@@ -77,3 +77,210 @@ end
    assert(keys[1] is 'b', "Second key should be 'b'")
    assert(keys[2] is 'c', "Third key should be 'c'")
 end
+
+-- Tests for table.foreachi()
+
+@Test function test_foreachi_basic()
+   -- Test basic iteration over array elements
+   t = { 'a', 'b', 'c' }
+   result = {}
+   table.foreachi(t, function(i, v)
+      table.insert(result, tostring(i) .. ':' .. v)
+   end)
+   assert(#result is 3, "Should iterate 3 times, got " .. #result)
+   assert(result[0] is '0:a', "First should be '0:a', got " .. tostring(result[0]))
+   assert(result[1] is '1:b', "Second should be '1:b', got " .. tostring(result[1]))
+   assert(result[2] is '2:c', "Third should be '2:c', got " .. tostring(result[2]))
+end
+
+@Test function test_foreachi_empty()
+   -- Test iteration over empty table
+   t = {}
+   count = 0
+   table.foreachi(t, function(i, v)
+      count += 1
+   end)
+   assert(count is 0, "Should not iterate on empty table")
+end
+
+@Test function test_foreachi_early_return()
+   -- Test early return when function returns non-nil
+   t = { 10, 20, 30, 40, 50 }
+   result = table.foreachi(t, function(i, v)
+      if v is 30 then return 'found:' .. i end
+   end)
+   assert(result is 'found:2', "Should return 'found:2', got " .. tostring(result))
+end
+
+@Test function test_foreachi_no_return()
+   -- Test that nil is returned when no early return happens
+   t = { 1, 2, 3 }
+   result = table.foreachi(t, function(i, v)
+      -- Return nothing (nil)
+   end)
+   assert(result is nil, "Should return nil when no early return")
+end
+
+@Test function test_foreachi_sparse_array()
+   -- Test that foreachi respects array length, not sparse entries
+   t = { 'a', 'b', 'c' }
+   t[10] = 'x'  -- This is in the hash part, not counted in length
+   count = 0
+   table.foreachi(t, function(i, v)
+      count += 1
+   end)
+   assert(count is 3, "Should only iterate array part (3 elements), got " .. count)
+end
+
+-- Tests for table.foreach()
+
+@Test function test_foreach_basic()
+   -- Test basic iteration over all table elements (hash and array)
+   t = { a = 1, b = 2, c = 3 }
+   sum = 0
+   table.foreach(t, function(k, v)
+      sum += v
+   end)
+   assert(sum is 6, "Sum should be 6, got " .. sum)
+end
+
+@Test function test_foreach_empty()
+   -- Test iteration over empty table
+   t = {}
+   count = 0
+   table.foreach(t, function(k, v)
+      count += 1
+   end)
+   assert(count is 0, "Should not iterate on empty table")
+end
+
+@Test function test_foreach_early_return()
+   -- Test early return when function returns non-nil
+   t = { a = 10, b = 20, c = 30 }
+   result = table.foreach(t, function(k, v)
+      if v is 20 then return 'found:' .. k end
+   end)
+   assert(result is 'found:b', "Should return 'found:b', got " .. tostring(result))
+end
+
+@Test function test_foreach_mixed_keys()
+   -- Test iteration over mixed array and hash keys
+   t = { 'x', 'y', name = 'test' }
+   keys = {}
+   table.foreach(t, function(k, v)
+      table.insert(keys, tostring(k))
+   end)
+   assert(#keys is 3, "Should have 3 keys, got " .. #keys)
+end
+
+@Test function test_foreach_no_return()
+   -- Test that nil is returned when no early return happens
+   t = { a = 1 }
+   result = table.foreach(t, function(k, v)
+      -- Return nothing (nil)
+   end)
+   assert(result is nil, "Should return nil when no early return")
+end
+
+-- Tests for table.getn()
+
+@Test function test_getn_empty()
+   -- Test length of empty table
+   t = {}
+   assert(table.getn(t) is 0, "Empty table should have length 0")
+end
+
+@Test function test_getn_array()
+   -- Test length of array-style table
+   t = { 'a', 'b', 'c', 'd', 'e' }
+   assert(table.getn(t) is 5, "Array with 5 elements should have length 5, got " .. table.getn(t))
+end
+
+@Test function test_getn_matches_length_operator()
+   -- Test that getn matches the # operator
+   t = { 1, 2, 3 }
+   assert(table.getn(t) is #t, "getn should match # operator")
+end
+
+@Test function test_getn_ignores_hash_part()
+   -- Test that getn only counts array part
+   t = { 'x', 'y' }
+   t.name = 'test'
+   t.value = 42
+   assert(table.getn(t) is 2, "getn should only count array elements, got " .. table.getn(t))
+end
+
+@Test function test_getn_after_insert_remove()
+   -- Test getn after modifications
+   t = {}
+   table.insert(t, 'a')
+   table.insert(t, 'b')
+   assert(table.getn(t) is 2, "After 2 inserts, length should be 2")
+   table.remove(t)
+   assert(table.getn(t) is 1, "After remove, length should be 1")
+end
+
+-- Tests for table.move()
+
+@Test function test_move_basic()
+   -- Test basic move within same table
+   t = { 'a', 'b', 'c', 'd', 'e' }
+   result = table.move(t, 0, 2, 3)  -- Move indices 0-2 to start at 3
+   assert(result is t, "move should return the target table")
+   assert(t[3] is 'a', "t[3] should be 'a', got " .. tostring(t[3]))
+   assert(t[4] is 'b', "t[4] should be 'b', got " .. tostring(t[4]))
+   assert(t[5] is 'c', "t[5] should be 'c', got " .. tostring(t[5]))
+end
+
+@Test function test_move_to_different_table()
+   -- Test move to a different table
+   src = { 10, 20, 30 }
+   dst = {}
+   result = table.move(src, 0, 2, 0, dst)
+   assert(result is dst, "move should return destination table")
+   assert(dst[0] is 10, "dst[0] should be 10")
+   assert(dst[1] is 20, "dst[1] should be 20")
+   assert(dst[2] is 30, "dst[2] should be 30")
+end
+
+@Test function test_move_empty_range()
+   -- Test move with empty range (e < f)
+   t = { 1, 2, 3 }
+   original_len = #t
+   result = table.move(t, 2, 1, 5)  -- Empty range, should do nothing
+   assert(result is t, "move should return the table")
+   assert(#t is original_len, "Table length should be unchanged")
+end
+
+@Test function test_move_single_element()
+   -- Test moving a single element
+   t = { 'x', 'y', 'z' }
+   table.move(t, 1, 1, 5)  -- Move t[1] to t[5]
+   assert(t[5] is 'y', "t[5] should be 'y', got " .. tostring(t[5]))
+end
+
+@Test function test_move_overlapping_forward()
+   -- Test overlapping move (shifting forward)
+   t = { 1, 2, 3, 4, 5 }
+   table.move(t, 0, 2, 1)  -- Move 0-2 to 1-3 (overlapping)
+   assert(t[1] is 1, "t[1] should be 1, got " .. tostring(t[1]))
+   assert(t[2] is 2, "t[2] should be 2, got " .. tostring(t[2]))
+   assert(t[3] is 3, "t[3] should be 3, got " .. tostring(t[3]))
+end
+
+@Test function test_move_returns_destination()
+   -- Test that move returns the destination table
+   src = { 1, 2, 3 }
+   dst = { 'a', 'b' }
+   result = table.move(src, 0, 2, 0, dst)
+   assert(result is dst, "move should return destination table when provided")
+end
+
+@Test function test_move_no_destination()
+   -- Test move without explicit destination (uses source)
+   t = { 'a', 'b', 'c' }
+   result = table.move(t, 0, 1, 5)
+   assert(result is t, "move should return source table when no destination")
+   assert(t[5] is 'a', "t[5] should be 'a'")
+   assert(t[6] is 'b', "t[6] should be 'b'")
+end

@@ -7,7 +7,6 @@
 #include "lj_obj.h"
 #include "lj_bc.h"
 #include "lib.h"
-#include "buildvm_libbc.h"
 
 // Context for library definitions.
 static uint8_t obuf[8192];
@@ -158,60 +157,14 @@ static void libdef_func(BuildCtx* ctx, char* p, int arg)
    regfunc = REGFUNC_OK;
 }
 
-static uint8_t* libdef_uleb128(uint8_t* p, uint32_t* vv)
-{
-   uint32_t v = *p++;
-   if (v >= 0x80) {
-      int sh = 0; v &= 0x7f;
-      do { v |= ((*p & 0x7f) << (sh += 7)); } while (*p++ >= 0x80);
-   }
-   *vv = v;
-   return p;
-}
-
-static void libdef_fixupbc(uint8_t* p)
-{
-   uint32_t i, sizebc;
-   p += 4;
-   p = libdef_uleb128(p, &sizebc);
-   p = libdef_uleb128(p, &sizebc);
-   p = libdef_uleb128(p, &sizebc);
-   for (i = 0; i < sizebc; i++, p += 4) {
-      uint8_t op = p[libbc_endian ? 3 : 0];
-      uint8_t ra = p[libbc_endian ? 2 : 1];
-      uint8_t rc = p[libbc_endian ? 1 : 2];
-      uint8_t rb = p[libbc_endian ? 0 : 3];
-      if (!LJ_DUALNUM && op == BC_ISTYPE && rc == ~LJ_TNUMX + 1) {
-         op = BC_ISNUM; rc++;
-      }
-      p[LJ_ENDIAN_SELECT(0, 3)] = op;
-      p[LJ_ENDIAN_SELECT(1, 2)] = ra;
-      p[LJ_ENDIAN_SELECT(2, 1)] = rc;
-      p[LJ_ENDIAN_SELECT(3, 0)] = rb;
-   }
-}
-
+// LJLIB_LUA is deprecated - all embedded Lua functions must be converted to LJLIB_CF.
+// The buildvm_libbc.h file that contained pre-compiled bytecode is no longer used.
 static void libdef_lua(BuildCtx* ctx, char* p, int arg)
 {
    UNUSED(arg);
-   if (ctx->mode == BUILD_libdef) {
-      int i;
-      for (i = 0; libbc_map[i].name != NULL; i++) {
-         if (!strcmp(libbc_map[i].name, p)) {
-            int ofs = libbc_map[i].ofs;
-            int len = libbc_map[i + 1].ofs - ofs;
-            obuf[2]++;  /* Bump hash table size. */
-            *optr++ = LIBINIT_LUA;
-            libdef_name(p, 0);
-            memcpy(optr, libbc_code + ofs, len);
-            libdef_fixupbc(optr);
-            optr += len;
-            return;
-         }
-      }
-      fprintf(stderr, "Error: missing libbc definition for %s\n", p);
-      exit(1);
-   }
+   UNUSED(ctx);
+   fprintf(stderr, "Error: LJLIB_LUA is deprecated. Convert '%s' to LJLIB_CF.\n", p);
+   exit(1);
 }
 
 static uint32_t find_rec(char* name)

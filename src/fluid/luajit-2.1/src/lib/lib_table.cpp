@@ -27,38 +27,55 @@
 
 //********************************************************************************************************************
 
-LJLIB_LUA(table_foreachi) /*
-  function(t, f)
-    CHECK_tab(t)
-    CHECK_func(f)
-    for i=0,#t-1 do
-      local r = f(i, t[i])
-      if r ~= nil then return r end
-    end
-  end
-*/
+LJLIB_CF(table_foreachi)
+{
+   GCtab *t = lj_lib_checktab(L, 1);
+   lj_lib_checkfunc(L, 2);
+   int32_t len = (int32_t)lj_tab_len(t);
+
+   for (int32_t i = 0; i < len; i++) {
+      lua_pushvalue(L, 2);  // Push function
+      lua_pushinteger(L, i);  // Push index
+      lua_rawgeti(L, 1, i);  // Push t[i]
+      lua_call(L, 2, 1);  // Call f(i, t[i])
+      if (!lua_isnil(L, -1)) {
+         return 1;  // Return non-nil result
+      }
+      lua_pop(L, 1);  // Pop nil result
+   }
+   return 0;
+}
 
 //********************************************************************************************************************
 
-LJLIB_LUA(table_foreach) /*
-  function(t, f)
-    CHECK_tab(t)
-    CHECK_func(f)
-    for k, v in PAIRS(t) do
-      local r = f(k, v)
-      if r ~= nil then return r end
-    end
-  end
-*/
+LJLIB_CF(table_foreach)
+{
+   GCtab *t = lj_lib_checktab(L, 1);
+   lj_lib_checkfunc(L, 2);
+
+   lua_pushnil(L);  // Initial key for iteration
+   while (lua_next(L, 1)) {
+      // Stack: key, value
+      lua_pushvalue(L, 2);  // Push function
+      lua_pushvalue(L, -3);  // Push key
+      lua_pushvalue(L, -3);  // Push value
+      lua_call(L, 2, 1);  // Call f(k, v)
+      if (!lua_isnil(L, -1)) {
+         return 1;  // Return non-nil result
+      }
+      lua_pop(L, 2);  // Pop result and value, keep key for next iteration
+   }
+   return 0;
+}
 
 //********************************************************************************************************************
 
-LJLIB_LUA(table_getn) /*
-  function(t)
-    CHECK_tab(t)
-    return #t
-  end
-*/
+LJLIB_CF(table_getn)
+{
+   GCtab *t = lj_lib_checktab(L, 1);
+   lua_pushinteger(L, (lua_Integer)lj_tab_len(t));
+   return 1;
+}
 
 //********************************************************************************************************************
 
@@ -123,25 +140,45 @@ LJLIB_CF(table_remove)
 
 //********************************************************************************************************************
 
-LJLIB_LUA(table_move) /*
-  function(a1, f, e, t, a2)
-    CHECK_tab(a1)
-    CHECK_int(f)
-    CHECK_int(e)
-    CHECK_int(t)
-    if a2 == nil then a2 = a1 end
-    CHECK_tab(a2)
-    if e >= f then
-      local d = t - f
-      if t > e or t <= f or a2 ~= a1 then
-   for i=f,e do a2[i+d] = a1[i] end
-      else
-   for i=e,f,-1 do a2[i+d] = a1[i] end
-      end
-    end
-    return a2
-  end
-*/
+LJLIB_CF(table_move)
+{
+   GCtab *a1 = lj_lib_checktab(L, 1);
+   int32_t f = lj_lib_checkint(L, 2);  // Start index
+   int32_t e = lj_lib_checkint(L, 3);  // End index
+   int32_t t = lj_lib_checkint(L, 4);  // Target index
+
+   // If a2 is nil, use a1 as destination
+   GCtab *a2;
+   if (lua_isnoneornil(L, 5)) {
+      a2 = a1;
+      lua_pushvalue(L, 1);  // Push a1 as return value
+   }
+   else {
+      a2 = lj_lib_checktab(L, 5);
+      lua_pushvalue(L, 5);  // Push a2 as return value
+   }
+
+   if (e >= f) {
+      int32_t d = t - f;
+      // Choose iteration direction to handle overlapping regions correctly
+      if (t > e or t <= f or a2 != a1) {
+         // Forward iteration: no overlap or different tables
+         for (int32_t i = f; i <= e; i++) {
+            lua_rawgeti(L, 1, i);  // Get a1[i]
+            lua_rawseti(L, (a2 IS a1) ? 1 : 5, i + d);  // Set a2[i+d]
+         }
+      }
+      else {
+         // Backward iteration: overlapping region requires reverse copy
+         for (int32_t i = e; i >= f; i--) {
+            lua_rawgeti(L, 1, i);  // Get a1[i]
+            lua_rawseti(L, 1, i + d);  // Set a1[i+d] (same table)
+         }
+      }
+   }
+
+   return 1;  // Return a2
+}
 
 //********************************************************************************************************************
 
