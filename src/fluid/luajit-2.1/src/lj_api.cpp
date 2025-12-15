@@ -673,7 +673,7 @@ extern lua_CFunction lua_tocfunction(lua_State *L, int idx)
 {
    cTValue *o = index2adr(L, idx);
    if (tvisfunc(o)) {
-      BCOp op = bc_op(*mref(funcV(o)->c.pc, BCIns));
+      BCOp op = bc_op(*mref<BCIns>(funcV(o)->c.pc));
       if (op IS BC_FUNCC or op IS BC_FUNCCW) return funcV(o)->c.f;
    }
    return nullptr;

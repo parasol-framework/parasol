@@ -82,7 +82,7 @@ inline constexpr int FRAME_TYPEP = (FRAME_TYPE | FRAME_P);
 */
 #define frame_gc(f)      (gcref((f)->fr.func))
 #define frame_ftsz(f)      ((ptrdiff_t)(f)->fr.tp.ftsz)
-#define frame_pc(f)      (mref((f)->fr.tp.pcr, const BCIns))
+#define frame_pc(f)      (mref<const BCIns>((f)->fr.tp.pcr))
 #define setframe_gc(f, p, tp)   (setgcref((f)->fr.func, (p)), UNUSED(tp))
 #define setframe_ftsz(f, sz)   ((f)->fr.tp.ftsz = (int32_t)(sz))
 #define setframe_pc(f, pc)   (setmref((f)->fr.tp.pcr, (pc)))
@@ -286,7 +286,7 @@ inline constexpr int CFRAME_UNWIND_FF = 2;  //  Only used in unwinder.
 #define cframe_multres(cf)   (*(uint32_t *)(((char *)(cf))+CFRAME_OFS_MULTRES))
 #define cframe_multres_n(cf) (cframe_multres((cf)) >> CFRAME_SHIFT_MULTRES)
 #define cframe_L(cf)         (&gcref(*(GCRef *)(((char *)(cf))+CFRAME_OFS_L))->th)
-#define cframe_pc(cf)        (mref(*(MRef *)(((char *)(cf))+CFRAME_OFS_PC), const BCIns))
+#define cframe_pc(cf)        (mref<const BCIns>(*(MRef *)(((char *)(cf))+CFRAME_OFS_PC)))
 #define setcframe_L(cf, L)   (setmref(*(MRef *)(((char *)(cf))+CFRAME_OFS_L), (L)))
 #define setcframe_pc(cf, pc) (setmref(*(MRef *)(((char *)(cf))+CFRAME_OFS_PC), (pc)))
 #define cframe_canyield(cf)  ((intptr_t)(cf) & CFRAME_RESUME)

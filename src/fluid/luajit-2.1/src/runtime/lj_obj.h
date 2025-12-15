@@ -49,59 +49,35 @@ struct SBuf;
 class ParserDiagnostics;
 class objScript;
 
-// -- Basic type aliases --------------------------------------------------
-
 // Memory and GC object sizes.
-using MSize = uint32_t;
-using GCSize = uint64_t;  // Always 64-bit
 
-// Memory reference - always 64-bit
+using MSize = uint32_t;
+using GCSize = uint64_t;
+
+// Memory reference
+
 struct MRef {
-   uint64_t ptr64;   //  True 64 bit pointer.
+   uint64_t ptr64;
+
+   template<typename T> [[nodiscard]] constexpr inline T * get() const noexcept { return (T *)(void *)ptr64; }
+   template<typename T> constexpr inline void set_fn(T *p) noexcept { ptr64 = uint64_t((void *)p); }
+   constexpr inline void set(std::nullptr_t) noexcept { ptr64 = 0; } // Overload for nullptr
+   constexpr inline void set(uint64_t u) noexcept { ptr64 = u; }
+   constexpr inline void set(MRef v) noexcept { ptr64 = v.ptr64; }
 };
 
-// MRef accessor functions - 64-bit only
-template<typename T>
-[[nodiscard]] constexpr inline T* mref_get(MRef r) noexcept
-{
-   return (T*)(void*)r.ptr64;
-}
+// MRef accessor functions
 
-[[nodiscard]] constexpr inline uint64_t mrefu(MRef r) noexcept
-{
-   return r.ptr64;
-}
-
-template<typename T>
-constexpr inline void setmref_fn(MRef& r, T* p) noexcept
-{
-   r.ptr64 = uint64_t((void*)p);
-}
-
-// Overload for nullptr
-constexpr inline void setmref_fn(MRef& r, std::nullptr_t) noexcept
-{
-   r.ptr64 = 0;
-}
-
-constexpr inline void setmrefu(MRef& r, uint64_t u) noexcept
-{
-   r.ptr64 = u;
-}
-
-constexpr inline void setmrefr(MRef& r, MRef v) noexcept
-{
-   r.ptr64 = v.ptr64;
-}
-
-// Compatibility macros - thin wrappers over template functions
-#define mref(r, t)      mref_get<t>(r)
-#define setmref(r, p)   setmref_fn((r), (p))
+template<typename T> [[nodiscard]] constexpr inline T * mref(const MRef &r) noexcept { return r.get<T>(); }
+[[nodiscard]] constexpr inline uint64_t mrefu(MRef r) noexcept { return r.ptr64; }
+template<typename T> constexpr inline void setmref(MRef &r, T *p) noexcept { r.set_fn(p); }
+constexpr inline void setmref(MRef &r, std::nullptr_t) noexcept { r.ptr64 = 0; } // Overload for nullptr
+constexpr inline void setmrefu(MRef &r, uint64_t u) noexcept { r.ptr64 = u; }
+constexpr inline void setmrefr(MRef &r, MRef v) noexcept { r.ptr64 = v.ptr64; }
 
 //********************************************************************************************************************
 // GC object references
 
-// GCobj reference - always 64-bit
 struct GCRef {
    uint64_t gcptr64;   //  True 64 bit pointer.
 };
@@ -116,55 +92,19 @@ struct GCRef {
 // GCRef accessor functions - 64-bit only
 // These just cast - they don't dereference, so can be inline functions
 
-[[nodiscard]] inline GCobj* gcref(GCRef r) noexcept
-{
-   return (GCobj*)r.gcptr64;
-}
-
-template<typename T>
-[[nodiscard]] inline T* gcrefp_fn(GCRef r) noexcept
-{
-   return (T*)(void*)r.gcptr64;
-}
-
-[[nodiscard]] constexpr inline uint64_t gcrefu(GCRef r) noexcept
-{
-   return r.gcptr64;
-}
-
-[[nodiscard]] constexpr inline bool gcrefeq(GCRef r1, GCRef r2) noexcept
-{
-   return r1.gcptr64 IS r2.gcptr64;
-}
-
-template<typename T>
-inline void setgcrefp_fn(GCRef& r, T* p) noexcept
-{
-   r.gcptr64 = uint64_t(p);
-}
+[[nodiscard]] inline GCobj* gcref(GCRef r) noexcept { return (GCobj*)r.gcptr64; }
+template<typename T> [[nodiscard]] inline T* gcrefp_fn(GCRef r) noexcept { return (T*)(void*)r.gcptr64; }
+[[nodiscard]] constexpr inline uint64_t gcrefu(GCRef r) noexcept { return r.gcptr64; }
+[[nodiscard]] constexpr inline bool gcrefeq(GCRef r1, GCRef r2) noexcept { return r1.gcptr64 IS r2.gcptr64; }
+template<typename T> inline void setgcrefp_fn(GCRef& r, T* p) noexcept { r.gcptr64 = uint64_t(p); }
 
 // Overload for integer types (used in some low-level operations)
 // Note: On 64-bit, uintptr_t is typically uint64_t, so only need one
 
-constexpr inline void setgcrefp_fn(GCRef& r, uint64_t v) noexcept
-{
-   r.gcptr64 = v;
-}
-
-constexpr inline void setgcrefp_fn(GCRef& r, int v) noexcept
-{
-   r.gcptr64 = uint64_t(v);
-}
-
-constexpr inline void setgcrefnull(GCRef& r) noexcept
-{
-   r.gcptr64 = 0;
-}
-
-constexpr inline void setgcrefr(GCRef& r, GCRef v) noexcept
-{
-   r.gcptr64 = v.gcptr64;
-}
+constexpr inline void setgcrefp_fn(GCRef& r, uint64_t v) noexcept { r.gcptr64 = v; }
+constexpr inline void setgcrefp_fn(GCRef& r, int v) noexcept { r.gcptr64 = uint64_t(v); }
+constexpr inline void setgcrefnull(GCRef& r) noexcept { r.gcptr64 = 0; }
+constexpr inline void setgcrefr(GCRef& r, GCRef v) noexcept { r.gcptr64 = v.gcptr64; }
 
 // These dereference GCobj->gch, so must remain macros until GCobj is defined
 // They will be converted to inline functions after GCobj definition
@@ -288,7 +228,7 @@ typedef LJ_ALIGN(8) union TValue {
 
 using cTValue = const TValue;
 
-[[nodiscard]] inline TValue* tvref(MRef r) noexcept { return mref(r, TValue); }
+[[nodiscard]] inline TValue* tvref(MRef r) noexcept { return r.get<TValue>(); }
 
 // More external and GCobj tags for internal objects.
 
@@ -458,7 +398,7 @@ typedef struct GCcdataVar {
    return (void*)((char*)cd - cdatav(cd)->offset);
 }
 
-// -- Prototype object ----------------------------------------------------
+// Prototype object
 
 inline constexpr int32_t SCALE_NUM_GCO = int32_t(sizeof(lua_Number) / sizeof(GCRef));
 
@@ -469,26 +409,26 @@ inline constexpr int32_t SCALE_NUM_GCO = int32_t(sizeof(lua_Number) / sizeof(GCR
 
 typedef struct GCproto {
    GCHeader;
-   uint8_t numparams; //  Number of parameters.
-   uint8_t framesize; //  Fixed frame size.
-   MSize sizebc;      //  Number of bytecode instructions.
+   uint8_t  numparams; //  Number of parameters.
+   uint8_t  framesize; //  Fixed frame size.
+   MSize    sizebc;    //  Number of bytecode instructions.
    uint32_t unused_gc64; // Padding for 64-bit alignment
-   GCRef gclist;
-   MRef k;            //  Split constant array (points to the middle).
-   MRef uv;           //  Upvalue list. local slot|0x8000 or parent uv idx.
-   MSize sizekgc;     //  Number of collectable constants.
-   MSize sizekn;      //  Number of lua_Number constants.
-   MSize sizept;      //  Total size including colocated arrays.
-   uint8_t sizeuv;    //  Number of upvalues.
-   uint8_t flags;     //  Miscellaneous flags (see below).
+   GCRef    gclist;
+   MRef     k;        //  Split constant array (points to the middle).
+   MRef     uv;       //  Upvalue list. local slot|0x8000 or parent uv idx.
+   MSize    sizekgc;  //  Number of collectable constants.
+   MSize    sizekn;   //  Number of lua_Number constants.
+   MSize    sizept;   //  Total size including colocated arrays.
+   uint8_t  sizeuv;   //  Number of upvalues.
+   uint8_t  flags;    //  Miscellaneous flags (see below).
    uint16_t trace;    //  Anchor for chain of root traces.
    //  The following fields are for debugging/tracebacks only ------
-   GCRef chunkname;   //  Name of the chunk this function was defined in.
+   GCRef  chunkname;  //  Name of the chunk this function was defined in.
    BCLine firstline;  //  First line of the function definition.
    BCLine numline;    //  Number of lines for the function definition.
-   MRef lineinfo;     //  Compressed map from bytecode ins. to source line.
-   MRef uvinfo;       //  Upvalue names.
-   MRef varinfo;      //  Names and compressed extents of local variables.
+   MRef   lineinfo;   //  Compressed map from bytecode ins. to source line.
+   MRef   uvinfo;     //  Upvalue names.
+   MRef   varinfo;    //  Names and compressed extents of local variables.
    uint64_t closeslots;  //  Bitmap of locals with <close> attribute (max 64 slots)
 } GCproto;
 
@@ -509,30 +449,25 @@ inline constexpr int PROTO_CLC_POLY         = 3 * PROTO_CLCOUNT;  //  Polymorphi
 inline constexpr uint16_t PROTO_UV_LOCAL     = 0x8000;   //  Upvalue for local slot.
 inline constexpr uint16_t PROTO_UV_IMMUTABLE = 0x4000;   //  Immutable upvalue.
 
-[[nodiscard]] inline GCobj* proto_kgc(const GCproto* pt, ptrdiff_t idx) noexcept
-{
+[[nodiscard]] inline GCobj* proto_kgc(const GCproto* pt, ptrdiff_t idx) noexcept {
    return check_exp(uintptr_t(intptr_t(idx)) >= uintptr_t(-intptr_t(pt->sizekgc)),
-      gcref(mref(pt->k, GCRef)[idx]));
+      gcref(pt->k.get<GCRef>()[idx]));
 }
 
-[[nodiscard]] inline TValue* proto_knumtv(const GCproto* pt, MSize idx) noexcept
-{
-   return check_exp(uintptr_t(idx) < pt->sizekn, &mref(pt->k, TValue)[idx]);
+[[nodiscard]] inline TValue* proto_knumtv(const GCproto* pt, MSize idx) noexcept {
+   return check_exp(uintptr_t(idx) < pt->sizekn, &(pt->k.get<TValue>()[idx]));
 }
 
-[[nodiscard]] inline BCIns* proto_bc(const GCproto* pt) noexcept
-{
+[[nodiscard]] inline BCIns* proto_bc(const GCproto* pt) noexcept {
    return (BCIns*)((char*)pt + sizeof(GCproto));
 }
 
-[[nodiscard]] inline BCPOS proto_bcpos(const GCproto* pt, const BCIns* pc) noexcept
-{
+[[nodiscard]] inline BCPOS proto_bcpos(const GCproto* pt, const BCIns* pc) noexcept {
    return BCPOS(pc - proto_bc(pt));
 }
 
-[[nodiscard]] inline uint16_t* proto_uv(const GCproto* pt) noexcept
-{
-   return mref(pt->uv, uint16_t);
+[[nodiscard]] inline uint16_t* proto_uv(const GCproto* pt) noexcept {
+   return pt->uv.get<uint16_t>();
 }
 
 // Forward declarations - defined after GCobj is complete
@@ -541,17 +476,17 @@ inline const char* proto_chunknamestr(const GCproto* pt) noexcept;
 
 [[nodiscard]] inline const void* proto_lineinfo(const GCproto* pt) noexcept
 {
-   return mref(pt->lineinfo, const void);
+   return pt->lineinfo.get<const void>();
 }
 
 [[nodiscard]] inline const uint8_t* proto_uvinfo(const GCproto* pt) noexcept
 {
-   return mref(pt->uvinfo, const uint8_t);
+   return mref<const uint8_t>(pt->uvinfo);
 }
 
 [[nodiscard]] inline const uint8_t* proto_varinfo(const GCproto* pt) noexcept
 {
-   return mref(pt->varinfo, const uint8_t);
+   return mref<const uint8_t>(pt->varinfo);
 }
 
 // -- Upvalue object ------------------------------------------------------
@@ -576,9 +511,8 @@ typedef struct GCupval {
 inline GCupval* uvprev(GCupval* uv) noexcept;
 inline GCupval* uvnext(GCupval* uv) noexcept;
 
-[[nodiscard]] inline TValue* uvval(GCupval* uv) noexcept
-{
-   return mref(uv->v, TValue);
+[[nodiscard]] inline TValue* uvval(GCupval* uv) noexcept {
+   return mref<TValue>(uv->v);
 }
 
 // Function object (closures)
@@ -624,7 +558,7 @@ inline constexpr uint8_t FF_C   = 1;
 
 [[nodiscard]] inline GCproto* funcproto(const GCfunc* fn) noexcept
 {
-   return check_exp(isluafunc(fn), (GCproto*)(mref(fn->l.pc, char) - sizeof(GCproto)));
+   return check_exp(isluafunc(fn), (GCproto*)(mref<char>(fn->l.pc) - sizeof(GCproto)));
 }
 
 [[nodiscard]] constexpr inline size_t sizeCfunc(MSize n) noexcept
@@ -672,12 +606,12 @@ inline GCtab* tabref(GCRef r) noexcept;
 
 [[nodiscard]] constexpr inline Node* noderef(MRef r) noexcept
 {
-   return mref(r, Node);
+   return mref<Node>(r);
 }
 
 [[nodiscard]] inline Node* nextnode(Node* n) noexcept
 {
-   return mref(n->next, Node);
+   return mref<Node>(n->next);
 }
 
 [[nodiscard]] inline Node* getfreetop(const GCtab* t, Node*) noexcept
@@ -734,7 +668,7 @@ static_assert(offsetof(GCarray, gclist) IS offsetof(GCtab, gclist));
 // Array accessor functions
 [[nodiscard]] inline void* arraydata(GCarray* arr) noexcept
 {
-   return mref(arr->data, void);
+   return mref<void>(arr->data);
 }
 
 [[nodiscard]] inline MSize arraylen(GCarray* arr) noexcept
@@ -988,7 +922,7 @@ struct lua_State {
 
 [[nodiscard]] inline global_State * G(lua_State* L) noexcept
 {
-   return mref(L->glref, global_State);
+   return mref<global_State>(L->glref);
 }
 
 [[nodiscard]] inline TValue * registry(lua_State* L) noexcept
@@ -1197,7 +1131,7 @@ template<typename T>
 {
    uint64_t u = o->u64;
    uint64_t seg = lightudseg(u);
-   uint32_t* segmap = mref(g->gc.lightudseg, uint32_t);
+   uint32_t* segmap = mref<uint32_t>(g->gc.lightudseg);
    lj_assertG(tvislightud(o), "lightuserdata expected");
    lj_assertG(seg <= g->gc.lightudnum, "bad lightuserdata segment %d", seg);
    return (void*)(((uint64_t)segmap[seg] << 32) | lightudlo(u));

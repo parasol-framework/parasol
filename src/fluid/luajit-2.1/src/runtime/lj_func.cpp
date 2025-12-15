@@ -173,7 +173,7 @@ GCfunc* lj_func_newL_gc(lua_State* L, GCproto* pt, GCfuncL* parent)
       if ((v & PROTO_UV_LOCAL)) {
          uv = func_finduv(L, base + (v & 0xff));
          uv->immutable = ((v / PROTO_UV_IMMUTABLE) & 1);
-         uv->dhash = (uint32_t)(uintptr_t)mref(parent->pc, char) ^ (v << 24);
+         uv->dhash = (uint32_t)(uintptr_t)mref<char>(parent->pc) ^ (v << 24);
       }
       else {
          uv = &gcref(puv[v])->uv;

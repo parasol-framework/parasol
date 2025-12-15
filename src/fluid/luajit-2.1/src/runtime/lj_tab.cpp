@@ -45,11 +45,9 @@ static LJ_AINLINE void newhpart(lua_State* L, GCtab* t, uint32_t hbits)
    t->hmask = hsize - 1;
 }
 
-/*
-** Q: Why all of these copies of t->hmask, t->node etc. to local variables?
-** A: Because alias analysis for C is _really_ tough.
-**    Even state-of-the-art C compilers won't produce good code without this.
-*/
+// Q: Why all of these copies of t->hmask, t->node etc. to local variables?
+// A: Because alias analysis for C is _really_ tough.
+//    Even state-of-the-art C compilers won't produce good code without this.
 
 // Clear hash part of table.
 static LJ_AINLINE void clearhpart(GCtab* t)
@@ -78,7 +76,9 @@ static LJ_AINLINE void clearapart(GCtab* t)
 static GCtab* newtab(lua_State* L, uint32_t asize, uint32_t hbits)
 {
    GCtab* t;
+
    // First try to colocate the array part.
+
    if (LJ_MAX_COLOSIZE != 0 and asize > 0 and asize <= LJ_MAX_COLOSIZE) {
       Node* nilnode;
       lj_assertL((sizeof(GCtab) & 7) == 0, "bad GCtab size");
@@ -108,14 +108,13 @@ static GCtab* newtab(lua_State* L, uint32_t asize, uint32_t hbits)
       setmref(t->node, nilnode);
       setmref(t->freetop, nilnode);
       if (asize > 0) {
-         if (asize > LJ_MAX_ASIZE)
-            lj_err_msg(L, ErrMsg::TABOV);
+         if (asize > LJ_MAX_ASIZE) lj_err_msg(L, ErrMsg::TABOV);
          setmref(t->array, lj_mem_newvec(L, asize, TValue));
          t->asize = asize;
       }
    }
-   if (hbits)
-      newhpart(L, t, hbits);
+
+   if (hbits) newhpart(L, t, hbits);
    return t;
 }
 

@@ -169,84 +169,84 @@ typedef struct CCallInfo {
   _(BUFFER,   lj_serialize_get,   2,  FS, PTR, CCI_T) \
   _(BUFFER,   lj_serialize_encode,   2,  FA, STR, CCI_L|CCI_T) \
   _(BUFFER,   lj_serialize_decode,   3,   A, INT, CCI_L|CCI_T) \
-  _(ANY,   lj_buf_tostr,      1,  FL, STR, CCI_T) \
-  _(ANY,   lj_tab_new_ah,      3,   A, TAB, CCI_L|CCI_T) \
-  _(ANY,   lj_tab_new1,      2,  FA, TAB, CCI_L|CCI_T) \
-  _(ANY,   lj_tab_dup,      2,  FA, TAB, CCI_L|CCI_T) \
-  _(ANY,   lj_tab_clear,      1,  FS, NIL, 0) \
-  _(ANY,   lj_tab_newkey,      3,   S, PGC, CCI_L|CCI_T) \
-  _(ANY,   lj_tab_keyindex,   2,  FL, INT, 0) \
-  _(ANY,   lj_vm_next,      2,  FL, PTR, 0) \
-  _(ANY,   lj_tab_len,      1,  FL, INT, 0) \
-  _(ANY,   lj_tab_len_hint,   2,  FL, INT, 0) \
+  _(ANY,   lj_buf_tostr,        1,  FL, STR, CCI_T) \
+  _(ANY,   lj_tab_new_ah,       3,   A, TAB, CCI_L|CCI_T) \
+  _(ANY,   lj_tab_new1,         2,  FA, TAB, CCI_L|CCI_T) \
+  _(ANY,   lj_tab_dup,          2,  FA, TAB, CCI_L|CCI_T) \
+  _(ANY,   lj_tab_clear,        1,  FS, NIL, 0) \
+  _(ANY,   lj_tab_newkey,       3,   S, PGC, CCI_L|CCI_T) \
+  _(ANY,   lj_tab_keyindex,     2,  FL, INT, 0) \
+  _(ANY,   lj_vm_next,          2,  FL, PTR, 0) \
+  _(ANY,   lj_tab_len,          1,  FL, INT, 0) \
+  _(ANY,   lj_tab_len_hint,     2,  FL, INT, 0) \
   _(ANY,   lj_gc_step_jit,      2,  FS, NIL, CCI_L) \
-  _(ANY,   lj_gc_barrieruv,   2,  FS, NIL, 0) \
-  _(ANY,   lj_mem_newgco,      2,  FA, PGC, CCI_L|CCI_T) \
-  _(ANY,   lj_prng_u64d,      1,  FS, NUM, CCI_CASTU64) \
-  _(ANY,   lj_vm_modi,      2,  FN, INT, 0) \
-  _(ANY,   cmath_log10,      1,   N, NUM, XA_FP) \
-  _(ANY,   deg,             1,   N, NUM, XA_FP) \
-  _(ANY,   rad,             1,   N, NUM, XA_FP) \
-  _(ANY,   cmath_exp,      1,   N, NUM, XA_FP) \
-  _(ANY,   cmath_sin,      1,   N, NUM, XA_FP) \
-  _(ANY,   cmath_cos,      1,   N, NUM, XA_FP) \
-  _(ANY,   cmath_tan,      1,   N, NUM, XA_FP) \
-  _(ANY,   cmath_asin,      1,   N, NUM, XA_FP) \
-  _(ANY,   cmath_acos,      1,   N, NUM, XA_FP) \
-  _(ANY,   cmath_atan,      1,   N, NUM, XA_FP) \
-  _(ANY,   cmath_sinh,      1,   N, NUM, XA_FP) \
-  _(ANY,   cmath_cosh,      1,   N, NUM, XA_FP) \
-  _(ANY,   cmath_tanh,      1,   N, NUM, XA_FP) \
-  _(ANY,   fputc,         2,   S, INT, 0) \
-  _(ANY,   fwrite,         4,   S, INT, 0) \
-  _(ANY,   fflush,         1,   S, INT, 0) \
+  _(ANY,   lj_gc_barrieruv,     2,  FS, NIL, 0) \
+  _(ANY,   lj_mem_newgco,       2,  FA, PGC, CCI_L|CCI_T) \
+  _(ANY,   lj_prng_u64d,        1,  FS, NUM, CCI_CASTU64) \
+  _(ANY,   lj_vm_modi,          2,  FN, INT, 0) \
+  _(ANY,   cmath_log10,         1,   N, NUM, XA_FP) \
+  _(ANY,   deg,                 1,   N, NUM, XA_FP) \
+  _(ANY,   rad,                 1,   N, NUM, XA_FP) \
+  _(ANY,   cmath_exp,           1,   N, NUM, XA_FP) \
+  _(ANY,   cmath_sin,           1,   N, NUM, XA_FP) \
+  _(ANY,   cmath_cos,           1,   N, NUM, XA_FP) \
+  _(ANY,   cmath_tan,           1,   N, NUM, XA_FP) \
+  _(ANY,   cmath_asin,          1,   N, NUM, XA_FP) \
+  _(ANY,   cmath_acos,          1,   N, NUM, XA_FP) \
+  _(ANY,   cmath_atan,          1,   N, NUM, XA_FP) \
+  _(ANY,   cmath_sinh,          1,   N, NUM, XA_FP) \
+  _(ANY,   cmath_cosh,          1,   N, NUM, XA_FP) \
+  _(ANY,   cmath_tanh,          1,   N, NUM, XA_FP) \
+  _(ANY,   fputc,               2,   S, INT, 0) \
+  _(ANY,   fwrite,              4,   S, INT, 0) \
+  _(ANY,   fflush,              1,   S, INT, 0) \
   /* ORDER FPM */ \
   _(FPMATH,   lj_vm_floor,      1,   N, NUM, XA_FP) \
-  _(FPMATH,   lj_vm_ceil,      1,   N, NUM, XA_FP) \
+  _(FPMATH,   lj_vm_ceil,       1,   N, NUM, XA_FP) \
   _(FPMATH,   lj_vm_trunc,      1,   N, NUM, XA_FP) \
-  _(FPMATH,   cmath_sqrt,      1,   N, NUM, XA_FP) \
-  _(ANY,   cmath_log,      1,   N, NUM, XA_FP) \
-  _(ANY,   lj_vm_log2,      1,   N, NUM, XA_FP) \
-  _(ANY,   lj_vm_powi,      2,   N, NUM, XA_FP) \
-  _(ANY,   lj_vm_pow,      2,   N, NUM, XA2_FP) \
-  _(ANY,   cmath_atan2,      2,   N, NUM, XA2_FP) \
-  _(ANY,   cmath_ldexp,      2,   N, NUM, XA_FP) \
+  _(FPMATH,   cmath_sqrt,       1,   N, NUM, XA_FP) \
+  _(ANY,   cmath_log,           1,   N, NUM, XA_FP) \
+  _(ANY,   lj_vm_log2,          1,   N, NUM, XA_FP) \
+  _(ANY,   lj_vm_powi,          2,   N, NUM, XA_FP) \
+  _(ANY,   lj_vm_pow,           2,   N, NUM, XA2_FP) \
+  _(ANY,   cmath_atan2,         2,   N, NUM, XA2_FP) \
+  _(ANY,   cmath_ldexp,         2,   N, NUM, XA_FP) \
   _(SOFTFP,   lj_vm_tobit,      1,   N, INT, XA_FP32) \
-  _(SOFTFP,   softfp_add,      2,   N, NUM, XA2_FP32) \
-  _(SOFTFP,   softfp_sub,      2,   N, NUM, XA2_FP32) \
-  _(SOFTFP,   softfp_mul,      2,   N, NUM, XA2_FP32) \
-  _(SOFTFP,   softfp_div,      2,   N, NUM, XA2_FP32) \
-  _(SOFTFP,   softfp_cmp,      2,   N, NIL, XA2_FP32) \
-  _(SOFTFP,   softfp_i2d,      1,   N, NUM, 0) \
-  _(SOFTFP,   softfp_d2i,      1,   N, INT, XA_FP32) \
-  _(SOFTFP_FFI,   softfp_ui2d,      1,   N, NUM, 0) \
-  _(SOFTFP_FFI,   softfp_f2d,      1,   N, NUM, 0) \
-  _(SOFTFP_FFI,   softfp_d2ui,      1,   N, INT, XA_FP32) \
-  _(SOFTFP_FFI,   softfp_d2f,      1,   N, FLOAT, XA_FP32) \
-  _(SOFTFP_FFI,   softfp_i2f,      1,   N, FLOAT, 0) \
-  _(SOFTFP_FFI,   softfp_ui2f,      1,   N, FLOAT, 0) \
-  _(SOFTFP_FFI,   softfp_f2i,      1,   N, INT, 0) \
-  _(SOFTFP_FFI,   softfp_f2ui,      1,   N, INT, 0) \
-  _(FP64_FFI,   fp64_l2d,      1,   N, NUM, XA_64) \
+  _(SOFTFP,   softfp_add,       2,   N, NUM, XA2_FP32) \
+  _(SOFTFP,   softfp_sub,       2,   N, NUM, XA2_FP32) \
+  _(SOFTFP,   softfp_mul,       2,   N, NUM, XA2_FP32) \
+  _(SOFTFP,   softfp_div,       2,   N, NUM, XA2_FP32) \
+  _(SOFTFP,   softfp_cmp,       2,   N, NIL, XA2_FP32) \
+  _(SOFTFP,   softfp_i2d,       1,   N, NUM, 0) \
+  _(SOFTFP,   softfp_d2i,       1,   N, INT, XA_FP32) \
+  _(SOFTFP_FFI,   softfp_ui2d,  1,   N, NUM, 0) \
+  _(SOFTFP_FFI,   softfp_f2d,   1,   N, NUM, 0) \
+  _(SOFTFP_FFI,   softfp_d2ui,  1,   N, INT, XA_FP32) \
+  _(SOFTFP_FFI,   softfp_d2f,   1,   N, FLOAT, XA_FP32) \
+  _(SOFTFP_FFI,   softfp_i2f,   1,   N, FLOAT, 0) \
+  _(SOFTFP_FFI,   softfp_ui2f,  1,   N, FLOAT, 0) \
+  _(SOFTFP_FFI,   softfp_f2i,   1,   N, INT, 0) \
+  _(SOFTFP_FFI,   softfp_f2ui,  1,   N, INT, 0) \
+  _(FP64_FFI,   fp64_l2d,       1,   N, NUM, XA_64) \
   _(FP64_FFI,   fp64_ul2d,      1,   N, NUM, XA_64) \
-  _(FP64_FFI,   fp64_l2f,      1,   N, FLOAT, XA_64) \
+  _(FP64_FFI,   fp64_l2f,       1,   N, FLOAT, XA_64) \
   _(FP64_FFI,   fp64_ul2f,      1,   N, FLOAT, XA_64) \
-  _(FP64_FFI,   fp64_d2l,      1,   N, I64, XA_FP) \
+  _(FP64_FFI,   fp64_d2l,       1,   N, I64, XA_FP) \
   _(FP64_FFI,   fp64_d2ul,      1,   N, U64, XA_FP) \
-  _(FP64_FFI,   fp64_f2l,      1,   N, I64, 0) \
+  _(FP64_FFI,   fp64_f2l,       1,   N, I64, 0) \
   _(FP64_FFI,   fp64_f2ul,      1,   N, U64, 0) \
-  _(FFI,   lj_carith_divi64,   2,   N, I64, XA2_64|CCI_NOFPRCLOBBER) \
-  _(FFI,   lj_carith_divu64,   2,   N, U64, XA2_64|CCI_NOFPRCLOBBER) \
-  _(FFI,   lj_carith_modi64,   2,   N, I64, XA2_64|CCI_NOFPRCLOBBER) \
-  _(FFI,   lj_carith_modu64,   2,   N, U64, XA2_64|CCI_NOFPRCLOBBER) \
-  _(FFI,   lj_carith_powi64,   2,   N, I64, XA2_64|CCI_NOFPRCLOBBER) \
-  _(FFI,   lj_carith_powu64,   2,   N, U64, XA2_64|CCI_NOFPRCLOBBER) \
-  _(FFI,   lj_cdata_newv,      4,   S, CDATA, CCI_L) \
-  _(FFI,   lj_cdata_setfin,   4,   S, NIL, CCI_L) \
-  _(FFI,   strlen,         1,   L, INTP, 0) \
-  _(FFI,   memcpy,         3,   S, PTR, 0) \
-  _(FFI,   memset,         3,   S, PTR, 0) \
-  _(FFI,   lj_vm_errno,      0,   S, INT, CCI_NOFPRCLOBBER) \
+  _(FFI,     lj_carith_divi64,  2,   N, I64, XA2_64|CCI_NOFPRCLOBBER) \
+  _(FFI,     lj_carith_divu64,  2,   N, U64, XA2_64|CCI_NOFPRCLOBBER) \
+  _(FFI,     lj_carith_modi64,  2,   N, I64, XA2_64|CCI_NOFPRCLOBBER) \
+  _(FFI,     lj_carith_modu64,  2,   N, U64, XA2_64|CCI_NOFPRCLOBBER) \
+  _(FFI,     lj_carith_powi64,  2,   N, I64, XA2_64|CCI_NOFPRCLOBBER) \
+  _(FFI,     lj_carith_powu64,  2,   N, U64, XA2_64|CCI_NOFPRCLOBBER) \
+  _(FFI,     lj_cdata_newv,     4,   S, CDATA, CCI_L) \
+  _(FFI,     lj_cdata_setfin,   4,   S, NIL, CCI_L) \
+  _(FFI,     strlen,            1,   L, INTP, 0) \
+  _(FFI,     memcpy,            3,   S, PTR, 0) \
+  _(FFI,     memset,            3,   S, PTR, 0) \
+  _(FFI,     lj_vm_errno,       0,   S, INT, CCI_NOFPRCLOBBER) \
   _(FFI32,   lj_carith_mul64,   2,   N, I64, XA2_64|CCI_NOFPRCLOBBER) \
   _(FFI32,   lj_carith_shl64,   2,   N, U64, XA_64|CCI_NOFPRCLOBBER) \
   _(FFI32,   lj_carith_shr64,   2,   N, U64, XA_64|CCI_NOFPRCLOBBER) \

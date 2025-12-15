@@ -33,6 +33,7 @@ enum class ExpKind : uint8_t {
    Global,     // sval = string value (explicit global or known global reference)
    Unscoped,   // sval = string value (undeclared variable - scope determined by context)
    Indexed,    // info = table register, aux = index reg/byte/string const
+   IndexedArray, // info = array register, aux = index reg/byte (array indexing)
    Jmp,        // info = instruction PC
    Relocable,  // info = instruction PC
    NonReloc,   // info = result register
@@ -42,8 +43,9 @@ enum class ExpKind : uint8_t {
 
 // Expression kind helper function - returns true for variable-like expressions.
 // Note: Unscoped is between Global and Indexed, so this range check covers it.
+// IndexedArray is also considered a variable-like expression for assignment purposes.
 [[nodiscard]] static constexpr bool vkisvar(ExpKind k) {
-   return ExpKind::Local <= k and k <= ExpKind::Indexed;
+   return ExpKind::Local <= k and k <= ExpKind::IndexedArray;
 }
 
 enum class ExprFlag : uint8_t {
@@ -249,6 +251,8 @@ struct ExpDesc {
    [[nodiscard]] inline bool is_upvalue() const { return this->k IS ExpKind::Upval; }
    [[nodiscard]] inline bool is_global() const { return this->k IS ExpKind::Global; }
    [[nodiscard]] inline bool is_indexed() const { return this->k IS ExpKind::Indexed; }
+   [[nodiscard]] inline bool is_indexed_array() const { return this->k IS ExpKind::IndexedArray; }
+   [[nodiscard]] inline bool is_any_indexed() const { return this->k IS ExpKind::Indexed or this->k IS ExpKind::IndexedArray; }
    [[nodiscard]] inline bool is_register() const { return this->k IS ExpKind::Local or this->k IS ExpKind::NonReloc; }
 
    // Extended falsey check (nil, false, 0, "")

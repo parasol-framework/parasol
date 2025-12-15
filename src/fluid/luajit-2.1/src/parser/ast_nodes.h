@@ -110,6 +110,7 @@ enum class FluidType : uint8_t {
    Num,
    Str,
    Table,
+   Array,        // Native array type
    Func,
    Thread,
    CData,
@@ -395,6 +396,7 @@ struct IndexExprPayload {
    IndexExprPayload& operator=(IndexExprPayload&&) noexcept = default;
    ExprNodePtr table;
    ExprNodePtr index;
+   FluidType base_type = FluidType::Unknown;  // Known type of the base (table/array) expression
    ~IndexExprPayload();
 };
 
@@ -417,6 +419,7 @@ struct SafeIndexExprPayload {
    SafeIndexExprPayload& operator=(SafeIndexExprPayload&&) noexcept = default;
    ExprNodePtr table;
    ExprNodePtr index;
+   FluidType base_type = FluidType::Unknown;  // Known type of the base (table/array) expression
    ~SafeIndexExprPayload();
 };
 

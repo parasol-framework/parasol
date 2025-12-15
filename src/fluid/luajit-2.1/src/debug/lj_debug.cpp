@@ -100,7 +100,7 @@ static BCPOS debug_framepc(lua_State *L, GCfunc *fn, cTValue *nextframe)
    if (pos > pt->sizebc) {  //  Undo the effects of lj_trace_exit for JLOOP.
       GCtrace* T = (GCtrace*)((char*)(ins - 1) - offsetof(GCtrace, startins));
       lj_assertL(bc_isret(bc_op(ins[-1])), "return bytecode expected");
-      pos = proto_bcpos(pt, mref(T->startpc, const BCIns));
+      pos = proto_bcpos(pt, mref<const BCIns>(T->startpc));
    }
 #endif
    return pos;

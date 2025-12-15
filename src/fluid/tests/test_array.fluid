@@ -1,59 +1,53 @@
--- Flute tests for array.concat functionality
+-- Flute tests for array:concat functionality
 
-@BeforeEach(hotpath=true) 
+@BeforeEach(hotpath=true)
 function enforce_hotpath() end
 
 @Test function testIntegerArrayConcat()
-   int_array = array.new(5, "integer")
+   int_array = array.new(5, 'int')
    int_array[0] = 10
    int_array[1] = 20
    int_array[2] = 30
    int_array[3] = 40
    int_array[4] = 50
 
-   result = int_array.concat("%d", ", ")
-   if result != "10, 20, 30, 40, 50" then
-      error("Integer array concat failed, expected '10, 20, 30, 40, 50', got '" .. result .. "'")
-   end
+   result = int_array:concat('%d', ', ')
+   assert(result is '10, 20, 30, 40, 50', "Integer array concat failed, expected '10, 20, 30, 40, 50', got '" .. result .. "'")
 
    -- Test without join string
-   result2 = int_array.concat("%d", "")
-   if result2 != "1020304050" then
-      error("Integer array concat without join failed, expected '1020304050', got '" .. result2 .. "'")
-   end
+   result2 = int_array:concat('%d', '')
+   assert(result2 is '1020304050', "Integer array concat without join failed, expected '1020304050', got '" .. result2 .. "'")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function testFloatArrayConcat()
-   float_array = array.new(3, "float")
+   float_array = array.new(3, 'float')
    float_array[0] = 1.5
    float_array[1] = 2.7
    float_array[2] = 3.14
 
-   result = float_array.concat("%.2f", " | ")
-   if result != "1.50 | 2.70 | 3.14" then
-      error("Float array concat failed, expected '1.50 | 2.70 | 3.14', got '" .. result .. "'")
-   end
+   result = float_array:concat('%.2f', ' | ')
+   assert(result is '1.50 | 2.70 | 3.14', "Float array concat failed, expected '1.50 | 2.70 | 3.14', got '" .. result .. "'")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function testByteArrayConcat()
-   byte_array = array.new(4, "byte")
+   byte_array = array.new(4, 'byte')
    byte_array[0] = 65  -- 'A'
    byte_array[1] = 66  -- 'B'
    byte_array[2] = 67  -- 'C'
    byte_array[3] = 68  -- 'D'
 
-   result = byte_array.concat("%c", "")
-   if result != "ABCD" then
+   result = byte_array:concat('%c', '')
+   if result != 'ABCD' then
       error("Byte array concat failed, expected 'ABCD', got '" .. result .. "'")
    end
 
    -- Test with separator
-   result2 = byte_array.concat("%d", "-")
-   if result2 != "65-66-67-68" then
+   result2 = byte_array:concat('%d', '-')
+   if result2 != '65-66-67-68' then
       error("Byte array numeric concat failed, expected '65-66-67-68', got '" .. result2 .. "'")
    end
 end
@@ -61,81 +55,75 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function testDoubleArrayConcat()
-   double_array = array.new(2, "double")
+   double_array = array.new(2, 'double')
    double_array[0] = 3.141592653589793
    double_array[1] = 2.718281828459045
 
-   result = double_array.concat("%.3f", " and ")
-   if result != "3.142 and 2.718" then
-      error("Double array concat failed, expected '3.142 and 2.718', got '" .. result .. "'")
-   end
+   result = double_array:concat('%.3f', ' and ')
+   assert(result is '3.142 and 2.718', "Double array concat failed, expected '3.142 and 2.718', got '" .. result .. "'")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function testWordArrayConcat()
-   word_array = array.new(3, "word")
+   word_array = array.new(3, 'int16')
    word_array[0] = 1000
    word_array[1] = 2000
    word_array[2] = 3000
 
-   result = word_array.concat("%04d", ", ")
-   if result != "1000, 2000, 3000" then
-      error("Word array concat failed, expected '1000, 2000, 3000', got '" .. result .. "'")
-   end
+   result = word_array:concat('%04d', ', ')
+   assert(result is '1000, 2000, 3000', "Word array concat failed, expected '1000, 2000, 3000', got '" .. result .. "'")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function testSingleElementConcat()
-   single_array = array.new(1, "integer")
+   single_array = array.new(1, 'int')
    single_array[0] = 42
 
-   result = single_array.concat("%d", ", ")
-   if result != "42" then
-      error("Single element array concat failed, expected '42', got '" .. result .. "'")
-   end
+   result = single_array:concat('%d', ', ')
+   assert(result is '42', "Single element array concat failed, expected '42', got '" .. result .. "'")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function testFormatValidation()
-   int_array = array.new(2, "integer")
+   int_array = array.new(2, 'int')
    int_array[0] = 10
    int_array[1] = 20
 
    -- Test valid formats work
-   result = int_array.concat("%d", ", ")
-   assert(result is "10, 20", "Valid format test failed, expected '10, 20', got '" .. result .. "'")
+   result = int_array:concat('%d', ', ')
+   assert(result is '10, 20', "Valid format test failed, expected '10, 20', got '" .. result .. "'")
 
    -- Test multiple format specifiers are rejected
    success = pcall(function()
-      return int_array.concat("%d %s", ", ")
+      return int_array:concat('%d %s', ', ')
    end)
    assert(not success, "Multiple format specifiers should be rejected")
 
    -- Test no format specifier is rejected
    success = pcall(function()
-      return int_array.concat("no format", ", ")
+      return int_array:concat('no format', ', ')
    end)
    assert(not success, "No format specifier should be rejected")
 
    -- Test incomplete format specifier is rejected
    success3 = pcall(function()
-      return int_array.concat("incomplete %", ", ")
+      return int_array:concat('incomplete %', ', ')
    end)
    assert(not success3, "Incomplete format specifier should be rejected")
 
    -- Test escaped %% works
-   result_escaped = int_array.concat("%%d:%d", ", ")
-   assert(result_escaped is "%d:10, %d:20", "Escaped %% test failed, expected '%d:10, %d:20', got '" .. result_escaped .. "'")
+   result_escaped = int_array:concat('%%d:%d', ', ')
+   assert(result_escaped is '%d:10, %d:20', "Escaped %% test failed, expected '%d:10, %d:20', got '" .. result_escaped .. "'")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function testStringArrayUnsupported()
    -- String arrays should work for concat
-   string_array = array.new(3, "string")
+   string_array = array.new(3, 'string')
    -- Note: We can't actually set string array values in current implementation
    -- but we can test that the concat method exists and handles the case
 
@@ -147,23 +135,23 @@ end
 -- Test basic array bounds checking
 
 @Test function testArrayBoundsChecking()
-   arr = array.new(10, "integer")
+   arr = array.new(10, 'int')
 
    -- Test valid access
    arr[0] = 100
-   assert(arr[0] is 100, "Valid array access failed")
+   assert(arr[0] is 100, 'Valid array access failed')
 
    -- Test invalid negative index
    status, err = pcall(function()
       return arr[-1]
    end)
-   assert(not status, "Should reject negative array index")
+   assert(not status, 'Should reject negative array index')
 
    -- Test invalid high index
    status, err = pcall(function()
       return arr[10]
    end)
-   assert(not status, "Should reject index beyond array size")
+   assert(not status, 'Should reject index beyond array size')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -172,168 +160,168 @@ end
 @Test function testArraySizeValidation()
    -- Test negative size rejection
    status, err = pcall(function()
-      return array.new(-5, "integer")
+      return array.new(-5, 'int')
    end)
-   assert(not status, "Should reject negative array size")
+   assert(not status, 'Should reject negative array size')
 
    -- Test zero size rejection
    status, err = pcall(function()
-      return array.new(0, "integer")
+      return array.new(0, 'int')
    end)
-   assert(not status, "Should reject zero array size")
+   assert(not status, 'Should reject zero array size')
 
    -- Test reasonable size acceptance
-   arr = array.new(100, "integer")
-   assert(arr != nil, "Should accept reasonable array size")
+   arr = array.new(100, 'int')
+   assert(arr != nil, 'Should accept reasonable array size')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Test getstring bounds checking on byte arrays
 
 @Test function testGetStringBounds()
-   str = "Hello World"
-   arr = array.new(str, "bytestring")
+   str = 'Hello World'
+   arr = array.new(str, 'bytestring')
 
    -- Test valid substring extraction
    result = arr.getstring(0, 5)
-   assert(result is "Hello", "Valid substring extraction failed")
+   assert(result is 'Hello', 'Valid substring extraction failed')
 
    -- Test invalid start index
    status, err = pcall(function()
       return arr.getstring(-1, 5)
    end)
-   assert(not status, "Should reject negative start index")
+   assert(not status, 'Should reject negative start index')
 
    -- Test invalid length (would exceed array bounds)
    status, err = pcall(function()
       return arr.getstring(5, 100)
    end)
-   assert(not status, "Should reject length that exceeds array bounds")
+   assert(not status, 'Should reject length that exceeds array bounds')
 
    -- Test negative length
    status, err = pcall(function()
       return arr.getstring(0, -5)
    end)
-   assert(not status, "Should reject negative length")
+   assert(not status, 'Should reject negative length')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Test array copy bounds checking
 
 @Test function testArrayCopyBounds()
-   dest = array.new(10, "byte")
-   source = "Hello"
+   dest = array.new(10, 'byte')
+   source = 'Hello'
 
    -- Test valid copy (source, destIndex=1 by default)
-   dest.copy(source)
+   dest:copy(source)
 
    -- Test copy beyond array bounds (start at index 8, source is 5 chars, would exceed size 10)
    status, err = pcall(function()
-      dest.copy(source, 8) -- start at index 8, copy 5 chars = positions 8-12 (exceeds size 10)
+      dest:copy(source, 8) -- start at index 8, copy 5 chars = positions 8-12 (exceeds size 10)
    end)
-   assert(not status, "Should reject copy that would exceed array bounds")
+   assert(not status, 'Should reject copy that would exceed array bounds')
 
    -- Test invalid destination index (0 is invalid, should be 1-based)
    status, err = pcall(function()
-      dest.copy(source, -1)
+      dest:copy(source, -1)
    end)
-   assert(not status, "Should reject invalid destination index")
+   assert(not status, 'Should reject invalid destination index')
 
    -- Test destination index beyond array size
    status, err = pcall(function()
-      dest.copy(source, 15) -- Beyond array size 10
+      dest:copy(source, 15) -- Beyond array size 10
    end)
-   assert(not status, "Should reject destination index beyond array size")
+   assert(not status, 'Should reject destination index beyond array size')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Test write access bounds on arrays
 
 @Test function testArrayWriteBounds()
-   arr = array.new(5, "integer")
+   arr = array.new(5, 'int')
 
    -- Test valid write
    arr[3] = 42
-   assert(arr[3] is 42, "Valid array write failed")
+   assert(arr[3] is 42, 'Valid array write failed')
 
    -- Test write beyond bounds
    status, err = pcall(function()
       arr[6] = 100
    end)
-   assert(not status, "Should reject write beyond array bounds")
+   assert(not status, 'Should reject write beyond array bounds')
 
    -- Test write at invalid index
    status, err = pcall(function()
       arr[-1] = 100
    end)
-   assert(not status, "Should reject write at invalid index")
+   assert(not status, 'Should reject write at invalid index')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Test table to array copying functionality
 
 @Test function testTableToIntegerArrayCopy()
-   arr = array.new(5, "integer")
+   arr = array.new(5, 'int')
    table_data = {10, 20, 30, 40, 50}
 
    -- Test copying entire table to array
-   arr.copy(table_data)
+   arr:copy(table_data)
 
    -- Verify values were copied correctly
    for i = 0, 4 do
-      assert(arr[i] is table_data[i], "Table to integer array copy failed at index " .. i)
+      assert(arr[i] is table_data[i], 'Table to integer array copy failed at index ' .. i)
    end
 end
 
 @Test function testTableToFloatArrayCopy()
-   arr = array.new(4, "float")
+   arr = array.new(4, 'float')
    table_data = {1.5, 2.7, 3.14, 4.8}
 
-   arr.copy(table_data)
+   arr:copy(table_data)
 
    -- Check with small tolerance for float comparison
    for i = 0, 3 do
       diff = math.abs(arr[i] - table_data[i])
-      assert(diff < 0.0001, "Table to float array copy failed at index " .. i)
+      assert(diff < 0.0001, 'Table to float array copy failed at index ' .. i)
    end
 end
 
 @Test function testTableToByteArrayCopy()
-   arr = array.new(4, "byte")
+   arr = array.new(4, 'byte')
    table_data = {65, 66, 67, 68}  -- ASCII A, B, C, D
 
-   arr.copy(table_data)
+   arr:copy(table_data)
 
    for i = 0, 3 do
-      assert(arr[i] is table_data[i], "Table to byte array copy failed at index " .. i)
+      assert(arr[i] is table_data[i], 'Table to byte array copy failed at index ' .. i)
    end
 end
 
 @Test function testTableToDoubleArrayCopy()
-   arr = array.new(3, "double")
+   arr = array.new(3, 'double')
    table_data = {3.141592653589793, 2.718281828459045, 1.414213562373095}
 
-   arr.copy(table_data)
+   arr:copy(table_data)
 
    for i = 0, 2 do
       diff = math.abs(arr[i] - table_data[i])
-      assert(diff < 0.000000001, "Table to double array copy failed at index " .. i)
+      assert(diff < 0.000000001, 'Table to double array copy failed at index ' .. i)
    end
 end
 
 @Test function testTableToWordArrayCopy()
-   arr = array.new(3, "word")
+   arr = array.new(3, 'word')
    table_data = {1000, 2000, 3000}
 
-   arr.copy(table_data)
+   arr:copy(table_data)
 
    for i = 0, 2 do
-      assert(arr[i] is table_data[i], "Table to word array copy failed at index " .. i)
+      assert(arr[i] is table_data[i], 'Table to word array copy failed at index ' .. i)
    end
 end
 
 @Test function testTableCopyWithDestinationIndex()
-   arr = array.new(6, "integer")
+   arr = array.new(6, 'int')
 
    -- Initialize array with different values
    for i = 0, 5 do
@@ -342,79 +330,79 @@ end
 
    -- Copy table starting at index 3
    table_data = {100, 200, 300}
-   arr.copy(table_data, 2) -- Source, DestIndex, Total
+   arr:copy(table_data, 2) -- Source, DestIndex, Total
 
    -- Check that first 2 elements are unchanged
-   assert(arr[0] is 0, "Element before copy should be unchanged")
-   assert(arr[1] is 1, "Element before copy should be unchanged")
+   assert(arr[0] is 0, 'Element before copy should be unchanged')
+   assert(arr[1] is 1, 'Element before copy should be unchanged')
 
    -- Check copied elements
-   assert(arr[2] is 100, "Copied element 1 incorrect")
-   assert(arr[3] is 200, "Copied element 2 incorrect")
-   assert(arr[4] is 300, "Copied element 3 incorrect")
+   assert(arr[2] is 100, 'Copied element 1 incorrect')
+   assert(arr[3] is 200, 'Copied element 2 incorrect')
+   assert(arr[4] is 300, 'Copied element 3 incorrect')
 
    -- Check that last element is unchanged
-   assert(arr[5] is 5, "Element after copy should be unchanged")
+   assert(arr[5] is 5, 'Element after copy should be unchanged')
 end
 
 @Test function testTableCopyWithLimitedTotal()
-   arr = array.new(5, "integer")
+   arr = array.new(5, 'int')
    table_data = {10, 20, 30, 40, 50}
 
    -- Copy only first 3 elements
-   arr.copy(table_data, 0, 3)
+   arr:copy(table_data, 0, 3)
 
-   assert(arr[0] is 10, "Limited copy element 1 incorrect")
-   assert(arr[1] is 20, "Limited copy element 2 incorrect")
-   assert(arr[2] is 30, "Limited copy element 3 incorrect")
+   assert(arr[0] is 10, 'Limited copy element 1 incorrect')
+   assert(arr[1] is 20, 'Limited copy element 2 incorrect')
+   assert(arr[2] is 30, 'Limited copy element 3 incorrect')
 
    -- Elements 3 and 4 should be uninitialized (0)
-   assert(arr[3] is 0, "Element beyond copy should be 0")
-   assert(arr[4] is 0, "Element beyond copy should be 0")
+   assert(arr[3] is 0, 'Element beyond copy should be 0')
+   assert(arr[4] is 0, 'Element beyond copy should be 0')
 end
 
 @Test function testTableCopyBoundsChecking()
-   arr = array.new(3, "integer")
+   arr = array.new(3, 'int')
    table_data = {10, 20, 30, 40}  -- Table larger than array
 
    -- Test copying to invalid destination index
    status = pcall(function()
-      arr.copy(table_data, 0)  -- Invalid index (0)
+      arr:copy(table_data, 0)  -- Invalid index (0)
    end)
-   assert(not status, "Should reject invalid destination index")
+   assert(not status, 'Should reject invalid destination index')
 
    -- Test copying beyond array bounds
    status2 = pcall(function()
-      arr.copy(table_data, 2)  -- Start at 2, table has 4 elements, would exceed array size 3
+      arr:copy(table_data, 2)  -- Start at 2, table has 4 elements, would exceed array size 3
    end)
-   assert(not status2, "Should reject copy that would exceed array bounds")
+   assert(not status2, 'Should reject copy that would exceed array bounds')
 
    -- Test with empty table
    empty_table = {}
    status3 = pcall(function()
-      arr.copy(empty_table)
+      arr:copy(empty_table)
    end)
-   assert(not status3, "Should reject empty table")
+   assert(not status3, 'Should reject empty table')
 end
 
 @Test function testTableCopyTypeConversion()
    -- Test copying integers to float array
-   float_arr = array.new(3, "float")
+   float_arr = array.new(3, 'float')
    int_table = {1, 2, 3}
 
-   float_arr.copy(int_table)
+   float_arr:copy(int_table)
 
-   assert(math.abs(float_arr[0] - 1.0) < 0.0001, "Integer to float conversion failed")
-   assert(math.abs(float_arr[1] - 2.0) < 0.0001, "Integer to float conversion failed")
-   assert(math.abs(float_arr[2] - 3.0) < 0.0001, "Integer to float conversion failed")
+   assert(math.abs(float_arr[0] - 1.0) < 0.0001, 'Integer to float conversion failed')
+   assert(math.abs(float_arr[1] - 2.0) < 0.0001, 'Integer to float conversion failed')
+   assert(math.abs(float_arr[2] - 3.0) < 0.0001, 'Integer to float conversion failed')
 
    -- Test copying floats to integer array (truncation)
-   int_arr = array.new(3, "integer")
+   int_arr = array.new(3, 'int')
    float_table = {1.7, 2.9, 3.1}
 
-   int_arr.copy(float_table)
+   int_arr:copy(float_table)
 
-   assert(int_arr[0] is 1, "Float to integer conversion failed")
-   assert(int_arr[1] is 2, "Float to integer conversion failed")
-   assert(int_arr[2] is 3, "Float to integer conversion failed")
+   assert(int_arr[0] is 1, 'Float to integer conversion failed')
+   assert(int_arr[1] is 2, 'Float to integer conversion failed')
+   assert(int_arr[2] is 3, 'Float to integer conversion failed')
 end

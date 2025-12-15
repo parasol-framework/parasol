@@ -198,7 +198,7 @@ static void gc_mark(global_State *g, GCobj* o)
       if (mt) gc_markobj(g, mt);
       // If array contains GC references (strings), mark them
       if (arr->elemtype IS ARRAY_ELEM_STRING) {
-         GCRef* refs = (GCRef*)mref(arr->data, void);
+         GCRef* refs = (GCRef*)mref<void>(arr->data);
          for (MSize i = 0; i < arr->len; i++) {
             if (gcref(refs[i])) gc_markobj(g, gcref(refs[i]));
          }
@@ -847,10 +847,10 @@ static size_t gc_onestep(lua_State *L)
 
    case GCPhase::Sweep: {
       GCSize old = g->gc.total;
-      setmref(g->gc.sweep, gc_sweep(g, mref(g->gc.sweep, GCRef), GCSWEEPMAX));
+      setmref(g->gc.sweep, gc_sweep(g, mref<GCRef>(g->gc.sweep), GCSWEEPMAX));
       lj_assertG(old >= g->gc.total, "sweep increased memory");
       g->gc.estimate -= old - g->gc.total;
-      if (gcref(*mref(g->gc.sweep, GCRef)) IS nullptr) {
+      if (gcref(*mref<GCRef>(g->gc.sweep)) IS nullptr) {
          if (g->str.num <= (g->str.mask >> 2) and g->str.mask > LJ_MIN_STRTAB * 2 - 1)
             lj_str_resize(L, g->str.mask >> 1);  //  Shrink string table.
          if (gcref(g->gc.mmudata)) {  // Need any finalizations?

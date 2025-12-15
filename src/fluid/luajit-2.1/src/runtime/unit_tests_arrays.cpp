@@ -93,13 +93,13 @@ static bool test_array_creation_byte(pf::Log &Log)
       Log.error("char array should be colocated");
       return false;
    }
-   if (mref(arr->data, void) IS nullptr) {
+   if (mref<void>(arr->data) IS nullptr) {
       Log.error("char array data pointer is null");
       return false;
    }
 
    // Verify zero-initialisation
-   uint8_t* data = (uint8_t*)mref(arr->data, void);
+   uint8_t* data = (uint8_t*)mref<void>(arr->data);
    for (int i = 0; i < 100; i++) {
       if (data[i] != 0) {
          Log.error("char array not zero-initialised at index %d", i);
@@ -136,7 +136,7 @@ static bool test_array_creation_int32(pf::Log &Log)
    }
 
    // Write and read back values
-   int32_t* data = (int32_t*)mref(arr->data, void);
+   int32_t* data = (int32_t*)mref<void>(arr->data);
    for (int i = 0; i < 50; i++) {
       data[i] = i * 100;
    }
@@ -172,7 +172,7 @@ static bool test_array_creation_double(pf::Log &Log)
       return false;
    }
 
-   double* data = (double*)mref(arr->data, void);
+   double* data = (double*)mref<void>(arr->data);
    data[0] = 3.14159265358979;
    data[24] = -2.71828182845904;
 
@@ -199,7 +199,7 @@ static bool test_array_index_access(pf::Log &Log)
    luaL_openlibs(L);
 
    GCarray* arr = lj_array_new(L, 10, ARRAY_ELEM_INT32);
-   int32_t* data = (int32_t*)mref(arr->data, void);
+   int32_t* data = (int32_t*)mref<void>(arr->data);
 
    for (int i = 0; i < 10; i++) {
       data[i] = i + 1;
@@ -287,12 +287,12 @@ static bool test_array_external(pf::Log &Log)
       Log.error("external array not marked as readonly");
       return false;
    }
-   if (mref(arr->data, void) != external_data) {
+   if (mref<void>(arr->data) != external_data) {
       Log.error("external array does not point to original data");
       return false;
    }
 
-   int32_t* data = (int32_t*)mref(arr->data, void);
+   int32_t* data = (int32_t*)mref<void>(arr->data);
    if (data[2] != 30) {
       Log.error("external array reads incorrectly: got %d, expected 30", data[2]);
       return false;
@@ -312,7 +312,7 @@ static bool test_array_to_table(pf::Log &Log)
    luaL_openlibs(L);
 
    GCarray* arr = lj_array_new(L, 5, ARRAY_ELEM_INT32);
-   int32_t* data = (int32_t*)mref(arr->data, void);
+   int32_t* data = (int32_t*)mref<void>(arr->data);
    data[0] = 100;
    data[1] = 200;
    data[2] = 300;
@@ -472,7 +472,7 @@ static bool test_arr_getidx_int32(pf::Log &Log)
    luaL_openlibs(L);
 
    GCarray* arr = lj_array_new(L, 10, ARRAY_ELEM_INT32);
-   int32_t* data = (int32_t*)mref(arr->data, void);
+   int32_t* data = (int32_t*)mref<void>(arr->data);
    for (int i = 0; i < 10; i++) {
       data[i] = (i + 1) * 100;  // 100, 200, 300, ...
    }
@@ -510,7 +510,7 @@ static bool test_arr_getidx_double(pf::Log &Log)
    luaL_openlibs(L);
 
    GCarray* arr = lj_array_new(L, 5, ARRAY_ELEM_DOUBLE);
-   double* data = (double*)mref(arr->data, void);
+   double* data = (double*)mref<void>(arr->data);
    data[0] = 3.14159;
    data[2] = -2.71828;
    data[4] = 1.41421;
@@ -542,7 +542,7 @@ static bool test_arr_setidx_int32(pf::Log &Log)
    luaL_openlibs(L);
 
    GCarray* arr = lj_array_new(L, 10, ARRAY_ELEM_INT32);
-   int32_t* data = (int32_t*)mref(arr->data, void);
+   int32_t* data = (int32_t*)mref<void>(arr->data);
 
    // Set values using lj_arr_setidx
    TValue val;
@@ -583,7 +583,7 @@ static bool test_arr_setidx_double(pf::Log &Log)
    luaL_openlibs(L);
 
    GCarray* arr = lj_array_new(L, 5, ARRAY_ELEM_DOUBLE);
-   double* data = (double*)mref(arr->data, void);
+   double* data = (double*)mref<void>(arr->data);
 
    TValue val;
    setnumV(&val, 3.14159);
@@ -646,7 +646,7 @@ static bool test_arr_byte_type(pf::Log &Log)
    luaL_openlibs(L);
 
    GCarray* arr = lj_array_new(L, 256, ARRAY_ELEM_BYTE);
-   uint8_t* data = (uint8_t*)mref(arr->data, void);
+   uint8_t* data = (uint8_t*)mref<void>(arr->data);
 
    // Test byte array stores and retrieves correctly
    for (int i = 0; i < 256; i++) {
@@ -674,7 +674,7 @@ static bool test_arr_byte_type(pf::Log &Log)
 //********************************************************************************************************************
 // Library Functions
 
-static bool test_lib_fastarray_new(pf::Log &Log)
+static bool test_lib_array_new(pf::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -684,26 +684,26 @@ static bool test_lib_fastarray_new(pf::Log &Log)
    }
    luaL_openlibs(L);
 
-   // Test fastarray.new via Lua
+   // Test array.new via Lua
    const char* code = R"(
-      local arr = fastarray.new(100, "int")
-      return arr != nil and fastarray.len(arr) is 100 and fastarray.type(arr) is "int"
+      local arr = array.new(100, "int")
+      return arr != nil and array.len(arr) is 100 and array.type(arr) is "int"
    )";
 
    if (dostring(L, code) != 0) {
-      Log.error("fastarray.new test code failed: %s", lua_tostring(L, -1));
+      Log.error("array.new test code failed: %s", lua_tostring(L, -1));
       return false;
    }
 
    if (not lua_toboolean(L, -1)) {
-      Log.error("fastarray.new did not create array correctly");
+      Log.error("array.new did not create array correctly");
       return false;
    }
 
    return true;
 }
 
-static bool test_lib_fastarray_index(pf::Log &Log)
+static bool test_lib_array_index(pf::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -715,7 +715,7 @@ static bool test_lib_fastarray_index(pf::Log &Log)
 
    // Test array indexing via library metamethods
    const char* code = R"(
-      local arr = fastarray.new(10, "int")
+      local arr = array.new(10, "int")
       arr[0] = 100
       arr[5] = 500
       arr[9] = 900
@@ -723,19 +723,19 @@ static bool test_lib_fastarray_index(pf::Log &Log)
    )";
 
    if (dostring(L, code) != 0) {
-      Log.error("fastarray index test code failed: %s", lua_tostring(L, -1));
+      Log.error("array index test code failed: %s", lua_tostring(L, -1));
       return false;
    }
 
    if (not lua_toboolean(L, -1)) {
-      Log.error("fastarray indexing did not work correctly");
+      Log.error("array indexing did not work correctly");
       return false;
    }
 
    return true;
 }
 
-static bool test_lib_fastarray_table(pf::Log &Log)
+static bool test_lib_array_table(pf::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -745,32 +745,32 @@ static bool test_lib_fastarray_table(pf::Log &Log)
    }
    luaL_openlibs(L);
 
-   // Test fastarray.table conversion
+   // Test array.table conversion
    const char* code = R"(
-      local arr = fastarray.new(5, "int")
+      local arr = array.new(5, "int")
       arr[0] = 10
       arr[1] = 20
       arr[2] = 30
       arr[3] = 40
       arr[4] = 50
-      local t = fastarray.table(arr)
+      local t = array.table(arr)
       return t[0] is 10 and t[2] is 30 and t[4] is 50
    )";
 
    if (dostring(L, code) != 0) {
-      Log.error("fastarray.table test code failed: %s", lua_tostring(L, -1));
+      Log.error("array.table test code failed: %s", lua_tostring(L, -1));
       return false;
    }
 
    if (not lua_toboolean(L, -1)) {
-      Log.error("fastarray.table conversion failed");
+      Log.error("array.table conversion failed");
       return false;
    }
 
    return true;
 }
 
-static bool test_lib_fastarray_copy(pf::Log &Log)
+static bool test_lib_array_copy(pf::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -780,33 +780,33 @@ static bool test_lib_fastarray_copy(pf::Log &Log)
    }
    luaL_openlibs(L);
 
-   // Test fastarray.copy
+   // Test array.copy
    const char* code = R"(
-      local src = fastarray.new(5, "int")
-      local dst = fastarray.new(5, "int")
+      local src = array.new(5, "int")
+      local dst = array.new(5, "int")
       src[0] = 100
       src[1] = 200
       src[2] = 300
       src[3] = 400
       src[4] = 500
-      fastarray.copy(dst, src)
+      array.copy(dst, src)
       return dst[0] is 100 and dst[2] is 300 and dst[4] is 500
    )";
 
    if (dostring(L, code) != 0) {
-      Log.error("fastarray.copy test code failed: %s", lua_tostring(L, -1));
+      Log.error("array.copy test code failed: %s", lua_tostring(L, -1));
       return false;
    }
 
    if (not lua_toboolean(L, -1)) {
-      Log.error("fastarray.copy did not copy correctly");
+      Log.error("array.copy did not copy correctly");
       return false;
    }
 
    return true;
 }
 
-static bool test_lib_fastarray_string(pf::Log &Log)
+static bool test_lib_array_string(pf::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -816,28 +816,28 @@ static bool test_lib_fastarray_string(pf::Log &Log)
    }
    luaL_openlibs(L);
 
-   // Test fastarray.getstring and setstring
+   // Test array.getstring and setstring
    const char* code = R"(
-      local arr = fastarray.new(10, "char")
-      fastarray.setstring(arr, "hello")
-      local s = fastarray.getstring(arr, 0, 5)
+      local arr = array.new(10, "char")
+      array.setstring(arr, "hello")
+      local s = array.getstring(arr, 0, 5)
       return s is "hello"
    )";
 
    if (dostring(L, code) != 0) {
-      Log.error("fastarray string test code failed: %s", lua_tostring(L, -1));
+      Log.error("array string test code failed: %s", lua_tostring(L, -1));
       return false;
    }
 
    if (not lua_toboolean(L, -1)) {
-      Log.error("fastarray string operations failed");
+      Log.error("array string operations failed");
       return false;
    }
 
    return true;
 }
 
-static bool test_lib_fastarray_fill(pf::Log &Log)
+static bool test_lib_array_fill(pf::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -847,10 +847,10 @@ static bool test_lib_fastarray_fill(pf::Log &Log)
    }
    luaL_openlibs(L);
 
-   // Test fastarray.fill
+   // Test array.fill
    const char* code = R"(
-      local arr = fastarray.new(10, "int")
-      fastarray.fill(arr, 42)
+      local arr = array.new(10, "int")
+      array.fill(arr, 42)
       local ok = true
       for i = 0, 9 do
          if arr[i] != 42 then ok = false end
@@ -859,19 +859,19 @@ static bool test_lib_fastarray_fill(pf::Log &Log)
    )";
 
    if (dostring(L, code) != 0) {
-      Log.error("fastarray.fill test code failed: %s", lua_tostring(L, -1));
+      Log.error("array.fill test code failed: %s", lua_tostring(L, -1));
       return false;
    }
 
    if (not lua_toboolean(L, -1)) {
-      Log.error("fastarray.fill did not fill correctly");
+      Log.error("array.fill did not fill correctly");
       return false;
    }
 
    return true;
 }
 
-static bool test_lib_fastarray_len_operator(pf::Log &Log)
+static bool test_lib_array_len_operator(pf::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -883,24 +883,24 @@ static bool test_lib_fastarray_len_operator(pf::Log &Log)
 
    // Test # operator via __len metamethod
    const char* code = R"(
-      local arr = fastarray.new(42, "double")
+      local arr = array.new(42, "double")
       return #arr is 42
    )";
 
    if (dostring(L, code) != 0) {
-      Log.error("fastarray # operator test code failed: %s", lua_tostring(L, -1));
+      Log.error("array # operator test code failed: %s", lua_tostring(L, -1));
       return false;
    }
 
    if (not lua_toboolean(L, -1)) {
-      Log.error("fastarray # operator did not return correct length");
+      Log.error("array # operator did not return correct length");
       return false;
    }
 
    return true;
 }
 
-static bool test_lib_fastarray_tostring(pf::Log &Log)
+static bool test_lib_array_tostring(pf::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -912,25 +912,25 @@ static bool test_lib_fastarray_tostring(pf::Log &Log)
 
    // Test tostring via __tostring metamethod
    const char* code = R"(
-      local arr = fastarray.new(100, "double")
+      local arr = array.new(100, "double")
       local s = tostring(arr)
       return s is 'array(100, "double")'
    )";
 
    if (dostring(L, code) != 0) {
-      Log.error("fastarray tostring test code failed: %s", lua_tostring(L, -1));
+      Log.error("array tostring test code failed: %s", lua_tostring(L, -1));
       return false;
    }
 
    if (not lua_toboolean(L, -1)) {
-      Log.error("fastarray tostring did not return expected format");
+      Log.error("array tostring did not return expected format");
       return false;
    }
 
    return true;
 }
 
-static bool test_lib_fastarray_double_type(pf::Log &Log)
+static bool test_lib_array_double_type(pf::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -942,7 +942,7 @@ static bool test_lib_fastarray_double_type(pf::Log &Log)
 
    // Test double array type
    const char* code = R"(
-      local arr = fastarray.new(5, "double")
+      local arr = array.new(5, "double")
       arr[0] = 3.14159
       arr[2] = -2.71828
       arr[4] = 1.41421
@@ -953,12 +953,12 @@ static bool test_lib_fastarray_double_type(pf::Log &Log)
    )";
 
    if (dostring(L, code) != 0) {
-      Log.error("fastarray double type test code failed: %s", lua_tostring(L, -1));
+      Log.error("array double type test code failed: %s", lua_tostring(L, -1));
       return false;
    }
 
    if (not lua_toboolean(L, -1)) {
-      Log.error("fastarray double type did not work correctly");
+      Log.error("array double type did not work correctly");
       return false;
    }
 
@@ -995,15 +995,15 @@ void array_unit_tests(int &Passed, int &Total)
       { "arr_roundtrip", test_arr_roundtrip },
       { "arr_byte_type", test_arr_byte_type },
       // Library Functions
-      { "lib_fastarray_new", test_lib_fastarray_new },
-      { "lib_fastarray_index", test_lib_fastarray_index },
-      { "lib_fastarray_table", test_lib_fastarray_table },
-      { "lib_fastarray_copy", test_lib_fastarray_copy },
-      { "lib_fastarray_string", test_lib_fastarray_string },
-      { "lib_fastarray_fill", test_lib_fastarray_fill },
-      { "lib_fastarray_len_operator", test_lib_fastarray_len_operator },
-      { "lib_fastarray_tostring", test_lib_fastarray_tostring },
-      { "lib_fastarray_double_type", test_lib_fastarray_double_type }
+      { "lib_array_new", test_lib_array_new },
+      { "lib_array_index", test_lib_array_index },
+      { "lib_array_table", test_lib_array_table },
+      { "lib_array_copy", test_lib_array_copy },
+      { "lib_array_string", test_lib_array_string },
+      { "lib_array_fill", test_lib_array_fill },
+      { "lib_array_len_operator", test_lib_array_len_operator },
+      { "lib_array_tostring", test_lib_array_tostring },
+      { "lib_array_double_type", test_lib_array_double_type }
    } };
 
    if (NewObject(CLASSID::FLUID, &glArrayTestScript) != ERR::Okay) return;

@@ -763,7 +763,7 @@ void lj_gdbjit_addtrace(jit_State* J, GCtrace* T)
    GDBJITctx ctx;
    GCproto* pt = &gcref(T->startpt)->pt;
    TraceNo parent = T->ir[REF_BASE].op1;
-   const BCIns* startpc = mref(T->startpc, const BCIns);
+   const BCIns* startpc = mref<const BCIns>(T->startpc);
    ctx.T = T;
    ctx.mcaddr = (uintptr_t)T->mcode;
    ctx.szmcode = T->szmcode;

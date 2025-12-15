@@ -123,7 +123,7 @@ static void bcwrite_ktab(BCWriteCtx* ctx, char* p, const GCtab* t)
 static void bcwrite_kgc(BCWriteCtx* ctx, GCproto* pt)
 {
    MSize i, sizekgc = pt->sizekgc;
-   GCRef* kr = mref(pt->k, GCRef) - (ptrdiff_t)sizekgc;
+   GCRef* kr = mref<GCRef>(pt->k) - (ptrdiff_t)sizekgc;
    for (i = 0; i < sizekgc; i++, kr++) {
       GCobj* o = gcref(*kr);
       MSize tp, need = 1;
@@ -190,7 +190,7 @@ static void bcwrite_kgc(BCWriteCtx* ctx, GCproto* pt)
 static void bcwrite_knum(BCWriteCtx* ctx, GCproto* pt)
 {
    MSize i, sizekn = pt->sizekn;
-   cTValue* o = mref(pt->k, TValue);
+   cTValue* o = mref<TValue>(pt->k);
    char* p = lj_buf_more(&ctx->sb, 10 * sizekn);
    for (i = 0; i < sizekn; i++, o++) {
       int32_t k;
@@ -260,7 +260,7 @@ static void bcwrite_proto(BCWriteCtx* ctx, GCproto* pt)
    // Recursively write children of prototype.
    if ((pt->flags & PROTO_CHILD)) {
       ptrdiff_t i, n = pt->sizekgc;
-      GCRef* kr = mref(pt->k, GCRef) - 1;
+      GCRef* kr = mref<GCRef>(pt->k) - 1;
       for (i = 0; i < n; i++, kr--) {
          GCobj* o = gcref(*kr);
          if (o->gch.gct == ~LJ_TPROTO)

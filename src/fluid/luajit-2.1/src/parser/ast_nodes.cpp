@@ -10,21 +10,22 @@ FluidType parse_type_name(std::string_view Name)
    };
 
    constexpr TypeName names[] = {
-      { "any",      FluidType::Any },
-      { "nil",      FluidType::Nil },
-      { "bool",     FluidType::Bool },
-      { "boolean",  FluidType::Bool },
-      { "num",      FluidType::Num },
-      { "number",   FluidType::Num },
-      { "str",      FluidType::Str },
-      { "string",   FluidType::Str },
-      { "table",    FluidType::Table },
-      { "func",     FluidType::Func },
-      { "function", FluidType::Func },
-      { "thread",   FluidType::Thread },
-      { "cdata",    FluidType::CData },
-      { "obj",      FluidType::Object },
-      { "object",   FluidType::Object }
+      { "any",       FluidType::Any },
+      { "nil",       FluidType::Nil },
+      { "bool",      FluidType::Bool },
+      { "boolean",   FluidType::Bool },
+      { "num",       FluidType::Num },
+      { "number",    FluidType::Num },
+      { "str",       FluidType::Str },
+      { "string",    FluidType::Str },
+      { "table",     FluidType::Table },
+      { "array",     FluidType::Array },
+      { "func",      FluidType::Func },
+      { "function",  FluidType::Func },
+      { "thread",    FluidType::Thread },
+      { "cdata",     FluidType::CData },
+      { "obj",       FluidType::Object },
+      { "object",    FluidType::Object }
    };
 
    for (const auto &entry : names) {
@@ -42,6 +43,7 @@ std::string_view type_name(FluidType Type)
       case FluidType::Num:    return "num";
       case FluidType::Str:    return "str";
       case FluidType::Table:  return "table";
+      case FluidType::Array:  return "array";
       case FluidType::Func:   return "func";
       case FluidType::Thread: return "thread";
       case FluidType::CData:  return "cdata";
@@ -69,7 +71,8 @@ uint8_t fluid_type_to_lj_tag(FluidType Type)
       case FluidType::CData:  return 10;  // ~10 = LJ_TCDATA
       case FluidType::Table:  return 11;  // ~11 = LJ_TTAB
       case FluidType::Object: return 12;  // ~12 = LJ_TUDATA
-      case FluidType::Num:    return 14;  // ~14 = LJ_TNUMX (13 is LJ_TARRAY)
+      case FluidType::Array:  return 13;  // ~13 = LJ_TARRAY
+      case FluidType::Num:    return 14;  // ~14 = LJ_TNUMX
       case FluidType::Any:
       case FluidType::Unknown:
       default: return 0xFF;  // Unknown - needs evaluation

@@ -386,7 +386,7 @@ TValue* LJ_FASTCALL lj_meta_equal_cd(lua_State *L, BCIns ins)
       o2 = &tv;
    }
    else if (op IS BC_ISEQN) {
-      o2 = &mref(curr_proto(L)->k, cTValue)[bc_d(ins)];
+      o2 = &mref<cTValue>(curr_proto(L)->k)[bc_d(ins)];
    }
    else {
       lj_assertL(op IS BC_ISEQP, "bad bytecode op %d", op);
@@ -423,7 +423,7 @@ TValue* LJ_FASTCALL lj_meta_equal_thunk(lua_State *L, BCIns ins)
       o2 = &tv;
    }
    else if (op IS BC_ISEQN) {
-      o2 = &mref(curr_proto(L)->k, cTValue)[bc_d(ins)];
+      o2 = &mref<cTValue>(curr_proto(L)->k)[bc_d(ins)];
    }
    else {
       lj_assertL(op IS BC_ISEQP, "bad bytecode op %d", op);

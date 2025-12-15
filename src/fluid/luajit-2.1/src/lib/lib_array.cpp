@@ -19,11 +19,13 @@
 #include <cstdio>
 #include <cstring>
 #include <parasol/strings.hpp>
+#include <parasol/main.h>
 
-#define LJLIB_MODULE_fastarray
+#define LJLIB_MODULE_array
 
 constexpr auto HASH_INT     = pf::strhash("int");
-constexpr auto HASH_BYTE    = pf::strhash("char");
+constexpr auto HASH_BYTE    = pf::strhash("byte");
+constexpr auto HASH_CHAR    = pf::strhash("char");
 constexpr auto HASH_INT16   = pf::strhash("int16");
 constexpr auto HASH_INT64   = pf::strhash("int64");
 constexpr auto HASH_FLOAT   = pf::strhash("float");
@@ -65,6 +67,7 @@ static uint8_t parse_elemtype(lua_State *L, int NArg)
    switch (type_str->hash) {
       case HASH_INT:     return ARRAY_ELEM_INT32;
       case HASH_BYTE:    return ARRAY_ELEM_BYTE;
+      case HASH_CHAR:    return ARRAY_ELEM_BYTE;
       case HASH_INT16:   return ARRAY_ELEM_INT16;
       case HASH_INT64:   return ARRAY_ELEM_INT64;
       case HASH_FLOAT:   return ARRAY_ELEM_FLOAT;
@@ -74,7 +77,7 @@ static uint8_t parse_elemtype(lua_State *L, int NArg)
       case HASH_POINTER: return ARRAY_ELEM_PTR;
    }
 
-   lj_err_argv(L, NArg, ErrMsg::BADTYPE, "invalid array type", strdata(type_str));
+   lj_err_argv(L, NArg, ErrMsg::BADTYPE, "valid array type", strdata(type_str));
    return 0;  // unreachable
 }
 
@@ -98,7 +101,8 @@ static const char* elemtype_name(uint8_t Type)
 }
 
 //********************************************************************************************************************
-// fastarray.new(size, type)
+// Usage: array.new(size, type)
+//
 // Creates a new array of the specified size and element type.
 //
 // Parameters:
@@ -107,9 +111,9 @@ static const char* elemtype_name(uint8_t Type)
 //
 // Returns: new array
 //
-// Example: local arr = fastarray.new(100, "int")
+// Example: local arr = array.new(100, "int")
 
-LJLIB_CF(fastarray_new)
+LJLIB_CF(array_new)
 {
    int32_t size = lj_lib_checkint(L, 1);
    if (size < 0) lj_err_argv(L, 1, ErrMsg::NUMRNG, "non-negative", "negative");
@@ -119,7 +123,7 @@ LJLIB_CF(fastarray_new)
 
    // Set metatable from registry
 
-   lua_getfield(L, LUA_REGISTRYINDEX, "fastarray_metatable");
+   lua_getfield(L, LUA_REGISTRYINDEX, "array_metatable");
    if (tvistab(L->top - 1)) {
       GCtab* mt = tabV(L->top - 1);
       setgcref(arr->metatable, obj2gco(mt));
@@ -132,7 +136,8 @@ LJLIB_CF(fastarray_new)
 }
 
 //********************************************************************************************************************
-// fastarray.table(arr)
+// Usage: array.table(arr)
+//
 // Converts an array to a Lua table.
 //
 // Parameters:
@@ -140,7 +145,7 @@ LJLIB_CF(fastarray_new)
 //
 // Returns: new table with array contents (0-based indexing)
 
-LJLIB_CF(fastarray_table)
+LJLIB_CF(array_table)
 {
    GCarray *arr = lib_checkarray(L, 1);
    GCtab *t = lj_array_to_table(L, arr);
@@ -149,7 +154,119 @@ LJLIB_CF(fastarray_table)
 }
 
 //********************************************************************************************************************
-// fastarray.copy(dst, src [, dstidx [, srcidx [, count]]])
+// Usage: array.concat(StringFormat, JoinString)
+//
+// Concatenates array elements into a string using the specified format and join string.
+//
+// StringFormat specifies how each element should be formatted (e.g., "%d", "%f", "%s").
+// JoinString is placed between each concatenated element.
+
+LJLIB_CF(array_concat)
+{
+   GCarray *arr = lib_checkarray(L, 1);
+
+   if (arr->len < 1) {
+      lua_pushstring(L, "");
+      return 1;
+   }
+
+   auto format = luaL_checkstring(L, 1);
+   auto join_str = luaL_optstring(L, 2, "");
+
+   // Validate format string - ensure exactly one format specifier
+
+   int format_count = 0;
+   bool in_format = false;
+   for (auto p = format; *p; p++) {
+      if (*p IS '%') {
+         if (*(p+1) IS '%') {
+            p++; // Skip escaped %
+            continue;
+         }
+
+         if (in_format) {
+            luaL_error(L, "Invalid format string: multiple format specifiers not allowed");
+            return 0;
+         }
+         in_format = true;
+      }
+      else if (in_format) {
+         // Check for end of format specifier
+         if (*p IS 'd' or *p IS 'i' or *p IS 'o' or *p IS 'x' or *p IS 'X' or
+             *p IS 'u' or *p IS 'c' or *p IS 's' or *p IS 'p' or
+             *p IS 'f' or *p IS 'F' or *p IS 'e' or *p IS 'E' or
+             *p IS 'g' or *p IS 'G') {
+            format_count++;
+            in_format = false;
+         }
+         // Allow format modifiers and flags
+         else if (!(*p IS '-' or *p IS '+' or *p IS ' ' or *p IS '#' or *p IS '0' or
+                    (*p >= '1' and *p <= '9') or *p IS '.' or *p IS 'l' or *p IS 'h')) {
+            luaL_error(L, "Invalid character '%c' in format string", *p);
+            return 0;
+         }
+      }
+   }
+
+   if (in_format) {
+      luaL_error(L, "Incomplete format specifier");
+      return 0;
+   }
+
+   if (format_count != 1) {
+      luaL_error(L, "Format string must contain exactly one format specifier, found %d", format_count);
+      return 0;
+   }
+
+   std::string result;
+   result.reserve(arr->len * 16);
+   char buffer[256];
+
+   for (int i = 0; i < arr->len; i++) {
+      if (i > 0) result += join_str;
+
+      switch(arr->elemtype) {
+         case ARRAY_ELEM_STRING:
+            snprintf(buffer, sizeof(buffer), format, arr->data.get<CSTRING>()[i]);
+            break;
+         case ARRAY_ELEM_PTR:
+            snprintf(buffer, sizeof(buffer), format, arr->data.get<void **>()[i]);
+            break;
+         case ARRAY_ELEM_FLOAT:
+            snprintf(buffer, sizeof(buffer), format, arr->data.get<float>()[i]);
+            break;
+         case ARRAY_ELEM_DOUBLE:
+            snprintf(buffer, sizeof(buffer), format, arr->data.get<double>()[i]);
+            break;
+         case ARRAY_ELEM_INT64:
+            snprintf(buffer, sizeof(buffer), format, arr->data.get<long long>()[i]);
+            break;
+         case ARRAY_ELEM_INT32:
+            snprintf(buffer, sizeof(buffer), format, arr->data.get<int>()[i]);
+            break;
+         case ARRAY_ELEM_INT16:
+            snprintf(buffer, sizeof(buffer), format, arr->data.get<int16_t>()[i]);
+            break;
+         case ARRAY_ELEM_BYTE:
+            snprintf(buffer, sizeof(buffer), format, arr->data.get<int8_t>()[i]);
+            break;
+         case ARRAY_ELEM_STRUCT:
+            luaL_error(L, "concat() does not support struct arrays.");
+            return 0;
+         default:
+            luaL_error(L, "Unsupported array type $%.8x", arr->elemtype);
+            return 0;
+      }
+
+      result += buffer;
+   }
+
+   lua_pushstring(L, result.c_str());
+   return 1;
+}
+
+//********************************************************************************************************************
+// array.copy(dst, src [, dstidx [, srcidx [, count]]])
 // Copies elements from source array to destination array.
 //
 // Parameters:
@@ -159,24 +276,23 @@ LJLIB_CF(fastarray_table)
 //   srcidx: starting index in source (0-based, default 0)
 //   count: number of elements to copy (default: all remaining elements in source)
 //
-// Both arrays must have the same element type.
-// The destination array must not be read-only.
+// Both arrays must have the same element type.  The destination array must not be read-only.
 
-LJLIB_CF(fastarray_copy)
+LJLIB_CF(array_copy)
 {
    GCarray *dst = lib_checkarray(L, 1);
    GCarray *src = lib_checkarray(L, 2);
 
-   uint32_t dstidx = uint32_t(lj_lib_optint(L, 3, 0));
-   uint32_t srcidx = uint32_t(lj_lib_optint(L, 4, 0));
-   uint32_t count  = uint32_t(lj_lib_optint(L, 5, int32_t(src->len - srcidx)));
+   auto dstidx = uint32_t(lj_lib_optint(L, 3, 0));
+   auto srcidx = uint32_t(lj_lib_optint(L, 4, 0));
+   auto count  = uint32_t(lj_lib_optint(L, 5, int32_t(src->len - srcidx)));
 
    lj_array_copy(L, dst, dstidx, src, srcidx, count);
    return 0;
 }
 
 //********************************************************************************************************************
-// fastarray.getstring(arr [, start [, len]])
+// array.getstring(arr [, start [, len]])
 // Extracts a string from a byte array.
 //
 // Parameters:
@@ -186,29 +302,25 @@ LJLIB_CF(fastarray_copy)
 //
 // Returns: string containing the bytes
 
-LJLIB_CF(fastarray_getstring)
+LJLIB_CF(array_getstring)
 {
    GCarray *arr = lib_checkarray(L, 1);
 
-   if (arr->elemtype != ARRAY_ELEM_BYTE) {
-      lj_err_caller(L, ErrMsg::ARRSTR);
-   }
+   if (arr->elemtype != ARRAY_ELEM_BYTE) lj_err_caller(L, ErrMsg::ARRSTR);
 
-   uint32_t start = uint32_t(lj_lib_optint(L, 2, 0));
-   uint32_t len = uint32_t(lj_lib_optint(L, 3, int32_t(arr->len - start)));
+   auto start = uint32_t(lj_lib_optint(L, 2, 0));
+   auto len = uint32_t(lj_lib_optint(L, 3, int32_t(arr->len - start)));
 
-   if (start + len > arr->len) {
-      lj_err_caller(L, ErrMsg::IDXRNG);
-   }
+   if (start + len > arr->len) lj_err_caller(L, ErrMsg::IDXRNG);
 
-   const char* data = (const char*)mref(arr->data, void) + start;
+   auto data = (CSTRING)mref<void>(arr->data) + start;
    GCstr* s = lj_str_new(L, data, len);
    setstrV(L, L->top++, s);
    return 1;
 }
 
 //********************************************************************************************************************
-// fastarray.setstring(arr, str [, start])
+// array.setstring(arr, str [, start])
 // Copies string bytes into a byte array.
 //
 // Parameters:
@@ -218,7 +330,7 @@ LJLIB_CF(fastarray_getstring)
 //
 // Returns: number of bytes written
 
-LJLIB_CF(fastarray_setstring)
+LJLIB_CF(array_setstring)
 {
    GCarray *arr = lib_checkarray(L, 1);
    GCstr *str = lj_lib_checkstr(L, 2);
@@ -226,8 +338,8 @@ LJLIB_CF(fastarray_setstring)
    if (arr->elemtype != ARRAY_ELEM_BYTE) lj_err_caller(L, ErrMsg::ARRSTR);
    if (arr->flags & ARRAY_FLAG_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
 
-   uint32_t start = uint32_t(lj_lib_optint(L, 3, 0));
-   uint32_t len = str->len;
+   auto start = uint32_t(lj_lib_optint(L, 3, 0));
+   auto len = str->len;
 
    // Clamp length to fit in array
 
@@ -238,7 +350,7 @@ LJLIB_CF(fastarray_setstring)
 
    if (start + len > arr->len) len = arr->len - start;
 
-   auto data = (char *)mref(arr->data, void) + start;
+   auto data = (char *)mref<void>(arr->data) + start;
    memcpy(data, strdata(str), len);
 
    setintV(L->top++, int32_t(len));
@@ -248,9 +360,9 @@ LJLIB_CF(fastarray_setstring)
 //********************************************************************************************************************
 // Returns the length of an array.
 
-LJLIB_CF(fastarray_len)
+LJLIB_CF(array_len)
 {
-   GCarray* arr = lib_checkarray(L, 1);
+   GCarray *arr = lib_checkarray(L, 1);
    setintV(L->top++, int32_t(arr->len));
    return 1;
 }
@@ -258,19 +370,19 @@ LJLIB_CF(fastarray_len)
 //********************************************************************************************************************
 // Returns the element type of an array as a string.
 //
-// Returns: element type string ("char", "int16", "integer", etc.)
+// Returns: element type string ("byte", "int16", "int", etc.)
 
-LJLIB_CF(fastarray_type)
+LJLIB_CF(array_type)
 {
-   GCarray* arr = lib_checkarray(L, 1);
-   const char* name = elemtype_name(arr->elemtype);
-   GCstr* s = lj_str_newz(L, name);
+   GCarray *arr = lib_checkarray(L, 1);
+   auto name = elemtype_name(arr->elemtype);
+   GCstr *s = lj_str_newz(L, name);
    setstrV(L, L->top++, s);
    return 1;
 }
 
 //********************************************************************************************************************
-// fastarray.readonly(arr)
+// array.readonly(arr)
 // Returns whether the array is read-only.
 //
 // Parameters:
@@ -278,15 +390,15 @@ LJLIB_CF(fastarray_type)
 //
 // Returns: true if read-only, false otherwise
 
-LJLIB_CF(fastarray_readonly)
+LJLIB_CF(array_readonly)
 {
-   GCarray* arr = lib_checkarray(L, 1);
+   GCarray *arr = lib_checkarray(L, 1);
    setboolV(L->top++, (arr->flags & ARRAY_FLAG_READONLY) != 0);
    return 1;
 }
 
 //********************************************************************************************************************
-// fastarray.fill(arr, value [, start [, count]])
+// array.fill(arr, value [, start [, count]])
 // Fills array elements with a value.
 //
 // Parameters:
@@ -295,22 +407,20 @@ LJLIB_CF(fastarray_readonly)
 //   start: starting index (0-based, default 0)
 //   count: number of elements to fill (default: all remaining)
 
-LJLIB_CF(fastarray_fill)
+LJLIB_CF(array_fill)
 {
    GCarray* arr = lib_checkarray(L, 1);
    lua_Number value = lj_lib_checknum(L, 2);
 
-   if (arr->flags & ARRAY_FLAG_READONLY) {
-      lj_err_caller(L, ErrMsg::ARRRO);
-   }
+   if (arr->flags & ARRAY_FLAG_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
 
-   uint32_t start = uint32_t(lj_lib_optint(L, 3, 0));
-   uint32_t count = uint32_t(lj_lib_optint(L, 4, int32_t(arr->len - start)));
+   auto start = uint32_t(lj_lib_optint(L, 3, 0));
+   auto count = uint32_t(lj_lib_optint(L, 4, int32_t(arr->len - start)));
 
    if (start >= arr->len) return 0;
    if (start + count > arr->len) count = arr->len - start;
 
-   uint8_t* base = (uint8_t*)mref(arr->data, void);
+   auto base = (uint8_t *)mref<void>(arr->data);
 
    for (uint32_t i = 0; i < count; i++) {
       void* elem = base + (start + i) * arr->elemsize;
@@ -332,14 +442,12 @@ LJLIB_CF(fastarray_fill)
 // Metamethod: __index
 // Handles array[idx] access.
 
-LJLIB_CF(fastarray___index)
+LJLIB_CF(array___index)
 {
-   GCarray* arr = lib_checkarray(L, 1);
+   GCarray *arr = lib_checkarray(L, 1);
    int32_t idx = lj_lib_checkint(L, 2);
 
-   if (idx < 0 or MSize(idx) >= arr->len) {
-      lj_err_callerv(L, ErrMsg::ARROB, idx, int(arr->len));
-   }
+   if (idx < 0 or MSize(idx) >= arr->len) lj_err_callerv(L, ErrMsg::ARROB, idx, int(arr->len));
 
    void* elem = lj_array_index(arr, uint32_t(idx));
 
@@ -350,11 +458,9 @@ LJLIB_CF(fastarray___index)
       case ARRAY_ELEM_INT64:  setnumV(L->top, lua_Number(*(int64_t*)elem)); break;
       case ARRAY_ELEM_FLOAT:  setnumV(L->top, *(float*)elem); break;
       case ARRAY_ELEM_DOUBLE: setnumV(L->top, *(double*)elem); break;
-      case ARRAY_ELEM_PTR:
-         setrawlightudV(L->top, *(void**)elem);
-         break;
+      case ARRAY_ELEM_PTR:    setrawlightudV(L->top, *(void**)elem); break;
       case ARRAY_ELEM_STRING: {
-         GCRef ref = *(GCRef*)elem;
+         GCRef ref = *(GCRef *)elem;
          if (gcref(ref)) setstrV(L, L->top, gco2str(gcref(ref)));
          else setnilV(L->top);
          break;
@@ -369,22 +475,19 @@ LJLIB_CF(fastarray___index)
 // Metamethod: __newindex
 // Handles array[idx] = value assignment.
 
-LJLIB_CF(fastarray___newindex)
+LJLIB_CF(array___newindex)
 {
    GCarray* arr = lib_checkarray(L, 1);
    int32_t idx = lj_lib_checkint(L, 2);
    TValue* val = L->base + 2;
 
-   if (arr->flags & ARRAY_FLAG_READONLY) {
-      lj_err_caller(L, ErrMsg::ARRRO);
-   }
-   if (idx < 0 or MSize(idx) >= arr->len) {
-      lj_err_callerv(L, ErrMsg::ARROB, idx, int(arr->len));
-   }
+   if (arr->flags & ARRAY_FLAG_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
+   if (idx < 0 or MSize(idx) >= arr->len) lj_err_callerv(L, ErrMsg::ARROB, idx, int(arr->len));
 
-   void* elem = lj_array_index(arr, uint32_t(idx));
+   void * elem = lj_array_index(arr, uint32_t(idx));
 
    // Get numeric value from TValue
+
    lua_Number num = 0;
    if (tvisint(val)) num = lua_Number(intV(val));
    else if (tvisnum(val)) num = numV(val);
@@ -418,7 +521,7 @@ LJLIB_CF(fastarray___newindex)
 // Metamethod: __len
 // Returns array length for # operator.
 
-LJLIB_CF(fastarray___len)
+LJLIB_CF(array___len)
 {
    GCarray *arr = lib_checkarray(L, 1);
    setintV(L->top++, int32_t(arr->len));
@@ -429,7 +532,7 @@ LJLIB_CF(fastarray___len)
 // Metamethod: __tostring
 // Returns string representation of array.
 
-LJLIB_CF(fastarray___tostring)
+LJLIB_CF(array___tostring)
 {
    GCarray* arr = lib_checkarray(L, 1);
    const char* type_name = elemtype_name(arr->elemtype);
@@ -449,17 +552,17 @@ LJLIB_CF(fastarray___tostring)
 
 //********************************************************************************************************************
 // Library opener function
-// Registers the fastarray library and sets up the array metatable.
+// Registers the array library and sets up the array metatable.
 
-extern "C" int luaopen_fastarray(lua_State *L)
+extern "C" int luaopen_array(lua_State *L)
 {
-   LJ_LIB_REG(L, "fastarray", fastarray);
+   LJ_LIB_REG(L, "array", array);
 
    // Create and register array metatable using Lua stack operations
    lua_createtable(L, 0, 4);  // metatable
 
    // Set __index from library function
-   lua_getfield(L, -2, "__index");  // Get fastarray.__index
+   lua_getfield(L, -2, "__index");  // Get array.__index
    lua_setfield(L, -2, "__index");  // Set it in metatable
 
    // Set __newindex from library function
@@ -474,8 +577,8 @@ extern "C" int luaopen_fastarray(lua_State *L)
    lua_getfield(L, -2, "__tostring");
    lua_setfield(L, -2, "__tostring");
 
-   // Store metatable in registry as "fastarray_metatable"
-   lua_setfield(L, LUA_REGISTRYINDEX, "fastarray_metatable");
+   // Store metatable in registry as "array_metatable"
+   lua_setfield(L, LUA_REGISTRYINDEX, "array_metatable");
 
    return 1;
 }

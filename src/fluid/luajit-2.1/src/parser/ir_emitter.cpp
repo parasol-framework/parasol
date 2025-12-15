@@ -1786,8 +1786,9 @@ ParserResult<ExpDesc> IrEmitter::emit_member_expr(const MemberExprPayload &Paylo
 }
 
 //********************************************************************************************************************
-// Emit bytecode for an index expression (table[key]), indexing a table with an arbitrary key.
+// Emit bytecode for an index expression (table[key]), indexing a table or array with an arbitrary key.
 // Special case: if key is a range expression, emit a call to table.slice() instead.
+// If base_type is FluidType::Array, emits array-specific bytecodes (BC_AGETV/BC_AGETB).
 
 ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload &Payload)
 {
@@ -1814,6 +1815,16 @@ ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload &Payload
    key_toval.to_val();
    key = key_toval.legacy();
    expr_index(&this->func_state, &table, &key);
+
+   // If base type is known to be an array, use array-specific bytecodes
+   if (Payload.base_type IS FluidType::Array) {
+      // Arrays don't support string keys, so only change kind for numeric indexing
+      // (aux >= 0 means numeric index, aux < 0 means string const key)
+      if (int32_t(table.u.s.aux) >= 0) {
+         table.k = ExpKind::IndexedArray;
+      }
+   }
+
    return ParserResult<ExpDesc>::success(table);
 }
 
@@ -1918,6 +1929,7 @@ ParserResult<ExpDesc> IrEmitter::emit_safe_member_expr(const SafeMemberExprPaylo
 
 //********************************************************************************************************************
 // Emit bytecode for a safe index expression (table?[key]), returning nil if the table is nil.
+// If base_type is FluidType::Array, emits array-specific bytecodes (BC_AGETV/BC_AGETB).
 
 ParserResult<ExpDesc> IrEmitter::emit_safe_index_expr(const SafeIndexExprPayload &Payload)
 {
@@ -1942,6 +1954,13 @@ ParserResult<ExpDesc> IrEmitter::emit_safe_index_expr(const SafeIndexExprPayload
 
    ExpDesc table = guard.base_expression();
    expr_index(&this->func_state, &table, &key);
+
+   // If base type is known to be an array, use array-specific bytecodes
+   if (Payload.base_type IS FluidType::Array) {
+      if (int32_t(table.u.s.aux) >= 0) {
+         table.k = ExpKind::IndexedArray;
+      }
+   }
 
    // Materialize the indexed result to a new register.
    // Do NOT reuse base_register() as that would clobber the table variable,

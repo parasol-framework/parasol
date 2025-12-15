@@ -98,7 +98,7 @@ static void perftools_addtrace(GCtrace* T)
 {
    static FILE* fp;
    GCproto* pt = &gcref(T->startpt)->pt;
-   const BCIns* startpc = mref(T->startpc, const BCIns);
+   const BCIns* startpc = mref<const BCIns>(T->startpc);
    const char* name = proto_chunknamestr(pt);
    BCLine lineno;
    if (name[0] == '@' or name[0] == '=')
@@ -201,7 +201,7 @@ void lj_trace_reenableproto(GCproto* pt)
 static void trace_unpatch(jit_State* J, GCtrace* T)
 {
    BCOp op = bc_op(T->startins);
-   BCIns* pc = mref(T->startpc, BCIns);
+   BCIns* pc = mref<BCIns>(T->startpc);
    UNUSED(J);
    if (op == BC_JMP)
       return;  //  No need to unpatch branches in parent traces (yet).
@@ -376,7 +376,7 @@ static void penalty_pc(jit_State* J, GCproto* pt, BCIns* pc, TraceError e)
 {
    uint32_t i, val = PENALTY_MIN;
    for (i = 0; i < PENALTY_SLOTS; i++)
-      if (mref(J->penalty[i].pc, const BCIns) == pc) {  // Cache slot found?
+      if (mref<const BCIns>(J->penalty[i].pc) == pc) {  // Cache slot found?
          // First try to bump its hotcount several times.
          val = ((uint32_t)J->penalty[i].val << 1) +
             (lj_prng_u64(&J2G(J)->prng) & ((1u << PENALTY_RNDBITS) - 1));
@@ -469,7 +469,7 @@ static void trace_start(jit_State* J)
 // Stop tracing.
 static void trace_stop(jit_State* J)
 {
-   BCIns* pc = mref(J->cur.startpc, BCIns);
+   BCIns* pc = mref<BCIns>(J->cur.startpc);
    BCOp op = bc_op(J->cur.startins);
    GCproto* pt = &gcref(J->cur.startpt)->pt;
    TraceNo traceno = J->cur.traceno;
@@ -577,7 +577,7 @@ static int trace_abort(jit_State* J)
    // Penalize or blacklist starting bytecode instruction.
    if (J->parent == 0 and !bc_isret(bc_op(J->cur.startins))) {
       if (J->exitno == 0) {
-         BCIns* startpc = mref(J->cur.startpc, BCIns);
+         BCIns* startpc = mref<BCIns>(J->cur.startpc);
          if (e == LJ_TRERR_RETRY)
             hotcount_set(J2GG(J), startpc + 1, 1);  //  Immediate retry.
          else

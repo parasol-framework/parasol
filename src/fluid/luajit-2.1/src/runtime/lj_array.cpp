@@ -104,7 +104,7 @@ void LJ_FASTCALL lj_array_free(global_State *g, GCarray *Array)
 
 void * lj_array_index(GCarray *Array, uint32_t Idx)
 {
-   auto base = (uint8_t*)mref(Array->data, void);
+   auto base = (uint8_t*)mref<void>(Array->data);
    return base + (Idx * Array->elemsize);
 }
 
@@ -146,7 +146,7 @@ GCtab* lj_array_to_table(lua_State *L, GCarray *Array)
    GCtab *t = lj_tab_new(L, Array->len, 0);  // 0-based: indices 0..len-1
    auto array_part = tvref(t->array);
 
-   auto data = (uint8_t *)mref(Array->data, void);
+   auto data = (uint8_t *)mref<void>(Array->data);
    for (MSize i = 0; i < Array->len; i++) {
       auto slot = &array_part[i];  // 0-based indexing (Fluid standard)
       void *elem = data + (i * Array->elemsize);

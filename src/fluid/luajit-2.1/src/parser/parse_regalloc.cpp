@@ -279,6 +279,19 @@ static void expr_discharge(FuncState *fs, ExpDesc *e)
       }
       bcreg_free(fs, e->u.s.info);
    }
+   else if (e->k IS ExpKind::IndexedArray) {
+      // Array indexing - emit BC_AGETV or BC_AGETB
+      // Note: Arrays don't support string keys, so no BC_AGETS equivalent
+      BCREG rc = e->u.s.aux;
+      if (rc > BCMAX_C) {
+         ins = BCINS_ABC(BC_AGETB, 0, e->u.s.info, rc - (BCMAX_C + 1));
+      }
+      else {
+         bcreg_free(fs, rc);
+         ins = BCINS_ABC(BC_AGETV, 0, e->u.s.info, rc);
+      }
+      bcreg_free(fs, e->u.s.info);
+   }
    else if (e->k IS ExpKind::Call) {
       e->u.s.info = e->u.s.aux;
       e->k = ExpKind::NonReloc;
@@ -494,9 +507,27 @@ static void bcemit_store(FuncState *fs, ExpDesc* var, ExpDesc *e)
       BCREG ra = expr_toanyreg(fs, e);
       ins = BCINS_AD(BC_GSET, ra, const_str(fs, var));
    }
-   else {
+   else if (var->k IS ExpKind::IndexedArray) {
+      // Array index assignment - emit BC_ASETV or BC_ASETB
       BCREG ra, rc;
-      fs_check_assert(fs,var->k IS ExpKind::Indexed, "bad expr type %d", int(var->k));
+      ra = expr_toanyreg(fs, e);
+      rc = var->u.s.aux;
+      if (rc > BCMAX_C) {
+         ins = BCINS_ABC(BC_ASETB, ra, var->u.s.info, rc - (BCMAX_C + 1));
+      }
+      else {
+#ifdef LUA_USE_ASSERT
+         // Free late alloced key reg to avoid assert on free of value reg.
+         if (e->k IS ExpKind::NonReloc and ra >= fs->nactvar and rc >= ra)
+            bcreg_free(fs, rc);
+#endif
+         ins = BCINS_ABC(BC_ASETV, ra, var->u.s.info, rc);
+      }
+   }
+   else {
+      // Table index assignment - emit BC_TSETV, BC_TSETB, or BC_TSETS
+      BCREG ra, rc;
+      fs_check_assert(fs, var->k IS ExpKind::Indexed, "bad expr type %d", int(var->k));
       ra = expr_toanyreg(fs, e);
       rc = var->u.s.aux;
       if (int32_t(rc) < 0) ins = BCINS_ABC(BC_TSETS, ra, var->u.s.info, ~rc);

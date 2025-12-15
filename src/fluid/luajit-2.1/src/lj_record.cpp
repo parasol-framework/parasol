@@ -519,7 +519,7 @@ static LoopEvent rec_for(jit_State *J, const BCIns *fori, int isforl)
    IRType t;
    if (isforl) {  // Handle FORL/JFORL opcodes.
       TRef idx = tr[FORL_IDX];
-      if (mref(J->scev.pc, const BCIns) IS fori and tref_ref(idx) IS J->scev.idx) {
+      if (mref<const BCIns>(J->scev.pc) IS fori and tref_ref(idx) IS J->scev.idx) {
          t = IRType(J->scev.t.irt);
          stop = J->scev.stop;
          idx = ir.emit(IRT(IR_ADD, t), idx, J->scev.step);
@@ -613,7 +613,7 @@ static int innerloopleft(jit_State *J, const BCIns *pc)
 {
    ptrdiff_t i;
    for (i = 0; i < PENALTY_SLOTS; i++)
-      if (mref(J->penalty[i].pc, const BCIns) IS pc) {
+      if (mref<const BCIns>(J->penalty[i].pc) IS pc) {
          if ((J->penalty[i].reason IS LJ_TRERR_LLEAVE or J->penalty[i].reason IS LJ_TRERR_LINNER) and J->penalty[i].val >= 2 * PENALTY_MIN)
             return 1;
          break;
@@ -1261,7 +1261,7 @@ static void rec_idx_bump(jit_State *J, RecordIndex* ix)
 {
    RBCHashEntry* rbc = &J->rbchash[(ix->tab & (RBCHASH_SLOTS - 1))];
    if (tref_ref(ix->tab) IS rbc->ref) {
-      const BCIns *pc = mref(rbc->pc, const BCIns);
+      const BCIns *pc = mref<const BCIns>(rbc->pc);
       GCtab* tb = tabV(&ix->tabv);
       uint32_t nhbits;
       IRIns* ir;
@@ -1792,14 +1792,14 @@ noconstify:
 static void check_call_unroll(jit_State *J, TraceNo lnk)
 {
    cTValue *frame = J->L->base - 1;
-   void* pc = mref(frame_func(frame)->l.pc, void);
+   void* pc = mref<void>(frame_func(frame)->l.pc);
    int32_t depth = J->framedepth;
    int32_t count = 0;
    if ((J->pt->flags & PROTO_VARARG)) depth--;  //  Vararg frame still missing.
    for (; depth > 0; depth--) {  // Count frames with same prototype.
       if (frame_iscont(frame)) depth--;
       frame = frame_prev(frame);
-      if (mref(frame_func(frame)->l.pc, void) IS pc) count++;
+      if (mref<void>(frame_func(frame)->l.pc) IS pc) count++;
    }
    if (J->pc IS J->startpc) {
       if (count + J->tailcalled > J->param[JIT_P_recunroll]) {

@@ -39,7 +39,7 @@ void* lj_lightud_intern(lua_State* L, void* p)
    global_State* g = G(L);
    uint64_t u = (uint64_t)p;
    uint32_t up = lightudup(u);
-   uint32_t* segmap = mref(g->gc.lightudseg, uint32_t);
+   uint32_t* segmap = mref<uint32_t>(g->gc.lightudseg);
    MSize segnum = g->gc.lightudnum;
    if (segmap) {
       MSize seg;

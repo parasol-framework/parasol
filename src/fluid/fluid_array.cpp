@@ -652,7 +652,7 @@ static int array_copy(lua_State *Lua)
       copymem(src, a->ptrPointer + (to_index * src_typesize), copy_total * src_typesize);
    }
    else { // Type conversion necessary
-      uint8_t *dest_ptr = (uint8_t *)a->ptrPointer + (to_index * a->TypeSize);
+      auto dest_ptr = (uint8_t *)a->ptrPointer + (to_index * a->TypeSize);
       for (int i=0; i < copy_total; i++) {
          int64_t s;
          switch (src_typesize) {
@@ -863,5 +863,5 @@ void register_array_class(lua_State *Lua)
    lua_settable(Lua, -3);   // metatable.__index = metatable
    luaL_openlib(Lua, nullptr, methods, 0);
 
-   luaL_openlib(Lua, "array", functions, 0);
+   luaL_openlib(Lua, "dep_array", functions, 0);
 }
