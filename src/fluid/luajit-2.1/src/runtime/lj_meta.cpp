@@ -142,17 +142,16 @@ cTValue *lj_meta_tget(lua_State *L, cTValue *o, cTValue *k)
    int loop;
    for (loop = 0; loop < LJ_MAX_IDXCHAIN; loop++) {
       cTValue *mo;
-      if (LJ_LIKELY(tvistab(o))) {
+      if (tvistab(o)) [[likely]] {
          GCtab *t = tabV(o);
          cTValue *tv = lj_tab_get(L, t, k);
-         if (not tvisnil(tv) or
-            !(mo = lj_meta_fast(L, tabref(t->metatable), MM_index)))
-            return tv;
+         if (not tvisnil(tv) or !(mo = lj_meta_fast(L, tabref(t->metatable), MM_index))) return tv;
       }
       else if (tvisnil(mo = lj_meta_lookup(L, o, MM_index))) {
          lj_err_optype(L, o, ErrMsg::OPINDEX);
          return nullptr;  //  unreachable
       }
+
       if (tvisfunc(mo)) {
          L->top = mmcall(L, lj_cont_ra, mo, o, k);
          return nullptr;  //  Trigger metamethod call.
@@ -200,16 +199,18 @@ TValue * lj_meta_tset(lua_State *L, cTValue *o, cTValue *k)
          // L->top+2 = v filled in by caller.
          return nullptr;  //  Trigger metamethod call.
       }
+
       copyTV(L, &tmp, mo);
       o = &tmp;
    }
+
    lj_err_msg(L, ErrMsg::SETLOOP);
    return nullptr;  //  unreachable
 }
 
 //********************************************************************************************************************
 
-static cTValue *str2num(cTValue *o, TValue* n)
+static cTValue * str2num(cTValue *o, TValue *n)
 {
    if (tvisnum(o)) return o;
    else if (tvisint(o)) return (setnumV(n, (lua_Number)intV(o)), n);
@@ -220,7 +221,7 @@ static cTValue *str2num(cTValue *o, TValue* n)
 //********************************************************************************************************************
 // Helper for arithmetic instructions. Coercion, metamethod.
 
-TValue* lj_meta_arith(lua_State *L, TValue* ra, cTValue *rb, cTValue *rc, BCREG op)
+TValue * lj_meta_arith(lua_State *L, TValue *ra, cTValue *rb, cTValue *rc, BCREG op)
 {
    MMS mm = bcmode_mm(op);
    TValue tempb, tempc;
@@ -246,7 +247,7 @@ TValue* lj_meta_arith(lua_State *L, TValue* ra, cTValue *rb, cTValue *rc, BCREG 
 //********************************************************************************************************************
 // Helper for CAT. Coercion, iterative concat, __concat metamethod.
 
-TValue * lj_meta_cat(lua_State *L, TValue* top, int left)
+TValue * lj_meta_cat(lua_State *L, TValue *top, int left)
 {
    int fromc = 0;
    if (left < 0) { left = -left; fromc = 1; }
@@ -296,11 +297,14 @@ TValue * lj_meta_cat(lua_State *L, TValue* top, int left)
          uint64_t tlen = tvisstr(o) ? strV(o)->len : tvisbuf(o) ? sbufxlen(bufV(o)) : STRFMT_MAXBUF_NUM;
          SBuf* sb;
          do {
-            o--; tlen += tvisstr(o) ? strV(o)->len : tvisbuf(o) ? sbufxlen(bufV(o)) : STRFMT_MAXBUF_NUM;
+            o--;
+            tlen += tvisstr(o) ? strV(o)->len : tvisbuf(o) ? sbufxlen(bufV(o)) : STRFMT_MAXBUF_NUM;
          } while (--left > 0 and (tvisstr(o - 1) or tvisnumber(o - 1)));
+
          if (tlen >= LJ_MAX_STR) lj_err_msg(L, ErrMsg::STROV);
          sb = lj_buf_tmp_(L);
          (void)lj_buf_more(sb, (MSize)tlen);
+
          for (e = top, top = o; o <= e; o++) {
             if (tvisstr(o)) {
                GCstr *s = strV(o);
@@ -314,6 +318,7 @@ TValue * lj_meta_cat(lua_State *L, TValue* top, int left)
             else if (tvisint(o)) lj_strfmt_putint(sb, intV(o));
             else lj_strfmt_putfnum(sb, STRFMT_G14, numV(o));
          }
+
          setstrV(L, top, lj_buf_str(L, sb));
       }
    } while (left >= 1);

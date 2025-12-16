@@ -1,6 +1,6 @@
 -- Flute tests for the catch() function
 
-@BeforeEach(hotpath=true) 
+@BeforeEach(hotpath=true)
 function enforce_hotpath() end
 
 ----------------------------------------------------------------------------------------------------------------------

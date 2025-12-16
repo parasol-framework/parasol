@@ -989,9 +989,26 @@ LJ_NORET LJ_NOINLINE static void err_msgv(lua_State* L, ErrMsg em, ...)
 }
 
 // Non-vararg variant for better calling conventions.
+
 LJ_NOINLINE void lj_err_msg(lua_State* L, ErrMsg em)
 {
    err_msgv(L, em);
+}
+
+// Vararg variant for formatted messages. Use this for errors raised from VM helper functions called from assembler
+// (e.g. lj_arr_set, lj_meta_tset). These functions are called while executing bytecode and need L->top adjusted
+// for proper unwinding.
+
+LJ_NOINLINE void lj_err_msgv(lua_State* L, ErrMsg em, ...)
+{
+   const char* msg;
+   va_list argp;
+   va_start(argp, em);
+   if (curr_funcisL(L)) L->top = curr_topL(L);
+   msg = lj_strfmt_pushvf(L, err2msg(em), argp);
+   va_end(argp);
+   lj_debug_addloc(L, msg, L->base - 1, nullptr);
+   lj_err_run(L);
 }
 
 //********************************************************************************************************************
@@ -1004,8 +1021,7 @@ LJ_NOINLINE void lj_err_lex(lua_State* L, GCstr* src, const char* tok, BCLine li
    lj_debug_shortname(buff, src, line);
    msg = lj_strfmt_pushvf(L, err2msg(em), argp);
    msg = lj_strfmt_pushf(L, "%s:%d: %s", buff, line, msg);
-   if (tok)
-      lj_strfmt_pushf(L, err2msg(ErrMsg::XNEAR), msg, tok);
+   if (tok) lj_strfmt_pushf(L, err2msg(ErrMsg::XNEAR), msg, tok);
    lj_err_throw(L, LUA_ERRSYNTAX);
 }
 
@@ -1021,8 +1037,7 @@ LJ_NOINLINE void lj_err_optype(lua_State* L, cTValue* o, ErrMsg opm)
       const BCIns* pc = cframe_Lpc(L) - 1;
       const char* oname = nullptr;
       const char* kind = lj_debug_slotname(pt, pc, (BCREG)(o - L->base), &oname);
-      if (kind)
-         err_msgv(L, ErrMsg::BADOPRT, opname, kind, oname, tname);
+      if (kind) err_msgv(L, ErrMsg::BADOPRT, opname, kind, oname, tname);
    }
    err_msgv(L, ErrMsg::BADOPRV, opname, tname);
 }
@@ -1094,9 +1109,11 @@ LJ_NOINLINE void lj_err_callermsg(lua_State* L, const char* msg)
 }
 
 //********************************************************************************************************************
-// Formatted error in context of caller.
+// Formatted error in context of caller. Use this for errors raised from C library functions (lua_* API, lib_*.cpp).
+// Do NOT use for VM helper functions called from assembler - use lj_err_msgv() instead, which adjusts L->top for
+// proper unwinding.
 
-LJ_NOINLINE void lj_err_callerv(lua_State* L, ErrMsg em, ...)
+LJ_NOINLINE void lj_err_callerv(lua_State *L, ErrMsg em, ...)
 {
    const char* msg;
    va_list argp;
@@ -1109,7 +1126,7 @@ LJ_NOINLINE void lj_err_callerv(lua_State* L, ErrMsg em, ...)
 //********************************************************************************************************************
 // Error in context of caller.
 
-LJ_NOINLINE void lj_err_caller(lua_State* L, ErrMsg em)
+LJ_NOINLINE void lj_err_caller(lua_State *L, ErrMsg em)
 {
    lj_err_callermsg(L, err2msg(em));
 }
@@ -1121,12 +1138,10 @@ LJ_NORET LJ_NOINLINE static void err_argmsg(lua_State* L, int narg, const char* 
 {
    const char* fname = "?";
    const char* ftype = lj_debug_funcname(L, L->base - 1, &fname);
-   if (narg < 0 and narg > LUA_REGISTRYINDEX)
-      narg = (int)(L->top - L->base) + narg + 1;
+   if (narg < 0 and narg > LUA_REGISTRYINDEX) narg = (int)(L->top - L->base) + narg + 1;
    if (ftype and ftype[3] == 'h' and --narg == 0)  //  Check for "method".
       msg = lj_strfmt_pushf(L, err2msg(ErrMsg::BADSELF), fname, msg);
-   else
-      msg = lj_strfmt_pushf(L, err2msg(ErrMsg::BADARG), narg, fname, msg);
+   else msg = lj_strfmt_pushf(L, err2msg(ErrMsg::BADARG), narg, fname, msg);
    lj_err_callermsg(L, msg);
 }
 
@@ -1164,10 +1179,8 @@ LJ_NOINLINE void lj_err_argtype(lua_State* L, int narg, const char* xname)
       else {
          GCfunc* fn = curr_func(L);
          int idx = LUA_GLOBALSINDEX - narg;
-         if (idx <= fn->c.nupvalues)
-            tname = lj_typename(&fn->c.upvalue[idx - 1]);
-         else
-            tname = lj_obj_typename[0];
+         if (idx <= fn->c.nupvalues) tname = lj_typename(&fn->c.upvalue[idx - 1]);
+         else tname = lj_obj_typename[0];
       }
    }
    else {

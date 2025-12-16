@@ -27,6 +27,7 @@ LJ_FUNC_NORET void LJ_FASTCALL lj_err_run(lua_State *L);
 LJ_FUNCA_NORET void LJ_FASTCALL lj_err_trace(lua_State *L, int errcode);
 #endif
 LJ_FUNC_NORET void lj_err_msg(lua_State *L, ErrMsg em);
+LJ_FUNC_NORET void lj_err_msgv(lua_State *L, ErrMsg em, ...);
 LJ_FUNC_NORET void lj_err_lex(lua_State *L, GCstr *src, const char *tok, BCLine line, ErrMsg em, va_list argp);
 LJ_FUNC_NORET void lj_err_optype(lua_State *L, cTValue *o, ErrMsg opm);
 LJ_FUNC_NORET void lj_err_comp(lua_State *L, cTValue *o1, cTValue *o2);

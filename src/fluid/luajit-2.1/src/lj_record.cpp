@@ -2322,9 +2322,9 @@ static TRef rec_arith_op(jit_State *J, RecordOps *ops)
 //********************************************************************************************************************
 // Handle native array ops: BC_AGETV, BC_AGETB, BC_ASETV, BC_ASETB
 //
-// Native arrays (GCarray) are different from tables - they have typed elements and 0-based indexing internally. 
+// Native arrays (GCarray) are different from tables - they have typed elements and 0-based indexing internally.
 // We emit calls to helper functions that handle the element type conversion.
-// 
+//
 // TODO: Optimise to inline loads/stores.
 
 static TRef rec_array_op(jit_State *J, RecordOps *ops)

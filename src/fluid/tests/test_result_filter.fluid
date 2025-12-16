@@ -1,7 +1,7 @@
 -- Test Result Filter Feature
 -- Tests the [pattern]func() syntax for selective return value extraction
 
-@BeforeEach(hotpath=true) 
+@BeforeEach(hotpath=true)
 function enforce_hotpath() end
 
 -- Helper function returning multiple values

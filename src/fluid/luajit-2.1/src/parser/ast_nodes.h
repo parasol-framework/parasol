@@ -110,7 +110,7 @@ enum class FluidType : uint8_t {
    Num,
    Str,
    Table,
-   Array,        // Native array type
+   Array,
    Func,
    Thread,
    CData,

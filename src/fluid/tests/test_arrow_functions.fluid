@@ -1,6 +1,6 @@
 -- Arrow function syntax tests
 
-@BeforeEach(hotpath=true) 
+@BeforeEach(hotpath=true)
 function enforce_hotpath() end
 
 @Test function testArrowSingleParam()

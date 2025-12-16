@@ -14,7 +14,7 @@
 
 // Element sizes for each type
 
-static const MSize glElemSizes[] = {
+static const int8_t glElemSizes[] = {
    sizeof(uint8_t),    // AET::BYTE
    sizeof(int16_t),    // AET::INT16
    sizeof(int32_t),    // AET::INT32
@@ -28,10 +28,10 @@ static const MSize glElemSizes[] = {
 
 //********************************************************************************************************************
 
-MSize lj_array_elemsize(uint8_t elemtype)
+MSize lj_array_elemsize(AET Type)
 {
-   lj_assertX(elemtype < AET::_MAX, "invalid array element type");
-   return glElemSizes[elemtype];
+   lj_assertX(int(Type) >= 0 and int(Type) < int(AET::_MAX), "invalid array element type");
+   return glElemSizes[int(Type)];
 }
 
 //********************************************************************************************************************
@@ -39,13 +39,12 @@ MSize lj_array_elemsize(uint8_t elemtype)
 
 extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type)
 {
-   MSize elemsize = lj_array_elemsize(Type);
+   auto elemsize = lj_array_elemsize(Type);
    lj_assertL(elemsize > 0 or Type IS AET::_STRUCT, "invalid element type for array creation");
 
-   GCarray *arr;
-   MSize total_size = sizearraycolo(Length, elemsize);
+   auto total_size = sizearraycolo(Length, elemsize);
 
-   arr = (GCarray *)lj_mem_newgco(L, total_size);
+   auto arr = (GCarray *)lj_mem_newgco(L, total_size);
    arr->gct      = ~LJ_TARRAY;
    arr->elemtype = Type;
    arr->flags    = ARRAY_FLAG_COLOCATED;
@@ -111,7 +110,7 @@ void * lj_array_index(GCarray *Array, uint32_t Idx)
 
 //********************************************************************************************************************
 
-void* lj_array_index_checked(lua_State *L, GCarray *Array, uint32_t Idx)
+void * lj_array_index_checked(lua_State *L, GCarray *Array, uint32_t Idx)
 {
    if (Idx >= Array->len) {
       lj_err_callerv(L, ErrMsg::ARROB, int(Idx + 1), int(Array->len));  // 1-based in error
@@ -121,35 +120,29 @@ void* lj_array_index_checked(lua_State *L, GCarray *Array, uint32_t Idx)
 
 //********************************************************************************************************************
 
-void lj_array_copy(lua_State *L, GCarray *Dst, uint32_t DstIdx, GCarray *Src, uint32_t SrcIdx, uint32_t Count)
+void lj_array_copy(lua_State *L, GCarray *Dest, uint32_t DstIdx, GCarray *Src, uint32_t SrcIdx, uint32_t Count)
 {
-   // Validate bounds
-   if (SrcIdx + Count > Src->len or DstIdx + Count > Dst->len) lj_err_caller(L, ErrMsg::IDXRNG);
+   // Safety checks - unsigned types can't be negative so just check bounds
+   if (SrcIdx + Count > Src->len or DstIdx + Count > Dest->len) lj_err_caller(L, ErrMsg::IDXRNG);
+   if (Dest->flags & ARRAY_FLAG_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
+   if (Dest->elemtype != Src->elemtype) lj_err_caller(L, ErrMsg::ARRTYPE);
 
-   // Check read-only
-   if (Dst->flags & ARRAY_FLAG_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
-
-   // Only allow copy between same element types
-   if (Dst->elemtype != Src->elemtype) lj_err_caller(L, ErrMsg::ARRTYPE);
-
-   void *dst_ptr = lj_array_index(Dst, DstIdx);
+   void *dst_ptr = lj_array_index(Dest, DstIdx);
    void *src_ptr = lj_array_index(Src, SrcIdx);
-   size_t byte_count = Count * Dst->elemsize;
-
-   // Use memmove to handle overlapping regions
-   memmove(dst_ptr, src_ptr, byte_count);
+   size_t byte_count = Count * Dest->elemsize;
+   memmove(dst_ptr, src_ptr, byte_count); // Use memmove to handle overlapping regions
 }
 
 //********************************************************************************************************************
 
-GCtab* lj_array_to_table(lua_State *L, GCarray *Array)
+GCtab * lj_array_to_table(lua_State *L, GCarray *Array)
 {
    GCtab *t = lj_tab_new(L, Array->len, 0);  // 0-based: indices 0..len-1
    auto array_part = tvref(t->array);
 
    auto data = Array->data.get<uint8_t>();
    for (MSize i = 0; i < Array->len; i++) {
-      auto slot = &array_part[i];  // 0-based indexing (Fluid standard)
+      auto slot = &array_part[i];
       void *elem = data + (i * Array->elemsize);
 
       switch (Array->elemtype) {

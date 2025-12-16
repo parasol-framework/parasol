@@ -152,7 +152,7 @@ int fcmd_catch(lua_State *Lua)
             // The +2 offset accounts for frames added by lua_pcall: the catch function itself
             // and the pcall error handler. Direct calls from the catch body will have exactly
             // CatchDepth frames; nested function calls will have more.
-            
+
             int prev_depth = prv->CatchDepth;
             lua_Debug ar;
             int depth = 0;
@@ -264,7 +264,7 @@ int fcmd_catch(lua_State *Lua)
 
          // Scope isolation via stack frame counting - see detailed comment in the
          // two-function catch() branch above. Save previous depth for nested catch() support.
-         
+
          int prev_depth = prv->CatchDepth;
          lua_Debug ar;
          int depth = 0;

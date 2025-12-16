@@ -1,6 +1,6 @@
 -- Flute regression tests for deferred expressions <{ expr }> and <type{ expr }>
 
-@BeforeEach(hotpath=true) 
+@BeforeEach(hotpath=true)
 function enforce_hotpath() end
 
 ----------------------------------------------------------------------------------------------------------------------

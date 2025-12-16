@@ -202,6 +202,5 @@ void LJ_FASTCALL lj_str_free(global_State* g, GCstr* s)
 
 void LJ_FASTCALL lj_str_init(lua_State* L)
 {
-   global_State *g = G(L);
    lj_str_resize(L, LJ_MIN_STRTAB - 1);
 }

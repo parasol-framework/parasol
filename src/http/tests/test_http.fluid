@@ -15,7 +15,7 @@ collected too early.
    glOutFile = 'temp:http-output.txt'
    SERVER_PORT = 18942
 
-@BeforeAll function setup(State)   
+@BeforeAll function setup(State)
    logOutput('Serving files from ' .. State.folder)
 
    global glServer = hslib.start({
@@ -228,7 +228,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test(priority=5); @Disabled(reason='Requires further development') 
+@Test(priority=5); @Disabled(reason='Requires further development')
 function testSSLOverProxy()
    proc = processing.new({ timeout = 5.0 })
 
@@ -313,7 +313,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test(priority=8); @Disabled(reason='Requires further development') 
+@Test(priority=8); @Disabled(reason='Requires further development')
 function testMultiPart()
    proc = processing.new({ timeout = 5.0 })
    content = ''

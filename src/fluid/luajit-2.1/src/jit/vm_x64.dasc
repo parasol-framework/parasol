@@ -769,6 +769,11 @@ static void build_subroutines(BuildCtx *ctx)
   |  movzx RBd, PC_RB			// Reload TValue *t from RB.
   |  lea RB, [BASE+RB*8]
   |2:
+  |  // Check if target is an array - handle directly without metamethods
+  |  mov ITYPE, [RB]
+  |  sar ITYPE, 47			// Extract type tag from high bits
+  |  cmp ITYPEd, LJ_TARRAY
+  |  je ->vmeta_agetv1
   |  mov L:CARG1, SAVE_L
   |  mov L:CARG1->base, BASE		// Caveat: CARG2/CARG3 may be BASE.
   |  mov CARG2, RB
@@ -842,6 +847,11 @@ static void build_subroutines(BuildCtx *ctx)
   |  movzx RBd, PC_RB			// Reload TValue *t from RB.
   |  lea RB, [BASE+RB*8]
   |2:
+  |  // Check if target is an array - handle directly without metamethods
+  |  mov ITYPE, [RB]
+  |  sar ITYPE, 47			// Extract type tag from high bits
+  |  cmp ITYPEd, LJ_TARRAY
+  |  je ->vmeta_asetv1
   |  mov L:CARG1, SAVE_L
   |  mov L:CARG1->base, BASE		// Caveat: CARG2/CARG3 may be BASE.
   |  mov CARG2, RB
@@ -934,21 +944,20 @@ static void build_subroutines(BuildCtx *ctx)
   |->vmeta_asetv1:
   |  movzx RBd, PC_RB			// Reload TValue *t from RB.
   |  lea RB, [BASE+RB*8]
+  |  movzx RAd, PC_RA			// Get value register index
+  |  lea CARG4, [BASE+RA*8]		// CARG4 = TValue *v (value to store)
   |  mov L:CARG1, SAVE_L
   |  mov L:CARG1->base, BASE		// Caveat: CARG2/CARG3 may be BASE.
-  |  mov CARG2, RB
-  |  mov CARG3, RC
+  |  mov CARG2, RB			// CARG2 = TValue *o (array)
+  |  mov CARG3, RC			// CARG3 = TValue *k (key)
   |  mov L:RB, L:CARG1
   |  mov SAVE_PC, PC
-  |  call extern lj_arr_set		// (lua_State *L, TValue *o, TValue *k)
-  |  // TValue * (finished) or NULL (metamethod) returned in eax (RC).
+  |  call extern lj_arr_set		// (lua_State *L, TValue *o, TValue *k, TValue *v)
+  |  // Returns 1 (success) or 0 (metamethod) in eax (RC).
   |  mov BASE, L:RB->base
-  |  test RC, RC
+  |  test RCd, RCd
   |  jz >3
-  |  // NOBARRIER: lj_arr_set ensures the array handles GC properly.
-  |  movzx RAd, PC_RA
-  |  mov RB, [BASE+RA*8]
-  |  mov [RC], RB
+  |  // Store completed by lj_arr_set
   |  ins_next
   |
   |3:  // Call __newindex metamethod.

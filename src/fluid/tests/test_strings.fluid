@@ -1,7 +1,7 @@
 -- Flute tests for the custom string functions
 -- String functions that are JIT-optimised are executed in loops to ensure coverage of their fast calls.
 
-@BeforeEach(hotpath=true) 
+@BeforeEach(hotpath=true)
 function enforce_hotpath() end
 
 @Test function testAlloc()

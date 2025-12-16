@@ -15,6 +15,7 @@
 #include "lj_str.h"
 #include "lj_array.h"
 #include "lib.h"
+#include "lib_range.h"
 
 #include <cstdio>
 #include <cstring>
@@ -33,29 +34,6 @@ constexpr auto HASH_DOUBLE  = pf::strhash("double");
 constexpr auto HASH_STRING  = pf::strhash("string");
 constexpr auto HASH_STRUCT  = pf::strhash("struct");
 constexpr auto HASH_POINTER = pf::strhash("pointer");
-
-//********************************************************************************************************************
-// Helper function to check argument is an array
-
-static GCarray * lib_checkarray(lua_State *L, int NArg)
-{
-   TValue *o = L->base + NArg - 1;
-   if (o >= L->top or not tvisarray(o)) {
-      lj_err_arg(L, NArg, ErrMsg::ARRARG);
-   }
-   return arrayV(o);
-}
-
-//********************************************************************************************************************
-// Helper function to check optional array argument (may be nil)
-
-static GCarray * lib_optarray(lua_State *L, int NArg)
-{
-   TValue *o = L->base + NArg - 1;
-   if (o >= L->top or tvisnil(o)) return nullptr;
-   if (not tvisarray(o)) lj_err_arg(L, NArg, ErrMsg::ARRARG);
-   return arrayV(o);
-}
 
 //********************************************************************************************************************
 // Helper to parse element type string
@@ -101,7 +79,7 @@ static CSTRING elemtype_name(AET Type)
 }
 
 //********************************************************************************************************************
-// Usage: array.new(size, type)
+// Usage: array.new(size, type) or array.new('string')
 //
 // Creates a new array of the specified size and element type.
 //
@@ -115,17 +93,31 @@ static CSTRING elemtype_name(AET Type)
 
 LJLIB_CF(array_new)
 {
-   int32_t size = lj_lib_checkint(L, 1);
-   if (size < 0) lj_err_argv(L, 1, ErrMsg::NUMRNG, "non-negative", "negative");
+   GCarray *arr;
+   int32_t size = 0;
+   AET elem_type;
+   auto type = lua_type(L, 1);
 
-   auto elemtype = parse_elemtype(L, 2);
-   GCarray *arr = lj_array_new(L, uint32_t(size), elemtype);
+   if (type IS LUA_TSTRING) {
+      TValue *o = L->base;
+      GCstr *s = strV(o);
+      elem_type = AET::_BYTE;
+      arr = lj_array_new(L, s->len, elem_type);
+
+      pf::copymem(strdata(s), arr->data.get<CSTRING>(), s->len);
+   }
+   else {
+      size = lj_lib_checkint(L, 1);
+      if (size < 0) lj_err_argv(L, 1, ErrMsg::NUMRNG, "non-negative", "negative");
+      elem_type = parse_elemtype(L, 2);
+      arr = lj_array_new(L, uint32_t(size), elem_type);
+   }
 
    // Set metatable from registry
 
    lua_getfield(L, LUA_REGISTRYINDEX, "array_metatable");
    if (tvistab(L->top - 1)) {
-      GCtab* mt = tabV(L->top - 1);
+      GCtab *mt = tabV(L->top - 1);
       setgcref(arr->metatable, obj2gco(mt));
       lj_gc_objbarrier(L, arr, mt);
    }
@@ -147,7 +139,7 @@ LJLIB_CF(array_new)
 
 LJLIB_CF(array_table)
 {
-   GCarray *arr = lib_checkarray(L, 1);
+   GCarray *arr = lj_lib_checkarray(L, 1);
    GCtab *t = lj_array_to_table(L, arr);
    settabV(L, L->top++, t);
    return 1;
@@ -163,15 +155,15 @@ LJLIB_CF(array_table)
 
 LJLIB_CF(array_concat)
 {
-   GCarray *arr = lib_checkarray(L, 1);
+   GCarray *arr = lj_lib_checkarray(L, 1);
 
    if (arr->len < 1) {
       lua_pushstring(L, "");
       return 1;
    }
 
-   auto format = luaL_checkstring(L, 1);
-   auto join_str = luaL_optstring(L, 2, "");
+   auto format = luaL_checkstring(L, 2);
+   auto join_str = luaL_optstring(L, 3, "");
 
    // Validate format string - ensure exactly one format specifier
 
@@ -222,7 +214,7 @@ LJLIB_CF(array_concat)
    result.reserve(arr->len * 16);
    char buffer[256];
 
-   for (int i = 0; i < arr->len; i++) {
+   for (MSize i = 0; i < arr->len; i++) {
       if (i > 0) result += join_str;
 
       switch(arr->elemtype) {
@@ -266,33 +258,170 @@ LJLIB_CF(array_concat)
 }
 
 //********************************************************************************************************************
-// array.copy(dst, src [, dstidx [, srcidx [, count]]])
+// array.copy(dst, src [, dest_idx [, src_idx [, count]]])
+//
 // Copies elements from source array to destination array.
 //
 // Parameters:
-//   dst: destination array
-//   src: source array
-//   dstidx: starting index in destination (0-based, default 0)
-//   srcidx: starting index in source (0-based, default 0)
-//   count: number of elements to copy (default: all remaining elements in source)
+//   dest:     destination array
+//   src:      source array, string, or table
+//   dest_idx: starting index in destination (0-based, default 0)
+//   src_idx:  starting index in source (0-based, default 0)
+//   count:    number of elements to copy (default: all remaining elements in source)
 //
-// Both arrays must have the same element type.  The destination array must not be read-only.
+// For array sources, both arrays must have the same element type.
+// The destination array must not be read-only.
 
 LJLIB_CF(array_copy)
 {
-   GCarray *dst = lib_checkarray(L, 1);
-   GCarray *src = lib_checkarray(L, 2);
+   GCarray *dest = lj_lib_checkarray(L, 1);
 
-   auto dstidx = uint32_t(lj_lib_optint(L, 3, 0));
-   auto srcidx = uint32_t(lj_lib_optint(L, 4, 0));
-   auto count  = uint32_t(lj_lib_optint(L, 5, int32_t(src->len - srcidx)));
+   if (dest->flags & ARRAY_FLAG_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
 
-   lj_array_copy(L, dst, dstidx, src, srcidx, count);
-   return 0;
+   size_t strlen;
+   auto type = lua_type(L, 2);
+   if (type IS LUA_TARRAY) {
+      GCarray *src = lj_lib_checkarray(L, 2);
+      auto dest_idx = lj_lib_optint(L, 3, 0);
+      auto src_idx  = lj_lib_optint(L, 4, 0);
+      auto count    = lj_lib_optint(L, 5, int32_t(src->len - src_idx));
+
+      lj_array_copy(L, dest, dest_idx, src, src_idx, count);
+      return 0;
+   }
+   else if (type IS LUA_TSTRING) {
+      // Treat string sequences as a byte array
+      auto str = lua_tolstring(L, 2, &strlen);
+      if (!str or strlen < 1) {
+         luaL_argerror(L, 2, "String is empty.");
+         return 0;
+      }
+
+      auto dest_idx   = lj_lib_optint(L, 3, 0);
+      auto src_idx    = lj_lib_optint(L, 4, 0);
+      auto copy_total = lj_lib_optint(L, 5, int32_t(strlen - src_idx));
+
+      // Bounds check source
+
+      if ((src_idx < 0) or (size_t(src_idx) >= strlen)) {
+         luaL_error(L, "Source index %d out of bounds (string length: %d).", src_idx, int(strlen));
+         return 0;
+      }
+      if (size_t(src_idx + copy_total) > strlen) copy_total = int32_t(strlen) - src_idx;
+
+      // Bounds check destination
+
+      if ((dest_idx < 0) or (MSize(dest_idx) >= dest->len)) {
+         luaL_error(L, "Destination index %d out of bounds (array size: %d).", dest_idx, int(dest->len));
+         return 0;
+      }
+
+      if (MSize(dest_idx + copy_total) > dest->len) {
+         luaL_error(L, "String copy would exceed array bounds (%d+%d > %d).", dest_idx, copy_total, int(dest->len));
+         return 0;
+      }
+
+      // Copy string bytes to array
+      auto data = (uint8_t*)mref<void>(dest->data) + dest_idx;
+      memcpy(data, str + src_idx, copy_total);
+      return 0;
+   }
+   else if (type IS LUA_TTABLE) {
+      // Get table length for bounds checking
+      MSize table_len = lua_objlen(L, 2);
+      if (table_len < 1) {
+         luaL_argerror(L, 2, "Table is empty.");
+         return 0;
+      }
+
+      auto dest_idx   = lj_lib_optint(L, 3, 0);
+      auto src_idx    = lj_lib_optint(L, 4, 0);
+      auto copy_total = lj_lib_optint(L, 5, int32_t(table_len - src_idx));
+
+      // Bounds check source index
+      if ((src_idx < 0) or (MSize(src_idx) >= table_len)) {
+         luaL_error(L, "Source index %d out of bounds (table length: %d).", src_idx, int(table_len));
+         return 0;
+      }
+
+      if (MSize(copy_total) > table_len - MSize(src_idx)) copy_total = int32_t(table_len - MSize(src_idx));
+
+      // Check bounds for destination array
+      if ((dest_idx < 0) or (MSize(dest_idx) >= dest->len)) {
+         luaL_error(L, "Destination index out of bounds: %d (array size: %d).", dest_idx, dest->len);
+         return 0;
+      }
+
+      if (MSize(dest_idx + copy_total) > dest->len) {
+         luaL_error(L, "Table copy would exceed array bounds (%d+%d > %d).", dest_idx, copy_total, dest->len);
+         return 0;
+      }
+
+      // Copy table elements using ipairs-style iteration
+
+      auto c_index = dest_idx;
+
+      for (MSize i = 0; i < copy_total; i++) {
+         lua_pushinteger(L, src_idx + i);
+         lua_gettable(L, 2);        // Get table[src_idx + i]
+
+         MSize dest_index = c_index + i;
+
+         // Convert and store based on array type
+
+         switch(dest->elemtype) {
+            case AET::_STRING:
+               if (lua_tostring(L, -1)) {
+                  luaL_error(L, "Writing to string arrays from tables is not yet supported.");
+                  lua_pop(L, 1);
+                  return 0;
+               }
+               break;
+            case AET::_PTR:
+               luaL_error(L, "Writing to pointer arrays from tables is not supported.");
+               lua_pop(L, 1);
+               return 0;
+            case AET::_FLOAT:
+               dest->data.get<float>()[dest_index] = lua_tonumber(L, -1);
+               break;
+            case AET::_DOUBLE:
+               dest->data.get<double>()[dest_index] = lua_tonumber(L, -1);
+               break;
+            case AET::_INT64:
+               dest->data.get<int64_t>()[dest_index] = lua_tointeger(L, -1);
+               break;
+            case AET::_INT32:
+               dest->data.get<int>()[dest_index] = lua_tointeger(L, -1);
+               break;
+            case AET::_INT16:
+               dest->data.get<int16_t>()[dest_index] = lua_tointeger(L, -1);
+               break;
+            case AET::_BYTE:
+               dest->data.get<int8_t>()[dest_index] = lua_tointeger(L, -1);
+               break;
+            case AET::_STRUCT:
+               luaL_error(L, "Writing to struct arrays from tables is not yet supported.");
+               lua_pop(L, 1);
+               return 0;
+            default:
+               luaL_error(L, "Unsupported array type $%.8x", dest->elemtype);
+               lua_pop(L, 1);
+               return 0;
+         }
+
+         lua_pop(L, 1); // Remove the value from stack
+      }
+
+      return 0;
+   }
+   else {
+      luaL_argerror(L, 2, "String, array or table expected.");
+      return 0;
+   }
 }
 
 //********************************************************************************************************************
-// array.getstring(arr [, start [, len]])
+// array.getString(arr [, start [, len]])
 // Extracts a string from a byte array.
 //
 // Parameters:
@@ -302,15 +431,16 @@ LJLIB_CF(array_copy)
 //
 // Returns: string containing the bytes
 
-LJLIB_CF(array_getstring)
+LJLIB_CF(array_getString)
 {
-   GCarray *arr = lib_checkarray(L, 1);
+   GCarray *arr = lj_lib_checkarray(L, 1);
 
    if (arr->elemtype != AET::_BYTE) lj_err_caller(L, ErrMsg::ARRSTR);
 
-   auto start = uint32_t(lj_lib_optint(L, 2, 0));
-   auto len = uint32_t(lj_lib_optint(L, 3, int32_t(arr->len - start)));
-
+   auto start = lj_lib_optint(L, 2, 0);
+   if (start < 0) lj_err_caller(L, ErrMsg::IDXRNG);
+   auto len = lj_lib_optint(L, 3, arr->len - start);
+   if (len < 0) lj_err_caller(L, ErrMsg::IDXRNG);
    if (start + len > arr->len) lj_err_caller(L, ErrMsg::IDXRNG);
 
    auto data = (CSTRING)mref<void>(arr->data) + start;
@@ -320,7 +450,8 @@ LJLIB_CF(array_getstring)
 }
 
 //********************************************************************************************************************
-// array.setstring(arr, str [, start])
+// Usage: array.setString(arr, str [, start])
+//
 // Copies string bytes into a byte array.
 //
 // Parameters:
@@ -330,15 +461,17 @@ LJLIB_CF(array_getstring)
 //
 // Returns: number of bytes written
 
-LJLIB_CF(array_setstring)
+LJLIB_CF(array_setString)
 {
-   GCarray *arr = lib_checkarray(L, 1);
+   GCarray *arr = lj_lib_checkarray(L, 1);
    GCstr *str = lj_lib_checkstr(L, 2);
 
    if (arr->elemtype != AET::_BYTE) lj_err_caller(L, ErrMsg::ARRSTR);
    if (arr->flags & ARRAY_FLAG_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
 
-   auto start = uint32_t(lj_lib_optint(L, 3, 0));
+   auto start = lj_lib_optint(L, 3, 0);
+   if (start < 0) lj_err_caller(L, ErrMsg::IDXRNG);
+
    auto len = str->len;
 
    // Clamp length to fit in array
@@ -362,7 +495,7 @@ LJLIB_CF(array_setstring)
 
 LJLIB_CF(array_len)
 {
-   GCarray *arr = lib_checkarray(L, 1);
+   GCarray *arr = lj_lib_checkarray(L, 1);
    setintV(L->top++, int32_t(arr->len));
    return 1;
 }
@@ -374,7 +507,7 @@ LJLIB_CF(array_len)
 
 LJLIB_CF(array_type)
 {
-   GCarray *arr = lib_checkarray(L, 1);
+   GCarray *arr = lj_lib_checkarray(L, 1);
    auto name = elemtype_name(arr->elemtype);
    GCstr *s = lj_str_newz(L, name);
    setstrV(L, L->top++, s);
@@ -382,7 +515,7 @@ LJLIB_CF(array_type)
 }
 
 //********************************************************************************************************************
-// array.readonly(arr)
+// array.readOnly(arr)
 // Returns whether the array is read-only.
 //
 // Parameters:
@@ -390,128 +523,379 @@ LJLIB_CF(array_type)
 //
 // Returns: true if read-only, false otherwise
 
-LJLIB_CF(array_readonly)
+LJLIB_CF(array_readOnly)
 {
-   GCarray *arr = lib_checkarray(L, 1);
+   GCarray *arr = lj_lib_checkarray(L, 1);
    setboolV(L->top++, (arr->flags & ARRAY_FLAG_READONLY) != 0);
    return 1;
 }
 
 //********************************************************************************************************************
+// Helper function to fill array elements with a value
+// Used by array_fill to handle both integer indices and range-based filling
+
+static void fill_array_elements(GCarray *Arr, lua_Number Value, int32_t Start, int32_t Stop, int32_t Step)
+{
+   auto base = (uint8_t *)mref<void>(Arr->data);
+   auto elemsize = Arr->elemsize;
+
+   if (Step > 0) {
+      for (int32_t i = Start; i <= Stop; i += Step) {
+         void *elem = base + i * elemsize;
+         switch (Arr->elemtype) {
+            case AET::_BYTE:   *(uint8_t *)elem = uint8_t(Value); break;
+            case AET::_INT16:  *(int16_t *)elem = int16_t(Value); break;
+            case AET::_INT32:  *(int32_t *)elem = int32_t(Value); break;
+            case AET::_INT64:  *(int64_t *)elem = int64_t(Value); break;
+            case AET::_FLOAT:  *(float *)elem = float(Value); break;
+            case AET::_DOUBLE: *(double *)elem = Value; break;
+            default: break;
+         }
+      }
+   }
+   else {
+      for (int32_t i = Start; i >= Stop; i += Step) {
+         void *elem = base + i * elemsize;
+         switch (Arr->elemtype) {
+            case AET::_BYTE:   *(uint8_t *)elem = uint8_t(Value); break;
+            case AET::_INT16:  *(int16_t *)elem = int16_t(Value); break;
+            case AET::_INT32:  *(int32_t *)elem = int32_t(Value); break;
+            case AET::_INT64:  *(int64_t *)elem = int64_t(Value); break;
+            case AET::_FLOAT:  *(float *)elem = float(Value); break;
+            case AET::_DOUBLE: *(double *)elem = Value; break;
+            default: break;
+         }
+      }
+   }
+}
+
+//********************************************************************************************************************
 // array.fill(arr, value [, start [, count]])
+// array.fill(arr, value, range)
+//
 // Fills array elements with a value.
 //
-// Parameters:
+// Parameters (integer form):
 //   arr: the array (must not be read-only)
 //   value: value to fill with (number)
 //   start: starting index (0-based, default 0)
 //   count: number of elements to fill (default: all remaining)
+//
+// Parameters (range form):
+//   arr: the array (must not be read-only)
+//   value: value to fill with (number)
+//   range: range object specifying which elements to fill
 
 LJLIB_CF(array_fill)
 {
-   GCarray* arr = lib_checkarray(L, 1);
+   GCarray *arr = lj_lib_checkarray(L, 1);
    lua_Number value = lj_lib_checknum(L, 2);
 
    if (arr->flags & ARRAY_FLAG_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
 
-   auto start = uint32_t(lj_lib_optint(L, 3, 0));
-   auto count = uint32_t(lj_lib_optint(L, 4, int32_t(arr->len - start)));
+   // Check if third argument is a range
+   fluid_range *r = check_range(L, 3);
+   if (r) {
+      int32_t len = int32_t(arr->len);
+      int32_t start = r->start;
+      int32_t stop = r->stop;
+      int32_t step = r->step;
 
-   if (start >= arr->len) return 0;
-   if (start + count > arr->len) count = arr->len - start;
+      // Handle negative indices
+      bool use_inclusive = r->inclusive;
+      if (start < 0 or stop < 0) {
+         use_inclusive = true;
+         if (start < 0) start += len;
+         if (stop < 0) stop += len;
+      }
+
+      // Determine iteration direction
+      bool forward = (start <= stop);
+      if (step IS 0) step = forward ? 1 : -1;
+      if (forward and step < 0) step = 1;
+      if (not forward and step > 0) step = -1;
+
+      // Calculate effective stop for exclusive ranges
+      int32_t effective_stop = stop;
+      if (not use_inclusive) {
+         if (forward) effective_stop = stop - 1;
+         else effective_stop = stop + 1;
+      }
+
+      // Bounds clipping
+      if (forward) {
+         if (start < 0) start = 0;
+         if (effective_stop >= len) effective_stop = len - 1;
+      }
+      else {
+         if (start >= len) start = len - 1;
+         if (effective_stop < 0) effective_stop = 0;
+      }
+
+      // Check for empty/invalid ranges
+      if (len IS 0 or (forward and start > effective_stop) or (not forward and start < effective_stop)) {
+         return 0;
+      }
+
+      fill_array_elements(arr, value, start, effective_stop, step);
+      return 0;
+   }
+
+   // Original integer-based fill
+   auto start = lj_lib_optint(L, 3, 0);
+   if (start < 0) lj_err_caller(L, ErrMsg::IDXRNG);
+
+   auto count = lj_lib_optint(L, 4, int32_t(arr->len - start));
+   if (count < 0) lj_err_caller(L, ErrMsg::IDXRNG);
+
+   if (MSize(start) >= arr->len) return 0;
+   if (MSize(start + count) > arr->len) count = int32_t(arr->len) - start;
+
+   fill_array_elements(arr, value, start, start + count - 1, 1);
+   return 0;
+}
+
+//********************************************************************************************************************
+// Helper to check if an array element matches a value
+
+static bool element_matches(GCarray *Arr, int32_t Idx, lua_Number Value)
+{
+   auto base = (uint8_t *)mref<void>(Arr->data);
+   void *elem = base + Idx * Arr->elemsize;
+
+   switch (Arr->elemtype) {
+      case AET::_BYTE:   return (*(uint8_t *)elem IS uint8_t(Value));
+      case AET::_INT16:  return (*(int16_t *)elem IS int16_t(Value));
+      case AET::_INT32:  return (*(int32_t *)elem IS int32_t(Value));
+      case AET::_INT64:  return (*(int64_t *)elem IS int64_t(Value));
+      case AET::_FLOAT:  return (*(float *)elem IS float(Value));
+      case AET::_DOUBLE: return (*(double *)elem IS Value);
+      default: return false;
+   }
+}
+
+//********************************************************************************************************************
+// array.find(arr, value [, start])
+// array.find(arr, value, range)
+//
+// Searches for a value in the array.
+//
+// Parameters (integer form):
+//   arr: the array to search
+//   value: the value to find
+//   start: starting index (0-based, default 0)
+//
+// Parameters (range form):
+//   arr: the array to search
+//   value: the value to find
+//   range: range object specifying which elements to search
+//
+// Returns: index of first occurrence, or nil if not found
+
+LJLIB_CF(array_find)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+   lua_Number value = lj_lib_checknum(L, 2);
+
+   // Check if third argument is a range
+   fluid_range *r = check_range(L, 3);
+   if (r) {
+      int32_t len = int32_t(arr->len);
+      int32_t start = r->start;
+      int32_t stop = r->stop;
+      int32_t step = r->step;
+
+      // Handle negative indices
+      bool use_inclusive = r->inclusive;
+      if (start < 0 or stop < 0) {
+         use_inclusive = true;
+         if (start < 0) start += len;
+         if (stop < 0) stop += len;
+      }
+
+      // Determine iteration direction
+      bool forward = (start <= stop);
+      if (step IS 0) step = forward ? 1 : -1;
+      if (forward and step < 0) step = 1;
+      if (not forward and step > 0) step = -1;
+
+      // Calculate effective stop for exclusive ranges
+      int32_t effective_stop = stop;
+      if (not use_inclusive) {
+         if (forward) effective_stop = stop - 1;
+         else effective_stop = stop + 1;
+      }
+
+      // Bounds clipping
+      if (forward) {
+         if (start < 0) start = 0;
+         if (effective_stop >= len) effective_stop = len - 1;
+      }
+      else {
+         if (start >= len) start = len - 1;
+         if (effective_stop < 0) effective_stop = 0;
+      }
+
+      // Check for empty/invalid ranges
+      if (len IS 0 or (forward and start > effective_stop) or (not forward and start < effective_stop)) {
+         lua_pushnil(L);
+         return 1;
+      }
+
+      // Search within the range
+      if (forward) {
+         for (int32_t i = start; i <= effective_stop; i += step) {
+            if (element_matches(arr, i, value)) {
+               setintV(L->top++, i);
+               return 1;
+            }
+         }
+      }
+      else {
+         for (int32_t i = start; i >= effective_stop; i += step) {
+            if (element_matches(arr, i, value)) {
+               setintV(L->top++, i);
+               return 1;
+            }
+         }
+      }
+
+      lua_pushnil(L);
+      return 1;
+   }
+
+   // Original integer-based find
+   auto start = lj_lib_optint(L, 3, 0);
+
+   if (start < 0) start = 0;
+   if (MSize(start) >= arr->len) {
+      lua_pushnil(L);
+      return 1;
+   }
+
+   for (MSize i = MSize(start); i < arr->len; i++) {
+      if (element_matches(arr, int32_t(i), value)) {
+         setintV(L->top++, int32_t(i));
+         return 1;
+      }
+   }
+
+   lua_pushnil(L);
+   return 1;
+}
+
+//********************************************************************************************************************
+// array.reverse(arr)
+//
+// Reverses the array elements in place.
+//
+// Parameters:
+//   arr: the array to reverse (must not be read-only)
+
+LJLIB_CF(array_reverse)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+
+   if (arr->flags & ARRAY_FLAG_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
+   if (arr->len < 2) return 0;
 
    auto base = (uint8_t *)mref<void>(arr->data);
+   auto elemsize = arr->elemsize;
 
-   for (uint32_t i = 0; i < count; i++) {
-      void* elem = base + (start + i) * arr->elemsize;
-      switch (arr->elemtype) {
-         case AET::_BYTE:   *(uint8_t*)elem = uint8_t(value); break;
-         case AET::_INT16:  *(int16_t*)elem = int16_t(value); break;
-         case AET::_INT32:  *(int32_t*)elem = int32_t(value); break;
-         case AET::_INT64:  *(int64_t*)elem = int64_t(value); break;
-         case AET::_FLOAT:  *(float*)elem = float(value); break;
-         case AET::_DOUBLE: *(double*)elem = value; break;
-         default: break;
-      }
+   // Allocate temporary buffer on the stack for element swapping
+   uint8_t temp[16];  // Large enough for any element type (max is double = 8 bytes)
+
+   for (MSize i = 0; i < arr->len / 2; i++) {
+      MSize j = arr->len - 1 - i;
+      void *elem_i = base + i * elemsize;
+      void *elem_j = base + j * elemsize;
+
+      memcpy(temp, elem_i, elemsize);
+      memcpy(elem_i, elem_j, elemsize);
+      memcpy(elem_j, temp, elemsize);
    }
 
    return 0;
 }
 
 //********************************************************************************************************************
-// Metamethod: __index
-// Handles array[idx] access.
+// array.slice(arr, range)
+//
+// Creates a new array containing elements specified by the range.
+//
+// Parameters:
+//   arr: the source array
+//   range: a range object specifying start, stop, step, and inclusivity
+//
+// Returns: new array containing the slice
+//
+// Delegates to range.slice() for the actual implementation.
 
-LJLIB_CF(array___index)
+LJLIB_CF(array_slice)
 {
-   GCarray *arr = lib_checkarray(L, 1);
-   int32_t idx = lj_lib_checkint(L, 2);
-
-   if (idx < 0 or MSize(idx) >= arr->len) lj_err_callerv(L, ErrMsg::ARROB, idx, int(arr->len));
-
-   void* elem = lj_array_index(arr, uint32_t(idx));
-
-   switch (arr->elemtype) {
-      case AET::_BYTE:   setintV(L->top, *(uint8_t*)elem); break;
-      case AET::_INT16:  setintV(L->top, *(int16_t*)elem); break;
-      case AET::_INT32:  setintV(L->top, *(int32_t*)elem); break;
-      case AET::_INT64:  setnumV(L->top, lua_Number(*(int64_t*)elem)); break;
-      case AET::_FLOAT:  setnumV(L->top, *(float*)elem); break;
-      case AET::_DOUBLE: setnumV(L->top, *(double*)elem); break;
-      case AET::_PTR:    setrawlightudV(L->top, *(void**)elem); break;
-      case AET::_STRING: {
-         GCRef ref = *(GCRef *)elem;
-         if (gcref(ref)) setstrV(L, L->top, gco2str(gcref(ref)));
-         else setnilV(L->top);
-         break;
-      }
-      default: setnilV(L->top); break;
-   }
-   L->top++;
-   return 1;
+   lj_lib_checkarray(L, 1);  // Validate first arg is an array
+   return lj_range_slice(L);
 }
 
 //********************************************************************************************************************
-// Metamethod: __newindex
-// Handles array[idx] = value assignment.
+// array.sort(arr [, descending])
+//
+// Sorts the numeric array in place using quicksort.
+//
+// Parameters:
+//   arr: the array to sort (must not be read-only, must be numeric type)
+//   descending: if true, sort in descending order (default: false/ascending)
+//
+// Note: Does not support string, pointer, or struct arrays.
 
-LJLIB_CF(array___newindex)
+template<typename T>
+static void quicksort(T *Data, int32_t Left, int32_t Right, bool Descending)
 {
-   GCarray* arr = lib_checkarray(L, 1);
-   int32_t idx = lj_lib_checkint(L, 2);
-   TValue* val = L->base + 2;
+   if (Left >= Right) return;
+
+   // Partition
+   T pivot = Data[(Left + Right) / 2];
+   int32_t i = Left, j = Right;
+
+   while (i <= j) {
+      if (Descending) {
+         while (Data[i] > pivot) i++;
+         while (Data[j] < pivot) j--;
+      }
+      else {
+         while (Data[i] < pivot) i++;
+         while (Data[j] > pivot) j--;
+      }
+
+      if (i <= j) {
+         T temp = Data[i];
+         Data[i] = Data[j];
+         Data[j] = temp;
+         i++;
+         j--;
+      }
+   }
+
+   if (Left < j) quicksort(Data, Left, j, Descending);
+   if (i < Right) quicksort(Data, i, Right, Descending);
+}
+
+LJLIB_CF(array_sort)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+   bool descending = lua_toboolean(L, 2);
 
    if (arr->flags & ARRAY_FLAG_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
-   if (idx < 0 or MSize(idx) >= arr->len) lj_err_callerv(L, ErrMsg::ARROB, idx, int(arr->len));
-
-   void * elem = lj_array_index(arr, uint32_t(idx));
-
-   // Get numeric value from TValue
-
-   lua_Number num = 0;
-   if (tvisint(val)) num = lua_Number(intV(val));
-   else if (tvisnum(val)) num = numV(val);
-   else if (arr->elemtype IS AET::_STRING and tvisstr(val)) {
-      GCstr* str = strV(val);
-      setgcref(*(GCRef*)elem, obj2gco(str));
-      lj_gc_objbarrier(L, arr, str);
-      return 0;
-   }
-   else if (arr->elemtype IS AET::_PTR and tvislightud(val)) {
-      *(void**)elem = (void*)(val->u64 & LJ_GCVMASK);
-      return 0;
-   }
-   else if (tvisnil(val)) num = 0;
-   else lj_err_caller(L, ErrMsg::ARRTYPE);
+   if (arr->len < 2) return 0;
 
    switch (arr->elemtype) {
-      case AET::_BYTE:   *(uint8_t*)elem = uint8_t(num); break;
-      case AET::_INT16:  *(int16_t*)elem = int16_t(num); break;
-      case AET::_INT32:  *(int32_t*)elem = int32_t(num); break;
-      case AET::_INT64:  *(int64_t*)elem = int64_t(num); break;
-      case AET::_FLOAT:  *(float*)elem = float(num); break;
-      case AET::_DOUBLE: *(double*)elem = num; break;
-      default: lj_err_caller(L, ErrMsg::ARRTYPE); break;
+      case AET::_BYTE: quicksort(arr->data.get<uint8_t>(), 0, int32_t(arr->len - 1), descending); break;
+      case AET::_INT16: quicksort(arr->data.get<int16_t>(), 0, int32_t(arr->len - 1), descending); break;
+      case AET::_INT32: quicksort(arr->data.get<int32_t>(), 0, int32_t(arr->len - 1), descending); break;
+      case AET::_INT64: quicksort(arr->data.get<int64_t>(), 0, int32_t(arr->len - 1), descending); break;
+      case AET::_FLOAT: quicksort(arr->data.get<float>(), 0, int32_t(arr->len - 1), descending); break;
+      case AET::_DOUBLE: quicksort(arr->data.get<double>(), 0, int32_t(arr->len - 1), descending); break;
+      default: luaL_error(L, "sort() does not support this array type."); return 0;
    }
 
    return 0;
@@ -523,7 +907,7 @@ LJLIB_CF(array___newindex)
 
 LJLIB_CF(array___len)
 {
-   GCarray *arr = lib_checkarray(L, 1);
+   GCarray *arr = lj_lib_checkarray(L, 1);
    setintV(L->top++, int32_t(arr->len));
    return 1;
 }
@@ -534,7 +918,7 @@ LJLIB_CF(array___len)
 
 LJLIB_CF(array___tostring)
 {
-   GCarray* arr = lib_checkarray(L, 1);
+   GCarray* arr = lj_lib_checkarray(L, 1);
    const char* type_name = elemtype_name(arr->elemtype);
 
    // Format: array(SIZE, "TYPE")
@@ -547,37 +931,20 @@ LJLIB_CF(array___tostring)
 }
 
 //********************************************************************************************************************
+// Registers the array library and sets up the array metatable.
+// Unlike the Lua table, arrays are created via conventional means, i.e. array.new().
 
 #include "lj_libdef.h"
-
-//********************************************************************************************************************
-// Library opener function
-// Registers the array library and sets up the array metatable.
 
 extern "C" int luaopen_array(lua_State *L)
 {
    LJ_LIB_REG(L, "array", array);
 
-   // Create and register array metatable using Lua stack operations
-   lua_createtable(L, 0, 4);  // metatable
+   // Store the array library table as the metatable for arrays.
+   // This allows method calls like arr:concat() to find the concat function
+   // in the library table. The library table is left on top of the stack by LJ_LIB_REG.
 
-   // Set __index from library function
-   lua_getfield(L, -2, "__index");  // Get array.__index
-   lua_setfield(L, -2, "__index");  // Set it in metatable
-
-   // Set __newindex from library function
-   lua_getfield(L, -2, "__newindex");
-   lua_setfield(L, -2, "__newindex");
-
-   // Set __len from library function
-   lua_getfield(L, -2, "__len");
-   lua_setfield(L, -2, "__len");
-
-   // Set __tostring from library function
-   lua_getfield(L, -2, "__tostring");
-   lua_setfield(L, -2, "__tostring");
-
-   // Store metatable in registry as "array_metatable"
+   lua_pushvalue(L, -1);  // Duplicate library table
    lua_setfield(L, LUA_REGISTRYINDEX, "array_metatable");
 
    return 1;

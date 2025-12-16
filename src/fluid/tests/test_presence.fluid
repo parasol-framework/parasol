@@ -1,7 +1,7 @@
 -- Flute tests for the postfix ?? operator (presence check)
 -- Returns boolean: true if value is truthy, false if falsey (nil, false, 0, "")
 
-@BeforeEach(hotpath=true) 
+@BeforeEach(hotpath=true)
 function enforce_hotpath() end
 
 @Test function testNil()

@@ -63,6 +63,9 @@ constexpr int LUA_TTABLE = 5;
 constexpr int LUA_TFUNCTION = 6;
 constexpr int LUA_TUSERDATA = 7;
 constexpr int LUA_TTHREAD = 8;
+constexpr int LUA_TPROTO = 9;
+constexpr int LUA_TCDATA = 10;
+constexpr int LUA_TARRAY = 11;
 
 // minimum Lua stack available to a C function
 constexpr int LUA_MINSTACK = 20;
@@ -216,6 +219,7 @@ inline bool lua_islightuserdata(lua_State *L, int N) { return lua_type(L, N) == 
 inline bool lua_isnil(lua_State *L, int N) { return lua_type(L, N) == LUA_TNIL; }
 inline bool lua_isboolean(lua_State *L, int N) { return lua_type(L, N) == LUA_TBOOLEAN; }
 inline bool lua_isthread(lua_State *L, int N) { return lua_type(L, N) == LUA_TTHREAD; }
+inline bool lua_isarray(lua_State *L, int N) { return lua_type(L, N) == LUA_TARRAY; }
 inline bool lua_isnone(lua_State *L, int N) { return lua_type(L, N) == LUA_TNONE; }
 inline bool lua_isnoneornil(lua_State *L, int N) { return lua_type(L, N) <= 0; }
 

@@ -1,7 +1,7 @@
 -- Comprehensive tests for bitshift operators
 -- C style precedence must be observed
 
-@BeforeEach(hotpath=true) 
+@BeforeEach(hotpath=true)
 function enforce_hotpath() end
 
 @Test function testBinaryBitwiseBasics()

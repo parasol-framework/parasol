@@ -230,12 +230,6 @@ using cTValue = const TValue;
 
 [[nodiscard]] inline TValue* tvref(MRef r) noexcept { return r.get<TValue>(); }
 
-// More external and GCobj tags for internal objects.
-
-inline constexpr int LAST_TT     = LUA_TTHREAD;
-inline constexpr int LUA_TPROTO  = LAST_TT + 1;
-inline constexpr int LUA_TCDATA  = LAST_TT + 2;
-
 // Format for 64 bit GC references (LJ_GC64):
 //
 // The upper 13 bits must be 1 (0xfff8...) for a special NaN. The next 4 bits hold the internal tag. The lowest 47
@@ -659,27 +653,25 @@ typedef struct GCarray {
    MSize capacity;          // Allocated capacity (elements, not bytes)
    MSize elemsize;          // Size of each element in bytes
    GCRef structdef;         // Optional: struct definition for struct arrays
+
+   // Array accessor functions
+   [[nodiscard]] inline void * arraydata() noexcept {
+      return mref<void>(data);
+   }
+
+   [[nodiscard]] inline MSize arraylen() noexcept {
+      return len;
+   }
+
+   [[nodiscard]] inline bool array_is_readonly() noexcept {
+      return (flags & ARRAY_FLAG_READONLY) != 0;
+   }
 } GCarray;
 
 // Ensure metatable field is at the same offset as in GCtab and GCudata
+
 static_assert(offsetof(GCarray, metatable) IS offsetof(GCtab, metatable));
 static_assert(offsetof(GCarray, gclist) IS offsetof(GCtab, gclist));
-
-// Array accessor functions
-[[nodiscard]] inline void* arraydata(GCarray* arr) noexcept
-{
-   return mref<void>(arr->data);
-}
-
-[[nodiscard]] inline MSize arraylen(GCarray* arr) noexcept
-{
-   return arr->len;
-}
-
-[[nodiscard]] inline bool array_is_readonly(GCarray* arr) noexcept
-{
-   return (arr->flags & ARRAY_FLAG_READONLY) != 0;
-}
 
 [[nodiscard]] inline MSize sizearraycolo(MSize len, MSize elemsize) noexcept
 {
@@ -689,9 +681,9 @@ static_assert(offsetof(GCarray, gclist) IS offsetof(GCtab, gclist));
 // Forward declaration - defined after GCobj is complete
 inline GCarray* arrayref(GCRef r) noexcept;
 
-// -- State objects -------------------------------------------------------
-
+//********************************************************************************************************************
 // VM states.
+
 enum {
    LJ_VMST_INTERP,   //  Interpreter.
    LJ_VMST_C,        //  C function.
@@ -1340,7 +1332,7 @@ inline void copyTV(lua_State* L, TValue* o1, const TValue* o2)
 }
 
 // Names and maps for internal and external object tags.
-LJ_DATA const char* const lj_obj_typename[1 + LUA_TCDATA + 1];
+LJ_DATA const char* const lj_obj_typename[1 + LUA_TARRAY + 1];
 LJ_DATA const char* const lj_obj_itypename[~LJ_TNUMX + 1];
 
 [[nodiscard]] inline const char* lj_typename(cTValue* o) noexcept {

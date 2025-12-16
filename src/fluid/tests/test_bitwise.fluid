@@ -1,6 +1,6 @@
 -- Comprehensive tests for bitwise operators and compound assignments.
 
-@BeforeEach(hotpath=true) 
+@BeforeEach(hotpath=true)
 function enforce_hotpath() end
 
 function returns6_99()

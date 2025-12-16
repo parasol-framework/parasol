@@ -1,6 +1,6 @@
 -- Flute tests for the ?? operator (if-empty: nil, false, 0, "")
 
-@BeforeEach(hotpath=true) 
+@BeforeEach(hotpath=true)
 function enforce_hotpath() end
 
 @Test function testNil()

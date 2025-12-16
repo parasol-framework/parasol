@@ -349,7 +349,7 @@ struct LinesIterator {
 static int lines_iterator(lua_State *Lua)
 {
    auto iter = (LinesIterator *)lua_touserdata(Lua, lua_upvalueindex(1));
-   
+
    if (not iter->file_handle) return 0; // End iteration
 
    auto file = (objFile *)GetObjectPtr(iter->file_handle->file_id);
@@ -493,7 +493,7 @@ static int file_read(lua_State *Lua)
          lua_pushstring(Lua, "Attempted to use a closed file");
          return 2;
       }
-      
+
       auto file = (objFile *)GetObjectPtr(handle->file_id);
       if (not file) {
          lua_pushnil(Lua);
@@ -502,7 +502,7 @@ static int file_read(lua_State *Lua)
       }
 
       int nargs = lua_gettop(Lua);
-      
+
       // Default to reading a line if no arguments
       if (nargs IS 1) {
          struct fl::ReadLine args;

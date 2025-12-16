@@ -8,7 +8,8 @@
 // C helpers for array bytecodes, called from assembler VM.
 // Returns TValue* result or nullptr if metamethod needs to be called.
 extern "C" [[nodiscard]] cTValue* lj_arr_get(lua_State* L, cTValue* o, cTValue* k);
-extern "C" [[nodiscard]] TValue* lj_arr_set(lua_State* L, cTValue* o, cTValue* k);
+// lj_arr_set returns 1 on success, 0 if metamethod needs to be called
+extern "C" [[nodiscard]] int lj_arr_set(lua_State* L, cTValue* o, cTValue* k, cTValue* v);
 
 // Direct array access helpers (no metamethod support, used after type check passes)
 extern "C" void lj_arr_getidx(lua_State* L, GCarray* arr, int32_t idx, TValue* result);

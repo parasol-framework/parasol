@@ -393,8 +393,10 @@ static int luaopen_table_new(lua_State* L)
 extern int luaopen_table(lua_State* L)
 {
    LJ_LIB_REG(L, "table", table);
-   lua_getglobal(L, "unpack");
-   lua_setfield(L, -2, "unpack");
+   // unpack() has been deprecated, retaining this only as an example of routing to global functions
+   // result1, result2, ... = table.unpack(someTable)
+   //lua_getglobal(L, "unpack");
+   //lua_setfield(L, -2, "unpack");
    lj_lib_prereg(L, "table.new", luaopen_table_new, tabV(L->top - 1));
    return 1;
 }
