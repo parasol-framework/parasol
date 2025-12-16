@@ -258,7 +258,7 @@ LJLIB_CF(array_concat)
 }
 
 //********************************************************************************************************************
-// array.copy(dst, src [, dest_idx [, src_idx [, count]]])
+// Usage: array.copy(dst, src [, dest_idx [, src_idx [, count]]])
 //
 // Copies elements from source array to destination array.
 //
@@ -421,7 +421,8 @@ LJLIB_CF(array_copy)
 }
 
 //********************************************************************************************************************
-// array.getString(arr [, start [, len]])
+// Usage: array.getString(arr [, start [, len]])
+// 
 // Extracts a string from a byte array.
 //
 // Parameters:
@@ -515,7 +516,8 @@ LJLIB_CF(array_type)
 }
 
 //********************************************************************************************************************
-// array.readOnly(arr)
+// Usage: array.readOnly(arr)
+// 
 // Returns whether the array is read-only.
 //
 // Parameters:
@@ -531,47 +533,38 @@ LJLIB_CF(array_readOnly)
 }
 
 //********************************************************************************************************************
+// Helper to store a numeric value into an array element based on element type
+
+static void store_array_element(GCarray *Arr, int32_t Idx, lua_Number Value)
+{
+   void *elem = Arr->data.get<uint8_t>() + Idx * Arr->elemsize;
+   switch (Arr->elemtype) {
+      case AET::_BYTE:   *(uint8_t *)elem = uint8_t(Value); break;
+      case AET::_INT16:  *(int16_t *)elem = int16_t(Value); break;
+      case AET::_INT32:  *(int32_t *)elem = int32_t(Value); break;
+      case AET::_INT64:  *(int64_t *)elem = int64_t(Value); break;
+      case AET::_FLOAT:  *(float *)elem = float(Value); break;
+      case AET::_DOUBLE: *(double *)elem = Value; break;
+      default: break;
+   }
+}
+
+//********************************************************************************************************************
 // Helper function to fill array elements with a value
 // Used by array_fill to handle both integer indices and range-based filling
 
 static void fill_array_elements(GCarray *Arr, lua_Number Value, int32_t Start, int32_t Stop, int32_t Step)
 {
-   auto base = (uint8_t *)mref<void>(Arr->data);
-   auto elemsize = Arr->elemsize;
-
    if (Step > 0) {
-      for (int32_t i = Start; i <= Stop; i += Step) {
-         void *elem = base + i * elemsize;
-         switch (Arr->elemtype) {
-            case AET::_BYTE:   *(uint8_t *)elem = uint8_t(Value); break;
-            case AET::_INT16:  *(int16_t *)elem = int16_t(Value); break;
-            case AET::_INT32:  *(int32_t *)elem = int32_t(Value); break;
-            case AET::_INT64:  *(int64_t *)elem = int64_t(Value); break;
-            case AET::_FLOAT:  *(float *)elem = float(Value); break;
-            case AET::_DOUBLE: *(double *)elem = Value; break;
-            default: break;
-         }
-      }
+      for (int32_t i = Start; i <= Stop; i += Step) store_array_element(Arr, i, Value);
    }
    else {
-      for (int32_t i = Start; i >= Stop; i += Step) {
-         void *elem = base + i * elemsize;
-         switch (Arr->elemtype) {
-            case AET::_BYTE:   *(uint8_t *)elem = uint8_t(Value); break;
-            case AET::_INT16:  *(int16_t *)elem = int16_t(Value); break;
-            case AET::_INT32:  *(int32_t *)elem = int32_t(Value); break;
-            case AET::_INT64:  *(int64_t *)elem = int64_t(Value); break;
-            case AET::_FLOAT:  *(float *)elem = float(Value); break;
-            case AET::_DOUBLE: *(double *)elem = Value; break;
-            default: break;
-         }
-      }
+      for (int32_t i = Start; i >= Stop; i += Step) store_array_element(Arr, i, Value);
    }
 }
 
 //********************************************************************************************************************
-// array.fill(arr, value [, start [, count]])
-// array.fill(arr, value, range)
+// Usage: array.fill(arr, value [, start [, count]]) or array.fill(arr, value, range)
 //
 // Fills array elements with a value.
 //
@@ -675,8 +668,7 @@ static bool element_matches(GCarray *Arr, int32_t Idx, lua_Number Value)
 }
 
 //********************************************************************************************************************
-// array.find(arr, value [, start])
-// array.find(arr, value, range)
+// Usage: array.find(arr, value [, start]) or array.find(arr, value, range)
 //
 // Searches for a value in the array.
 //
@@ -785,7 +777,7 @@ LJLIB_CF(array_find)
 }
 
 //********************************************************************************************************************
-// array.reverse(arr)
+// Usage: array.reverse(arr)
 //
 // Reverses the array elements in place.
 //
@@ -819,7 +811,7 @@ LJLIB_CF(array_reverse)
 }
 
 //********************************************************************************************************************
-// array.slice(arr, range)
+// Usage: array.slice(arr, range)
 //
 // Creates a new array containing elements specified by the range.
 //
@@ -838,7 +830,7 @@ LJLIB_CF(array_slice)
 }
 
 //********************************************************************************************************************
-// array.sort(arr [, descending])
+// Usage: array.sort(arr [, descending])
 //
 // Sorts the numeric array in place using quicksort.
 //

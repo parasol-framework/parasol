@@ -190,9 +190,7 @@ extern "C" int lj_arr_set(lua_State *L, cTValue *O, cTValue *K, cTValue *V)
       GCtab *mt = tabref(arr->metatable);
       if (mt) {
          cTValue *mo = lj_meta_fast(L, mt, MM_newindex);
-         if (mo) { // Metamethod exists - return 0 to trigger it
-            return 0;
-         }
+         if (mo) return 0; // Metamethod exists - return 0 to trigger it
       }
       // No metamethod - raise error
       lj_err_msgv(L, ErrMsg::ARROB, idx, int(arr->len));
