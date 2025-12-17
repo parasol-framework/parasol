@@ -963,6 +963,8 @@ LJ_NOINLINE void lj_err_callerv(lua_State *L, ErrMsg em, ...)
 
 //********************************************************************************************************************
 // Error in context of caller.
+// Do NOT use for VM helper functions called from assembler - use lj_err_msgv() instead, which adjusts L->top for
+// proper unwinding.
 
 LJ_NOINLINE void lj_err_caller(lua_State *L, ErrMsg em)
 {

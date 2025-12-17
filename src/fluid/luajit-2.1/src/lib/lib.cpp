@@ -29,7 +29,7 @@
 //********************************************************************************************************************
 // Library initialization
 
-static GCtab* lib_create_table(lua_State *L, const char* libname, int hsize)
+static GCtab * lib_create_table(lua_State *L, const char *libname, int hsize)
 {
    if (libname) {
       luaL_findtable(L, LUA_REGISTRYINDEX, "_LOADED", 16);
@@ -51,28 +51,24 @@ static GCtab* lib_create_table(lua_State *L, const char* libname, int hsize)
 
 //********************************************************************************************************************
 
-static const uint8_t* lib_read_lfunc(lua_State *L, const uint8_t* p, GCtab* tab)
+static const uint8_t * lib_read_lfunc(lua_State *L, const uint8_t* p, GCtab* tab)
 {
    int len = *p++;
    GCstr *name = lj_str_new(L, (const char*)p, len);
-   GCproto *pt;
-   GCfunc *fn;
-   const uint8_t* result;
 
-   // Use specialized constructor for bytecode reading
-   LexState ls(L, (const char*)(p + len), name);
+   LexState ls(L, (const char*)(p + len), name); // Use specialized constructor for bytecode reading
 
-   pt = lj_bcread_proto(&ls);
+   auto pt = lj_bcread_proto(&ls);
    pt->firstline = ~(BCLine)0;
-   fn = lj_func_newL_empty(L, pt, tabref(L->env));
+   auto fn = lj_func_newL_empty(L, pt, tabref(L->env));
+
    // NOBARRIER: See below for common barrier.
+   
    setfuncV(L, lj_tab_setstr(L, tab, name), fn);
 
-   result = (const uint8_t *)ls.p;
+   auto result = (const uint8_t *)ls.p;
 
-   // Destructor will automatically clean up
-
-   return result;
+   return result; // Destructor will automatically clean up
 }
 
 //********************************************************************************************************************
@@ -96,21 +92,24 @@ void lj_lib_register(lua_State *L, const char* libname, const uint8_t* p, const 
       tag &= LIBINIT_TAGMASK;
       if (tag != LIBINIT_STRING) {
          const char *name;
-         MSize nuv = (MSize)(L->top - L->base - tpos);
-         GCfunc* fn = lj_func_newC(L, nuv, env);
+         auto nuv = (MSize)(L->top - L->base - tpos);
+         GCfunc *fn = lj_func_newC(L, nuv, env);
          if (nuv) {
             L->top = L->base + tpos;
             memcpy(fn->c.upvalue, L->top, sizeof(TValue) * nuv);
          }
+
          fn->c.ffid = (uint8_t)(ffid++);
          name = (const char*)p;
          p += len;
+
          if (tag IS LIBINIT_CF) setmref(fn->c.pc, &G(L)->bc_cfunc_int);
          else setmref(fn->c.pc, bcff++);
+
          if (tag IS LIBINIT_ASM_) fn->c.f = ofn->c.f;  //  Copy handler from previous function.
          else fn->c.f = *cf++;  //  Get cf or handler from C function table.
-         if (len) {
-            // NOBARRIER: See above for common barrier.
+
+         if (len) { // NOBARRIER: See above for common barrier.
             setfuncV(L, lj_tab_setstr(L, tab, lj_str_new(L, name, len)), fn);
          }
          ofn = fn;
@@ -328,7 +327,7 @@ GCarray * lj_lib_checkarray(lua_State *L, int Arg)
 }
 
 //********************************************************************************************************************
-// Helper function to check optional array argument (may be nil)
+// Helper function to check optional array argument (may be nil, but non-arrays throw an error)
 
 GCarray * lj_lib_optarray(lua_State *L, int Arg)
 {

@@ -580,6 +580,7 @@ enum AET : uint8_t {
    _CSTRING,    // const char *
    _STRING_CPP, // std::string (C++ string)
    _STRING_GC,  // GCstr * (interned string)
+   _TABLE,      // GCtab * (table reference)
    _STRUCT,     // Structured data (uses structdef)
    _MAX,
    _VULNERABLE = _PTR

@@ -39,6 +39,7 @@ constexpr auto HASH_DOUBLE  = pf::strhash("double");
 constexpr auto HASH_STRING  = pf::strhash("string");
 constexpr auto HASH_STRUCT  = pf::strhash("struct");
 constexpr auto HASH_POINTER = pf::strhash("pointer");
+constexpr auto HASH_TABLE   = pf::strhash("table");
 
 //********************************************************************************************************************
 // Helper to parse element type string
@@ -58,6 +59,7 @@ static AET parse_elemtype(lua_State *L, int NArg)
       case HASH_STRING:  return AET::_STRING_GC;
       case HASH_STRUCT:  return AET::_STRUCT;
       case HASH_POINTER: return AET::_PTR;
+      case HASH_TABLE:   return AET::_TABLE;
    }
 
    lj_err_argv(L, NArg, ErrMsg::BADTYPE, "valid array type", strdata(type_str));
@@ -78,6 +80,7 @@ static CSTRING elemtype_name(AET Type)
       case AET::_DOUBLE:     return "double";
       case AET::_PTR:        return "pointer";
       case AET::_STRUCT:     return "struct";
+      case AET::_TABLE:      return "table";
       case AET::_CSTRING:
       case AET::_STRING_GC:
       case AET::_STRING_CPP: return "string";
@@ -261,6 +264,9 @@ LJLIB_CF(array_concat)
          case AET::_STRUCT:
             luaL_error(L, "concat() does not support struct arrays.");
             return 0;
+         case AET::_TABLE:
+            luaL_error(L, "concat() does not support table arrays.");
+            return 0;
          default:
             luaL_error(L, "Unsupported array type $%.8x", arr->elemtype);
             return 0;
@@ -436,6 +442,22 @@ LJLIB_CF(array_copy)
                luaL_error(L, "Writing to struct arrays from tables is not yet supported.");
                lua_pop(L, 1);
                return 0;
+            case AET::_TABLE:
+               if (lua_istable(L, -1)) {
+                  TValue *tv = L->top - 1;
+                  GCtab *tab = tabV(tv);
+                  setgcref(dest->data.get<GCRef>()[dest_index], obj2gco(tab));
+                  lj_gc_objbarrier(L, dest, tab);
+               }
+               else if (lua_isnil(L, -1)) {
+                  setgcrefnull(dest->data.get<GCRef>()[dest_index]);
+               }
+               else {
+                  luaL_error(L, "Expected table value at index %d.", src_idx + i);
+                  lua_pop(L, 1);
+                  return 0;
+               }
+               break;
             default:
                luaL_error(L, "Unsupported array type $%.8x", dest->elemtype);
                lua_pop(L, 1);
@@ -964,7 +986,8 @@ LJLIB_CF(array_reverse)
          std::reverse(p, p + arr->len);
          break;
       }
-      case AET::_STRING_GC: {
+      case AET::_STRING_GC:
+      case AET::_TABLE: {
          auto *p = static_cast<GCRef *>(data);
          std::reverse(p, p + arr->len);
          break;

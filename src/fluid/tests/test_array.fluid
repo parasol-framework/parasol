@@ -962,3 +962,189 @@ end
       assert(arr[i] is i, "sorted large array element " .. i .. " should be " .. i)
    end
 end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test table array type
+
+@Test function TableArrayBasic()
+   arr = array.new(3, 'table')
+   assert(#arr is 3, "table array should have length 3")
+   assert(arr:type() is 'table', "table array type should be 'table'")
+
+   -- All elements should initially be nil
+   assert(arr[0] is nil, "Uninitialized table array element should be nil")
+   assert(arr[1] is nil, "Uninitialized table array element should be nil")
+   assert(arr[2] is nil, "Uninitialized table array element should be nil")
+end
+
+@Test function TableArrayStoreAndRetrieve()
+   arr = array.new(3, 'table')
+
+   -- Store tables
+   arr[0] = {name = 'Alice', age = 30}
+   arr[1] = {name = 'Bob', age = 25}
+   arr[2] = {x = 10, y = 20}
+
+   -- Retrieve and verify
+   assert(arr[0].name is 'Alice', "arr[0].name should be 'Alice'")
+   assert(arr[0].age is 30, "arr[0].age should be 30")
+   assert(arr[1].name is 'Bob', "arr[1].name should be 'Bob'")
+   assert(arr[1].age is 25, "arr[1].age should be 25")
+   assert(arr[2].x is 10, "arr[2].x should be 10")
+   assert(arr[2].y is 20, "arr[2].y should be 20")
+end
+
+@Test function TableArrayReferenceSemantics()
+   arr = array.new(2, 'table')
+
+   -- Store a table and keep a reference
+   t = {value = 100}
+   arr[0] = t
+
+   -- Modify through original reference
+   t.value = 200
+   assert(arr[0].value is 200, "Modifying original table should affect array element")
+
+   -- Modify through array access
+   arr[0].value = 300
+   assert(t.value is 300, "Modifying through array should affect original table")
+end
+
+@Test function TableArrayNilAssignment()
+   arr = array.new(3, 'table')
+
+   -- Store a table
+   arr[0] = {data = 'test'}
+   assert(arr[0].data is 'test', "stored table should be accessible")
+
+   -- Clear with nil
+   arr[0] = nil
+   assert(arr[0] is nil, "nil assignment should clear table reference")
+end
+
+@Test function TableArrayReverse()
+   arr = array.new(3, 'table')
+   arr[0] = {id = 1}
+   arr[1] = {id = 2}
+   arr[2] = {id = 3}
+
+   arr:reverse()
+
+   assert(arr[0].id is 3, "reversed arr[0].id should be 3")
+   assert(arr[1].id is 2, "reversed arr[1].id should be 2")
+   assert(arr[2].id is 1, "reversed arr[2].id should be 1")
+end
+
+@Test function TableArrayToTable()
+   arr = array.new(3, 'table')
+   arr[0] = {a = 1}
+   arr[1] = {b = 2}
+   arr[2] = nil
+
+   t = arr:table()
+
+   assert(t[0].a is 1, "converted table[0].a should be 1")
+   assert(t[1].b is 2, "converted table[1].b should be 2")
+   assert(t[2] is nil, "converted table[2] should be nil")
+end
+
+@Test function TableArrayCopyFromTable()
+   arr = array.new(3, 'table')
+   source = {{x = 10}, {x = 20}, {x = 30}}
+
+   arr:copy(source)
+
+   assert(arr[0].x is 10, "copied arr[0].x should be 10")
+   assert(arr[1].x is 20, "copied arr[1].x should be 20")
+   assert(arr[2].x is 30, "copied arr[2].x should be 30")
+end
+
+@Test function TableArrayCopyWithNil()
+   arr = array.new(3, 'table')
+   source = {{a = 1}, nil, {c = 3}}
+
+   arr:copy(source)
+
+   assert(arr[0].a is 1, "copied arr[0].a should be 1")
+   assert(arr[1] is nil, "copied arr[1] should be nil")
+   assert(arr[2].c is 3, "copied arr[2].c should be 3")
+end
+
+@Test function TableArrayConcatRejected()
+   arr = array.new(2, 'table')
+   arr[0] = {a = 1}
+   arr[1] = {b = 2}
+
+   status = pcall(function()
+      return arr:concat('%s', ', ')
+   end)
+   assert(not status, "Concat should be rejected for table arrays")
+end
+
+@Test function TableArrayTypeValidation()
+   arr = array.new(2, 'table')
+
+   -- Storing non-table values should fail
+   status = pcall(function()
+      arr[0] = 42
+   end)
+   assert(not status, "Storing number in table array should fail")
+
+   status2 = pcall(function()
+      arr[0] = "string"
+   end)
+   assert(not status2, "Storing string in table array should fail")
+end
+
+@Test function TableArrayGCStress()
+   -- Create table array and populate with many tables
+   arr = array.new(100, 'table')
+   for i = 0, 99 do
+      arr[i] = {value = i * 10}
+   end
+
+   -- Force garbage collection
+   collectgarbage('collect')
+   collectgarbage('collect')
+
+   -- Verify all tables are still accessible
+   for i = 0, 99 do
+      expected = i * 10
+      assert(arr[i].value is expected, "GC stress: arr[" .. i .. "].value should be " .. expected)
+   end
+end
+
+@Test function TableArrayNestedTables()
+   arr = array.new(2, 'table')
+
+   -- Store nested tables
+   arr[0] = {
+      inner = {
+         deep = {
+            value = 42
+         }
+      }
+   }
+   arr[1] = {list = {1, 2, 3, 4, 5}}
+
+   assert(arr[0].inner.deep.value is 42, "nested table access should work")
+   assert(arr[1].list[0] is 1, "nested array access should work")
+   assert(arr[1].list[4] is 5, "nested array access should work")
+end
+
+@Test function TableArrayEmptyTables()
+   arr = array.new(3, 'table')
+
+   -- Store empty tables
+   arr[0] = {}
+   arr[1] = {}
+   arr[2] = {}
+
+   -- Add values to empty tables through array
+   arr[0].x = 10
+   arr[1].y = 20
+
+   assert(arr[0].x is 10, "adding to empty table through array should work")
+   assert(arr[1].y is 20, "adding to empty table through array should work")
+   assert(arr[2].z is nil, "unset field should be nil")
+end

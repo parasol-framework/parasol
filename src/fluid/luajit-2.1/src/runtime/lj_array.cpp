@@ -30,6 +30,7 @@ static const uint8_t glElemSizes[] = {
    sizeof(const char*),  // AET::_CSTRING
    sizeof(std::string),  // AET::_STRING_CPP
    sizeof(GCRef),        // AET::_STRING_GC
+   sizeof(GCRef),        // AET::_TABLE
    0                     // AET::_STRUCT (variable)
 };
 
@@ -199,6 +200,12 @@ GCtab * lj_array_to_table(lua_State *L, GCarray *Array)
          case AET::_INT64:  setnumV(slot, lua_Number(*(int64_t*)elem)); break;
          case AET::_FLOAT:  setnumV(slot, *(float*)elem); break;
          case AET::_DOUBLE: setnumV(slot, *(double*)elem); break;
+         case AET::_TABLE: {
+            GCRef ref = *(GCRef*)elem;
+            if (gcref(ref)) settabV(L, slot, gco2tab(gcref(ref)));
+            else setnilV(slot);
+            break;
+         }
          default: setnilV(slot); break;
       }
    }

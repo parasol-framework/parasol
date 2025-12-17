@@ -592,8 +592,6 @@ LJLIB_PUSH(top-3)
 LJLIB_SET(_VERSION)
 
 //********************************************************************************************************************
-// Base library: thunk functions
-
 // Check if a value is an unresolved thunk
 
 LJLIB_CF(isthunk)
@@ -650,8 +648,7 @@ LJLIB_CF(coroutine_status)
 {
    const char* s;
    lua_State* co;
-   if (!(L->top > L->base and tvisthread(L->base)))
-      lj_err_arg(L, 1, ErrMsg::NOCORO);
+   if (!(L->top > L->base and tvisthread(L->base))) lj_err_arg(L, 1, ErrMsg::NOCORO);
    co = threadV(L->base);
    if (co IS L) s = "running";
    else if (co->status IS LUA_YIELD) s = "suspended";
@@ -741,10 +738,8 @@ LJ_FUNCA_NORET void LJ_FASTCALL lj_ffh_coroutine_wrap_err(lua_State* L, lua_Stat
 void LJ_FASTCALL lj_ffh_coroutine_wrap_err(lua_State* L, lua_State* co)
 {
    co->top--; copyTV(L, L->top, co->top); L->top++;
-   if (tvisstr(L->top - 1))
-      lj_err_callermsg(L, strVdata(L->top - 1));
-   else
-      lj_err_run(L);
+   if (tvisstr(L->top - 1)) lj_err_callermsg(L, strVdata(L->top - 1));
+   else lj_err_run(L);
 }
 
 //********************************************************************************************************************

@@ -75,6 +75,13 @@ static void arr_load_elem(lua_State *L, GCarray *Array, uint32_t Idx, TValue *Re
          break;
       }
 
+      case AET::_TABLE: {
+         GCRef ref = *(GCRef*)elem;
+         if (gcref(ref)) settabV(L, Result, gco2tab(gcref(ref)));
+         else setnilV(Result);
+         break;
+      }
+
       default: setnilV(Result); break;
    }
 }
@@ -86,19 +93,34 @@ static void arr_store_elem(lua_State *L, GCarray *Array, uint32_t Idx, cTValue *
 {
    void *elem = lj_array_index(Array, Idx);
 
-   // Get numeric value from TValue
+   // Handle non-numeric types first (string, table) - these don't accept numeric values
+
+   if (Array->elemtype IS AET::_STRING_GC) {
+      if (tvisstr(Val)) {
+         GCstr *str = strV(Val);
+         setgcref(*(GCRef*)elem, obj2gco(str));
+         lj_gc_objbarrier(L, Array, str);
+      }
+      else if (tvisnil(Val)) setgcrefnull(*(GCRef*)elem);
+      else lj_err_msgv(L, ErrMsg::ARRTYPE);
+      return;
+   }
+   else if (Array->elemtype IS AET::_TABLE) {
+      if (tvistab(Val)) {
+         GCtab *tab = tabV(Val);
+         setgcref(*(GCRef*)elem, obj2gco(tab));
+         lj_gc_objbarrier(L, Array, tab);
+      }
+      else if (tvisnil(Val)) setgcrefnull(*(GCRef*)elem);
+      else lj_err_msgv(L, ErrMsg::ARRTYPE);
+      return;
+   }
+
+   // Get numeric value from TValue for primitive types
 
    lua_Number num = 0;
    if (tvisint(Val)) num = lua_Number(intV(Val));
    else if (tvisnum(Val)) num = numV(Val);
-   else if ((Array->elemtype IS AET::_STRING_GC) and tvisstr(Val)) {
-      // String storage
-      GCstr *str = strV(Val);
-      setgcref(*(GCRef*)elem, obj2gco(str));
-      // Use forward barrier for GC objects
-      lj_gc_objbarrier(L, Array, str);
-      return;
-   }
    else if (Array->elemtype IS AET::_PTR and tvislightud(Val)) [[unlikely]] {
       // Extract raw pointer (note: lightudV on 64-bit requires global_State)
       *(void**)elem = (void*)(Val->u64 & LJ_GCVMASK);
@@ -106,12 +128,12 @@ static void arr_store_elem(lua_State *L, GCarray *Array, uint32_t Idx, cTValue *
    }
    else if ((Array->elemtype IS AET::_CSTRING) or (Array->elemtype IS AET::_STRING_CPP)) [[unlikely]] {
       // Storing pointers to Lua strings is somewhat feasible but unsafe; for this reason we disallow it.
-      lj_err_caller(L, ErrMsg::ARRTYPE);
+      lj_err_msgv(L, ErrMsg::ARRTYPE);
       return;
    }
    else { // Type mismatch - attempt numeric conversion or error
       if (tvisnil(Val)) num = 0;
-      else lj_err_caller(L, ErrMsg::ARRTYPE);
+      else lj_err_msgv(L, ErrMsg::ARRTYPE);
    }
 
    // Primitive types
@@ -123,7 +145,7 @@ static void arr_store_elem(lua_State *L, GCarray *Array, uint32_t Idx, cTValue *
       case AET::_INT64:  *(int64_t*)elem = int64_t(num); break;
       case AET::_FLOAT:  *(float*)elem = float(num); break;
       case AET::_DOUBLE: *(double*)elem = num; break;
-      default: lj_err_caller(L, ErrMsg::ARRTYPE); break;
+      default: lj_err_msgv(L, ErrMsg::ARRTYPE); break;
    }
 }
 
