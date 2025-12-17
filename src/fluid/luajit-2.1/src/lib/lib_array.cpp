@@ -223,6 +223,12 @@ LJLIB_CF(array_concat)
          case AET::_STRING_GC:
             snprintf(buffer, sizeof(buffer), format, arr->data.get<CSTRING>()[i]);
             break;
+         case AET::_CSTRING:
+            snprintf(buffer, sizeof(buffer), format, arr->data.get<CSTRING>()[i]);
+            break;
+         case AET::_STRING_CPP:
+            snprintf(buffer, sizeof(buffer), format, arr->data.get<std::string>()[i].c_str());
+            break;
          case AET::_PTR:
             snprintf(buffer, sizeof(buffer), format, arr->data.get<void **>()[i]);
             break;
@@ -372,6 +378,10 @@ LJLIB_CF(array_copy)
          // Convert and store based on array type
 
          switch(dest->elemtype) {
+            case AET::_STRING_CPP:
+               if (lua_tostring(L, -1)) dest->data.get<std::string>()[dest_index].assign(lua_tostring(L, -1));
+               else dest->data.get<std::string>()[dest_index].clear();
+               break;
             case AET::_STRING_GC:
                if (lua_tostring(L, -1)) {
                   luaL_error(L, "Writing to string arrays from tables is not yet supported.");
@@ -379,6 +389,7 @@ LJLIB_CF(array_copy)
                   return 0;
                }
                break;
+            case AET::_CSTRING:
             case AET::_PTR:
                luaL_error(L, "Writing to pointer arrays from tables is not supported.");
                lua_pop(L, 1);

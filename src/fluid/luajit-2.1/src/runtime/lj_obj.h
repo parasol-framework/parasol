@@ -593,27 +593,38 @@ inline constexpr uint8_t ARRAY_CACHED    = 0x04;  // Cache the provided data on 
 
 struct GCarray {
    GCHeader;
-   AET   elemtype;        // Element type (ArrayElemType constants)
-   uint8_t flags;           // Array flags (read-only, struct-backed, etc.)
-   MRef  data;               // Pointer to element storage
-   GCRef gclist;            // GC list for marking
-   GCRef metatable;         // Optional metatable (must be at same offset as GCtab/GCudata)
-   MSize len;               // Number of elements
-   MSize capacity;          // Allocated capacity (elements, not bytes)
-   MSize elemsize;          // Size of each element in bytes
-   GCRef structdef;         // Optional: struct definition for struct arrays
+   AET     elemtype;    // Element type (ArrayElemType constants)
+   uint8_t flags;       // Array flags (read-only, struct-backed, etc.)
+   MRef    data;        // Pointer to element storage
+   GCRef   gclist;      // GC list for marking
+   GCRef   metatable;   // Optional metatable (must be at same offset as GCtab/GCudata)
+   MSize   len;         // Number of elements
+   MSize   capacity;    // Allocated capacity (elements, not bytes)
+   MSize   elemsize;    // Size of each element in bytes
+   GCRef   structdef;   // Optional: struct definition for struct arrays
 
-   // Array accessor functions
-   [[nodiscard]] inline void * arraydata() noexcept {
-      return mref<void>(data);
+   // Prevent copying (GC objects should not be copied)
+   GCarray(const GCarray&) = delete;
+   GCarray& operator=(const GCarray&) = delete;
+   
+   // Zero-initialise the colocated data area
+
+   void clear() { // NB: Intentionally ignores the read-only flag.
+      std::memset(this + 1, 0, len * elemsize);
    }
 
-   [[nodiscard]] inline MSize arraylen() noexcept {
-      return len;
-   }
+   [[nodiscard]] inline void * arraydata() noexcept { return mref<void>(data); }
+   [[nodiscard]] inline MSize arraylen() const noexcept { return len; }
+   [[nodiscard]] inline bool is_readonly() const noexcept { return (flags & ARRAY_READONLY) != 0; }
+   [[nodiscard]] inline bool is_external() const noexcept { return (flags & ARRAY_EXTERNAL) != 0; }
+   [[nodiscard]] inline bool is_colocated() const noexcept { return (flags & ARRAY_COLOCATED) != 0; }
 
-   [[nodiscard]] inline bool array_is_readonly() noexcept {
-      return (flags & ARRAY_READONLY) != 0;
+   [[nodiscard]] int type_flags() const noexcept;
+
+   // Calculate total allocation size for co-located arrays
+
+   [[nodiscard]] inline size_t alloc_size() const noexcept {
+      return is_colocated() ? sizeof(GCarray) + capacity * elemsize : sizeof(GCarray);
    }
 };
 

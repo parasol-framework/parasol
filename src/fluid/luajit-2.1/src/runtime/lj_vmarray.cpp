@@ -38,7 +38,7 @@ static int32_t arr_idx_from_tv(cTValue *K)
 //********************************************************************************************************************
 // Helper to retrieve array element into TValue based on element type
 
-static void arr_load_elem(GCarray *Array, uint32_t Idx, TValue *Result)
+static void arr_load_elem(lua_State *L, GCarray *Array, uint32_t Idx, TValue *Result)
 {
    void *elem = lj_array_index(Array, Idx);
 
@@ -49,6 +49,20 @@ static void arr_load_elem(GCarray *Array, uint32_t Idx, TValue *Result)
       case AET::_INT64:  setnumV(Result, lua_Number(*(int64_t*)elem)); break;
       case AET::_FLOAT:  setnumV(Result, *(float*)elem); break;
       case AET::_DOUBLE: setnumV(Result, *(double*)elem); break;
+
+      case AET::_CSTRING: {
+         if (auto str = *(CSTRING *)elem) setstrV(L, Result, lj_str_newz(L, str));
+         else setnilV(Result);
+         break;
+      }
+
+      case AET::_STRING_CPP: {
+         auto str = (std::string*)elem;
+         if (str->empty()) setnilV(Result);
+         else setstrV(L, Result, lj_str_new(L, str->data(), str->size()));
+         break;
+      }
+
       case AET::_PTR:
          // Store raw pointer value as light userdata
          setrawlightudV(Result, *(void**)elem);
@@ -88,6 +102,11 @@ static void arr_store_elem(lua_State *L, GCarray *Array, uint32_t Idx, cTValue *
    else if (Array->elemtype IS AET::_PTR and tvislightud(Val)) [[unlikely]] {
       // Extract raw pointer (note: lightudV on 64-bit requires global_State)
       *(void**)elem = (void*)(Val->u64 & LJ_GCVMASK);
+      return;
+   }
+   else if ((Array->elemtype IS AET::_CSTRING) or (Array->elemtype IS AET::_STRING_CPP)) [[unlikely]] {
+      // Storing pointers to Lua strings is somewhat feasible but unsafe; for this reason we disallow it.
+      lj_err_caller(L, ErrMsg::ARRTYPE);
       return;
    }
    else { // Type mismatch - attempt numeric conversion or error
@@ -136,15 +155,15 @@ extern "C" cTValue * lj_arr_get(lua_State *L, cTValue *O, cTValue *K)
          cTValue *tv = lj_tab_get(L, mt, K);
          if (not tvisnil(tv)) return tv;  // Found method in metatable
       }
-      // String key not found - raise error
-      lj_err_optype(L, O, ErrMsg::OPINDEX);
+      // String key not recognised as a method - raise error
+      lj_err_optype(L, O, ErrMsg::BADKEY);
       return nullptr;
    }
 
    // Convert index to integer (0-based internally)
 
    int32_t idx = arr_idx_from_tv(K);
-   if (idx < 0 or MSize(idx) >= arr->len) {
+   if ((idx < 0) or (idx >= arr->len)) {
       // Check for __index metamethod on array's metatable
       if (GCtab *mt = tabref(arr->metatable)) {
          if (lj_meta_fast(L, mt, MM_index)) {
@@ -163,7 +182,7 @@ extern "C" cTValue * lj_arr_get(lua_State *L, cTValue *O, cTValue *K)
    // Note: This uses a thread-local or static buffer that the assembly caller is expected to copy
 
    static thread_local TValue result;
-   arr_load_elem(arr, uint32_t(idx), &result);
+   arr_load_elem(L, arr, uint32_t(idx), &result);
    return &result;
 }
 
@@ -217,7 +236,7 @@ extern "C" int lj_arr_set(lua_State *L, cTValue *O, cTValue *K, cTValue *V)
 extern "C" void lj_arr_getidx(lua_State *L, GCarray *Array, int32_t Idx, TValue *Result)
 {
    if (Idx < 0 or MSize(Idx) >= Array->len) lj_err_msgv(L, ErrMsg::ARROB, Idx, int(Array->len));
-   arr_load_elem(Array, uint32_t(Idx), Result);
+   arr_load_elem(L, Array, uint32_t(Idx), Result);
 }
 
 //********************************************************************************************************************

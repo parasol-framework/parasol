@@ -100,18 +100,10 @@ void LJ_FASTCALL lj_array_free(global_State *g, GCarray *Array)
 
 //********************************************************************************************************************
 
-void * lj_array_index(GCarray *Array, uint32_t Idx)
-{
-   uint8_t *base = Array->data.get<uint8_t>();
-   return base + (Idx * Array->elemsize);
-}
-
-//********************************************************************************************************************
-
 void * lj_array_index_checked(lua_State *L, GCarray *Array, uint32_t Idx)
 {
    if (Idx >= Array->len) {
-      lj_err_callerv(L, ErrMsg::ARROB, int(Idx + 1), int(Array->len));  // 1-based in error
+      lj_err_callerv(L, ErrMsg::ARROB, int(Idx), int(Array->len));
    }
    return lj_array_index(Array, Idx);
 }
@@ -122,7 +114,7 @@ void lj_array_copy(lua_State *L, GCarray *Dest, uint32_t DstIdx, GCarray *Src, u
 {
    // Safety checks - unsigned types can't be negative so just check bounds
    if (SrcIdx + Count > Src->len or DstIdx + Count > Dest->len) lj_err_caller(L, ErrMsg::IDXRNG);
-   if (Dest->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
+   if (Dest->is_readonly()) lj_err_caller(L, ErrMsg::ARRRO);
    if (Dest->elemtype != Src->elemtype) lj_err_caller(L, ErrMsg::ARRTYPE);
 
    void *dst_ptr = lj_array_index(Dest, DstIdx);

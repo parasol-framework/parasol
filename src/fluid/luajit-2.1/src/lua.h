@@ -138,19 +138,19 @@ extern void  (lua_pushboolean) (lua_State *L, int b);
 extern void  (lua_pushlightuserdata) (lua_State *L, void *p);
 extern int   (lua_pushthread) (lua_State *L);
 
+// get functions (Lua -> stack)
 
-/*
-** get functions (Lua -> stack)
-*/
-extern void  (lua_gettable) (lua_State *L, int idx);
-extern void  (lua_getfield) (lua_State *L, int idx, const char *k);
-extern void  (lua_rawget) (lua_State *L, int idx);
-extern void  (lua_rawgeti) (lua_State *L, int idx, int n);
-extern void  (lua_createtable) (lua_State *L, int narr, int nrec);
-extern void *(lua_newuserdata) (lua_State *L, size_t sz);
-extern int   (lua_getmetatable) (lua_State *L, int objindex);
-extern void  (lua_getfenv) (lua_State *L, int idx);
+enum AET : uint8_t;
 
+extern void   lua_gettable(lua_State *L, int idx);
+extern void   lua_getfield(lua_State *L, int idx, const char *k);
+extern void   lua_rawget(lua_State *L, int idx);
+extern void   lua_rawgeti(lua_State *L, int idx, int n);
+//extern void   lua_createarray(lua_State *L, uint32_t Length, AET Type, void *Data = nullptr, uint8_t Flags = 0, std::string_view = {});
+extern void   lua_createtable(lua_State *L, int narr, int nrec);
+extern void * lua_newuserdata(lua_State *L, size_t sz);
+extern int    lua_getmetatable(lua_State *L, int objindex);
+extern void   lua_getfenv(lua_State *L, int idx);
 
 // set functions (stack -> Lua)
 
