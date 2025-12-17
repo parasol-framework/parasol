@@ -14,7 +14,7 @@
 
 // Element sizes for each type
 
-static const int8_t glElemSizes[] = {
+static const uint8_t glElemSizes[] = {
    sizeof(uint8_t),    // AET::BYTE
    sizeof(int16_t),    // AET::INT16
    sizeof(int32_t),    // AET::INT32
@@ -28,7 +28,7 @@ static const int8_t glElemSizes[] = {
 
 //********************************************************************************************************************
 
-MSize lj_array_elemsize(AET Type)
+uint8_t lj_array_elemsize(AET Type)
 {
    lj_assertX(int(Type) >= 0 and int(Type) < int(AET::_MAX), "invalid array element type");
    return glElemSizes[int(Type)];
@@ -39,10 +39,8 @@ MSize lj_array_elemsize(AET Type)
 
 extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type)
 {
-   auto elemsize = lj_array_elemsize(Type);
-   lj_assertL(elemsize > 0 or Type IS AET::_STRUCT, "invalid element type for array creation");
-
-   auto total_size = sizearraycolo(Length, elemsize);
+   auto elem_size = lj_array_elemsize(Type);
+   auto total_size = sizearraycolo(Length, elem_size);
 
    auto arr = (GCarray *)lj_mem_newgco(L, total_size);
    arr->gct      = ~LJ_TARRAY;
@@ -50,7 +48,7 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type)
    arr->flags    = ARRAY_COLOCATED;
    arr->len      = Length;
    arr->capacity = Length;
-   arr->elemsize = elemsize;
+   arr->elemsize = elem_size;
    setgcrefnull(arr->gclist);
    setgcrefnull(arr->metatable);
    setgcrefnull(arr->structdef);
@@ -59,7 +57,7 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type)
    auto data = (void *)(arr + 1);
    setmref(arr->data, data);
 
-   memset(data, 0, Length * elemsize);
+   memset(data, 0, Length * elem_size);
 
    return arr;
 }

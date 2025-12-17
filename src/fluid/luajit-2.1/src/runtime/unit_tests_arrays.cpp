@@ -273,7 +273,7 @@ static bool test_array_external(pf::Log &Log)
    // Create external buffer
    int32_t external_data[5] = { 10, 20, 30, 40, 50 };
 
-   GCarray* arr = lj_array_new(L, 5, AET::_INT32, external_data, ARRAY_READONLY);
+   GCarray* arr = lj_array_new_external(L, external_data, 5, AET::_INT32, ARRAY_READONLY);
 
    if (not arr) {
       Log.error("external array creation failed");
