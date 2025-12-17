@@ -11,19 +11,25 @@
 #include "lj_tab.h"
 
 #include <cstring>
+#include <parasol/main.h>
+#include <parasol/modules/fluid.h>
+#include <parasol/strings.hpp>
+#include "../../defs.h"
 
-// Element sizes for each type
+// Element sizes for each type (must match AET enum order)
 
 static const uint8_t glElemSizes[] = {
-   sizeof(uint8_t),    // AET::BYTE
-   sizeof(int16_t),    // AET::INT16
-   sizeof(int32_t),    // AET::INT32
-   sizeof(int64_t),    // AET::INT64
-   sizeof(float),      // AET::FLOAT
-   sizeof(double),     // AET::DOUBLE
-   sizeof(void*),      // AET::PTR
-   sizeof(GCRef),      // AET::STRING
-   0                   // AET::STRUCT (variable)
+   sizeof(uint8_t),      // AET::_BYTE
+   sizeof(int16_t),      // AET::_INT16
+   sizeof(int32_t),      // AET::_INT32
+   sizeof(int64_t),      // AET::_INT64
+   sizeof(float),        // AET::_FLOAT
+   sizeof(double),       // AET::_DOUBLE
+   sizeof(void*),        // AET::_PTR
+   sizeof(const char*),  // AET::_CSTRING
+   sizeof(std::string),  // AET::_STRING_CPP
+   sizeof(GCRef),        // AET::_STRING_GC
+   0                     // AET::_STRUCT (variable)
 };
 
 //********************************************************************************************************************
@@ -35,66 +41,55 @@ uint8_t lj_array_elemsize(AET Type)
 }
 
 //********************************************************************************************************************
-// Create a new array with colocated storage
+// Create a new array
 
-extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type)
+extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Data, uint8_t Flags, std::string_view StructName)
 {
-   auto elem_size = lj_array_elemsize(Type);
-   auto total_size = sizearraycolo(Length, elem_size);
+   MSize elem_size;
 
-   auto arr = (GCarray *)lj_mem_newgco(L, total_size);
-   arr->gct      = ~LJ_TARRAY;
-   arr->elemtype = Type;
-   arr->flags    = ARRAY_COLOCATED;
-   arr->len      = Length;
-   arr->capacity = Length;
-   arr->elemsize = elem_size;
-   setgcrefnull(arr->gclist);
-   setgcrefnull(arr->metatable);
-   setgcrefnull(arr->structdef);
+   if (!StructName.empty()) {
+      // Struct-backed array
+      auto prv = (prvFluid *)L->script->ChildPrivate;
+      auto name = struct_name(StructName);
+      if (prv->Structs.contains(name)) {
+         auto sdef = &prv->Structs[name];
+         elem_size = sdef->Size;
+      }
+      else {
+         lj_err_callerv(L, ErrMsg::NOSTRUCT, "%.*s", StructName.size(), StructName.data());
+         return nullptr;
+      }
+   }
+   else elem_size = lj_array_elemsize(Type);
 
-   // Data is colocated immediately after the header
-   auto data = (void *)(arr + 1);
-   setmref(arr->data, data);
+   lj_assertL(elem_size > 0 or Type IS AET::_STRUCT, "invalid element type for array creation");
 
-   memset(data, 0, Length * elem_size);
-
-   return arr;
-}
-
-//********************************************************************************************************************
-// Create array backed by external memory
-
-extern GCarray * lj_array_new_external(lua_State *L, void *Data, uint32_t Length, AET Type, uint8_t Flags)
-{
-   auto arr = (GCarray *)lj_mem_newgco(L, sizeof(GCarray));
-   arr->gct      = ~LJ_TARRAY;
-   arr->elemtype = Type;
-   arr->flags    = Flags | ARRAY_EXTERNAL;
-   arr->len      = Length;
-   arr->capacity = Length;
-   arr->elemsize = lj_array_elemsize(Type);
-   setgcrefnull(arr->gclist);
-   setgcrefnull(arr->metatable);
-   setgcrefnull(arr->structdef);
-   setmref(arr->data, Data);
-
-   return arr;
+   if (Data) {
+      if (Flags & ARRAY_CACHED) {
+         // Copy data into co-located storage
+         auto total_size = sizearraycolo(Length, elem_size);
+         auto mem = lj_mem_newgco(L, total_size);
+         return new (mem) GCarray(Data, Type, elem_size, Length, Flags);
+      }
+      else {
+         // External data (ARRAY_EXTERNAL is implied when Data provided without ARRAY_CACHED)
+         return new (lj_mem_newgco(L, sizeof(GCarray))) GCarray(Data, Type, elem_size, Length, Flags | ARRAY_EXTERNAL);
+      }
+   }
+   else {
+      auto total_size = sizearraycolo(Length, elem_size);
+      auto mem = lj_mem_newgco(L, total_size);
+      auto arr = new (mem) GCarray(Type, elem_size, Length);
+      return arr;
+   }
 }
 
 //********************************************************************************************************************
 
 void LJ_FASTCALL lj_array_free(global_State *g, GCarray *Array)
 {
-   MSize size;
-   if (Array->flags & ARRAY_COLOCATED) {
-      size = sizearraycolo(Array->capacity, Array->elemsize);
-   }
-   else {
-      size = sizeof(GCarray);
-      // Note: External data is not freed - caller manages it
-   }
-
+   auto size = Array->alloc_size();
+   Array->~GCarray(); // Call destructor explicitly (external data is not freed - caller manages it)
    lj_mem_free(g, Array, size);
 }
 

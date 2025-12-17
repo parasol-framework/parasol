@@ -337,6 +337,8 @@ end
 
 @Test function TableCopyWithLimitedTotal()
    arr = array.new(5, 'int')
+   arr:clear()
+
    table_data = {10, 20, 30, 40, 50}
 
    -- Copy only first 3 elements
@@ -665,6 +667,7 @@ end
 
 @Test function ArrayFillWithRange()
    arr = array.new(10, 'int')
+   arr:clear()
 
    -- Fill with range (exclusive)
    arr:fill(99, {2..5})
@@ -678,6 +681,7 @@ end
 
 @Test function ArrayFillWithInclusiveRange()
    arr = array.new(10, 'int')
+   arr:clear()
 
    -- Fill with inclusive range
    arr:fill(77, {2...5})
@@ -691,6 +695,7 @@ end
 
 @Test function ArrayFillWithNegativeRange()
    arr = array.new(5, 'int')
+   arr:clear()
 
    -- Fill last 2 elements using negative indices
    arr:fill(55, {-2..-1})
@@ -703,6 +708,7 @@ end
 
 @Test function ArrayFillWithSteppedRange()
    arr = array.new(10, 'int')
+   arr:clear()
 
    -- Fill every other element using range.new(start, stop, inclusive, step)
    arr:fill(33, range.new(0, 10, false, 2))
@@ -718,6 +724,7 @@ end
 @Test function ArrayFillOriginalSyntax()
    -- Verify original syntax still works
    arr = array.new(10, 'int')
+   arr:clear()
 
    -- Fill starting at index 3, 4 elements
    arr:fill(42, 3, 4)

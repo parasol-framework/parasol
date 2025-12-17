@@ -116,12 +116,10 @@ static TValue* unwind_close_handlers(lua_State* L, TValue* frame, TValue* errobj
 
    GCtab* env = tabref(L->env);
    if (env) {
-      GCstr* key = lj_str_newlit(L, "__close_err");
-      TValue* slot = lj_tab_setstr(L, env, key);
-      if (errobj)
-         copyTV(L, slot, errobj);
-      else
-         setnilV(slot);
+      GCstr *key = lj_str_newlit(L, "__close_err");
+      TValue *slot = lj_tab_setstr(L, env, key);
+      if (errobj) copyTV(L, slot, errobj);
+      else setnilV(slot);
       lj_gc_anybarriert(L, env);
    }
 
@@ -131,11 +129,11 @@ static TValue* unwind_close_handlers(lua_State* L, TValue* frame, TValue* errobj
 
    // Call lj_meta_close for each slot with <close> attribute in LIFO order
    // Iterate from highest slot to lowest to match Lua 5.4 semantics
-   TValue* base = frame + 1;
-   TValue* current_err = errobj;
+   TValue *base = frame + 1;
+   TValue *current_err = errobj;
    for (int slot = 63; slot >= 0; slot--) {
       if (closeslots & (1ULL << slot)) {
-         TValue* o = base + slot;
+         TValue *o = base + slot;
          // Verify slot is within valid frame range: must be >= base and < L->top
          if (o >= base and o < L->top and !tvisnil(o) and !tvisfalse(o)) {
             int errcode = lj_meta_close(L, o, current_err);
@@ -146,8 +144,8 @@ static TValue* unwind_close_handlers(lua_State* L, TValue* frame, TValue* errobj
                current_err = L->top - 1;
                // Update _G.__close_err with the new error
                if (env) {
-                  GCstr* key = lj_str_newlit(L, "__close_err");
-                  TValue* slot = lj_tab_setstr(L, env, key);
+                  GCstr *key = lj_str_newlit(L, "__close_err");
+                  TValue *slot = lj_tab_setstr(L, env, key);
                   copyTV(L, slot, current_err);
                   lj_gc_anybarriert(L, env);
                }

@@ -5,19 +5,22 @@
 #define LUA_CORE
 
 #include "lj_obj.h"
+#include <parasol/main.h>
 
+//********************************************************************************************************************
 // Object type names.
 
-LJ_DATADEF const char* const lj_obj_typename[] = {  // ORDER LUA_T
+LJ_DATADEF CSTRING const lj_obj_typename[] = {  // ORDER LUA_T
   "no value", "nil", "boolean", "userdata", "number", "string",
   "table", "function", "userdata", "thread", "proto", "cdata", "array"
 };
 
-LJ_DATADEF const char* const lj_obj_itypename[] = {  // ORDER LJ_T
+LJ_DATADEF CSTRING const lj_obj_itypename[] = {  // ORDER LJ_T
   "nil", "boolean", "boolean", "userdata", "string", "upval", "thread",
   "proto", "function", "trace", "cdata", "table", "userdata", "array", "number"
 };
 
+//********************************************************************************************************************
 // Compare two objects without calling metamethods.
 
 int LJ_FASTCALL lj_obj_equal(cTValue* o1, cTValue* o2)
@@ -30,6 +33,7 @@ int LJ_FASTCALL lj_obj_equal(cTValue* o1, cTValue* o2)
    return numberVnum(o1) IS numberVnum(o2);
 }
 
+//********************************************************************************************************************
 // Return pointer to object or its object data.
 
 const void* LJ_FASTCALL lj_obj_ptr(global_State* g, cTValue* o)
@@ -42,3 +46,22 @@ const void* LJ_FASTCALL lj_obj_ptr(global_State* g, cTValue* o)
    else return nullptr;
 }
 
+//********************************************************************************************************************
+
+[[nodiscard]] int GCarray::type_flags() const noexcept 
+{
+   switch(elemtype) {
+      case AET::_BYTE:       return FD_BYTE;
+      case AET::_INT16:      return FD_WORD;
+      case AET::_INT32:      return FD_INT;
+      case AET::_INT64:      return FD_INT64;
+      case AET::_FLOAT:      return FD_FLOAT;
+      case AET::_DOUBLE:     return FD_DOUBLE;
+      case AET::_PTR:        return FD_POINTER;
+      case AET::_CSTRING:    return FD_STRING;
+      case AET::_STRING_CPP: return FD_STRING | FD_CPP;
+      case AET::_STRING_GC:  return FD_STRING;
+      case AET::_STRUCT:     return FD_STRUCT;
+      default:               return 0;
+   }
+}

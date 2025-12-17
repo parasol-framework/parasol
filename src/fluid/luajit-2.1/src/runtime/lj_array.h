@@ -5,8 +5,7 @@
 
 #include "lj_obj.h"
 
-extern GCarray * lj_array_new(lua_State *, uint32_t, AET);
-extern GCarray * lj_array_new_external(lua_State *, void *, uint32_t len, AET, uint8_t flags);
+extern GCarray * lj_array_new(lua_State *, uint32_t, AET, void *Data = nullptr, uint8_t Flags = 0, std::string_view StructName = {});
 extern void LJ_FASTCALL lj_array_free(global_State *, GCarray *);
 [[nodiscard]] extern void * lj_array_index_checked(lua_State *L, GCarray *, uint32_t idx);
 [[nodiscard]] extern uint8_t lj_array_elemsize(AET);
@@ -15,7 +14,6 @@ extern GCtab* lj_array_to_table(lua_State *, GCarray *);
 
 //********************************************************************************************************************
 
-inline void * lj_array_index(GCarray *Array, uint32_t Idx)
-{
+inline void * lj_array_index(GCarray *Array, uint32_t Idx) {
    return (Array->data.get<int8_t>()) + (Idx * Array->elemsize);
 }

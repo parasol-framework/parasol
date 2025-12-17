@@ -266,6 +266,16 @@ LJLIB_CF(array_concat)
 }
 
 //********************************************************************************************************************
+
+LJLIB_CF(array_clear)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+   if (arr->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
+   arr->clear();
+   return 0;
+}
+
+//********************************************************************************************************************
 // Usage: array.copy(dst, src [, dest_idx [, src_idx [, count]]])
 //
 // Copies elements from source array to destination array.

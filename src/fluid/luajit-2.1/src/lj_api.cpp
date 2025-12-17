@@ -24,6 +24,7 @@
 #include "lj_strscan.h"
 #include "lj_strfmt.h"
 #include "lib/lib_utils.h"
+#include "lj_array.h"
 #include "runtime/lj_thunk.h"
 #include "runtime/stack_helpers.h"
 
@@ -817,6 +818,27 @@ extern void lua_createtable(lua_State *L, int narray, int nrec)
 {
    lj_gc_check(L);
    settabV(L, L->top, lj_tab_new_ah(L, narray, nrec));
+   incr_top(L);
+}
+
+//********************************************************************************************************************
+
+extern void lua_createarray(lua_State *L, uint32_t Length, AET Type, void *Data, uint8_t Flags, std::string_view StructName)
+{
+   lj_gc_check(L);
+   auto arr = lj_array_new(L, Length, Type, Data, Flags, StructName);
+
+   // Set metatable from registry
+
+   lua_getfield(L, LUA_REGISTRYINDEX, "array_metatable");
+   if (tvistab(L->top - 1)) {
+      GCtab *mt = tabV(L->top - 1);
+      setgcref(arr->metatable, obj2gco(mt));
+      lj_gc_objbarrier(L, arr, mt);
+   }
+   L->top--;  // Pop metatable
+
+   setarrayV(L, L->top, arr);
    incr_top(L);
 }
 

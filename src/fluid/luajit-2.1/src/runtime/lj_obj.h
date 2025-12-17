@@ -63,7 +63,7 @@ public:
    template<typename T = void> [[nodiscard]] constexpr inline T * get() const noexcept { return (T *)(void *)ptr; }
    template<typename T> constexpr inline void set_fn(T *p) noexcept { ptr = uint64_t((void *)p); }
    constexpr inline void set(std::nullptr_t) noexcept { ptr = 0; } // Overload for nullptr
-   constexpr inline void set(uint64_t u) noexcept { ptr = u; }
+   template<typename T = uint64_t> constexpr inline void set(T u) noexcept { ptr = uint64_t(u); }
    constexpr inline void set(MRef v) noexcept { ptr = v.ptr; }
 };
 
@@ -561,7 +561,7 @@ inline GCtab* tabref(GCRef r) noexcept;
 [[nodiscard]] constexpr inline Node* noderef(MRef r) noexcept { return mref<Node>(r); }
 [[nodiscard]] inline Node* nextnode(Node *n) noexcept { return mref<Node>(n->next); }
 [[nodiscard]] inline Node* getfreetop(const GCtab *t, Node *) noexcept { return noderef(t->freetop); }
-inline void setfreetop(GCtab *t, Node *, Node *v) noexcept { setmref(t->freetop, v); }
+inline void setfreetop(GCtab *t, Node *, Node *v) noexcept { t->freetop.set(v); }
 
 // Array element type constants
 
@@ -603,6 +603,53 @@ struct GCarray {
    MSize   elemsize;    // Size of each element in bytes
    GCRef   structdef;   // Optional: struct definition for struct arrays
 
+   // Constructor for pre-allocated array (data immediately follows header)
+   // NOTE: lj_mem_newgco() already sets nextgc and marked - do NOT overwrite them!
+
+   GCarray(AET Type, MSize ElemSize, MSize Length) noexcept
+      : elemtype(Type)
+      , flags(ARRAY_COLOCATED)
+      , len(Length)
+      , capacity(Length)
+      , elemsize(ElemSize)
+   {
+      gct = ~LJ_TARRAY;
+      // nextgc and marked are set by lj_mem_newgco() - do not touch!
+      setgcrefnull(gclist);
+      setgcrefnull(metatable);
+      setgcrefnull(structdef);
+      // Data is co-located immediately after the header
+      data.set(this + 1);
+      if (int(elemtype) >= int(AET::_VULNERABLE)) clear();
+   }
+
+   // Constructor for external array (data managed externally)
+   // NOTE: lj_mem_newgco() already sets nextgc and marked - do NOT overwrite them!
+   GCarray(void *Data, AET Type, MSize ElemSize, MSize Length, uint8_t Flags = 0) noexcept
+      : elemtype(Type), flags(uint8_t(Flags)), len(Length), capacity(Length), elemsize(ElemSize)
+   {
+      gct = ~LJ_TARRAY;
+      // nextgc and marked are set by lj_mem_newgco() - do not touch!
+      setgcrefnull(gclist);
+      setgcrefnull(metatable);
+      setgcrefnull(structdef);
+
+      if (Flags & ARRAY_EXTERNAL) {
+         data.set(Data);
+      }
+      else if (Flags & ARRAY_CACHED) {
+         // Allocate co-located data and copy from external source
+         data.set(this + 1);
+         std::memcpy(mref<void>(data), Data, len * elemsize);
+      }
+      else { // Default to external
+         data.set(Data);
+         flags |= ARRAY_EXTERNAL;
+      }
+   }
+
+   ~GCarray() = default;
+
    // Prevent copying (GC objects should not be copied)
    GCarray(const GCarray&) = delete;
    GCarray& operator=(const GCarray&) = delete;
@@ -633,9 +680,8 @@ struct GCarray {
 static_assert(offsetof(GCarray, metatable) IS offsetof(GCtab, metatable));
 static_assert(offsetof(GCarray, gclist) IS offsetof(GCtab, gclist));
 
-[[nodiscard]] inline MSize sizearraycolo(MSize len, MSize elemsize) noexcept
-{
-   return MSize(sizeof(GCarray)) + len * elemsize;
+[[nodiscard]] inline size_t sizearraycolo(size_t len, size_t elemsize) noexcept {
+   return sizeof(GCarray) + len * elemsize;
 }
 
 // Forward declaration - defined after GCobj is complete
