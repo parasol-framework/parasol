@@ -599,7 +599,7 @@ LJLIB_SET(_VERSION)
 LJLIB_CF(isthunk)
 {
    cTValue *o = lj_lib_checkany(L, 1);
-   setboolV(L->top++, lj_thunk_isthunk(o));
+   setboolV(L->top++, lj_is_thunk(o));
    return 1;
 }
 
@@ -610,7 +610,7 @@ LJLIB_CF(resolve)
 {
    cTValue *o = lj_lib_checkany(L, 1);
 
-   if (lj_thunk_isthunk(o)) {
+   if (lj_is_thunk(o)) {
       GCudata *ud = udataV(o);
       TValue *resolved = lj_thunk_resolve(L, ud);
       copyTV(L, L->top++, resolved);

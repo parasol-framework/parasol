@@ -1158,16 +1158,12 @@ static void build_subroutines(BuildCtx *ctx)
   |  call extern lj_meta_len		// (lua_State *L, TValue *o)
   |  // NULL (retry) or TValue * (metamethod) returned in eax (RC).
   |  mov BASE, L:RB->base
-#if LJ_52
   |  test RC, RC
   |  jne ->vmeta_binop			// Binop call for compatibility.
   |  movzx RDd, PC_RD
   |  mov TAB:CARG1, [BASE+RD*8]
   |  cleartp TAB:CARG1
   |  jmp ->BC_LEN_Z
-#else
-  |  jmp ->vmeta_binop			// Binop call for compatibility.
-#endif
   |
   |//-- Call metamethod ----------------------------------------------------
   |
@@ -1452,9 +1448,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov TAB:RB, [BASE]
   |  mov TMPR, TAB:RB
   |  checktab TAB:RB, ->fff_fallback
-#if LJ_52
   |  cmp aword TAB:RB->metatable, 0; jne ->fff_fallback
-#endif
   |  mov CFUNC:RD, [BASE-16]
   |  cleartp CFUNC:RD
   |  mov CFUNC:RD, CFUNC:RD->upvalue[0]
@@ -1523,9 +1517,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov TAB:RB, [BASE]
   |  mov TMPR, TAB:RB
   |  checktab TAB:RB, ->fff_fallback
-#if LJ_52
   |  cmp aword TAB:RB->metatable, 0; jne ->fff_fallback
-#endif
   |  mov CFUNC:RD, [BASE-16]
   |  cleartp CFUNC:RD
   |  mov CFUNC:RD, CFUNC:RD->upvalue[0]

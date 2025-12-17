@@ -437,22 +437,18 @@ TValue* LJ_FASTCALL lj_meta_equal_thunk(lua_State *L, BCIns ins)
    }
 
    // Resolve thunks if present
+
    cTValue *resolved_o1 = o1;
    cTValue *resolved_o2 = o2;
 
-   if (lj_thunk_isthunk(o1)) {
-      GCudata *ud = udataV(o1);
-      resolved_o1 = lj_thunk_resolve(L, ud);
-   }
-   if (lj_thunk_isthunk(o2)) {
-      GCudata *ud = udataV(o2);
-      resolved_o2 = lj_thunk_resolve(L, ud);
-   }
+   if (lj_is_thunk(o1)) resolved_o1 = lj_thunk_resolve(L, udataV(o1));
+   if (lj_is_thunk(o2)) resolved_o2 = lj_thunk_resolve(L, udataV(o2));
 
    // Now compare the resolved values using standard Lua equality semantics
    // Return semantics: 0 = don't branch, 1 = branch
    // For ISEQV (ne=0): return 1 if equal (branch to target), 0 if not equal
    // For ISNEV (ne=1): return 1 if not equal (branch to target), 0 if equal
+
    int ne = bc_op(ins) & 1;
 
    // Check for same TValue pointer first

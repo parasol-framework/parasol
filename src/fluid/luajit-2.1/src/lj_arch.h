@@ -37,25 +37,22 @@
 #define LJ_NUMMODE_DUAL      2   //  Dual-number mode only.
 #define LJ_NUMMODE_DUAL_SINGLE   3   //  Default to dual-number mode.
 
-// -- Target detection ----------------------------------------------------
-
 // Select native target if no target defined.
+
 #ifndef LUAJIT_TARGET
-
-#if defined(__x86_64__) || defined(__x86_64) || defined(_M_X64) || defined(_M_AMD64)
-#define LUAJIT_TARGET   LUAJIT_ARCH_X64
-#elif defined(__aarch64__)
-#define LUAJIT_TARGET   LUAJIT_ARCH_ARM64
-#elif defined(__ppc__) || defined(__ppc) || defined(__PPC__) || defined(__PPC) || defined(__powerpc__) || defined(__powerpc) || defined(__POWERPC__) || defined(__POWERPC) || defined(_M_PPC)
-#if _LP64
-#define LUAJIT_TARGET   LUAJIT_ARCH_PPC
-#else
-#error "32-bit architectures are not supported."
-#endif
-#else
-#error "Only 64-bit architectures are supported (x64, ARM64, PPC64)"
-#endif
-
+ #if defined(__x86_64__) || defined(__x86_64) || defined(_M_X64) || defined(_M_AMD64)
+  #define LUAJIT_TARGET   LUAJIT_ARCH_X64
+ #elif defined(__aarch64__)
+  #define LUAJIT_TARGET   LUAJIT_ARCH_ARM64
+ #elif defined(__ppc__) || defined(__ppc) || defined(__PPC__) || defined(__PPC) || defined(__powerpc__) || defined(__powerpc) || defined(__POWERPC__) || defined(__POWERPC) || defined(_M_PPC)
+  #if _LP64
+   #define LUAJIT_TARGET   LUAJIT_ARCH_PPC
+  #else
+   #error "32-bit architectures are not supported."
+  #endif
+ #else
+  #error "Only 64-bit architectures are supported (x64, ARM64, PPC64)"
+ #endif
 #endif
 
 // Select native OS if no target OS defined.
@@ -183,11 +180,7 @@
 #define LJ_ARCH_NAME      "ppc64"
 #endif
 
-#if LJ_ABI_SOFTFP
-#define LJ_ARCH_NUMMODE      LJ_NUMMODE_DUAL
-#else
 #define LJ_ARCH_NUMMODE      LJ_NUMMODE_DUAL_SINGLE
-#endif
 
 #define LJ_TARGET_PPC      1
 #define LJ_TARGET_EHRETREG   3
@@ -242,8 +235,6 @@
 #endif
 #endif
 
-// -- Derived defines -----------------------------------------------------
-
 // Enable or disable the dual-number mode for the VM.
 #if (LJ_ARCH_NUMMODE == LJ_NUMMODE_SINGLE && LUAJIT_NUMMODE == 2) || \
     (LJ_ARCH_NUMMODE == LJ_NUMMODE_DUAL && LUAJIT_NUMMODE == 1)
@@ -264,9 +255,9 @@
  #endif
 #endif
 
-#define LJ_GC64 1 // 64 bit GC references - always enabled.
-#define LJ_FR2 1 // 2-slot frame info - always enabled.
-#define LJ_HASJIT 1
+#define LJ_GC64 1   // 64 bit GC references - always enabled.
+#define LJ_FR2 1    // 2-slot frame info - always enabled.
+#define LJ_HASJIT 1 // Always enabled (user can switch it off at run time)
 
 // Disable or enable the FFI extension.
 #if defined(LUAJIT_DISABLE_FFI) || defined(LJ_ARCH_NOFFI)
@@ -285,15 +276,15 @@
 #define LJ_HASPROFILE      0
 
 #ifndef LJ_ARCH_HASFPU
-#define LJ_ARCH_HASFPU      1
+#define LJ_ARCH_HASFPU      1 // Always 1
 #endif
 
 #ifndef LJ_ABI_SOFTFP
-#define LJ_ABI_SOFTFP      0
+#define LJ_ABI_SOFTFP      0 // Legacy, never enabled
 #endif
 
-#define LJ_SOFTFP      0
-#define LJ_SOFTFP32    0
+#define LJ_SOFTFP      0 // Legacy, never enabled
+#define LJ_SOFTFP32    0 // Legacy, never enabled
 
 #if LJ_ARCH_ENDIAN == LUAJIT_BE
 #define LJ_LE         0
@@ -350,19 +341,18 @@ extern void* LJ_WIN_LOADLIBA(const char* path);
 #define LJ_NO_UNWIND      1
 #endif
 
-/*
-** LJ_UNWIND_EXT controls whether external frame unwinding is used.
-**
-** When set to 1, LuaJIT uses the system-provided unwind handler (e.g., libgcc_s
-** on Linux, system exception handling on Windows). This provides full C++ exception
-** interoperability and allows Lua errors to propagate through C++ frames with proper
-** destructor calls. However, it requires all C code on the stack to have unwind tables.
-**
-** When set to 0, LuaJIT uses internal frame unwinding which is faster and doesn't
-** require unwind tables, but has limited C++ exception support.
-**
-** See detailed discussion in lj_err.cpp lines 21-85 for pros/cons of each approach.
-*/
+// LJ_UNWIND_EXT controls whether external frame unwinding is used.
+//
+// When set to 1, LuaJIT uses the system-provided unwind handler (e.g., libgcc_s
+// on Linux, system exception handling on Windows). This provides full C++ exception
+// interoperability and allows Lua errors to propagate through C++ frames with proper
+// destructor calls. However, it requires all C code on the stack to have unwind tables.
+//
+// When set to 0, LuaJIT uses internal frame unwinding which is faster and doesn't
+// require unwind tables, but has limited C++ exception support.
+//
+// See detailed discussion in lj_err.cpp lines 21-85 for pros/cons of each approach.
+
 #if !LJ_NO_UNWIND && !defined(LUAJIT_UNWIND_INTERNAL) && (LJ_ABI_WIN || (defined(LUAJIT_UNWIND_EXTERNAL) && (defined(__GNUC__) || defined(__clang__))))
 #define LJ_UNWIND_EXT      1
 #else
@@ -378,35 +368,11 @@ extern void* LJ_WIN_LOADLIBA(const char* path);
 // Compatibility with Lua 5.1 vs. 5.2.
 #define LJ_52         1
 
-// VM security
-
-// Security defaults.
 #ifndef LUAJIT_SECURITY_PRNG
 // PRNG init: 0 = fixed/insecure, 1 = secure from OS.
 #define LUAJIT_SECURITY_PRNG   1
 #endif
 
-#ifndef LUAJIT_SECURITY_STRHASH
-// String hash: 0 = sparse only, 1 = sparse + dense.
-#define LUAJIT_SECURITY_STRHASH   0
-#endif
-
-#ifndef LUAJIT_SECURITY_STRID
-// String IDs: 0 = linear, 1 = reseed < 255, 2 = reseed < 15, 3 = random.
-#define LUAJIT_SECURITY_STRID   0
-#endif
-
-#ifndef LUAJIT_SECURITY_MCODE
-// Machine code page protection: 0 = insecure RWX, 1 = secure RW^X.
+#ifndef LUAJIT_SECURITY_MCODE // Machine code page protection: 0 = insecure RWX, 1 = secure RW^X.
 #define LUAJIT_SECURITY_MCODE   1
 #endif
-
-#define LJ_SECURITY_MODE \
-  ( 0u \
-  | ((LUAJIT_SECURITY_PRNG & 3) << 0) \
-  | ((LUAJIT_SECURITY_STRHASH & 3) << 2) \
-  | ((LUAJIT_SECURITY_STRID & 3) << 4) \
-  | ((LUAJIT_SECURITY_MCODE & 3) << 6) \
-  )
-#define LJ_SECURITY_MODESTRING \
-  "\004prng\007strhash\005strid\005mcode"

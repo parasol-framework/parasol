@@ -118,16 +118,6 @@ LJLIB_CF(jit_status)
 }
 
 //********************************************************************************************************************
-// Return the security mode index for the selected JIT security profile.
-
-LJLIB_CF(jit_security)
-{
-   int idx = lj_lib_checkopt(L, 1, -1, LJ_SECURITY_MODESTRING);
-   setintV(L->top++, ((LJ_SECURITY_MODE >> (2 * idx)) & 3));
-   return 1;
-}
-
-//********************************************************************************************************************
 // Attach or detach a VM event callback for JIT-related events such as trace recording.
 
 LJLIB_CF(jit_attach)

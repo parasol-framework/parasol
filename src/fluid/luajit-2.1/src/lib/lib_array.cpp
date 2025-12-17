@@ -1,5 +1,10 @@
 // Native array library.
 // Copyright (C) 2025 Paul Manias.
+//
+// TODO: Allow array lifetimes to be linked to Parasol objects.  This would allow external array data to be managed
+// safely without having to be cached.  In the event that the object is destroyed, the array should be marked as invalid
+// and the length reduced to 0 to prevent usage.
+//
 
 #define lib_array_c
 #define LUA_LIB
@@ -72,10 +77,10 @@ static CSTRING elemtype_name(AET Type)
       case AET::_FLOAT:      return "float";
       case AET::_DOUBLE:     return "double";
       case AET::_PTR:        return "pointer";
-      case AET::_CSTRING:    return "string";
-      case AET::_STRING_GC:  return "string";
-      case AET::_STRING_CPP: return "string";
       case AET::_STRUCT:     return "struct";
+      case AET::_CSTRING:
+      case AET::_STRING_GC:
+      case AET::_STRING_CPP: return "string";
       default: return "unknown";
    }
 }
@@ -220,9 +225,12 @@ LJLIB_CF(array_concat)
       if (i > 0) result += join_str;
 
       switch(arr->elemtype) {
-         case AET::_STRING_GC:
-            snprintf(buffer, sizeof(buffer), format, arr->data.get<CSTRING>()[i]);
+         case AET::_STRING_GC: {
+            GCRef ref = arr->data.get<GCRef>()[i];
+            if (gcref(ref)) snprintf(buffer, sizeof(buffer), format, strdata(gco2str(gcref(ref))));
+            else snprintf(buffer, sizeof(buffer), format, "");
             break;
+         }
          case AET::_CSTRING:
             snprintf(buffer, sizeof(buffer), format, arr->data.get<CSTRING>()[i]);
             break;
@@ -423,6 +431,8 @@ LJLIB_CF(array_copy)
                dest->data.get<int8_t>()[dest_index] = lua_tointeger(L, -1);
                break;
             case AET::_STRUCT:
+               // TODO: We should check the struct fields to confirm if its content can be safely copied.
+               // This would only have to be done once per struct type, so we could cache the result.
                luaL_error(L, "Writing to struct arrays from tables is not yet supported.");
                lua_pop(L, 1);
                return 0;
@@ -445,7 +455,7 @@ LJLIB_CF(array_copy)
 
 //********************************************************************************************************************
 // Usage: array.getString(arr [, start [, len]])
-// 
+//
 // Extracts a string from a byte array.
 //
 // Parameters:
@@ -540,7 +550,7 @@ LJLIB_CF(array_type)
 
 //********************************************************************************************************************
 // Usage: array.readOnly(arr)
-// 
+//
 // Returns whether the array is read-only.
 //
 // Parameters:
@@ -573,16 +583,62 @@ static void store_array_element(GCarray *Arr, int32_t Idx, lua_Number Value)
 }
 
 //********************************************************************************************************************
-// Helper function to fill array elements with a value
-// Used by array_fill to handle both integer indices and range-based filling
+// Template-based fill for contiguous ranges (step=1). Uses std::fill for optimal performance.
+
+template<typename T>
+static void fill_contiguous(void *Data, int32_t Start, int32_t Count, lua_Number Value)
+{
+   T *ptr = static_cast<T *>(Data) + Start;
+   std::fill(ptr, ptr + Count, T(Value));
+}
+
+//********************************************************************************************************************
+// Template-based fill for stepped ranges. Hoists type dispatch outside the loop.
+
+template<typename T>
+static void fill_stepped(void *Data, int32_t Start, int32_t Stop, int32_t Step, lua_Number Value)
+{
+   T *base = static_cast<T *>(Data);
+   T val = T(Value);
+   if (Step > 0) {
+      for (int32_t i = Start; i <= Stop; i += Step) base[i] = val;
+   }
+   else {
+      for (int32_t i = Start; i >= Stop; i += Step) base[i] = val;
+   }
+}
+
+//********************************************************************************************************************
+// Helper function to fill array elements with a value.
+// Uses optimised contiguous fill when step=1, otherwise falls back to stepped fill.
 
 static void fill_array_elements(GCarray *Arr, lua_Number Value, int32_t Start, int32_t Stop, int32_t Step)
 {
-   if (Step > 0) {
-      for (int32_t i = Start; i <= Stop; i += Step) store_array_element(Arr, i, Value);
+   void *data = Arr->data.get<void>();
+
+   // Optimised path for contiguous fills (step=1, forward direction)
+   if (Step IS 1) {
+      int32_t count = Stop - Start + 1;
+      switch (Arr->elemtype) {
+         case AET::_BYTE:   fill_contiguous<uint8_t>(data, Start, count, Value); return;
+         case AET::_INT16:  fill_contiguous<int16_t>(data, Start, count, Value); return;
+         case AET::_INT32:  fill_contiguous<int32_t>(data, Start, count, Value); return;
+         case AET::_INT64:  fill_contiguous<int64_t>(data, Start, count, Value); return;
+         case AET::_FLOAT:  fill_contiguous<float>(data, Start, count, Value); return;
+         case AET::_DOUBLE: fill_contiguous<double>(data, Start, count, Value); return;
+         default: return;
+      }
    }
-   else {
-      for (int32_t i = Start; i >= Stop; i += Step) store_array_element(Arr, i, Value);
+
+   // Stepped fill path (non-contiguous or reverse direction)
+   switch (Arr->elemtype) {
+      case AET::_BYTE:   fill_stepped<uint8_t>(data, Start, Stop, Step, Value); break;
+      case AET::_INT16:  fill_stepped<int16_t>(data, Start, Stop, Step, Value); break;
+      case AET::_INT32:  fill_stepped<int32_t>(data, Start, Stop, Step, Value); break;
+      case AET::_INT64:  fill_stepped<int64_t>(data, Start, Stop, Step, Value); break;
+      case AET::_FLOAT:  fill_stepped<float>(data, Start, Stop, Step, Value); break;
+      case AET::_DOUBLE: fill_stepped<double>(data, Start, Stop, Step, Value); break;
+      default: break;
    }
 }
 
@@ -691,6 +747,74 @@ static bool element_matches(GCarray *Arr, int32_t Idx, lua_Number Value)
 }
 
 //********************************************************************************************************************
+// Template-based find for contiguous forward search (step=1). Hoists type dispatch outside the loop.
+
+template<typename T>
+static int32_t find_forward_contiguous(const void *Data, int32_t Start, int32_t Stop, lua_Number Value)
+{
+   const T *base = static_cast<const T *>(Data);
+   T val = T(Value);
+   for (int32_t i = Start; i <= Stop; i++) {
+      if (base[i] IS val) return i;
+   }
+   return -1;
+}
+
+//********************************************************************************************************************
+// Template-based find for stepped ranges. Hoists type dispatch outside the loop.
+
+template<typename T>
+static int32_t find_stepped(const void *Data, int32_t Start, int32_t Stop, int32_t Step, lua_Number Value)
+{
+   const T *base = static_cast<const T *>(Data);
+   T val = T(Value);
+   if (Step > 0) {
+      for (int32_t i = Start; i <= Stop; i += Step) {
+         if (base[i] IS val) return i;
+      }
+   }
+   else {
+      for (int32_t i = Start; i >= Stop; i += Step) {
+         if (base[i] IS val) return i;
+      }
+   }
+   return -1;
+}
+
+//********************************************************************************************************************
+// Dispatches find operation based on array element type.
+// Returns index if found, -1 if not found.
+
+static int32_t find_in_array(GCarray *Arr, lua_Number Value, int32_t Start, int32_t Stop, int32_t Step)
+{
+   const void *data = Arr->data.get<void>();
+
+   // Optimised path for contiguous forward search (step=1)
+   if (Step IS 1) {
+      switch (Arr->elemtype) {
+         case AET::_BYTE:   return find_forward_contiguous<uint8_t>(data, Start, Stop, Value);
+         case AET::_INT16:  return find_forward_contiguous<int16_t>(data, Start, Stop, Value);
+         case AET::_INT32:  return find_forward_contiguous<int32_t>(data, Start, Stop, Value);
+         case AET::_INT64:  return find_forward_contiguous<int64_t>(data, Start, Stop, Value);
+         case AET::_FLOAT:  return find_forward_contiguous<float>(data, Start, Stop, Value);
+         case AET::_DOUBLE: return find_forward_contiguous<double>(data, Start, Stop, Value);
+         default: return -1;
+      }
+   }
+
+   // Stepped search path (non-contiguous or reverse direction)
+   switch (Arr->elemtype) {
+      case AET::_BYTE:   return find_stepped<uint8_t>(data, Start, Stop, Step, Value);
+      case AET::_INT16:  return find_stepped<int16_t>(data, Start, Stop, Step, Value);
+      case AET::_INT32:  return find_stepped<int32_t>(data, Start, Stop, Step, Value);
+      case AET::_INT64:  return find_stepped<int64_t>(data, Start, Stop, Step, Value);
+      case AET::_FLOAT:  return find_stepped<float>(data, Start, Stop, Step, Value);
+      case AET::_DOUBLE: return find_stepped<double>(data, Start, Stop, Step, Value);
+      default: return -1;
+   }
+}
+
+//********************************************************************************************************************
 // Usage: array.find(arr, value [, start]) or array.find(arr, value, range)
 //
 // Searches for a value in the array.
@@ -757,24 +881,12 @@ LJLIB_CF(array_find)
          return 1;
       }
 
-      // Search within the range
-      if (forward) {
-         for (int32_t i = start; i <= effective_stop; i += step) {
-            if (element_matches(arr, i, value)) {
-               setintV(L->top++, i);
-               return 1;
-            }
-         }
+      // Search within the range using optimised template dispatch
+      int32_t result = find_in_array(arr, value, start, effective_stop, step);
+      if (result >= 0) {
+         setintV(L->top++, result);
+         return 1;
       }
-      else {
-         for (int32_t i = start; i >= effective_stop; i += step) {
-            if (element_matches(arr, i, value)) {
-               setintV(L->top++, i);
-               return 1;
-            }
-         }
-      }
-
       lua_pushnil(L);
       return 1;
    }
@@ -788,11 +900,10 @@ LJLIB_CF(array_find)
       return 1;
    }
 
-   for (MSize i = MSize(start); i < arr->len; i++) {
-      if (element_matches(arr, int32_t(i), value)) {
-         setintV(L->top++, int32_t(i));
-         return 1;
-      }
+   int32_t result = find_in_array(arr, value, start, int32_t(arr->len - 1), 1);
+   if (result >= 0) {
+      setintV(L->top++, result);
+      return 1;
    }
 
    lua_pushnil(L);
@@ -814,20 +925,65 @@ LJLIB_CF(array_reverse)
    if (arr->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
    if (arr->len < 2) return 0;
 
-   auto base = (uint8_t *)mref<void>(arr->data);
-   auto elemsize = arr->elemsize;
+   void *data = arr->data.get<void>();
 
-   // Allocate temporary buffer on the stack for element swapping
-   uint8_t temp[16];  // Large enough for any element type (max is double = 8 bytes)
-
-   for (MSize i = 0; i < arr->len / 2; i++) {
-      MSize j = arr->len - 1 - i;
-      void *elem_i = base + i * elemsize;
-      void *elem_j = base + j * elemsize;
-
-      memcpy(temp, elem_i, elemsize);
-      memcpy(elem_i, elem_j, elemsize);
-      memcpy(elem_j, temp, elemsize);
+   // Use std::reverse with typed pointers for optimal performance
+   switch (arr->elemtype) {
+      case AET::_BYTE: {
+         auto *p = static_cast<uint8_t *>(data);
+         std::reverse(p, p + arr->len);
+         break;
+      }
+      case AET::_INT16: {
+         auto *p = static_cast<int16_t *>(data);
+         std::reverse(p, p + arr->len);
+         break;
+      }
+      case AET::_INT32: {
+         auto *p = static_cast<int32_t *>(data);
+         std::reverse(p, p + arr->len);
+         break;
+      }
+      case AET::_INT64: {
+         auto *p = static_cast<int64_t *>(data);
+         std::reverse(p, p + arr->len);
+         break;
+      }
+      case AET::_FLOAT: {
+         auto *p = static_cast<float *>(data);
+         std::reverse(p, p + arr->len);
+         break;
+      }
+      case AET::_DOUBLE: {
+         auto *p = static_cast<double *>(data);
+         std::reverse(p, p + arr->len);
+         break;
+      }
+      case AET::_PTR: {
+         auto *p = static_cast<void **>(data);
+         std::reverse(p, p + arr->len);
+         break;
+      }
+      case AET::_STRING_GC: {
+         auto *p = static_cast<GCRef *>(data);
+         std::reverse(p, p + arr->len);
+         break;
+      }
+      default: {
+         // Fallback for struct types using byte-level swap
+         auto *base = static_cast<uint8_t *>(data);
+         auto elemsize = arr->elemsize;
+         uint8_t temp[64];  // Large enough for typical struct sizes
+         for (MSize i = 0; i < arr->len / 2; i++) {
+            MSize j = arr->len - 1 - i;
+            void *elem_i = base + i * elemsize;
+            void *elem_j = base + j * elemsize;
+            memcpy(temp, elem_i, elemsize);
+            memcpy(elem_i, elem_j, elemsize);
+            memcpy(elem_j, temp, elemsize);
+         }
+         break;
+      }
    }
 
    return 0;
@@ -933,16 +1089,19 @@ LJLIB_CF(array___len)
 
 LJLIB_CF(array___tostring)
 {
-   GCarray* arr = lj_lib_checkarray(L, 1);
-   const char* type_name = elemtype_name(arr->elemtype);
+   GCarray *arr = lj_lib_checkarray(L, 1);
 
-   // Format: array(SIZE, "TYPE")
-   char buf[128];
-   snprintf(buf, sizeof(buf), "array(%u, \"%s\")", uint32_t(arr->len), type_name);
-
-   GCstr* s = lj_str_newz(L, buf);
-   setstrV(L, L->top++, s);
-   return 1;
+   if (arr->elemtype IS AET::_BYTE) {
+      setstrV(L, L->top++, lj_str_new(L, arr->data.get<char>(), arr->len));
+      return 1;
+   }
+   else {
+      auto type_name = elemtype_name(arr->elemtype);
+      char buf[64];
+      snprintf(buf, sizeof(buf), "array<%s>(%u)", type_name, uint32_t(arr->len));
+      setstrV(L, L->top++, lj_str_newz(L, buf)); // Throws on failure
+      return 1;
+   }
 }
 
 //********************************************************************************************************************

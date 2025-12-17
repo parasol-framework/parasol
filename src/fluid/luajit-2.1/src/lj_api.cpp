@@ -127,7 +127,7 @@ static TValue * thunk_resolve_at(lua_State *L, int idx)
    }
 
    TValue *o = index2adr_stack(L, idx);
-   if (o and lj_thunk_isthunk(o) and not L->resolving_thunk) {
+   if (o and lj_is_thunk(o) and not L->resolving_thunk) {
       GCudata *ud = udataV(o);
       ThunkPayload *payload = thunk_payload(ud);
 
@@ -555,6 +555,16 @@ extern int lua_toboolean(lua_State *L, int idx)
 {
    cTValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_const(L, idx) : index2adr(L, idx);
    return tvistruecond(o);
+}
+
+//********************************************************************************************************************
+// Return array value (does not perform any conversion)
+
+extern GCarray * lua_toarray(lua_State *L, int Arg)
+{
+   TValue *o = (Arg > LUA_REGISTRYINDEX) ? thunk_resolve_at(L, Arg) : index2adr(L, Arg);
+   if (tvisarray(o)) return &gcval(o)->arr;
+   lj_err_argt(L, Arg, LUA_TARRAY);
 }
 
 //********************************************************************************************************************

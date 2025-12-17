@@ -978,8 +978,8 @@ static ERR run_script(objScript *Self)
                   if ((type & FD_BUFFER) and (i+1 < Self->TotalArgs) and (args[1].Type & FD_BUFSIZE)) {
                      // Buffers are considered to be directly writable regions of memory, so the array interface is
                      // used to represent them.
-                     if (args[1].Type & FD_INT) make_array(prv->Lua, FD_BYTE|FD_WRITE, nullptr, (APTR *)args->Address, args[1].Int, false);
-                     else if (args[1].Type & FD_INT64) make_array(prv->Lua, FD_BYTE|FD_WRITE, nullptr, (APTR *)args->Address, args[1].Int64, false);
+                     if (args[1].Type & FD_INT) lua_createarray(prv->Lua, args[1].Int, AET::_BYTE, (APTR *)args->Address, ARRAY_EXTERNAL);
+                     else if (args[1].Type & FD_INT64) lua_createarray(prv->Lua, args[1].Int64, AET::_BYTE, (APTR *)args->Address, ARRAY_EXTERNAL);
                      else lua_pushnil(prv->Lua);
                      i++; args++; // Because we took the buffer-size parameter into account
                   }
@@ -1094,7 +1094,6 @@ static ERR register_interfaces(objScript *Self)
 
    auto prv = (prvFluid *)Self->ChildPrivate;
 
-   register_array_class(prv->Lua);
    register_io_class(prv->Lua);
    register_object_class(prv->Lua);
    register_module_class(prv->Lua);

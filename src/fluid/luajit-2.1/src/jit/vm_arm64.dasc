@@ -900,21 +900,15 @@ static void build_subroutines(BuildCtx *ctx)
   |
   |->vmeta_len:
   |  add CARG2, BASE, RC, lsl #3
-#if LJ_52
   |  mov TAB:RC, TAB:CARG1		// Save table (ignored for other types).
-#endif
   |   str BASE, L->base
   |  mov CARG1, L
   |   str PC, SAVE_PC
   |  bl extern lj_meta_len		// (lua_State *L, TValue *o)
   |  // Returns NULL (retry) or TValue * (metamethod base).
-#if LJ_52
   |  cbnz CRET1, ->vmeta_binop		// Binop call for compatibility.
   |  mov TAB:CARG1, TAB:RC
   |  b ->BC_LEN_Z
-#else
-  |  b ->vmeta_binop			// Binop call for compatibility.
-#endif
   |
   |//-- Call metamethod ----------------------------------------------------
   |
@@ -1167,14 +1161,10 @@ static void build_subroutines(BuildCtx *ctx)
   |
   |.ffunc_1 pairs
   |  checktp TMP1, CARG1, LJ_TTAB, ->fff_fallback
-#if LJ_52
   |  ldr TAB:CARG2, TAB:TMP1->metatable
-#endif
   |   ldr CFUNC:CARG4, CFUNC:CARG3->upvalue[0]
   |    ldr PC, [BASE, FRAME_PC]
-#if LJ_52
   |  cbnz TAB:CARG2, ->fff_fallback
-#endif
   |  mov RC, #(3+1)*8
   |  stp CARG1, TISNIL, [BASE, #-8]
   |   str CFUNC:CARG4, [BASE, #-16]
@@ -1210,14 +1200,10 @@ static void build_subroutines(BuildCtx *ctx)
   |
   |.ffunc_1 ipairs
   |  checktp TMP1, CARG1, LJ_TTAB, ->fff_fallback
-#if LJ_52
   |  ldr TAB:CARG2, TAB:TMP1->metatable
-#endif
   |   ldr CFUNC:CARG4, CFUNC:CARG3->upvalue[0]
   |    ldr PC, [BASE, FRAME_PC]
-#if LJ_52
   |  cbnz TAB:CARG2, ->fff_fallback
-#endif
   |  mov RC, #(3+1)*8
   |  mov TMP0w, #-1			// 0-based: -1 in 32-bit
   |  add TMP0, TMP0, TISNUM		// Create tagged integer -1
@@ -2740,22 +2726,18 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |2:
     |  cmn ITYPE, #-LJ_TTAB
     |  bne ->vmeta_len
-#if LJ_52
     |  ldr TAB:CARG2, TAB:CARG1->metatable
     |  cbnz TAB:CARG2, >9
     |3:
-#endif
     |->BC_LEN_Z:
     |  bl extern lj_tab_len		// (GCtab *t)
     |  // Returns uint32_t (but less than 2^31).
     |  b <1
     |
-#if LJ_52
     |9:
     |  ldrb TMP1w, TAB:CARG2->nomm
     |  tbnz TMP1w, #MM_len, <3		// 'no __len' flag set: done.
     |  b ->vmeta_len
-#endif
     break;
 
   //  -- Binary ops --------------------------------------------------------

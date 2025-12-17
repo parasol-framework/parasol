@@ -3798,6 +3798,39 @@ struct evHotplug {
    char Vendor[40];      // Name of vendor
 };
 
+inline ERR set_string_field(const std::string_view Source, STRING &Dest)
+{
+   MemInfo info;
+   if (auto error = MemoryIDInfo(GetMemoryID(Dest), &info, sizeof(info)); error IS ERR::Okay) {
+      if (Source.size()+1 < info.Size) {
+         pf::copymem(Source.data(), Dest, Source.size());
+         Dest[Source.size()] = 0;
+         return ERR::Okay;
+      }
+      else {
+         FreeResource(GetMemoryID(Dest));
+         if (AllocMemory(Source.size() + 1, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Dest, nullptr) IS ERR::Okay) {
+            pf::copymem(Source.data(), Dest, Source.size());
+            Dest[Source.size()] = 0;
+            return ERR::Okay;
+         }
+         else return ERR::AllocMemory;
+      }
+   }
+   else return error;
+}
+
+[[nodiscard]] inline char * strclone(const std::string_view String) noexcept
+{
+   char *newstr;
+   if (AllocMemory(String.size()+1, MEM::STRING|MEM::NO_CLEAR, (APTR *)&newstr, nullptr) IS ERR::Okay) {
+      pf::copymem(String.data(), newstr, String.size());
+      newstr[String.size()] = 0;
+      return newstr;
+   }
+   else return nullptr;
+}
+
 } // namespace
 
 namespace fl {

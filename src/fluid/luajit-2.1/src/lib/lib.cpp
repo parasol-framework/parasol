@@ -203,24 +203,22 @@ TValue * lj_lib_checkany(lua_State *L, int Arg)
 
 GCstr * lj_lib_checkstr(lua_State *L, int Arg)
 {
-   TValue* o = L->base + Arg - 1;
+   TValue *o = L->base + Arg - 1;
    if (o < L->top) {
-      // Resolve thunk if present
-      if (lj_thunk_isthunk(o)) {
-         GCudata *ud = udataV(o);
-         TValue *resolved = lj_thunk_resolve(L, ud);
-         // Stack may have moved, recalculate o
-         o = L->base + Arg - 1;
+      if (lj_is_thunk(o)) { // Resolve thunk if present
+         TValue *resolved = lj_thunk_resolve(L, udataV(o));
+         o = L->base + Arg - 1; // Stack may have moved, recalculate o
          copyTV(L, o, resolved);
       }
 
-      if (LJ_LIKELY(tvisstr(o))) return strV(o);
+      if (tvisstr(o)) [[likely]] return strV(o);
       else if (tvisnumber(o)) {
          GCstr* s = lj_strfmt_number(L, o);
          setstrV(L, o, s);
          return s;
       }
    }
+
    lj_err_argt(L, Arg, LUA_TSTRING);
    return nullptr;  //  unreachable
 }
@@ -229,7 +227,7 @@ GCstr * lj_lib_checkstr(lua_State *L, int Arg)
 
 GCstr * lj_lib_optstr(lua_State *L, int Arg)
 {
-   TValue* o = L->base + Arg - 1;
+   TValue *o = L->base + Arg - 1;
    return (o < L->top and !tvisnil(o)) ? lj_lib_checkstr(L, Arg) : nullptr;
 }
 
@@ -250,12 +248,9 @@ lua_Number lj_lib_checknum(lua_State *L, int Arg)
 {
    TValue* o = L->base + Arg - 1;
    if (o < L->top) {
-      // Resolve thunk if present
-      if (lj_thunk_isthunk(o)) {
-         GCudata *ud = udataV(o);
-         TValue *resolved = lj_thunk_resolve(L, ud);
-         // Stack may have moved, recalculate o
-         o = L->base + Arg - 1;
+      if (lj_is_thunk(o)) { // Resolve thunk if present
+         TValue *resolved = lj_thunk_resolve(L, udataV(o));
+         o = L->base + Arg - 1;  // Stack may have moved, recalculate o
          copyTV(L, o, resolved);
       }
    }
@@ -264,8 +259,8 @@ lua_Number lj_lib_checknum(lua_State *L, int Arg)
       lj_err_argt(L, Arg, LUA_TNUMBER);
    }
 
-   if (LJ_UNLIKELY(tvisint(o))) {
-      lua_Number n = (lua_Number)intV(o);
+   if (tvisint(o)) {
+      auto n = (lua_Number)intV(o);
       setnumV(o, n);
       return n;
    }
@@ -276,12 +271,9 @@ lua_Number lj_lib_checknum(lua_State *L, int Arg)
 
 int32_t lj_lib_checkint(lua_State *L, int Arg)
 {
-   TValue* o = L->base + Arg - 1;
-   if (!(o < L->top and lj_strscan_numberobj(o)))
-      lj_err_argt(L, Arg, LUA_TNUMBER);
-   if (LJ_LIKELY(tvisint(o))) {
-      return intV(o);
-   }
+   TValue *o = L->base + Arg - 1;
+   if (!(o < L->top and lj_strscan_numberobj(o))) lj_err_argt(L, Arg, LUA_TNUMBER);
+   if (tvisint(o)) return intV(o);
    else {
       int32_t i = lj_num2int(numV(o));
       if (LJ_DUALNUM) setintV(o, i);
@@ -293,7 +285,7 @@ int32_t lj_lib_checkint(lua_State *L, int Arg)
 
 int32_t lj_lib_optint(lua_State *L, int Arg, int32_t Default)
 {
-   TValue* o = L->base + Arg - 1;
+   TValue *o = L->base + Arg - 1;
    return (o < L->top and !tvisnil(o)) ? lj_lib_checkint(L, Arg) : Default;
 }
 
@@ -321,8 +313,18 @@ GCtab * lj_lib_checktab(lua_State *L, int Arg)
 GCarray * lj_lib_checkarray(lua_State *L, int Arg)
 {
    TValue *o = L->base + Arg - 1;
-   if (o >= L->top or not tvisarray(o)) lj_err_argt(L, Arg, LUA_TARRAY);
-   return arrayV(o);
+   if (o < L->top) {
+      if (lj_is_thunk(o)) { // Resolve thunk if present
+         TValue *resolved = lj_thunk_resolve(L, udataV(o));
+         o = L->base + Arg - 1; // Stack may have moved, recalculate o
+         copyTV(L, o, resolved); // Replace thunk with resolved value
+      }
+
+      if (tvisarray(o)) [[likely]] return arrayV(o);
+   }
+   
+   lj_err_argt(L, Arg, LUA_TARRAY);
+   return nullptr;  //  unreachable
 }
 
 //********************************************************************************************************************
@@ -332,6 +334,12 @@ GCarray * lj_lib_optarray(lua_State *L, int Arg)
 {
    TValue *o = L->base + Arg - 1;
    if (o < L->top and not tvisnil(o)) {
+      if (lj_is_thunk(o)) { // Resolve thunk if present
+         TValue *resolved = lj_thunk_resolve(L, udataV(o));
+         o = L->base + Arg - 1; // Stack may have moved, recalculate o
+         copyTV(L, o, resolved); // Replace thunk with resolved value
+      }
+
       if (tvisarray(o)) return arrayV(o);
       else lj_err_argt(L, Arg, LUA_TARRAY);
    }
@@ -343,7 +351,13 @@ GCarray * lj_lib_optarray(lua_State *L, int Arg)
 GCtab * lj_lib_checktabornil(lua_State *L, int Arg)
 {
    TValue *o = L->base + Arg - 1;
-   if (o < L->top) {
+   if (o < L->top) {    
+      if (lj_is_thunk(o)) { // Resolve thunk if present
+         TValue *resolved = lj_thunk_resolve(L, udataV(o));
+         o = L->base + Arg - 1; // Stack may have moved, recalculate o
+         copyTV(L, o, resolved); // Replace thunk with resolved value
+      }
+
       if (tvistab(o)) return tabV(o);
       else if (tvisnil(o)) return nullptr;
    }
@@ -355,12 +369,11 @@ GCtab * lj_lib_checktabornil(lua_State *L, int Arg)
 
 int lj_lib_checkopt(lua_State *L, int Arg, int def, const char* lst)
 {
-   GCstr* s = def >= 0 ? lj_lib_optstr(L, Arg) : lj_lib_checkstr(L, Arg);
+   GCstr *s = def >= 0 ? lj_lib_optstr(L, Arg) : lj_lib_checkstr(L, Arg);
    if (s) {
-      const char* opt = strdata(s);
-      MSize len = s->len;
-      int i;
-      for (i = 0; *(const uint8_t*)lst; i++) {
+      CSTRING opt = strdata(s);
+      auto len = s->len;
+      for (int i = 0; *(const uint8_t*)lst; i++) {
          if (*(const uint8_t*)lst IS len and memcmp(opt, lst + 1, len) IS 0) return i;
          lst += 1 + *(const uint8_t*)lst;
       }

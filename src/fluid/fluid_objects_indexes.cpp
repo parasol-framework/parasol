@@ -116,8 +116,8 @@ static ERR object_set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, int 
       }
       else return ERR::BufferOverflow;
    }
-   else if (auto farray = (struct array *)get_meta(Lua, ValueIndex, "Fluid.array")) {
-      return Object->set(Field->FieldID, farray->ptrPointer, farray->Total, farray->Type);
+   else if (auto farray = (struct GCarray *)get_meta(Lua, ValueIndex, "array_metatable")) {
+      return Object->set(Field->FieldID, farray->data.get<void>(), farray->len, farray->type_flags());
    }
    else return ERR::SetValueNotArray;
 }
@@ -168,8 +168,8 @@ static ERR object_set_ptr(lua_State *Lua, OBJECTPTR Object, Field *Field, int Va
       }
       else return ERR::SetValueNotPointer;
    }
-   else if (auto array = (struct array *)get_meta(Lua, ValueIndex, "Fluid.array")) {
-      return Object->set(Field->FieldID, array->ptrVoid);
+   else if (auto array = (struct GCarray *)get_meta(Lua, ValueIndex, "array_metatable")) {
+      return Object->set(Field->FieldID, array->data.get<void>());
    }
    else if (auto fstruct = (struct fstruct *)get_meta(Lua, ValueIndex, "Fluid.struct")) {
       return Object->set(Field->FieldID, fstruct->Data);
@@ -420,7 +420,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, int Va
    OBJECTPTR target;
    if (auto field = FindField(obj, strihash(FName), &target)) {
       if (field->Flags & FD_ARRAY) {
-         struct array *farray;
+         struct GCarray *farray;
 
          if (type IS LUA_TSTRING) { // Treat the source as a CSV field
             return target->set(field->FieldID, lua_tostring(Lua, ValueIndex));
@@ -435,8 +435,8 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, int Va
             }
             else return ERR::BufferOverflow;
          }
-         else if ((farray = (struct array *)get_meta(Lua, ValueIndex, "Fluid.array"))) {
-            return target->set(field->FieldID, farray->ptrPointer, farray->Total, farray->Type);
+         else if ((farray = (struct GCarray *)get_meta(Lua, ValueIndex, "array_metatable"))) {
+            return target->set(field->FieldID, farray->data.get<void>(), farray->len, farray->type_flags());
          }
          else return ERR::SetValueNotArray;
       }
@@ -482,8 +482,8 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, int Va
             }
             else return ERR::SetValueNotPointer;
          }
-         else if (auto array = (struct array *)get_meta(Lua, ValueIndex, "Fluid.array")) {
-            return obj->set(field->FieldID, array->ptrVoid);
+         else if (auto array = (struct GCarray *)get_meta(Lua, ValueIndex, "array_metatable")) {
+            return obj->set(field->FieldID, array->data.get<void>());
          }
          else if (auto fs = (fstruct *)get_meta(Lua, ValueIndex, "Fluid.struct")) {
             return obj->set(field->FieldID, fs->Data);

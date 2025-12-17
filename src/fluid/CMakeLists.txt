@@ -614,7 +614,7 @@ if (BUILD_DEFS)
 endif ()
 
 set (FLUID_SOURCES "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_struct.cpp" "fluid_processing.cpp"
-   "fluid_number.cpp" "fluid_functions.cpp" "fluid_objects.cpp" "fluid_array.cpp" "fluid_regex.cpp"
+   "fluid_number.cpp" "fluid_functions.cpp" "fluid_objects.cpp" "fluid_regex.cpp"
    "fluid_io.cpp" "fluid_class.cpp"
    "${LUAJIT_SRC}/lib/lib.cpp"
    "${LUAJIT_SRC}/lib/load.cpp"

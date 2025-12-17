@@ -175,7 +175,7 @@ end
       err, len = cmpfile.acRead(smallbuffer)
       assert(err is ERR_Okay, 'Failed to read decompressed data from file archive: ' .. mSys.GetErrorMsg(err))
       if len < #smallbuffer then
-         cmpbuffer ..= smallbuffer.getstring(0, len)
+         cmpbuffer ..= smallbuffer:getString(0, len)
       else
          cmpbuffer ..= tostring(smallbuffer)
       end

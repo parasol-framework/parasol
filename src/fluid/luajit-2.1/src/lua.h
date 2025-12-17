@@ -114,15 +114,17 @@ extern int (lua_equal) (lua_State *L, int idx1, int idx2);
 extern int (lua_rawequal) (lua_State *L, int idx1, int idx2);
 extern int (lua_lessthan) (lua_State *L, int idx1, int idx2);
 
-extern lua_Number      (lua_tonumber) (lua_State *L, int idx);
-extern lua_Integer     (lua_tointeger) (lua_State *L, int idx);
-extern int             (lua_toboolean) (lua_State *L, int idx);
-extern const char     *(lua_tolstring) (lua_State *L, int idx, size_t *len);
-extern size_t          (lua_objlen) (lua_State *L, int idx);
-extern lua_CFunction   (lua_tocfunction) (lua_State *L, int idx);
-extern void          *(lua_touserdata) (lua_State *L, int idx);
-extern lua_State      *(lua_tothread) (lua_State *L, int idx);
-extern const void     *(lua_topointer) (lua_State *L, int idx);
+struct GCarray;
+extern GCarray *     lua_toarray(lua_State *, int);
+extern lua_Number    lua_tonumber(lua_State *, int);
+extern lua_Integer   lua_tointeger(lua_State *, int);
+extern int           lua_toboolean(lua_State *, int);
+extern const char *  lua_tolstring(lua_State *, int, size_t *);
+extern size_t        lua_objlen(lua_State *, int);
+extern lua_CFunction lua_tocfunction(lua_State *, int);
+extern void *        lua_touserdata(lua_State *, int);
+extern lua_State *   lua_tothread(lua_State *, int);
+extern const void *  lua_topointer(lua_State *, int);
 
 // push functions (C -> stack)
 
@@ -146,8 +148,8 @@ extern void   lua_gettable(lua_State *L, int idx);
 extern void   lua_getfield(lua_State *L, int idx, const char *k);
 extern void   lua_rawget(lua_State *L, int idx);
 extern void   lua_rawgeti(lua_State *L, int idx, int n);
-//extern void   lua_createarray(lua_State *L, uint32_t Length, AET Type, void *Data = nullptr, uint8_t Flags = 0, std::string_view = {});
 extern void   lua_createtable(lua_State *L, int narr, int nrec);
+extern void   lua_createarray(lua_State *L, uint32_t Length, AET Type, void *Data = nullptr, uint8_t Flags = 0, std::string_view StructName = {});
 extern void * lua_newuserdata(lua_State *L, size_t sz);
 extern int    lua_getmetatable(lua_State *L, int objindex);
 extern void   lua_getfenv(lua_State *L, int idx);

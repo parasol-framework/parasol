@@ -182,78 +182,7 @@ struct datarequest {
    }
 };
 
-//********************************************************************************************************************
-
-struct struct_field {
-   std::string Name;      // Field name
-   std::string StructRef; // Named reference to other structure
-   uint16_t Offset = 0;   // Offset to the field value.
-   int  Type      = 0;    // FD flags
-   int  ArraySize = 0;    // Set if the field is an array
-
-   uint32_t nameHash() {
-      if (!NameHash) NameHash = strihash(Name);
-      return NameHash;
-   }
-
-   private:
-   uint32_t NameHash = 0;     // Lowercase hash of the field name
-};
-
-struct struct_record {
-   std::string Name;
-   std::vector<struct_field> Fields;
-   int Size = 0; // Total byte size of the structure
-   struct_record(std::string_view pName) : Name(pName) { }
-   struct_record() = default;
-};
-
-//********************************************************************************************************************
-// Structure names have their own handler due to the use of colons in struct references, i.e. "OfficialStruct:SomeName"
-
-struct struct_name {
-   std::string name;
-   struct_name(const std::string_view pName) {
-      auto colon = pName.find(':');
-
-      if (colon IS std::string::npos) name = pName;
-      else name = pName.substr(0, colon);
-   }
-
-   bool operator==(const std::string_view &other) const {
-      return (name == other);
-   }
-
-   bool operator==(const struct_name &other) const {
-      return (name == other.name);
-   }
-};
-
-struct struct_hash {
-   std::size_t operator()(const struct_name &k) const {
-      uint32_t hash = 5381;
-      for (auto c : k.name) {
-         if ((c >= 'A') and (c <= 'Z'));
-         else if ((c >= 'a') and (c <= 'z'));
-         else if ((c >= '0') and (c <= '9'));
-         else break;
-         hash = ((hash<<5) + hash) + uint8_t(c);
-      }
-      return hash;
-   }
-
-   std::size_t operator()(const std::string_view k) const {
-      uint32_t hash = 5381;
-      for (auto c : k) {
-         if ((c >= 'A') and (c <= 'Z'));
-         else if ((c >= 'a') and (c <= 'z'));
-         else if ((c >= '0') and (c <= '9'));
-         else break;
-         hash = ((hash<<5) + hash) + uint8_t(c);
-      }
-      return hash;
-   }
-};
+#include "struct_def.h"
 
 //********************************************************************************************************************
 
@@ -283,28 +212,6 @@ struct prvFluid {
    int      CatchDepth = -1;           // Lua stack frame count for scope isolation in catch().
                                        // Set by fcmd_catch() via lua_getstack() frame counting.
                                        // Only calls at exactly this depth throw exceptions.
-};
-
-struct array {
-   struct struct_record *StructDef; // Set if the array represents a known struct.
-   int Total;        // Total number of elements
-   int Type;         // FD_BYTE, FD_INT etc...
-   int TypeSize;     // Byte-size of the type, e.g. int64_t == 8 bytes
-   int ArraySize;    // Size of the array *in bytes*
-   int AlignedSize;  // For struct alignment
-   bool Allocated;
-   bool ReadOnly;
-   union { // TODO: Use std::variant
-      double  *ptrDouble;
-      int64_t *ptrLarge;
-      APTR    *ptrPointer;
-      STRING  *ptrString;
-      float   *ptrFloat;
-      int     *ptrLong;
-      int16_t *ptrWord;
-      uint8_t *ptrByte;
-      APTR    ptrVoid;
-   };
 };
 
 // This structure is created & managed through the 'struct' interface
@@ -481,7 +388,6 @@ void hook_debug(lua_State *, lua_Debug *) __attribute__ ((unused));
 ERR load_include(objScript *, CSTRING);
 int MAKESTRUCT(lua_State *);
 [[maybe_unused]] void make_any_table(lua_State *, int, CSTRING, int, CPTR );
-void make_array(lua_State *, int, CSTRING, APTR *, int, bool);
 [[maybe_unused]] void make_table(lua_State *, int, int, CPTR );
 [[maybe_unused]] ERR make_struct(lua_State *, std::string_view, CSTRING);
 ERR named_struct_to_table(lua_State *, std::string_view, CPTR);
@@ -493,7 +399,6 @@ struct object * push_object(lua_State *, OBJECTPTR Object);
 ERR push_object_id(lua_State *, OBJECTID ObjectID);
 struct fstruct * push_struct(objScript *, APTR, std::string_view, bool, bool);
 struct fstruct * push_struct_def(lua_State *, APTR, struct struct_record &, bool);
-extern void register_array_class(lua_State *);
 extern void register_io_class(lua_State *);
 extern void register_input_class(lua_State *);
 extern void register_object_class(lua_State *);
@@ -528,8 +433,6 @@ int fcmd_unsubscribe_event(lua_State *);
 
 #ifdef __arm__
 extern void armExecFunction(APTR, APTR, int);
-#elif _LP64
-extern void x64ExecFunction(APTR, int, int64_t *, int);
 #else
-extern void x86ExecFunction(APTR, APTR, int);
+extern void x64ExecFunction(APTR, int, int64_t *, int);
 #endif

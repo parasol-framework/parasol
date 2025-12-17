@@ -122,7 +122,7 @@ void lj_str_resize(lua_State* L, MSize newmask)
 }
 
 //********************************************************************************************************************
-// Allocate a new string and add to string interning table.
+// Allocate a new string and add to string interning table.  Throws on failure.
 
 static GCstr * lj_str_alloc(lua_State* L, CSTRING str, MSize len, uint32_t hash)
 {
@@ -156,7 +156,7 @@ static GCstr * lj_str_alloc(lua_State* L, CSTRING str, MSize len, uint32_t hash)
 }
 
 //********************************************************************************************************************
-// Intern a string and return string object.
+// Intern a string and return string object.  Throws on failure.
 
 GCstr * lj_str_new(lua_State* L, CSTRING str, size_t lenx)
 {

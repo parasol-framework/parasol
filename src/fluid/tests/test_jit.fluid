@@ -7,12 +7,6 @@ cached_trace_no = nil
 cached_trace_info = nil
 outer_upvalue = 37
 
-function assert_security_range(Value, Name)
-   if Value < 0 or Value > 3 then
-      error(Name .. " security mode out of range: " .. tostring(Value))
-   end
-end
-
 function build_trace()
    jit.on()
    jit.flush()
@@ -68,7 +62,7 @@ function constant_target(Value)
    return offset, label
 end
 
-@Test function testEngineModeToggles()
+@Test function EngineModeToggles()
    jit.on()
    enabled_on = jit.status()
    assert(enabled_on is true, "jit.on() should enable the compiler")
@@ -86,19 +80,7 @@ end
    end
 end
 
-@Test function testSecurityModes()
-   prng_level = jit.security("prng")
-   strhash_level = jit.security("strhash")
-   strid_level = jit.security("strid")
-   mcode_level = jit.security("mcode")
-
-   assert_security_range(prng_level, "prng")
-   assert_security_range(strhash_level, "strhash")
-   assert_security_range(strid_level, "strid")
-   assert_security_range(mcode_level, "mcode")
-end
-
-@Test function testFuncInfoForLuaFunction()
+@Test function FuncInfoForLuaFunction()
    info = jit.util.funcinfo(sample_vararg, 0)
    assert(info.params is 2, "Expected sample_vararg to report two parameters")
    assert(info.isVarArg is true, "Vararg flag should be set for sample_vararg")
@@ -108,7 +90,7 @@ end
    assert(info.proto != nil, "Proto reference should be available for Lua functions")
 end
 
-@Test function testFuncInfoForCFunction()
+@Test function FuncInfoForCFunction()
    info = jit.util.funcinfo(print)
    if info.ffid != nil then
       assert(type(info.ffid) is "number", "FFI id should be numeric when present")
@@ -117,7 +99,7 @@ end
    assert(type(info.upvalues) is "number", "C function upvalue count should be numeric")
 end
 
-@Test function testFuncBCAndFunck()
+@Test function FuncBCAndFunck()
    info = jit.util.funcinfo(constant_target, 0)
    first_ins, mode = jit.util.funcbc(constant_target, 0)
    assert(type(first_ins) is "number", "funcbc should return an instruction")
@@ -132,7 +114,7 @@ end
       value = jit.util.funck(constant_target, idx)
       if value != nil then
          constants[numeric_count] = value
-         numeric_count += 1
+         numeric_count++
       end
    end
 
@@ -148,7 +130,7 @@ end
       value = jit.util.funck(constant_target, idx)
       if value != nil then
          gc_values[gc_count] = value
-         gc_count += 1
+         gc_count++
       end
    end
 
@@ -159,12 +141,12 @@ end
    assert(found_label is true, "jit.util.funck should expose GC constants")
 end
 
-@Test function testFuncUpvalueName()
+@Test function FuncUpvalueName()
    name = jit.util.funcuvname(upvalue_consumer, 0)
    assert(name is "outer_upvalue", "First upvalue name should match outer_upvalue")
 end
 
-@Test function testTraceInfoAndIR()
+@Test function TraceInfoAndIR()
    trace_no, info = get_trace()
 
    assert(type(info.nins) is "number" and info.nins > 0, "traceinfo should report instruction count")
@@ -192,7 +174,7 @@ end
    assert(type(ir_prev) is "number", "traceir should return previous reference")
 end
 
-@Test function testTraceConstantsAndSnapshot()
+@Test function TraceConstantsAndSnapshot()
    trace_no, info = get_trace()
    if type(info.nk) is "number" and info.nk <= 0 then
       error("Trace did not expose any constants for verification")
@@ -219,7 +201,7 @@ end
    assert(#snapshot >= 3, "Snapshot should include map entries and sentinel")
 end
 
-@Test function testTraceMachineCodeAndExitStub()
+@Test function TraceMachineCodeAndExitStub()
    trace_no = get_trace()
    mcode, addr, loop_flag = jit.util.tracemc(trace_no)
    assert(mcode != nil, "tracemc should return machine code for hot traces")
@@ -237,7 +219,7 @@ end
    assert(type(exit_addr) is "number", "traceexitstub should return a numeric address")
 end
 
-@Test function testIrCallAddrLookup()
+@Test function IrCallAddrLookup()
    addr = jit.util.ircalladdr(0)
    assert(addr != nil, "ircalladdr(0) should return a function pointer")
    assert(type(addr) is "number", "ircalladdr(0) should be numeric")
@@ -246,13 +228,13 @@ end
    assert(invalid is nil, "Out-of-range ircalladdr should return nil")
 end
 
-@Test function testJitAttachTraceEvent()
+@Test function JitAttachTraceEvent()
    cached_trace_no = nil
    cached_trace_info = nil
 
    trace_events = 0
    function trace_handler(TraceNo, Reason)
-      trace_events += 1
+      trace_events++
    end
 
    jit.attach(trace_handler, "trace")

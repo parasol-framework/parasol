@@ -121,14 +121,13 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function StringArrayUnsupported()
-   -- String arrays should work for concat
+@Test function StringArray()
    string_array = array.new(3, 'string')
-   -- Note: We can't actually set string array values in current implementation
-   -- but we can test that the concat method exists and handles the case
-
-   -- This test would need actual string array assignment to work properly
-   -- For now, we'll skip this test until string array assignment is implemented
+   string_array[0] = 'hello'
+   string_array[1] = 'world'
+   string_array[2] = '!'
+   result = string_array:concat('%s', ' ')
+   assert(result is 'hello world !', "String array concat failed, expected 'hello world !', got '" .. tostring(result) .. "'")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -402,7 +401,7 @@ end
 
 @Test function ToString()
    str_array = array.new('hello')
-   assert(tostring(str_array) is 'array(5, "char")', "String array toString failed, got '" .. tostring(str_array) .. "'")
+   assert(tostring(str_array) is 'hello', "String array toString failed, got '" .. tostring(str_array) .. "'")
 
    assert(#str_array is 5, "String array length failed, expected 5, got " .. tostring(#str_array))
 end

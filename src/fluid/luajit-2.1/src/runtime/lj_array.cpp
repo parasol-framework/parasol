@@ -15,6 +15,7 @@
 #include <parasol/modules/fluid.h>
 #include <parasol/strings.hpp>
 #include "../../defs.h"
+#include "../../struct_def.h"
 
 // Element sizes for each type (must match AET enum order)
 
@@ -41,18 +42,24 @@ uint8_t lj_array_elemsize(AET Type)
 }
 
 //********************************************************************************************************************
-// Create a new array
+// Create a new array.
+//
+// For string arrays (CSTRING/STRING_CPP) with ARRAY_CACHED flag:
+// - Data points to an array of CSTRING or std::string pointers
+// - String content is copied into a vector<char> owned by the array
+// - The colocated data area stores CSTRING pointers into the vector
 
 extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Data, uint8_t Flags, std::string_view StructName)
 {
    MSize elem_size;
+   struct_record *sdef = nullptr;
 
-   if (!StructName.empty()) {
+   if (not StructName.empty()) {
       // Struct-backed array
       auto prv = (prvFluid *)L->script->ChildPrivate;
       auto name = struct_name(StructName);
       if (prv->Structs.contains(name)) {
-         auto sdef = &prv->Structs[name];
+         sdef = &prv->Structs[name];
          elem_size = sdef->Size;
       }
       else {
@@ -62,18 +69,75 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
    }
    else elem_size = lj_array_elemsize(Type);
 
-   lj_assertL(elem_size > 0 or Type IS AET::_STRUCT, "invalid element type for array creation");
+   lj_assertL(elem_size > 0, "invalid element size for array creation");
 
    if (Data) {
-      if (Flags & ARRAY_CACHED) {
-         // Copy data into co-located storage
-         auto total_size = sizearraycolo(Length, elem_size);
-         auto mem = lj_mem_newgco(L, total_size);
-         return new (mem) GCarray(Data, Type, elem_size, Length, Flags);
+      if (Flags & ARRAY_CACHED) { // External arrays originating from the framework require caching
+         // Handle string caching specially - store content in a vector
+         if (Type IS AET::_CSTRING or Type IS AET::_STRING_CPP) {
+            // Allocate array with space for CSTRING pointers (colocated)
+            auto total_size = sizearraycolo(Length, sizeof(CSTRING));
+            auto mem = lj_mem_newgco(L, total_size);
+            auto arr = new (mem) GCarray(Data, AET::_CSTRING, sizeof(CSTRING), Length, Flags, sdef);
+
+            // Calculate total string content size
+            size_t content_size = 0;
+            if (Type IS AET::_CSTRING) {
+               auto strings = (CSTRING *)Data;
+               for (uint32_t i = 0; i < Length; i++) {
+                  if (strings[i]) content_size += strlen(strings[i]) + 1;
+                  else content_size += 1; // For null string, store empty string
+               }
+            }
+            else { // AET::_STRING_CPP
+               auto strings = (std::string *)Data;
+               for (uint32_t i = 0; i < Length; i++) {
+                  content_size += strings[i].size() + 1;
+               }
+            }
+
+            // Allocate and populate the string cache
+            arr->strcache = new std::vector<char>(content_size);
+            auto cache_ptr = arr->strcache->data();
+            auto ptr_array = arr->data.get<CSTRING>();
+
+            if (Type IS AET::_CSTRING) {
+               auto strings = (CSTRING *)Data;
+               for (uint32_t i = 0; i < Length; i++) {
+                  ptr_array[i] = cache_ptr;
+                  if (strings[i]) {
+                     size_t slen = strlen(strings[i]);
+                     std::memcpy(cache_ptr, strings[i], slen + 1);
+                     cache_ptr += slen + 1;
+                  }
+                  else {
+                     *cache_ptr++ = '\0';
+                  }
+               }
+            }
+            else { // AET::_STRING_CPP
+               auto strings = (std::string *)Data;
+               for (uint32_t i = 0; i < Length; i++) {
+                  ptr_array[i] = cache_ptr;
+                  std::memcpy(cache_ptr, strings[i].c_str(), strings[i].size() + 1);
+                  cache_ptr += strings[i].size() + 1;
+               }
+               Type = AET::_CSTRING; // std::string is stored as a CSTRING when cached
+            }
+
+            return arr;
+         }
+         else {
+            // Non-string cached array - simple memcpy in constructor
+            auto total_size = sizearraycolo(Length, elem_size);
+            auto mem = lj_mem_newgco(L, total_size);
+            return new (mem) GCarray(Data, Type, elem_size, Length, Flags, sdef);
+         }
       }
       else {
          // External data (ARRAY_EXTERNAL is implied when Data provided without ARRAY_CACHED)
-         return new (lj_mem_newgco(L, sizeof(GCarray))) GCarray(Data, Type, elem_size, Length, Flags | ARRAY_EXTERNAL);
+         // Safe if the lifetime of the data is attached to the Lua state or exceeds it.
+         return new (lj_mem_newgco(L, sizeof(GCarray))) GCarray(Data, Type, elem_size, Length, Flags | ARRAY_EXTERNAL, sdef);
       }
    }
    else {
@@ -97,9 +161,7 @@ void LJ_FASTCALL lj_array_free(global_State *g, GCarray *Array)
 
 void * lj_array_index_checked(lua_State *L, GCarray *Array, uint32_t Idx)
 {
-   if (Idx >= Array->len) {
-      lj_err_callerv(L, ErrMsg::ARROB, int(Idx), int(Array->len));
-   }
+   if (Idx >= Array->len) lj_err_callerv(L, ErrMsg::ARROB, int(Idx), int(Array->len));
    return lj_array_index(Array, Idx);
 }
 

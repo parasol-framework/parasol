@@ -900,36 +900,6 @@ static bool test_lib_array_len_operator(pf::Log &Log)
    return true;
 }
 
-static bool test_lib_array_tostring(pf::Log &Log)
-{
-   LuaStateHolder Holder;
-   lua_State *L = Holder.get();
-   if (not L) {
-      Log.error("failed to create Lua state");
-      return false;
-   }
-   luaL_openlibs(L);
-
-   // Test tostring via __tostring metamethod
-   const char* code = R"(
-      local arr = array.new(100, "double")
-      local s = tostring(arr)
-      return s is 'array(100, "double")'
-   )";
-
-   if (dostring(L, code) != 0) {
-      Log.error("array tostring test code failed: %s", lua_tostring(L, -1));
-      return false;
-   }
-
-   if (not lua_toboolean(L, -1)) {
-      Log.error("array tostring did not return expected format");
-      return false;
-   }
-
-   return true;
-}
-
 static bool test_lib_array_double_type(pf::Log &Log)
 {
    LuaStateHolder Holder;
@@ -965,393 +935,19 @@ static bool test_lib_array_double_type(pf::Log &Log)
    return true;
 }
 
-static bool test_lib_array_find(pf::Log &Log)
-{
-   LuaStateHolder Holder;
-   lua_State *L = Holder.get();
-   if (not L) {
-      Log.error("failed to create Lua state");
-      return false;
-   }
-   luaL_openlibs(L);
-
-   const char* code = R"(
-      local arr = array.new(10, "int")
-      for i = 0, 9 do arr[i] = i * 10 end
-
-      -- Test basic find
-      local idx = arr:find(50)
-      if idx != 5 then return false, "find(50) should return 5, got " .. tostring(idx) end
-
-      -- Test find not found
-      local nil_idx = arr:find(55)
-      if nil_idx != nil then return false, "find(55) should return nil" end
-
-      -- Test find with start index
-      local idx2 = arr:find(50, 6)
-      if idx2 != nil then return false, "find(50, 6) should return nil" end
-
-      return true
-   )";
-
-   if (dostring(L, code) != 0) {
-      Log.error("array.find test code failed: %s", lua_tostring(L, -1));
-      return false;
-   }
-
-   if (not lua_toboolean(L, -1)) {
-      if (lua_isstring(L, -2)) {
-         Log.error("array.find failed: %s", lua_tostring(L, -2));
-      }
-      else {
-         Log.error("array.find did not work correctly");
-      }
-      return false;
-   }
-
-   return true;
-}
-
-static bool test_lib_array_reverse(pf::Log &Log)
-{
-   LuaStateHolder Holder;
-   lua_State *L = Holder.get();
-   if (not L) {
-      Log.error("failed to create Lua state");
-      return false;
-   }
-   luaL_openlibs(L);
-
-   const char* code = R"(
-      local arr = array.new(5, "int")
-      for i = 0, 4 do arr[i] = i end
-
-      arr:reverse()
-
-      return arr[0] is 4 and arr[1] is 3 and arr[2] is 2 and arr[3] is 1 and arr[4] is 0
-   )";
-
-   if (dostring(L, code) != 0) {
-      Log.error("array.reverse test code failed: %s", lua_tostring(L, -1));
-      return false;
-   }
-
-   if (not lua_toboolean(L, -1)) {
-      Log.error("array.reverse did not work correctly");
-      return false;
-   }
-
-   return true;
-}
-
-static bool test_lib_array_slice(pf::Log &Log)
-{
-   LuaStateHolder Holder;
-   lua_State *L = Holder.get();
-   if (not L) {
-      Log.error("failed to create Lua state");
-      return false;
-   }
-   luaL_openlibs(L);
-
-   const char* code = R"(
-      local arr = array.new(10, "int")
-      for i = 0, 9 do arr[i] = i * 10 end
-
-      -- Test basic slice with range
-      local sliced = arr:slice({2..5})
-      if #sliced != 3 then return false end
-      if sliced[0] != 20 then return false end
-      if sliced[1] != 30 then return false end
-      if sliced[2] != 40 then return false end
-
-      return true
-   )";
-
-   if (dostring(L, code) != 0) {
-      Log.error("array.slice test code failed: %s", lua_tostring(L, -1));
-      return false;
-   }
-
-   if (not lua_toboolean(L, -1)) {
-      Log.error("array.slice did not work correctly");
-      return false;
-   }
-
-   return true;
-}
-
-static bool test_lib_array_sort(pf::Log &Log)
-{
-   LuaStateHolder Holder;
-   lua_State *L = Holder.get();
-   if (not L) {
-      Log.error("failed to create Lua state");
-      return false;
-   }
-   luaL_openlibs(L);
-
-   const char* code = R"(
-      local arr = array.new(5, "int")
-      arr[0] = 30
-      arr[1] = 10
-      arr[2] = 50
-      arr[3] = 20
-      arr[4] = 40
-
-      arr:sort()
-
-      return arr[0] is 10 and arr[1] is 20 and arr[2] is 30 and arr[3] is 40 and arr[4] is 50
-   )";
-
-   if (dostring(L, code) != 0) {
-      Log.error("array.sort test code failed: %s", lua_tostring(L, -1));
-      return false;
-   }
-
-   if (not lua_toboolean(L, -1)) {
-      Log.error("array.sort did not work correctly");
-      return false;
-   }
-
-   return true;
-}
-
-static bool test_lib_array_sort_descending(pf::Log &Log)
-{
-   LuaStateHolder Holder;
-   lua_State *L = Holder.get();
-   if (not L) {
-      Log.error("failed to create Lua state");
-      return false;
-   }
-   luaL_openlibs(L);
-
-   const char* code = R"(
-      local arr = array.new(5, "int")
-      arr[0] = 30
-      arr[1] = 10
-      arr[2] = 50
-      arr[3] = 20
-      arr[4] = 40
-
-      arr:sort(true)
-
-      return arr[0] is 50 and arr[1] is 40 and arr[2] is 30 and arr[3] is 20 and arr[4] is 10
-   )";
-
-   if (dostring(L, code) != 0) {
-      Log.error("array.sort descending test code failed: %s", lua_tostring(L, -1));
-      return false;
-   }
-
-   if (not lua_toboolean(L, -1)) {
-      Log.error("array.sort descending did not work correctly");
-      return false;
-   }
-
-   return true;
-}
-
-static bool test_lib_array_concat(pf::Log &Log)
-{
-   LuaStateHolder Holder;
-   lua_State *L = Holder.get();
-   if (not L) {
-      Log.error("failed to create Lua state");
-      return false;
-   }
-   luaL_openlibs(L);
-
-   const char* code = R"(
-      local arr = array.new(3, "int")
-      arr[0] = 10
-      arr[1] = 20
-      arr[2] = 30
-
-      local result = arr:concat('%d', ', ')
-      return result is '10, 20, 30'
-   )";
-
-   if (dostring(L, code) != 0) {
-      Log.error("array.concat test code failed: %s", lua_tostring(L, -1));
-      return false;
-   }
-
-   if (not lua_toboolean(L, -1)) {
-      Log.error("array.concat did not work correctly");
-      return false;
-   }
-
-   return true;
-}
-
-static bool test_lib_array_readonly(pf::Log &Log)
-{
-   LuaStateHolder Holder;
-   lua_State *L = Holder.get();
-   if (not L) {
-      Log.error("failed to create Lua state");
-      return false;
-   }
-   luaL_openlibs(L);
-
-   const char* code = R"(
-      local arr = array.new(5, "int")
-      -- Normal array should not be read-only
-      return arr:readOnly() is false
-   )";
-
-   if (dostring(L, code) != 0) {
-      Log.error("array.readOnly test code failed: %s", lua_tostring(L, -1));
-      return false;
-   }
-
-   if (not lua_toboolean(L, -1)) {
-      Log.error("array.readOnly did not work correctly");
-      return false;
-   }
-
-   return true;
-}
-
-static bool test_lib_array_type(pf::Log &Log)
-{
-   LuaStateHolder Holder;
-   lua_State *L = Holder.get();
-   if (not L) {
-      Log.error("failed to create Lua state");
-      return false;
-   }
-   luaL_openlibs(L);
-
-   const char* code = R"(
-      local int_arr = array.new(5, "int")
-      local float_arr = array.new(5, "float")
-      local double_arr = array.new(5, "double")
-      local byte_arr = array.new(5, "byte")
-
-      return array.type(int_arr) is "int"
-         and array.type(float_arr) is "float"
-         and array.type(double_arr) is "double"
-         and array.type(byte_arr) is "char"
-   )";
-
-   if (dostring(L, code) != 0) {
-      Log.error("array.type test code failed: %s", lua_tostring(L, -1));
-      return false;
-   }
-
-   if (not lua_toboolean(L, -1)) {
-      Log.error("array.type did not return correct types");
-      return false;
-   }
-
-   return true;
-}
-
-static bool test_lib_array_int64(pf::Log &Log)
-{
-   LuaStateHolder Holder;
-   lua_State *L = Holder.get();
-   if (not L) {
-      Log.error("failed to create Lua state");
-      return false;
-   }
-   luaL_openlibs(L);
-
-   const char* code = R"(
-      local arr = array.new(3, "int64")
-      arr[0] = 1234567890123
-      arr[1] = -9876543210987
-      arr[2] = 0
-
-      return arr[0] is 1234567890123
-         and arr[1] is -9876543210987
-         and arr[2] is 0
-         and array.type(arr) is "int64"
-   )";
-
-   if (dostring(L, code) != 0) {
-      Log.error("array int64 test code failed: %s", lua_tostring(L, -1));
-      return false;
-   }
-
-   if (not lua_toboolean(L, -1)) {
-      Log.error("array int64 did not work correctly");
-      return false;
-   }
-
-   return true;
-}
-
-static bool test_lib_array_int16(pf::Log &Log)
-{
-   LuaStateHolder Holder;
-   lua_State *L = Holder.get();
-   if (not L) {
-      Log.error("failed to create Lua state");
-      return false;
-   }
-   luaL_openlibs(L);
-
-   const char* code = R"(
-      local arr = array.new(3, "int16")
-      arr[0] = 1000
-      arr[1] = -2000
-      arr[2] = 32767
-
-      return arr[0] is 1000
-         and arr[1] is -2000
-         and arr[2] is 32767
-         and array.type(arr) is "int16"
-   )";
-
-   if (dostring(L, code) != 0) {
-      Log.error("array int16 test code failed: %s", lua_tostring(L, -1));
-      return false;
-   }
-
-   if (not lua_toboolean(L, -1)) {
-      Log.error("array int16 did not work correctly");
-      return false;
-   }
-
-   return true;
-}
-
-static bool test_lib_array_from_string(pf::Log &Log)
-{
-   LuaStateHolder Holder;
-   lua_State *L = Holder.get();
-   if (not L) {
-      Log.error("failed to create Lua state");
-      return false;
-   }
-   luaL_openlibs(L);
-
-   const char* code = R"(
-      local arr = array.new("hello")
-
-      return #arr is 5
-         and arr[0] is 104  -- 'h'
-         and arr[1] is 101  -- 'e'
-         and arr[4] is 111  -- 'o'
-         and array.type(arr) is "char"
-   )";
-
-   if (dostring(L, code) != 0) {
-      Log.error("array from string test code failed: %s", lua_tostring(L, -1));
-      return false;
-   }
-
-   if (not lua_toboolean(L, -1)) {
-      Log.error("array from string did not work correctly");
-      return false;
-   }
-
-   return true;
-}
+// NOTE: The following library function tests have been removed as they duplicate
+// coverage in src/fluid/tests/test_array.fluid:
+//   - test_lib_array_find (duplicates ArrayFind, ArrayFindOriginalSyntax)
+//   - test_lib_array_reverse (duplicates ArrayReverse)
+//   - test_lib_array_slice (duplicates ArraySlice)
+//   - test_lib_array_sort (duplicates ArraySortAscending)
+//   - test_lib_array_sort_descending (duplicates ArraySortDescending)
+//   - test_lib_array_concat (duplicates IntegerArrayConcat)
+//   - test_lib_array_readonly (duplicates ArrayReadOnly)
+//   - test_lib_array_type (duplicates ArrayType)
+//   - test_lib_array_int64 (duplicates Int64Array)
+//   - test_lib_array_int16 (duplicates WordArrayConcat)
+//   - test_lib_array_from_string (duplicates ArrayFromString)
 
 //********************************************************************************************************************
 // Test runner
@@ -1361,7 +957,7 @@ static bool test_lib_array_from_string(pf::Log &Log)
 
 void array_unit_tests(int &Passed, int &Total)
 {
-   constexpr std::array<TestCase, 37> Tests = { {
+   constexpr std::array<TestCase, 25> Tests = { {
       // Core Data Structures
       { "array_creation_byte", test_array_creation_byte },
       { "array_creation_int32", test_array_creation_int32 },
@@ -1382,7 +978,7 @@ void array_unit_tests(int &Passed, int &Total)
       { "arr_setidx_double", test_arr_setidx_double },
       { "arr_roundtrip", test_arr_roundtrip },
       { "arr_byte_type", test_arr_byte_type },
-      // Library Functions
+      // Library Functions (basic integration - detailed tests in test_array.fluid)
       { "lib_array_new", test_lib_array_new },
       { "lib_array_index", test_lib_array_index },
       { "lib_array_table", test_lib_array_table },
@@ -1390,20 +986,7 @@ void array_unit_tests(int &Passed, int &Total)
       { "lib_array_string", test_lib_array_string },
       { "lib_array_fill", test_lib_array_fill },
       { "lib_array_len_operator", test_lib_array_len_operator },
-      { "lib_array_tostring", test_lib_array_tostring },
-      { "lib_array_double_type", test_lib_array_double_type },
-      // New library function tests
-      { "lib_array_find", test_lib_array_find },
-      { "lib_array_reverse", test_lib_array_reverse },
-      { "lib_array_slice", test_lib_array_slice },
-      { "lib_array_sort", test_lib_array_sort },
-      { "lib_array_sort_descending", test_lib_array_sort_descending },
-      { "lib_array_concat", test_lib_array_concat },
-      { "lib_array_readonly", test_lib_array_readonly },
-      { "lib_array_type", test_lib_array_type },
-      { "lib_array_int64", test_lib_array_int64 },
-      { "lib_array_int16", test_lib_array_int16 },
-      { "lib_array_from_string", test_lib_array_from_string }
+      { "lib_array_double_type", test_lib_array_double_type }
    } };
 
    if (NewObject(CLASSID::FLUID, &glArrayTestScript) != ERR::Okay) return;
