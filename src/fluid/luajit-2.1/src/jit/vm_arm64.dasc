@@ -3517,7 +3517,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  checkarray TMP2, ->vmeta_asetv
     |  // Check read-only flag
     |  ldrb TMP3w, ARRAY:TMP2->flags
-    |  tbnz TMP3w, #0, ->vmeta_asetv	// ARRAY_FLAG_READONLY = 0x01
+    |  tbnz TMP3w, #0, ->vmeta_asetv	// ARRAY_READONLY = 0x01
     |  // Check if key is integer
     |   cmp TISNUMhi, TMP1, lsr #32
     |  bne ->vmeta_asetv
@@ -3540,7 +3540,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  checkarray TMP2, ->vmeta_asetv
     |  // Check read-only flag
     |  ldrb TMP3w, ARRAY:TMP2->flags
-    |  tbnz TMP3w, #0, ->vmeta_asetv	// ARRAY_FLAG_READONLY = 0x01
+    |  tbnz TMP3w, #0, ->vmeta_asetv	// ARRAY_READONLY = 0x01
     |  // Bounds check
     |   ldr TMP3w, ARRAY:TMP2->len
     |  cmp RCw, TMP3w

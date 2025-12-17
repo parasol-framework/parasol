@@ -82,11 +82,8 @@ using lua_Number = LUA_NUMBER;
 // type for integer functions
 using lua_Integer = LUA_INTEGER;
 
+// state manipulation
 
-
-/*
-** state manipulation
-*/
 extern lua_State *(lua_newstate) (lua_Alloc f, void *ud);
 extern void       (lua_close) (lua_State *L);
 extern lua_State *(lua_newthread) (lua_State *L);
@@ -155,9 +152,8 @@ extern int   (lua_getmetatable) (lua_State *L, int objindex);
 extern void  (lua_getfenv) (lua_State *L, int idx);
 
 
-/*
-** set functions (stack -> Lua)
-*/
+// set functions (stack -> Lua)
+
 extern void  (lua_settable) (lua_State *L, int idx);
 extern void  (lua_setfield) (lua_State *L, int idx, const char *k);
 extern void  (lua_rawset) (lua_State *L, int idx);
@@ -165,19 +161,17 @@ extern void  (lua_rawseti) (lua_State *L, int idx, int n);
 extern int   (lua_setmetatable) (lua_State *L, int objindex);
 extern int   (lua_setfenv) (lua_State *L, int idx);
 
-/*
-** `load' and `call' functions (load and run Lua code)
-*/
-extern void  (lua_call) (lua_State *L, int nargs, int nresults);
-extern int   (lua_pcall) (lua_State *L, int nargs, int nresults, int errfunc);
-extern int   (lua_cpcall) (lua_State *L, lua_CFunction func, void *ud);
-extern int   (lua_load) (lua_State *L, class objFile *, const char *chunkname);
-extern int   (lua_load) (lua_State *L, std::string_view, const char *chunkname);
-extern int (lua_dump) (lua_State *L, lua_Writer writer, void *data);
+// `load' and `call' functions (load and run Lua code)
 
-/*
-** coroutine functions
-*/
+extern void lua_call(lua_State *L, int nargs, int nresults);
+extern int  lua_pcall(lua_State *L, int nargs, int nresults, int errfunc);
+extern int  lua_cpcall(lua_State *L, lua_CFunction func, void *ud);
+extern int  lua_load(lua_State *L, class objFile *, const char *chunkname);
+extern int  lua_load(lua_State *L, std::string_view, const char *chunkname);
+extern int  lua_dump(lua_State *L, lua_Writer writer, void *data);
+
+// coroutine functions
+
 extern int  (lua_yield) (lua_State *L, int nresults);
 extern int  (lua_resume) (lua_State *L, int narg);
 extern int  (lua_status) (lua_State *L);
@@ -284,15 +278,11 @@ extern int lua_sethook (lua_State *L, lua_Hook func, int mask, int count);
 extern lua_Hook lua_gethook (lua_State *L);
 extern int lua_gethookmask (lua_State *L);
 extern int lua_gethookcount (lua_State *L);
-
-// From Lua 5.2.
 extern void *lua_upvalueid (lua_State *L, int idx, int n);
 extern void lua_upvaluejoin (lua_State *L, int idx1, int n1, int idx2, int n2);
 extern void lua_copy (lua_State *L, int fromidx, int toidx);
 extern lua_Number lua_tonumberx (lua_State *L, int idx, int *isnum);
 extern lua_Integer lua_tointegerx (lua_State *L, int idx, int *isnum);
-
-// From Lua 5.3.
 extern int lua_isyieldable (lua_State *L);
 
 struct lua_Debug {

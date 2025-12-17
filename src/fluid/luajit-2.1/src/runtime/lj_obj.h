@@ -14,10 +14,8 @@
 #define IS ==
 #endif
 
-// -- Forward declarations ------------------------------------------------
-// These forward declarations establish the core type hierarchy of the VM.
-
 // GC object types
+
 union GCobj;
 struct GCstr;
 struct GCudata;
@@ -33,19 +31,21 @@ struct GChead;
 struct Node;
 
 // State objects
+
 struct lua_State;
 struct global_State;
 struct GCState;
 struct StrInternState;
 
 // Value types
+
 union TValue;
-// Note: FrameLink is defined inline as it's a simple union used only in TValue
 struct MRef;
 struct GCRef;
 struct SBuf;
 
 // External classes
+
 class ParserDiagnostics;
 class objScript;
 
@@ -54,26 +54,27 @@ class objScript;
 using MSize = uint32_t;
 using GCSize = uint64_t;
 
+//********************************************************************************************************************
 // Memory reference
 
 struct MRef {
-   uint64_t ptr64;
-
-   template<typename T> [[nodiscard]] constexpr inline T * get() const noexcept { return (T *)(void *)ptr64; }
-   template<typename T> constexpr inline void set_fn(T *p) noexcept { ptr64 = uint64_t((void *)p); }
-   constexpr inline void set(std::nullptr_t) noexcept { ptr64 = 0; } // Overload for nullptr
-   constexpr inline void set(uint64_t u) noexcept { ptr64 = u; }
-   constexpr inline void set(MRef v) noexcept { ptr64 = v.ptr64; }
+   uint64_t ptr;
+public:
+   template<typename T = void> [[nodiscard]] constexpr inline T * get() const noexcept { return (T *)(void *)ptr; }
+   template<typename T> constexpr inline void set_fn(T *p) noexcept { ptr = uint64_t((void *)p); }
+   constexpr inline void set(std::nullptr_t) noexcept { ptr = 0; } // Overload for nullptr
+   constexpr inline void set(uint64_t u) noexcept { ptr = u; }
+   constexpr inline void set(MRef v) noexcept { ptr = v.ptr; }
 };
 
 // MRef accessor functions
 
 template<typename T> [[nodiscard]] constexpr inline T * mref(const MRef &r) noexcept { return r.get<T>(); }
-[[nodiscard]] constexpr inline uint64_t mrefu(MRef r) noexcept { return r.ptr64; }
+[[nodiscard]] constexpr inline uint64_t mrefu(const MRef &r) noexcept { return r.ptr; }
 template<typename T> constexpr inline void setmref(MRef &r, T *p) noexcept { r.set_fn(p); }
-constexpr inline void setmref(MRef &r, std::nullptr_t) noexcept { r.ptr64 = 0; } // Overload for nullptr
-constexpr inline void setmrefu(MRef &r, uint64_t u) noexcept { r.ptr64 = u; }
-constexpr inline void setmrefr(MRef &r, MRef v) noexcept { r.ptr64 = v.ptr64; }
+constexpr inline void setmref(MRef &r, std::nullptr_t) noexcept { r.set(nullptr); } // Overload for nullptr
+constexpr inline void setmrefu(MRef &r, uint64_t u) noexcept { r.set(u); }
+constexpr inline void setmrefr(MRef &r, MRef v) noexcept { r.set(v); }
 
 //********************************************************************************************************************
 // GC object references
@@ -362,35 +363,12 @@ typedef struct GCcdataVar {
    MSize len;         //  Size of payload.
 } GCcdataVar;
 
-[[nodiscard]] inline void* cdataptr(GCcdata* cd) noexcept
-{
-   return (void*)(cd + 1);
-}
-
-[[nodiscard]] inline bool cdataisv(const GCcdata* cd) noexcept
-{
-   return (cd->marked & 0x80) != 0;
-}
-
-[[nodiscard]] inline GCcdataVar* cdatav(GCcdata* cd) noexcept
-{
-   return (GCcdataVar*)((char*)cd - sizeof(GCcdataVar));
-}
-
-[[nodiscard]] inline MSize cdatavlen(GCcdata* cd) noexcept
-{
-   return check_exp(cdataisv(cd), cdatav(cd)->len);
-}
-
-[[nodiscard]] inline MSize sizecdatav(GCcdata* cd) noexcept
-{
-   return cdatavlen(cd) + cdatav(cd)->extra;
-}
-
-[[nodiscard]] inline void* memcdatav(GCcdata* cd) noexcept
-{
-   return (void*)((char*)cd - cdatav(cd)->offset);
-}
+[[nodiscard]] inline void* cdataptr(GCcdata* cd) noexcept { return (void*)(cd + 1); }
+[[nodiscard]] inline bool cdataisv(const GCcdata* cd) noexcept { return (cd->marked & 0x80) != 0; }
+[[nodiscard]] inline GCcdataVar* cdatav(GCcdata* cd) noexcept { return (GCcdataVar*)((char*)cd - sizeof(GCcdataVar)); }
+[[nodiscard]] inline MSize cdatavlen(GCcdata* cd) noexcept { return check_exp(cdataisv(cd), cdatav(cd)->len); }
+[[nodiscard]] inline MSize sizecdatav(GCcdata* cd) noexcept { return cdatavlen(cd) + cdatav(cd)->extra; }
+[[nodiscard]] inline void* memcdatav(GCcdata* cd) noexcept { return (void*)((char*)cd - cdatav(cd)->offset); }
 
 // Prototype object
 
@@ -483,31 +461,30 @@ inline const char* proto_chunknamestr(const GCproto* pt) noexcept;
    return mref<const uint8_t>(pt->varinfo);
 }
 
-// -- Upvalue object ------------------------------------------------------
+//********************************************************************************************************************
+// Upvalue object
 
 typedef struct GCupval {
    GCHeader;
-   uint8_t closed;   //  Set if closed (i.e. uv->v == &uv->u.value).
-   uint8_t immutable;   //  Immutable value.
+   uint8_t closed;      // Set if closed (i.e. uv->v == &uv->u.value).
+   uint8_t immutable;   // Immutable value.
    union {
-      TValue tv;      //  If closed: the value itself.
-      struct {  // If open: double linked list, anchored at thread.
+      TValue tv;        // If closed: the value itself.
+      struct {          // If open: double linked list, anchored at thread.
          GCRef prev;
          GCRef next;
       };
    };
-   MRef v;      //  Points to stack slot (open) or above (closed).
-   uint32_t dhash;   //  Disambiguation hash: dh1 != dh2 => cannot alias.
+   MRef v;           // Points to stack slot (open) or above (closed).
+   uint32_t dhash;   // Disambiguation hash: dh1 != dh2 => cannot alias.
 } GCupval;
 
 // Forward declarations - defined after GCobj is complete
 
-inline GCupval* uvprev(GCupval* uv) noexcept;
-inline GCupval* uvnext(GCupval* uv) noexcept;
+inline GCupval * uvprev(GCupval *uv) noexcept;
+inline GCupval * uvnext(GCupval *uv) noexcept;
 
-[[nodiscard]] inline TValue* uvval(GCupval* uv) noexcept {
-   return mref<TValue>(uv->v);
-}
+[[nodiscard]] inline TValue * uvval(GCupval* uv) noexcept { return mref<TValue>(uv->v); }
 
 // Function object (closures)
 
@@ -535,33 +512,19 @@ typedef union GCfunc {
 inline constexpr uint8_t FF_LUA = 0;
 inline constexpr uint8_t FF_C   = 1;
 
-[[nodiscard]] inline bool isluafunc(const GCfunc* fn) noexcept
-{
-   return fn->c.ffid IS FF_LUA;
-}
+[[nodiscard]] inline bool isluafunc(const GCfunc* fn) noexcept { return fn->c.ffid IS FF_LUA; }
+[[nodiscard]] inline bool iscfunc(const GCfunc* fn) noexcept { return fn->c.ffid IS FF_C; }
+[[nodiscard]] inline bool isffunc(const GCfunc* fn) noexcept { return fn->c.ffid > FF_C; }
 
-[[nodiscard]] inline bool iscfunc(const GCfunc* fn) noexcept
-{
-   return fn->c.ffid IS FF_C;
-}
-
-[[nodiscard]] inline bool isffunc(const GCfunc* fn) noexcept
-{
-   return fn->c.ffid > FF_C;
-}
-
-[[nodiscard]] inline GCproto* funcproto(const GCfunc* fn) noexcept
-{
+[[nodiscard]] inline GCproto* funcproto(const GCfunc* fn) noexcept {
    return check_exp(isluafunc(fn), (GCproto*)(mref<char>(fn->l.pc) - sizeof(GCproto)));
 }
 
-[[nodiscard]] constexpr inline size_t sizeCfunc(MSize n) noexcept
-{
+[[nodiscard]] constexpr inline size_t sizeCfunc(MSize n) noexcept {
    return sizeof(GCfuncC) - sizeof(TValue) + sizeof(TValue) * n;
 }
 
-[[nodiscard]] constexpr inline size_t sizeLfunc(MSize n) noexcept
-{
+[[nodiscard]] constexpr inline size_t sizeLfunc(MSize n) noexcept {
    return sizeof(GCfuncL) - sizeof(GCRef) + sizeof(GCRef) * n;
 }
 
@@ -579,70 +542,56 @@ static_assert(offsetof(Node, val) == 0);
 
 typedef struct GCtab {
    GCHeader;
-   uint8_t nomm;      //  Negative cache for fast metamethods.
-   int8_t colo;       //  Array colocation.
-   MRef array;        //  Array part.
-   GCRef gclist;
-   GCRef metatable;   //  Must be at same offset in GCudata.
-   MRef node;         //  Hash part.
-   uint32_t asize;    //  Size of array part (keys [0, asize-1]).
-   uint32_t hmask;    //  Hash part mask (size of hash part - 1).
-   MRef freetop;      //  Top of free elements.
+   uint8_t  nomm;      // Negative cache for fast metamethods.
+   int8_t   colo;      // Array colocation.
+   MRef     array;     // Array part.
+   GCRef    gclist;
+   GCRef    metatable; // Must be at same offset in GCudata.
+   MRef     node;      // Hash part.
+   uint32_t asize;     // Size of array part (keys [0, asize-1]).
+   uint32_t hmask;     // Hash part mask (size of hash part - 1).
+   MRef     freetop;   // Top of free elements.
 } GCtab;
 
-[[nodiscard]] constexpr inline size_t sizetabcolo(MSize n) noexcept
-{
-   return n * sizeof(TValue) + sizeof(GCtab);
-}
+[[nodiscard]] constexpr inline size_t sizetabcolo(MSize n) noexcept { return n * sizeof(TValue) + sizeof(GCtab); }
 
 // Forward declaration - defined after GCobj is complete
 inline GCtab* tabref(GCRef r) noexcept;
 
-[[nodiscard]] constexpr inline Node* noderef(MRef r) noexcept
-{
-   return mref<Node>(r);
-}
-
-[[nodiscard]] inline Node* nextnode(Node* n) noexcept
-{
-   return mref<Node>(n->next);
-}
-
-[[nodiscard]] inline Node* getfreetop(const GCtab* t, Node*) noexcept
-{
-   return noderef(t->freetop);
-}
-
-inline void setfreetop(GCtab* t, Node*, Node* v) noexcept
-{
-   setmref(t->freetop, v);
-}
+[[nodiscard]] constexpr inline Node* noderef(MRef r) noexcept { return mref<Node>(r); }
+[[nodiscard]] inline Node* nextnode(Node *n) noexcept { return mref<Node>(n->next); }
+[[nodiscard]] inline Node* getfreetop(const GCtab *t, Node *) noexcept { return noderef(t->freetop); }
+inline void setfreetop(GCtab *t, Node *, Node *v) noexcept { setmref(t->freetop, v); }
 
 // Array element type constants
 
 enum AET : uint8_t {
-   _BYTE    = 0,   // byte
-   _INT16   = 1,   // int16_t
-   _INT32   = 2,   // int32_t
-   _INT64   = 3,   // int64_t
-   _FLOAT   = 4,   // float
-   _DOUBLE  = 5,   // double
-   _PTR     = 6,   // void*
-   _STRING  = 7,   // GCstr* (pointer to interned string)
-   _STRUCT  = 8,   // Structured data (uses structdef)
-   _MAX
+   // Primitive types first
+   _BYTE = 0,   // byte
+   _INT16,      // int16_t
+   _INT32,      // int32_t
+   _INT64,      // int64_t
+   _FLOAT,      // float
+   _DOUBLE,     // double
+   // Vulnerable types follow (anything involving or could involve a pointer)
+   _PTR,        // void*
+   _CSTRING,    // const char *
+   _STRING_CPP, // std::string (C++ string)
+   _STRING_GC,  // GCstr * (interned string)
+   _STRUCT,     // Structured data (uses structdef)
+   _MAX,
+   _VULNERABLE = _PTR
 };
 
 // Array flags
-inline constexpr uint8_t ARRAY_FLAG_READONLY  = 0x01;  // Cannot modify elements
-inline constexpr uint8_t ARRAY_FLAG_EXTERNAL  = 0x02;  // Data not owned by array
-inline constexpr uint8_t ARRAY_FLAG_COLOCATED = 0x04;  // Data follows GCarray header
-
-// Forward declaration for GCarray
-struct GCarray;
+inline constexpr uint8_t ARRAY_READONLY  = 0x01;  // Cannot modify elements
+inline constexpr uint8_t ARRAY_EXTERNAL  = 0x02;  // Data not owned by array
+inline constexpr uint8_t ARRAY_COLOCATED = 0x04;  // Data stored locally
+inline constexpr uint8_t ARRAY_CACHED    = 0x04;  // Cache the provided data on creation
 
 // Native typed array object. Fixed-size, homogeneous element storage.
-typedef struct GCarray {
+
+struct GCarray {
    GCHeader;
    AET   elemtype;        // Element type (ArrayElemType constants)
    uint8_t flags;           // Array flags (read-only, struct-backed, etc.)
@@ -664,9 +613,9 @@ typedef struct GCarray {
    }
 
    [[nodiscard]] inline bool array_is_readonly() noexcept {
-      return (flags & ARRAY_FLAG_READONLY) != 0;
+      return (flags & ARRAY_READONLY) != 0;
    }
-} GCarray;
+};
 
 // Ensure metatable field is at the same offset as in GCtab and GCudata
 
@@ -697,9 +646,8 @@ enum {
 
 #define setvmstate(g, st)   ((g)->vmstate = ~LJ_VMST_##st)
 
-// Metamethods. ORDER MM
-// CRITICAL: Metamethod order determines enum values hardcoded in lj_vm.obj.
-// New metamethods must be added at the END to avoid shifting indices.
+// Metamethod order determines enum values hardcoded in lj_vm.obj.
+// New metamethods must be added at the end to avoid shifting indices.
 // Inserting in the middle breaks all metamethod dispatch until lj_vm.obj is rebuilt.
 
 #ifdef LJ_HASFFI
@@ -746,9 +694,10 @@ typedef enum : uint32_t {
 } GCRootID;
 
 // GC root accessors - must remain as macros due to header ordering
-#define basemt_it(g, it)    ((g)->gcroot[GCROOT_BASEMT+~(it)])
-#define basemt_obj(g, o)    ((g)->gcroot[GCROOT_BASEMT+itypemap(o)])
-#define mmname_str(g, mm)   (strref((g)->gcroot[GCROOT_MMNAME+int(mm)]))
+
+#define basemt_it(g, it)    ((g)->gcroot[GCROOT_BASEMT + ~(it)])
+#define basemt_obj(g, o)    ((g)->gcroot[GCROOT_BASEMT + itypemap(o)])
+#define mmname_str(g, mm)   (strref((g)->gcroot[GCROOT_MMNAME + int(mm)]))
 
 // Garbage collector states. Order matters.
 // Using enum class for type safety; values must match GCState.state field usage.
@@ -764,24 +713,24 @@ enum class GCPhase : uint8_t {
 
 // Garbage collector state.
 typedef struct GCState {
-   GCSize total;         // Memory currently allocated.
-   GCSize threshold;     // Memory threshold.
+   GCSize  total;        // Memory currently allocated.
+   GCSize  threshold;    // Memory threshold.
    uint8_t currentwhite; // Current white color.
    GCPhase state;        // GC state.
    uint8_t nocdatafin;   // No cdata finalizer called.
    uint8_t lightudnum;   //  Number of lightuserdata segments - 1 (64-bit only).
-   MSize sweepstr;       // Sweep position in string table.
-   GCRef root;           // List of all collectable objects.
-   MRef sweep;           // Sweep position in root list.
-   GCRef gray;           // List of gray objects.
-   GCRef grayagain;      // List of objects for atomic traversal.
-   GCRef weak;           // List of weak tables (to be cleared).
-   GCRef mmudata;        // List of userdata (to be finalized).
-   GCSize debt;          // Debt (how much GC is behind schedule).
-   GCSize estimate;      // Estimate of memory actually in use.
-   MSize stepmul;        // Incremental GC step granularity.
-   MSize pause;          // Pause between successive GC cycles.
-   MRef lightudseg;      //  Upper bits of lightuserdata segments (64-bit).
+   MSize   sweepstr;     // Sweep position in string table.
+   GCRef   root;         // List of all collectable objects.
+   MRef    sweep;        // Sweep position in root list.
+   GCRef   gray;         // List of gray objects.
+   GCRef   grayagain;    // List of objects for atomic traversal.
+   GCRef   weak;         // List of weak tables (to be cleared).
+   GCRef   mmudata;      // List of userdata (to be finalized).
+   GCSize  debt;         // Debt (how much GC is behind schedule).
+   GCSize  estimate;     // Estimate of memory actually in use.
+   MSize   stepmul;      // Incremental GC step granularity.
+   MSize   pause;        // Pause between successive GC cycles.
+   MRef    lightudseg;   //  Upper bits of lightuserdata segments (64-bit).
 } GCState;
 
 // String interning state.
@@ -827,17 +776,19 @@ typedef struct global_State {
 } global_State;
 
 // Forward declarations - defined after GCobj is complete
+
 inline lua_State* mainthread(global_State* g) noexcept;
 inline TValue* niltv(lua_State* L) noexcept;
 [[nodiscard]] constexpr inline bool tvisnil(cTValue* o) noexcept;  // Defined in TValue section
 
 // niltvg doesn't depend on GCobj, can be defined here
-[[nodiscard]] inline TValue* niltvg(global_State* g) noexcept
-{
+
+[[nodiscard]] inline TValue* niltvg(global_State* g) noexcept {
    return check_exp(tvisnil(&g->nilnode.val), &g->nilnode.val);
 }
 
 // Hook management. Hook event masks are defined in lua.h.
+
 inline constexpr uint8_t HOOK_EVENTMASK    = 0x0f;
 inline constexpr uint8_t HOOK_ACTIVE       = 0x10;
 inline constexpr int HOOK_ACTIVE_SHIFT     = 4;
@@ -845,38 +796,31 @@ inline constexpr uint8_t HOOK_VMEVENT      = 0x20;
 inline constexpr uint8_t HOOK_GC           = 0x40;
 inline constexpr uint8_t HOOK_PROFILE      = 0x80;
 
-[[nodiscard]] inline bool hook_active(const global_State* g) noexcept
-{
+[[nodiscard]] inline bool hook_active(const global_State* g) noexcept {
    return (g->hookmask & HOOK_ACTIVE) != 0;
 }
 
-inline void hook_enter(global_State* g) noexcept
-{
+inline void hook_enter(global_State* g) noexcept {
    g->hookmask |= HOOK_ACTIVE;
 }
 
-inline void hook_entergc(global_State* g) noexcept
-{
+inline void hook_entergc(global_State* g) noexcept {
    g->hookmask = (g->hookmask | (HOOK_ACTIVE | HOOK_GC)) & ~HOOK_PROFILE;
 }
 
-inline void hook_vmevent(global_State* g) noexcept
-{
+inline void hook_vmevent(global_State* g) noexcept {
    g->hookmask |= (HOOK_ACTIVE | HOOK_VMEVENT);
 }
 
-inline void hook_leave(global_State* g) noexcept
-{
+inline void hook_leave(global_State* g) noexcept {
    g->hookmask &= ~HOOK_ACTIVE;
 }
 
-[[nodiscard]] inline uint8_t hook_save(const global_State* g) noexcept
-{
+[[nodiscard]] inline uint8_t hook_save(const global_State* g) noexcept {
    return g->hookmask & ~HOOK_EVENTMASK;
 }
 
-inline void hook_restore(global_State* g, uint8_t h) noexcept
-{
+inline void hook_restore(global_State* g, uint8_t h) noexcept {
    g->hookmask = (g->hookmask & HOOK_EVENTMASK) | h;
 }
 
@@ -912,15 +856,8 @@ struct lua_State {
 */
 };
 
-[[nodiscard]] inline global_State * G(lua_State* L) noexcept
-{
-   return mref<global_State>(L->glref);
-}
-
-[[nodiscard]] inline TValue * registry(lua_State* L) noexcept
-{
-   return &G(L)->registrytv;
-}
+[[nodiscard]] inline global_State * G(lua_State *L) noexcept { return mref<global_State>(L->glref); }
+[[nodiscard]] inline TValue * registry(lua_State *L) noexcept { return &G(L)->registrytv; }
 
 // Forward declarations - defined after GCobj is complete
 // Functions to access the currently executing (Lua) function.
@@ -963,68 +900,60 @@ static_assert(offsetof(GChead, gclist) == offsetof(GCfuncL, gclist));
 static_assert(offsetof(GChead, gclist) == offsetof(GCtab, gclist));
 
 typedef union GCobj {
-   GChead gch;
-   GCstr str;
-   GCupval uv;
+   GChead    gch;
+   GCstr     str;
+   GCupval   uv;
    lua_State th;
-   GCproto pt;
-   GCfunc fn;
-   GCcdata cd;
-   GCtab tab;
-   GCarray arr;
-   GCudata ud;
+   GCproto   pt;
+   GCfunc    fn;
+   GCcdata   cd;
+   GCtab     tab;
+   GCarray   arr;
+   GCudata   ud;
 } GCobj;
 
 // Functions to convert a GCobj pointer into a specific value.
-[[nodiscard]] inline GCstr* gco2str(GCobj* o) noexcept
-{
+
+[[nodiscard]] inline GCstr * gco2str(GCobj* o) noexcept {
    return check_exp(o->gch.gct IS ~LJ_TSTR, &o->str);
 }
 
-[[nodiscard]] inline GCupval* gco2uv(GCobj* o) noexcept
+[[nodiscard]] inline GCupval * gco2uv(GCobj* o) noexcept
 {
    return check_exp(o->gch.gct IS ~LJ_TUPVAL, &o->uv);
 }
 
-[[nodiscard]] inline lua_State* gco2th(GCobj* o) noexcept
-{
+[[nodiscard]] inline lua_State * gco2th(GCobj* o) noexcept {
    return check_exp(o->gch.gct IS ~LJ_TTHREAD, &o->th);
 }
 
-[[nodiscard]] inline GCproto* gco2pt(GCobj* o) noexcept
-{
+[[nodiscard]] inline GCproto * gco2pt(GCobj* o) noexcept {
    return check_exp(o->gch.gct IS ~LJ_TPROTO, &o->pt);
 }
 
-[[nodiscard]] inline GCfunc* gco2func(GCobj* o) noexcept
-{
+[[nodiscard]] inline GCfunc * gco2func(GCobj* o) noexcept {
    return check_exp(o->gch.gct IS ~LJ_TFUNC, &o->fn);
 }
 
-[[nodiscard]] inline GCcdata* gco2cd(GCobj* o) noexcept
-{
+[[nodiscard]] inline GCcdata * gco2cd(GCobj* o) noexcept {
    return check_exp(o->gch.gct IS ~LJ_TCDATA, &o->cd);
 }
 
-[[nodiscard]] inline GCtab* gco2tab(GCobj* o) noexcept
-{
+[[nodiscard]] inline GCtab * gco2tab(GCobj* o) noexcept {
    return check_exp(o->gch.gct IS ~LJ_TTAB, &o->tab);
 }
 
-[[nodiscard]] inline GCudata* gco2ud(GCobj* o) noexcept
-{
+[[nodiscard]] inline GCudata * gco2ud(GCobj* o) noexcept {
    return check_exp(o->gch.gct IS ~LJ_TUDATA, &o->ud);
 }
 
-[[nodiscard]] inline GCarray* gco2arr(GCobj* o) noexcept
-{
+[[nodiscard]] inline GCarray * gco2arr(GCobj* o) noexcept {
    return check_exp(o->gch.gct IS ~LJ_TARRAY, &o->arr);
 }
 
 // Convert any collectable object into a GCobj pointer.
 template<typename T>
-[[nodiscard]] inline GCobj* obj2gco(T* v) noexcept
-{
+[[nodiscard]] inline GCobj * obj2gco(T *v) noexcept {
    return (GCobj*)v;
 }
 

@@ -5261,7 +5261,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  bne ->vmeta_asetv
     |  // Check read-only flag
     |  lbz TMP0, ARRAY:TMP1->flags
-    |  andix. TMP0, TMP0, ARRAY_FLAG_READONLY
+    |  andix. TMP0, TMP0, ARRAY_READONLY
     |  bne ->vmeta_asetv
     |  // Check if key is integer
     |  checknum TMP2
@@ -5289,7 +5289,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  bne ->vmeta_asetv
     |  // Check read-only flag
     |  lbz TMP0, ARRAY:TMP1->flags
-    |  andix. TMP0, TMP0, ARRAY_FLAG_READONLY
+    |  andix. TMP0, TMP0, ARRAY_READONLY
     |  bne ->vmeta_asetv
     |  // Bounds check
     |  lwz TMP0, ARRAY:TMP1->len

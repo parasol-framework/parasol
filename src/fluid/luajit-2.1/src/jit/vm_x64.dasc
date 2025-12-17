@@ -4214,7 +4214,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  checkarray ARRAY:RB, ->vmeta_asetv
     |
     |  // Check read-only flag
-    |  test byte ARRAY:RB->flags, ARRAY_FLAG_READONLY
+    |  test byte ARRAY:RB->flags, ARRAY_READONLY
     |  jnz ->vmeta_asetv		// Read-only? Use fallback (will error).
     |
     |  // Integer key? (0-based indexing)
@@ -4247,7 +4247,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  checkarray ARRAY:RB, ->vmeta_asetv
     |
     |  // Check read-only flag
-    |  test byte ARRAY:RB->flags, ARRAY_FLAG_READONLY
+    |  test byte ARRAY:RB->flags, ARRAY_READONLY
     |  jnz ->vmeta_asetv		// Read-only? Use fallback (will error).
     |
     |  cmp RCd, ARRAY:RB->len		// Bounds check.

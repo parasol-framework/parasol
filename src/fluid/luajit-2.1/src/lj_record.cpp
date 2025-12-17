@@ -2336,14 +2336,13 @@ static TRef rec_array_op(jit_State *J, RecordOps *ops)
    int is_get = (op IS BC_AGETV or op IS BC_AGETB);
    int is_const_idx = (op IS BC_AGETB or op IS BC_ASETB);
 
-   // Type guard: ensure operand is an array
-   if (not tref_isarray(arr)) {
-      // Not an array type - abort trace
+   if (not tref_isarray(arr)) { // Not an array type - abort trace
       lj_trace_err(J, LJ_TRERR_BADTYPE);
       return 0;
    }
 
    // Handle index conversion
+
    TRef idx0;  // 0-based index
    if (is_const_idx) {
       // For AGETB/ASETB, the index is already a 0-based constant literal in bc_c()

@@ -47,7 +47,7 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type)
    auto arr = (GCarray *)lj_mem_newgco(L, total_size);
    arr->gct      = ~LJ_TARRAY;
    arr->elemtype = Type;
-   arr->flags    = ARRAY_FLAG_COLOCATED;
+   arr->flags    = ARRAY_COLOCATED;
    arr->len      = Length;
    arr->capacity = Length;
    arr->elemsize = elemsize;
@@ -72,7 +72,7 @@ extern GCarray * lj_array_new_external(lua_State *L, void *Data, uint32_t Length
    auto arr = (GCarray *)lj_mem_newgco(L, sizeof(GCarray));
    arr->gct      = ~LJ_TARRAY;
    arr->elemtype = Type;
-   arr->flags    = Flags | ARRAY_FLAG_EXTERNAL;
+   arr->flags    = Flags | ARRAY_EXTERNAL;
    arr->len      = Length;
    arr->capacity = Length;
    arr->elemsize = lj_array_elemsize(Type);
@@ -89,7 +89,7 @@ extern GCarray * lj_array_new_external(lua_State *L, void *Data, uint32_t Length
 void LJ_FASTCALL lj_array_free(global_State *g, GCarray *Array)
 {
    MSize size;
-   if (Array->flags & ARRAY_FLAG_COLOCATED) {
+   if (Array->flags & ARRAY_COLOCATED) {
       size = sizearraycolo(Array->capacity, Array->elemsize);
    }
    else {
@@ -124,7 +124,7 @@ void lj_array_copy(lua_State *L, GCarray *Dest, uint32_t DstIdx, GCarray *Src, u
 {
    // Safety checks - unsigned types can't be negative so just check bounds
    if (SrcIdx + Count > Src->len or DstIdx + Count > Dest->len) lj_err_caller(L, ErrMsg::IDXRNG);
-   if (Dest->flags & ARRAY_FLAG_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
+   if (Dest->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
    if (Dest->elemtype != Src->elemtype) lj_err_caller(L, ErrMsg::ARRTYPE);
 
    void *dst_ptr = lj_array_index(Dest, DstIdx);

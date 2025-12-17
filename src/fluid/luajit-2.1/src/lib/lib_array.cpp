@@ -50,7 +50,7 @@ static AET parse_elemtype(lua_State *L, int NArg)
       case HASH_INT64:   return AET::_INT64;
       case HASH_FLOAT:   return AET::_FLOAT;
       case HASH_DOUBLE:  return AET::_DOUBLE;
-      case HASH_STRING:  return AET::_STRING;
+      case HASH_STRING:  return AET::_STRING_GC;
       case HASH_STRUCT:  return AET::_STRUCT;
       case HASH_POINTER: return AET::_PTR;
    }
@@ -65,15 +65,17 @@ static AET parse_elemtype(lua_State *L, int NArg)
 static CSTRING elemtype_name(AET Type)
 {
    switch (Type) {
-      case AET::_BYTE:   return "char";
-      case AET::_INT16:  return "int16";
-      case AET::_INT32:  return "int";
-      case AET::_INT64:  return "int64";
-      case AET::_FLOAT:  return "float";
-      case AET::_DOUBLE: return "double";
-      case AET::_PTR:    return "pointer";
-      case AET::_STRING: return "string";
-      case AET::_STRUCT: return "struct";
+      case AET::_BYTE:       return "char";
+      case AET::_INT16:      return "int16";
+      case AET::_INT32:      return "int";
+      case AET::_INT64:      return "int64";
+      case AET::_FLOAT:      return "float";
+      case AET::_DOUBLE:     return "double";
+      case AET::_PTR:        return "pointer";
+      case AET::_CSTRING:    return "string";
+      case AET::_STRING_GC:  return "string";
+      case AET::_STRING_CPP: return "string";
+      case AET::_STRUCT:     return "struct";
       default: return "unknown";
    }
 }
@@ -218,7 +220,7 @@ LJLIB_CF(array_concat)
       if (i > 0) result += join_str;
 
       switch(arr->elemtype) {
-         case AET::_STRING:
+         case AET::_STRING_GC:
             snprintf(buffer, sizeof(buffer), format, arr->data.get<CSTRING>()[i]);
             break;
          case AET::_PTR:
@@ -276,7 +278,7 @@ LJLIB_CF(array_copy)
 {
    GCarray *dest = lj_lib_checkarray(L, 1);
 
-   if (dest->flags & ARRAY_FLAG_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
+   if (dest->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
 
    size_t strlen;
    auto type = lua_type(L, 2);
@@ -370,7 +372,7 @@ LJLIB_CF(array_copy)
          // Convert and store based on array type
 
          switch(dest->elemtype) {
-            case AET::_STRING:
+            case AET::_STRING_GC:
                if (lua_tostring(L, -1)) {
                   luaL_error(L, "Writing to string arrays from tables is not yet supported.");
                   lua_pop(L, 1);
@@ -468,7 +470,7 @@ LJLIB_CF(array_setString)
    GCstr *str = lj_lib_checkstr(L, 2);
 
    if (arr->elemtype != AET::_BYTE) lj_err_caller(L, ErrMsg::ARRSTR);
-   if (arr->flags & ARRAY_FLAG_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
+   if (arr->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
 
    auto start = lj_lib_optint(L, 3, 0);
    if (start < 0) lj_err_caller(L, ErrMsg::IDXRNG);
@@ -528,7 +530,7 @@ LJLIB_CF(array_type)
 LJLIB_CF(array_readOnly)
 {
    GCarray *arr = lj_lib_checkarray(L, 1);
-   setboolV(L->top++, (arr->flags & ARRAY_FLAG_READONLY) != 0);
+   setboolV(L->top++, (arr->flags & ARRAY_READONLY) != 0);
    return 1;
 }
 
@@ -584,7 +586,7 @@ LJLIB_CF(array_fill)
    GCarray *arr = lj_lib_checkarray(L, 1);
    lua_Number value = lj_lib_checknum(L, 2);
 
-   if (arr->flags & ARRAY_FLAG_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
+   if (arr->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
 
    // Check if third argument is a range
    fluid_range *r = check_range(L, 3);
@@ -788,7 +790,7 @@ LJLIB_CF(array_reverse)
 {
    GCarray *arr = lj_lib_checkarray(L, 1);
 
-   if (arr->flags & ARRAY_FLAG_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
+   if (arr->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
    if (arr->len < 2) return 0;
 
    auto base = (uint8_t *)mref<void>(arr->data);
@@ -877,7 +879,7 @@ LJLIB_CF(array_sort)
    GCarray *arr = lj_lib_checkarray(L, 1);
    bool descending = lua_toboolean(L, 2);
 
-   if (arr->flags & ARRAY_FLAG_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
+   if (arr->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
    if (arr->len < 2) return 0;
 
    switch (arr->elemtype) {

@@ -95,7 +95,6 @@ inline auto luaL_opt(lua_State *L, F Func, int N, T Default) {
    return lua_isnoneornil(L, N) ? Default : Func(L, N);
 }
 
-// From Lua 5.2.
 template<std::size_t N>
 inline void luaL_newlibtable(lua_State *L, const luaL_Reg (&Lib)[N]) {
    lua_createtable(L, 0, N - 1);

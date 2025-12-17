@@ -355,7 +355,7 @@ static TValue* cpwriter(lua_State* L, lua_CFunction dummy, void* ud)
 {
    BCWriteCtx* ctx = (BCWriteCtx*)ud;
    UNUSED(L); UNUSED(dummy);
-   lj_buf_need(&ctx->sb, 1024);  //  Avoids resize for most prototypes.
+   (void)lj_buf_need(&ctx->sb, 1024);  //  Avoids resize for most prototypes.
    bcwrite_header(ctx);
    bcwrite_proto(ctx, ctx->pt);
    bcwrite_footer(ctx);

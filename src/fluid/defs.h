@@ -17,10 +17,6 @@ constexpr int SIZE_READ = 1024;
 
 #include "lauxlib.h"
 
-#if !defined(LUAJIT_DISABLE_FFI) or !defined(LUAJIT_DISABLE_BUFFER) or !defined(LUAJIT_ENABLE_LUA52COMPAT)
-#error "Expected LUAJIT flags are not defined."
-#endif
-
 using namespace pf;
 
 template <class T> T ALIGN64(T a) { return (((a) + 7) & (~7)); }

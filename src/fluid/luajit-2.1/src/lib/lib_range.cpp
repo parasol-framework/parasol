@@ -44,7 +44,7 @@ static fluid_range * get_range(lua_State *L, int idx)
 // Check if a stack value at the given index is a range userdata (returns nullptr if not).
 // This function is exported via lib_range.h for use by lib_table.cpp.
 
-fluid_range *check_range(lua_State *L, int idx)
+fluid_range * check_range(lua_State *L, int idx)
 {
    if (void *ud = lua_touserdata(L, idx)) {
       if (lua_getmetatable(L, idx)) {

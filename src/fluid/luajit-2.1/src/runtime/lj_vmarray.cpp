@@ -10,9 +10,16 @@
 #include "lj_tab.h"
 #include "lj_meta.h"
 #include "lj_array.h"
+#include "lj_str.h"
 #include "lj_vmarray.h"
 #include "lj_vm.h"
 #include "lj_frame.h"
+
+#include <string>
+
+#ifndef CSTRING
+#define CSTRING const char *
+#endif
 
 //********************************************************************************************************************
 // Helper to convert TValue index to integer, returns -1 if invalid
@@ -29,7 +36,7 @@ static int32_t arr_idx_from_tv(cTValue *K)
 }
 
 //********************************************************************************************************************
-// Helper to load array element into TValue based on element type
+// Helper to retrieve array element into TValue based on element type
 
 static void arr_load_elem(GCarray *Array, uint32_t Idx, TValue *Result)
 {
@@ -46,12 +53,14 @@ static void arr_load_elem(GCarray *Array, uint32_t Idx, TValue *Result)
          // Store raw pointer value as light userdata
          setrawlightudV(Result, *(void**)elem);
          break;
-      case AET::_STRING: {
+
+      case AET::_STRING_GC: {
          GCRef ref = *(GCRef*)elem;
          if (gcref(ref)) setstrV(nullptr, Result, gco2str(gcref(ref)));
          else setnilV(Result);
          break;
       }
+
       default: setnilV(Result); break;
    }
 }
@@ -68,7 +77,7 @@ static void arr_store_elem(lua_State *L, GCarray *Array, uint32_t Idx, cTValue *
    lua_Number num = 0;
    if (tvisint(Val)) num = lua_Number(intV(Val));
    else if (tvisnum(Val)) num = numV(Val);
-   else if (Array->elemtype IS AET::_STRING and tvisstr(Val)) {
+   else if ((Array->elemtype IS AET::_STRING_GC) and tvisstr(Val)) {
       // String storage
       GCstr *str = strV(Val);
       setgcref(*(GCRef*)elem, obj2gco(str));
@@ -76,7 +85,7 @@ static void arr_store_elem(lua_State *L, GCarray *Array, uint32_t Idx, cTValue *
       lj_gc_objbarrier(L, Array, str);
       return;
    }
-   else if (Array->elemtype IS AET::_PTR and tvislightud(Val)) {
+   else if (Array->elemtype IS AET::_PTR and tvislightud(Val)) [[unlikely]] {
       // Extract raw pointer (note: lightudV on 64-bit requires global_State)
       *(void**)elem = (void*)(Val->u64 & LJ_GCVMASK);
       return;
@@ -85,6 +94,8 @@ static void arr_store_elem(lua_State *L, GCarray *Array, uint32_t Idx, cTValue *
       if (tvisnil(Val)) num = 0;
       else lj_err_caller(L, ErrMsg::ARRTYPE);
    }
+
+   // Primitive types
 
    switch (Array->elemtype) {
       case AET::_BYTE:   *(uint8_t*)elem = uint8_t(num); break;
@@ -101,17 +112,16 @@ static void arr_store_elem(lua_State *L, GCarray *Array, uint32_t Idx, cTValue *
 // Helper for AGETV/AGETB. Array get with metamethod support.
 // Returns pointer to result TValue, or nullptr to trigger metamethod call.
 
-extern "C" cTValue* lj_arr_get(lua_State *L, cTValue *O, cTValue *K)
+extern "C" cTValue * lj_arr_get(lua_State *L, cTValue *O, cTValue *K)
 {
-   if (not tvisarray(O)) {
-      // Not an array - check for __index metamethod
+   if (not tvisarray(O)) { // Not an array - check for __index metamethod
       cTValue *mo = lj_meta_lookup(L, O, MM_index);
       if (tvisnil(mo)) {
          lj_err_optype(L, O, ErrMsg::OPINDEX);
          return nullptr;  // unreachable
       }
 
-      // Would need to trigger metamethod - for now, error
+      // Would need to trigger metamethod (none implemented yet) - for now, error
       lj_err_optype(L, O, ErrMsg::OPINDEX);
       return nullptr;
    }
@@ -150,7 +160,7 @@ extern "C" cTValue* lj_arr_get(lua_State *L, cTValue *O, cTValue *K)
    }
 
    // Load element into a static result TValue
-   // Note: This uses a thread-local or static buffer that the VM will copy
+   // Note: This uses a thread-local or static buffer that the assembly caller is expected to copy
 
    static thread_local TValue result;
    arr_load_elem(arr, uint32_t(idx), &result);
@@ -177,8 +187,7 @@ extern "C" int lj_arr_set(lua_State *L, cTValue *O, cTValue *K, cTValue *V)
 
    GCarray *arr = arrayV(O);
 
-   // Check read-only flag
-   if (arr->flags & ARRAY_FLAG_READONLY) {
+   if (arr->flags & ARRAY_READONLY) {
       lj_err_msg(L, ErrMsg::ARRRO);
       return 0;  // unreachable
    }
@@ -217,6 +226,6 @@ extern "C" void lj_arr_getidx(lua_State *L, GCarray *Array, int32_t Idx, TValue 
 extern "C" void lj_arr_setidx(lua_State *L, GCarray *Array, int32_t Idx, cTValue *Val)
 {
    if (Idx < 0 or MSize(Idx) >= Array->len) lj_err_msgv(L, ErrMsg::ARROB, Idx, int(Array->len));
-   if (Array->flags & ARRAY_FLAG_READONLY) lj_err_msg(L, ErrMsg::ARRRO);
+   if (Array->flags & ARRAY_READONLY) lj_err_msg(L, ErrMsg::ARRRO);
    arr_store_elem(L, Array, uint32_t(Idx), Val);
 }

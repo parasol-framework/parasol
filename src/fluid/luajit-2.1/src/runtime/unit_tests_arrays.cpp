@@ -89,7 +89,7 @@ static bool test_array_creation_byte(pf::Log &Log)
       Log.error("char array has incorrect elemsize: %d", arr->elemsize);
       return false;
    }
-   if (!(arr->flags & ARRAY_FLAG_COLOCATED)) {
+   if (!(arr->flags & ARRAY_COLOCATED)) {
       Log.error("char array should be colocated");
       return false;
    }
@@ -273,17 +273,17 @@ static bool test_array_external(pf::Log &Log)
    // Create external buffer
    int32_t external_data[5] = { 10, 20, 30, 40, 50 };
 
-   GCarray* arr = lj_array_new_external(L, external_data, 5, AET::_INT32, ARRAY_FLAG_READONLY);
+   GCarray* arr = lj_array_new(L, 5, AET::_INT32, external_data, ARRAY_READONLY);
 
    if (not arr) {
       Log.error("external array creation failed");
       return false;
    }
-   if (!(arr->flags & ARRAY_FLAG_EXTERNAL)) {
+   if (!(arr->flags & ARRAY_EXTERNAL)) {
       Log.error("external array not marked as external");
       return false;
    }
-   if (!(arr->flags & ARRAY_FLAG_READONLY)) {
+   if (!(arr->flags & ARRAY_READONLY)) {
       Log.error("external array not marked as readonly");
       return false;
    }
