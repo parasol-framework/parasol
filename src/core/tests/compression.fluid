@@ -13,7 +13,7 @@ end
 
 global function streamedOutput(CompressedID, Data)
    err, len = glOutFile.acWrite(Data)
-   if (err != ERR_Okay) then return ERR_Write end
+   if err != ERR_Okay then return ERR_Write end
    return ERR_Okay
 end
 
@@ -82,7 +82,7 @@ end
       path     = 'temp:cmp_test_scripts.zip',
       flags    = '!NEW',
       feedback = function(Compression, Info)
-         if (Info.progress is 0) then
+         if Info.progress is 0 then
             print('Compressing file #' .. Info.index .. ', Path: \"' .. tostring(Info.dest) .. '"')
             glCompressedFiles[Info.dest] = Info
             file_count++
@@ -107,7 +107,7 @@ end
       feedback = function(Compression, Info)
          if Info.progress is 0 then
             file_count++
-            if (glCompressedFiles[Info.path]) then
+            if glCompressedFiles[Info.path] then
                glCompressedFiles[Info.path].found = true
             else
                print('File "' .. Info.path .. '" not registered.')
@@ -129,7 +129,7 @@ end
    file = obj.new('file', { src='scripts:gui.fluid', flags='!READ' } )
 
    global glOutFile = obj.new('file', { src='temp:scripts.gz', flags='!WRITE|NEW' } )
-   if (cmp.mtCompressStreamStart() is ERR_Okay) then
+   if cmp.mtCompressStreamStart() is ERR_Okay then
       input = string.alloc(16384)
       err = ERR_Okay
       while err is ERR_Okay do
@@ -157,14 +157,14 @@ end
 
    err = mSys.ReadFileToBuffer('scripts:gui/button.fluid', cmpsrc)
    assert(err is ERR_Okay, 'Failed to read original source file for comparison: ' .. mSys.GetErrorMsg(err))
-   cmpstr = tostring(cmpsrc)
+   cmpstr = cmpsrc:getString()
 
    -- Big buffer test
 
    cmpfile = obj.new('file', { src='archive:test/scripts/button.fluid', flags='!READ' })
    err, len = cmpfile.acRead(cmpbuffer)
    assert(err is ERR_Okay, 'Failed to read decompressed data from file archive: ' .. mSys.GetErrorMsg(err))
-   assert(tostring(cmpbuffer) is cmpstr, "The decompressed data does not match the original file.")
+   assert(cmpbuffer:getString() is cmpstr, "The decompressed data does not match the original file.")
 
    -- Small buffer test
 
@@ -177,7 +177,7 @@ end
       if len < #smallbuffer then
          cmpbuffer ..= smallbuffer:getString(0, len)
       else
-         cmpbuffer ..= tostring(smallbuffer)
+         cmpbuffer ..= smallbuffer:getString()
       end
    until (len is 0)
 
@@ -195,7 +195,7 @@ end
    assert(cmp.mtDecompressStreamStart() is ERR_Okay, 'Failed to initialise decompression.')
    input = string.alloc(16384)
    err = ERR_Okay
-   while (err is ERR_Okay) do
+   while err is ERR_Okay do
       err, len = file.acRead(input)
       if err is ERR_Okay then
          if len <= 0 then break end

@@ -499,12 +499,13 @@ LJLIB_CF(array_getString)
 
    auto start = lj_lib_optint(L, 2, 0);
    if (start < 0) lj_err_caller(L, ErrMsg::IDXRNG);
+
    auto len = lj_lib_optint(L, 3, arr->len - start);
    if (len < 0) lj_err_caller(L, ErrMsg::IDXRNG);
    if (start + len > arr->len) lj_err_caller(L, ErrMsg::IDXRNG);
 
    auto data = (CSTRING)mref<void>(arr->data) + start;
-   GCstr* s = lj_str_new(L, data, len);
+   GCstr *s = lj_str_new(L, data, len);
    setstrV(L, L->top++, s);
    return 1;
 }
@@ -1108,27 +1109,6 @@ LJLIB_CF(array___len)
    GCarray *arr = lj_lib_checkarray(L, 1);
    setintV(L->top++, int32_t(arr->len));
    return 1;
-}
-
-//********************************************************************************************************************
-// Metamethod: __tostring
-// Returns string representation of array.
-
-LJLIB_CF(array___tostring)
-{
-   GCarray *arr = lj_lib_checkarray(L, 1);
-
-   if (arr->elemtype IS AET::_BYTE) {
-      setstrV(L, L->top++, lj_str_new(L, arr->data.get<char>(), arr->len));
-      return 1;
-   }
-   else {
-      auto type_name = elemtype_name(arr->elemtype);
-      char buf[64];
-      snprintf(buf, sizeof(buf), "array<%s>(%u)", type_name, uint32_t(arr->len));
-      setstrV(L, L->top++, lj_str_newz(L, buf)); // Throws on failure
-      return 1;
-   }
 }
 
 //********************************************************************************************************************

@@ -72,7 +72,7 @@ end
       method     = 'GET',
       connectTimeout = 10,
       incoming = function(HTTP, Buffer)
-         content ..= tostring(Buffer)
+         content ..= Buffer:getString()
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
@@ -108,7 +108,7 @@ end
       flags      = HTF_NO_HEAD,
       contentLength = -1,
       incoming = function(HTTP, Buffer)
-         content ..= tostring(Buffer)
+         content ..= Buffer:getString()
       end,
       outgoing = function(HTTP)
          assert(testPostStringCompleted != true, 'This routine has been called a second time.')
@@ -152,7 +152,7 @@ end
       flags      = HTF_NO_HEAD,
       contentLength = -1,
       incoming = function(HTTP, Buffer)
-         content ..= tostring(Buffer)
+         content ..= Buffer:getString()
       end,
       outgoing = function(HTTP)
          assert(testPostStringCompleted != true, 'This routine has been called a second time.')
@@ -209,7 +209,7 @@ end
          end
       end,
       incoming = function(HTTP, Buffer)
-         content ..= tostring(Buffer)
+         content ..= Buffer:getString()
       end
    })
 
@@ -326,7 +326,7 @@ function testMultiPart()
       flags       = HTF_NO_HEADER,
       contenttype = 'multipart/form-data; boundary=' .. boundary,
       incoming = function(HTTP, Buffer)
-         content ..= tostring(Buffer)
+         content ..= Buffer.toString()
       end
    } )
 
@@ -394,7 +394,7 @@ end
          end
       end,
       incoming = function(HTTP, Buffer)
-         content ..= tostring(Buffer)
+         content ..= Buffer:getString()
       end
    })
 

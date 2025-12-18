@@ -67,8 +67,7 @@ static LJ_AINLINE void clearapart(GCtab* t)
 {
    uint32_t i, asize = t->asize;
    TValue* array = tvref(t->array);
-   for (i = 0; i < asize; i++)
-      setnilV(&array[i]);
+   for (i = 0; i < asize; i++) setnilV(&array[i]);
 }
 
 // Create a new table. Note: the slots are not initialized (yet).
@@ -260,6 +259,7 @@ void lj_tab_resize(lua_State* L, GCtab* t, uint32_t asize, uint32_t hbits)
       setmref(t->freetop, &g->nilnode);
       t->hmask = 0;
    }
+
    if (asize < oldasize) {  // Array part shrinks?
       TValue* array = tvref(t->array);
       uint32_t i;
@@ -272,6 +272,7 @@ void lj_tab_resize(lua_State* L, GCtab* t, uint32_t asize, uint32_t hbits)
          setmref(t->array, lj_mem_realloc(L, array,
             oldasize * sizeof(TValue), asize * sizeof(TValue)));
    }
+   
    if (oldhmask > 0) {  // Reinsert pairs from old hash part.
       global_State* g;
       uint32_t i;
@@ -309,8 +310,7 @@ static uint32_t countarray(const GCtab* t, uint32_t* bins)
       TValue* array;
       if (top >= t->asize) {
          top = t->asize - 1;
-         if (i > top)
-            break;
+         if (i > top) break;
       }
 
       array = tvref(t->array);
@@ -385,8 +385,7 @@ cTValue* LJ_FASTCALL lj_tab_getinth(GCtab* t, int32_t key)
    k.n = (lua_Number)key;
    n = hashnum(t, &k);
    do {
-      if (tvisnum(&n->key) and n->key.n == k.n)
-         return &n->val;
+      if (tvisnum(&n->key) and n->key.n == k.n) return &n->val;
    } while ((n = nextnode(n)));
    return nullptr;
 }
@@ -430,8 +429,7 @@ cTValue* lj_tab_get(lua_State* L, GCtab* t, cTValue* key)
    genlookup:
       n = hashkey(t, key);
       do {
-         if (lj_obj_equal(&n->key, key))
-            return &n->val;
+         if (lj_obj_equal(&n->key, key)) return &n->val;
       } while ((n = nextnode(n)));
    }
    return niltv(L);
@@ -512,8 +510,7 @@ TValue* lj_tab_newkey(lua_State* L, GCtab* t, cTValue* key)
       }
    }
    n->key.u64 = key->u64;
-   if (LJ_UNLIKELY(tvismzero(&n->key)))
-      n->key.u64 = 0;
+   if (LJ_UNLIKELY(tvismzero(&n->key))) n->key.u64 = 0;
    lj_gc_anybarriert(L, t);
    lj_assertL(tvisnil(&n->val), "new hash slot is not empty");
    return &n->val;
@@ -557,10 +554,8 @@ TValue* lj_tab_set(lua_State* L, GCtab* t, cTValue* key)
    else if (tvisnum(key)) {
       lua_Number nk = numV(key);
       int32_t k = lj_num2int(nk);
-      if (nk == (lua_Number)k)
-         return lj_tab_setint(L, t, k);
-      if (tvisnan(key))
-         lj_err_msg(L, ErrMsg::NANIDX);
+      if (nk == (lua_Number)k) return lj_tab_setint(L, t, k);
+      if (tvisnan(key)) lj_err_msg(L, ErrMsg::NANIDX);
       // Else use the generic lookup.
    }
    else if (tvisnil(key)) {
@@ -568,8 +563,7 @@ TValue* lj_tab_set(lua_State* L, GCtab* t, cTValue* key)
    }
    n = hashkey(t, key);
    do {
-      if (lj_obj_equal(&n->key, key))
-         return &n->val;
+      if (lj_obj_equal(&n->key, key)) return &n->val;
    } while ((n = nextnode(n)));
    return lj_tab_newkey(L, t, key);
 }
@@ -614,6 +608,7 @@ uint32_t LJ_FASTCALL lj_tab_keyindex(GCtab* t, cTValue* key)
 }
 
 // Get the next key/value pair of a table traversal.
+
 int lj_tab_next(GCtab* t, cTValue* key, TValue* o)
 {
    uint32_t idx = lj_tab_keyindex(t, key);  //  Find successor index of key.
@@ -702,7 +697,6 @@ MSize LJ_FASTCALL lj_tab_len(GCtab* t)
    return t->hmask ? semantic_length(tab_len_slow(t, last_index)) : semantic_length(last_index);
 }
 
-#if LJ_HASJIT
 // Verify hinted table length or compute it.
 MSize LJ_FASTCALL lj_tab_len_hint(GCtab* t, size_t hint)
 {
@@ -716,4 +710,3 @@ MSize LJ_FASTCALL lj_tab_len_hint(GCtab* t, size_t hint)
    }
    return lj_tab_len(t);
 }
-#endif

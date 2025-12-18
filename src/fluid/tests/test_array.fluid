@@ -401,8 +401,7 @@ end
 
 @Test function ToString()
    str_array = array.new('hello')
-   assert(tostring(str_array) is 'hello', "String array toString failed, got '" .. tostring(str_array) .. "'")
-
+   assert(string.startsWith(tostring(str_array), 'array:'), "String array tostring() failed, got '" .. tostring(str_array) .. "'")
    assert(#str_array is 5, "String array length failed, expected 5, got " .. tostring(#str_array))
 end
 
