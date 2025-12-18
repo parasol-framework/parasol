@@ -248,22 +248,23 @@ static int module_call(lua_State *Lua)
                return 0;
             }
 
-            if (auto mem = (GCarray *)get_meta(Lua, i, "array_metatable")) {
-               ((APTR *)(buffer + j))[0] = mem->data.get<void>();
+            if (lua_type(Lua, i) IS LUA_TARRAY) {
+               GCarray *arr = arrayV(Lua, i);
+               ((APTR *)(buffer + j))[0] = arr->data.get<void>();
                arg_values[in] = buffer + j;
                arg_types[in++] = &ffi_type_pointer;
                j += sizeof(APTR);
 
                if (args[i+1].Type & (FD_BUFSIZE|FD_ARRAYSIZE)) {
                   if (args[i+1].Type & FD_INT) {
-                     ((int *)(buffer + j))[0] = mem->len * mem->elemsize;
+                     ((int *)(buffer + j))[0] = arr->len * arr->elemsize;
                      arg_values[in]  = buffer + j;
                      arg_types[in++] = &ffi_type_sint32;
                      i++;
                      j += sizeof(int);
                   }
                   else if (args[i+1].Type & FD_INT64) {
-                     ((int64_t *)(buffer + j))[0] = mem->len * mem->elemsize;
+                     ((int64_t *)(buffer + j))[0] = arr->len * arr->elemsize;
                      arg_values[in]  = buffer + j;
                      arg_types[in++] = &ffi_type_sint64;
                      i++;
@@ -406,8 +407,9 @@ static int module_call(lua_State *Lua)
             return 0;
          }
 
-         if (auto mem = (GCarray *)get_meta(Lua, i, "array_metatable")) {
-            arg_values[in] = mem->data.get<void>();
+         if (lua_type(Lua, i) IS LUA_TARRAY) {
+            GCarray *arr = arrayV(Lua, i);
+            arg_values[in] = arr->data.get<void>();
             arg_types[in++] = &ffi_type_pointer;
             j += sizeof(APTR); // Dummy increment
 
@@ -415,7 +417,7 @@ static int module_call(lua_State *Lua)
                if (args[i+1].Type & FD_RESULT) {
                   if (args[i+1].Type & FD_INT) {
                      end -= sizeof(int);
-                     ((int *)end)[0] = mem->len;
+                     ((int *)end)[0] = arr->len;
                      ((APTR *)(buffer + j))[0] = end;
                      arg_values[in] = buffer + j;
                      arg_types[in++] = &ffi_type_pointer;
@@ -424,7 +426,7 @@ static int module_call(lua_State *Lua)
                   }
                   else if (args[i+1].Type & FD_INT64) {
                      end -= sizeof(int64_t);
-                     ((int64_t *)end)[0] = mem->len;
+                     ((int64_t *)end)[0] = arr->len;
                      ((APTR *)(buffer + j))[0] = end;
                      arg_values[in] = buffer + j;
                      arg_types[in++] = &ffi_type_pointer;
@@ -438,14 +440,14 @@ static int module_call(lua_State *Lua)
                }
                else {
                   if (args[i+1].Type & FD_INT) {
-                     ((int *)(buffer + j))[0] = mem->len;
+                     ((int *)(buffer + j))[0] = arr->len;
                      arg_values[in] = buffer + j;
                      arg_types[in++] = &ffi_type_sint32;
                      j += sizeof(int);
                      i++;
                   }
                   else if (args[i+1].Type & FD_INT64) {
-                     ((int64_t *)(buffer + j))[0] = mem->len;
+                     ((int64_t *)(buffer + j))[0] = arr->len;
                      arg_values[in] = buffer + j;
                      arg_types[in++] = &ffi_type_sint64;
                      j += sizeof(int64_t);

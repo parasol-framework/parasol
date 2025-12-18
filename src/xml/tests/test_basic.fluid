@@ -11,7 +11,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Check that the Tags array works as expected when used in Fluid
 
-@Test function testTagsArray()
+@Test function TagsArray()
    tags = glXML.tags
 
    expected = 2
@@ -24,7 +24,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test the FindTag() callbacks and GetTag() method.
 
-@Test function testIndexing()
+@Test function Indexing()
    totalFunctions = 0
 
    err, index, taglist = glXML.mtSearch("/book/function", function(XML, TagID, Attrib)
@@ -46,7 +46,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test the GetAttrib() method
 
-@Test function testGetAttrib()
+@Test function GetAttrib()
    err, index = glXML.mtSearch("/book/function/input/param")
    assert(err is ERR_Okay, "Failed to find /book/function/input/param, error: " .. mSys.GetErrorMsg(err))
 
@@ -60,7 +60,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test function testSerialise()
+@Test function Serialise()
    err, str = glXML.mtSerialise(0, XMF_INCLUDE_SIBLINGS)
    assert(err is ERR_Okay, "Serialise() failed.")
 end
@@ -68,7 +68,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test that line number counting works correctly
 
-@Test function testLineCount()
+@Test function LineCount()
    xml_content = [[<?xml version="1.0"?>
 <root>
    <item>First</item>
@@ -91,7 +91,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test function testSort()
+@Test function Sort()
    err = glXML.mtSort('/book', 'name')
    assert(err is ERR_Okay, 'Attempt to sort failed: ' .. mSys.GetErrorMsg(err))
 

@@ -261,14 +261,14 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, int8_t *
             luaL_argerror(Lua, n, "Unable to convert number to a pointer.");
             return ERR::WrongType;
          }
+         else if (type IS LUA_TARRAY) {
+            auto array = arrayV(Lua, n);
+            ((APTR *)(argbuffer + j))[0] = array->data.get<void>();
+         }
          else {
             //log.trace("Arg: %s, Value: Pointer, SrcType: %s", args[i].Name, lua_typename(Lua, type));
 
-            if (auto array = (struct GCarray *)get_meta(Lua, n, "array_metatable")) {
-               ((APTR *)(argbuffer + j))[0] = array->data.get<void>();
-               //n--; // Adjustment required due to successful get_meta()
-            }
-            else if (auto fstruct = (struct fstruct *)get_meta(Lua, n, "Fluid.struct")) {
+            if (auto fstruct = (struct fstruct *)get_meta(Lua, n, "Fluid.struct")) {
                ((APTR *)(argbuffer + j))[0] = fstruct->Data;
                //n--; // Adjustment required due to successful get_meta()
             }
