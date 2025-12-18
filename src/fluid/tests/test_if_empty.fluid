@@ -5,7 +5,7 @@ function enforce_hotpath() end
 
 @Test function testNil()
    v = nil ?? "A"
-   assert(v is "A", "Failed nil case: expected 'A', got '" .. nz(v, 'NIL') .. "'")
+   assert(v is "A", "Failed nil case: expected 'A', got '" .. tostring(v) .. "'")
 
    Options = { quit = nil }
    v = (Options.quit ?? nil)

@@ -280,8 +280,8 @@ function testExtractOperations()
    local err, id = xml.mtSearch('/root/section/item')
    local err, result = xml.mtSerialise(id, false)
 
-   assert(string.find(result, 'id="1"'), "Extracted XML is missing attributes: " .. nz(result,'NIL'))
-   assert(string.find(result, "Content"), "Extracted XML is missing content" .. nz(result,'NIL'))
+   assert(string.find(result, 'id="1"'), "Extracted XML is missing attributes: " .. tostring(result))
+   assert(string.find(result, "Content"), "Extracted XML is missing content" .. tostring(result))
 end
 
 -----------------------------------------------------------------------------------------------------------------------

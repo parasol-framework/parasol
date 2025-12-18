@@ -83,7 +83,7 @@ end
       flags    = '!NEW',
       feedback = function(Compression, Info)
          if (Info.progress is 0) then
-            print('Compressing file #' .. Info.index .. ', Path: \"' .. nz(Info.dest, 'NIL') .. '"')
+            print('Compressing file #' .. Info.index .. ', Path: \"' .. tostring(Info.dest) .. '"')
             glCompressedFiles[Info.dest] = Info
             file_count++
          end

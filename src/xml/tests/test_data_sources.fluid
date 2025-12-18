@@ -20,7 +20,7 @@ end
    local xml = obj.new("xml", { path = 'temp:test_xml_path.xml', flags = XMF_STRIP_HEADERS })
    local tags = xml.tags
    assert(tags, "XML should load from file path")
-   assert(tags[1].attribs[0].name is "testRoot", "Root tag should be testRoot; got " .. nz(tags[0].attribs[0].name, 'NIL'))
+   assert(tags[1].attribs[0].name is "testRoot", "Root tag should be testRoot; got " .. tostring(tags[0].attribs[0].name))
    assert(tags[1].children[0].children[0].attribs[0].value is "Path content", "Content should be preserved")
 
    collectgarbage()

@@ -43,7 +43,7 @@ end
    local xq = obj.new('xquery', { statement= '//item[@name=$nonexistent]' })
    local err = xq.mtEvaluate(xml)
    assert(err is ERR_Okay or err is ERR_Search, "Evaluate should succeed even with non-existent variable")
-   assert(nz(xq.resultString) is nil, "Non-existent variable should not match anything")
+   assert(not xq.resultString??, "Non-existent variable should not match anything")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -63,7 +63,7 @@ end
    -- Verify variable no longer works
    local err = xq.mtEvaluate(xml)
    assert(err is ERR_Okay or err is ERR_Search, "Evaluation should succeed after variable removal")
-   assert(nz(xq.resultString) is nil, "Non-existent variable should not match anything")
+   assert(not xq.resultString??, "Non-existent variable should not match anything")
 end
 
 -----------------------------------------------------------------------------------------------------------------------

@@ -125,7 +125,7 @@ function testErrorFunction()
    local err = xml.mtSearch('/root/item[error("err:TEST0001", "Forced failure", @code)]')
    assert(err != ERR_Okay, 'error() should signal a failing predicate evaluation')
 
-   local message = nz(xml.errorMsg, '')
+   local message = xml.errorMsg ?? ''
    assert(message is 'XPath error err:TEST0001: Forced failure [A]',
       'error() should populate the XML error message with detail, got ' .. message)
 end

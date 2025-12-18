@@ -133,7 +133,7 @@ end
    assert(err is ERR_Okay, 'Alias prefix should resolve via namespace URI bindings: ' .. mSys.GetErrorMsg(err))
 
    local errAttrib, value = xml.mtGetAttrib(itemId, 'id')
-   assert(errAttrib is ERR_Okay and value is 'ns-target', 'Matched element should expose id="ns-target", got ' .. nz(value, 'NIL'))
+   assert(errAttrib is ERR_Okay and value is 'ns-target', 'Matched element should expose id="ns-target", got ' .. tostring(value))
 end
 
 -----------------------------------------------------------------------------------------------------------------------

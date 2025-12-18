@@ -446,7 +446,6 @@ int fcmd_print(lua_State *);
 int fcmd_include(lua_State *);
 int fcmd_loadfile(lua_State *);
 int fcmd_exec(lua_State *);
-int fcmd_nz(lua_State *);
 int fcmd_require(lua_State *);
 int fcmd_subscribe_event(lua_State *);
 int fcmd_unsubscribe_event(lua_State *);

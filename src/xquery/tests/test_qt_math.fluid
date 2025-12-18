@@ -61,7 +61,7 @@ function runTest(TestPath)
 
       -- Get the test query using XPath from the test-case
       local err, test_query = xml.mtEvaluate('//test-case[@name="' .. test_name .. '"]/test')
-      if err != ERR_Okay or not nz(test_query) then
+      if err != ERR_Okay or not test_query?? then
          print('  SKIP: ' .. test_name .. ' (no test query found)')
          return
       end

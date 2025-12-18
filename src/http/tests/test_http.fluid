@@ -88,7 +88,7 @@ end
    assert(err is ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.error is ERR_Okay, 'HTTP object returned error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.currentState is HGS_COMPLETED, 'Expected HTTP state of COMPLETED not reached, got ' .. http.currentState)
-   assert(nz(content), 'No content received.')
+   assert(content??, 'No content received.')
 
    print(string.format('Received: %.80s [80 of %d bytes]', content, content:len()))
 end
@@ -131,7 +131,7 @@ end
 
    assert(http.error is ERR_Okay, 'HTTP object returned error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.currentState is HGS_COMPLETED, 'Expected HTTP state of COMPLETED not reached, got ' .. http.currentState)
-   assert(nz(content), 'No content received.')
+   assert(content??, 'No content received.')
    assert(http.status is 200, 'Unexpected HTTP status: ' .. http.status)
    js_content = json.decode(content)
    assert(js_content.body is outgoing_body, 'Unexpected response: ' .. content)
@@ -181,7 +181,7 @@ end
    assert(http.error is ERR_Okay, 'HTTP object returned error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.currentState is HGS_COMPLETED, 'Expected HTTP state of COMPLETED not reached, got ' .. http.currentState)
    assert(http.status is 200, 'Unexpected HTTP status: ' .. http.status)
-   assert(nz(content), 'No content received.')
+   assert(content??, 'No content received.')
 
    form = json.decode(content)
    assert(form, 'No JSON response received.')

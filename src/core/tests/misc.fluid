@@ -5,7 +5,7 @@
 
 @Test function testActionList()
    for id, actions in ipairs(mSys.ActionList()) do
-      if nz(actions) and nz(actions.name) then
+      if actions?? and actions.name?? then
          print(string.format('%d: $%.8x: %s', id-1, actions.hash, actions.name))
       end
    end

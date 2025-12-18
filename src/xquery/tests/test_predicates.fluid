@@ -350,7 +350,7 @@ function testXPathExtendedNumberFunctions()
    err, itemId = xml.mtSearch('/root/item[round(@price) = 3]')
    assert(err is ERR_Okay, 'round() should return the nearest integer: ' .. mSys.GetErrorMsg(err))
    err2, attrValue = xml.mtGetAttrib(itemId, 'price')
-   assert(err2 is ERR_Okay and attrValue is '2.6', 'round() should select the element with price="2.6", got ' .. nz(attrValue,'NIL'))
+   assert(err2 is ERR_Okay and attrValue is '2.6', 'round() should select the element with price="2.6", got ' .. tostring(attrValue))
 end
 
 -----------------------------------------------------------------------------------------------------------------------

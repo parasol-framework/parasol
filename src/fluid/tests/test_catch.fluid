@@ -166,7 +166,7 @@ end
    end)
 
    assert(ex, "Exception table was not returned.")
-   print("Received line " .. ex.line .. ", code " .. nz(ex.code,"LUA") .. ", msg: " .. ex.message)
+   print("Received line " .. ex.line .. ", code " .. (ex.code ?? "LUA") .. ", msg: " .. ex.message)
 end
 
 ----------------------------------------------------------------------------------------------------------------------

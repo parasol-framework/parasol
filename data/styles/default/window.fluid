@@ -101,7 +101,7 @@ return {
       -- Double clicking on the titlebar will maximise it.
 
       local xoffset = 3
-      if nz(Window.maximise) then
+      if Window.maximise?? then
          input.subscribe(JTYPE_BUTTON, bar, 0, function(Handler, Msg)
             if (Msg.type == JET_BUTTON_1) and (bit.band(Msg.flags, JTYPE_DBL_CLICK) != 0) and (Msg.value == 0) then
                if (Msg.x >= 24) and (Msg.y >= 0) and (Msg.x < bar.width - 60) and (Msg.y < bar.height) then
@@ -113,7 +113,7 @@ return {
 
       -- Close Gadget
 
-      if nz(Window.close) then
+      if Window.close?? then
          catch(function()
             local rgnClose = bar.new('surface', { xoffset=xoffset, y=2, width=17, height=17, region=true })
             rgnClose.acShow()
@@ -133,7 +133,7 @@ return {
          input.subscribe(JTYPE_BUTTON, max, 0, function(Handler, Msg)
             Window.mtMaximise()
          end)
-         if nz(Window.maximise) then
+         if Window.maximise?? then
             max.new('image', { path='icons:items/window_maximise(16)', iconFilter='pearl', align='center' })
          else
             max.new('image', { path='icons:items/window_maximise(16)', iconFilter='pearl', align='center', opacity='33%' })
@@ -149,7 +149,7 @@ return {
          input.subscribe(JTYPE_BUTTON, min, 0, function(Handler, Msg)
             Window.mtMinimise()
          end)
-         if nz(Window.minimise) then
+         if Window.minimise?? then
             min.new('image', { path='icons:items/window_minimise(16)', iconFilter='pearl', align='center' })
          else
             min.new('image', { path='icons:items/window_minimise(16)', iconFilter='pearl', align='center', opacity='33%' })
@@ -159,7 +159,7 @@ return {
 
       -- Move-To-Back Gadget
 
-      if nz(Window.moveToBack) then
+      if Window.moveToBack?? then
          catch(function()
             local mtb = bar.new('surface', { width=17, height=17, y=2, xoffset=xoffset, region=true })
             mtb.acShow()

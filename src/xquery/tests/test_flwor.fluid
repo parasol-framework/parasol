@@ -47,14 +47,14 @@ function testLetSyntaxErrors()
    xq.statement = 'let $a return $a'
    local err = xq.init()
    assert(err is ERR_Syntax, 'Missing assignment should be a syntax error, got ' .. mSys.getErrorMsg(err))
-   local message = nz(xq.errorMsg, '')
+   local message = xq.errorMsg ?? ''
    assert(string.find(message, "Expected ':=' in let binding", 0, true),
       'Error message should reference missing :=, got ' .. message)
 
    xq.statement = 'let $a := return 5'
    local err = xq.init()
    assert(err is ERR_Syntax, 'Missing expression should be a syntax error, got ' .. mSys.GetErrorMsg(err))
-   local message = nz(xq.errorMsg, '')
+   local message = xq.errorMsg ?? ''
    assert(string.find(message, "Expected expression after ':=' in let binding", 0, true),
       'Error message should reference missing binding expression, got ' .. message)
 end

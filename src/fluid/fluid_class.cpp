@@ -1117,7 +1117,6 @@ static ERR register_interfaces(objScript *Self)
    lua_register(prv->Lua, "include", fcmd_include);
    lua_register(prv->Lua, "require", fcmd_require);
    lua_register(prv->Lua, "msg", fcmd_msg);
-   lua_register(prv->Lua, "nz", fcmd_nz);
    lua_register(prv->Lua, "subscribeEvent", fcmd_subscribe_event);
    lua_register(prv->Lua, "unsubscribeEvent", fcmd_unsubscribe_event);
    lua_register(prv->Lua, "MAKESTRUCT", MAKESTRUCT);
