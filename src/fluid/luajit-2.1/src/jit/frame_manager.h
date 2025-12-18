@@ -256,9 +256,11 @@ class SlotView {
    jit_State *J;
 
    // Internal bounds check helper (only active in debug builds)
+   // Note: idx can be more negative than FUNC_SLOT_OFFSET when upvalues alias parent frame slots
    void check_bounds([[maybe_unused]] int32_t idx) const {
-      assert(idx >= FRC::FUNC_SLOT_OFFSET && "slot index below minimum");
-      assert(idx < int32_t(LJ_MAX_JSLOTS - J->baseslot) && "slot index exceeds maximum");
+      int32_t abs_slot = int32_t(J->baseslot) + idx;
+      assert(abs_slot >= 0 && "absolute slot index below zero");
+      assert(abs_slot < int32_t(LJ_MAX_JSLOTS) && "absolute slot index exceeds maximum");
    }
 
 public:

@@ -198,11 +198,134 @@ constexpr uint8_t  NO_REG = BCMAX_A;
   _(FUNCCW,   rbase,   ___,   ___,   ___)
 
 // Bytecode opcode numbers.
+// Explicitly enumerated for debugger visibility and easy value lookup.
 typedef enum {
-#define BCENUM(name, ma, mb, mc, mt)   BC_##name,
-   BCDEF(BCENUM)
-#undef BCENUM
-   BC__MAX
+   // Comparison ops (0-11)
+   BC_ISLT    = 0,
+   BC_ISGE    = 1,
+   BC_ISLE    = 2,
+   BC_ISGT    = 3,
+   BC_ISEQV   = 4,
+   BC_ISNEV   = 5,
+   BC_ISEQS   = 6,
+   BC_ISNES   = 7,
+   BC_ISEQN   = 8,
+   BC_ISNEN   = 9,
+   BC_ISEQP   = 10,
+   BC_ISNEP   = 11,
+
+   // Unary test and copy ops (12-17)
+   BC_ISTC    = 12,
+   BC_ISFC    = 13,
+   BC_IST     = 14,
+   BC_ISF     = 15,
+   BC_ISTYPE  = 16,
+   BC_ISNUM   = 17,
+
+   // Unary ops (18-21)
+   BC_MOV     = 18,
+   BC_NOT     = 19,
+   BC_UNM     = 20,
+   BC_LEN     = 21,
+
+   // Binary ops (22-37)
+   BC_ADDVN   = 22,
+   BC_SUBVN   = 23,
+   BC_MULVN   = 24,
+   BC_DIVVN   = 25,
+   BC_MODVN   = 26,
+   BC_ADDNV   = 27,
+   BC_SUBNV   = 28,
+   BC_MULNV   = 29,
+   BC_DIVNV   = 30,
+   BC_MODNV   = 31,
+   BC_ADDVV   = 32,
+   BC_SUBVV   = 33,
+   BC_MULVV   = 34,
+   BC_DIVVV   = 35,
+   BC_MODVV   = 36,
+   BC_POW     = 37,
+   BC_CAT     = 38,
+
+   // Constant ops (39-44)
+   BC_KSTR    = 39,
+   BC_KCDATA  = 40,
+   BC_KSHORT  = 41,
+   BC_KNUM    = 42,
+   BC_KPRI    = 43,
+   BC_KNIL    = 44,
+
+   // Upvalue and function ops (45-51)
+   BC_UGET   = 45,
+   BC_USETV  = 46,
+   BC_USETS  = 47,
+   BC_USETN  = 48,
+   BC_USETP  = 49,
+   BC_UCLO   = 50,
+   BC_FNEW   = 51,
+
+   // Table ops (52-64)
+   BC_TNEW   = 52,
+   BC_TDUP   = 53,
+   BC_GGET   = 54,
+   BC_GSET   = 55,
+   BC_TGETV  = 56,
+   BC_TGETS  = 57,
+   BC_TGETB  = 58,
+   BC_TGETR  = 59,
+   BC_TSETV  = 60,
+   BC_TSETS  = 61,
+   BC_TSETB  = 62,
+   BC_TSETM  = 63,
+   BC_TSETR  = 64,
+
+   // Array ops (65-68)
+   BC_AGETV  = 65,
+   BC_AGETB  = 66,
+   BC_ASETV  = 67,
+   BC_ASETB  = 68,
+
+   // Calls and vararg handling (69-76)
+   BC_CALLM  = 69,
+   BC_CALL   = 70,
+   BC_CALLMT = 71,
+   BC_CALLT  = 72,
+   BC_ITERC  = 73,
+   BC_ITERN  = 74,
+   BC_VARG   = 75,
+   BC_ISNEXT = 76,
+
+   // Returns (77-80)
+   BC_RETM   = 77,
+   BC_RET    = 78,
+   BC_RET0   = 79,
+   BC_RET1   = 80,
+
+   // Loops and branches (81-88)
+   BC_FORI   = 81,
+   BC_JFORI  = 82,
+   BC_FORL   = 83,
+   BC_IFORL  = 84,
+   BC_JFORL  = 85,
+   BC_ITERL  = 86,
+   BC_IITERL = 87,
+   BC_JITERL = 88,
+   BC_LOOP   = 89,
+   BC_ILOOP  = 90,
+   BC_JLOOP  = 91,
+   BC_JMP    = 92,
+
+   // Function headers (93-100)
+   BC_FUNCF  = 93,
+   BC_IFUNCF = 94,
+   BC_JFUNCF = 95,
+   BC_FUNCV  = 96,
+   BC_IFUNCV = 97,
+   BC_JFUNCV = 98,
+   BC_FUNCC  = 99,
+   BC_FUNCCW = 100,
+
+   BC__MAX   = 101
 } BCOp;
 
 static_assert((int)BC_ISEQV + 1 == (int)BC_ISNEV);

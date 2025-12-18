@@ -1,7 +1,5 @@
-/*
-** Client for the GDB JIT API.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-*/
+// Client for the GDB JIT API.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 
 #define lj_gdbjit_c
 #define LUA_CORE
@@ -19,9 +17,9 @@
 #include "lj_jit.h"
 #include "lj_dispatch.h"
 
-/* This is not compiled in by default.
-** Enable with -DLUAJIT_USE_GDBJIT in the Makefile and recompile everything.
-*/
+// This is not compiled in by default.
+// Enable with -DLUAJIT_USE_GDBJIT in the Makefile and recompile everything.
+
 #ifdef LUAJIT_USE_GDBJIT
 
 /* The GDB JIT API allows JIT compilers to pass debug information about
@@ -758,7 +756,7 @@ static void gdbjit_newentry(lua_State* L, GDBJITctx* ctx)
 }
 
 // Add debug info for newly compiled trace and notify GDB.
-void lj_gdbjit_addtrace(jit_State* J, GCtrace* T)
+extern "C" void lj_gdbjit_addtrace(jit_State* J, GCtrace* T)
 {
    GDBJITctx ctx;
    GCproto* pt = &gcref(T->startpt)->pt;
@@ -783,7 +781,7 @@ void lj_gdbjit_addtrace(jit_State* J, GCtrace* T)
 }
 
 // Delete debug info for trace and notify GDB.
-void lj_gdbjit_deltrace(jit_State* J, GCtrace* T)
+extern "C" void lj_gdbjit_deltrace(jit_State* J, GCtrace* T)
 {
    GDBJITentryobj* eo = (GDBJITentryobj*)T->gdbjit_entry;
    if (eo) {
@@ -802,5 +800,5 @@ void lj_gdbjit_deltrace(jit_State* J, GCtrace* T)
    }
 }
 
-#endif
-#endif
+#endif // LUAJIT_USE_GDBJIT
+#endif // HASJIT

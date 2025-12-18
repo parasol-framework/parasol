@@ -12,9 +12,9 @@
 #include "lj_err.h"
 #include "lj_tab.h"
 
-// Object hashing
-
+//********************************************************************************************************************
 // Hash an arbitrary key and return its anchor position in the hash table.
+
 static Node* hashkey(const GCtab* t, cTValue* key)
 {
    lj_assertX(!tvisint(key), "attempt to hash integer");
@@ -25,8 +25,7 @@ static Node* hashkey(const GCtab* t, cTValue* key)
    // Only hash 32 bits of lightuserdata on a 64 bit CPU. Good enough?
 }
 
-// Table creation and destruction
-
+//********************************************************************************************************************
 // Create new hash part for table.
 
 static LJ_AINLINE void newhpart(lua_State* L, GCtab* t, uint32_t hbits)
@@ -42,6 +41,7 @@ static LJ_AINLINE void newhpart(lua_State* L, GCtab* t, uint32_t hbits)
    t->hmask = hsize - 1;
 }
 
+//********************************************************************************************************************
 // Q: Why all of these copies of t->hmask, t->node etc. to local variables?
 // A: Because alias analysis for C is _really_ tough.
 //    Even state-of-the-art C compilers won't produce good code without this.
@@ -61,6 +61,7 @@ static LJ_AINLINE void clearhpart(GCtab* t)
    }
 }
 
+//********************************************************************************************************************
 // Clear array part of table.
 
 static LJ_AINLINE void clearapart(GCtab* t)
@@ -70,6 +71,7 @@ static LJ_AINLINE void clearapart(GCtab* t)
    for (i = 0; i < asize; i++) setnilV(&array[i]);
 }
 
+//********************************************************************************************************************
 // Create a new table. Note: the slots are not initialized (yet).
 
 static GCtab * newtab(lua_State* L, uint32_t asize, uint32_t hbits)
@@ -117,6 +119,7 @@ static GCtab * newtab(lua_State* L, uint32_t asize, uint32_t hbits)
    return t;
 }
 
+//********************************************************************************************************************
 // Create a new table.
 //
 // IMPORTANT NOTE: The API differs from lua_createtable()!
@@ -136,6 +139,7 @@ GCtab * lj_tab_new(lua_State* L, uint32_t asize, uint32_t hbits)
    return t;
 }
 
+//********************************************************************************************************************
 // The API of this function conforms to lua_createtable().
 // 0-based: asize = a for a array elements at indices 0..a-1
 
@@ -143,6 +147,8 @@ GCtab * lj_tab_new_ah(lua_State* L, int32_t a, int32_t h)
 {
    return lj_tab_new(L, (uint32_t)(a > 0 ? a : 0), hsize2hbits(h));
 }
+
+//********************************************************************************************************************
 
 GCtab * LJ_FASTCALL lj_tab_new1(lua_State* L, uint32_t ahsize)
 {
@@ -152,6 +158,7 @@ GCtab * LJ_FASTCALL lj_tab_new1(lua_State* L, uint32_t ahsize)
    return t;
 }
 
+//********************************************************************************************************************
 // Duplicate a table.
 
 GCtab * LJ_FASTCALL lj_tab_dup(lua_State* L, const GCtab* kt)
@@ -168,12 +175,9 @@ GCtab * LJ_FASTCALL lj_tab_dup(lua_State* L, const GCtab* kt)
       TValue* karray = tvref(kt->array);
       if (asize < 64) {  // An inlined loop beats memcpy for < 512 bytes.
          uint32_t i;
-         for (i = 0; i < asize; i++)
-            copyTV(L, &array[i], &karray[i]);
+         for (i = 0; i < asize; i++) copyTV(L, &array[i], &karray[i]);
       }
-      else {
-         memcpy(array, karray, asize * sizeof(TValue));
-      }
+      else memcpy(array, karray, asize * sizeof(TValue));
    }
 
    hmask = kt->hmask;
@@ -195,6 +199,7 @@ GCtab * LJ_FASTCALL lj_tab_dup(lua_State* L, const GCtab* kt)
    return t;
 }
 
+//********************************************************************************************************************
 // Clear a table.
 
 void LJ_FASTCALL lj_tab_clear(GCtab* t)
@@ -207,6 +212,7 @@ void LJ_FASTCALL lj_tab_clear(GCtab* t)
    }
 }
 
+//********************************************************************************************************************
 // Free a table.
 
 void LJ_FASTCALL lj_tab_free(global_State* g, GCtab* t)
@@ -219,6 +225,7 @@ void LJ_FASTCALL lj_tab_free(global_State* g, GCtab* t)
    else lj_mem_freet(g, t);
 }
 
+//********************************************************************************************************************
 // Resize a table to fit the new array/hash part sizes.
 
 void lj_tab_resize(lua_State* L, GCtab* t, uint32_t asize, uint32_t hbits)
@@ -286,6 +293,8 @@ void lj_tab_resize(lua_State* L, GCtab* t, uint32_t asize, uint32_t hbits)
    }
 }
 
+//********************************************************************************************************************
+
 static uint32_t countint(cTValue* key, uint32_t* bins)
 {
    lj_assertX(!tvisint(key), "bad integer key");
@@ -300,6 +309,8 @@ static uint32_t countint(cTValue* key, uint32_t* bins)
    }
    return 0;
 }
+
+//********************************************************************************************************************
 
 static uint32_t countarray(const GCtab* t, uint32_t* bins)
 {
@@ -323,6 +334,8 @@ static uint32_t countarray(const GCtab* t, uint32_t* bins)
    return na;
 }
 
+//********************************************************************************************************************
+
 static uint32_t counthash(const GCtab* t, uint32_t* bins, uint32_t* narray)
 {
    uint32_t total, na, i, hmask = t->hmask;
@@ -338,6 +351,8 @@ static uint32_t counthash(const GCtab* t, uint32_t* bins, uint32_t* narray)
    return total;
 }
 
+//********************************************************************************************************************
+
 static uint32_t bestasize(uint32_t bins[], uint32_t* narray)
 {
    uint32_t b, sum, na = 0, sz = 0, nn = *narray;
@@ -349,6 +364,8 @@ static uint32_t bestasize(uint32_t bins[], uint32_t* narray)
    *narray = sz;
    return na;
 }
+
+//********************************************************************************************************************
 
 static void rehashtab(lua_State* L, GCtab* t, cTValue* ek)
 {
@@ -371,12 +388,15 @@ void lj_tab_rehash(lua_State* L, GCtab* t)
 }
 #endif
 
+//********************************************************************************************************************
+
 void lj_tab_reasize(lua_State* L, GCtab* t, uint32_t nasize)
 {
    lj_tab_resize(L, t, nasize + 1, t->hmask > 0 ? lj_fls(t->hmask) + 1 : 0);
 }
 
-// -- Table getters -------------------------------------------------------
+//********************************************************************************************************************
+// Table getters
 
 cTValue* LJ_FASTCALL lj_tab_getinth(GCtab* t, int32_t key)
 {
@@ -390,6 +410,8 @@ cTValue* LJ_FASTCALL lj_tab_getinth(GCtab* t, int32_t key)
    return nullptr;
 }
 
+//********************************************************************************************************************
+
 cTValue* lj_tab_getstr(GCtab* t, const GCstr* key)
 {
    Node* n = hashstr(t, key);
@@ -399,6 +421,8 @@ cTValue* lj_tab_getstr(GCtab* t, const GCstr* key)
    } while ((n = nextnode(n)));
    return nullptr;
 }
+
+//********************************************************************************************************************
 
 cTValue* lj_tab_get(lua_State* L, GCtab* t, cTValue* key)
 {
@@ -435,9 +459,11 @@ cTValue* lj_tab_get(lua_State* L, GCtab* t, cTValue* key)
    return niltv(L);
 }
 
-// -- Table setters -------------------------------------------------------
+//********************************************************************************************************************
+// Table setters
 
 // Insert new key. Use Brent's variation to optimize the chain length.
+
 TValue* lj_tab_newkey(lua_State* L, GCtab* t, cTValue* key)
 {
    Node* n = hashkey(t, key);
@@ -516,6 +542,8 @@ TValue* lj_tab_newkey(lua_State* L, GCtab* t, cTValue* key)
    return &n->val;
 }
 
+//********************************************************************************************************************
+
 TValue* lj_tab_setinth(lua_State* L, GCtab* t, int32_t key)
 {
    TValue k;
@@ -529,6 +557,8 @@ TValue* lj_tab_setinth(lua_State* L, GCtab* t, int32_t key)
    return lj_tab_newkey(L, t, &k);
 }
 
+//********************************************************************************************************************
+
 TValue* lj_tab_setstr(lua_State* L, GCtab* t, const GCstr* key)
 {
    TValue k;
@@ -540,6 +570,8 @@ TValue* lj_tab_setstr(lua_State* L, GCtab* t, const GCstr* key)
    setstrV(L, &k, key);
    return lj_tab_newkey(L, t, &k);
 }
+
+//********************************************************************************************************************
 
 TValue* lj_tab_set(lua_State* L, GCtab* t, cTValue* key)
 {
@@ -568,7 +600,8 @@ TValue* lj_tab_set(lua_State* L, GCtab* t, cTValue* key)
    return lj_tab_newkey(L, t, key);
 }
 
-// -- Table traversal -----------------------------------------------------
+//********************************************************************************************************************
+// Table traversal
 
 /* Table traversal indexes (0-based):
 **
@@ -578,6 +611,7 @@ TValue* lj_tab_set(lua_State* L, GCtab* t, cTValue* key)
 */
 
 // Get the successor traversal index of a key.
+
 uint32_t LJ_FASTCALL lj_tab_keyindex(GCtab* t, cTValue* key)
 {
    TValue tmp;
@@ -607,6 +641,7 @@ uint32_t LJ_FASTCALL lj_tab_keyindex(GCtab* t, cTValue* key)
    return 0;  //  A nil key starts the traversal at internal index 0.
 }
 
+//********************************************************************************************************************
 // Get the next key/value pair of a table traversal.
 
 int lj_tab_next(GCtab* t, cTValue* key, TValue* o)
@@ -635,15 +670,19 @@ int lj_tab_next(GCtab* t, cTValue* key, TValue* o)
    return (int32_t)idx < 0 ? -1 : 0;  //  Invalid key or end of traversal.
 }
 
-// -- Table length calculation --------------------------------------------
+//********************************************************************************************************************
+// Table length calculation
 
 // 0-based: length = last_index + 1 (e.g., last element at index 2 → length 3)
+
 static LJ_AINLINE MSize semantic_length(size_t last_index)
 {
    // Handle sentinel value (size_t)-1 representing "before the first element"
    if (last_index == (size_t)-1) return 0;
    return (MSize)(last_index + 1);
 }
+
+//********************************************************************************************************************
 
 LJ_NOINLINE static size_t tab_len_slow(GCtab* t, size_t hi)
 {
@@ -671,7 +710,9 @@ LJ_NOINLINE static size_t tab_len_slow(GCtab* t, size_t hi)
    return lo;
 }
 
+//********************************************************************************************************************
 // Compute table length. Fast path. 0-based indexing.
+
 MSize LJ_FASTCALL lj_tab_len(GCtab* t)
 {
    // Initialize last_index to sentinel value representing "before the first element"
@@ -697,7 +738,9 @@ MSize LJ_FASTCALL lj_tab_len(GCtab* t)
    return t->hmask ? semantic_length(tab_len_slow(t, last_index)) : semantic_length(last_index);
 }
 
+//********************************************************************************************************************
 // Verify hinted table length or compute it.
+
 MSize LJ_FASTCALL lj_tab_len_hint(GCtab* t, size_t hint)
 {
    size_t asize = (size_t)t->asize;
