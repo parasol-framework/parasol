@@ -6,9 +6,9 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-extern int MCPROT_RW  = PAGE_READWRITE;
-extern int MCPROT_RX  = PAGE_EXECUTE_READ;
-extern int MCPROT_RWX = PAGE_EXECUTE_READWRITE;
+int MCPROT_RW  = PAGE_READWRITE;
+int MCPROT_RX  = PAGE_EXECUTE_READ;
+int MCPROT_RWX = PAGE_EXECUTE_READWRITE;
 
 extern "C" void* mcode_alloc_at(jit_State* J, uintptr_t hint, size_t sz, int prot)
 {

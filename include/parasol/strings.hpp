@@ -10,6 +10,7 @@
 #include <concepts>
 #include <ranges>
 #include <span>
+#include <cstdint>
 
 namespace pf {
 

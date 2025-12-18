@@ -687,7 +687,7 @@ static bool test_lib_array_new(pf::Log &Log)
    // Test array.new via Lua
    const char* code = R"(
       local arr = array.new(100, "int")
-      return arr != nil and array.len(arr) is 100 and array.type(arr) is "int"
+      return arr != nil and #arr is 100 and array.type(arr) is "int"
    )";
 
    if (dostring(L, code) != 0) {

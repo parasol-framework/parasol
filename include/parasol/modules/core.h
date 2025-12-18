@@ -3798,19 +3798,21 @@ struct evHotplug {
    char Vendor[40];      // Name of vendor
 };
 
+// Speed efficient way of setting a string field that is managed with AllocMemory().
+
 inline ERR set_string_field(const std::string_view Source, STRING &Dest)
 {
    MemInfo info;
    if (auto error = MemoryIDInfo(GetMemoryID(Dest), &info, sizeof(info)); error IS ERR::Okay) {
       if (Source.size()+1 < info.Size) {
-         pf::copymem(Source.data(), Dest, Source.size());
+         copymem(Source.data(), Dest, Source.size());
          Dest[Source.size()] = 0;
          return ERR::Okay;
       }
       else {
          FreeResource(GetMemoryID(Dest));
          if (AllocMemory(Source.size() + 1, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Dest, nullptr) IS ERR::Okay) {
-            pf::copymem(Source.data(), Dest, Source.size());
+            copymem(Source.data(), Dest, Source.size());
             Dest[Source.size()] = 0;
             return ERR::Okay;
          }
@@ -3824,14 +3826,14 @@ inline ERR set_string_field(const std::string_view Source, STRING &Dest)
 {
    char *newstr;
    if (AllocMemory(String.size()+1, MEM::STRING|MEM::NO_CLEAR, (APTR *)&newstr, nullptr) IS ERR::Okay) {
-      pf::copymem(String.data(), newstr, String.size());
+      copymem(String.data(), newstr, String.size());
       newstr[String.size()] = 0;
       return newstr;
    }
    else return nullptr;
 }
 
-} // namespace
+} // pf namespace
 
 namespace fl {
 
@@ -3885,7 +3887,7 @@ template<class T> ERR ReadBE(OBJECTPTR Object, T *Result)
    else return ERR::Read;
 }
 
-} // namespace
+} // fl namespace
 
 // Function construction (refer types.h)
 

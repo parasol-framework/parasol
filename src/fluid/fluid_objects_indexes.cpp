@@ -422,8 +422,6 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, int Va
    OBJECTPTR target;
    if (auto field = FindField(obj, strihash(FName), &target)) {
       if (field->Flags & FD_ARRAY) {
-         struct GCarray *arr;
-
          if (type IS LUA_TSTRING) { // Treat the source as a CSV field
             return target->set(field->FieldID, lua_tostring(Lua, ValueIndex));
          }

@@ -94,33 +94,26 @@ static CSTRING elemtype_name(AET Type)
 //
 // Creates a new array of the specified size and element type.
 //
-// Parameters:
 //   size: number of elements (must be non-negative)
 //   type: element type string ("char", "int16", "int", "int64", "float", "double", "string", "StructName")
-//
-// Returns: new array
-//
-// Example: local arr = array.new(100, "int")
 
 LJLIB_CF(array_new)
 {
    GCarray *arr;
-   int32_t size = 0;
-   AET elem_type;
-   auto type = lua_type(L, 1);
 
+   auto type = lua_type(L, 1);
    if (type IS LUA_TSTRING) {
       TValue *o = L->base;
       GCstr *s = strV(o);
-      elem_type = AET::_BYTE;
+      auto elem_type = AET::_BYTE;
       arr = lj_array_new(L, s->len, elem_type);
 
       pf::copymem(strdata(s), arr->data.get<CSTRING>(), s->len);
    }
    else {
-      size = lj_lib_checkint(L, 1);
+      auto size = lj_lib_checkint(L, 1);
       if (size < 0) lj_err_argv(L, 1, ErrMsg::NUMRNG, "non-negative", "negative");
-      elem_type = parse_elemtype(L, 2);
+      auto elem_type = parse_elemtype(L, 2);
 
       if (elem_type IS AET::_PTR) lj_err_argv(L, 2, ErrMsg::ARRTYPE); // For Parasol functions only
       else if (elem_type IS AET::_STRUCT) lj_err_argv(L, 2, ErrMsg::ARRTYPE); // For Parasol functions only (for now)
@@ -139,10 +132,7 @@ LJLIB_CF(array_new)
 //
 // Converts an array to a Lua table.
 //
-// Parameters:
 //   arr: the array to convert
-//
-// Returns: new table with array contents (0-based indexing)
 
 LJLIB_CF(array_table)
 {
@@ -390,7 +380,7 @@ LJLIB_CF(array_copy)
 
       auto c_index = dest_idx;
 
-      for (MSize i = 0; i < copy_total; i++) {
+      for (int i = 0; i < copy_total; i++) {
          lua_pushinteger(L, src_idx + i);
          lua_gettable(L, 2);        // Get table[src_idx + i]
 
@@ -495,7 +485,7 @@ LJLIB_CF(array_getString)
 
    auto len = lj_lib_optint(L, 3, arr->len - start);
    if (len < 0) lj_err_caller(L, ErrMsg::IDXRNG);
-   if (start + len > arr->len) lj_err_caller(L, ErrMsg::IDXRNG);
+   if (start + len > int(arr->len)) lj_err_caller(L, ErrMsg::IDXRNG);
 
    auto data = (CSTRING)mref<void>(arr->data) + start;
    GCstr *s = lj_str_new(L, data, len);
@@ -526,31 +516,21 @@ LJLIB_CF(array_setString)
    auto start = lj_lib_optint(L, 3, 0);
    if (start < 0) lj_err_caller(L, ErrMsg::IDXRNG);
 
-   auto len = str->len;
+   auto len = int(str->len);
 
    // Clamp length to fit in array
 
-   if (start >= arr->len) {
+   if (start >= int(arr->len)) {
       setintV(L->top++, 0);
       return 1;
    }
 
-   if (start + len > arr->len) len = arr->len - start;
+   if (start + len > int(arr->len)) len = arr->len - start;
 
    auto data = (char *)mref<void>(arr->data) + start;
    memcpy(data, strdata(str), len);
 
    setintV(L->top++, int32_t(len));
-   return 1;
-}
-
-//********************************************************************************************************************
-// Returns the length of an array.
-
-LJLIB_CF(array_len)
-{
-   GCarray *arr = lj_lib_checkarray(L, 1);
-   setintV(L->top++, int32_t(arr->len));
    return 1;
 }
 
@@ -583,23 +563,6 @@ LJLIB_CF(array_readOnly)
    GCarray *arr = lj_lib_checkarray(L, 1);
    setboolV(L->top++, (arr->flags & ARRAY_READONLY) != 0);
    return 1;
-}
-
-//********************************************************************************************************************
-// Helper to store a numeric value into an array element based on element type
-
-static void store_array_element(GCarray *Arr, int32_t Idx, lua_Number Value)
-{
-   void *elem = Arr->data.get<uint8_t>() + Idx * Arr->elemsize;
-   switch (Arr->elemtype) {
-      case AET::_BYTE:   *(uint8_t *)elem = uint8_t(Value); break;
-      case AET::_INT16:  *(int16_t *)elem = int16_t(Value); break;
-      case AET::_INT32:  *(int32_t *)elem = int32_t(Value); break;
-      case AET::_INT64:  *(int64_t *)elem = int64_t(Value); break;
-      case AET::_FLOAT:  *(float *)elem = float(Value); break;
-      case AET::_DOUBLE: *(double *)elem = Value; break;
-      default: break;
-   }
 }
 
 //********************************************************************************************************************
@@ -745,25 +708,6 @@ LJLIB_CF(array_fill)
 
    fill_array_elements(arr, value, start, start + count - 1, 1);
    return 0;
-}
-
-//********************************************************************************************************************
-// Helper to check if an array element matches a value
-
-static bool element_matches(GCarray *Arr, int32_t Idx, lua_Number Value)
-{
-   auto base = (uint8_t *)mref<void>(Arr->data);
-   void *elem = base + Idx * Arr->elemsize;
-
-   switch (Arr->elemtype) {
-      case AET::_BYTE:   return (*(uint8_t *)elem IS uint8_t(Value));
-      case AET::_INT16:  return (*(int16_t *)elem IS int16_t(Value));
-      case AET::_INT32:  return (*(int32_t *)elem IS int32_t(Value));
-      case AET::_INT64:  return (*(int64_t *)elem IS int64_t(Value));
-      case AET::_FLOAT:  return (*(float *)elem IS float(Value));
-      case AET::_DOUBLE: return (*(double *)elem IS Value);
-      default: return false;
-   }
 }
 
 //********************************************************************************************************************

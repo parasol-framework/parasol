@@ -188,7 +188,7 @@ extern "C" cTValue * lj_arr_get(lua_State *L, cTValue *O, cTValue *K)
    // Convert index to integer (0-based internally)
 
    int32_t idx = arr_idx_from_tv(K);
-   if ((idx < 0) or (idx >= arr->len)) {
+   if ((idx < 0) or (idx >= int32_t(arr->len))) {
       // Check for __index metamethod on array's metatable (per-instance first, then base)
       GCtab *mt = tabref(arr->metatable);
       if (not mt) mt = tabref(basemt_it(G(L), LJ_TARRAY));

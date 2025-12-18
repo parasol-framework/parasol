@@ -9,6 +9,7 @@
 
 #include <stdarg.h>
 #include <stddef.h>
+#include <cstdint>
 #include <string_view>
 
 #include "luaconf.h"
@@ -289,14 +290,14 @@ extern int lua_isyieldable (lua_State *L);
 
 struct lua_Debug {
   int event;
-  const char *name;   //  (n)
-  const char *namewhat;   //  (n) `global', `local', `field', `method'
-  const char *what;   //  (S) `Lua', `C', `main', `tail'
-  const char *source;   //  (S)
-  int currentline;   //  (l)
-  int nups;      //  (u) number of upvalues
-  int linedefined;   //  (S)
-  int lastlinedefined;   //  (S)
+  const char *name;      // (n)
+  const char *namewhat;  // (n) `global', `local', `field', `method'
+  const char *what;      // (S) `Lua', `C', `main', `tail'
+  const char *source;    // (S)
+  int currentline;       // (l)
+  int nups;              // (u) number of upvalues
+  int linedefined;       // (S)
+  int lastlinedefined;   // (S)
   char short_src[LUA_IDSIZE]; //  (S)
   // private part
   int i_ci;  //  active function

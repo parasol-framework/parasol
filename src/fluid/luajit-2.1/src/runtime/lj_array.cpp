@@ -43,7 +43,7 @@ uint8_t lj_array_elemsize(AET Type)
 }
 
 //********************************************************************************************************************
-// Create a new array without a metatable (use lua_createarray otherwise).  Throws on error.
+// Create a new array structure without placing it on the Lua stack (use lua_createarray otherwise).  Throws on error.
 //
 // For string arrays (CSTRING/STRING_CPP) with ARRAY_CACHED flag:
 // - Data points to an array of CSTRING or std::string pointers

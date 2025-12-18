@@ -832,15 +832,12 @@ extern void lua_createtable(lua_State *L, int narray, int nrec)
 }
 
 //********************************************************************************************************************
+// Create array and push onto stack
 
 extern void lua_createarray(lua_State *L, uint32_t Length, AET Type, void *Data, uint8_t Flags, std::string_view StructName)
 {
    lj_gc_check(L);
-   auto arr = lj_array_new(L, Length, Type, Data, Flags, StructName);
-
-   // Per-instance metatable is null - base metatable will be used automatically
-
-   setarrayV(L, L->top, arr);
+   setarrayV(L, L->top, lj_array_new(L, Length, Type, Data, Flags, StructName));
    incr_top(L);
 }
 

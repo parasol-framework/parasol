@@ -10,7 +10,7 @@ module({ name="Core", copyright="Paul Manias 1996-2025", timestamp=20241015 }, f
 
   privateNames({ "ScriptArg", "CoreBase", "RootModule" })
 
-  priority([[
+  priority([==[
 #if defined(_DEBUG)
  #ifndef _MSC_VER
   #include <signal.h>
@@ -46,7 +46,7 @@ constexpr bool defined(T flags, T test_flag) noexcept {
    return (static_cast<underlying>(flags) & static_cast<underlying>(test_flag)) != 0;
 }
 
-  ]])
+  ]==])
 
   loadFile(glPath .. 'common.fdl')
   loadFile(glPath .. 'common-graphics.fdl')
@@ -531,7 +531,7 @@ constexpr bool defined(T flags, T test_flag) noexcept {
     LIST_END    = 150
   })
 
-  c_insert([[
+  c_insert([==[
 
 typedef AC ACTIONID;
 
@@ -686,7 +686,7 @@ class FloatRect {
 
 }
 
-]])
+]==])
 
   struct("ObjectSignal", { comment="Required in calls to WaitForObjects()." }, [[
      obj Object # Reference to an object to monitor.
@@ -1091,7 +1091,7 @@ struct ScriptArg { // For use with sc::Exec
     "ParentContext",
     "SetResourceMgr")
 
-  c_insert([=[
+  c_insert([==[
 
 //********************************************************************************************************************
 
@@ -1187,7 +1187,7 @@ static thread_local int _tlUniqueThreadID = 0;
 inline OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UID; }
 inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(SetResource(Res, (MAXINT)Value)); }
 
-]=])
+]==])
 
   methods("MetaClass", "mc", {
     { id=1, name="FindField" }
@@ -1363,7 +1363,7 @@ inline CLASSID Object::baseClassID() { return Class->BaseClassID; }
    OBJECTID ScriptOwnerID;
   ]])
 
-  c_insert([[
+  c_insert([==[
 namespace sc {
 template <std::size_t SIZE> ERR Call(const FUNCTION &Function, const std::array<ScriptArg, SIZE> &Args) noexcept {
    struct Callback args = { Function.ProcedureID, Args.data(), int(std::ssize(Args)), ERR::Okay };
@@ -1389,7 +1389,7 @@ inline ERR Call(const FUNCTION &Function, ERR &Result) noexcept {
    return(error);
 }
 } // namespace
-  ]])
+  ]==])
 
   struct("ActionEntry", { restrict='c', comment="For the Task Actions field." }, [[
      fptr(error obj ptr) PerformAction # Pointer to a custom action hook.
@@ -1510,7 +1510,7 @@ inline ERR Call(const FUNCTION &Function, ERR &Result) noexcept {
     int(CF) Format     # CF_GZIP, CF_ZLIB, CF_DEFLATE
   ]])
 
-  c_insert([[
+  c_insert([==[
 #ifndef PRV_CORE
 
 // Note that the length of the data is only needed when messaging between processes, so we can skip it for these
@@ -1714,9 +1714,9 @@ template <class T, class X = APTR> FUNCTION C_FUNCTION(T *pRoutine, X pMeta = 0)
 };
 
 inline CSTRING Object::className() { return Class->ClassName; }
-  ]])
+  ]==])
 
-  if (glProgram == "idl-compile") then
+  if (glProgram is "idl-compile") then
      loadFile("defs/errors.fdl")
   end
 end)

@@ -1278,9 +1278,7 @@ static int range_slice_impl(lua_State *L)
          }
       }
 
-      // Per-instance metatable is null - base metatable will be used automatically
-
-      setarrayV(L, L->top++, new_arr);
+      setarrayV(L, L->top++, new_arr); // Push array onto the stack
       return 1;
    }
 
