@@ -338,6 +338,7 @@ TValue* LJ_FASTCALL lj_meta_len(lua_State *L, cTValue *o)
    cTValue *mo = lj_meta_lookup(L, o, MM_len);
    if (tvisnil(mo)) {
       if (tvistab(o)) tabref(tabV(o)->metatable)->nomm |= (uint8_t)(1u << MM_len);
+      else if (tvisarray(o)) return nullptr;  // Arrays have first-class length support.
       else lj_err_optype(L, o, ErrMsg::OPLEN);
       return nullptr;
    }

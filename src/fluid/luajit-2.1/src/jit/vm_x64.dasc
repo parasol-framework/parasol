@@ -1161,8 +1161,23 @@ static void build_subroutines(BuildCtx *ctx)
   |  test RC, RC
   |  jne ->vmeta_binop			// Binop call for compatibility.
   |  movzx RDd, PC_RD
-  |  mov TAB:CARG1, [BASE+RD*8]
-  |  cleartp TAB:CARG1
+  |  mov RD, [BASE+RD*8]
+  |  cmp ITYPEd, LJ_TARRAY; jne >1
+  |  // Array: read length directly.
+  |  movzx RAd, PC_RA
+  |.if DUALNUM
+  |  mov RDd, dword ARRAY:RD->len
+  |  setint RD
+  |  mov [BASE+RA*8], RD
+  |.else
+  |  xorps xmm0, xmm0
+  |  cvtsi2sd xmm0, dword ARRAY:RD->len
+  |  movsd qword [BASE+RA*8], xmm0
+  |.endif
+  |  ins_next
+  |1:
+  |  cleartp TAB:RD
+  |  mov TAB:CARG1, TAB:RD
   |  jmp ->BC_LEN_Z
   |
   |//-- Call metamethod ----------------------------------------------------
@@ -3371,7 +3386,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |.endif
     |  ins_next
     |2:
-    |  cmp ITYPEd, LJ_TTAB; jne ->vmeta_len
+    |  cmp ITYPEd, LJ_TTAB; jne >4
     |  mov TAB:CARG1, TAB:RD
     |  mov TAB:RB, TAB:RD->metatable
     |  cmp TAB:RB, 0
@@ -3389,6 +3404,16 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  mov BASE, RB			// Restore BASE.
     |  movzx RAd, PC_RA
     |  jmp <1
+    |4:  // Check for array type.
+    |  cmp ITYPEd, LJ_TARRAY; jne ->vmeta_len
+    |.if DUALNUM
+    |  mov RDd, dword ARRAY:RD->len
+    |  jmp <1
+    |.else
+    |  xorps xmm0, xmm0
+    |  cvtsi2sd xmm0, dword ARRAY:RD->len
+    |  jmp <1
+    |.endif
     |9:  // Check for __len.
     |  test byte TAB:RB->nomm, 1<<MM_len
     |  jnz <3

@@ -1147,7 +1147,14 @@ static TRef rec_mm_len(jit_State *J, TRef tr, TValue* tv)
       if (tref_istab(tr)) {
          IRBuilder ir(J);
          return ir.emit_int(IR_ALEN, tr, TREF_NIL);
+         //equiv to: rc = emitir(IRTI(IR_ALEN), rc, TREF_NIL);
       }
+      else if (tref_isarray(tr)) {
+         IRBuilder ir(J);
+         return ir.emit_int(IR_FLOAD, tr, IRFL_ARRAY_LEN);
+         //equiv to: rc = emitir(IRTI(IR_FLOAD), rc, IRFL_ARRAY_LEN);
+      }
+
       lj_trace_err(J, LJ_TRERR_NOMM);
    }
    return 0;  //  No result yet.
@@ -2580,7 +2587,6 @@ void lj_record_ins(jit_State *J)
 
    case BC_LEN:
       if (tref_isstr(rc)) rc = emitir(IRTI(IR_FLOAD), rc, IRFL_STR_LEN);
-      else if (not LJ_52 and tref_istab(rc)) rc = emitir(IRTI(IR_ALEN), rc, TREF_NIL);
       else rc = rec_mm_len(J, rc, rcv);
       break;
 

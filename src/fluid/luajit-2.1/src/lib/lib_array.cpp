@@ -1101,17 +1101,6 @@ LJLIB_CF(array_sort)
 }
 
 //********************************************************************************************************************
-// Metamethod: __len
-// Returns array length for # operator.
-
-LJLIB_CF(array___len)
-{
-   GCarray *arr = lj_lib_checkarray(L, 1);
-   setintV(L->top++, int32_t(arr->len));
-   return 1;
-}
-
-//********************************************************************************************************************
 // Registers the array library and sets up the array metatable.
 // Unlike the Lua table, arrays are created via conventional means, i.e. array.new().
 
