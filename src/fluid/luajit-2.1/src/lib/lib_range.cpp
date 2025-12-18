@@ -1247,13 +1247,7 @@ static int range_slice_impl(lua_State *L)
       // Check for empty/invalid ranges
       if (len IS 0 or (forward and start > effective_stop) or (not forward and start < effective_stop)) {
          GCarray *new_arr = lj_array_new(L, 0, arr->elemtype);
-         lua_getfield(L, LUA_REGISTRYINDEX, "array_metatable");
-         if (tvistab(L->top - 1)) {
-            GCtab *mt = tabV(L->top - 1);
-            setgcref(new_arr->metatable, obj2gco(mt));
-            lj_gc_objbarrier(L, new_arr, mt);
-         }
-         L->top--;
+         // Per-instance metatable is null - base metatable will be used automatically
          setarrayV(L, L->top++, new_arr);
          return 1;
       }
@@ -1284,14 +1278,7 @@ static int range_slice_impl(lua_State *L)
          }
       }
 
-      // Set metatable
-      lua_getfield(L, LUA_REGISTRYINDEX, "array_metatable");
-      if (tvistab(L->top - 1)) {
-         GCtab *mt = tabV(L->top - 1);
-         setgcref(new_arr->metatable, obj2gco(mt));
-         lj_gc_objbarrier(L, new_arr, mt);
-      }
-      L->top--;
+      // Per-instance metatable is null - base metatable will be used automatically
 
       setarrayV(L, L->top++, new_arr);
       return 1;

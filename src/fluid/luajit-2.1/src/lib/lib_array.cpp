@@ -19,6 +19,7 @@
 #include "lj_tab.h"
 #include "lj_str.h"
 #include "lj_array.h"
+#include "lj_meta.h"
 #include "lib.h"
 #include "lib_range.h"
 
@@ -127,15 +128,7 @@ LJLIB_CF(array_new)
       arr = lj_array_new(L, uint32_t(size), elem_type);
    }
 
-   // Set metatable from registry
-
-   lua_getfield(L, LUA_REGISTRYINDEX, "array_metatable");
-   if (tvistab(L->top - 1)) {
-      GCtab *mt = tabV(L->top - 1);
-      setgcref(arr->metatable, obj2gco(mt));
-      lj_gc_objbarrier(L, arr, mt);
-   }
-   L->top--;  // Pop metatable
+   // Per-instance metatable is null - base metatable will be used automatically
 
    setarrayV(L, L->top++, arr);
    return 1;
@@ -1101,21 +1094,26 @@ LJLIB_CF(array_sort)
 }
 
 //********************************************************************************************************************
-// Registers the array library and sets up the array metatable.
+// Registers the array library and sets up the base metatable for arrays.
 // Unlike the Lua table, arrays are created via conventional means, i.e. array.new().
+//
+// The array library table itself serves as the base metatable, allowing direct method
+// lookup (arr:concat(), arr:sort(), etc.) via lj_tab_get in the VM array helpers.
 
 #include "lj_libdef.h"
 
 extern "C" int luaopen_array(lua_State *L)
 {
    LJ_LIB_REG(L, "array", array);
+   // Stack: [..., array_lib_table]
 
-   // Store the array library table as the metatable for arrays.
-   // This allows method calls like arr:concat() to find the concat function
-   // in the library table. The library table is left on top of the stack by LJ_LIB_REG.
+   // Use the library table directly as the base metatable for arrays.
+   // This allows lj_arr_get to find methods like concat, sort, etc. via direct table lookup.
+   GCtab *lib = tabV(L->top - 1);
+   global_State *g = G(L);
 
-   lua_pushvalue(L, -1);  // Duplicate library table
-   lua_setfield(L, LUA_REGISTRYINDEX, "array_metatable");
+   // NOBARRIER: basemt is a GC root.
+   setgcref(basemt_it(g, LJ_TARRAY), obj2gco(lib));
 
    return 1;
 }

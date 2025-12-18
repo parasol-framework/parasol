@@ -67,7 +67,11 @@ cTValue * lj_meta_lookup(lua_State *L, cTValue *o, MMS mm)
    GCtab *mt;
    if (tvistab(o)) mt = tabref(tabV(o)->metatable);
    else if (tvisudata(o)) mt = tabref(udataV(o)->metatable);
-   else if (tvisarray(o)) mt = tabref(arrayV(o)->metatable);
+   else if (tvisarray(o)) {
+      // Check per-instance metatable first, then fall back to base metatable
+      mt = tabref(arrayV(o)->metatable);
+      if (not mt) mt = tabref(basemt_it(G(L), LJ_TARRAY));
+   }
    else mt = tabref(basemt_obj(G(L), o));
 
    if (mt) {
@@ -108,7 +112,7 @@ int lj_meta_tailcall(lua_State *L, cTValue *tv)
 //********************************************************************************************************************
 // Setup call to metamethod to be run by Assembler VM.
 
-static TValue * mmcall(lua_State *L, ASMFunction cont, cTValue *mo, cTValue *a, cTValue *b)
+TValue * mmcall(lua_State *L, ASMFunction cont, cTValue *mo, cTValue *a, cTValue *b)
 {
    //           |-- framesize -> top       top+1       top+2 top+3
    // before:   [func slots ...]

@@ -172,8 +172,11 @@ extern "C" cTValue * lj_arr_get(lua_State *L, cTValue *O, cTValue *K)
    // Check if key is a string (method lookup like arr:concat())
 
    if (tvisstr(K)) {
-      // Look up in array's metatable for methods
-      if (GCtab *mt = tabref(arr->metatable)) {
+      // Look up directly in array's metatable for methods (per-instance first, then base)
+      GCtab *mt = tabref(arr->metatable);
+      if (not mt) mt = tabref(basemt_it(G(L), LJ_TARRAY));
+
+      if (mt) {
          cTValue *tv = lj_tab_get(L, mt, K);
          if (not tvisnil(tv)) return tv;  // Found method in metatable
       }
@@ -186,13 +189,14 @@ extern "C" cTValue * lj_arr_get(lua_State *L, cTValue *O, cTValue *K)
 
    int32_t idx = arr_idx_from_tv(K);
    if ((idx < 0) or (idx >= arr->len)) {
-      // Check for __index metamethod on array's metatable
-      if (GCtab *mt = tabref(arr->metatable)) {
-         if (lj_meta_fast(L, mt, MM_index)) {
-            // Metamethod exists - return nullptr to trigger it
-            // The assembler VM will handle calling the metamethod
-            return nullptr;
-         }
+      // Check for __index metamethod on array's metatable (per-instance first, then base)
+      GCtab *mt = tabref(arr->metatable);
+      if (not mt) mt = tabref(basemt_it(G(L), LJ_TARRAY));
+
+      if (mt and lj_meta_fast(L, mt, MM_index)) {
+         // Metamethod exists - return nullptr to trigger it
+         // The assembler VM will handle calling the metamethod
+         return nullptr;
       }
 
       // No metamethod - raise error
@@ -236,8 +240,10 @@ extern "C" int lj_arr_set(lua_State *L, cTValue *O, cTValue *K, cTValue *V)
    // Convert index to integer (0-based internally)
    int32_t idx = arr_idx_from_tv(K);
    if (idx < 0 or MSize(idx) >= arr->len) {
-      // Check for __newindex metamethod on array's metatable
+      // Check for __newindex metamethod on array's metatable (per-instance first, then base)
       GCtab *mt = tabref(arr->metatable);
+      if (not mt) mt = tabref(basemt_it(G(L), LJ_TARRAY));
+
       if (mt) {
          cTValue *mo = lj_meta_fast(L, mt, MM_newindex);
          if (mo) return 0; // Metamethod exists - return 0 to trigger it

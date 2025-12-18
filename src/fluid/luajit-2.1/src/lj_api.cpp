@@ -838,15 +838,7 @@ extern void lua_createarray(lua_State *L, uint32_t Length, AET Type, void *Data,
    lj_gc_check(L);
    auto arr = lj_array_new(L, Length, Type, Data, Flags, StructName);
 
-   // Set metatable from registry
-
-   lua_getfield(L, LUA_REGISTRYINDEX, "array_metatable");
-   if (tvistab(L->top - 1)) {
-      GCtab *mt = tabV(L->top - 1);
-      setgcref(arr->metatable, obj2gco(mt));
-      lj_gc_objbarrier(L, arr, mt);
-   }
-   L->top--;  // Pop metatable
+   // Per-instance metatable is null - base metatable will be used automatically
 
    setarrayV(L, L->top, arr);
    incr_top(L);
