@@ -95,7 +95,7 @@ static CSTRING elemtype_name(AET Type)
 //
 // Parameters:
 //   size: number of elements (must be non-negative)
-//   type: element type string ("char", "int16", "int", "int64", "float", "double", "pointer", "string", "struct")
+//   type: element type string ("char", "int16", "int", "int64", "float", "double", "string", "StructName")
 //
 // Returns: new array
 //
@@ -120,6 +120,10 @@ LJLIB_CF(array_new)
       size = lj_lib_checkint(L, 1);
       if (size < 0) lj_err_argv(L, 1, ErrMsg::NUMRNG, "non-negative", "negative");
       elem_type = parse_elemtype(L, 2);
+
+      if (elem_type IS AET::_PTR) lj_err_argv(L, 2, ErrMsg::ARRTYPE); // For Parasol functions only
+      else if (elem_type IS AET::_STRUCT) lj_err_argv(L, 2, ErrMsg::ARRTYPE); // For Parasol functions only (for now)
+
       arr = lj_array_new(L, uint32_t(size), elem_type);
    }
 

@@ -43,7 +43,7 @@ uint8_t lj_array_elemsize(AET Type)
 }
 
 //********************************************************************************************************************
-// Create a new array.
+// Create a new array without a metatable (use lua_createarray otherwise).  Throws on error.
 //
 // For string arrays (CSTRING/STRING_CPP) with ARRAY_CACHED flag:
 // - Data points to an array of CSTRING or std::string pointers
@@ -127,6 +127,10 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
             }
 
             return arr;
+         }
+         else if (Type IS AET::_TABLE) {
+            // Table arrays not yet supported for caching
+            lj_err_callerv(L, ErrMsg::BADVAL);
          }
          else {
             // Non-string cached array - simple memcpy in constructor

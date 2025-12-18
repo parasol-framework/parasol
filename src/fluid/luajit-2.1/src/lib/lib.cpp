@@ -63,7 +63,7 @@ static const uint8_t * lib_read_lfunc(lua_State *L, const uint8_t* p, GCtab* tab
    auto fn = lj_func_newL_empty(L, pt, tabref(L->env));
 
    // NOBARRIER: See below for common barrier.
-   
+
    setfuncV(L, lj_tab_setstr(L, tab, name), fn);
 
    auto result = (const uint8_t *)ls.p;
@@ -321,7 +321,7 @@ GCarray * lj_lib_checkarray(lua_State *L, int Arg)
 
       if (tvisarray(o)) [[likely]] return arrayV(o);
    }
-   
+
    lj_err_argt(L, Arg, LUA_TARRAY);
    return nullptr;  //  unreachable
 }
@@ -350,7 +350,7 @@ GCarray * lj_lib_optarray(lua_State *L, int Arg)
 GCtab * lj_lib_checktabornil(lua_State *L, int Arg)
 {
    TValue *o = L->base + Arg - 1;
-   if (o < L->top) {    
+   if (o < L->top) {
       if (lj_is_thunk(o)) { // Resolve thunk if present
          TValue *resolved = lj_thunk_resolve(L, udataV(o));
          o = L->base + Arg - 1; // Stack may have moved, recalculate o

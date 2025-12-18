@@ -97,7 +97,7 @@ extern int lj_lib_postreg(lua_State *, lua_CFunction cf, int id, const char* nam
 // Conversion for arrays that originate from outside Fluid
 
 inline AET ff_to_element(int Flags) {
-   if (Flags & FD_CPP) {    
+   if (Flags & FD_CPP) {
       if (Flags & FD_STRING)  return AET::_STRING_CPP;
    }
    else {

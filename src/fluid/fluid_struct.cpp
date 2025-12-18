@@ -209,7 +209,7 @@ static constexpr int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 
       auto type = field.Type;
 
       if (type & FD_ARRAY) {
-         if (type & FD_CPP) {
+         if (type & FD_CPP) { // pf::vector<ANY>
             auto vector = (pf::vector<int> *)(address);
             if (type & FD_STRUCT) {
                if (prv->Structs.contains(std::string_view(field.StructRef))) {

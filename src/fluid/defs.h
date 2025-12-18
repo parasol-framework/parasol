@@ -15,6 +15,7 @@ constexpr int SIZE_READ = 1024;
 #include <span>
 #include <concepts>
 
+#include "lj_obj.h"
 #include "lauxlib.h"
 
 using namespace pf;
@@ -24,6 +25,25 @@ template <class T> T ALIGN32(T a) { return (((a) + 3) & (~3)); }
 
 extern CSTRING const glBytecodeNames[];
 extern bool glPrintMsg;
+
+//********************************************************************************************************************
+
+[[maybe_unused]] static AET ff_to_aet(int Type)
+{
+   if (Type & FD_POINTER)     return AET::_PTR;
+   else if (Type & FD_OBJECT) return AET::_STRUCT;
+   else if (Type & FD_STRING) {
+      if (Type & FD_CPP) return AET::_STRING_CPP;
+      else return AET::_CSTRING;
+   }
+   else if (Type & FD_FLOAT)   return AET::_FLOAT;
+   else if (Type & FD_DOUBLE)  return AET::_DOUBLE;
+   else if (Type & FD_INT64)   return AET::_INT64;
+   else if (Type & FD_INT)     return AET::_INT32;
+   else if (Type & FD_WORD)    return AET::_INT16;
+   else if (Type & FD_BYTE)    return AET::_BYTE;
+   else return AET::_MAX;
+}
 
 //********************************************************************************************************************
 

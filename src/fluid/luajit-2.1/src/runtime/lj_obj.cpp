@@ -48,7 +48,7 @@ const void * LJ_FASTCALL lj_obj_ptr(global_State *g, cTValue *o)
 
 //********************************************************************************************************************
 
-[[nodiscard]] int GCarray::type_flags() const noexcept 
+[[nodiscard]] int GCarray::type_flags() const noexcept
 {
    switch(elemtype) {
       case AET::_BYTE:       return FD_BYTE;

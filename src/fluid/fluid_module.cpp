@@ -247,7 +247,7 @@ static int module_call(lua_State *Lua)
                luaL_error(Lua, "No support for calls utilising C++ arrays.");
                return 0;
             }
-            
+
             if (auto mem = (GCarray *)get_meta(Lua, i, "array_metatable")) {
                ((APTR *)(buffer + j))[0] = mem->data.get<void>();
                arg_values[in] = buffer + j;

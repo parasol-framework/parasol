@@ -663,7 +663,7 @@ extern size_t lua_objlen(lua_State *L, int idx)
    else if (tvisarray(o)) return arrayV(o)->len;
    else if (tvisudata(o)) return udataV(o)->len;
    else if (tvisnumber(o)) {
-      GCstr* s = lj_strfmt_number(L, o);
+      GCstr *s = lj_strfmt_number(L, o);
       setstrV(L, o, s);
       return s->len;
    }

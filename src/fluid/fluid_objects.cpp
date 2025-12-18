@@ -813,7 +813,7 @@ static int object_children(lua_State *Lua)
    }
    else make_table(Lua, FD_INT, 0, nullptr);
 
-   return 1; // make_table() always returns a value even if it is nil
+   return 1; // make_array() always returns a value even if it is nil
 }
 
 //********************************************************************************************************************

@@ -336,7 +336,7 @@ static int get_results(lua_State *Lua, const FunctionField *args, const int8_t *
       if (type & FD_ARRAY) { // Pointer to an array.
          if (sizeof(APTR) IS 8) of = ALIGN64(of);
          if (type & FD_RESULT) {
-            int total_elements = -1;  // If -1, make_any_table() assumes the array is null terminated.
+            int total_elements = -1;  // If -1, make_any_array() assumes the array is null terminated.
             if (args[i+1].Type & FD_ARRAYSIZE) {
                const APTR size_var = ((APTR *)(ArgBuf + of + sizeof(APTR)))[0];
                if (args[i+1].Type & FD_INT) total_elements = ((int *)size_var)[0];

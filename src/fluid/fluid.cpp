@@ -102,7 +102,7 @@ OBJECTPTR access_object(struct object *Object)
       Object->AccessCount++;
       return Object->ObjectPtr;
    }
-   else if (!Object->UID) return nullptr; // Object reference is dead
+   else if (not Object->UID) return nullptr; // Object reference is dead
    else if ((!Object->ObjectPtr) or (Object->Detached)) {
       // Detached objects are always accessed via UID, even if we have a pointer reference.
       if (auto error = AccessObject(Object->UID, 5000, &Object->ObjectPtr); error IS ERR::Okay) {
@@ -147,7 +147,7 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
       log.trace("Class: %s, Module: %s", MetaClass->ClassName, module_name);
 
       auto prv = (prvFluid *)Lua->script->ChildPrivate;
-      if (!prv->Includes.contains(module_name)) {
+      if (not prv->Includes.contains(module_name)) {
          prv->Includes.insert(module_name); // Mark the module as processed.
 
          OBJECTPTR mod;
@@ -389,7 +389,7 @@ ERR SetVariable(objScript *Script, CSTRING Name, int Type, ...)
 
    log.branch("Script: %d, Name: %s, Type: $%.8x", Script->UID, Name, Type);
 
-   if (!(prv = (prvFluid *)Script->ChildPrivate)) return log.warning(ERR::ObjectCorrupt);
+   if (not (prv = (prvFluid *)Script->ChildPrivate)) return log.warning(ERR::ObjectCorrupt);
 
    va_start(list, Type);
 
@@ -436,18 +436,18 @@ void hook_debug(lua_State *Lua, lua_Debug *Info)
 }
 
 //********************************************************************************************************************
-// Builds an ordered Lua array from a fixed list of values.  Guaranteed to always return a table, empty or not.
-// Works with primitives only, for structs please use make_struct_[ptr|serial]_table() because the struct name
+// Builds an array from a fixed list of values.  Guaranteed to always return an array, empty or not.
+// Intended for primitives only, for structs please use make_struct_[ptr|serial]_table() because the struct name
 // will be required.
 
 void make_table(lua_State *Lua, int Type, int Elements, CPTR Data)
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("Type: $%.8x, Elements: %d, Data: %p", Type, Elements, Data);
+   log.traceBranch("Type: $%.8x, Elements: %d, Data: %p", int(Type), Elements, Data);
 
    if (Elements < 0) {
-      if (!Data) Elements = 0;
+      if (not Data) Elements = 0;
       else {
          int i = 0;
          switch (Type & (FD_DOUBLE|FD_INT64|FD_FLOAT|FD_POINTER|FD_OBJECT|FD_STRING|FD_INT|FD_WORD|FD_BYTE)) {
@@ -531,7 +531,7 @@ void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, int Elements, CPT
 }
 
 //********************************************************************************************************************
-// Create a Lua array from a serialised list of structures.
+// Create an array from a serialised list of structures aligned to a 64-bit boundary.
 
 void make_struct_serial_table(lua_State *Lua, CSTRING StructName, int Elements, CPTR Data)
 {
@@ -585,12 +585,10 @@ void make_any_table(lua_State *Lua, int Type, CSTRING TypeName, int Elements, CP
 
 void get_line(objScript *Self, int Line, STRING Buffer, int Size)
 {
-   CSTRING str;
-
-   if ((str = Self->String)) {
+   if (CSTRING str = Self->String) {
       int i;
       for (i=0; i < Line; i++) {
-         if (!(str = next_line(str))) {
+         if (not (str = next_line(str))) {
             Buffer[0] = 0;
             return;
          }
@@ -715,7 +713,7 @@ static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
 
    if ((String[i] IS '0') and (String[i+1] IS 'x')) {
       for (i+=2; i < String.size(); i++) {
-         if (!std::isxdigit(String[i])) return 's';
+         if (not std::isxdigit(String[i])) return 's';
       }
       return 'h';
    }
@@ -752,7 +750,7 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
 
    Line += i + 1;
 
-   if (!prefix.empty()) prefix += '_';
+   if (not prefix.empty()) prefix += '_';
    auto append_from = prefix.size();
 
    while (*Line > 0x20) {
@@ -776,12 +774,8 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
 
       if (n > 0) {
          auto dt = datatype(value);
-         if (dt IS 'i') {
-            lua_pushinteger(Lua, strtoll(value.c_str(), nullptr, 0));
-         }
-         else if (dt IS 'f') {
-            lua_pushnumber(Lua, strtod(value.c_str(), nullptr));
-         }
+         if (dt IS 'i') lua_pushinteger(Lua, strtoll(value.c_str(), nullptr, 0));
+         else if (dt IS 'f') lua_pushnumber(Lua, strtod(value.c_str(), nullptr));
          else if (dt IS 'h') {
             lua_pushnumber(Lua, strtoull(value.c_str(), nullptr, 0)); // Using pushnumber() so that 64-bit hex is supported.
          }
