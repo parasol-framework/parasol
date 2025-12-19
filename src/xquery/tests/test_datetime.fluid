@@ -50,7 +50,7 @@ function testDateTimeAdjustment()
 
    local err, adjustedUtc = xml.mtEvaluate("adjust-dateTime-to-timezone('2023-01-01T12:00:00+02:00', 'PT0S')")
    assert(adjustedUtc is '2023-01-01T10:00:00Z',
-      'adjust-dateTime-to-timezone() should translate instants to the requested timezone, got: ' .. nz(adjustedUtc,'NIL'))
+      'adjust-dateTime-to-timezone() should translate instants to the requested timezone, got: ' .. tostring(adjustedUtc))
 
    local err, adjustedForward = xml.mtEvaluate("adjust-dateTime-to-timezone('2023-01-01T12:00:00', 'PT3H')")
    assert(adjustedForward is '2023-01-01T15:00:00+03:00',

@@ -519,7 +519,7 @@ static LoopEvent rec_for(jit_State *J, const BCIns *fori, int isforl)
    IRType t;
    if (isforl) {  // Handle FORL/JFORL opcodes.
       TRef idx = tr[FORL_IDX];
-      if (mref(J->scev.pc, const BCIns) IS fori and tref_ref(idx) IS J->scev.idx) {
+      if (mref<const BCIns>(J->scev.pc) IS fori and tref_ref(idx) IS J->scev.idx) {
          t = IRType(J->scev.t.irt);
          stop = J->scev.stop;
          idx = ir.emit(IRT(IR_ADD, t), idx, J->scev.step);
@@ -613,7 +613,7 @@ static int innerloopleft(jit_State *J, const BCIns *pc)
 {
    ptrdiff_t i;
    for (i = 0; i < PENALTY_SLOTS; i++)
-      if (mref(J->penalty[i].pc, const BCIns) IS pc) {
+      if (mref<const BCIns>(J->penalty[i].pc) IS pc) {
          if ((J->penalty[i].reason IS LJ_TRERR_LLEAVE or J->penalty[i].reason IS LJ_TRERR_LINNER) and J->penalty[i].val >= 2 * PENALTY_MIN)
             return 1;
          break;
@@ -1147,7 +1147,14 @@ static TRef rec_mm_len(jit_State *J, TRef tr, TValue* tv)
       if (tref_istab(tr)) {
          IRBuilder ir(J);
          return ir.emit_int(IR_ALEN, tr, TREF_NIL);
+         //equiv to: rc = emitir(IRTI(IR_ALEN), rc, TREF_NIL);
       }
+      else if (tref_isarray(tr)) {
+         IRBuilder ir(J);
+         return ir.emit_int(IR_FLOAD, tr, IRFL_ARRAY_LEN);
+         //equiv to: rc = emitir(IRTI(IR_FLOAD), rc, IRFL_ARRAY_LEN);
+      }
+
       lj_trace_err(J, LJ_TRERR_NOMM);
    }
    return 0;  //  No result yet.
@@ -1261,7 +1268,7 @@ static void rec_idx_bump(jit_State *J, RecordIndex* ix)
 {
    RBCHashEntry* rbc = &J->rbchash[(ix->tab & (RBCHASH_SLOTS - 1))];
    if (tref_ref(ix->tab) IS rbc->ref) {
-      const BCIns *pc = mref(rbc->pc, const BCIns);
+      const BCIns *pc = mref<const BCIns>(rbc->pc);
       GCtab* tb = tabV(&ix->tabv);
       uint32_t nhbits;
       IRIns* ir;
@@ -1792,14 +1799,14 @@ noconstify:
 static void check_call_unroll(jit_State *J, TraceNo lnk)
 {
    cTValue *frame = J->L->base - 1;
-   void* pc = mref(frame_func(frame)->l.pc, void);
+   void* pc = mref<void>(frame_func(frame)->l.pc);
    int32_t depth = J->framedepth;
    int32_t count = 0;
    if ((J->pt->flags & PROTO_VARARG)) depth--;  //  Vararg frame still missing.
    for (; depth > 0; depth--) {  // Count frames with same prototype.
       if (frame_iscont(frame)) depth--;
       frame = frame_prev(frame);
-      if (mref(frame_func(frame)->l.pc, void) IS pc) count++;
+      if (mref<void>(frame_func(frame)->l.pc) IS pc) count++;
    }
    if (J->pc IS J->startpc) {
       if (count + J->tailcalled > J->param[JIT_P_recunroll]) {
@@ -2320,6 +2327,63 @@ static TRef rec_arith_op(jit_State *J, RecordOps *ops)
 }
 
 //********************************************************************************************************************
+// Handle native array ops: BC_AGETV, BC_AGETB, BC_ASETV, BC_ASETB
+//
+// Native arrays (GCarray) are different from tables - they have typed elements and 0-based indexing internally.
+// We emit calls to helper functions that handle the element type conversion.
+//
+// TODO: Optimise to inline loads/stores.
+
+static TRef rec_array_op(jit_State *J, RecordOps *ops)
+{
+   IRBuilder ir(J);
+   TRef arr = ops->rb;       // Array reference
+   TRef idx = ops->rc;       // Index (variable or constant)
+   BCOp op = ops->op;
+   int is_get = (op IS BC_AGETV or op IS BC_AGETB);
+   int is_const_idx = (op IS BC_AGETB or op IS BC_ASETB);
+
+   if (not tref_isarray(arr)) { // Not an array type - abort trace
+      lj_trace_err(J, LJ_TRERR_BADTYPE);
+      return 0;
+   }
+
+   // Handle index conversion
+
+   TRef idx0;  // 0-based index
+   if (is_const_idx) {
+      // For AGETB/ASETB, the index is already a 0-based constant literal in bc_c()
+      int32_t const_idx = int32_t(bc_c(ops->ins));
+      idx0 = ir.kint(const_idx);
+   }
+   else { // Variable index - narrow to integer and ensure 0-based
+      idx0 = lj_opt_narrow_index(J, idx);
+   }
+
+   if (is_get) {
+      // Array get - emit call to lj_arr_getidx helper
+      // Helper signature: void lj_arr_getidx(lua_State *L, GCarray *arr, int32_t idx, TValue *result)
+      // The L parameter is implicit (CCI_L flag)
+      // Result is stored to a destination that needs to be provided
+      // For now, we use a call that stores to tmptv and then load from there
+
+      lj_ir_call(J, IRCALL_lj_arr_getidx, arr, idx0);
+
+      // Load the result from g->tmptv (where lj_arr_getidx stores the result)
+      // This is a workaround for now - proper handling would use TMPREF
+      TRef tmp = emitir(IRT(IR_TMPREF, IRT_PGC), 0, IRTMPREF_OUT1);
+      return emitir(IRT(IR_VLOAD, IRT_NUM), tmp, 0);  // Load as number for simplicity
+   }
+   else {
+      // Array set - emit call to lj_arr_setidx helper
+      // Helper signature: void lj_arr_setidx(lua_State *L, GCarray *arr, int32_t idx, cTValue *val)
+      TRef val = ops->ra;  // Value to store
+      lj_ir_call(J, IRCALL_lj_arr_setidx, arr, idx0, val);
+      return 0;
+   }
+}
+
+//********************************************************************************************************************
 // Handle table access ops: BC_GGET, BC_GSET, BC_TGET*, BC_TSET*, BC_TNEW, BC_TDUP
 
 static TRef rec_table_op(jit_State *J, RecordOps *ops, const BCIns *pc)
@@ -2523,7 +2587,6 @@ void lj_record_ins(jit_State *J)
 
    case BC_LEN:
       if (tref_isstr(rc)) rc = emitir(IRTI(IR_FLOAD), rc, IRFL_STR_LEN);
-      else if (not LJ_52 and tref_istab(rc)) rc = emitir(IRTI(IR_ALEN), rc, TREF_NIL);
       else rc = rec_mm_len(J, rc, rcv);
       break;
 
@@ -2599,6 +2662,15 @@ void lj_record_ins(jit_State *J)
 
    case BC_TSETM:
       rec_tsetm(J, ra, (BCREG)(J->L->top - J->L->base), (int32_t)rcv->u32.lo);
+      break;
+
+      // Array ops - native array access
+   case BC_AGETV: case BC_AGETB:
+      rc = rec_array_op(J, &ops);
+      break;
+
+   case BC_ASETV: case BC_ASETB:
+      rec_array_op(J, &ops);
       break;
 
       // -- Calls and vararg handling

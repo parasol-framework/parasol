@@ -80,11 +80,13 @@ ExternalProject_Add(libffi-3.3
 set (LUAJIT_SRC "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src")
 
 # Define build directory for generated files (avoids polluting source tree)
+
 set (LUAJIT_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/luajit-generated")
 file(MAKE_DIRECTORY "${LUAJIT_BUILD_DIR}")
 file(MAKE_DIRECTORY "${LUAJIT_BUILD_DIR}/jit")
 
 # Generated header files
+
 set (LUAJIT_GENERATED_HEADERS
    "${LUAJIT_BUILD_DIR}/lj_bcdef.h"
    "${LUAJIT_BUILD_DIR}/lj_ffdef.h"
@@ -94,8 +96,8 @@ set (LUAJIT_GENERATED_HEADERS
 )
 
 set (LUAJIT_VMDEF_LUA "${LUAJIT_BUILD_DIR}/jit/vmdef.lua")
-set (LUAJIT_COMMON_DEFS LUAJIT_ENABLE_LUA52COMPAT LUAJIT_DISABLE_FFI)
-set (LUAJIT_NON_MSVC_DEFS -DLUAJIT_DISABLE_FFI -DLUAJIT_DISABLE_BUFFER -DLUAJIT_ENABLE_LUA52COMPAT)
+set (LUAJIT_COMMON_DEFS LUAJIT_DISABLE_FFI)
+set (LUAJIT_NON_MSVC_DEFS -DLUAJIT_DISABLE_FFI -DLUAJIT_DISABLE_BUFFER)
 
 option(PARASOL_PARSER_TRACE "Emit parser token and expectation traces" OFF)
 
@@ -118,6 +120,7 @@ endif ()
 # that provides lj_assert_fail(). Instead, we use:
 #   - Generator expressions for MSVC multi-config builds (in target_compile_definitions)
 #   - LUAJIT_LIBRARY_DEFS for non-MSVC single-config builds (in custom commands)
+
 set(LUAJIT_LIBRARY_DEFS "")
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
    set(LUAJIT_LIBRARY_DEFS -DLUA_USE_ASSERT)
@@ -137,6 +140,7 @@ set (LJLIB_C
    "${LUAJIT_SRC}/lib/lib_string.cpp"
    "${LUAJIT_SRC}/lib/lib_table.cpp"
    "${LUAJIT_SRC}/lib/lib_range.cpp"
+   "${LUAJIT_SRC}/lib/lib_array.cpp"
    "${LUAJIT_SRC}/lib/lib_debug.cpp"
    "${LUAJIT_SRC}/lib/lib_jit.cpp"
 )
@@ -230,8 +234,10 @@ if (MSVC)
    add_custom_command(
       OUTPUT ${BUILDVM_TARGET}
       COMMAND ${CMAKE_CXX_COMPILER} /nologo /c /W3 /std:c++20
-         /DLUAJIT_ENABLE_LUA52COMPAT /D_CRT_SECURE_NO_DEPRECATE /DLUAJIT_DISABLE_FFI
-         /I${LUAJIT_SRC} /I${LUAJIT_DYNASM_DIR} /I${LUAJIT_BUILD_DIR} /I${LUAJIT_SRC}/bytecode /I${LUAJIT_SRC}/debug /I${LUAJIT_SRC}/lib /I${LUAJIT_SRC}/parser /I${LUAJIT_SRC}/runtime
+         /D_CRT_SECURE_NO_DEPRECATE /DLUAJIT_DISABLE_FFI
+         /I${LUAJIT_SRC} /I${LUAJIT_DYNASM_DIR} /I${LUAJIT_BUILD_DIR} /I${LUAJIT_SRC}/bytecode
+         /I${LUAJIT_SRC}/debug /I${LUAJIT_SRC}/lib /I${LUAJIT_SRC}/parser /I${LUAJIT_SRC}/runtime
+         /I${PROJECT_SOURCE_DIR}/include /I${CMAKE_BINARY_DIR}
          ${BUILDVM_SOURCES}
       COMMAND ${CMAKE_LINKER} /nologo /out:${BUILDVM_TARGET}
          ${LUAJIT_BUILD_DIR}/buildvm.obj
@@ -290,7 +296,8 @@ if (MSVC)
    )
 
    # Disable specific warnings from LuaJIT and disable GS security checks for performance
-   target_compile_options(luajit_lib PRIVATE /wd4244 /wd5287 /GS-)
+   # /MP enables multi-processor compilation for parallel builds within this target
+   target_compile_options(luajit_lib PRIVATE /MP /wd4244 /wd5287 /GS-)
 
    # Use generator expression for configuration-specific paths in MSVC multi-config builds
    # Check if using a multi-config generator (Visual Studio) vs single-config (Ninja)
@@ -608,11 +615,12 @@ if (BUILD_DEFS)
 endif ()
 
 set (FLUID_SOURCES "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_struct.cpp" "fluid_processing.cpp"
-   "fluid_number.cpp" "fluid_functions.cpp" "fluid_objects.cpp" "fluid_array.cpp" "fluid_regex.cpp"
+   "fluid_number.cpp" "fluid_functions.cpp" "fluid_objects.cpp" "fluid_regex.cpp"
    "fluid_io.cpp" "fluid_class.cpp"
    "${LUAJIT_SRC}/lib/lib.cpp"
    "${LUAJIT_SRC}/lib/load.cpp"
    "${LUAJIT_SRC}/lib/lib_aux.cpp"
+   "${LUAJIT_SRC}/lib/lib_array.cpp"
    "${LUAJIT_SRC}/lib/lib_base.cpp"
    "${LUAJIT_SRC}/lib/lib_bit.cpp"
    "${LUAJIT_SRC}/lib/lib_debug.cpp"
@@ -633,6 +641,7 @@ set (FLUID_SOURCES "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_str
 if (ENABLE_UNIT_TESTS)
    list (APPEND FLUID_SOURCES "${LUAJIT_SRC}/runtime/unit_test_indexing.cpp")
    list (APPEND FLUID_SOURCES "${LUAJIT_SRC}/runtime/unit_test_vm_asm.cpp")
+   list (APPEND FLUID_SOURCES "${LUAJIT_SRC}/runtime/unit_tests_arrays.cpp")
    list (APPEND FLUID_SOURCES "${LUAJIT_SRC}/jit/jit_unit_tests.cpp")
 
    # Add MASM assembly file for register capture on MSVC x64
@@ -667,8 +676,12 @@ target_link_libraries (${MOD} PRIVATE
 target_compile_definitions(${MOD} PRIVATE
    LUAJIT_DISABLE_FFI
    LUAJIT_DISABLE_BUFFER
-   LUAJIT_ENABLE_LUA52COMPAT
    $<$<CONFIG:Debug>:LUA_USE_ASSERT>)
+
+if (MSVC)
+   # /MP enables multi-processor compilation for parallel builds within this target
+   target_compile_options(${MOD} PRIVATE /MP)
+endif ()
 
 if (ENABLE_UNIT_TESTS)
    target_compile_definitions(${MOD} PRIVATE ENABLE_UNIT_TESTS)

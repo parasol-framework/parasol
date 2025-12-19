@@ -1,6 +1,6 @@
 -- Flute tests for the safe navigation operators - ?., ?: and ?[
 
-@BeforeEach(hotpath=true) 
+@BeforeEach(hotpath=true)
 function enforce_hotpath() end
 
 ----------------------------------------------------------------------------------------------------------------------

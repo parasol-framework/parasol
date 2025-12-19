@@ -7,7 +7,6 @@
 #define LUA_CORE
 
 #include "lj_obj.h"
-#if LJ_HASJIT
 #include "lj_gc.h"
 #include "lj_err.h"
 #include "lj_jit.h"
@@ -15,14 +14,7 @@
 #include "lj_trace.h"
 #include "lj_dispatch.h"
 #include "lj_prng.h"
-#endif
-#if LJ_HASJIT or LJ_HASFFI
 #include "lj_vm.h"
-#endif
-
-// -- OS-specific functions -----------------------------------------------
-
-#if LJ_HASJIT or LJ_HASFFI
 
 // Define this if you want to run LuaJIT with Valgrind.
 #ifdef LUAJIT_USE_VALGRIND
@@ -39,8 +31,9 @@ void lj_mcode_sync(void* start, void* end)
 #ifdef LUAJIT_USE_VALGRIND
    VALGRIND_DISCARD_TRANSLATIONS(start, (char*)end - (char*)start);
 #endif
+
 #if LJ_TARGET_X86ORX64
-   UNUSED(start); UNUSED(end);
+
 #elif LJ_TARGET_IOS
    sys_icache_invalidate(start, (char*)end - (char*)start);
 #elif LJ_TARGET_PPC
@@ -52,37 +45,17 @@ void lj_mcode_sync(void* start, void* end)
 #endif
 }
 
-#endif
-
 #if LJ_HASJIT
 
 #if LJ_TARGET_WINDOWS
 
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+extern int MCPROT_RW;
+extern int MCPROT_RX;
+extern int MCPROT_RWX;
 
-#define MCPROT_RW   PAGE_READWRITE
-#define MCPROT_RX   PAGE_EXECUTE_READ
-#define MCPROT_RWX   PAGE_EXECUTE_READWRITE
-
-static void* mcode_alloc_at(jit_State* J, uintptr_t hint, size_t sz, DWORD prot)
-{
-   void* p = LJ_WIN_VALLOC((void*)hint, sz, MEM_RESERVE | MEM_COMMIT | MEM_TOP_DOWN, prot);
-   if (!p and !hint) lj_trace_err(J, LJ_TRERR_MCODEAL);
-   return p;
-}
-
-static void mcode_free(jit_State* J, void* p, size_t sz)
-{
-   UNUSED(J); UNUSED(sz);
-   VirtualFree(p, 0, MEM_RELEASE);
-}
-
-static int mcode_setprot(void* p, size_t sz, DWORD prot)
-{
-   DWORD oprot;
-   return !LJ_WIN_VPROTECT(p, sz, prot, &oprot);
-}
+extern "C" void* mcode_alloc_at(jit_State* J, uintptr_t hint, size_t sz, int prot);
+extern "C" void mcode_free(jit_State* J, void* p, size_t sz);
+extern "C" int mcode_setprot(void* p, size_t sz, int prot);
 
 #elif LJ_TARGET_POSIX
 
@@ -113,7 +86,6 @@ static void* mcode_alloc_at(jit_State* J, uintptr_t hint, size_t sz, int prot)
 
 static void mcode_free(jit_State* J, void* p, size_t sz)
 {
-   UNUSED(J);
    munmap(p, sz);
 }
 
@@ -130,42 +102,18 @@ static int mcode_setprot(void* p, size_t sz, int prot)
 
 // -- MCode area protection -----------------------------------------------
 
-#if LUAJIT_SECURITY_MCODE == 0
-
-/* Define this ONLY if page protection twiddling becomes a bottleneck.
-**
-** It's generally considered to be a potential security risk to have
-** pages with simultaneous write *and* execute access in a process.
-**
-** Do not even think about using this mode for server processes or
-** apps handling untrusted external data.
-**
-** The security risk is not in LuaJIT itself -- but if an adversary finds
-** any *other* flaw in your C application logic, then any RWX memory pages
-** simplify writing an exploit considerably.
-*/
-#define MCPROT_GEN   MCPROT_RWX
-#define MCPROT_RUN   MCPROT_RWX
-
-static void mcode_protect(jit_State* J, int prot)
-{
-   UNUSED(J); UNUSED(prot); UNUSED(mcode_setprot);
-}
-
-#else
-
-/* This is the default behaviour and much safer:
-**
-** Most of the time the memory pages holding machine code are executable,
+/* Most of the time the memory pages holding machine code are executable,
 ** but NONE of them is writable.
 **
 ** The current memory area is marked read-write (but NOT executable) only
 ** during the short time window while the assembler generates machine code.
 */
+
 #define MCPROT_GEN   MCPROT_RW
 #define MCPROT_RUN   MCPROT_RX
 
 // Protection twiddling failed. Probably due to kernel security.
+
 [[noreturn]] static LJ_NOINLINE void mcode_protfail(jit_State* J)
 {
    lua_CFunction panic = J2G(J)->panic;
@@ -187,19 +135,15 @@ static void mcode_protect(jit_State* J, int prot)
    }
 }
 
-#endif
 
 // -- MCode area allocation -----------------------------------------------
 
-#if LJ_64
 #define mcode_validptr(p)   (p)
-#else
-#define mcode_validptr(p)   ((p) and (uintptr_t)(p) < 0xffff0000)
-#endif
 
 #ifdef LJ_TARGET_JUMPRANGE
 
 // Get memory within relative jump distance of our code in 64 bit mode.
+
 static void* mcode_alloc(jit_State* J, size_t sz)
 {
    /* Target an address in the static assembler code (64K aligned).
@@ -254,6 +198,7 @@ static void* mcode_alloc(jit_State* J, size_t sz)
 // -- MCode area management -----------------------------------------------
 
 // Allocate a new MCode area.
+
 static void mcode_allocarea(jit_State* J)
 {
    MCode* oldarea = J->mcarea;
@@ -271,6 +216,7 @@ static void mcode_allocarea(jit_State* J)
 }
 
 // Free all MCode areas.
+
 void lj_mcode_free(jit_State* J)
 {
    MCode* mc = J->mcarea;
@@ -288,12 +234,11 @@ void lj_mcode_free(jit_State* J)
 // -- MCode transactions --------------------------------------------------
 
 // Reserve the remainder of the current MCode area.
+
 MCode* lj_mcode_reserve(jit_State* J, MCode** lim)
 {
-   if (!J->mcarea)
-      mcode_allocarea(J);
-   else
-      mcode_protect(J, MCPROT_GEN);
+   if (!J->mcarea) mcode_allocarea(J);
+   else mcode_protect(J, MCPROT_GEN);
    *lim = J->mcbot;
    return J->mctop;
 }

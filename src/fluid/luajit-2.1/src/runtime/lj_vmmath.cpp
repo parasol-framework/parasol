@@ -19,6 +19,8 @@
 // Wrapper functions to deal with the ELF/x86 PIC disaster.
 LJ_FUNCA double lj_wrap_log(double x) { return log(x); }
 LJ_FUNCA double lj_wrap_log10(double x) { return log10(x); }
+LJ_FUNCA double lj_wrap_deg(double x) { return x * 57.29577951308232; }
+LJ_FUNCA double lj_wrap_rad(double x) { return x * 0.017453292519943295; }
 LJ_FUNCA double lj_wrap_exp(double x) { return exp(x); }
 LJ_FUNCA double lj_wrap_sin(double x) { return sin(x); }
 LJ_FUNCA double lj_wrap_cos(double x) { return cos(x); }

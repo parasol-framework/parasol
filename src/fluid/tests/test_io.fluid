@@ -42,7 +42,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Basic file operations tests
 
-@Test(labels=['io', 'file']) function ioOpen()
+@Test(labels=['io', 'file']) function IOOpen()
    -- Test opening an existing file for reading
    test_path = createTestFile('test_read.txt', 'Hello, World!')
    file = io.open(test_path, 'r')
@@ -76,7 +76,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test(labels=['io', 'file']) function ioClose()
+@Test(labels=['io', 'file']) function IOClose()
    test_path = createTestFile('test_close.txt', 'test')
    file = io.open(test_path, 'r')
    assert(file, 'Failed to open file')
@@ -88,7 +88,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test(labels=['io', 'file']) function ioType()
+@Test(labels=['io', 'file']) function IOType()
    test_path = createTestFile('test_type.txt', 'test')
    file = io.open(test_path, 'r')
 
@@ -101,7 +101,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test(labels=['io', 'file']) function ioTmpfile()
+@Test(labels=['io', 'file']) function IOTmpfile()
    tmpfile = io.tmpfile()
    assert(tmpfile, 'Failed to create temporary file')
    assert(io.type(tmpfile) is 'file', 'Temporary file should be a valid file object')
@@ -116,7 +116,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- File handle method tests
 
-@Test(labels=['io', 'file']) function fileWrite()
+@Test(labels=['io', 'file']) function FileWrite()
    test_path = glTestFolder .. 'test_file_write.txt'
    file = io.open(test_path, 'w')
    assert(file, 'Failed to open file for writing')
@@ -138,7 +138,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test(labels=['io', 'file']) function fileRead()
+@Test(labels=['io', 'file']) function FileRead()
    -- Create test file with various content types
    test_content = '123\n456.789\nHello World\nLine 4\n'
    test_path = createTestFile('test_read.txt', test_content)
@@ -147,16 +147,16 @@ end
 
    -- Test reading a line (default behavior)
    line = file:read()
-   assert(line is '123', 'Should read first line: "123", got "' .. nz(line, 'NIL') .. '"')
+   assert(line is '123', 'Should read first line: "123", got "' .. tostring(line) .. '"')
 
    -- Test reading a number
    num = file:read('*n')
-   assert(num is 456.789, 'Should read number 456.789, got ' .. nz(num, 'NIL'))
+   assert(num is 456.789, 'Should read number 456.789, got ' .. tostring(num))
 
    -- Test reading specific number of bytes
    file:seek('set', 0) -- Reset to start
    bytes = file:read(3)
-   assert(bytes is '123', 'Should read 3 bytes: "123", got "' .. nz(bytes, 'NIL') .. '"')
+   assert(bytes is '123', 'Should read 3 bytes: "123", got "' .. tostring(bytes) .. '"')
 
    -- Test reading entire file
    file:seek('set', 0) -- Reset to start
@@ -184,7 +184,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test(labels=['io', 'file']) function fileSeek()
+@Test(labels=['io', 'file']) function FileSeek()
    test_path = createTestFile('test_seek.txt', '0123456789')
    file = io.open(test_path, 'r')
    assert(file, 'Failed to open file for seeking')
@@ -210,7 +210,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test(labels=['io', 'file']) function fileFlush()
+@Test(labels=['io', 'file']) function FileFlush()
    test_path = glTestFolder .. 'test_flush.txt'
    file = io.open(test_path, 'w')
    assert(file, 'Failed to open file for flushing')
@@ -226,7 +226,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Lines iteration tests
 
-@Test(labels=['io', "lines"]) function ioLines()
+@Test(labels=['io', "lines"]) function IOLines()
    -- Create test file with multiple lines
    lines_content = 'Line 1\nLine 2\nLine 3\n'
    test_path = createTestFile('test_lines.txt', lines_content)
@@ -240,7 +240,7 @@ end
    end
 
    assert(line_count is 3, 'Should read 3 lines, got ' .. line_count)
-   assert(collected_lines[0] is 'Line 1', 'First line should be "Line 1", got ' .. nz(collected_lines[0], 'NIL'))
+   assert(collected_lines[0] is 'Line 1', 'First line should be "Line 1", got ' .. tostring(collected_lines[0]))
    assert(collected_lines[1] is 'Line 2', 'Second line should be "Line 2"')
    assert(collected_lines[2] is 'Line 3', 'Third line should be "Line 3"')
 end
@@ -259,7 +259,7 @@ end
    end
 
    assert(line_count is 3, 'Should read 3 lines from file handle')
-   assert(collected_lines[0] is 'First', 'First line should be "First", got ' .. nz(collected_lines[0], 'NIL'))
+   assert(collected_lines[0] is 'First', 'First line should be "First", got ' .. tostring(collected_lines[0]))
    assert(collected_lines[1] is 'Second', 'Second line should be "Second"')
    assert(collected_lines[2] is 'Third', 'Third line should be "Third"')
 
@@ -269,7 +269,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Default input/output tests
 
-@Test(labels=['io', "defaults"]) function inputOutput()
+@Test(labels=['io', "defaults"]) function InputOutput()
    -- Test setting default input
    input_path = createTestFile('test_input.txt', 'input test data')
    input_file = io.input(input_path)
@@ -302,7 +302,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Constants tests
 
-@Test(labels=['io']) function ioConstants()
+@Test(labels=['io']) function IOConstants()
    assert(io.stdin, 'io.stdin not defined')
    assert(io.stdout, 'io.stdout not defined')
    assert(io.stderr, 'io.stderr not defined')
@@ -316,7 +316,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Error handling tests
 
-@Test(labels=['io', "error"]) function errorHandling()
+@Test(labels=['io', "error"]) function ErrorHandling()
    -- Test opening invalid file
    file, err = io.open('/invalid/path/file.txt', 'r')
    assert(file is nil, 'Should return nil for invalid file path')
@@ -341,7 +341,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Integration tests
 
-@Test(labels=['io', "read"]) function ioRead()
+@Test(labels=['io', "read"]) function IORead()
    -- Test reading from default input
    input_path = createTestFile('test_io_read.txt', 'io read test\nsecond line\n')
    io.input(input_path)
@@ -357,7 +357,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test(labels=['io', "full"]) function integration()
+@Test(labels=['io', "full"]) function Integration()
    -- Create a test file, write data, read it back line by line
    test_data = 'First line of data\nSecond line of data\nThird line of data\n'
    test_path = glTestFolder .. 'integration_test.txt'
@@ -385,7 +385,7 @@ end
    read_file:seek('set', 6) -- Skip "First "
 
    partial = read_file:read(4) -- Read "line"
-   assert(partial is 'line', 'Should read 4 bytes after seek, got "' .. nz(partial, 'NIL') .. '"')
+   assert(partial is 'line', 'Should read 4 bytes after seek, got "' .. tostring(partial) .. '"')
 
    -- Test reading entire remaining content
    read_file:seek('set', 0)
@@ -399,10 +399,10 @@ end
    num_file = io.open(number_path, 'r')
 
    int_num = num_file:read('*n')
-   assert(int_num is 42, 'Should read integer 42, got ' .. nz(int_num, 'NIL'))
+   assert(int_num is 42, 'Should read integer 42, got ' .. tostring(int_num))
 
    float_num = num_file:read('*n')
-   assert(math.abs(float_num - 3.14159) < 0.00001, 'Should read float 3.14159, got ' .. nz(float_num, 'NIL'))
+   assert(math.abs(float_num - 3.14159) < 0.00001, 'Should read float 3.14159, got ' .. tostring(float_num))
 
    num_file:close()
 end

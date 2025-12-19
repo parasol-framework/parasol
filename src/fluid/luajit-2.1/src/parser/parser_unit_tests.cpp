@@ -958,7 +958,7 @@ static BytecodeSnapshot snapshot_proto(GCproto* pt)
 
    if (pt->flags & PROTO_CHILD) {
       ptrdiff_t child_count = pt->sizekgc;
-      GCRef* kr = mref(pt->k, GCRef) - 1;
+      GCRef* kr = mref<GCRef>(pt->k) - 1;
       for (ptrdiff_t i = 0; i < child_count; ++i, --kr) {
          GCobj* obj = gcref(*kr);
          if (obj->gch.gct IS ~LJ_TPROTO) {

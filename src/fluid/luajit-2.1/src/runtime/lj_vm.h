@@ -64,6 +64,8 @@ LJ_ASMF double lj_vm_ceil_sf(double);
 #endif
 // C math library wrappers for C++ compatibility.
 LJ_ASMF double cmath_log10(double);
+LJ_ASMF double deg(double);
+LJ_ASMF double rad(double);
 LJ_ASMF double cmath_exp(double);
 LJ_ASMF double cmath_sin(double);
 LJ_ASMF double cmath_cos(double);

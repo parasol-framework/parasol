@@ -303,7 +303,7 @@ static void snap_useuv(GCproto* pt, uint8_t* udf)
    */
    if ((pt->flags & PROTO_CHILD)) {
       ptrdiff_t i, j, n = pt->sizekgc;
-      GCRef* kr = mref(pt->k, GCRef) - 1;
+      GCRef* kr = mref<GCRef>(pt->k) - 1;
       for (i = 0; i < n; i++, kr--) {
          GCobj* o = gcref(*kr);
          if (o->gch.gct == ~LJ_TPROTO) {

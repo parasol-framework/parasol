@@ -256,9 +256,11 @@ class SlotView {
    jit_State *J;
 
    // Internal bounds check helper (only active in debug builds)
+   // Note: idx can be more negative than FUNC_SLOT_OFFSET when upvalues alias parent frame slots
    void check_bounds([[maybe_unused]] int32_t idx) const {
-      assert(idx >= FRC::FUNC_SLOT_OFFSET && "slot index below minimum");
-      assert(idx < int32_t(LJ_MAX_JSLOTS - J->baseslot) && "slot index exceeds maximum");
+      int32_t abs_slot = int32_t(J->baseslot) + idx;
+      assert(abs_slot >= 0 && "absolute slot index below zero");
+      assert(abs_slot < int32_t(LJ_MAX_JSLOTS) && "absolute slot index exceeds maximum");
    }
 
 public:
@@ -383,7 +385,6 @@ public:
 
    //=================================================================================================================
    // Typed emission helpers - provide clearer semantics than raw IRT() macros
-   //=================================================================================================================
 
    // Emit integer-typed instruction: IRT(op, IRT_INT)
    TRef emit_int(IROp op, TRef a, TRef b = 0) { return emit(IRTI(op), a, b); }
@@ -399,7 +400,6 @@ public:
 
    //=================================================================================================================
    // Common IR patterns - encapsulate frequently used instruction sequences
-   //=================================================================================================================
 
    // Load field from object: FLOAD
    TRef fload(TRef obj, IRFieldID field, IRType t) {
@@ -435,7 +435,6 @@ public:
 
    //=================================================================================================================
    // Guard emission helpers
-   //=================================================================================================================
 
    // Emit equality guard
    void guard_eq(TRef a, TRef b, IRType t) { guard(IR_EQ, t, a, b); }
@@ -451,7 +450,6 @@ public:
 
    //=================================================================================================================
    // Constant emission (delegates to lj_ir_k* functions)
-   //=================================================================================================================
 
    TRef kint(int32_t k) { return lj_ir_kint(J, k); }
    TRef knum(lua_Number n) { return lj_ir_knum(J, n); }
@@ -464,7 +462,6 @@ public:
 
    //=================================================================================================================
    // State accessors
-   //=================================================================================================================
 
    // Get current number of IR instructions
    [[nodiscard]] IRRef nins() const { return J->cur.nins; }

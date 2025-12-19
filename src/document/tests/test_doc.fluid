@@ -13,7 +13,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
 function renderDocToBitmap(Path, Width)
-   scene = obj.new('VectorScene', { pageWidth=nz(Width,1024), pageHeight=768 })
+   scene = obj.new('VectorScene', { pageWidth=Width ?? 1024, pageHeight=768 })
    vp = scene.new('VectorViewport', { x=0, y=0, width='100%', height='100%' })
    vp.new('VectorRectangle', { x=0, y=0, width='100%', height='100%', fill='rgb(255,255,255)' })
 

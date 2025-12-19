@@ -85,7 +85,7 @@ function testBasicSSLCommunication()
             end
 
             emsg = buffer:sub(0, read_len)
-            logOutput('[Server] Received encrypted message of ' .. read_len .. ' bytes: "' .. nz(emsg,'NIL') .. '"')
+            logOutput('[Server] Received encrypted message of ' .. read_len .. ' bytes: "' .. tostring(emsg) .. '"')
 
             -- Verify message integrity over SSL
             if string.match(emsg, 'SSL_ECHO:' .. glSSLTestData) then
@@ -138,7 +138,7 @@ function testBasicSSLCommunication()
             end
 
             emsg = buffer:sub(0, read_len)
-            logOutput('[Client] Received encrypted message of ' .. read_len .. ' bytes: "' .. nz(emsg,'NIL') .. '"')
+            logOutput('[Client] Received encrypted message of ' .. read_len .. ' bytes: "' .. tostring(emsg) .. '"')
 
             -- Echo back the message to verify bidirectional SSL
             echo_msg = 'SSL_ECHO:' .. emsg

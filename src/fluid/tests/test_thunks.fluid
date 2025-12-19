@@ -1,6 +1,6 @@
 -- Flute tests for thunk functions
 
-@BeforeEach(hotpath=true) 
+@BeforeEach(hotpath=true)
 function enforce_hotpath() end
 
 @Test function testThunkBasicExecution()

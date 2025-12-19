@@ -207,27 +207,28 @@ global function parseClassFields(Class, ClientSpec)
       -- NB: Some classes don't output any fields (which is permissable)
 
       metaFields = Class.meta.subFields
-      if table.empty(metaFields) and (Class.meta.classID is Class.meta.baseClassID) then
+      if (not metaFields or #metaFields == 0) and (Class.meta.classID is Class.meta.baseClassID) then
          metaFields = Class.meta.fields
       end
 
-      if table.empty(metaFields) then metaFields = { } end
-
-      for k, f in ipairs(metaFields) do
-         def = getMetaFieldDefinition(f)
-         if def and def.synonym != true then
-            f = findClassField(Class, def.name) -- Retrieve field parsed from FDL, if defined
-            if f then
-               f.write   = def.write
-               f.read    = def.read
-               f.flags   = def.flags
-               f.access  = def.access ?? def.access
-               f.private = f.private ?? def.private
-               if not f.type then f.type = tostring(def.type) end
-            else
-               def.virtual = true
-               def.fullType = glTypes.void -- Dummy
-               table.insert(newFields, def)
+      if metaFields then
+         for i=0,#metaFields-1 do
+            f = metaFields[i]
+            def = getMetaFieldDefinition(f)
+            if def and def.synonym != true then
+               f = findClassField(Class, def.name) -- Retrieve field parsed from FDL, if defined
+               if f then
+                  f.write   = def.write
+                  f.read    = def.read
+                  f.flags   = def.flags
+                  f.access  = def.access ?? def.access
+                  f.private = f.private ?? def.private
+                  f.type   ?= tostring(def.type)
+               else
+                  def.virtual = true
+                  def.fullType = glTypes.void -- Dummy
+                  table.insert(newFields, def)
+               end
             end
          end
       end

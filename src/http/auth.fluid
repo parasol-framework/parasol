@@ -3,7 +3,7 @@
    local http = glSelf.owner
 
 function accept()
-   if nz(txtPassword.string) then
+   if txtPassword.string?? then
       http.username = txtName.string
       http.password = txtPassword.string
       win.mtClose()

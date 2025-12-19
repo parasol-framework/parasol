@@ -42,7 +42,7 @@ static void buf_grow(SBuf* sb, MSize sz)
    sb->w = b + len;
    sb->e = b + nsz;
    if ((flag & SBUF_FLAG_BORROW)) {  // Adjust borrowed buffer pointers.
-      SBuf* bsb = mref(sbufX(sb)->bsb, SBuf);
+      SBuf* bsb = mref<SBuf>(sbufX(sb)->bsb);
       bsb->b = b;
       bsb->w = b + len;
       bsb->e = b + nsz;

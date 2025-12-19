@@ -88,9 +88,9 @@ unique messages to verify proper isolation and delivery.
          name = 'ConcurrentClient' .. i,
          feedback = function(Socket, Client, State)
             if (State is NTC_CONNECTED) then
-               print('[Client ' .. nz(client_data[Socket.id].id, i) .. '] Connected to server')
+               print('[Client ' .. (client_data[Socket.id].id ?? i) .. '] Connected to server')
             elseif (State is NTC_DISCONNECTED) then
-               print('[Client ' .. nz(client_data[Socket.id].id, i) .. '] Disconnected from server')
+               print('[Client ' .. (client_data[Socket.id].id ?? i) .. '] Disconnected from server')
             end
          end,
          incoming = function(Socket, Script)

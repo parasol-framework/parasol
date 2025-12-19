@@ -46,6 +46,7 @@ terminated arrays, use [0].
 #include "lua.h"
 #include "lualib.h"
 #include "lauxlib.h"
+#include "lib.h"
 #include "lj_obj.h"
 #include "hashes.h"
 #include "defs.h"
@@ -173,7 +174,7 @@ static constexpr int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("Data: %p", Address);
+   log.traceBranch("Struct: %s, Data: %p", StructDef.Name.c_str(), Address);
 
    // Do not push a Lua value in the event of an error.
 
@@ -208,34 +209,34 @@ static constexpr int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 
       auto type = field.Type;
 
       if (type & FD_ARRAY) {
-         if (type & FD_CPP) {
+         if (type & FD_CPP) { // pf::vector<ANY>
             auto vector = (pf::vector<int> *)(address);
             if (type & FD_STRUCT) {
                if (prv->Structs.contains(std::string_view(field.StructRef))) {
-                  make_any_table(Lua, type, field.StructRef.c_str(), vector->size(), vector->data());
+                  make_any_array(Lua, type, field.StructRef, vector->size(), vector->data());
                }
                else lua_pushnil(Lua);
             }
-            else make_table(Lua, type, vector->size(), vector->data());
+            else make_array(Lua, ff_to_aet(type), vector->size(), vector->data());
          }
          else if (field.ArraySize IS -1) { // Pointer to a null-terminated array.
             if (type & FD_STRUCT) {
                if (prv->Structs.contains(std::string_view(field.StructRef))) {
-                  if (((CPTR *)address)[0]) make_any_table(Lua, type, field.StructRef.c_str(), -1, address);
+                  if (((CPTR *)address)[0]) make_any_array(Lua, type, field.StructRef, -1, address);
                   else lua_pushnil(Lua);
                }
                else lua_pushnil(Lua);
             }
-            else make_table(Lua, type, -1, ((CPTR *)address)[0]);
+            else make_array(Lua, ff_to_aet(type), -1, ((CPTR *)address)[0]);
          }
          else { // It's an embedded array of fixed size.
             if (type & FD_STRUCT) {
                if (prv->Structs.contains(std::string_view(field.StructRef))) {
-                  make_any_table(Lua, type, field.StructRef.c_str(), field.ArraySize, address);
+                  make_any_array(Lua, type, field.StructRef, field.ArraySize, address);
                }
                else lua_pushnil(Lua);
             }
-            else make_table(Lua, type, field.ArraySize, address);
+            else make_array(Lua, ff_to_aet(type), field.ArraySize, address);
          }
       }
       else if (type & FD_STRUCT) {
@@ -466,8 +467,8 @@ static void make_camel_case(std::string &String)
       if (Sequence[pos] IS '[') {
          pos++;
          type |= FD_ARRAY;
-         if (type & FD_CPP) { // In the case of std::vector, fixed array sizes are meaningless
-            field_size = sizeof(std::vector<int>);
+         if (type & FD_CPP) { // In the case of pf::vector, fixed array sizes are meaningless
+            field_size = sizeof(pf::vector<int>);
          }
          else if ((Sequence[pos] >= '0') and (Sequence[pos] <= '9')) { // Sanity check
             array_size = strtol(Sequence.c_str() + pos, nullptr, 0);
@@ -717,9 +718,9 @@ static int struct_get(lua_State *Lua)
                   if (field.Type & FD_ARRAY) { // Array of pointers to structures.
                      if (field.Type & FD_CPP) {
                         auto vector = (pf::vector<int> *)(address);
-                        make_array(Lua, field.Type, field.StructRef.c_str(), (APTR *)vector->data(), vector->size(), false);
+                        lua_createarray(Lua, vector->size(), ff_to_element(field.Type), (APTR *)vector->data(), ARRAY_CACHED, field.StructRef);
                      }
-                     else make_array(Lua, field.Type, field.StructRef.c_str(), (APTR *)address, array_size, false);
+                     else lua_createarray(Lua, array_size, ff_to_element(field.Type), (APTR *)address, ARRAY_CACHED, field.StructRef);
                   }
                   else push_struct(Lua->script, ((APTR *)address)[0], field.StructRef, false, false);
                }
@@ -732,9 +733,9 @@ static int struct_get(lua_State *Lua)
                if (field.Type & FD_ARRAY) {
                   if (field.Type & FD_CPP) {
                      auto vector = (pf::vector<std::string> *)(address);
-                     make_array(Lua, FD_CPP|FD_STRING, nullptr, (APTR *)vector->data(), vector->size(), false);
+                     lua_createarray(Lua, vector->size(), AET::_STRING_CPP, (APTR *)vector->data(), ARRAY_CACHED);
                   }
-                  else make_array(Lua, FD_STRING, nullptr, (APTR *)address, array_size, false);
+                  else lua_createarray(Lua, array_size, AET::_CSTRING, (APTR *)address, ARRAY_CACHED);
                }
                else if (field.Type & FD_CPP) {
                   lua_pushstring(Lua, ((std::string *)address)->c_str());
@@ -752,23 +753,23 @@ static int struct_get(lua_State *Lua)
                lua_pushnil(Lua);
             }
             else if (field.Type & FD_FLOAT)   {
-               if (field.Type & FD_ARRAY) make_array(Lua, FD_FLOAT, nullptr, (APTR *)address, array_size, false);
+               if (field.Type & FD_ARRAY) lua_createarray(Lua, array_size, AET::_FLOAT, (APTR *)address, ARRAY_CACHED);
                else lua_pushnumber(Lua, ((float *)address)[0]);
             }
             else if (field.Type & FD_DOUBLE) {
-               if (field.Type & FD_ARRAY) make_array(Lua, FD_DOUBLE, nullptr, (APTR *)address, array_size, false);
+               if (field.Type & FD_ARRAY) lua_createarray(Lua, array_size, AET::_DOUBLE, (APTR *)address, ARRAY_CACHED);
                else lua_pushnumber(Lua, ((double *)address)[0]);
             }
             else if (field.Type & FD_INT64) {
-               if (field.Type & FD_ARRAY) make_array(Lua, FD_INT64, nullptr, (APTR *)address, array_size, false);
+               if (field.Type & FD_ARRAY) lua_createarray(Lua, array_size, AET::_INT64, (APTR *)address, ARRAY_CACHED);
                else lua_pushnumber(Lua, ((int64_t *)address)[0]);
             }
             else if (field.Type & FD_INT) {
-               if (field.Type & FD_ARRAY) make_array(Lua, FD_INT, nullptr, (APTR *)address, array_size, false);
+               if (field.Type & FD_ARRAY) lua_createarray(Lua, array_size, AET::_INT32, (APTR *)address, ARRAY_CACHED);
                else lua_pushinteger(Lua, ((int *)address)[0]);
             }
             else if (field.Type & FD_WORD) {
-               if (field.Type & FD_ARRAY) make_array(Lua, FD_WORD, nullptr, (APTR *)address, array_size, false);
+               if (field.Type & FD_ARRAY) lua_createarray(Lua, array_size, AET::_INT16, (APTR *)address, ARRAY_CACHED);
                else lua_pushinteger(Lua, ((int16_t *)address)[0]);
             }
             else if (field.Type & FD_BYTE) {
@@ -776,7 +777,7 @@ static int struct_get(lua_State *Lua)
                   // Character arrays are interpreted as strings.  Use 'b' instead of 'c' if this behaviour is undesirable
                   lua_pushstring(Lua, (CSTRING)address);
                }
-               else if (field.Type & FD_ARRAY) make_array(Lua, FD_BYTE, nullptr, (APTR *)address, array_size, false);
+               else if (field.Type & FD_ARRAY) lua_createarray(Lua, array_size, AET::_BYTE, (APTR *)address, ARRAY_CACHED);
                else lua_pushinteger(Lua, ((uint8_t *)address)[0]);
             }
             else {

@@ -1,7 +1,5 @@
-/*
-** String handling.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-*/
+// String handling.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 
 #define lj_str_c
 #define LUA_CORE
@@ -12,11 +10,16 @@
 #include "lj_str.h"
 #include "lj_char.h"
 #include "lj_prng.h"
+#include <parasol/strings.hpp>
 
-// -- String helpers ------------------------------------------------------
+#ifndef CSTRING
+#define CSTRING const char *
+#endif
 
+//********************************************************************************************************************
 // Ordered compare of strings. Assumes string data is 4-byte aligned.
-int32_t LJ_FASTCALL lj_str_cmp(GCstr* a, GCstr* b)
+
+int32_t LJ_FASTCALL lj_str_cmp(GCstr *a, GCstr *b)
 {
    MSize i, n = a->len > b->len ? b->len : a->len;
    for (i = 0; i < n; i += 4) {
@@ -38,8 +41,10 @@ int32_t LJ_FASTCALL lj_str_cmp(GCstr* a, GCstr* b)
    return (int32_t)(a->len - b->len);
 }
 
+//********************************************************************************************************************
 // Find fixed string p inside string s.
-const char* lj_str_find(const char* s, const char* p, MSize slen, MSize plen)
+
+const char * lj_str_find(CSTRING s, CSTRING p, MSize slen, MSize plen)
 {
    if (plen <= slen) {
       if (plen IS 0) {
@@ -49,7 +54,7 @@ const char* lj_str_find(const char* s, const char* p, MSize slen, MSize plen)
          int c = *(const uint8_t*)p++;
          plen--; slen -= plen;
          while (slen) {
-            const char* q = (const char*)memchr(s, c, slen);
+            CSTRING q = (CSTRING)memchr(s, c, slen);
             if (!q) break;
             if (memcmp(q + 1, p, plen) IS 0) return q;
             q++; slen -= (MSize)(q - s); s = q;
@@ -59,82 +64,34 @@ const char* lj_str_find(const char* s, const char* p, MSize slen, MSize plen)
    return nullptr;
 }
 
+//********************************************************************************************************************
 // Check whether a string has a pattern matching character.
+
 int lj_str_haspattern(GCstr* s)
 {
    const char* p = strdata(s), * q = p + s->len;
    while (p < q) {
       int c = *(const uint8_t*)p++;
-      if (lj_char_ispunct(c) and strchr("^$*+?.([%-", c))
-         return 1;  //  Found a pattern matching char.
+      if (lj_char_ispunct(c) and strchr("^$*+?.([%-", c)) return 1;  //  Found a pattern matching char.
    }
    return 0;  //  No pattern matching chars found.
 }
 
-// -- String hashing ------------------------------------------------------
-
-// Keyed sparse ARX string hash. Constant time.
-static LuaStrHash hash_sparse(uint64_t seed, const char* str, MSize len)
-{
-   // Constants taken from lookup3 hash by Bob Jenkins.
-   LuaStrHash a, b, h = len ^ (LuaStrHash)seed;
-   if (len >= 4) {  // Caveat: unaligned access!
-      a = lj_getu32(str);
-      h ^= lj_getu32(str + len - 4);
-      b = lj_getu32(str + (len >> 1) - 2);
-      h ^= b; h -= lj_rol(b, 14);
-      b += lj_getu32(str + (len >> 2) - 1);
-   }
-   else {
-      a = *(const uint8_t*)str;
-      h ^= *(const uint8_t*)(str + len - 1);
-      b = *(const uint8_t*)(str + (len >> 1));
-      h ^= b; h -= lj_rol(b, 14);
-   }
-   a ^= h; a -= lj_rol(h, 11);
-   b ^= a; b -= lj_rol(a, 25);
-   h ^= b; h -= lj_rol(b, 16);
-   return h;
-}
-
-#if LUAJIT_SECURITY_STRHASH
-// Keyed dense ARX string hash. Linear time.
-static LJ_NOINLINE LuaStrHash hash_dense(uint64_t seed, LuaStrHash h,
-   const char* str, MSize len)
-{
-   LuaStrHash b = lj_bswap(lj_rol(h ^ (LuaStrHash)(seed >> 32), 4));
-   if (len > 12) {
-      LuaStrHash a = (LuaStrHash)seed;
-      const char* pe = str + len - 12, * p = pe, * q = str;
-      do {
-         a += lj_getu32(p);
-         b += lj_getu32(p + 4);
-         h += lj_getu32(p + 8);
-         p = q; q += 12;
-         h ^= b; h -= lj_rol(b, 14);
-         a ^= h; a -= lj_rol(h, 11);
-         b ^= a; b -= lj_rol(a, 25);
-      } while (p < pe);
-      h ^= b; h -= lj_rol(b, 16);
-      a ^= h; a -= lj_rol(h, 4);
-      b ^= a; b -= lj_rol(a, 14);
-   }
-   return b;
-}
-#endif
-
-// -- String interning ----------------------------------------------------
+//********************************************************************************************************************
+// String interning
 
 #define LJ_STR_MAXCOLL      32
 
 // Resize the string interning hash table (grow and shrink).
+
 void lj_str_resize(lua_State* L, MSize newmask)
 {
    global_State* g = G(L);
-   GCRef* newtab, * oldtab = g->str.tab;
+   GCRef *newtab, *oldtab = g->str.tab;
    MSize i;
 
    // No resizing during GC traversal or if already too big.
+
    GarbageCollector collector = gc(g);
    if (collector.phase() IS GCPhase::SweepString or newmask >= LJ_MAX_STRTAB - 1)
       return;
@@ -142,73 +99,18 @@ void lj_str_resize(lua_State* L, MSize newmask)
    newtab = lj_mem_newvec(L, newmask + 1, GCRef);
    memset(newtab, 0, (newmask + 1) * sizeof(GCRef));
 
-#if LUAJIT_SECURITY_STRHASH
-   // Check which chains need secondary hashes.
-   if (g->str.second) {
-      int newsecond = 0;
-      // Compute primary chain lengths.
-      for (i = g->str.mask; i != ~(MSize)0; i--) {
-         GCobj* o = (GCobj*)(gcrefu(oldtab[i]) & ~(uintptr_t)1);
-         while (o) {
-            GCstr* s = gco2str(o);
-            MSize hash = s->hashalg ? hash_sparse(g->str.seed, strdata(s), s->len) :
-               s->hash;
-            hash &= newmask;
-            setgcrefp(newtab[hash], gcrefu(newtab[hash]) + 1);
-            o = gcnext(o);
-         }
-      }
-      // Mark secondary chains.
-      for (i = newmask; i != ~(MSize)0; i--) {
-         int secondary = gcrefu(newtab[i]) > LJ_STR_MAXCOLL;
-         newsecond |= secondary;
-         setgcrefp(newtab[i], secondary);
-      }
-      g->str.second = newsecond;
-   }
-#endif
-
    // Reinsert all strings from the old table into the new table.
+
    for (i = g->str.mask; i != ~(MSize)0; i--) {
       GCobj* o = (GCobj*)(gcrefu(oldtab[i]) & ~(uintptr_t)1);
       while (o) {
-         GCobj* next = gcnext(o);
-         GCstr* s = gco2str(o);
+         GCobj *next = gcnext(o);
+         GCstr *s = gco2str(o);
          MSize hash = s->hash;
-#if LUAJIT_SECURITY_STRHASH
-         uintptr_t u;
-         if (LJ_LIKELY(!s->hashalg)) {  // String hashed with primary hash.
-            hash &= newmask;
-            u = gcrefu(newtab[hash]);
-            if (LJ_UNLIKELY(u & 1)) {  // Switch string to secondary hash.
-               s->hash = hash = hash_dense(g->str.seed, s->hash, strdata(s), s->len);
-               s->hashalg = 1;
-               hash &= newmask;
-               u = gcrefu(newtab[hash]);
-            }
-         }
-         else {  // String hashed with secondary hash.
-            MSize shash = hash_sparse(g->str.seed, strdata(s), s->len);
-            u = gcrefu(newtab[shash & newmask]);
-            if (u & 1) {
-               hash &= newmask;
-               u = gcrefu(newtab[hash]);
-            }
-            else {  // Revert string back to primary hash.
-               s->hash = shash;
-               s->hashalg = 0;
-               hash = (shash & newmask);
-            }
-         }
-         // NOBARRIER: The string table is a GC root.
-         setgcrefp(o->gch.nextgc, (u & ~(uintptr_t)1));
-         setgcrefp(newtab[hash], ((uintptr_t)o | (u & 1)));
-#else
          hash &= newmask;
          // NOBARRIER: The string table is a GC root.
          setgcrefr(o->gch.nextgc, newtab[hash]);
          setgcref(newtab[hash], o);
-#endif
          o = next;
       }
    }
@@ -219,124 +121,55 @@ void lj_str_resize(lua_State* L, MSize newmask)
    g->str.mask = newmask;
 }
 
-#if LUAJIT_SECURITY_STRHASH
-// Rehash and rechain all strings in a chain.
-static LJ_NOINLINE GCstr* lj_str_rehash_chain(lua_State* L, LuaStrHash hashc,
-   const char* str, MSize len)
-{
-   global_State* g = G(L);
-   GarbageCollector collector = gc(g);
-   int ow = collector.phase() IS GCPhase::SweepString ? otherwhite(g) : 0;  // Sweeping?
-   GCRef* strtab = g->str.tab;
-   MSize strmask = g->str.mask;
-   GCobj* o = gcref(strtab[hashc & strmask]);
-   setgcrefp(strtab[hashc & strmask], (void*)((uintptr_t)1));
-   g->str.second = 1;
-   while (o) {
-      uintptr_t u;
-      GCobj* next = gcnext(o);
-      GCstr* s = gco2str(o);
-      LuaStrHash hash;
-      if (ow) {  // Must sweep while rechaining.
-         if (((o->gch.marked ^ LJ_GC_WHITES) & ow)) {  // String alive?
-            lj_assertG(!isdead(g, o) or (o->gch.marked & LJ_GC_FIXED),
-               "sweep of undead string");
-            makewhite(g, o);
-         }
-         else {  // Free dead string.
-            lj_assertG(isdead(g, o) or ow IS LJ_GC_SFIXED,
-               "sweep of unlive string");
-            lj_str_free(g, s);
-            o = next;
-            continue;
-         }
-      }
-      hash = s->hash;
-      if (!s->hashalg) {  // Rehash with secondary hash.
-         hash = hash_dense(g->str.seed, hash, strdata(s), s->len);
-         s->hash = hash;
-         s->hashalg = 1;
-      }
-      // Rechain.
-      hash &= strmask;
-      u = gcrefu(strtab[hash]);
-      setgcrefp(o->gch.nextgc, (u & ~(uintptr_t)1));
-      setgcrefp(strtab[hash], ((uintptr_t)o | (u & 1)));
-      o = next;
-   }
-   // Try to insert the pending string again.
-   return lj_str_new(L, str, len);
-}
-#endif
+//********************************************************************************************************************
+// Allocate a new string and add to string interning table.  Throws on failure.
 
-// Reseed String ID from PRNG after random interval < 2^bits.
-#if LUAJIT_SECURITY_STRID == 1
-#define STRID_RESEED_INTERVAL   8
-#elif LUAJIT_SECURITY_STRID == 2
-#define STRID_RESEED_INTERVAL   4
-#elif LUAJIT_SECURITY_STRID >= 3
-#define STRID_RESEED_INTERVAL   0
-#endif
-
-// Allocate a new string and add to string interning table.
-static GCstr* lj_str_alloc(lua_State* L, const char* str, MSize len,
-   LuaStrHash hash, int hashalg)
+static GCstr * lj_str_alloc(lua_State* L, CSTRING str, MSize len, uint32_t hash)
 {
-   GCstr* s = lj_mem_newt(L, lj_str_size(len), GCstr);
-   global_State* g = G(L);
+   GCstr *s = lj_mem_newt(L, lj_str_size(len), GCstr);
+   global_State *g = G(L);
    uintptr_t u;
+
    newwhite(g, s);
-   s->gct = ~LJ_TSTR;
-   s->len = len;
-   s->hash = hash;
-#ifndef STRID_RESEED_INTERVAL
-   s->sid = g->str.id++;
-#elif STRID_RESEED_INTERVAL
-   if (!g->str.idreseed--) {
-      uint64_t r = lj_prng_u64(&g->prng);
-      g->str.id = (StrID)r;
-      g->str.idreseed = (uint8_t)(r >> (64 - STRID_RESEED_INTERVAL));
-   }
-   s->sid = g->str.id++;
-#else
-   s->sid = (StrID)lj_prng_u64(&g->prng);
-#endif
+
+   s->gct      = ~LJ_TSTR;
+   s->len      = len;
+   s->hash     = hash;
+   s->sid      = g->str.id++;
    s->reserved = 0;
-   s->hashalg = (uint8_t)hashalg;
+
    // Clear last 4 bytes of allocated memory. Implies zero-termination, too.
    *(uint32_t*)(strdatawr(s) + (len & ~(MSize)3)) = 0;
    memcpy(strdatawr(s), str, len);
+
    // Add to string hash table.
    hash &= g->str.mask;
    u = gcrefu(g->str.tab[hash]);
    setgcrefp(s->nextgc, (u & ~(uintptr_t)1));
+
    // NOBARRIER: The string table is a GC root.
    setgcrefp(g->str.tab[hash], ((uintptr_t)s | (u & 1)));
-   if (g->str.num++ > g->str.mask)  //  Allow a 100% load factor.
+   if (g->str.num++ > g->str.mask) { //  Allow a 100% load factor.
       lj_str_resize(L, (g->str.mask << 1) + 1);  //  Grow string table.
+   }
    return s;  //  Return newly interned string.
 }
 
-// Intern a string and return string object.
-GCstr* lj_str_new(lua_State* L, const char* str, size_t lenx)
+//********************************************************************************************************************
+// Intern a string and return string object.  Throws on failure.
+
+GCstr * lj_str_new(lua_State* L, CSTRING str, size_t lenx)
 {
-   global_State* g = G(L);
+   global_State *g = G(L);
    if (lenx - 1 < LJ_MAX_STR - 1) {
-      MSize len = (MSize)lenx;
-      LuaStrHash hash = hash_sparse(g->str.seed, str, len);
+      auto len = (MSize)lenx;
+      auto hash = pf::strhash(std::string_view(str, lenx));
       MSize coll = 0;
-      int hashalg = 0;
       // Check if the string has already been interned.
-      GCobj* o = gcref(g->str.tab[hash & g->str.mask]);
-#if LUAJIT_SECURITY_STRHASH
-      if (LJ_UNLIKELY((uintptr_t)o & 1)) {  // Secondary hash for this chain?
-         hashalg = 1;
-         hash = hash_dense(g->str.seed, hash, str, len);
-         o = (GCobj*)(gcrefu(g->str.tab[hash & g->str.mask]) & ~(uintptr_t)1);
-      }
-#endif
+      GCobj *o = gcref(g->str.tab[hash & g->str.mask]);
+
       while (o != nullptr) {
-         GCstr* sx = gco2str(o);
+         GCstr *sx = gco2str(o);
          if (sx->hash IS hash and sx->len IS len) {
             if (memcmp(str, strdata(sx), len) IS 0) {
                if (isdead(g, o)) flipwhite(o);  //  Resurrect if dead.
@@ -347,21 +180,17 @@ GCstr* lj_str_new(lua_State* L, const char* str, size_t lenx)
          coll++;
          o = gcnext(o);
       }
-#if LUAJIT_SECURITY_STRHASH
-      // Rehash chain if there are too many collisions.
-      if (LJ_UNLIKELY(coll > LJ_STR_MAXCOLL) and !hashalg) {
-         return lj_str_rehash_chain(L, hash, str, len);
-      }
-#endif
+
       // Otherwise allocate a new string.
-      return lj_str_alloc(L, str, len, hash, hashalg);
+      return lj_str_alloc(L, str, len, hash);
    }
    else {
-      if (lenx)
-         lj_err_msg(L, ErrMsg::STROV);
+      if (lenx) lj_err_msg(L, ErrMsg::STROV);
       return &g->strempty;
    }
 }
+
+//********************************************************************************************************************
 
 void LJ_FASTCALL lj_str_free(global_State* g, GCstr* s)
 {
@@ -369,9 +198,9 @@ void LJ_FASTCALL lj_str_free(global_State* g, GCstr* s)
    lj_mem_free(g, s, lj_str_size(s->len));
 }
 
+//********************************************************************************************************************
+
 void LJ_FASTCALL lj_str_init(lua_State* L)
 {
-   global_State* g = G(L);
-   g->str.seed = lj_prng_u64(&g->prng);
    lj_str_resize(L, LJ_MIN_STRTAB - 1);
 }

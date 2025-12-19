@@ -9,10 +9,10 @@
 #include "lj_obj.h"
 #include "lj_jit.h"
 
-#if LJ_HASJIT && defined(LUAJIT_USE_GDBJIT)
+#if defined(LUAJIT_USE_GDBJIT)
 
-LJ_FUNC void lj_gdbjit_addtrace(jit_State *J, GCtrace *T);
-LJ_FUNC void lj_gdbjit_deltrace(jit_State *J, GCtrace *T);
+extern "C" void lj_gdbjit_addtrace(jit_State *J, GCtrace *T);
+extern "C" void lj_gdbjit_deltrace(jit_State *J, GCtrace *T);
 
 #else
 inline void lj_gdbjit_addtrace([[maybe_unused]] jit_State *J, [[maybe_unused]] GCtrace *T) noexcept {}

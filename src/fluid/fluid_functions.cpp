@@ -152,7 +152,7 @@ int fcmd_catch(lua_State *Lua)
             // The +2 offset accounts for frames added by lua_pcall: the catch function itself
             // and the pcall error handler. Direct calls from the catch body will have exactly
             // CatchDepth frames; nested function calls will have more.
-            
+
             int prev_depth = prv->CatchDepth;
             lua_Debug ar;
             int depth = 0;
@@ -264,7 +264,7 @@ int fcmd_catch(lua_State *Lua)
 
          // Scope isolation via stack frame counting - see detailed comment in the
          // two-function catch() branch above. Save previous depth for nested catch() support.
-         
+
          int prev_depth = prv->CatchDepth;
          lua_Debug ar;
          int depth = 0;
@@ -863,61 +863,4 @@ int fcmd_arg(lua_State *Lua)
       lua_pushnil(Lua);
       return 1;
    }
-}
-
-//********************************************************************************************************************
-// DEPRECATED
-
-int fcmd_nz(lua_State *Lua)
-{
-   int args = lua_gettop(Lua);
-   if ((args != 2) and (args != 1)) {
-      luaL_error(Lua, "Expected 1 or 2 arguments, not %d.", args);
-      return 0;
-   }
-
-   bool isnull = false;
-   int type = lua_type(Lua, 1);
-   if (type IS LUA_TNUMBER) {
-      if (lua_tonumber(Lua, 1)) isnull = false;
-      else isnull = true;
-   }
-   else if (type IS LUA_TSTRING) {
-      CSTRING str;
-      if ((str = lua_tostring(Lua, 1))) {
-         if (str[0]) isnull = false;
-         else isnull = true;
-      }
-      else isnull = true;
-   }
-   else if ((type IS LUA_TNIL) or (type IS LUA_TNONE)) {
-      isnull = true;
-   }
-   else if ((type IS LUA_TLIGHTUSERDATA) or (type IS LUA_TUSERDATA)) {
-      if (lua_touserdata(Lua, 1)) isnull = false;
-      else isnull = true;
-   }
-   else if (type IS LUA_TTABLE) {
-      if (lua_objlen(Lua, 1) == 0) {
-         lua_pushnil(Lua);
-         if (lua_next(Lua, 1)) {
-            isnull = false;
-            lua_pop(Lua, 2); // Remove discovered value and next key
-         }
-         else isnull = true;
-      }
-      else isnull = false;
-   }
-
-   if (args IS 2) {
-      if (isnull) { // Return value 2 (top of the stack)
-      }
-      else { // Return value 1
-         lua_pop(Lua, 1);
-      }
-   }
-   else if (isnull) return 0;
-   else lua_pushinteger(Lua, 1);
-
-   return 1;
 }

@@ -45,6 +45,8 @@ For more information on the Fluid syntax, please refer to the official Fluid Ref
 #include "lj_obj.h"
 #include "parser/parser.h"
 #include "lj_bc.h"
+#include "lj_array.h"
+#include "lj_gc.h"
 
 #include "hashes.h"
 
@@ -102,7 +104,7 @@ OBJECTPTR access_object(struct object *Object)
       Object->AccessCount++;
       return Object->ObjectPtr;
    }
-   else if (!Object->UID) return nullptr; // Object reference is dead
+   else if (not Object->UID) return nullptr; // Object reference is dead
    else if ((!Object->ObjectPtr) or (Object->Detached)) {
       // Detached objects are always accessed via UID, even if we have a pointer reference.
       if (auto error = AccessObject(Object->UID, 5000, &Object->ObjectPtr); error IS ERR::Okay) {
@@ -147,7 +149,7 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
       log.trace("Class: %s, Module: %s", MetaClass->ClassName, module_name);
 
       auto prv = (prvFluid *)Lua->script->ChildPrivate;
-      if (!prv->Includes.contains(module_name)) {
+      if (not prv->Includes.contains(module_name)) {
          prv->Includes.insert(module_name); // Mark the module as processed.
 
          OBJECTPTR mod;
@@ -311,6 +313,7 @@ extern void indexing_unit_tests(int &, int &);
 extern void vm_asm_unit_tests(int &, int &);
 extern void jit_frame_unit_tests(int &, int &);
 extern void parser_unit_tests(int &, int &);
+extern void array_unit_tests(int &, int &);
 #endif
 
 static void MODTest(CSTRING Options, int *Passed, int *Total)
@@ -335,6 +338,11 @@ static void MODTest(CSTRING Options, int *Passed, int *Total)
       pf::Log log("FluidTests");
       log.branch("Running JIT frame unit tests...");
       jit_frame_unit_tests(*Passed, *Total);
+   }
+   {
+      pf::Log log("FluidTests");
+      log.branch("Running array unit tests...");
+      array_unit_tests(*Passed, *Total);
    }
 #else
    pf::Log("FluidTests").warning("Unit tests are disabled in this build.");
@@ -383,7 +391,7 @@ ERR SetVariable(objScript *Script, CSTRING Name, int Type, ...)
 
    log.branch("Script: %d, Name: %s, Type: $%.8x", Script->UID, Name, Type);
 
-   if (!(prv = (prvFluid *)Script->ChildPrivate)) return log.warning(ERR::ObjectCorrupt);
+   if (not (prv = (prvFluid *)Script->ChildPrivate)) return log.warning(ERR::ObjectCorrupt);
 
    va_start(list, Type);
 
@@ -430,32 +438,45 @@ void hook_debug(lua_State *Lua, lua_Debug *Info)
 }
 
 //********************************************************************************************************************
-// Builds an ordered Lua array from a fixed list of values.  Guaranteed to always return a table, empty or not.
-// Works with primitives only, for structs please use make_struct_[ptr|serial]_table() because the struct name
+// Builds an array from a fixed list of values.  Guaranteed to always return an array, empty or not.
+// Intended for primitives only, for structs please use make_struct_[ptr|serial]_table() because the struct name
 // will be required.
 
-void make_table(lua_State *Lua, int Type, int Elements, CPTR Data)
+void make_array(lua_State *Lua, AET Type, int Elements, CPTR Data, std::string_view StructName)
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("Type: $%.8x, Elements: %d, Data: %p", Type, Elements, Data);
+   log.traceBranch("Type: $%.8x, Elements: %d, Data: %p", int(Type), Elements, Data);
 
    if (Elements < 0) {
-      if (!Data) Elements = 0;
+      if (not Data) Elements = 0;
       else {
          int i = 0;
-         switch (Type & (FD_DOUBLE|FD_INT64|FD_FLOAT|FD_POINTER|FD_OBJECT|FD_STRING|FD_INT|FD_WORD|FD_BYTE)) {
-            case FD_STRING:
-            case FD_OBJECT:
-            case FD_POINTER: for (i=0; ((APTR *)Data)[i]; i++); break;
-            case FD_FLOAT:   for (i=0; ((float *)Data)[i]; i++); break;
-            case FD_DOUBLE:  for (i=0; ((double *)Data)[i]; i++); break;
-            case FD_INT64:   for (i=0; ((int64_t *)Data)[i]; i++); break;
-            case FD_INT:     for (i=0; ((int *)Data)[i]; i++); break;
-            case FD_WORD:    for (i=0; ((int16_t *)Data)[i]; i++); break;
-            case FD_BYTE:    for (i=0; ((int8_t *)Data)[i]; i++); break;
+         switch (Type) {
+            case AET::_CSTRING:
+            case AET::_PTR:
+            case AET::_OBJECT:
+               for (i=0; ((APTR *)Data)[i]; i++);
+               break;
+            case AET::_FLOAT:
+            case AET::_INT32:
+               for (i=0; ((int *)Data)[i]; i++);
+               break;
+            case AET::_DOUBLE:
+            case AET::_INT64:
+               for (i=0; ((int64_t *)Data)[i]; i++);
+               break;
+            case AET::_INT16:
+               for (i=0; ((int16_t *)Data)[i]; i++);
+               break;
+            case AET::_BYTE:
+               for (i=0; ((int8_t *)Data)[i]; i++);
+               break;
+            case AET::_STRUCT: // Use make_struct_*() interfaces instead
+            case AET::_STRING_GC:
+            case AET::_STRING_CPP:
             default:
-               log.warning("Unsupported type $%.8x", Type);
+               log.warning("Unsupported type $%.8x", int(Type));
                lua_pushnil(Lua);
                return;
          }
@@ -464,42 +485,23 @@ void make_table(lua_State *Lua, int Type, int Elements, CPTR Data)
       }
    }
 
-   lua_createtable(Lua, Elements, 0); // Create a new table on the stack.
-   if (!Data) return;
+   // lj_array_new() with ARRAY_CACHED handles all data copying internally, including string caching
 
-   switch(Type & (FD_DOUBLE|FD_INT64|FD_FLOAT|FD_POINTER|FD_OBJECT|FD_STRING|FD_INT|FD_WORD|FD_BYTE)) {
-      case FD_STRING:
-         if (Type & FD_CPP) {
-            auto vec = ((pf::vector<std::string> *)Data);
-            for (int i=0; i < Elements; i++) {
-               lua_pushinteger(Lua, i);
-               lua_pushlstring(Lua, (*vec)[i].c_str(), (*vec)[i].size());
-               lua_settable(Lua, -3);
-            }
-         }
-         else {
-            for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i); lua_pushstring(Lua, ((CSTRING *)Data)[i]); lua_settable(Lua, -3); }
-         }
-         break;
-      case FD_OBJECT:  for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i); push_object(Lua, ((OBJECTPTR *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_POINTER: for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i); lua_pushlightuserdata(Lua, ((APTR *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_FLOAT:   for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i); lua_pushnumber(Lua, ((float *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_DOUBLE:  for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i); lua_pushnumber(Lua, ((double *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_INT64:   for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i); lua_pushnumber(Lua, ((int64_t *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_INT:     for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i); lua_pushinteger(Lua, ((int *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_WORD:    for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i); lua_pushinteger(Lua, ((int16_t *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_BYTE:    for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i); lua_pushinteger(Lua, ((int8_t *)Data)[i]); lua_settable(Lua, -3); } break;
-   }
+   GCarray *array = lj_array_new(Lua, Elements, Type, (void *)Data, ARRAY_CACHED, StructName);
+
+   // Push to the stack
+   lj_gc_check(Lua);
+   setarrayV(Lua, Lua->top++, array);
 }
 
 //********************************************************************************************************************
 // Create a Lua array from a list of structure pointers.
 
-void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, int Elements, CPTR *Values)
+void make_struct_ptr_array(lua_State *Lua, std::string_view StructName, int Elements, CPTR *Values)
 {
    pf::Log log(__FUNCTION__);
 
-   log.trace("%s, Elements: %d, Values: %p", StructName, Elements, Values);
+   log.trace("%.*s, Elements: %d, Values: %p", int(StructName.size()), StructName.data(), Elements, Values);
 
    if (Elements < 0) {
       int i;
@@ -507,84 +509,109 @@ void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, int Elements, CPT
       Elements = i;
    }
 
-   lua_createtable(Lua, Elements, 0); // Create a new table on the stack.
-   if (!Values) return;
-
    auto prv = (prvFluid *)Lua->script->ChildPrivate;
 
    auto s_name = struct_name(StructName);
-   if (prv->Structs.contains(s_name)) {
+   if (not prv->Structs.contains(s_name)) luaL_error(Lua, "Failed to find struct '%.*s'", int(StructName.size()), StructName.data());
+
+   GCarray *arr = lj_array_new(Lua, Elements, AET::_TABLE);
+   setarrayV(Lua, Lua->top++, arr); // Push to stack immediately to protect from GC during loop
+   int arr_idx = lua_gettop(Lua);
+
+   if (Values) {
       std::vector<lua_ref> ref;
+      auto &sdef = prv->Structs[s_name];
+
       for (int i=0; i < Elements; i++) {
-         lua_pushinteger(Lua, i);
-         if (struct_to_table(Lua, ref, prv->Structs[s_name], Values[i]) != ERR::Okay) lua_pushnil(Lua);
-         lua_settable(Lua, -3);
+         if (struct_to_table(Lua, ref, sdef, Values[i]) IS ERR::Okay) {
+            // Table is now on top of stack; retrieve arr from stack in case GC moved it
+            arr = arrayV(Lua->base + arr_idx - 1);
+            TValue *tv = Lua->top - 1;
+            GCtab *tab = tabV(tv);
+            setgcref(arr->data.get<GCRef>()[i], obj2gco(tab));
+            lj_gc_objbarrier(Lua, arr, tab);
+            Lua->top--;  // Pop the table
+         }
+         else {
+            arr = arrayV(Lua->base + arr_idx - 1);
+            setgcrefnull(arr->data.get<GCRef>()[i]);
+         }
       }
    }
-   else log.warning("Failed to find struct '%s'", StructName);
 }
 
 //********************************************************************************************************************
-// Create a Lua array from a serialised list of structures.
+// Create an array from a serialised list of structures aligned to a 64-bit boundary.
 
-void make_struct_serial_table(lua_State *Lua, CSTRING StructName, int Elements, CPTR Data)
+void make_struct_serial_array(lua_State *Lua, std::string_view StructName, int Elements, CPTR Input)
 {
    pf::Log log(__FUNCTION__);
 
    if (Elements < 0) Elements = 0; // The total number of structs is a hard requirement.
 
-   lua_createtable(Lua, Elements, 0); // Create a new table on the stack.
-   if (!Data) return;
-
    auto prv = (prvFluid *)Lua->script->ChildPrivate;
+
    auto s_name = struct_name(StructName);
-   if (prv->Structs.contains(s_name)) {
-      auto def = &prv->Structs[s_name];
+   if (not prv->Structs.contains(s_name)) luaL_error(Lua, "Failed to find struct '%.*s'", int(StructName.size()), StructName.data());
+
+   GCarray *arr = lj_array_new(Lua, Elements, AET::_TABLE);
+   setarrayV(Lua, Lua->top++, arr); // Push to stack immediately to protect from GC during loop
+   int arr_idx = lua_gettop(Lua);
+
+   if (Input) {
+      std::vector<lua_ref> ref;
+      auto &sdef = prv->Structs[s_name];
 
       // 64-bit compilers don't always align structures to 64-bit, and it's difficult to compute alignment with
       // certainty.  It is essential that structures that are intended to be serialised into arrays are manually
       // padded to 64-bit so that the potential for mishap is eliminated.
 
-      int def_size = ALIGN64(def->Size);
-      char aligned = ((def->Size & 0x7) != 0) ? 'N': 'Y';
+      int def_size = ALIGN64(sdef.Size);
+      char aligned = ((sdef.Size & 0x7) != 0) ? 'N': 'Y';
       if (aligned IS 'N') {
-         log.msg("%s, Elements: %d, Values: %p, StructSize: %d, Aligned: %c", StructName, Elements, Data, def_size, aligned);
+         log.msg("%.*s, Elements: %d, Values: %p, StructSize: %d, Aligned: %c", int(StructName.size()), StructName.data(), Elements, Input, def_size, aligned);
       }
-
-      std::vector<lua_ref> ref;
 
       for (int i=0; i < Elements; i++) {
-         lua_pushinteger(Lua, i);
-         if (struct_to_table(Lua, ref, *def, Data) != ERR::Okay) lua_pushnil(Lua);
-         Data = (int8_t *)Data + def_size;
-         lua_settable(Lua, -3);
+         if (struct_to_table(Lua, ref, sdef, Input) IS ERR::Okay) {
+            // Table is now on top of stack; retrieve arr from stack in case GC moved it
+            arr = arrayV(Lua->base + arr_idx - 1);
+            TValue *tv = Lua->top - 1;
+            GCtab *tab = tabV(tv);
+            setgcref(arr->data.get<GCRef>()[i], obj2gco(tab));
+            lj_gc_objbarrier(Lua, arr, tab);
+            Lua->top--;  // Pop the table
+         }
+         else {
+            arr = arrayV(Lua->base + arr_idx - 1);
+            setgcrefnull(arr->data.get<GCRef>()[i]);
+         }
+
+         Input = (int8_t *)Input + def_size;
       }
    }
-   else log.warning("Failed to find struct '%s'", StructName);
 }
 
 //********************************************************************************************************************
 // The TypeName can be in the format 'Struct:Arg' without causing any issues.
 
-void make_any_table(lua_State *Lua, int Type, CSTRING TypeName, int Elements, CPTR Values)
+void make_any_array(lua_State *Lua, int Flags, std::string_view TypeName, int Elements, CPTR Values)
 {
-   if (Type & FD_STRUCT) {
-      if (Type & FD_POINTER) make_struct_ptr_table(Lua, TypeName, Elements, (CPTR *)Values);
-      else make_struct_serial_table(Lua, TypeName, Elements, Values);
+   if (Flags & FD_STRUCT) {
+      if (Flags & FD_POINTER) make_struct_ptr_array(Lua, TypeName, Elements, (CPTR *)Values);
+      else make_struct_serial_array(Lua, TypeName, Elements, Values);
    }
-   else make_table(Lua, Type, Elements, Values);
+   else make_array(Lua, ff_to_aet(Flags), Elements, Values, TypeName);
 }
 
 //********************************************************************************************************************
 
 void get_line(objScript *Self, int Line, STRING Buffer, int Size)
 {
-   CSTRING str;
-
-   if ((str = Self->String)) {
+   if (CSTRING str = Self->String) {
       int i;
       for (i=0; i < Line; i++) {
-         if (!(str = next_line(str))) {
+         if (not (str = next_line(str))) {
             Buffer[0] = 0;
             return;
          }
@@ -709,7 +736,7 @@ static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
 
    if ((String[i] IS '0') and (String[i+1] IS 'x')) {
       for (i+=2; i < String.size(); i++) {
-         if (!std::isxdigit(String[i])) return 's';
+         if (not std::isxdigit(String[i])) return 's';
       }
       return 'h';
    }
@@ -746,7 +773,7 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
 
    Line += i + 1;
 
-   if (!prefix.empty()) prefix += '_';
+   if (not prefix.empty()) prefix += '_';
    auto append_from = prefix.size();
 
    while (*Line > 0x20) {
@@ -770,12 +797,8 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
 
       if (n > 0) {
          auto dt = datatype(value);
-         if (dt IS 'i') {
-            lua_pushinteger(Lua, strtoll(value.c_str(), nullptr, 0));
-         }
-         else if (dt IS 'f') {
-            lua_pushnumber(Lua, strtod(value.c_str(), nullptr));
-         }
+         if (dt IS 'i') lua_pushinteger(Lua, strtoll(value.c_str(), nullptr, 0));
+         else if (dt IS 'f') lua_pushnumber(Lua, strtod(value.c_str(), nullptr));
          else if (dt IS 'h') {
             lua_pushnumber(Lua, strtoull(value.c_str(), nullptr, 0)); // Using pushnumber() so that 64-bit hex is supported.
          }

@@ -1,10 +1,8 @@
-/*
-** Auxiliary library for the Lua/C API.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-**
-** Major parts taken verbatim or adapted from the Lua interpreter.
-** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
-*/
+// Auxiliary library for the Lua/C API.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
+//
+// Major parts taken verbatim or adapted from the Lua interpreter.
+// Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 
 #include <errno.h>
 #include <stdarg.h>
@@ -29,6 +27,19 @@
 #ifndef CSTRING
 #define CSTRING const char*
 #endif
+
+//********************************************************************************************************************
+// Traverses a dot-separated path (e.g., "foo.bar.baz") in a table hierarchy, creating intermediate tables as needed.
+// Returns nullptr on success, or a pointer to the problematic part of the path if a non-table value is encountered.
+//
+// Parameters:
+//   L:      Lua state
+//   idx:    Stack index of the root table to search from
+//   fname:  Dot-separated field path (e.g., "package.loaded")
+//   szhint: Size hint for creating the final table (ignored for intermediate tables)
+//
+// On success: Leaves the final table on the stack and returns nullptr.
+// On failure: Pops intermediate values and returns pointer to the conflicting path segment.
 
 extern CSTRING luaL_findtable(lua_State* L, int idx, CSTRING fname, int szhint)
 {
@@ -56,12 +67,22 @@ extern CSTRING luaL_findtable(lua_State* L, int idx, CSTRING fname, int szhint)
    return nullptr;
 }
 
+//********************************************************************************************************************
+
 static int libsize(const luaL_Reg* l)
 {
    int size = 0;
    for (; l and l->name; l++) size++;
    return size;
 }
+
+//********************************************************************************************************************
+// Pushes a module table onto the stack.
+//
+// Parameters:
+//   L:          Lua state
+//   modname:    Name of the module to push
+//   sizehint:   Size hint for creating the module table (ignored for intermediate tables)
 
 extern void luaL_pushmodule(lua_State* L, CSTRING modname, int sizehint)
 {
@@ -76,6 +97,9 @@ extern void luaL_pushmodule(lua_State* L, CSTRING modname, int sizehint)
    lua_remove(L, -2);  //  Remove _LOADED table.
 }
 
+//********************************************************************************************************************
+// Opens a library table and sets its functions.
+
 extern void luaL_openlib(lua_State* L, CSTRING libname, const luaL_Reg* l, int nup)
 {
    lj_lib_checkfpu(L);
@@ -88,10 +112,14 @@ extern void luaL_openlib(lua_State* L, CSTRING libname, const luaL_Reg* l, int n
    else lua_pop(L, nup);  //  Remove upvalues.
 }
 
+//********************************************************************************************************************
+
 extern void luaL_register(lua_State* L, CSTRING libname, const luaL_Reg* l)
 {
    luaL_openlib(L, libname, l, 0);
 }
+
+//********************************************************************************************************************
 
 extern void luaL_setfuncs(lua_State* L, const luaL_Reg* l, int nup)
 {
@@ -105,6 +133,8 @@ extern void luaL_setfuncs(lua_State* L, const luaL_Reg* l, int nup)
    }
    lua_pop(L, nup);  //  Remove upvalues.
 }
+
+//********************************************************************************************************************
 
 extern CSTRING luaL_gsub(lua_State* L, CSTRING s, CSTRING p, CSTRING r)
 {
@@ -122,6 +152,7 @@ extern CSTRING luaL_gsub(lua_State* L, CSTRING s, CSTRING p, CSTRING r)
    return lua_tostring(L, -1);
 }
 
+//********************************************************************************************************************
 // Buffer handling
 
 #define bufflen(B)   ((size_t)((B)->p - (B)->buffer))
@@ -137,6 +168,8 @@ static int emptybuffer(luaL_Buffer* B)
    B->lvl++;
    return 1;
 }
+
+//********************************************************************************************************************
 
 static void adjuststack(luaL_Buffer* B)
 {
@@ -156,11 +189,15 @@ static void adjuststack(luaL_Buffer* B)
    }
 }
 
+//********************************************************************************************************************
+
 extern char* luaL_prepbuffer(luaL_Buffer* B)
 {
    if (emptybuffer(B)) adjuststack(B);
    return B->buffer;
 }
+
+//********************************************************************************************************************
 
 extern void luaL_addlstring(luaL_Buffer* B, CSTRING s, size_t l)
 {
@@ -176,10 +213,14 @@ extern void luaL_addlstring(luaL_Buffer* B, CSTRING s, size_t l)
    }
 }
 
+//********************************************************************************************************************
+
 extern void luaL_addstring(luaL_Buffer* B, CSTRING s)
 {
    luaL_addlstring(B, s, strlen(s));
 }
+
+//********************************************************************************************************************
 
 extern void luaL_pushresult(luaL_Buffer* B)
 {
@@ -187,6 +228,8 @@ extern void luaL_pushresult(luaL_Buffer* B)
    lua_concat(B->L, B->lvl);
    B->lvl = 1;
 }
+
+//********************************************************************************************************************
 
 extern void luaL_addvalue(luaL_Buffer* B)
 {
@@ -205,6 +248,8 @@ extern void luaL_addvalue(luaL_Buffer* B)
    }
 }
 
+//********************************************************************************************************************
+
 extern void luaL_buffinit(lua_State* L, luaL_Buffer* B)
 {
    B->L = L;
@@ -212,10 +257,12 @@ extern void luaL_buffinit(lua_State* L, luaL_Buffer* B)
    B->lvl = 0;
 }
 
+//********************************************************************************************************************
 // Reference management
 
 #define FREELIST_REF   0
 
+//********************************************************************************************************************
 // Convert a stack index to an absolute index.
 
 #define abs_index(L, i) ((i) > 0 or (i) <= LUA_REGISTRYINDEX ? (i) : lua_gettop(L) + (i) + 1)
@@ -244,6 +291,8 @@ extern int luaL_ref(lua_State* L, int t)
    return ref;
 }
 
+//********************************************************************************************************************
+
 extern void luaL_unref(lua_State* L, int t, int ref)
 {
    if (ref >= 0) {
@@ -255,6 +304,7 @@ extern void luaL_unref(lua_State* L, int t, int ref)
    }
 }
 
+//********************************************************************************************************************
 // Default allocator and panic function
 
 static int panic(lua_State* L)
@@ -305,4 +355,3 @@ extern lua_State* luaL_newstate(class objScript *Script)
 }
 
 #endif
-

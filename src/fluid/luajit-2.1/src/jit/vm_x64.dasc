@@ -97,6 +97,7 @@
 |.type NARGS,		int
 |.type TRACE,		GCtrace
 |.type SBUF,		SBuf
+|.type ARRAY,		GCarray
 |
 |// Stack layout while in interpreter. Must match with lj_frame.h.
 |//-----------------------------------------------------------------------
@@ -289,6 +290,7 @@
 |.macro checkstr, reg, target; checktp reg, LJ_TSTR, target; .endmacro
 |.macro checktab, reg, target; checktp reg, LJ_TTAB, target; .endmacro
 |.macro checkfunc, reg, target; checktp reg, LJ_TFUNC, target; .endmacro
+|.macro checkarray, reg, target; checktp reg, LJ_TARRAY, target; .endmacro
 |
 |.macro checknumx, reg, target, jump
 |  mov ITYPE, reg
@@ -767,6 +769,12 @@ static void build_subroutines(BuildCtx *ctx)
   |  movzx RBd, PC_RB			// Reload TValue *t from RB.
   |  lea RB, [BASE+RB*8]
   |2:
+  |  // Check if target is an array - handle directly without metamethods.  In future if we have static typing
+  |  // then we should be able to remove this check.
+  |  mov ITYPE, [RB]
+  |  sar ITYPE, 47			// Extract type tag from high bits
+  |  cmp ITYPEd, LJ_TARRAY
+  |  je ->vmeta_agetv1
   |  mov L:CARG1, SAVE_L
   |  mov L:CARG1->base, BASE		// Caveat: CARG2/CARG3 may be BASE.
   |  mov CARG2, RB
@@ -840,6 +848,12 @@ static void build_subroutines(BuildCtx *ctx)
   |  movzx RBd, PC_RB			// Reload TValue *t from RB.
   |  lea RB, [BASE+RB*8]
   |2:
+  |  // Check if target is an array - handle directly without metamethods.  In future if we have static typing
+  |  // then we should be able to remove this check.
+  |  mov ITYPE, [RB]
+  |  sar ITYPE, 47			// Extract type tag from high bits
+  |  cmp ITYPEd, LJ_TARRAY
+  |  je ->vmeta_asetv1
   |  mov L:CARG1, SAVE_L
   |  mov L:CARG1->base, BASE		// Caveat: CARG2/CARG3 may be BASE.
   |  mov CARG2, RB
@@ -892,6 +906,70 @@ static void build_subroutines(BuildCtx *ctx)
   |  movzx RAd, PC_RA
   |  mov BASE, RB			// Restore BASE.
   |  jmp ->BC_TSETR_Z
+  |
+  |//-- Array metamethod fallbacks -----------------------------------------
+  |
+  |->vmeta_agetv:
+  |  movzx RCd, PC_RC			// Reload TValue *k from RC.
+  |  lea RC, [BASE+RC*8]
+  |->vmeta_agetv1:
+  |  movzx RBd, PC_RB			// Reload TValue *t from RB.
+  |  lea RB, [BASE+RB*8]
+  |  mov L:CARG1, SAVE_L
+  |  mov L:CARG1->base, BASE		// Caveat: CARG2/CARG3 may be BASE.
+  |  mov CARG2, RB
+  |  mov CARG3, RC
+  |  mov L:RB, L:CARG1
+  |  mov SAVE_PC, PC
+  |  call extern lj_arr_get		// (lua_State *L, TValue *o, TValue *k)
+  |  // TValue * (finished) or NULL (metamethod) returned in eax (RC).
+  |  mov BASE, L:RB->base
+  |  test RC, RC
+  |  jz >3
+  |  movzx RAd, PC_RA
+  |  mov RB, [RC]
+  |  mov [BASE+RA*8], RB
+  |  ins_next
+  |
+  |3:  // Call __index metamethod.
+  |  mov RA, L:RB->top
+  |  mov [RA-24], PC			// [cont|PC]
+  |  lea PC, [RA+FRAME_CONT]
+  |  sub PC, BASE
+  |  mov LFUNC:RB, [RA-16]		// Guaranteed to be a function here.
+  |  cleartp LFUNC:RB
+  |  jmp ->vm_call_dispatch_f
+  |
+  |->vmeta_asetv:
+  |  movzx RCd, PC_RC			// Reload TValue *k from RC.
+  |  lea RC, [BASE+RC*8]
+  |->vmeta_asetv1:
+  |  movzx RBd, PC_RB			// Reload TValue *t from RB.
+  |  lea RB, [BASE+RB*8]
+  |  movzx RAd, PC_RA			// Get value register index
+  |  lea CARG4, [BASE+RA*8]		// CARG4 = TValue *v (value to store)
+  |  mov L:CARG1, SAVE_L
+  |  mov L:CARG1->base, BASE		// Caveat: CARG2/CARG3 may be BASE.
+  |  mov CARG2, RB			// CARG2 = TValue *o (array)
+  |  mov CARG3, RC			// CARG3 = TValue *k (key)
+  |  mov L:RB, L:CARG1
+  |  mov SAVE_PC, PC
+  |  call extern lj_arr_set		// (lua_State *L, TValue *o, TValue *k, TValue *v)
+  |  // Returns 1 (success) or 0 (metamethod) in eax (RC).
+  |  mov BASE, L:RB->base
+  |  test RCd, RCd
+  |  jz >3
+  |  // Store completed by lj_arr_set
+  |  ins_next
+  |
+  |3:  // Call __newindex metamethod.
+  |  mov RA, L:RB->top
+  |  mov [RA-24], PC			// [cont|PC]
+  |  lea PC, [RA+FRAME_CONT]
+  |  sub PC, BASE
+  |  mov LFUNC:RB, [RA-16]		// Guaranteed to be a function here.
+  |  cleartp LFUNC:RB
+  |  jmp ->vm_call_dispatch_f
   |
   |//-- Comparison metamethods ---------------------------------------------
   |
@@ -1080,16 +1158,27 @@ static void build_subroutines(BuildCtx *ctx)
   |  call extern lj_meta_len		// (lua_State *L, TValue *o)
   |  // NULL (retry) or TValue * (metamethod) returned in eax (RC).
   |  mov BASE, L:RB->base
-#if LJ_52
   |  test RC, RC
   |  jne ->vmeta_binop			// Binop call for compatibility.
   |  movzx RDd, PC_RD
-  |  mov TAB:CARG1, [BASE+RD*8]
-  |  cleartp TAB:CARG1
+  |  mov RD, [BASE+RD*8]
+  |  cmp ITYPEd, LJ_TARRAY; jne >1
+  |  // Array: read length directly.
+  |  movzx RAd, PC_RA
+  |.if DUALNUM
+  |  mov RDd, dword ARRAY:RD->len
+  |  setint RD
+  |  mov [BASE+RA*8], RD
+  |.else
+  |  xorps xmm0, xmm0
+  |  cvtsi2sd xmm0, dword ARRAY:RD->len
+  |  movsd qword [BASE+RA*8], xmm0
+  |.endif
+  |  ins_next
+  |1:
+  |  cleartp TAB:RD
+  |  mov TAB:CARG1, TAB:RD
   |  jmp ->BC_LEN_Z
-#else
-  |  jmp ->vmeta_binop			// Binop call for compatibility.
-#endif
   |
   |//-- Call metamethod ----------------------------------------------------
   |
@@ -1374,9 +1463,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov TAB:RB, [BASE]
   |  mov TMPR, TAB:RB
   |  checktab TAB:RB, ->fff_fallback
-#if LJ_52
   |  cmp aword TAB:RB->metatable, 0; jne ->fff_fallback
-#endif
   |  mov CFUNC:RD, [BASE-16]
   |  cleartp CFUNC:RD
   |  mov CFUNC:RD, CFUNC:RD->upvalue[0]
@@ -1445,9 +1532,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov TAB:RB, [BASE]
   |  mov TMPR, TAB:RB
   |  checktab TAB:RB, ->fff_fallback
-#if LJ_52
   |  cmp aword TAB:RB->metatable, 0; jne ->fff_fallback
-#endif
   |  mov CFUNC:RD, [BASE-16]
   |  cleartp CFUNC:RD
   |  mov CFUNC:RD, CFUNC:RD->upvalue[0]
@@ -1769,6 +1854,8 @@ static void build_subroutines(BuildCtx *ctx)
   |.endmacro
   |
   |  math_extern log10
+  |  math_extern deg
+  |  math_extern rad
   |  math_extern exp
   |  math_extern sin
   |  math_extern cos
@@ -3299,14 +3386,12 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |.endif
     |  ins_next
     |2:
-    |  cmp ITYPEd, LJ_TTAB; jne ->vmeta_len
+    |  cmp ITYPEd, LJ_TTAB; jne >4
     |  mov TAB:CARG1, TAB:RD
-#if LJ_52
     |  mov TAB:RB, TAB:RD->metatable
     |  cmp TAB:RB, 0
     |  jnz >9
     |3:
-#endif
     |->BC_LEN_Z:
     |  mov RB, BASE			// Save BASE.
     |  call extern lj_tab_len		// (GCtab *t)
@@ -3319,12 +3404,20 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  mov BASE, RB			// Restore BASE.
     |  movzx RAd, PC_RA
     |  jmp <1
-#if LJ_52
+    |4:  // Check for array type.
+    |  cmp ITYPEd, LJ_TARRAY; jne ->vmeta_len
+    |.if DUALNUM
+    |  mov RDd, dword ARRAY:RD->len
+    |  jmp <1
+    |.else
+    |  xorps xmm0, xmm0
+    |  cvtsi2sd xmm0, dword ARRAY:RD->len
+    |  jmp <1
+    |.endif
     |9:  // Check for __len.
     |  test byte TAB:RB->nomm, 1<<MM_len
     |  jnz <3
     |  jmp ->vmeta_len			// 'no __len' flag NOT set: check.
-#endif
     break;
 
   //  -- Binary ops --------------------------------------------------------
@@ -4081,6 +4174,109 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |7:  // Possible table write barrier for any value. Skip valiswhite check.
     |  barrierback TAB:RB, RD
     |  jmp <2
+    break;
+
+  //  -- Array ops ---------------------------------------------------------
+
+  case BC_AGETV:
+    |  ins_ABC	// RA = dst, RB = array, RC = key
+    |  mov ARRAY:RB, [BASE+RB*8]
+    |  mov RC, [BASE+RC*8]
+    |  checkarray ARRAY:RB, ->vmeta_agetv
+    |
+    |  // Integer key? (0-based indexing)
+    |.if DUALNUM
+    |  checkint RC, ->vmeta_agetv
+    |.else
+    |  // Convert number to int and back and compare.
+    |  checknum RC, ->vmeta_agetv
+    |  movd xmm0, RC
+    |  cvttsd2si RCd, xmm0
+    |  cvtsi2sd xmm1, RCd
+    |  ucomisd xmm0, xmm1
+    |  jne ->vmeta_agetv		// Generic numeric key? Use fallback.
+    |.endif
+    |  cmp RCd, ARRAY:RB->len		// Bounds check (0-based).
+    |  jae ->vmeta_agetv		// Out of bounds? Use fallback.
+    |
+    |  // Calculate element address: data + idx * elemsize
+    |  mov L:CARG1, SAVE_L
+    |  mov CARG2, ARRAY:RB
+    |  mov CARG3d, RCd
+    |  lea CARG4, [BASE+RA*8]
+    |  call extern lj_arr_getidx	// (lua_State *L, GCarray *arr, int32_t idx, TValue *result)
+    |  ins_next
+    break;
+
+  case BC_AGETB:
+    |  ins_ABC	// RA = dst, RB = array, RC = literal index (0-255, 0-based)
+    |  mov ARRAY:RB, [BASE+RB*8]
+    |  checkarray ARRAY:RB, ->vmeta_agetv
+    |  cmp RCd, ARRAY:RB->len		// Bounds check.
+    |  jae ->vmeta_agetv		// Out of bounds? Use fallback.
+    |
+    |  // Calculate element address: data + idx * elemsize
+    |  mov L:CARG1, SAVE_L
+    |  mov CARG2, ARRAY:RB
+    |  mov CARG3d, RCd
+    |  lea CARG4, [BASE+RA*8]
+    |  call extern lj_arr_getidx	// (lua_State *L, GCarray *arr, int32_t idx, TValue *result)
+    |  ins_next
+    break;
+
+  case BC_ASETV:
+    |  ins_ABC	// RA = src, RB = array, RC = key
+    |  mov ARRAY:RB, [BASE+RB*8]
+    |  mov RC, [BASE+RC*8]
+    |  checkarray ARRAY:RB, ->vmeta_asetv
+    |
+    |  // Check read-only flag
+    |  test byte ARRAY:RB->flags, ARRAY_READONLY
+    |  jnz ->vmeta_asetv		// Read-only? Use fallback (will error).
+    |
+    |  // Integer key? (0-based indexing)
+    |.if DUALNUM
+    |  checkint RC, ->vmeta_asetv
+    |.else
+    |  // Convert number to int and back and compare.
+    |  checknum RC, ->vmeta_asetv
+    |  movd xmm0, RC
+    |  cvttsd2si RCd, xmm0
+    |  cvtsi2sd xmm1, RCd
+    |  ucomisd xmm0, xmm1
+    |  jne ->vmeta_asetv		// Generic numeric key? Use fallback.
+    |.endif
+    |  cmp RCd, ARRAY:RB->len		// Bounds check (0-based).
+    |  jae ->vmeta_asetv		// Out of bounds? Use fallback.
+    |
+    |  // Store element
+    |  mov L:CARG1, SAVE_L
+    |  mov CARG2, ARRAY:RB
+    |  mov CARG3d, RCd
+    |  lea CARG4, [BASE+RA*8]
+    |  call extern lj_arr_setidx	// (lua_State *L, GCarray *arr, int32_t idx, cTValue *val)
+    |  ins_next
+    break;
+
+  case BC_ASETB:
+    |  ins_ABC	// RA = src, RB = array, RC = literal index (0-255, 0-based)
+    |  mov ARRAY:RB, [BASE+RB*8]
+    |  checkarray ARRAY:RB, ->vmeta_asetv
+    |
+    |  // Check read-only flag
+    |  test byte ARRAY:RB->flags, ARRAY_READONLY
+    |  jnz ->vmeta_asetv		// Read-only? Use fallback (will error).
+    |
+    |  cmp RCd, ARRAY:RB->len		// Bounds check.
+    |  jae ->vmeta_asetv		// Out of bounds? Use fallback.
+    |
+    |  // Store element
+    |  mov L:CARG1, SAVE_L
+    |  mov CARG2, ARRAY:RB
+    |  mov CARG3d, RCd
+    |  lea CARG4, [BASE+RA*8]
+    |  call extern lj_arr_setidx	// (lua_State *L, GCarray *arr, int32_t idx, cTValue *val)
+    |  ins_next
     break;
 
   //  -- Calls and vararg handling -----------------------------------------

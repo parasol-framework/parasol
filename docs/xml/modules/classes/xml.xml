@@ -796,6 +796,7 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
       <field name="LineNo" type="INT">Line number on which this tag was encountered</field>
       <field name="Flags" type="XTF" lookup="XTF">Optional flags</field>
       <field name="NamespaceID" type="UINT">Hash of namespace URI or 0 for no namespace</field>
+      <field name="Reserved" type="INT">Private</field>
       <field name="Attribs" type="pf::vector&lt;XMLAttrib&gt;">Array of attributes for this tag</field>
       <field name="Children" type="pf::vector&lt;XTag&gt;">Array of child tags</field>
     </struct>

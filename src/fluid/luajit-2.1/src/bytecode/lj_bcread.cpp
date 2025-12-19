@@ -256,7 +256,7 @@ static GCtab* bcread_ktab(LexState *State)
 static void bcread_kgc(LexState *State, GCproto *pt, MSize sizekgc)
 {
    MSize i;
-   GCRef* kr = mref(pt->k, GCRef) - (ptrdiff_t)sizekgc;
+   GCRef* kr = mref<GCRef>(pt->k) - (ptrdiff_t)sizekgc;
    for (i = 0; i < sizekgc; i++, kr++) {
       MSize tp = bcread_uleb128(State);
       if (tp >= BCDUMP_KGC_STR) {
@@ -300,7 +300,7 @@ static void bcread_kgc(LexState *State, GCproto *pt, MSize sizekgc)
 static void bcread_knum(LexState *State, GCproto *pt, MSize sizekn)
 {
    MSize i;
-   TValue* o = mref(pt->k, TValue);
+   TValue* o = mref<TValue>(pt->k);
    for (i = 0; i < sizekn; i++, o++) {
       int isnum = (State->p[0] & 1);
       uint32_t lo = bcread_uleb128_33(State);

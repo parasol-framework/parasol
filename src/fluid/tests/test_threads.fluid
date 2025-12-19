@@ -47,7 +47,7 @@ end
 -- This callback function is called every time that a thread completes its Activate() action.
 
 function picProcessed(ActionID, pic, Error, Key)
-   if nz(Error) then
+   if Error?? then
       print('Failed to load picture, error: ' .. mSys.GetErrorMsg(Error))
    end
 

@@ -190,9 +190,10 @@ global function loadActions()
    if glActions then return end
    verbose("Loading core actions...")
    global glActions = { }
-   for id, actions in ipairs(mSys.ActionList()) do
-      if not table.empty(actions) and actions.name?? then
-         glActions[actions.name] = { name=actions.name, input=actions.args, hash=actions.hash, id=id }
+   list = mSys.ActionList()
+   for id=1,#list-1 do
+      if list[id].name?? then
+         glActions[list[id].name] = { name=list[id].name, input=list[id].args, hash=list[id].hash, id=id }
       end
    end
 end

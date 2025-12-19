@@ -76,7 +76,7 @@ file.search = function(Path, Options)
 
    function scanPath(Path, currentDepth)
       if not currentDepth then currentDepth = 0 end
-      msg('scanPath() ' .. nz(Path, ':') .. ' (depth: ' .. currentDepth .. ')')
+      msg('scanPath() ' .. (Path ?? ':') .. ' (depth: ' .. currentDepth .. ')')
 
       if lStop then return end
 

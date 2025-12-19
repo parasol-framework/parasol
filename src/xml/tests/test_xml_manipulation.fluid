@@ -4,7 +4,7 @@
 
 local function printXML(XML)
    local err, str = XML.mtSerialise(0, XMF_INCLUDE_SIBLINGS)
-   print(nz(str,'NIL'))
+   print(tostring(str))
 end
 
 -----------------------------------------------------------------------------------------------------------------------

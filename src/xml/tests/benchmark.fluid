@@ -414,8 +414,8 @@ end
    print('Benchmark data loaded successfully')
    local err, cat_name = glXML.mtEvaluate('/catalog/@name')
    local err, product_count = glXML.mtEvaluate('count(//product)')
-   print('Document root: ' .. nz(cat_name, 'Unknown'))
-   print('Total products: ' .. nz(product_count, '0'))
+   print('Document root: ' .. (cat_name ?? 'Unknown'))
+   print('Total products: ' .. (product_count ?? '0'))
    print('')
 
    local benchmarks = {

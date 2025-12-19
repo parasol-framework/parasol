@@ -116,12 +116,10 @@ static TValue* unwind_close_handlers(lua_State* L, TValue* frame, TValue* errobj
 
    GCtab* env = tabref(L->env);
    if (env) {
-      GCstr* key = lj_str_newlit(L, "__close_err");
-      TValue* slot = lj_tab_setstr(L, env, key);
-      if (errobj)
-         copyTV(L, slot, errobj);
-      else
-         setnilV(slot);
+      GCstr *key = lj_str_newlit(L, "__close_err");
+      TValue *slot = lj_tab_setstr(L, env, key);
+      if (errobj) copyTV(L, slot, errobj);
+      else setnilV(slot);
       lj_gc_anybarriert(L, env);
    }
 
@@ -131,11 +129,11 @@ static TValue* unwind_close_handlers(lua_State* L, TValue* frame, TValue* errobj
 
    // Call lj_meta_close for each slot with <close> attribute in LIFO order
    // Iterate from highest slot to lowest to match Lua 5.4 semantics
-   TValue* base = frame + 1;
-   TValue* current_err = errobj;
+   TValue *base = frame + 1;
+   TValue *current_err = errobj;
    for (int slot = 63; slot >= 0; slot--) {
       if (closeslots & (1ULL << slot)) {
-         TValue* o = base + slot;
+         TValue *o = base + slot;
          // Verify slot is within valid frame range: must be >= base and < L->top
          if (o >= base and o < L->top and !tvisnil(o) and !tvisfalse(o)) {
             int errcode = lj_meta_close(L, o, current_err);
@@ -146,8 +144,8 @@ static TValue* unwind_close_handlers(lua_State* L, TValue* frame, TValue* errobj
                current_err = L->top - 1;
                // Update _G.__close_err with the new error
                if (env) {
-                  GCstr* key = lj_str_newlit(L, "__close_err");
-                  TValue* slot = lj_tab_setstr(L, env, key);
+                  GCstr *key = lj_str_newlit(L, "__close_err");
+                  TValue *slot = lj_tab_setstr(L, env, key);
                   copyTV(L, slot, current_err);
                   lj_gc_anybarriert(L, env);
                }
@@ -200,6 +198,7 @@ static void unwind_close_all(lua_State *L, TValue *from, TValue *to)
    setnilV(&L->close_err);
 }
 
+//********************************************************************************************************************
 // Unwind Lua stack and move error message to new top.
 
 LJ_NOINLINE static void unwindstack(lua_State *L, TValue *top)
@@ -212,8 +211,10 @@ LJ_NOINLINE static void unwindstack(lua_State *L, TValue *top)
    lj_state_relimitstack(L);
 }
 
+//********************************************************************************************************************
 // Unwind until stop frame. Optionally cleanup frames.
-static void* err_unwind(lua_State* L, void* stopcf, int errcode)
+
+extern void * err_unwind(lua_State *L, void *stopcf, int errcode)
 {
    TValue* frame = L->base - 1;
    void* cf = L->cframe;
@@ -256,7 +257,6 @@ static void* err_unwind(lua_State* L, void* stopcf, int errcode)
             }
             return nullptr;  //  Continue unwinding.
    #else
-            UNUSED(stopcf);
             cf = cframe_prev(cf);
             frame = frame_prevd(frame);
             break;
@@ -317,178 +317,18 @@ static void* err_unwind(lua_State* L, void* stopcf, int errcode)
    return L;  //  Anything non-nullptr will do.
 }
 
+//********************************************************************************************************************
 // External frame unwinding
 
 #if LJ_ABI_WIN
 
-/*
-** Someone in Redmond owes me several days of my life. A lot of this is
-** undocumented or just plain wrong on MSDN. Some of it can be gathered
-** from 3rd party docs or must be found by trial-and-error. They really
-** don't want you to write your own language-specific exception handler
-** or to interact gracefully with MSVC. :-(
-**
-** Apparently MSVC doesn't call C++ destructors for foreign exceptions
-** unless you compile your C++ code with /EHa. Unfortunately this means
-** catch (...) also catches things like access violations. The use of
-** _set_se_translator doesn't really help, because it requires /EHa, too.
-*/
-
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-
-#if LJ_TARGET_X86
-typedef void* UndocumentedDispatcherContext;  //  Unused on x86.
-#else
-// Taken from: http://www.nynaeve.net/?p=99
-typedef struct UndocumentedDispatcherContext {
-   ULONG64 ControlPc;
-   ULONG64 ImageBase;
-   PRUNTIME_FUNCTION FunctionEntry;
-   ULONG64 EstablisherFrame;
-   ULONG64 TargetIp;
-   PCONTEXT ContextRecord;
-   void (*LanguageHandler)(void);
-   PVOID HandlerData;
-   PUNWIND_HISTORY_TABLE HistoryTable;
-   ULONG ScopeIndex;
-   ULONG Fill0;
-} UndocumentedDispatcherContext;
-#endif
-
-#if LJ_TARGET_X64 && defined(MINGW_SDK_INIT)
-// Workaround for broken MinGW64 declaration.
-VOID RtlUnwindEx_FIXED(PVOID, PVOID, PVOID, PVOID, PVOID, PVOID) asm("RtlUnwindEx");
-#define RtlUnwindEx RtlUnwindEx_FIXED
-#endif
-
-#define LJ_MSVC_EXCODE     ((DWORD)0xe06d7363)
-#define LJ_GCC_EXCODE      ((DWORD)0x20474343)
-
-#define LJ_EXCODE    ((DWORD)0xe24c4a00)
-#define LJ_EXCODE_MAKE(c)  (LJ_EXCODE | (DWORD)(c))
-#define LJ_EXCODE_CHECK(cl)   (((cl) ^ LJ_EXCODE) <= 0xff)
-#define LJ_EXCODE_ERRCODE(cl) ((int)((cl) & 0xff))
-
-// Windows exception handler for interpreter frame.
-extern "C" int lj_err_unwind_win(EXCEPTION_RECORD* rec,
-   void* f, CONTEXT* ctx, UndocumentedDispatcherContext* dispatch)
-{
-#if LJ_TARGET_X86
-   void* cf = (char*)f - CFRAME_OFS_SEH;
-#else
-   void* cf = f;
-#endif
-   lua_State* L = cframe_L(cf);
-   int errcode = LJ_EXCODE_CHECK(rec->ExceptionCode) ?
-      LJ_EXCODE_ERRCODE(rec->ExceptionCode) : LUA_ERRRUN;
-   if ((rec->ExceptionFlags & 6)) {  // EH_UNWINDING|EH_EXIT_UNWIND
-      // Unwind internal frames.
-      err_unwind(L, cf, errcode);
-   }
-   else {
-      void* cf2 = err_unwind(L, cf, 0);
-      if (cf2) {  // We catch it, so start unwinding the upper frames.
-         if (rec->ExceptionCode == LJ_MSVC_EXCODE ||
-            rec->ExceptionCode == LJ_GCC_EXCODE) {
-            setstrV(L, L->top++, lj_err_str(L, ErrMsg::ERRCPP));
-         }
-         else if (!LJ_EXCODE_CHECK(rec->ExceptionCode)) {
-            // Don't catch access violations etc.
-            return 1;  //  ExceptionContinueSearch
-         }
-#if LJ_TARGET_X86
-         UNUSED(ctx);
-         UNUSED(dispatch);
-         /* Call all handlers for all lower C frames (including ourselves) again
-         ** with EH_UNWINDING set. Then call the specified function, passing cf
-         ** and errcode.
-         */
-         lj_vm_rtlunwind(cf, (void*)rec,
-            (cframe_unwind_ff(cf2) and errcode != LUA_YIELD) ?
-            (void*)lj_vm_unwind_ff : (void*)lj_vm_unwind_c, errcode);
-         // lj_vm_rtlunwind does not return.
-#else
-         // Unwind the stack and call all handlers for all lower C frames
-         // (including ourselves) again with EH_UNWINDING set. Then set
-         // stack pointer = cf, result = errcode and jump to the specified target.
-
-         RtlUnwindEx(cf, (void*)((cframe_unwind_ff(cf2) and errcode != LUA_YIELD) ?
-            lj_vm_unwind_ff_eh :
-            lj_vm_unwind_c_eh),
-            rec, (void*)(uintptr_t)errcode, ctx, dispatch->HistoryTable);
-         // RtlUnwindEx should never return.
-#endif
-      }
-   }
-   return 1;  //  ExceptionContinueSearch
-}
-
-#if LJ_UNWIND_JIT
-
-#if LJ_TARGET_X64
- #define CONTEXT_REG_PC  Rip
-#elif LJ_TARGET_ARM64
- #define CONTEXT_REG_PC  Pc
-#else
- #error "NYI: Windows arch-specific unwinder for JIT-compiled code"
-#endif
-
-//********************************************************************************************************************
-// Windows unwinder for JIT-compiled code.
-
-static void err_unwind_win_jit(global_State* g, int errcode)
-{
-   CONTEXT ctx;
-   UNWIND_HISTORY_TABLE hist;
-
-   memset(&hist, 0, sizeof(hist));
-   RtlCaptureContext(&ctx);
-   while (1) {
-      uintptr_t frame, base, addr = ctx.CONTEXT_REG_PC;
-      void* hdata;
-      PRUNTIME_FUNCTION func = RtlLookupFunctionEntry(addr, &base, &hist);
-      if (!func) {  // Found frame without .pdata: must be JIT-compiled code.
-         ExitNo exitno;
-         uintptr_t stub = lj_trace_unwind(G2J(g), addr - sizeof(MCode), &exitno);
-         if (stub) {  // Jump to side exit to unwind the trace.
-            ctx.CONTEXT_REG_PC = stub;
-            G2J(g)->exitcode = errcode;
-            RtlRestoreContext(&ctx, nullptr);  //  Does not return.
-         }
-         break;
-      }
-      RtlVirtualUnwind(UNW_FLAG_NHANDLER, base, addr, func,
-         &ctx, &hdata, &frame, nullptr);
-      if (!addr) break;
-   }
-   // Unwinding failed, if we end up here.
-}
-#endif
-
-//********************************************************************************************************************
-// Raise Windows exception.
-static void err_raise_ext(global_State* g, int errcode)
-{
-#if LJ_UNWIND_JIT
-   if (tvref(g->jit_base)) {
-      err_unwind_win_jit(g, errcode);
-      return;  //  Unwinding failed.
-   }
-#elif LJ_HASJIT
-   // Cannot catch on-trace errors for Windows/x86 SEH. Unwind to interpreter.
-   setmref(g->jit_base, nullptr);
-#endif
-   UNUSED(g);
-   RaiseException(LJ_EXCODE_MAKE(errcode), 1 /* EH_NONCONTINUABLE */, 0, nullptr);
-}
+extern "C" void err_unwind_win_jit(global_State* g, int errcode);
+extern "C" void err_raise_ext(global_State *g, int errcode);
 
 #elif !LJ_NO_UNWIND and (defined(__GNUC__) or defined(__clang__))
 
-/*
-** We have to use our own definitions instead of the mandatory (!) unwind.h,
-** since various OS, distros and compilers mess up the header installation.
-*/
+// We have to use our own definitions instead of the mandatory (!) unwind.h,
+// since various OS, distros and compilers mess up the header installation.
 
 typedef struct _Unwind_Context _Unwind_Context;
 
@@ -702,7 +542,6 @@ uint8_t* lj_err_register_mcode(void* base, size_t sz, uint8_t* info)
 
 void lj_err_deregister_mcode(void* base, size_t sz, uint8_t* info)
 {
-   UNUSED(base); UNUSED(sz);
    __deregister_frame(info + ERR_FRAME_JIT_OFS_REGISTER);
 }
 #endif
@@ -835,26 +674,25 @@ static void err_raise_ext(global_State* g, int errcode)
 
 #endif
 
-// Error handling
-
 // Throw error. Find catch frame, unwind stack and continue.
+
 LJ_NOINLINE void LJ_FASTCALL lj_err_throw(lua_State* L, int errcode)
 {
    global_State* g = G(L);
    lj_trace_abort(g);
    L->status = LUA_OK;
+
 #if LJ_UNWIND_EXT
    err_raise_ext(g, errcode);
-   /*
-   ** A return from this function signals a corrupt C stack that cannot be
-   ** unwound. We have no choice but to call the panic function and exit.
-   **
-   ** Usually this is caused by a C function without unwind information.
-   ** This may happen if you've manually enabled LUAJIT_UNWIND_EXTERNAL
-   ** and forgot to recompile *every* non-C++ file with -funwind-tables.
-   */
-   if (G(L)->panic)
-      G(L)->panic(L);
+
+   // A return from this function signals a corrupt C stack that cannot be
+   // unwound. We have no choice but to call the panic function and exit.
+   //
+   // Usually this is caused by a C function without unwind information.
+   // This may happen if you've manually enabled LUAJIT_UNWIND_EXTERNAL
+   // and forgot to recompile *every* non-C++ file with -funwind-tables.
+
+   if (G(L)->panic) G(L)->panic(L);
 #else
 #if LJ_HASJIT
    setmref(g->jit_base, nullptr);
@@ -989,9 +827,26 @@ LJ_NORET LJ_NOINLINE static void err_msgv(lua_State* L, ErrMsg em, ...)
 }
 
 // Non-vararg variant for better calling conventions.
+
 LJ_NOINLINE void lj_err_msg(lua_State* L, ErrMsg em)
 {
    err_msgv(L, em);
+}
+
+// Vararg variant for formatted messages. Use this for errors raised from VM helper functions called from assembler
+// (e.g. lj_arr_set, lj_meta_tset). These functions are called while executing bytecode and need L->top adjusted
+// for proper unwinding.
+
+LJ_NOINLINE void lj_err_msgv(lua_State* L, ErrMsg em, ...)
+{
+   const char* msg;
+   va_list argp;
+   va_start(argp, em);
+   if (curr_funcisL(L)) L->top = curr_topL(L);
+   msg = lj_strfmt_pushvf(L, err2msg(em), argp);
+   va_end(argp);
+   lj_debug_addloc(L, msg, L->base - 1, nullptr);
+   lj_err_run(L);
 }
 
 //********************************************************************************************************************
@@ -1004,8 +859,7 @@ LJ_NOINLINE void lj_err_lex(lua_State* L, GCstr* src, const char* tok, BCLine li
    lj_debug_shortname(buff, src, line);
    msg = lj_strfmt_pushvf(L, err2msg(em), argp);
    msg = lj_strfmt_pushf(L, "%s:%d: %s", buff, line, msg);
-   if (tok)
-      lj_strfmt_pushf(L, err2msg(ErrMsg::XNEAR), msg, tok);
+   if (tok) lj_strfmt_pushf(L, err2msg(ErrMsg::XNEAR), msg, tok);
    lj_err_throw(L, LUA_ERRSYNTAX);
 }
 
@@ -1021,8 +875,7 @@ LJ_NOINLINE void lj_err_optype(lua_State* L, cTValue* o, ErrMsg opm)
       const BCIns* pc = cframe_Lpc(L) - 1;
       const char* oname = nullptr;
       const char* kind = lj_debug_slotname(pt, pc, (BCREG)(o - L->base), &oname);
-      if (kind)
-         err_msgv(L, ErrMsg::BADOPRT, opname, kind, oname, tname);
+      if (kind) err_msgv(L, ErrMsg::BADOPRT, opname, kind, oname, tname);
    }
    err_msgv(L, ErrMsg::BADOPRV, opname, tname);
 }
@@ -1094,9 +947,11 @@ LJ_NOINLINE void lj_err_callermsg(lua_State* L, const char* msg)
 }
 
 //********************************************************************************************************************
-// Formatted error in context of caller.
+// Formatted error in context of caller. Use this for errors raised from C library functions (lua_* API, lib_*.cpp).
+// Do NOT use for VM helper functions called from assembler - use lj_err_msgv() instead, which adjusts L->top for
+// proper unwinding.
 
-LJ_NOINLINE void lj_err_callerv(lua_State* L, ErrMsg em, ...)
+LJ_NOINLINE void lj_err_callerv(lua_State *L, ErrMsg em, ...)
 {
    const char* msg;
    va_list argp;
@@ -1108,8 +963,10 @@ LJ_NOINLINE void lj_err_callerv(lua_State* L, ErrMsg em, ...)
 
 //********************************************************************************************************************
 // Error in context of caller.
+// Do NOT use for VM helper functions called from assembler - use lj_err_msgv() instead, which adjusts L->top for
+// proper unwinding.
 
-LJ_NOINLINE void lj_err_caller(lua_State* L, ErrMsg em)
+LJ_NOINLINE void lj_err_caller(lua_State *L, ErrMsg em)
 {
    lj_err_callermsg(L, err2msg(em));
 }
@@ -1121,12 +978,10 @@ LJ_NORET LJ_NOINLINE static void err_argmsg(lua_State* L, int narg, const char* 
 {
    const char* fname = "?";
    const char* ftype = lj_debug_funcname(L, L->base - 1, &fname);
-   if (narg < 0 and narg > LUA_REGISTRYINDEX)
-      narg = (int)(L->top - L->base) + narg + 1;
+   if (narg < 0 and narg > LUA_REGISTRYINDEX) narg = (int)(L->top - L->base) + narg + 1;
    if (ftype and ftype[3] == 'h' and --narg == 0)  //  Check for "method".
       msg = lj_strfmt_pushf(L, err2msg(ErrMsg::BADSELF), fname, msg);
-   else
-      msg = lj_strfmt_pushf(L, err2msg(ErrMsg::BADARG), narg, fname, msg);
+   else msg = lj_strfmt_pushf(L, err2msg(ErrMsg::BADARG), narg, fname, msg);
    lj_err_callermsg(L, msg);
 }
 
@@ -1164,10 +1019,8 @@ LJ_NOINLINE void lj_err_argtype(lua_State* L, int narg, const char* xname)
       else {
          GCfunc* fn = curr_func(L);
          int idx = LUA_GLOBALSINDEX - narg;
-         if (idx <= fn->c.nupvalues)
-            tname = lj_typename(&fn->c.upvalue[idx - 1]);
-         else
-            tname = lj_obj_typename[0];
+         if (idx <= fn->c.nupvalues) tname = lj_typename(&fn->c.upvalue[idx - 1]);
+         else tname = lj_obj_typename[0];
       }
    }
    else {
@@ -1251,7 +1104,6 @@ LJ_NOINLINE void lj_assert_fail(global_State* g, const char* file, int line,
    fprintf(stderr, "\n");
    va_end(argp);
    fflush(stderr);
-   UNUSED(g);
    abort();
 }
 

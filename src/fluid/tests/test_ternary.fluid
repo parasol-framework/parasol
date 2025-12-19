@@ -1,7 +1,7 @@
 -- Comprehensive test suite for ternary operator in Fluid
 -- condition ? true_expr :> false_expr
 
-@BeforeEach(hotpath=true) 
+@BeforeEach(hotpath=true)
 function enforce_hotpath() end
 
 -- Basic ternary tests

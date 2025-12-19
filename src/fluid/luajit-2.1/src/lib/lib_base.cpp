@@ -70,6 +70,7 @@ LJLIB_PUSH("trace")
 LJLIB_PUSH("cdata")
 LJLIB_PUSH("table")
 LJLIB_PUSH(top-9)  //  userdata
+LJLIB_PUSH("array")
 LJLIB_PUSH("number")
 LJLIB_ASM(type)      LJLIB_REC(.)
 {
@@ -591,14 +592,12 @@ LJLIB_PUSH(top-3)
 LJLIB_SET(_VERSION)
 
 //********************************************************************************************************************
-// Base library: thunk functions
-
 // Check if a value is an unresolved thunk
 
 LJLIB_CF(isthunk)
 {
    cTValue *o = lj_lib_checkany(L, 1);
-   setboolV(L->top++, lj_thunk_isthunk(o));
+   setboolV(L->top++, lj_is_thunk(o));
    return 1;
 }
 
@@ -609,7 +608,7 @@ LJLIB_CF(resolve)
 {
    cTValue *o = lj_lib_checkany(L, 1);
 
-   if (lj_thunk_isthunk(o)) {
+   if (lj_is_thunk(o)) {
       GCudata *ud = udataV(o);
       TValue *resolved = lj_thunk_resolve(L, ud);
       copyTV(L, L->top++, resolved);
@@ -649,8 +648,7 @@ LJLIB_CF(coroutine_status)
 {
    const char* s;
    lua_State* co;
-   if (!(L->top > L->base and tvisthread(L->base)))
-      lj_err_arg(L, 1, ErrMsg::NOCORO);
+   if (!(L->top > L->base and tvisthread(L->base))) lj_err_arg(L, 1, ErrMsg::NOCORO);
    co = threadV(L->base);
    if (co IS L) s = "running";
    else if (co->status IS LUA_YIELD) s = "suspended";
@@ -740,10 +738,8 @@ LJ_FUNCA_NORET void LJ_FASTCALL lj_ffh_coroutine_wrap_err(lua_State* L, lua_Stat
 void LJ_FASTCALL lj_ffh_coroutine_wrap_err(lua_State* L, lua_State* co)
 {
    co->top--; copyTV(L, L->top, co->top); L->top++;
-   if (tvisstr(L->top - 1))
-      lj_err_callermsg(L, strVdata(L->top - 1));
-   else
-      lj_err_run(L);
+   if (tvisstr(L->top - 1)) lj_err_callermsg(L, strVdata(L->top - 1));
+   else lj_err_run(L);
 }
 
 //********************************************************************************************************************

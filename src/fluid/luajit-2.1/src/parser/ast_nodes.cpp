@@ -10,21 +10,22 @@ FluidType parse_type_name(std::string_view Name)
    };
 
    constexpr TypeName names[] = {
-      { "any",      FluidType::Any },
-      { "nil",      FluidType::Nil },
-      { "bool",     FluidType::Bool },
-      { "boolean",  FluidType::Bool },
-      { "num",      FluidType::Num },
-      { "number",   FluidType::Num },
-      { "str",      FluidType::Str },
-      { "string",   FluidType::Str },
-      { "table",    FluidType::Table },
-      { "func",     FluidType::Func },
-      { "function", FluidType::Func },
-      { "thread",   FluidType::Thread },
-      { "cdata",    FluidType::CData },
-      { "obj",      FluidType::Object },
-      { "object",   FluidType::Object }
+      { "any",       FluidType::Any },
+      { "nil",       FluidType::Nil },
+      { "bool",      FluidType::Bool },
+      { "boolean",   FluidType::Bool },
+      { "num",       FluidType::Num },
+      { "number",    FluidType::Num },
+      { "str",       FluidType::Str },
+      { "string",    FluidType::Str },
+      { "table",     FluidType::Table },
+      { "array",     FluidType::Array },
+      { "func",      FluidType::Func },
+      { "function",  FluidType::Func },
+      { "thread",    FluidType::Thread },
+      { "cdata",     FluidType::CData },
+      { "obj",       FluidType::Object },
+      { "object",    FluidType::Object }
    };
 
    for (const auto &entry : names) {
@@ -42,6 +43,7 @@ std::string_view type_name(FluidType Type)
       case FluidType::Num:    return "num";
       case FluidType::Str:    return "str";
       case FluidType::Table:  return "table";
+      case FluidType::Array:  return "array";
       case FluidType::Func:   return "func";
       case FluidType::Thread: return "thread";
       case FluidType::CData:  return "cdata";
@@ -54,8 +56,8 @@ std::string_view type_name(FluidType Type)
 //********************************************************************************************************************
 // Convert FluidType to LJ type tag base value.
 // The LJ_T* tags are defined as ~value (bitwise NOT), e.g.:
-//   LJ_TNIL = ~0, LJ_TFALSE = ~1, LJ_TTRUE = ~2, LJ_TSTR = ~4, LJ_TTAB = ~11, LJ_TNUMX = ~13
-// We store the base value (0-13) and recover the tag with ~value
+//   LJ_TNIL = ~0, LJ_TFALSE = ~1, LJ_TTRUE = ~2, LJ_TSTR = ~4, LJ_TTAB = ~11, LJ_TARRAY = ~13, LJ_TNUMX = ~14
+// We store the base value (0-14) and recover the tag with ~value
 // Returns 0xFF for Unknown/Any types to signal "needs evaluation"
 
 uint8_t fluid_type_to_lj_tag(FluidType Type)
@@ -69,7 +71,8 @@ uint8_t fluid_type_to_lj_tag(FluidType Type)
       case FluidType::CData:  return 10;  // ~10 = LJ_TCDATA
       case FluidType::Table:  return 11;  // ~11 = LJ_TTAB
       case FluidType::Object: return 12;  // ~12 = LJ_TUDATA
-      case FluidType::Num:    return 13;  // ~13 = LJ_TNUMX
+      case FluidType::Array:  return 13;  // ~13 = LJ_TARRAY
+      case FluidType::Num:    return 14;  // ~14 = LJ_TNUMX
       case FluidType::Any:
       case FluidType::Unknown:
       default: return 0xFF;  // Unknown - needs evaluation

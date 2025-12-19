@@ -43,7 +43,7 @@ end
    -- Expect success
    err, value = cfg.mtReadValue('Clean', 'Points')
    assert(err is ERR_Okay, 'ReadInt() returned ' .. mSys.GetErrorMsg(err))
-   assert(value is '8', 'Did not read the expected [Clean].Points key-value, got ' .. nz(value,'NIL'))
+   assert(value is '8', 'Did not read the expected [Clean].Points key-value, got ' .. tostring(value))
 
    -- Expect failure
    err, value = cfg.mtReadValue('Courier Sans', 'Scalable')
@@ -61,7 +61,7 @@ end
    -- Expect success
    err, value = cfg.mtReadValue('Courier Sans', 'Scalable')
    assert(err is ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
-   assert(value is 'Yes', 'Did not read the expected [Courier Sans].Scalable key-value, got ' .. nz(value,'NIL'))
+   assert(value is 'Yes', 'Did not read the expected [Courier Sans].Scalable key-value, got ' .. tostring(value))
 
    -- Expect failure
    err, value = cfg.mtReadValue('Clean', 'Points')
@@ -106,7 +106,7 @@ end
 
    err, value = cfg.mtReadValue('MergedGroup', 'Hello')
    assert(err is ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
-   assert(value is 'World', 'Expected the World, received ' .. nz(value,'NIL'))
+   assert(value is 'World', 'Expected the World, received ' .. tostring(value))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -122,11 +122,11 @@ end
 
    err, value = cfg.mtReadValue('Clean', 'New')
    assert(err is ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
-   assert(value is 'Value', 'Expected a Value, received ' .. nz(value,'NIL'))
+   assert(value is 'Value', 'Expected a Value, received ' .. tostring(value))
 
    err, value = cfg.mtReadValue('NewGroup', 'fruit')
    assert(err is ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
-   assert(value is 'orange', 'Expected an orange, received ' .. nz(value,'NIL'))
+   assert(value is 'orange', 'Expected an orange, received ' .. tostring(value))
 end
 
 ----------------------------------------------------------------------------------------------------------------------

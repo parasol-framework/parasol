@@ -2,8 +2,8 @@
 Tests for resolving server names in parallel.
 --]]
 
-global glDomains = { 'google.com', 'parasol.ws', 'amazon.co.uk', 'stackoverflow.com', 'theguardian.com', 'www.bbc.co.uk' }
-global glTotalResolved = 0
+glDomains = array.of('string', 'google.com', 'parasol.ws', 'amazon.co.uk', 'stackoverflow.com', 'theguardian.com', 'www.bbc.co.uk')
+glTotalResolved = 0
 
 @BeforeAll function init()
    global mNet ?= mod.load('network')
@@ -37,10 +37,11 @@ function name_resolved(NetLookup, Error)
    print('Resolved host name "' .. host .. '" (' .. (glTotalResolved+1) .. '/' .. #glDomains .. ')')
 
    ip_list = nil
-   addresses = NetLookup.addresses
+   addresses = NetLookup.addresses -- array type
    if addresses then
       total_ips = #addresses
-      for index, ip in pairs(addresses) do
+      for i=0,#addresses-1 do
+         ip = addresses[i]
          assert((ip.type is IPADDR_V4) or (ip.type is IPADDR_V6), 'Unrecognised TCP/IP address type ' .. ip.type)
          if not ip_list then
             ip_list = netAddressToString(ip)
@@ -66,7 +67,7 @@ end
 -- for the same host.  In the log output you may see a thread being created for the first resolve, then the second call
 -- will hit the local DNS cache and return immediately.
 
-@Test(requires='network') function testDuplication()
+@Test(requires='network') function Duplication()
    resolved = 0
 
    domains = { 'google.com', 'reddit.com' }
@@ -100,12 +101,12 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Non-blocking name resolution (default)
 
-@Test(requires='network') function testNameResolutionAsync()
+@Test(requires='network') function NameResolutionAsync()
    nl = obj.new('NetLookup', { callback=name_resolved, flags=NLF_NO_CACHE })
 
    glTotalResolved = 0
-   for k,v in pairs(glDomains) do
-      nl.mtResolveName(v)
+   for i=0,#glDomains-1 do
+      nl.mtResolveName(glDomains[i])
    end
 
    err = proc.sleep(5.0)
@@ -115,20 +116,20 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Blocking name resolution
 
-@Test(requires='network') function testBlockingNameResolution()
+@Test(requires='network') function BlockingNameResolution()
    nl = obj.new('NetLookup', { callback = name_resolved, flags=NLF_NO_CACHE })
 
    glTotalResolved = 0
-   for k,v in pairs(glDomains) do
+   for i=0,#glDomains-1 do
       expected_total = glTotalResolved + 1
-      nl.mtBlockingResolveName(v)
+      nl.mtBlockingResolveName(glDomains[i])
       assert(expected_total is glTotalResolved, 'Name was not resolved when ResolveName() had returned, got ' .. glTotalResolved .. '/' .. expected_total)
    end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test(requires='network') function testBlockingAddressResolution()
+@Test(requires='network') function BlockingAddressResolution()
    address_resolved = false
    nl = obj.new('NetLookup', {
       callback = function(NetLookup, Error)

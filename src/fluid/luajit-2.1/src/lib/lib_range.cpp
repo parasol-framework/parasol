@@ -25,6 +25,7 @@
 #include "lj_buf.h"
 #include "lj_tab.h"
 #include "lj_str.h"
+#include "lj_array.h"
 #include "lib.h"
 #include "lib_range.h"
 #include <parasol/strings.hpp>
@@ -43,7 +44,7 @@ static fluid_range * get_range(lua_State *L, int idx)
 // Check if a stack value at the given index is a range userdata (returns nullptr if not).
 // This function is exported via lib_range.h for use by lib_table.cpp.
 
-fluid_range *check_range(lua_State *L, int idx)
+fluid_range * check_range(lua_State *L, int idx)
 {
    if (void *ud = lua_touserdata(L, idx)) {
       if (lua_getmetatable(L, idx)) {
@@ -1093,7 +1094,7 @@ static int range_slice_impl(lua_State *L)
       // Use LuaJIT's string buffer
       SBuf *sb = lj_buf_tmp_(L);
       lj_buf_reset(sb);
-      lj_buf_need(sb, MSize(result_size));
+      (void)lj_buf_need(sb, MSize(result_size));
 
       const char *src = strdata(str);
 
@@ -1201,6 +1202,83 @@ static int range_slice_impl(lua_State *L)
          }
       }
 
+      return 1;
+   }
+
+   // Array slicing
+   if (tvisarray(o)) {
+      GCarray *arr = arrayV(o);
+      int32_t len = int32_t(arr->len);
+      int32_t start = r->start;
+      int32_t stop = r->stop;
+      int32_t step = r->step;
+
+      // Handle negative indices
+      bool use_inclusive = r->inclusive;
+      if (start < 0 or stop < 0) {
+         use_inclusive = true;
+         if (start < 0) start += len;
+         if (stop < 0) stop += len;
+      }
+
+      // Determine iteration direction
+      bool forward = (start <= stop);
+      if (step IS 0) step = forward ? 1 : -1;
+      if (forward and step < 0) step = 1;
+      if (not forward and step > 0) step = -1;
+
+      // Calculate effective stop for exclusive ranges
+      int32_t effective_stop = stop;
+      if (not use_inclusive) {
+         if (forward) effective_stop = stop - 1;
+         else effective_stop = stop + 1;
+      }
+
+      // Bounds clipping
+      if (forward) {
+         if (start < 0) start = 0;
+         if (effective_stop >= len) effective_stop = len - 1;
+      }
+      else {
+         if (start >= len) start = len - 1;
+         if (effective_stop < 0) effective_stop = 0;
+      }
+
+      // Check for empty/invalid ranges
+      if (len IS 0 or (forward and start > effective_stop) or (not forward and start < effective_stop)) {
+         GCarray *new_arr = lj_array_new(L, 0, arr->elemtype);
+         // Per-instance metatable is null - base metatable will be used automatically
+         setarrayV(L, L->top++, new_arr);
+         return 1;
+      }
+
+      // Calculate result size
+      int32_t result_size = 0;
+      if (forward) result_size = ((effective_stop - start) / step) + 1;
+      else result_size = ((start - effective_stop) / (-step)) + 1;
+
+      // Create result array
+      GCarray *new_arr = lj_array_new(L, MSize(result_size), arr->elemtype);
+      auto src_base = (uint8_t *)mref<void>(arr->data);
+      auto dst_base = (uint8_t *)mref<void>(new_arr->data);
+      MSize elemsize = arr->elemsize;
+
+      // Copy elements
+      int32_t dst_idx = 0;
+      if (forward) {
+         for (int32_t i = start; i <= effective_stop; i += step) {
+            memcpy(dst_base + dst_idx * elemsize, src_base + i * elemsize, elemsize);
+            dst_idx++;
+         }
+      }
+      else {
+         for (int32_t i = start; i >= effective_stop; i += step) {
+            memcpy(dst_base + dst_idx * elemsize, src_base + i * elemsize, elemsize);
+            dst_idx++;
+         }
+      }
+
+      setarrayV(L, L->top++, new_arr); // Push array onto the stack
       return 1;
    }
 

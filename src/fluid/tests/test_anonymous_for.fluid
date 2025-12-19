@@ -1,7 +1,7 @@
 -- Flute test suite for Anonymous For Loops
 -- Tests the syntax: for {range} do ... end (without explicit loop variable)
 
-@BeforeEach(hotpath=true) 
+@BeforeEach(hotpath=true)
 function enforce_hotpath() end
 
 @Test function testAnonymousForBasicExclusive()

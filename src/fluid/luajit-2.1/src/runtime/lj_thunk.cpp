@@ -22,20 +22,7 @@
 using std::floor;
 using std::pow;
 
-// Global reference to thunk metatable (stored in registry)
 #define THUNK_METATABLE_NAME  "fluid.thunk"
-
-//********************************************************************************************************************
-// Check if a TValue is a thunk
-
-int lj_thunk_isthunk(cTValue *o)
-{
-   if (tvisudata(o)) {
-      GCudata *ud = udataV(o);
-      return ud->udtype IS UDTYPE_THUNK;
-   }
-   return 0;
-}
 
 //********************************************************************************************************************
 // Create a new thunk userdata
@@ -154,8 +141,7 @@ TValue* lj_thunk_resolve(lua_State *L, GCudata *thunk_udata)
 
 cTValue* lj_thunk_getvalue(lua_State *L, cTValue *o)
 {
-   UNUSED(L);
-   if (lj_thunk_isthunk(o)) {
+   if (lj_is_thunk(o)) {
       GCudata *ud = udataV(o);
       ThunkPayload *payload = thunk_payload(ud);
       if (payload->resolved) {
@@ -186,18 +172,9 @@ static int thunk_len(lua_State *L);
 static int thunk_call(lua_State *L);
 static int thunk_tostring(lua_State *L);
 
-// Helper: resolve thunk at stack position, return pointer to resolved value
-static TValue* resolve_at(lua_State *L, int idx)
-{
-   TValue *o = L->base + idx;
-   if (lj_thunk_isthunk(o)) {
-      return lj_thunk_resolve(L, udataV(o));
-   }
-   return o;
-}
-
 // Helper: Get number value from TValue, handling integer and number types
-static lua_Number getnumvalue(TValue *o)
+
+inline lua_Number getnumvalue(TValue *o)
 {
    if (tvisint(o)) return (lua_Number)intV(o);
    return numV(o);
@@ -396,7 +373,7 @@ static int thunk_lt(lua_State *L)
    int result;
    if (tvisnumber(a) and tvisnumber(b)) {
       result = (getnumvalue(a) < getnumvalue(b));
-   } 
+   }
    else if (tvisstr(a) and tvisstr(b)) {
       // String comparison
       GCstr *sa = strV(a);
@@ -405,7 +382,7 @@ static int thunk_lt(lua_State *L)
       int cmp = memcmp(strdata(sa), strdata(sb), len);
       if (cmp IS 0) result = (sa->len < sb->len);
       else result = (cmp < 0);
-   } 
+   }
    else {
       lj_err_comp(L, a, b);
       return 0;
@@ -424,7 +401,7 @@ static int thunk_le(lua_State *L)
    int result;
    if (tvisnumber(a) and tvisnumber(b)) {
       result = (getnumvalue(a) <= getnumvalue(b));
-   } 
+   }
    else if (tvisstr(a) and tvisstr(b)) {
       // String comparison
       GCstr *sa = strV(a);
@@ -433,7 +410,7 @@ static int thunk_le(lua_State *L)
       int cmp = memcmp(strdata(sa), strdata(sb), len);
       if (cmp IS 0) result = (sa->len <= sb->len);
       else result = (cmp <= 0);
-   } 
+   }
    else {
       lj_err_comp(L, a, b);
       return 0;
@@ -470,7 +447,7 @@ static int thunk_index(lua_State *L)
                   lua_call(L, 2, 1);
                   // Result is already at L->top-1, which is now L->top after lua_call returns
                   return 1;
-               } 
+               }
                else if (tvistab(idx)) { // __index is a table: look up key in that table
                   res = lj_tab_get(L, tabV(idx), key);
                }
@@ -497,7 +474,7 @@ static int thunk_index(lua_State *L)
                L->top += 3;
                lua_call(L, 2, 1);
                return 1;
-            } 
+            }
             else if (tvistab(idx)) {
                // __index is a table: look up key in that table
                cTValue *res = lj_tab_get(L, tabV(idx), key);
@@ -545,7 +522,7 @@ static int thunk_newindex(lua_State *L)
                   L->top += 4;
                   lua_call(L, 3, 0);
                   return 0;
-               } 
+               }
                else if (tvistab(newidx)) {
                   // __newindex is a table: set key in that table
                   GCtab *target = tabV(newidx);
@@ -581,7 +558,7 @@ static int thunk_newindex(lua_State *L)
                L->top += 4;
                lua_call(L, 3, 0);
                return 0;
-            } 
+            }
             else if (tvistab(newidx)) {
                // __newindex is a table: set key in that table
                GCtab *t = tabV(newidx);
@@ -612,7 +589,7 @@ static int thunk_len(lua_State *L)
    if (tvistab(o)) {
       setintV(L->top++, (int32_t)lj_tab_len(tabV(o)));
       return 1;
-   } 
+   }
    else if (tvisstr(o)) {
       setintV(L->top++, (int32_t)strV(o)->len);
       return 1;
@@ -660,9 +637,9 @@ static int thunk_call(lua_State *L)
 
    // Resolved to a function - call with the arguments
    // Push function
-   
+
    copyTV(L, L->top, o);
-   
+
    // Copy arguments
    for (int i = 0; i < nargs; i++) {
       copyTV(L, L->top + 1 + i, L->base + 1 + i);
@@ -683,16 +660,16 @@ static int thunk_tostring(lua_State *L)
    if (tvisstr(o)) {
       copyTV(L, L->top++, o);
       return 1;
-   } 
+   }
    else if (tvisnumber(o)) {
       GCstr *s = lj_strfmt_number(L, o);
       setstrV(L, L->top++, s);
       return 1;
-   } 
+   }
    else if (tvisnil(o)) {
       setstrV(L, L->top++, lj_str_newlit(L, "nil"));
       return 1;
-   } 
+   }
    else if (tvisbool(o)) {
       if (boolV(o)) setstrV(L, L->top++, lj_str_newlit(L, "true"));
       else setstrV(L, L->top++, lj_str_newlit(L, "false"));

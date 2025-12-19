@@ -11,6 +11,7 @@
 #include "lualib.h"
 #include "lauxlib.h"
 #include "lj_obj.h"
+#include "lib.h"
 
 #include "hashes.h"
 #include "defs.h"
@@ -108,7 +109,7 @@ static int module_load(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Internal: Object garbage collector.
+// Object garbage collector.
 
 static int module_destruct(lua_State *Lua)
 {
@@ -120,7 +121,7 @@ static int module_destruct(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Internal: Prints the module name
+// Prints the module name
 
 static int module_tostring(lua_State *Lua)
 {
@@ -247,22 +248,23 @@ static int module_call(lua_State *Lua)
                return 0;
             }
 
-            if (auto mem = (array *)get_meta(Lua, i, "Fluid.array")) {
-               ((APTR *)(buffer + j))[0] = mem->ptrVoid;
+            if (lua_type(Lua, i) IS LUA_TARRAY) {
+               GCarray *arr = arrayV(Lua, i);
+               ((APTR *)(buffer + j))[0] = arr->data.get<void>();
                arg_values[in] = buffer + j;
                arg_types[in++] = &ffi_type_pointer;
                j += sizeof(APTR);
 
                if (args[i+1].Type & (FD_BUFSIZE|FD_ARRAYSIZE)) {
                   if (args[i+1].Type & FD_INT) {
-                     ((int *)(buffer + j))[0] = mem->ArraySize;
+                     ((int *)(buffer + j))[0] = arr->len * arr->elemsize;
                      arg_values[in]  = buffer + j;
                      arg_types[in++] = &ffi_type_sint32;
                      i++;
                      j += sizeof(int);
                   }
                   else if (args[i+1].Type & FD_INT64) {
-                     ((int64_t *)(buffer + j))[0] = mem->ArraySize;
+                     ((int64_t *)(buffer + j))[0] = arr->len * arr->elemsize;
                      arg_values[in]  = buffer + j;
                      arg_types[in++] = &ffi_type_sint64;
                      i++;
@@ -399,14 +401,15 @@ static int module_call(lua_State *Lua)
          arg_types[in++] = &ffi_type_pointer;
          j += sizeof(APTR);
       }
-      else if (argtype & FD_ARRAY) {
+      else if (argtype & FD_ARRAY) { // Pass array data pointer
          if (argtype & FD_CPP) {
             luaL_error(Lua, "No support for calls utilising C++ arrays.");
             return 0;
          }
 
-         if (auto mem = (array *)get_meta(Lua, i, "Fluid.array")) {
-            arg_values[in] = &mem->ptrVoid;
+         if (lua_type(Lua, i) IS LUA_TARRAY) {
+            GCarray *arr = arrayV(Lua, i);
+            arg_values[in] = arr->data.get<void>();
             arg_types[in++] = &ffi_type_pointer;
             j += sizeof(APTR); // Dummy increment
 
@@ -414,7 +417,7 @@ static int module_call(lua_State *Lua)
                if (args[i+1].Type & FD_RESULT) {
                   if (args[i+1].Type & FD_INT) {
                      end -= sizeof(int);
-                     ((int *)end)[0] = mem->Total;
+                     ((int *)end)[0] = arr->len;
                      ((APTR *)(buffer + j))[0] = end;
                      arg_values[in] = buffer + j;
                      arg_types[in++] = &ffi_type_pointer;
@@ -423,7 +426,7 @@ static int module_call(lua_State *Lua)
                   }
                   else if (args[i+1].Type & FD_INT64) {
                      end -= sizeof(int64_t);
-                     ((int64_t *)end)[0] = mem->Total;
+                     ((int64_t *)end)[0] = arr->len;
                      ((APTR *)(buffer + j))[0] = end;
                      arg_values[in] = buffer + j;
                      arg_types[in++] = &ffi_type_pointer;
@@ -437,14 +440,14 @@ static int module_call(lua_State *Lua)
                }
                else {
                   if (args[i+1].Type & FD_INT) {
-                     ((int *)(buffer + j))[0] = mem->Total;
+                     ((int *)(buffer + j))[0] = arr->len;
                      arg_values[in] = buffer + j;
                      arg_types[in++] = &ffi_type_sint32;
                      j += sizeof(int);
                      i++;
                   }
                   else if (args[i+1].Type & FD_INT64) {
-                     ((int64_t *)(buffer + j))[0] = mem->Total;
+                     ((int64_t *)(buffer + j))[0] = arr->len;
                      arg_values[in] = buffer + j;
                      arg_types[in++] = &ffi_type_sint64;
                      j += sizeof(int64_t);
@@ -470,7 +473,8 @@ static int module_call(lua_State *Lua)
          }
       }
       else if (argtype & FD_PTR) {
-         if (lua_type(Lua, i) IS LUA_TSTRING) {
+         auto arg_type = lua_type(Lua, i);
+         if (arg_type IS LUA_TSTRING) {
             // Lua strings need to be converted to C strings
             size_t strlen;
             ((CSTRING *)(buffer + j))[0] = lua_tolstring(Lua, i, &strlen);
@@ -488,29 +492,6 @@ static int module_call(lua_State *Lua)
                }
                else if (args[i+1].Type & FD_INT64) {
                   ((int64_t *)(buffer + j))[0] = strlen;
-                  i++;
-                  arg_values[in] = buffer + j;
-                  arg_types[in++] = &ffi_type_sint64;
-                  j += sizeof(int64_t);
-               }
-            }
-         }
-         else if (auto array = (struct array *)get_meta(Lua, i, "Fluid.array")) {
-            ((APTR *)(buffer + j))[0] = array->ptrVoid;
-            arg_values[in] = buffer + j;
-            arg_types[in++] = &ffi_type_pointer;
-            j += sizeof(APTR);
-
-            if (args[i+1].Type & FD_BUFSIZE) {
-               if (args[i+1].Type & FD_INT) {
-                  ((int *)(buffer + j))[0] = array->ArraySize;
-                  i++;
-                  arg_values[in] = buffer + j;
-                  arg_types[in++] = &ffi_type_sint32;
-                  j += sizeof(int);
-               }
-               else if (args[i+1].Type & FD_INT64) {
-                  ((int64_t *)(buffer + j))[0] = array->ArraySize;
                   i++;
                   arg_values[in] = buffer + j;
                   arg_types[in++] = &ffi_type_sint64;
@@ -559,7 +540,32 @@ static int module_call(lua_State *Lua)
             arg_types[in++] = &ffi_type_pointer;
             j += sizeof(APTR);
          }
-         else if (lua_type(Lua, i) IS LUA_TTABLE) {
+         else if (arg_type IS LUA_TARRAY) {
+            GCarray *array = lj_lib_checkarray(Lua, i);
+
+            ((APTR *)(buffer + j))[0] = array->data.get<void>();
+            arg_values[in] = buffer + j;
+            arg_types[in++] = &ffi_type_pointer;
+            j += sizeof(APTR);
+
+            if (args[i+1].Type & FD_BUFSIZE) {
+               if (args[i+1].Type & FD_INT) {
+                  ((int *)(buffer + j))[0] = array->len * array->elemsize;
+                  i++;
+                  arg_values[in] = buffer + j;
+                  arg_types[in++] = &ffi_type_sint32;
+                  j += sizeof(int);
+               }
+               else if (args[i+1].Type & FD_INT64) {
+                  ((int64_t *)(buffer + j))[0] = array->len * array->elemsize;
+                  i++;
+                  arg_values[in] = buffer + j;
+                  arg_types[in++] = &ffi_type_sint64;
+                  j += sizeof(int64_t);
+               }
+            }
+         }
+         else if (arg_type IS LUA_TTABLE) {
             if (args[i].Type & FD_STRUCT) {
                // Convert Lua table to C struct
                lua_pushvalue(Lua, i); // Duplicate table for table_to_struct (consumes stack)
@@ -757,7 +763,7 @@ static int process_results(prvFluid *prv, APTR resultsidx, const FunctionField *
             auto var = ((APTR *)scan)[0];
             scan += sizeof(APTR);
             if (var) {
-               const auto argname = args[i].Name;
+               std::string_view argname(args[i].Name);
                APTR values = ((APTR *)var)[0];
                int total_elements = -1; // If -1, make_any_table() assumes the array is null terminated.
 
@@ -769,7 +775,7 @@ static int process_results(prvFluid *prv, APTR resultsidx, const FunctionField *
                }
 
                if (values) {
-                  make_any_table(prv->Lua, argtype, argname, total_elements, values);
+                  make_any_array(prv->Lua, argtype, argname, total_elements, values);
                   if (argtype & FD_ALLOC) FreeResource(values);
                }
                else lua_pushnil(prv->Lua);

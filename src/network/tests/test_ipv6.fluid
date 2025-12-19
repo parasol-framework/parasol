@@ -151,7 +151,7 @@ function testIPv6DNSResolution()
       callback = function(Lookup, Error)
          local addresses = Lookup.addresses
          if (Error is ERR_Okay) and addresses then
-            print('[DNS] Resolved ' .. nz(Lookup.hostName,'NIL') .. ' to ' .. #addresses .. ' addresses:')
+            print('[DNS] Resolved ' .. tostring(Lookup.hostName) .. ' to ' .. #addresses .. ' addresses:')
             for i, addr in ipairs(addresses) do
                local addr_str = mNet.AddressToStr(addr)
                local type_str = (addr.type is IPADDR_V6) and 'IPv6' or 'IPv4'

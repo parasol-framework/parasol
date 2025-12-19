@@ -67,6 +67,11 @@ cTValue * lj_meta_lookup(lua_State *L, cTValue *o, MMS mm)
    GCtab *mt;
    if (tvistab(o)) mt = tabref(tabV(o)->metatable);
    else if (tvisudata(o)) mt = tabref(udataV(o)->metatable);
+   else if (tvisarray(o)) {
+      // Check per-instance metatable first, then fall back to base metatable
+      mt = tabref(arrayV(o)->metatable);
+      if (not mt) mt = tabref(basemt_it(G(L), LJ_TARRAY));
+   }
    else mt = tabref(basemt_obj(G(L), o));
 
    if (mt) {
@@ -107,7 +112,7 @@ int lj_meta_tailcall(lua_State *L, cTValue *tv)
 //********************************************************************************************************************
 // Setup call to metamethod to be run by Assembler VM.
 
-static TValue * mmcall(lua_State *L, ASMFunction cont, cTValue *mo, cTValue *a, cTValue *b)
+TValue * mmcall(lua_State *L, ASMFunction cont, cTValue *mo, cTValue *a, cTValue *b)
 {
    //           |-- framesize -> top       top+1       top+2 top+3
    // before:   [func slots ...]
@@ -141,17 +146,16 @@ cTValue *lj_meta_tget(lua_State *L, cTValue *o, cTValue *k)
    int loop;
    for (loop = 0; loop < LJ_MAX_IDXCHAIN; loop++) {
       cTValue *mo;
-      if (LJ_LIKELY(tvistab(o))) {
+      if (tvistab(o)) [[likely]] {
          GCtab *t = tabV(o);
          cTValue *tv = lj_tab_get(L, t, k);
-         if (not tvisnil(tv) or
-            !(mo = lj_meta_fast(L, tabref(t->metatable), MM_index)))
-            return tv;
+         if (not tvisnil(tv) or !(mo = lj_meta_fast(L, tabref(t->metatable), MM_index))) return tv;
       }
       else if (tvisnil(mo = lj_meta_lookup(L, o, MM_index))) {
          lj_err_optype(L, o, ErrMsg::OPINDEX);
          return nullptr;  //  unreachable
       }
+
       if (tvisfunc(mo)) {
          L->top = mmcall(L, lj_cont_ra, mo, o, k);
          return nullptr;  //  Trigger metamethod call.
@@ -199,16 +203,18 @@ TValue * lj_meta_tset(lua_State *L, cTValue *o, cTValue *k)
          // L->top+2 = v filled in by caller.
          return nullptr;  //  Trigger metamethod call.
       }
+
       copyTV(L, &tmp, mo);
       o = &tmp;
    }
+
    lj_err_msg(L, ErrMsg::SETLOOP);
    return nullptr;  //  unreachable
 }
 
 //********************************************************************************************************************
 
-static cTValue *str2num(cTValue *o, TValue* n)
+static cTValue * str2num(cTValue *o, TValue *n)
 {
    if (tvisnum(o)) return o;
    else if (tvisint(o)) return (setnumV(n, (lua_Number)intV(o)), n);
@@ -219,7 +225,7 @@ static cTValue *str2num(cTValue *o, TValue* n)
 //********************************************************************************************************************
 // Helper for arithmetic instructions. Coercion, metamethod.
 
-TValue* lj_meta_arith(lua_State *L, TValue* ra, cTValue *rb, cTValue *rc, BCREG op)
+TValue * lj_meta_arith(lua_State *L, TValue *ra, cTValue *rb, cTValue *rc, BCREG op)
 {
    MMS mm = bcmode_mm(op);
    TValue tempb, tempc;
@@ -245,7 +251,7 @@ TValue* lj_meta_arith(lua_State *L, TValue* ra, cTValue *rb, cTValue *rc, BCREG 
 //********************************************************************************************************************
 // Helper for CAT. Coercion, iterative concat, __concat metamethod.
 
-TValue * lj_meta_cat(lua_State *L, TValue* top, int left)
+TValue * lj_meta_cat(lua_State *L, TValue *top, int left)
 {
    int fromc = 0;
    if (left < 0) { left = -left; fromc = 1; }
@@ -295,11 +301,14 @@ TValue * lj_meta_cat(lua_State *L, TValue* top, int left)
          uint64_t tlen = tvisstr(o) ? strV(o)->len : tvisbuf(o) ? sbufxlen(bufV(o)) : STRFMT_MAXBUF_NUM;
          SBuf* sb;
          do {
-            o--; tlen += tvisstr(o) ? strV(o)->len : tvisbuf(o) ? sbufxlen(bufV(o)) : STRFMT_MAXBUF_NUM;
+            o--;
+            tlen += tvisstr(o) ? strV(o)->len : tvisbuf(o) ? sbufxlen(bufV(o)) : STRFMT_MAXBUF_NUM;
          } while (--left > 0 and (tvisstr(o - 1) or tvisnumber(o - 1)));
+
          if (tlen >= LJ_MAX_STR) lj_err_msg(L, ErrMsg::STROV);
          sb = lj_buf_tmp_(L);
          (void)lj_buf_more(sb, (MSize)tlen);
+
          for (e = top, top = o; o <= e; o++) {
             if (tvisstr(o)) {
                GCstr *s = strV(o);
@@ -313,6 +322,7 @@ TValue * lj_meta_cat(lua_State *L, TValue* top, int left)
             else if (tvisint(o)) lj_strfmt_putint(sb, intV(o));
             else lj_strfmt_putfnum(sb, STRFMT_G14, numV(o));
          }
+
          setstrV(L, top, lj_buf_str(L, sb));
       }
    } while (left >= 1);
@@ -332,6 +342,7 @@ TValue* LJ_FASTCALL lj_meta_len(lua_State *L, cTValue *o)
    cTValue *mo = lj_meta_lookup(L, o, MM_len);
    if (tvisnil(mo)) {
       if (tvistab(o)) tabref(tabV(o)->metatable)->nomm |= (uint8_t)(1u << MM_len);
+      else if (tvisarray(o)) return nullptr;  // Arrays have first-class length support.
       else lj_err_optype(L, o, ErrMsg::OPLEN);
       return nullptr;
    }
@@ -385,7 +396,7 @@ TValue* LJ_FASTCALL lj_meta_equal_cd(lua_State *L, BCIns ins)
       o2 = &tv;
    }
    else if (op IS BC_ISEQN) {
-      o2 = &mref(curr_proto(L)->k, cTValue)[bc_d(ins)];
+      o2 = &mref<cTValue>(curr_proto(L)->k)[bc_d(ins)];
    }
    else {
       lj_assertL(op IS BC_ISEQP, "bad bytecode op %d", op);
@@ -422,7 +433,7 @@ TValue* LJ_FASTCALL lj_meta_equal_thunk(lua_State *L, BCIns ins)
       o2 = &tv;
    }
    else if (op IS BC_ISEQN) {
-      o2 = &mref(curr_proto(L)->k, cTValue)[bc_d(ins)];
+      o2 = &mref<cTValue>(curr_proto(L)->k)[bc_d(ins)];
    }
    else {
       lj_assertL(op IS BC_ISEQP, "bad bytecode op %d", op);
@@ -431,22 +442,18 @@ TValue* LJ_FASTCALL lj_meta_equal_thunk(lua_State *L, BCIns ins)
    }
 
    // Resolve thunks if present
+
    cTValue *resolved_o1 = o1;
    cTValue *resolved_o2 = o2;
 
-   if (lj_thunk_isthunk(o1)) {
-      GCudata *ud = udataV(o1);
-      resolved_o1 = lj_thunk_resolve(L, ud);
-   }
-   if (lj_thunk_isthunk(o2)) {
-      GCudata *ud = udataV(o2);
-      resolved_o2 = lj_thunk_resolve(L, ud);
-   }
+   if (lj_is_thunk(o1)) resolved_o1 = lj_thunk_resolve(L, udataV(o1));
+   if (lj_is_thunk(o2)) resolved_o2 = lj_thunk_resolve(L, udataV(o2));
 
    // Now compare the resolved values using standard Lua equality semantics
    // Return semantics: 0 = don't branch, 1 = branch
    // For ISEQV (ne=0): return 1 if equal (branch to target), 0 if not equal
    // For ISNEV (ne=1): return 1 if not equal (branch to target), 0 if equal
+
    int ne = bc_op(ins) & 1;
 
    // Check for same TValue pointer first

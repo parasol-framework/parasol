@@ -47,6 +47,7 @@
 #include "lj_trace.h"
 #include "lj_dispatch.h"
 #include "lj_vm.h"
+#include "lj_array.h"
 
 #include <array>
 #include <span>
@@ -161,34 +162,58 @@ inline void gc_markobj(global_State *g, T* o) noexcept {
 static void gc_mark(global_State *g, GCobj* o)
 {
    int gct = o->gch.gct;
+
    lj_assertG(iswhite(o), "mark of non-white object");
    lj_assertG(not isdead(g, o), "mark of dead object");
+
    white2gray(o);
-   if (LJ_UNLIKELY(gct IS ~LJ_TUDATA)) {
+
+   if (gct IS ~LJ_TUDATA) {
       GCtab* mt = tabref(gco2ud(o)->metatable);
       gray2black(o);  //  Userdata are never gray.
       if (mt) gc_markobj(g, mt);
       gc_markobj(g, tabref(gco2ud(o)->env));
       if (LJ_HASBUFFER and gco2ud(o)->udtype IS UDTYPE_BUFFER) {
-         SBufExt *sbx = (SBufExt*)uddata(gco2ud(o));
+         SBufExt *sbx = (SBufExt *)uddata(gco2ud(o));
          if (sbufiscow(sbx) and gcref(sbx->cowref)) gc_markobj(g, gcref(sbx->cowref));
          if (gcref(sbx->dict_str)) gc_markobj(g, gcref(sbx->dict_str));
          if (gcref(sbx->dict_mt)) gc_markobj(g, gcref(sbx->dict_mt));
       }
       else if (gco2ud(o)->udtype IS UDTYPE_THUNK) {
          // Mark thunk payload contents to prevent GC from collecting them
-         ThunkPayload* payload = thunk_payload(gco2ud(o));
+
+         ThunkPayload *payload = thunk_payload(gco2ud(o));
+
          // Mark the deferred function
+
          if (gcref(payload->deferred_func)) gc_markobj(g, gcref(payload->deferred_func));
+
          // Mark the cached value if it's a GC object
-         if (payload->resolved and tvisgcv(&payload->cached_value))
+
+         if (payload->resolved and tvisgcv(&payload->cached_value)) {
             gc_markobj(g, gcval(&payload->cached_value));
+         }
       }
    }
-   else if (LJ_UNLIKELY(gct IS ~LJ_TUPVAL)) {
-      GCupval* uv = gco2uv(o);
+   else if (gct IS ~LJ_TUPVAL) {
+      GCupval *uv = gco2uv(o);
       gc_marktv(g, uvval(uv));
       if (uv->closed) gray2black(o);  //  Closed upvalues are never gray.
+   }
+   else if (gct IS ~LJ_TARRAY) {
+      GCarray *arr = gco2arr(o);
+      gray2black(o);  //  Arrays are never gray.
+      GCtab *mt = tabref(arr->metatable);
+      if (mt) gc_markobj(g, mt);
+
+      // If array contains GC references (strings or tables), mark them
+
+      if (arr->elemtype IS AET::_STRING_GC or arr->elemtype IS AET::_TABLE) {
+         GCRef* refs = (GCRef*)mref<void>(arr->data);
+         for (MSize i = 0; i < arr->len; i++) {
+            if (gcref(refs[i])) gc_markobj(g, gcref(refs[i]));
+         }
+      }
    }
    else if (gct != ~LJ_TSTR and gct != ~LJ_TCDATA) {
       lj_assertG(gct IS ~LJ_TFUNC or gct IS ~LJ_TTAB or
@@ -204,8 +229,9 @@ static void gc_mark(global_State *g, GCobj* o)
 static void gc_mark_gcroot(global_State *g)
 {
    ptrdiff_t i;
-   for (i = 0; i < GCROOT_MAX; i++)
+   for (i = 0; i < GCROOT_MAX; i++) {
       if (gcref(g->gcroot[i]) != nullptr) gc_markobj(g, gcref(g->gcroot[i]));
+   }
 }
 
 //********************************************************************************************************************
@@ -240,9 +266,9 @@ static void gc_mark_uv(global_State *g)
 
 static void gc_mark_mmudata(global_State *g)
 {
-   GCobj* root = gcref(g->gc.mmudata);
-   GCobj* u = root;
-   if (u) {
+   GCobj *root = gcref(g->gc.mmudata);
+
+   if (GCobj *u = root) {
       do {
          u = gcnext(u);
          makewhite(g, u);  //  Could be from previous GC.
@@ -257,8 +283,8 @@ static void gc_mark_mmudata(global_State *g)
 size_t lj_gc_separateudata(global_State *g, int all)
 {
    size_t m = 0;
-   GCRef* p = &mainthread(g)->nextgc;
-   GCobj* o;
+   GCRef *p = &mainthread(g)->nextgc;
+   GCobj *o;
    while ((o = gcref(*p)) != nullptr) {
       if (not (iswhite(o) or all) or isfinalized(gco2ud(o))) {
          p = &o->gch.nextgc;  //  Nothing to do.
@@ -272,7 +298,7 @@ size_t lj_gc_separateudata(global_State *g, int all)
          markfinalized(o);
          *p = o->gch.nextgc;
          if (gcref(g->gc.mmudata)) {  // Link to end of mmudata list.
-            GCobj* root = gcref(g->gc.mmudata);
+            GCobj *root = gcref(g->gc.mmudata);
             setgcrefr(o->gch.nextgc, root->gch.nextgc);
             setgcref(root->gch.nextgc, o);
             setgcref(g->gc.mmudata, o);
@@ -516,10 +542,10 @@ static size_t gc_propagate_gray(global_State *g)
 
 using GCFreeFunc = void (LJ_FASTCALL*)(global_State*, GCobj*);
 
-// GC free functions for LJ_TSTR .. LJ_TUDATA. ORDER LJ_T
+// GC free functions for LJ_TSTR .. LJ_TARRAY. ORDER LJ_T
 // Using std::array for type-safe bounds checking and modern C++ semantics.
 
-static const std::array<GCFreeFunc, 9> gc_freefunc = {{
+static const std::array<GCFreeFunc, 10> gc_freefunc = {{
    (GCFreeFunc)lj_str_free,       // LJ_TSTR
    (GCFreeFunc)lj_func_freeuv,    // LJ_TUPVAL
    (GCFreeFunc)lj_state_free,     // LJ_TTHREAD
@@ -532,7 +558,8 @@ static const std::array<GCFreeFunc, 9> gc_freefunc = {{
    nullptr,                       // LJ_TCDATA (disabled)
 #endif
    (GCFreeFunc)lj_tab_free,       // LJ_TTAB
-   (GCFreeFunc)lj_udata_free      // LJ_TUDATA
+   (GCFreeFunc)lj_udata_free,     // LJ_TUDATA
+   (GCFreeFunc)lj_array_free      // LJ_TARRAY
 }};
 
 
@@ -832,10 +859,10 @@ static size_t gc_onestep(lua_State *L)
 
    case GCPhase::Sweep: {
       GCSize old = g->gc.total;
-      setmref(g->gc.sweep, gc_sweep(g, mref(g->gc.sweep, GCRef), GCSWEEPMAX));
+      setmref(g->gc.sweep, gc_sweep(g, mref<GCRef>(g->gc.sweep), GCSWEEPMAX));
       lj_assertG(old >= g->gc.total, "sweep increased memory");
       g->gc.estimate -= old - g->gc.total;
-      if (gcref(*mref(g->gc.sweep, GCRef)) IS nullptr) {
+      if (gcref(*mref<GCRef>(g->gc.sweep)) IS nullptr) {
          if (g->str.num <= (g->str.mask >> 2) and g->str.mask > LJ_MIN_STRTAB * 2 - 1)
             lj_str_resize(L, g->str.mask >> 1);  //  Shrink string table.
          if (gcref(g->gc.mmudata)) {  // Need any finalizations?

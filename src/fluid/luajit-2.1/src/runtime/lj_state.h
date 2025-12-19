@@ -11,12 +11,12 @@
 
 [[nodiscard]] inline ptrdiff_t savestack(lua_State* L, const TValue* p) noexcept
 {
-   return (const char*)(p) - mref(L->stack, char);
+   return (const char*)(p) - mref<char>(L->stack);
 }
 
 [[nodiscard]] inline TValue* restorestack(lua_State* L, ptrdiff_t n) noexcept
 {
-   return (TValue*)(mref(L->stack, char) + n);
+   return (TValue*)(mref<char>(L->stack) + n);
 }
 
 LJ_FUNC void lj_state_relimitstack(lua_State* L);
@@ -26,7 +26,7 @@ LJ_FUNC void LJ_FASTCALL lj_state_growstack1(lua_State* L);
 
 static LJ_AINLINE void lj_state_checkstack(lua_State* L, MSize need)
 {
-   if ((mref(L->maxstack, char) - (char*)L->top) <=
+   if ((mref<char>(L->maxstack) - (char*)L->top) <=
       (ptrdiff_t)need * (ptrdiff_t)sizeof(TValue))
       lj_state_growstack(L, need);
 }

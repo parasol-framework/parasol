@@ -112,8 +112,8 @@ static void resizestack(lua_State *L, MSize n)
    while (oldsize < realsize)  //  Clear new slots.
       setnilV(st + oldsize++);
    L->stacksize = realsize;
-   if ((size_t)(mref(G(L)->jit_base, char) - (char*)oldst) < oldsize)
-      setmref(G(L)->jit_base, mref(G(L)->jit_base, char) + delta);
+   if ((size_t)(mref<char>(G(L)->jit_base) - (char*)oldst) < oldsize)
+      setmref(G(L)->jit_base, mref<char>(G(L)->jit_base) + delta);
    L->base = (TValue*)((char*)L->base + delta);
    L->top = (TValue*)((char*)L->top + delta);
    for (up = gcref(L->openupval); up != nullptr; up = gcnext(up))
@@ -237,9 +237,9 @@ static void close_state(lua_State *L)
    lj_buf_free(g, &g->tmpbuf);
    lj_mem_freevec(g, tvref(L->stack), L->stacksize, TValue);
 #if LJ_64
-   if (mref(g->gc.lightudseg, uint32_t)) {
+   if (mref<uint32_t>(g->gc.lightudseg)) {
       MSize segnum = g->gc.lightudnum ? (2 << lj_fls(g->gc.lightudnum)) : 2;
-      lj_mem_freevec(g, mref(g->gc.lightudseg, uint32_t), segnum, uint32_t);
+      lj_mem_freevec(g, mref<uint32_t>(g->gc.lightudseg), segnum, uint32_t);
    }
 #endif
    lj_assertG(g->gc.total == sizeof(GG_State),

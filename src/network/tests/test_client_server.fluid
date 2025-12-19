@@ -234,7 +234,7 @@ end
       'Test did not complete all steps. Expected: ' .. glExpectedSteps .. ', Actual: ' .. glTestSteps)
 
    assert(glServerData is glClientData and glServerData != nil,
-      'Data integrity check failed. Expected: ' .. nz(glClientData, 'nil') .. ', Received: ' .. nz(glServerData, 'nil'))
+      'Data integrity check failed. Expected: ' .. tostring(glClientData) .. ', Received: ' .. tostring(glServerData))
 
    print('Basic communication test completed successfully!')
    print('Steps completed: ' .. glTestSteps .. '/' .. glExpectedSteps)

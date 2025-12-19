@@ -40,3 +40,6 @@ extern "C" void LJ_FASTCALL lj_meta_for(lua_State* L, TValue* o);
 
 // Helper for __close metamethod during scope exit. Returns error code (0 = success).
 extern "C" int lj_meta_close(lua_State* L, TValue* o, TValue* err);
+
+// Setup call to metamethod to be run by Assembler VM.
+TValue* mmcall(lua_State* L, ASMFunction cont, cTValue* mo, cTValue* a, cTValue* b);

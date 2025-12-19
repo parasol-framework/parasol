@@ -941,7 +941,7 @@ static ERR run_script(objScript *Self)
 
                   APTR values = args->Address;
                   int total_elements = -1;
-                  CSTRING arg_name = args->Name;
+                  std::string_view arg_name(args->Name);
                   if (args[1].Type & FD_ARRAYSIZE) {
                      if (args[1].Type & FD_INT) total_elements = args[1].Int;
                      else if (args[1].Type & FD_INT64) total_elements = args[1].Int64;
@@ -951,7 +951,7 @@ static ERR run_script(objScript *Self)
                   else log.trace("The size of the array is not defined.");
 
                   if (values) {
-                     make_any_table(prv->Lua, type, arg_name, total_elements, values);
+                     make_any_array(prv->Lua, type, arg_name, total_elements, values);
 
                      if (type & FD_ALLOC) FreeResource(values);
                   }
@@ -978,8 +978,8 @@ static ERR run_script(objScript *Self)
                   if ((type & FD_BUFFER) and (i+1 < Self->TotalArgs) and (args[1].Type & FD_BUFSIZE)) {
                      // Buffers are considered to be directly writable regions of memory, so the array interface is
                      // used to represent them.
-                     if (args[1].Type & FD_INT) make_array(prv->Lua, FD_BYTE|FD_WRITE, nullptr, (APTR *)args->Address, args[1].Int, false);
-                     else if (args[1].Type & FD_INT64) make_array(prv->Lua, FD_BYTE|FD_WRITE, nullptr, (APTR *)args->Address, args[1].Int64, false);
+                     if (args[1].Type & FD_INT) lua_createarray(prv->Lua, args[1].Int, AET::_BYTE, (APTR *)args->Address, ARRAY_EXTERNAL);
+                     else if (args[1].Type & FD_INT64) lua_createarray(prv->Lua, args[1].Int64, AET::_BYTE, (APTR *)args->Address, ARRAY_EXTERNAL);
                      else lua_pushnil(prv->Lua);
                      i++; args++; // Because we took the buffer-size parameter into account
                   }
@@ -1094,7 +1094,6 @@ static ERR register_interfaces(objScript *Self)
 
    auto prv = (prvFluid *)Self->ChildPrivate;
 
-   register_array_class(prv->Lua);
    register_io_class(prv->Lua);
    register_object_class(prv->Lua);
    register_module_class(prv->Lua);
@@ -1118,7 +1117,6 @@ static ERR register_interfaces(objScript *Self)
    lua_register(prv->Lua, "include", fcmd_include);
    lua_register(prv->Lua, "require", fcmd_require);
    lua_register(prv->Lua, "msg", fcmd_msg);
-   lua_register(prv->Lua, "nz", fcmd_nz);
    lua_register(prv->Lua, "subscribeEvent", fcmd_subscribe_event);
    lua_register(prv->Lua, "unsubscribeEvent", fcmd_unsubscribe_event);
    lua_register(prv->Lua, "MAKESTRUCT", MAKESTRUCT);
