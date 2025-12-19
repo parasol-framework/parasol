@@ -129,8 +129,9 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
             return arr;
          }
          else if (Type IS AET::_TABLE) {
-            // Table arrays not yet supported for caching
+            // Table arrays not supported for caching (not used by the Parasol API)
             lj_err_callerv(L, ErrMsg::BADVAL);
+            return nullptr;
          }
          else {
             // Non-string cached array - simple memcpy in constructor

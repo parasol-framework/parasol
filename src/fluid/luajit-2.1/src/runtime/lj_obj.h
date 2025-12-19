@@ -659,6 +659,11 @@ struct GCarray {
    GCarray(const GCarray&) = delete;
    GCarray& operator=(const GCarray&) = delete;
 
+
+   // Get typed pointer to element data (convenience template)
+   template<typename T> [[nodiscard]] inline T * get() noexcept { return (T *)mref<void>(data); }
+   template<typename T> [[nodiscard]] inline const T * get() const noexcept { return (const T *)mref<void>(data); }
+
    // Zero-initialise the array data area
 
    void clear() { // NB: Intentionally ignores the read-only flag.

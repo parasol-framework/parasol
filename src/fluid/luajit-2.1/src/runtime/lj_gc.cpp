@@ -209,7 +209,7 @@ static void gc_mark(global_State *g, GCobj* o)
       // If array contains GC references (strings or tables), mark them
 
       if (arr->elemtype IS AET::_STRING_GC or arr->elemtype IS AET::_TABLE) {
-         GCRef* refs = (GCRef*)mref<void>(arr->data);
+         GCRef* refs = arr->get<GCRef>();
          for (MSize i = 0; i < arr->len; i++) {
             if (gcref(refs[i])) gc_markobj(g, gcref(refs[i]));
          }
