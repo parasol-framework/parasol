@@ -118,7 +118,7 @@ static ERR object_set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, int 
    }
    else if (type IS LUA_TARRAY) {
       GCarray *arr = arrayV(Lua, ValueIndex);
-      return Object->set(Field->FieldID, arr->data.get<void>(), arr->len, arr->type_flags());
+      return Object->set(Field->FieldID, arr->arraydata(), arr->len, arr->type_flags());
    }
    else return ERR::SetValueNotArray;
 }
@@ -171,7 +171,7 @@ static ERR object_set_ptr(lua_State *Lua, OBJECTPTR Object, Field *Field, int Va
    }
    else if (type IS LUA_TARRAY) {
       GCarray *arr = arrayV(Lua, ValueIndex);
-      return Object->set(Field->FieldID, arr->data.get<void>());
+      return Object->set(Field->FieldID, arr->arraydata());
    }
    else if (auto fstruct = (struct fstruct *)get_meta(Lua, ValueIndex, "Fluid.struct")) {
       return Object->set(Field->FieldID, fstruct->Data);
@@ -435,7 +435,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, int Va
          }
          else if (type IS LUA_TARRAY) {
             GCarray *arr = arrayV(Lua, ValueIndex);
-            return target->set(field->FieldID, arr->data.get<void>(), arr->len, arr->type_flags());
+            return target->set(field->FieldID, arr->arraydata(), arr->len, arr->type_flags());
          }
          else return ERR::SetValueNotArray;
       }
@@ -479,7 +479,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, int Va
          }
          else if (type IS LUA_TARRAY) {
             GCarray *arr = arrayV(Lua, ValueIndex);
-            return obj->set(field->FieldID, arr->data.get<void>());
+            return obj->set(field->FieldID, arr->arraydata());
          }
          else if (auto fs = (fstruct *)get_meta(Lua, ValueIndex, "Fluid.struct")) {
             return obj->set(field->FieldID, fs->Data);

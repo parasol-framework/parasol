@@ -145,7 +145,7 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, int8_t *
             //log.trace("Arg: %s, Value: Buffer (Source is Memory)", args[i].Name);
 
             auto array = lua_toarray(Lua, n);
-            ((APTR *)(argbuffer + j))[0] = array->data.get<void>();
+            ((APTR *)(argbuffer + j))[0] = array->arraydata();
             j += sizeof(APTR);
 
             if (args[i+1].Type & FD_BUFSIZE) {
@@ -263,7 +263,7 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, int8_t *
          }
          else if (type IS LUA_TARRAY) {
             auto array = arrayV(Lua, n);
-            ((APTR *)(argbuffer + j))[0] = array->data.get<void>();
+            ((APTR *)(argbuffer + j))[0] = array->arraydata();
          }
          else {
             //log.trace("Arg: %s, Value: Pointer, SrcType: %s", args[i].Name, lua_typename(Lua, type));

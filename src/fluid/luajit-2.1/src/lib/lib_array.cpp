@@ -665,7 +665,7 @@ static void fill_stepped(void *Data, int32_t Start, int32_t Stop, int32_t Step, 
 
 static void fill_array_elements(GCarray *Arr, lua_Number Value, int32_t Start, int32_t Stop, int32_t Step)
 {
-   void *data = Arr->data.get<void>();
+   void *data = Arr->arraydata();
 
    // Optimised path for contiguous fills (step=1, forward direction)
    if (Step IS 1) {
@@ -819,7 +819,7 @@ static int32_t find_stepped(const void *Data, int32_t Start, int32_t Stop, int32
 
 static int32_t find_in_array(GCarray *Arr, lua_Number Value, int32_t Start, int32_t Stop, int32_t Step)
 {
-   const void *data = Arr->data.get<void>();
+   const void *data = Arr->arraydata();
 
    // Optimised path for contiguous forward search (step=1)
    if (Step IS 1) {
@@ -957,7 +957,7 @@ LJLIB_CF(array_reverse)
    if (arr->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
    if (arr->len < 2) return 0;
 
-   void *data = arr->data.get<void>();
+   void *data = arr->arraydata();
 
    // Use std::reverse with typed pointers for optimal performance
    switch (arr->elemtype) {

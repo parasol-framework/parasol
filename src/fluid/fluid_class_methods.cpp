@@ -956,7 +956,10 @@ static ERR FLUID_DerefProcedure(objScript *Self, struct sc::DerefProcedure *Args
    if ((Args->Procedure) and (Args->Procedure->isScript())) {
       if (Args->Procedure->Context IS Self) { // Verification of ownership
          auto prv = (prvFluid *)Self->ChildPrivate;
-         if (not prv) return log.warning(ERR::ObjectCorrupt);
+         if (not prv) {
+            if (Self->terminating()) return ERR::Okay;
+            else return log.warning(ERR::ObjectCorrupt);
+         }
 
          log.trace("Dereferencing procedure #%" PF64, (long long)Args->Procedure->ProcedureID);
 
