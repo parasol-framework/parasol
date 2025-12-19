@@ -55,12 +55,43 @@ end
 
    -- Empty string
    empty = string.split("")
-   assert(#empty is 0, "Empty string split should return empty table, got " .. #empty)
+   assert(#empty is 0, "Empty string split should return empty array, got " .. #empty)
 
    -- No separator found
    nosep = string.split("hello", ",")
    assert(#nosep is 1, "No separator should return single item, got " .. #nosep)
    assert(nosep[0] is "hello", "Expected 'hello', got '" .. nosep[0] .. "'")
+end
+
+@Test function testSplitReturnsArray()
+   -- Verify that string.split() returns a first-class array
+   parts = string.split("a,b,c", ",")
+
+   -- Check type is array
+   assert(type(parts) is "array", "Expected type 'array', got '" .. type(parts) .. "'")
+
+   -- Verify array methods are available
+   assert(parts:type() is "string", "Expected array element type 'string', got '" .. tostring(parts:type()) .. "'")
+
+   -- Verify index-based iteration works
+   assert(parts[0] is "a", "parts[0] should be 'a'")
+   assert(parts[1] is "b", "parts[1] should be 'b'")
+   assert(parts[2] is "c", "parts[2] should be 'c'")
+
+   -- Verify empty string produces empty array
+   empty = string.split("")
+   assert(type(empty) is "array", "Empty split should return array")
+   assert(#empty is 0, "Empty split should have length 0")
+
+   -- Verify single element case
+   single = string.split("hello", ",")
+   assert(type(single) is "array", "Single element split should return array")
+   assert(#single is 1, "Single element should have length 1")
+   assert(single[0] is "hello", "Single element should be 'hello'")
+
+   -- Verify concat method works on string arrays
+   rejoined = parts:concat("%s", ",")
+   assert(rejoined is "a,b,c", "concat should rejoin elements, got '" .. rejoined .. "'")
 end
 
 @Test function testTrim()

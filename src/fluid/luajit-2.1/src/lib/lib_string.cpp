@@ -25,6 +25,7 @@
 #include "lj_bcdump.h"
 #include "lj_char.h"
 #include "lj_strfmt.h"
+#include "lj_array.h"
 #include "lib.h"
 #include "lib_utils.h"
 #include "lib_range.h"
@@ -173,72 +174,91 @@ LJLIB_CF(string_alloc)
    return 1;
 }
 
+// Helper to find the next separator in a string
+// Returns pointer to separator if found, nullptr otherwise
+static const char* find_separator(const char *Pos, const char *End, const char *Sep, MSize SepLen, bool IsWhitespace)
+{
+   if (SepLen IS 1) {
+      return (const char*)memchr(Pos, Sep[0], End - Pos);
+   }
+
+   // Multi-character separator or whitespace
+   for (const char *p = Pos; p <= End - SepLen; p++) {
+      if (IsWhitespace and (*p IS ' ' or *p IS '\t' or *p IS '\n' or *p IS '\r')) return p;
+      else if (memcmp(p, Sep, SepLen) IS 0) return p;
+   }
+   return nullptr;
+}
+
 LJLIB_CF(string_split)
 {
-   GCstr* s = lj_lib_checkstr(L, 1);
-   GCstr* sep = lj_lib_optstr(L, 2);
-   const char* str = strdata(s);
-   const char* sepstr;
+   GCstr *s = lj_lib_checkstr(L, 1);
+   GCstr *sep = lj_lib_optstr(L, 2);
+   const char *str = strdata(s);
+   const char *sepstr;
    MSize seplen;
    MSize slen = s->len;
-   GCtab* t;
-   int32_t idx = 0;  // 0-based
+   bool is_whitespace = false;
 
-   if ((!sep) or (sep->len IS 0)) {
-      sepstr = " \t\n\r";  //  Default whitespace separators
+   if ((not sep) or (sep->len IS 0)) {
+      sepstr = " \t\n\r";  // Default whitespace separators
       seplen = 4;
+      is_whitespace = true;
    }
    else {
       sepstr = strdata(sep);
       seplen = sep->len;
    }
 
-   lua_createtable(L, 8, 0);  //  Initial array size estimate
-   t = tabV(L->top - 1);
+   // Handle empty string - return empty array
+   if (slen IS 0) {
+      GCarray *arr = lj_array_new(L, 0, AET::_STRING_GC);
+      setarrayV(L, L->top++, arr);
+      return 1;
+   }
 
-   if (slen IS 0) return 1;  //  Return empty table for empty string
-
-   const char *start = str;
    const char *end = str + slen;
-   const char *pos = start;
 
-   while (pos <= end) {
-      const char* found = nullptr;
+   // First pass: count separators to determine array size
+   uint32_t count = 1;  // At least one element (final segment)
+   const char *pos = str;
+   while (pos < end) {
+      const char *found = find_separator(pos, end, sepstr, seplen, is_whitespace);
+      if (found) {
+         count++;
+         pos = found + (is_whitespace ? 1 : seplen);
+      }
+      else break;
+   }
 
-      // Find next separator
-      if (seplen IS 1) {
-         found = (const char*)memchr(pos, sepstr[0], end - pos);
-      }
-      else {
-         // Multi-character separator or whitespace
-         for (const char* p = pos; p <= end - seplen; p++) {
-            if (seplen IS 4 and (*p IS ' ' or *p IS '\t' or *p IS '\n' or *p IS '\r')) {
-               found = p;
-               break;
-            }
-            else if (memcmp(p, sepstr, seplen) IS 0) {
-               found = p;
-               break;
-            }
-         }
-      }
+   // Create array with exact size
+   GCarray *arr = lj_array_new(L, count, AET::_STRING_GC);
+   GCRef *refs = arr->get<GCRef>();
+
+   // Second pass: populate the array
+   pos = str;
+   uint32_t idx = 0;
+   while (pos <= end and idx < count) {
+      const char *found = find_separator(pos, end, sepstr, seplen, is_whitespace);
 
       if (found) {
-         // Add substring to table
-         GCstr* substr = lj_str_new(L, pos, found - pos);
-         setstrV(L, lj_tab_setint(L, t, idx), substr);
+         GCstr *substr = lj_str_new(L, pos, found - pos);
+         setgcref(refs[idx], obj2gco(substr));
+         lj_gc_objbarrier(L, arr, substr);
          idx++;
-         pos = found + (seplen IS 4 ? 1 : seplen);  //  Skip separator
+         pos = found + (is_whitespace ? 1 : seplen);
       }
       else {
          // Add final substring
-         GCstr* substr = lj_str_new(L, pos, end - pos);
-         setstrV(L, lj_tab_setint(L, t, idx), substr);
+         GCstr *substr = lj_str_new(L, pos, end - pos);
+         setgcref(refs[idx], obj2gco(substr));
+         lj_gc_objbarrier(L, arr, substr);
          idx++;
          break;
       }
    }
 
+   setarrayV(L, L->top++, arr);
    lj_gc_check(L);
    return 1;
 }
