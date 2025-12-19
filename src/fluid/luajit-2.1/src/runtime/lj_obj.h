@@ -608,48 +608,29 @@ struct GCarray {
    struct struct_record *structdef;  // Optional: struct definition for struct arrays
    std::vector<char> *strcache; // Optional: cached string content for CSTRING/STRING_CPP arrays
 
-private:
-   // Common initialisation for all constructors.  NOTE: lj_mem_newgco() already sets nextgc and marked - 
-   // do NOT overwrite them!  We avoid member initializer lists to prevent GCC from zero-initializing
-   // the GCHeader fields (nextgc, marked) that were set by lj_mem_newgco().
-
-   void init(void *Data, AET Type, MSize ElemSize, MSize Length, uint8_t Flags, struct struct_record *StructDef) noexcept
+public:
+   // Initialise the array structure. Storage must be pre-allocated by the caller using lj_mem_new()
+   // for proper GC tracking. NOTE: lj_mem_newgco() already sets nextgc and marked - do NOT overwrite
+   // them! We avoid member initializer lists to prevent GCC from zero-initializing the GCHeader
+   // fields (nextgc, marked) that were set by lj_mem_newgco().
+   void init(void *Data, AET Type, MSize ElemSize, MSize Length, uint8_t Flags,
+             struct struct_record *StructDef = nullptr) noexcept
    {
-      gct = ~LJ_TARRAY;
-      elemtype = Type;
-      flags = Flags;
-      _pad0 = 0;
-      storage = Data;
+      gct       = ~LJ_TARRAY;
+      elemtype  = Type;
+      flags     = Flags;
+      _pad0     = 0;
+      storage   = Data;
       setgcrefnull(gclist);
       setgcrefnull(metatable);
-      len = Length;
-      elemsize = ElemSize;
+      len       = Length;
+      elemsize  = ElemSize;
       structdef = StructDef;
-      strcache = nullptr;
+      strcache  = nullptr;
    }
 
-public:
-   // Constructor for owned array with heap-allocated storage
-   GCarray(AET Type, MSize ElemSize, MSize Length) noexcept {
-      auto byte_size = Length * ElemSize;
-      init(::operator new(byte_size), Type, ElemSize, Length, 0, nullptr);
-      if (int(elemtype) >= int(AET::_VULNERABLE)) clear();
-   }
-
-   // Constructor for external array (data not owned)
-   GCarray(void *Data, AET Type, MSize ElemSize, MSize Length, uint8_t Flags, struct struct_record *StructDef = nullptr) noexcept {
-      init(Data, Type, ElemSize, Length, uint8_t(Flags | ARRAY_EXTERNAL), StructDef);
-   }
-
-   // Constructor for cached array (copy external data into owned storage)
-   GCarray(const void *Data, AET Type, MSize ElemSize, MSize Length, struct struct_record *StructDef = nullptr) noexcept {
-      auto byte_size = Length * ElemSize;
-      init(::operator new(byte_size), Type, ElemSize, Length, 0, StructDef);
-      std::memcpy(storage, Data, byte_size);
-   }
-
+   // Destructor only handles strcache. Storage is freed by lj_array_free() for proper GC tracking.
    ~GCarray() {
-      if (not is_external() and storage) ::operator delete(storage);
       if (strcache) delete strcache;
    }
 
@@ -676,11 +657,9 @@ public:
    [[nodiscard]] inline MSize arraylen() const noexcept { return len; }
    [[nodiscard]] inline bool is_readonly() const noexcept { return (flags & ARRAY_READONLY) != 0; }
    [[nodiscard]] inline bool is_external() const noexcept { return (flags & ARRAY_EXTERNAL) != 0; }
-
    [[nodiscard]] int type_flags() const noexcept;
-
-   // GCarray is always fixed-size (no co-located data)
    [[nodiscard]] inline size_t alloc_size() const noexcept { return sizeof(GCarray); }
+   [[nodiscard]] inline size_t storage_size() const noexcept { return is_external() ? 0 : size_t(len) * elemsize; }
 };
 
 // Ensure metatable field is at the same offset in GCtab, GCarray, GCudata
