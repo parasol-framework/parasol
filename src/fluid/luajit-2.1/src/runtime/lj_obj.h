@@ -651,7 +651,7 @@ public:
    // Zero-initialise the array data area
 
    void clear() { // NB: Intentionally ignores the read-only flag.
-      std::memset(storage, 0, len * elemsize);
+      if (storage) std::memset(storage, 0, len * elemsize);
    }
 
    [[nodiscard]] inline MSize arraylen() const noexcept { return len; }

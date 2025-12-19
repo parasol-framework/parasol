@@ -84,9 +84,9 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
          if (Type IS AET::_CSTRING or Type IS AET::_STRING_CPP) {
             // String caching: store CSTRING pointers that point into strcache
             size_t byte_size = Length * sizeof(CSTRING);
-            void *storage = lj_mem_new(L, byte_size);
+            void *storage = (byte_size > 0) ? lj_mem_new(L, byte_size) : nullptr;
             auto arr = (GCarray *)lj_mem_newgco(L, sizeof(GCarray));
-            arr->init(storage, AET::_CSTRING, sizeof(CSTRING), Length, 0, sdef);
+            if (storage) arr->init(storage, AET::_CSTRING, sizeof(CSTRING), Length, 0, sdef);
 
             // Calculate total string content size
             size_t content_size = 0;
@@ -142,10 +142,10 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
          else {
             // Non-string cached array - allocate storage via GC, then copy data
             size_t byte_size = Length * elem_size;
-            void *storage = lj_mem_new(L, byte_size);
+            void *storage = (byte_size > 0) ? lj_mem_new(L, byte_size) : nullptr;
             auto arr = (GCarray *)lj_mem_newgco(L, sizeof(GCarray));
-            arr->init(storage, Type, elem_size, Length, 0, sdef);
-            std::memcpy(storage, Data, byte_size);
+            arr->init(storage, Type, elem_size, Length, Flags, sdef);
+            if (byte_size > 0) std::memcpy(storage, Data, byte_size);
             return arr;
          }
       }
@@ -155,7 +155,7 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
       size_t byte_size = Length * elem_size;
       void *storage = (byte_size > 0) ? lj_mem_new(L, byte_size) : nullptr;
       auto arr = (GCarray *)lj_mem_newgco(L, sizeof(GCarray));
-      arr->init(storage, Type, elem_size, Length, 0, sdef);
+      arr->init(storage, Type, elem_size, Length, Flags & ~(ARRAY_EXTERNAL|ARRAY_CACHED), sdef);
       if (storage and int(Type) >= int(AET::_VULNERABLE)) arr->clear();
       return arr;
    }
