@@ -155,10 +155,9 @@ function timer(Subscriber, Elapsed, Current)
          end
       end
 
-      if glMode is MODE_VECTOR then
-         p.vector.acMoveToPoint(nextX + p.radius, nextY + p.radius, 0, moveflag)
-      elseif glMode is MODE_DIRECTVECTOR then
-         mVec.TranslatePath(p.path, tx, ty)
+      choose glMode from
+         MODE_VECTOR -> p.vector.acMoveToPoint(nextX + p.radius, nextY + p.radius, 0, moveflag)
+         MODE_DIRECTVECTOR -> mVec.TranslatePath(p.path, tx, ty)
       end
 
       p.x = nextX
@@ -210,14 +209,10 @@ end
 -- There are three versions of this benchmark:
 
 function setBenchmarkMode()
-   reqMode = arg('mode', 'vector')
-
-   if reqMode is 'primitive' then
-      glMode = MODE_PRIMITIVE
-   elseif reqMode is 'directvector' then
-      glMode = MODE_DIRECTVECTOR
-   else
-      glMode = MODE_VECTOR
+   glMode = choose arg('mode', 'vector') from
+      'primitive' -> MODE_PRIMITIVE
+      'directvector' -> MODE_DIRECTVECTOR
+      else -> MODE_VECTOR
    end
 end
 

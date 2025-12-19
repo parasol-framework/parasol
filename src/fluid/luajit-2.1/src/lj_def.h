@@ -135,7 +135,7 @@ inline constexpr uintptr_t bloomtest(BloomFilter b, uintptr_t x) {
    return b & bloombit(x);
 }
 
-#if defined(__GNUC__) || defined(__clang__) || defined(__psp2__)
+#if defined(__GNUC__) || defined(__clang__)
 
 #define LJ_NORET   [[noreturn]]
 #define LJ_ALIGN(n)   __attribute__((aligned(n)))
@@ -172,9 +172,6 @@ static LJ_AINLINE uint32_t lj_fls(uint32_t x)
 #if defined(__arm__)
 static LJ_AINLINE uint32_t lj_bswap(uint32_t x)
 {
-#if defined(__psp2__)
-   return __builtin_rev(x);
-#else
    uint32_t r;
 #if __ARM_ARCH_6__ || __ARM_ARCH_6J__ || __ARM_ARCH_6T2__ || __ARM_ARCH_6Z__ ||\
     __ARM_ARCH_6ZK__ || __ARM_ARCH_7__ || __ARM_ARCH_7A__ || __ARM_ARCH_7R__
@@ -187,7 +184,6 @@ static LJ_AINLINE uint32_t lj_bswap(uint32_t x)
    __asm__("eor %0, %1, %1, ror #16" : "=r" (r) : "r" (x));
 #endif
    return ((r & 0xff00ffffu) >> 8) ^ lj_ror(x, 8);
-#endif
 #endif
 }
 
