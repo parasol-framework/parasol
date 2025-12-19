@@ -1520,6 +1520,10 @@ ParserResult<ExpDesc> IrEmitter::emit_if_empty_expr(ExpDesc lhs, const ExprNode&
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQS, lhs_reg, const_str(&this->func_state, &emptyv)));
    ControlFlowEdge check_empty = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
 
+   // Empty array check (array with len == 0)
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEMPTYARR, lhs_reg, 0));
+   ControlFlowEdge check_empty_array = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+
    // LHS is truthy - it's already in lhs_reg, just skip RHS
    ControlFlowEdge skip_rhs = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
 
@@ -1530,6 +1534,7 @@ ParserResult<ExpDesc> IrEmitter::emit_if_empty_expr(ExpDesc lhs, const ExprNode&
    check_false.patch_to(BCPos(rhs_start));
    check_zero.patch_to(BCPos(rhs_start));
    check_empty.patch_to(BCPos(rhs_start));
+   check_empty_array.patch_to(BCPos(rhs_start));
 
    // Emit RHS - only executed when LHS is falsey
 
@@ -1713,6 +1718,10 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload &Pay
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQS, cond_reg, const_str(&this->func_state, &emptyv)));
    ControlFlowEdge check_empty = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
 
+   // Empty array check (array with len == 0)
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEMPTYARR, cond_reg, 0));
+   ControlFlowEdge check_empty_array = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+
    auto true_result = this->emit_expression(*Payload.if_true);
    if (not true_result.ok()) return true_result;
 
@@ -1728,6 +1737,7 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload &Pay
    check_false.patch_to(BCPos(false_start));
    check_zero.patch_to(BCPos(false_start));
    check_empty.patch_to(BCPos(false_start));
+   check_empty_array.patch_to(BCPos(false_start));
 
    auto false_result = this->emit_expression(*Payload.if_false);
    if (not false_result.ok()) return false_result;

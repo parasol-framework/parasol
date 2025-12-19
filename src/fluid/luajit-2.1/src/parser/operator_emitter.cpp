@@ -1138,6 +1138,10 @@ void OperatorEmitter::prepare_if_empty(ExprValue left)
          bcemit_INS(this->func_state, BCINS_AD(BC_ISEQS, reg, const_str(this->func_state, &emptyv)));
          BCPos check_empty = BCPos(bcemit_jmp(this->func_state));
 
+         // Empty array check (array with len == 0)
+         bcemit_INS(this->func_state, BCINS_AD(BC_ISEMPTYARR, reg, 0));
+         BCPos check_empty_array = BCPos(bcemit_jmp(this->func_state));
+
          // RHS will be emitted after this prepare phase
          // The jumps above will skip RHS when value is truthy (all JMPs execute)
          // Fall through to RHS when value is falsey (one JMP is skipped)
@@ -1148,6 +1152,7 @@ void OperatorEmitter::prepare_if_empty(ExprValue left)
          skip_rhs.append(check_false);
          skip_rhs.append(check_zero);
          skip_rhs.append(check_empty);
+         skip_rhs.append(check_empty_array);
          pc = skip_rhs.head().raw();
 
          // Mark that we need to preserve LHS value and reserve register for RHS
@@ -1349,6 +1354,10 @@ void OperatorEmitter::emit_presence_check(ExprValue operand)
    bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
    auto check_empty = BCPos(bcemit_jmp(fs));
 
+   // Empty array check (array with len == 0)
+   bcemit_INS(fs, BCINS_AD(BC_ISEMPTYARR, reg, 0));
+   auto check_empty_array = BCPos(bcemit_jmp(fs));
+
    expr_free(fs, e);  // Free the expression register
 
    // Reserve register for result
@@ -1369,6 +1378,8 @@ void OperatorEmitter::emit_presence_check(ExprValue operand)
    zero_edge.patch_to(false_pos);
    ControlFlowEdge empty_edge = this->cfg->make_unconditional(check_empty);
    empty_edge.patch_to(false_pos);
+   ControlFlowEdge empty_array_edge = this->cfg->make_unconditional(check_empty_array);
+   empty_array_edge.patch_to(false_pos);
 
    bcemit_AD(fs, BC_KPRI, dest, BCREG(ExpKind::False));
 

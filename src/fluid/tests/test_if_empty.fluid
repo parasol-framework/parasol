@@ -441,3 +441,69 @@ end
    value = getValues() ?? 99
    assert(value is 1, "Failed multi-values case: expected 1, got " .. tostring(value))
 end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Array falsey tests: empty arrays (len == 0) are considered falsey
+
+@Test function testEmptyArray()
+   local empty = array.new(0, 'int')
+   v = empty ?? 'default'
+   assert(v is 'default', "Empty array should be falsey: expected 'default', got '" .. tostring(v) .. "'")
+end
+
+@Test function testNonEmptyArray()
+   local filled = array.new(5, 'int')
+   v = filled ?? 'default'
+   assert(v is filled, "Non-empty array should be truthy: expected array, got '" .. tostring(v) .. "'")
+end
+
+@Test function testArrayShortCircuit()
+   call_count = 0
+   function rhs()
+      call_count += 1
+      return "RHS"
+   end
+   local filled = array.new(3, 'int')
+   result = filled ?? rhs()
+   assert(result is filled, "Non-empty array should return itself")
+   assert(call_count is 0, "RHS should not be called for non-empty array")
+end
+
+@Test function testEmptyArrayInChain()
+   local empty = array.new(0, 'double')
+   local filled = array.new(2, 'double')
+   v = empty ?? filled ?? 'default'
+   assert(v is filled, "Empty array should fall through to next truthy value")
+end
+
+@Test function testArrayWithZeroElements()
+   -- Test with various element types
+   local int_empty = array.new(0, 'int')
+   local double_empty = array.new(0, 'double')
+   local byte_empty = array.new(0, 'byte')
+
+   assert((int_empty ?? 'a') is 'a', "Empty int array should be falsey")
+   assert((double_empty ?? 'b') is 'b', "Empty double array should be falsey")
+   assert((byte_empty ?? 'c') is 'c', "Empty byte array should be falsey")
+end
+
+@Test function testArrayWithOneElement()
+   local single = array.new(1, 'int')
+   v = single ?? 'default'
+   assert(v is single, "Array with one element should be truthy")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Ternary operator with arrays: empty arrays (len == 0) are considered falsey
+
+@Test function testTernaryEmptyArray()
+   local empty = array.new(0, 'int')
+   v = empty ? 'truthy' :> 'falsey'
+   assert(v is 'falsey', "Empty array in ternary should be falsey: expected 'falsey', got '" .. tostring(v) .. "'")
+end
+
+@Test function testTernaryNonEmptyArray()
+   local filled = array.new(5, 'int')
+   v = filled ? 'truthy' :> 'falsey'
+   assert(v is 'truthy', "Non-empty array in ternary should be truthy: expected 'truthy', got '" .. tostring(v) .. "'")
+end

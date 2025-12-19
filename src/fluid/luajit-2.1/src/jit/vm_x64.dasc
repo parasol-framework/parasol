@@ -3321,6 +3321,27 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_next
     break;
 
+  case BC_ISEMPTYARR:
+    // Check if RA is an empty array. Used by ?? operator for extended falsey semantics.
+    // If RA is an array with len==0, execute the following JMP (value is falsey).
+    // Otherwise, skip the following JMP (value is truthy - not an array or non-empty).
+    |  ins_AD	// RA = src, followed by JMP with RD = target
+    |  mov RB, [BASE+RA*8]
+    |  mov ITYPE, RB
+    |  add PC, 4			// Advance past following JMP
+    |  sar ITYPE, 47
+    |  cmp ITYPEd, LJ_TARRAY
+    |  jne >1			// Not an array - skip JMP (truthy)
+    |  cleartp RB
+    |  cmp dword ARRAY:RB->len, 0
+    |  jne >1			// Non-empty array - skip JMP (truthy)
+    |  // Empty array - execute JMP (falsey)
+    |  movzx RDd, PC_RD
+    |  branchPC RD
+    |1:				// Fallthrough - skip the JMP
+    |  ins_next
+    break;
+
   //  -- Unary ops ---------------------------------------------------------
 
   case BC_MOV:
