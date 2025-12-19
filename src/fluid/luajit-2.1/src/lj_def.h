@@ -348,6 +348,8 @@ static LJ_AINLINE uint32_t lj_getu32(const void* v)
 #define LJ_ASMF_NORET   LJ_ASMF LJ_NORET
 
 // Internal assertions.
+// NOTE: If you want to set a breakpoint for a raised assert, do so in lj_assert_fail()
+
 #if defined(LUA_USE_ASSERT) || defined(LUA_USE_APICHECK)
 // Forward declaration needed before macro definitions (full definition in lj_obj.h)
 struct global_State;
