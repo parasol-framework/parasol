@@ -567,7 +567,7 @@ inline void setfreetop(GCtab *t, Node *, Node *v) noexcept { t->freetop.set(v); 
 
 // Array element type constants
 
-enum AET : uint8_t {
+enum class AET : uint8_t {
    // Primitive types first
    _BYTE = 0,   // byte
    _INT16,      // int16_t
@@ -582,6 +582,7 @@ enum AET : uint8_t {
    _STRING_GC,  // GCstr * (interned string)
    _TABLE,      // GCtab * (table reference)
    _STRUCT,     // Structured data (uses structdef)
+   _OBJECT,     // OBJECTPTR for external object references; otherwise Fluid.object
    _MAX,
    _VULNERABLE = _PTR
 };

@@ -1147,3 +1147,182 @@ end
    assert(arr[1].y is 20, "adding to empty table through array should work")
    assert(arr[2].z is nil, "unset field should be nil")
 end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test array.of() functionality
+
+@Test function ArrayOfString()
+   arr = array.of('string', 'google.com', 'parasol.ws', 'amazon.co.uk')
+
+   assert(#arr is 3, "array.of string should have length 3")
+   assert(arr:type() is 'string', "array.of string type should be 'string'")
+   assert(arr[0] is 'google.com', "arr[0] should be 'google.com'")
+   assert(arr[1] is 'parasol.ws', "arr[1] should be 'parasol.ws'")
+   assert(arr[2] is 'amazon.co.uk', "arr[2] should be 'amazon.co.uk'")
+end
+
+@Test function ArrayOfInt()
+   arr = array.of('int', 10, 20, 30, 40, 50)
+
+   assert(#arr is 5, "array.of int should have length 5")
+   assert(arr:type() is 'int', "array.of int type should be 'int'")
+   assert(arr[0] is 10, "arr[0] should be 10")
+   assert(arr[1] is 20, "arr[1] should be 20")
+   assert(arr[2] is 30, "arr[2] should be 30")
+   assert(arr[3] is 40, "arr[3] should be 40")
+   assert(arr[4] is 50, "arr[4] should be 50")
+end
+
+@Test function ArrayOfDouble()
+   arr = array.of('double', 1.5, 2.7, 3.14159)
+
+   assert(#arr is 3, "array.of double should have length 3")
+   assert(arr:type() is 'double', "array.of double type should be 'double'")
+   assert(math.abs(arr[0] - 1.5) < 0.0001, "arr[0] should be 1.5")
+   assert(math.abs(arr[1] - 2.7) < 0.0001, "arr[1] should be 2.7")
+   assert(math.abs(arr[2] - 3.14159) < 0.00001, "arr[2] should be 3.14159")
+end
+
+@Test function ArrayOfFloat()
+   arr = array.of('float', 1.5, 2.5, 3.5)
+
+   assert(#arr is 3, "array.of float should have length 3")
+   assert(arr:type() is 'float', "array.of float type should be 'float'")
+   assert(math.abs(arr[0] - 1.5) < 0.0001, "arr[0] should be 1.5")
+   assert(math.abs(arr[1] - 2.5) < 0.0001, "arr[1] should be 2.5")
+   assert(math.abs(arr[2] - 3.5) < 0.0001, "arr[2] should be 3.5")
+end
+
+@Test function ArrayOfInt16()
+   arr = array.of('int16', 100, 200, 300)
+
+   assert(#arr is 3, "array.of int16 should have length 3")
+   assert(arr:type() is 'int16', "array.of int16 type should be 'int16'")
+   assert(arr[0] is 100, "arr[0] should be 100")
+   assert(arr[1] is 200, "arr[1] should be 200")
+   assert(arr[2] is 300, "arr[2] should be 300")
+end
+
+@Test function ArrayOfInt64()
+   arr = array.of('int64', 1234567890123, -9876543210987, 0)
+
+   assert(#arr is 3, "array.of int64 should have length 3")
+   assert(arr:type() is 'int64', "array.of int64 type should be 'int64'")
+   assert(arr[0] is 1234567890123, "arr[0] should be 1234567890123")
+   assert(arr[1] is -9876543210987, "arr[1] should be -9876543210987")
+   assert(arr[2] is 0, "arr[2] should be 0")
+end
+
+@Test function ArrayOfByte()
+   arr = array.of('byte', 65, 66, 67, 68)  -- ASCII A, B, C, D
+
+   assert(#arr is 4, "array.of byte should have length 4")
+   assert(arr:type() is 'char', "array.of byte type should be 'char'")
+   assert(arr[0] is 65, "arr[0] should be 65 (A)")
+   assert(arr[1] is 66, "arr[1] should be 66 (B)")
+   assert(arr[2] is 67, "arr[2] should be 67 (C)")
+   assert(arr[3] is 68, "arr[3] should be 68 (D)")
+end
+
+@Test function ArrayOfChar()
+   arr = array.of('char', 72, 101, 108, 108, 111)  -- Hello
+
+   assert(#arr is 5, "array.of char should have length 5")
+   assert(arr:type() is 'char', "array.of char type should be 'char'")
+   assert(arr:getString() is 'Hello', "getString should return 'Hello'")
+end
+
+@Test function ArrayOfSingleElement()
+   arr = array.of('int', 42)
+
+   assert(#arr is 1, "array.of with single element should have length 1")
+   assert(arr[0] is 42, "arr[0] should be 42")
+end
+
+@Test function ArrayOfStringConcat()
+   arr = array.of('string', 'hello', 'world', '!')
+
+   result = arr:concat('%s', ' ')
+   assert(result is 'hello world !', "concat should produce 'hello world !', got '" .. result .. "'")
+end
+
+@Test function ArrayOfIntOperations()
+   arr = array.of('int', 30, 10, 50, 20, 40)
+
+   -- Test sort
+   arr:sort()
+   assert(arr[0] is 10, "sorted arr[0] should be 10")
+   assert(arr[4] is 50, "sorted arr[4] should be 50")
+
+   -- Test find
+   idx = arr:find(30)
+   assert(idx is 2, "find(30) should return 2")
+
+   -- Test reverse
+   arr:reverse()
+   assert(arr[0] is 50, "reversed arr[0] should be 50")
+   assert(arr[4] is 10, "reversed arr[4] should be 10")
+end
+
+@Test function ArrayOfSlice()
+   arr = array.of('int', 0, 10, 20, 30, 40, 50)
+
+   sliced = arr:slice({1..4})
+   assert(#sliced is 3, "slice should have length 3")
+   assert(sliced[0] is 10, "sliced[0] should be 10")
+   assert(sliced[1] is 20, "sliced[1] should be 20")
+   assert(sliced[2] is 30, "sliced[2] should be 30")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test array.of() error cases
+
+@Test function ArrayOfNoValues()
+   status = pcall(function()
+      return array.of('int')
+   end)
+   assert(not status, "array.of() with no values should fail")
+end
+
+@Test function ArrayOfInvalidType()
+   status = pcall(function()
+      return array.of('invalid', 1, 2, 3)
+   end)
+   assert(not status, "array.of() with invalid type should fail")
+end
+
+@Test function ArrayOfPointerRejected()
+   status = pcall(function()
+      return array.of('pointer', 1, 2, 3)
+   end)
+   assert(not status, "array.of() with pointer type should be rejected")
+end
+
+@Test function ArrayOfStructRejected()
+   status = pcall(function()
+      return array.of('struct', 1, 2, 3)
+   end)
+   assert(not status, "array.of() with struct type should be rejected")
+end
+
+@Test function ArrayOfTableRejected()
+   status = pcall(function()
+      return array.of('table', {}, {}, {})
+   end)
+   assert(not status, "array.of() with table type should be rejected")
+end
+
+@Test function ArrayOfStringWithTable()
+   -- Tables cannot be converted to strings and should fail
+   status = pcall(function()
+      return array.of('string', 'hello', {}, 'world')
+   end)
+   assert(not status, "array.of('string') with table value should fail")
+end
+
+@Test function ArrayOfIntTypeMismatch()
+   status = pcall(function()
+      return array.of('int', 1, 'not a number', 3)
+   end)
+   assert(not status, "array.of('int') with non-number value should fail")
+end

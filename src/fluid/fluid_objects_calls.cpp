@@ -346,7 +346,7 @@ static int get_results(lua_State *Lua, const FunctionField *args, const int8_t *
 
             CPTR values = ((APTR *)(ArgBuf + of))[0];
             if (values) {
-               make_any_table(Lua, type, args[i].Name, total_elements, values);
+               make_any_array(Lua, type, args[i].Name, total_elements, values);
                if (type & FD_ALLOC) FreeResource(values);
             }
             else lua_pushnil(Lua);

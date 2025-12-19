@@ -143,7 +143,7 @@ extern int   (lua_pushthread) (lua_State *L);
 
 // get functions (Lua -> stack)
 
-enum AET : uint8_t;
+enum class AET : uint8_t;
 
 extern void   lua_gettable(lua_State *L, int idx);
 extern void   lua_getfield(lua_State *L, int idx, const char *k);

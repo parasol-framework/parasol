@@ -174,7 +174,7 @@ static constexpr int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("Data: %p", Address);
+   log.traceBranch("Struct: %s, Data: %p", StructDef.Name, Address);
 
    // Do not push a Lua value in the event of an error.
 
@@ -213,30 +213,30 @@ static constexpr int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 
             auto vector = (pf::vector<int> *)(address);
             if (type & FD_STRUCT) {
                if (prv->Structs.contains(std::string_view(field.StructRef))) {
-                  make_any_table(Lua, type, field.StructRef.c_str(), vector->size(), vector->data());
+                  make_any_array(Lua, type, field.StructRef, vector->size(), vector->data());
                }
                else lua_pushnil(Lua);
             }
-            else make_table(Lua, type, vector->size(), vector->data());
+            else make_array(Lua, ff_to_aet(type), vector->size(), vector->data());
          }
          else if (field.ArraySize IS -1) { // Pointer to a null-terminated array.
             if (type & FD_STRUCT) {
                if (prv->Structs.contains(std::string_view(field.StructRef))) {
-                  if (((CPTR *)address)[0]) make_any_table(Lua, type, field.StructRef.c_str(), -1, address);
+                  if (((CPTR *)address)[0]) make_any_array(Lua, type, field.StructRef, -1, address);
                   else lua_pushnil(Lua);
                }
                else lua_pushnil(Lua);
             }
-            else make_table(Lua, type, -1, ((CPTR *)address)[0]);
+            else make_array(Lua, ff_to_aet(type), -1, ((CPTR *)address)[0]);
          }
          else { // It's an embedded array of fixed size.
             if (type & FD_STRUCT) {
                if (prv->Structs.contains(std::string_view(field.StructRef))) {
-                  make_any_table(Lua, type, field.StructRef.c_str(), field.ArraySize, address);
+                  make_any_array(Lua, type, field.StructRef, field.ArraySize, address);
                }
                else lua_pushnil(Lua);
             }
-            else make_table(Lua, type, field.ArraySize, address);
+            else make_array(Lua, ff_to_aet(type), field.ArraySize, address);
          }
       }
       else if (type & FD_STRUCT) {
@@ -467,8 +467,8 @@ static void make_camel_case(std::string &String)
       if (Sequence[pos] IS '[') {
          pos++;
          type |= FD_ARRAY;
-         if (type & FD_CPP) { // In the case of std::vector, fixed array sizes are meaningless
-            field_size = sizeof(std::vector<int>);
+         if (type & FD_CPP) { // In the case of pf::vector, fixed array sizes are meaningless
+            field_size = sizeof(pf::vector<int>);
          }
          else if ((Sequence[pos] >= '0') and (Sequence[pos] <= '9')) { // Sanity check
             array_size = strtol(Sequence.c_str() + pos, nullptr, 0);

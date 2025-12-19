@@ -296,7 +296,8 @@ if (MSVC)
    )
 
    # Disable specific warnings from LuaJIT and disable GS security checks for performance
-   target_compile_options(luajit_lib PRIVATE /wd4244 /wd5287 /GS-)
+   # /MP enables multi-processor compilation for parallel builds within this target
+   target_compile_options(luajit_lib PRIVATE /MP /wd4244 /wd5287 /GS-)
 
    # Use generator expression for configuration-specific paths in MSVC multi-config builds
    # Check if using a multi-config generator (Visual Studio) vs single-config (Ninja)
@@ -676,6 +677,11 @@ target_compile_definitions(${MOD} PRIVATE
    LUAJIT_DISABLE_FFI
    LUAJIT_DISABLE_BUFFER
    $<$<CONFIG:Debug>:LUA_USE_ASSERT>)
+
+if (MSVC)
+   # /MP enables multi-processor compilation for parallel builds within this target
+   target_compile_options(${MOD} PRIVATE /MP)
+endif ()
 
 if (ENABLE_UNIT_TESTS)
    target_compile_definitions(${MOD} PRIVATE ENABLE_UNIT_TESTS)

@@ -128,6 +128,75 @@ LJLIB_CF(array_new)
 }
 
 //********************************************************************************************************************
+// Usage: array.of(type, value1, value2, ...)
+//
+// Creates a new array populated with the given values.
+//
+//   type: element type string ("char", "int16", "int", "int64", "float", "double", "string")
+//   value1, value2, ...: values to populate the array with
+//
+// Example: array.of('string', 'google.com', 'parasol.ws', 'amazon.co.uk')
+// Example: array.of('int', 1, 2, 3, 4, 5)
+
+LJLIB_CF(array_of)
+{
+   auto elem_type = parse_elemtype(L, 1);
+
+   if (elem_type IS AET::_PTR) lj_err_argv(L, 1, ErrMsg::BADTYPE, "non-pointer type", "pointer");
+   if (elem_type IS AET::_STRUCT) lj_err_argv(L, 1, ErrMsg::BADTYPE, "non-struct type", "struct");
+   if (elem_type IS AET::_TABLE) lj_err_argv(L, 1, ErrMsg::BADTYPE, "non-table type", "table");
+
+   // Count number of values provided (all arguments after the type string)
+
+   int num_values = lua_gettop(L) - 1;
+   if (num_values < 1) {
+      luaL_error(L, "array.of() requires at least one value");
+      return 0;
+   }
+
+   GCarray *arr = lj_array_new(L, uint32_t(num_values), elem_type);
+
+   // Populate the array with provided values
+
+   for (int i = 0; i < num_values; i++) {
+      int arg_idx = i + 2;  // Arguments start at index 2 (after type string)
+
+      switch (elem_type) {
+         case AET::_STRING_GC: {
+            GCstr *s = lj_lib_checkstr(L, arg_idx);
+            setgcref(arr->data.get<GCRef>()[i], obj2gco(s));
+            lj_gc_objbarrier(L, arr, s);
+            break;
+         }
+         case AET::_FLOAT:
+            arr->data.get<float>()[i] = float(luaL_checknumber(L, arg_idx));
+            break;
+         case AET::_DOUBLE:
+            arr->data.get<double>()[i] = luaL_checknumber(L, arg_idx);
+            break;
+         case AET::_INT64:
+            arr->data.get<int64_t>()[i] = int64_t(luaL_checknumber(L, arg_idx));
+            break;
+         case AET::_INT32:
+            arr->data.get<int32_t>()[i] = int32_t(luaL_checkinteger(L, arg_idx));
+            break;
+         case AET::_INT16:
+            arr->data.get<int16_t>()[i] = int16_t(luaL_checkinteger(L, arg_idx));
+            break;
+         case AET::_BYTE:
+            arr->data.get<uint8_t>()[i] = uint8_t(luaL_checkinteger(L, arg_idx));
+            break;
+         default:
+            lj_err_argv(L, 1, ErrMsg::BADTYPE, "supported type", elemtype_name(elem_type));
+            return 0;
+      }
+   }
+
+   setarrayV(L, L->top++, arr);
+   return 1;
+}
+
+//********************************************************************************************************************
 // Usage: array.table(arr)
 //
 // Converts an array to a Lua table.
@@ -571,7 +640,7 @@ LJLIB_CF(array_readOnly)
 template<typename T>
 static void fill_contiguous(void *Data, int32_t Start, int32_t Count, lua_Number Value)
 {
-   T *ptr = static_cast<T *>(Data) + Start;
+   T *ptr = (T *)Data + Start;
    std::fill(ptr, ptr + Count, T(Value));
 }
 
@@ -579,15 +648,14 @@ static void fill_contiguous(void *Data, int32_t Start, int32_t Count, lua_Number
 // Template-based fill for stepped ranges. Hoists type dispatch outside the loop.
 
 template<typename T>
-static void fill_stepped(void *Data, int32_t Start, int32_t Stop, int32_t Step, lua_Number Value)
+static void fill_stepped(void *Data, int32_t Start, int32_t Stop, int32_t Step, T Value)
 {
-   T *base = static_cast<T *>(Data);
-   T val = T(Value);
+   T *base = (T *)Data;
    if (Step > 0) {
-      for (int32_t i = Start; i <= Stop; i += Step) base[i] = val;
+      for (int32_t i = Start; i <= Stop; i += Step) base[i] = Value;
    }
    else {
-      for (int32_t i = Start; i >= Stop; i += Step) base[i] = val;
+      for (int32_t i = Start; i >= Stop; i += Step) base[i] = Value;
    }
 }
 
@@ -716,7 +784,7 @@ LJLIB_CF(array_fill)
 template<typename T>
 static int32_t find_forward_contiguous(const void *Data, int32_t Start, int32_t Stop, lua_Number Value)
 {
-   const T *base = static_cast<const T *>(Data);
+   const T *base = (const T *)Data;
    T val = T(Value);
    for (int32_t i = Start; i <= Stop; i++) {
       if (base[i] IS val) return i;
@@ -730,7 +798,7 @@ static int32_t find_forward_contiguous(const void *Data, int32_t Start, int32_t 
 template<typename T>
 static int32_t find_stepped(const void *Data, int32_t Start, int32_t Stop, int32_t Step, lua_Number Value)
 {
-   const T *base = static_cast<const T *>(Data);
+   const T *base = (const T *)Data;
    T val = T(Value);
    if (Step > 0) {
       for (int32_t i = Start; i <= Stop; i += Step) {
@@ -779,7 +847,7 @@ static int32_t find_in_array(GCarray *Arr, lua_Number Value, int32_t Start, int3
 }
 
 //********************************************************************************************************************
-// Usage: array.find(arr, value [, start]) or array.find(arr, value, range)
+// Usage: array.find(arr, value [, start]) or array.find(arr, value, {range})
 //
 // Searches for a value in the array.
 //
@@ -894,49 +962,49 @@ LJLIB_CF(array_reverse)
    // Use std::reverse with typed pointers for optimal performance
    switch (arr->elemtype) {
       case AET::_BYTE: {
-         auto *p = static_cast<uint8_t *>(data);
+         auto *p = (uint8_t *)data;
          std::reverse(p, p + arr->len);
          break;
       }
       case AET::_INT16: {
-         auto *p = static_cast<int16_t *>(data);
+         auto *p = (int16_t *)data;
          std::reverse(p, p + arr->len);
          break;
       }
       case AET::_INT32: {
-         auto *p = static_cast<int32_t *>(data);
+         auto *p = (int32_t *)data;
          std::reverse(p, p + arr->len);
          break;
       }
       case AET::_INT64: {
-         auto *p = static_cast<int64_t *>(data);
+         auto *p = (int64_t *)data;
          std::reverse(p, p + arr->len);
          break;
       }
       case AET::_FLOAT: {
-         auto *p = static_cast<float *>(data);
+         auto *p = (float *)data;
          std::reverse(p, p + arr->len);
          break;
       }
       case AET::_DOUBLE: {
-         auto *p = static_cast<double *>(data);
+         auto *p = (double *)data;
          std::reverse(p, p + arr->len);
          break;
       }
       case AET::_PTR: {
-         auto *p = static_cast<void **>(data);
+         auto *p = (void **)data;
          std::reverse(p, p + arr->len);
          break;
       }
       case AET::_STRING_GC:
       case AET::_TABLE: {
-         auto *p = static_cast<GCRef *>(data);
+         auto *p = (GCRef *)data;
          std::reverse(p, p + arr->len);
          break;
       }
       default: {
          // Fallback for struct types using byte-level swap
-         auto *base = static_cast<uint8_t *>(data);
+         auto *base = (uint8_t *)data;
          auto elemsize = arr->elemsize;
          uint8_t temp[64];  // Large enough for typical struct sizes
          for (MSize i = 0; i < arr->len / 2; i++) {

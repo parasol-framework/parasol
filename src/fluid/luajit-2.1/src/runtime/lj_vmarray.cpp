@@ -70,7 +70,7 @@ static void arr_load_elem(lua_State *L, GCarray *Array, uint32_t Idx, TValue *Re
 
       case AET::_STRING_GC: {
          GCRef ref = *(GCRef*)elem;
-         if (gcref(ref)) setstrV(nullptr, Result, gco2str(gcref(ref)));
+         if (gcref(ref)) setstrV(L, Result, gco2str(gcref(ref)));
          else setnilV(Result);
          break;
       }

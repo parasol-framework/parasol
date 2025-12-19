@@ -941,7 +941,7 @@ static ERR run_script(objScript *Self)
 
                   APTR values = args->Address;
                   int total_elements = -1;
-                  CSTRING arg_name = args->Name;
+                  std::string_view arg_name(args->Name);
                   if (args[1].Type & FD_ARRAYSIZE) {
                      if (args[1].Type & FD_INT) total_elements = args[1].Int;
                      else if (args[1].Type & FD_INT64) total_elements = args[1].Int64;
@@ -951,7 +951,7 @@ static ERR run_script(objScript *Self)
                   else log.trace("The size of the array is not defined.");
 
                   if (values) {
-                     make_any_table(prv->Lua, type, arg_name, total_elements, values);
+                     make_any_array(prv->Lua, type, arg_name, total_elements, values);
 
                      if (type & FD_ALLOC) FreeResource(values);
                   }

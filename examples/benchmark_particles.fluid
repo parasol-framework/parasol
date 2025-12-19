@@ -14,11 +14,11 @@ Parameters:
 
    local glWinWidth, glWinHeight, glColours, glMode, glWindow, glSurface, glParticles, glViewport, glScene
    local glTimes, glTimerHandle, glFPS, glPrinted
-   local glBestFPS = 0
+   glBestFPS = 0
 
-   local MODE_PRIMITIVE    = 1 -- Tests the speed of drawing primitive rectangles (this will be much faster than drawVector() but is useful for comparative purposes)
-   local MODE_VECTOR       = 2 -- Tests the speed of drawing circles via the scene graph and VectorEllipse objects
-   local MODE_DIRECTVECTOR = 3 -- Tests the drawing speed of DrawPath() and bypasses the scene graph.
+   MODE_PRIMITIVE    = 1 -- Tests the speed of drawing primitive rectangles (this will be much faster than drawVector() but is useful for comparative purposes)
+   MODE_VECTOR       = 2 -- Tests the speed of drawing circles via the scene graph and VectorEllipse objects
+   MODE_DIRECTVECTOR = 3 -- Tests the drawing speed of DrawPath() and bypasses the scene graph.
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Render vector paths directly, bypassing the scene graph.
@@ -27,7 +27,8 @@ function drawDirectVector(Surface, Bitmap)
    glWinWidth, glWinHeight = Surface.width, Surface.height
 
    start = mSys.PreciseTime()
-   for _,p in pairs(glParticles) do
+   for i=0,#glParticles-1 do
+      p = glParticles[i]
       mVec.DrawPath(Bitmap, p.path, 0, nil, p.colour)
    end
 
@@ -41,7 +42,8 @@ function drawPrimitive(Surface, Bitmap)
    glWinWidth, glWinHeight = Surface.width, Surface.height
 
    start = mSys.PreciseTime()
-   for _,p in pairs(glParticles) do
+   for i=0,#glParticles-1 do
+      p = glParticles[i]
       col = p.colour
       err, pixel = Bitmap.mtGetColour(col.r, col.g, col.b, 255)
       Bitmap.mtDrawRectangle(p.x-p.radius, p.y-p.radius, p.radius*2, p.radius*2, pixel, BAF_FILL)
@@ -107,7 +109,8 @@ function timer(Subscriber, Elapsed, Current)
    glWinWidth  = glSurface.width ?? 1
    glWinHeight = glSurface.height ?? 1
 
-   for _,p in pairs(glParticles) do
+   for i=0,#glParticles-1 do
+      p = glParticles[i]
       -- Calculate next position of particle
 
       tx = math.cos(p.angle) * p.velocity
@@ -262,11 +265,11 @@ end
       error('Unknown benchmark mode')
    end
 
-   glParticles = {}
    max = tonumber((arg('maxParticles') ?? 500))
    if max < 100 then max = 100 end
-   for i=1,max do
-      table.insert(glParticles, newParticle())
+   glParticles = array.new(max, 'table')
+   for i=0,#glParticles-1 do
+      glParticles[i] = newParticle()
    end
 
    processing.task().set('AffinityMask', 6)

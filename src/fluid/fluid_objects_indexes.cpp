@@ -101,7 +101,7 @@ static ERR set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, int Values,
 
 static ERR object_set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, int ValueIndex)
 {
-   int type = lua_type(Lua, ValueIndex);
+   auto type = lua_type(Lua, ValueIndex);
 
    if (type IS LUA_TSTRING) { // Treat the source as a CSV field
       return Object->set(Field->FieldID, lua_tostring(Lua, ValueIndex));
@@ -456,9 +456,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, int Va
          if (field->Flags & (FD_OBJECT|FD_LOCAL)) { // Writing to an integral is permitted if marked as writeable.
             if (auto object = (struct object *)get_meta(Lua, ValueIndex, "Fluid.obj")) {
                OBJECTPTR ptr_obj;
-               if (object->ObjectPtr) {
-                  return target->set(field->FieldID, object->ObjectPtr);
-               }
+               if (object->ObjectPtr) return target->set(field->FieldID, object->ObjectPtr);
                else if ((ptr_obj = (OBJECTPTR)access_object(object))) {
                   ERR error = target->set(field->FieldID, object->ObjectPtr);
                   release_object(object);
@@ -472,9 +470,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, int Va
             return target->set(field->FieldID, lua_tostring(Lua, ValueIndex));
          }
          else if (type IS LUA_TNUMBER) {
-            if (field->Flags & FD_STRING) {
-               return obj->set(field->FieldID, lua_tostring(Lua, ValueIndex));
-            }
+            if (field->Flags & FD_STRING) return obj->set(field->FieldID, lua_tostring(Lua, ValueIndex));
             else if (lua_tointeger(Lua, ValueIndex) IS 0) {
                // Setting pointer fields with numbers is only allowed if that number evaluates to zero (NULL)
                return obj->set(field->FieldID, (APTR)nullptr);
@@ -488,9 +484,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, int Va
          else if (auto fs = (fstruct *)get_meta(Lua, ValueIndex, "Fluid.struct")) {
             return obj->set(field->FieldID, fs->Data);
          }
-         else if (type IS LUA_TNIL) {
-            return obj->set(field->FieldID, (APTR)nullptr);
-         }
+         else if (type IS LUA_TNIL) return obj->set(field->FieldID, (APTR)nullptr);
          else return ERR::SetValueNotPointer;
       }
       else if (field->Flags & (FD_DOUBLE|FD_FLOAT)) {
@@ -594,7 +588,7 @@ static int object_get_array(lua_State *Lua, const obj_read &Handle, object *Def)
             pf::vector<std::string> *values; // std::string doesn't work like standard primitives - at least not in MSVC - so it gets a special handler.
             if ((error = obj->get(field->FieldID, values, total, false)) IS ERR::Okay) {
                if (total <= 0) lua_pushnil(Lua);
-               else make_table(Lua, FD_STRING|FD_CPP, total, values);
+               else make_array(Lua, AET::_STRING_CPP, total, values);
             }
          }
          else {
@@ -602,21 +596,24 @@ static int object_get_array(lua_State *Lua, const obj_read &Handle, object *Def)
             pf::vector<APTR> *values; // The type doesn't matter.
             if ((error = obj->get(field->FieldID, values, total, false)) IS ERR::Okay) {
                if (total <= 0) lua_pushnil(Lua);
-               else make_any_table(Lua, field->Flags, (CSTRING)field->Arg, total, values->data());
+               else {
+                  std::string_view struct_name = field->Flags & FD_STRUCT ? std::string_view((CSTRING)field->Arg) : std::string_view {};
+                  make_any_array(Lua, field->Flags, struct_name, total, values->data());
+               }
             }
          }
       }
       else if ((error = obj->get(field->FieldID, list, total, false)) IS ERR::Okay) {
          if (total <= 0) lua_pushnil(Lua);
          else if (field->Flags & FD_STRING) {
-            make_table(Lua, FD_STRING, total, list);
+            make_array(Lua, AET::_CSTRING, total, list);
          }
          else if (field->Flags & (FD_INT|FD_INT64|FD_FLOAT|FD_DOUBLE|FD_POINTER|FD_BYTE|FD_WORD|FD_STRUCT)) {
-            make_any_table(Lua, field->Flags, (CSTRING)field->Arg, total, list);
+            std::string_view struct_name = field->Flags & FD_STRUCT ? std::string_view((CSTRING)field->Arg) : std::string_view {};
+            make_any_array(Lua, field->Flags, struct_name, total, list);
          }
          else {
-            pf::Log log(__FUNCTION__);
-            log.warning("Invalid array type for '%s', flags: $%.8x", field->Name, field->Flags);
+            pf::Log(__FUNCTION__).warning("Invalid array type for '%s', flags: $%.8x", field->Name, field->Flags);
             error = ERR::FieldTypeMismatch;
          }
       }
@@ -664,8 +661,7 @@ static int object_get_struct(lua_State *Lua, const obj_read &Handle, object *Def
          }
       }
       else {
-         pf::Log log(__FUNCTION__);
-         log.warning("No struct name reference for field %s in class %s.", field->Name, obj->Class->ClassName);
+         pf::Log(__FUNCTION__).warning("No struct name reference for field %s in class %s.", field->Name, obj->Class->ClassName);
          error = ERR::Failed;
       }
       release_object(Def);

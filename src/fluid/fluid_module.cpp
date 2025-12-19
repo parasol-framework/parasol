@@ -763,7 +763,7 @@ static int process_results(prvFluid *prv, APTR resultsidx, const FunctionField *
             auto var = ((APTR *)scan)[0];
             scan += sizeof(APTR);
             if (var) {
-               const auto argname = args[i].Name;
+               std::string_view argname(args[i].Name);
                APTR values = ((APTR *)var)[0];
                int total_elements = -1; // If -1, make_any_table() assumes the array is null terminated.
 
@@ -775,7 +775,7 @@ static int process_results(prvFluid *prv, APTR resultsidx, const FunctionField *
                }
 
                if (values) {
-                  make_any_table(prv->Lua, argtype, argname, total_elements, values);
+                  make_any_array(prv->Lua, argtype, argname, total_elements, values);
                   if (argtype & FD_ALLOC) FreeResource(values);
                }
                else lua_pushnil(prv->Lua);
