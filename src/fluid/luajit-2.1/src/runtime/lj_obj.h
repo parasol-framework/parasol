@@ -608,39 +608,16 @@ struct GCarray {
    struct struct_record *structdef;  // Optional: struct definition for struct arrays
    std::vector<char> *strcache; // Optional: cached string content for CSTRING/STRING_CPP arrays
 
-   // Constructor for owned array with heap-allocated storage
-   // NOTE: lj_mem_newgco() already sets nextgc and marked - do NOT overwrite them!
-   // We avoid member initializer lists to prevent GCC from zero-initializing
+private:
+   // Common initialisation for all constructors.  NOTE: lj_mem_newgco() already sets nextgc and marked - 
+   // do NOT overwrite them!  We avoid member initializer lists to prevent GCC from zero-initializing
    // the GCHeader fields (nextgc, marked) that were set by lj_mem_newgco().
 
-   GCarray(AET Type, MSize ElemSize, MSize Length) noexcept
+   void init(void *Data, AET Type, MSize ElemSize, MSize Length, uint8_t Flags, struct struct_record *StructDef) noexcept
    {
-      // Preserve nextgc and marked - they were set by lj_mem_newgco()
       gct = ~LJ_TARRAY;
       elemtype = Type;
-      flags = 0;
-      _pad0 = 0;
-      storage = nullptr;
-      setgcrefnull(gclist);
-      setgcrefnull(metatable);
-      len = Length;
-      elemsize = ElemSize;
-      structdef = nullptr;
-      strcache = nullptr;
-      // Allocate heap storage
-      auto byte_size = Length * ElemSize;
-      storage = ::operator new(byte_size);
-      if (int(elemtype) >= int(AET::_VULNERABLE)) clear();
-   }
-
-   // Constructor for external array (data not owned)
-   // NOTE: lj_mem_newgco() already sets nextgc and marked - do NOT overwrite them!
-   GCarray(void *Data, AET Type, MSize ElemSize, MSize Length, uint8_t Flags, struct struct_record *StructDef = nullptr) noexcept
-   {
-      // Preserve nextgc and marked - they were set by lj_mem_newgco()
-      gct = ~LJ_TARRAY;
-      elemtype = Type;
-      flags = uint8_t(Flags | ARRAY_EXTERNAL);
+      flags = Flags;
       _pad0 = 0;
       storage = Data;
       setgcrefnull(gclist);
@@ -651,25 +628,23 @@ struct GCarray {
       strcache = nullptr;
    }
 
-   // Constructor for cached array (copy external data into owned storage)
-   // NOTE: lj_mem_newgco() already sets nextgc and marked - do NOT overwrite them!
-   GCarray(const void *Data, AET Type, MSize ElemSize, MSize Length, struct struct_record *StructDef = nullptr) noexcept
-   {
-      // Preserve nextgc and marked - they were set by lj_mem_newgco()
-      gct = ~LJ_TARRAY;
-      elemtype = Type;
-      flags = 0;
-      _pad0 = 0;
-      storage = nullptr;
-      setgcrefnull(gclist);
-      setgcrefnull(metatable);
-      len = Length;
-      elemsize = ElemSize;
-      structdef = StructDef;
-      strcache = nullptr;
-      // Allocate storage and copy data
+public:
+   // Constructor for owned array with heap-allocated storage
+   GCarray(AET Type, MSize ElemSize, MSize Length) noexcept {
       auto byte_size = Length * ElemSize;
-      storage = ::operator new(byte_size);
+      init(::operator new(byte_size), Type, ElemSize, Length, 0, nullptr);
+      if (int(elemtype) >= int(AET::_VULNERABLE)) clear();
+   }
+
+   // Constructor for external array (data not owned)
+   GCarray(void *Data, AET Type, MSize ElemSize, MSize Length, uint8_t Flags, struct struct_record *StructDef = nullptr) noexcept {
+      init(Data, Type, ElemSize, Length, uint8_t(Flags | ARRAY_EXTERNAL), StructDef);
+   }
+
+   // Constructor for cached array (copy external data into owned storage)
+   GCarray(const void *Data, AET Type, MSize ElemSize, MSize Length, struct struct_record *StructDef = nullptr) noexcept {
+      auto byte_size = Length * ElemSize;
+      init(::operator new(byte_size), Type, ElemSize, Length, 0, StructDef);
       std::memcpy(storage, Data, byte_size);
    }
 
@@ -679,6 +654,7 @@ struct GCarray {
    }
 
    // Prevent copying (GC objects should not be copied)
+
    GCarray(const GCarray&) = delete;
    GCarray& operator=(const GCarray&) = delete;
 
