@@ -313,3 +313,62 @@ end
       error("Should enter this block since b is truthy")
    end
 end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Array presence tests: empty arrays (len == 0) are considered falsey
+
+@Test function testEmptyArrayPresence()
+   local empty = array.new(0, 'int')
+   assert((empty??) is false, "Empty array should return false for ??")
+end
+
+@Test function testNonEmptyArrayPresence()
+   local filled = array.new(5, 'int')
+   assert((filled??) is true, "Non-empty array should return true for ??")
+end
+
+@Test function testArrayInConditional()
+   local empty = array.new(0, 'int')
+   if empty?? then
+      error("Should not enter if block for empty array")
+   end
+
+   local filled = array.new(3, 'int')
+   entered = false
+   if filled?? then
+      entered = true
+   end
+   assert(entered is true, "Should enter if block for non-empty array")
+end
+
+@Test function testArrayWithVariousTypes()
+   -- Test presence check with various array element types
+   local int_empty = array.new(0, 'int')
+   local double_empty = array.new(0, 'double')
+   local byte_empty = array.new(0, 'byte')
+   local int_filled = array.new(1, 'int')
+
+   assert((int_empty??) is false, "Empty int array should return false")
+   assert((double_empty??) is false, "Empty double array should return false")
+   assert((byte_empty??) is false, "Empty byte array should return false")
+   assert((int_filled??) is true, "Non-empty int array should return true")
+end
+
+@Test function testArrayInComprehensiveFalseyList()
+   -- Verify arrays are now included in the falsey value set
+   test_cases = {
+      {val = nil, name = "nil", expected = false},
+      {val = false, name = "false", expected = false},
+      {val = 0, name = "zero", expected = false},
+      {val = "", name = "empty string", expected = false},
+      {val = array.new(0, 'int'), name = "empty array", expected = false},
+      {val = true, name = "true", expected = true},
+      {val = 1, name = "one", expected = true},
+      {val = "test", name = "non-empty string", expected = true},
+      {val = array.new(3, 'int'), name = "non-empty array", expected = true}
+   }
+   for _, tc in ipairs(test_cases) do
+      result = (tc.val)??
+      assert(result is tc.expected, "Value '" .. tc.name .. "' should return " .. tostring(tc.expected) .. ", got: " .. tostring(result))
+   end
+end

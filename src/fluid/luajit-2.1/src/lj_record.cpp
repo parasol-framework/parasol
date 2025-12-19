@@ -2578,6 +2578,29 @@ void lj_record_ins(jit_State *J)
       J->base[bc_a(ins)] = ra;
       break;
 
+   case BC_ISEMPTYARR: {
+      // Empty array check for ?? operator.
+      // If value is an array, we must guard on its length being 0 or non-zero.
+      // For non-array types, type specialisation suffices (they are always truthy for this check).
+      if (bc_a(pc[1]) < J->maxslot) J->maxslot = bc_a(pc[1]);  // Shrink used slots.
+      if (tref_isarray(ra)) {
+         // Load array length and compare to 0
+         TRef arrlen = emitir(IRTI(IR_FLOAD), ra, IRFL_ARRAY_LEN);
+         TRef zero = lj_ir_kint(J, 0);
+         // Determine if array is empty at recording time
+         GCarray *arr = arrayV(rav);
+         int is_empty = (arr->len IS 0);
+         rec_comp_prep(J);
+         // Emit EQ comparison (arrlen == 0)
+         // If array was empty when recorded, guard that it stays empty
+         // If array was non-empty when recorded, guard that it stays non-empty
+         emitir(IRTG(is_empty ? IR_EQ : IR_NE, IRT_INT), arrlen, zero);
+         rec_comp_fixup(J, J->pc, is_empty);
+      }
+      // For non-arrays, no additional guard needed - type specialisation handles it
+      break;
+   }
+
       // -- Unary ops
 
    case BC_NOT:
