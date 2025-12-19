@@ -120,6 +120,7 @@ typedef struct XTag {
    int      LineNo;                  // Line number on which this tag was encountered
    XTF      Flags;                   // Optional flags
    uint32_t NamespaceID;             // Hash of namespace URI or 0 for no namespace
+   int      Reserved;                // Private
    pf::vector<XMLAttrib> Attribs;    // Array of attributes for this tag
    pf::vector<XTag> Children;        // Array of child tags
    XTag(int pID, int pLine = 0) :
