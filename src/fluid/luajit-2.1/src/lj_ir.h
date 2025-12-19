@@ -215,7 +215,7 @@ typedef enum {
   _(CDATA_INT,   sizeof(GCcdata)) \
   _(CDATA_INT64, sizeof(GCcdata)) \
   _(CDATA_INT64_4, sizeof(GCcdata) + 4) \
-  _(ARRAY_DATA,   offsetof(GCarray, data)) \
+  _(ARRAY_STORAGE, offsetof(GCarray, storage)) \
   _(ARRAY_LEN,   offsetof(GCarray, len)) \
   _(ARRAY_ELEMTYPE, offsetof(GCarray, elemtype)) \
   _(ARRAY_ELEMSIZE, offsetof(GCarray, elemsize)) \

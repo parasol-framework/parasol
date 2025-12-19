@@ -589,113 +589,82 @@ enum class AET : uint8_t {
 
 // Array flags
 inline constexpr uint8_t ARRAY_READONLY  = 0x01;  // Cannot modify elements
-inline constexpr uint8_t ARRAY_EXTERNAL  = 0x02;  // Data not owned by array
-inline constexpr uint8_t ARRAY_COLOCATED = 0x04;  // Data stored immediately after header
-inline constexpr uint8_t ARRAY_CACHED    = ARRAY_COLOCATED;  // Alias: copy external data into colocated storage
+inline constexpr uint8_t ARRAY_EXTERNAL  = 0x02;  // Data not owned by array (storage is raw pointer)
+inline constexpr uint8_t ARRAY_CACHED    = 0x00;  // Copy external data into owned storage (default, flag is 0)
 
 // Native typed array object. Fixed-size, homogeneous element storage.
+// Storage uses a heap-allocated buffer for owned data.
 
 struct GCarray {
    GCHeader;
-   AET     elemtype;    // Element type
-   uint8_t flags;       // Array flags
-   MRef    data;        // Pointer to element storage
-   GCRef   gclist;      // GC list for marking
-   GCRef   metatable;   // Optional metatable (must be at same offset as GCtab/GCudata)
+   AET     elemtype;    // [10] Element type
+   uint8_t flags;       // [11] Array flags
+   uint32_t _pad0;      // Padding to align storage at offset 16 (like GCtab.array)
+   void    *storage;    // [16] Heap-allocated storage for owned data, or external pointer (matches GCtab.array)
+   GCRef   gclist;      // [24] GC list for marking (must match GCudata.gclist)
+   GCRef   metatable;   // [32] Optional metatable (must match GCudata.metatable)
    MSize   len;         // Number of elements
-   MSize   capacity;    // Allocated capacity (elements, not bytes)
    MSize   elemsize;    // Size of each element in bytes
    struct struct_record *structdef;  // Optional: struct definition for struct arrays
    std::vector<char> *strcache; // Optional: cached string content for CSTRING/STRING_CPP arrays
 
-   // Constructor for pre-allocated array (data immediately follows header)
-   // NOTE: lj_mem_newgco() already sets nextgc and marked - do NOT overwrite them!
-
-   GCarray(AET Type, MSize ElemSize, MSize Length) noexcept :
-      elemtype(Type), flags(ARRAY_COLOCATED), len(Length), capacity(Length),
-      elemsize(ElemSize), structdef(nullptr), strcache(nullptr)
+public:
+   // Initialise the array structure. Storage must be pre-allocated by the caller using lj_mem_new()
+   // for proper GC tracking. NOTE: lj_mem_newgco() already sets nextgc and marked - do NOT overwrite
+   // them! We avoid member initializer lists to prevent GCC from zero-initializing the GCHeader
+   // fields (nextgc, marked) that were set by lj_mem_newgco().
+   void init(void *Data, AET Type, MSize ElemSize, MSize Length, uint8_t Flags,
+             struct struct_record *StructDef = nullptr) noexcept
    {
-      gct = ~LJ_TARRAY;
-      // nextgc and marked are set by lj_mem_newgco() - do not touch!
+      gct       = ~LJ_TARRAY;
+      elemtype  = Type;
+      flags     = Flags;
+      _pad0     = 0;
+      storage   = Data;
       setgcrefnull(gclist);
       setgcrefnull(metatable);
-      // Data is co-located immediately after the header
-      data.set(this + 1);
-      if (int(elemtype) >= int(AET::_VULNERABLE)) clear();
+      len       = Length;
+      elemsize  = ElemSize;
+      structdef = StructDef;
+      strcache  = nullptr;
    }
 
-   // Constructor for external/cached array
-   // NOTE: lj_mem_newgco() already sets nextgc and marked - do NOT overwrite them!
-   GCarray(void *Data, AET Type, MSize ElemSize, MSize Length, uint8_t Flags = 0, struct struct_record *StructDef = nullptr) noexcept
-      : elemtype(Type), flags(uint8_t(Flags)), len(Length), capacity(Length), elemsize(ElemSize), structdef(StructDef), strcache(nullptr)
-   {
-      gct = ~LJ_TARRAY;
-      // nextgc and marked are set by lj_mem_newgco() - do not touch!
-      setgcrefnull(gclist);
-      setgcrefnull(metatable);
-      structdef = nullptr;
-
-      if (Flags & ARRAY_EXTERNAL) {
-         data.set(Data);
-      }
-      else if (Flags & ARRAY_CACHED) {
-         data.set(this + 1);
-         // Note: String caching is handled by lj_array_new_cached_strings(), not here.
-         if (Type != AET::_CSTRING and Type != AET::_STRING_CPP) {
-            std::memcpy(mref<void>(data), Data, len * elemsize);
-         }
-      }
-      else { // Default to external
-         data.set(Data);
-         flags |= ARRAY_EXTERNAL;
-      }
-   }
-
+   // Destructor only handles strcache. Storage is freed by lj_array_free() for proper GC tracking.
    ~GCarray() {
       if (strcache) delete strcache;
    }
 
    // Prevent copying (GC objects should not be copied)
+
    GCarray(const GCarray&) = delete;
    GCarray& operator=(const GCarray&) = delete;
 
    // Get pointer to element data
 
-   [[nodiscard]] inline void * arraydata() noexcept { return mref<void>(data); }
-   [[nodiscard]] inline const void * arraydata() const noexcept { return mref<void>(data); }
+   [[nodiscard]] inline void * arraydata() noexcept { return storage; }
+   [[nodiscard]] inline const void * arraydata() const noexcept { return storage; }
 
    // Get typed pointer to element data (convenience template)
-   template<typename T> [[nodiscard]] inline T * get() noexcept { return (T *)mref<void>(data); }
-   template<typename T> [[nodiscard]] inline const T * get() const noexcept { return (const T *)mref<void>(data); }
+   template<typename T> [[nodiscard]] inline T * get() noexcept { return (T *)storage; }
+   template<typename T> [[nodiscard]] inline const T * get() const noexcept { return (const T *)storage; }
 
    // Zero-initialise the array data area
 
    void clear() { // NB: Intentionally ignores the read-only flag.
-      std::memset(mref<void>(data), 0, len * elemsize);
+      if (storage) std::memset(storage, 0, len * elemsize);
    }
 
    [[nodiscard]] inline MSize arraylen() const noexcept { return len; }
    [[nodiscard]] inline bool is_readonly() const noexcept { return (flags & ARRAY_READONLY) != 0; }
    [[nodiscard]] inline bool is_external() const noexcept { return (flags & ARRAY_EXTERNAL) != 0; }
-   [[nodiscard]] inline bool is_colocated() const noexcept { return (flags & ARRAY_COLOCATED) != 0; }
-
    [[nodiscard]] int type_flags() const noexcept;
-
-   // Calculate total allocation size (excludes strcache which is separately managed)
-
-   [[nodiscard]] inline size_t alloc_size() const noexcept {
-      return is_colocated() ? sizeof(GCarray) + capacity * elemsize : sizeof(GCarray);
-   }
+   [[nodiscard]] inline size_t alloc_size() const noexcept { return sizeof(GCarray); }
+   [[nodiscard]] inline size_t storage_size() const noexcept { return is_external() ? 0 : size_t(len) * elemsize; }
 };
 
-// Ensure metatable field is at the same offset as in GCtab and GCudata
-
+// Ensure metatable field is at the same offset in GCtab, GCarray, GCudata
 static_assert(offsetof(GCarray, metatable) IS offsetof(GCtab, metatable));
 static_assert(offsetof(GCarray, gclist) IS offsetof(GCtab, gclist));
-
-[[nodiscard]] inline size_t sizearraycolo(size_t len, size_t elemsize) noexcept {
-   return sizeof(GCarray) + len * elemsize;
-}
 
 // Forward declaration - defined after GCobj is complete
 inline GCarray* arrayref(GCRef r) noexcept;

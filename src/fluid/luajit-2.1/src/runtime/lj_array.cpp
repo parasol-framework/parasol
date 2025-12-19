@@ -45,10 +45,10 @@ uint8_t lj_array_elemsize(AET Type)
 //********************************************************************************************************************
 // Create a new array structure without placing it on the Lua stack (use lua_createarray otherwise).  Throws on error.
 //
-// For string arrays (CSTRING/STRING_CPP) with ARRAY_CACHED flag:
+// For string arrays (CSTRING/STRING_CPP) with caching:
 // - Data points to an array of CSTRING or std::string pointers
 // - String content is copied into a vector<char> owned by the array
-// - The colocated data area stores CSTRING pointers into the vector
+// - The storage area stores CSTRING pointers into the vector
 
 extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Data, uint8_t Flags, std::string_view StructName)
 {
@@ -73,13 +73,20 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
    lj_assertL(elem_size > 0, "invalid element size for array creation");
 
    if (Data) {
-      if (Flags & ARRAY_CACHED) { // External arrays originating from the framework require caching
-         // Handle string caching specially - store content in a vector
+      if (Flags & ARRAY_EXTERNAL) {
+         // External data - caller manages lifetime (no storage allocation needed)
+         auto arr = (GCarray *)lj_mem_newgco(L, sizeof(GCarray));
+         arr->init(Data, Type, elem_size, Length, Flags, sdef);
+         return arr;
+      }
+      else {
+         // Cached data - copy into owned storage
          if (Type IS AET::_CSTRING or Type IS AET::_STRING_CPP) {
-            // Allocate array with space for CSTRING pointers (colocated)
-            auto total_size = sizearraycolo(Length, sizeof(CSTRING));
-            auto mem = lj_mem_newgco(L, total_size);
-            auto arr = new (mem) GCarray(Data, AET::_CSTRING, sizeof(CSTRING), Length, Flags, sdef);
+            // String caching: store CSTRING pointers that point into strcache
+            size_t byte_size = Length * sizeof(CSTRING);
+            void *storage = (byte_size > 0) ? lj_mem_new(L, byte_size) : nullptr;
+            auto arr = (GCarray *)lj_mem_newgco(L, sizeof(GCarray));
+            if (storage) arr->init(storage, AET::_CSTRING, sizeof(CSTRING), Length, 0, sdef);
 
             // Calculate total string content size
             size_t content_size = 0;
@@ -123,7 +130,6 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
                   std::memcpy(cache_ptr, strings[i].c_str(), strings[i].size() + 1);
                   cache_ptr += strings[i].size() + 1;
                }
-               Type = AET::_CSTRING; // std::string is stored as a CSTRING when cached
             }
 
             return arr;
@@ -134,22 +140,23 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
             return nullptr;
          }
          else {
-            // Non-string cached array - simple memcpy in constructor
-            auto total_size = sizearraycolo(Length, elem_size);
-            auto mem = lj_mem_newgco(L, total_size);
-            return new (mem) GCarray(Data, Type, elem_size, Length, Flags, sdef);
+            // Non-string cached array - allocate storage via GC, then copy data
+            size_t byte_size = Length * elem_size;
+            void *storage = (byte_size > 0) ? lj_mem_new(L, byte_size) : nullptr;
+            auto arr = (GCarray *)lj_mem_newgco(L, sizeof(GCarray));
+            arr->init(storage, Type, elem_size, Length, Flags, sdef);
+            if (byte_size > 0) std::memcpy(storage, Data, byte_size);
+            return arr;
          }
-      }
-      else {
-         // External data (ARRAY_EXTERNAL is implied when Data provided without ARRAY_CACHED)
-         // Safe if the lifetime of the data is attached to the Lua state or exceeds it.
-         return new (lj_mem_newgco(L, sizeof(GCarray))) GCarray(Data, Type, elem_size, Length, Flags | ARRAY_EXTERNAL, sdef);
       }
    }
    else {
-      auto total_size = sizearraycolo(Length, elem_size);
-      auto mem = lj_mem_newgco(L, total_size);
-      auto arr = new (mem) GCarray(Type, elem_size, Length);
+      // New empty array with owned storage allocated via GC
+      size_t byte_size = Length * elem_size;
+      void *storage = (byte_size > 0) ? lj_mem_new(L, byte_size) : nullptr;
+      auto arr = (GCarray *)lj_mem_newgco(L, sizeof(GCarray));
+      arr->init(storage, Type, elem_size, Length, Flags & ~(ARRAY_EXTERNAL|ARRAY_CACHED), sdef);
+      if (storage and int(Type) >= int(AET::_VULNERABLE)) arr->clear();
       return arr;
    }
 }
@@ -158,9 +165,13 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
 
 void LJ_FASTCALL lj_array_free(global_State *g, GCarray *Array)
 {
-   auto size = Array->alloc_size();
-   Array->~GCarray(); // Call destructor explicitly (external data is not freed - caller manages it)
-   lj_mem_free(g, Array, size);
+   // Free owned storage first (external storage is managed by caller)
+   size_t storage_size = Array->storage_size();
+   if (storage_size > 0) {
+      lj_mem_free(g, Array->storage, storage_size);
+   }
+   Array->~GCarray(); // Call destructor (handles strcache cleanup)
+   lj_mem_free(g, Array, sizeof(GCarray));
 }
 
 //********************************************************************************************************************

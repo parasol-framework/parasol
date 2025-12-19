@@ -155,6 +155,7 @@ LJLIB_CF(array_of)
    }
 
    GCarray *arr = lj_array_new(L, uint32_t(num_values), elem_type);
+   setarrayV(L, L->top++, arr);
 
    // Populate the array with provided values
 
@@ -168,31 +169,16 @@ LJLIB_CF(array_of)
             lj_gc_objbarrier(L, arr, s);
             break;
          }
-         case AET::_FLOAT:
-            arr->get<float>()[i] = float(luaL_checknumber(L, arg_idx));
-            break;
-         case AET::_DOUBLE:
-            arr->get<double>()[i] = luaL_checknumber(L, arg_idx);
-            break;
-         case AET::_INT64:
-            arr->get<int64_t>()[i] = int64_t(luaL_checknumber(L, arg_idx));
-            break;
-         case AET::_INT32:
-            arr->get<int32_t>()[i] = int32_t(luaL_checkinteger(L, arg_idx));
-            break;
-         case AET::_INT16:
-            arr->get<int16_t>()[i] = int16_t(luaL_checkinteger(L, arg_idx));
-            break;
-         case AET::_BYTE:
-            arr->get<uint8_t>()[i] = uint8_t(luaL_checkinteger(L, arg_idx));
-            break;
-         default:
-            lj_err_argv(L, 1, ErrMsg::BADTYPE, "supported type", elemtype_name(elem_type));
-            return 0;
+         case AET::_FLOAT:  arr->get<float>()[i] = float(luaL_checknumber(L, arg_idx)); break;
+         case AET::_DOUBLE: arr->get<double>()[i] = luaL_checknumber(L, arg_idx); break;
+         case AET::_INT64:  arr->get<int64_t>()[i] = int64_t(luaL_checknumber(L, arg_idx)); break;
+         case AET::_INT32:  arr->get<int32_t>()[i] = int32_t(luaL_checkinteger(L, arg_idx)); break;
+         case AET::_INT16:  arr->get<int16_t>()[i] = int16_t(luaL_checkinteger(L, arg_idx)); break;
+         case AET::_BYTE:   arr->get<uint8_t>()[i] = uint8_t(luaL_checkinteger(L, arg_idx)); break;
+         default: lj_err_argv(L, 1, ErrMsg::BADTYPE, "supported type", elemtype_name(elem_type)); return 0;
       }
    }
 
-   setarrayV(L, L->top++, arr);
    return 1;
 }
 

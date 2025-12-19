@@ -68,8 +68,8 @@ gui.dialog.file({
  cancelText = 'Exit',
  path       = '%%PATH%%',
  feedback = function(Dialog, Path, Files)
-  if (Files == nil) then mSys.SendMessage(MSGID_QUIT) return end
-  glRunFile = Path .. Files[1].filename
+  if not Files then mSys.SendMessage(MSGID_QUIT) return end
+  global glRunFile = Path .. Files[0].filename
   processing.signal()
  end
 })

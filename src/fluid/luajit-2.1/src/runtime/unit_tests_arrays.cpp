@@ -89,8 +89,8 @@ static bool test_array_creation_byte(pf::Log &Log)
       Log.error("char array has incorrect elemsize: %d", arr->elemsize);
       return false;
    }
-   if (!(arr->flags & ARRAY_COLOCATED)) {
-      Log.error("char array should be colocated");
+   if (arr->storage IS nullptr) {
+      Log.error("char array storage is null");
       return false;
    }
    if (arr->arraydata() IS nullptr) {
