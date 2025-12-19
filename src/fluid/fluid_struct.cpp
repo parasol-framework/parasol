@@ -174,7 +174,7 @@ static constexpr int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("Struct: %s, Data: %p", StructDef.Name, Address);
+   log.traceBranch("Struct: %s, Data: %p", StructDef.Name.c_str(), Address);
 
    // Do not push a Lua value in the event of an error.
 

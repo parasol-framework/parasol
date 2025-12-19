@@ -476,7 +476,7 @@ void make_array(lua_State *Lua, AET Type, int Elements, CPTR Data, std::string_v
             case AET::_STRING_GC:
             case AET::_STRING_CPP:
             default:
-               log.warning("Unsupported type $%.8x", Type);
+               log.warning("Unsupported type $%.8x", int(Type));
                lua_pushnil(Lua);
                return;
          }
