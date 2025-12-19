@@ -38,7 +38,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
    local lWindow, lFonts, vwSize, vwStyle, vwFace, lFontsSorted
    lShortText = 'The Quick Brown Fox Jumped Over The Lazy Dog'
    lOptions   = Options
-   lSizes     = { 6, 8, 10, 12, 14, 18, 24, 30, 36, 42, 50, 70, 90, 100, 120 }
+   lSizes     = array.of('int', 6, 8, 10, 12, 14, 18, 24, 30, 36, 42, 50, 70, 90, 100, 120)
    WIDGET_GAP = 6
 
    function exampleMargin()
@@ -49,9 +49,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       colour = self.colour.r .. ',' .. self.colour.g .. ',' .. self.colour.b .. ',' .. self.colour.a
       self.compactFace = self.face .. ':' .. self.pointSize .. ':' .. self.style .. ':' .. colour
 
-      if lOptions.feedback then
-         lOptions.feedback(self, Accepted)
-      end
+      lOptions?.feedback(self, Accepted)
 
       lWindow = nil
       return true
@@ -59,7 +57,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
    function refreshGuidelines()
       if self.exampleText then
-         seq = ''
+         seq       = ''
          gap       = exampleMargin()
          spacing   = self.exampleText.lineSpacing
          pageWidth = self.examplePage.width
@@ -149,8 +147,8 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
    function showFontSizes(List)
       sizes = { }
-      for _, v in ipairs(List) do
-         table.insert(sizes, { id=v, name=v })
+      for i=0,#List-1 do
+         table.insert(sizes, { id=List[i], name=List[i] })
       end
       vwSize.loadItems(sizes)
    end
@@ -170,9 +168,9 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
    function highlightSize(Size)
       Size ?? return
       selectSize = Size
-      for _,v in ipairs(lSizes) do
-         if v <= Size then
-            selectSize = v
+      for i=0,#lSizes-1 do
+         if lSizes[i] <= Size then
+            selectSize = lSizes[i]
          else
             break
          end
@@ -211,9 +209,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       modal        = lOptions.modal ?? false,
       events = {
          close = function(Window)
-            if lOptions.feedback then
-               lOptions.feedback(self, nil)
-            end
+            lOptions?.feedback(self, nil)
             lWindow = nil
          end
       }
@@ -339,7 +335,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       sensitive    = true,
       textAttrib   = 'name',
       itemSelected = function(View, Reason, Item)
-         assert(lFonts[Item.name], 'Font "' .. (Item.name ?? 'NIL') .. '" not recognised.')
+         assert(lFonts[Item.name], 'Font "' .. tostring(Item.name) .. '" not recognised.')
 
          self.face = Item.name
 

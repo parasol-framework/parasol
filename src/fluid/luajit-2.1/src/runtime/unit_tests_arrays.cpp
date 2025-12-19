@@ -93,13 +93,13 @@ static bool test_array_creation_byte(pf::Log &Log)
       Log.error("char array should be colocated");
       return false;
    }
-   if (mref<void>(arr->data) IS nullptr) {
+   if (arr->arraydata() IS nullptr) {
       Log.error("char array data pointer is null");
       return false;
    }
 
    // Verify zero-initialisation
-   uint8_t* data = (uint8_t*)mref<void>(arr->data);
+   uint8_t* data = (uint8_t*)arr->arraydata();
    for (int i = 0; i < 100; i++) {
       if (data[i] != 0) {
          Log.error("char array not zero-initialised at index %d", i);
@@ -136,7 +136,7 @@ static bool test_array_creation_int32(pf::Log &Log)
    }
 
    // Write and read back values
-   int32_t* data = (int32_t*)mref<void>(arr->data);
+   int32_t* data = (int32_t*)arr->arraydata();
    for (int i = 0; i < 50; i++) {
       data[i] = i * 100;
    }
@@ -172,7 +172,7 @@ static bool test_array_creation_double(pf::Log &Log)
       return false;
    }
 
-   double* data = (double*)mref<void>(arr->data);
+   double* data = (double*)arr->arraydata();
    data[0] = 3.14159265358979;
    data[24] = -2.71828182845904;
 
@@ -199,7 +199,7 @@ static bool test_array_index_access(pf::Log &Log)
    luaL_openlibs(L);
 
    GCarray* arr = lj_array_new(L, 10, AET::_INT32);
-   int32_t* data = (int32_t*)mref<void>(arr->data);
+   int32_t* data = (int32_t*)arr->arraydata();
 
    for (int i = 0; i < 10; i++) {
       data[i] = i + 1;
@@ -287,12 +287,12 @@ static bool test_array_external(pf::Log &Log)
       Log.error("external array not marked as readonly");
       return false;
    }
-   if (mref<void>(arr->data) != external_data) {
+   if (arr->arraydata() != external_data) {
       Log.error("external array does not point to original data");
       return false;
    }
 
-   int32_t* data = (int32_t*)mref<void>(arr->data);
+   int32_t* data = (int32_t*)arr->arraydata();
    if (data[2] != 30) {
       Log.error("external array reads incorrectly: got %d, expected 30", data[2]);
       return false;
@@ -312,7 +312,7 @@ static bool test_array_to_table(pf::Log &Log)
    luaL_openlibs(L);
 
    GCarray* arr = lj_array_new(L, 5, AET::_INT32);
-   int32_t* data = (int32_t*)mref<void>(arr->data);
+   int32_t* data = (int32_t*)arr->arraydata();
    data[0] = 100;
    data[1] = 200;
    data[2] = 300;
@@ -472,7 +472,7 @@ static bool test_arr_getidx_int32(pf::Log &Log)
    luaL_openlibs(L);
 
    GCarray* arr = lj_array_new(L, 10, AET::_INT32);
-   int32_t* data = (int32_t*)mref<void>(arr->data);
+   int32_t* data = (int32_t*)arr->arraydata();
    for (int i = 0; i < 10; i++) {
       data[i] = (i + 1) * 100;  // 100, 200, 300, ...
    }
@@ -510,7 +510,7 @@ static bool test_arr_getidx_double(pf::Log &Log)
    luaL_openlibs(L);
 
    GCarray* arr = lj_array_new(L, 5, AET::_DOUBLE);
-   double* data = (double*)mref<void>(arr->data);
+   double* data = (double*)arr->arraydata();
    data[0] = 3.14159;
    data[2] = -2.71828;
    data[4] = 1.41421;
@@ -542,7 +542,7 @@ static bool test_arr_setidx_int32(pf::Log &Log)
    luaL_openlibs(L);
 
    GCarray* arr = lj_array_new(L, 10, AET::_INT32);
-   int32_t* data = (int32_t*)mref<void>(arr->data);
+   int32_t* data = (int32_t*)arr->arraydata();
 
    // Set values using lj_arr_setidx
    TValue val;
@@ -583,7 +583,7 @@ static bool test_arr_setidx_double(pf::Log &Log)
    luaL_openlibs(L);
 
    GCarray* arr = lj_array_new(L, 5, AET::_DOUBLE);
-   double* data = (double*)mref<void>(arr->data);
+   double* data = (double*)arr->arraydata();
 
    TValue val;
    setnumV(&val, 3.14159);
@@ -646,7 +646,7 @@ static bool test_arr_byte_type(pf::Log &Log)
    luaL_openlibs(L);
 
    GCarray* arr = lj_array_new(L, 256, AET::_BYTE);
-   uint8_t* data = (uint8_t*)mref<void>(arr->data);
+   uint8_t* data = (uint8_t*)arr->arraydata();
 
    // Test byte array stores and retrieves correctly
    for (int i = 0; i < 256; i++) {

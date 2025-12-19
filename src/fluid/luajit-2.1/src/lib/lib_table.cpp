@@ -27,49 +27,6 @@
 
 //********************************************************************************************************************
 
-LJLIB_CF(table_foreachi)
-{
-   GCtab *t = lj_lib_checktab(L, 1);
-   lj_lib_checkfunc(L, 2);
-   int32_t len = (int32_t)lj_tab_len(t);
-
-   for (int32_t i = 0; i < len; i++) {
-      lua_pushvalue(L, 2);  // Push function
-      lua_pushinteger(L, i);  // Push index
-      lua_rawgeti(L, 1, i);  // Push t[i]
-      lua_call(L, 2, 1);  // Call f(i, t[i])
-      if (!lua_isnil(L, -1)) {
-         return 1;  // Return non-nil result
-      }
-      lua_pop(L, 1);  // Pop nil result
-   }
-   return 0;
-}
-
-//********************************************************************************************************************
-
-LJLIB_CF(table_foreach)
-{
-   (void)lj_lib_checktab(L, 1);
-   lj_lib_checkfunc(L, 2);
-
-   lua_pushnil(L);  // Initial key for iteration
-   while (lua_next(L, 1)) {
-      // Stack: key, value
-      lua_pushvalue(L, 2);  // Push function
-      lua_pushvalue(L, -3);  // Push key
-      lua_pushvalue(L, -3);  // Push value
-      lua_call(L, 2, 1);  // Call f(k, v)
-      if (!lua_isnil(L, -1)) {
-         return 1;  // Return non-nil result
-      }
-      lua_pop(L, 2);  // Pop result and value, keep key for next iteration
-   }
-   return 0;
-}
-
-//********************************************************************************************************************
-
 LJLIB_CF(table_getn)
 {
    GCtab *t = lj_lib_checktab(L, 1);
@@ -302,24 +259,6 @@ LJLIB_CF(table_sort)
    if (!tvisnil(L->base + 1)) lj_lib_checkfunc(L, 2);
    auxsort(L, 0, n - 1);  // 0-based: sort indices 0 to len-1
    return 0;
-}
-
-//********************************************************************************************************************
-
-LJLIB_PUSH("n")
-LJLIB_CF(table_pack)
-{
-   TValue *array, *base = L->base;
-   MSize n = (uint32_t)(L->top - base);
-   GCtab *t = lj_tab_new(L, n, 1);  // 0-based: asize = n for n elements
-   // NOBARRIER: The table is new (marked white).
-   setintV(lj_tab_setstr(L, t, strV(lj_lib_upvalue(L, 1))), (int32_t)n);
-   array = tvref(t->array);
-   copy_range(L, array, base, n);  // 0-based: copy all n elements starting at array[0]
-   settabV(L, base, t);
-   L->top = base + 1;
-   lj_gc_check(L);
-   return 1;
 }
 
 //********************************************************************************************************************

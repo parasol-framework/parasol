@@ -100,7 +100,7 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
             // Allocate and populate the string cache
             arr->strcache = new std::vector<char>(content_size);
             auto cache_ptr = arr->strcache->data();
-            auto ptr_array = arr->data.get<CSTRING>();
+            auto ptr_array = (CSTRING *)arr->arraydata();
 
             if (Type IS AET::_CSTRING) {
                auto strings = (CSTRING *)Data;
@@ -129,8 +129,9 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
             return arr;
          }
          else if (Type IS AET::_TABLE) {
-            // Table arrays not yet supported for caching
+            // Table arrays not supported for caching (not used by the Parasol API)
             lj_err_callerv(L, ErrMsg::BADVAL);
+            return nullptr;
          }
          else {
             // Non-string cached array - simple memcpy in constructor
@@ -192,7 +193,7 @@ GCtab * lj_array_to_table(lua_State *L, GCarray *Array)
    GCtab *t = lj_tab_new(L, Array->len, 0);  // 0-based: indices 0..len-1
    auto array_part = tvref(t->array);
 
-   auto data = Array->data.get<uint8_t>();
+   auto data = (uint8_t *)Array->arraydata();
    for (MSize i = 0; i < Array->len; i++) {
       auto slot = &array_part[i];
       void *elem = data + (i * Array->elemsize);

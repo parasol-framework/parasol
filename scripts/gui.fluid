@@ -2,9 +2,7 @@
 
    if gui then return end
 
-   if not mVec then
-      global mVec = mod.load('vector')
-   end
+   global mVec ?= mod.load('vector')
 
    global gui = {
      theme = 'light',
@@ -88,10 +86,10 @@ gui.strToRGB = function(Value)
          for str in string.gmatch(Value, '([^,]+)') do
             table.insert(colours, tonumber(str))
          end
-         local r = colours[0] ?? 0
-         local g = colours[1] ?? 0
-         local b = colours[2] ?? 0
-         local a = colours[3] ?? 255
+         r = colours[0] ?? 0
+         g = colours[1] ?? 0
+         b = colours[2] ?? 0
+         a = colours[3] ?? 255
          if r > 255 then r = 255 end
          if g > 255 then g = 255 end
          if b > 255 then b = 255 end

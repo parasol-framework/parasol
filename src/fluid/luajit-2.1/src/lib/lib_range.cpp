@@ -1259,8 +1259,8 @@ static int range_slice_impl(lua_State *L)
 
       // Create result array
       GCarray *new_arr = lj_array_new(L, MSize(result_size), arr->elemtype);
-      auto src_base = (uint8_t *)mref<void>(arr->data);
-      auto dst_base = (uint8_t *)mref<void>(new_arr->data);
+      auto src_base = arr->get<uint8_t>();
+      auto dst_base = new_arr->get<uint8_t>();
       MSize elemsize = arr->elemsize;
 
       // Copy elements

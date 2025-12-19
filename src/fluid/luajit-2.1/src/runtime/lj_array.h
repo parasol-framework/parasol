@@ -15,5 +15,5 @@ extern GCtab* lj_array_to_table(lua_State *, GCarray *);
 //********************************************************************************************************************
 
 inline void * lj_array_index(GCarray *Array, uint32_t Idx) {
-   return (Array->data.get<int8_t>()) + (Idx * Array->elemsize);
+   return (int8_t*)Array->arraydata() + (Idx * Array->elemsize);
 }

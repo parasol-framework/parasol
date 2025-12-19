@@ -528,13 +528,13 @@ void make_struct_ptr_array(lua_State *Lua, std::string_view StructName, int Elem
             arr = arrayV(Lua->base + arr_idx - 1);
             TValue *tv = Lua->top - 1;
             GCtab *tab = tabV(tv);
-            setgcref(arr->data.get<GCRef>()[i], obj2gco(tab));
+            setgcref(arr->get<GCRef>()[i], obj2gco(tab));
             lj_gc_objbarrier(Lua, arr, tab);
             Lua->top--;  // Pop the table
          }
          else {
             arr = arrayV(Lua->base + arr_idx - 1);
-            setgcrefnull(arr->data.get<GCRef>()[i]);
+            setgcrefnull(arr->get<GCRef>()[i]);
          }
       }
    }
@@ -578,13 +578,13 @@ void make_struct_serial_array(lua_State *Lua, std::string_view StructName, int E
             arr = arrayV(Lua->base + arr_idx - 1);
             TValue *tv = Lua->top - 1;
             GCtab *tab = tabV(tv);
-            setgcref(arr->data.get<GCRef>()[i], obj2gco(tab));
+            setgcref(arr->get<GCRef>()[i], obj2gco(tab));
             lj_gc_objbarrier(Lua, arr, tab);
             Lua->top--;  // Pop the table
          }
          else {
             arr = arrayV(Lua->base + arr_idx - 1);
-            setgcrefnull(arr->data.get<GCRef>()[i]);
+            setgcrefnull(arr->get<GCRef>()[i]);
          }
 
          Input = (int8_t *)Input + def_size;

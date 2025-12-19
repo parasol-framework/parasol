@@ -339,7 +339,7 @@ global function saveDocuments()
    -- Save module functions, if any
 
    outPath = glDocPath ?? 'sdk:docs/xml/modules/'
-   if (outPath:sub(-1) != '/') then outPath = outPath .. '/' end
+   if outPath:sub(-1) != '/' then outPath ..= '/' end
 
    if not table.empty(glFunctions) then
       out = docModuleHeader()

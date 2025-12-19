@@ -250,7 +250,7 @@ static int module_call(lua_State *Lua)
 
             if (lua_type(Lua, i) IS LUA_TARRAY) {
                GCarray *arr = arrayV(Lua, i);
-               ((APTR *)(buffer + j))[0] = arr->data.get<void>();
+               ((APTR *)(buffer + j))[0] = arr->arraydata();
                arg_values[in] = buffer + j;
                arg_types[in++] = &ffi_type_pointer;
                j += sizeof(APTR);
@@ -409,7 +409,7 @@ static int module_call(lua_State *Lua)
 
          if (lua_type(Lua, i) IS LUA_TARRAY) {
             GCarray *arr = arrayV(Lua, i);
-            arg_values[in] = arr->data.get<void>();
+            arg_values[in] = arr->arraydata();
             arg_types[in++] = &ffi_type_pointer;
             j += sizeof(APTR); // Dummy increment
 
@@ -543,7 +543,7 @@ static int module_call(lua_State *Lua)
          else if (arg_type IS LUA_TARRAY) {
             GCarray *array = lj_lib_checkarray(Lua, i);
 
-            ((APTR *)(buffer + j))[0] = array->data.get<void>();
+            ((APTR *)(buffer + j))[0] = array->arraydata();
             arg_values[in] = buffer + j;
             arg_types[in++] = &ffi_type_pointer;
             j += sizeof(APTR);

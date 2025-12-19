@@ -632,6 +632,11 @@ static void build_subroutines(BuildCtx *ctx)
   |  add CARG2, BASE, RB, lsl #3
   |   add CARG3, BASE, RC, lsl #3
   |1:
+  |  // Check if target is an array - handle directly without metamethods.
+  |  ldr TMP0, [CARG2]
+  |  asr TMP1, TMP0, #47
+  |  cmn TMP1, #-LJ_TARRAY
+  |  beq ->vmeta_agetv
   |   str BASE, L->base
   |  mov CARG1, L
   |   str PC, SAVE_PC
@@ -690,6 +695,11 @@ static void build_subroutines(BuildCtx *ctx)
   |  add CARG2, BASE, RB, lsl #3
   |   add CARG3, BASE, RC, lsl #3
   |1:
+  |  // Check if target is an array - handle directly without metamethods.
+  |  ldr TMP0, [CARG2]
+  |  asr TMP1, TMP0, #47
+  |  cmn TMP1, #-LJ_TARRAY
+  |  beq ->vmeta_asetv
   |   str BASE, L->base
   |  mov CARG1, L
   |   str PC, SAVE_PC
@@ -900,13 +910,24 @@ static void build_subroutines(BuildCtx *ctx)
   |
   |->vmeta_len:
   |  add CARG2, BASE, RC, lsl #3
-  |  mov TAB:RC, TAB:CARG1		// Save table (ignored for other types).
+  |  mov TAB:RC, TAB:CARG1		// Save table/array (ignored for other types).
   |   str BASE, L->base
   |  mov CARG1, L
   |   str PC, SAVE_PC
   |  bl extern lj_meta_len		// (lua_State *L, TValue *o)
   |  // Returns NULL (retry) or TValue * (metamethod base).
   |  cbnz CRET1, ->vmeta_binop		// Binop call for compatibility.
+  |  // Reload source value and check type.
+  |  ldr TMP0, [CARG2]
+  |  asr ITYPE, TMP0, #47
+  |  cmn ITYPE, #-LJ_TARRAY
+  |  bne >1
+  |  // Array: read length directly.
+  |  ldr CARG1w, ARRAY:RC->len
+  |  add CARG1, CARG1, TISNUM
+  |  str CARG1, [BASE, RA, lsl #3]
+  |  ins_next
+  |1:
   |  mov TAB:CARG1, TAB:RC
   |  b ->BC_LEN_Z
   |
@@ -2725,13 +2746,19 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |
     |2:
     |  cmn ITYPE, #-LJ_TTAB
-    |  bne ->vmeta_len
+    |  bne >4
     |  ldr TAB:CARG2, TAB:CARG1->metatable
     |  cbnz TAB:CARG2, >9
     |3:
     |->BC_LEN_Z:
     |  bl extern lj_tab_len		// (GCtab *t)
     |  // Returns uint32_t (but less than 2^31).
+    |  b <1
+    |
+    |4:  // Check for array type.
+    |  cmn ITYPE, #-LJ_TARRAY
+    |  bne ->vmeta_len
+    |  ldr CARG1w, ARRAY:CARG1->len
     |  b <1
     |
     |9:
