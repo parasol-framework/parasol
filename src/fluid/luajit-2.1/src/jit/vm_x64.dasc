@@ -4550,7 +4550,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_next
     |
     |5:  // Despecialize bytecode if any of the checks fail.
-    |  mov PC_OP, BC_JMP           // PC still points to BC_ISARR here: patch it in-place to BC_ITERA.
+    |  mov PC_OP, BC_JMP           // PC still points to BC_ISARR here: patch it in-place to BC_JMP.
     |  branchPC RD                 // After this, PC points to the branch target (initially BC_ITERA or a JITed loop).
     |.if JIT
     |  cmp byte [PC], BC_ITERA
