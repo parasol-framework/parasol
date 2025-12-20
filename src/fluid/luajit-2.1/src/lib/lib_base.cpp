@@ -36,6 +36,8 @@
 #include "lj_strfmt.h"
 #include "lib.h"
 #include "lib_utils.h"
+#include "lj_array.h"
+#include "lj_vmarray.h"
 #include "runtime/stack_utils.h"
 #include "runtime/lj_thunk.h"
 #include "debug/error_guard.h"
@@ -182,23 +184,69 @@ static int values_iterator_next(lua_State* L)
    return 0;  // End of iteration
 }
 
+//********************************************************************************************************************
+// values() iterator for arrays - iterates over array values only
+// Upvalue 1: the array being iterated
+// Upvalue 2: current index (stored as integer, mutable)
+
+static int values_array_iterator_next(lua_State* L)
+{
+   GCfunc* fn = curr_func(L);
+   GCarray* arr = arrayV(&fn->c.upvalue[0]);
+   TValue* idx_tv = &fn->c.upvalue[1];
+
+   int32_t idx = numberVint(idx_tv);
+   if (idx < 0 or MSize(idx) >= arr->len) return 0;  // End of iteration
+
+   // Get the element value
+   lj_arr_getidx(L, arr, idx, L->top);
+   L->top++;
+
+   // Advance index for next iteration
+   setintV(idx_tv, idx + 1);
+
+   return 1;
+}
+
 LJLIB_CF(values)
 {
-   GCtab* t = lj_lib_checktab(L, 1);
+   TValue* o = lj_lib_checkany(L, 1);
 
-   // Push the table as upvalue 1
-   settabV(L, L->top, t);
-   L->top++;
+   if (tvistab(o)) {
+      GCtab* t = tabV(o);
 
-   // Create state table to hold the mutable key (upvalue 2)
-   GCtab* state = lj_tab_new(L, 0, 1);
-   settabV(L, L->top, state);
-   TValue* key_slot = lj_tab_setint(L, state, 0);
-   setnilV(key_slot);
-   L->top++;
+      // Push the table as upvalue 1
+      settabV(L, L->top, t);
+      L->top++;
 
-   // Create closure with 2 upvalues
-   lua_pushcclosure(L, values_iterator_next, 2);
+      // Create state table to hold the mutable key (upvalue 2)
+      GCtab* state = lj_tab_new(L, 0, 1);
+      settabV(L, L->top, state);
+      TValue* key_slot = lj_tab_setint(L, state, 0);
+      setnilV(key_slot);
+      L->top++;
+
+      // Create closure with 2 upvalues
+      lua_pushcclosure(L, values_iterator_next, 2);
+   }
+   else if (tvisarray(o)) {
+      GCarray* arr = arrayV(o);
+
+      // Push the array as upvalue 1
+      setarrayV(L, L->top, arr);
+      L->top++;
+
+      // Push the starting index as upvalue 2
+      setintV(L->top, 0);
+      L->top++;
+
+      // Create closure with 2 upvalues
+      lua_pushcclosure(L, values_array_iterator_next, 2);
+   }
+   else {
+      lj_err_argt(L, 1, LUA_TTABLE);  // Raise error: expected table or array
+   }
+
    lua_pushnil(L);  // State (not used)
    lua_pushnil(L);  // Initial control variable
    return 3;

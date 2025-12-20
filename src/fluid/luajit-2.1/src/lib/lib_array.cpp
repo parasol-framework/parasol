@@ -1092,6 +1092,116 @@ LJLIB_CF(array_sort)
 }
 
 //********************************************************************************************************************
+// Push array element value to Lua stack based on element type.
+// Used by the array iterator to return element values.
+
+static void array_push_element(lua_State *L, GCarray *Arr, MSize Idx)
+{
+   void *elem = lj_array_index(Arr, Idx);
+
+   switch (Arr->elemtype) {
+      case AET::_BYTE:   lua_pushinteger(L, *(uint8_t *)elem); break;
+      case AET::_INT16:  lua_pushinteger(L, *(int16_t *)elem); break;
+      case AET::_INT32:  lua_pushinteger(L, *(int32_t *)elem); break;
+      case AET::_INT64:  lua_pushnumber(L, lua_Number(*(int64_t *)elem)); break;
+      case AET::_FLOAT:  lua_pushnumber(L, *(float *)elem); break;
+      case AET::_DOUBLE: lua_pushnumber(L, *(double *)elem); break;
+      case AET::_STRING_GC: {
+         GCRef ref = *(GCRef *)elem;
+         if (gcref(ref)) setstrV(L, L->top++, gco2str(gcref(ref)));
+         else lua_pushnil(L);
+         break;
+      }
+      case AET::_CSTRING: {
+         CSTRING str = *(CSTRING *)elem;
+         if (str) lua_pushstring(L, str);
+         else lua_pushnil(L);
+         break;
+      }
+      case AET::_TABLE: {
+         GCRef ref = *(GCRef *)elem;
+         if (gcref(ref)) settabV(L, L->top++, gco2tab(gcref(ref)));
+         else lua_pushnil(L);
+         break;
+      }
+      default: lua_pushnil(L); break;
+   }
+}
+
+//********************************************************************************************************************
+// Iterator function for array iteration.
+// Called repeatedly by the for loop until it returns nil.
+//
+// Usage: for i, v in arr do ... end
+
+static int array_iterator_next(lua_State *L)
+{
+   GCarray *arr = lua_toarray(L, lua_upvalueindex(1));
+   if (not arr) return 0;
+
+   int32_t idx;
+   if (lua_isnil(L, 2)) {
+      idx = 0;  // First iteration
+   }
+   else {
+      idx = int32_t(lua_tointeger(L, 2)) + 1;  // Next index
+   }
+
+   if (idx < 0 or MSize(idx) >= arr->len) return 0;  // Iteration complete
+
+   lua_pushinteger(L, idx);         // Return index (control var)
+   array_push_element(L, arr, idx); // Return value
+   return 2;
+}
+
+//********************************************************************************************************************
+// __call metamethod for array iteration.  Enables: for i, v in array_variable do
+//
+// This function serves dual purposes:
+// 
+// 1. When called directly (arr()), returns (iterator, nil, nil) for manual iteration setup
+// 2. When called by BC_ITERC with (state, control_var), acts as the iterator itself
+//
+// Detection: If arg2 is nil or integer (control var pattern), act as iterator.
+//            Otherwise, return the iterator triple for manual setup.
+
+static int array_call(lua_State *L)
+{
+   GCarray *arr = lua_toarray(L, 1);
+   if (not arr) return 0;
+
+   // Check if this is being called as an iterator (by BC_ITERC via lj_meta_call)
+   // After lj_meta_call rewrites the stack: __call(array, state, control_var)
+   // So: arg1 = array, arg2 = state (nil), arg3 = control_var (nil or integer)
+
+   auto nargs = lua_gettop(L);
+   if (nargs >= 3) {
+      auto type = lua_type(L, 3);
+      if ((type IS LUA_TNIL) or (type IS LUA_TNUMBER)) {
+         // Acting as iterator
+         int32_t idx;
+         if (type IS LUA_TNIL) idx = 0;  // First iteration
+         else idx = int32_t(lua_tointeger(L, 3)) + 1;  // Next index
+
+         if (idx < 0 or MSize(idx) >= arr->len) return 0;  // Iteration complete
+
+         lua_pushinteger(L, idx);         // Return index (control var + first loop var)
+         array_push_element(L, arr, idx); // Return value (second loop var)
+         return 2;
+      }
+   }
+
+   // Manual setup: arr() returns (iterator, nil, nil)
+   // Use array_iterator_next with array as upvalue for cleaner separation
+
+   lua_pushvalue(L, 1);  // Push array as upvalue
+   lua_pushcclosure(L, array_iterator_next, 1);
+   lua_pushnil(L);       // State (not used)
+   lua_pushnil(L);       // Initial control variable
+   return 3;
+}
+
+//********************************************************************************************************************
 // Registers the array library and sets up the base metatable for arrays.
 // Unlike the Lua table, arrays are created via conventional means, i.e. array.new().
 //
@@ -1109,6 +1219,10 @@ extern "C" int luaopen_array(lua_State *L)
    // This allows lj_arr_get to find methods like concat, sort, etc. via direct table lookup.
    GCtab *lib = tabV(L->top - 1);
    global_State *g = G(L);
+
+   // Add __call metamethod to the library table for iteration support.  Enables: for ... in ... do
+   lua_pushcfunction(L, array_call);
+   lua_setfield(L, -2, "__call");
 
    // NOBARRIER: basemt is a GC root.
    setgcref(basemt_it(g, LJ_TARRAY), obj2gco(lib));
