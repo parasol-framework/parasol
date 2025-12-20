@@ -2075,6 +2075,10 @@ LJLIB_CF(array_clone)
          }
          break;
       }
+      case AET::_STRUCT: {
+         luaL_error(L, "array.clone() does not support struct types.");
+         break;
+      }
       default: {
          // For all other types, direct memory copy
          void *src = arr->arraydata();

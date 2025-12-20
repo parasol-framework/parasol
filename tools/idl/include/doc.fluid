@@ -1000,7 +1000,7 @@ global function docTypes(References)
       typeName = choose ct.grouping from
          'constants' -> 'const'
          'flags' -> 'flag'
-         else -> error("Unknowning grouping for custom type, '" .. ct.grouping .. "'")
+         else -> error("Unknown grouping for custom type, '" .. ct.grouping .. "'")
       end
 
       if ct.restrict?? then
