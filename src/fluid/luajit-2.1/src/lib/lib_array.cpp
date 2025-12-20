@@ -1613,6 +1613,285 @@ static int array_call(lua_State *L)
 }
 
 //********************************************************************************************************************
+// Usage: array.each(arr, callback)
+//
+// Iterates over array elements, calling the callback for each element.
+// The callback receives (value, index) as arguments.
+//
+// Parameters:
+//   arr: the array to iterate
+//   callback: function(value, index) to call for each element
+//
+// Returns: the array (for chaining)
+
+LJLIB_CF(array_each)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+   luaL_checktype(L, 2, LUA_TFUNCTION);
+
+   for (MSize i = 0; i < arr->len; i++) {
+      lua_pushvalue(L, 2);            // Push the callback function
+      array_push_element(L, arr, i);  // Push value
+      lua_pushinteger(L, i);          // Push index
+      lua_call(L, 2, 0);              // Call callback(value, index)
+   }
+
+   // Return the array for chaining
+   lua_pushvalue(L, 1);
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: array.map(arr, transform)
+//
+// Returns a new array with each element transformed by the function.
+// The transform function receives (value, index) and returns the new value.
+//
+// Parameters:
+//   arr: the source array
+//   transform: function(value, index) returning transformed value
+//
+// Returns: new array of the same type with transformed elements
+
+LJLIB_CF(array_map)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+   luaL_checktype(L, 2, LUA_TFUNCTION);
+
+   // Create new array of same type and size
+   GCarray *result = lj_array_new(L, arr->len, arr->elemtype);
+   setarrayV(L, L->top++, result);
+   int result_idx = lua_gettop(L);
+
+   for (MSize i = 0; i < arr->len; i++) {
+      lua_pushvalue(L, 2);            // Push the transform function
+      array_push_element(L, arr, i);  // Push value
+      lua_pushinteger(L, i);          // Push index
+      lua_call(L, 2, 1);              // Call transform(value, index) -> result
+
+      // Store the result in the new array
+      switch (result->elemtype) {
+         case AET::_STRING_GC: {
+            if (lua_isstring(L, -1)) {
+               GCstr *s = lj_str_new(L, lua_tostring(L, -1), lua_strlen(L, -1));
+               setgcref(result->get<GCRef>()[i], obj2gco(s));
+               lj_gc_objbarrier(L, result, s);
+            }
+            else {
+               setgcrefnull(result->get<GCRef>()[i]);
+            }
+            break;
+         }
+         case AET::_TABLE: {
+            if (lua_istable(L, -1)) {
+               TValue *tv = L->top - 1;
+               GCtab *tab = tabV(tv);
+               setgcref(result->get<GCRef>()[i], obj2gco(tab));
+               lj_gc_objbarrier(L, result, tab);
+            }
+            else {
+               setgcrefnull(result->get<GCRef>()[i]);
+            }
+            break;
+         }
+         case AET::_FLOAT:  result->get<float>()[i] = float(lua_tonumber(L, -1)); break;
+         case AET::_DOUBLE: result->get<double>()[i] = lua_tonumber(L, -1); break;
+         case AET::_INT64:  result->get<int64_t>()[i] = int64_t(lua_tonumber(L, -1)); break;
+         case AET::_INT32:  result->get<int32_t>()[i] = int32_t(lua_tointeger(L, -1)); break;
+         case AET::_INT16:  result->get<int16_t>()[i] = int16_t(lua_tointeger(L, -1)); break;
+         case AET::_BYTE:   result->get<uint8_t>()[i] = uint8_t(lua_tointeger(L, -1)); break;
+         default:
+            break;
+      }
+
+      lua_pop(L, 1);  // Pop the result value
+   }
+
+   // Push the result array (already on stack at result_idx)
+   lua_pushvalue(L, result_idx);
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: array.filter(arr, predicate)
+//
+// Returns a new array containing only elements that satisfy the predicate.
+// The predicate function receives (value, index) and returns true/false.
+//
+// Parameters:
+//   arr: the source array
+//   predicate: function(value, index) returning boolean
+//
+// Returns: new array of the same type with filtered elements
+
+LJLIB_CF(array_filter)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+   luaL_checktype(L, 2, LUA_TFUNCTION);
+
+   // First pass: count matching elements
+   MSize count = 0;
+   for (MSize i = 0; i < arr->len; i++) {
+      lua_pushvalue(L, 2);            // Push the predicate function
+      array_push_element(L, arr, i);  // Push value
+      lua_pushinteger(L, i);          // Push index
+      lua_call(L, 2, 1);              // Call predicate(value, index) -> boolean
+
+      if (lua_toboolean(L, -1)) count++;
+      lua_pop(L, 1);
+   }
+
+   // Create new array with exact size needed
+   GCarray *result = lj_array_new(L, count, arr->elemtype);
+   setarrayV(L, L->top++, result);
+
+   if (count IS 0) return 1;
+
+   // Second pass: copy matching elements
+   MSize out_idx = 0;
+   for (MSize i = 0; i < arr->len; i++) {
+      lua_pushvalue(L, 2);            // Push the predicate function
+      array_push_element(L, arr, i);  // Push value
+      lua_pushinteger(L, i);          // Push index
+      lua_call(L, 2, 1);              // Call predicate(value, index) -> boolean
+
+      if (lua_toboolean(L, -1)) {
+         // Copy element to result array
+         void *src = lj_array_index(arr, i);
+         void *dst = lj_array_index(result, out_idx);
+
+         switch (result->elemtype) {
+            case AET::_STRING_GC:
+            case AET::_TABLE: {
+               GCRef ref = *(GCRef *)src;
+               *(GCRef *)dst = ref;
+               if (gcref(ref)) lj_gc_objbarrier(L, result, gcref(ref));
+               break;
+            }
+            case AET::_FLOAT:  *(float *)dst = *(float *)src; break;
+            case AET::_DOUBLE: *(double *)dst = *(double *)src; break;
+            case AET::_INT64:  *(int64_t *)dst = *(int64_t *)src; break;
+            case AET::_INT32:  *(int32_t *)dst = *(int32_t *)src; break;
+            case AET::_INT16:  *(int16_t *)dst = *(int16_t *)src; break;
+            case AET::_BYTE:   *(uint8_t *)dst = *(uint8_t *)src; break;
+            default:
+               memcpy(dst, src, arr->elemsize);
+               break;
+         }
+         out_idx++;
+      }
+
+      lua_pop(L, 1);
+   }
+
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: array.reduce(arr, initial, reducer)
+//
+// Folds all elements into a single accumulated value.
+// The reducer function receives (accumulator, value, index) and returns the new accumulator.
+//
+// Parameters:
+//   arr: the source array
+//   initial: the initial accumulator value
+//   reducer: function(accumulator, value, index) returning new accumulator
+//
+// Returns: the final accumulated value
+
+LJLIB_CF(array_reduce)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+   // Arg 2: initial value (any type)
+   luaL_checktype(L, 3, LUA_TFUNCTION);
+
+   // Start with the initial value on the stack
+   lua_pushvalue(L, 2);  // Push initial value as current accumulator
+
+   for (MSize i = 0; i < arr->len; i++) {
+      lua_pushvalue(L, 3);            // Push the reducer function
+      lua_pushvalue(L, -2);           // Push current accumulator
+      lua_remove(L, -3);              // Remove old accumulator from stack
+      array_push_element(L, arr, i);  // Push value
+      lua_pushinteger(L, i);          // Push index
+      lua_call(L, 3, 1);              // Call reducer(acc, value, index) -> new_acc
+      // New accumulator is now on top of stack
+   }
+
+   // Return the final accumulated value (already on stack)
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: array.any(arr, predicate)
+//
+// Returns true if any element satisfies the predicate. Short-circuits on first match.
+// The predicate function receives (value, index) and returns true/false.
+//
+// Parameters:
+//   arr: the source array
+//   predicate: function(value, index) returning boolean
+//
+// Returns: true if any element satisfies predicate, false otherwise
+
+LJLIB_CF(array_any)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+   luaL_checktype(L, 2, LUA_TFUNCTION);
+
+   for (MSize i = 0; i < arr->len; i++) {
+      lua_pushvalue(L, 2);            // Push the predicate function
+      array_push_element(L, arr, i);  // Push value
+      lua_pushinteger(L, i);          // Push index
+      lua_call(L, 2, 1);              // Call predicate(value, index) -> boolean
+
+      if (lua_toboolean(L, -1)) {
+         lua_pushboolean(L, 1);
+         return 1;
+      }
+      lua_pop(L, 1);
+   }
+
+   lua_pushboolean(L, 0);
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: array.all(arr, predicate)
+//
+// Returns true if all elements satisfy the predicate. Short-circuits on first failure.
+// The predicate function receives (value, index) and returns true/false.
+//
+// Parameters:
+//   arr: the source array
+//   predicate: function(value, index) returning boolean
+//
+// Returns: true if all elements satisfy predicate, false otherwise
+
+LJLIB_CF(array_all)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+   luaL_checktype(L, 2, LUA_TFUNCTION);
+
+   for (MSize i = 0; i < arr->len; i++) {
+      lua_pushvalue(L, 2);            // Push the predicate function
+      array_push_element(L, arr, i);  // Push value
+      lua_pushinteger(L, i);          // Push index
+      lua_call(L, 2, 1);              // Call predicate(value, index) -> boolean
+
+      if (not lua_toboolean(L, -1)) {
+         lua_pushboolean(L, 0);
+         return 1;
+      }
+      lua_pop(L, 1);
+   }
+
+   lua_pushboolean(L, 1);
+   return 1;
+}
+
+//********************************************************************************************************************
 // Registers the array library and sets up the base metatable for arrays.
 // Unlike the Lua table, arrays are created via conventional means, i.e. array.new().
 //
