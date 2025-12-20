@@ -63,7 +63,7 @@ end
 
 global function shortName(Name)
    result = ""
-   for _, n in ipairs(Name:split("_")) do
+   for n in values(Name:split("_")) do
       if (n is "XY") or (n is "SSL") or (n is "HTML") or (n is "CDATA") or (n is "2D") or (n  is "3D") or (n is "DGA") or
          (n is "DPMS") or (n is "GTF") or (n is "SRGB") or (n is "RGB") or (n is "HSV") or (n is "CX") or (n is "CY") or
          (n is "FX") or (n is "FY") then

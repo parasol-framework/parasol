@@ -1326,3 +1326,147 @@ end
    end)
    assert(not status, "array.of('int') with non-number value should fail")
 end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test array iteration (for i, v in arr do)
+-- Note: Array iteration follows ipairs semantics - returns (index, value)
+-- Use: for i, v in arr do   OR   for _, v in arr do
+
+@Test function ArrayIterationValue()
+   arr = array.of('int', 10, 20, 30)
+   sum = 0
+   for _, v in arr do
+      sum += v
+   end
+   assert(sum is 60, 'Sum should be 60, got ' .. sum)
+end
+
+@Test function ArrayIterationIndexValue()
+   arr = array.of('int', 100, 200, 300)
+   result = {}
+   for i, v in arr do
+      result[i] = v
+   end
+   assert(result[0] is 100 and result[1] is 200 and result[2] is 300,
+      'Index-value iteration failed')
+end
+
+@Test function ArrayIterationEmpty()
+   arr = array.new(0, 'int')
+   count = 0
+   for _, v in arr do
+      count++
+   end
+   assert(count is 0, 'Empty array should yield 0 iterations')
+end
+
+@Test function ArrayIterationString()
+   arr = array.of('string', 'a', 'b', 'c')
+   concat = ''
+   for _, s in arr do
+      concat ..= s
+   end
+   assert(concat is 'abc', 'String iteration failed, got: ' .. concat)
+end
+
+@Test function ArrayIterationFloat()
+   arr = array.of('float', 1.5, 2.5, 3.5)
+   sum = 0
+   for _, v in arr do
+      sum += v
+   end
+   assert(math.abs(sum - 7.5) < 0.001, 'Float sum should be 7.5')
+end
+
+@Test function ArrayIterationDouble()
+   arr = array.of('double', 1.1, 2.2, 3.3)
+   sum = 0
+   for _, v in arr do
+      sum += v
+   end
+   assert(math.abs(sum - 6.6) < 0.001, 'Double sum should be 6.6')
+end
+
+@Test function ArrayIterationInt64()
+   arr = array.of('int64', 1000000000000, 2000000000000, 3000000000000)
+   sum = 0
+   for _, v in arr do
+      sum += v
+   end
+   assert(sum is 6000000000000, 'Int64 sum should be 6000000000000')
+end
+
+@Test function ArrayIterationByte()
+   arr = array.of('byte', 65, 66, 67)  -- A, B, C
+   result = ''
+   for _, v in arr do
+      result ..= string.char(v)
+   end
+   assert(result is 'ABC', 'Byte iteration should produce ABC')
+end
+
+@Test function ArrayIterationTable()
+   arr = array.new(3, 'table')
+   arr[0] = {val = 1}
+   arr[1] = {val = 2}
+   arr[2] = {val = 3}
+
+   sum = 0
+   for _, t in arr do
+      sum += t.val
+   end
+   assert(sum is 6, 'Sum of table values should be 6')
+end
+
+@Test function ArrayIterationBreak()
+   arr = array.of('int', 1, 2, 3, 4, 5)
+   last = 0
+   for _, v in arr do
+      if v is 3 then break end
+      last = v
+   end
+   assert(last is 2, 'Break should stop at value 3, last processed is 2')
+end
+
+@Test function ArrayIterationContinue()
+   arr = array.of('int', 1, 2, 3, 4, 5)
+   sum = 0
+   for _, v in arr do
+      if v is 3 then continue end
+      sum += v
+   end
+   assert(sum is 12, 'Sum with continue should skip 3, yielding 1+2+4+5=12')
+end
+
+@Test function ArrayIterationNested()
+   arr1 = array.of('int', 1, 2)
+   arr2 = array.of('int', 10, 20)
+
+   products = {}
+   idx = 0
+   for _, a in arr1 do
+      for _, b in arr2 do
+         products[idx] = a * b
+         idx++
+      end
+   end
+
+   assert(products[0] is 10, 'Nested: 1*10 should be 10')
+   assert(products[1] is 20, 'Nested: 1*20 should be 20')
+   assert(products[2] is 20, 'Nested: 2*10 should be 20')
+   assert(products[3] is 40, 'Nested: 2*20 should be 40')
+end
+
+@Test function ArrayIterationLarge()
+   arr = array.new(1000, 'int')
+   for i = 0, 999 do
+      arr[i] = i
+   end
+
+   sum = 0
+   for _, v in arr do
+      sum += v
+   end
+   -- Sum of 0..999 = 999*1000/2 = 499500
+   assert(sum is 499500, 'Sum of 0..999 should be 499500')
+end

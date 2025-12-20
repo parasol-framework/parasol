@@ -176,7 +176,7 @@ global function parseMethod(Class, Extract)
    end
 
    if input?? then
-      for line, content in ipairs(input:split('\n')) do
+      for line, content in input:split('\n') do
          param = parseParameterString(content)
          if param then
             cType(param, name)

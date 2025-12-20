@@ -72,12 +72,12 @@ global function flags(Prefix, Options, ...)
 
    list = { }
    f = 0
-   for _, flag_def in ipairs({...}) do
+   for flag_def in values({...}) do
       if type(flag_def) is 'string' then
          local key, comment = flag_def:match('^(.+):%s+(.+)$')
          if not key then key = flag_def end
 
-         for _, v in ipairs(key:split('|')) do
+         for v in values(key:split('|')) do
             list[v] = 1 << f
          end
       elseif type(flag_def) is 'table' then
@@ -98,7 +98,7 @@ global function flags(Prefix, Options, ...)
                list[flag] = key
             else
                local f = 0
-               for _, v in ipairs(key:split('|')) do
+               for v in values(key:split('|')) do
                   if list[v] then
                      f = f | list[v]
                   else
@@ -133,7 +133,7 @@ global function enum(Prefix, Options, ...)
          val = enum_def:match('^(.-):%s+.+$')  -- Scrap any comment for this value
          val ??= enum_def
 
-         for _, name in ipairs(val:split('|')) do
+         for name in values(val:split('|')) do
             list[name] = inc
          end
       elseif type(enum_def) is 'table' then -- The client provided a table of fixed values
@@ -412,7 +412,7 @@ end
 
 global function extractFields(Def, Origin)
    fields = { }
-   for line, content in ipairs(Def:split('\n')) do
+   for line, content in Def:split('\n') do
       -- Extract comment, if specified
       comment = content:match('^.+#%s-(.+)$')
       if comment?? then

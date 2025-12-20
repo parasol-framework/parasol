@@ -601,9 +601,7 @@ template <class T> T roundup(T Num, int Alignment) {
 #if defined(__GNUC__) && defined(__x86__)
 
 constexpr int F2I(double val) noexcept {
-   if (std::is_constant_evaluated()) {
-      return (int)std::round(val);
-   }
+   if (std::is_constant_evaluated()) return (int)std::round(val);
    // This will round if the CPU is kept in its default rounding mode
    int ret;
    asm ("fistpl %0" : "=m" (ret) : "t" (val) : "st");
@@ -619,17 +617,8 @@ inline int F2I(double val) {
 
 #endif
 
-constexpr int F2T(double val) noexcept // For numbers no larger than 16 bit, standard (int) is faster than F2T().
-{
-   if ((val > 32767.0) or (val < -32767.0)) return(int(val));
-   else {
-      val = val + (68719476736.0 * 1.5);
-      auto bits = std::bit_cast<std::array<int, 2>>(val);
-      if constexpr (std::endian::native == std::endian::little) {
-         return bits[0] >> 16;
-      }
-      else return bits[1] >> 16;
-   }
+constexpr int F2T(double val) noexcept {
+   return int(val); // Expected to compile to a cvttsd2si instruction or equivalent
 }
 
 } // namespace
