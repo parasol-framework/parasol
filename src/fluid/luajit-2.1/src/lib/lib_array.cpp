@@ -42,6 +42,9 @@ constexpr auto HASH_STRUCT  = pf::strhash("struct");
 constexpr auto HASH_POINTER = pf::strhash("pointer");
 constexpr auto HASH_TABLE   = pf::strhash("table");
 
+// Forward declaration for find_in_array (used by contains)
+static int32_t find_in_array(GCarray *Arr, lua_Number Value, int32_t Start, int32_t Stop, int32_t Step);
+
 //********************************************************************************************************************
 // Helper to parse element type string
 
@@ -322,13 +325,421 @@ LJLIB_CF(array_concat)
 }
 
 //********************************************************************************************************************
+// Usage: array.join(arr [, separator])
+//
+// Concatenates array elements into a string, inserting the separator between elements.  This is the complement to
+// string.split() which returns arrays.  Simpler than concat() which requires a format string, this also makes it
+// faster for string concatenation.
+//
+// Parameters:
+//   arr: the array to join
+//   separator: string to insert between elements (default: "")
+//
+// Returns: concatenated string
+//
+// Note: For non-string types, elements are converted to their string representation.
+
+LJLIB_CF(array_join)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+
+   if (arr->len < 1) {
+      lua_pushstring(L, "");
+      return 1;
+   }
+
+   auto separator = luaL_optstring(L, 2, "");
+
+   std::string result;
+   result.reserve(arr->len * 16);
+   char buffer[256];
+
+   for (MSize i = 0; i < arr->len; i++) {
+      if (i > 0) result += separator;
+
+      switch(arr->elemtype) {
+         case AET::_STRING_GC: {
+            GCRef ref = arr->get<GCRef>()[i];
+            if (gcref(ref)) result += strdata(gco2str(gcref(ref)));
+            break;
+         }
+         case AET::_CSTRING: {
+            CSTRING str = arr->get<CSTRING>()[i];
+            if (str) result += str;
+            break;
+         }
+         case AET::_STRING_CPP:
+            result += arr->get<std::string>()[i];
+            break;
+         case AET::_FLOAT:
+            snprintf(buffer, sizeof(buffer), "%g", double(arr->get<float>()[i]));
+            result += buffer;
+            break;
+         case AET::_DOUBLE:
+            snprintf(buffer, sizeof(buffer), "%g", arr->get<double>()[i]);
+            result += buffer;
+            break;
+         case AET::_INT64:
+            snprintf(buffer, sizeof(buffer), "%lld", arr->get<long long>()[i]);
+            result += buffer;
+            break;
+         case AET::_INT32:
+            snprintf(buffer, sizeof(buffer), "%d", arr->get<int>()[i]);
+            result += buffer;
+            break;
+         case AET::_INT16:
+            snprintf(buffer, sizeof(buffer), "%d", int(arr->get<int16_t>()[i]));
+            result += buffer;
+            break;
+         case AET::_BYTE:
+            snprintf(buffer, sizeof(buffer), "%d", int(arr->get<uint8_t>()[i]));
+            result += buffer;
+            break;
+         case AET::_PTR:
+            snprintf(buffer, sizeof(buffer), "%p", arr->get<void *>()[i]);
+            result += buffer;
+            break;
+         case AET::_TABLE:
+            // Tables cannot be meaningfully converted to strings
+            result += "table";
+            break;
+         case AET::_STRUCT:
+            result += "struct";
+            break;
+         default:
+            result += "?";
+            break;
+      }
+   }
+
+   lua_pushstring(L, result.c_str());
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: array.contains(arr, value)
+//
+// Returns true if the value exists in the array, false otherwise.
+// This is a convenience wrapper around find() that returns a boolean.
+//
+// Parameters:
+//   arr: the array to search
+//   value: the value to find
+//
+// Returns: true if found, false otherwise
+
+LJLIB_CF(array_contains)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+
+   if (arr->len IS 0) {
+      lua_pushboolean(L, 0);
+      return 1;
+   }
+
+   // For string arrays, we need special handling
+   if (arr->elemtype IS AET::_STRING_GC) {
+      GCstr *search_str = lj_lib_checkstr(L, 2);
+      auto refs = arr->get<GCRef>();
+      for (MSize i = 0; i < arr->len; i++) {
+         GCRef ref = refs[i];
+         if (gcref(ref)) {
+            GCstr *elem = gco2str(gcref(ref));
+            if (elem->len IS search_str->len and
+                memcmp(strdata(elem), strdata(search_str), elem->len) IS 0) {
+               lua_pushboolean(L, 1);
+               return 1;
+            }
+         }
+      }
+      lua_pushboolean(L, 0);
+      return 1;
+   }
+
+   // For numeric types, use the existing find logic
+   lua_Number value = lj_lib_checknum(L, 2);
+   int32_t result = find_in_array(arr, value, 0, int32_t(arr->len - 1), 1);
+
+   lua_pushboolean(L, result >= 0 ? 1 : 0);
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: array.first(arr)
+//
+// Returns the first element of the array, or nil if empty. Provides bounds-safe access.
+//
+// Parameters:
+//   arr: the array
+//
+// Returns: first element value, or nil if array is empty
+
+LJLIB_CF(array_first)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+
+   if (arr->len IS 0) {
+      lua_pushnil(L);
+      return 1;
+   }
+
+   void *elem = lj_array_index(arr, 0);
+
+   switch (arr->elemtype) {
+      case AET::_BYTE:   lua_pushinteger(L, *(uint8_t *)elem); break;
+      case AET::_INT16:  lua_pushinteger(L, *(int16_t *)elem); break;
+      case AET::_INT32:  lua_pushinteger(L, *(int32_t *)elem); break;
+      case AET::_INT64:  lua_pushnumber(L, lua_Number(*(int64_t *)elem)); break;
+      case AET::_FLOAT:  lua_pushnumber(L, *(float *)elem); break;
+      case AET::_DOUBLE: lua_pushnumber(L, *(double *)elem); break;
+      case AET::_STRING_GC: {
+         GCRef ref = *(GCRef *)elem;
+         if (gcref(ref)) setstrV(L, L->top++, gco2str(gcref(ref)));
+         else lua_pushnil(L);
+         return 1;
+      }
+      case AET::_CSTRING: {
+         CSTRING str = *(CSTRING *)elem;
+         if (str) lua_pushstring(L, str);
+         else lua_pushnil(L);
+         break;
+      }
+      case AET::_TABLE: {
+         GCRef ref = *(GCRef *)elem;
+         if (gcref(ref)) settabV(L, L->top++, gco2tab(gcref(ref)));
+         else lua_pushnil(L);
+         return 1;
+      }
+      default: lua_pushnil(L); break;
+   }
+
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: array.last(arr)
+//
+// Returns the last element of the array, or nil if empty. Provides bounds-safe access.
+//
+// Parameters:
+//   arr: the array
+//
+// Returns: last element value, or nil if array is empty
+
+LJLIB_CF(array_last)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+
+   if (arr->len IS 0) {
+      lua_pushnil(L);
+      return 1;
+   }
+
+   void *elem = lj_array_index(arr, arr->len - 1);
+
+   switch (arr->elemtype) {
+      case AET::_BYTE:   lua_pushinteger(L, *(uint8_t *)elem); break;
+      case AET::_INT16:  lua_pushinteger(L, *(int16_t *)elem); break;
+      case AET::_INT32:  lua_pushinteger(L, *(int32_t *)elem); break;
+      case AET::_INT64:  lua_pushnumber(L, lua_Number(*(int64_t *)elem)); break;
+      case AET::_FLOAT:  lua_pushnumber(L, *(float *)elem); break;
+      case AET::_DOUBLE: lua_pushnumber(L, *(double *)elem); break;
+      case AET::_STRING_GC: {
+         GCRef ref = *(GCRef *)elem;
+         if (gcref(ref)) setstrV(L, L->top++, gco2str(gcref(ref)));
+         else lua_pushnil(L);
+         return 1;
+      }
+      case AET::_CSTRING: {
+         CSTRING str = *(CSTRING *)elem;
+         if (str) lua_pushstring(L, str);
+         else lua_pushnil(L);
+         break;
+      }
+      case AET::_TABLE: {
+         GCRef ref = *(GCRef *)elem;
+         if (gcref(ref)) settabV(L, L->top++, gco2tab(gcref(ref)));
+         else lua_pushnil(L);
+         return 1;
+      }
+      default: lua_pushnil(L); break;
+   }
+
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: array.clear(arr)
+//
+// Resets the array length to zero without deallocating storage. Capacity is preserved for reuse.
+//
+// Parameters:
+//   arr: the array to clear (must not be read-only)
+//
+// Note: For string arrays with GC references, this also nullifies the references to allow garbage collection.
 
 LJLIB_CF(array_clear)
 {
    GCarray *arr = lj_lib_checkarray(L, 1);
    if (arr->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
-   arr->clear();
+
+   // For GC-tracked types, clear references to allow garbage collection
+   if (arr->elemtype IS AET::_STRING_GC or arr->elemtype IS AET::_TABLE) {
+      auto refs = arr->get<GCRef>();
+      for (MSize i = 0; i < arr->len; i++) {
+         setgcrefnull(refs[i]);
+      }
+   }
+
+   arr->len = 0;
    return 0;
+}
+
+//********************************************************************************************************************
+// Usage: array.push(arr, value, ...)
+//
+// Appends one or more elements to the end of the array, growing capacity as needed.
+//
+// Parameters:
+//   arr: the array to append to (must not be read-only or external)
+//   value, ...: one or more values to append
+//
+// Returns: new length of the array
+//
+// Note: External arrays and cached string arrays cannot grow and will raise an error.
+
+LJLIB_CF(array_push)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+   if (arr->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
+
+   int num_values = lua_gettop(L) - 1;
+   if (num_values < 1) {
+      setintV(L->top++, int32_t(arr->len));
+      return 1;
+   }
+
+   // Ensure we have capacity for the new elements
+   MSize new_len = arr->len + MSize(num_values);
+   if (new_len > arr->capacity) {
+      if (not lj_array_grow(L, arr, new_len)) {
+         lj_err_caller(L, ErrMsg::ARREXT);
+      }
+   }
+
+   // Push each value
+   for (int i = 0; i < num_values; i++) {
+      int arg_idx = i + 2;
+      MSize idx = arr->len + MSize(i);
+
+      switch (arr->elemtype) {
+         case AET::_STRING_GC: {
+            GCstr *s = lj_lib_checkstr(L, arg_idx);
+            setgcref(arr->get<GCRef>()[idx], obj2gco(s));
+            lj_gc_objbarrier(L, arr, s);
+            break;
+         }
+         case AET::_TABLE: {
+            if (not lua_istable(L, arg_idx)) {
+               lj_err_argv(L, arg_idx, ErrMsg::BADTYPE, "table", luaL_typename(L, arg_idx));
+            }
+            TValue *tv = L->base + arg_idx - 1;
+            GCtab *tab = tabV(tv);
+            setgcref(arr->get<GCRef>()[idx], obj2gco(tab));
+            lj_gc_objbarrier(L, arr, tab);
+            break;
+         }
+         case AET::_FLOAT:  arr->get<float>()[idx] = float(luaL_checknumber(L, arg_idx)); break;
+         case AET::_DOUBLE: arr->get<double>()[idx] = luaL_checknumber(L, arg_idx); break;
+         case AET::_INT64:  arr->get<int64_t>()[idx] = int64_t(luaL_checknumber(L, arg_idx)); break;
+         case AET::_INT32:  arr->get<int32_t>()[idx] = int32_t(luaL_checkinteger(L, arg_idx)); break;
+         case AET::_INT16:  arr->get<int16_t>()[idx] = int16_t(luaL_checkinteger(L, arg_idx)); break;
+         case AET::_BYTE:   arr->get<uint8_t>()[idx] = uint8_t(luaL_checkinteger(L, arg_idx)); break;
+         default:
+            lj_err_argv(L, 1, ErrMsg::BADTYPE, "pushable type", elemtype_name(arr->elemtype));
+            return 0;
+      }
+   }
+
+   arr->len = new_len;
+   setintV(L->top++, int32_t(arr->len));
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: array.pop(arr [, n])
+//
+// Removes and returns the last element(s) from the array.
+//
+// Parameters:
+//   arr: the array to pop from (must not be read-only)
+//   n: number of elements to pop (default: 1)
+//
+// Returns: the popped value(s), or nil if the array is empty.
+//          Multiple values are returned in reverse order (last element first).
+//
+// Note: Stops early if the array becomes exhausted (not an error).
+
+LJLIB_CF(array_pop)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+   if (arr->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
+
+   if (arr->len IS 0) {
+      lua_pushnil(L);
+      return 1;
+   }
+
+   int n = lj_lib_optint(L, 2, 1);
+   if (n < 1) n = 1;
+
+   int returned = 0;
+   for (int i = 0; i < n and arr->len > 0; i++) {
+      MSize idx = arr->len - 1;
+      void *elem = lj_array_index(arr, idx);
+
+      // Push the value to the stack
+      switch (arr->elemtype) {
+         case AET::_BYTE:   lua_pushinteger(L, *(uint8_t *)elem); break;
+         case AET::_INT16:  lua_pushinteger(L, *(int16_t *)elem); break;
+         case AET::_INT32:  lua_pushinteger(L, *(int32_t *)elem); break;
+         case AET::_INT64:  lua_pushnumber(L, lua_Number(*(int64_t *)elem)); break;
+         case AET::_FLOAT:  lua_pushnumber(L, *(float *)elem); break;
+         case AET::_DOUBLE: lua_pushnumber(L, *(double *)elem); break;
+         case AET::_STRING_GC: {
+            GCRef ref = *(GCRef *)elem;
+            if (gcref(ref)) {
+               setstrV(L, L->top++, gco2str(gcref(ref)));
+               setgcrefnull(*(GCRef *)elem);  // Clear reference
+            }
+            else lua_pushnil(L);
+            break;
+         }
+         case AET::_CSTRING: {
+            CSTRING str = *(CSTRING *)elem;
+            if (str) lua_pushstring(L, str);
+            else lua_pushnil(L);
+            break;
+         }
+         case AET::_TABLE: {
+            GCRef ref = *(GCRef *)elem;
+            if (gcref(ref)) {
+               settabV(L, L->top++, gco2tab(gcref(ref)));
+               setgcrefnull(*(GCRef *)elem);  // Clear reference
+            }
+            else lua_pushnil(L);
+            break;
+         }
+         default:
+            lua_pushnil(L);
+            break;
+      }
+
+      arr->len--;
+      returned++;
+   }
+
+   return returned;
 }
 
 //********************************************************************************************************************
@@ -1158,7 +1569,7 @@ static int array_iterator_next(lua_State *L)
 // __call metamethod for array iteration.  Enables: for i, v in array_variable do
 //
 // This function serves dual purposes:
-// 
+//
 // 1. When called directly (arr()), returns (iterator, nil, nil) for manual iteration setup
 // 2. When called by BC_ITERC with (state, control_var), acts as the iterator itself
 //
@@ -1199,6 +1610,485 @@ static int array_call(lua_State *L)
    lua_pushnil(L);       // State (not used)
    lua_pushnil(L);       // Initial control variable
    return 3;
+}
+
+//********************************************************************************************************************
+// Usage: array.each(arr, callback)
+//
+// Iterates over array elements, calling the callback for each element.
+// The callback receives (value, index) as arguments.
+//
+// Parameters:
+//   arr: the array to iterate
+//   callback: function(value, index) to call for each element
+//
+// Returns: the array (for chaining)
+
+LJLIB_CF(array_each)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+   luaL_checktype(L, 2, LUA_TFUNCTION);
+
+   for (MSize i = 0; i < arr->len; i++) {
+      lua_pushvalue(L, 2);            // Push the callback function
+      array_push_element(L, arr, i);  // Push value
+      lua_pushinteger(L, i);          // Push index
+      lua_call(L, 2, 0);              // Call callback(value, index)
+   }
+
+   // Return the array for chaining
+   lua_pushvalue(L, 1);
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: array.map(arr, transform)
+//
+// Returns a new array with each element transformed by the function.
+// The transform function receives (value, index) and returns the new value.
+//
+// Parameters:
+//   arr: the source array
+//   transform: function(value, index) returning transformed value
+//
+// Returns: new array of the same type with transformed elements
+
+LJLIB_CF(array_map)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+   luaL_checktype(L, 2, LUA_TFUNCTION);
+
+   // Create new array of same type and size
+   GCarray *result = lj_array_new(L, arr->len, arr->elemtype);
+   setarrayV(L, L->top++, result);
+   int result_idx = lua_gettop(L);
+
+   for (MSize i = 0; i < arr->len; i++) {
+      lua_pushvalue(L, 2);            // Push the transform function
+      array_push_element(L, arr, i);  // Push value
+      lua_pushinteger(L, i);          // Push index
+      lua_call(L, 2, 1);              // Call transform(value, index) -> result
+
+      // Store the result in the new array
+      switch (result->elemtype) {
+         case AET::_STRING_GC: {
+            if (lua_isstring(L, -1)) {
+               GCstr *s = lj_str_new(L, lua_tostring(L, -1), lua_strlen(L, -1));
+               setgcref(result->get<GCRef>()[i], obj2gco(s));
+               lj_gc_objbarrier(L, result, s);
+            }
+            else {
+               setgcrefnull(result->get<GCRef>()[i]);
+            }
+            break;
+         }
+         case AET::_TABLE: {
+            if (lua_istable(L, -1)) {
+               TValue *tv = L->top - 1;
+               GCtab *tab = tabV(tv);
+               setgcref(result->get<GCRef>()[i], obj2gco(tab));
+               lj_gc_objbarrier(L, result, tab);
+            }
+            else {
+               setgcrefnull(result->get<GCRef>()[i]);
+            }
+            break;
+         }
+         case AET::_FLOAT:  result->get<float>()[i] = float(lua_tonumber(L, -1)); break;
+         case AET::_DOUBLE: result->get<double>()[i] = lua_tonumber(L, -1); break;
+         case AET::_INT64:  result->get<int64_t>()[i] = int64_t(lua_tonumber(L, -1)); break;
+         case AET::_INT32:  result->get<int32_t>()[i] = int32_t(lua_tointeger(L, -1)); break;
+         case AET::_INT16:  result->get<int16_t>()[i] = int16_t(lua_tointeger(L, -1)); break;
+         case AET::_BYTE:   result->get<uint8_t>()[i] = uint8_t(lua_tointeger(L, -1)); break;
+         default:
+            break;
+      }
+
+      lua_pop(L, 1);  // Pop the result value
+   }
+
+   // Push the result array (already on stack at result_idx)
+   lua_pushvalue(L, result_idx);
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: array.filter(arr, predicate)
+//
+// Returns a new array containing only elements that satisfy the predicate.
+// The predicate function receives (value, index) and returns true/false.
+//
+// Parameters:
+//   arr: the source array
+//   predicate: function(value, index) returning boolean
+//
+// Returns: new array of the same type with filtered elements
+
+LJLIB_CF(array_filter)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+   luaL_checktype(L, 2, LUA_TFUNCTION);
+
+   // First pass: count matching elements
+   MSize count = 0;
+   for (MSize i = 0; i < arr->len; i++) {
+      lua_pushvalue(L, 2);            // Push the predicate function
+      array_push_element(L, arr, i);  // Push value
+      lua_pushinteger(L, i);          // Push index
+      lua_call(L, 2, 1);              // Call predicate(value, index) -> boolean
+
+      if (lua_toboolean(L, -1)) count++;
+      lua_pop(L, 1);
+   }
+
+   // Create new array with exact size needed
+   GCarray *result = lj_array_new(L, count, arr->elemtype);
+   setarrayV(L, L->top++, result);
+
+   if (count IS 0) return 1;
+
+   // Second pass: copy matching elements
+   MSize out_idx = 0;
+   for (MSize i = 0; i < arr->len; i++) {
+      lua_pushvalue(L, 2);            // Push the predicate function
+      array_push_element(L, arr, i);  // Push value
+      lua_pushinteger(L, i);          // Push index
+      lua_call(L, 2, 1);              // Call predicate(value, index) -> boolean
+
+      if (lua_toboolean(L, -1)) {
+         // Copy element to result array
+         void *src = lj_array_index(arr, i);
+         void *dst = lj_array_index(result, out_idx);
+
+         switch (result->elemtype) {
+            case AET::_STRING_GC:
+            case AET::_TABLE: {
+               GCRef ref = *(GCRef *)src;
+               *(GCRef *)dst = ref;
+               if (gcref(ref)) lj_gc_objbarrier(L, result, gcref(ref));
+               break;
+            }
+            case AET::_FLOAT:  *(float *)dst = *(float *)src; break;
+            case AET::_DOUBLE: *(double *)dst = *(double *)src; break;
+            case AET::_INT64:  *(int64_t *)dst = *(int64_t *)src; break;
+            case AET::_INT32:  *(int32_t *)dst = *(int32_t *)src; break;
+            case AET::_INT16:  *(int16_t *)dst = *(int16_t *)src; break;
+            case AET::_BYTE:   *(uint8_t *)dst = *(uint8_t *)src; break;
+            default:
+               memcpy(dst, src, arr->elemsize);
+               break;
+         }
+         out_idx++;
+      }
+
+      lua_pop(L, 1);
+   }
+
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: array.reduce(arr, initial, reducer)
+//
+// Folds all elements into a single accumulated value.
+// The reducer function receives (accumulator, value, index) and returns the new accumulator.
+//
+// Parameters:
+//   arr: the source array
+//   initial: the initial accumulator value
+//   reducer: function(accumulator, value, index) returning new accumulator
+//
+// Returns: the final accumulated value
+
+LJLIB_CF(array_reduce)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+   // Arg 2: initial value (any type)
+   luaL_checktype(L, 3, LUA_TFUNCTION);
+
+   // Start with the initial value on the stack
+   lua_pushvalue(L, 2);  // Push initial value as current accumulator
+
+   for (MSize i = 0; i < arr->len; i++) {
+      lua_pushvalue(L, 3);            // Push the reducer function
+      lua_pushvalue(L, -2);           // Push current accumulator
+      lua_remove(L, -3);              // Remove old accumulator from stack
+      array_push_element(L, arr, i);  // Push value
+      lua_pushinteger(L, i);          // Push index
+      lua_call(L, 3, 1);              // Call reducer(acc, value, index) -> new_acc
+      // New accumulator is now on top of stack
+   }
+
+   // Return the final accumulated value (already on stack)
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: array.any(arr, predicate)
+//
+// Returns true if any element satisfies the predicate. Short-circuits on first match.
+// The predicate function receives (value, index) and returns true/false.
+//
+// Parameters:
+//   arr: the source array
+//   predicate: function(value, index) returning boolean
+//
+// Returns: true if any element satisfies predicate, false otherwise
+
+LJLIB_CF(array_any)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+   luaL_checktype(L, 2, LUA_TFUNCTION);
+
+   for (MSize i = 0; i < arr->len; i++) {
+      lua_pushvalue(L, 2);            // Push the predicate function
+      array_push_element(L, arr, i);  // Push value
+      lua_pushinteger(L, i);          // Push index
+      lua_call(L, 2, 1);              // Call predicate(value, index) -> boolean
+
+      if (lua_toboolean(L, -1)) {
+         lua_pushboolean(L, 1);
+         return 1;
+      }
+      lua_pop(L, 1);
+   }
+
+   lua_pushboolean(L, 0);
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: array.all(arr, predicate)
+//
+// Returns true if all elements satisfy the predicate. Short-circuits on first failure.
+// The predicate function receives (value, index) and returns true/false.
+//
+// Parameters:
+//   arr: the source array
+//   predicate: function(value, index) returning boolean
+//
+// Returns: true if all elements satisfy predicate, false otherwise
+
+LJLIB_CF(array_all)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+   luaL_checktype(L, 2, LUA_TFUNCTION);
+
+   for (MSize i = 0; i < arr->len; i++) {
+      lua_pushvalue(L, 2);            // Push the predicate function
+      array_push_element(L, arr, i);  // Push value
+      lua_pushinteger(L, i);          // Push index
+      lua_call(L, 2, 1);              // Call predicate(value, index) -> boolean
+
+      if (not lua_toboolean(L, -1)) {
+         lua_pushboolean(L, 0);
+         return 1;
+      }
+      lua_pop(L, 1);
+   }
+
+   lua_pushboolean(L, 1);
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: array.insert(arr, index, value, ...)
+//
+// Inserts one or more values at the specified index, shifting subsequent elements.
+//
+// Parameters:
+//   arr: the array to modify (must not be read-only)
+//   index: the position to insert at (0-based)
+//   value, ...: one or more values to insert
+//
+// Returns: new length of the array
+//
+// Note: If index equals the array length, values are appended (equivalent to push).
+//       If index is beyond array length, an error is raised.
+
+LJLIB_CF(array_insert)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+   if (arr->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
+
+   int32_t index = lj_lib_checkint(L, 2);
+   if (index < 0 or MSize(index) > arr->len) {
+      lj_err_callerv(L, ErrMsg::ARROB, index, int(arr->len));
+   }
+
+   int num_values = lua_gettop(L) - 2;
+   if (num_values < 1) {
+      setintV(L->top++, int32_t(arr->len));
+      return 1;
+   }
+
+   // Ensure we have capacity for the new elements
+   MSize new_len = arr->len + MSize(num_values);
+   if (new_len > arr->capacity) {
+      if (not lj_array_grow(L, arr, new_len)) {
+         lj_err_caller(L, ErrMsg::ARREXT);
+      }
+   }
+
+   // Shift existing elements to make room
+   MSize shift_count = arr->len - MSize(index);
+   if (shift_count > 0) {
+      void *src = lj_array_index(arr, index);
+      void *dst = lj_array_index(arr, index + num_values);
+      memmove(dst, src, shift_count * arr->elemsize);
+   }
+
+   // Insert the new values
+   for (int i = 0; i < num_values; i++) {
+      int arg_idx = i + 3;
+      MSize idx = MSize(index) + MSize(i);
+
+      switch (arr->elemtype) {
+         case AET::_STRING_GC: {
+            GCstr *s = lj_lib_checkstr(L, arg_idx);
+            setgcref(arr->get<GCRef>()[idx], obj2gco(s));
+            lj_gc_objbarrier(L, arr, s);
+            break;
+         }
+         case AET::_TABLE: {
+            if (not lua_istable(L, arg_idx)) {
+               lj_err_argv(L, arg_idx, ErrMsg::BADTYPE, "table", luaL_typename(L, arg_idx));
+            }
+            TValue *tv = L->base + arg_idx - 1;
+            GCtab *tab = tabV(tv);
+            setgcref(arr->get<GCRef>()[idx], obj2gco(tab));
+            lj_gc_objbarrier(L, arr, tab);
+            break;
+         }
+         case AET::_FLOAT:  arr->get<float>()[idx] = float(luaL_checknumber(L, arg_idx)); break;
+         case AET::_DOUBLE: arr->get<double>()[idx] = luaL_checknumber(L, arg_idx); break;
+         case AET::_INT64:  arr->get<int64_t>()[idx] = int64_t(luaL_checknumber(L, arg_idx)); break;
+         case AET::_INT32:  arr->get<int32_t>()[idx] = int32_t(luaL_checkinteger(L, arg_idx)); break;
+         case AET::_INT16:  arr->get<int16_t>()[idx] = int16_t(luaL_checkinteger(L, arg_idx)); break;
+         case AET::_BYTE:   arr->get<uint8_t>()[idx] = uint8_t(luaL_checkinteger(L, arg_idx)); break;
+         default:
+            lj_err_argv(L, 1, ErrMsg::BADTYPE, "insertable type", elemtype_name(arr->elemtype));
+            return 0;
+      }
+   }
+
+   arr->len = new_len;
+   setintV(L->top++, int32_t(arr->len));
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: array.remove(arr, index [, count])
+//
+// Removes one or more elements at the specified index, shifting subsequent elements.
+//
+// Parameters:
+//   arr: the array to modify (must not be read-only)
+//   index: the position to remove from (0-based)
+//   count: number of elements to remove (default: 1)
+//
+// Returns: the new length of the array
+//
+// Note: Count is automatically limited to available elements from index to end.
+//       A count of 0 does nothing.
+
+LJLIB_CF(array_remove)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+   if (arr->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
+
+   int32_t index = lj_lib_checkint(L, 2);
+   if (index < 0 or MSize(index) >= arr->len) {
+      lj_err_callerv(L, ErrMsg::ARROB, index, int(arr->len));
+   }
+
+   int32_t count = lj_lib_optint(L, 3, 1);
+   if (count < 0) {
+      luaL_error(L, "count must be non-negative");
+      return 0;
+   }
+   if (count IS 0) {
+      setintV(L->top++, int32_t(arr->len));
+      return 1;
+   }
+
+   // Limit count to available elements
+   MSize available = arr->len - MSize(index);
+   if (MSize(count) > available) count = int32_t(available);
+
+   // Shift remaining elements down
+   MSize shift_start = MSize(index) + MSize(count);
+   MSize shift_count = arr->len - shift_start;
+   if (shift_count > 0) {
+      void *src = lj_array_index(arr, shift_start);
+      void *dst = lj_array_index(arr, index);
+      memmove(dst, src, shift_count * arr->elemsize);
+   }
+
+   // Clear trailing elements for GC-tracked types
+   if (arr->elemtype IS AET::_STRING_GC or arr->elemtype IS AET::_TABLE) {
+      auto refs = arr->get<GCRef>();
+      for (MSize i = arr->len - MSize(count); i < arr->len; i++) {
+         setgcrefnull(refs[i]);
+      }
+   }
+
+   arr->len -= MSize(count);
+   setintV(L->top++, int32_t(arr->len));
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: array.clone(arr)
+//
+// Creates a deep copy of the array.
+//
+// Parameters:
+//   arr: the source array
+//
+// Returns: new array with copied elements
+//
+// Note: For GC-tracked types (strings, tables), references are copied (not deep-cloned).
+//       The new array has capacity equal to the source array's length.
+
+LJLIB_CF(array_clone)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+
+   // Create new array with same type and length
+   GCarray *result = lj_array_new(L, arr->len, arr->elemtype);
+   setarrayV(L, L->top++, result);
+
+   if (arr->len IS 0) return 1;
+
+   // Copy elements
+   switch (arr->elemtype) {
+      case AET::_STRING_GC:
+      case AET::_TABLE: {
+         // For GC-tracked types, copy references and set up barriers
+         auto src_refs = arr->get<GCRef>();
+         auto dst_refs = result->get<GCRef>();
+         for (MSize i = 0; i < arr->len; i++) {
+            GCRef ref = src_refs[i];
+            dst_refs[i] = ref;
+            if (gcref(ref)) lj_gc_objbarrier(L, result, gcref(ref));
+         }
+         break;
+      }
+      case AET::_STRUCT: {
+         luaL_error(L, "array.clone() does not support struct types.");
+         break;
+      }
+      default: {
+         // For all other types, direct memory copy
+         void *src = arr->arraydata();
+         void *dst = result->arraydata();
+         memcpy(dst, src, size_t(arr->len) * arr->elemsize);
+         break;
+      }
+   }
+
+   return 1;
 }
 
 //********************************************************************************************************************

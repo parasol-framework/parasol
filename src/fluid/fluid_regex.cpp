@@ -21,6 +21,9 @@ Examples:
 
 #include "lauxlib.h"
 #include "lj_obj.h"
+#include "lj_array.h"
+#include "lj_str.h"
+#include "lj_gc.h"
 #include "hashes.h"
 #include "defs.h"
 
@@ -59,13 +62,13 @@ static ERR match_many(int Index, std::vector<std::string_view> &Captures, size_t
       const std::string_view &first_group = Captures[1];
 
       if ((full_match.size() == first_group.size()) and (full_match.size() > 0) and (MatchStart <= Meta.subject.size())) {
-         unsigned char preceding_char = (unsigned char)Meta.subject[MatchStart - 1];
-         unsigned char match_char = (unsigned char)full_match.front();
+         auto preceding_char = (uint8_t)Meta.subject[MatchStart - 1];
+         auto match_char = (uint8_t)full_match.front();
 
          if (std::isalpha(preceding_char) and std::isalpha(match_char)) {
             bool preceding_is_word_start = false;
             if (MatchStart >= 2) {
-               unsigned char pre_preceding = (unsigned char)Meta.subject[MatchStart - 2];
+               auto pre_preceding = (uint8_t)Meta.subject[MatchStart - 2];
                preceding_is_word_start = (not std::isalnum(pre_preceding)) and (pre_preceding != '_');
             }
 
@@ -101,24 +104,29 @@ static ERR match_many(int Index, std::vector<std::string_view> &Captures, size_t
 
 //*********************************************************************************************************************
 // Differs to match_many() in that it only ever returns one match without the indexed table.
+// Returns a first-class array of captured strings.
 
 static ERR match_one(int Index, std::vector<std::string_view> &Captures, size_t MatchStart, size_t MatchEnd, regex_callback &Meta)
 {
-   auto lua_state = Meta.lua_state;
+   auto L = Meta.lua_state;
 
-   // Create capture table for this result
-   lua_createtable(lua_state, std::ssize(Captures), 0);
+   // Create array with exact size for captures
+   auto count = uint32_t(Captures.size());
+   GCarray *arr = lj_array_new(L, count, AET::_STRING_GC);
+   GCRef *refs = arr->get<GCRef>();
 
    // Captures are normalised: unmatched optional groups appear as empty entries to preserve indices.
-   for (int j=0; j < std::ssize(Captures); ++j) {
-      lua_pushinteger(lua_state, (lua_Integer)j);
-      if (Captures[j].data()) {
-         lua_pushlstring(lua_state, Captures[j].data(), Captures[j].length());
-      }
-      else lua_pushlstring(lua_state, "", 0);
-      lua_settable(lua_state, -3);
+
+   for (uint32_t j = 0; j < count; ++j) {
+      GCstr *s;
+      if (Captures[j].data()) s = lj_str_new(L, Captures[j].data(), Captures[j].length());
+      else s = lj_str_new(L, "", 0);
+
+      setgcref(refs[j], obj2gco(s));
+      lj_gc_objbarrier(L, arr, s);
    }
 
+   setarrayV(L, L->top++, arr);
    return ERR::Terminate;
 }
 
@@ -258,7 +266,8 @@ static int regex_replace(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Method: regex.split(text) -> table
+// Method: regex.split(text) -> array
+// Returns a first-class array of split string parts.
 
 static int regex_split(lua_State *Lua)
 {
@@ -271,15 +280,18 @@ static int regex_split(lua_State *Lua)
    pf::vector<std::string> parts;
    rx::Split(r->regex_obj, std::string_view(text, text_len), &parts, flags);
 
-   lua_createtable(Lua, std::ssize(parts), 0); // Result table
-   int part_index = 0;
-   for (auto &part : parts) {
-      lua_pushinteger(Lua, part_index++);
-      if (part.empty()) lua_pushstring(Lua, "");
-      else lua_pushlstring(Lua, part.c_str(), part.length());
-      lua_settable(Lua, -3);
+   // Create array with exact size
+   auto count = uint32_t(parts.size());
+   GCarray *arr = lj_array_new(Lua, count, AET::_STRING_GC);
+   GCRef *refs = arr->get<GCRef>();
+
+   for (uint32_t i = 0; i < count; ++i) {
+      GCstr *s = lj_str_new(Lua, parts[i].c_str(), parts[i].length());
+      setgcref(refs[i], obj2gco(s));
+      lj_gc_objbarrier(Lua, arr, s);
    }
 
+   setarrayV(Lua, Lua->top++, arr);
    return 1;
 }
 
