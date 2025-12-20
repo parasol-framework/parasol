@@ -1229,7 +1229,7 @@ inline void copyTV(lua_State* L, TValue* o1, const TValue* o2)
 
 [[nodiscard]] constexpr inline int32_t lj_num2int(lua_Number n) noexcept
 {
-   return (int32_t)(n);
+   return int32_t(n); // Expected to compile to a cvttsd2si instruction or equivalent
 }
 
 // This must match the JIT backend behavior. In particular for archs that don't have a common hardware instruction for

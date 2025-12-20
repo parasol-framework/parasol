@@ -191,9 +191,9 @@ static int values_iterator_next(lua_State* L)
 
 static int values_array_iterator_next(lua_State* L)
 {
-   GCfunc* fn = curr_func(L);
-   GCarray* arr = arrayV(&fn->c.upvalue[0]);
-   TValue* idx_tv = &fn->c.upvalue[1];
+   GCfunc *fn = curr_func(L);
+   GCarray *arr = arrayV(&fn->c.upvalue[0]);
+   TValue *idx_tv = &fn->c.upvalue[1];
 
    int32_t idx = numberVint(idx_tv);
    if (idx < 0 or MSize(idx) >= arr->len) return 0;  // End of iteration
@@ -201,10 +201,8 @@ static int values_array_iterator_next(lua_State* L)
    // Get the element value
    lj_arr_getidx(L, arr, idx, L->top);
    L->top++;
-
-   // Advance index for next iteration
-   setintV(idx_tv, idx + 1);
-
+     
+   setintV(idx_tv, idx + 1);  // Advance index for next iteration
    return 1;
 }
 
@@ -215,8 +213,7 @@ LJLIB_CF(values)
    if (tvistab(o)) {
       GCtab* t = tabV(o);
 
-      // Push the table as upvalue 1
-      settabV(L, L->top, t);
+      settabV(L, L->top, t); // Push the table as upvalue 1
       L->top++;
 
       // Create state table to hold the mutable key (upvalue 2)
@@ -230,22 +227,16 @@ LJLIB_CF(values)
       lua_pushcclosure(L, values_iterator_next, 2);
    }
    else if (tvisarray(o)) {
-      GCarray* arr = arrayV(o);
-
-      // Push the array as upvalue 1
-      setarrayV(L, L->top, arr);
+      GCarray *arr = arrayV(o);
+      setarrayV(L, L->top, arr); // Push the array as upvalue 1
       L->top++;
-
-      // Push the starting index as upvalue 2
-      setintV(L->top, 0);
+      setintV(L->top, 0); // Push the starting index as upvalue 2
       L->top++;
 
       // Create closure with 2 upvalues
       lua_pushcclosure(L, values_array_iterator_next, 2);
    }
-   else {
-      lj_err_argt(L, 1, LUA_TTABLE);  // Raise error: expected table or array
-   }
+   else lj_err_argt(L, 1, LUA_TTABLE);  // Expected table or array
 
    lua_pushnil(L);  // State (not used)
    lua_pushnil(L);  // Initial control variable
