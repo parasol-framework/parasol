@@ -490,7 +490,7 @@ global function extractFields(Def, Origin)
 
    Def ?? return fields
 
-   for line, content in ipairs(Def:split('\n')) do
+   for line, content in Def:split('\n') do
       -- Extract comment, if specified
       comment = content:match('^.+#%s-(.+)$')
       if comment?? then
@@ -578,7 +578,7 @@ global function idlFunction(Name, Category, Comment, Status, Description, Def)
 
    if Def.input?? then
       func.input = { }
-      for line, content in ipairs(Def.input:split('\n')) do
+      for line, content in Def.input:split('\n') do
          comment = content:match('^.-:%s-(.+)$')
          if comment?? then
             content = content:match('^(.-):%s-.+$')

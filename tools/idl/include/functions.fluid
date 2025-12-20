@@ -203,7 +203,7 @@ global function flags(Prefix, Options, ...)
          key, comment = flags[a]:match('^(.-):%s+(.+)$')
          if not key then key = flags[a] end
 
-         for _, flag_name in ipairs(key:split('|')) do
+         for flag_name in values(key:split('|')) do
             val = 1 << f
             outputFlagDef(Options, Prefix, flag_name, val)
             lookup[flag_name] = { name=flag_name, value=val, comment=comment }
@@ -227,7 +227,7 @@ global function flags(Prefix, Options, ...)
             if type(key) is 'number' then
                val = key
             else -- Process named reference(s) to other flags
-               for _, v in ipairs(key:split('|')) do
+               for v in values(key:split('|')) do
                   assert(lookup[v], "Failed to lookup flag reference '" .. v .. "' for " .. Prefix .. "_" .. flag_name)
                   val = val | lookup[v].value
                end
@@ -333,8 +333,8 @@ global function const(Prefix, Options, ...)
    for k,va in ipairs({...}) do
       if type(va) is 'string' then
          key, comment = va:match('^(.-):%s+(.+)$')
-         if not key then key = va end
-         for _, v in ipairs(key:split('|')) do
+         key ?= va
+         for v in values(key:split('|')) do
             table.insert(out, '#define ' .. Prefix .. '_' .. v)
          end
       elseif type(va) is 'table' then
@@ -419,7 +419,7 @@ global function enum(Prefix, Options, ...)
          key, comment = va:match('^(.-):%s+(.+)$')
          if not key then key = va end
          synonym = false
-         for _, name in ipairs(key:split('|')) do
+         for name in values(key:split('|')) do
             if Options.type then
                table.insert(out, '   ' .. name .. ' = ' .. inc .. ',')
             elseif Options.bits is 64 then
