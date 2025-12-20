@@ -1892,6 +1892,202 @@ LJLIB_CF(array_all)
 }
 
 //********************************************************************************************************************
+// Usage: array.insert(arr, index, value, ...)
+//
+// Inserts one or more values at the specified index, shifting subsequent elements.
+//
+// Parameters:
+//   arr: the array to modify (must not be read-only)
+//   index: the position to insert at (0-based)
+//   value, ...: one or more values to insert
+//
+// Returns: new length of the array
+//
+// Note: If index equals the array length, values are appended (equivalent to push).
+//       If index is beyond array length, an error is raised.
+
+LJLIB_CF(array_insert)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+   if (arr->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
+
+   int32_t index = lj_lib_checkint(L, 2);
+   if (index < 0 or MSize(index) > arr->len) {
+      lj_err_callerv(L, ErrMsg::ARROB, index, int(arr->len));
+   }
+
+   int num_values = lua_gettop(L) - 2;
+   if (num_values < 1) {
+      setintV(L->top++, int32_t(arr->len));
+      return 1;
+   }
+
+   // Ensure we have capacity for the new elements
+   MSize new_len = arr->len + MSize(num_values);
+   if (new_len > arr->capacity) {
+      if (not lj_array_grow(L, arr, new_len)) {
+         lj_err_caller(L, ErrMsg::ARREXT);
+      }
+   }
+
+   // Shift existing elements to make room
+   MSize shift_count = arr->len - MSize(index);
+   if (shift_count > 0) {
+      void *src = lj_array_index(arr, index);
+      void *dst = lj_array_index(arr, index + num_values);
+      memmove(dst, src, shift_count * arr->elemsize);
+   }
+
+   // Insert the new values
+   for (int i = 0; i < num_values; i++) {
+      int arg_idx = i + 3;
+      MSize idx = MSize(index) + MSize(i);
+
+      switch (arr->elemtype) {
+         case AET::_STRING_GC: {
+            GCstr *s = lj_lib_checkstr(L, arg_idx);
+            setgcref(arr->get<GCRef>()[idx], obj2gco(s));
+            lj_gc_objbarrier(L, arr, s);
+            break;
+         }
+         case AET::_TABLE: {
+            if (not lua_istable(L, arg_idx)) {
+               lj_err_argv(L, arg_idx, ErrMsg::BADTYPE, "table", luaL_typename(L, arg_idx));
+            }
+            TValue *tv = L->base + arg_idx - 1;
+            GCtab *tab = tabV(tv);
+            setgcref(arr->get<GCRef>()[idx], obj2gco(tab));
+            lj_gc_objbarrier(L, arr, tab);
+            break;
+         }
+         case AET::_FLOAT:  arr->get<float>()[idx] = float(luaL_checknumber(L, arg_idx)); break;
+         case AET::_DOUBLE: arr->get<double>()[idx] = luaL_checknumber(L, arg_idx); break;
+         case AET::_INT64:  arr->get<int64_t>()[idx] = int64_t(luaL_checknumber(L, arg_idx)); break;
+         case AET::_INT32:  arr->get<int32_t>()[idx] = int32_t(luaL_checkinteger(L, arg_idx)); break;
+         case AET::_INT16:  arr->get<int16_t>()[idx] = int16_t(luaL_checkinteger(L, arg_idx)); break;
+         case AET::_BYTE:   arr->get<uint8_t>()[idx] = uint8_t(luaL_checkinteger(L, arg_idx)); break;
+         default:
+            lj_err_argv(L, 1, ErrMsg::BADTYPE, "insertable type", elemtype_name(arr->elemtype));
+            return 0;
+      }
+   }
+
+   arr->len = new_len;
+   setintV(L->top++, int32_t(arr->len));
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: array.remove(arr, index [, count])
+//
+// Removes one or more elements at the specified index, shifting subsequent elements.
+//
+// Parameters:
+//   arr: the array to modify (must not be read-only)
+//   index: the position to remove from (0-based)
+//   count: number of elements to remove (default: 1)
+//
+// Returns: the new length of the array
+//
+// Note: Count is automatically limited to available elements from index to end.
+//       A count of 0 does nothing.
+
+LJLIB_CF(array_remove)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+   if (arr->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
+
+   int32_t index = lj_lib_checkint(L, 2);
+   if (index < 0 or MSize(index) >= arr->len) {
+      lj_err_callerv(L, ErrMsg::ARROB, index, int(arr->len));
+   }
+
+   int32_t count = lj_lib_optint(L, 3, 1);
+   if (count < 0) {
+      luaL_error(L, "count must be non-negative");
+      return 0;
+   }
+   if (count IS 0) {
+      setintV(L->top++, int32_t(arr->len));
+      return 1;
+   }
+
+   // Limit count to available elements
+   MSize available = arr->len - MSize(index);
+   if (MSize(count) > available) count = int32_t(available);
+
+   // Shift remaining elements down
+   MSize shift_start = MSize(index) + MSize(count);
+   MSize shift_count = arr->len - shift_start;
+   if (shift_count > 0) {
+      void *src = lj_array_index(arr, shift_start);
+      void *dst = lj_array_index(arr, index);
+      memmove(dst, src, shift_count * arr->elemsize);
+   }
+
+   // Clear trailing elements for GC-tracked types
+   if (arr->elemtype IS AET::_STRING_GC or arr->elemtype IS AET::_TABLE) {
+      auto refs = arr->get<GCRef>();
+      for (MSize i = arr->len - MSize(count); i < arr->len; i++) {
+         setgcrefnull(refs[i]);
+      }
+   }
+
+   arr->len -= MSize(count);
+   setintV(L->top++, int32_t(arr->len));
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: array.clone(arr)
+//
+// Creates a deep copy of the array.
+//
+// Parameters:
+//   arr: the source array
+//
+// Returns: new array with copied elements
+//
+// Note: For GC-tracked types (strings, tables), references are copied (not deep-cloned).
+//       The new array has capacity equal to the source array's length.
+
+LJLIB_CF(array_clone)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+
+   // Create new array with same type and length
+   GCarray *result = lj_array_new(L, arr->len, arr->elemtype);
+   setarrayV(L, L->top++, result);
+
+   if (arr->len IS 0) return 1;
+
+   // Copy elements
+   switch (arr->elemtype) {
+      case AET::_STRING_GC:
+      case AET::_TABLE: {
+         // For GC-tracked types, copy references and set up barriers
+         auto src_refs = arr->get<GCRef>();
+         auto dst_refs = result->get<GCRef>();
+         for (MSize i = 0; i < arr->len; i++) {
+            GCRef ref = src_refs[i];
+            dst_refs[i] = ref;
+            if (gcref(ref)) lj_gc_objbarrier(L, result, gcref(ref));
+         }
+         break;
+      }
+      default: {
+         // For all other types, direct memory copy
+         void *src = arr->arraydata();
+         void *dst = result->arraydata();
+         memcpy(dst, src, size_t(arr->len) * arr->elemsize);
+         break;
+      }
+   }
+
+   return 1;
+}
+
+//********************************************************************************************************************
 // Registers the array library and sets up the base metatable for arrays.
 // Unlike the Lua table, arrays are created via conventional means, i.e. array.new().
 //
