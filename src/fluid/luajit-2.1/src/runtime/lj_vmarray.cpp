@@ -82,6 +82,12 @@ static void arr_load_elem(lua_State *L, GCarray *Array, uint32_t Idx, TValue *Re
          break;
       }
 
+      case AET::_ANY: {
+         TValue *source = (TValue*)elem;
+         copyTV(L, Result, source);
+         break;
+      }
+
       default: setnilV(Result); break;
    }
 }
@@ -113,6 +119,13 @@ static void arr_store_elem(lua_State *L, GCarray *Array, uint32_t Idx, cTValue *
       }
       else if (tvisnil(Val)) setgcrefnull(*(GCRef*)elem);
       else lj_err_msgv(L, ErrMsg::ARRTYPE);
+      return;
+   }
+   else if (Array->elemtype IS AET::_ANY) {
+      TValue *dest = (TValue*)elem;
+      copyTV(L, dest, Val);
+      // Apply write barrier for any GC value
+      if (tvisgcv(Val)) lj_gc_objbarrier(L, Array, gcV(Val));
       return;
    }
 

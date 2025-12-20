@@ -31,6 +31,7 @@ static const uint8_t glElemSizes[] = {
    sizeof(std::string),  // AET::_STRING_CPP
    sizeof(GCRef),        // AET::_STRING_GC
    sizeof(GCRef),        // AET::_TABLE
+   sizeof(TValue),       // AET::_ANY
    0                     // AET::_STRUCT (variable)
 };
 
@@ -159,7 +160,14 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
       void *storage = (byte_size > 0) ? lj_mem_new(L, byte_size) : nullptr;
       auto arr = (GCarray *)lj_mem_newgco(L, sizeof(GCarray));
       arr->init(storage, Type, elem_size, Length, Length, Flags & ~(ARRAY_EXTERNAL|ARRAY_CACHED), sdef);
-      if (storage and int(Type) >= int(AET::_VULNERABLE)) arr->zero();
+      if (storage) {
+         if (Type IS AET::_ANY) {
+            // _ANY arrays require explicit nil initialization (nil TValue = -1, not 0)
+            TValue *slots = (TValue*)storage;
+            for (MSize i = 0; i < Length; i++) setnilV(&slots[i]);
+         }
+         else if (int(Type) >= int(AET::_VULNERABLE)) arr->zero();
+      }
       return arr;
    }
 }
@@ -261,6 +269,11 @@ GCtab * lj_array_to_table(lua_State *L, GCarray *Array)
             GCRef ref = *(GCRef*)elem;
             if (gcref(ref)) settabV(L, slot, gco2tab(gcref(ref)));
             else setnilV(slot);
+            break;
+         }
+         case AET::_ANY: {
+            TValue *src = (TValue*)elem;
+            copyTV(L, slot, src);
             break;
          }
          default: setnilV(slot); break;
