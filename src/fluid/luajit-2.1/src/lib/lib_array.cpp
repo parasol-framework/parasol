@@ -42,6 +42,9 @@ constexpr auto HASH_STRUCT  = pf::strhash("struct");
 constexpr auto HASH_POINTER = pf::strhash("pointer");
 constexpr auto HASH_TABLE   = pf::strhash("table");
 
+// Forward declaration for find_in_array (used by contains)
+static int32_t find_in_array(GCarray *Arr, lua_Number Value, int32_t Start, int32_t Stop, int32_t Step);
+
 //********************************************************************************************************************
 // Helper to parse element type string
 
@@ -318,6 +321,146 @@ LJLIB_CF(array_concat)
    }
 
    lua_pushstring(L, result.c_str());
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: array.join(arr [, separator])
+//
+// Concatenates array elements into a string, inserting the separator between elements.  This is the complement to
+// string.split() which returns arrays.  Simpler than concat() which requires a format string, this also makes it
+// faster for string concatenation.
+//
+// Parameters:
+//   arr: the array to join
+//   separator: string to insert between elements (default: "")
+//
+// Returns: concatenated string
+//
+// Note: For non-string types, elements are converted to their string representation.
+
+LJLIB_CF(array_join)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+
+   if (arr->len < 1) {
+      lua_pushstring(L, "");
+      return 1;
+   }
+
+   auto separator = luaL_optstring(L, 2, "");
+
+   std::string result;
+   result.reserve(arr->len * 16);
+   char buffer[256];
+
+   for (MSize i = 0; i < arr->len; i++) {
+      if (i > 0) result += separator;
+
+      switch(arr->elemtype) {
+         case AET::_STRING_GC: {
+            GCRef ref = arr->get<GCRef>()[i];
+            if (gcref(ref)) result += strdata(gco2str(gcref(ref)));
+            break;
+         }
+         case AET::_CSTRING: {
+            CSTRING str = arr->get<CSTRING>()[i];
+            if (str) result += str;
+            break;
+         }
+         case AET::_STRING_CPP:
+            result += arr->get<std::string>()[i];
+            break;
+         case AET::_FLOAT:
+            snprintf(buffer, sizeof(buffer), "%g", double(arr->get<float>()[i]));
+            result += buffer;
+            break;
+         case AET::_DOUBLE:
+            snprintf(buffer, sizeof(buffer), "%g", arr->get<double>()[i]);
+            result += buffer;
+            break;
+         case AET::_INT64:
+            snprintf(buffer, sizeof(buffer), "%lld", arr->get<long long>()[i]);
+            result += buffer;
+            break;
+         case AET::_INT32:
+            snprintf(buffer, sizeof(buffer), "%d", arr->get<int>()[i]);
+            result += buffer;
+            break;
+         case AET::_INT16:
+            snprintf(buffer, sizeof(buffer), "%d", int(arr->get<int16_t>()[i]));
+            result += buffer;
+            break;
+         case AET::_BYTE:
+            snprintf(buffer, sizeof(buffer), "%d", int(arr->get<uint8_t>()[i]));
+            result += buffer;
+            break;
+         case AET::_PTR:
+            snprintf(buffer, sizeof(buffer), "%p", arr->get<void *>()[i]);
+            result += buffer;
+            break;
+         case AET::_TABLE:
+            // Tables cannot be meaningfully converted to strings
+            result += "table";
+            break;
+         case AET::_STRUCT:
+            result += "struct";
+            break;
+         default:
+            result += "?";
+            break;
+      }
+   }
+
+   lua_pushstring(L, result.c_str());
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: array.contains(arr, value)
+//
+// Returns true if the value exists in the array, false otherwise.
+// This is a convenience wrapper around find() that returns a boolean.
+//
+// Parameters:
+//   arr: the array to search
+//   value: the value to find
+//
+// Returns: true if found, false otherwise
+
+LJLIB_CF(array_contains)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+
+   if (arr->len IS 0) {
+      lua_pushboolean(L, 0);
+      return 1;
+   }
+
+   // For string arrays, we need special handling
+   if (arr->elemtype IS AET::_STRING_GC) {
+      GCstr *search_str = lj_lib_checkstr(L, 2);
+      auto refs = arr->get<GCRef>();
+      for (MSize i = 0; i < arr->len; i++) {
+         GCRef ref = refs[i];
+         if (gcref(ref)) {
+            GCstr *elem = gco2str(gcref(ref));
+            if (elem->len IS search_str->len and
+                memcmp(strdata(elem), strdata(search_str), elem->len) IS 0) {
+               lua_pushboolean(L, 1);
+               return 1;
+            }
+         }
+      }
+      lua_pushboolean(L, 0);
+      return 1;
+   }
+
+   // For numeric types, use the existing find logic
+   lua_Number value = lj_lib_checknum(L, 2);
+   int32_t result = find_in_array(arr, value, 0, int32_t(arr->len - 1), 1);
+
+   lua_pushboolean(L, result >= 0 ? 1 : 0);
    return 1;
 }
 
@@ -1322,7 +1465,7 @@ static int array_iterator_next(lua_State *L)
 // __call metamethod for array iteration.  Enables: for i, v in array_variable do
 //
 // This function serves dual purposes:
-// 
+//
 // 1. When called directly (arr()), returns (iterator, nil, nil) for manual iteration setup
 // 2. When called by BC_ITERC with (state, control_var), acts as the iterator itself
 //
