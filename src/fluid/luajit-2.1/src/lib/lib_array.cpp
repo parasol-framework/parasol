@@ -322,13 +322,177 @@ LJLIB_CF(array_concat)
 }
 
 //********************************************************************************************************************
+// Usage: array.clear(arr)
+//
+// Resets the array length to zero without deallocating storage. Capacity is preserved for reuse.
+//
+// Parameters:
+//   arr: the array to clear (must not be read-only)
+//
+// Note: For string arrays with GC references, this also nullifies the references to allow garbage collection.
 
 LJLIB_CF(array_clear)
 {
    GCarray *arr = lj_lib_checkarray(L, 1);
    if (arr->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
-   arr->clear();
+
+   // For GC-tracked types, clear references to allow garbage collection
+   if (arr->elemtype IS AET::_STRING_GC or arr->elemtype IS AET::_TABLE) {
+      auto refs = arr->get<GCRef>();
+      for (MSize i = 0; i < arr->len; i++) {
+         setgcrefnull(refs[i]);
+      }
+   }
+
+   arr->len = 0;
    return 0;
+}
+
+//********************************************************************************************************************
+// Usage: array.push(arr, value, ...)
+//
+// Appends one or more elements to the end of the array, growing capacity as needed.
+//
+// Parameters:
+//   arr: the array to append to (must not be read-only or external)
+//   value, ...: one or more values to append
+//
+// Returns: new length of the array
+//
+// Note: External arrays and cached string arrays cannot grow and will raise an error.
+
+LJLIB_CF(array_push)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+   if (arr->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
+
+   int num_values = lua_gettop(L) - 1;
+   if (num_values < 1) {
+      setintV(L->top++, int32_t(arr->len));
+      return 1;
+   }
+
+   // Ensure we have capacity for the new elements
+   MSize new_len = arr->len + MSize(num_values);
+   if (new_len > arr->capacity) {
+      if (not lj_array_grow(L, arr, new_len)) {
+         lj_err_caller(L, ErrMsg::ARREXT);
+      }
+   }
+
+   // Push each value
+   for (int i = 0; i < num_values; i++) {
+      int arg_idx = i + 2;
+      MSize idx = arr->len + MSize(i);
+
+      switch (arr->elemtype) {
+         case AET::_STRING_GC: {
+            GCstr *s = lj_lib_checkstr(L, arg_idx);
+            setgcref(arr->get<GCRef>()[idx], obj2gco(s));
+            lj_gc_objbarrier(L, arr, s);
+            break;
+         }
+         case AET::_TABLE: {
+            if (not lua_istable(L, arg_idx)) {
+               lj_err_argv(L, arg_idx, ErrMsg::BADTYPE, "table", luaL_typename(L, arg_idx));
+            }
+            TValue *tv = L->base + arg_idx - 1;
+            GCtab *tab = tabV(tv);
+            setgcref(arr->get<GCRef>()[idx], obj2gco(tab));
+            lj_gc_objbarrier(L, arr, tab);
+            break;
+         }
+         case AET::_FLOAT:  arr->get<float>()[idx] = float(luaL_checknumber(L, arg_idx)); break;
+         case AET::_DOUBLE: arr->get<double>()[idx] = luaL_checknumber(L, arg_idx); break;
+         case AET::_INT64:  arr->get<int64_t>()[idx] = int64_t(luaL_checknumber(L, arg_idx)); break;
+         case AET::_INT32:  arr->get<int32_t>()[idx] = int32_t(luaL_checkinteger(L, arg_idx)); break;
+         case AET::_INT16:  arr->get<int16_t>()[idx] = int16_t(luaL_checkinteger(L, arg_idx)); break;
+         case AET::_BYTE:   arr->get<uint8_t>()[idx] = uint8_t(luaL_checkinteger(L, arg_idx)); break;
+         default:
+            lj_err_argv(L, 1, ErrMsg::BADTYPE, "pushable type", elemtype_name(arr->elemtype));
+            return 0;
+      }
+   }
+
+   arr->len = new_len;
+   setintV(L->top++, int32_t(arr->len));
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: array.pop(arr [, n])
+//
+// Removes and returns the last element(s) from the array.
+//
+// Parameters:
+//   arr: the array to pop from (must not be read-only)
+//   n: number of elements to pop (default: 1)
+//
+// Returns: the popped value(s), or nil if the array is empty.
+//          Multiple values are returned in reverse order (last element first).
+//
+// Note: Stops early if the array becomes exhausted (not an error).
+
+LJLIB_CF(array_pop)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+   if (arr->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
+
+   if (arr->len IS 0) {
+      lua_pushnil(L);
+      return 1;
+   }
+
+   int n = lj_lib_optint(L, 2, 1);
+   if (n < 1) n = 1;
+
+   int returned = 0;
+   for (int i = 0; i < n and arr->len > 0; i++) {
+      MSize idx = arr->len - 1;
+      void *elem = lj_array_index(arr, idx);
+
+      // Push the value to the stack
+      switch (arr->elemtype) {
+         case AET::_BYTE:   lua_pushinteger(L, *(uint8_t *)elem); break;
+         case AET::_INT16:  lua_pushinteger(L, *(int16_t *)elem); break;
+         case AET::_INT32:  lua_pushinteger(L, *(int32_t *)elem); break;
+         case AET::_INT64:  lua_pushnumber(L, lua_Number(*(int64_t *)elem)); break;
+         case AET::_FLOAT:  lua_pushnumber(L, *(float *)elem); break;
+         case AET::_DOUBLE: lua_pushnumber(L, *(double *)elem); break;
+         case AET::_STRING_GC: {
+            GCRef ref = *(GCRef *)elem;
+            if (gcref(ref)) {
+               setstrV(L, L->top++, gco2str(gcref(ref)));
+               setgcrefnull(*(GCRef *)elem);  // Clear reference
+            }
+            else lua_pushnil(L);
+            break;
+         }
+         case AET::_CSTRING: {
+            CSTRING str = *(CSTRING *)elem;
+            if (str) lua_pushstring(L, str);
+            else lua_pushnil(L);
+            break;
+         }
+         case AET::_TABLE: {
+            GCRef ref = *(GCRef *)elem;
+            if (gcref(ref)) {
+               settabV(L, L->top++, gco2tab(gcref(ref)));
+               setgcrefnull(*(GCRef *)elem);  // Clear reference
+            }
+            else lua_pushnil(L);
+            break;
+         }
+         default:
+            lua_pushnil(L);
+            break;
+      }
+
+      arr->len--;
+      returned++;
+   }
+
+   return returned;
 }
 
 //********************************************************************************************************************

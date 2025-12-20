@@ -75,8 +75,9 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
    if (Data) {
       if (Flags & ARRAY_EXTERNAL) {
          // External data - caller manages lifetime (no storage allocation needed)
+         // External arrays have capacity = length and cannot grow
          auto arr = (GCarray *)lj_mem_newgco(L, sizeof(GCarray));
-         arr->init(Data, Type, elem_size, Length, Flags, sdef);
+         arr->init(Data, Type, elem_size, Length, Length, Flags, sdef);
          return arr;
       }
       else {
@@ -86,7 +87,7 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
             size_t byte_size = Length * sizeof(CSTRING);
             void *storage = (byte_size > 0) ? lj_mem_new(L, byte_size) : nullptr;
             auto arr = (GCarray *)lj_mem_newgco(L, sizeof(GCarray));
-            if (storage) arr->init(storage, AET::_CSTRING, sizeof(CSTRING), Length, 0, sdef);
+            if (storage) arr->init(storage, AET::_CSTRING, sizeof(CSTRING), Length, Length, 0, sdef);
 
             // Calculate total string content size
             size_t content_size = 0;
@@ -141,10 +142,11 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
          }
          else {
             // Non-string cached array - allocate storage via GC, then copy data
+            // Capacity equals length for cached arrays
             size_t byte_size = Length * elem_size;
             void *storage = (byte_size > 0) ? lj_mem_new(L, byte_size) : nullptr;
             auto arr = (GCarray *)lj_mem_newgco(L, sizeof(GCarray));
-            arr->init(storage, Type, elem_size, Length, Flags, sdef);
+            arr->init(storage, Type, elem_size, Length, Length, Flags, sdef);
             if (byte_size > 0) std::memcpy(storage, Data, byte_size);
             return arr;
          }
@@ -152,13 +154,52 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
    }
    else {
       // New empty array with owned storage allocated via GC
+      // Capacity equals length for newly created arrays
       size_t byte_size = Length * elem_size;
       void *storage = (byte_size > 0) ? lj_mem_new(L, byte_size) : nullptr;
       auto arr = (GCarray *)lj_mem_newgco(L, sizeof(GCarray));
-      arr->init(storage, Type, elem_size, Length, Flags & ~(ARRAY_EXTERNAL|ARRAY_CACHED), sdef);
-      if (storage and int(Type) >= int(AET::_VULNERABLE)) arr->clear();
+      arr->init(storage, Type, elem_size, Length, Length, Flags & ~(ARRAY_EXTERNAL|ARRAY_CACHED), sdef);
+      if (storage and int(Type) >= int(AET::_VULNERABLE)) arr->zero();
       return arr;
    }
+}
+
+//********************************************************************************************************************
+// Grow array capacity to accommodate at least MinCapacity elements.
+// Uses a growth factor of 1.5x or the minimum required capacity, whichever is larger.
+// Returns true on success, false if the array cannot grow (external/cached string arrays).
+
+bool lj_array_grow(lua_State *L, GCarray *Array, MSize MinCapacity)
+{
+   // Cannot grow external arrays - they don't own their storage
+   if (Array->flags & ARRAY_EXTERNAL) return false;
+
+   // Cannot grow cached string arrays - strcache pointers would be invalidated
+   if (Array->strcache) return false;
+
+   // Already have enough capacity
+   if (Array->capacity >= MinCapacity) return true;
+
+   // Calculate new capacity using 1.5x growth factor
+   MSize new_capacity = Array->capacity + (Array->capacity >> 1);  // capacity * 1.5
+   if (new_capacity < MinCapacity) new_capacity = MinCapacity;
+   if (new_capacity < 8) new_capacity = 8;  // Minimum allocation
+
+   size_t old_size = size_t(Array->capacity) * Array->elemsize;
+   size_t new_size = size_t(new_capacity) * Array->elemsize;
+
+   // Reallocate storage
+   void *new_storage = lj_mem_realloc(L, Array->storage, old_size, new_size);
+
+   // Zero-initialise new elements for vulnerable types (pointers, strings, tables)
+   if (int(Array->elemtype) >= int(AET::_VULNERABLE)) {
+      size_t zerolen = new_size - old_size;
+      std::memset((char *)new_storage + old_size, 0, zerolen);
+   }
+
+   Array->storage = new_storage;
+   Array->capacity = new_capacity;
+   return true;
 }
 
 //********************************************************************************************************************

@@ -199,6 +199,7 @@ ERRDEF(ARROB,   "array index %d out of bounds (size %d)")
 ERRDEF(ARRRO,   "attempt to modify read-only array")
 ERRDEF(ARRTYPE, "invalid array element type")
 ERRDEF(ARRSTR,  "byte array expected for string extraction")
+ERRDEF(ARREXT,  "cannot grow external or cached string array")
 
 #undef ERRDEF
 

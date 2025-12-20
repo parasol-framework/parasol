@@ -603,7 +603,8 @@ struct GCarray {
    void    *storage;    // [16] Heap-allocated storage for owned data, or external pointer (matches GCtab.array)
    GCRef   gclist;      // [24] GC list for marking (must match GCudata.gclist)
    GCRef   metatable;   // [32] Optional metatable (must match GCudata.metatable)
-   MSize   len;         // Number of elements
+   MSize   len;         // Number of elements currently in use
+   MSize   capacity;    // Number of elements that can be stored (allocated capacity)
    MSize   elemsize;    // Size of each element in bytes
    struct struct_record *structdef;  // Optional: struct definition for struct arrays
    std::vector<char> *strcache; // Optional: cached string content for CSTRING/STRING_CPP arrays
@@ -613,7 +614,7 @@ public:
    // for proper GC tracking. NOTE: lj_mem_newgco() already sets nextgc and marked - do NOT overwrite
    // them! We avoid member initializer lists to prevent GCC from zero-initializing the GCHeader
    // fields (nextgc, marked) that were set by lj_mem_newgco().
-   void init(void *Data, AET Type, MSize ElemSize, MSize Length, uint8_t Flags,
+   void init(void *Data, AET Type, MSize ElemSize, MSize Length, MSize Capacity, uint8_t Flags,
              struct struct_record *StructDef = nullptr) noexcept
    {
       gct       = ~LJ_TARRAY;
@@ -624,6 +625,7 @@ public:
       setgcrefnull(gclist);
       setgcrefnull(metatable);
       len       = Length;
+      capacity  = Capacity;
       elemsize  = ElemSize;
       structdef = StructDef;
       strcache  = nullptr;
@@ -648,10 +650,10 @@ public:
    template<typename T> [[nodiscard]] inline T * get() noexcept { return (T *)storage; }
    template<typename T> [[nodiscard]] inline const T * get() const noexcept { return (const T *)storage; }
 
-   // Zero-initialise the array data area
+   // Zero-initialise the array data area (zeros all data up to capacity)
 
-   void clear() { // NB: Intentionally ignores the read-only flag.
-      if (storage) std::memset(storage, 0, len * elemsize);
+   void zero() { // NB: Intentionally ignores the read-only flag.
+      if (storage) std::memset(storage, 0, capacity * elemsize);
    }
 
    [[nodiscard]] inline MSize arraylen() const noexcept { return len; }
@@ -659,7 +661,7 @@ public:
    [[nodiscard]] inline bool is_external() const noexcept { return (flags & ARRAY_EXTERNAL) != 0; }
    [[nodiscard]] int type_flags() const noexcept;
    [[nodiscard]] inline size_t alloc_size() const noexcept { return sizeof(GCarray); }
-   [[nodiscard]] inline size_t storage_size() const noexcept { return is_external() ? 0 : size_t(len) * elemsize; }
+   [[nodiscard]] inline size_t storage_size() const noexcept { return is_external() ? 0 : size_t(capacity) * elemsize; }
 };
 
 // Ensure metatable field is at the same offset in GCtab, GCarray, GCudata
