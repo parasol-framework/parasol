@@ -227,7 +227,7 @@ end
 
 --********************************************************************************************************************
 
-@Test function ArrayAnyAnyAll()
+@Test function ArrayAnyPredicates()
    arr = array.of('any', 1, 2, 3)
 
    any_even = array.any(arr, function(v) return v % 2 is 0 end)
