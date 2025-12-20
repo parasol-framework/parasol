@@ -780,7 +780,7 @@ global function docClass(Class)
       table.sort(Class.sortedFields, function(a,b) return a.name < b.name end)
 
       out ..= '\n  <fields>\n'
-      for _, f in ipairs(Class.sortedFields) do
+      for f in values(Class.sortedFields) do
          if f.private != true then
             out ..= '    <field>\n'
             out ..= '      <name>' .. f.name .. '</name>\n'
@@ -875,7 +875,7 @@ global function docModuleHeader()
 
    if not table.empty(srcFiles) then
       out ..= '    <source>\n'
-      for _, path in pairs(srcFiles) do
+      for path in values(srcFiles) do
          filename = path:gsub('.*[:/\\](.-)', '%1', 1)
          path = path:match('(.*[:/\\])(.-)')
          out ..= "      <file path=\"" .. path:escXML() .. "\">" .. filename:escXML() .. "</file>\n"
@@ -925,7 +925,7 @@ global function docFunction(Function)
 
    if not table.empty(Function.input) then
       local args = ''
-      for k, fa in ipairs(Function.input) do
+      for fa in values(Function.input) do
          ref = ''
          if fa.ref then
             ref = ' lookup="' .. fa.lookup .. '"'
@@ -960,7 +960,7 @@ global function docFunction(Function)
    if not table.empty(Function.result) then
       if not table.empty(Function.result.values) then
          errors = ''
-         for _, result in ipairs(Function.result.values) do
+         for result in values(Function.result.values) do
             comment = (result.msg ?? mSys.GetErrorMsg(code))
             errors ..= "      <error code=\"" .. result.codeName .. "\">" .. substituteReferences(comment:escXML()) .. "</error>\n"
          end
@@ -987,23 +987,20 @@ end
 global function docTypes(References)
    out = ''
    sortedTypes = { }
-   for prefix, ct in pairs(glCustomTypes) do
+   for ct in values(glCustomTypes) do
       table.insert(sortedTypes, ct)
    end
 
    table.sort(sortedTypes, function(a,b) return a.prefix < b.prefix end)
 
-   for _, ct in ipairs(sortedTypes) do
+   for ct in values(sortedTypes) do
       comment = ''
       if ct.comment then comment = " comment=\"" .. ct.comment:escXML() .. '"' end
 
-      local typeName
-      if ct.grouping is 'constants' then
-         typeName = 'const'
-      elseif ct.grouping is 'flags' then
-         typeName = 'flag'
-      else
-         error("Unknowning grouping for custom type, '" .. ct.grouping .. "'")
+      typeName = choose ct.grouping from
+         'constants' -> 'const'
+         'flags' -> 'flag'
+         else -> error("Unknowning grouping for custom type, '" .. ct.grouping .. "'")
       end
 
       if ct.restrict?? then
@@ -1014,12 +1011,12 @@ global function docTypes(References)
          out ..= "    <constants lookup=\"" .. ct.prefix .. '"' .. comment:escXML() .. '>\n'
 
          sortedValues = { }
-         for _, v in pairs(ct.list) do
+         for v in values(ct.list) do
             table.insert(sortedValues, v)
          end
          table.sort(sortedValues, function(a,b) return a.name < b.name end)
 
-         for _, v in pairs(sortedValues) do
+         for v in values(sortedValues) do
             if v.synonym then
                -- Don't publish synonyms
             elseif v.comment?? then
@@ -1050,13 +1047,13 @@ global function docStructures(References)
    out = '  <structs>\n'
 
    sortedStructs = { }
-   for _, f in pairs(glStructures) do
+   for f in values(glStructures) do
       table.insert(sortedStructs, f)
    end
 
    table.sort(sortedStructs, function(a,b) return a.name < b.name end)
 
-   for _, struct in ipairs(sortedStructs) do
+   for struct in values(sortedStructs) do
       if struct.restrict?? then
          -- Don't output restricted structures.
          --verbose(struct.name .. ' is restricted.')
@@ -1070,7 +1067,7 @@ global function docStructures(References)
          if struct.type then typeName = " typeName=\"" .. struct.type:escXML() .. '"' end
 
          out ..= "    <struct name=\"" .. struct.name .. '"' .. comment .. typeName .. '>\n'
-         for i, f in ipairs(struct.fields) do
+         for f in values(struct.fields) do
             ref = ''
             if f.lookup then ref = " lookup=\"" .. f.lookup .. '"' end
 

@@ -504,7 +504,7 @@ global function platform(Platform, Function)
    if #platformHeader > 0 then
       priority('#ifdef ' .. define)
       priority()
-      for k,v in ipairs(platformHeader) do
+      for v in values(platformHeader) do
          priority(v)
       end
       priority('#endif')
@@ -514,7 +514,7 @@ global function platform(Platform, Function)
    if #platformOutput > 0 then
       output('#ifdef ' .. define)
       output()
-      for k,v in ipairs(platformOutput) do
+      for v in values(platformOutput) do
          output(v)
       end
       output('#endif')
@@ -553,7 +553,7 @@ global function struct(Name, Options, Def, Append)
       type_len = 0
       name_len = 0
       type_max = 0
-      for i, f in ipairs(fields) do
+      for f in values(fields) do
          field_name = cName(f, true)
          if field_name:len() > name_len then name_len = field_name:len() end
 
@@ -570,7 +570,7 @@ global function struct(Name, Options, Def, Append)
 
       max_len = 3 + type_max + 1 + 2
 
-      for i, f in ipairs(fields) do
+      for f in values(fields) do
          field_name = cName(f, true)
          local left
          if field_name?? then -- field_name can be nil if the field describes a function pointer
@@ -692,7 +692,7 @@ global function class(Name, Options, Spec, Private, Custom)
    cdef = parseClassFields(class, Spec)
 
    if not table.empty(Options.references) then
-      for _, v in pairs(Options.references) do
+      for v in values(Options.references) do
          if glCustomTypes[v]?? then
             cdef = cdef .. outputLookup(class.name .. v, glCustomTypes[v].list)
             glCustomTypes[v].restrict = nil
@@ -710,7 +710,7 @@ global function class(Name, Options, Spec, Private, Custom)
    if class.src then
       -- Process -METHOD- and -FIELD- definitions
 
-      for _, path in pairs(class.src) do
+      for path in values(class.src) do
          if glFeedback is 'verbose' then
             print()
             print('Class file: ' .. glFDLFolder .. path)
@@ -727,7 +727,7 @@ global function class(Name, Options, Spec, Private, Custom)
             'ERR%s-' .. Name:upper() .. '_(%a-)%(ext.-%)'
          }
 
-         for _, pattern in pairs(patterns) do
+         for pattern in values(patterns) do
             for actionName in string.gmatch(content, pattern) do
                if glActions[actionName] then
                   verbose('Discovered action ' .. actionName)
@@ -747,8 +747,7 @@ global function class(Name, Options, Spec, Private, Custom)
 
          -- Parse each line individually
 
-         local currentEntry
-         local processing
+         local currentEntry, processing
          for line in string.gmatch(extracted_content, '(.-\n)') do
             if line?? then
                line = (line:match('^(.*%S)') ?? '')
@@ -795,7 +794,7 @@ global function class(Name, Options, Spec, Private, Custom)
             end
 
             method.params = { }
-            for _, v in ipairs(t) do
+            for v in values(t) do
                param = { }
                param.type, param.name = v:match('^(.+)%s([^%s]+)$')
                cType(param, 'Method ' .. method.name)
@@ -822,28 +821,28 @@ global function class(Name, Options, Spec, Private, Custom)
          end
 
          struct_params = '' -- struct parameter types & names
-         values = '' -- Parameter values
+         v = '' -- Parameter values
          results = false
          params = ''
          if method.params then
-            for _, param in ipairs(method.params) do
+            for param in values(method.params) do
                struct_params ..= param.basicType .. ' ' .. pName(param) .. '; '
 
                if params?? then params ..= ', ' end
 
                if param.type is 'FUNCTION *' then
                   params ..= 'FUNCTION ' .. pName(param)
-                  if values?? then values ..= ', ' end
-                  values ..= '&' .. pName(param)
+                  if v?? then v ..= ', ' end
+                  v ..= '&' .. pName(param)
                else
                   params ..= param.type .. ' ' .. pName(param)
-                  if values?? then values ..= ', ' end
+                  if v?? then v ..= ', ' end
 
                   if param.resultValue then
-                     values ..= '(' .. param.basicType .. ')0'
+                     v ..= '(' .. param.basicType .. ')0'
                      results = true
                   else
-                     values ..= pName(param)
+                     v ..= pName(param)
                   end
                end
             end
@@ -863,13 +862,13 @@ global function class(Name, Options, Spec, Private, Custom)
          local args = 'nullptr'
 
          if method.params and #method.params > 0 then
-            inline ..= '      struct ' .. lpfx .. '::' .. method.name .. ' args = { ' .. values .. ' };\n'
+            inline ..= '      struct ' .. lpfx .. '::' .. method.name .. ' args = { ' .. v .. ' };\n'
             args = '&args'
          end
 
          if (results) then
             inline ..= '      ERR error = Action(AC(-' .. method.id .. '), this, ' .. args .. ');\n'
-            for _, p in pairs(method.params) do
+            for p in values(method.params) do
                if p.resultValue then
                   inline ..= '      if (' .. p.name .. ') *' .. p.name .. ' = args.' .. p.name .. ';\n'
                end
@@ -890,7 +889,7 @@ global function class(Name, Options, Spec, Private, Custom)
          output('namespace ' .. lpfx .. ' {')
       end
 
-      for _, method in ipairs(class.methods) do
+      for method in values(class.methods) do
          if method.struct?? then
             output(method.struct)
          end
@@ -905,7 +904,7 @@ global function class(Name, Options, Spec, Private, Custom)
    end
 
    class.sortedActions = { }
-   for _, a in pairs(class.actions) do
+   for a in values(class.actions) do
       table.insert(class.sortedActions, a)
    end
 
@@ -920,7 +919,7 @@ global function class(Name, Options, Spec, Private, Custom)
    if Options.output?? then
       mdef = ''
       if not table.empty(class.methods) then
-         for k, m in ipairs(class.methods) do
+         for m in values(class.methods) do
             if not table.empty(m.params) then
                mdef ..= 'FDEF ma' .. m.name .. '[] = { ' .. buildInputParameters(m.params) .. ' };\n'
             end
@@ -928,7 +927,7 @@ global function class(Name, Options, Spec, Private, Custom)
          mdef ..= '\n'
 
          mdef ..= 'static const struct MethodEntry cl' .. Name .. 'Methods[] = {\n'
-         for k, m in ipairs(class.methods) do
+         for m in values(class.methods) do
             local structSize
             if table.empty(m.params) then
                mdef ..= '   { AC(-' .. m.id .. '), (APTR)' .. Name:upper() .. '_' .. m.funcName .. ', "' .. m.name .. '", 0, 0 },\n'
@@ -942,7 +941,7 @@ global function class(Name, Options, Spec, Private, Custom)
 
       if not table.empty(class.sortedActions) then
          mdef ..= "static const struct ActionArray cl" .. Name .. "Actions[] = {\n"
-         for _, action in ipairs(class.sortedActions) do
+         for action in values(class.sortedActions) do
             mdef ..= "   { AC::" .. action.name .. ", " .. Name:upper() .. "_" .. action.name .. " },\n"
          end
          mdef ..= "   { AC::NIL, nullptr }\n};\n\n"
@@ -962,7 +961,7 @@ end
 
 global function functionNames(Prefix, ...)
    global glFunctionPrefix = Prefix ?? ''
-   for _, fname in ipairs({...}) do
+   for fname in values({...}) do
       if fname:find('[^%w]') then
          error('Invalid function name "' .. fname .. '"')
       end

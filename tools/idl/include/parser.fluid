@@ -2,14 +2,11 @@
 ----------------------------------------------------------------------------------------------------------------------
 
 global function parseClassEntry(Class, Type, Extract)
-   if Type is '-CLASS-' then
-      parseClassHeader(Class, Extract)
-   elseif Type is '-METHOD-' then
-      parseMethod(Class, Extract)
-   elseif Type is '-ACTION-' then
-      parseAction(Class, Extract)
-   elseif Type is '-FIELD-' then
-      parseField(Class, Extract)
+   choose Type from
+      '-CLASS-'  -> parseClassHeader(Class, Extract)
+      '-METHOD-' -> parseMethod(Class, Extract)
+      '-ACTION-' -> parseAction(Class, Extract)
+      '-FIELD-'  -> parseField(Class, Extract)
    end
 end
 
@@ -159,7 +156,7 @@ global function parseMethod(Class, Extract)
       method.results = { }
 
       for line in string.gmatch(errors, '(.-)\n') do
-         if not line?? then break end -- A double line-break forces a premature end to error processing.
+         line ?? break -- A double line-break forces a premature end to error processing.
 
          ecode, comment = line:match('(%a-):%s+(.+)')
          if ecode then
@@ -221,9 +218,9 @@ global function parseClassFields(Class, ClientSpec)
                   f.write   = def.write
                   f.read    = def.read
                   f.flags   = def.flags
-                  f.access  = def.access ?? def.access
-                  f.private = f.private ?? def.private
-                  f.type   ?= tostring(def.type)
+                  f.access  ?= def.access
+                  f.private ?= def.private
+                  f.type    ?= tostring(def.type)
                else
                   def.virtual = true
                   def.fullType = glTypes.void -- Dummy
@@ -233,14 +230,14 @@ global function parseClassFields(Class, ClientSpec)
          end
       end
 
-      for _, f in ipairs(newFields) do
+      for f in values(newFields) do
          table.insert(Class.fields, f)
       end
    end
 
    Class.lookupFields = { }
    if Class.fields then
-      for _, f in ipairs(Class.fields) do
+      for f in values(Class.fields) do
          Class.lookupFields[f.name] = f
       end
    end
@@ -252,7 +249,7 @@ global function parseClassFields(Class, ClientSpec)
    Class.longestType = 0
    name_len = 0
    Class.longestFieldType = 0  -- Holds the longest field + type string
-   for _, f in ipairs(Class.fields) do
+   for f in values(Class.fields) do
       if not f.virtual then
          field_name = cName(f)
 
