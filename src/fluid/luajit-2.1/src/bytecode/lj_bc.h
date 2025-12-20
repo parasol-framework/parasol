@@ -161,8 +161,10 @@ constexpr uint8_t  NO_REG = BCMAX_A;
   _(CALLT,   base,   ___,   lit,   call) \
   _(ITERC,   base,   lit,   lit,   call) \
   _(ITERN,   base,   lit,   lit,   call) \
+  _(ITERA,   base,   lit,   lit,   call) \
   _(VARG,   base,   lit,   lit,   ___) \
   _(ISNEXT,   base,   ___,   jump,   ___) \
+  _(ISARR,   base,   ___,   jump,   ___) \
   \
   /* Returns. */ \
   _(RETM,   base,   ___,   lit,   ___) \
@@ -287,47 +289,49 @@ typedef enum {
    BC_ASETV  = 68,
    BC_ASETB  = 69,
 
-   // Calls and vararg handling (70-77)
+   // Calls and vararg handling (70-79)
    BC_CALLM  = 70,
    BC_CALL   = 71,
    BC_CALLMT = 72,
    BC_CALLT  = 73,
    BC_ITERC  = 74,
    BC_ITERN  = 75,
-   BC_VARG   = 76,
-   BC_ISNEXT = 77,
+   BC_ITERA  = 76,
+   BC_VARG   = 77,
+   BC_ISNEXT = 78,
+   BC_ISARR  = 79,
 
-   // Returns (78-81)
-   BC_RETM   = 78,
-   BC_RET    = 79,
-   BC_RET0   = 80,
-   BC_RET1   = 81,
+   // Returns (80-83)
+   BC_RETM   = 80,
+   BC_RET    = 81,
+   BC_RET0   = 82,
+   BC_RET1   = 83,
 
-   // Loops and branches (82-93)
-   BC_FORI   = 82,
-   BC_JFORI  = 83,
-   BC_FORL   = 84,
-   BC_IFORL  = 85,
-   BC_JFORL  = 86,
-   BC_ITERL  = 87,
-   BC_IITERL = 88,
-   BC_JITERL = 89,
-   BC_LOOP   = 90,
-   BC_ILOOP  = 91,
-   BC_JLOOP  = 92,
-   BC_JMP    = 93,
+   // Loops and branches (84-95)
+   BC_FORI   = 84,
+   BC_JFORI  = 85,
+   BC_FORL   = 86,
+   BC_IFORL  = 87,
+   BC_JFORL  = 88,
+   BC_ITERL  = 89,
+   BC_IITERL = 90,
+   BC_JITERL = 91,
+   BC_LOOP   = 92,
+   BC_ILOOP  = 93,
+   BC_JLOOP  = 94,
+   BC_JMP    = 95,
 
-   // Function headers (94-101)
-   BC_FUNCF  = 94,
-   BC_IFUNCF = 95,
-   BC_JFUNCF = 96,
-   BC_FUNCV  = 97,
-   BC_IFUNCV = 98,
-   BC_JFUNCV = 99,
-   BC_FUNCC  = 100,
-   BC_FUNCCW = 101,
+   // Function headers (96-103)
+   BC_FUNCF  = 96,
+   BC_IFUNCF = 97,
+   BC_JFUNCF = 98,
+   BC_FUNCV  = 99,
+   BC_IFUNCV = 100,
+   BC_JFUNCV = 101,
+   BC_FUNCC  = 102,
+   BC_FUNCCW = 103,
 
-   BC__MAX   = 102
+   BC__MAX   = 104
 } BCOp;
 
 static_assert((int)BC_ISEQV + 1 == (int)BC_ISNEV);

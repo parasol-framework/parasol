@@ -428,6 +428,20 @@ UnsupportedNodeRecorder glUnsupportedNodes;
 }
 
 //********************************************************************************************************************
+// Detect if a generic for iterator expression is a direct variable access suitable for array specialisation.
+
+[[nodiscard]] static int predict_array_iter(LexState& lex_state, FuncState &func_state, BCPos pc)
+{
+   UNUSED(lex_state);
+
+   BCIns ins = func_state.bcbase[pc].ins;
+   BCOp op = bc_op(ins);
+
+   // The array type check is performed at runtime by BC_ISARR; this pass only verifies a direct variable source.
+   return (op IS BC_MOV or op IS BC_UGET or op IS BC_GGET) ? 1 : 0;
+}
+
+//********************************************************************************************************************
 // Release registers held by an indexed expression's base and key after they are no longer needed.
 
 static void release_indexed_original(FuncState &func_state, const ExpDesc &original)
@@ -1065,11 +1079,17 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
 
    bcreg_bump(fs, 3  + 1);
    int isnext = (nvars <= 5) ? predict_next(this->lex_state, *fs, exprpc) : 0;
+   int isarr = 0;
    this->lex_state.var_add(3);
+
+   if (isnext IS 0 and iterator_count IS BCREG(1) and nvars <= 5) {
+      isarr = predict_array_iter(this->lex_state, *fs, exprpc);
+   }
 
    auto loop_stack_guard = this->push_loop_context(BCPos(NO_JMP));
 
-   ControlFlowEdge loop = this->control_flow.make_unconditional(BCPos(bcemit_AJ(fs, isnext ? BC_ISNEXT : BC_JMP, base, NO_JMP)));
+   ControlFlowEdge loop = this->control_flow.make_unconditional(
+      BCPos(bcemit_AJ(fs, isnext ? BC_ISNEXT : isarr ? BC_ISARR : BC_JMP, base, NO_JMP)));
 
    {
       FuncScope visible_scope;
@@ -1097,7 +1117,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
    }
 
    loop.patch_head(fs->current_pc());
-   BCPos iter = BCPos(bcemit_ABC(fs, isnext ? BC_ITERN : BC_ITERC, base, nvars - BCREG(3) + BCREG(1), 3));
+   BCPos iter = BCPos(bcemit_ABC(fs, isnext ? BC_ITERN : isarr ? BC_ITERA : BC_ITERC, base, nvars - BCREG(3) + BCREG(1), 3));
    ControlFlowEdge loopend = this->control_flow.make_unconditional(BCPos(bcemit_AJ(fs, BC_ITERL, base, NO_JMP)));
    fs->bcbase[loopend.head().raw() - 1].line = Payload.body->span.line;
    fs->bcbase[loopend.head().raw()].line = Payload.body->span.line;

@@ -4452,6 +4452,61 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  jmp <6
     break;
 
+  case BC_ITERA:
+    |.if JIT
+    |  hotloop RBd
+    |.endif
+    |->vm_IITERA:
+    |  ins_A	// RA = base, (RB = nresults+1, RC = nargs+1 (2+1))
+    |  mov ARRAY:RB, [BASE+RA*8-16]
+    |  cleartp ARRAY:RB
+    |  mov RC, [BASE+RA*8-8]		// Control var.
+    |  add PC, 4
+    |  cmp RC, LJ_TNIL; je >1
+    |.if DUALNUM
+    |  cleartp RC
+    |.else
+    |  movd xmm0, RC
+    |  cvttsd2si RCd, xmm0
+    |.endif
+    |  add RCd, 1
+    |  jmp >2
+    |
+    |1:
+    |  xor RCd, RCd			// Start at index 0 when control var is nil.
+    |
+    |2:
+    |  cmp RCd, ARRAY:RB->len
+    |  jae >5
+    |
+    |  // Fetch the array element into R[A+1] (value slot).
+    |  mov L:CARG1, SAVE_L
+    |  mov CARG2, ARRAY:RB
+    |  mov CARG3d, RCd
+    |  lea CARG4, [BASE+RA*8+8]
+    |  call extern lj_arr_getidx	// (lua_State *L, GCarray *arr, int32_t idx, TValue *result)
+    |
+    |  // Store index into R[A] and control var slot (R[A-1]).
+    |.if DUALNUM
+    |  mov ITYPEd, RCd
+    |  setint ITYPE, ITYPE
+    |  mov [BASE+RA*8], ITYPE
+    |  mov [BASE+RA*8-8], ITYPE
+    |.else
+    |  cvtsi2sd xmm0, RCd
+    |  movsd qword [BASE+RA*8], xmm0
+    |  movsd qword [BASE+RA*8-8], xmm0
+    |.endif
+    |
+    |  movzx RDd, PC_RD			// Get target from ITERL.
+    |  branchPC RD
+    |  ins_next
+    |
+    |5:  // End of iteration.
+    |  mov aword [BASE+RA*8], LJ_TNIL
+    |  ins_next
+    break;
+
   case BC_ISNEXT:
     |  ins_AD	// RA = base, RD = target (points to ITERN)
     |  mov CFUNC:RB, [BASE+RA*8-24]
@@ -4469,6 +4524,36 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  branchPC RD
     |.if JIT
     |  cmp byte [PC], BC_ITERN
+    |  jne >6
+    |.endif
+    |  mov byte [PC], BC_ITERC
+    |  jmp <1
+    |.if JIT
+    |6:  // Unpatch JLOOP.
+    |  mov RA, [DISPATCH+DISPATCH_J(trace)]
+    |  movzx RCd, word [PC+2]
+    |  mov TRACE:RA, [RA+RC*8]
+    |  mov eax, TRACE:RA->startins
+    |  mov al, BC_ITERC
+    |  mov dword [PC], eax
+    |  jmp <1
+    |.endif
+    break;
+
+  case BC_ISARR:
+    |  ins_AD	// RA = base, RD = target (points to ITERA)
+    |  checktptp [BASE+RA*8-16], LJ_TARRAY, >5
+    |  cmp aword [BASE+RA*8-8], LJ_TNIL; jne >5
+    |  mov byte [PC], BC_ITERA
+    |  branchPC RD
+    |1:
+    |  ins_next
+    |
+    |5:  // Despecialize bytecode if any of the checks fail.
+    |  mov PC_OP, BC_JMP
+    |  branchPC RD
+    |.if JIT
+    |  cmp byte [PC], BC_ITERA
     |  jne >6
     |.endif
     |  mov byte [PC], BC_ITERC
