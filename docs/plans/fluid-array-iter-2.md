@@ -275,4 +275,5 @@ ctest --build-config Debug --test-dir build/agents --output-on-failure -L fluid
 - Step 3: Parser now detects bare array iterators in generic-for loops and emits `BC_ISARR`/`BC_ITERA` accordingly.
 - Step 4: Dispatch, trace, and snap logic now treat `BC_ITERA` like `BC_ITERN`, including hotcount dispatch entries, trace unpatch/blacklist handling, and slot range accounting.
 - Step 5: Added recorder support for array iteration: `BC_ISARR` guards array + nil control; `BC_ITERA` records array length guard, emits `lj_arr_getidx` for the value, and integrates with loop handling/tracing.
-- Pending: Step 6+ (documentation updates and tests).
+- Step 6: Confirmed existing IR array fields cover the new iterator path (no changes needed).
+- Step 7: Documented `BC_ISARR`/`BC_ITERA` in BYTECODE.md and added a Flute test to exercise the specialised array iterator.

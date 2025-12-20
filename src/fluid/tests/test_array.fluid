@@ -223,6 +223,26 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Verify native array iteration uses the specialised iterator semantics.
+
+@Test function ArrayIteratorSpecialisation()
+   arr = array.of('int', 4, 5, 6, 7)
+   indexes = {}
+   values = {}
+   count = 0
+
+   for i, v in arr do
+      indexes[i] = i
+      values[i] = v
+      count += 1
+   end
+
+   assert(count is 4, 'Iterator should visit every array element')
+   assert(indexes[0] is 0 and indexes[3] is 3, 'Iterator should emit zero-based indices')
+   assert(values[0] is 4 and values[3] is 7, 'Iterator should return array values in order')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- Test write access bounds on arrays
 
 @Test function ArrayWriteBounds()
