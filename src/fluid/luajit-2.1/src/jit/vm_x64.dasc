@@ -4457,7 +4457,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  hotloop RBd
     |.endif
     |->vm_IITERA:
-    |  ins_A	// RA = base, (RB = nresults+1, RC = nargs+1 (2+1))
+    |  ins_A                    // RA = base; initial RB = nresults+1, initial RC = nargs+1 (2+1). RB/RC are reused below.
     |  mov ARRAY:RB, [BASE+RA*8-16]
     |  cleartp ARRAY:RB
     |  mov RC, [BASE+RA*8-8]		// Control var.
@@ -4498,7 +4498,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  movsd qword [BASE+RA*8-8], xmm0
     |.endif
     |
-    |  movzx RDd, PC_RD			// Get target from ITERL.
+    |  movzx RDd, PC_RD			// Get target from following ITERL instruction.
     |  branchPC RD
     |  ins_next
     |
@@ -4544,28 +4544,28 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_AD	// RA = base, RD = target (points to ITERA)
     |  checktptp [BASE+RA*8-16], LJ_TARRAY, >5
     |  cmp aword [BASE+RA*8-8], LJ_TNIL; jne >5
-    |  mov byte [PC], BC_ITERA
+    |  mov byte [PC], BC_ITERA       // PC still points to BC_ISARR here: patch it in-place to BC_ITERA.
     |  branchPC RD
     |1:
     |  ins_next
     |
     |5:  // Despecialize bytecode if any of the checks fail.
-    |  mov PC_OP, BC_JMP
-    |  branchPC RD
+    |  mov PC_OP, BC_JMP           // PC still points to BC_ISARR here: patch it in-place to BC_ITERA.
+    |  branchPC RD                 // After this, PC points to the branch target (initially BC_ITERA or a JITed loop).
     |.if JIT
     |  cmp byte [PC], BC_ITERA
     |  jne >6
     |.endif
-    |  mov byte [PC], BC_ITERC
+    |  mov byte [PC], BC_ITERC     // Non-JIT: despecialize target from BC_ITERA to BC_ITERC at the branch target.
     |  jmp <1
     |.if JIT
-    |6:  // Unpatch JLOOP.
+    |6:  // Unpatch JLOOP: target was a JITed loop header, not a plain BC_ITERA.
     |  mov RA, [DISPATCH+DISPATCH_J(trace)]
     |  movzx RCd, word [PC+2]
     |  mov TRACE:RA, [RA+RC*8]
     |  mov eax, TRACE:RA->startins
     |  mov al, BC_ITERC
-    |  mov dword [PC], eax
+    |  mov dword [PC], eax       // Overwrite the JLOOP header at the branch target with BC_ITERC.
     |  jmp <1
     |.endif
     break;

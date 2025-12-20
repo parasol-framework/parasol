@@ -430,15 +430,16 @@ UnsupportedNodeRecorder glUnsupportedNodes;
 //********************************************************************************************************************
 // Detect if a generic for iterator expression is a direct variable access suitable for array specialisation.
 
-[[nodiscard]] static int predict_array_iter(LexState& lex_state, FuncState &func_state, BCPos pc)
+[[nodiscard]] static int predict_array_iter(FuncState &func_state, BCPos pc)
 {
-   UNUSED(lex_state);
-
    BCIns ins = func_state.bcbase[pc].ins;
    BCOp op = bc_op(ins);
 
-   // The array type check is performed at runtime by BC_ISARR; this pass only verifies a direct variable source.
-   return (op IS BC_MOV or op IS BC_UGET or op IS BC_GGET) ? 1 : 0;
+   // The array type check is performed at runtime by BC_ISARR; this pass only verifies that the iterator
+   // expression is sourced from a direct variable load. BC_MOV, BC_UGET and BC_GGET load variables from locals,
+   // upvalues and globals respectively.
+
+   return ((op IS BC_MOV) or (op IS BC_UGET) or (op IS BC_GGET)) ? 1 : 0;
 }
 
 //********************************************************************************************************************
@@ -1082,14 +1083,17 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
    int isarr = 0;
    this->lex_state.var_add(3);
 
-   if (isnext IS 0 and iterator_count IS BCREG(1) and nvars <= 5) {
-      isarr = predict_array_iter(this->lex_state, *fs, exprpc);
+   // Array iteration prediction is mutually exclusive with the 'next' optimisation.
+   // Only attempt array prediction when the 'next' optimisation is not selected.
+
+   if ((isnext IS 0) and iterator_count IS BCREG(1) and nvars <= 5) {
+      isarr = predict_array_iter(*fs, exprpc);
    }
 
    auto loop_stack_guard = this->push_loop_context(BCPos(NO_JMP));
 
    ControlFlowEdge loop = this->control_flow.make_unconditional(
-      BCPos(bcemit_AJ(fs, isnext ? BC_ISNEXT : isarr ? BC_ISARR : BC_JMP, base, NO_JMP)));
+      BCPos(bcemit_AJ(fs, isnext ? BC_ISNEXT : (isarr ? BC_ISARR : BC_JMP), base, NO_JMP)));
 
    {
       FuncScope visible_scope;

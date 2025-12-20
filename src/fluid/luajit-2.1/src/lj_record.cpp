@@ -726,7 +726,6 @@ static LoopEvent rec_itern(jit_State *J, BCREG ra, BCREG rb)
 static LoopEvent rec_itera(jit_State *J, BCREG ra, BCREG rb)
 {
 #if LJ_BE
-   UNUSED(ra); UNUSED(rb);
    setintV(&J->errinfo, (int32_t)BC_ITERA);
    lj_trace_err_info(J, LJ_TRERR_NYIBC);
 #else
