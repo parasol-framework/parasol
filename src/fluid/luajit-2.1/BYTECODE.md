@@ -131,6 +131,14 @@ Operand suffixes: V=variable slot, S=string const, N=number const, P=primitive (
 | `VARG` | A B C | R(A)...R(A+B-2) = vararg (C=base offset) |
 | `ISNEXT` | A D | Verify iterator is next(); JMP to D if not |
 
+##### Array Iteration Fast Path (BC_ISARR, BC_ITERA)
+- **BC_ISARR (A=D=base/jump)**: Guards array iteration setup. Checks that `R(A-2)` is a native array and `R(A-1)` is nil. On success, the opcode self-patches to `BC_ITERA` and falls through; on failure, it despecialises to `BC_JMP` and patches the following iterator to `BC_ITERC`.
+- **BC_ITERA (A=base, B/C=lit)**: Specialised native array iterator (0-based). Control var is `R(A-1)`, index result is `R(A)`, value result is `R(A+1)`. Semantics:
+  - If control var is nil, start at index 0; otherwise increment the control var by 1.
+  - If `idx >= arr.len`: set `R(A)` to nil, proceed to `BC_ITERL` (loop exits).
+  - Else: `R(A)` = index (integer tagged); `R(A-1)` updated to index; `R(A+1)` loaded via `lj_arr_getidx`.
+  - JIT/hotcount entry exists as `lj_vm_IITERA`, mirroring `BC_ITERN`.
+
 #### Return Ops
 | Opcode | Format | Description |
 |--------|--------|-------------|

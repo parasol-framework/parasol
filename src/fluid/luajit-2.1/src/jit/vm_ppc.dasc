@@ -5555,6 +5555,63 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  b <6
     break;
 
+  case BC_ITERA:
+    |.if JIT
+    |  // NYI on big-endian
+    |.endif
+    |  add RA, BASE, RA
+    |  lwz ARRAY:RB, -12(RA)
+    |  lwz TMP0, -4(RA)			// Control var.
+    |    addi PC, PC, 4
+    |  cmpwi TMP0, LJ_TNIL
+    |  bne >1
+    |  li RC, 0
+    |  b >2
+    |
+    |1:
+    |  lwz RC, -4(RA)
+    |  addi RC, RC, 1
+    |
+    |2:
+    |  lwz TMP1, ARRAY:RB->len
+    |  cmplw RC, TMP1
+    |  bge >5
+    |
+    |  // Fetch array element into R[A+1] (value slot).
+    |  stp BASE, L->base
+    |  mr CARG1, L
+    |  mr CARG2, ARRAY:RB
+    |  mr CARG3, RC
+    |  addi CARG4, RA, 8
+    |  stw PC, SAVE_PC
+    |  blex lj_arr_getidx
+    |
+    |  // Store index into R[A] and control var slot (R[A-1]).
+    |.if DUALNUM
+    |  stw RC, 4(RA)
+    |  stw TISNUM, 0(RA)
+    |  stw RC, -4(RA)
+    |  stw TISNUM, -8(RA)
+    |.else
+    |  tonum_u f1, RC
+    |  stfd f1, 0(RA)
+    |  stfd f1, -8(RA)
+    |.endif
+    |
+    |     lwz INS, -4(PC)
+    |    addis TMP3, PC, -(BCBIAS_J*4 >> 16)
+    |     decode_RD4 TMP1, INS
+    |    add PC, TMP1, TMP3
+    |  ins_next
+    |
+    |5:  // End of iteration.
+    |  stw TISNIL, 0(RA)
+    |.if not DUALNUM
+    |  stw ZERO, 4(RA)
+    |.endif
+    |  ins_next
+    break;
+
   case BC_ISNEXT:
     |  // RA = base*8, RD = target (points to ITERN)
     |  add RA, BASE, RA
@@ -5588,6 +5645,44 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  // NYI on big-endian: unpatch JLOOP.
     |   stb TMP1, 3(PC)
     |  b <1
+    break;
+
+  case BC_ISARR:
+    |  // RA = base*8, RD = target (points to ITERA)
+    |  add RA, BASE, RA
+      |    srwi TMP0, RD, 1
+    |  lwz TMP2, -16(RA)
+     |   add TMP3, PC, TMP0
+    |  cmpwi TMP2, LJ_TARRAY
+     |  bne >5
+    |  lwz TMP1, -8(RA)
+    |  cmpwi TMP1, LJ_TNIL
+    |  bne >5
+    |  li TMP0, BC_ITERA
+    |  stb TMP0, -1(PC)
+    |1:
+    |    addis PC, TMP3, -(BCBIAS_J*4 >> 16)
+    |  ins_next
+    |
+    |5:  // Despecialize bytecode if any of the checks fail.
+    |.if JIT
+    |  addis TMP0, TMP3, -(BCBIAS_J*4 >> 16)
+    |  lbz TMP2, -1(TMP0)
+    |.endif
+    |  li TMP0, BC_JMP
+     |   li TMP1, BC_ITERC
+    |  stb TMP0, -1(PC)
+    |.if JIT
+    |  cmpwi TMP2, BC_ITERA
+    |  bne >6
+    |.endif
+    |   stb TMP1, -1(TMP0)
+    |  b <1
+    |.if JIT
+    |6:  // Unpatch JLOOP. NYI on big-endian.
+    |  // No support for JITed loops on big-endian in PPC backend.
+    |  b <1
+    |.endif
     break;
 
   case BC_VARG:

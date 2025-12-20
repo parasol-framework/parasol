@@ -59,7 +59,6 @@ private:
 
 //********************************************************************************************************************
 // Core Data Structures
-//********************************************************************************************************************
 
 static bool test_array_creation_byte(pf::Log &Log)
 {
@@ -273,7 +272,7 @@ static bool test_array_external(pf::Log &Log)
    // Create external buffer
    int32_t external_data[5] = { 10, 20, 30, 40, 50 };
 
-   GCarray* arr = lj_array_new(L, 5, AET::_INT32, external_data, ARRAY_READONLY);
+   GCarray* arr = lj_array_new(L, 5, AET::_INT32, external_data, ARRAY_EXTERNAL|ARRAY_READONLY);
 
    if (not arr) {
       Log.error("external array creation failed");
@@ -377,7 +376,6 @@ static bool test_array_type_tag(pf::Log &Log)
 
 //********************************************************************************************************************
 // VM Type System Integration
-//********************************************************************************************************************
 
 static bool test_tvalue_array(pf::Log &Log)
 {
@@ -451,7 +449,6 @@ static bool test_setarrayV(pf::Log &Log)
 
 //********************************************************************************************************************
 // Bytecode C Helpers
-//********************************************************************************************************************
 
 // Helper to check if TValue contains an integer value (handles LJ_DUALNUM=0 case)
 static bool tv_is_integer(cTValue* o, int32_t expected)
@@ -935,23 +932,8 @@ static bool test_lib_array_double_type(pf::Log &Log)
    return true;
 }
 
-// NOTE: The following library function tests have been removed as they duplicate
-// coverage in src/fluid/tests/test_array.fluid:
-//   - test_lib_array_find (duplicates ArrayFind, ArrayFindOriginalSyntax)
-//   - test_lib_array_reverse (duplicates ArrayReverse)
-//   - test_lib_array_slice (duplicates ArraySlice)
-//   - test_lib_array_sort (duplicates ArraySortAscending)
-//   - test_lib_array_sort_descending (duplicates ArraySortDescending)
-//   - test_lib_array_concat (duplicates IntegerArrayConcat)
-//   - test_lib_array_readonly (duplicates ArrayReadOnly)
-//   - test_lib_array_type (duplicates ArrayType)
-//   - test_lib_array_int64 (duplicates Int64Array)
-//   - test_lib_array_int16 (duplicates WordArrayConcat)
-//   - test_lib_array_from_string (duplicates ArrayFromString)
-
 //********************************************************************************************************************
 // Test runner
-//********************************************************************************************************************
 
 } // namespace
 

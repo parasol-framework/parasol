@@ -2421,7 +2421,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
       |  csel PC, RB, PC, hi
     }
     |  b <1
-    break;
+  break;
 
   case BC_ISEQV: case BC_ISNEV:
     vk = op == BC_ISEQV;
@@ -3730,6 +3730,54 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  b <3
     break;
 
+
+  case BC_ITERA:
+    |.if JIT
+    |  hotloop
+    |.endif
+    |->vm_IITERA:
+    |  // RA = base, (RB = nresults+1, RC = nargs+1 (2+1))
+    |  add RA, BASE, RA, lsl #3
+    |  ldr ARRAY:RB, [RA, #-16]
+    |  ldr TMP0, [RA, #-8]		// Control var.
+    |    add PC, PC, #4
+    |  cmp TMP0, TISNIL
+    |  bne >1
+    |  mov RCw, #0
+    |  b >2
+    |
+    |1:
+    |  ldr RCw, [RA, #-8+LO]
+    |  add RCw, RCw, #1
+    |
+    |2:
+    |  ldr TMP1w, ARRAY:RB->len
+    |  cmp RCw, TMP1w
+    |  bhs >5
+    |
+    |  // Fetch array element into R[A+1] (value slot).
+    |  mov CARG1, L
+    |  mov CARG2, ARRAY:RB
+    |  sxtw CARG3, RCw
+    |  add CARG4, RA, #8
+    |  bl extern lj_arr_getidx
+    |
+    |  // Store index into R[A] and control var slot (R[A-1]).
+    |  mov TMP0w, RCw
+    |  add TMP0, TMP0, TISNUM
+    |  stp TMP0, TMP0, [RA, #-8]
+    |
+    |    ldrh TMP3w, [PC, # OFS_RD]	// Get target from following ITERL.
+    |    add TMP3, PC, TMP3, lsl #2
+    |    sub TMP3, TMP3, #0x20000
+    |  mov PC, TMP3
+    |  ins_next
+    |
+    |5:  // End of iteration.
+    |  str TISNIL, [RA]
+    |  ins_next
+    break;
+
   case BC_ISNEXT:
     |  // RA = base, RC = target (points to ITERN)
     |  add RA, BASE, RA, lsl #3
@@ -3760,6 +3808,47 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  strb TMP0w, [PC, #-4+OFS_OP]
     |.if JIT
     |  cmp TMP2w, #BC_ITERN
+    |  bne >6
+    |.endif
+    |   strb TMP1w, [RC, # OFS_OP]
+    |  b <1
+    |.if JIT
+    |6:  // Unpatch JLOOP.
+    |  ldr RA, [GL, #GL_J(trace)]
+    |  ldrh TMP2w, [RC, # OFS_RD]
+    |  ldr TRACE:RA, [RA, TMP2, lsl #3]
+    |  ldr TMP2w, TRACE:RA->startins
+    |  bfxil TMP2w, TMP1w, #0, #8
+    |  str TMP2w, [RC]
+    |  b <1
+    |.endif
+    break;
+
+  case BC_ISARR:
+    |  // RA = base, RD = target (points to ITERA)
+    |  add RA, BASE, RA, lsl #3
+    |     add RC, PC, RC, lsl #2
+    |  ldr TMP2, [RA, #-16]
+    |     sub RC, RC, #0x20000
+    |  checkarray TMP2, >5
+    |  ldr TMP3, [RA, #-8]
+    |  cmp TMP3, TISNIL
+    |  bne >5
+    |  mov TMP0, #BC_ITERA
+    |  strb TMP0w, [PC, #-4+OFS_OP]
+    |1:
+    |     mov PC, RC
+    |  ins_next
+    |
+    |5:  // Despecialize bytecode if any of the checks fail.
+    |.if JIT
+    |  ldrb TMP2w, [RC, # OFS_OP]
+    |.endif
+    |  mov TMP0, #BC_JMP
+    |   mov TMP1, #BC_ITERC
+    |  strb TMP0w, [PC, #-4+OFS_OP]
+    |.if JIT
+    |  cmp TMP2w, #BC_ITERA
     |  bne >6
     |.endif
     |   strb TMP1w, [RC, # OFS_OP]
