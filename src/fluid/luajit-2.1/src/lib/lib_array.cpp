@@ -465,6 +465,110 @@ LJLIB_CF(array_contains)
 }
 
 //********************************************************************************************************************
+// Usage: array.first(arr)
+//
+// Returns the first element of the array, or nil if empty. Provides bounds-safe access.
+//
+// Parameters:
+//   arr: the array
+//
+// Returns: first element value, or nil if array is empty
+
+LJLIB_CF(array_first)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+
+   if (arr->len IS 0) {
+      lua_pushnil(L);
+      return 1;
+   }
+
+   void *elem = lj_array_index(arr, 0);
+
+   switch (arr->elemtype) {
+      case AET::_BYTE:   lua_pushinteger(L, *(uint8_t *)elem); break;
+      case AET::_INT16:  lua_pushinteger(L, *(int16_t *)elem); break;
+      case AET::_INT32:  lua_pushinteger(L, *(int32_t *)elem); break;
+      case AET::_INT64:  lua_pushnumber(L, lua_Number(*(int64_t *)elem)); break;
+      case AET::_FLOAT:  lua_pushnumber(L, *(float *)elem); break;
+      case AET::_DOUBLE: lua_pushnumber(L, *(double *)elem); break;
+      case AET::_STRING_GC: {
+         GCRef ref = *(GCRef *)elem;
+         if (gcref(ref)) setstrV(L, L->top++, gco2str(gcref(ref)));
+         else lua_pushnil(L);
+         return 1;
+      }
+      case AET::_CSTRING: {
+         CSTRING str = *(CSTRING *)elem;
+         if (str) lua_pushstring(L, str);
+         else lua_pushnil(L);
+         break;
+      }
+      case AET::_TABLE: {
+         GCRef ref = *(GCRef *)elem;
+         if (gcref(ref)) settabV(L, L->top++, gco2tab(gcref(ref)));
+         else lua_pushnil(L);
+         return 1;
+      }
+      default: lua_pushnil(L); break;
+   }
+
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: array.last(arr)
+//
+// Returns the last element of the array, or nil if empty. Provides bounds-safe access.
+//
+// Parameters:
+//   arr: the array
+//
+// Returns: last element value, or nil if array is empty
+
+LJLIB_CF(array_last)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+
+   if (arr->len IS 0) {
+      lua_pushnil(L);
+      return 1;
+   }
+
+   void *elem = lj_array_index(arr, arr->len - 1);
+
+   switch (arr->elemtype) {
+      case AET::_BYTE:   lua_pushinteger(L, *(uint8_t *)elem); break;
+      case AET::_INT16:  lua_pushinteger(L, *(int16_t *)elem); break;
+      case AET::_INT32:  lua_pushinteger(L, *(int32_t *)elem); break;
+      case AET::_INT64:  lua_pushnumber(L, lua_Number(*(int64_t *)elem)); break;
+      case AET::_FLOAT:  lua_pushnumber(L, *(float *)elem); break;
+      case AET::_DOUBLE: lua_pushnumber(L, *(double *)elem); break;
+      case AET::_STRING_GC: {
+         GCRef ref = *(GCRef *)elem;
+         if (gcref(ref)) setstrV(L, L->top++, gco2str(gcref(ref)));
+         else lua_pushnil(L);
+         return 1;
+      }
+      case AET::_CSTRING: {
+         CSTRING str = *(CSTRING *)elem;
+         if (str) lua_pushstring(L, str);
+         else lua_pushnil(L);
+         break;
+      }
+      case AET::_TABLE: {
+         GCRef ref = *(GCRef *)elem;
+         if (gcref(ref)) settabV(L, L->top++, gco2tab(gcref(ref)));
+         else lua_pushnil(L);
+         return 1;
+      }
+      default: lua_pushnil(L); break;
+   }
+
+   return 1;
+}
+
+//********************************************************************************************************************
 // Usage: array.clear(arr)
 //
 // Resets the array length to zero without deallocating storage. Capacity is preserved for reuse.

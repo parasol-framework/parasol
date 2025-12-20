@@ -2028,3 +2028,144 @@ end
    -- Test non-existent value
    assert((arr:find(99) != nil) is arr:contains(99), "contains and find should agree on missing value")
 end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test array.first() functionality
+
+@Test function ArrayFirstInt()
+   arr = array.of('int', 10, 20, 30, 40, 50)
+   assert(arr:first() is 10, "first() should return 10")
+end
+
+@Test function ArrayFirstString()
+   arr = array.of('string', 'alpha', 'beta', 'gamma')
+   assert(arr:first() is 'alpha', "first() should return 'alpha'")
+end
+
+@Test function ArrayFirstFloat()
+   arr = array.of('float', 1.5, 2.5, 3.5)
+   assert(math.abs(arr:first() - 1.5) < 0.0001, "first() should return 1.5")
+end
+
+@Test function ArrayFirstDouble()
+   arr = array.of('double', 3.14159, 2.71828)
+   assert(math.abs(arr:first() - 3.14159) < 0.00001, "first() should return pi")
+end
+
+@Test function ArrayFirstByte()
+   arr = array.of('byte', 65, 66, 67)
+   assert(arr:first() is 65, "first() should return 65")
+end
+
+@Test function ArrayFirstInt64()
+   arr = array.of('int64', 1234567890123, 9876543210987)
+   assert(arr:first() is 1234567890123, "first() should return large int64")
+end
+
+@Test function ArrayFirstTable()
+   arr = array.new(2, 'table')
+   arr[0] = {x = 100}
+   arr[1] = {y = 200}
+   result = arr:first()
+   assert(result.x is 100, "first() should return table with x=100")
+end
+
+@Test function ArrayFirstEmpty()
+   arr = array.new(0, 'int')
+   assert(arr:first() is nil, "first() on empty array should return nil")
+end
+
+@Test function ArrayFirstSingle()
+   arr = array.of('int', 42)
+   assert(arr:first() is 42, "first() on single element should return that element")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test array.last() functionality
+
+@Test function ArrayLastInt()
+   arr = array.of('int', 10, 20, 30, 40, 50)
+   assert(arr:last() is 50, "last() should return 50")
+end
+
+@Test function ArrayLastString()
+   arr = array.of('string', 'alpha', 'beta', 'gamma')
+   assert(arr:last() is 'gamma', "last() should return 'gamma'")
+end
+
+@Test function ArrayLastFloat()
+   arr = array.of('float', 1.5, 2.5, 3.5)
+   assert(math.abs(arr:last() - 3.5) < 0.0001, "last() should return 3.5")
+end
+
+@Test function ArrayLastDouble()
+   arr = array.of('double', 3.14159, 2.71828)
+   assert(math.abs(arr:last() - 2.71828) < 0.00001, "last() should return e")
+end
+
+@Test function ArrayLastByte()
+   arr = array.of('byte', 65, 66, 67)
+   assert(arr:last() is 67, "last() should return 67")
+end
+
+@Test function ArrayLastInt64()
+   arr = array.of('int64', 1234567890123, 9876543210987)
+   assert(arr:last() is 9876543210987, "last() should return large int64")
+end
+
+@Test function ArrayLastTable()
+   arr = array.new(2, 'table')
+   arr[0] = {x = 100}
+   arr[1] = {y = 200}
+   result = arr:last()
+   assert(result.y is 200, "last() should return table with y=200")
+end
+
+@Test function ArrayLastEmpty()
+   arr = array.new(0, 'int')
+   assert(arr:last() is nil, "last() on empty array should return nil")
+end
+
+@Test function ArrayLastSingle()
+   arr = array.of('int', 42)
+   assert(arr:last() is 42, "last() on single element should return that element")
+end
+
+@Test function ArrayFirstLastConsistency()
+   -- For single element array, first() and last() should return same value
+   arr = array.of('string', 'only')
+   assert(arr:first() is arr:last(), "first() and last() should be same for single element")
+end
+
+@Test function ArrayFirstLastVsIndexing()
+   -- Verify first() and last() match direct indexing
+   arr = array.of('int', 100, 200, 300, 400, 500)
+   assert(arr:first() is arr[0], "first() should match arr[0]")
+   assert(arr:last() is arr[#arr - 1], "last() should match arr[#arr - 1]")
+end
+
+@Test function ArrayFirstLastAfterPush()
+   arr = array.new(0, 'int')
+   arr:push(10)
+   assert(arr:first() is 10 and arr:last() is 10, "first() and last() should be 10")
+
+   arr:push(20)
+   assert(arr:first() is 10, "first() should still be 10")
+   assert(arr:last() is 20, "last() should be 20")
+
+   arr:push(30)
+   assert(arr:first() is 10, "first() should still be 10")
+   assert(arr:last() is 30, "last() should be 30")
+end
+
+@Test function ArrayFirstLastAfterPop()
+   arr = array.of('int', 10, 20, 30)
+   assert(arr:last() is 30, "last() should be 30")
+
+   arr:pop()
+   assert(arr:last() is 20, "last() should be 20 after pop")
+
+   arr:pop()
+   assert(arr:first() is arr:last(), "first() and last() should be same after pops")
+   assert(arr:first() is 10, "first() should be 10")
+end
