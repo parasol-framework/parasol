@@ -182,13 +182,11 @@ global function flags(Prefix, Options, ...)
    end
 
    if not Options.weak then
-      type_size = 'uint32_t'
-      if Options.bits is 64 then
-         type_size = 'int64_t'
-      elseif Options.bits is 16 then
-         type_size = 'uint16_t'
-      elseif Options.bits is 8 then
-         type_size = 'uint8_t'
+      type_size = choose Options.bits from
+         64 -> 'int64_t'
+         16 -> 'uint16_t'
+         8  -> 'uint8_t'
+         else -> 'uint32_t'
       end
       table.insert(out, string.format('enum class %s : ' .. type_size .. ' {', Prefix))
       table.insert(out, '   NIL = 0,')
@@ -201,7 +199,7 @@ global function flags(Prefix, Options, ...)
       local flag_name
       if type(flags[a]) is 'string' then
          key, comment = flags[a]:match('^(.-):%s+(.+)$')
-         if not key then key = flags[a] end
+         key ?= flags[a]
 
          for flag_name in values(key:split('|')) do
             val = 1 << f
@@ -222,7 +220,7 @@ global function flags(Prefix, Options, ...)
                end
             end
 
-            if not key then key = ref end
+            key ?= ref
 
             if type(key) is 'number' then
                val = key
@@ -352,12 +350,12 @@ global function const(Prefix, Options, ...)
             end
          end)
 
-         for _, v in ipairs(sorted) do
+         for v in values(sorted) do
             local val, comment
             if type(v.value) is 'string' then
                val, comment = v.value:match('^(.-):%s+(.+)$')
             end
-            if not val then val = v.value end
+            val ?= v.value
 
             if Options.type then
                table.insert(out, '   ' .. v.name .. ' = ' .. val .. ',')
@@ -417,7 +415,7 @@ global function enum(Prefix, Options, ...)
    for k,va in ipairs({...}) do
       if type(va) is 'string' then
          key, comment = va:match('^(.-):%s+(.+)$')
-         if not key then key = va end
+         key ?= va
          synonym = false
          for name in values(key:split('|')) do
             if Options.type then
