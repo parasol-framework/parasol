@@ -178,14 +178,21 @@ LJLIB_CF(string_alloc)
 // Returns pointer to separator if found, nullptr otherwise
 static const char* find_separator(const char *Pos, const char *End, const char *Sep, MSize SepLen, bool IsWhitespace)
 {
+   if (IsWhitespace) {
+      // Whitespace separators: scan the entire range, independent of SepLen.
+      for (const char *p = Pos; p < End; p++) {
+         if (*p IS ' ' or *p IS '\t' or *p IS '\n' or *p IS '\r') return p;
+      }
+      return nullptr;
+   }
+
    if (SepLen IS 1) {
       return (const char*)memchr(Pos, Sep[0], End - Pos);
    }
 
-   // Multi-character separator or whitespace
+   // Multi-character separator.
    for (const char *p = Pos; p <= End - SepLen; p++) {
-      if (IsWhitespace and (*p IS ' ' or *p IS '\t' or *p IS '\n' or *p IS '\r')) return p;
-      else if (memcmp(p, Sep, SepLen) IS 0) return p;
+      if (memcmp(p, Sep, SepLen) IS 0) return p;
    }
    return nullptr;
 }
