@@ -5650,12 +5650,11 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
   case BC_ISARR:
     |  // RA = base*8, RD = target (points to ITERA)
     |  add RA, BASE, RA
-    |    srwi TMP0, RD, 1
+      |    srwi TMP0, RD, 1
     |  lwz TMP2, -16(RA)
-    |   add TMP3, PC, TMP0
+     |   add TMP3, PC, TMP0
     |  cmpwi TMP2, LJ_TARRAY
-    |   addis TMP3, TMP3, -(BCBIAS_J*4 >> 16)
-    |  bne >5
+     |  bne >5
     |  lwz TMP1, -8(RA)
     |  cmpwi TMP1, LJ_TNIL
     |  bne >5
@@ -5667,16 +5666,17 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |
     |5:  // Despecialize bytecode if any of the checks fail.
     |.if JIT
-    |  lbz TMP2, -1(TMP3)
+    |  addis TMP0, TMP3, -(BCBIAS_J*4 >> 16)
+    |  lbz TMP2, -1(TMP0)
     |.endif
     |  li TMP0, BC_JMP
-    |   li TMP1, BC_ITERC
+     |   li TMP1, BC_ITERC
     |  stb TMP0, -1(PC)
     |.if JIT
     |  cmpwi TMP2, BC_ITERA
     |  bne >6
     |.endif
-    |   stb TMP1, -1(TMP3)
+    |   stb TMP1, -1(TMP0)
     |  b <1
     |.if JIT
     |6:  // Unpatch JLOOP. NYI on big-endian.
