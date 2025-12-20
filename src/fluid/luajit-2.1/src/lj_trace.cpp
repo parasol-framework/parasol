@@ -216,7 +216,7 @@ static void trace_unpatch(jit_State* J, GCtrace* T)
    case BC_JITERL:
    case BC_JLOOP:
       lj_assertJ(op == BC_ITERL or op == BC_ITERN or op == BC_LOOP ||
-         bc_isret(op), "bad original bytecode %d", op);
+         op == BC_ITERA or bc_isret(op), "bad original bytecode %d", op);
       *pc = T->startins;
       break;
    case BC_JMP:
@@ -361,7 +361,7 @@ void lj_trace_freestate(global_State* g)
 // Blacklist a bytecode instruction.
 static void blacklist_pc(GCproto* pt, BCIns* pc)
 {
-   if (bc_op(*pc) == BC_ITERN) {
+   if (bc_op(*pc) == BC_ITERN or bc_op(*pc) == BC_ITERA) {
       setbc_op(pc, BC_ITERC);
       setbc_op(pc + 1 + bc_j(pc[1]), BC_JMP);
    }
@@ -405,7 +405,7 @@ static void trace_start(jit_State* J)
    TraceNo traceno;
 
    if ((J->pt->flags & PROTO_NOJIT)) {  // JIT disabled for this proto?
-      if (J->parent == 0 and J->exitno == 0 and bc_op(*J->pc) != BC_ITERN) {
+      if (J->parent == 0 and J->exitno == 0 and bc_op(*J->pc) != BC_ITERN and bc_op(*J->pc) != BC_ITERA) {
          // Lazy bytecode patching to disable hotcount events.
          lj_assertJ(bc_op(*J->pc) == BC_FORL or bc_op(*J->pc) == BC_ITERL ||
             bc_op(*J->pc) == BC_LOOP or bc_op(*J->pc) == BC_FUNCF,
@@ -914,7 +914,7 @@ int LJ_FASTCALL lj_trace_exit(jit_State* J, void* exptr)
    if (bc_op(*pc) == BC_JLOOP) {
       BCIns* retpc = &traceref(J, bc_d(*pc))->startins;
       int isret = bc_isret(bc_op(*retpc));
-      if (isret or bc_op(*retpc) == BC_ITERN) {
+      if (isret or bc_op(*retpc) == BC_ITERN or bc_op(*retpc) == BC_ITERA) {
          if (J->state == TraceState::RECORD) {
             J->patchins = *pc;
             J->patchpc = (BCIns*)pc;

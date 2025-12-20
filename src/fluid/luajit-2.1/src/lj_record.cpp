@@ -628,7 +628,7 @@ static void rec_loop_interp(jit_State *J, const BCIns *pc, LoopEvent ev)
 {
    if (J->parent IS 0 and J->exitno IS 0) {
       if (pc IS J->startpc and FRC::at_trace_root(J)) {
-         if (bc_op(J->cur.startins) IS BC_ITERN) return;  //  See rec_itern().
+         if (bc_op(J->cur.startins) IS BC_ITERN or bc_op(J->cur.startins) IS BC_ITERA) return;  //  See rec_itern()/rec_itera().
          // Same loop?
          if (ev IS LOOPEV_LEAVE)  //  Must loop back to form a root trace.
             lj_trace_err(J, LJ_TRERR_LLEAVE);
@@ -721,6 +721,63 @@ static LoopEvent rec_itern(jit_State *J, BCREG ra, BCREG rb)
 }
 
 //********************************************************************************************************************
+// Record ITERA.
+
+static LoopEvent rec_itera(jit_State *J, BCREG ra, BCREG rb)
+{
+#if LJ_BE
+   UNUSED(ra); UNUSED(rb);
+   setintV(&J->errinfo, (int32_t)BC_ITERA);
+   lj_trace_err_info(J, LJ_TRERR_NYIBC);
+#else
+   IRBuilder ir(J);
+
+   if (J->pc IS J->startpc and
+      (J->cur.nins > REF_FIRST + 1 or (J->cur.nins IS REF_FIRST + 1 and J->cur.ir[REF_FIRST].o != IR_PROF)) and
+      FRC::at_trace_root(J) and J->parent IS 0 and J->exitno IS 0) {
+      J->instunroll = 0;
+      lj_record_stop(J, TraceLink::LOOP, J->cur.traceno);
+      return LOOPEV_ENTER;
+   }
+
+   TRef arr_ref = getslot(J, ra - 2);
+   if (not tref_isarray(arr_ref)) lj_trace_err(J, LJ_TRERR_BADTYPE);
+
+   TValue *ctrl_tv = &J->L->base[ra - 1];
+   GCarray *arr = arrayV(&J->L->base[ra - 2]);
+   int32_t idx_int;
+   if (tvisnil(ctrl_tv)) idx_int = 0;
+   else if (tvisint(ctrl_tv)) idx_int = intV(ctrl_tv) + 1;
+   else idx_int = int32_t(lj_num2int(numV(ctrl_tv))) + 1;
+
+   if (idx_int < 0 or MSize(idx_int) >= arr->len) {
+      J->maxslot = ra - 3;
+      J->pc += 2;
+      return LOOPEV_LEAVE;
+   }
+
+   TRef ctrl_ref = getslot(J, ra - 1);
+   TRef idx_ref = tref_isnil(ctrl_ref) ? ir.kint(0) : lj_opt_narrow_index(J, ctrl_ref);
+   if (not tref_isnil(ctrl_ref)) idx_ref = emitir(IRT(IR_ADD, IRT_INT), idx_ref, ir.kint(1));
+
+   TRef len_ref = emitir(IRT(IR_FLOAD, IRT_INT), arr_ref, IRFL_ARRAY_LEN);
+   ir.guard(IR_LT, IRT_INT, idx_ref, len_ref);
+
+   lj_ir_call(J, IRCALL_lj_arr_getidx, arr_ref, idx_ref);
+   TRef tmp = emitir(IRT(IR_TMPREF, IRT_PGC), 0, IRTMPREF_OUT1);
+   TRef val = emitir(IRT(IR_VLOAD, IRT_NUM), tmp, 0);
+
+   J->base[ra - 1] = idx_ref;
+   J->base[ra] = idx_ref;
+   J->base[ra + 1] = val;
+   J->maxslot = ra - 1 + rb;
+   J->needsnap = 1;
+   J->pc += bc_j(J->pc[1]) + 2;
+   return LOOPEV_ENTER;
+#endif
+}
+
+//********************************************************************************************************************
 // Record ISNEXT.
 
 static void rec_isnext(jit_State *J, BCREG ra)
@@ -741,6 +798,22 @@ static void rec_isnext(jit_State *J, BCREG ra)
    else {  // Abort trace. Interpreter will despecialise bytecode.
       lj_trace_err(J, LJ_TRERR_RECERR);
    }
+}
+
+//********************************************************************************************************************
+// Record ISARR.
+
+static void rec_isarr(jit_State *J, BCREG ra)
+{
+   TRef arr_ref = getslot(J, ra - 2);
+   TRef ctrl_ref = getslot(J, ra - 1);
+
+   if (not tref_isarray(arr_ref) or not tref_isnil(ctrl_ref)) {
+      lj_trace_err(J, LJ_TRERR_RECERR);
+   }
+
+   // Keep control var nil so BC_ITERA can initialise the index.
+   J->maxslot = ra;
 }
 
 //********************************************************************************************************************
@@ -2434,7 +2507,7 @@ static TRef rec_table_op(jit_State *J, RecordOps *ops, const BCIns *pc)
 }
 
 //********************************************************************************************************************
-// Handle loop ops: BC_FORI, BC_FORL, BC_ITERL, BC_ITERN, BC_LOOP, BC_J*, BC_I*
+// Handle loop ops: BC_FORI, BC_FORL, BC_ITERL, BC_ITERN, BC_ITERA, BC_LOOP, BC_J*, BC_I*
 
 static void rec_loop_op(jit_State *J, RecordOps *ops, const BCIns *pc)
 {
@@ -2463,6 +2536,10 @@ static void rec_loop_op(jit_State *J, RecordOps *ops, const BCIns *pc)
          rec_loop_interp(J, pc, rec_itern(J, ra, rb));
          break;
 
+      case BC_ITERA:
+         rec_loop_interp(J, pc, rec_itera(J, ra, rb));
+         break;
+
       case BC_LOOP:
          rec_loop_interp(J, pc, rec_loop(J, ra, 1));
          break;
@@ -2476,7 +2553,7 @@ static void rec_loop_op(jit_State *J, RecordOps *ops, const BCIns *pc)
          break;
 
       case BC_JLOOP:
-         rec_loop_jit(J, rc, rec_loop(J, ra, !bc_isret(bc_op(traceref(J, rc)->startins)) and bc_op(traceref(J, rc)->startins) != BC_ITERN));
+         rec_loop_jit(J, rc, rec_loop(J, ra, !bc_isret(bc_op(traceref(J, rc)->startins)) and bc_op(traceref(J, rc)->startins) != BC_ITERN and bc_op(traceref(J, rc)->startins) != BC_ITERA));
          break;
 
       case BC_IFORL:
@@ -2752,6 +2829,7 @@ void lj_record_ins(jit_State *J)
    case BC_FORL:
    case BC_ITERL:
    case BC_ITERN:
+   case BC_ITERA:
    case BC_LOOP:
    case BC_JFORL:
    case BC_JITERL:
@@ -2770,6 +2848,10 @@ void lj_record_ins(jit_State *J)
 
    case BC_ISNEXT:
       rec_isnext(J, ra);
+      break;
+
+   case BC_ISARR:
+      rec_isarr(J, ra);
       break;
 
       // Function headers
@@ -2865,6 +2947,13 @@ static const BCIns *rec_setup_root(jit_State *J)
          J->bc_extent = (MSize)(-bc_j(pc[1])) * sizeof(BCIns);
          J->bc_min = pc + 2 + bc_j(pc[1]);
          J->state = TraceState::RECORD_1ST;  //  Record the first ITERN, too.
+         break;
+      case BC_ITERA:
+         lj_assertJ(bc_op(pc[1]) IS BC_ITERL, "no ITERL after ITERA");
+         J->maxslot = ra;
+         J->bc_extent = (MSize)(-bc_j(pc[1])) * sizeof(BCIns);
+         J->bc_min = pc + 2 + bc_j(pc[1]);
+         J->state = TraceState::RECORD_1ST;  //  Record the first ITERA, too.
          break;
       case BC_LOOP:
          // Only check BC range for real loops, but not for "repeat until true".
@@ -2967,6 +3056,7 @@ void lj_record_setup(jit_State *J)
          if (bc_op(*J->pc) IS BC_JLOOP) {
             BCIns startins = traceref(J, bc_d(*J->pc))->startins;
             if (bc_op(startins) IS BC_ITERN) rec_itern(J, bc_a(startins), bc_b(startins));
+            else if (bc_op(startins) IS BC_ITERA) rec_itera(J, bc_a(startins), bc_b(startins));
          }
          lj_record_stop(J, TraceLink::INTERP, 0);
       }
@@ -2978,7 +3068,7 @@ void lj_record_setup(jit_State *J)
 
       // Note: the loop instruction itself is recorded at the end and not
       // at the start! So snapshot #0 needs to point to the *next* instruction.
-      // The one exception is BC_ITERN, which sets LJ_TRACE_RECORD_1ST.
+      // The exceptions are BC_ITERN and BC_ITERA, which set LJ_TRACE_RECORD_1ST.
 
       lj_snap_add(J);
       if (bc_op(J->cur.startins) IS BC_FORL) rec_for_loop(J, J->pc - 1, &J->scev, 1);

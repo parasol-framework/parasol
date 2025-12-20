@@ -273,4 +273,6 @@ ctest --build-config Debug --test-dir build/agents --output-on-failure -L fluid
 - Step 1: Added `BC_ISARR`/`BC_ITERA` to `lj_bc.h`, renumbering opcode ranges to keep iteration opcodes contiguous.
 - Step 2: Implemented x64 VM handlers: `BC_ITERA` loads elements via `lj_arr_getidx`, updates control/index slots with integer tags, and terminates by niling the loop value; `BC_ISARR` guards array type + nil control and patches to the iterator/fallback bytecodes.
 - Step 3: Parser now detects bare array iterators in generic-for loops and emits `BC_ISARR`/`BC_ITERA` accordingly.
-- Pending: Step 4+ (dispatch/trace/recorder updates, documentation, and tests).
+- Step 4: Dispatch, trace, and snap logic now treat `BC_ITERA` like `BC_ITERN`, including hotcount dispatch entries, trace unpatch/blacklist handling, and slot range accounting.
+- Step 5: Added recorder support for array iteration: `BC_ISARR` guards array + nil control; `BC_ITERA` records array length guard, emits `lj_arr_getidx` for the value, and integrates with loop handling/tracing.
+- Pending: Step 6+ (documentation updates and tests).
