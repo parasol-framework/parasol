@@ -69,7 +69,7 @@ end
    arr = array.of('any', 1, 'a', nil, true)
    array.sort(arr, true) -- descending
 
-   -- Expected order (descending): table (none), string, number, boolean, nil
+   -- Expected order (descending): string, number, boolean, nil
    -- Actually: 'a', 1, true, nil (reversing the type order)
    assert(arr[0] is 'a', "first should be 'a'")
    assert(arr[1] is 1, "second should be 1")
