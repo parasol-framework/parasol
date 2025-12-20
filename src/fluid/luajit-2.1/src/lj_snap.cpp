@@ -259,11 +259,11 @@ static BCREG snap_usedef(jit_State* J, uint8_t* udf,
          if (!(op == BC_ISTC or op == BC_ISFC)) DEF_SLOT(bc_a(ins));
          break;
       case BCMbase:
-         if (op >= BC_CALLM and op <= BC_ITERN) {
+         if (op >= BC_CALLM and op <= BC_ITERA) {
             BCREG top = (op == BC_CALLM or op == BC_CALLMT or bc_c(ins) == 0) ?
                maxslot : (bc_a(ins) + bc_c(ins) + LJ_FR2);
             DEF_SLOT(bc_a(ins) + 1);
-            s = bc_a(ins) - ((op == BC_ITERC or op == BC_ITERN) ? 3 : 0);
+            s = bc_a(ins) - ((op == BC_ITERC or op == BC_ITERN or op == BC_ITERA) ? 3 : 0);
             for (; s < top; s++) USE_SLOT(s);
             for (; s < maxslot; s++) DEF_SLOT(s);
             if (op == BC_CALLT or op == BC_CALLMT) {

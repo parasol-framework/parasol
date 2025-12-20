@@ -57,6 +57,7 @@ void lj_dispatch_init(GG_State* GG)
 
    // Workaround for stable v2.1 bytecode. TODO: Replace with BC_IITERN.
    disp[BC_ITERN] = &lj_vm_IITERN;
+   disp[BC_ITERA] = &lj_vm_IITERA;
    disp[BC_LOOP]  = disp[BC_ILOOP];
    disp[BC_FUNCF] = disp[BC_IFUNCF];
    disp[BC_FUNCV] = disp[BC_IFUNCV];
@@ -95,7 +96,7 @@ void lj_dispatch_update(global_State* g)
 
    if (oldmode != mode) {  // Mode changed?
       ASMFunction* disp = G2GG(g)->dispatch;
-      ASMFunction f_forl, f_iterl, f_itern, f_loop, f_funcf, f_funcv;
+      ASMFunction f_forl, f_iterl, f_itern, f_itera, f_loop, f_funcf, f_funcv;
       g->dispatchmode = mode;
 
       // Hotcount if JIT is on, but not while recording.
@@ -104,6 +105,7 @@ void lj_dispatch_update(global_State* g)
          f_forl  = makeasmfunc(lj_bc_ofs[BC_FORL]);
          f_iterl = makeasmfunc(lj_bc_ofs[BC_ITERL]);
          f_itern = makeasmfunc(lj_bc_ofs[BC_ITERN]);
+         f_itera = makeasmfunc(lj_bc_ofs[BC_ITERA]);
          f_loop  = makeasmfunc(lj_bc_ofs[BC_LOOP]);
          f_funcf = makeasmfunc(lj_bc_ofs[BC_FUNCF]);
          f_funcv = makeasmfunc(lj_bc_ofs[BC_FUNCV]);
@@ -112,6 +114,7 @@ void lj_dispatch_update(global_State* g)
          f_forl  = disp[GG_LEN_DDISP + BC_IFORL];
          f_iterl = disp[GG_LEN_DDISP + BC_IITERL];
          f_itern = &lj_vm_IITERN;
+         f_itera = &lj_vm_IITERA;
          f_loop  = disp[GG_LEN_DDISP + BC_ILOOP];
          f_funcf = makeasmfunc(lj_bc_ofs[BC_IFUNCF]);
          f_funcv = makeasmfunc(lj_bc_ofs[BC_IFUNCV]);
@@ -122,6 +125,7 @@ void lj_dispatch_update(global_State* g)
       disp[GG_LEN_DDISP + BC_FORL] = f_forl;
       disp[GG_LEN_DDISP + BC_ITERL] = f_iterl;
       disp[GG_LEN_DDISP + BC_ITERN] = f_itern;
+      disp[GG_LEN_DDISP + BC_ITERA] = f_itera;
       disp[GG_LEN_DDISP + BC_LOOP] = f_loop;
 
       // Set dynamic instruction dispatch.
@@ -152,6 +156,7 @@ void lj_dispatch_update(global_State* g)
          disp[BC_FORL] = f_forl;
          disp[BC_ITERL] = f_iterl;
          disp[BC_ITERN] = f_itern;
+         disp[BC_ITERA] = f_itera;
          disp[BC_LOOP] = f_loop;
          // Set dynamic return dispatch.
          if ((mode & DISPMODE_RET)) {
