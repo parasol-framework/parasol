@@ -759,20 +759,10 @@ static LoopEvent rec_itera(jit_State *J, BCREG ra, BCREG rb)
    TRef idx_ref = tref_isnil(ctrl_ref) ? ir.kint(0) : lj_opt_narrow_index(J, ctrl_ref);
    if (not tref_isnil(ctrl_ref)) idx_ref = emitir(IRT(IR_ADD, IRT_INT), idx_ref, ir.kint(1));
 
-   TRef len_ref = emitir(IRT(IR_FLOAD, IRT_INT), arr_ref, IRFL_ARRAY_LEN);
-   ir.guard(IR_LT, IRT_INT, idx_ref, len_ref);
-
-   lj_ir_call(J, IRCALL_lj_arr_getidx, arr_ref, idx_ref);
-   TRef tmp = emitir(IRT(IR_TMPREF, IRT_PGC), 0, IRTMPREF_OUT1);
-   TRef val = emitir(IRT(IR_VLOAD, IRT_NUM), tmp, 0);
-
-   J->base[ra - 1] = idx_ref;
-   J->base[ra] = idx_ref;
-   J->base[ra + 1] = val;
-   J->maxslot = ra - 1 + rb;
-   J->needsnap = 1;
-   J->pc += bc_j(J->pc[1]) + 2;
-   return LOOPEV_ENTER;
+   // NYI: Array iteration JIT support has issues with lj_ir_call variadic args on Windows x64.
+   // Fall back to interpreter for now. The ISARR/ITERA bytecode path uses this function.
+   setintV(&J->errinfo, (int32_t)BC_ITERA);
+   lj_trace_err_info(J, LJ_TRERR_NYIBC);
 #endif
 }
 
@@ -2403,56 +2393,14 @@ static TRef rec_arith_op(jit_State *J, RecordOps *ops)
 //
 // Native arrays (GCarray) are different from tables - they have typed elements and 0-based indexing internally.
 // We emit calls to helper functions that handle the element type conversion.
-//
-// TODO: Optimise to inline loads/stores.
 
 static TRef rec_array_op(jit_State *J, RecordOps *ops)
 {
-   IRBuilder ir(J);
-   TRef arr = ops->rb;       // Array reference
-   TRef idx = ops->rc;       // Index (variable or constant)
-   BCOp op = ops->op;
-   int is_get = (op IS BC_AGETV or op IS BC_AGETB);
-   int is_const_idx = (op IS BC_AGETB or op IS BC_ASETB);
-
-   if (not tref_isarray(arr)) { // Not an array type - abort trace
-      lj_trace_err(J, LJ_TRERR_BADTYPE);
-      return 0;
-   }
-
-   // Handle index conversion
-
-   TRef idx0;  // 0-based index
-   if (is_const_idx) {
-      // For AGETB/ASETB, the index is already a 0-based constant literal in bc_c()
-      int32_t const_idx = int32_t(bc_c(ops->ins));
-      idx0 = ir.kint(const_idx);
-   }
-   else { // Variable index - narrow to integer and ensure 0-based
-      idx0 = lj_opt_narrow_index(J, idx);
-   }
-
-   if (is_get) {
-      // Array get - emit call to lj_arr_getidx helper
-      // Helper signature: void lj_arr_getidx(lua_State *L, GCarray *arr, int32_t idx, TValue *result)
-      // The L parameter is implicit (CCI_L flag)
-      // Result is stored to a destination that needs to be provided
-      // For now, we use a call that stores to tmptv and then load from there
-
-      lj_ir_call(J, IRCALL_lj_arr_getidx, arr, idx0);
-
-      // Load the result from g->tmptv (where lj_arr_getidx stores the result)
-      // This is a workaround for now - proper handling would use TMPREF
-      TRef tmp = emitir(IRT(IR_TMPREF, IRT_PGC), 0, IRTMPREF_OUT1);
-      return emitir(IRT(IR_VLOAD, IRT_NUM), tmp, 0);  // Load as number for simplicity
-   }
-   else {
-      // Array set - emit call to lj_arr_setidx helper
-      // Helper signature: void lj_arr_setidx(lua_State *L, GCarray *arr, int32_t idx, cTValue *val)
-      TRef val = ops->ra;  // Value to store
-      lj_ir_call(J, IRCALL_lj_arr_setidx, arr, idx0, val);
-      return 0;
-   }
+   // NYI: Array indexing JIT support has issues with lj_ir_call variadic args on Windows x64.
+   // Fall back to interpreter for now.
+   UNUSED(ops);
+   lj_trace_err(J, LJ_TRERR_NYIBC);
+   return 0;
 }
 
 //********************************************************************************************************************

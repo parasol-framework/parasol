@@ -106,7 +106,8 @@ static_assert((int)FF_next IS FF_next_N); // This solves a circular dependency p
 
 LJLIB_ASM(next) LJLIB_REC(.) // Use of '.' indicates the function name in the recorder is unchanged
 {
-   lj_lib_checktab(L, 1);
+   TValue* o = lj_lib_checkany(L, 1);
+   if (not (tvistab(o) or tvisarray(o))) lj_err_argt(L, 1, LUA_TTABLE);
    lj_err_msg(L, ErrMsg::NEXTIDX);
    return FFH_UNREACHABLE;
 }
@@ -122,8 +123,8 @@ static int ffh_pairs(lua_State* L, MMS mm)
       copyTV(L, L->base - 2, mo);  //  Replace callable.
       return FFH_TAILCALL;
    }
-   else {
-      LJ_CHECK_TYPE(L, 1, o, LUA_TTABLE);
+
+   if (tvisarray(o)) {
       copyTV(L, o - 1, o);
       o--;
       setfuncV(L, o - 1, funcV(lj_lib_upvalue(L, 1)));
@@ -131,6 +132,14 @@ static int ffh_pairs(lua_State* L, MMS mm)
       else setintV(o + 1, -1);  // ipairs starts at -1, increments to 0
       return FFH_RES(3);
    }
+
+   LJ_CHECK_TYPE(L, 1, o, LUA_TTABLE);
+   copyTV(L, o - 1, o);
+   o--;
+   setfuncV(L, o - 1, funcV(lj_lib_upvalue(L, 1)));
+   if (mm IS MM_pairs) setnilV(o + 1);
+   else setintV(o + 1, -1);  // ipairs starts at -1, increments to 0
+   return FFH_RES(3);
 }
 
 //********************************************************************************************************************
@@ -145,7 +154,8 @@ LJLIB_ASM(pairs)      LJLIB_REC(xpairs 0)
 
 LJLIB_NOREGUV LJLIB_ASM(ipairs_aux)   LJLIB_REC(.)
 {
-   lj_lib_checktab(L, 1);
+   TValue* o = lj_lib_checkany(L, 1);
+   if (not (tvistab(o) or tvisarray(o))) lj_err_argt(L, 1, LUA_TTABLE);
    lj_lib_checkint(L, 2);
    return FFH_UNREACHABLE;
 }

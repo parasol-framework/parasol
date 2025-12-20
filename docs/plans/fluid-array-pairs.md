@@ -213,3 +213,33 @@ build/agents-install/parasol tools/flute.fluid file=src/fluid/tests/test_array.f
 2. **Array iteration semantics**: arrays are 0-based, so `pairs` and `ipairs` both iterate indices 0..len-1.
 3. **Bounds checks**: use unsigned comparison (`jae`) for efficient 0 <= idx < len checks.
 4. **JIT calls**: use the existing `IRCALL_lj_arr_getidx` helper and load results via TMPREF and `lj_record_vload`.
+
+## Status
+
+### Completed (2025-12-20)
+
+**Interpreter Support - WORKING**
+- ✅ Implemented array support in `ffh_pairs`, `next`, and `ipairs_aux` C fallbacks (lib_base.cpp)
+- ✅ Extended `next` and `ipairs_aux` assembly fast paths for arrays (vm_x64.dasc)
+- ✅ Fixed Windows x64 register aliasing bugs in vm_x64.dasc - see [AGENTS.md](../../src/fluid/luajit-2.1/src/jit/AGENTS.md) for details
+- ✅ Added Flute tests for array `pairs`/`ipairs` in `src/fluid/tests/test_array.fluid`
+- ✅ All 155 array Flute tests pass
+
+**JIT Recording Support - NYI (Not Yet Implemented)**
+- ⚠️ JIT recording for array iteration encounters issues with `lj_ir_call` variadic argument handling on Windows x64
+- ⚠️ The third variadic argument to `lj_ir_call` reads garbage (value 13432 instead of valid TRef)
+- 🔄 Workaround: Array iteration falls back to interpreter when JIT is active
+- 📍 Affected functions set to NYI: `rec_itera`, `rec_array_op`, `recff_ipairs_aux` (array path), `recff_next` (array path)
+
+**Files Modified:**
+- `lib_base.cpp` - C fallback for pairs/ipairs/next accepting arrays
+- `vm_x64.dasc` - Assembly fast paths with Windows x64 register fixes
+- `lj_record.cpp` - NYI for BC_ITERA and array indexing JIT recording
+- `lj_ffrecord.cpp` - NYI for array ipairs_aux and next fast function recording
+
+### Future Work
+
+To enable JIT compilation of array iteration:
+1. Investigate why `lj_ir_call` variadic args fail on Windows x64 (possibly MSVC calling convention issue)
+2. Consider alternative approaches: manually emit IR_CARG chain instead of using lj_ir_call
+3. Or implement direct IR patterns for array element access without using helper calls

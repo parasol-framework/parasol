@@ -254,7 +254,7 @@ typedef struct CCallInfo {
   _(FFI32,   lj_carith_rol64,   2,   N, U64, XA_64|CCI_NOFPRCLOBBER) \
   _(FFI32,   lj_carith_ror64,   2,   N, U64, XA_64|CCI_NOFPRCLOBBER) \
   /* Native array helpers */ \
-  _(ANY,   lj_arr_getidx,      3,   L, NIL, CCI_T) \
+  _(ANY,   lj_arr_getidx,      4,   L, NIL, CCI_T) \
   _(ANY,   lj_arr_setidx,      4,   S, NIL, CCI_L|CCI_T) \
   \
   // End of list.

@@ -465,6 +465,37 @@ static void LJ_FASTCALL recff_tostring(jit_State* J, RecordFFData* rd)
 
 //********************************************************************************************************************
 
+static bool array_elem_irtype(AET ElemType, IRType &ResultType)
+{
+   switch (ElemType) {
+      case AET::_BYTE:
+      case AET::_INT16:
+      case AET::_INT32:
+         ResultType = IRT_INT;
+         return true;
+      case AET::_INT64:
+      case AET::_FLOAT:
+      case AET::_DOUBLE:
+         ResultType = IRT_NUM;
+         return true;
+      case AET::_PTR:
+         ResultType = IRT_LIGHTUD;
+         return true;
+      case AET::_CSTRING:
+      case AET::_STRING_CPP:
+      case AET::_STRING_GC:
+         ResultType = IRT_STR;
+         return true;
+      case AET::_TABLE:
+         ResultType = IRT_TAB;
+         return true;
+      default:
+         return false;
+   }
+}
+
+//********************************************************************************************************************
+
 static void LJ_FASTCALL recff_ipairs_aux(jit_State* J, RecordFFData* rd)
 {
    RecordIndex ix;
@@ -480,6 +511,10 @@ static void LJ_FASTCALL recff_ipairs_aux(jit_State* J, RecordFFData* rd)
       J->base[0] = ix.key = emitir(IRTI(IR_ADD), ix.key, lj_ir_kint(J, 1));
       J->base[1] = lj_record_idx(J, &ix);
       rd->nres = tref_isnil(J->base[1]) ? 0 : 2;
+   }
+   else if (tref_isarray(ix.tab)) {
+      // NYI: Array ipairs JIT support has issues with lj_ir_call variadic args on Windows x64.
+      recff_nyiu(J, rd);
    }  // else: Interpreter will throw.
 }
 
@@ -490,6 +525,12 @@ static void LJ_FASTCALL recff_xpairs(jit_State* J, RecordFFData* rd)
    TRef tr = J->base[0];
    if (!(recff_metacall(J, rd, (MMS)(MM_pairs + rd->data)))) {
       if (tref_istab(tr)) {
+         J->base[0] = lj_ir_kfunc(J, funcV(&J->fn->c.upvalue[0]));
+         J->base[1] = tr;
+         J->base[2] = rd->data ? lj_ir_kint(J, -1) : TREF_NIL;  // 0-based: ipairs starts at -1
+         rd->nres = 3;
+      }
+      else if (tref_isarray(tr)) {
          J->base[0] = lj_ir_kfunc(J, funcV(&J->fn->c.upvalue[0]));
          J->base[1] = tr;
          J->base[2] = rd->data ? lj_ir_kint(J, -1) : TREF_NIL;  // 0-based: ipairs starts at -1
@@ -582,6 +623,10 @@ static void LJ_FASTCALL recff_next(jit_State* J, RecordFFData* rd)
       rd->nres = lj_record_next(J, &ix);
       J->base[0] = ix.key;
       J->base[1] = ix.val;
+   }
+   else if (tref_isarray(tab)) {
+      // NYI: Array next JIT support has issues with lj_ir_call variadic args on Windows x64.
+      recff_nyiu(J, rd);
    }  // else: Interpreter will throw.
 #endif
 }
