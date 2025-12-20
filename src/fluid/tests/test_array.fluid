@@ -1325,11 +1325,15 @@ end
    assert(not status, "array.of() with struct type should be rejected")
 end
 
-@Test function ArrayOfTableRejected()
-   status = pcall(function()
-      return array.of('table', {}, {}, {})
+@Test function ArrayOfTableAccepted()
+   -- array.of('table', ...) is now supported
+   status, arr = pcall(function()
+      return array.of('table', { x = 1 }, { y = 2 }, { z = 3 })
    end)
-   assert(not status, "array.of() with table type should be rejected")
+   assert(status, "array.of() with table type should succeed")
+   assert(#arr is 3, "array should have 3 elements")
+   assert(arr[0].x is 1, "first table should have x=1")
+   assert(arr[2].z is 3, "third table should have z=3")
 end
 
 @Test function ArrayOfStringWithTable()

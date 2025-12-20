@@ -581,6 +581,7 @@ enum class AET : uint8_t {
    _STRING_CPP, // std::string (C++ string)
    _STRING_GC,  // GCstr * (interned string)
    _TABLE,      // GCtab * (table reference)
+   _ANY,        // TValue (mixed type storage)
    _STRUCT,     // Structured data (uses structdef)
    _OBJECT,     // OBJECTPTR for external object references; otherwise Fluid.object
    _MAX,

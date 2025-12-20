@@ -214,6 +214,13 @@ static void gc_mark(global_State *g, GCobj* o)
             if (gcref(refs[i])) gc_markobj(g, gcref(refs[i]));
          }
       }
+      else if (arr->elemtype IS AET::_ANY) {
+         // Mark all GC values in TValue slots
+         TValue* slots = arr->get<TValue>();
+         for (MSize i = 0; i < arr->len; i++) {
+            gc_marktv(g, &slots[i]);
+         }
+      }
    }
    else if (gct != ~LJ_TSTR and gct != ~LJ_TCDATA) {
       lj_assertG(gct IS ~LJ_TFUNC or gct IS ~LJ_TTAB or

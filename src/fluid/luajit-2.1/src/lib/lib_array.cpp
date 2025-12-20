@@ -25,6 +25,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <algorithm>
 #include <parasol/strings.hpp>
 #include <parasol/main.h>
 
@@ -41,6 +42,7 @@ constexpr auto HASH_STRING  = pf::strhash("string");
 constexpr auto HASH_STRUCT  = pf::strhash("struct");
 constexpr auto HASH_POINTER = pf::strhash("pointer");
 constexpr auto HASH_TABLE   = pf::strhash("table");
+constexpr auto HASH_ANY     = pf::strhash("any");
 
 // Forward declaration for find_in_array (used by contains)
 static int32_t find_in_array(GCarray *Arr, lua_Number Value, int32_t Start, int32_t Stop, int32_t Step);
@@ -64,6 +66,7 @@ static AET parse_elemtype(lua_State *L, int NArg)
       case HASH_STRUCT:  return AET::_STRUCT;
       case HASH_POINTER: return AET::_PTR;
       case HASH_TABLE:   return AET::_TABLE;
+      case HASH_ANY:     return AET::_ANY;
    }
 
    lj_err_argv(L, NArg, ErrMsg::BADTYPE, "valid array type", strdata(type_str));
@@ -88,6 +91,7 @@ static CSTRING elemtype_name(AET Type)
       case AET::_CSTRING:
       case AET::_STRING_GC:
       case AET::_STRING_CPP: return "string";
+      case AET::_ANY:        return "any";
       default: return "unknown";
    }
 }
@@ -147,7 +151,6 @@ LJLIB_CF(array_of)
 
    if (elem_type IS AET::_PTR) lj_err_argv(L, 1, ErrMsg::BADTYPE, "non-pointer type", "pointer");
    if (elem_type IS AET::_STRUCT) lj_err_argv(L, 1, ErrMsg::BADTYPE, "non-struct type", "struct");
-   if (elem_type IS AET::_TABLE) lj_err_argv(L, 1, ErrMsg::BADTYPE, "non-table type", "table");
 
    // Count number of values provided (all arguments after the type string)
 
@@ -178,6 +181,25 @@ LJLIB_CF(array_of)
          case AET::_INT32:  arr->get<int32_t>()[i] = int32_t(luaL_checkinteger(L, arg_idx)); break;
          case AET::_INT16:  arr->get<int16_t>()[i] = int16_t(luaL_checkinteger(L, arg_idx)); break;
          case AET::_BYTE:   arr->get<uint8_t>()[i] = uint8_t(luaL_checkinteger(L, arg_idx)); break;
+         case AET::_TABLE: {
+            if (not lua_istable(L, arg_idx)) {
+               lj_err_argv(L, arg_idx, ErrMsg::BADTYPE, "table", luaL_typename(L, arg_idx));
+            }
+            TValue *tv = L->base + arg_idx - 1;
+            GCtab *tab = tabV(tv);
+            setgcref(arr->get<GCRef>()[i], obj2gco(tab));
+            lj_gc_objbarrier(L, arr, tab);
+            break;
+         }
+         case AET::_ANY: {
+            // Copy the TValue directly (any type is allowed)
+            TValue *dest = &arr->get<TValue>()[i];
+            TValue *src = L->base + arg_idx - 1;
+            copyTV(L, dest, src);
+            // Write barrier for GC values
+            if (tvisgcv(src)) lj_gc_objbarrier(L, arr, gcV(src));
+            break;
+         }
          default: lj_err_argv(L, 1, ErrMsg::BADTYPE, "supported type", elemtype_name(elem_type)); return 0;
       }
    }
@@ -510,6 +532,11 @@ LJLIB_CF(array_first)
          else lua_pushnil(L);
          return 1;
       }
+      case AET::_ANY: {
+         TValue *source = (TValue *)elem;
+         copyTV(L, L->top++, source);
+         return 1;
+      }
       default: lua_pushnil(L); break;
    }
 
@@ -562,6 +589,11 @@ LJLIB_CF(array_last)
          else lua_pushnil(L);
          return 1;
       }
+      case AET::_ANY: {
+         TValue *source = (TValue *)elem;
+         copyTV(L, L->top++, source);
+         return 1;
+      }
       default: lua_pushnil(L); break;
    }
 
@@ -588,6 +620,12 @@ LJLIB_CF(array_clear)
       auto refs = arr->get<GCRef>();
       for (MSize i = 0; i < arr->len; i++) {
          setgcrefnull(refs[i]);
+      }
+   }
+   else if (arr->elemtype IS AET::_ANY) {
+      auto slots = arr->get<TValue>();
+      for (MSize i = 0; i < arr->len; i++) {
+         setnilV(&slots[i]);
       }
    }
 
@@ -655,6 +693,13 @@ LJLIB_CF(array_push)
          case AET::_INT32:  arr->get<int32_t>()[idx] = int32_t(luaL_checkinteger(L, arg_idx)); break;
          case AET::_INT16:  arr->get<int16_t>()[idx] = int16_t(luaL_checkinteger(L, arg_idx)); break;
          case AET::_BYTE:   arr->get<uint8_t>()[idx] = uint8_t(luaL_checkinteger(L, arg_idx)); break;
+         case AET::_ANY: {
+            TValue *dest = &arr->get<TValue>()[idx];
+            TValue *src = L->base + arg_idx - 1;
+            copyTV(L, dest, src);
+            if (tvisgcv(src)) lj_gc_objbarrier(L, arr, gcV(src));
+            break;
+         }
          default:
             lj_err_argv(L, 1, ErrMsg::BADTYPE, "pushable type", elemtype_name(arr->elemtype));
             return 0;
@@ -728,6 +773,12 @@ LJLIB_CF(array_pop)
                setgcrefnull(*(GCRef *)elem);  // Clear reference
             }
             else lua_pushnil(L);
+            break;
+         }
+         case AET::_ANY: {
+            TValue *source = (TValue *)elem;
+            copyTV(L, L->top++, source);
+            setnilV(source);  // Clear the slot
             break;
          }
          default:
@@ -1399,6 +1450,11 @@ LJLIB_CF(array_reverse)
          std::reverse(p, p + arr->len);
          break;
       }
+      case AET::_ANY: {
+         auto *p = (TValue *)data;
+         std::reverse(p, p + arr->len);
+         break;
+      }
       default: {
          // Fallback for struct types using byte-level swap
          auto *base = (uint8_t *)data;
@@ -1449,6 +1505,55 @@ LJLIB_CF(array_slice)
 //
 // Note: Does not support string, pointer, or struct arrays.
 
+//********************************************************************************************************************
+// Type priority for sorting _ANY arrays: nil=0, false=1, true=2, number=3, string=4, other=5
+
+static int tvalue_type_priority(cTValue *v)
+{
+   if (tvisnil(v)) return 0;
+   if (tvisfalse(v)) return 1;
+   if (tvistrue(v)) return 2;
+   if (tvisnumber(v)) return 3;
+   if (tvisstr(v)) return 4;
+   return 5;  // tables, functions, etc.
+}
+
+//********************************************************************************************************************
+// Compare two TValues for sorting. Returns <0 if a<b, 0 if a==b, >0 if a>b.
+
+static int tvalue_compare(cTValue *a, cTValue *b, bool descending)
+{
+   int type_a = tvalue_type_priority(a);
+   int type_b = tvalue_type_priority(b);
+
+   if (type_a != type_b) {
+      return descending ? (type_b - type_a) : (type_a - type_b);
+   }
+
+   // Same type - compare values
+   int result = 0;
+   if (tvisnumber(a)) {
+      lua_Number na = numberVnum(a);
+      lua_Number nb = numberVnum(b);
+      result = (na < nb) ? -1 : (na > nb) ? 1 : 0;
+   }
+   else if (tvisstr(a)) {
+      GCstr *sa = strV(a);
+      GCstr *sb = strV(b);
+      result = strcmp(strdata(sa), strdata(sb));
+   }
+   else if (tvisgcv(a)) {
+      // For GC objects (tables, etc.), compare by address
+      result = (gcrefu(a->gcr) < gcrefu(b->gcr)) ? -1 :
+               (gcrefu(a->gcr) > gcrefu(b->gcr)) ? 1 : 0;
+   }
+   // nil, true, false compare equal within their type
+
+   return descending ? -result : result;
+}
+
+//********************************************************************************************************************
+
 template<typename T>
 static void quicksort(T *Data, int32_t Left, int32_t Right, bool Descending)
 {
@@ -1496,6 +1601,14 @@ LJLIB_CF(array_sort)
       case AET::_INT64: quicksort(arr->get<int64_t>(), 0, int32_t(arr->len - 1), descending); break;
       case AET::_FLOAT: quicksort(arr->get<float>(), 0, int32_t(arr->len - 1), descending); break;
       case AET::_DOUBLE: quicksort(arr->get<double>(), 0, int32_t(arr->len - 1), descending); break;
+      case AET::_ANY: {
+         TValue *data = arr->get<TValue>();
+         // Use std::sort with custom comparator for type-grouped sorting
+         std::sort(data, data + arr->len, [descending](const TValue &a, const TValue &b) {
+            return tvalue_compare(&a, &b, descending) < 0;
+         });
+         break;
+      }
       default: luaL_error(L, "sort() does not support this array type."); return 0;
    }
 
@@ -1533,6 +1646,11 @@ static void array_push_element(lua_State *L, GCarray *Arr, MSize Idx)
          GCRef ref = *(GCRef *)elem;
          if (gcref(ref)) settabV(L, L->top++, gco2tab(gcref(ref)));
          else lua_pushnil(L);
+         break;
+      }
+      case AET::_ANY: {
+         TValue *source = (TValue *)elem;
+         copyTV(L, L->top++, source);
          break;
       }
       default: lua_pushnil(L); break;
@@ -1692,6 +1810,13 @@ LJLIB_CF(array_map)
             else {
                setgcrefnull(result->get<GCRef>()[i]);
             }
+            break;
+         }
+         case AET::_ANY: {
+            TValue *dest = &result->get<TValue>()[i];
+            TValue *src = L->top - 1;
+            copyTV(L, dest, src);
+            if (tvisgcv(src)) lj_gc_objbarrier(L, result, gcV(src));
             break;
          }
          case AET::_FLOAT:  result->get<float>()[i] = float(lua_tonumber(L, -1)); break;
@@ -1966,6 +2091,13 @@ LJLIB_CF(array_insert)
          case AET::_INT32:  arr->get<int32_t>()[idx] = int32_t(luaL_checkinteger(L, arg_idx)); break;
          case AET::_INT16:  arr->get<int16_t>()[idx] = int16_t(luaL_checkinteger(L, arg_idx)); break;
          case AET::_BYTE:   arr->get<uint8_t>()[idx] = uint8_t(luaL_checkinteger(L, arg_idx)); break;
+         case AET::_ANY: {
+            TValue *dest = &arr->get<TValue>()[idx];
+            TValue *src = L->base + arg_idx - 1;
+            copyTV(L, dest, src);
+            if (tvisgcv(src)) lj_gc_objbarrier(L, arr, gcV(src));
+            break;
+         }
          default:
             lj_err_argv(L, 1, ErrMsg::BADTYPE, "insertable type", elemtype_name(arr->elemtype));
             return 0;
@@ -2032,6 +2164,12 @@ LJLIB_CF(array_remove)
          setgcrefnull(refs[i]);
       }
    }
+   else if (arr->elemtype IS AET::_ANY) {
+      auto slots = arr->get<TValue>();
+      for (MSize i = arr->len - MSize(count); i < arr->len; i++) {
+         setnilV(&slots[i]);
+      }
+   }
 
    arr->len -= MSize(count);
    setintV(L->top++, int32_t(arr->len));
@@ -2072,6 +2210,16 @@ LJLIB_CF(array_clone)
             GCRef ref = src_refs[i];
             dst_refs[i] = ref;
             if (gcref(ref)) lj_gc_objbarrier(L, result, gcref(ref));
+         }
+         break;
+      }
+      case AET::_ANY: {
+         // For any-type arrays, copy TValues and set up barriers for GC values
+         auto src_slots = arr->get<TValue>();
+         auto dst_slots = result->get<TValue>();
+         for (MSize i = 0; i < arr->len; i++) {
+            copyTV(L, &dst_slots[i], &src_slots[i]);
+            if (tvisgcv(&src_slots[i])) lj_gc_objbarrier(L, result, gcV(&src_slots[i]));
          }
          break;
       }
