@@ -400,14 +400,21 @@ UnsupportedNodeRecorder glUnsupportedNodes;
    BCIns ins = func_state.bcbase[pc].ins;
    GCstr *name = nullptr;
    cTValue *table_entry = nullptr;
+   auto read_var_name = [&](int32_t Slot) -> GCstr* {
+      if (Slot < 0 or Slot >= int32_t(func_state.nactvar)) return nullptr;
+      GCRef name_ref = func_state.var_get(Slot).name;
+      if (gcrefu(name_ref) < VARNAME__MAX) return nullptr;
+      return gco2str(gcref(name_ref));
+   };
 
    switch (bc_op(ins)) {
       case BC_MOV:
-         name = gco2str(gcref(func_state.var_get(bc_d(ins)).name));
+         name = read_var_name(int32_t(bc_d(ins)));
          break;
 
       case BC_UGET:
-         name = gco2str(gcref(func_state.var_get(func_state.uvmap[bc_d(ins)]).name));
+         if (bc_d(ins) >= func_state.nuv) return 0;
+         name = read_var_name(int32_t(func_state.uvmap[bc_d(ins)]));
          break;
 
       case BC_GGET:

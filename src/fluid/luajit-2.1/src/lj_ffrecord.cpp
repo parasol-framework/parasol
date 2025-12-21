@@ -38,6 +38,7 @@
 #include "lj_iropt.h"
 #include "lj_trace.h"
 #include "lj_record.h"
+#include "lj_vmarray.h"
 #include "lj_ffrecord.h"
 #include "lj_dispatch.h"
 #include "lj_vm.h"
@@ -177,6 +178,36 @@ static TRef recff_tmpref(jit_State* J, TRef tr, int mode)
 {
    if (!LJ_DUALNUM and tref_isinteger(tr)) tr = emitir(IRTN(IR_CONV), tr, IRCONV_NUM_INT);
    return emitir(IRT(IR_TMPREF, IRT_PGC), tr, mode);
+}
+
+//********************************************************************************************************************
+// Emit IR call without varargs (Windows x64 vararg safety).
+
+static TRef recff_ir_call_fixed(jit_State* J, IRCallID CallId, TRef Arg1, TRef Arg2, TRef Arg3, TRef Arg4)
+{
+   const CCallInfo* call_info = &lj_ir_callinfo[CallId];
+   uint32_t nargs = CCI_NARGS(call_info);
+   if (call_info->flags & CCI_L) nargs--;
+
+   TRef carg = TREF_NIL;
+   if (nargs IS 1) {
+      carg = Arg1;
+   }
+   else if (nargs IS 2) {
+      carg = emitir(IRT(IR_CARG, IRT_NIL), Arg1, Arg2);
+   }
+   else if (nargs IS 3) {
+      carg = emitir(IRT(IR_CARG, IRT_NIL), Arg1, Arg2);
+      carg = emitir(IRT(IR_CARG, IRT_NIL), carg, Arg3);
+   }
+   else {
+      lj_assertJ(nargs IS 4, "unexpected fixed call arg count");
+      carg = emitir(IRT(IR_CARG, IRT_NIL), Arg1, Arg2);
+      carg = emitir(IRT(IR_CARG, IRT_NIL), carg, Arg3);
+      carg = emitir(IRT(IR_CARG, IRT_NIL), carg, Arg4);
+   }
+   if (CCI_OP(call_info) IS IR_CALLS) J->needsnap = 1;
+   return emitir(CCI_OPTYPE(call_info), carg, CallId);
 }
 
 //********************************************************************************************************************
@@ -471,7 +502,7 @@ static bool array_elem_irtype(AET ElemType, IRType &ResultType)
       case AET::_BYTE:
       case AET::_INT16:
       case AET::_INT32:
-         ResultType = IRT_INT;
+         ResultType = LJ_DUALNUM ? IRT_INT : IRT_NUM;
          return true;
       case AET::_INT64:
       case AET::_FLOAT:
@@ -513,8 +544,38 @@ static void LJ_FASTCALL recff_ipairs_aux(jit_State* J, RecordFFData* rd)
       rd->nres = tref_isnil(J->base[1]) ? 0 : 2;
    }
    else if (tref_isarray(ix.tab)) {
-      // NYI: Array ipairs JIT support has issues with lj_ir_call variadic args on Windows x64.
-      recff_nyiu(J, rd);
+      if (not tvisnumber(&rd->argv[1]))  //  No support for string coercion.
+         lj_trace_err(J, LJ_TRERR_BADTYPE);
+
+      GCarray *arr = arrayV(&rd->argv[0]);
+      int32_t idx_int;
+      if (tvisint(&rd->argv[1])) idx_int = intV(&rd->argv[1]) + 1;
+      else idx_int = int32_t(lj_num2int(numV(&rd->argv[1]))) + 1;
+
+      TRef idx_ref = lj_opt_narrow_toint(J, J->base[1]);
+      idx_ref = emitir(IRTI(IR_ADD), idx_ref, lj_ir_kint(J, 1));
+      TRef len_ref = emitir(IRTI(IR_FLOAD), ix.tab, IRFL_ARRAY_LEN);
+
+      if (idx_int < 0 or MSize(idx_int) >= arr->len) {
+         emitir(IRTGI(IR_UGE), idx_ref, len_ref);
+         rd->nres = 0;
+         return;
+      }
+
+      emitir(IRTGI(IR_ULT), idx_ref, len_ref);
+      J->base[0] = idx_ref;
+
+      TValue result_tv;
+      lj_arr_getidx(J->L, arr, idx_int, &result_tv);
+      IRType result_type;
+      if (not array_elem_irtype(arr->elemtype, result_type) or tvisnil(&result_tv)) {
+         result_type = itype2irt(&result_tv);
+      }
+      if (!LJ_DUALNUM and result_type IS IRT_INT) result_type = IRT_NUM;
+      TRef tmp_ref = recff_tmpref(J, TREF_NIL, IRTMPREF_OUT1);
+      recff_ir_call_fixed(J, IRCALL_lj_arr_getidx, ix.tab, idx_ref, tmp_ref, TREF_NIL);
+      J->base[1] = lj_record_vload(J, tmp_ref, 0, result_type);
+      rd->nres = 2;
    }  // else: Interpreter will throw.
 }
 
@@ -625,8 +686,63 @@ static void LJ_FASTCALL recff_next(jit_State* J, RecordFFData* rd)
       J->base[1] = ix.val;
    }
    else if (tref_isarray(tab)) {
-      // NYI: Array next JIT support has issues with lj_ir_call variadic args on Windows x64.
-      recff_nyiu(J, rd);
+      GCarray *arr = arrayV(&rd->argv[0]);
+      cTValue *key_tv = &rd->argv[1];
+      int32_t idx_int = 0;
+
+      if (tvisnil(key_tv)) {
+         idx_int = 0;
+      }
+      else if (tvisint(key_tv)) {
+         int32_t key_int = intV(key_tv);
+         if (key_int < 0 or MSize(key_int) >= arr->len) lj_trace_err(J, LJ_TRERR_BADTYPE);
+         idx_int = key_int + 1;
+      }
+      else if (tvisnum(key_tv)) {
+         lua_Number num = numV(key_tv);
+         int32_t key_int = int32_t(lj_num2int(num));
+         if (not ((lua_Number)key_int IS num)) lj_trace_err(J, LJ_TRERR_BADTYPE);
+         if (key_int < 0 or MSize(key_int) >= arr->len) lj_trace_err(J, LJ_TRERR_BADTYPE);
+         idx_int = key_int + 1;
+      }
+      else {
+         lj_trace_err(J, LJ_TRERR_BADTYPE);
+      }
+
+      TRef len_ref = emitir(IRTI(IR_FLOAD), tab, IRFL_ARRAY_LEN);
+      TRef idx_ref;
+
+      if (tref_isnil(J->base[1])) {
+         idx_ref = lj_ir_kint(J, 0);
+      }
+      else {
+         if (not tref_isnumber(J->base[1])) lj_trace_err(J, LJ_TRERR_BADTYPE);
+         TRef key_ref = lj_opt_narrow_index(J, J->base[1]);
+         emitir(IRTGI(IR_ULT), key_ref, len_ref);
+         idx_ref = emitir(IRTI(IR_ADD), key_ref, lj_ir_kint(J, 1));
+      }
+
+      if (idx_int < 0 or MSize(idx_int) >= arr->len) {
+         emitir(IRTGI(IR_UGE), idx_ref, len_ref);
+         J->base[0] = TREF_NIL;
+         rd->nres = 1;
+         return;
+      }
+
+      emitir(IRTGI(IR_ULT), idx_ref, len_ref);
+      J->base[0] = idx_ref;
+
+      TValue result_tv;
+      lj_arr_getidx(J->L, arr, idx_int, &result_tv);
+      IRType result_type;
+      if (not array_elem_irtype(arr->elemtype, result_type) or tvisnil(&result_tv)) {
+         result_type = itype2irt(&result_tv);
+      }
+      if (!LJ_DUALNUM and result_type IS IRT_INT) result_type = IRT_NUM;
+      TRef tmp_ref = recff_tmpref(J, TREF_NIL, IRTMPREF_OUT1);
+      recff_ir_call_fixed(J, IRCALL_lj_arr_getidx, tab, idx_ref, tmp_ref, TREF_NIL);
+      J->base[1] = lj_record_vload(J, tmp_ref, 0, result_type);
+      rd->nres = 2;
    }  // else: Interpreter will throw.
 #endif
 }
