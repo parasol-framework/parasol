@@ -772,10 +772,10 @@ static int range_contains(lua_State *L)
 }
 
 //********************************************************************************************************************
-// range:toTable()
+// range:toArray()
 // Returns an array containing all values in the range
 
-static int range_totable(lua_State *L)
+static int range_toarray(lua_State *L)
 {
    auto r = (fluid_range *)lua_touserdata(L, lua_upvalueindex(1));
    if (not r) {
@@ -785,45 +785,44 @@ static int range_totable(lua_State *L)
 
    int32_t len = range_length(r);
 
-   // Create table with appropriate size
-   lua_createtable(L, len, 0);
+   // Create array with appropriate size
+   GCarray *arr = lj_array_new(L, MSize(len), AET::_INT32);
 
-   if (len IS 0) return 1;
+   if (len IS 0) {
+      setarrayV(L, L->top++, arr);
+      return 1;
+   }
 
+   int32_t *data = arr->get<int32_t>();
    int32_t step = r->step;
    int32_t stop = r->stop;
 
    // Calculate effective stop
    if (not r->inclusive) {
-      if (step > 0) {
-         stop = stop - 1;
-      }
-      else {
-         stop = stop + 1;
-      }
+      if (step > 0) stop--;
+      else stop++;
    }
 
    int32_t idx = 0;
    if (step > 0) {
       for (int32_t i = r->start; i <= stop; i += step) {
-         lua_pushinteger(L, i);
-         lua_rawseti(L, -2, idx++);
+         data[idx++] = i;
       }
    }
    else {
       for (int32_t i = r->start; i >= stop; i += step) {
-         lua_pushinteger(L, i);
-         lua_rawseti(L, -2, idx++);
+         data[idx++] = i;
       }
    }
 
+   setarrayV(L, L->top++, arr);
    return 1;
 }
 
 //********************************************************************************************************************
 // __index metamethod
 // Handles property access (.start, .stop, .step, .inclusive, .length)
-// and method calls (:contains, :toTable)
+// and method calls (:contains, :toArray)
 
 constexpr auto HASH_start     = pf::strhash("start");
 constexpr auto HASH_stop      = pf::strhash("stop");
@@ -831,7 +830,7 @@ constexpr auto HASH_step      = pf::strhash("step");
 constexpr auto HASH_inclusive = pf::strhash("inclusive");
 constexpr auto HASH_length    = pf::strhash("length");
 constexpr auto HASH_contains  = pf::strhash("contains");
-constexpr auto HASH_toTable   = pf::strhash("toTable");
+constexpr auto HASH_toArray   = pf::strhash("toArray");
 constexpr auto HASH_each      = pf::strhash("each");
 constexpr auto HASH_filter    = pf::strhash("filter");
 constexpr auto HASH_reduce    = pf::strhash("reduce");
@@ -866,9 +865,9 @@ static int range_index(lua_State *Lua)
             lua_pushvalue(Lua, 1);  // Push the range userdata
             lua_pushcclosure(Lua, range_contains, 1);
             return 1;
-         case HASH_toTable:
+         case HASH_toArray:
             lua_pushvalue(Lua, 1);  // Push the range userdata
-            lua_pushcclosure(Lua, range_totable, 1);
+            lua_pushcclosure(Lua, range_toarray, 1);
             return 1;
       }
    }
