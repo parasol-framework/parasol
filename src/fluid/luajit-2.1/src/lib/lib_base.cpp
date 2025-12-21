@@ -106,7 +106,7 @@ static_assert((int)FF_next IS FF_next_N); // This solves a circular dependency p
 
 LJLIB_ASM(next) LJLIB_REC(.) // Use of '.' indicates the function name in the recorder is unchanged
 {
-   TValue* o = lj_lib_checkany(L, 1);
+   TValue *o = lj_lib_checkany(L, 1);
    if (not (tvistab(o) or tvisarray(o))) lj_err_argt(L, 1, LUA_TTABLE);
    lj_err_msg(L, ErrMsg::NEXTIDX);
    return FFH_UNREACHABLE;
@@ -116,15 +116,15 @@ LJLIB_ASM(next) LJLIB_REC(.) // Use of '.' indicates the function name in the re
 
 static int ffh_pairs(lua_State* L, MMS mm)
 {
-   TValue* o = lj_lib_checkany(L, 1);
-   cTValue* mo = lj_meta_lookup(L, o, mm);
+   TValue *o = lj_lib_checkany(L, 1);
+   cTValue *mo = lj_meta_lookup(L, o, mm);
    if (not tvisnil(mo)) {
       L->top = o + 1;  //  Only keep one argument.
       copyTV(L, L->base - 2, mo);  //  Replace callable.
       return FFH_TAILCALL;
    }
 
-   if (tvisarray(o)) {
+   if ((tvisarray(o)) or (tvistab(o))) {
       copyTV(L, o - 1, o);
       o--;
       setfuncV(L, o - 1, funcV(lj_lib_upvalue(L, 1)));
@@ -132,14 +132,7 @@ static int ffh_pairs(lua_State* L, MMS mm)
       else setintV(o + 1, -1);  // ipairs starts at -1, increments to 0
       return FFH_RES(3);
    }
-
-   LJ_CHECK_TYPE(L, 1, o, LUA_TTABLE);
-   copyTV(L, o - 1, o);
-   o--;
-   setfuncV(L, o - 1, funcV(lj_lib_upvalue(L, 1)));
-   if (mm IS MM_pairs) setnilV(o + 1);
-   else setintV(o + 1, -1);  // ipairs starts at -1, increments to 0
-   return FFH_RES(3);
+   else lj_err_argt(L, 1, LUA_TTABLE);
 }
 
 //********************************************************************************************************************
@@ -177,17 +170,15 @@ static int values_iterator_next(lua_State* L)
 {
    // Upvalue 1: the table being iterated
    // Upvalue 2: state table containing the current key at index 0
-   GCfunc* fn = curr_func(L);
-   GCtab* t = tabV(&fn->c.upvalue[0]);
-   GCtab* state = tabV(&fn->c.upvalue[1]);
-   TValue* key_slot = lj_tab_setint(L, state, 0);  // Get mutable slot
+   GCfunc *fn       = curr_func(L);
+   GCtab *t         = tabV(&fn->c.upvalue[0]);
+   GCtab *state     = tabV(&fn->c.upvalue[1]);
+   TValue *key_slot = lj_tab_setint(L, state, 0);  // Get mutable slot
 
    TValue result[2];
    if (lj_tab_next(t, key_slot, result)) {
-      // Update the key in state table for next iteration
-      copyTV(L, key_slot, &result[0]);
-      // Return only the value
-      copyTV(L, L->top, &result[1]);
+      copyTV(L, key_slot, &result[0]); // Update the key in state table for next iteration
+      copyTV(L, L->top, &result[1]); // Return only the value
       L->top++;
       return 1;
    }
@@ -221,7 +212,7 @@ LJLIB_CF(values)
    TValue* o = lj_lib_checkany(L, 1);
 
    if (tvistab(o)) {
-      GCtab* t = tabV(o);
+      GCtab *t = tabV(o);
 
       settabV(L, L->top, t); // Push the table as upvalue 1
       L->top++;
@@ -232,19 +223,13 @@ LJLIB_CF(values)
       TValue* key_slot = lj_tab_setint(L, state, 0);
       setnilV(key_slot);
       L->top++;
-
-      // Create closure with 2 upvalues
-      lua_pushcclosure(L, values_iterator_next, 2);
+      lua_pushcclosure(L, values_iterator_next, 2); // Create closure with 2 upvalues
    }
    else if (tvisarray(o)) {
       GCarray *arr = arrayV(o);
-      setarrayV(L, L->top, arr); // Push the array as upvalue 1
-      L->top++;
-      setintV(L->top, 0); // Push the starting index as upvalue 2
-      L->top++;
-
-      // Create closure with 2 upvalues
-      lua_pushcclosure(L, values_array_iterator_next, 2);
+      setarrayV(L, L->top++, arr); // Push the array as upvalue 1
+      setintV(L->top++, 0); // Push the starting index as upvalue 2
+      lua_pushcclosure(L, values_array_iterator_next, 2); // Create closure with 2 upvalues
    }
    else lj_err_argt(L, 1, LUA_TTABLE);  // Expected table or array
 
@@ -262,18 +247,15 @@ static int keys_iterator_next(lua_State* L)
 {
    // Upvalue 1: the table being iterated
    // Upvalue 2: state table containing the current key at index 0
-   GCfunc* fn = curr_func(L);
-   GCtab* t = tabV(&fn->c.upvalue[0]);
-   GCtab* state = tabV(&fn->c.upvalue[1]);
-   TValue* key_slot = lj_tab_setint(L, state, 0);  // Get mutable slot
+   GCfunc *fn       = curr_func(L);
+   GCtab *t         = tabV(&fn->c.upvalue[0]);
+   GCtab *state     = tabV(&fn->c.upvalue[1]);
+   TValue *key_slot = lj_tab_setint(L, state, 0);  // Get mutable slot
 
    TValue result[2];
    if (lj_tab_next(t, key_slot, result)) {
-      // Update the key in state table for next iteration
-      copyTV(L, key_slot, &result[0]);
-      // Return only the key
-      copyTV(L, L->top, &result[0]);
-      L->top++;
+      copyTV(L, key_slot, &result[0]); // Update the key in state table for next iteration
+      copyTV(L, L->top++, &result[0]); // Return only the key
       return 1;
    }
    return 0;  // End of iteration
@@ -281,16 +263,16 @@ static int keys_iterator_next(lua_State* L)
 
 LJLIB_CF(keys)
 {
-   GCtab* t = lj_lib_checktab(L, 1);
+   GCtab *t = lj_lib_checktab(L, 1);
 
    // Push the table as upvalue 1
    settabV(L, L->top, t);
    L->top++;
 
    // Create state table to hold the mutable key (upvalue 2)
-   GCtab* state = lj_tab_new(L, 0, 1);
+   GCtab *state = lj_tab_new(L, 0, 1);
    settabV(L, L->top, state);
-   TValue* key_slot = lj_tab_setint(L, state, 0);
+   TValue *key_slot = lj_tab_setint(L, state, 0);
    setnilV(key_slot);
    L->top++;
 
@@ -344,8 +326,8 @@ LJLIB_CF(rawset)      LJLIB_REC(.)
 
 LJLIB_CF(rawequal)      LJLIB_REC(.)
 {
-   cTValue* o1 = lj_lib_checkany(L, 1);
-   cTValue* o2 = lj_lib_checkany(L, 2);
+   cTValue *o1 = lj_lib_checkany(L, 1);
+   cTValue *o2 = lj_lib_checkany(L, 2);
    setboolV(L->top - 1, lj_obj_equal(o1, o2));
    return 1;
 }
@@ -354,12 +336,10 @@ LJLIB_CF(rawequal)      LJLIB_REC(.)
 
 LJLIB_CF(rawlen)      LJLIB_REC(.)
 {
-   cTValue* o = L->base;
+   cTValue *o = L->base;
    int32_t len;
-   if (L->top > o and tvisstr(o))
-      len = (int32_t)strV(o)->len;
-   else
-      len = (int32_t)lj_tab_len(lj_lib_checktab(L, 1));
+   if (L->top > o and tvisstr(o)) len = (int32_t)strV(o)->len;
+   else len = (int32_t)lj_tab_len(lj_lib_checktab(L, 1));
    setintV(L->top - 1, len);
    return 1;
 }
@@ -390,6 +370,7 @@ LJLIB_CF(__filter)      LJLIB_REC(.)
    int32_t value_count = nargs - 3;
 
    // First pass: count how many values we'll keep (for stack check)
+
    int32_t out_count = 0;
    for (int32_t i = 0; i < value_count; i++) {
       bool keep = (i < count) ? ((mask & (1ULL << i)) != 0) : trailing_keep;
@@ -397,23 +378,22 @@ LJLIB_CF(__filter)      LJLIB_REC(.)
    }
 
    // Ensure we have enough stack space
+
    if (out_count > 0 and !lua_checkstack(L, out_count)) {
       lj_err_caller(L, ErrMsg::STKOV);
       return 0;  // StackFrame destructor will restore L->top
    }
 
    // Move kept values into position at L->base (overwriting the args)
-   // This is similar to how select() works but with filtering
-   TValue* src = L->base + 3;  // Values start after mask, count, trailing_keep
-   TValue* dst = L->base;      // Overwrite from the start
+
+   TValue *src = L->base + 3;  // Values start after mask, count, trailing_keep
+   TValue *dst = L->base;      // Overwrite from the start
 
    int32_t written = 0;
    for (int32_t i = 0; i < value_count; i++) {
       bool keep = (i < count) ? ((mask & (1ULL << i)) != 0) : trailing_keep;
       if (keep) {
-         if (dst + written != src + i) {
-            copyTV(L, dst + written, src + i);
-         }
+         if (dst + written != src + i) copyTV(L, dst + written, src + i);
          written++;
       }
    }
@@ -580,8 +560,7 @@ LJLIB_CF(newproxy)
          validproxy = lua_toboolean(L, -1);
          lua_pop(L, 1);
       }
-      if (!validproxy)
-         lj_err_arg(L, 1, ErrMsg::NOPROXY);
+      if (!validproxy) lj_err_arg(L, 1, ErrMsg::NOPROXY);
       lua_getmetatable(L, 1);
    }
    lua_setmetatable(L, 2);
@@ -608,6 +587,7 @@ LJLIB_CF(print)
       lua_gettable(L, LUA_GLOBALSINDEX);
       tv = L->top - 1;
    }
+
    shortcut = (tvisfunc(tv) and funcV(tv)->c.ffid IS FF_tostring) and
       !gcrefu(basemt_it(G(L), LJ_TNUMX));
    for (i = 0; i < nargs; i++) {
@@ -615,6 +595,7 @@ LJLIB_CF(print)
       const char* str;
       size_t size;
       MSize len;
+      
       if (shortcut and (str = lj_strfmt_wstrnum(L, o, &len)) != nullptr) {
          size = len;
       }
@@ -628,8 +609,8 @@ LJLIB_CF(print)
             lj_err_caller(L, ErrMsg::PRTOSTR);  // StackFrame will restore L->top
          L->top--;
       }
-      if (i)
-         putchar('\t');
+
+      if (i) putchar('\t');
       fwrite(str, 1, size, stdout);
    }
    putchar('\n');
@@ -678,11 +659,7 @@ LJLIB_CF(__create_thunk)
 {
    GCfunc *fn = lj_lib_checkfunc(L, 1);
    int expected_type = (int)lj_lib_checkint(L, 2);
-
-   // Create thunk userdata
    lj_thunk_new(L, fn, expected_type);
-
-   // Thunk userdata is now at L->top-1
    return 1;
 }
 
