@@ -36,6 +36,14 @@ end
    container = { values = { [1] = "First", [2] = "Second" } }
    value = container?.values?[2]
    assert(value is "Second", "Safe index should return stored element when present, got " .. tostring(value))
+
+   -- Test with native Fluid array
+   container = array.of('string', "First", "Second")
+   value = container?[1]
+   assert(value is "Second", "Safe index should return stored element when present, got " .. tostring(value))
+
+   value = container?[6]
+   assert(value is nil, "Safe index should return nil when index is out of bounds, got " .. tostring(value))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -352,4 +360,162 @@ end
    obj2 = { a = { b = { c = "value" } } }
    v2 = (obj2?.a?.b?.c) ?? "default"
    assert(v2 is "value", "Chaining with if-empty should use value when present")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Fluid Array Safe Navigation Tests
+
+@Test function testFluidArraySafeIndexBasic()
+   -- Test different array element types with safe navigation
+   intArr = array.of('int', 10, 20, 30, 40, 50)
+   assert(intArr?[0] is 10, "Safe index on int array should return first element")
+   assert(intArr?[2] is 30, "Safe index on int array should return middle element")
+   assert(intArr?[4] is 50, "Safe index on int array should return last element")
+   assert(intArr?[5] is nil, "Safe index out of bounds should return nil")
+   assert(intArr?[100] is nil, "Safe index far out of bounds should return nil")
+
+   doubleArr = array.of('double', 1.5, 2.5, 3.5)
+   assert(doubleArr?[0] is 1.5, "Safe index on double array should work")
+   assert(doubleArr?[3] is nil, "Safe index out of bounds on double array should return nil")
+
+   byteArr = array.of('byte', 255, 128, 0)
+   assert(byteArr?[0] is 255, "Safe index on byte array should work")
+   assert(byteArr?[1] is 128, "Safe index on byte array should return correct value")
+   assert(byteArr?[3] is nil, "Safe index out of bounds on byte array should return nil")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testFluidArraySafeIndexVariable()
+   -- Test safe navigation with variable indices
+   arr = array.of('string', "zero", "one", "two", "three")
+
+   idx = 0
+   assert(arr?[idx] is "zero", "Safe index with variable index 0 should work")
+
+   idx = 2
+   assert(arr?[idx] is "two", "Safe index with variable index should work")
+
+   idx = 10
+   assert(arr?[idx] is nil, "Safe index with out-of-bounds variable index should return nil")
+
+   -- Test with computed index
+   base = 1
+   assert(arr?[base + 1] is "two", "Safe index with computed index should work")
+   assert(arr?[base + 100] is nil, "Safe index with out-of-bounds computed index should return nil")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testFluidArraySafeIndexNilArray()
+   -- Test safe navigation on nil array variable
+   nilArr = nil
+   assert(nilArr?[0] is nil, "Safe index on nil should return nil")
+   assert(nilArr?[5] is nil, "Safe index on nil with any index should return nil")
+
+   -- Verify index expression is not evaluated when base is nil
+   indexCalls = 0
+   function getIndex()
+      indexCalls++
+      return 0
+   end
+   result = nilArr?[getIndex()]
+   assert(result is nil, "Safe index on nil should return nil")
+   assert(indexCalls is 0, "Index expression should not be evaluated when array is nil")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testFluidArraySafeIndexChained()
+   -- Test chained safe navigation with arrays
+   data = {
+      items = array.of('int', 100, 200, 300)
+   }
+   assert(data?.items?[0] is 100, "Chained safe navigation to array should work")
+   assert(data?.items?[2] is 300, "Chained safe navigation to array last element should work")
+   assert(data?.items?[5] is nil, "Chained safe navigation with out-of-bounds should return nil")
+
+   -- Test with nil intermediate
+   data2 = { items = nil }
+   assert(data2?.items?[0] is nil, "Chained safe navigation with nil intermediate should return nil")
+
+   -- Test with nil base
+   data3 = nil
+   assert(data3?.items?[0] is nil, "Chained safe navigation with nil base should return nil")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testFluidArraySafeIndexWithFallback()
+   -- Test safe array navigation combined with ?? operator
+   arr = array.of('string', "first", "second")
+
+   v = arr?[0] ?? "default"
+   assert(v is "first", "Safe index with fallback should return value when present")
+
+   v = arr?[10] ?? "default"
+   assert(v is "default", "Safe index out of bounds with fallback should return default")
+
+   nilArr = nil
+   v = nilArr?[0] ?? "default"
+   assert(v is "default", "Safe index on nil with fallback should return default")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testFluidArraySafeIndexNestedArrays()
+   -- Test arrays containing other arrays (if supported)
+   outer = array.of('any', array.of('int', 1, 2, 3), array.of('int', 4, 5, 6))
+
+   inner = outer?[0]
+   assert(inner, "Safe index should return nested array")
+   assert(inner?[0] is 1, "Safe index on nested array should work")
+   assert(inner?[2] is 3, "Safe index on nested array should return correct value")
+
+   -- Out of bounds on outer
+   assert(outer?[5] is nil, "Safe index out of bounds on outer array should return nil")
+
+   -- Out of bounds on inner (if we got a valid inner)
+   inner2 = outer?[1]
+   assert(inner2?[10] is nil, "Safe index out of bounds on inner array should return nil")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testFluidArraySafeIndexEmptyArray()
+   -- Test safe navigation on empty arrays
+   emptyInt = array.new(0, 'int')
+   assert(emptyInt?[0] is nil, "Safe index on empty array should return nil")
+
+   emptyStr = array.new(0, 'string')
+   assert(emptyStr?[0] is nil, "Safe index on empty string array should return nil")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testFluidArraySafeIndexInLoop()
+   -- Test safe navigation in loop context
+   arr = array.of('int', 10, 20, 30)
+   results = {}
+
+   for i in {0..5} do
+      results[i] = arr?[i] ?? -1
+   end
+
+   assert(results[0] is 10, "Safe index in loop should work for index 0")
+   assert(results[1] is 20, "Safe index in loop should work for index 1")
+   assert(results[2] is 30, "Safe index in loop should work for index 2")
+   assert(results[3] is -1, "Safe index in loop should return fallback for out of bounds")
+   assert(results[4] is -1, "Safe index in loop should return fallback for out of bounds")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testFluidArraySafeIndexTableInArray()
+   -- Test array containing tables
+   arr = array.of('table', { name = "Alice" }, { name = "Bob" }, { name = "Carol" })
+
+   assert(arr?[0]?.name is "Alice", "Safe navigation through array to table field should work")
+   assert(arr?[1]?.name is "Bob", "Safe navigation through array to table field should work")
+   assert(arr?[5]?.name is nil, "Safe navigation with out-of-bounds array should return nil")
 end

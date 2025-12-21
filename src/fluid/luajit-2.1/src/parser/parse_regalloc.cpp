@@ -292,6 +292,18 @@ static void expr_discharge(FuncState *fs, ExpDesc *e)
       }
       bcreg_free(fs, e->u.s.info);
    }
+   else if (e->k IS ExpKind::SafeIndexedArray) {
+      // Safe array indexing - emit BC_ASGETV or BC_ASGETB (returns nil for out-of-bounds)
+      BCREG rc = e->u.s.aux;
+      if (rc > BCMAX_C) {
+         ins = BCINS_ABC(BC_ASGETB, 0, e->u.s.info, rc - (BCMAX_C + 1));
+      }
+      else {
+         bcreg_free(fs, rc);
+         ins = BCINS_ABC(BC_ASGETV, 0, e->u.s.info, rc);
+      }
+      bcreg_free(fs, e->u.s.info);
+   }
    else if (e->k IS ExpKind::Call) {
       e->u.s.info = e->u.s.aux;
       e->k = ExpKind::NonReloc;
@@ -507,8 +519,9 @@ static void bcemit_store(FuncState *fs, ExpDesc* var, ExpDesc *e)
       BCREG ra = expr_toanyreg(fs, e);
       ins = BCINS_AD(BC_GSET, ra, const_str(fs, var));
    }
-   else if (var->k IS ExpKind::IndexedArray) {
+   else if (var->k IS ExpKind::IndexedArray or var->k IS ExpKind::SafeIndexedArray) {
       // Array index assignment - emit BC_ASETV or BC_ASETB
+      // Note: SafeIndexedArray uses same SET bytecodes as IndexedArray (safe is only for reads)
       BCREG ra, rc;
       ra = expr_toanyreg(fs, e);
       rc = var->u.s.aux;

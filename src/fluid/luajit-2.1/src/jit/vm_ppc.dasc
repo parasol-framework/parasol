@@ -5414,6 +5414,49 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_next
     break;
 
+  case BC_ASGETV:
+    |  // Safe array get with variable index - returns nil for out-of-bounds on arrays.
+    |  // For non-arrays, falls back to regular table indexing via vmeta_tgetb.
+    |  // RA = dst, RB = table/array, RC = key
+    |  lpx  TMP1, BASE, RB		// Load table/array
+    |  lpx  TMP2, BASE, RC		// Load key (hi word)
+    |  lwzx TMP3, RA, RC		// Load key (lo word) - index
+    |  lwz  ITYPE, 0(TMP1)
+    |  checkarray ITYPE
+    |  bne ->vmeta_tgetv			// Not an array? Fall back to table get.
+    |  // Check if key is integer
+    |  checknum TMP2
+    |  bgt ->vmeta_tgetv			// Not an integer? Fall back to table get.
+    |  // Call safe helper to get element (handles bounds check internally)
+    |  add CARG4, BASE, RA
+    |  stp BASE, L->base
+    |  mr  CARG1, L
+    |  mr  CARG2, ARRAY:TMP1
+    |  mr  CARG3, TMP3
+    |  stw PC, SAVE_PC
+    |  blex lj_arr_safe_getidx
+    |  ins_next
+    break;
+
+  case BC_ASGETB:
+    |  // Safe array get with literal index - returns nil for out-of-bounds on arrays.
+    |  // For non-arrays, falls back to regular table indexing via vmeta_tgetv.
+    |  // RA = dst, RB = table/array, RC = literal index (0-255, 0-based)
+    |  lpx TMP1, BASE, RB		// Load table/array
+    |  lwz ITYPE, 0(TMP1)
+    |  checkarray ITYPE
+    |  bne ->vmeta_tgetb			// Not an array? Fall back to table get.
+    |  // Call safe helper to get element (handles bounds check internally)
+    |  add CARG4, BASE, RA
+    |  stp BASE, L->base
+    |  mr CARG1, L
+    |  mr CARG2, ARRAY:TMP1
+    |  mr CARG3, RC
+    |  stw PC, SAVE_PC
+    |  blex lj_arr_safe_getidx
+    |  ins_next
+    break;
+
   //  -- Calls and vararg handling -----------------------------------------
 
   case BC_CALLM:

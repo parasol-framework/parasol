@@ -298,6 +298,19 @@ extern "C" void lj_arr_getidx(lua_State *L, GCarray *Array, int32_t Idx, TValue 
 }
 
 //********************************************************************************************************************
+// Safe array get by index - returns nil for out-of-bounds instead of throwing an error.
+// Used by safe navigation operator (?[]) on arrays.
+
+extern "C" void lj_arr_safe_getidx(lua_State *L, GCarray *Array, int32_t Idx, TValue *Result)
+{
+   if (Idx < 0 or MSize(Idx) >= Array->len) {
+      setnilV(Result);
+      return;
+   }
+   arr_load_elem(L, Array, uint32_t(Idx), Result);
+}
+
+//********************************************************************************************************************
 // Direct array set by index - called after type and bounds checks pass
 
 extern "C" void lj_arr_setidx(lua_State *L, GCarray *Array, int32_t Idx, cTValue *Val)

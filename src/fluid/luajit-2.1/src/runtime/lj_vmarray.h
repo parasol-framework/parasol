@@ -14,3 +14,7 @@ extern "C" [[nodiscard]] int lj_arr_set(lua_State* L, cTValue* o, cTValue* k, cT
 // Direct array access helpers (no metamethod support, used after type check passes)
 extern "C" void lj_arr_getidx(lua_State* L, GCarray* arr, int32_t idx, TValue* result);
 extern "C" void lj_arr_setidx(lua_State* L, GCarray* arr, int32_t idx, cTValue* val);
+
+// Safe array get - returns nil for out-of-bounds instead of throwing error
+// Used by safe navigation operator (?[]) on arrays
+extern "C" void lj_arr_safe_getidx(lua_State* L, GCarray* arr, int32_t idx, TValue* result);

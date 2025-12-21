@@ -118,6 +118,8 @@ Operand suffixes: V=variable slot, S=string const, N=number const, P=primitive (
 | `AGETB` | A B C | R(A) = R(B)[C] (native array get by byte literal) |
 | `ASETV` | A B C | R(B)[R(C)] = R(A) (native array set by variable) |
 | `ASETB` | A B C | R(B)[C] = R(A) (native array set by byte literal) |
+| `ASGETV` | A B C | R(A) = R(B)?[R(C)] (safe array get - nil for out-of-bounds) |
+| `ASGETB` | A B C | R(A) = R(B)?[C] (safe array get with literal - nil for out-of-bounds) |
 
 #### Call and Vararg Ops
 | Opcode | Format | Description |
@@ -231,12 +233,16 @@ Array bytecodes mirror the table access pattern but operate on `GCarray` objects
 
 | Bytecode | Operation | Bounds Check | Read-Only Check |
 |----------|-----------|--------------|-----------------|
-| `AGETV` | Load element by variable index | Yes | No |
-| `AGETB` | Load element by literal index | Yes | No |
-| `ASETV` | Store element by variable index | Yes | Yes |
-| `ASETB` | Store element by literal index | Yes | Yes |
+| `AGETV` | Load element by variable index | Yes (error) | No |
+| `AGETB` | Load element by literal index | Yes (error) | No |
+| `ASETV` | Store element by variable index | Yes (error) | Yes |
+| `ASETB` | Store element by literal index | Yes (error) | Yes |
+| `ASGETV` | Safe load by variable index | Yes (nil) | No |
+| `ASGETB` | Safe load by literal index | Yes (nil) | No |
 
-**Bounds checking**: All array access bytecodes validate `0 <= index < array.len`. Out-of-bounds access raises `LJ_ERR_ARROB`.
+**Bounds checking**: Standard array access bytecodes (`AGETV`, `AGETB`, `ASETV`, `ASETB`) validate `0 <= index < array.len`. Out-of-bounds access raises `LJ_ERR_ARROB`.
+
+**Safe bounds checking**: Safe array get bytecodes (`ASGETV`, `ASGETB`) return `nil` for out-of-bounds access instead of raising an error. These are used by the safe navigation operator (`?[]`) on arrays.
 
 **Read-only checking**: Store operations (`ASETV`, `ASETB`) verify the `ARRAY_FLAG_READONLY` flag is not set. Writes to read-only arrays raise `LJ_ERR_ARRRO`.
 
@@ -272,6 +278,7 @@ Array bytecodes record to the JIT trace using call-based IR emission:
 
 - `AGETV`/`AGETB` → `IRCALL_lj_arr_getidx`
 - `ASETV`/`ASETB` → `IRCALL_lj_arr_setidx`
+- `ASGETV`/`ASGETB` → `IRCALL_lj_arr_safe_getidx`
 
 The recorder emits:
 1. Type guard ensuring operand is array
@@ -286,6 +293,8 @@ When the parser can determine at compile time that an expression is an array (vi
 
 - Known array + variable index → `BC_AGETV` / `BC_ASETV`
 - Known array + literal index (0-255) → `BC_AGETB` / `BC_ASETB`
+- Safe navigation (`?[]`) with variable index → `BC_ASGETV`
+- Safe navigation (`?[]`) with literal index (0-255) → `BC_ASGETB`
 
 When the base type is unknown, standard table bytecodes (`TGETV`, `TSETV`, etc.) are emitted, relying on runtime type dispatch.
 
@@ -390,4 +399,4 @@ end:
 - `LJ_TARRAY`: type tag for native arrays (value ~13).
 - `ARRAY_FLAG_READONLY`: flag indicating array elements cannot be modified.
 - `ARRAY_FLAG_EXTERNAL`: flag indicating array data is not owned by the GC.
-- Cheat sheet: `ISEQ*`/`ISNE*`/`IS*` comparisons — true skips next, false executes next; `and` skips RHS on falsey, `or` skips RHS on truthy; `x?` and `lhs ?? rhs` use chained equality tests with shared jump lists; ternary writes result back into the condition register with one branch skipped; `AGETV`/`AGETB`/`ASETV`/`ASETB` provide direct array element access with bounds checking.
+- Cheat sheet: `ISEQ*`/`ISNE*`/`IS*` comparisons — true skips next, false executes next; `and` skips RHS on falsey, `or` skips RHS on truthy; `x?` and `lhs ?? rhs` use chained equality tests with shared jump lists; ternary writes result back into the condition register with one branch skipped; `AGETV`/`AGETB`/`ASETV`/`ASETB` provide direct array element access with bounds checking; `ASGETV`/`ASGETB` provide safe array access (returns nil for out-of-bounds) for the `?[]` operator.

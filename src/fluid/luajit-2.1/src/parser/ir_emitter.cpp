@@ -1996,12 +1996,13 @@ ParserResult<ExpDesc> IrEmitter::emit_safe_index_expr(const SafeIndexExprPayload
    ExpDesc table = guard.base_expression();
    expr_index(&this->func_state, &table, &key);
 
-   // If base type is known to be an array, use array-specific bytecodes
-   if (Payload.base_type IS FluidType::Array) {
-      if (int32_t(table.u.s.aux) >= 0) {
-         table.k = ExpKind::IndexedArray;
-      }
-   }
+   // For safe index expressions (?[]), always use SafeIndexedArray for numeric keys.
+   // This emits BC_ASGETV/BC_ASGETB which:
+   // - For arrays: return nil for out-of-bounds instead of throwing
+   // - For non-arrays: fall back to regular table indexing
+   // We only do this for numeric keys (aux >= 0); string keys use regular table indexing.
+   
+   if (int32_t(table.u.s.aux) >= 0) table.k = ExpKind::SafeIndexedArray;
 
    // Materialize the indexed result to a new register.
    // Do NOT reuse base_register() as that would clobber the table variable,

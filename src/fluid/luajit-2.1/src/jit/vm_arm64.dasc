@@ -3648,6 +3648,44 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_next
     break;
 
+  case BC_ASGETV:
+    |  // Safe array get with variable index - returns nil for out-of-bounds on arrays.
+    |  // For non-arrays, falls back to regular table indexing via vmeta_tgetb.
+    |  // RA = dst, RB = table/array, RC = key
+    |  ldr TMP2, [BASE, RB, lsl #3]	// Load table/array
+    |  ldr TMP1, [BASE, RC, lsl #3]	// Load key
+    |  asr ITYPE, TMP2, #47
+    |  cmn ITYPE, #-LJ_TARRAY
+    |  bne ->vmeta_tgetv			// Not an array? Fall back to table get.
+    |  // Check if key is integer
+    |  cmp TISNUMhi, TMP1, lsr #32
+    |  bne ->vmeta_tgetv			// Not an integer? Fall back to table get.
+    |  // Call safe helper to get element (handles bounds check internally)
+    |  mov CARG1, L
+    |  mov CARG2, ARRAY:TMP2
+    |  sxtw CARG3, TMP1w
+    |  add CARG4, BASE, RA, lsl #3
+    |  bl extern lj_arr_safe_getidx
+    |  ins_next
+    break;
+
+  case BC_ASGETB:
+    |  // Safe array get with literal index - returns nil for out-of-bounds on arrays.
+    |  // For non-arrays, falls back to regular table indexing via vmeta_tgetv.
+    |  // RA = dst, RB = table/array, RC = literal index (0-255, 0-based)
+    |  ldr TMP2, [BASE, RB, lsl #3]	// Load table/array
+    |  asr ITYPE, TMP2, #47
+    |  cmn ITYPE, #-LJ_TARRAY
+    |  bne ->vmeta_tgetb			// Not an array? Fall back to table get.
+    |  // Call safe helper to get element (handles bounds check internally)
+    |  mov CARG1, L
+    |  mov CARG2, ARRAY:TMP2
+    |  mov CARG3, RC
+    |  add CARG4, BASE, RA, lsl #3
+    |  bl extern lj_arr_safe_getidx
+    |  ins_next
+    break;
+
   //  -- Calls and vararg handling -----------------------------------------
 
   case BC_CALLM:
