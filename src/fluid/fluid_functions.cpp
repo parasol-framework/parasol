@@ -727,65 +727,63 @@ int fcmd_loadfile(lua_State *Lua)
 
       objFile::create file = { fl::Path(src), fl::Flags(FL::READ) };
       if (file.ok()) {
-         {
-            // Check for the presence of a compiled header and skip it if present
+         // Check for the presence of a compiled header and skip it if present
 
-            {
-               int len, i;
-               char header[256];
-               if (file->read(header, sizeof(header), &len) IS ERR::Okay) {
-                  if (pf::startswith(LUA_COMPILED, std::string_view(header, sizeof(header)))) {
-                     recompile = false; // Do not recompile that which is already compiled
-                     for (i=sizeof(LUA_COMPILED)-1; (i < len) and (header[i]); i++);
-                     if (not header[i]) i++;
-                     else i = 0;
-                  }
+         {
+            int len, i;
+            char header[256];
+            if (file->read(header, sizeof(header), &len) IS ERR::Okay) {
+               if (pf::startswith(LUA_COMPILED, std::string_view(header, sizeof(header)))) {
+                  recompile = false; // Do not recompile that which is already compiled
+                  for (i=sizeof(LUA_COMPILED)-1; (i < len) and (header[i]); i++);
+                  if (not header[i]) i++;
                   else i = 0;
                }
                else i = 0;
-
-               file->setPosition(i);
             }
+            else i = 0;
 
-            int i;
-            for (i=strlen(path); i > 0; i--) { // Get the file name from the path
-               if ((path[i-1] IS '\\') or (path[i-1] IS '/') or (path[i-1] IS ':')) break;
-            }
+            file->setPosition(i);
+         }
 
-            // Prefix chunk name with '@' (Lua convention for file-based chunks) for better debug output
-            std::string chunk_name = std::string("@") + (path + i);
+         int i;
+         for (i=strlen(path); i > 0; i--) { // Get the file name from the path
+            if ((path[i-1] IS '\\') or (path[i-1] IS '/') or (path[i-1] IS ':')) break;
+         }
 
-            if (not lua_load(Lua, *file, chunk_name.c_str())) {
-               // TODO Code compilation not currently supported
-            /*
-               if (recompile) {
-                  objFile::create cachefile = {
-                     fl::Path(fbpath),
-                     fl::Flags(FL::NEW|FL::WRITE),
-                     fl::Permissions(PERMIT::USER_READ|PERMIT::USER_WRITE)
-                  };
+         // Prefix chunk name with '@' (Lua convention for file-based chunks) for better debug output
+         std::string chunk_name = std::string("@") + (path + i);
 
-                  if (cachefile.ok()) {
-                     const Proto *f;
-                     struct DateTime *date;
-                     f = clvalue(Lua->top + (-1))->l.p;
-                     luaU_dump(Lua, f, &code_writer, cachefile, (Self->Flags & SCF_DEBUG) ? 0 : 1);
-                     if (not file.obj->getPtr(FID_Date, &date)) {
-                        cachefile->setDate(date);
-                     }
+         if (not lua_load(Lua, *file, chunk_name.c_str())) {
+            // TODO Code compilation not currently supported
+         /*
+            if (recompile) {
+               objFile::create cachefile = {
+                  fl::Path(fbpath),
+                  fl::Flags(FL::NEW|FL::WRITE),
+                  fl::Permissions(PERMIT::USER_READ|PERMIT::USER_WRITE)
+               };
+
+               if (cachefile.ok()) {
+                  const Proto *f;
+                  struct DateTime *date;
+                  f = clvalue(Lua->top + (-1))->l.p;
+                  luaU_dump(Lua, f, &code_writer, cachefile, (Self->Flags & SCF_DEBUG) ? 0 : 1);
+                  if (not file.obj->getPtr(FID_Date, &date)) {
+                     cachefile->setDate(date);
                   }
                }
-             */
+            }
+            */
 
-               int result_top = lua_gettop(Lua);
+            int result_top = lua_gettop(Lua);
 
-               if (not lua_pcall(Lua, 0, LUA_MULTRET, 0)) {
-                  results = lua_gettop(Lua) - result_top + 1;
-               }
-               else error_msg = lua_tostring(Lua, -1);
+            if (not lua_pcall(Lua, 0, LUA_MULTRET, 0)) {
+               results = lua_gettop(Lua) - result_top + 1;
             }
             else error_msg = lua_tostring(Lua, -1);
          }
+         else error_msg = lua_tostring(Lua, -1);
       }
       else error = ERR::DoesNotExist;
 

@@ -14,6 +14,89 @@ The functions in the *.dasc files are typically backed by fallback functions in 
 
 **The dangerous aliasing**: On Windows x64, `BASE == rdx == CARG2`. On POSIX, `BASE == rdx == CARG3`.
 
+All aliases can be read from lines 16 - 101 of vm_x64.dasc.  At the time of writing, the following aliases are defined:
+
+```
+BASE = rdx
+if X64WIN
+   KBASE     = rdi		// Must be C callee-save.
+   PC        = rsi		// Must be C callee-save.
+   DISPATCH  = rbx		// Must be C callee-save.
+   KBASEd    = edi
+   PCd       = esi
+   DISPATCHd = ebx
+else
+   KBASE     = r15		// Must be C callee-save.
+   PC        = rbx		// Must be C callee-save.
+   DISPATCH  = r14		// Must be C callee-save.
+   KBASEd    = r15d
+   PCd       = ebx
+   DISPATCHd = r14d
+endif
+
+RA     = rcx
+RAd    = ecx
+RAH    = ch
+RAL    = cl
+RB     = rbp		// Must be rbp (C callee-save).
+RBd    = ebp
+RC     = rax		// Must be rax.
+RCd    = eax
+RCW    = ax
+RCH    = ah
+RCL    = al
+OP     = RBd
+RD     = RC
+RDd    = RCd
+RDW    = RCW
+RDL    = RCL
+TMPR   = r10
+TMPRd  = r10d
+ITYPE  = r11
+ITYPEd = r11d
+
+if X64WIN
+   CARG1  =	rcx // x64/WIN64 C call arguments.
+   CARG2  =	rdx
+   CARG3  =	r8
+   CARG4  =	r9
+   CARG1d =	ecx
+   CARG2d =	edx
+   CARG3d =	r8d
+   CARG4d =	r9d
+else
+   CARG1  = rdi // x64/POSIX C call arguments.
+   CARG2  = rsi
+   CARG3  = rdx
+   CARG4  = rcx
+   CARG5  = r8
+   CARG6  = r9
+   CARG1d = edi
+   CARG2d = esi
+   CARG3d = edx
+   CARG4d = ecx
+   CARG5d = r8d
+   CARG6d = r9d
+endif
+
+// Type definitions
+type L      = lua_State
+type GL     = global_State
+type TVALUE = TValue
+type GCOBJ  = GCobj
+type STR    = GCstr
+type TAB    = GCtab
+type LFUNC  = GCfuncL
+type CFUNC  = GCfuncC
+type PROTO  = GCproto
+type UPVAL  = GCupval
+type NODE   = Node
+type NARGS  = int
+type TRACE  = GCtrace
+type SBUF   = SBuf
+type ARRAY  = GCarray
+```
+
 ### Common Bug Pattern
 
 When calling C functions that take 4 arguments (e.g., `lj_arr_getidx`), setting `CARG2` on Windows will clobber `BASE`:

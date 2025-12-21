@@ -153,6 +153,8 @@ constexpr uint8_t  NO_REG = BCMAX_A;
   _(AGETB,   dst,   var,   lit,   index) \
   _(ASETV,   var,   var,   var,   newindex) \
   _(ASETB,   var,   var,   lit,   newindex) \
+  _(ASGETV,  dst,   var,   var,   index) /* Safe array get (returns nil for out-of-bounds) */ \
+  _(ASGETB,  dst,   var,   lit,   index) /* Safe array get with literal index */ \
   \
   /* Calls and vararg handling. T = tail call. */ \
   _(CALLM,   base,   lit,   lit,   call) \
@@ -283,55 +285,57 @@ typedef enum {
    BC_TSETM  = 64,
    BC_TSETR  = 65,
 
-   // Array ops (66-69)
+   // Array ops (66-71)
    BC_AGETV  = 66,
    BC_AGETB  = 67,
    BC_ASETV  = 68,
    BC_ASETB  = 69,
+   BC_ASGETV = 70,  // Safe array get (returns nil for out-of-bounds)
+   BC_ASGETB = 71,  // Safe array get with literal index
 
-   // Calls and vararg handling (70-79)
-   BC_CALLM  = 70,
-   BC_CALL   = 71,
-   BC_CALLMT = 72,
-   BC_CALLT  = 73,
-   BC_ITERC  = 74,
-   BC_ITERN  = 75,
-   BC_ITERA  = 76,
-   BC_VARG   = 77,
-   BC_ISNEXT = 78,
-   BC_ISARR  = 79,
+   // Calls and vararg handling (72-81)
+   BC_CALLM  = 72,
+   BC_CALL   = 73,
+   BC_CALLMT = 74,
+   BC_CALLT  = 75,
+   BC_ITERC  = 76,
+   BC_ITERN  = 77,
+   BC_ITERA  = 78,
+   BC_VARG   = 79,
+   BC_ISNEXT = 80,
+   BC_ISARR  = 81,
 
-   // Returns (80-83)
-   BC_RETM   = 80,
-   BC_RET    = 81,
-   BC_RET0   = 82,
-   BC_RET1   = 83,
+   // Returns (82-85)
+   BC_RETM   = 82,
+   BC_RET    = 83,
+   BC_RET0   = 84,
+   BC_RET1   = 85,
 
-   // Loops and branches (84-95)
-   BC_FORI   = 84,
-   BC_JFORI  = 85,
-   BC_FORL   = 86,
-   BC_IFORL  = 87,
-   BC_JFORL  = 88,
-   BC_ITERL  = 89,
-   BC_IITERL = 90,
-   BC_JITERL = 91,
-   BC_LOOP   = 92,
-   BC_ILOOP  = 93,
-   BC_JLOOP  = 94,
-   BC_JMP    = 95,
+   // Loops and branches (86-97)
+   BC_FORI   = 86,
+   BC_JFORI  = 87,
+   BC_FORL   = 88,
+   BC_IFORL  = 89,
+   BC_JFORL  = 90,
+   BC_ITERL  = 91,
+   BC_IITERL = 92,
+   BC_JITERL = 93,
+   BC_LOOP   = 94,
+   BC_ILOOP  = 95,
+   BC_JLOOP  = 96,
+   BC_JMP    = 97,
 
-   // Function headers (96-103)
-   BC_FUNCF  = 96,
-   BC_IFUNCF = 97,
-   BC_JFUNCF = 98,
-   BC_FUNCV  = 99,
-   BC_IFUNCV = 100,
-   BC_JFUNCV = 101,
-   BC_FUNCC  = 102,
-   BC_FUNCCW = 103,
+   // Function headers (98-105)
+   BC_FUNCF  = 98,
+   BC_IFUNCF = 99,
+   BC_JFUNCF = 100,
+   BC_FUNCV  = 101,
+   BC_IFUNCV = 102,
+   BC_JFUNCV = 103,
+   BC_FUNCC  = 104,
+   BC_FUNCCW = 105,
 
-   BC__MAX   = 104
+   BC__MAX   = 106
 } BCOp;
 
 static_assert((int)BC_ISEQV + 1 == (int)BC_ISNEV);

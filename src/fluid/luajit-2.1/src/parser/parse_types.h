@@ -34,6 +34,7 @@ enum class ExpKind : uint8_t {
    Unscoped,   // sval = string value (undeclared variable - scope determined by context)
    Indexed,    // info = table register, aux = index reg/byte/string const
    IndexedArray, // info = array register, aux = index reg/byte (array indexing)
+   SafeIndexedArray, // info = array register, aux = index reg/byte (safe array indexing - nil for out-of-bounds)
    Jmp,        // info = instruction PC
    Relocable,  // info = instruction PC
    NonReloc,   // info = result register
@@ -43,9 +44,9 @@ enum class ExpKind : uint8_t {
 
 // Expression kind helper function - returns true for variable-like expressions.
 // Note: Unscoped is between Global and Indexed, so this range check covers it.
-// IndexedArray is also considered a variable-like expression for assignment purposes.
+// IndexedArray and SafeIndexedArray are also considered variable-like expressions for assignment purposes.
 [[nodiscard]] static constexpr bool vkisvar(ExpKind k) {
-   return ExpKind::Local <= k and k <= ExpKind::IndexedArray;
+   return ExpKind::Local <= k and k <= ExpKind::SafeIndexedArray;
 }
 
 enum class ExprFlag : uint8_t {
@@ -252,7 +253,8 @@ struct ExpDesc {
    [[nodiscard]] inline bool is_global() const { return this->k IS ExpKind::Global; }
    [[nodiscard]] inline bool is_indexed() const { return this->k IS ExpKind::Indexed; }
    [[nodiscard]] inline bool is_indexed_array() const { return this->k IS ExpKind::IndexedArray; }
-   [[nodiscard]] inline bool is_any_indexed() const { return this->k IS ExpKind::Indexed or this->k IS ExpKind::IndexedArray; }
+   [[nodiscard]] inline bool is_safe_indexed_array() const { return this->k IS ExpKind::SafeIndexedArray; }
+   [[nodiscard]] inline bool is_any_indexed() const { return this->k IS ExpKind::Indexed or this->k IS ExpKind::IndexedArray or this->k IS ExpKind::SafeIndexedArray; }
    [[nodiscard]] inline bool is_register() const { return this->k IS ExpKind::Local or this->k IS ExpKind::NonReloc; }
 
    // Extended falsey check (nil, false, 0, "")
