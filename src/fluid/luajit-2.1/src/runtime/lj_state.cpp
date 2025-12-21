@@ -117,7 +117,7 @@ static void resizestack(lua_State *L, MSize n)
    L->base = (TValue*)((char*)L->base + delta);
    L->top = (TValue*)((char*)L->top + delta);
    for (up = gcref(L->openupval); up != nullptr; up = gcnext(up))
-      setmref(gco2uv(up)->v, (TValue*)((char*)uvval(gco2uv(up)) + delta));
+      setmref(gco_to_upval(up)->v, (TValue*)((char*)uvval(gco_to_upval(up)) + delta));
 }
 
 //********************************************************************************************************************

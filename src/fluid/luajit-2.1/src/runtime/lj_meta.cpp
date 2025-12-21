@@ -392,7 +392,7 @@ TValue* LJ_FASTCALL lj_meta_equal_cd(lua_State *L, BCIns ins)
       if (not tviscdata(o1mm)) o1mm = o2;
    }
    else if (op IS BC_ISEQS) {
-      setstrV(L, &tv, gco2str(proto_kgc(curr_proto(L), ~(ptrdiff_t)bc_d(ins))));
+      setstrV(L, &tv, gco_to_string(proto_kgc(curr_proto(L), ~(ptrdiff_t)bc_d(ins))));
       o2 = &tv;
    }
    else if (op IS BC_ISEQN) {
@@ -429,7 +429,7 @@ TValue* LJ_FASTCALL lj_meta_equal_thunk(lua_State *L, BCIns ins)
       o2 = &L->base[bc_d(ins)];
    }
    else if (op IS BC_ISEQS) {
-      setstrV(L, &tv, gco2str(proto_kgc(curr_proto(L), ~(ptrdiff_t)bc_d(ins))));
+      setstrV(L, &tv, gco_to_string(proto_kgc(curr_proto(L), ~(ptrdiff_t)bc_d(ins))));
       o2 = &tv;
    }
    else if (op IS BC_ISEQN) {

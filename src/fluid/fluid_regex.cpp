@@ -2,9 +2,9 @@
 
 Examples:
 
-  local reg = regex.new("\\d+", REGEX_ICASE)
-  local matches = reg:match("Hello 123 World")
-  local result = reg:replace("abc123def", "XXX")
+  reg = regex.new("\\d+", REGEX_ICASE)
+  matches = reg:match("Hello 123 World")
+  result = reg:replace("abc123def", "XXX")
 
 *********************************************************************************************************************/
 
@@ -31,6 +31,7 @@ struct regex_callback {
    lua_State *lua_state;
    std::string_view subject;
    int result_index = 0;
+   GCarray *results = nullptr;  // For array-based multi-match results
 
    explicit regex_callback(lua_State *LuaState)
       : lua_state(LuaState) {}
@@ -54,7 +55,7 @@ static ERR load_regex(void)
 
 static ERR match_many(int Index, std::vector<std::string_view> &Captures, size_t MatchStart, size_t MatchEnd, regex_callback &Meta)
 {
-   auto lua_state = Meta.lua_state;
+   auto lua = Meta.lua_state;
 
    bool skip_match = false;
    if ((MatchStart > 0) and (Captures.size() > 1)) {
@@ -79,23 +80,30 @@ static ERR match_many(int Index, std::vector<std::string_view> &Captures, size_t
 
    if (skip_match) return ERR::Okay;
 
-   int slot = Meta.result_index;
-   lua_pushinteger(lua_state, slot);
-
-   // Create capture table for this result (attached to results table)
-   lua_createtable(lua_state, std::ssize(Captures), 0);
-
-   // Captures are normalised: unmatched optional groups appear as empty entries to preserve indices.
-   for (int j=0; j < std::ssize(Captures); ++j) {
-      lua_pushinteger(lua_state, (lua_Integer)j);
-      if (Captures[j].data()) {
-         lua_pushlstring(lua_state, Captures[j].data(), Captures[j].length());
-      }
-      else lua_pushlstring(lua_state, "", 0);
-      lua_settable(lua_state, -3);
+   // Grow results array if needed
+   auto slot = MSize(Meta.result_index);
+   if (slot >= Meta.results->capacity) {
+      lj_array_grow(lua, Meta.results, slot + 8);
    }
 
-   lua_settable(lua_state, -3); // Add capture table to results
+   // Create string array for captures
+   auto count = uint32_t(Captures.size());
+   GCarray *capture_arr = lj_array_new(lua, count, AET::_STRING_GC);
+   GCRef *refs = capture_arr->get<GCRef>();
+
+   // Captures are normalised: unmatched optional groups appear as empty entries to preserve indices.
+   for (uint32_t j = 0; j < count; ++j) {
+      GCstr *s;
+      if (Captures[j].data()) s = lj_str_new(lua, Captures[j].data(), Captures[j].length());
+      else s = lj_str_new(lua, "", 0);
+
+      setgcref(refs[j], obj2gco(s));
+      lj_gc_objbarrier(lua, capture_arr, s);
+   }
+
+   // Store capture array in results array
+   setgcref(Meta.results->get<GCRef>()[slot], obj2gco(capture_arr));
+   lj_gc_objbarrier(lua, Meta.results, capture_arr);
 
    Meta.result_index = slot + 1;
 
@@ -219,8 +227,8 @@ static int regex_match(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Method: regex.search(text) -> table|nil
-// Returns nil if no matches, otherwise a table of indexed match tables.
+// Method: regex.search(text) -> array|nil
+// Returns nil if no matches, otherwise an array of capture arrays.
 
 static int regex_search(lua_State *Lua)
 {
@@ -230,17 +238,22 @@ static int regex_search(lua_State *Lua)
    auto text = luaL_checklstring(Lua, 1, &text_len);
    auto flags = RMATCH(luaL_optint(Lua, 2, int(RMATCH::NIL)));
 
-   lua_createtable(Lua, 0, 0); // Result table
+   GCarray *results = lj_array_new(Lua, 0, AET::_ARRAY);
+   setarrayV(Lua, Lua->top++, results); // Root results to prevent GC during callbacks
 
-   // Use match_many() to populate the table with the matches.
+   // Use match_many() to populate the array with the matches.
    auto meta = regex_callback { Lua };
    meta.subject = std::string_view(text, text_len);
+   meta.results = results;
    auto cb = C_FUNCTION(match_many, &meta);
 
    if (rx::Search(r->regex_obj, std::string_view(text, text_len), flags, &cb) IS ERR::Okay) {
+      // Adjust array length to actual match count
+      results->len = MSize(meta.result_index);
       return 1;
    }
    else {
+      lua_pop(Lua, 1);
       lua_pushnil(Lua);
       return 1;
    }

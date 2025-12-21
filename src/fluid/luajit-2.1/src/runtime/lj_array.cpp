@@ -31,6 +31,7 @@ static const uint8_t glElemSizes[] = {
    sizeof(std::string),  // AET::_STRING_CPP
    sizeof(GCRef),        // AET::_STRING_GC
    sizeof(GCRef),        // AET::_TABLE
+   sizeof(GCRef),        // AET::_ARRAY
    sizeof(TValue),       // AET::_ANY
    0                     // AET::_STRUCT (variable)
 };
@@ -136,7 +137,7 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
 
             return arr;
          }
-         else if (Type IS AET::_TABLE) {
+         else if ((Type IS AET::_TABLE) or (Type IS AET::_ARRAY)) {
             // Table arrays not supported for caching (not used by the Parasol API)
             lj_err_callerv(L, ErrMsg::BADVAL);
             return nullptr;
@@ -267,7 +268,13 @@ GCtab * lj_array_to_table(lua_State *L, GCarray *Array)
          case AET::_DOUBLE: setnumV(slot, *(double*)elem); break;
          case AET::_TABLE: {
             GCRef ref = *(GCRef*)elem;
-            if (gcref(ref)) settabV(L, slot, gco2tab(gcref(ref)));
+            if (gcref(ref)) settabV(L, slot, gco_to_table(gcref(ref)));
+            else setnilV(slot);
+            break;
+         }
+         case AET::_ARRAY: {
+            GCRef ref = *(GCRef*)elem;
+            if (gcref(ref)) setarrayV(L, slot, gco_to_array(gcref(ref)));
             else setnilV(slot);
             break;
          }

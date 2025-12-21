@@ -77,7 +77,7 @@ TValue* lj_thunk_resolve(lua_State *L, GCudata *thunk_udata)
    }
 
    // Get the deferred function
-   GCfunc *fn = gco2func(gcref(payload->deferred_func));
+   GCfunc *fn = gco_to_function(gcref(payload->deferred_func));
 
    // Abort any ongoing trace and disable JIT recording during thunk resolution.
    // The JIT cannot record across lua_pcall boundaries because the protected C frame

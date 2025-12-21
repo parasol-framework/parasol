@@ -362,11 +362,11 @@ static int range_take(lua_State* L)
       return 0;
    }
 
-   int32_t n = (int32_t)luaL_checkinteger(L, 2);
+   auto n = (int32_t)luaL_checkinteger(L, 2);
    if (n < 0) n = 0;
 
-   int32_t step = r->step;
-   int32_t stop = r->stop;
+   auto step = r->step;
+   auto stop = r->stop;
 
    if (not r->inclusive) {
       if (step > 0) stop--;

@@ -70,14 +70,21 @@ static void arr_load_elem(lua_State *L, GCarray *Array, uint32_t Idx, TValue *Re
 
       case AET::_STRING_GC: {
          GCRef ref = *(GCRef*)elem;
-         if (gcref(ref)) setstrV(L, Result, gco2str(gcref(ref)));
+         if (gcref(ref)) setstrV(L, Result, gco_to_string(gcref(ref)));
          else setnilV(Result);
          break;
       }
 
       case AET::_TABLE: {
          GCRef ref = *(GCRef*)elem;
-         if (gcref(ref)) settabV(L, Result, gco2tab(gcref(ref)));
+         if (gcref(ref)) settabV(L, Result, gco_to_table(gcref(ref)));
+         else setnilV(Result);
+         break;
+      }
+
+      case AET::_ARRAY: {
+         GCRef ref = *(GCRef*)elem;
+         if (gcref(ref)) setarrayV(L, Result, gco_to_array(gcref(ref)));
          else setnilV(Result);
          break;
       }
@@ -116,6 +123,16 @@ static void arr_store_elem(lua_State *L, GCarray *Array, uint32_t Idx, cTValue *
          GCtab *tab = tabV(Val);
          setgcref(*(GCRef*)elem, obj2gco(tab));
          lj_gc_objbarrier(L, Array, tab);
+      }
+      else if (tvisnil(Val)) setgcrefnull(*(GCRef*)elem);
+      else lj_err_msgv(L, ErrMsg::ARRTYPE);
+      return;
+   }
+   else if (Array->elemtype IS AET::_ARRAY) {
+      if (tvisarray(Val)) {
+         GCarray *array = arrayV(Val);
+         setgcref(*(GCRef*)elem, obj2gco(array));
+         lj_gc_objbarrier(L, Array, array);
       }
       else if (tvisnil(Val)) setgcrefnull(*(GCRef*)elem);
       else lj_err_msgv(L, ErrMsg::ARRTYPE);

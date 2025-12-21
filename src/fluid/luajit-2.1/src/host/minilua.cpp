@@ -503,9 +503,9 @@ struct lua_State th;
 #define gco2cl(o)check_exp((o)->gch.tt==6,&((o)->cl))
 #define gco2h(o)check_exp((o)->gch.tt==5,&((o)->h))
 #define gco2p(o)check_exp((o)->gch.tt==(8+1),&((o)->p))
-#define gco2uv(o)check_exp((o)->gch.tt==(8+2),&((o)->uv))
+#define gco_to_upval(o)check_exp((o)->gch.tt==(8+2),&((o)->uv))
 #define ngcotouv(o)check_exp((o)==NULL||(o)->gch.tt==(8+2),&((o)->uv))
-#define gco2th(o)check_exp((o)->gch.tt==8,&((o)->th))
+#define gco_to_thread(o)check_exp((o)->gch.tt==8,&((o)->th))
 #define obj2gco(v)(cast(GCObject*,(v)))
 static void luaE_freethread(lua_State*L,lua_State*L1);
 #define pcRel(pc,p)(cast(int,(pc)-(p)->code)-1)
@@ -1050,7 +1050,7 @@ CallInfo*ci;
 GCObject*up;
 L->top=(L->top-oldstack)+L->stack;
 for(up=L->openupval;up!=NULL;up=up->gch.next)
-gco2uv(up)->v=(gco2uv(up)->v-oldstack)+L->stack;
+gco_to_upval(up)->v=(gco_to_upval(up)->v-oldstack)+L->stack;
 for(ci=L->base_ci;ci<=L->ci;ci++){
 ci->top=(ci->top-oldstack)+L->stack;
 ci->base=(ci->base-oldstack)+L->stack;
@@ -1741,7 +1741,7 @@ markobject(g,gco2u(o)->env);
 return;
 }
 case(8+2):{
-UpVal*uv=gco2uv(o);
+UpVal*uv=gco_to_upval(o);
 markvalue(g,uv->v);
 if(uv->v==&uv->u.value)
 gray2black(o);
@@ -1758,7 +1758,7 @@ g->gray=o;
 break;
 }
 case 8:{
-gco2th(o)->gclist=g->gray;
+gco_to_thread(o)->gclist=g->gray;
 g->gray=o;
 break;
 }
@@ -1923,7 +1923,7 @@ return(cl->c.isC)?sizeCclosure(cl->c.nupvalues):
 sizeLclosure(cl->l.nupvalues);
 }
 case 8:{
-lua_State*th=gco2th(o);
+lua_State*th=gco_to_thread(o);
 g->gray=th->gclist;
 th->gclist=g->grayagain;
 g->grayagain=o;
@@ -1987,10 +1987,10 @@ static void freeobj(lua_State*L,GCObject*o){
 switch(o->gch.tt){
 case(8+1):luaF_freeproto(L,gco2p(o));break;
 case 6:luaF_freeclosure(L,gco2cl(o));break;
-case(8+2):luaF_freeupval(L,gco2uv(o));break;
+case(8+2):luaF_freeupval(L,gco_to_upval(o));break;
 case 5:luaH_free(L,gco2h(o));break;
 case 8:{
-luaE_freethread(L,gco2th(o));
+luaE_freethread(L,gco_to_thread(o));
 break;
 }
 case 4:{
@@ -2012,7 +2012,7 @@ global_State*g=G(L);
 int deadmask=otherwhite(g);
 while((curr=*p)!=NULL&&count-->0){
 if(curr->gch.tt==8)
-sweepwholelist(L,&gco2th(curr)->openupval);
+sweepwholelist(L,&gco_to_thread(curr)->openupval);
 if((curr->gch.marked^bit2mask(0,1))&deadmask){
 makewhite(g,curr);
 p=&curr->gch.next;

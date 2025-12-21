@@ -586,7 +586,7 @@ static void fs_fixup_k(FuncState* fs, GCproto* pt, void* kptr)
             GCobj* o = gcV(&n->key);
             setgcref(((GCRef*)kptr)[~kidx], o);
             lj_gc_objbarrier(fs->L, pt, o);
-            if (tvisproto(&n->key)) fs_fixup_uv2(fs, gco2pt(o));
+            if (tvisproto(&n->key)) fs_fixup_uv2(fs, gco_to_proto(o));
          }
       }
    }

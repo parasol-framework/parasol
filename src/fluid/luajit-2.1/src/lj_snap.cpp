@@ -199,8 +199,8 @@ static BCREG snap_usedef(jit_State* J, uint8_t* udf,
    // Treat open upvalues as used.
    o = gcref(J->L->openupval);
    while (o) {
-      if (uvval(gco2uv(o)) < J->L->base) break;
-      udf[uvval(gco2uv(o)) - J->L->base] = 0;
+      if (uvval(gco_to_upval(o)) < J->L->base) break;
+      udf[uvval(gco_to_upval(o)) - J->L->base] = 0;
       o = gcref(o->gch.nextgc);
    }
 
@@ -307,8 +307,8 @@ static void snap_useuv(GCproto* pt, uint8_t* udf)
       for (i = 0; i < n; i++, kr--) {
          GCobj* o = gcref(*kr);
          if (o->gch.gct == ~LJ_TPROTO) {
-            for (j = 0; j < gco2pt(o)->sizeuv; j++) {
-               uint32_t v = proto_uv(gco2pt(o))[j];
+            for (j = 0; j < gco_to_proto(o)->sizeuv; j++) {
+               uint32_t v = proto_uv(gco_to_proto(o))[j];
                if ((v & PROTO_UV_LOCAL)) {
                   udf[(v & 0xff)] = 0;
                }

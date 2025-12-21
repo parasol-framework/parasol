@@ -130,8 +130,8 @@ static void bcwrite_kgc(BCWriteCtx* ctx, GCproto* pt)
       char* p;
       // Determine constant type and needed size.
       if (o->gch.gct == ~LJ_TSTR) {
-         tp = BCDUMP_KGC_STR + gco2str(o)->len;
-         need = 5 + gco2str(o)->len;
+         tp = BCDUMP_KGC_STR + gco_to_string(o)->len;
+         need = 5 + gco_to_string(o)->len;
       }
       else if (o->gch.gct == ~LJ_TPROTO) {
          lj_assertBCW((pt->flags & PROTO_CHILD), "prototype has unexpected child");
@@ -139,7 +139,7 @@ static void bcwrite_kgc(BCWriteCtx* ctx, GCproto* pt)
 #if LJ_HASFFI
       }
       else if (o->gch.gct == ~LJ_TCDATA) {
-         CTypeID id = gco2cd(o)->ctypeid;
+         CTypeID id = gco_to_cdata(o)->ctypeid;
          need = 1 + 4 * 5;
          if (id == CTID_INT64) {
             tp = BCDUMP_KGC_I64;
@@ -165,15 +165,15 @@ static void bcwrite_kgc(BCWriteCtx* ctx, GCproto* pt)
       p = lj_strfmt_wuleb128(p, tp);
       // Write constant data (if any).
       if (tp >= BCDUMP_KGC_STR) {
-         p = lj_buf_wmem(p, strdata(gco2str(o)), gco2str(o)->len);
+         p = lj_buf_wmem(p, strdata(gco_to_string(o)), gco_to_string(o)->len);
       }
       else if (tp == BCDUMP_KGC_TAB) {
-         bcwrite_ktab(ctx, p, gco2tab(o));
+         bcwrite_ktab(ctx, p, gco_to_table(o));
          continue;
 #if LJ_HASFFI
       }
       else if (tp != BCDUMP_KGC_CHILD) {
-         cTValue* q = (TValue*)cdataptr(gco2cd(o));
+         cTValue* q = (TValue*)cdataptr(gco_to_cdata(o));
          p = lj_strfmt_wuleb128(p, q[0].u32.lo);
          p = lj_strfmt_wuleb128(p, q[0].u32.hi);
          if (tp == BCDUMP_KGC_COMPLEX) {
@@ -264,7 +264,7 @@ static void bcwrite_proto(BCWriteCtx* ctx, GCproto* pt)
       for (i = 0; i < n; i++, kr--) {
          GCobj* o = gcref(*kr);
          if (o->gch.gct == ~LJ_TPROTO)
-            bcwrite_proto(ctx, gco2pt(o));
+            bcwrite_proto(ctx, gco_to_proto(o));
       }
    }
 
