@@ -177,8 +177,8 @@ static int range_each(lua_State* L)
 }
 
 //********************************************************************************************************************
-// range:filter(function(Value) return bool end) -> table
-// Returns a table containing only values for which the predicate returns true.
+// range:filter(function(Value) return bool end) -> array
+// Returns an array containing only values for which the predicate returns true.
 
 static int range_filter(lua_State* L)
 {
@@ -198,15 +198,18 @@ static int range_filter(lua_State* L)
       else stop++;
    }
 
-   // Create result table
-   lua_createtable(L, 0, 0);
-   int result_table = lua_gettop(L);
-   int array_index = 0;
-
-   // Check for empty range - return empty table
+   // Check for empty range - return empty array
    if ((step > 0 and r->start > stop) or (step < 0 and r->start < stop)) {
+      GCarray *arr = lj_array_new(L, 0, AET::_ANY);
+      setarrayV(L, L->top++, arr);
       return 1;
    }
+
+   // Pre-allocate array to maximum possible size
+   int32_t max_size = range_length(r);
+   GCarray *arr = lj_array_new(L, MSize(max_size), AET::_ANY);
+   TValue *data = arr->get<TValue>();
+   int32_t array_index = 0;
 
    lua_pushvalue(L, 2);  // Push callback
    int callback_index = lua_gettop(L);
@@ -221,14 +224,18 @@ static int range_filter(lua_State* L)
       lua_call(L, 1, 1);
 
       if (lua_toboolean(L, -1)) {
-         lua_pushinteger(L, value);
-         lua_rawseti(L, result_table, array_index++);
+         setintV(&data[array_index++], value);
       }
       lua_pop(L, 1);
    }
 
    lua_pop(L, 1);  // Pop callback
-   return 1;       // Return result table
+
+   // Adjust array length to actual count
+   arr->len = MSize(array_index);
+
+   setarrayV(L, L->top++, arr);
+   return 1;
 }
 
 //********************************************************************************************************************
@@ -282,8 +289,8 @@ static int range_reduce(lua_State *L)
 }
 
 //********************************************************************************************************************
-// range:map(function(Value) return transformed end) -> table
-// Returns a table with each value transformed by the function.
+// range:map(function(Value) return transformed end) -> array
+// Returns an array with each value transformed by the function.
 
 static int range_map(lua_State* L)
 {
@@ -303,16 +310,18 @@ static int range_map(lua_State* L)
       else stop++;
    }
 
-   // Create result table with estimated size
-   int32_t estimated_size = range_length(r);
-   lua_createtable(L, estimated_size > 0 ? estimated_size : 0, 0);
-   int result_table = lua_gettop(L);
-   int array_index = 0;
-
-   // Check for empty range - return empty table
+   // Check for empty range - return empty array
    if ((step > 0 and r->start > stop) or (step < 0 and r->start < stop)) {
+      GCarray *arr = lj_array_new(L, 0, AET::_ANY);
+      setarrayV(L, L->top++, arr);
       return 1;
    }
+
+   // Create result array with exact size
+   int32_t size = range_length(r);
+   GCarray *arr = lj_array_new(L, MSize(size), AET::_ANY);
+   TValue *data = arr->get<TValue>();
+   int32_t array_index = 0;
 
    lua_pushvalue(L, 2);  // Push callback
    int callback_index = lua_gettop(L);
@@ -326,12 +335,19 @@ static int range_map(lua_State* L)
       lua_pushinteger(L, value);
       lua_call(L, 1, 1);
 
-      // Store transformed value in result table
-      lua_rawseti(L, result_table, array_index++);
+      // Store transformed value in result array
+      TValue *src = L->top - 1;
+      copyTV(L, &data[array_index++], src);
+      if (tvisgcv(src)) {
+         lj_gc_objbarrier(L, arr, gcV(src));
+      }
+      lua_pop(L, 1);
    }
 
    lua_pop(L, 1);  // Pop callback
-   return 1;       // Return result table
+
+   setarrayV(L, L->top++, arr);
+   return 1;
 }
 
 //********************************************************************************************************************
