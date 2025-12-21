@@ -1,4 +1,4 @@
--- Flute tests for the jit, jit.util and jit.opt interfaces.
+-- Flute tests that need to exercise the JIT in specific ways.
 
 jit.on()
 jit.opt.start()  -- Reset to default JIT options before starting tests.

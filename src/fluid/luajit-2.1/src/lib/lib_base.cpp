@@ -211,7 +211,7 @@ static int values_array_iterator_next(lua_State* L)
    // Get the element value
    lj_arr_getidx(L, arr, idx, L->top);
    L->top++;
-     
+
    setintV(idx_tv, idx + 1);  // Advance index for next iteration
    return 1;
 }

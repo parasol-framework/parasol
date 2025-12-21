@@ -53,35 +53,6 @@ static TRef rec_tmpref(jit_State *J, TRef tr, int mode)
 }
 
 //********************************************************************************************************************
-// Emit IR call without varargs (Windows x64 vararg safety).
-
-static TRef rec_ir_call_fixed(jit_State *J, IRCallID CallId, TRef Arg1, TRef Arg2, TRef Arg3, TRef Arg4)
-{
-   const CCallInfo *call_info = &lj_ir_callinfo[CallId];
-   uint32_t nargs = CCI_NARGS(call_info);
-   if (call_info->flags & CCI_L) nargs--;
-
-   TRef carg = TREF_NIL;
-   if (nargs IS 1) {
-      carg = Arg1;
-   }
-   else if (nargs IS 2) {
-      carg = emitir(IRT(IR_CARG, IRT_NIL), Arg1, Arg2);
-   }
-   else if (nargs IS 3) {
-      carg = emitir(IRT(IR_CARG, IRT_NIL), Arg1, Arg2);
-      carg = emitir(IRT(IR_CARG, IRT_NIL), carg, Arg3);
-   }
-   else {
-      lj_assertJ(nargs IS 4, "unexpected fixed call arg count");
-      carg = emitir(IRT(IR_CARG, IRT_NIL), Arg1, Arg2);
-      carg = emitir(IRT(IR_CARG, IRT_NIL), carg, Arg3);
-      carg = emitir(IRT(IR_CARG, IRT_NIL), carg, Arg4);
-   }
-   if (CCI_OP(call_info) IS IR_CALLS) J->needsnap = 1;
-   return emitir(CCI_OPTYPE(call_info), carg, CallId);
-}
-
 // Record loop ops
 
 // Loop event.
@@ -815,7 +786,7 @@ static LoopEvent rec_itera(jit_State *J, BCREG ra, BCREG rb)
       IRType result_type = itype2irt(&result_tv);
       if (!LJ_DUALNUM and result_type IS IRT_INT) result_type = IRT_NUM;
       TRef tmp_ref = rec_tmpref(J, TREF_NIL, IRTMPREF_OUT1);
-      rec_ir_call_fixed(J, IRCALL_lj_arr_getidx, arr_ref, idx_ref, tmp_ref, TREF_NIL);
+      lj_ir_call(J, IRCALL_lj_arr_getidx, arr_ref, idx_ref, tmp_ref);
       value_ref = lj_record_vload(J, tmp_ref, 0, result_type);
    }
 
@@ -918,19 +889,20 @@ static void rec_call_setup(jit_State *J, BCREG func, ptrdiff_t nargs)
    TValue* functv = &J->L->base[func];
    TRef kfunc, * fbase = &J->base[func];
    ptrdiff_t i;
+
    (void)getslot(J, func); //  Ensure func has a reference.
-   for (i = 1; i <= nargs; i++)
-      (void)getslot(J, func + FRC::HEADER_SIZE + i - 1);  //  Ensure all args have a reference (args start at func+2).
+   for (i = 1; i <= nargs; i++) (void)getslot(J, func + FRC::HEADER_SIZE + i - 1);  //  Ensure all args have a reference (args start at func+2).
+
    if (not tref_isfunc(fbase[0])) {  // Resolve __call metamethod.
       ix.tab = fbase[0];
       copyTV(J->L, &ix.tabv, functv);
       if (not lj_record_mm_lookup(J, &ix, MM_call) or !tref_isfunc(ix.mobj)) lj_trace_err(J, LJ_TRERR_NOMM);
-      for (i = ++nargs; i > 1; i--)
-         fbase[i + 1] = fbase[i];
+      for (i = ++nargs; i > 1; i--) fbase[i + 1] = fbase[i];
       fbase[2] = fbase[0];
       fbase[0] = ix.mobj;  //  Replace function.
       functv = &ix.mobjv;
    }
+
    kfunc = rec_call_specialise(J, funcV(functv), fbase[0]);
    fbase[0] = kfunc;
    fbase[1] = TREF_FRAME;
@@ -1007,8 +979,8 @@ void lj_record_ret(jit_State *J, BCREG rbase, ptrdiff_t gotresults)
    ptrdiff_t i;
    FrameManager fm(J);
    SlotView slots(J);
-   for (i = 0; i < gotresults; i++)
-      (void)getslot(J, rbase + i);  //  Ensure all results have a reference.
+   for (i = 0; i < gotresults; i++) (void)getslot(J, rbase + i);  //  Ensure all results have a reference.
+
    while (frame_ispcall(frame)) {  // Immediately resolve pcall() returns.
       BCREG cbase = (BCREG)frame_delta(frame);
       if (FRC::dec_depth(J) <= 0) lj_trace_err(J, LJ_TRERR_NYIRETL);
@@ -2499,12 +2471,12 @@ static TRef rec_array_op(jit_State *J, RecordOps *ops)
       IRType result_type = itype2irt(&result_tv);
       if (!LJ_DUALNUM and result_type IS IRT_INT) result_type = IRT_NUM;
       TRef tmp_ref = rec_tmpref(J, TREF_NIL, IRTMPREF_OUT1);
-      rec_ir_call_fixed(J, IRCALL_lj_arr_getidx, array_ref, idx_ref, tmp_ref, TREF_NIL);
+      lj_ir_call(J, IRCALL_lj_arr_getidx, array_ref, idx_ref, tmp_ref);
       return lj_record_vload(J, tmp_ref, 0, result_type);
    }
 
    TRef tmp_ref = rec_tmpref(J, ops->ra, IRTMPREF_IN1);
-   rec_ir_call_fixed(J, IRCALL_lj_arr_setidx, array_ref, idx_ref, tmp_ref, TREF_NIL);
+   lj_ir_call(J, IRCALL_lj_arr_setidx, array_ref, idx_ref, tmp_ref);
    return 0;
 }
 
