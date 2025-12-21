@@ -153,7 +153,7 @@ static void rec_check_slots(jit_State *J)
          if (s IS 0) lj_assertJ(tref_isfunc(tr), "frame slot 0 is not a function");
          else if (s IS 1) lj_assertJ((tr & ~TREF_FRAME) IS 0, "bad frame slot 1");
          else if ((tr & TREF_FRAME)) {
-            GCfunc* fn = gco2func(frame_gc(tv));
+            GCfunc* fn = gco_to_function(frame_gc(tv));
             BCREG delta = (BCREG)(tv - frame_prev(tv));
             lj_assertJ(not ref or ir_knum(ir)->u64 IS tv->u64, "frame slot %d PC mismatch", s);
             tr = J->slot[s - 1];
@@ -1387,7 +1387,7 @@ static void rec_idx_bump(jit_State *J, RecordIndex* ix)
          }
       }
       else if (ir->o IS IR_TDUP) {
-         GCtab* tpl = gco2tab(proto_kgc(&gcref(rbc->pt)->pt, ~(ptrdiff_t)bc_d(*pc)));
+         GCtab* tpl = gco_to_table(proto_kgc(&gcref(rbc->pt)->pt, ~(ptrdiff_t)bc_d(*pc)));
          // Grow template table, but preserve keys with nil values.
          if ((tb->asize > tpl->asize and (1u << nhbits) - 1 IS tpl->hmask) or
             (tb->asize IS tpl->asize and (1u << nhbits) - 1 > tpl->hmask)) {
@@ -2264,7 +2264,7 @@ static void rec_decode_operands(jit_State *J, cTValue *lbase, RecordOps *ops)
          break;
       }
       case BCMstr: {
-         GCstr *s = gco2str(proto_kgc(J->pt, ~(ptrdiff_t)ops->rc));
+         GCstr *s = gco_to_string(proto_kgc(J->pt, ~(ptrdiff_t)ops->rc));
          setstrV(J->L, ops->rcv(), s);
          ops->ix.key = ops->rc = lj_ir_kstr(J, s);
          break;
@@ -2514,7 +2514,7 @@ static TRef rec_table_op(jit_State *J, RecordOps *ops, const BCIns *pc)
          return rec_tnew(J, rc);
 
       case BC_TDUP: {
-         TRef result = emitir(IRTG(IR_TDUP, IRT_TAB), lj_ir_ktab(J, gco2tab(proto_kgc(J->pt, ~(ptrdiff_t)rc))), 0);
+         TRef result = emitir(IRTG(IR_TDUP, IRT_TAB), lj_ir_ktab(J, gco_to_table(proto_kgc(J->pt, ~(ptrdiff_t)rc))), 0);
 #ifdef LUAJIT_ENABLE_TABLE_BUMP
          J->rbchash[(result & (RBCHASH_SLOTS - 1))].ref = tref_ref(result);
          setmref(J->rbchash[(result & (RBCHASH_SLOTS - 1))].pc, pc);

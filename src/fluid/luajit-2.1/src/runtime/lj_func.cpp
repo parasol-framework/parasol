@@ -41,7 +41,7 @@ static GCupval* func_finduv(lua_State* L, TValue* slot)
    GCupval* p;
    GCupval* uv;
    // Search the sorted list of open upvalues.
-   while (gcref(*pp) != nullptr and uvval((p = gco2uv(gcref(*pp)))) >= slot) {
+   while (gcref(*pp) != nullptr and uvval((p = gco_to_upval(gcref(*pp)))) >= slot) {
       lj_assertG(!p->closed and uvval(p) != &p->tv, "closed upvalue in chain");
       if (uvval(p) == slot) {  // Found open upvalue pointing to same slot?
          if (isdead(g, obj2gco(p)))  //  Resurrect it, if it's dead.
@@ -85,7 +85,7 @@ void LJ_FASTCALL lj_func_closeuv(lua_State* L, TValue* level)
    GCupval* uv;
    global_State* g = G(L);
    while (gcref(L->openupval) != nullptr &&
-      uvval((uv = gco2uv(gcref(L->openupval)))) >= level) {
+      uvval((uv = gco_to_upval(gcref(L->openupval)))) >= level) {
       GCobj* o = obj2gco(uv);
       lj_assertG(!isblack(o), "bad black upvalue");
       lj_assertG(!uv->closed and uvval(uv) != &uv->tv, "closed upvalue in chain");

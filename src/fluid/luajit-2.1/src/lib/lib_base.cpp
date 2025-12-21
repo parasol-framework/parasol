@@ -797,7 +797,7 @@ static void setpc_wrap_aux(lua_State* L, GCfunc* fn)
 static void newproxy_weaktable(lua_State* L)
 {
    // NOBARRIER: The table is new (marked white).
-   GCtab* t = lj_tab_new(L, 0, 1);
+   GCtab *t = lj_tab_new(L, 0, 1);
    settabV(L, L->top++, t);
    setgcref(t->metatable, obj2gco(t));
    setstrV(L, lj_tab_setstr(L, t, lj_str_newlit(L, "__mode")), lj_str_newlit(L, "kv"));
@@ -809,7 +809,7 @@ static void newproxy_weaktable(lua_State* L)
 extern int luaopen_base(lua_State* L)
 {
    // NOBARRIER: Table and value are the same.
-   GCtab* env = tabref(L->env);
+   GCtab *env = tabref(L->env);
    settabV(L, lj_tab_setstr(L, env, lj_str_newlit(L, "_G")), env);
    lua_pushliteral(L, "5.2");  //  top-3. // Lua version number, set as _VERSION
    newproxy_weaktable(L);  //  top-2.

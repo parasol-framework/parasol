@@ -63,7 +63,7 @@ fluid_range * check_range(lua_State *L, int idx)
 // Check if a TValue is a range userdata (for use in metamethod implementations).
 // This avoids stack manipulation and is more efficient for internal use.
 
-fluid_range *check_range_tv(lua_State *L, cTValue *tv)
+fluid_range * check_range_tv(lua_State *L, cTValue *tv)
 {
    if (not tvisudata(tv)) return nullptr;
 
@@ -177,8 +177,8 @@ static int range_each(lua_State* L)
 }
 
 //********************************************************************************************************************
-// range:filter(function(Value) return bool end) -> table
-// Returns a table containing only values for which the predicate returns true.
+// range:filter(function(Value) return bool end) -> array
+// Returns an array containing only values for which the predicate returns true.
 
 static int range_filter(lua_State* L)
 {
@@ -198,15 +198,18 @@ static int range_filter(lua_State* L)
       else stop++;
    }
 
-   // Create result table
-   lua_createtable(L, 0, 0);
-   int result_table = lua_gettop(L);
-   int array_index = 0;
-
-   // Check for empty range - return empty table
+   // Check for empty range - return empty array
    if ((step > 0 and r->start > stop) or (step < 0 and r->start < stop)) {
+      GCarray *arr = lj_array_new(L, 0, AET::_ANY);
+      setarrayV(L, L->top++, arr);
       return 1;
    }
+
+   // Pre-allocate array to maximum possible size
+   int32_t max_size = range_length(r);
+   GCarray *arr = lj_array_new(L, MSize(max_size), AET::_ANY);
+   TValue *data = arr->get<TValue>();
+   int32_t array_index = 0;
 
    lua_pushvalue(L, 2);  // Push callback
    int callback_index = lua_gettop(L);
@@ -221,21 +224,25 @@ static int range_filter(lua_State* L)
       lua_call(L, 1, 1);
 
       if (lua_toboolean(L, -1)) {
-         lua_pushinteger(L, value);
-         lua_rawseti(L, result_table, array_index++);
+         setintV(&data[array_index++], value);
       }
       lua_pop(L, 1);
    }
 
    lua_pop(L, 1);  // Pop callback
-   return 1;       // Return result table
+
+   // Adjust array length to actual count
+   arr->len = MSize(array_index);
+
+   setarrayV(L, L->top++, arr);
+   return 1;
 }
 
 //********************************************************************************************************************
 // range:reduce(initial, function(Acc, Value) return new_acc end) -> value
 // Folds the range into a single accumulated value.
 
-static int range_reduce(lua_State* L)
+static int range_reduce(lua_State *L)
 {
    auto r = check_range(L, 1);
    if (not r) {
@@ -282,8 +289,8 @@ static int range_reduce(lua_State* L)
 }
 
 //********************************************************************************************************************
-// range:map(function(Value) return transformed end) -> table
-// Returns a table with each value transformed by the function.
+// range:map(function(Value) return transformed end) -> array
+// Returns an array with each value transformed by the function.
 
 static int range_map(lua_State* L)
 {
@@ -303,16 +310,18 @@ static int range_map(lua_State* L)
       else stop++;
    }
 
-   // Create result table with estimated size
-   int32_t estimated_size = range_length(r);
-   lua_createtable(L, estimated_size > 0 ? estimated_size : 0, 0);
-   int result_table = lua_gettop(L);
-   int array_index = 0;
-
-   // Check for empty range - return empty table
+   // Check for empty range - return empty array
    if ((step > 0 and r->start > stop) or (step < 0 and r->start < stop)) {
+      GCarray *arr = lj_array_new(L, 0, AET::_ANY);
+      setarrayV(L, L->top++, arr);
       return 1;
    }
+
+   // Create result array with exact size
+   int32_t size = range_length(r);
+   GCarray *arr = lj_array_new(L, MSize(size), AET::_ANY);
+   TValue *data = arr->get<TValue>();
+   int32_t array_index = 0;
 
    lua_pushvalue(L, 2);  // Push callback
    int callback_index = lua_gettop(L);
@@ -326,17 +335,24 @@ static int range_map(lua_State* L)
       lua_pushinteger(L, value);
       lua_call(L, 1, 1);
 
-      // Store transformed value in result table
-      lua_rawseti(L, result_table, array_index++);
+      // Store transformed value in result array
+      TValue *src = L->top - 1;
+      copyTV(L, &data[array_index++], src);
+      if (tvisgcv(src)) {
+         lj_gc_objbarrier(L, arr, gcV(src));
+      }
+      lua_pop(L, 1);
    }
 
    lua_pop(L, 1);  // Pop callback
-   return 1;       // Return result table
+
+   setarrayV(L, L->top++, arr);
+   return 1;
 }
 
 //********************************************************************************************************************
-// range:take(n) -> table
-// Returns a table containing the first n values from the range.
+// range:take(n) -> array
+// Returns an array containing the first n values from the range.
 
 static int range_take(lua_State* L)
 {
@@ -346,37 +362,43 @@ static int range_take(lua_State* L)
       return 0;
    }
 
-   int32_t n = (int32_t)luaL_checkinteger(L, 2);
+   auto n = (int32_t)luaL_checkinteger(L, 2);
    if (n < 0) n = 0;
 
-   int32_t step = r->step;
-   int32_t stop = r->stop;
+   auto step = r->step;
+   auto stop = r->stop;
 
    if (not r->inclusive) {
       if (step > 0) stop--;
       else stop++;
    }
 
-   // Create result table
-   lua_createtable(L, n, 0);
-   int result_table = lua_gettop(L);
-   int array_index = 0;
-
-   // Check for empty range or zero take
+   // Check for empty range or zero take - return empty array
    if (n IS 0 or (step > 0 and r->start > stop) or (step < 0 and r->start < stop)) {
+      GCarray *arr = lj_array_new(L, 0, AET::_INT32);
+      setarrayV(L, L->top++, arr);
       return 1;
    }
+
+   // Calculate actual count (may be less than n if range is shorter)
+   int32_t range_len = range_length(r);
+   int32_t actual_count = (n < range_len) ? n : range_len;
+
+   // Create result array
+   GCarray *arr = lj_array_new(L, MSize(actual_count), AET::_INT32);
+   int32_t *data = arr->get<int32_t>();
 
    auto should_continue = (step > 0)
       ? [](int32_t Value, int32_t Stop) { return Value <= Stop; }
       : [](int32_t Value, int32_t Stop) { return Value >= Stop; };
 
+   int32_t array_index = 0;
    for (int32_t value = r->start; should_continue(value, stop) and array_index < n; value += step) {
-      lua_pushinteger(L, value);
-      lua_rawseti(L, result_table, array_index++);
+      data[array_index++] = value;
    }
 
-   return 1;  // Return result table
+   setarrayV(L, L->top++, arr);
+   return 1;
 }
 
 //********************************************************************************************************************
@@ -750,10 +772,10 @@ static int range_contains(lua_State *L)
 }
 
 //********************************************************************************************************************
-// range:toTable()
+// range:toArray()
 // Returns an array containing all values in the range
 
-static int range_totable(lua_State *L)
+static int range_toarray(lua_State *L)
 {
    auto r = (fluid_range *)lua_touserdata(L, lua_upvalueindex(1));
    if (not r) {
@@ -763,45 +785,44 @@ static int range_totable(lua_State *L)
 
    int32_t len = range_length(r);
 
-   // Create table with appropriate size
-   lua_createtable(L, len, 0);
+   // Create array with appropriate size
+   GCarray *arr = lj_array_new(L, MSize(len), AET::_INT32);
 
-   if (len IS 0) return 1;
+   if (len IS 0) {
+      setarrayV(L, L->top++, arr);
+      return 1;
+   }
 
+   int32_t *data = arr->get<int32_t>();
    int32_t step = r->step;
    int32_t stop = r->stop;
 
    // Calculate effective stop
    if (not r->inclusive) {
-      if (step > 0) {
-         stop = stop - 1;
-      }
-      else {
-         stop = stop + 1;
-      }
+      if (step > 0) stop--;
+      else stop++;
    }
 
    int32_t idx = 0;
    if (step > 0) {
       for (int32_t i = r->start; i <= stop; i += step) {
-         lua_pushinteger(L, i);
-         lua_rawseti(L, -2, idx++);
+         data[idx++] = i;
       }
    }
    else {
       for (int32_t i = r->start; i >= stop; i += step) {
-         lua_pushinteger(L, i);
-         lua_rawseti(L, -2, idx++);
+         data[idx++] = i;
       }
    }
 
+   setarrayV(L, L->top++, arr);
    return 1;
 }
 
 //********************************************************************************************************************
 // __index metamethod
 // Handles property access (.start, .stop, .step, .inclusive, .length)
-// and method calls (:contains, :toTable)
+// and method calls (:contains, :toArray)
 
 constexpr auto HASH_start     = pf::strhash("start");
 constexpr auto HASH_stop      = pf::strhash("stop");
@@ -809,7 +830,7 @@ constexpr auto HASH_step      = pf::strhash("step");
 constexpr auto HASH_inclusive = pf::strhash("inclusive");
 constexpr auto HASH_length    = pf::strhash("length");
 constexpr auto HASH_contains  = pf::strhash("contains");
-constexpr auto HASH_toTable   = pf::strhash("toTable");
+constexpr auto HASH_toArray   = pf::strhash("toArray");
 constexpr auto HASH_each      = pf::strhash("each");
 constexpr auto HASH_filter    = pf::strhash("filter");
 constexpr auto HASH_reduce    = pf::strhash("reduce");
@@ -844,9 +865,9 @@ static int range_index(lua_State *Lua)
             lua_pushvalue(Lua, 1);  // Push the range userdata
             lua_pushcclosure(Lua, range_contains, 1);
             return 1;
-         case HASH_toTable:
+         case HASH_toArray:
             lua_pushvalue(Lua, 1);  // Push the range userdata
-            lua_pushcclosure(Lua, range_totable, 1);
+            lua_pushcclosure(Lua, range_toarray, 1);
             return 1;
       }
    }

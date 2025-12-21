@@ -787,7 +787,7 @@ LJFOLDF(kfold_add_kgc)
 #endif
 #if LJ_HASFFI
    if (irt_iscdata(fleft->t)) {
-      CType* ct = ctype_raw(ctype_ctsG(J2G(J)), gco2cd(o)->ctypeid);
+      CType* ct = ctype_raw(ctype_ctsG(J2G(J)), gco_to_cdata(o)->ctypeid);
       if (ctype_isnum(ct->info) or ctype_isenum(ct->info) ||
          ctype_isptr(ct->info) or ctype_isfunc(ct->info) ||
          ctype_iscomplex(ct->info) or ctype_isvector(ct->info))
@@ -2183,12 +2183,12 @@ LJFOLDF(cse_uref)
    if (LJ_LIKELY(J->flags & JIT_F_OPT_CSE)) {
       IRRef ref = J->chain[fins->o];
       GCfunc* fn = ir_kfunc(fleft);
-      GCupval* uv = gco2uv(gcref(fn->l.uvptr[(fins->op2 >> 8)]));
+      GCupval* uv = gco_to_upval(gcref(fn->l.uvptr[(fins->op2 >> 8)]));
       while (ref > 0) {
          IRIns* ir = IR(ref);
          if (irref_isk(ir->op1)) {
             GCfunc* fn2 = ir_kfunc(IR(ir->op1));
-            if (gco2uv(gcref(fn2->l.uvptr[(ir->op2 >> 8)])) == uv) {
+            if (gco_to_upval(gcref(fn2->l.uvptr[(ir->op2 >> 8)])) == uv) {
                if (fins->o == IR_UREFO and gcstep_barrier(J, ref))
                   break;
                return ref;

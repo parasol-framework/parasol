@@ -210,34 +210,34 @@ end
 end
 
 @Test function testRangeToTable()
-   -- Test toTable method
+   -- Test toArray method
    r1 = range(0, 5)
-   t1 = r1:toTable()
-   assert(#t1 is 5, "toTable should return 5 elements")
+   t1 = r1:toArray()
+   assert(#t1 is 5, "toArray should return 5 elements")
    assert(t1[0] is 0, "first element should be 0")
    assert(t1[4] is 4, "last element should be 4")
 
    r2 = range(0, 5, true)
-   t2 = r2:toTable()
-   assert(#t2 is 6, "inclusive toTable should return 6 elements")
+   t2 = r2:toArray()
+   assert(#t2 is 6, "inclusive toArray should return 6 elements")
    assert(t2[5] is 5, "last element should be 5")
 end
 
 @Test function testRangeToTableWithStep()
-   -- Test toTable with step
+   -- Test toArray with step
    r = range(0, 10, false, 2)
-   t = r:toTable()
-   assert(#t is 5, "toTable with step 2 should return 5 elements")
+   t = r:toArray()
+   assert(#t is 5, "toArray with step 2 should return 5 elements")
    assert(t[0] is 0, "first element should be 0")
    assert(t[1] is 2, "second element should be 2")
    assert(t[4] is 8, "last element should be 8")
 end
 
 @Test function testRangeToTableReverse()
-   -- Test toTable for reverse range
+   -- Test toArray for reverse range
    r = range(5, 0, true)
-   t = r:toTable()
-   assert(#t is 6, "reverse toTable should return 6 elements")
+   t = r:toArray()
+   assert(#t is 6, "reverse toArray should return 6 elements")
    assert(t[0] is 5, "first element should be 5")
    assert(t[5] is 0, "last element should be 0")
 end

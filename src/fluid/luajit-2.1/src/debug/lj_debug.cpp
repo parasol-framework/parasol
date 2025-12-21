@@ -271,10 +271,10 @@ restart:
             if (ra == slot) { slot = bc_d(ins); goto restart; }
             break;
          case BC_GGET:
-            *name = strdata(gco2str(proto_kgc(pt, ~(ptrdiff_t)bc_d(ins))));
+            *name = strdata(gco_to_string(proto_kgc(pt, ~(ptrdiff_t)bc_d(ins))));
             return "global";
          case BC_TGETS:
-            *name = strdata(gco2str(proto_kgc(pt, ~(ptrdiff_t)bc_c(ins))));
+            *name = strdata(gco_to_string(proto_kgc(pt, ~(ptrdiff_t)bc_c(ins))));
             if (ip > proto_bc(pt)) {
                BCIns insp = ip[-1];
                if (bc_op(insp) == BC_MOV and bc_a(insp) == ra + 1 + LJ_FR2 and

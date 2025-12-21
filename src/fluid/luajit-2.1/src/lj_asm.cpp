@@ -1332,8 +1332,8 @@ static void asm_lref(ASMState* as, IRIns* ir)
 // -- Calls ---------------------------------------------------------------
 
 // Collect arguments from CALL* and CARG instructions.
-static void asm_collectargs(ASMState* as, IRIns* ir,
-   const CCallInfo* ci, IRRef* args)
+
+static void asm_collectargs(ASMState* as, IRIns* ir, const CCallInfo* ci, IRRef* args)
 {
    uint32_t n = CCI_XNARGS(ci);
    // Account for split args.

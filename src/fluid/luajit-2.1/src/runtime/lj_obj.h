@@ -581,6 +581,7 @@ enum class AET : uint8_t {
    _STRING_CPP, // std::string (C++ string)
    _STRING_GC,  // GCstr * (interned string)
    _TABLE,      // GCtab * (table reference)
+   _ARRAY,      // GCarray * (array reference)
    _ANY,        // TValue (mixed type storage)
    _STRUCT,     // Structured data (uses structdef)
    _OBJECT,     // OBJECTPTR for external object references; otherwise Fluid.object
@@ -938,15 +939,15 @@ typedef union GCobj {
 
 // Functions to convert a GCobj pointer into a specific value.
 
-[[nodiscard]] inline GCstr * gco2str(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TSTR, &o->str); }
-[[nodiscard]] inline GCupval * gco2uv(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TUPVAL, &o->uv); }
-[[nodiscard]] inline lua_State * gco2th(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TTHREAD, &o->th); }
-[[nodiscard]] inline GCproto * gco2pt(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TPROTO, &o->pt); }
-[[nodiscard]] inline GCfunc * gco2func(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TFUNC, &o->fn); }
-[[nodiscard]] inline GCcdata * gco2cd(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TCDATA, &o->cd); }
-[[nodiscard]] inline GCtab * gco2tab(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TTAB, &o->tab); }
-[[nodiscard]] inline GCudata * gco2ud(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TUDATA, &o->ud); }
-[[nodiscard]] inline GCarray * gco2arr(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TARRAY, &o->arr); }
+[[nodiscard]] inline GCstr *     gco_to_string(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TSTR, &o->str); }
+[[nodiscard]] inline GCupval *   gco_to_upval(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TUPVAL, &o->uv); }
+[[nodiscard]] inline lua_State * gco_to_thread(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TTHREAD, &o->th); }
+[[nodiscard]] inline GCproto *   gco_to_proto(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TPROTO, &o->pt); }
+[[nodiscard]] inline GCfunc *    gco_to_function(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TFUNC, &o->fn); }
+[[nodiscard]] inline GCcdata *   gco_to_cdata(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TCDATA, &o->cd); }
+[[nodiscard]] inline GCtab *     gco_to_table(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TTAB, &o->tab); }
+[[nodiscard]] inline GCudata *   gco_to_userdata(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TUDATA, &o->ud); }
+[[nodiscard]] inline GCarray *   gco_to_array(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TARRAY, &o->arr); }
 
 // Convert any collectable object into a GCobj pointer.
 template<typename T> [[nodiscard]] inline GCobj * obj2gco(T *v) noexcept { return (GCobj*)v; }

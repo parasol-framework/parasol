@@ -105,7 +105,7 @@ void lj_str_resize(lua_State* L, MSize newmask)
       GCobj* o = (GCobj*)(gcrefu(oldtab[i]) & ~(uintptr_t)1);
       while (o) {
          GCobj *next = gcnext(o);
-         GCstr *s = gco2str(o);
+         GCstr *s = gco_to_string(o);
          MSize hash = s->hash;
          hash &= newmask;
          // NOBARRIER: The string table is a GC root.
@@ -169,7 +169,7 @@ GCstr * lj_str_new(lua_State* L, CSTRING str, size_t lenx)
       GCobj *o = gcref(g->str.tab[hash & g->str.mask]);
 
       while (o != nullptr) {
-         GCstr *sx = gco2str(o);
+         GCstr *sx = gco_to_string(o);
          if (sx->hash IS hash and sx->len IS len) {
             if (memcmp(str, strdata(sx), len) IS 0) {
                if (isdead(g, o)) flipwhite(o);  //  Resurrect if dead.

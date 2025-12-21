@@ -962,7 +962,7 @@ static BytecodeSnapshot snapshot_proto(GCproto* pt)
       for (ptrdiff_t i = 0; i < child_count; ++i, --kr) {
          GCobj* obj = gcref(*kr);
          if (obj->gch.gct IS ~LJ_TPROTO) {
-            snapshot.children.push_back(snapshot_proto(gco2pt(obj)));
+            snapshot.children.push_back(snapshot_proto(gco_to_proto(obj)));
          }
       }
    }

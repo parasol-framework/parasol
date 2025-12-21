@@ -404,7 +404,7 @@ UnsupportedNodeRecorder glUnsupportedNodes;
       if (Slot < 0 or Slot >= int32_t(func_state.nactvar)) return nullptr;
       GCRef name_ref = func_state.var_get(Slot).name;
       if (gcrefu(name_ref) < VARNAME__MAX) return nullptr;
-      return gco2str(gcref(name_ref));
+      return gco_to_string(gcref(name_ref));
    };
 
    switch (bc_op(ins)) {

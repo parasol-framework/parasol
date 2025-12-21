@@ -169,20 +169,20 @@ static void gc_mark(global_State *g, GCobj* o)
    white2gray(o);
 
    if (gct IS ~LJ_TUDATA) {
-      GCtab* mt = tabref(gco2ud(o)->metatable);
+      GCtab* mt = tabref(gco_to_userdata(o)->metatable);
       gray2black(o);  //  Userdata are never gray.
       if (mt) gc_markobj(g, mt);
-      gc_markobj(g, tabref(gco2ud(o)->env));
-      if (LJ_HASBUFFER and gco2ud(o)->udtype IS UDTYPE_BUFFER) {
-         SBufExt *sbx = (SBufExt *)uddata(gco2ud(o));
+      gc_markobj(g, tabref(gco_to_userdata(o)->env));
+      if (LJ_HASBUFFER and gco_to_userdata(o)->udtype IS UDTYPE_BUFFER) {
+         SBufExt *sbx = (SBufExt *)uddata(gco_to_userdata(o));
          if (sbufiscow(sbx) and gcref(sbx->cowref)) gc_markobj(g, gcref(sbx->cowref));
          if (gcref(sbx->dict_str)) gc_markobj(g, gcref(sbx->dict_str));
          if (gcref(sbx->dict_mt)) gc_markobj(g, gcref(sbx->dict_mt));
       }
-      else if (gco2ud(o)->udtype IS UDTYPE_THUNK) {
+      else if (gco_to_userdata(o)->udtype IS UDTYPE_THUNK) {
          // Mark thunk payload contents to prevent GC from collecting them
 
-         ThunkPayload *payload = thunk_payload(gco2ud(o));
+         ThunkPayload *payload = thunk_payload(gco_to_userdata(o));
 
          // Mark the deferred function
 
@@ -196,19 +196,19 @@ static void gc_mark(global_State *g, GCobj* o)
       }
    }
    else if (gct IS ~LJ_TUPVAL) {
-      GCupval *uv = gco2uv(o);
+      GCupval *uv = gco_to_upval(o);
       gc_marktv(g, uvval(uv));
       if (uv->closed) gray2black(o);  //  Closed upvalues are never gray.
    }
    else if (gct IS ~LJ_TARRAY) {
-      GCarray *arr = gco2arr(o);
+      GCarray *arr = gco_to_array(o);
       gray2black(o);  //  Arrays are never gray.
       GCtab *mt = tabref(arr->metatable);
       if (mt) gc_markobj(g, mt);
 
       // If array contains GC references (strings or tables), mark them
 
-      if (arr->elemtype IS AET::_STRING_GC or arr->elemtype IS AET::_TABLE) {
+      if (arr->elemtype IS AET::_STRING_GC or arr->elemtype IS AET::_TABLE or arr->elemtype IS AET::_ARRAY) {
          GCRef* refs = arr->get<GCRef>();
          for (MSize i = 0; i < arr->len; i++) {
             if (gcref(refs[i])) gc_markobj(g, gcref(refs[i]));
@@ -293,15 +293,15 @@ size_t lj_gc_separateudata(global_State *g, int all)
    GCRef *p = &mainthread(g)->nextgc;
    GCobj *o;
    while ((o = gcref(*p)) != nullptr) {
-      if (not (iswhite(o) or all) or isfinalized(gco2ud(o))) {
+      if (not (iswhite(o) or all) or isfinalized(gco_to_userdata(o))) {
          p = &o->gch.nextgc;  //  Nothing to do.
       }
-      else if (not lj_meta_fastg(g, tabref(gco2ud(o)->metatable), MM_gc)) {
+      else if (not lj_meta_fastg(g, tabref(gco_to_userdata(o)->metatable), MM_gc)) {
          markfinalized(o);  //  Done, as there's no __gc metamethod.
          p = &o->gch.nextgc;
       }
       else {  // Otherwise move userdata to be finalized to mmudata list.
-         m += sizeudata(gco2ud(o));
+         m += sizeudata(gco_to_userdata(o));
          markfinalized(o);
          *p = o->gch.nextgc;
          if (gcref(g->gc.mmudata)) {  // Link to end of mmudata list.
@@ -502,22 +502,22 @@ static size_t propagatemark(global_State *g)
    gray2black(o);
    setgcrefr(g->gc.gray, o->gch.gclist);  //  Remove from gray list.
    if (LJ_LIKELY(gct IS ~LJ_TTAB)) {
-      GCtab* t = gco2tab(o);
+      GCtab* t = gco_to_table(o);
       if (gc_traverse_tab(g, t) > 0) black2gray(o);  //  Keep weak tables gray.
       return sizeof(GCtab) + sizeof(TValue) * t->asize + (t->hmask ? sizeof(Node) * (t->hmask + 1) : 0);
    }
    else if (LJ_LIKELY(gct IS ~LJ_TFUNC)) {
-      GCfunc* fn = gco2func(o);
+      GCfunc* fn = gco_to_function(o);
       gc_traverse_func(g, fn);
       return isluafunc(fn) ? sizeLfunc((MSize)fn->l.nupvalues) : sizeCfunc((MSize)fn->c.nupvalues);
    }
    else if (LJ_LIKELY(gct IS ~LJ_TPROTO)) {
-      GCproto* pt = gco2pt(o);
+      GCproto* pt = gco_to_proto(o);
       gc_traverse_proto(g, pt);
       return pt->sizept;
    }
    else if (LJ_LIKELY(gct IS ~LJ_TTHREAD)) {
-      lua_State* th = gco2th(o);
+      lua_State* th = gco_to_thread(o);
       setgcrefr(th->gclist, g->gc.grayagain);
       setgcref(g->gc.grayagain, o);
       black2gray(o);  //  Threads are never black.
@@ -585,7 +585,7 @@ static GCRef* gc_sweep(global_State *g, GCRef* p, uint32_t lim)
    GCobj* o;
    while ((o = gcref(*p)) != nullptr and lim-- > 0) {
       if (o->gch.gct IS ~LJ_TTHREAD)  //  Need to sweep open upvalues, too.
-         gc_fullsweep(g, &gco2th(o)->openupval);
+         gc_fullsweep(g, &gco_to_thread(o)->openupval);
 
       if (((o->gch.marked ^ LJ_GC_WHITES) & ow)) {  // Black or current white?
          lj_assertG(not isdead(g, o) or (o->gch.marked & LJ_GC_FIXED), "sweep of undead object");
@@ -623,7 +623,7 @@ static void gc_sweepstr(global_State *g, GCRef* chain)
       else {  // Otherwise string is dead, free it.
          lj_assertG(isdead(g, o) or ow IS LJ_GC_SFIXED, "sweep of unlive string");
          setgcrefr(*p, o->gch.nextgc);
-         lj_str_free(g, gco2str(o));
+         lj_str_free(g, gco_to_string(o));
       }
    }
    setgcrefp(*chain, (gcrefu(q) | (u & 1)));
@@ -651,7 +651,7 @@ static void gc_sweepstr(global_State *g, GCRef* chain)
 static void gc_clearweak(global_State *g, GCobj* o)
 {
    while (o) {
-      GCtab* t = gco2tab(o);
+      GCtab* t = gco_to_table(o);
       lj_assertG((t->marked & LJ_GC_WEAK), "clear of non-weak table");
 
       // Clear array part (TValue has alignment attributes incompatible with std::span).
@@ -726,7 +726,7 @@ static void gc_finalize(lua_State *L)
       makewhite(g, o);
       o->gch.marked &= (uint8_t)~LJ_GC_CDATA_FIN;
       // Resolve finalizer.
-      setcdataV(L, &tmp, gco2cd(o));
+      setcdataV(L, &tmp, gco_to_cdata(o));
       tv = lj_tab_set(L, ctype_ctsG(g)->finalizer, &tmp);
       if (not tvisnil(tv)) {
          g->gc.nocdatafin = 0;
@@ -742,7 +742,7 @@ static void gc_finalize(lua_State *L)
    setgcref(mainthread(g)->nextgc, o);
    makewhite(g, o);
    // Resolve the __gc metamethod.
-   mo = lj_meta_fastg(g, tabref(gco2ud(o)->metatable), MM_gc);
+   mo = lj_meta_fastg(g, tabref(gco_to_userdata(o)->metatable), MM_gc);
    if (mo) gc_call_finalizer(g, L, mo, o);
 }
 
@@ -951,7 +951,7 @@ void LJ_FASTCALL lj_gc_step_fixtop(lua_State *L)
 
 int LJ_FASTCALL lj_gc_step_jit(global_State *g, MSize steps)
 {
-   lua_State *L = gco2th(gcref(g->cur_L));
+   lua_State *L = gco_to_thread(gcref(g->cur_L));
    L->base = tvref(G(L)->jit_base);
    L->top = curr_topL(L);
    while (steps-- > 0 and lj_gc_step(L) IS 0);

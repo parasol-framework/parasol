@@ -110,12 +110,12 @@ static std::string describe_gc_constant(GCproto *Proto, ptrdiff_t Index, [[maybe
    GCobj *gc_obj = proto_kgc(Proto, Index);
 
    if (gc_obj->gch.gct IS (uint8_t)~LJ_TSTR) {
-      GCstr *str_obj = gco2str(gc_obj);
+      GCstr *str_obj = gco_to_string(gc_obj);
       return std::format("K{}", format_string_constant({strdata(str_obj), str_obj->len}));
    }
 
    if (gc_obj->gch.gct IS (uint8_t)~LJ_TPROTO) {
-      GCproto *child = gco2pt(gc_obj);
+      GCproto *child = gco_to_proto(gc_obj);
       return std::format("K<func {}-{}>", child->firstline, child->firstline + child->numline);
    }
 
@@ -282,7 +282,7 @@ static void emit_disassembly(GCproto *Proto, std::ostringstream &Buf, bool Compa
          if (valid) {
             GCobj *gc_obj = proto_kgc(Proto, index);
             if (gc_obj->gch.gct IS (uint8_t)~LJ_TPROTO) {
-               GCproto *child = gco2pt(gc_obj);
+               GCproto *child = gco_to_proto(gc_obj);
 
                if (not Compact) {
                   Buf << std::format("{}  --- lines {}-{}, {} bytecodes ---\n",
