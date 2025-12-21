@@ -95,4 +95,5 @@ When adding entries to `MMDEF` in `lj_obj.h`:
 **File Locations:**
 - Parser source: `src/fluid/luajit-2.1/src/parser/` (see [`src/parser/AGENTS.md`](src/parser/AGENTS.md) for parser-specific details)
 - Bytecode reference: `src/fluid/luajit-2.1/BYTECODE.md` (instruction matrix, control-flow semantics)
+- JIT coding reference: `src/fluid/luajit-2.1/jit/AGENTS.md`
 - Fluid tests: `src/fluid/tests/`

@@ -1436,7 +1436,12 @@ static void build_subroutines(BuildCtx *ctx)
   |.ffunc_1 next
   |  je >2				// Missing 2nd arg?
   |1:
-  |  mov CARG1, [BASE]
+  |  mov TMPR, [BASE]
+  |  mov ITYPE, TMPR
+  |  sar ITYPE, 47
+  |  cmp ITYPEd, LJ_TARRAY
+  |  je >8
+  |  mov CARG1, TMPR
   |  mov PC, [BASE-8]
   |  checktab CARG1, ->fff_fallback
   |  mov RB, BASE			// Save BASE.
@@ -1459,6 +1464,65 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov aword [BASE+8], LJ_TNIL
   |  jmp <1
   |
+  |8:
+  |  mov ARRAY:RB, TMPR
+  |  cleartp ARRAY:RB
+  |  mov RC, [BASE+8]
+  |  cmp RC, LJ_TNIL
+  |  je >9
+  |.if DUALNUM
+  |  mov RA, RC
+  |  checkint RA, ->fff_fallback
+  |  cmp RAd, 0; jl ->fff_fallback
+  |  cmp RAd, ARRAY:RB->len; jae ->fff_fallback
+  |  add RAd, 1
+  |  jmp >3
+  |.else
+  |  checknumtp [BASE+8], ->fff_fallback
+  |  movsd xmm0, qword [BASE+8]
+  |  cvttsd2si RAd, xmm0
+  |  cvtsi2sd xmm1, RAd
+  |  ucomisd xmm0, xmm1
+  |  jne ->fff_fallback
+  |  cmp RAd, 0; jl ->fff_fallback
+  |  cmp RAd, ARRAY:RB->len; jae ->fff_fallback
+  |  add RAd, 1
+  |  jmp >3
+  |.endif
+  |9:
+  |  xor RAd, RAd
+  |3:
+  |  mov PC, [BASE-8]
+  |  cmp RAd, ARRAY:RB->len
+  |  jae >4
+  |.if DUALNUM
+  |  setint ITYPE, RA
+  |  mov [BASE-16], ITYPE
+  |.else
+  |  cvtsi2sd xmm0, RAd
+  |  movsd qword [BASE-16], xmm0
+  |.endif
+  |  mov TMPRd, RAd
+  |  mov L:CARG1, SAVE_L
+  |.if X64WIN
+  |  mov CARG3, ARRAY:RB        // Save array to r8 temporarily.
+  |  lea CARG4, [BASE-8]        // Compute result address (CARG2 == BASE).
+  |  mov RB, BASE               // Save BASE to rbp.
+  |  mov CARG2, CARG3           // Move array to CARG2 (clobbers BASE).
+  |  mov CARG3d, TMPRd          // Pass index.
+  |.else
+  |  mov CARG2, ARRAY:RB        // Pass array.
+  |  mov RB, BASE               // Save BASE before it's clobbered.
+  |  lea CARG4, [BASE-8]        // Compute result address (CARG3 == BASE).
+  |  mov CARG3d, TMPRd          // Pass index (clobbers BASE via CARG3).
+  |.endif
+  |  call extern lj_arr_getidx
+  |  mov BASE, RB               // Restore BASE.
+  |  jmp ->fff_res2
+  |4:
+  |  mov aword [BASE-16], LJ_TNIL
+  |  jmp ->fff_res1
+  |
   |.ffunc_1 pairs
   |  mov TAB:RB, [BASE]
   |  mov TMPR, TAB:RB
@@ -1476,7 +1540,12 @@ static void build_subroutines(BuildCtx *ctx)
   |  jmp ->fff_res
   |
   |.ffunc_2 ipairs_aux
-  |  mov TAB:RB, [BASE]
+  |  mov TMPR, [BASE]
+  |  mov ITYPE, TMPR
+  |  sar ITYPE, 47
+  |  cmp ITYPEd, LJ_TARRAY
+  |  je >8
+  |  mov TAB:RB, TMPR
   |  checktab TAB:RB, ->fff_fallback
   |.if DUALNUM
   |  mov RA, [BASE+8]
@@ -1527,6 +1596,47 @@ static void build_subroutines(BuildCtx *ctx)
   |->fff_res0:
   |  mov RDd, 1+0
   |  jmp ->fff_res
+  |
+  |8:
+  |  mov ARRAY:RB, TMPR
+  |  cleartp ARRAY:RB
+  |.if DUALNUM
+  |  mov RA, [BASE+8]
+  |  checkint RA, ->fff_fallback
+  |.else
+  |  checknumtp [BASE+8], ->fff_fallback
+  |  movsd xmm0, qword [BASE+8]
+  |.endif
+  |  mov PC, [BASE-8]
+  |.if DUALNUM
+  |  add RAd, 1
+  |  setint ITYPE, RA
+  |  mov [BASE-16], ITYPE
+  |.else
+  |  sseconst_1 xmm1, TMPR
+  |  addsd xmm0, xmm1
+  |  cvttsd2si RAd, xmm0
+  |  movsd qword [BASE-16], xmm0
+  |.endif
+  |  cmp RAd, ARRAY:RB->len
+  |  jae ->fff_res0
+  |  mov TMPRd, RAd
+  |  mov L:CARG1, SAVE_L
+  |.if X64WIN
+  |  mov CARG3, ARRAY:RB        // Save array to r8 temporarily.
+  |  lea CARG4, [BASE-8]        // Compute result address (CARG2 == BASE).
+  |  mov RB, BASE               // Save BASE to rbp.
+  |  mov CARG2, CARG3           // Move array to CARG2 (clobbers BASE).
+  |  mov CARG3d, TMPRd          // Pass index.
+  |.else
+  |  mov CARG2, ARRAY:RB        // Pass array.
+  |  mov RB, BASE               // Save BASE before it's clobbered.
+  |  lea CARG4, [BASE-8]        // Compute result address (CARG3 == BASE).
+  |  mov CARG3d, TMPRd          // Pass index (clobbers BASE via CARG3).
+  |.endif
+  |  call extern lj_arr_getidx
+  |  mov BASE, RB               // Restore BASE.
+  |  jmp ->fff_res2
   |
   |.ffunc_1 ipairs
   |  mov TAB:RB, [BASE]
@@ -4222,9 +4332,15 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |
     |  // Calculate element address: data + idx * elemsize
     |  mov L:CARG1, SAVE_L
+    |.if X64WIN
+    |  lea CARG4, [BASE+RA*8]      // Caveat: CARG2 == BASE.
     |  mov CARG2, ARRAY:RB
     |  mov CARG3d, RCd
-    |  lea CARG4, [BASE+RA*8]
+    |.else
+    |  mov CARG2, ARRAY:RB
+    |  lea CARG4, [BASE+RA*8]      // Caveat: CARG3 == BASE.
+    |  mov CARG3d, RCd
+    |.endif
     |  call extern lj_arr_getidx	// (lua_State *L, GCarray *arr, int32_t idx, TValue *result)
     |  ins_next
     break;
@@ -4238,9 +4354,15 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |
     |  // Calculate element address: data + idx * elemsize
     |  mov L:CARG1, SAVE_L
+    |.if X64WIN
+    |  lea CARG4, [BASE+RA*8]      // Caveat: CARG2 == BASE.
     |  mov CARG2, ARRAY:RB
     |  mov CARG3d, RCd
-    |  lea CARG4, [BASE+RA*8]
+    |.else
+    |  mov CARG2, ARRAY:RB
+    |  lea CARG4, [BASE+RA*8]      // Caveat: CARG3 == BASE.
+    |  mov CARG3d, RCd
+    |.endif
     |  call extern lj_arr_getidx	// (lua_State *L, GCarray *arr, int32_t idx, TValue *result)
     |  ins_next
     break;
@@ -4479,14 +4601,8 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  cmp RCd, ARRAY:RB->len
     |  jae >5
     |
-    |  // Fetch the array element into R[A+1] (value slot).
-    |  mov L:CARG1, SAVE_L
-    |  mov CARG2, ARRAY:RB
-    |  mov CARG3d, RCd
-    |  lea CARG4, [BASE+RA*8+8]
-    |  call extern lj_arr_getidx	// (lua_State *L, GCarray *arr, int32_t idx, TValue *result)
-    |
-    |  // Store index into R[A] and control var slot (R[A-1]).
+    |  // Store index into R[A] and control var slot (R[A-1]) BEFORE call.
+    |  // (RCd and BASE are clobbered by call setup and the call itself.)
     |.if DUALNUM
     |  mov ITYPEd, RCd
     |  setint ITYPE, ITYPE
@@ -4497,6 +4613,19 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  movsd qword [BASE+RA*8], xmm0
     |  movsd qword [BASE+RA*8-8], xmm0
     |.endif
+    |
+    |  // Fetch the array element into R[A+1] (value slot).
+    |  mov L:CARG1, SAVE_L
+    |.if X64WIN
+    |  lea CARG4, [BASE+RA*8+8]    // Caveat: CARG2 == BASE.
+    |  mov CARG2, ARRAY:RB
+    |  mov CARG3d, RCd
+    |.else
+    |  mov CARG2, ARRAY:RB
+    |  lea CARG4, [BASE+RA*8+8]    // Caveat: CARG3 == BASE.
+    |  mov CARG3d, RCd
+    |.endif
+    |  call extern lj_arr_getidx	// (lua_State *L, GCarray *arr, int32_t idx, TValue *result)
     |
     |  movzx RDd, PC_RD			// Get target from following ITERL instruction.
     |  branchPC RD

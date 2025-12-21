@@ -30,6 +30,7 @@
 #include "lj_snap.h"
 #include "lj_dispatch.h"
 #include "lj_vm.h"
+#include "lj_vmarray.h"
 #include "lj_prng.h"
 #include "jit/frame_manager.h"
 
@@ -42,6 +43,16 @@
 // Emit raw IR without passing through optimisations.
 #define emitir_raw(ot, a, b)   (lj_ir_set(J, (ot), (a), (b)), lj_ir_emit(J))
 
+//********************************************************************************************************************
+// Emit TMPREF.
+
+static TRef rec_tmpref(jit_State *J, TRef tr, int mode)
+{
+   if (!LJ_DUALNUM and tref_isinteger(tr)) tr = emitir(IRTN(IR_CONV), tr, IRCONV_NUM_INT);
+   return emitir(IRT(IR_TMPREF, IRT_PGC), tr, mode);
+}
+
+//********************************************************************************************************************
 // Record loop ops
 
 // Loop event.
@@ -739,6 +750,9 @@ static LoopEvent rec_itera(jit_State *J, BCREG ra, BCREG rb)
       return LOOPEV_ENTER;
    }
 
+   J->maxslot = ra;
+   lj_snap_add(J);  // Required to make JLOOP the first ins in a side-trace.
+
    TRef arr_ref = getslot(J, ra - 2);
    if (not tref_isarray(arr_ref)) lj_trace_err(J, LJ_TRERR_BADTYPE);
 
@@ -749,27 +763,37 @@ static LoopEvent rec_itera(jit_State *J, BCREG ra, BCREG rb)
    else if (tvisint(ctrl_tv)) idx_int = intV(ctrl_tv) + 1;
    else idx_int = int32_t(lj_num2int(numV(ctrl_tv))) + 1;
 
+   TRef ctrl_ref = getslot(J, ra - 1);
+   TRef idx_ref = tref_isnil(ctrl_ref) ? ir.kint(0) : lj_opt_narrow_index(J, ctrl_ref);
+   if (not tref_isnil(ctrl_ref)) idx_ref = ir.emit_int(IR_ADD, idx_ref, ir.kint(1));
+
+   TRef len_ref = ir.fload_int(arr_ref, IRFL_ARRAY_LEN);
+
    if (idx_int < 0 or MSize(idx_int) >= arr->len) {
+      ir.guard_int(IR_UGE, idx_ref, len_ref);
       J->maxslot = ra - 3;
       J->pc += 2;
       return LOOPEV_LEAVE;
    }
 
-   TRef ctrl_ref = getslot(J, ra - 1);
-   TRef idx_ref = tref_isnil(ctrl_ref) ? ir.kint(0) : lj_opt_narrow_index(J, ctrl_ref);
-   if (not tref_isnil(ctrl_ref)) idx_ref = emitir(IRT(IR_ADD, IRT_INT), idx_ref, ir.kint(1));
+   int nres = (rb < 3) ? 1 : 2;
+   TRef value_ref = TREF_NIL;
 
-   TRef len_ref = emitir(IRT(IR_FLOAD, IRT_INT), arr_ref, IRFL_ARRAY_LEN);
-   ir.guard(IR_LT, IRT_INT, idx_ref, len_ref);
-
-   lj_ir_call(J, IRCALL_lj_arr_getidx, arr_ref, idx_ref);
-   TRef tmp = emitir(IRT(IR_TMPREF, IRT_PGC), 0, IRTMPREF_OUT1);
-   TRef val = emitir(IRT(IR_VLOAD, IRT_NUM), tmp, 0);
+   ir.guard_int(IR_ULT, idx_ref, len_ref);
+   if (nres IS 2) {
+      TValue result_tv;
+      lj_arr_getidx(J->L, arr, idx_int, &result_tv);
+      IRType result_type = itype2irt(&result_tv);
+      if (!LJ_DUALNUM and result_type IS IRT_INT) result_type = IRT_NUM;
+      TRef tmp_ref = rec_tmpref(J, TREF_NIL, IRTMPREF_OUT1);
+      lj_ir_call(J, IRCALL_lj_arr_getidx, arr_ref, idx_ref, tmp_ref);
+      value_ref = lj_record_vload(J, tmp_ref, 0, result_type);
+   }
 
    J->base[ra - 1] = idx_ref;
    J->base[ra] = idx_ref;
-   J->base[ra + 1] = val;
-   J->maxslot = ra - 1 + rb;
+   J->base[ra + 1] = value_ref;
+   J->maxslot = ra + nres;
    J->needsnap = 1;
    J->pc += bc_j(J->pc[1]) + 2;
    return LOOPEV_ENTER;
@@ -865,19 +889,20 @@ static void rec_call_setup(jit_State *J, BCREG func, ptrdiff_t nargs)
    TValue* functv = &J->L->base[func];
    TRef kfunc, * fbase = &J->base[func];
    ptrdiff_t i;
+
    (void)getslot(J, func); //  Ensure func has a reference.
-   for (i = 1; i <= nargs; i++)
-      (void)getslot(J, func + FRC::HEADER_SIZE + i - 1);  //  Ensure all args have a reference (args start at func+2).
+   for (i = 1; i <= nargs; i++) (void)getslot(J, func + FRC::HEADER_SIZE + i - 1);  //  Ensure all args have a reference (args start at func+2).
+
    if (not tref_isfunc(fbase[0])) {  // Resolve __call metamethod.
       ix.tab = fbase[0];
       copyTV(J->L, &ix.tabv, functv);
       if (not lj_record_mm_lookup(J, &ix, MM_call) or !tref_isfunc(ix.mobj)) lj_trace_err(J, LJ_TRERR_NOMM);
-      for (i = ++nargs; i > 1; i--)
-         fbase[i + 1] = fbase[i];
+      for (i = ++nargs; i > 1; i--) fbase[i + 1] = fbase[i];
       fbase[2] = fbase[0];
       fbase[0] = ix.mobj;  //  Replace function.
       functv = &ix.mobjv;
    }
+
    kfunc = rec_call_specialise(J, funcV(functv), fbase[0]);
    fbase[0] = kfunc;
    fbase[1] = TREF_FRAME;
@@ -954,8 +979,8 @@ void lj_record_ret(jit_State *J, BCREG rbase, ptrdiff_t gotresults)
    ptrdiff_t i;
    FrameManager fm(J);
    SlotView slots(J);
-   for (i = 0; i < gotresults; i++)
-      (void)getslot(J, rbase + i);  //  Ensure all results have a reference.
+   for (i = 0; i < gotresults; i++) (void)getslot(J, rbase + i);  //  Ensure all results have a reference.
+
    while (frame_ispcall(frame)) {  // Immediately resolve pcall() returns.
       BCREG cbase = (BCREG)frame_delta(frame);
       if (FRC::dec_depth(J) <= 0) lj_trace_err(J, LJ_TRERR_NYIRETL);
@@ -2403,56 +2428,56 @@ static TRef rec_arith_op(jit_State *J, RecordOps *ops)
 //
 // Native arrays (GCarray) are different from tables - they have typed elements and 0-based indexing internally.
 // We emit calls to helper functions that handle the element type conversion.
-//
-// TODO: Optimise to inline loads/stores.
 
 static TRef rec_array_op(jit_State *J, RecordOps *ops)
 {
    IRBuilder ir(J);
-   TRef arr = ops->rb;       // Array reference
-   TRef idx = ops->rc;       // Index (variable or constant)
-   BCOp op = ops->op;
-   int is_get = (op IS BC_AGETV or op IS BC_AGETB);
-   int is_const_idx = (op IS BC_AGETB or op IS BC_ASETB);
+   TRef array_ref = ops->rb;
+   if (not tref_isarray(array_ref)) lj_trace_err(J, LJ_TRERR_BADTYPE);
 
-   if (not tref_isarray(arr)) { // Not an array type - abort trace
-      lj_trace_err(J, LJ_TRERR_BADTYPE);
-      return 0;
-   }
+   bool is_get = (ops->op IS BC_AGETV or ops->op IS BC_AGETB);
+   bool is_lit = (ops->op IS BC_AGETB or ops->op IS BC_ASETB);
+   int32_t idx_int = 0;
+   TRef idx_ref = 0;
 
-   // Handle index conversion
-
-   TRef idx0;  // 0-based index
-   if (is_const_idx) {
-      // For AGETB/ASETB, the index is already a 0-based constant literal in bc_c()
-      int32_t const_idx = int32_t(bc_c(ops->ins));
-      idx0 = ir.kint(const_idx);
-   }
-   else { // Variable index - narrow to integer and ensure 0-based
-      idx0 = lj_opt_narrow_index(J, idx);
-   }
-
-   if (is_get) {
-      // Array get - emit call to lj_arr_getidx helper
-      // Helper signature: void lj_arr_getidx(lua_State *L, GCarray *arr, int32_t idx, TValue *result)
-      // The L parameter is implicit (CCI_L flag)
-      // Result is stored to a destination that needs to be provided
-      // For now, we use a call that stores to tmptv and then load from there
-
-      lj_ir_call(J, IRCALL_lj_arr_getidx, arr, idx0);
-
-      // Load the result from g->tmptv (where lj_arr_getidx stores the result)
-      // This is a workaround for now - proper handling would use TMPREF
-      TRef tmp = emitir(IRT(IR_TMPREF, IRT_PGC), 0, IRTMPREF_OUT1);
-      return emitir(IRT(IR_VLOAD, IRT_NUM), tmp, 0);  // Load as number for simplicity
+   if (is_lit) {
+      idx_int = int32_t(ops->rc);
+      idx_ref = ir.kint(idx_int);
    }
    else {
-      // Array set - emit call to lj_arr_setidx helper
-      // Helper signature: void lj_arr_setidx(lua_State *L, GCarray *arr, int32_t idx, cTValue *val)
-      TRef val = ops->ra;  // Value to store
-      lj_ir_call(J, IRCALL_lj_arr_setidx, arr, idx0, val);
-      return 0;
+      cTValue *key_tv = ops->rcv();
+      if (tvisint(key_tv)) idx_int = intV(key_tv);
+      else if (tvisnum(key_tv)) {
+         lua_Number num = numV(key_tv);
+         idx_int = int32_t(lj_num2int(num));
+         if (not ((lua_Number)idx_int IS num)) lj_trace_err(J, LJ_TRERR_BADTYPE);
+      }
+      else {
+         lj_trace_err(J, LJ_TRERR_BADTYPE);
+      }
+
+      if (not tref_isnumber(ops->rc)) lj_trace_err(J, LJ_TRERR_BADTYPE);
+      idx_ref = lj_opt_narrow_index(J, ops->rc);
    }
+
+   TRef len_ref = ir.fload_int(array_ref, IRFL_ARRAY_LEN);
+   ir.guard_int(IR_ULT, idx_ref, len_ref);
+
+   if (is_get) {
+      GCarray *arr = arrayV(ops->rbv());
+      if (idx_int < 0 or MSize(idx_int) >= arr->len) lj_trace_err(J, LJ_TRERR_BADTYPE);
+      TValue result_tv;
+      lj_arr_getidx(J->L, arr, idx_int, &result_tv);
+      IRType result_type = itype2irt(&result_tv);
+      if (!LJ_DUALNUM and result_type IS IRT_INT) result_type = IRT_NUM;
+      TRef tmp_ref = rec_tmpref(J, TREF_NIL, IRTMPREF_OUT1);
+      lj_ir_call(J, IRCALL_lj_arr_getidx, array_ref, idx_ref, tmp_ref);
+      return lj_record_vload(J, tmp_ref, 0, result_type);
+   }
+
+   TRef tmp_ref = rec_tmpref(J, ops->ra, IRTMPREF_IN1);
+   lj_ir_call(J, IRCALL_lj_arr_setidx, array_ref, idx_ref, tmp_ref);
+   return 0;
 }
 
 //********************************************************************************************************************

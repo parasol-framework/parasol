@@ -279,7 +279,7 @@ void lj_tab_resize(lua_State* L, GCtab* t, uint32_t asize, uint32_t hbits)
          setmref(t->array, lj_mem_realloc(L, array,
             oldasize * sizeof(TValue), asize * sizeof(TValue)));
    }
-   
+
    if (oldhmask > 0) {  // Reinsert pairs from old hash part.
       global_State* g;
       uint32_t i;

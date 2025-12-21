@@ -1845,3 +1845,43 @@ end
    assert(arr:first() is arr:last(), "first() and last() should be same after pops")
    assert(arr:first() is 10, "first() should be 10")
 end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test array pairs/ipairs iteration
+
+@Test function ArrayPairsIpairs()
+   arr = array.of('int', 10, 20, 30)
+   sum = 0
+   indices = {}
+   for i, v in ipairs(arr) do
+      indices[#indices] = i
+      sum += v
+   end
+   assert(#indices is 3, "ipairs should visit 3 indices")
+   assert(indices[0] is 0 and indices[1] is 1 and indices[2] is 2, "ipairs should return 0-based indices")
+   assert(sum is 60, "ipairs should sum to 60")
+
+   sum = 0
+   for i, v in pairs(arr) do
+      sum += v
+   end
+   assert(sum is 60, "pairs should sum to 60")
+end
+
+@Test function ArrayPairsEmpty()
+   empty = array.new(0, 'int')
+   count = 0
+   for i, v in pairs(empty) do
+      count += 1
+   end
+   assert(count is 0, "pairs on empty array should not iterate")
+end
+
+@Test function ArrayPairsStrings()
+   str_arr = array.of('string', 'a', 'b', 'c')
+   concat = ''
+   for i, s in ipairs(str_arr) do
+      concat ..= s
+   end
+   assert(concat is 'abc', "ipairs should concatenate to 'abc'")
+end

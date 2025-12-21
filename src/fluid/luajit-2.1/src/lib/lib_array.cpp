@@ -1854,26 +1854,11 @@ LJLIB_CF(array_filter)
    GCarray *arr = lj_lib_checkarray(L, 1);
    luaL_checktype(L, 2, LUA_TFUNCTION);
 
-   // First pass: count matching elements
-   MSize count = 0;
-   for (MSize i = 0; i < arr->len; i++) {
-      lua_pushvalue(L, 2);            // Push the predicate function
-      array_push_element(L, arr, i);  // Push value
-      lua_pushinteger(L, i);          // Push index
-      lua_call(L, 2, 1);              // Call predicate(value, index) -> boolean
-
-      if (lua_toboolean(L, -1)) count++;
-      lua_pop(L, 1);
-   }
-
-   // Create new array with exact size needed
-   GCarray *result = lj_array_new(L, count, arr->elemtype);
+   // Create result array with zero length (will grow dynamically)
+   GCarray *result = lj_array_new(L, 0, arr->elemtype);
    setarrayV(L, L->top++, result);
 
-   if (count IS 0) return 1;
-
-   // Second pass: copy matching elements
-   MSize out_idx = 0;
+   // Single pass: filter and copy matching elements
    for (MSize i = 0; i < arr->len; i++) {
       lua_pushvalue(L, 2);            // Push the predicate function
       array_push_element(L, arr, i);  // Push value
@@ -1881,9 +1866,15 @@ LJLIB_CF(array_filter)
       lua_call(L, 2, 1);              // Call predicate(value, index) -> boolean
 
       if (lua_toboolean(L, -1)) {
+         // Grow array to accommodate new element
+         MSize new_len = result->len + 1;
+         if (not lj_array_grow(L, result, new_len)) {
+            lj_err_caller(L, ErrMsg::ARREXT);
+         }
+
          // Copy element to result array
          void *src = lj_array_index(arr, i);
-         void *dst = lj_array_index(result, out_idx);
+         void *dst = lj_array_index(result, result->len);
 
          switch (result->elemtype) {
             case AET::_STRING_GC:
@@ -1891,6 +1882,13 @@ LJLIB_CF(array_filter)
                GCRef ref = *(GCRef *)src;
                *(GCRef *)dst = ref;
                if (gcref(ref)) lj_gc_objbarrier(L, result, gcref(ref));
+               break;
+            }
+            case AET::_ANY: {
+               TValue *tv_src = (TValue *)src;
+               TValue *tv_dst = (TValue *)dst;
+               copyTV(L, tv_dst, tv_src);
+               if (tvisgcv(tv_src)) lj_gc_objbarrier(L, result, gcV(tv_src));
                break;
             }
             case AET::_FLOAT:  *(float *)dst = *(float *)src; break;
@@ -1903,7 +1901,7 @@ LJLIB_CF(array_filter)
                memcpy(dst, src, arr->elemsize);
                break;
          }
-         out_idx++;
+         result->len = new_len;
       }
 
       lua_pop(L, 1);

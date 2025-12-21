@@ -1,15 +1,12 @@
-/*
-** SSA IR (Intermediate Representation) format.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-*/
+// SSA IR (Intermediate Representation) format.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 
 #pragma once
 
 #include "lj_obj.h"
 
-// -- IR instructions -----------------------------------------------------
-
 // IR instruction definition. Order matters, see below. ORDER IR
+
 #define IRDEF(_) \
   /* Guarded assertions. */ \
   /* Must be properly aligned to flip opposites (^1) and (un)ordered (^4). */ \
@@ -231,50 +228,50 @@ typedef enum {
 
 // TMPREF mode bits, stored in op2.
 
-constexpr int IRTMPREF_IN1 = 0x01;   /* First input value. */
-constexpr int IRTMPREF_OUT1 = 0x02;   /* First output value. */
-constexpr int IRTMPREF_OUT2 = 0x04;   /* Second output value. */
+constexpr int IRTMPREF_IN1 = 0x01;    // First input value. 
+constexpr int IRTMPREF_OUT1 = 0x02;   // First output value. 
+constexpr int IRTMPREF_OUT2 = 0x04;   // Second output value. 
 
 // SLOAD mode bits, stored in op2.
-constexpr int IRSLOAD_PARENT = 0x01;   /* Coalesce with parent trace. */
-constexpr int IRSLOAD_FRAME = 0x02;   /* Load 32 bits of ftsz. */
-constexpr int IRSLOAD_TYPECHECK = 0x04;   /* Needs type check. */
-constexpr int IRSLOAD_CONVERT = 0x08;   /* Number to integer conversion. */
-constexpr int IRSLOAD_READONLY = 0x10;   /* Read-only, omit slot store. */
-constexpr int IRSLOAD_INHERIT = 0x20;   /* Inherited by exits/side traces. */
-constexpr int IRSLOAD_KEYINDEX = 0x40;   /* Table traversal key index. */
+constexpr int IRSLOAD_PARENT = 0x01;    // Coalesce with parent trace. 
+constexpr int IRSLOAD_FRAME = 0x02;     // Load 32 bits of ftsz. 
+constexpr int IRSLOAD_TYPECHECK = 0x04; // Needs type check. 
+constexpr int IRSLOAD_CONVERT = 0x08;   // Number to integer conversion. 
+constexpr int IRSLOAD_READONLY = 0x10;  // Read-only, omit slot store. 
+constexpr int IRSLOAD_INHERIT = 0x20;   // Inherited by exits/side traces. 
+constexpr int IRSLOAD_KEYINDEX = 0x40;  // Table traversal key index. 
 
 // XLOAD mode bits, stored in op2.
-constexpr int IRXLOAD_READONLY = 0x01;   /* Load from read-only data. */
-constexpr int IRXLOAD_VOLATILE = 0x02;   /* Load from volatile data. */
-constexpr int IRXLOAD_UNALIGNED = 0x04;   /* Unaligned load. */
+constexpr int IRXLOAD_READONLY = 0x01;   // Load from read-only data. 
+constexpr int IRXLOAD_VOLATILE = 0x02;   // Load from volatile data. 
+constexpr int IRXLOAD_UNALIGNED = 0x04;  // Unaligned load. 
 
 // BUFHDR mode, stored in op2.
-constexpr int IRBUFHDR_RESET = 0;   /* Reset buffer. */
-constexpr int IRBUFHDR_APPEND = 1;   /* Append to buffer. */
-constexpr int IRBUFHDR_WRITE = 2;   /* Write to string buffer. */
+constexpr int IRBUFHDR_RESET = 0;    // Reset buffer. 
+constexpr int IRBUFHDR_APPEND = 1;   // Append to buffer. 
+constexpr int IRBUFHDR_WRITE = 2;    // Write to string buffer. 
 
 // CONV mode, stored in op2.
-constexpr int IRCONV_SRCMASK = 0x001f;   /* Source IRType. */
-constexpr int IRCONV_DSTMASK = 0x03e0;   /* Dest. IRType (also in ir->t). */
+constexpr int IRCONV_SRCMASK = 0x001f;   // Source IRType. 
+constexpr int IRCONV_DSTMASK = 0x03e0;   // Dest. IRType (also in ir->t). 
 constexpr int IRCONV_DSH = 5;
-constexpr int IRCONV_SEXT = 0x0800;   /* Sign-extend integer to integer. */
+constexpr int IRCONV_SEXT = 0x0800;      // Sign-extend integer to integer. 
 constexpr int IRCONV_MODEMASK = 0x0fff;
 constexpr int IRCONV_CONVMASK = 0xf000;
 constexpr int IRCONV_CSH = 12;
 #define IRCONV_NUM_INT      ((IRT_NUM<<IRCONV_DSH)|IRT_INT)
 #define IRCONV_INT_NUM      ((IRT_INT<<IRCONV_DSH)|IRT_NUM)
 // Number to integer conversion mode. Ordered by strength of the checks.
-constexpr int IRCONV_TOBIT = (0 << IRCONV_CSH);   /* None. Cache only: TOBIT conv. */
-constexpr int IRCONV_ANY = (1 << IRCONV_CSH);   /* Any FP number is ok. */
-constexpr int IRCONV_INDEX = (2 << IRCONV_CSH);   /* Check + special backprop rules. */
-constexpr int IRCONV_CHECK = (3 << IRCONV_CSH);   /* Number checked for integerness. */
-constexpr int IRCONV_NONE = IRCONV_ANY;   /* INT|*64 no conv, but change type. */
+constexpr int IRCONV_TOBIT = (0 << IRCONV_CSH);   // None. Cache only: TOBIT conv. 
+constexpr int IRCONV_ANY = (1 << IRCONV_CSH);     // Any FP number is ok. 
+constexpr int IRCONV_INDEX = (2 << IRCONV_CSH);   // Check + special backprop rules. 
+constexpr int IRCONV_CHECK = (3 << IRCONV_CSH);   // Number checked for integerness. 
+constexpr int IRCONV_NONE = IRCONV_ANY;   // INT|*64 no conv, but change type. 
 
 // TOSTR mode, stored in op2.
-constexpr int IRTOSTR_INT = 0;   /* Convert integer to string. */
-constexpr int IRTOSTR_NUM = 1;   /* Convert number to string. */
-constexpr int IRTOSTR_CHAR = 2;   /* Convert char value to string. */
+constexpr int IRTOSTR_INT = 0;   // Convert integer to string. 
+constexpr int IRTOSTR_NUM = 1;   // Convert number to string. 
+constexpr int IRTOSTR_CHAR = 2;  // Convert char value to string. 
 
 // -- IR operands ---------------------------------------------------------
 
@@ -312,17 +309,17 @@ inline constexpr uint8_t irm_kind(uint8_t m) { return m & IRM_S; }
 
 LJ_DATA const uint8_t lj_ir_mode[IR__MAX + 1];
 
-// -- IR instruction types ------------------------------------------------
+// IR instruction types
 
 #define IRTSIZE_PGC      (LJ_GC64 ? 8 : 4)
 
-/* Map of itypes to non-negative numbers and their sizes. ORDER LJ_T.
-** LJ_TUPVAL/LJ_TTRACE never appear in a TValue. Use these itypes for
-** IRT_P32 and IRT_P64, which never escape the IR.
-** The various integers are only used in the IR and can only escape to
-** a TValue after implicit or explicit conversion. Their types must be
-** contiguous and next to IRT_NUM (see the typerange macros below).
-*/
+// Map of itypes to non-negative numbers and their sizes. ORDER LJ_T.
+// LJ_TUPVAL/LJ_TTRACE never appear in a TValue. Use these itypes for
+// IRT_P32 and IRT_P64, which never escape the IR.
+// The various integers are only used in the IR and can only escape to
+// a TValue after implicit or explicit conversion. Their types must be
+// contiguous and next to IRT_NUM (see the typerange macros below).
+
 #define IRTDEF(_) \
   _(NIL, 4) _(FALSE, 4) _(TRUE, 4) _(LIGHTUD, LJ_64 ? 8 : 4) \
   _(STR, IRTSIZE_PGC) _(P32, 4) _(THREAD, IRTSIZE_PGC) _(PROTO, IRTSIZE_PGC) \
@@ -333,6 +330,7 @@ LJ_DATA const uint8_t lj_ir_mode[IR__MAX + 1];
   _(SOFTFP, 4)  //  There is room for 8 more types.
 
 // IR result type and flags.
+
 typedef enum : uint32_t {
 #define IRTENUM(name, size)   IRT_##name,
    IRTDEF(IRTENUM)
@@ -361,41 +359,40 @@ inline constexpr bool irtype_ispri(IRType irt) { return (uint32_t)(irt) <= IRT_T
 // Stored IRType.
 struct IRType1 { uint8_t irt; };
 
-#define IRT(o, t)      ((uint32_t)(((o)<<8) | (t)))
+#define IRT(o, t)       ((uint32_t)(((o)<<8) | (t)))
 #define IRTI(o)         (IRT((o), IRT_INT))
 #define IRTN(o)         (IRT((o), IRT_NUM))
 #define IRTG(o, t)      (IRT((o), IRT_GUARD|(t)))
-#define IRTGI(o)      (IRT((o), IRT_GUARD|IRT_INT))
+#define IRTGI(o)        (IRT((o), IRT_GUARD|IRT_INT))
 
-#define irt_t(t)      ((IRType)(t).irt)
+#define irt_t(t)         ((IRType)(t).irt)
 #define irt_type(t)      ((IRType)((t).irt & IRT_TYPE))
 #define irt_sametype(t1, t2)   ((((t1).irt ^ (t2).irt) & IRT_TYPE) == 0)
-#define irt_typerange(t, first, last) \
-  ((uint32_t)((t).irt & IRT_TYPE) - (uint32_t)(first) <= (uint32_t)(last-first))
+#define irt_typerange(t, first, last) ((uint32_t)((t).irt & IRT_TYPE) - (uint32_t)(first) <= (uint32_t)(last-first))
 
 #define irt_isnil(t)      (irt_type(t) == IRT_NIL)
 #define irt_ispri(t)      ((uint32_t)irt_type(t) <= IRT_TRUE)
-#define irt_islightud(t)   (irt_type(t) == IRT_LIGHTUD)
+#define irt_islightud(t)  (irt_type(t) == IRT_LIGHTUD)
 #define irt_isstr(t)      (irt_type(t) == IRT_STR)
 #define irt_istab(t)      (irt_type(t) == IRT_TAB)
-#define irt_isarray(t)      (irt_type(t) == IRT_ARRAY)
-#define irt_iscdata(t)      (irt_type(t) == IRT_CDATA)
-#define irt_isfloat(t)      (irt_type(t) == IRT_FLOAT)
+#define irt_isarray(t)    (irt_type(t) == IRT_ARRAY)
+#define irt_iscdata(t)    (irt_type(t) == IRT_CDATA)
+#define irt_isfloat(t)    (irt_type(t) == IRT_FLOAT)
 #define irt_isnum(t)      (irt_type(t) == IRT_NUM)
 #define irt_isint(t)      (irt_type(t) == IRT_INT)
-#define irt_isi8(t)      (irt_type(t) == IRT_I8)
-#define irt_isu8(t)      (irt_type(t) == IRT_U8)
+#define irt_isi8(t)       (irt_type(t) == IRT_I8)
+#define irt_isu8(t)       (irt_type(t) == IRT_U8)
 #define irt_isi16(t)      (irt_type(t) == IRT_I16)
 #define irt_isu16(t)      (irt_type(t) == IRT_U16)
 #define irt_isu32(t)      (irt_type(t) == IRT_U32)
 #define irt_isi64(t)      (irt_type(t) == IRT_I64)
 #define irt_isu64(t)      (irt_type(t) == IRT_U64)
 
-#define irt_isfp(t)      (irt_isnum(t) or irt_isfloat(t))
-#define irt_isinteger(t)   (irt_typerange((t), IRT_I8, IRT_INT))
+#define irt_isfp(t)       (irt_isnum(t) or irt_isfloat(t))
+#define irt_isinteger(t)  (irt_typerange((t), IRT_I8, IRT_INT))
 #define irt_isgcv(t)      (irt_typerange((t), IRT_STR, IRT_ARRAY))
-#define irt_isaddr(t)      (irt_typerange((t), IRT_LIGHTUD, IRT_ARRAY))
-#define irt_isint64(t)      (irt_typerange((t), IRT_I64, IRT_U64))
+#define irt_isaddr(t)     (irt_typerange((t), IRT_LIGHTUD, IRT_ARRAY))
+#define irt_isint64(t)    (irt_typerange((t), IRT_I64, IRT_U64))
 
 #if LJ_GC64
 // Include IRT_NIL, so IR(ASMREF_L) (aka REF_NIL) is considered 64 bit.
@@ -413,7 +410,7 @@ struct IRType1 { uint8_t irt; };
 #endif
 
 #define irt_is64(t)      ((IRT_IS64 >> irt_type(t)) & 1)
-#define irt_is64orfp(t)      (((IRT_IS64|(1u<<IRT_FLOAT))>>irt_type(t)) & 1)
+#define irt_is64orfp(t)  (((IRT_IS64|(1u<<IRT_FLOAT))>>irt_type(t)) & 1)
 
 #define irt_size(t)      (lj_ir_type_size[irt_t((t))])
 
@@ -438,58 +435,55 @@ static LJ_AINLINE uint32_t irt_toitype_(IRType t)
 
 #define irt_toitype(t)      irt_toitype_(irt_type((t)))
 
-#define irt_isguard(t)      ((t).irt & IRT_GUARD)
-#define irt_ismarked(t)      ((t).irt & IRT_MARK)
-#define irt_setmark(t)      ((t).irt |= IRT_MARK)
+#define irt_isguard(t)     ((t).irt & IRT_GUARD)
+#define irt_ismarked(t)    ((t).irt & IRT_MARK)
+#define irt_setmark(t)     ((t).irt |= IRT_MARK)
 #define irt_clearmark(t)   ((t).irt &= ~IRT_MARK)
-#define irt_isphi(t)      ((t).irt & IRT_ISPHI)
+#define irt_isphi(t)       ((t).irt & IRT_ISPHI)
 #define irt_setphi(t)      ((t).irt |= IRT_ISPHI)
-#define irt_clearphi(t)      ((t).irt &= ~IRT_ISPHI)
+#define irt_clearphi(t)    ((t).irt &= ~IRT_ISPHI)
 
-// Stored combined IR opcode and type.
-using IROpT = uint16_t;
+using IROpT = uint16_t; // Stored combined IR opcode and type.
 
-// -- IR references -------------------------------------------------------
+// IR references
 
-// IR references.
-
-using IRRef1 = uint16_t;   /* One stored reference. */
-using IRRef2 = uint32_t;   /* Two stored references. */
-using IRRef = uint32_t;      /* Used to pass around references. */
+using IRRef1 = uint16_t;   // One stored reference. 
+using IRRef2 = uint32_t;   // Two stored references. 
+using IRRef = uint32_t;    // Used to pass around references. 
 
 // Fixed references.
+
 enum {
    REF_BIAS = 0x8000,
    REF_TRUE = REF_BIAS - 3,
    REF_FALSE = REF_BIAS - 2,
-   REF_NIL = REF_BIAS - 1,   //  \--- Constants grow downwards.
-   REF_BASE = REF_BIAS,   //  /--- IR grows upwards.
+   REF_NIL = REF_BIAS - 1,    //  \--- Constants grow downwards.
+   REF_BASE = REF_BIAS,       //  /--- IR grows upwards.
    REF_FIRST = REF_BIAS + 1,
    REF_DROP = 0xffff
 };
 
-/* Note: IRMlit operands must be < REF_BIAS, too!
-** This allows for fast and uniform manipulation of all operands
-** without looking up the operand mode in lj_ir_mode:
-** - CSE calculates the maximum reference of two operands.
-**   This must work with mixed reference/literal operands, too.
-** - DCE marking only checks for operand >= REF_BIAS.
-** - LOOP needs to substitute reference operands.
-**   Constant references and literals must not be modified.
-*/
+// Note: IRMlit operands must be < REF_BIAS, too!
+// This allows for fast and uniform manipulation of all operands
+// without looking up the operand mode in lj_ir_mode:
+// - CSE calculates the maximum reference of two operands.
+//   This must work with mixed reference/literal operands, too.
+// - DCE marking only checks for operand >= REF_BIAS.
+// - LOOP needs to substitute reference operands.
+//   Constant references and literals must not be modified.
 
 #define IRREF2(lo, hi)      ((IRRef2)(lo) | ((IRRef2)(hi) << 16))
 
 #define irref_isk(ref)      ((ref) < REF_BIAS)
 
-/* Tagged IR references (32 bit).
-**
-** +-------+-------+---------------+
-** |  irt  | flags |      ref      |
-** +-------+-------+---------------+
-**
-** The tag holds a copy of the IRType and speeds up IR type checks.
-*/
+// Tagged IR references (32 bit).
+//
+// +-------+-------+---------------+
+// |  irt  | flags |      ref      |
+// +-------+-------+---------------+
+//
+// The tag holds a copy of the IRType and speeds up IR type checks.
+
 using TRef = uint32_t;
 
 constexpr uint32_t TREF_REFMASK = 0x0000ffff;
@@ -497,46 +491,41 @@ constexpr uint32_t TREF_FRAME = 0x00010000;
 constexpr uint32_t TREF_CONT = 0x00020000;
 constexpr uint32_t TREF_KEYINDEX = 0x00100000;
 
-// C++20 constexpr function for TREF construction
-static constexpr TRef TREF(uint32_t ref, IRType t)
-{
+static constexpr TRef TREF(uint32_t ref, IRType t) {
    return TRef((ref) + (uint32_t(t) << 24));
 }
 
 #define tref_ref(tr)      ((IRRef1)(tr))
 #define tref_t(tr)      ((IRType)((tr)>>24))
 #define tref_type(tr)      ((IRType)(((tr)>>24) & IRT_TYPE))
-#define tref_typerange(tr, first, last) \
-  ((((tr)>>24) & IRT_TYPE) - (TRef)(first) <= (TRef)(last-first))
+#define tref_typerange(tr, first, last) ((((tr)>>24) & IRT_TYPE) - (TRef)(first) <= (TRef)(last-first))
 
 #define tref_istype(tr, t)   (((tr) & (IRT_TYPE<<24)) == ((t)<<24))
-#define tref_isnil(tr)      (tref_istype((tr), IRT_NIL))
-#define tref_isfalse(tr)   (tref_istype((tr), IRT_FALSE))
+#define tref_isnil(tr)       (tref_istype((tr), IRT_NIL))
+#define tref_isfalse(tr)     (tref_istype((tr), IRT_FALSE))
 #define tref_istrue(tr)      (tref_istype((tr), IRT_TRUE))
 #define tref_islightud(tr)   (tref_istype((tr), IRT_LIGHTUD))
-#define tref_isstr(tr)      (tref_istype((tr), IRT_STR))
+#define tref_isstr(tr)       (tref_istype((tr), IRT_STR))
 #define tref_isfunc(tr)      (tref_istype((tr), IRT_FUNC))
-#define tref_iscdata(tr)   (tref_istype((tr), IRT_CDATA))
-#define tref_istab(tr)      (tref_istype((tr), IRT_TAB))
-#define tref_isudata(tr)   (tref_istype((tr), IRT_UDATA))
-#define tref_isarray(tr)   (tref_istype((tr), IRT_ARRAY))
-#define tref_isnum(tr)      (tref_istype((tr), IRT_NUM))
-#define tref_isint(tr)      (tref_istype((tr), IRT_INT))
-
+#define tref_iscdata(tr)     (tref_istype((tr), IRT_CDATA))
+#define tref_istab(tr)       (tref_istype((tr), IRT_TAB))
+#define tref_isudata(tr)     (tref_istype((tr), IRT_UDATA))
+#define tref_isarray(tr)     (tref_istype((tr), IRT_ARRAY))
+#define tref_isnum(tr)       (tref_istype((tr), IRT_NUM))
+#define tref_isint(tr)       (tref_istype((tr), IRT_INT))
 #define tref_isbool(tr)      (tref_typerange((tr), IRT_FALSE, IRT_TRUE))
-#define tref_ispri(tr)      (tref_typerange((tr), IRT_NIL, IRT_TRUE))
-#define tref_istruecond(tr)   (!tref_typerange((tr), IRT_NIL, IRT_FALSE))
+#define tref_ispri(tr)       (tref_typerange((tr), IRT_NIL, IRT_TRUE))
+#define tref_istruecond(tr)  (!tref_typerange((tr), IRT_NIL, IRT_FALSE))
 #define tref_isinteger(tr)   (tref_typerange((tr), IRT_I8, IRT_INT))
-#define tref_isnumber(tr)   (tref_typerange((tr), IRT_NUM, IRT_INT))
-#define tref_isnumber_str(tr)   (tref_isnumber((tr)) or tref_isstr((tr)))
-#define tref_isgcv(tr)      (tref_typerange((tr), IRT_STR, IRT_ARRAY))
-
-#define tref_isk(tr)      (irref_isk(tref_ref((tr))))
-#define tref_isk2(tr1, tr2)   (irref_isk(tref_ref((tr1) | (tr2))))
+#define tref_isnumber(tr)    (tref_typerange((tr), IRT_NUM, IRT_INT))
+#define tref_isnumber_str(tr) (tref_isnumber((tr)) or tref_isstr((tr)))
+#define tref_isgcv(tr)        (tref_typerange((tr), IRT_STR, IRT_ARRAY))
+#define tref_isk(tr)         (irref_isk(tref_ref((tr))))
+#define tref_isk2(tr1, tr2)  (irref_isk(tref_ref((tr1) | (tr2))))
 
 // Accepts uint32_t to support both compile-time IRType and runtime values
-static constexpr TRef TREF_PRI(uint32_t t)
-{
+
+static constexpr TRef TREF_PRI(uint32_t t) {
    return TREF(REF_NIL - t, IRType(t));
 }
 
@@ -544,22 +533,19 @@ constexpr TRef TREF_NIL = TREF_PRI(uint32_t(IRT_NIL));
 constexpr TRef TREF_FALSE = TREF_PRI(uint32_t(IRT_FALSE));
 constexpr TRef TREF_TRUE = TREF_PRI(uint32_t(IRT_TRUE));
 
-// -- IR format -----------------------------------------------------------
-
-/* IR instruction format (64 bit).
-**
-**    16      16     8   8   8   8
-** +-------+-------+---+---+---+---+
-** |  op1  |  op2  | t | o | r | s |
-** +-------+-------+---+---+---+---+
-** |  op12/i/gco32 |   ot  | prev  | (alternative fields in union)
-** +-------+-------+---+---+---+---+
-** |  TValue/gco64                 | (2nd IR slot for 64 bit constants)
-** +---------------+-------+-------+
-**        32           16      16
-**
-** prev is only valid prior to register allocation and then reused for r + s.
-*/
+// IR instruction format (64 bit).
+//
+//    16      16     8   8   8   8
+// +-------+-------+---+---+---+---+
+// |  op1  |  op2  | t | o | r | s |
+// +-------+-------+---+---+---+---+
+// |  op12/i/gco32 |   ot  | prev  | (alternative fields in union)
+// +-------+-------+---+---+---+---+
+// |  TValue/gco64                 | (2nd IR slot for 64 bit constants)
+// +---------------+-------+-------+
+//        32           16      16
+//
+// prev is only valid prior to register allocation and then reused for r + s.
 
 union IRIns {
    struct {
