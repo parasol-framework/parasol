@@ -668,7 +668,7 @@ gui.toolbar = function(Options)
    end)
 
    self.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Code, Unicode)
-      if bit.band(Qualifiers, KQ_PRESSED) != 0 then
+      if (Qualifiers & KQ_PRESSED) != 0 then
          if (Code is KEY_ENTER) or (Code is KEY_NP_ENTER) or (Code is KEY_SPACE) then
             sendFeedback()
          elseif (Code is KEY_UP) or (Code is KEY_LEFT) then
@@ -697,7 +697,7 @@ gui.toolbar = function(Options)
       end
    end)
 
-   self.viewport.mtSubscribeInput(bit.bor(JTYPE_BUTTON, JTYPE_MOVEMENT, JTYPE_CROSSING), inputFeedback)
+   self.viewport.mtSubscribeInput(JTYPE_BUTTON | JTYPE_MOVEMENT | JTYPE_CROSSING, inputFeedback)
 
    kbfill = 'rgba(0,0,0,.5)'
    if Options.theme != 'light' then

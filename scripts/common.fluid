@@ -66,9 +66,7 @@ end
 
 ------------------------------------------------------------------------------
 
-if not file then
-   global file = { ui = { } }
-end
+global file ?= { ui = { } }
 
 -- Read an entire file as a string.
 -- Will throw an exception if the file is not found or the complete data cannot be read.
