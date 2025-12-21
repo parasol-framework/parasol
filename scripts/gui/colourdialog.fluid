@@ -60,12 +60,12 @@ end
 
 function refreshColourNodes(self)
    for idx, node in ipairs(self._colourNodes) do
-      rgb = self._userColours[idx] ?? { }
+      rgb = self._userColours?[idx] ?? { }
 
-      if not rgb.r then rgb.r = 255 end
-      if not rgb.g then rgb.g = 255 end
-      if not rgb.b then rgb.b = 255 end
-      if not rgb.a then rgb.a = 255 end
+      rgb.r ?= 255
+      rgb.g ?= 255
+      rgb.b ?= 255
+      rgb.a ?= 255
 
       node.fill = gui.rgbToSVG(rgb)
    end
@@ -218,11 +218,11 @@ function buildLayout(self, Options)
    for row=1, 2 do
       x = dx
       for column=1, 7 do
-         rgb = self._userColours[ci] ?? { r=255, g=255, b=255, a=255 }
-         if not rgb.r then rgb.r = 255 end
-         if not rgb.g then rgb.g = 255 end
-         if not rgb.b then rgb.b = 255 end
-         if not rgb.a then rgb.a = 255 end
+         rgb = self._userColours?[ci] ?? { r=255, g=255, b=255, a=255 }
+         rgb.r ?= 255
+         rgb.g ?= 255
+         rgb.b ?= 255
+         rgb.a ?= 255
 
          vec = self.viewport.new('VectorRectangle', {
             fill   = gui.rgbToSVG(rgb),
@@ -412,7 +412,7 @@ end
 -- Locate the picker within the rainbow palette, if active
 
 function arrangePicker(self)
-   if not self.vecPicker then return end
+   self.vecPicker ?? return
 
    if self._picker then
       val = (self._picker.y * 255) / (getRainbowBitmap().height * 0.75)
