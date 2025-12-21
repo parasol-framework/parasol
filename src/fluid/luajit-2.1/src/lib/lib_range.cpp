@@ -63,7 +63,7 @@ fluid_range * check_range(lua_State *L, int idx)
 // Check if a TValue is a range userdata (for use in metamethod implementations).
 // This avoids stack manipulation and is more efficient for internal use.
 
-fluid_range *check_range_tv(lua_State *L, cTValue *tv)
+fluid_range * check_range_tv(lua_State *L, cTValue *tv)
 {
    if (not tvisudata(tv)) return nullptr;
 
@@ -235,7 +235,7 @@ static int range_filter(lua_State* L)
 // range:reduce(initial, function(Acc, Value) return new_acc end) -> value
 // Folds the range into a single accumulated value.
 
-static int range_reduce(lua_State* L)
+static int range_reduce(lua_State *L)
 {
    auto r = check_range(L, 1);
    if (not r) {
@@ -335,8 +335,8 @@ static int range_map(lua_State* L)
 }
 
 //********************************************************************************************************************
-// range:take(n) -> table
-// Returns a table containing the first n values from the range.
+// range:take(n) -> array
+// Returns an array containing the first n values from the range.
 
 static int range_take(lua_State* L)
 {
@@ -357,26 +357,32 @@ static int range_take(lua_State* L)
       else stop++;
    }
 
-   // Create result table
-   lua_createtable(L, n, 0);
-   int result_table = lua_gettop(L);
-   int array_index = 0;
-
-   // Check for empty range or zero take
+   // Check for empty range or zero take - return empty array
    if (n IS 0 or (step > 0 and r->start > stop) or (step < 0 and r->start < stop)) {
+      GCarray *arr = lj_array_new(L, 0, AET::_INT32);
+      setarrayV(L, L->top++, arr);
       return 1;
    }
+
+   // Calculate actual count (may be less than n if range is shorter)
+   int32_t range_len = range_length(r);
+   int32_t actual_count = (n < range_len) ? n : range_len;
+
+   // Create result array
+   GCarray *arr = lj_array_new(L, MSize(actual_count), AET::_INT32);
+   int32_t *data = arr->get<int32_t>();
 
    auto should_continue = (step > 0)
       ? [](int32_t Value, int32_t Stop) { return Value <= Stop; }
       : [](int32_t Value, int32_t Stop) { return Value >= Stop; };
 
+   int32_t array_index = 0;
    for (int32_t value = r->start; should_continue(value, stop) and array_index < n; value += step) {
-      lua_pushinteger(L, value);
-      lua_rawseti(L, result_table, array_index++);
+      data[array_index++] = value;
    }
 
-   return 1;  // Return result table
+   setarrayV(L, L->top++, arr);
+   return 1;
 }
 
 //********************************************************************************************************************
