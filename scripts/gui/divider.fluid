@@ -135,7 +135,7 @@ gui.divider = function(Options)
       })
    end
 
-   if (Options.style != 'none') then
+   if Options.style != 'none' then
       self._dividerVP.new('VectorRectangle', {
          name='div_fill', x='1%', y='1%', width='98%', height='98%', fill='url(#' .. div_name .. ')'
       })

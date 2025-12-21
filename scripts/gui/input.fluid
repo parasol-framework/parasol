@@ -63,7 +63,7 @@ gui.input = function(Options)
 
    -- Main entry point --
 
-   if not Options.target then error('A target viewport is required.') end
+   assert(Options.target, 'A target viewport is required.')
 
    font_max_height, font_height = gui.getFontHeight(gui.fonts.widget)
    box_height = math.floor(font_max_height * 1.35) + 1

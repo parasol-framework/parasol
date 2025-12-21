@@ -63,7 +63,7 @@ gui.checkbox = function(Options)
 
    -- Main entry point --
 
-   if not Options.target then error('A target viewport is required.') end
+   assert(Options.target, 'A target viewport is required.')
 
    vps = { -- Viewport settings
       x        = Options.x,

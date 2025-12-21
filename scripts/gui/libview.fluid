@@ -4,8 +4,8 @@
    require 'gui'
    require 'gui/scrollbar'
 
-   global mGfx ?= mod.load('display')
-   global mVec ?= mod.load('vector')
+   mGfx ?= mod.load('display')
+   mVec ?= mod.load('vector')
 
    glItemCounter   = 1
 

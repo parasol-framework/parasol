@@ -15,7 +15,7 @@ BTNGAP     = 3
 WIDGET_GAP = 6
 COL_BORDER = { r=0, g=0, b=0, a=160 }
 
-COMMON = {
+COMMON = array.of('string',
   '0,64,64', '0,128,128', '0,192,192', '0,255,255', '64,255,255',  '128,255,255', '192,255,255', '224,255,255', -- Aqua
   '0,64,0',  '0,128,0',   '0,192,0',   '0,255,0',   '64,255,64',   '128,255,128', '192,255,192', '224,255,224', -- Green
   '64,64,0', '128,128,0', '192,192,0', '255,255,0', '255,255,64',  '255,255,128', '255,255,192', '255,255,224', -- Yellow
@@ -23,7 +23,7 @@ COMMON = {
   '64,0,64', '128,0,128', '192,0,192', '255,0,255', '255,64,255',  '255,128,255', '255,192,255', '255,224,255', -- Purple
   '0,0,64',  '0,0,128',   '0,0,192',   '0,0,255',   '64,64,255',   '128,128,255', '192,192,255', '224,224,255', -- Blue
   '0,0,0',   '32,32,32',  '64,64,64',  '96,96,96',  '128,128,128', '160,160,160', '192,192,192', '255,255,255'  -- Grey
-}
+)
 
 local glRainbowBitmap
 
@@ -93,13 +93,13 @@ function getRainbowBitmap()
          m = v * (1 - s)
          n = v * (1 - s * f)
 
-         local err, rgb
-         if i is 1 then err, rgb = glRainbowBitmap.mtGetColour(n * 255, v * 255, m * 255, 255)
-         elseif i is 2 then err, rgb = glRainbowBitmap.mtGetColour(m * 255, v * 255, n * 255, 255)
-         elseif i is 3 then err, rgb = glRainbowBitmap.mtGetColour(m * 255, n * 255, v * 255, 255)
-         elseif i is 4 then err, rgb = glRainbowBitmap.mtGetColour(n * 255, m * 255, v * 255, 255)
-         elseif i is 5 then err, rgb = glRainbowBitmap.mtGetColour(v * 255, m * 255, n * 255, 255)
-         else err, rgb = glRainbowBitmap.mtGetColour(v * 255, n * 255, m * 255, 255)
+         rgb = choose i from
+            1 -> [_*]glRainbowBitmap.mtGetColour(n * 255, v * 255, m * 255, 255)
+            2 -> [_*]glRainbowBitmap.mtGetColour(m * 255, v * 255, n * 255, 255)
+            3 -> [_*]glRainbowBitmap.mtGetColour(m * 255, n * 255, v * 255, 255)
+            4 -> [_*]glRainbowBitmap.mtGetColour(n * 255, m * 255, v * 255, 255)
+            5 -> [_*]glRainbowBitmap.mtGetColour(v * 255, m * 255, n * 255, 255)
+            else -> [_*]glRainbowBitmap.mtGetColour(v * 255, n * 255, m * 255, 255)
          end
 
          mGfx.DrawPixel(glRainbowBitmap, x, y, rgb)
@@ -121,13 +121,13 @@ function getRainbowBitmap()
          m = v * (1 - s)
          n = v * (1 - s * f)
 
-         local err, rgb
-         if i is 1 then err, rgb = glRainbowBitmap.mtGetColour(n * 255, v * 255, m * 255, 255)
-         elseif i is 2 then err, rgb = glRainbowBitmap.mtGetColour(m * 255, v * 255, n * 255, 255)
-         elseif i is 3 then err, rgb = glRainbowBitmap.mtGetColour(m * 255, n * 255, v * 255, 255)
-         elseif i is 4 then err, rgb = glRainbowBitmap.mtGetColour(n * 255, m * 255, v * 255, 255)
-         elseif i is 5 then err, rgb = glRainbowBitmap.mtGetColour(v * 255, m * 255, n * 255, 255)
-         else err, rgb = glRainbowBitmap.mtGetColour(v * 255, n * 255, m * 255, 255)
+         rgb = choose i from
+            1 -> [_*]glRainbowBitmap.mtGetColour(n * 255, v * 255, m * 255, 255)
+            2 -> [_*]glRainbowBitmap.mtGetColour(m * 255, v * 255, n * 255, 255)
+            3 -> [_*]glRainbowBitmap.mtGetColour(m * 255, n * 255, v * 255, 255)
+            4 -> [_*]glRainbowBitmap.mtGetColour(n * 255, m * 255, v * 255, 255)
+            5 -> [_*]glRainbowBitmap.mtGetColour(v * 255, m * 255, n * 255, 255)
+            else -> [_*]glRainbowBitmap.mtGetColour(v * 255, n * 255, m * 255, 255)
          end
 
          mGfx.DrawPixel(glRainbowBitmap, x, y, rgb)
@@ -143,7 +143,7 @@ end
 function buildLayout(self, Options)
    self.scene ?? return
 
-   self._links = { }
+   self._links = array.new(0, 'table')
 
    dx = WIDGET_GAP
    dy = 0
@@ -182,7 +182,7 @@ function buildLayout(self, Options)
             roundY = 2
          })
 
-         table.insert(self._links, {
+         self._links:push({
             vector=vec, x=x, y=y, width=BTNSIZE, height=BTNSIZE, colour=rgb,
             routine = function(Link)
                updateRGBInput(self, Link.colour)
@@ -210,7 +210,7 @@ function buildLayout(self, Options)
       align     = 'left'
    })
 
-   self._colourNodes = { }
+   self._colourNodes = array.new(0, 'any')
 
    dy += gui.getFontHeight(gui.fonts.window) + WIDGET_GAP
    y = dy
@@ -236,11 +236,11 @@ function buildLayout(self, Options)
             roundY = 2
          })
 
-         table.insert(self._colourNodes, vec)
+         self._colourNodes:push(vec)
          index = (((row-1) * 7) + column) - 1
-         table.insert(self._links, { vector=vec, x=x, y=y, width=BTNSIZE, height=BTNSIZE, colour=rgb, index=index,
+         self._links:push({ vector=vec, x=x, y=y, width=BTNSIZE, height=BTNSIZE, colour=rgb, index=index,
             routine = function(Link)
-               if self._userColours[index] then updateRGBInput(self, self._userColours[index]) end
+               if self._userColours?[index] then updateRGBInput(self, self._userColours[index]) end
             end
          })
 
@@ -255,17 +255,17 @@ function buildLayout(self, Options)
             target = self.viewport, x = x+2, y = y, size = BTNSIZE, image = 'items/add',
             events = {
                activate = function(Icon)
-                  for k, v in pairs(self._userColours) do
-                     if (v.r is self._rgb.r) and (v.g is self._rgb.g) and (v.b is self._rgb.b) then return end
+                  if self._userColours:any(v => ((v.r is self._rgb.r) and (v.g is self._rgb.g) and (v.b is self._rgb.b))) then
+                     return
                   end
 
                   if #self._userColours < 7 * 2 then
                      self._paletteChanged = true
-                     table.insert(self._userColours, self._rgb)
+                     array.push(self._userColours, self._rgb)
                      refreshColourNodes(self)
                      self.viewport.acDraw()
                   else
-                     gui.dialog.error('Out of Palette Space', 'You have run out of space for adding new colours to your personal palette.  Please delete some of your existing colours before adding new ones.', self._window.surface)
+                     gui.dialog.error('Out of Palette Space', 'You have run out of space for adding new colours to your personal palette.  Please delete some of your existing colours before adding new ones.')
                   end
                end
             }
@@ -275,10 +275,10 @@ function buildLayout(self, Options)
             target = self.viewport, x = x+2, y = y, size = BTNSIZE, image = 'items/trash',
             events = {
                activate = function(Icon)
-                  for k, v in pairs(self._userColours) do
+                  for k, v in ipairs(self._userColours) do
                      if (v.r is self._rgb.r) and (v.g is self._rgb.g) and (v.b is self._rgb.b) then
                         self._paletteChanged = true
-                        table.remove(self._userColours, k)
+                        array.remove(self._userColours, k)
                         refreshColourNodes(self)
                         self.viewport.acDraw()
                         break
@@ -433,7 +433,7 @@ end
 function arrangeLayout(self)
    -- Recalculate clickable links
 
-   for _, link in ipairs(self._links) do
+   for link in values(self._links) do
       if link.vector then
          link.x, link.y, link.width, link.height = [_*]link.vector.mtGetBoundary()
       end
@@ -490,6 +490,10 @@ function loadColours(self)
       js = file.readAll('user:config/colours.json')
       if js?? then
          self._userColours = json.decode(js)
+         if type(self._userColours) != 'array' then
+            msg('Invalid colours.json file detected.')
+            self._userColours = array.new(0, 'table')
+         end
       end
    end)
 end
@@ -508,8 +512,8 @@ gui.dialog.colour = function(Options)
       _rainbow   = { winX = 0, winY = 0, winWidth = 0, winHeight = 0 },
       _rainbowBmp,
       _rgb       = { r=200, g=200, b=200, a=255 },
-      _links     = { },
-      _userColours = { },
+      _links     = array.new(0, 'table'),
+      _userColours = array.new(0, 'table'),
       _picker = nil
    }
 
@@ -529,7 +533,7 @@ gui.dialog.colour = function(Options)
             self._rainbowClick = false
 
             if (math.abs(Msg.absX - self._absX) <= 2) and (math.abs(Msg.absY - self._absY) <= 2) then
-               for _, link in ipairs(self._links) do
+               for link in values(self._links) do
                   if (Msg.x >= link.x) and (Msg.x < link.x + link.width) and
                      (Msg.y >= link.y) and (Msg.y < link.y + link.height) then
                      link.routine(link)
