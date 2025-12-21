@@ -270,48 +270,47 @@
 <p>When starting a new task, you may need to explicitly remind the agent about Parasol-specific requirements:</p>
 <p><strong>For any coding task:</strong></p>
 <ul>
-<li>&quot;Build and test after making C++ changes&quot; - Agents may skip compilation verification</li>
+<li>&quot;Build and test after making C++ changes&quot; - Use if the agent is skipping compilation verification.</li>
 </ul>
 <p><strong>When asking for Fluid code:</strong></p>
 <ul>
-<li>&quot;Read at least 3 examples from <code>examples/</code> or <code>src/[module]/tests/</code> before writing code&quot; - This will improve code quality</li>
-<li>Point the agent to specific example files most relevant to your task (e.g., <code>examples/widgets.fluid</code> for GUI work)</li>
+<li>&quot;Read at least 3 examples from <code>examples/</code> or <code>src/[module]/tests/</code> before writing code&quot; - This will improve code quality.</li>
+<li>Point the agent to specific example files most relevant to your task (e.g., <code>examples/widgets.fluid</code> for GUI work).</li>
 </ul>
 <p><strong>When asking for tests:</strong></p>
 <ul>
-<li>&quot;Write a Flute test following patterns in <code>src/[module]/tests/</code>&quot; - Agents should study existing tests first</li>
-<li>&quot;Use the exact command format from CLAUDE.md for running tests&quot; - The working directory and path format matter</li>
+<li>&quot;Write a Flute test following patterns in <code>src/[module]/tests/</code>&quot; - Agents should study existing tests first.</li>
 </ul>
 <p><strong>When working with existing code:</strong></p>
 <ul>
-<li>&quot;Search for similar implementations before writing new code&quot; - Leverage existing patterns</li>
-<li>&quot;Check the documentation in <code>docs/xml/modules/classes/</code> for the [ClassName] API&quot; - For detailed class information</li>
+<li>&quot;Search for similar implementations before writing new code&quot; - Critical for leveraging existing patterns.</li>
+<li>&quot;Check the documentation in <code>docs/xml/modules/classes/</code> for the [ClassName] API&quot; - For detailed class information.</li>
 </ul>
 <h2 id="using-multiple-agents-effectively">Using Multiple Agents Effectively</h2>
 <p>Different agents have different strengths. Consider these strategies:</p>
 <p><strong>When to switch agents:</strong></p>
 <ul>
-<li>If one agent repeatedly makes the same mistake despite corrections</li>
-<li>When you need a fresh perspective on a difficult problem</li>
-<li>If the context has grown too large and clearing would lose important continuity</li>
+<li>If one agent repeatedly makes the same mistake despite corrections.</li>
+<li>When you need a fresh perspective on a difficult problem.</li>
+<li>If the context has grown too large, ask it to save a status report for the next agent and then continue afresh.</li>
 </ul>
 <p><strong>Learning agent personalities:</strong></p>
 <ul>
-<li>Try different agents on similar small tasks to understand their strengths</li>
-<li>Some agents better understand existing code patterns</li>
-<li>Some are better at generating boilerplate or test code</li>
-<li>Some handle complex refactoring more reliably</li>
+<li>Try different agents on similar small tasks to understand their strengths.</li>
+<li>Some agents better understand existing code patterns.</li>
+<li>Some are better at generating boilerplate or test code.</li>
+<li>Some handle complex refactoring more reliably.</li>
 </ul>
 <p><strong>Maintaining consistency:</strong></p>
 <ul>
-<li>When switching agents mid-feature, have the new agent review what&#39;s already been done</li>
-<li>Always point new agents to <code>AGENTS.md</code> and relevant examples</li>
-<li>Keep notes on which agent approaches worked well for different task types</li>
+<li>When switching agents mid-feature, have the new agent review what&#39;s already been done.</li>
+<li>Always point new agents to <code>AGENTS.md</code> and relevant examples.</li>
+<li>Keep notes on which agent approaches worked well for different task types.</li>
 </ul>
 <p><strong>Leveraging complementary strengths:</strong></p>
 <ul>
-<li>Use one agent for initial implementation, another for review and refinement</li>
-<li>Have one agent write tests for another agent&#39;s code</li>
+<li>Use one agent for initial implementation, another for review and refinement.</li>
+<li>Have one agent write tests for another agent&#39;s code.</li>
 <li>For critical code, give multiple agents the same task and pick the best solution, or combination of both.</li>
 </ul>
 </div></div></div></div>

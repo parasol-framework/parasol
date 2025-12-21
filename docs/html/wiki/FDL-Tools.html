@@ -304,9 +304,9 @@
 <p>This example from the Core API parses <code>errors.fdl</code> as a straight header file with no interface definitions:</p>
 <pre><code>parasol scripts/dev/idl-c src=defs/errors.fdl output=sdk:include/system/errors.h</code></pre>
 <p>This example parses every function interface for the Core API, and auto-generates C prototypes according to their definitions:</p>
-<pre><code>parasol scripts/dev/idl-c src=defs/core.fdl 
-  output-proto=prototypes.h 
-  output-defs=data_functions.c 
+<pre><code>parasol scripts/dev/idl-c src=defs/core.fdl
+  output-proto=prototypes.h
+  output-defs=data_functions.c
   files={ &quot;core.cpp&quot; &quot;lib_objects.cpp&quot; &quot;lib_base64.cpp&quot; &quot;lib_events.cpp&quot; &quot;lib_fields_read.cpp&quot;
    &quot;lib_fields_write.cpp&quot; &quot;lib_filesystem.cpp&quot; &quot;lib_functions.cpp&quot; &quot;lib_locking.cpp&quot;
    &quot;lib_log.cpp&quot; &quot;lib_messages.cpp&quot; &quot;lib_memory.cpp&quot; &quot;lib_strings.cpp&quot; &quot;lib_unicode.cpp&quot;

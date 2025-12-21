@@ -102,7 +102,7 @@ end
       task = obj.new('task', {
          src     = output_path,
          outputCallback = function(Task, Buffer)
-            print(tostring(Buffer))
+            print(Buffer:getString())
          end,
          flags   = 'WAIT',
          timeout = 20

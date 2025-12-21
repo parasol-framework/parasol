@@ -30,11 +30,11 @@ function resolveSDKPath(Path)
       err, sdk_path = mSys.ResolvePath(Path .. '/CMakeLists.txt')
    end
 
-   if (err is ERR_Okay) then
+   if err is ERR_Okay then
       sdk_path = sdk_path:match('(.+)CMakeLists%.txt')
    else
       msg = ''
-      for _, path in ipairs(search_list) do
+      for path in values(search_list) do
          msg ..= path .. '\n'
       end
       print('Unable to find CMakeLists.txt after searching the following paths:\n' .. msg)
@@ -57,7 +57,7 @@ end
    footer = file.readAll('sdk:docs/wiki-footer.html')
 
    err, temp_output = mSys.ResolvePath('temp:markdown', RSF_NO_FILE_CHECK)
-   output_files = { }
+   output_files = array.new(0, 'table')
 
    err, pandoc_path = mSys.ResolvePath("pandoc", RSF_PATH)
 
@@ -101,17 +101,17 @@ end
 
          cmdlist ..= '"' .. pandoc_path .. '"' .. ' ' .. parameters .. '\n'
 
-         table.insert(output_files, { title=title, pandoc_output=pandoc_output, target_path=res_output_path })
+         output_files:push({ title=title, pandoc_output=pandoc_output, target_path=res_output_path })
       end
    })
 
    output_path = arg('output') -- Optional output path for the generated script.
 
    if state.platform is 'Windows' then
-      if not output_path then output_path = 'temp:docgen.bat' end
+      output_path ??= 'temp:docgen.bat'
       cmdlist = cmdlist:gsub('\\','\\\\')
    else
-      if not output_path then output_path = 'temp:docgen.sh' end
+      output_path ??= 'temp:docgen.sh'
       cmdlist = '#!/bin/bash\n' .. cmdlist
    end
 
@@ -119,7 +119,7 @@ end
    fl.acWrite(cmdlist)
    fl.free()
 
-   if (not arg('dry-run')) then
+   if not arg('dry-run') then
       print('Running generated script from ' .. output_path)
 
       task = obj.new('task', {
@@ -135,7 +135,7 @@ end
 
       mSys.DeleteFile(output_path)
 
-      for k,v in pairs(output_files) do
+      for v in values(output_files) do
          md_output = file.readAll(v.pandoc_output)
          fl = obj.new('file', { path=v.target_path, flags='WRITE|NEW' })
 
