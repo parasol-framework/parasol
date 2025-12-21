@@ -13,8 +13,8 @@ Parameters:
    mVec ?= mod.load('vector')
 
    local glWinWidth, glWinHeight, glColours, glMode, glWindow, glSurface, glParticles, glViewport, glScene
-   local glTimes, glTimerHandle, glFPS, glPrinted
-   glBestFPS = 0
+   local glTimerHandle, glFPS, glPrinted
+   glFrameStats = { avg = 0, best = 0, times = array.new(0, 'int') }
 
    MODE_PRIMITIVE    = 1 -- Tests the speed of drawing primitive rectangles (this will be much faster than drawVector() but is useful for comparative purposes)
    MODE_VECTOR       = 2 -- Tests the speed of drawing circles via the scene graph and VectorEllipse objects
@@ -27,12 +27,11 @@ function drawDirectVector(Surface, Bitmap)
    glWinWidth, glWinHeight = Surface.width, Surface.height
 
    start = mSys.PreciseTime()
-   for i=0,#glParticles-1 do
-      p = glParticles[i]
+   for i,p in pairs(glParticles) do
       mVec.DrawPath(Bitmap, p.path, 0, nil, p.colour)
    end
 
-   updateTime(mSys.PreciseTime() - start)
+   glFrameStats.times:push(mSys.PreciseTime() - start)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -42,33 +41,13 @@ function drawPrimitive(Surface, Bitmap)
    glWinWidth, glWinHeight = Surface.width, Surface.height
 
    start = mSys.PreciseTime()
-   for i=0,#glParticles-1 do
-      p = glParticles[i]
+   for i,p in pairs(glParticles) do
       col = p.colour
       err, pixel = Bitmap.mtGetColour(col.r, col.g, col.b, 255)
       Bitmap.mtDrawRectangle(p.x-p.radius, p.y-p.radius, p.radius*2, p.radius*2, pixel, BAF_FILL)
    end
 
-   updateTime(mSys.PreciseTime() - start)
-end
-
-----------------------------------------------------------------------------------------------------------------------
-
-function updateTime(elapsed)
-   table.insert(glTimes, elapsed)
-   if #glTimes > 50 then table.remove(glTimes, 1) end
-   totalTime = 0
-   for _,time in pairs(glTimes) do
-      totalTime = totalTime + time
-   end
-   totalTime = totalTime / #glTimes
-   fps = 1000000 / totalTime
-
-   if glFPS then glFPS.string = string.format('FPS: %.0f', fps) end
-
-   if (#glTimes >= 50) and (fps > glBestFPS) then
-      glBestFPS = fps
-   end
+   glFrameStats.times:push(mSys.PreciseTime() - start)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -109,8 +88,7 @@ function timer(Subscriber, Elapsed, Current)
    glWinWidth  = glSurface.width ?? 1
    glWinHeight = glSurface.height ?? 1
 
-   for i=0,#glParticles-1 do
-      p = glParticles[i]
+   for i,p in pairs(glParticles) do
       -- Calculate next position of particle
 
       tx = math.cos(p.angle) * p.velocity
@@ -165,13 +143,39 @@ function timer(Subscriber, Elapsed, Current)
    end
 
    glViewport.acDraw()
-   updateTime(glScene.renderTime)
+   if glScene.renderTime then glFrameStats.times:push(glScene.renderTime) end
 
-   if math.round(Current / 1000000) % 4 is 0 then
+   if math.round(Current / 1000000) % 2 is 0 then
       if not glPrinted then
-         glPrinted = true
-         print('Best frame rate: ' .. math.round(glBestFPS))
-         glBestFPS = 0
+         local fps
+         totalTime = 0
+         bestTime = 0x7ffffff
+         for frame=0,#glFrameStats.times-1 do
+            time = glFrameStats.times[frame]
+
+            if time < bestTime then bestTime = time end
+
+            if totalTime < 1000000 then
+               totalTime += time
+            else
+               totalTime = totalTime / frame
+               fps = frame
+               break
+            end
+         end
+
+         if fps then
+            glFrameStats.avg = fps
+            glFrameStats.best = math.round(1 / (bestTime / 1000000))
+            if glFPS then glFPS.string = string.format('FPS: %.0f', fps) end
+
+            print('Avg frame rate: ' .. math.round(glFrameStats.avg) .. '; Best rate: ' .. glFrameStats.best)
+
+            glFrameStats.avg = 0
+            glFrameStats.best = 0
+            glFrameStats.times:clear()
+            glPrinted = true
+         end
       end
    else
       glPrinted = false
@@ -224,38 +228,36 @@ end
 
    processing.task().affinityMask = 6
 
-   glTimes = {}
-
    if glMode is MODE_PRIMITIVE then
       print('Drawing Mode: Primitive')
 
       glSurface.mtAddCallback(drawPrimitive)
 
-      glColours = {
+      glColours = array.of('table',
         { r=0xcc, g=0, b=0 }, { r=0xff, g=0xcc, b=0 }, { r=0xaa, g=0xff, b=0 },
         { r=0, g=0x99, b=0xcc }, { r=0x19, g=0x4c, b=0x99 }, { r=0x66, g=0x19, b=0x99 }
-      }
+      )
    elseif (glMode is MODE_VECTOR) then
       print('Drawing Mode: Vector')
 
-      glColours = {
+      glColours = array.of('table',
         { r=0xcc, g=0, b=0 }, { r=0xff, g=0xcc, b=0 }, { r=0xaa, g=0xff, b=0 },
         { r=0, g=0x99, b=0xcc }, { r=0x19, g=0x4c, b=0x99 }, { r=0x66, g=0x19, b=0x99 }
-      }
+      )
 
    elseif (glMode is MODE_DIRECTVECTOR) then
       print('Drawing Mode: Direct Vector')
 
       glSurface.mtAddCallback(drawDirectVector)
 
-      glColours = {
+      glColours = array.of('table',
         obj.new('VectorColour', { red=0.8,   green=0,   blue=0 }),
         obj.new('VectorColour', { red=1.0,   green=0.8, blue=0 }),
         obj.new('Vectorcolour', { red=0.666, green=1.0, blue=0 }),
         obj.new('Vectorcolour', { red=0,     green=0.6, blue=0.8 }),
         obj.new('Vectorcolour', { red=0.1,   green=0.3, blue=0.6 }),
         obj.new('Vectorcolour', { red=0.4,   green=0.1, blue=0.6 })
-      }
+      )
    else
       error('Unknown benchmark mode')
    end
