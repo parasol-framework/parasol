@@ -1,17 +1,17 @@
-/*
-** Target architecture selection.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-*/
+// Target architecture selection.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 
 #pragma once
 
 #include "lua.h"
 
 // Target endianess.
+
 #define LUAJIT_LE   0
 #define LUAJIT_BE   1
 
 // Target architectures.
+
 #define LUAJIT_ARCH_X86      1
 #define LUAJIT_ARCH_x86      1
 #define LUAJIT_ARCH_X64      2
@@ -24,6 +24,7 @@
 #define LUAJIT_ARCH_ppc      5
 
 // Target OS.
+
 #define LUAJIT_OS_OTHER      0
 #define LUAJIT_OS_WINDOWS    1
 #define LUAJIT_OS_LINUX      2
@@ -32,11 +33,13 @@
 #define LUAJIT_OS_POSIX      5
 
 // Number mode.
-#define LJ_NUMMODE_SINGLE   0   //  Single-number mode only.
+
+#define LJ_NUMMODE_SINGLE        0   //  Single-number mode only.
 #define LJ_NUMMODE_SINGLE_DUAL   1   //  Default to single-number mode.
-#define LJ_NUMMODE_DUAL      2   //  Dual-number mode only.
+#define LJ_NUMMODE_DUAL          2   //  Dual-number mode only.
 #define LJ_NUMMODE_DUAL_SINGLE   3   //  Default to dual-number mode.
 
+//********************************************************************************************************************
 // Select native target if no target defined.
 
 #ifndef LUAJIT_TARGET
@@ -55,6 +58,7 @@
  #endif
 #endif
 
+//********************************************************************************************************************
 // Select native OS if no target OS defined.
 #ifndef LUAJIT_OS
 
@@ -118,9 +122,9 @@
 #endif
 #endif
 
-// -- Arch-specific settings ----------------------------------------------
+//********************************************************************************************************************
+// Arch-specific settings
 
-// Set target architecture properties.
 #if LUAJIT_TARGET == LUAJIT_ARCH_X64
 
 #define LJ_ARCH_NAME         "x64"
@@ -134,7 +138,7 @@
 #define LJ_TARGET_MASKSHIFT  1
 #define LJ_TARGET_MASKROT    1
 #define LJ_TARGET_UNALIGNED  1
-#define LJ_ARCH_NUMMODE      LJ_NUMMODE_SINGLE_DUAL
+#define LJ_ARCH_NUMMODE      LJ_NUMMODE_SINGLE_DUAL // x64 SSE/AVX conversion is fast enough for this default
 #define LJ_TARGET_GC64       1
 
 #elif LUAJIT_TARGET == LUAJIT_ARCH_ARM
@@ -220,7 +224,9 @@
 #error "No target architecture defined"
 #endif
 
+//********************************************************************************************************************
 // Check target-specific constraints.
+
 #ifndef _BUILDVM_H
 #if LJ_TARGET_X64
 #if __USING_SJLJ_EXCEPTIONS__
@@ -235,11 +241,14 @@
 #endif
 #endif
 
+//********************************************************************************************************************
 // Enable or disable the dual-number mode for the VM.
+
 #if (LJ_ARCH_NUMMODE == LJ_NUMMODE_SINGLE && LUAJIT_NUMMODE == 2) || \
     (LJ_ARCH_NUMMODE == LJ_NUMMODE_DUAL && LUAJIT_NUMMODE == 1)
 #error "No support for this number mode on this architecture"
 #endif
+
 #if LJ_ARCH_NUMMODE == LJ_NUMMODE_DUAL || \
     (LJ_ARCH_NUMMODE == LJ_NUMMODE_DUAL_SINGLE && LUAJIT_NUMMODE != 1) || \
     (LJ_ARCH_NUMMODE == LJ_NUMMODE_SINGLE_DUAL && LUAJIT_NUMMODE == 2)
@@ -309,6 +318,7 @@
 #define LJ_PAGESIZE      4096
 #endif
 
+//********************************************************************************************************************
 // Various workarounds for embedded operating systems or weak C runtimes.
 
 #if defined(__ANDROID__) || defined(__symbian__) || LJ_TARGET_WINDOWS
@@ -341,15 +351,15 @@ extern void* LJ_WIN_LOADLIBA(const char* path);
 #define LJ_NO_UNWIND      1
 #endif
 
+//********************************************************************************************************************
 // LJ_UNWIND_EXT controls whether external frame unwinding is used.
 //
-// When set to 1, LuaJIT uses the system-provided unwind handler (e.g., libgcc_s
-// on Linux, system exception handling on Windows). This provides full C++ exception
-// interoperability and allows Lua errors to propagate through C++ frames with proper
-// destructor calls. However, it requires all C code on the stack to have unwind tables.
+// When set to 1, LuaJIT uses the system-provided unwind handler (e.g., libgcc_s on Linux, system exception handling
+// on Windows). This provides full C++ exception interoperability and allows Lua errors to propagate through C++
+// frames with proper destructor calls. However, it requires all C code on the stack to have unwind tables.
 //
-// When set to 0, LuaJIT uses internal frame unwinding which is faster and doesn't
-// require unwind tables, but has limited C++ exception support.
+// When set to 0, LuaJIT uses internal frame unwinding which is faster and doesn't require unwind tables, but has
+// limited C++ exception support.
 //
 // See detailed discussion in lj_err.cpp lines 21-85 for pros/cons of each approach.
 
@@ -365,8 +375,7 @@ extern void* LJ_WIN_LOADLIBA(const char* path);
 #define LJ_UNWIND_JIT      0
 #endif
 
-// Compatibility with Lua 5.1 vs. 5.2.
-#define LJ_52         1
+#define LJ_52         1 // Always 1
 
 #ifndef LUAJIT_SECURITY_PRNG
 // PRNG init: 0 = fixed/insecure, 1 = secure from OS.

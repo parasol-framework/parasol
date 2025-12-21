@@ -1,4 +1,4 @@
-|// Low-level VM code for PowerPC 32 bit or 32on64 bit mode.
+|// Low-level VM code for PowerPC 64 bit mode.
 |// Bytecode interpreter, fast functions and helper functions.
 |// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 |
@@ -1660,6 +1660,8 @@ static void build_subroutines(BuildCtx *ctx)
   |
   |.ffunc_1 next
   |   stwx TISNIL, BASE, NARGS8:RC	// Set missing 2nd arg to nil.
+  |  checkarray CARG3
+  |  beq >8
   |  checktab CARG3
   |   lwz PC, FRAME_PC(BASE)
   |  bne ->fff_fallback
@@ -1676,6 +1678,46 @@ static void build_subroutines(BuildCtx *ctx)
   |   lwz CFUNC:RB, FRAME_FUNC(BASE)
   |   li NARGS8:RC, 2*8
   |  b ->fff_fallback			// Invalid key.
+  |
+  |8:
+  |  lwz TMP0, 8(BASE)
+  |   lwz TMP1, 12(BASE)
+  |  cmpwi TMP0, LJ_TNIL
+  |  beq >9
+  |  checknum cr1, TMP0
+  |  bne cr1, ->fff_fallback
+  |  cmpwi TMP1, 0
+  |  blt ->fff_fallback
+  |  lwz TMP2, ARRAY:CARG1->len
+  |  cmplw TMP1, TMP2
+  |  bge ->fff_fallback
+  |  addi TMP1, TMP1, 1
+  |  b >3
+  |9:
+  |  li TMP1, 0
+  |3:
+  |  lwz PC, FRAME_PC(BASE)
+  |  lwz TMP2, ARRAY:CARG1->len
+  |  cmplw TMP1, TMP2
+  |  bge >4
+  |  la RA, -8(BASE)
+  |.if DUALNUM
+  |  stw TISNUM, 0(RA)
+  |  stw TMP1, 4(RA)
+  |.else
+  |  tonum_u f1, TMP1
+  |  stfd f1, 0(RA)
+  |.endif
+  |  mr CARG2, CARG1
+  |  mr CARG1, L
+  |  mr CARG3, TMP1
+  |  addi CARG4, RA, 8
+  |  blex lj_arr_getidx
+  |  li RD, (2+1)*8
+  |  b ->fff_res
+  |4:
+  |  li CARG3, LJ_TNIL
+  |  b ->fff_restv
   |
   |.ffunc_1 pairs
   |  checktab CARG3
@@ -1712,6 +1754,8 @@ static void build_subroutines(BuildCtx *ctx)
   |    lfd FARG2, 8(BASE)
   |.endif
   |  blt ->fff_fallback
+  |  checkarray CARG3
+  |  beq >8
   |  checktab CARG3
   |  checknum cr1, CARG4
   |   lwz PC, FRAME_PC(BASE)
@@ -1781,6 +1825,45 @@ static void build_subroutines(BuildCtx *ctx)
   |  lwz TMP3, 4(CRET1)
   |.endif
   |  b <1
+  |
+  |8:
+  |  checknum cr1, CARG4
+  |   lwz PC, FRAME_PC(BASE)
+  |.if DUALNUM
+  |  bne cr1, ->fff_fallback
+  |.else
+  |    lus TMP0, 0x3ff0
+  |    stw ZERO, TMPD_LO
+  |  bne cr1, ->fff_fallback
+  |    stw TMP0, TMPD_HI
+  |  bge cr1, ->fff_fallback
+  |    lfd FARG1, TMPD
+  |  toint TMP2, FARG2, f0
+  |.endif
+  |.if not DUALNUM
+  |  fadd FARG2, FARG2, FARG1
+  |.endif
+  |  addi TMP2, TMP2, 1
+  |  la RA, -8(BASE)
+  |.if DUALNUM
+  |  stw TISNUM, 0(RA)
+  |  stw TMP2, 4(RA)
+  |.else
+  |  stfd FARG2, 0(RA)
+  |.endif
+  |  lwz TMP0, ARRAY:CARG1->len
+  |  cmplw TMP2, TMP0
+  |  bge >9
+  |  mr CARG2, CARG1
+  |  mr CARG1, L
+  |  mr CARG3, TMP2
+  |  addi CARG4, RA, 8
+  |  blex lj_arr_getidx
+  |  li RD, (2+1)*8
+  |  b ->fff_res
+  |9:
+  |  li RD, (0+1)*8
+  |  b ->fff_res
   |
   |.ffunc_1 ipairs
   |  checktab CARG3
@@ -5577,16 +5660,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  cmplw RC, TMP1
     |  bge >5
     |
-    |  // Fetch array element into R[A+1] (value slot).
-    |  stp BASE, L->base
-    |  mr CARG1, L
-    |  mr CARG2, ARRAY:RB
-    |  mr CARG3, RC
-    |  addi CARG4, RA, 8
-    |  stw PC, SAVE_PC
-    |  blex lj_arr_getidx
-    |
-    |  // Store index into R[A] and control var slot (R[A-1]).
+    |  // Store index into R[A] and control var slot (R[A-1]) before call.
     |.if DUALNUM
     |  stw RC, 4(RA)
     |  stw TISNUM, 0(RA)
@@ -5597,6 +5671,15 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  stfd f1, 0(RA)
     |  stfd f1, -8(RA)
     |.endif
+    |
+    |  // Fetch array element into R[A+1] (value slot).
+    |  stp BASE, L->base
+    |  mr CARG1, L
+    |  mr CARG2, ARRAY:RB
+    |  mr CARG3, RC
+    |  addi CARG4, RA, 8
+    |  stw PC, SAVE_PC
+    |  blex lj_arr_getidx
     |
     |     lwz INS, -4(PC)
     |    addis TMP3, PC, -(BCBIAS_J*4 >> 16)

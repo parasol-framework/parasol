@@ -1166,8 +1166,12 @@ static void build_subroutines(BuildCtx *ctx)
   |//-- Base library: iterators -------------------------------------------
   |
   |.ffunc_1 next
-  |  checktp CARG1, LJ_TTAB, ->fff_fallback
   |  str TISNIL, [BASE, NARGS8:RC]	// Set missing 2nd arg to nil.
+  |  mov TMP0, CARG1
+  |  asr ITYPE, TMP0, #47
+  |  cmn ITYPE, #-LJ_TARRAY
+  |  beq >8
+  |  checktp CARG1, LJ_TTAB, ->fff_fallback
   |  ldr PC, [BASE, FRAME_PC]
   |  add CARG2, BASE, #8
   |  sub CARG3, BASE, #16
@@ -1177,6 +1181,40 @@ static void build_subroutines(BuildCtx *ctx)
   |  tbnz CRET1w, #31, ->fff_fallback	// Invalid key.
   |  cbnz CRET1, ->fff_res		// Found key/value.
   |  // End of traversal: return nil.
+  |  str TISNIL, [BASE, #-16]
+  |  b ->fff_res1
+  |
+  |8:
+  |  and ARRAY:RB, TMP0, #LJ_GCVMASK
+  |  ldr TMP1, [BASE, #8]
+  |  cmp TMP1, TISNIL
+  |  beq >9
+  |  mov TMP2, TMP1
+  |  checkint TMP2, ->fff_fallback
+  |  cmp TMP2w, #0
+  |  blt ->fff_fallback
+  |  ldr TMP3w, ARRAY:RB->len
+  |  cmp TMP2w, TMP3w
+  |  bhs ->fff_fallback
+  |  add TMP2w, TMP2w, #1
+  |  b >3
+  |9:
+  |  mov TMP2w, #0
+  |3:
+  |  ldr PC, [BASE, FRAME_PC]
+  |  ldr TMP3w, ARRAY:RB->len
+  |  cmp TMP2w, TMP3w
+  |  bhs >4
+  |  add TMP0, TMP2, TISNUM
+  |  str TMP0, [BASE, #-16]
+  |  mov CARG1, L
+  |  mov CARG2, ARRAY:RB
+  |  sxtw CARG3, TMP2w
+  |  sub CARG4, BASE, #8
+  |  bl extern lj_arr_getidx
+  |  mov RC, #(2+1)*8
+  |  b ->fff_res
+  |4:
   |  str TISNIL, [BASE, #-16]
   |  b ->fff_res1
   |
@@ -1192,6 +1230,10 @@ static void build_subroutines(BuildCtx *ctx)
   |  b ->fff_res
   |
   |.ffunc_2 ipairs_aux
+  |  mov TMP0, CARG1
+  |  asr ITYPE, TMP0, #47
+  |  cmn ITYPE, #-LJ_TARRAY
+  |  beq >8
   |  checktab CARG1, ->fff_fallback
   |   checkint CARG2, ->fff_fallback
   |  ldr TMP1w, TAB:CARG1->asize
@@ -1218,6 +1260,28 @@ static void build_subroutines(BuildCtx *ctx)
   |  cbz CRET1, ->fff_res
   |  ldr TMP0, [CRET1]
   |  b <1
+  |
+  |8:
+  |  and ARRAY:RB, TMP0, #LJ_GCVMASK
+  |  mov TMP2, CARG2
+  |  checkint TMP2, ->fff_fallback
+  |  ldr PC, [BASE, FRAME_PC]
+  |  add TMP2w, TMP2w, #1
+  |  add TMP1, TMP2, TISNUM
+  |  str TMP1, [BASE, #-16]
+  |  ldr TMP3w, ARRAY:RB->len
+  |  cmp TMP2w, TMP3w
+  |  bhs >9
+  |  mov CARG1, L
+  |  mov CARG2, ARRAY:RB
+  |  sxtw CARG3, TMP2w
+  |  sub CARG4, BASE, #8
+  |  bl extern lj_arr_getidx
+  |  mov RC, #(2+1)*8
+  |  b ->fff_res
+  |9:
+  |  mov RC, #(0+1)*8
+  |  b ->fff_res
   |
   |.ffunc_1 ipairs
   |  checktp TMP1, CARG1, LJ_TTAB, ->fff_fallback
@@ -3755,17 +3819,17 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  cmp RCw, TMP1w
     |  bhs >5
     |
+    |  // Store index into R[A] and control var slot (R[A-1]) before call.
+    |  mov TMP0w, RCw
+    |  add TMP0, TMP0, TISNUM
+    |  stp TMP0, TMP0, [RA, #-8]
+    |
     |  // Fetch array element into R[A+1] (value slot).
     |  mov CARG1, L
     |  mov CARG2, ARRAY:RB
     |  sxtw CARG3, RCw
     |  add CARG4, RA, #8
     |  bl extern lj_arr_getidx
-    |
-    |  // Store index into R[A] and control var slot (R[A-1]).
-    |  mov TMP0w, RCw
-    |  add TMP0, TMP0, TISNUM
-    |  stp TMP0, TMP0, [RA, #-8]
     |
     |    ldrh TMP3w, [PC, # OFS_RD]	// Get target from following ITERL.
     |    add TMP3, PC, TMP3, lsl #2
