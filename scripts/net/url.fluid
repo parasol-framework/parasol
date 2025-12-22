@@ -36,15 +36,15 @@
 -- Percent-encode a string for safe URL use
 
 function url.encode(str, extraChars)
-   if not str then return nil end
+   str ?? return
 
-   local chars_to_encode = RESERVED_CHARS.general .. RESERVED_CHARS.query
+   chars_to_encode = RESERVED_CHARS.general .. RESERVED_CHARS.query
    if extraChars then chars_to_encode = chars_to_encode .. extraChars end
 
    -- Simple character-by-character encoding to avoid pattern issues
-   local result = {}
+   result = {}
    for i = 0, #str-1 do
-      local c = str:sub(i, i+1)
+      c = str:sub(i, i+1)
       if chars_to_encode:find(c, 1, true) then
          table.insert(result, string.format('%%%02X', string.byte(c)))
       else
@@ -58,9 +58,9 @@ end
 -- Percent-encode with spaces as plus signs (for form data)
 
 function url.encodePlus(str, extraChars)
-   if not str then return nil end
+   str ?? return
 
-   local encoded = url.encode(str, extraChars)
+   encoded = url.encode(str, extraChars)
    if encoded then
       encoded = encoded:gsub('%%20', '+')
    end
@@ -73,7 +73,7 @@ end
 function url.decode(str)
    if not str then return nil end
 
-   local decoded = str:gsub('%%([0-9A-Fa-f][0-9A-Fa-f])', function(hex)
+   decoded = str:gsub('%%([0-9A-Fa-f][0-9A-Fa-f])', function(hex)
       return string.char(tonumber(hex, 16))
    end)
 
@@ -84,7 +84,7 @@ end
 
 function url.decodePlus(str)
    if not str then return nil end
-   local decoded = str:gsub('%+', ' ')
+   decoded = str:gsub('%+', ' ')
    return url.decode(decoded)
 end
 
@@ -103,9 +103,9 @@ end
 function url.parseQuery(queryString)
    if not queryString or queryString is '' then return {} end
 
-   local params = {}
+   params = {}
    for pair in queryString:gmatch('[^&]+') do
-      local key, value = pair:match('^([^=]*)=(.*)$')
+      key, value = pair:match('^([^=]*)=(.*)$')
       if key then
          key = url.decodePlus(key)
          value = url.decodePlus(value)
@@ -131,40 +131,35 @@ end
 -- Parse query string into list of key-value pairs (preserves order and duplicates)
 
 function url.parseQueryList(queryString)
-   if not queryString or queryString is '' then return {} end
+   params = array.new(0, 'table')
+   queryString ?? return params
 
-   local params = {}
    for pair in queryString:gmatch('[^&]+') do
-      local key, value = pair:match('^([^=]*)=(.*)$')
+      key, value = pair:match('^([^=]*)=(.*)$')
       if key then
          key = url.decodePlus(key)
          value = url.decodePlus(value)
-         table.insert(params, { key = key, value = value })
+         params:push({ key = key, value = value })
       else
          -- Handle key without value
          key = url.decodePlus(pair)
-         table.insert(params, { key = key, value = '' })
+         params:push({ key = key, value = '' })
       end
    end
 
    return params
 end
 
--- Build query string from table or list of parameters
+-- Build query string from table or array of parameters
 
 function url.buildQuery(params)
-   if not params then return '' end
+   params ?? return ''
 
-   local parts = {}
+   parts = array.new(0, 'string')
 
-   if #params > 0 then
-      -- Array-like table (list of key-value pairs)
-      for _, param in ipairs(params) do
-         if type(param) is 'table' and param.key then
-            local key = url.encodePlus(tostring(param.key))
-            local value = url.encodePlus(tostring(param.value or ''))
-            table.insert(parts, key .. '=' .. value)
-         end
+   if type(params) is 'array' then
+      for param in values(params) do
+         parts:push(url.encodePlus(tostring(param.key)) .. '=' .. url.encodePlus(tostring(param.value or '')))
       end
    else
       -- Hash-like table
@@ -173,17 +168,17 @@ function url.buildQuery(params)
          if type(value) is 'table' then
             -- Handle multiple values for same key
             for _, v in ipairs(value) do
-               local encodedValue = url.encodePlus(tostring(v))
-               table.insert(parts, key .. '=' .. encodedValue)
+               encodedValue = url.encodePlus(tostring(v))
+               parts:push(key .. '=' .. encodedValue)
             end
          else
-            local encodedValue = url.encodePlus(tostring(value))
-            table.insert(parts, key .. '=' .. encodedValue)
+            encodedValue = url.encodePlus(tostring(value))
+            parts:push(key .. '=' .. encodedValue)
          end
       end
    end
 
-   return table.concat(parts, '&')
+   return parts:join('&')
 end
 
 -- Encode parameters into query string format
@@ -198,11 +193,9 @@ end
 -- Parse a URL into its components
 
 function url.parse(urlString)
-   if not urlString or urlString is '' then
-      return nil, 'Empty URL string'
-   end
+   urlString ?? return nil, 'Empty URL string'
 
-   local components = {
+   components = {
       scheme = nil,
       auth = nil,
       host = nil,
@@ -213,21 +206,21 @@ function url.parse(urlString)
       fragment = nil
    }
 
-   local remaining = urlString
+   remaining = urlString
 
-   local fragPos = remaining:find('#')
+   fragPos = remaining:find('#')
    if fragPos then
       components.fragment = remaining:sub(fragPos)
       remaining = remaining:sub(0, fragPos)
    end
 
-   local queryPos = remaining:find('?', 1, true)
+   queryPos = remaining:find('?', 1, true)
    if queryPos then
       components.query = remaining:sub(queryPos)
       remaining = remaining:sub(0, queryPos)
    end
 
-   local schemeMatch = remaining:match('^([%w+.-]+):(.*)')
+   schemeMatch = remaining:match('^([%w+.-]+):(.*)')
    if schemeMatch then
       components.scheme = schemeMatch:lower()
       remaining = remaining:match('^[%w+.-]+:(.*)')
@@ -238,31 +231,31 @@ function url.parse(urlString)
       remaining = remaining:sub(2) -- Remove //
 
       -- Find the end of authority (next /, ?, #, or end of string)
-      local pathStart = remaining:find('/') or (#remaining + 1)
-      local authority = remaining:sub(0, pathStart - 1)
+      pathStart = remaining:find('/') or (#remaining + 1)
+      authority = remaining:sub(0, pathStart - 1)
       remaining = remaining:sub(pathStart)
 
       -- Extract auth (user:pass@)
-      local authEnd = authority:find('@')
+      authEnd = authority:find('@')
       if authEnd then
          components.auth = authority:sub(0, authEnd - 1)
          authority = authority:sub(authEnd)
       end
 
       -- Handle IPv6 addresses [host]:port
-      local ipv6Match = authority:match('^%[([^%]]+)%]:?(%d*)$')
+      ipv6Match = authority:match('^%[([^%]]+)%]:?(%d*)$')
       if ipv6Match then
          components.host = ipv6Match
-         local portStr = authority:match('^%[[^%]]+%]:(%d+)$')
+         portStr = authority:match('^%[[^%]]+%]:(%d+)$')
          if portStr and portStr != '' then
             components.port = tonumber(portStr)
          end
       else
          -- Handle regular host:port
-         local colonPos = authority:find(':', 1, true)
+         colonPos = authority:find(':', 1, true)
          if colonPos then
             components.host = authority:sub(0, colonPos - 1)
-            local portStr = authority:sub(colonPos)
+            portStr = authority:sub(colonPos)
             if portStr != '' then
                components.port = tonumber(portStr)
             end
@@ -279,7 +272,7 @@ function url.parse(urlString)
    end
 
    if components.path then
-      local paramPos = components.path:find(';')
+      paramPos = components.path:find(';')
       if paramPos then
          components.params = components.path:sub(paramPos)
          components.path = components.path:sub(0, paramPos - 1)
@@ -292,45 +285,45 @@ end
 -- Reconstruct URL from components
 
 function url.unparse(components)
-   if not components then return '' end
+   components ?? return ''
 
-   local parts = {}
+   parts = array.new(0, 'string')
 
-   if components.scheme then table.insert(parts, components.scheme .. ':') end
+   if components.scheme then parts:push(components.scheme .. ':') end
 
    if components.host then
-      table.insert(parts, '//')
+      parts:push('//')
 
-      if components.auth then table.insert(parts, components.auth .. '@') end
+      if components.auth then parts:push(components.auth .. '@') end
 
       if components.host:find(':') then
-         table.insert(parts, '[' .. components.host .. ']')
+         parts:push('[' .. components.host .. ']')
       else
-         table.insert(parts, components.host)
+         parts:push(components.host)
       end
 
-      if components.port then table.insert(parts, ':' .. components.port) end
+      if components.port then parts:push(':' .. components.port) end
    end
 
-   if components.path then table.insert(parts, components.path) end
-   if components.params then table.insert(parts, ';' .. components.params) end
-   if components.query then table.insert(parts, '?' .. components.query) end
-   if components.fragment then table.insert(parts, '#' .. components.fragment) end
+   if components.path then parts:push(components.path) end
+   if components.params then parts:push(';' .. components.params) end
+   if components.query then parts:push('?' .. components.query) end
+   if components.fragment then parts:push('#' .. components.fragment) end
 
-   return table.concat(parts)
+   return parts:join()
 end
 
 -- Split URL into 5 components (no params)
 
 function url.split(urlString)
-   local components = url.parse(urlString)
-   if not components then return nil end
+   components = url.parse(urlString)
+   components ?? return
 
    return {
-      scheme = components.scheme,
-      netloc = url._buildNetloc(components),
-      path = components.path,
-      query = components.query,
+      scheme   = components.scheme,
+      netloc   = url._buildNetloc(components),
+      path     = components.path,
+      query    = components.query,
       fragment = components.fragment
    }
 end
@@ -338,21 +331,21 @@ end
 -- Reconstruct URL from split components
 
 function url.unsplit(components)
-   if not components then return '' end
-   local parts = {}
-   if components.scheme then table.insert(parts, components.scheme .. ':') end
-   if components.netloc then table.insert(parts, '//' .. components.netloc) end
-   if components.path then table.insert(parts, components.path) end
-   if components.query then table.insert(parts, '?' .. components.query) end
-   if components.fragment then table.insert(parts, '#' .. components.fragment) end
-   return table.concat(parts)
+   components ?? return ''
+   parts = array.new(0, 'string')
+   if components.scheme then parts:push(components.scheme .. ':') end
+   if components.netloc then parts:push('//' .. components.netloc) end
+   if components.path then parts:push(components.path) end
+   if components.query then parts:push('?' .. components.query) end
+   if components.fragment then parts:push('#' .. components.fragment) end
+   return parts:join()
 end
 
 -- Helper to build netloc from components
 
 function url._buildNetloc(components)
-   if not components.host then return nil end
-   local netloc = {}
+   components.host ?? return nil
+   netloc = {}
    if components.auth then table.insert(netloc, components.auth .. '@') end
    if components.host:find(':') then
       table.insert(netloc, '[' .. components.host .. ']')
@@ -366,12 +359,12 @@ end
 -- Remove fragment from URL
 
 function url.defrag(urlString)
-   if not urlString then return nil, nil end
+   urlString ?? return nil, nil
 
-   local fragPos = urlString:find('#')
+   fragPos = urlString:find('#')
    if fragPos then
-      local base = urlString:sub(0, fragPos - 1)
-      local fragment = urlString:sub(fragPos + 1)
+      base = urlString:sub(0, fragPos - 1)
+      fragment = urlString:sub(fragPos + 1)
       return base, fragment
    end
 
@@ -387,7 +380,7 @@ function url.join(baseUrl, relativeUrl)
    if not relativeUrl then return baseUrl end
    if url.isAbsolute(relativeUrl) then return relativeUrl end
 
-   local base = url.parse(baseUrl)
+   base = url.parse(baseUrl)
    if not base then return relativeUrl end
 
    -- Handle fragment-only URLs
@@ -404,7 +397,7 @@ function url.join(baseUrl, relativeUrl)
    end
 
    -- Parse relative URL
-   local rel = url.parse(relativeUrl)
+   rel = url.parse(relativeUrl)
    if not rel then return baseUrl end
 
    -- If relative has authority, use it completely
@@ -424,12 +417,12 @@ function url.join(baseUrl, relativeUrl)
    end
 
    -- Handle relative path
-   local basePath = base.path or '/'
+   basePath = base.path or '/'
    if basePath:sub(-1) != '/' then
       basePath = basePath:match('(.*/)') or '/'
    end
 
-   local newPath = basePath .. (rel.path or '')
+   newPath = basePath .. (rel.path or '')
    rel.path = url.normalize(newPath)
 
    return url.unparse(rel)
@@ -440,8 +433,8 @@ end
 function url.normalize(path)
    if not path then return '' end
 
-   local segments = {}
-   local isAbsolute = path:sub(0, 1) is '/'
+   segments = {}
+   isAbsolute = path:sub(0, 1) is '/'
 
    for segment in path:gmatch('[^/]+') do
       if segment is '..' then
@@ -455,7 +448,7 @@ function url.normalize(path)
       end
    end
 
-   local result = table.concat(segments, '/')
+   result = table.concat(segments, '/')
    if isAbsolute then result = '/' .. result end
 
    -- Preserve trailing slash
@@ -472,7 +465,7 @@ end
 -- Check if URL is absolute
 
 function url.isAbsolute(urlString)
-   if not urlString then return false end
+   urlString ?? return false
    return urlString:match('^[%w+.-]+:') != nil
 end
 
@@ -485,21 +478,21 @@ end
 -- Extract scheme from URL
 
 function url.getScheme(urlString)
-   if not urlString then return nil end
+   urlString ?? return nil
    return urlString:match('^([%w+.-]+):')
 end
 
 -- Extract host from URL
 
 function url.getHost(urlString)
-   local components = url.parse(urlString)
+   components = url.parse(urlString)
    return components and components.host
 end
 
 -- Extract port from URL with optional default
 
 function url.getPort(urlString, defaultPort)
-   local components = url.parse(urlString)
+   components = url.parse(urlString)
    if components then
       if components.port then
          return components.port

@@ -3,8 +3,8 @@
 ------------------------------------------------------------------------------
 -- Serialise the key-values of a table into an XML string.
 
-table.toXML = function(t)
-   local out = ''
+table.toXML = function(t:table)
+   out = ''
    for tag,v in pairs(t) do
       if type(v) is 'table' then -- tag
          out ..= '<' .. tag
@@ -51,11 +51,11 @@ end
 -- Usage: for k,v in table.sortByKeys(the_table) do
 
 table.sortByKeys = function(t, f)
-   local a = {}
+   a = {}
    for n in pairs(t) do table.insert(a, n) end
    table.sort(a, f)
-   local i = -1
-   local iter = function()
+   i = -1
+   iter = function()
       i++
       if not a[i] then return nil
       else return a[i], t[a[i]]
@@ -72,11 +72,11 @@ global file ?= { ui = { } }
 -- Will throw an exception if the file is not found or the complete data cannot be read.
 
 file.readAll = function(Path)
-   local ex, fl = catch(function() return obj.new('file', { flags='READ', path=Path } ) end)
-   if ex then error('Failed to open file "' .. tostring(Path) .. '": ' .. ex.message) end
+   ex, fl = catch(function() return obj.new('file', { flags='READ', path=Path } ) end)
+   assert(not ex, 'Failed to open file "' .. tostring(Path) .. '": ' .. ex.message)
 
-   local file_buffer = string.alloc(fl.size)
-   local err, bytes_read = fl.acRead(file_buffer)
+   file_buffer = string.alloc(fl.size)
+   err, bytes_read = fl.acRead(file_buffer)
    fl.free()
    assert(err is ERR_Okay and bytes_read is #file_buffer, 'Failed to read ' .. #file_buffer .. ' bytes from "' .. Path .. '"')
    return file_buffer
@@ -84,8 +84,8 @@ end
 
 ------------------------------------------------------------------------------
 
-file.writeAll = function(Path, Content)
-   local fl = obj.new('file', { path = Path, flags = 'WRITE|NEW' })
+file.writeAll = function(Path:str, Content:str)
+   fl = obj.new('file', { path = Path, flags = 'WRITE|NEW' })
    fl.acWrite(Content)
    fl.free()
 end
@@ -93,7 +93,7 @@ end
 ------------------------------------------------------------------------------
 
 file.isFolder = function(Path)
-   local e = string.sub(Path, -1)
+   e = string.sub(Path, -1)
    if (e is '/') or (e is '\\') or (e is ':') then return true end
    return false
 end
@@ -101,9 +101,9 @@ end
 ------------------------------------------------------------------------------
 
 file.splitPath = function(Path)
-   if not Path then return nil, nil end
-   local path, fl = string.match(Path, '^(.+[/:\\])(.+)$')
-   if not path then return nil, Path end
+   Path ?? return nil, nil
+   path, fl = string.match(Path, '^(.+[/:\\])(.+)$')
+   path ?? return nil, Path
    return path, fl
 end
 
