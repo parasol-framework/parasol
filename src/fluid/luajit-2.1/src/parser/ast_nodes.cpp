@@ -740,7 +740,7 @@ ExprNodePtr make_table_expr(SourceSpan Span, std::vector<TableField> fields, boo
    return node;
 }
 
-ExprNodePtr make_function_expr(SourceSpan Span, std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body, bool IsThunk, FluidType ThunkReturnType)
+ExprNodePtr make_function_expr(SourceSpan Span, std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body, bool IsThunk, FluidType ThunkReturnType, FunctionReturnTypes ReturnTypes)
 {
    assert_node(body != nullptr, "function literal body required");
    FunctionExprPayload payload;
@@ -748,6 +748,7 @@ ExprNodePtr make_function_expr(SourceSpan Span, std::vector<FunctionParameter> p
    payload.is_vararg = is_vararg;
    payload.is_thunk = IsThunk;
    payload.thunk_return_type = ThunkReturnType;
+   payload.return_types = ReturnTypes;
    payload.body = std::move(body);
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::FunctionExpr;
@@ -813,7 +814,7 @@ ExprNodePtr make_choose_expr_tuple(SourceSpan Span, ExprNodeList ScrutineeTuple,
 }
 
 std::unique_ptr<FunctionExprPayload> make_function_payload(std::vector<FunctionParameter> parameters,
-   bool is_vararg, std::unique_ptr<BlockStmt> body, bool IsThunk, FluidType ThunkReturnType)
+   bool is_vararg, std::unique_ptr<BlockStmt> body, bool IsThunk, FluidType ThunkReturnType, FunctionReturnTypes ReturnTypes)
 {
    assert_node(body != nullptr, "function body required");
    auto payload = std::make_unique<FunctionExprPayload>();
@@ -821,6 +822,7 @@ std::unique_ptr<FunctionExprPayload> make_function_payload(std::vector<FunctionP
    payload->is_vararg = is_vararg;
    payload->is_thunk = IsThunk;
    payload->thunk_return_type = ThunkReturnType;
+   payload->return_types = ReturnTypes;
    payload->body = std::move(body);
    return payload;
 }
