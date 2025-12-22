@@ -55,3 +55,14 @@ const FunctionExprPayload* TypeCheckScope::lookup_function(GCstr* Name) const
    }
    return nullptr;
 }
+
+void TypeCheckScope::fix_local_type(GCstr* Name, FluidType Type)
+{
+   for (auto it = this->variables_.rbegin(); it != this->variables_.rend(); ++it) {
+      if (it->name IS Name and not it->is_parameter) {
+         it->type.primary = Type;
+         it->type.is_fixed = true;
+         return;
+      }
+   }
+}

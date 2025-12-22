@@ -16,18 +16,10 @@ namespace {
          result.primary = FluidType::Nil;
          result.is_nullable = true;
          break;
-      case LiteralKind::Boolean:
-         result.primary = FluidType::Bool;
-         break;
-      case LiteralKind::Number:
-         result.primary = FluidType::Num;
-         break;
-      case LiteralKind::String:
-         result.primary = FluidType::Str;
-         break;
-      case LiteralKind::CData:
-         result.primary = FluidType::CData;
-         break;
+      case LiteralKind::Boolean: result.primary = FluidType::Bool; break;
+      case LiteralKind::Number:  result.primary = FluidType::Num; break;
+      case LiteralKind::String:  result.primary = FluidType::Str; break;
+      case LiteralKind::CData:   result.primary = FluidType::CData; break;
    }
    return result;
 }
@@ -36,77 +28,72 @@ namespace {
 
 class TypeAnalyser {
 public:
-   explicit TypeAnalyser(ParserContext& Context) : ctx_(Context) {}
-
-   void analyse_module(const BlockStmt& Module);
-
+   explicit TypeAnalyser(ParserContext &Context) : ctx_(Context) {}
+   void analyse_module(const BlockStmt &);
    [[nodiscard]] const std::vector<TypeDiagnostic>& diagnostics() const { return this->diagnostics_; }
 
 private:
    void push_scope();
    void pop_scope();
-   [[nodiscard]] TypeCheckScope& current_scope();
-   [[nodiscard]] const TypeCheckScope& current_scope() const;
+   [[nodiscard]] TypeCheckScope & current_scope();
+   [[nodiscard]] const TypeCheckScope & current_scope() const;
 
-   void analyse_block(const BlockStmt& Block);
-   void analyse_statement(const StmtNode& Statement);
-   void analyse_assignment(const AssignmentStmtPayload& Payload);
-   void analyse_local_decl(const LocalDeclStmtPayload& Payload);
-   void analyse_local_function(const LocalFunctionStmtPayload& Payload);
-   void analyse_function_stmt(const FunctionStmtPayload& Payload);
-   void analyse_function_payload(const FunctionExprPayload& Function);
-   void analyse_expression(const ExprNode& Expression);
-   void analyse_call_expr(const CallExprPayload& Call);
-   void check_arguments(const FunctionExprPayload& Function, const CallExprPayload& Call);
-   void check_argument_type(const ExprNode& Argument, FluidType Expected, size_t Index);
+   void analyse_block(const BlockStmt &);
+   void analyse_statement(const StmtNode &);
+   void analyse_assignment(const AssignmentStmtPayload &);
+   void analyse_local_decl(const LocalDeclStmtPayload &);
+   void analyse_local_function(const LocalFunctionStmtPayload &);
+   void analyse_function_stmt(const FunctionStmtPayload &);
+   void analyse_function_payload(const FunctionExprPayload &);
+   void analyse_expression(const ExprNode &);
+   void analyse_call_expr(const CallExprPayload &);
+   void check_arguments(const FunctionExprPayload &, const CallExprPayload &);
+   void check_argument_type(const ExprNode &, FluidType, size_t);
 
-   [[nodiscard]] InferredType infer_expression_type(const ExprNode& Expr) const;
-   [[nodiscard]] std::optional<InferredType> resolve_identifier(GCstr* Name) const;
-   [[nodiscard]] const FunctionExprPayload* resolve_call_target(const CallTarget& Target) const;
-   [[nodiscard]] const FunctionExprPayload* resolve_function(GCstr* Name) const;
+   [[nodiscard]] InferredType infer_expression_type(const ExprNode &) const;
+   [[nodiscard]] std::optional<InferredType> resolve_identifier(GCstr *) const;
+   [[nodiscard]] const FunctionExprPayload * resolve_call_target(const CallTarget &) const;
+   [[nodiscard]] const FunctionExprPayload * resolve_function(GCstr *) const;
+   void fix_local_type(GCstr *, FluidType);
 
-   ParserContext& ctx_;
+   ParserContext &ctx_;
    std::vector<TypeCheckScope> scope_stack_{};
    std::vector<TypeDiagnostic> diagnostics_{};
 };
 
-void TypeAnalyser::push_scope()
-{
+void TypeAnalyser::push_scope() {
    this->scope_stack_.emplace_back();
 }
 
-void TypeAnalyser::pop_scope()
-{
+void TypeAnalyser::pop_scope() {
    if (not this->scope_stack_.empty()) this->scope_stack_.pop_back();
 }
 
-TypeCheckScope& TypeAnalyser::current_scope()
-{
+TypeCheckScope & TypeAnalyser::current_scope() {
    if (this->scope_stack_.empty()) this->push_scope();
    return this->scope_stack_.back();
 }
 
-const TypeCheckScope& TypeAnalyser::current_scope() const
-{
+const TypeCheckScope & TypeAnalyser::current_scope() const {
    lj_assertX(not this->scope_stack_.empty(), "type analysis scope stack is empty");
    return this->scope_stack_.back();
 }
 
-void TypeAnalyser::analyse_module(const BlockStmt& Module)
+void TypeAnalyser::analyse_module(const BlockStmt &Module)
 {
    this->push_scope();
    this->analyse_block(Module);
    this->pop_scope();
 }
 
-void TypeAnalyser::analyse_block(const BlockStmt& Block)
+void TypeAnalyser::analyse_block(const BlockStmt &Block)
 {
    for (const auto& statement : Block.view()) {
       this->analyse_statement(statement);
    }
 }
 
-void TypeAnalyser::analyse_statement(const StmtNode& Statement)
+void TypeAnalyser::analyse_statement(const StmtNode &Statement)
 {
    switch (Statement.kind) {
       case AstNodeKind::AssignmentStmt: {
@@ -236,24 +223,105 @@ void TypeAnalyser::analyse_statement(const StmtNode& Statement)
    }
 }
 
-void TypeAnalyser::analyse_assignment(const AssignmentStmtPayload& Payload)
+void TypeAnalyser::analyse_assignment(const AssignmentStmtPayload &Payload)
 {
-   for (const auto& value : Payload.values) {
-      this->analyse_expression(*value);
+   for (size_t i = 0; i < Payload.targets.size(); ++i) {
+      const auto& target_ptr = Payload.targets[i];
+      if (not target_ptr) continue;
+      const auto& target = *target_ptr;
+
+      // Only check local variable assignments
+      if (target.kind IS AstNodeKind::IdentifierExpr) {
+         auto* name_ref = std::get_if<NameRef>(&target.data);
+         if (not name_ref) continue;
+
+         auto existing = this->resolve_identifier(name_ref->identifier.symbol);
+         if (not existing) continue;
+
+         if (i >= Payload.values.size()) continue;
+         InferredType value_type = this->infer_expression_type(*Payload.values[i]);
+
+         if (existing->is_fixed) {
+            // Fixed type: check compatibility
+            if (existing->primary IS FluidType::Any) continue; // 'any' accepts everything including nil
+            if (value_type.primary IS FluidType::Nil) continue;  // Nil is always allowed as a "clear" operation
+
+            if (value_type.primary != FluidType::Any and value_type.primary != existing->primary) {
+               // Type mismatch
+               TypeDiagnostic diag;
+               diag.location = target.span;
+               diag.expected = existing->primary;
+               diag.actual = value_type.primary;
+               diag.code = ParserErrorCode::TypeMismatchAssignment;
+               diag.message = std::format("cannot assign '{}' to variable of type '{}'",
+                  type_name(value_type.primary), type_name(existing->primary));
+               this->diagnostics_.push_back(std::move(diag));
+            }
+         }
+         else {
+            // Unfixed variable: first non-nil assignment fixes the type
+            // But don't fix if the variable was explicitly declared as 'any'
+            if ((existing->primary != FluidType::Any) and (value_type.primary != FluidType::Nil) and
+                (value_type.primary != FluidType::Any)) {
+               this->fix_local_type(name_ref->identifier.symbol, value_type.primary);
+            }
+         }
+      }
    }
-   for (const auto& target : Payload.targets) {
-      this->analyse_expression(*target);
-   }
+
+   // Continue with existing analysis
+
+   for (const auto &value : Payload.values) this->analyse_expression(*value);
+   for (const auto &target : Payload.targets) this->analyse_expression(*target);
 }
 
-void TypeAnalyser::analyse_local_decl(const LocalDeclStmtPayload& Payload)
+void TypeAnalyser::analyse_local_decl(const LocalDeclStmtPayload &Payload)
 {
    size_t value_index = 0;
    for (const auto& name : Payload.names) {
       InferredType inferred;
-      if (this->ctx_.config().infer_local_types and value_index < Payload.values.size()) {
-         inferred = this->infer_expression_type(*Payload.values[value_index]);
+
+      // Explicit type annotation takes precedence (Unknown = no annotation)
+      if (name.type != FluidType::Unknown) {
+         inferred.primary = name.type;
+         // 'any' type is not fixed - it accepts any value
+         inferred.is_fixed = (name.type != FluidType::Any);
+
+         // Check that initial value matches declared type (if present and not 'any')
+         if (name.type != FluidType::Any and value_index < Payload.values.size()) {
+            InferredType value_type = this->infer_expression_type(*Payload.values[value_index]);
+
+            // Nil is always allowed as initial value for typed variables
+            if (value_type.primary != FluidType::Nil and
+                value_type.primary != FluidType::Any and
+                value_type.primary != name.type) {
+               TypeDiagnostic diag;
+               diag.location = Payload.values[value_index]->span;
+               diag.expected = name.type;
+               diag.actual = value_type.primary;
+               diag.code = ParserErrorCode::TypeMismatchAssignment;
+               diag.message = std::format("cannot assign '{}' to variable of type '{}'",
+                  type_name(value_type.primary), type_name(name.type));
+               this->diagnostics_.push_back(std::move(diag));
+            }
+         }
       }
+      else if (value_index < Payload.values.size()) {
+         // No annotation: infer type from initial value
+         inferred = this->infer_expression_type(*Payload.values[value_index]);
+
+         // Non-nil, non-any initial values fix the type
+         if (inferred.primary != FluidType::Nil and inferred.primary != FluidType::Any) {
+            inferred.is_fixed = true;
+         }
+      }
+      else {
+         // No annotation and no initialiser: starts as nil, type not yet determined
+         // Use Nil (not Any) so the first non-nil assignment will fix the type
+         inferred.primary = FluidType::Nil;
+         inferred.is_fixed = false;
+      }
+
       value_index += 1;
       this->current_scope().declare_local(name.symbol, inferred);
    }
@@ -263,7 +331,7 @@ void TypeAnalyser::analyse_local_decl(const LocalDeclStmtPayload& Payload)
    }
 }
 
-void TypeAnalyser::analyse_local_function(const LocalFunctionStmtPayload& Payload)
+void TypeAnalyser::analyse_local_function(const LocalFunctionStmtPayload &Payload)
 {
    const FunctionExprPayload* function = Payload.function.get();
    this->current_scope().declare_function(Payload.name.symbol, function);
@@ -271,7 +339,7 @@ void TypeAnalyser::analyse_local_function(const LocalFunctionStmtPayload& Payloa
    if (function) this->analyse_function_payload(*function);
 }
 
-void TypeAnalyser::analyse_function_stmt(const FunctionStmtPayload& Payload)
+void TypeAnalyser::analyse_function_stmt(const FunctionStmtPayload &Payload)
 {
    const FunctionExprPayload* function = Payload.function.get();
 
@@ -279,6 +347,7 @@ void TypeAnalyser::analyse_function_stmt(const FunctionStmtPayload& Payload)
       const Identifier& terminal = Payload.name.segments.back();
       this->current_scope().declare_function(terminal.symbol, function);
    }
+
    if (Payload.name.method) {
       this->current_scope().declare_function(Payload.name.method->symbol, function);
    }
@@ -286,7 +355,7 @@ void TypeAnalyser::analyse_function_stmt(const FunctionStmtPayload& Payload)
    if (function) this->analyse_function_payload(*function);
 }
 
-void TypeAnalyser::analyse_function_payload(const FunctionExprPayload& Function)
+void TypeAnalyser::analyse_function_payload(const FunctionExprPayload &Function)
 {
    this->push_scope();
    for (const auto& param : Function.parameters) {
@@ -297,7 +366,7 @@ void TypeAnalyser::analyse_function_payload(const FunctionExprPayload& Function)
    this->pop_scope();
 }
 
-void TypeAnalyser::analyse_expression(const ExprNode& Expression)
+void TypeAnalyser::analyse_expression(const ExprNode &Expression)
 {
    switch (Expression.kind) {
       case AstNodeKind::UnaryExpr: {
@@ -383,7 +452,7 @@ void TypeAnalyser::analyse_expression(const ExprNode& Expression)
    }
 }
 
-void TypeAnalyser::analyse_call_expr(const CallExprPayload& Call)
+void TypeAnalyser::analyse_call_expr(const CallExprPayload &Call)
 {
    for (const auto& argument : Call.arguments) {
       this->analyse_expression(*argument);
@@ -393,7 +462,7 @@ void TypeAnalyser::analyse_call_expr(const CallExprPayload& Call)
    if (target) this->check_arguments(*target, Call);
 }
 
-void TypeAnalyser::check_arguments(const FunctionExprPayload& Function, const CallExprPayload& Call)
+void TypeAnalyser::check_arguments(const FunctionExprPayload& Function, const CallExprPayload &Call)
 {
    size_t param_index = 0;
    for (const auto& param : Function.parameters) {
@@ -494,6 +563,17 @@ const FunctionExprPayload* TypeAnalyser::resolve_function(GCstr* Name) const
       if (fn) return fn;
    }
    return nullptr;
+}
+
+void TypeAnalyser::fix_local_type(GCstr* Name, FluidType Type)
+{
+   for (auto it = this->scope_stack_.rbegin(); it != this->scope_stack_.rend(); ++it) {
+      auto existing = it->lookup_local_type(Name);
+      if (existing) {
+         it->fix_local_type(Name, Type);
+         return;
+      }
+   }
 }
 
 static void publish_type_diagnostics(ParserContext& Context, const std::vector<TypeDiagnostic>& Diagnostics)

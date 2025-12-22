@@ -295,11 +295,12 @@ end
    nilVar ??= 'replaced nil'
    assert(nilVar is 'replaced nil', 'If-empty should replace nil')
 
-   local falseVar = false
+   -- Using 'any' type to allow multi-type assignment (type fixing)
+   local falseVar: any = false
    falseVar ??= 'replaced false'
    assert(falseVar is 'replaced false', 'If-empty should replace false')
 
-   local zeroVar = 0
+   local zeroVar: any = 0
    zeroVar ??= 'replaced zero'
    assert(zeroVar is 'replaced zero', 'If-empty should replace zero')
 

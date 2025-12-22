@@ -696,7 +696,7 @@ endif ()
 set (FLUID_TESTS
    catch defer debuglog io object regex struct threads xml strings math array array_any array_manip array_functional compound
    bitshift bitwise if_empty presence blank ternary table stress unit_tests jitoptions
-   unicode ellipsis safe_nav close type_annotations jit  pipe pipe_iteration arrow_functions result_filter
+   unicode ellipsis safe_nav close type_annotations type_fixing jit  pipe pipe_iteration arrow_functions result_filter
    thunks deferred_expr shadow_assert ranges annotations locality anonymous_for key_values
    choose_from flow table_slice
 )

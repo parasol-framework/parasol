@@ -11,6 +11,7 @@ struct InferredType {
    FluidType primary = FluidType::Any;
    bool is_constant = false;
    bool is_nullable = false;
+   bool is_fixed = false;  // Type is locked, cannot change
 
    [[nodiscard]] bool matches(FluidType Expected) const
    {
@@ -33,6 +34,7 @@ public:
    void declare_parameter(GCstr* Name, FluidType Type);
    void declare_local(GCstr* Name, const InferredType& Type);
    void declare_function(GCstr* Name, const FunctionExprPayload* Function);
+   void fix_local_type(GCstr* Name, FluidType Type);
 
    [[nodiscard]] std::optional<FluidType> lookup_parameter_type(GCstr* Name) const;
    [[nodiscard]] std::optional<InferredType> lookup_local_type(GCstr* Name) const;

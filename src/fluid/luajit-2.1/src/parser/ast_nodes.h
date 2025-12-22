@@ -1,28 +1,23 @@
 // Lua parser - AST/IR node schema
 // Copyright (C) 2025 Paul Manias
 //
-// The schema mirrors every construct currently handled by the LuaJIT parser and
-// describes how child nodes, source locations and semantic attributes are stored.
+// The schema mirrors every construct currently handled by the LuaJIT parser and describes how child nodes, source
+// locations and semantic attributes are stored.
 //
-//  *  Expressions include literals, identifiers, calls, table constructors,
-//     unary/binary operators (including Fluid extensions such as `??`, ternary
-//     selections and postfix increment), function literals and suffix operations
+//  *  Expressions include literals, identifiers, calls, table constructors, unary/binary operators (including Fluid
+//     extensions such as `??`, ternary selections and postfix increment), function literals and suffix operations
 //     (field access, indexing, method calls, presence checks).
-//  *  Statements cover assignments, declarations, control-flow (if/while/repeat,
-//     numeric & generic for loops, break/continue), defer blocks,
-//     returns, chunk/local blocks and bare expression statements.
-//  *  Dedicated structs capture reusable metadata (Identifier, NameRef,
-//     FunctionParameter, TableField, BlockStmt) so later work can extend the
-//     IR without mutating parser internals.
+//  *  Statements cover assignments, declarations, control-flow (if/while/repeat, numeric & generic for loops,
+//     break/continue), defer blocks, returns, chunk/local blocks and bare expression statements.
+//  *  Dedicated structs capture reusable metadata (Identifier, NameRef, FunctionParameter, TableField, BlockStmt) so
+//     later work can extend the IR without mutating parser internals.
 //
-// Nodes own their children through std::unique_ptr / std::vector so lifetime is
-// explicit and node hierarchies can be transferred between passes. Every node
-// stores a SourceSpan for diagnostics, and lightweight view helpers expose the
-// contents of frequently iterated collections without leaking storage details.
-// Extensions should prefer adding new structs + AstNodeKind tags rather than
-// repurposing existing payloads; see the "Extension guidelines" comment near the
-// end of this file.
-
+// Nodes own their children through std::unique_ptr / std::vector so lifetime is explicit and node hierarchies can be
+// transferred between passes. Every node stores a SourceSpan for diagnostics, and lightweight view helpers expose the
+// contents of frequently iterated collections without leaking storage details.  Extensions should prefer adding new
+// structs + AstNodeKind tags rather than repurposing existing payloads; see the "Extension guidelines" comment near
+// the end of this file.
+//
 // Extension guidelines
 // 1. Add a new AstNodeKind entry and dedicated payload struct. Do NOT overload existing
 //    payloads unless semantics are identical.
@@ -237,6 +232,7 @@ struct Identifier {
    SourceSpan span{};
    bool is_blank = false;
    bool has_close = false;
+   FluidType type = FluidType::Unknown;  // Explicit type annotation (Unknown = no annotation)
 };
 
 struct NameRef {

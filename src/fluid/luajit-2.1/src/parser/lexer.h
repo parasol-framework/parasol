@@ -160,6 +160,7 @@ typedef struct BCInsLine {
 // Info for local variables. Only used during bytecode generation.
 
 enum class VarInfoFlag : uint8_t;
+enum class FluidType : uint8_t;  // Forward declaration (defined in ast_nodes.h)
 
 typedef struct VarInfo {
    GCRef name;        //  Local variable name.
@@ -167,6 +168,7 @@ typedef struct VarInfo {
    BCPOS endpc;       //  First point where the local variable is dead.
    uint8_t slot;      //  Variable slot.
    VarInfoFlag info;  //  Variable info flags.
+   FluidType fixed_type;  // Type once established (Any = not yet fixed)
 } VarInfo;
 
 // Forward declarations for parser scope helpers.

@@ -1,0 +1,543 @@
+-- Flute tests for Fluid Type Fixing feature
+-- Type fixing commits local variables to a specific type upon first non-nil assignment
+
+----------------------------------------------------------------------------------------------------------------------
+-- EXPLICIT TYPE ANNOTATIONS
+
+@Test function testExplicitNumAnnotation()
+   local count: num = 0
+   assert(count is 0, "initial value should be 0")
+   count = 42
+   assert(count is 42, "reassignment same type should work")
+   count = 3.14159
+   assert(count is 3.14159, "float value should work for num type")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testExplicitStrAnnotation()
+   local message: str = "hello"
+   assert(message is "hello", "initial value should be 'hello'")
+   message = "world"
+   assert(message is "world", "reassignment same type should work")
+   message = ""
+   assert(message is "", "empty string should work for str type")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testExplicitBoolAnnotation()
+   local flag: bool = true
+   assert(flag is true, "initial value should be true")
+   flag = false
+   assert(flag is false, "reassignment to false should work")
+   flag = true
+   assert(flag is true, "reassignment back to true should work")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testExplicitTableAnnotation()
+   local config: table = { host = "localhost" }
+   assert(config.host is "localhost", "initial table should have host field")
+   config = { port = 8080 }
+   assert(config.port is 8080, "different table shape should work")
+   config = {}
+   assert(type(config) is "table", "empty table should work")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testExplicitFuncAnnotation()
+   local handler: func = function() return 1 end
+   assert(handler() is 1, "initial function should return 1")
+   handler = function() return 2 end
+   assert(handler() is 2, "reassignment to different function should work")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testExplicitAnyOpt()
+   local variant: any = 0
+   assert(variant is 0, "initial number value")
+   variant = "text"
+   assert(variant is "text", "changed to string should work for any type")
+   variant = { key = true }
+   assert(variant.key is true, "changed to table should work for any type")
+   variant = nil
+   assert(variant is nil, "changed to nil should work for any type")
+   variant = false
+   assert(variant is false, "changed to boolean should work for any type")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testExplicitAnyAcceptsAllTypes()
+   -- The 'any' type should accept any value without type errors
+   local data: any
+
+   data = 42
+   assert(type(data) is "number", "any should accept number")
+
+   data = "string"
+   assert(type(data) is "string", "any should accept string")
+
+   data = true
+   assert(type(data) is "boolean", "any should accept boolean")
+
+   data = { x = 1 }
+   assert(type(data) is "table", "any should accept table")
+
+   data = function() end
+   assert(type(data) is "function", "any should accept function")
+
+   data = nil
+   assert(data is nil, "any should accept nil")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- IMPLICIT TYPE FIXING (no annotation)
+
+@Test function testImplicitFixingNumber()
+   local count = 10
+   assert(count is 10, "initial number")
+   count = 20
+   assert(count is 20, "reassignment same type should work")
+   count = 0
+   assert(count is 0, "zero should work")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testImplicitFixingString()
+   local name = "Alice"
+   assert(name is "Alice", "initial string")
+   name = "Bob"
+   assert(name is "Bob", "reassignment same type should work")
+   name = ""
+   assert(name is "", "empty string should work")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testImplicitFixingBoolean()
+   local active = true
+   assert(active is true, "initial boolean")
+   active = false
+   assert(active is false, "reassignment to false should work")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testImplicitFixingTable()
+   local data = { a = 1 }
+   assert(data.a is 1, "initial table")
+   data = { b = 2 }
+   assert(data.b is 2, "different table shape should work")
+   data = {}
+   assert(type(data) is "table", "empty table should work")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testImplicitFixingFunction()
+   local fn = function() return "original" end
+   assert(fn() is "original", "initial function")
+   fn = function() return "replaced" end
+   assert(fn() is "replaced", "reassignment to different function should work")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- NIL SEMANTICS
+
+@Test function testNilPlaceholderDeferred()
+   local result
+   assert(result is nil, "initially nil")
+   result = nil
+   assert(result is nil, "still uncommitted after nil assignment")
+   result = 42
+   assert(result is 42, "now fixed to number")
+   result = 100
+   assert(result is 100, "reassignment same type should work")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testNilClearsValue()
+   local x = 10
+   assert(x is 10, "initial value")
+   x = nil
+   assert(x is nil, "value cleared to nil")
+   x = 42
+   assert(x is 42, "reassigned back to number")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testTypedVariableStartsNil()
+   local count: num
+   assert(count is nil, "typed variable starts nil")
+   count = 10
+   assert(count is 10, "assigned number value")
+   count = nil
+   assert(count is nil, "cleared back to nil")
+   count = 20
+   assert(count is 20, "reassigned number value")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testNilAssignmentToTypedVariable()
+   local message: str = "hello"
+   assert(message is "hello", "initial string value")
+   message = nil
+   assert(message is nil, "nil clears value preserving type constraint")
+   message = "world"
+   assert(message is "world", "string reassignment should work")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- TYPE ANNOTATION ALIASES
+
+@Test function testTypeAliases()
+   -- num/number are aliases
+   local n1: num = 1
+   local n2: number = 2
+   assert(n1 is 1, "num alias works")
+   assert(n2 is 2, "number alias works")
+
+   -- str/string are aliases
+   local s1: str = "a"
+   local s2: string = "b"
+   assert(s1 is "a", "str alias works")
+   assert(s2 is "b", "string alias works")
+
+   -- bool/boolean are aliases
+   local b1: bool = true
+   local b2: boolean = false
+   assert(b1 is true, "bool alias works")
+   assert(b2 is false, "boolean alias works")
+
+   -- func/function are aliases
+   local f1: func = function() return 1 end
+   local f2: function = function() return 2 end
+   assert(f1() is 1, "func alias works")
+   assert(f2() is 2, "function alias works")
+
+   -- obj/object are aliases
+   -- Skip actual object testing - just verify parsing works
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- TYPE MISMATCH ERROR DETECTION
+
+@Test function testTypeMismatchNumberToString()
+   ex = catch(function()
+      return exec("local x = 10; x = 'text'")
+   end)
+   assert(ex, "should have thrown type error for number to string")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testTypeMismatchStringToNumber()
+   ex = catch(function()
+      return exec("local name = 'Alice'; name = 42")
+   end)
+   assert(ex, "should have thrown type error for string to number")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testTypeMismatchBooleanToString()
+   ex = catch(function()
+      return exec("local flag = true; flag = 'yes'")
+   end)
+   assert(ex, "should have thrown type error for boolean to string")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testTypeMismatchTableToString()
+   ex = catch(function()
+      return exec("local data = {}; data = 'not a table'")
+   end)
+   assert(ex, "should have thrown type error for table to string")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testTypeMismatchFunctionToNumber()
+   ex = catch(function()
+      return exec("local fn = function() end; fn = 123")
+   end)
+   assert(ex, "should have thrown type error for function to number")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testTypeMismatchWithExplicitAnnotation()
+   ex = catch(function()
+      return exec("local count: num = 10; count = 'text'")
+   end)
+   assert(ex, "should have thrown type error for annotated variable")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testTypeMismatchInitialValue()
+   -- Explicit annotation with mismatched initial value
+   ex = catch(function()
+      return exec("local count: num = 'not a number'")
+   end)
+   assert(ex, "should have thrown type error for mismatched initial value")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testUnknownTypeRejected()
+   ex = catch(function()
+      return exec("local x: unknown_type = 42")
+   end)
+   assert(ex, "should have rejected unknown type name")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- DEFERRED TYPE FIXING (nil placeholder then assignment)
+
+@Test function testDeferredFixingThenMismatch()
+   ex = catch(function()
+      return exec("local result; result = 42; result = 'text'")
+   end)
+   assert(ex, "deferred fixing should catch type mismatch")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testDeferredFixingWithNilAssignments()
+   ex = catch(function()
+      return exec("local value; value = nil; value = nil; value = 100; value = 'wrong'")
+   end)
+   assert(ex, "multiple nil assignments then fix should catch mismatch")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- EDGE CASES
+
+@Test function testMultipleLocalsOneLine()
+   local a, b, c = 1, "two", true
+   assert(a is 1, "first local should be number")
+   assert(b is "two", "second local should be string")
+   assert(c is true, "third local should be boolean")
+
+   a = 2
+   b = "three"
+   c = false
+   assert(a is 2, "first local reassignment should work")
+   assert(b is "three", "second local reassignment should work")
+   assert(c is false, "third local reassignment should work")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testMultipleAnnotatedLocals()
+   local x: num, y: str = 10, "hello"
+   assert(x is 10, "first annotated local")
+   assert(y is "hello", "second annotated local")
+
+   x = 20
+   y = "world"
+   assert(x is 20, "first annotated reassignment")
+   assert(y is "world", "second annotated reassignment")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testMixedAnnotatedAndUnannotated()
+   local typed: num, untyped = 10, "hello"
+   assert(typed is 10, "annotated local should be number")
+   assert(untyped is "hello", "unannotated local should be string")
+
+   typed = 20
+   untyped = "world"
+   assert(typed is 20, "annotated reassignment should work")
+   assert(untyped is "world", "unannotated reassignment should work")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testLoopVariableScope()
+   -- Loop variables should be independent per iteration
+   for i in {0..3} do
+      local item = i * 10
+      assert(item is i * 10, "loop variable should be fixed in each iteration")
+      item = i * 20
+      assert(item is i * 20, "reassignment within iteration should work")
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testNestedFunctionScope()
+   local outer = "outer"
+   assert(outer is "outer", "outer variable should be string")
+
+   function inner()
+      local nested = 42
+      assert(nested is 42, "nested variable should be number")
+      nested = 100
+      assert(nested is 100, "nested reassignment should work")
+      return nested
+   end
+
+   assert(inner() is 100, "nested function should return number")
+   outer = "modified"
+   assert(outer is "modified", "outer variable reassignment should work")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testConditionalBranches()
+   local value
+   if true then
+      value = 42
+   else
+      value = 100
+   end
+   assert(value is 42, "value should be from true branch")
+
+   value = 200
+   assert(value is 200, "reassignment after conditional should work")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- FUNCTION PARAMETERS (type annotations on parameters)
+
+@Test function testTypedParameterBasic()
+   function greet(Name: str)
+      return "Hello, " .. Name
+   end
+   assert(greet("World") is "Hello, World", "typed parameter should work")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testTypedParameterMultiple()
+   function add(A: num, B: num)
+      return A + B
+   end
+   assert(add(3, 4) is 7, "multiple typed parameters should work")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testMixedTypedAndUntypedParameters()
+   function process(Value, Count: num)
+      return { value = Value, count = Count }
+   end
+   result = process("test", 5)
+   assert(result.value is "test", "untyped parameter should accept any value")
+   assert(result.count is 5, "typed parameter should have number")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- TABLE SHAPE FLEXIBILITY
+
+@Test function testTableShapeNotTracked()
+   -- Type fixing does NOT track table shapes
+   local config = { host = "localhost", port = 8080 }
+   config = { completely = "different", structure = true }
+   assert(config.completely is "different", "different table shape should be allowed")
+   config = { nested = { deep = { value = 1 } } }
+   assert(config.nested.deep.value is 1, "deeply nested table should be allowed")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- SPECIAL VALUES
+
+@Test function testZeroNotNil()
+   local count = 0
+   assert(count is 0, "zero should fix type to number")
+   count = 42
+   assert(count is 42, "reassignment to non-zero should work")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testEmptyStringNotNil()
+   local text = ""
+   assert(text is "", "empty string should fix type to string")
+   text = "content"
+   assert(text is "content", "reassignment to non-empty should work")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testFalseNotNil()
+   local flag = false
+   assert(flag is false, "false should fix type to boolean")
+   flag = true
+   assert(flag is true, "reassignment to true should work")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testEmptyTableFixesType()
+   local data = {}
+   assert(type(data) is "table", "empty table should fix type to table")
+   data = { key = "value" }
+   assert(data.key is "value", "reassignment to non-empty table should work")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- COMPOUND OPERATORS WITH TYPE FIXING
+
+@Test function testCompoundOperatorsPreserveType()
+   local count = 10
+   count += 5
+   assert(count is 15, "compound += should work with fixed num type")
+   count -= 3
+   assert(count is 12, "compound -= should work with fixed num type")
+   count *= 2
+   assert(count is 24, "compound *= should work with fixed num type")
+   count /= 4
+   assert(count is 6, "compound /= should work with fixed num type")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testStringConcatPreservesType()
+   local text = "hello"
+   text ..= " world"
+   assert(text is "hello world", "string concat should work with fixed str type")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testPostfixIncrementPreservesType()
+   local counter = 0
+   counter++
+   assert(counter is 1, "postfix ++ should work with fixed num type")
+   counter++
+   assert(counter is 2, "repeated postfix ++ should work")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- SPECIAL FLUID OPERATORS WITH TYPE FIXING
+
+@Test function testIfNilOperatorWithTypedVariable()
+   local value: num
+   value ?= 42
+   assert(value is 42, "?= should assign to nil typed variable")
+   value ?= 100
+   assert(value is 42, "?= should not overwrite non-nil value")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testIfEmptyOperatorWithAnyType()
+   -- Using 'any' type to allow multi-type assignment
+   local value: any = 0
+   value ??= "fallback"
+   assert(value is "fallback", "??= should work with any type allowing type change")
+end
