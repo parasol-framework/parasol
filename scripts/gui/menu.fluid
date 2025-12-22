@@ -193,7 +193,7 @@ gui.menu = function(Options)
 
    self.show = function()
       surface = self.surface
-      if (surface.flags & RNF_VISIBLE)?? then return end
+      if (surface.flags & RNF_VISIBLE) != 0 then return end
 
       self.reverseX = Options.reverseX ?? false
 

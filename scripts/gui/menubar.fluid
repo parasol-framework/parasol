@@ -26,7 +26,7 @@ function activateItem(self) -- Activate the current menu item.
    menu = self._currentItem.menu
    if not menu then
       if not (#self._currentItem.menuConfig > 0) then
-         self?._lastMenu?.hide()
+         self._lastMenu?.hide()
          return
       end
 

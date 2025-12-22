@@ -255,13 +255,13 @@ function buildLayout(self, Options)
             target = self.viewport, x = x+2, y = y, size = BTNSIZE, image = 'items/add',
             events = {
                activate = function(Icon)
-                  if self._userColours:any(v => ((v.r is self._rgb.r) and (v.g is self._rgb.g) and (v.b is self._rgb.b))) then
+                  if self._userColours:any(col => ((col.r is self._rgb.r) and (col.g is self._rgb.g) and (col.b is self._rgb.b))) then
                      return
                   end
 
                   if #self._userColours < 7 * 2 then
                      self._paletteChanged = true
-                     array.push(self._userColours, self._rgb)
+                     self._userColours:push(self._rgb)
                      refreshColourNodes(self)
                      self.viewport.acDraw()
                   else
@@ -275,10 +275,10 @@ function buildLayout(self, Options)
             target = self.viewport, x = x+2, y = y, size = BTNSIZE, image = 'items/trash',
             events = {
                activate = function(Icon)
-                  for k, v in ipairs(self._userColours) do
-                     if (v.r is self._rgb.r) and (v.g is self._rgb.g) and (v.b is self._rgb.b) then
+                  for k, col in ipairs(self._userColours) do
+                     if (col.r is self._rgb.r) and (col.g is self._rgb.g) and (col.b is self._rgb.b) then
                         self._paletteChanged = true
-                        array.remove(self._userColours, k)
+                        self._userColours:remove(k)
                         refreshColourNodes(self)
                         self.viewport.acDraw()
                         break
