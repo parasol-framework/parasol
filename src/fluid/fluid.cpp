@@ -256,6 +256,9 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
                   else if (pf::iequals(trimmed, "trace-value-category")) {
                      glJitOptions |= JOF::TRACE_VALUE_CATEGORY;
                   }
+                  else if (pf::iequals(trimmed, "trace-types")) {
+                     glJitOptions |= JOF::TRACE_TYPES;
+                  }
                   else if (pf::iequals(trimmed, "diagnose")) {
                      glJitOptions |= JOF::DIAGNOSE;
                   }

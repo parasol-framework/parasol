@@ -2,11 +2,12 @@
 
 #include <format>
 
+#include <parasol/main.h>
 #include "parser/parser_context.h"
 
 namespace {
 
-[[nodiscard]] InferredType infer_literal_type(const LiteralValue& Literal)
+[[nodiscard]] InferredType infer_literal_type(const LiteralValue &Literal)
 {
    InferredType result;
    result.is_constant = true;
@@ -22,6 +23,13 @@ namespace {
       case LiteralKind::CData:   result.primary = FluidType::CData; break;
    }
    return result;
+}
+
+// Helper to check if type tracing is enabled
+[[nodiscard]] inline bool should_trace_types(lua_State* L)
+{
+   auto prv = (prvFluid *)L->script->ChildPrivate;
+   return (prv->JitOptions & JOF::TRACE_TYPES) != JOF::NIL;
 }
 
 } // namespace
@@ -57,6 +65,7 @@ private:
    void check_argument_type(const ExprNode &, FluidType, size_t);
 
    [[nodiscard]] InferredType infer_expression_type(const ExprNode &) const;
+   [[nodiscard]] InferredType infer_call_return_type(const ExprNode &, size_t Position) const;
    [[nodiscard]] std::optional<InferredType> resolve_identifier(GCstr *) const;
    [[nodiscard]] const FunctionExprPayload * resolve_call_target(const CallTarget &) const;
    [[nodiscard]] const FunctionExprPayload * resolve_function(GCstr *) const;
@@ -72,11 +81,52 @@ private:
    [[nodiscard]] bool statement_contains_call_to(const StmtNode &, GCstr *) const;
    [[nodiscard]] bool expression_contains_call_to(const ExprNode &, GCstr *) const;
 
+   // Tracing helper
+   [[nodiscard]] bool trace_enabled() const { return should_trace_types(&this->ctx_.lua()); }
+   void trace_infer(BCLine Line, std::string_view Context, FluidType Type) const;
+   void trace_fix(BCLine Line, GCstr* Name, FluidType Type) const;
+   void trace_decl(BCLine Line, GCstr* Name, FluidType Type, bool IsFixed) const;
+
    ParserContext &ctx_;
    std::vector<TypeCheckScope> scope_stack_{};
    std::vector<FunctionContext> function_stack_{};  // Stack of function contexts for return type tracking
    std::vector<TypeDiagnostic> diagnostics_{};
 };
+
+//********************************************************************************************************************
+// Tracing implementations
+
+void TypeAnalyser::trace_infer(BCLine Line, std::string_view Context, FluidType Type) const
+{
+   if (not this->trace_enabled()) return;
+   auto type_str = type_name(Type);
+   pf::Log("TypeCheck").msg("[%d] infer %.*s -> %.*s", Line,
+      int(Context.size()), Context.data(),
+      int(type_str.size()), type_str.data());
+}
+
+void TypeAnalyser::trace_fix(BCLine Line, GCstr* Name, FluidType Type) const
+{
+   if (not this->trace_enabled()) return;
+   std::string_view name_view = Name ? std::string_view(strdata(Name), Name->len) : std::string_view("<unknown>");
+   auto type_str = type_name(Type);
+   pf::Log("TypeCheck").msg("[%d] fix '%.*s' -> %.*s", Line,
+      int(name_view.size()), name_view.data(),
+      int(type_str.size()), type_str.data());
+}
+
+void TypeAnalyser::trace_decl(BCLine Line, GCstr* Name, FluidType Type, bool IsFixed) const
+{
+   if (not this->trace_enabled()) return;
+   std::string_view name_view = Name ? std::string_view(strdata(Name), Name->len) : std::string_view("<unknown>");
+   auto type_str = type_name(Type);
+   pf::Log("TypeCheck").msg("[%d] decl '%.*s': %.*s%s", Line,
+      int(name_view.size()), name_view.data(),
+      int(type_str.size()), type_str.data(),
+      IsFixed ? " (fixed)" : "");
+}
+
+//********************************************************************************************************************
 
 void TypeAnalyser::push_scope() {
    this->scope_stack_.emplace_back();
@@ -118,7 +168,7 @@ void TypeAnalyser::leave_function()
    }
 }
 
-FunctionContext* TypeAnalyser::current_function()
+FunctionContext * TypeAnalyser::current_function()
 {
    if (this->function_stack_.empty()) return nullptr;
    return &this->function_stack_.back();
@@ -330,9 +380,40 @@ void TypeAnalyser::analyse_assignment(const AssignmentStmtPayload &Payload)
 
 void TypeAnalyser::analyse_local_decl(const LocalDeclStmtPayload &Payload)
 {
+   // Track which position we're at for multi-value returns from function calls
+   // When a function call is the last (or only) value, it may provide multiple return values
    size_t value_index = 0;
-   for (const auto &name : Payload.names) {
+   size_t call_return_index = 0;  // Position within a multi-return call
+   const ExprNode* multi_return_call = nullptr;  // The function call providing multi-returns
+
+   for (size_t name_index = 0; name_index < Payload.names.size(); ++name_index) {
+      const auto& name = Payload.names[name_index];
       InferredType inferred;
+      InferredType value_type;
+      bool have_value_type = false;
+
+      // Determine the value type for this variable
+      if (value_index < Payload.values.size()) {
+         // We have an explicit value at this position
+         const ExprNode& value_expr = *Payload.values[value_index];
+         value_type = this->infer_expression_type(value_expr);
+         have_value_type = true;
+
+         // If this is the last value and it's a call expression, it may provide multiple returns
+         if (value_index == Payload.values.size() - 1 and value_expr.kind IS AstNodeKind::CallExpr) {
+            multi_return_call = &value_expr;
+            call_return_index = 0;
+         }
+
+         value_index += 1;
+      }
+      else if (multi_return_call) {
+         // No more explicit values, but we have a trailing function call
+         // Use the next return value position from the multi-return call
+         call_return_index += 1;
+         value_type = this->infer_call_return_type(*multi_return_call, call_return_index);
+         have_value_type = (value_type.primary != FluidType::Any);
+      }
 
       // Explicit type annotation takes precedence (Unknown = no annotation)
       if (name.type != FluidType::Unknown) {
@@ -341,15 +422,15 @@ void TypeAnalyser::analyse_local_decl(const LocalDeclStmtPayload &Payload)
          inferred.is_fixed = (name.type != FluidType::Any);
 
          // Check that initial value matches declared type (if present and not 'any')
-         if (name.type != FluidType::Any and value_index < Payload.values.size()) {
-            InferredType value_type = this->infer_expression_type(*Payload.values[value_index]);
-
+         if (name.type != FluidType::Any and have_value_type) {
             // Nil is always allowed as initial value for typed variables
             if (value_type.primary != FluidType::Nil and
                 value_type.primary != FluidType::Any and
                 value_type.primary != name.type) {
                TypeDiagnostic diag;
-               diag.location = Payload.values[value_index]->span;
+               if (value_index > 0 and value_index - 1 < Payload.values.size()) {
+                  diag.location = Payload.values[value_index - 1]->span;
+               }
                diag.expected = name.type;
                diag.actual = value_type.primary;
                diag.code = ParserErrorCode::TypeMismatchAssignment;
@@ -359,9 +440,9 @@ void TypeAnalyser::analyse_local_decl(const LocalDeclStmtPayload &Payload)
             }
          }
       }
-      else if (value_index < Payload.values.size()) {
+      else if (have_value_type) {
          // No annotation: infer type from initial value
-         inferred = this->infer_expression_type(*Payload.values[value_index]);
+         inferred = value_type;
 
          // Non-nil, non-any initial values fix the type
          if (inferred.primary != FluidType::Nil and inferred.primary != FluidType::Any) {
@@ -375,8 +456,8 @@ void TypeAnalyser::analyse_local_decl(const LocalDeclStmtPayload &Payload)
          inferred.is_fixed = false;
       }
 
-      value_index += 1;
       this->current_scope().declare_local(name.symbol, inferred);
+      this->trace_decl(this->ctx_.lex().linenumber, name.symbol, inferred.primary, inferred.is_fixed);
    }
 
    for (const auto &value : Payload.values) {
@@ -589,10 +670,166 @@ InferredType TypeAnalyser::infer_expression_type(const ExprNode& Expr) const
       case AstNodeKind::FunctionExpr:
          result.primary = FluidType::Func;
          break;
+      case AstNodeKind::CallExpr: {
+         // For call expressions, try to infer from the function's declared return type
+         auto *payload = std::get_if<CallExprPayload>(&Expr.data);
+         if (payload) {
+            const FunctionExprPayload* target = this->resolve_call_target(payload->target);
+            if (target and target->return_types.is_explicit and target->return_types.count > 0) {
+               result.primary = target->return_types.types[0];
+               return result;
+            }
+         }
+         result.primary = FluidType::Any;
+         break;
+      }
+      case AstNodeKind::BinaryExpr: {
+         // Infer type from binary expression operands and operator
+         auto *payload = std::get_if<BinaryExprPayload>(&Expr.data);
+         if (payload) {
+            switch (payload->op) {
+               // Comparison operators always return boolean
+               case AstBinaryOperator::Equal:
+               case AstBinaryOperator::NotEqual:
+               case AstBinaryOperator::LessThan:
+               case AstBinaryOperator::LessEqual:
+               case AstBinaryOperator::GreaterThan:
+               case AstBinaryOperator::GreaterEqual:
+                  result.primary = FluidType::Bool;
+                  return result;
+               // Logical operators in Lua/Fluid return one of their operands.
+               // Try to infer from operands, if both have the same type, use that.
+               case AstBinaryOperator::LogicalAnd:
+               case AstBinaryOperator::LogicalOr: {
+                  InferredType left_type, right_type;
+                  if (payload->left) left_type = this->infer_expression_type(*payload->left);
+                  if (payload->right) right_type = this->infer_expression_type(*payload->right);
+
+                  // If both operands have the same concrete type, return that
+
+                  if ((left_type.primary IS right_type.primary) and (left_type.primary != FluidType::Any) and
+                      (left_type.primary != FluidType::Unknown)) {
+                     return left_type;
+                  }
+
+                  // For `or`, the right operand is the fallback, so prefer its type if known
+
+                  if (payload->op IS AstBinaryOperator::LogicalOr) {
+                     if ((right_type.primary != FluidType::Any) and (right_type.primary != FluidType::Unknown)) {
+                        return right_type;
+                     }
+                     if ((left_type.primary != FluidType::Any) and (left_type.primary != FluidType::Unknown)) {
+                        return left_type;
+                     }
+                  }
+                  else { // For `and`, the left operand short-circuits, so prefer left type if known
+                     if ((left_type.primary != FluidType::Any) and (left_type.primary != FluidType::Unknown)) {
+                        return left_type;
+                     }
+                     if ((right_type.primary != FluidType::Any) and (right_type.primary != FluidType::Unknown)) {
+                        return right_type;
+                     }
+                  }
+
+                  result.primary = FluidType::Any;
+                  return result;
+               }
+               // Concatenation returns string
+               case AstBinaryOperator::Concat:
+                  result.primary = FluidType::Str;
+                  return result;
+               // Arithmetic operators return number
+               case AstBinaryOperator::Add:
+               case AstBinaryOperator::Subtract:
+               case AstBinaryOperator::Multiply:
+               case AstBinaryOperator::Divide:
+               case AstBinaryOperator::Modulo:
+               case AstBinaryOperator::Power:
+               case AstBinaryOperator::BitAnd:
+               case AstBinaryOperator::BitOr:
+               case AstBinaryOperator::BitXor:
+               case AstBinaryOperator::ShiftLeft:
+               case AstBinaryOperator::ShiftRight:
+                  result.primary = FluidType::Num;
+                  return result;
+               // IfEmpty returns type of the operands
+               case AstBinaryOperator::IfEmpty:
+                  if (payload->left) {
+                     result = this->infer_expression_type(*payload->left);
+                     if (result.primary != FluidType::Any and result.primary != FluidType::Unknown) {
+                        return result;
+                     }
+                  }
+                  if (payload->right) {
+                     return this->infer_expression_type(*payload->right);
+                  }
+                  break;
+            }
+         }
+         result.primary = FluidType::Any;
+         break;
+      }
+      case AstNodeKind::UnaryExpr: {
+         auto *payload = std::get_if<UnaryExprPayload>(&Expr.data);
+         if (payload) {
+            switch (payload->op) {
+               case AstUnaryOperator::Not:
+                  result.primary = FluidType::Bool;
+                  return result;
+               case AstUnaryOperator::Negate:
+               case AstUnaryOperator::BitNot:
+                  result.primary = FluidType::Num;
+                  return result;
+               case AstUnaryOperator::Length:
+                  result.primary = FluidType::Num;
+                  return result;
+            }
+         }
+         result.primary = FluidType::Any;
+         break;
+      }
+      case AstNodeKind::TernaryExpr: {
+         // Ternary returns type of true branch (or false branch if true is unknown)
+         auto *payload = std::get_if<TernaryExprPayload>(&Expr.data);
+         if (payload) {
+            if (payload->if_true) {
+               result = this->infer_expression_type(*payload->if_true);
+               if (result.primary != FluidType::Any and result.primary != FluidType::Unknown) return result;
+            }
+
+            if (payload->if_false) return this->infer_expression_type(*payload->if_false);
+         }
+         result.primary = FluidType::Any;
+         break;
+      }
       default:
          result.primary = FluidType::Any;
          break;
    }
+
+   return result;
+}
+
+// Infer the return type at a specific position from a function call expression
+// This is used for multi-value assignments like: local a, b = func()
+[[nodiscard]] InferredType TypeAnalyser::infer_call_return_type(const ExprNode& Expr, size_t Position) const
+{
+   InferredType result;
+   result.primary = FluidType::Any;
+
+   if (Expr.kind != AstNodeKind::CallExpr) return result;
+
+   auto *payload = std::get_if<CallExprPayload>(&Expr.data);
+   if (not payload) return result;
+
+   const FunctionExprPayload* target = this->resolve_call_target(payload->target);
+   if (not target) return result;
+
+   if (not target->return_types.is_explicit) return result;
+
+   // Get the type at the requested position
+   FluidType type = target->return_types.type_at(Position);
+   if (type != FluidType::Unknown) result.primary = type;
 
    return result;
 }
@@ -646,6 +883,7 @@ void TypeAnalyser::fix_local_type(GCstr *Name, FluidType Type)
       auto existing = it->lookup_local_type(Name);
       if (existing) {
          it->fix_local_type(Name, Type);
+         this->trace_fix(this->ctx_.lex().linenumber, Name, Type);
          return;
       }
    }
@@ -706,27 +944,43 @@ void TypeAnalyser::validate_return_types(const ReturnStmtPayload& Return, Source
       }
    }
    else {
-      // Inference mode: first return statement fixes types (first-wins rule)
+      // Inference mode: first non-nil return statement fixes types (first-wins rule)
+      // Nil returns don't establish a type - they're compatible with any future type
       if (not ctx->return_type_inferred and return_count > 0) {
          // First return: infer types from returned values
+         bool has_non_nil = false;
          for (size_t i = 0; i < std::min(return_count, MAX_RETURN_TYPES); ++i) {
             InferredType inferred = this->infer_expression_type(*Return.values[i]);
             ctx->expected_returns.types[i] = inferred.primary;
+            if (inferred.primary != FluidType::Nil and inferred.primary != FluidType::Any) {
+               has_non_nil = true;
+            }
          }
          ctx->expected_returns.count = uint8_t(std::min(return_count, MAX_RETURN_TYPES));
-         ctx->return_type_inferred = true;
+         // Only mark as inferred if we have at least one concrete (non-nil) type
+         // This allows a later return with concrete types to establish the actual types
+         ctx->return_type_inferred = has_non_nil;
       }
-      else if (ctx->return_type_inferred and return_count > 0) {
-         // Subsequent return: check consistency with inferred types (first-wins rule)
+      else if (return_count > 0) {
+         // Subsequent return: check consistency with inferred types
          size_t check_count = std::min(return_count, size_t(ctx->expected_returns.count));
 
          for (size_t i = 0; i < check_count; ++i) {
             FluidType expected = ctx->expected_returns.types[i];
-            if (expected IS FluidType::Any or expected IS FluidType::Unknown) continue;
-
             InferredType actual = this->infer_expression_type(*Return.values[i]);
 
-            // Nil is always allowed
+            // If expected is nil/any/unknown, and actual is concrete, upgrade the expected type
+            if ((expected IS FluidType::Nil or expected IS FluidType::Any or expected IS FluidType::Unknown) and
+                actual.primary != FluidType::Nil and actual.primary != FluidType::Any and
+                actual.primary != FluidType::Unknown) {
+               ctx->expected_returns.types[i] = actual.primary;
+               ctx->return_type_inferred = true;
+               continue;
+            }
+
+            if (expected IS FluidType::Any or expected IS FluidType::Unknown) continue;
+
+            // Nil is always allowed as a "clear" or "no value" return
             if (actual.primary IS FluidType::Nil) continue;
             // Any can match any type
             if (actual.primary IS FluidType::Any) continue;
