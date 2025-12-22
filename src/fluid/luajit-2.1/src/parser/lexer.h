@@ -168,7 +168,7 @@ typedef struct VarInfo {
    BCPOS endpc;       //  First point where the local variable is dead.
    uint8_t slot;      //  Variable slot.
    VarInfoFlag info;  //  Variable info flags.
-   FluidType fixed_type;  // Type once established (Any = not yet fixed)
+   FluidType fixed_type;  // Type once established (Unknown = not yet fixed)
 } VarInfo;
 
 // Forward declarations for parser scope helpers.

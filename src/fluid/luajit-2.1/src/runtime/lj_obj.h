@@ -372,7 +372,30 @@ typedef struct GCcdataVar {
 [[nodiscard]] inline MSize sizecdatav(GCcdata* cd) noexcept { return cdatavlen(cd) + cdatav(cd)->extra; }
 [[nodiscard]] inline void* memcdatav(GCcdata* cd) noexcept { return (void*)((char*)cd - cdatav(cd)->offset); }
 
-// Prototype object
+//********************************************************************************************************************
+// Function Prototype Object
+//
+// GCproto represents the compiled, immutable blueprint of a function. It is created during parsing and
+// contains all the static information needed to execute the function: bytecode instructions, constants, upvalue
+// descriptors, and debug information.
+//
+// - A prototype is NOT a closure. Multiple closures (GCfunc) can share the same prototype.
+// - Prototypes are immutable after creation - they store the "code" while closures capture the "environment".
+// - Child prototypes (nested functions) are stored in the constants array (sizekgc).
+// - The bytecode array immediately follows the GCproto structure in memory.
+// - Constants are stored in a "split" array with GC objects at negative indices and numbers at positive indices.
+//
+// Memory Layout (contiguous allocation):
+//   [GCproto header] [bytecode...] [upvalue descriptors...] [constants (GCRef then lua_Number)...] [debug info...]
+//
+// Usage:
+// - Created by the parser (parse_internal.h, parser.cpp) during compilation
+// - Referenced by GCfuncL closures via the pc field (funcproto() retrieves it)
+// - Used by the bytecode interpreter and JIT compiler for execution
+// - Accessed by debug facilities for stack traces, line info, and variable names
+// - Serialised/deserialised by lj_bcwrite.cpp and lj_bcread.cpp for bytecode dumps
+//
+// Related: GCfunc (closure that references a prototype), lj_func.cpp (prototype lifecycle)
 
 inline constexpr int32_t SCALE_NUM_GCO = int32_t(sizeof(lua_Number) / sizeof(GCRef));
 

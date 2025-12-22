@@ -31,6 +31,7 @@
 
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -111,6 +112,24 @@ enum class FluidType : uint8_t {
    CData,
    Object,       // Parasol userdata
    Unknown
+};
+
+// Maximum number of explicitly typed return values per function
+constexpr size_t MAX_RETURN_TYPES = 8;
+
+// Function return type declaration for static analysis
+struct FunctionReturnTypes {
+   std::array<FluidType, MAX_RETURN_TYPES> types{};  // Return types (Unknown = unused slot)
+   uint8_t count = 0;           // Number of declared types (0 = not declared)
+   bool is_variadic = false;    // True if declaration ends with ... (last type repeats)
+   bool is_explicit = false;    // True if explicitly declared, false if inferred
+
+   [[nodiscard]] bool is_void() const { return count IS 0 and is_explicit; }
+   [[nodiscard]] bool is_any() const { return count IS 1 and types[0] IS FluidType::Any; }
+   [[nodiscard]] FluidType type_at(size_t Index) const {
+      if (Index >= count) return is_variadic ? types[count - 1] : FluidType::Unknown;
+      return types[Index];
+   }
 };
 
 // Convert type name string to FluidType
@@ -468,7 +487,8 @@ struct FunctionExprPayload {
    std::vector<FunctionParameter> parameters;
    bool is_vararg = false;
    bool is_thunk = false;              // Marks function as thunk
-   FluidType thunk_return_type = FluidType::Any;  // Return type for thunk (default: Any)
+   FluidType thunk_return_type = FluidType::Any;  // Return type for thunk (kept for IR emission compatibility)
+   FunctionReturnTypes return_types{};            // General return type tracking for type checking
    std::unique_ptr<BlockStmt> body;
    std::vector<AnnotationEntry> annotations;  // Annotations attached to this function
    ~FunctionExprPayload();
@@ -488,6 +508,7 @@ struct DeferredExprPayload {
 };
 
 // Range expression payload: represents {start..stop} or {start...stop} literal syntax
+
 struct RangeExprPayload {
    RangeExprPayload() = default;
    RangeExprPayload(const RangeExprPayload&) = delete;
@@ -500,7 +521,8 @@ struct RangeExprPayload {
    ~RangeExprPayload();
 };
 
-// Relational operator for choose expression patterns (Phase 6)
+// Relational operator for choose expression patterns
+
 enum class ChooseRelationalOp : uint8_t {
    None,         // Equality comparison (default)
    LessThan,     // < pattern
@@ -510,6 +532,7 @@ enum class ChooseRelationalOp : uint8_t {
 };
 
 // A single case arm in a choose expression
+
 struct ChooseCase {
    ChooseCase() = default;
    ChooseCase(const ChooseCase&) = delete;
@@ -852,12 +875,12 @@ ExprNodePtr make_safe_member_expr(SourceSpan span, ExprNodePtr table, Identifier
 ExprNodePtr make_safe_index_expr(SourceSpan span, ExprNodePtr table, ExprNodePtr index);
 ExprNodePtr make_result_filter_expr(SourceSpan span, ExprNodePtr expression, uint64_t keep_mask, uint8_t explicit_count, bool trailing_keep);
 ExprNodePtr make_table_expr(SourceSpan span, std::vector<TableField> fields, bool has_array_part);
-ExprNodePtr make_function_expr(SourceSpan span, std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body, bool is_thunk = false, FluidType thunk_return_type = FluidType::Any);
+ExprNodePtr make_function_expr(SourceSpan span, std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body, bool is_thunk = false, FluidType thunk_return_type = FluidType::Any, FunctionReturnTypes return_types = {});
 ExprNodePtr make_deferred_expr(SourceSpan span, ExprNodePtr inner, FluidType type = FluidType::Unknown, bool type_explicit = false);
 ExprNodePtr make_range_expr(SourceSpan span, ExprNodePtr start, ExprNodePtr stop, bool inclusive);
 ExprNodePtr make_choose_expr(SourceSpan span, ExprNodePtr scrutinee, std::vector<ChooseCase> cases, size_t inferred_arity = 0);
 ExprNodePtr make_choose_expr_tuple(SourceSpan span, ExprNodeList scrutinee_tuple, std::vector<ChooseCase> cases);
-std::unique_ptr<FunctionExprPayload> make_function_payload(std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body, bool is_thunk = false, FluidType thunk_return_type = FluidType::Any);
+std::unique_ptr<FunctionExprPayload> make_function_payload(std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body, bool is_thunk = false, FluidType thunk_return_type = FluidType::Any, FunctionReturnTypes return_types = {});
 std::unique_ptr<BlockStmt> make_block(SourceSpan span, StmtNodeList statements);
 StmtNodePtr make_assignment_stmt(SourceSpan span, AssignmentOperator op, ExprNodeList targets, ExprNodeList values);
 StmtNodePtr make_local_decl_stmt(SourceSpan span, std::vector<Identifier> names, ExprNodeList values);

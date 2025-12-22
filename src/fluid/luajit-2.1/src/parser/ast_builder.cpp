@@ -30,6 +30,7 @@ static std::unique_ptr<FunctionExprPayload> move_function_payload(ExprNodePtr &N
    result->is_vararg = payload->is_vararg;
    result->is_thunk = payload->is_thunk;
    result->thunk_return_type = payload->thunk_return_type;
+   result->return_types = payload->return_types;  // Copy return type information
    result->body = std::move(payload->body);
    result->annotations = std::move(payload->annotations);
    return result;
@@ -1463,8 +1464,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
                   case_arm.is_wildcard = true;
                   case_arm.pattern = nullptr;
                }
-               else {
-                  // Not a wildcard pattern, parse as normal expression
+               else { // Not a wildcard pattern, parse as normal expression
                   auto pattern = this->parse_expression();
                   if (not pattern.ok()) {
                      this->in_choose_expression = false;
@@ -1473,8 +1473,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
                   case_arm.pattern = std::move(pattern.value_ref());
                }
             }
-            else {
-               // Parse pattern (Phase 1: only literal expressions)
+            else { // Parse pattern (only literal expressions)
                auto pattern = this->parse_expression();
                if (not pattern.ok()) {
                   this->in_choose_expression = false;
@@ -1483,8 +1482,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
                case_arm.pattern = std::move(pattern.value_ref());
             }
          }
-         else {
-            // Parse pattern (Phase 1: only literal expressions)
+         else { // Parse pattern (only literal expressions)
             auto pattern = this->parse_expression();
             if (not pattern.ok()) {
                this->in_choose_expression = false;
@@ -2267,6 +2265,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_arrow_function(ExprNodeList paramete
    }
 
    std::unique_ptr<BlockStmt> body;
+   FunctionReturnTypes return_types;
 
    if (this->ctx.check(TokenKind::DoToken)) {
       this->ctx.tokens().advance();
@@ -2276,6 +2275,34 @@ ParserResult<ExprNodePtr> AstBuilder::parse_arrow_function(ExprNodeList paramete
       body = std::move(block.value_ref());
    }
    else {
+      // Expression body - check for optional type annotation: => type: expr
+      // The syntax is: => type: expr (where type is a known type name like num, str, bool, etc.)
+      // We must distinguish this from method calls like: => value:method()
+      // Only consume as type annotation if the identifier is a KNOWN type name.
+      Token current = this->ctx.tokens().current();
+      if (current.kind() IS TokenKind::Identifier) {
+         // Check if this identifier is a known type name
+         GCstr *type_name_str = current.identifier();
+         std::string_view type_str(strdata(type_name_str), type_name_str->len);
+         FluidType parsed = parse_type_name(type_str);
+
+         // Only treat as type annotation if:
+         // 1. The identifier is a known type name (not Unknown)
+         // 2. It's followed by a colon
+         if (not (parsed IS FluidType::Unknown)) {
+            Token next = this->ctx.tokens().peek(1);
+            if (next.kind() IS TokenKind::Colon) {
+               // This is a type annotation: "=> type: expr"
+               this->ctx.tokens().advance();  // consume type identifier
+               this->ctx.tokens().advance();  // consume ':'
+
+               return_types.types[0] = parsed;
+               return_types.count = 1;
+               return_types.is_explicit = true;
+            }
+         }
+      }
+
       auto expr = this->parse_expression();
       if (not expr.ok()) return ParserResult<ExprNodePtr>::failure(expr.error_ref());
 
@@ -2307,7 +2334,8 @@ ParserResult<ExprNodePtr> AstBuilder::parse_arrow_function(ExprNodeList paramete
    if (not parsed_params.empty()) function_span = combine_spans(parsed_params.front().name.span, body->span);
    else function_span = combine_spans(arrow_token.span(), body->span);
 
-   ExprNodePtr node = make_function_expr(function_span, std::move(parsed_params), false, std::move(body));
+   ExprNodePtr node = make_function_expr(function_span, std::move(parsed_params), false, std::move(body),
+      false, FluidType::Any, return_types);
    return ParserResult<ExprNodePtr>::success(std::move(node));
 }
 
@@ -2446,29 +2474,34 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
 
 //********************************************************************************************************************
 // Parses function literals (anonymous functions) with parameters and body.
-// If is_thunk is true, parses optional return type annotation after parameters.
+// Parses optional return type annotation after parameters for all functions.
+// If is_thunk is true, validates thunk-specific constraints.
 
 ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(const Token &function_token, bool is_thunk)
 {
    auto params = this->parse_parameter_list(false);
    if (not params.ok()) return ParserResult<ExprNodePtr>::failure(params.error_ref());
 
-   FluidType return_type = FluidType::Any;
-   if (is_thunk) {
-      if (params.value_ref().is_vararg) {
-         Token current = this->ctx.tokens().current();
-         std::string message("thunk functions do not support varargs");
-         this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, message);
-         ParserError error;
-         error.code = ParserErrorCode::UnexpectedToken;
-         error.token = current;
-         error.message = message;
-         return ParserResult<ExprNodePtr>::failure(error);
-      }
+   if (is_thunk and params.value_ref().is_vararg) {
+      Token current = this->ctx.tokens().current();
+      std::string message("thunk functions do not support varargs");
+      this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, message);
+      ParserError error;
+      error.code = ParserErrorCode::UnexpectedToken;
+      error.token = current;
+      error.message = message;
+      return ParserResult<ExprNodePtr>::failure(error);
+   }
 
-      auto type_result = this->parse_return_type_annotation();
-      if (not type_result.ok()) return ParserResult<ExprNodePtr>::failure(type_result.error_ref());
-      return_type = type_result.value_ref();
+   // Parse optional return type annotation for all functions (not just thunks)
+   auto type_result = this->parse_return_type_annotation();
+   if (not type_result.ok()) return ParserResult<ExprNodePtr>::failure(type_result.error_ref());
+   FunctionReturnTypes return_types = type_result.value_ref();
+
+   // For thunk compatibility: extract single return type for thunk_return_type field
+   FluidType thunk_return_type = FluidType::Any;
+   if (is_thunk and return_types.count > 0) {
+      thunk_return_type = return_types.types[0];
    }
 
    const TokenKind terms[] = { TokenKind::EndToken };
@@ -2477,7 +2510,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(const Token &functi
 
    this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
    ExprNodePtr node = make_function_expr(function_token.span(), std::move(params.value_ref().parameters),
-      params.value_ref().is_vararg, std::move(body.value_ref()), is_thunk, return_type);
+      params.value_ref().is_vararg, std::move(body.value_ref()), is_thunk, thunk_return_type, return_types);
    return ParserResult<ExprNodePtr>::success(std::move(node));
 }
 
@@ -3314,43 +3347,132 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
 }
 
 //********************************************************************************************************************
-// Parses optional return type annotation after function parameters (`:type` syntax).
-// Returns FluidType::Any if no annotation is present.
+// Parses optional return type annotation after function parameters.
+// Supports single type `:type` and multiple types `:<type1, type2, ...>` syntax.
+// Returns empty FunctionReturnTypes if no annotation is present.
 
-ParserResult<FluidType> AstBuilder::parse_return_type_annotation()
+ParserResult<FunctionReturnTypes> AstBuilder::parse_return_type_annotation()
 {
+   FunctionReturnTypes result;
+
    if (not this->ctx.match(TokenKind::Colon).ok()) {
-      return ParserResult<FluidType>::success(FluidType::Any);
+      return ParserResult<FunctionReturnTypes>::success(result);
    }
 
-   auto type_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
-   if (not type_token.ok()) {
-      return ParserResult<FluidType>::failure(type_token.error_ref());
+   result.is_explicit = true;
+   Token current = this->ctx.tokens().current();
+
+   // Check for multi-type syntax: :<type1, type2, ...>
+   if (current.raw() IS '<') {
+      this->ctx.tokens().advance();  // consume '<'
+
+      // Parse comma-separated type list
+      do {
+         current = this->ctx.tokens().current();
+
+         // Check for variadic marker ...
+         if (current.kind() IS TokenKind::Dots) {
+            this->ctx.tokens().advance();
+            result.is_variadic = true;
+            break;  // ... must be last
+         }
+
+         // Handle overflow: 9th+ types force 8th to 'any'
+         if (result.count >= MAX_RETURN_TYPES) {
+            if (result.count IS MAX_RETURN_TYPES) {
+               result.types[MAX_RETURN_TYPES - 1] = FluidType::Any;
+            }
+            // Skip remaining types until '>' or '...'
+            if (current.kind() IS TokenKind::Identifier) {
+               this->ctx.tokens().advance();
+            }
+            result.count++;
+            continue;
+         }
+
+         // Parse type name
+         auto type_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+         if (not type_token.ok()) {
+            return ParserResult<FunctionReturnTypes>::failure(type_token.error_ref());
+         }
+
+         GCstr *type_name_str = type_token.value_ref().identifier();
+         if (type_name_str IS nullptr) {
+            std::string message("expected type name in return type list");
+            this->ctx.emit_error(ParserErrorCode::ExpectedIdentifier, type_token.value_ref(), message);
+            ParserError error;
+            error.code = ParserErrorCode::ExpectedIdentifier;
+            error.token = type_token.value_ref();
+            error.message = message;
+            return ParserResult<FunctionReturnTypes>::failure(error);
+         }
+
+         std::string_view type_str(strdata(type_name_str), type_name_str->len);
+         FluidType parsed = parse_type_name(type_str);
+
+         if (parsed IS FluidType::Unknown) {
+            std::string message = std::format("unknown type name '{}'", type_str);
+            this->ctx.emit_error(ParserErrorCode::UnexpectedToken, type_token.value_ref(), message);
+            ParserError error;
+            error.code = ParserErrorCode::UnexpectedToken;
+            error.token = type_token.value_ref();
+            error.message = message;
+            return ParserResult<FunctionReturnTypes>::failure(error);
+         }
+
+         result.types[result.count++] = parsed;
+
+      } while (this->ctx.match(TokenKind::Comma).ok());
+
+      // Expect closing '>'
+      current = this->ctx.tokens().current();
+      if (current.raw() IS '>') {
+         this->ctx.tokens().advance();
+      }
+      else {
+         std::string message("expected '>' to close return type list");
+         this->ctx.emit_error(ParserErrorCode::ExpectedToken, current, message);
+         ParserError error;
+         error.code = ParserErrorCode::ExpectedToken;
+         error.token = current;
+         error.message = message;
+         return ParserResult<FunctionReturnTypes>::failure(error);
+      }
+   }
+   else {
+      // Single type: :typename
+      auto type_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+      if (not type_token.ok()) {
+         return ParserResult<FunctionReturnTypes>::failure(type_token.error_ref());
+      }
+
+      GCstr *type_name_str = type_token.value_ref().identifier();
+      if (type_name_str IS nullptr) {
+         std::string message("expected type name after ':'");
+         this->ctx.emit_error(ParserErrorCode::ExpectedIdentifier, type_token.value_ref(), message);
+         ParserError error;
+         error.code = ParserErrorCode::ExpectedIdentifier;
+         error.token = type_token.value_ref();
+         error.message = message;
+         return ParserResult<FunctionReturnTypes>::failure(error);
+      }
+
+      std::string_view type_str(strdata(type_name_str), type_name_str->len);
+      FluidType parsed = parse_type_name(type_str);
+
+      if (parsed IS FluidType::Unknown) {
+         std::string message = std::format("unknown type name '{}'", type_str);
+         this->ctx.emit_error(ParserErrorCode::UnexpectedToken, type_token.value_ref(), message);
+         ParserError error;
+         error.code = ParserErrorCode::UnexpectedToken;
+         error.token = type_token.value_ref();
+         error.message = message;
+         return ParserResult<FunctionReturnTypes>::failure(error);
+      }
+
+      result.types[0] = parsed;
+      result.count = 1;
    }
 
-   GCstr *type_name = type_token.value_ref().identifier();
-   if (type_name IS nullptr) {
-      std::string message("expected type name after ':'");
-      this->ctx.emit_error(ParserErrorCode::ExpectedIdentifier, type_token.value_ref(), message);
-      ParserError error;
-      error.code = ParserErrorCode::ExpectedIdentifier;
-      error.token = type_token.value_ref();
-      error.message = message;
-      return ParserResult<FluidType>::failure(error);
-   }
-
-   std::string_view type_str(strdata(type_name), type_name->len);
-   FluidType parsed_type = parse_type_name(type_str);
-
-   if (parsed_type IS FluidType::Unknown) {
-      std::string message = std::format("unknown type name '{}'", type_str);
-      this->ctx.emit_error(ParserErrorCode::UnexpectedToken, type_token.value_ref(), message);
-      ParserError error;
-      error.code = ParserErrorCode::UnexpectedToken;
-      error.token = type_token.value_ref();
-      error.message = message;
-      return ParserResult<FluidType>::failure(error);
-   }
-
-   return ParserResult<FluidType>::success(parsed_type);
+   return ParserResult<FunctionReturnTypes>::success(result);
 }

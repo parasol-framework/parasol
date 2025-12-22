@@ -28,7 +28,11 @@ enum class ParserErrorCode : uint16_t {
    TypeMismatchReturn,
    DeferredTypeRequired,
    UndefinedVariable,
-   ThunkDirectCall          // Warning: thunk called without assignment defeats memoization
+   ThunkDirectCall,         // Warning: thunk called without assignment defeats memoization
+   ReturnTypeMismatch,      // Return value type doesn't match declaration
+   ReturnCountMismatch,     // Too many return values
+   RecursiveFunctionNeedsType, // Recursive function must have explicit return type
+   TooManyReturnTypes       // More than 8 return types declared
 };
 
 struct ParserDiagnostic {

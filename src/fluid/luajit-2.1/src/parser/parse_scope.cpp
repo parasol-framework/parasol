@@ -71,6 +71,7 @@ void LexState::var_add(BCREG nvars)
       v->startpc = fs->pc;
       v->slot = nactvar++;
       v->info = VarInfoFlag::None;
+      v->fixed_type = FluidType::Unknown;  // Initialize to Unknown (no type constraint)
    }
    fs->nactvar = nactvar;
 }

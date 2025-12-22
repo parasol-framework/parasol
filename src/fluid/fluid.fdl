@@ -25,7 +25,8 @@ function()
      "TRACE_CFG:       Trace ControlFlowGraph edge creation and patching.",
      "TRACE_ASSIGNMENTS: Trace PreparedAssignment lifecycle and hazard handling.",
      "TRACE_VALUE_CATEGORY: Trace ValueUse/ValueSlot/LValue operations.",
-     { TRACE = "TRACE_TOKENS|TRACE_EXPECT|TRACE_BOUNDARY|TRACE_OPERATORS|TRACE_REGISTERS|TRACE_CFG|TRACE_ASSIGNMENTS|TRACE_VALUE_CATEGORY" }
+     "TRACE_TYPES:     Trace type inference and type checking decisions.",
+     { TRACE = "TRACE_TOKENS|TRACE_EXPECT|TRACE_BOUNDARY|TRACE_OPERATORS|TRACE_REGISTERS|TRACE_CFG|TRACE_ASSIGNMENTS|TRACE_VALUE_CATEGORY|TRACE_TYPES" }
   )
 
 --[[

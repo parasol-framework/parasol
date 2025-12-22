@@ -825,6 +825,15 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
       info->info |= VarInfoFlag::Close;
    }
 
+   // Set fixed_type for variables with explicit type annotations
+   for (auto i = BCReg(0); i < nvars; ++i) {
+      const Identifier& identifier = Payload.names[i.raw()];
+      if (identifier.type IS FluidType::Unknown) continue;
+
+      VarInfo* info = &this->func_state.var_get(base.raw() + i.raw());
+      info->fixed_type = identifier.type;
+   }
+
    for (auto i = BCReg(0); i < nvars; ++i) {
       const Identifier& identifier = Payload.names[i.raw()];
       if (is_blank_symbol(identifier)) continue;

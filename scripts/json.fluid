@@ -87,7 +87,7 @@ do
    -- Expects the given pos to be the first character after the opening quote.
    -- Returns val, pos; the returned pos is after the closing quote character.
 
-   local function decode_str_val(str, pos, val)
+   local function decode_str_val(str, pos, val):<str, num>
       val = val or ''
       local early_end_error = 'End of input found while parsing string.'
       assert(pos < #str, early_end_error)
@@ -164,7 +164,7 @@ do
 
    json.null = {}  -- This is a one-off table to represent the null value.
 
-   function json.decode(str, pos, end_delim)
+   function json.decode(str, pos, end_delim):<any, num>
       pos = pos or 0
       if pos >= #str then error('Reached unexpected end of input.') end
       local pos = pos + #str:match('^%s*', pos)  -- Skip whitespace

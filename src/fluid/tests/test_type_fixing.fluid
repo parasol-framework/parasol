@@ -13,8 +13,6 @@
    assert(count is 3.14159, "float value should work for num type")
 end
 
-----------------------------------------------------------------------------------------------------------------------
-
 @Test function testExplicitStrAnnotation()
    local message: str = "hello"
    assert(message is "hello", "initial value should be 'hello'")
@@ -23,8 +21,6 @@ end
    message = ""
    assert(message is "", "empty string should work for str type")
 end
-
-----------------------------------------------------------------------------------------------------------------------
 
 @Test function testExplicitBoolAnnotation()
    local flag: bool = true
@@ -35,8 +31,6 @@ end
    assert(flag is true, "reassignment back to true should work")
 end
 
-----------------------------------------------------------------------------------------------------------------------
-
 @Test function testExplicitTableAnnotation()
    local config: table = { host = "localhost" }
    assert(config.host is "localhost", "initial table should have host field")
@@ -46,16 +40,12 @@ end
    assert(type(config) is "table", "empty table should work")
 end
 
-----------------------------------------------------------------------------------------------------------------------
-
 @Test function testExplicitFuncAnnotation()
    local handler: func = function() return 1 end
    assert(handler() is 1, "initial function should return 1")
    handler = function() return 2 end
    assert(handler() is 2, "reassignment to different function should work")
 end
-
-----------------------------------------------------------------------------------------------------------------------
 
 @Test function testExplicitAnyOpt()
    local variant: any = 0
@@ -69,8 +59,6 @@ end
    variant = false
    assert(variant is false, "changed to boolean should work for any type")
 end
-
-----------------------------------------------------------------------------------------------------------------------
 
 @Test function testExplicitAnyAcceptsAllTypes()
    -- The 'any' type should accept any value without type errors
@@ -107,8 +95,6 @@ end
    assert(count is 0, "zero should work")
 end
 
-----------------------------------------------------------------------------------------------------------------------
-
 @Test function testImplicitFixingString()
    local name = "Alice"
    assert(name is "Alice", "initial string")
@@ -118,16 +104,12 @@ end
    assert(name is "", "empty string should work")
 end
 
-----------------------------------------------------------------------------------------------------------------------
-
 @Test function testImplicitFixingBoolean()
    local active = true
    assert(active is true, "initial boolean")
    active = false
    assert(active is false, "reassignment to false should work")
 end
-
-----------------------------------------------------------------------------------------------------------------------
 
 @Test function testImplicitFixingTable()
    local data = { a = 1 }
@@ -137,8 +119,6 @@ end
    data = {}
    assert(type(data) is "table", "empty table should work")
 end
-
-----------------------------------------------------------------------------------------------------------------------
 
 @Test function testImplicitFixingFunction()
    local fn = function() return "original" end
@@ -161,8 +141,6 @@ end
    assert(result is 100, "reassignment same type should work")
 end
 
-----------------------------------------------------------------------------------------------------------------------
-
 @Test function testNilClearsValue()
    local x = 10
    assert(x is 10, "initial value")
@@ -171,8 +149,6 @@ end
    x = 42
    assert(x is 42, "reassigned back to number")
 end
-
-----------------------------------------------------------------------------------------------------------------------
 
 @Test function testTypedVariableStartsNil()
    local count: num
@@ -184,8 +160,6 @@ end
    count = 20
    assert(count is 20, "reassigned number value")
 end
-
-----------------------------------------------------------------------------------------------------------------------
 
 @Test function testNilAssignmentToTypedVariable()
    local message: str = "hello"
@@ -540,4 +514,143 @@ end
    local value: any = 0
    value ??= "fallback"
    assert(value is "fallback", "??= should work with any type allowing type change")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- RUNTIME TYPE CHECKING
+-- These tests verify BC_ISTYPE emission for dynamic values like function returns and table lookups
+
+@Test function testRuntimeCheckFunctionReturn()
+   -- Function return values require runtime type checking since their type
+   -- isn't known at compile time in the assignment context
+   function getNumber(): num
+      return 42
+   end
+   local x: num = 0
+   x = getNumber()
+   assert(x is 42, "runtime check should pass for matching function return type")
+end
+
+@Test function testRuntimeCheckNilAllowed()
+   -- Nil should always be allowed for typed variables (clears the value)
+   function maybeNil()
+      return nil
+   end
+   local x: num = 10
+   x = maybeNil()  -- nil is always allowed
+   assert(x is nil, "nil should be allowed for typed variables")
+end
+
+@Test function testRuntimeCheckTableLookup()
+   -- Table field lookups require runtime type checking
+   local data = { value = 42 }
+   local x: num = 0
+   x = data.value
+   assert(x is 42, "table lookup should pass type check when value matches")
+end
+
+@Test function testRuntimeCheckTableLookupMismatch()
+   -- Table field lookup with type mismatch should raise error
+   ex = catch(function()
+      return exec([[
+         local data = { value = "not a number" }
+         local x: num = 0
+         x = data.value
+      ]])
+   end)
+   assert(ex, "should raise error when table lookup type doesn't match")
+end
+
+@Test function testRuntimeCheckFunctionReturnMismatch()
+   -- Function returning wrong type should raise error
+   ex = catch(function()
+      return exec([[
+         function getString()
+            return "text"
+         end
+         local x: num = 0
+         x = getString()
+      ]])
+   end)
+   assert(ex, "should raise error when function return type doesn't match")
+end
+
+@Test function testRuntimeCheckMultipleFunctionCalls()
+   -- Multiple function calls should all be checked
+   function getValue(N)
+      if N is 1 then return 100 end
+      if N is 2 then return 200 end
+      return 300
+   end
+
+   local a: num = 0
+   local b: num = 0
+   local c: num = 0
+
+   a = getValue(1)
+   b = getValue(2)
+   c = getValue(3)
+
+   assert(a is 100, "first function call should pass")
+   assert(b is 200, "second function call should pass")
+   assert(c is 300, "third function call should pass")
+end
+
+@Test function testRuntimeCheckNestedTableLookup()
+   -- Nested table lookups should be checked
+   local config = {
+      settings = {
+         timeout = 30
+      }
+   }
+   local timeout: num = 0
+   timeout = config.settings.timeout
+   assert(timeout is 30, "nested table lookup should pass type check")
+end
+
+@Test function testRuntimeCheckWithConditionalReturn()
+   -- Function with conditional returns should be checked at runtime
+   function getValueOrNil(ReturnValue)
+      if ReturnValue then
+         return 42
+      else
+         return nil
+      end
+   end
+
+   local x: num = 0
+   x = getValueOrNil(true)
+   assert(x is 42, "conditional return with value should pass")
+
+   x = getValueOrNil(false)
+   assert(x is nil, "conditional return with nil should be allowed")
+end
+
+@Test function testRuntimeCheckArrayIndex()
+   -- Array index access requires runtime type checking
+   local numbers = { 10, 20, 30 }
+   local x: num = 0
+   x = numbers[0]
+   assert(x is 10, "array index access should pass type check")
+   x = numbers[1]
+   assert(x is 20, "second array index should pass")
+   x = numbers[2]
+   assert(x is 30, "third array index should pass")
+end
+
+@Test function testRuntimeCheckStaticTypesSkipped()
+   -- Statically-known types should skip runtime check (optimization)
+   -- These assignments should NOT emit BC_ISTYPE
+   local x: num = 0
+   x = 42        -- literal number - static check only
+   x = 3.14159   -- literal float - static check only
+   assert(x is 3.14159, "literal assignments should work without runtime check")
+
+   local s: str = ""
+   s = "hello"   -- literal string - static check only
+   assert(s is "hello", "literal string should work without runtime check")
+
+   local b: bool = false
+   b = true      -- literal boolean - static check only
+   assert(b is true, "literal boolean should work without runtime check")
 end

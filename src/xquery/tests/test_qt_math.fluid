@@ -150,7 +150,7 @@ function runTest(TestPath)
          -- assert-string-value: compare as strings
          -- Get the tag and extract content
          local err, assertTag = xml.mtGetTag(assertStringId)
-         local expectedValue = ''
+         expectedValue = ''
          if assertTag and assertTag.children then
             for _, child in ipairs(assertTag.children) do
                if child.attribs and child.attribs[1] and child.attribs[1].name is '' then
