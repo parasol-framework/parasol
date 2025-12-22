@@ -8,12 +8,11 @@
 
 #include <parasol/main.h>
 
+#include "parser/ast_nodes.h"  // For FluidType and fluid_type_to_lj_tag()
+
 [[nodiscard]] BCPOS bcemit_jmp(FuncState *);
 
-inline bool is_register_key(int32_t Aux)
-{
-   return (Aux >= 0) and (Aux <= BCMAX_C);
-}
+[[nodiscard]] inline bool is_register_key(int32_t Aux) { return (Aux >= 0) and (Aux <= BCMAX_C); }
 
 //********************************************************************************************************************
 // Register allocation methods
@@ -502,6 +501,62 @@ static void bcemit_store(FuncState *fs, ExpDesc* var, ExpDesc *e)
    BCIns ins;
    if (var->k IS ExpKind::Local) {
       fs->ls->vstack[var->u.s.aux].info |= VarInfoFlag::VarReadWrite;
+      VarInfo* vinfo = &fs->ls->vstack[var->u.s.aux];
+      FluidType fixed = vinfo->fixed_type;
+
+      // Check if runtime type checking is needed for this variable
+      if (fixed != FluidType::Unknown and fixed != FluidType::Any) {
+         bool needs_check = true;
+
+         // Skip check for statically-known compatible types
+         if (e->k IS ExpKind::Nil) needs_check = false;  // nil is always allowed (clears the variable)
+         else if (e->k IS ExpKind::False or e->k IS ExpKind::True) {
+            needs_check = (fixed != FluidType::Bool);
+         }
+         else if (e->k IS ExpKind::Str) needs_check = (fixed != FluidType::Str);
+         else if (e->k IS ExpKind::Num) needs_check = (fixed != FluidType::Num);
+
+         if (needs_check) {
+            // For dynamic values, emit runtime type check
+            // First materialise value to a register
+
+            BCREG src_reg = expr_toanyreg(fs, e);
+
+            // Skip type check for nil values (nil is always allowed as a "clear" operation)
+            // BC_ISNEP checks if value != nil, skips next instruction if true (not nil)
+            // We want to skip BC_ISTYPE when value IS nil, so use BC_ISEQP with nil primitive
+
+            ExpDesc nilv(ExpKind::Nil);
+            bcemit_INS(fs, BCINS_AD(BC_ISEQP, src_reg, const_pri(&nilv)));
+            BCPOS skip_pos = bcemit_jmp(fs);
+
+            // Emit type check instruction
+            // For numbers, use BC_ISNUM (because BC_ISTYPE doesn't work for numbers without LJ_DUALNUM)
+            // For other types, use BC_ISTYPE with (base_tag + 1) as the D operand
+
+            if (fixed IS FluidType::Num) {
+               // BC_ISNUM checks if value is a number (any floating point value)
+               // The D operand should be ~LJ_TNUMX + 2 = 16 (see lj_meta_istype which does tp--)
+               bcemit_AD(fs, BC_ISNUM, src_reg, ~LJ_TNUMX + 2);
+            }
+            else {
+               // BC_ISTYPE - the D operand is (base_tag + 1) to match the VM's itype comparison:
+               //   itype = ~base = -(base+1), so itype + (base+1) = 0 when types match
+               uint8_t lj_tag = fluid_type_to_lj_tag(fixed);
+               bcemit_AD(fs, BC_ISTYPE, src_reg, lj_tag + 1);
+            }
+
+            // Patch jump to skip over BC_ISTYPE when value is nil
+            ControlFlowGraph cfg(fs);
+            ControlFlowEdge skip_edge = cfg.make_unconditional(BCPos(skip_pos));
+            skip_edge.patch_here();
+
+            // Update expression state - value is now in src_reg
+            e->k = ExpKind::NonReloc;
+            e->u.s.info = src_reg;
+         }
+      }
+
       expr_free(fs, e);
       expr_toreg(fs, e, var->u.s.info);
       return;

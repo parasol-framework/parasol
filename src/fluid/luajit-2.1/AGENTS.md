@@ -58,13 +58,9 @@ This file captures practices and gotchas observed while maintaining the LuaJIT 2
 ```
 
 ## Miscellaneous Gotchas
-- Check that any new compile-time constants or flags (e.g. `#define`s) do
-  not collide with upstream naming; we will eventually rebase to newer
-  LuaJIT drops.
-- Generated build outputs under `build/agents/` can be removed safely; do not
-  store investigation artefacts there long-term.
-- Keep an eye on Fluid tests after modifying LuaJIT semantics—failures often
-  surface as subtle script regressions rather than outright crashes.
+- Check that any new compile-time constants or flags (e.g. `#define`s) do not collide with upstream naming; we will eventually rebase to newer LuaJIT drops.
+- Generated build outputs under `build/agents/` can be removed safely; do not store investigation artefacts there long-term.
+- Keep an eye on Fluid tests after modifying LuaJIT semantics—failures often surface as subtle script regressions rather than outright crashes.
 
 ## VM Assembly and buildvm Dependencies
 
