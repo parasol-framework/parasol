@@ -2428,22 +2428,31 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
 
          // For parentheses in a choose expression context, check if this starts a tuple pattern.
          // We scan ahead to find ) and check if -> or 'when' follows.
+         // BUT: if the base expression is callable (identifier, member, index), treat as function call.
          if (token.kind() IS TokenKind::LeftParen and this->in_choose_expression) {
-            // Look ahead to find matching ) and check if followed by ->
-            int paren_depth = 1;
-            size_t pos = 1;  // Start after (
-            while (paren_depth > 0 and pos < 100) {  // Limit scan to avoid performance issues
-               Token ahead = this->ctx.tokens().peek(pos);
-               if (ahead.kind() IS TokenKind::LeftParen) paren_depth++;
-               else if (ahead.kind() IS TokenKind::RightParen) paren_depth--;
-               else if (ahead.kind() IS TokenKind::EndOfFile) break;
-               pos++;
-            }
-            // Check if ) is followed by -> (tuple pattern) or 'when' (tuple pattern with guard)
-            if (paren_depth IS 0) {
-               Token after_paren = this->ctx.tokens().peek(pos);
-               if (after_paren.kind() IS TokenKind::CaseArrow or after_paren.kind() IS TokenKind::When) {
-                  break;  // This is a tuple pattern, not a function call
+            // If base is a callable expression, this is a function call, not a tuple pattern
+            bool is_callable = base->kind IS AstNodeKind::IdentifierExpr or
+                               base->kind IS AstNodeKind::MemberExpr or
+                               base->kind IS AstNodeKind::IndexExpr or
+                               base->kind IS AstNodeKind::CallExpr;
+
+            if (not is_callable) {
+               // Look ahead to find matching ) and check if followed by ->
+               int paren_depth = 1;
+               size_t pos = 1;  // Start after (
+               while (paren_depth > 0 and pos < 100) {  // Limit scan to avoid performance issues
+                  Token ahead = this->ctx.tokens().peek(pos);
+                  if (ahead.kind() IS TokenKind::LeftParen) paren_depth++;
+                  else if (ahead.kind() IS TokenKind::RightParen) paren_depth--;
+                  else if (ahead.kind() IS TokenKind::EndOfFile) break;
+                  pos++;
+               }
+               // Check if ) is followed by -> (tuple pattern) or 'when' (tuple pattern with guard)
+               if (paren_depth IS 0) {
+                  Token after_paren = this->ctx.tokens().peek(pos);
+                  if (after_paren.kind() IS TokenKind::CaseArrow or after_paren.kind() IS TokenKind::When) {
+                     break;  // This is a tuple pattern, not a function call
+                  }
                }
             }
          }
@@ -3170,46 +3179,28 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
          info.left = 3;
          info.right = 3;
          return info;
-      case TokenKind::LessEqual: {
+      case TokenKind::LessEqual:
          // Check if this is actually the start of a choose case relational pattern
          // (<= followed by expression then ->). If so, don't treat it as a binary operator.
-         // Skip this check when parsing guard expressions (in_guard_expression flag).
-         if (not this->in_guard_expression) {
-            Token peek1 = this->ctx.tokens().peek(1);
-            Token peek2 = this->ctx.tokens().peek(2);
-            if (peek2.kind() IS TokenKind::CaseArrow) return std::nullopt;
-            // Handle negative numbers: <= -number ->
-            if (peek1.raw() IS '-') {
-               Token peek3 = this->ctx.tokens().peek(3);
-               if (peek3.kind() IS TokenKind::CaseArrow) return std::nullopt;
-            }
+         // Only check when inside a choose expression, and skip when parsing guard expressions.
+         if (this->in_choose_expression and not this->in_guard_expression) {
+            if (this->is_choose_relational_pattern(1)) return std::nullopt;
          }
          info.op = AstBinaryOperator::LessEqual;
          info.left = 3;
          info.right = 3;
          return info;
-      }
-      case TokenKind::GreaterEqual: {
+      case TokenKind::GreaterEqual:
          // Check if this is actually the start of a choose case relational pattern
          // (>= followed by expression then ->). If so, don't treat it as a binary operator.
-         // Skip this check when parsing guard expressions (in_guard_expression flag).
-
-         if (not this->in_guard_expression) {
-            Token peek1 = this->ctx.tokens().peek(1);
-            Token peek2 = this->ctx.tokens().peek(2);
-            if (peek2.kind() IS TokenKind::CaseArrow) return std::nullopt;
-
-            // Handle negative numbers: >= -number ->
-            if (peek1.raw() IS '-') {
-               Token peek3 = this->ctx.tokens().peek(3);
-               if (peek3.kind() IS TokenKind::CaseArrow) return std::nullopt;
-            }
+         // Only check when inside a choose expression, and skip when parsing guard expressions.
+         if (this->in_choose_expression and not this->in_guard_expression) {
+            if (this->is_choose_relational_pattern(1)) return std::nullopt;
          }
          info.op = AstBinaryOperator::GreaterEqual;
          info.left = 3;
          info.right = 3;
          return info;
-      }
       case TokenKind::AndToken:
          info.op = AstBinaryOperator::LogicalAnd;
          info.left = 2;
@@ -3253,30 +3244,17 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
    if (token.raw() IS '<') {
       // Check if this is actually the start of a choose case relational pattern
       // (< followed by expression then ->). If so, don't treat it as a binary operator.
-      // Look ahead: if we see < expr -> or < -expr ->, this is a pattern start.
-      // Skip this check when parsing guard expressions (in_guard_expression flag).
+      // Only check when inside a choose expression, and skip when parsing guard expressions.
 
-      if (not this->in_guard_expression) {
+      if (this->in_choose_expression and not this->in_guard_expression) {
          Token peek1 = this->ctx.tokens().peek(1);
-         Token peek2 = this->ctx.tokens().peek(2);
-         if (peek2.kind() IS TokenKind::CaseArrow) return std::nullopt;
 
-         // Handle negative numbers: < -number ->
-         if (peek1.raw() IS '-') {
-            Token peek3 = this->ctx.tokens().peek(3);
-            if (peek3.kind() IS TokenKind::CaseArrow) return std::nullopt;
-         }
-
-         // Also check for <= pattern: < = expr -> or < = -expr ->
+         // Check for <= pattern: < = expr ->
          if (peek1.kind() IS TokenKind::Equals) {
-            Token peek3 = this->ctx.tokens().peek(3);
-            if (peek3.kind() IS TokenKind::CaseArrow) return std::nullopt;
-
-            // Handle <= -number ->
-            if (peek2.raw() IS '-') {
-               Token peek4 = this->ctx.tokens().peek(4);
-               if (peek4.kind() IS TokenKind::CaseArrow) return std::nullopt;
-            }
+            if (this->is_choose_relational_pattern(2)) return std::nullopt;
+         }
+         else {
+            if (this->is_choose_relational_pattern(1)) return std::nullopt;
          }
       }
       info.op = AstBinaryOperator::LessThan;
@@ -3288,32 +3266,17 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
    if (token.raw() IS '>') {
       // Check if this is actually the start of a choose case relational pattern
       // (> followed by expression then ->). If so, don't treat it as a binary operator.
-      // Skip this check when parsing guard expressions (in_guard_expression flag).
+      // Only check when inside a choose expression, and skip when parsing guard expressions.
 
-      if (not this->in_guard_expression) {
+      if (this->in_choose_expression and not this->in_guard_expression) {
          Token peek1 = this->ctx.tokens().peek(1);
-         Token peek2 = this->ctx.tokens().peek(2);
-         if (peek2.kind() IS TokenKind::CaseArrow) return std::nullopt;
 
-         // Handle negative numbers: > -number ->
-
-         if (peek1.raw() IS '-') {
-            Token peek3 = this->ctx.tokens().peek(3);
-            if (peek3.kind() IS TokenKind::CaseArrow) return std::nullopt;
-         }
-
-         // Also check for >= pattern: > = expr -> or > = -expr ->
-
+         // Check for >= pattern: > = expr ->
          if (peek1.kind() IS TokenKind::Equals) {
-            Token peek3 = this->ctx.tokens().peek(3);
-            if (peek3.kind() IS TokenKind::CaseArrow) return std::nullopt;
-
-            // Handle >= -number ->
-
-            if (peek2.raw() IS '-') {
-               Token peek4 = this->ctx.tokens().peek(4);
-               if (peek4.kind() IS TokenKind::CaseArrow) return std::nullopt;
-            }
+            if (this->is_choose_relational_pattern(2)) return std::nullopt;
+         }
+         else {
+            if (this->is_choose_relational_pattern(1)) return std::nullopt;
          }
       }
       info.op = AstBinaryOperator::GreaterThan;
@@ -3343,6 +3306,60 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
       return info;
    }
    return std::nullopt;
+}
+
+//********************************************************************************************************************
+// Checks if looking at a choose expression relational pattern by scanning ahead through the expression.
+// Start position is the offset from current token (e.g., 1 to start after '<').
+// Returns true if the pattern ends with '->' (CaseArrow), indicating this is a case pattern not a binary operator.
+
+bool AstBuilder::is_choose_relational_pattern(size_t StartPos) const
+{
+   size_t pos = StartPos;
+   int paren_depth = 0;
+   int brace_depth = 0;
+   int bracket_depth = 0;
+
+   // Scan through the expression, tracking bracket depths
+   while (pos < 100) {  // Limit scan to avoid performance issues
+      Token ahead = this->ctx.tokens().peek(pos);
+      TokenKind kind = ahead.kind();
+
+      // Track nesting depths
+      if (kind IS TokenKind::LeftParen) paren_depth++;
+      else if (kind IS TokenKind::RightParen) {
+         if (paren_depth IS 0) break;  // Unmatched close, end of expression
+         paren_depth--;
+      }
+      else if (kind IS TokenKind::LeftBrace) brace_depth++;
+      else if (kind IS TokenKind::RightBrace) {
+         if (brace_depth IS 0) break;
+         brace_depth--;
+      }
+      else if (kind IS TokenKind::LeftBracket) bracket_depth++;
+      else if (kind IS TokenKind::RightBracket) {
+         if (bracket_depth IS 0) break;
+         bracket_depth--;
+      }
+      // At depth 0, check for CaseArrow which indicates this is a choose pattern
+      else if (paren_depth IS 0 and brace_depth IS 0 and bracket_depth IS 0) {
+         if (kind IS TokenKind::CaseArrow) return true;
+
+         // These tokens indicate end of expression without finding CaseArrow
+         if (kind IS TokenKind::EndToken or
+             kind IS TokenKind::EndOfFile or
+             kind IS TokenKind::Else or
+             kind IS TokenKind::When or
+             kind IS TokenKind::Comma or
+             kind IS TokenKind::Semicolon or
+             kind IS TokenKind::ThenToken or
+             kind IS TokenKind::DoToken) {
+            return false;
+         }
+      }
+      pos++;
+   }
+   return false;
 }
 
 //********************************************************************************************************************

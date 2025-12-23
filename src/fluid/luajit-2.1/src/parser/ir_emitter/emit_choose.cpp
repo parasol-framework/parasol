@@ -125,16 +125,22 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
       scrutinee_regs.push_back(scrutinee_reg);
 
       // Determine result register allocation strategy:
-      // - If scrutinee is a local variable (e.g., loop variable), allocate a SEPARATE
-      //   result register to avoid clobbering the live variable.
-      // - If scrutinee is a constant/temporary, reuse the same register for efficiency
-      //   and correct semantics (assignment expects result in that register).
+      // - If scrutinee is a local variable (e.g., loop variable), allocate a SEPARATE result register
+      //   to avoid clobbering the live variable.
+      // - If scrutinee is a constant/temporary, reuse the same register for efficiency and correct
+      //   semantics (assignment expects result in that register).
+      //
+      // Note: Reserve the scrutinee register in all cases to prevent pattern expressions from overwriting 
+      // it during case evaluation.
 
       if (scrutinee_is_local) {
          result_reg = fs->free_reg();
          allocator.reserve(BCReg(1));
       }
-      else result_reg = scrutinee_reg;
+      else {
+         result_reg = scrutinee_reg;
+         allocator.reserve(BCReg(1));  // Reserve scrutinee_reg to protect it from reuse
+      }
    }
 
    // For single scrutinee, use the first (only) element
@@ -204,7 +210,7 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
             ExpressionValue result_value(fs, result.value_ref());
             result_value.discharge();
             this->materialise_to_reg(result_value.legacy(), result_reg, case_arm.is_wildcard ? "choose wildcard branch" : "choose else branch");
-            allocator.collapse_freereg(BCReg(result_reg));
+            // Note: Do not collapse result_reg here - it may be the same as scrutinee_reg.
          }
 
          if (has_next or guard_jump.valid()) {
@@ -296,7 +302,7 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
             ExpressionValue result_value(fs, result.value_ref());
             result_value.discharge();
             this->materialise_to_reg(result_value.legacy(), result_reg, "choose tuple case result");
-            allocator.collapse_freereg(BCReg(result_reg));
+            // Note: Do not collapse result_reg here - it may overlap with scrutinee registers.
          }
 
          // Jump to end after this case
@@ -314,7 +320,20 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
             return this->unsupported_expr(AstNodeKind::ChooseExpr, case_arm.span);
          }
 
+         // Temporarily ensure freereg is above scrutinee_reg to prevent pattern expressions
+         // from clobbering the scrutinee. Save and restore freereg to avoid affecting
+         // code after the choose expression.
+         
+         BCREG saved_freereg = fs->freereg;
+         if (fs->freereg <= scrutinee_reg.raw()) fs->freereg = BCREG(scrutinee_reg.raw() + 1);
+
          auto pattern_result = this->emit_expression(*case_arm.pattern);
+
+         // Restore freereg to its saved value (but not below result_reg + 1 to preserve result)
+
+         if (saved_freereg > BCREG(result_reg + 1)) fs->freereg = saved_freereg;
+         else fs->freereg = BCREG(result_reg + 1);
+
          if (not pattern_result.ok()) return pattern_result;
          ExpDesc pattern_expr = pattern_result.value_ref();
 
@@ -363,7 +382,7 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
 
             // For each field in the pattern, check existence and value
 
-            for (const TableField& field : table_payload->fields) {
+            for (const TableField &field : table_payload->fields) {
                if (field.kind != TableFieldKind::Record or not field.name.has_value()) {
                   continue;  // Skip non-record fields (should have been caught by parser)
                }
@@ -482,7 +501,8 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
             ExpressionValue result_value(fs, result.value_ref());
             result_value.discharge();
             this->materialise_to_reg(result_value.legacy(), result_reg, "choose case result");
-            allocator.collapse_freereg(BCReg(result_reg));
+            // Note: Do not collapse result_reg here - it may be the same as scrutinee_reg,
+            // and we need to preserve scrutinee_reg for subsequent case comparisons.
          }
 
          // Jump to end after this case (needed if there are more cases OR if there's no else)
@@ -512,10 +532,12 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
       return ParserResult<ExpDesc>::success(result);
    }
 
-   // Preserve result register by adjusting what RegisterGuard will restore to
-
-   if (register_guard.saved() >= BCReg(result_reg + 1)) register_guard.adopt_saved(register_guard.saved());
-   else register_guard.disarm();
+   // Ensure freereg is exactly result_reg + 1 so that subsequent code doesn't think
+   // there are intermediate values between the result and whatever comes next.
+   // This is critical for expressions like concatenation that depend on consecutive registers.
+   
+   fs->freereg = BCREG(result_reg + 1);
+   register_guard.disarm();  // Don't let guard restore freereg, we've set it correctly
 
    ExpDesc result;
    result.init(ExpKind::NonReloc, result_reg);

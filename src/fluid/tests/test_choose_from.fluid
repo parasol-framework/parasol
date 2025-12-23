@@ -286,6 +286,16 @@ end
       else -> 'above threshold'
    end
    assert(result is 'near threshold', "Expected 'near threshold', got " .. tostring(result))
+
+   -- Test that complex expressions with variables in relational patterns work correctly
+   MAX_ANGLE = 360
+   QRT_ANGLE = 90
+   result = choose 100 from
+      < QRT_ANGLE -> 'small'
+      < (MAX_ANGLE - QRT_ANGLE) -> 'medium'
+      else -> 'large'
+   end
+   assert(result is 'medium', "Expected 'medium', got " .. tostring(result))
 end
 
 @Test(hotpath=true) function testRelationalWithFunctionCallExpressions()

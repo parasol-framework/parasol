@@ -68,13 +68,13 @@ void ParserDiagnostics::set_limit(uint32_t new_limit)
    this->limit = new_limit;
 }
 
-void ParserDiagnostics::report(const ParserDiagnostic& diagnostic)
+void ParserDiagnostics::report(const ParserDiagnostic &Diagnostic)
 {
-   bool counts_against_limit = diagnostic.severity IS ParserDiagnosticSeverity::Error
-      or diagnostic.severity IS ParserDiagnosticSeverity::Warning;
+   bool counts_against_limit = Diagnostic.severity IS ParserDiagnosticSeverity::Error
+      or Diagnostic.severity IS ParserDiagnosticSeverity::Warning;
 
    if (counts_against_limit and this->counted_entries >= this->limit) return;
-   this->storage.push_back(diagnostic);
+   this->storage.push_back(Diagnostic);
    if (counts_against_limit) this->counted_entries += 1;
 }
 

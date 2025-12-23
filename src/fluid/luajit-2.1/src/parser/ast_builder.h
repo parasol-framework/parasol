@@ -46,7 +46,7 @@ private:
    ParserResult<StmtNodePtr> parse_while();
    ParserResult<StmtNodePtr> parse_repeat();
    ParserResult<StmtNodePtr> parse_for();
-   ParserResult<StmtNodePtr> parse_anonymous_for(const Token& for_token);
+   ParserResult<StmtNodePtr> parse_anonymous_for(const Token &);
    ParserResult<StmtNodePtr> parse_do();
    ParserResult<StmtNodePtr> parse_defer();
    ParserResult<StmtNodePtr> parse_return();
@@ -54,11 +54,11 @@ private:
    ParserResult<ExprNodePtr> parse_choose_expr();
    ParserResult<ExprNodePtr> parse_unary();
    ParserResult<ExprNodePtr> parse_primary();
-   ParserResult<ExprNodePtr> parse_suffixed(ExprNodePtr base);
+   ParserResult<ExprNodePtr> parse_suffixed(ExprNodePtr);
    ParserResult<ExprNodePtr> parse_arrow_function(ExprNodeList parameters);
-   ParserResult<ExprNodePtr> parse_function_literal(const Token& function_token, bool is_thunk = false);
+   ParserResult<ExprNodePtr> parse_function_literal(const Token &, bool is_thunk = false);
    ParserResult<ExprNodePtr> parse_table_literal();
-   ParserResult<ReturnStmtPayload> parse_return_payload(const Token& return_token, bool same_line_only);
+   ParserResult<ReturnStmtPayload> parse_return_payload(const Token &, bool same_line_only);
    ParserResult<FunctionReturnTypes> parse_return_type_annotation();
 
    ParserResult<std::vector<Identifier>> parse_name_list();
@@ -67,17 +67,17 @@ private:
       bool is_vararg = false;
    };
 
-   static inline SourceSpan combine_spans(const SourceSpan& start, const SourceSpan& end) {
-      SourceSpan span = start;
-      span.offset = end.offset;
-      span.line = end.line;
-      span.column = end.column;
+   static inline SourceSpan combine_spans(const SourceSpan &Start, const SourceSpan &End) {
+      SourceSpan span = Start;
+      span.offset = End.offset;
+      span.line   = End.line;
+      span.column = End.column;
       return span;
    }
 
-   ParserResult<ParameterListResult> parse_parameter_list(bool allow_optional);
-   ParserResult<std::vector<TableField>> parse_table_fields(bool* has_array_part);
-   ParserResult<ExprNodeList> parse_call_arguments(bool* forwards_multret);
+   ParserResult<ParameterListResult> parse_parameter_list(bool);
+   ParserResult<std::vector<TableField>> parse_table_fields(bool *);
+   ParserResult<ExprNodeList> parse_call_arguments(bool *);
 
    struct ResultFilterInfo {
       uint64_t keep_mask = 0;
@@ -86,15 +86,16 @@ private:
    };
 
    ParserResult<ResultFilterInfo> parse_result_filter_pattern();
-   ParserResult<ExprNodePtr> parse_result_filter_expr(const Token& start_token);
-   ParserResult<std::unique_ptr<BlockStmt>> parse_scoped_block(std::initializer_list<TokenKind> terminators);
+   ParserResult<ExprNodePtr> parse_result_filter_expr(const Token &);
+   ParserResult<std::unique_ptr<BlockStmt>> parse_scoped_block(std::initializer_list<TokenKind>);
 
-   [[nodiscard]] bool at_end_of_block(std::span<const TokenKind> terminators) const;
+   [[nodiscard]] bool at_end_of_block(std::span<const TokenKind>) const;
    [[nodiscard]] bool is_statement_start(TokenKind kind) const;
-   [[nodiscard]] static Identifier make_identifier(const Token& token);
-   [[nodiscard]] static LiteralValue make_literal(const Token& token);
-   [[nodiscard]] inline SourceSpan span_from(const Token& token) { return token.span(); }
-   [[nodiscard]] inline SourceSpan span_from(const Token& start, const Token& end) const { return combine_spans(start.span(), end.span()); }
-   [[nodiscard]] std::optional<BinaryOpInfo> match_binary_operator(const Token& token) const;
+   [[nodiscard]] static Identifier make_identifier(const Token &);
+   [[nodiscard]] static LiteralValue make_literal(const Token &);
+   [[nodiscard]] inline SourceSpan span_from(const Token &Token) { return Token.span(); }
+   [[nodiscard]] inline SourceSpan span_from(const Token &Start, const Token &End) const { return combine_spans(Start.span(), End.span()); }
+   [[nodiscard]] std::optional<BinaryOpInfo> match_binary_operator(const Token &) const;
+   [[nodiscard]] bool is_choose_relational_pattern(size_t) const;
 
 };
