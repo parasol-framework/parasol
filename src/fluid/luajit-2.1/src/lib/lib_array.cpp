@@ -645,19 +645,93 @@ LJLIB_CF(array_clear)
    // For GC-tracked types, clear references to allow garbage collection
    if (arr->elemtype IS AET::_STRING_GC or arr->elemtype IS AET::_TABLE or arr->elemtype IS AET::_ARRAY) {
       auto refs = arr->get<GCRef>();
-      for (MSize i = 0; i < arr->len; i++) {
-         setgcrefnull(refs[i]);
-      }
+      for (MSize i = 0; i < arr->len; i++) setgcrefnull(refs[i]);
    }
    else if (arr->elemtype IS AET::_ANY) {
       auto slots = arr->get<TValue>();
-      for (MSize i = 0; i < arr->len; i++) {
-         setnilV(&slots[i]);
-      }
+      for (MSize i = 0; i < arr->len; i++) setnilV(&slots[i]);
    }
 
    arr->len = 0;
    return 0;
+}
+
+//********************************************************************************************************************
+// Usage: new_len = array.resize(arr, new_size)
+//
+// Resizes an array to the specified length, growing or shrinking as needed.  When growing, new elements are
+// zero-initialized (or nil for reference types).  When shrinking, excess elements are discarded (references are
+// cleared for GC).
+//
+//   arr: the array to resize (must not be read-only or external)
+//   new_size: the new length of the array (must be non-negative)
+//
+// Note: External arrays and cached string arrays cannot grow and will raise an error.
+
+LJLIB_CF(array_resize)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+   if (arr->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
+
+   auto new_size = lj_lib_checkint(L, 2);
+   if (new_size < 0) lj_err_argv(L, 2, ErrMsg::NUMRNG, "non-negative", "negative");
+
+   MSize target_len = MSize(new_size);
+   MSize old_len = arr->len;
+
+   if (target_len > old_len) {
+      // Growing: ensure capacity and zero-initialize new elements
+      if (target_len > arr->capacity) {
+         if (not lj_array_grow(L, arr, target_len)) lj_err_caller(L, ErrMsg::ARREXT);
+      }
+
+      // Zero-initialize new elements based on type
+
+      switch (arr->elemtype) {
+         case AET::_STRING_GC:
+         case AET::_TABLE:
+         case AET::_ARRAY: {
+            auto refs = arr->get<GCRef>();
+            for (MSize i = old_len; i < target_len; i++) setgcrefnull(refs[i]);
+            break;
+         }
+         case AET::_ANY: {
+            auto slots = arr->get<TValue>();
+            for (MSize i = old_len; i < target_len; i++) setnilV(&slots[i]);
+            break;
+         }
+         default: {
+            // Numeric types: zero-fill the new region
+            void *start = (char*)arr->arraydata() + (old_len * arr->elemsize);
+            size_t bytes = (target_len - old_len) * arr->elemsize;
+            memset(start, 0, bytes);
+            break;
+         }
+      }
+   }
+   else if (target_len < old_len) {
+      // Shrinking: clear references for GC-tracked types
+      switch (arr->elemtype) {
+         case AET::_STRING_GC:
+         case AET::_TABLE:
+         case AET::_ARRAY: {
+            auto refs = arr->get<GCRef>();
+            for (MSize i = target_len; i < old_len; i++) setgcrefnull(refs[i]);
+            break;
+         }
+         case AET::_ANY: {
+            auto slots = arr->get<TValue>();
+            for (MSize i = target_len; i < old_len; i++) setnilV(&slots[i]);
+            break;
+         }
+         default:
+            break; // Numeric types don't need clearing
+      }
+   }
+
+   arr->len = target_len;
+   setintV(L->top++, int32_t(arr->len));
+   return 1;
 }
 
 //********************************************************************************************************************

@@ -475,3 +475,133 @@ end
    assert(empty2:type() is 'int', "All should be int type")
    assert(empty3:type() is 'int', "All should be int type")
 end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Size larger than initial values (padding tests)
+
+@Test function ArrayTypedSizeLargerThanValues()
+   -- Size is larger than number of initial values - should pad with zeros
+   arr = array<int, 10> { 1, 2, 3 }
+   assert(#arr is 10, "Array should have length 10, got " .. #arr)
+   assert(arr:type() is 'int', "Type should be 'int'")
+   assert(arr[0] is 1, "First element should be 1, got " .. arr[0])
+   assert(arr[1] is 2, "Second element should be 2, got " .. arr[1])
+   assert(arr[2] is 3, "Third element should be 3, got " .. arr[2])
+   -- Remaining elements should be zero-initialized
+   assert(arr[3] is 0, "Element 3 should be 0 (padded), got " .. arr[3])
+   assert(arr[9] is 0, "Element 9 should be 0 (padded), got " .. arr[9])
+end
+
+@Test function ArrayTypedSizeLargerThanValuesDouble()
+   -- Test with double type
+   arr = array<double, 5> { 1.5, 2.5 }
+   assert(#arr is 5, "Array should have length 5, got " .. #arr)
+   assert(arr[0] is 1.5, "First element should be 1.5")
+   assert(arr[1] is 2.5, "Second element should be 2.5")
+   assert(arr[2] is 0.0, "Element 2 should be 0.0 (padded)")
+   assert(arr[4] is 0.0, "Element 4 should be 0.0 (padded)")
+end
+
+@Test function ArrayTypedSizeLargerThanValuesString()
+   -- Test with string type - padded elements should be nil
+   arr = array<string, 5> { 'hello', 'world' }
+   assert(#arr is 5, "Array should have length 5, got " .. #arr)
+   assert(arr[0] is 'hello', "First element should be 'hello'")
+   assert(arr[1] is 'world', "Second element should be 'world'")
+   assert(arr[2] is nil, "Element 2 should be nil (padded)")
+   assert(arr[4] is nil, "Element 4 should be nil (padded)")
+end
+
+@Test function ArrayTypedSizeLargerThanValuesTable()
+   -- Test with table type - padded elements should be nil
+   arr = array<table, 4> { {x=1}, {x=2} }
+   assert(#arr is 4, "Array should have length 4, got " .. #arr)
+   assert(arr[0].x is 1, "First table.x should be 1")
+   assert(arr[1].x is 2, "Second table.x should be 2")
+   assert(arr[2] is nil, "Element 2 should be nil (padded)")
+   assert(arr[3] is nil, "Element 3 should be nil (padded)")
+end
+
+@Test function ArrayTypedSizeEqualsValuesCount()
+   -- When size equals values count, should work normally
+   arr = array<int, 3> { 10, 20, 30 }
+   assert(#arr is 3, "Array should have length 3")
+   assert(arr[0] is 10, "First element should be 10")
+   assert(arr[2] is 30, "Third element should be 30")
+end
+
+@Test function ArrayTypedSizeLessThanValuesCount()
+   -- When size is less than values count, size should be ignored (values take precedence)
+   arr = array<int, 2> { 1, 2, 3, 4, 5 }
+   assert(#arr is 5, "Array should have 5 elements (values take precedence), got " .. #arr)
+   assert(arr[4] is 5, "Fifth element should be 5")
+end
+
+@Test function ArrayTypedDynamicSizeWithValues()
+   -- Dynamic size expression with initial values
+   n = 8
+   arr = array<int, n> { 100, 200 }
+   assert(#arr is 8, "Array should have length 8, got " .. #arr)
+   assert(arr[0] is 100, "First element should be 100")
+   assert(arr[1] is 200, "Second element should be 200")
+   assert(arr[7] is 0, "Element 7 should be 0 (padded)")
+end
+
+@Test function ArrayTypedSingleValueWithPadding()
+   -- Single initial value with larger size
+   arr = array<int, 5> { 42 }
+   assert(#arr is 5, "Array should have length 5")
+   assert(arr[0] is 42, "First element should be 42")
+   assert(arr[1] is 0, "Element 1 should be 0 (padded)")
+   assert(arr[4] is 0, "Element 4 should be 0 (padded)")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- array.resize() direct tests
+
+@Test function ArrayResizeGrow()
+   -- Test array.resize() growing an array
+   arr = array<int> { 1, 2, 3 }
+   assert(#arr is 3, "Initial length should be 3")
+   array.resize(arr, 7)
+   assert(#arr is 7, "Length after resize should be 7, got " .. #arr)
+   assert(arr[0] is 1, "First element preserved")
+   assert(arr[2] is 3, "Third element preserved")
+   assert(arr[3] is 0, "New element should be 0")
+   assert(arr[6] is 0, "Last element should be 0")
+end
+
+@Test function ArrayResizeShrink()
+   -- Test array.resize() shrinking an array
+   arr = array<int> { 10, 20, 30, 40, 50 }
+   assert(#arr is 5, "Initial length should be 5")
+   array.resize(arr, 2)
+   assert(#arr is 2, "Length after resize should be 2, got " .. #arr)
+   assert(arr[0] is 10, "First element preserved")
+   assert(arr[1] is 20, "Second element preserved")
+end
+
+@Test function ArrayResizeSameSize()
+   -- Test array.resize() with same size (no-op)
+   arr = array<int> { 1, 2, 3 }
+   array.resize(arr, 3)
+   assert(#arr is 3, "Length should remain 3")
+   assert(arr[0] is 1, "Elements should be unchanged")
+end
+
+@Test function ArrayResizeToZero()
+   -- Test array.resize() to zero (like clear)
+   arr = array<int> { 1, 2, 3 }
+   array.resize(arr, 0)
+   assert(#arr is 0, "Length should be 0 after resize to 0")
+end
+
+@Test function ArrayResizeStringArray()
+   -- Test array.resize() with string array
+   arr = array<string> { 'a', 'b' }
+   array.resize(arr, 5)
+   assert(#arr is 5, "Length should be 5")
+   assert(arr[0] is 'a', "First element preserved")
+   assert(arr[1] is 'b', "Second element preserved")
+   assert(arr[2] is nil, "New string element should be nil")
+end

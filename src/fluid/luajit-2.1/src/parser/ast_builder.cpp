@@ -12,7 +12,7 @@
 
 // Extracts the function payload from an expression node if it's a function expression, otherwise returns null.
 
-static FunctionExprPayload* function_payload_from(ExprNode &Node)
+static FunctionExprPayload * function_payload_from(ExprNode &Node)
 {
    if (Node.kind != AstNodeKind::FunctionExpr) return nullptr;
    return std::get_if<FunctionExprPayload>(&Node.data);
@@ -2263,15 +2263,87 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
                args.push_back(std::move(val));
             }
 
-            // If size was specified and is larger than values count, we need a different approach
-            // For now, array.of() handles the sizing internally
-            if (specified_size > 0 and size_t(specified_size) > init_values.size()) {
-               // Use array.new(size, 'type') then populate - but for simplicity,
-               // we'll let array.of handle it and trust the runtime to pre-allocate
-               // In practice, array.of already handles this efficiently
-            }
+            ExprNodePtr array_of_call = make_call_expr(span, std::move(array_of), std::move(args), false);
 
-            node = make_call_expr(span, std::move(array_of), std::move(args), false);
+            // If size was specified (literal or expression) and may be larger than values count, wrap in IIFE to resize
+            // For literal sizes, we only wrap if size > values count
+            // For dynamic expressions, we always wrap since we can't know at parse time
+            bool needs_resize = size_expr != nullptr or (specified_size > 0 and size_t(specified_size) > init_values.size());
+
+            if (needs_resize) {
+               // Generate: (function() local _arr = array.of(...); array.resize(_arr, size); return _arr end)()
+
+               // Create local variable name "_arr"
+               Identifier arr_id;
+               arr_id.symbol = this->ctx.lex().keepstr("_arr");
+               arr_id.span = span;
+
+               // Statement 1: local _arr = array.of('type', v1, v2, ...)
+               std::vector<Identifier> local_names;
+               local_names.push_back(arr_id);
+               ExprNodeList local_values;
+               local_values.push_back(std::move(array_of_call));
+               StmtNodePtr local_stmt = make_local_decl_stmt(span, std::move(local_names), std::move(local_values));
+
+               // Build array.resize(_arr, size_expr_or_literal)
+               Identifier array_id2;
+               array_id2.symbol = this->ctx.lex().keepstr("array");
+               array_id2.span = span;
+               NameRef array_ref2;
+               array_ref2.identifier = array_id2;
+               ExprNodePtr array_base2 = make_identifier_expr(span, array_ref2);
+
+               Identifier resize_id;
+               resize_id.symbol = this->ctx.lex().keepstr("resize");
+               resize_id.span = span;
+               ExprNodePtr array_resize = make_member_expr(span, std::move(array_base2), resize_id, false);
+
+               // Arguments for resize: (_arr, size)
+               ExprNodeList resize_args;
+               NameRef arr_ref;
+               arr_ref.identifier = arr_id;
+               resize_args.push_back(make_identifier_expr(span, arr_ref));
+
+               // Use size_expr if available, otherwise use literal
+               if (size_expr) {
+                  resize_args.push_back(std::move(size_expr));
+               }
+               else {
+                  LiteralValue size_literal;
+                  size_literal.kind = LiteralKind::Number;
+                  size_literal.number_value = double(specified_size);
+                  resize_args.push_back(make_literal_expr(span, size_literal));
+               }
+
+               ExprNodePtr resize_call = make_call_expr(span, std::move(array_resize), std::move(resize_args), false);
+
+               // Statement 2: array.resize(_arr, size)
+               StmtNodePtr resize_stmt = make_expression_stmt(span, std::move(resize_call));
+
+               // Statement 3: return _arr
+               ExprNodeList return_values;
+               NameRef arr_ref2;
+               arr_ref2.identifier = arr_id;
+               return_values.push_back(make_identifier_expr(span, arr_ref2));
+               StmtNodePtr return_stmt = make_return_stmt(span, std::move(return_values), false);
+
+               // Build function body block
+               StmtNodeList body_stmts;
+               body_stmts.push_back(std::move(local_stmt));
+               body_stmts.push_back(std::move(resize_stmt));
+               body_stmts.push_back(std::move(return_stmt));
+               auto body = make_block(span, std::move(body_stmts));
+
+               // Build anonymous function (no parameters)
+               ExprNodePtr anon_func = make_function_expr(span, {}, false, std::move(body), false, FluidType::Any);
+
+               // Build immediate call to function (no arguments)
+               ExprNodeList call_args;
+               node = make_call_expr(span, std::move(anon_func), std::move(call_args), false);
+            }
+            else {
+               node = std::move(array_of_call);
+            }
          }
          else {
             // Empty braces {} or no initialiser: use array.new()
