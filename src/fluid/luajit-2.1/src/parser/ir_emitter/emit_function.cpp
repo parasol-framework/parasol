@@ -139,18 +139,19 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
       child_emitter.update_local_binding(param.name.symbol, BCReg(base.raw() + i.raw()));
    }
 
-   auto body_result = child_emitter.emit_block(*Payload.body, FuncScopeFlag::None);
-   if (not body_result.ok()) return ParserResult<ExpDesc>::failure(body_result.error_ref());
+   // Copy explicit return types to the function state BEFORE emitting the body.
+   // This ensures emit_return_stmt can see the types when deciding whether to use tail-calls
+   // and whether to emit BC_TYPEFIX instructions.
 
    child_state.funcname = funcname;
-
-   // Copy explicit return types to the function state for runtime type checking.
-   
    if (Payload.return_types.is_explicit) {
       for (size_t i = 0; i < Payload.return_types.count and i < child_state.return_types.size(); ++i) {
          child_state.return_types[i] = Payload.return_types.types[i];
       }
    }
+
+   auto body_result = child_emitter.emit_block(*Payload.body, FuncScopeFlag::None);
+   if (not body_result.ok()) return ParserResult<ExpDesc>::failure(body_result.error_ref());
 
    fs_guard.disarm();  // fs_finish will handle cleanup
    GCproto *pt = this->lex_state.fs_finish(Payload.body->span.line);
