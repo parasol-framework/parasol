@@ -320,26 +320,13 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
             return this->unsupported_expr(AstNodeKind::ChooseExpr, case_arm.span);
          }
 
-         // Temporarily ensure freereg is above scrutinee_reg to prevent pattern expressions
-         // from clobbering the scrutinee. Save and restore freereg to avoid affecting
-         // code after the choose expression.
-         
-         BCREG saved_freereg = fs->freereg;
-         if (fs->freereg <= scrutinee_reg.raw()) fs->freereg = BCREG(scrutinee_reg.raw() + 1);
-
-         auto pattern_result = this->emit_expression(*case_arm.pattern);
-
-         // Restore freereg to its saved value (but not below result_reg + 1 to preserve result)
-
-         if (saved_freereg > BCREG(result_reg + 1)) fs->freereg = saved_freereg;
-         else fs->freereg = BCREG(result_reg + 1);
-
-         if (not pattern_result.ok()) return pattern_result;
-         ExpDesc pattern_expr = pattern_result.value_ref();
-
          ControlFlowEdge false_jump;
 
          // Check for table pattern { key = value, ... }
+         // Table patterns are handled specially - we extract the payload directly from the AST
+         // and emit type checking + field comparison bytecode. We must NOT call emit_expression
+         // for table patterns, as that would emit TDUP bytecode that gets overwritten by the
+         // type() call, creating dead code that confuses the JIT's slot tracking.
 
          if (case_arm.is_table_pattern) {
             // Table pattern: { key1 = value1, key2 = value2, ... }
@@ -416,62 +403,83 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
                allocator.collapse_freereg(BCReg(field_reg));
             }
          }
-         // Check for relational pattern (< <= > >=)
-         else if (case_arm.relational_op != ChooseRelationalOp::None) {
-            // Relational patterns require both operands in registers
-            // Generate: jump if condition is NOT satisfied (inverted logic)
-            // For < pattern: jump if scrutinee >= pattern (use BC_ISGE)
-            // For <= pattern: jump if scrutinee > pattern (use BC_ISGT)
-            // For > pattern: jump if scrutinee <= pattern (use BC_ISLE)
-            // For >= pattern: jump if scrutinee < pattern (use BC_ISLT)
-
-            ExpressionValue pattern_value(fs, pattern_expr);
-            BCReg pattern_reg = pattern_value.discharge_to_any_reg(allocator);
-
-            BCOp bc_op;
-            switch (case_arm.relational_op) {
-               case ChooseRelationalOp::LessThan:     bc_op = BC_ISGE; break; // jump if NOT <
-               case ChooseRelationalOp::LessEqual:    bc_op = BC_ISGT; break; // jump if NOT <=
-               case ChooseRelationalOp::GreaterThan:  bc_op = BC_ISLE; break; // jump if NOT >
-               case ChooseRelationalOp::GreaterEqual: bc_op = BC_ISLT; break; // jump if NOT >=
-               default: bc_op = BC_ISGE; break; // Shouldn't reach here
-            }
-
-            bcemit_INS(fs, BCINS_AD(bc_op, scrutinee_reg, pattern_reg));
-            false_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
-            allocator.collapse_freereg(pattern_reg);
-         }
-         // Equality pattern (default)
-         else if (pattern_expr.k IS ExpKind::Nil) {
-            // Generate: if scrutinee_reg != pattern_value then jump to next case
-            // Use ISNE* bytecode for "not equal" comparison (jump if not equal)
-            bcemit_INS(fs, BCINS_AD(BC_ISNEP, scrutinee_reg, const_pri(&nilv)));
-            false_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
-         }
-         else if (pattern_expr.k IS ExpKind::True) {
-            bcemit_INS(fs, BCINS_AD(BC_ISNEP, scrutinee_reg, const_pri(&truev)));
-            false_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
-         }
-         else if (pattern_expr.k IS ExpKind::False) {
-            bcemit_INS(fs, BCINS_AD(BC_ISNEP, scrutinee_reg, const_pri(&falsev)));
-            false_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
-         }
-         else if (pattern_expr.k IS ExpKind::Num) {
-            bcemit_INS(fs, BCINS_AD(BC_ISNEN, scrutinee_reg, const_num(fs, &pattern_expr)));
-            false_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
-         }
-         else if (pattern_expr.k IS ExpKind::Str) {
-            bcemit_INS(fs, BCINS_AD(BC_ISNES, scrutinee_reg, const_str(fs, &pattern_expr)));
-            false_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
-         }
          else {
-            // Non-constant pattern - need to materialise and use ISNEV
-            ExpressionValue pattern_value(fs, pattern_expr);
-            BCReg pattern_reg = pattern_value.discharge_to_any_reg(allocator);
-            bcemit_INS(fs, BCINS_AD(BC_ISNEV, scrutinee_reg, pattern_reg));
-            false_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
-            allocator.collapse_freereg(pattern_reg);
-         }
+            // Non-table pattern: emit the pattern expression and compare with scrutinee
+
+            // Temporarily ensure freereg is above scrutinee_reg to prevent pattern expressions
+            // from clobbering the scrutinee. Save and restore freereg to avoid affecting
+            // code after the choose expression.
+
+            BCREG saved_freereg = fs->freereg;
+            if (fs->freereg <= scrutinee_reg.raw()) fs->freereg = BCREG(scrutinee_reg.raw() + 1);
+
+            auto pattern_result = this->emit_expression(*case_arm.pattern);
+
+            // Restore freereg to its saved value (but not below result_reg + 1 to preserve result)
+
+            if (saved_freereg > BCREG(result_reg + 1)) fs->freereg = saved_freereg;
+            else fs->freereg = BCREG(result_reg + 1);
+
+            if (not pattern_result.ok()) return pattern_result;
+            ExpDesc pattern_expr = pattern_result.value_ref();
+
+            // Check for relational pattern (< <= > >=)
+            if (case_arm.relational_op != ChooseRelationalOp::None) {
+               // Relational patterns require both operands in registers
+               // Generate: jump if condition is NOT satisfied (inverted logic)
+               // For < pattern: jump if scrutinee >= pattern (use BC_ISGE)
+               // For <= pattern: jump if scrutinee > pattern (use BC_ISGT)
+               // For > pattern: jump if scrutinee <= pattern (use BC_ISLE)
+               // For >= pattern: jump if scrutinee < pattern (use BC_ISLT)
+
+               ExpressionValue pattern_value(fs, pattern_expr);
+               BCReg pattern_reg = pattern_value.discharge_to_any_reg(allocator);
+
+               BCOp bc_op;
+               switch (case_arm.relational_op) {
+                  case ChooseRelationalOp::LessThan:     bc_op = BC_ISGE; break; // jump if NOT <
+                  case ChooseRelationalOp::LessEqual:    bc_op = BC_ISGT; break; // jump if NOT <=
+                  case ChooseRelationalOp::GreaterThan:  bc_op = BC_ISLE; break; // jump if NOT >
+                  case ChooseRelationalOp::GreaterEqual: bc_op = BC_ISLT; break; // jump if NOT >=
+                  default: bc_op = BC_ISGE; break; // Shouldn't reach here
+               }
+
+               bcemit_INS(fs, BCINS_AD(bc_op, scrutinee_reg, pattern_reg));
+               false_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
+               allocator.collapse_freereg(pattern_reg);
+            }
+            // Equality pattern (default)
+            else if (pattern_expr.k IS ExpKind::Nil) {
+               // Generate: if scrutinee_reg != pattern_value then jump to next case
+               // Use ISNE* bytecode for "not equal" comparison (jump if not equal)
+               bcemit_INS(fs, BCINS_AD(BC_ISNEP, scrutinee_reg, const_pri(&nilv)));
+               false_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
+            }
+            else if (pattern_expr.k IS ExpKind::True) {
+               bcemit_INS(fs, BCINS_AD(BC_ISNEP, scrutinee_reg, const_pri(&truev)));
+               false_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
+            }
+            else if (pattern_expr.k IS ExpKind::False) {
+               bcemit_INS(fs, BCINS_AD(BC_ISNEP, scrutinee_reg, const_pri(&falsev)));
+               false_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
+            }
+            else if (pattern_expr.k IS ExpKind::Num) {
+               bcemit_INS(fs, BCINS_AD(BC_ISNEN, scrutinee_reg, const_num(fs, &pattern_expr)));
+               false_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
+            }
+            else if (pattern_expr.k IS ExpKind::Str) {
+               bcemit_INS(fs, BCINS_AD(BC_ISNES, scrutinee_reg, const_str(fs, &pattern_expr)));
+               false_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
+            }
+            else {
+               // Non-constant pattern - need to materialise and use ISNEV
+               ExpressionValue pattern_value(fs, pattern_expr);
+               BCReg pattern_reg = pattern_value.discharge_to_any_reg(allocator);
+               bcemit_INS(fs, BCINS_AD(BC_ISNEV, scrutinee_reg, pattern_reg));
+               false_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
+               allocator.collapse_freereg(pattern_reg);
+            }
+         }  // End of non-table pattern else block
 
          // Emit guard condition check if present
 

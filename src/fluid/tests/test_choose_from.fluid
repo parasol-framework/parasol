@@ -4,7 +4,7 @@
 ----------------------------------------------------------------------------------------------------------------------
 -- Basic Value Matching
 
-@Test(hotpath=true) function testBasicLiteralNumber()
+@Test(hotpath=true) function BasicLiteralNumber()
    result = choose 200 from
       200 -> 'OK'
       404 -> 'Not Found'
@@ -13,7 +13,7 @@
    assert(result is 'OK', "Expected 'OK', got " .. tostring(result))
 end
 
-@Test function testBasicLiteralNumberSecondMatch()
+@Test function BasicLiteralNumberSecondMatch()
    result = choose 404 from
       200 -> 'OK'
       404 -> 'Not Found'
@@ -22,7 +22,7 @@ end
    assert(result is 'Not Found', "Expected 'Not Found', got " .. tostring(result))
 end
 
-@Test function testBasicLiteralElse()
+@Test function BasicLiteralElse()
    result = choose 500 from
       200 -> 'OK'
       404 -> 'Not Found'
@@ -31,7 +31,7 @@ end
    assert(result is 'Unknown', "Expected 'Unknown', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testBasicLiteralString()
+@Test(hotpath=true) function BasicLiteralString()
    result = choose 'hello' from
       'hello' -> 'greeting'
       'goodbye' -> 'farewell'
@@ -40,7 +40,7 @@ end
    assert(result is 'greeting', "Expected 'greeting', got " .. tostring(result))
 end
 
-@Test function testBasicLiteralBoolean()
+@Test function BasicLiteralBoolean()
    result = choose true from
       true -> 'yes'
       false -> 'no'
@@ -49,7 +49,7 @@ end
    assert(result is 'yes', "Expected 'yes', got " .. tostring(result))
 end
 
-@Test function testBasicLiteralBooleanFalse()
+@Test function BasicLiteralBooleanFalse()
    result = choose false from
       true -> 'yes'
       false -> 'no'
@@ -58,7 +58,7 @@ end
    assert(result is 'no', "Expected 'no', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testBasicLiteralNil()
+@Test(hotpath=true) function BasicLiteralNil()
    result = choose nil from
       nil -> 'nothing'
       else -> 'something'
@@ -66,7 +66,7 @@ end
    assert(result is 'nothing', "Expected 'nothing', got " .. tostring(result))
 end
 
-@Test function testBasicNegativeNumber()
+@Test function BasicNegativeNumber()
    result = choose -42 from
       -42 -> 'negative forty-two'
       42 -> 'forty-two'
@@ -75,7 +75,7 @@ end
    assert(result is 'negative forty-two', "Expected 'negative forty-two', got " .. tostring(result))
 end
 
-@Test function testBasicFloatingPoint()
+@Test function BasicFloatingPoint()
    result = choose 3.14 from
       3.14 -> 'pi'
       2.71 -> 'e'
@@ -87,7 +87,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Variable Scrutinee (Runtime Evaluation)
 
-@Test(hotpath=true) function testVariableScrutinee()
+@Test(hotpath=true) function VariableScrutinee()
    status = 200
    result = choose status from
       200 -> 'OK'
@@ -97,7 +97,7 @@ end
    assert(result is 'OK', "Expected 'OK', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testScrutineeEvaluatedOnce()
+@Test(hotpath=true) function ScrutineeEvaluatedOnce()
    call_count = 0
    function getValue()
       call_count++
@@ -113,7 +113,7 @@ end
    assert(call_count is 1, "Scrutinee should be evaluated exactly once, was called " .. tostring(call_count) .. " times")
 end
 
-@Test(hotpath=true) function testExpressionScrutinee()
+@Test(hotpath=true) function ExpressionScrutinee()
    a, b = 10, 5
    result = choose a + b from
       15 -> 'fifteen'
@@ -126,7 +126,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- No Else Branch (Default nil Behaviour)
 
-@Test function testNoElseReturnsNil()
+@Test function NoElseReturnsNil()
    result = choose 999 from
       200 -> 'OK'
       404 -> 'Not Found'
@@ -134,7 +134,7 @@ end
    assert(result is nil, "Expected nil when no match and no else, got " .. tostring(result))
 end
 
-@Test function testNoElseWithMatch()
+@Test function NoElseWithMatch()
    result = choose 200 from
       200 -> 'OK'
       404 -> 'Not Found'
@@ -145,7 +145,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- First-Match-Wins (Order Dependency)
 
-@Test function testFirstMatchWins()
+@Test function FirstMatchWins()
    result = choose 'test' from
       'test' -> 'first'
       'test' -> 'second'
@@ -154,7 +154,7 @@ end
    assert(result is 'first', "Expected 'first' (first match wins), got " .. tostring(result))
 end
 
-@Test function testFirstMatchWinsWithWildcard()
+@Test function FirstMatchWinsWithWildcard()
    result = choose 42 from
       _ -> 'wildcard'
       42 -> 'literal'
@@ -166,14 +166,14 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Wildcard `_` Pattern
 
-@Test function testBareWildcard()
+@Test function BareWildcard()
    result = choose 'anything' from
       _ -> 'matched'
    end
    assert(result is 'matched', "Expected 'matched', got " .. tostring(result))
 end
 
-@Test function testWildcardAfterSpecificPatterns()
+@Test function WildcardAfterSpecificPatterns()
    result = choose 'unknown' from
       'known' -> 'specific'
       _ -> 'catch-all'
@@ -181,7 +181,7 @@ end
    assert(result is 'catch-all', "Expected 'catch-all', got " .. tostring(result))
 end
 
-@Test function testWildcardMatchesNil()
+@Test function WildcardMatchesNil()
    -- Note: _ matches anything including nil (unlike else which is only reached if nothing matched)
    result = choose nil from
       _ -> 'wildcard matched nil'
@@ -192,7 +192,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Relational Patterns
 
-@Test(hotpath=true) function testRelationalLessThan()
+@Test(hotpath=true) function RelationalLessThan()
    result = choose 25 from
       < 30 -> 'small'
       < 60 -> 'medium'
@@ -201,7 +201,7 @@ end
    assert(result is 'small', "Expected 'small', got " .. tostring(result))
 end
 
-@Test function testRelationalLessThanSecondMatch()
+@Test function RelationalLessThanSecondMatch()
    result = choose 45 from
       < 30 -> 'small'
       < 60 -> 'medium'
@@ -210,7 +210,7 @@ end
    assert(result is 'medium', "Expected 'medium', got " .. tostring(result))
 end
 
-@Test function testRelationalLessThanElse()
+@Test function RelationalLessThanElse()
    result = choose 100 from
       < 30 -> 'small'
       < 60 -> 'medium'
@@ -219,7 +219,7 @@ end
    assert(result is 'large', "Expected 'large', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testRelationalLessThanOrEqual()
+@Test(hotpath=true) function RelationalLessThanOrEqual()
    result = choose 30 from
       <= 30 -> 'at most 30'
       else -> 'more than 30'
@@ -227,7 +227,7 @@ end
    assert(result is 'at most 30', "Expected 'at most 30', got " .. tostring(result))
 end
 
-@Test function testRelationalGreaterThan()
+@Test function RelationalGreaterThan()
    result = choose 100 from
       > 50 -> 'large'
       else -> 'small'
@@ -235,7 +235,7 @@ end
    assert(result is 'large', "Expected 'large', got " .. tostring(result))
 end
 
-@Test function testRelationalGreaterThanOrEqual()
+@Test function RelationalGreaterThanOrEqual()
    result = choose 50 from
       >= 50 -> 'at least 50'
       else -> 'less than 50'
@@ -243,7 +243,7 @@ end
    assert(result is 'at least 50', "Expected 'at least 50', got " .. tostring(result))
 end
 
-@Test function testRelationalBoundaryCondition()
+@Test function RelationalBoundaryCondition()
    -- Test exact boundary
    result = choose 30 from
       < 30 -> 'below'
@@ -252,7 +252,7 @@ end
    assert(result is 'at or above', "Expected 'at or above' for boundary value, got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testRelationalWithNegativeNumbers()
+@Test(hotpath=true) function RelationalWithNegativeNumbers()
    result = choose -10 from
       < 0 -> 'negative'
       >= 0 -> 'non-negative'
@@ -261,7 +261,7 @@ end
    assert(result is 'negative', "Expected 'negative', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testRelationalWithParenthesisedExpressions()
+@Test(hotpath=true) function RelationalWithParenthesisedExpressions()
    -- Test that parenthesised expressions in relational patterns parse correctly
 
    -- Test with parenthesised expression as sole relational pattern
@@ -298,7 +298,7 @@ end
    assert(result is 'medium', "Expected 'medium', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testRelationalWithFunctionCallExpressions()
+@Test(hotpath=true) function RelationalWithFunctionCallExpressions()
    function getLimit()
       return 50
    end
@@ -313,7 +313,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Table Patterns (Open Record Semantics)
 
-@Test(hotpath=true) function testTablePatternExactMatch()
+@Test(hotpath=true) function TablePatternExactMatch()
    data = { type = 'message' }
    result = choose data from
       { type = 'message' } -> 'is message'
@@ -322,7 +322,7 @@ end
    assert(result is 'is message', "Expected 'is message', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testTablePatternOpenRecord()
+@Test(hotpath=true) function TablePatternOpenRecord()
    -- Extra keys should be ignored (open record semantics)
    data = { type = 'message', unread = true, timestamp = 12345 }
    result = choose data from
@@ -332,7 +332,7 @@ end
    assert(result is 'is message', "Expected 'is message' with extra keys, got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testTablePatternMultipleKeys()
+@Test(hotpath=true) function TablePatternMultipleKeys()
    data = { type = 'message', unread = true }
    result = choose data from
       { type = 'message', unread = true } -> 'unread message'
@@ -342,7 +342,7 @@ end
    assert(result is 'unread message', "Expected 'unread message', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testTablePatternMissingKey()
+@Test(hotpath=true) function TablePatternMissingKey()
    -- Pattern should fail if required key is missing
    data = { type = 'message' }
    result = choose data from
@@ -352,7 +352,7 @@ end
    assert(result is 'fallback', "Expected 'fallback' when key is missing, got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testTablePatternKeyValueMismatch()
+@Test(hotpath=true) function TablePatternKeyValueMismatch()
    data = { type = 'notification' }
    result = choose data from
       { type = 'message' } -> 'is message'
@@ -361,7 +361,7 @@ end
    assert(result is 'not message', "Expected 'not message' for value mismatch, got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testTablePatternAgainstNil()
+@Test(hotpath=true) function TablePatternAgainstNil()
    result = choose nil from
       { type = 'message' } -> 'is message'
       nil -> 'is nil'
@@ -370,7 +370,7 @@ end
    assert(result is 'is nil', "Expected 'is nil', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testTablePatternAgainstNonTable()
+@Test(hotpath=true) function TablePatternAgainstNonTable()
    result = choose 'string value' from
       { type = 'message' } -> 'is message'
       else -> 'not a table'
@@ -378,7 +378,7 @@ end
    assert(result is 'not a table', "Expected 'not a table', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testEmptyTablePattern()
+@Test(hotpath=true) function EmptyTablePattern()
    -- Empty pattern {} should match any table
    data = { anything = 'here' }
    result = choose data from
@@ -388,7 +388,7 @@ end
    assert(result is 'is a table', "Expected 'is a table', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testEmptyTablePatternAgainstEmptyTable()
+@Test(hotpath=true) function EmptyTablePatternAgainstEmptyTable()
    data = {}
    result = choose data from
       {} -> 'empty table'
@@ -397,7 +397,7 @@ end
    assert(result is 'empty table', "Expected 'empty table', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testTablePatternWithNumericValues()
+@Test(hotpath=true) function TablePatternWithNumericValues()
    data = { status = 200, count = 5 }
    result = choose data from
       { status = 200 } -> 'ok status'
@@ -407,7 +407,7 @@ end
    assert(result is 'ok status', "Expected 'ok status', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testTablePatternWithBooleanValues()
+@Test(hotpath=true) function TablePatternWithBooleanValues()
    data = { active = true, visible = false }
    result = choose data from
       { active = true, visible = true } -> 'active and visible'
@@ -420,7 +420,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Guards (when clause)
 
-@Test(hotpath=true) function testGuardTrue()
+@Test(hotpath=true) function GuardTrue()
    value = 50
    result = choose value from
       _ when value > 25 -> 'large'
@@ -429,7 +429,7 @@ end
    assert(result is 'large', "Expected 'large', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testGuardFalse()
+@Test(hotpath=true) function GuardFalse()
    value = 10
    result = choose value from
       _ when value > 25 -> 'large'
@@ -438,7 +438,7 @@ end
    assert(result is 'small', "Expected 'small', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testGuardWithLiteral()
+@Test(hotpath=true) function GuardWithLiteral()
    status = 200
    priority = 5
    result = choose status from
@@ -449,7 +449,7 @@ end
    assert(result is 'high priority OK', "Expected 'high priority OK', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testGuardWithLiteralFails()
+@Test(hotpath=true) function GuardWithLiteralFails()
    status = 200
    priority = 1
    result = choose status from
@@ -460,7 +460,7 @@ end
    assert(result is 'normal OK', "Expected 'normal OK' when guard fails, got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testGuardWithTablePattern()
+@Test(hotpath=true) function GuardWithTablePattern()
    notification = { type = 'message', priority = 8 }
    result = choose notification from
       { type = 'message' } when notification.priority > 5 -> 'urgent message'
@@ -470,7 +470,7 @@ end
    assert(result is 'urgent message', "Expected 'urgent message', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testGuardEvaluatedAfterPatternMatch()
+@Test(hotpath=true) function GuardEvaluatedAfterPatternMatch()
    evaluated = false
    function checkGuard()
       evaluated = true
@@ -486,7 +486,7 @@ end
    assert(evaluated is false, "Guard should not be evaluated when pattern doesn't match")
 end
 
-@Test(hotpath=true) function testGuardWithComplexExpression()
+@Test(hotpath=true) function GuardWithComplexExpression()
    data = { x = 10, y = 20 }
    result = choose data from
       {} when data.x + data.y > 25 -> 'sum large'
@@ -496,7 +496,7 @@ end
    assert(result is 'sum large', "Expected 'sum large', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testMultipleGuardsFirstWins()
+@Test(hotpath=true) function MultipleGuardsFirstWins()
    value = 50
    result = choose value from
       _ when value > 40 -> 'first guard'
@@ -509,7 +509,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Tuple Patterns
 
-@Test(hotpath=true) function testTupleExactMatch()
+@Test(hotpath=true) function TupleExactMatch()
    result = choose (0, 0) from
       (0, 0) -> 'origin'
       else -> 'not origin'
@@ -517,7 +517,7 @@ end
    assert(result is 'origin', "Expected 'origin', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testTupleWithWildcard()
+@Test(hotpath=true) function TupleWithWildcard()
    result = choose (5, 0) from
       (0, 0) -> 'origin'
       (_, 0) -> 'on x-axis'
@@ -527,7 +527,7 @@ end
    assert(result is 'on x-axis', "Expected 'on x-axis', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testTupleOnYAxis()
+@Test(hotpath=true) function TupleOnYAxis()
    result = choose (0, 7) from
       (0, 0) -> 'origin'
       (_, 0) -> 'on x-axis'
@@ -537,7 +537,7 @@ end
    assert(result is 'on y-axis', "Expected 'on y-axis', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testTupleElsewhere()
+@Test(hotpath=true) function TupleElsewhere()
    result = choose (3, 4) from
       (0, 0) -> 'origin'
       (_, 0) -> 'on x-axis'
@@ -547,7 +547,7 @@ end
    assert(result is 'elsewhere', "Expected 'elsewhere', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testTupleFromVariables()
+@Test(hotpath=true) function TupleFromVariables()
    dx, dy = 0, 5
    result = choose (dx, dy) from
       (0, 0) -> 'standing'
@@ -558,7 +558,7 @@ end
    assert(result is 'vertical', "Expected 'vertical', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testTupleThreeElements()
+@Test(hotpath=true) function TupleThreeElements()
    result = choose (1, 2, 3) from
       (0, 0, 0) -> 'origin'
       (1, _, _) -> 'x is 1'
@@ -568,14 +568,14 @@ end
    assert(result is 'x is 1', "Expected 'x is 1', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testTupleAllWildcards()
+@Test(hotpath=true) function TupleAllWildcards()
    result = choose (5, 10) from
       (_, _) -> 'any pair'
    end
    assert(result is 'any pair', "Expected 'any pair', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testTupleFromFunctionReturn()
+@Test(hotpath=true) function TupleFromFunctionReturn()
    function getCoords()
       return 10, 20
    end
@@ -588,7 +588,7 @@ end
    assert(result is 'specific point', "Expected 'specific point', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testTupleWithStrings()
+@Test(hotpath=true) function TupleWithStrings()
    result = choose ('GET', '/api') from
       ('GET', '/') -> 'home'
       ('GET', '/api') -> 'api get'
@@ -598,7 +598,7 @@ end
    assert(result is 'api get', "Expected 'api get', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testTupleWithMixedTypes()
+@Test(hotpath=true) function TupleWithMixedTypes()
    result = choose ('error', 404) from
       ('success', _) -> 'success'
       ('error', 404) -> 'not found error'
@@ -611,7 +611,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Expression Context
 
-@Test(hotpath=true) function testInLocalAssignment()
+@Test(hotpath=true) function InLocalAssignment()
    x = choose 1 from
       1 -> 'one'
       else -> 'other'
@@ -619,7 +619,7 @@ end
    assert(x is 'one', "Expected 'one', got " .. tostring(x))
 end
 
-@Test(hotpath=true) function testInReturn()
+@Test(hotpath=true) function InReturn()
    function getStatus(code)
       return choose code from
          200 -> 'OK'
@@ -633,7 +633,7 @@ end
    assert(getStatus(500) is 'Unknown', "Expected 'Unknown'")
 end
 
-@Test(hotpath=true) function testInTableConstructor()
+@Test(hotpath=true) function InTableConstructor()
    t = {
       status = choose 200 from
          200 -> 'ok'
@@ -645,7 +645,7 @@ end
    assert(t.code is 200, "Expected 200, got " .. tostring(t.code))
 end
 
-@Test(hotpath=true) function testInFunctionArgument()
+@Test(hotpath=true) function InFunctionArgument()
    function process(value)
       return 'processed: ' .. value
    end
@@ -657,7 +657,7 @@ end
    assert(result is 'processed: one', "Expected 'processed: one', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testInArithmeticExpression()
+@Test(hotpath=true) function InArithmeticExpression()
    multiplier = (choose 'double' from
       'double' -> 2
       'triple' -> 3
@@ -667,7 +667,7 @@ end
    assert(result is 20, "Expected 20, got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testInConcatenation()
+@Test(hotpath=true) function InConcatenation()
    result = 'Status: ' .. (choose 200 from
       200 -> 'OK'
       else -> 'Error'
@@ -678,7 +678,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Statement Context
 
-@Test(hotpath=true) function testStatementContextSideEffects()
+@Test(hotpath=true) function StatementContextSideEffects()
    result = nil
    choose 'save' from
       'save' -> result = 'saved'
@@ -688,7 +688,7 @@ end
    assert(result is 'saved', "Expected 'saved', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testStatementContextFunctionCalls()
+@Test(hotpath=true) function StatementContextFunctionCalls()
    log = {}
    function logAction(action)
       log[#log] = action  -- Use #log for 0-based indexing (Fluid convention)
@@ -707,7 +707,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Nested Choose Expressions
 
-@Test(hotpath=true) function testNestedChooseInResult()
+@Test(hotpath=true) function NestedChooseInResult()
    outer = 'a'
    inner = 1
    result = choose outer from
@@ -722,7 +722,7 @@ end
    assert(result is 'a1', "Expected 'a1', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testNestedChooseInGuard()
+@Test(hotpath=true) function NestedChooseInGuard()
    value = 50
    category = 'high'
    result = choose value from
@@ -732,7 +732,7 @@ end
    assert(result is 'high priority', "Expected 'high priority', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testDeeplyNestedChoose()
+@Test(hotpath=true) function DeeplyNestedChoose()
    a, b, c = 1, 2, 3
    result = choose a from
       1 -> choose b from
@@ -750,7 +750,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Complex Result Expressions
 
-@Test(hotpath=true) function testResultWithArithmetic()
+@Test(hotpath=true) function ResultWithArithmetic()
    x = 10
    result = choose x from
       10 -> x * 2 + 5
@@ -759,7 +759,7 @@ end
    assert(result is 25, "Expected 25, got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testResultWithFunctionCall()
+@Test(hotpath=true) function ResultWithFunctionCall()
    function double(n)
       return n * 2
    end
@@ -771,7 +771,7 @@ end
    assert(result is 10, "Expected 10, got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testResultWithTableConstructor()
+@Test(hotpath=true) function ResultWithTableConstructor()
    result = choose 'user' from
       'user' -> { name = 'John', role = 'user' }
       'admin' -> { name = 'Admin', role = 'admin' }
@@ -782,7 +782,7 @@ end
    assert(result.role is 'user', "Expected role 'user'")
 end
 
-@Test(hotpath=true) function testResultWithMethodCall()
+@Test(hotpath=true) function ResultWithMethodCall()
    obj = {
       getValue = function(self)
          return 'method result'
@@ -799,14 +799,14 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Edge Cases
 
-@Test(hotpath=true) function testOnlyElseBranch()
+@Test(hotpath=true) function OnlyElseBranch()
    result = choose 'anything' from
       else -> 'always this'
    end
    assert(result is 'always this', "Expected 'always this', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testEmptyString()
+@Test(hotpath=true) function EmptyString()
    result = choose '' from
       '' -> 'empty'
       else -> 'not empty'
@@ -814,7 +814,7 @@ end
    assert(result is 'empty', "Expected 'empty', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testZeroValue()
+@Test(hotpath=true) function ZeroValue()
    result = choose 0 from
       0 -> 'zero'
       else -> 'non-zero'
@@ -822,7 +822,7 @@ end
    assert(result is 'zero', "Expected 'zero', got " .. tostring(result))
 end
 
-@Test function testNaNHandling()
+@Test function NaNHandling()
    nan = 0/0
    result = choose nan from
       _ -> 'wildcard catches NaN'
@@ -830,7 +830,7 @@ end
    assert(result is 'wildcard catches NaN', "Expected wildcard to catch NaN")
 end
 
-@Test function testInfinityHandling()
+@Test function InfinityHandling()
    inf = 1/0
    result = choose inf from
       > 1000000 -> 'very large'
@@ -839,7 +839,7 @@ end
    assert(result is 'very large', "Expected 'very large' for infinity")
 end
 
-@Test(hotpath=true) function testChooseWithTernary()
+@Test(hotpath=true) function ChooseWithTernary()
    flag = true
    result = choose (flag ? 1 :> 2) from
       1 -> 'one'
@@ -849,7 +849,7 @@ end
    assert(result is 'one', "Expected 'one', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testChooseWithCoalesce()
+@Test(hotpath=true) function ChooseWithCoalesce()
    value = nil
    result = choose (value ?? 'default') from
       'default' -> 'used default'
@@ -861,7 +861,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Type Coercion and Comparison Semantics
 
-@Test(hotpath=true) function testNoImplicitTypeCoercion()
+@Test(hotpath=true) function NoImplicitTypeCoercion()
    -- '1' should not match 1
    result = choose '1' from
       1 -> 'number'
@@ -871,7 +871,7 @@ end
    assert(result is 'string', "Expected 'string' (no implicit coercion), got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testTableIdentityVsEquality()
+@Test(hotpath=true) function TableIdentityVsEquality()
    t1 = { a = 1 }
    t2 = { a = 1 }
 
@@ -886,7 +886,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Performance/Stress Tests
 
-@Test(hotpath=true) function testManyBranches()
+@Test(hotpath=true) function ManyBranches()
    -- Test that many branches work correctly
    target = 50
    result = choose target from
@@ -908,7 +908,7 @@ end
    assert(result is 'fifty', "Expected 'fifty', got " .. tostring(result))
 end
 
-@Test(hotpath=true) function testRepeatedEvaluation()
+@Test(hotpath=true) function RepeatedEvaluation()
    -- Ensure repeated use works correctly in a loop
    results = {}
    for i in {0..10} do
@@ -929,7 +929,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Real-World Use Cases
 
-@Test(hotpath=true) function testHttpStatusHandling()
+@Test(hotpath=true) function HttpStatusHandling()
    function describeStatus(code)
       return choose code from
          < 200 -> 'informational'
@@ -948,7 +948,7 @@ end
    assert(describeStatus(500) is 'server error')
 end
 
-@Test(hotpath=true) function testEventDispatch()
+@Test(hotpath=true) function EventDispatch()
    function handleEvent(event)
       return choose event from
          { type = 'click', button = 'left' } -> 'left click'
@@ -968,7 +968,7 @@ end
    assert(handleEvent({ type = 'scroll' }) is 'unknown event')
 end
 
-@Test(hotpath=true) function testStateTransition()
+@Test(hotpath=true) function StateTransition()
    function nextState(current, action)
       return choose (current, action) from
          ('idle', 'start') -> 'running'
@@ -987,7 +987,7 @@ end
    assert(nextState('idle', 'pause') is 'idle')  -- Invalid, stays in current
 end
 
-@Test(hotpath=true) function testIconSelection()
+@Test(hotpath=true) function IconSelection()
    function getIcon(notification)
       return choose notification from
          { type = 'message', unread = true } -> 'icon-inbox-unread'
@@ -1011,7 +1011,7 @@ end
 -- Syntax Error Tests (Expected Failures)
 -- These tests verify that invalid syntax is properly rejected
 
-@Test function testSyntaxErrorMissingFrom()
+@Test function SyntaxErrorMissingFrom()
    script = obj.new('fluid', {
       statement = [[
          result = choose value
@@ -1023,7 +1023,7 @@ end
    assert(script.error != ERR_Okay, "Should fail: missing 'from' keyword")
 end
 
-@Test(hotpath=false) function testSyntaxErrorMissingEnd()
+@Test(hotpath=false) function SyntaxErrorMissingEnd()
    script = obj.new('fluid', {
       statement = [[
          result = choose value from
@@ -1034,7 +1034,7 @@ end
    assert(script.error != ERR_Okay, "Should fail: missing 'end' keyword")
 end
 
-@Test function testSyntaxErrorMissingArrow()
+@Test function SyntaxErrorMissingArrow()
    script = obj.new('fluid', {
       statement = [[
          result = choose value from
@@ -1046,7 +1046,7 @@ end
    assert(script.error != ERR_Okay, "Should fail: missing '->' arrow")
 end
 
-@Test function testSyntaxErrorElseNotLast()
+@Test function SyntaxErrorElseNotLast()
    script = obj.new('fluid', {
       statement = [[
          result = choose value from
@@ -1059,7 +1059,7 @@ end
    assert(script.error != ERR_Okay, "Should fail: 'else' must be last")
 end
 
-@Test function testSyntaxErrorTupleArityMismatch()
+@Test function SyntaxErrorTupleArityMismatch()
    -- This should be a compile-time error
    script = obj.new('fluid', {
       statement = [[
@@ -1073,7 +1073,7 @@ end
    assert(script.error != ERR_Okay, "Should fail: tuple arity mismatch")
 end
 
-@Test function testSyntaxErrorTuplePatternOnSingleValue()
+@Test function SyntaxErrorTuplePatternOnSingleValue()
    -- Tuple patterns require a function call returning multiple values, not a single expression
    script = obj.new('fluid', {
       statement = [[
@@ -1090,7 +1090,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Integration with Other Fluid Features
 
-@Test(hotpath=true) function testWithRanges()
+@Test(hotpath=true) function WithRanges()
    items = { [0] = 'a', [1] = 'b', [2] = 'c' }
    results = {}
    for i in {0..3} do
@@ -1106,7 +1106,7 @@ end
    assert(results[2] is 'third', "Expected 'third', got " .. tostring(results[2]))
 end
 
-@Test(hotpath=true) function testWithCompoundAssignment()
+@Test(hotpath=true) function WithCompoundAssignment()
    count = 0
    values = { [0] = 1, [1] = 2, [2] = 3, [3] = 1, [4] = 2, [5] = 1 }
    for i in {0..6} do
@@ -1118,7 +1118,7 @@ end
    assert(count is 3, "Expected 3 ones, got " .. tostring(count))
 end
 
-@Test(hotpath=true) function testWithDefer()
+@Test(hotpath=true) function WithDefer()
    log = {}
    function test()
       defer()
@@ -1142,7 +1142,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Short-Circuit Evaluation
 
-@Test(hotpath=true) function testShortCircuitBranchNotEvaluated()
+@Test(hotpath=true) function ShortCircuitBranchNotEvaluated()
    evaluated_branches = {}
 
    function branch1()
@@ -1171,7 +1171,7 @@ end
    assert(evaluated_branches[0] is 'branch1', "Only branch1 should be called")
 end
 
-@Test(hotpath=true) function testShortCircuitGuardNotEvaluated()
+@Test(hotpath=true) function ShortCircuitGuardNotEvaluated()
    guard_evaluated = false
 
    function checkGuard()
