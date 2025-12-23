@@ -265,7 +265,7 @@ inline int strcopy(T &&Source, std::span<char, N> Dest) noexcept
    size_t pos = 0;
    while (String[pos]) {
       for (i=0; i < Keyword.size(); i++) if (std::toupper(String[pos+i]) != std::toupper(Keyword[i])) break;
-      if (i == Keyword.size()) return pos;
+      if (i == Keyword.size()) return int(pos);
       for (++pos; (String[pos] & 0xc0) == 0x80; pos++);
    }
 

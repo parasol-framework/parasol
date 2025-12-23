@@ -72,6 +72,7 @@ void LexState::var_add(BCREG nvars)
       v->slot = nactvar++;
       v->info = VarInfoFlag::None;
       v->fixed_type = FluidType::Unknown;  // Initialize to Unknown (no type constraint)
+      v->result_types.fill(FluidType::Unknown);  // No return type info for non-functions
    }
    fs->nactvar = nactvar;
 }
@@ -789,13 +790,13 @@ static void fs_fixup_ret(FuncState* fs)
 //********************************************************************************************************************
 // Finish a FuncState and return the new prototype.
 
-GCproto* LexState::fs_finish(BCLine Line)
+GCproto * LexState::fs_finish(BCLine Line)
 {
-   lua_State* L = this->L;
-   FuncState* fs = this->fs;
+   lua_State *L = this->L;
+   FuncState *fs = this->fs;
    BCLine numline = Line - fs->linedefined;
    size_t sizept, ofsk, ofsuv, ofsli, ofsdbg, ofsvar;
-   GCproto* pt;
+   GCproto *pt;
 
    // Apply final fixups.
 
@@ -838,6 +839,8 @@ GCproto* LexState::fs_finish(BCLine Line)
       }
    }
 
+   pt->result_types = fs->return_types;
+
    // Close potentially uninitialized gap between bc and kgc.
 
    *(uint32_t*)((char*)pt + ofsk - sizeof(GCRef) * (fs->nkgc + 1)) = 0;
@@ -861,26 +864,27 @@ GCproto* LexState::fs_finish(BCLine Line)
 //********************************************************************************************************************
 // Initialize a new FuncState.
 
-void LexState::fs_init(FuncState* FunctionState)
+void LexState::fs_init(FuncState *FunctionState)
 {
-   FuncState* fs = FunctionState;
-   lua_State* L = this->L;
-   fs->prev = this->fs; this->fs = fs;  // Append to list.
-   fs->ls = this;
+   FuncState *fs = FunctionState;
+   lua_State *L = this->L;
+   fs->prev  = this->fs; this->fs = fs;  // Append to list.
+   fs->ls    = this;
    fs->vbase = this->vtop;
-   fs->L = L;
-   fs->pc = 0;
+   fs->L     = L;
+   fs->pc    = 0;
    fs->lasttarget = 0;
    fs->clear_pending_jumps();
-   fs->freereg = 0;
-   fs->nkgc = 0;
-   fs->nkn = 0;
-   fs->nactvar = 0;
+   fs->freereg   = 0;
+   fs->nkgc      = 0;
+   fs->nkn       = 0;
+   fs->nactvar   = 0;
    fs->numparams = 0;  // Initialize parameter count to zero.
-   fs->nuv = 0;
-   fs->bl = nullptr;
-   fs->flags = 0;
+   fs->nuv       = 0;
+   fs->bl        = nullptr;
+   fs->flags     = 0;
    fs->framesize = 1;  // Minimum frame size.
+   fs->return_types.fill(FluidType::Unknown);  // Initialize return types
    fs->kt = lj_tab_new(L, 0, 0);
    // Anchor table of constants in stack to avoid being collected.
    settabV(L, L->top, fs->kt);

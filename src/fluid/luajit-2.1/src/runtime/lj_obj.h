@@ -1,6 +1,7 @@
 // LuaJIT VM tags, values and objects.
-// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 //
+// Copyright (C) 2025 Paul Manias
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 // Portions taken verbatim or adapted from the Lua interpreter.
 // Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 
@@ -9,6 +10,7 @@
 #include "lua.h"
 #include "lj_def.h"
 #include "lj_arch.h"
+#include <array>
 #include <vector>
 #include "../../../struct_def.h"
 
@@ -55,6 +57,67 @@ class objScript;
 
 using MSize = uint32_t;  // NB: Can't be changed - would affect offsets in GC objects
 using GCSize = uint64_t; // NB: Can't be changed - would affect offsets in GC objects
+
+enum class AstNodeKind : uint16_t {
+   LiteralExpr,
+   IdentifierExpr,
+   VarArgExpr,
+   UnaryExpr,
+   BinaryExpr,
+   UpdateExpr,
+   TernaryExpr,
+   PresenceExpr,
+   PipeExpr,
+   CallExpr,
+   MemberExpr,
+   IndexExpr,
+   SafeMemberExpr,
+   SafeIndexExpr,
+   SafeCallExpr,
+   ResultFilterExpr,
+   TableExpr,
+   FunctionExpr,
+   DeferredExpr,  // Deferred expression <{ expr }>
+   RangeExpr,     // Range literal {start..stop} or {start...stop}
+   ChooseExpr,    // Choose expression: choose value from pattern -> result ... end
+   BlockStmt,
+   AssignmentStmt,
+   LocalDeclStmt,
+   GlobalDeclStmt,
+   LocalFunctionStmt,
+   FunctionStmt,
+   IfStmt,
+   WhileStmt,
+   RepeatStmt,
+   NumericForStmt,
+   GenericForStmt,
+   BreakStmt,
+   ContinueStmt,
+   ReturnStmt,
+   DeferStmt,
+   DoStmt,
+   ConditionalShorthandStmt,
+   ExpressionStmt
+};
+
+// Parameter type annotation for static analysis
+enum class FluidType : uint8_t {
+   Any = 0,     // No type constraint (default)
+   Nil,
+   Bool,
+   Num,
+   Str,
+   Table,
+   Array,
+   Func,
+   Thread,
+   CData,
+   Object,       // Parasol userdata
+   Unknown
+};
+
+// Maximum number of explicitly typed return values per function
+constexpr size_t MAX_RETURN_TYPES = 8;
 
 //********************************************************************************************************************
 // Memory reference
@@ -404,6 +467,9 @@ inline constexpr int32_t SCALE_NUM_GCO = int32_t(sizeof(lua_Number) / sizeof(GCR
    return (n + SCALE_NUM_GCO - 1) & ~(SCALE_NUM_GCO - 1);
 }
 
+// Maximum number of explicitly typed return values per function prototype
+inline constexpr size_t PROTO_MAX_RETURN_TYPES = 8;
+
 typedef struct GCproto {
    GCHeader;
    uint8_t  numparams; //  Number of parameters.
@@ -419,7 +485,7 @@ typedef struct GCproto {
    uint8_t  sizeuv;   //  Number of upvalues.
    uint8_t  flags;    //  Miscellaneous flags (see below).
    uint16_t trace;    //  Anchor for chain of root traces.
-   //  The following fields are for debugging/tracebacks only ------
+   //  The following fields are for debugging/tracebacks only
    GCRef  chunkname;  //  Name of the chunk this function was defined in.
    BCLine firstline;  //  First line of the function definition.
    BCLine numline;    //  Number of lines for the function definition.
@@ -427,6 +493,8 @@ typedef struct GCproto {
    MRef   uvinfo;     //  Upvalue names.
    MRef   varinfo;    //  Names and compressed extents of local variables.
    uint64_t closeslots;  //  Bitmap of locals with <close> attribute (max 64 slots)
+   // Return type information for runtime type checking
+   std::array<FluidType, PROTO_MAX_RETURN_TYPES> result_types{};  // Return types, set by fs_finish()
 } GCproto;
 
 // Flags for prototype.

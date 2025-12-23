@@ -100,8 +100,7 @@ void TypeAnalyser::trace_infer(BCLine Line, std::string_view Context, FluidType 
 {
    if (not this->trace_enabled()) return;
    auto type_str = type_name(Type);
-   pf::Log("TypeCheck").msg("[%d] infer %.*s -> %.*s", Line,
-      int(Context.size()), Context.data(),
+   pf::Log("TypeCheck").msg("[%d] infer %.*s -> %.*s", Line, int(Context.size()), Context.data(),
       int(type_str.size()), type_str.data());
 }
 
@@ -110,8 +109,7 @@ void TypeAnalyser::trace_fix(BCLine Line, GCstr* Name, FluidType Type) const
    if (not this->trace_enabled()) return;
    std::string_view name_view = Name ? std::string_view(strdata(Name), Name->len) : std::string_view("<unknown>");
    auto type_str = type_name(Type);
-   pf::Log("TypeCheck").msg("[%d] fix '%.*s' -> %.*s", Line,
-      int(name_view.size()), name_view.data(),
+   pf::Log("TypeCheck").msg("[%d] fix '%.*s' -> %.*s", Line, int(name_view.size()), name_view.data(),
       int(type_str.size()), type_str.data());
 }
 
@@ -120,10 +118,8 @@ void TypeAnalyser::trace_decl(BCLine Line, GCstr* Name, FluidType Type, bool IsF
    if (not this->trace_enabled()) return;
    std::string_view name_view = Name ? std::string_view(strdata(Name), Name->len) : std::string_view("<unknown>");
    auto type_str = type_name(Type);
-   pf::Log("TypeCheck").msg("[%d] decl '%.*s': %.*s%s", Line,
-      int(name_view.size()), name_view.data(),
-      int(type_str.size()), type_str.data(),
-      IsFixed ? " (fixed)" : "");
+   pf::Log("TypeCheck").msg("[%d] decl '%.*s': %.*s%s", Line, int(name_view.size()), name_view.data(),
+      int(type_str.size()), type_str.data(), IsFixed ? " (fixed)" : "");
 }
 
 //********************************************************************************************************************
@@ -899,7 +895,7 @@ void TypeAnalyser::fix_local_type(GCstr *Name, FluidType Type)
 // - First-wins inference rule for functions without explicit return type declarations
 // - Nil is always allowed as a valid return value for any type slot
 
-void TypeAnalyser::validate_return_types(const ReturnStmtPayload& Return, SourceSpan Location)
+void TypeAnalyser::validate_return_types(const ReturnStmtPayload &Return, SourceSpan Location)
 {
    FunctionContext* ctx = this->current_function();
    if (not ctx) return;  // Not inside a function (shouldn't happen in valid code)

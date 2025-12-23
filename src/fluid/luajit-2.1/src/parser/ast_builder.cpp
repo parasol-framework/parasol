@@ -2662,8 +2662,7 @@ ParserResult<std::vector<Identifier>> AstBuilder::parse_name_list()
 
          identifier.type = parse_type_name(type_view);
          if (identifier.type IS FluidType::Unknown) {
-            auto message = std::format("unknown type name '{}'; valid types are: any, nil, bool, "
-               "num, str, table, array, func, thread, cdata, obj", type_view);
+            auto message = std::format("Invalid type.  Common types are: any, bool, num, str, table, array", type_view);
             this->ctx.emit_error(ParserErrorCode::UnknownTypeName, type_token, message);
             ParserError error;
             error.code = ParserErrorCode::UnknownTypeName;

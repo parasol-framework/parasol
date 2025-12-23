@@ -4,7 +4,7 @@
 ----------------------------------------------------------------------------------------------------------------------
 -- EXPLICIT TYPE ANNOTATIONS
 
-@Test function testExplicitNumAnnotation()
+@Test function ExplicitNumAnnotation()
    local count: num = 0
    assert(count is 0, "initial value should be 0")
    count = 42
@@ -13,7 +13,7 @@
    assert(count is 3.14159, "float value should work for num type")
 end
 
-@Test function testExplicitStrAnnotation()
+@Test function ExplicitStrAnnotation()
    local message: str = "hello"
    assert(message is "hello", "initial value should be 'hello'")
    message = "world"
@@ -22,7 +22,7 @@ end
    assert(message is "", "empty string should work for str type")
 end
 
-@Test function testExplicitBoolAnnotation()
+@Test function ExplicitBoolAnnotation()
    local flag: bool = true
    assert(flag is true, "initial value should be true")
    flag = false
@@ -31,7 +31,7 @@ end
    assert(flag is true, "reassignment back to true should work")
 end
 
-@Test function testExplicitTableAnnotation()
+@Test function ExplicitTableAnnotation()
    local config: table = { host = "localhost" }
    assert(config.host is "localhost", "initial table should have host field")
    config = { port = 8080 }
@@ -40,14 +40,14 @@ end
    assert(type(config) is "table", "empty table should work")
 end
 
-@Test function testExplicitFuncAnnotation()
+@Test function ExplicitFuncAnnotation()
    local handler: func = function() return 1 end
    assert(handler() is 1, "initial function should return 1")
    handler = function() return 2 end
    assert(handler() is 2, "reassignment to different function should work")
 end
 
-@Test function testExplicitAnyOpt()
+@Test function ExplicitAnyOpt()
    local variant: any = 0
    assert(variant is 0, "initial number value")
    variant = "text"
@@ -60,7 +60,7 @@ end
    assert(variant is false, "changed to boolean should work for any type")
 end
 
-@Test function testExplicitAnyAcceptsAllTypes()
+@Test function ExplicitAnyAcceptsAllTypes()
    -- The 'any' type should accept any value without type errors
    local data: any
 
@@ -86,7 +86,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- IMPLICIT TYPE FIXING (no annotation)
 
-@Test function testImplicitFixingNumber()
+@Test function ImplicitFixingNumber()
    local count = 10
    assert(count is 10, "initial number")
    count = 20
@@ -95,7 +95,7 @@ end
    assert(count is 0, "zero should work")
 end
 
-@Test function testImplicitFixingString()
+@Test function ImplicitFixingString()
    local name = "Alice"
    assert(name is "Alice", "initial string")
    name = "Bob"
@@ -104,14 +104,14 @@ end
    assert(name is "", "empty string should work")
 end
 
-@Test function testImplicitFixingBoolean()
+@Test function ImplicitFixingBoolean()
    local active = true
    assert(active is true, "initial boolean")
    active = false
    assert(active is false, "reassignment to false should work")
 end
 
-@Test function testImplicitFixingTable()
+@Test function ImplicitFixingTable()
    local data = { a = 1 }
    assert(data.a is 1, "initial table")
    data = { b = 2 }
@@ -120,7 +120,7 @@ end
    assert(type(data) is "table", "empty table should work")
 end
 
-@Test function testImplicitFixingFunction()
+@Test function ImplicitFixingFunction()
    local fn = function() return "original" end
    assert(fn() is "original", "initial function")
    fn = function() return "replaced" end
@@ -130,7 +130,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- NIL SEMANTICS
 
-@Test function testNilPlaceholderDeferred()
+@Test function NilPlaceholderDeferred()
    local result
    assert(result is nil, "initially nil")
    result = nil
@@ -141,7 +141,7 @@ end
    assert(result is 100, "reassignment same type should work")
 end
 
-@Test function testNilClearsValue()
+@Test function NilClearsValue()
    local x = 10
    assert(x is 10, "initial value")
    x = nil
@@ -150,7 +150,7 @@ end
    assert(x is 42, "reassigned back to number")
 end
 
-@Test function testTypedVariableStartsNil()
+@Test function TypedVariableStartsNil()
    local count: num
    assert(count is nil, "typed variable starts nil")
    count = 10
@@ -161,7 +161,7 @@ end
    assert(count is 20, "reassigned number value")
 end
 
-@Test function testNilAssignmentToTypedVariable()
+@Test function NilAssignmentToTypedVariable()
    local message: str = "hello"
    assert(message is "hello", "initial string value")
    message = nil
@@ -173,7 +173,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- TYPE ANNOTATION ALIASES
 
-@Test function testTypeAliases()
+@Test function TypeAliases()
    -- num/number are aliases
    local n1: num = 1
    local n2: number = 2
@@ -205,7 +205,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- TYPE MISMATCH ERROR DETECTION
 
-@Test function testTypeMismatchNumberToString()
+@Test function TypeMismatchNumberToString()
    ex = catch(function()
       return exec("local x = 10; x = 'text'")
    end)
@@ -214,7 +214,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testTypeMismatchStringToNumber()
+@Test function TypeMismatchStringToNumber()
    ex = catch(function()
       return exec("local name = 'Alice'; name = 42")
    end)
@@ -223,7 +223,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testTypeMismatchBooleanToString()
+@Test function TypeMismatchBooleanToString()
    ex = catch(function()
       return exec("local flag = true; flag = 'yes'")
    end)
@@ -232,7 +232,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testTypeMismatchTableToString()
+@Test function TypeMismatchTableToString()
    ex = catch(function()
       return exec("local data = {}; data = 'not a table'")
    end)
@@ -241,7 +241,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testTypeMismatchFunctionToNumber()
+@Test function TypeMismatchFunctionToNumber()
    ex = catch(function()
       return exec("local fn = function() end; fn = 123")
    end)
@@ -250,7 +250,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testTypeMismatchWithExplicitAnnotation()
+@Test function TypeMismatchWithExplicitAnnotation()
    ex = catch(function()
       return exec("local count: num = 10; count = 'text'")
    end)
@@ -259,7 +259,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testTypeMismatchInitialValue()
+@Test function TypeMismatchInitialValue()
    -- Explicit annotation with mismatched initial value
    ex = catch(function()
       return exec("local count: num = 'not a number'")
@@ -269,9 +269,9 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testUnknownTypeRejected()
+@Test function UnknownTypeRejected()
    ex = catch(function()
-      return exec("local x: unknown_type = 42")
+      return exec("local x: NotAType = 42")
    end)
    assert(ex, "should have rejected unknown type name")
 end
@@ -279,7 +279,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- DEFERRED TYPE FIXING (nil placeholder then assignment)
 
-@Test function testDeferredFixingThenMismatch()
+@Test function DeferredFixingThenMismatch()
    ex = catch(function()
       return exec("local result; result = 42; result = 'text'")
    end)
@@ -288,7 +288,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testDeferredFixingWithNilAssignments()
+@Test function DeferredFixingWithNilAssignments()
    ex = catch(function()
       return exec("local value; value = nil; value = nil; value = 100; value = 'wrong'")
    end)
@@ -298,7 +298,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- EDGE CASES
 
-@Test function testMultipleLocalsOneLine()
+@Test function MultipleLocalsOneLine()
    local a, b, c = 1, "two", true
    assert(a is 1, "first local should be number")
    assert(b is "two", "second local should be string")
@@ -314,7 +314,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testMultipleAnnotatedLocals()
+@Test function MultipleAnnotatedLocals()
    local x: num, y: str = 10, "hello"
    assert(x is 10, "first annotated local")
    assert(y is "hello", "second annotated local")
@@ -327,7 +327,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testMixedAnnotatedAndUnannotated()
+@Test function MixedAnnotatedAndUnannotated()
    local typed: num, untyped = 10, "hello"
    assert(typed is 10, "annotated local should be number")
    assert(untyped is "hello", "unannotated local should be string")
@@ -340,7 +340,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testLoopVariableScope()
+@Test function LoopVariableScope()
    -- Loop variables should be independent per iteration
    for i in {0..3} do
       local item = i * 10
@@ -352,7 +352,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testNestedFunctionScope()
+@Test function NestedFunctionScope()
    local outer = "outer"
    assert(outer is "outer", "outer variable should be string")
 
@@ -371,7 +371,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testConditionalBranches()
+@Test function ConditionalBranches()
    local value
    if true then
       value = 42
@@ -387,7 +387,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- FUNCTION PARAMETERS (type annotations on parameters)
 
-@Test function testTypedParameterBasic()
+@Test function TypedParameterBasic()
    function greet(Name: str)
       return "Hello, " .. Name
    end
@@ -396,7 +396,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testTypedParameterMultiple()
+@Test function TypedParameterMultiple()
    function add(A: num, B: num)
       return A + B
    end
@@ -405,7 +405,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testMixedTypedAndUntypedParameters()
+@Test function MixedTypedAndUntypedParameters()
    function process(Value, Count: num)
       return { value = Value, count = Count }
    end
@@ -417,7 +417,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- TABLE SHAPE FLEXIBILITY
 
-@Test function testTableShapeNotTracked()
+@Test function TableShapeNotTracked()
    -- Type fixing does NOT track table shapes
    local config = { host = "localhost", port = 8080 }
    config = { completely = "different", structure = true }
@@ -429,7 +429,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- SPECIAL VALUES
 
-@Test function testZeroNotNil()
+@Test function ZeroNotNil()
    local count = 0
    assert(count is 0, "zero should fix type to number")
    count = 42
@@ -438,7 +438,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testEmptyStringNotNil()
+@Test function EmptyStringNotNil()
    local text = ""
    assert(text is "", "empty string should fix type to string")
    text = "content"
@@ -447,7 +447,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testFalseNotNil()
+@Test function FalseNotNil()
    local flag = false
    assert(flag is false, "false should fix type to boolean")
    flag = true
@@ -456,7 +456,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testEmptyTableFixesType()
+@Test function EmptyTableFixesType()
    local data = {}
    assert(type(data) is "table", "empty table should fix type to table")
    data = { key = "value" }
@@ -466,7 +466,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- COMPOUND OPERATORS WITH TYPE FIXING
 
-@Test function testCompoundOperatorsPreserveType()
+@Test function CompoundOperatorsPreserveType()
    local count = 10
    count += 5
    assert(count is 15, "compound += should work with fixed num type")
@@ -480,7 +480,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testStringConcatPreservesType()
+@Test function StringConcatPreservesType()
    local text = "hello"
    text ..= " world"
    assert(text is "hello world", "string concat should work with fixed str type")
@@ -488,7 +488,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testPostfixIncrementPreservesType()
+@Test function PostfixIncrementPreservesType()
    local counter = 0
    counter++
    assert(counter is 1, "postfix ++ should work with fixed num type")
@@ -499,7 +499,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- SPECIAL FLUID OPERATORS WITH TYPE FIXING
 
-@Test function testIfNilOperatorWithTypedVariable()
+@Test function IfNilOperatorWithTypedVariable()
    local value: num
    value ?= 42
    assert(value is 42, "?= should assign to nil typed variable")
@@ -509,7 +509,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testIfEmptyOperatorWithAnyType()
+@Test function IfEmptyOperatorWithAnyType()
    -- Using 'any' type to allow multi-type assignment
    local value: any = 0
    value ??= "fallback"
@@ -520,7 +520,7 @@ end
 -- RUNTIME TYPE CHECKING
 -- These tests verify BC_ISTYPE emission for dynamic values like function returns and table lookups
 
-@Test function testRuntimeCheckFunctionReturn()
+@Test function RuntimeCheckFunctionReturn()
    -- Function return values require runtime type checking since their type
    -- isn't known at compile time in the assignment context
    function getNumber(): num
@@ -531,7 +531,7 @@ end
    assert(x is 42, "runtime check should pass for matching function return type")
 end
 
-@Test function testRuntimeCheckNilAllowed()
+@Test function RuntimeCheckNilAllowed()
    -- Nil should always be allowed for typed variables (clears the value)
    function maybeNil()
       return nil
@@ -541,7 +541,7 @@ end
    assert(x is nil, "nil should be allowed for typed variables")
 end
 
-@Test function testRuntimeCheckTableLookup()
+@Test function RuntimeCheckTableLookup()
    -- Table field lookups require runtime type checking
    local data = { value = 42 }
    local x: num = 0
@@ -549,7 +549,7 @@ end
    assert(x is 42, "table lookup should pass type check when value matches")
 end
 
-@Test function testRuntimeCheckTableLookupMismatch()
+@Test function RuntimeCheckTableLookupMismatch()
    -- Table field lookup with type mismatch should raise error
    ex = catch(function()
       return exec([[
@@ -561,7 +561,7 @@ end
    assert(ex, "should raise error when table lookup type doesn't match")
 end
 
-@Test function testRuntimeCheckFunctionReturnMismatch()
+@Test function RuntimeCheckFunctionReturnMismatch()
    -- Function returning wrong type should raise error
    ex = catch(function()
       return exec([[
@@ -575,7 +575,7 @@ end
    assert(ex, "should raise error when function return type doesn't match")
 end
 
-@Test function testRuntimeCheckMultipleFunctionCalls()
+@Test function RuntimeCheckMultipleFunctionCalls()
    -- Multiple function calls should all be checked
    function getValue(N)
       if N is 1 then return 100 end
@@ -596,7 +596,7 @@ end
    assert(c is 300, "third function call should pass")
 end
 
-@Test function testRuntimeCheckNestedTableLookup()
+@Test function RuntimeCheckNestedTableLookup()
    -- Nested table lookups should be checked
    local config = {
       settings = {
@@ -608,7 +608,7 @@ end
    assert(timeout is 30, "nested table lookup should pass type check")
 end
 
-@Test function testRuntimeCheckWithConditionalReturn()
+@Test function RuntimeCheckWithConditionalReturn()
    -- Function with conditional returns should be checked at runtime
    function getValueOrNil(ReturnValue)
       if ReturnValue then
@@ -626,7 +626,7 @@ end
    assert(x is nil, "conditional return with nil should be allowed")
 end
 
-@Test function testRuntimeCheckArrayIndex()
+@Test function RuntimeCheckArrayIndex()
    -- Array index access requires runtime type checking
    local numbers = { 10, 20, 30 }
    local x: num = 0
@@ -638,7 +638,7 @@ end
    assert(x is 30, "third array index should pass")
 end
 
-@Test function testRuntimeCheckStaticTypesSkipped()
+@Test function RuntimeCheckStaticTypesSkipped()
    -- Statically-known types should skip runtime check (optimization)
    -- These assignments should NOT emit BC_ISTYPE
    local x: num = 0
@@ -653,4 +653,73 @@ end
    local b: bool = false
    b = true      -- literal boolean - static check only
    assert(b is true, "literal boolean should work without runtime check")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- COMPILE-TIME TYPE CHECKING FOR FUNCTION RETURN TYPES
+-- When a function has explicit return type annotations, the compiler can check type compatibility
+-- at compile time rather than runtime.
+
+@Test function CompileTimeMatchingReturnTypes()
+   -- When function return type matches variable type, no runtime check needed
+   function getNumber(): num
+      return 42
+   end
+
+   local x: num = 0
+   x = getNumber()  -- Types match, no BC_ISTYPE emitted
+   assert(x is 42, "matching return types should work without runtime check")
+
+   -- Multiple calls should all skip runtime check
+   x = getNumber()
+   x = getNumber()
+   assert(x is 42, "repeated calls with matching types should work")
+end
+
+@Test function CompileTimeMismatchReturnTypes()
+   -- When function return type doesn't match variable type, compile-time error
+   ex = catch(function()
+      return exec([[
+         function getString(): str
+            return "hello"
+         end
+
+         local x: num = 0
+         x = getString()  -- Type mismatch: str vs num
+      ]])
+   end)
+   assert(ex, "mismatched return types should cause compile-time error")
+end
+
+@Test function CompileTimeAnyReturnTypeAllowed()
+   -- Function returning 'any' should allow assignment to any typed variable
+   function getAny(): any
+      return 42
+   end
+
+   local x: num = 0
+   x = getAny()  -- 'any' return type means runtime check needed
+   assert(x is 42, "function returning 'any' should work with typed variable")
+end
+
+@Test function CompileTimeUnknownReturnTypeRuntimeCheck()
+   -- Function without return type annotation requires runtime check
+   function getValue()
+      return 42
+   end
+
+   local x: num = 0
+   x = getValue()  -- Unknown return type, BC_ISTYPE emitted for runtime check
+   assert(x is 42, "unknown return type should use runtime check")
+end
+
+@Test function CompileTimeMultipleReturnTypesFirstOnly()
+   -- Only the first return type is checked for single-value assignment
+   function getNumberAndString():<num, str>
+      return 42, "hello"
+   end
+
+   local x: num = 0
+   x = getNumberAndString()  -- First return is num, matches
+   assert(x is 42, "first return type should be used for type check")
 end

@@ -169,6 +169,7 @@ typedef struct VarInfo {
    uint8_t slot;      //  Variable slot.
    VarInfoFlag info;  //  Variable info flags.
    FluidType fixed_type;  // Type once established (Unknown = not yet fixed)
+   std::array<FluidType, MAX_RETURN_TYPES> result_types{};  // Return types if this variable holds a function
 } VarInfo;
 
 // Forward declarations for parser scope helpers.

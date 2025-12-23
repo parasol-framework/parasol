@@ -56,67 +56,6 @@ using StmtNodePtr = std::unique_ptr<StmtNode>;
 using ExprNodeList = std::vector<ExprNodePtr>;
 using StmtNodeList = std::vector<StmtNodePtr>;
 
-enum class AstNodeKind : uint16_t {
-   LiteralExpr,
-   IdentifierExpr,
-   VarArgExpr,
-   UnaryExpr,
-   BinaryExpr,
-   UpdateExpr,
-   TernaryExpr,
-   PresenceExpr,
-   PipeExpr,
-   CallExpr,
-   MemberExpr,
-   IndexExpr,
-   SafeMemberExpr,
-   SafeIndexExpr,
-   SafeCallExpr,
-   ResultFilterExpr,
-   TableExpr,
-   FunctionExpr,
-   DeferredExpr,  // Deferred expression <{ expr }>
-   RangeExpr,     // Range literal {start..stop} or {start...stop}
-   ChooseExpr,    // Choose expression: choose value from pattern -> result ... end
-   BlockStmt,
-   AssignmentStmt,
-   LocalDeclStmt,
-   GlobalDeclStmt,
-   LocalFunctionStmt,
-   FunctionStmt,
-   IfStmt,
-   WhileStmt,
-   RepeatStmt,
-   NumericForStmt,
-   GenericForStmt,
-   BreakStmt,
-   ContinueStmt,
-   ReturnStmt,
-   DeferStmt,
-   DoStmt,
-   ConditionalShorthandStmt,
-   ExpressionStmt
-};
-
-// Parameter type annotation for static analysis
-enum class FluidType : uint8_t {
-   Any = 0,     // No type constraint (default)
-   Nil,
-   Bool,
-   Num,
-   Str,
-   Table,
-   Array,
-   Func,
-   Thread,
-   CData,
-   Object,       // Parasol userdata
-   Unknown
-};
-
-// Maximum number of explicitly typed return values per function
-constexpr size_t MAX_RETURN_TYPES = 8;
-
 // Function return type declaration for static analysis
 struct FunctionReturnTypes {
    std::array<FluidType, MAX_RETURN_TYPES> types{};  // Return types (Unknown = unused slot)

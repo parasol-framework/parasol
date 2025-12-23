@@ -15,8 +15,6 @@
 #include "lj_arch.h"
 #include "lj_prng.h"
 
-// -- PRNG step function --------------------------------------------------
-
 /* This implements a Tausworthe PRNG with period 2^223. Based on:
 **   Tables of maximally-equidistributed combined LFSR generators,
 **   Pierre L'Ecuyer, 1991, table 3, 1st entry.

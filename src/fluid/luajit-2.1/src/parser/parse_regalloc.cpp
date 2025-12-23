@@ -1,6 +1,7 @@
 // Lua parser - Register allocation and bytecode emission.
-// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 //
+// Copyright (C) 2025 Paul Manias
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 // Major portions taken verbatim or adapted from the Lua interpreter.
 // Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 
@@ -496,31 +497,37 @@ static void expr_toval(FuncState *fs, ExpDesc *e)
 //********************************************************************************************************************
 // Emit store for LHS expression.
 
-static void bcemit_store(FuncState *fs, ExpDesc* var, ExpDesc *e)
+static void bcemit_store(FuncState *fs, ExpDesc *LHS, ExpDesc *RHS)
 {
    BCIns ins;
-   if (var->k IS ExpKind::Local) {
-      fs->ls->vstack[var->u.s.aux].info |= VarInfoFlag::VarReadWrite;
-      VarInfo* vinfo = &fs->ls->vstack[var->u.s.aux];
+   if (LHS->k IS ExpKind::Local) {
+      fs->ls->vstack[LHS->u.s.aux].info |= VarInfoFlag::VarReadWrite;
+      VarInfo *vinfo = &fs->ls->vstack[LHS->u.s.aux];
       FluidType fixed = vinfo->fixed_type;
 
-      // Check if runtime type checking is needed for this variable
-      if (fixed != FluidType::Unknown and fixed != FluidType::Any) {
+      // Check if this variable has a defined type and needs runtime type checking
+      if ((fixed != FluidType::Unknown) and (fixed != FluidType::Any)) {
          bool needs_check = true;
 
          // Skip check for statically-known compatible types
-         if (e->k IS ExpKind::Nil) needs_check = false;  // nil is always allowed (clears the variable)
-         else if (e->k IS ExpKind::False or e->k IS ExpKind::True) {
-            needs_check = (fixed != FluidType::Bool);
+         if (RHS->k IS ExpKind::Nil) needs_check = false;  // nil is always allowed (clears the variable)
+         else if (RHS->k IS ExpKind::False or RHS->k IS ExpKind::True) needs_check = (fixed != FluidType::Bool);
+         else if (RHS->k IS ExpKind::Str) needs_check = (fixed != FluidType::Str);
+         else if (RHS->k IS ExpKind::Num) needs_check = (fixed != FluidType::Num);
+         // Check if expression has known result type (e.g., from function call with declared return type)
+         else if (RHS->result_type != FluidType::Unknown and RHS->result_type != FluidType::Any) {
+            // The fact that the parser has allowed this assignment without throwing an error implies that the types are compatible.
+            // The assert assures this fact is always true, and thus we set needs_check on this assumption.
+
+            fs_check_assert(fs, RHS->result_type IS fixed, "expected function return type (RHS) to match variable (LHS)");
+            needs_check = false;  // Types match - skip runtime check
          }
-         else if (e->k IS ExpKind::Str) needs_check = (fixed != FluidType::Str);
-         else if (e->k IS ExpKind::Num) needs_check = (fixed != FluidType::Num);
 
          if (needs_check) {
             // For dynamic values, emit runtime type check
             // First materialise value to a register
 
-            BCREG src_reg = expr_toanyreg(fs, e);
+            BCREG src_reg = expr_toanyreg(fs, RHS);
 
             // Skip type check for nil values (nil is always allowed as a "clear" operation)
             // BC_ISNEP checks if value != nil, skips next instruction if true (not nil)
@@ -552,66 +559,64 @@ static void bcemit_store(FuncState *fs, ExpDesc* var, ExpDesc *e)
             skip_edge.patch_here();
 
             // Update expression state - value is now in src_reg
-            e->k = ExpKind::NonReloc;
-            e->u.s.info = src_reg;
+            RHS->k = ExpKind::NonReloc;
+            RHS->u.s.info = src_reg;
          }
       }
 
-      expr_free(fs, e);
-      expr_toreg(fs, e, var->u.s.info);
+      expr_free(fs, RHS);
+      expr_toreg(fs, RHS, LHS->u.s.info);
       return;
    }
-   else if (var->k IS ExpKind::Upval) {
-      fs->ls->vstack[var->u.s.aux].info |= VarInfoFlag::VarReadWrite;
-      expr_toval(fs, e);
-      if (e->k <= ExpKind::True) ins = BCINS_AD(BC_USETP, var->u.s.info, const_pri(e));
-      else if (e->k IS ExpKind::Str) ins = BCINS_AD(BC_USETS, var->u.s.info, const_str(fs, e));
-      else if (e->k IS ExpKind::Num) ins = BCINS_AD(BC_USETN, var->u.s.info, const_num(fs, e));
-      else ins = BCINS_AD(BC_USETV, var->u.s.info, expr_toanyreg(fs, e));
+   else if (LHS->k IS ExpKind::Upval) {
+      fs->ls->vstack[LHS->u.s.aux].info |= VarInfoFlag::VarReadWrite;
+      expr_toval(fs, RHS);
+      if (RHS->k <= ExpKind::True) ins = BCINS_AD(BC_USETP, LHS->u.s.info, const_pri(RHS));
+      else if (RHS->k IS ExpKind::Str) ins = BCINS_AD(BC_USETS, LHS->u.s.info, const_str(fs, RHS));
+      else if (RHS->k IS ExpKind::Num) ins = BCINS_AD(BC_USETN, LHS->u.s.info, const_num(fs, RHS));
+      else ins = BCINS_AD(BC_USETV, LHS->u.s.info, expr_toanyreg(fs, RHS));
    }
-   else if (var->k IS ExpKind::Global or var->k IS ExpKind::Unscoped) {
+   else if (LHS->k IS ExpKind::Global or LHS->k IS ExpKind::Unscoped) {
       // Unscoped should normally be resolved in emit_lvalue_expr(), but handle it here defensively
-      BCREG ra = expr_toanyreg(fs, e);
-      ins = BCINS_AD(BC_GSET, ra, const_str(fs, var));
+      BCREG ra = expr_toanyreg(fs, RHS);
+      ins = BCINS_AD(BC_GSET, ra, const_str(fs, LHS));
    }
-   else if (var->k IS ExpKind::IndexedArray or var->k IS ExpKind::SafeIndexedArray) {
+   else if (LHS->k IS ExpKind::IndexedArray or LHS->k IS ExpKind::SafeIndexedArray) {
       // Array index assignment - emit BC_ASETV or BC_ASETB
       // Note: SafeIndexedArray uses same SET bytecodes as IndexedArray (safe is only for reads)
       BCREG ra, rc;
-      ra = expr_toanyreg(fs, e);
-      rc = var->u.s.aux;
+      ra = expr_toanyreg(fs, RHS);
+      rc = LHS->u.s.aux;
       if (rc > BCMAX_C) {
-         ins = BCINS_ABC(BC_ASETB, ra, var->u.s.info, rc - (BCMAX_C + 1));
+         ins = BCINS_ABC(BC_ASETB, ra, LHS->u.s.info, rc - (BCMAX_C + 1));
       }
       else {
 #ifdef LUA_USE_ASSERT
          // Free late alloced key reg to avoid assert on free of value reg.
-         if (e->k IS ExpKind::NonReloc and ra >= fs->nactvar and rc >= ra)
-            bcreg_free(fs, rc);
+         if (RHS->k IS ExpKind::NonReloc and ra >= fs->nactvar and rc >= ra) bcreg_free(fs, rc);
 #endif
-         ins = BCINS_ABC(BC_ASETV, ra, var->u.s.info, rc);
+         ins = BCINS_ABC(BC_ASETV, ra, LHS->u.s.info, rc);
       }
    }
    else {
       // Table index assignment - emit BC_TSETV, BC_TSETB, or BC_TSETS
       BCREG ra, rc;
-      fs_check_assert(fs, var->k IS ExpKind::Indexed, "bad expr type %d", int(var->k));
-      ra = expr_toanyreg(fs, e);
-      rc = var->u.s.aux;
-      if (int32_t(rc) < 0) ins = BCINS_ABC(BC_TSETS, ra, var->u.s.info, ~rc);
-      else if (rc > BCMAX_C) ins = BCINS_ABC(BC_TSETB, ra, var->u.s.info, rc - (BCMAX_C + 1));
+      fs_check_assert(fs, LHS->k IS ExpKind::Indexed, "bad expr type %d", int(LHS->k));
+      ra = expr_toanyreg(fs, RHS);
+      rc = LHS->u.s.aux;
+      if (int32_t(rc) < 0) ins = BCINS_ABC(BC_TSETS, ra, LHS->u.s.info, ~rc);
+      else if (rc > BCMAX_C) ins = BCINS_ABC(BC_TSETB, ra, LHS->u.s.info, rc - (BCMAX_C + 1));
       else {
 #ifdef LUA_USE_ASSERT
          // Free late alloced key reg to avoid assert on free of value reg.
          // This can only happen when called from expr_table().
-         if (e->k IS ExpKind::NonReloc and ra >= fs->nactvar and rc >= ra)
-            bcreg_free(fs, rc);
+         if (RHS->k IS ExpKind::NonReloc and ra >= fs->nactvar and rc >= ra) bcreg_free(fs, rc);
 #endif
-         ins = BCINS_ABC(BC_TSETV, ra, var->u.s.info, rc);
+         ins = BCINS_ABC(BC_TSETV, ra, LHS->u.s.info, rc);
       }
    }
    bcemit_INS(fs, ins);
-   expr_free(fs, e);
+   expr_free(fs, RHS);
 }
 
 //********************************************************************************************************************
@@ -623,7 +628,7 @@ static void bcemit_method(FuncState *fs, ExpDesc *e, ExpDesc *key)
    expr_free(fs, e);
    func = fs->freereg;
    bcemit_AD(fs, BC_MOV, func + 1 + LJ_FR2, obj);  // Copy object to 1st argument.
-   fs_check_assert(fs,key->is_str_constant(), "bad usage");
+   fs_check_assert(fs, key->is_str_constant(), "bad usage");
    idx = const_str(fs, key);
    if (idx <= BCMAX_C) {
       bcreg_reserve(fs, 2 + LJ_FR2);
