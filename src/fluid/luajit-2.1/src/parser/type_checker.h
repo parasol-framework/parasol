@@ -17,6 +17,7 @@ struct InferredType {
    {
       if (Expected IS FluidType::Any) return true;
       if (this->primary IS FluidType::Any) return true;
+      if (this->primary IS FluidType::Nil) return true;  // nil matches any type (represents "no value")
       return this->primary IS Expected;
    }
 };

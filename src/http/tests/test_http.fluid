@@ -259,7 +259,7 @@ end
       method     = 'get',
       outputFile = glOutFile,
       stateChanged = function(HTTP, State)
-         if (State is HGS_COMPLETED) then
+         if State is HGS_COMPLETED then
             msg('State changed to COMPLETED.')
          end
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
@@ -335,7 +335,7 @@ function testMultiPart()
    filepath = 'system:icons.zip'
    filename = string.gsub(filepath, '.*[:/\\](.-)', '%1', 1)
 
-   // Parameters
+   -- Parameters
 
    msg('Building parameters')
    str ..= '--' .. boundary .. CRLF
@@ -361,11 +361,9 @@ function testMultiPart()
 
    srcfile = obj.new('file', { src=filepath, flags='READ' } )
 
-   if (srcfile) then
-      http.size = headfile.size + tailfile.size + srcfile.size
-      http.inputfile = headfile.location .. '|' .. srcfile.location .. '|' .. tailfile.location
-      http.acActivate()
-   end
+   http.size = headfile.size + tailfile.size + srcfile.size
+   http.inputfile = headfile.location .. '|' .. srcfile.location .. '|' .. tailfile.location
+   http.acActivate()
 
    headfile = nil
    tailfile = nil
@@ -402,7 +400,7 @@ end
    assert(err is ERR_Okay, "HTTP object failed to activate.")
 
    err = proc.sleep()
-   if (http.error is ERR_HostNotFound) then print('Unable to test, IPv6 name resolution failed.') return end
+   if http.error is ERR_HostNotFound then print('Unable to test, IPv6 name resolution failed.') return end
    assert(err is ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.error is ERR_Okay, 'HTTP object returned error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.currentState is HGS_COMPLETED, 'Expected HTTP state of COMPLETED not reached, got ' .. http.currentState)

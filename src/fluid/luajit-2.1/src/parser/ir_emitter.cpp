@@ -126,18 +126,49 @@ private:
 };
 
 //********************************************************************************************************************
+// Check if any active local variables have the <close> attribute.
+// Close handlers use temporary registers that could clobber return values.
+
+static bool has_close_variables(FuncState* fs)
+{
+   for (BCREG i = 0; i < fs->nactvar; ++i) {
+      VarInfo* v = &fs->var_get(i);
+      if (has_flag(v->info, VarInfoFlag::Close)) return true;
+   }
+   return false;
+}
+
+//********************************************************************************************************************
 // Snapshot return register state.
 // Used by ir_emitter for return statement handling.
+//
+// This function ensures return values are in safe registers before __close and defer handlers run.
+// Close handlers (bcemit_close) use temporary registers starting at freereg (which is set to nactvar).
+// They reserve 5+LJ_FR2 registers for: getmetatable function, metatable result, __close function, args.
+// If return values overlap with these temporary registers, they must be moved to safe slots.
+
+static constexpr BCREG CLOSE_HANDLER_TEMP_REGS = 5 + LJ_FR2;
 
 static void snapshot_return_regs(FuncState* fs, BCIns* ins)
 {
    BCOp op = bc_op(*ins);
 
+   // Calculate the "danger zone" for return values.
+   // If there are close handlers, they use nactvar to nactvar+CLOSE_HANDLER_TEMP_REGS as temporaries.
+   // Return values in this range must be snapshotted to safe slots.
+   bool has_closes = has_close_variables(fs);
+   BCReg danger_limit = BCReg(fs->nactvar + (has_closes ? CLOSE_HANDLER_TEMP_REGS : 0));
+
    if (op IS BC_RET1) {
       auto src = BCReg(bc_a(*ins));
-      if (src < fs->nactvar) {
+      if (src < danger_limit) {
          RegisterAllocator allocator(fs);
          auto dst = fs->free_reg();
+         // Skip past close handler temporaries if needed
+         if (has_closes and dst < danger_limit) {
+            allocator.reserve(BCReg(danger_limit.raw() - dst.raw()));
+            dst = fs->free_reg();
+         }
          allocator.reserve(BCReg(1));
          bcemit_AD(fs, BC_MOV, dst, src);
          setbc_a(ins, dst);
@@ -147,9 +178,14 @@ static void snapshot_return_regs(FuncState* fs, BCIns* ins)
       auto base = BCReg(bc_a(*ins));
       auto nres = BCReg(bc_d(*ins));
       auto top = BCReg(base.raw() + nres.raw() - 1);
-      if (top < fs->nactvar) {
-         auto dst = fs->free_reg();
+      if (top < danger_limit) {
          RegisterAllocator allocator(fs);
+         auto dst = fs->free_reg();
+         // Skip past close handler temporaries if needed
+         if (has_closes and dst < danger_limit) {
+            allocator.reserve(BCReg(danger_limit.raw() - dst.raw()));
+            dst = fs->free_reg();
+         }
          allocator.reserve(nres);
          for (auto i = BCReg(0); i < nres; ++i) {
             bcemit_AD(fs, BC_MOV, dst + i, base + i);
@@ -160,11 +196,20 @@ static void snapshot_return_regs(FuncState* fs, BCIns* ins)
    else if (op IS BC_RETM) {
       auto base = BCReg(bc_a(*ins));
       auto nfixed = BCReg(bc_d(*ins));
-      if (base < fs->nactvar) {
-         auto dst = fs->free_reg();
+      // For multi-result returns (nfixed=0 from call), we know at least 1 value is at base.
+      // We need to protect it if it falls in the danger zone.
+      auto min_values = BCReg(nfixed.raw() > 0 ? nfixed.raw() : 1);
+      auto top = BCReg(base.raw() + min_values.raw() - 1);
+      if (top < danger_limit) {
          RegisterAllocator allocator(fs);
-         allocator.reserve(nfixed);
-         for (auto i = BCReg(0); i < nfixed; ++i) {
+         auto dst = fs->free_reg();
+         // Skip past close handler temporaries if needed
+         if (has_closes and dst < danger_limit) {
+            allocator.reserve(BCReg(danger_limit.raw() - dst.raw()));
+            dst = fs->free_reg();
+         }
+         allocator.reserve(min_values);
+         for (auto i = BCReg(0); i < min_values; ++i) {
             bcemit_AD(fs, BC_MOV, dst + i, base + i);
          }
          setbc_a(ins, dst);
@@ -722,6 +767,16 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &Pa
 {
    BCIns ins;
    this->func_state.flags |= PROTO_HAS_RETURN;
+
+   // Check if function needs runtime type inference (no explicit return types declared)
+   bool needs_typefix = true;
+   for (size_t i = 0; i < this->func_state.return_types.size(); ++i) {
+      if (this->func_state.return_types[i] != FluidType::Unknown) {
+         needs_typefix = false;
+         break;
+      }
+   }
+
    if (Payload.values.empty()) {
       ins = BCINS_AD(BC_RET0, 0, 1);
    }
@@ -731,32 +786,66 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &Pa
       if (not list.ok()) return ParserResult<IrEmitUnit>::failure(list.error_ref());
 
       ExpDesc last = list.value_ref();
-      if (count IS 1) {
-         if (last.k IS ExpKind::Call) {
-            BCIns* ip = ir_bcptr(&this->func_state, &last);
-            if (bc_op(*ip) IS BC_VARG) {
-               setbc_b(ir_bcptr(&this->func_state, &last), 0);
-               ins = BCINS_AD(BC_RETM, this->func_state.nactvar, last.u.s.aux - this->func_state.nactvar);
+
+      // Handle tail-call case: return f() or return f(...)
+      if (count IS 1 and last.k IS ExpKind::Call) {
+         BCIns* ip = ir_bcptr(&this->func_state, &last);
+         if (bc_op(*ip) IS BC_VARG) {
+            // Variadic return: return ...
+            setbc_b(ir_bcptr(&this->func_state, &last), 0);
+            // For VARG returns, we can't know count at compile time - skip typefix
+            ins = BCINS_AD(BC_RETM, this->func_state.nactvar, last.u.s.aux - this->func_state.nactvar);
+         }
+         else if (needs_typefix and bc_op(*ip) IS BC_CALL) {
+            // DISABLE TAIL-CALL: emit BC_CALL + BC_TYPEFIX + BC_RET instead of BC_CALLT
+            // This ensures BC_TYPEFIX runs for the return value.
+            // Only apply to simple BC_CALL - not BC_CALLM (used by result filters) or other call types.
+            bool has_closes = has_close_variables(&this->func_state);
+            if (has_closes) {
+               // With close handlers: Use fixed 1 result (B=2) because MULTRES can be corrupted
+               // by close handlers that run between the call and return.
+               setbc_b(ip, 2);
+               bcemit_AD(&this->func_state, BC_TYPEFIX, last.u.s.aux, 1);
+               ins = BCINS_AD(BC_RET1, last.u.s.aux, 2);
             }
             else {
-               this->func_state.pc--;
-               ins = BCINS_AD(bc_op(*ip) - BC_CALL + BC_CALLT, bc_a(*ip), bc_c(*ip));
+               // No close handlers: Safe to use RETM with all results
+               setbc_b(ip, 0);  // Request all results (MULTRES)
+               bcemit_AD(&this->func_state, BC_TYPEFIX, last.u.s.aux, 1);
+               ins = BCINS_AD(BC_RETM, this->func_state.nactvar, last.u.s.aux - this->func_state.nactvar);
             }
          }
          else {
-            RegisterAllocator allocator(&this->func_state);
-            ExpressionValue value(&this->func_state, last);
-            auto reg = value.discharge_to_any_reg(allocator);
-            ins = BCINS_AD(BC_RET1, reg, 2);
+            // Normal tail-call for:
+            // - Explicitly typed functions (needs_typefix=false)
+            // - Special call types like BC_CALLM (result filters) where we can't safely modify
+            this->func_state.pc--;
+            ins = BCINS_AD(bc_op(*ip) - BC_CALL + BC_CALLT, bc_a(*ip), bc_c(*ip));
          }
       }
+      else if (count IS 1) {
+         // Single non-call return value
+         RegisterAllocator allocator(&this->func_state);
+         ExpressionValue value(&this->func_state, last);
+         auto reg = value.discharge_to_any_reg(allocator);
+         if (needs_typefix) {
+            bcemit_AD(&this->func_state, BC_TYPEFIX, reg, 1);
+         }
+         ins = BCINS_AD(BC_RET1, reg, 2);
+      }
       else {
+         // Multiple return values
          if (last.k IS ExpKind::Call) {
             setbc_b(ir_bcptr(&this->func_state, &last), 0);
+            // Variadic tail - count unknown, skip typefix for safety
             ins = BCINS_AD(BC_RETM, this->func_state.nactvar, last.u.s.aux - this->func_state.nactvar);
          }
          else {
             this->materialise_to_next_reg(last, "return tail value");
+            if (needs_typefix) {
+               auto typefix_count = std::min(count.raw(), BCREG(PROTO_MAX_RETURN_TYPES));
+               bcemit_AD(&this->func_state, BC_TYPEFIX, this->func_state.nactvar, typefix_count);
+            }
             ins = BCINS_AD(BC_RET, this->func_state.nactvar, count + 1);
          }
       }
