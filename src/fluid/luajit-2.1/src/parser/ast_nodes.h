@@ -186,11 +186,29 @@ enum class CallDispatch : uint8_t {
 //********************************************************************************************************************
 
 struct Identifier {
-   GCstr* symbol = nullptr;
+   GCstr *symbol = nullptr;
    SourceSpan span{};
    bool is_blank = false;
    bool has_close = false;
    FluidType type = FluidType::Unknown;  // Explicit type annotation (Unknown = no annotation)
+
+   // Default constructor
+   Identifier() = default;
+
+   // Constructor for creating identifier from a string
+   // Uses lua_State to intern the string
+   Identifier(lua_State* L, const char* Name, SourceSpan Span = {});
+
+   // Constructor for creating identifier using keepstr (LexState method)
+   // This variant is used when the string needs to be kept in the lexer's string table
+   static Identifier from_keepstr(GCstr* Symbol, SourceSpan Span = {}) {
+      Identifier id;
+      id.symbol = Symbol;
+      id.span = Span;
+      id.is_blank = false;
+      id.has_close = false;
+      return id;
+   }
 };
 
 struct NameRef {
@@ -542,6 +560,8 @@ struct IfClause {
 
 struct AssignmentStmtPayload {
    AssignmentStmtPayload() = default;
+   AssignmentStmtPayload(AssignmentOperator op, ExprNodeList targets, ExprNodeList values)
+      : op(op), targets(std::move(targets)), values(std::move(values)) {}
    AssignmentStmtPayload(const AssignmentStmtPayload&) = delete;
    AssignmentStmtPayload& operator=(const AssignmentStmtPayload&) = delete;
    AssignmentStmtPayload(AssignmentStmtPayload&&) noexcept = default;
@@ -553,7 +573,8 @@ struct AssignmentStmtPayload {
 };
 
 struct LocalDeclStmtPayload {
-   LocalDeclStmtPayload() = default;
+   LocalDeclStmtPayload(AssignmentOperator op, std::vector<Identifier> names, ExprNodeList values)
+      : op(op), names(std::move(names)), values(std::move(values)) {}
    LocalDeclStmtPayload(const LocalDeclStmtPayload&) = delete;
    LocalDeclStmtPayload& operator=(const LocalDeclStmtPayload&) = delete;
    LocalDeclStmtPayload(LocalDeclStmtPayload&&) noexcept = default;
@@ -565,7 +586,8 @@ struct LocalDeclStmtPayload {
 };
 
 struct GlobalDeclStmtPayload {
-   GlobalDeclStmtPayload() = default;
+   GlobalDeclStmtPayload(AssignmentOperator op, std::vector<Identifier> names, ExprNodeList values)
+      : op(op), names(std::move(names)), values(std::move(values)) {}
    GlobalDeclStmtPayload(const GlobalDeclStmtPayload&) = delete;
    GlobalDeclStmtPayload& operator=(const GlobalDeclStmtPayload&) = delete;
    GlobalDeclStmtPayload(GlobalDeclStmtPayload&&) noexcept = default;
@@ -577,7 +599,8 @@ struct GlobalDeclStmtPayload {
 };
 
 struct LocalFunctionStmtPayload {
-   LocalFunctionStmtPayload() = default;
+   LocalFunctionStmtPayload(Identifier name, std::unique_ptr<FunctionExprPayload> function)
+      : name(std::move(name)), function(std::move(function)) {}
    LocalFunctionStmtPayload(const LocalFunctionStmtPayload&) = delete;
    LocalFunctionStmtPayload& operator=(const LocalFunctionStmtPayload&) = delete;
    LocalFunctionStmtPayload(LocalFunctionStmtPayload&&) noexcept = default;
@@ -594,7 +617,8 @@ struct FunctionNamePath {
 };
 
 struct FunctionStmtPayload {
-   FunctionStmtPayload() = default;
+   FunctionStmtPayload(FunctionNamePath name, std::unique_ptr<FunctionExprPayload> function)
+      : name(std::move(name)), function(std::move(function)) {}
    FunctionStmtPayload(const FunctionStmtPayload&) = delete;
    FunctionStmtPayload& operator=(const FunctionStmtPayload&) = delete;
    FunctionStmtPayload(FunctionStmtPayload&&) noexcept = default;
@@ -605,7 +629,8 @@ struct FunctionStmtPayload {
 };
 
 struct IfStmtPayload {
-   IfStmtPayload() = default;
+   IfStmtPayload(std::vector<IfClause> clauses)
+      : clauses(std::move(clauses)) {}
    IfStmtPayload(const IfStmtPayload&) = delete;
    IfStmtPayload& operator=(const IfStmtPayload&) = delete;
    IfStmtPayload(IfStmtPayload&&) noexcept = default;
@@ -615,7 +640,8 @@ struct IfStmtPayload {
 };
 
 struct LoopStmtPayload {
-   LoopStmtPayload() = default;
+   LoopStmtPayload(LoopStyle style, ExprNodePtr condition, std::unique_ptr<BlockStmt> body)
+      : style(style), condition(std::move(condition)), body(std::move(body)) {}
    LoopStmtPayload(const LoopStmtPayload&) = delete;
    LoopStmtPayload& operator=(const LoopStmtPayload&) = delete;
    LoopStmtPayload(LoopStmtPayload&&) noexcept = default;
@@ -627,7 +653,10 @@ struct LoopStmtPayload {
 };
 
 struct NumericForStmtPayload {
-   NumericForStmtPayload() = default;
+   NumericForStmtPayload(Identifier control, ExprNodePtr start, ExprNodePtr stop,
+                         ExprNodePtr step, std::unique_ptr<BlockStmt> body)
+      : control(std::move(control)), start(std::move(start)), stop(std::move(stop)),
+        step(std::move(step)), body(std::move(body)) {}
    NumericForStmtPayload(const NumericForStmtPayload&) = delete;
    NumericForStmtPayload& operator=(const NumericForStmtPayload&) = delete;
    NumericForStmtPayload(NumericForStmtPayload&&) noexcept = default;
@@ -641,7 +670,9 @@ struct NumericForStmtPayload {
 };
 
 struct GenericForStmtPayload {
-   GenericForStmtPayload() = default;
+   GenericForStmtPayload(std::vector<Identifier> names, ExprNodeList iterators,
+                         std::unique_ptr<BlockStmt> body)
+      : names(std::move(names)), iterators(std::move(iterators)), body(std::move(body)) {}
    GenericForStmtPayload(const GenericForStmtPayload&) = delete;
    GenericForStmtPayload& operator=(const GenericForStmtPayload&) = delete;
    GenericForStmtPayload(GenericForStmtPayload&&) noexcept = default;
@@ -653,7 +684,8 @@ struct GenericForStmtPayload {
 };
 
 struct ReturnStmtPayload {
-   ReturnStmtPayload() = default;
+   ReturnStmtPayload(ExprNodeList values, bool forwards_call)
+      : values(std::move(values)), forwards_call(forwards_call) {}
    ReturnStmtPayload(const ReturnStmtPayload&) = delete;
    ReturnStmtPayload& operator=(const ReturnStmtPayload&) = delete;
    ReturnStmtPayload(ReturnStmtPayload&&) noexcept = default;
@@ -668,7 +700,8 @@ struct BreakStmtPayload {};
 struct ContinueStmtPayload {};
 
 struct DeferStmtPayload {
-   DeferStmtPayload() = default;
+   DeferStmtPayload(std::unique_ptr<FunctionExprPayload> callable, ExprNodeList arguments = {})
+      : callable(std::move(callable)), arguments(std::move(arguments)) {}
    DeferStmtPayload(const DeferStmtPayload&) = delete;
    DeferStmtPayload& operator=(const DeferStmtPayload&) = delete;
    DeferStmtPayload(DeferStmtPayload&&) noexcept = default;
@@ -679,7 +712,8 @@ struct DeferStmtPayload {
 };
 
 struct DoStmtPayload {
-   DoStmtPayload() = default;
+   DoStmtPayload(std::unique_ptr<BlockStmt> block)
+      : block(std::move(block)) {}
    DoStmtPayload(const DoStmtPayload&) = delete;
    DoStmtPayload& operator=(const DoStmtPayload&) = delete;
    DoStmtPayload(DoStmtPayload&&) noexcept = default;
@@ -689,7 +723,8 @@ struct DoStmtPayload {
 };
 
 struct ConditionalShorthandStmtPayload {
-   ConditionalShorthandStmtPayload() = default;
+   ConditionalShorthandStmtPayload(ExprNodePtr condition, StmtNodePtr body)
+      : condition(std::move(condition)), body(std::move(body)) {}
    ConditionalShorthandStmtPayload(const ConditionalShorthandStmtPayload&) = delete;
    ConditionalShorthandStmtPayload& operator=(const ConditionalShorthandStmtPayload&) = delete;
    ConditionalShorthandStmtPayload(ConditionalShorthandStmtPayload&&) noexcept = default;
@@ -700,7 +735,8 @@ struct ConditionalShorthandStmtPayload {
 };
 
 struct ExpressionStmtPayload {
-   ExpressionStmtPayload() = default;
+   ExpressionStmtPayload(ExprNodePtr expression)
+      : expression(std::move(expression)) {}
    ExpressionStmtPayload(const ExpressionStmtPayload&) = delete;
    ExpressionStmtPayload& operator=(const ExpressionStmtPayload&) = delete;
    ExpressionStmtPayload(ExpressionStmtPayload&&) noexcept = default;

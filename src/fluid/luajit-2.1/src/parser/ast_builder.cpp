@@ -215,9 +215,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_local()
       StmtNodePtr stmt = std::make_unique<StmtNode>();
       stmt->kind = AstNodeKind::LocalFunctionStmt;
       stmt->span = this->span_from(local_token, name_token.value_ref());
-      LocalFunctionStmtPayload payload;
-      payload.name = make_identifier(name_token.value_ref());
-      payload.function = move_function_payload(function_expr);
+      LocalFunctionStmtPayload payload(make_identifier(name_token.value_ref()), move_function_payload(function_expr));
       stmt->data = std::move(payload);
       return ParserResult<StmtNodePtr>::success(std::move(stmt));
    }
@@ -264,13 +262,8 @@ ParserResult<StmtNodePtr> AstBuilder::parse_local()
          }
          else {
             // Non-identifier expression in trailing position - this is an error
-            Token bad = this->ctx.tokens().current();
-            this->ctx.emit_error(ParserErrorCode::ExpectedIdentifier, bad, "expected identifier after values in local declaration");
-            ParserError error;
-            error.code = ParserErrorCode::ExpectedIdentifier;
-            error.token = bad;
-            error.message = "expected identifier after values in local declaration";
-            return ParserResult<StmtNodePtr>::failure(error);
+            return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedIdentifier, this->ctx.tokens().current(),
+               "expected identifier after values in local declaration");
          }
       }
       // Remove the converted identifiers from the values list
@@ -280,11 +273,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_local()
    StmtNodePtr stmt = std::make_unique<StmtNode>();
    stmt->kind = AstNodeKind::LocalDeclStmt;
    stmt->span = local_token.span();
-   LocalDeclStmtPayload payload;
-   payload.op = assign_op;
-   payload.names = std::move(name_list);
-   payload.values = std::move(values);
-   stmt->data = std::move(payload);
+   stmt->data.emplace<LocalDeclStmtPayload>(assign_op, std::move(name_list), std::move(values));
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
 
@@ -319,10 +308,10 @@ ParserResult<StmtNodePtr> AstBuilder::parse_global()
       StmtNodePtr stmt = std::make_unique<StmtNode>();
       stmt->kind = AstNodeKind::FunctionStmt;
       stmt->span = this->span_from(global_token, name_token.value_ref());
-      FunctionStmtPayload payload;
-      payload.name.segments.push_back(make_identifier(name_token.value_ref()));
-      payload.name.is_explicit_global = true;  // Mark as explicitly global
-      payload.function = move_function_payload(function_expr);
+      FunctionNamePath name;
+      name.segments.push_back(make_identifier(name_token.value_ref()));
+      name.is_explicit_global = true;  // Mark as explicitly global
+      FunctionStmtPayload payload(std::move(name), move_function_payload(function_expr));
       stmt->data = std::move(payload);
       return ParserResult<StmtNodePtr>::success(std::move(stmt));
    }
@@ -369,13 +358,8 @@ ParserResult<StmtNodePtr> AstBuilder::parse_global()
          }
          else {
             // Non-identifier expression in trailing position - this is an error
-            Token bad = this->ctx.tokens().current();
-            this->ctx.emit_error(ParserErrorCode::ExpectedIdentifier, bad, "expected identifier after values in global declaration");
-            ParserError error;
-            error.code = ParserErrorCode::ExpectedIdentifier;
-            error.token = bad;
-            error.message = "expected identifier after values in global declaration";
-            return ParserResult<StmtNodePtr>::failure(error);
+            return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedIdentifier, this->ctx.tokens().current(),
+               "expected identifier after values in global declaration");
          }
       }
       // Remove the converted identifiers from the values list
@@ -385,10 +369,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_global()
    StmtNodePtr stmt = std::make_unique<StmtNode>();
    stmt->kind = AstNodeKind::GlobalDeclStmt;
    stmt->span = global_token.span();
-   GlobalDeclStmtPayload payload;
-   payload.op = assign_op;
-   payload.names = std::move(name_list);
-   payload.values = std::move(values);
+   GlobalDeclStmtPayload payload(assign_op, std::move(name_list), std::move(values));
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
@@ -415,14 +396,8 @@ ParserResult<StmtNodePtr> AstBuilder::parse_function_stmt()
 
    if (this->ctx.match(TokenKind::Colon).ok()) {
       if (is_thunk) {
-         Token current = this->ctx.tokens().current();
-         std::string message("thunk functions do not support method syntax");
-         this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, message);
-         ParserError error;
-         error.code = ParserErrorCode::UnexpectedToken;
-         error.token = current;
-         error.message = message;
-         return ParserResult<StmtNodePtr>::failure(error);
+         return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, this->ctx.tokens().current(),
+            "thunk functions do not support method syntax");
       }
       method = true;
       auto seg = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
@@ -439,9 +414,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_function_stmt()
    if (method and path.method.has_value()) {
       auto* payload = function_payload_from(*function_expr);
       FunctionParameter self_param;
-      self_param.name = path.method.value();
-      self_param.name.symbol = lj_str_newlit(&this->ctx.lua(), "self");
-      self_param.name.is_blank = false;
+      self_param.name = Identifier(&this->ctx.lua(), "self", path.method.value().span);
       self_param.is_self = true;
       if (payload) payload->parameters.insert(payload->parameters.begin(), self_param);
    }
@@ -449,9 +422,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_function_stmt()
    StmtNodePtr stmt = std::make_unique<StmtNode>();
    stmt->kind = AstNodeKind::FunctionStmt;
    stmt->span = this->span_from(func_token, name_token.value_ref());
-   FunctionStmtPayload payload;
-   payload.name = std::move(path);
-   payload.function = move_function_payload(function_expr);
+   FunctionStmtPayload payload(std::move(path), move_function_payload(function_expr));
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
@@ -511,12 +482,8 @@ ParserResult<AnnotationArgValue> AstBuilder::parse_annotation_value()
       }
 
       if (not this->ctx.check(close_kind)) {
-         ParserError error;
-         error.code = ParserErrorCode::ExpectedToken;
-         error.token = this->ctx.tokens().current();
-         error.message = (close_kind IS TokenKind::RightBracket) ? "expected ']' to close array" : "expected '}' to close array";
-         this->ctx.emit_error(error.code, error.token, error.message);
-         return ParserResult<AnnotationArgValue>::failure(error);
+         return this->fail<AnnotationArgValue>(ParserErrorCode::ExpectedToken, this->ctx.tokens().current(),
+            (close_kind IS TokenKind::RightBracket) ? "expected ']' to close array" : "expected '}' to close array");
       }
       this->ctx.tokens().advance();  // Consume ] or }
       return ParserResult<AnnotationArgValue>::success(std::move(value));
@@ -530,12 +497,8 @@ ParserResult<AnnotationArgValue> AstBuilder::parse_annotation_value()
       return ParserResult<AnnotationArgValue>::success(std::move(value));
    }
 
-   ParserError error;
-   error.code = ParserErrorCode::UnexpectedToken;
-   error.token = current;
-   error.message = "expected annotation value (string, number, boolean, array, or identifier)";
-   this->ctx.emit_error(error.code, error.token, error.message);
-   return ParserResult<AnnotationArgValue>::failure(error);
+   return this->fail<AnnotationArgValue>(ParserErrorCode::UnexpectedToken, current,
+      "expected annotation value (string, number, boolean, array, or identifier)");
 }
 
 //********************************************************************************************************************
@@ -588,12 +551,8 @@ ParserResult<std::vector<AnnotationEntry>> AstBuilder::parse_annotations()
 
          // Expect closing parenthesis
          if (not this->ctx.check(TokenKind::RightParen)) {
-            ParserError error;
-            error.code = ParserErrorCode::ExpectedToken;
-            error.token = this->ctx.tokens().current();
-            error.message = "expected ')' to close annotation arguments";
-            this->ctx.emit_error(error.code, error.token, error.message);
-            return ParserResult<std::vector<AnnotationEntry>>::failure(error);
+            return this->fail<std::vector<AnnotationEntry>>(ParserErrorCode::ExpectedToken,
+               this->ctx.tokens().current(), "expected ')' to close annotation arguments");
          }
          this->ctx.tokens().advance();  // Consume )
       }
@@ -639,12 +598,8 @@ ParserResult<StmtNodePtr> AstBuilder::parse_annotated_statement()
       stmt = std::move(result.value_ref());
       // Verify it's a local function, not a variable declaration
       if (stmt->kind != AstNodeKind::LocalFunctionStmt) {
-         ParserError error;
-         error.code = ParserErrorCode::UnexpectedToken;
-         error.token = current;
-         error.message = "annotations can only precede function declarations";
-         this->ctx.emit_error(error.code, error.token, error.message);
-         return ParserResult<StmtNodePtr>::failure(error);
+         return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, current,
+            "annotations can only precede function declarations");
       }
    }
    else if (current.kind() IS TokenKind::Global) {
@@ -653,21 +608,13 @@ ParserResult<StmtNodePtr> AstBuilder::parse_annotated_statement()
       stmt = std::move(result.value_ref());
       // Verify it's a global function, not a variable declaration
       if (stmt->kind != AstNodeKind::FunctionStmt) {
-         ParserError error;
-         error.code = ParserErrorCode::UnexpectedToken;
-         error.token = current;
-         error.message = "annotations can only precede function declarations";
-         this->ctx.emit_error(error.code, error.token, error.message);
-         return ParserResult<StmtNodePtr>::failure(error);
+         return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, current,
+            "annotations can only precede function declarations");
       }
    }
    else {
-      ParserError error;
-      error.code = ParserErrorCode::UnexpectedToken;
-      error.token = current;
-      error.message = "annotations must precede a function declaration";
-      this->ctx.emit_error(error.code, error.token, error.message);
-      return ParserResult<StmtNodePtr>::failure(error);
+      return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, current,
+         "annotations must precede a function declaration");
    }
 
    // Attach annotations to the function payload
@@ -736,8 +683,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_if()
    StmtNodePtr stmt = std::make_unique<StmtNode>();
    stmt->kind = AstNodeKind::IfStmt;
    stmt->span = if_token.span();
-   IfStmtPayload payload;
-   payload.clauses = std::move(clauses);
+   IfStmtPayload payload(std::move(clauses));
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
@@ -759,10 +705,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_while()
    StmtNodePtr stmt = std::make_unique<StmtNode>();
    stmt->kind = AstNodeKind::WhileStmt;
    stmt->span = token.span();
-   LoopStmtPayload payload;
-   payload.style = LoopStyle::WhileLoop;
-   payload.condition = std::move(condition.value_ref());
-   payload.body = std::move(body.value_ref());
+   LoopStmtPayload payload(LoopStyle::WhileLoop, std::move(condition.value_ref()), std::move(body.value_ref()));
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
@@ -784,10 +727,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_repeat()
    StmtNodePtr stmt = std::make_unique<StmtNode>();
    stmt->kind = AstNodeKind::RepeatStmt;
    stmt->span = token.span();
-   LoopStmtPayload payload;
-   payload.style = LoopStyle::RepeatUntil;
-   payload.body = std::move(body.value_ref());
-   payload.condition = std::move(condition.value_ref());
+   LoopStmtPayload payload(LoopStyle::RepeatUntil, std::move(condition.value_ref()), std::move(body.value_ref()));
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
@@ -829,12 +769,8 @@ ParserResult<StmtNodePtr> AstBuilder::parse_for()
       StmtNodePtr stmt = std::make_unique<StmtNode>();
       stmt->kind = AstNodeKind::NumericForStmt;
       stmt->span = token.span();
-      NumericForStmtPayload payload;
-      payload.control = make_identifier(name_token.value_ref());
-      payload.start = std::move(start.value_ref());
-      payload.stop = std::move(stop.value_ref());
-      payload.step = std::move(step_expr);
-      payload.body = std::move(body.value_ref());
+      NumericForStmtPayload payload(make_identifier(name_token.value_ref()),
+         std::move(start.value_ref()), std::move(stop.value_ref()), std::move(step_expr), std::move(body.value_ref()));
       stmt->data = std::move(payload);
       return ParserResult<StmtNodePtr>::success(std::move(stmt));
    }
@@ -918,12 +854,8 @@ ParserResult<StmtNodePtr> AstBuilder::parse_for()
                StmtNodePtr stmt = std::make_unique<StmtNode>();
                stmt->kind = AstNodeKind::NumericForStmt;
                stmt->span = token.span();
-               NumericForStmtPayload payload;
-               payload.control = std::move(names[0]);
-               payload.start = std::move(start_expr);
-               payload.stop = std::move(final_stop_expr);
-               payload.step = std::move(step_expr);
-               payload.body = std::move(body.value_ref());
+               NumericForStmtPayload payload(std::move(names[0]), std::move(start_expr),
+                  std::move(final_stop_expr), std::move(step_expr), std::move(body.value_ref()));
                stmt->data = std::move(payload);
                return ParserResult<StmtNodePtr>::success(std::move(stmt));
             }
@@ -957,10 +889,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_for()
    stmt->kind = AstNodeKind::GenericForStmt;
    stmt->span = token.span();
 
-   GenericForStmtPayload payload;
-   payload.names = std::move(names);
-   payload.iterators = std::move(iterator_nodes);
-   payload.body = std::move(body.value_ref());
+   GenericForStmtPayload payload(std::move(names), std::move(iterator_nodes), std::move(body.value_ref()));
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
@@ -1044,12 +973,8 @@ ParserResult<StmtNodePtr> AstBuilder::parse_anonymous_for(const Token& ForToken)
             StmtNodePtr stmt = std::make_unique<StmtNode>();
             stmt->kind = AstNodeKind::NumericForStmt;
             stmt->span = ForToken.span();
-            NumericForStmtPayload payload;
-            payload.control = std::move(blank_id);
-            payload.start = std::move(start_expr);
-            payload.stop = std::move(final_stop_expr);
-            payload.step = std::move(step_expr);
-            payload.body = std::move(body.value_ref());
+            NumericForStmtPayload payload(std::move(blank_id), std::move(start_expr), std::move(final_stop_expr),
+               std::move(step_expr), std::move(body.value_ref()));
             stmt->data = std::move(payload);
             return ParserResult<StmtNodePtr>::success(std::move(stmt));
          }
@@ -1073,13 +998,13 @@ ParserResult<StmtNodePtr> AstBuilder::parse_anonymous_for(const Token& ForToken)
    stmt->kind = AstNodeKind::GenericForStmt;
    stmt->span = ForToken.span();
 
-   GenericForStmtPayload payload;
-   payload.names.push_back(std::move(blank_id));
+   std::vector<Identifier> names;
+   names.push_back(std::move(blank_id));
 
    ExprNodeList iterators;
    iterators.push_back(std::move(iter_expr));
-   payload.iterators = std::move(iterators);
-   payload.body = std::move(body.value_ref());
+
+   GenericForStmtPayload payload(std::move(names), std::move(iterators), std::move(body.value_ref()));
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
@@ -1101,8 +1026,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_do()
    stmt->kind = AstNodeKind::DoStmt;
    stmt->span = token.span();
 
-   DoStmtPayload payload;
-   payload.block = std::move(block.value_ref());
+   DoStmtPayload payload(std::move(block.value_ref()));
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
@@ -1141,10 +1065,8 @@ ParserResult<StmtNodePtr> AstBuilder::parse_defer()
    StmtNodePtr stmt = std::make_unique<StmtNode>();
    stmt->kind = AstNodeKind::DeferStmt;
    stmt->span = token.span();
-   DeferStmtPayload payload;
-   payload.callable = make_function_payload(std::move(param_info.parameters), param_info.is_vararg,
-      std::move(body.value_ref()));
-   payload.arguments = std::move(args);
+   DeferStmtPayload payload(make_function_payload(std::move(param_info.parameters), param_info.is_vararg,
+      std::move(body.value_ref())), std::move(args));
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
@@ -1181,9 +1103,7 @@ ParserResult<ReturnStmtPayload> AstBuilder::parse_return_payload(const Token& re
       // Optional separator consumed.
    }
 
-   ReturnStmtPayload payload;
-   payload.values = std::move(values);
-   payload.forwards_call = forwards_call;
+   ReturnStmtPayload payload(std::move(values), forwards_call);
    return ParserResult<ReturnStmtPayload>::success(std::move(payload));
 }
 
@@ -1300,14 +1220,9 @@ ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
    while (not this->ctx.check(TokenKind::EndToken) and not this->ctx.check(TokenKind::EndOfFile)) {
       // Validate else is last - no cases allowed after else
       if (seen_else) {
-         Token current = this->ctx.tokens().current();
-         std::string msg = "'else' must be the last case in choose expression";
-         this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, msg);
-         ParserError error;
-         error.code = ParserErrorCode::UnexpectedToken;
-         error.message = msg;
          this->in_choose_expression = false;  // Clean up flag before returning
-         return ParserResult<ExprNodePtr>::failure(error);
+         return this->fail<ExprNodePtr>(ParserErrorCode::UnexpectedToken, this->ctx.tokens().current(),
+            "'else' must be the last case in choose expression");
       }
 
       ChooseCase case_arm;
@@ -1373,14 +1288,10 @@ ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
 
             // Arity validation - compile error on mismatch
             if (case_arm.tuple_patterns.size() != tuple_arity) {
-               std::string msg = "tuple pattern has " + std::to_string(case_arm.tuple_patterns.size()) +
-                  " elements but scrutinee has " + std::to_string(tuple_arity);
                this->in_choose_expression = false;
-               this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, msg);
-               ParserError error;
-               error.code = ParserErrorCode::UnexpectedToken;
-               error.message = msg;
-               return ParserResult<ExprNodePtr>::failure(error);
+               return this->fail<ExprNodePtr>(ParserErrorCode::UnexpectedToken, current,
+                  "tuple pattern has " + std::to_string(case_arm.tuple_patterns.size()) +
+                  " elements but scrutinee has " + std::to_string(tuple_arity));
             }
 
             // Check if all wildcards (equivalent to bare _ wildcard)
@@ -1564,19 +1475,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
          }
 
          Token op = this->ctx.tokens().current();
-         AssignmentOperator assignment_op = AssignmentOperator::Plain;
-         switch (op.kind()) {
-            case TokenKind::Equals:         assignment_op = AssignmentOperator::Plain; break;
-            case TokenKind::CompoundAdd:    assignment_op = AssignmentOperator::Add; break;
-            case TokenKind::CompoundSub:    assignment_op = AssignmentOperator::Subtract; break;
-            case TokenKind::CompoundMul:    assignment_op = AssignmentOperator::Multiply; break;
-            case TokenKind::CompoundDiv:    assignment_op = AssignmentOperator::Divide; break;
-            case TokenKind::CompoundMod:    assignment_op = AssignmentOperator::Modulo; break;
-            case TokenKind::CompoundConcat: assignment_op = AssignmentOperator::Concat; break;
-            case TokenKind::CompoundIfEmpty: assignment_op = AssignmentOperator::IfEmpty; break;
-            case TokenKind::CompoundIfNil:  assignment_op = AssignmentOperator::IfNil; break;
-            default: break;
-         }
+         auto assignment_op = token_to_assignment_op(op.kind()).value_or(AssignmentOperator::Plain);
          this->ctx.tokens().advance();  // consume assignment operator
 
          auto values = this->parse_expression_list();
@@ -1588,10 +1487,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
          StmtNodePtr stmt = std::make_unique<StmtNode>();
          stmt->kind = AstNodeKind::AssignmentStmt;
          stmt->span = op.span();
-         AssignmentStmtPayload payload;
-         payload.op = assignment_op;
-         payload.targets = std::move(targets);
-         payload.values = std::move(values.value_ref());
+         AssignmentStmtPayload payload(assignment_op, std::move(targets), std::move(values.value_ref()));
          stmt->data = std::move(payload);
 
          case_arm.result_stmt = std::move(stmt);
@@ -1646,60 +1542,17 @@ ParserResult<StmtNodePtr> AstBuilder::parse_expression_stmt()
    }
 
    Token op = this->ctx.tokens().current();
-   AssignmentOperator assignment = AssignmentOperator::Plain;
-   bool has_assignment = false;
-   switch (op.kind()) {
-      case TokenKind::Equals:
-         has_assignment = true;
-         assignment = AssignmentOperator::Plain;
-         break;
-      case TokenKind::CompoundAdd:
-         has_assignment = true;
-         assignment = AssignmentOperator::Add;
-         break;
-      case TokenKind::CompoundSub:
-         has_assignment = true;
-         assignment = AssignmentOperator::Subtract;
-         break;
-      case TokenKind::CompoundMul:
-         has_assignment = true;
-         assignment = AssignmentOperator::Multiply;
-         break;
-      case TokenKind::CompoundDiv:
-         has_assignment = true;
-         assignment = AssignmentOperator::Divide;
-         break;
-      case TokenKind::CompoundMod:
-         has_assignment = true;
-         assignment = AssignmentOperator::Modulo;
-         break;
-      case TokenKind::CompoundConcat:
-         has_assignment = true;
-         assignment = AssignmentOperator::Concat;
-         break;
-      case TokenKind::CompoundIfEmpty:
-         has_assignment = true;
-         assignment = AssignmentOperator::IfEmpty;
-         break;
-      case TokenKind::CompoundIfNil:
-         has_assignment = true;
-         assignment = AssignmentOperator::IfNil;
-         break;
-      default:
-         break;
-   }
+   auto assignment_result = token_to_assignment_op(op.kind());
 
-   if (has_assignment) {
+   if (assignment_result.has_value()) {
+      AssignmentOperator assignment = assignment_result.value();
       this->ctx.tokens().advance();
       auto values = this->parse_expression_list();
       if (not values.ok()) return ParserResult<StmtNodePtr>::failure(values.error_ref());
       StmtNodePtr stmt = std::make_unique<StmtNode>();
       stmt->kind = AstNodeKind::AssignmentStmt;
       stmt->span = op.span();
-      AssignmentStmtPayload payload;
-      payload.op = assignment;
-      payload.targets = std::move(targets);
-      payload.values = std::move(values.value_ref());
+      AssignmentStmtPayload payload(assignment, std::move(targets), std::move(values.value_ref()));
       stmt->data = std::move(payload);
       return ParserResult<StmtNodePtr>::success(std::move(stmt));
    }
@@ -1744,9 +1597,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_expression_stmt()
                StmtNodePtr stmt = std::make_unique<StmtNode>();
                stmt->kind = AstNodeKind::ConditionalShorthandStmt;
                stmt->span = span;
-               ConditionalShorthandStmtPayload payload;
-               payload.condition = std::move(condition);
-               payload.body = std::move(body);
+               ConditionalShorthandStmtPayload payload(std::move(condition), std::move(body));
                stmt->data = std::move(payload);
                return ParserResult<StmtNodePtr>::success(std::move(stmt));
             }
@@ -1755,21 +1606,14 @@ ParserResult<StmtNodePtr> AstBuilder::parse_expression_stmt()
    }
 
    if (targets.size() > 1) {
-      Token bad = this->ctx.tokens().current();
-      this->ctx.emit_error(ParserErrorCode::UnexpectedToken, bad,
+      return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, this->ctx.tokens().current(),
          "unexpected expression list without assignment");
-      ParserError error;
-      error.code = ParserErrorCode::UnexpectedToken;
-      error.token = bad;
-      error.message = "malformed assignment";
-      return ParserResult<StmtNodePtr>::failure(error);
    }
 
    StmtNodePtr stmt = std::make_unique<StmtNode>();
    stmt->kind = AstNodeKind::ExpressionStmt;
    stmt->span = targets[0]->span;
-   ExpressionStmtPayload payload;
-   payload.expression = std::move(targets[0]);
+   ExpressionStmtPayload payload(std::move(targets[0]));
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
@@ -1840,11 +1684,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
             // For chaining: range:each(f1) |> f2 → range:each(f1):each(f2)
             SourceSpan span = combine_spans(left.value_ref()->span, rhs.value_ref()->span);
 
-            Identifier method;
-            method.symbol = lj_str_newlit(&this->ctx.lua(), "each");
-            method.span = next.span();
-            method.is_blank = false;
-            method.has_close = false;
+            Identifier method(&this->ctx.lua(), "each", next.span());
 
             ExprNodeList args;
             args.push_back(std::move(rhs.value_ref()));
@@ -1857,13 +1697,8 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
          // Validate that RHS is a call expression for normal pipes
 
          if (not rhs_is_call) {
-            Token bad = this->ctx.tokens().current();
-            this->ctx.emit_error(ParserErrorCode::UnexpectedToken, bad, "pipe operator requires function call on right-hand side");
-            ParserError error;
-            error.code = ParserErrorCode::UnexpectedToken;
-            error.token = next;
-            error.message = "pipe operator requires function call on right-hand side";
-            return ParserResult<ExprNodePtr>::failure(error);
+            return this->fail<ExprNodePtr>(ParserErrorCode::UnexpectedToken, next,
+               "pipe operator requires function call on right-hand side");
          }
 
          SourceSpan span = combine_spans(left.value_ref()->span, rhs.value_ref()->span);
@@ -1911,11 +1746,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
          ExprNodePtr rhs_expr = std::move(right.value_ref());
          ExprNodePtr lhs_expr = std::move(left.value_ref());
 
-         Identifier method;
-         method.symbol = lj_str_newlit(&this->ctx.lua(), "contains");
-         method.span = next.span();
-         method.is_blank = false;
-         method.has_close = false;
+         Identifier method(&this->ctx.lua(), "contains", next.span());
 
          ExprNodeList args;
          args.push_back(std::move(lhs_expr));
@@ -2096,23 +1927,15 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
          }
 
          if (parsed_empty) {
-            Token bad = Token::from_span(open_paren.span(), TokenKind::LeftParen);
-            this->ctx.emit_error(ParserErrorCode::UnexpectedToken, bad, "empty parentheses are not an expression");
-            ParserError error;
-            error.code = ParserErrorCode::UnexpectedToken;
-            error.token = bad;
-            error.message = "empty parentheses are not an expression";
-            return ParserResult<ExprNodePtr>::failure(error);
+            return this->fail<ExprNodePtr>(ParserErrorCode::UnexpectedToken,
+               Token::from_span(open_paren.span(), TokenKind::LeftParen),
+               "empty parentheses are not an expression");
          }
 
          if (expressions.size() > 1) {
-            Token bad = Token::from_span(open_paren.span(), TokenKind::LeftParen);
-            this->ctx.emit_error(ParserErrorCode::UnexpectedToken, bad, "multiple expressions in parentheses are not supported");
-            ParserError error;
-            error.code = ParserErrorCode::UnexpectedToken;
-            error.token = bad;
-            error.message = "multiple expressions in parentheses are not supported";
-            return ParserResult<ExprNodePtr>::failure(error);
+            return this->fail<ExprNodePtr>(ParserErrorCode::UnexpectedToken,
+               Token::from_span(open_paren.span(), TokenKind::LeftParen),
+               "multiple expressions in parentheses are not supported");
          }
 
          node = std::move(expressions.front());
@@ -2133,13 +1956,8 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
          if (not inner.ok()) return inner;
          Token close_token = this->ctx.tokens().current();
          if (not this->ctx.match(TokenKind::DeferredClose).ok()) {
-            this->ctx.emit_error(ParserErrorCode::ExpectedToken, close_token,
+            return this->fail<ExprNodePtr>(ParserErrorCode::ExpectedToken, close_token,
                "Expected '}>' to close deferred expression");
-            ParserError error;
-            error.code = ParserErrorCode::ExpectedToken;
-            error.token = close_token;
-            error.message = "Expected '}>' to close deferred expression";
-            return ParserResult<ExprNodePtr>::failure(error);
          }
 
          // Infer type from inner expression
@@ -2188,13 +2006,8 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
             size_expr = std::move(expr_result.value_ref());
 
             if (not this->ctx.check(TokenKind::Greater)) {
-               this->ctx.emit_error(ParserErrorCode::ExpectedToken, this->ctx.tokens().current(),
+               return this->fail<ExprNodePtr>(ParserErrorCode::ExpectedToken, this->ctx.tokens().current(),
                   "Expected '>' to close array<type, expr>");
-               ParserError error;
-               error.code = ParserErrorCode::ExpectedToken;
-               error.token = this->ctx.tokens().current();
-               error.message = "Expected '>' to close array<type, expr>";
-               return ParserResult<ExprNodePtr>::failure(error);
             }
             this->ctx.tokens().advance();  // Consume '>'
          }
@@ -2219,13 +2032,8 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
                      }
                      else {
                         // Non-array field in array initialiser - emit error
-                        this->ctx.emit_error(ParserErrorCode::UnexpectedToken, start,
+                        return this->fail<ExprNodePtr>(ParserErrorCode::UnexpectedToken, start,
                            "Array initialiser can only contain sequential values, not key-value pairs");
-                        ParserError error;
-                        error.code = ParserErrorCode::UnexpectedToken;
-                        error.token = start;
-                        error.message = "Array initialiser can only contain sequential values";
-                        return ParserResult<ExprNodePtr>::failure(error);
                      }
                   }
                }
@@ -2235,9 +2043,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
          SourceSpan span = start.span();
 
          // Build identifier for 'array' global
-         Identifier array_id;
-         array_id.symbol = this->ctx.lex().keepstr("array");
-         array_id.span = span;
+         Identifier array_id = Identifier::from_keepstr(this->ctx.lex().keepstr("array"), span);
          NameRef array_ref;
          array_ref.identifier = array_id;
          ExprNodePtr array_base = make_identifier_expr(span, array_ref);
@@ -2247,9 +2053,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
             // Build: array.of('type', values...)
 
             // Create member access for .of
-            Identifier of_id;
-            of_id.symbol = this->ctx.lex().keepstr("of");
-            of_id.span = span;
+            Identifier of_id = Identifier::from_keepstr(this->ctx.lex().keepstr("of"), span);
             ExprNodePtr array_of = make_member_expr(span, std::move(array_base), of_id, false);
 
             // Build argument list: ('type', v1, v2, ...)
@@ -2278,9 +2082,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
                // Generate: (function() local _arr = array.of(...); array.resize(_arr, size); return _arr end)()
 
                // Create local variable name "_arr"
-               Identifier arr_id;
-               arr_id.symbol = this->ctx.lex().keepstr("_arr");
-               arr_id.span = span;
+               Identifier arr_id = Identifier::from_keepstr(this->ctx.lex().keepstr("_arr"), span);
 
                // Statement 1: local _arr = array.of('type', v1, v2, ...)
                std::vector<Identifier> local_names;
@@ -2290,16 +2092,12 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
                StmtNodePtr local_stmt = make_local_decl_stmt(span, std::move(local_names), std::move(local_values));
 
                // Build array.resize(_arr, size_expr_or_literal)
-               Identifier array_id2;
-               array_id2.symbol = this->ctx.lex().keepstr("array");
-               array_id2.span = span;
+               Identifier array_id2 = Identifier::from_keepstr(this->ctx.lex().keepstr("array"), span);
                NameRef array_ref2;
                array_ref2.identifier = array_id2;
                ExprNodePtr array_base2 = make_identifier_expr(span, array_ref2);
 
-               Identifier resize_id;
-               resize_id.symbol = this->ctx.lex().keepstr("resize");
-               resize_id.span = span;
+               Identifier resize_id = Identifier::from_keepstr(this->ctx.lex().keepstr("resize"), span);
                ExprNodePtr array_resize = make_member_expr(span, std::move(array_base2), resize_id, false);
 
                // Arguments for resize: (_arr, size)
@@ -2354,9 +2152,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
             // array<type> or array<type, size> -> array.new(size, 'type')
 
             // Create member access for .new
-            Identifier new_id;
-            new_id.symbol = this->ctx.lex().keepstr("new");
-            new_id.span = span;
+            Identifier new_id = Identifier::from_keepstr(this->ctx.lex().keepstr("new"), span);
             ExprNodePtr array_new = make_member_expr(span, std::move(array_base), new_id, false);
 
             // Build argument list: (size, 'type')
@@ -2398,13 +2194,8 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
             std::string_view type_name(strdata(type_str), type_str->len);
             explicit_type = parse_type_name(type_name);
             if (explicit_type IS FluidType::Unknown) {
-               auto message = std::format("Unknown type name '{}' in typed deferred expression", type_name);
-               this->ctx.emit_error(ParserErrorCode::UnknownTypeName, start, message);
-               ParserError error;
-               error.code = ParserErrorCode::UnknownTypeName;
-               error.token = start;
-               error.message = message;
-               return ParserResult<ExprNodePtr>::failure(error);
+               return this->fail<ExprNodePtr>(ParserErrorCode::UnknownTypeName, start,
+                  std::format("Unknown type name '{}' in typed deferred expression", type_name));
             }
          }
          this->ctx.tokens().advance();
@@ -2412,12 +2203,8 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
          if (not inner.ok()) return inner;
          Token close_token = this->ctx.tokens().current();
          if (not this->ctx.match(TokenKind::DeferredClose).ok()) {
-            this->ctx.emit_error(ParserErrorCode::ExpectedToken, close_token, "Expected '}>' to close typed deferred expression");
-            ParserError error;
-            error.code = ParserErrorCode::ExpectedToken;
-            error.token = close_token;
-            error.message = "Expected '}>' to close typed deferred expression";
-            return ParserResult<ExprNodePtr>::failure(error);
+            return this->fail<ExprNodePtr>(ParserErrorCode::ExpectedToken, close_token,
+               "Expected '}>' to close typed deferred expression");
          }
 
          SourceSpan span = span_from(start, close_token);
@@ -2449,12 +2236,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
          }
          else msg = std::format("Expected expression, got '{}'", this->ctx.lex().token2str(current.raw()));
 
-         this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, msg);
-         ParserError error;
-         error.code = ParserErrorCode::UnexpectedToken;
-         error.token = current;
-         error.message = msg;
-         return ParserResult<ExprNodePtr>::failure(error);
+         return this->fail<ExprNodePtr>(ParserErrorCode::UnexpectedToken, current, std::move(msg));
       }
    }
    return this->parse_suffixed(std::move(node));
@@ -2475,15 +2257,9 @@ ParserResult<ExprNodePtr> AstBuilder::parse_arrow_function(ExprNodeList paramete
    if (not build_arrow_parameters(parameters, parsed_params, &invalid_param)) {
       SourceSpan span = arrow_token.span();
       if (invalid_param and *invalid_param) span = (*invalid_param)->span;
-      Token param_token = Token::from_span(span, TokenKind::Identifier);
-      this->ctx.emit_error(ParserErrorCode::ExpectedIdentifier, param_token,
+      return this->fail<ExprNodePtr>(ParserErrorCode::ExpectedIdentifier,
+         Token::from_span(span, TokenKind::Identifier),
          "arrow function parameters must be identifiers");
-
-      ParserError error;
-      error.code = ParserErrorCode::ExpectedIdentifier;
-      error.token = param_token;
-      error.message = "arrow function parameters must be identifiers";
-      return ParserResult<ExprNodePtr>::failure(error);
    }
 
    std::unique_ptr<BlockStmt> body;
@@ -2532,14 +2308,9 @@ ParserResult<ExprNodePtr> AstBuilder::parse_arrow_function(ExprNodeList paramete
       // in an expression-body arrow function. Provide a helpful error message.
       Token next = this->ctx.tokens().current();
       if (is_compound_assignment(next.kind())) {
-         auto msg = std::format("'{}' is a statement, not an expression; use 'do ... end' for statement bodies in arrow functions",
-            this->ctx.lex().token2str(next.raw()));
-         this->ctx.emit_error(ParserErrorCode::UnexpectedToken, next, msg);
-         ParserError error;
-         error.code = ParserErrorCode::UnexpectedToken;
-         error.token = next;
-         error.message = msg;
-         return ParserResult<ExprNodePtr>::failure(error);
+         return this->fail<ExprNodePtr>(ParserErrorCode::UnexpectedToken, next,
+            std::format("'{}' is a statement, not an expression; use 'do ... end' for statement bodies in arrow functions",
+               this->ctx.lex().token2str(next.raw())));
       }
 
       ExprNodeList return_values;
@@ -2714,14 +2485,8 @@ ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(const Token &functi
    if (not params.ok()) return ParserResult<ExprNodePtr>::failure(params.error_ref());
 
    if (is_thunk and params.value_ref().is_vararg) {
-      Token current = this->ctx.tokens().current();
-      std::string message("thunk functions do not support varargs");
-      this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, message);
-      ParserError error;
-      error.code = ParserErrorCode::UnexpectedToken;
-      error.token = current;
-      error.message = message;
-      return ParserResult<ExprNodePtr>::failure(error);
+      return this->fail<ExprNodePtr>(ParserErrorCode::UnexpectedToken, this->ctx.tokens().current(),
+         "thunk functions do not support varargs");
    }
 
    // Parse optional return type annotation for all functions (not just thunks)
@@ -2884,22 +2649,16 @@ ParserResult<std::vector<Identifier>> AstBuilder::parse_name_list()
          }
          else {
             this->ctx.emit_error(ParserErrorCode::ExpectedTypeName, type_token, "expected type name after ':'");
-            ParserError error;
-            error.code = ParserErrorCode::ExpectedTypeName;
-            error.token = type_token;
-            error.message = "expected type name after ':'";
-            return ParserResult<Identifier>::failure(error);
+            return ParserResult<Identifier>::failure(
+               ParserError(ParserErrorCode::ExpectedTypeName, type_token, "expected type name after ':'"));
          }
 
          identifier.type = parse_type_name(type_view);
          if (identifier.type IS FluidType::Unknown) {
             auto message = std::format("Invalid type.  Common types are: any, bool, num, str, table, array", type_view);
             this->ctx.emit_error(ParserErrorCode::UnknownTypeName, type_token, message);
-            ParserError error;
-            error.code = ParserErrorCode::UnknownTypeName;
-            error.token = type_token;
-            error.message = message;
-            return ParserResult<Identifier>::failure(error);
+            return ParserResult<Identifier>::failure(
+               ParserError(ParserErrorCode::UnknownTypeName, type_token, std::move(message)));
          }
       }
 
@@ -2919,14 +2678,9 @@ ParserResult<std::vector<Identifier>> AstBuilder::parse_name_list()
 
          if (not this->ctx.lex_opt('>')) {
             Token current = this->ctx.tokens().current();
-            std::string message("expected '>' after attribute");
-            this->ctx.emit_error(ParserErrorCode::ExpectedToken, current, message);
-
-            ParserError error;
-            error.code = ParserErrorCode::ExpectedToken;
-            error.token = current;
-            error.message = message;
-            return ParserResult<Identifier>::failure(error);
+            this->ctx.emit_error(ParserErrorCode::ExpectedToken, current, "expected '>' after attribute");
+            return ParserResult<Identifier>::failure(
+               ParserError(ParserErrorCode::ExpectedToken, current, "expected '>' after attribute"));
          }
 
          if (is_close_attribute) identifier.has_close = true;
@@ -2989,27 +2743,15 @@ ParserResult<AstBuilder::ParameterListResult> AstBuilder::parse_parameter_list(b
                type_view = token_kind_name_constexpr(kind);
             }
             else {
-               constexpr std::string_view expected_type_name = "Expected type name after ':'";
-               this->ctx.emit_error(ParserErrorCode::ExpectedTypeName, type_token, expected_type_name);
-
-               ParserError error;
-               error.code = ParserErrorCode::ExpectedTypeName;
-               error.token = type_token;
-               error.message.assign(expected_type_name.begin(), expected_type_name.end());
-               return ParserResult<ParameterListResult>::failure(error);
+               return this->fail<ParameterListResult>(ParserErrorCode::ExpectedTypeName, type_token,
+                  "Expected type name after ':'");
             }
 
             param.type = parse_type_name(type_view);
             // If parse_type_name returns an invalid type, emit error
             if (param.type IS FluidType::Unknown) {
-               auto message = std::format("Unknown type name '{}'; expected a valid type name", type_view);
-               this->ctx.emit_error(ParserErrorCode::UnknownTypeName, type_token, message);
-
-               ParserError error;
-               error.code = ParserErrorCode::UnknownTypeName;
-               error.token = type_token;
-               error.message = message;
-               return ParserResult<ParameterListResult>::failure(error);
+               return this->fail<ParameterListResult>(ParserErrorCode::UnknownTypeName, type_token,
+                  std::format("Unknown type name '{}'; expected a valid type name", type_view));
             }
          }
          else { // No type annotation provided - emit advice for untyped parameter
@@ -3085,6 +2827,7 @@ ParserResult<ExprNodeList> AstBuilder::parse_call_arguments(bool *ForwardsMultre
 {
    ExprNodeList args;
    *ForwardsMultret = false;
+
    if (this->ctx.check(TokenKind::LeftParen)) {
       this->ctx.tokens().advance();
       if (not this->ctx.check(TokenKind::RightParen)) {
@@ -3099,6 +2842,7 @@ ParserResult<ExprNodeList> AstBuilder::parse_call_arguments(bool *ForwardsMultre
             }
          }
       }
+
       this->ctx.consume(TokenKind::RightParen, ParserErrorCode::ExpectedToken);
       return ParserResult<ExprNodeList>::success(std::move(args));
    }
@@ -3118,13 +2862,8 @@ ParserResult<ExprNodeList> AstBuilder::parse_call_arguments(bool *ForwardsMultre
       return ParserResult<ExprNodeList>::success(std::move(args));
    }
 
-   Token bad = this->ctx.tokens().current();
-   this->ctx.emit_error(ParserErrorCode::UnexpectedToken, bad, "invalid call arguments");
-   ParserError error;
-   error.code = ParserErrorCode::UnexpectedToken;
-   error.token = bad;
-   error.message = "invalid call arguments";
-   return ParserResult<ExprNodeList>::failure(error);
+   return this->fail<ExprNodeList>(ParserErrorCode::UnexpectedToken, this->ctx.tokens().current(),
+      "invalid call arguments");
 }
 
 //********************************************************************************************************************
@@ -3232,13 +2971,8 @@ ParserResult<AstBuilder::ResultFilterInfo> AstBuilder::parse_result_filter_patte
 
    while (current.kind() != TokenKind::RightBracket) {
       if (position >= 64) {
-         this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current,
+         return this->fail<ResultFilterInfo>(ParserErrorCode::UnexpectedToken, current,
             "result filter pattern too long (max 64 positions)");
-         ParserError error;
-         error.code = ParserErrorCode::UnexpectedToken;
-         error.token = current;
-         error.message = "result filter pattern too long (max 64 positions)";
-         return ParserResult<ResultFilterInfo>::failure(error);
       }
 
       if (current.kind() IS TokenKind::Multiply) {  // *
@@ -3263,50 +2997,30 @@ ParserResult<AstBuilder::ResultFilterInfo> AstBuilder::parse_result_filter_patte
                // Each underscore counts as one "drop" position
                for (MSize i = 0; i < len; i++) {
                   if (position >= 64) {
-                     this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, "result filter pattern too long (max 64 positions)");
-                     ParserError error;
-                     error.code = ParserErrorCode::UnexpectedToken;
-                     error.token = current;
-                     error.message = "result filter pattern too long (max 64 positions)";
-                     return ParserResult<ResultFilterInfo>::failure(error);
+                     return this->fail<ResultFilterInfo>(ParserErrorCode::UnexpectedToken, current,
+                        "result filter pattern too long (max 64 positions)");
                   }
                   info.trailing_keep = false;
                   position++;
                   if (position == 64) {
-                     this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, "result filter pattern too long (max 64 positions)");
-                     ParserError error;
-                     error.code = ParserErrorCode::UnexpectedToken;
-                     error.token = current;
-                     error.message = "result filter pattern too long (max 64 positions)";
-                     return ParserResult<ResultFilterInfo>::failure(error);
+                     return this->fail<ResultFilterInfo>(ParserErrorCode::UnexpectedToken, current,
+                        "result filter pattern too long (max 64 positions)");
                   }
                }
             }
             else {
-               this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, "result filter pattern expects '_' or '*'");
-               ParserError error;
-               error.code = ParserErrorCode::UnexpectedToken;
-               error.token = current;
-               error.message = "result filter pattern expects '_' or '*'";
-               return ParserResult<ResultFilterInfo>::failure(error);
+               return this->fail<ResultFilterInfo>(ParserErrorCode::UnexpectedToken, current,
+                  "result filter pattern expects '_' or '*'");
             }
          }
          else {
-            this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, "result filter pattern expects '_' or '*'");
-            ParserError error;
-            error.code = ParserErrorCode::UnexpectedToken;
-            error.token = current;
-            error.message = "result filter pattern expects '_' or '*'";
-            return ParserResult<ResultFilterInfo>::failure(error);
+            return this->fail<ResultFilterInfo>(ParserErrorCode::UnexpectedToken, current,
+               "result filter pattern expects '_' or '*'");
          }
       }
       else {
-         this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, "result filter pattern expects '_' or '*'");
-         ParserError error;
-         error.code = ParserErrorCode::UnexpectedToken;
-         error.token = current;
-         error.message = "result filter pattern expects '_' or '*'";
-         return ParserResult<ResultFilterInfo>::failure(error);
+         return this->fail<ResultFilterInfo>(ParserErrorCode::UnexpectedToken, current,
+            "result filter pattern expects '_' or '*'");
       }
 
       this->ctx.tokens().advance();
@@ -3340,12 +3054,8 @@ ParserResult<ExprNodePtr> AstBuilder::parse_result_filter_expr(const Token &Star
    // Validate that result is a call expression
    AstNodeKind kind = expr.value_ref()->kind;
    if (kind != AstNodeKind::CallExpr and kind != AstNodeKind::SafeCallExpr) {
-      this->ctx.emit_error(ParserErrorCode::UnexpectedToken, StartToken, "result filter requires a function call");
-      ParserError error;
-      error.code = ParserErrorCode::UnexpectedToken;
-      error.token = StartToken;
-      error.message = "result filter requires a function call";
-      return ParserResult<ExprNodePtr>::failure(error);
+      return this->fail<ExprNodePtr>(ParserErrorCode::UnexpectedToken, StartToken,
+         "result filter requires a function call");
    }
 
    // Optimisation: If the filter keeps all values (trailing_keep=true and all explicit
@@ -3646,26 +3356,16 @@ ParserResult<FunctionReturnTypes> AstBuilder::parse_return_type_annotation()
 
          GCstr *type_name_str = type_token.value_ref().identifier();
          if (type_name_str IS nullptr) {
-            std::string message("expected type name in return type list");
-            this->ctx.emit_error(ParserErrorCode::ExpectedIdentifier, type_token.value_ref(), message);
-            ParserError error;
-            error.code = ParserErrorCode::ExpectedIdentifier;
-            error.token = type_token.value_ref();
-            error.message = message;
-            return ParserResult<FunctionReturnTypes>::failure(error);
+            return this->fail<FunctionReturnTypes>(ParserErrorCode::ExpectedIdentifier, type_token.value_ref(),
+               "expected type name in return type list");
          }
 
          std::string_view type_str(strdata(type_name_str), type_name_str->len);
          FluidType parsed = parse_type_name(type_str);
 
          if (parsed IS FluidType::Unknown) {
-            std::string message = std::format("unknown type name '{}'", type_str);
-            this->ctx.emit_error(ParserErrorCode::UnexpectedToken, type_token.value_ref(), message);
-            ParserError error;
-            error.code = ParserErrorCode::UnexpectedToken;
-            error.token = type_token.value_ref();
-            error.message = message;
-            return ParserResult<FunctionReturnTypes>::failure(error);
+            return this->fail<FunctionReturnTypes>(ParserErrorCode::UnexpectedToken, type_token.value_ref(),
+               std::format("unknown type name '{}'", type_str));
          }
 
          result.types[result.count++] = parsed;
@@ -3674,17 +3374,10 @@ ParserResult<FunctionReturnTypes> AstBuilder::parse_return_type_annotation()
 
       // Expect closing '>'
       current = this->ctx.tokens().current();
-      if (current.raw() IS '>') {
-         this->ctx.tokens().advance();
-      }
+      if (current.raw() IS '>') this->ctx.tokens().advance();
       else {
-         std::string message("expected '>' to close return type list");
-         this->ctx.emit_error(ParserErrorCode::ExpectedToken, current, message);
-         ParserError error;
-         error.code = ParserErrorCode::ExpectedToken;
-         error.token = current;
-         error.message = message;
-         return ParserResult<FunctionReturnTypes>::failure(error);
+         return this->fail<FunctionReturnTypes>(ParserErrorCode::ExpectedToken, current,
+            "expected '>' to close return type list");
       }
    }
    else {
@@ -3696,26 +3389,16 @@ ParserResult<FunctionReturnTypes> AstBuilder::parse_return_type_annotation()
 
       GCstr *type_name_str = type_token.value_ref().identifier();
       if (type_name_str IS nullptr) {
-         std::string message("expected type name after ':'");
-         this->ctx.emit_error(ParserErrorCode::ExpectedIdentifier, type_token.value_ref(), message);
-         ParserError error;
-         error.code = ParserErrorCode::ExpectedIdentifier;
-         error.token = type_token.value_ref();
-         error.message = message;
-         return ParserResult<FunctionReturnTypes>::failure(error);
+         return this->fail<FunctionReturnTypes>(ParserErrorCode::ExpectedIdentifier, type_token.value_ref(),
+            "expected type name after ':'");
       }
 
       std::string_view type_str(strdata(type_name_str), type_name_str->len);
       FluidType parsed = parse_type_name(type_str);
 
       if (parsed IS FluidType::Unknown) {
-         std::string message = std::format("unknown type name '{}'", type_str);
-         this->ctx.emit_error(ParserErrorCode::UnexpectedToken, type_token.value_ref(), message);
-         ParserError error;
-         error.code = ParserErrorCode::UnexpectedToken;
-         error.token = type_token.value_ref();
-         error.message = message;
-         return ParserResult<FunctionReturnTypes>::failure(error);
+         return this->fail<FunctionReturnTypes>(ParserErrorCode::UnexpectedToken, type_token.value_ref(),
+            std::format("unknown type name '{}'", type_str));
       }
 
       result.types[0] = parsed;
@@ -3723,4 +3406,24 @@ ParserResult<FunctionReturnTypes> AstBuilder::parse_return_type_annotation()
    }
 
    return ParserResult<FunctionReturnTypes>::success(result);
+}
+
+//********************************************************************************************************************
+// Maps a TokenKind to its corresponding AssignmentOperator.
+// Returns std::nullopt if the token is not an assignment operator.
+
+std::optional<AssignmentOperator> AstBuilder::token_to_assignment_op(TokenKind Kind)
+{
+   switch (Kind) {
+      case TokenKind::Equals:           return AssignmentOperator::Plain;
+      case TokenKind::CompoundAdd:      return AssignmentOperator::Add;
+      case TokenKind::CompoundSub:      return AssignmentOperator::Subtract;
+      case TokenKind::CompoundMul:      return AssignmentOperator::Multiply;
+      case TokenKind::CompoundDiv:      return AssignmentOperator::Divide;
+      case TokenKind::CompoundMod:      return AssignmentOperator::Modulo;
+      case TokenKind::CompoundConcat:   return AssignmentOperator::Concat;
+      case TokenKind::CompoundIfEmpty:  return AssignmentOperator::IfEmpty;
+      case TokenKind::CompoundIfNil:    return AssignmentOperator::IfNil;
+      default:                          return std::nullopt;
+   }
 }

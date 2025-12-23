@@ -840,10 +840,7 @@ StmtNodePtr make_assignment_stmt(SourceSpan Span, AssignmentOperator op, ExprNod
    StmtNodePtr node = std::make_unique<StmtNode>();
    node->kind = AstNodeKind::AssignmentStmt;
    node->span = Span;
-   AssignmentStmtPayload payload;
-   payload.op = op;
-   payload.targets = std::move(targets);
-   payload.values = std::move(values);
+   AssignmentStmtPayload payload(op, std::move(targets), std::move(values));
    node->data = std::move(payload);
    return node;
 }
@@ -853,9 +850,7 @@ StmtNodePtr make_local_decl_stmt(SourceSpan Span, std::vector<Identifier> names,
    StmtNodePtr node = std::make_unique<StmtNode>();
    node->kind = AstNodeKind::LocalDeclStmt;
    node->span = Span;
-   LocalDeclStmtPayload payload;
-   payload.names = std::move(names);
-   payload.values = std::move(values);
+   LocalDeclStmtPayload payload(AssignmentOperator::Plain, std::move(names), std::move(values));
    node->data = std::move(payload);
    return node;
 }
@@ -865,9 +860,7 @@ StmtNodePtr make_return_stmt(SourceSpan Span, ExprNodeList values, bool forwards
    StmtNodePtr node = std::make_unique<StmtNode>();
    node->kind = AstNodeKind::ReturnStmt;
    node->span = Span;
-   ReturnStmtPayload payload;
-   payload.values = std::move(values);
-   payload.forwards_call = forwards_call;
+   ReturnStmtPayload payload(std::move(values), forwards_call);
    node->data = std::move(payload);
    return node;
 }
@@ -877,8 +870,7 @@ StmtNodePtr make_expression_stmt(SourceSpan Span, ExprNodePtr expression)
    StmtNodePtr node = std::make_unique<StmtNode>();
    node->kind = AstNodeKind::ExpressionStmt;
    node->span = Span;
-   ExpressionStmtPayload payload;
-   payload.expression = std::move(expression);
+   ExpressionStmtPayload payload(std::move(expression));
    node->data = std::move(payload);
    return node;
 }
@@ -891,4 +883,12 @@ size_t ast_statement_child_count(const StmtNode &Node)
 size_t ast_expression_child_count(const ExprNode &Node)
 {
    return std::visit(ExpressionChildCounter{}, Node.data);
+}
+
+//********************************************************************************************************************
+// Constructor for Identifier that creates an identifier from a string.
+
+Identifier::Identifier(lua_State* L, const char* Name, SourceSpan Span)
+   : symbol(lj_str_new(L, Name, std::strlen(Name))), span(Span), is_blank(false), has_close(false), type(FluidType::Unknown)
+{
 }

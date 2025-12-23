@@ -98,4 +98,15 @@ private:
    [[nodiscard]] std::optional<BinaryOpInfo> match_binary_operator(const Token &) const;
    [[nodiscard]] bool is_choose_relational_pattern(size_t) const;
 
+   // Helper to emit an error and return a failure result in one step.
+   // Reduces boilerplate for the common pattern of emit_error + return failure.
+   template<typename T>
+   [[nodiscard]] ParserResult<T> fail(ParserErrorCode Code, const Token& ErrorToken, std::string Message) {
+      this->ctx.emit_error(Code, ErrorToken, Message);
+      return ParserResult<T>::failure(ParserError(Code, ErrorToken, std::move(Message)));
+   }
+
+   // Helper to map TokenKind to AssignmentOperator.
+   // Returns std::nullopt if the token is not an assignment operator.
+   [[nodiscard]] static std::optional<AssignmentOperator> token_to_assignment_op(TokenKind Kind);
 };

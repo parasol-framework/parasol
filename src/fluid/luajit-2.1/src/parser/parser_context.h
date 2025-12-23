@@ -51,6 +51,13 @@ struct ParserError {
    ParserErrorCode code = ParserErrorCode::None;
    std::string message;
    Token token;
+
+   // Default constructor
+   ParserError() = default;
+
+   // Constructor to simplify error creation
+   ParserError(ParserErrorCode Code, const Token& ErrorToken, std::string Message)
+      : code(Code), message(std::move(Message)), token(ErrorToken) {}
 };
 
 //********************************************************************************************************************
