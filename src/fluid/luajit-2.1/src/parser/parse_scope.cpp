@@ -841,6 +841,20 @@ GCproto * LexState::fs_finish(BCLine Line)
 
    pt->result_types = fs->return_types;
 
+   // Set PROTO_TYPEFIX flag for runtime type inference if:
+   // 1. The function has NO explicit return type annotations, AND
+   // 2. At least one return statement exists (has values to infer)
+   bool has_explicit = false;
+   for (size_t i = 0; i < fs->return_types.size(); ++i) {
+      if (fs->return_types[i] != FluidType::Unknown) {
+         has_explicit = true;
+         break;
+      }
+   }
+   if (not has_explicit and (fs->flags & PROTO_HAS_RETURN)) {
+      pt->flags |= PROTO_TYPEFIX;
+   }
+
    // Close potentially uninitialized gap between bc and kgc.
 
    *(uint32_t*)((char*)pt + ofsk - sizeof(GCRef) * (fs->nkgc + 1)) = 0;

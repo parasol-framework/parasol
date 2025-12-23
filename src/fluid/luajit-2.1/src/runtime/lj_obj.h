@@ -506,6 +506,7 @@ inline constexpr uint8_t PROTO_ILOOP        = 0x10;   //  Patched bytecode with 
 // Only used during parsing.
 inline constexpr uint8_t PROTO_HAS_RETURN   = 0x20;   //  Already emitted a return.
 inline constexpr uint8_t PROTO_FIXUP_RETURN = 0x40;   //  Need to fixup emitted returns.
+inline constexpr uint8_t PROTO_TYPEFIX      = 0x80;   //  Runtime type inference enabled (no explicit return types).
 // Top bits used for counting created closures.
 inline constexpr uint8_t PROTO_CLCOUNT      = 0x20;   //  Base of saturating 3 bit counter.
 inline constexpr int PROTO_CLC_BITS         = 3;

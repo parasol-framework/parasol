@@ -2846,6 +2846,24 @@ void lj_record_ins(jit_State *J)
       lj_record_ret(J, ra, (ptrdiff_t)rc - 1);
       break;
 
+      // Type fixing
+
+   case BC_TYPEFIX:
+      // BC_TYPEFIX is a one-time operation that mutates the prototype.
+      // After first execution, it becomes a no-op. For JIT recording:
+      // - If types are already fixed (common case), treat as no-op
+      // - If types not fixed, abort trace (mutation during recording is problematic)
+      {
+         GCproto *pt = funcproto(curr_func(J->L));
+         if (pt->result_types[0] IS FluidType::Unknown) {
+            // Types not yet fixed - abort trace, let interpreter handle it
+            setintV(&J->errinfo, (int32_t)op);
+            lj_trace_err_info(J, LJ_TRERR_NYIBC);
+         }
+         // Types already fixed - no-op, continue recording
+      }
+      break;
+
       // Loops and branches
 
    case BC_FORI:

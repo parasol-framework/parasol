@@ -174,6 +174,9 @@ constexpr uint8_t  NO_REG = BCMAX_A;
   _(RET0,   rbase,   ___,   lit,   ___) \
   _(RET1,   rbase,   ___,   lit,   ___) \
   \
+  /* Type fixing. */ \
+  _(TYPEFIX,   rbase,   ___,   lit,   ___) \
+  \
   /* Loops and branches. I/J = interp/JIT, I/C/L = init/call/loop. */ \
   _(FORI,   base,   ___,   jump,   ___) \
   _(JFORI,   base,   ___,   jump,   ___) \
@@ -311,31 +314,34 @@ typedef enum {
    BC_RET0   = 84,
    BC_RET1   = 85,
 
-   // Loops and branches (86-97)
-   BC_FORI   = 86,
-   BC_JFORI  = 87,
-   BC_FORL   = 88,
-   BC_IFORL  = 89,
-   BC_JFORL  = 90,
-   BC_ITERL  = 91,
-   BC_IITERL = 92,
-   BC_JITERL = 93,
-   BC_LOOP   = 94,
-   BC_ILOOP  = 95,
-   BC_JLOOP  = 96,
-   BC_JMP    = 97,
+   // Type fixing (86)
+   BC_TYPEFIX = 86,
 
-   // Function headers (98-105)
-   BC_FUNCF  = 98,
-   BC_IFUNCF = 99,
-   BC_JFUNCF = 100,
-   BC_FUNCV  = 101,
-   BC_IFUNCV = 102,
-   BC_JFUNCV = 103,
-   BC_FUNCC  = 104,
-   BC_FUNCCW = 105,
+   // Loops and branches (87-98)
+   BC_FORI   = 87,
+   BC_JFORI  = 88,
+   BC_FORL   = 89,
+   BC_IFORL  = 90,
+   BC_JFORL  = 91,
+   BC_ITERL  = 92,
+   BC_IITERL = 93,
+   BC_JITERL = 94,
+   BC_LOOP   = 95,
+   BC_ILOOP  = 96,
+   BC_JLOOP  = 97,
+   BC_JMP    = 98,
 
-   BC__MAX   = 106
+   // Function headers (99-106)
+   BC_FUNCF  = 99,
+   BC_IFUNCF = 100,
+   BC_JFUNCF = 101,
+   BC_FUNCV  = 102,
+   BC_IFUNCV = 103,
+   BC_JFUNCV = 104,
+   BC_FUNCC  = 105,
+   BC_FUNCCW = 106,
+
+   BC__MAX   = 107
 } BCOp;
 
 static_assert((int)BC_ISEQV + 1 == (int)BC_ISNEV);

@@ -26,6 +26,27 @@
 #include "lib.h"
 
 //********************************************************************************************************************
+// Convert LuaJIT internal type tag to FluidType for runtime type inference.
+// Called by BC_TYPEFIX to fix a function's return type based on actual value.
+
+static FluidType lj_tag_to_fluid_type(uint32_t tag)
+{
+   switch (tag) {
+      case LJ_TNIL:    return FluidType::Nil;
+      case LJ_TFALSE:
+      case LJ_TTRUE:   return FluidType::Bool;
+      case LJ_TSTR:    return FluidType::Str;
+      case LJ_TTHREAD: return FluidType::Thread;
+      case LJ_TFUNC:   return FluidType::Func;
+      case LJ_TCDATA:  return FluidType::CData;
+      case LJ_TTAB:    return FluidType::Table;
+      case LJ_TUDATA:  return FluidType::Object;
+      case LJ_TARRAY:  return FluidType::Array;
+      default:         return FluidType::Num;  // Numbers have itype < LJ_TISNUM
+   }
+}
+
+//********************************************************************************************************************
 // String interning of metamethod names for fast indexing.
 
 void lj_meta_init(lua_State *L)
@@ -633,5 +654,53 @@ void LJ_FASTCALL lj_meta_for(lua_State *L, TValue *o)
          if (tvisint(o + 1)) setnumV(o + 1, (lua_Number)intV(o + 1));
          if (tvisint(o + 2)) setnumV(o + 2, (lua_Number)intV(o + 2));
       }
+   }
+}
+
+//********************************************************************************************************************
+// Helper for BC_TYPEFIX. Fix function return types based on actual returned values.
+// Called when a function without explicit return types returns values for the first time.
+//
+// Parameters:
+//   L     - Lua state
+//   base  - Base register containing first return value
+//   count - Number of return values to fix (1-8)
+
+void LJ_FASTCALL lj_meta_typefix(lua_State *L, TValue *base, uint32_t count)
+{
+   // Get the current function's prototype
+   GCfunc *fn = curr_func(L);
+   if (not isluafunc(fn)) return;  // C functions don't have prototypes
+
+   GCproto *pt = funcproto(fn);
+
+   // Only process if PROTO_TYPEFIX is set (function has no explicit return types)
+   if (not (pt->flags & PROTO_TYPEFIX)) return;
+
+   // Process each return value position
+   for (uint32_t pos = 0; pos < count and pos < PROTO_MAX_RETURN_TYPES; ++pos) {
+      // Only fix if type is currently Unknown
+      if (pt->result_types[pos] != FluidType::Unknown) continue;
+
+      // Get the value being returned
+      TValue *val = base + pos;
+
+      // Don't fix type for nil - nil is always allowed as a return value
+      if (tvisnil(val)) continue;
+
+      // Determine the type from the value
+      FluidType inferred;
+      if (tvisnumber(val)) {
+         inferred = FluidType::Num;
+      }
+      else {
+         inferred = lj_tag_to_fluid_type(itype(val));
+      }
+
+      // Fix the type in the prototype
+      // Note: This is a mutation of the prototype. For thread safety, this relies on
+      // the fact that the write is atomic at the byte level and idempotent (same value
+      // would be written by any thread inferring the same type).
+      pt->result_types[pos] = inferred;
    }
 }
