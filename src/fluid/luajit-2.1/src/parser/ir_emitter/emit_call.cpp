@@ -1,5 +1,6 @@
 // Copyright (C) 2025 Paul Manias
 // IR emitter implementation: call expression emission
+//
 // #included from ir_emitter.cpp
 
 //********************************************************************************************************************
@@ -15,13 +16,10 @@
 
 ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
 {
-   if (not Payload.lhs or not Payload.rhs_call) {
-      return this->unsupported_expr(AstNodeKind::PipeExpr, SourceSpan{});
-   }
+   if (not Payload.lhs or not Payload.rhs_call) return this->unsupported_expr(AstNodeKind::PipeExpr, SourceSpan{});
 
    // The RHS must be a call expression - this was validated in the parser
-   if (Payload.rhs_call->kind != AstNodeKind::CallExpr and
-       Payload.rhs_call->kind != AstNodeKind::SafeCallExpr) {
+   if (Payload.rhs_call->kind != AstNodeKind::CallExpr and Payload.rhs_call->kind != AstNodeKind::SafeCallExpr) {
       return this->unsupported_expr(AstNodeKind::PipeExpr, Payload.rhs_call->span);
    }
 
@@ -73,12 +71,16 @@ ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
       // Multi-value case: discharge the call result to registers
       // If limit > 0, we want exactly 'limit' results
       // If limit == 0, we want all results (multi-return)
+
       if (Payload.limit > 0) {
          // Set BC_CALL B field to request exactly 'limit' return values
          // B = limit + 1 means "expect limit results"
+
          setbc_b(ir_bcptr(fs, &lhs), Payload.limit + 1);
+
          // The call results are placed starting at lhs.u.s.aux (the call base)
          // Update freereg to reflect the limited number of results
+
          fs->freereg = lhs.u.s.aux + Payload.limit;
       }
       else { // Forward all return values - keep B=0 for CALLM pattern
@@ -185,7 +187,7 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
    // NOTE: Optimisations may cause confusion during debugging sessions, so we may want to add
    // a way to disable them if tracing/profiling is enabled.
 
-   if (const auto* direct = std::get_if<DirectCallTarget>(&Payload.target)) {
+   if (const auto *direct = std::get_if<DirectCallTarget>(&Payload.target)) {
       if (direct->callable and direct->callable->kind IS AstNodeKind::IdentifierExpr) {
          const auto *name_ref = std::get_if<NameRef>(&direct->callable->data);
          if (name_ref and name_ref->identifier.symbol) {
@@ -235,7 +237,7 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
       allocator.reserve(BCReg(1));
       base = BCReg(callee.u.s.info);
    }
-   else if (const auto* method = std::get_if<MethodCallTarget>(&Payload.target)) {
+   else if (const auto *method = std::get_if<MethodCallTarget>(&Payload.target)) {
       if (not method->receiver or method->method.symbol IS nullptr) {
          return this->unsupported_expr(AstNodeKind::CallExpr, SourceSpan{});
       }
@@ -310,45 +312,75 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
 // This provides short-circuiting: the message is only evaluated when the assertion fails.
 //
 // Transforms: assert(cond, expensive_expr)
-// Into:       assert(cond, (thunk():str return expensive_expr end)())
+// Into:       assert(cond, (thunk():str return "[LINE] " .. expensive_expr end)())
 
 void IrEmitter::optimise_assert(const ExprNodeList &Args)
 {
    if (Args.size() < 2) return;  // No message argument
 
-   // Simple literals and identifiers don't benefit from deferral.
-   const ExprNode &msg = *Args[1];
+   ExprNodePtr &msg_arg = const_cast<ExprNodePtr&>(Args[1]);
+   SourceSpan span = msg_arg->span;
 
-   switch (msg.kind) {
+   // Capture message kind before any moves
+
+   AstNodeKind msg_kind = msg_arg->kind;
+   bool is_already_thunk = false;
+
+   if (msg_kind IS AstNodeKind::CallExpr) {
+      const auto &call_payload = std::get<CallExprPayload>(msg_arg->data);
+      if (std::holds_alternative<DirectCallTarget>(call_payload.target)) {
+         const auto &target = std::get<DirectCallTarget>(call_payload.target);
+         if (target.callable and target.callable->kind IS AstNodeKind::FunctionExpr) {
+            const auto &func_payload = std::get<FunctionExprPayload>(target.callable->data);
+            is_already_thunk = func_payload.is_thunk;
+         }
+      }
+   }
+
+   // If the message is already a thunk/deferred expression, leave it alone
+   // to preserve its lazy evaluation semantics (concatenation would force evaluation)
+   if (is_already_thunk) return;
+
+   // Get line number from the condition expression (where assert was called)
+   auto line_num = Args[0]->span.line;
+   auto column = Args[0]->span.column;
+
+   // Create line prefix string: "[LINE:COLUMN] "
+   std::string prefix = std::format("[{}:{}] ", line_num, column);
+   GCstr *prefix_str = lj_str_new(this->lex_state.L, prefix.c_str(), prefix.size());
+
+   LiteralValue prefix_literal = { .kind = LiteralKind::String, .string_value = prefix_str };
+   ExprNodePtr prefix_expr = make_literal_expr(span, prefix_literal);
+
+   // "[LINE:COLUMN] " .. message
+   ExprNodePtr concat_expr = make_binary_expr(span, AstBinaryOperator::Concat, std::move(prefix_expr), std::move(msg_arg));
+
+   // Check if the original message was simple (doesn't need thunk wrapping)
+   bool needs_thunk = true;
+
+   switch (msg_kind) {
       case AstNodeKind::LiteralExpr:    // String/number literals are cheap
       case AstNodeKind::IdentifierExpr: // Simple variable access is cheap
-         return;
-      case AstNodeKind::CallExpr: {
-         // Check if this is already a thunk call (anonymous thunk being invoked)
-         // Pattern: CallExpr with FunctionExpr callee where is_thunk=true
-         const auto &call_payload = std::get<CallExprPayload>(msg.data);
-         if (std::holds_alternative<DirectCallTarget>(call_payload.target)) {
-            const auto &target = std::get<DirectCallTarget>(call_payload.target);
-            if (target.callable and target.callable->kind IS AstNodeKind::FunctionExpr) {
-               const auto &func_payload = std::get<FunctionExprPayload>(target.callable->data);
-               if (func_payload.is_thunk) return;  // Already a thunk call
-            }
-         }
+         needs_thunk = false;
          break;
-      }
+      case AstNodeKind::CallExpr:
+         if (is_already_thunk) needs_thunk = false;
+         break;
       default:
          break;
    }
 
-   // Wrap the message in an anonymous thunk call:
-   //   (thunk():str return msg end)()
+   if (not needs_thunk) { // Simple message: just use the concatenation directly
+      msg_arg = std::move(concat_expr);
+      return;
+   }
 
-   ExprNodePtr &msg_arg = const_cast<ExprNodePtr&>(Args[1]);
-   SourceSpan span = msg_arg->span;
+   // Wrap the concatenation in an anonymous thunk call:
+   //   (thunk():str return "[LINE] " .. msg end)()
 
-   // Build return statement with the message expression
+   // Build return statement with the concatenation expression
    ExprNodeList return_values;
-   return_values.push_back(std::move(msg_arg));
+   return_values.push_back(std::move(concat_expr));
    StmtNodePtr return_stmt = make_return_stmt(span, std::move(return_values), false);
 
    // Build thunk body containing just the return statement
@@ -396,19 +428,20 @@ ParserResult<ExpDesc> IrEmitter::emit_result_filter_expr(const ResultFilterPaylo
    this->materialise_to_next_reg(trail_expr, "filter trailing");
 
    // Emit the call expression
+
    auto call_result = this->emit_expression(*Payload.expression);
    if (not call_result.ok()) return call_result;
    ExpDesc call = call_result.value_ref();
 
    // Set B=0 on the inner call to request all return values
-   if (call.k IS ExpKind::Call) {
-      setbc_b(ir_bcptr(fs, &call), 0);
-   }
+
+   if (call.k IS ExpKind::Call) setbc_b(ir_bcptr(fs, &call), 0);
    this->materialise_to_next_reg(call, "filter input");
 
    // Emit CALLM to call __filter with variable arguments from the inner call
    // CALLM: base = function, C+1 = fixed args before vararg (3: mask, count, trailing)
    // The varargs come from the inner call's multiple returns
+
    BCIns ins = BCINS_ABC(BC_CALLM, base, 0, 3);  // 3 fixed args before vararg
 
    ExpDesc result;

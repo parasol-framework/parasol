@@ -57,7 +57,7 @@ end
    footer = file.readAll('sdk:docs/wiki-footer.html')
 
    err, temp_output = mSys.ResolvePath('temp:markdown', RSF_NO_FILE_CHECK)
-   output_files = array.new(0, 'table')
+   output_files = array<table>
 
    err, pandoc_path = mSys.ResolvePath("pandoc", RSF_PATH)
 

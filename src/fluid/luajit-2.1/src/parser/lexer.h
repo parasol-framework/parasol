@@ -95,6 +95,7 @@ struct TokenDefinition {
    TOKEN_DEF(defer_open,   "<{",       false) \
    TOKEN_DEF(defer_typed,  "<type{",   false) \
    TOKEN_DEF(defer_close,  "}>",       false) \
+   TOKEN_DEF(array_typed,  "array<type>", false) \
    TOKEN_DEF(annotate,     "@",        false) \
    TOKEN_DEF(eof,          "<eof>",    false)
 
@@ -235,6 +236,7 @@ public:
    uint32_t   ternary_depth; // Number of pending ternary operators.
    uint8_t    pending_if_empty_colon; // Tracks ?: misuse after ??.
    int        is_bytecode;   // Set to 1 if input is bytecode, 0 if source text.
+   int64_t    array_typed_size = -1;  // Size parameter for array<type, size> (-1 = no size specified)
 
    size_t   current_offset = 0;
    size_t   line_start_offset = 0;

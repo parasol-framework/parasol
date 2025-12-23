@@ -79,7 +79,7 @@ end
 
 @Test function testVariadicReturnsSameType()
    function manyNums(Count: num):<num, ...>
-      -- Use simple table instead of array.new
+      -- Use simple table instead of array<>
       local results = { 10, 20, 30 }
       return results[0], results[1], results[2] -- Presume 3
    end

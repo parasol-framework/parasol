@@ -545,6 +545,82 @@ static LexToken lex_unicode_operator(LexState *State) noexcept
 }
 
 //********************************************************************************************************************
+// Skip inline whitespace (space and tab only, not newlines)
+
+static void lex_skip_inline_ws(LexState *State) noexcept
+{
+   while (State->c IS ' ' or State->c IS '\t') lex_next(State);
+}
+
+//********************************************************************************************************************
+// Scan array typed expression: array<type> or array<type, size>
+// Caller has already scanned "array" and confirmed c is '<'
+// Returns TK_array_typed with type name in tv, size in State->array_typed_size
+
+static LexToken lex_array_typed(LexState *State, TValue *tv)
+{
+   lex_next(State);  // Consume '<'
+   lex_skip_inline_ws(State);
+
+   // Scan type name
+   if (not (isalpha(State->c) or State->c IS '_')) {
+      lj_lex_error(State, '<', ErrMsg::XTOKEN);
+   }
+
+   lj_buf_reset(&State->sb);
+   do {
+      lex_savenext(State);
+   } while (lj_char_isident(State->c));
+
+   auto type_str = std::string_view(State->sb.b, sbuflen(&State->sb));
+   GCstr *type_name = State->keepstr(type_str);
+
+   lex_skip_inline_ws(State);
+
+   // Check for optional size: array<type, size> or array<type, expr>
+   State->array_typed_size = -1;  // Reset to "no size specified"
+   if (State->c IS ',') {
+      lex_next(State);  // Consume ','
+      lex_skip_inline_ws(State);
+
+      if (isdigit(State->c)) {
+         // Parse positive integer literal
+         int64_t size = 0;
+         while (isdigit(State->c)) {
+            size = size * 10 + (State->c - '0');
+            if (size > INT32_MAX) {
+               lj_lex_error(State, TK_number, ErrMsg::XNUMBER);
+            }
+            lex_next(State);
+         }
+         State->array_typed_size = size;
+         lex_skip_inline_ws(State);
+
+         if (State->c != '>') {
+            lj_lex_error(State, '>', ErrMsg::XTOKEN);
+         }
+         lex_next(State);  // Consume '>'
+      }
+      else {
+         // Non-literal size - set marker for parser to handle expression
+         // Parser will parse the expression and expect '>'
+         State->array_typed_size = -2;
+         // Don't consume anything else - parser will handle
+      }
+   }
+   else {
+      if (State->c != '>') {
+         lj_lex_error(State, '>', ErrMsg::XTOKEN);
+      }
+      lex_next(State);  // Consume '>'
+   }
+
+   // Store type name in token value
+   setstrV(State->L, tv, type_name);
+   return TK_array_typed;
+}
+
+//********************************************************************************************************************
 // Token scanner, main entry point
 
 static LexToken lex_scan(LexState *State, TValue *tv)
@@ -572,6 +648,12 @@ static LexToken lex_scan(LexState *State, TValue *tv)
          } while (lj_char_isident(State->c) and not is_unicode_operator_start(State));
 
          auto str_view = std::string_view(State->sb.b, sbuflen(&State->sb));
+
+         // Check for array<type> syntax before interning the string
+         if (str_view IS "array" and State->c IS '<') {
+            return lex_array_typed(State, tv);
+         }
+
          GCstr *s = State->keepstr(str_view);
          setstrV(State->L, tv, s);
 

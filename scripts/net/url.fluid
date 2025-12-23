@@ -131,7 +131,7 @@ end
 -- Parse query string into list of key-value pairs (preserves order and duplicates)
 
 function url.parseQueryList(queryString)
-   params = array.new(0, 'table')
+   params = array<table>
    queryString ?? return params
 
    for pair in queryString:gmatch('[^&]+') do
@@ -155,7 +155,7 @@ end
 function url.buildQuery(params)
    params ?? return ''
 
-   parts = array.new(0, 'string')
+   parts = array<string>
 
    if type(params) is 'array' then
       for param in values(params) do
@@ -287,7 +287,7 @@ end
 function url.unparse(components)
    components ?? return ''
 
-   parts = array.new(0, 'string')
+   parts = array<string>
 
    if components.scheme then parts:push(components.scheme .. ':') end
 
@@ -332,7 +332,7 @@ end
 
 function url.unsplit(components)
    components ?? return ''
-   parts = array.new(0, 'string')
+   parts = array<string>
    if components.scheme then parts:push(components.scheme .. ':') end
    if components.netloc then parts:push('//' .. components.netloc) end
    if components.path then parts:push(components.path) end

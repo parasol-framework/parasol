@@ -70,6 +70,7 @@ enum class TokenKind : uint16_t {
    DeferredOpen = TK_defer_open,
    DeferredTyped = TK_defer_typed,
    DeferredClose = TK_defer_close,
+   ArrayTyped = TK_array_typed,
    ThunkToken = TK_thunk,
    Choose = TK_choose,
    From = TK_from,
@@ -95,7 +96,9 @@ enum class TokenKind : uint16_t {
    Multiply = '*',
    Divide = '/',
    Modulo = '%',
-   Question = '?'
+   Question = '?',
+   Less = '<',
+   Greater = '>'
 };
 
 [[nodiscard]] inline CSTRING token_kind_name(TokenKind kind, LexState &lex) { return lex.token2str((LexToken)kind); }
@@ -159,6 +162,7 @@ enum class TokenKind : uint16_t {
       case TokenKind::DeferredOpen: return "<{";
       case TokenKind::DeferredTyped: return "<type{";
       case TokenKind::DeferredClose: return "}>";
+      case TokenKind::ArrayTyped: return "array<type>";
       case TokenKind::Choose: return "choose";
       case TokenKind::From: return "from";
       case TokenKind::When: return "when";
@@ -182,6 +186,8 @@ enum class TokenKind : uint16_t {
       case TokenKind::Divide: return "/";
       case TokenKind::Modulo: return "%";
       case TokenKind::Question: return "?";
+      case TokenKind::Less: return "<";
+      case TokenKind::Greater: return ">";
       default: return "<unknown>";
    }
 }
