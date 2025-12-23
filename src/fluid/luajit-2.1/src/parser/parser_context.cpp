@@ -9,6 +9,9 @@
 
 #include "parser/parse_types.h"
 #include "parser.h"
+#ifdef INCLUDE_ADVICE
+#include "parser/parser_advice.h"
+#endif
 
 //********************************************************************************************************************
 
@@ -323,3 +326,21 @@ void ParserContext::log_trace(ParserChannel Channel, const Token &token, std::st
 
    log.msg(level, "[%d:%d] %s: %s - %.*s", (int)line, (int)column, channel, name.c_str(), (int)note.size(), note.data());
 }
+
+//********************************************************************************************************************
+// Emit an advice message if the advice system is enabled.
+
+#ifdef INCLUDE_ADVICE
+void ParserContext::emit_advice(uint8_t Priority, AdviceCategory Category, std::string Message, const Token &Location)
+{
+   auto *emitter = this->advice();
+   if (not emitter) return;
+
+   std::string_view filename;
+   if (this->lex_state->chunkname) {
+      filename = std::string_view(strdata(this->lex_state->chunkname), this->lex_state->chunkname->len);
+   }
+
+   emitter->emit(Priority, Category, std::move(Message), Location, filename);
+}
+#endif

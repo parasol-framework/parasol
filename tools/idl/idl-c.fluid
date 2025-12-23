@@ -41,8 +41,8 @@
 
    require './include/utils'
    require './include/parser'
-   require './include/functions'
    require './include/types'
+   require './include/functions'
    require './include/doc'
 
 ----------------------------------------------------------------------------------------------------------------------

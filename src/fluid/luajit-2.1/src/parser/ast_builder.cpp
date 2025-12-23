@@ -9,6 +9,9 @@
 #include "parser/token_types.h"
 #include "parser/parse_types.h"
 #include "runtime/lj_str.h"
+#ifdef INCLUDE_ADVICE
+#include "parser/parser_advice.h"
+#endif
 
 // Extracts the function payload from an expression node if it's a function expression, otherwise returns null.
 
@@ -2268,6 +2271,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
             // If size was specified (literal or expression) and may be larger than values count, wrap in IIFE to resize
             // For literal sizes, we only wrap if size > values count
             // For dynamic expressions, we always wrap since we can't know at parse time
+
             bool needs_resize = size_expr != nullptr or (specified_size > 0 and size_t(specified_size) > init_values.size());
 
             if (needs_resize) {
@@ -2953,6 +2957,7 @@ ParserResult<AstBuilder::ParameterListResult> AstBuilder::parse_parameter_list(b
    if (allow_optional and not this->ctx.check(TokenKind::LeftParen)) {
       return ParserResult<ParameterListResult>::success(result);
    }
+
    this->ctx.consume(TokenKind::LeftParen, ParserErrorCode::ExpectedToken);
    if (not this->ctx.check(TokenKind::RightParen)) {
       do {
@@ -3005,6 +3010,15 @@ ParserResult<AstBuilder::ParameterListResult> AstBuilder::parse_parameter_list(b
                error.token = type_token;
                error.message = message;
                return ParserResult<ParameterListResult>::failure(error);
+            }
+         }
+         else { // No type annotation provided - emit advice for untyped parameter
+            if (param.name.symbol) {
+               #ifdef INCLUDE_ADVICE
+               auto param_name = std::string_view(strdata(param.name.symbol), param.name.symbol->len);
+               auto message = std::format("Function parameter '{}' lacks type annotation", param_name);
+               this->ctx.emit_advice(1, AdviceCategory::TypeSafety, std::move(message), name.value_ref());
+               #endif
             }
          }
          result.parameters.push_back(param);

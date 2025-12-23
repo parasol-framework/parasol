@@ -16,6 +16,11 @@
 #include "lj_obj.h"
 #include "lj_err.h"
 
+#ifdef INCLUDE_ADVICE
+#include <memory>
+class AdviceEmitter;  // Forward declaration
+#endif
+
 struct SourceSpan {
    BCLine line = 0;
    BCLine column = 0;
@@ -255,6 +260,12 @@ public:
 
    ParserContext* active_context = nullptr;
    std::deque<BufferedToken> buffered_tokens;
+
+#ifdef INCLUDE_ADVICE
+   // Advice system: 0 = off, 1 = best (critical), 2 = most (medium), 3 = all
+   uint8_t advice_level = 0;
+   std::unique_ptr<AdviceEmitter> advice_emitter;
+#endif
 
    LexState() = default;  // Default constructor for bytecode reader usage
    LexState(lua_State* L, std::string_view Source, std::string_view Chunkarg, std::optional<std::string_view> Mode = std::nullopt);

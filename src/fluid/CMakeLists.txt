@@ -100,10 +100,16 @@ set (LUAJIT_COMMON_DEFS LUAJIT_DISABLE_FFI)
 set (LUAJIT_NON_MSVC_DEFS -DLUAJIT_DISABLE_FFI -DLUAJIT_DISABLE_BUFFER)
 
 option(PARASOL_PARSER_TRACE "Emit parser token and expectation traces" OFF)
+option(INCLUDE_ADVICE "Include the parser advice system for code analysis" ON)
 
 if (PARASOL_PARSER_TRACE)
    list(APPEND LUAJIT_COMMON_DEFS PARASOL_PARSER_TRACE)
    list(APPEND LUAJIT_NON_MSVC_DEFS -DPARASOL_PARSER_TRACE)
+endif ()
+
+if (INCLUDE_ADVICE)
+   list(APPEND LUAJIT_COMMON_DEFS INCLUDE_ADVICE)
+   list(APPEND LUAJIT_NON_MSVC_DEFS -DINCLUDE_ADVICE)
 endif ()
 
 if (ENABLE_UNIT_TESTS)
@@ -637,6 +643,10 @@ set (FLUID_SOURCES "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_str
    "${LUAJIT_SRC}/parser/parser.cpp"
    "${LUAJIT_SRC}/parser/lexer.cpp"
    "${LUAJIT_SRC}/parser/parser_unit_tests.cpp")
+
+if (INCLUDE_ADVICE)
+   list (APPEND FLUID_SOURCES "${LUAJIT_SRC}/parser/parser_advice.cpp")
+endif ()
 
 if (ENABLE_UNIT_TESTS)
    list (APPEND FLUID_SOURCES "${LUAJIT_SRC}/runtime/unit_test_indexing.cpp")

@@ -271,6 +271,15 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
                   else if (pf::iequals(trimmed, "trace")) { // Shortcut for tracing everything
                      glJitOptions |= JOF::TRACE;
                   }
+                  else if (pf::iequals(trimmed, "top-advice")) {
+                     glJitOptions |= JOF::TOP_ADVICE;
+                  }
+                  else if (pf::iequals(trimmed, "advice")) {
+                     glJitOptions |= JOF::ADVICE;
+                  }
+                  else if (pf::iequals(trimmed, "all-advice")) {
+                     glJitOptions |= JOF::ALL_ADVICE;
+                  }
                   else log.warning("Unknown JIT option \"%s\" specified.", trimmed.c_str());
                }
 
