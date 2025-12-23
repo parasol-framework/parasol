@@ -2,7 +2,7 @@
 
 ----------------------------------------------------------------------------------------------------------------------
 
-global function ignoreAction(actionID)
+global function ignoreAction(actionID:num)
    actionID ?? return
    return glIgnoreList[actionID]
 end

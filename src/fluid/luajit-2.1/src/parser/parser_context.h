@@ -10,6 +10,11 @@
 #include "parser/token_stream.h"
 #include "parser/parser_profiler.h"
 
+#ifdef INCLUDE_ADVICE
+class AdviceEmitter;
+enum class AdviceCategory : uint8_t;
+#endif
+
 enum class ParserChannel : uint8_t {
    Error,
    Warning,
@@ -116,6 +121,12 @@ public:
    inline LexState & lex() const { return *this->lex_state; }
    inline FuncState & func() const { return *this->func_state; }
    inline lua_State & lua() const { return *this->lua_state; }
+#ifdef INCLUDE_ADVICE
+   inline AdviceEmitter * advice() const { return this->lex_state->advice_emitter.get(); }
+
+   // Emit advice if the advice system is enabled
+   void emit_advice(uint8_t Priority, AdviceCategory Category, std::string Message, const Token &Location);
+#endif
    inline ParserDiagnostics & diagnostics() { return this->diag; }
    inline const ParserDiagnostics & diagnostics() const { return this->diag; }
    inline TokenStreamAdapter & tokens() { return this->token_stream; }

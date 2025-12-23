@@ -17,15 +17,18 @@ function()
      "DIAGNOSE:        Cancels aborting on error so that the full script is parsed.  Enables deeper log tracing.",
      "DUMP_BYTECODE:   Print a disassembly of bytecode instructions after parsing.",
      "PROFILE:         Use timers to profile JIT parsing.  Required to configure run-time profiling.",
+     "TOP_ADVICE:      Filter advice messages down to type safety and correctness issues.",
+     "ADVICE:          Filter advice messages down to performance and code quality issues.",
+     "ALL_ADVICE:      Include all advice messages and style suggestions.",
+     "TRACE_CFG:       Trace ControlFlowGraph edge creation and patching.",
+     "TRACE_TYPES:     Trace type inference and type checking decisions.",
      "TRACE_TOKENS:    Trace the emission of tokens.",
      "TRACE_EXPECT:    Enable trace expectation messages during parsing.",
      "TRACE_BOUNDARY:  Enable log messages for AST boundary crossing.",
      "TRACE_OPERATORS: Trace OperatorEmitter method calls and decisions.",
      "TRACE_REGISTERS: Trace RegisterAllocator reservations and releases.",
-     "TRACE_CFG:       Trace ControlFlowGraph edge creation and patching.",
-     "TRACE_ASSIGNMENTS: Trace PreparedAssignment lifecycle and hazard handling.",
+     "TRACE_ASSIGNMENTS:    Trace PreparedAssignment lifecycle and hazard handling.",
      "TRACE_VALUE_CATEGORY: Trace ValueUse/ValueSlot/LValue operations.",
-     "TRACE_TYPES:     Trace type inference and type checking decisions.",
      { TRACE = "TRACE_TOKENS|TRACE_EXPECT|TRACE_BOUNDARY|TRACE_OPERATORS|TRACE_REGISTERS|TRACE_CFG|TRACE_ASSIGNMENTS|TRACE_VALUE_CATEGORY|TRACE_TYPES" }
   )
 

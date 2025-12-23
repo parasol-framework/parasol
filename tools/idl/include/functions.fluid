@@ -392,7 +392,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
-global function enum(Prefix, Options, ...)
+global function enum(Prefix:str, Options:table, ...)
    verbose('Processing ' .. tostring(Prefix) .. ' enum.')
    if glCustomTypes[Prefix] then print('WARN: A "' .. Prefix .. '" constant already exists.') end
 

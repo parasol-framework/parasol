@@ -12,7 +12,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-global function parseClassHeader(Class, Extract)
+global function parseClassHeader(Class:table, Extract:str)
    Extract = '-CLASS-\n' .. Extract:trim() .. '\n-END-\n'
    local name
    name, Class.comment = Extract:match('\n(%w+):%s+(.-)\n')
@@ -23,7 +23,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-global function parseAction(Class, Extract)
+global function parseAction(Class:table, Extract:str)
    Extract = '-ACTION-\n' .. Extract:trim() .. '\n-END-\n'
 
    name    = Extract:match('\n[Nn]ame:%s+(.-)\n')
@@ -32,8 +32,7 @@ global function parseAction(Class, Extract)
       name, comment = Extract:match('\n(%w+):%s+(.-)\n')
    end
 
-   action = Class.actions[name]
-   if not action then action = { } end
+   action = Class.actions[name] ?? { }
    action.name = name
    action.comment = comment
    action.description = Extract:match('\n\n(.-)\n%-[A-Z]+%-\n')
@@ -62,7 +61,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-global function parseField(class, Extract)
+global function parseField(class:table, Extract:str)
    Extract = '-FIELD-\n' .. Extract:trim() .. '\n-END-\n'
    lookup  = Extract:match('\n[Ll]ookup:%s+(.-)\n')
    status  = Extract:match('\n[Ss]tatus:%s+(.-)\n')
@@ -99,7 +98,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Convert a parameter string such as "int width: The width of the image"
 
-global function parseParameterString(Parameter)
+global function parseParameterString(Parameter:str):table
    param = { }
    param.comment = Parameter:match('^.+:%s-(.+)$')
    if param.comment?? then Parameter = Parameter:match('^(.+):%s-.+$') end
@@ -114,7 +113,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-global function parseMethod(Class, Extract)
+global function parseMethod(Class:table, Extract:str)
    Extract = '-METHOD-\n' .. Extract:trim() .. '\n-END-\n'
 
    name    = Extract:match('\n[Nn]ame:%s+(.-)\n')
@@ -188,7 +187,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Process the formal field definitions in a class spec.
 
-global function parseClassFields(Class, ClientSpec)
+global function parseClassFields(Class:table, ClientSpec:str)
    cdef = ''
 
    -- Parse fields defined in the FDL

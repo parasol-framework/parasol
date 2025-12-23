@@ -27,6 +27,9 @@
 #include "lexer.h"
 #include "parser.h"
 #include "parser_context.h"
+#ifdef INCLUDE_ADVICE
+#include "parser_advice.h"
+#endif
 #include "../../defs.h"
 #include "lj_char.h"
 #include "lj_strscan.h"
@@ -908,6 +911,20 @@ static LexToken lex_scan(LexState *State, TValue *tv)
 }
 
 //********************************************************************************************************************
+// Compute the advice level from JIT options flags.
+// Returns: 0 = off, 1 = best (critical only), 2 = most (medium), 3 = all
+
+#ifdef INCLUDE_ADVICE
+static uint8_t compute_advice_level(JOF Options)
+{
+   if ((Options & JOF::ALL_ADVICE) != JOF::NIL) return 3;
+   if ((Options & JOF::ADVICE) != JOF::NIL) return 2;
+   if ((Options & JOF::TOP_ADVICE) != JOF::NIL) return 1;
+   return 0;
+}
+#endif
+
+//********************************************************************************************************************
 // LexState source text constructor
 
 LexState::LexState(lua_State* L, std::string_view Source, std::string_view Chunkarg, std::optional<std::string_view> Mode)
@@ -947,6 +964,14 @@ LexState::LexState(lua_State* L, std::string_view Source, std::string_view Chunk
    , active_context(nullptr)
 {
    lj_buf_init(L, &this->sb);
+
+#ifdef INCLUDE_ADVICE
+   // Initialise advice system from JIT options
+   this->advice_level = compute_advice_level(glJitOptions);
+   if (this->advice_level > 0) {
+      this->advice_emitter = std::make_unique<AdviceEmitter>(this->advice_level);
+   }
+#endif
 
    // Read first character
    lex_next(this);

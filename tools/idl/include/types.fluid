@@ -50,7 +50,7 @@ global glTypes = {
 -----------------------------------------------------------------------------------------------------------------------
 -- Convert FD flags into a printable C type.  Used by getMetaFieldDefinition() for classes.
 
-global function getFieldType(Def, Type, CustomName, Option)
+global function getFieldType(Def:table, Type:num, CustomName:str, Option:any)
    local result
 
    if (Type & FD_CUSTOM)?? then
@@ -178,7 +178,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Returns { cpp, type, fullType, docType, defType, sizeof, ref, lookup, bits, name, comment, basicType, allocated, resultValue }
 
-global function cType(Field, Origin)
+global function cType(Field:table, Origin:str):table
    assert(Field.type, "Field definition incorrect, missing 'type' value for '" .. tostring(Origin) .. "'\n" .. debug.traceback())
 
    Field.defType = Field.type -- Save the original type name
