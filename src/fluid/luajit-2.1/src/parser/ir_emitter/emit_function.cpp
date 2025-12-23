@@ -7,7 +7,7 @@
 // For thunk functions, transforms into a wrapper that returns thunk userdata via AST transformation.
 // The optional funcname parameter sets the function's name for tostring() output.
 
-ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &Payload, GCstr* funcname)
+ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &Payload, GCstr *funcname)
 {
    if (not Payload.body) return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
 
@@ -134,18 +134,24 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
    IrEmitter child_emitter(child_ctx);
    auto base = BCReg(child_state.nactvar - param_count.raw());
    for (auto i = BCReg(0); i < param_count; ++i) {
-      const FunctionParameter& param = Payload.parameters[i.raw()];
+      const FunctionParameter &param = Payload.parameters[i.raw()];
       if (param.name.is_blank or param.name.symbol IS nullptr) continue;
       child_emitter.update_local_binding(param.name.symbol, BCReg(base.raw() + i.raw()));
    }
 
-   auto body_result = child_emitter.emit_block(*Payload.body, FuncScopeFlag::None);
-   if (not body_result.ok()) {
-      return ParserResult<ExpDesc>::failure(body_result.error_ref());
+   // Copy explicit return types to the function state BEFORE emitting the body.
+   // This ensures emit_return_stmt can see the types when deciding whether to use tail-calls
+   // and whether to emit BC_TYPEFIX instructions.
+
+   child_state.funcname = funcname;
+   if (Payload.return_types.is_explicit) {
+      for (size_t i = 0; i < Payload.return_types.count and i < child_state.return_types.size(); ++i) {
+         child_state.return_types[i] = Payload.return_types.types[i];
+      }
    }
 
-   // Set the function name before finishing the prototype
-   child_state.funcname = funcname;
+   auto body_result = child_emitter.emit_block(*Payload.body, FuncScopeFlag::None);
+   if (not body_result.ok()) return ParserResult<ExpDesc>::failure(body_result.error_ref());
 
    fs_guard.disarm();  // fs_finish will handle cleanup
    GCproto *pt = this->lex_state.fs_finish(Payload.body->span.line);
@@ -362,8 +368,16 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunction
 
    ExpDesc fn = function_value.value_ref();
    this->materialise_to_reg(fn, slot, "local function literal");
-   this->func_state.var_get(this->func_state.nactvar - 1).startpc = this->func_state.pc;
+   VarInfo &var_info = this->func_state.var_get(this->func_state.nactvar - 1);
+   var_info.startpc = this->func_state.pc;
    if (Payload.name.symbol and not Payload.name.is_blank) this->update_local_binding(Payload.name.symbol, slot);
+
+   // Copy function return types to VarInfo for compile-time type checking at call sites
+   if (Payload.function->return_types.is_explicit) {
+      for (size_t i = 0; i < Payload.function->return_types.count and i < var_info.result_types.size(); ++i) {
+         var_info.result_types[i] = Payload.function->return_types.types[i];
+      }
+   }
 
    // Register annotations if present
 
@@ -432,8 +446,16 @@ ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload
 
       ExpDesc fn = function_value.value_ref();
       this->materialise_to_reg(fn, slot, "function literal");
-      this->func_state.var_get(this->func_state.nactvar - 1).startpc = this->func_state.pc;
+      VarInfo &var_info = this->func_state.var_get(this->func_state.nactvar - 1);
+      var_info.startpc = this->func_state.pc;
       this->update_local_binding(symbol, slot);
+
+      // Copy function return types to VarInfo for compile-time type checking at call sites
+      if (Payload.function->return_types.is_explicit) {
+         for (size_t i = 0; i < Payload.function->return_types.count and i < var_info.result_types.size(); ++i) {
+            var_info.result_types[i] = Payload.function->return_types.types[i];
+         }
+      }
 
       // Register annotations if present
       if (not Payload.function->annotations.empty()) {

@@ -936,8 +936,7 @@ void OperatorEmitter::prepare_logical_and(ExprValue left)
       pc = bcemit_jmp(this->func_state);
       will_skip_rhs = true;
    }
-   else {
-      // Runtime value - emit conditional branch (jump if false)
+   else { // Runtime value - emit conditional branch (jump if false)
       pc = bcemit_branch(this->func_state, left_desc, 0);
    }
 
@@ -947,9 +946,14 @@ void OperatorEmitter::prepare_logical_and(ExprValue left)
    }
 
    // Set up CFG edges for short-circuit behavior
+   // The false_edge collects jumps for "left is false" path - these will be resolved later
+   // when the complete_logical_and merges paths. We release it here since it's just
+   // being used to accumulate jump positions, not to be patched at this location.
+
    ControlFlowEdge false_edge = this->cfg->make_false_edge(BCPos(left_desc->f));
    false_edge.append(BCPos(pc));
    left_desc->f = false_edge.head().raw();
+   false_edge.release();  // Mark as handled - jumps will be resolved in complete_logical_and
 
    ControlFlowEdge true_edge = this->cfg->make_true_edge(BCPos(left_desc->t));
    true_edge.patch_here();
@@ -983,9 +987,12 @@ void OperatorEmitter::complete_logical_and(ExprValue left, ExpDesc right)
    }
 
    // Merge false paths: both "left is false" and "right is false" go to same target
+   // This edge accumulates the merged jump list; release it since jumps resolve
+   // when the expression result is used (discharged to register, used in condition, etc.)
    ControlFlowEdge false_edge = this->cfg->make_false_edge(BCPos(right_desc->f));
    false_edge.append(BCPos(left_desc->f));
    right_desc->f = false_edge.head().raw();
+   false_edge.release();  // Mark as handled - jumps will be resolved by caller
 
    // Result is right's value
    *left_desc = *right_desc;
@@ -1035,9 +1042,13 @@ void OperatorEmitter::prepare_logical_or(ExprValue left)
    }
 
    // Set up CFG edges for short-circuit behavior
+   // The true_edge collects jumps for "left is true" path - these will be resolved later
+   // when the complete_logical_or merges paths. We release it here since it's just
+   // being used to accumulate jump positions, not to be patched at this location.
    ControlFlowEdge true_edge = this->cfg->make_true_edge(BCPos(left_desc->t));
    true_edge.append(BCPos(pc));
    left_desc->t = true_edge.head().raw();
+   true_edge.release();  // Mark as handled - jumps will be resolved in complete_logical_or
 
    ControlFlowEdge false_edge = this->cfg->make_false_edge(BCPos(left_desc->f));
    false_edge.patch_here();
@@ -1066,9 +1077,12 @@ void OperatorEmitter::complete_logical_or(ExprValue left, ExpDesc right)
    right = right_val.legacy();
 
    // Merge true paths: both "left is true" and "right is true" go to same target
+   // This edge accumulates the merged jump list; release it since jumps resolve
+   // when the expression result is used (discharged to register, used in condition, etc.)
    ControlFlowEdge true_edge = this->cfg->make_true_edge(BCPos(right.t));
    true_edge.append(BCPos(left_desc->t));
    right.t = true_edge.head().raw();
+   true_edge.release();  // Mark as handled - jumps will be resolved by caller
 
    // Result is right's value
    *left_desc = right;

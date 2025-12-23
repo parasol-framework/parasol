@@ -1,6 +1,6 @@
 -- Visual FX interface.  Applies cosmetic effects to viewports.
 
-   global mVec ?= mod.load('vector')
+   local mVec = mod.load('vector')
 
    global vfx ?= {
       fps = 1/60 -- Desired FPS for the effects, ideally matches the display
@@ -117,9 +117,9 @@ vfx.fadeIn = function(Viewport, Seconds, Delay, CallbackOnCompletion)
    local err
    Viewport.opacity = 0
    err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
-      if not Viewport.exists() then check(ERR_Terminate) end
+      Viewport.exists() ?? check(ERR_Terminate)
 
-      if not state.time then state.time = CurrentTime end
+      state.time ?= CurrentTime
       if state.delay > 0 then
          if (CurrentTime - state.time) >= state.delay * 1000000 then
             state.delay = 0
@@ -157,9 +157,9 @@ vfx.zoomIn = function(Viewport, Seconds, Delay, CallbackOnCompletion)
    Viewport.acDraw()
 
    err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
-      if not Viewport.exists() then check(ERR_Terminate) end
+      Viewport.exists() ?? check(ERR_Terminate)
 
-      if not state.time then state.time = CurrentTime end
+      state.time ?= CurrentTime
       if state.delay > 0 then
          if (CurrentTime - state.time) >= state.delay * 1000000 then
             state.delay = 0
@@ -200,9 +200,9 @@ vfx.zoomOut = function(Viewport, Seconds, Delay, CallbackOnCompletion)
    Viewport.acDraw()
 
    err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
-      if not Viewport.exists() then check(ERR_Terminate) end
+      Viewport.exists() ?? check(ERR_Terminate)
 
-      if not state.time then state.time = CurrentTime end
+      state.time ?= CurrentTime
       if state.delay > 0 then
          if (CurrentTime - state.time) >= state.delay * 1000000 then
             state.delay = 0
@@ -236,10 +236,9 @@ end
 vfx.shake = function(Viewport, Seconds, Delay, Intensity, CallbackOnCompletion)
    state = { name = 'shake', intensity = (Intensity ?? 1.0), seconds = (Seconds ?? 1.0), delay = (Delay ?? 0), callback = CallbackOnCompletion }
 
-   if state.intensity < 0.1 then
-      state.intensity = 0.1
-   elseif state.intensity > 2 then
-      state.intensity = 2
+   state.intensity = choose state.intensity from
+     < 0.1 -> 0.1
+     > 2   -> 2
    end
 
    MAX_ANGLE = 90 * Intensity
@@ -250,9 +249,9 @@ vfx.shake = function(Viewport, Seconds, Delay, Intensity, CallbackOnCompletion)
    local err
    err, state.matrix = Viewport.mtNewMatrix(false)
    err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
-      if not Viewport.exists() then check(ERR_Terminate) end
+      Viewport.exists() ?? check(ERR_Terminate)
 
-      if not state.time then state.time = CurrentTime end
+      state.time ?= CurrentTime
       if state.delay > 0 then
          if (CurrentTime - state.time) >= state.delay * 1000000 then
             state.delay = 0
@@ -297,9 +296,9 @@ vfx.rotate = function(Viewport, Seconds, Delay, CallbackOnCompletion)
    local err
    err, state.matrix = Viewport.mtNewMatrix(false)
    err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
-      if not Viewport.exists() then check(ERR_Terminate) end
+      Viewport.exists() ?? check(ERR_Terminate)
 
-      if not state.time then state.time = CurrentTime end
+      state.time ?= CurrentTime
       if state.delay > 0 then
          if (CurrentTime - state.time) >= state.delay * 1000000 then
             state.delay = 0
@@ -399,25 +398,25 @@ vfx.wipes.clock.animate = function(State, Options, Progress)
    pc.y = -1
    State.clip_path.mtAddCommand(pc)
 
-   if (angle > top_right_pt) then -- Fill corners
+   if angle > top_right_pt then -- Fill corners
       pc.x = State.v_width + 1
       pc.y = -1
       State.clip_path.mtAddCommand(pc)
    end
 
-   if (angle > bottom_right_pt) then
+   if angle > bottom_right_pt then
       pc.x = State.v_width + 1
       pc.y = State.v_height + 1
       State.clip_path.mtAddCommand(pc)
    end
 
-   if (angle > bottom_left_pt) then
+   if angle > bottom_left_pt then
       pc.x = -1
       pc.y = State.v_height + 1
       State.clip_path.mtAddCommand(pc)
    end
 
-   if (angle > top_left_pt) then
+   if angle > top_left_pt then
       pc.x = -1
       pc.y = -1
       State.clip_path.mtAddCommand(pc)
@@ -446,7 +445,7 @@ vfx.wipes.radial.init = function(State, Options)
    State.interval    = 1.0 / State.segments
    State.stroke_size = State.max_radius / State.segments
 
-   State.ellipses = { }
+   State.ellipses = array.new(0, 'any')
    State.clip.flags = 'ApplyStrokes|ApplyFills'
 
    State.center = State.clip.viewport.new('VectorEllipse', {
@@ -455,7 +454,7 @@ vfx.wipes.radial.init = function(State, Options)
 
    for i=1,State.segments-1 do
       radius = State.stroke_size + ((State.max_radius - State.stroke_size)) * (i / (State.segments-1)) - (State.stroke_size * 0.5)
-      table.insert(State.ellipses, State.clip.viewport.new('VectorEllipse', {
+      State.ellipses:push(State.clip.viewport.new('VectorEllipse', {
          cx = State.cx, cy = State.cy, rx = radius, ry = radius, fill='none',
          stroke = 'rgb(255,255,255)', visibility = VIS_HIDDEN
       }))
@@ -471,8 +470,8 @@ vfx.wipes.radial.animate = function(State, Options, Progress)
    for i=1,State.segments-1 do
       size = (Progress / (i * State.interval)) * State.stroke_size
       if size > State.stroke_size + 0.25 then size = State.stroke_size + 0.25 end
-      State.ellipses[i].strokeWidth = size
-      State.ellipses[i].visibility = (size < 0.5) ? VIS_HIDDEN :> VIS_VISIBLE
+      State.ellipses[i-1].strokeWidth = size
+      State.ellipses[i-1].visibility = (size < 0.5) ? VIS_HIDDEN :> VIS_VISIBLE
    end
 end
 
@@ -524,7 +523,7 @@ vfx.wipes.shutter.animate = function(State, Options, Progress)
    interval   = 1.0 / segments
    bar_height = State.v_height / segments
 
-   if not State.clip_path then State.clip_path = State.clip.viewport.new('VectorPath', { }) end
+   State.clip_path ?= State.clip.viewport.new('VectorPath', { })
 
    State.clip_path.acClear()
    for i=0,segments-1 do
@@ -559,9 +558,9 @@ end
 vfx.initTimer = function(State, Options)
    local err
    err, State.timerID = mSys.SubscribeTimer(1 * vfx.fps, function(Subscriber, Elapsed, CurrentTime)
-      if not State.viewport.exists() then check(ERR_Terminate) end
+      State.viewport.exists() ?? check(ERR_Terminate)
 
-      if not State.time then State.time = CurrentTime end
+      State.time ?= CurrentTime
       if State.delay > 0 then
          if (CurrentTime - State.time) >= State.delay * 1000000 then
             State.delay = 0

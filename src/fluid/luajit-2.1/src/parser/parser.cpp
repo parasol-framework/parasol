@@ -174,7 +174,15 @@ static void run_ast_pipeline(ParserContext &Context, ParserProfiler &Profiler)
       ParserProfiler::StageTimer type_timer = Profiler.stage("type_analysis");
       run_type_analysis(Context, *chunk);
       type_timer.stop();
+
+      // Raise errors now, required to check for type violations
+      if (Context.diagnostics().has_errors()) {
+         raise_accumulated_diagnostics(Context);
+         return;
+      }
    }
+
+   // Emit bytecode instructions
 
    ParserProfiler::StageTimer emit_timer = Profiler.stage("emit");
    IrEmitter emitter(Context);

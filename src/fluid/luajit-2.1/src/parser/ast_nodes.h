@@ -1,28 +1,23 @@
 // Lua parser - AST/IR node schema
 // Copyright (C) 2025 Paul Manias
 //
-// The schema mirrors every construct currently handled by the LuaJIT parser and
-// describes how child nodes, source locations and semantic attributes are stored.
+// The schema mirrors every construct currently handled by the LuaJIT parser and describes how child nodes, source
+// locations and semantic attributes are stored.
 //
-//  *  Expressions include literals, identifiers, calls, table constructors,
-//     unary/binary operators (including Fluid extensions such as `??`, ternary
-//     selections and postfix increment), function literals and suffix operations
+//  *  Expressions include literals, identifiers, calls, table constructors, unary/binary operators (including Fluid
+//     extensions such as `??`, ternary selections and postfix increment), function literals and suffix operations
 //     (field access, indexing, method calls, presence checks).
-//  *  Statements cover assignments, declarations, control-flow (if/while/repeat,
-//     numeric & generic for loops, break/continue), defer blocks,
-//     returns, chunk/local blocks and bare expression statements.
-//  *  Dedicated structs capture reusable metadata (Identifier, NameRef,
-//     FunctionParameter, TableField, BlockStmt) so later work can extend the
-//     IR without mutating parser internals.
+//  *  Statements cover assignments, declarations, control-flow (if/while/repeat, numeric & generic for loops,
+//     break/continue), defer blocks, returns, chunk/local blocks and bare expression statements.
+//  *  Dedicated structs capture reusable metadata (Identifier, NameRef, FunctionParameter, TableField, BlockStmt) so
+//     later work can extend the IR without mutating parser internals.
 //
-// Nodes own their children through std::unique_ptr / std::vector so lifetime is
-// explicit and node hierarchies can be transferred between passes. Every node
-// stores a SourceSpan for diagnostics, and lightweight view helpers expose the
-// contents of frequently iterated collections without leaking storage details.
-// Extensions should prefer adding new structs + AstNodeKind tags rather than
-// repurposing existing payloads; see the "Extension guidelines" comment near the
-// end of this file.
-
+// Nodes own their children through std::unique_ptr / std::vector so lifetime is explicit and node hierarchies can be
+// transferred between passes. Every node stores a SourceSpan for diagnostics, and lightweight view helpers expose the
+// contents of frequently iterated collections without leaking storage details.  Extensions should prefer adding new
+// structs + AstNodeKind tags rather than repurposing existing payloads; see the "Extension guidelines" comment near
+// the end of this file.
+//
 // Extension guidelines
 // 1. Add a new AstNodeKind entry and dedicated payload struct. Do NOT overload existing
 //    payloads unless semantics are identical.
@@ -36,6 +31,7 @@
 
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -60,62 +56,19 @@ using StmtNodePtr = std::unique_ptr<StmtNode>;
 using ExprNodeList = std::vector<ExprNodePtr>;
 using StmtNodeList = std::vector<StmtNodePtr>;
 
-enum class AstNodeKind : uint16_t {
-   LiteralExpr,
-   IdentifierExpr,
-   VarArgExpr,
-   UnaryExpr,
-   BinaryExpr,
-   UpdateExpr,
-   TernaryExpr,
-   PresenceExpr,
-   PipeExpr,
-   CallExpr,
-   MemberExpr,
-   IndexExpr,
-   SafeMemberExpr,
-   SafeIndexExpr,
-   SafeCallExpr,
-   ResultFilterExpr,
-   TableExpr,
-   FunctionExpr,
-   DeferredExpr,  // Deferred expression <{ expr }>
-   RangeExpr,     // Range literal {start..stop} or {start...stop}
-   ChooseExpr,    // Choose expression: choose value from pattern -> result ... end
-   BlockStmt,
-   AssignmentStmt,
-   LocalDeclStmt,
-   GlobalDeclStmt,
-   LocalFunctionStmt,
-   FunctionStmt,
-   IfStmt,
-   WhileStmt,
-   RepeatStmt,
-   NumericForStmt,
-   GenericForStmt,
-   BreakStmt,
-   ContinueStmt,
-   ReturnStmt,
-   DeferStmt,
-   DoStmt,
-   ConditionalShorthandStmt,
-   ExpressionStmt
-};
+// Function return type declaration for static analysis
+struct FunctionReturnTypes {
+   std::array<FluidType, MAX_RETURN_TYPES> types{};  // Return types (Unknown = unused slot)
+   uint8_t count = 0;           // Number of declared types (0 = not declared)
+   bool is_variadic = false;    // True if declaration ends with ... (last type repeats)
+   bool is_explicit = false;    // True if explicitly declared, false if inferred
 
-// Parameter type annotation for static analysis
-enum class FluidType : uint8_t {
-   Any = 0,     // No type constraint (default)
-   Nil,
-   Bool,
-   Num,
-   Str,
-   Table,
-   Array,
-   Func,
-   Thread,
-   CData,
-   Object,       // Parasol userdata
-   Unknown
+   [[nodiscard]] bool is_void() const { return count IS 0 and is_explicit; }
+   [[nodiscard]] bool is_any() const { return count IS 1 and types[0] IS FluidType::Any; }
+   [[nodiscard]] FluidType type_at(size_t Index) const {
+      if (Index >= count) return is_variadic ? types[count - 1] : FluidType::Unknown;
+      return types[Index];
+   }
 };
 
 // Convert type name string to FluidType
@@ -237,6 +190,7 @@ struct Identifier {
    SourceSpan span{};
    bool is_blank = false;
    bool has_close = false;
+   FluidType type = FluidType::Unknown;  // Explicit type annotation (Unknown = no annotation)
 };
 
 struct NameRef {
@@ -472,7 +426,8 @@ struct FunctionExprPayload {
    std::vector<FunctionParameter> parameters;
    bool is_vararg = false;
    bool is_thunk = false;              // Marks function as thunk
-   FluidType thunk_return_type = FluidType::Any;  // Return type for thunk (default: Any)
+   FluidType thunk_return_type = FluidType::Any;  // Return type for thunk (kept for IR emission compatibility)
+   FunctionReturnTypes return_types{};            // General return type tracking for type checking
    std::unique_ptr<BlockStmt> body;
    std::vector<AnnotationEntry> annotations;  // Annotations attached to this function
    ~FunctionExprPayload();
@@ -492,6 +447,7 @@ struct DeferredExprPayload {
 };
 
 // Range expression payload: represents {start..stop} or {start...stop} literal syntax
+
 struct RangeExprPayload {
    RangeExprPayload() = default;
    RangeExprPayload(const RangeExprPayload&) = delete;
@@ -504,7 +460,8 @@ struct RangeExprPayload {
    ~RangeExprPayload();
 };
 
-// Relational operator for choose expression patterns (Phase 6)
+// Relational operator for choose expression patterns
+
 enum class ChooseRelationalOp : uint8_t {
    None,         // Equality comparison (default)
    LessThan,     // < pattern
@@ -514,6 +471,7 @@ enum class ChooseRelationalOp : uint8_t {
 };
 
 // A single case arm in a choose expression
+
 struct ChooseCase {
    ChooseCase() = default;
    ChooseCase(const ChooseCase&) = delete;
@@ -856,12 +814,12 @@ ExprNodePtr make_safe_member_expr(SourceSpan span, ExprNodePtr table, Identifier
 ExprNodePtr make_safe_index_expr(SourceSpan span, ExprNodePtr table, ExprNodePtr index);
 ExprNodePtr make_result_filter_expr(SourceSpan span, ExprNodePtr expression, uint64_t keep_mask, uint8_t explicit_count, bool trailing_keep);
 ExprNodePtr make_table_expr(SourceSpan span, std::vector<TableField> fields, bool has_array_part);
-ExprNodePtr make_function_expr(SourceSpan span, std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body, bool is_thunk = false, FluidType thunk_return_type = FluidType::Any);
+ExprNodePtr make_function_expr(SourceSpan span, std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body, bool is_thunk = false, FluidType thunk_return_type = FluidType::Any, FunctionReturnTypes return_types = {});
 ExprNodePtr make_deferred_expr(SourceSpan span, ExprNodePtr inner, FluidType type = FluidType::Unknown, bool type_explicit = false);
 ExprNodePtr make_range_expr(SourceSpan span, ExprNodePtr start, ExprNodePtr stop, bool inclusive);
 ExprNodePtr make_choose_expr(SourceSpan span, ExprNodePtr scrutinee, std::vector<ChooseCase> cases, size_t inferred_arity = 0);
 ExprNodePtr make_choose_expr_tuple(SourceSpan span, ExprNodeList scrutinee_tuple, std::vector<ChooseCase> cases);
-std::unique_ptr<FunctionExprPayload> make_function_payload(std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body, bool is_thunk = false, FluidType thunk_return_type = FluidType::Any);
+std::unique_ptr<FunctionExprPayload> make_function_payload(std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body, bool is_thunk = false, FluidType thunk_return_type = FluidType::Any, FunctionReturnTypes return_types = {});
 std::unique_ptr<BlockStmt> make_block(SourceSpan span, StmtNodeList statements);
 StmtNodePtr make_assignment_stmt(SourceSpan span, AssignmentOperator op, ExprNodeList targets, ExprNodeList values);
 StmtNodePtr make_local_decl_stmt(SourceSpan span, std::vector<Identifier> names, ExprNodeList values);

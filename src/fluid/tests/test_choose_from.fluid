@@ -261,6 +261,45 @@ end
    assert(result is 'negative', "Expected 'negative', got " .. tostring(result))
 end
 
+@Test(hotpath=true) function testRelationalWithParenthesisedExpressions()
+   -- Test that parenthesised expressions in relational patterns parse correctly
+
+   -- Test with parenthesised expression as sole relational pattern
+   result = choose 50 from
+      < ((100 - 50) + 10) -> 'below 60'
+      else -> 'above or equal 60'
+   end
+   assert(result is 'below 60', "Expected 'below 60', got " .. tostring(result))
+
+   -- Test with literal first, then parenthesised expression
+   result = choose 100 from
+      < 50 -> 'very small'
+      < (200 + 70) -> 'medium'
+      else -> 'large'
+   end
+   assert(result is 'medium', "Expected 'medium', got " .. tostring(result))
+
+   -- Test multiple parenthesised expressions (using literals inside)
+   result = choose 80 from
+      < (50 + 25) -> 'below threshold'
+      < (100 + 25) -> 'near threshold'
+      else -> 'above threshold'
+   end
+   assert(result is 'near threshold', "Expected 'near threshold', got " .. tostring(result))
+end
+
+@Test(hotpath=true) function testRelationalWithFunctionCallExpressions()
+   function getLimit()
+      return 50
+   end
+
+   result = choose 30 from
+      < getLimit() -> 'below limit'
+      else -> 'at or above limit'
+   end
+   assert(result is 'below limit', "Expected 'below limit', got " .. tostring(result))
+end
+
 ----------------------------------------------------------------------------------------------------------------------
 -- Table Patterns (Open Record Semantics)
 

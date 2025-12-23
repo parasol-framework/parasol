@@ -188,7 +188,8 @@ end
 
 @Test function testRecursion()
    -- Test deep recursion with tail-call optimization
-   function fibonacci(N, A, B)
+   -- Recursive function with return values requires explicit type declaration
+   function fibonacci(N, A, B):num
       A = A ?? 0
       B = B ?? 1
       if N is 0 then

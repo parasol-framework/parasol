@@ -383,7 +383,7 @@ end
    assert(ns_item2_id != ns_item1_id, "ns:item2 should have different NamespaceID (should resolve to 'b')")
 
    -- Verify the actual namespace URIs
-   function get_namespace_uri(namespaceId)
+   function get_namespace_uri(namespaceId):str
       if namespaceId and namespaceId != 0 then
          local err, uri = xml.mtGetNamespaceURI(namespaceId)
          if err is ERR_Okay then

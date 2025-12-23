@@ -26,6 +26,27 @@
 #include "lib.h"
 
 //********************************************************************************************************************
+// Convert LuaJIT internal type tag to FluidType for runtime type inference.
+// Called by BC_TYPEFIX to fix a function's return type based on actual value.
+
+static FluidType lj_tag_to_fluid_type(uint32_t tag)
+{
+   switch (tag) {
+      case LJ_TNIL:    return FluidType::Nil;
+      case LJ_TFALSE:
+      case LJ_TTRUE:   return FluidType::Bool;
+      case LJ_TSTR:    return FluidType::Str;
+      case LJ_TTHREAD: return FluidType::Thread;
+      case LJ_TFUNC:   return FluidType::Func;
+      case LJ_TCDATA:  return FluidType::CData;
+      case LJ_TTAB:    return FluidType::Table;
+      case LJ_TUDATA:  return FluidType::Object;
+      case LJ_TARRAY:  return FluidType::Array;
+      default:         return FluidType::Num;  // Numbers have itype < LJ_TISNUM
+   }
+}
+
+//********************************************************************************************************************
 // String interning of metamethod names for fast indexing.
 
 void lj_meta_init(lua_State *L)
@@ -181,12 +202,12 @@ TValue * lj_meta_tset(lua_State *L, cTValue *o, cTValue *k)
          if (LJ_LIKELY(not tvisnil(tv))) {
             t->nomm = 0;  //  Invalidate negative metamethod cache.
             lj_gc_anybarriert(L, t);
-            return (TValue*)tv;
+            return (TValue *)tv;
          }
          else if (not (mo = lj_meta_fast(L, tabref(t->metatable), MM_newindex))) {
             t->nomm = 0;  //  Invalidate negative metamethod cache.
             lj_gc_anybarriert(L, t);
-            if (tv != niltv(L)) return (TValue*)tv;
+            if (tv != niltv(L)) return (TValue *)tv;
             if (tvisnil(k)) lj_err_msg(L, ErrMsg::NILIDX);
             else if (tvisint(k)) { setnumV(&tmp, (lua_Number)intV(k)); k = &tmp; }
             else if (tvisnum(k) and tvisnan(k)) lj_err_msg(L, ErrMsg::NANIDX);
@@ -297,7 +318,7 @@ TValue * lj_meta_cat(lua_State *L, TValue *top, int left)
          // concat:    [...][CAT stack ...] [result]
          // next step: [...][CAT stack ............]
 
-         TValue* e, * o = top;
+         TValue *e, * o = top;
          uint64_t tlen = tvisstr(o) ? strV(o)->len : tvisbuf(o) ? sbufxlen(bufV(o)) : STRFMT_MAXBUF_NUM;
          SBuf* sb;
          do {
@@ -337,7 +358,7 @@ TValue * lj_meta_cat(lua_State *L, TValue *top, int left)
 //********************************************************************************************************************
 // Helper for LEN. __len metamethod.
 
-TValue* LJ_FASTCALL lj_meta_len(lua_State *L, cTValue *o)
+TValue * LJ_FASTCALL lj_meta_len(lua_State *L, cTValue *o)
 {
    cTValue *mo = lj_meta_lookup(L, o, MM_len);
    if (tvisnil(mo)) {
@@ -352,16 +373,16 @@ TValue* LJ_FASTCALL lj_meta_len(lua_State *L, cTValue *o)
 //********************************************************************************************************************
 // Helper for equality comparisons. __eq metamethod.
 
-TValue* lj_meta_equal(lua_State *L, GCobj* o1, GCobj* o2, int ne)
+TValue * lj_meta_equal(lua_State *L, GCobj* o1, GCobj* o2, int ne)
 {
    // Field metatable must be at same offset for GCtab and GCudata!
    cTValue *mo = lj_meta_fast(L, tabref(o1->gch.metatable), MM_eq);
    if (mo) {
-      TValue* top;
+      TValue *top;
       uint32_t it;
       if (tabref(o1->gch.metatable) != tabref(o2->gch.metatable)) {
          cTValue *mo2 = lj_meta_fast(L, tabref(o2->gch.metatable), MM_eq);
-         if (mo2 IS nullptr or !lj_obj_equal(mo, mo2)) return (TValue*)(intptr_t)ne;
+         if (mo2 IS nullptr or !lj_obj_equal(mo, mo2)) return (TValue *)(intptr_t)ne;
       }
 
       top = curr_top(L);
@@ -374,13 +395,13 @@ TValue* lj_meta_equal(lua_State *L, GCobj* o1, GCobj* o2, int ne)
       setgcV(L, top + 1, o2, it);
       return top;  //  Trigger metamethod call.
    }
-   return (TValue*)(intptr_t)ne;
+   return (TValue *)(intptr_t)ne;
 }
 
 //********************************************************************************************************************
 
 #if LJ_HASFFI
-TValue* LJ_FASTCALL lj_meta_equal_cd(lua_State *L, BCIns ins)
+TValue * LJ_FASTCALL lj_meta_equal_cd(lua_State *L, BCIns ins)
 {
    ASMFunction cont = (bc_op(ins) & 1) ? lj_cont_condf : lj_cont_condt;
    int op = (int)bc_op(ins) & ~1;
@@ -405,7 +426,7 @@ TValue* LJ_FASTCALL lj_meta_equal_cd(lua_State *L, BCIns ins)
    }
    mo = lj_meta_lookup(L, o1mm, MM_eq);
    if (LJ_LIKELY(not tvisnil(mo))) return mmcall(L, cont, mo, o1, o2);
-   else return (TValue*)(intptr_t)(bc_op(ins) & 1);
+   else return (TValue *)(intptr_t)(bc_op(ins) & 1);
 }
 #endif
 
@@ -413,7 +434,7 @@ TValue* LJ_FASTCALL lj_meta_equal_cd(lua_State *L, BCIns ins)
 // Helper for thunk equality comparisons. Resolves thunk and compares with any type.
 // Called from VM assembler (vmeta_equal_thunk) which does NOT set L->top.
 
-TValue* LJ_FASTCALL lj_meta_equal_thunk(lua_State *L, BCIns ins)
+TValue * LJ_FASTCALL lj_meta_equal_thunk(lua_State *L, BCIns ins)
 {
    // VMHelperGuard fixes L->top (VM assembler doesn't set it) and saves/restores
    // stack state in case thunk resolution triggers nested Lua calls with GC.
@@ -458,12 +479,12 @@ TValue* LJ_FASTCALL lj_meta_equal_thunk(lua_State *L, BCIns ins)
 
    // Check for same TValue pointer first
    if (resolved_o1 IS resolved_o2) {
-      return (TValue*)(intptr_t)(ne ? 0 : 1);  // Equal: ISEQ branches, ISNE doesn't
+      return (TValue *)(intptr_t)(ne ? 0 : 1);  // Equal: ISEQ branches, ISNE doesn't
    }
 
    // Use lj_obj_equal for basic equality (handles numbers, strings, primitives, reference equality)
    if (lj_obj_equal(resolved_o1, resolved_o2)) {
-      return (TValue*)(intptr_t)(ne ? 0 : 1);  // Equal: ISEQ branches, ISNE doesn't
+      return (TValue *)(intptr_t)(ne ? 0 : 1);  // Equal: ISEQ branches, ISNE doesn't
    }
 
    // For tables and userdata with same type, check __eq metamethod
@@ -477,13 +498,13 @@ TValue* LJ_FASTCALL lj_meta_equal_thunk(lua_State *L, BCIns ins)
    }
 
    // Different types or no metamethod - not equal
-   return (TValue*)(intptr_t)(ne ? 1 : 0);  // Not equal: ISNE branches, ISEQ doesn't
+   return (TValue *)(intptr_t)(ne ? 1 : 0);  // Not equal: ISNE branches, ISEQ doesn't
 }
 
 //********************************************************************************************************************
 // Helper for ordered comparisons. String compare, __lt/__le metamethods.
 
-TValue* lj_meta_comp(lua_State *L, cTValue *o1, cTValue *o2, int op)
+TValue * lj_meta_comp(lua_State *L, cTValue *o1, cTValue *o2, int op)
 {
    if (LJ_HASFFI and (tviscdata(o1) or tviscdata(o2))) {
       ASMFunction cont = (op & 1) ? lj_cont_condf : lj_cont_condt;
@@ -499,7 +520,7 @@ TValue* lj_meta_comp(lua_State *L, cTValue *o1, cTValue *o2, int op)
       // Never called with two numbers.
       if (tvisstr(o1) and tvisstr(o2)) {
          int32_t res = lj_str_cmp(strV(o1), strV(o2));
-         return (TValue*)(intptr_t)(((op & 2) ? res <= 0 : res < 0) ^ (op & 1));
+         return (TValue *)(intptr_t)(((op & 2) ? res <= 0 : res < 0) ^ (op & 1));
       }
       else {
          while (true) {
@@ -527,7 +548,11 @@ TValue* lj_meta_comp(lua_State *L, cTValue *o1, cTValue *o2, int op)
 void lj_meta_istype(lua_State *L, BCREG ra, BCREG tp)
 {
    L->top = curr_topL(L);
-   ra++; tp--;
+   ra++;
+   tp--;
+   // tp range is 0 to ~LJ_TNUMX (14) for lj_obj_itypename array access; and ~LJ_TNUMX + 1 (15) for number coercion
+   // (handled specially, doesn't access array)
+   lj_assertL(tp <= uint32_t(~LJ_TNUMX) + 1, "tp out of range for ISTYPE: %u (max %u)", tp, uint32_t(~LJ_TNUMX) + 1);
    lj_assertL(LJ_DUALNUM or tp != ~LJ_TNUMX, "bad type for ISTYPE");
    if (LJ_DUALNUM and tp IS ~LJ_TNUMX) lj_lib_checkint(L, ra);
    else if (tp IS ~LJ_TNUMX + 1) lj_lib_checknum(L, ra);
@@ -538,10 +563,10 @@ void lj_meta_istype(lua_State *L, BCREG ra, BCREG tp)
 //********************************************************************************************************************
 // Helper for calls. __call metamethod.
 
-void lj_meta_call(lua_State *L, TValue* func, TValue* top)
+void lj_meta_call(lua_State *L, TValue *func, TValue *top)
 {
    cTValue *mo = lj_meta_lookup(L, func, MM_call);
-   TValue* p;
+   TValue *p;
    if (not tvisfunc(mo)) lj_err_optype_call(L, func);
    for (p = top; p > func + 2; p--) copyTV(L, p, p - 1);
    copyTV(L, func + 2, func);
@@ -556,7 +581,7 @@ void lj_meta_call(lua_State *L, TValue* func, TValue* top)
 // When an error occurs in __close, the error value is left at L->top - 1 and we must NOT restore L->top (which
 // would hide the error).
 
-int lj_meta_close(lua_State *L, TValue* o, TValue* err)
+int lj_meta_close(lua_State *L, TValue *o, TValue *err)
 {
    cTValue *mo = lj_meta_lookup(L, o, MM_close);
    if (tvisnil(mo)) return 0;  // No __close metamethod, nothing to do.
@@ -576,7 +601,7 @@ int lj_meta_close(lua_State *L, TValue* o, TValue* err)
       top = L->top;
       copyTV(L, top++, mo);         // Push __close function
       setnilV(top++);               // Frame slot for LJ_FR2
-      TValue* argbase = top;        // First argument position (for lj_vm_pcall base)
+      TValue *argbase = top;        // First argument position (for lj_vm_pcall base)
       copyTV(L, top++, o);          // Push object (first argument)
       if (err) copyTV(L, top++, err); // Push error value (second argument)
       else setnilV(top++);            // Push nil for normal scope exit
@@ -597,7 +622,7 @@ int lj_meta_close(lua_State *L, TValue* o, TValue* err)
 //********************************************************************************************************************
 // Helper for FORI. Coercion.
 
-void LJ_FASTCALL lj_meta_for(lua_State *L, TValue* o)
+void LJ_FASTCALL lj_meta_for(lua_State *L, TValue *o)
 {
    if (not lj_strscan_numberobj(o)) lj_err_msg(L, ErrMsg::FORINIT);
    if (not lj_strscan_numberobj(o + 1)) lj_err_msg(L, ErrMsg::FORLIM);
@@ -629,5 +654,53 @@ void LJ_FASTCALL lj_meta_for(lua_State *L, TValue* o)
          if (tvisint(o + 1)) setnumV(o + 1, (lua_Number)intV(o + 1));
          if (tvisint(o + 2)) setnumV(o + 2, (lua_Number)intV(o + 2));
       }
+   }
+}
+
+//********************************************************************************************************************
+// Helper for BC_TYPEFIX. Fix function return types based on actual returned values.
+// Called when a function without explicit return types returns values for the first time.
+//
+// Parameters:
+//   L     - Lua state
+//   base  - Base register containing first return value
+//   count - Number of return values to fix (1-8)
+
+void LJ_FASTCALL lj_meta_typefix(lua_State *L, TValue *base, uint32_t count)
+{
+   // Get the current function's prototype
+   GCfunc *fn = curr_func(L);
+   if (not isluafunc(fn)) return;  // C functions don't have prototypes
+
+   GCproto *pt = funcproto(fn);
+
+   // Only process if PROTO_TYPEFIX is set (function has no explicit return types)
+   if (not (pt->flags & PROTO_TYPEFIX)) return;
+
+   // Process each return value position
+   for (uint32_t pos = 0; pos < count and pos < PROTO_MAX_RETURN_TYPES; ++pos) {
+      // Only fix if type is currently Unknown
+      if (pt->result_types[pos] != FluidType::Unknown) continue;
+
+      // Get the value being returned
+      TValue *val = base + pos;
+
+      // Don't fix type for nil - nil is always allowed as a return value
+      if (tvisnil(val)) continue;
+
+      // Determine the type from the value
+      FluidType inferred;
+      if (tvisnumber(val)) {
+         inferred = FluidType::Num;
+      }
+      else {
+         inferred = lj_tag_to_fluid_type(itype(val));
+      }
+
+      // Fix the type in the prototype
+      // Note: This is a mutation of the prototype. For thread safety, this relies on
+      // the fact that the write is atomic at the byte level and idempotent (same value
+      // would be written by any thread inferring the same type).
+      pt->result_types[pos] = inferred;
    }
 }

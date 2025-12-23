@@ -71,6 +71,7 @@ static const FieldDef clJitOptions[] = {
    { "TraceExpect",   JOF::TRACE_EXPECT },
    { "DumpBytecode",  JOF::DUMP_BYTECODE },
    { "Profile",       JOF::PROFILE },
+   { "TraceTypes",    JOF::TRACE_TYPES },
    { nullptr, 0 }
 };
 

@@ -11,7 +11,6 @@
    mGfx ?= mod.load('display') -- Required for the 'icons:' volume
 
 @BeforeAll function init()
-
    folder = 'icons:programs/'
    list = ''
    print('Scanning "' .. folder .. '" for SVGs')

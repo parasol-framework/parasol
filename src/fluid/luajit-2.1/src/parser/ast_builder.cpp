@@ -30,6 +30,7 @@ static std::unique_ptr<FunctionExprPayload> move_function_payload(ExprNodePtr &N
    result->is_vararg = payload->is_vararg;
    result->is_thunk = payload->is_thunk;
    result->thunk_return_type = payload->thunk_return_type;
+   result->return_types = payload->return_types;  // Copy return type information
    result->body = std::move(payload->body);
    result->annotations = std::move(payload->annotations);
    return result;
@@ -873,9 +874,11 @@ ParserResult<StmtNodePtr> AstBuilder::parse_for()
             // Check if both start and stop are numeric literals for compile-time optimisation.
             // When both are constants, we can compute the step direction and exclusive adjustment
             // at compile time, producing optimal BC_FORI/BC_FORL bytecode.
+
             bool start_is_num = start_expr->kind IS AstNodeKind::LiteralExpr and
                std::get_if<LiteralValue>(&start_expr->data) and
                std::get<LiteralValue>(start_expr->data).kind IS LiteralKind::Number;
+
             bool stop_is_num = stop_expr->kind IS AstNodeKind::LiteralExpr and
                std::get_if<LiteralValue>(&stop_expr->data) and
                std::get<LiteralValue>(stop_expr->data).kind IS LiteralKind::Number;
@@ -993,9 +996,11 @@ ParserResult<StmtNodePtr> AstBuilder::parse_anonymous_for(const Token& ForToken)
          SourceSpan span = iter_expr->span;
 
          // Check if both start and stop are numeric literals for compile-time optimisation.
+
          bool start_is_num = range_payload->start->kind IS AstNodeKind::LiteralExpr and
             std::get_if<LiteralValue>(&range_payload->start->data) and
             std::get<LiteralValue>(range_payload->start->data).kind IS LiteralKind::Number;
+
          bool stop_is_num = range_payload->stop->kind IS AstNodeKind::LiteralExpr and
             std::get_if<LiteralValue>(&range_payload->stop->data) and
             std::get<LiteralValue>(range_payload->stop->data).kind IS LiteralKind::Number;
@@ -1108,11 +1113,13 @@ ParserResult<StmtNodePtr> AstBuilder::parse_defer()
    this->ctx.tokens().advance();
    bool has_params = this->ctx.check(TokenKind::LeftParen);
    ParameterListResult param_info;
+
    if (has_params) {
       auto parsed = this->parse_parameter_list(true);
       if (not parsed.ok()) return ParserResult<StmtNodePtr>::failure(parsed.error_ref());
       param_info = std::move(parsed.value_ref());
    }
+
    const TokenKind body_terms[] = { TokenKind::EndToken };
    auto body = this->parse_block(body_terms);
    if (not body.ok()) return ParserResult<StmtNodePtr>::failure(body.error_ref());
@@ -1147,12 +1154,15 @@ ParserResult<ReturnStmtPayload> AstBuilder::parse_return_payload(const Token& re
    ExprNodeList values;
    bool forwards_call = false;
    Token current = this->ctx.tokens().current();
+
    bool is_terminator = this->ctx.check(TokenKind::EndToken) or this->ctx.check(TokenKind::Else) or
       this->ctx.check(TokenKind::ElseIf) or this->ctx.check(TokenKind::Until) or
       this->ctx.check(TokenKind::EndOfFile) or this->ctx.check(TokenKind::Semicolon);
+
    bool same_line = same_line_only
       ? ((current.kind() IS TokenKind::EndOfFile) ? false : (current.span().line IS return_token.span().line))
       : true;
+
    bool parse_values = not is_terminator and (not same_line_only or same_line);
 
    if (parse_values) {
@@ -1454,8 +1464,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
                   case_arm.is_wildcard = true;
                   case_arm.pattern = nullptr;
                }
-               else {
-                  // Not a wildcard pattern, parse as normal expression
+               else { // Not a wildcard pattern, parse as normal expression
                   auto pattern = this->parse_expression();
                   if (not pattern.ok()) {
                      this->in_choose_expression = false;
@@ -1464,8 +1473,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
                   case_arm.pattern = std::move(pattern.value_ref());
                }
             }
-            else {
-               // Parse pattern (Phase 1: only literal expressions)
+            else { // Parse pattern (only literal expressions)
                auto pattern = this->parse_expression();
                if (not pattern.ok()) {
                   this->in_choose_expression = false;
@@ -1474,8 +1482,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
                case_arm.pattern = std::move(pattern.value_ref());
             }
          }
-         else {
-            // Parse pattern (Phase 1: only literal expressions)
+         else { // Parse pattern (only literal expressions)
             auto pattern = this->parse_expression();
             if (not pattern.ok()) {
                this->in_choose_expression = false;
@@ -1587,8 +1594,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
          case_arm.result_stmt = std::move(stmt);
          case_arm.has_statement_result = true;
       }
-      else {
-         // Parse as expression (original behaviour)
+      else { // Parse as expression (original behaviour)
          case_arm.result = std::move(first_expr.value_ref());
       }
 
@@ -1696,6 +1702,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_expression_stmt()
    }
 
    // Conditional shorthand pattern: value ?? return/break/continue
+
    if (targets.size() IS 1 and is_presence_expr(targets[0])) {
       Token next = this->ctx.tokens().current();
       if (is_shorthand_statement_keyword(next.kind())) {
@@ -2032,15 +2039,13 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
 
          // Only auto-invoke parameterless thunks to return thunk userdata
          // Thunks with parameters remain callable functions
-         auto* payload = std::get_if<FunctionExprPayload>(&fn.value_ref()->data);
+         auto *payload = std::get_if<FunctionExprPayload>(&fn.value_ref()->data);
          if (payload and payload->parameters.empty()) {
             SourceSpan span = fn.value_ref()->span;
             ExprNodeList call_args;
             node = make_call_expr(span, std::move(fn.value_ref()), std::move(call_args), false);
          }
-         else {
-            node = std::move(fn.value_ref());
-         }
+         else node = std::move(fn.value_ref());
          break;
       }
 
@@ -2138,20 +2143,20 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
          FluidType inferred_type = infer_expression_type(*inner.value_ref());
          SourceSpan span = span_from(start, close_token);
 
-         // Step 1: Build return statement with inner expression
+         // Build return statement with inner expression
          ExprNodeList return_values;
          return_values.push_back(std::move(inner.value_ref()));
          StmtNodePtr return_stmt = make_return_stmt(span, std::move(return_values), false);
 
-         // Step 2: Build thunk body containing just the return statement
+         // Build thunk body containing just the return statement
          StmtNodeList body_stmts;
          body_stmts.push_back(std::move(return_stmt));
          auto body = make_block(span, std::move(body_stmts));
 
-         // Step 3: Build anonymous thunk function (no parameters, is_thunk=true)
+         // Build anonymous thunk function (no parameters, is_thunk=true)
          ExprNodePtr thunk_func = make_function_expr(span, {}, false, std::move(body), true, inferred_type);
 
-         // Step 4: Build immediate call to thunk (no arguments)
+         // Build immediate call to thunk (no arguments)
          ExprNodeList call_args;
          node = make_call_expr(span, std::move(thunk_func), std::move(call_args), false);
          break;
@@ -2160,8 +2165,11 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
       case TokenKind::DeferredTyped: {
          // Typed deferred expression: <type{ expr }>
          // Desugar to: (thunk():explicit_type return expr end)()
+
          Token start = this->ctx.tokens().current();
+
          // Get the type name from the token payload
+
          GCstr *type_str = start.payload().as_string();
          FluidType explicit_type = FluidType::Unknown;
          if (type_str) {
@@ -2182,8 +2190,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
          if (not inner.ok()) return inner;
          Token close_token = this->ctx.tokens().current();
          if (not this->ctx.match(TokenKind::DeferredClose).ok()) {
-            this->ctx.emit_error(ParserErrorCode::ExpectedToken, close_token,
-               "Expected '}>' to close typed deferred expression");
+            this->ctx.emit_error(ParserErrorCode::ExpectedToken, close_token, "Expected '}>' to close typed deferred expression");
             ParserError error;
             error.code = ParserErrorCode::ExpectedToken;
             error.token = close_token;
@@ -2193,20 +2200,20 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
 
          SourceSpan span = span_from(start, close_token);
 
-         // Step 1: Build return statement with inner expression
+         // Build return statement with inner expression
          ExprNodeList return_values;
          return_values.push_back(std::move(inner.value_ref()));
          StmtNodePtr return_stmt = make_return_stmt(span, std::move(return_values), false);
 
-         // Step 2: Build thunk body containing just the return statement
+         // Build thunk body containing just the return statement
          StmtNodeList body_stmts;
          body_stmts.push_back(std::move(return_stmt));
          auto body = make_block(span, std::move(body_stmts));
 
-         // Step 3: Build anonymous thunk function (no parameters, is_thunk=true)
+         // Build anonymous thunk function (no parameters, is_thunk=true)
          ExprNodePtr thunk_func = make_function_expr(span, {}, false, std::move(body), true, explicit_type);
 
-         // Step 4: Build immediate call to thunk (no arguments)
+         // Build immediate call to thunk (no arguments)
          ExprNodeList call_args;
          node = make_call_expr(span, std::move(thunk_func), std::move(call_args), false);
          break;
@@ -2218,9 +2225,8 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
             msg = std::format("'{}' is a statement, not an expression; use 'do ... end' for statements in arrow functions",
                this->ctx.lex().token2str(current.raw()));
          }
-         else {
-            msg = std::format("Expected expression, got '{}'", this->ctx.lex().token2str(current.raw()));
-         }
+         else msg = std::format("Expected expression, got '{}'", this->ctx.lex().token2str(current.raw()));
+
          this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, msg);
          ParserError error;
          error.code = ParserErrorCode::UnexpectedToken;
@@ -2259,6 +2265,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_arrow_function(ExprNodeList paramete
    }
 
    std::unique_ptr<BlockStmt> body;
+   FunctionReturnTypes return_types;
 
    if (this->ctx.check(TokenKind::DoToken)) {
       this->ctx.tokens().advance();
@@ -2268,6 +2275,34 @@ ParserResult<ExprNodePtr> AstBuilder::parse_arrow_function(ExprNodeList paramete
       body = std::move(block.value_ref());
    }
    else {
+      // Expression body - check for optional type annotation: => type: expr
+      // The syntax is: => type: expr (where type is a known type name like num, str, bool, etc.)
+      // We must distinguish this from method calls like: => value:method()
+      // Only consume as type annotation if the identifier is a KNOWN type name.
+      Token current = this->ctx.tokens().current();
+      if (current.kind() IS TokenKind::Identifier) {
+         // Check if this identifier is a known type name
+         GCstr *type_name_str = current.identifier();
+         std::string_view type_str(strdata(type_name_str), type_name_str->len);
+         FluidType parsed = parse_type_name(type_str);
+
+         // Only treat as type annotation if:
+         // 1. The identifier is a known type name (not Unknown)
+         // 2. It's followed by a colon
+         if (not (parsed IS FluidType::Unknown)) {
+            Token next = this->ctx.tokens().peek(1);
+            if (next.kind() IS TokenKind::Colon) {
+               // This is a type annotation: "=> type: expr"
+               this->ctx.tokens().advance();  // consume type identifier
+               this->ctx.tokens().advance();  // consume ':'
+
+               return_types.types[0] = parsed;
+               return_types.count = 1;
+               return_types.is_explicit = true;
+            }
+         }
+      }
+
       auto expr = this->parse_expression();
       if (not expr.ok()) return ParserResult<ExprNodePtr>::failure(expr.error_ref());
 
@@ -2296,14 +2331,11 @@ ParserResult<ExprNodePtr> AstBuilder::parse_arrow_function(ExprNodeList paramete
    }
 
    SourceSpan function_span = arrow_token.span();
-   if (not parsed_params.empty()) {
-      function_span = combine_spans(parsed_params.front().name.span, body->span);
-   }
-   else {
-      function_span = combine_spans(arrow_token.span(), body->span);
-   }
+   if (not parsed_params.empty()) function_span = combine_spans(parsed_params.front().name.span, body->span);
+   else function_span = combine_spans(arrow_token.span(), body->span);
 
-   ExprNodePtr node = make_function_expr(function_span, std::move(parsed_params), false, std::move(body));
+   ExprNodePtr node = make_function_expr(function_span, std::move(parsed_params), false, std::move(body),
+      false, FluidType::Any, return_types);
    return ParserResult<ExprNodePtr>::success(std::move(node));
 }
 
@@ -2442,29 +2474,34 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
 
 //********************************************************************************************************************
 // Parses function literals (anonymous functions) with parameters and body.
-// If is_thunk is true, parses optional return type annotation after parameters.
+// Parses optional return type annotation after parameters for all functions.
+// If is_thunk is true, validates thunk-specific constraints.
 
 ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(const Token &function_token, bool is_thunk)
 {
    auto params = this->parse_parameter_list(false);
    if (not params.ok()) return ParserResult<ExprNodePtr>::failure(params.error_ref());
 
-   FluidType return_type = FluidType::Any;
-   if (is_thunk) {
-      if (params.value_ref().is_vararg) {
-         Token current = this->ctx.tokens().current();
-         std::string message("thunk functions do not support varargs");
-         this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, message);
-         ParserError error;
-         error.code = ParserErrorCode::UnexpectedToken;
-         error.token = current;
-         error.message = message;
-         return ParserResult<ExprNodePtr>::failure(error);
-      }
+   if (is_thunk and params.value_ref().is_vararg) {
+      Token current = this->ctx.tokens().current();
+      std::string message("thunk functions do not support varargs");
+      this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, message);
+      ParserError error;
+      error.code = ParserErrorCode::UnexpectedToken;
+      error.token = current;
+      error.message = message;
+      return ParserResult<ExprNodePtr>::failure(error);
+   }
 
-      auto type_result = this->parse_return_type_annotation();
-      if (not type_result.ok()) return ParserResult<ExprNodePtr>::failure(type_result.error_ref());
-      return_type = type_result.value_ref();
+   // Parse optional return type annotation for all functions (not just thunks)
+   auto type_result = this->parse_return_type_annotation();
+   if (not type_result.ok()) return ParserResult<ExprNodePtr>::failure(type_result.error_ref());
+   FunctionReturnTypes return_types = type_result.value_ref();
+
+   // For thunk compatibility: extract single return type for thunk_return_type field
+   FluidType thunk_return_type = FluidType::Any;
+   if (is_thunk and return_types.count > 0) {
+      thunk_return_type = return_types.types[0];
    }
 
    const TokenKind terms[] = { TokenKind::EndToken };
@@ -2473,7 +2510,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(const Token &functi
 
    this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
    ExprNodePtr node = make_function_expr(function_token.span(), std::move(params.value_ref().parameters),
-      params.value_ref().is_vararg, std::move(body.value_ref()), is_thunk, return_type);
+      params.value_ref().is_vararg, std::move(body.value_ref()), is_thunk, thunk_return_type, return_types);
    return ParserResult<ExprNodePtr>::success(std::move(node));
 }
 
@@ -2490,9 +2527,8 @@ static bool check_range_pattern(ParserContext& ctx, bool& is_inclusive)
    // Returns 0 if not a valid range operand
    auto operand_length = [&ctx](int start_offset) -> int {
       Token tok = ctx.tokens().peek(start_offset);
-      if (tok.kind() IS TokenKind::Number or tok.kind() IS TokenKind::Identifier) {
-         return 1;
-      }
+      if (tok.kind() IS TokenKind::Number or tok.kind() IS TokenKind::Identifier) return 1;
+
       if (tok.kind() IS TokenKind::Minus) {
          Token next = ctx.tokens().peek(start_offset + 1);
          if (next.kind() IS TokenKind::Number) return 2;  // -num
@@ -2501,26 +2537,24 @@ static bool check_range_pattern(ParserContext& ctx, bool& is_inclusive)
    };
 
    // Check first operand
+
    int first_len = operand_length(0);
    if (first_len IS 0) return false;
 
    // Check for range operator at expected position
+
    Token range_op = ctx.tokens().peek(first_len);
-   if (range_op.kind() IS TokenKind::Cat) {
-      is_inclusive = false;
-   }
-   else if (range_op.kind() IS TokenKind::Dots) {
-      is_inclusive = true;
-   }
-   else {
-      return false;
-   }
+   if (range_op.kind() IS TokenKind::Cat) is_inclusive = false;
+   else if (range_op.kind() IS TokenKind::Dots) is_inclusive = true;
+   else return false;
 
    // Check second operand
+
    int second_len = operand_length(first_len + 1);
    if (second_len IS 0) return false;
 
    // Verify the range is followed by closing brace (strict pattern match)
+
    Token closing = ctx.tokens().peek(first_len + 1 + second_len);
    return closing.kind() IS TokenKind::RightBrace;
 }
@@ -2536,6 +2570,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_table_literal()
 
    // Check for range literal pattern using lookahead: {expr..expr} or {expr...expr}
    // This avoids ambiguity with string concatenation like {'str' .. func(), ...}
+
    if (not this->ctx.check(TokenKind::RightBrace)) {
       bool is_inclusive = false;
 
@@ -2586,6 +2621,7 @@ ParserResult<ExprNodeList> AstBuilder::parse_expression_list()
    return ParserResult<ExprNodeList>::success(std::move(nodes));
 }
 
+//********************************************************************************************************************
 // Parses comma-separated lists of identifiers with optional attributes (e.g., <close>).
 
 ParserResult<std::vector<Identifier>> AstBuilder::parse_name_list()
@@ -2597,6 +2633,44 @@ ParserResult<std::vector<Identifier>> AstBuilder::parse_name_list()
       if (not token.ok()) return ParserResult<Identifier>::failure(token.error_ref());
 
       Identifier identifier = make_identifier(token.value_ref());
+
+      // Parse optional type annotation (:type)
+      if (this->ctx.check(TokenKind::Colon)) {
+         this->ctx.tokens().advance();
+
+         Token type_token = this->ctx.tokens().current();
+         std::string_view type_view;
+
+         auto kind = type_token.kind();
+         if (kind IS TokenKind::Identifier) {
+            this->ctx.tokens().advance();
+            GCstr* type_symbol = type_token.identifier();
+            if (type_symbol) type_view = std::string_view(strdata(type_symbol), type_symbol->len);
+         }
+         else if (kind IS TokenKind::Function or kind IS TokenKind::Nil) {
+            this->ctx.tokens().advance();
+            type_view = token_kind_name_constexpr(kind);
+         }
+         else {
+            this->ctx.emit_error(ParserErrorCode::ExpectedTypeName, type_token, "expected type name after ':'");
+            ParserError error;
+            error.code = ParserErrorCode::ExpectedTypeName;
+            error.token = type_token;
+            error.message = "expected type name after ':'";
+            return ParserResult<Identifier>::failure(error);
+         }
+
+         identifier.type = parse_type_name(type_view);
+         if (identifier.type IS FluidType::Unknown) {
+            auto message = std::format("Invalid type.  Common types are: any, bool, num, str, table, array", type_view);
+            this->ctx.emit_error(ParserErrorCode::UnknownTypeName, type_token, message);
+            ParserError error;
+            error.code = ParserErrorCode::UnknownTypeName;
+            error.token = type_token;
+            error.message = message;
+            return ParserResult<Identifier>::failure(error);
+         }
+      }
 
       if (this->ctx.tokens().current().raw() IS '<') {
          this->ctx.tokens().advance();
@@ -3025,8 +3099,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_result_filter_expr(const Token &Star
    // Validate that result is a call expression
    AstNodeKind kind = expr.value_ref()->kind;
    if (kind != AstNodeKind::CallExpr and kind != AstNodeKind::SafeCallExpr) {
-      this->ctx.emit_error(ParserErrorCode::UnexpectedToken, StartToken,
-         "result filter requires a function call");
+      this->ctx.emit_error(ParserErrorCode::UnexpectedToken, StartToken, "result filter requires a function call");
       ParserError error;
       error.code = ParserErrorCode::UnexpectedToken;
       error.token = StartToken;
@@ -3046,8 +3119,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_result_filter_expr(const Token &Star
 
    SourceSpan span = combine_spans(StartToken.span(), expr.value_ref()->span);
    return ParserResult<ExprNodePtr>::success(
-      make_result_filter_expr(span, std::move(expr.value_ref()),
-         f.keep_mask, f.explicit_count, f.trailing_keep));
+      make_result_filter_expr(span, std::move(expr.value_ref()), f.keep_mask, f.explicit_count, f.trailing_keep));
 }
 
 //********************************************************************************************************************
@@ -3121,10 +3193,12 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
          // Check if this is actually the start of a choose case relational pattern
          // (>= followed by expression then ->). If so, don't treat it as a binary operator.
          // Skip this check when parsing guard expressions (in_guard_expression flag).
+
          if (not this->in_guard_expression) {
             Token peek1 = this->ctx.tokens().peek(1);
             Token peek2 = this->ctx.tokens().peek(2);
             if (peek2.kind() IS TokenKind::CaseArrow) return std::nullopt;
+
             // Handle negative numbers: >= -number ->
             if (peek1.raw() IS '-') {
                Token peek3 = this->ctx.tokens().peek(3);
@@ -3181,19 +3255,23 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
       // (< followed by expression then ->). If so, don't treat it as a binary operator.
       // Look ahead: if we see < expr -> or < -expr ->, this is a pattern start.
       // Skip this check when parsing guard expressions (in_guard_expression flag).
+
       if (not this->in_guard_expression) {
          Token peek1 = this->ctx.tokens().peek(1);
          Token peek2 = this->ctx.tokens().peek(2);
          if (peek2.kind() IS TokenKind::CaseArrow) return std::nullopt;
+
          // Handle negative numbers: < -number ->
          if (peek1.raw() IS '-') {
             Token peek3 = this->ctx.tokens().peek(3);
             if (peek3.kind() IS TokenKind::CaseArrow) return std::nullopt;
          }
+
          // Also check for <= pattern: < = expr -> or < = -expr ->
          if (peek1.kind() IS TokenKind::Equals) {
             Token peek3 = this->ctx.tokens().peek(3);
             if (peek3.kind() IS TokenKind::CaseArrow) return std::nullopt;
+
             // Handle <= -number ->
             if (peek2.raw() IS '-') {
                Token peek4 = this->ctx.tokens().peek(4);
@@ -3211,20 +3289,27 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
       // Check if this is actually the start of a choose case relational pattern
       // (> followed by expression then ->). If so, don't treat it as a binary operator.
       // Skip this check when parsing guard expressions (in_guard_expression flag).
+
       if (not this->in_guard_expression) {
          Token peek1 = this->ctx.tokens().peek(1);
          Token peek2 = this->ctx.tokens().peek(2);
          if (peek2.kind() IS TokenKind::CaseArrow) return std::nullopt;
+
          // Handle negative numbers: > -number ->
+
          if (peek1.raw() IS '-') {
             Token peek3 = this->ctx.tokens().peek(3);
             if (peek3.kind() IS TokenKind::CaseArrow) return std::nullopt;
          }
+
          // Also check for >= pattern: > = expr -> or > = -expr ->
+
          if (peek1.kind() IS TokenKind::Equals) {
             Token peek3 = this->ctx.tokens().peek(3);
             if (peek3.kind() IS TokenKind::CaseArrow) return std::nullopt;
+
             // Handle >= -number ->
+
             if (peek2.raw() IS '-') {
                Token peek4 = this->ctx.tokens().peek(4);
                if (peek4.kind() IS TokenKind::CaseArrow) return std::nullopt;
@@ -3261,43 +3346,132 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
 }
 
 //********************************************************************************************************************
-// Parses optional return type annotation after function parameters (`:type` syntax).
-// Returns FluidType::Any if no annotation is present.
+// Parses optional return type annotation after function parameters.
+// Supports single type `:type` and multiple types `:<type1, type2, ...>` syntax.
+// Returns empty FunctionReturnTypes if no annotation is present.
 
-ParserResult<FluidType> AstBuilder::parse_return_type_annotation()
+ParserResult<FunctionReturnTypes> AstBuilder::parse_return_type_annotation()
 {
+   FunctionReturnTypes result;
+
    if (not this->ctx.match(TokenKind::Colon).ok()) {
-      return ParserResult<FluidType>::success(FluidType::Any);
+      return ParserResult<FunctionReturnTypes>::success(result);
    }
 
-   auto type_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
-   if (not type_token.ok()) {
-      return ParserResult<FluidType>::failure(type_token.error_ref());
+   result.is_explicit = true;
+   Token current = this->ctx.tokens().current();
+
+   // Check for multi-type syntax: :<type1, type2, ...>
+   if (current.raw() IS '<') {
+      this->ctx.tokens().advance();  // consume '<'
+
+      // Parse comma-separated type list
+      do {
+         current = this->ctx.tokens().current();
+
+         // Check for variadic marker ...
+         if (current.kind() IS TokenKind::Dots) {
+            this->ctx.tokens().advance();
+            result.is_variadic = true;
+            break;  // ... must be last
+         }
+
+         // Handle overflow: 9th+ types force 8th to 'any'
+         if (result.count >= MAX_RETURN_TYPES) {
+            if (result.count IS MAX_RETURN_TYPES) {
+               result.types[MAX_RETURN_TYPES - 1] = FluidType::Any;
+            }
+            // Skip remaining types until '>' or '...'
+            if (current.kind() IS TokenKind::Identifier) {
+               this->ctx.tokens().advance();
+            }
+            result.count++;
+            continue;
+         }
+
+         // Parse type name
+         auto type_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+         if (not type_token.ok()) {
+            return ParserResult<FunctionReturnTypes>::failure(type_token.error_ref());
+         }
+
+         GCstr *type_name_str = type_token.value_ref().identifier();
+         if (type_name_str IS nullptr) {
+            std::string message("expected type name in return type list");
+            this->ctx.emit_error(ParserErrorCode::ExpectedIdentifier, type_token.value_ref(), message);
+            ParserError error;
+            error.code = ParserErrorCode::ExpectedIdentifier;
+            error.token = type_token.value_ref();
+            error.message = message;
+            return ParserResult<FunctionReturnTypes>::failure(error);
+         }
+
+         std::string_view type_str(strdata(type_name_str), type_name_str->len);
+         FluidType parsed = parse_type_name(type_str);
+
+         if (parsed IS FluidType::Unknown) {
+            std::string message = std::format("unknown type name '{}'", type_str);
+            this->ctx.emit_error(ParserErrorCode::UnexpectedToken, type_token.value_ref(), message);
+            ParserError error;
+            error.code = ParserErrorCode::UnexpectedToken;
+            error.token = type_token.value_ref();
+            error.message = message;
+            return ParserResult<FunctionReturnTypes>::failure(error);
+         }
+
+         result.types[result.count++] = parsed;
+
+      } while (this->ctx.match(TokenKind::Comma).ok());
+
+      // Expect closing '>'
+      current = this->ctx.tokens().current();
+      if (current.raw() IS '>') {
+         this->ctx.tokens().advance();
+      }
+      else {
+         std::string message("expected '>' to close return type list");
+         this->ctx.emit_error(ParserErrorCode::ExpectedToken, current, message);
+         ParserError error;
+         error.code = ParserErrorCode::ExpectedToken;
+         error.token = current;
+         error.message = message;
+         return ParserResult<FunctionReturnTypes>::failure(error);
+      }
+   }
+   else {
+      // Single type: :typename
+      auto type_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+      if (not type_token.ok()) {
+         return ParserResult<FunctionReturnTypes>::failure(type_token.error_ref());
+      }
+
+      GCstr *type_name_str = type_token.value_ref().identifier();
+      if (type_name_str IS nullptr) {
+         std::string message("expected type name after ':'");
+         this->ctx.emit_error(ParserErrorCode::ExpectedIdentifier, type_token.value_ref(), message);
+         ParserError error;
+         error.code = ParserErrorCode::ExpectedIdentifier;
+         error.token = type_token.value_ref();
+         error.message = message;
+         return ParserResult<FunctionReturnTypes>::failure(error);
+      }
+
+      std::string_view type_str(strdata(type_name_str), type_name_str->len);
+      FluidType parsed = parse_type_name(type_str);
+
+      if (parsed IS FluidType::Unknown) {
+         std::string message = std::format("unknown type name '{}'", type_str);
+         this->ctx.emit_error(ParserErrorCode::UnexpectedToken, type_token.value_ref(), message);
+         ParserError error;
+         error.code = ParserErrorCode::UnexpectedToken;
+         error.token = type_token.value_ref();
+         error.message = message;
+         return ParserResult<FunctionReturnTypes>::failure(error);
+      }
+
+      result.types[0] = parsed;
+      result.count = 1;
    }
 
-   GCstr *type_name = type_token.value_ref().identifier();
-   if (type_name IS nullptr) {
-      std::string message("expected type name after ':'");
-      this->ctx.emit_error(ParserErrorCode::ExpectedIdentifier, type_token.value_ref(), message);
-      ParserError error;
-      error.code = ParserErrorCode::ExpectedIdentifier;
-      error.token = type_token.value_ref();
-      error.message = message;
-      return ParserResult<FluidType>::failure(error);
-   }
-
-   std::string_view type_str(strdata(type_name), type_name->len);
-   FluidType parsed_type = parse_type_name(type_str);
-
-   if (parsed_type IS FluidType::Unknown) {
-      std::string message = std::format("unknown type name '{}'", type_str);
-      this->ctx.emit_error(ParserErrorCode::UnexpectedToken, type_token.value_ref(), message);
-      ParserError error;
-      error.code = ParserErrorCode::UnexpectedToken;
-      error.token = type_token.value_ref();
-      error.message = message;
-      return ParserResult<FluidType>::failure(error);
-   }
-
-   return ParserResult<FluidType>::success(parsed_type);
+   return ParserResult<FunctionReturnTypes>::success(result);
 }

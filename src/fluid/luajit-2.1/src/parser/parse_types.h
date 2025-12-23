@@ -1,6 +1,7 @@
 // Lua parser - Type definitions and structures.
-// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 //
+// Copyright (C) 2025 Paul Manias
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 // Major portions taken verbatim or adapted from the Lua interpreter.
 // Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 
@@ -211,26 +212,27 @@ struct ExpDesc {
    } u;
    ExpKind k;      // Expression kind.
    ExprFlag flags; // Expression flags.
+   FluidType result_type = FluidType::Unknown;  // Known result type (for Call: callee's first return type)
    BCPOS t;        // True condition jump list.
    BCPOS f;        // False condition jump list.
 
    // Constructors
-   constexpr ExpDesc() : u{}, k(ExpKind::Void), flags(ExprFlag::None), t(NO_JMP), f(NO_JMP) {}
+   constexpr ExpDesc() : u{}, k(ExpKind::Void), flags(ExprFlag::None), result_type(FluidType::Unknown), t(NO_JMP), f(NO_JMP) {}
 
-   constexpr ExpDesc(ExpKind Kind, uint32_t Info = 0) : u{}, k(Kind), flags(ExprFlag::None), t(NO_JMP), f(NO_JMP) {
+   constexpr ExpDesc(ExpKind Kind, uint32_t Info = 0) : u{}, k(Kind), flags(ExprFlag::None), result_type(FluidType::Unknown), t(NO_JMP), f(NO_JMP) {
       this->u.s.info = Info;
       this->u.s.aux = 0;
    }
 
-   explicit constexpr ExpDesc(GCstr* Value) : u{}, k(ExpKind::Str), flags(ExprFlag::None), t(NO_JMP), f(NO_JMP) {
+   explicit constexpr ExpDesc(GCstr* Value) : u{}, k(ExpKind::Str), flags(ExprFlag::None), result_type(FluidType::Str), t(NO_JMP), f(NO_JMP) {
       this->u.sval = Value;
    }
 
-   explicit constexpr ExpDesc(lua_Number Value) : u{}, k(ExpKind::Num), flags(ExprFlag::None), t(NO_JMP), f(NO_JMP) {
+   explicit constexpr ExpDesc(lua_Number Value) : u{}, k(ExpKind::Num), flags(ExprFlag::None), result_type(FluidType::Num), t(NO_JMP), f(NO_JMP) {
       setnumV(&this->u.nval, Value);
    }
 
-   explicit constexpr ExpDesc(bool Value) : u{}, k(Value ? ExpKind::True : ExpKind::False), flags(ExprFlag::None), t(NO_JMP), f(NO_JMP) {
+   explicit constexpr ExpDesc(bool Value) : u{}, k(Value ? ExpKind::True : ExpKind::False), flags(ExprFlag::None), result_type(FluidType::Bool), t(NO_JMP), f(NO_JMP) {
       this->u.s.info = 0;
       this->u.s.aux = 0;
    }
@@ -270,6 +272,7 @@ struct ExpDesc {
       this->k = kind;
       this->u.s.info = info;
       this->flags = ExprFlag::None;
+      this->result_type = FluidType::Unknown;
       this->f = this->t = NO_JMP;
    }
 
@@ -328,9 +331,9 @@ using VarSlot = StrongIndex<struct VarSlotTag, VarIndex>;
 
 // Variable info flags are defined in VarInfoFlag.
 
-// Per-function state.
-//
+//********************************************************************************************************************
 // FuncState tracks all parser state for a single function being compiled:
+//
 // - Register allocation (freereg, nactvar, framesize)
 // - Bytecode emission (pc, bcbase, bclim)
 // - Jump management (jpc, lasttarget)
@@ -345,7 +348,6 @@ using VarSlot = StrongIndex<struct VarSlotTag, VarIndex>;
 // - Debug assertions validate invariants in development builds
 
 struct FuncState {
-   // --- Core State (Public for backward compatibility) ---
    GCtab *kt;          // Hash table for constants.
    LexState *ls;       // Lexer state.
    lua_State *L;       // Lua state.
@@ -377,7 +379,10 @@ struct FuncState {
    // Set before fs_finish() is called. nullptr for anonymous functions.
    GCstr* funcname = nullptr;
 
-   // --- Type-Safe Accessors ---
+   // Return types for runtime type checking.  Set during function emission if explicit return types are declared.
+   // FluidType::Unknown (default) means no type constraint is applied for that position.
+   std::array<FluidType, MAX_RETURN_TYPES> return_types{};
+
    // Return strong types for bytecode positions and registers
 
    [[nodiscard]] constexpr BCPos current_pc() const noexcept { return BCPos(pc); }
@@ -389,37 +394,25 @@ struct FuncState {
    [[nodiscard]] constexpr BCReg active_var_count() const noexcept { return BCReg(nactvar); }
    [[nodiscard]] constexpr BCReg frame_size() const noexcept { return BCReg(framesize); }
 
-   // --- Register Management ---
-
    // Reset free register to the first register after local variables.
    // Common pattern: fs->freereg = fs->nactvar
    constexpr void reset_freereg() noexcept { freereg = nactvar; }
 
    // Ensure freereg is at least at nactvar level.
    // Common pattern: if (fs->freereg < fs->nactvar) fs->freereg = fs->nactvar;
-   constexpr void ensure_freereg_at_locals() noexcept {
-      if (freereg < nactvar) freereg = nactvar;
-   }
+   constexpr void ensure_freereg_at_locals() noexcept { if (freereg < nactvar) freereg = nactvar; }
 
    // Check if a register is a temporary (above local variables).
-   [[nodiscard]] constexpr bool is_temp_register(BCReg Reg) const noexcept {
-      return Reg.raw() >= nactvar;
-   }
+   [[nodiscard]] constexpr bool is_temp_register(BCReg Reg) const noexcept { return Reg.raw() >= nactvar; }
 
    // Check if a register is a local variable slot.
-   [[nodiscard]] constexpr bool is_local_register(BCReg Reg) const noexcept {
-      return Reg.raw() < nactvar;
-   }
+   [[nodiscard]] constexpr bool is_local_register(BCReg Reg) const noexcept { return Reg.raw() < nactvar; }
 
    // Check if a register is at the top of the stack (can be freed).
-   [[nodiscard]] constexpr bool is_stack_top(BCReg Reg) const noexcept {
-      return Reg.raw() + 1 IS freereg;
-   }
+   [[nodiscard]] constexpr bool is_stack_top(BCReg Reg) const noexcept { return Reg.raw() + 1 IS freereg; }
 
    // Get the next available register without allocating it.
    [[nodiscard]] constexpr BCReg next_free() const noexcept { return BCReg(freereg); }
-
-   // --- Jump Management ---
 
    // Check if there are pending jumps to patch.
    [[nodiscard]] constexpr bool has_pending_jumps() const noexcept { return jpc != NO_JMP; }
@@ -452,37 +445,22 @@ struct FuncState {
    }
 
    // Get a span view of the bytecode up to current pc.
-   [[nodiscard]] inline std::span<BCInsLine> bytecode_span() noexcept {
-      return std::span<BCInsLine>(bcbase, pc);
-   }
 
-   [[nodiscard]] inline std::span<const BCInsLine> bytecode_span() const noexcept {
-      return std::span<const BCInsLine>(bcbase, pc);
-   }
-
-   // --- Array Access with Spans ---
+   [[nodiscard]] inline std::span<BCInsLine> bytecode_span() noexcept { return std::span<BCInsLine>(bcbase, pc); }
+   [[nodiscard]] inline std::span<const BCInsLine> bytecode_span() const noexcept { return std::span<const BCInsLine>(bcbase, pc); }
 
    // Get a span view of active upvalue mappings.
-   [[nodiscard]] inline std::span<VarIndex> upvalue_span() noexcept {
-      return std::span<VarIndex>(uvmap.data(), nuv);
-   }
 
-   [[nodiscard]] inline std::span<const VarIndex> upvalue_span() const noexcept {
-      return std::span<const VarIndex>(uvmap.data(), nuv);
-   }
+   [[nodiscard]] inline std::span<VarIndex> upvalue_span() noexcept { return std::span<VarIndex>(uvmap.data(), nuv); }
+   [[nodiscard]] inline std::span<const VarIndex> upvalue_span() const noexcept { return std::span<const VarIndex>(uvmap.data(), nuv); }
 
    // Get a span view of active variable mappings.
-   [[nodiscard]] inline std::span<VarIndex> varmap_span() noexcept {
-      return std::span<VarIndex>(varmap.data(), nactvar);
-   }
 
-   [[nodiscard]] inline std::span<const VarIndex> varmap_span() const noexcept {
-      return std::span<const VarIndex>(varmap.data(), nactvar);
-   }
-
-   // --- Variable Access ---
+   [[nodiscard]] inline std::span<VarIndex> varmap_span() noexcept { return std::span<VarIndex>(varmap.data(), nactvar); }
+   [[nodiscard]] inline std::span<const VarIndex> varmap_span() const noexcept { return std::span<const VarIndex>(varmap.data(), nactvar); }
 
    // Get variable info for a local variable slot.
+
    [[nodiscard]] inline VarInfo& var_get(int32_t Slot) {
       lj_assertX(Slot >= 0 and Slot < int32_t(varmap.size()), "variable slot out of range");
       return ls->vstack[varmap[Slot]];
@@ -506,8 +484,6 @@ struct FuncState {
 
    [[nodiscard]] constexpr BCReg num_constants() const noexcept { return BCReg(nkn); }
    [[nodiscard]] constexpr BCReg gc_constants() const noexcept { return BCReg(nkgc); }
-
-   // --- Scope Queries ---
 
    // Check if we're at the top-level function (no enclosing function).
    [[nodiscard]] constexpr bool is_top_level() const noexcept { return prev IS nullptr; }

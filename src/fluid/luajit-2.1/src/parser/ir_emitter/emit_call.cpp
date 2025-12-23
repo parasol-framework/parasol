@@ -208,6 +208,7 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
    ExpDesc callee;
    auto base = BCReg(0);
    bool is_safe_callable = false;
+   FluidType callee_return_type = FluidType::Unknown;  // First return type of callee (if known)
 
    if (const auto *direct = std::get_if<DirectCallTarget>(&Payload.target)) {
       if (not direct->callable) return this->unsupported_expr(AstNodeKind::CallExpr, SourceSpan{});
@@ -221,6 +222,13 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
       auto callee_result = this->emit_expression(*direct->callable);
       if (not callee_result.ok()) return callee_result;
       callee = callee_result.value_ref();
+
+      // If callee is a local variable, check if it has known return types
+      if (callee.k IS ExpKind::Local) {
+         VarInfo* vinfo = &this->lex_state.vstack[callee.u.s.aux];
+         callee_return_type = vinfo->result_types[0];
+      }
+
       this->materialise_to_next_reg(callee, "call callee");
       // Reserve register for frame link
       RegisterAllocator allocator(&this->func_state);
@@ -292,6 +300,7 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
    ExpDesc result;
    result.init(ExpKind::Call, call_pc);
    result.u.s.aux = base;
+   result.result_type = callee_return_type;  // Propagate known return type
    this->func_state.freereg = base + 1;
    return ParserResult<ExpDesc>::success(result);
 }
