@@ -152,8 +152,8 @@ end
    file = obj.new('file', { path='scripts:gui/button.fluid' } )
    file_size = file.size
 
-   cmpbuffer = array.new(file_size, 'byte')
-   cmpsrc = array.new(file_size, 'byte')
+   cmpbuffer = array<byte, file_size>
+   cmpsrc = array<byte, file_size>
 
    err = mSys.ReadFileToBuffer('scripts:gui/button.fluid', cmpsrc)
    assert(err is ERR_Okay, 'Failed to read original source file for comparison: ' .. mSys.GetErrorMsg(err))
@@ -169,7 +169,7 @@ end
    -- Small buffer test
 
    cmpfile.acSeek(0, SEEK_START)
-   smallbuffer = array.new(256, 'byte')
+   smallbuffer = array<byte, 256>
    cmpbuffer = ''
    repeat
       err, len = cmpfile.acRead(smallbuffer)

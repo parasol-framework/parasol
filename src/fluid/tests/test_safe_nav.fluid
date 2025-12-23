@@ -38,7 +38,7 @@ end
    assert(value is "Second", "Safe index should return stored element when present, got " .. tostring(value))
 
    -- Test with native Fluid array
-   container = array.of('string', "First", "Second")
+   container = array<string> { "First", "Second" }
    value = container?[1]
    assert(value is "Second", "Safe index should return stored element when present, got " .. tostring(value))
 
@@ -367,18 +367,18 @@ end
 
 @Test function testFluidArraySafeIndexBasic()
    -- Test different array element types with safe navigation
-   intArr = array.of('int', 10, 20, 30, 40, 50)
+   intArr = array<int> { 10, 20, 30, 40, 50 }
    assert(intArr?[0] is 10, "Safe index on int array should return first element")
    assert(intArr?[2] is 30, "Safe index on int array should return middle element")
    assert(intArr?[4] is 50, "Safe index on int array should return last element")
    assert(intArr?[5] is nil, "Safe index out of bounds should return nil")
    assert(intArr?[100] is nil, "Safe index far out of bounds should return nil")
 
-   doubleArr = array.of('double', 1.5, 2.5, 3.5)
+   doubleArr = array<double> { 1.5, 2.5, 3.5 }
    assert(doubleArr?[0] is 1.5, "Safe index on double array should work")
    assert(doubleArr?[3] is nil, "Safe index out of bounds on double array should return nil")
 
-   byteArr = array.of('byte', 255, 128, 0)
+   byteArr = array<byte> { 255, 128, 0 }
    assert(byteArr?[0] is 255, "Safe index on byte array should work")
    assert(byteArr?[1] is 128, "Safe index on byte array should return correct value")
    assert(byteArr?[3] is nil, "Safe index out of bounds on byte array should return nil")
@@ -388,7 +388,7 @@ end
 
 @Test function testFluidArraySafeIndexVariable()
    -- Test safe navigation with variable indices
-   arr = array.of('string', "zero", "one", "two", "three")
+   arr = array<string> { "zero", "one", "two", "three" }
 
    idx = 0
    assert(arr?[idx] is "zero", "Safe index with variable index 0 should work")
@@ -429,7 +429,7 @@ end
 @Test function testFluidArraySafeIndexChained()
    -- Test chained safe navigation with arrays
    data = {
-      items = array.of('int', 100, 200, 300)
+      items = array<int> { 100, 200, 300 }
    }
    assert(data?.items?[0] is 100, "Chained safe navigation to array should work")
    assert(data?.items?[2] is 300, "Chained safe navigation to array last element should work")
@@ -448,7 +448,7 @@ end
 
 @Test function testFluidArraySafeIndexWithFallback()
    -- Test safe array navigation combined with ?? operator
-   arr = array.of('string', "first", "second")
+   arr = array<string> { "first", "second" }
 
    v = arr?[0] ?? "default"
    assert(v is "first", "Safe index with fallback should return value when present")
@@ -465,7 +465,7 @@ end
 
 @Test function testFluidArraySafeIndexNestedArrays()
    -- Test arrays containing other arrays (if supported)
-   outer = array.of('any', array.of('int', 1, 2, 3), array.of('int', 4, 5, 6))
+   outer = array<any> { array<int> { 1, 2, 3 }, array<int> { 4, 5, 6 } }
 
    inner = outer?[0]
    assert(inner, "Safe index should return nested array")
@@ -495,7 +495,7 @@ end
 
 @Test function testFluidArraySafeIndexInLoop()
    -- Test safe navigation in loop context
-   arr = array.of('int', 10, 20, 30)
+   arr = array<int> { 10, 20, 30 }
    results = {}
 
    for i in {0..5} do
@@ -513,7 +513,7 @@ end
 
 @Test function testFluidArraySafeIndexTableInArray()
    -- Test array containing tables
-   arr = array.of('table', { name = "Alice" }, { name = "Bob" }, { name = "Carol" })
+   arr = array<table> { { name = "Alice" }, { name = "Bob" }, { name = "Carol" } }
 
    assert(arr?[0]?.name is "Alice", "Safe navigation through array to table field should work")
    assert(arr?[1]?.name is "Bob", "Safe navigation through array to table field should work")

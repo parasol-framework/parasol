@@ -33,7 +33,7 @@ gui.menu = function(Options)
       popup    = Options.popup ?? false,
       relative = Options.relative,
       style    = Options.style ?? 'popup',
-      items    = array.new(0, 'table')
+      items    = array<table>
    }
 
    function initVectorScene()
@@ -77,7 +77,7 @@ gui.menu = function(Options)
          end
       })
 
-      self.items = array.new(0, 'table')
+      self.items = array<table>
       widestItem = 0
       widestKey = 0
       y = VMARGIN

@@ -318,22 +318,22 @@ end
 -- Array presence tests: empty arrays (len == 0) are considered falsey
 
 @Test function testEmptyArrayPresence()
-   local empty = array.new(0, 'int')
+   local empty = array<int>
    assert((empty??) is false, "Empty array should return false for ??")
 end
 
 @Test function testNonEmptyArrayPresence()
-   local filled = array.new(5, 'int')
+   local filled = array<int, 5>
    assert((filled??) is true, "Non-empty array should return true for ??")
 end
 
 @Test function testArrayInConditional()
-   local empty = array.new(0, 'int')
+   local empty = array<int>
    if empty?? then
       error("Should not enter if block for empty array")
    end
 
-   local filled = array.new(3, 'int')
+   local filled = array<int, 3>
    entered = false
    if filled?? then
       entered = true
@@ -343,10 +343,10 @@ end
 
 @Test function testArrayWithVariousTypes()
    -- Test presence check with various array element types
-   local int_empty = array.new(0, 'int')
-   local double_empty = array.new(0, 'double')
-   local byte_empty = array.new(0, 'byte')
-   local int_filled = array.new(1, 'int')
+   local int_empty = array<int>
+   local double_empty = array<double>
+   local byte_empty = array<byte>
+   local int_filled = array<int, 1>
 
    assert((int_empty??) is false, "Empty int array should return false")
    assert((double_empty??) is false, "Empty double array should return false")
@@ -361,11 +361,11 @@ end
       {val = false, name = "false", expected = false},
       {val = 0, name = "zero", expected = false},
       {val = "", name = "empty string", expected = false},
-      {val = array.new(0, 'int'), name = "empty array", expected = false},
+      {val = array<int>, name = "empty array", expected = false},
       {val = true, name = "true", expected = true},
       {val = 1, name = "one", expected = true},
       {val = "test", name = "non-empty string", expected = true},
-      {val = array.new(3, 'int'), name = "non-empty array", expected = true}
+      {val = array<int, 3>, name = "non-empty array", expected = true}
    }
    for _, tc in ipairs(test_cases) do
       result = (tc.val)??

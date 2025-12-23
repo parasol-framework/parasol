@@ -7,7 +7,7 @@ function enforce_hotpath() end
 -- Test array.push() functionality
 
 @Test function ArrayPushBasic()
-   arr = array.new(0, 'int')
+   arr = array<int>
    assert(#arr is 0, 'Initial array length should be 0')
 
    len = arr:push(10)
@@ -25,7 +25,7 @@ function enforce_hotpath() end
 end
 
 @Test function ArrayPushMultiple()
-   arr = array.new(0, 'int')
+   arr = array<int>
 
    len = arr:push(1, 2, 3, 4, 5)
    assert(len is 5, 'push() with 5 values should return 5')
@@ -35,7 +35,7 @@ end
 end
 
 @Test function ArrayPushGrowth()
-   arr = array.new(2, 'int')
+   arr = array<int, 2>
    arr[0] = 100
    arr[1] = 200
 
@@ -53,7 +53,7 @@ end
 end
 
 @Test function ArrayPushFloat()
-   arr = array.new(0, 'float')
+   arr = array<float>
    arr:push(1.5)
    arr:push(2.7)
    arr:push(3.14)
@@ -65,7 +65,7 @@ end
 end
 
 @Test function ArrayPushDouble()
-   arr = array.new(0, 'double')
+   arr = array<double>
    arr:push(3.141592653589793)
    arr:push(2.718281828459045)
 
@@ -75,7 +75,7 @@ end
 end
 
 @Test function ArrayPushInt64()
-   arr = array.new(0, 'int64')
+   arr = array<int64>
    arr:push(1234567890123)
    arr:push(-9876543210987)
 
@@ -85,7 +85,7 @@ end
 end
 
 @Test function ArrayPushByte()
-   arr = array.new(0, 'byte')
+   arr = array<byte>
    arr:push(65, 66, 67, 68)  -- A, B, C, D
 
    assert(#arr is 4, 'Byte array length should be 4')
@@ -93,7 +93,7 @@ end
 end
 
 @Test function ArrayPushString()
-   arr = array.new(0, 'string')
+   arr = array<string>
    arr:push('hello')
    arr:push('world')
    arr:push('!')
@@ -105,7 +105,7 @@ end
 end
 
 @Test function ArrayPushTable()
-   arr = array.new(0, 'table')
+   arr = array<table>
    arr:push({x = 10})
    arr:push({y = 20})
 
@@ -115,7 +115,7 @@ end
 end
 
 @Test function ArrayPushNoArgs()
-   arr = array.new(3, 'int')
+   arr = array<int, 3>
    arr[0] = 1
    arr[1] = 2
    arr[2] = 3
@@ -128,7 +128,7 @@ end
 @Test function ArrayPushReadOnlyRejected()
    -- We can't easily create a read-only array from Fluid, but we can test the error path
    -- by checking that push works on normal arrays
-   arr = array.new(0, 'int')
+   arr = array<int>
    arr:push(42)
    assert(arr[0] is 42, 'push on normal array should work')
 end
@@ -137,7 +137,7 @@ end
 -- Test array.pop() functionality
 
 @Test function ArrayPopBasic()
-   arr = array.of('int', 10, 20, 30)
+   arr = array<int> { 10, 20, 30 }
    assert(#arr is 3, 'Initial array length should be 3')
 
    val = arr:pop()
@@ -154,14 +154,14 @@ end
 end
 
 @Test function ArrayPopEmpty()
-   arr = array.new(0, 'int')
+   arr = array<int>
    val = arr:pop()
    assert(val is nil, 'pop() on empty array should return nil')
    assert(#arr is 0, 'Array length should still be 0')
 end
 
 @Test function ArrayPopMultiple()
-   arr = array.of('int', 1, 2, 3, 4, 5)
+   arr = array<int> { 1, 2, 3, 4, 5 }
 
    a, b = arr:pop(2)
    assert(a is 5, 'First pop value should be 5')
@@ -170,7 +170,7 @@ end
 end
 
 @Test function ArrayPopExhaust()
-   arr = array.of('int', 1, 2, 3)
+   arr = array<int> { 1, 2, 3 }
 
    -- Pop more than available
    a, b, c, d = arr:pop(5)
@@ -182,14 +182,14 @@ end
 end
 
 @Test function ArrayPopFloat()
-   arr = array.of('float', 1.5, 2.5, 3.5)
+   arr = array<float> { 1.5, 2.5, 3.5 }
    val = arr:pop()
    assert(math.abs(val - 3.5) < 0.0001, 'pop() should return 3.5')
    assert(#arr is 2, 'Array length should be 2')
 end
 
 @Test function ArrayPopString()
-   arr = array.of('string', 'hello', 'world', '!')
+   arr = array<string> { 'hello', 'world', '!' }
    val = arr:pop()
    assert(val is '!', 'pop() should return !')
    assert(#arr is 2, 'Array length should be 2')
@@ -198,7 +198,7 @@ end
 end
 
 @Test function ArrayPopTable()
-   arr = array.new(2, 'table')
+   arr = array<table, 2>
    arr[0] = {x = 10}
    arr[1] = {y = 20}
 
@@ -212,7 +212,7 @@ end
 -- Test array.clear() functionality (updated behavior - resets length, preserves capacity)
 
 @Test function ArrayClearBasic()
-   arr = array.of('int', 1, 2, 3, 4, 5)
+   arr = array<int> { 1, 2, 3, 4, 5 }
    assert(#arr is 5, 'Initial array length should be 5')
 
    arr:clear()
@@ -220,7 +220,7 @@ end
 end
 
 @Test function ArrayClearAndPush()
-   arr = array.of('int', 10, 20, 30)
+   arr = array<int> { 10, 20, 30 }
    arr:clear()
    assert(#arr is 0, 'Array should be empty after clear')
 
@@ -233,7 +233,7 @@ end
 end
 
 @Test function ArrayClearString()
-   arr = array.of('string', 'hello', 'world')
+   arr = array<string> { 'hello', 'world' }
    arr:clear()
    assert(#arr is 0, 'String array should be empty after clear')
 
@@ -245,7 +245,7 @@ end
 end
 
 @Test function ArrayClearTable()
-   arr = array.new(3, 'table')
+   arr = array<table, 3>
    arr[0] = {x = 1}
    arr[1] = {x = 2}
    arr[2] = {x = 3}
@@ -255,7 +255,7 @@ end
 end
 
 @Test function ArrayClearEmpty()
-   arr = array.new(0, 'int')
+   arr = array<int>
    arr:clear()  -- Should not error
    assert(#arr is 0, 'Empty array should still be empty after clear')
 end
@@ -264,7 +264,7 @@ end
 -- Test push/pop/clear integration
 
 @Test function ArrayPushPopClearIntegration()
-   arr = array.new(0, 'int')
+   arr = array<int>
 
    -- Build up array
    for i = 0, 9 do
@@ -293,7 +293,7 @@ end
 
 @Test function ArrayPushPopStack()
    -- Use array as a stack
-   stack = array.new(0, 'int')
+   stack = array<int>
 
    stack:push(10)
    stack:push(20)
@@ -309,7 +309,7 @@ end
 end
 
 @Test function ArrayLargePushPop()
-   arr = array.new(0, 'int')
+   arr = array<int>
 
    -- Push many elements
    for i = 0, 999 do
@@ -335,7 +335,7 @@ end
 -- Test array.insert() functionality
 
 @Test function ArrayInsertBasic()
-   arr = array.of('int', 1, 2, 4, 5)
+   arr = array<int> { 1, 2, 4, 5 }
    len = arr:insert(2, 3)
    assert(len is 5, "insert() should return new length 5")
    assert(#arr is 5, "Array length should be 5")
@@ -347,7 +347,7 @@ end
 end
 
 @Test function ArrayInsertAtStart()
-   arr = array.of('int', 2, 3, 4)
+   arr = array<int> { 2, 3, 4 }
    arr:insert(0, 1)
    assert(#arr is 4, "Array length should be 4")
    assert(arr[0] is 1, "arr[0] should be 1 (inserted at start)")
@@ -357,7 +357,7 @@ end
 end
 
 @Test function ArrayInsertAtEnd()
-   arr = array.of('int', 1, 2, 3)
+   arr = array<int> { 1, 2, 3 }
    arr:insert(3, 4)  -- Insert at length = append
    assert(#arr is 4, "Array length should be 4")
    assert(arr[0] is 1, "arr[0] should be 1")
@@ -367,7 +367,7 @@ end
 end
 
 @Test function ArrayInsertMultiple()
-   arr = array.of('int', 1, 5)
+   arr = array<int> { 1, 5 }
    arr:insert(1, 2, 3, 4)  -- Insert multiple values
    assert(#arr is 5, "Array length should be 5")
    assert(arr[0] is 1, "arr[0] should be 1")
@@ -378,7 +378,7 @@ end
 end
 
 @Test function ArrayInsertString()
-   arr = array.of('string', 'a', 'c', 'd')
+   arr = array<string> { 'a', 'c', 'd' }
    arr:insert(1, 'b')
    assert(#arr is 4, "String array length should be 4")
    assert(arr[0] is 'a', "arr[0] should be 'a'")
@@ -388,7 +388,7 @@ end
 end
 
 @Test function ArrayInsertFloat()
-   arr = array.of('float', 1.0, 3.0)
+   arr = array<float> { 1.0, 3.0 }
    arr:insert(1, 2.0)
    assert(#arr is 3, "Float array length should be 3")
    assert(math.abs(arr[0] - 1.0) < 0.0001, "arr[0] should be 1.0")
@@ -397,21 +397,21 @@ end
 end
 
 @Test function ArrayInsertDouble()
-   arr = array.of('double', 1.1, 3.3)
+   arr = array<double> { 1.1, 3.3 }
    arr:insert(1, 2.2)
    assert(#arr is 3, "Double array length should be 3")
    assert(math.abs(arr[1] - 2.2) < 0.0001, "arr[1] should be 2.2")
 end
 
 @Test function ArrayInsertByte()
-   arr = array.of('byte', 65, 67)  -- A, C
+   arr = array<byte> { 65, 67 }  -- A, C
    arr:insert(1, 66)  -- Insert B
    assert(#arr is 3, "Byte array length should be 3")
    assert(arr:getString() is 'ABC', "getString should return 'ABC'")
 end
 
 @Test function ArrayInsertInt64()
-   arr = array.of('int64', 1000000000000, 3000000000000)
+   arr = array<int64> { 1000000000000, 3000000000000 }
    arr:insert(1, 2000000000000)
    assert(#arr is 3, "Int64 array length should be 3")
    assert(arr[0] is 1000000000000, "arr[0] should be correct")
@@ -420,7 +420,7 @@ end
 end
 
 @Test function ArrayInsertTable()
-   arr = array.new(2, 'table')
+   arr = array<table, 2>
    arr[0] = {x = 1}
    arr[1] = {x = 3}
    arr:insert(1, {x = 2})
@@ -431,7 +431,7 @@ end
 end
 
 @Test function ArrayInsertGrowth()
-   arr = array.new(2, 'int')
+   arr = array<int, 2>
    arr[0] = 1
    arr[1] = 2
    -- Insert beyond initial capacity
@@ -444,21 +444,21 @@ end
 end
 
 @Test function ArrayInsertEmpty()
-   arr = array.new(0, 'int')
+   arr = array<int>
    arr:insert(0, 42)
    assert(#arr is 1, "Empty array should have 1 element after insert")
    assert(arr[0] is 42, "arr[0] should be 42")
 end
 
 @Test function ArrayInsertNoValues()
-   arr = array.of('int', 1, 2, 3)
+   arr = array<int> { 1, 2, 3 }
    len = arr:insert(1)  -- No value to insert
    assert(len is 3, "insert() with no value should return current length")
    assert(#arr is 3, "Array length should be unchanged")
 end
 
 @Test function ArrayInsertBoundsCheck()
-   arr = array.of('int', 1, 2, 3)
+   arr = array<int> { 1, 2, 3 }
 
    -- Test negative index
    status = pcall(function()
@@ -477,7 +477,7 @@ end
 -- Test array.remove() functionality
 
 @Test function ArrayRemoveBasic()
-   arr = array.of('int', 1, 2, 3, 4, 5)
+   arr = array<int> { 1, 2, 3, 4, 5 }
    len = arr:remove(2)
    assert(len is 4, "remove(2) should return new length 4")
    assert(#arr is 4, "Array length should be 4")
@@ -488,7 +488,7 @@ end
 end
 
 @Test function ArrayRemoveFirst()
-   arr = array.of('int', 1, 2, 3)
+   arr = array<int> { 1, 2, 3 }
    len = arr:remove(0)
    assert(len is 2, "remove(0) should return new length 2")
    assert(#arr is 2, "Array length should be 2")
@@ -497,7 +497,7 @@ end
 end
 
 @Test function ArrayRemoveLast()
-   arr = array.of('int', 1, 2, 3)
+   arr = array<int> { 1, 2, 3 }
    len = arr:remove(2)
    assert(len is 2, "remove(2) should return new length 2")
    assert(#arr is 2, "Array length should be 2")
@@ -506,7 +506,7 @@ end
 end
 
 @Test function ArrayRemoveMultiple()
-   arr = array.of('int', 1, 2, 3, 4, 5)
+   arr = array<int> { 1, 2, 3, 4, 5 }
    len = arr:remove(1, 3)
    assert(len is 2, "remove(1, 3) should return new length 2")
    assert(#arr is 2, "Array length should be 2")
@@ -515,7 +515,7 @@ end
 end
 
 @Test function ArrayRemoveString()
-   arr = array.of('string', 'a', 'b', 'c', 'd')
+   arr = array<string> { 'a', 'b', 'c', 'd' }
    len = arr:remove(1)
    assert(len is 3, "remove(1) should return new length 3")
    assert(#arr is 3, "Array length should be 3")
@@ -525,21 +525,21 @@ end
 end
 
 @Test function ArrayRemoveFloat()
-   arr = array.of('float', 1.5, 2.5, 3.5)
+   arr = array<float> { 1.5, 2.5, 3.5 }
    len = arr:remove(1)
    assert(len is 2, "remove(1) should return new length 2")
    assert(#arr is 2, "Array length should be 2")
 end
 
 @Test function ArrayRemoveDouble()
-   arr = array.of('double', 1.1, 2.2, 3.3)
+   arr = array<double> { 1.1, 2.2, 3.3 }
    len = arr:remove(1)
    assert(len is 2, "remove(1) should return new length 2")
    assert(#arr is 2, "Array length should be 2")
 end
 
 @Test function ArrayRemoveByte()
-   arr = array.of('byte', 65, 66, 67, 68)  -- ABCD
+   arr = array<byte> { 65, 66, 67, 68 }  -- ABCD
    len = arr:remove(1)  -- Remove B
    assert(len is 3, "remove(1) should return new length 3")
    assert(#arr is 3, "Array length should be 3")
@@ -547,14 +547,14 @@ end
 end
 
 @Test function ArrayRemoveInt64()
-   arr = array.of('int64', 1000000000000, 2000000000000, 3000000000000)
+   arr = array<int64> { 1000000000000, 2000000000000, 3000000000000 }
    len = arr:remove(1)
    assert(len is 2, "remove(1) should return new length 2")
    assert(#arr is 2, "Array length should be 2")
 end
 
 @Test function ArrayRemoveTable()
-   arr = array.new(3, 'table')
+   arr = array<table, 3>
    arr[0] = {x = 1}
    arr[1] = {x = 2}
    arr[2] = {x = 3}
@@ -567,7 +567,7 @@ end
 
 @Test function ArrayRemoveStringGC()
    -- Verify that removed strings can be garbage collected
-   arr = array.of('string', 'alpha', 'beta', 'gamma', 'delta')
+   arr = array<string> { 'alpha', 'beta', 'gamma', 'delta' }
    arr:remove(1, 2)  -- Remove 'beta' and 'gamma'
    assert(#arr is 2, "Array should have 2 elements")
    assert(arr[0] is 'alpha', "arr[0] should be 'alpha'")
@@ -581,7 +581,7 @@ end
 
 @Test function ArrayRemoveTableGC()
    -- Verify that removed tables can be garbage collected
-   arr = array.new(4, 'table')
+   arr = array<table, 4>
    arr[0] = {name = 'first'}
    arr[1] = {name = 'second'}
    arr[2] = {name = 'third'}
@@ -600,7 +600,7 @@ end
 
 @Test function ArrayRemoveAllStringsGC()
    -- Remove all elements from a string array
-   arr = array.of('string', 'one', 'two', 'three')
+   arr = array<string> { 'one', 'two', 'three' }
    arr:remove(0, 3)
    assert(#arr is 0, "Array should be empty")
 
@@ -614,7 +614,7 @@ end
 
 @Test function ArrayRemoveAllTablesGC()
    -- Remove all elements from a table array
-   arr = array.new(3, 'table')
+   arr = array<table, 3>
    arr[0] = {id = 1}
    arr[1] = {id = 2}
    arr[2] = {id = 3}
@@ -631,7 +631,7 @@ end
 end
 
 @Test function ArrayRemoveCountExceedsAvailable()
-   arr = array.of('int', 1, 2, 3, 4, 5)
+   arr = array<int> { 1, 2, 3, 4, 5 }
    len = arr:remove(3, 10)  -- Only 2 elements from index 3
    assert(len is 3, "remove should return new length 3")
    assert(#arr is 3, "Array length should be 3")
@@ -641,21 +641,21 @@ end
 end
 
 @Test function ArrayRemoveZeroCount()
-   arr = array.of('int', 1, 2, 3)
+   arr = array<int> { 1, 2, 3 }
    result = arr:remove(1, 0)
    assert(result is 3, "remove with count=0 should return current length")
    assert(#arr is 3, "Array length should be unchanged")
 end
 
 @Test function ArrayRemoveAll()
-   arr = array.of('int', 1, 2, 3)
+   arr = array<int> { 1, 2, 3 }
    len = arr:remove(0, 3)
    assert(len is 0, "remove all should return 0")
    assert(#arr is 0, "Array should be empty")
 end
 
 @Test function ArrayRemoveBoundsCheck()
-   arr = array.of('int', 1, 2, 3)
+   arr = array<int> { 1, 2, 3 }
 
    -- Test negative index
    status = pcall(function()
@@ -676,7 +676,7 @@ end
 end
 
 @Test function ArrayRemoveNegativeCount()
-   arr = array.of('int', 1, 2, 3)
+   arr = array<int> { 1, 2, 3 }
    status = pcall(function()
       arr:remove(0, -1)
    end)
@@ -684,7 +684,7 @@ end
 end
 
 @Test function ArrayRemoveSingle()
-   arr = array.of('int', 42)
+   arr = array<int> { 42 }
    len = arr:remove(0)
    assert(len is 0, "remove(0) should return 0")
    assert(#arr is 0, "Array should be empty")
@@ -694,7 +694,7 @@ end
 -- Test array.clone() functionality
 
 @Test function ArrayCloneInt()
-   original = array.of('int', 1, 2, 3, 4, 5)
+   original = array<int> { 1, 2, 3, 4, 5 }
    copy = original:clone()
 
    assert(#copy is 5, "Clone should have same length")
@@ -709,7 +709,7 @@ end
 end
 
 @Test function ArrayCloneString()
-   original = array.of('string', 'hello', 'world', '!')
+   original = array<string> { 'hello', 'world', '!' }
    copy = original:clone()
 
    assert(#copy is 3, "Clone should have same length")
@@ -724,7 +724,7 @@ end
 end
 
 @Test function ArrayCloneFloat()
-   original = array.of('float', 1.5, 2.5, 3.5)
+   original = array<float> { 1.5, 2.5, 3.5 }
    copy = original:clone()
 
    assert(#copy is 3, "Clone should have same length")
@@ -734,7 +734,7 @@ end
 end
 
 @Test function ArrayCloneDouble()
-   original = array.of('double', 3.14159, 2.71828)
+   original = array<double> { 3.14159, 2.71828 }
    copy = original:clone()
 
    assert(#copy is 2, "Clone should have same length")
@@ -743,7 +743,7 @@ end
 end
 
 @Test function ArrayCloneByte()
-   original = array.of('byte', 65, 66, 67, 68)
+   original = array<byte> { 65, 66, 67, 68 }
    copy = original:clone()
 
    assert(#copy is 4, "Clone should have same length")
@@ -751,7 +751,7 @@ end
 end
 
 @Test function ArrayCloneInt16()
-   original = array.of('int16', 100, 200, 300)
+   original = array<int16> { 100, 200, 300 }
    copy = original:clone()
 
    assert(#copy is 3, "Clone should have same length")
@@ -761,7 +761,7 @@ end
 end
 
 @Test function ArrayCloneInt64()
-   original = array.of('int64', 1234567890123, -9876543210987)
+   original = array<int64> { 1234567890123, -9876543210987 }
    copy = original:clone()
 
    assert(#copy is 2, "Clone should have same length")
@@ -770,7 +770,7 @@ end
 end
 
 @Test function ArrayCloneTable()
-   original = array.new(2, 'table')
+   original = array<table, 2>
    original[0] = {x = 10, y = 20}
    original[1] = {name = 'test'}
    copy = original:clone()
@@ -786,7 +786,7 @@ end
 end
 
 @Test function ArrayCloneEmpty()
-   original = array.new(0, 'int')
+   original = array<int>
    copy = original:clone()
 
    assert(#copy is 0, "Clone of empty array should be empty")
@@ -794,7 +794,7 @@ end
 end
 
 @Test function ArrayCloneSingle()
-   original = array.of('int', 42)
+   original = array<int> { 42 }
    copy = original:clone()
 
    assert(#copy is 1, "Clone should have length 1")
@@ -803,21 +803,21 @@ end
 
 @Test function ArrayClonePreservesType()
    -- Test that clone preserves element type
-   int_arr = array.of('int', 1, 2, 3)
+   int_arr = array<int> { 1, 2, 3 }
    int_clone = int_arr:clone()
    assert(int_clone:type() is 'int', "Clone should preserve int type")
 
-   float_arr = array.of('float', 1.5, 2.5)
+   float_arr = array<float> { 1.5, 2.5 }
    float_clone = float_arr:clone()
    assert(float_clone:type() is 'float', "Clone should preserve float type")
 
-   string_arr = array.of('string', 'a', 'b')
+   string_arr = array<string> { 'a', 'b' }
    string_clone = string_arr:clone()
    assert(string_clone:type() is 'string', "Clone should preserve string type")
 end
 
 @Test function ArrayCloneIndependence()
-   original = array.of('int', 10, 20, 30)
+   original = array<int> { 10, 20, 30 }
    copy = original:clone()
 
    -- Modify both arrays differently
@@ -833,7 +833,7 @@ end
 end
 
 @Test function ArrayCloneAndModify()
-   original = array.of('int', 1, 2, 3, 4, 5)
+   original = array<int> { 1, 2, 3, 4, 5 }
    copy = original:clone()
 
    -- Remove from copy
@@ -849,7 +849,7 @@ end
 end
 
 @Test function ArrayCloneLarge()
-   original = array.new(1000, 'int')
+   original = array<int, 1000>
    for i = 0, 999 do
       original[i] = i * 2
    end
@@ -872,7 +872,7 @@ end
 -- Test insert/remove/clone integration
 
 @Test function ArrayInsertRemoveIntegration()
-   arr = array.of('int', 1, 5)
+   arr = array<int> { 1, 5 }
 
    -- Insert in middle
    arr:insert(1, 2, 3, 4)
@@ -888,7 +888,7 @@ end
 end
 
 @Test function ArrayCloneInsertRemove()
-   original = array.of('int', 1, 2, 3)
+   original = array<int> { 1, 2, 3 }
    copy = original:clone()
 
    -- Insert into original
@@ -904,7 +904,7 @@ end
 
 @Test function ArrayBuildWithInsert()
    -- Build array using insert instead of push
-   arr = array.new(0, 'int')
+   arr = array<int>
    for i = 0, 4 do
       arr:insert(0, 4 - i)  -- Insert at start each time
    end
@@ -916,7 +916,7 @@ end
 end
 
 @Test function ArrayRemoveUntilEmpty()
-   arr = array.of('int', 1, 2, 3, 4, 5)
+   arr = array<int> { 1, 2, 3, 4, 5 }
 
    while #arr > 0 do
       arr:remove(0)  -- Always remove first
@@ -927,7 +927,7 @@ end
 
 @Test function ArrayCloneChain()
    -- Clone multiple times
-   arr1 = array.of('int', 1, 2, 3)
+   arr1 = array<int> { 1, 2, 3 }
    arr2 = arr1:clone()
    arr3 = arr2:clone()
 

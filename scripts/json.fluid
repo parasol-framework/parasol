@@ -115,7 +115,7 @@ do
    function json.encode(obj, err_callback, as_key)
       local kind = kind_of(obj)  -- This is 'array' if it's an array or type(obj) otherwise.
       if kind is 'array' then
-         local s = array.new(0, 'string')
+         local s = array<string>
          if as_key then
             local msg = 'Can\'t encode array as key.'
             if err_callback then err_callback(msg) else error(msg) end
@@ -129,7 +129,7 @@ do
          end
          return s:join()
       elseif kind is 'table' then
-         local s = array.new(0, 'string')
+         local s = array<string>
          if as_key then
             local msg = 'Can\'t encode table as key.'
             if err_callback then err_callback(msg) else error(msg) end
@@ -181,7 +181,7 @@ do
             pos, delim_found = skip_delim(str, pos, ',')
          end
       elseif first is '[' then  -- Parse an array.
-         local arr, val, delim_found = array.new(0, 'any'), true, true
+         local arr, val, delim_found = array<any>, true, true
          pos++
          while true do
             val, pos = json.decode(str, pos, ']')
