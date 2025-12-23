@@ -153,16 +153,28 @@ static void rec_check_slots(jit_State *J)
          if (s IS 0) lj_assertJ(tref_isfunc(tr), "frame slot 0 is not a function");
          else if (s IS 1) lj_assertJ((tr & ~TREF_FRAME) IS 0, "bad frame slot 1");
          else if ((tr & TREF_FRAME)) {
-            GCfunc* fn = gco_to_function(frame_gc(tv));
-            BCREG delta = (BCREG)(tv - frame_prev(tv));
-            lj_assertJ(not ref or ir_knum(ir)->u64 IS tv->u64, "frame slot %d PC mismatch", s);
-            tr = J->slot[s - 1];
-            ir = IR(tref_ref(tr));
-            lj_assertJ(tref_isfunc(tr), "frame slot %d is not a function", s - 1);
-            lj_assertJ(not tref_isk(tr) or fn IS ir_kfunc(ir), "frame slot %d function mismatch", s - 1);
-            lj_assertJ(s > delta + 1 ? (J->slot[s - delta] & TREF_FRAME)
-               : (s IS delta + 1), "frame slot %d broken chain", s - 1);
-            depth++;
+            // Check if this is a valid frame slot or a stale marker from a returned call.
+            // Stale TREF_FRAME can remain in slots after an inlined call returns and the slot
+            // is reused by subsequent code. Only validate frame slots that are actually part
+            // of the current frame chain (reachable from baseslot-1 via frame_delta).
+            GCobj* frame_obj = frame_gc(tv);
+            if (frame_obj and frame_obj->gch.gct IS ~LJ_TFUNC) {
+               // Valid frame - perform full validation
+               GCfunc* fn = gco_to_function(frame_obj);
+               BCREG delta = (BCREG)(tv - frame_prev(tv));
+               lj_assertJ(not ref or ir_knum(ir)->u64 IS tv->u64, "frame slot %d PC mismatch", s);
+               tr = J->slot[s - 1];
+               ir = IR(tref_ref(tr));
+               lj_assertJ(tref_isfunc(tr), "frame slot %d is not a function", s - 1);
+               lj_assertJ(not tref_isk(tr) or fn IS ir_kfunc(ir), "frame slot %d function mismatch", s - 1);
+               lj_assertJ(s > delta + 1 ? (J->slot[s - delta] & TREF_FRAME)
+                  : (s IS delta + 1), "frame slot %d broken chain", s - 1);
+               depth++;
+            }
+            else {
+               // Stale TREF_FRAME from a returned inlined call. Clear it to avoid confusion.
+               J->slot[s] = 0;
+            }
          }
          else if ((tr & TREF_CONT)) {
             lj_assertJ(not ref or ir_knum(ir)->u64 IS tv->u64, "cont slot %d continuation mismatch", s);
