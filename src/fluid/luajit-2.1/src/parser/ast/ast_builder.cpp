@@ -112,9 +112,7 @@ static bool build_arrow_parameters(const ExprNodeList &Expressions, std::vector<
 
 static ParserResult<StmtNodePtr> make_control_stmt(ParserContext& Context, AstNodeKind Kind, const Token& Token)
 {
-   StmtNodePtr node = std::make_unique<StmtNode>();
-   node->kind = Kind;
-   node->span = Token.span();
+   auto node = std::make_unique<StmtNode>(Kind, Token.span());
    if (Kind IS AstNodeKind::BreakStmt) node->data.emplace<BreakStmtPayload>();
    else node->data.emplace<ContinueStmtPayload>();
    Context.tokens().advance();
@@ -212,9 +210,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_local()
       auto fn = this->parse_function_literal(function_token, is_thunk);
       if (not fn.ok()) return ParserResult<StmtNodePtr>::failure(fn.error_ref());
       ExprNodePtr function_expr = std::move(fn.value_ref());
-      StmtNodePtr stmt = std::make_unique<StmtNode>();
-      stmt->kind = AstNodeKind::LocalFunctionStmt;
-      stmt->span = this->span_from(local_token, name_token.value_ref());
+      auto stmt = std::make_unique<StmtNode>(AstNodeKind::LocalFunctionStmt, this->span_from(local_token, name_token.value_ref()));
       LocalFunctionStmtPayload payload(make_identifier(name_token.value_ref()), move_function_payload(function_expr));
       stmt->data = std::move(payload);
       return ParserResult<StmtNodePtr>::success(std::move(stmt));
@@ -270,9 +266,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_local()
       values.resize(name_count);
    }
 
-   StmtNodePtr stmt = std::make_unique<StmtNode>();
-   stmt->kind = AstNodeKind::LocalDeclStmt;
-   stmt->span = local_token.span();
+   auto stmt = std::make_unique<StmtNode>(AstNodeKind::LocalDeclStmt, local_token.span());
    stmt->data.emplace<LocalDeclStmtPayload>(assign_op, std::move(name_list), std::move(values));
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
@@ -305,9 +299,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_global()
 
       // Build a FunctionStmt with a simple name path (will store to global)
 
-      StmtNodePtr stmt = std::make_unique<StmtNode>();
-      stmt->kind = AstNodeKind::FunctionStmt;
-      stmt->span = this->span_from(global_token, name_token.value_ref());
+      auto stmt = std::make_unique<StmtNode>(AstNodeKind::FunctionStmt, this->span_from(global_token, name_token.value_ref()));
       FunctionNamePath name;
       name.segments.push_back(make_identifier(name_token.value_ref()));
       name.is_explicit_global = true;  // Mark as explicitly global
@@ -366,9 +358,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_global()
       values.resize(name_count);
    }
 
-   StmtNodePtr stmt = std::make_unique<StmtNode>();
-   stmt->kind = AstNodeKind::GlobalDeclStmt;
-   stmt->span = global_token.span();
+   auto stmt = std::make_unique<StmtNode>(AstNodeKind::GlobalDeclStmt, global_token.span());
    GlobalDeclStmtPayload payload(assign_op, std::move(name_list), std::move(values));
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
@@ -419,9 +409,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_function_stmt()
       if (payload) payload->parameters.insert(payload->parameters.begin(), self_param);
    }
 
-   StmtNodePtr stmt = std::make_unique<StmtNode>();
-   stmt->kind = AstNodeKind::FunctionStmt;
-   stmt->span = this->span_from(func_token, name_token.value_ref());
+   auto stmt = std::make_unique<StmtNode>(AstNodeKind::FunctionStmt, this->span_from(func_token, name_token.value_ref()));
    FunctionStmtPayload payload(std::move(path), move_function_payload(function_expr));
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
@@ -680,9 +668,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_if()
 
    this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
 
-   StmtNodePtr stmt = std::make_unique<StmtNode>();
-   stmt->kind = AstNodeKind::IfStmt;
-   stmt->span = if_token.span();
+   auto stmt = std::make_unique<StmtNode>(AstNodeKind::IfStmt, if_token.span());
    IfStmtPayload payload(std::move(clauses));
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
@@ -702,9 +688,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_while()
    if (not body.ok()) return ParserResult<StmtNodePtr>::failure(body.error_ref());
    this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
 
-   StmtNodePtr stmt = std::make_unique<StmtNode>();
-   stmt->kind = AstNodeKind::WhileStmt;
-   stmt->span = token.span();
+   auto stmt = std::make_unique<StmtNode>(AstNodeKind::WhileStmt, token.span());
    LoopStmtPayload payload(LoopStyle::WhileLoop, std::move(condition.value_ref()), std::move(body.value_ref()));
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
@@ -724,9 +708,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_repeat()
    auto condition = this->parse_expression();
    if (not condition.ok()) return ParserResult<StmtNodePtr>::failure(condition.error_ref());
 
-   StmtNodePtr stmt = std::make_unique<StmtNode>();
-   stmt->kind = AstNodeKind::RepeatStmt;
-   stmt->span = token.span();
+   auto stmt = std::make_unique<StmtNode>(AstNodeKind::RepeatStmt, token.span());
    LoopStmtPayload payload(LoopStyle::RepeatUntil, std::move(condition.value_ref()), std::move(body.value_ref()));
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
@@ -766,9 +748,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_for()
       if (not body.ok()) return ParserResult<StmtNodePtr>::failure(body.error_ref());
       this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
 
-      StmtNodePtr stmt = std::make_unique<StmtNode>();
-      stmt->kind = AstNodeKind::NumericForStmt;
-      stmt->span = token.span();
+      auto stmt = std::make_unique<StmtNode>(AstNodeKind::NumericForStmt, token.span());
       NumericForStmtPayload payload(make_identifier(name_token.value_ref()),
          std::move(start.value_ref()), std::move(stop.value_ref()), std::move(step_expr), std::move(body.value_ref()));
       stmt->data = std::move(payload);
@@ -836,24 +816,15 @@ ParserResult<StmtNodePtr> AstBuilder::parse_for()
                }
 
                // Create literals for stop and step
-               LiteralValue stop_lit;
-               stop_lit.kind = LiteralKind::Number;
-               stop_lit.number_value = final_stop;
-               ExprNodePtr final_stop_expr = make_literal_expr(stop_expr->span, stop_lit);
-
-               LiteralValue step_lit;
-               step_lit.kind = LiteralKind::Number;
-               step_lit.number_value = step_val;
-               ExprNodePtr step_expr = make_literal_expr(span, step_lit);
+               ExprNodePtr final_stop_expr = make_literal_expr(stop_expr->span, LiteralValue::number(final_stop));
+               ExprNodePtr step_expr = make_literal_expr(span, LiteralValue::number(step_val));
 
                this->ctx.consume(TokenKind::DoToken, ParserErrorCode::ExpectedToken);
                auto body = this->parse_scoped_block({ TokenKind::EndToken });
                if (not body.ok()) return ParserResult<StmtNodePtr>::failure(body.error_ref());
                this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
 
-               StmtNodePtr stmt = std::make_unique<StmtNode>();
-               stmt->kind = AstNodeKind::NumericForStmt;
-               stmt->span = token.span();
+               auto stmt = std::make_unique<StmtNode>(AstNodeKind::NumericForStmt, token.span());
                NumericForStmtPayload payload(std::move(names[0]), std::move(start_expr),
                   std::move(final_stop_expr), std::move(step_expr), std::move(body.value_ref()));
                stmt->data = std::move(payload);
@@ -885,10 +856,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_for()
    if (not body.ok()) return ParserResult<StmtNodePtr>::failure(body.error_ref());
    this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
 
-   StmtNodePtr stmt = std::make_unique<StmtNode>();
-   stmt->kind = AstNodeKind::GenericForStmt;
-   stmt->span = token.span();
-
+   auto stmt = std::make_unique<StmtNode>(AstNodeKind::GenericForStmt, token.span());
    GenericForStmtPayload payload(std::move(names), std::move(iterator_nodes), std::move(body.value_ref()));
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
@@ -955,27 +923,17 @@ ParserResult<StmtNodePtr> AstBuilder::parse_anonymous_for(const Token& ForToken)
             ExprNodePtr start_expr = std::move(range_payload->start);
 
             // Create literals for stop and step
-            LiteralValue stop_lit;
-            stop_lit.kind = LiteralKind::Number;
-            stop_lit.number_value = final_stop;
-            ExprNodePtr final_stop_expr = make_literal_expr(span, stop_lit);
-
-            LiteralValue step_lit;
-            step_lit.kind = LiteralKind::Number;
-            step_lit.number_value = step_val;
-            ExprNodePtr step_expr = make_literal_expr(span, step_lit);
+            ExprNodePtr final_stop_expr = make_literal_expr(span, LiteralValue::number(final_stop));
+            ExprNodePtr step_expr = make_literal_expr(span, LiteralValue::number(step_val));
 
             this->ctx.consume(TokenKind::DoToken, ParserErrorCode::ExpectedToken);
             auto body = this->parse_scoped_block({ TokenKind::EndToken });
             if (not body.ok()) return ParserResult<StmtNodePtr>::failure(body.error_ref());
             this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
 
-            StmtNodePtr stmt = std::make_unique<StmtNode>();
-            stmt->kind = AstNodeKind::NumericForStmt;
-            stmt->span = ForToken.span();
-            NumericForStmtPayload payload(std::move(blank_id), std::move(start_expr), std::move(final_stop_expr),
+            StmtNodePtr stmt = std::make_unique<StmtNode>(AstNodeKind::NumericForStmt, ForToken.span());
+            stmt->data.emplace<NumericForStmtPayload>(std::move(blank_id), std::move(start_expr), std::move(final_stop_expr),
                std::move(step_expr), std::move(body.value_ref()));
-            stmt->data = std::move(payload);
             return ParserResult<StmtNodePtr>::success(std::move(stmt));
          }
       }
@@ -994,10 +952,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_anonymous_for(const Token& ForToken)
    if (not body.ok()) return ParserResult<StmtNodePtr>::failure(body.error_ref());
    this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
 
-   StmtNodePtr stmt = std::make_unique<StmtNode>();
-   stmt->kind = AstNodeKind::GenericForStmt;
-   stmt->span = ForToken.span();
-
+   auto stmt = std::make_unique<StmtNode>(AstNodeKind::GenericForStmt, ForToken.span());
    std::vector<Identifier> names;
    names.push_back(std::move(blank_id));
 
@@ -1022,10 +977,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_do()
 
    this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
 
-   StmtNodePtr stmt = std::make_unique<StmtNode>();
-   stmt->kind = AstNodeKind::DoStmt;
-   stmt->span = token.span();
-
+   auto stmt = std::make_unique<StmtNode>(AstNodeKind::DoStmt, token.span());
    DoStmtPayload payload(std::move(block.value_ref()));
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
@@ -1062,9 +1014,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_defer()
       this->ctx.consume(TokenKind::RightParen, ParserErrorCode::ExpectedToken);
    }
 
-   StmtNodePtr stmt = std::make_unique<StmtNode>();
-   stmt->kind = AstNodeKind::DeferStmt;
-   stmt->span = token.span();
+   auto stmt = std::make_unique<StmtNode>(AstNodeKind::DeferStmt, token.span());
    DeferStmtPayload payload(make_function_payload(std::move(param_info.parameters), param_info.is_vararg,
       std::move(body.value_ref())), std::move(args));
    stmt->data = std::move(payload);
@@ -1117,10 +1067,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_return()
    auto payload = this->parse_return_payload(token, false);
    if (not payload.ok()) return ParserResult<StmtNodePtr>::failure(payload.error_ref());
 
-   StmtNodePtr stmt = std::make_unique<StmtNode>();
-   stmt->kind = AstNodeKind::ReturnStmt;
-   stmt->span = token.span();
-
+   auto stmt = std::make_unique<StmtNode>(AstNodeKind::ReturnStmt, token.span());
    stmt->data = std::move(payload.value_ref());
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
@@ -1484,9 +1431,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
             return ParserResult<ExprNodePtr>::failure(values.error_ref());
          }
 
-         StmtNodePtr stmt = std::make_unique<StmtNode>();
-         stmt->kind = AstNodeKind::AssignmentStmt;
-         stmt->span = op.span();
+         auto stmt = std::make_unique<StmtNode>(AstNodeKind::AssignmentStmt, op.span());
          AssignmentStmtPayload payload(assignment_op, std::move(targets), std::move(values.value_ref()));
          stmt->data = std::move(payload);
 
@@ -1549,9 +1494,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_expression_stmt()
       this->ctx.tokens().advance();
       auto values = this->parse_expression_list();
       if (not values.ok()) return ParserResult<StmtNodePtr>::failure(values.error_ref());
-      StmtNodePtr stmt = std::make_unique<StmtNode>();
-      stmt->kind = AstNodeKind::AssignmentStmt;
-      stmt->span = op.span();
+      auto stmt = std::make_unique<StmtNode>(AstNodeKind::AssignmentStmt, op.span());
       AssignmentStmtPayload payload(assignment, std::move(targets), std::move(values.value_ref()));
       stmt->data = std::move(payload);
       return ParserResult<StmtNodePtr>::success(std::move(stmt));
@@ -1574,10 +1517,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_expression_stmt()
                auto payload = this->parse_return_payload(return_token, true);
                if (not payload.ok()) return ParserResult<StmtNodePtr>::failure(payload.error_ref());
 
-               StmtNodePtr node = std::make_unique<StmtNode>();
-               node->kind = AstNodeKind::ReturnStmt;
-               node->span = return_token.span();
-
+               auto node = std::make_unique<StmtNode>(AstNodeKind::ReturnStmt, return_token.span());
                node->data = std::move(payload.value_ref());
                body = std::move(node);
             }
@@ -1594,9 +1534,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_expression_stmt()
 
             if (body) {
                SourceSpan span = combine_spans(condition->span, body->span);
-               StmtNodePtr stmt = std::make_unique<StmtNode>();
-               stmt->kind = AstNodeKind::ConditionalShorthandStmt;
-               stmt->span = span;
+               auto stmt = std::make_unique<StmtNode>(AstNodeKind::ConditionalShorthandStmt, span);
                ConditionalShorthandStmtPayload payload(std::move(condition), std::move(body));
                stmt->data = std::move(payload);
                return ParserResult<StmtNodePtr>::success(std::move(stmt));
@@ -1610,9 +1548,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_expression_stmt()
          "unexpected expression list without assignment");
    }
 
-   StmtNodePtr stmt = std::make_unique<StmtNode>();
-   stmt->kind = AstNodeKind::ExpressionStmt;
-   stmt->span = targets[0]->span;
+   auto stmt = std::make_unique<StmtNode>(AstNodeKind::ExpressionStmt, targets[0]->span);
    ExpressionStmtPayload payload(std::move(targets[0]));
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
@@ -2060,10 +1996,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
             ExprNodeList args;
 
             // First argument: type name as string literal
-            LiteralValue type_literal;
-            type_literal.kind = LiteralKind::String;
-            type_literal.string_value = type_str;
-            args.push_back(make_literal_expr(span, type_literal));
+            args.push_back(make_literal_expr(span, LiteralValue::string(type_str)));
 
             // Add all initialiser values
             for (auto &val : init_values) {
@@ -2085,6 +2018,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
                Identifier arr_id = Identifier::from_keepstr(this->ctx.lex().keepstr("_arr"), span);
 
                // Statement 1: local _arr = array.of('type', v1, v2, ...)
+
                std::vector<Identifier> local_names;
                local_names.push_back(arr_id);
                ExprNodeList local_values;
@@ -2092,6 +2026,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
                StmtNodePtr local_stmt = make_local_decl_stmt(span, std::move(local_names), std::move(local_values));
 
                // Build array.resize(_arr, size_expr_or_literal)
+
                Identifier array_id2 = Identifier::from_keepstr(this->ctx.lex().keepstr("array"), span);
                NameRef array_ref2;
                array_ref2.identifier = array_id2;
@@ -2101,21 +2036,16 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
                ExprNodePtr array_resize = make_member_expr(span, std::move(array_base2), resize_id, false);
 
                // Arguments for resize: (_arr, size)
+
                ExprNodeList resize_args;
                NameRef arr_ref;
                arr_ref.identifier = arr_id;
                resize_args.push_back(make_identifier_expr(span, arr_ref));
 
                // Use size_expr if available, otherwise use literal
-               if (size_expr) {
-                  resize_args.push_back(std::move(size_expr));
-               }
-               else {
-                  LiteralValue size_literal;
-                  size_literal.kind = LiteralKind::Number;
-                  size_literal.number_value = double(specified_size);
-                  resize_args.push_back(make_literal_expr(span, size_literal));
-               }
+
+               if (size_expr) resize_args.push_back(std::move(size_expr));
+               else resize_args.push_back(make_literal_expr(span, LiteralValue::number(double(specified_size))));
 
                ExprNodePtr resize_call = make_call_expr(span, std::move(array_resize), std::move(resize_args), false);
 
@@ -2143,9 +2073,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
                ExprNodeList call_args;
                node = make_call_expr(span, std::move(anon_func), std::move(call_args), false);
             }
-            else {
-               node = std::move(array_of_call);
-            }
+            else node = std::move(array_of_call);
          }
          else {
             // Empty braces {} or no initialiser: use array.new()
@@ -2156,24 +2084,12 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
             ExprNodePtr array_new = make_member_expr(span, std::move(array_base), new_id, false);
 
             // Build argument list: (size, 'type')
+
             ExprNodeList args;
+            if (size_expr) args.push_back(std::move(size_expr));
+            else args.push_back(make_literal_expr(span, LiteralValue::number((specified_size >= 0) ? double(specified_size) : 0.0)));
 
-            // First argument: size expression or literal (0 if not specified)
-            if (size_expr) {
-               args.push_back(std::move(size_expr));
-            }
-            else {
-               LiteralValue size_literal;
-               size_literal.kind = LiteralKind::Number;
-               size_literal.number_value = (specified_size >= 0) ? double(specified_size) : 0.0;
-               args.push_back(make_literal_expr(span, size_literal));
-            }
-
-            // Second argument: type name as string literal
-            LiteralValue type_literal;
-            type_literal.kind = LiteralKind::String;
-            type_literal.string_value = type_str;
-            args.push_back(make_literal_expr(span, type_literal));
+            args.push_back(make_literal_expr(span, LiteralValue::string(type_str)));
 
             node = make_call_expr(span, std::move(array_new), std::move(args), false);
          }
@@ -2927,31 +2843,20 @@ Identifier AstBuilder::make_identifier(const Token &Token)
 
 LiteralValue AstBuilder::make_literal(const Token &token)
 {
-   LiteralValue literal;
    switch (token.kind()) {
       case TokenKind::Number:
-         literal.kind = LiteralKind::Number;
-         literal.number_value = token.payload().as_number();
-         break;
+         return LiteralValue::number(token.payload().as_number());
       case TokenKind::String:
-         literal.kind = LiteralKind::String;
-         literal.string_value = token.payload().as_string();
-         break;
+         return LiteralValue::string(token.payload().as_string());
       case TokenKind::Nil:
-         literal.kind = LiteralKind::Nil;
-         break;
+         return LiteralValue::nil();
       case TokenKind::TrueToken:
-         literal.kind = LiteralKind::Boolean;
-         literal.bool_value = true;
-         break;
+         return LiteralValue::boolean(true);
       case TokenKind::FalseToken:
-         literal.kind = LiteralKind::Boolean;
-         literal.bool_value = false;
-         break;
+         return LiteralValue::boolean(false);
       default:
-         break;
+         return LiteralValue::nil();
    }
-   return literal;
 }
 
 //********************************************************************************************************************

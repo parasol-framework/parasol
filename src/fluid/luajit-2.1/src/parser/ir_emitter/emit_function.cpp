@@ -49,10 +49,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
       ExprNodePtr create_thunk_fn = make_identifier_expr(span, create_thunk_ref);
 
       // Type tag argument
-      LiteralValue type_literal;
-      type_literal.kind = LiteralKind::Number;
-      type_literal.number_value = double(fluid_type_to_lj_tag(Payload.thunk_return_type));
-      ExprNodePtr type_arg = make_literal_expr(span, type_literal);
+      ExprNodePtr type_arg = make_literal_expr(span, LiteralValue::number(double(fluid_type_to_lj_tag(Payload.thunk_return_type))));
 
       // Build argument list
       ExprNodeList call_args;

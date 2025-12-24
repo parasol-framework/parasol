@@ -349,8 +349,7 @@ void IrEmitter::optimise_assert(const ExprNodeList &Args)
    std::string prefix = std::format("[{}:{}] ", line_num, column);
    GCstr *prefix_str = lj_str_new(this->lex_state.L, prefix.c_str(), prefix.size());
 
-   LiteralValue prefix_literal = { .kind = LiteralKind::String, .string_value = prefix_str };
-   ExprNodePtr prefix_expr = make_literal_expr(span, prefix_literal);
+   ExprNodePtr prefix_expr = make_literal_expr(span, LiteralValue::string(prefix_str));
 
    // "[LINE:COLUMN] " .. message
    ExprNodePtr concat_expr = make_binary_expr(span, AstBinaryOperator::Concat, std::move(prefix_expr), std::move(msg_arg));

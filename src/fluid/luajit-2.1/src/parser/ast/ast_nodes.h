@@ -223,6 +223,44 @@ struct LiteralValue {
    lua_Number number_value = 0.0;
    GCstr* string_value = nullptr;
    TValue cdata_value{};
+
+   // Default constructor (nil)
+   LiteralValue() = default;
+
+   // Construct a nil literal
+   static LiteralValue nil() { return LiteralValue{}; }
+
+   // Construct a boolean literal
+   static LiteralValue boolean(bool Value) {
+      LiteralValue lit;
+      lit.kind = LiteralKind::Boolean;
+      lit.bool_value = Value;
+      return lit;
+   }
+
+   // Construct a number literal
+   static LiteralValue number(lua_Number Value) {
+      LiteralValue lit;
+      lit.kind = LiteralKind::Number;
+      lit.number_value = Value;
+      return lit;
+   }
+
+   // Construct a string literal
+   static LiteralValue string(GCstr* Value) {
+      LiteralValue lit;
+      lit.kind = LiteralKind::String;
+      lit.string_value = Value;
+      return lit;
+   }
+
+   // Construct a cdata literal
+   static LiteralValue cdata(const TValue& Value) {
+      LiteralValue lit;
+      lit.kind = LiteralKind::CData;
+      lit.cdata_value = Value;
+      return lit;
+   }
 };
 
 struct FunctionParameter {
@@ -545,6 +583,9 @@ struct ExprNode {
       ResultFilterPayload, TableExprPayload, FunctionExprPayload, DeferredExprPayload,
       RangeExprPayload, ChooseExprPayload>
       data;
+
+   ExprNode() = default;
+   ExprNode(AstNodeKind Kind, SourceSpan Span) : kind(Kind), span(Span) {}
 };
 
 struct IfClause {
@@ -756,6 +797,9 @@ struct StmtNode {
       ReturnStmtPayload, BreakStmtPayload, ContinueStmtPayload, DeferStmtPayload,
       DoStmtPayload, ConditionalShorthandStmtPayload, ExpressionStmtPayload>
       data;
+
+   StmtNode() = default;
+   StmtNode(AstNodeKind Kind, SourceSpan Span) : kind(Kind), span(Span) {}
 };
 
 //********************************************************************************************************************
