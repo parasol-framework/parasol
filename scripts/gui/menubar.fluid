@@ -367,7 +367,7 @@ gui.menubar = function(Options)
       arrangeItems(self)
    end,
    function(Error)
-      print(Error .. '\n' .. debug.traceback())
+      print(Error)
    end)
 
    return self

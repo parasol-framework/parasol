@@ -91,15 +91,26 @@ LJLIB_ASM(assert)      LJLIB_REC(.)
          // nil or other types: append nothing (empty message after prefix)
 
          GCstr *formatted = lj_buf_str(L, sb);
-         setstrV(L, L->top++, formatted);
+
+         if (not L->sent_traceback) {
+            // Inject traceback information into the first serious error message
+            // Further tracebacks are not injected because it makes the log unnecessarily noisy.
+            luaL_traceback(L, L, strdata(formatted), 1); // level 1 = skip assert itself
+            L->sent_traceback = true;
+         }
+         else setstrV(L, L->top++, formatted);
       }
       else if (tvisstr(msg_tv) or tvisnumber(msg_tv)) {
          // No location info, use message as-is
          GCstr *msg = lj_lib_checkstr(L, 2);
-         setstrV(L, L->top++, msg);
+
+         if (not L->sent_traceback) {
+           luaL_traceback(L, L, strdata(msg), 1);
+           L->sent_traceback = true;
+         }
+         else setstrV(L, L->top++, msg);
       }
-      else {
-         // No location info and message is nil or non-string - use default error
+      else { // No location info and message is nil or non-string - use default error
          lj_err_caller(L, ErrMsg::ASSERT);
       }
       lj_err_run(L);

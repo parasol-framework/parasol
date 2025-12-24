@@ -558,18 +558,12 @@ static void lex_skip_inline_ws(LexState *State) noexcept
 //********************************************************************************************************************
 // Skip all whitespace including newlines (for multi-line constructs)
 
-static void lex_skip_ws(LexState *State) noexcept
+[[maybe_unused]] static void lex_skip_ws(LexState *State) noexcept
 {
    while (true) {
-      if (State->c IS ' ' or State->c IS '\t') {
-         lex_next(State);
-      }
-      else if (lex_iseol(State->c)) {
-         lex_newline(State);
-      }
-      else {
-         break;
-      }
+      if (State->c IS ' ' or State->c IS '\t') lex_next(State);
+      else if (lex_iseol(State->c)) lex_newline(State);
+      else break;
    }
 }
 
@@ -584,9 +578,7 @@ static LexToken lex_array_typed(LexState *State, TValue *tv)
    lex_skip_inline_ws(State);
 
    // Scan type name
-   if (not (isalpha(State->c) or State->c IS '_')) {
-      lj_lex_error(State, '<', ErrMsg::XTOKEN);
-   }
+   if (not (isalpha(State->c) or State->c IS '_')) lj_lex_error(State, '<', ErrMsg::XTOKEN);
 
    lj_buf_reset(&State->sb);
    do {
@@ -609,17 +601,13 @@ static LexToken lex_array_typed(LexState *State, TValue *tv)
          int64_t size = 0;
          while (isdigit(State->c)) {
             size = size * 10 + (State->c - '0');
-            if (size > INT32_MAX) {
-               lj_lex_error(State, TK_number, ErrMsg::XNUMBER);
-            }
+            if (size > INT32_MAX) lj_lex_error(State, TK_number, ErrMsg::XNUMBER);
             lex_next(State);
          }
          State->array_typed_size = size;
          lex_skip_inline_ws(State);
 
-         if (State->c != '>') {
-            lj_lex_error(State, '>', ErrMsg::XTOKEN);
-         }
+         if (State->c != '>') lj_lex_error(State, '>', ErrMsg::XTOKEN);
          lex_next(State);  // Consume '>'
       }
       else {
@@ -630,9 +618,7 @@ static LexToken lex_array_typed(LexState *State, TValue *tv)
       }
    }
    else {
-      if (State->c != '>') {
-         lj_lex_error(State, '>', ErrMsg::XTOKEN);
-      }
+      if (State->c != '>') lj_lex_error(State, '>', ErrMsg::XTOKEN);
       lex_next(State);  // Consume '>'
    }
 
@@ -896,8 +882,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
                   *tv = limit_val;
                   return TK_pipe;
                }
-               else {
-                  // Error: expected '>' after number
+               else { // Error: expected '>' after number
                   lj_lex_error(State, TK_pipe, ErrMsg::XSYMBOL);
                }
             }

@@ -10,7 +10,7 @@ Parameters:
    require 'gui/window'
    include 'display'
 
-   mVec ?= mod.load('vector')
+   lVec = mVec
 
    local glWinWidth, glWinHeight, glColours, glMode, glWindow, glSurface, glParticles, glViewport, glScene
    local glTimerHandle, glFPS, glPrinted
@@ -28,7 +28,7 @@ function drawDirectVector(Surface, Bitmap)
 
    start = mSys.PreciseTime()
    for p in values(glParticles) do
-      mVec.DrawPath(Bitmap, p.path, 0, nil, p.colour)
+      lVec.DrawPath(Bitmap, p.path, 0, nil, p.colour)
    end
 
    glFrameStats.times:push(mSys.PreciseTime() - start)
@@ -71,7 +71,7 @@ function newParticle()
       })
    elseif glMode is MODE_DIRECTVECTOR then
       particle.colour = glColours[(math.floor(math.random() * #glColours))]
-      err, particle.path = mVec.GenerateEllipse(particle.x, particle.y, particle.radius, particle.radius, 0)
+      err, particle.path = lVec.GenerateEllipse(particle.x, particle.y, particle.radius, particle.radius, 0)
    elseif glMode is MODE_PRIMITIVE then
       particle.colour = glColours[(math.floor(math.random() * #glColours))]
    else
@@ -135,7 +135,7 @@ function timer(Subscriber, Elapsed, Current)
 
       choose glMode from
          MODE_VECTOR -> p.vector.acMoveToPoint(nextX + p.radius, nextY + p.radius, 0, moveflag)
-         MODE_DIRECTVECTOR -> mVec.TranslatePath(p.path, tx, ty)
+         MODE_DIRECTVECTOR -> lVec.TranslatePath(p.path, tx, ty)
       end
 
       p.x = nextX

@@ -385,7 +385,7 @@ end
 -- should be used for in-place code formatting.
 
 global function extractParagraph(Input, Caller, References)
-   if not Input?? then error('No Input provided to extractParagraph()\n' .. debug.traceback()) end
+   if not Input?? then error('No Input provided to extractParagraph()') end
 
    Input = Input:trim()
 
@@ -431,7 +431,6 @@ global function extractParagraph(Input, Caller, References)
                   return '<types lookup="' .. Lookup .. '"/>'
                else
                   print('Unrecognised struct or constant "' .. Lookup .. '"')
-                  --print(debug.traceback())
                end
             end)
          elseif line:match('^<pre>.-') or line:match('^<h%d>.-') or
@@ -524,7 +523,6 @@ global function substituteReferences(String, Class)
          return '<lk>' .. Lookup .. '</lk>' .. Whitespace
       else
          print('Unrecognised struct or constant "!' .. Lookup .. '"')
-         --print(debug.traceback())
       end
    end)
 
