@@ -3,7 +3,7 @@
 @BeforeEach(hotpath=true)
 function enforce_hotpath() end
 
-@Test function testThunkBasicExecution()
+@Test function ThunkBasicExecution()
    -- Thunk body should not execute on call
    executed = false
 
@@ -22,7 +22,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testGlobalThunkVar()
+@Test function GlobalThunkVar()
    thunk get_str():str
       return 'hello'
    end
@@ -35,7 +35,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testThunkParameterCapture()
+@Test function ThunkParameterCapture()
    -- Thunk with parameters - capture at call time
    call_count = 0
 
@@ -65,7 +65,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testLocalThunk()
+@Test function LocalThunk()
    exec_local = false
 
    thunk local_lazy():str
@@ -83,7 +83,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testAnonymousThunk()
+@Test function AnonymousThunk()
    executed = false
 
    -- Anonymous thunk assigned to variable
@@ -103,7 +103,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testAnonymousThunkNoParams()
+@Test function AnonymousThunkNoParams()
    counter = 0
 
    -- Parameterless anonymous thunks are auto-invoked, returning thunk userdata directly
@@ -128,7 +128,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testThunkReturnTypes()
+@Test function ThunkReturnTypes()
    -- Test explicit return type annotation
    thunk get_string():str
       return "typed"
@@ -159,7 +159,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testThunkControlFlow()
+@Test function ThunkControlFlow()
    -- Test thunk with if/else control flow
    thunk conditional(x):num
       if x > 0 then
@@ -183,7 +183,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testThunkWithLoop()
+@Test function ThunkWithLoop()
    -- Test thunk containing a loop
    thunk sum_to(n):num
       total = 0
@@ -199,7 +199,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testThunkUpvalueCapture()
+@Test function ThunkUpvalueCapture()
    -- Test that thunks properly capture upvalues
    multiplier = 10
 
@@ -221,7 +221,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testThunkDefaultReturnType()
+@Test function ThunkDefaultReturnType()
    -- Thunk without return type defaults to 'any'
    thunk untyped_thunk()
       return "default"
@@ -234,7 +234,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testThunkWithTableAccess()
+@Test function ThunkWithTableAccess()
    -- Test thunk result used for table access (tests lj_meta_tget resolution)
    thunk get_config():table
       return { name = "test", value = 42 }
@@ -247,7 +247,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testRecursiveThunk()
+@Test function RecursiveThunk()
    -- Test recursive thunk (each call creates new thunk)
    thunk factorial(n):num
       if n <= 1 then
@@ -263,7 +263,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testMultipleThunkResolutions()
+@Test function MultipleThunkResolutions()
    -- Test that multiple thunks can be resolved independently
    count_a, count_b = 0, 0
 
@@ -290,7 +290,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testThunkArithmeticOperators()
+@Test function ThunkArithmeticOperators()
    -- Test all arithmetic metamethods
    thunk get_ten():num return 10 end
    thunk get_three():num return 3 end
@@ -319,7 +319,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testThunkConcatenation()
+@Test function ThunkConcatenation()
    -- Test string concatenation metamethod
    thunk get_hello():str return "Hello" end
    thunk get_world():str return "World" end
@@ -333,7 +333,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testThunkComparison()
+@Test function ThunkComparison()
    -- Test comparison metamethods (thunk vs thunk)
    thunk cmp_get_five():num return 5 end
    thunk cmp_get_ten():num return 10 end
@@ -357,7 +357,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testThunkNewindex()
+@Test function ThunkNewindex()
    -- Test table field assignment through thunk
    thunk newindex_get_table():table return { x = 1 } end
 
@@ -370,7 +370,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testThunkLength()
+@Test function ThunkLength()
    -- Test length operator
    thunk len_get_array():table return {1, 2, 3, 4, 5} end
    thunk len_get_string():str return "hello" end
@@ -384,7 +384,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testThunkCall()
+@Test function ThunkCall()
    -- Test calling a thunk that resolves to a function
    -- Note: Direct call thunk(args) doesn't propagate return values correctly
    -- Use resolve() to get the function, then call it
@@ -401,7 +401,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testIsthunkFunction()
+@Test function IsthunkFunction()
    -- Test the isthunk() helper function
    thunk get_value():num return 42 end
 
@@ -419,7 +419,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testThunkGCSurvival()
+@Test function ThunkGCSurvival()
    -- Test that thunks and their resolved values survive garbage collection
    thunk get_data():table return { value = "persistent" } end
 
@@ -441,7 +441,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testThunkBoolReturnType()
+@Test function ThunkBoolReturnType()
    -- Test boolean return type
    thunk is_positive(x):bool
       return x > 0
@@ -464,7 +464,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testThunkWithNilReturn()
+@Test function ThunkWithNilReturn()
    -- Test thunk that returns nil (uses default/any type since :nil isn't a valid annotation)
    thunk get_nil()
       return nil
@@ -477,7 +477,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testThunkCachingBehavior()
+@Test function ThunkCachingBehavior()
    -- Verify that thunks cache their result and don't re-execute
    exec_count = 0
 

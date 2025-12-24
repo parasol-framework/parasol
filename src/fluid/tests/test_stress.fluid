@@ -1,7 +1,7 @@
 -- Stress testing for the parser and JIT compiler.  For most of these tests the main objective is to not crash
 -- or fail during parsing, so use of assert() isn't strictly necessary.
 
-@Test function testLongAdditionChain()
+@Test function LongAdditionChain()
    count = 40000
    terms = {}
    for index = 0, count do
@@ -14,7 +14,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testDeepNesting()
+@Test function DeepNesting()
    -- Test deeply nested expressions and function calls
    count = 0
 
@@ -46,7 +46,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testLargeTableConstruction()
+@Test function LargeTableConstruction()
    -- Test creating very large tables
    large_array = {}
    for i = 0, 50000 do
@@ -66,7 +66,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testStringConcatenation()
+@Test function StringConcatenation()
    -- Test very long string concatenation chains
    result = ""
    for i = 0, 10000 do
@@ -85,7 +85,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testManyLocalVariables()
+@Test function ManyLocalVariables()
    -- Test parser/compiler handling of many variables in scope
    v1, v2, v3, v4, v5 = 1, 2, 3, 4, 5
    v6, v7, v8, v9, v10 = 6, 7, 8, 9, 10
@@ -110,7 +110,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testComplexExpressions()
+@Test function ComplexExpressions()
    -- Test deeply nested and complex expressions with various operators
    a, b, c, d = 10, 20, 30, 40
 
@@ -150,7 +150,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testLoopIntensity()
+@Test function LoopIntensity()
    -- Test intensive nested loops
    counter = 0
 
@@ -186,7 +186,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testRecursion()
+@Test function Recursion()
    -- Test deep recursion with tail-call optimization
    -- Recursive function with return values requires explicit type declaration
    function fibonacci(N, A, B):num
@@ -228,7 +228,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testDeferStatements()
+@Test function DeferStatements()
    -- Test defer statement under stress conditions
    execution_order = {}
 

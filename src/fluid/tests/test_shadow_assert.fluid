@@ -7,7 +7,7 @@ function enforce_hotpath() end
 ----------------------------------------------------------------------------------------------------------------------
 -- Basic assert that passes (message should not be evaluated)
 
-@Test function testAssertPassesNoEval()
+@Test function AssertPassesNoEval()
    message_evaluated = false
    function get_message()
       message_evaluated = true
@@ -21,7 +21,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Basic assert that fails
 
-@Test function testAssertFails()
+@Test function AssertFails()
    success, err = pcall(function()
       assert(false, 'Custom error message')
    end)
@@ -33,7 +33,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Assert with no message (uses default)
 
-@Test function testAssertDefaultMessage()
+@Test function AssertDefaultMessage()
    success, err = pcall(function()
       assert(false)
    end)
@@ -45,7 +45,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Assert with complex condition
 
-@Test function testAssertComplexCondition()
+@Test function AssertComplexCondition()
    x = 10
    y = 20
    assert(x < y, 'x should be less than y')
@@ -54,7 +54,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Assert with expression that has side effects in condition
 
-@Test function testAssertConditionSideEffects()
+@Test function AssertConditionSideEffects()
    counter = 0
    function increment()
       counter++
@@ -68,7 +68,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Multiple asserts in sequence
 
-@Test function testMultipleAsserts()
+@Test function MultipleAsserts()
    assert(1 is 1)
    assert(2 is 2, 'two is two')
    assert(true)
@@ -78,7 +78,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Assert with string concatenation in message (lazy evaluation test)
 
-@Test function testAssertExpensiveMessage()
+@Test function AssertExpensiveMessage()
    expensive_called = false
    function expensive_operation()
       expensive_called = true
@@ -92,7 +92,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Assert with nil condition
 
-@Test function testAssertNil()
+@Test function AssertNil()
    success, err = pcall(function()
       assert(nil, 'nil is falsey')
    end)
@@ -103,21 +103,21 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Assert with 0 (which is truthy in Lua)
 
-@Test function testAssertZero()
+@Test function AssertZero()
    assert(0, 'zero is truthy')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Assert with empty string (which is truthy in Lua)
 
-@Test function testAssertEmptyString()
+@Test function AssertEmptyString()
    assert('', 'empty string is truthy')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Assert does NOT return values (shadow optimization always applies)
 
-@Test function testAssertNoReturn()
+@Test function AssertNoReturn()
    -- Shadow function: assert() returns no values in all contexts.
    -- Unlike standard Lua where assert returns all its arguments, the shadow
    -- assert is optimised to never evaluate or return the message.

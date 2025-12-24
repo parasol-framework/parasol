@@ -6,7 +6,7 @@ function enforce_hotpath() end
 -----------------------------------------------------------------------------------------------------------------------
 -- Using pairs() on an object will iterate over its field meta data.
 
-@Test function testPairs()
+@Test function Pairs()
    script = obj.find("self")
    for k,v in pairs(script) do
       print(string.format("%20s", k), " ", string.format("$%.8x", v))
@@ -16,7 +16,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Using ipairs() on an object will iterate over its field meta data.
 
-@Test function testIPairs()
+@Test function IPairs()
    script = obj.find("self")
    for k,v in ipairs(script) do
       print(k, " ", v)
@@ -25,7 +25,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test function testType()
+@Test function Type()
    script = obj.find("self")
    assert(getmetatable(script).__name is 'Fluid.obj', 'Expected metatable __name of Fluid.obj for script objecxt')
 end

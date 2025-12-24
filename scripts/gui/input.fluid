@@ -48,7 +48,7 @@ gui.input = function(Options)
       self.viewport.acDisable()
       self.text.opacity = 0.5
       self.bkgd.fill = gui.style.page.bkgd
-      if self.events.disable then self.events.disable(self) end
+      self.events?.disable(self)
       self.viewport.acDraw()
    end
 
@@ -57,7 +57,7 @@ gui.input = function(Options)
       self.viewport.acDisable()
       self.text.opacity = 1.0
       self.bkgd.fill = gui.style.page.bkgd
-      if self.events.enable then self.events.enable(self) end
+      self.events?.enable(self)
       self.viewport.acDraw()
    end
 
@@ -181,7 +181,7 @@ gui.input = function(Options)
    end)
 
    self._textClip.mtSubscribeKeyboard(function(Viewport, Qualifiers, Value, Unicode)
-      if not (Qualifiers & KQ_PRESSED)?? then return end
+      if (Qualifiers & KQ_PRESSED) is 0 then return end
 
       if (Value is KEY_ENTER) or (Value is KEY_NP_ENTER) then
          validateInput(self)

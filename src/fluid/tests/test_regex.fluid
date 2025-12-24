@@ -1,6 +1,6 @@
 -- Flute tests for the regex functionality
 
-@Test function testConstruction()
+@Test function Construction()
    -- Test valid regex construction
 
    simple_regex = regex.new("hello")
@@ -22,7 +22,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test function testTestMethod()
+@Test function TestMethod()
    test_regex = regex.new("\\d+")
    assert(test_regex.test("abc123def"), "Should find digits in string")
    assert(not test_regex.test("hello world"), "Should not find digits in text")
@@ -37,7 +37,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test function testMatchMethod()
+@Test function MatchMethod()
    -- Simple match
    word_regex = regex.new("(\\w+)")
    matches = word_regex.search("hello world")
@@ -64,7 +64,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test function testSearchMethod()
+@Test function SearchMethod()
    digit_regex = regex.new("(\\d+)")
    all_matches = digit_regex.search("abc123def456ghi")
    assert(#all_matches is 2, "Should find 2 digit sequences")
@@ -80,7 +80,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test function testReplaceMethod()
+@Test function ReplaceMethod()
    replace_regex = regex.new("\\d+")
    result1 = replace_regex.replace("abc123def456", "XXX")
    assert(result1 is "abcXXXdefXXX", "Failed to replace both occurrences")
@@ -106,7 +106,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test function testSplitMethod()
+@Test function SplitMethod()
    comma_regex = regex.new("\\s*,\\s*")
    split_result = comma_regex.split("apple, banana,  cherry")
    assert(#split_result is 3, "Should split into 3 parts")
@@ -131,7 +131,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test function testFlags()
+@Test function Flags()
    -- Case insensitive flag
    icase_regex = regex.new("hello", regex.ICASE)
    assert(icase_regex.test("HELLO"), "ICASE flag should work")
@@ -141,7 +141,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test function testErrorHandling()
+@Test function ErrorHandling()
    -- Test empty pattern (valid)
    empty_regex = regex.new("")
    assert(empty_regex.test("anything") is true, "Empty pattern should match anything")
@@ -153,7 +153,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test function testRealWorldPatterns()
+@Test function RealWorldPatterns()
    -- Email validation
    email_validator = regex.new("^[\\w._%+\\-]+@[\\w.\\-]+\\.[A-Za-z]{2,}$")
    assert(email_validator.test("user@example.com"), "Valid email should pass")
@@ -181,7 +181,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test function testMemoryManagement()
+@Test function MemoryManagement()
    -- Create many regex objects to test memory handling
    regex_list = {}
    for i = 0, 99 do

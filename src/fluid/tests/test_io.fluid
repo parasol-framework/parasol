@@ -2,12 +2,12 @@
 -- Flute tests for the Lua IO library
 
 glTestFolder = 'temp:'
-glTestFiles = { }
+glTestFiles = array<string>
 
 @AfterAll function cleanup()
-   for k, v in pairs(glTestFiles) do
-      logOutput('Deleting test file ' .. v)
-      mSys.DeleteFile(v)
+   for _, path in glTestFiles do
+      logOutput('Deleting test file ' .. path)
+      mSys.DeleteFile(path)
    end
 end
 
@@ -17,10 +17,9 @@ end
 function createTestFile(name, content)
    path = glTestFolder .. name
    file = obj.new('file', { path=path, flags=FL_NEW|FL_WRITE })
-   if content then
-      file.acWrite(content)
-   end
-   table.insert(glTestFiles, path)
+   content and file.acWrite(content)
+
+   glTestFiles:push(path)
    return path
 end
 
@@ -56,7 +55,7 @@ end
    assert(file, 'Failed to open file for writing')
    file:write('Test content')
    file:close()
-   table.insert(glTestFiles, write_path)
+   glTestFiles:push(write_path)
    assert(fileExists(write_path), 'File should exist after writing')
 
    -- Test append mode
@@ -120,7 +119,7 @@ end
    test_path = glTestFolder .. 'test_file_write.txt'
    file = io.open(test_path, 'w')
    assert(file, 'Failed to open file for writing')
-   table.insert(glTestFiles, test_path)
+   glTestFiles:push(test_path)
 
    -- Test single string write
    result = file:write('Hello')
@@ -214,7 +213,7 @@ end
    test_path = glTestFolder .. 'test_flush.txt'
    file = io.open(test_path, 'w')
    assert(file, 'Failed to open file for flushing')
-   table.insert(glTestFiles, test_path)
+   glTestFiles:push(test_path)
 
    file:write('test data')
    result = file:flush()
@@ -233,10 +232,10 @@ end
 
    -- Test io.lines with filename
    line_count = 0
-   collected_lines = {}
+   collected_lines = array<string>
    for line in io.lines(test_path) do
       line_count++
-      table.insert(collected_lines, line)
+      collected_lines:push(line)
    end
 
    assert(line_count is 3, 'Should read 3 lines, got ' .. line_count)
@@ -252,10 +251,10 @@ end
    assert(file, 'Failed to open file for line iteration')
 
    line_count = 0
-   collected_lines = {}
+   collected_lines = array<string>
    for line in file:lines() do
       line_count++
-      table.insert(collected_lines, line)
+      collected_lines:push(line)
    end
 
    assert(line_count is 3, 'Should read 3 lines from file handle')
@@ -282,7 +281,7 @@ end
    -- Test setting default output
    output_path = glTestFolder .. 'test_output.txt'
    output_file = io.output(output_path)
-   table.insert(glTestFiles, output_path)
+   glTestFiles:push(output_path)
    assert(output_file, 'io.output should return file handle when setting')
 
    -- Test getting current default output
@@ -367,12 +366,12 @@ end
    assert(write_file, 'Failed to open file for integration test')
    write_file:write(test_data)
    write_file:close()
-   table.insert(glTestFiles, test_path)
+   glTestFiles:push(test_path)
 
    -- Read it back and verify
-   lines_read = {}
+   lines_read = array<string>
    for line in io.lines(test_path) do
-      table.insert(lines_read, line)
+      lines_read:push(line)
    end
 
    assert(#lines_read is 3, 'Should read exactly 3 lines')

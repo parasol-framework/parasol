@@ -566,9 +566,7 @@ static int file_read(lua_State *Lua)
                      break;
                }
             }
-            else {
-               lua_pushnil(Lua);
-            }
+            else lua_pushnil(Lua);
          }
          else if (lua_type(Lua, i) IS LUA_TNUMBER) {
             // Read specified number of bytes
@@ -582,13 +580,9 @@ static int file_read(lua_State *Lua)
                }
                else lua_pushnil(Lua);
             }
-            else {
-               lua_pushstring(Lua, "");
-            }
+            else lua_pushstring(Lua, "");
          }
-         else {
-            lua_pushnil(Lua);
-         }
+         else lua_pushnil(Lua);
       }
 
       return nargs - 1; // Return number of results (excluding file handle)
