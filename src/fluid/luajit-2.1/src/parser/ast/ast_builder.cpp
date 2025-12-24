@@ -1,4 +1,12 @@
+// AST Builder - Main Entry Point and Core Infrastructure
 // Copyright (C) 2025 Paul Manias
+//
+// This file contains the core infrastructure for the AST builder:
+// - Constructor and main entry point (parse_chunk)
+// - Block parsing (parse_block, parse_scoped_block)
+// - Statement dispatch (parse_statement)
+// - Utility functions (make_identifier, make_literal, at_end_of_block, is_statement_start)
+// - Token-to-operator mapping (token_to_assignment_op)
 
 #include "ast/ast_builder.h"
 
@@ -129,29 +137,27 @@ AstBuilder::AstBuilder(ParserContext &Context)
 
 ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_chunk()
 {
-   const TokenKind terms[] = { TokenKind::EndOfFile };
-   return this->parse_block(terms);
+   const TokenKind terminators[] = { TokenKind::EndOfFile };
+   return this->parse_block(terminators);
 }
 
 //********************************************************************************************************************
-// Parses a block of statements, stopping when a terminator token or end of file is encountered.
+// Parses a block of statements until a terminator token is encountered.
 
 ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_block(std::span<const TokenKind> terminators)
 {
-   std::unique_ptr<BlockStmt> block = std::make_unique<BlockStmt>();
-   Token start = this->ctx.tokens().current();
+   StmtNodeList statements;
    while (not this->at_end_of_block(terminators)) {
       auto stmt = this->parse_statement();
       if (not stmt.ok()) return ParserResult<std::unique_ptr<BlockStmt>>::failure(stmt.error_ref());
-      if (stmt.value_ref()) block->statements.push_back(std::move(stmt.value_ref()));
+      if (stmt.value_ref()) statements.push_back(std::move(stmt.value_ref()));
    }
-   Token end = this->ctx.tokens().current();
-   block->span = this->span_from(start, end);
-   return ParserResult<std::unique_ptr<BlockStmt>>::success(std::move(block));
+   Token last = this->ctx.tokens().current();
+   return ParserResult<std::unique_ptr<BlockStmt>>::success(make_block(last.span(), std::move(statements)));
 }
 
 //********************************************************************************************************************
-// Parses a single statement by examining the current token and dispatching to the appropriate statement parser.
+// Statement dispatch - routes to the appropriate parser based on token type.
 
 ParserResult<StmtNodePtr> AstBuilder::parse_statement()
 {
