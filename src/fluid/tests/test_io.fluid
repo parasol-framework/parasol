@@ -82,7 +82,8 @@ end
 
    result = io.close(file)
    assert(result is true, 'io.close should return true on success')
-   assert(io.type(file) is 'closed file', 'File should be marked as closed')
+   file_type = io.type(file)
+   assert(file_type is 'closed file', 'File should be marked as closed, got ' .. tostring(file_type))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -91,11 +92,14 @@ end
    test_path = createTestFile('test_type.txt', 'test')
    file = io.open(test_path, 'r')
 
-   assert(io.type(file) is 'file', "Should return 'file' for open file")
+   file_type = io.type(file)
+
+   assert(file_type is 'file', "Should return 'file' for open file, got " .. tostring(file_type))
    assert(io.type('not a file') is nil, 'Should return nil for non-file object')
 
    file:close()
-   assert(io.type(file) is 'closed file', 'Should return "closed file" for closed file')
+   file_type = io.type(file)
+   assert(file_type is 'closed file', 'Should return "closed file" for closed file, got ' .. tostring(file_type))
 end
 
 ----------------------------------------------------------------------------------------------------------------------

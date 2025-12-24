@@ -29,12 +29,18 @@ struct FileHandle {
 
    FileHandle(objFile *f, bool ac = true) : file_id(f->UID), auto_close(ac) {}
 
-   ~FileHandle() {
-      objFile *fl;
-      if ((auto_close) and (file_id) and ((fl = (objFile *)GetObjectPtr(file_id)))) {
-         FreeResource(fl);
+   // Close the file handle and optionally free the underlying file object.
+   // Returns true if the file was actually closed.
+
+   bool close() {
+      if (file_id) {
+         if (auto_close) {
+            if (auto fl = (objFile *)GetObjectPtr(file_id)) FreeResource(fl);
+         }
+         file_id = 0;
+         return true;
       }
-      file_id = 0;
+      return false;
    }
 };
 
@@ -57,7 +63,7 @@ inline int push_file_handle(lua_State *Lua, objFile *File, bool AutoClose = true
 inline int file_gc(lua_State *Lua)
 {
    if (auto handle = check_file_handle(Lua, 1)) {
-      handle->~FileHandle();
+      handle->close();
    }
    return 0;
 }
@@ -118,7 +124,7 @@ static int io_close(lua_State *Lua)
    }
 
    if (auto handle = check_file_handle(Lua, 1)) {
-      handle->~FileHandle();
+      handle->close();
       lua_pushboolean(Lua, 1);
       return 1;
    }
@@ -363,7 +369,7 @@ static int lines_iterator(lua_State *Lua)
    }
    else { // End of file or error - close if we own it
       if (iter->close_on_finish) {
-         iter->file_handle->~FileHandle();
+         iter->file_handle->close();
          iter->file_handle = nullptr;
       }
       return 0; // End iteration
@@ -374,10 +380,9 @@ static int lines_iterator_gc(lua_State *Lua)
 {
    auto iter = (LinesIterator *)lua_touserdata(Lua, 1);
    if (iter->close_on_finish and iter->file_handle) {
-      iter->file_handle->~FileHandle();
+      iter->file_handle->close();
       iter->file_handle = nullptr;
    }
-   iter->~LinesIterator();
    return 0;
 }
 
@@ -488,7 +493,7 @@ static int io_type(lua_State *Lua)
 static int file_read(lua_State *Lua)
 {
    if (auto handle = check_file_handle(Lua, 1)) {
-      if (!handle->file_id) {
+      if (not handle->file_id) {
          lua_pushnil(Lua);
          lua_pushstring(Lua, "Attempted to use a closed file");
          return 2;
@@ -648,7 +653,7 @@ static int file_seek(lua_State *Lua)
 {
    auto handle = check_file_handle(Lua, 1);
    auto file = (objFile *)GetObjectPtr(handle->file_id);
-   if (!file) {
+   if (not file) {
       lua_pushnil(Lua);
       lua_pushstring(Lua, "Attempted to use a closed file");
       return 2;
