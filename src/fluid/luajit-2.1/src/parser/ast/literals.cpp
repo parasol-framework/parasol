@@ -314,6 +314,7 @@ ParserResult<std::vector<TableField>> AstBuilder::parse_table_fields(bool *has_a
 {
    std::vector<TableField> fields;
    bool array = false;
+
    while (not this->ctx.check(TokenKind::RightBrace)) {
       TableField field;
       Token current = this->ctx.tokens().current();
@@ -494,6 +495,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_result_filter_expr(const Token &Star
    this->ctx.consume(TokenKind::RightBracket, ParserErrorCode::ExpectedToken);
 
    // Parse the expression to filter (must be followed by a callable)
+
    auto expr = this->parse_unary();
    if (not expr.ok()) return expr;
 
@@ -501,6 +503,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_result_filter_expr(const Token &Star
    if (not expr.ok()) return expr;
 
    // Validate that result is a call expression
+
    AstNodeKind kind = expr.value_ref()->kind;
    if (kind != AstNodeKind::CallExpr and kind != AstNodeKind::SafeCallExpr) {
       return this->fail<ExprNodePtr>(ParserErrorCode::UnexpectedToken, StartToken,
@@ -513,9 +516,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_result_filter_expr(const Token &Star
 
    auto &f = filter.value_ref();
    uint64_t all_kept_mask = (f.explicit_count > 0) ? ((1ULL << f.explicit_count) - 1) : 0;
-   if (f.trailing_keep and f.keep_mask IS all_kept_mask) {
-      return expr;  // No filtering needed - just return the call expression
-   }
+   if (f.trailing_keep and f.keep_mask IS all_kept_mask) return expr;  // No filtering needed, just return the call expression
 
    SourceSpan span = combine_spans(StartToken.span(), expr.value_ref()->span);
    return ParserResult<ExprNodePtr>::success(
@@ -559,19 +560,14 @@ ParserResult<FunctionReturnTypes> AstBuilder::parse_return_type_annotation()
                result.types[MAX_RETURN_TYPES - 1] = FluidType::Any;
             }
             // Skip remaining types until '>' or '...'
-            if (current.kind() IS TokenKind::Identifier) {
-               this->ctx.tokens().advance();
-               result.count++;
-               continue;
-            }
-            break;
+            if (current.kind() IS TokenKind::Identifier) this->ctx.tokens().advance();
+            result.count++;
+            continue;
          }
 
          // Parse type name
          auto type_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
-         if (not type_token.ok()) {
-            return ParserResult<FunctionReturnTypes>::failure(type_token.error_ref());
-         }
+         if (not type_token.ok()) return ParserResult<FunctionReturnTypes>::failure(type_token.error_ref());
 
          GCstr *type_name_str = type_token.value_ref().identifier();
          if (type_name_str IS nullptr) {
@@ -591,11 +587,10 @@ ParserResult<FunctionReturnTypes> AstBuilder::parse_return_type_annotation()
 
       } while (this->ctx.match(TokenKind::Comma).ok());
 
-      // Expect closing >
-      if (not this->ctx.lex_opt('>')) {
-         return this->fail<FunctionReturnTypes>(ParserErrorCode::ExpectedToken, this->ctx.tokens().current(),
-            "expected '>' to close return type list");
-      }
+      // Expect closing '>'
+      current = this->ctx.tokens().current();
+      if (current.raw() IS '>') this->ctx.tokens().advance();
+      else return this->fail<FunctionReturnTypes>(ParserErrorCode::ExpectedToken, current, "expected '>' to close return type list");
    }
    else {
       // Single type: :typename

@@ -1,4 +1,4 @@
-#include "ast/ast_nodes.h"
+#include "ast/nodes.h"
 
 #include "lj_def.h"
 

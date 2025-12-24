@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "parser_diagnostics.h"
-#include "ast/ast_nodes.h"
+#include "ast/nodes.h"
 
 struct InferredType {
    FluidType primary = FluidType::Any;
@@ -35,26 +35,26 @@ struct FunctionContext {
    const FunctionExprPayload* function = nullptr;  // The function being analysed
    FunctionReturnTypes expected_returns{};         // Declared or inferred return types
    bool return_type_inferred = false;              // True once first return statement sets types
-   GCstr* function_name = nullptr;                 // Function name (for recursive detection)
+   GCstr *function_name = nullptr;                 // Function name (for recursive detection)
 };
 
 class TypeCheckScope {
 public:
-   void declare_parameter(GCstr* Name, FluidType Type);
-   void declare_local(GCstr* Name, const InferredType& Type);
-   void declare_function(GCstr* Name, const FunctionExprPayload* Function);
-   void fix_local_type(GCstr* Name, FluidType Type);
+   void declare_parameter(GCstr *, FluidType Type);
+   void declare_local(GCstr *, const InferredType &);
+   void declare_function(GCstr *, const FunctionExprPayload *);
+   void fix_local_type(GCstr *, FluidType Type);
 
-   [[nodiscard]] std::optional<FluidType> lookup_parameter_type(GCstr* Name) const;
-   [[nodiscard]] std::optional<InferredType> lookup_local_type(GCstr* Name) const;
-   [[nodiscard]] const FunctionExprPayload* lookup_function(GCstr* Name) const;
+   [[nodiscard]] std::optional<FluidType> lookup_parameter_type(GCstr *) const;
+   [[nodiscard]] std::optional<InferredType> lookup_local_type(GCstr *) const;
+   [[nodiscard]] const FunctionExprPayload * lookup_function(GCstr *) const;
 
 private:
    struct VariableInfo {
       GCstr* name = nullptr;
       InferredType type{};
       bool is_parameter = false;
-      const FunctionExprPayload* function = nullptr;
+      const FunctionExprPayload * function = nullptr;
    };
 
    std::vector<VariableInfo> variables_{};

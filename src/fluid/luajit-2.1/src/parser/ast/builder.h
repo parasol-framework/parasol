@@ -12,7 +12,7 @@
 #include <span>
 #include <vector>
 
-#include "ast_nodes.h"
+#include "nodes.h"
 #include "../parser_context.h"
 
 class AstBuilder {

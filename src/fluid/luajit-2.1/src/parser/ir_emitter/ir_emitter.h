@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-#include "../ast/ast_nodes.h"
+#include "../ast/nodes.h"
 #include "operator_emitter.h"
 #include "../parser_context.h"
 #include "../parse_control_flow.h"

@@ -9,7 +9,7 @@
 
 #include <parasol/main.h>
 
-#include "ast/ast_nodes.h"  // For FluidType and fluid_type_to_lj_tag()
+#include "ast/nodes.h"  // For FluidType and fluid_type_to_lj_tag()
 
 [[nodiscard]] BCPOS bcemit_jmp(FuncState *);
 

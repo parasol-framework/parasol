@@ -24,8 +24,8 @@
 #include <vector>
 #include <cstdio>
 
-#include "ast/ast_builder.h"
-#include "ast/ast_nodes.h"
+#include "ast/builder.h"
+#include "ast/nodes.h"
 #include "parser_context.h"
 #include "parser_diagnostics.h"
 #include "parse_types.h"

@@ -8,7 +8,7 @@
 // - Utility functions (make_identifier, make_literal, at_end_of_block, is_statement_start)
 // - Token-to-operator mapping (token_to_assignment_op)
 
-#include "ast/ast_builder.h"
+#include "ast/builder.h"
 
 #include <cstring>
 #include <format>
@@ -17,6 +17,7 @@
 #include "../token_types.h"
 #include "../parse_types.h"
 #include "runtime/lj_str.h"
+
 #ifdef INCLUDE_ADVICE
 #include "../parser_advice.h"
 #endif
@@ -127,8 +128,7 @@ static ParserResult<StmtNodePtr> make_control_stmt(ParserContext& Context, AstNo
    return ParserResult<StmtNodePtr>::success(std::move(node));
 }
 
-AstBuilder::AstBuilder(ParserContext &Context)
-   : ctx(Context)
+AstBuilder::AstBuilder(ParserContext &Context) : ctx(Context)
 {
 }
 
@@ -284,9 +284,9 @@ std::optional<AssignmentOperator> AstBuilder::token_to_assignment_op(TokenKind K
 
 //********************************************************************************************************************
 
-#include "ast_builder_statements.cpp"
-#include "ast_builder_loops.cpp"
-#include "ast_builder_expressions.cpp"
-#include "ast_builder_literals.cpp"
-#include "ast_builder_choose.cpp"
-#include "ast_builder_anno.cpp"
+#include "statements.cpp"
+#include "loops.cpp"
+#include "expressions.cpp"
+#include "literals.cpp"
+#include "choose.cpp"
+#include "annotations.cpp"
