@@ -21,8 +21,8 @@
 
 #include <optional>
 
-#include "parser/parse_types.h"
-#include "parser/value_categories.h"
+#include "../parse_types.h"
+#include "../value_categories.h"
 
 class RegisterAllocator;
 class ControlFlowGraph;

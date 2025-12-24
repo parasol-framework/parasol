@@ -11,13 +11,13 @@
 
 #include "lj_obj.h"
 #include "bytecode/lj_bc.h"
-#include "parser/lexer.h"
+#include "../lexer.h"
 
 #include <parasol/main.h>
 
-#include "parser/operator_emitter.h"
-#include "parser/parse_internal.h"
-#include "parser/parse_control_flow.h"
+#include "operator_emitter.h"
+#include "../parse_internal.h"
+#include "../parse_control_flow.h"
 
 //********************************************************************************************************************
 // Helper: Check if operator tracing is enabled

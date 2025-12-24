@@ -5,11 +5,11 @@
 // Major portions taken verbatim or adapted from the Lua interpreter.
 // Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 
-#include "parser/parse_regalloc.h"
+#include "parse_regalloc.h"
 
 #include <parasol/main.h>
 
-#include "parser/ast_nodes.h"  // For FluidType and fluid_type_to_lj_tag()
+#include "ast/ast_nodes.h"  // For FluidType and fluid_type_to_lj_tag()
 
 [[nodiscard]] BCPOS bcemit_jmp(FuncState *);
 

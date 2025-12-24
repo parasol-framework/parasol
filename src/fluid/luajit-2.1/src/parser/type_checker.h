@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 
-#include "parser/parser_diagnostics.h"
-#include "ast_nodes.h"
+#include "parser_diagnostics.h"
+#include "ast/ast_nodes.h"
 
 struct InferredType {
    FluidType primary = FluidType::Any;

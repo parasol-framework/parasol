@@ -12,8 +12,8 @@
 #include <span>
 #include <vector>
 
-#include "parser/ast_nodes.h"
-#include "parser/parser_context.h"
+#include "ast_nodes.h"
+#include "../parser_context.h"
 
 class AstBuilder {
 public:

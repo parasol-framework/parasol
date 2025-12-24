@@ -1,4 +1,4 @@
-#include "parser/ast_nodes.h"
+#include "ast/ast_nodes.h"
 
 #include "lj_def.h"
 

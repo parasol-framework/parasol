@@ -1,16 +1,16 @@
 // Copyright (C) 2025 Paul Manias
 
-#include "parser/ast_builder.h"
+#include "ast/ast_builder.h"
 
 #include <cstring>
 #include <format>
 #include <utility>
 
-#include "parser/token_types.h"
-#include "parser/parse_types.h"
+#include "../token_types.h"
+#include "../parse_types.h"
 #include "runtime/lj_str.h"
 #ifdef INCLUDE_ADVICE
-#include "parser/parser_advice.h"
+#include "../parser_advice.h"
 #endif
 
 // Extracts the function payload from an expression node if it's a function expression, otherwise returns null.

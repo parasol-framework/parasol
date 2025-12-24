@@ -24,13 +24,13 @@
 #include <vector>
 #include <cstdio>
 
-#include "parser/ast_builder.h"
-#include "parser/ast_nodes.h"
-#include "parser/parser_context.h"
-#include "parser/parser_diagnostics.h"
-#include "parser/parse_types.h"
-#include "parser/token_stream.h"
-#include "parser/token_types.h"
+#include "ast/ast_builder.h"
+#include "ast/ast_nodes.h"
+#include "parser_context.h"
+#include "parser_diagnostics.h"
+#include "parse_types.h"
+#include "token_stream.h"
+#include "token_types.h"
 #include "parser.h"
 #include "../../../defs.h"
 

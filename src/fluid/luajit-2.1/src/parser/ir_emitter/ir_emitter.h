@@ -10,12 +10,12 @@
 #include <utility>
 #include <vector>
 
-#include "parser/ast_nodes.h"
-#include "parser/operator_emitter.h"
-#include "parser/parser_context.h"
-#include "parser/parse_control_flow.h"
-#include "parser/parse_regalloc.h"
-#include "parser/parse_types.h"
+#include "../ast/ast_nodes.h"
+#include "operator_emitter.h"
+#include "../parser_context.h"
+#include "../parse_control_flow.h"
+#include "../parse_regalloc.h"
+#include "../parse_types.h"
 
 //********************************************************************************************************************
 

@@ -1,6 +1,6 @@
 // Copyright (C) 2025 Paul Manias
 
-#include "parser/ir_emitter.h"
+#include "ir_emitter.h"
 
 #include <array>
 #include <cstdint>
@@ -14,9 +14,9 @@
 #include "lj_debug.h"
 #include "lj_tab.h"
 
-#include "parser/parse_internal.h"
-#include "parser/parse_value.h"
-#include "parser/token_types.h"
+#include "../parse_internal.h"
+#include "../parse_value.h"
+#include "../token_types.h"
 
 #include "../../../defs.h"  // For glPrintMsg
 
