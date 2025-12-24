@@ -198,7 +198,7 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
             if (not assert_str) assert_str = lj_str_newlit(this->lex_state.L, "assert");
             if (not msg_str) msg_str = lj_str_newlit(this->lex_state.L, "msg");
 
-            if (func_name IS assert_str) this->optimise_assert(Payload.arguments);
+            if (func_name IS assert_str) this->optimise_assert(const_cast<ExprNodeList&>(Payload.arguments));
             else if ((func_name IS msg_str) and not glPrintMsg) {
                // msg() is eliminated entirely when debug messaging is disabled at compile time.
                return ParserResult<ExpDesc>::success(ExpDesc(ExpKind::Void));
@@ -308,24 +308,23 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
 }
 
 //********************************************************************************************************************
-// Optimise assert(condition, message) expressions by wrapping the message in an anonymous thunk call.
-// This provides short-circuiting: the message is only evaluated when the assertion fails.
+// Optimise assert(condition, message) expressions by:
+// 1. Wrapping expensive message expressions in an anonymous thunk for lazy evaluation
+// 2. Appending line/column as additional arguments for runtime formatting
 //
-// Transforms: assert(cond, expensive_expr)
-// Into:       assert(cond, (thunk():str return "[LINE] " .. expensive_expr end)())
+// Transforms: assert(cond, msg)            -> assert(cond, msg, line, col)
+// Transforms: assert(cond, expensive())    -> assert(cond, (thunk():str return expensive() end)(), line, col)
 
-void IrEmitter::optimise_assert(const ExprNodeList &Args)
+void IrEmitter::optimise_assert(ExprNodeList &Args)
 {
    if (Args.size() < 2) return;  // No message argument
 
-   ExprNodePtr &msg_arg = const_cast<ExprNodePtr&>(Args[1]);
+   ExprNodePtr &msg_arg = Args[1];
    SourceSpan span = msg_arg->span;
-
-   // Capture message kind before any moves
-
    AstNodeKind msg_kind = msg_arg->kind;
-   bool is_already_thunk = false;
 
+   // Check if the message is already a thunk call
+   bool is_already_thunk = false;
    if (msg_kind IS AstNodeKind::CallExpr) {
       const auto &call_payload = std::get<CallExprPayload>(msg_arg->data);
       if (std::holds_alternative<DirectCallTarget>(call_payload.target)) {
@@ -337,62 +336,42 @@ void IrEmitter::optimise_assert(const ExprNodeList &Args)
       }
    }
 
-   // If the message is already a thunk/deferred expression, leave it alone
-   // to preserve its lazy evaluation semantics (concatenation would force evaluation)
-   if (is_already_thunk) return;
-
-   // Get line number from the condition expression (where assert was called)
-   auto line_num = Args[0]->span.line;
-   auto column = Args[0]->span.column;
-
-   // Create line prefix string: "[LINE:COLUMN] "
-   std::string prefix = std::format("[{}:{}] ", line_num, column);
-   GCstr *prefix_str = lj_str_new(this->lex_state.L, prefix.c_str(), prefix.size());
-
-   ExprNodePtr prefix_expr = make_literal_expr(span, LiteralValue::string(prefix_str));
-
-   // "[LINE:COLUMN] " .. message
-   ExprNodePtr concat_expr = make_binary_expr(span, AstBinaryOperator::Concat, std::move(prefix_expr), std::move(msg_arg));
-
-   // Check if the original message was simple (doesn't need thunk wrapping)
-   bool needs_thunk = true;
-
+   // Wrap expensive expressions in thunk for lazy evaluation
+   bool needs_thunk = false;
    switch (msg_kind) {
       case AstNodeKind::LiteralExpr:    // String/number literals are cheap
       case AstNodeKind::IdentifierExpr: // Simple variable access is cheap
-         needs_thunk = false;
          break;
       case AstNodeKind::CallExpr:
-         if (is_already_thunk) needs_thunk = false;
+         if (not is_already_thunk) needs_thunk = true;
          break;
       default:
+         needs_thunk = true;
          break;
    }
 
-   if (not needs_thunk) { // Simple message: just use the concatenation directly
-      msg_arg = std::move(concat_expr);
-      return;
+   if (needs_thunk and not is_already_thunk) {
+      // Wrap in thunk: (thunk():str return msg end)()
+      ExprNodeList return_values;
+      return_values.push_back(std::move(msg_arg));
+      StmtNodePtr return_stmt = make_return_stmt(span, std::move(return_values), false);
+
+      StmtNodeList body_stmts;
+      body_stmts.push_back(std::move(return_stmt));
+      auto body = make_block(span, std::move(body_stmts));
+
+      ExprNodePtr thunk_func = make_function_expr(span, {}, false, std::move(body), true, FluidType::Str);
+
+      ExprNodeList call_args;
+      msg_arg = make_call_expr(span, std::move(thunk_func), std::move(call_args), false);
    }
 
-   // Wrap the concatenation in an anonymous thunk call:
-   //   (thunk():str return "[LINE] " .. msg end)()
+   // Append line and column as literal arguments for runtime formatting
+   auto line_num = Args[0]->span.line;
+   auto column = Args[0]->span.column;
 
-   // Build return statement with the concatenation expression
-   ExprNodeList return_values;
-   return_values.push_back(std::move(concat_expr));
-   StmtNodePtr return_stmt = make_return_stmt(span, std::move(return_values), false);
-
-   // Build thunk body containing just the return statement
-   StmtNodeList body_stmts;
-   body_stmts.push_back(std::move(return_stmt));
-   auto body = make_block(span, std::move(body_stmts));
-
-   // Build anonymous thunk function (no parameters, is_thunk=true, returns string)
-   ExprNodePtr thunk_func = make_function_expr(span, {}, false, std::move(body), true, FluidType::Str);
-
-   // Build immediate call to thunk (no arguments)
-   ExprNodeList call_args;
-   msg_arg = make_call_expr(span, std::move(thunk_func), std::move(call_args), false);
+   Args.push_back(make_literal_expr(span, LiteralValue::number(double(line_num))));
+   Args.push_back(make_literal_expr(span, LiteralValue::number(double(column))));
 }
 
 //********************************************************************************************************************
