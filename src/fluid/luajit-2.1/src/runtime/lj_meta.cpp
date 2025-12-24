@@ -277,7 +277,14 @@ TValue * lj_meta_cat(lua_State *L, TValue *top, int left)
    int fromc = 0;
    if (left < 0) { left = -left; fromc = 1; }
 
+   // Convert nil operands to empty strings for safe concatenation
+   static GCstr *empty_str = nullptr;
+   if (not empty_str) empty_str = lj_str_newlit(L, "");
+
    do {
+      if (tvisnil(top)) setstrV(L, top, empty_str);
+      if (tvisnil(top - 1)) setstrV(L, top - 1, empty_str);
+
       if (not (tvisstr(top) or tvisnumber(top) or tvisbuf(top)) or
          !(tvisstr(top - 1) or tvisnumber(top - 1) or tvisbuf(top - 1))) {
          cTValue *mo = lj_meta_lookup(L, top - 1, MM_concat);
