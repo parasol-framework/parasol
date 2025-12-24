@@ -49,7 +49,7 @@ end
 -- Convert an RGB string to an RGB table.  Supports '#' and 'rgb()'
 
 gui.strToRGB = function(Value:str):table
-   assert(Value, 'Empty value passed to strToRGB()\n' .. debug.traceback())
+   assert(Value, 'Empty value passed to strToRGB()')
 
    local result, fail
    xpcall(function()
@@ -146,7 +146,7 @@ end
 -- Convert HSV table to RGB
 
 gui.hsvToRGB = function(Value)
-   assert(Value, 'Empty value passed to hsvToRGB()\n' .. debug.traceback())
+   assert(Value, 'Empty value passed to hsvToRGB()')
 
    h = Value.h / 60
    s = Value.s
@@ -178,7 +178,7 @@ end
 -- Return the light value of an RGB colour (i.e. the V in HSV)
 
 gui.rgbValue = function(Value)
-   assert(Value, 'Empty value passed to rgbValue()\n' .. debug.traceback())
+   assert(Value, 'Empty value passed to rgbValue()')
 
    max = Value.b
    if Value.g > max then max = Value.g end
@@ -200,7 +200,7 @@ end
 -- Convert RGB table to HSV
 
 gui.rgbToHSV = function(Value)
-   assert(Value, 'Empty value passed to rgbToHSV()\n' .. debug.traceback())
+   assert(Value, 'Empty value passed to rgbToHSV()')
 
    max = gui.rgbValue(Value)
    hsv = { v = max }
@@ -261,7 +261,7 @@ end
 -- Generate a simple gradient fill for vectors.
 
 gui.simpleGradient = function(Scene, Name, Colours, X1, Y1, X2, Y2, Units, IgnoreClashes)
-   assert(Name, 'A name for the gradient is required.\n' .. debug.traceback())
+   assert(Name, 'A name for the gradient is required.')
 
    stops = { }
    i = 0
