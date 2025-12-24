@@ -42,10 +42,15 @@
 #include "runtime/lj_thunk.h"
 #include "debug/error_guard.h"
 
-//********************************************************************************************************************
-// Base library: checks
-
 #define LJLIB_MODULE_base
+
+//********************************************************************************************************************
+// The implementation of assert() is a little strange in that it is specifically geared towards being optimised by
+// the parser in optimise_assert().  The design relies on the message parameter being wrapped into a thunk, and then
+// line and column numbers are appended as additional arguments for runtime formatting.
+//
+// It is not the intention that this implementation of assert() is called directly from the client (which should be
+// impossible if the parser is functioning as expected).
 
 LJLIB_ASM(assert)      LJLIB_REC(.)
 {
@@ -55,12 +60,47 @@ LJLIB_ASM(assert)      LJLIB_REC(.)
       lj_err_caller(L, ErrMsg::ASSERT);
    }
    else {
-      // Message provided - the parser has already prepended [line:col] prefix,
-      // so bypass lj_err_callermsg which would add redundant location info.
-      // Just push the message to top of stack and call lj_err_run directly.
-      if (is_any_type<LJ_TSTR, LJ_TNUMX>(L->base + 1)) {
+      // Check for line/column arguments (args 3 and 4) added by optimise_assert()
+
+      int32_t line = 0, column = 0;
+      if (L->top >= L->base + 3 and tvisnum(L->base + 2)) line = int32_t(numV(L->base + 2));
+      if (L->top >= L->base + 4 and tvisnum(L->base + 3)) column = int32_t(numV(L->base + 3));
+
+      // Resolve the message if it's a thunk (lazy evaluation)
+      TValue *msg_tv = L->base + 1;
+      if (lj_is_thunk(msg_tv)) {
+         TValue *resolved = lj_thunk_resolve(L, udataV(msg_tv));
+         if (resolved) msg_tv = resolved;
+      }
+
+      if (line > 0) { // Format message with location prefix if line/column provided
+         SBuf *sb = lj_buf_tmp_(L);
+         lj_buf_putchar(sb, '[');
+         lj_strfmt_putint(sb, line);
+         lj_buf_putchar(sb, ':');
+         lj_strfmt_putint(sb, column);
+         lj_buf_putmem(sb, "] ", 2);
+
+         // Append original message (handle nil as empty)
+         if (tvisstr(msg_tv)) {
+            GCstr *msg = strV(msg_tv);
+            lj_buf_putmem(sb, strdata(msg), msg->len);
+         }
+         else if (tvisnum(msg_tv)) lj_strfmt_putfnum(sb, STRFMT_G14, numV(msg_tv));
+
+         // nil or other types: append nothing (empty message after prefix)
+
+         GCstr *formatted = lj_buf_str(L, sb);
+         setstrV(L, L->top++, formatted);
+      }
+      else if (tvisstr(msg_tv) or tvisnumber(msg_tv)) {
+         // No location info, use message as-is
          GCstr *msg = lj_lib_checkstr(L, 2);
          setstrV(L, L->top++, msg);
+      }
+      else {
+         // No location info and message is nil or non-string - use default error
+         lj_err_caller(L, ErrMsg::ASSERT);
       }
       lj_err_run(L);
    }
@@ -606,7 +646,7 @@ LJLIB_CF(print)
       const char* str;
       size_t size;
       MSize len;
-      
+
       if (shortcut and (str = lj_strfmt_wstrnum(L, o, &len)) != nullptr) {
          size = len;
       }
@@ -616,8 +656,7 @@ LJLIB_CF(print)
          L->top += 2;
          lua_call(L, 1, 1);
          str = lua_tolstring(L, -1, &size);
-         if (!str)
-            lj_err_caller(L, ErrMsg::PRTOSTR);  // StackFrame will restore L->top
+         if (!str) lj_err_caller(L, ErrMsg::PRTOSTR);  // StackFrame will restore L->top
          L->top--;
       }
 

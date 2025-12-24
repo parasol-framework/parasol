@@ -199,7 +199,7 @@ private:
    void materialise_to_reg(ExpDesc& expression, BCReg slot, std::string_view usage);
    void ensure_register_floor(std::string_view usage);
    void ensure_register_balance(std::string_view usage);
-   void optimise_assert(const ExprNodeList &);
+   void optimise_assert(ExprNodeList &Args);
 
    ParserResult<IrEmitUnit> unsupported_stmt(AstNodeKind kind, const SourceSpan& span);
    ParserResult<ExpDesc> unsupported_expr(AstNodeKind kind, const SourceSpan& span);
