@@ -1265,12 +1265,13 @@ extern const char* lua_setupvalue(lua_State *L, int idx, int n)
 //********************************************************************************************************************
 // Prepare base for function call
 
-static TValue* api_call_base(lua_State *L, int nargs)
+static TValue * api_call_base(lua_State *L, int nargs)
 {
-   TValue* o = L->top, * base = o - nargs;
+   TValue * o = L->top, * base = o - nargs;
    L->top = o + 1;
    for (; o > base; o--) copyTV(L, o, o - 1);
    setnilV(o);
+   L->sent_traceback = false;
    return o + 1;
 }
 
