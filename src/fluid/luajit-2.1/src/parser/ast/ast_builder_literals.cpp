@@ -567,6 +567,7 @@ ParserResult<FunctionReturnTypes> AstBuilder::parse_return_type_annotation()
             break;
          }
 
+         // Parse type name
          auto type_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
          if (not type_token.ok()) {
             return ParserResult<FunctionReturnTypes>::failure(type_token.error_ref());
@@ -587,6 +588,7 @@ ParserResult<FunctionReturnTypes> AstBuilder::parse_return_type_annotation()
          }
 
          result.types[result.count++] = parsed;
+
       } while (this->ctx.match(TokenKind::Comma).ok());
 
       // Expect closing >
@@ -596,11 +598,9 @@ ParserResult<FunctionReturnTypes> AstBuilder::parse_return_type_annotation()
       }
    }
    else {
-      // Single type syntax: :type
+      // Single type: :typename
       auto type_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
-      if (not type_token.ok()) {
-         return ParserResult<FunctionReturnTypes>::failure(type_token.error_ref());
-      }
+      if (not type_token.ok()) return ParserResult<FunctionReturnTypes>::failure(type_token.error_ref());
 
       GCstr *type_name_str = type_token.value_ref().identifier();
       if (type_name_str IS nullptr) {
