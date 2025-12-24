@@ -317,7 +317,8 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
 
 void IrEmitter::optimise_assert(ExprNodeList &Args)
 {
-   if (Args.size() < 2) return;  // No message argument
+   // Requires at least 2 arguments: condition (Args[0]) and message (Args[1])
+   if (Args.size() < 2) return;
 
    ExprNodePtr &msg_arg = Args[1];
    SourceSpan span = msg_arg->span;

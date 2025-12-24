@@ -545,14 +545,13 @@ end
    assert(ok is false, "range literal with non-integer stop should throw")
 
    -- Nil values in literals - when range literal parsing fails (due to nil operands),
-   -- the parser falls back to table constructor with string concatenation. Since nil
-   -- is treated as empty string in concatenation, these now produce valid tables.
-   ok, result = pcall(function()
+   -- the parser falls back to table constructor with string concatenation.
+   -- nil as the first operand throws an error (must establish string context first).
+   -- nil as a subsequent operand is treated as empty string.
+   ok, err = pcall(function()
       return {nil..5}
    end)
-   assert(ok is true, "nil..5 should fall back to string concatenation")
-   assert(type(result) is "table", "result should be a table")
-   assert(result[0] is "5", "nil..5 should concatenate to '5'")
+   assert(ok is false, "nil..5 should throw (nil cannot be first concat operand)")
 
    ok, result = pcall(function()
       return {0..nil}

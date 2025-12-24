@@ -277,13 +277,17 @@ TValue * lj_meta_cat(lua_State *L, TValue *top, int left)
    int fromc = 0;
    if (left < 0) { left = -left; fromc = 1; }
 
-   // Convert nil operands to empty strings for safe concatenation
-   static GCstr *empty_str = nullptr;
-   if (not empty_str) empty_str = lj_str_newlit(L, "");
+   // Convert nil to empty string for non-first operands only.
+   // The first operand (leftmost in source) must be a valid string/number to establish
+   // that we're doing string concatenation. Subsequent nil values become empty strings.
+
+   GCstr *empty_str = &G(L)->strempty;
 
    do {
+      // Always allow nil-to-empty for the right operand (not the first value)
       if (tvisnil(top)) setstrV(L, top, empty_str);
-      if (tvisnil(top - 1)) setstrV(L, top - 1, empty_str);
+      // Only convert left operand if it's not the first value in the chain
+      if (tvisnil(top - 1) and left > 1) setstrV(L, top - 1, empty_str);
 
       if (not (tvisstr(top) or tvisnumber(top) or tvisbuf(top)) or
          !(tvisstr(top - 1) or tvisnumber(top - 1) or tvisbuf(top - 1))) {

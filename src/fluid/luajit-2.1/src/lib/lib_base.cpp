@@ -98,6 +98,10 @@ LJLIB_ASM(assert)      LJLIB_REC(.)
          GCstr *msg = lj_lib_checkstr(L, 2);
          setstrV(L, L->top++, msg);
       }
+      else {
+         // No location info and message is nil or non-string - use default error
+         lj_err_caller(L, ErrMsg::ASSERT);
+      }
       lj_err_run(L);
    }
    return FFH_UNREACHABLE;
