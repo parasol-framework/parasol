@@ -5,6 +5,10 @@
 #include <parasol/main.h>
 #include "parser/parser_context.h"
 
+#ifdef INCLUDE_ADVICE
+#include "parser/parser_advice.h"
+#endif
+
 namespace {
 
 [[nodiscard]] InferredType infer_literal_type(const LiteralValue &Literal)
@@ -87,6 +91,11 @@ private:
    void trace_fix(BCLine Line, GCstr* Name, FluidType Type) const;
    void trace_decl(BCLine Line, GCstr* Name, FluidType Type, bool IsFixed) const;
 
+   // Shadowing detection - checks if variable exists in an outer scope (not current scope)
+   #ifdef INCLUDE_ADVICE
+   void check_shadowing(GCstr *Name, SourceSpan Location);
+   #endif
+
    ParserContext &ctx_;
    std::vector<TypeCheckScope> scope_stack_{};
    std::vector<FunctionContext> function_stack_{};  // Stack of function contexts for return type tracking
@@ -121,6 +130,46 @@ void TypeAnalyser::trace_decl(BCLine Line, GCstr* Name, FluidType Type, bool IsF
    pf::Log("TypeCheck").msg("[%d] decl '%.*s': %.*s%s", Line, int(name_view.size()), name_view.data(),
       int(type_str.size()), type_str.data(), IsFixed ? " (fixed)" : "");
 }
+
+//********************************************************************************************************************
+// Check if declaring a variable would shadow a variable in an outer scope.
+// Only checks outer scopes (not the current scope) since redeclaration in the same scope is a different issue.
+
+#ifdef INCLUDE_ADVICE
+void TypeAnalyser::check_shadowing(GCstr *Name, SourceSpan Location)
+{
+   if (not Name) return;
+
+   // Skip blank identifiers (single underscore) - they're intentionally discarded
+   if (Name->len IS 1 and strdata(Name)[0] IS '_') return;
+
+   // Check all scopes except the current one (outermost to second-to-last)
+   // We iterate in reverse (innermost first) but skip the current scope
+   if (this->scope_stack_.size() < 2) return;  // Need at least 2 scopes for shadowing
+
+   for (size_t i = 0; i < this->scope_stack_.size() - 1; ++i) {
+      const auto& scope = this->scope_stack_[i];
+      auto existing = scope.lookup_local_type(Name);
+      if (existing) {
+         std::string_view name_view(strdata(Name), Name->len);
+         this->ctx_.emit_advice(2, AdviceCategory::CodeQuality,
+            std::format("Variable '{}' shadows a variable in an outer scope", name_view),
+            Token::from_span(Location, TokenKind::Identifier));
+         return;  // Only report once per variable
+      }
+
+      // Also check parameters in this scope
+      auto param = scope.lookup_parameter_type(Name);
+      if (param) {
+         std::string_view name_view(strdata(Name), Name->len);
+         this->ctx_.emit_advice(2, AdviceCategory::CodeQuality,
+            std::format("Variable '{}' shadows a parameter in an outer scope", name_view),
+            Token::from_span(Location, TokenKind::Identifier));
+         return;
+      }
+   }
+}
+#endif
 
 //********************************************************************************************************************
 
@@ -452,6 +501,10 @@ void TypeAnalyser::analyse_local_decl(const LocalDeclStmtPayload &Payload)
          inferred.is_fixed = false;
       }
 
+      #ifdef INCLUDE_ADVICE
+      this->check_shadowing(name.symbol, name.span);
+      #endif
+
       this->current_scope().declare_local(name.symbol, inferred);
       this->trace_decl(this->ctx_.lex().linenumber, name.symbol, inferred.primary, inferred.is_fixed);
    }
@@ -463,6 +516,10 @@ void TypeAnalyser::analyse_local_decl(const LocalDeclStmtPayload &Payload)
 
 void TypeAnalyser::analyse_local_function(const LocalFunctionStmtPayload &Payload)
 {
+   #ifdef INCLUDE_ADVICE
+   this->check_shadowing(Payload.name.symbol, Payload.name.span);
+   #endif
+
    const FunctionExprPayload* function = Payload.function.get();
    this->current_scope().declare_function(Payload.name.symbol, function);
 
