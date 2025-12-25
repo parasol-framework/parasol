@@ -9,12 +9,13 @@ FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
 BOX_SIZE = math.floor(FONT_MAX_HEIGHT * 1.35) + 1
 MARGIN = math.floor(FONT_HEIGHT * 0.5) + 1
 
-   local lStyle
+local lStyle = thunk():str
    if mSys.AnalysePath('style:slider.fluid') is ERR_Okay then
-      lStyle = loadFile('style:slider.fluid')
+      return loadFile('style:slider.fluid')
    else
-      lStyle = loadFile('styles:default/slider.fluid')
+      return loadFile('styles:default/slider.fluid')
    end
+end
 
 gui.slider = function(Options)
    self = { -- Public variables
@@ -32,7 +33,7 @@ gui.slider = function(Options)
       self.viewport.scene.surface.mtScheduleRedraw()
    end
 
-   self.setRange = function(Min, Max)
+   self.setRange = function(Min:num, Max:num)
       assert(Max > Min, 'The min/max values are invalid.')
       self.min = Min
       self.max = Max
@@ -49,7 +50,7 @@ gui.slider = function(Options)
    self.orientation = (Options.orientation is 'vertical') ? 'V' :> 'H'
    self._labelSize = 0
 
-   if (self.orientation is 'V') then
+   if self.orientation is 'V' then
       self.viewport = target.new('VectorViewport', { x = Options.x, y = Options.y, height = (Options.size ?? 100), width = BOX_SIZE, overflow = VOF_HIDDEN })
 
       self._sliderHostVP = self.viewport.new('VectorViewport', { y = 0, width = '100%', yOffset = 0, overflow = VOF_HIDDEN })

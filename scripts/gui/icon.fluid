@@ -123,7 +123,7 @@ gui.icon = function(Options)
       -- Create a dark rounded box in the background of the text, this will make it easier to distinguish the text
       -- against a busy background or one of a similar colour.
 
-      if #lLines == 0 then return end
+      if #lLines is 0 then return end
 
       box_height = self.viewport.height - (lIconSize + MARGIN)
       y = lIconSize + MARGIN

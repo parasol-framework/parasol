@@ -17,7 +17,7 @@ gui.scrollbar = function(Options)
    lTarget   = Options.target
    lPage     = Options.page
    lView     = Options.view
-   lBreadth  = (Options.breadth ?? 16)
+   lBreadth  = Options.breadth ?? 16
    lPageMode = 'fixed'
    lMinWidth = 0
 

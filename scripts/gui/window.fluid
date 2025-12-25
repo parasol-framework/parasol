@@ -6,7 +6,7 @@ Documentation is available in the Parasol Wiki.
    require 'gui'
    include 'display'
 
-   if not mGfx then global mGfx = mod.load('display') end
+   global mGfx ?= mod.load('display')
 
 DEFAULT_WIDTH  = 600
 DEFAULT_HEIGHT = 400
@@ -24,8 +24,8 @@ function hosted(self)
    return self.hosted
 end
 
-function iconTheme()
-   if (gui.rgbValue(gui.strToRGB(gui.style.widget.text)) > 127) then
+iconTheme = thunk():str
+   if gui.rgbValue(gui.strToRGB(gui.style.widget.text)) > 127 then
       return 'pearl'
    else
       return 'default' -- The default theme is dark
@@ -57,9 +57,9 @@ gui.window = function(Options)
 
    self.clientViewport = function(self, Options)
       if self._clientViewport then return self._clientViewport end
-      if not Options then Options = { } end
+      Options ?= { }
 
-      if not Options.aspectRatio then Options.aspectRatio = 'XMin|YMin|Meet' end
+      Options.aspectRatio ?= 'XMin|YMin|Meet'
 
       if hosted(self) then
          Options.x = 0
@@ -141,7 +141,7 @@ gui.window = function(Options)
             Width - self.client.left - self.client.right,
             Height - self.client.top - self.client.bottom, 0)
       else
-         if (X) or (Y) then
+         if X or Y then
             X ?= self.surface.x
             Y ?= self.surface.y
             self.surface.acRedimension(X, Y, 0, Width, Height, 0)
@@ -434,26 +434,18 @@ gui.window = function(Options)
    self:setTitle(self.title)
 
    if Options.insideWidth then
-      if hosted(self) then
-         self.surface.width = Options.insideWidth
-      else
-         self.surface.width = Options.insideWidth + self.client.left + self.client.right
-      end
+      self.surface.width = hosted(self) ? Options.insideWidth :> Options.insideWidth + self.client.left + self.client.right
    end
 
    if Options.insideHeight then
-      if hosted(self) then
-         self.surface.height = Options.insideHeight
-      else
-         self.surface.height = Options.insideHeight + self.client.top + self.client.bottom
-      end
+      self.surface.height = hosted(self) ? Options.insideHeight :> Options.insideHeight + self.client.top + self.client.bottom
    end
 
    if self.surface.popOver != 0 then
       -- If a pop-over surface is stick-to-front, we also need that status to avoid being behind it.
 
       info = struct.new('SurfaceInfo')
-      if (mGfx.GetSurfaceInfo(self.surface.popOver, info) is ERR_Okay) then
+      if mGfx.GetSurfaceInfo(self.surface.popOver, info) is ERR_Okay then
          if (info.flags & RNF_STICK_TO_FRONT)?? then
             self.surface.flags = self.surface.flags | RNF_STICK_TO_FRONT
          end
@@ -461,11 +453,11 @@ gui.window = function(Options)
    end
 
    self.viewport.mtSubscribeFeedback(FM_HAS_FOCUS | FM_CHILD_HAS_FOCUS | FM_LOST_FOCUS, function(Viewport, Event)
-      if (Event is FM_LOST_FOCUS) then
-         if self.events and self.events.lostFocus then self.events.lostFocus(self) end
+      if Event is FM_LOST_FOCUS then
+         self.events?.lostFocus(self)
       else
          if not self.disabled then
-            if self.events and self.events.focus then self.events.focus(self) end
+            self.events?.focus(self)
          end
       end
 
@@ -473,7 +465,7 @@ gui.window = function(Options)
    end)
 
    mGfx.windowHook(self.surface.id, WH_CLOSE, function()
-      if not self.closeEnabled then return end
+      self.closeEnabled ?? return
 
       if self.events and self.events.close then
          result = self.events.close(self)
