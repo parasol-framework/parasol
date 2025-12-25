@@ -1,0 +1,91 @@
+-- Fluid Language Server Protocol (LSP) Server
+--
+-- A TCP-based LSP server for IDE integration with Fluid scripts.
+--
+-- Usage: parasol lsp_server.fluid port=5007 [options...]
+--
+-- See --help for full usage information.
+
+glHelp = [[
+Fluid Language Server Protocol (LSP) server for IDE integration.
+
+This server implements the Language Server Protocol over TCP, allowing IDEs
+and editors to provide features like autocompletion, hover information, and
+diagnostics for Fluid scripts.
+
+Usage: parasol lsp_server.fluid [options...]
+
+Parameters:
+
+  port    - TCP port to listen on (default: 5007)
+  verbose - Enable verbose/debug logging (true/false, default: false)
+  config  - Path to config file (default: user:config/lsp_server_cfg.fluid)
+  help    - Display this help message
+
+Examples:
+
+  parasol lsp_server.fluid port=5007
+  parasol lsp_server.fluid port=5007 verbose=true
+  parasol lsp_server.fluid config=my_lsp_config.fluid
+
+Config File Format:
+
+  The config file should define a glOptions table:
+
+    glOptions = {
+       port = 5007,
+       verbose = false
+    }
+
+Testing with netcat/telnet:
+
+  1. Start the server: parasol lsp_server.fluid port=5007
+  2. Connect: nc localhost 5007
+  3. Send initialize request:
+     Content-Length: 110
+
+     {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"processId":1,"capabilities":{},"rootUri":null}}
+
+IDE Integration:
+
+  Configure your IDE's LSP client to connect to localhost on the specified port.
+  The server supports the standard LSP lifecycle: initialize, initialized, shutdown, exit.
+]]
+
+   lsplib = require 'dev/lsp'
+
+   -- Load config file if available
+   glConfigFile = arg('config') ?? 'user:config/lsp_server_cfg.fluid'
+   glOptions = { }
+
+   if mSys.AnalysePath(glConfigFile) is ERR_Okay then
+      loadFile(glConfigFile, glOptions)
+      print('Loaded config from: ' .. glConfigFile)
+   end
+
+   -- Handle help request
+   if arg('help') then
+      print(glHelp)
+      return
+   end
+
+   -- Override with command-line arguments
+   if arg('port') then
+      glOptions.port = tonumber(arg('port'))
+   end
+
+   if arg('verbose') then
+      local verbose = arg('verbose'):lower()
+      glOptions.verbose = (verbose is 'true' or verbose is '1')
+   end
+
+   -- Set up logging to stdout
+   glOptions.logMessage = function(Message)
+      print(Message)
+   end
+
+   -- Start the LSP server
+   glServer = lsplib.start(glOptions)
+
+   -- Keep the server running
+   processing.sleep()

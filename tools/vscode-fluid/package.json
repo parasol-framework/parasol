@@ -1,0 +1,86 @@
+{
+   "name": "fluid-language",
+   "displayName": "Fluid Language Support",
+   "description": "Language support for Fluid scripting (Parasol Framework)",
+   "version": "0.1.0",
+   "publisher": "parasol",
+   "engines": {
+      "vscode": "^1.75.0"
+   },
+   "categories": [
+      "Programming Languages"
+   ],
+   "activationEvents": [
+      "workspaceContains:**/*.fluid"
+   ],
+   "main": "./extension.js",
+   "contributes": {
+      "languages": [
+         {
+            "id": "fluid",
+            "aliases": ["Fluid", "fluid"],
+            "extensions": [".fluid"],
+            "configuration": "./language-configuration.json"
+         }
+      ],
+      "grammars": [
+         {
+            "language": "fluid",
+            "scopeName": "source.fluid",
+            "path": "./syntaxes/fluid.tmLanguage.json"
+         }
+      ],
+      "configuration": {
+         "type": "object",
+         "title": "Fluid",
+         "properties": {
+            "fluid.lsp.enable": {
+               "type": "boolean",
+               "default": true,
+               "description": "Enable Fluid LSP server connection"
+            },
+            "fluid.lsp.host": {
+               "type": "string",
+               "default": "127.0.0.1",
+               "description": "LSP server host address"
+            },
+            "fluid.lsp.port": {
+               "type": "number",
+               "default": 5007,
+               "description": "LSP server TCP port"
+            }
+         }
+      },
+      "semanticTokenScopes": [
+         {
+            "language": "fluid",
+            "scopes": {
+               "keyword": ["keyword.control.fluid"],
+               "operator": ["keyword.operator.fluid"],
+               "variable": ["variable.other.fluid"],
+               "function": ["entity.name.function.fluid"],
+               "string": ["string.quoted.fluid"],
+               "number": ["constant.numeric.fluid"],
+               "comment": ["comment.fluid"],
+               "type": ["entity.name.type.fluid"],
+               "parameter": ["variable.parameter.fluid"],
+               "property": ["variable.other.property.fluid"],
+               "namespace": ["entity.name.namespace.fluid"],
+               "class": ["entity.name.class.fluid"],
+               "macro": ["constant.other.fluid"]
+            }
+         }
+      ],
+      "configurationDefaults": {
+         "[fluid]": {
+            "editor.semanticHighlighting.enabled": true
+         }
+      }
+   },
+   "dependencies": {
+      "vscode-languageclient": "^9.0.1"
+   },
+   "devDependencies": {
+      "@types/vscode": "^1.75.0"
+   }
+}

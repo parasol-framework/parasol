@@ -1,0 +1,833 @@
+-- Fluid Language Server Protocol (LSP) Server Library
+--
+-- Provides a TCP-based LSP server for IDE integration with Fluid scripts.
+-- Implements the JSON-RPC 2.0 protocol with LSP wire format (Content-Length framing).
+--
+-- Usage:
+--    lsplib = require 'dev/lsp'
+--    server = lsplib.start({ port = 5007, verbose = true })
+--    processing.sleep()
+--
+-- The server supports handler registration for extending LSP functionality:
+--    server.registerHandler('textDocument/hover', function(msg, state) ... end)
+
+   include 'network'
+   json = require('json')
+
+   lsp = { }
+
+   glTime = obj.new('time')
+
+   -- Document storage for open files
+   glDocuments = { }
+
+----------------------------------------------------------------------------------------------------------------------
+-- Semantic Token Types and Modifiers (LSP standard)
+
+-- Token types - order matters, index is used in the protocol
+TOKEN_TYPES = {
+   'keyword',        -- 0: if, while, for, etc.
+   'operator',       -- 1: and, or, not, is
+   'variable',       -- 2: regular variables
+   'function',       -- 3: function names
+   'string',         -- 4: string literals
+   'number',         -- 5: numeric literals
+   'comment',        -- 6: comments
+   'type',           -- 7: type names
+   'parameter',      -- 8: function parameters
+   'property',       -- 9: object properties
+   'namespace',      -- 10: module/namespace
+   'class',          -- 11: class names
+   'macro'           -- 12: constants like ERR_Okay
+}
+
+-- Token modifiers (bitfield)
+TOKEN_MODIFIERS = {
+   'declaration',    -- 0: variable/function declaration
+   'definition',     -- 1: definition site
+   'readonly',       -- 2: constants
+   'static',         -- 3: static members
+   'deprecated',     -- 4: deprecated items
+   'modification',   -- 5: modified variable
+   'documentation',  -- 6: documentation strings
+   'defaultLibrary'  -- 7: built-in functions
+}
+
+-- Fluid reserved keywords
+FLUID_KEYWORDS = {
+   -- Control flow
+   ['if'] = true, ['then'] = true, ['else'] = true, ['elseif'] = true,
+   ['for'] = true, ['in'] = true, ['while'] = true, ['do'] = true,
+   ['repeat'] = true, ['until'] = true, ['break'] = true, ['continue'] = true,
+   ['return'] = true, ['end'] = true,
+
+   -- Declarations
+   ['function'] = true, ['local'] = true, ['global'] = true,
+
+   -- Special
+   ['defer'] = true, ['catch'] = true, ['raise'] = true, ['check'] = true
+}
+
+-- Logical/comparison operators (highlighted as operators)
+FLUID_OPERATORS = {
+   ['and'] = true, ['or'] = true, ['not'] = true, ['is'] = true
+}
+
+-- Built-in constants
+FLUID_CONSTANTS = {
+   ['true'] = true, ['false'] = true, ['nil'] = true
+}
+
+-- Built-in functions (default library)
+FLUID_BUILTINS = {
+   ['print'] = true, ['msg'] = true, ['error'] = true, ['assert'] = true,
+   ['type'] = true, ['tonumber'] = true, ['tostring'] = true,
+   ['pairs'] = true, ['ipairs'] = true, ['next'] = true,
+   ['select'] = true, ['unpack'] = true, ['pcall'] = true, ['xpcall'] = true,
+   ['setmetatable'] = true, ['getmetatable'] = true,
+   ['rawget'] = true, ['rawset'] = true, ['rawequal'] = true,
+   ['collectgarbage'] = true, ['require'] = true, ['include'] = true,
+   ['loadFile'] = true, ['loadString'] = true,
+   ['arg'] = true, ['processing'] = true
+}
+
+-- Parasol modules/namespaces
+FLUID_MODULES = {
+   ['obj'] = true, ['mSys'] = true, ['mVec'] = true, ['mGfx'] = true,
+   ['string'] = true, ['table'] = true, ['math'] = true, ['bit'] = true,
+   ['io'] = true, ['os'] = true, ['debug'] = true, ['regex'] = true,
+   ['json'] = true
+}
+
+----------------------------------------------------------------------------------------------------------------------
+-- Utility Functions
+
+function timestamp()
+   glTime.acQuery()
+   return string.format('%04d-%02d-%02d %02d:%02d:%02d',
+      glTime.year, glTime.month, glTime.day, glTime.hour, glTime.minute, glTime.second)
+end
+
+function logMessage(Self, Message)
+   if Self.logMessage then
+      Self.logMessage('[' .. timestamp() .. '] ' .. Message)
+   end
+end
+
+function logVerbose(Self, Message)
+   if Self.verbose and Self.logMessage then
+      Self.logMessage('[' .. timestamp() .. '] [DEBUG] ' .. Message)
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- LSP Wire Protocol Parsing
+
+-- Parse the Content-Length header from the buffer
+-- Returns: content_length, body_start_offset, error_message
+-- If incomplete (need more data): nil, nil, nil
+-- If error: nil, nil, error_string
+-- If success: content_length, body_start_offset, nil
+function parseHeader(Buffer)
+   header_end = Buffer:find('\r\n\r\n')
+   if not header_end then
+      return nil, nil, nil  -- Need more data
+   end
+
+   header_section = Buffer:sub(0, header_end)
+   content_length = nil
+
+   for line in header_section:gmatch('[^\r\n]+') do
+      name, value = line:match('([^:]+):%s*(.+)')
+      if name and name:lower() is 'content-length' then
+         content_length = tonumber(value)
+         break
+      end
+   end
+
+   if not content_length then
+      return nil, nil, 'Missing Content-Length header'
+   end
+
+   return content_length, header_end + 4, nil  -- +4 for \r\n\r\n
+end
+
+-- Parse a JSON-RPC 2.0 message
+function parseMessage(JsonBody)
+   local success, msg = pcall(function()
+      return json.decode(JsonBody)
+   end)
+
+   if not success then
+      return nil, 'JSON parse error: ' .. tostring(msg)
+   end
+
+   if msg.jsonrpc != '2.0' then
+      return nil, 'Invalid JSON-RPC version: ' .. tostring(msg.jsonrpc)
+   end
+
+   return msg, nil
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Response Formatting
+
+function formatResponse(ResponseTable)
+   body = json.encode(ResponseTable)
+   return 'Content-Length: ' .. #body .. '\r\n\r\n' .. body
+end
+
+function sendResponse(Self, ClientSocket, ResponseTable)
+   if not ResponseTable then
+      return  -- Notifications don't get responses
+   end
+
+   formatted = formatResponse(ResponseTable)
+   err = ClientSocket.acWrite(formatted)
+   if err != ERR_Okay then
+      logMessage(Self, 'Failed to send response: ' .. mSys.GetErrorMsg(err))
+   else
+      logVerbose(Self, 'Sent response: ' .. formatted:sub(0, 200))
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- LSP Error Codes
+
+LSP_ERROR = {
+   PARSE_ERROR      = -32700,
+   INVALID_REQUEST  = -32600,
+   METHOD_NOT_FOUND = -32601,
+   INVALID_PARAMS   = -32602,
+   INTERNAL_ERROR   = -32603
+}
+
+function makeErrorResponse(Id, Code, Message)
+   return {
+      jsonrpc = '2.0',
+      id = Id,
+      error = {
+         code = Code,
+         message = Message
+      }
+   }
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Semantic Token Encoder
+
+-- Tokenize a Fluid source file and return semantic tokens
+-- Returns array of tokens: { line, startChar, length, tokenType, tokenModifiers }
+function tokenizeFluid(Source)
+   tokens = { }
+   line = 0
+   col = 0
+   pos = 0
+   len = #Source
+
+   -- Helper to add a token
+   function addToken(TokenLine, TokenCol, TokenLen, TokenType, TokenMod)
+      table.insert(tokens, {
+         line = TokenLine,
+         char = TokenCol,
+         length = TokenLen,
+         type = TokenType,
+         modifiers = TokenMod or 0
+      })
+   end
+
+   -- Skip whitespace and track position
+   function skipWhitespace()
+      while pos < len do
+         c = Source:sub(pos, pos + 1)
+         if c is ' ' or c is '\t' then
+            col++
+            pos++
+         elseif c is '\n' then
+            line++
+            col = 0
+            pos++
+         elseif c is '\r' then
+            pos++
+            if pos < len and Source:sub(pos, pos + 1) is '\n' then
+               pos++
+            end
+            line++
+            col = 0
+         else
+            break
+         end
+      end
+   end
+
+   -- Check if character is identifier start
+   function isIdentStart(C)
+      return (C >= 'a' and C <= 'z') or (C >= 'A' and C <= 'Z') or C is '_'
+   end
+
+   -- Check if character is identifier continuation
+   function isIdentChar(C)
+      return isIdentStart(C) or (C >= '0' and C <= '9')
+   end
+
+   -- Check if character is digit
+   function isDigit(C)
+      return C >= '0' and C <= '9'
+   end
+
+   -- Main tokenization loop
+   while pos < len do
+      skipWhitespace()
+      if pos >= len then break end
+
+      c = Source:sub(pos, pos + 1)
+      start_col = col
+      start_pos = pos
+
+      -- Line comment: --
+      if c is '-' and pos + 1 < len and Source:sub(pos + 1, pos + 2) is '-' then
+         comment_start = col
+
+         -- Check for block comment --[[
+         if pos + 3 < len and Source:sub(pos + 2, pos + 4) is '[[' then
+            pos += 4
+            col += 4
+            -- Find closing ]]
+            while pos < len do
+               if Source:sub(pos, pos + 2) is ']]' then
+                  pos += 2
+                  col += 2
+                  break
+               elseif Source:sub(pos, pos + 1) is '\n' then
+                  addToken(line, comment_start, col - comment_start, 6, 0)  -- comment
+                  line++
+                  col = 0
+                  pos++
+                  comment_start = 0
+               else
+                  pos++
+                  col++
+               end
+            end
+            if col > comment_start then
+               addToken(line, comment_start, col - comment_start, 6, 0)  -- comment
+            end
+         else
+            -- Line comment - find end of line
+            while pos < len and Source:sub(pos, pos + 1) != '\n' do
+               pos++
+               col++
+            end
+            addToken(line, comment_start, col - comment_start, 6, 0)  -- comment
+         end
+
+      -- String literals
+      elseif c is '"' or c is "'" then
+         quote = c
+         str_start = col
+         pos++
+         col++
+         while pos < len do
+            sc = Source:sub(pos, pos + 1)
+            if sc is quote then
+               pos++
+               col++
+               break
+            elseif sc is '\\' then
+               pos += 2
+               col += 2
+            elseif sc is '\n' then
+               break  -- Unterminated string
+            else
+               pos++
+               col++
+            end
+         end
+         addToken(line, str_start, col - str_start, 4, 0)  -- string
+
+      -- Multiline string [[
+      elseif c is '[' and pos + 1 < len and Source:sub(pos + 1, pos + 2) is '[' then
+         str_start_line = line
+         str_start_col = col
+         pos += 2
+         col += 2
+         segment_start = col
+         while pos < len do
+            if Source:sub(pos, pos + 2) is ']]' then
+               if col > segment_start or line is str_start_line then
+                  addToken(line, (line is str_start_line) and str_start_col or 0,
+                     (line is str_start_line) and (col - str_start_col + 2) or (col + 2), 4, 0)
+               end
+               pos += 2
+               col += 2
+               break
+            elseif Source:sub(pos, pos + 1) is '\n' then
+               if line is str_start_line then
+                  addToken(line, str_start_col, col - str_start_col, 4, 0)
+               else
+                  addToken(line, 0, col, 4, 0)
+               end
+               line++
+               col = 0
+               pos++
+               segment_start = 0
+            else
+               pos++
+               col++
+            end
+         end
+
+      -- Numbers
+      elseif isDigit(c) or (c is '.' and pos + 1 < len and isDigit(Source:sub(pos + 1, pos + 2))) then
+         num_start = col
+         -- Hex number
+         if c is '0' and pos + 1 < len and (Source:sub(pos + 1, pos + 2) is 'x' or Source:sub(pos + 1, pos + 2) is 'X') then
+            pos += 2
+            col += 2
+            while pos < len do
+               nc = Source:sub(pos, pos + 1)
+               if isDigit(nc) or (nc >= 'a' and nc <= 'f') or (nc >= 'A' and nc <= 'F') then
+                  pos++
+                  col++
+               else
+                  break
+               end
+            end
+         else
+            -- Decimal number
+            while pos < len and isDigit(Source:sub(pos, pos + 1)) do
+               pos++
+               col++
+            end
+            -- Decimal part
+            if pos < len and Source:sub(pos, pos + 1) is '.' then
+               pos++
+               col++
+               while pos < len and isDigit(Source:sub(pos, pos + 1)) do
+                  pos++
+                  col++
+               end
+            end
+            -- Exponent
+            if pos < len and (Source:sub(pos, pos + 1) is 'e' or Source:sub(pos, pos + 1) is 'E') then
+               pos++
+               col++
+               if pos < len and (Source:sub(pos, pos + 1) is '+' or Source:sub(pos, pos + 1) is '-') then
+                  pos++
+                  col++
+               end
+               while pos < len and isDigit(Source:sub(pos, pos + 1)) do
+                  pos++
+                  col++
+               end
+            end
+         end
+         addToken(line, num_start, col - num_start, 5, 0)  -- number
+
+      -- Identifiers and keywords
+      elseif isIdentStart(c) then
+         ident_start = col
+         while pos < len and isIdentChar(Source:sub(pos, pos + 1)) do
+            pos++
+            col++
+         end
+         ident = Source:sub(start_pos, pos)
+         ident_len = col - ident_start
+
+         if FLUID_KEYWORDS[ident] then
+            addToken(line, ident_start, ident_len, 0, 0)  -- keyword
+         elseif FLUID_OPERATORS[ident] then
+            addToken(line, ident_start, ident_len, 1, 0)  -- operator
+         elseif FLUID_CONSTANTS[ident] then
+            addToken(line, ident_start, ident_len, 12, 4)  -- macro + readonly
+         elseif FLUID_BUILTINS[ident] then
+            addToken(line, ident_start, ident_len, 3, 128)  -- function + defaultLibrary
+         elseif FLUID_MODULES[ident] then
+            addToken(line, ident_start, ident_len, 10, 0)  -- namespace
+         elseif ident:match('^ERR_') then
+            addToken(line, ident_start, ident_len, 12, 4)  -- macro + readonly (error constants)
+         elseif ident:match('^gl[A-Z]') then
+            addToken(line, ident_start, ident_len, 2, 8)  -- variable + static (global)
+         elseif ident:match('^[A-Z]') and ident:match('^[A-Z_]+$') then
+            addToken(line, ident_start, ident_len, 12, 4)  -- macro + readonly (CONSTANTS)
+         else
+            -- Check if it's a function call (followed by parenthesis)
+            save_pos = pos
+            save_col = col
+            skipWhitespace()
+            if pos < len and Source:sub(pos, pos + 1) is '(' then
+               addToken(line, ident_start, ident_len, 3, 0)  -- function
+            end
+            -- Restore position (we don't consume the paren)
+            pos = save_pos
+            col = save_col
+            -- Regular identifiers are not highlighted (let theme handle them)
+         end
+
+      else
+         -- Skip other characters (operators, punctuation, etc.)
+         pos++
+         col++
+      end
+   end
+
+   return tokens
+end
+
+-- Encode tokens into LSP semantic tokens format (delta-encoded integers)
+function encodeSemanticTokens(Tokens)
+   data = { }
+   prev_line = 0
+   prev_char = 0
+
+   for _, tok in ipairs(Tokens) do
+      delta_line = tok.line - prev_line
+      delta_char = (delta_line is 0) and (tok.char - prev_char) or tok.char
+
+      table.insert(data, delta_line)
+      table.insert(data, delta_char)
+      table.insert(data, tok.length)
+      table.insert(data, tok.type)
+      table.insert(data, tok.modifiers)
+
+      prev_line = tok.line
+      prev_char = tok.char
+   end
+
+   return data
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Core LSP Handlers
+
+function registerCoreHandlers(Self)
+   -- initialize: Client initiates handshake
+   Self._handlers['initialize'] = function(Msg, State)
+      State.initialized = true
+      logMessage(Self, 'LSP initialize request received')
+
+      return {
+         jsonrpc = '2.0',
+         id = Msg.id,
+         result = {
+            capabilities = {
+               -- Full sync: client sends entire document on change
+               textDocumentSync = {
+                  openClose = true,
+                  change = 1  -- Full sync
+               },
+               -- Semantic tokens for syntax highlighting
+               semanticTokensProvider = {
+                  legend = {
+                     tokenTypes = TOKEN_TYPES,
+                     tokenModifiers = TOKEN_MODIFIERS
+                  },
+                  full = true,
+                  range = false
+               }
+            },
+            serverInfo = {
+               name = 'Fluid LSP Server',
+               version = '0.1.0'
+            }
+         }
+      }
+   end
+
+   -- initialized: Client confirms handshake complete (notification, no response)
+   Self._handlers['initialized'] = function(Msg, State)
+      logMessage(Self, 'LSP initialized notification received - handshake complete')
+      return nil
+   end
+
+   -- shutdown: Client requests shutdown preparation
+   Self._handlers['shutdown'] = function(Msg, State)
+      State.shutdown_requested = true
+      logMessage(Self, 'LSP shutdown request received')
+
+      return {
+         jsonrpc = '2.0',
+         id = Msg.id,
+         result = json.null
+      }
+   end
+
+   -- exit: Client requests termination (notification)
+   Self._handlers['exit'] = function(Msg, State)
+      if State.shutdown_requested then
+         logMessage(Self, 'LSP exit notification - clean shutdown')
+      else
+         logMessage(Self, 'LSP exit notification - unexpected (no prior shutdown)')
+      end
+      State.should_disconnect = true
+      return nil
+   end
+
+   --------------------------------------------------------------------------
+   -- Document Synchronization
+
+   -- textDocument/didOpen: Client opened a document
+   Self._handlers['textDocument/didOpen'] = function(Msg, State)
+      doc = Msg.params.textDocument
+      glDocuments[doc.uri] = {
+         uri = doc.uri,
+         languageId = doc.languageId,
+         version = doc.version,
+         content = doc.text
+      }
+      logMessage(Self, 'Document opened: ' .. doc.uri)
+      return nil  -- Notification, no response
+   end
+
+   -- textDocument/didChange: Document content changed
+   Self._handlers['textDocument/didChange'] = function(Msg, State)
+      uri = Msg.params.textDocument.uri
+      version = Msg.params.textDocument.version
+
+      if glDocuments[uri] then
+         -- Full sync: replace entire content
+         for _, change in ipairs(Msg.params.contentChanges) do
+            glDocuments[uri].content = change.text
+         end
+         glDocuments[uri].version = version
+         logVerbose(Self, 'Document updated: ' .. uri .. ' (version ' .. version .. ')')
+      end
+      return nil  -- Notification, no response
+   end
+
+   -- textDocument/didClose: Client closed a document
+   Self._handlers['textDocument/didClose'] = function(Msg, State)
+      uri = Msg.params.textDocument.uri
+      glDocuments[uri] = nil
+      logMessage(Self, 'Document closed: ' .. uri)
+      return nil  -- Notification, no response
+   end
+
+   --------------------------------------------------------------------------
+   -- Semantic Tokens
+
+   -- textDocument/semanticTokens/full: Return all semantic tokens for a document
+   Self._handlers['textDocument/semanticTokens/full'] = function(Msg, State)
+      uri = Msg.params.textDocument.uri
+      doc = glDocuments[uri]
+
+      if not doc then
+         logMessage(Self, 'Semantic tokens requested for unknown document: ' .. uri)
+         return {
+            jsonrpc = '2.0',
+            id = Msg.id,
+            result = { data = {} }
+         }
+      end
+
+      logVerbose(Self, 'Computing semantic tokens for: ' .. uri)
+
+      tokens = tokenizeFluid(doc.content)
+      encoded = encodeSemanticTokens(tokens)
+
+      logVerbose(Self, 'Returning ' .. #tokens .. ' tokens (' .. #encoded .. ' integers)')
+
+      return {
+         jsonrpc = '2.0',
+         id = Msg.id,
+         result = {
+            data = encoded
+         }
+      }
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Method Dispatch
+
+function dispatchMethod(Self, Message, State)
+   method = Message.method
+
+   if not method then
+      -- This is a response, not a request - ignore for now
+      logVerbose(Self, 'Received response message (ignored)')
+      return nil
+   end
+
+   handler = Self._handlers[method]
+
+   if handler then
+      logVerbose(Self, 'Dispatching method: ' .. method)
+      success, result = pcall(function()
+         return handler(Message, State)
+      end)
+
+      if success then
+         return result
+      else
+         logMessage(Self, 'Handler error for ' .. method .. ': ' .. tostring(result))
+         if Message.id then
+            return makeErrorResponse(Message.id, LSP_ERROR.INTERNAL_ERROR, tostring(result))
+         end
+         return nil
+      end
+   else
+      logVerbose(Self, 'Unknown method: ' .. method)
+      -- Unknown method: return error for requests, ignore notifications
+      if Message.id then
+         return makeErrorResponse(Message.id, LSP_ERROR.METHOD_NOT_FOUND, 'Method not found: ' .. method)
+      end
+      return nil
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Incoming Data Handler
+
+function processIncoming(Self, ClientSocket)
+   state = ClientSocket._state()
+
+   -- Initialize state on first call
+   if not state.initialised then
+      state.buffer = ''
+      state.phase = 'READING_HEADER'
+      state.content_length = nil
+      state.initialized = false
+      state.shutdown_requested = false
+      state.should_disconnect = false
+      state.initialised = true
+      logVerbose(Self, 'New client connection initialized')
+   end
+
+   -- Read available data
+   buffer = string.alloc(8192)
+   err, bytes_read = ClientSocket.acRead(buffer, 8192)
+
+   if err != ERR_Okay then
+      if err != ERR_Disconnected then
+         logMessage(Self, 'Read error: ' .. mSys.GetErrorMsg(err))
+      end
+      return
+   end
+
+   if bytes_read is 0 then
+      return
+   end
+
+   -- Accumulate data
+   state.buffer ..= buffer:sub(0, bytes_read)
+   logVerbose(Self, 'Received ' .. bytes_read .. ' bytes, buffer now ' .. #state.buffer .. ' bytes')
+
+   -- Process messages in a loop (may have multiple messages in buffer)
+   while #state.buffer > 0 do
+      if state.phase is 'READING_HEADER' then
+         content_length, body_start, parse_err = parseHeader(state.buffer)
+
+         if not content_length then
+            if parse_err then
+               logMessage(Self, 'Header parse error: ' .. parse_err)
+               state.buffer = ''
+            end
+            break  -- Need more data or error occurred
+         end
+
+         state.content_length = content_length
+         state.buffer = state.buffer:sub(body_start)
+         state.phase = 'READING_BODY'
+         logVerbose(Self, 'Header parsed, expecting ' .. content_length .. ' bytes')
+      end
+
+      if state.phase is 'READING_BODY' then
+         if #state.buffer < state.content_length then
+            break  -- Need more data
+         end
+
+         -- Extract the JSON body
+         json_body = state.buffer:sub(0, state.content_length)
+         state.buffer = state.buffer:sub(state.content_length)
+         state.phase = 'READING_HEADER'
+
+         logVerbose(Self, 'Received message: ' .. json_body:sub(0, 200))
+
+         -- Parse and dispatch
+         message, parse_err = parseMessage(json_body)
+         if message then
+            response = dispatchMethod(Self, message, state)
+            sendResponse(Self, ClientSocket, response)
+
+            -- Check if we should disconnect after exit
+            if state.should_disconnect then
+               logVerbose(Self, 'Disconnecting client per exit request')
+               ClientSocket.acDeactivate()
+               return
+            end
+         else
+            logMessage(Self, 'Parse error: ' .. tostring(parse_err))
+            -- Send parse error response if we can determine an ID
+            sendResponse(Self, ClientSocket, makeErrorResponse(json.null, LSP_ERROR.PARSE_ERROR, parse_err))
+         end
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Public API
+
+lsp.start = function(Options)
+   Options = Options or {}
+
+   self = {
+      port = Options.port or 5007,
+      verbose = Options.verbose or false,
+      logMessage = Options.logMessage or function(msg) print(msg) end,
+      _socket = nil,
+      _handlers = {}
+   }
+
+   -- Register core LSP handlers
+   registerCoreHandlers(self)
+
+   logMessage(self, 'Starting Fluid LSP Server on port ' .. self.port)
+
+   -- Create TCP server socket
+   self._socket = obj.new('netsocket', {
+      port = self.port,
+      flags = 'SERVER|MULTI_CONNECT',
+      feedback = function(Server, ClientSocket, State)
+         if State is NTC_CONNECTED then
+            logMessage(self, 'LSP client connected')
+         elseif State is NTC_DISCONNECTED then
+            logMessage(self, 'LSP client disconnected')
+         end
+      end,
+      incoming = function(Server, ClientSocket)
+         processIncoming(self, ClientSocket)
+      end
+   })
+
+   if not self._socket then
+      error('Failed to create LSP server socket on port ' .. self.port)
+   end
+
+   logMessage(self, 'Fluid LSP Server listening on port ' .. self.port)
+   if self.verbose then
+      logMessage(self, 'Verbose logging enabled')
+   end
+
+   -- Public methods
+
+   self.stop = function()
+      if self._socket then
+         logMessage(self, 'Stopping LSP server')
+         self._socket = nil
+         collectgarbage()
+      end
+   end
+
+   self.registerHandler = function(Method, Handler)
+      if type(Handler) != 'function' then
+         error('Handler must be a function')
+      end
+      self._handlers[Method] = Handler
+      logVerbose(self, 'Registered handler for: ' .. Method)
+   end
+
+   return self
+end
+
+   return lsp
