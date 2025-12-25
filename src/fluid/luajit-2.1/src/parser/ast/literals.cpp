@@ -31,6 +31,14 @@ ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(const Token &functi
    if (not type_result.ok()) return ParserResult<ExprNodePtr>::failure(type_result.error_ref());
    FunctionReturnTypes return_types = type_result.value_ref();
 
+   #ifdef INCLUDE_ADVICE
+   if (not return_types.is_explicit) {
+      this->ctx.emit_advice(1, AdviceCategory::TypeSafety,
+         "Function lacks return type annotation; consider adding ': type' or ': <type1, type2>'",
+         function_token);
+   }
+   #endif
+
    // For thunk compatibility: extract single return type for thunk_return_type field
    FluidType thunk_return_type = FluidType::Any;
    if (is_thunk and return_types.count > 0) {
