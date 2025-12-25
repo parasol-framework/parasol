@@ -62,6 +62,21 @@ static bool is_shorthand_statement_keyword(TokenKind Kind)
    }
 }
 
+// Checks if a statement unconditionally terminates control flow (return, break, continue).
+
+static bool is_terminating_statement(const StmtNode *Stmt)
+{
+   if (not Stmt) return false;
+   switch (Stmt->kind) {
+      case AstNodeKind::ReturnStmt:
+      case AstNodeKind::BreakStmt:
+      case AstNodeKind::ContinueStmt:
+         return true;
+      default:
+         return false;
+   }
+}
+
 // Checks if a token kind is a compound assignment operator (+=, -=, etc.).
 // These are statements, not expressions, which helps provide better error messages.
 
@@ -151,7 +166,12 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_block(std::span<const
    StmtNodeList statements;
    bool recovery_mode = not this->ctx.config().abort_on_error;
 
+   #ifdef INCLUDE_ADVICE
+   const StmtNode *terminating_stmt = nullptr;  // Track the first terminating statement in this block
+   #endif
+
    while (not this->at_end_of_block(terminators)) {
+      Token stmt_start = this->ctx.tokens().current();
       auto stmt = this->parse_statement();
 
       if (not stmt.ok()) {
@@ -182,7 +202,31 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_block(std::span<const
          continue;
       }
 
-      if (stmt.value_ref()) statements.push_back(std::move(stmt.value_ref()));
+      if (stmt.value_ref()) {
+         #ifdef INCLUDE_ADVICE
+         // Check for unreachable code: if we've already seen a terminating statement, this code is unreachable
+         if (terminating_stmt) {
+            const char *terminator_name = nullptr;
+            switch (terminating_stmt->kind) {
+               case AstNodeKind::ReturnStmt:   terminator_name = "return"; break;
+               case AstNodeKind::BreakStmt:    terminator_name = "break"; break;
+               case AstNodeKind::ContinueStmt: terminator_name = "continue"; break;
+               default: break;
+            }
+            if (terminator_name) {
+               this->ctx.emit_advice(1, AdviceCategory::TypeSafety,
+                  std::format("Unreachable code after '{}' statement", terminator_name),
+                  stmt_start);
+            }
+         }
+         // Track if this statement terminates control flow
+         else if (is_terminating_statement(stmt.value_ref().get())) {
+            terminating_stmt = stmt.value_ref().get();
+         }
+         #endif
+
+         statements.push_back(std::move(stmt.value_ref()));
+      }
    }
 
    Token last = this->ctx.tokens().current();
