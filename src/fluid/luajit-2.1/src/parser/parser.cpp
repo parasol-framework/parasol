@@ -136,12 +136,12 @@ static void trace_ast_boundary(ParserContext &Context, const BlockStmt &Chunk, C
          int(stmt.kind), children, int(stmt_span.line), int(stmt_span.column), stmt_span.offset);
 
       if (stmt.kind IS AstNodeKind::ExpressionStmt) {
-         const auto * payload = std::get_if<ExpressionStmtPayload>(&stmt.data);
+         const auto *payload = std::get_if<ExpressionStmtPayload>(&stmt.data);
          if (payload and payload->expression) {
             const ExprNode& expr = *payload->expression;
             size_t expr_children = ast_expression_child_count(expr);
             SourceSpan expr_span = expr.span;
-            log.msg("      expr kind=%d children=%" PRId64 " span=%d:%d offset=%" PRId64,
+            log.msg("   expr kind=%d children=%" PRId64 " span=%d:%d offset=%" PRId64,
                int(expr.kind), expr_children, int(expr_span.line), int(expr_span.column), expr_span.offset);
          }
       }
@@ -255,7 +255,7 @@ extern GCproto * lj_parse(LexState *State)
 
    run_ast_pipeline(root_context, profiler);
 
-   if ((prv->JitOptions & JOF::DUMP_BYTECODE) != JOF::NIL) dump_bytecode(root_context);
+   if ((prv->JitOptions & JOF::DUMP_BYTECODE) != JOF::NIL) dump_bytecode(root_context.func());
 
    flush_non_fatal_errors(root_context);
 

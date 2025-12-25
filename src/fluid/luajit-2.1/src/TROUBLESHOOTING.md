@@ -381,5 +381,4 @@ When implementing new operators:
 5. Test function calls that return a single result and those that return multiple results
    (`f(x)`) - test VCALL handling
 6. Test in various contexts (assignments, function arguments, conditionals)
-7. If issues arise, use DebugLog('disasm') as a source of truth rather than guessing the
-   logic of emitted bytecode.
+7. If issues arise, use `--jit-options dump-bytecode` as a source of truth rather than guessing the logic of emitted bytecode.

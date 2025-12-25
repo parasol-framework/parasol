@@ -606,7 +606,6 @@ static ERR SET_Path(objScript *Self, CSTRING Value)
 }
 
 //********************************************************************************************************************
-// Internal: Name
 
 static ERR SET_Name(objScript *Self, CSTRING Name)
 {

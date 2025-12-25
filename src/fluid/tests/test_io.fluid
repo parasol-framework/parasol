@@ -248,7 +248,7 @@ end
    assert(collected_lines[2] is 'Line 3', 'Third line should be "Line 3"')
 end
 
-@Test(labels=['io', "lines"]) function fileLines()
+@Test(labels=['io', "lines"]) function FileLines()
    lines_content = 'First\nSecond\nThird\n'
    test_path = createTestFile('test_file_lines.txt', lines_content)
    file = io.open(test_path, 'r')

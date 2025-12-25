@@ -32,7 +32,7 @@ end
 
 gui.pixel = function(val)
    val ?? return 0
-   local num, alpha = val:match('^(%d+)(%a-)$')
+   num, alpha = val:match('^(%d+)(%a-)$')
    num = tonumber(num)
    assert(num, 'Invalid graphics unit \'' .. val .. '\'')
    return choose alpha from
@@ -82,10 +82,13 @@ gui.strToRGB = function(Value:str):table
          colours = array<int> { 0, 0, 0, 255 }
          c = 0
          for str in string.gmatch(Value, '([^,]+)') do
-            if str then colours[c] = tonumber(str) end
-            c++
+            if str then 
+               colours[c++] = tonumber(str)
+            end
          end
+
          assert(c >= 3, "Invalid value: " .. tostring(Value))
+
          r = colours[0]
          g = colours[1]
          b = colours[2]
@@ -252,7 +255,7 @@ gui.applyFill = function(Vector, Fill)
       end
       if Vector.stroke then Vector.stroke = Fill end
       child = Vector.child
-      if child then gui.applyFill(child, Fill) end
+      child and gui.applyFill(child, Fill)
       Vector = Vector.next
    end
 end
@@ -309,7 +312,7 @@ gui.createIcon = function(Scene, Path, Size, Theme, Name)
    Size ??= 16
    assert(Path, 'No Path specified.')
    lGradient = gui.iconThemes.default
-   local icon = { size=Size }
+   icon = { size=Size }
 
    gui._counter++
    gname = 'icon_grd' .. gui._counter

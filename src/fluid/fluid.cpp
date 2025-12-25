@@ -74,6 +74,23 @@ static struct MsgHandler *glMsgThread = nullptr; // Message handler for thread c
 [[nodiscard]] static CSTRING load_include_struct(lua_State *, CSTRING, CSTRING);
 [[nodiscard]] static CSTRING load_include_constant(lua_State *, CSTRING, CSTRING);
 
+constexpr auto HASH_TRACE_TOKENS         = pf::strhash("trace-tokens");
+constexpr auto HASH_TRACE_EXPECT         = pf::strhash("trace-expect");
+constexpr auto HASH_TRACE_BOUNDARY       = pf::strhash("trace-boundary");
+constexpr auto HASH_TRACE_OPERATORS      = pf::strhash("trace-operators");
+constexpr auto HASH_TRACE_REGISTERS      = pf::strhash("trace-registers");
+constexpr auto HASH_TRACE_CFG            = pf::strhash("trace-cfg");
+constexpr auto HASH_TRACE_ASSIGNMENTS    = pf::strhash("trace-assignments");
+constexpr auto HASH_TRACE_VALUE_CATEGORY = pf::strhash("trace-value-category");
+constexpr auto HASH_TRACE_TYPES          = pf::strhash("trace-types");
+constexpr auto HASH_DIAGNOSE             = pf::strhash("diagnose");
+constexpr auto HASH_DUMP_BYTECODE        = pf::strhash("dump-bytecode");
+constexpr auto HASH_PROFILE              = pf::strhash("profile");
+constexpr auto HASH_TRACE                = pf::strhash("trace");
+constexpr auto HASH_TOP_ADVICE           = pf::strhash("top-advice");
+constexpr auto HASH_ADVICE               = pf::strhash("advice");
+constexpr auto HASH_ALL_ADVICE           = pf::strhash("all-advice");
+
 #include "module_def.cpp"
 
 //********************************************************************************************************************
@@ -232,60 +249,29 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
                   std::string trimmed = option;
                   pf::trim(trimmed);
 
-                  if (pf::iequals(trimmed, "trace-tokens")) {
-                     glJitOptions |= JOF::TRACE_TOKENS;
-                  }
-                  else if (pf::iequals(trimmed, "trace-expect")) {
-                     glJitOptions |= JOF::TRACE_EXPECT;
-                  }
-                  else if (pf::iequals(trimmed, "trace-boundary")) {
-                     glJitOptions |= JOF::TRACE_BOUNDARY;
-                  }
-                  else if (pf::iequals(trimmed, "trace-operators")) {
-                     glJitOptions |= JOF::TRACE_OPERATORS;
-                  }
-                  else if (pf::iequals(trimmed, "trace-registers")) {
-                     glJitOptions |= JOF::TRACE_REGISTERS;
-                  }
-                  else if (pf::iequals(trimmed, "trace-cfg")) {
-                     glJitOptions |= JOF::TRACE_CFG;
-                  }
-                  else if (pf::iequals(trimmed, "trace-assignments")) {
-                     glJitOptions |= JOF::TRACE_ASSIGNMENTS;
-                  }
-                  else if (pf::iequals(trimmed, "trace-value-category")) {
-                     glJitOptions |= JOF::TRACE_VALUE_CATEGORY;
-                  }
-                  else if (pf::iequals(trimmed, "trace-types")) {
-                     glJitOptions |= JOF::TRACE_TYPES;
-                  }
-                  else if (pf::iequals(trimmed, "diagnose")) {
-                     glJitOptions |= JOF::DIAGNOSE;
-                  }
-                  else if (pf::iequals(trimmed, "dump-bytecode")) {
-                     glJitOptions |= JOF::DUMP_BYTECODE;
-                  }
-                  else if (pf::iequals(trimmed, "profile")) { // Use timers to profile JIT execution
-                     glJitOptions |= JOF::PROFILE;
-                  }
-                  else if (pf::iequals(trimmed, "trace")) { // Shortcut for tracing everything
-                     glJitOptions |= JOF::TRACE;
-                  }
-                  else if (pf::iequals(trimmed, "top-advice")) {
-                     glJitOptions |= JOF::TOP_ADVICE;
-                  }
-                  else if (pf::iequals(trimmed, "advice")) {
-                     glJitOptions |= JOF::ADVICE;
-                  }
-                  else if (pf::iequals(trimmed, "all-advice")) {
-                     glJitOptions |= JOF::ALL_ADVICE;
-                  }
+                  auto hash = pf::strhash(trimmed);
+                  if (hash IS HASH_TRACE_VALUE_CATEGORY)   glJitOptions |= JOF::TRACE_VALUE_CATEGORY;
+                  else if (hash IS HASH_TRACE_ASSIGNMENTS) glJitOptions |= JOF::TRACE_ASSIGNMENTS;
+                  else if (hash IS HASH_TRACE_OPERATORS) glJitOptions |= JOF::TRACE_OPERATORS;
+                  else if (hash IS HASH_TRACE_REGISTERS) glJitOptions |= JOF::TRACE_REGISTERS;
+                  else if (hash IS HASH_TRACE_BOUNDARY) glJitOptions |= JOF::TRACE_BOUNDARY;
+                  else if (hash IS HASH_TRACE_TOKENS)  glJitOptions |= JOF::TRACE_TOKENS;
+                  else if (hash IS HASH_TRACE_EXPECT)  glJitOptions |= JOF::TRACE_EXPECT;
+                  else if (hash IS HASH_TRACE_CFG)     glJitOptions |= JOF::TRACE_CFG;
+                  else if (hash IS HASH_TRACE_TYPES)   glJitOptions |= JOF::TRACE_TYPES;
+                  else if (hash IS HASH_DIAGNOSE)      glJitOptions |= JOF::DIAGNOSE;
+                  else if (hash IS HASH_DUMP_BYTECODE) glJitOptions |= JOF::DUMP_BYTECODE;
+                  else if (hash IS HASH_PROFILE)       glJitOptions |= JOF::PROFILE;
+                  else if (hash IS HASH_TRACE)         glJitOptions |= JOF::TRACE;
+                  else if (hash IS HASH_TOP_ADVICE)    glJitOptions |= JOF::TOP_ADVICE;
+                  else if (hash IS HASH_ADVICE)        glJitOptions |= JOF::ADVICE;
+                  else if (hash IS HASH_ALL_ADVICE)    glJitOptions |= JOF::ALL_ADVICE;
                   else log.warning("Unknown JIT option \"%s\" specified.", trimmed.c_str());
                }
 
                log.msg("JIT options \"%s\" set to $%.8x", value.c_str(), (uint32_t)glJitOptions);
 
-               if (glJitOptions != JOF::NIL) {
+               if ((glJitOptions & (JOF::TRACE|JOF::PROFILE)) != JOF::NIL) {
                   if (GetResource(RES::LOG_LEVEL) < 5) {
                      // Automatically raise the log level to see JIT messages.  Helpful for AI
                      // agents that forget this requirement.

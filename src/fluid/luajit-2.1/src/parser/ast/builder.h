@@ -91,6 +91,8 @@ private:
 
    [[nodiscard]] bool at_end_of_block(std::span<const TokenKind>) const;
    [[nodiscard]] bool is_statement_start(TokenKind kind) const;
+   [[nodiscard]] bool is_synchronisation_point(std::span<const TokenKind> terminators) const;
+   [[nodiscard]] size_t skip_to_synchronisation_point(std::span<const TokenKind> terminators);
    [[nodiscard]] static Identifier make_identifier(const Token &);
    [[nodiscard]] static LiteralValue make_literal(const Token &);
    [[nodiscard]] inline SourceSpan span_from(const Token &Token) { return Token.span(); }

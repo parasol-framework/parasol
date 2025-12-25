@@ -23,6 +23,7 @@
 #include "lj_obj.h"
 #include "lj_bc.h"
 #include "parser/parser_diagnostics.h"
+#include "luajit-2.1/src/debug/dump_bytecode.h"
 
 #include "hashes.h"
 #include "defs.h"
@@ -65,13 +66,22 @@ static ERR save_binary(objScript *, OBJECTPTR);
 //********************************************************************************************************************
 
 static const FieldDef clJitOptions[] = {
-   { "TraceTokens",   JOF::TRACE_TOKENS },
    { "Diagnose",      JOF::DIAGNOSE },
-   { "TraceBoundary", JOF::TRACE_BOUNDARY },
-   { "TraceExpect",   JOF::TRACE_EXPECT },
    { "DumpBytecode",  JOF::DUMP_BYTECODE },
    { "Profile",       JOF::PROFILE },
+   { "TopAdvice",     JOF::TOP_ADVICE },
+   { "Advice",        JOF::ADVICE },
+   { "AllAdvice",     JOF::ALL_ADVICE },
+   { "Trace",         JOF::TRACE },
    { "TraceTypes",    JOF::TRACE_TYPES },
+   { "TraceTokens",   JOF::TRACE_TOKENS },
+   { "TraceBoundary", JOF::TRACE_BOUNDARY },
+   { "TraceExpect",   JOF::TRACE_EXPECT },
+   { "TraceCfg",      JOF::TRACE_CFG },
+   { "TraceOperators", JOF::TRACE_OPERATORS },
+   { "TraceRegisters", JOF::TRACE_REGISTERS },
+   { "TraceAssignments", JOF::TRACE_ASSIGNMENTS },
+   { "TraceValueCategory", JOF::TRACE_VALUE_CATEGORY },
    { nullptr, 0 }
 };
 

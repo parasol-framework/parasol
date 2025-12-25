@@ -1,18 +1,14 @@
-/*
-** Memory access optimizations.
-** AA: Alias Analysis using high-level semantic disambiguation.
-** FWD: Load Forwarding (L2L) + Store Forwarding (S2L).
-** DSE: Dead-Store Elimination.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-*/
+// Memory access optimizations.
+// AA: Alias Analysis using high-level semantic disambiguation.
+// FWD: Load Forwarding (L2L) + Store Forwarding (S2L).
+// DSE: Dead-Store Elimination.
+//
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 
 #define lj_opt_mem_c
 #define LUA_CORE
 
 #include "lj_obj.h"
-
-#if LJ_HASJIT
-
 #include "lj_tab.h"
 #include "lj_ir.h"
 #include "lj_jit.h"
@@ -26,10 +22,8 @@
 #define fleft      (J->fold.left)
 #define fright      (J->fold.right)
 
-/*
-** Caveat #1: return value is not always a TRef -- only use with tref_ref().
-** Caveat #2: FWD relies on active CSE for xREF operands -- see lj_opt_fold().
-*/
+// Caveat #1: return value is not always a TRef -- only use with tref_ref().
+// Caveat #2: FWD relies on active CSE for xREF operands -- see lj_opt_fold().
 
 // Return values from alias analysis.
 typedef enum {
@@ -38,7 +32,7 @@ typedef enum {
    ALIAS_MUST   //  The two refs MUST alias (exact).
 } AliasRet;
 
-// -- ALOAD/HLOAD forwarding and ASTORE/HSTORE elimination ----------------
+// ALOAD/HLOAD forwarding and ASTORE/HSTORE elimination
 
 // Simplified escape analysis: check for intervening stores.
 static AliasRet aa_escape(jit_State* J, IRIns* ir, IRIns* stop)
@@ -447,7 +441,7 @@ doemit:
    return EMITFOLD;
 }
 
-// -- ULOAD forwarding ----------------------------------------------------
+// -- ULOAD forwarding
 
 /* The current alias analysis for upvalues is very simplistic. It only
 ** disambiguates between the unique upvalues of the same function.
@@ -457,21 +451,17 @@ doemit:
 ** generate a unique key for every upvalue, even across all prototypes.
 ** Lacking a realistic use-case, it's unclear whether this is beneficial.
 */
+
 static AliasRet aa_uref(IRIns* refa, IRIns* refb)
 {
-   if (refa->o != refb->o)
-      return ALIAS_NO;  //  Different UREFx type.
+   if (refa->o != refb->o) return ALIAS_NO;  //  Different UREFx type.
    if (refa->op1 == refb->op1) {  // Same function.
-      if (refa->op2 == refb->op2)
-         return ALIAS_MUST;  //  Same function, same upvalue idx.
-      else
-         return ALIAS_NO;  //  Same function, different upvalue idx.
+      if (refa->op2 == refb->op2) return ALIAS_MUST;  //  Same function, same upvalue idx.
+      else return ALIAS_NO;  //  Same function, different upvalue idx.
    }
    else {  // Different functions, check disambiguation hash values.
-      if (((refa->op2 ^ refb->op2) & 0xff))
-         return ALIAS_NO;  //  Upvalues with different hash values cannot alias.
-      else
-         return ALIAS_MAY;  //  No conclusion can be drawn for same hash value.
+      if (((refa->op2 ^ refb->op2) & 0xff)) return ALIAS_NO;  //  Upvalues with different hash values cannot alias.
+      else return ALIAS_MAY;  //  No conclusion can be drawn for same hash value.
    }
 }
 
@@ -558,7 +548,7 @@ doemit:
    return EMITFOLD;  //  Otherwise we have a conflict or simply no match.
 }
 
-// -- FLOAD forwarding and FSTORE elimination -----------------------------
+// -- FLOAD forwarding and FSTORE elimination
 
 /* Alias analysis for field access.
 ** Field loads are cheap and field stores are rare.
@@ -672,7 +662,7 @@ int LJ_FASTCALL lj_opt_fwd_sbuf(jit_State* J, IRRef lim)
    return 1;  //  No conflict. Can safely FOLD/CSE.
 }
 
-// -- XLOAD forwarding and XSTORE elimination -----------------------------
+// -- XLOAD forwarding and XSTORE elimination
 
 // Find cdata allocation for a reference (if any).
 static IRIns* aa_findcnew(jit_State* J, IRIns* ir)
@@ -970,11 +960,7 @@ int lj_opt_fwd_wasnonnil(jit_State* J, IROpT loadop, IRRef xref)
    return 0;  //  Nothing derived at all, previous value MAY be nil.
 }
 
-// ------------------------------------------------------------------------
-
 #undef IR
 #undef fins
 #undef fleft
 #undef fright
-
-#endif

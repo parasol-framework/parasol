@@ -15,289 +15,6 @@ static const MethodEntry clMethods[] = {
 
 //********************************************************************************************************************
 
-static std::string format_string_constant(std::string_view Data)
-{
-   static constexpr size_t max_length = 40;
-   static constexpr std::string_view hex_digits = "0123456789ABCDEF";
-
-   std::string text;
-   const auto limit = std::min(Data.size(), max_length);
-   const bool truncated = Data.size() > max_length;
-
-   text.reserve(limit * 2 + (truncated ? 6 : 2)); // Pre-allocate for quotes and possible escapes
-
-   for (size_t i = 0; i < limit; i++) {
-      const unsigned char ch = Data[i];
-
-      switch (ch) {
-         case '\n': text += "\\n"; break;
-         case '\r': text += "\\r"; break;
-         case '\t': text += "\\t"; break;
-         case '\\': text += "\\\\"; break;
-         case '"':  text += "\\\""; break;
-         default:
-            if (ch < 32) {
-               text += "\\x";
-               text += hex_digits[(ch >> 4) & 15];
-               text += hex_digits[ch & 15];
-            }
-            else text += char(ch);
-            break;
-      }
-   }
-
-   if (truncated) text += "...";
-
-   return std::format("\"{}\"", text);
-}
-
-//********************************************************************************************************************
-
-template<std::integral T>
-static BCLine get_line_from_info(const void *LineInfo, BCPOS Offset, BCLine FirstLine) {
-   return FirstLine + (BCLine)((const T *)LineInfo)[Offset];
-}
-
-static BCLine get_proto_line(GCproto *Proto, BCPOS Pc)
-{
-   const void *lineinfo = proto_lineinfo(Proto);
-
-   if ((Pc <= Proto->sizebc) and lineinfo) {
-      const BCLine first_line = Proto->firstline;
-      if (Pc IS Proto->sizebc) return first_line + Proto->numline;
-      if (Pc IS 0) return first_line;
-
-      const BCPOS offset = Pc - 1;
-
-      if (Proto->numline < 256) return get_line_from_info<uint8_t>(lineinfo, offset, first_line);
-      if (Proto->numline < 65536) return get_line_from_info<uint16_t>(lineinfo, offset, first_line);
-      return get_line_from_info<uint32_t>(lineinfo, offset, first_line);
-   }
-
-   return 0;
-}
-
-//********************************************************************************************************************
-
-static std::string_view get_proto_uvname(GCproto *Proto, uint32_t Index)
-{
-   const uint8_t *info = proto_uvinfo(Proto);
-   if (not info or Index >= Proto->sizeuv) return {};
-
-   const uint8_t *ptr = info;
-
-   for (uint32_t i = 0; i < Index; ++i) {
-      while (*ptr) ++ptr;
-      ++ptr;
-   }
-
-   return (CSTRING )ptr;
-}
-
-//********************************************************************************************************************
-
-static std::string describe_num_constant(const TValue *Value)
-{
-   if (tvisint(Value)) return std::format("{}", intV(Value));
-   if (tvisnum(Value)) return std::format("{}", numV(Value));
-   return "<number>";
-}
-
-//********************************************************************************************************************
-
-static std::string describe_gc_constant(GCproto *Proto, ptrdiff_t Index, [[maybe_unused]] bool Compact)
-{
-   GCobj *gc_obj = proto_kgc(Proto, Index);
-
-   if (gc_obj->gch.gct IS (uint8_t)~LJ_TSTR) {
-      GCstr *str_obj = gco_to_string(gc_obj);
-      return std::format("K{}", format_string_constant({strdata(str_obj), str_obj->len}));
-   }
-
-   if (gc_obj->gch.gct IS (uint8_t)~LJ_TPROTO) {
-      GCproto *child = gco_to_proto(gc_obj);
-      return std::format("K<func {}-{}>", child->firstline, child->firstline + child->numline);
-   }
-
-   if (gc_obj->gch.gct IS (uint8_t)~LJ_TTAB) return "K<table>";
-
-   if constexpr (LJ_HASFFI) {
-      if (gc_obj->gch.gct IS (uint8_t)~LJ_TCDATA) return "K<cdata>";
-   }
-
-   return "K<gc>";
-}
-
-//********************************************************************************************************************
-
-static std::string describe_primitive(int Value)
-{
-   switch (Value) {
-      case 0: return "nil";
-      case 1: return "false";
-      case 2: return "true";
-      default: return std::format("pri({})", Value);
-   }
-}
-
-//********************************************************************************************************************
-
-static void append_operand(std::string &Operands, std::string_view Label, std::string_view Value)
-{
-   if (not Operands.empty()) Operands += ' ';
-   Operands += std::format("{}={}", Label, Value);
-}
-
-//********************************************************************************************************************
-
-static std::string describe_operand_value(GCproto *Proto, BCMode Mode, int Value, BCPOS Pc, [[maybe_unused]] bool Compact)
-{
-   switch (Mode) {
-      case BCMdst:
-      case BCMbase:
-      case BCMvar:
-      case BCMrbase:
-         return std::format("R{}", Value);
-
-      case BCMuv: {
-         auto name = get_proto_uvname(Proto, (uint32_t)Value);
-         return name.empty() ? std::format("U{}", Value) : std::format("U{}({})", Value, name);
-      }
-
-      case BCMlit:
-         return std::format("#{}", Value);
-
-      case BCMlits:
-         return std::format("#{}", (int16_t)Value);
-
-      case BCMpri:
-         return describe_primitive(Value);
-
-      case BCMnum:
-         return std::format("#{}", describe_num_constant(proto_knumtv(Proto, Value)));
-
-      case BCMstr:
-      case BCMfunc:
-      case BCMtab:
-      case BCMcdata:
-         return describe_gc_constant(Proto, -(ptrdiff_t)Value - 1, Compact);
-
-      case BCMjump: {
-         if ((BCPOS)Value IS NO_JMP) return "->(no)";
-
-         const ptrdiff_t offset = (ptrdiff_t)Value - BCBIAS_J;
-         const ptrdiff_t dest = (ptrdiff_t)Pc + 1 + offset;
-
-         if (dest < 0) return "->(neg)";
-         if (dest >= (ptrdiff_t)Proto->sizebc) return "->(out)";
-
-         return std::format("->{}", (BCPOS)dest);
-      }
-
-      case BCMnone:
-      default:
-         return std::format("{}", Value);
-   }
-}
-
-//********************************************************************************************************************
-
-static void emit_disassembly(GCproto *Proto, std::ostringstream &Buf, bool Compact, int Indent = 0);
-
-static void emit_disassembly(GCproto *Proto, std::ostringstream &Buf, bool Compact, int Indent)
-{
-   const BCIns *bc_stream = proto_bc(Proto);
-   std::vector<uint8_t> targets(Proto->sizebc ? Proto->sizebc : 1, 0);
-   std::string indent_str(Indent * 2, ' ');
-
-   for (BCPOS pc = 0; pc < Proto->sizebc; pc++) {
-      BCIns instruction = bc_stream[pc];
-      BCOp opcode = bc_op(instruction);
-
-      if (bcmode_hasd(opcode)) {
-         BCMode mode_d = bcmode_d(opcode);
-         if (mode_d IS BCMjump) {
-            int value = bc_d(instruction);
-            if ((BCPOS)value != NO_JMP) {
-               ptrdiff_t offset = (ptrdiff_t)value - BCBIAS_J;
-               ptrdiff_t dest = (ptrdiff_t)pc + 1 + offset;
-               if (dest >= 0 and dest < (ptrdiff_t)Proto->sizebc) targets[(size_t)dest] = 1;
-            }
-         }
-      }
-   }
-
-   for (BCPOS pc = 0; pc < Proto->sizebc; pc++) {
-      BCIns instruction = bc_stream[pc];
-      BCOp opcode = bc_op(instruction);
-      BCMode mode_a = bcmode_a(opcode);
-      BCMode mode_b = bcmode_b(opcode);
-      BCMode mode_c = bcmode_c(opcode);
-      BCMode mode_d = bcmode_d(opcode);
-
-      int value_a = bc_a(instruction);
-      int value_b = bc_b(instruction);
-      int value_c = bc_c(instruction);
-      int value_d = bc_d(instruction);
-
-      std::string operands;
-
-      if (mode_a != BCMnone) append_operand(operands, "A", describe_operand_value(Proto, mode_a, value_a, pc, Compact));
-
-      if (bcmode_hasd(opcode)) {
-         if (mode_d != BCMnone) append_operand(operands, "D", describe_operand_value(Proto, mode_d, value_d, pc, Compact));
-      }
-      else {
-         if (mode_b != BCMnone) append_operand(operands, "B", describe_operand_value(Proto, mode_b, value_b, pc, Compact));
-         if (mode_c != BCMnone) append_operand(operands, "C", describe_operand_value(Proto, mode_c, value_c, pc, Compact));
-      }
-
-      BCLine line = get_proto_line(Proto, pc);
-
-      if (Compact) {
-         Buf << std::format("{}[{}]{}{} {}",
-            indent_str, pc,
-            targets[pc] ? "*" : "",
-            line >= 0 ? std::format("({})", line) : "",
-            glBytecodeNames[opcode]);
-         if (not operands.empty()) Buf << " " << operands;
-         Buf << "\n";
-      }
-      else {
-         Buf << std::format("{}{:04d} {} {} {:<9}",
-            indent_str, pc,
-            targets[pc] ? "=>" : "  ",
-            line >= 0 ? std::format("{:4}", line) : "   -",
-            glBytecodeNames[opcode]);
-         if (not operands.empty()) Buf << " " << operands;
-         Buf << "\n";
-      }
-
-      // If this is a FNEW instruction, recursively disassemble the child prototype
-      if (std::string_view opname = glBytecodeNames[opcode]; opname IS "FNEW") {
-         // FNEW uses D operand (BCMfunc mode) which encodes GC constant index as negative
-         const ptrdiff_t index = -(ptrdiff_t)value_d - 1;
-         // Check if index is valid for proto_kgc (expects negative indices from -1 to -sizekgc)
-         const bool valid = ((uintptr_t)(intptr_t)index >= (uintptr_t)-(intptr_t)Proto->sizekgc);
-         if (valid) {
-            GCobj *gc_obj = proto_kgc(Proto, index);
-            if (gc_obj->gch.gct IS (uint8_t)~LJ_TPROTO) {
-               GCproto *child = gco_to_proto(gc_obj);
-
-               if (not Compact) {
-                  Buf << std::format("{}  --- lines {}-{}, {} bytecodes ---\n",
-                     indent_str, child->firstline, child->firstline + child->numline, child->sizebc);
-               }
-
-               emit_disassembly(child, Buf, Compact, Indent + 1);
-            }
-         }
-      }
-   }
-}
-
-//********************************************************************************************************************
-
 static int append_dump_chunk([[maybe_unused]] lua_State *, const void *Chunk, size_t Size, void *UserData)
 {
    auto bytes = (std::vector<uint8_t> *)UserData;
@@ -627,8 +344,6 @@ static void emit_state_info(prvFluid *Prv, std::ostringstream &Buf, bool Compact
    if (not Compact) Buf << "\n";
 }
 
-//********************************************************************************************************************
-
 /*********************************************************************************************************************
 
 -METHOD-
@@ -720,9 +435,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
       // Here we can process options that are exclusive to internal calls.
 
       if (opts.show_stack) emit_stack_trace(prv, buf, opts.compact);
-
       if (opts.show_locals) emit_locals_info(prv, buf, opts.compact);
-
       if (opts.show_upvalues) emit_upvalues_info(prv, buf, opts.compact);
    }
 
@@ -809,53 +522,32 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
    }
 
    if (opts.show_disasm) {
+      auto buf_logger = [](std::string_view Msg, void *Meta) {
+         auto *pbuf = (std::ostringstream *)Meta;
+         *pbuf << Msg << "\n";
+      };
+
+      if (not opts.compact) buf << "=== BYTECODE DISASSEMBLY ===\n";
+
       lua_Debug ar;
       if (lua_getstack(prv->Lua, 1, &ar)) {
-         lua_getinfo(prv->Lua, "Sln", &ar);
-
-         if (not opts.compact) buf <<"=== BYTECODE DISASSEMBLY ===\n";
-
          if (lua_getinfo(prv->Lua, "f", &ar)) {
             GCfunc *fn = funcV(prv->Lua->top - 1);
-            if (isluafunc(fn)) {
-               GCproto *proto = funcproto(fn);
-               CSTRING func_name = ar.name ? ar.name : "<anonymous>";
-
-               if (not opts.compact) {
-                  buf << "Function: " << func_name << " (" << ar.short_src << ":" << ar.linedefined
-                      << "-" << ar.lastlinedefined << ")\n";
-                  buf << "Bytecodes: " << proto->sizebc << ", Constants: " << proto->sizekn
-                      << " numeric, " << proto->sizekgc << " objects\n\n";
-               }
-
-               emit_disassembly(proto, buf, opts.compact);
-            }
+            if (isluafunc(fn)) trace_proto_bytecode(funcproto(fn), buf_logger, &buf, not opts.compact);
             else buf << "(current frame is a C function; bytecode unavailable)\n";
 
             lua_pop(prv->Lua, 1);
          }
          else buf << "(unable to inspect current frame)\n";
-
-         if (not opts.compact) buf <<"\n";
       }
       else {
          // No active frame - try to disassemble the main chunk if available
-         if (not opts.compact) buf <<"=== BYTECODE DISASSEMBLY ===\n";
-
          if (prv->MainChunkRef) {
             lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, prv->MainChunkRef);
             if (lua_isfunction(prv->Lua, -1)) {
                GCfunc *fn = funcV(prv->Lua->top - 1);
                if (isluafunc(fn)) {
-                  GCproto *proto = funcproto(fn);
-
-                  if (not opts.compact) {
-                     buf << "Main chunk (lines " << proto->firstline << "-" << (proto->firstline + proto->numline) << ")\n";
-                     buf << "Bytecodes: " << proto->sizebc << ", Constants: " << proto->sizekn
-                         << " numeric, " << proto->sizekgc << " objects\n\n";
-                  }
-
-                  emit_disassembly(proto, buf, opts.compact);
+                  trace_proto_bytecode(funcproto(fn), buf_logger, &buf, not opts.compact);
                }
                else buf << "(main chunk is a C function; bytecode unavailable)\n";
             }
@@ -863,8 +555,6 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
             lua_pop(prv->Lua, 1);
          }
          else buf << "(no main chunk reference stored; bytecode disassembly requires calling DebugLog from within a function)\n";
-
-         if (not opts.compact) buf <<"\n";
       }
    }
 
@@ -933,15 +623,12 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
    }
 
    if (opts.show_globals) emit_globals_info(prv, buf, opts.compact);
-
    if (opts.show_memory) emit_memory_stats(prv, buf, opts.compact);
-
    if (opts.show_state) emit_state_info(prv, buf, opts.compact);
 
    const std::string result = buf.str();
-   if ((Args->Result = pf::strclone(result.c_str())) IS nullptr) {
-      return ERR::AllocMemory;
-   }
+   if ((Args->Result = pf::strclone(result.c_str())) IS nullptr) return ERR::AllocMemory;
+
    return ERR::Okay;
 }
 
