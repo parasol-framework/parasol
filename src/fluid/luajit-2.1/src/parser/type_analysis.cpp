@@ -30,7 +30,7 @@ namespace {
 }
 
 // Helper to check if type tracing is enabled
-[[nodiscard]] inline bool should_trace_types(lua_State* L)
+[[nodiscard]] inline bool should_trace_types(lua_State *L)
 {
    auto prv = (prvFluid *)L->script->ChildPrivate;
    return (prv->JitOptions & JOF::TRACE_TYPES) != JOF::NIL;
@@ -68,12 +68,13 @@ private:
    void check_arguments(const FunctionExprPayload &, const CallExprPayload &);
    void check_argument_type(const ExprNode &, FluidType, size_t);
 
-   [[nodiscard]] InferredType infer_expression_type(const ExprNode &) const;
+   [[nodiscard]] InferredType infer_expression_type(const ExprNode &);
    [[nodiscard]] InferredType infer_call_return_type(const ExprNode &, size_t Position) const;
    [[nodiscard]] std::optional<InferredType> resolve_identifier(GCstr *) const;
    [[nodiscard]] const FunctionExprPayload * resolve_call_target(const CallTarget &) const;
    [[nodiscard]] const FunctionExprPayload * resolve_function(GCstr *) const;
    void fix_local_type(GCstr *, FluidType);
+   void mark_identifier_used(GCstr *);
 
    // Return type validation
 
@@ -178,7 +179,32 @@ void TypeAnalyser::push_scope() {
 }
 
 void TypeAnalyser::pop_scope() {
-   if (not this->scope_stack_.empty()) this->scope_stack_.pop_back();
+   if (this->scope_stack_.empty()) return;
+
+   #ifdef INCLUDE_ADVICE
+   // Report unused variables before popping the scope
+   auto unused = this->scope_stack_.back().get_unused_variables();
+   for (const auto& var : unused) {
+      std::string_view name_view(strdata(var.name), var.name->len);
+      if (var.is_parameter) {
+         this->ctx_.emit_advice(2, AdviceCategory::CodeQuality,
+            std::format("Unused function parameter '{}'", name_view),
+            Token::from_span(var.location, TokenKind::Identifier));
+      }
+      else if (var.is_function) {
+         this->ctx_.emit_advice(2, AdviceCategory::CodeQuality,
+            std::format("Unused local function '{}'", name_view),
+            Token::from_span(var.location, TokenKind::Identifier));
+      }
+      else {
+         this->ctx_.emit_advice(2, AdviceCategory::CodeQuality,
+            std::format("Unused local variable '{}'", name_view),
+            Token::from_span(var.location, TokenKind::Identifier));
+      }
+   }
+   #endif
+
+   this->scope_stack_.pop_back();
 }
 
 TypeCheckScope & TypeAnalyser::current_scope() {
@@ -301,7 +327,7 @@ void TypeAnalyser::analyse_statement(const StmtNode &Statement)
                if (payload->control.symbol) {
                   InferredType loop_var;
                   loop_var.primary = FluidType::Num;
-                  this->current_scope().declare_local(payload->control.symbol, loop_var);
+                  this->current_scope().declare_local(payload->control.symbol, loop_var, payload->control.span);
                }
                this->analyse_block(*payload->body);
                this->pop_scope();
@@ -322,7 +348,7 @@ void TypeAnalyser::analyse_statement(const StmtNode &Statement)
                   if (name.symbol) {
                      InferredType loop_var;
                      loop_var.primary = FluidType::Any;  // Type depends on iterator
-                     this->current_scope().declare_local(name.symbol, loop_var);
+                     this->current_scope().declare_local(name.symbol, loop_var, name.span);
                   }
                }
                this->analyse_block(*payload->body);
@@ -505,7 +531,7 @@ void TypeAnalyser::analyse_local_decl(const LocalDeclStmtPayload &Payload)
       this->check_shadowing(name.symbol, name.span);
       #endif
 
-      this->current_scope().declare_local(name.symbol, inferred);
+      this->current_scope().declare_local(name.symbol, inferred, name.span);
       this->trace_decl(this->ctx_.lex().linenumber, name.symbol, inferred.primary, inferred.is_fixed);
    }
 
@@ -521,7 +547,7 @@ void TypeAnalyser::analyse_local_function(const LocalFunctionStmtPayload &Payloa
    #endif
 
    const FunctionExprPayload* function = Payload.function.get();
-   this->current_scope().declare_function(Payload.name.symbol, function);
+   this->current_scope().declare_function(Payload.name.symbol, function, Payload.name.span);
 
    if (function) this->analyse_function_payload(*function, Payload.name.symbol);
 }
@@ -531,15 +557,28 @@ void TypeAnalyser::analyse_function_stmt(const FunctionStmtPayload &Payload)
    const FunctionExprPayload* function = Payload.function.get();
    GCstr *function_name = nullptr;
 
-   if (not Payload.name.segments.empty()) {
-      const Identifier& terminal = Payload.name.segments.back();
-      this->current_scope().declare_function(terminal.symbol, function);
-      function_name = terminal.symbol;
-   }
+   // Only track non-global function declarations for unused variable detection
+   // Global functions (declared with `global function`) are not local to any scope
+   if (not Payload.name.is_explicit_global) {
+      if (not Payload.name.segments.empty()) {
+         const Identifier& terminal = Payload.name.segments.back();
+         this->current_scope().declare_function(terminal.symbol, function, terminal.span);
+         function_name = terminal.symbol;
+      }
 
-   if (Payload.name.method) {
-      this->current_scope().declare_function(Payload.name.method->symbol, function);
-      function_name = Payload.name.method->symbol;
+      if (Payload.name.method) {
+         this->current_scope().declare_function(Payload.name.method->symbol, function, Payload.name.method->span);
+         function_name = Payload.name.method->symbol;
+      }
+   }
+   else {
+      // Still need the function name for recursive detection
+      if (not Payload.name.segments.empty()) {
+         function_name = Payload.name.segments.back().symbol;
+      }
+      else if (Payload.name.method) {
+         function_name = Payload.name.method->symbol;
+      }
    }
 
    if (function) this->analyse_function_payload(*function, function_name);
@@ -551,7 +590,7 @@ void TypeAnalyser::analyse_function_payload(const FunctionExprPayload &Function,
    this->enter_function(Function, Name);
 
    for (const auto &param : Function.parameters) {
-      this->current_scope().declare_parameter(param.name.symbol, param.type);
+      this->current_scope().declare_parameter(param.name.symbol, param.type, param.name.span);
    }
 
    // Check for recursive functions without explicit return types
@@ -568,6 +607,16 @@ void TypeAnalyser::analyse_function_payload(const FunctionExprPayload &Function,
          Name ? std::string_view(strdata(Name), Name->len) : "<anonymous>");
       this->diagnostics_.push_back(std::move(diag));
    }
+
+   // Advise on missing return type annotation for functions that return values
+   #ifdef INCLUDE_ADVICE
+   if ((not Function.return_types.is_explicit) and this->function_has_return_values(Function)) {
+      SourceSpan span = Function.body ? Function.body->span : SourceSpan{};
+      this->ctx_.emit_advice(1, AdviceCategory::TypeSafety,
+         "Function lacks return type annotation; consider adding ': type' after the parameter list",
+         Token::from_span(span, TokenKind::Function));
+   }
+   #endif
 
    if (Function.body) this->analyse_block(*Function.body);
 
@@ -656,6 +705,33 @@ void TypeAnalyser::analyse_expression(const ExprNode &Expression)
          if (payload) this->analyse_function_payload(*payload);
          break;
       }
+      case AstNodeKind::IdentifierExpr: {
+         // Mark variable as used when it appears in an expression
+         auto *payload = std::get_if<NameRef>(&Expression.data);
+         if (payload) this->mark_identifier_used(payload->identifier.symbol);
+         break;
+      }
+      case AstNodeKind::ChooseExpr: {
+         auto *payload = std::get_if<ChooseExprPayload>(&Expression.data);
+         if (payload) {
+            // Analyse scrutinee (the value being matched)
+            if (payload->scrutinee) this->analyse_expression(*payload->scrutinee);
+            for (const auto &tuple_elem : payload->scrutinee_tuple) {
+               if (tuple_elem) this->analyse_expression(*tuple_elem);
+            }
+            // Analyse each case
+            for (const auto &case_item : payload->cases) {
+               if (case_item.pattern) this->analyse_expression(*case_item.pattern);
+               for (const auto &tuple_pattern : case_item.tuple_patterns) {
+                  if (tuple_pattern) this->analyse_expression(*tuple_pattern);
+               }
+               if (case_item.guard) this->analyse_expression(*case_item.guard);
+               if (case_item.result) this->analyse_expression(*case_item.result);
+               if (case_item.result_stmt) this->analyse_statement(*case_item.result_stmt);
+            }
+         }
+         break;
+      }
       default:
          break;
    }
@@ -663,6 +739,21 @@ void TypeAnalyser::analyse_expression(const ExprNode &Expression)
 
 void TypeAnalyser::analyse_call_expr(const CallExprPayload &Call)
 {
+   // Analyse the callable to mark function names as used
+   if (std::holds_alternative<DirectCallTarget>(Call.target)) {
+      const auto &direct = std::get<DirectCallTarget>(Call.target);
+      if (direct.callable) this->analyse_expression(*direct.callable);
+   }
+   else if (std::holds_alternative<MethodCallTarget>(Call.target)) {
+      const auto &method = std::get<MethodCallTarget>(Call.target);
+      if (method.receiver) this->analyse_expression(*method.receiver);
+   }
+   else if (std::holds_alternative<SafeMethodCallTarget>(Call.target)) {
+      const auto &safe_method = std::get<SafeMethodCallTarget>(Call.target);
+      if (safe_method.receiver) this->analyse_expression(*safe_method.receiver);
+   }
+
+   // Analyse arguments
    for (const auto &argument : Call.arguments) {
       this->analyse_expression(*argument);
    }
@@ -699,7 +790,7 @@ void TypeAnalyser::check_argument_type(const ExprNode& Argument, FluidType Expec
    }
 }
 
-InferredType TypeAnalyser::infer_expression_type(const ExprNode& Expr) const
+InferredType TypeAnalyser::infer_expression_type(const ExprNode& Expr)
 {
    InferredType result;
 
@@ -712,6 +803,8 @@ InferredType TypeAnalyser::infer_expression_type(const ExprNode& Expr) const
       case AstNodeKind::IdentifierExpr: {
          auto *payload = std::get_if<NameRef>(&Expr.data);
          if (payload) {
+            // Mark the variable as used
+            this->mark_identifier_used(payload->identifier.symbol);
             auto resolved = this->resolve_identifier(payload->identifier.symbol);
             if (resolved) return *resolved;
          }
@@ -901,6 +994,27 @@ std::optional<InferredType> TypeAnalyser::resolve_identifier(GCstr *Name) const
       }
    }
    return std::nullopt;
+}
+
+void TypeAnalyser::mark_identifier_used(GCstr *Name)
+{
+   if (not Name) return;
+
+   // Mark the variable as used in the scope where it's defined
+   for (auto it = this->scope_stack_.rbegin(); it != this->scope_stack_.rend(); ++it) {
+      // Check if this scope has the variable and mark it
+      auto type = it->lookup_local_type(Name);
+      if (type) {
+         it->mark_used(Name);
+         return;
+      }
+
+      auto param = it->lookup_parameter_type(Name);
+      if (param) {
+         it->mark_used(Name);
+         return;
+      }
+   }
 }
 
 const FunctionExprPayload* TypeAnalyser::resolve_call_target(const CallTarget& Target) const

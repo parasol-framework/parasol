@@ -778,14 +778,6 @@ ParserResult<ExprNodePtr> AstBuilder::parse_arrow_function(ExprNodeList paramete
       body = make_block(return_span, std::move(statements));
    }
 
-   #ifdef INCLUDE_ADVICE
-   if (not return_types.is_explicit) {
-      this->ctx.emit_advice(1, AdviceCategory::TypeSafety,
-         "Arrow function lacks return type annotation; consider adding 'type:' before the expression",
-         arrow_token);
-   }
-   #endif
-
    SourceSpan function_span = arrow_token.span();
    if (not parsed_params.empty()) function_span = combine_spans(parsed_params.front().name.span, body->span);
    else function_span = combine_spans(arrow_token.span(), body->span);
