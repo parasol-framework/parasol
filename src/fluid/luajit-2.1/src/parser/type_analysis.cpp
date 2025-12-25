@@ -143,12 +143,22 @@ private:
    // Shadowing detection - warns when inner variable shadows outer scope variable
    #ifdef INCLUDE_ADVICE
    void check_shadowing(GCstr *Name, SourceSpan Location);
+
+   // Global access in loop detection - warns when globals are accessed in loops without caching
+   void check_global_in_loop(GCstr *Name, SourceSpan Location);
+
+   // Track a global variable declaration
+   void track_global(GCstr *Name);
    #endif
 
    ParserContext &ctx_;                             // Parser context for diagnostics and lexer access
    std::vector<TypeCheckScope> scope_stack_{};      // Stack of scopes for variable tracking
    std::vector<FunctionContext> function_stack_{};  // Stack of function contexts for return type tracking
    std::vector<TypeDiagnostic> diagnostics_{};      // Collected type errors and warnings
+   uint32_t loop_depth_{0};                         // Current loop nesting depth for performance advice
+   #ifdef INCLUDE_ADVICE
+   std::vector<GCstr*> declared_globals_{};         // Globals explicitly declared with 'global' keyword
+   #endif
 };
 
 //********************************************************************************************************************
@@ -227,6 +237,55 @@ void TypeAnalyser::check_shadowing(GCstr *Name, SourceSpan Location)
          return;
       }
    }
+}
+
+//********************************************************************************************************************
+// Global Variable Access in Loop Detection:  Warns when global variables declared with the 'global' keyword are
+// accessed within loops.  Accessing globals in tight loops incurs a performance penalty because each access requires
+// a hash table lookup in the global environment table. For optimal JIT performance, globals should be cached in
+// local variables before entering the loop.
+
+void TypeAnalyser::track_global(GCstr *Name)
+{
+   if (not Name) return;
+   // Avoid duplicates
+   for (const auto* existing : this->declared_globals_) {
+      if (existing IS Name) return;
+   }
+   this->declared_globals_.push_back(Name);
+}
+
+void TypeAnalyser::check_global_in_loop(GCstr *Name, SourceSpan Location)
+{
+   // Only check when inside a loop
+   if (this->loop_depth_ IS 0) return;
+   if (not Name) return;
+
+   // Skip blank identifier
+   if (Name->len IS 1 and strdata(Name)[0] IS '_') return;
+
+   // Check if this identifier is a local or parameter in any scope
+   for (const auto& scope : this->scope_stack_) {
+      if (scope.lookup_local_type(Name)) return;  // Found as local
+      if (scope.lookup_parameter_type(Name)) return;  // Found as parameter
+   }
+
+   // Only warn about globals that were explicitly declared in this script with 'global'
+   bool is_declared_global = false;
+   for (const auto* declared : this->declared_globals_) {
+      if (declared IS Name) {
+         is_declared_global = true;
+         break;
+      }
+   }
+   if (not is_declared_global) return;
+
+   // It's a declared global variable being accessed inside a loop
+   std::string_view name_view(strdata(Name), Name->len);
+   this->ctx_.emit_advice(2, AdviceCategory::Performance,
+      std::format("Global '{}' accessed in loop; consider caching in a local variable for better JIT performance",
+         name_view),
+      Token::from_span(Location, TokenKind::Identifier));
 }
 #endif
 
@@ -404,7 +463,9 @@ void TypeAnalyser::analyse_statement(const StmtNode &Statement)
             if (payload->condition) this->analyse_expression(*payload->condition);
             if (payload->body) {
                this->push_scope();
+               this->loop_depth_++;
                this->analyse_block(*payload->body);
+               this->loop_depth_--;
                this->pop_scope();
             }
          }
@@ -424,7 +485,9 @@ void TypeAnalyser::analyse_statement(const StmtNode &Statement)
                   loop_var.primary = FluidType::Num;
                   this->current_scope().declare_local(payload->control.symbol, loop_var, payload->control.span);
                }
+               this->loop_depth_++;
                this->analyse_block(*payload->body);
+               this->loop_depth_--;
                this->pop_scope();
             }
          }
@@ -446,7 +509,9 @@ void TypeAnalyser::analyse_statement(const StmtNode &Statement)
                      this->current_scope().declare_local(name.symbol, loop_var, name.span);
                   }
                }
+               this->loop_depth_++;
                this->analyse_block(*payload->body);
+               this->loop_depth_--;
                this->pop_scope();
             }
          }
@@ -709,11 +774,14 @@ void TypeAnalyser::analyse_global_decl(const GlobalDeclStmtPayload &Payload)
       this->analyse_expression(*value);
    }
 
-   // Check global naming conventions
    #ifdef INCLUDE_ADVICE
    for (const auto &name : Payload.names) {
       if (not name.symbol) continue;
 
+      // Track this global for loop access detection
+      this->track_global(name.symbol);
+
+      // Check global naming conventions
       std::string_view name_view(strdata(name.symbol), name.symbol->len);
 
       if (not is_valid_global_name(name_view)) {
@@ -912,7 +980,12 @@ void TypeAnalyser::analyse_expression(const ExprNode &Expression)
       case AstNodeKind::IdentifierExpr: {
          // Mark variable as used when it appears in an expression
          auto *payload = std::get_if<NameRef>(&Expression.data);
-         if (payload) this->mark_identifier_used(payload->identifier.symbol);
+         if (payload) {
+            this->mark_identifier_used(payload->identifier.symbol);
+            #ifdef INCLUDE_ADVICE
+            this->check_global_in_loop(payload->identifier.symbol, payload->identifier.span);
+            #endif
+         }
          break;
       }
       case AstNodeKind::ChooseExpr: {
@@ -1444,9 +1517,7 @@ bool TypeAnalyser::body_has_return_values(const BlockStmt& Block) const
       switch (stmt->kind) {
          case AstNodeKind::ReturnStmt: {
             auto *payload = std::get_if<ReturnStmtPayload>(&stmt->data);
-            if (payload and not payload->values.empty()) {
-               return true;  // Found a return with values
-            }
+            if (payload and not payload->values.empty()) return true;  // Found a return with values
             break;
          }
          case AstNodeKind::IfStmt: {
@@ -1578,9 +1649,7 @@ bool TypeAnalyser::statement_contains_call_to(const StmtNode& Stmt, GCstr *Name)
       }
       case AstNodeKind::DoStmt: {
          auto *payload = std::get_if<DoStmtPayload>(&Stmt.data);
-         if (payload and payload->block) {
-            return this->body_contains_call_to(*payload->block, Name);
-         }
+         if (payload and payload->block) return this->body_contains_call_to(*payload->block, Name);
          break;
       }
       default:
@@ -1642,9 +1711,7 @@ bool TypeAnalyser::expression_contains_call_to(const ExprNode& Expr, GCstr *Name
       }
       case AstNodeKind::MemberExpr: {
          auto *payload = std::get_if<MemberExprPayload>(&Expr.data);
-         if (payload and payload->table) {
-            return this->expression_contains_call_to(*payload->table, Name);
-         }
+         if (payload and payload->table) return this->expression_contains_call_to(*payload->table, Name);
          break;
       }
       case AstNodeKind::IndexExpr: {
@@ -1680,8 +1747,7 @@ static void publish_type_diagnostics(ParserContext& Context, const std::vector<T
 {
    for (const auto &diag : Diagnostics) {
       ParserDiagnostic diagnostic;
-      diagnostic.severity = Context.config().type_errors_are_fatal
-         ? ParserDiagnosticSeverity::Error
+      diagnostic.severity = Context.config().type_errors_are_fatal ? ParserDiagnosticSeverity::Error
          : ParserDiagnosticSeverity::Warning;
       diagnostic.code = diag.code;
       diagnostic.message = diag.message;
