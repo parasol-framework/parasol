@@ -228,50 +228,50 @@ typedef enum {
 
 // TMPREF mode bits, stored in op2.
 
-constexpr int IRTMPREF_IN1 = 0x01;    // First input value. 
-constexpr int IRTMPREF_OUT1 = 0x02;   // First output value. 
-constexpr int IRTMPREF_OUT2 = 0x04;   // Second output value. 
+constexpr int IRTMPREF_IN1 = 0x01;    // First input value.
+constexpr int IRTMPREF_OUT1 = 0x02;   // First output value.
+constexpr int IRTMPREF_OUT2 = 0x04;   // Second output value.
 
 // SLOAD mode bits, stored in op2.
-constexpr int IRSLOAD_PARENT = 0x01;    // Coalesce with parent trace. 
-constexpr int IRSLOAD_FRAME = 0x02;     // Load 32 bits of ftsz. 
-constexpr int IRSLOAD_TYPECHECK = 0x04; // Needs type check. 
-constexpr int IRSLOAD_CONVERT = 0x08;   // Number to integer conversion. 
-constexpr int IRSLOAD_READONLY = 0x10;  // Read-only, omit slot store. 
-constexpr int IRSLOAD_INHERIT = 0x20;   // Inherited by exits/side traces. 
-constexpr int IRSLOAD_KEYINDEX = 0x40;  // Table traversal key index. 
+constexpr int IRSLOAD_PARENT = 0x01;    // Coalesce with parent trace.
+constexpr int IRSLOAD_FRAME = 0x02;     // Load 32 bits of ftsz.
+constexpr int IRSLOAD_TYPECHECK = 0x04; // Needs type check.
+constexpr int IRSLOAD_CONVERT = 0x08;   // Number to integer conversion.
+constexpr int IRSLOAD_READONLY = 0x10;  // Read-only, omit slot store.
+constexpr int IRSLOAD_INHERIT = 0x20;   // Inherited by exits/side traces.
+constexpr int IRSLOAD_KEYINDEX = 0x40;  // Table traversal key index.
 
 // XLOAD mode bits, stored in op2.
-constexpr int IRXLOAD_READONLY = 0x01;   // Load from read-only data. 
-constexpr int IRXLOAD_VOLATILE = 0x02;   // Load from volatile data. 
-constexpr int IRXLOAD_UNALIGNED = 0x04;  // Unaligned load. 
+constexpr int IRXLOAD_READONLY = 0x01;   // Load from read-only data.
+constexpr int IRXLOAD_VOLATILE = 0x02;   // Load from volatile data.
+constexpr int IRXLOAD_UNALIGNED = 0x04;  // Unaligned load.
 
 // BUFHDR mode, stored in op2.
-constexpr int IRBUFHDR_RESET = 0;    // Reset buffer. 
-constexpr int IRBUFHDR_APPEND = 1;   // Append to buffer. 
-constexpr int IRBUFHDR_WRITE = 2;    // Write to string buffer. 
+constexpr int IRBUFHDR_RESET = 0;    // Reset buffer.
+constexpr int IRBUFHDR_APPEND = 1;   // Append to buffer.
+constexpr int IRBUFHDR_WRITE = 2;    // Write to string buffer.
 
 // CONV mode, stored in op2.
-constexpr int IRCONV_SRCMASK = 0x001f;   // Source IRType. 
-constexpr int IRCONV_DSTMASK = 0x03e0;   // Dest. IRType (also in ir->t). 
+constexpr int IRCONV_SRCMASK = 0x001f;   // Source IRType.
+constexpr int IRCONV_DSTMASK = 0x03e0;   // Dest. IRType (also in ir->t).
 constexpr int IRCONV_DSH = 5;
-constexpr int IRCONV_SEXT = 0x0800;      // Sign-extend integer to integer. 
+constexpr int IRCONV_SEXT = 0x0800;      // Sign-extend integer to integer.
 constexpr int IRCONV_MODEMASK = 0x0fff;
 constexpr int IRCONV_CONVMASK = 0xf000;
 constexpr int IRCONV_CSH = 12;
 #define IRCONV_NUM_INT      ((IRT_NUM<<IRCONV_DSH)|IRT_INT)
 #define IRCONV_INT_NUM      ((IRT_INT<<IRCONV_DSH)|IRT_NUM)
 // Number to integer conversion mode. Ordered by strength of the checks.
-constexpr int IRCONV_TOBIT = (0 << IRCONV_CSH);   // None. Cache only: TOBIT conv. 
-constexpr int IRCONV_ANY = (1 << IRCONV_CSH);     // Any FP number is ok. 
-constexpr int IRCONV_INDEX = (2 << IRCONV_CSH);   // Check + special backprop rules. 
-constexpr int IRCONV_CHECK = (3 << IRCONV_CSH);   // Number checked for integerness. 
-constexpr int IRCONV_NONE = IRCONV_ANY;   // INT|*64 no conv, but change type. 
+constexpr int IRCONV_TOBIT = (0 << IRCONV_CSH);   // None. Cache only: TOBIT conv.
+constexpr int IRCONV_ANY = (1 << IRCONV_CSH);     // Any FP number is ok.
+constexpr int IRCONV_INDEX = (2 << IRCONV_CSH);   // Check + special backprop rules.
+constexpr int IRCONV_CHECK = (3 << IRCONV_CSH);   // Number checked for integerness.
+constexpr int IRCONV_NONE = IRCONV_ANY;   // INT|*64 no conv, but change type.
 
 // TOSTR mode, stored in op2.
-constexpr int IRTOSTR_INT = 0;   // Convert integer to string. 
-constexpr int IRTOSTR_NUM = 1;   // Convert number to string. 
-constexpr int IRTOSTR_CHAR = 2;  // Convert char value to string. 
+constexpr int IRTOSTR_INT = 0;   // Convert integer to string.
+constexpr int IRTOSTR_NUM = 1;   // Convert number to string.
+constexpr int IRTOSTR_CHAR = 2;  // Convert char value to string.
 
 // -- IR operands ---------------------------------------------------------
 
@@ -447,9 +447,9 @@ using IROpT = uint16_t; // Stored combined IR opcode and type.
 
 // IR references
 
-using IRRef1 = uint16_t;   // One stored reference. 
-using IRRef2 = uint32_t;   // Two stored references. 
-using IRRef = uint32_t;    // Used to pass around references. 
+using IRRef1 = uint16_t;   // One stored reference.
+using IRRef2 = uint32_t;   // Two stored references.
+using IRRef = uint32_t;    // Used to pass around references.
 
 // Fixed references.
 

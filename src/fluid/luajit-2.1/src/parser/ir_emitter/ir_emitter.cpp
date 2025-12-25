@@ -2099,7 +2099,7 @@ ParserResult<ExpDesc> IrEmitter::emit_safe_index_expr(const SafeIndexExprPayload
    // - For arrays: return nil for out-of-bounds instead of throwing
    // - For non-arrays: fall back to regular table indexing
    // We only do this for numeric keys (aux >= 0); string keys use regular table indexing.
-   
+
    if (int32_t(table.u.s.aux) >= 0) table.k = ExpKind::SafeIndexedArray;
 
    // Materialize the indexed result to a new register.

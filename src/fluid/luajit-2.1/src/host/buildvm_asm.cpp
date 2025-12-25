@@ -6,8 +6,6 @@
 #include "buildvm.h"
 #include "lj_bc.h"
 
-// ------------------------------------------------------------------------
-
 #if LJ_TARGET_X86ORX64
 // Emit bytes piecewise as assembler text.
 static void emit_asm_bytes(BuildCtx *ctx, uint8_t *p, int n)
@@ -135,11 +133,7 @@ static void emit_asm_wordreloc(BuildCtx *ctx, uint8_t *p, int n,
     exit(1);
   }
 #elif LJ_TARGET_PPC
-#if LJ_TARGET_PS3
-#define TOCPREFIX "."
-#else
 #define TOCPREFIX ""
-#endif
   if ((ins >> 26) == 16) {
     fprintf(ctx->fp, "\t%s %d, %d, " TOCPREFIX "%s\n",
 	    (ins & 1) ? "bcl" : "bc", (ins >> 21) & 31, (ins >> 16) & 31, sym);
@@ -168,26 +162,6 @@ static void emit_asm_label(BuildCtx *ctx, const char *name, int size, int isfunc
 {
   switch (ctx->mode) {
   case BUILD_elfasm:
-#if LJ_TARGET_PS3
-    if (!strncmp(name, "lj_vm_", 6) &&
-	strcmp(name, ctx->beginsym) &&
-	!strstr(name, "hook")) {
-      fprintf(ctx->fp,
-	"\n\t.globl %s\n"
-	"\t.section \".opd\",\"aw\"\n"
-	"%s:\n"
-	"\t.long .%s,.TOC.@tocbase32\n"
-	"\t.size %s,8\n"
-	"\t.previous\n"
-	"\t.globl .%s\n"
-	"\t.hidden .%s\n"
-	"\t.type .%s, " ELFASM_PX "function\n"
-	"\t.size .%s, %d\n"
-	".%s:\n",
-	name, name, name, name, name, name, name, name, size, name);
-      break;
-    }
-#endif
     fprintf(ctx->fp,
       "\n\t.globl %s\n"
       "\t.hidden %s\n"
@@ -240,11 +214,7 @@ void emit_asm(BuildCtx *ctx)
   fprintf(ctx->fp, "\t.text\n");
   emit_asm_align(ctx, 4);
 
-#if LJ_TARGET_PS3
-  emit_asm_label(ctx, ctx->beginsym, ctx->codesz, 0);
-#else
   emit_asm_label(ctx, ctx->beginsym, 0, 0);
-#endif
   if (ctx->mode != BUILD_machasm)
     fprintf(ctx->fp, ".Lbegin:\n");
 
@@ -316,10 +286,8 @@ void emit_asm(BuildCtx *ctx)
   fprintf(ctx->fp, "\n");
   switch (ctx->mode) {
   case BUILD_elfasm:
-#if !(LJ_TARGET_PS3 || LJ_TARGET_PSVITA)
     fprintf(ctx->fp, "\t.section .note.GNU-stack,\"\"," ELFASM_PX "progbits\n");
-#endif
-#if LJ_TARGET_PPC && !LJ_TARGET_PS3 && !LJ_ABI_SOFTFP
+#if LJ_TARGET_PPC
     // Hard-float ABI.
     fprintf(ctx->fp, "\t.gnu_attribute 4, 1\n");
 #endif

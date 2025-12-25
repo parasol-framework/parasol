@@ -130,7 +130,7 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
       // - If scrutinee is a constant/temporary, reuse the same register for efficiency and correct
       //   semantics (assignment expects result in that register).
       //
-      // Note: Reserve the scrutinee register in all cases to prevent pattern expressions from overwriting 
+      // Note: Reserve the scrutinee register in all cases to prevent pattern expressions from overwriting
       // it during case evaluation.
 
       if (scrutinee_is_local) {
@@ -543,7 +543,7 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
    // Ensure freereg is exactly result_reg + 1 so that subsequent code doesn't think
    // there are intermediate values between the result and whatever comes next.
    // This is critical for expressions like concatenation that depend on consecutive registers.
-   
+
    fs->freereg = BCREG(result_reg + 1);
    register_guard.disarm();  // Don't let guard restore freereg, we've set it correctly
 

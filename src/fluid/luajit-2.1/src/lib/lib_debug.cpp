@@ -42,7 +42,7 @@ LJLIB_CF(debug_getregistry)
 LJLIB_CF(debug_getmetatable)   LJLIB_REC(.)
 {
    lj_lib_checkany(L, 1);
-   if (!lua_getmetatable(L, 1)) {
+   if (not lua_getmetatable(L, 1)) {
       setnilV(L->top - 1);
    }
    return 1;
@@ -73,7 +73,7 @@ LJLIB_CF(debug_setfenv)
 {
    lj_lib_checktab(L, 2);
    L->top = L->base + 2;
-   if (!lua_setfenv(L, 1)) lj_err_caller(L, ErrMsg::SETFENV);
+   if (not lua_setfenv(L, 1)) lj_err_caller(L, ErrMsg::SETFENV);
    return 1;
 }
 
@@ -146,7 +146,7 @@ LJLIB_CF(debug_getinfo)
    lua_State *L1 = getthread(L, &arg);
    CSTRING options = luaL_optstring(L, arg + 2, "flnSu");
    if (lua_isnumber(L, arg + 1)) {
-      if (!lua_getstack(L1, (int)lua_tointeger(L, arg + 1), (lua_Debug*)&ar)) {
+      if (not lua_getstack(L1, (int)lua_tointeger(L, arg + 1), (lua_Debug*)&ar)) {
          setnilV(L->top - 1);
          return 1;
       }
@@ -157,7 +157,7 @@ LJLIB_CF(debug_getinfo)
    }
    else lj_err_arg(L, arg + 1, ErrMsg::NOFUNCL);
 
-   if (!lj_debug_getinfo(L1, options, &ar, 1)) lj_err_arg(L, arg + 2, ErrMsg::INVOPT);
+   if (not lj_debug_getinfo(L1, options, &ar, 1)) lj_err_arg(L, arg + 2, ErrMsg::INVOPT);
 
    lua_createtable(L, 0, 16);  //  Create result table.
    for (; *options; options++) {
@@ -206,7 +206,7 @@ LJLIB_CF(debug_getlocal)
       return 1;
    }
 
-   if (!lua_getstack(L1, lj_lib_checkint(L, arg + 1), &ar)) lj_err_arg(L, arg + 1, ErrMsg::LVLRNG);
+   if (not lua_getstack(L1, lj_lib_checkint(L, arg + 1), &ar)) lj_err_arg(L, arg + 1, ErrMsg::LVLRNG);
 
    if (auto name = lua_getlocal(L1, &ar, slot)) {
       lua_xmove(L1, L, 1);
@@ -228,7 +228,7 @@ LJLIB_CF(debug_setlocal)
    lua_State *L1 = getthread(L, &arg);
    lua_Debug ar;
    TValue* tv;
-   if (!lua_getstack(L1, lj_lib_checkint(L, arg + 1), &ar)) lj_err_arg(L, arg + 1, ErrMsg::LVLRNG);
+   if (not lua_getstack(L1, lj_lib_checkint(L, arg + 1), &ar)) lj_err_arg(L, arg + 1, ErrMsg::LVLRNG);
    tv = lj_lib_checkany(L, arg + 3);
    copyTV(L1, L1->top++, tv);
    lua_pushstring(L, lua_setlocal(L1, &ar, debug_idx(lj_lib_checkint(L, arg + 2))));
@@ -245,7 +245,7 @@ static int debug_getupvalue(lua_State *L, int get)
    auto name = get ? lua_getupvalue(L, 1, n) : lua_setupvalue(L, 1, n);
    if (name) {
       lua_pushstring(L, name);
-      if (!get) return 1;
+      if (not get) return 1;
       copyTV(L, L->top, L->top - 2);
       L->top++;
       return 2;
@@ -287,7 +287,7 @@ LJLIB_CF(debug_upvaluejoin)
    for (int i = 0; i < 2; i++) {
       int32_t n;
       fn[i] = lj_lib_checkfunc(L, 2 * i + 1);
-      if (!isluafunc(fn[i])) lj_err_arg(L, 2 * i + 1, ErrMsg::NOLFUNC);
+      if (not isluafunc(fn[i])) lj_err_arg(L, 2 * i + 1, ErrMsg::NOLFUNC);
       n = debug_idx(lj_lib_checkint(L, 2 * i + 2)) - 1;
       if ((uint32_t)n >= fn[i]->l.nupvalues) lj_err_arg(L, 2 * i + 2, ErrMsg::IDXRNG);
       p[i] = &fn[i]->l.uvptr[n];
@@ -313,8 +313,8 @@ LJLIB_CF(debug_getuservalue)
 LJLIB_CF(debug_setuservalue)
 {
    TValue* o = L->base;
-   if (!(o < L->top and tvisudata(o))) lj_err_argt(L, 1, LUA_TUSERDATA);
-   if (!(o + 1 < L->top and tvistab(o + 1))) lj_err_argt(L, 2, LUA_TTABLE);
+   if (not (o < L->top and tvisudata(o))) lj_err_argt(L, 1, LUA_TUSERDATA);
+   if (not (o + 1 < L->top and tvistab(o + 1))) lj_err_argt(L, 2, LUA_TTABLE);
    L->top = o + 2;
    lua_setfenv(L, 1);
    return 1;
@@ -462,7 +462,7 @@ LJLIB_CF(debug_locality)
 
    // Get the stack frame at the specified level
    lua_Debug ar;
-   if (!lua_getstack(L1, level, &ar)) {
+   if (not lua_getstack(L1, level, &ar)) {
       // Invalid level - check global table only
       lua_getglobal(L1, varname);
       if (lua_isnil(L1, -1)) {

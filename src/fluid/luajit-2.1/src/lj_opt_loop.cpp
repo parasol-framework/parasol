@@ -1,25 +1,8 @@
 /*
 ** LOOP: Loop Optimizations.
 ** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-*/
-
-#define lj_opt_loop_c
-#define LUA_CORE
-
-#include "lj_obj.h"
-
-#if LJ_HASJIT
-
-#include "lj_err.h"
-#include "lj_buf.h"
-#include "lj_ir.h"
-#include "lj_jit.h"
-#include "lj_iropt.h"
-#include "lj_trace.h"
-#include "lj_snap.h"
-#include "lj_vm.h"
-
-/* Loop optimization:
+**
+** Loop optimization:
 **
 ** Traditional Loop-Invariant Code Motion (LICM) splits the instructions
 ** of a loop into invariant and variant instructions. The invariant
@@ -89,6 +72,19 @@
 ** on-the-fly generation of the IR and the machine code.
 */
 
+#define lj_opt_loop_c
+#define LUA_CORE
+
+#include "lj_obj.h"
+#include "lj_err.h"
+#include "lj_buf.h"
+#include "lj_ir.h"
+#include "lj_jit.h"
+#include "lj_iropt.h"
+#include "lj_trace.h"
+#include "lj_snap.h"
+#include "lj_vm.h"
+
 // Some local macros to save typing. Undef'd at the end.
 #define IR(ref)      (&J->cur.ir[(ref)])
 
@@ -132,7 +128,7 @@ static void loop_emit_phi(jit_State* J, IRRef1* subst, IRRef1* phi, IRRef nphi,
          if (!irref_isk(ir->op2)) irt_clearmark(IR(ir->op2)->t);
          if (!irref_isk(ir->op1)) {
             irt_clearmark(IR(ir->op1)->t);
-            if (ir->op1 < invar &&
+            if (ir->op1 < invar and
                ir->o >= IR_CALLN and ir->o <= IR_CARG) {  // ORDER IR
                ir = IR(ir->op1);
                while (ir->o == IR_CARG) {
@@ -204,11 +200,10 @@ static void loop_emit_phi(jit_State* J, IRRef1* subst, IRRef1* phi, IRRef nphi,
    }
 }
 
-// -- Loop unrolling using copy-substitution ------------------------------
-
+// -- Loop unrolling using copy-substitution
 // Copy-substitute snapshot.
-static void loop_subst_snap(jit_State* J, SnapShot* osnap,
-   SnapEntry* loopmap, IRRef1* subst)
+
+static void loop_subst_snap(jit_State* J, SnapShot* osnap, SnapEntry* loopmap, IRRef1* subst)
 {
    SnapEntry* nmap, * omap = &J->cur.snapmap[osnap->mapofs];
    SnapEntry* nextmap = &J->cur.snapmap[snap_nextofs(&J->cur, osnap)];
@@ -243,8 +238,7 @@ static void loop_subst_snap(jit_State* J, SnapShot* osnap,
       }
       else {  // Copy substituted slot from snapshot map.
          if (snap_slot(lsn) == snap_slot(osn)) ln++;  //  Shadowed loop slot.
-         if (!irref_isk(snap_ref(osn)))
-            osn = snap_setref(osn, subst[snap_ref(osn)]);
+         if (!irref_isk(snap_ref(osn))) osn = snap_setref(osn, subst[snap_ref(osn)]);
          nmap[nn++] = osn;
          on++;
       }
@@ -325,7 +319,7 @@ static void loop_unroll(LoopState* lps)
       if (!irref_isk(op1)) op1 = subst[op1];
       op2 = ir->op2;
       if (!irref_isk(op2)) op2 = subst[op2];
-      if (irm_kind(lj_ir_mode[ir->o]) == IRM_N &&
+      if (irm_kind(lj_ir_mode[ir->o]) == IRM_N and
          op1 == ir->op1 and op2 == ir->op2) {  // Regular invariant ins?
          subst[ins] = (IRRef1)ins;  //  Shortcut.
       }
@@ -351,27 +345,23 @@ static void loop_unroll(LoopState* lps)
                   else if (irt_isnum(t) and irt_isinteger(irr->t))  //  Fix int->num.
                      ref = tref_ref(emitir(IRTN(IR_CONV), ref, IRCONV_NUM_INT));
                   else if (irt_isnum(irr->t) and irt_isinteger(t))  //  Fix num->int.
-                     ref = tref_ref(emitir(IRTGI(IR_CONV), ref,
-                        IRCONV_INT_NUM | IRCONV_CHECK));
-                  else
-                     lj_trace_err(J, LJ_TRERR_TYPEINS);
+                     ref = tref_ref(emitir(IRTGI(IR_CONV), ref, IRCONV_INT_NUM | IRCONV_CHECK));
+                  else lj_trace_err(J, LJ_TRERR_TYPEINS);
                   subst[ins] = (IRRef1)ref;
                   irr = IR(ref);
                   goto phiconv;
                }
             }
-            else if (ref != REF_DROP and ref > invar &&
-               ((irr->o == IR_CONV and irr->op1 < invar) ||
-                  (irr->o == IR_ALEN and irr->op2 < invar &&
-                     irr->op2 != REF_NIL))) {
+            else if (ref != REF_DROP and ref > invar and
+               ((irr->o == IR_CONV and irr->op1 < invar) or
+                  (irr->o == IR_ALEN and irr->op2 < invar and irr->op2 != REF_NIL))) {
                // May need an extra PHI for a CONV or ALEN hint.
                ref = irr->o == IR_CONV ? irr->op1 : irr->op2;
                irr = IR(ref);
             phiconv:
                if (ref < invar and !irref_isk(ref) and !irt_isphi(irr->t)) {
                   irt_setphi(irr->t);
-                  if (nphi >= LJ_MAX_PHI)
-                     lj_trace_err(J, LJ_TRERR_PHIOV);
+                  if (nphi >= LJ_MAX_PHI) lj_trace_err(J, LJ_TRERR_PHIOV);
                   phi[nphi++] = (IRRef1)ref;
                }
             }
@@ -399,8 +389,7 @@ static void loop_undo(jit_State* J, IRRef ins, SnapNo nsnap, MSize nsnapmap)
    lj_ir_rollback(J, ins);
    for (i = 0; i < BPROP_SLOTS; i++) {  // Remove backprop. cache entries.
       BPropEntry* bp = &J->bpropcache[i];
-      if (bp->val >= ins)
-         bp->key = 0;
+      if (bp->val >= ins) bp->key = 0;
    }
    for (ins--; ins >= REF_FIRST; ins--) {  // Remove flags.
       IRIns* ir = IR(ins);
@@ -455,5 +444,3 @@ int lj_opt_loop(jit_State* J)
 #undef IR
 #undef emitir
 #undef emitir_raw
-
-#endif

@@ -1330,7 +1330,7 @@ void LexState::lex_match(LexToken What, LexToken Who, BCLine Line)
 
 [[nodiscard]] SourceSpan LexState::current_token_span() const
 {
-   return SourceSpan{
+   return SourceSpan {
       .line = this->current_token_line,
       .column = this->current_token_column,
       .offset = this->current_token_offset
@@ -1339,7 +1339,7 @@ void LexState::lex_match(LexToken What, LexToken Who, BCLine Line)
 
 [[nodiscard]] SourceSpan LexState::lookahead_token_span() const
 {
-   return SourceSpan{
+   return SourceSpan {
       .line = this->lookahead_line,
       .column = this->lookahead_column,
       .offset = this->lookahead_offset

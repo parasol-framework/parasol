@@ -119,6 +119,32 @@ static std::string describe_primitive(int Value)
 
 //********************************************************************************************************************
 
+template<std::integral T>
+static BCLine get_line_from_info(const void *LineInfo, BCPOS Offset, BCLine FirstLine) {
+   return FirstLine + BCLine(((const T *)LineInfo)[Offset]);
+}
+
+static BCLine get_proto_line(GCproto *Proto, BCPOS Pc)
+{
+   const void *lineinfo = proto_lineinfo(Proto);
+
+   if ((Pc <= Proto->sizebc) and lineinfo) {
+      const BCLine first_line = Proto->firstline;
+      if (Pc IS Proto->sizebc) return first_line + Proto->numline;
+      if (Pc IS 0) return first_line;
+
+      const BCPOS offset = Pc - 1;
+
+      if (Proto->numline < 256) return get_line_from_info<uint8_t>(lineinfo, offset, first_line);
+      if (Proto->numline < 65536) return get_line_from_info<uint16_t>(lineinfo, offset, first_line);
+      return get_line_from_info<uint32_t>(lineinfo, offset, first_line);
+   }
+
+   return 0;
+}
+
+//********************************************************************************************************************
+
 static std::string_view get_proto_uvname(GCproto *Proto, uint32_t Index)
 {
    const uint8_t *info = proto_uvinfo(Proto);
@@ -316,17 +342,49 @@ static BytecodeInfo extract_instruction_info(BCIns Ins)
 //********************************************************************************************************************
 // Recursively print bytecode for a finalized prototype.
 
-static void trace_proto_bytecode(GCproto *Proto, int Indent = 0)
+void trace_proto_bytecode(GCproto *Proto, BytecodeLogger Logger, void *Meta, bool Verbose, int Indent)
 {
-   pf::Log log("ByteCode");
    if (not Proto) return;
 
    const BCIns *bc_stream = proto_bc(Proto);
    std::string indent_str(Indent * 2, ' ');
 
-   if (Indent > 0) {
-      log.branch("%s--- Nested function: lines %d-%d, %d bytecodes ---", indent_str.c_str(), int(Proto->firstline),
-         int(Proto->firstline + Proto->numline), int(Proto->sizebc));
+   // In verbose mode, pre-scan to identify jump targets
+   std::vector<uint8_t> targets;
+   if (Verbose) {
+      targets.resize(Proto->sizebc ? Proto->sizebc : 1, 0);
+      for (BCPOS pc = 0; pc < Proto->sizebc; ++pc) {
+         BCIns instruction = bc_stream[pc];
+         BCOp opcode = bc_op(instruction);
+
+         if (bcmode_hasd(opcode) and bcmode_d(opcode) IS BCMjump) {
+            int value = bc_d(instruction);
+            if ((BCPOS)value != NO_JMP) {
+               ptrdiff_t offset = (ptrdiff_t)value - BCBIAS_J;
+               ptrdiff_t dest = (ptrdiff_t)pc + 1 + offset;
+               if (dest >= 0 and dest < (ptrdiff_t)Proto->sizebc) targets[size_t(dest)] = 1;
+            }
+         }
+      }
+   }
+
+   // Output function header
+   if (Indent IS 0) {
+      if (Verbose) {
+         Logger(std::format("Function (lines {}-{})", int(Proto->firstline), int(Proto->firstline + Proto->numline)), Meta);
+         Logger(std::format("Bytecodes: {}, Constants: {} numeric, {} objects", int(Proto->sizebc), int(Proto->sizekn), int(Proto->sizekgc)), Meta);
+         Logger("", Meta);
+      }
+   }
+   else {
+      if (Verbose) {
+         Logger(std::format("{}--- Nested function: lines {}-{}, {} bytecodes ---",
+            indent_str, int(Proto->firstline), int(Proto->firstline + Proto->numline), int(Proto->sizebc)), Meta);
+      }
+      else {
+         Logger(std::format("{}--- Nested function: lines {}-{}, {} bytecodes ---",
+            indent_str, int(Proto->firstline), int(Proto->firstline + Proto->numline), int(Proto->sizebc)), Meta);
+      }
    }
 
    for (BCPOS pc = 0; pc < Proto->sizebc; ++pc) {
@@ -345,7 +403,14 @@ static void trace_proto_bytecode(GCproto *Proto, int Indent = 0)
          if (info.mode_c != BCMnone) append_operand(operands, "C", describe_operand_value(Proto, info.mode_c, info.value_c, pc));
       }
 
-      log.msg("%s[%04d] %-10s %s", indent_str.c_str(), (int)pc, info.op_name, operands.c_str());
+      if (Verbose) {
+         BCLine line = get_proto_line(Proto, pc);
+         Logger(std::format("{}[{:04d}] {} {} {:<9} {}", indent_str, int(pc), targets[pc] ? "=>" : "  ",
+            line > 0 ? std::format("{:4}", line) : std::string("   -"), info.op_name, operands), Meta);
+      }
+      else {
+         Logger(std::format("{}[{:04d}] {:<10} {}", indent_str, int(pc), info.op_name, operands), Meta);
+      }
 
       // If this is a FNEW instruction, recursively disassemble the child prototype
       if (info.op IS BC_FNEW) {
@@ -356,7 +421,7 @@ static void trace_proto_bytecode(GCproto *Proto, int Indent = 0)
             GCobj *gc_obj = proto_kgc(Proto, index);
             if (gc_obj->gch.gct IS (uint8_t)~LJ_TPROTO) {
                GCproto *child = gco_to_proto(gc_obj);
-               trace_proto_bytecode(child, Indent + 1);
+               trace_proto_bytecode(child, Logger, Meta, Verbose, Indent + 1);
             }
          }
       }
@@ -366,12 +431,15 @@ static void trace_proto_bytecode(GCproto *Proto, int Indent = 0)
 //********************************************************************************************************************
 // Print a complete disassembly of bytecode instructions.
 
-extern void dump_bytecode(ParserContext &Context)
+extern void dump_bytecode(FuncState &fs)
 {
    pf::Log log("ByteCode");
 
-   FuncState &fs = Context.func();
-   log.branch("Instruction Count: %u", (unsigned)fs.pc);
+   auto log_callback = [](std::string_view Msg, void *Meta) {
+      printf("%.*s\n", int(Msg.size()), Msg.data());
+   };
+
+   printf("Instruction Count: %u\n", (unsigned)fs.pc);
    for (BCPOS pc = 0; pc < fs.pc; ++pc) {
       const BCInsLine& line = fs.bcbase[pc];
       auto info = extract_instruction_info(line.ins);
@@ -388,7 +456,7 @@ extern void dump_bytecode(ParserContext &Context)
          if (info.mode_c != BCMnone) append_operand(operands, "C", describe_operand_from_fs(&fs, info.mode_c, info.value_c, pc));
       }
 
-      log.msg("[%04d] %-10s %s", (int)pc, info.op_name, operands.c_str());
+      printf("[%04d] %-10s %s\n", (int)pc, info.op_name, operands.c_str());
 
       // If this is a FNEW instruction, look up and print the child prototype
       if (info.op IS BC_FNEW) {
@@ -403,7 +471,7 @@ extern void dump_bytecode(ParserContext &Context)
                TValue *key_tv = &node[i].key;
                if (tvisproto(key_tv)) {
                   GCproto *child = protoV(key_tv);
-                  trace_proto_bytecode(child, 1);
+                  trace_proto_bytecode(child, log_callback, &log, false, 1);
                }
                break;
             }
