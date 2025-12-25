@@ -213,9 +213,8 @@ void TypeAnalyser::trace_decl(BCLine Line, GCstr* Name, FluidType Type, bool IsF
 #ifdef INCLUDE_ADVICE
 void TypeAnalyser::check_shadowing(GCstr *Name, SourceSpan Location)
 {
+   if (not this->ctx_.should_emit_advice(2)) return;
    if (not Name) return;
-
-   // Skip blank identifiers (single underscore) - they're intentionally discarded
    if (Name->len IS 1 and strdata(Name)[0] IS '_') return;
 
    // Check all scopes except the current one (outermost to second-to-last)
@@ -263,11 +262,9 @@ void TypeAnalyser::track_global(GCstr *Name)
 
 void TypeAnalyser::check_global_in_loop(GCstr *Name, SourceSpan Location)
 {
-   // Only check when inside a loop
+   if (not this->ctx_.should_emit_advice(2)) return;
    if (this->loop_depth_ IS 0) return;
    if (not Name) return;
-
-   // Skip blank identifier
    if (Name->len IS 1 and strdata(Name)[0] IS '_') return;
 
    // Check if this identifier is a local or parameter in any scope
@@ -299,7 +296,7 @@ void TypeAnalyser::check_global_in_loop(GCstr *Name, SourceSpan Location)
 
 void TypeAnalyser::check_function_in_loop(SourceSpan Location)
 {
-   // Only warn when inside a loop
+   if (not this->ctx_.should_emit_advice(2)) return;
    if (this->loop_depth_ IS 0) return;
 
    this->ctx_.emit_advice(2, AdviceCategory::Performance,
@@ -314,7 +311,7 @@ void TypeAnalyser::check_function_in_loop(SourceSpan Location)
 
 void TypeAnalyser::check_concat_in_loop(SourceSpan Location)
 {
-   // Only warn when inside a loop
+   if (not this->ctx_.should_emit_advice(2)) return;
    if (this->loop_depth_ IS 0) return;
 
    this->ctx_.emit_advice(2, AdviceCategory::Performance,
@@ -343,24 +340,26 @@ void TypeAnalyser::pop_scope() {
    if (this->scope_stack_.empty()) return;
 
    #ifdef INCLUDE_ADVICE
-   // Report unused variables before popping the scope
-   auto unused = this->scope_stack_.back().get_unused_variables();
-   for (const auto& var : unused) {
-      std::string_view name_view(strdata(var.name), var.name->len);
-      if (var.is_parameter) {
-         this->ctx_.emit_advice(2, AdviceCategory::CodeQuality,
-            std::format("Unused function parameter '{}'", name_view),
-            Token::from_span(var.location, TokenKind::Identifier));
-      }
-      else if (var.is_function) {
-         this->ctx_.emit_advice(2, AdviceCategory::CodeQuality,
-            std::format("Unused local function '{}'", name_view),
-            Token::from_span(var.location, TokenKind::Identifier));
-      }
-      else {
-         this->ctx_.emit_advice(2, AdviceCategory::CodeQuality,
-            std::format("Unused local variable '{}'", name_view),
-            Token::from_span(var.location, TokenKind::Identifier));
+   // Report unused variables before popping the scope (skip if advice wouldn't be emitted)
+   if (this->ctx_.should_emit_advice(2)) {
+      auto unused = this->scope_stack_.back().get_unused_variables();
+      for (const auto& var : unused) {
+         std::string_view name_view(strdata(var.name), var.name->len);
+         if (var.is_parameter) {
+            this->ctx_.emit_advice(2, AdviceCategory::CodeQuality,
+               std::format("Unused function parameter '{}'", name_view),
+               Token::from_span(var.location, TokenKind::Identifier));
+         }
+         else if (var.is_function) {
+            this->ctx_.emit_advice(2, AdviceCategory::CodeQuality,
+               std::format("Unused local function '{}'", name_view),
+               Token::from_span(var.location, TokenKind::Identifier));
+         }
+         else {
+            this->ctx_.emit_advice(2, AdviceCategory::CodeQuality,
+               std::format("Unused local variable '{}'", name_view),
+               Token::from_span(var.location, TokenKind::Identifier));
+         }
       }
    }
    #endif
@@ -816,20 +815,22 @@ void TypeAnalyser::analyse_global_decl(const GlobalDeclStmtPayload &Payload)
    }
 
    #ifdef INCLUDE_ADVICE
+   // Track globals for loop access detection
    for (const auto &name : Payload.names) {
-      if (not name.symbol) continue;
+      if (name.symbol) this->track_global(name.symbol);
+   }
 
-      // Track this global for loop access detection
-      this->track_global(name.symbol);
-
-      // Check global naming conventions
-      std::string_view name_view(strdata(name.symbol), name.symbol->len);
-
-      if (not is_valid_global_name(name_view)) {
-         this->ctx_.emit_advice(3, AdviceCategory::Style,
-            std::format("Global variable '{}' should follow naming convention: 'gl[A-Z]...' or 'ALL_CAPS'",
-               name_view),
-            Token::from_span(name.span, TokenKind::Identifier));
+   // Check global naming conventions
+   if (this->ctx_.should_emit_advice(3)) {
+      for (const auto &name : Payload.names) {
+         if (not name.symbol) continue;
+         std::string_view name_view(strdata(name.symbol), name.symbol->len);
+         if (not is_valid_global_name(name_view)) {
+            this->ctx_.emit_advice(3, AdviceCategory::Style,
+               std::format("Global variable '{}' should follow naming convention: 'gl[A-Z]...' or 'ALL_CAPS'",
+                  name_view),
+               Token::from_span(name.span, TokenKind::Identifier));
+         }
       }
    }
    #endif
@@ -919,7 +920,8 @@ void TypeAnalyser::analyse_function_payload(const FunctionExprPayload &Function,
 
    // Advise on missing return type annotation for functions that return values
    #ifdef INCLUDE_ADVICE
-   if ((not Function.return_types.is_explicit) and this->function_has_return_values(Function)) {
+   if (this->ctx_.should_emit_advice(1) and
+       (not Function.return_types.is_explicit) and this->function_has_return_values(Function)) {
       SourceSpan span = Function.body ? Function.body->span : SourceSpan{};
       this->ctx_.emit_advice(1, AdviceCategory::TypeSafety,
          "Function lacks return type annotation; consider adding ': type' after the parameter list",

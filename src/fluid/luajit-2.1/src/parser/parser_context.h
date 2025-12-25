@@ -131,6 +131,10 @@ public:
 #ifdef INCLUDE_ADVICE
    inline AdviceEmitter * advice() const { return this->lex_state->advice_emitter.get(); }
 
+   // Check if advice at the given priority level would be emitted.
+   // Use this before performing expensive checks to avoid unnecessary computation.
+   [[nodiscard]] bool should_emit_advice(uint8_t Priority) const;
+
    // Emit advice if the advice system is enabled
    void emit_advice(uint8_t Priority, AdviceCategory Category, std::string Message, const Token &Location);
 #endif

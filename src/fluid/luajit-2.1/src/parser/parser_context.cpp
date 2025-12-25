@@ -330,9 +330,20 @@ void ParserContext::log_trace(ParserChannel Channel, const Token &token, std::st
 }
 
 //********************************************************************************************************************
-// Emit an advice message if the advice system is enabled.
+// Check if advice at the given priority level would be emitted.
+// This allows callers to skip expensive checks when advice would be filtered out anyway.
 
 #ifdef INCLUDE_ADVICE
+bool ParserContext::should_emit_advice(uint8_t Priority) const
+{
+   auto *emitter = this->advice();
+   if (not emitter) return false;
+   return emitter->should_emit(Priority);
+}
+
+//********************************************************************************************************************
+// Emit an advice message if the advice system is enabled.
+
 void ParserContext::emit_advice(uint8_t Priority, AdviceCategory Category, std::string Message, const Token &Location)
 {
    auto *emitter = this->advice();
