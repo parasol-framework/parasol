@@ -296,6 +296,7 @@ using cTValue = const TValue;
 
 [[nodiscard]] inline TValue* tvref(MRef r) noexcept { return r.get<TValue>(); }
 
+//********************************************************************************************************************
 // Format for 64 bit GC references (LJ_GC64):
 //
 // The upper 13 bits must be 1 (0xfff8...) for a special NaN. The next 4 bits hold the internal tag. The lowest 47
@@ -312,24 +313,25 @@ using cTValue = const TValue;
 // Primitive types nil/false/true must be first, lightuserdata next.  GC objects are at the end, table/userdata
 // must be lowest.  Also check lj_ir.h for similar ordering constraints.
 
-// Internal type tags. ORDER LJ_T
+// Internal type tags. ORDER LJ_T.  Maxes out at 16 flags.
 
-inline constexpr uint32_t LJ_TNIL      = ~0u;
-inline constexpr uint32_t LJ_TFALSE    = ~1u;
-inline constexpr uint32_t LJ_TTRUE     = ~2u;
-inline constexpr uint32_t LJ_TLIGHTUD  = ~3u;
-inline constexpr uint32_t LJ_TSTR      = ~4u;
-inline constexpr uint32_t LJ_TUPVAL    = ~5u;
-inline constexpr uint32_t LJ_TTHREAD   = ~6u;
-inline constexpr uint32_t LJ_TPROTO    = ~7u;
-inline constexpr uint32_t LJ_TFUNC     = ~8u;
-inline constexpr uint32_t LJ_TTRACE    = ~9u;
-inline constexpr uint32_t LJ_TCDATA    = ~10u;
-inline constexpr uint32_t LJ_TTAB      = ~11u;
-inline constexpr uint32_t LJ_TUDATA    = ~12u;
-inline constexpr uint32_t LJ_TARRAY    = ~13u;   // Native array type
+inline constexpr uint32_t LJ_TNIL      = ~0u;  // Nil
+inline constexpr uint32_t LJ_TFALSE    = ~1u;  // False
+inline constexpr uint32_t LJ_TTRUE     = ~2u;  // True
+inline constexpr uint32_t LJ_TLIGHTUD  = ~3u;  // Lightuserdata
+inline constexpr uint32_t LJ_TSTR      = ~4u;  // String
+inline constexpr uint32_t LJ_TUPVAL    = ~5u;  // Unused in TValue(?) could be shared?
+inline constexpr uint32_t LJ_TTHREAD   = ~6u;  // Unused?
+inline constexpr uint32_t LJ_TPROTO    = ~7u;  // Function prototype
+inline constexpr uint32_t LJ_TFUNC     = ~8u;  // Function
+inline constexpr uint32_t LJ_TTRACE    = ~9u;  // Unused in TValue(?) could be shared?
+inline constexpr uint32_t LJ_TCDATA    = ~10u; // Unused (disabled)
+inline constexpr uint32_t LJ_TTAB      = ~11u; // Table
+inline constexpr uint32_t LJ_TUDATA    = ~12u; // Userdata
+inline constexpr uint32_t LJ_TARRAY    = ~13u; // Native array type
 // This is just the canonical number type used in some places.
-inline constexpr uint32_t LJ_TNUMX     = ~14u;
+inline constexpr uint32_t LJ_TNUMX     = ~14u; // Number
+// ~15u is unused
 
 // Integers have itype == LJ_TISNUM doubles have itype < LJ_TISNUM
 // Always LJ_TNUMX for 64-bit GC64 mode
