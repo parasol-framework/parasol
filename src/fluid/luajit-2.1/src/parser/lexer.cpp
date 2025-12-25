@@ -756,7 +756,12 @@ static LexToken lex_scan(LexState *State, TValue *tv)
             State->mark_token_start();
             lex_next(State);
             if (State->c IS '>') { lex_next(State); return TK_arrow; }
-            if (State->c IS '=') { lex_next(State); return TK_eq; }
+            if (State->c IS '=') {
+               lex_next(State);
+               pf::Log("Fluid").warning("%s:%d: Deprecated '==' operator, use 'is' instead",
+                  strdata(State->chunkname), State->linenumber);
+               return TK_eq;
+            }
             return '=';
 
          case '<':
@@ -812,7 +817,12 @@ static LexToken lex_scan(LexState *State, TValue *tv)
          case '~':  // Deprecated: ~=
             State->mark_token_start();
             lex_next(State);
-            if (State->c IS '=') { lex_next(State); return TK_ne; }
+            if (State->c IS '=') {
+               lex_next(State);
+               pf::Log("Fluid").warning("%s:%d: Deprecated '~=' operator, use '!=' instead",
+                  strdata(State->chunkname), State->linenumber);
+               return TK_ne;
+            }
             return '~';
 
          case ':':

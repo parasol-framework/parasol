@@ -176,13 +176,13 @@ function runTests()
                label_present = false
                inverse = false
 
-               for _, label_filter in ipairs(glLabels) do
+               for label_filter in values(glLabels) do
                   if label_filter:startsWith('~') then
                      inverse = true
                      label_filter = label_filter:sub(1)
                   end
 
-                  for _, test_label in ipairs(test_labels) do
+                  for test_label in values(test_labels) do
                      if label_filter is test_label then
                         label_present = true
                         break
@@ -192,13 +192,9 @@ function runTests()
                end
 
                if inverse then
-                  if label_present then
-                     disabled = true
-                  end
+                  disabled = label_present
                else
-                  if not label_present then
-                     disabled = true
-                  end
+                  disabled = not label_present
                end
             end
          end
