@@ -88,7 +88,7 @@ static ERR match_many(int Index, std::vector<std::string_view> &Captures, size_t
 
    // Create string array for captures
    auto count = uint32_t(Captures.size());
-   GCarray *capture_arr = lj_array_new(lua, count, AET::_STRING_GC);
+   GCarray *capture_arr = lj_array_new(lua, count, AET::STR_GC);
    GCRef *refs = capture_arr->get<GCRef>();
 
    // Captures are normalised: unmatched optional groups appear as empty entries to preserve indices.
@@ -120,7 +120,7 @@ static ERR match_one(int Index, std::vector<std::string_view> &Captures, size_t 
 
    // Create array with exact size for captures
    auto count = uint32_t(Captures.size());
-   GCarray *arr = lj_array_new(L, count, AET::_STRING_GC);
+   GCarray *arr = lj_array_new(L, count, AET::STR_GC);
    GCRef *refs = arr->get<GCRef>();
 
    // Captures are normalised: unmatched optional groups appear as empty entries to preserve indices.
@@ -238,7 +238,7 @@ static int regex_search(lua_State *Lua)
    auto text = luaL_checklstring(Lua, 1, &text_len);
    auto flags = RMATCH(luaL_optint(Lua, 2, int(RMATCH::NIL)));
 
-   GCarray *results = lj_array_new(Lua, 0, AET::_ARRAY);
+   GCarray *results = lj_array_new(Lua, 0, AET::ARRAY);
    setarrayV(Lua, Lua->top++, results); // Root results to prevent GC during callbacks
 
    // Use match_many() to populate the array with the matches.
@@ -295,7 +295,7 @@ static int regex_split(lua_State *Lua)
 
    // Create array with exact size
    auto count = uint32_t(parts.size());
-   GCarray *arr = lj_array_new(Lua, count, AET::_STRING_GC);
+   GCarray *arr = lj_array_new(Lua, count, AET::STR_GC);
    GCRef *refs = arr->get<GCRef>();
 
    for (uint32_t i = 0; i < count; ++i) {

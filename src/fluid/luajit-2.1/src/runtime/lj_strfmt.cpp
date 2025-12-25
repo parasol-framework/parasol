@@ -170,11 +170,6 @@ const char* lj_strfmt_wstrnum(lua_State* L, cTValue* o, MSize* lenp)
       *lenp = strV(o)->len;
       return strVdata(o);
    }
-   else if (tvisbuf(o)) {
-      SBufExt* sbx = bufV(o);
-      *lenp = sbufxlen(sbx);
-      return sbx->r;
-   }
    else if (tvisint(o)) {
       sb = lj_strfmt_putint(lj_buf_tmp_(L), intV(o));
    }
@@ -436,8 +431,8 @@ int lj_strfmt_putarg(lua_State* L, SBuf* sb, int arg, int retry)
             MSize len;
             const char* s;
             cTValue* mo;
-            if (LJ_UNLIKELY(!tvisstr(o) and !tvisbuf(o)) and retry >= 0 &&
-               !tvisnil(mo = lj_meta_lookup(L, o, MM_tostring))) {
+
+            if (!tvisstr(o) and retry >= 0 and !tvisnil(mo = lj_meta_lookup(L, o, MM_tostring))) [[unlikely]] {
                // Call __tostring metamethod once.
                copyTV(L, L->top++, mo);
                copyTV(L, L->top++, o);
@@ -449,17 +444,10 @@ int lj_strfmt_putarg(lua_State* L, SBuf* sb, int arg, int retry)
                   break;
                }
             }
-            if (LJ_LIKELY(tvisstr(o))) {
+
+            if (tvisstr(o)) [[likely]] {
                len = strV(o)->len;
                s = strVdata(o);
-#if LJ_HASBUFFER
-            }
-            else if (tvisbuf(o)) {
-               SBufExt* sbx = bufV(o);
-               if (sbx == (SBufExt*)sb) lj_err_arg(L, arg + 1, ErrMsg::BUFFER_SELF);
-               len = sbufxlen(sbx);
-               s = sbx->r;
-#endif
             }
             else {
                GCstr* str = lj_strfmt_obj(L, o);

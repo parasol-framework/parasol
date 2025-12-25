@@ -219,7 +219,7 @@ LJLIB_CF(string_split)
 
    // Handle empty string - return empty array
    if (slen IS 0) {
-      GCarray *arr = lj_array_new(L, 0, AET::_STRING_GC);
+      GCarray *arr = lj_array_new(L, 0, AET::STR_GC);
       setarrayV(L, L->top++, arr);
       return 1;
    }
@@ -239,7 +239,7 @@ LJLIB_CF(string_split)
    }
 
    // Create array with exact size
-   GCarray *arr = lj_array_new(L, count, AET::_STRING_GC);
+   GCarray *arr = lj_array_new(L, count, AET::STR_GC);
    GCRef *refs = arr->get<GCRef>();
 
    // Second pass: populate the array

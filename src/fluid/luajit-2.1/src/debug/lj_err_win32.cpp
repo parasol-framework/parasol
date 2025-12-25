@@ -14,16 +14,17 @@
 
 #ifdef _WIN32
 
+#define WIN32_LEAN_AND_MEAN
 #define LUA_CORE
+
+#include <windows.h>
+
 #include "lj_err.h"
 #include "lj_frame.h"
 #include "lj_jit.h"
 #include "lj_dispatch.h"
 #include "lj_vm.h"
 #include "lj_trace.h"
-
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
 
 // Taken from: http://www.nynaeve.net/?p=99
 typedef struct UndocumentedDispatcherContext {

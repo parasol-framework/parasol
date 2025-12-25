@@ -51,17 +51,17 @@ const void * LJ_FASTCALL lj_obj_ptr(global_State *g, cTValue *o)
 [[nodiscard]] int GCarray::type_flags() const noexcept
 {
    switch(elemtype) {
-      case AET::_BYTE:       return FD_BYTE;
-      case AET::_INT16:      return FD_WORD;
-      case AET::_INT32:      return FD_INT;
-      case AET::_INT64:      return FD_INT64;
-      case AET::_FLOAT:      return FD_FLOAT;
-      case AET::_DOUBLE:     return FD_DOUBLE;
-      case AET::_PTR:        return FD_POINTER;
-      case AET::_CSTRING:    return FD_STRING;
-      case AET::_STRING_CPP: return FD_STRING | FD_CPP;
-      case AET::_STRING_GC:  return FD_STRING;
-      case AET::_STRUCT:     return FD_STRUCT;
+      case AET::BYTE:       return FD_BYTE;
+      case AET::INT16:      return FD_WORD;
+      case AET::INT32:      return FD_INT;
+      case AET::INT64:      return FD_INT64;
+      case AET::FLOAT:      return FD_FLOAT;
+      case AET::DOUBLE:     return FD_DOUBLE;
+      case AET::PTR:        return FD_POINTER;
+      case AET::CSTR:    return FD_STRING;
+      case AET::STR_CPP: return FD_STRING | FD_CPP;
+      case AET::STR_GC:  return FD_STRING;
+      case AET::STRUCT:     return FD_STRUCT;
       default:               return 0;
    }
 }

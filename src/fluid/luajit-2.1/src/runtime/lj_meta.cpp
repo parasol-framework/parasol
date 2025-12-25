@@ -289,8 +289,7 @@ TValue * lj_meta_cat(lua_State *L, TValue *top, int left)
       // Only convert left operand if it's not the first value in the chain
       if (tvisnil(top - 1) and left > 1) setstrV(L, top - 1, empty_str);
 
-      if (not (tvisstr(top) or tvisnumber(top) or tvisbuf(top)) or
-         !(tvisstr(top - 1) or tvisnumber(top - 1) or tvisbuf(top - 1))) {
+      if (not (tvisstr(top) or tvisnumber(top)) or !(tvisstr(top - 1) or tvisnumber(top - 1))) {
          cTValue *mo = lj_meta_lookup(L, top - 1, MM_concat);
          if (tvisnil(mo)) {
             mo = lj_meta_lookup(L, top, MM_concat);
@@ -330,11 +329,11 @@ TValue * lj_meta_cat(lua_State *L, TValue *top, int left)
          // next step: [...][CAT stack ............]
 
          TValue *e, * o = top;
-         uint64_t tlen = tvisstr(o) ? strV(o)->len : tvisbuf(o) ? sbufxlen(bufV(o)) : STRFMT_MAXBUF_NUM;
+         uint64_t tlen = tvisstr(o) ? strV(o)->len : STRFMT_MAXBUF_NUM;
          SBuf* sb;
          do {
             o--;
-            tlen += tvisstr(o) ? strV(o)->len : tvisbuf(o) ? sbufxlen(bufV(o)) : STRFMT_MAXBUF_NUM;
+            tlen += tvisstr(o) ? strV(o)->len : STRFMT_MAXBUF_NUM;
          } while (--left > 0 and (tvisstr(o - 1) or tvisnumber(o - 1)));
 
          if (tlen >= LJ_MAX_STR) lj_err_msg(L, ErrMsg::STROV);
@@ -346,10 +345,6 @@ TValue * lj_meta_cat(lua_State *L, TValue *top, int left)
                GCstr *s = strV(o);
                MSize len = s->len;
                lj_buf_putmem(sb, strdata(s), len);
-            }
-            else if (tvisbuf(o)) {
-               SBufExt* sbx = bufV(o);
-               lj_buf_putmem(sb, sbx->r, sbufxlen(sbx));
             }
             else if (tvisint(o)) lj_strfmt_putint(sb, intV(o));
             else lj_strfmt_putfnum(sb, STRFMT_G14, numV(o));

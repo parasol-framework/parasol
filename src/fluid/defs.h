@@ -30,19 +30,19 @@ extern bool glPrintMsg;
 
 [[maybe_unused]] static AET ff_to_aet(int Type)
 {
-   if (Type & FD_POINTER)     return AET::_PTR;
-   else if (Type & FD_OBJECT) return AET::_STRUCT;
+   if (Type & FD_POINTER)     return AET::PTR;
+   else if (Type & FD_OBJECT) return AET::STRUCT;
    else if (Type & FD_STRING) {
-      if (Type & FD_CPP) return AET::_STRING_CPP;
-      else return AET::_CSTRING;
+      if (Type & FD_CPP) return AET::STR_CPP;
+      else return AET::CSTR;
    }
-   else if (Type & FD_FLOAT)   return AET::_FLOAT;
-   else if (Type & FD_DOUBLE)  return AET::_DOUBLE;
-   else if (Type & FD_INT64)   return AET::_INT64;
-   else if (Type & FD_INT)     return AET::_INT32;
-   else if (Type & FD_WORD)    return AET::_INT16;
-   else if (Type & FD_BYTE)    return AET::_BYTE;
-   else return AET::_MAX;
+   else if (Type & FD_FLOAT)   return AET::FLOAT;
+   else if (Type & FD_DOUBLE)  return AET::DOUBLE;
+   else if (Type & FD_INT64)   return AET::INT64;
+   else if (Type & FD_INT)     return AET::INT32;
+   else if (Type & FD_WORD)    return AET::INT16;
+   else if (Type & FD_BYTE)    return AET::BYTE;
+   else return AET::MAX;
 }
 
 //********************************************************************************************************************

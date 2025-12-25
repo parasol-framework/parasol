@@ -1,3 +1,18 @@
+// Type Analysis for Fluid Parser
+// Copyright (C) 2025 Paul Manias
+//
+// This module performs semantic type analysis on the Fluid AST after parsing.
+// It implements:
+// - Type inference for local variables and function returns
+// - Type checking for assignments and function arguments
+// - Return type validation within functions
+// - Detection of recursive functions requiring explicit type declarations
+// - Scope-based variable tracking for unused variable detection
+// - Shadowing detection for variables in nested scopes
+//
+// The analysis is non-blocking by default - type mismatches generate warnings
+// unless the parser is configured with type_errors_are_fatal = true.
+
 #include "parser/type_checker.h"
 
 #include <format>
@@ -5,7 +20,14 @@
 #include <parasol/main.h>
 #include "parser/parser_context.h"
 
+#ifdef INCLUDE_ADVICE
+#include "parser/parser_advice.h"
+#endif
+
 namespace {
+
+// Infer the type of a literal value (nil, boolean, number, string, cdata).
+// Literal types are always marked as constant since their values cannot change.
 
 [[nodiscard]] InferredType infer_literal_type(const LiteralValue &Literal)
 {
@@ -26,7 +48,7 @@ namespace {
 }
 
 // Helper to check if type tracing is enabled
-[[nodiscard]] inline bool should_trace_types(lua_State* L)
+[[nodiscard]] inline bool should_trace_types(lua_State *L)
 {
    auto prv = (prvFluid *)L->script->ChildPrivate;
    return (prv->JitOptions & JOF::TRACE_TYPES) != JOF::NIL;
@@ -34,46 +56,77 @@ namespace {
 
 } // namespace
 
+//********************************************************************************************************************
+// TypeAnalyser - Main class for performing semantic type analysis on Fluid AST.
+//
+// The analyser walks the AST and performs:
+// 1. Type inference - Determines types for variables without explicit annotations
+// 2. Type checking - Validates type compatibility for assignments and function calls
+// 3. Return validation - Ensures consistent return types within functions
+// 4. Usage tracking - Detects unused variables and parameters (for advice)
+// 5. Shadowing detection - Warns when inner scope variables shadow outer ones
+//
+// The analyser maintains a scope stack to track variable declarations and types
+// as it traverses nested blocks, functions, and control structures.
+
 class TypeAnalyser {
 public:
    explicit TypeAnalyser(ParserContext &Context) : ctx_(Context) {}
+
+   // Entry point: analyse an entire module (top-level block)
    void analyse_module(const BlockStmt &);
+
+   // Access collected type diagnostics after analysis
    [[nodiscard]] const std::vector<TypeDiagnostic> & diagnostics() const { return this->diagnostics_; }
 
 private:
+   // Scope management - maintains a stack of TypeCheckScope for tracking variable types
    void push_scope();
    void pop_scope();
    [[nodiscard]] TypeCheckScope & current_scope();
    [[nodiscard]] const TypeCheckScope & current_scope() const;
 
-   // Function context stack management for return type validation
+   // Function context management - tracks return type expectations for nested functions
    void enter_function(const FunctionExprPayload &, GCstr *Name = nullptr);
    void leave_function();
    [[nodiscard]] FunctionContext* current_function();
    [[nodiscard]] const FunctionContext* current_function() const;
 
+   // AST traversal methods - recursively analyse each node type
    void analyse_block(const BlockStmt &);
    void analyse_statement(const StmtNode &);
    void analyse_assignment(const AssignmentStmtPayload &);
    void analyse_local_decl(const LocalDeclStmtPayload &);
+   void analyse_global_decl(const GlobalDeclStmtPayload &);
    void analyse_local_function(const LocalFunctionStmtPayload &);
    void analyse_function_stmt(const FunctionStmtPayload &);
    void analyse_function_payload(const FunctionExprPayload &, GCstr *Name = nullptr);
    void analyse_expression(const ExprNode &);
    void analyse_call_expr(const CallExprPayload &);
+
+   // Argument type checking for function calls
    void check_arguments(const FunctionExprPayload &, const CallExprPayload &);
    void check_argument_type(const ExprNode &, FluidType, size_t);
 
-   [[nodiscard]] InferredType infer_expression_type(const ExprNode &) const;
+   // Type inference - determines types from expressions and context
+   [[nodiscard]] InferredType infer_expression_type(const ExprNode &);
    [[nodiscard]] InferredType infer_call_return_type(const ExprNode &, size_t Position) const;
+
+   // Symbol resolution - looks up variables and functions in scope stack
    [[nodiscard]] std::optional<InferredType> resolve_identifier(GCstr *) const;
    [[nodiscard]] const FunctionExprPayload * resolve_call_target(const CallTarget &) const;
    [[nodiscard]] const FunctionExprPayload * resolve_function(GCstr *) const;
+
+   // Type fixation - locks variable type after first concrete assignment
    void fix_local_type(GCstr *, FluidType);
 
-   // Return type validation
+   // Usage tracking - marks variables as used for unused variable detection
+   void mark_identifier_used(GCstr *);
 
+   // Return type validation - ensures consistency within functions
    void validate_return_types(const ReturnStmtPayload &, SourceSpan);
+
+   // Recursive function detection - identifies functions that call themselves
    [[nodiscard]] bool is_recursive_function(const FunctionExprPayload &, GCstr *) const;
    [[nodiscard]] bool function_has_return_values(const FunctionExprPayload &) const;
    [[nodiscard]] bool body_has_return_values(const BlockStmt &) const;
@@ -81,20 +134,44 @@ private:
    [[nodiscard]] bool statement_contains_call_to(const StmtNode &, GCstr *) const;
    [[nodiscard]] bool expression_contains_call_to(const ExprNode &, GCstr *) const;
 
-   // Tracing helper
+   // Debug tracing - outputs type inference steps when TRACE_TYPES is enabled
    [[nodiscard]] bool trace_enabled() const { return should_trace_types(&this->ctx_.lua()); }
    void trace_infer(BCLine Line, std::string_view Context, FluidType Type) const;
    void trace_fix(BCLine Line, GCstr* Name, FluidType Type) const;
    void trace_decl(BCLine Line, GCstr* Name, FluidType Type, bool IsFixed) const;
 
-   ParserContext &ctx_;
-   std::vector<TypeCheckScope> scope_stack_{};
+   // Shadowing detection - warns when inner variable shadows outer scope variable
+   #ifdef INCLUDE_ADVICE
+   void check_shadowing(GCstr *Name, SourceSpan Location);
+
+   // Global access in loop detection - warns when globals are accessed in loops without caching
+   void check_global_in_loop(GCstr *Name, SourceSpan Location);
+
+   // Function definition in loop detection - warns when closures are created inside loops
+   void check_function_in_loop(SourceSpan Location);
+
+   // String concatenation in loop detection - warns when .. is used in loops
+   void check_concat_in_loop(SourceSpan Location);
+
+   // Track a global variable declaration
+   void track_global(GCstr *Name);
+   #endif
+
+   ParserContext &ctx_;                             // Parser context for diagnostics and lexer access
+   std::vector<TypeCheckScope> scope_stack_{};      // Stack of scopes for variable tracking
    std::vector<FunctionContext> function_stack_{};  // Stack of function contexts for return type tracking
-   std::vector<TypeDiagnostic> diagnostics_{};
+   std::vector<TypeDiagnostic> diagnostics_{};      // Collected type errors and warnings
+   uint32_t loop_depth_{0};                         // Current loop nesting depth for performance advice
+   #ifdef INCLUDE_ADVICE
+   std::vector<GCstr*> declared_globals_{};         // Globals explicitly declared with 'global' keyword
+   #endif
 };
 
 //********************************************************************************************************************
-// Tracing implementations
+// Debug Tracing
+//
+// These methods output type inference steps to the log when --jit-options trace-types is enabled.
+// Useful for debugging type inference logic and understanding how types are determined.
 
 void TypeAnalyser::trace_infer(BCLine Line, std::string_view Context, FluidType Type) const
 {
@@ -123,24 +200,196 @@ void TypeAnalyser::trace_decl(BCLine Line, GCstr* Name, FluidType Type, bool IsF
 }
 
 //********************************************************************************************************************
+// Shadowing Detection
+//
+// Checks if declaring a variable would shadow a variable in an outer scope.
+// Only checks outer scopes (not the current scope) since redeclaration in the same scope
+// is handled differently. Shadowing is a common source of bugs where the programmer
+// accidentally uses a new variable instead of the intended outer one.
+//
+// The check skips blank identifiers (single underscore '_') which are intentionally
+// used to discard values.
+
+#ifdef INCLUDE_ADVICE
+void TypeAnalyser::check_shadowing(GCstr *Name, SourceSpan Location)
+{
+   if (not this->ctx_.should_emit_advice(2)) return;
+   if (not Name) return;
+   if (Name->len IS 1 and strdata(Name)[0] IS '_') return;
+
+   // Check all scopes except the current one (outermost to second-to-last)
+   // We iterate in reverse (innermost first) but skip the current scope
+   if (this->scope_stack_.size() < 2) return;  // Need at least 2 scopes for shadowing
+
+   for (size_t i = 0; i < this->scope_stack_.size() - 1; ++i) {
+      const auto& scope = this->scope_stack_[i];
+      auto existing = scope.lookup_local_type(Name);
+      if (existing) {
+         std::string_view name_view(strdata(Name), Name->len);
+         this->ctx_.emit_advice(2, AdviceCategory::CodeQuality,
+            std::format("Variable '{}' shadows a variable in an outer scope", name_view),
+            Token::from_span(Location, TokenKind::Identifier));
+         return;  // Only report once per variable
+      }
+
+      // Also check parameters in this scope
+      auto param = scope.lookup_parameter_type(Name);
+      if (param) {
+         std::string_view name_view(strdata(Name), Name->len);
+         this->ctx_.emit_advice(2, AdviceCategory::CodeQuality,
+            std::format("Variable '{}' shadows a parameter in an outer scope", name_view),
+            Token::from_span(Location, TokenKind::Identifier));
+         return;
+      }
+   }
+}
+
+//********************************************************************************************************************
+// Global Variable Access in Loop Detection:  Warns when global variables declared with the 'global' keyword are
+// accessed within loops.  Accessing globals in tight loops incurs a performance penalty because each access requires
+// a hash table lookup in the global environment table. For optimal JIT performance, globals should be cached in
+// local variables before entering the loop.
+
+void TypeAnalyser::track_global(GCstr *Name)
+{
+   if (not Name) return;
+   // Avoid duplicates
+   for (const auto* existing : this->declared_globals_) {
+      if (existing IS Name) return;
+   }
+   this->declared_globals_.push_back(Name);
+}
+
+void TypeAnalyser::check_global_in_loop(GCstr *Name, SourceSpan Location)
+{
+   if (not this->ctx_.should_emit_advice(2)) return;
+   if (this->loop_depth_ IS 0) return;
+   if (not Name) return;
+   if (Name->len IS 1 and strdata(Name)[0] IS '_') return;
+
+   // Check if this identifier is a local or parameter in any scope
+   for (const auto& scope : this->scope_stack_) {
+      if (scope.lookup_local_type(Name)) return;  // Found as local
+      if (scope.lookup_parameter_type(Name)) return;  // Found as parameter
+   }
+
+   // Only warn about globals that were explicitly declared in this script with 'global'
+   bool is_declared_global = false;
+   for (const auto* declared : this->declared_globals_) {
+      if (declared IS Name) {
+         is_declared_global = true;
+         break;
+      }
+   }
+   if (not is_declared_global) return;
+
+   // It's a declared global variable being accessed inside a loop
+   std::string_view name_view(strdata(Name), Name->len);
+   this->ctx_.emit_advice(2, AdviceCategory::Performance,
+      std::format("Global '{}' accessed in loop; consider caching in a local variable for better JIT performance",
+         name_view),
+      Token::from_span(Location, TokenKind::Identifier));
+}
+
+//********************************************************************************************************************
+// Function Definition in Loop Detection: Warns when function expressions (closures) are defined inside loops.
+
+void TypeAnalyser::check_function_in_loop(SourceSpan Location)
+{
+   if (not this->ctx_.should_emit_advice(2)) return;
+   if (this->loop_depth_ IS 0) return;
+
+   this->ctx_.emit_advice(2, AdviceCategory::Performance,
+      "Function defined inside loop; consider moving it outside the loop for better performance",
+      Token::from_span(Location, TokenKind::Function));
+}
+
+//********************************************************************************************************************
+// String Concatenation in Loop Detection:  Warns when string concatenation (..) is used inside loops. Each
+// concatenation creates a new intermediate string object, which is inefficient when building strings iteratively.
+// For building strings in loops, array.join() is more efficient as it allocates only once.
+
+void TypeAnalyser::check_concat_in_loop(SourceSpan Location)
+{
+   if (not this->ctx_.should_emit_advice(2)) return;
+   if (this->loop_depth_ IS 0) return;
+
+   this->ctx_.emit_advice(2, AdviceCategory::Performance,
+      "String concatenation in loop; consider using array.join() for better performance",
+      Token::from_span(Location, TokenKind::Cat));
+}
+#endif
+
+//********************************************************************************************************************
+// Scope Management
+//
+// Scopes are pushed when entering blocks (functions, loops, if statements, do blocks)
+// and popped when leaving them. Each scope tracks its own local variables and their types.
+//
+// When a scope is popped, unused variable detection runs to identify variables that were
+// declared but never referenced. This helps catch typos and dead code.
 
 void TypeAnalyser::push_scope() {
    this->scope_stack_.emplace_back();
 }
 
+// Pop the current scope and report any unused variables.
+// This is called when leaving a block, function, or control structure.
+
 void TypeAnalyser::pop_scope() {
-   if (not this->scope_stack_.empty()) this->scope_stack_.pop_back();
+   if (this->scope_stack_.empty()) return;
+
+   #ifdef INCLUDE_ADVICE
+   // Report unused variables before popping the scope (skip if advice wouldn't be emitted)
+   if (this->ctx_.should_emit_advice(2)) {
+      auto unused = this->scope_stack_.back().get_unused_variables();
+      for (const auto& var : unused) {
+         std::string_view name_view(strdata(var.name), var.name->len);
+         if (var.is_parameter) {
+            this->ctx_.emit_advice(2, AdviceCategory::CodeQuality,
+               std::format("Unused function parameter '{}'", name_view),
+               Token::from_span(var.location, TokenKind::Identifier));
+         }
+         else if (var.is_function) {
+            this->ctx_.emit_advice(2, AdviceCategory::CodeQuality,
+               std::format("Unused local function '{}'", name_view),
+               Token::from_span(var.location, TokenKind::Identifier));
+         }
+         else {
+            this->ctx_.emit_advice(2, AdviceCategory::CodeQuality,
+               std::format("Unused local variable '{}'", name_view),
+               Token::from_span(var.location, TokenKind::Identifier));
+         }
+      }
+   }
+   #endif
+
+   this->scope_stack_.pop_back();
 }
+
+//********************************************************************************************************************
 
 TypeCheckScope & TypeAnalyser::current_scope() {
    if (this->scope_stack_.empty()) this->push_scope();
    return this->scope_stack_.back();
 }
 
+//********************************************************************************************************************
+
 const TypeCheckScope & TypeAnalyser::current_scope() const {
    lj_assertX(not this->scope_stack_.empty(), "type analysis scope stack is empty");
    return this->scope_stack_.back();
 }
+
+//********************************************************************************************************************
+// Function Context Management
+//
+// When entering a function, we push a FunctionContext to track expected return types.
+// This enables validation of return statements against declared or inferred types.
+//
+// If the function has explicit return type annotations, those are used immediately.
+// Otherwise, the first return statement with non-nil values establishes the expected types
+// (first-wins inference rule).
 
 void TypeAnalyser::enter_function(const FunctionExprPayload &Function, GCstr *Name)
 {
@@ -156,6 +405,8 @@ void TypeAnalyser::enter_function(const FunctionExprPayload &Function, GCstr *Na
 
    this->function_stack_.push_back(ctx);
 }
+
+//********************************************************************************************************************
 
 void TypeAnalyser::leave_function()
 {
@@ -190,6 +441,12 @@ void TypeAnalyser::analyse_block(const BlockStmt &Block)
    }
 }
 
+//********************************************************************************************************************
+// Statement Analysis
+//
+// Dispatches to the appropriate handler based on statement type.
+// Each handler may push/pop scopes, declare variables, or analyse nested expressions.
+
 void TypeAnalyser::analyse_statement(const StmtNode &Statement)
 {
    switch (Statement.kind) {
@@ -201,6 +458,11 @@ void TypeAnalyser::analyse_statement(const StmtNode &Statement)
       case AstNodeKind::LocalDeclStmt: {
          auto *payload = std::get_if<LocalDeclStmtPayload>(&Statement.data);
          if (payload) this->analyse_local_decl(*payload);
+         break;
+      }
+      case AstNodeKind::GlobalDeclStmt: {
+         auto *payload = std::get_if<GlobalDeclStmtPayload>(&Statement.data);
+         if (payload) this->analyse_global_decl(*payload);
          break;
       }
       case AstNodeKind::LocalFunctionStmt: {
@@ -234,7 +496,9 @@ void TypeAnalyser::analyse_statement(const StmtNode &Statement)
             if (payload->condition) this->analyse_expression(*payload->condition);
             if (payload->body) {
                this->push_scope();
+               this->loop_depth_++;
                this->analyse_block(*payload->body);
+               this->loop_depth_--;
                this->pop_scope();
             }
          }
@@ -252,9 +516,11 @@ void TypeAnalyser::analyse_statement(const StmtNode &Statement)
                if (payload->control.symbol) {
                   InferredType loop_var;
                   loop_var.primary = FluidType::Num;
-                  this->current_scope().declare_local(payload->control.symbol, loop_var);
+                  this->current_scope().declare_local(payload->control.symbol, loop_var, payload->control.span);
                }
+               this->loop_depth_++;
                this->analyse_block(*payload->body);
+               this->loop_depth_--;
                this->pop_scope();
             }
          }
@@ -273,10 +539,12 @@ void TypeAnalyser::analyse_statement(const StmtNode &Statement)
                   if (name.symbol) {
                      InferredType loop_var;
                      loop_var.primary = FluidType::Any;  // Type depends on iterator
-                     this->current_scope().declare_local(name.symbol, loop_var);
+                     this->current_scope().declare_local(name.symbol, loop_var, name.span);
                   }
                }
+               this->loop_depth_++;
                this->analyse_block(*payload->body);
+               this->loop_depth_--;
                this->pop_scope();
             }
          }
@@ -322,8 +590,28 @@ void TypeAnalyser::analyse_statement(const StmtNode &Statement)
    }
 }
 
+//********************************************************************************************************************
+// Assignment Analysis
+//
+// Handles assignment statements (x = value, a, b = c, d).
+// For typed variables, validates that the assigned value matches the expected type.
+// For untyped variables, the first non-nil assignment fixes the variable's type.
+//
+// Type fixation rules:
+// - Variables declared with explicit type annotations are fixed immediately
+// - Variables without annotations become fixed after first non-nil, non-any assignment
+// - Nil assignments never fix or change type (nil is compatible with all types)
+// - 'any' type variables accept all assignments without fixation
+
 void TypeAnalyser::analyse_assignment(const AssignmentStmtPayload &Payload)
 {
+   // Check for compound concatenation assignment (..=) in loops
+   #ifdef INCLUDE_ADVICE
+   if (Payload.op IS AssignmentOperator::Concat and not Payload.targets.empty()) {
+      this->check_concat_in_loop(Payload.targets[0]->span);
+   }
+   #endif
+
    for (size_t i = 0; i < Payload.targets.size(); ++i) {
       const auto &target_ptr = Payload.targets[i];
       if (not target_ptr) continue;
@@ -373,6 +661,17 @@ void TypeAnalyser::analyse_assignment(const AssignmentStmtPayload &Payload)
    for (const auto &value : Payload.values) this->analyse_expression(*value);
    for (const auto &target : Payload.targets) this->analyse_expression(*target);
 }
+
+//********************************************************************************************************************
+// Local Declaration Analysis
+//
+// Handles 'local' variable declarations with optional type annotations and initialisers.
+// Supports multi-value assignments from function calls (local a, b, c = func()).
+//
+// Type determination priority:
+// 1. Explicit type annotation (local x:num = 5) - type is fixed
+// 2. Inferred from initialiser (local x = 5) - type becomes fixed
+// 3. No initialiser (local x) - starts as nil, fixes on first assignment
 
 void TypeAnalyser::analyse_local_decl(const LocalDeclStmtPayload &Payload)
 {
@@ -452,7 +751,11 @@ void TypeAnalyser::analyse_local_decl(const LocalDeclStmtPayload &Payload)
          inferred.is_fixed = false;
       }
 
-      this->current_scope().declare_local(name.symbol, inferred);
+      #ifdef INCLUDE_ADVICE
+      this->check_shadowing(name.symbol, name.span);
+      #endif
+
+      this->current_scope().declare_local(name.symbol, inferred, name.span);
       this->trace_decl(this->ctx_.lex().linenumber, name.symbol, inferred.primary, inferred.is_fixed);
    }
 
@@ -461,32 +764,135 @@ void TypeAnalyser::analyse_local_decl(const LocalDeclStmtPayload &Payload)
    }
 }
 
+//********************************************************************************************************************
+// Global Naming Convention Validation
+//
+// Checks if a global variable name follows Fluid naming conventions:
+// - glX... - Starts with 'gl' followed by uppercase letter (e.g., glMyGlobal, glConfig)
+// - ALL_CAPS - Full uppercase with underscores for constants (e.g., MY_FLAG, ERR_OKAY)
+// - mX... - Starts with 'm' for modules from mod.load() (e.g., mSys, mDisplay)
+//
+// These conventions help distinguish globals from locals and make code more readable.
+
+[[nodiscard]] static bool is_valid_global_name(std::string_view Name)
+{
+   if (Name.empty()) return false;
+
+   // Check for 'gl' prefix: glX... where X is uppercase
+   if (Name.size() >= 3 and Name[0] IS 'g' and Name[1] IS 'l') {
+      return std::isupper(static_cast<unsigned char>(Name[2]));
+   }
+
+   // Check for 'm' prefix (module naming): mX... where X is uppercase
+   if (Name.size() >= 2 and Name[0] IS 'm' and std::isupper(static_cast<unsigned char>(Name[1]))) {
+      return true;
+   }
+
+   // Check for ALL_CAPS_WITH_UNDERSCORES pattern
+   // Must have at least one character, all uppercase or underscore, must start with uppercase
+   if (not std::isupper(static_cast<unsigned char>(Name[0]))) return false;
+
+   for (char c : Name) {
+      if (not std::isupper(static_cast<unsigned char>(c)) and c != '_' and not std::isdigit(static_cast<unsigned char>(c))) {
+         return false;
+      }
+   }
+   return true;
+}
+
+//********************************************************************************************************************
+// Global Declaration Analysis
+//
+// Handles 'global' variable declarations. Unlike locals, globals are stored in the
+// global table and persist across function calls. This method checks naming conventions
+// to encourage good practices (globals should be visually distinct from locals).
+
+void TypeAnalyser::analyse_global_decl(const GlobalDeclStmtPayload &Payload)
+{
+   // Analyse the values first
+   for (const auto &value : Payload.values) {
+      this->analyse_expression(*value);
+   }
+
+   #ifdef INCLUDE_ADVICE
+   // Track globals for loop access detection
+   for (const auto &name : Payload.names) {
+      if (name.symbol) this->track_global(name.symbol);
+   }
+
+   // Check global naming conventions
+   if (this->ctx_.should_emit_advice(3)) {
+      for (const auto &name : Payload.names) {
+         if (not name.symbol) continue;
+         std::string_view name_view(strdata(name.symbol), name.symbol->len);
+         if (not is_valid_global_name(name_view)) {
+            this->ctx_.emit_advice(3, AdviceCategory::Style,
+               std::format("Global variable '{}' should follow naming convention: 'gl[A-Z]...' or 'ALL_CAPS'",
+                  name_view),
+               Token::from_span(name.span, TokenKind::Identifier));
+         }
+      }
+   }
+   #endif
+}
+
+//********************************************************************************************************************
+// Local Function Analysis: Handles 'local function name()' declarations. The function is registered in the current
+// scope for unused variable detection and then its body is analysed.
+
 void TypeAnalyser::analyse_local_function(const LocalFunctionStmtPayload &Payload)
 {
+   #ifdef INCLUDE_ADVICE
+   this->check_shadowing(Payload.name.symbol, Payload.name.span);
+   #endif
+
    const FunctionExprPayload* function = Payload.function.get();
-   this->current_scope().declare_function(Payload.name.symbol, function);
+   this->current_scope().declare_function(Payload.name.symbol, function, Payload.name.span);
 
    if (function) this->analyse_function_payload(*function, Payload.name.symbol);
 }
+
+//********************************************************************************************************************
+// Function Statement Analysis: Handles top-level function declarations (function name(), function table.method()).
+// Distinguishes between local functions (tracked for usage) and global functions (exempt from unused detection since
+// they're accessible externally).
 
 void TypeAnalyser::analyse_function_stmt(const FunctionStmtPayload &Payload)
 {
    const FunctionExprPayload* function = Payload.function.get();
    GCstr *function_name = nullptr;
 
-   if (not Payload.name.segments.empty()) {
-      const Identifier& terminal = Payload.name.segments.back();
-      this->current_scope().declare_function(terminal.symbol, function);
-      function_name = terminal.symbol;
-   }
+   // Only track non-global function declarations for unused variable detection
+   // Global functions (declared with `global function`) are not local to any scope
+   if (not Payload.name.is_explicit_global) {
+      if (not Payload.name.segments.empty()) {
+         const Identifier& terminal = Payload.name.segments.back();
+         this->current_scope().declare_function(terminal.symbol, function, terminal.span);
+         function_name = terminal.symbol;
+      }
 
-   if (Payload.name.method) {
-      this->current_scope().declare_function(Payload.name.method->symbol, function);
-      function_name = Payload.name.method->symbol;
+      if (Payload.name.method) {
+         this->current_scope().declare_function(Payload.name.method->symbol, function, Payload.name.method->span);
+         function_name = Payload.name.method->symbol;
+      }
+   }
+   else {
+      // Still need the function name for recursive detection
+      // Note: Global functions are exempt from naming convention checks
+      if (not Payload.name.segments.empty()) {
+         function_name = Payload.name.segments.back().symbol;
+      }
+      else if (Payload.name.method) {
+         function_name = Payload.name.method->symbol;
+      }
    }
 
    if (function) this->analyse_function_payload(*function, function_name);
 }
+
+//********************************************************************************************************************
+// Function Payload Analysis: Analyses a function's body, including parameter registration, return type validation,
+// and recursive function detection. Creates a new scope for the function body.
 
 void TypeAnalyser::analyse_function_payload(const FunctionExprPayload &Function, GCstr *Name)
 {
@@ -494,7 +900,7 @@ void TypeAnalyser::analyse_function_payload(const FunctionExprPayload &Function,
    this->enter_function(Function, Name);
 
    for (const auto &param : Function.parameters) {
-      this->current_scope().declare_parameter(param.name.symbol, param.type);
+      this->current_scope().declare_parameter(param.name.symbol, param.type, param.name.span);
    }
 
    // Check for recursive functions without explicit return types
@@ -512,11 +918,26 @@ void TypeAnalyser::analyse_function_payload(const FunctionExprPayload &Function,
       this->diagnostics_.push_back(std::move(diag));
    }
 
+   // Advise on missing return type annotation for functions that return values
+   #ifdef INCLUDE_ADVICE
+   if (this->ctx_.should_emit_advice(1) and
+       (not Function.return_types.is_explicit) and this->function_has_return_values(Function)) {
+      SourceSpan span = Function.body ? Function.body->span : SourceSpan{};
+      this->ctx_.emit_advice(1, AdviceCategory::TypeSafety,
+         "Function lacks return type annotation; consider adding ': type' after the parameter list",
+         Token::from_span(span, TokenKind::Function));
+   }
+   #endif
+
    if (Function.body) this->analyse_block(*Function.body);
 
    this->leave_function();
    this->pop_scope();
 }
+
+//********************************************************************************************************************
+// Expression Analysis: Recursively analyses expressions to track variable usage and collect type information.
+// Marks identifiers as used when they appear in expressions (for unused variable detection).
 
 void TypeAnalyser::analyse_expression(const ExprNode &Expression)
 {
@@ -534,6 +955,11 @@ void TypeAnalyser::analyse_expression(const ExprNode &Expression)
       case AstNodeKind::BinaryExpr: {
          auto *payload = std::get_if<BinaryExprPayload>(&Expression.data);
          if (payload) {
+            #ifdef INCLUDE_ADVICE
+            if (payload->op IS AstBinaryOperator::Concat) {
+               this->check_concat_in_loop(Expression.span);
+            }
+            #endif
             if (payload->left) this->analyse_expression(*payload->left);
             if (payload->right) this->analyse_expression(*payload->right);
          }
@@ -596,7 +1022,44 @@ void TypeAnalyser::analyse_expression(const ExprNode &Expression)
       }
       case AstNodeKind::FunctionExpr: {
          auto *payload = std::get_if<FunctionExprPayload>(&Expression.data);
-         if (payload) this->analyse_function_payload(*payload);
+         if (payload) {
+            #ifdef INCLUDE_ADVICE
+            this->check_function_in_loop(Expression.span);
+            #endif
+            this->analyse_function_payload(*payload);
+         }
+         break;
+      }
+      case AstNodeKind::IdentifierExpr: {
+         // Mark variable as used when it appears in an expression
+         auto *payload = std::get_if<NameRef>(&Expression.data);
+         if (payload) {
+            this->mark_identifier_used(payload->identifier.symbol);
+            #ifdef INCLUDE_ADVICE
+            this->check_global_in_loop(payload->identifier.symbol, payload->identifier.span);
+            #endif
+         }
+         break;
+      }
+      case AstNodeKind::ChooseExpr: {
+         auto *payload = std::get_if<ChooseExprPayload>(&Expression.data);
+         if (payload) {
+            // Analyse scrutinee (the value being matched)
+            if (payload->scrutinee) this->analyse_expression(*payload->scrutinee);
+            for (const auto &tuple_elem : payload->scrutinee_tuple) {
+               if (tuple_elem) this->analyse_expression(*tuple_elem);
+            }
+            // Analyse each case
+            for (const auto &case_item : payload->cases) {
+               if (case_item.pattern) this->analyse_expression(*case_item.pattern);
+               for (const auto &tuple_pattern : case_item.tuple_patterns) {
+                  if (tuple_pattern) this->analyse_expression(*tuple_pattern);
+               }
+               if (case_item.guard) this->analyse_expression(*case_item.guard);
+               if (case_item.result) this->analyse_expression(*case_item.result);
+               if (case_item.result_stmt) this->analyse_statement(*case_item.result_stmt);
+            }
+         }
          break;
       }
       default:
@@ -604,8 +1067,27 @@ void TypeAnalyser::analyse_expression(const ExprNode &Expression)
    }
 }
 
+//********************************************************************************************************************
+// Call Expression Analysis: Analyses function calls including direct calls, method calls, and safe method calls.
+// Validates argument types against the function's parameter declarations if available.
+
 void TypeAnalyser::analyse_call_expr(const CallExprPayload &Call)
 {
+   // Analyse the callable to mark function names as used
+   if (std::holds_alternative<DirectCallTarget>(Call.target)) {
+      const auto &direct = std::get<DirectCallTarget>(Call.target);
+      if (direct.callable) this->analyse_expression(*direct.callable);
+   }
+   else if (std::holds_alternative<MethodCallTarget>(Call.target)) {
+      const auto &method = std::get<MethodCallTarget>(Call.target);
+      if (method.receiver) this->analyse_expression(*method.receiver);
+   }
+   else if (std::holds_alternative<SafeMethodCallTarget>(Call.target)) {
+      const auto &safe_method = std::get<SafeMethodCallTarget>(Call.target);
+      if (safe_method.receiver) this->analyse_expression(*safe_method.receiver);
+   }
+
+   // Analyse arguments
    for (const auto &argument : Call.arguments) {
       this->analyse_expression(*argument);
    }
@@ -613,6 +1095,9 @@ void TypeAnalyser::analyse_call_expr(const CallExprPayload &Call)
    const FunctionExprPayload* target = this->resolve_call_target(Call.target);
    if (target) this->check_arguments(*target, Call);
 }
+
+//********************************************************************************************************************
+// Validate each argument against the corresponding parameter type declaration.
 
 void TypeAnalyser::check_arguments(const FunctionExprPayload &Function, const CallExprPayload &Call)
 {
@@ -623,6 +1108,9 @@ void TypeAnalyser::check_arguments(const FunctionExprPayload &Function, const Ca
       param_index += 1;
    }
 }
+
+//********************************************************************************************************************
+// Check a single argument against its expected type, reporting diagnostics for mismatches.
 
 void TypeAnalyser::check_argument_type(const ExprNode& Argument, FluidType Expected, size_t Index)
 {
@@ -642,7 +1130,20 @@ void TypeAnalyser::check_argument_type(const ExprNode& Argument, FluidType Expec
    }
 }
 
-InferredType TypeAnalyser::infer_expression_type(const ExprNode& Expr) const
+//********************************************************************************************************************
+// Type Inference: Infers the type of an expression based on its AST structure. Returns InferredType containing the
+// primary type and metadata (constant, nullable, fixed).
+//
+// Inference rules by expression type:
+// - Literals: Type determined by literal kind (nil, bool, num, str, cdata)
+// - Identifiers: Looked up in scope stack, returns declared or inferred type
+// - Tables: Always FluidType::Table
+// - Functions: Always FluidType::Func
+// - Calls: Uses function's declared return type if available, otherwise Any
+// - Binary ops: Depends on operator (comparisons -> bool, arithmetic -> num, etc.)
+// - Unary ops: Depends on operator (not -> bool, negate -> num, length -> num)
+
+InferredType TypeAnalyser::infer_expression_type(const ExprNode& Expr)
 {
    InferredType result;
 
@@ -655,6 +1156,8 @@ InferredType TypeAnalyser::infer_expression_type(const ExprNode& Expr) const
       case AstNodeKind::IdentifierExpr: {
          auto *payload = std::get_if<NameRef>(&Expr.data);
          if (payload) {
+            // Mark the variable as used
+            this->mark_identifier_used(payload->identifier.symbol);
             auto resolved = this->resolve_identifier(payload->identifier.symbol);
             if (resolved) return *resolved;
          }
@@ -806,8 +1309,11 @@ InferredType TypeAnalyser::infer_expression_type(const ExprNode& Expr) const
    return result;
 }
 
-// Infer the return type at a specific position from a function call expression
-// This is used for multi-value assignments like: local a, b = func()
+//********************************************************************************************************************
+// Multi-Value Return Type Inference: Infers the return type at a specific position from a function call expression.
+// Used for multi-value assignments like: local a, b, c = func()
+// where func() returns multiple values and we need to know the type of each.
+
 [[nodiscard]] InferredType TypeAnalyser::infer_call_return_type(const ExprNode& Expr, size_t Position) const
 {
    InferredType result;
@@ -830,6 +1336,12 @@ InferredType TypeAnalyser::infer_expression_type(const ExprNode& Expr) const
    return result;
 }
 
+//********************************************************************************************************************
+// Symbol Resolution: These methods look up identifiers in the scope stack to find their types and resolve function
+// references for call target analysis.
+//
+// Look up a variable's type by searching from innermost to outermost scope.
+
 std::optional<InferredType> TypeAnalyser::resolve_identifier(GCstr *Name) const
 {
    for (auto it = this->scope_stack_.rbegin(); it != this->scope_stack_.rend(); ++it) {
@@ -845,6 +1357,33 @@ std::optional<InferredType> TypeAnalyser::resolve_identifier(GCstr *Name) const
    }
    return std::nullopt;
 }
+
+// Mark a variable as used when it appears in an expression.  Searches from innermost to outermost scope to find
+// where it's defined.
+
+void TypeAnalyser::mark_identifier_used(GCstr *Name)
+{
+   if (not Name) return;
+
+   // Mark the variable as used in the scope where it's defined
+   for (auto it = this->scope_stack_.rbegin(); it != this->scope_stack_.rend(); ++it) {
+      // Check if this scope has the variable and mark it
+      auto type = it->lookup_local_type(Name);
+      if (type) {
+         it->mark_used(Name);
+         return;
+      }
+
+      auto param = it->lookup_parameter_type(Name);
+      if (param) {
+         it->mark_used(Name);
+         return;
+      }
+   }
+}
+
+// Resolve the target of a function call to get its FunctionExprPayload.  Handles direct calls (func()) and
+// identifier references (myFunc()).
 
 const FunctionExprPayload* TypeAnalyser::resolve_call_target(const CallTarget& Target) const
 {
@@ -864,6 +1403,8 @@ const FunctionExprPayload* TypeAnalyser::resolve_call_target(const CallTarget& T
    return nullptr;
 }
 
+// Look up a function by name in the scope stack.
+
 const FunctionExprPayload* TypeAnalyser::resolve_function(GCstr *Name) const
 {
    for (auto it = this->scope_stack_.rbegin(); it != this->scope_stack_.rend(); ++it) {
@@ -872,6 +1413,9 @@ const FunctionExprPayload* TypeAnalyser::resolve_function(GCstr *Name) const
    }
    return nullptr;
 }
+
+// Fix (lock) a variable's type after the first concrete assignment.
+// Once fixed, the variable cannot be assigned values of different types.
 
 void TypeAnalyser::fix_local_type(GCstr *Name, FluidType Type)
 {
@@ -886,9 +1430,9 @@ void TypeAnalyser::fix_local_type(GCstr *Name, FluidType Type)
 }
 
 //********************************************************************************************************************
-// Return type validation
+// Return type validation: This method validates return statements against the function's declared or inferred return
+// types.
 //
-// This method validates return statements against the function's declared or inferred return types.
 // It implements:
 // - Type mismatch detection between returned values and declared types
 // - Return count validation (too many values returned)
@@ -997,11 +1541,9 @@ void TypeAnalyser::validate_return_types(const ReturnStmtPayload &Return, Source
 }
 
 //********************************************************************************************************************
-// Recursive function detection
-//
-// Recursive functions must have explicit return type declarations because their return type
-// cannot be inferred without executing the recursion. This detects direct recursion (function
-// calls itself) and flags an error if no explicit return type is declared.
+// Recursive function detection:  Recursive functions must have explicit return type declarations because their
+// return type cannot be inferred without executing the recursion.  This detects direct recursion (function calls
+// itself) and flags an error if no explicit return type is declared.
 
 bool TypeAnalyser::is_recursive_function(const FunctionExprPayload &Function, GCstr *Name) const
 {
@@ -1011,6 +1553,7 @@ bool TypeAnalyser::is_recursive_function(const FunctionExprPayload &Function, GC
 }
 
 // Check if a function has any return statements with values (non-void returns)
+
 bool TypeAnalyser::function_has_return_values(const FunctionExprPayload &Function) const
 {
    if (not Function.body) return false;
@@ -1018,6 +1561,7 @@ bool TypeAnalyser::function_has_return_values(const FunctionExprPayload &Functio
 }
 
 // Recursively check if a block contains any return statements with values
+
 bool TypeAnalyser::body_has_return_values(const BlockStmt& Block) const
 {
    for (const auto &stmt : Block.statements) {
@@ -1026,9 +1570,7 @@ bool TypeAnalyser::body_has_return_values(const BlockStmt& Block) const
       switch (stmt->kind) {
          case AstNodeKind::ReturnStmt: {
             auto *payload = std::get_if<ReturnStmtPayload>(&stmt->data);
-            if (payload and not payload->values.empty()) {
-               return true;  // Found a return with values
-            }
+            if (payload and not payload->values.empty()) return true;  // Found a return with values
             break;
          }
          case AstNodeKind::IfStmt: {
@@ -1067,6 +1609,10 @@ bool TypeAnalyser::body_has_return_values(const BlockStmt& Block) const
    }
    return false;
 }
+
+//********************************************************************************************************************
+// Recursive Call Detection Helpers: These methods search the AST for calls to a specific function name, used to
+// detect direct recursion. They traverse all statement and expression types that might contain function calls.
 
 bool TypeAnalyser::body_contains_call_to(const BlockStmt& Block, GCstr *Name) const
 {
@@ -1156,9 +1702,7 @@ bool TypeAnalyser::statement_contains_call_to(const StmtNode& Stmt, GCstr *Name)
       }
       case AstNodeKind::DoStmt: {
          auto *payload = std::get_if<DoStmtPayload>(&Stmt.data);
-         if (payload and payload->block) {
-            return this->body_contains_call_to(*payload->block, Name);
-         }
+         if (payload and payload->block) return this->body_contains_call_to(*payload->block, Name);
          break;
       }
       default:
@@ -1220,9 +1764,7 @@ bool TypeAnalyser::expression_contains_call_to(const ExprNode& Expr, GCstr *Name
       }
       case AstNodeKind::MemberExpr: {
          auto *payload = std::get_if<MemberExprPayload>(&Expr.data);
-         if (payload and payload->table) {
-            return this->expression_contains_call_to(*payload->table, Name);
-         }
+         if (payload and payload->table) return this->expression_contains_call_to(*payload->table, Name);
          break;
       }
       case AstNodeKind::IndexExpr: {
@@ -1249,12 +1791,16 @@ bool TypeAnalyser::expression_contains_call_to(const ExprNode& Expr, GCstr *Name
    return false;
 }
 
+//********************************************************************************************************************
+// Diagnostic Publishing: Converts internal TypeDiagnostic records to ParserDiagnostic format for output.  The
+// severity depends on the parser configuration - type errors can be warnings or fatal errors depending on
+// type_errors_are_fatal setting.
+
 static void publish_type_diagnostics(ParserContext& Context, const std::vector<TypeDiagnostic>& Diagnostics)
 {
    for (const auto &diag : Diagnostics) {
       ParserDiagnostic diagnostic;
-      diagnostic.severity = Context.config().type_errors_are_fatal
-         ? ParserDiagnosticSeverity::Error
+      diagnostic.severity = Context.config().type_errors_are_fatal ? ParserDiagnosticSeverity::Error
          : ParserDiagnosticSeverity::Warning;
       diagnostic.code = diag.code;
       diagnostic.message = diag.message;
@@ -1262,6 +1808,10 @@ static void publish_type_diagnostics(ParserContext& Context, const std::vector<T
       Context.diagnostics().report(diagnostic);
    }
 }
+
+//********************************************************************************************************************
+// Entry Point: Called from the parser after AST construction to run semantic type analysis.  Creates a TypeAnalyser
+// instance, runs analysis on the module, and publishes any collected diagnostics.
 
 void run_type_analysis(ParserContext& Context, const BlockStmt& Module)
 {

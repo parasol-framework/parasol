@@ -1152,11 +1152,7 @@ int lj_record_mm_lookup(jit_State *J, RecordIndex* ix, MMS mm)
       mt = tabref(udataV(&ix->tabv)->metatable);
       // The metatables of special userdata objects are treated as immutable.
       if (udtype != UDTYPE_USERDATA) {
-         if (LJ_HASFFI and udtype IS UDTYPE_FFI_CLIB) {
-            // Specialise to the C library namespace object.
-            ir.guard_eq(ix->tab, ir.kptr(udataV(&ix->tabv)), IRT_PGC);
-         }
-         else {
+         {
             // Specialise to the type of userdata.
             TRef tr = ir.fload(ix->tab, IRFL_UDATA_UDTYPE, IRT_U8);
             ir.guard_eq_int(tr, ir.kint(udtype));
@@ -1610,17 +1606,6 @@ handlemm:
             return 0;  //  No result yet.
          }
       }
-
-#if LJ_HASBUFFER
-      // The index table of buffer objects is treated as immutable.
-      if (ix->mt IS TREF_NIL and !ix->val and
-         tref_isudata(ix->tab) and udataV(&ix->tabv)->udtype IS UDTYPE_BUFFER and
-         tref_istab(ix->mobj) and tref_isstr(ix->key) and tref_isk(ix->key)) {
-         cTValue *val = lj_tab_getstr(tabV(&ix->mobjv), strV(&ix->keyv));
-         TRef tr = lj_record_constify(J, val);
-         if (tr) return tr;  //  Specialise to the value, i.e. a method.
-      }
-#endif
 
       // Otherwise retry lookup with metaobject.
       ix->tab = ix->mobj;

@@ -28,22 +28,22 @@ Example usage:
 ----------------------------------------------------------------------------------------------------------------------
 
 glNetworkAvailable = thunk():bool
-   global mNet ?= catch(function() return mod.load('network') end)
+   global mNet ?= catch(function():any return mod.load('network') end)
    return mNet != nil
 end
 
 glAudioAvailable = thunk():bool
-   global mAudio ?= catch(function() return mod.load('audio') end)
+   global mAudio ?= catch(function():any return mod.load('audio') end)
    return mAudio != nil
 end
 
 glFontAvailable = thunk():bool
-   global mFont ?= catch(function() return mod.load('font') end)
+   global mFont ?= catch(function():any return mod.load('font') end)
    return mFont != nil
 end
 
 glDisplayAvailable = thunk():bool
-   global mGfx ?= catch(function() return mod.load('display') end)
+   global mGfx ?= catch(function():any return mod.load('display') end)
    return mGfx != nil
 end
 
@@ -52,7 +52,7 @@ global glSSLAvailable = thunk():bool
 
    -- Test if SSL support is available by attempting to create SSL socket
 
-   ex, test_socket = catch(function()
+   ex, test_socket = catch(function():any
       return obj.new('netsocket', { name = 'SSLSupportTest', port = glPort, flags = 'SERVER|SSL' })
    end)
 
@@ -68,7 +68,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function checkAvailable(Requirement:str, Expectation:bool)
+function checkAvailable(Requirement:str, Expectation:bool):bool
    if Requirement is 'network' then
       return glNetworkAvailable is Expectation
    elseif Requirement is 'ssl' then
@@ -89,7 +89,7 @@ end
 function sortTests(Tests:table)
    if #Tests <= 1 then return end
 
-   table.sort(Tests, function(a,b)
+   table.sort(Tests, function(a:table, b:table):bool
       return (a.priority ?? 0) < (b.priority ?? 0)
    end)
 end
@@ -138,7 +138,7 @@ function runTests()
          test_priority = nil
          test_labels   = nil
          test_hotpath  = nil
-         for k,v in pairs(entry.annotations) do
+         for v in values(entry.annotations) do
             if v.name is 'Test' then
                -- @Test Arguments: name, timeout, priority, labels
                is_test = true
@@ -176,13 +176,13 @@ function runTests()
                label_present = false
                inverse = false
 
-               for _, label_filter in ipairs(glLabels) do
+               for label_filter in values(glLabels) do
                   if label_filter:startsWith('~') then
                      inverse = true
                      label_filter = label_filter:sub(1)
                   end
 
-                  for _, test_label in ipairs(test_labels) do
+                  for test_label in values(test_labels) do
                      if label_filter is test_label then
                         label_present = true
                         break
@@ -192,13 +192,9 @@ function runTests()
                end
 
                if inverse then
-                  if label_present then
-                     disabled = true
-                  end
+                  disabled = label_present
                else
-                  if not label_present then
-                     disabled = true
-                  end
+                  disabled = not label_present
                end
             end
          end
@@ -338,7 +334,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Unit tests should call logOutput() for the purpose of formally logging output for the current test.
 
-global function logOutput(Message)
+global function logOutput(Message:str)
    print(Message)
 end
 

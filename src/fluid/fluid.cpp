@@ -451,28 +451,28 @@ void make_array(lua_State *Lua, AET Type, int Elements, CPTR Data, std::string_v
       else {
          int i = 0;
          switch (Type) {
-            case AET::_CSTRING:
-            case AET::_PTR:
-            case AET::_OBJECT:
+            case AET::CSTR:
+            case AET::PTR:
+            case AET::OBJECT:
                for (i=0; ((APTR *)Data)[i]; i++);
                break;
-            case AET::_FLOAT:
-            case AET::_INT32:
+            case AET::FLOAT:
+            case AET::INT32:
                for (i=0; ((int *)Data)[i]; i++);
                break;
-            case AET::_DOUBLE:
-            case AET::_INT64:
+            case AET::DOUBLE:
+            case AET::INT64:
                for (i=0; ((int64_t *)Data)[i]; i++);
                break;
-            case AET::_INT16:
+            case AET::INT16:
                for (i=0; ((int16_t *)Data)[i]; i++);
                break;
-            case AET::_BYTE:
+            case AET::BYTE:
                for (i=0; ((int8_t *)Data)[i]; i++);
                break;
-            case AET::_STRUCT: // Use make_struct_*() interfaces instead
-            case AET::_STRING_GC:
-            case AET::_STRING_CPP:
+            case AET::STRUCT: // Use make_struct_*() interfaces instead
+            case AET::STR_GC:
+            case AET::STR_CPP:
             default:
                log.warning("Unsupported type $%.8x", int(Type));
                lua_pushnil(Lua);
@@ -512,7 +512,7 @@ void make_struct_ptr_array(lua_State *Lua, std::string_view StructName, int Elem
    auto s_name = struct_name(StructName);
    if (not prv->Structs.contains(s_name)) luaL_error(Lua, "Failed to find struct '%.*s'", int(StructName.size()), StructName.data());
 
-   GCarray *arr = lj_array_new(Lua, Elements, AET::_TABLE);
+   GCarray *arr = lj_array_new(Lua, Elements, AET::TABLE);
    setarrayV(Lua, Lua->top++, arr); // Push to stack immediately to protect from GC during loop
    int arr_idx = lua_gettop(Lua);
 
@@ -552,7 +552,7 @@ void make_struct_serial_array(lua_State *Lua, std::string_view StructName, int E
    auto s_name = struct_name(StructName);
    if (not prv->Structs.contains(s_name)) luaL_error(Lua, "Failed to find struct '%.*s'", int(StructName.size()), StructName.data());
 
-   GCarray *arr = lj_array_new(Lua, Elements, AET::_TABLE);
+   GCarray *arr = lj_array_new(Lua, Elements, AET::TABLE);
    setarrayV(Lua, Lua->top++, arr); // Push to stack immediately to protect from GC during loop
    int arr_idx = lua_gettop(Lua);
 

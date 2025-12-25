@@ -12,8 +12,8 @@
 #include "lj_prng.h"
 #include <parasol/strings.hpp>
 
-#ifndef CSTRING
-#define CSTRING const char *
+#ifndef PLATFORM_CONFIG_H
+#include <parasol/config.h>
 #endif
 
 //********************************************************************************************************************

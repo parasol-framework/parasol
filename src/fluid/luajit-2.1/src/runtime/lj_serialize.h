@@ -18,8 +18,6 @@ LJ_FUNC [[nodiscard]] SBufExt * LJ_FASTCALL lj_serialize_put(SBufExt *sbx, cTVal
 LJ_FUNC [[nodiscard]] char * LJ_FASTCALL lj_serialize_get(SBufExt *sbx, TValue *o);
 LJ_FUNC [[nodiscard]] GCstr * LJ_FASTCALL lj_serialize_encode(lua_State *L, cTValue *o);
 LJ_FUNC void lj_serialize_decode(lua_State *L, TValue *o, GCstr *str);
-#if LJ_HASJIT
 LJ_FUNC [[nodiscard]] MSize LJ_FASTCALL lj_serialize_peektype(SBufExt *sbx);
-#endif
 
 #endif

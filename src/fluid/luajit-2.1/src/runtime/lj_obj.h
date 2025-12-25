@@ -14,8 +14,8 @@
 #include <vector>
 #include "../../../struct_def.h"
 
-#ifndef IS
-#define IS ==
+#ifndef PLATFORM_CONFIG_H
+#include <parasol/config.h>
 #endif
 
 // GC object types
@@ -302,18 +302,30 @@ using cTValue = const TValue;
 // The upper 13 bits must be 1 (0xfff8...) for a special NaN. The next 4 bits hold the internal tag. The lowest 47
 // bits either hold a pointer, a zero-extended 32 bit integer or all bits set to 1 for primitive types.
 //
-//                     ------MSW------.------LSW------
-// primitive types    |1..1|itype|1..................1|
-// GC objects         |1..1|itype|-------GCRef--------|
-// lightuserdata      |1..1|itype|seg|------ofs-------|
-// int (LJ_DUALNUM)   |1..1|itype|0..0|-----int-------|
-// number              ------------double-------------
+//64-bit TValue layout:
+// ┌─────────────────────────────────────────────────────────────────┐
+// │ 63      51│50    47│46                                         0│
+// ├───────────┼────────┼────────────────────────────────────────────┤
+// │  13 bits  │ 4 bits │              47 bits                       │
+// │  NaN sig  │ itype  │         pointer/value                      │
+// │  (all 1s) │  tag   │                                            │
+// └───────────┴────────┴────────────────────────────────────────────┘
+//                    ───────MSW───────.───────LSW─────
+// primitive types    │1..1│itype│1..................1│
+// GC objects         │1..1│itype│────GCRef───────────│
+// lightuserdata      │1..1│itype│seg│──────ofs───────│
+// int (LJ_DUALNUM)   │1..1│itype│0..0│─────int───────│
+// number             ────────────double───────────────
 //
-// ORDER LJ_T
-// Primitive types nil/false/true must be first, lightuserdata next.  GC objects are at the end, table/userdata
-// must be lowest.  Also check lj_ir.h for similar ordering constraints.
+// ORDERING of LJ_T Tags
+// ---------------------
+// Primitive types nil/false/true must be first
+// lightuserdata next
+// GC objects are at the end
+// table/userdata must be lowest
+// Also check lj_ir.h for similar ordering constraints.
 
-// Internal type tags. ORDER LJ_T.  Maxes out at 16 flags.
+// Internal type tags. Maxes out at 16 tags.
 
 inline constexpr uint32_t LJ_TNIL      = ~0u;  // Nil
 inline constexpr uint32_t LJ_TFALSE    = ~1u;  // False
@@ -391,9 +403,9 @@ typedef struct GCudata {
 // Userdata types.
 enum {
    UDTYPE_USERDATA,   //  Regular userdata.
-   UDTYPE_IO_FILE,    //  I/O library FILE.
-   UDTYPE_FFI_CLIB,   //  FFI C library namespace.
-   UDTYPE_BUFFER,     //  String buffer.
+   UDTYPE_IO_FILE_DEPRECATED,    // Was I/O library FILE.
+   UDTYPE_FFI_CLIB_DEPRECATED,   // Was FFI C library namespace.
+   UDTYPE_BUFFER_DEPRECATED,     // Was String buffer.
    UDTYPE_THUNK,      //  Thunk (deferred evaluation).
    UDTYPE__MAX
 };
@@ -663,24 +675,24 @@ inline void setfreetop(GCtab *t, Node *, Node *v) noexcept { t->freetop.set(v); 
 
 enum class AET : uint8_t {
    // Primitive types first
-   _BYTE = 0,   // byte
-   _INT16,      // int16_t
-   _INT32,      // int32_t
-   _INT64,      // int64_t
-   _FLOAT,      // float
-   _DOUBLE,     // double
+   BYTE = 0,   // byte
+   INT16,      // int16_t
+   INT32,      // int32_t
+   INT64,      // int64_t
+   FLOAT,      // float
+   DOUBLE,     // double
    // Vulnerable types follow (anything involving or could involve a pointer)
-   _PTR,        // void*
-   _CSTRING,    // const char *
-   _STRING_CPP, // std::string (C++ string)
-   _STRING_GC,  // GCstr * (interned string)
-   _TABLE,      // GCtab * (table reference)
-   _ARRAY,      // GCarray * (array reference)
-   _ANY,        // TValue (mixed type storage)
-   _STRUCT,     // Structured data (uses structdef)
-   _OBJECT,     // OBJECTPTR for external object references; otherwise Fluid.object
-   _MAX,
-   _VULNERABLE = _PTR
+   PTR,        // void*
+   CSTR,       // const char *
+   STR_CPP,    // std::string (C++ string)
+   STR_GC,     // GCstr * (interned string)
+   TABLE,      // GCtab * (table reference)
+   ARRAY,      // GCarray * (array reference)
+   ANY,        // TValue (mixed type storage)
+   STRUCT,     // Structured data (uses structdef)
+   OBJECT,     // OBJECTPTR for external object references; otherwise Fluid.object
+   MAX,
+   VULNERABLE = PTR
 };
 
 // Array flags
