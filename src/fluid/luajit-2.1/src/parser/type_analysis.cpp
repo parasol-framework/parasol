@@ -147,6 +147,12 @@ private:
    // Global access in loop detection - warns when globals are accessed in loops without caching
    void check_global_in_loop(GCstr *Name, SourceSpan Location);
 
+   // Function definition in loop detection - warns when closures are created inside loops
+   void check_function_in_loop(SourceSpan Location);
+
+   // String concatenation in loop detection - warns when .. is used in loops
+   void check_concat_in_loop(SourceSpan Location);
+
    // Track a global variable declaration
    void track_global(GCstr *Name);
    #endif
@@ -286,6 +292,34 @@ void TypeAnalyser::check_global_in_loop(GCstr *Name, SourceSpan Location)
       std::format("Global '{}' accessed in loop; consider caching in a local variable for better JIT performance",
          name_view),
       Token::from_span(Location, TokenKind::Identifier));
+}
+
+//********************************************************************************************************************
+// Function Definition in Loop Detection: Warns when function expressions (closures) are defined inside loops.
+
+void TypeAnalyser::check_function_in_loop(SourceSpan Location)
+{
+   // Only warn when inside a loop
+   if (this->loop_depth_ IS 0) return;
+
+   this->ctx_.emit_advice(2, AdviceCategory::Performance,
+      "Function defined inside loop; consider moving it outside the loop for better performance",
+      Token::from_span(Location, TokenKind::Function));
+}
+
+//********************************************************************************************************************
+// String Concatenation in Loop Detection:  Warns when string concatenation (..) is used inside loops. Each
+// concatenation creates a new intermediate string object, which is inefficient when building strings iteratively.
+// For building strings in loops, array.join() is more efficient as it allocates only once.
+
+void TypeAnalyser::check_concat_in_loop(SourceSpan Location)
+{
+   // Only warn when inside a loop
+   if (this->loop_depth_ IS 0) return;
+
+   this->ctx_.emit_advice(2, AdviceCategory::Performance,
+      "String concatenation in loop; consider using array.join() for better performance",
+      Token::from_span(Location, TokenKind::Cat));
 }
 #endif
 
@@ -572,6 +606,13 @@ void TypeAnalyser::analyse_statement(const StmtNode &Statement)
 
 void TypeAnalyser::analyse_assignment(const AssignmentStmtPayload &Payload)
 {
+   // Check for compound concatenation assignment (..=) in loops
+   #ifdef INCLUDE_ADVICE
+   if (Payload.op IS AssignmentOperator::Concat and not Payload.targets.empty()) {
+      this->check_concat_in_loop(Payload.targets[0]->span);
+   }
+   #endif
+
    for (size_t i = 0; i < Payload.targets.size(); ++i) {
       const auto &target_ptr = Payload.targets[i];
       if (not target_ptr) continue;
@@ -912,6 +953,11 @@ void TypeAnalyser::analyse_expression(const ExprNode &Expression)
       case AstNodeKind::BinaryExpr: {
          auto *payload = std::get_if<BinaryExprPayload>(&Expression.data);
          if (payload) {
+            #ifdef INCLUDE_ADVICE
+            if (payload->op IS AstBinaryOperator::Concat) {
+               this->check_concat_in_loop(Expression.span);
+            }
+            #endif
             if (payload->left) this->analyse_expression(*payload->left);
             if (payload->right) this->analyse_expression(*payload->right);
          }
@@ -974,7 +1020,12 @@ void TypeAnalyser::analyse_expression(const ExprNode &Expression)
       }
       case AstNodeKind::FunctionExpr: {
          auto *payload = std::get_if<FunctionExprPayload>(&Expression.data);
-         if (payload) this->analyse_function_payload(*payload);
+         if (payload) {
+            #ifdef INCLUDE_ADVICE
+            this->check_function_in_loop(Expression.span);
+            #endif
+            this->analyse_function_payload(*payload);
+         }
          break;
       }
       case AstNodeKind::IdentifierExpr: {
