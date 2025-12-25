@@ -200,14 +200,14 @@ static int range_filter(lua_State* L)
 
    // Check for empty range - return empty array
    if ((step > 0 and r->start > stop) or (step < 0 and r->start < stop)) {
-      GCarray *arr = lj_array_new(L, 0, AET::_ANY);
+      GCarray *arr = lj_array_new(L, 0, AET::ANY);
       setarrayV(L, L->top++, arr);
       return 1;
    }
 
    // Pre-allocate array to maximum possible size
    int32_t max_size = range_length(r);
-   GCarray *arr = lj_array_new(L, MSize(max_size), AET::_ANY);
+   GCarray *arr = lj_array_new(L, MSize(max_size), AET::ANY);
    TValue *data = arr->get<TValue>();
    int32_t array_index = 0;
 
@@ -312,14 +312,14 @@ static int range_map(lua_State* L)
 
    // Check for empty range - return empty array
    if ((step > 0 and r->start > stop) or (step < 0 and r->start < stop)) {
-      GCarray *arr = lj_array_new(L, 0, AET::_ANY);
+      GCarray *arr = lj_array_new(L, 0, AET::ANY);
       setarrayV(L, L->top++, arr);
       return 1;
    }
 
    // Create result array with exact size
    int32_t size = range_length(r);
-   GCarray *arr = lj_array_new(L, MSize(size), AET::_ANY);
+   GCarray *arr = lj_array_new(L, MSize(size), AET::ANY);
    TValue *data = arr->get<TValue>();
    int32_t array_index = 0;
 
@@ -375,7 +375,7 @@ static int range_take(lua_State* L)
 
    // Check for empty range or zero take - return empty array
    if (n IS 0 or (step > 0 and r->start > stop) or (step < 0 and r->start < stop)) {
-      GCarray *arr = lj_array_new(L, 0, AET::_INT32);
+      GCarray *arr = lj_array_new(L, 0, AET::INT32);
       setarrayV(L, L->top++, arr);
       return 1;
    }
@@ -385,7 +385,7 @@ static int range_take(lua_State* L)
    int32_t actual_count = (n < range_len) ? n : range_len;
 
    // Create result array
-   GCarray *arr = lj_array_new(L, MSize(actual_count), AET::_INT32);
+   GCarray *arr = lj_array_new(L, MSize(actual_count), AET::INT32);
    int32_t *data = arr->get<int32_t>();
 
    auto should_continue = (step > 0)
@@ -786,7 +786,7 @@ static int range_toarray(lua_State *L)
    int32_t len = range_length(r);
 
    // Create array with appropriate size
-   GCarray *arr = lj_array_new(L, MSize(len), AET::_INT32);
+   GCarray *arr = lj_array_new(L, MSize(len), AET::INT32);
 
    if (len IS 0) {
       setarrayV(L, L->top++, arr);

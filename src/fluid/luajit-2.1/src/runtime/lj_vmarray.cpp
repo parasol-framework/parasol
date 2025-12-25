@@ -17,10 +17,6 @@
 
 #include <string>
 
-#ifndef CSTRING
-#define CSTRING const char *
-#endif
-
 //********************************************************************************************************************
 // Helper to convert TValue index to integer, returns -1 if invalid
 
@@ -43,53 +39,53 @@ static void arr_load_elem(lua_State *L, GCarray *Array, uint32_t Idx, TValue *Re
    void *elem = lj_array_index(Array, Idx);
 
    switch (Array->elemtype) {
-      case AET::_BYTE:   setintV(Result, *(uint8_t*)elem); break;
-      case AET::_INT16:  setintV(Result, *(int16_t*)elem); break;
-      case AET::_INT32:  setintV(Result, *(int32_t*)elem); break;
-      case AET::_INT64:  setnumV(Result, lua_Number(*(int64_t*)elem)); break;
-      case AET::_FLOAT:  setnumV(Result, *(float*)elem); break;
-      case AET::_DOUBLE: setnumV(Result, *(double*)elem); break;
+      case AET::BYTE:   setintV(Result, *(uint8_t*)elem); break;
+      case AET::INT16:  setintV(Result, *(int16_t*)elem); break;
+      case AET::INT32:  setintV(Result, *(int32_t*)elem); break;
+      case AET::INT64:  setnumV(Result, lua_Number(*(int64_t*)elem)); break;
+      case AET::FLOAT:  setnumV(Result, *(float*)elem); break;
+      case AET::DOUBLE: setnumV(Result, *(double*)elem); break;
 
-      case AET::_CSTRING: {
+      case AET::CSTR: {
          if (auto str = *(CSTRING *)elem) setstrV(L, Result, lj_str_newz(L, str));
          else setnilV(Result);
          break;
       }
 
-      case AET::_STRING_CPP: {
+      case AET::STR_CPP: {
          auto str = (std::string*)elem;
          if (str->empty()) setnilV(Result);
          else setstrV(L, Result, lj_str_new(L, str->data(), str->size()));
          break;
       }
 
-      case AET::_PTR:
+      case AET::PTR:
          // Store raw pointer value as light userdata
          setrawlightudV(Result, *(void**)elem);
          break;
 
-      case AET::_STRING_GC: {
+      case AET::STR_GC: {
          GCRef ref = *(GCRef*)elem;
          if (gcref(ref)) setstrV(L, Result, gco_to_string(gcref(ref)));
          else setnilV(Result);
          break;
       }
 
-      case AET::_TABLE: {
+      case AET::TABLE: {
          GCRef ref = *(GCRef*)elem;
          if (gcref(ref)) settabV(L, Result, gco_to_table(gcref(ref)));
          else setnilV(Result);
          break;
       }
 
-      case AET::_ARRAY: {
+      case AET::ARRAY: {
          GCRef ref = *(GCRef*)elem;
          if (gcref(ref)) setarrayV(L, Result, gco_to_array(gcref(ref)));
          else setnilV(Result);
          break;
       }
 
-      case AET::_ANY: {
+      case AET::ANY: {
          TValue *source = (TValue*)elem;
          copyTV(L, Result, source);
          break;
@@ -108,7 +104,7 @@ static void arr_store_elem(lua_State *L, GCarray *Array, uint32_t Idx, cTValue *
 
    // Handle non-numeric types first (string, table) - these don't accept numeric values
 
-   if (Array->elemtype IS AET::_STRING_GC) {
+   if (Array->elemtype IS AET::STR_GC) {
       if (tvisstr(Val)) {
          GCstr *str = strV(Val);
          setgcref(*(GCRef*)elem, obj2gco(str));
@@ -118,7 +114,7 @@ static void arr_store_elem(lua_State *L, GCarray *Array, uint32_t Idx, cTValue *
       else lj_err_msgv(L, ErrMsg::ARRTYPE);
       return;
    }
-   else if (Array->elemtype IS AET::_TABLE) {
+   else if (Array->elemtype IS AET::TABLE) {
       if (tvistab(Val)) {
          GCtab *tab = tabV(Val);
          setgcref(*(GCRef*)elem, obj2gco(tab));
@@ -128,7 +124,7 @@ static void arr_store_elem(lua_State *L, GCarray *Array, uint32_t Idx, cTValue *
       else lj_err_msgv(L, ErrMsg::ARRTYPE);
       return;
    }
-   else if (Array->elemtype IS AET::_ARRAY) {
+   else if (Array->elemtype IS AET::ARRAY) {
       if (tvisarray(Val)) {
          GCarray *array = arrayV(Val);
          setgcref(*(GCRef*)elem, obj2gco(array));
@@ -138,7 +134,7 @@ static void arr_store_elem(lua_State *L, GCarray *Array, uint32_t Idx, cTValue *
       else lj_err_msgv(L, ErrMsg::ARRTYPE);
       return;
    }
-   else if (Array->elemtype IS AET::_ANY) {
+   else if (Array->elemtype IS AET::ANY) {
       TValue *dest = (TValue*)elem;
       copyTV(L, dest, Val);
       // Apply write barrier for any GC value
@@ -151,12 +147,12 @@ static void arr_store_elem(lua_State *L, GCarray *Array, uint32_t Idx, cTValue *
    lua_Number num = 0;
    if (tvisint(Val)) num = lua_Number(intV(Val));
    else if (tvisnum(Val)) num = numV(Val);
-   else if (Array->elemtype IS AET::_PTR and tvislightud(Val)) [[unlikely]] {
+   else if (Array->elemtype IS AET::PTR and tvislightud(Val)) [[unlikely]] {
       // Extract raw pointer (note: lightudV on 64-bit requires global_State)
       *(void**)elem = (void*)(Val->u64 & LJ_GCVMASK);
       return;
    }
-   else if ((Array->elemtype IS AET::_CSTRING) or (Array->elemtype IS AET::_STRING_CPP)) [[unlikely]] {
+   else if ((Array->elemtype IS AET::CSTR) or (Array->elemtype IS AET::STR_CPP)) [[unlikely]] {
       // Storing pointers to Lua strings is somewhat feasible but unsafe; for this reason we disallow it.
       lj_err_msgv(L, ErrMsg::ARRTYPE);
       return;
@@ -169,12 +165,12 @@ static void arr_store_elem(lua_State *L, GCarray *Array, uint32_t Idx, cTValue *
    // Primitive types
 
    switch (Array->elemtype) {
-      case AET::_BYTE:   *(uint8_t*)elem = uint8_t(num); break;
-      case AET::_INT16:  *(int16_t*)elem = int16_t(num); break;
-      case AET::_INT32:  *(int32_t*)elem = int32_t(num); break;
-      case AET::_INT64:  *(int64_t*)elem = int64_t(num); break;
-      case AET::_FLOAT:  *(float*)elem = float(num); break;
-      case AET::_DOUBLE: *(double*)elem = num; break;
+      case AET::BYTE:   *(uint8_t*)elem = uint8_t(num); break;
+      case AET::INT16:  *(int16_t*)elem = int16_t(num); break;
+      case AET::INT32:  *(int32_t*)elem = int32_t(num); break;
+      case AET::INT64:  *(int64_t*)elem = int64_t(num); break;
+      case AET::FLOAT:  *(float*)elem = float(num); break;
+      case AET::DOUBLE: *(double*)elem = num; break;
       default: lj_err_msgv(L, ErrMsg::ARRTYPE); break;
    }
 }

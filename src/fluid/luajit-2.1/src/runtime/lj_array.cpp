@@ -20,27 +20,27 @@
 // Element sizes for each type (must match AET enum order)
 
 static const uint8_t glElemSizes[] = {
-   sizeof(uint8_t),      // AET::_BYTE
-   sizeof(int16_t),      // AET::_INT16
-   sizeof(int32_t),      // AET::_INT32
-   sizeof(int64_t),      // AET::_INT64
-   sizeof(float),        // AET::_FLOAT
-   sizeof(double),       // AET::_DOUBLE
-   sizeof(void*),        // AET::_PTR
-   sizeof(const char*),  // AET::_CSTRING
-   sizeof(std::string),  // AET::_STRING_CPP
-   sizeof(GCRef),        // AET::_STRING_GC
-   sizeof(GCRef),        // AET::_TABLE
-   sizeof(GCRef),        // AET::_ARRAY
-   sizeof(TValue),       // AET::_ANY
-   0                     // AET::_STRUCT (variable)
+   sizeof(uint8_t),      // AET::BYTE
+   sizeof(int16_t),      // AET::INT16
+   sizeof(int32_t),      // AET::INT32
+   sizeof(int64_t),      // AET::INT64
+   sizeof(float),        // AET::FLOAT
+   sizeof(double),       // AET::DOUBLE
+   sizeof(void*),        // AET::PTR
+   sizeof(const char*),  // AET::CSTR
+   sizeof(std::string),  // AET::STR_CPP
+   sizeof(GCRef),        // AET::STR_GC
+   sizeof(GCRef),        // AET::TABLE
+   sizeof(GCRef),        // AET::ARRAY
+   sizeof(TValue),       // AET::ANY
+   0                     // AET::STRUCT (variable)
 };
 
 //********************************************************************************************************************
 
 uint8_t lj_array_elemsize(AET Type)
 {
-   lj_assertX(int(Type) >= 0 and int(Type) < int(AET::_MAX), "invalid array element type");
+   lj_assertX(int(Type) >= 0 and int(Type) < int(AET::MAX), "invalid array element type");
    return glElemSizes[int(Type)];
 }
 
@@ -84,23 +84,23 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
       }
       else {
          // Cached data - copy into owned storage
-         if (Type IS AET::_CSTRING or Type IS AET::_STRING_CPP) {
+         if (Type IS AET::CSTR or Type IS AET::STR_CPP) {
             // String caching: store CSTRING pointers that point into strcache
             size_t byte_size = Length * sizeof(CSTRING);
             void *storage = (byte_size > 0) ? lj_mem_new(L, byte_size) : nullptr;
             auto arr = (GCarray *)lj_mem_newgco(L, sizeof(GCarray));
-            if (storage) arr->init(storage, AET::_CSTRING, sizeof(CSTRING), Length, Length, 0, sdef);
+            if (storage) arr->init(storage, AET::CSTR, sizeof(CSTRING), Length, Length, 0, sdef);
 
             // Calculate total string content size
             size_t content_size = 0;
-            if (Type IS AET::_CSTRING) {
+            if (Type IS AET::CSTR) {
                auto strings = (CSTRING *)Data;
                for (uint32_t i = 0; i < Length; i++) {
                   if (strings[i]) content_size += strlen(strings[i]) + 1;
                   else content_size += 1; // For null string, store empty string
                }
             }
-            else { // AET::_STRING_CPP
+            else { // AET::STR_CPP
                auto strings = (std::string *)Data;
                for (uint32_t i = 0; i < Length; i++) {
                   content_size += strings[i].size() + 1;
@@ -112,7 +112,7 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
             auto cache_ptr = arr->strcache->data();
             auto ptr_array = (CSTRING *)arr->arraydata();
 
-            if (Type IS AET::_CSTRING) {
+            if (Type IS AET::CSTR) {
                auto strings = (CSTRING *)Data;
                for (uint32_t i = 0; i < Length; i++) {
                   ptr_array[i] = cache_ptr;
@@ -126,7 +126,7 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
                   }
                }
             }
-            else { // AET::_STRING_CPP
+            else { // AET::STR_CPP
                auto strings = (std::string *)Data;
                for (uint32_t i = 0; i < Length; i++) {
                   ptr_array[i] = cache_ptr;
@@ -137,7 +137,7 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
 
             return arr;
          }
-         else if ((Type IS AET::_TABLE) or (Type IS AET::_ARRAY)) {
+         else if ((Type IS AET::TABLE) or (Type IS AET::ARRAY)) {
             // Table arrays not supported for caching (not used by the Parasol API)
             lj_err_callerv(L, ErrMsg::BADVAL);
             return nullptr;
@@ -162,12 +162,12 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
       auto arr = (GCarray *)lj_mem_newgco(L, sizeof(GCarray));
       arr->init(storage, Type, elem_size, Length, Length, Flags & ~(ARRAY_EXTERNAL|ARRAY_CACHED), sdef);
       if (storage) {
-         if (Type IS AET::_ANY) {
+         if (Type IS AET::ANY) {
             // _ANY arrays require explicit nil initialization (nil TValue = -1, not 0)
             TValue *slots = (TValue*)storage;
             for (MSize i = 0; i < Length; i++) setnilV(&slots[i]);
          }
-         else if (int(Type) >= int(AET::_VULNERABLE)) arr->zero();
+         else if (int(Type) >= int(AET::VULNERABLE)) arr->zero();
       }
       return arr;
    }
@@ -201,7 +201,7 @@ bool lj_array_grow(lua_State *L, GCarray *Array, MSize MinCapacity)
    void *new_storage = lj_mem_realloc(L, Array->storage, old_size, new_size);
 
    // Zero-initialise new elements for vulnerable types (pointers, strings, tables)
-   if (int(Array->elemtype) >= int(AET::_VULNERABLE)) {
+   if (int(Array->elemtype) >= int(AET::VULNERABLE)) {
       size_t zerolen = new_size - old_size;
       std::memset((char *)new_storage + old_size, 0, zerolen);
    }
@@ -260,25 +260,25 @@ GCtab * lj_array_to_table(lua_State *L, GCarray *Array)
       void *elem = data + (i * Array->elemsize);
 
       switch (Array->elemtype) {
-         case AET::_BYTE:   setintV(slot, *(uint8_t*)elem); break;
-         case AET::_INT16:  setintV(slot, *(int16_t*)elem); break;
-         case AET::_INT32:  setintV(slot, *(int32_t*)elem); break;
-         case AET::_INT64:  setnumV(slot, lua_Number(*(int64_t*)elem)); break;
-         case AET::_FLOAT:  setnumV(slot, *(float*)elem); break;
-         case AET::_DOUBLE: setnumV(slot, *(double*)elem); break;
-         case AET::_TABLE: {
+         case AET::BYTE:   setintV(slot, *(uint8_t*)elem); break;
+         case AET::INT16:  setintV(slot, *(int16_t*)elem); break;
+         case AET::INT32:  setintV(slot, *(int32_t*)elem); break;
+         case AET::INT64:  setnumV(slot, lua_Number(*(int64_t*)elem)); break;
+         case AET::FLOAT:  setnumV(slot, *(float*)elem); break;
+         case AET::DOUBLE: setnumV(slot, *(double*)elem); break;
+         case AET::TABLE: {
             GCRef ref = *(GCRef*)elem;
             if (gcref(ref)) settabV(L, slot, gco_to_table(gcref(ref)));
             else setnilV(slot);
             break;
          }
-         case AET::_ARRAY: {
+         case AET::ARRAY: {
             GCRef ref = *(GCRef*)elem;
             if (gcref(ref)) setarrayV(L, slot, gco_to_array(gcref(ref)));
             else setnilV(slot);
             break;
          }
-         case AET::_ANY: {
+         case AET::ANY: {
             TValue *src = (TValue*)elem;
             copyTV(L, slot, src);
             break;

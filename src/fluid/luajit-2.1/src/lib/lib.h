@@ -98,18 +98,18 @@ extern int lj_lib_postreg(lua_State *, lua_CFunction cf, int id, const char* nam
 
 inline AET ff_to_element(int Flags) {
    if (Flags & FD_CPP) {
-      if (Flags & FD_STRING)  return AET::_STRING_CPP;
+      if (Flags & FD_STRING)  return AET::STR_CPP;
    }
    else {
-      if (Flags & FD_BYTE)    return AET::_BYTE;
-      if (Flags & FD_WORD)    return AET::_INT16;
-      if (Flags & FD_INT)     return AET::_INT32;
-      if (Flags & FD_INT64)   return AET::_INT64;
-      if (Flags & FD_FLOAT)   return AET::_FLOAT;
-      if (Flags & FD_DOUBLE)  return AET::_DOUBLE;
-      if (Flags & FD_STRING)  return AET::_CSTRING;
-      if (Flags & FD_POINTER) return AET::_PTR;
-      if (Flags & FD_STRUCT)  return AET::_STRUCT;
+      if (Flags & FD_BYTE)    return AET::BYTE;
+      if (Flags & FD_WORD)    return AET::INT16;
+      if (Flags & FD_INT)     return AET::INT32;
+      if (Flags & FD_INT64)   return AET::INT64;
+      if (Flags & FD_FLOAT)   return AET::FLOAT;
+      if (Flags & FD_DOUBLE)  return AET::DOUBLE;
+      if (Flags & FD_STRING)  return AET::CSTR;
+      if (Flags & FD_POINTER) return AET::PTR;
+      if (Flags & FD_STRUCT)  return AET::STRUCT;
    }
-   return AET::_MAX;
+   return AET::MAX;
 }

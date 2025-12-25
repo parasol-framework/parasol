@@ -588,7 +588,7 @@ static int object_get_array(lua_State *Lua, const obj_read &Handle, object *Def)
             pf::vector<std::string> *values; // std::string doesn't work like standard primitives - at least not in MSVC - so it gets a special handler.
             if ((error = obj->get(field->FieldID, values, total, false)) IS ERR::Okay) {
                if (total <= 0) lua_pushnil(Lua);
-               else make_array(Lua, AET::_STRING_CPP, total, values);
+               else make_array(Lua, AET::STR_CPP, total, values);
             }
          }
          else {
@@ -606,7 +606,7 @@ static int object_get_array(lua_State *Lua, const obj_read &Handle, object *Def)
       else if ((error = obj->get(field->FieldID, list, total, false)) IS ERR::Okay) {
          if (total <= 0) lua_pushnil(Lua);
          else if (field->Flags & FD_STRING) {
-            make_array(Lua, AET::_CSTRING, total, list);
+            make_array(Lua, AET::CSTR, total, list);
          }
          else if (field->Flags & (FD_INT|FD_INT64|FD_FLOAT|FD_DOUBLE|FD_POINTER|FD_BYTE|FD_WORD|FD_STRUCT)) {
             std::string_view struct_name = field->Flags & FD_STRUCT ? std::string_view((CSTRING)field->Arg) : std::string_view {};

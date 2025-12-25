@@ -499,25 +499,25 @@ static void LJ_FASTCALL recff_tostring(jit_State* J, RecordFFData* rd)
 static bool array_elem_irtype(AET ElemType, IRType &ResultType)
 {
    switch (ElemType) {
-      case AET::_BYTE:
-      case AET::_INT16:
-      case AET::_INT32:
+      case AET::BYTE:
+      case AET::INT16:
+      case AET::INT32:
          ResultType = LJ_DUALNUM ? IRT_INT : IRT_NUM;
          return true;
-      case AET::_INT64:
-      case AET::_FLOAT:
-      case AET::_DOUBLE:
+      case AET::INT64:
+      case AET::FLOAT:
+      case AET::DOUBLE:
          ResultType = IRT_NUM;
          return true;
-      case AET::_PTR:
+      case AET::PTR:
          ResultType = IRT_LIGHTUD;
          return true;
-      case AET::_CSTRING:
-      case AET::_STRING_CPP:
-      case AET::_STRING_GC:
+      case AET::CSTR:
+      case AET::STR_CPP:
+      case AET::STR_GC:
          ResultType = IRT_STR;
          return true;
-      case AET::_TABLE:
+      case AET::TABLE:
          ResultType = IRT_TAB;
          return true;
       default:

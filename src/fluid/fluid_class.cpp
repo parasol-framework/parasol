@@ -989,8 +989,8 @@ static ERR run_script(objScript *Self)
                   if ((type & FD_BUFFER) and (i+1 < Self->TotalArgs) and (args[1].Type & FD_BUFSIZE)) {
                      // Buffers are considered to be directly writable regions of memory, so the array interface is
                      // used to represent them.
-                     if (args[1].Type & FD_INT) lua_createarray(prv->Lua, args[1].Int, AET::_BYTE, (APTR *)args->Address, ARRAY_EXTERNAL);
-                     else if (args[1].Type & FD_INT64) lua_createarray(prv->Lua, args[1].Int64, AET::_BYTE, (APTR *)args->Address, ARRAY_EXTERNAL);
+                     if (args[1].Type & FD_INT) lua_createarray(prv->Lua, args[1].Int, AET::BYTE, (APTR *)args->Address, ARRAY_EXTERNAL);
+                     else if (args[1].Type & FD_INT64) lua_createarray(prv->Lua, args[1].Int64, AET::BYTE, (APTR *)args->Address, ARRAY_EXTERNAL);
                      else lua_pushnil(prv->Lua);
                      i++; args++; // Because we took the buffer-size parameter into account
                   }

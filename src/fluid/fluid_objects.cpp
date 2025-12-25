@@ -809,9 +809,9 @@ static int object_children(lua_State *Lua)
          else id[index++] = rec.ObjectID;
       }
 
-      make_array(Lua, AET::_INT32, index, id.get());
+      make_array(Lua, AET::INT32, index, id.get());
    }
-   else make_array(Lua, AET::_INT32);
+   else make_array(Lua, AET::INT32);
 
    return 1; // make_array() always returns a value even if it is nil
 }

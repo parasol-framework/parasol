@@ -24,10 +24,6 @@
 #include <sys/wait.h>
 #endif
 
-#ifndef CSTRING
-#define CSTRING const char*
-#endif
-
 //********************************************************************************************************************
 // Traverses a dot-separated path (e.g., "foo.bar.baz") in a table hierarchy, creating intermediate tables as needed.
 // Returns nullptr on success, or a pointer to the problematic part of the path if a non-table value is encountered.

@@ -1,10 +1,10 @@
 #ifdef _WIN32
 
-#include "lj_jit.h"
-#include "lj_trace.h"
-
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+
+#include "lj_jit.h"
+#include "lj_trace.h"
 
 int MCPROT_RW  = PAGE_READWRITE;
 int MCPROT_RX  = PAGE_EXECUTE_READ;

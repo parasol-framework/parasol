@@ -208,13 +208,13 @@ static void gc_mark(global_State *g, GCobj* o)
 
       // If array contains GC references (strings or tables), mark them
 
-      if (arr->elemtype IS AET::_STRING_GC or arr->elemtype IS AET::_TABLE or arr->elemtype IS AET::_ARRAY) {
+      if (arr->elemtype IS AET::STR_GC or arr->elemtype IS AET::TABLE or arr->elemtype IS AET::ARRAY) {
          GCRef* refs = arr->get<GCRef>();
          for (MSize i = 0; i < arr->len; i++) {
             if (gcref(refs[i])) gc_markobj(g, gcref(refs[i]));
          }
       }
-      else if (arr->elemtype IS AET::_ANY) {
+      else if (arr->elemtype IS AET::ANY) {
          // Mark all GC values in TValue slots
          TValue* slots = arr->get<TValue>();
          for (MSize i = 0; i < arr->len; i++) {
