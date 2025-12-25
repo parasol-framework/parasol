@@ -275,13 +275,7 @@
 #define LJ_HASFFI      1
 #endif
 
-// Disable or enable the string buffer extension.
-#if defined(LUAJIT_DISABLE_BUFFER)
-#define LJ_HASBUFFER      0
-#else
-#define LJ_HASBUFFER      1
-#endif
-
+#define LJ_HASBUFFER      0 // Always 0
 #define LJ_HASPROFILE      0
 
 #ifndef LJ_ARCH_HASFPU

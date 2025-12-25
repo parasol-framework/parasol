@@ -173,13 +173,7 @@ static void gc_mark(global_State *g, GCobj* o)
       gray2black(o);  //  Userdata are never gray.
       if (mt) gc_markobj(g, mt);
       gc_markobj(g, tabref(gco_to_userdata(o)->env));
-      if (LJ_HASBUFFER and gco_to_userdata(o)->udtype IS UDTYPE_BUFFER) {
-         SBufExt *sbx = (SBufExt *)uddata(gco_to_userdata(o));
-         if (sbufiscow(sbx) and gcref(sbx->cowref)) gc_markobj(g, gcref(sbx->cowref));
-         if (gcref(sbx->dict_str)) gc_markobj(g, gcref(sbx->dict_str));
-         if (gcref(sbx->dict_mt)) gc_markobj(g, gcref(sbx->dict_mt));
-      }
-      else if (gco_to_userdata(o)->udtype IS UDTYPE_THUNK) {
+      if (gco_to_userdata(o)->udtype IS UDTYPE_THUNK) {
          // Mark thunk payload contents to prevent GC from collecting them
 
          ThunkPayload *payload = thunk_payload(gco_to_userdata(o));

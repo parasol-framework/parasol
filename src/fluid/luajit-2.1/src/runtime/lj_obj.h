@@ -403,9 +403,9 @@ typedef struct GCudata {
 // Userdata types.
 enum {
    UDTYPE_USERDATA,   //  Regular userdata.
-   UDTYPE_IO_FILE,    //  I/O library FILE.
-   UDTYPE_FFI_CLIB,   //  FFI C library namespace.
-   UDTYPE_BUFFER,     //  String buffer.
+   UDTYPE_IO_FILE_DEPRECATED,    // Was I/O library FILE.
+   UDTYPE_FFI_CLIB_DEPRECATED,   // Was FFI C library namespace.
+   UDTYPE_BUFFER_DEPRECATED,     // Was String buffer.
    UDTYPE_THUNK,      //  Thunk (deferred evaluation).
    UDTYPE__MAX
 };

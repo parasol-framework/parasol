@@ -44,11 +44,6 @@ extern int         lj_lib_checkopt(lua_State *, int, int def, const char* lst);
 extern GCarray *   lj_lib_optarray(lua_State *L, int);
 extern GCarray *   lj_lib_checkarray(lua_State *, int);
 
-#if LJ_HASBUFFER
-extern GCstr* lj_lib_checkstrx(lua_State *, int);
-extern int32_t lj_lib_checkintrange(lua_State *, int, int32_t a, int32_t b);
-#endif
-
 // Avoid including lj_frame.h.
 #define lj_lib_upvalue(L, n) (&gcval(L->base-2)->fn.c.upvalue[(n)-1])
 

@@ -245,7 +245,7 @@ end
                -- Route with authentication validation
                { pattern = '/auth/protected',
                  method = 'GET',
-                 validateHeader = function(headers)
+                 validateHeader = function(headers):any
                     local auth = headers['authorization']
                     if not auth then
                        return { status = 401, statusText = 'Unauthorized',
@@ -268,7 +268,7 @@ end
                -- Route with admin-level validation
                { pattern = '/api/admin-only',
                  method = 'POST',
-                 validateHeader = function(headers)
+                 validateHeader = function(headers):any
                     local auth = headers['authorization']
                     if not auth then
                        return { status = 401, statusText = 'Unauthorized',
@@ -293,7 +293,7 @@ end
                -- Route with content-type validation
                { pattern = '/api/json-only',
                  method = 'POST',
-                 validateHeader = function(headers)
+                 validateHeader = function(headers):any
                     local contentType = headers['content-type']
                     if not contentType or not contentType:find('application/json') then
                        return { status = 415, statusText = 'Unsupported Media Type',
@@ -310,7 +310,7 @@ end
                -- Route with validation that throws an exception
                { pattern = '/error/validation-crash',
                  method = 'GET',
-                 validateHeader = function(headers)
+                 validateHeader = function(headers):any
                     error('Intentional validation error') -- This will be caught by pcall
                  end,
                  handler = function(req, res)

@@ -99,10 +99,6 @@ constexpr int SBUF_FLAG_BORROW = 4;   //  Borrowed string buffer.
   (lj_assertG_(G(sbufL(sb)), sbufisext(sb), "not an SBufExt"), (SBufExt *)(sb))
 #define setsbufflag(sb, flag)   (setmrefu((sb)->L, (flag)))
 
-#define tvisbuf(o) \
-  (LJ_HASBUFFER && tvisudata(o) && udataV(o)->udtype == UDTYPE_BUFFER)
-#define bufV(o)      check_exp(tvisbuf(o), ((SBufExt *)uddata(udataV(o))))
-
 // Buffer management
 LJ_FUNC char* LJ_FASTCALL lj_buf_need2(SBuf* sb, MSize sz);
 LJ_FUNC char* LJ_FASTCALL lj_buf_more2(SBuf* sb, MSize sz);
@@ -188,13 +184,6 @@ static LJ_AINLINE void lj_bufx_free(lua_State* L, SBufExt* sbx) noexcept
    setgcrefnull(sbx->cowref);
    sbx->r = sbx->w = sbx->b = sbx->e = NULL;
 }
-
-#if LJ_HASBUFFER && LJ_HASJIT
-LJ_FUNC void lj_bufx_set(SBufExt* sbx, const char* p, MSize len, GCobj* o);
-#if LJ_HASFFI
-LJ_FUNC MSize LJ_FASTCALL lj_bufx_more(SBufExt* sbx, MSize sz);
-#endif
-#endif
 
 // Low-level buffer put operations
 LJ_FUNC SBuf* lj_buf_putmem(SBuf* sb, const void* q, MSize len);
