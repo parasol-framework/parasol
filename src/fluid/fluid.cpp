@@ -250,7 +250,7 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
                   pf::trim(trimmed);
 
                   auto hash = pf::strhash(trimmed);
-                  if (hash IS HASH_TRACE_VALUE_CATEGORY) glJitOptions |= JOF::TRACE_VALUE_CATEGORY;
+                  if (hash IS HASH_TRACE_VALUE_CATEGORY)   glJitOptions |= JOF::TRACE_VALUE_CATEGORY;
                   else if (hash IS HASH_TRACE_ASSIGNMENTS) glJitOptions |= JOF::TRACE_ASSIGNMENTS;
                   else if (hash IS HASH_TRACE_OPERATORS) glJitOptions |= JOF::TRACE_OPERATORS;
                   else if (hash IS HASH_TRACE_REGISTERS) glJitOptions |= JOF::TRACE_REGISTERS;
@@ -271,7 +271,7 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
 
                log.msg("JIT options \"%s\" set to $%.8x", value.c_str(), (uint32_t)glJitOptions);
 
-               if (glJitOptions != JOF::NIL) {
+               if ((glJitOptions & (JOF::TRACE|JOF::PROFILE)) != JOF::NIL) {
                   if (GetResource(RES::LOG_LEVEL) < 5) {
                      // Automatically raise the log level to see JIT messages.  Helpful for AI
                      // agents that forget this requirement.

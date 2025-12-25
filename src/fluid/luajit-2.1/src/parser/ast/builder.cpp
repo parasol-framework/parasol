@@ -143,15 +143,48 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_chunk()
 
 //********************************************************************************************************************
 // Parses a block of statements until a terminator token is encountered.
+// When abort_on_error is false (DIAGNOSE mode), uses panic-mode recovery to continue
+// parsing after errors, collecting multiple diagnostics and returning a partial AST.
 
 ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_block(std::span<const TokenKind> terminators)
 {
    StmtNodeList statements;
+   bool recovery_mode = not this->ctx.config().abort_on_error;
+
    while (not this->at_end_of_block(terminators)) {
       auto stmt = this->parse_statement();
-      if (not stmt.ok()) return ParserResult<std::unique_ptr<BlockStmt>>::failure(stmt.error_ref());
+
+      if (not stmt.ok()) {
+         if (not recovery_mode) { // Standard mode: return failure immediately
+            return ParserResult<std::unique_ptr<BlockStmt>>::failure(stmt.error_ref());
+         }
+
+         // DIAGNOSE mode: skip to next synchronisation point and continue
+         Token error_token = this->ctx.tokens().current();
+         size_t skipped = this->skip_to_synchronisation_point(terminators);
+
+         #if 0 // Quite noisy, needs a control mechanism
+         if (skipped > 0) {
+            // Emit informational diagnostic about skipped tokens
+            ParserDiagnostic info;
+            info.severity = ParserDiagnosticSeverity::Info;
+            info.code = ParserErrorCode::RecoverySkippedTokens;
+            info.message = std::format("skipped {} token{} during error recovery", skipped, skipped IS 1 ? "" : "s");
+            info.token = error_token;
+            this->ctx.diagnostics().report(info);
+         }
+         #endif
+
+         // If we've hit end of block or EOF, stop trying
+         if (this->at_end_of_block(terminators)) break;
+
+         // Continue parsing from synchronisation point
+         continue;
+      }
+
       if (stmt.value_ref()) statements.push_back(std::move(stmt.value_ref()));
    }
+
    Token last = this->ctx.tokens().current();
    return ParserResult<std::unique_ptr<BlockStmt>>::success(make_block(last.span(), std::move(statements)));
 }
@@ -220,7 +253,10 @@ bool AstBuilder::is_statement_start(TokenKind kind) const
 {
    switch (kind) {
       case TokenKind::Local:
+      case TokenKind::Global:
       case TokenKind::Function:
+      case TokenKind::ThunkToken:
+      case TokenKind::Annotate:
       case TokenKind::If:
       case TokenKind::WhileToken:
       case TokenKind::Repeat:
@@ -235,6 +271,41 @@ bool AstBuilder::is_statement_start(TokenKind kind) const
       default:
          return false;
    }
+}
+
+//********************************************************************************************************************
+// Checks if the current token is a valid synchronisation point for error recovery.
+// A synchronisation point is either a token that can start a new statement, a block terminator, or end of file.
+
+bool AstBuilder::is_synchronisation_point(std::span<const TokenKind> terminators) const
+{
+   TokenKind kind = this->ctx.tokens().current().kind();
+
+   if (kind IS TokenKind::EndOfFile) return true;   // End of file is always a synchronisation point
+   if (this->is_statement_start(kind)) return true; // Check if this is a statement start
+   if (kind IS TokenKind::Identifier) return true;  // Identifier can start an expression statement
+
+   for (TokenKind term : terminators) { // Check block terminators
+      if (kind IS term) return true;
+   }
+
+   return false;
+}
+
+//********************************************************************************************************************
+// Skips tokens until reaching a synchronisation point (statement start or block terminator).
+// Returns the number of tokens skipped. This implements "panic mode" error recovery.
+
+size_t AstBuilder::skip_to_synchronisation_point(std::span<const TokenKind> terminators)
+{
+   size_t skipped = 0;
+
+   while (not this->is_synchronisation_point(terminators)) {
+      this->ctx.tokens().advance();
+      if (++skipped > 1000) break;  // Safety limit to prevent infinite loops
+   }
+
+   return skipped;
 }
 
 // Creates an identifier structure from a token, extracting its symbol and source span.

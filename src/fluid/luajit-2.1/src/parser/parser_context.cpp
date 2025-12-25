@@ -224,14 +224,16 @@ void ParserContext::emit_error(ParserErrorCode code, const Token &token, std::st
    diagnostic.token    = token;
    this->diag.report(diagnostic);
 
-   this->log_trace(ParserChannel::Error, token, message);
-
    if (this->current_config.abort_on_error) {
+      // Log immediately since we're about to throw
+      this->log_trace(ParserChannel::Error, token, message);
+
       // Save the diagnostics for client analysis
       this->lua().parser_diagnostics = new ParserDiagnostics(this->diagnostics());
 
       lj_lex_error(this->lex_state, this->lex_state->tok, ErrMsg::XTOKEN, this->lex_state->token2str(token.raw()));
    }
+   // In DIAGNOSE mode (abort_on_error=false), skip logging - errors will be reported later
 }
 
 //********************************************************************************************************************

@@ -32,7 +32,8 @@ enum class ParserErrorCode : uint16_t {
    ReturnTypeMismatch,      // Return value type doesn't match declaration
    ReturnCountMismatch,     // Too many return values
    RecursiveFunctionNeedsType, // Recursive function must have explicit return type
-   TooManyReturnTypes       // More than 8 return types declared
+   TooManyReturnTypes,      // More than 8 return types declared
+   RecoverySkippedTokens    // Info: tokens skipped during error recovery
 };
 
 struct ParserDiagnostic {
