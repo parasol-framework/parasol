@@ -440,7 +440,7 @@ LJLIB_CF(debug_getMetatable)   LJLIB_REC(.)
 // Sets the metatable for the given object to the given table (which can be nil).  Returns the original object.
 // This function bypasses any __metatable protection.
 //
-// Example: debug.setmetatable(obj, { __index = defaults })
+// Example: debug.setMetatable(obj, { __index = defaults })
 
 LJLIB_CF(debug_setMetatable)
 {
@@ -457,7 +457,7 @@ LJLIB_CF(debug_setMetatable)
 // For functions, this is the table that is used for global variable access within the function.
 //
 // Example:
-//   env = debug.getFEnv(myFunction)
+//   env = debug.getEnv(myFunction)
 //   print(env._G)
 
 LJLIB_CF(debug_getEnv)
@@ -479,7 +479,7 @@ LJLIB_CF(debug_getEnv)
 //
 // Example:
 //   sandbox = { print = print }
-//   debug.setfenv(untrustedFunc, sandbox)
+//   debug.setEnv(untrustedFunc, sandbox)
 
 LJLIB_CF(debug_setEnv)
 {
@@ -493,7 +493,7 @@ LJLIB_CF(debug_setEnv)
 // debug.getInfo([thread,] function [, what]): table
 //
 // Returns a table with information about a function or stack level.  The function can be specified as a function
-// value or as a number representing a stack level (0 = getinfo itself, 1 = function that called getinfo, etc.).
+// value or as a number representing a stack level (0 = getInfo itself, 1 = function that called getInfo, etc.).
 //
 //   thread   - (optional) A thread whose stack to examine
 //   function - A function value or stack level number
@@ -583,7 +583,7 @@ LJLIB_CF(debug_getInfo)
 // of a level, returns only the name of the parameter at the given index (useful for introspecting parameter names).
 //
 //   thread - (optional) A thread whose stack to examine
-//   level  - Stack level (1 = function that called getlocal, etc.)
+//   level  - Stack level (1 = function that called getLocal, etc.)
 //   func   - Alternative: a function to query parameter names
 //   index  - 0-based local variable index (negative indices access vararg values)
 //
@@ -592,7 +592,7 @@ LJLIB_CF(debug_getInfo)
 //   - Variables include parameters, declared locals, and temporaries
 //
 // Example:
-//   name, value = debug.getlocal(1, 0)  -- First local in caller
+//   name, value = debug.getLocal(1, 0)  -- First local in caller
 //   if name then print(name, "=", value) end
 
 LJLIB_CF(debug_getLocal)
@@ -629,7 +629,7 @@ LJLIB_CF(debug_getLocal)
 // or nil if the index is out of range.
 //
 //   thread - (optional) A thread whose stack to modify
-//   level  - Stack level (1 = function that called setlocal, etc.)
+//   level  - Stack level (1 = function that called setLocal, etc.)
 //   index  - 0-based local variable index (negative indices access vararg values)
 //   value  - The new value to assign
 //
@@ -695,8 +695,8 @@ LJLIB_CF(debug_setUpvalue)
 //   index - 0-based upvalue index
 //
 // Example:
-//   id1 = debug.upvalueid(func1, 0)
-//   id2 = debug.upvalueid(func2, 0)
+//   id1 = debug.upvalueID(func1, 0)
+//   id2 = debug.upvalueID(func2, 0)
 //   if id1 is id2 then print("Same upvalue") end
 
 LJLIB_CF(debug_upvalueID)
