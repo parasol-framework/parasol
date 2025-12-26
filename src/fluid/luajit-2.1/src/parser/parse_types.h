@@ -594,7 +594,7 @@ static_assert((int)BC_MODVV - (int)BC_ADDVV == int(BinOpr::Mod) - int(BinOpr::Ad
 
 // Error checking functions.
 
-[[maybe_unused]] [[noreturn]] void err_limit(FuncState *fs, uint32_t limit, CSTRING what);
+[[maybe_unused]] void err_limit(FuncState *fs, uint32_t limit, CSTRING what);
 
 inline void checklimit(FuncState *fs, MSize v, MSize l, const char *m) { if (v >= l) err_limit(fs, l, m); }
 inline void checklimitgt(FuncState *fs, MSize v, MSize l, const char *m) { if (v > l) err_limit(fs, l, m); }

@@ -53,7 +53,7 @@ struct TestCase {
 // Execute Lua code and check result
 static bool run_lua_test(lua_State* L, std::string_view Code, std::string& Error)
 {
-   if (luaL_loadbuffer(L, Code.data(), Code.size(), "indexing-test")) {
+   if (lua_load(L, Code, "indexing-test")) {
       Error = lua_tostring(L, -1);
       lua_pop(L, 1);
       return false;

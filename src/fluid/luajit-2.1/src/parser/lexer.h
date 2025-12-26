@@ -260,6 +260,8 @@ public:
 
    ParserContext* active_context = nullptr;
    std::deque<BufferedToken> buffered_tokens;
+   bool diagnose_mode = false;  // When true, lexer errors are collected instead of thrown
+   bool had_lex_error = false;  // Set when a recoverable lexer error occurred
 
 #ifdef INCLUDE_ADVICE
    // Advice system: 0 = off, 1 = best (critical), 2 = most (medium), 3 = all
@@ -280,8 +282,8 @@ public:
    void next();
    LexToken lookahead_token();
    const char* token2str(LexToken Tok);
-   LJ_NORET LJ_NOINLINE void err_syntax(ErrMsg Message);
-   LJ_NORET LJ_NOINLINE void err_token(LexToken Token);
+   LJ_NOINLINE void err_syntax(ErrMsg Message);
+   LJ_NOINLINE void err_token(LexToken Token);
    int lex_opt(LexToken Token);
    void lex_check(LexToken Token);
    void lex_match(LexToken What, LexToken Who, BCLine Line);
@@ -341,4 +343,4 @@ public:
 #endif
 };
 
-LJ_FUNC_NORET void lj_lex_error(LexState *, LexToken, ErrMsg, ...);
+void lj_lex_error(LexState *, LexToken, ErrMsg, ...);
