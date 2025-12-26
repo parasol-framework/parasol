@@ -67,8 +67,11 @@ FLUID_KEYWORDS = {
    ['repeat'] = true, ['until'] = true, ['break'] = true, ['continue'] = true,
    ['return'] = true, ['end'] = true,
 
+   -- Pattern matching
+   ['choose'] = true, ['from'] = true, ['when'] = true,
+
    -- Declarations
-   ['function'] = true, ['local'] = true, ['global'] = true,
+   ['function'] = true, ['local'] = true, ['global'] = true, ['thunk'] = true,
 
    -- Special
    ['defer'] = true, ['catch'] = true, ['raise'] = true, ['check'] = true
@@ -86,23 +89,61 @@ FLUID_CONSTANTS = {
 
 -- Built-in functions (default library)
 FLUID_BUILTINS = {
+   -- Output
    ['print'] = true, ['msg'] = true, ['error'] = true, ['assert'] = true,
+
+   -- Type conversion/introspection
    ['type'] = true, ['tonumber'] = true, ['tostring'] = true,
-   ['pairs'] = true, ['ipairs'] = true, ['next'] = true,
-   ['select'] = true, ['unpack'] = true, ['pcall'] = true, ['xpcall'] = true,
+
+   -- Iteration
+   ['pairs'] = true, ['ipairs'] = true, ['next'] = true, ['values'] = true,
+
+   -- Result handling
+   ['unpack'] = true,
+
+   -- Protected calls
+   ['pcall'] = true, ['xpcall'] = true,
+
+   -- Metatable access
    ['setmetatable'] = true, ['getmetatable'] = true,
    ['rawget'] = true, ['rawset'] = true, ['rawequal'] = true,
+
+   -- Script/module loading
    ['collectgarbage'] = true, ['require'] = true, ['include'] = true,
-   ['loadFile'] = true, ['loadString'] = true,
-   ['arg'] = true, ['processing'] = true
+   ['loadFile'] = true, ['load'] = true, ['exec'] = true,
+
+   -- Script parameters
+   ['arg'] = true,
+
+   -- Deferred expressions
+   ['resolve'] = true,
+
+   -- Range constructor
+   ['range'] = true,
+
+   -- Events
+   ['subscribeEvent'] = true, ['unsubscribeEvent'] = true,
+
+   -- Structures
+   ['MAKESTRUCT'] = true
 }
 
 -- Parasol modules/namespaces
 FLUID_MODULES = {
-   ['obj'] = true, ['mSys'] = true, ['mVec'] = true, ['mGfx'] = true,
+   -- Core interfaces
+   ['obj'] = true, ['struct'] = true, ['array'] = true, ['regex'] = true,
+   ['mod'] = true, ['thread'] = true, ['processing'] = true,
+
+   -- Parasol API modules (loaded via mod.load())
+   ['mSys'] = true, ['mVec'] = true, ['mGfx'] = true,
+   ['mAudio'] = true, ['mFont'] = true, ['mNet'] = true, ['mXML'] = true,
+
+   -- Standard libraries
    ['string'] = true, ['table'] = true, ['math'] = true, ['bit'] = true,
-   ['io'] = true, ['os'] = true, ['debug'] = true, ['regex'] = true,
-   ['json'] = true
+   ['io'] = true, ['debug'] = true,
+
+   -- Fluid script libraries
+   ['json'] = true, ['gui'] = true, ['file'] = true
 }
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -510,8 +551,256 @@ function tokenizeFluid(Source:str):array
             line = save_line
          end
 
+      -- Symbolic operators (multi-character first, then single-character)
+      elseif c is '?' then
+         op_start = col
+         if pos + 2 < len and Source:sub(pos + 1, pos + 3) is '?=' then
+            -- ??= if-empty assignment
+            addToken(line, op_start, 3, 1, 0)
+            pos += 3
+            col += 3
+         elseif pos + 1 < len and Source:sub(pos + 1, pos + 2) is '?' then
+            -- ?? if-empty operator
+            addToken(line, op_start, 2, 1, 0)
+            pos += 2
+            col += 2
+         elseif pos + 1 < len and Source:sub(pos + 1, pos + 2) is '=' then
+            -- ?= if-nil assignment
+            addToken(line, op_start, 2, 1, 0)
+            pos += 2
+            col += 2
+         elseif pos + 1 < len and Source:sub(pos + 1, pos + 2) is '.' then
+            -- ?. safe navigation
+            addToken(line, op_start, 2, 1, 0)
+            pos += 2
+            col += 2
+         elseif pos + 1 < len and Source:sub(pos + 1, pos + 2) is '[' then
+            -- ?[ safe index
+            addToken(line, op_start, 2, 1, 0)
+            pos += 2
+            col += 2
+         else
+            -- ? ternary condition
+            addToken(line, op_start, 1, 1, 0)
+            pos++
+            col++
+         end
+
+      elseif c is '|' then
+         op_start = col
+         if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '>' then
+            -- |> pipe operator
+            addToken(line, op_start, 2, 1, 0)
+            pos += 2
+            col += 2
+         else
+            -- | bitwise OR
+            addToken(line, op_start, 1, 1, 0)
+            pos++
+            col++
+         end
+
+      elseif c is '=' then
+         op_start = col
+         if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '>' then
+            -- => arrow function
+            addToken(line, op_start, 2, 1, 0)
+            pos += 2
+            col += 2
+         else
+            -- = assignment (skip, not highlighted as operator)
+            pos++
+            col++
+         end
+
+      elseif c is ':' then
+         op_start = col
+         if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '>' then
+            -- :> ternary else
+            addToken(line, op_start, 2, 1, 0)
+            pos += 2
+            col += 2
+         else
+            -- : type annotation or method call (skip)
+            pos++
+            col++
+         end
+
+      elseif c is '.' then
+         op_start = col
+         if pos + 2 < len and Source:sub(pos + 1, pos + 3) is '.=' then
+            -- ..= concatenation assignment
+            addToken(line, op_start, 3, 1, 0)
+            pos += 3
+            col += 3
+         elseif pos + 2 < len and Source:sub(pos + 1, pos + 3) is '..' then
+            -- ... varargs or inclusive range
+            addToken(line, op_start, 3, 1, 0)
+            pos += 3
+            col += 3
+         elseif pos + 1 < len and Source:sub(pos + 1, pos + 2) is '.' then
+            -- .. concatenation or exclusive range
+            addToken(line, op_start, 2, 1, 0)
+            pos += 2
+            col += 2
+         else
+            -- . field access (skip)
+            pos++
+            col++
+         end
+
+      elseif c is '+' then
+         op_start = col
+         if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '+' then
+            -- ++ increment
+            addToken(line, op_start, 2, 1, 0)
+            pos += 2
+            col += 2
+         elseif pos + 1 < len and Source:sub(pos + 1, pos + 2) is '=' then
+            -- += compound assignment
+            addToken(line, op_start, 2, 1, 0)
+            pos += 2
+            col += 2
+         else
+            -- + addition
+            addToken(line, op_start, 1, 1, 0)
+            pos++
+            col++
+         end
+
+      elseif c is '-' then
+         op_start = col
+         if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '=' then
+            -- -= compound assignment
+            addToken(line, op_start, 2, 1, 0)
+            pos += 2
+            col += 2
+         else
+            -- - subtraction/negation
+            addToken(line, op_start, 1, 1, 0)
+            pos++
+            col++
+         end
+
+      elseif c is '*' then
+         op_start = col
+         if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '=' then
+            -- *= compound assignment
+            addToken(line, op_start, 2, 1, 0)
+            pos += 2
+            col += 2
+         else
+            -- * multiplication
+            addToken(line, op_start, 1, 1, 0)
+            pos++
+            col++
+         end
+
+      elseif c is '/' then
+         op_start = col
+         if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '=' then
+            -- /= compound assignment
+            addToken(line, op_start, 2, 1, 0)
+            pos += 2
+            col += 2
+         else
+            -- / division
+            addToken(line, op_start, 1, 1, 0)
+            pos++
+            col++
+         end
+
+      elseif c is '%' then
+         op_start = col
+         if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '=' then
+            -- %= compound assignment
+            addToken(line, op_start, 2, 1, 0)
+            pos += 2
+            col += 2
+         else
+            -- % modulo
+            addToken(line, op_start, 1, 1, 0)
+            pos++
+            col++
+         end
+
+      elseif c is '<' then
+         op_start = col
+         if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '<' then
+            -- << left shift
+            addToken(line, op_start, 2, 1, 0)
+            pos += 2
+            col += 2
+         elseif pos + 1 < len and Source:sub(pos + 1, pos + 2) is '=' then
+            -- <= less than or equal
+            addToken(line, op_start, 2, 1, 0)
+            pos += 2
+            col += 2
+         else
+            -- < less than
+            addToken(line, op_start, 1, 1, 0)
+            pos++
+            col++
+         end
+
+      elseif c is '>' then
+         op_start = col
+         if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '>' then
+            -- >> right shift
+            addToken(line, op_start, 2, 1, 0)
+            pos += 2
+            col += 2
+         elseif pos + 1 < len and Source:sub(pos + 1, pos + 2) is '=' then
+            -- >= greater than or equal
+            addToken(line, op_start, 2, 1, 0)
+            pos += 2
+            col += 2
+         else
+            -- > greater than
+            addToken(line, op_start, 1, 1, 0)
+            pos++
+            col++
+         end
+
+      elseif c is '!' then
+         op_start = col
+         if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '=' then
+            -- != not equal
+            addToken(line, op_start, 2, 1, 0)
+            pos += 2
+            col += 2
+         else
+            -- ! (used in flags like '!READ')
+            pos++
+            col++
+         end
+
+      elseif c is '&' then
+         -- & bitwise AND
+         addToken(line, col, 1, 1, 0)
+         pos++
+         col++
+
+      elseif c is '~' then
+         -- ~ bitwise NOT
+         addToken(line, col, 1, 1, 0)
+         pos++
+         col++
+
+      elseif c is '^' then
+         -- ^ exponentiation
+         addToken(line, col, 1, 1, 0)
+         pos++
+         col++
+
+      elseif c is '#' then
+         -- # length operator
+         addToken(line, col, 1, 1, 0)
+         pos++
+         col++
+
       else
-         -- Skip other characters (operators, punctuation, etc.)
+         -- Skip other characters (punctuation, brackets, etc.)
          pos++
          col++
       end
