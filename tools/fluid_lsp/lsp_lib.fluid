@@ -14,14 +14,14 @@
    include 'network'
    json = require('json')
 
-   lsp = { }
+   lsp = { } -- Library export
 
    glTime = obj.new('time')
 
-   -- Document storage for open files
+   -- Document storage for open files.  URI indexed
    glDocuments = { }
 
-   -- Token cache for delta semantic tokens
+   -- Token cache for delta semantic tokens.  URI indexed
    -- Structure: { [uri] = { resultId = number, data = { ... } } }
    glTokenCache = { }
    glNextResultId = 1
@@ -30,7 +30,8 @@
 -- Semantic Token Types and Modifiers (LSP standard)
 
 -- Token types - order matters, index is used in the protocol
-TOKEN_TYPES = {
+
+TOKEN_TYPES = array<string> {
    'keyword',        -- 0: if, while, for, etc.
    'operator',       -- 1: and, or, not, is
    'variable',       -- 2: regular variables
@@ -47,7 +48,7 @@ TOKEN_TYPES = {
 }
 
 -- Token modifiers (bitfield)
-TOKEN_MODIFIERS = {
+TOKEN_MODIFIERS = array<string> {
    'declaration',    -- 0: variable/function declaration
    'definition',     -- 1: definition site
    'readonly',       -- 2: constants
@@ -107,22 +108,24 @@ FLUID_MODULES = {
 ----------------------------------------------------------------------------------------------------------------------
 -- Utility Functions
 
-function timestamp()
+function timestamp():str
    glTime.acQuery()
    return string.format('%04d-%02d-%02d %02d:%02d:%02d',
       glTime.year, glTime.month, glTime.day, glTime.hour, glTime.minute, glTime.second)
 end
 
-function logMessage(Self, Message)
-   if Self.logMessage then
-      Self.logMessage('[' .. timestamp() .. '] ' .. Message)
+function logMessage(Self:table, Message:str)
+   Self?.logMessage('[' .. timestamp() .. '] ' .. Message)
+end
+
+function logVerbose(Self:table, Message:str)
+   if Self.verbose then
+      Self?.logMessage('[' .. timestamp() .. '] [DEBUG] ' .. Message)
    end
 end
 
-function logVerbose(Self, Message)
-   if Self.verbose and Self.logMessage then
-      Self.logMessage('[' .. timestamp() .. '] [DEBUG] ' .. Message)
-   end
+function logWarning(Self:table, Message:str)
+   Self?.logMessage('[' .. timestamp() .. '] [WARN] ' .. Message)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -136,10 +139,7 @@ end
 
 function parseHeader(Buffer:str):<str,num,str>
    header_end = Buffer:find('\r\n\r\n')
-   if not header_end then
-      return nil, nil, nil  -- Need more data
-   end
-
+   header_end ?? return nil, nil, nil  -- Need more data
    header_section = Buffer:sub(0, header_end)
    content_length = nil
 
@@ -151,22 +151,19 @@ function parseHeader(Buffer:str):<str,num,str>
       end
    end
 
-   if not content_length then
-      return nil, nil, 'Missing Content-Length header'
-   end
-
+   content_length ?? return nil, nil, 'Missing Content-Length header'
    return content_length, header_end + 4, nil  -- +4 for \r\n\r\n
 end
 
+----------------------------------------------------------------------------------------------------------------------
 -- Parse a JSON-RPC 2.0 message
+
 function parseMessage(JsonBody)
    local success, msg = pcall(function()
       return json.decode(JsonBody)
    end)
 
-   if not success then
-      return nil, 'JSON parse error: ' .. tostring(msg)
-   end
+   success ?? return nil, 'JSON parse error: ' .. tostring(msg)
 
    if msg.jsonrpc != '2.0' then
       return nil, 'Invalid JSON-RPC version: ' .. tostring(msg.jsonrpc)
@@ -184,9 +181,7 @@ function formatResponse(ResponseTable:table):str
 end
 
 function sendResponse(Self, ClientSocket, ResponseTable, RequestLog)
-   if not ResponseTable then
-      return  -- Notifications don't get responses
-   end
+   ResponseTable ?? return -- Notifications don't get responses
 
    formatted = formatResponse(ResponseTable)
    err = ClientSocket.acWrite(formatted)
@@ -213,9 +208,9 @@ function positionToOffset(Content, Line, Character)
    while current_line < Line and offset < #Content do
       c = Content:sub(offset, offset + 1)
       if c is '\n' then
-         current_line += 1
+         current_line++
       end
-      offset += 1
+      offset++
    end
 
    -- Add character offset within the line
@@ -261,8 +256,9 @@ end
 
 -- Tokenize a Fluid source file and return semantic tokens
 -- Returns array of tokens: { line, startChar, length, tokenType, tokenModifiers }
-function tokenizeFluid(Source)
-   tokens = { }
+
+function tokenizeFluid(Source:str):array
+   tokens = array<table>
    line = 0
    col = 0
    pos = 0
@@ -271,7 +267,7 @@ function tokenizeFluid(Source)
    -- Helper to add a token (skips zero-length tokens)
    function addToken(TokenLine, TokenCol, TokenLen, TokenType, TokenMod)
       if TokenLen <= 0 then return end  -- Skip invalid tokens
-      table.insert(tokens, {
+      tokens:push({
          line   = TokenLine,
          char   = TokenCol,
          length = TokenLen,
@@ -524,22 +520,23 @@ function tokenizeFluid(Source)
    return tokens
 end
 
+----------------------------------------------------------------------------------------------------------------------
 -- Encode tokens into LSP semantic tokens format (delta-encoded integers)
 
-function encodeSemanticTokens(Tokens)
-   data = { }
+function encodeSemanticTokens(Tokens:array):array
+   data = array<int>
    prev_line = 0
    prev_char = 0
 
-   for _, tok in ipairs(Tokens) do
+   for tok in values(Tokens) do
       delta_line = tok.line - prev_line
       delta_char = (delta_line is 0) and (tok.char - prev_char) or tok.char
 
-      table.insert(data, delta_line)
-      table.insert(data, delta_char)
-      table.insert(data, tok.length)
-      table.insert(data, tok.type)
-      table.insert(data, tok.modifiers)
+      data:push(delta_line)
+      data:push(delta_char)
+      data:push(tok.length)
+      data:push(tok.type)
+      data:push(tok.modifiers)
 
       prev_line = tok.line
       prev_char = tok.char
@@ -548,9 +545,11 @@ function encodeSemanticTokens(Tokens)
    return data
 end
 
+----------------------------------------------------------------------------------------------------------------------
 -- Compute semantic token edits between old and new data arrays
 -- Returns array of SemanticTokensEdit: { start, deleteCount, data? }
-function computeTokenEdits(OldData, NewData)
+
+function computeTokenEdits(OldData:array, NewData:array):array
    old_len = #OldData
    new_len = #NewData
 
@@ -567,7 +566,7 @@ function computeTokenEdits(OldData, NewData)
          end
       end
       if not match then break end
-      prefix_tokens += 1
+      prefix_tokens++
    end
 
    -- Find common suffix (in groups of 5 integers = 1 token)
@@ -587,7 +586,7 @@ function computeTokenEdits(OldData, NewData)
          end
       end
       if not match then break end
-      suffix_tokens += 1
+      suffix_tokens++
    end
 
    -- Calculate the range that differs
@@ -600,7 +599,7 @@ function computeTokenEdits(OldData, NewData)
 
    -- If nothing changed, return empty edits
    if delete_count is 0 and insert_count is 0 then
-      return { }
+      return array<table>
    end
 
    -- Build the edit
@@ -611,13 +610,13 @@ function computeTokenEdits(OldData, NewData)
 
    -- Include new data if we're inserting anything
    if insert_count > 0 then
-      edit.data = { }
+      edit.data = array<int>
       for i = prefix_ints, prefix_ints + insert_count - 1 do
-         table.insert(edit.data, NewData[i])
+         edit.data:push(NewData[i])
       end
    end
 
-   return { edit }
+   return array<table> { edit }
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -742,6 +741,7 @@ function registerCoreHandlers(Self)
    -- Semantic Tokens
 
    -- textDocument/semanticTokens/full: Return all semantic tokens for a document
+
    Self._handlers['textDocument/semanticTokens/full'] = function(Msg, State)
       uri = Msg.params.textDocument.uri
       doc = glDocuments[uri]
@@ -751,7 +751,7 @@ function registerCoreHandlers(Self)
          return {
             jsonrpc = '2.0',
             id = Msg.id,
-            result = { data = {} }
+            result = { data = array<int> }
          }
       end
 
@@ -762,7 +762,7 @@ function registerCoreHandlers(Self)
 
       -- Generate resultId and cache for delta requests
       result_id = tostring(glNextResultId)
-      glNextResultId += 1
+      glNextResultId++
 
       glTokenCache[uri] = {
          resultId = result_id,
@@ -792,7 +792,7 @@ function registerCoreHandlers(Self)
          return {
             jsonrpc = '2.0',
             id = Msg.id,
-            result = { data = {} }
+            result = { data = array<int> }
          }
       end
 
@@ -800,13 +800,13 @@ function registerCoreHandlers(Self)
       cached = glTokenCache[uri]
       if not cached or cached.resultId != previous_result_id then
          -- Can't compute delta, return full tokens
-         logVerbose(Self, 'Cannot compute delta (no cache or resultId mismatch), returning full tokens')
+         logWarning(Self, 'Cannot compute delta (no cache or resultId mismatch), returning full tokens')
 
          tokens = tokenizeFluid(doc.content)
          encoded = encodeSemanticTokens(tokens)
 
          result_id = tostring(glNextResultId)
-         glNextResultId += 1
+         glNextResultId++
 
          glTokenCache[uri] = {
             resultId = result_id,
@@ -834,7 +834,7 @@ function registerCoreHandlers(Self)
 
       -- Generate new resultId and update cache
       result_id = tostring(glNextResultId)
-      glNextResultId += 1
+      glNextResultId++
 
       glTokenCache[uri] = {
          resultId = result_id,
@@ -843,7 +843,7 @@ function registerCoreHandlers(Self)
 
       -- Calculate edit size for logging
       edit_size = 0
-      for _, edit in ipairs(edits) do
+      for edit in values(edits) do
          edit_size += (edit.data and #edit.data or 0)
       end
 
@@ -907,13 +907,13 @@ function processIncoming(Self, ClientSocket)
 
    -- Initialize state on first call
    if not state.initialised then
-      state.buffer = ''
-      state.phase = 'READING_HEADER'
-      state.content_length = nil
-      state.initialized = false
+      state.buffer             = ''
+      state.phase              = 'READING_HEADER'
+      state.content_length     = nil
+      state.initialized        = false
       state.shutdown_requested = false
-      state.should_disconnect = false
-      state.initialised = true
+      state.should_disconnect  = false
+      state.initialised        = true
       logVerbose(Self, 'New client connection initialized')
    end
 
@@ -928,9 +928,7 @@ function processIncoming(Self, ClientSocket)
       return
    end
 
-   if bytes_read is 0 then
-      return
-   end
+   if bytes_read is 0 then return end
 
    -- Accumulate data
    state.buffer ..= buffer:sub(0, bytes_read)
