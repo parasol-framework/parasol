@@ -141,7 +141,7 @@ static void LJ_FASTCALL recff_nyi(jit_State* J, RecordFFData* rd)
             op == BC_RETM or op == BC_TSETM)) {
             switch (J->fn->c.ffid) {
             case FF_error:
-            case FF_debug_sethook:
+            case FF_debug_setHook:
             case FF_jit_flush:
                break;  //  Don't stitch across special builtins.
             default:
@@ -1396,7 +1396,7 @@ static void LJ_FASTCALL recff_table_clear(jit_State* J, RecordFFData* rd)
 //********************************************************************************************************************
 // Debug library fast functions
 
-static void LJ_FASTCALL recff_debug_getmetatable(jit_State* J, RecordFFData* rd)
+static void LJ_FASTCALL recff_debug_getMetatable(jit_State* J, RecordFFData* rd)
 {
    GCtab* mt;
    TRef mtref;

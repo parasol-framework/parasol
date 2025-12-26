@@ -1,10 +1,40 @@
-/*
-** Debug library.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-**
-** Major portions taken verbatim or adapted from the Lua interpreter.
-** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
-*/
+// Debug library.
+// Copyright (C) 2025 Paul Manias
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
+//
+// Major portions taken verbatim or adapted from the Lua interpreter.
+// Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
+//
+// The debug library provides introspection functions for examining and manipulating the Lua runtime
+// environment.  It includes standard Lua debug functions as well as Parasol-specific extensions for
+// code validation and annotation management.
+//
+//   debug.getRegistry()         - Returns the Lua registry table
+//   debug.getMetatable(obj)     - Returns the metatable of any object
+//   debug.setMetatable(obj, mt) - Sets the metatable of any object
+//   debug.getEnv(obj)           - Returns the environment of a function/thread/userdata
+//   debug.setEnv(obj, env)      - Sets the environment of a function/thread/userdata
+//   debug.getInfo(f [, what])   - Returns debug information about a function or stack level
+//   debug.getLocal(level, idx)  - Returns local variable name and value at stack level
+//   debug.setLocal(level, idx, val) - Sets local variable value at stack level
+//   debug.getUpvalue(f, idx)    - Returns upvalue name and value from a function
+//   debug.setUpvalue(f, idx, val) - Sets upvalue value in a function
+//   debug.upvalueID(f, idx)     - Returns unique identifier for an upvalue
+//   debug.upvalueJoin(f1, n1, f2, n2) - Makes upvalue n1 of f1 share storage with upvalue n2 of f2
+//   debug.getUserValue(u)       - Returns the environment table of a userdata
+//   debug.setUserValue(u, t)    - Sets the environment table of a userdata
+//   debug.setHook([hook, mask [, count]]) - Sets the debug hook
+//   debug.getHook()             - Returns the current hook settings
+//   debug.debug()               - Enters interactive debug mode
+//   debug.traceback([msg [, level]]) - Returns a traceback string
+//   debug.validate(code [, flags]) - Parses code and returns diagnostics without execution
+//   debug.locality(name [, level]) - Returns locality of a variable: "local", "upvalue", "global", or "nil"
+//   debug.anno.get(func)        - Returns annotation entry for a function
+//   debug.anno.set(func, annotations [, source [, name]]) - Sets annotations for a function
+//   debug.anno.list()           - Returns shallow copy of entire annotation table
+//
+// Note: Local variable and upvalue indices in this implementation are 0-based, consistent with
+// Fluid's zero-based indexing convention.
 
 #define lib_debug_c
 #define LUA_LIB
@@ -21,63 +51,18 @@
 #include "lj_debug.h"
 #include "lib.h"
 #include "debug/error_guard.h"
+#include "parser/parser_diagnostics.h"
+#include "../../defs.h"
 
 #include <cctype>       // For isalnum, isdigit
 #include <cstdlib>      // For strtod
 #include <string_view>  // For std::string_view
 #include <charconv>     // For std::from_chars
 
-//********************************************************************************************************************
+#define LEVELS1   12   //  size of the first part of the stack
+#define LEVELS2   10   //  size of the second part of the stack
 
 #define LJLIB_MODULE_debug
-
-LJLIB_CF(debug_getregistry)
-{
-   copyTV(L, L->top++, registry(L));
-   return 1;
-}
-
-//********************************************************************************************************************
-
-LJLIB_CF(debug_getmetatable)   LJLIB_REC(.)
-{
-   lj_lib_checkany(L, 1);
-   if (not lua_getmetatable(L, 1)) {
-      setnilV(L->top - 1);
-   }
-   return 1;
-}
-
-//********************************************************************************************************************
-
-LJLIB_CF(debug_setmetatable)
-{
-   lj_lib_checktabornil(L, 2);
-   L->top = L->base + 2;
-   lua_setmetatable(L, 1);
-   return 1;
-}
-
-//********************************************************************************************************************
-
-LJLIB_CF(debug_getfenv)
-{
-   lj_lib_checkany(L, 1);
-   lua_getfenv(L, 1);
-   return 1;
-}
-
-//********************************************************************************************************************
-
-LJLIB_CF(debug_setfenv)
-{
-   lj_lib_checktab(L, 2);
-   L->top = L->base + 2;
-   if (not lua_setfenv(L, 1)) lj_err_caller(L, ErrMsg::SETFENV);
-   return 1;
-}
-
-//********************************************************************************************************************
 
 static void settabss(lua_State *L, CSTRING i, CSTRING v)
 {
@@ -85,15 +70,11 @@ static void settabss(lua_State *L, CSTRING i, CSTRING v)
    lua_setfield(L, -2, i);
 }
 
-//********************************************************************************************************************
-
 static void settabsi(lua_State *L, CSTRING i, int v)
 {
    lua_pushinteger(L, v);
    lua_setfield(L, -2, i);
 }
-
-//********************************************************************************************************************
 
 static void settabsb(lua_State *L, CSTRING i, int v)
 {
@@ -101,19 +82,7 @@ static void settabsb(lua_State *L, CSTRING i, int v)
    lua_setfield(L, -2, i);
 }
 
-//********************************************************************************************************************
-// Convert 0-based user index to 1-based internal slot number.
-// Negative indices (varargs) pass through unchanged.
-
-static int32_t debug_idx(int32_t Index)
-{
-   if (Index >= 0) return Index + 1;  // 0-based: slot 0 → internal 1
-   return Index;  // Negative (varargs) unchanged
-}
-
-//********************************************************************************************************************
-
-static lua_State* getthread(lua_State *L, int* arg)
+static lua_State * getthread(lua_State *L, int* arg)
 {
    if (L->base < L->top and tvisthread(L->base)) {
       *arg = 1;
@@ -125,8 +94,6 @@ static lua_State* getthread(lua_State *L, int* arg)
    }
 }
 
-//********************************************************************************************************************
-
 static void treatstackoption(lua_State *L, lua_State *L1, CSTRING fname)
 {
    if (L == L1) {
@@ -137,105 +104,17 @@ static void treatstackoption(lua_State *L, lua_State *L1, CSTRING fname)
    lua_setfield(L, -2, fname);
 }
 
-//********************************************************************************************************************
+// Convert 0-based user index to 1-based internal slot number.
+// Negative indices (varargs) pass through unchanged.
 
-LJLIB_CF(debug_getinfo)
+static int32_t debug_idx(int32_t Index)
 {
-   lj_Debug ar;
-   int arg, opt_f = 0, opt_L = 0;
-   lua_State *L1 = getthread(L, &arg);
-   CSTRING options = luaL_optstring(L, arg + 2, "flnSu");
-   if (lua_isnumber(L, arg + 1)) {
-      if (not lua_getstack(L1, (int)lua_tointeger(L, arg + 1), (lua_Debug*)&ar)) {
-         setnilV(L->top - 1);
-         return 1;
-      }
-   }
-   else if (L->base + arg < L->top and tvisfunc(L->base + arg)) {
-      options = lua_pushfstring(L, ">%s", options);
-      setfuncV(L1, L1->top++, funcV(L->base + arg));
-   }
-   else lj_err_arg(L, arg + 1, ErrMsg::NOFUNCL);
-
-   if (not lj_debug_getinfo(L1, options, &ar, 1)) lj_err_arg(L, arg + 2, ErrMsg::INVOPT);
-
-   lua_createtable(L, 0, 16);  //  Create result table.
-   for (; *options; options++) {
-      switch (*options) {
-         case 'S':
-            settabss(L, "source", ar.source);
-            settabss(L, "shortSource", ar.short_src);
-            settabsi(L, "lineDefined", ar.linedefined);
-            settabsi(L, "lastLineDefined", ar.lastlinedefined);
-            settabss(L, "what", ar.what);
-            break;
-         case 'l':
-            settabsi(L, "currentLine", ar.currentline);
-            break;
-         case 'u':
-            settabsi(L, "nups", ar.nups);
-            settabsi(L, "nParams", ar.nparams);
-            settabsb(L, "isVarArg", ar.isvararg);
-            break;
-         case 'n':
-            settabss(L, "name", ar.name);
-            settabss(L, "nameWhat", ar.namewhat);
-            break;
-         case 'f': opt_f = 1; break;
-         case 'L': opt_L = 1; break;
-         default: break;
-      }
-   }
-   if (opt_L) treatstackoption(L, L1, "activeLines");
-   if (opt_f) treatstackoption(L, L1, "func");
-   return 1;  //  Return result table.
+   if (Index >= 0) return Index + 1;  // 0-based: slot 0 → internal 1
+   return Index;  // Negative (varargs) unchanged
 }
 
 //********************************************************************************************************************
-
-LJLIB_CF(debug_getlocal)
-{
-   int arg;
-   lua_State *L1 = getthread(L, &arg);
-   lua_Debug ar;
-
-   int slot = debug_idx(lj_lib_checkint(L, arg + 2));
-   if (tvisfunc(L->base + arg)) {
-      L->top = L->base + arg + 1;
-      lua_pushstring(L, lua_getlocal(L, nullptr, slot));
-      return 1;
-   }
-
-   if (not lua_getstack(L1, lj_lib_checkint(L, arg + 1), &ar)) lj_err_arg(L, arg + 1, ErrMsg::LVLRNG);
-
-   if (auto name = lua_getlocal(L1, &ar, slot)) {
-      lua_xmove(L1, L, 1);
-      lua_pushstring(L, name);
-      lua_pushvalue(L, -2);
-      return 2;
-   }
-   else {
-      setnilV(L->top - 1);
-      return 1;
-   }
-}
-
-//********************************************************************************************************************
-
-LJLIB_CF(debug_setlocal)
-{
-   int arg;
-   lua_State *L1 = getthread(L, &arg);
-   lua_Debug ar;
-   TValue* tv;
-   if (not lua_getstack(L1, lj_lib_checkint(L, arg + 1), &ar)) lj_err_arg(L, arg + 1, ErrMsg::LVLRNG);
-   tv = lj_lib_checkany(L, arg + 3);
-   copyTV(L1, L1->top++, tv);
-   lua_pushstring(L, lua_setlocal(L1, &ar, debug_idx(lj_lib_checkint(L, arg + 2))));
-   return 1;
-}
-
-//********************************************************************************************************************
+// Internal helper for get/set upvalue operations
 
 static int debug_getupvalue(lua_State *L, int get)
 {
@@ -251,73 +130,6 @@ static int debug_getupvalue(lua_State *L, int get)
       return 2;
    }
    return 0;
-}
-
-//********************************************************************************************************************
-
-LJLIB_CF(debug_getupvalue)
-{
-   return debug_getupvalue(L, 1);
-}
-
-LJLIB_CF(debug_setupvalue)
-{
-   lj_lib_checkany(L, 3);
-   return debug_getupvalue(L, 0);
-}
-
-//********************************************************************************************************************
-
-LJLIB_CF(debug_upvalueid)
-{
-   GCfunc* fn = lj_lib_checkfunc(L, 1);
-   int32_t n = debug_idx(lj_lib_checkint(L, 2)) - 1;
-   if ((uint32_t)n >= fn->l.nupvalues) lj_err_arg(L, 2, ErrMsg::IDXRNG);
-   lua_pushlightuserdata(L, isluafunc(fn) ? (void*)gcref(fn->l.uvptr[n]) : (void*)&fn->c.upvalue[n]);
-   return 1;
-}
-
-//********************************************************************************************************************
-
-LJLIB_CF(debug_upvaluejoin)
-{
-   GCfunc * fn[2];
-   GCRef * p[2];
-
-   for (int i = 0; i < 2; i++) {
-      int32_t n;
-      fn[i] = lj_lib_checkfunc(L, 2 * i + 1);
-      if (not isluafunc(fn[i])) lj_err_arg(L, 2 * i + 1, ErrMsg::NOLFUNC);
-      n = debug_idx(lj_lib_checkint(L, 2 * i + 2)) - 1;
-      if ((uint32_t)n >= fn[i]->l.nupvalues) lj_err_arg(L, 2 * i + 2, ErrMsg::IDXRNG);
-      p[i] = &fn[i]->l.uvptr[n];
-   }
-   setgcrefr(*p[0], *p[1]);
-   lj_gc_objbarrier(L, fn[0], gcref(*p[1]));
-   return 0;
-}
-
-//********************************************************************************************************************
-
-LJLIB_CF(debug_getuservalue)
-{
-   TValue* o = L->base;
-   if (o < L->top and tvisudata(o)) settabV(L, o, tabref(udataV(o)->env));
-   else setnilV(o);
-   L->top = o + 1;
-   return 1;
-}
-
-//********************************************************************************************************************
-
-LJLIB_CF(debug_setuservalue)
-{
-   TValue* o = L->base;
-   if (not (o < L->top and tvisudata(o))) lj_err_argt(L, 1, LUA_TUSERDATA);
-   if (not (o + 1 < L->top and tvistab(o + 1))) lj_err_argt(L, 2, LUA_TTABLE);
-   L->top = o + 2;
-   lua_setfenv(L, 1);
-   return 1;
 }
 
 //********************************************************************************************************************
@@ -363,162 +175,16 @@ static char* unmakemask(int mask, char* smask)
 }
 
 //********************************************************************************************************************
-
-LJLIB_CF(debug_sethook)
-{
-   int arg, mask, count;
-   lua_Hook func;
-   (void)getthread(L, &arg);
-   if (lua_isnoneornil(L, arg + 1)) {
-      lua_settop(L, arg + 1);
-      func = nullptr; mask = 0; count = 0;  //  turn off hooks
-   }
-   else {
-      CSTRING smask = luaL_checkstring(L, arg + 2);
-      luaL_checktype(L, arg + 1, LUA_TFUNCTION);
-      count = luaL_optint(L, arg + 3, 0);
-      func = hookf; mask = makemask(smask, count);
-   }
-   (L->top++)->u64 = KEY_HOOK;
-   lua_pushvalue(L, arg + 1);
-   lua_rawset(L, LUA_REGISTRYINDEX);
-   lua_sethook(L, func, mask, count);
-   return 0;
-}
-
-//********************************************************************************************************************
-
-LJLIB_CF(debug_gethook)
-{
-   char buff[5];
-   int mask = lua_gethookmask(L);
-   lua_Hook hook = lua_gethook(L);
-   if (hook != nullptr and hook != hookf) {  // external hook?
-      lua_pushliteral(L, "external hook");
-   }
-   else {
-      (L->top++)->u64 = KEY_HOOK;
-      lua_rawget(L, LUA_REGISTRYINDEX);   //  get hook
-   }
-   lua_pushstring(L, unmakemask(mask, buff));
-   lua_pushinteger(L, lua_gethookcount(L));
-   return 3;
-}
-
-//********************************************************************************************************************
-
-LJLIB_CF(debug_debug)
-{
-   for (;;) {
-      char buffer[250];
-      fputs("lua_debug> ", stderr);
-      if (fgets(buffer, sizeof(buffer), stdin) == 0 ||
-         strcmp(buffer, "cont\n") == 0)
-         return 0;
-      if (luaL_loadbuffer(L, buffer, strlen(buffer), "=(debug command)") ||
-         lua_pcall(L, 0, 0, 0)) {
-         CSTRING s = lua_tostring(L, -1);
-         fputs(s ? s : "(error object is not a string)", stderr);
-         fputs("\n", stderr);
-      }
-      lua_settop(L, 0);  //  remove eventual returns
-   }
-}
-
-//********************************************************************************************************************
-
-#define LEVELS1   12   //  size of the first part of the stack
-#define LEVELS2   10   //  size of the second part of the stack
-
-LJLIB_CF(debug_traceback)
-{
-   int arg;
-   lua_State *L1 = getthread(L, &arg);
-   CSTRING msg = lua_tostring(L, arg + 1);
-   if (msg == nullptr and L->top > L->base + arg) L->top = L->base + arg + 1;
-   else luaL_traceback(L, L1, msg, lj_lib_optint(L, arg + 2, (L == L1)));
-   return 1;
-}
-
-//********************************************************************************************************************
-// Returns the locality of a variable: "local", "upvalue", "global", or "nil".
-// Usage: debug.locality(name [, level])
-//   name  - the variable name as a string
-//   level - optional stack level (default 1 = caller's frame)
-
-LJLIB_CF(debug_locality)
-{
-   int arg;
-   lua_State *L1 = getthread(L, &arg);
-
-   // Check for nil or missing argument
-   if (L->base + arg >= L->top or tvisnil(L->base + arg)) {
-      lua_pushliteral(L, "nil");
-      return 1;
-   }
-
-   CSTRING varname = luaL_checkstring(L, arg + 1);
-   int level = luaL_optint(L, arg + 2, 1);
-
-   // Get the stack frame at the specified level
-   lua_Debug ar;
-   if (not lua_getstack(L1, level, &ar)) {
-      // Invalid level - check global table only
-      lua_getglobal(L1, varname);
-      if (lua_isnil(L1, -1)) {
-         lua_pop(L1, 1);
-         lua_pushliteral(L, "nil");
-      }
-      else {
-         lua_pop(L1, 1);
-         lua_pushliteral(L, "global");
-      }
-      return 1;
-   }
-
-   // Search local variables in the frame
-   int slot = 1;
-   CSTRING name;
-   while ((name = lua_getlocal(L1, &ar, slot)) != nullptr) {
-      lua_pop(L1, 1);  // Pop the value
-      if (strcmp(name, varname) == 0) {
-         lua_pushliteral(L, "local");
-         return 1;
-      }
-      slot++;
-   }
-
-   // Get the function at this level to check upvalues
-   if (lua_getinfo(L1, "f", &ar)) {
-      int uv = 1;
-      while ((name = lua_getupvalue(L1, -1, uv)) != nullptr) {
-         lua_pop(L1, 1);  // Pop the value
-         if (strcmp(name, varname) == 0) {
-            lua_pop(L1, 1);  // Pop the function
-            lua_pushliteral(L, "upvalue");
-            return 1;
-         }
-         uv++;
-      }
-      lua_pop(L1, 1);  // Pop the function
-   }
-
-   // Check global table
-   lua_getglobal(L1, varname);
-   if (lua_isnil(L1, -1)) {
-      lua_pop(L1, 1);
-      lua_pushliteral(L, "nil");
-   }
-   else {
-      lua_pop(L1, 1);
-      lua_pushliteral(L, "global");
-   }
-   return 1;
-}
-
-//********************************************************************************************************************
-// Annotation string parser helper - parses a single value
-// Returns true on success (pushes value to stack), false on error
+// Internal helper: Parses a single annotation value from a string view.
+//
+// Supported value types:
+//   - String literals: "text" or 'text' (with escape sequences)
+//   - Boolean literals: true, false
+//   - Number literals: integer or floating-point
+//   - Array literals: [item, item, ...] or {item, item, ...}
+//
+// Returns true and pushes the value to the Lua stack on success.
+// Returns false on parse error (nothing pushed to stack).
 
 static bool parse_annotation_value(lua_State *L, std::string_view& sv)
 {
@@ -606,8 +272,22 @@ static bool parse_annotation_value(lua_State *L, std::string_view& sv)
 }
 
 //********************************************************************************************************************
-// Parses annotation string syntax like: @Test(name="foo", labels=["a","b"]); @Requires(network=true)
-// Returns true on success (pushes annotations array to stack), false on parse error
+// Internal helper: Parses an annotation string into a Lua table.
+//
+// Annotation Syntax:
+//   @Name                 - Simple annotation with no arguments
+//   @Name(key=value, ...) - Annotation with key-value arguments
+//   @Name(bareKey, ...)   - Bare identifiers are treated as key=true
+//   @Name; @Other         - Multiple annotations separated by semicolons
+//
+// Example Input:
+//   "@Test(name=\"foo\", labels=[\"a\",\"b\"]); @Requires(network=true)"
+//
+// Produces an array of annotation entries, each containing:
+//   { name = "AnnotationName", args = { key = value, ... } }
+//
+// Returns true and pushes the annotations array to the Lua stack on success.
+// Returns false on parse error (nothing pushed to stack).
 
 static bool lj_parse_annotation_string(lua_State *L, std::string_view sv)
 {
@@ -728,11 +408,674 @@ static bool lj_parse_annotation_string(lua_State *L, std::string_view sv)
 }
 
 //********************************************************************************************************************
+// debug.getRegistry():table
+//
+// Returns the Lua registry table, a pre-defined table used by C code to store Lua values.  The registry is a global
+// table accessible only from C code, used to store references that should not be accessible from Lua code.
+
+LJLIB_CF(debug_getRegistry)
+{
+   copyTV(L, L->top++, registry(L));
+   return 1;
+}
+
+//********************************************************************************************************************
+// debug.getMetatable(object:any):table
+//
+// Returns the metatable of the given object, or nil if it has no metatable.  Unlike getmetatable(), this function
+// bypasses the __metatable metamethod and always returns the actual metatable.
+
+LJLIB_CF(debug_getMetatable)   LJLIB_REC(.)
+{
+   lj_lib_checkany(L, 1);
+   if (not lua_getmetatable(L, 1)) {
+      setnilV(L->top - 1);
+   }
+   return 1;
+}
+
+//********************************************************************************************************************
+// debug.setMetatable(object:any, table):any
+//
+// Sets the metatable for the given object to the given table (which can be nil).  Returns the original object.
+// This function bypasses any __metatable protection.
+//
+// Example: debug.setMetatable(obj, { __index = defaults })
+
+LJLIB_CF(debug_setMetatable)
+{
+   lj_lib_checktabornil(L, 2);
+   L->top = L->base + 2;
+   lua_setmetatable(L, 1);
+   return 1;
+}
+
+//********************************************************************************************************************
+// debug.getEnv(object:any):table
+//
+// Returns the environment of the given object.  The object can be a Lua function, a thread, or a userdata.
+// For functions, this is the table that is used for global variable access within the function.
+//
+// Example:
+//   env = debug.getEnv(myFunction)
+//   print(env._G)
+
+LJLIB_CF(debug_getEnv)
+{
+   lj_lib_checkany(L, 1);
+   lua_getfenv(L, 1);
+   return 1;
+}
+
+//********************************************************************************************************************
+// debug.setEnv(object:any, table):any
+//
+// Sets the environment of the given object to the given table.  The object can be a Lua function, a thread,
+// or a userdata.  For functions, this changes the table used for global variable access.  Throws an error if the
+// environment cannot be set (e.g., for C functions)
+//
+//   object - A function, thread, or userdata
+//   table  - The new environment table
+//
+// Example:
+//   sandbox = { print = print }
+//   debug.setEnv(untrustedFunc, sandbox)
+
+LJLIB_CF(debug_setEnv)
+{
+   lj_lib_checktab(L, 2);
+   L->top = L->base + 2;
+   if (not lua_setfenv(L, 1)) lj_err_caller(L, ErrMsg::SETFENV);
+   return 1;
+}
+
+//********************************************************************************************************************
+// debug.getInfo([thread,] function [, what]): table
+//
+// Returns a table with information about a function or stack level.  The function can be specified as a function
+// value or as a number representing a stack level (0 = getInfo itself, 1 = function that called getInfo, etc.).
+//
+//   thread   - (optional) A thread whose stack to examine
+//   function - A function value or stack level number
+//   what     - (optional) String specifying which fields to fill (default: "flnSu"):
+//              'n' - name, nameWhat
+//              'S' - source, shortSource, lineDefined, lastLineDefined, what
+//              'l' - currentLine
+//              'u' - nups, nParams, isVarArg
+//              'f' - func (pushes the function onto the stack)
+//              'L' - activeLines (table of valid line numbers)
+//
+// Returns:
+//   table - A table containing the requested information:
+//     source         - Source file name
+//     shortSource    - Short version of source (for error messages)
+//     lineDefined    - Line where the function definition starts
+//     lastLineDefined - Line where the function definition ends
+//     what           - "Lua", "C", "main", or "tail"
+//     currentLine    - Current line being executed
+//     name           - Name of the function (if available)
+//     nameWhat       - How the name was obtained ("global", "local", "method", "field", "")
+//     nups           - Number of upvalues
+//     nParams        - Number of parameters
+//     isVarArg       - Whether the function is variadic
+//     func           - The function itself
+//     activeLines    - Table with line numbers as keys
+//
+// Returns nil if the stack level is invalid.
+
+LJLIB_CF(debug_getInfo)
+{
+   lj_Debug ar;
+   int arg, opt_f = 0, opt_L = 0;
+   lua_State *L1 = getthread(L, &arg);
+   CSTRING options = luaL_optstring(L, arg + 2, "flnSu");
+   if (lua_isnumber(L, arg + 1)) {
+      if (not lua_getstack(L1, (int)lua_tointeger(L, arg + 1), (lua_Debug*)&ar)) {
+         setnilV(L->top - 1);
+         return 1;
+      }
+   }
+   else if (L->base + arg < L->top and tvisfunc(L->base + arg)) {
+      options = lua_pushfstring(L, ">%s", options);
+      setfuncV(L1, L1->top++, funcV(L->base + arg));
+   }
+   else lj_err_arg(L, arg + 1, ErrMsg::NOFUNCL);
+
+   if (not lj_debug_getinfo(L1, options, &ar, 1)) lj_err_arg(L, arg + 2, ErrMsg::INVOPT);
+
+   lua_createtable(L, 0, 16);  //  Create result table.
+   for (; *options; options++) {
+      switch (*options) {
+         case 'S':
+            settabss(L, "source", ar.source);
+            settabss(L, "shortSource", ar.short_src);
+            settabsi(L, "lineDefined", ar.linedefined);
+            settabsi(L, "lastLineDefined", ar.lastlinedefined);
+            settabss(L, "what", ar.what);
+            break;
+         case 'l':
+            settabsi(L, "currentLine", ar.currentline);
+            break;
+         case 'u':
+            settabsi(L, "nups", ar.nups);
+            settabsi(L, "nParams", ar.nparams);
+            settabsb(L, "isVarArg", ar.isvararg);
+            break;
+         case 'n':
+            settabss(L, "name", ar.name);
+            settabss(L, "nameWhat", ar.namewhat);
+            break;
+         case 'f': opt_f = 1; break;
+         case 'L': opt_L = 1; break;
+         default: break;
+      }
+   }
+   if (opt_L) treatstackoption(L, L1, "activeLines");
+   if (opt_f) treatstackoption(L, L1, "func");
+   return 1;  //  Return result table.
+}
+
+//********************************************************************************************************************
+// debug.getLocal([thread,] level, index):<str, any>
+// debug.getLocal(func, index):str
+//
+// Returns the name and value of a local variable at the given stack level and index.  If given a function instead
+// of a level, returns only the name of the parameter at the given index (useful for introspecting parameter names).
+//
+//   thread - (optional) A thread whose stack to examine
+//   level  - Stack level (1 = function that called getLocal, etc.)
+//   func   - Alternative: a function to query parameter names
+//   index  - 0-based local variable index (negative indices access vararg values)
+//
+// Notes:
+//   - Negative indices access vararg parameters
+//   - Variables include parameters, declared locals, and temporaries
+//
+// Example:
+//   name, value = debug.getLocal(1, 0)  -- First local in caller
+//   if name then print(name, "=", value) end
+
+LJLIB_CF(debug_getLocal)
+{
+   int arg;
+   lua_State *L1 = getthread(L, &arg);
+   lua_Debug ar;
+
+   int slot = debug_idx(lj_lib_checkint(L, arg + 2));
+   if (tvisfunc(L->base + arg)) {
+      L->top = L->base + arg + 1;
+      lua_pushstring(L, lua_getlocal(L, nullptr, slot));
+      return 1;
+   }
+
+   if (not lua_getstack(L1, lj_lib_checkint(L, arg + 1), &ar)) lj_err_arg(L, arg + 1, ErrMsg::LVLRNG);
+
+   if (auto name = lua_getlocal(L1, &ar, slot)) {
+      lua_xmove(L1, L, 1);
+      lua_pushstring(L, name);
+      lua_pushvalue(L, -2);
+      return 2;
+   }
+   else {
+      setnilV(L->top - 1);
+      return 1;
+   }
+}
+
+//********************************************************************************************************************
+// debug.setLocal([thread,] level, index, value): str
+//
+// Sets the value of a local variable at the given stack level and index.  Returns the name of the variable,
+// or nil if the index is out of range.
+//
+//   thread - (optional) A thread whose stack to modify
+//   level  - Stack level (1 = function that called setLocal, etc.)
+//   index  - 0-based local variable index (negative indices access vararg values)
+//   value  - The new value to assign
+//
+// Note: This modifies the actual variable in the running code
+//
+// Example:
+//   debug.setLocal(1, 0, "new value")  -- Set first local in caller
+
+LJLIB_CF(debug_setLocal)
+{
+   int arg;
+   lua_State *L1 = getthread(L, &arg);
+   lua_Debug ar;
+   TValue *tv;
+   if (not lua_getstack(L1, lj_lib_checkint(L, arg + 1), &ar)) lj_err_arg(L, arg + 1, ErrMsg::LVLRNG);
+   tv = lj_lib_checkany(L, arg + 3);
+   copyTV(L1, L1->top++, tv);
+   lua_pushstring(L, lua_setlocal(L1, &ar, debug_idx(lj_lib_checkint(L, arg + 2))));
+   return 1;
+}
+
+//********************************************************************************************************************
+// debug.getUpvalue(func, index):<str, any>
+//
+// Returns the name and value of an upvalue from a function.  Upvalues are external local variables that the
+// function uses and that are captured in the function's closure.  For C functions, upvalue names are always ""
+//
+//   func  - A Lua function
+//   index - 0-based upvalue index
+
+LJLIB_CF(debug_getUpvalue)
+{
+   return debug_getupvalue(L, 1);
+}
+
+//********************************************************************************************************************
+// debug.setUpvalue(func, index, value):str
+//
+// Sets the value of an upvalue in a function.  Returns the name of the upvalue, or nil if the index is out of range.
+// Note: This modifies the upvalue for all closures sharing it.
+//
+//   func  - A Lua function
+//   index - 0-based upvalue index
+//   value - The new value to assign
+//
+// Example:
+//   debug.setUpvalue(myFunc, 0, newValue)
+
+LJLIB_CF(debug_setUpvalue)
+{
+   lj_lib_checkany(L, 3);
+   return debug_getupvalue(L, 0);
+}
+
+//********************************************************************************************************************
+// debug.upvalueID(func, index):any
+//
+// Returns a unique identifier for the upvalue at the given index in the given function.  This identifier can be
+// used to check if two closures share the same upvalue (by comparing their upvalue IDs).
+// Two upvalues share storage if and only if they have the same ID
+//
+//   func  - A function
+//   index - 0-based upvalue index
+//
+// Example:
+//   id1 = debug.upvalueID(func1, 0)
+//   id2 = debug.upvalueID(func2, 0)
+//   if id1 is id2 then print("Same upvalue") end
+
+LJLIB_CF(debug_upvalueID)
+{
+   GCfunc* fn = lj_lib_checkfunc(L, 1);
+   int32_t n = debug_idx(lj_lib_checkint(L, 2)) - 1;
+   if ((uint32_t)n >= fn->l.nupvalues) lj_err_arg(L, 2, ErrMsg::IDXRNG);
+   lua_pushlightuserdata(L, isluafunc(fn) ? (void*)gcref(fn->l.uvptr[n]) : (void*)&fn->c.upvalue[n]);
+   return 1;
+}
+
+//********************************************************************************************************************
+// debug.upvalueJoin(func1, n1, func2, n2)
+//
+// Makes the n1-th upvalue of func1 refer to the n2-th upvalue of func2.  After this call, both upvalues share
+// the same storage - modifying one will affect the other.
+//
+//   func1 - First Lua function (must be a Lua function, not C)
+//   n1    - 0-based upvalue index in func1
+//   func2 - Second Lua function (must be a Lua function, not C)
+//   n2    - 0-based upvalue index in func2
+//
+// Notes:
+//   - Both functions must be Lua functions (not C functions)
+//   - After joining, both upvalues share the same value
+//
+// Example:
+//   -- Make counter1 and counter2 share the same 'count' upvalue
+//   debug.upvalueJoin(counter1, 0, counter2, 0)
+
+LJLIB_CF(debug_upvalueJoin)
+{
+   GCfunc * fn[2];
+   GCRef * p[2];
+
+   for (int i = 0; i < 2; i++) {
+      int32_t n;
+      fn[i] = lj_lib_checkfunc(L, 2 * i + 1);
+      if (not isluafunc(fn[i])) lj_err_arg(L, 2 * i + 1, ErrMsg::NOLFUNC);
+      n = debug_idx(lj_lib_checkint(L, 2 * i + 2)) - 1;
+      if ((uint32_t)n >= fn[i]->l.nupvalues) lj_err_arg(L, 2 * i + 2, ErrMsg::IDXRNG);
+      p[i] = &fn[i]->l.uvptr[n];
+   }
+   setgcrefr(*p[0], *p[1]);
+   lj_gc_objbarrier(L, fn[0], gcref(*p[1]));
+   return 0;
+}
+
+//********************************************************************************************************************
+// debug.getUserValue(userdata):table
+//
+// Returns the Lua value (typically a table) associated with the given userdata, or nil if the userdata has no
+// associated value or if the argument is not a userdata.
+//
+//   userdata - A userdata value
+
+LJLIB_CF(debug_getUserValue)
+{
+   TValue *o = L->base;
+   if (o < L->top and tvisudata(o)) settabV(L, o, tabref(udataV(o)->env));
+   else setnilV(o);
+   L->top = o + 1;
+   return 1;
+}
+
+//********************************************************************************************************************
+// debug.setUserValue(userdata, value):any
+//
+// Sets the Lua value (typically a table) associated with the given userdata.  Returns the userdata.
+//
+//   userdata - A userdata value
+//   value    - A table to associate with the userdata
+//
+// Throws an error if the first argument is not a userdata or the second is not a table
+
+LJLIB_CF(debug_setUserValue)
+{
+   TValue* o = L->base;
+   if (not (o < L->top and tvisudata(o))) lj_err_argt(L, 1, LUA_TUSERDATA);
+   if (not (o + 1 < L->top and tvistab(o + 1))) lj_err_argt(L, 2, LUA_TTABLE);
+   L->top = o + 2;
+   lua_setfenv(L, 1);
+   return 1;
+}
+
+//********************************************************************************************************************
+// debug.setHook([thread,] hook, mask [, count])
+//
+// Sets the given function as a debug hook.  The hook function is called for the events specified in the mask
+// string.  When called without arguments, turns off the hook.
+//
+//   thread - (optional) Thread to set the hook for
+//   hook   - A function to be called on hook events, or nil to turn off hooks
+//   mask   - A string specifying when the hook is called:
+//            'c' - Call: hook is called whenever Lua calls a function
+//            'r' - Return: hook is called whenever Lua returns from a function
+//            'l' - Line: hook is called whenever Lua executes a new line of code
+//   count  - (optional) If > 0, hook is also called after every 'count' instructions
+//
+// Hook Function Signature:
+//   hook(event, line)
+//   - event: "call", "return", "line", "count", or "tail return"
+//   - line: Current line number (for "line" events), or nil
+
+LJLIB_CF(debug_setHook)
+{
+   int arg, mask, count;
+   lua_Hook func;
+
+   (void)getthread(L, &arg);
+   if (lua_isnoneornil(L, arg + 1)) {
+      lua_settop(L, arg + 1);
+      func = nullptr; mask = 0; count = 0;  //  turn off hooks
+   }
+   else {
+      CSTRING smask = luaL_checkstring(L, arg + 2);
+      luaL_checktype(L, arg + 1, LUA_TFUNCTION);
+      count = luaL_optint(L, arg + 3, 0);
+      func = hookf; mask = makemask(smask, count);
+   }
+
+   (L->top++)->u64 = KEY_HOOK;
+   lua_pushvalue(L, arg + 1);
+   lua_rawset(L, LUA_REGISTRYINDEX);
+   lua_sethook(L, func, mask, count);
+   return 0;
+}
+
+//********************************************************************************************************************
+// debug.getHook([thread]):<hook, mask, count>
+//
+// Returns the current hook settings for the given thread.
+//
+// Returns:
+//   hook  - The current hook function, or nil if none is set
+//   mask  - A string with the current hook mask ('c', 'r', 'l')
+//   count - The current hook count
+
+LJLIB_CF(debug_getHook)
+{
+   char buff[5];
+   int mask = lua_gethookmask(L);
+   lua_Hook hook = lua_gethook(L);
+   if (hook != nullptr and hook != hookf) {  // external hook?
+      lua_pushliteral(L, "external hook");
+   }
+   else {
+      (L->top++)->u64 = KEY_HOOK;
+      lua_rawget(L, LUA_REGISTRYINDEX);   //  get hook
+   }
+   lua_pushstring(L, unmakemask(mask, buff));
+   lua_pushinteger(L, lua_gethookcount(L));
+   return 3;
+}
+
+//********************************************************************************************************************
+// debug.traceback([thread,] [message [, level]]):str
+//
+// Returns a string with a traceback of the call stack.  The optional message string is prepended to the traceback.
+// The optional level number specifies at which level to start the traceback (default is 1, the function calling
+// traceback).
+//
+//   thread  - (optional) Thread to get the traceback for
+//   message - (optional) A message to prepend to the traceback
+//   level   - (optional) The stack level to start from (default: 1)
+
+LJLIB_CF(debug_traceback)
+{
+   int arg;
+   lua_State *L1 = getthread(L, &arg);
+   CSTRING msg = lua_tostring(L, arg + 1);
+   if (msg == nullptr and L->top > L->base + arg) L->top = L->base + arg + 1;
+   else luaL_traceback(L, L1, msg, lj_lib_optint(L, arg + 2, (L == L1)));
+   return 1;
+}
+
+//********************************************************************************************************************
+// debug.validate(statement [, flags]) - Parse code and return diagnostics without execution
+//
+// Returns a table with:
+//   success     - boolean: true if no errors
+//   diagnostics - array of diagnostic entries, each containing:
+//     line      - 0-based line number
+//     column    - 0-based column number
+//     endColumn - 0-based end column (column + 1 as approximation)
+//     severity  - 0=Info, 1=Warning, 2=Error
+//     code      - string error code (e.g., "UnexpectedToken")
+//     message   - human-readable error message
+//
+// Optional flags parameter (string, reserved for future use):
+//   "s" - syntax only (default, just parse)
+//   "t" - include type checking (future)
+
+static CSTRING diagnostic_code_name(ParserErrorCode Code)
+{
+   switch (Code) {
+      case ParserErrorCode::None:                   return "None";
+      case ParserErrorCode::UnexpectedToken:        return "UnexpectedToken";
+      case ParserErrorCode::ExpectedToken:          return "ExpectedToken";
+      case ParserErrorCode::ExpectedIdentifier:     return "ExpectedIdentifier";
+      case ParserErrorCode::UnexpectedEndOfFile:    return "UnexpectedEndOfFile";
+      case ParserErrorCode::InternalInvariant:      return "InternalInvariant";
+      case ParserErrorCode::ExpectedTypeName:       return "ExpectedTypeName";
+      case ParserErrorCode::UnknownTypeName:        return "UnknownTypeName";
+      case ParserErrorCode::TypeMismatchArgument:   return "TypeMismatchArgument";
+      case ParserErrorCode::TypeMismatchAssignment: return "TypeMismatchAssignment";
+      case ParserErrorCode::TypeMismatchReturn:     return "TypeMismatchReturn";
+      case ParserErrorCode::DeferredTypeRequired:   return "DeferredTypeRequired";
+      case ParserErrorCode::UndefinedVariable:      return "UndefinedVariable";
+      case ParserErrorCode::ThunkDirectCall:        return "ThunkDirectCall";
+      case ParserErrorCode::ReturnTypeMismatch:     return "ReturnTypeMismatch";
+      case ParserErrorCode::ReturnCountMismatch:    return "ReturnCountMismatch";
+      case ParserErrorCode::RecursiveFunctionNeedsType: return "RecursiveFunctionNeedsType";
+      case ParserErrorCode::TooManyReturnTypes:     return "TooManyReturnTypes";
+      case ParserErrorCode::RecoverySkippedTokens:  return "RecoverySkippedTokens";
+      default: return "Unknown";
+   }
+}
+
+LJLIB_CF(debug_validate)
+{
+   CSTRING statement = luaL_checkstring(L, 1);
+   // flags parameter reserved for future use (type checking, etc.)
+   // CSTRING flags = luaL_optstring(L, 2, "s");
+
+   // Create result table
+   lua_newtable(L);
+
+   // Check that script context is available
+   if (L->script IS nullptr) {
+      settabsb(L, "success", false);
+      lua_newtable(L);
+      lua_setfield(L, -2, "diagnostics");
+      return 1;
+   }
+
+   // Parse the statement using luaL_loadbuffer with DIAGNOSE mode
+   // This requires temporarily enabling JOF::DIAGNOSE
+   auto *prv = (prvFluid *)L->script->ChildPrivate;
+   JOF old_options = prv ? prv->JitOptions : JOF::NIL;
+   if (prv) prv->JitOptions |= JOF::DIAGNOSE;
+
+   int parse_result = luaL_loadbuffer(L, statement, strlen(statement), "=validate");
+
+   if (prv) prv->JitOptions = old_options;  // Restore options
+
+   // Pop the compiled chunk or error message
+   lua_pop(L, 1);
+
+   // Build diagnostics array
+   lua_newtable(L);
+   int diag_idx = 0;
+
+   if (L->parser_diagnostics) {
+      auto *diagnostics = (ParserDiagnostics*)L->parser_diagnostics;
+      for (const auto &entry : diagnostics->entries()) {
+         lua_newtable(L);  // diagnostic entry
+
+         SourceSpan span = entry.token.span();
+         settabsi(L, "line", span.line);
+         settabsi(L, "column", span.column);
+         settabsi(L, "endColumn", span.column + 1);  // Approximation
+         settabsi(L, "severity", int(entry.severity));
+         settabss(L, "code", diagnostic_code_name(entry.code));
+         settabss(L, "message", entry.message.empty() ? "Syntax error" : entry.message.c_str());
+
+         lua_rawseti(L, -2, diag_idx++);
+      }
+
+      // Clear diagnostics for next use
+      delete diagnostics;
+      L->parser_diagnostics = nullptr;
+   }
+
+   lua_setfield(L, -2, "diagnostics");
+
+   // Set success field
+   settabsb(L, "success", parse_result IS 0);
+
+   return 1;
+}
+
+//********************************************************************************************************************
+// debug.locality([thread,] name [, level]):str
+//
+// Returns the locality of a variable, indicating where it is defined in the current scope.  This is useful for
+// debugging and introspection to understand variable resolution.
+//
+//   thread - (optional) Thread whose stack to examine
+//   name   - The variable name as a string
+//   level  - (optional) Stack level to examine (default: 1 = caller's frame)
+//
+// Returns: local / upvalue / global / nil
+//
+// Notes:
+//   - Search order: locals -> upvalues -> globals
+//   - Returns the first match found
+
+LJLIB_CF(debug_locality)
+{
+   int arg;
+   lua_State *L1 = getthread(L, &arg);
+
+   // Check for nil or missing argument
+   if (L->base + arg >= L->top or tvisnil(L->base + arg)) {
+      lua_pushliteral(L, "nil");
+      return 1;
+   }
+
+   CSTRING varname = luaL_checkstring(L, arg + 1);
+   int level = luaL_optint(L, arg + 2, 1);
+
+   // Get the stack frame at the specified level
+   lua_Debug ar;
+   if (not lua_getstack(L1, level, &ar)) {
+      // Invalid level - check global table only
+      lua_getglobal(L1, varname);
+      if (lua_isnil(L1, -1)) {
+         lua_pop(L1, 1);
+         lua_pushliteral(L, "nil");
+      }
+      else {
+         lua_pop(L1, 1);
+         lua_pushliteral(L, "global");
+      }
+      return 1;
+   }
+
+   // Search local variables in the frame
+   int slot = 1;
+   CSTRING name;
+   while ((name = lua_getlocal(L1, &ar, slot)) != nullptr) {
+      lua_pop(L1, 1);  // Pop the value
+      if (strcmp(name, varname) == 0) {
+         lua_pushliteral(L, "local");
+         return 1;
+      }
+      slot++;
+   }
+
+   // Get the function at this level to check upvalues
+   if (lua_getinfo(L1, "f", &ar)) {
+      int uv = 1;
+      while ((name = lua_getupvalue(L1, -1, uv)) != nullptr) {
+         lua_pop(L1, 1);  // Pop the value
+         if (strcmp(name, varname) == 0) {
+            lua_pop(L1, 1);  // Pop the function
+            lua_pushliteral(L, "upvalue");
+            return 1;
+         }
+         uv++;
+      }
+      lua_pop(L1, 1);  // Pop the function
+   }
+
+   // Check global table
+   lua_getglobal(L1, varname);
+   if (lua_isnil(L1, -1)) {
+      lua_pop(L1, 1);
+      lua_pushliteral(L, "nil");
+   }
+   else {
+      lua_pop(L1, 1);
+      lua_pushliteral(L, "global");
+   }
+   return 1;
+}
+
+//********************************************************************************************************************
 
 #define LJLIB_MODULE_debug_anno
 
 //********************************************************************************************************************
-// debug.anno.get(func) - Returns annotation entry for a function, or nil
+// debug.anno.get(func): table
+//
+// Returns the annotation entry for a function, or nil if no annotations are registered.  The annotation system
+// allows attaching metadata to functions for testing frameworks, documentation generators, and other tools.
+//
+//   func - A function to look up annotations for
 
 LJLIB_CF(debug_anno_get)
 {
@@ -754,10 +1097,25 @@ LJLIB_CF(debug_anno_get)
 }
 
 //********************************************************************************************************************
-// debug.anno.set(func, annotations [, source [, name]]) - Sets annotations for a function
-// annotations can be a table or a string to parse
-// source is optional and defaults to "<runtime>"
-// name is optional function name (falls back to debug info, then "<anonymous>")
+// debug.anno.set(func, annotations [, source [, name]]): table
+//
+// Sets annotations for a function.  Annotations can be provided as a table (for programmatic use) or as a string
+// in annotation syntax (for parsing).  The annotations are stored in the global _ANNO table, indexed by function.
+// Returns the annotation entry that was created/updated.
+//
+//   func        - The function to annotate
+//   annotations - Either:
+//                 - A table/array of annotation objects
+//                 - A string in annotation syntax: "@Name(key=value, ...)"
+//   source      - (optional) Source identifier, defaults to "<runtime>"
+//   name        - (optional) Function name, falls back to debug info or "<anonymous>"
+//
+// Annotation String Syntax:
+//   "@Test"                         - Simple annotation
+//   "@Test(name=\"foo\")"           - With string argument
+//   "@Test(enabled=true, count=5)"  - With boolean and number arguments
+//   "@Test(labels=[\"a\", \"b\"])"  - With array argument
+//   "@Test; @Requires(network)"     - Multiple annotations
 
 LJLIB_CF(debug_anno_set)
 {
@@ -829,7 +1187,20 @@ LJLIB_CF(debug_anno_set)
 }
 
 //********************************************************************************************************************
-// debug.anno.list() - Returns shallow copy of entire _ANNO table
+// debug.anno.list(): table
+//
+// Returns a shallow copy of the entire _ANNO table, which contains all registered function annotations.
+// The returned table is indexed by function references, with each value being an annotation entry.
+//
+// Notes:
+//   - Returns an empty table if no annotations have been registered
+//   - The returned table is a copy; modifying it does not affect _ANNO
+//
+// Example:
+//   all_annotations = debug.anno.list()
+//   for func, entry in pairs(all_annotations) do
+//      print(entry.name, #entry.annotations, "annotations")
+//   end
 
 LJLIB_CF(debug_anno_list)
 {
@@ -861,11 +1232,11 @@ extern int luaopen_debug(lua_State *L)
 {
    LJ_LIB_REG(L, LUA_DBLIBNAME, debug);
 
-   // Register debug.anno as a subtable of debug
-   lua_getglobal(L, LUA_DBLIBNAME);  // Get the debug table we just created
+   // Register debug.anno as a sub-table of debug
+   lua_getglobal(L, LUA_DBLIBNAME);     // Get the debug table we just created
    LJ_LIB_REG(L, nullptr, debug_anno);  // Create anno table without setting in globals
-   lua_setfield(L, -2, "anno");      // debug.anno = anno_table
-   lua_pop(L, 1);                     // Pop debug table
+   lua_setfield(L, -2, "anno");         // debug.anno = anno_table
+   lua_pop(L, 1);                       // Pop debug table
 
    return 1;
 }
