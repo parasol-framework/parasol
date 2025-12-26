@@ -181,7 +181,7 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_block(std::span<const
 
          // DIAGNOSE mode: skip to next synchronisation point and continue
          Token error_token = this->ctx.tokens().current();
-         size_t skipped = this->skip_to_synchronisation_point(terminators);
+         [[maybe_unused]] size_t skipped = this->skip_to_synchronisation_point(terminators);
 
          #if 0 // Quite noisy, needs a control mechanism
          if (skipped > 0) {

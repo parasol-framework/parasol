@@ -1068,7 +1068,7 @@ static std::optional<BytecodeSnapshot> compile_snapshot(lua_State* L, std::strin
    bool ast_pipeline, std::string& error)
 {
 
-   if (luaL_loadbuffer(L, source.data(), source.size(), "parser-unit")) {
+   if (lua_load(L, source, "parser-unit")) {
       const char* message = lua_tostring(L, -1);
       error.assign(message ? message : "unknown parser error");
       lua_pop(L, 1);

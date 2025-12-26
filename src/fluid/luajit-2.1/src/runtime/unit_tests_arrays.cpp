@@ -26,7 +26,7 @@ static objScript* glArrayTestScript = nullptr;
 // Helper: dostring equivalent - loads and executes a string
 static int dostring(lua_State *L, const char* s)
 {
-   int result = luaL_loadbuffer(L, s, strlen(s), "test");
+   int result = lua_load(L, std::string_view(s, strlen(s)), "test");
    if (result IS 0) result = lua_pcall(L, 0, LUA_MULTRET, 0);
    return result;
 }

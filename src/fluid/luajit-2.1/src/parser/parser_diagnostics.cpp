@@ -21,7 +21,7 @@
 // Reports a function limit error (too many locals, upvalues, etc.) and throws.
 // This is called when parser limits are exceeded during compilation.
 
-[[maybe_unused]] [[noreturn]] void err_limit(FuncState *FS, uint32_t Limit, CSTRING What)
+[[maybe_unused]] void err_limit(FuncState *FS, uint32_t Limit, CSTRING What)
 {
    if (FS->ls->active_context) FS->ls->active_context->report_limit_error(*FS, Limit, What);
 

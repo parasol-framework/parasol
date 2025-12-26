@@ -24,9 +24,11 @@
 #endif
 
 #include "lj_state.h"
+#include "lj_err.h"
 #include "lexer.h"
 #include "parser.h"
 #include "parser_context.h"
+#include "parser_diagnostics.h"
 #ifdef INCLUDE_ADVICE
 #include "parser_advice.h"
 #endif
@@ -63,6 +65,12 @@ namespace {
 
    constexpr bool lex_iseol(LexChar c) noexcept {
       return c IS '\n' or c IS '\r';
+   }
+
+   // Returns true if character is a synchronization point for error recovery.
+   // These tokens preserve structural context when recovering from lexer errors.
+   constexpr bool is_sync_char(LexChar c) noexcept {
+      return c IS ',' or c IS ';' or c IS '}' or c IS ')' or c IS ']';
    }
 } // anonymous namespace
 
@@ -115,8 +123,7 @@ static void lex_newline(LexState *State)
    lex_next(State);  // Skip "\n" or "\r".
    if (lex_iseol(State->c) and State->c != old) lex_next(State);  // Skip "\n\r" or "\r\n".
 
-   if (uint32_t(++State->linenumber) >= LJ_MAX_LINE)
-      lj_lex_error(State, State->tok, ErrMsg::XLINES);
+   if (uint32_t(++State->linenumber) >= LJ_MAX_LINE) lj_lex_error(State, State->tok, ErrMsg::XLINES);
 
    State->line_start_offset = State->current_offset;
 }
@@ -155,9 +162,7 @@ static void lex_number(LexState *State, TValue* tv)
    // Special case: Stop before '..' to allow range literals like {1..5}
    while (is_number_char(State->c, c)) {
       // If we see '.', check if next character is also '.' (range operator)
-      if (State->c IS '.' and State->peek_next() IS '.') {
-         break;  // Don't consume '.', let parser handle '..'
-      }
+      if (State->c IS '.' and State->peek_next() IS '.') break;  // Don't consume '.', let parser handle '..'
       c = State->c;
       lex_savenext(State);
    }
@@ -392,7 +397,7 @@ static void lex_string(LexState *State, TValue* tv)
             if (not isdigit(c)) goto err_xesc;
             c = parse_decimal_escape(State, c);
             if (c < 0) {
-            err_xesc:
+err_xesc:
                lj_lex_error(State, TK_string, ErrMsg::XESC);
             }
             lex_save(State, c);
@@ -635,6 +640,15 @@ static LexToken lex_scan(LexState *State, TValue *tv)
    lj_buf_reset(&State->sb);
 
    while (true) {
+      // In diagnose mode, if a lexer error occurred, reset and continue scanning
+      // The error was already recorded, now we need to rescan from the recovery point
+      if (State->had_lex_error) {
+         State->had_lex_error = false;
+         lj_buf_reset(&State->sb);
+         // Continue to next iteration to scan from new position
+         continue;
+      }
+
       // Check for Unicode operators before identifier scanning
       if (LexToken unicode_tok = lex_unicode_operator(State)) {
          return unicode_tok;
@@ -646,6 +660,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
 
          if (isdigit(State->c)) {
             lex_number(State, tv);
+            if (State->had_lex_error) continue;  // Rescan after error recovery
             return TK_number;
          }
 
@@ -710,6 +725,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
             int sep = lex_skipeq(State);
             if (sep >= 0) {
                lex_longstring(State, tv, sep);
+               if (State->had_lex_error) continue;  // Rescan after error recovery
                return TK_string;
             }
             if (sep IS -1) return '[';
@@ -849,6 +865,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
          case '\'':
             State->mark_token_start();
             lex_string(State, tv);
+            if (State->had_lex_error) continue;  // Rescan after error recovery
             return TK_string;
 
          case '.':
@@ -885,9 +902,8 @@ static LexToken lex_scan(LexState *State, TValue *tv)
                   lex_next(State);
                   // Validate limit is a positive integer
                   double num = tvisnum(&limit_val) ? numV(&limit_val) : double(intV(&limit_val));
-                  if (num < 1 or num != std::floor(num)) {
-                     lj_lex_error(State, TK_pipe, ErrMsg::XSYMBOL);
-                  }
+                  if (num < 1 or num != std::floor(num)) lj_lex_error(State, TK_pipe, ErrMsg::XSYMBOL);
+
                   // Store limit in token payload
                   *tv = limit_val;
                   return TK_pipe;
@@ -1271,13 +1287,13 @@ void LexState::ensure_lookahead(size_t count)
    return &this->buffered_tokens[index];
 }
 
-[[noreturn]] LJ_NOINLINE void LexState::err_syntax(ErrMsg Message)
+LJ_NOINLINE void LexState::err_syntax(ErrMsg Message)
 {
    if (this->active_context) this->active_context->err_syntax(Message);
    lj_lex_error(this, this->tok, Message);
 }
 
-[[noreturn]] LJ_NOINLINE void LexState::err_token(LexToken Token)
+LJ_NOINLINE void LexState::err_token(LexToken Token)
 {
    if (this->active_context) this->active_context->err_token(Token);
    lj_lex_error(this, this->tok, ErrMsg::XTOKEN, this->token2str(Token));
@@ -1358,19 +1374,81 @@ void LexState::lex_match(LexToken What, LexToken Who, BCLine Line)
 
 //********************************************************************************************************************
 // Error reporting
+//
+// In diagnose mode, this function records the error and returns without throwing, allowing the lexer/parser to
+// continue and collect multiple errors.
 
 void lj_lex_error(LexState *State, LexToken tok, ErrMsg em, ...)
 {
    va_list argp;
    va_start(argp, em);
 
-   const char* tokstr = nullptr;
+   const char *tokstr = nullptr;
    if (tok) {
       if (tok IS TK_name or tok IS TK_string or tok IS TK_number) {
          lex_save(State, '\0');
          tokstr = State->sb.b;
       }
       else tokstr = State->token2str(tok);
+   }
+
+   // In diagnose mode, record the error and recover instead of throwing
+   if (State->diagnose_mode) {
+      // Format the error message
+      char msg_buffer[256];
+      vsnprintf(msg_buffer, sizeof(msg_buffer), err2msg(em), argp);
+      va_end(argp);
+
+      // Create diagnostic entry
+      ParserDiagnostic diag;
+      diag.severity = ParserDiagnosticSeverity::Error;
+      diag.code = ParserErrorCode::UnexpectedToken;
+      if (tokstr) diag.message = std::string(msg_buffer) + " near '" + tokstr + "'";
+      else diag.message = msg_buffer;
+
+      SourceSpan error_span = { State->linenumber, State->current_token_column, State->current_token_offset };
+      diag.token = Token::from_span(error_span, TokenKind::Unknown);
+
+      // Report to parser context if available (will be included in parser's diagnostics copy)
+      // Otherwise fall back to direct storage in lua_State
+
+      if (State->active_context) State->active_context->diagnostics().report(diag);
+      else {
+         if (not State->L->parser_diagnostics) State->L->parser_diagnostics = new ParserDiagnostics();
+         auto *diagnostics = (ParserDiagnostics*)State->L->parser_diagnostics;
+         diagnostics->report(diag);
+      }
+
+      // Skip to synchronization point for recovery.
+      // Priority: sync tokens (,;})]) on same line, then EOL.
+      // This preserves structural context when errors occur inside nested constructs.
+
+      while (State->c != '\n' and State->c != LEX_EOF) {
+         if (is_sync_char(State->c)) {
+            // Found sync point - stop here, don't consume the sync token.
+            // This lets the parser see the delimiter and resynchronize.
+            break;
+         }
+         State->pos++;
+         if (State->pos < State->source.size()) State->c = State->source[State->pos];
+         else State->c = LEX_EOF;
+      }
+
+      // Only skip past newline if we didn't find a sync token
+      if (State->c IS '\n') {
+         State->pos++;
+         State->linenumber++;
+         State->line_start_offset = State->pos;
+         State->c = (State->pos < State->source.size()) ? State->source[State->pos] : LEX_EOF;
+      }
+
+      // Reset lexer state for clean recovery
+
+      State->current_offset = State->pos;
+      lj_buf_reset(&State->sb);  // Clear string buffer
+      State->had_lex_error = true;  // Signal to lex_scan to handle recovery
+
+      return;  // Return without throwing - caller will handle recovery
    }
 
    lj_err_lex(State->L, State->chunkname, tokstr, State->linenumber, em, argp);

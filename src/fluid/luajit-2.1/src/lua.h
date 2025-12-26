@@ -169,7 +169,6 @@ extern int   (lua_setfenv) (lua_State *L, int idx);
 extern void lua_call(lua_State *L, int nargs, int nresults);
 extern int  lua_pcall(lua_State *L, int nargs, int nresults, int errfunc);
 extern int  lua_cpcall(lua_State *L, lua_CFunction func, void *ud);
-extern int  lua_load(lua_State *L, class objFile *, const char *chunkname);
 extern int  lua_load(lua_State *L, std::string_view, const char *chunkname);
 extern int  lua_dump(lua_State *L, lua_Writer writer, void *data);
 
