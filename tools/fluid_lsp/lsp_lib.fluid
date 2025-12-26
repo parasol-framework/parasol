@@ -21,6 +21,11 @@
    -- Document storage for open files
    glDocuments = { }
 
+   -- Token cache for delta semantic tokens
+   -- Structure: { [uri] = { resultId = number, data = { ... } } }
+   glTokenCache = { }
+   glNextResultId = 1
+
 ----------------------------------------------------------------------------------------------------------------------
 -- Semantic Token Types and Modifiers (LSP standard)
 
@@ -128,7 +133,8 @@ end
 -- If incomplete (need more data): nil, nil, nil
 -- If error: nil, nil, error_string
 -- If success: content_length, body_start_offset, nil
-function parseHeader(Buffer)
+
+function parseHeader(Buffer:str):<str,num,str>
    header_end = Buffer:find('\r\n\r\n')
    if not header_end then
       return nil, nil, nil  -- Need more data
@@ -172,12 +178,12 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Response Formatting
 
-function formatResponse(ResponseTable)
+function formatResponse(ResponseTable:table):str
    body = json.encode(ResponseTable)
    return 'Content-Length: ' .. #body .. '\r\n\r\n' .. body
 end
 
-function sendResponse(Self, ClientSocket, ResponseTable)
+function sendResponse(Self, ClientSocket, ResponseTable, RequestLog)
    if not ResponseTable then
       return  -- Notifications don't get responses
    end
@@ -188,7 +194,44 @@ function sendResponse(Self, ClientSocket, ResponseTable)
       logMessage(Self, 'Failed to send response: ' .. mSys.GetErrorMsg(err))
    else
       logVerbose(Self, 'Sent response: ' .. formatted:sub(0, 200))
+
+      -- Log outgoing response if logging enabled
+      if RequestLog then
+         RequestLog('RESPONSE', formatted)
+      end
    end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Text Edit Helper
+
+-- Convert line/character position to byte offset in document
+function positionToOffset(Content, Line, Character)
+   offset = 0
+   current_line = 0
+
+   while current_line < Line and offset < #Content do
+      c = Content:sub(offset, offset + 1)
+      if c is '\n' then
+         current_line += 1
+      end
+      offset += 1
+   end
+
+   -- Add character offset within the line
+   return offset + Character
+end
+
+-- Apply a text edit to document content
+function applyTextEdit(Content, Range, NewText)
+   start_offset = positionToOffset(Content, Range.start.line, Range.start.character)
+   end_offset = positionToOffset(Content, Range['end'].line, Range['end'].character)
+
+   -- Build new content: before + new text + after
+   before = Content:sub(0, start_offset)
+   after = Content:sub(end_offset)
+
+   return before .. NewText .. after
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -202,7 +245,7 @@ LSP_ERROR = {
    INTERNAL_ERROR   = -32603
 }
 
-function makeErrorResponse(Id, Code, Message)
+function makeErrorResponse(Id:num, Code:num, Message:str):table
    return {
       jsonrpc = '2.0',
       id = Id,
@@ -225,13 +268,14 @@ function tokenizeFluid(Source)
    pos = 0
    len = #Source
 
-   -- Helper to add a token
+   -- Helper to add a token (skips zero-length tokens)
    function addToken(TokenLine, TokenCol, TokenLen, TokenType, TokenMod)
+      if TokenLen <= 0 then return end  -- Skip invalid tokens
       table.insert(tokens, {
-         line = TokenLine,
-         char = TokenCol,
+         line   = TokenLine,
+         char   = TokenCol,
          length = TokenLen,
-         type = TokenType,
+         type   = TokenType,
          modifiers = TokenMod or 0
       })
    end
@@ -299,7 +343,10 @@ function tokenizeFluid(Source)
                   col += 2
                   break
                elseif Source:sub(pos, pos + 1) is '\n' then
-                  addToken(line, comment_start, col - comment_start, 6, 0)  -- comment
+                  -- Only add token if there's content on this line
+                  if col > comment_start then
+                     addToken(line, comment_start, col - comment_start, 6, 0)  -- comment
+                  end
                   line++
                   col = 0
                   pos++
@@ -309,6 +356,7 @@ function tokenizeFluid(Source)
                   col++
                end
             end
+            -- Add final line of block comment if there's content
             if col > comment_start then
                addToken(line, comment_start, col - comment_start, 6, 0)  -- comment
             end
@@ -452,16 +500,18 @@ function tokenizeFluid(Source)
             addToken(line, ident_start, ident_len, 12, 4)  -- macro + readonly (CONSTANTS)
          else
             -- Check if it's a function call (followed by parenthesis)
+            -- Save all position state since skipWhitespace may cross newlines
             save_pos = pos
             save_col = col
+            save_line = line
             skipWhitespace()
             if pos < len and Source:sub(pos, pos + 1) is '(' then
-               addToken(line, ident_start, ident_len, 3, 0)  -- function
+               addToken(save_line, ident_start, ident_len, 3, 0)  -- function
             end
             -- Restore position (we don't consume the paren)
             pos = save_pos
             col = save_col
-            -- Regular identifiers are not highlighted (let theme handle them)
+            line = save_line
          end
 
       else
@@ -475,6 +525,7 @@ function tokenizeFluid(Source)
 end
 
 -- Encode tokens into LSP semantic tokens format (delta-encoded integers)
+
 function encodeSemanticTokens(Tokens)
    data = { }
    prev_line = 0
@@ -497,6 +548,78 @@ function encodeSemanticTokens(Tokens)
    return data
 end
 
+-- Compute semantic token edits between old and new data arrays
+-- Returns array of SemanticTokensEdit: { start, deleteCount, data? }
+function computeTokenEdits(OldData, NewData)
+   old_len = #OldData
+   new_len = #NewData
+
+   -- Find common prefix (in groups of 5 integers = 1 token)
+   prefix_tokens = 0
+   max_prefix = math.min(old_len, new_len) / 5
+   while prefix_tokens < max_prefix do
+      idx = prefix_tokens * 5
+      match = true
+      for i = 0, 4 do
+         if OldData[idx + i] != NewData[idx + i] then
+            match = false
+            break
+         end
+      end
+      if not match then break end
+      prefix_tokens += 1
+   end
+
+   -- Find common suffix (in groups of 5 integers = 1 token)
+   suffix_tokens = 0
+   old_suffix_start = old_len
+   new_suffix_start = new_len
+   max_suffix = math.min((old_len / 5) - prefix_tokens, (new_len / 5) - prefix_tokens)
+
+   while suffix_tokens < max_suffix do
+      old_idx = old_len - (suffix_tokens + 1) * 5
+      new_idx = new_len - (suffix_tokens + 1) * 5
+      match = true
+      for i = 0, 4 do
+         if OldData[old_idx + i] != NewData[new_idx + i] then
+            match = false
+            break
+         end
+      end
+      if not match then break end
+      suffix_tokens += 1
+   end
+
+   -- Calculate the range that differs
+   prefix_ints = prefix_tokens * 5
+   suffix_ints = suffix_tokens * 5
+
+   delete_start = prefix_ints
+   delete_count = old_len - prefix_ints - suffix_ints
+   insert_count = new_len - prefix_ints - suffix_ints
+
+   -- If nothing changed, return empty edits
+   if delete_count is 0 and insert_count is 0 then
+      return { }
+   end
+
+   -- Build the edit
+   edit = {
+      start = delete_start,
+      deleteCount = delete_count
+   }
+
+   -- Include new data if we're inserting anything
+   if insert_count > 0 then
+      edit.data = { }
+      for i = prefix_ints, prefix_ints + insert_count - 1 do
+         table.insert(edit.data, NewData[i])
+      end
+   end
+
+   return { edit }
+end
+
 ----------------------------------------------------------------------------------------------------------------------
 -- Core LSP Handlers
 
@@ -511,10 +634,10 @@ function registerCoreHandlers(Self)
          id = Msg.id,
          result = {
             capabilities = {
-               -- Full sync: client sends entire document on change
+               -- Incremental sync: client sends only changed portions
                textDocumentSync = {
                   openClose = true,
-                  change = 1  -- Full sync
+                  change = 2  -- Incremental sync
                },
                -- Semantic tokens for syntax highlighting
                semanticTokensProvider = {
@@ -522,7 +645,9 @@ function registerCoreHandlers(Self)
                      tokenTypes = TOKEN_TYPES,
                      tokenModifiers = TOKEN_MODIFIERS
                   },
-                  full = true,
+                  full = {
+                     delta = true  -- Support delta updates for efficiency
+                  },
                   range = false
                }
             },
@@ -585,9 +710,18 @@ function registerCoreHandlers(Self)
       version = Msg.params.textDocument.version
 
       if glDocuments[uri] then
-         -- Full sync: replace entire content
          for _, change in ipairs(Msg.params.contentChanges) do
-            glDocuments[uri].content = change.text
+            if change.range then
+               -- Incremental sync: apply text edit at range
+               glDocuments[uri].content = applyTextEdit(
+                  glDocuments[uri].content,
+                  change.range,
+                  change.text
+               )
+            else
+               -- Full sync fallback: replace entire content
+               glDocuments[uri].content = change.text
+            end
          end
          glDocuments[uri].version = version
          logVerbose(Self, 'Document updated: ' .. uri .. ' (version ' .. version .. ')')
@@ -599,6 +733,7 @@ function registerCoreHandlers(Self)
    Self._handlers['textDocument/didClose'] = function(Msg, State)
       uri = Msg.params.textDocument.uri
       glDocuments[uri] = nil
+      glTokenCache[uri] = nil  -- Clear token cache to free memory
       logMessage(Self, 'Document closed: ' .. uri)
       return nil  -- Notification, no response
    end
@@ -625,13 +760,101 @@ function registerCoreHandlers(Self)
       tokens = tokenizeFluid(doc.content)
       encoded = encodeSemanticTokens(tokens)
 
-      logVerbose(Self, 'Returning ' .. #tokens .. ' tokens (' .. #encoded .. ' integers)')
+      -- Generate resultId and cache for delta requests
+      result_id = tostring(glNextResultId)
+      glNextResultId += 1
+
+      glTokenCache[uri] = {
+         resultId = result_id,
+         data = encoded
+      }
+
+      logVerbose(Self, 'Returning ' .. #tokens .. ' tokens (' .. #encoded .. ' integers), resultId=' .. result_id)
 
       return {
          jsonrpc = '2.0',
          id = Msg.id,
          result = {
+            resultId = result_id,
             data = encoded
+         }
+      }
+   end
+
+   -- textDocument/semanticTokens/full/delta: Return only changed semantic tokens
+   Self._handlers['textDocument/semanticTokens/full/delta'] = function(Msg, State)
+      uri = Msg.params.textDocument.uri
+      previous_result_id = Msg.params.previousResultId
+      doc = glDocuments[uri]
+
+      if not doc then
+         logMessage(Self, 'Semantic tokens delta requested for unknown document: ' .. uri)
+         return {
+            jsonrpc = '2.0',
+            id = Msg.id,
+            result = { data = {} }
+         }
+      end
+
+      -- Check if we have the previous result cached
+      cached = glTokenCache[uri]
+      if not cached or cached.resultId != previous_result_id then
+         -- Can't compute delta, return full tokens
+         logVerbose(Self, 'Cannot compute delta (no cache or resultId mismatch), returning full tokens')
+
+         tokens = tokenizeFluid(doc.content)
+         encoded = encodeSemanticTokens(tokens)
+
+         result_id = tostring(glNextResultId)
+         glNextResultId += 1
+
+         glTokenCache[uri] = {
+            resultId = result_id,
+            data = encoded
+         }
+
+         return {
+            jsonrpc = '2.0',
+            id = Msg.id,
+            result = {
+               resultId = result_id,
+               data = encoded
+            }
+         }
+      end
+
+      logVerbose(Self, 'Computing semantic tokens delta for: ' .. uri)
+
+      -- Compute new tokens
+      tokens = tokenizeFluid(doc.content)
+      new_encoded = encodeSemanticTokens(tokens)
+
+      -- Compute delta between old and new
+      edits = computeTokenEdits(cached.data, new_encoded)
+
+      -- Generate new resultId and update cache
+      result_id = tostring(glNextResultId)
+      glNextResultId += 1
+
+      glTokenCache[uri] = {
+         resultId = result_id,
+         data = new_encoded
+      }
+
+      -- Calculate edit size for logging
+      edit_size = 0
+      for _, edit in ipairs(edits) do
+         edit_size += (edit.data and #edit.data or 0)
+      end
+
+      logVerbose(Self, 'Returning ' .. #edits .. ' edits (' .. edit_size .. ' integers vs ' .. #new_encoded .. ' full), resultId=' .. result_id)
+
+      return {
+         jsonrpc = '2.0',
+         id = Msg.id,
+         result = {
+            resultId = result_id,
+            edits = edits
          }
       }
    end
@@ -744,11 +967,16 @@ function processIncoming(Self, ClientSocket)
 
          logVerbose(Self, 'Received message: ' .. json_body:sub(0, 200))
 
+         -- Log incoming request if logging enabled
+         if Self.requestLog then
+            Self.requestLog('REQUEST', json_body)
+         end
+
          -- Parse and dispatch
          message, parse_err = parseMessage(json_body)
          if message then
             response = dispatchMethod(Self, message, state)
-            sendResponse(Self, ClientSocket, response)
+            sendResponse(Self, ClientSocket, response, Self.requestLog)
 
             -- Check if we should disconnect after exit
             if state.should_disconnect then
@@ -759,7 +987,7 @@ function processIncoming(Self, ClientSocket)
          else
             logMessage(Self, 'Parse error: ' .. tostring(parse_err))
             -- Send parse error response if we can determine an ID
-            sendResponse(Self, ClientSocket, makeErrorResponse(json.null, LSP_ERROR.PARSE_ERROR, parse_err))
+            sendResponse(Self, ClientSocket, makeErrorResponse(json.null, LSP_ERROR.PARSE_ERROR, parse_err), Self.requestLog)
          end
       end
    end
@@ -775,6 +1003,7 @@ lsp.start = function(Options)
       port = Options.port or 5007,
       verbose = Options.verbose or false,
       logMessage = Options.logMessage or function(msg) print(msg) end,
+      requestLog = Options.requestLog,  -- Optional request/response logging callback
       _socket = nil,
       _handlers = {}
    }

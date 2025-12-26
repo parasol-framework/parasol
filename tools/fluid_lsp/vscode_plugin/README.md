@@ -2,13 +2,6 @@
 
 Language support for Fluid scripting (Parasol Framework), including syntax highlighting and LSP integration.
 
-## Features
-
-- Syntax highlighting for `.fluid` files
-- LSP client for connecting to the Fluid language server
-- Auto-closing brackets and quotes
-- Comment toggling (line and block comments)
-
 ## Setup
 
 ### 1. Install Dependencies
@@ -24,12 +17,6 @@ Before using LSP features, start the Fluid LSP server:
 
 ```bash
 parasol tools/lsp_server.fluid port=5007
-```
-
-Or with verbose logging:
-
-```bash
-parasol tools/lsp_server.fluid port=5007 verbose=true
 ```
 
 ### 3. Install the Extension
@@ -57,24 +44,16 @@ npx vsce package
 code --install-extension fluid-language-0.1.0.vsix
 ```
 
-## Commands
-
-- **Fluid: Restart LSP** - Reconnect to the LSP server
-
 ## Troubleshooting
 
 ### "Could not connect to server"
 
-1. Ensure the LSP server is running:
-   ```bash
-   parasol tools/lsp_server.fluid port=5007
-   ```
-
+1. Ensure the LSP server is running.
 2. Check the port matches your VS Code settings
-
 3. View the Fluid LSP output channel for connection details:
    - View > Output > Select "Fluid LSP" from dropdown
 
 ### No Syntax Highlighting
 
-Ensure the file has a `.fluid` extension.
+Ensure the opened file has a `.fluid` extension.
+In the bottom right corner, ensure that the Language Mode is set to Fluid.

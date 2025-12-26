@@ -71,4 +71,4 @@ data/ssl/localhost.p12
 data/ssl/localhost.pem
 src/xquery/tests/QT3_1_0/
 docs/kotuku*/
-tools/vscode-fluid/node_modules/
+tools/fluid_lsp/vscode_plugin/node_modules/

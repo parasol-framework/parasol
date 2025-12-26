@@ -17,15 +17,17 @@ Usage: parasol lsp_server.fluid [options...]
 
 Parameters:
 
-  port    - TCP port to listen on (default: 5007)
-  verbose - Enable verbose/debug logging (true/false, default: false)
-  config  - Path to config file (default: user:config/lsp_server_cfg.fluid)
-  help    - Display this help message
+  port        - TCP port to listen on (default: 5007)
+  verbose     - Enable verbose/debug logging (true/false, default: false)
+  config      - Path to config file (default: user:config/lsp_server_cfg.fluid)
+  request-log - Path to log file for request/response debugging
+  help        - Display this help message
 
 Examples:
 
   parasol lsp_server.fluid port=5007
   parasol lsp_server.fluid port=5007 verbose=true
+  parasol lsp_server.fluid port=5007 request-log=lsp_debug.log
   parasol lsp_server.fluid config=my_lsp_config.fluid
 
 Config File Format:
@@ -52,7 +54,7 @@ IDE Integration:
   The server supports the standard LSP lifecycle: initialize, initialized, shutdown, exit.
 ]]
 
-   lsplib = require 'dev/lsp'
+   lsplib = require './lsp_lib'
 
    -- Load config file if available
    glConfigFile = arg('config') ?? 'user:config/lsp_server_cfg.fluid'
@@ -75,8 +77,25 @@ IDE Integration:
    end
 
    if arg('verbose') then
-      local verbose = arg('verbose'):lower()
+      verbose = arg('verbose'):lower()
       glOptions.verbose = (verbose is 'true' or verbose is '1')
+   end
+
+   -- Set up request/response logging if requested
+   log_path = arg('request-log')
+   if log_path?? then
+      glReqLog = obj.new('file', { src=log_path, flags='NEW|WRITE' })
+      print('Request logging enabled: ' .. log_path)
+
+      tm = obj.new('time')
+      tm.acQuery()
+      glOptions.requestLog = function(Direction, Content)
+         timestamp = string.format('%04d-%02d-%02d %02d:%02d:%02d', tm.year, tm.month, tm.day, tm.hour, tm.minute, tm.second)
+         header = '\n=== ' .. Direction .. ' [' .. timestamp .. '] ===\n'
+         glReqLog.acWrite(header)
+         glReqLog.acWrite(Content)
+         glReqLog.acWrite('\n')
+      end
    end
 
    -- Set up logging to stdout

@@ -56,6 +56,7 @@ The following options can be used when executing script files:
  --log-api       Activates run-time log messages at API level.
  --log-info      Activates run-time log messages at INFO level.
  --log-error     Activates run-time log messages at ERROR level.
+ --jit-options   Development options that control the behaviour of the compiler.
  --version       Prints the version number on line 1 and git commit on line 2.
 )";
 
