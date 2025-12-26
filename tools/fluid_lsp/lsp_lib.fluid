@@ -1679,7 +1679,6 @@ lsp.start = function(Options)
       _handlers = {}
    }
 
-   -- Register core LSP handlers
    registerCoreHandlers(self)
 
    logMessage(self, 'Starting Fluid LSP Server on port ' .. self.port)
@@ -1700,10 +1699,6 @@ lsp.start = function(Options)
       end
    })
 
-   if not self._socket then
-      error('Failed to create LSP server socket on port ' .. self.port)
-   end
-
    logMessage(self, 'Fluid LSP Server listening on port ' .. self.port)
    if self.verbose then
       logMessage(self, 'Verbose logging enabled')
@@ -1720,9 +1715,7 @@ lsp.start = function(Options)
    end
 
    self.registerHandler = function(Method, Handler)
-      if type(Handler) != 'function' then
-         error('Handler must be a function')
-      end
+      assert(type(Handler) is 'function', 'Handler must be a function')
       self._handlers[Method] = Handler
       logVerbose(self, 'Registered handler for: ' .. Method)
    end
