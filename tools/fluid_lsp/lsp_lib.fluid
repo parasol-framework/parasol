@@ -810,6 +810,182 @@ function tokenizeFluid(Source:str):array
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- LSP Symbol Kinds (subset used for Fluid)
+
+SYMBOL_KIND = {
+   FILE = 1,
+   MODULE = 2,
+   NAMESPACE = 3,
+   PACKAGE = 4,
+   CLASS = 5,
+   METHOD = 6,
+   PROPERTY = 7,
+   FIELD = 8,
+   CONSTRUCTOR = 9,
+   ENUM = 10,
+   INTERFACE = 11,
+   FUNCTION = 12,
+   VARIABLE = 13,
+   CONSTANT = 14,
+   STRING = 15,
+   NUMBER = 16,
+   BOOLEAN = 17,
+   ARRAY = 18,
+   OBJECT = 19,
+   KEY = 20,
+   NULL = 21,
+   ENUM_MEMBER = 22,
+   STRUCT = 23,
+   EVENT = 24,
+   OPERATOR = 25,
+   TYPE_PARAMETER = 26
+}
+
+----------------------------------------------------------------------------------------------------------------------
+-- Find the line number of the matching 'end' for a block starting at StartLine
+
+function findMatchingEnd(Lines:array, StartLine)
+   depth = 1
+   line_num = StartLine + 1
+
+   while line_num < #Lines do
+      line_text = Lines[line_num]
+
+      -- Count block openers (simplified - doesn't handle strings/comments perfectly)
+      for opener in line_text:gmatch('%f[%w]function%f[^%w]') do depth++ end
+      for opener in line_text:gmatch('%f[%w]if%f[^%w]') do
+         if line_text:match('%f[%w]if%f[^%w].*%f[%w]then%f[^%w]') then
+            depth++
+         end
+      end
+      for opener in line_text:gmatch('%f[%w]for%f[^%w]') do
+         if line_text:match('%f[%w]for%f[^%w].*%f[%w]do%f[^%w]') then
+            depth++
+         end
+      end
+      for opener in line_text:gmatch('%f[%w]while%f[^%w]') do
+         if line_text:match('%f[%w]while%f[^%w].*%f[%w]do%f[^%w]') then
+            depth++
+         end
+      end
+      for opener in line_text:gmatch('%f[%w]repeat%f[^%w]') do depth++ end
+      for opener in line_text:gmatch('%f[%w]defer%f[^%w]') do depth++ end
+
+      -- Count block closers
+      for closer in line_text:gmatch('%f[%w]end%f[^%w]') do depth -= 1 end
+      for closer in line_text:gmatch('%f[%w]until%f[^%w]') do depth -= 1 end
+
+      if depth <= 0 then
+         return line_num
+      end
+
+      line_num++
+   end
+
+   -- If no matching end found, return last line
+   return #Lines - 1
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Extract document symbols (functions, globals) from Fluid source
+-- Returns array of DocumentSymbol objects for the outline view
+
+function extractDocumentSymbols(Source:str):array
+   symbols = array<table>
+   lines = Source:split('\n')
+   line_num = 0
+   in_block_comment = false
+
+   for line_text in values(lines) do
+      -- Track block comments --[[ ... ]]
+      if in_block_comment then
+         if line_text:find('%]%]') then
+            in_block_comment = false
+         end
+         line_num++
+         continue
+      end
+
+      -- Check for block comment start
+      if line_text:find('%-%-%[%[') then
+         in_block_comment = true
+         line_num++
+         continue
+      end
+
+      -- Skip line comments (lines starting with --)
+      trimmed = line_text:match('^%s*(.*)')
+      if trimmed:sub(0, 2) is '--' then
+         line_num++
+         continue
+      end
+
+      -- Check if 'function' appears before any line comment
+      comment_pos = line_text:find('%-%-')
+      func_pos = line_text:find('function%s+[%w_]')
+
+      -- Skip if function keyword is inside a line comment
+      if func_pos and comment_pos and comment_pos < func_pos then
+         line_num++
+         continue
+      end
+
+      if func_pos then
+         -- Extract everything after 'function '
+         after_func = line_text:sub(func_pos)
+         name = after_func:match('^function%s+([%w_:%.]+)')
+
+         if name then
+            -- Determine scope by looking before 'function'
+            before_func = line_text:sub(0, func_pos)
+            scope = nil
+            if before_func:match('local%s*$') then
+               scope = 'local'
+            elseif before_func:match('global%s*$') then
+               scope = 'global'
+            end
+
+            -- Find the column where the name starts (0-based)
+            name_start = line_text:find(name, func_pos, true)
+            name_start = name_start and (name_start - 1) or 0
+
+            -- Determine symbol kind based on name pattern
+            kind = SYMBOL_KIND.FUNCTION
+            if name:find(':') then
+               kind = SYMBOL_KIND.METHOD  -- Class:method style
+            end
+
+            -- Find the end of this function (matching 'end')
+            end_line = findMatchingEnd(lines, line_num)
+
+            symbol = {
+               name = name,
+               kind = kind,
+               range = {
+                  start = { line = line_num, character = 0 },
+                  ['end'] = { line = end_line, character = #lines[end_line] }
+               },
+               selectionRange = {
+                  start = { line = line_num, character = name_start },
+                  ['end'] = { line = line_num, character = name_start + #name }
+               }
+            }
+
+            if scope then
+               symbol.detail = scope
+            end
+
+            symbols:push(symbol)
+         end
+      end
+
+      line_num++
+   end
+
+   return symbols
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Encode tokens into LSP semantic tokens format (delta-encoded integers)
 
 function encodeSemanticTokens(Tokens:array):array
@@ -937,7 +1113,9 @@ function registerCoreHandlers(Self)
                      delta = true  -- Support delta updates for efficiency
                   },
                   range = false
-               }
+               },
+               -- Document symbols for outline view
+               documentSymbolProvider = true
             },
             serverInfo = {
                name = 'Fluid LSP Server',
@@ -1147,6 +1325,36 @@ function registerCoreHandlers(Self)
          }
       }
    end
+
+   --------------------------------------------------------------------------
+   -- Document Symbols (Outline View)
+
+   -- textDocument/documentSymbol: Return symbols for outline view
+   Self._handlers['textDocument/documentSymbol'] = function(Msg, State)
+      uri = Msg.params.textDocument.uri
+      doc = glDocuments[uri]
+
+      if not doc then
+         logMessage(Self, 'Document symbols requested for unknown document: ' .. uri)
+         return {
+            jsonrpc = '2.0',
+            id = Msg.id,
+            result = array<table>
+         }
+      end
+
+      logVerbose(Self, 'Computing document symbols for: ' .. uri)
+
+      symbols = extractDocumentSymbols(doc.content)
+
+      logVerbose(Self, 'Returning ' .. #symbols .. ' symbols')
+
+      return {
+         jsonrpc = '2.0',
+         id = Msg.id,
+         result = symbols
+      }
+   end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -1179,7 +1387,7 @@ function dispatchMethod(Self, Message, State)
          return nil
       end
    else
-      logVerbose(Self, 'Unknown method: ' .. method)
+      logWarning(Self, 'Unknown method: ' .. method)
       -- Unknown method: return error for requests, ignore notifications
       if Message.id then
          return makeErrorResponse(Message.id, LSP_ERROR.METHOD_NOT_FOUND, 'Method not found: ' .. method)
