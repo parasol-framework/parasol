@@ -1,7 +1,8 @@
 /*
 ** Object de/serialization.
 ** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-** TODO: Buffer support is deprecated but this code could be modified to use our string buffer feature.
+** TODO: Buffer support is deprecated but this code could be modified to use our string buffer feature
+** or byte arrays.
 */
 
 #define lj_serialize_c
@@ -526,7 +527,6 @@ void lj_serialize_decode(lua_State* L, TValue* o, GCstr* str)
    if (r != sbx.w) lj_err_caller(L, ErrMsg::BUFFER_LEFTOV);
 }
 
-#if LJ_HASJIT
 // Peek into buffer to find the result IRType for specialization purposes.
 LJ_FUNC MSize LJ_FASTCALL lj_serialize_peektype(SBufExt* sbx)
 {
@@ -554,6 +554,5 @@ LJ_FUNC MSize LJ_FASTCALL lj_serialize_peektype(SBufExt* sbx)
    }
    return IRT_NIL;  //  Will fail on actual decode.
 }
-#endif
 
 #endif
