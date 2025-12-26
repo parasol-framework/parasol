@@ -844,7 +844,7 @@ SYMBOL_KIND = {
 ----------------------------------------------------------------------------------------------------------------------
 -- Find the line number of the matching 'end' for a block starting at StartLine
 
-function findMatchingEnd(Lines:array, StartLine)
+function findMatchingEnd(Lines:array, StartLine:num):num
    depth = 1
    line_num = StartLine + 1
 
@@ -986,6 +986,143 @@ function extractDocumentSymbols(Source:str):array
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- LSP Folding Range Kinds
+
+FOLDING_KIND = {
+   COMMENT = 'comment',
+   IMPORTS = 'imports',
+   REGION = 'region'
+}
+
+----------------------------------------------------------------------------------------------------------------------
+-- Extract folding ranges from Fluid source
+-- Returns array of FoldingRange objects for code folding
+
+function extractFoldingRanges(Source:str):array
+   ranges = array<table>
+   lines = Source:split('\n')
+   line_num = 0
+   block_stack = array<table>  -- Stack of { line, kind } for nested blocks
+   in_block_comment = false
+   block_comment_start = 0
+
+   for line_text in values(lines) do
+      -- Handle block comments --[[ ... ]]
+      if in_block_comment then
+         if line_text:find('%]%]') then
+            -- End of block comment
+            if line_num > block_comment_start then
+               ranges:push({
+                  startLine = block_comment_start,
+                  endLine = line_num,
+                  kind = FOLDING_KIND.COMMENT
+               })
+            end
+            in_block_comment = false
+         end
+         line_num++
+         continue
+      end
+
+      -- Check for block comment start
+      block_comment_pos = line_text:find('%-%-%[%[')
+      if block_comment_pos then
+         -- Check it's not inside a string (simplified check)
+         before = line_text:sub(0, block_comment_pos)
+         if not before:find('["\']') then
+            in_block_comment = true
+            block_comment_start = line_num
+            line_num++
+            continue
+         end
+      end
+
+      -- Check for block openers: function, if...then, for...do, while...do, repeat, defer
+      -- We need to be careful not to match keywords in comments or strings
+
+      -- Skip if line is a comment
+      trimmed = line_text:match('^%s*(.*)')
+      if trimmed:sub(0, 2) is '--' then
+         line_num++
+         continue
+      end
+
+      -- Find comment position to avoid matching keywords in comments
+      comment_pos = line_text:find('%-%-')
+
+      -- Check for block openers (only if not in a comment)
+      function checkKeyword(Pattern)
+         pos = line_text:find(Pattern)
+         if pos and (not comment_pos or pos < comment_pos) then
+            return pos
+         end
+         return nil
+      end
+
+      -- function ... (opens a block)
+      if checkKeyword('%f[%w]function%s+[%w_]') or checkKeyword('%f[%w]function%s*%(') then
+         block_stack:push({ line = line_num, kind = 'function' })
+      end
+
+      -- if ... then (opens a block)
+      if checkKeyword('%f[%w]if%f[^%w]') and checkKeyword('%f[%w]then%f[^%w]') then
+         block_stack:push({ line = line_num, kind = 'if' })
+      end
+
+      -- for ... do (opens a block)
+      if checkKeyword('%f[%w]for%f[^%w]') and checkKeyword('%f[%w]do%f[^%w]') then
+         block_stack:push({ line = line_num, kind = 'for' })
+      end
+
+      -- while ... do (opens a block)
+      if checkKeyword('%f[%w]while%f[^%w]') and checkKeyword('%f[%w]do%f[^%w]') then
+         block_stack:push({ line = line_num, kind = 'while' })
+      end
+
+      -- repeat (opens a block, closed by until)
+      if checkKeyword('%f[%w]repeat%f[^%w]') then
+         block_stack:push({ line = line_num, kind = 'repeat' })
+      end
+
+      -- defer (opens a block)
+      if checkKeyword('%f[%w]defer%f[^%w]') then
+         block_stack:push({ line = line_num, kind = 'defer' })
+      end
+
+      -- Check for block closers
+      -- 'end' closes function, if, for, while, defer
+      if checkKeyword('%f[%w]end%f[^%w]') then
+         if #block_stack > 0 then
+            block_start = block_stack:pop()
+            if block_start and line_num > block_start.line then
+               ranges:push({
+                  startLine = block_start.line,
+                  endLine = line_num
+               })
+            end
+         end
+      end
+
+      -- 'until' closes repeat
+      if checkKeyword('%f[%w]until%f[^%w]') then
+         if #block_stack > 0 then
+            block_start = block_stack:pop()
+            if block_start and block_start.kind is 'repeat' and line_num > block_start.line then
+               ranges:push({
+                  startLine = block_start.line,
+                  endLine = line_num
+               })
+            end
+         end
+      end
+
+      line_num++
+   end
+
+   return ranges
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Encode tokens into LSP semantic tokens format (delta-encoded integers)
 
 function encodeSemanticTokens(Tokens:array):array
@@ -1115,7 +1252,9 @@ function registerCoreHandlers(Self)
                   range = false
                },
                -- Document symbols for outline view
-               documentSymbolProvider = true
+               documentSymbolProvider = true,
+               -- Folding ranges for code folding
+               foldingRangeProvider = true
             },
             serverInfo = {
                name = 'Fluid LSP Server',
@@ -1152,6 +1291,13 @@ function registerCoreHandlers(Self)
       end
       State.should_disconnect = true
       return nil
+   end
+
+   -- $/cancelRequest: Client wants to cancel a pending request (notification)
+   -- Since we process requests synchronously, we just acknowledge and ignore
+   Self._handlers['$/cancelRequest'] = function(Msg, State)
+      logVerbose(Self, 'Cancel request received for id: ' .. tostring(Msg.params.id))
+      return nil  -- Notification, no response
    end
 
    --------------------------------------------------------------------------
@@ -1353,6 +1499,36 @@ function registerCoreHandlers(Self)
          jsonrpc = '2.0',
          id = Msg.id,
          result = symbols
+      }
+   end
+
+   --------------------------------------------------------------------------
+   -- Folding Ranges (Code Folding)
+
+   -- textDocument/foldingRange: Return folding ranges for code folding
+   Self._handlers['textDocument/foldingRange'] = function(Msg, State)
+      uri = Msg.params.textDocument.uri
+      doc = glDocuments[uri]
+
+      if not doc then
+         logMessage(Self, 'Folding ranges requested for unknown document: ' .. uri)
+         return {
+            jsonrpc = '2.0',
+            id = Msg.id,
+            result = array<table>
+         }
+      end
+
+      logVerbose(Self, 'Computing folding ranges for: ' .. uri)
+
+      ranges = extractFoldingRanges(doc.content)
+
+      logVerbose(Self, 'Returning ' .. #ranges .. ' folding ranges')
+
+      return {
+         jsonrpc = '2.0',
+         id = Msg.id,
+         result = ranges
       }
    end
 end
