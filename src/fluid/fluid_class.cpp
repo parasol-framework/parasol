@@ -427,7 +427,7 @@ static ERR FLUID_Activate(objScript *Self)
       }
       else {
          log.trace("Compiling Lua script.");
-         result = lua_load(prv->Lua, std::string_view(Self->String, strlen(Self->String)), chunk_name.c_str());
+         result = lua_load(prv->Lua, std::string_view(Self->String), chunk_name.c_str());
       }
 
       if (result) { // Error reported from parser
