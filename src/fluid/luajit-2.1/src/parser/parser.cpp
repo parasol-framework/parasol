@@ -175,8 +175,9 @@ static void run_ast_pipeline(ParserContext &Context, ParserProfiler &Profiler)
       run_type_analysis(Context, *chunk);
       type_timer.stop();
 
-      // Raise errors now, required to check for type violations
-      if (Context.diagnostics().has_errors()) {
+      // Raise errors now, required to check for type violations.
+      // In diagnose mode (abort_on_error=false), continue to emit to collect more errors.
+      if (Context.diagnostics().has_errors() and Context.config().abort_on_error) {
          raise_accumulated_diagnostics(Context);
          return;
       }

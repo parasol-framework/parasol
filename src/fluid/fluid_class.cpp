@@ -354,7 +354,7 @@ static ERR FLUID_Activate(objScript *Self)
       prv->Lua->protected_globals   = false;
 
       // Set up global variable protection that is JIT-compatible.
-      // Key insight: __index can be a TABLE (JIT traces through it) instead of a FUNCTION (JIT aborts).
+      // __index can be a table (JIT traces through it) instead of a function (JIT aborts).
       // We use:
       //   __index = storage_table (direct table lookup, JIT-compatible)
       //   __newindex = C function (only called on writes, protects existing functions)
@@ -423,11 +423,11 @@ static ERR FLUID_Activate(objScript *Self)
       if (startswith(LUA_COMPILED, Self->String)) { // The source is compiled
          log.trace("Loading pre-compiled Lua script.");
          int headerlen = strlen(Self->String) + 1;
-         result = luaL_loadbuffer(prv->Lua, Self->String + headerlen, prv->LoadedSize - headerlen, chunk_name.c_str());
+         result = lua_load(prv->Lua, std::string_view(Self->String + headerlen, prv->LoadedSize - headerlen), chunk_name.c_str());
       }
       else {
          log.trace("Compiling Lua script.");
-         result = luaL_loadbuffer(prv->Lua, Self->String, strlen(Self->String), chunk_name.c_str());
+         result = lua_load(prv->Lua, std::string_view(Self->String, strlen(Self->String)), chunk_name.c_str());
       }
 
       if (result) { // Error reported from parser
@@ -832,7 +832,7 @@ static ERR FLUID_SaveToObject(objScript *Self, struct acSaveToObject *Args)
    if (Self->Path) chunk_name = std::string("@") + Self->Path;
    else chunk_name = "=script";
 
-   if (not luaL_loadbuffer(prv->Lua, Self->String, strlen(Self->String), chunk_name.c_str())) {
+   if (not lua_load(prv->Lua, std::string_view(Self->String, strlen(Self->String)), chunk_name.c_str())) {
       ERR error = save_binary(Self, Args->Dest);
       return error;
    }

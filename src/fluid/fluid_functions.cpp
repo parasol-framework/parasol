@@ -19,6 +19,16 @@
 #include "hashes.h"
 #include "defs.h"
 
+static int lua_load(lua_State *Lua, class objFile *File, CSTRING SourceName)
+{
+   std::string buffer;
+   auto filesize = File->get<int>(FID_Size);
+   buffer.resize(filesize);
+   File->read(buffer.data(), filesize);
+
+   return lua_load(Lua, std::string_view(buffer.data(), buffer.size()), SourceName);
+}
+
 //********************************************************************************************************************
 // check() is the equivalent of an assert() for error codes.  Any major error code will be converted to an
 // exception containing a readable string for the error code.  It is most powerful when used in conjunction with

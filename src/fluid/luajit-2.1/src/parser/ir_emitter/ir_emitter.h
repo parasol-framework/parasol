@@ -205,6 +205,7 @@ private:
    ParserResult<ExpDesc> unsupported_expr(AstNodeKind kind, const SourceSpan& span);
 
    ParserError make_error(ParserErrorCode code, std::string_view message) const;
+   ParserError make_error(ParserErrorCode code, std::string_view message, const SourceSpan& span) const;
 
    inline std::optional<BCReg> resolve_local(GCstr* symbol) const { return this->binding_table.resolve(symbol); }
    inline void update_local_binding(GCstr* symbol, BCReg slot) { this->binding_table.add(symbol, slot); }

@@ -25,7 +25,6 @@
 //   debug.setUserValue(u, t)    - Sets the environment table of a userdata
 //   debug.setHook([hook, mask [, count]]) - Sets the debug hook
 //   debug.getHook()             - Returns the current hook settings
-//   debug.debug()               - Enters interactive debug mode
 //   debug.traceback([msg [, level]]) - Returns a traceback string
 //   debug.validate(code [, flags]) - Parses code and returns diagnostics without execution
 //   debug.locality(name [, level]) - Returns locality of a variable: "local", "upvalue", "global", or "nil"
@@ -712,7 +711,11 @@ LJLIB_CF(debug_upvalueID)
 // debug.upvalueJoin(func1, n1, func2, n2)
 //
 // Makes the n1-th upvalue of func1 refer to the n2-th upvalue of func2.  After this call, both upvalues share
-// the same storage - modifying one will affect the other.
+// the same storage - modifying one will affect the other.  Useful for debuggers and profilers that need to:
+//
+// * Inject logging into existing closures
+// * Share breakpoint state across multiple function instances
+// * Connect instrumentation code to production closures
 //
 //   func1 - First Lua function (must be a Lua function, not C)
 //   n1    - 0-based upvalue index in func1
@@ -724,8 +727,7 @@ LJLIB_CF(debug_upvalueID)
 //   - After joining, both upvalues share the same value
 //
 // Example:
-//   -- Make counter1 and counter2 share the same 'count' upvalue
-//   debug.upvalueJoin(counter1, 0, counter2, 0)
+//   debug.upvalueJoin(counter1, 0, counter2, 0) -- Make counter1 and counter2 funcs share the same 'count' upvalue
 
 LJLIB_CF(debug_upvalueJoin)
 {
@@ -933,13 +935,13 @@ LJLIB_CF(debug_validate)
       return 1;
    }
 
-   // Parse the statement using luaL_loadbuffer with DIAGNOSE mode
+   // Parse the statement using lua_load with DIAGNOSE mode
    // This requires temporarily enabling JOF::DIAGNOSE
    auto *prv = (prvFluid *)L->script->ChildPrivate;
    JOF old_options = prv ? prv->JitOptions : JOF::NIL;
    if (prv) prv->JitOptions |= JOF::DIAGNOSE;
 
-   int parse_result = luaL_loadbuffer(L, statement, strlen(statement), "=validate");
+   int parse_result = lua_load(L, std::string_view(statement, strlen(statement)), "=validate");
 
    if (prv) prv->JitOptions = old_options;  // Restore options
 
@@ -956,9 +958,10 @@ LJLIB_CF(debug_validate)
          lua_newtable(L);  // diagnostic entry
 
          SourceSpan span = entry.token.span();
-         settabsi(L, "line", span.line);
-         settabsi(L, "column", span.column);
-         settabsi(L, "endColumn", span.column + 1);  // Approximation
+         // LSP uses 0-based line/column, Lua parser uses 1-based
+         settabsi(L, "line", span.line > 0 ? span.line - 1 : 0);
+         settabsi(L, "column", span.column > 0 ? span.column - 1 : 0);
+         settabsi(L, "endColumn", span.column);  // Already correct after -1 adjustment
          settabsi(L, "severity", int(entry.severity));
          settabss(L, "code", diagnostic_code_name(entry.code));
          settabss(L, "message", entry.message.empty() ? "Syntax error" : entry.message.c_str());

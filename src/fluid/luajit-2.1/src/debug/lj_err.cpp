@@ -1,5 +1,69 @@
 // Error handling.
 // Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
+//
+// LuaJIT can either use internal or external frame unwinding:
+//
+// - Internal frame unwinding (INT) is free-standing and doesn't require
+//   any OS or library support.
+//
+// - External frame unwinding (EXT) uses the system-provided unwind handler.
+//
+// Pros and Cons:
+//
+// - EXT requires unwind tables for *all* functions on the C stack between
+//   the pcall/catch and the error/throw. C modules used by Lua code can
+//   throw errors, so these need to have unwind tables, too. Transitively
+//   this applies to all system libraries used by C modules -- at least
+//   when they have callbacks which may throw an error.
+//
+// - INT is faster when actually throwing errors, but this happens rarely.
+//   Setting up error handlers is zero-cost in any case.
+//
+// - INT needs to save *all* callee-saved registers when entering the
+//   interpreter. EXT only needs to save those actually used inside the
+//   interpreter. JIT-compiled code may need to save some more.
+//
+// - EXT provides full interoperability with C++ exceptions. You can throw
+//   Lua errors or C++ exceptions through a mix of Lua frames and C++ frames.
+//   C++ destructors are called as needed. C++ exceptions caught by pcall
+//   are converted to the string "C++ exception". Lua errors can be caught
+//   with catch (...) in C++.
+//
+// - INT has only limited support for automatically catching C++ exceptions
+//   on POSIX systems using DWARF2 stack unwinding. Other systems may use
+//   the wrapper function feature. Lua errors thrown through C++ frames
+//   cannot be caught by C++ code and C++ destructors are not run.
+//
+// - EXT can handle errors from internal helper functions that are called
+//   from JIT-compiled code (except for Windows/x86 and 32 bit ARM).
+//   INT has no choice but to call the panic handler, if this happens.
+//   Note: this is mainly relevant for out-of-memory errors.
+//
+// EXT is the default on all systems where the toolchain produces unwind
+// tables by default (*). This is hard-coded and/or detected in src/Makefile.
+// You can thwart the detection with: TARGET_XCFLAGS=-DLUAJIT_UNWIND_INTERNAL
+//
+// INT is the default on all other systems.
+//
+// EXT can be manually enabled for toolchains that are able to produce
+// conforming unwind tables:
+//   "TARGET_XCFLAGS=-funwind-tables -DLUAJIT_UNWIND_EXTERNAL"
+// As explained above, *all* C code used directly or indirectly by LuaJIT
+// must be compiled with -funwind-tables (or -fexceptions). C++ code must
+// *not* be compiled with -fno-exceptions.
+//
+// If you're unsure whether error handling inside the VM works correctly,
+// try running this and check whether it prints "OK":
+//
+//   luajit -e "print(select(2, load('OK')):match('OK'))"
+//
+// (*) Originally, toolchains only generated unwind tables for C++ code. For
+// interoperability reasons, this can be manually enabled for plain C code,
+// too (with -funwind-tables). With the introduction of the x64 architecture,
+// the corresponding POSIX and Windows ABIs mandated unwind tables for all
+// code. Over the following years most desktop and server platforms have
+// enabled unwind tables by default on all architectures. OTOH mobile and
+// embedded platforms do not consistently mandate unwind tables.
 
 #define lj_err_c
 #define LUA_CORE
@@ -19,79 +83,11 @@
 #include "lj_tab.h"
 #include "lj_gc.h"
 
-/*
-** LuaJIT can either use internal or external frame unwinding:
-**
-** - Internal frame unwinding (INT) is free-standing and doesn't require
-**   any OS or library support.
-**
-** - External frame unwinding (EXT) uses the system-provided unwind handler.
-**
-** Pros and Cons:
-**
-** - EXT requires unwind tables for *all* functions on the C stack between
-**   the pcall/catch and the error/throw. C modules used by Lua code can
-**   throw errors, so these need to have unwind tables, too. Transitively
-**   this applies to all system libraries used by C modules -- at least
-**   when they have callbacks which may throw an error.
-**
-** - INT is faster when actually throwing errors, but this happens rarely.
-**   Setting up error handlers is zero-cost in any case.
-**
-** - INT needs to save *all* callee-saved registers when entering the
-**   interpreter. EXT only needs to save those actually used inside the
-**   interpreter. JIT-compiled code may need to save some more.
-**
-** - EXT provides full interoperability with C++ exceptions. You can throw
-**   Lua errors or C++ exceptions through a mix of Lua frames and C++ frames.
-**   C++ destructors are called as needed. C++ exceptions caught by pcall
-**   are converted to the string "C++ exception". Lua errors can be caught
-**   with catch (...) in C++.
-**
-** - INT has only limited support for automatically catching C++ exceptions
-**   on POSIX systems using DWARF2 stack unwinding. Other systems may use
-**   the wrapper function feature. Lua errors thrown through C++ frames
-**   cannot be caught by C++ code and C++ destructors are not run.
-**
-** - EXT can handle errors from internal helper functions that are called
-**   from JIT-compiled code (except for Windows/x86 and 32 bit ARM).
-**   INT has no choice but to call the panic handler, if this happens.
-**   Note: this is mainly relevant for out-of-memory errors.
-**
-** EXT is the default on all systems where the toolchain produces unwind
-** tables by default (*). This is hard-coded and/or detected in src/Makefile.
-** You can thwart the detection with: TARGET_XCFLAGS=-DLUAJIT_UNWIND_INTERNAL
-**
-** INT is the default on all other systems.
-**
-** EXT can be manually enabled for toolchains that are able to produce
-** conforming unwind tables:
-**   "TARGET_XCFLAGS=-funwind-tables -DLUAJIT_UNWIND_EXTERNAL"
-** As explained above, *all* C code used directly or indirectly by LuaJIT
-** must be compiled with -funwind-tables (or -fexceptions). C++ code must
-** *not* be compiled with -fno-exceptions.
-**
-** If you're unsure whether error handling inside the VM works correctly,
-** try running this and check whether it prints "OK":
-**
-**   luajit -e "print(select(2, load('OK')):match('OK'))"
-**
-** (*) Originally, toolchains only generated unwind tables for C++ code. For
-** interoperability reasons, this can be manually enabled for plain C code,
-** too (with -funwind-tables). With the introduction of the x64 architecture,
-** the corresponding POSIX and Windows ABIs mandated unwind tables for all
-** code. Over the following years most desktop and server platforms have
-** enabled unwind tables by default on all architectures. OTOH mobile and
-** embedded platforms do not consistently mandate unwind tables.
-*/
-
 // Error message strings.
 LJ_DATADEF const char* lj_err_allmsg =
 #define ERRDEF(name, msg)  msg "\0"
 #include "lj_errmsg.h"
 ;
-
-// Internal frame unwinding
 
 //********************************************************************************************************************
 // Call __close handlers for to-be-closed locals during error unwinding.
@@ -103,18 +99,18 @@ LJ_DATADEF const char* lj_err_allmsg =
 static TValue* unwind_close_handlers(lua_State* L, TValue* frame, TValue* errobj)
 {
    // Get the function from this frame
-   GCfunc* fn = frame_func(frame);
+   GCfunc *fn = frame_func(frame);
 
    // Only process Lua functions (they have closeslots in their prototype)
    if (!isluafunc(fn)) return errobj;
 
-   GCproto* pt = funcproto(fn);
+   GCproto *pt = funcproto(fn);
    uint64_t closeslots = pt->closeslots;
    if (closeslots IS 0) return errobj;
 
    // Set _G.__close_err for bytecode-based handlers that might run later
 
-   GCtab* env = tabref(L->env);
+   GCtab *env = tabref(L->env);
    if (env) {
       GCstr *key = lj_str_newlit(L, "__close_err");
       TValue *slot = lj_tab_setstr(L, env, key);
@@ -694,9 +690,8 @@ LJ_NOINLINE void LJ_FASTCALL lj_err_throw(lua_State* L, int errcode)
 
    if (G(L)->panic) G(L)->panic(L);
 #else
-#if LJ_HASJIT
    setmref(g->jit_base, nullptr);
-#endif
+
    {
       void* cf = err_unwind(L, nullptr, errcode);
       if (cframe_unwind_ff(cf))
@@ -782,7 +777,7 @@ static ptrdiff_t finderrfunc(lua_State* L)
 
 LJ_NOINLINE void LJ_FASTCALL lj_err_run(lua_State* L)
 {
-   ptrdiff_t ef = (LJ_HASJIT and tvref(G(L)->jit_base)) ? 0 : finderrfunc(L);
+   ptrdiff_t ef = tvref(G(L)->jit_base) ? 0 : finderrfunc(L);
    if (ef) {
       TValue* errfunc = restorestack(L, ef);
       TValue* top = L->top;
@@ -801,15 +796,11 @@ LJ_NOINLINE void LJ_FASTCALL lj_err_run(lua_State* L)
    lj_err_throw(L, LUA_ERRRUN);
 }
 
-#if LJ_HASJIT
 LJ_NOINLINE void LJ_FASTCALL lj_err_trace(lua_State* L, int errcode)
 {
-   if (errcode == LUA_ERRRUN)
-      lj_err_run(L);
-   else
-      lj_err_throw(L, errcode);
+   if (errcode == LUA_ERRRUN) lj_err_run(L);
+   else lj_err_throw(L, errcode);
 }
-#endif
 
 //********************************************************************************************************************
 // Formatted runtime error message.
@@ -839,11 +830,10 @@ LJ_NOINLINE void lj_err_msg(lua_State* L, ErrMsg em)
 
 LJ_NOINLINE void lj_err_msgv(lua_State* L, ErrMsg em, ...)
 {
-   const char* msg;
    va_list argp;
    va_start(argp, em);
    if (curr_funcisL(L)) L->top = curr_topL(L);
-   msg = lj_strfmt_pushvf(L, err2msg(em), argp);
+   auto msg = lj_strfmt_pushvf(L, err2msg(em), argp);
    va_end(argp);
    lj_debug_addloc(L, msg, L->base - 1, nullptr);
    lj_err_run(L);
@@ -855,9 +845,8 @@ LJ_NOINLINE void lj_err_msgv(lua_State* L, ErrMsg em, ...)
 LJ_NOINLINE void lj_err_lex(lua_State* L, GCstr* src, const char* tok, BCLine line, ErrMsg em, va_list argp)
 {
    char buff[LUA_IDSIZE];
-   const char* msg;
    lj_debug_shortname(buff, src, line);
-   msg = lj_strfmt_pushvf(L, err2msg(em), argp);
+   auto msg = lj_strfmt_pushvf(L, err2msg(em), argp);
    msg = lj_strfmt_pushf(L, "%s:%d: %s", buff, line, msg);
    if (tok) lj_strfmt_pushf(L, err2msg(ErrMsg::XNEAR), msg, tok);
    lj_err_throw(L, LUA_ERRSYNTAX);
@@ -868,13 +857,13 @@ LJ_NOINLINE void lj_err_lex(lua_State* L, GCstr* src, const char* tok, BCLine li
 
 LJ_NOINLINE void lj_err_optype(lua_State* L, cTValue* o, ErrMsg opm)
 {
-   const char* tname = lj_typename(o);
-   const char* opname = err2msg(opm);
+   auto tname = lj_typename(o);
+   auto opname = err2msg(opm);
    if (curr_funcisL(L)) {
-      GCproto* pt = curr_proto(L);
-      const BCIns* pc = cframe_Lpc(L) - 1;
-      const char* oname = nullptr;
-      const char* kind = lj_debug_slotname(pt, pc, (BCREG)(o - L->base), &oname);
+      GCproto *pt = curr_proto(L);
+      const BCIns *pc = cframe_Lpc(L) - 1;
+      CSTRING oname = nullptr;
+      auto kind = lj_debug_slotname(pt, pc, (BCREG)(o - L->base), &oname);
       if (kind) err_msgv(L, ErrMsg::BADOPRT, opname, kind, oname, tname);
    }
    err_msgv(L, ErrMsg::BADOPRV, opname, tname);
@@ -885,8 +874,8 @@ LJ_NOINLINE void lj_err_optype(lua_State* L, cTValue* o, ErrMsg opm)
 
 LJ_NOINLINE void lj_err_comp(lua_State* L, cTValue* o1, cTValue* o2)
 {
-   const char* t1 = lj_typename(o1);
-   const char* t2 = lj_typename(o2);
+   auto t1 = lj_typename(o1);
+   auto t2 = lj_typename(o2);
    err_msgv(L, t1 == t2 ? ErrMsg::BADCMPV : ErrMsg::BADCMPT, t1, t2);
    // This assumes the two "boolean" entries are commoned by the C compiler.
 }
@@ -918,11 +907,9 @@ LJ_NOINLINE void lj_err_optype_call(lua_State* L, TValue* o)
 LJ_NOINLINE void lj_err_callermsg(lua_State* L, const char* msg)
 {
    TValue* frame = nullptr, * pframe = nullptr;
-   if (!(LJ_HASJIT and tvref(G(L)->jit_base))) {
+   if (not tvref(G(L)->jit_base)) {
       frame = L->base - 1;
-      if (frame_islua(frame)) {
-         pframe = frame_prevl(frame);
-      }
+      if (frame_islua(frame)) pframe = frame_prevl(frame);
       else if (frame_iscont(frame)) {
          if (frame_iscont_fficb(frame)) {
             pframe = frame;

@@ -688,7 +688,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_expression_stmt(const ExpressionStmtPay
       std::string msg = "undeclared variable '";
       msg += std::string_view(strdata(name), name->len);
       msg += "' - use 'local' to declare new variables";
-      return ParserResult<IrEmitUnit>::failure(this->make_error(ParserErrorCode::UndefinedVariable, msg));
+      return ParserResult<IrEmitUnit>::failure(this->make_error(ParserErrorCode::UndefinedVariable, msg, payload.expression->span));
    }
 
    // For other expression statements, we need to ensure any bytecode emitted for the expression
@@ -2254,6 +2254,15 @@ ParserError IrEmitter::make_error(ParserErrorCode code, std::string_view message
    error.code = code;
    error.message.assign(message.begin(), message.end());
    error.token = Token::from_current(this->lex_state);
+   return error;
+}
+
+ParserError IrEmitter::make_error(ParserErrorCode code, std::string_view message, const SourceSpan& span) const
+{
+   ParserError error;
+   error.code = code;
+   error.message.assign(message.begin(), message.end());
+   error.token = Token::from_span(span, TokenKind::Unknown);
    return error;
 }
 
