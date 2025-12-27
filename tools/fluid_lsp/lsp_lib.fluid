@@ -3,11 +3,6 @@
 -- Provides a TCP-based LSP server for IDE integration with Fluid scripts.
 -- Implements the JSON-RPC 2.0 protocol with LSP wire format (Content-Length framing).
 --
--- Usage:
---    lsplib = require 'dev/lsp'
---    server = lsplib.start({ port = 5007, verbose = true })
---    processing.sleep()
---
 -- The server supports handler registration for extending LSP functionality:
 --    server.registerHandler('textDocument/hover', function(msg, state) ... end)
 
@@ -25,6 +20,80 @@
    -- Structure: { [uri] = { resultId = number, data = { ... } } }
    glTokenCache = { }
    glNextResultId = 1
+
+----------------------------------------------------------------------------------------------------------------------
+-- Document Line Index
+-- Lazily computes and caches an array of line byte offsets. Invalidate by setting doc.lineIndex = nil on changes.
+-- Format: array<int> with pairs of (start, stop) for each line, so line N is at indices N*2 and N*2+1.
+
+function rebuildLineIndex(Doc:table, FromLine:num)
+   if Doc.lineIndex then return end
+
+   content = Doc.content
+   len = #content
+   pos = 0
+
+   if not FromLine or not Doc.lineIndex or FromLine is 0 then
+      -- Full rebuild
+      Doc.lineIndex = array<int>
+   else
+      -- Incremental rebuild from FromLine onwards
+      -- Truncate the array to keep lines 0..FromLine-1
+      keep_count = FromLine * 2
+      if keep_count > #Doc.lineIndex then
+         keep_count = #Doc.lineIndex
+      end
+
+      -- Remove entries from FromLine onwards
+      Doc.lineIndex:resize(keep_count)
+
+      -- Start scanning from where FromLine begins
+      if keep_count >= 2 then
+         -- Position after the previous line's newline
+         pos = Doc.lineIndex[keep_count - 1] + 1  -- After stop of previous line + newline
+         if pos > len then pos = len end
+      else
+         pos = 0
+      end
+   end
+
+   while pos < len do
+      -- Find end of line (newline or end of content)
+      newline_pos = content:find('\n', pos)
+      if newline_pos then
+         Doc.lineIndex:push(pos, newline_pos - 1)
+         pos = newline_pos + 1  -- Skip past the newline
+      else
+         Doc.lineIndex:push(pos, len - 1)
+         break
+      end
+   end
+
+   -- Handle empty document or trailing newline
+   if #Doc.lineIndex is 0 or (len > 0 and content:sub(len - 1, len) is '\n') then
+      Doc.lineIndex:push(len, len)  -- start, stop
+   end
+end
+
+function getTotalLines(Doc:table):num
+   rebuildLineIndex(Doc)
+   return #Doc.lineIndex / 2
+end
+
+function getLine(Doc:table, LineNo:num):str
+   rebuildLineIndex(Doc)
+   total_lines = #Doc.lineIndex / 2
+   if LineNo < 0 or LineNo >= total_lines then return '' end
+
+   idx = LineNo * 2
+   return Doc.content:sub(Doc.lineIndex[idx], Doc.lineIndex[idx + 1])
+end
+
+-- Mark line N and subsequent lines for recomputation.  Currently we are very lazy about this...
+
+function markLineIndex(Doc:table, LineNo:num)
+   Doc.lineIndex = nil
+end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Semantic Token Types and Modifiers (LSP standard)
@@ -236,6 +305,135 @@ function sendResponse(Self, ClientSocket, ResponseTable, RequestLog)
          RequestLog('RESPONSE', formatted)
       end
    end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Send an LSP notification (no response expected)
+
+function sendNotification(Self, ClientSocket, Method, Params)
+   notification = {
+      jsonrpc = '2.0',
+      method = Method,
+      params = Params
+   }
+   formatted = formatResponse(notification)
+   err = ClientSocket.acWrite(formatted)
+   if err != ERR_Okay then
+      logMessage(Self, 'Failed to send notification: ' .. mSys.GetErrorMsg(err))
+   else
+      logVerbose(Self, 'Sent notification: ' .. Method)
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Compute diagnostics for a document using debug.validate()
+
+-- Helper to check if character is alphanumeric or underscore
+function isIdentChar(C)
+   return (C >= 'a' and C <= 'z') or (C >= 'A' and C <= 'Z') or (C >= '0' and C <= '9') or C is '_'
+end
+
+-- Compute start and end columns for an error range based on context
+-- Returns: start_col, end_col
+function computeErrorRange(Doc:table, Line:num, Column:num)
+   -- Find the target line
+   if Line >= getTotalLines(Doc) then return Column, Column + 1 end
+
+   line_text = getLine(Doc, Line)
+   if Column >= #line_text then return Column, Column + 1 end
+
+   c = line_text:sub(Column, Column + 1)
+
+   -- If starting on an identifier/number character, extend both directions
+   if isIdentChar(c) or (c >= '0' and c <= '9') then
+      -- Extend backwards to find start of token
+      start_col = Column
+      while start_col > 0 do
+         prev_c = line_text:sub(start_col - 1, start_col)
+         if isIdentChar(prev_c) or (prev_c >= '0' and prev_c <= '9') then
+            start_col -= 1
+         else
+            break
+         end
+      end
+
+      -- Extend forwards to find end of token
+      end_col = Column + 1
+      while end_col < #line_text do
+         next_c = line_text:sub(end_col, end_col + 1)
+         if isIdentChar(next_c) or (next_c >= '0' and next_c <= '9') then
+            end_col++
+         else
+            break
+         end
+      end
+      return start_col, end_col
+   end
+
+   -- For operators and punctuation, try to capture multi-character operators
+   if c is '=' or c is '!' or c is '<' or c is '>' or c is '~' or c is ':' or c is '.' then
+      next_c = (Column + 1 < #line_text) and line_text:sub(Column + 1, Column + 2) or ''
+      if next_c is '=' or next_c is '>' then
+         return Column, Column + 2
+      end
+   end
+
+   -- For string delimiters, try to find matching end
+   if c is '"' or c is "'" then
+      end_col = Column + 1
+      while end_col < #line_text do
+         sc = line_text:sub(end_col, end_col + 1)
+         if sc is c then
+            return Column, end_col + 1
+         elseif sc is '\\' then
+            end_col += 2  -- Skip escaped character
+         else
+            end_col++
+         end
+      end
+      return Column, #line_text  -- Unterminated string - highlight to end of line
+   end
+
+   -- Default: single character
+   return Column, Column + 1
+end
+
+function computeDiagnostics(Doc:table)
+   result = debug.validate(Doc.content)
+
+   lsp_diags = array<table>
+
+   if result.diagnostics then
+      rebuildLineIndex(Doc)
+
+      for diag in values(result.diagnostics) do
+         -- Map severity: C++ (0=Info,1=Warn,2=Error) -> LSP (1=Error,2=Warn,3=Info)
+         lsp_severity = 3  -- Default to Info
+         if diag.severity is 2 then lsp_severity = 1      -- Error
+         elseif diag.severity is 1 then lsp_severity = 2  -- Warning
+         end
+
+         -- Compute a meaningful range if not provided by the parser
+         start_col = diag.column
+         end_col = diag.endColumn
+         if end_col <= start_col+1 then
+            start_col, end_col = computeErrorRange(Doc, diag.line, diag.column)
+         end
+
+         lsp_diags:push({
+            range = {
+               start = { line = diag.line, character = start_col },
+               ['end'] = { line = diag.line, character = end_col }
+            },
+            severity = lsp_severity,
+            source = 'fluid',
+            code = diag.code,
+            message = diag.message
+         })
+      end
+   end
+
+   return { uri = Doc.uri, version = Doc.version, diagnostics = lsp_diags }
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -844,12 +1042,13 @@ SYMBOL_KIND = {
 ----------------------------------------------------------------------------------------------------------------------
 -- Find the line number of the matching 'end' for a block starting at StartLine
 
-function findMatchingEnd(Lines:array, StartLine:num):num
+function findMatchingEnd(Doc:table, StartLine:num):num
    depth = 1
    line_num = StartLine + 1
+   total_lines = getTotalLines(Doc)
 
-   while line_num < #Lines do
-      line_text = Lines[line_num]
+   while line_num < total_lines do
+      line_text = getLine(Doc, line_num)
 
       -- Count block openers (simplified - doesn't handle strings/comments perfectly)
       for opener in line_text:gmatch('%f[%w]function%f[^%w]') do depth++ end
@@ -883,40 +1082,38 @@ function findMatchingEnd(Lines:array, StartLine:num):num
    end
 
    -- If no matching end found, return last line
-   return #Lines - 1
+   return total_lines - 1
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Extract document symbols (functions, globals) from Fluid source
 -- Returns array of DocumentSymbol objects for the outline view
 
-function extractDocumentSymbols(Source:str):array
+function extractDocumentSymbols(Doc:table):array
    symbols = array<table>
-   lines = Source:split('\n')
-   line_num = 0
+   total_lines = getTotalLines(Doc)
    in_block_comment = false
 
-   for line_text in values(lines) do
+   for line_num = 0, total_lines - 1 do
+      line_text = getLine(Doc, line_num)
+
       -- Track block comments --[[ ... ]]
       if in_block_comment then
          if line_text:find('%]%]') then
             in_block_comment = false
          end
-         line_num++
          continue
       end
 
       -- Check for block comment start
       if line_text:find('%-%-%[%[') then
          in_block_comment = true
-         line_num++
          continue
       end
 
       -- Skip line comments (lines starting with --)
       trimmed = line_text:match('^%s*(.*)')
       if trimmed:sub(0, 2) is '--' then
-         line_num++
          continue
       end
 
@@ -926,7 +1123,6 @@ function extractDocumentSymbols(Source:str):array
 
       -- Skip if function keyword is inside a line comment
       if func_pos and comment_pos and comment_pos < func_pos then
-         line_num++
          continue
       end
 
@@ -956,14 +1152,14 @@ function extractDocumentSymbols(Source:str):array
             end
 
             -- Find the end of this function (matching 'end')
-            end_line = findMatchingEnd(lines, line_num)
+            end_line = findMatchingEnd(Doc, line_num)
 
             symbol = {
                name = name,
                kind = kind,
                range = {
                   start = { line = line_num, character = 0 },
-                  ['end'] = { line = end_line, character = #lines[end_line] }
+                  ['end'] = { line = end_line, character = #getLine(Doc, end_line) }
                },
                selectionRange = {
                   start = { line = line_num, character = name_start },
@@ -978,8 +1174,6 @@ function extractDocumentSymbols(Source:str):array
             symbols:push(symbol)
          end
       end
-
-      line_num++
    end
 
    return symbols
@@ -998,15 +1192,16 @@ FOLDING_KIND = {
 -- Extract folding ranges from Fluid source
 -- Returns array of FoldingRange objects for code folding
 
-function extractFoldingRanges(Source:str):array
+function extractFoldingRanges(Doc:table):array
    ranges = array<table>
-   lines = Source:split('\n')
-   line_num = 0
+   total_lines = getTotalLines(Doc)
    block_stack = array<table>  -- Stack of { line, kind } for nested blocks
    in_block_comment = false
    block_comment_start = 0
 
-   for line_text in values(lines) do
+   for line_num = 0, total_lines - 1 do
+      line_text = getLine(Doc, line_num)
+
       -- Handle block comments --[[ ... ]]
       if in_block_comment then
          if line_text:find('%]%]') then
@@ -1020,7 +1215,6 @@ function extractFoldingRanges(Source:str):array
             end
             in_block_comment = false
          end
-         line_num++
          continue
       end
 
@@ -1032,7 +1226,6 @@ function extractFoldingRanges(Source:str):array
          if not before:find('["\']') then
             in_block_comment = true
             block_comment_start = line_num
-            line_num++
             continue
          end
       end
@@ -1043,7 +1236,6 @@ function extractFoldingRanges(Source:str):array
       -- Skip if line is a comment
       trimmed = line_text:match('^%s*(.*)')
       if trimmed:sub(0, 2) is '--' then
-         line_num++
          continue
       end
 
@@ -1115,8 +1307,6 @@ function extractFoldingRanges(Source:str):array
             end
          end
       end
-
-      line_num++
    end
 
    return ranges
@@ -1310,9 +1500,15 @@ function registerCoreHandlers(Self)
          uri = doc.uri,
          languageId = doc.languageId,
          version = doc.version,
-         content = doc.text
+         content = doc.text,
+         lineIndex = nil  -- Lazily computed line index
       }
       logMessage(Self, 'Document opened: ' .. doc.uri)
+
+      -- Compute and publish diagnostics
+      params = computeDiagnostics(glDocuments[doc.uri])
+      sendNotification(Self, State.clientSocket, 'textDocument/publishDiagnostics', params)
+
       return nil  -- Notification, no response
    end
 
@@ -1322,8 +1518,13 @@ function registerCoreHandlers(Self)
       version = Msg.params.textDocument.version
 
       if glDocuments[uri] then
-         for _, change in ipairs(Msg.params.contentChanges) do
+         edit_line = nil  -- Track earliest edited line for incremental index update
+         for change in values(Msg.params.contentChanges) do
             if change.range then
+               -- Track the earliest line affected by edits
+               if not edit_line or change.range.start.line < edit_line then
+                  edit_line = change.range.start.line
+               end
                -- Incremental sync: apply text edit at range
                glDocuments[uri].content = applyTextEdit(
                   glDocuments[uri].content,
@@ -1333,10 +1534,19 @@ function registerCoreHandlers(Self)
             else
                -- Full sync fallback: replace entire content
                glDocuments[uri].content = change.text
+               edit_line = 0  -- Force full rebuild
             end
          end
          glDocuments[uri].version = version
+
+         -- Incrementally rebuild line index from the edited line
+         markLineIndex(glDocuments[uri], edit_line)
+
          logVerbose(Self, 'Document updated: ' .. uri .. ' (version ' .. version .. ')')
+
+         -- Compute and publish diagnostics
+         params = computeDiagnostics(glDocuments[uri])
+         sendNotification(Self, State.clientSocket, 'textDocument/publishDiagnostics', params)
       end
       return nil  -- Notification, no response
    end
@@ -1347,6 +1557,13 @@ function registerCoreHandlers(Self)
       glDocuments[uri] = nil
       glTokenCache[uri] = nil  -- Clear token cache to free memory
       logMessage(Self, 'Document closed: ' .. uri)
+
+      -- Clear diagnostics for closed document
+      sendNotification(Self, State.clientSocket, 'textDocument/publishDiagnostics', {
+         uri = uri,
+         diagnostics = array<table>
+      })
+
       return nil  -- Notification, no response
    end
 
@@ -1491,7 +1708,7 @@ function registerCoreHandlers(Self)
 
       logVerbose(Self, 'Computing document symbols for: ' .. uri)
 
-      symbols = extractDocumentSymbols(doc.content)
+      symbols = extractDocumentSymbols(doc)
 
       logVerbose(Self, 'Returning ' .. #symbols .. ' symbols')
 
@@ -1521,7 +1738,7 @@ function registerCoreHandlers(Self)
 
       logVerbose(Self, 'Computing folding ranges for: ' .. uri)
 
-      ranges = extractFoldingRanges(doc.content)
+      ranges = extractFoldingRanges(doc)
 
       logVerbose(Self, 'Returning ' .. #ranges .. ' folding ranges')
 
@@ -1536,7 +1753,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Method Dispatch
 
-function dispatchMethod(Self, Message, State)
+function dispatchMethod(Self:table, Message:table, State)
    method = Message.method
 
    if not method then
@@ -1575,7 +1792,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Incoming Data Handler
 
-function processIncoming(Self, ClientSocket)
+function processIncoming(Self:table, ClientSocket)
    state = ClientSocket._state()
 
    -- Initialize state on first call
@@ -1586,6 +1803,7 @@ function processIncoming(Self, ClientSocket)
       state.initialized        = false
       state.shutdown_requested = false
       state.should_disconnect  = false
+      state.clientSocket       = ClientSocket  -- Store for sending notifications
       state.initialised        = true
       logVerbose(Self, 'New client connection initialized')
    end
