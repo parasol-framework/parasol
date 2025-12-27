@@ -23,11 +23,9 @@ Index files (checked in order): index.html, index.htm, default.html, default.htm
 
    httplib = require 'net/httpserver'
 
-   glConfigFile = arg('config')
+   glConfigFile = arg('config', 'user:config/http_server_cfg.fluid')
 
    glOptions = { }
-
-   glConfigFile ??= 'user:config/http_server_cfg.fluid'
 
    if mSys.AnalysePath(glConfigFile) is ERR_Okay then
       loadFile(glConfigFile, glOptions)
@@ -79,4 +77,3 @@ Index files (checked in order): index.html, index.htm, default.html, default.htm
    glServer = httplib.start(glOptions)
 
    processing.sleep()
-

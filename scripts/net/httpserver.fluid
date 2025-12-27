@@ -5,13 +5,13 @@
 -- httpServer.stop()
 
    include 'network'
-   local json = require('json')
+   json = require('json')
 
-   local glTime = obj.new('time')
+   glTime = obj.new('time')
 
-   local httpServer = { }
+   httpServer = { }
 
-   local glStatusTexts = {
+   glStatusTexts = {
        [200] = 'OK', [201] = 'Created', [204] = 'No Content',
        [301] = 'Moved Permanently', [302] = 'Found', [304] = 'Not Modified',
        [400] = 'Bad Request', [401] = 'Unauthorized', [403] = 'Forbidden',
@@ -19,7 +19,7 @@
        [500] = 'Internal Server Error', [501] = 'Not Implemented', [502] = 'Bad Gateway'
    }
 
-   local glMimeTypes = {
+   glMimeTypes = {
       -- Text
       html = 'text/html',
       htm = 'text/html',
@@ -70,8 +70,8 @@
 
 ----------------------------------------------------------------------------------------------------------------------
 
-local function validatePort(port)
-   local portNum = tonumber(port)
+function validatePort(port)
+   portNum = tonumber(port)
    if not portNum or portNum < 1 or portNum > 65535 then
       return false
    end
@@ -81,7 +81,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Decode percent-encoded characters in URLs
 
-local function urlDecode(str)
+function urlDecode(str)
    if str then
       str = str:gsub('+', ' ') -- Replace + with space
       str = str:gsub('%%(%x%x)', function(hex)
@@ -94,7 +94,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Canonicalize path to prevent directory traversal attacks
 
-local function canonicalizePath(self, Path)
+function canonicalizePath(self, Path)
    if not Path then return nil end
 
    Path = Path:gsub('[%c]', '')   -- Remove any null bytes
@@ -106,7 +106,7 @@ local function canonicalizePath(self, Path)
    Path = Path:gsub('/+', '/')
 
    -- Split into components
-   local components = {}
+   components = {}
    for component in Path:gmatch('[^/]+') do
       if component is '..' then
          -- Attempt to go up - block this
@@ -118,7 +118,7 @@ local function canonicalizePath(self, Path)
    end
 
    -- Rebuild clean path
-   local cleanPath = '/' .. table.concat(components, '/')
+   cleanPath = '/' .. table.concat(components, '/')
    if Path:endsWith('/') and cleanPath != '/' then
       cleanPath ..= '/'
    end
@@ -128,20 +128,20 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-local function getMimeType(Filename)
-   local extension = Filename:match("%.([^%.]+)$")
+function getMimeType(Filename)
+   extension = Filename:match("%.([^%.]+)$")
    if not extension then return 'application/octet-stream' end
    return glMimeTypes[extension:lower()] or 'application/octet-stream'
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-local function timestamp()
+function timestamp()
    glTime.acQuery()
    return string.format('%04d-%02d-%02d %02d:%02d:%02d', glTime.year, glTime.month, glTime.day, glTime.hour, glTime.minute, glTime.second)
 end
 
-local function logMessage(self, message)
+function logMessage(self, message)
    if self.logMessage then
       self.logMessage('[' .. timestamp() .. '] ' .. message)
    end
@@ -151,20 +151,20 @@ end
 -- Process chunked request body incrementally
 -- Returns true when chunking is complete, false if still reading
 
-local function processChunkedBody(state, server)
+function processChunkedBody(state, server)
    while #state.buffer > 0 do
       if state.chunk_state is 'SIZE' then
          -- Look for chunk size line ending with \r\n
-         local line_end = state.buffer:find('\r\n')
+         line_end = state.buffer:find('\r\n')
          if not line_end then
             return false -- Need more data for chunk size line
          end
 
-         local size_line = state.buffer:sub(0, line_end)
+         size_line = state.buffer:sub(0, line_end)
          state.buffer = state.buffer:sub(line_end + 2) -- Remove \r\n
 
          -- Parse chunk size (ignore extensions after semicolon)
-         local hex_size = size_line:match('^([0-9a-fA-F]+)')
+         hex_size = size_line:match('^([0-9a-fA-F]+)')
          if not hex_size then
             logMessage(server, 'Invalid chunk size format: ' .. size_line)
             return false -- Invalid format
@@ -187,14 +187,14 @@ local function processChunkedBody(state, server)
 
       elseif state.chunk_state is 'DATA' then
          -- Read chunk data
-         local needed = state.chunk_size - state.chunk_received
-         local available = #state.buffer
+         needed = state.chunk_size - state.chunk_received
+         available = #state.buffer
 
          if available is 0 then
             return false -- Need more data
          end
 
-         local to_take = math.min(available, needed)
+         to_take = math.min(available, needed)
          state.request.body   = state.request.body .. state.buffer:sub(0, to_take)
          state.buffer         = state.buffer:sub(to_take)
          state.chunk_received = state.chunk_received + to_take
@@ -220,7 +220,7 @@ local function processChunkedBody(state, server)
 
       elseif state.chunk_state is 'TRAILER' then
          -- Look for final \r\n (trailer headers are ignored for now)
-         local trailer_end = state.buffer:find('\r\n')
+         trailer_end = state.buffer:find('\r\n')
          if trailer_end then
             state.buffer = state.buffer:sub(trailer_end + 1)
             return true -- Chunked reading complete
@@ -235,14 +235,14 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-local function readRequestWithTimeout(client, maxSize, timeoutSeconds)
-   local buffer = string.alloc(1024) -- Start with 1KB buffer
-   local requestData = ''
-   local totalRead = 0
-   local startTime = mSys.PreciseTime()
+function readRequestWithTimeout(client, maxSize, timeoutSeconds)
+   buffer = string.alloc(1024) -- Start with 1KB buffer
+   requestData = ''
+   totalRead = 0
+   startTime = mSys.PreciseTime()
 
    while totalRead < maxSize do
-      local err, bytes_read = client.acRead(buffer, 1024)
+      err, bytes_read = client.acRead(buffer, 1024)
 
       if err != ERR_Okay then
          if err is ERR_TimeOut then
@@ -285,12 +285,12 @@ end
 -- Read chunked request body (Transfer-Encoding: chunked)
 -- Returns body, error_msg, connection_status
 
-local function readChunkedRequestBody(client, maxSize, timeoutSeconds)
-   local body = ''
-   local totalSize = 0
-   local startTime = mSys.PreciseTime()
-   local buffer = string.alloc(8192) -- Buffer for reading
-   local earlyTermination = false
+function readChunkedRequestBody(client, maxSize, timeoutSeconds)
+   body = ''
+   totalSize = 0
+   startTime = mSys.PreciseTime()
+   buffer = string.alloc(8192) -- Buffer for reading
+   earlyTermination = false
 
    while true do
       -- Check timeout
@@ -299,10 +299,10 @@ local function readChunkedRequestBody(client, maxSize, timeoutSeconds)
       end
 
       -- Read chunk size line (hexadecimal number followed by optional extensions and CRLF)
-      local chunkSizeLine = ''
-      local char = ''
+      chunkSizeLine = ''
+      char = ''
       while not chunkSizeLine:match('\r\n$') do
-         local err, bytes_read = client.acRead(buffer, 1)
+         err, bytes_read = client.acRead(buffer, 1)
          if err != ERR_Okay then
             if err is ERR_TimeOut then
                return nil, 'timeout', false
@@ -336,12 +336,12 @@ local function readChunkedRequestBody(client, maxSize, timeoutSeconds)
       end
 
       -- Parse chunk size (ignore chunk extensions after semicolon if present)
-      local chunkSizeHex = chunkSizeLine:match('^([0-9a-fA-F]+)')
+      chunkSizeHex = chunkSizeLine:match('^([0-9a-fA-F]+)')
       if not chunkSizeHex then
          return nil, 'invalid_chunk_format', false
       end
 
-      local chunkSize = tonumber(chunkSizeHex, 16)
+      chunkSize = tonumber(chunkSizeHex, 16)
       if not chunkSize then
          return nil, 'invalid_chunk_size', false
       end
@@ -349,7 +349,7 @@ local function readChunkedRequestBody(client, maxSize, timeoutSeconds)
       -- If chunk size is 0, we've reached the end
       if chunkSize is 0 then
          -- Read trailing CRLF after last chunk (if present)
-         local err, bytes_read = client.acRead(buffer, 2)
+         err, bytes_read = client.acRead(buffer, 2)
          -- Ignore any errors here - the 0 chunk is sufficient termination
          break  -- Normal termination
       end
@@ -361,11 +361,11 @@ local function readChunkedRequestBody(client, maxSize, timeoutSeconds)
       end
 
       -- Read chunk data
-      local chunkData = ''
-      local chunkRead = 0
+      chunkData = ''
+      chunkRead = 0
       while chunkRead < chunkSize do
-         local toRead = math.min(8192, chunkSize - chunkRead)
-         local err, bytes_read = client.acRead(buffer, toRead)
+         toRead = math.min(8192, chunkSize - chunkRead)
+         err, bytes_read = client.acRead(buffer, toRead)
          if err != ERR_Okay then
             if err is ERR_TimeOut then
                return nil, 'timeout', false
@@ -403,10 +403,10 @@ local function readChunkedRequestBody(client, maxSize, timeoutSeconds)
       body ..= chunkData
 
       -- Read trailing CRLF after chunk data
-      local crlf = ''
-      local crlf_attempts = 0
+      crlf = ''
+      crlf_attempts = 0
       while #crlf < 2 and crlf_attempts < 2 do
-         local err, bytes_read = client.acRead(buffer, 1)
+         err, bytes_read = client.acRead(buffer, 1)
          crlf_attempts++
          if err != ERR_Okay then
             if err is ERR_TimeOut then
@@ -443,14 +443,14 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Parse query string into key-value pairs
 
-local function parseQueryString(QueryString)
-   local query = {}
+function parseQueryString(QueryString)
+   query = {}
    if not QueryString or QueryString is '' then
       return query
    end
 
    for pair in QueryString:gmatch('[^&]+') do
-      local key, value = pair:match('([^=]+)=(.+)')
+      key, value = pair:match('([^=]+)=(.+)')
       if key and value then
          key = urlDecode(key)
          value = urlDecode(value)
@@ -474,10 +474,10 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Parse JSON body
 
-local function parseJsonBody(Body)
+function parseJsonBody(Body)
    if not Body?? then return {} end
 
-   local success, result = pcall(function()
+   success, result = pcall(function()
       return json.decode(Body)
    end)
 
@@ -487,19 +487,19 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Parse form-encoded body (application/x-www-form-urlencoded)
 
-local function parseFormBody(Body)
+function parseFormBody(Body)
    return parseQueryString(Body) -- Same parsing logic as query strings
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Parse cookies from Cookie header
 
-local function parseCookies(CookieHeader)
-   local cookies = {}
-   if not CookieHeader then return cookies end
+function parseCookies(CookieHeader)
+   cookies = {}
+   CookieHeader ?? return cookies
 
    for cookie in CookieHeader:gmatch('[^;]+') do
-      local name, value = cookie:match('%s*([^=]+)=(.+)')
+      name, value = cookie:match('%s*([^=]+)=(.+)')
       if name and value then
          -- Trim whitespace manually
          name = name:match('^%s*(.-)%s*$')
@@ -514,38 +514,38 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Returns: { method, path, fullPath, version, headers[k,v], query[k,v], cookies[k,v], params[k,v], body, parsedBody, range }
 
-local function parseHttpRequest(Req)
-   local lines = {}
+function parseHttpRequest(Req)
+   lines = {}
    for line in Req:gmatch("[^\r\n]+") do
       table.insert(lines, line)
    end
 
    if #lines is 0 then return nil end
 
-   local req_line = lines[0]
-   local method, full_path, version = req_line:match("(%S+)%s+(%S+)%s+(%S+)")
+   req_line = lines[0]
+   method, full_path, version = req_line:match("(%S+)%s+(%S+)%s+(%S+)")
 
    if (not method) or (not full_path) then return nil end
 
    -- Separate path from query string
-   local path, queryString = full_path:match("([^?]*)%??(.*)")
+   path, queryString = full_path:match("([^?]*)%??(.*)")
    if not path then
       path = full_path
       queryString = ''
    end
 
-   local headers = {}
+   headers = {}
    for i = 1, #lines-1 do -- Skip the METHOD
-      local line = lines[i]
-      local name, value = line:match("([^:]+):%s*(.+)")
+      line = lines[i]
+      name, value = line:match("([^:]+):%s*(.+)")
       if name and value then
          headers[name:lower()] = value
       end
    end
 
-   local query = parseQueryString(queryString)
+   query = parseQueryString(queryString)
 
-   local cookies = parseCookies(headers['cookie'])
+   cookies = parseCookies(headers['cookie'])
 
    return {
       method     = method,
@@ -565,8 +565,8 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-local function sendHttpResponse(self, client, statusCode, statusText, headers, body)
-   local response = "HTTP/1.1 " .. statusCode .. " " .. statusText .. "\r\n"
+function sendHttpResponse(self, client, statusCode, statusText, headers, body)
+   response = "HTTP/1.1 " .. statusCode .. " " .. statusText .. "\r\n"
 
    if (not headers['content-length']) and (body) then headers['content-length'] = tostring(#body)end
 
@@ -596,7 +596,7 @@ local function sendHttpResponse(self, client, statusCode, statusText, headers, b
 
    if body then response ..= body end
 
-   local err, written = client.acWrite(response)
+   err, written = client.acWrite(response)
    if err != ERR_Okay then
       logMessage(self, 'Failed to send response: ' .. mSys.GetErrorMsg(err))
    end
@@ -610,8 +610,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Create enhanced response object with helper methods
 
-local function createResponseObject(self, client)
-   local res = {
+function createResponseObject(self, client)
+   res = {
       _self = self,
       _client = client,
       _statusCode = 200,
@@ -622,9 +622,8 @@ local function createResponseObject(self, client)
 
    -- Set status code and optional status text
    res.status = function(code, text)
-      if res._sent then
-         error('Cannot set status after response sent')
-      end
+      assert(not res._sent, 'Cannot set status after response sent')
+
       res._statusCode = code
       if text then
          res._statusText = text
@@ -637,9 +636,7 @@ local function createResponseObject(self, client)
 
    -- Set response header
    res.header = function(name, value)
-      if res._sent then
-         error('Cannot set headers after response sent')
-      end
+      assert(not res._sent, 'Cannot set headers after response sent')
       res._headers[name:lower()] = value
       return res
    end
@@ -649,7 +646,7 @@ local function createResponseObject(self, client)
       assert(not res._sent, 'Cannot set cookies after response sent')
 
       options = options or {}
-      local cookieStr = name .. '=' .. tostring(value)
+      cookieStr = name .. '=' .. tostring(value)
 
       if options.maxAge then
          cookieStr ..= '; Max-Age=' .. tostring(options.maxAge)
@@ -674,7 +671,7 @@ local function createResponseObject(self, client)
       end
 
       -- Handle multiple cookies by making set-cookie an array
-      local existing = res._headers['set-cookie']
+      existing = res._headers['set-cookie']
       if existing then
          if type(existing) != 'table' then
             existing = { existing }
@@ -691,7 +688,7 @@ local function createResponseObject(self, client)
    res.json = function(data)
       assert(not res._sent, 'Response already sent')
 
-      local jsonStr = type(data) is 'string' ? data :> json.encode(data)
+      jsonStr = type(data) is 'string' ? data :> json.encode(data)
 
       res._headers['content-type'] = 'application/json'
       sendHttpResponse(res._self, res._client, res._statusCode, res._statusText, res._headers, jsonStr)
@@ -727,8 +724,8 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-local function createErrorPage(statusCode, statusText, message, details)
-   local html = '<!DOCTYPE html>\n<html>\n<head>\n'
+function createErrorPage(statusCode, statusText, message, details)
+   html = '<!DOCTYPE html>\n<html>\n<head>\n'
       .. '<meta charset="utf-8">\n'
       .. '<title>' .. statusCode .. ' ' .. statusText .. '</title>\n'
       .. '<style>\n'
@@ -752,7 +749,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-local function serveFile(self, ClientSocket, FilePath, Request)
+function serveFile(self, ClientSocket, FilePath, Request)
    local ex, file = catch(function() return obj.new('file', { path = FilePath, flags = 'READ' }) end)
    if not file then
       local errorBody
@@ -765,8 +762,8 @@ local function serveFile(self, ClientSocket, FilePath, Request)
       return
    end
 
-   local fileSize = file.size
-   local mimeType = getMimeType(FilePath)
+   fileSize = file.size
+   mimeType = getMimeType(FilePath)
 
    -- For HEAD requests, only send headers without body
    if Request.method is 'HEAD' then
@@ -786,12 +783,12 @@ local function serveFile(self, ClientSocket, FilePath, Request)
          ['accept-ranges'] = 'bytes'
       })
 
-      local buffer = string.alloc(self.fileChunkSize)
-      local totalSent = 0
+      buffer = string.alloc(self.fileChunkSize)
+      totalSent = 0
 
       while totalSent < fileSize do
-         local toRead = math.min(self.fileChunkSize, fileSize - totalSent)
-         local err, bytes_read = file.acRead(buffer, toRead)
+         toRead = math.min(self.fileChunkSize, fileSize - totalSent)
+         err, bytes_read = file.acRead(buffer, toRead)
 
          if err != ERR_Okay then
             logMessage(self, 'Error streaming file: ' .. mSys.GetErrorMsg(err))
@@ -811,11 +808,11 @@ local function serveFile(self, ClientSocket, FilePath, Request)
       end
    else
       -- Small files: read all at once
-      local buffer = string.alloc(fileSize)
-      local err, bytes_read = file.acRead(buffer)
+      buffer = string.alloc(fileSize)
+      err, bytes_read = file.acRead(buffer)
 
       if err != ERR_Okay then
-         local errorBody = createErrorPage(500, 'Internal Server Error', 'Error reading file.', 'Read error: ' .. mSys.GetErrorMsg(err))
+         errorBody = createErrorPage(500, 'Internal Server Error', 'Error reading file.', 'Read error: ' .. mSys.GetErrorMsg(err))
          sendHttpResponse(self, ClientSocket, 500, "Internal Server Error", {
             ['content-type'] = 'text/html'
          }, errorBody)
@@ -834,7 +831,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-local function formatFileSize(Bytes)
+function formatFileSize(Bytes)
    if Bytes < 1024 then
       return tostring(Bytes) .. ' B'
    elseif Bytes < 1024 * 1024 then
@@ -848,16 +845,16 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-local function printableTime(Time)
+function printableTime(Time)
    return string.format('%04d-%02d-%02d %02d:%02d:%02d',
       Time.Year, Time.Month, Time.Day, Time.Hour, Time.Minute, Time.Second)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-local function generateDirectoryListing(self, DirPath, URIPath)
+function generateDirectoryListing(self, DirPath, URIPath)
    -- HTML escape function for security
-   local function escapeHtml(str)
+   function escapeHtml(str)
       if not str then return '' end
       str = tostring(str)
       str = str:gsub('&', '&amp;')
@@ -868,8 +865,8 @@ local function generateDirectoryListing(self, DirPath, URIPath)
       return str
    end
 
-   local safeUrlPath = escapeHtml(URIPath)
-   local html = '<!DOCTYPE html>\n<html>\n<head>\n'
+   safeUrlPath = escapeHtml(URIPath)
+   html = '<!DOCTYPE html>\n<html>\n<head>\n'
       .. '<meta charset="utf-8">\n'
       .. '<title>Directory listing for ' .. safeUrlPath .. '</title>\n'
       .. '<style>\n'
@@ -892,34 +889,34 @@ local function generateDirectoryListing(self, DirPath, URIPath)
 
    -- Add parent directory link if not root
    if URIPath != '/' then
-      local parentPath = URIPath:match('(.+)/.+/')
+      parentPath = URIPath:match('(.+)/.+/')
       if not parentPath then parentPath = '/' end
       html ..= '<tr><td><a href="' .. parentPath .. '" class="dir">../</a></td><td>-</td><td>-</td></tr>\n'
    end
 
    -- List directory contents
    logMessage(self, 'Scanning folder ' .. DirPath)
-   local err, dir = mSys.OpenDir(DirPath, bit.bor(RDF_FOLDERS, RDF_FILES, RDF_PERMISSIONS, RDF_DATE, RDF_SIZE, RDF_TAGS))
+   err, dir = mSys.OpenDir(DirPath, bit.bor(RDF_FOLDERS, RDF_FILES, RDF_PERMISSIONS, RDF_DATE, RDF_SIZE, RDF_TAGS))
    if err is ERR_Okay then
-      local count = 0
-      local maxEntries = 1000 -- Limit directory entries to prevent DoS
+      count = 0
+      maxEntries = 1000 -- Limit directory entries to prevent DoS
       while mSys.ScanDir(dir) is ERR_Okay and count < maxEntries do
-         local info = dir.info
-         local name = info.Name
+         info = dir.info
+         name = info.Name
 
          -- Skip hidden files and system files for security
          if name:startsWith('.') then
-            local isFolder = (info.flags & RDF_FOLDER) != 0
-            local size     = isFolder ? '-' :> formatFileSize(info.size)
-            local modTime  = printableTime(info.modified)
-            local href     = URIPath .. name
+            isFolder = (info.flags & RDF_FOLDER) != 0
+            size     = isFolder ? '-' :> formatFileSize(info.size)
+            modTime  = printableTime(info.modified)
+            href     = URIPath .. name
             if isFolder then href ..= '/' end
 
-            local displayName = escapeHtml(name)
+            displayName = escapeHtml(name)
             if isFolder then displayName ..= '/' end
 
-            local safeHref = escapeHtml(href)
-            local cssClass = ''
+            safeHref = escapeHtml(href)
+            cssClass = ''
             if isFolder then
                cssClass = ' class="dir"'
             end
@@ -945,12 +942,12 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-local function serveDirectory(self, Client, DirPath, URIPath, Request)
+function serveDirectory(self, Client, DirPath, URIPath, Request)
    -- Check for configured index files in order
    for _, indexFile in ipairs(self.indexFiles) do
-      local indexPath = DirPath .. indexFile
-      local err, type = mSys.AnalysePath(indexPath)
-      if type is LOC_FILE then
+      indexPath = DirPath .. indexFile
+      file_type = [_*]mSys.AnalysePath(indexPath)
+      if file_type is LOC_FILE then
          logMessage(self, 'Serving index file: ' .. indexFile)
          serveFile(self, Client, indexPath, Request)
          return
@@ -984,13 +981,13 @@ end
 
 -- Execute middleware pipeline with next() chaining
 
-local function executeMiddleware(middlewareList, request, response, finalCallback)
-   local currentIndex = 0
+function executeMiddleware(middlewareList, request, response, finalCallback)
+   currentIndex = 0
 
-   local function next(error)
+   function next(error)
       if error then
          if not response._sent then
-            local errorBody = createErrorPage(500, 'Internal Server Error', 'Middleware error.', 'Error: ' .. tostring(error))
+            errorBody = createErrorPage(500, 'Internal Server Error', 'Middleware error.', 'Error: ' .. tostring(error))
             sendHttpResponse(response._self, response._client, 500, "Internal Server Error", {
                ['content-type'] = 'text/html'
             }, errorBody)
@@ -1003,11 +1000,11 @@ local function executeMiddleware(middlewareList, request, response, finalCallbac
          return
       end
 
-      local middleware = middlewareList[currentIndex]
+      middleware = middlewareList[currentIndex]
       currentIndex++
 
       -- Execute middleware function safely
-      local success, result = pcall(function()
+      success, result = pcall(function()
          return middleware(request, response, next)
       end)
 
@@ -1021,7 +1018,7 @@ end
 
 -- Built-in CORS middleware
 
-local function corsMiddleware(request, response, next)
+function corsMiddleware(request, response, next)
    -- Set CORS headers
    response.header('Access-Control-Allow-Origin', '*')
    response.header('Access-Control-Allow-Methods', 'GET, HEAD, POST, PUT, DELETE, PATCH, OPTIONS')
@@ -1039,35 +1036,35 @@ end
 
 -- Built-in request logging middleware
 
-local function loggingMiddleware(request, response, next)
-   local startTime = mSys.PreciseTime()
+function loggingMiddleware(request, response, next)
+   startTime = mSys.PreciseTime()
 
    logMessage(response._self, request.method .. ' ' .. request.path .. ' from ' .. (request.ip or 'unknown'))
 
    -- Wrap response.send to log completion
-   local originalSend = response.send
-   local originalJson = response.json
-   local originalRedirect = response.redirect
+   originalSend = response.send
+   originalJson = response.json
+   originalRedirect = response.redirect
 
-   local function logResponse()
-      local duration = (mSys.PreciseTime() - startTime) / 1000 -- Convert to milliseconds
+   function logResponse()
+      duration = (mSys.PreciseTime() - startTime) / 1000 -- Convert to milliseconds
       logMessage(response._self, response._statusCode .. ' ' .. request.path .. ' (' .. string.format('%.2f', duration) .. 'ms)')
    end
 
    response.send = function(...)
-      local result = originalSend(...)
+      result = originalSend(...)
       logResponse()
       return result
    end
 
    response.json = function(...)
-      local result = originalJson(...)
+      result = originalJson(...)
       logResponse()
       return result
    end
 
    response.redirect = function(...)
-      local result = originalRedirect(...)
+      result = originalRedirect(...)
       logResponse()
       return result
    end
@@ -1077,20 +1074,20 @@ end
 
 -- Built-in authentication middleware template
 
-local function authMiddleware(options)
+function authMiddleware(options)
    options = options or {}
-   local tokenHeader = options.header or 'authorization'
-   local tokenPrefix = options.prefix or 'Bearer '
+   tokenHeader = options.header or 'authorization'
+   tokenPrefix = options.prefix or 'Bearer '
 
    return function(request, response, next)
-      local authHeader = request.headers[tokenHeader:lower()]
+      authHeader = request.headers[tokenHeader:lower()]
 
       if not authHeader then
          response.status(401).json({ error = 'Missing authorization header' })
          return
       end
 
-      local token = authHeader
+      token = authHeader
       if tokenPrefix and authHeader:find('^' .. tokenPrefix) then
          token = authHeader:sub(#tokenPrefix)
       end
@@ -1117,12 +1114,12 @@ end
 
 -- Add a route with method, pattern, callback, and optional middleware to a server instance
 
-local function addRoute(self, route)
+function addRoute(self, route)
    if not self._routes then self._routes = {} end
 
    if route.pattern and route.method and route.handler then
-      local method = route.method:upper()
-      local pattern = tostring(route.pattern)
+      method = route.method:upper()
+      pattern = tostring(route.pattern)
 
       if not self._routes[method] then self._routes[method] = {} end
 
@@ -1155,11 +1152,11 @@ end
 
 -- Extract parameters from a matched path using route pattern and regex match results
 
-local function extractParams(pattern, matchResults)
-   local params = {}
+function extractParams(pattern, matchResults)
+   params = {}
 
    -- Extract parameter names from the original pattern
-   local paramNames = {}
+   paramNames = {}
    for paramName in pattern:gmatch(':([%w_]+)') do
       table.insert(paramNames, paramName)
    end
@@ -1176,19 +1173,19 @@ end
 
 -- Find matching route for a request from a server instance
 
-local function matchRoute(serverInstance, method, path)
+function matchRoute(serverInstance, method, path)
    if not serverInstance._routes then return nil end
 
-   local methodRoutes = serverInstance._routes[method]
+   methodRoutes = serverInstance._routes[method]
    if not methodRoutes then return nil end
 
    for i, route in ipairs(methodRoutes) do
-      local pattern = route.pattern
+      pattern = route.pattern
 
       if not route.compiledRegex then
          -- Convert route pattern to proper regex pattern
          -- :param becomes ([^/]+), * becomes (.*), escape regex special chars
-         local regexPattern = pattern
+         regexPattern = pattern
 
          -- NOTE: SRELL follows the ECMAScript grammar strictly and treats escapes for
          -- characters that do not require escaping (like '-') as literal backslashes.
@@ -1213,11 +1210,11 @@ local function matchRoute(serverInstance, method, path)
       -- Test if path matches this route (skip invalid regex patterns)
 
       if route.compiledRegex then
-         local testResult = route.compiledRegex.test(path)
+         testResult = route.compiledRegex.test(path)
 
          if testResult then -- Get capture groups for parameter extraction
-            local matchResults = route.compiledRegex.match(path)
-            local params = extractParams(pattern, matchResults)
+            matchResults = route.compiledRegex.match(path)
+            params = extractParams(pattern, matchResults)
             return route, params
          end
       end
@@ -1229,18 +1226,18 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Check rate limiting for client IP
 
-local function checkRateLimit(self, IP)
+function checkRateLimit(self, IP)
    if not self.rateLimit or self.rateLimit <= 0 then
       return true -- Rate limiting disabled
    end
 
-   local currentTime = mSys.PreciseTime() / 1000000 -- Convert to seconds
+   currentTime = mSys.PreciseTime() / 1000000 -- Convert to seconds
 
    -- Clean up old entries every minute
    if currentTime - self._lastCleanup > 60 then
-      local cutoff = currentTime - self.rateLimitWindow
+      cutoff = currentTime - self.rateLimitWindow
       for ip, data in pairs(self._rateLimits) do
-         local newRequests = {}
+         newRequests = {}
          for _, timestamp in ipairs(data.requests) do
             if timestamp > cutoff then
                table.insert(newRequests, timestamp)
@@ -1260,11 +1257,11 @@ local function checkRateLimit(self, IP)
       self._rateLimits[IP] = { requests = {} }
    end
 
-   local clientData = self._rateLimits[IP]
-   local cutoff = currentTime - self.rateLimitWindow
+   clientData = self._rateLimits[IP]
+   cutoff = currentTime - self.rateLimitWindow
 
    -- Count recent requests
-   local recentRequests = {}
+   recentRequests = {}
    for _, timestamp in ipairs(clientData.requests) do
       if timestamp > cutoff then
          table.insert(recentRequests, timestamp)
@@ -1286,8 +1283,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- This is the incoming data handler for client sockets.  acRead() is used to read data from the ClientSocket.
 
-local function serverIncoming(self, ClientSocket)
-   local state = ClientSocket._state()
+function serverIncoming(self, ClientSocket)
+   state = ClientSocket._state()
 
    if not state.initialised then
       state.buffer            = ''
@@ -1305,12 +1302,12 @@ local function serverIncoming(self, ClientSocket)
       state.chunk_received    = 0
 
       -- Get client IP for rate limiting
-      local ip_array = ClientSocket.client.ip
+      ip_array = ClientSocket.client.ip
       state.ip = ip_array[0] .. '.' .. ip_array[1] .. '.' .. ip_array[2] .. '.' .. ip_array[3]
 
       -- Check rate limit
       if not checkRateLimit(self, state.ip) then
-         local errorBody = createErrorPage(429, 'Too Many Requests', 'Rate limit exceeded. Please try again later.', 'Limit: ' .. self.rateLimit .. ' requests per ' .. self.rateLimitWindow .. ' seconds')
+         errorBody = createErrorPage(429, 'Too Many Requests', 'Rate limit exceeded. Please try again later.', 'Limit: ' .. self.rateLimit .. ' requests per ' .. self.rateLimitWindow .. ' seconds')
          sendHttpResponse(self, ClientSocket, 429, "Too Many Requests", {
             ['content-type'] = 'text/html',
             ['retry-after'] = tostring(self.rateLimitWindow)
@@ -1321,15 +1318,15 @@ local function serverIncoming(self, ClientSocket)
 
    -- Check for timeout
    if (mSys.PreciseTime() - state.start_time)/1000000 > self.timeout then
-      local errorBody = createErrorPage(408, 'Request Timeout', 'The server did not receive a complete request within the timeout period.', 'Timeout: ' .. self.timeout .. ' seconds')
+      errorBody = createErrorPage(408, 'Request Timeout', 'The server did not receive a complete request within the timeout period.', 'Timeout: ' .. self.timeout .. ' seconds')
       sendHttpResponse(self, ClientSocket, 408, "Request Timeout", {
          ['content-type'] = 'text/html'
       }, errorBody)
       return
    end
 
-   local buffer = string.alloc(8192)
-   local err, bytes_read = ClientSocket.acRead(buffer, 8192)
+   buffer = string.alloc(8192)
+   err, bytes_read = ClientSocket.acRead(buffer, 8192)
 
    if err != ERR_Okay then
       logMessage(self, 'Failed to read from client: ' .. mSys.GetErrorMsg(err))
@@ -1347,7 +1344,7 @@ local function serverIncoming(self, ClientSocket)
 
    state.buffer ..= buffer:sub(0, bytes_read)
    if #state.buffer > self.maxRequestSize then
-      local errorBody = createErrorPage(413, 'Payload Too Large', 'Request exceeds maximum allowed size.', 'Maximum size: ' .. self.maxRequestSize .. ' bytes')
+      errorBody = createErrorPage(413, 'Payload Too Large', 'Request exceeds maximum allowed size.', 'Maximum size: ' .. self.maxRequestSize .. ' bytes')
       sendHttpResponse(self, ClientSocket, 413, "Payload Too Large", {
          ['content-type'] = 'text/html'
       }, errorBody)
@@ -1357,15 +1354,15 @@ local function serverIncoming(self, ClientSocket)
    -- Read and parse headers
    if state.phase is 'READING_HEADERS' then
       -- Look for end of headers marker
-      local header_end = state.buffer:find('\r\n\r\n')
-      if not header_end then return end -- Wait for more data
+      header_end = state.buffer:find('\r\n\r\n')
+      header_end ?? return -- Wait for more data
 
       -- Extract header section
-      local header_section = state.buffer:sub(0, header_end + 3) -- Include the \r\n\r\n
+      header_section = state.buffer:sub(0, header_end + 3) -- Include the \r\n\r\n
       state.request = parseHttpRequest(header_section)
 
       if not state.request then
-         local errorBody = createErrorPage(400, 'Bad Request', 'Invalid HTTP request format.', 'The request could not be parsed as valid HTTP.')
+         errorBody = createErrorPage(400, 'Bad Request', 'Invalid HTTP request format.', 'The request could not be parsed as valid HTTP.')
          sendHttpResponse(self, ClientSocket, 400, "Bad Request", {
             ['content-type'] = 'text/html'
          }, errorBody)
@@ -1381,8 +1378,8 @@ local function serverIncoming(self, ClientSocket)
       end
 
       -- Check if method is supported
-      local supportedMethods = { 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS' }
-      local methodSupported = false
+      supportedMethods = { 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS' }
+      methodSupported = false
       for _, method in ipairs(supportedMethods) do
          if state.request.method is method then
             methodSupported = true
@@ -1391,7 +1388,7 @@ local function serverIncoming(self, ClientSocket)
       end
 
       if not methodSupported then
-         local errorBody = createErrorPage(405, 'Method Not Allowed', 'HTTP method not supported.', 'Requested method: ' .. state.request.method)
+         errorBody = createErrorPage(405, 'Method Not Allowed', 'HTTP method not supported.', 'Requested method: ' .. state.request.method)
          sendHttpResponse(self, ClientSocket, 405, "Method Not Allowed", {
             ['content-type'] = 'text/html',
             ['allow'] = 'GET, HEAD, POST, PUT, DELETE, PATCH, OPTIONS'
@@ -1404,30 +1401,30 @@ local function serverIncoming(self, ClientSocket)
       state.headers_complete = true
 
       -- Call validateHeader callback if route has one
-      local matchedRoute, params = matchRoute(self, state.request.method, state.request.path)
+      matchedRoute, params = matchRoute(self, state.request.method, state.request.path)
 
       if matchedRoute and matchedRoute.validateHeader then
-         local success, validationResult = pcall(matchedRoute.validateHeader, state.request.headers)
+         success, validationResult = pcall(matchedRoute.validateHeader, state.request.headers)
 
          if not success then -- validateHeader threw an error
             logMessage(self, 'validateHeader callback error: ' .. tostring(validationResult))
-            local errorBody = createErrorPage(500, 'Internal Server Error', 'Header validation failed.', 'Internal server error during header validation.')
+            errorBody = createErrorPage(500, 'Internal Server Error', 'Header validation failed.', 'Internal server error during header validation.')
             sendHttpResponse(self, ClientSocket, 500, "Internal Server Error", { ['content-type'] = 'text/html' }, errorBody)
             state.invalid_header = true
             state.phase = 'CANCELLED'
          elseif validationResult is false then -- Headers failed validation, send 400 Bad Request
-            local errorBody = createErrorPage(400, 'Bad Request', 'Request headers failed validation.', 'The request headers do not meet server requirements.')
+            errorBody = createErrorPage(400, 'Bad Request', 'Request headers failed validation.', 'The request headers do not meet server requirements.')
             sendHttpResponse(self, ClientSocket, 400, "Bad Request", { ['content-type'] = 'text/html' }, errorBody)
             state.invalid_header = true
             state.phase = 'CANCELLED'
          elseif type(validationResult) is 'table' and validationResult.status then
             -- Custom error response from validateHeader
-            local statusCode = validationResult.status or 400
-            local statusText = validationResult.statusText or 'Bad Request'
-            local message = validationResult.message or 'Request headers failed validation.'
-            local details = validationResult.details or 'The request headers do not meet server requirements.'
+            statusCode = validationResult.status or 400
+            statusText = validationResult.statusText or 'Bad Request'
+            message = validationResult.message or 'Request headers failed validation.'
+            details = validationResult.details or 'The request headers do not meet server requirements.'
 
-            local errorBody = createErrorPage(statusCode, statusText, message, details)
+            errorBody = createErrorPage(statusCode, statusText, message, details)
             sendHttpResponse(self, ClientSocket, statusCode, statusText, { ['content-type'] = 'text/html' }, errorBody)
             state.invalid_header = true
             state.phase = 'CANCELLED'
@@ -1467,11 +1464,11 @@ local function serverIncoming(self, ClientSocket)
          end
       elseif state.content_length and state.content_length > 0 then
          -- Accumulate body data from buffer
-         local needed = state.content_length - state.body_received
-         local available = #state.buffer
+         needed = state.content_length - state.body_received
+         available = #state.buffer
 
          if available > 0 then
-            local to_take = math.min(available, needed)
+            to_take = math.min(available, needed)
             state.request.body = state.request.body .. state.buffer:sub(0, to_take)
             state.buffer = state.buffer:sub(to_take)
             state.body_received = state.body_received + to_take
@@ -1486,7 +1483,7 @@ local function serverIncoming(self, ClientSocket)
 
       -- Body reading complete, parse it
       if state.request.body then
-         local contentType = state.request.headers['content-type'] or ''
+         contentType = state.request.headers['content-type'] or ''
          if contentType:find('application/json') then
             logMessage(self, 'Parsing JSON encoded data')
             state.request.parsedBody = parseJsonBody(state.request.body)
@@ -1504,7 +1501,7 @@ local function serverIncoming(self, ClientSocket)
 
    -- Process complete request
    if state.phase is 'PROCESSING' then
-      local request = state.request
+      request = state.request
 
       -- Handle OPTIONS requests for CORS
       if request.method is 'OPTIONS' then
@@ -1518,9 +1515,9 @@ local function serverIncoming(self, ClientSocket)
       end
 
       -- Canonicalize and validate path
-      local URIPath = canonicalizePath(self, request.path)
+      URIPath = canonicalizePath(self, request.path)
       if not URIPath then
-         local errorBody = createErrorPage(400, 'Bad Request', 'Invalid path in request.', 'Original path: ' .. request.path)
+         errorBody = createErrorPage(400, 'Bad Request', 'Invalid path in request.', 'Original path: ' .. request.path)
          logMessage(self, 'Security: Invalid path blocked: ' .. request.path)
          sendHttpResponse(self, ClientSocket, 400, "Bad Request", {
             ['content-type'] = 'text/html'
@@ -1532,15 +1529,15 @@ local function serverIncoming(self, ClientSocket)
       request.ip = state.ip
 
       -- Try to match against registered routes first
-      local matchedRoute, params = matchRoute(self, request.method, URIPath)
+      matchedRoute, params = matchRoute(self, request.method, URIPath)
       if matchedRoute then
          logMessage(self, 'Found matching route: ' .. matchedRoute.pattern)
          -- Populate request params and create response object
          request.params = params
-         local response = createResponseObject(self, ClientSocket)
+         response = createResponseObject(self, ClientSocket)
 
          -- Combine global middleware with route-specific middleware
-         local middlewareChain = {}
+         middlewareChain = {}
 
          -- Add global middleware first
          if self._middleware then
@@ -1557,8 +1554,8 @@ local function serverIncoming(self, ClientSocket)
          end
 
          -- Execute middleware pipeline followed by route handler
-         local function routeHandler(req, res)
-            local success, result = pcall(function()
+         function routeHandler(req, res)
+            success, result = pcall(function()
                return matchedRoute.callback(req, res)
             end)
 
@@ -1566,7 +1563,7 @@ local function serverIncoming(self, ClientSocket)
                -- Route callback failed, send 500 error
                logMessage(self, 'Route handler error: ' .. tostring(result))
                if not res._sent then
-                  local errorBody = createErrorPage(500, 'Internal Server Error', 'Route handler failed.', 'Error: ' .. tostring(result))
+                  errorBody = createErrorPage(500, 'Internal Server Error', 'Route handler failed.', 'Error: ' .. tostring(result))
                   sendHttpResponse(self, ClientSocket, 500, "Internal Server Error", {
                      ['content-type'] = 'text/html'
                   }, errorBody)
@@ -1574,7 +1571,7 @@ local function serverIncoming(self, ClientSocket)
             elseif not res._sent then
                -- Route executed successfully but didn't send a response
                logMessage(self, 'Warning: Route handler completed without sending response')
-               local errorBody = createErrorPage(500, 'Internal Server Error', 'Route handler did not send a response.', 'Path: ' .. URIPath)
+               errorBody = createErrorPage(500, 'Internal Server Error', 'Route handler did not send a response.', 'Path: ' .. URIPath)
                sendHttpResponse(self, ClientSocket, 500, "Internal Server Error", {
                   ['content-type'] = 'text/html'
                }, errorBody)
@@ -1588,7 +1585,7 @@ local function serverIncoming(self, ClientSocket)
       end
 
       -- Validate path doesn't contain dangerous patterns
-      local dangerous = {
+      dangerous = {
          '%.%./', '%.%.\\', -- Directory traversal
          '^%.', '/%.', -- Hidden files
          '%.exe$', '%.bat$', '%.cmd$', '%.ps1$', -- Executables
@@ -1598,7 +1595,7 @@ local function serverIncoming(self, ClientSocket)
 
       for _, pattern in ipairs(dangerous) do
          if URIPath:find(pattern) then
-            local errorBody = createErrorPage(403, 'Forbidden', 'Access to this file type is forbidden.', 'Path: ' .. URIPath)
+            errorBody = createErrorPage(403, 'Forbidden', 'Access to this file type is forbidden.', 'Path: ' .. URIPath)
             logMessage(self, 'Security: Blocked access to dangerous path: ' .. URIPath)
             sendHttpResponse(self, ClientSocket, 403, "Forbidden", {
                ['content-type'] = 'text/html'
@@ -1607,12 +1604,12 @@ local function serverIncoming(self, ClientSocket)
          end
       end
 
-      local file_path = self.folder .. URIPath
+      file_path = self.folder .. URIPath
 
       -- Check if path exists and determine if it's a file or directory
-      local err, fileType = mSys.AnalysePath(file_path)
+      err, fileType = mSys.AnalysePath(file_path)
       if err != ERR_Okay then
-         local errorBody = createErrorPage(404, 'Not Found', 'The requested resource was not found.', 'Path: ' .. URIPath .. '\nResolved to: ' .. file_path)
+         errorBody = createErrorPage(404, 'Not Found', 'The requested resource was not found.', 'Path: ' .. URIPath .. '\nResolved to: ' .. file_path)
          sendHttpResponse(self, ClientSocket, 404, "Not Found", {
             ['content-type'] = 'text/html'
          }, errorBody)
@@ -1620,7 +1617,7 @@ local function serverIncoming(self, ClientSocket)
       end
 
       if request.method != 'GET' and request.method != 'HEAD' then
-         local errorBody = createErrorPage(405, 'Method Not Allowed',
+         errorBody = createErrorPage(405, 'Method Not Allowed',
             'This method is not allowed for static file serving. Use routing system for API endpoints.',
             'Method: ' .. request.method .. ', Path: ' .. URIPath)
          sendHttpResponse(self, ClientSocket, 405, "Method Not Allowed", {
@@ -1648,7 +1645,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 httpServer.start = function(Options)
-   local self = {
+   self = {
       port            = 8080,   -- Server port number
       folder          = nil,    -- Path from which to serve files
       bind            = nil,    -- Bind to specific address (e.g., '127.0.0.1', '0.0.0.0', or specific IP)
@@ -1677,37 +1674,33 @@ httpServer.start = function(Options)
 
    if Options.folder then
       -- Validate folder input
-      local folder = Options.folder
+      folder = Options.folder
       if folder:find('%.%.') or folder:find('^~') then
          error('Invalid folder path: security violation')
       end
 
-      local err, resolvedPath = mSys.ResolvePath(folder)
+      err, resolvedPath = mSys.ResolvePath(folder)
       if err is ERR_Okay then
          self.folder = resolvedPath
       end
 
-      local err, filetype = mSys.AnalysePath(self.folder)
-      if filetype != LOC_FOLDER then
-         error('Error: folder "' .. (self.folder ?? 'NIL') .. '" does not exist')
-      end
+      file_type = [_*]mSys.AnalysePath(self.folder)
+      assert(file_type is LOC_FOLDER, 'Folder "' .. self.folder .. '" does not exist')
    end
 
-   if not self.folder then
-      error('The folder option is required')
-   end
+   assert(self.folder, 'The folder option is required')
 
    if Options.verbose then
       if type(Options.verbose) is 'boolean' then
          self.verbose = Options.verbose
       else
-         local verbose = tostring(Options.verbose):lower()
+         verbose = tostring(Options.verbose):lower()
          self.verbose = (verbose is 'true' or verbose is '1')
       end
    end
 
    if Options.timeout then
-      local timeout = tonumber(Options.timeout)
+      timeout = tonumber(Options.timeout)
       if timeout and (timeout > 0) and (timeout <= 300) then
          self.timeout = timeout
       else
@@ -1719,13 +1712,13 @@ httpServer.start = function(Options)
       if type(Options.autoIndex) is 'boolean' then
          self.autoIndex = Options.autoIndex
       else
-         local autoindex = tostring(Options.autoIndex):lower()
+         autoindex = tostring(Options.autoIndex):lower()
          self.autoIndex = (autoindex is 'true' or autoindex is '1')
       end
    end
 
    if Options.rateLimit then
-      local limit = tonumber(Options.rateLimit)
+      limit = tonumber(Options.rateLimit)
       if limit and (limit >= 0) and (limit <= 1000) then
          self.rateLimit = limit
       end
@@ -1744,7 +1737,7 @@ httpServer.start = function(Options)
    end
 
    -- Process middleware configuration
-   local middlewareCount = 0
+   middlewareCount = 0
    if Options.middleware then
       if type(Options.middleware) is 'table' then
          self._middleware = {}
@@ -1763,7 +1756,7 @@ httpServer.start = function(Options)
    end
 
    -- Process routes configuration
-   local routeCount = 0
+   routeCount = 0
    if Options.routes then
       if type(Options.routes) is 'table' then
          for i, route in ipairs(Options.routes) do
@@ -1777,7 +1770,7 @@ httpServer.start = function(Options)
       end
    end
 
-   local bindMsg = ''
+   bindMsg = ''
    if self.bind then
       bindMsg = ' bound to ' .. self.bind
    end
@@ -1799,7 +1792,7 @@ httpServer.start = function(Options)
    msg('  Global middleware: ' .. middlewareCount)
    msg('  Routes configured: ' .. routeCount)
 
-   local cfg = {
+   cfg = {
       port = self.port,
       flags = 'SERVER|MULTI_CONNECT',
       feedback = function(Server, ClientSocket, State)
@@ -1820,10 +1813,6 @@ httpServer.start = function(Options)
    end
 
    self._socket = obj.new('netsocket', cfg)
-
-   if not self._socket then
-      error('Failed to create server socket')
-   end
 
    self.stop = function()
       if self._socket then
