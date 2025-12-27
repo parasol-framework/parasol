@@ -342,6 +342,12 @@ end
    -- Mixed with quotes (should not escape quotes)
    quotes = string.escXML('Hello "world" & <test>')
    assert(quotes is 'Hello "world" &amp; &lt;test&gt;', "Expected 'Hello \"world\" &amp; &lt;test&gt;', got '" .. quotes .. "'")
+
+   ue = string.unescapeXML('&amp;&quot;&apos;;')
+   assert(ue is "&\"';", "Received string is incorrect: " .. tostring(ue))
+
+   ue = string.unescapeXML('&lt;<&gt;>')
+   assert(ue is "<<>>", "Received string is incorrect: " .. tostring(ue))
 end
 
 @Test function testSub()

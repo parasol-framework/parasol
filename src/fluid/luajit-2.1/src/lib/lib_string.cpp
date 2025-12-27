@@ -36,7 +36,8 @@
 #define L_ESC      '%'
 
 // Helper to check if a TValue is a range userdata and extract it
-static fluid_range* get_range_from_tvalue(lua_State* L, cTValue* tv)
+
+static fluid_range * get_range_from_tvalue(lua_State *L, cTValue *tv)
 {
    if (not tvisudata(tv)) return nullptr;
 
@@ -285,7 +286,7 @@ LJLIB_CF(string_split)
 
 LJLIB_CF(string_trim)
 {
-   GCstr* s = lj_lib_optstr(L, 1);
+   GCstr *s = lj_lib_optstr(L, 1);
    if (not s) {
       setstrV(L, L->top - 1, &G(L)->strempty);
       return 1;
@@ -314,7 +315,7 @@ LJLIB_CF(string_trim)
    }
 
    // Create trimmed string
-   GCstr* result = lj_str_new(L, start, end - start);
+   GCstr *result = lj_str_new(L, start, end - start);
    setstrV(L, L->top - 1, result);
    lj_gc_check(L);
    return 1;
@@ -324,7 +325,7 @@ LJLIB_CF(string_trim)
 
 LJLIB_CF(string_rtrim)
 {
-   GCstr* s = lj_lib_optstr(L, 1);
+   GCstr *s = lj_lib_optstr(L, 1);
    if (not s) {
       setstrV(L, L->top - 1, &G(L)->strempty);
       return 1;
@@ -344,7 +345,7 @@ LJLIB_CF(string_rtrim)
       end--;
 
    // Create right-trimmed string
-   GCstr* result = lj_str_new(L, str, end - str);
+   GCstr *result = lj_str_new(L, str, end - str);
    setstrV(L, L->top - 1, result);
    lj_gc_check(L);
    return 1;
@@ -386,8 +387,8 @@ LJLIB_CF(string_startsWith)
 
 LJLIB_CF(string_endsWith)
 {
-   GCstr* s = lj_lib_checkstr(L, 1);
-   GCstr* suffix = lj_lib_checkstr(L, 2);
+   GCstr *s = lj_lib_checkstr(L, 1);
+   GCstr *suffix = lj_lib_checkstr(L, 2);
    const char* str = strdata(s);
    const char* suffixstr = strdata(suffix);
    MSize slen = s->len;
@@ -416,7 +417,7 @@ LJLIB_CF(string_endsWith)
 LJLIB_CF(string_join)
 {
    GCtab *t = lj_lib_checktab(L, 1);
-   GCstr* sep = lj_lib_optstr(L, 2);
+   GCstr *sep = lj_lib_optstr(L, 2);
    const char* sepstr = "";
    MSize seplen = 0;
    SBuf* sb = lj_buf_tmp_(L);
@@ -964,10 +965,10 @@ static int push_captures(MatchState* ms, const char* s, const char* e)
 
 //********************************************************************************************************************
 
-static int str_find_aux(lua_State* L, int find)
+static int str_find_aux(lua_State *L, int find)
 {
-   GCstr* s = lj_lib_checkstr(L, 1);
-   GCstr* p = lj_lib_checkstr(L, 2);
+   GCstr *s = lj_lib_checkstr(L, 1);
+   GCstr *p = lj_lib_checkstr(L, 2);
    int32_t start = lj_lib_optint(L, 3, 0);  // 0-based: default start at 0
    MSize st;
    if (start < 0) start += (int32_t)s->len;  // 0-based: -1 → len-1
@@ -1034,10 +1035,10 @@ LJLIB_CF(string_match)
 LJLIB_NOREG LJLIB_CF(string_gmatch_aux)
 {
    const char* p = strVdata(lj_lib_upvalue(L, 2));
-   GCstr* str = strV(lj_lib_upvalue(L, 1));
+   GCstr *str = strV(lj_lib_upvalue(L, 1));
    const char* s = strdata(str);
-   TValue* tvpos = lj_lib_upvalue(L, 3);
-   const char* src = s + tvpos->u32.lo;
+   TValue *tvpos = lj_lib_upvalue(L, 3);
+   const char *src = s + tvpos->u32.lo;
    MatchState ms;
    ms.L = L;
    ms.src_init = s;
@@ -1091,7 +1092,7 @@ static void add_s(MatchState* ms, luaL_Buffer* b, const char* s, const char* e)
 
 static void add_value(MatchState* ms, luaL_Buffer* b, const char* s, const char* e)
 {
-   lua_State* L = ms->L;
+   lua_State *L = ms->L;
    switch (lua_type(L, 3)) {
       case LUA_TNUMBER:
       case LUA_TSTRING:
@@ -1182,7 +1183,7 @@ LJLIB_CF(string_format)      LJLIB_REC(.)
 // Handles numeric keys for single-character access, range userdata for substring extraction,
 // and string keys for method lookups (delegated to string library table)
 
-static int string_index_handler(lua_State* L)
+static int string_index_handler(lua_State *L)
 {
    // Argument 1: the string
    // Argument 2: the key (number, range userdata, or string)
@@ -1192,9 +1193,9 @@ static int string_index_handler(lua_State* L)
       return 1;
    }
 
-   GCstr* str = strV(L->base);
+   GCstr *str = strV(L->base);
    int32_t len = (int32_t)str->len;
-   cTValue* key = L->base + 1;
+   cTValue *key = L->base + 1;
 
    // Check for numeric key (single character access)
    if (tvisnum(key) or tvisint(key)) {
@@ -1266,7 +1267,7 @@ static int string_index_handler(lua_State* L)
    return 1;
 }
 
-extern int luaopen_string(lua_State* L)
+extern int luaopen_string(lua_State *L)
 {
    LJ_LIB_REG(L, "string", string);
    // At this point, L->top - 1 has the string library table on the Lua stack
@@ -1292,7 +1293,7 @@ extern int luaopen_string(lua_State* L)
    // Stack: [..., string_lib_table, closure]
 
    // Set the closure as __index metamethod
-   TValue* index_slot = lj_tab_setstr(L, mt, mmname_str(g, MM_index));
+   TValue *index_slot = lj_tab_setstr(L, mt, mmname_str(g, MM_index));
    setfuncV(L, index_slot, funcV(L->top - 1));
    lua_pop(L, 1);  // Pop the closure
    // Stack: [..., string_lib_table]
