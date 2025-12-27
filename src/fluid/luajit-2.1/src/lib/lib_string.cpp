@@ -149,7 +149,7 @@ LJLIB_CF(string_rep)      LJLIB_REC(.)
    GCstr *sep = lj_lib_optstr(L, 3);
    SBuf *sb = lj_buf_tmp_(L);
    if (sep and rep > 1) {
-      GCstr* s2 = lj_buf_cat2str(L, sep, s);
+      GCstr *s2 = lj_buf_cat2str(L, sep, s);
       lj_buf_reset(sb);
       lj_buf_putstr(sb, s);
       s = s2;
