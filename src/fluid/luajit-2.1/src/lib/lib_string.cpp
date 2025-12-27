@@ -415,7 +415,7 @@ LJLIB_CF(string_endsWith)
 
 LJLIB_CF(string_join)
 {
-   GCtab* t = lj_lib_checktab(L, 1);
+   GCtab *t = lj_lib_checktab(L, 1);
    GCstr* sep = lj_lib_optstr(L, 2);
    const char* sepstr = "";
    MSize seplen = 0;
