@@ -8,6 +8,8 @@
 #define LUA_LIB
 
 #include <cctype>
+#include <array>
+#include <string_view>
 
 #include "lua.h"
 #include "lauxlib.h"
@@ -70,6 +72,7 @@ LJLIB_CF(string_len)
    return 1;
 }
 
+//********************************************************************************************************************
 // NOTE: ASM version exists
 
 LJLIB_ASM(string_byte)      LJLIB_REC(string_range 0)
@@ -93,6 +96,7 @@ LJLIB_ASM(string_byte)      LJLIB_REC(string_range 0)
    return FFH_RES(n);
 }
 
+//********************************************************************************************************************
 // NOTE: ASM version exists
 
 LJLIB_ASM(string_char)      LJLIB_REC(.)
@@ -108,6 +112,7 @@ LJLIB_ASM(string_char)      LJLIB_REC(.)
    return FFH_RES(1);
 }
 
+//********************************************************************************************************************
 // NOTE: Backed by an ASM implementation
 // string_sub:	Declares an assembly ffunc as its primary implementation. The C code that follows is the fallback (called when the ffunc jumps to ->fff_fallback).
 // string_range 1: Tells the JIT recorder how to handle this function. string_range is the recorder function name, 1 is a parameter distinguishing it from other range operations.
@@ -124,6 +129,7 @@ LJLIB_ASM(string_sub)      LJLIB_REC(string_range 1)
    return FFH_RETRY;
 }
 
+//********************************************************************************************************************
 // string.substr() is now an alias for string.sub() - both use exclusive end semantics.
 // The ASM implementation jumps directly to string_sub.
 
@@ -133,13 +139,15 @@ LJLIB_ASM(string_substr)      LJLIB_REC(string_range 1)
    return FFH_RETRY;
 }
 
+//********************************************************************************************************************
+
 LJLIB_CF(string_rep)      LJLIB_REC(.)
 {
-   GCstr* s = lj_lib_optstr(L, 1);
-   if (!s) s = &G(L)->strempty;
+   GCstr *s = lj_lib_optstr(L, 1);
+   if (not s) s = &G(L)->strempty;
    int32_t rep = lj_lib_checkint(L, 2);
-   GCstr* sep = lj_lib_optstr(L, 3);
-   SBuf* sb = lj_buf_tmp_(L);
+   GCstr *sep = lj_lib_optstr(L, 3);
+   SBuf *sb = lj_buf_tmp_(L);
    if (sep and rep > 1) {
       GCstr* s2 = lj_buf_cat2str(L, sep, s);
       lj_buf_reset(sb);
@@ -153,6 +161,7 @@ LJLIB_CF(string_rep)      LJLIB_REC(.)
    return 1;
 }
 
+//********************************************************************************************************************
 // string.alloc() is a quicker version of string.rep() for reserving space without filling it.
 //
 // 1. Takes a size parameter - Uses lj_lib_checkint(L, 1) to get the size from the first argument
@@ -165,7 +174,7 @@ LJLIB_CF(string_alloc)
 {
    int32_t size = lj_lib_checkint(L, 1);
    LJ_CHECK_ARG(L, 1, size >= 0, ErrMsg::NUMRNG);
-   SBuf* sb = lj_buf_tmp_(L);
+   SBuf *sb = lj_buf_tmp_(L);
    lj_buf_reset(sb);
    (void)lj_buf_need(sb, (MSize)size);
    sb->w += size;  //  Advance write pointer to reserve space
@@ -174,8 +183,10 @@ LJLIB_CF(string_alloc)
    return 1;
 }
 
+//********************************************************************************************************************
 // Helper to find the next separator in a string
 // Returns pointer to separator if found, nullptr otherwise
+
 static const char* find_separator(const char *Pos, const char *End, const char *Sep, MSize SepLen, bool IsWhitespace)
 {
    if (IsWhitespace) {
@@ -186,9 +197,7 @@ static const char* find_separator(const char *Pos, const char *End, const char *
       return nullptr;
    }
 
-   if (SepLen IS 1) {
-      return (const char*)memchr(Pos, Sep[0], End - Pos);
-   }
+   if (SepLen IS 1) return (const char*)memchr(Pos, Sep[0], End - Pos);
 
    // Multi-character separator.
    for (const char *p = Pos; p <= End - SepLen; p++) {
@@ -196,6 +205,8 @@ static const char* find_separator(const char *Pos, const char *End, const char *
    }
    return nullptr;
 }
+
+//********************************************************************************************************************
 
 LJLIB_CF(string_split)
 {
@@ -270,10 +281,12 @@ LJLIB_CF(string_split)
    return 1;
 }
 
+//********************************************************************************************************************
+
 LJLIB_CF(string_trim)
 {
    GCstr* s = lj_lib_optstr(L, 1);
-   if (!s) {
+   if (not s) {
       setstrV(L, L->top - 1, &G(L)->strempty);
       return 1;
    }
@@ -289,12 +302,10 @@ LJLIB_CF(string_trim)
    }
 
    // Skip leading whitespace
-   while (start < end and (*start IS ' ' or *start IS '\t' or *start IS '\n' or *start IS '\r'))
-      start++;
+   while (start < end and (*start IS ' ' or *start IS '\t' or *start IS '\n' or *start IS '\r')) start++;
 
    // Skip trailing whitespace
-   while (end > start and (end[-1] IS ' ' or end[-1] IS '\t' or end[-1] IS '\n' or end[-1] IS '\r'))
-      end--;
+   while (end > start and (end[-1] IS ' ' or end[-1] IS '\t' or end[-1] IS '\n' or end[-1] IS '\r')) end--;
 
    // If all whitespace, return empty string
    if (start >= end) {
@@ -309,17 +320,19 @@ LJLIB_CF(string_trim)
    return 1;
 }
 
+//********************************************************************************************************************
+
 LJLIB_CF(string_rtrim)
 {
    GCstr* s = lj_lib_optstr(L, 1);
-   if (!s) {
+   if (not s) {
       setstrV(L, L->top - 1, &G(L)->strempty);
       return 1;
    }
 
-   const char* str = strdata(s);
+   auto str = strdata(s);
    MSize len = s->len;
-   const char* end = str + len;
+   auto end = str + len;
 
    if (len IS 0) {
       setstrV(L, L->top - 1, s);  //  Return original empty string
@@ -337,12 +350,14 @@ LJLIB_CF(string_rtrim)
    return 1;
 }
 
+//********************************************************************************************************************
+
 LJLIB_CF(string_startsWith)
 {
-   GCstr* s = lj_lib_checkstr(L, 1);
-   GCstr* prefix = lj_lib_checkstr(L, 2);
-   const char* str = strdata(s);
-   const char* prefixstr = strdata(prefix);
+   GCstr *s = lj_lib_checkstr(L, 1);
+   GCstr *prefix = lj_lib_checkstr(L, 2);
+   auto str = strdata(s);
+   auto prefixstr = strdata(prefix);
    MSize slen = s->len;
    MSize prefixlen = prefix->len;
 
@@ -366,6 +381,8 @@ LJLIB_CF(string_startsWith)
    setboolV(L->top - 1, matches);
    return 1;
 }
+
+//********************************************************************************************************************
 
 LJLIB_CF(string_endsWith)
 {
@@ -394,6 +411,8 @@ LJLIB_CF(string_endsWith)
    return 1;
 }
 
+//********************************************************************************************************************
+
 LJLIB_CF(string_join)
 {
    GCtab* t = lj_lib_checktab(L, 1);
@@ -413,7 +432,7 @@ LJLIB_CF(string_join)
    lj_buf_reset(sb);
 
    for (i = 0; i <= last; i++) {
-      cTValue* tv = lj_tab_getint(t, i);
+      cTValue *tv = lj_tab_getint(t, i);
       if (tv and !tvisnil(tv)) {
          int isValidType = 0;
 
@@ -422,18 +441,15 @@ LJLIB_CF(string_join)
             isValidType = 1;
          }
 
-         if (isValidType) {
-            // Add separator before non-first elements
+         if (isValidType) { // Add separator before non-first elements
             if (sb->w > sb->b and seplen > 0) {
                lj_buf_putmem(sb, sepstr, seplen);
             }
 
-            if (tvisstr(tv)) {
-               // Add string content
+            if (tvisstr(tv)) { // Add string content
                lj_buf_putstr(sb, strV(tv));
             }
-            else if (tvisnum(tv)) {
-               // Convert number to string directly into buffer
+            else if (tvisnum(tv)) { // Convert number to string directly into buffer
                sb = lj_strfmt_putnum(sb, tv);
             }
          }
@@ -445,10 +461,12 @@ LJLIB_CF(string_join)
    return 1;
 }
 
+//********************************************************************************************************************
+
 LJLIB_CF(string_cap)
 {
-   GCstr* s = lj_lib_checkstr(L, 1);
-   const char* str = strdata(s);
+   GCstr *s = lj_lib_checkstr(L, 1);
+   auto str = strdata(s);
    MSize len = s->len;
 
    if (len IS 0) {
@@ -456,29 +474,26 @@ LJLIB_CF(string_cap)
       return 1;
    }
 
-   // Create new string with first character uppercased
-   SBuf* sb = lj_buf_tmp_(L);
+   SBuf *sb = lj_buf_tmp_(L);
    lj_buf_reset(sb);
 
-   // Convert first character to uppercase
    char first = str[0];
-   if (first >= 'a' and first <= 'z') {
-      first = first - 32;  //  Convert to uppercase
-   }
+   if (first >= 'a' and first <= 'z') first -= 32;
    lj_buf_putb(sb, first);
 
-   // Add remaining characters unchanged
    if (len > 1) lj_buf_putmem(sb, str + 1, len - 1);
 
    setstrV(L, L->top - 1, lj_buf_str(L, sb));
    lj_gc_check(L);
    return 1;
 }
+
+//********************************************************************************************************************
 
 LJLIB_CF(string_decap)
 {
-   GCstr* s = lj_lib_checkstr(L, 1);
-   const char* str = strdata(s);
+   GCstr *s = lj_lib_checkstr(L, 1);
+   auto str = strdata(s);
    MSize len = s->len;
 
    if (len IS 0) {
@@ -486,15 +501,11 @@ LJLIB_CF(string_decap)
       return 1;
    }
 
-   // Create new string with first character lowercased
-   SBuf* sb = lj_buf_tmp_(L);
+   SBuf *sb = lj_buf_tmp_(L);
    lj_buf_reset(sb);
 
-   // Convert first character to lowercase
    char first = str[0];
-   if (first >= 'A' and first <= 'Z') {
-      first = first + 32;  //  Convert to lowercase
-   }
+   if (first >= 'A' and first <= 'Z') first += 32;
    lj_buf_putb(sb, first);
 
    if (len > 1) lj_buf_putmem(sb, str + 1, len - 1);
@@ -504,50 +515,82 @@ LJLIB_CF(string_decap)
    return 1;
 }
 
+//********************************************************************************************************************
+
 LJLIB_CF(string_hash)
 {
-   GCstr* s = lj_lib_checkstr(L, 1);
+   GCstr *s = lj_lib_checkstr(L, 1);
    int caseSensitive = 0;  //  Default: case insensitive
 
    // Check for optional second parameter (boolean)
-   if (L->base + 1 < L->top and tvisbool(L->base + 1)) {
-      caseSensitive = boolV(L->base + 1);
-   }
-   const char* str = strdata(s);
-   MSize len = s->len;
-   uint32_t hash = 5381;  //  djb2 hash algorithm
-   MSize i;
+   if (L->base + 1 < L->top and tvisbool(L->base + 1)) caseSensitive = boolV(L->base + 1);
 
-   if (caseSensitive) {
-      for (i = 0; i < len; i++) {
-         hash = ((hash << 5) + hash) + (unsigned char)str[i];
-      }
-   }
-   else {
-      for (i = 0; i < len; i++) {
-         unsigned char c = (unsigned char)str[i];
-         if (c >= 0x41 and c <= 0x5A) c = c + 0x20;
-         hash = ((hash << 5) + hash) + c;
-      }
-   }
+   auto str = strdata(s);
+   uint32_t hash;
+   if (caseSensitive) hash = pf::strhash({ str, s->len });
+   else hash = pf::strihash({ str, s->len });
 
    setintV(L->top - 1, (int32_t)hash);
    return 1;
 }
 
-LJLIB_CF(string_escXML)
-{
-   GCstr* s = lj_lib_optstr(L, 1);
+//********************************************************************************************************************
 
-   // Handle nil input - return empty string
-   if (!s) {
+LJLIB_CF(string_unescapeXML)
+{
+   GCstr *s = lj_lib_optstr(L, 1);
+
+   if (not s) {
       setstrV(L, L->top - 1, &G(L)->strempty);
       return 1;
    }
 
-   const char* str = strdata(s);
+   static constexpr std::array<std::pair<std::string_view, char>, 5> entities = {{
+      { "lt;", '<' }, { "gt;", '>' }, { "amp;", '&' }, { "quot;", '"' }, { "apos;", '\'' }
+   }};
+
+   std::string_view input(strdata(s), s->len);
+   SBuf *sb = lj_buf_tmp_(L);
+   lj_buf_reset(sb);
+
+   for (size_t i = 0; i < input.size(); i++) {
+      if (input[i] IS '&') {
+         std::string_view remaining = input.substr(i + 1);
+         bool matched = false;
+
+         for (const auto& [entity, replacement] : entities) {
+            if (remaining.starts_with(entity)) {
+               lj_buf_putb(sb, replacement);
+               i += entity.size();
+               matched = true;
+               break;
+            }
+         }
+
+         if (not matched) lj_buf_putb(sb, '&');
+      }
+      else lj_buf_putb(sb, input[i]);
+   }
+
+   setstrV(L, L->top - 1, lj_buf_str(L, sb));
+   lj_gc_check(L);
+   return 1;
+}
+
+//********************************************************************************************************************
+
+LJLIB_CF(string_escXML)
+{
+   GCstr *s = lj_lib_optstr(L, 1);
+
+   if (not s) { // Handle nil input - return empty string
+      setstrV(L, L->top - 1, &G(L)->strempty);
+      return 1;
+   }
+
+   auto str = strdata(s);
    MSize len = s->len;
-   SBuf* sb = lj_buf_tmp_(L);
+   SBuf *sb = lj_buf_tmp_(L);
    MSize i;
 
    lj_buf_reset(sb);
@@ -555,10 +598,10 @@ LJLIB_CF(string_escXML)
    for (i = 0; i < len; i++) {
       char c = str[i];
       switch (c) {
-      case '&': lj_buf_putmem(sb, "&amp;", 5); break;
-      case '<': lj_buf_putmem(sb, "&lt;", 4); break;
-      case '>': lj_buf_putmem(sb, "&gt;", 4); break;
-      default: lj_buf_putb(sb, c); break;
+         case '&': lj_buf_putmem(sb, "&amp;", 5); break;
+         case '<': lj_buf_putmem(sb, "&lt;", 4); break;
+         case '>': lj_buf_putmem(sb, "&gt;", 4); break;
+         default: lj_buf_putb(sb, c); break;
       }
    }
 
@@ -566,6 +609,8 @@ LJLIB_CF(string_escXML)
    lj_gc_check(L);
    return 1;
 }
+
+//********************************************************************************************************************
 
 LJLIB_ASM(string_reverse)  LJLIB_REC(string_op IRCALL_lj_buf_putstr_reverse)
 {
@@ -575,14 +620,15 @@ LJLIB_ASM(string_reverse)  LJLIB_REC(string_op IRCALL_lj_buf_putstr_reverse)
 LJLIB_ASM_(string_lower)  LJLIB_REC(string_op IRCALL_lj_buf_putstr_lower)
 LJLIB_ASM_(string_upper)  LJLIB_REC(string_op IRCALL_lj_buf_putstr_upper)
 
-// ------------------------------------------------------------------------
+//********************************************************************************************************************
 
 static int writer_buf(lua_State* L, const void* p, size_t size, void* sb)
 {
    lj_buf_putmem((SBuf*)sb, p, (MSize)size);
-   UNUSED(L);
    return 0;
 }
+
+//********************************************************************************************************************
 
 LJLIB_CF(string_dump)
 {
@@ -590,29 +636,28 @@ LJLIB_CF(string_dump)
    int strip = L->base + 1 < L->top and tvistruecond(L->base + 1);
    SBuf* sb = lj_buf_tmp_(L);  //  Assumes lj_bcwrite() doesn't use tmpbuf.
    L->top = L->base + 1;
-   if (!isluafunc(fn) or lj_bcwrite(L, funcproto(fn), writer_buf, sb, strip))
-      lj_err_caller(L, ErrMsg::STRDUMP);
+   if (not isluafunc(fn) or lj_bcwrite(L, funcproto(fn), writer_buf, sb, strip)) lj_err_caller(L, ErrMsg::STRDUMP);
    setstrV(L, L->top - 1, lj_buf_str(L, sb));
    lj_gc_check(L);
    return 1;
 }
 
-// ------------------------------------------------------------------------
-
+//********************************************************************************************************************
 // macro to `unsign' a character
+
 #define uchar(c)   ((unsigned char)(c))
 
 #define CAP_UNFINISHED   (-1)
 #define CAP_POSITION   (-2)
 
 typedef struct MatchState {
-   const char* src_init;  //  init of source string
-   const char* src_end;  //  end (`\0') of source string
-   lua_State* L;
+   const char *src_init;  //  init of source string
+   const char *src_end;  //  end (`\0') of source string
+   lua_State *L;
    int level;  //  total number of captures (finished or unfinished)
    int depth;
    struct {
-      const char* init;
+      const char *init;
       ptrdiff_t len;
    } capture[LUA_MAXCAPTURES];
 } MatchState;
@@ -655,6 +700,8 @@ static const char* classend(MatchState* ms, const char* p)
    }
 }
 
+//********************************************************************************************************************
+
 static const unsigned char match_class_map[32] = {
   0,LJ_CHAR_ALPHA,0,LJ_CHAR_CNTRL,LJ_CHAR_DIGIT,0,0,LJ_CHAR_GRAPH,0,0,0,0,
   LJ_CHAR_LOWER,0,0,0,LJ_CHAR_PUNCT,0,0,LJ_CHAR_SPACE,0,
@@ -674,6 +721,8 @@ static int match_class(int c, int cl)
    }
    return (cl IS c);
 }
+
+//********************************************************************************************************************
 
 static int matchbracketclass(int c, const char* p, const char* ec)
 {
@@ -697,6 +746,8 @@ static int matchbracketclass(int c, const char* p, const char* ec)
    return !sig;
 }
 
+//********************************************************************************************************************
+
 static int singlematch(int c, const char* p, const char* ep)
 {
    switch (*p) {
@@ -713,11 +764,9 @@ static const char* match(MatchState* ms, const char* s, const char* p);
 
 static const char* matchbalance(MatchState* ms, const char* s, const char* p)
 {
-   if (*p IS 0 or *(p + 1) IS 0)
-      lj_err_caller(ms->L, ErrMsg::STRPATU);
-   if (*s != *p) {
-      return nullptr;
-   }
+   if (*p IS 0 or *(p + 1) IS 0) lj_err_caller(ms->L, ErrMsg::STRPATU);
+
+   if (*s != *p) return nullptr;
    else {
       int b = *p;
       int e = *(p + 1);
@@ -726,9 +775,7 @@ static const char* matchbalance(MatchState* ms, const char* s, const char* p)
          if (*s IS e) {
             if (--cont IS 0) return s + 1;
          }
-         else if (*s IS b) {
-            cont++;
-         }
+         else if (*s IS b) cont++;
       }
    }
    return nullptr;  //  string ends out of balance
@@ -739,8 +786,7 @@ static const char* matchbalance(MatchState* ms, const char* s, const char* p)
 static const char* max_expand(MatchState* ms, const char* s, const char* p, const char* ep)
 {
    ptrdiff_t i = 0;  //  counts maximum expand for item
-   while ((s + i) < ms->src_end and singlematch(uchar(*(s + i)), p, ep))
-      i++;
+   while ((s + i) < ms->src_end and singlematch(uchar(*(s + i)), p, ep)) i++;
    // keeps trying to match with the maximum repetitions
    while (i >= 0) {
       const char* res = match(ms, (s + i), ep + 1);
@@ -754,7 +800,7 @@ static const char* max_expand(MatchState* ms, const char* s, const char* p, cons
 
 static const char* min_expand(MatchState* ms, const char* s, const char* p, const char* ep)
 {
-   for (;;) {
+   while (true) {
       const char* res = match(ms, s, ep + 1);
       if (res != nullptr) return res;
       else if (s < ms->src_end and singlematch(uchar(*s), p, ep)) s++;  //  try with one more repetition
@@ -796,11 +842,8 @@ static const char* match_capture(MatchState* ms, const char* s, int l)
    size_t len;
    l = check_capture(ms, l);
    len = (size_t)ms->capture[l].len;
-   if ((size_t)(ms->src_end - s) >= len &&
-      memcmp(ms->capture[l].init, s, len) IS 0)
-      return s + len;
-   else
-      return nullptr;
+   if ((size_t)(ms->src_end - s) >= len && memcmp(ms->capture[l].init, s, len) IS 0) return s + len;
+   else return nullptr;
 }
 
 //********************************************************************************************************************
@@ -830,8 +873,7 @@ init: //  using goto's to optimize tail recursion
       case 'f': {  // frontier?
          const char* ep; char previous;
          p += 2;
-         if (*p != '[')
-            lj_err_caller(ms->L, ErrMsg::STRPATB);
+         if (*p != '[') lj_err_caller(ms->L, ErrMsg::STRPATB);
          ep = classend(ms, p);  //  points to what is next
          previous = (s IS ms->src_init) ? '\0' : *(s - 1);
          if (matchbracketclass(uchar(previous), p, ep - 1) ||
@@ -899,16 +941,13 @@ static void push_onecapture(MatchState* ms, int i, const char* s, const char* e)
    if (i >= ms->level) {
       if (i IS 0)  //  ms->level IS 0, too
          lua_pushlstring(ms->L, s, (size_t)(e - s));  //  add whole match
-      else
-         lj_err_caller(ms->L, ErrMsg::STRCAPI);
+      else lj_err_caller(ms->L, ErrMsg::STRCAPI);
    }
    else {
       ptrdiff_t l = ms->capture[i].len;
       if (l IS CAP_UNFINISHED) lj_err_caller(ms->L, ErrMsg::STRCAPU);
-      if (l IS CAP_POSITION)
-         lua_pushinteger(ms->L, ms->capture[i].init - ms->src_init);  // 0-based position
-      else
-         lua_pushlstring(ms->L, ms->capture[i].init, (size_t)l);
+      if (l IS CAP_POSITION) lua_pushinteger(ms->L, ms->capture[i].init - ms->src_init);  // 0-based position
+      else lua_pushlstring(ms->L, ms->capture[i].init, (size_t)l);
    }
 }
 
@@ -919,8 +958,7 @@ static int push_captures(MatchState* ms, const char* s, const char* e)
    int i;
    int nlevels = (ms->level IS 0 and s) ? 1 : ms->level;
    luaL_checkstack(ms->L, nlevels, "too many captures");
-   for (i = 0; i < nlevels; i++)
-      push_onecapture(ms, i, s, e);
+   for (i = 0; i < nlevels; i++) push_onecapture(ms, i, s, e);
    return nlevels;  //  number of strings pushed
 }
 
@@ -939,8 +977,8 @@ static int str_find_aux(lua_State* L, int find)
       setnilV(L->top - 1);
       return 1;
    }
-   if (find and ((L->base + 3 < L->top and tvistruecond(L->base + 3)) ||
-      !lj_str_haspattern(p))) {  // Search for fixed string.
+
+   if (find and ((L->base + 3 < L->top and tvistruecond(L->base + 3)) || !lj_str_haspattern(p))) {  // Search for fixed string.
       const char* q = lj_str_find(strdata(s) + st, strdata(p), s->len - st, p->len);
       if (q) {
          setintV(L->top - 2, (int32_t)(q - strdata(s)));  // 0-based start
@@ -1074,11 +1112,11 @@ static void add_value(MatchState* ms, luaL_Buffer* b, const char* s, const char*
          break;
    }
 
-   if (!lua_toboolean(L, -1)) {  // nil or false?
+   if (not lua_toboolean(L, -1)) {  // nil or false?
       lua_pop(L, 1);
       lua_pushlstring(L, s, (size_t)(e - s));  //  keep original text
    }
-   else if (!lua_isstring(L, -1)) {
+   else if (not lua_isstring(L, -1)) {
       lj_err_callerv(L, ErrMsg::STRGSRV, luaL_typename(L, -1));
    }
    luaL_addvalue(b);  //  add result to accumulator
@@ -1097,9 +1135,7 @@ LJLIB_CF(string_gsub)
    int n = 0;
    MatchState ms;
    luaL_Buffer b;
-   if (!(tr IS LUA_TNUMBER or tr IS LUA_TSTRING ||
-      tr IS LUA_TFUNCTION or tr IS LUA_TTABLE))
-      lj_err_arg(L, 3, ErrMsg::NOSFT);
+   if (not (tr IS LUA_TNUMBER or tr IS LUA_TSTRING || tr IS LUA_TFUNCTION or tr IS LUA_TTABLE)) lj_err_arg(L, 3, ErrMsg::NOSFT);
    luaL_buffinit(L, &b);
    ms.L = L;
    ms.src_init = src;
@@ -1114,12 +1150,9 @@ LJLIB_CF(string_gsub)
       }
       if (e and e > src) //  non empty match?
          src = e;  //  skip it
-      else if (src < ms.src_end)
-         luaL_addchar(&b, *src++);
-      else
-         break;
-      if (anchor)
-         break;
+      else if (src < ms.src_end) luaL_addchar(&b, *src++);
+      else break;
+      if (anchor) break;
    }
    luaL_addlstring(&b, src, (size_t)(ms.src_end - src));
    luaL_pushresult(&b);
