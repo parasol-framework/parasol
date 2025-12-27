@@ -1,5 +1,4 @@
-#ifndef DEFS_H
-#define DEFS_H 1
+#pragma once
 
 #ifndef PLATFORM_CONFIG_H
 #include <parasol/config.h>
@@ -1256,5 +1255,3 @@ typename Container::const_iterator binary_search(const Container& container, con
     }
     return container.end();
 }
-
-#endif // DEFS_H
