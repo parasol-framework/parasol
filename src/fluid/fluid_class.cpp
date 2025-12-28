@@ -721,53 +721,18 @@ static ERR FLUID_Query(objScript *Self)
 
       if (result) { // Error reported from parser
          Self->Error = ERR::Syntax;
-         if (auto errorstr = lua_tostring(prv->Lua,-1)) {
-            if (prv->Lua->parser_diagnostics) {
-               if (prv->Lua->parser_diagnostics->has_errors()) {
-                  std::string error_msg;
-                  for (const auto &entry : prv->Lua->parser_diagnostics->entries()) {
-                     if (not error_msg.empty()) error_msg += "\n";
-                     error_msg += entry.to_string(Self->LineOffset);
-                  }
-                  Self->setErrorString(error_msg);
+         if (auto errorstr = lua_tostring(prv->Lua, -1)) {
+            if (prv->Lua->parser_diagnostics and prv->Lua->parser_diagnostics->has_errors()) {
+               std::string error_msg;
+               for (const auto &entry : prv->Lua->parser_diagnostics->entries()) {
+                  if (not error_msg.empty()) error_msg += "\n";
+                  error_msg += entry.to_string(Self->LineOffset);
                }
-               else Self->setErrorString(errorstr);
-
-               log.warning("%s", Self->ErrorString);
+               Self->setErrorString(error_msg);
             }
-            else {
-               // TODO: Legacy support - remove when parser_diagnostics is always available
-               // Format: [string "..."]:Line:Error
-               int i;
-               if ((i = strsearch("\"]:", errorstr)) != -1) {
-                  i += 3;
-                  int line = strtol(errorstr + i, nullptr, 0);
-                  while ((errorstr[i]) and (errorstr[i] != ':')) i++;
-                  if (errorstr[i] IS ':') i++;
+            else Self->setErrorString(errorstr);
 
-                  std::string error_msg = std::format("Line {}: {}\n", line + Self->LineOffset, errorstr + i);
-                  CSTRING str = Self->String;
-
-                  for (int j=1; j <= line+1; j++) {
-                     if (j >= line-1) {
-                        int col;
-                        for (col=0; (str[col]) and (str[col] != '\n') and (str[col] != '\r') and (col < 120); col++);
-                        error_msg += std::format("{}: {}{}\n",
-                           j + Self->LineOffset,
-                           std::string_view(str, col),
-                           col IS 120 ? "..." : "");
-                     }
-                     if (not (str = next_line(str))) break;
-                  }
-                  Self->setErrorString(error_msg.c_str());
-
-                  log.warning("Parser Failed: %s", Self->ErrorString);
-               }
-               else {
-                  log.warning("Parser Failed: %s", errorstr);
-                  Self->setErrorString(errorstr);
-               }
-            }
+            log.warning("%s", Self->ErrorString);
          }
 
          lua_pop(prv->Lua, 1);  // Pop error string
