@@ -51,6 +51,7 @@
 #include "lib.h"
 #include "debug/error_guard.h"
 #include "parser/parser_diagnostics.h"
+#include "parser/parser_tips.h"
 #include "../../defs.h"
 
 #include <cctype>       // For isalnum, isdigit
@@ -887,6 +888,14 @@ LJLIB_CF(debug_traceback)
 //     severity  - 0=Info, 1=Warning, 2=Error
 //     code      - string error code (e.g., "UnexpectedToken")
 //     message   - human-readable error message
+//   tips        - array of code improvement hints (LSP severity 4), each containing:
+//     line      - 0-based line number
+//     column    - 0-based column number
+//     endColumn - 0-based end column
+//     severity  - 3 (Hint - maps to LSP severity 4)
+//     priority  - 1=critical, 2=medium, 3=low
+//     category  - hint category (e.g., "performance", "code-quality")
+//     message   - human-readable improvement suggestion
 //
 // Optional flags parameter (string, reserved for future use):
 //   "s" - syntax only (default, just parse)
@@ -939,7 +948,7 @@ LJLIB_CF(debug_validate)
    // This requires temporarily enabling JOF::DIAGNOSE
    auto *prv = (prvFluid *)L->script->ChildPrivate;
    JOF old_options = prv ? prv->JitOptions : JOF::NIL;
-   if (prv) prv->JitOptions |= JOF::DIAGNOSE;
+   if (prv) prv->JitOptions |= JOF::DIAGNOSE|JOF::ALL_TIPS;
 
    int parse_result = lua_load(L, std::string_view(statement, strlen(statement)), "=validate");
 
@@ -975,6 +984,35 @@ LJLIB_CF(debug_validate)
    }
 
    lua_setfield(L, -2, "diagnostics");
+
+   // Build tips array (code improvement hints)
+   lua_newtable(L);
+   int tip_idx = 0;
+
+   if (L->parser_tips) {
+      auto *tips = L->parser_tips;
+      for (const auto &entry : tips->entries()) {
+         lua_newtable(L);  // tip entry
+
+         SourceSpan span = entry.token.span();
+         // LSP uses 0-based line/column, Lua parser uses 1-based
+         settabsi(L, "line", span.line > 0 ? span.line - 1 : 0);
+         settabsi(L, "column", span.column > 0 ? span.column - 1 : 0);
+         settabsi(L, "endColumn", span.column);  // Already correct after -1 adjustment
+         settabsi(L, "severity", 3);  // Hint severity (maps to LSP severity 4)
+         settabsi(L, "priority", entry.priority);
+         settabss(L, "category", category_name(entry.category));
+         settabss(L, "message", entry.message.c_str());
+
+         lua_rawseti(L, -2, tip_idx++);
+      }
+
+      // Clear tips for next use
+      delete tips;
+      L->parser_tips = nullptr;
+   }
+
+   lua_setfield(L, -2, "tips");
 
    // Set success field
    settabsb(L, "success", parse_result IS 0);

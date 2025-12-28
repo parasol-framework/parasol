@@ -28,6 +28,7 @@
 #include "lj_prng.h"
 #include "../parser/lexer.h"
 #include "../parser/parser_diagnostics.h"
+#include "../parser/parser_tips.h"
 #include "lj_alloc.h"
 #include "luajit.h"
 
@@ -219,6 +220,10 @@ static void close_state(lua_State *L)
       delete (ParserDiagnostics*)L->parser_diagnostics;
       L->parser_diagnostics = nullptr;
    }
+   if (L->parser_tips) {
+      delete L->parser_tips;
+      L->parser_tips = nullptr;
+   }
    funcnames_free(g);
    lj_func_closeuv(L, tvref(L->stack));
 
@@ -383,6 +388,7 @@ lua_State* lj_state_new(lua_State *L)
    setmref(L1->stack, nullptr);
    L1->cframe = nullptr;
    L1->parser_diagnostics = nullptr;
+   L1->parser_tips = nullptr;
    setnilV(&L1->close_err);  // Initialize __close error to nil
    // NOBARRIER: The lua_State is new (marked white).
    setgcrefnull(L1->openupval);
@@ -402,6 +408,10 @@ void LJ_FASTCALL lj_state_free(global_State* g, lua_State *L)
    if (L->parser_diagnostics) {
       delete (ParserDiagnostics*)L->parser_diagnostics;
       L->parser_diagnostics = nullptr;
+   }
+   if (L->parser_tips) {
+      delete L->parser_tips;
+      L->parser_tips = nullptr;
    }
    lj_func_closeuv(L, tvref(L->stack));
    lj_assertG(gcref(L->openupval) == nullptr, "stale open upvalues");

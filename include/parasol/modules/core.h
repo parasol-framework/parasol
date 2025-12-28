@@ -1750,8 +1750,8 @@ struct MethodEntry {
    CSTRING Name;                         // Name of the method
    const struct FunctionField * Args;    // List of parameters accepted by the method
    int     Size;                         // Total byte-size of all accepted parameters when they are assembled as a C structure.
-   MethodEntry() : MethodID(AC::NIL), Routine(nullptr), Name(nullptr) { }
-   MethodEntry(AC pID, APTR pRoutine, CSTRING pName, const struct FunctionField *pArgs, int pSize) :
+   MethodEntry() : MethodID(AC::NIL), Routine(nullptr), Name(nullptr), Args(nullptr), Size(0) { }
+   MethodEntry(AC pID, APTR pRoutine, CSTRING pName, const struct FunctionField *pArgs = nullptr, int pSize = 0) :
       MethodID(pID), Routine(pRoutine), Name(pName), Args(pArgs), Size(pSize) { }
 };
 
