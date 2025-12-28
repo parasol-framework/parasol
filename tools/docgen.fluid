@@ -15,18 +15,18 @@
 function resolveSDKPath(Path)
    local sdk_path
    err = ERR_Failed
-   search_list = { }
+   search_list = array<string>
    if not Path then
       search_path = 'CMakeLists.txt'
       limit = 5
       while (err != ERR_Okay) and (limit > 0) do
-         table.insert(search_list, search_path)
+         search_list:push(search_path)
          err, sdk_path = mSys.ResolvePath(search_path)
          search_path = '../' .. search_path
          limit -= 1
       end
    else
-      table.insert(search_list, Path .. '/CMakeLists.txt')
+      search_list:push(Path .. '/CMakeLists.txt')
       err, sdk_path = mSys.ResolvePath(Path .. '/CMakeLists.txt')
    end
 
@@ -34,7 +34,7 @@ function resolveSDKPath(Path)
       sdk_path = sdk_path:match('(.+)CMakeLists%.txt')
    else
       msg = ''
-      for _, path in ipairs(search_list) do
+      for path in values(search_list) do
          msg ..= path .. '\n'
       end
       print('Unable to find CMakeLists.txt after searching the following paths:\n' .. msg)

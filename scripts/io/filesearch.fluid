@@ -12,9 +12,7 @@ file.search = function(Path, Options)
    isRegexFilter = false
 
    function contentMatch(Path)
-      if not lOptions.contentFilter then
-         return true
-      end
+      lOptions.contentFilter ?? return true
 
       ex, fl = catch(function()
          return obj.new('file', { path=Path, flags='READ' } )
@@ -74,18 +72,18 @@ file.search = function(Path, Options)
       return false -- Dates are exactly equal
    end
 
-   function scanPath(Path, currentDepth)
+   function scanPath(Path:str, currentDepth:num)
       if not currentDepth then currentDepth = 0 end
       msg('scanPath() ' .. (Path ?? ':') .. ' (depth: ' .. currentDepth .. ')')
 
       if lStop then return end
 
-      if (lOptions.maxDepth) and (currentDepth > lOptions.maxDepth) then return end
+      if lOptions.maxDepth and (currentDepth > lOptions.maxDepth) then return end
 
       count = 0
       flags = 0
-      if not lOptions.matchFolders then flags = (flags | FL_EXCLUDE_FOLDERS) end
-      if lOptions.ignoreFiles then flags = (flags | FL_EXCLUDE_FILES) end
+      if not lOptions.matchFolders then flags = flags | FL_EXCLUDE_FOLDERS end
+      if lOptions.ignoreFiles then flags = flags | FL_EXCLUDE_FILES end
 
       ex, folder = catch(function()
          return obj.new('file', { src=Path, flags=flags } )
@@ -104,7 +102,7 @@ file.search = function(Path, Options)
 
          match = true
          if lOptions.nameFilter then
-            local cmpName = fileName
+            cmpName = fileName
             if not lOptions.caseSensitive then
                cmpName = cmpName:lower()
             end
@@ -179,7 +177,7 @@ file.search = function(Path, Options)
       collectgarbage()
    end
 
-   local function processPath(Path)
+   function processPath(Path:str)
       msg(string.format('Path: %s, Filter: %s, Regex: %s, Content: %s', Path, Options.nameFilter, tostring(isRegexFilter), Options.contentFilter))
 
       if file.isFolder(Path) then
@@ -189,11 +187,11 @@ file.search = function(Path, Options)
       else
          -- Single file analysis
 
-         local path, fileName = file.splitPath(Path)
-         local nameMatches = true
+         path, fileName = file.splitPath(Path)
+         nameMatches = true
 
          if Options.nameFilter then
-            local cmpName = fileName
+            cmpName = fileName
             if not lOptions.caseSensitive then
                cmpName = cmpName:lower()
             end
@@ -201,9 +199,9 @@ file.search = function(Path, Options)
             if isRegexFilter then
                nameMatches = lOptions.nameFilter.test(cmpName)
             elseif lOptions.namePattern or lOptions.nameWild then -- nameWild is obsolete
-               nameMatches = (string.find(cmpName, lOptions.nameFilter) != nil)
+               nameMatches = string.find(cmpName, lOptions.nameFilter) != nil
             else
-               nameMatches = (cmpName is lOptions.nameFilter)
+               nameMatches = cmpName is lOptions.nameFilter
             end
          end
 
@@ -228,18 +226,18 @@ file.search = function(Path, Options)
 
    if lOptions.maxDate then
       err, maxDate = mSys.StrReadDate(lOptions.maxDate)
-      if err != ERR_Okay then error('Invalid maxDate value.') end
+      assert(err is ERR_Okay, 'Invalid maxDate value.')
       lOptions.maxDate = maxDate
    end
 
    if lOptions.minDate then
       err, minDate = mSys.StrReadDate(lOptions.minDate)
-      if err != ERR_Okay then error('Invalid minDate value.') end
+      assert(err is ERR_Okay, 'Invalid minDate value.')
       lOptions.minDate = minDate
    end
 
-   if type(Path) is 'table' then
-      for k,v in pairs(Path) do
+   if type(Path) is 'table' or type(Path) is 'array' then
+      for v in values(Path) do
          processPath(v)
       end
    else

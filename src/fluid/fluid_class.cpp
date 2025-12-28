@@ -103,6 +103,7 @@ static ERR FLUID_Free(objScript *);
 static ERR FLUID_Init(objScript *);
 static ERR FLUID_NewChild(objScript *, struct acNewChild &);
 static ERR FLUID_NewObject(objScript *);
+static ERR FLUID_Query(objScript *);
 static ERR FLUID_SaveToObject(objScript *, struct acSaveToObject *);
 
 static const ActionArray clActions[] = {
@@ -112,6 +113,7 @@ static const ActionArray clActions[] = {
    { AC::Init,         FLUID_Init },
    { AC::NewChild,     FLUID_NewChild },
    { AC::NewObject,    FLUID_NewObject },
+   { AC::Query,        FLUID_Query },
    { AC::SaveToObject, FLUID_SaveToObject },
    { AC::NIL, nullptr }
 };
@@ -170,12 +172,11 @@ void process_error(objScript *Self, CSTRING Procedure)
    else Self->Error = ERR::Exception; // Unspecified exception, e.g. an error() or assert().  The result string will indicate detail.
 
    pf::Log log;
-   CSTRING str = lua_tostring(prv->Lua, -1);
+   auto str = lua_tostring(prv->Lua, -1);
    lua_pop(prv->Lua, 1);  // pop returned value
    Self->setErrorString(str);
 
-   CSTRING file = Self->Path;
-   if (file) {
+   if (auto file = Self->Path) {
       int i;
       for (i=strlen(file); (i > 0) and (file[i-1] != '/') and (file[i-1] != '\\'); i--);
       log.msg(flags, "%s: %s", file+i, str);
@@ -307,229 +308,39 @@ static ERR FLUID_Activate(objScript *Self)
 
    log.trace("Target: %d, Procedure: %s / ID #%" PF64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", (long long)Self->ProcedureID);
 
-   ERR error = ERR::Failed;
-
    auto prv = (prvFluid *)Self->ChildPrivate;
    if (not prv) return log.warning(ERR::ObjectCorrupt);
 
-   if (prv->Recurse) { // When performing a recursive call, we can assume that the code has already been loaded.
-      error = run_script(Self);
-      if (error != ERR::Okay) Self->Error = error;
-
-      {
-         pf::Log log;
-         log.traceBranch("Collecting garbage.");
-         lua_gc(prv->Lua, LUA_GCCOLLECT, 0);
-      }
-
-      return ERR::Okay;
+   if ((prv->Recurse) and (not Self->Procedure) and (not Self->ProcedureID)) {
+      return ERR::Okay; // Do nothing, script is running.
    }
 
-   prv->Recurse++;
+   ERR error = ERR::Failed;
 
-   Self->CurrentLine = -1;
-   Self->Error       = ERR::Okay;
+   if ((error = acQuery(Self)) IS ERR::Okay) {
+      prv->Recurse++;
 
-   bool reload = false;
-   if (not Self->ActivationCount) reload = true;
+      if ((Self->Procedure) or (Self->ProcedureID)) {
+         // The Lua script needs to have been executed at least once in order for the procedures to be initialised and recognised.
 
-   if ((Self->ActivationCount) and (not Self->Procedure) and (not Self->ProcedureID)) {
-      // If no procedure has been specified, kill the old Lua instance to restart from scratch
+         if (Self->ActivationCount IS 0) {
+            pf::Log log;
+            log.traceBranch("Collecting functions prior to procedure call...");
 
-      free_all(Self);
-      new (prv) prvFluid;
-
-      if (not (prv->Lua = luaL_newstate(Self))) {
-         log.warning("Failed to open a Lua instance.");
-         goto failure;
-      }
-
-      reload = true;
-   }
-
-   if (reload) {
-      log.trace("The Lua script will be initialised from scratch.");
-
-      prv->Lua->script             = Self;
-      prv->Lua->protected_globals   = false;
-
-      // Set up global variable protection that is JIT-compatible.
-      // __index can be a table (JIT traces through it) instead of a function (JIT aborts).
-      // We use:
-      //   __index = storage_table (direct table lookup, JIT-compatible)
-      //   __newindex = C function (only called on writes, protects existing functions)
-
-      lua_newtable(prv->Lua); // Storage table (will hold all globals) - stack index 1
-      {
-         lua_newtable(prv->Lua); // Metatable = { __newindex = func, __index = storage_table }
-         {
-            // __newindex: C function for write protection (only called when writing new keys)
-            lua_pushstring(prv->Lua, "__newindex");
-            lua_pushvalue(prv->Lua, 1); // Storage table (absolute index)
-            lua_pushcclosure(prv->Lua, global_newindex, 1);
-            lua_settable(prv->Lua, -3);
-
-            // __index: Direct table reference (JIT-compatible, no C function call)
-            lua_pushstring(prv->Lua, "__index");
-            lua_pushvalue(prv->Lua, 1); // Storage table (absolute index)
-            lua_settable(prv->Lua, -3);
-         }
-         lua_setmetatable(prv->Lua, LUA_GLOBALSINDEX);
-      }
-      lua_pop(prv->Lua, 1); // Pop the storage table
-
-      lua_gc(prv->Lua, LUA_GCSTOP, 0);  // Stop collector during initialization
-         luaL_openlibs(prv->Lua);  // Open Lua libraries
-      lua_gc(prv->Lua, LUA_GCRESTART, 0);
-
-      // Register private variables in the registry, which is tamper proof from the user's Lua code
-
-      if (register_interfaces(Self) != ERR::Okay) goto failure;
-
-      // Line hook, executes on the execution of a new line
-
-      if ((Self->Flags & SCF::LOG_ALL) != SCF::NIL) {
-         // LUA_MASKLINE:  Interpreter is executing a line.
-         // LUA_MASKCALL:  Interpreter is calling a function.
-         // LUA_MASKRET:   Interpreter returns from a function.
-         // LUA_MASKCOUNT: The hook will be called every X number of instructions executed.
-
-         lua_sethook(prv->Lua, hook_debug, LUA_MASKCALL|LUA_MASKRET|LUA_MASKLINE, 0);
-      }
-
-      // Pre-load the Core module: mSys = mod.load('core')
-
-      if (auto core = objModule::create::global(fl::Name("core"))) {
-         SetName(core, "mSys");
-         new_module(prv->Lua, core);
-         lua_setglobal(prv->Lua, "mSys");
-      }
-      else {
-         log.warning("Failed to create module object.");
-         goto failure;
-      }
-
-      prv->Lua->protected_globals = true;
-
-      // Determine chunk name for better debug output.
-      // Prefix with '@' to indicate file-based chunk (Lua convention), otherwise use '=' for special sources.
-      // This ensures debug output shows the actual filename instead of "[string]".
-
-      std::string chunk_name;
-      if (Self->Path) chunk_name = std::string("@") + Self->Path;
-      else chunk_name = "=script";
-
-      int result;
-      if (startswith(LUA_COMPILED, Self->String)) { // The source is compiled
-         log.trace("Loading pre-compiled Lua script.");
-         int headerlen = strlen(Self->String) + 1;
-         result = lua_load(prv->Lua, std::string_view(Self->String + headerlen, prv->LoadedSize - headerlen), chunk_name.c_str());
-      }
-      else {
-         log.trace("Compiling Lua script.");
-         result = lua_load(prv->Lua, std::string_view(Self->String), chunk_name.c_str());
-      }
-
-      if (result) { // Error reported from parser
-         Self->Error = ERR::Syntax;
-         if (auto errorstr = lua_tostring(prv->Lua,-1)) {
-            if (prv->Lua->parser_diagnostics) {
-               if (prv->Lua->parser_diagnostics->has_errors()) {
-                  std::string error_msg;
-                  for (const auto &entry : prv->Lua->parser_diagnostics->entries()) {
-                     if (not error_msg.empty()) error_msg += "\n";
-                     error_msg += entry.to_string(Self->LineOffset);
-                  }
-                  Self->setErrorString(error_msg);
-               }
-               else Self->setErrorString(errorstr);
-
-               log.warning("%s", Self->ErrorString);
-            }
-            else {
-               // TODO: Legacy support - remove when parser_diagnostics is always available
-               // Format: [string "..."]:Line:Error
-               int i;
-               if ((i = strsearch("\"]:", errorstr)) != -1) {
-                  i += 3;
-                  int line = strtol(errorstr + i, nullptr, 0);
-                  while ((errorstr[i]) and (errorstr[i] != ':')) i++;
-                  if (errorstr[i] IS ':') i++;
-
-                  std::string error_msg = std::format("Line {}: {}\n", line + Self->LineOffset, errorstr + i);
-                  CSTRING str = Self->String;
-
-                  for (int j=1; j <= line+1; j++) {
-                     if (j >= line-1) {
-                        int col;
-                        for (col=0; (str[col]) and (str[col] != '\n') and (str[col] != '\r') and (col < 120); col++);
-                        error_msg += std::format("{}: {}{}\n",
-                           j + Self->LineOffset,
-                           std::string_view(str, col),
-                           col IS 120 ? "..." : "");
-                     }
-                     if (not (str = next_line(str))) break;
-                  }
-                  Self->setErrorString(error_msg.c_str());
-
-                  log.warning("Parser Failed: %s", Self->ErrorString);
-               }
-               else {
-                  log.warning("Parser Failed: %s", errorstr);
-                  Self->setErrorString(errorstr);
-               }
+            if (lua_pcall(prv->Lua, 0, 0, 0)) {
+               process_error(Self, "Activation");
+               if ((error = Self->Error) IS ERR::Okay) error = ERR::Failed;
             }
          }
-
-         lua_pop(prv->Lua, 1);  // Pop error string
-         goto failure;
-      }
-      else {
-         log.trace("Script successfully compiled.");
-
-         // Store a reference to the compiled main chunk for post-execution analysis (e.g., bytecode disassembly)
-         if (prv->MainChunkRef) luaL_unref(prv->Lua, LUA_REGISTRYINDEX, prv->MainChunkRef);
-         lua_pushvalue(prv->Lua, -1); // Duplicate the function on top of the stack
-         prv->MainChunkRef = luaL_ref(prv->Lua, LUA_REGISTRYINDEX); // Store reference, pops the duplicate
       }
 
-      if (prv->SaveCompiled) { // Compile the script and save the result to the cache file
-         log.msg("Compiling the source into the cache file.");
+      Self->ActivationCount++;
 
-         prv->SaveCompiled = false;
+      if (Self->Error IS ERR::Okay) run_script(Self); // Will set Self->Error if there's an issue
 
-         objFile::create cachefile = {
-            fl::Path(Self->CacheFile), fl::Flags(FL::NEW|FL::WRITE), fl::Permissions(prv->CachePermissions)
-         };
-
-         if (cachefile.ok()) {
-            save_binary(Self, *cachefile);
-            cachefile->setDate(&prv->CacheDate);
-         }
-      }
+      error = ERR::Okay; // The error reflects on the initial processing of the script only - the developer must check the Error field for information on script execution
+      prv->Recurse--;
    }
-   else log.trace("Using the Lua script cache.");
-
-   Self->ActivationCount++;
-
-   if ((Self->Procedure) or (Self->ProcedureID)) {
-      // The Lua script needs to have been executed at least once in order for the procedures to be initialised and recognised.
-
-      if ((Self->ActivationCount IS 1) or (reload)) {
-         pf::Log log;
-         log.traceBranch("Collecting functions prior to procedure call...");
-
-         if (lua_pcall(prv->Lua, 0, 0, 0)) {
-            process_error(Self, "Activation");
-         }
-      }
-   }
-
-   if (Self->Error IS ERR::Okay) run_script(Self); // Will set Self->Error if there's an issue
-
-   error = ERR::Okay; // The error reflects on the initial processing of the script only - the developer must check the Error field for information on script execution
-
-failure:
 
    if (prv->Lua) {
       pf::Log log;
@@ -537,7 +348,6 @@ failure:
       lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
    }
 
-   prv->Recurse--;
    return error;
 }
 
@@ -720,7 +530,7 @@ static ERR FLUID_Init(objScript *Self)
 
    // Allocate private structure if not done by NewObject().
 
-   prvFluid *prv = (prvFluid *)Self->ChildPrivate;
+   auto prv = (prvFluid *)Self->ChildPrivate;
    if ((error IS ERR::Okay) and (not prv)) {
       if (AllocMemory(sizeof(prvFluid), MEM::DATA, &Self->ChildPrivate) IS ERR::Okay) {
          prv = (prvFluid *)Self->ChildPrivate;
@@ -802,6 +612,168 @@ static ERR FLUID_NewObject(objScript *Self)
       return ERR::Okay;
    }
    else return ERR::AllocMemory;
+}
+
+//********************************************************************************************************************
+// Parse the script but don't run it.  Note that not running the code means that functions won't be registered, so
+// introspection of available procedures will be limited.
+
+static ERR FLUID_Query(objScript *Self)
+{
+   pf::Log log;
+
+   if ((not Self->String) or (not Self->String[0])) return log.warning(ERR::FieldNotSet);
+
+   log.trace("Target: %d, Procedure: %s / ID #%" PF64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", (long long)Self->ProcedureID);
+
+   ERR error = ERR::Failed;
+
+   auto prv = (prvFluid *)Self->ChildPrivate;
+   if (not prv) return log.warning(ERR::ObjectCorrupt);
+
+   if (prv->Recurse) return ERR::Okay; // Do nothing, script is running.
+
+   Self->CurrentLine = -1;
+   Self->Error       = ERR::Okay;
+
+   if ((Self->ActivationCount IS 0) and (not prv->Lua->protected_globals)) {
+      log.trace("The Lua script will be initialised from scratch.");
+
+      prv->Lua->script            = Self;
+      prv->Lua->protected_globals = false;
+
+      // Set up global variable protection that is JIT-compatible.
+      // __index can be a table (JIT traces through it) instead of a function (JIT aborts).
+      // We use:
+      //   __index = storage_table (direct table lookup, JIT-compatible)
+      //   __newindex = C function (only called on writes, protects existing functions)
+
+      lua_newtable(prv->Lua); // Storage table (will hold all globals) - stack index 1
+      {
+         lua_newtable(prv->Lua); // Metatable = { __newindex = func, __index = storage_table }
+         {
+            // __newindex: C function for write protection (only called when writing new keys)
+            lua_pushstring(prv->Lua, "__newindex");
+            lua_pushvalue(prv->Lua, 1); // Storage table (absolute index)
+            lua_pushcclosure(prv->Lua, global_newindex, 1);
+            lua_settable(prv->Lua, -3);
+
+            // __index: Direct table reference (JIT-compatible, no C function call)
+            lua_pushstring(prv->Lua, "__index");
+            lua_pushvalue(prv->Lua, 1); // Storage table (absolute index)
+            lua_settable(prv->Lua, -3);
+         }
+         lua_setmetatable(prv->Lua, LUA_GLOBALSINDEX);
+      }
+      lua_pop(prv->Lua, 1); // Pop the storage table
+
+      lua_gc(prv->Lua, LUA_GCSTOP, 0);  // Stop collector during initialization
+         luaL_openlibs(prv->Lua);  // Open Lua libraries
+      lua_gc(prv->Lua, LUA_GCRESTART, 0);
+
+      // Register private variables in the registry, which is tamper proof from the user's Lua code
+
+      if (register_interfaces(Self) != ERR::Okay) goto failure;
+
+      // Line hook, executes on the execution of a new line
+
+      if ((Self->Flags & SCF::LOG_ALL) != SCF::NIL) {
+         // LUA_MASKLINE:  Interpreter is executing a line.
+         // LUA_MASKCALL:  Interpreter is calling a function.
+         // LUA_MASKRET:   Interpreter returns from a function.
+         // LUA_MASKCOUNT: The hook will be called every X number of instructions executed.
+
+         lua_sethook(prv->Lua, hook_debug, LUA_MASKCALL|LUA_MASKRET|LUA_MASKLINE, 0);
+      }
+
+      // Pre-load the Core module: mSys = mod.load('core')
+
+      if (auto core = objModule::create::global(fl::Name("core"))) {
+         SetName(core, "mSys");
+         new_module(prv->Lua, core);
+         lua_setglobal(prv->Lua, "mSys");
+      }
+      else {
+         log.warning("Failed to create module object.");
+         goto failure;
+      }
+
+      prv->Lua->protected_globals = true;
+
+      // Determine chunk name for better debug output.
+      // Prefix with '@' to indicate file-based chunk (Lua convention), otherwise use '=' for special sources.
+      // This ensures debug output shows the actual filename instead of "[string]".
+
+      std::string chunk_name;
+      if (Self->Path) chunk_name = std::string("@") + Self->Path;
+      else chunk_name = "=script";
+
+      int result;
+      if (startswith(LUA_COMPILED, Self->String)) { // The source is compiled
+         log.trace("Loading pre-compiled Lua script.");
+         int headerlen = strlen(Self->String) + 1;
+         result = lua_load(prv->Lua, std::string_view(Self->String + headerlen, prv->LoadedSize - headerlen), chunk_name.c_str());
+      }
+      else {
+         log.trace("Compiling Lua script.");
+         result = lua_load(prv->Lua, std::string_view(Self->String), chunk_name.c_str());
+      }
+
+      if (result) { // Error reported from parser
+         Self->Error = ERR::Syntax;
+         if (auto errorstr = lua_tostring(prv->Lua, -1)) {
+            if (prv->Lua->parser_diagnostics and prv->Lua->parser_diagnostics->has_errors()) {
+               std::string error_msg;
+               for (const auto &entry : prv->Lua->parser_diagnostics->entries()) {
+                  if (not error_msg.empty()) error_msg += "\n";
+                  error_msg += entry.to_string(Self->LineOffset);
+               }
+               Self->setErrorString(error_msg);
+            }
+            else Self->setErrorString(errorstr);
+
+            log.warning("%s", Self->ErrorString);
+         }
+
+         lua_pop(prv->Lua, 1);  // Pop error string
+         goto failure;
+      }
+      else {
+         log.trace("Script successfully compiled.");
+
+         // Store a reference to the compiled main chunk for post-execution analysis (e.g., bytecode disassembly)
+         if (prv->MainChunkRef) luaL_unref(prv->Lua, LUA_REGISTRYINDEX, prv->MainChunkRef);
+         lua_pushvalue(prv->Lua, -1); // Duplicate the function on top of the stack
+         prv->MainChunkRef = luaL_ref(prv->Lua, LUA_REGISTRYINDEX); // Store reference, pops the duplicate
+      }
+
+      if (prv->SaveCompiled) { // Compile the script and save the result to the cache file
+         log.msg("Compiling the source into the cache file.");
+
+         prv->SaveCompiled = false;
+
+         objFile::create cachefile = {
+            fl::Path(Self->CacheFile), fl::Flags(FL::NEW|FL::WRITE), fl::Permissions(prv->CachePermissions)
+         };
+
+         if (cachefile.ok()) {
+            save_binary(Self, *cachefile);
+            cachefile->setDate(&prv->CacheDate);
+         }
+      }
+   }
+
+   error = ERR::Okay; // The error reflects on the initial processing of the script only - the developer must check the Error field for information on script execution
+
+failure:
+
+   if (prv->Lua) {
+      pf::Log log;
+      log.traceBranch("Collecting garbage.");
+      lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
+   }
+
+   return error;
 }
 
 /*********************************************************************************************************************

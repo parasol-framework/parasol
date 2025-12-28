@@ -30,8 +30,38 @@
 #include <type_traits>
 #include <memory>
 #include <optional>
+#include <concepts>
 
 namespace pf {
+
+//********************************************************************************************************************
+
+// Concept for types that support lock(timeout)/unlock() interface
+template<typename T>
+concept Lockable = requires(T obj, int timeout) {
+   { obj.lock(timeout) } -> std::same_as<ERR>;
+   { obj.unlock() } -> std::same_as<void>;
+};
+
+// Concept for Parasol object types (either derived from Object or implementing Lockable interface)
+template<typename T>
+concept ParasolObject = std::is_base_of_v<Object, T> or Lockable<T>;
+
+// Concept for numeric types (arithmetic or enum)
+template<typename T>
+concept NumericOrEnum = std::is_arithmetic_v<T> or std::is_enum_v<T>;
+
+// Concept for numeric or SCALE-derived types (for dimension fields)
+template<typename T>
+concept NumericOrScale = std::is_arithmetic_v<T> or std::is_base_of_v<SCALE, T>;
+
+// Concept for counter types used in reference counting
+template<typename C>
+concept RefCounter = (std::is_arithmetic_v<C> or std::is_same_v<C, std::atomic_int>);
+
+// Concept for invocable cleanup functions
+template<typename F>
+concept Invocable = std::is_invocable_v<std::decay_t<F>>;
 
 //********************************************************************************************************************
 
@@ -45,16 +75,19 @@ template <class T = double> struct POINT {
    }
 };
 
-template <class T = double>
-[[nodiscard]] std::enable_if_t<std::is_arithmetic_v<T>, bool>
-operator==(const POINT<T> &a, const POINT<T> &b) {
+template <std::floating_point T = double>
+[[nodiscard]] bool operator==(const POINT<T> &a, const POINT<T> &b) {
+   return (a.x == b.x) and (a.y == b.y);
+}
+
+template <std::integral T>
+[[nodiscard]] bool operator==(const POINT<T> &a, const POINT<T> &b) {
    return (a.x == b.x) and (a.y == b.y);
 }
 
 // Fast distance approximation for integral types
-template <class T = double>
-[[nodiscard]] std::enable_if_t<std::is_integral_v<T>, T>
-operator-(const POINT<T> A, const POINT<T> &B) {
+template <std::integral T>
+[[nodiscard]] T operator-(const POINT<T> A, const POINT<T> &B) {
    if (A == B) return T{0};
    double a = std::abs(double(B.x - A.x));
    double b = std::abs(double(B.y - A.y));
@@ -63,9 +96,8 @@ operator-(const POINT<T> A, const POINT<T> &B) {
 }
 
 // Optimized distance calculation for floating-point types
-template <class T>
-[[nodiscard]] std::enable_if_t<std::is_floating_point_v<T>, T>
-operator-(const POINT<T> A, const POINT<T> &B) {
+template <std::floating_point T>
+[[nodiscard]] T operator-(const POINT<T> A, const POINT<T> &B) {
    if (A == B) return T{0};
    T a = std::abs(B.x - A.x);
    T b = std::abs(B.y - A.y);
@@ -74,8 +106,8 @@ operator-(const POINT<T> A, const POINT<T> &B) {
 }
 
 template <class T = double, class M = double>
-[[nodiscard]] std::enable_if_t<std::is_arithmetic_v<T> and std::is_arithmetic_v<M>, POINT<T>>
-operator * (const POINT<T> &lhs, const M &Multiplier) {
+   requires (std::is_arithmetic_v<T> and std::is_arithmetic_v<M>)
+[[nodiscard]] POINT<T> operator * (const POINT<T> &lhs, const M &Multiplier) {
    return POINT<T> { T(lhs.x * Multiplier), T(lhs.y * Multiplier) };
 }
 
@@ -125,9 +157,8 @@ private:
    FUNC func;
 };
 
-template <typename F>
-[[nodiscard]] std::enable_if_t<std::is_invocable_v<std::decay_t<F>>, deferred_call<std::decay_t<F>>>
-Defer(F &&f) {
+template <Invocable F>
+[[nodiscard]] deferred_call<std::decay_t<F>> Defer(F &&f) {
    return deferred_call<std::decay_t<F>>(std::forward<F>(f));
 }
 
@@ -143,39 +174,24 @@ template <class T = Object> struct DeleteObject {
 
 // Simplify the creation of unique pointers with the destructor
 
-template <class T = Object>
-[[nodiscard]] std::enable_if_t<std::is_base_of_v<Object, T>, std::unique_ptr<T, DeleteObject<T>>>
-make_unique_object(T *Object) {
+template <class T = Object> requires std::is_base_of_v<Object, T>
+[[nodiscard]] std::unique_ptr<T, DeleteObject<T>> make_unique_object(T *Object) {
    return std::unique_ptr<T, DeleteObject<T>>(Object, DeleteObject<T>{});
 }
 
 // Variant for std::shared_ptr
 
-template <class T = Object>
-[[nodiscard]] std::enable_if_t<std::is_base_of_v<Object, T>, std::shared_ptr<T>>
-make_shared_object(T *Object) {
+template <class T = Object> requires std::is_base_of_v<Object, T>
+[[nodiscard]] std::shared_ptr<T> make_shared_object(T *Object) {
    return std::shared_ptr<T>(Object, DeleteObject<T>{});
 }
 
 //********************************************************************************************************************
-// SFINAE trait to detect lockable objects
-
-template<typename T, typename = void>
-struct is_lockable : std::false_type {};
-
-template<typename T>
-struct is_lockable<T, std::void_t<
-   decltype(std::declval<T>().lock(std::declval<int>())),
-   decltype(std::declval<T>().unlock())
->> : std::true_type {};
-
-//********************************************************************************************************************
 // Scoped object locker.  Use granted() to confirm that the lock has been granted.
+// Uses the ParasolObject concept to ensure T is either Object-derived or has lock()/unlock() methods.
 
-template <class T = Object>
+template <ParasolObject T = Object>
 class ScopedObjectLock {
-   static_assert(std::is_base_of_v<Object, T> or is_lockable<T>::value,
-                 "T must be Object-derived or have lock()/unlock() methods");
    private:
       bool quicklock;
 
@@ -240,12 +256,11 @@ class LocalResource {
 //********************************************************************************************************************
 // Enhanced version of LocalResource that features reference counting and is usable for object resources.  The use of
 // GuardedObject is considered essential for interoperability with the C++ class destruction model.
+// Uses concepts to ensure T derives from Object and C is a valid reference counter type.
 
-template <class T = Object, class C = std::atomic_int>
+template <class T = Object, RefCounter C = std::atomic_int>
+   requires std::is_base_of_v<Object, T>
 class GuardedObject {
-   static_assert(std::is_base_of_v<Object, T>, "T must derive from Object");
-   static_assert(std::is_arithmetic_v<C> or std::is_same_v<C, std::atomic_int>,
-                 "Counter type must be arithmetic or atomic_int");
 
    private:
       C * count;  // Count of GuardedObjects accessing the same resource.  Can be int (non-threaded) or std::atomic_int
@@ -614,157 +629,159 @@ inline FieldValue Pretext(const std::string &Value) { return FieldValue(FID_Pret
 
 // Template-based Flags are required for strongly typed enums
 
-template <class T> [[nodiscard]] FieldValue Type(T Value) {
-   static_assert(std::is_arithmetic_v<T> or std::is_enum_v<T>, "Type value must be numeric or enum");
-   if constexpr (std::is_enum_v<T>) return FieldValue(FID_Type, int(Value));
-   else return FieldValue(FID_Type, int(Value));
+template <NumericOrEnum T> [[nodiscard]] FieldValue Type(T Value) {
+   return FieldValue(FID_Type, int(Value));
 }
 
-template <class T> [[nodiscard]] FieldValue AspectRatio(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "AspectRatio value must be numeric");
+template <NumericOrEnum T> [[nodiscard]] FieldValue AspectRatio(T Value) {
    return FieldValue(FID_AspectRatio, int(Value));
 }
 
-template <class T> [[nodiscard]] FieldValue BlendMode(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "BlendMode value must be numeric");
+template <NumericOrEnum T> [[nodiscard]] FieldValue BlendMode(T Value) {
    return FieldValue(FID_BlendMode, int(Value));
 }
 
-template <class T> [[nodiscard]] FieldValue ColourSpace(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "ColourSpace value must be numeric");
+template <NumericOrEnum T> [[nodiscard]] FieldValue ColourSpace(T Value) {
    return FieldValue(FID_ColourSpace, int(Value));
 }
 
-template <class T> requires std::is_arithmetic_v<T> || std::is_enum_v<T> 
-[[nodiscard]] FieldValue Flags(T Value) {
+template <NumericOrEnum T> [[nodiscard]] FieldValue Flags(T Value) {
    return FieldValue(FID_Flags, int(Value));
 }
 
-template <class T> [[nodiscard]] FieldValue Units(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "Units value must be numeric");
+template <NumericOrEnum T> [[nodiscard]] FieldValue Units(T Value) {
    return FieldValue(FID_Units, int(Value));
 }
 
-template <class T> [[nodiscard]] FieldValue SpreadMethod(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "SpreadMethod value must be numeric");
+template <NumericOrEnum T> [[nodiscard]] FieldValue SpreadMethod(T Value) {
    return FieldValue(FID_SpreadMethod, int(Value));
 }
 
-template <class T> [[nodiscard]] FieldValue Visibility(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "Visibility value must be numeric");
+template <NumericOrEnum T> [[nodiscard]] FieldValue Visibility(T Value) {
    return FieldValue(FID_Visibility, int(Value));
 }
 
-template <class T> [[nodiscard]] std::enable_if_t<std::is_arithmetic_v<T>, FieldValue> PageWidth(T Value) {
+template <std::floating_point T> [[nodiscard]] FieldValue PageWidth(T Value) {
    return FieldValue(FID_PageWidth, Value);
 }
 
-template <class T> [[nodiscard]] std::enable_if_t<std::is_arithmetic_v<T>, FieldValue> PageHeight(T Value) {
+template <std::integral T> [[nodiscard]] FieldValue PageWidth(T Value) {
+   return FieldValue(FID_PageWidth, Value);
+}
+
+template <std::floating_point T> [[nodiscard]] FieldValue PageHeight(T Value) {
    return FieldValue(FID_PageHeight, Value);
 }
 
-template <class T> [[nodiscard]] FieldValue Radius(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "Radius value must be numeric");
+template <std::integral T> [[nodiscard]] FieldValue PageHeight(T Value) {
+   return FieldValue(FID_PageHeight, Value);
+}
+
+template <NumericOrScale T> [[nodiscard]] FieldValue Radius(T Value) {
    return FieldValue(FID_Radius, Value);
 }
 
-template <class T> [[nodiscard]] FieldValue CenterX(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "CenterX value must be numeric");
+template <NumericOrScale T> [[nodiscard]] FieldValue CenterX(T Value) {
    return FieldValue(FID_CenterX, Value);
 }
 
-template <class T> [[nodiscard]] FieldValue CenterY(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "CenterY value must be numeric");
+template <NumericOrScale T> [[nodiscard]] FieldValue CenterY(T Value) {
    return FieldValue(FID_CenterY, Value);
 }
 
-template <class T> [[nodiscard]] FieldValue FX(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "FX value must be numeric");
+template <NumericOrScale T> [[nodiscard]] FieldValue FX(T Value) {
    return FieldValue(FID_FX, Value);
 }
 
-template <class T> [[nodiscard]] FieldValue FY(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "FY value must be numeric");
+template <NumericOrScale T> [[nodiscard]] FieldValue FY(T Value) {
    return FieldValue(FID_FY, Value);
 }
 
-template <class T> [[nodiscard]] FieldValue ResX(T Value) {
-   static_assert(std::is_arithmetic<T>::value, "ResX value must be numeric");
+template <std::floating_point T> [[nodiscard]] FieldValue ResX(T Value) {
    return FieldValue(FID_ResX, Value);
 }
 
-template <class T> [[nodiscard]] FieldValue ResY(T Value) {
-   static_assert(std::is_arithmetic<T>::value, "ResY value must be numeric");
+template <std::integral T> [[nodiscard]] FieldValue ResX(T Value) {
+   return FieldValue(FID_ResX, Value);
+}
+
+template <std::floating_point T> [[nodiscard]] FieldValue ResY(T Value) {
    return FieldValue(FID_ResY, Value);
 }
 
-template <class T> [[nodiscard]] FieldValue ViewX(T Value) {
-   static_assert(std::is_arithmetic<T>::value, "ViewX value must be numeric");
+template <std::integral T> [[nodiscard]] FieldValue ResY(T Value) {
+   return FieldValue(FID_ResY, Value);
+}
+
+template <std::floating_point T> [[nodiscard]] FieldValue ViewX(T Value) {
    return FieldValue(FID_ViewX, Value);
 }
 
-template <class T> [[nodiscard]] FieldValue ViewY(T Value) {
-   static_assert(std::is_arithmetic<T>::value, "ViewY value must be numeric");
+template <std::integral T> [[nodiscard]] FieldValue ViewX(T Value) {
+   return FieldValue(FID_ViewX, Value);
+}
+
+template <std::floating_point T> [[nodiscard]] FieldValue ViewY(T Value) {
    return FieldValue(FID_ViewY, Value);
 }
 
-template <class T> FieldValue ViewWidth(T Value) {
-   static_assert(std::is_arithmetic<T>::value, "ViewWidth value must be numeric");
+template <std::integral T> [[nodiscard]] FieldValue ViewY(T Value) {
+   return FieldValue(FID_ViewY, Value);
+}
+
+template <std::floating_point T> [[nodiscard]] FieldValue ViewWidth(T Value) {
    return FieldValue(FID_ViewWidth, Value);
 }
 
-template <class T> [[nodiscard]] FieldValue ViewHeight(T Value) {
-   static_assert(std::is_arithmetic<T>::value, "ViewHeight value must be numeric");
+template <std::integral T> [[nodiscard]] FieldValue ViewWidth(T Value) {
+   return FieldValue(FID_ViewWidth, Value);
+}
+
+template <std::floating_point T> [[nodiscard]] FieldValue ViewHeight(T Value) {
    return FieldValue(FID_ViewHeight, Value);
 }
 
-template <class T> [[nodiscard]] FieldValue Width(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "Width value must be numeric");
+template <std::integral T> [[nodiscard]] FieldValue ViewHeight(T Value) {
+   return FieldValue(FID_ViewHeight, Value);
+}
+
+template <NumericOrScale T> [[nodiscard]] FieldValue Width(T Value) {
    return FieldValue(FID_Width, Value);
 }
 
-template <class T> [[nodiscard]] FieldValue Height(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "Height value must be numeric");
+template <NumericOrScale T> [[nodiscard]] FieldValue Height(T Value) {
    return FieldValue(FID_Height, Value);
 }
 
-template <class T> [[nodiscard]] FieldValue X(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "X value must be numeric");
+template <NumericOrScale T> [[nodiscard]] FieldValue X(T Value) {
    return FieldValue(FID_X, Value);
 }
 
-template <class T> [[nodiscard]] FieldValue XOffset(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "XOffset value must be numeric");
+template <NumericOrScale T> [[nodiscard]] FieldValue XOffset(T Value) {
    return FieldValue(FID_XOffset, Value);
 }
 
-template <class T> [[nodiscard]] FieldValue Y(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "Y value must be numeric");
+template <NumericOrScale T> [[nodiscard]] FieldValue Y(T Value) {
    return FieldValue(FID_Y, Value);
 }
 
-template <class T> [[nodiscard]] FieldValue YOffset(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "YOffset value must be numeric");
+template <NumericOrScale T> [[nodiscard]] FieldValue YOffset(T Value) {
    return FieldValue(FID_YOffset, Value);
 }
 
-template <class T> [[nodiscard]] FieldValue X1(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "X1 value must be numeric");
+template <NumericOrScale T> [[nodiscard]] FieldValue X1(T Value) {
    return FieldValue(FID_X1, Value);
 }
 
-template <class T> [[nodiscard]] FieldValue Y1(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "Y1 value must be numeric");
+template <NumericOrScale T> [[nodiscard]] FieldValue Y1(T Value) {
    return FieldValue(FID_Y1, Value);
 }
 
-template <class T> [[nodiscard]] FieldValue X2(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "X2 value must be numeric");
+template <NumericOrScale T> [[nodiscard]] FieldValue X2(T Value) {
    return FieldValue(FID_X2, Value);
 }
 
-template <class T> [[nodiscard]] FieldValue Y2(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "Y2 value must be numeric");
+template <NumericOrScale T> [[nodiscard]] FieldValue Y2(T Value) {
    return FieldValue(FID_Y2, Value);
 }
 

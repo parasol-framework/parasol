@@ -1276,13 +1276,11 @@ inline FieldValue Sequence(std::string &Value) { return FieldValue(FID_Sequence,
 constexpr FieldValue FontStyle(CSTRING Value) { return FieldValue(FID_FontStyle, Value); }
 inline FieldValue FontStyle(std::string &Value) { return FieldValue(FID_FontStyle, Value.c_str()); }
 
-template <class T> FieldValue RoundX(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "RoundX value must be numeric");
+template <pf::NumericOrScale T> FieldValue RoundX(T Value) {
    return FieldValue(FID_RoundX, Value);
 }
 
-template <class T> FieldValue RoundY(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "RoundY value must be numeric");
+template <pf::NumericOrScale T> FieldValue RoundY(T Value) {
    return FieldValue(FID_RoundY, Value);
 }
 
