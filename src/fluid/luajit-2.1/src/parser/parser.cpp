@@ -267,6 +267,12 @@ extern GCproto * lj_parse(LexState *State)
    if (State->tok != TK_eof) State->err_token(TK_eof);
    pt = State->fs_finish(State->linenumber);
    L->top--;  // Drop chunkname.
+
+   // Transfer tips to lua_State for debug.validate() access
+   if (State->tip_emitter and State->tip_emitter->has_tip()) {
+      L->parser_tips = State->tip_emitter.release();
+   }
+
    lj_assertL(fs.prev == nullptr and State->fs == nullptr, "mismatched frame nesting");
    lj_assertL(pt->sizeuv == 0, "toplevel proto has upvalues");
    return pt;

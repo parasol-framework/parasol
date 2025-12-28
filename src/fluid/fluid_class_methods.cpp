@@ -1,6 +1,7 @@
 // Support methods for the Script class
 
 //********************************************************************************************************************
+// NB: Parameter definitions are managed in the Script base class.
 
 static ERR FLUID_GetProcedureID(objScript *, struct sc::GetProcedureID *);
 static ERR FLUID_DerefProcedure(objScript *, struct sc::DerefProcedure *);

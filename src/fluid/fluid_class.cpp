@@ -624,7 +624,7 @@ static ERR FLUID_Query(objScript *Self)
 
    if ((not Self->String) or (not Self->String[0])) return log.warning(ERR::FieldNotSet);
 
-   log.trace("Target: %d, Procedure: %s / ID #%" PF64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", (long long)Self->ProcedureID);
+   log.branch("Target: %d, Procedure: %s / ID #%" PF64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", (long long)Self->ProcedureID);
 
    ERR error = ERR::Failed;
 
@@ -675,13 +675,13 @@ static ERR FLUID_Query(objScript *Self)
 
       if (register_interfaces(Self) != ERR::Okay) goto failure;
 
-      // Line hook, executes on the execution of a new line
+      // Line hook, executes on the execution of a new line (doesn't execute during Query() compilation)
 
       if ((Self->Flags & SCF::LOG_ALL) != SCF::NIL) {
          // LUA_MASKLINE:  Interpreter is executing a line.
          // LUA_MASKCALL:  Interpreter is calling a function.
          // LUA_MASKRET:   Interpreter returns from a function.
-         // LUA_MASKCOUNT: The hook will be called every X number of instructions executed.
+         // LUA_MASKCOUNT: The hook will be called every X number of instructions executed (could be set to 1 for exactness).
 
          lua_sethook(prv->Lua, hook_debug, LUA_MASKCALL|LUA_MASKRET|LUA_MASKLINE, 0);
       }

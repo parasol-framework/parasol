@@ -41,6 +41,10 @@ struct global_State;
 struct GCState;
 struct StrInternState;
 
+// Parser objects
+
+class TipEmitter;
+
 // Value types
 
 union TValue;
@@ -974,6 +978,7 @@ struct lua_State {
    bool    sent_traceback;    // True if traceback has been sent for the current error
    uint8_t resolving_thunk;  // Flag to prevent recursive thunk resolution
    ParserDiagnostics *parser_diagnostics; // Stores ParserDiagnostics* during parsing errors
+   TipEmitter *parser_tips;               // Stores TipEmitter* during parsing for code hints
    TValue close_err;  // Current error for __close handlers (nil if no error)
 
    // Constructor/destructor not actually used as yet.

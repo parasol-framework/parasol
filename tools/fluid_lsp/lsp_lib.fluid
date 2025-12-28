@@ -448,6 +448,28 @@ function computeDiagnostics(Doc:table)
       end
    end
 
+   -- Add tips as LSP Hint diagnostics (severity 4)
+   if result.tips then
+      for tip in values(result.tips) do
+         start_col = tip.column
+         end_col = tip.endColumn
+         if end_col <= start_col+1 then
+            start_col, end_col = computeErrorRange(Doc, tip.line, tip.column)
+         end
+
+         lsp_diags:push({
+            range = {
+               start = { line = tip.line, character = start_col },
+               ['end'] = { line = tip.line, character = end_col }
+            },
+            severity = 4,  -- LSP Hint
+            source = 'fluid',
+            code = tip.category,
+            message = tip.message
+         })
+      end
+   end
+
    return { uri = Doc.uri, version = Doc.version, diagnostics = lsp_diags }
 end
 

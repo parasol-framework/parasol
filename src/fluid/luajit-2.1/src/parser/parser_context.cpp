@@ -19,19 +19,19 @@ ParserContext & ParserContext::operator=(ParserContext&& other) noexcept
 {
    if (this != &other) {
       this->detach_from_lex();
-      this->lex_state  = other.lex_state;
-      this->func_state = other.func_state;
-      this->lua_state  = other.lua_state;
-      this->allocator  = other.allocator;
+      this->lex_state      = other.lex_state;
+      this->func_state     = other.func_state;
+      this->lua_state      = other.lua_state;
+      this->allocator      = other.allocator;
       this->current_config = other.current_config;
       this->diag           = std::move(other.diag);
       this->diag.set_limit(this->current_config.max_diagnostics);
-      this->token_stream = other.token_stream;
+      this->token_stream     = other.token_stream;
       this->previous_context = other.previous_context;
       if (this->lex_state) this->lex_state->active_context = this;
-      other.lex_state  = nullptr;
-      other.func_state = nullptr;
-      other.lua_state  = nullptr;
+      other.lex_state        = nullptr;
+      other.func_state       = nullptr;
+      other.lua_state        = nullptr;
       other.previous_context = nullptr;
    }
    return *this;
@@ -91,9 +91,9 @@ ParserResult<Token> ParserContext::expect_identifier(ParserErrorCode code)
 
 //********************************************************************************************************************
 
-int ParserContext::lex_opt(LexToken token)
+int ParserContext::lex_opt(LexToken Token)
 {
-   if (this->tokens().current().raw() IS token) {
+   if (this->tokens().current().raw() IS Token) {
       this->token_stream.advance();
       return 1;
    }
@@ -148,33 +148,33 @@ void ParserContext::err_syntax(ErrMsg message)
 
 //********************************************************************************************************************
 
-void ParserContext::err_token(LexToken token)
+void ParserContext::err_token(LexToken Token)
 {
-   Token current = this->tokens().current();
+   ::Token current = this->tokens().current();
    ParserDiagnostic diagnostic;
    diagnostic.severity = ParserDiagnosticSeverity::Error;
    diagnostic.code     = ParserErrorCode::UnexpectedToken;
-   diagnostic.message  = this->format_lex_error(token);
+   diagnostic.message  = this->format_lex_error(Token);
    diagnostic.token    = current;
    this->diag.report(diagnostic);
-   lj_lex_error(this->lex_state, this->lex_state->tok, ErrMsg::XTOKEN, this->lex_state->token2str(token));
+   lj_lex_error(this->lex_state, this->lex_state->tok, ErrMsg::XTOKEN, this->lex_state->token2str(Token));
 }
 
 //********************************************************************************************************************
 
-void ParserContext::report_limit_error(FuncState& func_state, uint32_t limit, const char* what)
+void ParserContext::report_limit_error(FuncState &FState, uint32_t Limit, CSTRING What)
 {
    ParserDiagnostic diagnostic;
    diagnostic.severity = ParserDiagnosticSeverity::Error;
    diagnostic.code     = ParserErrorCode::UnexpectedToken;
-   diagnostic.message  = std::string("function limit exceeded for ") + what;
+   diagnostic.message  = std::string("function limit exceeded for ") + What;
    diagnostic.token    = this->tokens().current();
    this->diag.report(diagnostic);
-   if (func_state.linedefined IS 0) {
-      lj_lex_error(func_state.ls, 0, ErrMsg::XLIMM, limit, what);
+   if (FState.linedefined IS 0) {
+      lj_lex_error(FState.ls, 0, ErrMsg::XLIMM, Limit, What);
       return;
    }
-   lj_lex_error(func_state.ls, 0, ErrMsg::XLIMF, func_state.linedefined, limit, what);
+   lj_lex_error(FState.ls, 0, ErrMsg::XLIMF, FState.linedefined, Limit, What);
 }
 
 //********************************************************************************************************************
@@ -183,20 +183,18 @@ std::string ParserContext::format_expected_message(TokenKind kind) const
 {
    CSTRING name = token_kind_name(kind, this->lex());
    std::string message = std::string("expected ") + name;
-   if ((LexToken)kind <= TK_OFS) {
-      lua_pop(this->lua_state, 1);
-   }
+   if ((LexToken)kind <= TK_OFS) lua_pop(this->lua_state, 1);
    return message;
 }
 
 //********************************************************************************************************************
 
-ParserError ParserContext::make_error(ParserErrorCode code, const Token &token, std::string_view message)
+ParserError ParserContext::make_error(ParserErrorCode code, const Token &token, std::string_view Message)
 {
    ParserError error;
    error.code = code;
    error.token = token;
-   error.message.assign(message.begin(), message.end());
+   error.message.assign(Message.begin(), Message.end());
    return error;
 }
 
@@ -215,18 +213,18 @@ void ParserContext::trace_token_advance(const Token &previous, const Token &curr
 //********************************************************************************************************************
 // Note: This function does not return if abort_on_error is true
 
-void ParserContext::emit_error(ParserErrorCode code, const Token &token, std::string_view message)
+void ParserContext::emit_error(ParserErrorCode code, const Token &token, std::string_view Message)
 {
    ParserDiagnostic diagnostic;
    diagnostic.severity = ParserDiagnosticSeverity::Error;
    diagnostic.code     = code;
-   diagnostic.message.assign(message.begin(), message.end());
+   diagnostic.message.assign(Message.begin(), Message.end());
    diagnostic.token    = token;
    this->diag.report(diagnostic);
 
    if (this->current_config.abort_on_error) {
       // Log immediately since we're about to throw
-      this->log_trace(ParserChannel::Error, token, message);
+      this->log_trace(ParserChannel::Error, token, Message);
 
       // Save the diagnostics for client analysis
       this->lua().parser_diagnostics = new ParserDiagnostics(this->diagnostics());
@@ -239,16 +237,16 @@ void ParserContext::emit_error(ParserErrorCode code, const Token &token, std::st
 //********************************************************************************************************************
 // Emit a warning diagnostic (non-fatal)
 
-void ParserContext::emit_warning(ParserErrorCode code, const Token &token, std::string_view message)
+void ParserContext::emit_warning(ParserErrorCode code, const Token &Token, std::string_view Message)
 {
    ParserDiagnostic diagnostic;
    diagnostic.severity = ParserDiagnosticSeverity::Warning;
    diagnostic.code     = code;
-   diagnostic.message.assign(message.begin(), message.end());
-   diagnostic.token    = token;
+   diagnostic.message.assign(Message.begin(), Message.end());
+   diagnostic.token    = Token;
    this->diag.report(diagnostic);
 
-   this->log_trace(ParserChannel::Warning, token, message);
+   this->log_trace(ParserChannel::Warning, Token, Message);
 }
 
 //********************************************************************************************************************
@@ -272,26 +270,26 @@ void ParserContext::detach_from_lex()
 
 //********************************************************************************************************************
 
-std::string ParserContext::format_lex_error(LexToken token) const
+std::string ParserContext::format_lex_error(LexToken Token) const
 {
-   auto text = this->lex_state->token2str(token);
+   auto text = this->lex_state->token2str(Token);
    if (not text) return std::string("unexpected token");
    return std::string("unexpected ") + text;
 }
 
 //********************************************************************************************************************
 
-std::string ParserContext::describe_token(const Token &token) const
+std::string ParserContext::describe_token(const Token &Token) const
 {
-   auto name = token_kind_name(token.kind(), this->lex());
+   auto name = token_kind_name(Token.kind(), this->lex());
    std::string result;
 
    result.assign(name ? name : "token");
 
-   if ((LexToken)token.kind() <= TK_OFS) lua_pop(this->lua_state, 1);
+   if ((LexToken)Token.kind() <= TK_OFS) lua_pop(this->lua_state, 1);
 
-   if (token.is_identifier()) {
-      if (GCstr *identifier = token.identifier()) {
+   if (Token.is_identifier()) {
+      if (GCstr *identifier = Token.identifier()) {
          result.push_back(' ');
          result.push_back('\'');
          result.append(strdata(identifier), identifier->len);
@@ -303,13 +301,13 @@ std::string ParserContext::describe_token(const Token &token) const
 
 //********************************************************************************************************************
 
-void ParserContext::log_trace(ParserChannel Channel, const Token &token, std::string_view note) const
+void ParserContext::log_trace(ParserChannel Channel, const Token &Token, std::string_view Note) const
 {
    pf::Log log("Parser");
 
-   std::string name = this->describe_token(token);
-   BCLine line = token.span().line;
-   BCLine column = token.span().column;
+   std::string name = this->describe_token(Token);
+   BCLine line = Token.span().line;
+   BCLine column = Token.span().column;
 
    VLF level = VLF::API;
    CSTRING channel;
@@ -321,12 +319,12 @@ void ParserContext::log_trace(ParserChannel Channel, const Token &token, std::st
       default:                     channel = "Unknown"; break;
    }
 
-   if (note.empty()) {
+   if (Note.empty()) {
       log.msg(level, "[%d:%d] %s: %s", (int)line, (int)column, channel, name.c_str());
       return;
    }
 
-   log.msg(level, "[%d:%d] %s: %s - %.*s", (int)line, (int)column, channel, name.c_str(), (int)note.size(), note.data());
+   log.msg(level, "[%d:%d] %s: %s - %.*s", (int)line, (int)column, channel, name.c_str(), (int)Note.size(), Note.data());
 }
 
 //********************************************************************************************************************
