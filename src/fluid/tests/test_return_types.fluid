@@ -39,7 +39,7 @@ end
    function makeAdder(N: num):func
       return function(X) return X + N end
    end
-   local add5 = makeAdder(5)
+   add5 = makeAdder(5)
    assert(add5(10) is 15, "function return type should work")
 end
 
@@ -50,7 +50,7 @@ end
    function divmod(A: num, B: num):<num, num>
       return math.floor(A / B), A % B
    end
-   local q, r = divmod(17, 5)
+   q, r = divmod(17, 5)
    assert(q is 3, "quotient should be 3")
    assert(r is 2, "remainder should be 2")
 end
@@ -59,7 +59,7 @@ end
    function parseResult(Input: str):<bool, str, num>
       return true, Input, #Input
    end
-   local ok, text, len = parseResult("hello")
+   ok, text, len = parseResult("hello")
    assert(ok is true, "first return (bool) should be true")
    assert(text is "hello", "second return (str) should be 'hello'")
    assert(len is 5, "third return (num) should be 5")
@@ -69,7 +69,7 @@ end
    function measure(Text: str):<str, num>
       return Text, #Text
    end
-   local s, n = measure("test")
+   s, n = measure("test")
    assert(s is "test", "string return should work")
    assert(n is 4, "number return should work")
 end
@@ -80,10 +80,10 @@ end
 @Test function testVariadicReturnsSameType()
    function manyNums(Count: num):<num, ...>
       -- Use simple table instead of array<>
-      local results = { 10, 20, 30 }
+      results = { 10, 20, 30 }
       return results[0], results[1], results[2] -- Presume 3
    end
-   local a, b, c = manyNums(3)
+   a, b, c = manyNums(3)
    assert(a is 10, "first variadic return should be 10")
    assert(b is 20, "second variadic return should be 20")
    assert(c is 30, "third variadic return should be 30")
@@ -97,7 +97,7 @@ end
          return false, 0
       end
    end
-   local ok, first, second, third = statusAndValues(true)
+   ok, first, second, third = statusAndValues(true)
    assert(ok is true, "first (bool) should be true")
    assert(first is 1, "second (first num) should be 1")
    assert(second is 2, "third (variadic num) should be 2")
@@ -121,7 +121,7 @@ end
 end
 
 @Test function testAnyReturnMultipleTypes()
-   local counter = 0
+   counter = 0
    function alternate():any
       counter += 1
       if counter % 2 is 0 then
@@ -156,7 +156,7 @@ end
    function wrapped(Value)
       return { data = Value }
    end
-   local result = wrapped(42)
+   result = wrapped(42)
    assert(result.data is 42, "inferred table return should work")
 end
 
@@ -164,7 +164,7 @@ end
    function pair(A, B)
       return A, B
    end
-   local x, y = pair(1, 2)
+   x, y = pair(1, 2)
    assert(x is 1, "first inferred return should work")
    assert(y is 2, "second inferred return should work")
 end
@@ -173,7 +173,7 @@ end
 -- RETURN TYPE MISMATCH ERRORS (compile-time detection)
 
 @Test function testReturnTypeMismatchNumToStr()
-   local ex = catch(function()
+   ex = catch(function()
       return exec([[
          function bad():num
             return "not a number"
@@ -184,7 +184,7 @@ end
 end
 
 @Test function testReturnTypeMismatchStrToNum()
-   local ex = catch(function()
+   ex = catch(function()
       return exec([[
          function bad():str
             return 42
@@ -195,7 +195,7 @@ end
 end
 
 @Test function testReturnTypeMismatchBoolToTable()
-   local ex = catch(function()
+   ex = catch(function()
       return exec([[
          function bad():bool
             return {}
@@ -206,7 +206,7 @@ end
 end
 
 @Test function testReturnTypeMismatchInMultiple()
-   local ex = catch(function()
+   ex = catch(function()
       return exec([[
          function bad():<num, str>
             return "wrong", 42
@@ -220,7 +220,7 @@ end
 -- RETURN COUNT VALIDATION
 
 @Test function testTooManyReturnsError()
-   local ex = catch(function()
+   ex = catch(function()
       return exec([[
          function bad():<num, str>
             return 1, "a", "extra"
@@ -235,7 +235,7 @@ end
    function partial():<num, str, bool>
       return 42
    end
-   local a, b, c = partial()
+   a, b, c = partial()
    assert(a is 42, "first return should be 42")
    assert(b is nil, "second return should be nil (not provided)")
    assert(c is nil, "third return should be nil (not provided)")
@@ -243,10 +243,10 @@ end
 
 @Test function testEmptyReturnForVoid()
    function noReturn()
-      local x = 42
+      x = 42
       -- no return statement
    end
-   local result = noReturn()
+   result = noReturn()
    assert(result is nil, "void function should return nil")
 end
 
@@ -254,7 +254,7 @@ end
    function bareReturn()
       return
    end
-   local result = bareReturn()
+   result = bareReturn()
    assert(result is nil, "bare return should return nil")
 end
 
@@ -278,7 +278,7 @@ end
 end
 
 @Test function testRecursiveFunctionWithoutTypeError()
-   local ex = catch(function()
+   ex = catch(function()
       return exec([[
          function factorial(N)
             if N <= 1 then return 1 end
@@ -294,7 +294,7 @@ end
    -- Forward declare isOdd so isEven can call it
    local isOdd
 
-   local function isEven(N: num):bool
+   function isEven(N: num):bool
       if N is 0 then return true end
       return isOdd(N - 1)
    end
@@ -317,30 +317,30 @@ end
 end
 
 @Test function testArrowFunctionExplicitTypeStr()
-   local greet = (name => str: "Hello, " .. name)
+   greet = (name => str: "Hello, " .. name)
    assert(greet("World") is "Hello, World", "arrow function with explicit str type should work")
 end
 
 @Test function testArrowFunctionExplicitTypeBool()
-   local isPositive = (x => bool: x > 0)
+   isPositive = (x => bool: x > 0)
    assert(isPositive(5) is true, "arrow function with explicit bool type should work")
    assert(isPositive(-5) is false, "arrow function should return false for negative")
 end
 
 @Test function testArrowFunctionInferredType()
-   local square = (x => x * x)
+   square = (x => x * x)
    assert(square(5) is 25, "arrow function with inferred num type should work")
 end
 
 @Test function testArrowFunctionInferredString()
-   local wrap = (s => "[" .. s .. "]")
+   wrap = (s => "[" .. s .. "]")
    assert(wrap("test") is "[test]", "arrow function with inferred str type should work")
 end
 
 @Test function testArrowFunctionTypeMismatch()
-   local ex = catch(function()
+   ex = catch(function()
       return exec([[
-         local bad = (x => num: "not a number")
+         bad = (x => num: "not a number")
       ]])
    end)
    assert(ex, "arrow function with mismatched return type should error")
@@ -365,7 +365,7 @@ end
       end
       return 42, "text"
    end
-   local a, b = mixed(true)
+   a, b = mixed(true)
    assert(a is nil, "nil in first position should work")
    assert(b is "text", "string in second position should work")
 end
@@ -375,7 +375,7 @@ end
 
 @Test function testFirstReturnFixesType()
    -- First return should fix the type, subsequent returns must match
-   local ex = catch(function()
+   ex = catch(function()
       return exec([[
          function inconsistent(X)
             if X > 0 then
@@ -402,7 +402,7 @@ end
 end
 
 @Test function testFirstReturnFixesMultipleTypes()
-   local ex = catch(function()
+   ex = catch(function()
       return exec([[
          function inconsistentPair(X)
             if X > 0 then
@@ -426,7 +426,7 @@ end
       end
       return inner
    end
-   local fn = outer()
+   fn = outer()
    assert(fn() is 42, "nested function with return types should work")
 end
 
@@ -434,7 +434,7 @@ end
    function selfReturning():func
       return selfReturning
    end
-   local fn = selfReturning()
+   fn = selfReturning()
    assert(fn is selfReturning, "function returning itself should work")
 end
 
@@ -442,7 +442,7 @@ end
    function makeMultiplier(Factor: num):func
       return (x => num: x * Factor)
    end
-   local times3 = makeMultiplier(3)
+   times3 = makeMultiplier(3)
    assert(times3(10) is 30, "higher-order function with typed return should work")
 end
 
@@ -456,10 +456,10 @@ end
 end
 
 @Test function testReturnTypeInLocalFunction()
-   local function localTyped(X: num):num
+   function localTyped(X: num):num
       return X + 1
    end
-   assert(localTyped(5) is 6, "local function with return type should work")
+   assert(localTyped(5) is 6, "function with return type should work")
 end
 
 @Test function testReturnTypeInMethodSyntax()
@@ -477,7 +477,7 @@ end
    function eightReturns():<num, num, num, num, num, num, num, num>
       return 1, 2, 3, 4, 5, 6, 7, 8
    end
-   local a, b, c, d, e, f, g, h = eightReturns()
+   a, b, c, d, e, f, g, h = eightReturns()
    assert(a is 1, "1st of 8 returns")
    assert(h is 8, "8th of 8 returns")
 end
@@ -488,7 +488,7 @@ end
       -- 9th type (str) should be treated as any due to MAX_RETURN_TYPES = 8
       return 1, 2, 3, 4, 5, 6, 7, 8, "ninth"
    end
-   local a, b, c, d, e, f, g, h, i = manyReturns()
+   a, b, c, d, e, f, g, h, i = manyReturns()
    assert(a is 1, "1st return should be 1")
    assert(h is 8, "8th return should be 8")
    assert(i is "ninth", "9th return should work (treated as any)")
@@ -502,26 +502,22 @@ end
       return 42
    end
 
-   local result: num = getNum()
+   result: num = getNum()
    assert(result is 42, "typed variable from typed function should work")
 end
 
--- NOTE: This test requires Phase 6 implementation (call result type checking)
--- For now, skip this test as it's beyond Phase 4 scope
+-- Detect type mismatch when assigning function result to typed variable
+
 @Test function testTypedFunctionResultTypeMismatch()
-   -- Phase 6: Will detect type mismatch when assigning function result to typed variable
-   -- For now, this is a placeholder that passes
-   local ex = catch(function()
+   ex = catch(function()
       return exec([[
          function getNum():num
             return 42
          end
-         local result: str = getNum()
+         result: str = getNum()
       ]])
    end)
-   -- Phase 6 TODO: assert(ex, "assigning num function result to str variable should error")
-   -- For now, just verify the code runs (Phase 6 will add the type check)
-   assert(true, "placeholder until Phase 6 is implemented")
+   assert(ex, "Expected exception to be raised from invalid typed assignment")
 end
 
 @Test function testMultipleAssignmentFromTypedFunction()
@@ -539,7 +535,7 @@ end
       return 42
    end
 
-   local result = getNum()  -- Should implicitly fix 'result' to num
+   result = getNum()  -- Should implicitly fix 'result' to num
    result = 100  -- Should work (same type)
    assert(result is 100, "implicitly fixed variable should allow same-type reassignment")
 end
@@ -592,12 +588,12 @@ end
       return "Result: " .. tostring(X)
    end
 
-   local result = step3(step2(step1(5)))
+   result = step3(step2(step1(5)))
    assert(result is "Result: 12", "chained typed functions should work")
 end
 
 @Test function testTypedFunctionInTable()
-   local ops = {
+   ops = {
       add = function(A: num, B: num):num return A + B end,
       sub = function(A: num, B: num):num return A - B end,
       mul = function(A: num, B: num):num return A * B end
@@ -616,13 +612,13 @@ end
       return X * 2
    end
 
-   local result = withCallback(5, doubler)
+   result = withCallback(5, doubler)
    assert(result is 10, "typed function as callback should work")
 end
 
 @Test function testTypedFunctionWithVarargs()
    function sumAll(...):num
-      local total = 0
+      total = 0
       for _, v in ipairs({...}) do
          total += v
       end
@@ -635,7 +631,7 @@ end
    function firstAndRest(...):<num, ...>
       return ...
    end
-   local a, b, c = firstAndRest(1, 2, 3)
+   a, b, c = firstAndRest(1, 2, 3)
    assert(a is 1, "first from varargs should be 1")
    assert(b is 2, "second from varargs should be 2")
    assert(c is 3, "third from varargs should be 3")
@@ -645,7 +641,7 @@ end
 -- ERROR MESSAGE QUALITY
 
 @Test function testErrorMessageMentionsTypes()
-   local ex = catch(function()
+   ex = catch(function()
       return exec([[
          function bad():num
             return "text"

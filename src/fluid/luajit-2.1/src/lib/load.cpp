@@ -54,11 +54,9 @@ extern int lua_load(lua_State *Lua, std::string_view Source, CSTRING SourceName)
 
    // Set diagnose mode if enabled - this allows lexer to collect errors instead of throwing
 
-   if (Lua->script) {
-      auto *prv = (prvFluid *)Lua->script->ChildPrivate;
-      if ((prv->JitOptions & JOF::DIAGNOSE) != JOF::NIL) ls.diagnose_mode = true;
-      prv->CapturedVariables.clear();  // Clear previous captures before new parse
-   }
+   auto *prv = (prvFluid *)Lua->script->ChildPrivate;
+   if ((prv->JitOptions & JOF::DIAGNOSE) != JOF::NIL) ls.diagnose_mode = true;
+   prv->CapturedVariables.clear();  // Clear previous captures before new parse
 
    auto status = lj_vm_cpcall(Lua, nullptr, &ls, cpparser);
    lj_gc_check(Lua);
@@ -66,12 +64,12 @@ extern int lua_load(lua_State *Lua, std::string_view Source, CSTRING SourceName)
 }
 
 //********************************************************************************************************************
-// Dump bytecode
+// Dump bytecode to a function writer
 
-extern int lua_dump(lua_State* L, lua_Writer writer, APTR data)
+extern int lua_dump(lua_State *L, lua_Writer Writer, APTR Data)
 {
    cTValue *o = L->top - 1;
    lj_checkapi(L->top > L->base, "top slot empty");
-   if (tvisfunc(o) and isluafunc(funcV(o))) return lj_bcwrite(L, funcproto(funcV(o)), writer, data, 0);
+   if (tvisfunc(o) and isluafunc(funcV(o))) return lj_bcwrite(L, funcproto(funcV(o)), Writer, Data, 0);
    else return 1;
 }
