@@ -87,9 +87,9 @@ constexpr auto HASH_DIAGNOSE             = pf::strhash("diagnose");
 constexpr auto HASH_DUMP_BYTECODE        = pf::strhash("dump-bytecode");
 constexpr auto HASH_PROFILE              = pf::strhash("profile");
 constexpr auto HASH_TRACE                = pf::strhash("trace");
-constexpr auto HASH_TOP_ADVICE           = pf::strhash("top-advice");
-constexpr auto HASH_ADVICE               = pf::strhash("advice");
-constexpr auto HASH_ALL_ADVICE           = pf::strhash("all-advice");
+constexpr auto HASH_TOP_TIPS             = pf::strhash("top-tips");
+constexpr auto HASH_TIPS                 = pf::strhash("tips");
+constexpr auto HASH_ALL_TIPS             = pf::strhash("all-tips");
 
 #include "module_def.cpp"
 
@@ -263,9 +263,9 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
                   else if (hash IS HASH_DUMP_BYTECODE) glJitOptions |= JOF::DUMP_BYTECODE;
                   else if (hash IS HASH_PROFILE)       glJitOptions |= JOF::PROFILE;
                   else if (hash IS HASH_TRACE)         glJitOptions |= JOF::TRACE;
-                  else if (hash IS HASH_TOP_ADVICE)    glJitOptions |= JOF::TOP_ADVICE;
-                  else if (hash IS HASH_ADVICE)        glJitOptions |= JOF::ADVICE;
-                  else if (hash IS HASH_ALL_ADVICE)    glJitOptions |= JOF::ALL_ADVICE;
+                  else if (hash IS HASH_TOP_TIPS)      glJitOptions |= JOF::TOP_TIPS;
+                  else if (hash IS HASH_TIPS)          glJitOptions |= JOF::TIPS;
+                  else if (hash IS HASH_ALL_TIPS)      glJitOptions |= JOF::ALL_TIPS;
                   else log.warning("Unknown JIT option \"%s\" specified.", trimmed.c_str());
                }
 

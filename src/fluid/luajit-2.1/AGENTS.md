@@ -84,9 +84,9 @@ Run `parasol` with `--jit-options` to pass JIT engine flags as a CSV list:
 | `dump-bytecode` | Dump disassembled bytecode at the end of parsing |
 | `diagnose` | Disable abort-on-error for full script parsing |
 | `profile` | Profile JIT parsing and runtime |
-| `advice` | Enable parser advice/hints |
-| `top-advice` | Enable top-level advice only |
-| `all-advice` | Enable all advice messages |
+| `tips` | Enable parser tips |
+| `top-tips` | Enable top-level tips only |
+| `all-tips` | Enable all tips |
 
 Example: `--jit-options dump-bytecode,trace-registers`
 

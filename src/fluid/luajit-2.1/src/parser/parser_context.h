@@ -10,9 +10,9 @@
 #include "parser/token_stream.h"
 #include "parser/parser_profiler.h"
 
-#ifdef INCLUDE_ADVICE
-class AdviceEmitter;
-enum class AdviceCategory : uint8_t;
+#ifdef INCLUDE_TIPS
+class TipEmitter;
+enum class TipCategory : uint8_t;
 #endif
 
 enum class ParserChannel : uint8_t {
@@ -128,15 +128,15 @@ public:
    inline LexState & lex() const { return *this->lex_state; }
    inline FuncState & func() const { return *this->func_state; }
    inline lua_State & lua() const { return *this->lua_state; }
-#ifdef INCLUDE_ADVICE
-   inline AdviceEmitter * advice() const { return this->lex_state->advice_emitter.get(); }
+#ifdef INCLUDE_TIPS
+   inline TipEmitter * tip() const { return this->lex_state->tip_emitter.get(); }
 
-   // Check if advice at the given priority level would be emitted.
+   // Check if tip at the given priority level would be emitted.
    // Use this before performing expensive checks to avoid unnecessary computation.
-   [[nodiscard]] bool should_emit_advice(uint8_t Priority) const;
+   [[nodiscard]] bool should_emit_tip(uint8_t Priority) const;
 
-   // Emit advice if the advice system is enabled
-   void emit_advice(uint8_t Priority, AdviceCategory Category, std::string Message, const Token &Location);
+   // Emit tip if the tip system is enabled
+   void emit_tip(uint8_t Priority, TipCategory Category, std::string Message, const Token &Location);
 #endif
    inline ParserDiagnostics & diagnostics() { return this->diag; }
    inline const ParserDiagnostics & diagnostics() const { return this->diag; }
