@@ -883,7 +883,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
    for (auto i = BCReg(0); i < nvars; ++i) {
       const Identifier& identifier = Payload.names[i.raw()];
       GCstr* symbol = identifier.symbol;
-      this->lex_state.var_new(i, is_blank_symbol(identifier) ? NAME_BLANK : symbol);
+      this->lex_state.var_new(i, is_blank_symbol(identifier) ? NAME_BLANK : symbol,
+                              identifier.span.line, identifier.span.column);
    }
 
    ExpDesc tail;
@@ -1091,7 +1092,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
    this->lex_state.var_new_fixed(FORL_IDX, VARNAME_FOR_IDX);
    this->lex_state.var_new_fixed(FORL_STOP, VARNAME_FOR_STOP);
    this->lex_state.var_new_fixed(FORL_STEP, VARNAME_FOR_STEP);
-   this->lex_state.var_new(FORL_EXT, control_symbol);
+   this->lex_state.var_new(FORL_EXT, control_symbol, Payload.control.span.line, Payload.control.span.column);
 
    auto start_expr = this->emit_expression(*Payload.start);
    if (not start_expr.ok()) return ParserResult<IrEmitUnit>::failure(start_expr.error_ref());
@@ -1172,7 +1173,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
 
    for (const Identifier& identifier : Payload.names) {
       GCstr* symbol = identifier.symbol ? identifier.symbol : NAME_BLANK;
-      this->lex_state.var_new(nvars++, symbol);
+      this->lex_state.var_new(nvars++, symbol, identifier.span.line, identifier.span.column);
    }
 
    BCPos exprpc = fs->current_pc();

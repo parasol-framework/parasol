@@ -118,7 +118,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
    for (auto i = BCReg(0); i < param_count; ++i) {
       const FunctionParameter& param = Payload.parameters[i.raw()];
       GCstr *symbol = (param.name.symbol and not param.name.is_blank) ? param.name.symbol : NAME_BLANK;
-      this->lex_state.var_new(i, symbol);
+      this->lex_state.var_new(i, symbol, param.name.span.line, param.name.span.column);
    }
 
    child_state.numparams = uint8_t(param_count.raw());
@@ -350,7 +350,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunction
 
    GCstr *symbol = Payload.name.symbol ? Payload.name.symbol : NAME_BLANK;
    auto slot = BCReg(this->func_state.freereg);
-   this->lex_state.var_new(0, symbol);
+   this->lex_state.var_new(0, symbol, Payload.name.span.line, Payload.name.span.column);
    ExpDesc variable;
    variable.init(ExpKind::Local, slot);
    variable.u.s.aux = this->func_state.varmap[slot];
@@ -429,7 +429,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload
       if (not symbol) return this->unsupported_stmt(AstNodeKind::FunctionStmt, SourceSpan{});
 
       auto slot = BCReg(this->func_state.freereg);
-      this->lex_state.var_new(0, symbol);
+      auto& first_segment = Payload.name.segments.front();
+      this->lex_state.var_new(0, symbol, first_segment.span.line, first_segment.span.column);
       ExpDesc variable;
       variable.init(ExpKind::Local, slot);
       variable.u.s.aux = this->func_state.varmap[slot];

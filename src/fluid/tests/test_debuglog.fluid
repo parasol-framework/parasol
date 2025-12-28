@@ -92,8 +92,8 @@ end
    err, result = glSelf.mtDebugLog('memory')
 
    assert(result, 'DebugLog should return a result')
-   assert(string.find(result, 'MEMORY STATISTICS'), 'Should contain memory header')
-   assert(string.find(result, 'Lua heap'), 'Should contain heap information')
+   assert(string.find(result, 'MEMORY'), 'Should contain memory header')
+   assert(string.find(result, 'LuaUsage'), 'Should contain heap information')
    assert(string.find(result, 'MB'), 'Should contain MB unit')
 end
 
@@ -120,7 +120,7 @@ end
    assert(result, 'DebugLog should return a result')
    assert(string.find(result, 'CALL STACK'), 'Should contain stack trace')
    assert(string.find(result, 'LOCALS'), 'Should contain locals')
-   assert(string.find(result, 'MEMORY STATISTICS'), 'Should contain memory info')
+   assert(string.find(result, 'MEMORY'), 'Should contain memory info')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -133,7 +133,7 @@ end
    assert(result, 'DebugLog should return a result')
    assert(string.find(result, 'CALL STACK'), 'Should contain stack trace')
    assert(string.find(result, 'LOCALS'), 'Should contain locals')
-   assert(string.find(result, 'MEMORY STATISTICS'), 'Should contain memory info')
+   assert(string.find(result, 'MEMORY'), 'Should contain memory info')
    assert(string.find(result, 'STATE'), 'Should contain state info')
 end
 
@@ -246,7 +246,7 @@ end
    result = calculateTotal(10, 20, 30)
 
    assert(result??, 'DebugLog should return a result')
-   assert(string.find(result, 'FUNCTION INFORMATION'), 'Should contain function info header')
+   assert(string.find(result, 'FUNCTIONS'), 'Should contain function info header')
    assert(string.find(result, 'Function %[%d+%]:'), 'Should contain function label with level number')
    assert(string.find(result, 'calculateTotal'), 'Should contain function name')
    assert(string.find(result, 'Parameters:'), 'Should contain parameters count')
@@ -278,7 +278,7 @@ end
    result = sampleFunction(5, 7)
 
    assert(result??, 'DebugLog should return a result')
-   assert(string.find(result, 'BYTECODE DISASSEMBLY'), 'Should contain disassembly header')
+   assert(string.find(result, 'BYTECODE'), 'Should contain disassembly header')
    assert(string.find(result, 'FUNCF'), 'Should list function prologue instruction')
    assert(string.find(result, 'RET'), 'Should list return instruction')
 
@@ -326,7 +326,7 @@ end
    result = captureDump(4, 9)
 
    assert(result??, 'DebugLog should return a result')
-   assert(string.find(result, 'BYTECODE DUMP'), 'Should contain dump header')
+   assert(string.find(result, 'BINARY'), 'Should contain dump header')
    assert(string.find(result, 'Bytes:%s*%d+'), 'Should report byte count')
    assert(string.find(result, '%d+:%s*%x%x'), 'Should contain hexadecimal byte output')
 end

@@ -22,7 +22,7 @@ static int is_blank_identifier(GCstr *name)
 //********************************************************************************************************************
 // Define a new local variable.
 
-void LexState::var_new(BCREG n, GCstr* name)
+void LexState::var_new(BCREG n, GCstr* name, BCLine Line, BCLine Column)
 {
    FuncState* fs = this->fs;
    MSize vtop = this->vtop;
@@ -44,6 +44,9 @@ void LexState::var_new(BCREG n, GCstr* name)
    // NOBARRIER: name is anchored in fs->kt and ls->vstack is not a GCobj.
    setgcref(this->vstack[vtop].name, obj2gco(name));
    fs->varmap[fs->nactvar + n] = uint16_t(vtop);
+   // Use provided line/column if given (non-zero), otherwise fall back to current token position
+   this->vstack[vtop].line = (Line > 0) ? Line : this->current_token_line;
+   this->vstack[vtop].column = (Column > 0) ? Column : this->current_token_column;
    this->vtop = vtop + 1;
 }
 
@@ -788,6 +791,28 @@ static void fs_fixup_ret(FuncState* fs)
 }
 
 //********************************************************************************************************************
+// Build a qualified scope name from the function state chain (e.g., "outer.inner" for nested functions).
+
+static std::string build_scope_name(FuncState *FState)
+{
+   std::vector<std::string_view> names;
+   for (auto current = FState; current; current = current->prev) {
+      if (current->funcname) {
+         names.push_back(std::string_view(strdata(current->funcname), current->funcname->len));
+      }
+   }
+
+   if (names.empty()) return "";
+
+   std::string result;
+   for (auto it = names.rbegin(); it != names.rend(); ++it) {
+      if (not result.empty()) result += '.';
+      result += *it;
+   }
+   return result;
+}
+
+//********************************************************************************************************************
 // Finish a FuncState and return the new prototype.
 
 GCproto * LexState::fs_finish(BCLine Line)
@@ -801,6 +826,46 @@ GCproto * LexState::fs_finish(BCLine Line)
    // Apply final fixups.
 
    fs_fixup_ret(fs);
+
+   // Capture variable declarations if JOF::DIAGNOSE is enabled.
+
+   auto prv = (prvFluid *)this->L->script->ChildPrivate;
+   if (((prv->JitOptions & JOF::DIAGNOSE) != JOF::NIL)) {
+      std::string scope = build_scope_name(fs);
+
+      // Capture local variables.
+      for (MSize i = fs->vbase; i < this->vtop; i++) {
+         VarInfo *var = &this->vstack[i];
+         if (gola_is_jump_or_target(var)) continue;
+         GCstr *name_str = strref(var->name);
+         if (uintptr_t(name_str) < VARNAME__MAX) continue;
+         if (name_str IS NAME_BLANK) continue;
+
+         VariableInfo info {
+            .line   = var->line,
+            .column = var->column,
+            .scope  = scope,
+            .name   = std::string(strdata(name_str), name_str->len),
+            .type   = var->fixed_type,
+            .is_global = false
+         };
+         prv->CapturedVariables.push_back(std::move(info));
+      }
+
+      // Capture explicitly declared globals (only for main chunk, not nested functions).
+      if (not fs->prev) {
+         for (GCstr *name : fs->declared_globals) {
+            VariableInfo info;
+            info.line = 0;  // Line info not available for globals declared elsewhere
+            info.column = 0;
+            info.scope = "";
+            info.name = std::string(strdata(name), name->len);
+            info.type = FluidType::Unknown;  // Type not tracked for globals
+            info.is_global = true;
+            prv->CapturedVariables.push_back(std::move(info));
+         }
+      }
+   }
 
    // Calculate total size of prototype including all colocated arrays.
 

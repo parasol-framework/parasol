@@ -16,6 +16,26 @@ static const MethodEntry clMethods[] = {
 
 //********************************************************************************************************************
 
+static std::string_view fluid_type_name(FluidType Type)
+{
+   switch (Type) {
+      case FluidType::Nil:     return "nil";
+      case FluidType::Bool:    return "bool";
+      case FluidType::Num:     return "number";
+      case FluidType::Str:     return "string";
+      case FluidType::Table:   return "table";
+      case FluidType::Array:   return "array";
+      case FluidType::Func:    return "function";
+      case FluidType::Thread:  return "thread";
+      case FluidType::Object:  return "object";
+      case FluidType::Unknown: return "unknown";
+      case FluidType::Any:
+      default: return "any";
+   }
+}
+
+//********************************************************************************************************************
+
 static int append_dump_chunk([[maybe_unused]] lua_State *, const void *Chunk, size_t Size, void *UserData)
 {
    auto bytes = (std::vector<uint8_t> *)UserData;
@@ -76,7 +96,7 @@ static void append_hex_dump(std::span<uint8_t> Data, std::ostringstream &Buf, bo
 
 static void emit_stack_trace(prvFluid *Prv, std::ostringstream &Buf, bool Compact)
 {
-   if (not Compact) Buf << "=== CALL STACK ===\n";
+   if (not Compact) Buf << "-CALL STACK-\n";
 
    if constexpr (LJ_HASPROFILE) {
       size_t dump_len = 0;
@@ -84,7 +104,7 @@ static void emit_stack_trace(prvFluid *Prv, std::ostringstream &Buf, bool Compac
       auto dump = luaJIT_profile_dumpstack(Prv->Lua, Compact ? "pF (l)\n" : "l f\n", 50, &dump_len);
       if (dump and dump_len) {
          // Skip the first line (level 0) which is the C function mtDebugLog itself
-         auto first_newline = (CSTRING )memchr(dump, '\n', dump_len);
+         auto first_newline = (CSTRING)memchr(dump, '\n', dump_len);
          if (first_newline and size_t(first_newline - dump + 1) < dump_len) {
             CSTRING start = first_newline + 1;
             size_t len = dump_len - (start - dump);
@@ -135,10 +155,22 @@ static void emit_stack_trace(prvFluid *Prv, std::ostringstream &Buf, bool Compac
 
 static void emit_locals_info(prvFluid *Prv, std::ostringstream &Buf, bool Compact)
 {
+   if (not Compact) Buf << "-LOCALS-\n";
+
+   // In diagnosis mode, variables will be captured during compilation.
+
+   if (not Prv->CapturedVariables.empty()) {
+      for (const auto& var : Prv->CapturedVariables) {
+         if (not var.is_global) {
+            Buf << var.line << ":" << var.column << ":" << (var.scope.empty() ? "_" : var.scope) << ":"
+               << var.name << ":" << fluid_type_name(var.type) << ":" << "\n";
+         }
+      }
+      return;
+   }
+
    lua_Debug ar;
    if (not lua_getstack(Prv->Lua, 1, &ar)) return; // Level 1 = caller's frame
-
-   if (not Compact) Buf <<"=== LOCALS ===\n";
 
    int idx = 1;
    CSTRING name;
@@ -171,8 +203,6 @@ static void emit_locals_info(prvFluid *Prv, std::ostringstream &Buf, bool Compac
       lua_pop(Prv->Lua, 1);
       idx++;
    }
-
-   if (not Compact) Buf <<"\n";
 }
 
 //********************************************************************************************************************
@@ -184,7 +214,7 @@ static void emit_upvalues_info(prvFluid *Prv, std::ostringstream &Buf, bool Comp
 
    lua_getinfo(Prv->Lua, "f", &ar);
 
-   if (not Compact) Buf <<"=== UPVALUES ===\n";
+   if (not Compact) Buf <<"-UPVALUES-\n";
 
    int idx = 1;
    CSTRING name;
@@ -224,7 +254,7 @@ static void emit_upvalues_info(prvFluid *Prv, std::ostringstream &Buf, bool Comp
 
 static void emit_globals_info(prvFluid *Prv, std::ostringstream &Buf, bool Compact)
 {
-   if (not Compact) Buf << "=== GLOBALS ===\n";
+   if (not Compact) Buf << "-GLOBALS-\n";
 
    // Access the storage table where user-defined globals are stored.
    // The storage table is either:
@@ -304,15 +334,15 @@ static void emit_globals_info(prvFluid *Prv, std::ostringstream &Buf, bool Compa
 
 static void emit_memory_stats(prvFluid *Prv, std::ostringstream &Buf, bool Compact)
 {
-   if (not Compact) Buf << "=== MEMORY STATISTICS ===\n";
+   if (not Compact) Buf << "-MEMORY-\n";
 
    const int kb = lua_gc(Prv->Lua, LUA_GCCOUNT, 0);
    const int bytes = lua_gc(Prv->Lua, LUA_GCCOUNTB, 0);
    const double mb = kb / 1024.0 + bytes / (1024.0 * 1024.0);
 
    Buf << (Compact
-      ? std::format("Lua heap: {} MB\n", mb)
-      : std::format("Lua heap usage: {} MB ({} KB + {} bytes)\n", mb, kb, bytes));
+      ? std::format("LuaUsage: {} MB\n", mb)
+      : std::format("LuaUsage: {} MB ({} KB + {} bytes)\n", mb, kb, bytes));
 
    if (not Compact) Buf << "\n";
 }
@@ -321,7 +351,7 @@ static void emit_memory_stats(prvFluid *Prv, std::ostringstream &Buf, bool Compa
 
 static void emit_state_info(prvFluid *Prv, std::ostringstream &Buf, bool Compact)
 {
-   if (not Compact) Buf << "=== STATE ===\n";
+   if (not Compact) Buf << "-STATE-\n";
 
    Buf << std::format("Stack top: {}\n", lua_gettop(Prv->Lua));
    Buf << std::format("Protected globals: {}\n", Prv->Lua->protected_globals ? "true" : "false");
@@ -431,19 +461,22 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
 
    std::ostringstream buf;
 
-   if (prv->Recurse) {
-      // If Recurse is defined then we know what we're being called from within the script itself.
-      // Here we can process options that are exclusive to internal calls.
-
-      if (opts.show_stack) emit_stack_trace(prv, buf, opts.compact);
-      if (opts.show_locals) emit_locals_info(prv, buf, opts.compact);
-      if (opts.show_upvalues) emit_upvalues_info(prv, buf, opts.compact);
+   if (opts.show_stack) {
+      if (prv->Recurse) emit_stack_trace(prv, buf, opts.compact);
+      else log.warning("Unable to provide stack trace to an external caller.");
    }
+
+   if (opts.show_upvalues) {
+      if (prv->Recurse) emit_upvalues_info(prv, buf, opts.compact);
+      else log.warning("Unable to provide upvalues to an external caller.");
+   }
+
+   if (opts.show_locals) emit_locals_info(prv, buf, opts.compact);
 
    // Here we can process options that are meaningful post-execution.
 
    if (opts.show_funcinfo) {
-      if (not opts.compact) buf <<"=== FUNCTION INFORMATION ===\n";
+      if (not opts.compact) buf <<"-FUNCTIONS-\n";
 
       if (prv->Recurse) {
          int level = 1;
@@ -528,7 +561,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
          *pbuf << Msg << "\n";
       };
 
-      if (not opts.compact) buf << "=== BYTECODE DISASSEMBLY ===\n";
+      if (not opts.compact) buf << "-BYTECODE-\n";
 
       lua_Debug ar;
       if (lua_getstack(prv->Lua, 1, &ar)) {
@@ -564,7 +597,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
       if (lua_getstack(prv->Lua, 1, &ar)) {
          lua_getinfo(prv->Lua, "Sln", &ar);
 
-         if (not opts.compact) buf <<"=== BYTECODE DUMP ===\n";
+         if (not opts.compact) buf <<"-BINARY-\n";
 
          if (lua_getinfo(prv->Lua, "f", &ar)) {
             GCfunc *fn = funcV(prv->Lua->top - 1);
@@ -593,7 +626,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
       }
       else {
          // No active frame - try to dump the main chunk if available
-         if (not opts.compact) buf <<"=== BYTECODE DUMP ===\n";
+         if (not opts.compact) buf <<"-BYTECODE-\n";
 
          if (prv->MainChunkRef) {
             lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, prv->MainChunkRef);
