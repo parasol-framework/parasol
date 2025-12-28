@@ -16,9 +16,9 @@
 #include "lj_obj.h"
 #include "lj_err.h"
 
-#ifdef INCLUDE_ADVICE
+#ifdef INCLUDE_TIPS
 #include <memory>
-class AdviceEmitter;  // Forward declaration
+class TipEmitter;  // Forward declaration
 #endif
 
 struct SourceSpan {
@@ -263,10 +263,10 @@ public:
    bool diagnose_mode = false;  // When true, lexer errors are collected instead of thrown
    bool had_lex_error = false;  // Set when a recoverable lexer error occurred
 
-#ifdef INCLUDE_ADVICE
-   // Advice system: 0 = off, 1 = best (critical), 2 = most (medium), 3 = all
-   uint8_t advice_level = 0;
-   std::unique_ptr<AdviceEmitter> advice_emitter;
+#ifdef INCLUDE_TIPS
+   // Tip system: 0 = off, 1 = best (critical), 2 = most (medium), 3 = all
+   uint8_t tip_level = 0;
+   std::unique_ptr<TipEmitter> tip_emitter;
 #endif
 
    LexState() = default;  // Default constructor for bytecode reader usage

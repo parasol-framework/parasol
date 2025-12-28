@@ -20,8 +20,8 @@
 #include <parasol/main.h>
 #include "parser/parser_context.h"
 
-#ifdef INCLUDE_ADVICE
-#include "parser/parser_advice.h"
+#ifdef INCLUDE_TIPS
+#include "parser/parser_tips.h"
 #endif
 
 namespace {
@@ -63,7 +63,7 @@ namespace {
 // 1. Type inference - Determines types for variables without explicit annotations
 // 2. Type checking - Validates type compatibility for assignments and function calls
 // 3. Return validation - Ensures consistent return types within functions
-// 4. Usage tracking - Detects unused variables and parameters (for advice)
+// 4. Usage tracking - Detects unused variables and parameters (for tip)
 // 5. Shadowing detection - Warns when inner scope variables shadow outer ones
 //
 // The analyser maintains a scope stack to track variable declarations and types
@@ -141,7 +141,7 @@ private:
    void trace_decl(BCLine Line, GCstr* Name, FluidType Type, bool IsFixed) const;
 
    // Shadowing detection - warns when inner variable shadows outer scope variable
-   #ifdef INCLUDE_ADVICE
+   #ifdef INCLUDE_TIPS
    void check_shadowing(GCstr *Name, SourceSpan Location);
 
    // Global access in loop detection - warns when globals are accessed in loops without caching
@@ -161,8 +161,8 @@ private:
    std::vector<TypeCheckScope> scope_stack_{};      // Stack of scopes for variable tracking
    std::vector<FunctionContext> function_stack_{};  // Stack of function contexts for return type tracking
    std::vector<TypeDiagnostic> diagnostics_{};      // Collected type errors and warnings
-   uint32_t loop_depth_{0};                         // Current loop nesting depth for performance advice
-   #ifdef INCLUDE_ADVICE
+   uint32_t loop_depth_{0};                         // Current loop nesting depth for performance tip
+   #ifdef INCLUDE_TIPS
    std::vector<GCstr*> declared_globals_{};         // Globals explicitly declared with 'global' keyword
    #endif
 };
@@ -210,10 +210,10 @@ void TypeAnalyser::trace_decl(BCLine Line, GCstr* Name, FluidType Type, bool IsF
 // The check skips blank identifiers (single underscore '_') which are intentionally
 // used to discard values.
 
-#ifdef INCLUDE_ADVICE
+#ifdef INCLUDE_TIPS
 void TypeAnalyser::check_shadowing(GCstr *Name, SourceSpan Location)
 {
-   if (not this->ctx_.should_emit_advice(2)) return;
+   if (not this->ctx_.should_emit_tip(2)) return;
    if (not Name) return;
    if (Name->len IS 1 and strdata(Name)[0] IS '_') return;
 
@@ -226,7 +226,7 @@ void TypeAnalyser::check_shadowing(GCstr *Name, SourceSpan Location)
       auto existing = scope.lookup_local_type(Name);
       if (existing) {
          std::string_view name_view(strdata(Name), Name->len);
-         this->ctx_.emit_advice(2, AdviceCategory::CodeQuality,
+         this->ctx_.emit_tip(2, TipCategory::CodeQuality,
             std::format("Variable '{}' shadows a variable in an outer scope", name_view),
             Token::from_span(Location, TokenKind::Identifier));
          return;  // Only report once per variable
@@ -236,7 +236,7 @@ void TypeAnalyser::check_shadowing(GCstr *Name, SourceSpan Location)
       auto param = scope.lookup_parameter_type(Name);
       if (param) {
          std::string_view name_view(strdata(Name), Name->len);
-         this->ctx_.emit_advice(2, AdviceCategory::CodeQuality,
+         this->ctx_.emit_tip(2, TipCategory::CodeQuality,
             std::format("Variable '{}' shadows a parameter in an outer scope", name_view),
             Token::from_span(Location, TokenKind::Identifier));
          return;
@@ -262,7 +262,7 @@ void TypeAnalyser::track_global(GCstr *Name)
 
 void TypeAnalyser::check_global_in_loop(GCstr *Name, SourceSpan Location)
 {
-   if (not this->ctx_.should_emit_advice(2)) return;
+   if (not this->ctx_.should_emit_tip(2)) return;
    if (this->loop_depth_ IS 0) return;
    if (not Name) return;
    if (Name->len IS 1 and strdata(Name)[0] IS '_') return;
@@ -285,7 +285,7 @@ void TypeAnalyser::check_global_in_loop(GCstr *Name, SourceSpan Location)
 
    // It's a declared global variable being accessed inside a loop
    std::string_view name_view(strdata(Name), Name->len);
-   this->ctx_.emit_advice(2, AdviceCategory::Performance,
+   this->ctx_.emit_tip(2, TipCategory::Performance,
       std::format("Global '{}' accessed in loop; consider caching in a local variable for better JIT performance",
          name_view),
       Token::from_span(Location, TokenKind::Identifier));
@@ -296,10 +296,10 @@ void TypeAnalyser::check_global_in_loop(GCstr *Name, SourceSpan Location)
 
 void TypeAnalyser::check_function_in_loop(SourceSpan Location)
 {
-   if (not this->ctx_.should_emit_advice(2)) return;
+   if (not this->ctx_.should_emit_tip(2)) return;
    if (this->loop_depth_ IS 0) return;
 
-   this->ctx_.emit_advice(2, AdviceCategory::Performance,
+   this->ctx_.emit_tip(2, TipCategory::Performance,
       "Function defined inside loop; consider moving it outside the loop for better performance",
       Token::from_span(Location, TokenKind::Function));
 }
@@ -311,10 +311,10 @@ void TypeAnalyser::check_function_in_loop(SourceSpan Location)
 
 void TypeAnalyser::check_concat_in_loop(SourceSpan Location)
 {
-   if (not this->ctx_.should_emit_advice(2)) return;
+   if (not this->ctx_.should_emit_tip(2)) return;
    if (this->loop_depth_ IS 0) return;
 
-   this->ctx_.emit_advice(2, AdviceCategory::Performance,
+   this->ctx_.emit_tip(2, TipCategory::Performance,
       "String concatenation in loop; consider using array.join() for better performance",
       Token::from_span(Location, TokenKind::Cat));
 }
@@ -339,24 +339,24 @@ void TypeAnalyser::push_scope() {
 void TypeAnalyser::pop_scope() {
    if (this->scope_stack_.empty()) return;
 
-   #ifdef INCLUDE_ADVICE
-   // Report unused variables before popping the scope (skip if advice wouldn't be emitted)
-   if (this->ctx_.should_emit_advice(2)) {
+   #ifdef INCLUDE_TIPS
+   // Report unused variables before popping the scope (skip if tip wouldn't be emitted)
+   if (this->ctx_.should_emit_tip(2)) {
       auto unused = this->scope_stack_.back().get_unused_variables();
       for (const auto& var : unused) {
          std::string_view name_view(strdata(var.name), var.name->len);
          if (var.is_parameter) {
-            this->ctx_.emit_advice(2, AdviceCategory::CodeQuality,
+            this->ctx_.emit_tip(2, TipCategory::CodeQuality,
                std::format("Unused function parameter '{}'", name_view),
                Token::from_span(var.location, TokenKind::Identifier));
          }
          else if (var.is_function) {
-            this->ctx_.emit_advice(2, AdviceCategory::CodeQuality,
+            this->ctx_.emit_tip(2, TipCategory::CodeQuality,
                std::format("Unused local function '{}'", name_view),
                Token::from_span(var.location, TokenKind::Identifier));
          }
          else {
-            this->ctx_.emit_advice(2, AdviceCategory::CodeQuality,
+            this->ctx_.emit_tip(2, TipCategory::CodeQuality,
                std::format("Unused local variable '{}'", name_view),
                Token::from_span(var.location, TokenKind::Identifier));
          }
@@ -606,7 +606,7 @@ void TypeAnalyser::analyse_statement(const StmtNode &Statement)
 void TypeAnalyser::analyse_assignment(const AssignmentStmtPayload &Payload)
 {
    // Check for compound concatenation assignment (..=) in loops
-   #ifdef INCLUDE_ADVICE
+   #ifdef INCLUDE_TIPS
    if (Payload.op IS AssignmentOperator::Concat and not Payload.targets.empty()) {
       this->check_concat_in_loop(Payload.targets[0]->span);
    }
@@ -751,7 +751,7 @@ void TypeAnalyser::analyse_local_decl(const LocalDeclStmtPayload &Payload)
          inferred.is_fixed = false;
       }
 
-      #ifdef INCLUDE_ADVICE
+      #ifdef INCLUDE_TIPS
       this->check_shadowing(name.symbol, name.span);
       #endif
 
@@ -814,19 +814,19 @@ void TypeAnalyser::analyse_global_decl(const GlobalDeclStmtPayload &Payload)
       this->analyse_expression(*value);
    }
 
-   #ifdef INCLUDE_ADVICE
+   #ifdef INCLUDE_TIPS
    // Track globals for loop access detection
    for (const auto &name : Payload.names) {
       if (name.symbol) this->track_global(name.symbol);
    }
 
    // Check global naming conventions
-   if (this->ctx_.should_emit_advice(3)) {
+   if (this->ctx_.should_emit_tip(3)) {
       for (const auto &name : Payload.names) {
          if (not name.symbol) continue;
          std::string_view name_view(strdata(name.symbol), name.symbol->len);
          if (not is_valid_global_name(name_view)) {
-            this->ctx_.emit_advice(3, AdviceCategory::Style,
+            this->ctx_.emit_tip(3, TipCategory::Style,
                std::format("Global variable '{}' should follow naming convention: 'gl[A-Z]...' or 'ALL_CAPS'",
                   name_view),
                Token::from_span(name.span, TokenKind::Identifier));
@@ -842,7 +842,7 @@ void TypeAnalyser::analyse_global_decl(const GlobalDeclStmtPayload &Payload)
 
 void TypeAnalyser::analyse_local_function(const LocalFunctionStmtPayload &Payload)
 {
-   #ifdef INCLUDE_ADVICE
+   #ifdef INCLUDE_TIPS
    this->check_shadowing(Payload.name.symbol, Payload.name.span);
    #endif
 
@@ -919,11 +919,11 @@ void TypeAnalyser::analyse_function_payload(const FunctionExprPayload &Function,
    }
 
    // Advise on missing return type annotation for functions that return values
-   #ifdef INCLUDE_ADVICE
-   if (this->ctx_.should_emit_advice(1) and
+   #ifdef INCLUDE_TIPS
+   if (this->ctx_.should_emit_tip(1) and
        (not Function.return_types.is_explicit) and this->function_has_return_values(Function)) {
       SourceSpan span = Function.body ? Function.body->span : SourceSpan{};
-      this->ctx_.emit_advice(1, AdviceCategory::TypeSafety,
+      this->ctx_.emit_tip(1, TipCategory::TypeSafety,
          "Function lacks return type annotation; consider adding ': type' after the parameter list",
          Token::from_span(span, TokenKind::Function));
    }
@@ -955,7 +955,7 @@ void TypeAnalyser::analyse_expression(const ExprNode &Expression)
       case AstNodeKind::BinaryExpr: {
          auto *payload = std::get_if<BinaryExprPayload>(&Expression.data);
          if (payload) {
-            #ifdef INCLUDE_ADVICE
+            #ifdef INCLUDE_TIPS
             if (payload->op IS AstBinaryOperator::Concat) {
                this->check_concat_in_loop(Expression.span);
             }
@@ -1023,7 +1023,7 @@ void TypeAnalyser::analyse_expression(const ExprNode &Expression)
       case AstNodeKind::FunctionExpr: {
          auto *payload = std::get_if<FunctionExprPayload>(&Expression.data);
          if (payload) {
-            #ifdef INCLUDE_ADVICE
+            #ifdef INCLUDE_TIPS
             this->check_function_in_loop(Expression.span);
             #endif
             this->analyse_function_payload(*payload);
@@ -1035,7 +1035,7 @@ void TypeAnalyser::analyse_expression(const ExprNode &Expression)
          auto *payload = std::get_if<NameRef>(&Expression.data);
          if (payload) {
             this->mark_identifier_used(payload->identifier.symbol);
-            #ifdef INCLUDE_ADVICE
+            #ifdef INCLUDE_TIPS
             this->check_global_in_loop(payload->identifier.symbol, payload->identifier.span);
             #endif
          }
