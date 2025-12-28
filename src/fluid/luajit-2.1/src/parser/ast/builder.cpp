@@ -214,7 +214,7 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_block(std::span<const
                default: break;
             }
             if (terminator_name) {
-               this->ctx.emit_tips(1, TipCategory::TypeSafety,
+               this->ctx.emit_tip(1, TipCategory::TypeSafety,
                   std::format("Unreachable code after '{}' statement", terminator_name),
                   stmt_start);
             }

@@ -296,7 +296,7 @@ ParserResult<AstBuilder::ParameterListResult> AstBuilder::parse_parameter_list(b
                #ifdef INCLUDE_TIPS
                auto param_name = std::string_view(strdata(param.name.symbol), param.name.symbol->len);
                auto message = std::format("Function parameter '{}' lacks type annotation", param_name);
-               this->ctx.emit_tips(1, TipCategory::TypeSafety, std::move(message), name.value_ref());
+               this->ctx.emit_tip(1, TipCategory::TypeSafety, std::move(message), name.value_ref());
                #endif
             }
          }
