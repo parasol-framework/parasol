@@ -54,10 +54,48 @@ IDE Integration:
   The server supports the standard LSP lifecycle: initialize, initialized, shutdown, exit.
 ]]
 
-   lsplib = require './lsp_lib'
+   require './lsp_lib'
+
+----------------------------------------------------------------------------------------------------------------------
+-- Resolve the location of the Parasol SDK and create an 'sdk:' volume.
+
+function resolveSDKPath(Path)
+   local sdk_path
+   err = ERR_Failed
+   search_list = array<string>
+   if not Path then
+      search_path = 'CMakeLists.txt'
+      limit = 5
+      while (err != ERR_Okay) and (limit > 0) do
+         search_list:push(search_path)
+         err, sdk_path = mSys.ResolvePath(search_path)
+         search_path = '../' .. search_path
+         limit -= 1
+      end
+   else
+      search_list:push(Path .. '/CMakeLists.txt')
+      err, sdk_path = mSys.ResolvePath(Path .. '/CMakeLists.txt')
+   end
+
+   if err is ERR_Okay then
+      sdk_path = sdk_path:match('(.+)CMakeLists%.txt')
+   else
+      msg = ''
+      for path in values(search_list) do
+         msg ..= path .. '\n'
+      end
+      print('Unable to find CMakeLists.txt after searching the following paths:\n' .. msg)
+      error('A path to the Parasol SDK could not be determined.')
+   end
+
+   mSys.SetVolume('sdk', sdk_path)
+end
+
+----------------------------------------------------------------------------------------------------------------------
 
    -- Load config file if available
-   glConfigFile = arg('config') ?? 'user:config/lsp_server_cfg.fluid'
+   glConfigFile = arg('config', 'user:config/lsp_server_cfg.fluid')
+   glDocPath = 'sdk:docs/xml/'
    glOptions = { }
 
    if mSys.AnalysePath(glConfigFile) is ERR_Okay then
@@ -65,13 +103,11 @@ IDE Integration:
       print('Loaded config from: ' .. glConfigFile)
    end
 
-   -- Handle help request
    if arg('help') then
       print(glHelp)
       return
    end
 
-   -- Override with command-line arguments
    if arg('port') then
       glOptions.port = tonumber(arg('port'))
    end
@@ -81,7 +117,12 @@ IDE Integration:
       glOptions.verbose = (verbose is 'true' or verbose is '1')
    end
 
+   if arg('docs') then
+      glDocPath = arg('docs')
+   end
+
    -- Set up request/response logging if requested
+
    log_path = arg('request-log')
    if log_path?? then
       glReqLog = obj.new('file', { src=log_path, flags='NEW|WRITE' })
@@ -103,8 +144,11 @@ IDE Integration:
       print(Message)
    end
 
-   -- Start the LSP server
-   glServer = lsplib.start(glOptions)
+   sdkPath = arg('sdk')
+   resolveSDKPath(sdkPath)
 
-   -- Keep the server running
+   lspInitDocs(glDocPath) -- Initialize documentation for hover support
+
+   glServer = lspStart(glOptions)
+
    processing.sleep()

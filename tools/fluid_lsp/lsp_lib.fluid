@@ -8,13 +8,22 @@
 
    include 'network'
    json = require('json')
+   require 'common'
+   require 'io/filesearch'
 
-   lsp = { } -- Library export
+   CACHE_PATH = 'user:config/lsp_doc_cache.fluid'
+
+   self = { }
 
    glTime = obj.new('time')
+   glSelf = obj.find('self')
 
    -- Document storage for open files.  URI indexed
    glDocuments = { }
+
+   -- Documentation cache and static definitions for hover
+   glDocCache = nil
+   glDefs = nil
 
    -- Token cache for delta semantic tokens.  URI indexed
    -- Structure: { [uri] = { resultId = number, data = { ... } } }
@@ -329,12 +338,14 @@ end
 -- Compute diagnostics for a document using debug.validate()
 
 -- Helper to check if character is alphanumeric or underscore
+
 function isIdentChar(C)
    return (C >= 'a' and C <= 'z') or (C >= 'A' and C <= 'Z') or (C >= '0' and C <= '9') or C is '_'
 end
 
 -- Compute start and end columns for an error range based on context
 -- Returns: start_col, end_col
+
 function computeErrorRange(Doc:table, Line:num, Column:num)
    -- Find the target line
    if Line >= getTotalLines(Doc) then return Column, Column + 1 end
@@ -347,6 +358,7 @@ function computeErrorRange(Doc:table, Line:num, Column:num)
    -- If starting on an identifier/number character, extend both directions
    if isIdentChar(c) or (c >= '0' and c <= '9') then
       -- Extend backwards to find start of token
+
       start_col = Column
       while start_col > 0 do
          prev_c = line_text:sub(start_col - 1, start_col)
@@ -358,6 +370,7 @@ function computeErrorRange(Doc:table, Line:num, Column:num)
       end
 
       -- Extend forwards to find end of token
+
       end_col = Column + 1
       while end_col < #line_text do
          next_c = line_text:sub(end_col, end_col + 1)
@@ -371,6 +384,7 @@ function computeErrorRange(Doc:table, Line:num, Column:num)
    end
 
    -- For operators and punctuation, try to capture multi-character operators
+
    if c is '=' or c is '!' or c is '<' or c is '>' or c is '~' or c is ':' or c is '.' then
       next_c = (Column + 1 < #line_text) and line_text:sub(Column + 1, Column + 2) or ''
       if next_c is '=' or next_c is '>' then
@@ -379,6 +393,7 @@ function computeErrorRange(Doc:table, Line:num, Column:num)
    end
 
    -- For string delimiters, try to find matching end
+
    if c is '"' or c is "'" then
       end_col = Column + 1
       while end_col < #line_text do
@@ -1444,7 +1459,9 @@ function registerCoreHandlers(Self)
                -- Document symbols for outline view
                documentSymbolProvider = true,
                -- Folding ranges for code folding
-               foldingRangeProvider = true
+               foldingRangeProvider = true,
+               -- Hover information
+               hoverProvider = true
             },
             serverInfo = {
                name = 'Fluid LSP Server',
@@ -1748,6 +1765,728 @@ function registerCoreHandlers(Self)
          result = ranges
       }
    end
+
+   --------------------------------------------------------------------------
+   -- Hover Information
+
+   -- textDocument/hover: Return documentation for symbol at cursor
+   Self._handlers['textDocument/hover'] = function(Msg, State)
+      uri = Msg.params.textDocument.uri
+      position = Msg.params.position
+      doc = glDocuments[uri]
+
+      if not doc then
+         logMessage(Self, 'Hover requested for unknown document: ' .. uri)
+         return {
+            jsonrpc = '2.0',
+            id = Msg.id,
+            result = json.null
+         }
+      end
+
+      -- Get the token at the hover position
+      tokenInfo = getTokenAtPosition(doc, position.line, position.character)
+
+      if not tokenInfo then
+         return {
+            jsonrpc = '2.0',
+            id = Msg.id,
+            result = json.null
+         }
+      end
+
+      logVerbose(Self, 'Hover: token="' .. tokenInfo.text .. '" context=' .. tokenInfo.context ..
+         (tokenInfo.object and (' object=' .. tokenInfo.object) or ''))
+
+      -- Attempt to resolve documentation
+      hoverContent = resolveHoverContent(tokenInfo, doc)
+
+      if not hoverContent then
+         return {
+            jsonrpc = '2.0',
+            id = Msg.id,
+            result = json.null
+         }
+      end
+
+      return {
+         jsonrpc = '2.0',
+         id = Msg.id,
+         result = {
+            contents = {
+               kind = 'markdown',
+               value = hoverContent
+            },
+            range = {
+               start = { line = position.line, character = tokenInfo.startCol },
+               ['end'] = { line = position.line, character = tokenInfo.endCol }
+            }
+         }
+      }
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Documentation Cache Builder
+--
+-- Builds an index of Parasol API documentation from XML files.
+-- Stores top-level info (names, comments, prototypes) plus byte offsets for on-demand detail retrieval.
+--
+-- Compact string format uses \0 as field separator:
+--   Fields:  'A:access\0L:start,end\0T:type\0C:comment'
+--   Methods: 'L:start,end\0P:prototype\0C:comment'
+--   Actions: 'L:start,end\0P:prototype\0C:comment'
+--   Functions: 'L:start,end\0P:prototype\0C:comment'
+
+-- Encode a field entry to compact string format
+function encodeField(Access, Type, ByteStart, ByteEnd, Comment)
+   return 'A:' .. (Access or 'R') .. '\0L:' .. ByteStart .. ',' .. ByteEnd ..
+          '\0T:' .. (Type or '') .. '\0C:' .. (Comment or '')
+end
+
+-- Encode a method/action/function entry to compact string format
+function encodeMethod(Prototype, ByteStart, ByteEnd, Comment)
+   return 'L:' .. ByteStart .. ',' .. ByteEnd ..
+          '\0P:' .. (Prototype or '') .. '\0C:' .. (Comment or '')
+end
+
+-- Decode a field from compact string format
+function decodeField(Str:any):table
+   if type(Str) != 'string' then return Str end  -- Already decoded or nil
+
+   result = {}
+   for field in values(Str:split('\0')) do
+      key = field:sub(0, 1)
+      value = field:sub(2)
+      if key is 'A' then
+         result.access = value
+      elseif key is 'L' then
+         start_pos, end_pos = value:match('(%d+),(%d+)')
+         result.byteStart = tonumber(start_pos)
+         result.byteEnd = tonumber(end_pos)
+      elseif key is 'T' then
+         result.type = value
+      elseif key is 'C' then
+         result.comment = value
+      else
+         print('Unrecognised key: ' .. tostring(key))
+      end
+   end
+   return result
+end
+
+-- Decode a method/action/function from compact string format
+
+function decodeMethod(Str:any):table
+   if type(Str) is 'table' then return Str end  -- Already decoded or nil
+
+   result = {}
+   for field in values(Str:split('\0')) do
+      key = field:sub(0, 1)
+      value = field:sub(2)
+      if key is 'L' then
+         start_pos, end_pos = value:match('(%d+),(%d+)')
+         result.byteStart = tonumber(start_pos)
+         result.byteEnd = tonumber(end_pos)
+      elseif key is 'P' then
+         result.prototype = value
+      elseif key is 'C' then
+         result.comment = value
+      else
+         print('Unrecognised key: ' .. tostring(key))
+      end
+   end
+
+   return result
+end
+
+function parseAccessString(ReadAttr:str, WriteAttr:str):str
+   -- Convert access attributes to simplified form: R, W, R/W, R/I, R/S, etc.
+   r = ReadAttr and (ReadAttr is 'R' or ReadAttr is 'G') and 'R' or nil
+   w = nil
+   if WriteAttr then
+      if WriteAttr is 'W' then w = 'W'
+      elseif WriteAttr is 'S' then w = 'S'
+      elseif WriteAttr is 'I' then w = 'I'
+      end
+   end
+
+   if r and w then return r .. '/' .. w
+   elseif r then return r
+   elseif w then return w
+   else return 'R' end
+end
+
+function extractXMLElement(Content:str, TagName:str, StartPos):table
+   -- Find an XML element and return its content plus byte positions
+   openTag = '<' .. TagName .. '>'
+   closeTag = '</' .. TagName .. '>'
+
+   tagStart = Content:find(openTag, StartPos)
+   tagStart ?? return
+
+   tagEnd = Content:find(closeTag, tagStart)
+   tagEnd ?? return
+
+   content = Content:sub(tagStart + #openTag, tagEnd - 1)
+   content = content?:unescapeXML()
+
+   return {
+      byteStart = tagStart,
+      byteEnd = tagEnd + #closeTag - 1,
+      content = content
+   }
+end
+
+function extractChildText(Content:str, TagName:str):str
+   -- Extract text content of a child element
+   pattern = '<' .. TagName .. '>([^<]*)</' .. TagName .. '>'
+   content = Content:match(pattern)
+   content?:unescapeXML()
+   return content
+end
+
+function extractChildAttr(Content:str, TagName:str, AttrName:str):str
+   -- Extract attribute value from a child element
+   pattern = '<' .. TagName .. '[^>]*' .. AttrName .. '="([^"]*)"'
+   content = Content:match(pattern)
+   content?:unescapeXML()
+   return content
+end
+
+function processModuleXML(FilePath:str, DocPath:str):<str,table>
+   -- Process a module XML file and extract function information
+   content = file.readAll(FilePath)
+   content ?? return
+
+   relativePath = FilePath:gsub(DocPath, '')
+
+   -- Extract module info
+   infoMatch = extractXMLElement(content, 'info', 0)
+   infoMatch ?? return
+
+   modName = extractChildText(infoMatch.content, 'name')
+   modName ?? return
+
+   modEntry = {
+      file = relativePath,
+      comment = extractChildText(infoMatch.content, 'comment') or '',
+      functions = {}
+   }
+
+   -- Extract functions (using compact string format)
+   pos = 0
+   while true do
+      funcMatch = extractXMLElement(content, 'function', pos)
+      funcMatch ?? break
+
+      funcName = extractChildText(funcMatch.content, 'name')
+      if funcName then
+         modEntry.functions[funcName] = encodeMethod(
+            extractChildText(funcMatch.content, 'prototype') or '',
+            funcMatch.byteStart,
+            funcMatch.byteEnd,
+            extractChildText(funcMatch.content, 'comment') or ''
+         )
+      end
+
+      pos = funcMatch.byteEnd
+   end
+
+   return modName, modEntry
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Process a class XML file and extract method/action/field information
+
+function processClassXML(FilePath, DocPath)
+   content = file.readAll(FilePath)
+   content ?? return
+
+   relativePath = FilePath:gsub(DocPath, '')
+
+   -- Extract class info
+   infoMatch = extractXMLElement(content, 'info', 0)
+   infoMatch ?? return
+
+   className = extractChildText(infoMatch.content, 'name')
+   className ?? return
+
+   classEntry = {
+      file = relativePath,
+      module = extractChildText(infoMatch.content, 'module') or '',
+      comment = extractChildText(infoMatch.content, 'comment') or '',
+      methods = {},
+      actions = {},
+      fields = {}
+   }
+
+   -- Extract methods (using compact string format)
+   pos = 0
+   while true do
+      methodMatch = extractXMLElement(content, 'method', pos)
+      methodMatch ?? break
+
+      methodName = extractChildText(methodMatch.content, 'name')
+      if methodName then
+         classEntry.methods[methodName] = encodeMethod(
+            extractChildText(methodMatch.content, 'prototype') or '',
+            methodMatch.byteStart,
+            methodMatch.byteEnd,
+            extractChildText(methodMatch.content, 'comment') or ''
+         )
+      end
+
+      pos = methodMatch.byteEnd
+   end
+
+   -- Extract actions (using compact string format)
+   pos = 0
+   while true do
+      actionMatch = extractXMLElement(content, 'action', pos)
+      actionMatch ?? break
+
+      actionName = extractChildText(actionMatch.content, 'name')
+      if actionName then
+         classEntry.actions[actionName] = encodeMethod(
+            extractChildText(actionMatch.content, 'prototype') or '',
+            actionMatch.byteStart,
+            actionMatch.byteEnd,
+            extractChildText(actionMatch.content, 'comment') or ''
+         )
+      end
+
+      pos = actionMatch.byteEnd
+   end
+
+   -- Extract fields (using compact string format)
+   pos = 0
+   while true do
+      fieldMatch = extractXMLElement(content, 'field', pos)
+      fieldMatch ?? break
+
+      fieldName = extractChildText(fieldMatch.content, 'name')
+      if fieldName then
+         readAttr = extractChildAttr(fieldMatch.content, 'access', 'read')
+         writeAttr = extractChildAttr(fieldMatch.content, 'access', 'write')
+
+         classEntry.fields[fieldName] = encodeField(
+            parseAccessString(readAttr, writeAttr),
+            extractChildText(fieldMatch.content, 'type') or '',
+            fieldMatch.byteStart,
+            fieldMatch.byteEnd,
+            extractChildText(fieldMatch.content, 'comment') or ''
+         )
+      end
+
+      pos = fieldMatch.byteEnd
+   end
+
+   return className, classEntry
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function buildDocCache(DocPath)
+   -- Build the documentation cache from XML files
+
+   cache = {
+      version = 1,
+      built = mSys.PreciseTime() / 1000000,
+      sdkPath = DocPath,
+      modules = {},
+      classes = {}
+   }
+
+   modulesPath = DocPath .. 'modules/'
+   classesPath = DocPath .. 'modules/classes/'
+
+   -- Process module XML files
+
+   print('Scanning modules for documentation cache; ', modulesPath)
+
+   err = file.search(modulesPath, {
+      nameFilter = '%.xml$',
+      nameWild = true,
+      maxDepth = 0,
+      matchFeedback = function(Path, FileName, File)
+         -- Skip if it's a directory entry for 'classes'
+         if FileName is 'classes' then return end
+
+         fullPath = Path .. FileName
+         modName, modEntry = processModuleXML(fullPath, DocPath)
+         if modName and modEntry then
+            cache.modules[modName] = modEntry
+            msg('Found module ' .. modName .. ' @ ' .. fullPath)
+         end
+      end
+   })
+
+   collectgarbage()
+
+   -- Process class XML files
+
+   print('Scanning classes for documentation cache; ', classesPath)
+
+   err = file.search(classesPath, {
+      nameFilter = '%.xml$',
+      nameWild = true,
+      maxDepth = 1,
+      matchFeedback = function(Path, FileName, File)
+         fullPath = Path .. FileName
+         className, classEntry = processClassXML(fullPath, DocPath)
+         if className and classEntry then
+            cache.classes[className] = classEntry
+            msg('Found class ' .. className .. ' @ ' .. fullPath)
+         end
+      end
+   })
+
+   msg('Scan completed')
+
+   collectgarbage()
+   return cache
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Serialize a Lua table to a string representation
+
+function serializeTable(Tbl:any, Indent):str
+   Indent = Indent or ''
+   nextIndent = Indent .. '   '
+
+   if type(Tbl) != 'table' then
+      if type(Tbl) is 'string' then
+         -- Escape special characters
+         escaped = Tbl:gsub('\\', '\\\\'):gsub('\n', '\\n'):gsub('\r', '\\r'):gsub("'", "\\'")
+         return "'" .. escaped .. "'"
+      elseif type(Tbl) is 'number' then
+         return tostring(Tbl)
+      elseif type(Tbl) is 'boolean' then
+         return Tbl and 'true' or 'false'
+      else
+         return 'nil'
+      end
+   end
+
+   parts = {}
+   for k, v in pairs(Tbl) do
+      keyStr = type(k) is 'string' and "['" .. k .. "']" or '[' .. tostring(k) .. ']'
+      valStr = serializeTable(v, nextIndent)
+      table.insert(parts, nextIndent .. keyStr .. ' = ' .. valStr)
+   end
+
+   if #parts is 0 then
+      return '{}'
+   end
+
+   return '{\n' .. table.concat(parts, ',\n') .. '\n' .. Indent .. '}'
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function saveDocCache(CachePath, Cache)
+   -- Save the cache as a Fluid script
+   content = '-- Fluid LSP Documentation Cache\n'
+   content ..= '-- Auto-generated, do not edit manually\n'
+   content ..= '-- Built: ' .. timestamp() .. '\n\n'
+   content ..= 'return ' .. serializeTable(Cache) .. '\n'
+
+   file.writeAll(CachePath, content)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function loadDocCache(DocPath)
+   -- Attempt to load the cache, returns nil if invalid
+   msg('Loading document cache from ' .. CACHE_PATH)
+   ex, cache = catch(function()
+      return loadFile(CACHE_PATH)
+   end)
+
+   if ex or not cache then msg('Failed to run cache file.  Error: ' .. tostring(ex.message)); return nil end
+   if cache.version != 1 then msg('Unsupported version'); return nil end
+   if cache.sdkPath != DocPath then msg('Path mismatch: ' .. cache.sdkPath .. ' != ' .. DocPath); return nil end
+
+   return cache
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Hover Support - Token Extraction
+
+global function getTokenAtPosition(Doc:table, Line:num, Character:num):table
+   -- Extract the token/symbol at a given position in the document
+   -- Returns: { text, object, startCol, endCol, context }
+   -- context: 'identifier', 'method_call', 'field_access', 'module_call'
+
+   lineText = getLine(Doc, Line)
+   if not lineText or Character >= #lineText then return nil end
+
+   -- Helper to check if character is identifier-like
+   function isIdent(C)
+      return (C >= 'a' and C <= 'z') or (C >= 'A' and C <= 'Z') or (C >= '0' and C <= '9') or C is '_'
+   end
+
+   -- Find token boundaries
+   startCol = Character
+   endCol = Character
+
+   -- Scan backwards to find token start
+   while startCol > 0 do
+      c = lineText:sub(startCol - 1, startCol)
+      if not isIdent(c) then break end
+      startCol -= 1
+   end
+
+   -- Scan forward to find token end
+   while endCol < #lineText do
+      c = lineText:sub(endCol, endCol + 1)
+      if not isIdent(c) then break end
+      endCol++
+   end
+
+   if startCol is endCol then return nil end
+
+   token = lineText:sub(startCol, endCol)
+   context = 'identifier'
+   precedingIdent = nil
+
+   -- Check for preceding dot (field access or method call)
+   if startCol > 0 then
+      beforeStart = startCol - 1
+
+      -- Skip whitespace
+      while beforeStart > 0 and (lineText:sub(beforeStart, beforeStart + 1) is ' ' or lineText:sub(beforeStart, beforeStart + 1) is '\t') do
+         beforeStart -= 1
+      end
+
+      if lineText:sub(beforeStart, beforeStart + 1) is '.' then
+         -- Find the preceding identifier (the object/module name)
+         objEnd = beforeStart
+         objStart = beforeStart - 1
+
+         while objStart > 0 and isIdent(lineText:sub(objStart - 1, objStart)) do
+            objStart -= 1
+         end
+
+         if objStart < objEnd then
+            precedingIdent = lineText:sub(objStart, objEnd)
+
+            -- Check if followed by parenthesis (method call)
+            afterEnd = endCol
+            while afterEnd < #lineText and (lineText:sub(afterEnd, afterEnd + 1) is ' ' or lineText:sub(afterEnd, afterEnd + 1) is '\t') do
+               afterEnd++
+            end
+
+            if lineText:sub(afterEnd, afterEnd + 1) is '(' then
+               context = 'method_call'
+            else
+               context = 'field_access'
+            end
+         end
+      end
+   end
+
+   return {
+      text = token,
+      object = precedingIdent,
+      startCol = startCol,
+      endCol = endCol,
+      context = context
+   }
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Hover Support - Type Inference
+
+function buildTypeMap(Doc)
+   -- Build a mapping of variable names to class types based on obj.new() calls
+   typeMap = {}
+
+   -- Match patterns like: varname = obj.new('classname' or varname = obj.new("classname"
+   for varname, classname in Doc.content:gmatch("([%w_]+)%s*=%s*obj%.new%s*%(%s*['\"]([%w_]+)['\"]") do
+      -- Capitalize first letter for class name lookup (e.g., 'netsocket' -> 'NetSocket')
+      -- Most class names in the XML are in TitleCase
+      normalizedClass = classname:sub(1,1):upper() .. classname:sub(2)
+      typeMap[varname] = normalizedClass
+   end
+
+   return typeMap
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Hover Support - Content Resolution and Formatting
+
+function formatClassHover(ClassName, ClassDoc)
+   md = '**class ' .. ClassName .. '**\n\n'
+   md ..= ClassDoc.comment
+   if ClassDoc.module and #ClassDoc.module > 0 then
+      md ..= '\n\n_Module: ' .. ClassDoc.module .. '_'
+   end
+   return md
+end
+
+function formatMethodHover(ClassName, MethodName, MethodDoc)
+   doc = decodeMethod(MethodDoc)  -- Decode compact string if needed
+   md = '**' .. ClassName .. '.' .. MethodName .. '**\n\n'
+   if doc.prototype?? then
+      md ..= '```c\n' .. doc.prototype .. '\n```\n\n'
+   end
+   md ..= doc.comment or ''
+   return md
+end
+
+function formatActionHover(ClassName, ActionName, ActionDoc)
+   doc = decodeMethod(ActionDoc)  -- Decode compact string if needed
+   md = '**' .. ClassName .. '.ac' .. ActionName .. '** _(Action)_\n\n'
+   if doc.prototype?? then
+      md ..= '```c\n' .. doc.prototype .. '\n```\n\n'
+   end
+   md ..= doc.comment or ''
+   return md
+end
+
+function formatFieldHover(ClassName, FieldName, FieldDoc)
+   doc = decodeField(FieldDoc)  -- Decode compact string if needed
+   md = '**' .. ClassName .. '.' .. FieldName .. '**\n\n'
+   md ..= 'Type: `' .. (doc.type or 'unknown') .. '`'
+   if doc.access then
+      md ..= ' | Access: ' .. doc.access
+   end
+   md ..= '\n\n' .. (doc.comment or '')
+   return md
+end
+
+function formatModuleFunctionHover(ModuleName, FuncName, FuncDoc)
+   doc = decodeMethod(FuncDoc)  -- Decode compact string if needed
+   md = '**' .. ModuleName .. '.' .. FuncName .. '**\n\n'
+   if doc.prototype?? then
+      md ..= '```c\n' .. doc.prototype .. '\n```\n\n'
+   end
+   md ..= doc.comment or ''
+   md ..= '\n\n[Documentation](https://parasol.ws/modules/' .. ModuleName:lower() .. '.html?page=' .. FuncName .. ')'
+   return md
+end
+
+function formatBuiltinHover(FuncName, BuiltinDoc)
+   md = '**' .. FuncName .. '** _(Built-in)_\n\n'
+   if BuiltinDoc.prototype?? then
+      md ..= '```lua\n' .. BuiltinDoc.prototype .. '\n```\n\n'
+   end
+   md ..= BuiltinDoc.comment
+   return md
+end
+
+function formatKeywordHover(Keyword, KeywordDoc)
+   md = '**' .. Keyword .. '** _(Keyword)_\n\n' .. KeywordDoc.comment
+   return md
+end
+
+global function resolveHoverContent(TokenInfo, Doc)
+   -- Resolve hover content for a token
+   -- Priority: keywords, builtins, class names, module functions, object methods/fields
+
+   if not TokenInfo then return nil end
+
+   token = TokenInfo.text
+   context = TokenInfo.context
+
+   -- Check for keywords
+   if glDefs?.keywords?[token] then
+      return formatKeywordHover(token, glDefs.keywords[token])
+   end
+
+   -- Check for built-in functions
+   if glDefs?.builtins?[token] then
+      return formatBuiltinHover(token, glDefs.builtins[token])
+   end
+
+   -- Handle obj.new specially
+   if context is 'method_call' and TokenInfo.object is 'obj' and token is 'new' then
+      if glDefs and glDefs.builtins and glDefs.builtins['obj.new'] then
+         return formatBuiltinHover('obj.new', glDefs.builtins['obj.new'])
+      end
+   end
+
+   -- Check for class names (standalone identifier starting with capital)
+   if context is 'identifier' and token:match('^[A-Z]') then
+      if glDocCache and glDocCache.classes and glDocCache.classes[token] then
+         return formatClassHover(token, glDocCache.classes[token])
+      end
+   end
+
+   -- Handle method or field access on an object
+   if (context is 'method_call' or context is 'field_access') and TokenInfo.object then
+      objName = TokenInfo.object
+
+      -- Try to infer class type from obj.new() assignments
+      typeMap = buildTypeMap(Doc)
+      className = typeMap[objName]
+
+      -- Also try the object name directly as a class (for cases like NetSocket.Connect)
+      if not className and objName:match('^[A-Z]') then
+         className = objName
+      end
+
+      if className and glDocCache and glDocCache.classes then
+         classDoc = glDocCache.classes[className]
+         if classDoc then
+            if context is 'method_call' then
+               -- Check for action pattern (acXxx)
+               if token:match('^ac[A-Z]') then
+                  actionName = token:sub(3)
+                  if classDoc.actions and classDoc.actions[actionName] then
+                     return formatActionHover(className, actionName, classDoc.actions[actionName])
+                  end
+               end
+
+               -- Check for method pattern (mtXxx)
+               if token:match('^mt[A-Z]') then
+                  methodName = token:sub(3)
+                  if classDoc.methods and classDoc.methods[methodName] then
+                     return formatMethodHover(className, methodName, classDoc.methods[methodName])
+                  end
+               end
+
+               -- Try direct method lookup
+               if classDoc.methods and classDoc.methods[token] then
+                  return formatMethodHover(className, token, classDoc.methods[token])
+               end
+
+               -- Also check actions without ac prefix
+               if classDoc.actions and classDoc.actions[token] then
+                  return formatActionHover(className, token, classDoc.actions[token])
+               end
+            else
+               -- Field access - try various case combinations
+               if classDoc.fields then
+                  -- Try exact match
+                  if classDoc.fields[token] then
+                     return formatFieldHover(className, token, classDoc.fields[token])
+                  end
+                  -- Try capitalized (Fluid uses lowercase, XML uses TitleCase)
+                  capitalizedToken = token:sub(1,1):upper() .. token:sub(2)
+                  if classDoc.fields[capitalizedToken] then
+                     return formatFieldHover(className, capitalizedToken, classDoc.fields[capitalizedToken])
+                  end
+               end
+            end
+         end
+      end
+
+      -- Try module function lookup (mSys.Sleep, mNet.AddressToStr, etc.)
+      if glDefs?.modulePrefixes?[objName] then
+         modName = glDefs.modulePrefixes[objName]
+         if glDocCache?.modules?[modName] then
+            moduleDoc = glDocCache.modules[modName]
+            if moduleDoc?.functions?[token] then
+               return formatModuleFunctionHover(modName, token, moduleDoc.functions[token])
+            end
+         end
+      end
+   end
+
+   return nil
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -1885,17 +2624,58 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Public API
 
-lsp.start = function(Options)
-   Options = Options or {}
+-- Initialize the documentation system for hover support
+-- DocPath: Path to the XML document folder (e.g., 'sdk:docs/xml/')
+-- Returns true if successful
 
-   self = {
-      port = Options.port or 5007,
-      verbose = Options.verbose or false,
-      logMessage = Options.logMessage or function(msg) print(msg) end,
-      requestLog = Options.requestLog,  -- Optional request/response logging callback
-      _socket = nil,
-      _handlers = {}
-   }
+global function lspInitDocs(DocPath)
+   DocPath ?? return false
+
+   if not DocPath:match('[/\\]$') then -- Ensure path ends with separator
+      DocPath = DocPath .. '/'
+   end
+
+   -- Load static definitions (builtins, keywords)
+   defsPath = glSelf.workingPath .. 'lsp_defs.fluid'
+   success, result = pcall(function()
+      return loadFile(defsPath)
+   end)
+
+   if success and result then
+      glDefs = result
+      print('Loaded static definitions')
+   else
+      print('Failed to load static definitions from ' .. defsPath)
+   end
+
+   -- Try to load cached documentation
+   glDocCache = loadDocCache(DocPath)
+
+   if glDocCache then
+      print('Loaded documentation cache')
+   else
+      -- Build cache if not found or invalid
+      glDocCache = buildDocCache(DocPath)
+      if glDocCache then
+         saveDocCache(CACHE_PATH, glDocCache)
+         print('Documentation cache built and saved')
+      else
+         print('Failed to build documentation cache')
+      end
+   end
+
+   return glDocCache != nil
+end
+
+global function lspStart(Options)
+   Options ?= {}
+
+   self.port       = Options.port or 5007
+   self.verbose    = Options.verbose or false
+   self.logMessage = Options.logMessage or function(msg) print(msg) end
+   self.requestLog = Options.requestLog  -- Optional request/response logging callback
+   self._socket    = nil
+   self._handlers  = {}
 
    registerCoreHandlers(self)
 
@@ -1940,5 +2720,3 @@ lsp.start = function(Options)
 
    return self
 end
-
-   return lsp
