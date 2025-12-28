@@ -291,12 +291,12 @@ ParserResult<AstBuilder::ParameterListResult> AstBuilder::parse_parameter_list(b
                   std::format("Unknown type name '{}'; expected a valid type name", type_view));
             }
          }
-         else { // No type annotation provided - emit advice for untyped parameter
+         else { // No type annotation provided - emit tips for untyped parameter
             if (param.name.symbol) {
-               #ifdef INCLUDE_ADVICE
+               #ifdef INCLUDE_TIPS
                auto param_name = std::string_view(strdata(param.name.symbol), param.name.symbol->len);
                auto message = std::format("Function parameter '{}' lacks type annotation", param_name);
-               this->ctx.emit_advice(1, AdviceCategory::TypeSafety, std::move(message), name.value_ref());
+               this->ctx.emit_tip(1, TipCategory::TypeSafety, std::move(message), name.value_ref());
                #endif
             }
          }

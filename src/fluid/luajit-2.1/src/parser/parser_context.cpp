@@ -9,8 +9,8 @@
 
 #include "parser/parse_types.h"
 #include "parser.h"
-#ifdef INCLUDE_ADVICE
-#include "parser/parser_advice.h"
+#ifdef INCLUDE_TIPS
+#include "parser/parser_tips.h"
 #endif
 
 //********************************************************************************************************************
@@ -330,23 +330,23 @@ void ParserContext::log_trace(ParserChannel Channel, const Token &token, std::st
 }
 
 //********************************************************************************************************************
-// Check if advice at the given priority level would be emitted.
-// This allows callers to skip expensive checks when advice would be filtered out anyway.
+// Check if tip at the given priority level would be emitted.
+// This allows callers to skip expensive checks when tip would be filtered out anyway.
 
-#ifdef INCLUDE_ADVICE
-bool ParserContext::should_emit_advice(uint8_t Priority) const
+#ifdef INCLUDE_TIPS
+bool ParserContext::should_emit_tip(uint8_t Priority) const
 {
-   auto *emitter = this->advice();
+   auto *emitter = this->tip();
    if (not emitter) return false;
    return emitter->should_emit(Priority);
 }
 
 //********************************************************************************************************************
-// Emit an advice message if the advice system is enabled.
+// Emit a tip message if the tip system is enabled.
 
-void ParserContext::emit_advice(uint8_t Priority, AdviceCategory Category, std::string Message, const Token &Location)
+void ParserContext::emit_tip(uint8_t Priority, TipCategory Category, std::string Message, const Token &Location)
 {
-   auto *emitter = this->advice();
+   auto *emitter = this->tip();
    if (not emitter) return;
 
    std::string_view filename;

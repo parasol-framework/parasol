@@ -44,7 +44,7 @@ This separation allows the AST and bytecode emission to evolve independently whi
 | `parser_context.h` / `parser_context.cpp` | `ParserContext` class managing lexer state, diagnostics, and configuration |
 | `parser_config.h` | `ParserConfig` struct with type analysis and error handling options |
 | `parser_diagnostics.h` / `parser_diagnostics.cpp` | `ParserDiagnostics` for error and warning collection |
-| `parser_advice.h` / `parser_advice.cpp` | Optional advice/hints system for IDE integration |
+| `parser_tips.h` / `parser_tips.cpp` | Optional tips system for IDE integration |
 | `parser_profiler.h` | Profiling instrumentation for parser performance analysis |
 
 ### AST Building (`ast/` subdirectory)

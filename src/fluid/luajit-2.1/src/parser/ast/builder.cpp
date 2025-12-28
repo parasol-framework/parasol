@@ -18,8 +18,8 @@
 #include "../parse_types.h"
 #include "runtime/lj_str.h"
 
-#ifdef INCLUDE_ADVICE
-#include "../parser_advice.h"
+#ifdef INCLUDE_TIPS
+#include "../parser_tips.h"
 #endif
 
 // Extracts the function payload from an expression node if it's a function expression, otherwise returns null.
@@ -166,7 +166,7 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_block(std::span<const
    StmtNodeList statements;
    bool recovery_mode = not this->ctx.config().abort_on_error;
 
-   #ifdef INCLUDE_ADVICE
+   #ifdef INCLUDE_TIPS
    const StmtNode *terminating_stmt = nullptr;  // Track the first terminating statement in this block
    #endif
 
@@ -203,7 +203,7 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_block(std::span<const
       }
 
       if (stmt.value_ref()) {
-         #ifdef INCLUDE_ADVICE
+         #ifdef INCLUDE_TIPS
          // Check for unreachable code: if we've already seen a terminating statement, this code is unreachable
          if (terminating_stmt) {
             const char *terminator_name = nullptr;
@@ -214,7 +214,7 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_block(std::span<const
                default: break;
             }
             if (terminator_name) {
-               this->ctx.emit_advice(1, AdviceCategory::TypeSafety,
+               this->ctx.emit_tip(1, TipCategory::TypeSafety,
                   std::format("Unreachable code after '{}' statement", terminator_name),
                   stmt_start);
             }

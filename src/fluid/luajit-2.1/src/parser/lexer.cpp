@@ -29,8 +29,8 @@
 #include "parser.h"
 #include "parser_context.h"
 #include "parser_diagnostics.h"
-#ifdef INCLUDE_ADVICE
-#include "parser_advice.h"
+#ifdef INCLUDE_TIPS
+#include "parser_tips.h"
 #endif
 #include "../../defs.h"
 #include "lj_char.h"
@@ -971,15 +971,15 @@ static LexToken lex_scan(LexState *State, TValue *tv)
 }
 
 //********************************************************************************************************************
-// Compute the advice level from JIT options flags.
+// Compute the tip level from JIT options flags.
 // Returns: 0 = off, 1 = best (critical only), 2 = most (medium), 3 = all
 
-#ifdef INCLUDE_ADVICE
-static uint8_t compute_advice_level(JOF Options)
+#ifdef INCLUDE_TIPS
+static uint8_t compute_tip_level(JOF Options)
 {
-   if ((Options & JOF::ALL_ADVICE) != JOF::NIL) return 3;
-   if ((Options & JOF::ADVICE) != JOF::NIL) return 2;
-   if ((Options & JOF::TOP_ADVICE) != JOF::NIL) return 1;
+   if ((Options & JOF::ALL_TIPS) != JOF::NIL) return 3;
+   if ((Options & JOF::TIPS) != JOF::NIL) return 2;
+   if ((Options & JOF::TOP_TIPS) != JOF::NIL) return 1;
    return 0;
 }
 #endif
@@ -1025,11 +1025,11 @@ LexState::LexState(lua_State* L, std::string_view Source, std::string_view Chunk
 {
    lj_buf_init(L, &this->sb);
 
-#ifdef INCLUDE_ADVICE
-   // Initialise advice system from JIT options
-   this->advice_level = compute_advice_level(glJitOptions);
-   if (this->advice_level > 0) {
-      this->advice_emitter = std::make_unique<AdviceEmitter>(this->advice_level);
+#ifdef INCLUDE_TIPS
+   // Initialise tip system from JIT options
+   this->tip_level = compute_tip_level(glJitOptions);
+   if (this->tip_level > 0) {
+      this->tip_emitter = std::make_unique<TipEmitter>(this->tip_level);
    }
 #endif
 
