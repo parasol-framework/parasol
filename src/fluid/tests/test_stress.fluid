@@ -157,7 +157,7 @@ end
    for i = 1, 100 do
       for j = 1, 100 do
          for k = 1, 10 do
-            counter += 1
+            counter++
             if counter % 1000 is 0 then
                continue
             end
@@ -171,8 +171,8 @@ end
    n = 0
    iterations = 0
    while n < 10000 do
-      n += 1
-      iterations += 1
+      n++
+      iterations++
       if n % 2 is 0 then
          continue
       end
@@ -258,7 +258,7 @@ end
    defer_counter = 0
    for i = 1, 100 do
       defer
-         defer_counter += 1
+         defer_counter++
       end
    end
 end

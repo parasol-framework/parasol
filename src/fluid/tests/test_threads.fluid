@@ -17,7 +17,7 @@
    file.search(folder, {
       nameFilter = '.+%.svg',
       nameWild   = 'lua',
-      matchFeedback = function(Path, FileName, File)
+      matchFeedback = function(Path:str, FileName:str, File)
          list ..= FileName .. ' '
          table.insert(glPictures, { path=Path .. FileName })
       end
@@ -25,20 +25,18 @@
 
    print('Found ' .. #glPictures .. ' SVG files: ' .. list)
 
-   if #glPictures is 0 then error('Failed to find any SVG files.') end
+   assert(#glPictures > 0, 'Failed to find any SVG files.')
 end
 
 function initPictures()
-   for k, v in ipairs(glPictures) do
+   for v in values(glPictures) do
       v.pic = obj.new('picture', { path=v.path, flags='QUERY' } )
    end
 end
 
 function freePictures()
-   for k, v in ipairs(glPictures) do
-      if v.pic != nil then
-         v.pic = nil
-      end
+   for v in values(glPictures) do
+      if v.pic then v.pic = nil end
    end
 end
 
@@ -88,10 +86,8 @@ end
 @Test function testSequential()
    initPictures()
 
-   for k, v in ipairs(glPictures) do
-      if v.pic != nil then
-         v.pic.acActivate()
-      end
+   for v in values(glPictures) do
+      v.pic?.acActivate()
    end
 
    freePictures()

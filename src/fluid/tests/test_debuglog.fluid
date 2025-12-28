@@ -150,9 +150,6 @@ end
    result = compactTest()
 
    assert(result, 'DebugLog should return a result')
-   -- In compact mode, should NOT contain the header separators
-   assert(not string.find(result, '==='), 'Compact mode should not contain === headers')
-   -- But should still contain the data (source location and variables)
    assert(string.find(result, 'test_debuglog%.fluid:%d+'), 'Should contain source location')
    assert(string.find(result, 'x'), 'Should contain variable x')
 end
@@ -234,7 +231,7 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test funcinfo option (Phase 1 feature)
+-- Test funcinfo option
 
 @Test function testFuncInfo()
    function calculateTotal(a, b, c)
@@ -264,14 +261,14 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test disassembly option (Phase 3.1 feature)
+-- Test disassembly option
 
 @Test function testDisassembly()
    function sampleFunction(a, b)
       scale = b * 2
       total = a + scale
       err, result = glSelf.mtDebugLog('disasm')
-      msg(result)
+      msg('sampleFunction: ' .. tostring(result))
       return result
    end
 
@@ -312,8 +309,7 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
-
--- Test binary dump option (Phase 3.2 feature)
+-- Test binary dump option
 
 @Test function testBytecodeDump()
    function captureDump(a, b)

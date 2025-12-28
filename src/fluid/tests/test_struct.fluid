@@ -19,7 +19,7 @@ function testFontList()
          logOutput("Styles: " .. font.styles)
 
          points = ""
-         for _, p in ipairs(font.points) do
+         for p in values(font.points) do
             if points?? then points ..= ", " end
             points ..= p
          end

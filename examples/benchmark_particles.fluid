@@ -262,7 +262,7 @@ end
       error('Unknown benchmark mode')
    end
 
-   max = tonumber((arg('maxParticles') ?? 500))
+   max = tonumber(arg('maxParticles',500))
    if max < 100 then max = 100 end
    glParticles = array<table, max>
    for i=0,#glParticles-1 do

@@ -192,20 +192,9 @@ Parasol maintains retained scene graphs that can be modified at runtime. This en
 
 Before considering ANY C++ code changes complete, verify:
 
-- [ ] All `&&` replaced with `and`
-- [ ] All `||` replaced with `or`
-- [ ] All `==` replaced with `IS` macro
 - [ ] All `static_cast` replaced with C-style casts
-- [ ] No C++ exceptions used
-- [ ] All trailing whitespace removed
 - [ ] Code compiles successfully
 - [ ] Follows formatting standards below
-
-For Fluid code, verify:
-
-- [ ] All `~=` replaced with `!=`
-- [ ] All `==` replaced with `is`
-- [ ] All trailing whitespace removed
 
 ### Additional Code Style Standards
 
