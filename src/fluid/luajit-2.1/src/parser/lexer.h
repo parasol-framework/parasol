@@ -170,12 +170,14 @@ enum class FluidType : uint8_t;  // Forward declaration (defined in ast_nodes.h)
 
 typedef struct VarInfo {
    GCRef name;        //  Local variable name.
+   std::array<FluidType, MAX_RETURN_TYPES> result_types{};  // Return types if this variable holds a function
    BCPOS startpc;     //  First point where the local variable is active.
    BCPOS endpc;       //  First point where the local variable is dead.
    uint8_t slot;      //  Variable slot.
    VarInfoFlag info;  //  Variable info flags.
    FluidType fixed_type;  // Type once established (Unknown = not yet fixed)
-   std::array<FluidType, MAX_RETURN_TYPES> result_types{};  // Return types if this variable holds a function
+   BCLine line = 0;    // Line number where the variable was declared (for diagnostics)
+   BCLine column = 0;  // Column number where the variable was declared (for diagnostics)
 } VarInfo;
 
 // Forward declarations for parser scope helpers.
@@ -290,7 +292,7 @@ public:
    GCstr* lex_str();
 
    // Variable management
-   void var_new(BCREG Reg, GCstr* Name);
+   void var_new(BCREG Reg, GCstr* Name, BCLine Line = 0, BCLine Column = 0);
    void var_new_lit(BCREG Reg, std::string_view Value);
    void var_new_fixed(BCREG Reg, uintptr_t Name);
    void var_add(BCREG VariableCount);

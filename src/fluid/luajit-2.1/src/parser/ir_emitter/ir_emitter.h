@@ -117,6 +117,8 @@ struct PreparedAssignment {
    bool newly_created = false;   // True if a new local was created for an undeclared variable
    bool needs_var_add = false;   // True if var_add() must be called after expression evaluation
    GCstr* pending_symbol = nullptr;  // Symbol name for deferred var_add
+   BCLine pending_line = 0;      // Line number for deferred variable declaration
+   BCLine pending_column = 0;    // Column number for deferred variable declaration
 };
 
 //********************************************************************************************************************

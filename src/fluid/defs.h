@@ -205,6 +205,18 @@ struct datarequest {
 #include "struct_def.h"
 
 //********************************************************************************************************************
+// Variable information captured during parsing when JOF::DIAGNOSE is enabled.
+
+struct VariableInfo {
+   BCLine line;
+   BCLine column;
+   std::string scope;
+   std::string name;
+   FluidType type;
+   bool is_global;
+};
+
+//********************************************************************************************************************
 
 struct prvFluid {
    lua_State *Lua;                        // Lua instance
@@ -232,6 +244,7 @@ struct prvFluid {
    int      CatchDepth = -1;           // Lua stack frame count for scope isolation in catch().
                                        // Set by fcmd_catch() via lua_getstack() frame counting.
                                        // Only calls at exactly this depth throw exceptions.
+   std::vector<VariableInfo> CapturedVariables; // Variable declarations captured during parsing (JOF::DIAGNOSE)
 };
 
 // This structure is created & managed through the 'struct' interface

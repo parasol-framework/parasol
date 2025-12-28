@@ -22,7 +22,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
       BCReg idx = BCReg(0);
       for (PreparedAssignment& target : targets) {
          if (target.pending_symbol) {
-            this->lex_state.var_new(idx, target.pending_symbol);
+            this->lex_state.var_new(idx, target.pending_symbol, target.pending_line, target.pending_column);
             ++idx;
          }
       }
@@ -105,7 +105,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
 
          if (target.needs_var_add and target.pending_symbol) {
             // Create new local for this undeclared variable
-            this->lex_state.var_new(BCReg(0), target.pending_symbol);
+            this->lex_state.var_new(BCReg(0), target.pending_symbol, target.pending_line, target.pending_column);
             this->lex_state.var_add(BCReg(1));
             BCReg local_slot = BCReg(this->func_state.nactvar - 1);
 
@@ -276,7 +276,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(PreparedAssignment 
       // Finalize deferred local variable now that expression is evaluated
 
       if (target.needs_var_add and target.pending_symbol) {
-         this->lex_state.var_new(BCReg(0), target.pending_symbol);
+         this->lex_state.var_new(BCReg(0), target.pending_symbol, target.pending_line, target.pending_column);
          this->lex_state.var_add(BCReg(1));
          BCReg slot = BCReg(this->func_state.nactvar - 1);
          // Update target.storage to point to the new local
@@ -377,7 +377,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_nil_assignment(PreparedAssignment ta
       // Finalize deferred local variable now that expression is evaluated
 
       if (target.needs_var_add and target.pending_symbol) {
-         this->lex_state.var_new(BCReg(0), target.pending_symbol);
+         this->lex_state.var_new(BCReg(0), target.pending_symbol, target.pending_line, target.pending_column);
          this->lex_state.var_add(BCReg(1));
          BCReg slot = BCReg(this->func_state.nactvar - 1);
          // Update target.storage to point to the new local
@@ -471,6 +471,8 @@ ParserResult<std::vector<PreparedAssignment>> IrEmitter::prepare_assignment_targ
          prepared.needs_var_add = true;
          prepared.newly_created = true;
          prepared.pending_symbol = slot.u.sval;
+         prepared.pending_line = node->span.line;
+         prepared.pending_column = node->span.column;
          // Don't convert to Local yet - keep as Unscoped for now
          // The actual local slot will be determined later in emit_plain_assignment
       }
