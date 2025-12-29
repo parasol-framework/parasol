@@ -37,12 +37,12 @@ end
    value = container?.values?[2]
    assert(value is "Second", "Safe index should return stored element when present, got " .. tostring(value))
 
-   -- Test with native Fluid array
-   container = array<string> { "First", "Second" }
-   value = container?[1]
+   -- Test with native Fluid array (use separate variable since array != table)
+   arr_container = array<string> { "First", "Second" }
+   value = arr_container?[1]
    assert(value is "Second", "Safe index should return stored element when present, got " .. tostring(value))
 
-   value = container?[6]
+   value = arr_container?[6]
    assert(value is nil, "Safe index should return nil when index is out of bounds, got " .. tostring(value))
 end
 

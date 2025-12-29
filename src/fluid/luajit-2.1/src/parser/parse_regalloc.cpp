@@ -8,10 +8,33 @@
 #include "parse_regalloc.h"
 
 #include <parasol/main.h>
+#include <format>
 
-#include "ast/nodes.h"  // For FluidType and fluid_type_to_lj_tag()
+#include "ast/nodes.h"  // For FluidType, fluid_type_to_lj_tag(), type_name()
+#include "lj_err.h"     // For lj_err_throw, ErrMsg
 
 [[nodiscard]] BCPOS bcemit_jmp(FuncState *);
+
+//********************************************************************************************************************
+// Emit a compile-time type mismatch error.
+// This is called when we can statically determine that an assignment will fail type checking.
+
+[[noreturn]] static void err_type_mismatch(FuncState *fs, FluidType actual_type, FluidType expected_type)
+{
+   lua_State *L = fs->L;
+   LexState *ls = fs->ls;
+
+   // Format the error message
+   std::string msg = std::format("type mismatch: cannot assign {} to {} variable",
+      type_name(actual_type), type_name(expected_type));
+
+   // Build the full error message with source location
+   char buff[LUA_IDSIZE];
+   lj_debug_shortname(buff, ls->chunkname, ls->linenumber);
+   lj_strfmt_pushf(L, "%s:%d: %s", buff, ls->linenumber, msg.c_str());
+
+   lj_err_throw(L, LUA_ERRSYNTAX);
+}
 
 [[nodiscard]] inline bool is_register_key(int32_t Aux) { return (Aux >= 0) and (Aux <= BCMAX_C); }
 
@@ -508,19 +531,40 @@ static void bcemit_store(FuncState *fs, ExpDesc *LHS, ExpDesc *RHS)
       // Check if this variable has a defined type and needs runtime type checking
       if ((fixed != FluidType::Unknown) and (fixed != FluidType::Any)) {
          bool needs_check = true;
+         FluidType static_rhs_type = FluidType::Unknown; // TODO: needs_check can emit simpler tests when RHS type is known.
 
-         // Skip check for statically-known compatible types
-         if (RHS->k IS ExpKind::Nil) needs_check = false;  // nil is always allowed (clears the variable)
-         else if (RHS->k IS ExpKind::False or RHS->k IS ExpKind::True) needs_check = (fixed != FluidType::Bool);
-         else if (RHS->k IS ExpKind::Str) needs_check = (fixed != FluidType::Str);
-         else if (RHS->k IS ExpKind::Num) needs_check = (fixed != FluidType::Num);
-         // Check if expression has known result type (e.g., from function call with declared return type)
+         // Check for statically-known types - either from literals or from expression result types
+         if (RHS->k IS ExpKind::Nil) {
+            needs_check = false;  // nil is always allowed (clears the variable)
+         }
+         else if (RHS->k IS ExpKind::False or RHS->k IS ExpKind::True) {
+            static_rhs_type = FluidType::Bool;
+            if (fixed IS FluidType::Bool) needs_check = false;
+            else err_type_mismatch(fs, FluidType::Bool, fixed);
+         }
+         else if (RHS->k IS ExpKind::Str) {
+            static_rhs_type = FluidType::Str;
+            if (fixed IS FluidType::Str) needs_check = false;
+            else err_type_mismatch(fs, FluidType::Str, fixed);
+         }
+         else if (RHS->k IS ExpKind::Num) {
+            static_rhs_type = FluidType::Num;
+            if (fixed IS FluidType::Num) needs_check = false;
+            else err_type_mismatch(fs, FluidType::Num, fixed);
+         }
+         // Check if expression has known result type (e.g., from function call with declared return type,
+         // or operators with statically known result types like arithmetic, comparison, concatenation)
          else if (RHS->result_type != FluidType::Unknown and RHS->result_type != FluidType::Any) {
-            // The fact that the parser has allowed this assignment without throwing an error implies that the types are compatible.
-            // The assert assures this fact is always true, and thus we set needs_check on this assumption.
+            // TODO: For maxing optimisation, uncomment this assert to help find areas where type checks aren't
+            // being handled by the compiler.  Ideally we would handle all type checking at compile time, in which
+            // case this assert is never raised.
+            //fs_check_assert(fs, RHS->result_type IS fixed, "expected function return type (RHS) to match variable (LHS)");
 
-            fs_check_assert(fs, RHS->result_type IS fixed, "expected function return type (RHS) to match variable (LHS)");
-            needs_check = false;  // Types match - skip runtime check
+            static_rhs_type = RHS->result_type;
+            // If the RHS result type matches the variable's fixed type, skip runtime check
+            // Otherwise, fall through to runtime check (we don't emit compile-time errors for
+            // expression results because source location tracking isn't accurate at this point)
+            needs_check = (RHS->result_type != fixed);
          }
 
          if (needs_check) {
