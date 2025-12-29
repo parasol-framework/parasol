@@ -163,7 +163,7 @@ static void emit_locals_info(prvFluid *Prv, std::ostringstream &Buf, bool Compac
       for (const auto& var : Prv->CapturedVariables) {
          if (not var.is_global) {
             Buf << var.line << ":" << var.column << ":" << (var.scope.empty() ? "_" : var.scope) << ":"
-               << var.name << ":" << fluid_type_name(var.type) << ":" << "\n";
+               << var.name << ":" << fluid_type_name(var.type) << "\n";
          }
       }
       return;
@@ -176,30 +176,24 @@ static void emit_locals_info(prvFluid *Prv, std::ostringstream &Buf, bool Compac
    CSTRING name;
    while ((name = lua_getlocal(Prv->Lua, &ar, idx))) {
       int type = lua_type(Prv->Lua, -1);
-      Buf << name << " = ";
+      std::string value;
 
-      switch (type) {
-         case LUA_TNIL:     Buf << "nil"; break;
-         case LUA_TBOOLEAN: Buf << (lua_toboolean(Prv->Lua, -1) ? "true" : "false"); break;
-         case LUA_TNUMBER:  Buf << lua_tonumber(Prv->Lua, -1); break;
-         case LUA_TSTRING: {
-            size_t len;
-            CSTRING str = lua_tolstring(Prv->Lua, -1, &len);
-            std::string_view sv(str, len);
-            if (len > 40) Buf << "\"" << sv.substr(0, 40) << "...\"";
-            else Buf << "\"" << sv << "\"";
-            break;
+      if (not Compact) {
+         switch (type) {
+            case LUA_TBOOLEAN: value = (lua_toboolean(Prv->Lua, -1) ? "true" : "false"); break;
+            case LUA_TNUMBER:  value = lua_tostring(Prv->Lua, -1); break;
+            case LUA_TSTRING: {
+               size_t len;
+               CSTRING str = lua_tolstring(Prv->Lua, -1, &len);
+               std::string_view sv(str, len);
+               if (len > 40) value = "\"" + std::string(sv.substr(0, 40)) + "...\"";
+               else value = "\"" + std::string(sv) + "\"";
+               break;
+            }
          }
-         case LUA_TTABLE:    Buf << "{ ... }"; break;
-         case LUA_TFUNCTION: Buf << "<function>"; break;
-         case LUA_TUSERDATA: Buf << "<userdata>"; break;
-         case LUA_TTHREAD:   Buf << "<thread>"; break;
-         default: Buf << "<" << lua_typename(Prv->Lua, type) << ">"; break;
       }
 
-      if (not Compact) Buf <<" (" << lua_typename(Prv->Lua, type) << ")";
-      Buf << "\n";
-
+      Buf << ":::" << name << ":" << lua_typename(Prv->Lua, type) << ":" << value << "\n";
       lua_pop(Prv->Lua, 1);
       idx++;
    }
@@ -256,6 +250,18 @@ static void emit_globals_info(prvFluid *Prv, std::ostringstream &Buf, bool Compa
 {
    if (not Compact) Buf << "-GLOBALS-\n";
 
+   // In diagnosis mode, variables will be captured during compilation.
+
+   if (not Prv->CapturedVariables.empty()) {
+      for (const auto& var : Prv->CapturedVariables) {
+         if (var.is_global) {
+            Buf << var.line << ":" << var.column << ":" << (var.scope.empty() ? "_" : var.scope) << ":"
+               << var.name << ":" << fluid_type_name(var.type) << ":" << "\n";
+         }
+      }
+      return;
+   }
+
    // Access the storage table where user-defined globals are stored.
    // The storage table is either:
    //   1. The __index table directly (JIT-compatible mode), or
@@ -297,30 +303,27 @@ static void emit_globals_info(prvFluid *Prv, std::ostringstream &Buf, bool Compa
    lua_pushnil(Prv->Lua);
    while (lua_next(Prv->Lua, storage_table_idx)) {
       CSTRING key = lua_tostring(Prv->Lua, -2);
-      Buf << key << " = ";
-
       int type = lua_type(Prv->Lua, -1);
-      switch (type) {
-         case LUA_TNIL: Buf << "nil"; break;
-         case LUA_TBOOLEAN: Buf << (lua_toboolean(Prv->Lua, -1) ? "true" : "false"); break;
-         case LUA_TNUMBER: Buf << lua_tonumber(Prv->Lua, -1); break;
-         case LUA_TSTRING: {
-            size_t len;
-            CSTRING str = lua_tolstring(Prv->Lua, -1, &len);
-            std::string_view sv(str, len);
-            if (len > 40) Buf << "\"" << sv.substr(0, 40) << "...\"";
-            else Buf << "\"" << sv << "\"";
-            break;
+
+      std::string value;
+
+      if (not Compact) {
+         switch (type) {
+            case LUA_TBOOLEAN: value = lua_toboolean(Prv->Lua, -1) ? "true" : "false"; break;
+            case LUA_TNUMBER:  value = lua_tostring(Prv->Lua, -1); break;
+            case LUA_TSTRING: {
+               size_t len;
+               CSTRING str = lua_tolstring(Prv->Lua, -1, &len);
+               std::string_view sv(str, len);
+               if (len > 40) value = "\"" + std::string(sv.substr(0, 40)) + "...\"";
+               else value = "\"" + std::string(sv) + "\"";
+               break;
+            }
          }
-         case LUA_TTABLE: Buf << "{ ... }"; break;
-         case LUA_TFUNCTION: Buf << "<function>"; break;
-         default: Buf << "<" << lua_typename(Prv->Lua, type) << ">"; break;
       }
 
-      if (not Compact) Buf << " (" << lua_typename(Prv->Lua, type) << ")";
-      Buf << "\n";
+      Buf << ":::" << key << ":" << lua_typename(Prv->Lua, type) << ":" << value << "\n";
       count++;
-
       lua_pop(Prv->Lua, 1);
    }
 

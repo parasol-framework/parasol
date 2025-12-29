@@ -915,13 +915,24 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
       info->info |= VarInfoFlag::Close;
    }
 
-   // Set fixed_type for variables with explicit type annotations
+   // Set fixed_type for variables - explicit annotations take precedence, otherwise infer from initialisers
    for (auto i = BCReg(0); i < nvars; ++i) {
       const Identifier& identifier = Payload.names[i.raw()];
-      if (identifier.type IS FluidType::Unknown) continue;
-
       VarInfo* info = &this->func_state.var_get(base.raw() + i.raw());
-      info->fixed_type = identifier.type;
+
+      if (identifier.type != FluidType::Unknown) {
+         // Explicit type annotation takes precedence
+         info->fixed_type = identifier.type;
+      }
+      else if (i.raw() < Payload.values.size()) {
+         // No explicit annotation - infer type from initialiser expression
+         // Note: Nil is excluded because it represents absence of value, not a type constraint
+         FluidType inferred = infer_expression_type(*Payload.values[i.raw()]);
+         if (inferred != FluidType::Unknown and inferred != FluidType::Any and inferred != FluidType::Nil) {
+            info->fixed_type = inferred;
+         }
+      }
+      // If no initialiser and no annotation, fixed_type remains Unknown (set in var_add)
    }
 
    for (auto i = BCReg(0); i < nvars; ++i) {
@@ -2270,7 +2281,7 @@ ParserError IrEmitter::make_error(ParserErrorCode code, std::string_view message
 //********************************************************************************************************************
 
 #include "ir_emitter/emit_choose.cpp"
-#include "ir_emitter/emit_decl.cpp"
+#include "ir_emitter/emit_global.cpp"
 #include "ir_emitter/emit_assignment.cpp"
 #include "ir_emitter/emit_function.cpp"
 #include "ir_emitter/emit_table.cpp"

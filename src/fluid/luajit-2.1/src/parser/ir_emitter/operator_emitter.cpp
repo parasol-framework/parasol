@@ -221,6 +221,7 @@ static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
    allocator.release_expression(e1);
    e1->u.s.info = bcemit_ABC(fs, op, 0, rb, rc);
    e1->k = ExpKind::Relocable;
+   e1->result_type = FluidType::Num;  // Arithmetic operations always return number
 }
 
 //********************************************************************************************************************
@@ -319,6 +320,7 @@ static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
    // existing short-circuit and conditional semantics.
    eret->u.s.info = bcemit_jmp(fs);
    eret->k = ExpKind::Jmp;
+   eret->result_type = FluidType::Bool;  // Comparison operations always return boolean
 }
 
 //********************************************************************************************************************
@@ -452,6 +454,7 @@ static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, Exp
    lhs_value_discharge.discharge();
    *lhs = lhs_value_discharge.legacy();
    fs_check_assert(fs,lhs->k IS ExpKind::NonReloc and lhs->u.s.info IS base, "bitwise result not in base register");
+   lhs->result_type = FluidType::Num;  // Bitwise operations always return number
 }
 
 //********************************************************************************************************************
@@ -557,6 +560,7 @@ static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc
    arg_value_discharge.discharge();
    *arg = arg_value_discharge.legacy();
    fs_check_assert(fs,arg->k IS ExpKind::NonReloc and arg->u.s.info IS base, "bitwise result not in base register");
+   arg->result_type = FluidType::Num;  // Bitwise operations always return number
 }
 
 //********************************************************************************************************************
@@ -587,6 +591,7 @@ static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
       }
       else if (e->k IS ExpKind::Jmp) {
          invertcond(fs, e);
+         e->result_type = FluidType::Bool;  // NOT always returns boolean
          return;
       }
       else if (e->k IS ExpKind::Relocable) {
@@ -596,6 +601,7 @@ static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
          e->k = ExpKind::NonReloc;
       }
       else fs_check_assert(fs,e->k IS ExpKind::NonReloc, "bad expr type %d", int(e->k));
+      e->result_type = FluidType::Bool;  // NOT always returns boolean
    }
    else {
       fs_check_assert(fs,op IS BC_UNM or op IS BC_LEN, "bad unop %d", op);
@@ -631,6 +637,8 @@ static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
    expr_free(fs, e);
    e->u.s.info = bcemit_AD(fs, op, 0, e->u.s.info);
    e->k = ExpKind::Relocable;
+   // BC_UNM (negate) and BC_LEN (length) always return number
+   e->result_type = FluidType::Num;
 }
 
 //********************************************************************************************************************
@@ -1320,6 +1328,7 @@ void OperatorEmitter::complete_concat(ExprValue left, ExpDesc right)
    }
 
    left_desc->k = ExpKind::Relocable;
+   left_desc->result_type = FluidType::Str;  // Concatenation always returns string
 }
 
 //********************************************************************************************************************
@@ -1402,4 +1411,5 @@ void OperatorEmitter::emit_presence_check(ExprValue operand)
    skip_edge.patch_to(fs->current_pc());
 
    e->init(ExpKind::NonReloc, dest);
+   e->result_type = FluidType::Bool;  // Presence check always returns boolean
 }

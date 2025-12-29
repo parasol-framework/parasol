@@ -42,12 +42,12 @@
 do
    -- Internal functions.
 
-   local function kind_of(obj)
+   function kind_of(obj)
       -- Native Fluid arrays are always treated as arrays
       if type(obj) is 'array' then return 'array' end
       if type(obj) != 'table' then return type(obj) end
       -- Count total elements
-      local count = 0
+      count = 0
       for _ in pairs(obj) do
          count++
       end
@@ -59,9 +59,9 @@ do
       return 'array'
    end
 
-   local function escape_str(s)
-      local in_char  = {'\\', '"', '/', '\b', '\f', '\n', '\r', '\t'}
-      local out_char = {'\\', '"', '/',  'b',  'f',  'n',  'r',  't'}
+   function escape_str(s:str):str
+      in_char  = {'\\', '"', '/', '\b', '\f', '\n', '\r', '\t'}
+      out_char = {'\\', '"', '/',  'b',  'f',  'n',  'r',  't'}
       for i, c in ipairs(in_char) do
          s = s:gsub(c, '\\' .. out_char[i])
       end
@@ -73,7 +73,7 @@ do
    -- 2. Delimiter not found: pos = pos after leading space;     did_find = false.
    -- This throws an error if err_if_missing is true and the delim is not found.
 
-   local function skip_delim(str, pos, delim, err_if_missing)
+   function skip_delim(str:str, pos:num, delim:str, err_if_missing:bool):<num, bool>
       pos += #str:match('^%s*', pos)
       if str:sub(pos, pos+1) != delim then
          if err_if_missing then
@@ -87,35 +87,35 @@ do
    -- Expects the given pos to be the first character after the opening quote.
    -- Returns val, pos; the returned pos is after the closing quote character.
 
-   local function decode_str_val(str, pos, val):<str, num>
+   function decode_str_val(str:str, pos:num, val:str):<str, num>
       val = val or ''
-      local early_end_error = 'End of input found while parsing string.'
+      early_end_error = 'End of input found while parsing string.'
       assert(pos < #str, early_end_error)
-      local c = str:sub(pos, pos+1)
+      c = str:sub(pos, pos+1)
       if c is '"'  then return val, pos + 1 end
       if c != '\\' then return decode_str_val(str, pos + 1, val .. c) end
       -- We must have a \ character.
-      local esc_map = {b = '\b', f = '\f', n = '\n', r = '\r', t = '\t'}
-      local nextc = str:sub(pos + 1, pos + 2)
+      esc_map = {b = '\b', f = '\f', n = '\n', r = '\r', t = '\t'}
+      nextc = str:sub(pos + 1, pos + 2)
       assert(nextc, early_end_error)
       return decode_str_val(str, pos + 2, val .. (esc_map[nextc] or nextc))
    end
 
    -- Returns val, pos; the returned pos is after the number's final character.
 
-   local function decode_num_val(str, pos)
-      local num_str = str:match('^-?%d+%.?%d*[eE]?[+-]?%d*', pos)
-      local val = tonumber(num_str)
-      if not val then error('Error parsing number at position ' .. pos .. '.') end
+   function decode_num_val(str:str, pos:num):<num, num>
+      num_str = str:match('^-?%d+%.?%d*[eE]?[+-]?%d*', pos)
+      val = tonumber(num_str)
+      assert(val, 'Error parsing number at position ' .. pos .. '.')
       return val, pos + #num_str
    end
 
    -- Public values and functions.
 
-   function json.encode(obj, err_callback, as_key)
+   function json.encode(obj:any, err_callback:func, as_key:bool):str
       local kind = kind_of(obj)  -- This is 'array' if it's an array or type(obj) otherwise.
       if kind is 'array' then
-         local s = array<string>
+         s = array<string>
          if as_key then
             local msg = 'Can\'t encode array as key.'
             if err_callback then err_callback(msg) else error(msg) end
@@ -129,7 +129,7 @@ do
          end
          return s:join()
       elseif kind is 'table' then
-         local s = array<string>
+         s = array<string>
          if as_key then
             local msg = 'Can\'t encode table as key.'
             if err_callback then err_callback(msg) else error(msg) end
@@ -164,13 +164,13 @@ do
 
    json.null = {}  -- This is a one-off table to represent the null value.
 
-   function json.decode(str, pos, end_delim):<any, num>
+   function json.decode(str:str, pos:num, end_delim:str):<any, num>
       pos = pos or 0
       if pos >= #str then error('Reached unexpected end of input.') end
-      local pos = pos + #str:match('^%s*', pos)  -- Skip whitespace
-      local first = str:sub(pos, pos+1)
+      pos = pos + #str:match('^%s*', pos)  -- Skip whitespace
+      first = str:sub(pos, pos+1)
       if first is '{' then  -- Parse an object.
-         local obj, key, delim_found = {}, true, true
+         local obj:table, key:any, delim_found = {}, true, true
          pos++
          while true do
             key, pos = json.decode(str, pos, '}')
@@ -197,12 +197,12 @@ do
       elseif first is end_delim then  -- End of an object or array.
          return nil, pos + 1
       else  -- Parse true, false, or null.
-         local literals = {['true'] = true, ['false'] = false, ['null'] = json.null}
+         literals = {['true'] = true, ['false'] = false, ['null'] = json.null}
          for lit_str, lit_val in pairs(literals) do
-            local lit_end = pos + #lit_str
+            lit_end = pos + #lit_str
             if str:sub(pos, lit_end) is lit_str then return lit_val, lit_end end
          end
-         local pos_info_str = 'position ' .. pos .. ': ' .. str:sub(pos, pos + 11)
+         pos_info_str = 'position ' .. pos .. ': ' .. str:sub(pos, pos + 11)
          error('Invalid json syntax starting at ' .. pos_info_str)
       end
    end

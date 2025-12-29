@@ -27,23 +27,31 @@ end
 -- Test locals option
 
 @Test function testLocals()
-   function testFunc()
-      x = 42
-      name = 'test'
-      flag = true
-      err, result = glSelf.mtDebugLog('locals')
-      return result
-   end
+   -- Test compile-time variable capture with diagnose mode
+   script = obj.new('fluid', {
+      statement = [[
+         local x = 42
+         local name = 'test'
+         local flag = true
+         -- Local-by-default tests
+         x2 = 42
+         name2 = 'test'
+         flag2 = true
+      ]],
+      jitOptions = 'DIAGNOSE'
+   })
 
-   result = testFunc()
+   script.acQuery()
+   err, result = script.mtDebugLog('locals')
+   print(result)
+
    assert(result, 'DebugLog should return a result')
-   assert(string.find(result, 'LOCALS'), 'Should contain locals header')
-   assert(string.find(result, 'x'), 'Should contain variable x')
-   assert(string.find(result, '42'), 'Should contain value 42')
+   assert(string.find(result, ':x:'), 'Should contain variable x')
+   assert(string.find(result, ':number'), 'Should contain num type for x')
    assert(string.find(result, 'name'), 'Should contain variable name')
-   assert(string.find(result, 'test'), 'Should contain value test')
+   assert(string.find(result, ':string'), 'Should contain str type for name')
    assert(string.find(result, 'flag'), 'Should contain variable flag')
-   assert(string.find(result, 'true'), 'Should contain value true')
+   assert(string.find(result, ':bool'), 'Should contain bool type for flag')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -188,7 +196,7 @@ end
    end
 
    result = typeTest()
-
+print(result)
    assert(result, 'DebugLog should return a result')
    assert(string.find(result, 'numVar'), 'Should contain numVar')
    assert(string.find(result, '3%.14'), 'Should contain number value')
@@ -199,9 +207,7 @@ end
    assert(string.find(result, 'nilVar'), 'Should contain nilVar')
    assert(string.find(result, 'nil'), 'Should contain nil value')
    assert(string.find(result, 'tableVar'), 'Should contain tableVar')
-   assert(string.find(result, '{ ... }'), 'Should show table placeholder')
    assert(string.find(result, 'funcVar'), 'Should contain funcVar')
-   assert(string.find(result, '<function>'), 'Should show function placeholder')
 end
 
 -----------------------------------------------------------------------------------------------------------------------

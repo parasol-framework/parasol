@@ -3,7 +3,9 @@
 // #included from ir_emitter.cpp
 
 //********************************************************************************************************************
-// Emit bytecode for a plain assignment, storing values into one or more target lvalues.
+// Emit bytecode for a plain assignment, storing values into one or more target lvalues.  NB: This generic function
+// exists over the local/global specific implementations because of the need to handle complex scenarios
+// involving mixed scope variables on the LHS.
 
 ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAssignment> targets, const ExprNodeList& values)
 {
@@ -40,12 +42,21 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
       this->lex_state.assign_adjust(nvars.raw(), nexps.raw(), &tail);
       this->lex_state.var_add(nvars);
 
-      // Update binding table
+      // Update binding table and set fixed_type from initialisers
       BCReg base = BCReg(this->func_state.nactvar - nvars.raw());
       for (BCReg i = BCReg(0); i < nvars; ++i) {
          PreparedAssignment& target = targets[i.raw()];
          if (target.pending_symbol) {
             this->update_local_binding(target.pending_symbol, base + i);
+
+            // Infer type from initialiser expression (same logic as emit_local_decl_stmt)
+            if (i.raw() < values.size()) {
+               FluidType inferred = infer_expression_type(*values[i.raw()]);
+               if (inferred != FluidType::Unknown and inferred != FluidType::Any and inferred != FluidType::Nil) {
+                  VarInfo* info = &this->func_state.var_get(base.raw() + i.raw());
+                  info->fixed_type = inferred;
+               }
+            }
          }
       }
 
@@ -108,6 +119,15 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
             this->lex_state.var_new(BCReg(0), target.pending_symbol, target.pending_line, target.pending_column);
             this->lex_state.var_add(BCReg(1));
             BCReg local_slot = BCReg(this->func_state.nactvar - 1);
+
+            // Infer type from initialiser expression
+            if (i < values.size()) {
+               FluidType inferred = infer_expression_type(*values[i]);
+               if (inferred != FluidType::Unknown and inferred != FluidType::Any and inferred != FluidType::Nil) {
+                  VarInfo* info = &this->func_state.var_get(local_slot.raw());
+                  info->fixed_type = inferred;
+               }
+            }
 
             // If the value isn't already at the local slot, move it
             if (value_slot.raw() != local_slot.raw()) {

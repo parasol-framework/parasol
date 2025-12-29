@@ -367,6 +367,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunction
    this->materialise_to_reg(fn, slot, "local function literal");
    VarInfo &var_info = this->func_state.var_get(this->func_state.nactvar - 1);
    var_info.startpc = this->func_state.pc;
+   var_info.fixed_type = FluidType::Func;  // Function declarations have known type
    if (Payload.name.symbol and not Payload.name.is_blank) this->update_local_binding(Payload.name.symbol, slot);
 
    // Copy function return types to VarInfo for compile-time type checking at call sites
@@ -446,6 +447,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload
       this->materialise_to_reg(fn, slot, "function literal");
       VarInfo &var_info = this->func_state.var_get(this->func_state.nactvar - 1);
       var_info.startpc = this->func_state.pc;
+      var_info.fixed_type = FluidType::Func;  // Function declarations have known type
       this->update_local_binding(symbol, slot);
 
       // Copy function return types to VarInfo for compile-time type checking at call sites
