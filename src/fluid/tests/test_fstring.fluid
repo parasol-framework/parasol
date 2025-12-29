@@ -120,6 +120,45 @@ end
    assert(result is "Tab:\tNewline:\nDone", "Escape sequences failed")
 end
 
+@Test function HexEscapeSequences()
+   -- Test hexadecimal escape sequences in f-string literal parts
+   result = f"Hex: \x48\x65\x6C\x6C\x6F"  -- "Hello"
+   assert(result is "Hex: Hello", "Hex escape sequences failed: " .. tostring(result))
+end
+
+@Test function UnicodeEscapeSequences()
+   -- Test Unicode escape sequences in f-string literal parts
+   result = f"Unicode: \u{48}\u{65}\u{6C}\u{6C}\u{6F}"  -- "Hello"
+   assert(result is "Unicode: Hello", "Unicode escape sequences failed: " .. tostring(result))
+end
+
+@Test function DecimalEscapeSequences()
+   -- Test decimal escape sequences in f-string literal parts
+   result = f"Decimal: \072\101\108\108\111"  -- "Hello"
+   assert(result is "Decimal: Hello", "Decimal escape sequences failed: " .. tostring(result))
+end
+
+@Test function NewlineContinuation()
+   -- Test newline continuation in f-string literal parts
+   result = f"Line1\
+Line2"
+   assert(result is "Line1\nLine2", "Newline continuation failed: " .. tostring(result))
+end
+
+@Test function MixedEscapeSequences()
+   -- Test mixing different escape types in f-string literal parts
+   name = "World"
+   result = f"Hi \x48ello\t{name}\n\u{44}one"
+   assert(result is "Hi Hello\tWorld\nDone", "Mixed escape sequences failed: " .. tostring(result))
+end
+
+@Test function EscapeSequencesWithInterpolation()
+   -- Test escape sequences combined with interpolation
+   value = 42
+   result = f"Value:\t{value}\nNext:\x41"  -- A = 0x41
+   assert(result is "Value:\t42\nNext:A", "Escape sequences with interpolation failed: " .. tostring(result))
+end
+
 @Test function StrayClosingBrace()
    -- Stray } should be treated as literal
    result = f"Stray } here"
