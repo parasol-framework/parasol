@@ -144,6 +144,8 @@ ERRDEF(XBLANKREAD, "cannot read blank identifier " LUA_QL("_"))
 ERRDEF(XLUNDEF,    "undefined label " LUA_QS)
 ERRDEF(XLDUP,      "duplicate label " LUA_QS)
 ERRDEF(XGSCOPE,    "<goto %s> jumps into the scope of local " LUA_QS)
+ERRDEF(XFSTR_EMPTY, "empty interpolation in f-string")
+ERRDEF(XFSTR_BRACE, "unclosed brace in f-string interpolation")
 
 // Bytecode reader errors.
 ERRDEF(BCFMT,   "cannot load incompatible bytecode")

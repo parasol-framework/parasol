@@ -8,6 +8,7 @@
 #include <cctype>
 #include <cmath>
 #include <concepts>
+#include <string>
 #include <string_view>
 
 #include "lj_obj.h"
@@ -354,7 +355,7 @@ namespace {
    }
 } // anonymous namespace
 
-static void lex_string(LexState *State, TValue* tv)
+static void lex_string(LexState *State, TValue *TV)
 {
    LexChar delim = State->c;  // Delimiter is '\'' or '"'.
    lex_savenext(State);
@@ -365,7 +366,7 @@ static void lex_string(LexState *State, TValue* tv)
          lj_lex_error(State, TK_eof, ErrMsg::XSTR);
          // In diagnose mode, return synthetic empty string and exit
          if (State->diagnose_mode) {
-            setstrV(State->L, tv, State->empty_string_constant);
+            setstrV(State->L, TV, State->empty_string_constant);
             return;
          }
          continue;
@@ -375,7 +376,7 @@ static void lex_string(LexState *State, TValue* tv)
          lj_lex_error(State, TK_string, ErrMsg::XSTR);
          // In diagnose mode, return synthetic empty string and exit
          if (State->diagnose_mode) {
-            setstrV(State->L, tv, State->empty_string_constant);
+            setstrV(State->L, TV, State->empty_string_constant);
             return;
          }
          continue;
@@ -443,7 +444,233 @@ err_xesc:
 
    lex_savenext(State);  // Skip trailing delimiter.
    auto str_content = std::string_view(State->sb.b + 1, sbuflen(&State->sb) - 2);
-   setstrV(State->L, tv, State->keepstr(str_content));
+   setstrV(State->L, TV, State->keepstr(str_content));
+}
+
+//********************************************************************************************************************
+// F-string interpolation support
+
+static LexToken lex_scan(LexState *State, TValue *TV);
+namespace {
+   // Create a buffered token with no value
+   LexState::BufferedToken make_buffered_token(LexState *State, LexToken Tok, BCLine Line, BCLine Col, size_t Offset) {
+      LexState::BufferedToken bt;
+      bt.token = Tok;
+      setnilV(&bt.value);
+      bt.line = Line;
+      bt.column = Col;
+      bt.offset = Offset;
+      return bt;
+   }
+
+   // Create a buffered string token
+   LexState::BufferedToken make_string_token(LexState *State, std::string_view content, BCLine Line, BCLine Col, size_t Offset) {
+      LexState::BufferedToken bt;
+      bt.token = TK_string;
+      GCstr *s = State->keepstr(content);
+      setstrV(State->L, &bt.value, s);
+      bt.line = Line;
+      bt.column = Col;
+      bt.offset = Offset;
+      return bt;
+   }
+
+   // Create a buffered name/identifier token
+   LexState::BufferedToken make_name_token(LexState *State, std::string_view name, BCLine Line, BCLine Col, size_t Offset) {
+      LexState::BufferedToken bt;
+      GCstr *s = State->keepstr(name);
+      bt.token = (s->reserved > 0) ? (TK_OFS + s->reserved) : TK_name;
+      setstrV(State->L, &bt.value, s);
+      bt.line = Line;
+      bt.column = Col;
+      bt.offset = Offset;
+      return bt;
+   }
+
+   // Flush pending literal content to the token buffer
+   void fstring_flush_literal(LexState *State, size_t Offset, bool &NeedConcat) {
+      if (sbuflen(&State->sb) > 0) {
+         if (NeedConcat) {
+            State->buffered_tokens.push_back(
+               make_buffered_token(State, TK_concat, State->linenumber,
+                  BCLine(State->current_offset - State->line_start_offset), Offset));
+         }
+         State->buffered_tokens.push_back(
+            make_string_token(State, std::string_view(State->sb.b, sbuflen(&State->sb)),
+               State->linenumber, BCLine(State->current_offset - State->line_start_offset), Offset));
+         lj_buf_reset(&State->sb);
+         NeedConcat = true;
+      }
+   }
+
+   // Scan an expression using the main lexer and push tokens to the buffer
+   // Returns true if expression had content, false if empty
+   bool fstring_scan_expression(LexState *State, size_t Offset, bool &NeedConcat) {
+      BCLine expr_line = State->linenumber;
+      BCLine expr_col = BCLine(State->current_offset - State->line_start_offset);
+
+      // Add concat operator if needed
+      if (NeedConcat) {
+         State->buffered_tokens.push_back(make_buffered_token(State, TK_concat, expr_line, expr_col, Offset));
+      }
+
+      // Add (tostring( wrapper
+      State->buffered_tokens.push_back(make_buffered_token(State, '(', expr_line, expr_col, Offset));
+      State->buffered_tokens.push_back(make_name_token(State, "tostring", expr_line, expr_col, Offset));
+      State->buffered_tokens.push_back(make_buffered_token(State, '(', expr_line, expr_col, Offset));
+
+      // Track where expression tokens start in the buffer
+      size_t expr_start = State->buffered_tokens.size();
+
+      // Scan tokens using the main lexer until we hit the closing }
+      int brace_depth = 1;  // We've already consumed the opening {
+
+      while (brace_depth > 0) {
+         TValue expr_tv;
+         LexToken tok = lex_scan(State, &expr_tv);
+
+         if (tok IS TK_eof) {
+            lj_lex_error(State, TK_string, ErrMsg::XFSTR_BRACE);
+            // Remove the (tostring( tokens we added
+            while (State->buffered_tokens.size() > expr_start - 3) {
+               State->buffered_tokens.pop_back();
+            }
+            return false;
+         }
+
+         if (tok IS '{') { // Track brace depth
+            brace_depth++;
+         }
+         else if (tok IS '}') {
+            brace_depth--;
+            if (brace_depth IS 0) break;  // End of expression, don't add the }
+         }
+
+         // Push token to buffer
+         LexState::BufferedToken bt;
+         bt.token = tok;
+         copyTV(State->L, &bt.value, &expr_tv);
+         bt.line = State->current_token_line;
+         bt.column = State->current_token_column;
+         bt.offset = State->current_token_offset;
+         State->buffered_tokens.push_back(bt);
+      }
+
+      // Check if expression was empty (only whitespace/comments)
+      bool got_tokens = State->buffered_tokens.size() > expr_start;
+      if (not got_tokens) {
+         lj_lex_error(State, TK_string, ErrMsg::XFSTR_EMPTY);
+         // Add nil as placeholder in diagnose mode
+         if (State->diagnose_mode) {
+            State->buffered_tokens.push_back(make_name_token(State, "nil", expr_line, expr_col, Offset));
+         }
+      }
+
+      // Add )) closing wrapper
+      State->buffered_tokens.push_back(make_buffered_token(State, ')', State->linenumber, BCLine(State->current_offset - State->line_start_offset), Offset));
+      State->buffered_tokens.push_back(make_buffered_token(State, ')', State->linenumber, BCLine(State->current_offset - State->line_start_offset), Offset));
+
+      NeedConcat = true;
+      return got_tokens;
+   }
+} // anonymous namespace
+
+// Parse an f-string and emit tokens for the concatenation expression
+
+static LexToken lex_fstring(LexState *State, TValue *TV)
+{
+   size_t fstring_offset = State->current_offset;
+
+   LexChar delim = State->c;  // '"' or '\''
+   lex_next(State);  // Skip opening delimiter
+
+   lj_buf_reset(&State->sb);
+   bool has_expressions = false;
+   bool need_concat = false;
+
+   while (State->c != delim) {
+      if (State->c IS LEX_EOF or lex_iseol(State->c)) {
+         lj_lex_error(State, TK_eof, ErrMsg::XSTR);
+         if (State->diagnose_mode) {
+            setstrV(State->L, TV, State->intern_empty_string());
+            return TK_string;
+         }
+         continue;
+      }
+
+      if (State->c IS '{') {
+         lex_next(State);
+         if (State->c IS '{') { // Escaped brace: {{ -> {
+            lex_savenext(State);
+            continue;
+         }
+
+         // Flush any pending literal content
+         fstring_flush_literal(State, fstring_offset, need_concat);
+
+         // Scan the expression using the main lexer
+         fstring_scan_expression(State, fstring_offset, need_concat);
+         has_expressions = true;
+      }
+      else if (State->c IS '}') {
+         lex_next(State);
+         if (State->c IS '}') { // Escaped brace: }} -> }
+            lex_savenext(State);
+         }
+         else { // Stray } - treat as literal
+            lex_save(State, '}');
+         }
+      }
+      else if (State->c IS '\\') {
+         // Handle standard escape sequences
+         LexChar c = lex_next(State);
+         switch (c) {
+            case 'a': c = '\a'; break;
+            case 'b': c = '\b'; break;
+            case 'f': c = '\f'; break;
+            case 'n': c = '\n'; break;
+            case 'r': c = '\r'; break;
+            case 't': c = '\t'; break;
+            case 'v': c = '\v'; break;
+            case '\\': case '"': case '\'': break;
+            case '{': case '}': break;  // Allow escaping braces too
+            default:
+               // For other characters, include as-is (or handle hex/unicode if needed)
+               break;
+         }
+         lex_save(State, c);
+         lex_next(State);
+      }
+      else lex_savenext(State);
+   }
+
+   lex_next(State);  // Skip closing delimiter
+
+   // Flush any remaining literal content
+   fstring_flush_literal(State, fstring_offset, need_concat);
+
+   // Optimisation: No expressions? Return as plain string
+   if (not has_expressions) {
+      if (State->buffered_tokens.empty()) setstrV(State->L, TV, State->intern_empty_string());
+      else { // Get the single string token we pushed
+         auto first_token = State->buffered_tokens.front();
+         State->buffered_tokens.pop_front();
+         copyTV(State->L, TV, &first_token.value);
+      }
+      return TK_string;
+   }
+
+   // Return the first token from the buffer
+
+   if (State->buffered_tokens.empty()) { // This shouldn't happen, but handle it
+      setstrV(State->L, TV, State->intern_empty_string());
+      return TK_string;
+   }
+
+   auto first_token = State->buffered_tokens.front();
+   State->buffered_tokens.pop_front();
+   copyTV(State->L, TV, &first_token.value);
+   return first_token.token;
 }
 
 //********************************************************************************************************************
@@ -700,6 +927,11 @@ static LexToken lex_scan(LexState *State, TValue *tv)
          // Check for array<type> syntax before interning the string
          if (str_view IS "array" and State->c IS '<') {
             return lex_array_typed(State, tv);
+         }
+
+         // Check for f-string prefix: f"..." or f'...'
+         if (str_view IS "f" and (State->c IS '"' or State->c IS '\'')) {
+            return lex_fstring(State, tv);
          }
 
          GCstr *s = State->keepstr(str_view);
