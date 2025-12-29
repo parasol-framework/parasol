@@ -2054,7 +2054,7 @@ static ERR GET_Statement(extXML *Self, STRING *Value)
       }
       else return log.warning(ERR::NotFound);
    }
-   else return log.warning(ERR::NotFound);
+   else return log.warning(ERR::NoData); // NB: If there are tags, tag 0 should always exist, so this indicates a parsing issue
 
    if ((*Value = pf::strclone(buffer.str()))) {
       return ERR::Okay;

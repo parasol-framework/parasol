@@ -161,6 +161,13 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
 {
    pf::Log log(__FUNCTION__);
 
+   // Ensure that the base-class is loaded first, if applicable
+   if (MetaClass->BaseClassID != MetaClass->ClassID) {
+      if (auto base_class = FindClass(MetaClass->BaseClassID)) {
+         auto_load_include(Lua, base_class);
+      }
+   }
+
    CSTRING module_name;
    if (auto error = MetaClass->get(FID_Module, module_name); error IS ERR::Okay) {
       log.trace("Class: %s, Module: %s", MetaClass->ClassName, module_name);

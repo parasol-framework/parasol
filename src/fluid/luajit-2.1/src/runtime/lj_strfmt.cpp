@@ -53,7 +53,11 @@ SFormat LJ_FASTCALL lj_strfmt_parse(FormatState* fs)
                else break;
             }
 
-            if ((uint32_t)*p - '0' < 10) {  // Parse width.
+            if (*p == '*') {  // Width from argument.
+               sf |= STRFMT_F_WIDTH_ARG;
+               p++;
+            }
+            else if ((uint32_t)*p - '0' < 10) {  // Parse width.
                uint32_t width = (uint32_t)*p++ - '0';
                if ((uint32_t)*p - '0' < 10) width = (uint32_t)*p++ - '0' + width * 10;
                sf |= (width << STRFMT_SH_WIDTH);
@@ -62,11 +66,19 @@ SFormat LJ_FASTCALL lj_strfmt_parse(FormatState* fs)
             if (*p == '.') {  // Parse precision.
                uint32_t prec = 0;
                p++;
-               if ((uint32_t)*p - '0' < 10) {
+               if (*p == '*') {  // Precision from argument.
+                  sf |= STRFMT_F_PREC_ARG;
+                  p++;
+               }
+               else if ((uint32_t)*p - '0' < 10) {
                   prec = (uint32_t)*p++ - '0';
                   if ((uint32_t)*p - '0' < 10) prec = (uint32_t)*p++ - '0' + prec * 10;
+                  sf |= ((prec + 1) << STRFMT_SH_PREC);
                }
-               sf |= ((prec + 1) << STRFMT_SH_PREC);
+               else {
+                  // Just "." with no number means precision of 0
+                  sf |= (1 << STRFMT_SH_PREC);
+               }
             }
 
             // Parse conversion.
@@ -384,6 +396,29 @@ int lj_strfmt_putarg(lua_State* L, SBuf* sb, int arg, int retry)
             strdata(lj_str_new(L, fs.str, fs.len)));
       }
       else {
+         // Handle dynamic width from argument
+         if ((sf & STRFMT_F_WIDTH_ARG)) {
+            arg++;
+            if (arg > narg)
+               lj_err_arg(L, arg, ErrMsg::NOVAL);
+            int32_t width = lj_lib_checkint(L, arg);
+            if (width < 0) {
+               sf |= STRFMT_F_LEFT;  // Negative width means left-justify
+               width = -width;
+            }
+            if (width > 255) width = 255;
+            sf = (sf & ~(255u << STRFMT_SH_WIDTH)) | ((uint32_t)width << STRFMT_SH_WIDTH);
+         }
+         // Handle dynamic precision from argument
+         if ((sf & STRFMT_F_PREC_ARG)) {
+            arg++;
+            if (arg > narg)
+               lj_err_arg(L, arg, ErrMsg::NOVAL);
+            int32_t prec = lj_lib_checkint(L, arg);
+            if (prec < 0) prec = 0;  // Negative precision is treated as missing
+            if (prec > 254) prec = 254;
+            sf = (sf & ~(255u << STRFMT_SH_PREC)) | (((uint32_t)prec + 1) << STRFMT_SH_PREC);
+         }
          TValue* o = &L->base[arg++];
          if (arg > narg)
             lj_err_arg(L, arg, ErrMsg::NOVAL);
@@ -561,6 +596,23 @@ const char* lj_strfmt_pushvf(lua_State* L, const char* fmt, va_list argp)
    GCstr* str;
    lj_strfmt_init(&fs, fmt, (MSize)strlen(fmt));
    while ((sf = lj_strfmt_parse(&fs)) != STRFMT_EOF) {
+      // Handle dynamic width from argument
+      if ((sf & STRFMT_F_WIDTH_ARG)) {
+         int32_t width = va_arg(argp, int32_t);
+         if (width < 0) {
+            sf |= STRFMT_F_LEFT;
+            width = -width;
+         }
+         if (width > 255) width = 255;
+         sf = (sf & ~(255u << STRFMT_SH_WIDTH)) | ((uint32_t)width << STRFMT_SH_WIDTH);
+      }
+      // Handle dynamic precision from argument
+      if ((sf & STRFMT_F_PREC_ARG)) {
+         int32_t prec = va_arg(argp, int32_t);
+         if (prec < 0) prec = 0;
+         if (prec > 254) prec = 254;
+         sf = (sf & ~(255u << STRFMT_SH_PREC)) | (((uint32_t)prec + 1) << STRFMT_SH_PREC);
+      }
       switch (STRFMT_TYPE(sf)) {
       case STRFMT_LIT:  lj_buf_putmem(sb, fs.str, fs.len); break;
       case STRFMT_INT:  lj_strfmt_putfxint(sb, sf, va_arg(argp, int32_t)); break;
@@ -569,7 +621,21 @@ const char* lj_strfmt_pushvf(lua_State* L, const char* fmt, va_list argp)
       case STRFMT_STR: {
          const char* s = va_arg(argp, const char*);
          if (s == nullptr) s = "(null)";
-         lj_buf_putmem(sb, s, (MSize)strlen(s));
+         if ((sf & (STRFMT_F_WIDTH_ARG | STRFMT_F_PREC_ARG)) or STRFMT_WIDTH(sf) or (STRFMT_PREC(sf) != (MSize)-1)) {
+            // Use formatted string output when width or precision is specified
+            MSize len = (MSize)strlen(s);
+            MSize prec = STRFMT_PREC(sf);
+            if (prec != (MSize)-1 and len > prec) len = prec;
+            MSize width = STRFMT_WIDTH(sf);
+            char* w = lj_buf_more(sb, width > len ? width : len);
+            if ((sf & STRFMT_F_LEFT)) w = lj_buf_wmem(w, s, len);
+            while (width-- > len) *w++ = ' ';
+            if (!(sf & STRFMT_F_LEFT)) w = lj_buf_wmem(w, s, len);
+            sb->w = w;
+         }
+         else {
+            lj_buf_putmem(sb, s, (MSize)strlen(s));
+         }
          break;
       }
       case STRFMT_CHAR: lj_buf_putb(sb, va_arg(argp, int)); break;
