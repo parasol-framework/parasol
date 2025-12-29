@@ -128,6 +128,9 @@ static void lex_newline(LexState *State)
    State->line_start_offset = State->current_offset;
 }
 
+// Forward declaration for error reporting without skip (used by synthetic token returns)
+static void lj_lex_error_no_skip(LexState *State, LexToken tok, ErrMsg em);
+
 //********************************************************************************************************************
 // Numeric literal scanning
 
@@ -201,6 +204,15 @@ static void lex_number(LexState *State, TValue* tv)
 #endif
 
    State->assert_condition(fmt IS STRSCAN_ERROR, "unexpected number format %d", fmt);
+
+   // In diagnose mode, report error without skipping and return synthetic value.
+   // The malformed number has already been consumed, so we continue from current position.
+   if (State->diagnose_mode) {
+      lj_lex_error_no_skip(State, TK_number, ErrMsg::XNUMBER);
+      setintV(tv, 0);
+      return;
+   }
+
    lj_lex_error(State, TK_number, ErrMsg::XNUMBER);
 }
 
@@ -231,7 +243,11 @@ static void lex_longstring(LexState *State, TValue* tv, int sep)
       switch (State->c) {
          case LEX_EOF:
             lj_lex_error(State, TK_eof, tv ? ErrMsg::XLSTR : ErrMsg::XLCOM);
-            break;
+            // In diagnose mode, return synthetic empty string and exit
+            if (State->diagnose_mode and tv) {
+               setstrV(State->L, tv, State->empty_string_constant);
+            }
+            return;
 
          case ']':
             if (lex_skipeq(State) IS sep) {
@@ -347,11 +363,21 @@ static void lex_string(LexState *State, TValue* tv)
       switch (State->c) {
       case LEX_EOF:
          lj_lex_error(State, TK_eof, ErrMsg::XSTR);
+         // In diagnose mode, return synthetic empty string and exit
+         if (State->diagnose_mode) {
+            setstrV(State->L, tv, State->empty_string_constant);
+            return;
+         }
          continue;
 
       case '\n':
       case '\r':
          lj_lex_error(State, TK_string, ErrMsg::XSTR);
+         // In diagnose mode, return synthetic empty string and exit
+         if (State->diagnose_mode) {
+            setstrV(State->L, tv, State->empty_string_constant);
+            return;
+         }
          continue;
 
       case '\\': {
@@ -730,6 +756,11 @@ static LexToken lex_scan(LexState *State, TValue *tv)
             }
             if (sep IS -1) return '[';
             lj_lex_error(State, TK_string, ErrMsg::XLDELIM);
+            // In diagnose mode, return synthetic empty string
+            if (State->diagnose_mode) {
+               setstrV(State->L, tv, State->empty_string_constant);
+               return TK_string;
+            }
             continue;
          }
 
@@ -1370,6 +1401,45 @@ void LexState::lex_match(LexToken What, LexToken Who, BCLine Line)
       .column = this->lookahead_column,
       .offset = this->lookahead_offset
    };
+}
+
+//********************************************************************************************************************
+// Error reporting (no skip) - for use when returning synthetic tokens
+//
+// In diagnose mode, records the error but does NOT skip to a sync point. Use this when the lexer has already
+// consumed the bad token and will return a synthetic value, allowing parsing to continue from the current position.
+
+static void lj_lex_error_no_skip(LexState *State, LexToken tok, ErrMsg em)
+{
+   const char* tokstr = nullptr;
+   if (tok) {
+      if (tok IS TK_name or tok IS TK_string or tok IS TK_number) {
+         lex_save(State, '\0');
+         tokstr = State->sb.b;
+      }
+      else tokstr = State->token2str(tok);
+   }
+
+   if (State->diagnose_mode) {
+      ParserDiagnostic diag;
+      diag.severity = ParserDiagnosticSeverity::Error;
+      diag.code = ParserErrorCode::UnexpectedToken;
+      if (tokstr) diag.message = std::string(err2msg(em)) + " near '" + tokstr + "'";
+      else diag.message = err2msg(em);
+
+      SourceSpan error_span = { State->linenumber, State->current_token_column, State->current_token_offset };
+      diag.token = Token::from_span(error_span, TokenKind::Unknown);
+
+      if (State->active_context) State->active_context->diagnostics().report(diag);
+      else {
+         if (not State->L->parser_diagnostics) State->L->parser_diagnostics = new ParserDiagnostics();
+         auto *diagnostics = (ParserDiagnostics*)State->L->parser_diagnostics;
+         diagnostics->report(diag);
+      }
+      return;  // Don't skip, don't set had_lex_error - caller returns synthetic token
+   }
+
+   lj_err_lex(State->L, State->chunkname, tokstr, State->linenumber, em, nullptr);
 }
 
 //********************************************************************************************************************
