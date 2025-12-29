@@ -621,7 +621,7 @@ const char* lj_strfmt_pushvf(lua_State* L, const char* fmt, va_list argp)
       case STRFMT_STR: {
          const char* s = va_arg(argp, const char*);
          if (s == nullptr) s = "(null)";
-         if ((sf & (STRFMT_F_WIDTH_ARG | STRFMT_F_PREC_ARG)) or STRFMT_WIDTH(sf) or STRFMT_PREC(sf) != (MSize)-1) {
+         if ((sf & (STRFMT_F_WIDTH_ARG | STRFMT_F_PREC_ARG)) or STRFMT_WIDTH(sf) or (STRFMT_PREC(sf) != (MSize)-1)) {
             // Use formatted string output when width or precision is specified
             MSize len = (MSize)strlen(s);
             MSize prec = STRFMT_PREC(sf);
