@@ -1,22 +1,57 @@
+-- JSON support is made available as an extension of the XML class
+-- Alternatively the native JSON module can be used by script writers.
 
-glJSON = '{ "string":"foo bar",\n' ..
-         '  "number":12345,\n' ..
-         '  "float":12345.54321,\n' ..
-         '  "escaped":"Return:\\r\\n,Tab:\\t,Quote:\\"",\n' ..
-         '  "null":null,\n' ..
-         '  "array-int":[ 0, 1, 2, 3, 4 ],\n' ..
-         '  "array-str":[ "A", "B", "C" ],\n' ..
-         '  "array-obj":[ { "ABC":"XYZ" },\n' ..
-         '                { "DEF":"XYZ" } ],\n' ..
-         '  "an-object":{ "field1":"value1", "field2":2 }\n' ..
-         '}\n'
-
+   json = require 'json'
    mJson = mod.load('json')
 
-@Test function testLoadJSON()
+glJSON = [[
+{ "string":  "foo bar",
+  "number":  12345,
+  "float":   12345.54321,
+  "null":    null,
+  "array-int":[ 0, 1, 2, 3, 4 ],
+  "array-str":[ "A", "B", "C" ],
+  "array-obj":[ { "ABC":"XYZ" }, { "DEF":"XYZ" } ],
+  "an-object":{ "field1":"value1", "field2":2 }
+}
+]]
+
+--[[ Expected XML structure:
+<item type="object">
+<item name="string" type="string">foo bar</item>
+<item name="number" type="number">12345</item>
+<item name="float" type="number">12345.54321</item>
+<item name="null" type="null"/>
+<item name="array-int" type="array" subtype="integer"/>
+<value>0</value><value>1</value><value>2</value><value>3</value><value>4</value>
+<item name="array-str" type="array" subtype="string"/>
+<value>A</value><value>B</value><value>C</value>
+<item name="array-obj" type="array" subtype="object">
+<item type="object"><item name="ABC" type="string">XYZ</item></item>
+<item type="object"><item name="DEF" type="string">XYZ</item></item></item>
+<item name="an-object" type="object"><item name="field1" type="string">value1</item><item name="field2" type="number">2</item></item>
+</item>
+--]]
+
+glEscape = '{ "escaped": "Return:\n,Tab:\t,Quote:\\"" }'
+
+@Test function LoadJSON()
    print('Interpreting JSON statement:\n' .. glJSON)
+   -- Create an XML object from the JSON text.
+   xml = obj.new('json', { statement=glJSON, flags=XMF_READABLE } )
 
-   json = obj.new('json', { statement=glJSON, flags='!READABLE' } )
+   tags = xml.tags
+   assert(tags, "No tags found in XML object.")
+   assert(#tags is 1, "Expected 1 top-level tag, found " .. #tags .. ".")
 
-   print(json.statement)
+   err, str = xml.mtSerialise(0, 0)
+   assert(err is ERR_Okay, "Serialise() failed.")
+   assert(str:find('>foo bar<'), "Expected string value not found in serialised XML.")
+   assert(str:find('"array%-obj"'), "Expected array-object tag not found in serialised XML.")
+   assert(str:find('>XYZ<'), "Expected object field value not found in serialised XML.")
+
+   statement = xml.statement
+   assert(statement, "No statement found in XML object.")
+   assert(#statement > 320, "Statement length too short.")
+
 end
