@@ -563,7 +563,13 @@ void lj_meta_istype(lua_State *L, BCREG ra, BCREG tp)
    if (LJ_DUALNUM and tp IS ~LJ_TNUMX) lj_lib_checkint(L, ra);
    else if (tp IS ~LJ_TNUMX + 1) lj_lib_checknum(L, ra);
    else if (tp IS ~LJ_TSTR) lj_lib_checkstr(L, ra);
-   else lj_err_argtype(L, ra, lj_obj_itypename[tp]);
+   else if (tp IS ~LJ_TTRUE) {
+      // Boolean check: accept both true and false
+      // LJ_TFALSE = ~1, LJ_TTRUE = ~2
+      TValue* o = L->base + ra - 1;
+      if (not tvisbool(o)) lj_err_assigntype(L, int(ra) - 1, "boolean");
+   }
+   else lj_err_assigntype(L, int(ra) - 1, lj_obj_itypename[tp]);
 }
 
 //********************************************************************************************************************
