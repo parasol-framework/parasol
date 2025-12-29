@@ -1,7 +1,5 @@
 -- A compact pure-Lua JSON library originally written by @tylerneylon for the public domain.
 --
--- The main functions are: json.encode, json.decode.
---
 -- ## json.encode(Object, [ErrorCallback])
 --
 -- This expects the following to be true of any tables being encoded:
@@ -9,202 +7,164 @@
 --    spec.
 --  * They are not recursive. Such a structure cannot be specified in json.
 --
--- A Lua table is considered to be an array if and only if its set of keys is a consecutive sequence of integers
--- starting at 0. Arrays are encoded like so: `[2, 3, false, "hi"]`. Any other type of Lua table is encoded as a json
--- object, encoded like so: `{"key1": 2, "key2": false}`.
+-- Native Fluid arrays are encoded as JSON arrays.
 --
--- Native Fluid arrays (created with array.new() or array.of()) are fully supported and will be encoded as JSON arrays.
---
--- Because the Lua nil value cannot be a key, and as a table value is considerd equivalent to a missing key, there is no
--- way to express the json "null" value in a Lua table. The only way this will output "null" is if your entire input obj
+-- Because the nil value cannot be a key, and as a table value is considered equivalent to a missing key, there is no
+-- way to express the json "null" value in a table. The only way this will output "null" is if your entire input obj
 -- is nil itself.
---
--- An empty Lua table, {}, could be considered either a json object or array - it's an ambiguous edge case. We choose to
--- treat this as an object as it is the more general type.
---
--- To be clear, none of the above considerations is a limitation of this code.  Rather, it is what we get when we
--- completely observe the json specification for as arbitrary a Lua object as json is capable of expressing.
 --
 -- ## json.decode:
 --
 -- This function decodes json, with the exception that it does not pay attention to \u-escaped unicode code points in
 -- strings.
 --
--- It is difficult for Lua to return null as a value. In order to prevent the loss of keys with a null value in a json
+-- It is difficult to return null as a value. In order to prevent the loss of keys with a null value in a json
 -- string, this function uses the one-off table value json.null (which is just an empty table) to indicate null values.
 -- This way you can check if a value is null with the conditional `val is json.null`.
 --
--- If you have control over the data and are using Lua, I would recommend just avoiding null values in your data to begin
--- with.
+-- If you have control over the data, avoid null values in your data to begin with.
 
-   local json = { }
+   local json = { ['null'] = {} }
+   in_char  = array<string> { '\\', '"', '/', '\b', '\f', '\n', '\r', '\t' }
+   out_char = array<string> { '\\', '"', '/',  'b',  'f',  'n',  'r',  't' }
 
-do
-   -- Internal functions.
+function escape_str(String:str):str
+   for i, c in in_char do
+      String = String:gsub(c, '\\' .. out_char[i])
+   end
+   return String
+end
 
-   function kind_of(obj)
-      -- Native Fluid arrays are always treated as arrays
-      if type(obj) is 'array' then return 'array' end
-      if type(obj) != 'table' then return type(obj) end
-      -- Count total elements
-      count = 0
-      for _ in pairs(obj) do
-         count++
+-- Returns pos, did_find; there are two cases:
+-- 1. Delimiter found: pos = pos after leading space + delim; did_find = true.
+-- 2. Delimiter not found: pos = pos after leading space;     did_find = false.
+-- This throws an error if ThrowIfMissing is true and the delim is not found.
+
+function skip_delim(String:str, Pos:num, Delimiter:str, ThrowIfMissing:bool):<num, bool>
+   Pos += #String:match('^%s*', Pos)
+   if String:sub(Pos, Pos+1) != Delimiter then
+      if ThrowIfMissing then
+         error('Expected ' .. Delimiter .. ' near position ' .. Pos)
       end
-      -- Empty table is treated as a table (object)
-      if count is 0 then return 'table' end
-      for i = 0, count - 1 do
-         if obj[i] is nil then return 'table' end
-      end
-      return 'array'
+      return Pos, false
    end
+   return Pos + 1, true
+end
 
-   function escape_str(s:str):str
-      in_char  = {'\\', '"', '/', '\b', '\f', '\n', '\r', '\t'}
-      out_char = {'\\', '"', '/',  'b',  'f',  'n',  'r',  't'}
-      for i, c in ipairs(in_char) do
-         s = s:gsub(c, '\\' .. out_char[i])
-      end
-      return s
-   end
+-- Expects the given pos to be the first character after the opening quote.
+-- Returns val, pos; the returned pos is after the closing quote character.
 
-   -- Returns pos, did_find; there are two cases:
-   -- 1. Delimiter found: pos = pos after leading space + delim; did_find = true.
-   -- 2. Delimiter not found: pos = pos after leading space;     did_find = false.
-   -- This throws an error if err_if_missing is true and the delim is not found.
+function decode_str_val(String:str, pos:num, val:str):<any, num>
+   val = val or ''
+   early_end_error = 'End of input found while parsing string.'
+   assert(pos < #String, early_end_error)
+   c = String:sub(pos, pos+1)
+   if c is '"'  then return val, pos + 1 end
+   if c != '\\' then return decode_str_val(String, pos + 1, val .. c) end
+   -- We must have a \ character.
+   esc_map = {b = '\b', f = '\f', n = '\n', r = '\r', t = '\t'}
+   nextc = String:sub(pos + 1, pos + 2)
+   assert(nextc, early_end_error)
+   return decode_str_val(String, pos + 2, val .. (esc_map[nextc] or nextc))
+end
 
-   function skip_delim(str:str, pos:num, delim:str, err_if_missing:bool):<num, bool>
-      pos += #str:match('^%s*', pos)
-      if str:sub(pos, pos+1) != delim then
-         if err_if_missing then
-            error('Expected ' .. delim .. ' near position ' .. pos)
-         end
-         return pos, false
-      end
-      return pos + 1, true
-   end
+-- Returns val, pos; the returned pos is after the number's final character.
 
-   -- Expects the given pos to be the first character after the opening quote.
-   -- Returns val, pos; the returned pos is after the closing quote character.
+function decode_num_val(String:str, pos:num):<any, num>
+   num_str = String:match('^-?%d+%.?%d*[eE]?[+-]?%d*', pos)
+   val = tonumber(num_str)
+   assert(val, 'Error parsing number at position ' .. pos .. '.')
+   return val, pos + #num_str
+end
 
-   function decode_str_val(str:str, pos:num, val:str):<str, num>
-      val = val or ''
-      early_end_error = 'End of input found while parsing string.'
-      assert(pos < #str, early_end_error)
-      c = str:sub(pos, pos+1)
-      if c is '"'  then return val, pos + 1 end
-      if c != '\\' then return decode_str_val(str, pos + 1, val .. c) end
-      -- We must have a \ character.
-      esc_map = {b = '\b', f = '\f', n = '\n', r = '\r', t = '\t'}
-      nextc = str:sub(pos + 1, pos + 2)
-      assert(nextc, early_end_error)
-      return decode_str_val(str, pos + 2, val .. (esc_map[nextc] or nextc))
-   end
+-- Public values and functions.
 
-   -- Returns val, pos; the returned pos is after the number's final character.
-
-   function decode_num_val(str:str, pos:num):<num, num>
-      num_str = str:match('^-?%d+%.?%d*[eE]?[+-]?%d*', pos)
-      val = tonumber(num_str)
-      assert(val, 'Error parsing number at position ' .. pos .. '.')
-      return val, pos + #num_str
-   end
-
-   -- Public values and functions.
-
-   function json.encode(obj:any, err_callback:func, as_key:bool):str
-      local kind = kind_of(obj)  -- This is 'array' if it's an array or type(obj) otherwise.
-      if kind is 'array' then
-         s = array<string>
-         if as_key then
-            local msg = 'Can\'t encode array as key.'
-            if err_callback then err_callback(msg) else error(msg) end
-         else
-            s:push('[')
-            for i, val in ipairs(obj) do
-               if i > 0 then s:push(', ') end
-               s:push(json.encode(val, err_callback))
-            end
-            s:push(']')
-         end
-         return s:join()
-      elseif kind is 'table' then
-         s = array<string>
-         if as_key then
-            local msg = 'Can\'t encode table as key.'
-            if err_callback then err_callback(msg) else error(msg) end
-         else
-            s:push('{')
-            for k, v in pairs(obj) do
-               if #s > 1 then s:push(', ') end  -- More than just the opening brace
-               s:push(json.encode(k, err_callback, true))
-               s:push(':')
-               s:push(json.encode(v, err_callback))
-            end
-            s:push('}')
-         end
-         return s:join()
-      elseif kind is 'string' then
-         return '"' .. escape_str(obj) .. '"'
-      elseif kind is 'number' then
-         if as_key then return '"' .. tostring(obj) .. '"' end
-         return tostring(obj)
-      elseif kind is 'boolean' then
-         return tostring(obj)
-      elseif kind is 'nil' then
-         return 'null'
-      elseif kind is 'function' then
-         return 'function'
+json.encode = function(Value:any, ErrorCallback:func, AsKey:bool):str
+   local kind = type(Value)
+   ErrorCallback ?= error
+   if kind is 'array' then
+      s = array<string>
+      if AsKey then
+         ErrorCallback('Can\'t encode array as key.')
       else
-         local msg = 'Unsupported type: ' .. kind .. '.'
-         if err_callback then return err_callback(msg) else error(msg) end
-         return ''
+         s:push('[')
+         for i, val in ipairs(Value) do
+            if i > 0 then s:push(', ') end
+            s:push(json.encode(val, ErrorCallback))
+         end
+         s:push(']')
       end
+      return s:join()
+   elseif kind is 'table' then
+      s = array<string>
+      if AsKey then
+         ErrorCallback('Can\'t encode table as key.')
+      else
+         s:push('{')
+         for k, v in pairs(Value) do
+            if #s > 1 then s:push(', ') end  -- More than just the opening brace
+            s:push(json.encode(k, ErrorCallback, true), ':', json.encode(v, ErrorCallback))
+         end
+         s:push('}')
+      end
+      return s:join()
+   elseif kind is 'string' then
+      return '"' .. escape_str(Value) .. '"'
+   elseif kind is 'number' then
+      if AsKey then return '"' .. tostring(Value) .. '"' end
+      return tostring(Value)
+   elseif kind is 'boolean' then
+      return tostring(Value)
+   elseif kind is 'nil' then
+      return 'null'
+   elseif kind is 'function' then
+      return 'function'
+   else
+      ErrorCallback('Unsupported type: ' .. kind .. '.')
+      return ''
    end
+end
 
-   json.null = {}  -- This is a one-off table to represent the null value.
-
-   function json.decode(str:str, pos:num, end_delim:str):<any, num>
-      pos = pos or 0
-      if pos >= #str then error('Reached unexpected end of input.') end
-      pos = pos + #str:match('^%s*', pos)  -- Skip whitespace
-      first = str:sub(pos, pos+1)
-      if first is '{' then  -- Parse an object.
-         local obj:table, key:any, delim_found = {}, true, true
-         pos++
-         while true do
-            key, pos = json.decode(str, pos, '}')
-            if not key then return obj, pos end
-            if not delim_found then error('Comma missing between object items.') end
-            pos = skip_delim(str, pos, ':', true)  -- true -> error if missing.
-            obj[key], pos = json.decode(str, pos)
-            pos, delim_found = skip_delim(str, pos, ',')
-         end
-      elseif first is '[' then  -- Parse an array.
-         local arr, val, delim_found = array<any>, true, true
-         pos++
-         while true do
-            val, pos = json.decode(str, pos, ']')
-            if not val then return arr, pos end -- NB: Distinction between false and nil is essential
-            if not delim_found then error('Comma missing between array items.') end
-            arr:push(val)
-            pos, delim_found = skip_delim(str, pos, ',')
-         end
-      elseif first is '"' then  -- Parse a string.
-         return decode_str_val(str, pos + 1)
-      elseif first is '-' or first:match('%d') then  -- Parse a number.
-         return decode_num_val(str, pos)
-      elseif first is end_delim then  -- End of an object or array.
-         return nil, pos + 1
-      else  -- Parse true, false, or null.
-         literals = {['true'] = true, ['false'] = false, ['null'] = json.null}
-         for lit_str, lit_val in pairs(literals) do
-            lit_end = pos + #lit_str
-            if str:sub(pos, lit_end) is lit_str then return lit_val, lit_end end
-         end
-         pos_info_str = 'position ' .. pos .. ': ' .. str:sub(pos, pos + 11)
-         error('Invalid json syntax starting at ' .. pos_info_str)
+json.decode = function(str:str, pos:num, EndToken:str):<any, num>
+   pos ?= 0
+   if pos >= #str then error('Reached unexpected end of input.') end
+   pos += #str:match('^%s*', pos)  -- Skip whitespace
+   first = str:sub(pos, pos+1)
+   if first is '{' then  -- Parse an object.
+      local map:table, key:any, delim_found = {}, true, true
+      pos++
+      while true do
+         key, pos = json.decode(str, pos, '}')
+         if not key then return map, pos end
+         if not delim_found then error('Comma missing between object items.') end
+         pos = skip_delim(str, pos, ':', true)  -- true -> error if missing.
+         map[key], pos = json.decode(str, pos)
+         pos, delim_found = skip_delim(str, pos, ',')
       end
+   elseif first is '[' then  -- Parse an array.
+      local arr:any, val:any, delim_found = array<any>, true, true
+      pos++
+      while true do
+         val, pos = json.decode(str, pos, ']')
+         if not val then return arr, pos end -- NB: Distinction between false and nil is essential
+         if not delim_found then error('Comma missing between array items.') end
+         arr:push(val)
+         pos, delim_found = skip_delim(str, pos, ',')
+      end
+   elseif first is '"' then  -- Parse a string.
+      return decode_str_val(str, pos + 1)
+   elseif first is '-' or first:match('%d') then  -- Parse a number.
+      return decode_num_val(str, pos)
+   elseif first is EndToken then  -- End of an object or array.
+      return nil, pos + 1
+   else  -- Parse true, false, or null.
+      literals = {['true'] = true, ['false'] = false, ['null'] = json.null}
+      for lit_str, lit_val in pairs(literals) do
+         lit_end = pos + #lit_str
+         if str:sub(pos, lit_end) is lit_str then return lit_val, lit_end end
+      end
+      pos_info_str = 'position ' .. pos .. ': ' .. str:sub(pos, pos + 11)
+      error('Invalid json syntax starting at ' .. pos_info_str)
    end
 end
 
