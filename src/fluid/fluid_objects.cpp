@@ -394,10 +394,6 @@ inline void build_read_table(object *Def)
       log.trace("$%.8x", uint32_t(class_id));
    }
    else if ((class_name = luaL_checkstring(Lua, 1))) {
-      if (class_name[0] IS '@') { // Deprecated
-         log.warning("Use of @ for allocating public objects is deprecated.");
-         class_name++;
-      }
       class_id = CLASSID(strihash(class_name));
       log.trace("%s, $%.8x", class_name, uint32_t(class_id));
    }
@@ -425,9 +421,9 @@ inline void build_read_table(object *Def)
          // Set fields against the object and initialise the object.  NOTE: Lua's table management code *does not*
          // preserve the order in which the fields were originally passed to the table.
 
-         ERR field_error  = ERR::Okay;
+         ERR field_error    = ERR::Okay;
          CSTRING field_name = nullptr;
-         int failed_type   = LUA_TNONE;
+         int failed_type    = LUA_TNONE;
          lua_pushnil(Lua);  // Access first key for lua_next()
          while (lua_next(Lua, 2) != 0) {
             if ((field_name = luaL_checkstring(Lua, -2))) {

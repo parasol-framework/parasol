@@ -40,6 +40,8 @@ typedef enum FormatType {
 #define STRFMT_F_SPACE   0x0800
 #define STRFMT_F_ALT   0x1000
 #define STRFMT_F_UPPER   0x2000
+#define STRFMT_F_WIDTH_ARG  0x4000  // Width comes from argument (*)
+#define STRFMT_F_PREC_ARG   0x8000  // Precision comes from argument (.*)
 
 // Format indicator fields.
 #define STRFMT_SH_WIDTH   16

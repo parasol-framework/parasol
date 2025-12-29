@@ -701,18 +701,16 @@ void LJ_FASTCALL lj_meta_typefix(lua_State *L, TValue *base, uint32_t count)
       if (tvisnil(val)) continue;
 
       // Determine the type from the value
+
       FluidType inferred;
-      if (tvisnumber(val)) {
-         inferred = FluidType::Num;
-      }
-      else {
-         inferred = lj_tag_to_fluid_type(itype(val));
-      }
+      if (tvisnumber(val)) inferred = FluidType::Num;
+      else inferred = lj_tag_to_fluid_type(itype(val));
 
       // Fix the type in the prototype
       // Note: This is a mutation of the prototype. For thread safety, this relies on
       // the fact that the write is atomic at the byte level and idempotent (same value
       // would be written by any thread inferring the same type).
+
       pt->result_types[pos] = inferred;
    }
 }
