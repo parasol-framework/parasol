@@ -2,14 +2,11 @@
 
 #include "lj_def.h"
 
+#include <unordered_map>
+
 FluidType parse_type_name(std::string_view Name)
 {
-   struct TypeName {
-      std::string_view name;
-      FluidType type;
-   };
-
-   constexpr TypeName names[] = {
+   static const std::unordered_map<std::string_view, FluidType> type_map = {
       { "any",       FluidType::Any },
       { "nil",       FluidType::Nil },
       { "bool",      FluidType::Bool },
@@ -28,11 +25,8 @@ FluidType parse_type_name(std::string_view Name)
       { "object",    FluidType::Object }
    };
 
-   for (const auto &entry : names) {
-      if (Name IS entry.name) return entry.type;
-   }
-
-   return FluidType::Unknown;
+   auto it = type_map.find(Name);
+   return (it != type_map.end()) ? it->second : FluidType::Unknown;
 }
 
 std::string_view type_name(FluidType Type)

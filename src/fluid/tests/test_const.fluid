@@ -163,7 +163,7 @@ local x <const> = 1
 x = 2
 ]])
    end)
-   assert(not ok, 'Reassigning const local should fail to compile')
+   assert(ex, 'Reassigning const local should fail to compile')
    assert(tostring(ex.message):find('cannot assign to const local'), 'Error should mention const local: ' .. tostring(ex.message))
 end
 
