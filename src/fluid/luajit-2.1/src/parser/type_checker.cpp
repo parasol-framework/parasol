@@ -13,7 +13,7 @@ void TypeCheckScope::declare_parameter(GCstr *Name, FluidType Type, SourceSpan L
    this->variables_.push_back(info);
 }
 
-void TypeCheckScope::declare_local(GCstr *Name, const InferredType &Type, SourceSpan Location)
+void TypeCheckScope::declare_local(GCstr *Name, const InferredType &Type, SourceSpan Location, bool IsConst)
 {
    VariableInfo info;
    info.name = Name;
@@ -21,6 +21,7 @@ void TypeCheckScope::declare_local(GCstr *Name, const InferredType &Type, Source
    info.location = Location;
    info.is_parameter = false;
    info.is_used = false;
+   info.is_const = IsConst;
    this->variables_.push_back(info);
 }
 
@@ -99,4 +100,12 @@ std::vector<UnusedVariableInfo> TypeCheckScope::get_unused_variables() const
    }
 
    return unused;
+}
+
+bool TypeCheckScope::is_local_const(GCstr *Name) const
+{
+   for (auto it = this->variables_.rbegin(); it != this->variables_.rend(); ++it) {
+      if (it->name IS Name) return it->is_const;
+   }
+   return false;
 }

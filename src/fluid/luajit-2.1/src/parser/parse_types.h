@@ -73,7 +73,8 @@ enum class VarInfoFlag : uint8_t {
    JumpTarget = 0x04u,
    Defer = 0x08u,
    DeferArg = 0x10u,
-   Close = 0x20u
+   Close = 0x20u,
+   Const = 0x40u  // Variable is const (cannot be reassigned)
 };
 
 // Concept for flag types that support bitwise operations
@@ -374,6 +375,9 @@ struct FuncState {
    // Track explicitly declared global names.  This prevents new unscoped variables from being interpreted as locals
    // and thus shadowing global variables.
    ankerl::unordered_dense::set<GCstr*> declared_globals;
+
+   // Track global names declared with <const> attribute for compile-time reassignment checks.
+   ankerl::unordered_dense::set<GCstr*> const_globals;
 
    // Function name for named function declarations (used for tostring() output).
    // Set before fs_finish() is called. nullptr for anonymous functions.

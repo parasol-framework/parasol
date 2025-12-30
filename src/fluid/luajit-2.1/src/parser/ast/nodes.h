@@ -190,6 +190,7 @@ struct Identifier {
    SourceSpan span{};
    bool is_blank = false;
    bool has_close = false;
+   bool has_const = false;  // Const attribute flag - variable cannot be reassigned
    FluidType type = FluidType::Unknown;  // Explicit type annotation (Unknown = no annotation)
 
    // Default constructor
@@ -207,6 +208,7 @@ struct Identifier {
       id.span = Span;
       id.is_blank = false;
       id.has_close = false;
+      id.has_const = false;
       return id;
    }
 };

@@ -206,10 +206,14 @@ ParserResult<std::vector<Identifier>> AstBuilder::parse_name_list()
          if (not attribute.ok()) return ParserResult<Identifier>::failure(attribute.error_ref());
 
          bool is_close_attribute = false;
+         bool is_const_attribute = false;
          if (GCstr *attr_name = attribute.value_ref().identifier()) {
             std::string_view view(strdata(attr_name), attr_name->len);
             if (view IS std::string_view("close")) {
                is_close_attribute = true;
+            }
+            else if (view IS std::string_view("const")) {
+               is_const_attribute = true;
             }
          }
 
@@ -221,7 +225,40 @@ ParserResult<std::vector<Identifier>> AstBuilder::parse_name_list()
          }
 
          if (is_close_attribute) identifier.has_close = true;
+         else if (is_const_attribute) identifier.has_const = true;
          else this->ctx.emit_error(ParserErrorCode::UnexpectedToken, attribute.value_ref(), "unknown attribute");
+      }
+
+      // Parse optional type annotation (:type) after attribute (supports `name <const>:type` syntax)
+      if (identifier.type IS FluidType::Unknown and this->ctx.check(TokenKind::Colon)) {
+         this->ctx.tokens().advance();
+
+         Token type_token = this->ctx.tokens().current();
+         std::string_view type_view;
+
+         auto kind = type_token.kind();
+         if (kind IS TokenKind::Identifier) {
+            this->ctx.tokens().advance();
+            GCstr* type_symbol = type_token.identifier();
+            if (type_symbol) type_view = std::string_view(strdata(type_symbol), type_symbol->len);
+         }
+         else if (kind IS TokenKind::Function or kind IS TokenKind::Nil) {
+            this->ctx.tokens().advance();
+            type_view = token_kind_name_constexpr(kind);
+         }
+         else {
+            this->ctx.emit_error(ParserErrorCode::ExpectedTypeName, type_token, "expected type name after ':'");
+            return ParserResult<Identifier>::failure(
+               ParserError(ParserErrorCode::ExpectedTypeName, type_token, "expected type name after ':'"));
+         }
+
+         identifier.type = parse_type_name(type_view);
+         if (identifier.type IS FluidType::Unknown) {
+            auto message = std::format("Invalid type.  Common types are: any, bool, num, str, table, array", type_view);
+            this->ctx.emit_error(ParserErrorCode::UnknownTypeName, type_token, message);
+            return ParserResult<Identifier>::failure(
+               ParserError(ParserErrorCode::UnknownTypeName, type_token, std::move(message)));
+         }
       }
 
       return ParserResult<Identifier>::success(std::move(identifier));

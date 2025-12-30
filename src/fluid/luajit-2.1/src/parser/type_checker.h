@@ -66,7 +66,7 @@ struct UnusedVariableInfo {
 class TypeCheckScope {
 public:
    void declare_parameter(GCstr *, FluidType Type, SourceSpan Location = {});
-   void declare_local(GCstr *, const InferredType &, SourceSpan Location = {});
+   void declare_local(GCstr *, const InferredType &, SourceSpan Location = {}, bool IsConst = false);
    void declare_function(GCstr *, const FunctionExprPayload *, SourceSpan Location = {});
    void fix_local_type(GCstr *, FluidType Type);
 
@@ -80,6 +80,9 @@ public:
    // Get all unused variables in this scope (for reporting on scope exit)
    [[nodiscard]] std::vector<UnusedVariableInfo> get_unused_variables() const;
 
+   // Check if a local variable has the <const> attribute
+   [[nodiscard]] bool is_local_const(GCstr *) const;
+
 private:
    struct VariableInfo {
       GCstr *name = nullptr;
@@ -87,6 +90,7 @@ private:
       SourceSpan location{};
       bool is_parameter = false;
       bool is_used = false;
+      bool is_const = false;  // True if declared with <const> attribute
       const FunctionExprPayload * function = nullptr;
    };
 

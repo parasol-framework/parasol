@@ -621,6 +621,7 @@ static void bcemit_store(FuncState *fs, ExpDesc *LHS, ExpDesc *RHS)
       else ins = BCINS_AD(BC_USETV, LHS->u.s.info, expr_toanyreg(fs, RHS));
    }
    else if (LHS->k IS ExpKind::Global or LHS->k IS ExpKind::Unscoped) {
+      // Note: Const global reassignment is checked during type analysis phase
       // Unscoped should normally be resolved in emit_lvalue_expr(), but handle it here defensively
       BCREG ra = expr_toanyreg(fs, RHS);
       ins = BCINS_AD(BC_GSET, ra, const_str(fs, LHS));
