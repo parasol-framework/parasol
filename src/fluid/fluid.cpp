@@ -767,7 +767,7 @@ static CSTRING load_include_constant(CSTRING Line, CSTRING Source)
          auto dt = datatype(value);
          FluidConstant constant(int64_t(0));
 
-         if (dt IS 'i') constant = FluidConstant(strtoll(value.c_str(), nullptr, 0));
+         if (dt IS 'i') constant = FluidConstant(int64_t(strtoll(value.c_str(), nullptr, 0)));
          else if (dt IS 'f') constant = FluidConstant(strtod(value.c_str(), nullptr));
          else if (dt IS 'h') constant = FluidConstant(int64_t(strtoull(value.c_str(), nullptr, 0)));
          else log.warning("Unsupported constant value: %s", value.c_str());
