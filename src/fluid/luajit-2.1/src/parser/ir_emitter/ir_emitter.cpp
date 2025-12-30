@@ -21,15 +21,12 @@
 #include "../../../defs.h"  // For glPrintMsg, FluidConstant
 
 //********************************************************************************************************************
-// Thread-safe lookup of a registered Fluid constant by name.
 // Returns nullptr if not found.
 
 inline const FluidConstant * lookup_constant(const GCstr *Name)
 {
-   if (not Name or Name->len IS 0) return nullptr;
-   std::string key(strdata(Name), Name->len);
    std::shared_lock lock(glConstantMutex);
-   auto it = glConstantRegistry.find(key);
+   auto it = glConstantRegistry.find(Name->hash);
    if (it != glConstantRegistry.end()) return &it->second;
    return nullptr;
 }

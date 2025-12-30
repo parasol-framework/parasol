@@ -116,7 +116,7 @@ struct FluidConstant {
 
 // Global constant registry - case-sensitive, owns string keys
 // Protected by glConstantMutex for thread-safe access
-extern ankerl::unordered_dense::map<std::string, FluidConstant> glConstantRegistry;
+extern ankerl::unordered_dense::map<uint32_t, FluidConstant> glConstantRegistry;
 extern std::shared_mutex glConstantMutex;
 
 //********************************************************************************************************************

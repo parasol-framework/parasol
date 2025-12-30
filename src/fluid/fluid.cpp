@@ -69,7 +69,7 @@ bool glPrintMsg = false;
 JOF glJitOptions = JOF::NIL;
 ankerl::unordered_dense::map<std::string_view, ACTIONID, CaseInsensitiveHashView, CaseInsensitiveEqualView> glActionLookup;
 ankerl::unordered_dense::map<std::string_view, uint32_t> glStructSizes;
-ankerl::unordered_dense::map<std::string, FluidConstant> glConstantRegistry;
+ankerl::unordered_dense::map<uint32_t, FluidConstant> glConstantRegistry;
 ankerl::unordered_dense::map<struct_name, struct_record, struct_hash> glStructs;
 std::shared_mutex glConstantMutex;
 static std::set<std::string> glLoadedConstants; // Stores the names of modules that have loaded constants (system wide)
@@ -736,32 +736,32 @@ static CSTRING load_include_constant(CSTRING Line, CSTRING Source)
       return next_line(Line);
    }
 
-   std::string prefix(Line, i);
-   prefix.reserve(MAX_STRING_PREFIX_LENGTH);
+   std::string name(Line, i);
+   name.reserve(MAX_STRING_PREFIX_LENGTH);
 
    Line += i + 1;
 
-   if (not prefix.empty()) prefix += '_';
-   auto append_from = prefix.size();
+   if (not name.empty()) name += '_';
+   auto append_from = name.size();
 
    while (*Line > 0x20) {
       int n;
       for (n=0; (Line[n] > 0x20) and (Line[n] != '='); n++);
 
       if (Line[n] != '=') {
-         log.warning("Malformed const definition, expected '=' after name '%s'", prefix.c_str());
+         log.warning("Malformed const definition, expected '=' after name '%s'", name.c_str());
          break;
       }
 
-      prefix.erase(append_from);
-      prefix.append(Line, n);
+      name.erase(append_from);
+      name.append(Line, n);
       Line += n + 1;
 
       for (n=0; (Line[n] > 0x20) and (Line[n] != ','); n++);
       std::string value(Line, n);
       Line += n;
 
-      //log.warning("%s = %s", prefix.c_str(), value.c_str());
+      //log.warning("%s = %s", name.c_str(), value.c_str());
 
       if (n > 0) {
          auto dt = datatype(value);
@@ -772,7 +772,7 @@ static CSTRING load_include_constant(CSTRING Line, CSTRING Source)
          else if (dt IS 'h') constant = FluidConstant(int64_t(strtoull(value.c_str(), nullptr, 0)));
          else log.warning("Unsupported constant value: %s", value.c_str());
 
-         glConstantRegistry.emplace(prefix, constant);
+         glConstantRegistry.emplace(pf::strhash(name), constant);
       }
 
       if (*Line IS ',') Line++;
