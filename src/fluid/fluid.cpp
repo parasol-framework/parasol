@@ -721,20 +721,6 @@ static CSTRING load_include_struct(objScript *Script, CSTRING Line, CSTRING Sour
 }
 
 //********************************************************************************************************************
-// Thread-safe lookup of a registered Fluid constant by name.
-// Returns nullptr if not found.
-
-const FluidConstant * lookup_constant(const GCstr* Name)
-{
-   if (not Name or Name->len IS 0) return nullptr;
-   std::string key(strdata(Name), Name->len);
-   std::shared_lock lock(glConstantMutex);
-   auto it = glConstantRegistry.find(key);
-   if (it != glConstantRegistry.end()) return &it->second;
-   return nullptr;
-}
-
-//********************************************************************************************************************
 // Update the constant registry.
 // A lock on glConstantMutex must be held before calling this function.
 

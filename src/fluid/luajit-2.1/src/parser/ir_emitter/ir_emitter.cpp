@@ -19,7 +19,20 @@
 #include "../token_types.h"
 
 #include "../../../defs.h"  // For glPrintMsg, FluidConstant
-#include "../fluid_constants.h"  // For lookup_constant()
+
+//********************************************************************************************************************
+// Thread-safe lookup of a registered Fluid constant by name.
+// Returns nullptr if not found.
+
+inline const FluidConstant * lookup_constant(const GCstr *Name)
+{
+   if (not Name or Name->len IS 0) return nullptr;
+   std::string key(strdata(Name), Name->len);
+   std::shared_lock lock(glConstantMutex);
+   auto it = glConstantRegistry.find(key);
+   if (it != glConstantRegistry.end()) return &it->second;
+   return nullptr;
+}
 
 //********************************************************************************************************************
 // NilShortCircuitGuard - RAII helper for safe navigation nil-check pattern.

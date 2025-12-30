@@ -119,9 +119,6 @@ struct FluidConstant {
 extern ankerl::unordered_dense::map<std::string, FluidConstant> glConstantRegistry;
 extern std::shared_mutex glConstantMutex;
 
-// Lookup a registered Fluid constant by name. Returns nullptr if not found.
-const FluidConstant* lookup_constant(const GCstr* Name);
-
 //********************************************************************************************************************
 // Helper: build a std::string_view from a Lua string argument.
 // Raises a Lua error if the argument at 'idx' is not a string (delegates to luaL_checklstring).
