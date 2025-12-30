@@ -114,7 +114,6 @@ end
    assert(result, 'DebugLog should return a result')
    assert(string.find(result, 'STATE'), 'Should contain state header')
    assert(string.find(result, 'Stack top'), 'Should contain stack top information')
-   assert(string.find(result, 'Protected globals'), 'Should contain protected globals info')
 end
 
 -----------------------------------------------------------------------------------------------------------------------

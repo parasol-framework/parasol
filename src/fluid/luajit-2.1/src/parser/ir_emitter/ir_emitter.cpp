@@ -691,10 +691,10 @@ ParserResult<IrEmitUnit> IrEmitter::emit_expression_stmt(const ExpressionStmtPay
 
    ExpDesc value = expression.value_ref();
 
-   // When protected_globals is enabled and we have a bare Unscoped identifier as an expression
-   // statement, this is an error - the user must explicitly declare locals with 'local'.
+   // We have a bare Unscoped identifier as an expression statement, this is an error - the user must explicitly
+   // declare locals with 'local'.
 
-   if (value.k IS ExpKind::Unscoped and this->func_state.L->protected_globals) {
+   if (value.k IS ExpKind::Unscoped) {
       GCstr* name = value.u.sval;
       std::string msg = "undeclared variable '";
       msg += std::string_view(strdata(name), name->len);

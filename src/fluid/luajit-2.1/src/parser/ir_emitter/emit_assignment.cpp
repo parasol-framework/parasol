@@ -487,11 +487,11 @@ ParserResult<std::vector<PreparedAssignment>> IrEmitter::prepare_assignment_targ
       // Check if this is an Unscoped variable that needs a new local
       // Keep it as Unscoped and defer local creation until after expression evaluation
 
-      if (slot.k IS ExpKind::Unscoped and this->func_state.L->protected_globals) {
-         prepared.needs_var_add = true;
-         prepared.newly_created = true;
+      if (slot.k IS ExpKind::Unscoped) {
+         prepared.needs_var_add  = true;
+         prepared.newly_created  = true;
          prepared.pending_symbol = slot.u.sval;
-         prepared.pending_line = node->span.line;
+         prepared.pending_line   = node->span.line;
          prepared.pending_column = node->span.column;
          // Don't convert to Local yet - keep as Unscoped for now
          // The actual local slot will be determined later in emit_plain_assignment

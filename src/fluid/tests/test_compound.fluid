@@ -387,8 +387,8 @@ end
 
    -- Test global ??= assigns when value is false
    global gFalseVar = false
-   global gFalseVar ??= 'from false'
-   assert(gFalseVar is 'from false', 'global ??= should assign when value is false')
+   global gFalseVar ??= true
+   assert(gFalseVar is true, 'global ??= should assign when value is false')
 
    -- Test global ??= assigns when value is zero
    global gZeroVar = 0
@@ -433,7 +433,7 @@ end
    assert(gTruthyVar is 'truthy', 'global ??= should preserve truthy value')
 
    -- Now test with falsey value
-   global gFalseyVar = 0
+   global gFalseyVar = ''
    global gFalseyVar ??= countedFallback()
    assert(gCallCount is 1, 'global ??= should evaluate RHS when LHS is falsey')
    assert(gFalseyVar is 'fallback', 'global ??= should assign fallback when LHS is falsey')

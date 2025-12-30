@@ -142,17 +142,21 @@ static void free_all(objScript *Self)
 
 static int global_newindex(lua_State *Lua) // Write global variable via proxy
 {
-   if (Lua->protected_globals) {
-      lua_pushvalue(Lua, 2);
-      lua_rawget(Lua, lua_upvalueindex(1));
-      int existing_type = lua_type(Lua, -1);
-      lua_pop(Lua, 1);
-      if (existing_type == LUA_TFUNCTION) { //(existing_type != LUA_TNIL) {
-         luaL_error(Lua, "Unpermitted attempt to overwrite existing global '%s' with a %s type.", luaL_checkstring(Lua, 2), lua_typename(Lua, lua_type(Lua, -1)));
+   //pf::Log(__FUNCTION__).warning("Write-Global: %s", luaL_checkstring(Lua, 2));
+
+   lua_pushvalue(Lua, 2);
+   lua_rawget(Lua, lua_upvalueindex(1)); // Get the assigned value
+   int existing_type = lua_type(Lua, -1);
+   lua_pop(Lua, 1); // Pop the assigned value
+
+   if (existing_type != LUA_TNIL) {
+      auto new_type = lua_type(Lua, 3);
+      if ((existing_type != new_type) and (new_type != LUA_TNIL)) {
+         luaL_error(Lua, "Attempt to overwrite existing global '%s' <%s> with a <%s> type.", luaL_checkstring(Lua, 2), lua_typename(Lua, existing_type), lua_typename(Lua, new_type));
       }
    }
 
-   lua_rawset(Lua, lua_upvalueindex(1));
+   lua_rawset(Lua, lua_upvalueindex(1)); // Set the global variable as normal
    return 0;
 }
 
@@ -636,11 +640,10 @@ static ERR FLUID_Query(objScript *Self)
    Self->CurrentLine = -1;
    Self->Error       = ERR::Okay;
 
-   if ((Self->ActivationCount IS 0) and (not prv->Lua->protected_globals)) {
+   if (Self->ActivationCount IS 0) {
       log.trace("The Lua script will be initialised from scratch.");
 
-      prv->Lua->script            = Self;
-      prv->Lua->protected_globals = false;
+      prv->Lua->script = Self;
 
       // Set up global variable protection that is JIT-compatible.
       // __index can be a table (JIT traces through it) instead of a function (JIT aborts).
@@ -697,8 +700,6 @@ static ERR FLUID_Query(objScript *Self)
          log.warning("Failed to create module object.");
          goto failure;
       }
-
-      prv->Lua->protected_globals = true;
 
       // Determine chunk name for better debug output.
       // Prefix with '@' to indicate file-based chunk (Lua convention), otherwise use '=' for special sources.

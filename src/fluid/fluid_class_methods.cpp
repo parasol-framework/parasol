@@ -357,7 +357,6 @@ static void emit_state_info(prvFluid *Prv, std::ostringstream &Buf, bool Compact
    if (not Compact) Buf << "-STATE-\n";
 
    Buf << std::format("Stack top: {}\n", lua_gettop(Prv->Lua));
-   Buf << std::format("Protected globals: {}\n", Prv->Lua->protected_globals ? "true" : "false");
 
    if (auto hook_mask = lua_gethookmask(Prv->Lua)) {
       std::vector<std::string_view> flags;
