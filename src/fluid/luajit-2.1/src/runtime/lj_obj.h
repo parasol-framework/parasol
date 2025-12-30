@@ -974,7 +974,6 @@ struct lua_State {
    void    *cframe;     //  End of C stack frame chain.
    MSize   stacksize;   //  True stack size (incl. LJ_STACK_EXTRA).
    class objScript *script;
-   bool    protected_globals; // Becomes true once all global constants are initialised
    bool    sent_traceback;    // True if traceback has been sent for the current error
    uint8_t resolving_thunk;  // Flag to prevent recursive thunk resolution
    ParserDiagnostics *parser_diagnostics; // Stores ParserDiagnostics* during parsing errors
@@ -983,7 +982,7 @@ struct lua_State {
 
    // Constructor/destructor not actually used as yet.
 /*
-   lua_State(class objScript* pScript) : Script(pScript), protected_globals(false) {
+   lua_State(class objScript* pScript) : Script(pScript) {
 
    }
 

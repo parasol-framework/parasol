@@ -136,27 +136,6 @@ static void free_all(objScript *Self)
 }
 
 //********************************************************************************************************************
-// Proxy function for controlling writes to global variables.
-// Note: __index uses a direct table reference (not a function) for JIT compatibility.
-// When __index is a table, LuaJIT can trace through global reads without aborting.
-
-static int global_newindex(lua_State *Lua) // Write global variable via proxy
-{
-   if (Lua->protected_globals) {
-      lua_pushvalue(Lua, 2);
-      lua_rawget(Lua, lua_upvalueindex(1));
-      int existing_type = lua_type(Lua, -1);
-      lua_pop(Lua, 1);
-      if (existing_type == LUA_TFUNCTION) { //(existing_type != LUA_TNIL) {
-         luaL_error(Lua, "Unpermitted attempt to overwrite existing global '%s' with a %s type.", luaL_checkstring(Lua, 2), lua_typename(Lua, lua_type(Lua, -1)));
-      }
-   }
-
-   lua_rawset(Lua, lua_upvalueindex(1));
-   return 0;
-}
-
-//********************************************************************************************************************
 // Only to be used immediately after a failed lua_pcall().  Lua stores a description of the error that occurred on the
 // stack, this will be popped and copied to the ErrorString field.
 
@@ -636,36 +615,10 @@ static ERR FLUID_Query(objScript *Self)
    Self->CurrentLine = -1;
    Self->Error       = ERR::Okay;
 
-   if ((Self->ActivationCount IS 0) and (not prv->Lua->protected_globals)) {
+   if (Self->ActivationCount IS 0) {
       log.trace("The Lua script will be initialised from scratch.");
 
-      prv->Lua->script            = Self;
-      prv->Lua->protected_globals = false;
-
-      // Set up global variable protection that is JIT-compatible.
-      // __index can be a table (JIT traces through it) instead of a function (JIT aborts).
-      // We use:
-      //   __index = storage_table (direct table lookup, JIT-compatible)
-      //   __newindex = C function (only called on writes, protects existing functions)
-
-      lua_newtable(prv->Lua); // Storage table (will hold all globals) - stack index 1
-      {
-         lua_newtable(prv->Lua); // Metatable = { __newindex = func, __index = storage_table }
-         {
-            // __newindex: C function for write protection (only called when writing new keys)
-            lua_pushstring(prv->Lua, "__newindex");
-            lua_pushvalue(prv->Lua, 1); // Storage table (absolute index)
-            lua_pushcclosure(prv->Lua, global_newindex, 1);
-            lua_settable(prv->Lua, -3);
-
-            // __index: Direct table reference (JIT-compatible, no C function call)
-            lua_pushstring(prv->Lua, "__index");
-            lua_pushvalue(prv->Lua, 1); // Storage table (absolute index)
-            lua_settable(prv->Lua, -3);
-         }
-         lua_setmetatable(prv->Lua, LUA_GLOBALSINDEX);
-      }
-      lua_pop(prv->Lua, 1); // Pop the storage table
+      prv->Lua->script = Self;
 
       lua_gc(prv->Lua, LUA_GCSTOP, 0);  // Stop collector during initialization
          luaL_openlibs(prv->Lua);  // Open Lua libraries
@@ -697,8 +650,6 @@ static ERR FLUID_Query(objScript *Self)
          log.warning("Failed to create module object.");
          goto failure;
       }
-
-      prv->Lua->protected_globals = true;
 
       // Determine chunk name for better debug output.
       // Prefix with '@' to indicate file-based chunk (Lua convention), otherwise use '=' for special sources.

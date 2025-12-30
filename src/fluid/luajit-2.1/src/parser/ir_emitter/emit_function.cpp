@@ -223,9 +223,8 @@ ParserResult<ExpDesc> IrEmitter::emit_function_lvalue(const FunctionNamePath &pa
 
 //********************************************************************************************************************
 // Emit bytecode for an lvalue expression (assignable location like identifier, member, or index).
-// When AllocNewLocal is false, unscoped variables will not create new locals even when protected_globals
-// is true. This is used for compound assignments (+=, -=) and update expressions (++, --) where the
-// variable must already exist.
+// AllocNewLocal must be false when dealing with update operators like compound assignments (+=, -=) and (++, --)
+// where the variable must already exist.
 
 ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode &Expr, bool AllocNewLocal)
 {
@@ -251,36 +250,26 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode &Expr, bool All
          auto result = this->emit_identifier_expr(name_ref);
          if (not result.ok()) return result;
          ExpDesc value = result.value_ref();
-         if (value.k IS ExpKind::Local) {
+         if (value.k IS ExpKind::Local) { // Local variable already exists
             value.u.s.aux = this->func_state.varmap[value.u.s.info];
          }
-         else if (value.k IS ExpKind::Unscoped) {
-            // Undeclared variable used as assignment target
-            GCstr* name = value.u.sval;
+         else if (value.k IS ExpKind::Unscoped) { // Undeclared variable used as assignment target
+            GCstr *name = value.u.sval;
 
             // Check if this was explicitly declared as global (in this or parent scope)
             if (this->func_state.declared_globals.count(name) > 0) {
-               // Explicitly declared global - always treat as global
                value.k = ExpKind::Global;
             }
-            else if (this->func_state.L->protected_globals) {
-               if (AllocNewLocal) {
-                  // Plain assignment: return Unscoped and let prepare_assignment_targets handle
-                  // the local creation with proper timing for multi-value assignments.
-                  // The ExpKind::Unscoped with name will signal that a new local should be created.
-                  // value is already Unscoped with name set, so just return it.
-               }
-               else {
-                  // Compound/update assignment on undeclared variable - error
-                  // The variable must exist for operations like ++, +=, etc.
-                  std::string var_name(strdata(name), name->len);
-                  std::string msg = "cannot use compound/update operator on undeclared variable '" + var_name + "'";
-                  return ParserResult<ExpDesc>::failure(this->make_error(ParserErrorCode::UndefinedVariable, msg));
-               }
+            else if (AllocNewLocal) {
+               // Plain assignment: return Unscoped and let prepare_assignment_targets handle
+               // the local creation with proper timing for multi-value assignments.
+               // The ExpKind::Unscoped with name will signal that a new local should be created.
+               // value is already Unscoped with name set, so just return it.
             }
-            else {
-               // Traditional Lua behaviour: treat as global
-               value.k = ExpKind::Global;
+            else { // Compound/update assignment on an undeclared variable is an error
+               std::string var_name(strdata(name), name->len);
+               std::string msg = "cannot use compound/update operator on undeclared variable '" + var_name + "'";
+               return ParserResult<ExpDesc>::failure(this->make_error(ParserErrorCode::UndefinedVariable, msg));
             }
          }
          // Allow Unscoped for deferred local creation in prepare_assignment_targets
@@ -416,8 +405,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload
    // and if protected_globals is enabled without explicit global declaration
 
    bool is_simple_name = Payload.name.segments.size() == 1 and not Payload.name.method.has_value();
-   bool should_be_local = is_simple_name and this->func_state.L->protected_globals and
-      not Payload.name.is_explicit_global;
+   bool should_be_local = is_simple_name and not Payload.name.is_explicit_global;
 
    // Determine the function name for tostring() support.
    // For simple names, use the single segment. For paths like foo.bar, use the last segment.

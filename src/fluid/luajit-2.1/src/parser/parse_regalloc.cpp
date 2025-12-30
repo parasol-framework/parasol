@@ -24,14 +24,14 @@
    lua_State *L = fs->L;
    LexState *ls = fs->ls;
 
-   // Format the error message
    std::string msg = std::format("type mismatch: cannot assign {} to {} variable",
       type_name(actual_type), type_name(expected_type));
 
    // Build the full error message with source location
+
    char buff[LUA_IDSIZE];
-   lj_debug_shortname(buff, ls->chunkname, ls->linenumber);
-   lj_strfmt_pushf(L, "%s:%d: %s", buff, ls->linenumber, msg.c_str());
+   lj_debug_shortname(buff, ls->chunkname, ls->lastline);
+   lj_strfmt_pushf(L, "%s:%d: %s", buff, ls->lastline, msg.c_str());
 
    lj_err_throw(L, LUA_ERRSYNTAX);
 }

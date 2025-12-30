@@ -254,10 +254,10 @@ end
       glColours = array<table> {
         obj.new('VectorColour', { red=0.8,   green=0,   blue=0 }),
         obj.new('VectorColour', { red=1.0,   green=0.8, blue=0 }),
-        obj.new('Vectorcolour', { red=0.666, green=1.0, blue=0 }),
-        obj.new('Vectorcolour', { red=0,     green=0.6, blue=0.8 }),
-        obj.new('Vectorcolour', { red=0.1,   green=0.3, blue=0.6 }),
-        obj.new('Vectorcolour', { red=0.4,   green=0.1, blue=0.6 })
+        obj.new('VectorColour', { red=0.666, green=1.0, blue=0 }),
+        obj.new('VectorColour', { red=0,     green=0.6, blue=0.8 }),
+        obj.new('VectorColour', { red=0.1,   green=0.3, blue=0.6 }),
+        obj.new('VectorColour', { red=0.4,   green=0.1, blue=0.6 })
       }
    else
       error('Unknown benchmark mode')
