@@ -1,8 +1,8 @@
 // Type Analysis for Fluid Parser
 // Copyright (C) 2025 Paul Manias
 //
-// This module performs semantic type analysis on the Fluid AST after parsing.
-// It implements:
+// This module performs semantic type analysis on the Fluid AST after parsing.  It implements:
+//
 // - Type inference for local variables and function returns
 // - Type checking for assignments and function arguments
 // - Return type validation within functions
@@ -10,13 +10,14 @@
 // - Scope-based variable tracking for unused variable detection
 // - Shadowing detection for variables in nested scopes
 //
-// The analysis is non-blocking by default - type mismatches generate warnings
-// unless the parser is configured with type_errors_are_fatal = true.
+// The analysis is non-blocking by default - type mismatches generate warnings unless the parser is configured with
+// type_errors_are_fatal = true.
 
 #include "parser/type_checker.h"
 
 #include <format>
 
+#include <ankerl/unordered_dense.h>
 #include <parasol/main.h>
 #include "parser/parser_context.h"
 
@@ -24,12 +25,10 @@
 #include "parser/parser_tips.h"
 #endif
 
-namespace {
+// Infer the type of a literal value (nil, boolean, number, string, cdata).  Literal types are always marked as
+// constant since their values cannot change.
 
-// Infer the type of a literal value (nil, boolean, number, string, cdata).
-// Literal types are always marked as constant since their values cannot change.
-
-[[nodiscard]] InferredType infer_literal_type(const LiteralValue &Literal)
+[[nodiscard]] static InferredType infer_literal_type(const LiteralValue &Literal)
 {
    InferredType result;
    result.is_constant = true;
@@ -48,13 +47,12 @@ namespace {
 }
 
 // Helper to check if type tracing is enabled
+
 [[nodiscard]] inline bool should_trace_types(lua_State *L)
 {
    auto prv = (prvFluid *)L->script->ChildPrivate;
    return (prv->JitOptions & JOF::TRACE_TYPES) != JOF::NIL;
 }
-
-} // namespace
 
 //********************************************************************************************************************
 // TypeAnalyser - Main class for performing semantic type analysis on Fluid AST.
@@ -66,8 +64,8 @@ namespace {
 // 4. Usage tracking - Detects unused variables and parameters (for tip)
 // 5. Shadowing detection - Warns when inner scope variables shadow outer ones
 //
-// The analyser maintains a scope stack to track variable declarations and types
-// as it traverses nested blocks, functions, and control structures.
+// The analyser maintains a scope stack to track variable declarations and types as it traverses nested blocks,
+// functions, and control structures.
 
 class TypeAnalyser {
 public:
@@ -157,11 +155,24 @@ private:
    void track_global(GCstr *Name);
    #endif
 
+   // Global variable type tracking - stores type information for variables declared with 'global' keyword
+   struct GlobalTypeInfo {
+      InferredType type{};
+      SourceSpan location{};
+      const FunctionExprPayload* function = nullptr;  // Non-null if declared as global function
+   };
+
+   void declare_global(GCstr *Name, const InferredType &Type, SourceSpan Location);
+   void declare_global_function(GCstr *Name, const FunctionExprPayload *Function, SourceSpan Location);
+   [[nodiscard]] std::optional<InferredType> lookup_global_type(GCstr *Name) const;
+   void fix_global_type(GCstr *Name, FluidType Type);
+
    ParserContext &ctx_;                             // Parser context for diagnostics and lexer access
    std::vector<TypeCheckScope> scope_stack_{};      // Stack of scopes for variable tracking
    std::vector<FunctionContext> function_stack_{};  // Stack of function contexts for return type tracking
    std::vector<TypeDiagnostic> diagnostics_{};      // Collected type errors and warnings
    uint32_t loop_depth_{0};                         // Current loop nesting depth for performance tip
+   ankerl::unordered_dense::map<GCstr*, GlobalTypeInfo> global_types_{};  // Type info for global variables
    #ifdef INCLUDE_TIPS
    std::vector<GCstr*> declared_globals_{};         // Globals explicitly declared with 'global' keyword
    #endif
@@ -202,13 +213,11 @@ void TypeAnalyser::trace_decl(BCLine Line, GCstr* Name, FluidType Type, bool IsF
 //********************************************************************************************************************
 // Shadowing Detection
 //
-// Checks if declaring a variable would shadow a variable in an outer scope.
-// Only checks outer scopes (not the current scope) since redeclaration in the same scope
-// is handled differently. Shadowing is a common source of bugs where the programmer
-// accidentally uses a new variable instead of the intended outer one.
+// Checks if declaring a variable would shadow a variable in an outer scope.  Only checks outer scopes (not the
+// current scope) since redeclaration in the same scope is handled differently. Shadowing is a common source of bugs
+// where the programmer accidentally uses a new variable instead of the intended outer one.
 //
-// The check skips blank identifiers (single underscore '_') which are intentionally
-// used to discard values.
+// The check skips blank identifiers (single underscore '_') which are intentionally used to discard values.
 
 #ifdef INCLUDE_TIPS
 void TypeAnalyser::check_shadowing(GCstr *Name, SourceSpan Location)
@@ -323,11 +332,11 @@ void TypeAnalyser::check_concat_in_loop(SourceSpan Location)
 //********************************************************************************************************************
 // Scope Management
 //
-// Scopes are pushed when entering blocks (functions, loops, if statements, do blocks)
-// and popped when leaving them. Each scope tracks its own local variables and their types.
+// Scopes are pushed when entering blocks (functions, loops, if statements, do blocks) and popped when leaving them.
+// Each scope tracks its own local variables and their types.
 //
-// When a scope is popped, unused variable detection runs to identify variables that were
-// declared but never referenced. This helps catch typos and dead code.
+// When a scope is popped, unused variable detection runs to identify variables that were declared but never
+// referenced. This helps catch typos and dead code.
 
 void TypeAnalyser::push_scope() {
    this->scope_stack_.emplace_back();
@@ -384,12 +393,11 @@ const TypeCheckScope & TypeAnalyser::current_scope() const {
 //********************************************************************************************************************
 // Function Context Management
 //
-// When entering a function, we push a FunctionContext to track expected return types.
-// This enables validation of return statements against declared or inferred types.
+// When entering a function, we push a FunctionContext to track expected return types.  This enables validation of
+// return statements against declared or inferred types.
 //
-// If the function has explicit return type annotations, those are used immediately.
-// Otherwise, the first return statement with non-nil values establishes the expected types
-// (first-wins inference rule).
+// If the function has explicit return type annotations, those are used immediately.  Otherwise, the first return
+// statement with non-nil values establishes the expected types (first-wins inference rule).
 
 void TypeAnalyser::enter_function(const FunctionExprPayload &Function, GCstr *Name)
 {
@@ -617,12 +625,23 @@ void TypeAnalyser::analyse_assignment(const AssignmentStmtPayload &Payload)
       if (not target_ptr) continue;
       const auto &target = *target_ptr;
 
-      // Only check local variable assignments
+      // Check local and global variable assignments
       if (target.kind IS AstNodeKind::IdentifierExpr) {
          auto *name_ref = std::get_if<NameRef>(&target.data);
          if (not name_ref) continue;
 
-         auto existing = this->resolve_identifier(name_ref->identifier.symbol);
+         GCstr *name = name_ref->identifier.symbol;
+
+         // First check local variables
+         auto existing = this->resolve_identifier(name);
+         bool is_global = false;
+
+         // If not found as local, check global variables
+         if (not existing) {
+            existing = this->lookup_global_type(name);
+            is_global = existing.has_value();
+         }
+
          if (not existing) continue;
 
          if (i >= Payload.values.size()) continue;
@@ -640,8 +659,8 @@ void TypeAnalyser::analyse_assignment(const AssignmentStmtPayload &Payload)
                diag.expected = existing->primary;
                diag.actual = value_type.primary;
                diag.code = ParserErrorCode::TypeMismatchAssignment;
-               diag.message = std::format("cannot assign '{}' to variable of type '{}'",
-                  type_name(value_type.primary), type_name(existing->primary));
+               diag.message = std::format("cannot assign '{}' to {} of type '{}'",
+                  type_name(value_type.primary), is_global ? "global" : "variable", type_name(existing->primary));
                this->diagnostics_.push_back(std::move(diag));
             }
          }
@@ -650,7 +669,12 @@ void TypeAnalyser::analyse_assignment(const AssignmentStmtPayload &Payload)
             // But don't fix if the variable was explicitly declared as 'any'
             if ((existing->primary != FluidType::Any) and (value_type.primary != FluidType::Nil) and
                 (value_type.primary != FluidType::Any)) {
-               this->fix_local_type(name_ref->identifier.symbol, value_type.primary);
+               if (is_global) {
+                  this->fix_global_type(name, value_type.primary);
+               }
+               else {
+                  this->fix_local_type(name, value_type.primary);
+               }
             }
          }
       }
@@ -665,8 +689,8 @@ void TypeAnalyser::analyse_assignment(const AssignmentStmtPayload &Payload)
 //********************************************************************************************************************
 // Local Declaration Analysis
 //
-// Handles 'local' variable declarations with optional type annotations and initialisers.
-// Supports multi-value assignments from function calls (local a, b, c = func()).
+// Handles 'local' variable declarations with optional type annotations and initialisers.  Supports multi-value
+// assignments from function calls (local a, b, c = func()).
 //
 // Type determination priority:
 // 1. Explicit type annotation (local x:num = 5) - type is fixed
@@ -803,15 +827,43 @@ void TypeAnalyser::analyse_local_decl(const LocalDeclStmtPayload &Payload)
 //********************************************************************************************************************
 // Global Declaration Analysis
 //
-// Handles 'global' variable declarations. Unlike locals, globals are stored in the
-// global table and persist across function calls. This method checks naming conventions
-// to encourage good practices (globals should be visually distinct from locals).
+// Handles 'global' variable declarations. Unlike locals, globals are stored in the global table and persist across
+// function calls. This method checks naming conventions to encourage good practices (globals should be visually
+// distinct from locals).
 
 void TypeAnalyser::analyse_global_decl(const GlobalDeclStmtPayload &Payload)
 {
    // Analyse the values first
    for (const auto &value : Payload.values) {
       this->analyse_expression(*value);
+   }
+
+   // Track global variable types for type checking on subsequent assignments
+   for (size_t i = 0; i < Payload.names.size(); ++i) {
+      const auto &name = Payload.names[i];
+      if (not name.symbol) continue;
+
+      InferredType inferred;
+
+      // Explicit type annotation takes precedence
+      if (name.type != FluidType::Unknown) {
+         inferred.primary = name.type;
+         inferred.is_fixed = (name.type != FluidType::Any);
+      }
+      else if (i < Payload.values.size()) {
+         // Infer type from initial value
+         inferred = this->infer_expression_type(*Payload.values[i]);
+         // Non-nil, non-any initial values fix the type
+         if (inferred.primary != FluidType::Nil and inferred.primary != FluidType::Any) {
+            inferred.is_fixed = true;
+         }
+      }
+      else { // No annotation and no initialiser: starts as nil, type not yet fixed
+         inferred.primary = FluidType::Nil;
+         inferred.is_fixed = false;
+      }
+
+      this->declare_global(name.symbol, inferred, name.span);
    }
 
    #ifdef INCLUDE_TIPS
@@ -861,6 +913,7 @@ void TypeAnalyser::analyse_function_stmt(const FunctionStmtPayload &Payload)
 {
    const FunctionExprPayload* function = Payload.function.get();
    GCstr *function_name = nullptr;
+   SourceSpan function_location{};
 
    // Only track non-global function declarations for unused variable detection
    // Global functions (declared with `global function`) are not local to any scope
@@ -869,21 +922,27 @@ void TypeAnalyser::analyse_function_stmt(const FunctionStmtPayload &Payload)
          const Identifier& terminal = Payload.name.segments.back();
          this->current_scope().declare_function(terminal.symbol, function, terminal.span);
          function_name = terminal.symbol;
+         function_location = terminal.span;
       }
 
       if (Payload.name.method) {
          this->current_scope().declare_function(Payload.name.method->symbol, function, Payload.name.method->span);
          function_name = Payload.name.method->symbol;
+         function_location = Payload.name.method->span;
       }
    }
    else {
-      // Still need the function name for recursive detection
+      // Track global function type for type checking on reassignment
       // Note: Global functions are exempt from naming convention checks
       if (not Payload.name.segments.empty()) {
          function_name = Payload.name.segments.back().symbol;
+         function_location = Payload.name.segments.back().span;
+         this->declare_global_function(function_name, function, function_location);
       }
       else if (Payload.name.method) {
          function_name = Payload.name.method->symbol;
+         function_location = Payload.name.method->span;
+         this->declare_global_function(function_name, function, function_location);
       }
    }
 
@@ -919,6 +978,7 @@ void TypeAnalyser::analyse_function_payload(const FunctionExprPayload &Function,
    }
 
    // Advise on missing return type annotation for functions that return values
+
    #ifdef INCLUDE_TIPS
    if (this->ctx_.should_emit_tip(1) and
        (not Function.return_types.is_explicit) and this->function_has_return_values(Function)) {
@@ -1426,6 +1486,54 @@ void TypeAnalyser::fix_local_type(GCstr *Name, FluidType Type)
          this->trace_fix(this->ctx_.lex().linenumber, Name, Type);
          return;
       }
+   }
+}
+
+//********************************************************************************************************************
+// Global Variable Type Tracking
+//
+// These methods manage type information for global variables declared with the 'global' keyword.
+// Unlike locals which use scope-based tracking, globals use a flat map since they persist for
+// the entire script lifetime.
+
+void TypeAnalyser::declare_global(GCstr *Name, const InferredType &Type, SourceSpan Location)
+{
+   if (not Name) return;
+   GlobalTypeInfo info;
+   info.type = Type;
+   info.location = Location;
+   this->global_types_[Name] = info;
+   this->trace_decl(this->ctx_.lex().linenumber, Name, Type.primary, Type.is_fixed);
+}
+
+void TypeAnalyser::declare_global_function(GCstr *Name, const FunctionExprPayload *Function, SourceSpan Location)
+{
+   if (not Name) return;
+   GlobalTypeInfo info;
+   info.type.primary = FluidType::Func;
+   info.type.is_fixed = true;  // Functions have fixed type
+   info.location = Location;
+   info.function = Function;
+   this->global_types_[Name] = info;
+   this->trace_decl(this->ctx_.lex().linenumber, Name, FluidType::Func, true);
+}
+
+std::optional<InferredType> TypeAnalyser::lookup_global_type(GCstr *Name) const
+{
+   if (not Name) return std::nullopt;
+   auto it = this->global_types_.find(Name);
+   if (it != this->global_types_.end()) return it->second.type;
+   return std::nullopt;
+}
+
+void TypeAnalyser::fix_global_type(GCstr *Name, FluidType Type)
+{
+   if (not Name) return;
+   auto it = this->global_types_.find(Name);
+   if (it != this->global_types_.end()) {
+      it->second.type.primary = Type;
+      it->second.type.is_fixed = true;
+      this->trace_fix(this->ctx_.lex().linenumber, Name, Type);
    }
 }
 

@@ -297,8 +297,6 @@ void LocalBindingTable::add(GCstr* symbol, BCReg slot)
 //********************************************************************************************************************
 // IR emission context implementation
 
-namespace {
-
 constexpr size_t kAstNodeKindCount = size_t(AstNodeKind::ExpressionStmt) + 1;
 
 class UnsupportedNodeRecorder {
@@ -319,7 +317,7 @@ private:
    std::array<uint32_t, kAstNodeKindCount> counts{};
 };
 
-UnsupportedNodeRecorder glUnsupportedNodes;
+static UnsupportedNodeRecorder glUnsupportedNodes;
 
 //********************************************************************************************************************
 // Check if an identifier is blank (underscore placeholder) or has no associated symbol.
@@ -524,8 +522,6 @@ static void release_indexed_original(FuncState &func_state, const ExpDesc &origi
 {
    return &func_state->bcbase[expression->u.s.info].ins;
 }
-
-}  // namespace
 
 IrEmitter::IrEmitter(ParserContext& context)
    : ctx(context),

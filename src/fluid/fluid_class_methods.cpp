@@ -259,44 +259,49 @@ static void emit_globals_info(prvFluid *Prv, std::ostringstream &Buf, bool Compa
                << var.name << ":" << fluid_type_name(var.type) << ":" << "\n";
          }
       }
+      // TODO: We need to add globals not in the capture list.
       return;
    }
 
    // Access the storage table where user-defined globals are stored.
    // The storage table is either:
-   //   1. The __index table directly (JIT-compatible mode), or
-   //   2. An upvalue in the __index closure (legacy mode)
-
-   lua_pushvalue(Prv->Lua, LUA_GLOBALSINDEX); // Push global environment
-   if (not lua_getmetatable(Prv->Lua, -1)) {
-      lua_pop(Prv->Lua, 1);
-      return;
-   }
-
-   lua_pushstring(Prv->Lua, "__index");
-   lua_rawget(Prv->Lua, -2); // Get __index (could be table or function)
+   //   1. LUA_GLOBALSINDEX directly (no metatable protection)
+   //   2. The __index table directly (JIT-compatible mode with metatable)
+   //   3. An upvalue in the __index closure (legacy mode with metatable)
 
    int storage_table_idx;
    int items_to_pop;
 
-   if (lua_istable(Prv->Lua, -1)) {
-      // JIT-compatible mode: __index IS the storage table directly
+   lua_pushvalue(Prv->Lua, LUA_GLOBALSINDEX); // Push global environment
+
+   if (not lua_getmetatable(Prv->Lua, -1)) {
+      // No metatable - globals are stored directly in LUA_GLOBALSINDEX
       storage_table_idx = lua_gettop(Prv->Lua);
-      items_to_pop = 3; // storage table, metatable, global env
+      items_to_pop = 1; // global env only
    }
-   else if (lua_isfunction(Prv->Lua, -1)) {
-      // Legacy mode: __index is a closure with storage table as upvalue
-      auto upvalue_name = lua_getupvalue(Prv->Lua, -1, 1);
-      if (not upvalue_name or not lua_istable(Prv->Lua, -1)) {
+   else {
+      lua_pushstring(Prv->Lua, "__index");
+      lua_rawget(Prv->Lua, -2); // Get __index (could be table or function)
+
+      if (lua_istable(Prv->Lua, -1)) {
+         // JIT-compatible mode: __index IS the storage table directly
+         storage_table_idx = lua_gettop(Prv->Lua);
+         items_to_pop = 3; // storage table, metatable, global env
+      }
+      else if (lua_isfunction(Prv->Lua, -1)) {
+         // Legacy mode: __index is a closure with storage table as upvalue
+         auto upvalue_name = lua_getupvalue(Prv->Lua, -1, 1);
+         if (not upvalue_name or not lua_istable(Prv->Lua, -1)) {
+            lua_pop(Prv->Lua, 3);
+            return;
+         }
+         storage_table_idx = lua_gettop(Prv->Lua);
+         items_to_pop = 4; // storage table, __index closure, metatable, global env
+      }
+      else {
          lua_pop(Prv->Lua, 3);
          return;
       }
-      storage_table_idx = lua_gettop(Prv->Lua);
-      items_to_pop = 4; // storage table, __index closure, metatable, global env
-   }
-   else {
-      lua_pop(Prv->Lua, 3);
-      return;
    }
 
    int count = 0;

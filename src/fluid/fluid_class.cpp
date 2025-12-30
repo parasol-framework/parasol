@@ -136,31 +136,6 @@ static void free_all(objScript *Self)
 }
 
 //********************************************************************************************************************
-// Proxy function for controlling writes to global variables.
-// Note: __index uses a direct table reference (not a function) for JIT compatibility.
-// When __index is a table, LuaJIT can trace through global reads without aborting.
-
-static int global_newindex(lua_State *Lua) // Write global variable via proxy
-{
-   //pf::Log(__FUNCTION__).warning("Write-Global: %s", luaL_checkstring(Lua, 2));
-
-   lua_pushvalue(Lua, 2);
-   lua_rawget(Lua, lua_upvalueindex(1)); // Get the assigned value
-   int existing_type = lua_type(Lua, -1);
-   lua_pop(Lua, 1); // Pop the assigned value
-
-   if (existing_type != LUA_TNIL) {
-      auto new_type = lua_type(Lua, 3);
-      if ((existing_type != new_type) and (new_type != LUA_TNIL)) {
-         luaL_error(Lua, "Attempt to overwrite existing global '%s' <%s> with a <%s> type.", luaL_checkstring(Lua, 2), lua_typename(Lua, existing_type), lua_typename(Lua, new_type));
-      }
-   }
-
-   lua_rawset(Lua, lua_upvalueindex(1)); // Set the global variable as normal
-   return 0;
-}
-
-//********************************************************************************************************************
 // Only to be used immediately after a failed lua_pcall().  Lua stores a description of the error that occurred on the
 // stack, this will be popped and copied to the ErrorString field.
 
@@ -644,31 +619,6 @@ static ERR FLUID_Query(objScript *Self)
       log.trace("The Lua script will be initialised from scratch.");
 
       prv->Lua->script = Self;
-
-      // Set up global variable protection that is JIT-compatible.
-      // __index can be a table (JIT traces through it) instead of a function (JIT aborts).
-      // We use:
-      //   __index = storage_table (direct table lookup, JIT-compatible)
-      //   __newindex = C function (only called on writes, protects existing functions)
-
-      lua_newtable(prv->Lua); // Storage table (will hold all globals) - stack index 1
-      {
-         lua_newtable(prv->Lua); // Metatable = { __newindex = func, __index = storage_table }
-         {
-            // __newindex: C function for write protection (only called when writing new keys)
-            lua_pushstring(prv->Lua, "__newindex");
-            lua_pushvalue(prv->Lua, 1); // Storage table (absolute index)
-            lua_pushcclosure(prv->Lua, global_newindex, 1);
-            lua_settable(prv->Lua, -3);
-
-            // __index: Direct table reference (JIT-compatible, no C function call)
-            lua_pushstring(prv->Lua, "__index");
-            lua_pushvalue(prv->Lua, 1); // Storage table (absolute index)
-            lua_settable(prv->Lua, -3);
-         }
-         lua_setmetatable(prv->Lua, LUA_GLOBALSINDEX);
-      }
-      lua_pop(prv->Lua, 1); // Pop the storage table
 
       lua_gc(prv->Lua, LUA_GCSTOP, 0);  // Stop collector during initialization
          luaL_openlibs(prv->Lua);  // Open Lua libraries
