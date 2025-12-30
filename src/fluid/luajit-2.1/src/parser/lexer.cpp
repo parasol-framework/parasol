@@ -625,7 +625,7 @@ static LexToken lex_fstring(LexState *State, TValue *TV)
          }
       }
       else if (State->c IS '\\') {
-         // Handle standard escape sequences
+         // Handle standard escape sequences (matching regular string behavior)
          LexChar c = lex_next(State);
          switch (c) {
             case 'a': c = '\a'; break;
@@ -637,8 +637,52 @@ static LexToken lex_fstring(LexState *State, TValue *TV)
             case 'v': c = '\v'; break;
             case '\\': case '"': case '\'': break;
             case '{': case '}': break;  // Allow escaping braces too
+
+            case 'x':
+               c = parse_hex_escape(State);
+               if (c < 0) {
+                  lj_lex_error(State, TK_string, ErrMsg::XESC);
+                  if (State->diagnose_mode) {
+                     lex_next(State);
+                     continue;
+                  }
+               }
+               break;
+
+            case 'u':
+               if (not parse_unicode_escape(State)) {
+                  lj_lex_error(State, TK_string, ErrMsg::XESC);
+                  if (State->diagnose_mode) {
+                     lex_next(State);
+                     continue;
+                  }
+               }
+               lex_next(State);
+               continue;
+
+            case '\n':
+            case '\r':
+               lex_save(State, '\n');
+               lex_newline(State);
+               continue;
+
+            case LEX_EOF:
+               continue;
+
             default:
-               // For other characters, include as-is (or handle hex/unicode if needed)
+               if (isdigit(c)) {
+                  c = parse_decimal_escape(State, c);
+                  if (c < 0) {
+                     lj_lex_error(State, TK_string, ErrMsg::XESC);
+                     if (State->diagnose_mode) {
+                        lex_next(State);
+                        continue;
+                     }
+                  }
+                  lex_save(State, c);
+                  continue;
+               }
+               // For other characters, include as-is
                break;
          }
          lex_save(State, c);
