@@ -342,18 +342,18 @@ function serializeTable(Tbl:any, Indent):str
       end
    end
 
-   parts = {}
+   parts = array<string>
    for k, v in pairs(Tbl) do
       keyStr = type(k) is 'string' and "['" .. k .. "']" or '[' .. tostring(k) .. ']'
       valStr = serializeTable(v, nextIndent)
-      table.insert(parts, nextIndent .. keyStr .. ' = ' .. valStr)
+      parts:push(nextIndent .. keyStr .. ' = ' .. valStr)
    end
 
    if #parts is 0 then
       return '{}'
    end
 
-   return '{\n' .. table.concat(parts, ',\n') .. '\n' .. Indent .. '}'
+   return '{\n' .. parts.join(',\n') .. Indent .. '}'
 end
 
 ----------------------------------------------------------------------------------------------------------------------

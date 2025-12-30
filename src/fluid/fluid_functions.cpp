@@ -668,7 +668,8 @@ int fcmd_require(lua_State *Lua)
 //********************************************************************************************************************
 // Usage: state = getExecutionState()
 //
-// Returns miscellaneous information about the code's current state of execution.
+// Returns miscellaneous information about the code's current state of execution.  Currently this function is
+// considered to be internal until such time we add anything useful for production developers.
 
 int fcmd_get_execution_state(lua_State *Lua)
 {

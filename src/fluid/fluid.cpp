@@ -807,11 +807,7 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
          else if (dt IS 'h') {
             lua_pushnumber(Lua, strtoull(value.c_str(), nullptr, 0)); // Using pushnumber() so that 64-bit hex is supported.
          }
-         else if (value[0] IS '\"') {
-            if (value[n-1] IS '\"') lua_pushlstring(Lua, value.c_str()+1, n-2);
-            else lua_pushlstring(Lua, value.c_str(), n);
-         }
-         else lua_pushlstring(Lua, value.c_str(), n);
+         else luaL_error(Lua, "Unsupported constant value: %s", value.c_str());
 
          lua_setglobal(Lua, prefix.c_str());
       }
