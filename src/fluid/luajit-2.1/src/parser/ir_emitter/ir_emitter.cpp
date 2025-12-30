@@ -922,6 +922,22 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
       info->info |= VarInfoFlag::Close;
    }
 
+   // Handle <const> attribute - mark local variables that cannot be reassigned
+   for (auto i = BCReg(0); i < nvars; ++i) {
+      const Identifier& identifier = Payload.names[i.raw()];
+      if (not identifier.has_const) continue;
+
+      // Validate: const requires initialiser
+      if (i.raw() >= Payload.values.size()) {
+         return ParserResult<IrEmitUnit>::failure(this->make_error(ParserErrorCode::ConstRequiresInitialiser,
+            std::format("const local '{}' requires an initialiser",
+               identifier.symbol ? std::string_view(strdata(identifier.symbol), identifier.symbol->len) : "_")));
+      }
+
+      VarInfo* info = &this->func_state.var_get(base.raw() + i.raw());
+      info->info |= VarInfoFlag::Const;
+   }
+
    // Set fixed_type for variables - explicit annotations take precedence, otherwise infer from initialisers
    for (auto i = BCReg(0); i < nvars; ++i) {
       const Identifier& identifier = Payload.names[i.raw()];

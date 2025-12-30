@@ -13,9 +13,23 @@ ParserResult<IrEmitUnit> IrEmitter::emit_global_decl_stmt(const GlobalDeclStmtPa
 
    // Register all declared global names so nested functions can recognise them
 
-   for (const Identifier& identifier : Payload.names) {
+   for (size_t i = 0; i < Payload.names.size(); ++i) {
+      const Identifier& identifier = Payload.names[i];
       if (is_blank_symbol(identifier)) continue;
-      if (GCstr *name = identifier.symbol) this->func_state.declared_globals.insert(name);
+      if (GCstr *name = identifier.symbol) {
+         this->func_state.declared_globals.insert(name);
+
+         if (identifier.has_const) {
+            // Validate: const requires initialiser
+            if (i >= Payload.values.size()) {
+               return ParserResult<IrEmitUnit>::failure(this->make_error(ParserErrorCode::ConstRequiresInitialiser,
+                  std::format("const global '{}' requires an initialiser",
+                     std::string_view(strdata(name), name->len))));
+            }
+            // Track this global as const for reassignment checking
+            this->func_state.const_globals.insert(name);
+         }
+      }
    }
 
    // Handle conditional assignment (??=) for global declarations

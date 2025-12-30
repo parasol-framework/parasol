@@ -3,11 +3,11 @@
 ------------------------------------------------------------------------------
 -- Serialise the key-values of a table into an XML string.
 
-table.toXML = function(t:table)
+table.toXML = function(t:table):str
    out = ''
    for tag,v in pairs(t) do
       if type(v) is 'table' then -- tag
-         out ..= '<' .. tag
+         out ..= f'<{tag}'
          local child = ''
          for ak,av in pairs(v) do
             if type(ak) is 'number' then -- key-less, can be child tag or content
@@ -23,9 +23,9 @@ table.toXML = function(t:table)
                   child ..= string.escXML(tostring(av)) -- content
                end
             elseif type(av) is 'string' then -- attribute
-               out ..= ' ' .. ak .. '="' .. string.escXML(av) .. '"'
+               out ..= f' {ak}="{string.escXML(av)}"'
             elseif type(av) is 'number' then -- attribute
-               out ..= ' ' .. ak .. '=' .. av
+               out ..= f' {ak}={av}'
             elseif type(av) is 'boolean' then -- attribute
                if av is true then
                   out ..= ' ' .. ak
@@ -36,12 +36,12 @@ table.toXML = function(t:table)
          end
 
          if child?? then
-            out ..= '>' .. child .. '</>'
+            out ..= f'>{child}</>'
          else
             out ..= '/>'
          end
       else
-         out = '<' .. tag .. '/>'
+         out = f'<{tag}/>'
       end
    end
    return out
@@ -50,7 +50,7 @@ end
 ------------------------------------------------------------------------------
 -- Usage: for k,v in table.sortByKeys(the_table) do
 
-table.sortByKeys = function(t, f)
+table.sortByKeys = function(t:table, f:func):func
    a = {}
    for n in pairs(t) do table.insert(a, n) end
    table.sort(a, f)
@@ -66,12 +66,12 @@ end
 
 ------------------------------------------------------------------------------
 
-global file ?= { ui = { } }
+global file <const> ?= { ui = { } }
 
 -- Read an entire file as a string.
 -- Will throw an exception if the file is not found or the complete data cannot be read.
 
-file.readAll = function(Path)
+file.readAll = function(Path:str):str
    ex, fl = catch(function() return obj.new('file', { flags='READ', path=Path } ) end)
    assert(not ex, 'Failed to open file "' .. tostring(Path) .. '": ' .. ex.message)
 
@@ -92,7 +92,7 @@ end
 
 ------------------------------------------------------------------------------
 
-file.isFolder = function(Path)
+file.isFolder = function(Path:str):bool
    e = string.sub(Path, -1)
    if (e is '/') or (e is '\\') or (e is ':') then return true end
    return false
@@ -100,7 +100,7 @@ end
 
 ------------------------------------------------------------------------------
 
-file.splitPath = function(Path)
+file.splitPath = function(Path:str):<str,str>
    Path ?? return nil, nil
    path, fl = string.match(Path, '^(.+[/:\\])(.+)$')
    path ?? return nil, Path
@@ -109,6 +109,6 @@ end
 
 ------------------------------------------------------------------------------
 
-file.sanitisePath = function(Path)
+file.sanitisePath = function(Path:str):str
    return string.gsub(Path, '[:/\\][:/\\]+', function(n) return n:sub(0,1) end)
 end

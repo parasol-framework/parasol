@@ -34,7 +34,7 @@ extern void luaL_checkany(lua_State *, int narg);
 extern int   luaL_newmetatable(lua_State *, const char *tname);
 extern void * luaL_checkudata(lua_State *, int ud, const char *tname);
 extern void luaL_where(lua_State *, int lvl);
-extern int luaL_error(lua_State *, const char *fmt, ...);
+[[noreturn]] extern int luaL_error(lua_State *, const char *fmt, ...);
 extern int luaL_checkoption(lua_State *, int narg, const char *def, const char *const lst[]);
 
 // pre-defined references

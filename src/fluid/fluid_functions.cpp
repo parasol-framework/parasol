@@ -15,6 +15,7 @@
 #include "lualib.h"
 #include "lauxlib.h"
 #include "lj_obj.h"
+#include "parser/parser_diagnostics.h"
 
 #include "hashes.h"
 #include "defs.h"
@@ -27,6 +28,25 @@ static int lua_load(lua_State *Lua, class objFile *File, CSTRING SourceName)
    File->read(buffer.data(), filesize);
 
    return lua_load(Lua, std::string_view(buffer.data(), buffer.size()), SourceName);
+}
+
+//********************************************************************************************************************
+// lua_load() failures are handled here.  At least one parser diagnostic is expected - failure to produce a
+// diagnostic requires further investigation and a fix to the parser code.
+
+[[noreturn]] static void lua_load_failed(lua_State *Lua)
+{
+   if (Lua->parser_diagnostics and Lua->parser_diagnostics->has_errors()) {
+      std::string msg;
+      for (const auto &entry : Lua->parser_diagnostics->entries()) {
+         if (not msg.empty()) msg += "\n";
+         msg += entry.to_string(Lua->script->LineOffset);
+      }
+      luaL_error(Lua, "%s", msg.c_str());
+   }
+   else luaL_error(Lua, "Parsing failed but no diagnostics are available.");
+
+   //error_msg = lua_tostring(Lua, -1); <- No longer considered appropriate (legacy)
 }
 
 //********************************************************************************************************************
@@ -576,12 +596,12 @@ int fcmd_include(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Usage: require 'Module'
+// Usage: require 'ScriptFile'
 //
 // Loads a Fluid language file from "scripts:" and executes it.  Differs from loadFile() in that registration
 // prevents multiple executions, and the volume restriction improves security.
 //
-// The module can opt to return a table that represents the interface.  This allows the user to avoid namespace
+// The loaded script can opt to return a table that represents the interface.  This allows the user to avoid namespace
 // conflicts that could occur if the interface would otherwise be accessed as a global.
 
 int fcmd_require(lua_State *Lua)
@@ -669,7 +689,7 @@ int fcmd_require(lua_State *Lua)
          else error_msg = lua_tostring(Lua, -1);
          prv->RequireCounter--;
       }
-      else error_msg = lua_tostring(Lua, -1);
+      else { lua_load_failed(Lua); return 0; }
    }
    else {
       luaL_error(Lua, "Failed to open file '%s', may not exist.", path.c_str());
@@ -811,7 +831,7 @@ int fcmd_loadfile(lua_State *Lua)
             }
             else error_msg = lua_tostring(Lua, -1);
          }
-         else error_msg = lua_tostring(Lua, -1);
+         else { lua_load_failed(Lua); return 0; }
       }
       else error = ERR::DoesNotExist;
 
@@ -826,7 +846,7 @@ int fcmd_loadfile(lua_State *Lua)
 //********************************************************************************************************************
 // Usage: exec(Statement)
 //
-// Executes a string statement within a pcall.  Returns results if there are any.  An execption will be raised if an
+// Executes a string statement within a pcall.  Returns results if there are any.  An exception will be raised if an
 // error occurs during statement execution.
 
 int fcmd_exec(lua_State *Lua)
@@ -857,7 +877,7 @@ int fcmd_exec(lua_State *Lua)
             }
             else error_msg = lua_tostring(Lua, -1);
          }
-         else error_msg = lua_tostring(Lua, -1);
+         else { lua_load_failed(Lua); return 0; }
       }
 
       if (error_msg) luaL_error(Lua, error_msg);

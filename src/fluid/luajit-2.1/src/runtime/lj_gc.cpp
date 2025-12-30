@@ -58,7 +58,7 @@
 static constexpr uint32_t GCSTEPSIZE     = 1024u;  // Base step size in bytes
 static constexpr uint32_t GCSWEEPMAX     = 40;     // Max objects to sweep per step
 static constexpr uint32_t GCSWEEPCOST    = 10;     // Cost estimate per sweep operation
-static constexpr uint32_t GCFINALIZECOST = 100;    // Cost estimate per finalizer call
+static constexpr uint32_t GCFINALIZECOST = 100;    // Cost estimate per finaliser call
 
 static void gc_mark(global_State *, GCobj *);
 static GCRef* gc_sweep(global_State *, GCRef *, uint32_t);
@@ -68,24 +68,24 @@ static GCRef* gc_sweep(global_State *, GCRef *, uint32_t);
 #define gc_traverse_curtrace(g)   gc_traverse_trace(g, &G2J(g)->cur)
 
 //********************************************************************************************************************
-// RAII guard for GC finalizer state preservation.
+// RAII guard for GC finaliser state preservation.
 // Saves hook state and GC threshold on construction, restores on destruction.
 // Used during __gc metamethod calls to prevent re-entrant GC and hooks.
 
-class GCFinalizerGuard {
+class GCFinaliserGuard {
    global_State *g_;
    uint8_t savedHook_;
    GCSize savedThreshold_;
 
 public:
-   explicit GCFinalizerGuard(global_State *g) noexcept
+   explicit GCFinaliserGuard(global_State *g) noexcept
       : g_(g), savedHook_(hook_save(g)), savedThreshold_(g->gc.threshold)
    {
       hook_entergc(g);  // Disable hooks and new traces during __gc.
       g->gc.threshold = LJ_MAX_MEM;  // Prevent GC steps.
    }
 
-   ~GCFinalizerGuard() noexcept {
+   ~GCFinaliserGuard() noexcept {
       hook_restore(g_, savedHook_);
       g_->gc.threshold = savedThreshold_;
    }
@@ -94,8 +94,8 @@ public:
    [[nodiscard]] uint8_t savedHook() const noexcept { return savedHook_; }
 
    // Non-copyable, non-movable.
-   GCFinalizerGuard(const GCFinalizerGuard&) = delete;
-   GCFinalizerGuard& operator=(const GCFinalizerGuard&) = delete;
+   GCFinaliserGuard(const GCFinaliserGuard&) = delete;
+   GCFinaliserGuard& operator=(const GCFinaliserGuard&) = delete;
 };
 
 //********************************************************************************************************************
@@ -333,7 +333,7 @@ static int gc_traverse_tab(global_State *g, GCtab* t)
       if (weak) {  // Weak tables are cleared in the atomic phase.
 #if LJ_HASFFI
          CTState* cts = ctype_ctsG(g);
-         if (cts and cts->finalizer IS t) {
+         if (cts and cts->finaliser IS t) {
             weak = (int)(~0u & ~LJ_GC_WEAKVAL);
          }
          else
@@ -669,25 +669,25 @@ static void gc_clearweak(global_State *g, GCobj* o)
 }
 
 //********************************************************************************************************************
-// Call a userdata or cdata finalizer.
+// Call a userdata or cdata finaliser.
 
-static void gc_call_finalizer(global_State *g, lua_State *L, cTValue* mo, GCobj* o)
+static void gc_call_finaliser(global_State *g, lua_State *L, cTValue* mo, GCobj* o)
 {
    lj_trace_abort(g);
 
    // Use RAII guard for hook state and GC threshold preservation.
-   GCFinalizerGuard guard(g);
+   GCFinaliserGuard guard(g);
 
    if (LJ_HASPROFILE and (guard.savedHook() & HOOK_PROFILE)) lj_dispatch_update(g);
 
-   // Set up the stack for the finalizer call.
+   // Set up the stack for the finaliser call.
    TValue* top = L->top;
    copyTV(L, top++, mo);
    if (LJ_FR2) setnilV(top++);
    setgcV(L, top, o, ~o->gch.gct);
    L->top = top + 1;
 
-   // Call the finalizer. Stack: |mo|o| -> |
+   // Call the finaliser. Stack: |mo|o| -> |
    int errcode = lj_vm_pcall(L, top, 1 + 0, -1);
 
    if (LJ_HASPROFILE and (guard.savedHook() & HOOK_PROFILE)) lj_dispatch_update(g);
@@ -705,7 +705,7 @@ static void gc_finalize(lua_State *L)
    global_State *g = G(L);
    GCobj* o = gcnext(gcref(g->gc.mmudata));
    cTValue* mo;
-   lj_assertG(tvref(g->jit_base) IS nullptr, "finalizer called on trace");
+   lj_assertG(tvref(g->jit_base) IS nullptr, "finaliser called on trace");
    // Unchain from list of userdata to be finalized.
    if (o IS gcref(g->gc.mmudata))
       setgcrefnull(g->gc.mmudata);
@@ -719,14 +719,14 @@ static void gc_finalize(lua_State *L)
       setgcref(g->gc.root, o);
       makewhite(g, o);
       o->gch.marked &= (uint8_t)~LJ_GC_CDATA_FIN;
-      // Resolve finalizer.
+      // Resolve finaliser.
       setcdataV(L, &tmp, gco_to_cdata(o));
-      tv = lj_tab_set(L, ctype_ctsG(g)->finalizer, &tmp);
+      tv = lj_tab_set(L, ctype_ctsG(g)->finaliser, &tmp);
       if (not tvisnil(tv)) {
          g->gc.nocdatafin = 0;
          copyTV(L, &tmp, tv);
-         setnilV(tv);  //  Clear entry in finalizer table.
-         gc_call_finalizer(g, L, &tmp, o);
+         setnilV(tv);  //  Clear entry in finaliser table.
+         gc_call_finaliser(g, L, &tmp, o);
       }
       return;
    }
@@ -737,7 +737,7 @@ static void gc_finalize(lua_State *L)
    makewhite(g, o);
    // Resolve the __gc metamethod.
    mo = lj_meta_fastg(g, tabref(gco_to_userdata(o)->metatable), MM_gc);
-   if (mo) gc_call_finalizer(g, L, mo, o);
+   if (mo) gc_call_finaliser(g, L, mo, o);
 }
 
 //********************************************************************************************************************
@@ -749,16 +749,16 @@ void lj_gc_finalize_udata(lua_State *L)
 }
 
 #if LJ_HASFFI
-// Finalize all cdata objects from finalizer table.
+// Finalize all cdata objects from finaliser table.
 void lj_gc_finalize_cdata(lua_State *L)
 {
    global_State *g = G(L);
    CTState* cts = ctype_ctsG(g);
    if (cts) {
-      GCtab* t = cts->finalizer;
+      GCtab* t = cts->finaliser;
       Node* node = noderef(t->node);
       ptrdiff_t i;
-      setgcrefnull(t->metatable);  //  Mark finalizer table as disabled.
+      setgcrefnull(t->metatable);  //  Mark finaliser table as disabled.
       for (i = (ptrdiff_t)t->hmask; i >= 0; i--)
          if (not tvisnil(&node[i].val) and tviscdata(&node[i].key)) {
             GCobj* o = gcV(&node[i].key);
@@ -767,7 +767,7 @@ void lj_gc_finalize_cdata(lua_State *L)
             o->gch.marked &= (uint8_t)~LJ_GC_CDATA_FIN;
             copyTV(L, &tmp, &node[i].val);
             setnilV(&node[i].val);
-            gc_call_finalizer(g, L, &tmp, o);
+            gc_call_finaliser(g, L, &tmp, o);
          }
    }
 }
@@ -882,7 +882,7 @@ static size_t gc_onestep(lua_State *L)
    case GCPhase::Finalize:
       if (gcref(g->gc.mmudata) != nullptr) {
          GCSize old = g->gc.total;
-         if (tvref(g->jit_base))  //  Don't call finalizers on trace.
+         if (tvref(g->jit_base))  //  Don't call finalisers on trace.
             return LJ_MAX_MEM;
          gc_finalize(L);  //  Finalize one userdata object.
          if (old >= g->gc.total and g->gc.estimate > old - g->gc.total)
@@ -892,7 +892,7 @@ static size_t gc_onestep(lua_State *L)
          return GCFINALIZECOST;
       }
 #if LJ_HASFFI
-      if (not g->gc.nocdatafin) lj_tab_rehash(L, ctype_ctsG(g)->finalizer);
+      if (not g->gc.nocdatafin) lj_tab_rehash(L, ctype_ctsG(g)->finaliser);
 #endif
       g->gc.state = (GCPhase::Pause);  //  End of GC cycle.
       g->gc.debt = 0;

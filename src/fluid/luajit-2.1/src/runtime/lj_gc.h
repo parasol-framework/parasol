@@ -256,8 +256,8 @@ public:
       return gs->gc.state IS GCPhase::Finalize;
    }
 
-   // Check if there are pending finalizers.
-   [[nodiscard]] bool hasPendingFinalizers() const noexcept {
+   // Check if there are pending finalisers.
+   [[nodiscard]] bool hasPendingFinalisers() const noexcept {
       return gcref(gs->gc.mmudata) != nullptr;
    }
 
@@ -315,7 +315,7 @@ public:
 
    // -- Finalization --
 
-   // Separate userdata with finalizers to the mmudata list.
+   // Separate userdata with finalisers to the mmudata list.
    // Returns the total size of userdata to be finalized.
    size_t separateUdata(int all) noexcept {
       return lj_gc_separateudata(gs, all);

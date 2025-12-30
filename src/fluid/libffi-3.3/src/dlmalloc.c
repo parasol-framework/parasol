@@ -1284,7 +1284,7 @@ extern void*     sbrk(ptrdiff_t);
 
 /*
    If HAVE_MORECORE or HAVE_MMAP are false, we just define calls and
-   checks to fail so compiler optimizer can delete code rather than
+   checks to fail so compiler optimiser can delete code rather than
    using so many "#if"s.
 */
 

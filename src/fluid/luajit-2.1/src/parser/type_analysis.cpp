@@ -115,6 +115,9 @@ private:
    [[nodiscard]] const FunctionExprPayload * resolve_call_target(const CallTarget &) const;
    [[nodiscard]] const FunctionExprPayload * resolve_function(GCstr *) const;
 
+   // Const checking - checks if a local variable has <const> attribute
+   [[nodiscard]] bool is_local_const(GCstr *) const;
+
    // Type fixation - locks variable type after first concrete assignment
    void fix_local_type(GCstr *, FluidType);
 
@@ -160,11 +163,13 @@ private:
       InferredType type{};
       SourceSpan location{};
       const FunctionExprPayload* function = nullptr;  // Non-null if declared as global function
+      bool is_const = false;  // True if declared with <const> attribute
    };
 
-   void declare_global(GCstr *Name, const InferredType &Type, SourceSpan Location);
+   void declare_global(GCstr *Name, const InferredType &Type, SourceSpan Location, bool IsConst = false);
    void declare_global_function(GCstr *Name, const FunctionExprPayload *Function, SourceSpan Location);
    [[nodiscard]] std::optional<InferredType> lookup_global_type(GCstr *Name) const;
+   [[nodiscard]] bool is_global_const(GCstr *Name) const;
    void fix_global_type(GCstr *Name, FluidType Type);
 
    ParserContext &ctx_;                             // Parser context for diagnostics and lexer access
@@ -633,16 +638,33 @@ void TypeAnalyser::analyse_assignment(const AssignmentStmtPayload &Payload)
          GCstr *name = name_ref->identifier.symbol;
 
          // First check local variables
+
          auto existing = this->resolve_identifier(name);
          bool is_global = false;
+         bool is_const = false;
 
          // If not found as local, check global variables
+
          if (not existing) {
             existing = this->lookup_global_type(name);
             is_global = existing.has_value();
+            if (is_global) is_const = this->is_global_const(name);
          }
+         else is_const = this->is_local_const(name);
 
          if (not existing) continue;
+
+         // Check for assignment to const variable
+
+         if (is_const) {
+            std::string_view name_view(strdata(name), name->len);
+            TypeDiagnostic diag;
+            diag.location = target.span;
+            diag.code = ParserErrorCode::AssignToConstant;
+            diag.message = std::format("cannot assign to const {} '{}'", is_global ? "global" : "local", name_view);
+            this->diagnostics_.push_back(std::move(diag));
+            continue;  // Skip further checking for this target
+         }
 
          if (i >= Payload.values.size()) continue;
          InferredType value_type = this->infer_expression_type(*Payload.values[i]);
@@ -779,7 +801,7 @@ void TypeAnalyser::analyse_local_decl(const LocalDeclStmtPayload &Payload)
       this->check_shadowing(name.symbol, name.span);
       #endif
 
-      this->current_scope().declare_local(name.symbol, inferred, name.span);
+      this->current_scope().declare_local(name.symbol, inferred, name.span, name.has_const);
       this->trace_decl(this->ctx_.lex().linenumber, name.symbol, inferred.primary, inferred.is_fixed);
    }
 
@@ -863,7 +885,7 @@ void TypeAnalyser::analyse_global_decl(const GlobalDeclStmtPayload &Payload)
          inferred.is_fixed = false;
       }
 
-      this->declare_global(name.symbol, inferred, name.span);
+      this->declare_global(name.symbol, inferred, name.span, name.has_const);
    }
 
    #ifdef INCLUDE_TIPS
@@ -1442,10 +1464,11 @@ void TypeAnalyser::mark_identifier_used(GCstr *Name)
    }
 }
 
+//********************************************************************************************************************
 // Resolve the target of a function call to get its FunctionExprPayload.  Handles direct calls (func()) and
 // identifier references (myFunc()).
 
-const FunctionExprPayload* TypeAnalyser::resolve_call_target(const CallTarget& Target) const
+const FunctionExprPayload * TypeAnalyser::resolve_call_target(const CallTarget &Target) const
 {
    if (std::holds_alternative<DirectCallTarget>(Target)) {
       const auto &direct = std::get<DirectCallTarget>(Target);
@@ -1465,7 +1488,7 @@ const FunctionExprPayload* TypeAnalyser::resolve_call_target(const CallTarget& T
 
 // Look up a function by name in the scope stack.
 
-const FunctionExprPayload* TypeAnalyser::resolve_function(GCstr *Name) const
+const FunctionExprPayload * TypeAnalyser::resolve_function(GCstr *Name) const
 {
    for (auto it = this->scope_stack_.rbegin(); it != this->scope_stack_.rend(); ++it) {
       const FunctionExprPayload* fn = it->lookup_function(Name);
@@ -1474,8 +1497,17 @@ const FunctionExprPayload* TypeAnalyser::resolve_function(GCstr *Name) const
    return nullptr;
 }
 
-// Fix (lock) a variable's type after the first concrete assignment.
-// Once fixed, the variable cannot be assigned values of different types.
+//********************************************************************************************************************
+// Fix (lock) a variable's type after the first concrete assignment.  Once fixed, the variable cannot be assigned 
+// values of different types.
+
+bool TypeAnalyser::is_local_const(GCstr *Name) const
+{
+   for (auto it = this->scope_stack_.rbegin(); it != this->scope_stack_.rend(); ++it) {
+      if (it->lookup_local_type(Name)) return it->is_local_const(Name);
+   }
+   return false;
+}
 
 void TypeAnalyser::fix_local_type(GCstr *Name, FluidType Type)
 {
@@ -1496,12 +1528,13 @@ void TypeAnalyser::fix_local_type(GCstr *Name, FluidType Type)
 // Unlike locals which use scope-based tracking, globals use a flat map since they persist for
 // the entire script lifetime.
 
-void TypeAnalyser::declare_global(GCstr *Name, const InferredType &Type, SourceSpan Location)
+void TypeAnalyser::declare_global(GCstr *Name, const InferredType &Type, SourceSpan Location, bool IsConst)
 {
    if (not Name) return;
    GlobalTypeInfo info;
    info.type = Type;
    info.location = Location;
+   info.is_const = IsConst;
    this->global_types_[Name] = info;
    this->trace_decl(this->ctx_.lex().linenumber, Name, Type.primary, Type.is_fixed);
 }
@@ -1521,20 +1554,25 @@ void TypeAnalyser::declare_global_function(GCstr *Name, const FunctionExprPayloa
 std::optional<InferredType> TypeAnalyser::lookup_global_type(GCstr *Name) const
 {
    if (not Name) return std::nullopt;
-   auto it = this->global_types_.find(Name);
-   if (it != this->global_types_.end()) return it->second.type;
+   if (auto it = this->global_types_.find(Name); it != this->global_types_.end()) return it->second.type;
    return std::nullopt;
 }
 
 void TypeAnalyser::fix_global_type(GCstr *Name, FluidType Type)
 {
    if (not Name) return;
-   auto it = this->global_types_.find(Name);
-   if (it != this->global_types_.end()) {
+   if (auto it = this->global_types_.find(Name); it != this->global_types_.end()) {
       it->second.type.primary = Type;
       it->second.type.is_fixed = true;
       this->trace_fix(this->ctx_.lex().linenumber, Name, Type);
    }
+}
+
+bool TypeAnalyser::is_global_const(GCstr *Name) const
+{
+   if (not Name) return false;
+   if (auto it = this->global_types_.find(Name); it != this->global_types_.end()) return it->second.is_const;
+   return false;
 }
 
 //********************************************************************************************************************
@@ -1561,8 +1599,8 @@ void TypeAnalyser::validate_return_types(const ReturnStmtPayload &Return, Source
       if (not ctx->expected_returns.is_variadic and return_count > ctx->expected_returns.count) {
          TypeDiagnostic diag;
          diag.location = Location;
-         diag.code = ParserErrorCode::ReturnCountMismatch;
-         diag.message = std::format("too many return values: function declares {} but {} returned",
+         diag.code     = ParserErrorCode::ReturnCountMismatch;
+         diag.message  = std::format("too many return values: function declares {} but {} returned",
             ctx->expected_returns.count, return_count);
          this->diagnostics_.push_back(std::move(diag));
       }
@@ -1725,9 +1763,7 @@ bool TypeAnalyser::body_has_return_values(const BlockStmt& Block) const
 bool TypeAnalyser::body_contains_call_to(const BlockStmt& Block, GCstr *Name) const
 {
    for (const auto &stmt : Block.statements) {
-      if (stmt and this->statement_contains_call_to(*stmt, Name)) {
-         return true;
-      }
+      if (stmt and this->statement_contains_call_to(*stmt, Name)) return true;
    }
    return false;
 }
