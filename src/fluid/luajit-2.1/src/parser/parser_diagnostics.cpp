@@ -63,6 +63,7 @@ static CSTRING error_code_name(ParserErrorCode Code)
       case ParserErrorCode::UndefinedVariable:      return "Undefined variable";
       case ParserErrorCode::ThunkDirectCall:        return "Thunk direct call";
       case ParserErrorCode::RecoverySkippedTokens:  return "Recovery skipped tokens";
+      case ParserErrorCode::AssignToConstant:       return "Assign to constant";
       default: return "Unknown";
    }
 }

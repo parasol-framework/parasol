@@ -3,6 +3,10 @@
 //
 // #included from ir_emitter.cpp
 
+constexpr auto HASH_ASSERT  = pf::strhash("assert");
+constexpr auto HASH_MSG     = pf::strhash("msg");
+constexpr auto HASH_INCLUDE = pf::strhash("include");
+
 //********************************************************************************************************************
 // Pipe expression: lhs |> rhs_call()
 // Prepends the LHS result(s) as argument(s) to the RHS function call.
@@ -193,15 +197,21 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
          if (name_ref and name_ref->identifier.symbol) {
             GCstr *func_name = name_ref->identifier.symbol;
 
-            static GCstr *assert_str = nullptr; // Global state - this is confirmed as thread safe.
-            static GCstr *msg_str = nullptr;
-            if (not assert_str) assert_str = lj_str_newlit(this->lex_state.L, "assert");
-            if (not msg_str) msg_str = lj_str_newlit(this->lex_state.L, "msg");
-
-            if (func_name IS assert_str) this->optimise_assert(const_cast<ExprNodeList&>(Payload.arguments));
-            else if ((func_name IS msg_str) and not glPrintMsg) {
+            if (func_name->hash IS HASH_ASSERT) this->optimise_assert(const_cast<ExprNodeList&>(Payload.arguments));
+            else if ((func_name->hash IS HASH_MSG) and not glPrintMsg) {
                // msg() is eliminated entirely when debug messaging is disabled at compile time.
                return ParserResult<ExpDesc>::success(ExpDesc(ExpKind::Void));
+            }
+            else if (func_name->hash IS HASH_INCLUDE) {
+               // Intercept include('module_name') to pre-load constants at parse time
+               if (not Payload.arguments.empty() and
+                   Payload.arguments[0]->kind IS AstNodeKind::LiteralExpr) {
+                  const auto *lit = std::get_if<LiteralValue>(&Payload.arguments[0]->data);
+                  if (lit and lit->kind IS LiteralKind::String and lit->string_value) {
+                     std::string mod_name(strdata(lit->string_value), lit->string_value->len);
+                     load_include(this->lex_state.L->script, mod_name.c_str());
+                  }
+               }
             }
          }
       }

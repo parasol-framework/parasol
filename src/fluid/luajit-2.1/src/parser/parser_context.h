@@ -55,9 +55,9 @@ struct ParserError {
    // Default constructor
    ParserError() = default;
 
-   // Constructor to simplify error creation
-   ParserError(ParserErrorCode Code, const Token& ErrorToken, std::string Message)
-      : code(Code), message(std::move(Message)), token(ErrorToken) {}
+   // Constructor to simplify error creation (accepts std::string, std::string_view, or const char*)
+   ParserError(ParserErrorCode Code, const Token& ErrorToken, std::string_view Message)
+      : code(Code), message(Message), token(ErrorToken) {}
 };
 
 //********************************************************************************************************************
@@ -178,14 +178,14 @@ private:
    std::string describe_token(const Token& token) const;
    void log_trace(ParserChannel, const Token& token, std::string_view note) const;
 
-   LexState* lex_state;
-   FuncState* func_state;
-   lua_State* lua_state;
+   LexState *lex_state;
+   FuncState *func_state;
+   lua_State *lua_state;
    ParserAllocator allocator;
    ParserConfig current_config;
    ParserDiagnostics diag;
    TokenStreamAdapter token_stream;
-   ParserContext* previous_context = nullptr;
+   ParserContext *previous_context = nullptr;
 };
 
 //********************************************************************************************************************
@@ -200,6 +200,6 @@ public:
    inline ~ParserSession() { this->ctx->restore_config(this->previous); }
 
 private:
-   ParserContext* ctx;
+   ParserContext *ctx;
    ParserConfig previous;
 };

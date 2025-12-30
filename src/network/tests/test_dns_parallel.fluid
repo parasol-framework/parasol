@@ -2,6 +2,8 @@
 Tests for resolving server names in parallel.
 --]]
 
+   include 'network'
+
 glDomains = array<string> { 'google.com', 'parasol.ws', 'amazon.co.uk', 'stackoverflow.com', 'theguardian.com', 'www.bbc.co.uk' }
 glTotalResolved = 0
 

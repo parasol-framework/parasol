@@ -59,10 +59,9 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
 
    if (not StructName.empty()) {
       // Struct-backed array
-      auto prv = (prvFluid *)L->script->ChildPrivate;
       auto name = struct_name(StructName);
-      if (prv->Structs.contains(name)) {
-         sdef = &prv->Structs[name];
+      if (glStructs.contains(name)) {
+         sdef = &glStructs[name];
          elem_size = sdef->Size;
       }
       else {

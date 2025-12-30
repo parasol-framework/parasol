@@ -241,6 +241,13 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode &Expr, bool All
             return ParserResult<ExpDesc>::success(blank_expr);
          }
 
+         // Check if this is a registered constant - cannot assign to constants
+         if (lookup_constant(name_ref.identifier.symbol)) {
+            std::string var_name(strdata(name_ref.identifier.symbol), name_ref.identifier.symbol->len);
+            std::string msg = "cannot assign to constant '" + var_name + "'";
+            return ParserResult<ExpDesc>::failure(this->make_error(ParserErrorCode::AssignToConstant, msg));
+         }
+
          auto result = this->emit_identifier_expr(name_ref);
          if (not result.ok()) return result;
          ExpDesc value = result.value_ref();

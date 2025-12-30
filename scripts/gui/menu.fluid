@@ -252,7 +252,7 @@ gui.menu = function(Options)
                   y -= surface.height + surface.bottomMargin
                end
 
-               surface.acMoveToPoint(x, y, 0, bit.bor(MTF_X, MTF_Y))
+               surface.acMoveToPoint(x, y, 0, MTF_X | MTF_Y)
             end
          end
       elseif self.parentMenu then -- Display this menu relative to a parent menu in the hierarchy
@@ -323,13 +323,13 @@ gui.menu = function(Options)
 
             if y + surface.height > target.height then
                if self.parentMenu then -- Child menu
-                  y = y - surface.height
+                  y -= surface.height
                else
                   y = y - surface.height - (Options.y ?? 0)
                end
             end
 
-            surface.acMoveToPoint(x, y, 0, bit.bor(MTF_X, MTF_Y))
+            surface.acMoveToPoint(x, y, 0, MTF_X | MTF_Y)
          end
       end
 
@@ -338,7 +338,7 @@ gui.menu = function(Options)
       self.timeShow = mSys.PreciseTime()
    end
 
-   function highlightItem(Item)
+   function highlightItem(Item:table)
       if Item is self.hItem then
          return
       elseif Item then
@@ -436,7 +436,7 @@ gui.menu = function(Options)
       end
    end)
 
-   self.viewport.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON, JTYPE_CROSSING), function(Viewport, Events)
+   self.viewport.mtSubscribeInput(JTYPE_MOVEMENT | JTYPE_BUTTON | JTYPE_CROSSING, function(Viewport, Events)
       ev = Events
       while ev do
          if ev.type is JET_BUTTON_1 then

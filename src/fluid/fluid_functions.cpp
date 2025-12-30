@@ -536,7 +536,8 @@ int fcmd_print(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Usage: include "File1","File2","File3",...
+// Usage: include "Module1","Module2","Module3",...
+// Loads the constants for a module without the overhead of creating a module object.
 
 int fcmd_include(lua_State *Lua)
 {
@@ -548,6 +549,22 @@ int fcmd_include(lua_State *Lua)
    int top = lua_gettop(Lua);
    for (int n=1; n <= top; n++) {
       CSTRING include = lua_tostring(Lua, n);
+
+      // For security purposes, check the validity of the include name.
+
+      int i;
+      for (i=0; include[i]; i++) {
+         if ((include[i] >= 'a') and (include[i] <= 'z')) continue;
+         if ((include[i] >= 'A') and (include[i] <= 'Z')) continue;
+         if ((include[i] >= '0') and (include[i] <= '9')) continue;
+         break;
+      }
+
+      if ((include[i]) or (i >= 32)) {
+         luaL_error(Lua, "Invalid module name; only alpha-numeric names are permitted with max 32 chars.");
+         return 0;
+      }
+
       if (auto error = load_include(Lua->script, include); error != ERR::Okay) {
          if (error IS ERR::FileNotFound) luaL_error(Lua, "Requested include file '%s' does not exist.", include);
          else luaL_error(Lua, "Failed to process include file: %s", GetErrorMsg(error));

@@ -206,12 +206,19 @@ private:
    ParserResult<IrEmitUnit> unsupported_stmt(AstNodeKind kind, const SourceSpan& span);
    ParserResult<ExpDesc> unsupported_expr(AstNodeKind kind, const SourceSpan& span);
 
-   ParserError make_error(ParserErrorCode code, std::string_view message) const;
-   ParserError make_error(ParserErrorCode code, std::string_view message, const SourceSpan& span) const;
+   // Create a parser error with the specified error code and message, capturing the current token context.
 
-   inline std::optional<BCReg> resolve_local(GCstr* symbol) const { return this->binding_table.resolve(symbol); }
-   inline void update_local_binding(GCstr* symbol, BCReg slot) { this->binding_table.add(symbol, slot); }
-   inline void release_expression(ExpDesc& expression, std::string_view usage) { expr_free(&this->func_state, &expression); this->ensure_register_floor(usage); }
+   inline ParserError make_error(ParserErrorCode Code, std::string_view Message) const {
+      return ParserError(Code, Token::from_current(this->lex_state), Message);
+   }
+
+   inline ParserError make_error(ParserErrorCode Code, std::string_view Message, const SourceSpan &Span) const {
+      return ParserError(Code, Token::from_span(Span, TokenKind::Unknown), Message);
+   }
+
+   inline std::optional<BCReg> resolve_local(GCstr *symbol) const { return this->binding_table.resolve(symbol); }
+   inline void update_local_binding(GCstr *symbol, BCReg slot) { this->binding_table.add(symbol, slot); }
+   inline void release_expression(ExpDesc &expression, std::string_view usage) { expr_free(&this->func_state, &expression); this->ensure_register_floor(usage); }
 
    struct LoopContext {
       ControlFlowEdge break_edge;
@@ -226,7 +233,7 @@ private:
 
       void release() { this->active = false; }
 
-      IrEmitter* emitter;
+      IrEmitter *emitter;
       bool active = true;
    };
 

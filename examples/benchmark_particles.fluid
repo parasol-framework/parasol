@@ -9,6 +9,7 @@ Parameters:
    require 'common'
    require 'gui/window'
    include 'display'
+   include 'vector'
 
    lVec = mVec
 

@@ -410,7 +410,7 @@ inline void build_read_table(object *Def)
 
       obj->CreatorMeta = Lua;
 
-      auto_load_include(Lua, obj->Class);
+      load_include_for_class(Lua, obj->Class);
 
       auto def = (object *)lua_newuserdata(Lua, sizeof(object));
       clearmem(def, sizeof(object));
@@ -552,7 +552,7 @@ static int object_newchild(lua_State *Lua)
 
       obj->CreatorMeta = Lua;
 
-      auto_load_include(Lua, obj->Class);
+      load_include_for_class(Lua, obj->Class);
 
       auto def = (object *)lua_newuserdata(Lua, sizeof(object));
       clearmem(def, sizeof(object));
@@ -628,7 +628,7 @@ object * push_object(lua_State *Lua, OBJECTPTR Object)
    if (auto newobject = (object *)lua_newuserdata(Lua, sizeof(object))) {
       clearmem(newobject, sizeof(object));
 
-      auto_load_include(Lua, Object->Class);
+      load_include_for_class(Lua, Object->Class);
 
       newobject->ObjectPtr = nullptr;
       newobject->UID       = Object->UID;
@@ -680,7 +680,7 @@ ERR push_object_id(lua_State *Lua, OBJECTID ObjectID)
    // Private objects discovered by obj.find() have to be treated as an external reference at all times
    // (access must controlled by access_object() and release_object() calls).
 
-   auto_load_include(Lua, obj->Class);
+   load_include_for_class(Lua, obj->Class);
 
    auto def = (object *)lua_newuserdata(Lua, sizeof(object)); // +1 stack
    clearmem(def, sizeof(object));

@@ -18,7 +18,21 @@
 #include "../parse_value.h"
 #include "../token_types.h"
 
-#include "../../../defs.h"  // For glPrintMsg
+#include "../../../defs.h"  // For glPrintMsg, FluidConstant
+
+//********************************************************************************************************************
+// Thread-safe lookup of a registered Fluid constant by name.
+// Returns nullptr if not found.
+
+inline const FluidConstant * lookup_constant(const GCstr *Name)
+{
+   if (not Name or Name->len IS 0) return nullptr;
+   std::string key(strdata(Name), Name->len);
+   std::shared_lock lock(glConstantMutex);
+   auto it = glConstantRegistry.find(key);
+   if (it != glConstantRegistry.end()) return &it->second;
+   return nullptr;
+}
 
 //********************************************************************************************************************
 // NilShortCircuitGuard - RAII helper for safe navigation nil-check pattern.
@@ -1461,6 +1475,13 @@ ParserResult<ExpDesc> IrEmitter::emit_identifier_expr(const NameRef& reference)
          "cannot read blank identifier '_'"));
    }
 
+   // Check if this is a registered constant - substitute with literal value
+   if (auto constant = lookup_constant(reference.identifier.symbol)) {
+      ExpDesc expr(constant->to_number());
+      return ParserResult<ExpDesc>::success(expr);
+   }
+
+   // Normal variable lookup
    ExpDesc resolved;
    this->lex_state.var_lookup_symbol(reference.identifier.symbol, &resolved);
    return ParserResult<ExpDesc>::success(resolved);
@@ -1718,6 +1739,7 @@ ParserResult<ExpDesc> IrEmitter::emit_bitwise_expr(BinOpr opr, ExpDesc lhs, cons
    // Discharge Call expressions to NonReloc first. This ensures that function calls
    // returning multiple values are properly truncated to single values before being
    // used as operands, matching Lua's standard semantics for binary operators.
+
    if (lhs.k IS ExpKind::Call) {
       ExpressionValue lhs_discharge(fs, lhs);
       lhs_discharge.discharge();
@@ -1725,6 +1747,7 @@ ParserResult<ExpDesc> IrEmitter::emit_bitwise_expr(BinOpr opr, ExpDesc lhs, cons
    }
 
    // Discharge LHS to any register if needed (for non-constant values)
+
    if (not lhs.is_num_constant_nojump()) {
       ExpressionValue lhs_val(fs, lhs);
       lhs_val.discharge_to_any_reg(allocator);
@@ -1734,6 +1757,7 @@ ParserResult<ExpDesc> IrEmitter::emit_bitwise_expr(BinOpr opr, ExpDesc lhs, cons
    // Calculate base register for the call frame.
    // Check if LHS is at the top of the stack to avoid orphaning registers when chaining
    // operations (e.g., 1 | 2 | 4 produces AST: (1 | 2) | 4, so LHS is the previous result).
+
    BCREG call_base;
    if (lhs.k IS ExpKind::NonReloc and lhs.u.s.info >= fs->nactvar and lhs.u.s.info + 1 IS fs->freereg) {
       // LHS is at the top - reuse its register to avoid orphaning
@@ -1754,6 +1778,7 @@ ParserResult<ExpDesc> IrEmitter::emit_bitwise_expr(BinOpr opr, ExpDesc lhs, cons
    lhs = lhs_toval.legacy();
 
    // Check if LHS is at base (for chaining). If so, move it before loading callee.
+
    bool lhs_was_base = (lhs.k IS ExpKind::NonReloc and lhs.u.s.info IS call_base);
    if (lhs_was_base) {
       ExpressionValue lhs_to_arg1(fs, lhs);
@@ -1824,7 +1849,6 @@ ParserResult<ExpDesc> IrEmitter::emit_bitwise_expr(BinOpr opr, ExpDesc lhs, cons
 
    return ParserResult<ExpDesc>::success(lhs);
 }
-
 
 //********************************************************************************************************************
 // Emit bytecode for a ternary expression (condition ? true_value : false_value), with falsey checks.
@@ -2242,7 +2266,7 @@ void IrEmitter::ensure_register_balance(std::string_view usage)
 //********************************************************************************************************************
 // Report an unsupported statement node and return an internal invariant error.
 
-ParserResult<IrEmitUnit> IrEmitter::unsupported_stmt(AstNodeKind kind, const SourceSpan& span)
+ParserResult<IrEmitUnit> IrEmitter::unsupported_stmt(AstNodeKind kind, const SourceSpan &span)
 {
    glUnsupportedNodes.record(kind, span, "stmt");
    std::string message = "IR emitter does not yet support statement kind " + std::to_string(int(kind));
@@ -2251,31 +2275,11 @@ ParserResult<IrEmitUnit> IrEmitter::unsupported_stmt(AstNodeKind kind, const Sou
 
 // Report an unsupported expression node and return an internal invariant error.
 
-ParserResult<ExpDesc> IrEmitter::unsupported_expr(AstNodeKind kind, const SourceSpan& span)
+ParserResult<ExpDesc> IrEmitter::unsupported_expr(AstNodeKind kind, const SourceSpan &span)
 {
    glUnsupportedNodes.record(kind, span, "expr");
    std::string message = "IR emitter does not yet support expression kind " + std::to_string(int(kind));
    return ParserResult<ExpDesc>::failure(this->make_error(ParserErrorCode::InternalInvariant, message));
-}
-
-// Create a parser error with the specified error code and message, capturing the current token context.
-
-ParserError IrEmitter::make_error(ParserErrorCode code, std::string_view message) const
-{
-   ParserError error;
-   error.code = code;
-   error.message.assign(message.begin(), message.end());
-   error.token = Token::from_current(this->lex_state);
-   return error;
-}
-
-ParserError IrEmitter::make_error(ParserErrorCode code, std::string_view message, const SourceSpan& span) const
-{
-   ParserError error;
-   error.code = code;
-   error.message.assign(message.begin(), message.end());
-   error.token = Token::from_span(span, TokenKind::Unknown);
-   return error;
 }
 
 //********************************************************************************************************************

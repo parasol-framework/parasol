@@ -88,12 +88,16 @@ static int module_load(lua_State *Lua)
    pf::Log log(__FUNCTION__);
    log.branch("Module: %s", modname);
 
-   // Check if there is an include file with the same name as this module.
+   int i;
+   for (i=0; modname[i]; i++) {
+      if ((modname[i] >= 'a') and (modname[i] <= 'z')) continue;
+      if ((modname[i] >= 'A') and (modname[i] <= 'Z')) continue;
+      if ((modname[i] >= '0') and (modname[i] <= '9')) continue;
+      break;
+   }
 
-   auto error = load_include(Lua->script, modname);
-   if ((error != ERR::Okay) and (error != ERR::FileNotFound)) {
-      log.debranch();
-      luaL_error(Lua, "Failed to load include file for the %s module.", modname);
+   if ((modname[i]) or (i >= 32)) {
+      luaL_error(Lua, "Invalid module name; only alpha-numeric names are permitted with max 32 chars.");
       return 0;
    }
 
