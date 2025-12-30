@@ -34,19 +34,19 @@ end
 
 gui.window = function(Options)
    self = { -- Public variables
-      events       = (Options.events ?? { }),
+      events       = Options.events ?? { },
       aspectRatio  = Options.aspectRatio??,
-      minimiseEnabled = Options.minimise??,
-      maximiseEnabled = Options.maximise??,
+      minimiseEnabled   = Options.minimise??,
+      maximiseEnabled   = Options.maximise??,
       moveToBackEnabled = Options.moveToBack??,
-      invertedPalette = Options.invertPalette,
+      invertedPalette   = Options.invertPalette,
       closeEnabled = Options.close??,
       focus        = Options.focus??,
       quit         = Options.quit is false ? nil :> true, -- Quit defaults to true, user can explicitly set false to disable
-      title        = (Options.title ?? 'Window'),
-      icon         = (Options.icon ?? 'devices/monitor'),
+      title        = Options.title ?? 'Window',
+      icon         = Options.icon ?? 'devices/monitor',
       restore      = nil, -- { x, y, width, height }
-      orientation  = (Options.orientation ?? 'landscape'),
+      orientation  = Options.orientation ?? 'landscape',
       client       = { }, -- Client margins
       menubar      = Options.menubar, -- Menubar configuration
       margins      = { left, right, top, bottom },
@@ -112,12 +112,12 @@ gui.window = function(Options)
    self.resizeClientArea = function(self, ClientWidth, ClientHeight)
       if not ClientWidth then
          ClientWidth = self.surface.width
-         if not hosted(self) then ClientWidth = ClientWidth - self.client.left - self.client.right end
+         if not hosted(self) then ClientWidth -= self.client.left - self.client.right end
       end
 
       if not ClientHeight then
          ClientHeight = self.surface.height
-         if not hosted(self) then ClientHeight = ClientHeight - self.client.top - self.client.bottom end
+         if not hosted(self) then ClientHeight -= self.client.top - self.client.bottom end
       end
 
       if hosted(self) then

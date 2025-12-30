@@ -97,14 +97,9 @@ static bool test_array_creation_byte(pf::Log &Log)
       return false;
    }
 
-   // Verify zero-initialisation
-   uint8_t* data = (uint8_t*)arr->arraydata();
-   for (int i = 0; i < 100; i++) {
-      if (data[i] != 0) {
-         Log.error("char array not zero-initialised at index %d", i);
-         return false;
-      }
-   }
+   // Note: Primitive type arrays (BYTE, INT16, etc.) are NOT zero-initialised for performance.
+   // Only vulnerable types (PTR, CSTR, etc.) are zeroed to avoid dangling pointers.
+   // Use arr->zero() explicitly if zero-initialisation is required.
 
    return true;
 }

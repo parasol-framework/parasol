@@ -1,5 +1,7 @@
 -- Schema validation tests for XML module
 
+   include 'xml'
+
 global glScriptFolder
 global glXML
 

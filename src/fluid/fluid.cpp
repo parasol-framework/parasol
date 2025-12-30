@@ -38,6 +38,7 @@ For more information on the Fluid syntax, please refer to the official Fluid Ref
 #include <inttypes.h>
 #include <vector>
 #include <iterator>
+#include <mutex>
 
 #include "lua.h"
 #include "lualib.h"
@@ -68,11 +69,15 @@ bool glPrintMsg = false;
 JOF glJitOptions = JOF::NIL;
 ankerl::unordered_dense::map<std::string_view, ACTIONID, CaseInsensitiveHashView, CaseInsensitiveEqualView> glActionLookup;
 ankerl::unordered_dense::map<std::string_view, uint32_t> glStructSizes;
+ankerl::unordered_dense::map<std::string, FluidConstant> glConstantRegistry;
+ankerl::unordered_dense::map<struct_name, struct_record, struct_hash> glStructs;
+std::shared_mutex glConstantMutex;
+static std::set<std::string> glLoadedConstants; // Stores the names of modules that have loaded constants (system wide)
 
 static struct MsgHandler *glMsgThread = nullptr; // Message handler for thread callbacks
 
-[[nodiscard]] static CSTRING load_include_struct(lua_State *, CSTRING, CSTRING);
-[[nodiscard]] static CSTRING load_include_constant(lua_State *, CSTRING, CSTRING);
+[[nodiscard]] static CSTRING load_include_struct(objScript *, CSTRING, CSTRING);
+[[nodiscard]] static CSTRING load_include_constant(CSTRING, CSTRING);
 
 constexpr auto HASH_TRACE_TOKENS         = pf::strhash("trace-tokens");
 constexpr auto HASH_TRACE_EXPECT         = pf::strhash("trace-expect");
@@ -157,52 +162,22 @@ void release_object(struct object *Object)
 //********************************************************************************************************************
 // Automatically load the include file for the given metaclass, if it has not been loaded already.
 
-void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
+void load_include_for_class(lua_State *Lua, objMetaClass *MetaClass)
 {
-   pf::Log log(__FUNCTION__);
-
    // Ensure that the base-class is loaded first, if applicable
    if (MetaClass->BaseClassID != MetaClass->ClassID) {
       if (auto base_class = FindClass(MetaClass->BaseClassID)) {
-         auto_load_include(Lua, base_class);
+         load_include_for_class(Lua, base_class);
       }
    }
 
    CSTRING module_name;
    if (auto error = MetaClass->get(FID_Module, module_name); error IS ERR::Okay) {
-      log.trace("Class: %s, Module: %s", MetaClass->ClassName, module_name);
-
-      auto prv = (prvFluid *)Lua->script->ChildPrivate;
-      if (not prv->Includes.contains(module_name)) {
-         prv->Includes.insert(module_name); // Mark the module as processed.
-
-         OBJECTPTR mod;
-         if ((error = MetaClass->get(FID_RootModule, mod)) IS ERR::Okay) {
-            struct ModHeader *header;
-
-            if (((error = mod->get(FID_Header, header)) IS ERR::Okay) and (header)) {
-               if (auto structs = header->StructDefs) {
-                  for (auto &s : structs[0]) {
-                     glStructSizes[s.first] = s.second;
-                  }
-               }
-
-               if (auto idl = header->Definitions) {
-                  log.trace("Parsing IDL for module %s", module_name);
-
-                  while ((idl) and (*idl)) {
-                     if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(Lua, idl+2, module_name);
-                     else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(Lua, idl+2, module_name);
-                     else idl = next_line(idl);
-                  }
-               }
-               else log.trace("No IDL defined for %s", module_name);
-            }
-         }
+      if (load_include(Lua->script, module_name) != ERR::Okay) {
+         luaL_error(Lua, "Failed to process module '%s' for class '%s'", module_name, MetaClass->ClassName);
       }
-      else log.trace("Module %s is marked as loaded.", module_name);
    }
-   else log.traceWarning("Failed to get module name from class '%s', \"%s\"", MetaClass->ClassName, GetErrorMsg(error));
+   else pf::Log(__FUNCTION__).traceWarning("Failed to get module name from class '%s', \"%s\"", MetaClass->ClassName, GetErrorMsg(error));
 }
 
 //********************************************************************************************************************
@@ -514,10 +489,8 @@ void make_struct_ptr_array(lua_State *Lua, std::string_view StructName, int Elem
       Elements = i;
    }
 
-   auto prv = (prvFluid *)Lua->script->ChildPrivate;
-
    auto s_name = struct_name(StructName);
-   if (not prv->Structs.contains(s_name)) luaL_error(Lua, "Failed to find struct '%.*s'", int(StructName.size()), StructName.data());
+   if (not glStructs.contains(s_name)) luaL_error(Lua, "Failed to find struct '%.*s'", int(StructName.size()), StructName.data());
 
    GCarray *arr = lj_array_new(Lua, Elements, AET::TABLE);
    setarrayV(Lua, Lua->top++, arr); // Push to stack immediately to protect from GC during loop
@@ -525,7 +498,7 @@ void make_struct_ptr_array(lua_State *Lua, std::string_view StructName, int Elem
 
    if (Values) {
       std::vector<lua_ref> ref;
-      auto &sdef = prv->Structs[s_name];
+      auto &sdef = glStructs[s_name];
 
       for (int i=0; i < Elements; i++) {
          if (struct_to_table(Lua, ref, sdef, Values[i]) IS ERR::Okay) {
@@ -554,10 +527,8 @@ void make_struct_serial_array(lua_State *Lua, std::string_view StructName, int E
 
    if (Elements < 0) Elements = 0; // The total number of structs is a hard requirement.
 
-   auto prv = (prvFluid *)Lua->script->ChildPrivate;
-
    auto s_name = struct_name(StructName);
-   if (not prv->Structs.contains(s_name)) luaL_error(Lua, "Failed to find struct '%.*s'", int(StructName.size()), StructName.data());
+   if (not glStructs.contains(s_name)) luaL_error(Lua, "Failed to find struct '%.*s'", int(StructName.size()), StructName.data());
 
    GCarray *arr = lj_array_new(Lua, Elements, AET::TABLE);
    setarrayV(Lua, Lua->top++, arr); // Push to stack immediately to protect from GC during loop
@@ -565,7 +536,7 @@ void make_struct_serial_array(lua_State *Lua, std::string_view StructName, int E
 
    if (Input) {
       std::vector<lua_ref> ref;
-      auto &sdef = prv->Structs[s_name];
+      auto &sdef = glStructs[s_name];
 
       // 64-bit compilers don't always align structures to 64-bit, and it's difficult to compute alignment with
       // certainty.  It is essential that structures that are intended to be serialised into arrays are manually
@@ -634,6 +605,7 @@ void get_line(objScript *Self, int Line, STRING Buffer, int Size)
 }
 
 //********************************************************************************************************************
+// For the 'include' keyword
 
 [[nodiscard]] ERR load_include(objScript *Script, CSTRING IncName)
 {
@@ -641,67 +613,56 @@ void get_line(objScript *Self, int Line, STRING Buffer, int Size)
 
    log.branch("Definition: %s", IncName);
 
-   auto prv = (prvFluid *)Script->ChildPrivate;
-
-   // For security purposes, check the validity of the include name.
-
-   int i;
-   for (i=0; IncName[i]; i++) {
-      if ((IncName[i] >= 'a') and (IncName[i] <= 'z')) continue;
-      if ((IncName[i] >= 'A') and (IncName[i] <= 'Z')) continue;
-      if ((IncName[i] >= '0') and (IncName[i] <= '9')) continue;
-      break;
-   }
-
-   if ((IncName[i]) or (i >= 32)) {
-      log.msg("Invalid module name; only alpha-numeric names are permitted with max 32 chars.");
-      return ERR::Syntax;
-   }
-
-   if (prv->Includes.contains(IncName)) {
-      log.trace("Include file '%s' already loaded.", IncName);
-      return ERR::Okay;
-   }
-
    ERR error = ERR::Okay;
 
-   AdjustLogLevel(1);
+   std::unique_lock lock(glConstantMutex); // Required to update the constant registry
 
-      objModule::create module = { fl::Name(IncName) };
-      if (module.ok()) {
-         prv->Includes.insert(IncName); // Mark the file as loaded.
+   // Constants are system-wide, so process only once per session.
 
-         OBJECTPTR root;
-         if ((error = module->get(FID_Root, root)) IS ERR::Okay) {
-            struct ModHeader *header;
-            if ((((error = root->get(FID_Header, header)) IS ERR::Okay) and (header))) {
-               if (auto structs = header->StructDefs) {
-                  for (auto &s : structs[0]) glStructSizes[s.first] = s.second;
-               }
+   bool process_constants = false;
+   if (not glLoadedConstants.contains(IncName)) {
+      process_constants = true;
+      glLoadedConstants.insert(IncName);
+   }
 
-               if (auto idl = header->Definitions) {
-                  log.trace("Parsing IDL for module %s", IncName);
+   if (process_constants) {
+      AdjustLogLevel(1);
 
-                  while ((idl) and (*idl)) {
-                     if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(prv->Lua, idl+2, IncName);
-                     else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(prv->Lua, idl+2, IncName);
-                     else idl = next_line(idl);
+         objModule::create module = { fl::Name(IncName) };
+         if (module.ok()) {
+            OBJECTPTR root;
+            if ((error = module->get(FID_Root, root)) IS ERR::Okay) {
+               struct ModHeader *header;
+               if ((((error = root->get(FID_Header, header)) IS ERR::Okay) and (header))) {
+                  if (auto structs = header->StructDefs) {
+                     for (auto &s : structs[0]) glStructSizes[s.first] = s.second;
                   }
+
+                  if (auto idl = header->Definitions) {
+                     log.trace("Parsing IDL for module %s", IncName);
+
+                     while ((idl) and (*idl)) {
+                        if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(Script, idl+2, IncName);
+                        else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(idl+2, IncName);
+                        else idl = next_line(idl);
+                     }
+                  }
+                  else log.trace("No IDL defined for %s", IncName);
                }
-               else log.trace("No IDL defined for %s", IncName);
             }
          }
-      }
-      else error = ERR::CreateObject;
+         else error = ERR::CreateObject;
 
-   AdjustLogLevel(-1);
+      AdjustLogLevel(-1);
+   }
+
    return error;
 }
 
 //********************************************************************************************************************
 // Format: s.Name:typeField,...
 
-static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
+static CSTRING load_include_struct(objScript *Script, CSTRING Line, CSTRING Source)
 {
    pf::Log log("load_include");
 
@@ -717,12 +678,12 @@ static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
 
       if ((Line[j] IS '\n') or (Line[j] IS '\r')) {
          std::string linebuf(Line, j);
-         make_struct(Lua, name, linebuf.c_str());
+         make_struct(Script, name, linebuf.c_str());
          while ((Line[j] IS '\n') or (Line[j] IS '\r')) j++;
          return Line + j;
       }
       else {
-         make_struct(Lua, name, Line);
+         make_struct(Script, name, Line);
          return Line + j;
       }
    }
@@ -760,8 +721,24 @@ static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
 }
 
 //********************************************************************************************************************
+// Thread-safe lookup of a registered Fluid constant by name.
+// Returns nullptr if not found.
 
-static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Source)
+const FluidConstant * lookup_constant(const GCstr* Name)
+{
+   if (not Name or Name->len IS 0) return nullptr;
+   std::string key(strdata(Name), Name->len);
+   std::shared_lock lock(glConstantMutex);
+   auto it = glConstantRegistry.find(key);
+   if (it != glConstantRegistry.end()) return &it->second;
+   return nullptr;
+}
+
+//********************************************************************************************************************
+// Update the constant registry.
+// A lock on glConstantMutex must be held before calling this function.
+
+static CSTRING load_include_constant(CSTRING Line, CSTRING Source)
 {
    pf::Log log("load_include");
 
@@ -802,14 +779,14 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
 
       if (n > 0) {
          auto dt = datatype(value);
-         if (dt IS 'i') lua_pushinteger(Lua, strtoll(value.c_str(), nullptr, 0));
-         else if (dt IS 'f') lua_pushnumber(Lua, strtod(value.c_str(), nullptr));
-         else if (dt IS 'h') {
-            lua_pushnumber(Lua, strtoull(value.c_str(), nullptr, 0)); // Using pushnumber() so that 64-bit hex is supported.
-         }
-         else luaL_error(Lua, "Unsupported constant value: %s", value.c_str());
+         FluidConstant constant(int64_t(0));
 
-         lua_setglobal(Lua, prefix.c_str());
+         if (dt IS 'i') constant = FluidConstant(strtoll(value.c_str(), nullptr, 0));
+         else if (dt IS 'f') constant = FluidConstant(strtod(value.c_str(), nullptr));
+         else if (dt IS 'h') constant = FluidConstant(int64_t(strtoull(value.c_str(), nullptr, 0)));
+         else log.warning("Unsupported constant value: %s", value.c_str());
+
+         glConstantRegistry.emplace(prefix, constant);
       }
 
       if (*Line IS ',') Line++;

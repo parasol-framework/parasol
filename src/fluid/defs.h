@@ -7,6 +7,7 @@ constexpr int SIZE_READ = 1024;
 #include <unordered_set>
 #include <set>
 #include <array>
+#include <shared_mutex>
 #include <parasol/strings.hpp>
 #include <parasol/modules/regex.h>
 #include <parasol/modules/fluid.h>
@@ -92,6 +93,34 @@ extern OBJECTPTR glFluidContext;
 extern OBJECTPTR clFluid;
 extern JOF glJitOptions;
 extern ankerl::unordered_dense::map<std::string_view, uint32_t> glStructSizes;
+extern ankerl::unordered_dense::map<struct_name, struct_record, struct_hash> glStructs;
+
+//********************************************************************************************************************
+// Compile-time constant value (64-bit integer or double)
+
+struct FluidConstant {
+   enum class Type : uint8_t { Int64, Double };
+   Type type;
+   union {
+      int64_t i64;
+      double f64;
+   } value;
+
+   constexpr FluidConstant(int64_t v) : type(Type::Int64) { value.i64 = v; }
+   constexpr FluidConstant(double v) : type(Type::Double) { value.f64 = v; }
+
+   [[nodiscard]] constexpr lua_Number to_number() const {
+      return (type IS Type::Int64) ? lua_Number(value.i64) : value.f64;
+   }
+};
+
+// Global constant registry - case-sensitive, owns string keys
+// Protected by glConstantMutex for thread-safe access
+extern ankerl::unordered_dense::map<std::string, FluidConstant> glConstantRegistry;
+extern std::shared_mutex glConstantMutex;
+
+// Lookup a registered Fluid constant by name. Returns nullptr if not found.
+const FluidConstant* lookup_constant(const GCstr* Name);
 
 //********************************************************************************************************************
 // Helper: build a std::string_view from a Lua string argument.
@@ -223,9 +252,7 @@ struct prvFluid {
    std::vector<actionmonitor> ActionList; // Action subscriptions managed by subscribe()
    std::vector<eventsub> EventList;       // Event subscriptions managed by subscribeEvent()
    std::vector<datarequest> Requests;     // For drag and drop requests
-   ankerl::unordered_dense::map<struct_name, struct_record, struct_hash> Structs;
    ankerl::unordered_dense::map<OBJECTID, int> StateMap;
-   std::set<std::string, CaseInsensitiveMap> Includes; // Stores the status of loaded include files.
    pf::vector<std::string> Procedures;
    std::vector<std::unique_ptr<std::jthread>> Threads; // Simple mechanism for auto-joining all the threads on object destruction
    APTR     FocusEventHandle;
@@ -409,7 +436,7 @@ struct lua_ref {
 
 OBJECTPTR access_object(struct object *);
 std::vector<lua_ref> * alloc_references(void);
-void auto_load_include(lua_State *, objMetaClass *);
+void load_include_for_class(lua_State *, objMetaClass *);
 ERR build_args(lua_State *, const struct FunctionField *, int, int8_t *, int *);
 const char * code_reader(lua_State *, void *, size_t *);
 [[maybe_unused]] int code_writer_id(lua_State *, CPTR, size_t, void *);
@@ -422,7 +449,7 @@ ERR load_include(objScript *, CSTRING);
 int MAKESTRUCT(lua_State *);
 [[maybe_unused]] void make_any_array(lua_State *, int, std::string_view, int, CPTR);
 [[maybe_unused]] void make_array(lua_State *, AET, int = 0, CPTR = nullptr, std::string_view = {});
-[[maybe_unused]] ERR make_struct(lua_State *, std::string_view, CSTRING);
+[[maybe_unused]] ERR make_struct(objScript *, std::string_view, CSTRING);
 ERR named_struct_to_table(lua_State *, std::string_view, CPTR);
 void make_struct_ptr_array(lua_State *, std::string_view, int, CPTR *);
 void make_struct_serial_array(lua_State *, std::string_view, int, CPTR);

@@ -64,8 +64,7 @@ static ERR set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, int Values,
    else if (Field->Flags & FD_STRUCT) {
       // Array structs can be set if the Lua table consists of Fluid.struct types.
 
-      auto prv = (prvFluid *)Lua->script->ChildPrivate;
-      if (auto def = prv->Structs.find(std::string_view((CSTRING)Field->Arg)); def != prv->Structs.end()) {
+      if (auto def = glStructs.find(std::string_view((CSTRING)Field->Arg)); def != glStructs.end()) {
          int aligned_size = ALIGN64(def->second.Size);
          auto structbuf = std::make_unique<uint8_t[]>(total * aligned_size);
 

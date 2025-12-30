@@ -18,7 +18,8 @@
 #include "../parse_value.h"
 #include "../token_types.h"
 
-#include "../../../defs.h"  // For glPrintMsg
+#include "../../../defs.h"  // For glPrintMsg, FluidConstant
+#include "../fluid_constants.h"  // For lookup_constant()
 
 //********************************************************************************************************************
 // NilShortCircuitGuard - RAII helper for safe navigation nil-check pattern.
@@ -1461,6 +1462,13 @@ ParserResult<ExpDesc> IrEmitter::emit_identifier_expr(const NameRef& reference)
          "cannot read blank identifier '_'"));
    }
 
+   // Check if this is a registered constant - substitute with literal value
+   if (auto constant = lookup_constant(reference.identifier.symbol)) {
+      ExpDesc expr(constant->to_number());
+      return ParserResult<ExpDesc>::success(expr);
+   }
+
+   // Normal variable lookup
    ExpDesc resolved;
    this->lex_state.var_lookup_symbol(reference.identifier.symbol, &resolved);
    return ParserResult<ExpDesc>::success(resolved);

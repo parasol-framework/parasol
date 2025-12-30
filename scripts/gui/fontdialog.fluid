@@ -7,6 +7,7 @@ Documentation is available in the Parasol Wiki.
    require 'gui/window'
    require 'gui/button'
    include 'display'
+   include 'font'
 
    global gui ?= { }
    gui.dialog ?= { }
