@@ -58,7 +58,7 @@ extern int lua_load(lua_State *Lua, std::string_view Source, CSTRING SourceName)
    if ((prv->JitOptions & JOF::DIAGNOSE) != JOF::NIL) ls.diagnose_mode = true;
    prv->CapturedVariables.clear();  // Clear previous captures before new parse
 
-   auto status = lj_vm_cpcall(Lua, nullptr, &ls, cpparser);
+   auto status = lj_vm_cpcall(Lua, nullptr, &ls, cpparser); // Call the parser
    lj_gc_check(Lua);
    return status;
 }

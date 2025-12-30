@@ -170,7 +170,7 @@ void LJ_FASTCALL lj_serialize_dict_prep_mt(lua_State* L, GCtab* dict)
    }
 }
 
-// -- Internal serializer -------------------------------------------------
+// -- Internal serialiser -------------------------------------------------
 
 // Put serialized object into buffer.
 static char* serialize_put(char* w, SBufExt* sbx, cTValue* o)

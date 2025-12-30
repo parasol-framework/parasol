@@ -677,10 +677,10 @@ static void LJ_FASTCALL gdbjit_debugline(GDBJITctx* ctx)
 #undef DALIGNNOP
 #undef DSECT
 
-// Type of a section initializer callback.
+// Type of a section initialiser callback.
 typedef void (LJ_FASTCALL* GDBJITinitf)(GDBJITctx* ctx);
 
-// Call section initializer and set the section offset and size.
+// Call section initialiser and set the section offset and size.
 static void gdbjit_initsect(GDBJITctx* ctx, int sect, GDBJITinitf initf)
 {
    ctx->startp = ctx->p;

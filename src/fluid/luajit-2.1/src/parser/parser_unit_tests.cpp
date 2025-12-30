@@ -616,13 +616,13 @@ return build_pair(1, 2)
 
    const auto* decl_payload = std::get_if<LocalDeclStmtPayload>(&local_decl.data);
    if (not decl_payload or decl_payload->values.size() != 1) {
-      log.error("local declaration missing initializer");
+      log.error("local declaration missing initialiser");
       return false;
    }
 
    const ExprNode& table_expr = *decl_payload->values[0];
    if (not (table_expr.kind IS AstNodeKind::TableExpr)) {
-      log.error("expected table constructor initializer");
+      log.error("expected table constructor initialiser");
       return false;
    }
 

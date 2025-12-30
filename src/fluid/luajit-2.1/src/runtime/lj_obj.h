@@ -724,7 +724,7 @@ struct GCarray {
 public:
    // Initialise the array structure. Storage must be pre-allocated by the caller using lj_mem_new()
    // for proper GC tracking. NOTE: lj_mem_newgco() already sets nextgc and marked - do NOT overwrite
-   // them! We avoid member initializer lists to prevent GCC from zero-initializing the GCHeader
+   // them! We avoid member initialiser lists to prevent GCC from zero-initializing the GCHeader
    // fields (nextgc, marked) that were set by lj_mem_newgco().
    void init(void *Data, AET Type, MSize ElemSize, MSize Length, MSize Capacity, uint8_t Flags,
              struct struct_record *StructDef = nullptr) noexcept
@@ -792,7 +792,7 @@ enum {
    LJ_VMST_GC,       //  Garbage collector.
    LJ_VMST_EXIT,     //  Trace exit handler.
    LJ_VMST_RECORD,   //  Trace recorder.
-   LJ_VMST_OPT,      //  Optimizer.
+   LJ_VMST_OPT,      //  Optimiser.
    LJ_VMST_ASM,      //  Assembler.
    LJ_VMST__MAX
 };
@@ -871,7 +871,7 @@ typedef struct GCState {
    GCSize  threshold;    // Memory threshold.
    uint8_t currentwhite; // Current white color.
    GCPhase state;        // GC state.
-   uint8_t nocdatafin;   // No cdata finalizer called.
+   uint8_t nocdatafin;   // No cdata finaliser called.
    uint8_t lightudnum;   //  Number of lightuserdata segments - 1 (64-bit only).
    MSize   sweepstr;     // Sweep position in string table.
    GCRef   root;         // List of all collectable objects.
