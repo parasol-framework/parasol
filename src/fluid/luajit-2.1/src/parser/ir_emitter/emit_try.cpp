@@ -44,12 +44,14 @@ ParserResult<IrEmitUnit> IrEmitter::emit_try_except_stmt(const TryExceptPayload 
    fs->try_blocks.push_back(TryBlockDesc{first_handler, handler_count});
 
    BCReg base_reg = fs->free_reg();
+   TryScopeGuard try_scope(this, base_reg);
    bcemit_AD(fs, BC_TRYENTER, base_reg, BCReg(try_block_index));
 
    auto body_result = this->emit_block(*Payload.try_block, FuncScopeFlag::None);
    if (not body_result.ok()) return body_result;
 
    bcemit_AD(fs, BC_TRYLEAVE, base_reg, BCReg(0));
+   try_scope.release();
 
    BCPos exit_jmp(bcemit_jmp(fs));
    std::vector<BCPos> handler_exits;

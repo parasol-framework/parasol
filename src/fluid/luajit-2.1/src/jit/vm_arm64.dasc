@@ -389,20 +389,37 @@ static void build_subroutines(BuildCtx *ctx)
   |  b <2
   |
   |->vm_unwind_c:			// Unwind C stack, return from vm_pcall.
-  |  // (void *cframe, int errcode)
-  |  mov sp, CARG1
-  |  mov CRET1, CARG2
-  |->vm_unwind_c_eh:			// Landing pad for external unwinder.
-  |  ldr L, SAVE_L
-  |   mv_vmstate TMP0w, C
-  |  ldr GL, L->glref
-  |   st_vmstate TMP0w
-  |  b ->vm_leave_unw
-  |
-  |->vm_unwind_ff:			// Unwind C stack, return from ff pcall.
-  |  // (void *cframe)
-  |  and sp, CARG1, #CFRAME_RAWMASK
-  |->vm_unwind_ff_eh:			// Landing pad for external unwinder.
+|  // (void *cframe, int errcode)
+|  mov sp, CARG1
+|  mov CRET1, CARG2
+|->vm_unwind_c_eh:			// Landing pad for external unwinder.
+|  ldr L, SAVE_L
+|   cmp CRET1w, #0x100
+|   beq >9
+|   mv_vmstate TMP0w, C
+|  ldr GL, L->glref
+|   st_vmstate TMP0w
+|  b ->vm_leave_unw
+|9:
+|   mv_vmstate TMP0w, INTERP
+|  ldr GL, L->glref
+|   st_vmstate TMP0w
+|  add DISPATCH, GL, #GG_G2DISP
+|  ldr PC, L->try_handler_pc
+|  str xzr, L->try_handler_pc
+|  ldr BASE, L->base
+|  ldr CARG2, [BASE, FRAME_FUNC]
+|  and CARG2, CARG2, #LJ_GCVMASK
+|  ldr KBASE, [CARG2, #PC2PROTO(k)]
+|  ins_next
+|
+|->ins_NEXT:
+|  ins_next
+|
+|->vm_unwind_ff:			// Unwind C stack, return from ff pcall.
+|  // (void *cframe)
+|  and sp, CARG1, #CFRAME_RAWMASK
+|->vm_unwind_ff_eh:			// Landing pad for external unwinder.
   |  ldr L, SAVE_L
   |    movz TISNUM, #(LJ_TISNUM>>1)&0xffff, lsl #48
   |    movz TISNUMhi, #(LJ_TISNUM>>1)&0xffff, lsl #16
@@ -4434,7 +4451,18 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
 
   case BC_TRYENTER:
   case BC_TRYLEAVE:
-    |  // Placeholder until try bytecode handlers are implemented
+    |  ins_AD
+    if (op == BC_TRYENTER) {
+      |  decode_RA RA, INS
+      |  decode_RD RC, INS
+      |  mov CARG1, L
+      |  mov CARG2w, RA
+      |  mov CARG3w, RC
+      |  bl extern lj_try_enter
+    } else {
+      |  mov CARG1, L
+      |  bl extern lj_try_leave
+    }
     |  ins_next
     break;
 

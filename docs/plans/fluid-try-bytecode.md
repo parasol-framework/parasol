@@ -28,7 +28,7 @@ Emit try body code **inline** (not in closures) with bytecode markers that call 
 
 - Inline emission now records try blocks and handlers directly in `FuncState`/`GCproto`, including packed filters.
 - Runtime filter matching and try-frame cleanup are implemented; BC_RET paths trim stale frames on return.
-- Handler re-entry in `err_unwind()`/`lj_err_throw()` and TRYLEAVE insertion for cross-scope jumps are still pending.
+- Handler re-entry in `err_unwind()`/`lj_err_throw()` is wired to jump into handler PCs with exception tables, and break/continue now emit `BC_TRYLEAVE` before exiting try scopes.
 
 ## Implementation Checklist
 
@@ -37,12 +37,12 @@ Emit try body code **inline** (not in closures) with bytecode markers that call 
 - [x] **Step 3**: Implement try_stack lifecycle management in `lj_state.cpp` (alloc/free)
 - [x] **Step 4**: Add `lj_try_enter()`, `lj_try_leave()`, `lj_try_find_handler()` in `fluid_functions.cpp`
 - [x] **Step 5**: Add `cleanup_try_frames_to_base()` and integrate into BC_RET* handlers
-- [ ] **Step 6**: Modify `err_unwind()` and `lj_err_throw()` to re-enter handlers; define `ERR_TRYHANDLER`
-- [ ] **Step 7**: Implement handler entry stack restoration and exception table placement
+- [x] **Step 6**: Modify `err_unwind()` and `lj_err_throw()` to re-enter handlers; define `ERR_TRYHANDLER`
+- [x] **Step 7**: Implement handler entry stack restoration and exception table placement
 - [x] **Step 8**: Implement `filter_matches()` for exception filtering
 - [x] **Step 9**: Rewrite `emit_try_except_stmt()` and record handler metadata in proto
-- [ ] **Step 10**: Insert `BC_TRYLEAVE` before break/continue/goto jumps that exit try scopes
-- [ ] **Step 11**: Add VM handlers in buildvm and regenerate
+- [x] **Step 10**: Insert `BC_TRYLEAVE` before break/continue/goto jumps that exit try scopes
+- [x] **Step 11**: Add VM handlers in buildvm and regenerate
 - [ ] **Test**: Enable and run control flow tests (return/break/continue)
 - [ ] **Test**: Run full test_try_except.fluid test suite
 

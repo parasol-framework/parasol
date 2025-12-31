@@ -540,8 +540,19 @@ IrEmitter::LoopStackGuard IrEmitter::push_loop_context(BCPos continue_target)
    loop_context.continue_edge = this->control_flow.make_continue_edge();
    loop_context.defer_base = this->func_state.active_var_count();
    loop_context.continue_target = continue_target;
+   loop_context.try_depth = this->current_try_depth();
    this->loop_stack.push_back(loop_context);
    return LoopStackGuard(this);
+}
+
+void IrEmitter::emit_tryleave_to_depth(size_t target_depth)
+{
+   size_t depth = this->try_scope_stack.size();
+   while (depth > target_depth) {
+      BCReg base_reg = this->try_scope_stack[depth - 1];
+      bcemit_AD(&this->func_state, BC_TRYLEAVE, base_reg, BCReg(0));
+      depth--;
+   }
 }
 
 //********************************************************************************************************************
@@ -1341,6 +1352,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_break_stmt(const BreakStmtPayload&)
    // Order: closes before defers (LIFO - most recently declared runs first).
    execute_closes(&this->func_state, loop.defer_base);
    execute_defers(&this->func_state, loop.defer_base);
+   this->emit_tryleave_to_depth(loop.try_depth);
    loop.break_edge.append(BCPos(bcemit_jmp(&this->func_state)));
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
@@ -1359,6 +1371,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_continue_stmt(const ContinueStmtPayload
    // Order: closes before defers (LIFO - most recently declared runs first).
    execute_closes(&this->func_state, loop.defer_base);
    execute_defers(&this->func_state, loop.defer_base);
+   this->emit_tryleave_to_depth(loop.try_depth);
    loop.continue_edge.append(BCPos(bcemit_jmp(&this->func_state)));
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }

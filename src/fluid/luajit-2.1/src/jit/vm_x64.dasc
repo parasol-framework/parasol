@@ -489,20 +489,38 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov al, LUA_YIELD
   |  jmp ->vm_unwind_c_eh
   |
-  |->vm_unwind_c:       // Unwind C stack, return from vm_pcall.
-  |  // (void *cframe, int errcode)
-  |  mov eax, CARG2d       // Error return status for vm_pcall.
-  |  mov rsp, CARG1
-  |->vm_unwind_c_eh:       // Landing pad for external unwinder.
-  |  mov L:RB, SAVE_L
-  |  mov GL:RB, L:RB->glref
-  |  mov dword GL:RB->vmstate, ~LJ_VMST_C
-  |  jmp ->vm_leave_unw
-  |
-  |->vm_unwind_rethrow:
-  |.if not X64WIN
-  |  mov CARG1, SAVE_L
-  |  mov CARG2d, eax
+|->vm_unwind_c:       // Unwind C stack, return from vm_pcall.
+|  // (void *cframe, int errcode)
+|  mov eax, CARG2d       // Error return status for vm_pcall.
+|  mov rsp, CARG1
+|->vm_unwind_c_eh:       // Landing pad for external unwinder.
+|  mov L:RB, SAVE_L
+|  cmp eax, 0x100
+|  je >9
+|  mov GL:RB, L:RB->glref
+|  mov dword GL:RB->vmstate, ~LJ_VMST_C
+|  jmp ->vm_leave_unw
+|9:
+|  mov GL:RB, L:RB->glref
+|  mov dword GL:RB->vmstate, ~LJ_VMST_INTERP
+|  mov DISPATCH, GL:RB
+|  add DISPATCH, GG_G2DISP
+|  mov PC, L:RB->try_handler_pc
+|  mov aword L:RB->try_handler_pc, 0
+|  mov BASE, L:RB->base
+|  mov LFUNC:KBASE, [BASE-16]
+|  cleartp LFUNC:KBASE
+|  mov KBASE, LFUNC:KBASE->pc
+|  mov KBASE, [KBASE+PC2PROTO(k)]
+|  ins_next
+|
+|->ins_NEXT:
+|  ins_next
+|
+|->vm_unwind_rethrow:
+|.if not X64WIN
+|  mov CARG1, SAVE_L
+|  mov CARG2d, eax
   |  restoreregs
   |  jmp extern lj_err_throw     // (lua_State *L, int errcode)
   |.endif
@@ -5331,11 +5349,22 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  add RA, L:RB->top      // RA = (L->top-(L->base+nresults))*8
     |  mov PC, [BASE-8]       // Fetch PC of caller.
     |  jmp ->vm_returnc
-    break;
+  break;
 
   case BC_TRYENTER:
   case BC_TRYLEAVE:
-    |  // Placeholder until try bytecode handlers are implemented
+    |  ins_AD
+    if (op == BC_TRYENTER) {
+      |  movzx RAd, PC_RA
+      |  movzx RDd, PC_RD
+      |  mov CARG1, L:RB
+      |  mov CARG2d, RAd
+      |  mov CARG3d, RDd
+      |  call extern lj_try_enter
+    } else {
+      |  mov CARG1, L:RB
+      |  call extern lj_try_leave
+    }
     |  ins_next
     break;
 

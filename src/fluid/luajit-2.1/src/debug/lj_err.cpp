@@ -79,6 +79,12 @@
 #include "lj_trace.h"
 #include "lj_vm.h"
 #include "lj_strfmt.h"
+#include "lj_tab.h"
+#include "../../../defs.h"
+
+extern "C" bool lj_try_find_handler(lua_State *L, const TryFrame *Frame, TValue *ErrorObj,
+   ERR ErrorCode, const BCIns **HandlerPc, BCREG *ExceptionReg);
+#include "lj_strfmt.h"
 #include "lj_meta.h"
 #include "lj_tab.h"
 #include "lj_gc.h"
@@ -195,6 +201,62 @@ static void unwind_close_all(lua_State *L, TValue *from, TValue *to)
 }
 
 //********************************************************************************************************************
+// Build exception table for try handlers.
+
+static ERR resolve_try_error(lua_State *L, int ErrCode)
+{
+   auto prv = (prvFluid *)L->script->ChildPrivate;
+   if (prv and prv->CaughtError >= ERR::ExceptionThreshold) return prv->CaughtError;
+   if (ErrCode IS LUA_ERRMEM) return ERR::Memory;
+   return ERR::Exception;
+}
+
+static int resolve_try_line(lua_State *L)
+{
+   auto prv = (prvFluid *)L->script->ChildPrivate;
+   if (not prv) return -1;
+
+   lua_Debug ar;
+   if (lua_getstack(L, 0, &ar)) {
+      lua_getinfo(L, "nSl", &ar);
+      prv->ErrorLine = ar.currentline;
+   }
+   else prv->ErrorLine = -1;
+
+   return prv->ErrorLine;
+}
+
+static GCstr* resolve_try_message(lua_State *L, TValue *ErrorObj)
+{
+   if (ErrorObj and tvisstr(ErrorObj)) return strV(ErrorObj);
+   if (ErrorObj) return lj_strfmt_obj(L, ErrorObj);
+   return lj_str_newlit(L, "<No message>");
+}
+
+static GCtab* build_try_exception_table(lua_State *L, TValue *ErrorObj, ERR ErrorCode)
+{
+   GCtab *tab = lj_tab_new(L, 0, 3);
+
+   GCstr *key = lj_str_newlit(L, "code");
+   TValue *slot = lj_tab_setstr(L, tab, key);
+   if (ErrorCode >= ERR::ExceptionThreshold) setintV(slot, int(ErrorCode));
+   else setnilV(slot);
+   lj_gc_anybarriert(L, tab);
+
+   key = lj_str_newlit(L, "message");
+   slot = lj_tab_setstr(L, tab, key);
+   setstrV(L, slot, resolve_try_message(L, ErrorObj));
+   lj_gc_anybarriert(L, tab);
+
+   key = lj_str_newlit(L, "line");
+   slot = lj_tab_setstr(L, tab, key);
+   setintV(slot, resolve_try_line(L));
+   lj_gc_anybarriert(L, tab);
+
+   return tab;
+}
+
+//********************************************************************************************************************
 // Pop try frames that belong to the current function when exiting early.
 
 extern "C" void cleanup_try_frames_to_base(lua_State *L, TValue *target_base)
@@ -226,6 +288,34 @@ LJ_NOINLINE static void unwindstack(lua_State *L, TValue *top)
 
 extern void * err_unwind(lua_State *L, void *stopcf, int errcode)
 {
+   TValue *errobj = (L->top > tvref(L->stack)) ? L->top - 1 : nullptr;
+   ERR error_code = resolve_try_error(L, errcode);
+
+   if (errcode and L->try_stack and L->try_stack->depth > 0) {
+      TryFrame *try_frame = &L->try_stack->frames[L->try_stack->depth - 1];
+      const BCIns *handler_pc = nullptr;
+      BCREG exception_reg = 0;
+
+      if (lj_try_find_handler(L, try_frame, errobj, error_code, &handler_pc, &exception_reg)) {
+         unwind_close_all(L, L->base - 1, try_frame->frame_base - 1);
+         errobj = (L->top > try_frame->frame_base) ? L->top - 1 : errobj;
+
+         if (auto prv = (prvFluid *)L->script->ChildPrivate) prv->CaughtError = error_code;
+         L->try_stack->depth = try_frame->depth ? try_frame->depth - 1 : 0;
+         L->base = try_frame->frame_base;
+         L->top = try_frame->saved_top;
+         L->status = LUA_OK;
+         if (not (exception_reg IS 0xFF)) {
+            GCtab *exc_table = build_try_exception_table(L, errobj, error_code);
+            TValue *slot = try_frame->frame_base + exception_reg;
+            setgcV(L, slot, obj2gco(exc_table), LJ_TTAB);
+            if (slot >= L->top) L->top = slot + 1;
+         }
+         L->try_handler_pc = handler_pc;
+         return L->cframe;
+      }
+   }
+
    TValue* frame = L->base - 1;
    void* cf = L->cframe;
    while (cf) {
@@ -708,10 +798,11 @@ LJ_NOINLINE void LJ_FASTCALL lj_err_throw(lua_State *L, int errcode)
 
    {
       void* cf = err_unwind(L, nullptr, errcode);
+      int final_err = L->try_handler_pc ? ERR_TRYHANDLER : errcode;
       if (cframe_unwind_ff(cf))
          lj_vm_unwind_ff(cframe_raw(cf));
       else
-         lj_vm_unwind_c(cframe_raw(cf), errcode);
+         lj_vm_unwind_c(cframe_raw(cf), final_err);
    }
 #endif
    exit(EXIT_FAILURE);

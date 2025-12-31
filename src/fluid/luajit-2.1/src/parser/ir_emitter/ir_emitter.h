@@ -220,12 +220,14 @@ private:
    inline std::optional<BCReg> resolve_local(GCstr *symbol) const { return this->binding_table.resolve(symbol); }
    inline void update_local_binding(GCstr *symbol, BCReg slot) { this->binding_table.add(symbol, slot); }
    inline void release_expression(ExpDesc &expression, std::string_view usage) { expr_free(&this->func_state, &expression); this->ensure_register_floor(usage); }
+   inline size_t current_try_depth() const noexcept { return this->try_scope_stack.size(); }
 
    struct LoopContext {
       ControlFlowEdge break_edge;
       ControlFlowEdge continue_edge;
       BCReg defer_base;
       BCPos continue_target;
+      size_t try_depth = 0;
    };
 
    struct LoopStackGuard {
@@ -238,6 +240,29 @@ private:
       bool active = true;
    };
 
+   struct TryScopeGuard {
+      TryScopeGuard(IrEmitter *Owner, BCReg BaseReg) : emitter(Owner) {
+         if (this->emitter) this->emitter->try_scope_stack.push_back(BaseReg);
+      }
+      ~TryScopeGuard() {
+         if (this->emitter) this->emitter->try_scope_stack.pop_back();
+      }
+
+      TryScopeGuard(const TryScopeGuard&) = delete;
+      TryScopeGuard& operator=(const TryScopeGuard&) = delete;
+
+      void release() {
+         if (this->emitter) {
+            this->emitter->try_scope_stack.pop_back();
+            this->emitter = nullptr;
+         }
+      }
+
+      IrEmitter *emitter;
+   };
+
    LoopStackGuard push_loop_context(BCPos continue_target);
+   void emit_tryleave_to_depth(size_t target_depth);
    std::vector<LoopContext> loop_stack;
+   std::vector<BCReg> try_scope_stack;
 };

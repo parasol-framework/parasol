@@ -19,6 +19,8 @@ LJ_DATA const char *lj_err_allmsg;
    return lj_err_allmsg + int(em);
 }
 
+#define ERR_TRYHANDLER 0x100
+
 LJ_FUNC GCstr *lj_err_str(lua_State *L, ErrMsg em);
 LJ_FUNCA_NORET void LJ_FASTCALL lj_err_throw(lua_State *L, int errcode);
 LJ_FUNC_NORET void lj_err_mem(lua_State *L);

@@ -635,21 +635,39 @@ static void build_subroutines(BuildCtx *ctx)
   |  b <2
   |
   |->vm_unwind_c:			// Unwind C stack, return from vm_pcall.
-  |  // (void *cframe, int errcode)
-  |  mr sp, CARG1
-  |  mr CRET1, CARG2
-  |->vm_unwind_c_eh:			// Landing pad for external unwinder.
-  |  lwz L, SAVE_L
-  |  .toc ld TOCREG, SAVE_TOC
-  |   li TMP0, ~LJ_VMST_C
-  |  lwz GL:TMP1, L->glref
-  |   stw TMP0, GL:TMP1->vmstate
-  |  b ->vm_leave_unw
-  |
-  |->vm_unwind_ff:			// Unwind C stack, return from ff pcall.
-  |  // (void *cframe)
-  |.if GPR64
-  |  rldicr sp, CARG1, 0, 61
+|  // (void *cframe, int errcode)
+|  mr sp, CARG1
+|  mr CRET1, CARG2
+|->vm_unwind_c_eh:			// Landing pad for external unwinder.
+|  lwz L, SAVE_L
+|  cmpwi cr1, CRET1, 0x100
+|  .toc ld TOCREG, SAVE_TOC
+|   li TMP0, ~LJ_VMST_C
+|  lwz GL:TMP1, L->glref
+|  beq cr1, >9
+|   stw TMP0, GL:TMP1->vmstate
+|  b ->vm_leave_unw
+|9:
+|   li TMP0, ~LJ_VMST_INTERP
+|   stw TMP0, GL:TMP1->vmstate
+|  addi DISPATCH, GL:TMP1, GG_G2DISP
+|  lp PC, L->try_handler_pc
+|   li TMP0, 0
+|  stp TMP0, L->try_handler_pc
+|  lp BASE, L->base
+|  lp TMP1, FRAME_FUNC(BASE)
+|  ins_next1
+|  lp TMP1, LFUNC:TMP1->pc
+|  lwz KBASE, PC2PROTO(k)(TMP1)
+|   ins_next2
+|
+|->ins_NEXT:
+|  ins_next
+|
+|->vm_unwind_ff:			// Unwind C stack, return from ff pcall.
+|  // (void *cframe)
+|.if GPR64
+|  rldicr sp, CARG1, 0, 61
   |.else
   |  rlwinm sp, CARG1, 0, 0, 29
   |.endif
@@ -6469,7 +6487,18 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
 
   case BC_TRYENTER:
   case BC_TRYLEAVE:
-    |  // Placeholder until try bytecode handlers are implemented
+    |  ins_AD
+    if (op == BC_TRYENTER) {
+      |  decode_RA8 RA, INS
+      |  decode_RD8 RD, INS
+      |   mr CARG1, L
+      |   mr CARG2, RA
+      |   mr CARG3, RD
+      |   bl extern lj_try_enter
+    } else {
+      |   mr CARG1, L
+      |   bl extern lj_try_leave
+    }
     |  ins_next
     break;
 
