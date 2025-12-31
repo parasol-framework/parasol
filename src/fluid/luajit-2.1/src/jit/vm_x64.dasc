@@ -539,6 +539,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov DISPATCH, L:RB->glref       // Setup pointer to dispatch table.
   |  add DISPATCH, GG_G2DISP
   |  mov PC, L:RB->try_handler_pc    // Load handler PC from lua_State.
+  |  mov qword L:RB->try_handler_pc, 0  // Clear it to allow future exceptions.
   |  // Load KBASE (constant table) from the function in the frame.
   |  mov LFUNC:KBASE, [BASE-16]
   |  cleartp LFUNC:KBASE

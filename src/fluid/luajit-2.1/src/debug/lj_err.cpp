@@ -240,8 +240,39 @@ static bool check_try_handler(lua_State *L, int errcode)
 
    TryFrame *try_frame = &L->try_stack->frames[L->try_stack->depth - 1];
 
-   // Validate try frame function pointer
    lj_assertL(try_frame->func != nullptr, "check_try_handler: try_frame->func is null");
+
+   // Check if there's a protected call frame (FRAME_CP, FRAME_PCALL, FRAME_PCALLH) between
+   // the current error and the try block. If so, let the protected call handle the error first.
+   // This ensures that lua_pcall() inside functions like exec() works correctly.
+   //
+   // We walk the Lua frame chain looking for protected frames that are "above" the try block
+   // (i.e., started after the try block).
+
+   {
+      TValue *pf = L->base - 1;
+      TValue *try_base = restorestack(L, try_frame->frame_base);
+
+      while (pf > tvref(L->stack) + LJ_FR2) {
+         int pf_type = frame_typep(pf);
+
+         // Check if this is a protected frame (C protected or Lua pcall)
+         if (pf_type IS FRAME_CP or pf_type IS FRAME_PCALL or pf_type IS FRAME_PCALLH) {
+            // This protected frame is above the try block's base - it should handle the error first
+            if (pf >= try_base) return false;
+         }
+
+         // If we've reached the try block's function, stop searching
+         GCfunc *func = frame_func(pf);
+         if (func IS try_frame->func) {
+            break;  // Reached the try frame's function
+         }
+
+         // Move to previous frame based on frame type
+         if (pf_type IS FRAME_LUA or pf_type IS FRAME_LUAP) pf = frame_prevl(pf);
+         else pf = frame_prevd(pf);
+      }
+   }
 
    // Verify try frame is in current call chain by walking up the frame chain.
    // The error may have been raised from a C function (like error()) so we need
@@ -330,8 +361,18 @@ extern "C" void setup_try_handler(lua_State *L)
       error_msg = strVdata(L->top - 1);
    }
 
-   // Get line number (simplified - skip debug API which requires valid stack)
+   // Extract line number from error message (format: "filename:line: message")
    int line = 0;
+   if (error_msg) {
+      const char *colon1 = strchr(error_msg, ':');
+      if (colon1) {
+         // Check if next character starts a number (line number)
+         const char *num_start = colon1 + 1;
+         if (*num_start >= '0' and *num_start <= '9') {
+            line = int(strtol(num_start, nullptr, 10));
+         }
+      }
+   }
 
    // Convert offsets back to pointers using restorestack()
    TValue *saved_base = restorestack(L, try_frame->frame_base);

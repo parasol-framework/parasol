@@ -32,13 +32,12 @@ ParserResult<IrEmitUnit> IrEmitter::emit_try_except_stmt(const TryExceptPayload 
    FuncState *fs = &this->func_state;
    BCReg base_reg = BCReg(fs->freereg);
 
-   if (not Payload.try_block) {
-      return this->unsupported_stmt(AstNodeKind::TryExceptStmt, SourceSpan{});
-   }
+   if (not Payload.try_block) return this->unsupported_stmt(AstNodeKind::TryExceptStmt, SourceSpan{});
 
-   // Allocate try block index for this try block
+   // Reserve a slot in try_blocks for this try block. We'll fill in the details later after emitting the try body
+   // (which may contain nested try blocks with their own handlers).  This ensures first_handler_index is correct
+   // after nested try blocks have added their handlers.
 
-   size_t first_handler_index = fs->try_handlers.size();
    uint16_t try_block_index = uint16_t(fs->try_blocks.size());
 
    // Validate limits
@@ -48,39 +47,52 @@ ParserResult<IrEmitUnit> IrEmitter::emit_try_except_stmt(const TryExceptPayload 
          ParserErrorCode::InternalInvariant, "too many try blocks in function", SourceSpan{}));
    }
 
-   if (first_handler_index + Payload.except_clauses.size() >= 0xFFFF) {
-      return ParserResult<IrEmitUnit>::failure(this->make_error(
-         ParserErrorCode::InternalInvariant, "too many exception handlers in function", SourceSpan{}));
-   }
+   // Determine handler count - if no except clauses, we'll emit a synthetic catch-all handler
 
-   // Record try block descriptor (handler count filled in after handlers are processed)
+   uint8_t handler_count = Payload.except_clauses.empty() ? 1 : uint8_t(Payload.except_clauses.size());
+
+   // Push a placeholder TryBlockDesc - first_handler will be updated after emitting try body
+
    fs->try_blocks.push_back(TryBlockDesc{
-      uint16_t(first_handler_index),
-      uint8_t(Payload.except_clauses.size()),
+      0,             // Place-holder; set correctly after try body
+      handler_count,
       0  // padding
    });
 
    // Track try depth for break/continue cleanup
+
    uint8_t saved_try_depth = fs->try_depth;
    fs->try_depth++;
 
    // Emit BC_TRYENTER with try block index
    bcemit_AD(fs, BC_TRYENTER, base_reg, BCReg(try_block_index));
 
-   // Emit try body INLINE (not in closure!)
+   // Emit try body inline (not in closure!).  Nested try blocks will add their handlers to try_handlers during this phase.
+
    auto body_result = this->emit_block(*Payload.try_block, FuncScopeFlag::None);
    if (not body_result.ok()) {
       fs->try_depth = saved_try_depth;
       return body_result;
    }
 
-   // Emit BC_TRYLEAVE after try body (normal exit path)
-   bcemit_AD(fs, BC_TRYLEAVE, base_reg, BCReg(0));
+   bcemit_AD(fs, BC_TRYLEAVE, base_reg, BCReg(0)); // Emit BC_TRYLEAVE after try body (normal exit path)
 
    // Jump over handlers (successful completion)
    ControlFlowEdge exit_jmp = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
 
+   // Correctly determine first_handler_index - nested try blocks have added their handlers
+   size_t first_handler_index = fs->try_handlers.size();
+
+   // Update the placeholder TryBlockDesc with the correct first_handler
+   fs->try_blocks[try_block_index].first_handler = uint16_t(first_handler_index);
+
+   if (first_handler_index + Payload.except_clauses.size() >= 0xFFFF) {
+      return ParserResult<IrEmitUnit>::failure(this->make_error(
+         ParserErrorCode::InternalInvariant, "too many exception handlers in function", SourceSpan{}));
+   }
+
    // Emit handlers inline and record metadata
+
    std::vector<ControlFlowEdge> handler_exits;
 
    for (const auto &clause : Payload.except_clauses) {
@@ -103,7 +115,10 @@ ParserResult<IrEmitUnit> IrEmitter::emit_try_except_stmt(const TryExceptPayload 
                packed_filter |= (uint64_t(code_val) << shift);
                shift += 16;
             }
-            // Non-constant codes are ignored (treated as catch-all for now)
+            else { // Non-numeric codes are an error
+               return ParserResult<IrEmitUnit>::failure(this->make_error(
+                  ParserErrorCode::InternalInvariant, "Non-numeric filter in try block", SourceSpan{}));
+            }
          }
       }
 
@@ -123,12 +138,10 @@ ParserResult<IrEmitUnit> IrEmitter::emit_try_except_stmt(const TryExceptPayload 
          // absolute register.
 
          fs->freereg++;
-         this->lex_state.var_new(BCReg(0), clause.exception_var->symbol, clause.exception_var->span.line,
-            clause.exception_var->span.column);
+         this->lex_state.var_new(BCReg(0), clause.exception_var->symbol, clause.exception_var->span.line, clause.exception_var->span.column);
          this->lex_state.var_add(BCReg(1));
 
-         // The exception register is the slot we just added
-         exception_reg = saved_nactvar;
+         exception_reg = saved_nactvar; // The exception register is the slot we just added
 
          // Update local binding so the variable can be referenced
          this->update_local_binding(clause.exception_var->symbol, BCReg(exception_reg));
@@ -166,6 +179,23 @@ ParserResult<IrEmitUnit> IrEmitter::emit_try_except_stmt(const TryExceptPayload 
       });
 
       // Jump to exit after handler
+      handler_exits.push_back(this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs))));
+   }
+
+   // If no except clauses were provided, emit a synthetic catch-all handler that silently swallows exceptions.
+   // This handler has no body - it just jumps to the exit, effectively discarding the exception.
+
+   if (Payload.except_clauses.empty()) {
+      BCPOS handler_pc = fs->pc;  // Record handler entry PC
+
+      // Record handler metadata: packed_filter=0 (catch-all), exception_reg=0xFF (no variable)
+      fs->try_handlers.push_back(TryHandlerDesc{
+         0,           // packed_filter = 0 means catch-all
+         handler_pc,
+         0xFF         // exception_reg = 0xFF means no exception variable
+      });
+
+      // Jump to exit (this is the "body" of the synthetic handler - just falls through to exit)
       handler_exits.push_back(this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs))));
    }
 
