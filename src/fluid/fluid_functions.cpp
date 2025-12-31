@@ -15,10 +15,67 @@
 #include "lualib.h"
 #include "lauxlib.h"
 #include "lj_obj.h"
+#include "lj_err.h"
+#include "lj_gc.h"
 #include "parser/parser_diagnostics.h"
 
 #include "hashes.h"
 #include "defs.h"
+
+extern "C" void lj_try_enter(lua_State *L, BCREG Base, uint16_t TryBlockIndex)
+{
+   (void)Base;
+
+   if (not L->try_stack) {
+      L->try_stack = (TryFrameStack *)lj_mem_new(L, sizeof(TryFrameStack));
+      L->try_stack->depth = 0;
+   }
+
+   if (L->try_stack->depth >= LJ_MAX_TRY_DEPTH) {
+      lj_err_msg(L, ErrMsg::XLEVELS);
+   }
+
+   TryFrame *try_frame = &L->try_stack->frames[L->try_stack->depth++];
+   try_frame->try_block_index = TryBlockIndex;
+   try_frame->frame_base = L->base;
+   try_frame->saved_top = L->top;
+   try_frame->saved_nactvar = (BCREG)(L->top - L->base);
+   try_frame->func = curr_func(L);
+   try_frame->depth = (uint8_t)L->try_stack->depth;
+}
+
+extern "C" void lj_try_leave(lua_State *L)
+{
+   if (L->try_stack and L->try_stack->depth > 0) {
+      L->try_stack->depth--;
+   }
+}
+
+extern "C" bool lj_try_find_handler(lua_State *L, const TryFrame *Frame,
+   TValue *ErrorObj, ERR ErrorCode, const BCIns **HandlerPc, BCREG *ExceptionReg)
+{
+   (void)ErrorObj;
+   (void)ErrorCode;
+
+   if (HandlerPc) *HandlerPc = nullptr;
+   if (ExceptionReg) *ExceptionReg = 0;
+
+   if (not Frame) return false;
+
+   GCfunc *func = Frame->func ? Frame->func : curr_func(L);
+   GCproto *proto = funcproto(func);
+
+   if (not proto->try_blocks or not proto->try_handlers) return false;
+   if (Frame->try_block_index >= proto->try_block_count) return false;
+
+   const TryBlockDesc *try_block = &proto->try_blocks[Frame->try_block_index];
+   uint32_t first_handler = try_block->first_handler;
+   uint8_t handler_count = try_block->handler_count;
+
+   if ((uint32_t)(first_handler + handler_count) > proto->try_handler_count) return false;
+
+   return false;
+}
 
 static int lua_load(lua_State *Lua, class objFile *File, CSTRING SourceName)
 {

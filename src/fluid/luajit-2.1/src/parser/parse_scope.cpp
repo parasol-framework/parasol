@@ -904,6 +904,11 @@ GCproto * LexState::fs_finish(BCLine Line)
       }
    }
 
+   pt->try_blocks = nullptr;
+   pt->try_handlers = nullptr;
+   pt->try_block_count = 0;
+   pt->try_handler_count = 0;
+
    pt->result_types = fs->return_types;
 
    // Set PROTO_TYPEFIX flag for runtime type inference if:

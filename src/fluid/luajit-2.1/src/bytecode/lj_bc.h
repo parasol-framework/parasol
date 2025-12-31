@@ -203,7 +203,9 @@ constexpr uint8_t  NO_REG = BCMAX_A;
   _(IFUNCV,   rbase,   ___,   ___,   ___) \
   _(JFUNCV,   rbase,   ___,   lit,   ___) \
   _(FUNCC,   rbase,   ___,   ___,   ___) \
-  _(FUNCCW,   rbase,   ___,   ___,   ___)
+  _(FUNCCW,   rbase,   ___,   ___,   ___) \
+  _(TRYENTER,   base,   ___,   lit,   ___) \
+  _(TRYLEAVE,   base,   ___,   ___,   ___)
 
 // Bytecode opcode numbers.
 // Explicitly enumerated for debugger visibility and easy value lookup.
@@ -331,7 +333,7 @@ typedef enum {
    BC_JLOOP  = 97,
    BC_JMP    = 98,
 
-   // Function headers (99-106)
+   // Function headers (99-108)
    BC_FUNCF  = 99,
    BC_IFUNCF = 100,
    BC_JFUNCF = 101,
@@ -340,8 +342,10 @@ typedef enum {
    BC_JFUNCV = 104,
    BC_FUNCC  = 105,
    BC_FUNCCW = 106,
+   BC_TRYENTER = 107,
+   BC_TRYLEAVE = 108,
 
-   BC__MAX   = 107
+   BC__MAX   = 109
 } BCOp;
 
 static_assert((int)BC_ISEQV + 1 == (int)BC_ISNEV);

@@ -5320,6 +5320,12 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  jmp ->vm_returnc
     break;
 
+  case BC_TRYENTER:
+  case BC_TRYLEAVE:
+    |  // Placeholder until try bytecode handlers are implemented
+    |  ins_next
+    break;
+
   //  ----------------------------------------------------------------------
 
   default:

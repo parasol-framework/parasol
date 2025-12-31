@@ -395,6 +395,12 @@ GCproto *lj_bcread_proto(LexState *State)
    pt->sizeuv = (uint8_t)sizeuv;
    pt->flags = (uint8_t)flags;
    pt->trace = 0;
+   pt->try_blocks = nullptr;
+   pt->try_handlers = nullptr;
+   pt->try_block_count = 0;
+   pt->try_handler_count = 0;
+   pt->closeslots = 0;
+   pt->result_types.fill(FluidType::Unknown);
    setgcref(pt->chunkname, obj2gco(State->chunkname));
 
    // Close potentially uninitialized gap between bc and kgc.

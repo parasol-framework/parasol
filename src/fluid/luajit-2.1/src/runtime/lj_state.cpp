@@ -180,6 +180,8 @@ static void stack_init(lua_State *L1, lua_State *L)
    TValue* stend, * st = lj_mem_newvec(L, LJ_STACK_START + LJ_STACK_EXTRA, TValue);
    setmref(L1->stack, st);
    L1->stacksize = LJ_STACK_START + LJ_STACK_EXTRA;
+   if (L1->try_stack) L1->try_stack->depth = 0;
+   L1->try_handler_pc = nullptr;
    stend = st + L1->stacksize;
    setmref(L1->maxstack, stend - LJ_STACK_EXTRA - 1);
    setthreadV(L1, st++, L1);  //  Needed for curr_funcisL() on empty stack.
@@ -226,6 +228,11 @@ static void close_state(lua_State *L)
    }
    funcnames_free(g);
    lj_func_closeuv(L, tvref(L->stack));
+   if (L->try_stack) {
+      lj_mem_free(g, L->try_stack, sizeof(TryFrameStack));
+      L->try_stack = nullptr;
+   }
+   L->try_handler_pc = nullptr;
 
    // Free all GC objects during shutdown
    GarbageCollector collector = gc(g);
@@ -290,6 +297,8 @@ extern lua_State* lua_newstate(lua_Alloc allocf, void* allocd)
    L->marked = LJ_GC_WHITE0 | LJ_GC_FIXED | LJ_GC_SFIXED;  //  Prevent free.
    L->dummy_ffid = FF_C;
    setnilV(&L->close_err);  // Initialize __close error to nil
+   L->try_stack = nullptr;
+   L->try_handler_pc = nullptr;
    setmref(L->glref, g);
    g->gc.currentwhite = LJ_GC_WHITE0 | LJ_GC_FIXED;
    g->strempty.marked = LJ_GC_WHITE0;
@@ -389,6 +398,8 @@ lua_State* lj_state_new(lua_State *L)
    L1->cframe = nullptr;
    L1->parser_diagnostics = nullptr;
    L1->parser_tips = nullptr;
+   L1->try_stack = nullptr;
+   L1->try_handler_pc = nullptr;
    setnilV(&L1->close_err);  // Initialize __close error to nil
    // NOBARRIER: The lua_State is new (marked white).
    setgcrefnull(L1->openupval);
@@ -414,6 +425,11 @@ void LJ_FASTCALL lj_state_free(global_State* g, lua_State *L)
       L->parser_tips = nullptr;
    }
    lj_func_closeuv(L, tvref(L->stack));
+   if (L->try_stack) {
+      lj_mem_free(g, L->try_stack, sizeof(TryFrameStack));
+      L->try_stack = nullptr;
+   }
+   L->try_handler_pc = nullptr;
    lj_assertG(gcref(L->openupval) == nullptr, "stale open upvalues");
    lj_mem_freevec(g, tvref(L->stack), L->stacksize, TValue);
    lj_mem_freet(g, L);

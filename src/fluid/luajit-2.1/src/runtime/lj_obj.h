@@ -447,6 +447,35 @@ typedef struct GCcdataVar {
    MSize len;         //  Size of payload.
 } GCcdataVar;
 
+// Handler metadata stored per-proto
+struct TryHandlerDesc {
+   uint64_t filter_packed;
+   BCPOS    handler_pc;     //  Bytecode position for handler entry
+   BCREG    exception_reg;  //  0xFF when no exception variable
+};
+
+struct TryBlockDesc {
+   uint16_t first_handler;
+   uint8_t  handler_count;
+};
+
+// Exception frame for try-except blocks
+struct TryFrame {
+   uint16_t try_block_index;
+   TValue  *frame_base;     //  L->base when BC_TRYENTER executed
+   TValue  *saved_top;      //  L->top when BC_TRYENTER executed
+   BCREG    saved_nactvar;  //  L->top - L->base at entry
+   GCfunc  *func;           //  Function containing the try block
+   uint8_t  depth;          //  Nesting depth for validation
+};
+
+constexpr int LJ_MAX_TRY_DEPTH = 32;
+
+struct TryFrameStack {
+   TryFrame frames[LJ_MAX_TRY_DEPTH];
+   int depth;
+};
+
 [[nodiscard]] inline void* cdataptr(GCcdata* cd) noexcept { return (void*)(cd + 1); }
 [[nodiscard]] inline bool cdataisv(const GCcdata* cd) noexcept { return (cd->marked & 0x80) != 0; }
 [[nodiscard]] inline GCcdataVar* cdatav(GCcdata* cd) noexcept { return (GCcdataVar*)((char*)cd - sizeof(GCcdataVar)); }
@@ -511,6 +540,10 @@ typedef struct GCproto {
    MRef   lineinfo;   //  Compressed map from bytecode ins. to source line.
    MRef   uvinfo;     //  Upvalue names.
    MRef   varinfo;    //  Names and compressed extents of local variables.
+   TryBlockDesc  *try_blocks;
+   TryHandlerDesc *try_handlers;
+   uint16_t       try_block_count;
+   uint16_t       try_handler_count;
    uint64_t closeslots;  //  Bitmap of locals with <close> attribute (max 64 slots)
    // Return type information for runtime type checking
    std::array<FluidType, PROTO_MAX_RETURN_TYPES> result_types{};  // Return types, set by fs_finish()
@@ -980,6 +1013,8 @@ struct lua_State {
    ParserDiagnostics *parser_diagnostics; // Stores ParserDiagnostics* during parsing errors
    TipEmitter *parser_tips;               // Stores TipEmitter* during parsing for code hints
    TValue close_err;  // Current error for __close handlers (nil if no error)
+   TryFrameStack *try_stack;      // Exception frame stack (lazily allocated)
+   const BCIns   *try_handler_pc; // Handler PC for error re-entry
 
    // Constructor/destructor not actually used as yet.
 /*
