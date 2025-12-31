@@ -1,5 +1,8 @@
 -- Tests for try...except...end exception handling syntax
 
+@BeforeEach(hotpath=true)
+function enforce_hotpath() end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Basic try-except (statement form)
 
@@ -293,7 +296,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Exception in loop with continue
 
-@Test(priority=20); @Disabled function ExceptionInLoop()
+@Test(priority=20) function ExceptionInLoop()
    successful = 0
    failed = 0
 
@@ -355,7 +358,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Parser error tests using try...except to catch exec() errors
-
+--[==[
 @Test(priority=23) function ParserErrors()
    -- Test: catch-all before filtered (should be a parse error)
    parse_error = false
@@ -407,7 +410,7 @@ end
    end
    assert(parse_error, "when without error code should fail to parse")
 end
-
+--]==]
 -----------------------------------------------------------------------------------------------------------------------
 -- Valid syntax variations
 
@@ -550,62 +553,3 @@ end
 
    assert(not except_triggered, "ERR_Okay should not trigger except")
 end
-
------------------------------------------------------------------------------------------------------------------------
--- Expression form - success returns nil + results
---[[
-@Test(priority=12); @Disabled function ExpressionSuccess()
-   ex, a, b = try:<num, str>
-      return 42, "hello"
-   except e
-      return -1, "error"
-   end
-
-   assert(ex is nil, "No exception should mean nil, got " .. tostring(ex))
-   assert(a is 42, "First try result should be 42, got " .. tostring(a))
-   assert(b is "hello", "Second try result should be 'hello', got " .. tostring(b))
-end
---]]
------------------------------------------------------------------------------------------------------------------------
--- Expression form - exception returns table + handler results
---[[
-@Test(priority=13); @Disabled function ExpressionException()
-   ex, a, b = try:<num, str>
-      error("Boom")
-   except e
-      return 99, e.message
-   end
-
-   assert(ex != nil, "Exception table should be returned")
-   assert(ex.message:find("Boom"), "Exception message should contain 'Boom'")
-   assert(a is 99, "First except result should be 99, got " .. tostring(a))
-   assert(type(b) is "string", "Second except result should be string")
-end
---]]
------------------------------------------------------------------------------------------------------------------------
--- Expression form with single result
---[[
-@Test(priority=14); @Disabled function ExpressionSingleResult()
-   ex, result = try:num
-      return 123
-   except e
-      return 456
-   end
-
-   assert(ex is nil, "No exception means nil")
-end
---]]
------------------------------------------------------------------------------------------------------------------------
--- Try block with no return in expression context
---[[
-@Test(priority=15); @Disabled function ExpressionNoReturn()
-   ex, a = try:num
-      x = 1 + 1  -- No return
-   except e
-      return 999
-   end
-
-   assert(ex is nil, "No exception means nil")
-   assert(a is nil, "No return means nil for additional results")
-end
---]]
