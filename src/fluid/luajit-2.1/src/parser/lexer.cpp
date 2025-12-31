@@ -246,7 +246,7 @@ static void lex_longstring(LexState *State, TValue* tv, int sep)
             lj_lex_error(State, TK_eof, tv ? ErrMsg::XLSTR : ErrMsg::XLCOM);
             // In diagnose mode, return synthetic empty string and exit
             if (State->diagnose_mode and tv) {
-               setstrV(State->L, tv, State->empty_string_constant);
+               setstrV(State->L, tv, State->intern_empty_string());
             }
             return;
 
@@ -366,7 +366,7 @@ static void lex_string(LexState *State, TValue *TV)
          lj_lex_error(State, TK_eof, ErrMsg::XSTR);
          // In diagnose mode, return synthetic empty string and exit
          if (State->diagnose_mode) {
-            setstrV(State->L, TV, State->empty_string_constant);
+            setstrV(State->L, TV, State->intern_empty_string());
             return;
          }
          continue;
@@ -376,7 +376,7 @@ static void lex_string(LexState *State, TValue *TV)
          lj_lex_error(State, TK_string, ErrMsg::XSTR);
          // In diagnose mode, return synthetic empty string and exit
          if (State->diagnose_mode) {
-            setstrV(State->L, TV, State->empty_string_constant);
+            setstrV(State->L, TV, State->intern_empty_string());
             return;
          }
          continue;
@@ -1035,7 +1035,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
             lj_lex_error(State, TK_string, ErrMsg::XLDELIM);
             // In diagnose mode, return synthetic empty string
             if (State->diagnose_mode) {
-               setstrV(State->L, tv, State->empty_string_constant);
+               setstrV(State->L, tv, State->intern_empty_string());
                return TK_string;
             }
             continue;
