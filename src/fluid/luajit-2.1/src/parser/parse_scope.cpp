@@ -869,12 +869,21 @@ GCproto * LexState::fs_finish(BCLine Line)
 
    // Calculate total size of prototype including all colocated arrays.
 
+   auto align_size = [](size_t Value, size_t Alignment) {
+      size_t mask = Alignment - 1;
+      return (Value + mask) & ~mask;
+   };
+
    sizept = sizeof(GCproto) + fs->pc * sizeof(BCIns) + fs->nkgc * sizeof(GCRef);
    sizept = (sizept + sizeof(TValue) - 1) & ~(sizeof(TValue) - 1);
    ofsk = sizept; sizept += fs->nkn * sizeof(TValue);
    ofsuv = sizept; sizept += ((fs->nuv + 1) & ~1) * 2;
    ofsli = sizept; sizept += fs_prep_line(fs, numline);
    ofsdbg = sizept; sizept += this->fs_prep_var(fs, &ofsvar);
+   sizept = align_size(sizept, alignof(TryBlockDesc));
+   size_t ofstry = sizept; sizept += fs->try_blocks.size() * sizeof(TryBlockDesc);
+   sizept = align_size(sizept, alignof(TryHandlerDesc));
+   size_t ofshandler = sizept; sizept += fs->try_handlers.size() * sizeof(TryHandlerDesc);
 
    // Allocate prototype and initialize its fields.
 
@@ -904,10 +913,16 @@ GCproto * LexState::fs_finish(BCLine Line)
       }
    }
 
-   pt->try_blocks = nullptr;
-   pt->try_handlers = nullptr;
-   pt->try_block_count = 0;
-   pt->try_handler_count = 0;
+   pt->try_block_count = uint16_t(fs->try_blocks.size());
+   pt->try_handler_count = uint16_t(fs->try_handlers.size());
+   pt->try_blocks = pt->try_block_count ? reinterpret_cast<TryBlockDesc *>((char *)pt + ofstry) : nullptr;
+   pt->try_handlers = pt->try_handler_count ? reinterpret_cast<TryHandlerDesc *>((char *)pt + ofshandler) : nullptr;
+   if (pt->try_blocks) {
+      memcpy(pt->try_blocks, fs->try_blocks.data(), fs->try_blocks.size() * sizeof(TryBlockDesc));
+   }
+   if (pt->try_handlers) {
+      memcpy(pt->try_handlers, fs->try_handlers.data(), fs->try_handlers.size() * sizeof(TryHandlerDesc));
+   }
 
    pt->result_types = fs->return_types;
 
@@ -969,6 +984,8 @@ void LexState::fs_init(FuncState *FunctionState)
    fs->flags     = 0;
    fs->framesize = 1;  // Minimum frame size.
    fs->return_types.fill(FluidType::Unknown);  // Initialize return types
+   fs->try_blocks.clear();
+   fs->try_handlers.clear();
    fs->kt = lj_tab_new(L, 0, 0);
    // Anchor table of constants in stack to avoid being collected.
    settabV(L, L->top, fs->kt);

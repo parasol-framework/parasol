@@ -16,6 +16,8 @@
 #include <ankerl/unordered_dense.h>
 #include <variant>
 #include <ranges>
+#include <vector>
+#include "lj_obj.h"
 
 // Expression kinds.
 
@@ -386,6 +388,8 @@ struct FuncState {
    // Return types for runtime type checking.  Set during function emission if explicit return types are declared.
    // FluidType::Unknown (default) means no type constraint is applied for that position.
    std::array<FluidType, MAX_RETURN_TYPES> return_types{};
+   std::vector<TryBlockDesc> try_blocks;
+   std::vector<TryHandlerDesc> try_handlers;
 
    // Return strong types for bytecode positions and registers
 

@@ -22,6 +22,21 @@
 #include "hashes.h"
 #include "defs.h"
 
+static bool filter_matches(uint64_t PackedFilter, ERR ErrorCode, TValue *ErrorObj)
+{
+   (void)ErrorObj;
+
+   if (PackedFilter IS 0) return true;
+   if (int(ErrorCode) < int(ERR::ExceptionThreshold)) return false;
+
+   for (int shift = 0; shift < 64; shift += 16) {
+      uint16_t filter_code = uint16_t(PackedFilter >> shift);
+      if (filter_code IS 0) break;
+      if (filter_code IS uint16_t(ErrorCode)) return true;
+   }
+   return false;
+}
+
 extern "C" void lj_try_enter(lua_State *L, BCREG Base, uint16_t TryBlockIndex)
 {
    (void)Base;
@@ -54,11 +69,8 @@ extern "C" void lj_try_leave(lua_State *L)
 extern "C" bool lj_try_find_handler(lua_State *L, const TryFrame *Frame,
    TValue *ErrorObj, ERR ErrorCode, const BCIns **HandlerPc, BCREG *ExceptionReg)
 {
-   (void)ErrorObj;
-   (void)ErrorCode;
-
    if (HandlerPc) *HandlerPc = nullptr;
-   if (ExceptionReg) *ExceptionReg = 0;
+   if (ExceptionReg) *ExceptionReg = BCREG(0);
 
    if (not Frame) return false;
 
@@ -73,6 +85,15 @@ extern "C" bool lj_try_find_handler(lua_State *L, const TryFrame *Frame,
    uint8_t handler_count = try_block->handler_count;
 
    if ((uint32_t)(first_handler + handler_count) > proto->try_handler_count) return false;
+
+   for (uint8_t index = 0; index < handler_count; ++index) {
+      const TryHandlerDesc *handler = &proto->try_handlers[first_handler + index];
+      if (not filter_matches(handler->filter_packed, ErrorCode, ErrorObj)) continue;
+
+      if (HandlerPc) *HandlerPc = proto_bc(proto) + handler->handler_pc;
+      if (ExceptionReg) *ExceptionReg = handler->exception_reg;
+      return true;
+   }
 
    return false;
 }

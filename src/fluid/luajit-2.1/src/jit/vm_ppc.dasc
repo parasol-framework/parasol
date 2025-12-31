@@ -5964,15 +5964,18 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |.endif
     |  bne <2
     |3:
-    |5:
-    |  cmplw RB, RD
-    |   decode_RA8 RA, INS
-    |  bgt >6
-    |   sub BASE, TMP2, RA
-    |  lwz LFUNC:TMP1, FRAME_FUNC(BASE)
-    |  ins_next1
-    |  lwz TMP1, LFUNC:TMP1->pc
-    |  lwz KBASE, PC2PROTO(k)(TMP1)
+|5:
+|  cmplw RB, RD
+|   decode_RA8 RA, INS
+|  bgt >6
+|   mr CARG1, L
+|   sub CARG2, TMP2, RA
+|   bl extern cleanup_try_frames_to_base
+|   sub BASE, TMP2, RA
+|  lwz LFUNC:TMP1, FRAME_FUNC(BASE)
+|  ins_next1
+|  lwz TMP1, LFUNC:TMP1->pc
+|  lwz KBASE, PC2PROTO(k)(TMP1)
     |  ins_next2
     |
     |6:  // Fill up results with nil.
@@ -6013,15 +6016,18 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
       |  stw CARG2, 4(TMP2)
       |.endif
     }
-    |5:
-    |  cmplw RB, RD
-    |   decode_RA8 RA, INS
-    |  bgt >6
-    |   sub BASE, TMP2, RA
-    |  lwz LFUNC:TMP1, FRAME_FUNC(BASE)
-    |  ins_next1
-    |  lwz TMP1, LFUNC:TMP1->pc
-    |  lwz KBASE, PC2PROTO(k)(TMP1)
+|5:
+|  cmplw RB, RD
+|   decode_RA8 RA, INS
+|  bgt >6
+|   mr CARG1, L
+|   sub CARG2, TMP2, RA
+|   bl extern cleanup_try_frames_to_base
+|   sub BASE, TMP2, RA
+|  lwz LFUNC:TMP1, FRAME_FUNC(BASE)
+|  ins_next1
+|  lwz TMP1, LFUNC:TMP1->pc
+|  lwz KBASE, PC2PROTO(k)(TMP1)
     |  ins_next2
     |
     |6:  // Fill up results with nil.

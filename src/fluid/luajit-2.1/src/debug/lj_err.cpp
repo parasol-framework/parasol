@@ -195,6 +195,20 @@ static void unwind_close_all(lua_State *L, TValue *from, TValue *to)
 }
 
 //********************************************************************************************************************
+// Pop try frames that belong to the current function when exiting early.
+
+extern "C" void cleanup_try_frames_to_base(lua_State *L, TValue *target_base)
+{
+   if (not L or not L->try_stack) return;
+
+   while (L->try_stack->depth > 0) {
+      TryFrame *try_frame = &L->try_stack->frames[L->try_stack->depth - 1];
+      if (try_frame->frame_base < target_base) break;
+      L->try_stack->depth--;
+   }
+}
+
+//********************************************************************************************************************
 // Unwind Lua stack and move error message to new top.
 
 LJ_NOINLINE static void unwindstack(lua_State *L, TValue *top)

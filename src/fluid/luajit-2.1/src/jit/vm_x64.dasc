@@ -4888,6 +4888,19 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
       break;
     }
     |  movzx RAd, PC_RA
+    |  mov TMPRd, RAd
+    |  lea TMPR, [BASE+TMPR*8-16]
+    |.if X64WIN
+    |  mov RB, BASE
+    |  mov CARG1, L:RB
+    |  mov CARG2, TMPR
+    |  call extern cleanup_try_frames_to_base
+    |  mov BASE, RB
+    |.else
+    |  mov CARG1, L:RB
+    |  mov CARG2, TMPR
+    |  call extern cleanup_try_frames_to_base
+    |.endif
     |  neg RA
     |  lea BASE, [BASE+RA*8-16]     // base = base - (RA+2)*8
     |  mov LFUNC:KBASE, [BASE-16]

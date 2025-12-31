@@ -24,17 +24,23 @@ Emit try body code **inline** (not in closures) with bytecode markers that call 
 - Error matching against filters during unwinding
 - Jumping to appropriate handlers
 
+### Progress
+
+- Inline emission now records try blocks and handlers directly in `FuncState`/`GCproto`, including packed filters.
+- Runtime filter matching and try-frame cleanup are implemented; BC_RET paths trim stale frames on return.
+- Handler re-entry in `err_unwind()`/`lj_err_throw()` and TRYLEAVE insertion for cross-scope jumps are still pending.
+
 ## Implementation Checklist
 
- - [x] **Step 1**: Add BC_TRYENTER, BC_TRYLEAVE to BCDEF macro in `lj_bc.h`
- - [x] **Step 2**: Add TryHandlerDesc/TryBlockDesc, TryFrame/TryFrameStack, proto fields, and `lua_State::try_handler_pc`
- - [x] **Step 3**: Implement try_stack lifecycle management in `lj_state.cpp` (alloc/free)
- - [x] **Step 4**: Add `lj_try_enter()`, `lj_try_leave()`, `lj_try_find_handler()` in `fluid_functions.cpp`
-- [ ] **Step 5**: Add `cleanup_try_frames_to_base()` and integrate into BC_RET* handlers
+- [x] **Step 1**: Add BC_TRYENTER, BC_TRYLEAVE to BCDEF macro in `lj_bc.h`
+- [x] **Step 2**: Add TryHandlerDesc/TryBlockDesc, TryFrame/TryFrameStack, proto fields, and `lua_State::try_handler_pc`
+- [x] **Step 3**: Implement try_stack lifecycle management in `lj_state.cpp` (alloc/free)
+- [x] **Step 4**: Add `lj_try_enter()`, `lj_try_leave()`, `lj_try_find_handler()` in `fluid_functions.cpp`
+- [x] **Step 5**: Add `cleanup_try_frames_to_base()` and integrate into BC_RET* handlers
 - [ ] **Step 6**: Modify `err_unwind()` and `lj_err_throw()` to re-enter handlers; define `ERR_TRYHANDLER`
 - [ ] **Step 7**: Implement handler entry stack restoration and exception table placement
-- [ ] **Step 8**: Implement `filter_matches()` for exception filtering
-- [ ] **Step 9**: Rewrite `emit_try_except_stmt()` and record handler metadata in proto
+- [x] **Step 8**: Implement `filter_matches()` for exception filtering
+- [x] **Step 9**: Rewrite `emit_try_except_stmt()` and record handler metadata in proto
 - [ ] **Step 10**: Insert `BC_TRYLEAVE` before break/continue/goto jumps that exit try scopes
 - [ ] **Step 11**: Add VM handlers in buildvm and regenerate
 - [ ] **Test**: Enable and run control flow tests (return/break/continue)

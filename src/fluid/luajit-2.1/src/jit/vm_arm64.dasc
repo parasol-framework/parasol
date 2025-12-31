@@ -4059,6 +4059,9 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |3:
     |  decode_RA RA, INS
     |  sub CARG4, CARG3, RA, lsl #3
+    |  mov CARG1, L
+    |  mov CARG2, CARG4
+    |  bl extern cleanup_try_frames_to_base
     |   decode_RB RB, INS
     |  ldr LFUNC:CARG1, [CARG4, FRAME_FUNC]
     |5:
@@ -4102,6 +4105,9 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  sub CARG4, BASE, #16
     |   decode_RA RA, INS
     |  sub BASE, CARG4, RA, lsl #3
+    |  mov CARG1, L
+    |  mov CARG2, BASE
+    |  bl extern cleanup_try_frames_to_base
     if (op == BC_RET1) {
       |  str TMP0, [CARG4], #8
     }
