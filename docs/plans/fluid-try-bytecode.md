@@ -26,19 +26,58 @@ Emit try body code **inline** (not in closures) with bytecode markers that call 
 
 ## Implementation Checklist
 
-- [ ] **Step 1**: Add BC_TRYENTER, BC_TRYLEAVE to BCDEF macro in `lj_bc.h`
-- [ ] **Step 2**: Add TryHandlerDesc/TryBlockDesc, TryFrame/TryFrameStack, proto fields, and `lua_State::try_handler_pc`
-- [ ] **Step 3**: Implement try_stack lifecycle management in `lj_state.cpp` (alloc/free)
-- [ ] **Step 4**: Add `lj_try_enter()`, `lj_try_leave()`, `lj_try_find_handler()` in `fluid_functions.cpp`
-- [ ] **Step 5**: Add `cleanup_try_frames_to_base()` and integrate into BC_RET* handlers
-- [ ] **Step 6**: Modify `err_unwind()` and `lj_err_throw()` to re-enter handlers; define `ERR_TRYHANDLER`
-- [ ] **Step 7**: Implement handler entry stack restoration and exception table placement
-- [ ] **Step 8**: Implement `filter_matches()` for exception filtering
-- [ ] **Step 9**: Rewrite `emit_try_except_stmt()` and record handler metadata in proto
-- [ ] **Step 10**: Insert `BC_TRYLEAVE` before break/continue/goto jumps that exit try scopes
-- [ ] **Step 11**: Add VM handlers in buildvm and regenerate
+- [x] **Step 1**: Add BC_TRYENTER, BC_TRYLEAVE to BCDEF macro in `lj_bc.h`
+- [x] **Step 2**: Add TryHandlerDesc/TryBlockDesc, TryFrame/TryFrameStack, proto fields, and `lua_State::try_handler_pc`
+- [x] **Step 3**: Implement try_stack lifecycle management in `lj_state.cpp` (alloc/free)
+- [x] **Step 4**: Add `lj_try_enter()`, `lj_try_leave()`, `lj_try_find_handler()` in `fluid_functions.cpp`
+- [x] **Step 5**: Add `cleanup_try_frames_to_base()` and integrate into BC_RET* handlers
+- [x] **Step 6**: Modify `err_unwind()` and `lj_err_throw()` to re-enter handlers; define `ERR_TRYHANDLER`
+- [x] **Step 7**: Implement handler entry stack restoration and exception table placement
+- [x] **Step 8**: Implement `filter_matches()` for exception filtering
+- [x] **Step 9**: Rewrite `emit_try_except_stmt()` and record handler metadata in proto
+- [x] **Step 10**: Insert `BC_TRYLEAVE` before break/continue/goto jumps that exit try scopes
+- [x] **Step 11**: Add VM handlers in buildvm and regenerate
+- [x] **Fix**: Debug parser register/scope tracking issues with inline try-except bytecode
+- [x] **Fix**: Implement VM re-entry for exception handlers (Windows SEH)
+- [x] **Fix**: Use stack offsets in TryFrame instead of absolute pointers (GC safety)
 - [ ] **Test**: Enable and run control flow tests (return/break/continue)
 - [ ] **Test**: Run full test_try_except.fluid test suite
+
+## Implementation Status (2025-12-31)
+
+**Completed Infrastructure:**
+- BC_TRYENTER and BC_TRYLEAVE bytecodes added to lj_bc.h
+- TryFrame, TryFrameStack, TryBlockDesc, TryHandlerDesc structures in lj_obj.h
+- try_stack and try_handler_pc fields in lua_State
+- Lifecycle management for try_stack in lj_state.cpp
+- Runtime functions lj_try_enter(), lj_try_leave(), lj_try_find_handler(), lj_try_build_exception_table()
+- check_try_handler() in err_unwind() to find matching handlers during exceptions
+- VM handlers for BC_TRYENTER and BC_TRYLEAVE in vm_x64.dasc
+- emit_try_except_stmt() rewritten to emit inline bytecode
+- try_depth tracking in FuncState for break/continue cleanup
+- LoopContext.try_depth_at_entry for tracking try depth at loop entry
+- BC_TRYLEAVE emission before break/continue that exit try scopes
+- GCproto try metadata allocation and deallocation
+- Windows SEH integration with lj_vm_resume_try_eh landing pad
+- TryFrame uses ptrdiff_t offsets (not raw pointers) for GC safety
+
+**Resolved Issues:**
+- Parser register/scope tracking fixed by using offset 0 in var_new() for exception variables
+- VM re-entry mechanism implemented via vm_resume_try_eh entry point in vm_x64.dasc
+- Windows SEH path fixed with setup_try_handler() called during unwind phase
+- GC assertion failures fixed by storing stack offsets instead of absolute pointers in TryFrame
+
+**Basic Functionality Verified:**
+- Simple try-except blocks with `error()` are caught and handlers execute
+- Exception variables (`except e`) receive a table with code, message, line, trace fields
+- Control flow continues correctly after handler completes
+- Stack state is properly restored on exception
+
+**Remaining Work:**
+- Test control flow statements (return/break/continue) from within try blocks
+- Run full test_try_except.fluid test suite
+- Test nested try blocks
+- Test exception re-raising from handlers
 
 ## Files to Modify
 
@@ -86,13 +125,15 @@ struct TryBlockDesc {
 };
 
 // Exception frame for try-except blocks
+// Note: frame_base and saved_top are offsets (not pointers) for GC safety.
+// Use savestack(L, ptr) to store and restorestack(L, offset) to retrieve.
 struct TryFrame {
-   uint16_t try_block_index;
-   TValue  *frame_base;     // L->base when BC_TRYENTER executed
-   TValue  *saved_top;      // L->top when BC_TRYENTER executed
-   BCReg    saved_nactvar;  // L->top - L->base at entry
-   GCfunc  *func;           // Function containing the try block
-   uint8_t  depth;          // Nesting depth for validation
+   uint16_t  try_block_index;
+   ptrdiff_t frame_base;     // Offset of L->base when BC_TRYENTER executed
+   ptrdiff_t saved_top;      // Offset of L->top when BC_TRYENTER executed
+   BCReg     saved_nactvar;  // L->top - L->base at entry
+   GCfunc   *func;           // Function containing the try block
+   uint8_t   depth;          // Nesting depth for validation
 };
 
 constexpr int LJ_MAX_TRY_DEPTH = 32;
@@ -163,8 +204,8 @@ extern "C" void lj_try_enter(lua_State *L, BCReg Base, uint16_t TryBlockIndex)
 
    TryFrame *try_frame = &L->try_stack->frames[L->try_stack->depth++];
    try_frame->try_block_index = TryBlockIndex;
-   try_frame->frame_base = L->base;
-   try_frame->saved_top = L->top;
+   try_frame->frame_base = savestack(L, L->base);  // Store as offset for GC safety
+   try_frame->saved_top = savestack(L, L->top);    // Store as offset for GC safety
    try_frame->saved_nactvar = (BCReg)(L->top - L->base);
    try_frame->func = curr_func(L);
    try_frame->depth = (uint8_t)L->try_stack->depth;
@@ -208,10 +249,13 @@ void cleanup_try_frames_to_base(lua_State *L, TValue *TargetBase)
 {
    if (!L->try_stack) return;
 
+   // Convert target to offset for comparison with stored offsets
+   ptrdiff_t target_offset = savestack(L, TargetBase);
+
    // Pop all try frames whose frame_base is at or above target_base
    while (L->try_stack->depth > 0) {
       TryFrame *try_frame = &L->try_stack->frames[L->try_stack->depth - 1];
-      if (try_frame->frame_base < TargetBase) break;  // This frame is in an outer scope
+      if (try_frame->frame_base < target_offset) break;  // This frame is in an outer scope
       L->try_stack->depth--;
    }
 }
@@ -311,18 +355,22 @@ When jumping to an exception handler, restore VM state:
 void handle_try_exception(lua_State *L, TryFrame *Frame,
                           TValue *ErrorObj, ERR ErrorCode, BCReg ExceptionReg)
 {
-   // 1. Restore stack pointers
-   L->base = Frame->frame_base;
-   L->top = Frame->saved_top;
+   // 1. Convert offsets back to pointers using restorestack()
+   TValue *saved_base = restorestack(L, Frame->frame_base);
+   TValue *saved_top = restorestack(L, Frame->saved_top);
 
    // 2. Close any open upvalues in the abandoned scope
-   lj_func_closeuv(L, Frame->saved_top);
+   lj_func_closeuv(L, saved_top);
 
-   // 3. Build exception table
+   // 3. Restore stack pointers
+   L->base = saved_base;
+   L->top = saved_top;
+
+   // 4. Build exception table
    lua_createtable(L, 0, 4);
    // Set e.code, e.message, e.line, e.trace
 
-   // 4. Place exception table in handler's expected register
+   // 5. Place exception table in handler's expected register
    // (Register determined by TryHandlerDesc.exception_reg)
    // If ExceptionReg IS 0xFF, discard the table instead
 

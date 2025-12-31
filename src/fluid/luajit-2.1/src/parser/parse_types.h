@@ -13,6 +13,7 @@
 #include <string_view>
 #include <concepts>
 #include <type_traits>
+#include <vector>
 #include <ankerl/unordered_dense.h>
 #include <variant>
 #include <ranges>
@@ -386,6 +387,12 @@ struct FuncState {
    // Return types for runtime type checking.  Set during function emission if explicit return types are declared.
    // FluidType::Unknown (default) means no type constraint is applied for that position.
    std::array<FluidType, MAX_RETURN_TYPES> return_types{};
+
+   // Try-except metadata for bytecode-level exception handling.
+   // These are populated during emit_try_except_stmt and copied to GCproto during fs_finish.
+   std::vector<TryBlockDesc>   try_blocks;    // Try block descriptors
+   std::vector<TryHandlerDesc> try_handlers;  // Handler descriptors
+   uint8_t try_depth = 0;  // Current try nesting depth for break/continue cleanup
 
    // Return strong types for bytecode positions and registers
 

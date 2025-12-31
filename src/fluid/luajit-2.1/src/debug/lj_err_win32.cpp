@@ -55,6 +55,10 @@ VOID RtlUnwindEx_FIXED(PVOID, PVOID, PVOID, PVOID, PVOID, PVOID) asm("RtlUnwindE
 #define LJ_EXCODE_ERRCODE(cl) ((int)((cl) & 0xff))
 
 extern void * err_unwind(lua_State* L, void* stopcf, int errcode);
+extern "C" void setup_try_handler(lua_State *L);
+
+// Sentinel value returned by err_unwind when a try-except handler is found.
+#define ERR_TRYHANDLER ((void*)(intptr_t)-2)
 
 // Windows exception handler for interpreter frame.  Called from buildvm_peobj.cpp
 
@@ -63,13 +67,31 @@ extern "C" int lj_err_unwind_win(EXCEPTION_RECORD *rec, void* f, CONTEXT* ctx, U
    void* cf = f;
    lua_State* L = cframe_L(cf);
    int errcode = LJ_EXCODE_CHECK(rec->ExceptionCode) ? LJ_EXCODE_ERRCODE(rec->ExceptionCode) : LUA_ERRRUN;
+
    if ((rec->ExceptionFlags & 6)) {  // EH_UNWINDING|EH_EXIT_UNWIND
+      // If we're resuming at a try-except handler, skip the normal unwind processing.
+      // The state has already been set up by setup_try_handler().
+      if (L->try_handler_pc) {
+         return 1;  // ExceptionContinueSearch - let RtlUnwindEx continue to target
+      }
       // Unwind internal frames.
       err_unwind(L, cf, errcode);
    }
    else {
       void *cf2 = err_unwind(L, cf, 0);
-      if (cf2) {  // We catch it, so start unwinding the upper frames.
+      if (cf2 IS ERR_TRYHANDLER) {
+         // A try-except handler was found. check_try_handler() only recorded
+         // the handler PC. Now we need to set up the actual state.
+         setup_try_handler(L);
+         //
+         // Resume execution at the handler PC using the VM entry point.
+         // Use 'cf' (the current frame) as TargetFrame, matching the pattern
+         // used by the standard exception handlers.
+         RtlUnwindEx(cf, (void*)lj_vm_resume_try_eh,
+            rec, (void*)(uintptr_t)0, ctx, dispatch->HistoryTable);
+         // RtlUnwindEx should never return.
+      }
+      else if (cf2) {  // We catch it, so start unwinding the upper frames.
          if (rec->ExceptionCode == LJ_MSVC_EXCODE ||
             rec->ExceptionCode == LJ_GCC_EXCODE) {
             setstrV(L, L->top++, lj_err_str(L, ErrMsg::ERRCPP));

@@ -83,6 +83,15 @@
 #include "lj_tab.h"
 #include "lj_gc.h"
 
+// For prvFluid access in try-except handling
+#include "../../defs.h"
+
+// Forward declarations for internal try-except functions that use Parasol's ERR type.
+// These are defined in fluid_functions.cpp.
+
+extern "C" bool lj_try_find_handler(lua_State *, const TryFrame *, ERR, const BCIns **,  BCREG );
+extern "C" void lj_try_build_exception_table(lua_State *, ERR, CSTRING, int, BCREG);
+
 // Error message strings.
 LJ_DATADEF CSTRING lj_err_allmsg =
 #define ERRDEF(name, msg)  msg "\0"
@@ -208,10 +217,127 @@ LJ_NOINLINE static void unwindstack(lua_State *L, TValue *top)
 }
 
 //********************************************************************************************************************
+// Sentinel value returned by err_unwind when a try-except handler is found.
+// The caller should re-enter the VM at L->try_handler_pc.
+
+#define ERR_TRYHANDLER ((void*)(intptr_t)-2)
+
+//********************************************************************************************************************
+// Check if a try frame should handle this error.
+// Returns true if handler found, with L->try_handler_pc set.
+
+// Check if a try handler exists for the current error.
+// If found, returns true but does NOT modify L->base, L->top, or the try stack.
+// The actual state modification is done by setup_try_handler().
+
+static bool check_try_handler(lua_State *L, int errcode)
+{
+   if (not L->try_stack or L->try_stack->depth IS 0) return false;
+
+   TryFrame *try_frame = &L->try_stack->frames[L->try_stack->depth - 1];
+
+   // Verify try frame is in current call chain by walking up the frame chain.
+   // The error may have been raised from a C function (like error()) so we need
+   // to check if the try block's function is anywhere in the call chain.
+
+   TValue *frame = L->base - 1;
+   bool found_try_func = false;
+
+   while (frame > tvref(L->stack) + LJ_FR2) {
+      GCfunc *func = frame_func(frame);
+      if (func IS try_frame->func) {
+         found_try_func = true;
+         break;
+      }
+      frame = frame_prev(frame);
+   }
+
+   if (not found_try_func) return false;
+
+   // Extract error code from prvFluid if available
+   ERR err_code = ERR::Exception;  // Default for Lua errors
+   if (L->script) {
+      auto prv = (prvFluid *)L->script->ChildPrivate;
+      if (prv and prv->CaughtError >= ERR::ExceptionThreshold) err_code = prv->CaughtError;
+   }
+
+   const BCIns *handler_pc = nullptr;
+   BCREG exception_reg = 0xFF;
+
+   if (lj_try_find_handler(L, try_frame, err_code, &handler_pc, &exception_reg)) {
+      // Just record that a handler exists - don't modify state yet
+      L->try_handler_pc = handler_pc;
+      return true;
+   }
+
+   return false;
+}
+
+//********************************************************************************************************************
+// Called to actually set up the try handler state before resuming execution.
+// This should be called right before jumping to the handler, NOT during search phase.
+
+extern "C" void setup_try_handler(lua_State *L)
+{
+   if (not L->try_stack or L->try_stack->depth IS 0) return;
+
+   TryFrame *try_frame = &L->try_stack->frames[L->try_stack->depth - 1];
+
+   // Extract error code from prvFluid if available
+   ERR err_code = ERR::Exception;
+   if (L->script) {
+      auto prv = (prvFluid *)L->script->ChildPrivate;
+      if (prv and prv->CaughtError >= ERR::ExceptionThreshold) {
+         err_code = prv->CaughtError;
+      }
+   }
+
+   const BCIns *handler_pc = nullptr;
+   BCREG exception_reg = 0xFF;
+
+   if (not lj_try_find_handler(L, try_frame, err_code, &handler_pc, &exception_reg)) {
+      return;  // Should not happen if check_try_handler returned true
+   }
+
+   // Get error message before restoring stack
+   const char *error_msg = nullptr;
+   if (L->top > L->base and tvisstr(L->top - 1)) {
+      error_msg = strVdata(L->top - 1);
+   }
+
+   // Get line number (simplified - skip debug API which requires valid stack)
+   int line = 0;
+
+   // Convert offsets back to pointers using restorestack()
+   TValue *saved_base = restorestack(L, try_frame->frame_base);
+   TValue *saved_top = restorestack(L, try_frame->saved_top);
+
+   lj_func_closeuv(L, saved_top); // Close upvalues and restore stack state
+   L->base = saved_base;
+   L->top = saved_top;
+
+   L->try_stack->depth--; // Pop try frame
+
+   // Build exception table and place in handler's register
+   lj_try_build_exception_table(L, err_code, error_msg, line, exception_reg);
+
+   L->try_handler_pc = handler_pc; // Stash handler PC for VM re-entry (already set, but confirm)
+}
+
+//********************************************************************************************************************
 // Unwind until stop frame. Optionally cleanup frames.
 
 extern void * err_unwind(lua_State *L, void *stopcf, int errcode)
 {
+   // Check for try-except handlers first.
+   // On Windows, errcode is 0 during search phase and non-zero during unwind phase.
+   // We need to check for try handlers even during search phase (errcode=0).
+   // Use LUA_ERRRUN as default for search phase.
+   int try_errcode = errcode ? errcode : LUA_ERRRUN;
+   if (check_try_handler(L, try_errcode)) {
+      return ERR_TRYHANDLER;
+   }
+
    TValue* frame = L->base - 1;
    void* cf = L->cframe;
    while (cf) {
@@ -694,7 +820,16 @@ LJ_NOINLINE void LJ_FASTCALL lj_err_throw(lua_State *L, int errcode)
 
    {
       void* cf = err_unwind(L, nullptr, errcode);
-      if (cframe_unwind_ff(cf))
+      if (cf IS ERR_TRYHANDLER) {
+         // A try-except handler was found. The state has been set up:
+         // - L->base and L->top restored to try block entry state
+         // - Exception table placed in handler's register
+         // - L->try_handler_pc points to the handler bytecode
+         //
+         // Resume execution at the handler PC using the VM entry point.
+         lj_vm_resume_try(cframe_raw(L->cframe));
+      }
+      else if (cframe_unwind_ff(cf))
          lj_vm_unwind_ff(cframe_raw(cf));
       else
          lj_vm_unwind_c(cframe_raw(cf), errcode);

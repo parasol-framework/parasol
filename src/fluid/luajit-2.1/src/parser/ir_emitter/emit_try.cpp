@@ -1,243 +1,181 @@
 // Copyright (C) 2025 Paul Manias
-// IR emitter implementation: try...except...end statement emission
+// IR emitter implementation: try...except...end statement emission (bytecode-level)
 // This file is #included from ir_emitter.cpp
+//
+// This implements bytecode-level exception handling that emits try body and handlers inline (not in closures),
+// allowing return/break/continue to work correctly.
+//
+// Bytecode structure:
+//   BC_TRYENTER  base, try_block_index    ; Push exception frame
+//   <try body bytecode>                   ; Inline try body
+//   BC_TRYLEAVE  base, 0                  ; Pop exception frame (normal exit)
+//   JMP          exit_label               ; Jump over handlers
+//   handler_1:                            ; Handler entry point (recorded in TryHandlerDesc)
+//   <handler1 bytecode>                   ; Inline handler body
+//   JMP          exit_label
+//   handler_2:
+//   <handler2 bytecode>
+//   JMP          exit_label
+//   exit_label:
+//
+// Handler metadata (TryBlockDesc, TryHandlerDesc) is stored in the FuncState during compilation and copied to the
+// GCproto during fs_finish().
 
 //********************************************************************************************************************
 // Emit bytecode for try...except...end exception handling blocks.
 //
-// Transforms:
-//   try
-//      <try body>
-//   except e when { ERR_A, ERR_B }
-//      <handler1>
-//   except e
-//      <handler2>
-//   end
-//
-// Into:
-//   __try(0, function() <try body> end, function(e) <handler1> end, filter1, function(e) <handler2> end, 0)
-//
-// The first argument is the expected result count (0 for statement form).
-// The try body is wrapped in a function closure.
-// Each except handler is wrapped in a function closure with optional exception parameter.
-// Filters are packed as 64-bit integers with up to 4 error codes (16 bits each), or 0 for catch-all.
+// This is the bytecode-level implementation that emits try body and handlers inline,
+// allowing return/break/continue to correctly affect the enclosing function/loop.
 
 ParserResult<IrEmitUnit> IrEmitter::emit_try_except_stmt(const TryExceptPayload &Payload)
 {
    FuncState *fs = &this->func_state;
+   BCReg base_reg = BCReg(fs->freereg);
 
-   // 1. Emit load of __try global function
-   ExpDesc try_func(ExpKind::Global);
-   try_func.u.sval = lj_str_newlit(this->lex_state.L, "__try");
-   this->materialise_to_next_reg(try_func, "try call function");
-   BCReg base = BCReg(try_func.u.s.info);
-
-   // Reserve register for frame link (FR2 mode)
-   RegisterAllocator allocator(fs);
-   allocator.reserve(BCReg(1));
-
-   // 2. Emit result count (0 for statement form - no LHS assignment)
-   // For expression form this would be the number of LHS variables
-   ExpDesc count(0.0);  // Statement form - no return values
-   this->materialise_to_next_reg(count, "try result count");
-
-   // 3. Emit try body as function closure
    if (not Payload.try_block) {
       return this->unsupported_stmt(AstNodeKind::TryExceptStmt, SourceSpan{});
    }
 
-   // Emit the try body function by creating a child function state and emitting the try block directly.
-   {
-      FuncState child_state;
-      ParserAllocator child_allocator = ParserAllocator::from(this->lex_state.L);
-      ParserConfig inherited = this->ctx.config();
-      ParserContext child_ctx = ParserContext::from(this->lex_state, child_state, child_allocator, inherited);
-      ParserSession session(child_ctx, inherited);
+   // Allocate try block index for this try block
 
-      ptrdiff_t oldbase = fs->bcbase - this->lex_state.bcstack;
-      this->lex_state.fs_init(&child_state);
-      FuncStateGuard fs_guard(&this->lex_state, &child_state);
+   size_t first_handler_index = fs->try_handlers.size();
+   uint16_t try_block_index = uint16_t(fs->try_blocks.size());
 
-      child_state.declared_globals = fs->declared_globals;
+   // Validate limits
 
-      // Set linedefined to the earliest line that bytecode might reference.
-      // Use the minimum of lastline and the first statement's line to ensure
-      // linedefined is always <= any line number in the emitted bytecode.
-      BCLine body_first_line = this->lex_state.lastline;
-      if (not Payload.try_block->statements.empty()) {
-         const StmtNodePtr& first_stmt = Payload.try_block->statements.front();
-         if (first_stmt) body_first_line = first_stmt->span.line;
-      }
-      child_state.linedefined = std::min(this->lex_state.lastline, body_first_line);
-
-      child_state.bcbase = fs->bcbase + fs->pc;
-      child_state.bclim = fs->bclim - fs->pc;
-      bcemit_AD(&child_state, BC_FUNCF, 0, 0);
-
-      FuncScope scope;
-      ScopeGuard scope_guard(&child_state, &scope, FuncScopeFlag::None);
-
-      child_state.numparams = 0;
-
-      IrEmitter child_emitter(child_ctx);
-      auto body_result = child_emitter.emit_block(*Payload.try_block, FuncScopeFlag::None);
-      if (not body_result.ok()) return body_result;
-
-      fs_guard.disarm();
-      GCproto *pt = this->lex_state.fs_finish(Payload.try_block->span.line);
-      scope_guard.disarm();
-      fs->bcbase = this->lex_state.bcstack + oldbase;
-      fs->bclim = BCPos(this->lex_state.sizebcstack - oldbase).raw();
-
-      ExpDesc try_fn;
-      try_fn.init(ExpKind::Relocable, bcemit_AD(fs, BC_FNEW, 0, const_gc(fs, obj2gco(pt), LJ_TPROTO)));
-      this->materialise_to_next_reg(try_fn, "try body function");
-
-      if (not (fs->flags & PROTO_CHILD)) {
-         if (fs->flags & PROTO_HAS_RETURN) fs->flags |= PROTO_FIXUP_RETURN;
-         fs->flags |= PROTO_CHILD;
-      }
+   if (try_block_index >= 0xFFFF) {
+      return ParserResult<IrEmitUnit>::failure(this->make_error(
+         ParserErrorCode::InternalInvariant, "too many try blocks in function", SourceSpan{}));
    }
 
-   // 4. For each except clause, emit handler function and filter
-   int arg_count = 2;  // result_count and try_body so far
+   if (first_handler_index + Payload.except_clauses.size() >= 0xFFFF) {
+      return ParserResult<IrEmitUnit>::failure(this->make_error(
+         ParserErrorCode::InternalInvariant, "too many exception handlers in function", SourceSpan{}));
+   }
 
-   for (const auto& clause : Payload.except_clauses) {
-      // Emit handler function with optional exception parameter
-      {
-         FuncState child_state;
-         ParserAllocator child_allocator = ParserAllocator::from(this->lex_state.L);
-         ParserConfig inherited = this->ctx.config();
-         ParserContext child_ctx = ParserContext::from(this->lex_state, child_state, child_allocator, inherited);
-         ParserSession session(child_ctx, inherited);
+   // Record try block descriptor (handler count filled in after handlers are processed)
+   fs->try_blocks.push_back(TryBlockDesc{
+      uint16_t(first_handler_index),
+      uint8_t(Payload.except_clauses.size()),
+      0  // padding
+   });
 
-         ptrdiff_t oldbase = fs->bcbase - this->lex_state.bcstack;
-         this->lex_state.fs_init(&child_state);
-         FuncStateGuard fs_guard(&this->lex_state, &child_state);
+   // Track try depth for break/continue cleanup
+   uint8_t saved_try_depth = fs->try_depth;
+   fs->try_depth++;
 
-         child_state.declared_globals = fs->declared_globals;
+   // Emit BC_TRYENTER with try block index
+   bcemit_AD(fs, BC_TRYENTER, base_reg, BCReg(try_block_index));
 
-         // Set linedefined to the earliest line that bytecode might reference.
-         // Use the minimum of lastline, clause.span.line, and the first statement's line
-         // to ensure linedefined is always <= any line number in the emitted bytecode.
-         BCLine body_first_line = this->lex_state.lastline;
-         body_first_line = std::min(body_first_line, clause.span.line);
-         if (clause.block and not clause.block->statements.empty()) {
-            const StmtNodePtr& first_stmt = clause.block->statements.front();
-            if (first_stmt) body_first_line = std::min(body_first_line, first_stmt->span.line);
-         }
-         child_state.linedefined = body_first_line;
+   // Emit try body INLINE (not in closure!)
+   auto body_result = this->emit_block(*Payload.try_block, FuncScopeFlag::None);
+   if (not body_result.ok()) {
+      fs->try_depth = saved_try_depth;
+      return body_result;
+   }
 
-         child_state.bcbase = fs->bcbase + fs->pc;
-         child_state.bclim = fs->bclim - fs->pc;
-         bcemit_AD(&child_state, BC_FUNCF, 0, 0);
+   // Emit BC_TRYLEAVE after try body (normal exit path)
+   bcemit_AD(fs, BC_TRYLEAVE, base_reg, BCReg(0));
 
-         FuncScope scope;
-         ScopeGuard scope_guard(&child_state, &scope, FuncScopeFlag::None);
+   // Jump over handlers (successful completion)
+   ControlFlowEdge exit_jmp = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
 
-         // Set up exception variable parameter if present
-         if (clause.exception_var.has_value()) {
-            GCstr *symbol = clause.exception_var->symbol;
-            if (symbol) {
-               BCLine param_line = std::min(body_first_line, clause.exception_var->span.line);
-               this->lex_state.var_new(BCReg(0), symbol, param_line, clause.exception_var->span.column);
-               child_state.numparams = 1;
-               this->lex_state.var_add(BCReg(1));
-               RegisterAllocator child_reg_alloc(&child_state);
-               child_reg_alloc.reserve(BCReg(1));
-            }
-         }
-         else {
-            // No exception variable - still receives one arg but ignores it
-            this->lex_state.var_new(BCReg(0), NAME_BLANK, body_first_line, 0);
-            child_state.numparams = 1;
-            this->lex_state.var_add(BCReg(1));
-            RegisterAllocator child_reg_alloc(&child_state);
-            child_reg_alloc.reserve(BCReg(1));
-         }
+   // Emit handlers inline and record metadata
+   std::vector<ControlFlowEdge> handler_exits;
 
-         IrEmitter child_emitter(child_ctx);
-
-         // Update local binding for exception variable
-         if (clause.exception_var.has_value() and clause.exception_var->symbol) {
-            child_emitter.update_local_binding(clause.exception_var->symbol, BCReg(0));
-         }
-
-         if (clause.block) {
-            auto body_result = child_emitter.emit_block(*clause.block, FuncScopeFlag::None);
-            if (not body_result.ok()) return body_result;
-         }
-
-         fs_guard.disarm();
-         GCproto *pt = this->lex_state.fs_finish(body_first_line);
-         scope_guard.disarm();
-         fs->bcbase = this->lex_state.bcstack + oldbase;
-         fs->bclim = BCPos(this->lex_state.sizebcstack - oldbase).raw();
-
-         ExpDesc handler_fn;
-         handler_fn.init(ExpKind::Relocable, bcemit_AD(fs, BC_FNEW, 0, const_gc(fs, obj2gco(pt), LJ_TPROTO)));
-         this->materialise_to_next_reg(handler_fn, "except handler function");
-
-         if (not (fs->flags & PROTO_CHILD)) {
-            if (fs->flags & PROTO_HAS_RETURN) fs->flags |= PROTO_FIXUP_RETURN;
-            fs->flags |= PROTO_CHILD;
-         }
-      }
-      arg_count++;
-
-      // Emit filter value (packed 64-bit integer or 0 for catch-all)
+   for (const auto &clause : Payload.except_clauses) {
+      // Pack filter codes inline (up to 4 16-bit error codes into 64-bit integer)
+      uint64_t packed_filter = 0;
       if (not clause.filter_codes.empty()) {
-         // Pack up to 4 error codes into a 64-bit integer
-         // Each code is 16 bits, stored from low to high bits
-         uint64_t packed = 0;
          int shift = 0;
-         for (const auto& code_expr : clause.filter_codes) {
+         for (const auto &code_expr : clause.filter_codes) {
             if (not code_expr or shift >= 64) break;
 
-            // Emit the expression and get its value
+            // Try to evaluate the expression as a constant
             auto code_result = this->emit_expression(*code_expr);
-            if (not code_result.ok()) {
-               // If we can't evaluate at compile time, emit 0 (catch-all fallback)
-               break;
-            }
+            if (not code_result.ok()) break;
 
             ExpDesc code = code_result.value_ref();
 
             // We need the numeric value - if it's a constant, extract it
             if (code.k IS ExpKind::Num) {
                uint16_t code_val = uint16_t(code.number_value());
-               packed |= (uint64_t(code_val) << shift);
+               packed_filter |= (uint64_t(code_val) << shift);
                shift += 16;
             }
-            else {
-               // Not a compile-time constant - we need to evaluate at runtime
-               // For now, emit the expression and build the filter dynamically
-               // This is more complex, so we'll just emit 0 for catch-all if not constant
-               this->materialise_to_next_reg(code, "except filter code");
-               // TODO: Build filter at runtime for non-constant codes
+            // Non-constant codes are ignored (treated as catch-all for now)
+         }
+      }
+
+      // Determine exception register
+
+      BCREG exception_reg = 0xFF;  // No exception variable by default
+      BCReg saved_freereg = BCReg(fs->freereg);
+      BCPOS handler_pc = fs->pc;  // Record handler entry PC BEFORE emitting any handler code
+
+      // If there's an exception variable, allocate a register for it.
+      // The runtime will place the exception table in this register
+
+      if (clause.exception_var.has_value() and clause.exception_var->symbol) {
+         BCREG saved_nactvar = fs->nactvar;  // Save nactvar before adding the exception variable
+
+         // Reserve register space first, then create the variable var_new takes an offset from nactvar, not an
+         // absolute register.
+
+         fs->freereg++;
+         this->lex_state.var_new(BCReg(0), clause.exception_var->symbol, clause.exception_var->span.line,
+            clause.exception_var->span.column);
+         this->lex_state.var_add(BCReg(1));
+
+         // The exception register is the slot we just added
+         exception_reg = saved_nactvar;
+
+         // Update local binding so the variable can be referenced
+         this->update_local_binding(clause.exception_var->symbol, BCReg(exception_reg));
+
+         // Emit handler body
+         if (clause.block) {
+            auto handler_result = this->emit_block(*clause.block, FuncScopeFlag::None);
+            if (not handler_result.ok()) {
+               fs->try_depth = saved_try_depth;
+               return handler_result;
             }
          }
 
-         lua_Number filter_val = lua_Number(packed);
-         ExpDesc filter(filter_val);
-         this->materialise_to_next_reg(filter, "except filter");
+         // Clean up: remove the exception variable and restore freereg
+         this->lex_state.var_remove(saved_nactvar);
+         fs->freereg = saved_freereg.raw();
       }
       else {
-         // Catch-all: emit 0
-         ExpDesc filter(0.0);
-         this->materialise_to_next_reg(filter, "except catch-all filter");
+         // No exception variable - emit handler body without variable binding
+         if (clause.block) {
+            auto handler_result = this->emit_block(*clause.block, FuncScopeFlag::None);
+            if (not handler_result.ok()) {
+               fs->try_depth = saved_try_depth;
+               return handler_result;
+            }
+         }
+         fs->freereg = saved_freereg.raw();
       }
-      arg_count++;
+
+      // Record handler metadata
+      fs->try_handlers.push_back(TryHandlerDesc{
+         packed_filter,
+         handler_pc,
+         exception_reg
+      });
+
+      // Jump to exit after handler
+      handler_exits.push_back(this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs))));
    }
 
-   // 5. Emit CALL instruction
-   // BC_CALL A=base, B=nresults+1, C=nargs+1
-   // For statement form, B=1 means 0 results (discard all)
-   // C operand: freereg - base - 1 (this accounts for the frame link slot properly)
-   bcemit_ABC(fs, BC_CALL, base, BCReg(1), BCReg(fs->freereg - base.raw() - 1));
+   // Patch all exits to point to after the try-except block
+   exit_jmp.patch_here();
+   for (ControlFlowEdge &handler_exit : handler_exits) {
+      handler_exit.patch_here();
+   }
 
-   // Reset freereg to base after call (statement form, no results kept)
-   fs->freereg = base.raw();
+   fs->try_depth = saved_try_depth; // Restore try depth
 
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
