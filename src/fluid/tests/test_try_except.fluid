@@ -314,7 +314,7 @@ end
 @Test function MultipleErrorsSequence()
    count = 0
 
-   for i in {0..3} do  -- Range is exclusive, so 0..3 gives 0, 1, 2
+   for i in {0..30} do  -- Range is exclusive, so 0..3 gives 0, 1, 2
       try
          error("Error " .. i)
       except e
@@ -322,7 +322,7 @@ end
       end
    end
 
-   assert(count is 3, "Should handle 3 errors, got " .. count)
+   assert(count is 30, "Should handle 30 errors, got " .. count)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
