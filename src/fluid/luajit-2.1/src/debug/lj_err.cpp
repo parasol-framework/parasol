@@ -394,6 +394,11 @@ extern "C" void setup_try_handler(lua_State *L)
    // Build exception table and place in handler's register
    lj_try_build_exception_table(L, err_code, error_msg, line, exception_reg);
 
+   // Reset CaughtError so it doesn't leak to subsequent exceptions
+
+   auto prv = (prvFluid *)L->script->ChildPrivate;
+   prv->CaughtError = ERR::Okay;
+
    L->try_handler_pc = handler_pc; // Stash handler PC for VM re-entry (already set, but confirm)
 }
 

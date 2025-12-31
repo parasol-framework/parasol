@@ -233,64 +233,6 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Expression form - success returns nil + results
---[[
-@Test(priority=12); @Disabled function ExpressionSuccess()
-   ex, a, b = try
-      return 42, "hello"
-   except e
-      return -1, "error"
-   end
-
-   assert(ex is nil, "No exception should mean nil, got " .. tostring(ex))
-   assert(a is 42, "First try result should be 42, got " .. tostring(a))
-   assert(b is "hello", "Second try result should be 'hello', got " .. tostring(b))
-end
---]]
------------------------------------------------------------------------------------------------------------------------
--- Expression form - exception returns table + handler results
---[[
-@Test(priority=13); @Disabled function ExpressionException()
-   ex, a, b = try
-      error("Boom")
-   except e
-      return 99, e.message
-   end
-
-   assert(ex != nil, "Exception table should be returned")
-   assert(ex.message:find("Boom"), "Exception message should contain 'Boom'")
-   assert(a is 99, "First except result should be 99, got " .. tostring(a))
-   assert(type(b) is "string", "Second except result should be string")
-end
---]]
------------------------------------------------------------------------------------------------------------------------
--- Expression form with single result
---[[
-@Test(priority=14); @Disabled function ExpressionSingleResult()
-   ex = try
-      return 123
-   except e
-      return 456
-   end
-
-   assert(ex is nil, "No exception means nil")
-end
---]]
------------------------------------------------------------------------------------------------------------------------
--- Try block with no return in expression context
---[[
-@Test(priority=15); @Disabled function ExpressionNoReturn()
-   ex, a = try
-      x = 1 + 1  -- No return
-   except e
-      return 999
-   end
-
-   assert(ex is nil, "No exception means nil")
-   assert(a is nil, "No return means nil for additional results")
-end
---]]
------------------------------------------------------------------------------------------------------------------------
 -- Scope isolation - variables in try block
 
 @Test(priority=16) function ScopeIsolation()
@@ -341,7 +283,7 @@ end
       try
          error("Error " .. i)
       except e
-         count += 1
+         count++
       end
    end
 
@@ -360,9 +302,9 @@ end
          if i % 2 is 0 then
             error("Even number")
          end
-         successful += 1
+         successful++
       except e
-         failed += 1
+         failed++
       end
    end
 
@@ -541,7 +483,7 @@ end
    count = 0
    for i in {0..9} do
       try
-         count += 1
+         count++
          if i is 3 then
             break
          end
@@ -608,3 +550,62 @@ end
 
    assert(not except_triggered, "ERR_Okay should not trigger except")
 end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Expression form - success returns nil + results
+--[[
+@Test(priority=12); @Disabled function ExpressionSuccess()
+   ex, a, b = try:<num, str>
+      return 42, "hello"
+   except e
+      return -1, "error"
+   end
+
+   assert(ex is nil, "No exception should mean nil, got " .. tostring(ex))
+   assert(a is 42, "First try result should be 42, got " .. tostring(a))
+   assert(b is "hello", "Second try result should be 'hello', got " .. tostring(b))
+end
+--]]
+-----------------------------------------------------------------------------------------------------------------------
+-- Expression form - exception returns table + handler results
+--[[
+@Test(priority=13); @Disabled function ExpressionException()
+   ex, a, b = try:<num, str>
+      error("Boom")
+   except e
+      return 99, e.message
+   end
+
+   assert(ex != nil, "Exception table should be returned")
+   assert(ex.message:find("Boom"), "Exception message should contain 'Boom'")
+   assert(a is 99, "First except result should be 99, got " .. tostring(a))
+   assert(type(b) is "string", "Second except result should be string")
+end
+--]]
+-----------------------------------------------------------------------------------------------------------------------
+-- Expression form with single result
+--[[
+@Test(priority=14); @Disabled function ExpressionSingleResult()
+   ex, result = try:num
+      return 123
+   except e
+      return 456
+   end
+
+   assert(ex is nil, "No exception means nil")
+end
+--]]
+-----------------------------------------------------------------------------------------------------------------------
+-- Try block with no return in expression context
+--[[
+@Test(priority=15); @Disabled function ExpressionNoReturn()
+   ex, a = try:num
+      x = 1 + 1  -- No return
+   except e
+      return 999
+   end
+
+   assert(ex is nil, "No exception means nil")
+   assert(a is nil, "No return means nil for additional results")
+end
+--]]
