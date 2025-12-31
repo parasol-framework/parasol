@@ -1139,11 +1139,11 @@ extern "C" void lj_try_enter(lua_State *L, BCREG Base, uint16_t TryBlockIndex)
 
    TryFrame *try_frame = &L->try_stack->frames[L->try_stack->depth++];
    try_frame->try_block_index = TryBlockIndex;
-   try_frame->frame_base = savestack(L, L->base);  // Store as offset, not pointer
-   try_frame->saved_top = savestack(L, L->top);    // Store as offset, not pointer
-   try_frame->saved_nactvar = (BCREG)(L->top - L->base);
-   try_frame->func = func;
-   try_frame->depth = (uint8_t)L->try_stack->depth;
+   try_frame->frame_base      = savestack(L, L->base);  // Store as offset, not pointer
+   try_frame->saved_top       = savestack(L, L->top);    // Store as offset, not pointer
+   try_frame->saved_nactvar   = (BCREG)(L->top - L->base);
+   try_frame->func            = func;
+   try_frame->depth           = (uint8_t)L->try_stack->depth;
 }
 
 //********************************************************************************************************************
@@ -1222,9 +1222,13 @@ extern "C" bool lj_try_find_handler(lua_State *L, const TryFrame *Frame, ERR Err
    lj_assertL(proto != nullptr, "lj_try_find_handler: proto is null for Lua function");
    if (not proto->try_blocks or Frame->try_block_index >= proto->try_block_count) return false;
 
-   lj_assertL(proto->try_handlers != nullptr, "lj_try_find_handler: try_handlers is null but try_blocks exists");
-
    const TryBlockDesc *try_block = &proto->try_blocks[Frame->try_block_index];
+
+   // A try block with no handlers (no except clause) silently swallows exceptions
+   if (try_block->handler_count IS 0) return false;
+
+   // Only access try_handlers if there are handlers to check
+   lj_assertL(proto->try_handlers != nullptr, "lj_try_find_handler: try_handlers is null but handler_count > 0");
 
    // Validate handler indices are within bounds
    lj_assertL(try_block->first_handler + try_block->handler_count <= proto->try_handler_count,
