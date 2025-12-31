@@ -443,6 +443,16 @@ struct StatementChildCounter {
       return total;
    }
 
+   [[nodiscard]] inline size_t operator()(const TryExceptPayload &Payload) const
+   {
+      size_t total = block_child_count(Payload.try_block);
+      for (const ExceptClause& clause : Payload.except_clauses) {
+         total += clause.filter_codes.size();
+         total += block_child_count(clause.block);
+      }
+      return total;
+   }
+
    [[nodiscard]] inline size_t operator()(const ExpressionStmtPayload &Payload) const
    {
       return Payload.expression ? 1 : 0;
@@ -488,6 +498,8 @@ DeferStmtPayload::~DeferStmtPayload() = default;
 DoStmtPayload::~DoStmtPayload() = default;
 ExpressionStmtPayload::~ExpressionStmtPayload() = default;
 ConditionalShorthandStmtPayload::~ConditionalShorthandStmtPayload() = default;
+ExceptClause::~ExceptClause() = default;
+TryExceptPayload::~TryExceptPayload() = default;
 BlockStmt::~BlockStmt() = default;
 
 ExprNodePtr make_literal_expr(SourceSpan Span, const LiteralValue &Literal)

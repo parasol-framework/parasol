@@ -777,6 +777,36 @@ struct ConditionalShorthandStmtPayload {
    ~ConditionalShorthandStmtPayload();
 };
 
+// Exception clause for try...except...end blocks
+struct ExceptClause {
+   ExceptClause() = default;
+   ExceptClause(const ExceptClause&) = delete;
+   ExceptClause& operator=(const ExceptClause&) = delete;
+   ExceptClause(ExceptClause&&) noexcept = default;
+   ExceptClause& operator=(ExceptClause&&) noexcept = default;
+
+   std::optional<Identifier> exception_var;  // Optional: e in "except e when ..."
+   ExprNodeList filter_codes;                // Error codes from when clause (empty = catch-all)
+   std::unique_ptr<BlockStmt> block;         // except block body
+   SourceSpan span{};
+
+   ~ExceptClause();
+};
+
+// Try-except statement payload: try ... except ... end
+struct TryExceptPayload {
+   TryExceptPayload() = default;
+   TryExceptPayload(const TryExceptPayload&) = delete;
+   TryExceptPayload& operator=(const TryExceptPayload&) = delete;
+   TryExceptPayload(TryExceptPayload&&) noexcept = default;
+   TryExceptPayload& operator=(TryExceptPayload&&) noexcept = default;
+
+   std::unique_ptr<BlockStmt> try_block;     // The try body
+   std::vector<ExceptClause> except_clauses; // One or more except handlers
+
+   ~TryExceptPayload();
+};
+
 struct ExpressionStmtPayload {
    ExpressionStmtPayload(ExprNodePtr expression)
       : expression(std::move(expression)) {}
@@ -797,7 +827,7 @@ struct StmtNode {
       LocalFunctionStmtPayload, FunctionStmtPayload, IfStmtPayload,
       LoopStmtPayload, NumericForStmtPayload, GenericForStmtPayload,
       ReturnStmtPayload, BreakStmtPayload, ContinueStmtPayload, DeferStmtPayload,
-      DoStmtPayload, ConditionalShorthandStmtPayload, ExpressionStmtPayload>
+      DoStmtPayload, ConditionalShorthandStmtPayload, TryExceptPayload, ExpressionStmtPayload>
       data;
 
    StmtNode() = default;

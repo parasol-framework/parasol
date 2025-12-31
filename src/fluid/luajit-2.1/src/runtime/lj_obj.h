@@ -101,6 +101,7 @@ enum class AstNodeKind : uint16_t {
    DeferStmt,
    DoStmt,
    ConditionalShorthandStmt,
+   TryExceptStmt,  // try...except...end exception handling
    ExpressionStmt
 };
 

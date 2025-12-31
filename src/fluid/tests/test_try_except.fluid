@@ -1,0 +1,610 @@
+-- Tests for try...except...end exception handling syntax
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Basic try-except (statement form)
+
+@Test function BasicTryExcept()
+   handled = false
+
+   try
+      error("Test error")
+   except e
+      handled = true
+      assert(e.message:find("Test error"), "Expected error message to contain 'Test error'")
+   end
+
+   assert(handled, "Exception should have been handled")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Try block without exception
+
+@Test function NoException()
+   try_executed = false
+   except_executed = false
+
+   try
+      try_executed = true
+   except e
+      except_executed = true
+   end
+
+   assert(try_executed, "Try block should have executed")
+   assert(not except_executed, "Except block should not have executed")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Exception variable is optional
+
+@Test function WithoutExceptionVariable()
+   handled = false
+
+   try
+      error("Test error")
+   except
+      handled = true
+   end
+
+   assert(handled, "Exception should have been handled without variable")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Nested try blocks
+
+@Test function NestedTry()
+   outer_handled = false
+   inner_handled = false
+
+   try
+      try
+         error("Inner error")
+      except e
+         inner_handled = true
+         assert(e.message:find("Inner"), "Inner handler should get inner error")
+      end
+   except e
+      outer_handled = true
+   end
+
+   assert(inner_handled, "Inner exception should have been handled")
+   assert(not outer_handled, "Outer handler should not execute for inner error")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Re-throwing exceptions
+
+@Test function Rethrow()
+   outer_handled = false
+
+   try
+      try
+         error("Original error")
+      except e
+         error(e.message .. " rethrown")
+      end
+   except e
+      outer_handled = true
+      assert(e.message:find("rethrown"), "Outer should catch rethrown error")
+   end
+
+   assert(outer_handled, "Rethrown exception should be caught by outer handler")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Exception table fields
+
+@Test function ExceptionTableFields()
+   try
+      error("Test message")
+   except e
+      assert(e.code is nil, "Lua errors should have nil code")
+      assert(e.message:find("Test message"), "Message should match, got " .. tostring(e.message))
+      assert(e.line > 0, "Should have line number")
+      assert(e.trace != nil, "Should have stack trace")
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- ERR code exceptions
+
+@Test function ErrCodeException()
+   try
+      raise(ERR_Failed)
+   except e
+      assert(e.code is ERR_Failed, "ERR exceptions should have numeric code")
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Single error code filter
+
+@Test function SingleFilter()
+   correct_handler = false
+
+   try
+      raise(ERR_Args)
+   except e when ERR_Args
+      correct_handler = true
+   except e
+      assert(false, "Should not reach catch-all")
+   end
+
+   assert(correct_handler, "Filtered handler should match")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Multiple error codes in filter
+
+@Test function MultipleFilter()
+   correct_handler = false
+
+   try
+      raise(ERR_Failed)
+   except e when { ERR_Failed, ERR_Search }
+      correct_handler = true
+   except e
+      assert(false, "Should not reach catch-all")
+   end
+
+   assert(correct_handler, "Multiple filter should match")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Filter falling through to catch-all
+
+@Test function FilterFallthrough()
+   catchall_handler = false
+
+   try
+      raise(ERR_Write)
+   except e when ERR_Read
+      assert(false, "Should not match ERR_Read filter")
+   except e
+      catchall_handler = true
+   end
+
+   assert(catchall_handler, "Should fall through to catch-all")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Multiple except clauses
+
+@Test function MultipleExceptClauses()
+   handler_index = 0
+
+   -- Test first handler matches
+   try
+      raise(ERR_Args)
+   except e when ERR_Args
+      handler_index = 1
+   except e when ERR_Failed
+      handler_index = 2
+   except e
+      handler_index = 3
+   end
+   assert(handler_index is 1, "First filter should match ERR_Args")
+
+   -- Test second handler matches
+   try
+      raise(ERR_Failed)
+   except e when ERR_Args
+      handler_index = 1
+   except e when ERR_Failed
+      handler_index = 2
+   except e
+      handler_index = 3
+   end
+   assert(handler_index is 2, "Second filter should match ERR_Failed")
+
+   -- Test catch-all matches
+   try
+      raise(ERR_Search)
+   except e when ERR_Args
+      handler_index = 1
+   except e when ERR_Failed
+      handler_index = 2
+   except e
+      handler_index = 3
+   end
+   assert(handler_index is 3, "Catch-all should match unfiltered error")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Expression form - success returns nil + results
+
+@Test function ExpressionSuccess()
+   ex, a, b = try
+      return 42, "hello"
+   except e
+      return -1, "error"
+   end
+
+   assert(ex is nil, "No exception should mean nil, got " .. tostring(ex))
+   assert(a is 42, "First try result should be 42, got " .. tostring(a))
+   assert(b is "hello", "Second try result should be 'hello', got " .. tostring(b))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Expression form - exception returns table + handler results
+
+@Test function ExpressionException()
+   ex, a, b = try
+      error("Boom")
+   except e
+      return 99, e.message
+   end
+
+   assert(ex != nil, "Exception table should be returned")
+   assert(ex.message:find("Boom"), "Exception message should contain 'Boom'")
+   assert(a is 99, "First except result should be 99, got " .. tostring(a))
+   assert(type(b) is "string", "Second except result should be string")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Expression form with single result
+
+@Test function ExpressionSingleResult()
+   ex = try
+      return 123
+   except e
+      return 456
+   end
+
+   assert(ex is nil, "No exception means nil")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Try block with no return in expression context
+
+@Test function ExpressionNoReturn()
+   ex, a = try
+      x = 1 + 1  -- No return
+   except e
+      return 999
+   end
+
+   assert(ex is nil, "No exception means nil")
+   assert(a is nil, "No return means nil for additional results")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Scope isolation - variables in try block
+
+@Test function ScopeIsolation()
+   outer_var = "outer"
+
+   try
+      inner_var = "inner"
+      outer_var = "modified"
+   except e
+   end
+
+   assert(outer_var is "modified", "Outer variable should be modified")
+   -- Note: inner_var is visible because Fluid doesn't have block scope by default
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Empty try block
+
+@Test function EmptyTryBlock()
+   executed = false
+
+   try
+   except e
+      executed = true
+   end
+
+   assert(not executed, "Empty try should not trigger except")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Empty except block
+
+@Test function EmptyExceptBlock()
+   try
+      error("Test")
+   except e
+   end
+   -- Should not crash - empty handler is valid
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Multiple errors in sequence
+
+@Test function MultipleErrorsSequence()
+   count = 0
+
+   for i in {0..3} do  -- Range is exclusive, so 0..3 gives 0, 1, 2
+      try
+         error("Error " .. i)
+      except e
+         count += 1
+      end
+   end
+
+   assert(count is 3, "Should handle 3 errors, got " .. count)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Exception in loop with continue
+
+@Test function ExceptionInLoop()
+   successful = 0
+   failed = 0
+
+   for i in {0..5} do  -- Range is exclusive, so 0..5 gives 0, 1, 2, 3, 4
+      try
+         if i % 2 is 0 then
+            error("Even number")
+         end
+         successful += 1
+      except e
+         failed += 1
+      end
+   end
+
+   assert(successful is 2, "Should have 2 successful iterations (1, 3)")
+   assert(failed is 3, "Should have 3 failed iterations (0, 2, 4)")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Deeply nested try blocks
+
+@Test function DeeplyNested()
+   depth = 0
+
+   try
+      depth = 1
+      try
+         depth = 2
+         try
+            depth = 3
+            error("Deep error")
+         except e
+            assert(depth is 3, "Innermost should catch")
+         end
+      except e
+         assert(false, "Middle should not catch")
+      end
+   except e
+      assert(false, "Outer should not catch")
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Error code at filter boundary (4 codes max)
+
+@Test function FourCodeFilter()
+   matched = false
+
+   try
+      raise(ERR_Search)
+   except e when { ERR_Args, ERR_Failed, ERR_Read, ERR_Search }
+      matched = true
+   except e
+      assert(false, "Should match 4-code filter")
+   end
+
+   assert(matched, "Should match last code in 4-code filter")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Parser error tests using try...except to catch exec() errors
+
+@Test function ParserErrors()
+   -- Test: try without except (should be a parse error)
+   parse_error = false
+   try
+      exec("try error('test') end")
+   except e
+      parse_error = true
+   end
+   assert(parse_error, "try without except should fail to parse")
+
+   -- Test: except without try (should be a parse error)
+   parse_error = false
+   try
+      exec("except e error('test') end")
+   except e
+      parse_error = true
+   end
+   assert(parse_error, "except without try should fail to parse")
+
+   -- Test: catch-all before filtered (should be a parse error)
+   parse_error = false
+   try
+      exec([[
+         try
+            error("test")
+         except e
+            print("catchall")
+         except e when ERR_Failed
+            print("filtered")
+         end
+      ]])
+   except e
+      parse_error = true
+   end
+   assert(parse_error, "catch-all before filtered should fail to parse")
+
+   -- Test: duplicate catch-all (should be a parse error)
+   parse_error = false
+   try
+      exec([[
+         try
+            error("test")
+         except e
+            print("first")
+         except e
+            print("second")
+         end
+      ]])
+   except e
+      parse_error = true
+   end
+   assert(parse_error, "duplicate catch-all should fail to parse")
+
+   -- Test: when without error code (should be a parse or runtime error)
+   -- Note: `when` followed by a newline and then code is technically valid syntax
+   -- because `print("test")` is parsed as the filter expression.
+   -- This is unusual but not a parse error - it's just wrong at runtime.
+--[==[
+   parse_error = false
+   try
+      exec([[
+         try
+            error("test")
+         except e when
+            print("test")
+         end
+      ]])
+   except e
+      parse_error = true
+   end
+   assert(parse_error, "when without error code should fail to parse")
+--]==]
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Valid syntax variations
+
+@Test function ValidSyntaxVariations()
+   -- Multiple filtered handlers, no catch-all
+   handled = false
+   try
+      raise(ERR_Args)
+   except e when ERR_Args
+      handled = true
+   except e when ERR_Failed
+      assert(false)
+   end
+   assert(handled)
+
+   -- Single filtered handler only
+   handled = false
+   try
+      raise(ERR_Failed)
+   except e when ERR_Failed
+      handled = true
+   end
+   assert(handled)
+
+   -- Just catch-all
+   handled = false
+   try
+      error("test")
+   except e
+      handled = true
+   end
+   assert(handled)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Return from within try block
+
+@Test; @Disable function return_from_try()
+   function test_return()
+      try
+         return "from_try"
+      except e
+         return "from_except"
+      end
+      return "after_try"
+   end
+
+   result = test_return()
+   assert(result is "from_try", "Should return from try block")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Return from within except block
+
+@Test; @Disable function return_from_except()
+   function test_return()
+      try
+         error("test")
+      except e
+         return "from_except"
+      end
+      return "after_try"
+   end
+
+   result = test_return()
+   assert(result is "from_except", "Should return from except block")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Break from try block in loop
+
+@Test; @Disable function break_from_try()
+   count = 0
+   for i in {0..9} do
+      try
+         count += 1
+         if i is 3 then
+            break
+         end
+      except e
+      end
+   end
+
+   assert(count is 4, "Should break after 4 iterations, got " .. count)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Continue from try block in loop
+
+@Test; @Disable function continue_from_try()
+   count = 0
+   sum = 0
+   for i in {0..4} do
+      try
+         count += 1
+         if i is 2 then
+            continue
+         end
+         sum += i
+      except e
+      end
+   end
+
+   assert(count is 5, "Should count all iterations")
+   assert(sum is 0+1+3+4, "Should skip i=2 in sum, got " .. sum)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Lua standard error types
+
+@Test function LuaErrors()
+   -- nil indexing
+   try
+      x = nil
+      y = x.field
+   except e
+      assert(e.code is nil, "Lua errors have nil code")
+      assert(e.message:find("nil"), "Should mention nil in message")
+   end
+
+   -- Type error
+   try
+      x = "string" + 123
+   except e
+      assert(e.message != nil, "Should have error message")
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- ERR_Okay and other non-exception codes should not trigger except
+
+@Test function NonExceptionErrors()
+   except_triggered = false
+
+   try
+      -- This should NOT trigger an exception (ERR_Okay is below threshold)
+      result = mSys.AnalysePath(".", 0)
+   except e
+      except_triggered = true
+   end
+
+   assert(not except_triggered, "ERR_Okay should not trigger except")
+end

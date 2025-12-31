@@ -670,6 +670,10 @@ ParserResult<IrEmitUnit> IrEmitter::emit_statement(const StmtNode& stmt)
       const auto &payload = std::get<ConditionalShorthandStmtPayload>(stmt.data);
       return this->emit_conditional_shorthand_stmt(payload);
    }
+   case AstNodeKind::TryExceptStmt: {
+      const auto &payload = std::get<TryExceptPayload>(stmt.data);
+      return this->emit_try_except_stmt(payload);
+   }
    default:
       return this->unsupported_stmt(stmt.kind, stmt.span);
    }
@@ -2299,3 +2303,4 @@ ParserResult<ExpDesc> IrEmitter::unsupported_expr(AstNodeKind kind, const Source
 #include "ir_emitter/emit_function.cpp"
 #include "ir_emitter/emit_table.cpp"
 #include "ir_emitter/emit_call.cpp"
+#include "ir_emitter/emit_try.cpp"

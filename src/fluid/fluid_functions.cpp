@@ -257,14 +257,12 @@ int fcmd_catch(lua_State *Lua)
 
                   lua_call(Lua, 1, 0); // nargs, nresults
                }
-               else {
-                  if (raw_error_valid) {
-                     lua_rawgeti(Lua, LUA_REGISTRYINDEX, raw_error_ref);
-                     luaL_unref(Lua, LUA_REGISTRYINDEX, raw_error_ref);
-                     lua_error(Lua);
-                  }
-                  else luaL_error(Lua, "<No message>");
+               else if (raw_error_valid) {
+                  lua_rawgeti(Lua, LUA_REGISTRYINDEX, raw_error_ref);
+                  luaL_unref(Lua, LUA_REGISTRYINDEX, raw_error_ref);
+                  lua_error(Lua);
                }
+               else luaL_error(Lua, "<No message>");
 
                lua_pushinteger(Lua, prv->CaughtError != ERR::Okay ? int(prv->CaughtError) : int(ERR::Exception));
                return 1;
@@ -344,6 +342,192 @@ int fcmd_catch(lua_State *Lua)
          }
       }
       else luaL_argerror(Lua, 1, "Expected function.");
+   }
+
+   return 0;
+}
+
+//********************************************************************************************************************
+// __try(result_count, try_body, except1_fn, except1_filter, except2_fn, except2_filter, ...)
+//
+// Returns: exception_table (or nil), result1, result2, ... (if result_count > 0)
+//
+// result_count: Total LHS variables INCLUDING exception table slot (0 = no returns)
+//               Capped at MAX_RETURN_TYPES
+// try_body: Function containing the try block code
+// except_fn: Function containing the except block code (receives exception table as arg)
+// except_filter: Packed 64-bit integer with up to 4 16-bit error codes (0 = catch-all)
+
+constexpr int MAX_TRY_RETURNS = 16;
+
+int fcmd_try(lua_State *Lua)
+{
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
+   int nargs = lua_gettop(Lua);
+
+   if (nargs < 2) {
+      luaL_argerror(Lua, 1, "Expected result count and try body function");
+      return 0;
+   }
+
+   // First arg: result count (total LHS variables including exception table)
+   // 0 = statement form with no assignments, skip building results
+   int result_count = int(lua_tointeger(Lua, 1));
+   if (result_count > MAX_TRY_RETURNS) result_count = MAX_TRY_RETURNS;
+   if (result_count < 0) result_count = 0;
+
+   // Second arg: try body function
+   if (lua_type(Lua, 2) != LUA_TFUNCTION) {
+      luaL_argerror(Lua, 2, "Expected try body function");
+      return 0;
+   }
+
+   // Remaining args: pairs of (except_fn, filter_int64) or just except_fn for catch-all
+   // Filter: packed 64-bit integer with up to 4 error codes (16 bits each)
+   // A filter value of 0 indicates catch-all
+
+   prv->Catch++;
+   prv->CaughtError = ERR::Okay;
+
+   // Stack depth tracking for scope isolation (same as fcmd_catch)
+   int prev_depth = prv->CatchDepth;
+   lua_Debug ar;
+   int depth = 0;
+   while (lua_getstack(Lua, depth, &ar)) depth++;
+   prv->CatchDepth = depth + 2;
+
+   // Execute try body with protected call
+   lua_pushcfunction(Lua, fcmd_catch_handler);
+   lua_pushvalue(Lua, 2);  // try body function
+
+   // Capture stack position BEFORE pushing handler and function
+   int result_top = lua_gettop(Lua) - 2;
+
+   if (lua_pcall(Lua, 0, LUA_MULTRET, -2)) {
+      // Exception occurred - find matching except handler
+      prv->Catch--;
+      prv->CatchDepth = prev_depth;
+
+      int raw_error_ref = luaL_ref(Lua, LUA_REGISTRYINDEX);
+      bool raw_error_valid = (raw_error_ref != LUA_NOREF) and (raw_error_ref != LUA_REFNIL);
+
+      ERR filter_error = prv->CaughtError;
+      if (filter_error < ERR::ExceptionThreshold) filter_error = ERR::Exception;
+
+      // Search through except handlers (args 3+)
+      int handler_index = -1;
+      for (int i = 3; i <= nargs; i += 2) {
+         if (lua_type(Lua, i) != LUA_TFUNCTION) continue;
+
+         // Check if next arg is a filter (integer) or missing/zero (catch-all)
+         bool is_catch_all = (i + 1 > nargs) or
+                             (lua_type(Lua, i + 1) != LUA_TNUMBER) or
+                             (lua_tointeger(Lua, i + 1) IS 0);
+
+         if (not is_catch_all) {
+            uint64_t filter = uint64_t(lua_tointeger(Lua, i + 1));
+            // Unpack and match error codes (up to 4 codes, 16 bits each)
+            for (int shift = 0; shift < 64; shift += 16) {
+               uint16_t code = (filter >> shift) & 0xFFFF;
+               if (code IS 0) break;  // No more codes in this filter
+               if (code IS uint16_t(filter_error)) {
+                  handler_index = i;
+                  break;
+               }
+            }
+         }
+         else {
+            // Catch-all handler (no filter or filter IS 0)
+            handler_index = i;
+         }
+
+         if (handler_index != -1) break;
+      }
+
+      if (handler_index != -1) {
+         // Always build exception table - it's passed to the handler as an argument
+         lua_newtable(Lua);
+
+         lua_pushstring(Lua, "code");
+         if (prv->CaughtError >= ERR::ExceptionThreshold)
+            lua_pushinteger(Lua, int(prv->CaughtError));
+         else
+            lua_pushnil(Lua);  // Lua exception (not ERR code)
+         lua_settable(Lua, -3);
+
+         lua_pushstring(Lua, "message");
+         if (raw_error_valid) {
+            lua_rawgeti(Lua, LUA_REGISTRYINDEX, raw_error_ref);
+            if (lua_type(Lua, -1) != LUA_TSTRING) {
+               lua_pop(Lua, 1);
+               if (prv->CaughtError != ERR::Okay) lua_pushstring(Lua, GetErrorMsg(prv->CaughtError));
+               else lua_pushstring(Lua, "<No message>");
+            }
+         }
+         else if (prv->CaughtError != ERR::Okay) lua_pushstring(Lua, GetErrorMsg(prv->CaughtError));
+         else lua_pushstring(Lua, "<No message>");
+
+         lua_settable(Lua, -3);
+
+         lua_pushstring(Lua, "line");
+         lua_pushinteger(Lua, prv->ErrorLine);
+         lua_settable(Lua, -3);
+
+         lua_pushstring(Lua, "trace");
+         luaL_traceback(Lua, Lua, nullptr, 1);
+         lua_settable(Lua, -3);
+
+         if (raw_error_valid) luaL_unref(Lua, LUA_REGISTRYINDEX, raw_error_ref);
+
+         // Call the handler with exception table as argument
+         lua_pushvalue(Lua, handler_index);       // Push handler function
+         lua_pushvalue(Lua, -2);                  // Push exception table as arg
+         int handler_results = result_count > 1 ? result_count - 1 : 0;
+         lua_call(Lua, 1, handler_results);
+
+         if (result_count > 0) {
+            // Stack now has: [..., exception_table, r1, r2, ..., rN]
+            // The exception_table is already at the correct position (front of return values)
+            // Return: exception_table, r1, r2, ..., rN
+            return result_count;
+         }
+         return 0;  // Statement form - no returns
+      }
+      else { // No matching handler - rethrow the exception
+         if (raw_error_valid) {
+            lua_rawgeti(Lua, LUA_REGISTRYINDEX, raw_error_ref);
+            luaL_unref(Lua, LUA_REGISTRYINDEX, raw_error_ref);
+            lua_error(Lua);
+         }
+         else luaL_error(Lua, "<No message>");
+      }
+   }
+   else {
+      // Success - no exception occurred
+      prv->Catch--;
+      prv->CatchDepth = prev_depth;
+
+      // Remove the error handler that's still on the stack after successful pcall
+      // Stack after pcall: [args..., catch_handler, result1, result2, ...]
+
+      int handler_pos = result_top + 1;
+      lua_remove(Lua, handler_pos);
+
+      if (result_count IS 0) return 0; // Statement form - no returns needed
+
+      // Calculate how many results the try body returned
+      int try_results = lua_gettop(Lua) - result_top;
+
+      lua_pushnil(Lua); // First return value is nil (no exception)
+
+      // Move nil to the front of all results
+      if (try_results > 0) lua_insert(Lua, -(try_results + 1));  // Move nil before try body results
+
+      // Return: nil, try_result1, try_result2, ...
+      // But cap at result_count
+      int actual_returns = try_results + 1;  // +1 for nil exception table
+      if (actual_returns > result_count) actual_returns = result_count;
+      return actual_returns;
    }
 
    return 0;
