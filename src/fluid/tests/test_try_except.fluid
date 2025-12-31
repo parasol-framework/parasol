@@ -503,7 +503,7 @@ end
 @Test(priority=28); @Disabled function continue_from_try()
    count = 0
    sum = 0
-   for i in {0..4} do
+   for i in {0..5} do
       try
          count++
          if i is 2 then
@@ -514,7 +514,7 @@ end
       end
    end
 
-   assert(count is 5, "Should count all iterations")
+   assert(count is 5, "Should count all iterations, got " .. tostring(count))
    assert(sum is 0+1+3+4, "Should skip i=2 in sum, got " .. sum)
 end
 
