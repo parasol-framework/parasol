@@ -853,11 +853,14 @@ LJ_NOINLINE void LJ_FASTCALL lj_err_throw(lua_State *L, int errcode)
    {
       void* cf = err_unwind(L, nullptr, errcode);
       if (cf IS ERR_TRYHANDLER) {
-         // A try-except handler was found. The state has been set up:
-         // - L->base and L->top restored to try block entry state
-         // - Exception table placed in handler's register
-         // - L->try_handler_pc points to the handler bytecode
-         //
+         // A try-except handler was found. check_try_handler() only recorded
+         // the handler PC. Now set up the actual state before resuming:
+         // - Restore L->base and L->top to try block entry state
+         // - Close upvalues above the restored top
+         // - Pop the try frame
+         // - Build exception table and place in handler's register
+         setup_try_handler(L);
+
          // Resume execution at the handler PC using the VM entry point.
          lj_vm_resume_try(cframe_raw(L->cframe));
       }
