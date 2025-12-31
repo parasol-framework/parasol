@@ -1182,7 +1182,7 @@ LJLIB_CF(debug_anno_set)
       CSTRING str = lua_tostring(L, 2);
       if (not lj_parse_annotation_string(L, str)) {
          lua_pop(L, 1);  // Pop _ANNO
-         return luaL_error(L, "Failed to parse annotation string");
+         luaL_error(L, "Failed to parse annotation string");
       }
       // Parsed annotations array is now on stack
    }

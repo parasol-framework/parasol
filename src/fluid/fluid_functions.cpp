@@ -696,7 +696,7 @@ int fcmd_msg(lua_State *Lua)
       lua_pushvalue(Lua, i);   // value to pass to tostring
       lua_call(Lua, 1, 1);
       CSTRING s = lua_tostring(Lua, -1);  // get result
-      if (not s) return luaL_error(Lua, LUA_QL("tostring") " must return a string to " LUA_QL("print"));
+      if (not s) luaL_error(Lua, LUA_QL("tostring") " must return a string to " LUA_QL("print"));
 
       {
          pf::Log log("Fluid");
@@ -721,7 +721,7 @@ int fcmd_print(lua_State *Lua)
       lua_pushvalue(Lua, i);   // value to print
       lua_call(Lua, 1, 1);
       CSTRING s = lua_tostring(Lua, -1);  // get result
-      if (not s) return luaL_error(Lua, LUA_QL("tostring") " must return a string to " LUA_QL("print"));
+      if (not s) luaL_error(Lua, LUA_QL("tostring") " must return a string to " LUA_QL("print"));
 
       #ifdef __ANDROID__
          {
@@ -1109,22 +1109,40 @@ int fcmd_arg(lua_State *Lua)
 
 extern "C" void lj_try_enter(lua_State *L, BCREG Base, uint16_t TryBlockIndex)
 {
+   lj_assertL(L->base >= tvref(L->stack), "lj_try_enter: L->base below stack start");
+   lj_assertL(L->base <= tvref(L->maxstack), "lj_try_enter: L->base above maxstack");
+   lj_assertL(L->top >= L->base, "lj_try_enter: L->top below L->base");
+   lj_assertL(L->top <= tvref(L->maxstack), "lj_try_enter: L->top above maxstack");
+
    // Lazy allocation of try stack
    if (not L->try_stack) {
       L->try_stack = (TryFrameStack *)lj_mem_new(L, sizeof(TryFrameStack));
       L->try_stack->depth = 0;
    }
 
+   lj_assertL(L->try_stack != nullptr, "lj_try_enter: try_stack allocation failed");
+
    if (L->try_stack->depth >= LJ_MAX_TRY_DEPTH) {
       lj_err_msg(L, ErrMsg::XNEST);  // "try blocks nested too deeply"
    }
+
+   // Verify the current function is a Lua function (try blocks only exist in Lua code)
+   GCfunc *func = curr_func(L);
+   lj_assertL(func != nullptr, "lj_try_enter: curr_func is null");
+   lj_assertL(isluafunc(func), "lj_try_enter: curr_func is not a Lua function");
+
+   // Verify TryBlockIndex is valid for this function's proto
+   GCproto *proto = funcproto(func);
+   lj_assertL(proto != nullptr, "lj_try_enter: proto is null");
+   lj_assertL(TryBlockIndex < proto->try_block_count,
+      "lj_try_enter: TryBlockIndex %u >= try_block_count %u", TryBlockIndex, proto->try_block_count);
 
    TryFrame *try_frame = &L->try_stack->frames[L->try_stack->depth++];
    try_frame->try_block_index = TryBlockIndex;
    try_frame->frame_base = savestack(L, L->base);  // Store as offset, not pointer
    try_frame->saved_top = savestack(L, L->top);    // Store as offset, not pointer
    try_frame->saved_nactvar = (BCREG)(L->top - L->base);
-   try_frame->func = curr_func(L);
+   try_frame->func = func;
    try_frame->depth = (uint8_t)L->try_stack->depth;
 }
 
@@ -1133,7 +1151,11 @@ extern "C" void lj_try_enter(lua_State *L, BCREG Base, uint16_t TryBlockIndex)
 
 extern "C" void lj_try_leave(lua_State *L)
 {
+   // Note: It's valid to call lj_try_leave when there's no try stack (e.g., after exception handling
+   // has already cleaned up). We only assert when there IS a try stack but depth is inconsistent.
    if (L->try_stack and L->try_stack->depth > 0) {
+      lj_assertL(L->try_stack->depth <= LJ_MAX_TRY_DEPTH,
+         "lj_try_leave: depth %u exceeds LJ_MAX_TRY_DEPTH", L->try_stack->depth);
       L->try_stack->depth--;
    }
 }
@@ -1146,8 +1168,14 @@ extern "C" void lj_try_cleanup_to_base(lua_State *L, TValue *TargetBase)
 {
    if (not L->try_stack) return;
 
+   // Validate TargetBase is within valid stack bounds
+   lj_assertL(TargetBase >= tvref(L->stack), "lj_try_cleanup_to_base: TargetBase below stack start");
+   lj_assertL(TargetBase <= tvref(L->maxstack), "lj_try_cleanup_to_base: TargetBase above maxstack");
+
    ptrdiff_t target_offset = savestack(L, TargetBase);
    while (L->try_stack->depth > 0) {
+      lj_assertL(L->try_stack->depth <= LJ_MAX_TRY_DEPTH,
+         "lj_try_cleanup_to_base: depth %u exceeds LJ_MAX_TRY_DEPTH", L->try_stack->depth);
       TryFrame *try_frame = &L->try_stack->frames[L->try_stack->depth - 1];
       if (try_frame->frame_base < target_offset) break;  // This frame is in an outer scope
       L->try_stack->depth--;
@@ -1182,18 +1210,35 @@ static bool filter_matches(uint64_t PackedFilter, ERR ErrorCode)
 extern "C" bool lj_try_find_handler(lua_State *L, const TryFrame *Frame, ERR ErrorCode, const BCIns **HandlerPc,
    BCREG *ExceptionReg)
 {
+   lj_assertL(Frame != nullptr, "lj_try_find_handler: Frame is null");
+   lj_assertL(HandlerPc != nullptr, "lj_try_find_handler: HandlerPc output is null");
+   lj_assertL(ExceptionReg != nullptr, "lj_try_find_handler: ExceptionReg output is null");
+
    GCfunc *func = Frame->func;
+   lj_assertL(func != nullptr, "lj_try_find_handler: Frame->func is null");
    if (not isluafunc(func)) return false;
 
    GCproto *proto = funcproto(func);
+   lj_assertL(proto != nullptr, "lj_try_find_handler: proto is null for Lua function");
    if (not proto->try_blocks or Frame->try_block_index >= proto->try_block_count) return false;
 
+   lj_assertL(proto->try_handlers != nullptr, "lj_try_find_handler: try_handlers is null but try_blocks exists");
+
    const TryBlockDesc *try_block = &proto->try_blocks[Frame->try_block_index];
+
+   // Validate handler indices are within bounds
+   lj_assertL(try_block->first_handler + try_block->handler_count <= proto->try_handler_count,
+      "lj_try_find_handler: handler indices out of bounds (first=%u, count=%u, total=%u)",
+      try_block->first_handler, try_block->handler_count, proto->try_handler_count);
 
    for (uint8_t index = 0; index < try_block->handler_count; ++index) {
       const TryHandlerDesc *handler = &proto->try_handlers[try_block->first_handler + index];
 
       if (not filter_matches(handler->filter_packed, ErrorCode)) continue;
+
+      // Validate handler PC is within bytecode bounds
+      lj_assertL(handler->handler_pc < proto->sizebc,
+         "lj_try_find_handler: handler_pc %u >= sizebc %u", handler->handler_pc, proto->sizebc);
 
       // Found a matching handler
       *HandlerPc = proto_bc(proto) + handler->handler_pc;
@@ -1212,9 +1257,19 @@ extern "C" void lj_try_build_exception_table(lua_State *L, ERR ErrorCode, CSTRIN
 {
    if (ExceptionReg IS 0xFF) return;  // No exception variable - discard
 
+   // Validate stack state before placing exception table
+   lj_assertL(L->base >= tvref(L->stack), "lj_try_build_exception_table: L->base below stack start");
+   lj_assertL(L->base <= tvref(L->maxstack), "lj_try_build_exception_table: L->base above maxstack");
+
+   // Validate target slot is within valid stack bounds
+   TValue *target_slot = L->base + ExceptionReg;
+   lj_assertL(target_slot >= tvref(L->stack), "lj_try_build_exception_table: target slot below stack start");
+   lj_assertL(target_slot < tvref(L->maxstack), "lj_try_build_exception_table: target slot at or above maxstack");
+
    // Create exception table
 
    GCtab *t = lj_tab_new(L, 0, 4);
+   lj_assertL(t != nullptr, "lj_try_build_exception_table: table allocation failed");
    TValue *slot;
 
    // Set e.code
@@ -1244,5 +1299,5 @@ extern "C" void lj_try_build_exception_table(lua_State *L, ERR ErrorCode, CSTRIN
    lj_gc_anybarriert(L, t);
 
    // Place exception table in the handler's expected register
-   settabV(L, L->base + ExceptionReg, t);
+   settabV(L, target_slot, t);
 }

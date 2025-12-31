@@ -89,7 +89,7 @@
 // Forward declarations for internal try-except functions that use Parasol's ERR type.
 // These are defined in fluid_functions.cpp.
 
-extern "C" bool lj_try_find_handler(lua_State *, const TryFrame *, ERR, const BCIns **,  BCREG );
+extern "C" bool lj_try_find_handler(lua_State *, const TryFrame *, ERR, const BCIns **, BCREG *);
 extern "C" void lj_try_build_exception_table(lua_State *, ERR, CSTRING, int, BCREG);
 
 // Error message strings.
@@ -234,7 +234,14 @@ static bool check_try_handler(lua_State *L, int errcode)
 {
    if (not L->try_stack or L->try_stack->depth IS 0) return false;
 
+   // Validate try stack depth is within bounds
+   lj_assertL(L->try_stack->depth <= LJ_MAX_TRY_DEPTH,
+      "check_try_handler: try_stack depth %u exceeds LJ_MAX_TRY_DEPTH", L->try_stack->depth);
+
    TryFrame *try_frame = &L->try_stack->frames[L->try_stack->depth - 1];
+
+   // Validate try frame function pointer
+   lj_assertL(try_frame->func != nullptr, "check_try_handler: try_frame->func is null");
 
    // Verify try frame is in current call chain by walking up the frame chain.
    // The error may have been raised from a C function (like error()) so we need
@@ -242,6 +249,9 @@ static bool check_try_handler(lua_State *L, int errcode)
 
    TValue *frame = L->base - 1;
    bool found_try_func = false;
+
+   // Validate initial frame pointer is within stack bounds
+   lj_assertL(frame >= tvref(L->stack), "check_try_handler: initial frame below stack start");
 
    while (frame > tvref(L->stack) + LJ_FR2) {
       GCfunc *func = frame_func(frame);
@@ -265,6 +275,9 @@ static bool check_try_handler(lua_State *L, int errcode)
    BCREG exception_reg = 0xFF;
 
    if (lj_try_find_handler(L, try_frame, err_code, &handler_pc, &exception_reg)) {
+      // Validate handler PC was set
+      lj_assertL(handler_pc != nullptr, "check_try_handler: handler found but handler_pc is null");
+
       // Just record that a handler exists - don't modify state yet
       L->try_handler_pc = handler_pc;
       return true;
@@ -281,7 +294,14 @@ extern "C" void setup_try_handler(lua_State *L)
 {
    if (not L->try_stack or L->try_stack->depth IS 0) return;
 
+   // Validate try stack state
+   lj_assertL(L->try_stack->depth <= LJ_MAX_TRY_DEPTH,
+      "setup_try_handler: try_stack depth %u exceeds LJ_MAX_TRY_DEPTH", L->try_stack->depth);
+
    TryFrame *try_frame = &L->try_stack->frames[L->try_stack->depth - 1];
+
+   // Validate try frame
+   lj_assertL(try_frame->func != nullptr, "setup_try_handler: try_frame->func is null");
 
    // Extract error code from prvFluid if available
    ERR err_code = ERR::Exception;
@@ -296,8 +316,13 @@ extern "C" void setup_try_handler(lua_State *L)
    BCREG exception_reg = 0xFF;
 
    if (not lj_try_find_handler(L, try_frame, err_code, &handler_pc, &exception_reg)) {
-      return;  // Should not happen if check_try_handler returned true
+      // This should not happen if check_try_handler returned true - assert in debug builds
+      lj_assertL(false, "setup_try_handler: no handler found but check_try_handler returned true");
+      return;
    }
+
+   // Validate handler PC
+   lj_assertL(handler_pc != nullptr, "setup_try_handler: handler found but handler_pc is null");
 
    // Get error message before restoring stack
    const char *error_msg = nullptr;
@@ -311,6 +336,13 @@ extern "C" void setup_try_handler(lua_State *L)
    // Convert offsets back to pointers using restorestack()
    TValue *saved_base = restorestack(L, try_frame->frame_base);
    TValue *saved_top = restorestack(L, try_frame->saved_top);
+
+   // Validate restored pointers are within stack bounds
+   lj_assertL(saved_base >= tvref(L->stack), "setup_try_handler: saved_base below stack start");
+   lj_assertL(saved_base <= tvref(L->maxstack), "setup_try_handler: saved_base above maxstack");
+   lj_assertL(saved_top >= tvref(L->stack), "setup_try_handler: saved_top below stack start");
+   lj_assertL(saved_top <= tvref(L->maxstack), "setup_try_handler: saved_top above maxstack");
+   lj_assertL(saved_top >= saved_base, "setup_try_handler: saved_top below saved_base");
 
    lj_func_closeuv(L, saved_top); // Close upvalues and restore stack state
    L->base = saved_base;
@@ -1208,7 +1240,7 @@ extern void luaL_where(lua_State *L, int level)
    lj_debug_addloc(L, "", frame, size ? frame + size : nullptr);
 }
 
-extern int luaL_error(lua_State *L, CSTRING fmt, ...)
+[[noreturn]] extern void luaL_error(lua_State *L, CSTRING fmt, ...)
 {
    CSTRING msg;
    va_list argp;
@@ -1216,7 +1248,6 @@ extern int luaL_error(lua_State *L, CSTRING fmt, ...)
    msg = lj_strfmt_pushvf(L, fmt, argp);
    va_end(argp);
    lj_err_callermsg(L, msg);
-   return 0;  //  unreachable
 }
 
 //********************************************************************************************************************

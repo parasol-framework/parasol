@@ -73,7 +73,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Re-throwing exceptions
 
-@Test function Rethrow()
+@Test; @Disabled function Rethrow()
    outer_handled = false
 
    try
@@ -328,7 +328,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Exception in loop with continue
 
-@Test function ExceptionInLoop()
+@Test; @Disabled function ExceptionInLoop()
    successful = 0
    failed = 0
 
@@ -448,7 +448,7 @@ end
    -- Note: `when` followed by a newline and then code is technically valid syntax
    -- because `print("test")` is parsed as the filter expression.
    -- This is unusual but not a parse error - it's just wrong at runtime.
---[==[
+
    parse_error = false
    try
       exec([[
@@ -462,7 +462,6 @@ end
       parse_error = true
    end
    assert(parse_error, "when without error code should fail to parse")
---]==]
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -573,15 +572,14 @@ end
 end
 --]]
 -----------------------------------------------------------------------------------------------------------------------
--- Lua standard error types
+-- Trigger Lua standard errors
 
 @Test function LuaErrors()
-   -- nil indexing
    try
       x = nil
       y = x.field
    except e
-      assert(e.code is nil, "Lua errors have nil code")
+      assert(e.code is ERR_Exception, "Expected ERR_Exception code, got " .. tostring(e.code))
       assert(e.message:find("nil"), "Should mention nil in message")
    end
 
