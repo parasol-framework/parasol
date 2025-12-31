@@ -1,8 +1,5 @@
 -- Tests for try...except...end exception handling syntax
 
-@BeforeEach(hotpath=true)
-function enforce_hotpath() end
-
 -----------------------------------------------------------------------------------------------------------------------
 -- Basic try-except (statement form)
 
