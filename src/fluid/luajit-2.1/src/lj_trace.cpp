@@ -768,6 +768,8 @@ void lj_trace_ins(jit_State *J, const BCIns *pc)
          "trace recorder mutated stack");
 #endif
       if (J->state IS TraceState::ERR or J->state IS TraceState::IDLE) {
+         // try-except may have changed the stack, this stabilises it.  Ideally this
+         // doesn't happen in practice, hence the assert above.
          J->L->base = base_before;
          J->L->top = top_before;
       }
