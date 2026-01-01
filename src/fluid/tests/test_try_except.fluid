@@ -1,5 +1,8 @@
 -- Tests for try...except...end exception handling syntax
 
+@BeforeEach(hotpath=true)
+function enforce_hotpath() end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Basic try-except (statement form)
 
@@ -276,7 +279,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Multiple errors in sequence
 
-@Test(priority=19); @Disabled function MultipleErrorsSequence()
+@Test(priority=19) function MultipleErrorsSequence()
    count = 0
 
    for i in {0..30} do  -- Range is exclusive, so 0..3 gives 0, 1, 2
@@ -479,7 +482,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Break from try block in loop
 
-@Test(priority=27); @Disabled function break_from_try()
+@Test(priority=27) function break_from_try()
    count = 0
    for i in {0..9} do
       try
@@ -497,7 +500,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Continue from try block in loop
 
-@Test(priority=28); @Disabled function continue_from_try()
+@Test(priority=28) function continue_from_try()
    count = 0
    sum = 0
    for i in {0..5} do

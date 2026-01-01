@@ -232,7 +232,12 @@ LJ_NOINLINE static void unwindstack(lua_State *L, TValue *top)
 
 static bool check_try_handler(lua_State *L, int errcode)
 {
+   // Note: JIT state check is done in err_unwind before calling this function
+
    if (not L->try_stack or L->try_stack->depth IS 0) return false;
+
+   // Don't intercept errors from JIT-compiled code
+   //if (tvref(G(L)->jit_base)) return false; // Disabled - PROTO_NOJIT flag provides coverage
 
    // Validate try stack depth is within bounds
    lj_assertL(L->try_stack->depth <= LJ_MAX_TRY_DEPTH,
@@ -356,7 +361,7 @@ extern "C" void setup_try_handler(lua_State *L)
    lj_assertL(handler_pc != nullptr, "setup_try_handler: handler found but handler_pc is null");
 
    // Get error message before restoring stack
-   const char *error_msg = nullptr;
+   CSTRING error_msg = nullptr;
    if (L->top > L->base and tvisstr(L->top - 1)) {
       error_msg = strVdata(L->top - 1);
    }
@@ -364,10 +369,10 @@ extern "C" void setup_try_handler(lua_State *L)
    // Extract line number from error message (format: "filename:line: message")
    int line = 0;
    if (error_msg) {
-      const char *colon1 = strchr(error_msg, ':');
+      CSTRING colon1 = strchr(error_msg, ':');
       if (colon1) {
          // Check if next character starts a number (line number)
-         const char *num_start = colon1 + 1;
+         CSTRING num_start = colon1 + 1;
          if (*num_start >= '0' and *num_start <= '9') {
             line = int(strtol(num_start, nullptr, 10));
          }
@@ -411,17 +416,16 @@ extern void * err_unwind(lua_State *L, void *stopcf, int errcode)
    // On Windows, errcode is 0 during search phase and non-zero during unwind phase.
    // We need to check for try handlers even during search phase (errcode=0).
    // Use LUA_ERRRUN as default for search phase.
-   int try_errcode = errcode ? errcode : LUA_ERRRUN;
-   if (check_try_handler(L, try_errcode)) {
-      return ERR_TRYHANDLER;
-   }
 
-   TValue* frame = L->base - 1;
-   void* cf = L->cframe;
+   int try_errcode = errcode ? errcode : LUA_ERRRUN;
+   if (check_try_handler(L, try_errcode)) return ERR_TRYHANDLER;
+
+   TValue *frame = L->base - 1;
+   void *cf = L->cframe;
    while (cf) {
       int32_t nres = cframe_nres(cframe_raw(cf));
       if (nres < 0) {  // C frame without Lua frame?
-         TValue* top = restorestack(L, -nres);
+         TValue *top = restorestack(L, -nres);
          if (frame < top) {  // Frame reached?
             if (errcode) {
                unwind_close_all(L, L->base - 1, top);

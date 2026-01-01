@@ -475,8 +475,6 @@ ERR msg_thread_script_callback(APTR Custom, int MsgID, int MsgType, APTR Message
 
 int fcmd_arg(lua_State *);
 int fcmd_catch(lua_State *);
-int fcmd_catch_handler(lua_State *);
-int fcmd_try(lua_State *);
 int fcmd_check(lua_State *);
 int fcmd_raise(lua_State *);
 int fcmd_get_execution_state(lua_State *);

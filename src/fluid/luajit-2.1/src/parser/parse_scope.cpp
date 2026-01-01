@@ -918,6 +918,11 @@ GCproto * LexState::fs_finish(BCLine Line)
 
       pt->try_block_count = uint16_t(fs->try_blocks.size());
       pt->try_handler_count = uint16_t(fs->try_handlers.size());
+
+      // Disable JIT for functions with try blocks until proper JIT integration is implemented.
+      // The BC_TRYENTER/BC_TRYLEAVE opcodes are NYI (not yet implemented) in the JIT recorder,
+      // and there are complex interactions with exception handling that can cause crashes.
+      pt->flags |= PROTO_NOJIT;
    }
    else {
       pt->try_blocks = nullptr;
