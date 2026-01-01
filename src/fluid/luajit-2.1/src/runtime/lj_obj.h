@@ -526,7 +526,7 @@ struct TryFrame {
 // Stack of try frames for exception unwinding
 struct TryFrameStack {
    TryFrame frames[LJ_MAX_TRY_DEPTH];
-   int depth;
+   int depth = 0;
 };
 
 typedef struct GCproto {
@@ -1004,9 +1004,9 @@ inline void hook_leave(global_State *g) noexcept { g->hookmask &= ~HOOK_ACTIVE; 
 [[nodiscard]] inline uint8_t hook_save(const global_State *g) noexcept { return g->hookmask & ~HOOK_EVENTMASK; }
 inline void hook_restore(global_State *g, uint8_t h) noexcept { g->hookmask = (g->hookmask & HOOK_EVENTMASK) | h; }
 
-// Per-thread state object.
+// Per-thread state object.  See lj_state_new() for initialisation.
 struct lua_State {
-   GCHeader;
+   GCHeader;            // NB: C++ placement new can trash any preset values here.
    uint8_t dummy_ffid;  //  Fake FF_C for curr_funcisL() on dummy frames.
    uint8_t status;      //  Thread status.
    MRef    glref;       //  Link to global state.
@@ -1026,7 +1026,7 @@ struct lua_State {
    TipEmitter *parser_tips;               // Stores TipEmitter* during parsing for code hints
    TValue close_err;  // Current error for __close handlers (nil if no error)
    // Try-except exception handling runtime state (lazily allocated)
-   TryFrameStack *try_stack;      // Exception frame stack (nullptr until first BC_TRYENTER)
+   TryFrameStack try_stack;      // Exception frame stack (nullptr until first BC_TRYENTER)
    const BCIns   *try_handler_pc; // Handler PC for error re-entry (set during unwind)
 
    // Constructor/destructor not actually used as yet.

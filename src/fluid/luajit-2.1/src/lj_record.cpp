@@ -2917,6 +2917,46 @@ void lj_record_ins(jit_State *J)
       lj_ffrecord_func(J);
       break;
 
+   case BC_TRYENTER: {
+      // Inlined frames use a virtual base pointer. Compute the correct base below so
+      // try-enter can still record properly inside inlined calls.
+
+      // Add snapshot before try block to enable on-trace error catching.
+      // This allows the JIT to exit at this point when an exception occurs,
+      // letting the interpreter handle the try-except recovery.
+      lj_snap_add(J);
+
+      // Emit call to lj_try_enter(L, Func, Base, TryBlockIndex)
+      // L is implicit (CCI_L flag)
+      // Func is the current function for this frame (may differ from J->fn)
+      // Base must point at the current frame. For inlined frames, REF_BASE is the root base,
+      // so add the baseslot offset to reach the virtual frame base.
+      TRef tr_func = getcurrf(J);
+      TRef tr_base = REF_BASE;
+      if (J->baseslot > FRC::MIN_BASESLOT) {
+         IRBuilder ir(J);
+         int32_t slot_delta = (int32_t)J->baseslot - (int32_t)FRC::MIN_BASESLOT;
+         int32_t byte_delta = slot_delta * 8;
+         tr_base = ir.emit(IRT(IR_ADD, IRT_PGC), REF_BASE, ir.kint(byte_delta));
+      }
+      TRef tr_index = lj_ir_kint(J, (int32_t)bc_d(ins));
+      lj_ir_call(J, IRCALL_lj_try_enter, tr_func, tr_base, tr_index);
+
+      // Enable on-trace error catching (like pcall does)
+      J->needsnap = 1;
+      break;
+   }
+
+   case BC_TRYLEAVE: {
+      // Emit call to lj_try_leave(L)
+      // L is implicit (CCI_L flag), no explicit args needed
+      lj_ir_call(J, IRCALL_lj_try_leave);
+
+      // Stop catching on-trace errors (like pcall return does)
+      J->needsnap = 1;
+      break;
+   }
+
    default:
       if (op >= BC__MAX) {
          lj_ffrecord_func(J);
@@ -2925,8 +2965,6 @@ void lj_record_ins(jit_State *J)
       [[fallthrough]];
    case BC_UCLO:
    case BC_FNEW:
-   case BC_TRYENTER:
-   case BC_TRYLEAVE:
       setintV(&J->errinfo, (int32_t)op);
       lj_trace_err_info(J, LJ_TRERR_NYIBC);
       break;

@@ -24,7 +24,6 @@ end
 @Test(priority=1) function SilentTry()
    success = false
    try
-      print('Simple test')
       success = true
    end
    assert(success, "Simple try block should execute with no exception handling")
@@ -98,17 +97,17 @@ end
    outer_handled = false
 
    try
-      print("Entered outer try")
+      msg("Entered outer try")
       try
-         print("Entered inner try")
+         msg("Entered inner try")
          error("Raising error")
       except e
-         print("Captured inner error: " .. e.message)
+         msg("Captured inner error: " .. e.message)
          error("Rethrowing '" .. e.message .. "'")
       end
    except e
       outer_handled = true
-      print("Captured rethrown error in outer try: " .. e.message)
+      msg("Captured rethrown error in outer try: " .. e.message)
       assert(e.message:find("Rethrowing"), "Outer should catch rethrown error, got: " .. tostring(e.message))
    end
 

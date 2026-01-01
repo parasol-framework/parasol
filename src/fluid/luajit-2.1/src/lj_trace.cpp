@@ -32,7 +32,8 @@
 #include "lj_target.h"
 #include "lj_prng.h"
 
-// -- Error handling ------------------------------------------------------
+//********************************************************************************************************************
+// Error handling
 
 // Synchronous abort with error message.
 void lj_trace_err(jit_State* J, TraceError e)
@@ -42,39 +43,38 @@ void lj_trace_err(jit_State* J, TraceError e)
    lj_err_throw(J->L, LUA_ERRRUN);
 }
 
+//********************************************************************************************************************
 // Synchronous abort with error message and error info.
+
 void lj_trace_err_info(jit_State* J, TraceError e)
 {
    setintV(J->L->top++, (int32_t)e);
    lj_err_throw(J->L, LUA_ERRRUN);
 }
 
-// -- Trace management ----------------------------------------------------
-
-/* The current trace is first assembled in J->cur. The variable length
-** arrays point to shared, growable buffers (J->irbuf etc.). When trace
-** recording ends successfully, the current trace and its data structures
-** are copied to a new (compact) GCtrace object.
-*/
+//********************************************************************************************************************
+// Trace management
+//
+// The current trace is first assembled in J->cur. The variable length
+// arrays point to shared, growable buffers (J->irbuf etc.). When trace
+// recording ends successfully, the current trace and its data structures
+// are copied to a new (compact) GCtrace object.
 
 // Find a free trace number.
+
 static TraceNo trace_findfree(jit_State* J)
 {
    MSize osz, lim;
-   if (J->freetrace == 0)
-      J->freetrace = 1;
+   if (J->freetrace == 0) J->freetrace = 1;
    for (; J->freetrace < J->sizetrace; J->freetrace++)
-      if (traceref(J, J->freetrace) == nullptr)
-         return J->freetrace++;
+      if (traceref(J, J->freetrace) == nullptr) return J->freetrace++;
    // Need to grow trace array.
    lim = (MSize)J->param[JIT_P_maxtrace] + 1;
    if (lim < 2) lim = 2; else if (lim > 65535) lim = 65535;
    osz = J->sizetrace;
-   if (osz >= lim)
-      return 0;  //  Too many traces.
+   if (osz >= lim) return 0;  //  Too many traces.
    lj_mem_growvec(J->L, J->trace, J->sizetrace, lim, GCRef);
-   for (; osz < J->sizetrace; osz++)
-      setgcrefnull(J->trace[osz]);
+   for (; osz < J->sizetrace; osz++) setgcrefnull(J->trace[osz]);
    return J->freetrace;
 }
 
@@ -119,7 +119,9 @@ static void perftools_addtrace(GCtrace* T)
 }
 #endif
 
+//********************************************************************************************************************
 // Allocate space for copy of T.
+
 GCtrace* LJ_FASTCALL lj_trace_alloc(lua_State* L, GCtrace* T)
 {
    size_t sztr = ((sizeof(GCtrace) + 7) & ~7);
@@ -141,7 +143,9 @@ GCtrace* LJ_FASTCALL lj_trace_alloc(lua_State* L, GCtrace* T)
    return T2;
 }
 
+//********************************************************************************************************************
 // Save current trace by copying and compacting it.
+
 static void trace_save(jit_State* J, GCtrace* T)
 {
    size_t sztr = ((sizeof(GCtrace) + 7) & ~7);
@@ -180,15 +184,16 @@ void LJ_FASTCALL lj_trace_free(global_State* g, GCtrace* T)
       T->nsnap * sizeof(SnapShot) + T->nsnapmap * sizeof(SnapEntry));
 }
 
+//********************************************************************************************************************
 // Re-enable compiling a prototype by unpatching any modified bytecode.
+
 void lj_trace_reenableproto(GCproto* pt)
 {
    if ((pt->flags & PROTO_ILOOP)) {
       BCIns* bc = proto_bc(pt);
       BCPOS i, sizebc = pt->sizebc;
       pt->flags &= ~PROTO_ILOOP;
-      if (bc_op(bc[0]) == BC_IFUNCF)
-         setbc_op(&bc[0], BC_FUNCF);
+      if (bc_op(bc[0]) == BC_IFUNCF) setbc_op(&bc[0], BC_FUNCF);
       for (i = 1; i < sizebc; i++) {
          BCOp op = bc_op(bc[i]);
          if (op == BC_IFORL or op == BC_IITERL or op == BC_ILOOP)
@@ -197,14 +202,15 @@ void lj_trace_reenableproto(GCproto* pt)
    }
 }
 
+//********************************************************************************************************************
 // Unpatch the bytecode modified by a root trace.
+
 static void trace_unpatch(jit_State* J, GCtrace* T)
 {
    BCOp op = bc_op(T->startins);
    BCIns* pc = mref<BCIns>(T->startpc);
    UNUSED(J);
-   if (op == BC_JMP)
-      return;  //  No need to unpatch branches in parent traces (yet).
+   if (op == BC_JMP) return;  //  No need to unpatch branches in parent traces (yet).
    switch (bc_op(*pc)) {
    case BC_JFORL:
       lj_assertJ(traceref(J, bc_d(*pc)) == T, "JFORL references other trace");
@@ -236,7 +242,9 @@ static void trace_unpatch(jit_State* J, GCtrace* T)
    }
 }
 
+//********************************************************************************************************************
 // Flush a root trace.
+
 static void trace_flushroot(jit_State* J, GCtrace* T)
 {
    GCproto* pt = &gcref(T->startpt)->pt;
@@ -260,7 +268,9 @@ static void trace_flushroot(jit_State* J, GCtrace* T)
    }
 }
 
+//********************************************************************************************************************
 // Flush a trace. Only root traces are considered.
+
 void lj_trace_flush(jit_State* J, TraceNo traceno)
 {
    if (traceno > 0 and traceno < J->sizetrace) {
@@ -270,25 +280,26 @@ void lj_trace_flush(jit_State* J, TraceNo traceno)
    }
 }
 
+//********************************************************************************************************************
 // Flush all traces associated with a prototype.
+
 void lj_trace_flushproto(global_State* g, GCproto* pt)
 {
-   while (pt->trace != 0)
-      trace_flushroot(G2J(g), traceref(G2J(g), pt->trace));
+   while (pt->trace != 0) trace_flushroot(G2J(g), traceref(G2J(g), pt->trace));
 }
 
+//********************************************************************************************************************
 // Flush all traces.
+
 int lj_trace_flushall(lua_State* L)
 {
    jit_State* J = L2J(L);
    ptrdiff_t i;
-   if ((J2G(J)->hookmask & HOOK_GC))
-      return 1;
+   if ((J2G(J)->hookmask & HOOK_GC)) return 1;
    for (i = (ptrdiff_t)J->sizetrace - 1; i > 0; i--) {
       GCtrace* T = traceref(J, i);
       if (T) {
-         if (T->root == 0)
-            trace_flushroot(J, T);
+         if (T->root == 0) trace_flushroot(J, T);
          lj_gdbjit_deltrace(J, T);
          T->traceno = T->link = 0;  //  Blacklist the link for cont_stitch.
          setgcrefnull(J->trace[i]);
@@ -307,7 +318,9 @@ int lj_trace_flushall(lua_State* L)
    return 0;
 }
 
+//********************************************************************************************************************
 // Initialize JIT compiler state.
+
 void lj_trace_initstate(global_State* g)
 {
    jit_State* J = G2J(g);
@@ -356,7 +369,8 @@ void lj_trace_freestate(global_State* g)
    lj_mem_freevec(g, J->trace, J->sizetrace, GCRef);
 }
 
-// -- Penalties and blacklisting ------------------------------------------
+//********************************************************************************************************************
+// Penalties and blacklisting
 
 // Blacklist a bytecode instruction.
 static void blacklist_pc(GCproto* pt, BCIns* pc)

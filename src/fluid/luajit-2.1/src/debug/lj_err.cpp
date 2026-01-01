@@ -234,16 +234,16 @@ static bool check_try_handler(lua_State *L, int errcode)
 {
    // Note: JIT state check is done in err_unwind before calling this function
 
-   if (not L->try_stack or L->try_stack->depth IS 0) return false;
+   if (L->try_stack.depth IS 0) return false;
 
    // Don't intercept errors from JIT-compiled code
    //if (tvref(G(L)->jit_base)) return false; // Disabled - PROTO_NOJIT flag provides coverage
 
    // Validate try stack depth is within bounds
-   lj_assertL(L->try_stack->depth <= LJ_MAX_TRY_DEPTH,
-      "check_try_handler: try_stack depth %u exceeds LJ_MAX_TRY_DEPTH", L->try_stack->depth);
+   lj_assertL(L->try_stack.depth <= LJ_MAX_TRY_DEPTH,
+      "check_try_handler: try_stack depth %u exceeds LJ_MAX_TRY_DEPTH", L->try_stack.depth);
 
-   TryFrame *try_frame = &L->try_stack->frames[L->try_stack->depth - 1];
+   TryFrame *try_frame = &L->try_stack.frames[L->try_stack.depth - 1];
 
    lj_assertL(try_frame->func != nullptr, "check_try_handler: try_frame->func is null");
 
@@ -328,15 +328,12 @@ static bool check_try_handler(lua_State *L, int errcode)
 
 extern "C" void setup_try_handler(lua_State *L)
 {
-   if (not L->try_stack or L->try_stack->depth IS 0) return;
+   if (L->try_stack.depth IS 0) return;
 
-   // Validate try stack state
-   lj_assertL(L->try_stack->depth <= LJ_MAX_TRY_DEPTH,
-      "setup_try_handler: try_stack depth %u exceeds LJ_MAX_TRY_DEPTH", L->try_stack->depth);
+   lj_assertL(L->try_stack.depth <= LJ_MAX_TRY_DEPTH, "setup_try_handler: try_stack depth %u exceeds LJ_MAX_TRY_DEPTH", L->try_stack.depth);
 
-   TryFrame *try_frame = &L->try_stack->frames[L->try_stack->depth - 1];
+   TryFrame *try_frame = &L->try_stack.frames[L->try_stack.depth - 1];
 
-   // Validate try frame
    lj_assertL(try_frame->func != nullptr, "setup_try_handler: try_frame->func is null");
 
    // Extract error code from prvFluid if available
@@ -394,7 +391,7 @@ extern "C" void setup_try_handler(lua_State *L)
    L->base = saved_base;
    L->top = saved_top;
 
-   L->try_stack->depth--; // Pop try frame
+   L->try_stack.depth--; // Pop try frame
 
    // Build exception table and place in handler's register
    lj_try_build_exception_table(L, err_code, error_msg, line, exception_reg);

@@ -211,6 +211,9 @@ typedef struct CCallInfo {
   /* Native array helpers */ \
   _(ANY,        lj_arr_getidx,     4,   L, NIL, CCI_L|CCI_T) \
   _(ANY,        lj_arr_setidx,     4,   S, NIL, CCI_L|CCI_T) \
+  /* Try-except exception handling */ \
+  _(ANY,        lj_try_enter,      4,  FS, NIL, CCI_L|CCI_T) \
+  _(ANY,        lj_try_leave,      1,  FS, NIL, CCI_L) \
   \
   // End of list.
 
@@ -250,3 +253,7 @@ extern uint64_t fp64_d2ul(double a);
 extern int64_t fp64_f2l(float a);
 extern uint64_t fp64_f2ul(float a);
 #endif
+
+// Try-except exception handling runtime functions
+extern "C" void lj_try_enter(lua_State *L, GCfunc *Func, TValue *Base, uint16_t TryBlockIndex);
+extern "C" void lj_try_leave(lua_State *L);

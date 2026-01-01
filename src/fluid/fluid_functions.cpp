@@ -924,44 +924,72 @@ int fcmd_arg(lua_State *Lua)
 
 //********************************************************************************************************************
 // Called by BC_TRYENTER to push an exception frame onto the try stack.
+//
+// Parameters:
+//   L              - The lua_State pointer
+//   Func          - The current Lua function (passed explicitly for JIT compatibility)
+//   Base          - The current base pointer (passed explicitly for JIT compatibility)
+//   TryBlockIndex - Index into the function's try_blocks array
+//
+// Note: Both Func and Base are passed explicitly rather than computed from L->base because in JIT-compiled
+// code, L->base is not synchronized with the actual base (which is kept in a CPU register).
+// The interpreter passes its BASE register value. The JIT passes REF_BASE which resolves to the actual base.
 
-extern "C" void lj_try_enter(lua_State *L, BCREG Base, uint16_t TryBlockIndex)
+extern "C" void lj_try_enter(lua_State *L, GCfunc *Func, TValue *Base, uint16_t TryBlockIndex)
 {
-   lj_assertL(L->base >= tvref(L->stack), "lj_try_enter: L->base below stack start");
-   lj_assertL(L->base <= tvref(L->maxstack), "lj_try_enter: L->base above maxstack");
-   lj_assertL(L->top >= L->base, "lj_try_enter: L->top below L->base");
-   lj_assertL(L->top <= tvref(L->maxstack), "lj_try_enter: L->top above maxstack");
+   // Keep the entirety of this function as simple as possible - no allocations, no throwing in production.
 
-   // Lazy allocation of try stack
-   if (not L->try_stack) {
-      L->try_stack = (TryFrameStack *)lj_mem_new(L, sizeof(TryFrameStack));
-      L->try_stack->depth = 0;
+   lj_assertL(Func != nullptr, "lj_try_enter: Func is null");
+   lj_assertL(isluafunc(Func), "lj_try_enter: Func is not a Lua function");
+   lj_assertL(Base >= tvref(L->stack), "lj_try_enter: Base below stack start");
+   lj_assertL(Base <= tvref(L->maxstack), "lj_try_enter: Base above maxstack");
+
+   if (L->try_stack.depth >= LJ_MAX_TRY_DEPTH) lj_err_msg(L, ErrMsg::XNEST);  // "try blocks nested too deeply"
+
+   // Sync L->base with the passed Base pointer.  This is critical for JIT mode where L->base may be stale (the JIT keeps the
+   // base in a CPU register). If an error occurs after this call, the error handling code uses L->base to walk frames - it
+   // must be valid.  Note: Do NOT modify L->top here - it was synced by the VM before this call, and modifying it would
+   // truncate the live stack.
+
+   if (L->base != Base) {
+      pf::Log(__FUNCTION__).traceWarning("L->base != Base; syncing L->base for try-enter");
+      L->base = Base;
    }
 
-   lj_assertL(L->try_stack != nullptr, "lj_try_enter: try_stack allocation failed");
+   ptrdiff_t frame_base_offset = savestack(L, Base);
+   ptrdiff_t saved_top_offset = savestack(L, L->top);
 
-   if (L->try_stack->depth >= LJ_MAX_TRY_DEPTH) {
-      lj_err_msg(L, ErrMsg::XNEST);  // "try blocks nested too deeply"
-   }
+#define TRY_USE_PROTO
 
-   // Verify the current function is a Lua function (try blocks only exist in Lua code)
-   GCfunc *func = curr_func(L);
-   lj_assertL(func != nullptr, "lj_try_enter: curr_func is null");
-   lj_assertL(isluafunc(func), "lj_try_enter: curr_func is not a Lua function");
-
+#ifdef TRY_USE_PROTO
+   GCproto *proto = funcproto(Func); // Retrieve for nactvar saving
    // Verify TryBlockIndex is valid for this function's proto
-   GCproto *proto = funcproto(func);
    lj_assertL(proto != nullptr, "lj_try_enter: proto is null");
-   lj_assertL(TryBlockIndex < proto->try_block_count,
-      "lj_try_enter: TryBlockIndex %u >= try_block_count %u", TryBlockIndex, proto->try_block_count);
+   lj_assertL(TryBlockIndex < proto->try_block_count, "lj_try_enter: TryBlockIndex %u >= try_block_count %u", TryBlockIndex, proto->try_block_count);
+#elif LUA_USE_ASSERT
+   lj_assertL(L->top >= Base and L->top <= tvref(L->maxstack), "lj_try_enter: L->top out of range (top=%p base=%p max=%p)", L->top, Base, L->maxstack);
 
-   TryFrame *try_frame = &L->try_stack->frames[L->try_stack->depth++];
+   // Only enforce exactness when not on trace.
+   if (not tvref(G(L)->jit_base)) {
+      lj_assertL(L->top IS Base, "lj_try_enter: L->top not synced by VM (top=%p base=%p)", L->top, Base);
+   }
+#endif
+
+   TryFrame *try_frame = &L->try_stack.frames[L->try_stack.depth++];
    try_frame->try_block_index = TryBlockIndex;
-   try_frame->frame_base      = savestack(L, L->base);  // Store as offset, not pointer
-   try_frame->saved_top       = savestack(L, L->top);    // Store as offset, not pointer
-   try_frame->saved_nactvar   = (BCREG)(L->top - L->base);
-   try_frame->func            = func;
-   try_frame->depth           = (uint8_t)L->try_stack->depth;
+   try_frame->frame_base      = frame_base_offset;
+   try_frame->saved_top       = saved_top_offset;
+#ifdef TRY_USE_PROTO
+   try_frame->saved_nactvar   = BCREG(proto->framesize);  // More stable but less efficient
+#else
+   try_frame->saved_nactvar   = L->top - L->base; // Risk: L->top could theoretically be stale in JIT mode
+#endif
+   try_frame->func            = Func;
+   try_frame->depth           = (uint8_t)L->try_stack.depth;
+
+   // Note: We leave L->top at safe_top. In JIT mode, the JIT will restore state
+   // from snapshots if needed. In interpreter mode, the VM will continue with the
+   // correct top. This ensures L->top is always valid if an error occurs.
 }
 
 //********************************************************************************************************************
@@ -969,36 +997,7 @@ extern "C" void lj_try_enter(lua_State *L, BCREG Base, uint16_t TryBlockIndex)
 
 extern "C" void lj_try_leave(lua_State *L)
 {
-   // Note: It's valid to call lj_try_leave when there's no try stack (e.g., after exception handling
-   // has already cleaned up). We only assert when there IS a try stack but depth is inconsistent.
-   if (L->try_stack and L->try_stack->depth > 0) {
-      lj_assertL(L->try_stack->depth <= LJ_MAX_TRY_DEPTH,
-         "lj_try_leave: depth %u exceeds LJ_MAX_TRY_DEPTH", L->try_stack->depth);
-      L->try_stack->depth--;
-   }
-}
-
-//********************************************************************************************************************
-// Pop all try frames whose frame_base is at or above target_base.
-// Called during returns and exception unwinding to clean up stale try frames.
-// UNUSED: Deprecate if all try-except scenarios are completed without requiring this function.
-
-extern "C" void lj_try_cleanup_to_base(lua_State *L, TValue *TargetBase)
-{
-   if (not L->try_stack) return;
-
-   // Validate TargetBase is within valid stack bounds
-   lj_assertL(TargetBase >= tvref(L->stack), "lj_try_cleanup_to_base: TargetBase below stack start");
-   lj_assertL(TargetBase <= tvref(L->maxstack), "lj_try_cleanup_to_base: TargetBase above maxstack");
-
-   ptrdiff_t target_offset = savestack(L, TargetBase);
-   while (L->try_stack->depth > 0) {
-      lj_assertL(L->try_stack->depth <= LJ_MAX_TRY_DEPTH,
-         "lj_try_cleanup_to_base: depth %u exceeds LJ_MAX_TRY_DEPTH", L->try_stack->depth);
-      TryFrame *try_frame = &L->try_stack->frames[L->try_stack->depth - 1];
-      if (try_frame->frame_base < target_offset) break;  // This frame is in an outer scope
-      L->try_stack->depth--;
-   }
+   if (L->try_stack.depth > 0) L->try_stack.depth--;
 }
 
 //********************************************************************************************************************
