@@ -2925,6 +2925,8 @@ void lj_record_ins(jit_State *J)
       [[fallthrough]];
    case BC_UCLO:
    case BC_FNEW:
+   case BC_TRYENTER:
+   case BC_TRYLEAVE:
       setintV(&J->errinfo, (int32_t)op);
       lj_trace_err_info(J, LJ_TRERR_NYIBC);
       break;

@@ -1,5 +1,8 @@
 -- Tests for <const> attribute support.
 
+@BeforeEach(hotpath=true)
+function enforce_hotpath() end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Test valid local const declarations
 

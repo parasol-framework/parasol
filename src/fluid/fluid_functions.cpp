@@ -15,6 +15,9 @@
 #include "lualib.h"
 #include "lauxlib.h"
 #include "lj_obj.h"
+#include "lj_str.h"
+#include "lj_tab.h"
+#include "lj_gc.h"
 #include "parser/parser_diagnostics.h"
 
 #include "hashes.h"
@@ -348,192 +351,6 @@ int fcmd_catch(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// __try(result_count, try_body, except1_fn, except1_filter, except2_fn, except2_filter, ...)
-//
-// Returns: exception_table (or nil), result1, result2, ... (if result_count > 0)
-//
-// result_count: Total LHS variables INCLUDING exception table slot (0 = no returns)
-//               Capped at MAX_RETURN_TYPES
-// try_body: Function containing the try block code
-// except_fn: Function containing the except block code (receives exception table as arg)
-// except_filter: Packed 64-bit integer with up to 4 16-bit error codes (0 = catch-all)
-
-constexpr int MAX_TRY_RETURNS = 16;
-
-int fcmd_try(lua_State *Lua)
-{
-   auto prv = (prvFluid *)Lua->script->ChildPrivate;
-   int nargs = lua_gettop(Lua);
-
-   if (nargs < 2) {
-      luaL_argerror(Lua, 1, "Expected result count and try body function");
-      return 0;
-   }
-
-   // First arg: result count (total LHS variables including exception table)
-   // 0 = statement form with no assignments, skip building results
-   int result_count = int(lua_tointeger(Lua, 1));
-   if (result_count > MAX_TRY_RETURNS) result_count = MAX_TRY_RETURNS;
-   if (result_count < 0) result_count = 0;
-
-   // Second arg: try body function
-   if (lua_type(Lua, 2) != LUA_TFUNCTION) {
-      luaL_argerror(Lua, 2, "Expected try body function");
-      return 0;
-   }
-
-   // Remaining args: pairs of (except_fn, filter_int64) or just except_fn for catch-all
-   // Filter: packed 64-bit integer with up to 4 error codes (16 bits each)
-   // A filter value of 0 indicates catch-all
-
-   prv->Catch++;
-   prv->CaughtError = ERR::Okay;
-
-   // Stack depth tracking for scope isolation (same as fcmd_catch)
-   int prev_depth = prv->CatchDepth;
-   lua_Debug ar;
-   int depth = 0;
-   while (lua_getstack(Lua, depth, &ar)) depth++;
-   prv->CatchDepth = depth + 2;
-
-   // Execute try body with protected call
-   lua_pushcfunction(Lua, fcmd_catch_handler);
-   lua_pushvalue(Lua, 2);  // try body function
-
-   // Capture stack position BEFORE pushing handler and function
-   int result_top = lua_gettop(Lua) - 2;
-
-   if (lua_pcall(Lua, 0, LUA_MULTRET, -2)) {
-      // Exception occurred - find matching except handler
-      prv->Catch--;
-      prv->CatchDepth = prev_depth;
-
-      int raw_error_ref = luaL_ref(Lua, LUA_REGISTRYINDEX);
-      bool raw_error_valid = (raw_error_ref != LUA_NOREF) and (raw_error_ref != LUA_REFNIL);
-
-      ERR filter_error = prv->CaughtError;
-      if (filter_error < ERR::ExceptionThreshold) filter_error = ERR::Exception;
-
-      // Search through except handlers (args 3+)
-      int handler_index = -1;
-      for (int i = 3; i <= nargs; i += 2) {
-         if (lua_type(Lua, i) != LUA_TFUNCTION) continue;
-
-         // Check if next arg is a filter (integer) or missing/zero (catch-all)
-         bool is_catch_all = (i + 1 > nargs) or
-                             (lua_type(Lua, i + 1) != LUA_TNUMBER) or
-                             (lua_tointeger(Lua, i + 1) IS 0);
-
-         if (not is_catch_all) {
-            uint64_t filter = uint64_t(lua_tointeger(Lua, i + 1));
-            // Unpack and match error codes (up to 4 codes, 16 bits each)
-            for (int shift = 0; shift < 64; shift += 16) {
-               uint16_t code = (filter >> shift) & 0xFFFF;
-               if (code IS 0) break;  // No more codes in this filter
-               if (code IS uint16_t(filter_error)) {
-                  handler_index = i;
-                  break;
-               }
-            }
-         }
-         else {
-            // Catch-all handler (no filter or filter IS 0)
-            handler_index = i;
-         }
-
-         if (handler_index != -1) break;
-      }
-
-      if (handler_index != -1) {
-         // Always build exception table - it's passed to the handler as an argument
-         lua_newtable(Lua);
-
-         lua_pushstring(Lua, "code");
-         if (prv->CaughtError >= ERR::ExceptionThreshold)
-            lua_pushinteger(Lua, int(prv->CaughtError));
-         else
-            lua_pushnil(Lua);  // Lua exception (not ERR code)
-         lua_settable(Lua, -3);
-
-         lua_pushstring(Lua, "message");
-         if (raw_error_valid) {
-            lua_rawgeti(Lua, LUA_REGISTRYINDEX, raw_error_ref);
-            if (lua_type(Lua, -1) != LUA_TSTRING) {
-               lua_pop(Lua, 1);
-               if (prv->CaughtError != ERR::Okay) lua_pushstring(Lua, GetErrorMsg(prv->CaughtError));
-               else lua_pushstring(Lua, "<No message>");
-            }
-         }
-         else if (prv->CaughtError != ERR::Okay) lua_pushstring(Lua, GetErrorMsg(prv->CaughtError));
-         else lua_pushstring(Lua, "<No message>");
-
-         lua_settable(Lua, -3);
-
-         lua_pushstring(Lua, "line");
-         lua_pushinteger(Lua, prv->ErrorLine);
-         lua_settable(Lua, -3);
-
-         lua_pushstring(Lua, "trace");
-         luaL_traceback(Lua, Lua, nullptr, 1);
-         lua_settable(Lua, -3);
-
-         if (raw_error_valid) luaL_unref(Lua, LUA_REGISTRYINDEX, raw_error_ref);
-
-         // Call the handler with exception table as argument
-         lua_pushvalue(Lua, handler_index);       // Push handler function
-         lua_pushvalue(Lua, -2);                  // Push exception table as arg
-         int handler_results = result_count > 1 ? result_count - 1 : 0;
-         lua_call(Lua, 1, handler_results);
-
-         if (result_count > 0) {
-            // Stack now has: [..., exception_table, r1, r2, ..., rN]
-            // The exception_table is already at the correct position (front of return values)
-            // Return: exception_table, r1, r2, ..., rN
-            return result_count;
-         }
-         return 0;  // Statement form - no returns
-      }
-      else { // No matching handler - rethrow the exception
-         if (raw_error_valid) {
-            lua_rawgeti(Lua, LUA_REGISTRYINDEX, raw_error_ref);
-            luaL_unref(Lua, LUA_REGISTRYINDEX, raw_error_ref);
-            lua_error(Lua);
-         }
-         else luaL_error(Lua, "<No message>");
-      }
-   }
-   else {
-      // Success - no exception occurred
-      prv->Catch--;
-      prv->CatchDepth = prev_depth;
-
-      // Remove the error handler that's still on the stack after successful pcall
-      // Stack after pcall: [args..., catch_handler, result1, result2, ...]
-
-      int handler_pos = result_top + 1;
-      lua_remove(Lua, handler_pos);
-
-      if (result_count IS 0) return 0; // Statement form - no returns needed
-
-      // Calculate how many results the try body returned
-      int try_results = lua_gettop(Lua) - result_top;
-
-      lua_pushnil(Lua); // First return value is nil (no exception)
-
-      // Move nil to the front of all results
-      if (try_results > 0) lua_insert(Lua, -(try_results + 1));  // Move nil before try body results
-
-      // Return: nil, try_result1, try_result2, ...
-      // But cap at result_count
-      int actual_returns = try_results + 1;  // +1 for nil exception table
-      if (actual_returns > result_count) actual_returns = result_count;
-      return actual_returns;
-   }
-
-   return 0;
-}
-
-//********************************************************************************************************************
 // The event callback will be called with the following prototype:
 //
 // function callback(EventID, Args)
@@ -697,7 +514,7 @@ int fcmd_msg(lua_State *Lua)
       lua_pushvalue(Lua, i);   // value to pass to tostring
       lua_call(Lua, 1, 1);
       CSTRING s = lua_tostring(Lua, -1);  // get result
-      if (not s) return luaL_error(Lua, LUA_QL("tostring") " must return a string to " LUA_QL("print"));
+      if (not s) luaL_error(Lua, LUA_QL("tostring") " must return a string to " LUA_QL("print"));
 
       {
          pf::Log log("Fluid");
@@ -722,7 +539,7 @@ int fcmd_print(lua_State *Lua)
       lua_pushvalue(Lua, i);   // value to print
       lua_call(Lua, 1, 1);
       CSTRING s = lua_tostring(Lua, -1);  // get result
-      if (not s) return luaL_error(Lua, LUA_QL("tostring") " must return a string to " LUA_QL("print"));
+      if (not s) luaL_error(Lua, LUA_QL("tostring") " must return a string to " LUA_QL("print"));
 
       #ifdef __ANDROID__
          {
@@ -1093,4 +910,217 @@ int fcmd_arg(lua_State *Lua)
       lua_pushnil(Lua);
       return 1;
    }
+}
+
+//********************************************************************************************************************
+// Bytecode-level try-except runtime functions.
+// These are called by the BC_TRYENTER and BC_TRYLEAVE handlers and by the error unwinding system.
+
+#include "lj_err.h"
+#include "lj_func.h"
+#include "lj_frame.h"
+#include "lj_gc.h"
+#include "lj_state.h"
+
+//********************************************************************************************************************
+// Called by BC_TRYENTER to push an exception frame onto the try stack.
+
+extern "C" void lj_try_enter(lua_State *L, BCREG Base, uint16_t TryBlockIndex)
+{
+   lj_assertL(L->base >= tvref(L->stack), "lj_try_enter: L->base below stack start");
+   lj_assertL(L->base <= tvref(L->maxstack), "lj_try_enter: L->base above maxstack");
+   lj_assertL(L->top >= L->base, "lj_try_enter: L->top below L->base");
+   lj_assertL(L->top <= tvref(L->maxstack), "lj_try_enter: L->top above maxstack");
+
+   // Lazy allocation of try stack
+   if (not L->try_stack) {
+      L->try_stack = (TryFrameStack *)lj_mem_new(L, sizeof(TryFrameStack));
+      L->try_stack->depth = 0;
+   }
+
+   lj_assertL(L->try_stack != nullptr, "lj_try_enter: try_stack allocation failed");
+
+   if (L->try_stack->depth >= LJ_MAX_TRY_DEPTH) {
+      lj_err_msg(L, ErrMsg::XNEST);  // "try blocks nested too deeply"
+   }
+
+   // Verify the current function is a Lua function (try blocks only exist in Lua code)
+   GCfunc *func = curr_func(L);
+   lj_assertL(func != nullptr, "lj_try_enter: curr_func is null");
+   lj_assertL(isluafunc(func), "lj_try_enter: curr_func is not a Lua function");
+
+   // Verify TryBlockIndex is valid for this function's proto
+   GCproto *proto = funcproto(func);
+   lj_assertL(proto != nullptr, "lj_try_enter: proto is null");
+   lj_assertL(TryBlockIndex < proto->try_block_count,
+      "lj_try_enter: TryBlockIndex %u >= try_block_count %u", TryBlockIndex, proto->try_block_count);
+
+   TryFrame *try_frame = &L->try_stack->frames[L->try_stack->depth++];
+   try_frame->try_block_index = TryBlockIndex;
+   try_frame->frame_base      = savestack(L, L->base);  // Store as offset, not pointer
+   try_frame->saved_top       = savestack(L, L->top);    // Store as offset, not pointer
+   try_frame->saved_nactvar   = (BCREG)(L->top - L->base);
+   try_frame->func            = func;
+   try_frame->depth           = (uint8_t)L->try_stack->depth;
+}
+
+//********************************************************************************************************************
+// Called by BC_TRYLEAVE to pop an exception frame from the try stack.
+
+extern "C" void lj_try_leave(lua_State *L)
+{
+   // Note: It's valid to call lj_try_leave when there's no try stack (e.g., after exception handling
+   // has already cleaned up). We only assert when there IS a try stack but depth is inconsistent.
+   if (L->try_stack and L->try_stack->depth > 0) {
+      lj_assertL(L->try_stack->depth <= LJ_MAX_TRY_DEPTH,
+         "lj_try_leave: depth %u exceeds LJ_MAX_TRY_DEPTH", L->try_stack->depth);
+      L->try_stack->depth--;
+   }
+}
+
+//********************************************************************************************************************
+// Pop all try frames whose frame_base is at or above target_base.
+// Called during returns and exception unwinding to clean up stale try frames.
+// UNUSED: Deprecate if all try-except scenarios are completed without requiring this function.
+
+extern "C" void lj_try_cleanup_to_base(lua_State *L, TValue *TargetBase)
+{
+   if (not L->try_stack) return;
+
+   // Validate TargetBase is within valid stack bounds
+   lj_assertL(TargetBase >= tvref(L->stack), "lj_try_cleanup_to_base: TargetBase below stack start");
+   lj_assertL(TargetBase <= tvref(L->maxstack), "lj_try_cleanup_to_base: TargetBase above maxstack");
+
+   ptrdiff_t target_offset = savestack(L, TargetBase);
+   while (L->try_stack->depth > 0) {
+      lj_assertL(L->try_stack->depth <= LJ_MAX_TRY_DEPTH,
+         "lj_try_cleanup_to_base: depth %u exceeds LJ_MAX_TRY_DEPTH", L->try_stack->depth);
+      TryFrame *try_frame = &L->try_stack->frames[L->try_stack->depth - 1];
+      if (try_frame->frame_base < target_offset) break;  // This frame is in an outer scope
+      L->try_stack->depth--;
+   }
+}
+
+//********************************************************************************************************************
+// Check if a filter matches an error code.
+// PackedFilter contains up to 4 16-bit error codes packed into a 64-bit integer.
+// A filter of 0 means catch-all.
+
+static bool filter_matches(uint64_t PackedFilter, ERR ErrorCode)
+{
+   if (PackedFilter IS 0) return true;  // Catch-all
+
+   // Only ERR codes at or above ExceptionThreshold can match specific filters
+   if (ErrorCode < ERR::ExceptionThreshold) return false;
+
+   // Unpack and check each 16-bit code
+   for (int shift = 0; shift < 64; shift += 16) {
+      uint16_t filter_code = (PackedFilter >> shift) & 0xFFFF;
+      if (filter_code IS 0) break;  // No more codes in this filter
+      if (filter_code IS uint16_t(ErrorCode)) return true;
+   }
+   return false;
+}
+
+//********************************************************************************************************************
+// Find a matching handler for the given error in the current try frame.
+// Returns true if a handler was found, with handler PC and exception register set.
+
+extern "C" bool lj_try_find_handler(lua_State *L, const TryFrame *Frame, ERR ErrorCode, const BCIns **HandlerPc,
+   BCREG *ExceptionReg)
+{
+   lj_assertL(Frame != nullptr, "lj_try_find_handler: Frame is null");
+   lj_assertL(HandlerPc != nullptr, "lj_try_find_handler: HandlerPc output is null");
+   lj_assertL(ExceptionReg != nullptr, "lj_try_find_handler: ExceptionReg output is null");
+
+   GCfunc *func = Frame->func;
+   lj_assertL(func != nullptr, "lj_try_find_handler: Frame->func is null");
+   if (not isluafunc(func)) return false;
+
+   GCproto *proto = funcproto(func);
+   lj_assertL(proto != nullptr, "lj_try_find_handler: proto is null for Lua function");
+   if (not proto->try_blocks or Frame->try_block_index >= proto->try_block_count) return false;
+
+   const TryBlockDesc *try_block = &proto->try_blocks[Frame->try_block_index];
+
+   // A try block with no handlers (no except clause) silently swallows exceptions
+   if (try_block->handler_count IS 0) return false;
+
+   // Only access try_handlers if there are handlers to check
+   lj_assertL(proto->try_handlers != nullptr, "lj_try_find_handler: try_handlers is null but handler_count > 0");
+
+   // Validate handler indices are within bounds
+   lj_assertL(try_block->first_handler + try_block->handler_count <= proto->try_handler_count,
+      "lj_try_find_handler: handler indices out of bounds (first=%u, count=%u, total=%u)",
+      try_block->first_handler, try_block->handler_count, proto->try_handler_count);
+
+   for (uint8_t index = 0; index < try_block->handler_count; ++index) {
+      const TryHandlerDesc *handler = &proto->try_handlers[try_block->first_handler + index];
+
+      if (not filter_matches(handler->filter_packed, ErrorCode)) continue;
+
+      // Validate handler PC is within bytecode bounds
+      lj_assertL(handler->handler_pc < proto->sizebc,
+         "lj_try_find_handler: handler_pc %u >= sizebc %u", handler->handler_pc, proto->sizebc);
+
+      // Found a matching handler
+      *HandlerPc = proto_bc(proto) + handler->handler_pc;
+      *ExceptionReg = handler->exception_reg;
+      return true;
+   }
+
+   return false;
+}
+
+//********************************************************************************************************************
+// Build an exception table and place it in the specified register.
+// The exception table has fields: code, message, line, trace
+
+extern "C" void lj_try_build_exception_table(lua_State *L, ERR ErrorCode, CSTRING Message, int Line, BCREG ExceptionReg)
+{
+   if (ExceptionReg IS 0xFF) return;  // No exception variable - discard
+
+   // Validate stack state before placing exception table
+   lj_assertL(L->base >= tvref(L->stack), "lj_try_build_exception_table: L->base below stack start");
+   lj_assertL(L->base <= tvref(L->maxstack), "lj_try_build_exception_table: L->base above maxstack");
+
+   // Validate target slot is within valid stack bounds
+   TValue *target_slot = L->base + ExceptionReg;
+   lj_assertL(target_slot >= tvref(L->stack), "lj_try_build_exception_table: target slot below stack start");
+   lj_assertL(target_slot < tvref(L->maxstack), "lj_try_build_exception_table: target slot at or above maxstack");
+
+   // Create exception table
+
+   GCtab *t = lj_tab_new(L, 0, 4);
+   lj_assertL(t != nullptr, "lj_try_build_exception_table: table allocation failed");
+   TValue *slot;
+
+   // Set e.code
+
+   slot = lj_tab_setstr(L, t, lj_str_newlit(L, "code"));
+   if (ErrorCode >= ERR::ExceptionThreshold) setintV(slot, int(ErrorCode));
+   else setnilV(slot);
+
+   // Set e.message
+
+   slot = lj_tab_setstr(L, t, lj_str_newlit(L, "message"));
+   if (Message) setstrV(L, slot, lj_str_newz(L, Message));
+   else if (ErrorCode != ERR::Okay) setstrV(L, slot, lj_str_newz(L, GetErrorMsg(ErrorCode)));
+   else setstrV(L, slot, lj_str_newlit(L, "<No message>"));
+
+   // Set e.line
+
+   slot = lj_tab_setstr(L, t, lj_str_newlit(L, "line"));
+   setintV(slot, Line);
+
+   // Set e.trace (traceback is not available after stack restoration)
+   // TODO: Capture traceback before stack is restored in check_try_handler
+
+   slot = lj_tab_setstr(L, t, lj_str_newlit(L, "trace"));
+   setnilV(slot);
+
+   lj_gc_anybarriert(L, t);
+
+   // Place exception table in the handler's expected register
+   settabV(L, target_slot, t);
 }

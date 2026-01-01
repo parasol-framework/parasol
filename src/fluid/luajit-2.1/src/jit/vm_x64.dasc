@@ -495,6 +495,9 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov rsp, CARG1
   |->vm_unwind_c_eh:       // Landing pad for external unwinder.
   |  mov L:RB, SAVE_L
+  |  // Restore L->cframe before we overwrite RB with GL
+  |  mov RA, SAVE_CFRAME
+  |  mov L:RB->cframe, RA
   |  mov GL:RB, L:RB->glref
   |  mov dword GL:RB->vmstate, ~LJ_VMST_C
   |  jmp ->vm_leave_unw
@@ -525,6 +528,28 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov RA, -16        // Results start at BASE+RA = BASE-16.
   |  set_vmstate INTERP
   |  jmp ->vm_returnc         // Increments RD/MULTRES and returns.
+  |
+  |->vm_resume_try:          // Resume execution at try-except handler.
+  |  // (void *cframe)
+  |  // Called when a try-except handler is found during error unwinding.
+  |  // L->base, L->top already restored, exception table in handler register.
+  |  // L->try_handler_pc points to handler bytecode.
+  |  and CARG1, CFRAME_RAWMASK
+  |  mov rsp, CARG1
+  |->vm_resume_try_eh:       // Landing pad for external unwinder (Windows).
+  |  mov L:RB, SAVE_L
+  |  mov BASE, L:RB->base
+  |  mov DISPATCH, L:RB->glref       // Setup pointer to dispatch table.
+  |  add DISPATCH, GG_G2DISP
+  |  mov PC, L:RB->try_handler_pc    // Load handler PC from lua_State.
+  |  mov qword L:RB->try_handler_pc, 0  // Clear it to allow future exceptions.
+  |  // Load KBASE (constant table) from the function in the frame.
+  |  mov LFUNC:KBASE, [BASE-16]
+  |  cleartp LFUNC:KBASE
+  |  mov KBASE, LFUNC:KBASE->pc
+  |  mov KBASE, [KBASE+PC2PROTO(k)]
+  |  set_vmstate INTERP
+  |  ins_next                        // Dispatch to handler bytecode.
   |
   |//-----------------------------------------------------------------------
   |//-- Grow stack for calls -----------------------------------------------
@@ -5318,6 +5343,29 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  add RA, L:RB->top      // RA = (L->top-(L->base+nresults))*8
     |  mov PC, [BASE-8]       // Fetch PC of caller.
     |  jmp ->vm_returnc
+    break;
+
+  // -- Exception handling opcodes -----------------------------------------
+
+  case BC_TRYENTER:
+    |  ins_AD  // A=base_reg, D=try_block_index
+    |  mov L:RB, SAVE_L
+    |  mov L:RB->base, BASE
+    |  mov L:RB->top, BASE  // Update L->top to current position
+    |  mov CARG1, L:RB      // First arg: lua_State *L
+    |  mov CARG2d, RAd      // Second arg: BCREG Base (from RA)
+    |  mov CARG3d, RDd      // Third arg: uint16_t TryBlockIndex (from RD)
+    |  call extern lj_try_enter
+    |  mov BASE, L:RB->base
+    |  ins_next
+    break;
+
+  case BC_TRYLEAVE:
+    |  ins_AD  // A=base_reg, D=unused
+    |  mov L:RB, SAVE_L
+    |  mov CARG1, L:RB      // First arg: lua_State *L
+    |  call extern lj_try_leave
+    |  ins_next
     break;
 
   //  ----------------------------------------------------------------------

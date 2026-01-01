@@ -489,6 +489,46 @@ inline constexpr int32_t SCALE_NUM_GCO = int32_t(sizeof(lua_Number) / sizeof(GCR
 // Maximum number of explicitly typed return values per function prototype
 inline constexpr size_t PROTO_MAX_RETURN_TYPES = 8;
 
+//********************************************************************************************************************
+// Try-except exception handling metadata structures.
+// These structures support bytecode-level try-except statements.
+
+// Handler metadata stored per-proto - describes a single except clause
+struct TryHandlerDesc {
+   uint64_t filter_packed;   // Packed 16-bit error codes (up to 4), 0 = catch-all
+   BCPOS    handler_pc;      // Bytecode position for handler entry
+   BCREG    exception_reg;   // Register to store exception table, 0xFF = no variable
+};
+
+// Try block descriptor - describes a try block and its handlers
+struct TryBlockDesc {
+   uint16_t first_handler;   // Index into proto's try_handlers array
+   uint8_t  handler_count;   // Number of except clauses for this try block
+   uint8_t  _padding;        // Alignment padding
+};
+
+// Maximum nesting depth for try blocks
+inline constexpr int LJ_MAX_TRY_DEPTH = 32;
+
+// Exception frame for try-except blocks (runtime state)
+// Note: frame_base and saved_top are offsets from L->stack (not absolute pointers)
+// because the Lua stack can be reallocated during execution.
+// Use savestack(L, ptr) to convert to offset, restorestack(L, offset) to convert back.
+struct TryFrame {
+   uint16_t  try_block_index;  // Index into GCproto::try_blocks
+   ptrdiff_t frame_base;       // Offset of L->base when BC_TRYENTER executed
+   ptrdiff_t saved_top;        // Offset of L->top when BC_TRYENTER executed
+   BCREG     saved_nactvar;    // L->top - L->base at entry (for validation)
+   GCfunc   *func;             // Function containing the try block
+   uint8_t   depth;            // Nesting depth for validation
+};
+
+// Stack of try frames for exception unwinding
+struct TryFrameStack {
+   TryFrame frames[LJ_MAX_TRY_DEPTH];
+   int depth;
+};
+
 typedef struct GCproto {
    GCHeader;
    uint8_t  numparams; //  Number of parameters.
@@ -514,6 +554,11 @@ typedef struct GCproto {
    uint64_t closeslots;  //  Bitmap of locals with <close> attribute (max 64 slots)
    // Return type information for runtime type checking
    std::array<FluidType, PROTO_MAX_RETURN_TYPES> result_types{};  // Return types, set by fs_finish()
+   // Try-except exception handling metadata
+   TryBlockDesc   *try_blocks;        // Array of try block descriptors (nullptr if none)
+   TryHandlerDesc *try_handlers;      // Array of handler descriptors (nullptr if none)
+   uint16_t        try_block_count;   // Number of try blocks
+   uint16_t        try_handler_count; // Number of handlers
 } GCproto;
 
 // Flags for prototype.
@@ -980,6 +1025,9 @@ struct lua_State {
    ParserDiagnostics *parser_diagnostics; // Stores ParserDiagnostics* during parsing errors
    TipEmitter *parser_tips;               // Stores TipEmitter* during parsing for code hints
    TValue close_err;  // Current error for __close handlers (nil if no error)
+   // Try-except exception handling runtime state (lazily allocated)
+   TryFrameStack *try_stack;      // Exception frame stack (nullptr until first BC_TRYENTER)
+   const BCIns   *try_handler_pc; // Handler PC for error re-entry (set during unwind)
 
    // Constructor/destructor not actually used as yet.
 /*

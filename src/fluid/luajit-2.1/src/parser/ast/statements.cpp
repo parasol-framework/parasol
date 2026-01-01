@@ -489,7 +489,17 @@ ParserResult<StmtNodePtr> AstBuilder::parse_try()
       }
 
       // Optional when clause for filtering
-      if (this->ctx.match(TokenKind::When).ok()) {
+      if (this->ctx.check(TokenKind::When)) {
+         Token when_token = this->ctx.tokens().current();
+         this->ctx.tokens().advance();  // consume 'when'
+
+         // Filter code(s) must be on the same line as 'when'
+         Token next_token = this->ctx.tokens().current();
+         if (next_token.span().line != when_token.span().line) {
+            return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, when_token,
+               "expected error code or {codes} after 'when' on the same line");
+         }
+
          // Parse error code filter(s)
          if (this->ctx.check(TokenKind::LeftBrace)) {
             // Multiple codes: when { ERR_A, ERR_B }

@@ -153,16 +153,13 @@ void LJ_FASTCALL lj_state_growstack(lua_State *L, MSize need)
    if (L->stacksize > LJ_STACK_MAXEX)  //  Overflow while handling overflow?
       lj_err_throw(L, LUA_ERRERR);
    n = L->stacksize + need;
-   if (n > LJ_STACK_MAX) {
-      n += 2 * LUA_MINSTACK;
-   }
+   if (n > LJ_STACK_MAX) n += 2 * LUA_MINSTACK;
    else if (n < 2 * L->stacksize) {
       n = 2 * L->stacksize;
       if (n >= LJ_STACK_MAX) n = LJ_STACK_MAX;
    }
    resizestack(L, n);
-   if (L->stacksize > LJ_STACK_MAXEX)
-      lj_err_msg(L, ErrMsg::STKOV);
+   if (L->stacksize > LJ_STACK_MAXEX) lj_err_msg(L, ErrMsg::STKOV);
 }
 
 //********************************************************************************************************************
@@ -224,6 +221,11 @@ static void close_state(lua_State *L)
       delete L->parser_tips;
       L->parser_tips = nullptr;
    }
+   // Free try-except exception frame stack
+   if (L->try_stack) {
+      lj_mem_free(g, L->try_stack, sizeof(TryFrameStack));
+      L->try_stack = nullptr;
+   }
    funcnames_free(g);
    lj_func_closeuv(L, tvref(L->stack));
 
@@ -231,8 +233,7 @@ static void close_state(lua_State *L)
    GarbageCollector collector = gc(g);
    collector.freeAll();
 
-   lj_assertG(gcref(g->gc.root) == obj2gco(L),
-      "main thread is not first GC object");
+   lj_assertG(gcref(g->gc.root) == obj2gco(L), "main thread is not first GC object");
    lj_assertG(g->str.num == 0, "leaked %d strings", g->str.num);
    lj_trace_freestate(g);
 #if LJ_HASFFI
@@ -290,6 +291,8 @@ extern lua_State* lua_newstate(lua_Alloc allocf, void* allocd)
    L->marked = LJ_GC_WHITE0 | LJ_GC_FIXED | LJ_GC_SFIXED;  //  Prevent free.
    L->dummy_ffid = FF_C;
    setnilV(&L->close_err);  // Initialize __close error to nil
+   L->try_stack = nullptr;  // Lazily allocated on first BC_TRYENTER
+   L->try_handler_pc = nullptr;
    setmref(L->glref, g);
    g->gc.currentwhite = LJ_GC_WHITE0 | LJ_GC_FIXED;
    g->strempty.marked = LJ_GC_WHITE0;
@@ -390,7 +393,11 @@ lua_State* lj_state_new(lua_State *L)
    L1->parser_diagnostics = nullptr;
    L1->parser_tips = nullptr;
    setnilV(&L1->close_err);  // Initialize __close error to nil
+   L1->try_stack = nullptr;  // Lazily allocated on first BC_TRYENTER
+   L1->try_handler_pc = nullptr;
+
    // NOBARRIER: The lua_State is new (marked white).
+
    setgcrefnull(L1->openupval);
    setmrefr(L1->glref, L->glref);
    setgcrefr(L1->env, L->env);
@@ -405,13 +412,22 @@ void LJ_FASTCALL lj_state_free(global_State* g, lua_State *L)
 {
    lj_assertG(L != mainthread(g), "free of main thread");
    if (obj2gco(L) == gcref(g->cur_L)) setgcrefnull(g->cur_L);
+
    if (L->parser_diagnostics) {
       delete (ParserDiagnostics*)L->parser_diagnostics;
       L->parser_diagnostics = nullptr;
    }
+
    if (L->parser_tips) {
       delete L->parser_tips;
       L->parser_tips = nullptr;
+   }
+
+   // Free try-except exception frame stack
+   if (L->try_stack) {
+      lj_mem_free(g, L->try_stack, sizeof(TryFrameStack));
+      L->try_stack = nullptr;
+
    }
    lj_func_closeuv(L, tvref(L->stack));
    lj_assertG(gcref(L->openupval) == nullptr, "stale open upvalues");

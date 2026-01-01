@@ -2,6 +2,9 @@
 --
 -- Tests the f"..." string interpolation feature
 
+@BeforeEach(hotpath=true)
+function enforce_hotpath() end
+
 @Test function BasicInterpolation()
    name = "World"
    result = f"Hello {name}"

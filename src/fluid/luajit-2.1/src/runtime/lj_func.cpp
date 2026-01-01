@@ -1,10 +1,8 @@
-/*
-** Function handling (prototypes, functions and upvalues).
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-**
-** Portions taken verbatim or adapted from the Lua interpreter.
-** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
-*/
+// Function handling (prototypes, functions and upvalues).
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
+//
+// Portions taken verbatim or adapted from the Lua interpreter.
+// Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 
 #define lj_func_c
 #define LUA_CORE
@@ -15,14 +13,18 @@
 #include "lj_trace.h"
 #include "lj_vm.h"
 
-// -- Prototypes ----------------------------------------------------------
+// Prototypes
 
 void LJ_FASTCALL lj_func_freeproto(global_State* g, GCproto* pt)
 {
+   // Free try-except metadata if present
+
+   if (pt->try_blocks) lj_mem_free(g, pt->try_blocks, pt->try_block_count * sizeof(TryBlockDesc));
+   if (pt->try_handlers) lj_mem_free(g, pt->try_handlers, pt->try_handler_count * sizeof(TryHandlerDesc));
    lj_mem_free(g, pt, pt->sizept);
 }
 
-// -- Upvalues ------------------------------------------------------------
+// Upvalues
 
 static void unlinkuv(global_State* g, GCupval* uv)
 {
@@ -34,6 +36,7 @@ static void unlinkuv(global_State* g, GCupval* uv)
 }
 
 // Find existing open upvalue for a stack slot or create a new one.
+
 static GCupval* func_finduv(lua_State* L, TValue* slot)
 {
    global_State* g = G(L);
@@ -69,6 +72,7 @@ static GCupval* func_finduv(lua_State* L, TValue* slot)
 }
 
 // Create an empty and closed upvalue.
+
 static GCupval* func_emptyuv(lua_State* L)
 {
    GCupval* uv = (GCupval*)lj_mem_newgco(L, sizeof(GCupval));
@@ -80,6 +84,7 @@ static GCupval* func_emptyuv(lua_State* L)
 }
 
 // Close all open upvalues pointing to some stack level or above.
+
 void LJ_FASTCALL lj_func_closeuv(lua_State* L, TValue* level)
 {
    GCupval* uv;
@@ -90,9 +95,8 @@ void LJ_FASTCALL lj_func_closeuv(lua_State* L, TValue* level)
       lj_assertG(!isblack(o), "bad black upvalue");
       lj_assertG(!uv->closed and uvval(uv) != &uv->tv, "closed upvalue in chain");
       setgcrefr(L->openupval, uv->nextgc);  //  No longer in open list.
-      if (isdead(g, o)) {
-         lj_func_freeuv(g, uv);
-      }
+
+      if (isdead(g, o)) lj_func_freeuv(g, uv);
       else {
          unlinkuv(g, uv);
          gc(g).closeUpvalue(uv);  // Phase 4 migration: use GarbageCollector facade
@@ -107,7 +111,7 @@ void LJ_FASTCALL lj_func_freeuv(global_State* g, GCupval* uv)
    lj_mem_freet(g, uv);
 }
 
-// -- Functions (closures) ------------------------------------------------
+// Functions (closures)
 
 GCfunc* lj_func_newC(lua_State* L, MSize nelems, GCtab* env)
 {
@@ -138,6 +142,7 @@ static GCfunc* func_newL(lua_State* L, GCproto* pt, GCtab* env)
 }
 
 // Create a new Lua function with empty upvalues.
+
 GCfunc* lj_func_newL_empty(lua_State* L, GCproto* pt, GCtab* env)
 {
    GCfunc* fn = func_newL(L, pt, env);
@@ -155,7 +160,8 @@ GCfunc* lj_func_newL_empty(lua_State* L, GCproto* pt, GCtab* env)
 }
 
 // Do a GC check and create a new Lua function with inherited upvalues.
-GCfunc* lj_func_newL_gc(lua_State* L, GCproto* pt, GCfuncL* parent)
+
+GCfunc * lj_func_newL_gc(lua_State* L, GCproto* pt, GCfuncL* parent)
 {
    GCfunc* fn;
    GCRef* puv;
@@ -175,9 +181,8 @@ GCfunc* lj_func_newL_gc(lua_State* L, GCproto* pt, GCfuncL* parent)
          uv->immutable = ((v / PROTO_UV_IMMUTABLE) & 1);
          uv->dhash = (uint32_t)(uintptr_t)mref<char>(parent->pc) ^ (v << 24);
       }
-      else {
-         uv = &gcref(puv[v])->uv;
-      }
+      else uv = &gcref(puv[v])->uv;
+
       setgcref(fn->l.uvptr[i], obj2gco(uv));
    }
    fn->l.nupvalues = (uint8_t)nuv;
@@ -186,8 +191,6 @@ GCfunc* lj_func_newL_gc(lua_State* L, GCproto* pt, GCfuncL* parent)
 
 void LJ_FASTCALL lj_func_free(global_State* g, GCfunc* fn)
 {
-   MSize size = isluafunc(fn) ? sizeLfunc((MSize)fn->l.nupvalues) :
-      sizeCfunc((MSize)fn->c.nupvalues);
+   MSize size = isluafunc(fn) ? sizeLfunc((MSize)fn->l.nupvalues) : sizeCfunc((MSize)fn->c.nupvalues);
    lj_mem_free(g, fn, size);
 }
-
