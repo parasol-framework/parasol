@@ -13,11 +13,9 @@
 
 #include "lj_debug.h"
 #include "lj_tab.h"
-
 #include "../parse_internal.h"
 #include "../parse_value.h"
 #include "../token_types.h"
-
 #include "../../../defs.h"  // For glPrintMsg, FluidConstant
 
 //********************************************************************************************************************
@@ -231,7 +229,7 @@ static void snapshot_return_regs(FuncState* fs, BCIns* ins)
 //********************************************************************************************************************
 // Adjust LHS/RHS of an assignment.
 // Exclusively used by ir_emitter for assignment statements, local declarations, and for loops.
-// TOOD: May as well be a regular function instead of a LexState method.
+// TODO: May as well be a regular function instead of a LexState method.
 
 void LexState::assign_adjust(BCREG nvars, BCREG nexps, ExpDesc *Expr)
 {

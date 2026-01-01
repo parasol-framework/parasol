@@ -1042,7 +1042,6 @@ static ERR register_interfaces(objScript *Self)
 
    lua_register(prv->Lua, "arg", fcmd_arg);
    lua_register(prv->Lua, "catch", fcmd_catch);
-   lua_register(prv->Lua, "__try", fcmd_try);
    lua_register(prv->Lua, "check", fcmd_check);
    lua_register(prv->Lua, "raise", fcmd_raise);
    lua_register(prv->Lua, "loadFile", fcmd_loadfile);
