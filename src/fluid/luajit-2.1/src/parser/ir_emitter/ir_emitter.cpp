@@ -866,6 +866,17 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &Pa
    // Order: closes before defers (LIFO - most recently declared runs first).
    execute_closes(&this->func_state, 0);
    execute_defers(&this->func_state, 0);
+
+   // Emit BC_TRYLEAVE for each try scope we're exiting with this return.
+   // A return from inside a try block must pop all pending try frames to prevent
+   // stale frames accumulating on L->try_stack across multiple function calls.
+   if (this->func_state.try_depth > 0) {
+      BCReg base_reg = BCReg(this->func_state.freereg);
+      for (uint8_t i = 0; i < this->func_state.try_depth; ++i) {
+         bcemit_AD(&this->func_state, BC_TRYLEAVE, base_reg, BCReg(0));
+      }
+   }
+
    if (this->func_state.flags & PROTO_CHILD) bcemit_AJ(&this->func_state, BC_UCLO, 0, 0);
    bcemit_INS(&this->func_state, ins);
    this->func_state.reset_freereg();

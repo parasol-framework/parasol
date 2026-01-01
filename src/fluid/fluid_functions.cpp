@@ -981,6 +981,7 @@ extern "C" void lj_try_leave(lua_State *L)
 //********************************************************************************************************************
 // Pop all try frames whose frame_base is at or above target_base.
 // Called during returns and exception unwinding to clean up stale try frames.
+// UNUSED: Deprecate if all try-except scenarios are completed without requiring this function.
 
 extern "C" void lj_try_cleanup_to_base(lua_State *L, TValue *TargetBase)
 {
