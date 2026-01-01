@@ -1,5 +1,8 @@
 -- Tests for break and continue statements across all loop types
 
+@BeforeEach(hotpath=true)
+function enforce_hotpath() end
+
 ----------------------------------------------------------------------------------------------------------------------
 -- Generic for loop tests
 

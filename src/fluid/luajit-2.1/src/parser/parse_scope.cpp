@@ -35,16 +35,21 @@ void LexState::var_new(BCREG n, GCstr* name, BCLine Line, BCLine Column)
    // Anchor the variable name in the current function's constant table if it's a real string.
    // This is necessary because identifiers may have been lexed while parsing a parent function,
    // so they're anchored in the parent's kt, not the current function's kt.
+
    if (name != NAME_BLANK and uintptr_t(name) >= VARNAME__MAX) {
       TValue* tv = lj_tab_setstr(this->L, fs->kt, name);
       if (tvisnil(tv)) setboolV(tv, 1);
    }
 
    fs_check_assert(fs, name IS NAME_BLANK or uintptr_t(name) < VARNAME__MAX or lj_tab_getstr(fs->kt, name) != nullptr, "unanchored variable name");
+
    // NOBARRIER: name is anchored in fs->kt and ls->vstack is not a GCobj.
+
    setgcref(this->vstack[vtop].name, obj2gco(name));
    fs->varmap[fs->nactvar + n] = uint16_t(vtop);
+
    // Use provided line/column if given (non-zero), otherwise fall back to current token position
+
    this->vstack[vtop].line = (Line > 0) ? Line : this->current_token_line;
    this->vstack[vtop].column = (Column > 0) ? Column : this->current_token_column;
    this->vtop = vtop + 1;
@@ -52,15 +57,8 @@ void LexState::var_new(BCREG n, GCstr* name, BCLine Line, BCLine Column)
 
 //********************************************************************************************************************
 
-void LexState::var_new_lit(BCREG n, std::string_view value)
-{
-   this->var_new(n, this->keepstr(value));
-}
-
-void LexState::var_new_fixed(BCREG n, uintptr_t name)
-{
-   this->var_new(n, (GCstr*)name);
-}
+void LexState::var_new_lit(BCREG n, std::string_view value) { this->var_new(n, this->keepstr(value)); }
+void LexState::var_new_fixed(BCREG n, uintptr_t name) { this->var_new(n, (GCstr*)name); }
 
 //********************************************************************************************************************
 // Add local variables.
@@ -871,9 +869,9 @@ GCproto * LexState::fs_finish(BCLine Line)
 
    sizept = sizeof(GCproto) + fs->pc * sizeof(BCIns) + fs->nkgc * sizeof(GCRef);
    sizept = (sizept + sizeof(TValue) - 1) & ~(sizeof(TValue) - 1);
-   ofsk = sizept; sizept += fs->nkn * sizeof(TValue);
-   ofsuv = sizept; sizept += ((fs->nuv + 1) & ~1) * 2;
-   ofsli = sizept; sizept += fs_prep_line(fs, numline);
+   ofsk   = sizept; sizept += fs->nkn * sizeof(TValue);
+   ofsuv  = sizept; sizept += ((fs->nuv + 1) & ~1) * 2;
+   ofsli  = sizept; sizept += fs_prep_line(fs, numline);
    ofsdbg = sizept; sizept += this->fs_prep_var(fs, &ofsvar);
 
    // Allocate prototype and initialize its fields.
@@ -906,9 +904,32 @@ GCproto * LexState::fs_finish(BCLine Line)
 
    pt->result_types = fs->return_types;
 
+   // Copy try-except metadata to prototype.  These arrays are allocated separately and freed with the proto via the GC.
+
+   if (not fs->try_blocks.empty()) {
+      size_t blocks_size = fs->try_blocks.size() * sizeof(TryBlockDesc);
+      size_t handlers_size = fs->try_handlers.size() * sizeof(TryHandlerDesc);
+
+      pt->try_blocks = (TryBlockDesc *)lj_mem_new(L, blocks_size);
+      pt->try_handlers = (TryHandlerDesc *)lj_mem_new(L, handlers_size);
+
+      memcpy(pt->try_blocks, fs->try_blocks.data(), blocks_size);
+      memcpy(pt->try_handlers, fs->try_handlers.data(), handlers_size);
+
+      pt->try_block_count = uint16_t(fs->try_blocks.size());
+      pt->try_handler_count = uint16_t(fs->try_handlers.size());
+   }
+   else {
+      pt->try_blocks = nullptr;
+      pt->try_handlers = nullptr;
+      pt->try_block_count = 0;
+      pt->try_handler_count = 0;
+   }
+
    // Set PROTO_TYPEFIX flag for runtime type inference if:
    // 1. The function has NO explicit return type annotations, AND
    // 2. At least one return statement exists (has values to infer)
+
    bool has_explicit = false;
    for (size_t i = 0; i < fs->return_types.size(); ++i) {
       if (fs->return_types[i] != FluidType::Unknown) {
@@ -916,9 +937,8 @@ GCproto * LexState::fs_finish(BCLine Line)
          break;
       }
    }
-   if (not has_explicit and (fs->flags & PROTO_HAS_RETURN)) {
-      pt->flags |= PROTO_TYPEFIX;
-   }
+
+   if (not has_explicit and (fs->flags & PROTO_HAS_RETURN)) pt->flags |= PROTO_TYPEFIX;
 
    // Close potentially uninitialized gap between bc and kgc.
 

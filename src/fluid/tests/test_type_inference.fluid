@@ -1,6 +1,9 @@
 -- Flute tests for Fluid Runtime Type Inference feature
 -- Runtime type inference commits function return types based on the first non-nil return value
 
+@BeforeEach(hotpath=true)
+function enforce_hotpath() end
+
 ----------------------------------------------------------------------------------------------------------------------
 -- BASIC TYPE INFERENCE
 

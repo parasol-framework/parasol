@@ -226,6 +226,7 @@ private:
       ControlFlowEdge continue_edge;
       BCReg defer_base;
       BCPos continue_target;
+      uint8_t try_depth_at_entry;  // try_depth when loop was entered
    };
 
    struct LoopStackGuard {

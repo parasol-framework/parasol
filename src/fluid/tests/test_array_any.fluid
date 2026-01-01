@@ -1,6 +1,9 @@
 -- Tests for 'any' type arrays
 -- Copyright (C) 2025 Paul Manias
 
+@BeforeEach(hotpath=true)
+function enforce_hotpath() end
+
 @Test function ArrayAnyNew()
    arr = array<any, 5>
    assert(#arr is 5, "array should have 5 elements")

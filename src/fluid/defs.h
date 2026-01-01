@@ -255,7 +255,7 @@ struct prvFluid {
    APTR     FocusEventHandle;
    struct finput *InputList;           // Managed by the input interface
    DateTime CacheDate;
-   ERR      CaughtError;               // Set to -1 to enable catching of ERR results.
+   ERR      CaughtError;               // Set to -1 to enable catching of ERR results.  TODO: Should move to Lua internals, e.g. lua_State
    PERMIT   CachePermissions;
    JOF      JitOptions;
    int      LoadedSize;
@@ -475,8 +475,6 @@ ERR msg_thread_script_callback(APTR Custom, int MsgID, int MsgType, APTR Message
 
 int fcmd_arg(lua_State *);
 int fcmd_catch(lua_State *);
-int fcmd_catch_handler(lua_State *);
-int fcmd_try(lua_State *);
 int fcmd_check(lua_State *);
 int fcmd_raise(lua_State *);
 int fcmd_get_execution_state(lua_State *);

@@ -2845,21 +2845,22 @@ void lj_record_ins(jit_State *J)
 
       // Type fixing
 
-   case BC_TYPEFIX:
+   case BC_TYPEFIX: {
       // BC_TYPEFIX is a one-time operation that mutates the prototype.
       // After first execution, it becomes a no-op. For JIT recording:
       // - If types are already fixed (common case), treat as no-op
-      // - If types not fixed, abort trace (mutation during recording is problematic)
-      {
-         GCproto *pt = funcproto(curr_func(J->L));
-         if (pt->result_types[0] IS FluidType::Unknown) {
-            // Types not yet fixed - abort trace, let interpreter handle it
-            setintV(&J->errinfo, (int32_t)op);
-            lj_trace_err_info(J, LJ_TRERR_NYIBC);
-         }
-         // Types already fixed - no-op, continue recording
+      // - If types not fixed, skip during recording (mutation is safe for interpreter)
+
+      GCproto *pt = funcproto(curr_func(J->L));
+      if (pt->result_types[0] IS FluidType::Unknown) {
+         // Types not yet fixed.  We can leave it for the interpreter and keep recording
+         // TODO: Need to consider if it is viable to mutate the function prototype (set the result types) here during recording.
+         // It could also be considered a red-flag if the interpreter hasn't mutated the function by this point, even if only
+         // setting the result type to FluidType::Any.
+         break;
       }
-      break;
+      else break; // Types already fixed - no-op, continue recording
+   }
 
       // Loops and branches
 
@@ -2916,6 +2917,46 @@ void lj_record_ins(jit_State *J)
    case BC_FUNCCW:
       lj_ffrecord_func(J);
       break;
+
+   case BC_TRYENTER: {
+      // Inlined frames use a virtual base pointer. Compute the correct base below so
+      // try-enter can still record properly inside inlined calls.
+
+      // Add snapshot before try block to enable on-trace error catching.
+      // This allows the JIT to exit at this point when an exception occurs,
+      // letting the interpreter handle the try-except recovery.
+
+      uint16_t try_index = (uint16_t)bc_d(ins);
+      lj_snap_add(J);
+
+      // Emit call to lj_try_enter(L, Func, Base, TryBlockIndex)
+      // L is implicit (CCI_L flag)
+      // Func is the current function for this frame (may differ from J->fn)
+      // Base must point at the current frame. For inlined frames, REF_BASE is the root base,
+      // so add the baseslot offset to reach the virtual frame base.
+
+      TRef tr_func = getcurrf(J);
+      TRef tr_base = REF_BASE;
+      if (J->baseslot > FRC::MIN_BASESLOT) {
+         IRBuilder ir(J);
+         int32_t slot_delta = (int32_t)J->baseslot - (int32_t)FRC::MIN_BASESLOT;
+         int32_t byte_delta = slot_delta * 8;
+         tr_base = ir.emit(IRT(IR_ADD, IRT_PGC), REF_BASE, ir.kint(byte_delta));
+      }
+      TRef tr_index = lj_ir_kint(J, (int32_t)try_index);
+      lj_ir_call(J, IRCALL_lj_try_enter, tr_func, tr_base, tr_index);
+
+      // Enable on-trace error catching (like pcall does)
+      J->needsnap = 1;
+      break;
+   }
+
+   case BC_TRYLEAVE: {
+      // Emit call to lj_try_leave(L)
+      lj_ir_call(J, IRCALL_lj_try_leave); // L is implicit (CCI_L flag), no explicit args needed
+      J->needsnap = 1; // Stop catching on-trace errors (like pcall return does)
+      break;
+   }
 
    default:
       if (op >= BC__MAX) {
