@@ -620,11 +620,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- <close> in nested try blocks
--- Note: Currently, try-except doesn't track per-block scope for <close> variables.
--- When an inner try catches an exception, ALL <close> variables in the function's
--- closeslots bitmap are closed, including those from outer scopes. The outer scope's
--- variable is then closed again when its scope exits normally.
--- This test verifies the current behavior.
+-- Only locals created inside a try block should be closed when that try handles an exception.
 
 @Test(priority=33) function CloseInNestedTry()
    order = {}
@@ -644,12 +640,9 @@ end
       assert(false, "Outer except should not be reached")
    end
 
-   -- Current behavior: inner try closes both inner and outer (all closeslots),
-   -- then outer try's normal exit closes outer again
-   assert(#order is 3, "Expected 3 <close> handler calls with current behavior, got " .. #order)
+   assert(#order is 2, "Expected 2 <close> handler calls, got " .. #order)
    assert(order[0] is 'inner', "Inner should close first, got " .. tostring(order[0]))
-   assert(order[1] is 'outer', "Outer closed by inner try, got " .. tostring(order[1]))
-   assert(order[2] is 'outer', "Outer closed again at scope exit, got " .. tostring(order[2]))
+   assert(order[1] is 'outer', "Outer should close after inner, got " .. tostring(order[1]))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -700,4 +693,166 @@ end
    -- Per Lua 5.4 semantics, error in __close replaces original
    assert(caught_error != nil, "Should catch an error")
    assert(tostring(caught_error.message):find("close handler error"), "Error from __close should replace original: got " .. tostring(caught_error.message))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- <close> cleanup when returning from try block
+
+@Test(priority=36) function CloseOnReturnFromTry()
+   closed = false
+   mt = {
+      __close = function(self, err)
+         closed = true
+      end
+   }
+
+   function subject()
+      try
+         local obj <close> = setmetatable({}, mt)
+         return "from_try"
+      except e
+         return "from_except"
+      end
+   end
+
+   result = subject()
+   assert(result is "from_try", "Should return from try block")
+   assert(closed, "<close> handler should run before return from try")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- <close> cleanup when returning from except block
+
+@Test(priority=37) function CloseOnReturnFromExcept()
+   closed = false
+   mt = {
+      __close = function(self, err)
+         closed = true
+      end
+   }
+
+   function subject()
+      try
+         local obj <close> = setmetatable({}, mt)
+         error("return from except test")
+      except e
+         return "from_except"
+      end
+   end
+
+   result = subject()
+   assert(result is "from_except", "Should return from except block")
+   assert(closed, "<close> handler should run before return from except")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- <close> cleanup when breaking out of a try block inside a loop
+
+@Test(priority=38) function CloseOnBreakFromTry()
+   function subject()
+      closed = 0
+      mt = { __close = function(self, err) closed++ end }
+      count = 0
+      for i in {0..5} do
+         try
+            local obj <close> = setmetatable({}, mt)
+            count++
+            if i is 2 then
+               break
+            end
+         except e
+         end
+      end
+      return count, closed
+   end
+
+   count, closed = subject()
+   assert(count is 3, "Expected 3 iterations before break, got " .. tostring(count))
+   assert(closed is 3, "Expected 3 <close> calls before break, got " .. tostring(closed))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- <close> cleanup when continuing from a try block inside a loop
+
+@Test(priority=39); @Disabled function CloseOnContinueFromTry()
+   function subject()
+      closed = 0
+      mt = { __close = function(self, err) closed++ end }
+      count = 0
+      for i in {0..5} do
+         try
+            local obj <close> = setmetatable({}, mt)
+            count++
+            if i is 2 then
+               continue
+            end
+         except e
+         end
+      end
+      return count, closed
+   end
+
+   count, closed = subject()
+   assert(count is 5, "Expected 5 iterations with continue, got " .. tostring(count))
+   assert(closed is 5, "Expected 5 <close> calls with continue, got " .. tostring(closed))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- <close> cleanup when rethrowing from except
+
+@Test(priority=40) function CloseOnRethrow()
+   closed = false
+   mt = {
+      __close = function(self, err)
+         closed = true
+      end
+   }
+
+   caught_error = nil
+   try
+      try
+         local obj <close> = setmetatable({}, mt)
+         error("inner")
+      except e
+         error("outer " .. tostring(e.message))
+      end
+   except e
+      caught_error = e
+   end
+
+   assert(closed, "<close> handler should run before rethrow")
+   assert(caught_error != nil, "Outer exception should be caught")
+   assert(tostring(caught_error.message):find("outer"), "Expected rethrown error, got " .. tostring(caught_error.message))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- <close> handlers should continue after a __close error
+
+@Test(priority=41) function CloseErrorContinuesHandlers()
+   order = {}
+   mt_first = {
+      __close = function(self, err)
+         table.insert(order, "first")
+      end
+   }
+   mt_second = {
+      __close = function(self, err)
+         table.insert(order, "second")
+         error("close second")
+      end
+   }
+
+   caught_error = nil
+   try
+      local a <close> = setmetatable({}, mt_first)
+      local b <close> = setmetatable({}, mt_second)
+      error("original error")
+   except e
+      caught_error = e
+   end
+
+   assert(#order is 2, "Both <close> handlers should run, got " .. tostring(#order))
+   assert(order[0] is "second", "LIFO: second should close first, got " .. tostring(order[0]))
+   assert(order[1] is "first", "LIFO: first should close second, got " .. tostring(order[1]))
+   assert(tostring(caught_error.message):find("close second"), "Close error should replace original: got " .. tostring(caught_error.message))
 end

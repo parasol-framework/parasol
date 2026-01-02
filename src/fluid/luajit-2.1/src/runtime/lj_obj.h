@@ -504,7 +504,7 @@ struct TryHandlerDesc {
 struct TryBlockDesc {
    uint16_t first_handler;   // Index into proto's try_handlers array
    uint8_t  handler_count;   // Number of except clauses for this try block
-   uint8_t  _padding;        // Alignment padding
+   uint8_t  entry_slots;     // Active slot count at try entry (first free register)
 };
 
 // Maximum nesting depth for try blocks
@@ -518,7 +518,7 @@ struct TryFrame {
    uint16_t  try_block_index;  // Index into GCproto::try_blocks
    ptrdiff_t frame_base;       // Offset of L->base when BC_TRYENTER executed
    ptrdiff_t saved_top;        // Offset of L->top when BC_TRYENTER executed
-   BCREG     saved_nactvar;    // L->top - L->base at entry (for validation)
+   BCREG     saved_nactvar;    // Active slot count at try entry (first free register)
    GCfunc   *func;             // Function containing the try block
    uint8_t   depth;            // Nesting depth for validation
 };

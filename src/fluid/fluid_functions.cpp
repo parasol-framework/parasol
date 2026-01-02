@@ -957,15 +957,20 @@ extern "C" void lj_try_enter(lua_State *L, GCfunc *Func, TValue *Base, uint16_t 
    }
 
    ptrdiff_t frame_base_offset = savestack(L, Base);
-   ptrdiff_t saved_top_offset = savestack(L, L->top);
+   TValue *safe_top = L->top;
+   if (safe_top < Base) safe_top = Base;
+   ptrdiff_t saved_top_offset = savestack(L, safe_top);
+   lj_assertL(saved_top_offset >= frame_base_offset, "lj_try_enter: saved_top below base (top=%p base=%p)", safe_top, Base);
 
 #define TRY_USE_PROTO 1
 
 #ifdef TRY_USE_PROTO
-   GCproto *proto = funcproto(Func); // Retrieve for nactvar saving
+   GCproto *proto = funcproto(Func); // Retrieve for try metadata
    // Verify TryBlockIndex is valid for this function's proto
    lj_assertL(proto != nullptr, "lj_try_enter: proto is null");
    lj_assertL(TryBlockIndex < proto->try_block_count, "lj_try_enter: TryBlockIndex %u >= try_block_count %u", TryBlockIndex, proto->try_block_count);
+   lj_assertL(proto->try_blocks != nullptr, "lj_try_enter: try_blocks is null");
+   uint8_t entry_slots = proto->try_blocks[TryBlockIndex].entry_slots;
 #elif LUA_USE_ASSERT
    lj_assertL(L->top >= Base and L->top <= tvref(L->maxstack), "lj_try_enter: L->top out of range (top=%p base=%p max=%p)", L->top, Base, L->maxstack);
 
@@ -980,7 +985,7 @@ extern "C" void lj_try_enter(lua_State *L, GCfunc *Func, TValue *Base, uint16_t 
    try_frame->frame_base      = frame_base_offset;
    try_frame->saved_top       = saved_top_offset;
 #ifdef TRY_USE_PROTO
-   try_frame->saved_nactvar   = BCREG(proto->framesize);  // More stable but less efficient
+   try_frame->saved_nactvar   = BCREG(entry_slots);
 #else
    try_frame->saved_nactvar   = L->top - L->base; // Risk: L->top could theoretically be stale in JIT mode
 #endif

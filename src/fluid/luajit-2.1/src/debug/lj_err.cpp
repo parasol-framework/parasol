@@ -176,6 +176,9 @@ static TValue* unwind_close_try_block(lua_State *L, TValue* frame, TValue* errob
    uint64_t closeslots = pt->closeslots;
    if (closeslots IS 0) return errobj;
 
+   lj_assertL(min_slot_index >= 0, "unwind_close_try_block: min_slot_index negative (%d)", min_slot_index);
+   lj_assertL(min_slot_index <= LJ_MAX_SLOTS, "unwind_close_try_block: min_slot_index too large (%d)", min_slot_index);
+
    // Set _G.__close_err for bytecode-based handlers
 
    GCtab *env = tabref(L->env);
@@ -194,6 +197,11 @@ static TValue* unwind_close_try_block(lua_State *L, TValue* frame, TValue* errob
    // Only process slots >= min_slot_index (created inside the try block)
 
    TValue *base = frame + 1;
+   lj_assertL(frame >= tvref(L->stack) and frame < tvref(L->maxstack),
+      "unwind_close_try_block: frame out of range (%p)", frame);
+   lj_assertL(base >= tvref(L->stack) and base <= tvref(L->maxstack),
+      "unwind_close_try_block: base out of range (%p)", base);
+
    TValue *current_err = errobj;
    for (int slot = 63; slot >= min_slot_index; slot--) {
       if (closeslots & (1ULL << slot)) {
@@ -312,7 +320,7 @@ static bool check_try_handler(lua_State *L, int errcode)
    if (L->try_stack.depth IS 0) return false;
 
    // Don't intercept errors from JIT-compiled code
-   //if (tvref(G(L)->jit_base)) return false; // Disabled - PROTO_NOJIT flag provides coverage
+   if (tvref(G(L)->jit_base)) return false;
 
    // Validate try stack depth is within bounds
    lj_assertL(L->try_stack.depth <= LJ_MAX_TRY_DEPTH,
@@ -461,15 +469,15 @@ extern "C" void setup_try_handler(lua_State *L)
    lj_assertL(saved_top >= tvref(L->stack), "setup_try_handler: saved_top below stack start");
    lj_assertL(saved_top <= tvref(L->maxstack), "setup_try_handler: saved_top above maxstack");
    lj_assertL(saved_top >= saved_base, "setup_try_handler: saved_top below saved_base");
+   lj_assertL(try_frame->saved_nactvar <= LJ_MAX_SLOTS,
+      "setup_try_handler: saved_nactvar too large (%u)", unsigned(try_frame->saved_nactvar));
 
-   // Call __close handlers for <close> locals created inside the try block.  Calculate the minimum slot index:
-   // slots >= this index were created inside the try.  saved_top is L->top when the try started, so
-   // (saved_top - saved_base) gives the number of stack slots that existed at try entry. Slots at or above this
-   // index were created inside the try block.
+   // Call __close handlers for <close> locals created inside the try block. The compiler records the number of
+   // active slots at try entry (first free register), so slots >= this index were created inside the try block.
 
    TValue *errobj = (L->top > saved_top) ? L->top - 1 : nullptr;
    TValue *try_frame_ptr = saved_base - 1;  // Frame pointer for the function containing try
-   int min_slot_index = int(saved_top - saved_base);  // Slots >= this were created inside try
+   int min_slot_index = int(try_frame->saved_nactvar);  // Slots >= this were created inside try
    TValue *final_err = unwind_close_try_block(L, try_frame_ptr, errobj, min_slot_index);
 
    // If a __close handler threw, the error was updated. Re-extract the error message.
