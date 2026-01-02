@@ -774,7 +774,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- <close> cleanup when continuing from a try block inside a loop
 
-@Test(priority=39); @Disabled function CloseOnContinueFromTry()
+@Test(priority=39) function CloseOnContinueFromTry()
    function subject()
       closed = 0
       mt = { __close = function(self, err) closed++ end }

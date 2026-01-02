@@ -790,6 +790,8 @@ void lj_trace_ins(jit_State *J, const BCIns *pc)
 //       end
 //    end
 //    print('Hello World') -- Invalid stack references the {0..20} range instead of 'Hello World'
+//
+// TODO: Improving the JIT compiler should be done to render this workaround obsolete.
 
 static bool loop_contains_break_in_try(const BCIns *LoopPC)
 {
@@ -839,6 +841,51 @@ static bool loop_contains_break_in_try(const BCIns *LoopPC)
 }
 
 //********************************************************************************************************************
+// Check if a loop body contains a __close handler sequence inside a try block.
+// BC_UCLO is used as a JIT barrier for the close sequence; encountering it while recording
+// inside a try block can trigger a trace error that should not surface to user code.
+//
+// This is effectively the same issue as seen in loop_contains_break_in_try().
+//
+// TODO: Improving the JIT compiler should be done to render this workaround obsolete.
+
+static bool loop_contains_close_in_try(const BCIns *LoopPC)
+{
+   if (not LoopPC) return false;
+
+   BCOp op = bc_op(*LoopPC);
+
+   // Get the backward jump offset to find the loop body extent
+   if (op != BC_ITERL and op != BC_ITERN and op != BC_FORL and op != BC_LOOP) {
+      return false;  // Not a recognized loop instruction
+   }
+
+   ptrdiff_t jump_offset = bc_j(*LoopPC);
+   if (jump_offset >= 0) return false;  // Not a backward jump
+
+   // Sanity check: jump offset shouldn't be too large (arbitrary limit of 10000 instructions)
+   if (jump_offset < -10000) return false;
+
+   const BCIns *body_start = LoopPC + 1 + jump_offset;
+   int try_depth = 0;
+
+   for (const BCIns *scan = body_start; scan < LoopPC; ++scan) {
+      BCOp scan_op = bc_op(*scan);
+      if (scan_op IS BC_TRYENTER) {
+         try_depth++;
+         continue;
+      }
+      if (scan_op IS BC_TRYLEAVE) {
+         if (try_depth > 0) try_depth--;
+         continue;
+      }
+      if (scan_op IS BC_UCLO and try_depth > 0) return true;
+   }
+
+   return false;
+}
+
+//********************************************************************************************************************
 // A hotcount triggered. Start recording a root trace.
 
 void LJ_FASTCALL lj_trace_hot(jit_State *J, const BCIns *pc)
@@ -864,6 +911,12 @@ void LJ_FASTCALL lj_trace_hot(jit_State *J, const BCIns *pc)
    if (J->state == TraceState::IDLE and !(J2G(J)->hookmask & (HOOK_GC | HOOK_VMEVENT))) {
       // Don't compile loops that contain break inside try blocks - snapshot restoration is broken
       if (loop_contains_break_in_try(actual_pc)) {
+         ERRNO_RESTORE
+         return;
+      }
+
+      // Don't compile loops that contain __close inside try blocks - recording aborts with NYIBC.
+      if (loop_contains_close_in_try(actual_pc)) {
          ERRNO_RESTORE
          return;
       }
