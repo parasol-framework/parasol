@@ -10,6 +10,7 @@ function enforce_hotpath() end
    handled = false
 
    try
+      local some_value = 42
       error("Test error")
    except e
       handled = true
@@ -17,6 +18,7 @@ function enforce_hotpath() end
    end
 
    assert(handled, "Exception should have been handled")
+   assert(some_value is nil, "Variable from try block should not be visible outside")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -447,7 +449,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Return from within try block
 
-@Test(priority=25) function return_from_try()
+@Test(priority=25) function ReturnFromTry()
    function test_return()
       try
          return "from_try"
@@ -482,7 +484,7 @@ end
 -- Break from try block in loop.  The outer function is used for isolation in case 'break' behaves in a way that
 -- could affect the test harness.
 
-function break_test()
+global function break_test()
    count = 0
    for i in {0..9} do
       try
@@ -560,4 +562,142 @@ end
    end
 
    assert(not except_triggered, "ERR_Okay should not trigger except")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- <close> variable cleanup in try-except blocks
+-- Verifies that __close metamethods are called when an exception is caught by try-except
+
+@Test(priority=31) function CloseInTryExcept()
+   closed = false
+   received_err = nil
+   mt = {
+      __close = function(self, err)
+         closed = true
+         received_err = err
+      end
+   }
+
+   try
+      local obj <close> = setmetatable({}, mt)
+      error("test error in try")
+   except e
+      -- Exception should be caught
+   end
+
+   assert(closed, "<close> handler should be called when try-except catches exception")
+   assert(received_err != nil, "Error should be passed to __close handler")
+   assert(tostring(received_err):find("test error in try"), "Error message should be passed to __close: got " .. tostring(received_err))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Multiple <close> variables in try-except - LIFO order
+
+@Test(priority=32) function MultipleCloseInTryExcept()
+   order = {}
+   function makeMt(n)
+      return {
+         __close = function(self, err)
+            table.insert(order, n)
+         end
+      }
+   end
+
+   try
+      local a <close> = setmetatable({}, makeMt(1))
+      local b <close> = setmetatable({}, makeMt(2))
+      local c <close> = setmetatable({}, makeMt(3))
+      error("multi close test")
+   except e
+      -- Exception should be caught
+   end
+
+   assert(#order is 3, "All three <close> handlers should be called, got " .. #order)
+   assert(order[0] is 3, "LIFO: 3 should close first, got " .. tostring(order[0]))
+   assert(order[1] is 2, "LIFO: 2 should close second, got " .. tostring(order[1]))
+   assert(order[2] is 1, "LIFO: 1 should close third, got " .. tostring(order[2]))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- <close> in nested try blocks
+-- Note: Currently, try-except doesn't track per-block scope for <close> variables.
+-- When an inner try catches an exception, ALL <close> variables in the function's
+-- closeslots bitmap are closed, including those from outer scopes. The outer scope's
+-- variable is then closed again when its scope exits normally.
+-- This test verifies the current behavior.
+
+@Test(priority=33) function CloseInNestedTry()
+   order = {}
+   mt_outer = { __close = function() table.insert(order, 'outer') end }
+   mt_inner = { __close = function() table.insert(order, 'inner') end }
+
+   try
+      local outer_obj <close> = setmetatable({}, mt_outer)
+      try
+         local inner_obj <close> = setmetatable({}, mt_inner)
+         error("inner error")
+      except e
+         -- Inner exception caught
+      end
+   except e
+      -- Outer exception not expected
+      assert(false, "Outer except should not be reached")
+   end
+
+   -- Current behavior: inner try closes both inner and outer (all closeslots),
+   -- then outer try's normal exit closes outer again
+   assert(#order is 3, "Expected 3 <close> handler calls with current behavior, got " .. #order)
+   assert(order[0] is 'inner', "Inner should close first, got " .. tostring(order[0]))
+   assert(order[1] is 'outer', "Outer closed by inner try, got " .. tostring(order[1]))
+   assert(order[2] is 'outer', "Outer closed again at scope exit, got " .. tostring(order[2]))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- <close> cleanup when no exception occurs in try block
+
+@Test(priority=34) function CloseInTryNoException()
+   closed = false
+   received_err = nil
+   mt = {
+      __close = function(self, err)
+         closed = true
+         received_err = err
+      end
+   }
+
+   try
+      local obj <close> = setmetatable({}, mt)
+      -- No exception
+   except e
+      assert(false, "No exception expected")
+   end
+
+   assert(closed, "<close> handler should be called even without exception")
+   assert(received_err is nil, "No error should be passed to __close on normal exit")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- <close> error replaces original error in try-except
+
+@Test(priority=35) function CloseErrorInTryExcept()
+   close_called = false
+   mt = {
+      __close = function(self, err)
+         close_called = true
+         error("close handler error")
+      end
+   }
+
+   caught_error = nil
+   try
+      local obj <close> = setmetatable({}, mt)
+      error("original error")
+   except e
+      caught_error = e
+   end
+
+   assert(close_called, "<close> handler should be called")
+   -- Per Lua 5.4 semantics, error in __close replaces original
+   assert(caught_error != nil, "Should catch an error")
+   assert(tostring(caught_error.message):find("close handler error"), "Error from __close should replace original: got " .. tostring(caught_error.message))
 end

@@ -163,34 +163,109 @@ static TValue* unwind_close_handlers(lua_State *L, TValue* frame, TValue* errobj
 }
 
 //********************************************************************************************************************
-// Call __close handlers for all frames from 'from' down to 'to'.
-// This must be called BEFORE L->base is modified during unwinding.
-// If a __close handler throws, the new error replaces the original at L->top - 1.
+// Close <close> variables that were created after the try block started.  Only closes slots >= min_slot_index
+// (slots created after the try started).  min_slot_index is the slot index (relative to function base) above which
+// to close.  Returns the error object to propagate (may be updated if a __close handler throws).
 
-static void unwind_close_all(lua_State *L, TValue *from, TValue *to)
+static TValue* unwind_close_try_block(lua_State *L, TValue* frame, TValue* errobj, int min_slot_index)
 {
-   TValue *errobj = (L->top > to) ? L->top - 1 : nullptr;
-   TValue *frame = from;
+   GCfunc *fn = frame_func(frame);
+   if (!isluafunc(fn)) return errobj;
+
+   GCproto *pt = funcproto(fn);
+   uint64_t closeslots = pt->closeslots;
+   if (closeslots IS 0) return errobj;
+
+   // Set _G.__close_err for bytecode-based handlers
+
+   GCtab *env = tabref(L->env);
+   if (env) {
+      GCstr *key = lj_str_newlit(L, "__close_err");
+      TValue *slot = lj_tab_setstr(L, env, key);
+      if (errobj) copyTV(L, slot, errobj);
+      else setnilV(slot);
+      lj_gc_anybarriert(L, env);
+   }
+
+   if (errobj) copyTV(L, &L->close_err, errobj);
+   else setnilV(&L->close_err);
+
+   // Call lj_meta_close for each slot with <close> attribute in LIFO order.
+   // Only process slots >= min_slot_index (created inside the try block)
+
+   TValue *base = frame + 1;
+   TValue *current_err = errobj;
+   for (int slot = 63; slot >= min_slot_index; slot--) {
+      if (closeslots & (1ULL << slot)) {
+         TValue *o = base + slot;
+
+         // Only close if: slot is within valid stack range and not already nil/false
+
+         if (o >= base and o < L->top and !tvisnil(o) and !tvisfalse(o)) {
+            int errcode = lj_meta_close(L, o, current_err);
+            if (errcode != 0) {
+               current_err = L->top - 1;
+               if (env) {
+                  GCstr *key = lj_str_newlit(L, "__close_err");
+                  TValue *slot_tv = lj_tab_setstr(L, env, key);
+                  copyTV(L, slot_tv, current_err);
+                  lj_gc_anybarriert(L, env);
+               }
+               copyTV(L, &L->close_err, current_err);
+            }
+         }
+      }
+   }
+
+   // Clear __close_err after processing
+
+   if (env) {
+      GCstr *key = lj_str_newlit(L, "__close_err");
+      TValue *slot_tv = lj_tab_setstr(L, env, key);
+      setnilV(slot_tv);
+   }
+
+   setnilV(&L->close_err);
+   return current_err;
+}
+
+//********************************************************************************************************************
+// Call __close handlers for all frames from 'from' down to 'to'.  This must be called BEFORE L->base is modified
+// during unwinding.  If a __close handler throws, the new error replaces the original at L->top - 1.
+
+static void unwind_close_all(lua_State *L, TValue *From, TValue *To)
+{
+   TValue *errobj = (L->top > To) ? L->top - 1 : nullptr;
+   TValue *frame = From;
    int count = 0;
+
    // Use LUAI_MAXCSTACK as the safety limit - this matches the maximum call depth
    // that LuaJIT enforces, so any valid frame chain should terminate well before this.
    // The limit guards against stack corruption causing infinite loops.
-   while (frame >= to and count < LUAI_MAXCSTACK) {
+
+   while (frame >= To and count < LUAI_MAXCSTACK) {
       count++;
+
       // unwind_close_handlers may return a different error if a __close threw
-      TValue* new_err = unwind_close_handlers(L, frame, errobj);
+
+      TValue *new_err = unwind_close_handlers(L, frame, errobj);
       if (new_err != errobj and new_err != nullptr and errobj != nullptr) {
          // A __close handler threw - update the error at the original location
          copyTV(L, errobj, new_err);
       }
+
       errobj = new_err;  // Use the (possibly updated) error for subsequent handlers
+
       // Move to previous frame based on type
+
       int ftype = frame_type(frame);
       if (ftype IS FRAME_LUA or ftype IS FRAME_LUAP) frame = frame_prevl(frame);
       else frame = frame_prevd(frame);
    }
+
    // If we hit the limit, the frame chain is likely corrupt. Log an assertion
    // in debug builds to help diagnose the issue.
+
    lj_assertL(count < LUAI_MAXCSTACK, "frame chain exceeded LUAI_MAXCSTACK during __close unwinding");
 
    // Clear __close_err after all handlers run
@@ -206,12 +281,12 @@ static void unwind_close_all(lua_State *L, TValue *from, TValue *to)
 //********************************************************************************************************************
 // Unwind Lua stack and move error message to new top.
 
-LJ_NOINLINE static void unwindstack(lua_State *L, TValue *top)
+LJ_NOINLINE static void unwindstack(lua_State *L, TValue *Top)
 {
-   lj_func_closeuv(L, top);
-   if (top < L->top - 1) {
-      copyTV(L, top, L->top - 1);
-      L->top = top + 1;
+   lj_func_closeuv(L, Top);
+   if (Top < L->top - 1) {
+      copyTV(L, Top, L->top - 1);
+      L->top = Top + 1;
    }
    lj_state_relimitstack(L);
 }
@@ -386,6 +461,32 @@ extern "C" void setup_try_handler(lua_State *L)
    lj_assertL(saved_top >= tvref(L->stack), "setup_try_handler: saved_top below stack start");
    lj_assertL(saved_top <= tvref(L->maxstack), "setup_try_handler: saved_top above maxstack");
    lj_assertL(saved_top >= saved_base, "setup_try_handler: saved_top below saved_base");
+
+   // Call __close handlers for <close> locals created inside the try block.  Calculate the minimum slot index:
+   // slots >= this index were created inside the try.  saved_top is L->top when the try started, so
+   // (saved_top - saved_base) gives the number of stack slots that existed at try entry. Slots at or above this
+   // index were created inside the try block.
+
+   TValue *errobj = (L->top > saved_top) ? L->top - 1 : nullptr;
+   TValue *try_frame_ptr = saved_base - 1;  // Frame pointer for the function containing try
+   int min_slot_index = int(saved_top - saved_base);  // Slots >= this were created inside try
+   TValue *final_err = unwind_close_try_block(L, try_frame_ptr, errobj, min_slot_index);
+
+   // If a __close handler threw, the error was updated. Re-extract the error message.
+   if (final_err and final_err != errobj and tvisstr(final_err)) {
+      error_msg = strVdata(final_err);
+      // Re-extract line number from new error message
+      line = 0;
+      if (error_msg) {
+         CSTRING colon1 = strchr(error_msg, ':');
+         if (colon1) {
+            CSTRING num_start = colon1 + 1;
+            if (*num_start >= '0' and *num_start <= '9') {
+               line = int(strtol(num_start, nullptr, 10));
+            }
+         }
+      }
+   }
 
    lj_func_closeuv(L, saved_top); // Close upvalues and restore stack state
    L->base = saved_base;
@@ -939,51 +1040,51 @@ LJ_NOINLINE void lj_err_mem(lua_State *L)
 
 //********************************************************************************************************************
 // Find error function for runtime errors. Requires an extra stack traversal.
+
 static ptrdiff_t finderrfunc(lua_State *L)
 {
    cTValue* frame = L->base - 1, * bot = tvref(L->stack) + LJ_FR2;
    void* cf = L->cframe;
    while (frame > bot and cf) {
       while (cframe_nres(cframe_raw(cf)) < 0) {  // cframe without frame?
-         if (frame >= restorestack(L, -cframe_nres(cf)))
-            break;
+         if (frame >= restorestack(L, -cframe_nres(cf))) break;
          if (cframe_errfunc(cf) >= 0)  //  Error handler not inherited (-1)?
             return cframe_errfunc(cf);
          cf = cframe_prev(cf);  //  Else unwind cframe and continue searching.
-         if (cf == nullptr)
-            return 0;
+         if (cf == nullptr) return 0;
       }
+
       switch (frame_typep(frame)) {
-      case FRAME_LUA:
-      case FRAME_LUAP:
-         frame = frame_prevl(frame);
-         break;
-      case FRAME_C:
-         cf = cframe_prev(cf);
-         // fallthrough
-      case FRAME_VARG:
-         frame = frame_prevd(frame);
-         break;
-      case FRAME_CONT:
-         if (frame_iscont_fficb(frame))
+         case FRAME_LUA:
+         case FRAME_LUAP:
+            frame = frame_prevl(frame);
+            break;
+         case FRAME_C:
             cf = cframe_prev(cf);
-         frame = frame_prevd(frame);
-         break;
-      case FRAME_CP:
-         if (cframe_canyield(cf)) return 0;
-         if (cframe_errfunc(cf) >= 0)
-            return cframe_errfunc(cf);
-         cf = cframe_prev(cf);
-         frame = frame_prevd(frame);
-         break;
-      case FRAME_PCALL:
-      case FRAME_PCALLH:
-         if (frame_func(frame_prevd(frame))->c.ffid == FF_xpcall)
-            return savestack(L, frame_prevd(frame) + 1);  //  xpcall's errorfunc.
-         return 0;
-      default:
-         lj_assertL(0, "bad frame type");
-         return 0;
+            // fallthrough
+         case FRAME_VARG:
+            frame = frame_prevd(frame);
+            break;
+         case FRAME_CONT:
+            if (frame_iscont_fficb(frame))
+               cf = cframe_prev(cf);
+            frame = frame_prevd(frame);
+            break;
+         case FRAME_CP:
+            if (cframe_canyield(cf)) return 0;
+            if (cframe_errfunc(cf) >= 0)
+               return cframe_errfunc(cf);
+            cf = cframe_prev(cf);
+            frame = frame_prevd(frame);
+            break;
+         case FRAME_PCALL:
+         case FRAME_PCALLH:
+            if (frame_func(frame_prevd(frame))->c.ffid == FF_xpcall)
+               return savestack(L, frame_prevd(frame) + 1);  //  xpcall's errorfunc.
+            return 0;
+         default:
+            lj_assertL(0, "bad frame type");
+            return 0;
       }
    }
    return 0;

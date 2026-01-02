@@ -603,8 +603,6 @@ static ERR FLUID_Query(objScript *Self)
 
    if ((not Self->String) or (not Self->String[0])) return log.warning(ERR::FieldNotSet);
 
-   log.branch("Target: %d, Procedure: %s / ID #%" PF64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", (long long)Self->ProcedureID);
-
    ERR error = ERR::Failed;
 
    auto prv = (prvFluid *)Self->ChildPrivate;
@@ -612,12 +610,15 @@ static ERR FLUID_Query(objScript *Self)
 
    if (prv->Recurse) return ERR::Okay; // Do nothing, script is running.
 
+   if (not Self->ActivationCount) {
+      // Announce once only to limit log noise
+      log.branch("Target: %d, Procedure: %s / ID #%" PF64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", (long long)Self->ProcedureID);
+   }
+
    Self->CurrentLine = -1;
    Self->Error       = ERR::Okay;
 
    if (Self->ActivationCount IS 0) {
-      log.trace("The Lua script will be initialised from scratch.");
-
       prv->Lua->script = Self;
 
       lua_gc(prv->Lua, LUA_GCSTOP, 0);  // Stop collector during initialization

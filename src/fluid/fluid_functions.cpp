@@ -959,7 +959,7 @@ extern "C" void lj_try_enter(lua_State *L, GCfunc *Func, TValue *Base, uint16_t 
    ptrdiff_t frame_base_offset = savestack(L, Base);
    ptrdiff_t saved_top_offset = savestack(L, L->top);
 
-#define TRY_USE_PROTO
+#define TRY_USE_PROTO 1
 
 #ifdef TRY_USE_PROTO
    GCproto *proto = funcproto(Func); // Retrieve for nactvar saving
@@ -993,7 +993,8 @@ extern "C" void lj_try_enter(lua_State *L, GCfunc *Func, TValue *Base, uint16_t 
 }
 
 //********************************************************************************************************************
-// Called by BC_TRYLEAVE to pop an exception frame from the try stack.
+// Called by BC_TRYLEAVE to pop an exception frame from the try stack.  Note that this operation is also replicated
+// in the *.dasc files when JIT optimised.
 
 extern "C" void lj_try_leave(lua_State *L)
 {

@@ -7,7 +7,7 @@ function join(values)
    return table.concat(values, ',')
 end
 
-@Test function testBasicExecution()
+@Test function BasicExecution()
    order = {}
    function subject()
       defer
@@ -20,7 +20,7 @@ end
    assert(join(order) is 'body,deferred', "Expected body before deferred handler, got '" .. join(order) .. "'")
 end
 
-@Test function testDeferWithoutParens()
+@Test function DeferWithoutParens()
    order = {}
 
    function subject()
@@ -40,7 +40,7 @@ end
    assert(join(order) is 'body,beta,alpha', "Expected mix of defer syntaxes to preserve order, got '" .. join(order) .. "'")
 end
 
-@Test function testLifoOrder()
+@Test function LifoOrder()
    order = {}
    function subject()
       defer
@@ -67,7 +67,7 @@ function subjectReturn(order)
    return 'result'
 end
 
-@Test function testEarlyReturn()
+@Test function EarlyReturn()
    order = {}
    value = subjectReturn(order)
 
@@ -75,7 +75,7 @@ end
    assert(join(order) is 'before-return,deferred', "Expected deferred handler to run after return, got '" .. join(order) .. "'")
 end
 
-@Test function testNestedScopes()
+@Test function NestedScopes()
    order = {}
 
    function subject()
@@ -98,7 +98,7 @@ end
    assert(join(order) is 'inner-body,inner,after-inner,outer', "Expected inner defer before outer, got '" .. join(order) .. "'")
 end
 
-@Test function testBreak()
+@Test function Break()
    order = {}
 
    function subject()
@@ -115,7 +115,7 @@ end
    assert(join(order) is 'before-break-1,loop-1', "Expected loop defer to run on break, got '" .. join(order) .. "'")
 end
 
-@Test function testContinue()
+@Test function Continue()
    order = {}
 
    function subject()
@@ -136,7 +136,7 @@ end
    assert(join(order) is 'body-1,continue-1,defer-1,body-2,after-2,defer-2', "Unexpected continue defer order: '" .. join(order) .. "'")
 end
 
-@Test function testUpvalues()
+@Test function Upvalues()
    captures = {}
 
    function subject()
@@ -154,7 +154,7 @@ end
    assert(join(captures) is 'body,30', "Expected upvalue capture to reflect latest value, got '" .. join(captures) .. "'")
 end
 
-@Test function testArgumentSnapshot()
+@Test function ArgumentSnapshot()
    events = {}
 
    function subject()
@@ -175,7 +175,7 @@ end
       "Deferred argument should snapshot initial value: '" .. join(events) .. "'")
 end
 
-@Test function testMultiReturnPreservesLocals()
+@Test function MultiReturnPreservesLocals()
    function subject()
       head = 'alpha'
       tail = 'omega'
@@ -194,7 +194,7 @@ end
    assert(second is 'omega', "Expected second return value to remain 'omega', got '" .. tostring(second) .. "'")
 end
 
-@Test function testConditionalScopes()
+@Test function ConditionalScopes()
    order = {}
 
    function subject()
@@ -217,7 +217,7 @@ end
    assert(join(order) is 'if-body,if-block,after-if,outer', "Unexpected conditional defer order: '" .. join(order) .. "'")
 end
 
-@Test function testLoopMultipleDefers()
+@Test function LoopMultipleDefers()
    order = {}
 
    function subject()
@@ -250,7 +250,7 @@ end
    assert(total is 6, "Expected total to be 6 after loop")
 end
 
-@Test function testHandlerError()
+@Test function HandlerError()
    -- Phase 3 placeholder: deferred handler error propagation to be implemented.
 end
 
@@ -265,14 +265,14 @@ function recurse(n, order)
    table.insert(order, 'leave-' .. tostring(n))
 end
 
-@Test function testRecursive()
+@Test function Recursive()
    order = {}
    recurse(3, order)
 
    assert(join(order) is 'enter-3,enter-2,enter-1,leave-1,defer-1,leave-2,defer-2,leave-3,defer-3', "Unexpected recursive defer order: '" .. join(order) .. "'")
 end
 
-@Test function testClosureReturn()
+@Test function ClosureReturn()
    calls = {}
    function make()
       sum = 0
@@ -289,7 +289,7 @@ end
    assert(join(calls) is '15', "Expected deferred closure to observe mutated state, got '" .. join(calls) .. "'")
 end
 
-@Test function testResourceCleanupPattern()
+@Test function ResourceCleanupPattern()
    log = {}
 
    function cleanup(resource, token)
