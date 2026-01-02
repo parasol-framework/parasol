@@ -2946,15 +2946,14 @@ void lj_record_ins(jit_State *J)
       TRef tr_index = lj_ir_kint(J, (int32_t)try_index);
       lj_ir_call(J, IRCALL_lj_try_enter, tr_func, tr_base, tr_index);
 
-      // Enable on-trace error catching (like pcall does)
-      J->needsnap = 1;
+      J->needsnap = 1; // Snapshot after try_enter to create a restore point for trace exits
       break;
    }
 
    case BC_TRYLEAVE: {
       // Emit call to lj_try_leave(L)
       lj_ir_call(J, IRCALL_lj_try_leave); // L is implicit (CCI_L flag), no explicit args needed
-      J->needsnap = 1; // Stop catching on-trace errors (like pcall return does)
+      J->needsnap = 1; // Snapshot after try_leave to mark the end of the try block scope
       break;
    }
 
