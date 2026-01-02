@@ -1,14 +1,12 @@
-/*
-** Trace management.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-*/
+// Trace management.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 
 #define lj_trace_c
 #define LUA_CORE
 
-#include "lj_obj.h"
+#include <parasol/main.h>
 
-#if LJ_HASJIT
+#include "lj_obj.h"
 
 #include "lj_gc.h"
 #include "lj_err.h"
@@ -31,6 +29,7 @@
 #include "lj_vmevent.h"
 #include "lj_target.h"
 #include "lj_prng.h"
+#include "../../defs.h"
 
 //********************************************************************************************************************
 // Error handling
@@ -55,10 +54,9 @@ void lj_trace_err_info(jit_State *J, TraceError e)
 //********************************************************************************************************************
 // Trace management
 //
-// The current trace is first assembled in J->cur. The variable length
-// arrays point to shared, growable buffers (J->irbuf etc.). When trace
-// recording ends successfully, the current trace and its data structures
-// are copied to a new (compact) GCtrace object.
+// The current trace is first assembled in J->cur. The variable length arrays point to shared, growable buffers
+// (J->irbuf etc.). When trace recording ends successfully, the current trace and its data structures are copied to
+// a new (compact) GCtrace object.
 
 // Find a free trace number.
 
@@ -175,12 +173,10 @@ void LJ_FASTCALL lj_trace_free(global_State* g, GCtrace* T)
    jit_State *J = G2J(g);
    if (T->traceno) {
       lj_gdbjit_deltrace(J, T);
-      if (T->traceno < J->freetrace)
-         J->freetrace = T->traceno;
+      if (T->traceno < J->freetrace) J->freetrace = T->traceno;
       setgcrefnull(J->trace[T->traceno]);
    }
-   lj_mem_free(g, T,
-      ((sizeof(GCtrace) + 7) & ~7) + (T->nins - T->nk) * sizeof(IRIns) +
+   lj_mem_free(g, T, ((sizeof(GCtrace) + 7) & ~7) + (T->nins - T->nk) * sizeof(IRIns) +
       T->nsnap * sizeof(SnapShot) + T->nsnapmap * sizeof(SnapEntry));
 }
 
@@ -221,7 +217,7 @@ static void trace_unpatch(jit_State *J, GCtrace* T)
       break;
    case BC_JITERL:
    case BC_JLOOP:
-      lj_assertJ(op == BC_ITERL or op == BC_ITERN or op == BC_LOOP ||
+      lj_assertJ(op == BC_ITERL or op == BC_ITERN or op == BC_LOOP or
          op == BC_ITERA or bc_isret(op), "bad original bytecode %d", op);
       *pc = T->startins;
       break;
@@ -250,9 +246,12 @@ static void trace_flushroot(jit_State *J, GCtrace* T)
    GCproto* pt = &gcref(T->startpt)->pt;
    lj_assertJ(T->root == 0, "not a root trace");
    lj_assertJ(pt != nullptr, "trace has no prototype");
+
    // First unpatch any modified bytecode.
    trace_unpatch(J, T);
+
    // Unlink root trace from chain anchored in prototype.
+
    if (pt->trace == T->traceno) {  // Trace is first in chain. Easy.
       pt->trace = T->nextroot;
    }
@@ -421,7 +420,7 @@ static void trace_start(jit_State *J)
    if ((J->pt->flags & PROTO_NOJIT)) {  // JIT disabled for this proto?
       if (J->parent == 0 and J->exitno == 0 and bc_op(*J->pc) != BC_ITERN and bc_op(*J->pc) != BC_ITERA) {
          // Lazy bytecode patching to disable hotcount events.
-         lj_assertJ(bc_op(*J->pc) == BC_FORL or bc_op(*J->pc) == BC_ITERL ||
+         lj_assertJ(bc_op(*J->pc) == BC_FORL or bc_op(*J->pc) == BC_ITERL or
             bc_op(*J->pc) == BC_LOOP or bc_op(*J->pc) == BC_FUNCF,
             "bad hot bytecode %d", bc_op(*J->pc));
          setbc_op(J->pc, (int)bc_op(*J->pc) + (int)BC_ILOOP - (int)BC_LOOP);
@@ -460,8 +459,7 @@ static void trace_start(jit_State *J)
    setgcref(J->cur.startpt, obj2gco(J->pt));
 
    L = J->L;
-   lj_vmevent_send(L, TRACE,
-      setstrV(L, L->top++, lj_str_newlit(L, "start"));
+   lj_vmevent_send(L, TRACE, setstrV(L, L->top++, lj_str_newlit(L, "start"));
    setintV(L->top++, traceno);
    setfuncV(L, L->top++, J->fn);
    setintV(L->top++, proto_bcpos(J->pt, J->pc));
@@ -481,6 +479,7 @@ static void trace_start(jit_State *J)
 }
 
 // Stop tracing.
+
 static void trace_stop(jit_State *J)
 {
    BCIns *pc = mref<BCIns>(J->cur.startpc);
@@ -777,20 +776,104 @@ void lj_trace_ins(jit_State *J, const BCIns *pc)
 }
 
 //********************************************************************************************************************
+// Check if a loop body contains a break inside a try block.
+// This specific pattern causes snapshot restoration issues during JIT trace exits.
+// Returns true if a JMP (break) that exits the loop is found inside a try block.
+//
+// Example of the problem:
+//
+//    for i in {0..20} do -- Hotpath computed here after a given number of cycles.
+//       try -- Try block saves a stack
+//          if i is 5 then
+//             break -- Try stack is popped, then jumps out of loop.  Snapshot restoration is invalid.
+//          end
+//       end
+//    end
+//    print('Hello World') -- Invalid stack references the {0..20} range instead of 'Hello World'
+
+static bool loop_contains_break_in_try(const BCIns *LoopPC)
+{
+   if (not LoopPC) return false;
+
+   BCOp op = bc_op(*LoopPC);
+
+   // Get the backward jump offset to find the loop body extent
+   if (op != BC_ITERL and op != BC_ITERN and op != BC_FORL and op != BC_LOOP) {
+      return false;  // Not a recognized loop instruction
+   }
+
+   ptrdiff_t jump_offset = bc_j(*LoopPC);
+   if (jump_offset >= 0) return false;  // Not a backward jump
+
+   // Sanity check: jump offset shouldn't be too large (arbitrary limit of 10000 instructions)
+   if (jump_offset < -10000) return false;
+
+   // Scan from the jump target (loop body start) to current PC
+   const BCIns *body_start = LoopPC + 1 + jump_offset;
+
+   // Look for the pattern: TRYENTER ... TRYLEAVE followed by JMP that exits the loop
+   // This indicates a break from inside a try block. The break is compiled as:
+   // TRYENTER -> (break condition) -> JMP(to break TRYLEAVE) -> ... -> TRYLEAVE -> JMP(to after loop)
+
+   bool has_try = false;
+   for (const BCIns *scan = body_start; scan < LoopPC; ++scan) {
+      BCOp scan_op = bc_op(*scan);
+      if (scan_op == BC_TRYENTER) {
+         has_try = true;
+      }
+      else if (scan_op == BC_TRYLEAVE and has_try) {
+         // Check if the next instruction after TRYLEAVE is a JMP that exits the loop
+         const BCIns *next = scan + 1;
+         if (next < LoopPC and bc_op(*next) == BC_JMP) {
+            ptrdiff_t jmp_offset = bc_j(*next);
+            const BCIns *target_pc = next + 1 + jmp_offset;
+            if (target_pc > LoopPC) {
+               // This TRYLEAVE -> JMP(exit loop) pattern indicates a break from try block
+               return true;
+            }
+         }
+      }
+   }
+
+   return false;
+}
+
+//********************************************************************************************************************
 // A hotcount triggered. Start recording a root trace.
 
 void LJ_FASTCALL lj_trace_hot(jit_State *J, const BCIns *pc)
 {
    // Note: pc is the interpreter bytecode PC here. It's offset by 1.
    ERRNO_SAVE
+
+   pf::Log log(__FUNCTION__);
+
+   const BCIns *actual_pc = pc - 1;  // Location of instruction
+
    // Reset hotcount.
    hotcount_set(J2GG(J), pc, J->param[JIT_P_hotloop] * HOTCOUNT_LOOP);
+
+   // Defer JIT compilation if inside a try block to prevent snapshot corruption
+   if (J->L and J->L->try_stack.depth > 0) {
+      log.msg("JIT compilation within try block abandoned.");
+      ERRNO_RESTORE
+      return;
+   }
+
    // Only start a new trace if not recording or inside __gc call or vmevent.
    if (J->state == TraceState::IDLE and !(J2G(J)->hookmask & (HOOK_GC | HOOK_VMEVENT))) {
+      // Don't compile loops that contain break inside try blocks - snapshot restoration is broken
+      if (loop_contains_break_in_try(actual_pc)) {
+         ERRNO_RESTORE
+         return;
+      }
+
+      BCOp op = bc_op(*actual_pc);
+      log.msg("Recording JIT trace: %s", (op < BC__MAX) ? glBytecodeNames[op] : "???");
       J->parent = 0;  //  Root trace.
       J->exitno = 0;
       J->state = TraceState::START;
-      lj_trace_ins(J, pc - 1);
+      lj_trace_ins(J, actual_pc);
    }
    ERRNO_RESTORE
 }
@@ -1020,6 +1103,4 @@ uintptr_t LJ_FASTCALL lj_trace_unwind(jit_State *J, uintptr_t addr, ExitNo* ep)
    lj_assertJ(0, "bad exit pc");
    return 0;
 }
-#endif
-
 #endif

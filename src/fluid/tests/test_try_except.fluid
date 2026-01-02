@@ -464,7 +464,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Return from within except block
 
-@Test(priority=26) function return_from_except()
+@Test(priority=26) function ReturnFromExcept()
    function test_return()
       try
          error("test")
@@ -479,9 +479,10 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Break from try block in loop
+-- Break from try block in loop.  The outer function is used for isolation in case 'break' behaves in a way that
+-- could affect the test harness.
 
-@Test(priority=27) function break_from_try()
+function break_test()
    count = 0
    for i in {0..9} do
       try
@@ -490,16 +491,24 @@ end
             break
          end
       except e
+         error("Exception should not occur")
       end
    end
+   count++ -- We need a function to be called immediately after the break to ensure that function exit isn't broken
+   return count
+end
 
-   assert(count is 4, "Should break after 4 iterations, got " .. count)
+@Test(priority=27) function BreakFromTry()
+   for i in {0..20} do
+      count = break_test()
+      assert(count is 5, "Expected a count of 5, got " .. count)
+   end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Continue from try block in loop
 
-@Test(priority=28) function continue_from_try()
+@Test(priority=28) function ContinueFromTry()
    count = 0
    sum = 0
    for i in {0..5} do
