@@ -38,21 +38,18 @@
 void lj_snap_grow_buf_(jit_State* J, MSize need)
 {
    MSize maxsnap = (MSize)J->param[JIT_P_maxsnap];
-   if (need > maxsnap)
-      lj_trace_err(J, LJ_TRERR_SNAPOV);
+   if (need > maxsnap) lj_trace_err(J, LJ_TRERR_SNAPOV);
    lj_mem_growvec(J->L, J->snapbuf, J->sizesnap, maxsnap, SnapShot);
    J->cur.snap = J->snapbuf;
 }
 
 // Grow snapshot map buffer.
+
 void lj_snap_grow_map_(jit_State* J, MSize need)
 {
-   if (need < 2 * J->sizesnapmap)
-      need = 2 * J->sizesnapmap;
-   else if (need < 64)
-      need = 64;
-   J->snapmapbuf = (SnapEntry*)lj_mem_realloc(J->L, J->snapmapbuf,
-      J->sizesnapmap * sizeof(SnapEntry), need * sizeof(SnapEntry));
+   if (need < 2 * J->sizesnapmap) need = 2 * J->sizesnapmap;
+   else if (need < 64) need = 64;
+   J->snapmapbuf = (SnapEntry*)lj_mem_realloc(J->L, J->snapmapbuf, J->sizesnapmap * sizeof(SnapEntry), need * sizeof(SnapEntry));
    J->cur.snapmap = J->snapmapbuf;
    J->sizesnapmap = need;
 }
@@ -365,13 +362,14 @@ void lj_snap_shrink(jit_State* J)
 ** There are very few renames (often none), so the filter has
 ** very few bits set. This makes it suitable for negative filtering.
 */
+
 static BloomFilter snap_renamefilter(GCtrace* T, SnapNo lim)
 {
    BloomFilter rfilt = 0;
    IRIns* ir;
-   for (ir = &T->ir[T->nins - 1]; ir->o == IR_RENAME; ir--)
-      if (ir->op2 <= lim)
-         bloomset(rfilt, ir->op1);
+   for (ir = &T->ir[T->nins - 1]; ir->o == IR_RENAME; ir--) {
+      if (ir->op2 <= lim) bloomset(rfilt, ir->op1);
+   }
    return rfilt;
 }
 
