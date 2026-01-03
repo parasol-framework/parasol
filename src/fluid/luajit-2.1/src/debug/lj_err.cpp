@@ -306,46 +306,43 @@ LJ_NOINLINE static void unwindstack(lua_State *L, TValue *Top)
 #define ERR_TRYHANDLER ((void*)(intptr_t)-2)
 
 //********************************************************************************************************************
-// Check if a try frame should handle this error.
-// Returns true if handler found, with L->try_handler_pc set.
-
-// Check if a try handler exists for the current error.
-// If found, returns true but does NOT modify L->base, L->top, or the try stack.
-// The actual state modification is done by setup_try_handler().
+// Check if a try handler exists for the current error.  If found, returns true but does NOT modify L->base, L->top,
+// or the try stack.  The actual state modification is done by setup_try_handler().
 
 static bool check_try_handler(lua_State *L, int errcode)
 {
    if (L->try_stack.depth IS 0) return false;
 
    // Don't intercept errors from JIT-compiled code (jit_base set during trace execution)
-   if (tvref(G(L)->jit_base)) return false;
+   // 2026-01-03: Suspect this check is redundant, hence the warning.  Remove if not being triggered.
 
-   // Don't intercept errors from C frames without Lua frames (like lj_vm_cpcall used for
-   // trace recording). These protected calls should handle errors first.
-   // Walk the cframe chain to check for nres < 0 which indicates "C frame without Lua frame".
+   if (tvref(G(L)->jit_base)) {
+      pf::Log(__FUNCTION__).warning("Skipping try handler check: error from JIT-compiled code");
+      return false;
+   }
+
+   // Don't intercept errors from C frames without Lua frames (like lj_vm_cpcall used for trace recording). These
+   // protected calls should handle errors first.  Walk the cframe chain to check for nres < 0 which indicates
+   // "C frame without Lua frame".
+
    {
       void *cf = L->cframe;
       TryFrame *try_frame = &L->try_stack.frames[L->try_stack.depth - 1];
       TValue *try_base = restorestack(L, try_frame->frame_base);
 
       while (cf) {
-         int32_t nres = cframe_nres(cframe_raw(cf));
-         if (nres < 0) {
+         if (auto nres = cframe_nres(cframe_raw(cf)); nres < 0) {
             // This is a C frame without Lua frame (e.g., trace recording cpcall).
             // Check if it's above the try block by comparing saved top position.
             TValue *cf_top = restorestack(L, -nres);
-            if (cf_top >= try_base) {
-               // The cpcall is above/at the try block - let it handle the error
-               return false;
-            }
+            if (cf_top >= try_base) return false; // The cpcall is above/at the try block - let it handle the error
          }
          cf = cframe_prev(cf);
       }
    }
 
    // Validate try stack depth is within bounds
-   lj_assertL(L->try_stack.depth <= LJ_MAX_TRY_DEPTH,
-      "check_try_handler: try_stack depth %u exceeds LJ_MAX_TRY_DEPTH", L->try_stack.depth);
+   lj_assertL(L->try_stack.depth <= LJ_MAX_TRY_DEPTH, "check_try_handler: try_stack depth %u exceeds LJ_MAX_TRY_DEPTH", L->try_stack.depth);
 
    TryFrame *try_frame = &L->try_stack.frames[L->try_stack.depth - 1];
 
@@ -372,20 +369,19 @@ static bool check_try_handler(lua_State *L, int errcode)
          }
 
          // If we've reached the try block's function, stop searching
+
          GCfunc *func = frame_func(pf);
-         if (func IS try_frame->func) {
-            break;  // Reached the try frame's function
-         }
+         if (func IS try_frame->func) break;  // Reached the try frame's function
 
          // Move to previous frame based on frame type
+
          if (pf_type IS FRAME_LUA or pf_type IS FRAME_LUAP) pf = frame_prevl(pf);
          else pf = frame_prevd(pf);
       }
    }
 
-   // Verify try frame is in current call chain by walking up the frame chain.
-   // The error may have been raised from a C function (like error()) so we need
-   // to check if the try block's function is anywhere in the call chain.
+   // Verify try frame is in current call chain by walking up the frame chain.  The error may have been raised from
+   // a C function (like error()) so we need to check if the try block's function is anywhere in the call chain.
 
    TValue *frame = L->base - 1;
    bool found_try_func = false;
@@ -405,6 +401,7 @@ static bool check_try_handler(lua_State *L, int errcode)
    if (not found_try_func) return false;
 
    // Extract error code from prvFluid if available
+
    ERR err_code = ERR::Exception;  // Default for Lua errors
    if (L->script) {
       auto prv = (prvFluid *)L->script->ChildPrivate;
