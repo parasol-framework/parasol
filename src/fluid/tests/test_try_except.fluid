@@ -167,7 +167,7 @@ end
 
    try
       raise(ERR_Failed)
-   except e when { ERR_Failed, ERR_Search }
+   except e when ERR_Failed, ERR_Search
       correct_handler = true
    except e
       assert(false, "Should not reach catch-all")
@@ -348,7 +348,7 @@ end
 
    try
       raise(ERR_Search)
-   except e when { ERR_Args, ERR_Failed, ERR_Read, ERR_Search }
+   except e when ERR_Args, ERR_Failed, ERR_Read, ERR_Search
       matched = true
    except e
       assert(false, "Should match 4-code filter")
