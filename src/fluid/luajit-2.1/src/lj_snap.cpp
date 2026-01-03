@@ -1,6 +1,32 @@
 /*
 ** Snapshot handling.
 ** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
+**
+** Snapshots capture the interpreter state at specific points during trace recording.
+** When a trace exits (guard fails), the snapshot is used to restore the interpreter
+** state so execution can continue correctly.
+**
+** SNAPSHOT STRUCTURE:
+** Each snapshot (SnapShot) contains:
+**   - mapofs: Offset into snapmap where this snapshot's entries begin
+**   - nent:   Number of slot entries (NOT including frame links)
+**   - ref:    IR reference at which this snapshot was created
+**   - nslots: Total number of stack slots
+**   - topslot: Top slot for stack sizing
+**
+** SNAPMAP LAYOUT:
+** The snapmap is a contiguous array of SnapEntry values. For each snapshot:
+**   snapmap[mapofs + 0..nent-1] = Slot entries (which slots to restore and their IR refs)
+**   snapmap[mapofs + nent..nent+1] = PC + frame links (64-bit value packed as 2 SnapEntry)
+**
+** The PC is stored as: pcbase = (pc_pointer << 8) | (baseslot - 2)
+** Use snap_pc() to extract the PC pointer from the frame links.
+**
+** IMPORTANT INVARIANTS:
+** - Snapshots are stored contiguously: snap[N+1].mapofs >= snap[N].mapofs + snap[N].nent + 2
+** - The loop snapshot (last snapshot before loop optimization) may have its PC replaced
+**   with a sentinel value during lj_opt_loop processing
+** - lj_snap_shrink() can reduce nent and move the PC data, updating nsnapmap accordingly
 */
 
 #define lj_snap_c
@@ -331,7 +357,31 @@ void lj_snap_purge(jit_State* J)
    }
 }
 
-// Shrink last snapshot.
+// Shrink last snapshot by removing unused slot entries.
+//
+// This function performs dead slot elimination on the most recent snapshot. It uses
+// reaching-definitions analysis (snap_usedef) to determine which slots are actually
+// needed for correct restoration.
+//
+// IMPORTANT: This modifies both snap->nent AND J->cur.nsnapmap.
+//
+// Before shrink (example with 4 slots):
+//   snapmap: [slot0][slot1][slot2][slot3][PC_lo][PC_hi]
+//            ^mapofs                      ^mapofs+nent
+//   nent = 4, nsnapmap = mapofs + 6
+//
+// After shrink (if slots 1 and 2 are unused):
+//   snapmap: [slot0][slot3][PC_lo][PC_hi]
+//            ^mapofs       ^mapofs+nent
+//   nent = 2, nsnapmap = mapofs + 4
+//
+// The PC + frame links (2 SnapEntry = 64 bits) are moved down to immediately follow
+// the remaining slot entries. This compacts the snapmap and frees space for future
+// snapshots.
+//
+// NOTE: The next snapshot must be created AFTER this shrink completes, otherwise
+// it would start at the old nsnapmap position and overlap with this snapshot's data.
+
 void lj_snap_shrink(jit_State* J)
 {
    SnapShot* snap = &J->cur.snap[J->cur.nsnap - 1];
