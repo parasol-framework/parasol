@@ -790,17 +790,15 @@ void LJ_FASTCALL lj_trace_hot(jit_State *J, const BCIns *pc)
    // Reset hotcount.
    hotcount_set(J2GG(J), pc, J->param[JIT_P_hotloop] * HOTCOUNT_LOOP);
 
-   // Defer JIT compilation if inside a try block to prevent snapshot corruption
+   // Just a mild warning in case of regression.  Issues related to compilation inside try blocks should now be fixed.
    if (J->L and J->L->try_stack.depth > 0) {
-      log.msg("JIT compilation within try block abandoned.");
-      ERRNO_RESTORE
-      return;
+      log.traceWarning("JIT compilation detected within try block");
    }
 
    // Only start a new trace if not recording or inside __gc call or vmevent.
    if (J->state == TraceState::IDLE and !(J2G(J)->hookmask & (HOOK_GC | HOOK_VMEVENT))) {
       BCOp op = bc_op(*actual_pc);
-      log.msg("Recording JIT trace: %s", (op < BC__MAX) ? glBytecodeNames[op] : "???");
+      log.detail("Recording JIT trace: %s", (op < BC__MAX) ? glBytecodeNames[op] : "???");
       J->parent = 0;  //  Root trace.
       J->exitno = 0;
       J->state = TraceState::START;

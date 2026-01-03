@@ -962,33 +962,16 @@ extern "C" void lj_try_enter(lua_State *L, GCfunc *Func, TValue *Base, uint16_t 
    ptrdiff_t saved_top_offset = savestack(L, safe_top);
    lj_assertL(saved_top_offset >= frame_base_offset, "lj_try_enter: saved_top below base (top=%p base=%p)", safe_top, Base);
 
-#define TRY_USE_PROTO 1
-
-#ifdef TRY_USE_PROTO
    GCproto *proto = funcproto(Func); // Retrieve for try metadata
-   // Verify TryBlockIndex is valid for this function's proto
-   lj_assertL(proto != nullptr, "lj_try_enter: proto is null");
    lj_assertL(TryBlockIndex < proto->try_block_count, "lj_try_enter: TryBlockIndex %u >= try_block_count %u", TryBlockIndex, proto->try_block_count);
    lj_assertL(proto->try_blocks != nullptr, "lj_try_enter: try_blocks is null");
    uint8_t entry_slots = proto->try_blocks[TryBlockIndex].entry_slots;
-#elif LUA_USE_ASSERT
-   lj_assertL(L->top >= Base and L->top <= tvref(L->maxstack), "lj_try_enter: L->top out of range (top=%p base=%p max=%p)", L->top, Base, L->maxstack);
-
-   // Only enforce exactness when not on trace.
-   if (not tvref(G(L)->jit_base)) {
-      lj_assertL(L->top IS Base, "lj_try_enter: L->top not synced by VM (top=%p base=%p)", L->top, Base);
-   }
-#endif
 
    TryFrame *try_frame = &L->try_stack.frames[L->try_stack.depth++];
    try_frame->try_block_index = TryBlockIndex;
    try_frame->frame_base      = frame_base_offset;
    try_frame->saved_top       = saved_top_offset;
-#ifdef TRY_USE_PROTO
    try_frame->saved_nactvar   = BCREG(entry_slots);
-#else
-   try_frame->saved_nactvar   = L->top - L->base; // Risk: L->top could theoretically be stale in JIT mode
-#endif
    try_frame->func            = Func;
    try_frame->depth           = (uint8_t)L->try_stack.depth;
 

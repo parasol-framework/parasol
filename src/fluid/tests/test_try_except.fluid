@@ -359,7 +359,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Parser error tests using try...except to catch exec() errors
---[==[
+
 @Test(priority=23) function ParserErrors()
    -- Test: catch-all before filtered (should be a parse error)
    parse_error = false
@@ -411,7 +411,7 @@ end
    end
    assert(parse_error, "when without error code should fail to parse")
 end
---]==]
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Valid syntax variations
 
