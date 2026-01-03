@@ -594,11 +594,11 @@ end
 -- Multiple <close> variables in try-except - LIFO order
 
 @Test(priority=32) function MultipleCloseInTryExcept()
-   order = {}
-   function makeMt(n)
+   order = array<int>
+   function makeMt(n:num)
       return {
          __close = function(self, err)
-            table.insert(order, n)
+            order:push(n)
          end
       }
    end
@@ -623,9 +623,9 @@ end
 -- Only locals created inside a try block should be closed when that try handles an exception.
 
 @Test(priority=33) function CloseInNestedTry()
-   order = {}
-   mt_outer = { __close = function() table.insert(order, 'outer') end }
-   mt_inner = { __close = function() table.insert(order, 'inner') end }
+   order = array<string>
+   mt_outer = { __close = function() order:push('outer') end }
+   mt_inner = { __close = function() order:push('inner') end }
 
    try
       local outer_obj <close> = setmetatable({}, mt_outer)
@@ -1074,30 +1074,30 @@ end
 -- Test interaction between defer and <close> in try block with exception
 
 @Test(priority=45) function DeferAndCloseInTry()
-   order = {}
-   mt = { __close = function() table.insert(order, 'close') end }
+   order = array<string>
+   mt = { __close = function() order:push('close') end }
 
    function subject()
       try
          defer
-            table.insert(order, 'defer')
+            order:push('defer')
          end
          local obj <close> = setmetatable({}, mt)
-         table.insert(order, 'body')
+         order:push('body')
          error('test error')
       except e
-         table.insert(order, 'except')
+         order:push('except')
       end
    end
 
    subject()
 
    -- Document actual behavior - close should run, defer behavior may vary
-   assert(order[0] is 'body', "First should be body: '" .. join(order) .. "'")
+   assert(order[0] is 'body', "First should be body: '" .. order:join(',') .. "'")
 
    local has_close = false
-   for _, v in ipairs(order) do
+   for v in values(order) do
       if v is 'close' then has_close = true end
    end
-   assert(has_close, "<close> handler should be called: '" .. join(order) .. "'")
+   assert(has_close, "<close> handler should be called: '" .. order:join(',') .. "'")
 end
