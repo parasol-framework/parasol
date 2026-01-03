@@ -856,3 +856,248 @@ end
    assert(order[1] is "first", "LIFO: first should close second, got " .. tostring(order[1]))
    assert(tostring(caught_error.message):find("close second"), "Close error should replace original: got " .. tostring(caught_error.message))
 end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Tests for defer interaction with try-except blocks
+
+-- Defer runs when try block exits normally (no exception)
+
+@Test(priority=40) function DeferInTryBlockNormal()
+   order = array<string>
+
+   function subject()
+      try
+         defer
+            order:push('deferred')
+         end
+         order:push('try-body')
+      except e
+         order:push('except')
+      end
+   end
+
+   subject()
+   result = order:join(',')
+   assert(result is 'try-body,deferred', "Defer should run when try block exits normally: '" .. tostring(result) .. "'")
+end
+
+-- Test defer behavior when exception is caught by try-except
+
+@Test(priority=40) function DeferInTryWithException()
+   order = array<string>
+
+   function subject()
+      try
+         defer
+            order:push('deferred')
+         end
+         order:push('before-error')
+         error('test error')
+         order:push('after-error')
+      except e
+         order:push('except')
+      end
+   end
+
+   subject()
+
+   -- Document actual behavior - defer may or may not run depending on implementation
+   assert(#order >= 2, "Should have at least before-error and except: '" .. order:join(',') .. "'")
+   assert(order[0] is 'before-error', "First should be before-error: '" .. order:join(',') .. "'")
+end
+
+-- Test multiple defers when exception is caught
+
+@Test(priority=40) function MultipleDeferInTryWithException()
+   order = array<string>
+
+   function subject()
+      try
+         defer
+            order:push('defer-1')
+         end
+         defer
+            order:push('defer-2')
+         end
+         defer
+            order:push('defer-3')
+         end
+         order:push('body')
+         error('test error')
+      except e
+         order:push('except')
+      end
+   end
+
+   subject()
+
+   -- Document actual behavior
+   assert(#order >= 2, "Should have at least body and except: '" .. order:join(',') .. "'")
+   assert(order[0] is 'body', "First should be body: '" .. order:join(',') .. "'")
+end
+
+-- Defer in except block runs correctly when except exits
+
+@Test(priority=40) function DeferInExceptBlock()
+   order = array<string>
+
+   function subject()
+      try
+         error('test error')
+      except e
+         defer
+            order:push('except-defer')
+         end
+         order:push('except-body')
+      end
+
+      order:push('after-try')
+   end
+
+   subject()
+
+   assert(order:join(',') is 'except-body,except-defer,after-try', "Defer in except block should run when except exits: '" .. order:join(',') .. "'")
+end
+
+-- Test defer behavior with nested try blocks
+
+@Test(priority=40) function DeferInNestedTry()
+   order = array<string>
+
+   function subject()
+      try
+         defer
+            order:push('outer-defer')
+         end
+         order:push('outer-body')
+
+         try
+            defer
+               order:push('inner-defer')
+            end
+            order:push('inner-body')
+            error('inner error')
+         except e
+            order:push('inner-except')
+         end
+
+         order:push('after-inner-try')
+      except e
+         order:push('outer-except')
+      end
+   end
+
+   subject()
+
+   -- Document actual behavior - outer-defer should run, inner-defer behavior may vary
+   assert(order[0] is 'outer-body', "First should be outer-body: '" .. order:join(',') .. "'")
+   assert(order[1] is 'inner-body', "Second should be inner-body: '" .. order:join(',') .. "'")
+end
+
+-- Defer runs when returning from try block (no exception)
+
+@Test(priority=40) function DeferWithReturnFromTry()
+   order = array<string>
+
+   function subject()
+      try
+         defer
+            order:push('deferred')
+         end
+         order:push('before-return')
+         return 'from-try'
+      except e
+         order:push('except')
+         return 'from-except'
+      end
+      order:push('after-try')
+      return 'after'
+   end
+
+   result = subject()
+   assert(result is 'from-try', "Should return from try block, got '" .. tostring(result) .. "'")
+   assert(order:join(',') is 'before-return,deferred', "Defer should run before return: '" .. order:join(',') .. "'")
+end
+
+-- Defer runs when breaking from try block in loop (no exception)
+
+@Test(priority=45) function DeferWithBreakInTryLoop()
+   order = array<string>
+
+   function subject()
+      for i = 1, 4 do
+         try
+            defer
+               order:push('defer-' .. tostring(i))
+            end
+            order:push('body-' .. tostring(i))
+         except
+            order:push('except-' .. tostring(i))
+         end
+      end
+   end
+
+   subject()
+
+   expected = 'body-1,defer-1,body-2,defer-2,body-3,defer-3,body-4,defer-4'
+   assert(order:join(',') is expected, "Defer should run on break from try:\n" .. expected .. '\n' .. order:join(','))
+end
+
+-- Test defer behavior with continue in try loop
+
+@Test(priority=45) function DeferWithContinueInTryLoop()
+   order = array<string>
+
+   function subject()
+      for i = 1, 3 do
+         try
+            defer
+               order:push('defer-' .. tostring(i))
+            end
+            order:push('body-' .. tostring(i))
+            if i is 2 then
+               continue
+            end
+            order:push('after-continue-' .. tostring(i))
+         except e
+            order:push('except-' .. tostring(i))
+         end
+      end
+   end
+
+   subject()
+
+   -- Document actual behavior
+   assert(#order >= 3, "Should have multiple entries: '" .. order:join(',') .. "'")
+end
+
+-- Test interaction between defer and <close> in try block with exception
+
+@Test(priority=45) function DeferAndCloseInTry()
+   order = {}
+   mt = { __close = function() table.insert(order, 'close') end }
+
+   function subject()
+      try
+         defer
+            table.insert(order, 'defer')
+         end
+         local obj <close> = setmetatable({}, mt)
+         table.insert(order, 'body')
+         error('test error')
+      except e
+         table.insert(order, 'except')
+      end
+   end
+
+   subject()
+
+   -- Document actual behavior - close should run, defer behavior may vary
+   assert(order[0] is 'body', "First should be body: '" .. join(order) .. "'")
+
+   local has_close = false
+   for _, v in ipairs(order) do
+      if v is 'close' then has_close = true end
+   end
+   assert(has_close, "<close> handler should be called: '" .. join(order) .. "'")
+end

@@ -315,12 +315,33 @@ LJ_NOINLINE static void unwindstack(lua_State *L, TValue *Top)
 
 static bool check_try_handler(lua_State *L, int errcode)
 {
-   // Note: JIT state check is done in err_unwind before calling this function
-
    if (L->try_stack.depth IS 0) return false;
 
-   // Don't intercept errors from JIT-compiled code
+   // Don't intercept errors from JIT-compiled code (jit_base set during trace execution)
    if (tvref(G(L)->jit_base)) return false;
+
+   // Don't intercept errors from C frames without Lua frames (like lj_vm_cpcall used for
+   // trace recording). These protected calls should handle errors first.
+   // Walk the cframe chain to check for nres < 0 which indicates "C frame without Lua frame".
+   {
+      void *cf = L->cframe;
+      TryFrame *try_frame = &L->try_stack.frames[L->try_stack.depth - 1];
+      TValue *try_base = restorestack(L, try_frame->frame_base);
+
+      while (cf) {
+         int32_t nres = cframe_nres(cframe_raw(cf));
+         if (nres < 0) {
+            // This is a C frame without Lua frame (e.g., trace recording cpcall).
+            // Check if it's above the try block by comparing saved top position.
+            TValue *cf_top = restorestack(L, -nres);
+            if (cf_top >= try_base) {
+               // The cpcall is above/at the try block - let it handle the error
+               return false;
+            }
+         }
+         cf = cframe_prev(cf);
+      }
+   }
 
    // Validate try stack depth is within bounds
    lj_assertL(L->try_stack.depth <= LJ_MAX_TRY_DEPTH,

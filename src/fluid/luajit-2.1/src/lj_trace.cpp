@@ -845,8 +845,24 @@ static bool loop_contains_break_in_try(const BCIns *LoopPC)
 // BC_UCLO is used as a JIT barrier for the close sequence; encountering it while recording
 // inside a try block can trigger a trace error that should not surface to user code.
 //
-// This is effectively the same issue as seen in loop_contains_break_in_try().
+// This is similar to the issue managed by loop_contains_break_in_try().
 //
+// function subject()
+//    closed = 0
+//    mt = { __close = function(self, err) closed++ end }
+//    count = 0
+//    for i in {0..5} do
+//       try
+//          local obj <close> = setmetatable({}, mt)
+//          count++
+//          if i is 2 then
+//             continue
+//          end
+//       except e
+//       end
+//    end
+//    return count, closed
+//  end
 // TODO: Improving the JIT compiler should be done to render this workaround obsolete.
 
 static bool loop_contains_close_in_try(const BCIns *LoopPC)

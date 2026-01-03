@@ -69,14 +69,29 @@ ParserResult<IrEmitUnit> IrEmitter::emit_try_except_stmt(const TryExceptPayload 
    bcemit_AD(fs, BC_TRYENTER, base_reg, BCReg(try_block_index));
 
    // Emit try body inline (not in closure!).  Nested try blocks will add their handlers to try_handlers during this phase.
+   // We manually manage the scope here so we can emit BC_TRYLEAVE before defer execution.
+   // The ScopeGuard destructor will call fscope_end() which executes defers AFTER BC_TRYLEAVE.
+   {
+      FuncScope try_scope;
+      ScopeGuard try_guard(fs, &try_scope, FuncScopeFlag::None);
+      LocalBindingScope binding_scope(this->binding_table);
 
-   auto body_result = this->emit_block(*Payload.try_block, FuncScopeFlag::None);
-   if (not body_result.ok()) {
-      fs->try_depth = saved_try_depth;
-      return body_result;
+      // Emit all statements in the try body
+      for (const StmtNode& stmt : Payload.try_block->view()) {
+         auto status = this->emit_statement(stmt);
+         if (not status.ok()) {
+            fs->try_depth = saved_try_depth;
+            return status;
+         }
+         this->ensure_register_balance(describe_node_kind(stmt.kind));
+      }
+
+      // Emit BC_TRYLEAVE BEFORE the scope ends (before defers are executed)
+      // This ensures defers run OUTSIDE the try block's exception protection
+      bcemit_AD(fs, BC_TRYLEAVE, base_reg, BCReg(0));
+
+      // ScopeGuard destructor runs here, calling fscope_end() which executes defers
    }
-
-   bcemit_AD(fs, BC_TRYLEAVE, base_reg, BCReg(0)); // Emit BC_TRYLEAVE after try body (normal exit path)
 
    // Jump over handlers (successful completion)
    ControlFlowEdge exit_jmp = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
