@@ -2127,14 +2127,45 @@ static void rec_comp_prep(jit_State *J)
 
 //********************************************************************************************************************
 // Fixup comparison.
+//
+// After recording a comparison guard, this function modifies the snapshot's PC to point to the "opposite target"
+// (the path not taken by the guard). This optimization prevents re-recording the same comparison instruction
+// when a side trace starts from this guard's exit.
+//
+// IMPORTANT: This PC modification must be SKIPPED inside try blocks.
+//
+// When a guard is inside a try block and leads to break/continue, the bytecode sequence is:
+//   ISEQN i, 3      ; Guard recorded here (snapshot created with this PC)
+//   JMP   +N        ; Jump to break cleanup
+//   ...
+//   BC_TRYLEAVE     ; Pop try frame
+//   JMP   loop_exit ; Exit the loop
+//
+// If we modify the snapshot PC to point past the comparison (e.g., to BC_TRYLEAVE), then when the guard exits:
+// 1. The snapshot is restored with PC pointing to BC_TRYLEAVE
+// 2. But the try stack still has the try frame pushed (from the JIT-compiled TRYENTER)
+// 3. The interpreter executes BC_TRYLEAVE which pops the already-correct try stack
+// 4. This causes try stack corruption and subsequent slot corruption
+//
+// By skipping the PC fixup inside try blocks, the guard exit correctly resumes at the comparison instruction,
+// allowing the interpreter to re-execute and follow the correct break/continue path with proper cleanup.
 
 static void rec_comp_fixup(jit_State *J, const BCIns *pc, int cond)
 {
    BCIns jmpins = pc[1];
    const BCIns *npc = pc + 2 + (cond ? bc_j(jmpins) : 0);
    SnapShot *snap = &J->cur.snap[J->cur.nsnap - 1];
-   // Set PC to opposite target to avoid re-recording the comp. in side trace.
 
+   // Skip PC modification inside try blocks to prevent snapshot restoration issues.
+   // See function header comment for detailed explanation.
+   if (J->L->try_stack.depth > 0) {
+      J->needsnap = 1;
+      return;
+   }
+
+   // Set PC to opposite target to avoid re-recording the comparison in side trace.
+   // The PC is stored in the snapmap at position (mapofs + nent) as a 64-bit value:
+   //   pcbase = (pc_pointer << 8) | baseslot
    SnapEntry* flink = &J->cur.snapmap[snap->mapofs + snap->nent];
    uint64_t pcbase;
    memcpy(&pcbase, flink, sizeof(uint64_t));

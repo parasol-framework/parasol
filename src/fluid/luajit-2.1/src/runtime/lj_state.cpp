@@ -150,6 +150,8 @@ void lj_state_shrinkstack(lua_State *L, MSize used)
 void LJ_FASTCALL lj_state_growstack(lua_State *L, MSize need)
 {
    MSize n;
+   lj_assertL(need < 1024, "Stack growth request exceeds reasonable 1K limit");
+
    if (L->stacksize > LJ_STACK_MAXEX)  //  Overflow while handling overflow?
       lj_err_throw(L, LUA_ERRERR);
    n = L->stacksize + need;
@@ -231,12 +233,12 @@ static void close_state(lua_State *L)
    lj_str_freetab(g);
    lj_buf_free(g, &g->tmpbuf);
    lj_mem_freevec(g, tvref(L->stack), L->stacksize, TValue);
-#if LJ_64
+
    if (mref<uint32_t>(g->gc.lightudseg)) {
       MSize segnum = g->gc.lightudnum ? (2 << lj_fls(g->gc.lightudnum)) : 2;
       lj_mem_freevec(g, mref<uint32_t>(g->gc.lightudseg), segnum, uint32_t);
    }
-#endif
+
    lj_assertG(g->gc.total == sizeof(GG_State),
       "memory leak of %lld bytes",
       (long long)(g->gc.total - sizeof(GG_State)));

@@ -957,33 +957,21 @@ extern "C" void lj_try_enter(lua_State *L, GCfunc *Func, TValue *Base, uint16_t 
    }
 
    ptrdiff_t frame_base_offset = savestack(L, Base);
-   ptrdiff_t saved_top_offset = savestack(L, L->top);
+   TValue *safe_top = L->top;
+   if (safe_top < Base) safe_top = Base;
+   ptrdiff_t saved_top_offset = savestack(L, safe_top);
+   lj_assertL(saved_top_offset >= frame_base_offset, "lj_try_enter: saved_top below base (top=%p base=%p)", safe_top, Base);
 
-#define TRY_USE_PROTO
-
-#ifdef TRY_USE_PROTO
-   GCproto *proto = funcproto(Func); // Retrieve for nactvar saving
-   // Verify TryBlockIndex is valid for this function's proto
-   lj_assertL(proto != nullptr, "lj_try_enter: proto is null");
+   GCproto *proto = funcproto(Func); // Retrieve for try metadata
    lj_assertL(TryBlockIndex < proto->try_block_count, "lj_try_enter: TryBlockIndex %u >= try_block_count %u", TryBlockIndex, proto->try_block_count);
-#elif LUA_USE_ASSERT
-   lj_assertL(L->top >= Base and L->top <= tvref(L->maxstack), "lj_try_enter: L->top out of range (top=%p base=%p max=%p)", L->top, Base, L->maxstack);
-
-   // Only enforce exactness when not on trace.
-   if (not tvref(G(L)->jit_base)) {
-      lj_assertL(L->top IS Base, "lj_try_enter: L->top not synced by VM (top=%p base=%p)", L->top, Base);
-   }
-#endif
+   lj_assertL(proto->try_blocks != nullptr, "lj_try_enter: try_blocks is null");
+   uint8_t entry_slots = proto->try_blocks[TryBlockIndex].entry_slots;
 
    TryFrame *try_frame = &L->try_stack.frames[L->try_stack.depth++];
    try_frame->try_block_index = TryBlockIndex;
    try_frame->frame_base      = frame_base_offset;
    try_frame->saved_top       = saved_top_offset;
-#ifdef TRY_USE_PROTO
-   try_frame->saved_nactvar   = BCREG(proto->framesize);  // More stable but less efficient
-#else
-   try_frame->saved_nactvar   = L->top - L->base; // Risk: L->top could theoretically be stale in JIT mode
-#endif
+   try_frame->saved_nactvar   = BCREG(entry_slots);
    try_frame->func            = Func;
    try_frame->depth           = (uint8_t)L->try_stack.depth;
 
@@ -993,7 +981,8 @@ extern "C" void lj_try_enter(lua_State *L, GCfunc *Func, TValue *Base, uint16_t 
 }
 
 //********************************************************************************************************************
-// Called by BC_TRYLEAVE to pop an exception frame from the try stack.
+// Called by BC_TRYLEAVE to pop an exception frame from the try stack.  Note that this operation is also replicated
+// in the *.dasc files when JIT optimised.
 
 extern "C" void lj_try_leave(lua_State *L)
 {

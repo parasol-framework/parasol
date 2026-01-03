@@ -497,23 +497,29 @@ ParserResult<StmtNodePtr> AstBuilder::parse_try()
          Token next_token = this->ctx.tokens().current();
          if (next_token.span().line != when_token.span().line) {
             return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, when_token,
-               "expected error code or {codes} after 'when' on the same line");
+               "expected error code(s) after 'when' on the same line");
          }
 
-         // Parse error code filter(s)
-         if (this->ctx.check(TokenKind::LeftBrace)) {
-            // Multiple codes: when { ERR_A, ERR_B }
-            this->ctx.tokens().advance();  // consume '{'
-            auto codes = this->parse_expression_list();
-            if (not codes.ok()) return ParserResult<StmtNodePtr>::failure(codes.error_ref());
-            clause.filter_codes = std::move(codes.value_ref());
-            this->ctx.consume(TokenKind::RightBrace, ParserErrorCode::ExpectedToken);
-         }
-         else {
-            // Single code: when ERR_A
-            auto code = this->parse_expression();
-            if (not code.ok()) return ParserResult<StmtNodePtr>::failure(code.error_ref());
-            clause.filter_codes.push_back(std::move(code.value_ref()));
+         // Parse error code filter(s): when ERR_A or when ERR_A, ERR_B
+         auto first_code = this->parse_expression();
+         if (not first_code.ok()) return ParserResult<StmtNodePtr>::failure(first_code.error_ref());
+         clause.filter_codes.push_back(std::move(first_code.value_ref()));
+
+         // Continue parsing comma-separated codes on the same line as 'when'
+         while (this->ctx.check(TokenKind::Comma)) {
+            Token comma_token = this->ctx.tokens().current();
+            if (comma_token.span().line != when_token.span().line) break;
+            this->ctx.tokens().advance();  // consume ','
+
+            Token code_token = this->ctx.tokens().current();
+            if (code_token.span().line != when_token.span().line) {
+               return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, comma_token,
+                  "expected error code after ',' on the same line as 'when'");
+            }
+
+            auto next_code = this->parse_expression();
+            if (not next_code.ok()) return ParserResult<StmtNodePtr>::failure(next_code.error_ref());
+            clause.filter_codes.push_back(std::move(next_code.value_ref()));
          }
       }
       else {
