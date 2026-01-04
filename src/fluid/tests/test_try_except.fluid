@@ -1110,7 +1110,7 @@ end
       error("Test error")
    except e
       assert(e.trace, "Trace should be captured with try<trace>")
-      assert(type(e.trace) is "table", "Trace should be table of frames")
+      assert(type(e.trace) is "array", "Trace should be array of frames")
       assert(#e.trace >= 1, "Should have at least one frame")
    end
 end

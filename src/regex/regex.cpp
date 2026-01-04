@@ -140,7 +140,7 @@ static srell::regex_constants::match_flag_type convert_match_flags(RMATCH Flags)
 
 static ERR regex_free(APTR Address)
 {
-   ((Regex *)Address)->~Regex();
+   ((extRegex *)Address)->~extRegex();
    return ERR::Okay;
 }
 
