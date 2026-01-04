@@ -52,3 +52,22 @@ VARNAMEDEF(VARNAMEENUM)
 #undef VARNAMEENUM
    VARNAME__MAX
 };
+
+//********************************************************************************************************************
+// Stack trace capture for try<trace>
+
+inline constexpr int LJ_MAX_TRACE_FRAMES = 32;
+
+struct CapturedFrame {
+   GCstr *source;      // Source file name (may be nullptr)
+   GCstr *funcname;    // Function name (may be nullptr)
+   BCLine line;        // Line number (0 if unknown)
+};
+
+struct CapturedStackTrace {
+   CapturedFrame frames[LJ_MAX_TRACE_FRAMES];
+   uint16_t frame_count;
+};
+
+LJ_FUNC CapturedStackTrace* lj_debug_capture_trace(lua_State *L, int skip_levels);
+LJ_FUNC void lj_debug_free_trace(lua_State *L, CapturedStackTrace *trace);

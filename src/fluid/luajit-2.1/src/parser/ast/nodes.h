@@ -803,6 +803,7 @@ struct TryExceptPayload {
 
    std::unique_ptr<BlockStmt> try_block;     // The try body
    std::vector<ExceptClause> except_clauses; // One or more except handlers
+   bool enable_trace = false;                // If true, capture stack trace on exception
 
    ~TryExceptPayload();
 };

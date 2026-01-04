@@ -18,6 +18,7 @@
 #include "lj_str.h"
 #include "lj_tab.h"
 #include "lj_gc.h"
+#include "lj_debug.h"
 #include "parser/parser_diagnostics.h"
 
 #include "hashes.h"
@@ -965,7 +966,8 @@ extern "C" void lj_try_enter(lua_State *L, GCfunc *Func, TValue *Base, uint16_t 
    GCproto *proto = funcproto(Func); // Retrieve for try metadata
    lj_assertL(TryBlockIndex < proto->try_block_count, "lj_try_enter: TryBlockIndex %u >= try_block_count %u", TryBlockIndex, proto->try_block_count);
    lj_assertL(proto->try_blocks != nullptr, "lj_try_enter: try_blocks is null");
-   uint8_t entry_slots = proto->try_blocks[TryBlockIndex].entry_slots;
+   TryBlockDesc *block_desc = &proto->try_blocks[TryBlockIndex];
+   uint8_t entry_slots = block_desc->entry_slots;
 
    TryFrame *try_frame = &L->try_stack.frames[L->try_stack.depth++];
    try_frame->try_block_index = TryBlockIndex;
@@ -974,6 +976,7 @@ extern "C" void lj_try_enter(lua_State *L, GCfunc *Func, TValue *Base, uint16_t 
    try_frame->saved_nactvar   = BCREG(entry_slots);
    try_frame->func            = Func;
    try_frame->depth           = (uint8_t)L->try_stack.depth;
+   try_frame->flags           = block_desc->flags;
 
    // Note: We leave L->top at safe_top. In JIT mode, the JIT will restore state
    // from snapshots if needed. In interpreter mode, the VM will continue with the
@@ -1062,11 +1065,15 @@ extern "C" bool lj_try_find_handler(lua_State *L, const TryFrame *Frame, ERR Err
 
 //********************************************************************************************************************
 // Build an exception table and place it in the specified register.
-// The exception table has fields: code, message, line, trace
+// The exception table has fields: code, message, line, trace, stackTrace
 
-extern "C" void lj_try_build_exception_table(lua_State *L, ERR ErrorCode, CSTRING Message, int Line, BCREG ExceptionReg)
+extern "C" void lj_try_build_exception_table(lua_State *L, ERR ErrorCode, CSTRING Message, int Line, BCREG ExceptionReg, CapturedStackTrace *Trace)
 {
-   if (ExceptionReg IS 0xFF) return;  // No exception variable - discard
+   if (ExceptionReg IS 0xFF) {
+      // No exception variable - just free the trace and return
+      if (Trace) lj_debug_free_trace(L, Trace);
+      return;
+   }
 
    // Validate stack state before placing exception table
    lj_assertL(L->base >= tvref(L->stack), "lj_try_build_exception_table: L->base below stack start");
@@ -1079,7 +1086,7 @@ extern "C" void lj_try_build_exception_table(lua_State *L, ERR ErrorCode, CSTRIN
 
    // Create exception table
 
-   GCtab *t = lj_tab_new(L, 0, 4);
+   GCtab *t = lj_tab_new(L, 0, 5);
    lj_assertL(t != nullptr, "lj_try_build_exception_table: table allocation failed");
    TValue *slot;
 
@@ -1101,11 +1108,68 @@ extern "C" void lj_try_build_exception_table(lua_State *L, ERR ErrorCode, CSTRIN
    slot = lj_tab_setstr(L, t, lj_str_newlit(L, "line"));
    setintV(slot, Line);
 
-   // Set e.trace (traceback is not available after stack restoration)
-   // TODO: Capture traceback before stack is restored in check_try_handler
-
+   // Set e.trace - array of frame tables if trace was captured
+   // Also build e.stackTrace string at the same time
    slot = lj_tab_setstr(L, t, lj_str_newlit(L, "trace"));
-   setnilV(slot);
+   TValue *stacktrace_slot = lj_tab_setstr(L, t, lj_str_newlit(L, "stackTrace"));
+
+   if (Trace and Trace->frame_count > 0) {
+      // Build array of frame tables: [{source, line, func}, ...]
+      GCtab *frames = lj_tab_new(L, Trace->frame_count, 0);
+
+      // Build formatted traceback string at the same time
+      std::string traceback = "stack traceback:";
+
+      for (uint16_t i = 0; i < Trace->frame_count; i++) {
+         CapturedFrame *cf = &Trace->frames[i];
+         GCtab *frame = lj_tab_new(L, 0, 3);
+
+         TValue *frame_slot = lj_tab_setstr(L, frame, lj_str_newlit(L, "source"));
+         if (cf->source) setstrV(L, frame_slot, cf->source);
+         else setnilV(frame_slot);
+
+         frame_slot = lj_tab_setstr(L, frame, lj_str_newlit(L, "line"));
+         setintV(frame_slot, cf->line);
+
+         frame_slot = lj_tab_setstr(L, frame, lj_str_newlit(L, "func"));
+         if (cf->funcname) setstrV(L, frame_slot, cf->funcname);
+         else setnilV(frame_slot);
+
+         lj_gc_anybarriert(L, frame);
+
+         TValue *arr_slot = lj_tab_setint(L, frames, i);
+         settabV(L, arr_slot, frame);
+
+         // Build traceback string entry
+
+         traceback += "\n\t";
+         if (cf->source) traceback += strdata(cf->source);
+         else traceback += "?";
+
+         if (cf->line > 0) {
+            traceback += ":";
+            traceback += std::to_string(cf->line);
+         }
+         if (cf->funcname) {
+            traceback += ": in function '";
+            traceback += strdata(cf->funcname);
+            traceback += "'";
+         }
+      }
+
+      lj_gc_anybarriert(L, frames);
+      settabV(L, slot, frames);
+
+      // Set stackTrace string
+      setstrV(L, stacktrace_slot, lj_str_new(L, traceback.data(), traceback.size()));
+
+      lj_debug_free_trace(L, Trace);
+   }
+   else {
+      setnilV(slot);
+      setnilV(stacktrace_slot);
+      if (Trace) lj_debug_free_trace(L, Trace);
+   }
 
    lj_gc_anybarriert(L, t);
 

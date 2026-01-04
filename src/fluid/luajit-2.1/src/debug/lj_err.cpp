@@ -90,7 +90,7 @@
 // These are defined in fluid_functions.cpp.
 
 extern "C" bool lj_try_find_handler(lua_State *, const TryFrame *, ERR, const BCIns **, BCREG *);
-extern "C" void lj_try_build_exception_table(lua_State *, ERR, CSTRING, int, BCREG);
+extern "C" void lj_try_build_exception_table(lua_State *, ERR, CSTRING, int, BCREG, CapturedStackTrace *);
 
 // Error message strings.
 LJ_DATADEF CSTRING lj_err_allmsg =
@@ -413,9 +413,16 @@ static bool check_try_handler(lua_State *L, int errcode)
 
    if (lj_try_find_handler(L, try_frame, err_code, &handler_pc, &exception_reg)) {
       // Validate handler PC was set
+
       lj_assertL(handler_pc != nullptr, "check_try_handler: handler found but handler_pc is null");
 
+      // Capture stack trace if TRY_FLAG_TRACE is enabled (before stack unwinding)
+
+      if (try_frame->flags & TRY_FLAG_TRACE) L->pending_trace = lj_debug_capture_trace(L, 0);
+      else L->pending_trace = nullptr;
+
       // Just record that a handler exists - don't modify state yet
+
       L->try_handler_pc = handler_pc;
       return true;
    }
@@ -520,8 +527,10 @@ extern "C" void setup_try_handler(lua_State *L)
 
    L->try_stack.depth--; // Pop try frame
 
-   // Build exception table and place in handler's register
-   lj_try_build_exception_table(L, err_code, error_msg, line, exception_reg);
+   // Build exception table and place in handler's register (pass pending_trace, which may be null)
+   
+   lj_try_build_exception_table(L, err_code, error_msg, line, exception_reg, L->pending_trace);
+   L->pending_trace = nullptr;  // Ownership transferred to exception table builder
 
    // Reset CaughtError so it doesn't leak to subsequent exceptions
 
