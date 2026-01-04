@@ -3364,7 +3364,7 @@ class objModule : public Object {
    inline ERR setHeader(struct ModHeader * Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
-      return field->WriteValue(target, field, 0x08000500, Value, 1);
+      return field->WriteValue(target, field, 0x08000510, Value, 1);
    }
 
    inline ERR setFlags(const MOF Value) noexcept {
@@ -3375,7 +3375,7 @@ class objModule : public Object {
 
    template <class T> inline ERR setName(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[5];
+      auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 

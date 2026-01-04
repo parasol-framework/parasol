@@ -77,6 +77,16 @@ if (modDisplay) modDisplay-&gt;get(FID_ModBase, DisplayBase);
 
   <fields>
     <field>
+      <name>Defs</name>
+      <comment>Returns the compiled IDL definition for the module.</comment>
+      <access read="G">Get</access>
+      <type>STRING</type>
+      <description>
+<p>Returns the IDL definition string that was compiled from the module's FDL file.  Useful for introspection purposes.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Flags</name>
       <comment>Optional flags.</comment>
       <access read="R" write="I">Read/Init</access>

@@ -477,13 +477,13 @@ global function saveOutput()
 
    if not outPath then
       if glModuleName?? then
-         outPath = 'sdk:data/config/defs/' .. glModuleName:lower() .. '.def'
+         outPath = f'sdk:data/config/defs/{glModuleName:lower()}.def'
       else
          error('No output path specified in command-line.')
       end
    end
 
-   print('Saving compressed IDL output to "' .. outPath .. '"')
+   print(f'Saving compressed IDL output to "{outPath}"')
 
    err, file = catch(function()
       if glAppend then
@@ -527,18 +527,18 @@ global function saveOutput()
 
    c = ''
    for group in values(sortedConstants) do
-      c ..= 'c.' .. group.prefix .. ':'
+      c ..= f'c.{group.prefix}:'
       e = ''
       for const in values(group.table) do
          if e?? then e ..= ',' end
          if type(const.value) is 'string' then
             val = const.value:match('^(.-):%s+.+$') -- Scrap any defined comment for this value.
             val ??= const.value
-            e ..= const.name .. '="' .. const.value .. '"'
+            e ..= f'{const.name}="{const.value}"'
          else
             hexval = string.format('%x', const.value)
             if hexval:len() is 16 then hexval = hexval:sub(-8) end
-            e ..= const.name .. '=0x' .. hexval
+            e ..= f'{const.name}=0x{hexval}'
          end
       end
       c ..= e .. EOL
