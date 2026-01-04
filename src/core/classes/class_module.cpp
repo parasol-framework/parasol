@@ -593,6 +593,7 @@ Returns the IDL definition string that was compiled from the module's FDL file. 
 static ERR GET_Defs(extModule *Self, CSTRING *Value)
 {
    if ((Self->Root) and (Self->Root->Header)) *Value = Self->Root->Header->Definitions;
+   else *Value = nullptr;
    return ERR::Okay;
 }
 

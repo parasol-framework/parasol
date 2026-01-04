@@ -10,23 +10,19 @@
 static int object_newindex(lua_State *Lua)
 {
    if (auto def = (object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
-      if (auto keyname = luaL_checkstring(Lua, 2)) {
+      if (auto hash = luaL_checkstringhash(Lua, 2)) {
          if (auto obj = access_object(def)) {
             ERR error;
-            if (keyname[0] IS '_') error = acSetKey(obj, keyname+1, lua_tostring(Lua, 3));
-            else {
-               auto jt = get_write_table(def);
-               auto hash = simple_hash(keyname); // Case sensitive
-               if (auto func = jt->find(obj_write(hash)); func != jt->end()) {
-                  error = func->Call(Lua, obj, func->Field, 3);
-               }
-               else error = ERR::NoSupport;
+            auto jt = get_write_table(def);
+            if (auto func = jt->find(obj_write(hash)); func != jt->end()) {
+               error = func->Call(Lua, obj, func->Field, 3);
             }
+            else error = ERR::NoSupport;
             release_object(def);
 
             if (error >= ERR::ExceptionThreshold) {
                pf::Log log(__FUNCTION__);
-               log.warning("Unable to write %s.%s: %s", def->Class->ClassName, keyname, GetErrorMsg(error));
+               log.warning("Unable to write %s.%s: %s", def->Class->ClassName, luaL_checkstring(Lua, 2), GetErrorMsg(error));
                auto prv = (prvFluid *)Lua->script->ChildPrivate;
                prv->CaughtError = error;
                /*if (prv->ThrowErrors)*/ luaL_error(Lua, GetErrorMsg(error));
