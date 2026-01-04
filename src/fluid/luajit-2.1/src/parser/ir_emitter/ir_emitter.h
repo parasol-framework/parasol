@@ -161,6 +161,7 @@ private:
    ParserResult<IrEmitUnit> emit_break_stmt(const BreakStmtPayload& payload);
    ParserResult<IrEmitUnit> emit_continue_stmt(const ContinueStmtPayload& payload);
    ParserResult<IrEmitUnit> emit_conditional_shorthand_stmt(const ConditionalShorthandStmtPayload& payload);
+   ParserResult<IrEmitUnit> emit_try_except_stmt(const TryExceptPayload& payload);
    ParserResult<IrEmitUnit> emit_assignment_stmt(const AssignmentStmtPayload& payload);
    ParserResult<IrEmitUnit> emit_plain_assignment(std::vector<PreparedAssignment> targets, const ExprNodeList& values);
    ParserResult<IrEmitUnit> emit_compound_assignment(AssignmentOperator op, PreparedAssignment target, const ExprNodeList& values);
@@ -225,6 +226,7 @@ private:
       ControlFlowEdge continue_edge;
       BCReg defer_base;
       BCPos continue_target;
+      uint8_t try_depth_at_entry;  // try_depth when loop was entered
    };
 
    struct LoopStackGuard {

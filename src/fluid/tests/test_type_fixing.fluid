@@ -1,6 +1,9 @@
 -- Flute tests for Fluid Type Fixing feature
 -- Type fixing commits local variables to a specific type upon first non-nil assignment
 
+@BeforeEach(hotpath=true)
+function enforce_hotpath() end
+
 ----------------------------------------------------------------------------------------------------------------------
 -- EXPLICIT TYPE ANNOTATIONS
 

@@ -66,6 +66,8 @@ struct TokenDefinition {
    TOKEN_DEF(then,         "then",     true) \
    TOKEN_DEF(thunk,        "thunk",    true) \
    TOKEN_DEF(true,         "true",     true) \
+   TOKEN_DEF(try,          "try",      true) \
+   TOKEN_DEF(except,       "except",   true) \
    TOKEN_DEF(until,        "until",    true) \
    TOKEN_DEF(when,         "when",     true) \
    TOKEN_DEF(while,        "while",    true) \

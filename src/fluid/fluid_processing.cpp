@@ -233,7 +233,7 @@ static int processing_get(lua_State *Lua)
          }
          return 0;
       }
-      else return luaL_error(Lua, "Unrecognised index '%s'", fieldname);
+      else luaL_error(Lua, "Unrecognised index '%s'", fieldname);
    }
 
    return 0;

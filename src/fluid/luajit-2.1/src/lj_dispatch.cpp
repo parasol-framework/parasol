@@ -388,7 +388,9 @@ void LJ_FASTCALL lj_dispatch_ins(lua_State* L, const BCIns* pc)
 #endif
          J->L = L;
          lj_trace_ins(J, pc - 1);  //  The interpreter bytecode PC is offset by 1.
+#ifdef LUA_USE_ASSERT
          lj_assertG(L->top - L->base == delta, "unbalanced stack after tracing of instruction");
+#endif
       }
    }
 

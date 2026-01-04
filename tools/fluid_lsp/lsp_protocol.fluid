@@ -134,6 +134,8 @@ function dispatchMethod(Self:table, Message:table, State)
       end
       return nil
    end
+
+   collectgarbage()
 end
 
 ----------------------------------------------------------------------------------------------------------------------

@@ -2127,14 +2127,45 @@ static void rec_comp_prep(jit_State *J)
 
 //********************************************************************************************************************
 // Fixup comparison.
+//
+// After recording a comparison guard, this function modifies the snapshot's PC to point to the "opposite target"
+// (the path not taken by the guard). This optimization prevents re-recording the same comparison instruction
+// when a side trace starts from this guard's exit.
+//
+// IMPORTANT: This PC modification must be SKIPPED inside try blocks.
+//
+// When a guard is inside a try block and leads to break/continue, the bytecode sequence is:
+//   ISEQN i, 3      ; Guard recorded here (snapshot created with this PC)
+//   JMP   +N        ; Jump to break cleanup
+//   ...
+//   BC_TRYLEAVE     ; Pop try frame
+//   JMP   loop_exit ; Exit the loop
+//
+// If we modify the snapshot PC to point past the comparison (e.g., to BC_TRYLEAVE), then when the guard exits:
+// 1. The snapshot is restored with PC pointing to BC_TRYLEAVE
+// 2. But the try stack still has the try frame pushed (from the JIT-compiled TRYENTER)
+// 3. The interpreter executes BC_TRYLEAVE which pops the already-correct try stack
+// 4. This causes try stack corruption and subsequent slot corruption
+//
+// By skipping the PC fixup inside try blocks, the guard exit correctly resumes at the comparison instruction,
+// allowing the interpreter to re-execute and follow the correct break/continue path with proper cleanup.
 
 static void rec_comp_fixup(jit_State *J, const BCIns *pc, int cond)
 {
    BCIns jmpins = pc[1];
    const BCIns *npc = pc + 2 + (cond ? bc_j(jmpins) : 0);
    SnapShot *snap = &J->cur.snap[J->cur.nsnap - 1];
-   // Set PC to opposite target to avoid re-recording the comp. in side trace.
 
+   // Skip PC modification inside try blocks to prevent snapshot restoration issues.
+   // See function header comment for detailed explanation.
+   if (J->L->try_stack.depth > 0) {
+      J->needsnap = 1;
+      return;
+   }
+
+   // Set PC to opposite target to avoid re-recording the comparison in side trace.
+   // The PC is stored in the snapmap at position (mapofs + nent) as a 64-bit value:
+   //   pcbase = (pc_pointer << 8) | baseslot
    SnapEntry* flink = &J->cur.snapmap[snap->mapofs + snap->nent];
    uint64_t pcbase;
    memcpy(&pcbase, flink, sizeof(uint64_t));
@@ -2845,21 +2876,22 @@ void lj_record_ins(jit_State *J)
 
       // Type fixing
 
-   case BC_TYPEFIX:
+   case BC_TYPEFIX: {
       // BC_TYPEFIX is a one-time operation that mutates the prototype.
       // After first execution, it becomes a no-op. For JIT recording:
       // - If types are already fixed (common case), treat as no-op
-      // - If types not fixed, abort trace (mutation during recording is problematic)
-      {
-         GCproto *pt = funcproto(curr_func(J->L));
-         if (pt->result_types[0] IS FluidType::Unknown) {
-            // Types not yet fixed - abort trace, let interpreter handle it
-            setintV(&J->errinfo, (int32_t)op);
-            lj_trace_err_info(J, LJ_TRERR_NYIBC);
-         }
-         // Types already fixed - no-op, continue recording
+      // - If types not fixed, skip during recording (mutation is safe for interpreter)
+
+      GCproto *pt = funcproto(curr_func(J->L));
+      if (pt->result_types[0] IS FluidType::Unknown) {
+         // Types not yet fixed.  We can leave it for the interpreter and keep recording
+         // TODO: Need to consider if it is viable to mutate the function prototype (set the result types) here during recording.
+         // It could also be considered a red-flag if the interpreter hasn't mutated the function by this point, even if only
+         // setting the result type to FluidType::Any.
+         break;
       }
-      break;
+      else break; // Types already fixed - no-op, continue recording
+   }
 
       // Loops and branches
 
@@ -2916,6 +2948,45 @@ void lj_record_ins(jit_State *J)
    case BC_FUNCCW:
       lj_ffrecord_func(J);
       break;
+
+   case BC_TRYENTER: {
+      // Inlined frames use a virtual base pointer. Compute the correct base below so
+      // try-enter can still record properly inside inlined calls.
+
+      // Add snapshot before try block to enable on-trace error catching.
+      // This allows the JIT to exit at this point when an exception occurs,
+      // letting the interpreter handle the try-except recovery.
+
+      uint16_t try_index = (uint16_t)bc_d(ins);
+      lj_snap_add(J);
+
+      // Emit call to lj_try_enter(L, Func, Base, TryBlockIndex)
+      // L is implicit (CCI_L flag)
+      // Func is the current function for this frame (may differ from J->fn)
+      // Base must point at the current frame. For inlined frames, REF_BASE is the root base,
+      // so add the baseslot offset to reach the virtual frame base.
+
+      TRef tr_func = getcurrf(J);
+      TRef tr_base = REF_BASE;
+      if (J->baseslot > FRC::MIN_BASESLOT) {
+         IRBuilder ir(J);
+         int32_t slot_delta = (int32_t)J->baseslot - (int32_t)FRC::MIN_BASESLOT;
+         int32_t byte_delta = slot_delta * 8;
+         tr_base = ir.emit(IRT(IR_ADD, IRT_PGC), REF_BASE, ir.kint(byte_delta));
+      }
+      TRef tr_index = lj_ir_kint(J, (int32_t)try_index);
+      lj_ir_call(J, IRCALL_lj_try_enter, tr_func, tr_base, tr_index);
+
+      J->needsnap = 1; // Snapshot after try_enter to create a restore point for trace exits
+      break;
+   }
+
+   case BC_TRYLEAVE: {
+      // Emit call to lj_try_leave(L)
+      lj_ir_call(J, IRCALL_lj_try_leave); // L is implicit (CCI_L flag), no explicit args needed
+      J->needsnap = 1; // Snapshot after try_leave to mark the end of the try block scope
+      break;
+   }
 
    default:
       if (op >= BC__MAX) {

@@ -30,7 +30,7 @@ end
 global function checkOptions(Options)
    if type(Options) != 'table' then
       if Options then
-         error('Invalid option type "' .. type(Options) .. '", expected table.')
+         error(f'Invalid option type "{type(Options)}", expected table.')
       else
          return { }
       end
@@ -47,7 +47,7 @@ global function priority(Input)
       saveOutput = glOutput
       glOutput = { }
       Input()
-      for k,v in ipairs(glOutput) do
+      for _,v in ipairs(glOutput) do
          table.insert(glHeader, v)
       end
       glOutput = saveOutput
@@ -83,7 +83,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Scan Class.fields for a specific FieldName.
 
-global function findClassField(Class, FieldName)
+global function findClassField(Class:table, FieldName:str):table
    assert(Class.fields, 'Class.fields is empty')
 
    for _, f in ipairs(Class.fields) do
@@ -99,10 +99,10 @@ end
 -- From: <something>content</>
 -- To:   <something>content</something>
 
-global function cleanXMLString(str, caller)
+global function cleanXMLString(str:str, caller:str):str
    if str?? then
       if str:find('[<>]') then
-         str = '<ROOT>' .. str .. '</ROOT>'
+         str = f'<ROOT>{str}</ROOT>'
 
          local cleanXMLString_xml
          if not cleanXMLString_xml then
@@ -114,7 +114,7 @@ global function cleanXMLString(str, caller)
             err, clean_str = cleanXMLString_xml.mtSerialise(0, XMF_INCLUDE_SIBLINGS)
             if clean_str then str = clean_str:match('<ROOT>(.-)</ROOT>'):trim() end
          else
-            error('Failed to parse XML for ' .. (caller ?? 'undefined') .. '.')
+            error(f'Failed to parse XML for {caller ?? "undefined"}.')
          end
       end
       return str
@@ -166,7 +166,7 @@ global function getMetaFieldDefinition(Field)
    end
 
    if fl.read?? and fl.write?? then
-      fl.access = fl.read .. '/' .. fl.write
+      fl.access = f'{fl.read}/{fl.write}'
    elseif fl.read?? then
       fl.access = fl.read
    elseif fl.write?? then
@@ -204,26 +204,26 @@ end
 global function resolveSDKPath(Path)
    local sdk_path
    err = ERR_Failed
-   search_list = { }
+   search_list = array<string>
    if not Path then
       search_path = 'CMakeLists.txt'
       limit = 5
       while (err != ERR_Okay) and (limit > 0) do
-         table.insert(search_list, search_path)
+         search_list:push(search_path)
          err, sdk_path = mSys.ResolvePath(search_path)
-         search_path = '../' .. search_path
+         search_path = f'../{search_path}'
          limit -= 1
       end
    else
-      table.insert(search_list, Path .. '/CMakeLists.txt')
-      err, sdk_path = mSys.ResolvePath(Path .. '/CMakeLists.txt')
+      search_list:push(f'{Path}/CMakeLists.txt')
+      err, sdk_path = mSys.ResolvePath(f'{Path}/CMakeLists.txt')
    end
 
    if err is ERR_Okay then
       sdk_path = sdk_path:match("(.+)CMakeLists%.txt")
    else
       msg = ''
-      for _, path in ipairs(search_list) do
+      for path in values(search_list) do
          msg ..= path .. '\n'
       end
       print('Unable to find CMakeLists.txt after searching the following paths:\n' .. msg)
@@ -231,4 +231,34 @@ global function resolveSDKPath(Path)
    end
 
    mSys.SetVolume('sdk', sdk_path)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Decompile an IDL definition and return a table of constants.
+
+global function parseIDL(ModuleName)
+   constants = { }
+   m = obj.new('module', { name=ModuleName })
+   defs = m.defs
+   if not defs then 
+      verbose(f'No definitions found for module "{ModuleName}".')
+      return { }
+   end
+
+   matcher = regex.new("c\\.([A-Z]+):(.+)")
+   match_list = matcher.search(defs)
+   
+   for i=0,#match_list-1 do
+      prefix = match_list[i][1]
+      extract = match_list[i][2]
+      constants[prefix] = { }
+      split_values = extract:split(',')
+      for v in values(split_values) do
+         pair = v:split('=')
+         constants[prefix][pair[0]] = tonumber(pair[1])
+      end
+   end
+
+   verbose(f'Parsed {#constants} constant groups from module "{ModuleName}".')
+   return constants
 end

@@ -609,10 +609,6 @@ void get_line(objScript *Self, int Line, STRING Buffer, int Size)
 
 [[nodiscard]] ERR load_include(objScript *Script, CSTRING IncName)
 {
-   pf::Log log(__FUNCTION__);
-
-   log.branch("Definition: %s", IncName);
-
    ERR error = ERR::Okay;
 
    std::unique_lock lock(glConstantMutex); // Required to update the constant registry
@@ -626,6 +622,9 @@ void get_line(objScript *Self, int Line, STRING Buffer, int Size)
    }
 
    if (process_constants) {
+      pf::Log log(__FUNCTION__);
+      log.branch("Definition: %s", IncName);
+
       AdjustLogLevel(1);
 
          objModule::create module = { fl::Name(IncName) };

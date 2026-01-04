@@ -122,9 +122,6 @@ LJLIB_CF(jit_status)
 
 LJLIB_CF(jit_attach)
 {
-#ifdef LUAJIT_DISABLE_VMEVENT
-   luaL_error(L, "vmevent API disabled");
-#else
    GCfunc* fn = lj_lib_checkfunc(L, 1);
    GCstr* s = lj_lib_optstr(L, 2);
    luaL_findtable(L, LUA_REGISTRYINDEX, LJ_VMEVENTS_REGKEY, LJ_VMEVENTS_HSIZE);
@@ -145,7 +142,6 @@ LJLIB_CF(jit_attach)
          }
       }
    }
-#endif
    return 0;
 }
 

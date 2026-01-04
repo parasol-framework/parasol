@@ -4,7 +4,7 @@
 @BeforeEach(hotpath=true)
 function enforce_hotpath() end
 
-@Test function testEllipsisBasic()
+@Test function EllipsisBasic()
    function variadic(…)
       return {…}
    end
@@ -16,7 +16,7 @@ function enforce_hotpath() end
    assert(result[2] is 3, "Third element should be 3")
 end
 
-@Test function testEllipsisNoArgs()
+@Test function EllipsisNoArgs()
    function variadic(…)
       return {…}
    end
@@ -25,7 +25,7 @@ end
    assert(#result is 0, "Variadic with no args should have 0 elements")
 end
 
-@Test function testEllipsisSingleArg()
+@Test function EllipsisSingleArg()
    function variadic(…)
       return {…}
    end
@@ -35,7 +35,7 @@ end
    assert(result[0] is "hello", "First element should be 'hello'")
 end
 
-@Test function testEllipsisMultipleTypes()
+@Test function EllipsisMultipleTypes()
    function variadic(…)
       return {…}
    end
@@ -49,7 +49,7 @@ end
    assert(result[3] is true, "Fourth element should be true")
 end
 
-@Test function testEllipsisWithNamedParams()
+@Test function EllipsisWithNamedParams()
    function variadic(a, b, …)
       return a, b, {…}
    end
@@ -63,7 +63,7 @@ end
    assert(rest[2] is 50, "Rest[2] should be 50")
 end
 
-@Test function testEllipsisForwarding()
+@Test function EllipsisForwarding()
    function inner(…)
       return {…}
    end
@@ -79,7 +79,7 @@ end
    assert(result[2] is "c", "Element 2 should be 'c'")
 end
 
-@Test function testEllipsisUnpacking()
+@Test function EllipsisUnpacking()
    function variadic(…)
       count = 0
       for _ in ipairs({…}) do
@@ -92,7 +92,7 @@ end
    assert(result is 5, "Count of 5 args should be 5")
 end
 
-@Test function testEllipsisInStringFormat()
+@Test function EllipsisInStringFormat()
    function format_args(fmt, …)
       return string.format(fmt, …)
    end
@@ -101,7 +101,7 @@ end
    assert(result is "Number: 42, String: test", "Format with variadic args should work")
 end
 
-@Test function testAsciiEllipsisMixedWithUnicode()
+@Test function AsciiEllipsisMixedWithUnicode()
    -- Test that both ASCII ... and Unicode … can coexist
    function ascii_variadic(...)
       return {...}

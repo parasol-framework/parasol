@@ -39,6 +39,7 @@ global function parseAction(Class:table, Extract:str)
 
    errors = Extract:match('\n%-ERRORS%-\n(.-)%-END%-')
    if errors?? then
+      error_list = glCoreConstants['ERR']
       action.results = { }
 
       for line in string.gmatch(errors, '(.-)\n') do
@@ -46,14 +47,15 @@ global function parseAction(Class:table, Extract:str)
 
          ecode, comment = line:match('(%a-):%s+(.+)')
          if ecode then
-            table.insert(action.results, { code = _G['ERR_' .. ecode], codeName = ecode, msg = comment })
+            table.insert(action.results, { code = error_list[ecode], codeName = ecode, msg = comment })
          else
             ecode = line:match('(%a+):?')
             if ecode?? then
-               table.insert(action.results, { code = _G['ERR_' .. ecode], codeName = ecode, msg = mSys.GetErrorMsg(_G['ERR_' .. ecode]) })
+               table.insert(action.results, { code = error_list[ecode], codeName = ecode, msg = mSys.GetErrorMsg(error_list[ecode]) })
             end
         end
       end
+
 
       table.sort(action.results, function(a,b) return a.code < b.code end)
    end
@@ -152,6 +154,7 @@ global function parseMethod(Class:table, Extract:str)
 
    errors = Extract:match('\n%-ERRORS%-\n(.-)%-END%-')
    if errors?? then
+      error_list = glCoreConstants['ERR']
       method.results = { }
 
       for line in string.gmatch(errors, '(.-)\n') do
@@ -159,11 +162,11 @@ global function parseMethod(Class:table, Extract:str)
 
          ecode, comment = line:match('(%a-):%s+(.+)')
          if ecode then
-            table.insert(method.results, { code = _G['ERR_' .. ecode], codeName = ecode, msg = comment })
+            table.insert(method.results, { code = error_list[ecode], codeName = ecode, msg = comment })
          else
             ecode = line:match('(%a+):?')
             if ecode?? then
-               table.insert(method.results, { code = _G['ERR_' .. ecode], codeName = ecode, msg = mSys.GetErrorMsg(_G['ERR_' .. ecode]) })
+               table.insert(method.results, { code = error_list[ecode], codeName = ecode, msg = mSys.GetErrorMsg(error_list[ecode]) })
             end
          end
       end
@@ -244,7 +247,7 @@ global function parseClassFields(Class:table, ClientSpec:str)
    -- NB: FieldArray is not output because as yet fields (including virtual fields) cannot be accurately
    -- described without the developer writing a custom field configuration in C.
 
-   fdef = 'static const struct FieldArray cl' .. Class.name .. 'Fields[] = {\n'
+   fdef = f'static const struct FieldArray cl{Class.name}Fields[] = {{\n'
    Class.longestType = 0
    name_len = 0
    Class.longestFieldType = 0  -- Holds the longest field + type string
@@ -270,7 +273,7 @@ global function parseClassFields(Class:table, ClientSpec:str)
 
          assert(f.fullType??, 'The fullType is not defined for field ' .. tostring(f.name))
 
-         fdef ..= "   { \"" .. f.name .. "\", " .. f.fullType.fd .. ", 0, nullptr, nullptr },\n"
+         fdef ..= f"   {{ \"{f.name}\", {f.fullType.fd}, 0, nullptr, nullptr }},\n"
       end
    end
    fdef ..= '};\n\n'
@@ -284,10 +287,10 @@ end
 global function parseSourceFiles()
    if glFeedback is 'verbose' then print('Processing source files...') end
 
-   srcFiles = { }
+   srcFiles = array<string>
 
-   for i=1, arg('files:size') ?? 0 do
-      table.insert(srcFiles, arg('files(' .. (i-1) .. ')'))
+   for i=0, arg('files:size', 0)-1 do
+      srcFiles:push(arg('files(' .. i .. ')'))
    end
 
    if #srcFiles < 1 then
@@ -295,7 +298,7 @@ global function parseSourceFiles()
       return
    end
 
-   for _, path in pairs(srcFiles) do
+   for path in values(srcFiles) do
       -- Process --IDL_BEGIN/END-- sections, which allow the developer to embed FDL functions in the source code.
 
       local idlExtract, extract
@@ -397,6 +400,7 @@ global function parseFunction(extract)
 
    errors = extract:match("\n%-ERRORS%-\n(.-)%-END%-")
    if errors?? then
+      error_list = glCoreConstants['ERR']
       def.result = cType({ type="error", values={ }, isFunction=true }, "Function " .. name)
 
       for line in string.gmatch(errors, "(.-)\n") do
@@ -404,7 +408,7 @@ global function parseFunction(extract)
 
          local ecode, comment = line:match("(%a-):%s+(.+)")
          if ecode?? and comment?? then
-            codeValue = _G['ERR_' .. ecode]
+            codeValue = error_list[ecode]
             if not codeValue then
                print('Error code "' .. ecode .. '" referenced in function ' .. name .. '() is invalid.')
             else
@@ -413,7 +417,7 @@ global function parseFunction(extract)
          else
             ecode = line:match("(%a+):?")
             if ecode?? then
-               codeValue = _G['ERR_' .. ecode]
+               codeValue = error_list[ecode]
                if not codeValue then
                   print('Error code "' .. ecode .. '" referenced in function ' .. name .. '() is invalid.')
                else

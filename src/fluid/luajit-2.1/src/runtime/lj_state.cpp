@@ -150,19 +150,18 @@ void lj_state_shrinkstack(lua_State *L, MSize used)
 void LJ_FASTCALL lj_state_growstack(lua_State *L, MSize need)
 {
    MSize n;
+   lj_assertL(need < 1024, "Stack growth request exceeds reasonable 1K limit");
+
    if (L->stacksize > LJ_STACK_MAXEX)  //  Overflow while handling overflow?
       lj_err_throw(L, LUA_ERRERR);
    n = L->stacksize + need;
-   if (n > LJ_STACK_MAX) {
-      n += 2 * LUA_MINSTACK;
-   }
+   if (n > LJ_STACK_MAX) n += 2 * LUA_MINSTACK;
    else if (n < 2 * L->stacksize) {
       n = 2 * L->stacksize;
       if (n >= LJ_STACK_MAX) n = LJ_STACK_MAX;
    }
    resizestack(L, n);
-   if (L->stacksize > LJ_STACK_MAXEX)
-      lj_err_msg(L, ErrMsg::STKOV);
+   if (L->stacksize > LJ_STACK_MAXEX) lj_err_msg(L, ErrMsg::STKOV);
 }
 
 //********************************************************************************************************************
@@ -215,15 +214,9 @@ static TValue * cpluaopen(lua_State *Lua, lua_CFunction dummy, void* ud)
 
 static void close_state(lua_State *L)
 {
-   global_State* g = G(L);
-   if (L->parser_diagnostics) {
-      delete (ParserDiagnostics*)L->parser_diagnostics;
-      L->parser_diagnostics = nullptr;
-   }
-   if (L->parser_tips) {
-      delete L->parser_tips;
-      L->parser_tips = nullptr;
-   }
+   global_State *g = G(L);
+   if (L->parser_diagnostics) { delete (ParserDiagnostics*)L->parser_diagnostics; L->parser_diagnostics = nullptr; }
+   if (L->parser_tips) { delete L->parser_tips; L->parser_tips = nullptr; }
    funcnames_free(g);
    lj_func_closeuv(L, tvref(L->stack));
 
@@ -231,8 +224,7 @@ static void close_state(lua_State *L)
    GarbageCollector collector = gc(g);
    collector.freeAll();
 
-   lj_assertG(gcref(g->gc.root) == obj2gco(L),
-      "main thread is not first GC object");
+   lj_assertG(gcref(g->gc.root) == obj2gco(L), "main thread is not first GC object");
    lj_assertG(g->str.num == 0, "leaked %d strings", g->str.num);
    lj_trace_freestate(g);
 #if LJ_HASFFI
@@ -241,12 +233,12 @@ static void close_state(lua_State *L)
    lj_str_freetab(g);
    lj_buf_free(g, &g->tmpbuf);
    lj_mem_freevec(g, tvref(L->stack), L->stacksize, TValue);
-#if LJ_64
+
    if (mref<uint32_t>(g->gc.lightudseg)) {
       MSize segnum = g->gc.lightudnum ? (2 << lj_fls(g->gc.lightudnum)) : 2;
       lj_mem_freevec(g, mref<uint32_t>(g->gc.lightudseg), segnum, uint32_t);
    }
-#endif
+
    lj_assertG(g->gc.total == sizeof(GG_State),
       "memory leak of %lld bytes",
       (long long)(g->gc.total - sizeof(GG_State)));
@@ -290,6 +282,7 @@ extern lua_State* lua_newstate(lua_Alloc allocf, void* allocd)
    L->marked = LJ_GC_WHITE0 | LJ_GC_FIXED | LJ_GC_SFIXED;  //  Prevent free.
    L->dummy_ffid = FF_C;
    setnilV(&L->close_err);  // Initialize __close error to nil
+   L->try_handler_pc = nullptr;
    setmref(L->glref, g);
    g->gc.currentwhite = LJ_GC_WHITE0 | LJ_GC_FIXED;
    g->strempty.marked = LJ_GC_WHITE0;
@@ -378,19 +371,34 @@ extern void lua_close(lua_State *L)
 
 //********************************************************************************************************************
 
-lua_State* lj_state_new(lua_State *L)
+lua_State * lj_state_new(lua_State *L)
 {
    lua_State *L1 = lj_mem_newobj(L, lua_State);
-   L1->gct = ~LJ_TTHREAD;
+
+   auto copy_a = L1->nextgc; // Copy any pre-configured values prior to placement-new.
+   auto copy_b = L1->marked; 
+   auto copy_c = L1->gct;
+  
+   new (L1) lua_State;
+   
+   L1->nextgc = copy_a; // Restore copied values.
+   L1->marked = copy_b; 
+   L1->gct    = copy_c; 
+
+   L1->gct        = ~LJ_TTHREAD;
    L1->dummy_ffid = FF_C;
-   L1->status = LUA_OK;
-   L1->stacksize = 0;
+   L1->status     = LUA_OK;
+   L1->stacksize  = 0;
    setmref(L1->stack, nullptr);
-   L1->cframe = nullptr;
+   L1->cframe             = nullptr;
    L1->parser_diagnostics = nullptr;
-   L1->parser_tips = nullptr;
+   L1->parser_tips        = nullptr;
    setnilV(&L1->close_err);  // Initialize __close error to nil
+   L1->try_stack.depth    = 0;
+   L1->try_handler_pc     = nullptr;
+
    // NOBARRIER: The lua_State is new (marked white).
+
    setgcrefnull(L1->openupval);
    setmrefr(L1->glref, L->glref);
    setgcrefr(L1->env, L->env);
@@ -405,16 +413,13 @@ void LJ_FASTCALL lj_state_free(global_State* g, lua_State *L)
 {
    lj_assertG(L != mainthread(g), "free of main thread");
    if (obj2gco(L) == gcref(g->cur_L)) setgcrefnull(g->cur_L);
-   if (L->parser_diagnostics) {
-      delete (ParserDiagnostics*)L->parser_diagnostics;
-      L->parser_diagnostics = nullptr;
-   }
-   if (L->parser_tips) {
-      delete L->parser_tips;
-      L->parser_tips = nullptr;
-   }
+   
+   if (L->parser_diagnostics) { delete (ParserDiagnostics*)L->parser_diagnostics; L->parser_diagnostics = nullptr; }
+   if (L->parser_tips) { delete L->parser_tips; L->parser_tips = nullptr; }
+
    lj_func_closeuv(L, tvref(L->stack));
    lj_assertG(gcref(L->openupval) == nullptr, "stale open upvalues");
    lj_mem_freevec(g, tvref(L->stack), L->stacksize, TValue);
+   L->~lua_State();
    lj_mem_freet(g, L);
 }

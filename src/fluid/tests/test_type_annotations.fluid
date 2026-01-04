@@ -1,5 +1,8 @@
 -- Regression tests for Fluid parameter type annotations and static analysis helpers
 
+@BeforeEach(hotpath=true)
+function enforce_hotpath() end
+
 -- Compile a function with the provided signature and return the callable
 function parameter_names(Signature)
    names = {}

@@ -83,6 +83,15 @@
 #include "lj_tab.h"
 #include "lj_gc.h"
 
+// For prvFluid access in try-except handling
+#include "../../defs.h"
+
+// Forward declarations for internal try-except functions that use Parasol's ERR type.
+// These are defined in fluid_functions.cpp.
+
+extern "C" bool lj_try_find_handler(lua_State *, const TryFrame *, ERR, const BCIns **, BCREG *);
+extern "C" void lj_try_build_exception_table(lua_State *, ERR, CSTRING, int, BCREG);
+
 // Error message strings.
 LJ_DATADEF CSTRING lj_err_allmsg =
 #define ERRDEF(name, msg)  msg "\0"
@@ -154,34 +163,117 @@ static TValue* unwind_close_handlers(lua_State *L, TValue* frame, TValue* errobj
 }
 
 //********************************************************************************************************************
-// Call __close handlers for all frames from 'from' down to 'to'.
-// This must be called BEFORE L->base is modified during unwinding.
-// If a __close handler throws, the new error replaces the original at L->top - 1.
+// Close <close> variables that were created after the try block started.  Only closes slots >= min_slot_index
+// (slots created after the try started).  min_slot_index is the slot index (relative to function base) above which
+// to close.  Returns the error object to propagate (may be updated if a __close handler throws).
 
-static void unwind_close_all(lua_State *L, TValue *from, TValue *to)
+static TValue* unwind_close_try_block(lua_State *L, TValue* frame, TValue* errobj, int min_slot_index)
 {
-   TValue *errobj = (L->top > to) ? L->top - 1 : nullptr;
-   TValue *frame = from;
+   GCfunc *fn = frame_func(frame);
+   if (!isluafunc(fn)) return errobj;
+
+   GCproto *pt = funcproto(fn);
+   uint64_t closeslots = pt->closeslots;
+   if (closeslots IS 0) return errobj;
+
+   lj_assertL(min_slot_index >= 0, "unwind_close_try_block: min_slot_index negative (%d)", min_slot_index);
+   lj_assertL(min_slot_index <= LJ_MAX_SLOTS, "unwind_close_try_block: min_slot_index too large (%d)", min_slot_index);
+
+   // Set _G.__close_err for bytecode-based handlers
+
+   GCtab *env = tabref(L->env);
+   if (env) {
+      GCstr *key = lj_str_newlit(L, "__close_err");
+      TValue *slot = lj_tab_setstr(L, env, key);
+      if (errobj) copyTV(L, slot, errobj);
+      else setnilV(slot);
+      lj_gc_anybarriert(L, env);
+   }
+
+   if (errobj) copyTV(L, &L->close_err, errobj);
+   else setnilV(&L->close_err);
+
+   // Call lj_meta_close for each slot with <close> attribute in LIFO order.
+   // Only process slots >= min_slot_index (created inside the try block)
+
+   TValue *base = frame + 1;
+   lj_assertL(frame >= tvref(L->stack) and frame < tvref(L->maxstack),
+      "unwind_close_try_block: frame out of range (%p)", frame);
+   lj_assertL(base >= tvref(L->stack) and base <= tvref(L->maxstack),
+      "unwind_close_try_block: base out of range (%p)", base);
+
+   TValue *current_err = errobj;
+   for (int slot = 63; slot >= min_slot_index; slot--) {
+      if (closeslots & (1ULL << slot)) {
+         TValue *o = base + slot;
+
+         // Only close if: slot is within valid stack range and not already nil/false
+
+         if (o >= base and o < L->top and !tvisnil(o) and !tvisfalse(o)) {
+            int errcode = lj_meta_close(L, o, current_err);
+            if (errcode != 0) {
+               current_err = L->top - 1;
+               if (env) {
+                  GCstr *key = lj_str_newlit(L, "__close_err");
+                  TValue *slot_tv = lj_tab_setstr(L, env, key);
+                  copyTV(L, slot_tv, current_err);
+                  lj_gc_anybarriert(L, env);
+               }
+               copyTV(L, &L->close_err, current_err);
+            }
+         }
+      }
+   }
+
+   // Clear __close_err after processing
+
+   if (env) {
+      GCstr *key = lj_str_newlit(L, "__close_err");
+      TValue *slot_tv = lj_tab_setstr(L, env, key);
+      setnilV(slot_tv);
+   }
+
+   setnilV(&L->close_err);
+   return current_err;
+}
+
+//********************************************************************************************************************
+// Call __close handlers for all frames from 'from' down to 'to'.  This must be called BEFORE L->base is modified
+// during unwinding.  If a __close handler throws, the new error replaces the original at L->top - 1.
+
+static void unwind_close_all(lua_State *L, TValue *From, TValue *To)
+{
+   TValue *errobj = (L->top > To) ? L->top - 1 : nullptr;
+   TValue *frame = From;
    int count = 0;
+
    // Use LUAI_MAXCSTACK as the safety limit - this matches the maximum call depth
    // that LuaJIT enforces, so any valid frame chain should terminate well before this.
    // The limit guards against stack corruption causing infinite loops.
-   while (frame >= to and count < LUAI_MAXCSTACK) {
+
+   while (frame >= To and count < LUAI_MAXCSTACK) {
       count++;
+
       // unwind_close_handlers may return a different error if a __close threw
-      TValue* new_err = unwind_close_handlers(L, frame, errobj);
+
+      TValue *new_err = unwind_close_handlers(L, frame, errobj);
       if (new_err != errobj and new_err != nullptr and errobj != nullptr) {
          // A __close handler threw - update the error at the original location
          copyTV(L, errobj, new_err);
       }
+
       errobj = new_err;  // Use the (possibly updated) error for subsequent handlers
+
       // Move to previous frame based on type
+
       int ftype = frame_type(frame);
       if (ftype IS FRAME_LUA or ftype IS FRAME_LUAP) frame = frame_prevl(frame);
       else frame = frame_prevd(frame);
    }
+
    // If we hit the limit, the frame chain is likely corrupt. Log an assertion
    // in debug builds to help diagnose the issue.
+
    lj_assertL(count < LUAI_MAXCSTACK, "frame chain exceeded LUAI_MAXCSTACK during __close unwinding");
 
    // Clear __close_err after all handlers run
@@ -197,14 +289,246 @@ static void unwind_close_all(lua_State *L, TValue *from, TValue *to)
 //********************************************************************************************************************
 // Unwind Lua stack and move error message to new top.
 
-LJ_NOINLINE static void unwindstack(lua_State *L, TValue *top)
+LJ_NOINLINE static void unwindstack(lua_State *L, TValue *Top)
 {
-   lj_func_closeuv(L, top);
-   if (top < L->top - 1) {
-      copyTV(L, top, L->top - 1);
-      L->top = top + 1;
+   lj_func_closeuv(L, Top);
+   if (Top < L->top - 1) {
+      copyTV(L, Top, L->top - 1);
+      L->top = Top + 1;
    }
    lj_state_relimitstack(L);
+}
+
+//********************************************************************************************************************
+// Sentinel value returned by err_unwind when a try-except handler is found.
+// The caller should re-enter the VM at L->try_handler_pc.
+
+#define ERR_TRYHANDLER ((void*)(intptr_t)-2)
+
+//********************************************************************************************************************
+// Check if a try handler exists for the current error.  If found, returns true but does NOT modify L->base, L->top,
+// or the try stack.  The actual state modification is done by setup_try_handler().
+
+static bool check_try_handler(lua_State *L, int errcode)
+{
+   if (L->try_stack.depth IS 0) return false;
+
+   // Don't intercept errors from JIT-compiled code (jit_base set during trace execution)
+   // 2026-01-03: Suspect this check is redundant, hence the warning.  Remove if not being triggered.
+
+   if (tvref(G(L)->jit_base)) {
+      pf::Log(__FUNCTION__).warning("Skipping try handler check: error from JIT-compiled code");
+      return false;
+   }
+
+   // Don't intercept errors from C frames without Lua frames (like lj_vm_cpcall used for trace recording). These
+   // protected calls should handle errors first.  Walk the cframe chain to check for nres < 0 which indicates
+   // "C frame without Lua frame".
+
+   {
+      void *cf = L->cframe;
+      TryFrame *try_frame = &L->try_stack.frames[L->try_stack.depth - 1];
+      TValue *try_base = restorestack(L, try_frame->frame_base);
+
+      while (cf) {
+         if (auto nres = cframe_nres(cframe_raw(cf)); nres < 0) {
+            // This is a C frame without Lua frame (e.g., trace recording cpcall).
+            // Check if it's above the try block by comparing saved top position.
+            TValue *cf_top = restorestack(L, -nres);
+            if (cf_top >= try_base) return false; // The cpcall is above/at the try block - let it handle the error
+         }
+         cf = cframe_prev(cf);
+      }
+   }
+
+   // Validate try stack depth is within bounds
+   lj_assertL(L->try_stack.depth <= LJ_MAX_TRY_DEPTH, "check_try_handler: try_stack depth %u exceeds LJ_MAX_TRY_DEPTH", L->try_stack.depth);
+
+   TryFrame *try_frame = &L->try_stack.frames[L->try_stack.depth - 1];
+
+   lj_assertL(try_frame->func != nullptr, "check_try_handler: try_frame->func is null");
+
+   // Check if there's a protected call frame (FRAME_CP, FRAME_PCALL, FRAME_PCALLH) between
+   // the current error and the try block. If so, let the protected call handle the error first.
+   // This ensures that lua_pcall() inside functions like exec() works correctly.
+   //
+   // We walk the Lua frame chain looking for protected frames that are "above" the try block
+   // (i.e., started after the try block).
+
+   {
+      TValue *pf = L->base - 1;
+      TValue *try_base = restorestack(L, try_frame->frame_base);
+
+      while (pf > tvref(L->stack) + LJ_FR2) {
+         int pf_type = frame_typep(pf);
+
+         // Check if this is a protected frame (C protected or Lua pcall)
+         if (pf_type IS FRAME_CP or pf_type IS FRAME_PCALL or pf_type IS FRAME_PCALLH) {
+            // This protected frame is above the try block's base - it should handle the error first
+            if (pf >= try_base) return false;
+         }
+
+         // If we've reached the try block's function, stop searching
+
+         GCfunc *func = frame_func(pf);
+         if (func IS try_frame->func) break;  // Reached the try frame's function
+
+         // Move to previous frame based on frame type
+
+         if (pf_type IS FRAME_LUA or pf_type IS FRAME_LUAP) pf = frame_prevl(pf);
+         else pf = frame_prevd(pf);
+      }
+   }
+
+   // Verify try frame is in current call chain by walking up the frame chain.  The error may have been raised from
+   // a C function (like error()) so we need to check if the try block's function is anywhere in the call chain.
+
+   TValue *frame = L->base - 1;
+   bool found_try_func = false;
+
+   // Validate initial frame pointer is within stack bounds
+   lj_assertL(frame >= tvref(L->stack), "check_try_handler: initial frame below stack start");
+
+   while (frame > tvref(L->stack) + LJ_FR2) {
+      GCfunc *func = frame_func(frame);
+      if (func IS try_frame->func) {
+         found_try_func = true;
+         break;
+      }
+      frame = frame_prev(frame);
+   }
+
+   if (not found_try_func) return false;
+
+   // Extract error code from prvFluid if available
+
+   ERR err_code = ERR::Exception;  // Default for Lua errors
+   if (L->script) {
+      auto prv = (prvFluid *)L->script->ChildPrivate;
+      if (prv and prv->CaughtError >= ERR::ExceptionThreshold) err_code = prv->CaughtError;
+   }
+
+   const BCIns *handler_pc = nullptr;
+   BCREG exception_reg = 0xFF;
+
+   if (lj_try_find_handler(L, try_frame, err_code, &handler_pc, &exception_reg)) {
+      // Validate handler PC was set
+      lj_assertL(handler_pc != nullptr, "check_try_handler: handler found but handler_pc is null");
+
+      // Just record that a handler exists - don't modify state yet
+      L->try_handler_pc = handler_pc;
+      return true;
+   }
+
+   return false;
+}
+
+//********************************************************************************************************************
+// Called to actually set up the try handler state before resuming execution.
+// This should be called right before jumping to the handler, NOT during search phase.
+
+extern "C" void setup_try_handler(lua_State *L)
+{
+   if (L->try_stack.depth IS 0) return;
+
+   lj_assertL(L->try_stack.depth <= LJ_MAX_TRY_DEPTH, "setup_try_handler: try_stack depth %u exceeds LJ_MAX_TRY_DEPTH", L->try_stack.depth);
+
+   TryFrame *try_frame = &L->try_stack.frames[L->try_stack.depth - 1];
+
+   lj_assertL(try_frame->func != nullptr, "setup_try_handler: try_frame->func is null");
+
+   // Extract error code from prvFluid if available
+   ERR err_code = ERR::Exception;
+   if (L->script) {
+      auto prv = (prvFluid *)L->script->ChildPrivate;
+      if (prv and prv->CaughtError >= ERR::ExceptionThreshold) {
+         err_code = prv->CaughtError;
+      }
+   }
+
+   const BCIns *handler_pc = nullptr;
+   BCREG exception_reg = 0xFF;
+
+   if (not lj_try_find_handler(L, try_frame, err_code, &handler_pc, &exception_reg)) {
+      // This should not happen if check_try_handler returned true - assert in debug builds
+      lj_assertL(false, "setup_try_handler: no handler found but check_try_handler returned true");
+      return;
+   }
+
+   // Validate handler PC
+   lj_assertL(handler_pc != nullptr, "setup_try_handler: handler found but handler_pc is null");
+
+   // Get error message before restoring stack
+   CSTRING error_msg = nullptr;
+   if (L->top > L->base and tvisstr(L->top - 1)) {
+      error_msg = strVdata(L->top - 1);
+   }
+
+   // Extract line number from error message (format: "filename:line: message")
+   int line = 0;
+   if (error_msg) {
+      CSTRING colon1 = strchr(error_msg, ':');
+      if (colon1) {
+         // Check if next character starts a number (line number)
+         CSTRING num_start = colon1 + 1;
+         if (*num_start >= '0' and *num_start <= '9') {
+            line = int(strtol(num_start, nullptr, 10));
+         }
+      }
+   }
+
+   // Convert offsets back to pointers using restorestack()
+   TValue *saved_base = restorestack(L, try_frame->frame_base);
+   TValue *saved_top = restorestack(L, try_frame->saved_top);
+
+   // Validate restored pointers are within stack bounds
+   lj_assertL(saved_base >= tvref(L->stack), "setup_try_handler: saved_base below stack start");
+   lj_assertL(saved_base <= tvref(L->maxstack), "setup_try_handler: saved_base above maxstack");
+   lj_assertL(saved_top >= tvref(L->stack), "setup_try_handler: saved_top below stack start");
+   lj_assertL(saved_top <= tvref(L->maxstack), "setup_try_handler: saved_top above maxstack");
+   lj_assertL(saved_top >= saved_base, "setup_try_handler: saved_top below saved_base");
+   lj_assertL(try_frame->saved_nactvar <= LJ_MAX_SLOTS,
+      "setup_try_handler: saved_nactvar too large (%u)", unsigned(try_frame->saved_nactvar));
+
+   // Call __close handlers for <close> locals created inside the try block. The compiler records the number of
+   // active slots at try entry (first free register), so slots >= this index were created inside the try block.
+
+   TValue *errobj = (L->top > saved_top) ? L->top - 1 : nullptr;
+   TValue *try_frame_ptr = saved_base - 1;  // Frame pointer for the function containing try
+   int min_slot_index = int(try_frame->saved_nactvar);  // Slots >= this were created inside try
+   TValue *final_err = unwind_close_try_block(L, try_frame_ptr, errobj, min_slot_index);
+
+   // If a __close handler threw, the error was updated. Re-extract the error message.
+   if (final_err and final_err != errobj and tvisstr(final_err)) {
+      error_msg = strVdata(final_err);
+      // Re-extract line number from new error message
+      line = 0;
+      if (error_msg) {
+         CSTRING colon1 = strchr(error_msg, ':');
+         if (colon1) {
+            CSTRING num_start = colon1 + 1;
+            if (*num_start >= '0' and *num_start <= '9') {
+               line = int(strtol(num_start, nullptr, 10));
+            }
+         }
+      }
+   }
+
+   lj_func_closeuv(L, saved_top); // Close upvalues and restore stack state
+   L->base = saved_base;
+   L->top = saved_top;
+
+   L->try_stack.depth--; // Pop try frame
+
+   // Build exception table and place in handler's register
+   lj_try_build_exception_table(L, err_code, error_msg, line, exception_reg);
+
+   // Reset CaughtError so it doesn't leak to subsequent exceptions
+
+   auto prv = (prvFluid *)L->script->ChildPrivate;
+   prv->CaughtError = ERR::Okay;
+
+   L->try_handler_pc = handler_pc; // Stash handler PC for VM re-entry (already set, but confirm)
 }
 
 //********************************************************************************************************************
@@ -212,12 +536,20 @@ LJ_NOINLINE static void unwindstack(lua_State *L, TValue *top)
 
 extern void * err_unwind(lua_State *L, void *stopcf, int errcode)
 {
-   TValue* frame = L->base - 1;
-   void* cf = L->cframe;
+   // Check for try-except handlers first.
+   // On Windows, errcode is 0 during search phase and non-zero during unwind phase.
+   // We need to check for try handlers even during search phase (errcode=0).
+   // Use LUA_ERRRUN as default for search phase.
+
+   int try_errcode = errcode ? errcode : LUA_ERRRUN;
+   if (check_try_handler(L, try_errcode)) return ERR_TRYHANDLER;
+
+   TValue *frame = L->base - 1;
+   void *cf = L->cframe;
    while (cf) {
       int32_t nres = cframe_nres(cframe_raw(cf));
       if (nres < 0) {  // C frame without Lua frame?
-         TValue* top = restorestack(L, -nres);
+         TValue *top = restorestack(L, -nres);
          if (frame < top) {  // Frame reached?
             if (errcode) {
                unwind_close_all(L, L->base - 1, top);
@@ -395,6 +727,18 @@ LJ_FUNCA int lj_err_unwind_dwarf(int version, int actions, uint64_t uexclass, _U
       cf = err_unwind(L, cf, errcode);
       if ((actions & _UA_FORCE_UNWIND)) {
          return _URC_CONTINUE_UNWIND;
+      }
+      else if (cf IS ERR_TRYHANDLER) {
+         // Try-except handler found. setup_try_handler() prepares the Lua state:
+         // - Restores L->base and L->top to try block entry state
+         // - Closes upvalues and <close> variables created inside the try block
+         // - Pops the try frame from the try stack
+         // - Builds exception table and places it in the handler's register
+         // - Sets L->try_handler_pc to point to the handler bytecode
+         setup_try_handler(L);
+         _Unwind_SetGR(ctx, LJ_TARGET_EHRETREG, errcode);
+         _Unwind_SetIP(ctx, (uintptr_t)lj_vm_resume_try_eh);
+         return _URC_INSTALL_CONTEXT;
       }
       else if (cf) {
          _Unwind_SetGR(ctx, LJ_TARGET_EHRETREG, errcode);
@@ -694,7 +1038,19 @@ LJ_NOINLINE void LJ_FASTCALL lj_err_throw(lua_State *L, int errcode)
 
    {
       void* cf = err_unwind(L, nullptr, errcode);
-      if (cframe_unwind_ff(cf))
+      if (cf IS ERR_TRYHANDLER) {
+         // A try-except handler was found. check_try_handler() only recorded
+         // the handler PC. Now set up the actual state before resuming:
+         // - Restore L->base and L->top to try block entry state
+         // - Close upvalues above the restored top
+         // - Pop the try frame
+         // - Build exception table and place in handler's register
+         setup_try_handler(L);
+
+         // Resume execution at the handler PC using the VM entry point.
+         lj_vm_resume_try(cframe_raw(L->cframe));
+      }
+      else if (cframe_unwind_ff(cf))
          lj_vm_unwind_ff(cframe_raw(cf));
       else
          lj_vm_unwind_c(cframe_raw(cf), errcode);
@@ -722,51 +1078,51 @@ LJ_NOINLINE void lj_err_mem(lua_State *L)
 
 //********************************************************************************************************************
 // Find error function for runtime errors. Requires an extra stack traversal.
+
 static ptrdiff_t finderrfunc(lua_State *L)
 {
    cTValue* frame = L->base - 1, * bot = tvref(L->stack) + LJ_FR2;
    void* cf = L->cframe;
    while (frame > bot and cf) {
       while (cframe_nres(cframe_raw(cf)) < 0) {  // cframe without frame?
-         if (frame >= restorestack(L, -cframe_nres(cf)))
-            break;
+         if (frame >= restorestack(L, -cframe_nres(cf))) break;
          if (cframe_errfunc(cf) >= 0)  //  Error handler not inherited (-1)?
             return cframe_errfunc(cf);
          cf = cframe_prev(cf);  //  Else unwind cframe and continue searching.
-         if (cf == nullptr)
-            return 0;
+         if (cf == nullptr) return 0;
       }
+
       switch (frame_typep(frame)) {
-      case FRAME_LUA:
-      case FRAME_LUAP:
-         frame = frame_prevl(frame);
-         break;
-      case FRAME_C:
-         cf = cframe_prev(cf);
-         // fallthrough
-      case FRAME_VARG:
-         frame = frame_prevd(frame);
-         break;
-      case FRAME_CONT:
-         if (frame_iscont_fficb(frame))
+         case FRAME_LUA:
+         case FRAME_LUAP:
+            frame = frame_prevl(frame);
+            break;
+         case FRAME_C:
             cf = cframe_prev(cf);
-         frame = frame_prevd(frame);
-         break;
-      case FRAME_CP:
-         if (cframe_canyield(cf)) return 0;
-         if (cframe_errfunc(cf) >= 0)
-            return cframe_errfunc(cf);
-         cf = cframe_prev(cf);
-         frame = frame_prevd(frame);
-         break;
-      case FRAME_PCALL:
-      case FRAME_PCALLH:
-         if (frame_func(frame_prevd(frame))->c.ffid == FF_xpcall)
-            return savestack(L, frame_prevd(frame) + 1);  //  xpcall's errorfunc.
-         return 0;
-      default:
-         lj_assertL(0, "bad frame type");
-         return 0;
+            // fallthrough
+         case FRAME_VARG:
+            frame = frame_prevd(frame);
+            break;
+         case FRAME_CONT:
+            if (frame_iscont_fficb(frame))
+               cf = cframe_prev(cf);
+            frame = frame_prevd(frame);
+            break;
+         case FRAME_CP:
+            if (cframe_canyield(cf)) return 0;
+            if (cframe_errfunc(cf) >= 0)
+               return cframe_errfunc(cf);
+            cf = cframe_prev(cf);
+            frame = frame_prevd(frame);
+            break;
+         case FRAME_PCALL:
+         case FRAME_PCALLH:
+            if (frame_func(frame_prevd(frame))->c.ffid == FF_xpcall)
+               return savestack(L, frame_prevd(frame) + 1);  //  xpcall's errorfunc.
+            return 0;
+         default:
+            lj_assertL(0, "bad frame type");
+            return 0;
       }
    }
    return 0;
@@ -1073,7 +1429,7 @@ extern void luaL_where(lua_State *L, int level)
    lj_debug_addloc(L, "", frame, size ? frame + size : nullptr);
 }
 
-extern int luaL_error(lua_State *L, CSTRING fmt, ...)
+[[noreturn]] extern void luaL_error(lua_State *L, CSTRING fmt, ...)
 {
    CSTRING msg;
    va_list argp;
@@ -1081,7 +1437,6 @@ extern int luaL_error(lua_State *L, CSTRING fmt, ...)
    msg = lj_strfmt_pushvf(L, fmt, argp);
    va_end(argp);
    lj_err_callermsg(L, msg);
-   return 0;  //  unreachable
 }
 
 //********************************************************************************************************************

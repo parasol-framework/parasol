@@ -6,21 +6,21 @@ function enforce_hotpath() end
 ----------------------------------------------------------------------------------------------------------------------
 -- Type inference tests
 
-@Test function testInferredStringType()
+@Test function InferredStringType()
    x = <{ 'hello' }>
    result = resolve(x)
    assert(type(result) is 'string', 'Expected string type, got ' .. type(result))
    assert(result is 'hello', 'Expected "hello", got "' .. result .. '"')
 end
 
-@Test function testInferredNumberType()
+@Test function InferredNumberType()
    x = <{ 42 }>
    result = resolve(x)
    assert(type(result) is 'number', 'Expected number type, got ' .. type(result))
    assert(result is 42, 'Expected 42, got ' .. tostring(result))
 end
 
-@Test function testInferredBooleanType()
+@Test function InferredBooleanType()
    x = <{ true }>
    result = resolve(x)
    assert(type(result) is 'boolean', 'Expected boolean type, got ' .. type(result))
@@ -32,13 +32,13 @@ end
    assert(result2 is false, 'Expected false')
 end
 
-@Test function testInferredNilType()
+@Test function InferredNilType()
    x = <{ nil }>
    result = resolve(x)
    assert(result is nil, 'Expected nil')
 end
 
-@Test function testInferredTableType()
+@Test function InferredTableType()
    x = <{ { a = 1, b = 2 } }>
    a = x.a  -- Resolve 'x' and retrieve 'a'
    assert(type(x) is 'table', 'Expected table type, got ' .. type(x))
@@ -46,7 +46,7 @@ end
    assert(x.b is 2, 'Expected x.b = 2')
 end
 
-@Test function testInferredArithmeticType()
+@Test function InferredArithmeticType()
    a = 10
    b = 20
    x = <{ a + b }>
@@ -55,7 +55,7 @@ end
    assert(result is 30, 'Expected 30, got ' .. tostring(result))
 end
 
-@Test function testInferredConcatType()
+@Test function InferredConcatType()
    prefix = 'Hello'
    suffix = 'World'
    x = <{ prefix .. ' ' .. suffix }>
@@ -64,7 +64,7 @@ end
    assert(result is 'Hello World', 'Expected "Hello World", got "' .. result .. '"')
 end
 
-@Test function testInferredComparisonType()
+@Test function InferredComparisonType()
    a = 5
    b = 10
    x = <{ a < b }>
@@ -76,7 +76,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Explicit type annotation tests
 
-@Test function testExplicitStringType()
+@Test function ExplicitStringType()
    function getValue()
       return 'computed'
    end
@@ -86,7 +86,7 @@ end
    assert(result is 'computed', 'Expected "computed"')
 end
 
-@Test function testExplicitNumberType()
+@Test function ExplicitNumberType()
    function compute()
       return 42
    end
@@ -96,7 +96,7 @@ end
    assert(result is 42, 'Expected 42')
 end
 
-@Test function testExplicitTypeShortForm()
+@Test function ExplicitTypeShortForm()
    x = <num{ 123 }>
    result = resolve(x)
    assert(type(result) is 'number', 'Expected number type')
@@ -108,7 +108,7 @@ end
    assert(result2 is 'test', 'Expected "test"')
 end
 
-@Test function testExplicitTableType()
+@Test function ExplicitTableType()
    function buildTable()
       return { value = 99 }
    end
@@ -118,7 +118,7 @@ end
    assert(result.value is 99, 'Expected result.value = 99')
 end
 
-@Test function testExplicitBooleanType()
+@Test function ExplicitBooleanType()
    function checkCondition()
       return true
    end
@@ -131,7 +131,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- resolve() behaviour tests
 
-@Test function testResolveNonDeferred()
+@Test function ResolveNonDeferred()
    str = 'plain string'
    result1 = resolve(str)
    assert(result1 is str, 'resolve should return non-deferred values unchanged')
@@ -145,7 +145,7 @@ end
    assert(result3 is tbl, 'resolve should return non-deferred tables unchanged')
 end
 
-@Test function testDeferredUpvalueCapture()
+@Test function DeferredUpvalueCapture()
    base = 100
    multiplier = 2
    x = <{ base * multiplier }>
@@ -156,7 +156,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- type() returns the expected type for deferred expressions (not "function")
 
-@Test function testTypeReturnsExpectedType()
+@Test function TypeReturnsExpectedType()
    str = <{ 'hello' }>
    assert(type(str) is 'string', 'Expected type(str) to be "string", got "' .. type(str) .. '"')
 
@@ -173,7 +173,7 @@ end
    assert(type(nilval) is 'nil', 'Expected type(nilval) to be "nil", got "' .. type(nilval) .. '"')
 end
 
-@Test function testTypeWithExplicitAnnotation()
+@Test function TypeWithExplicitAnnotation()
    function getValue()
       return 'computed'
    end
@@ -188,7 +188,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Deferred expressions in various contexts
 
-@Test function testDeferredNested()
+@Test function DeferredNested()
    inner = <{ 'inner' }>
    outer = <string{ inner }>
    -- Resolving outer returns the inner deferred, which then needs resolving
@@ -196,7 +196,7 @@ end
    assert(result is 'inner', 'Expected nested deferred to resolve to "inner"')
 end
 
-@Test function testDeferredInTable()
+@Test function DeferredInTable()
    t = {
       lazy = <{ 'computed later' }>
    }
@@ -204,7 +204,7 @@ end
    assert(result is 'computed later', 'Expected table field deferred to resolve correctly')
 end
 
-@Test function testDeferredTernary()
+@Test function DeferredTernary()
    flag = true
    x = <{ flag ? 'yes' :> 'no' }>
    result = resolve(x)
@@ -216,7 +216,7 @@ end
    assert(result2 is 'no', 'Expected ternary deferred to resolve to "no"')
 end
 
-@Test function testDeferredAsArgument()
+@Test function DeferredAsArgument()
    function identity(val)
       return resolve(val)
    end
@@ -228,7 +228,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- assert() short-circuit evaluation with deferred messages
 
-@Test function testAssertShortCircuit()
+@Test function AssertShortCircuit()
    evaluated = false
    function makeMessage()
       evaluated = true
@@ -241,7 +241,7 @@ end
    assert(evaluated is false, 'Deferred message should NOT be evaluated when assert succeeds')
 end
 
-@Test function testAssertWithDeferredMessage()
+@Test function AssertWithDeferredMessage()
    context = 'test context'
    value = 42
 

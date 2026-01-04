@@ -13,11 +13,9 @@
 
 #include "lj_debug.h"
 #include "lj_tab.h"
-
 #include "../parse_internal.h"
 #include "../parse_value.h"
 #include "../token_types.h"
-
 #include "../../../defs.h"  // For glPrintMsg, FluidConstant
 
 //********************************************************************************************************************
@@ -231,7 +229,7 @@ static void snapshot_return_regs(FuncState* fs, BCIns* ins)
 //********************************************************************************************************************
 // Adjust LHS/RHS of an assignment.
 // Exclusively used by ir_emitter for assignment statements, local declarations, and for loops.
-// TOOD: May as well be a regular function instead of a LexState method.
+// TODO: May as well be a regular function instead of a LexState method.
 
 void LexState::assign_adjust(BCREG nvars, BCREG nexps, ExpDesc *Expr)
 {
@@ -540,6 +538,7 @@ IrEmitter::LoopStackGuard IrEmitter::push_loop_context(BCPos continue_target)
    loop_context.continue_edge = this->control_flow.make_continue_edge();
    loop_context.defer_base = this->func_state.active_var_count();
    loop_context.continue_target = continue_target;
+   loop_context.try_depth_at_entry = this->func_state.try_depth;  // Track try depth at loop entry
    this->loop_stack.push_back(loop_context);
    return LoopStackGuard(this);
 }
@@ -669,6 +668,10 @@ ParserResult<IrEmitUnit> IrEmitter::emit_statement(const StmtNode& stmt)
    case AstNodeKind::ConditionalShorthandStmt: {
       const auto &payload = std::get<ConditionalShorthandStmtPayload>(stmt.data);
       return this->emit_conditional_shorthand_stmt(payload);
+   }
+   case AstNodeKind::TryExceptStmt: {
+      const auto &payload = std::get<TryExceptPayload>(stmt.data);
+      return this->emit_try_except_stmt(payload);
    }
    default:
       return this->unsupported_stmt(stmt.kind, stmt.span);
@@ -863,6 +866,17 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &Pa
    // Order: closes before defers (LIFO - most recently declared runs first).
    execute_closes(&this->func_state, 0);
    execute_defers(&this->func_state, 0);
+
+   // Emit BC_TRYLEAVE for each try scope we're exiting with this return.
+   // A return from inside a try block must pop all pending try frames to prevent
+   // stale frames accumulating on L->try_stack across multiple function calls.
+   if (this->func_state.try_depth > 0) {
+      BCReg base_reg = BCReg(this->func_state.freereg);
+      for (uint8_t i = 0; i < this->func_state.try_depth; ++i) {
+         bcemit_AD(&this->func_state, BC_TRYLEAVE, base_reg, BCReg(0));
+      }
+   }
+
    if (this->func_state.flags & PROTO_CHILD) bcemit_AJ(&this->func_state, BC_UCLO, 0, 0);
    bcemit_INS(&this->func_state, ins);
    this->func_state.reset_freereg();
@@ -1333,10 +1347,25 @@ ParserResult<IrEmitUnit> IrEmitter::emit_break_stmt(const BreakStmtPayload&)
    }
 
    LoopContext& loop = this->loop_stack.back();
+
    // Both __close and defer handlers must run when jumping out of scope via break.
    // Order: closes before defers (LIFO - most recently declared runs first).
+
    execute_closes(&this->func_state, loop.defer_base);
    execute_defers(&this->func_state, loop.defer_base);
+
+   // Emit BC_TRYLEAVE for each try scope we're exiting with this break.
+   // The try_depth tracks how deep we are in try blocks; when breaking out of
+   // a loop that's inside a try, we need to pop the try frame(s).
+
+   if (this->func_state.try_depth > loop.try_depth_at_entry) {
+      uint8_t leave_count = this->func_state.try_depth - loop.try_depth_at_entry;
+      BCReg base_reg = BCReg(this->func_state.freereg);
+      for (uint8_t i = 0; i < leave_count; ++i) {
+         bcemit_AD(&this->func_state, BC_TRYLEAVE, base_reg, BCReg(0));
+      }
+   }
+
    loop.break_edge.append(BCPos(bcemit_jmp(&this->func_state)));
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
@@ -1351,10 +1380,25 @@ ParserResult<IrEmitUnit> IrEmitter::emit_continue_stmt(const ContinueStmtPayload
    }
 
    LoopContext& loop = this->loop_stack.back();
+
    // Both __close and defer handlers must run when jumping out of scope via continue.
    // Order: closes before defers (LIFO - most recently declared runs first).
+
    execute_closes(&this->func_state, loop.defer_base);
    execute_defers(&this->func_state, loop.defer_base);
+
+   // Emit BC_TRYLEAVE for each try scope we're exiting with this continue.
+   // The try_depth tracks how deep we are in try blocks; when continuing
+   // inside a loop that's inside a try, we need to pop the try frame(s).
+
+   if (this->func_state.try_depth > loop.try_depth_at_entry) {
+      uint8_t leave_count = this->func_state.try_depth - loop.try_depth_at_entry;
+      BCReg base_reg = BCReg(this->func_state.freereg);
+      for (uint8_t i = 0; i < leave_count; ++i) {
+         bcemit_AD(&this->func_state, BC_TRYLEAVE, base_reg, BCReg(0));
+      }
+   }
+
    loop.continue_edge.append(BCPos(bcemit_jmp(&this->func_state)));
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
@@ -1370,6 +1414,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_assignment_stmt(const AssignmentStmtPay
    // The variable must already exist - we should modify the existing storage.
    // For plain (=) and if-empty/if-nil (?=/??=) assignments, allow new local creation.
    // If-empty/if-nil on an undeclared variable creates a local and assigns (since undefined is empty/nil).
+
    bool AllocNewLocal = (Payload.op IS AssignmentOperator::Plain or Payload.op IS AssignmentOperator::IfEmpty or Payload.op IS AssignmentOperator::IfNil);
 
    auto targets_result = this->prepare_assignment_targets(Payload.targets, AllocNewLocal);
@@ -1377,9 +1422,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_assignment_stmt(const AssignmentStmtPay
 
    std::vector<PreparedAssignment> targets = std::move(targets_result.value_ref());
 
-   if (Payload.op IS AssignmentOperator::Plain) {
-      return this->emit_plain_assignment(std::move(targets), Payload.values);
-   }
+   if (Payload.op IS AssignmentOperator::Plain) return this->emit_plain_assignment(std::move(targets), Payload.values);
 
    if (targets.size() != 1) {
       const ExprNodePtr& node = Payload.targets.front();
@@ -1389,9 +1432,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_assignment_stmt(const AssignmentStmtPay
    }
 
    PreparedAssignment target = std::move(targets.front());
+
    if (Payload.op IS AssignmentOperator::IfEmpty) {
       return this->emit_if_empty_assignment(std::move(target), Payload.values);
    }
+
    if (Payload.op IS AssignmentOperator::IfNil) {
       return this->emit_if_nil_assignment(std::move(target), Payload.values);
    }
@@ -1411,21 +1456,21 @@ ParserResult<ExpDesc> IrEmitter::emit_expression(const ExprNode& expr)
    this->lex_state.lastline = expr.span.line;
 
    switch (expr.kind) {
-      case AstNodeKind::LiteralExpr:    return this->emit_literal_expr(std::get<LiteralValue>(expr.data));
-      case AstNodeKind::IdentifierExpr: return this->emit_identifier_expr(std::get<NameRef>(expr.data));
-      case AstNodeKind::VarArgExpr:     return this->emit_vararg_expr();
-      case AstNodeKind::UnaryExpr:      return this->emit_unary_expr(std::get<UnaryExprPayload>(expr.data));
-      case AstNodeKind::UpdateExpr:     return this->emit_update_expr(std::get<UpdateExprPayload>(expr.data));
-      case AstNodeKind::BinaryExpr:     return this->emit_binary_expr(std::get<BinaryExprPayload>(expr.data));
-      case AstNodeKind::TernaryExpr:    return this->emit_ternary_expr(std::get<TernaryExprPayload>(expr.data));
-      case AstNodeKind::PresenceExpr:   return this->emit_presence_expr(std::get<PresenceExprPayload>(expr.data));
-      case AstNodeKind::PipeExpr:       return this->emit_pipe_expr(std::get<PipeExprPayload>(expr.data));
-      case AstNodeKind::MemberExpr:     return this->emit_member_expr(std::get<MemberExprPayload>(expr.data));
-      case AstNodeKind::IndexExpr:      return this->emit_index_expr(std::get<IndexExprPayload>(expr.data));
-      case AstNodeKind::SafeMemberExpr: return this->emit_safe_member_expr(std::get<SafeMemberExprPayload>(expr.data));
-      case AstNodeKind::SafeIndexExpr:  return this->emit_safe_index_expr(std::get<SafeIndexExprPayload>(expr.data));
-      case AstNodeKind::SafeCallExpr:   return this->emit_safe_call_expr(std::get<CallExprPayload>(expr.data));
-      case AstNodeKind::CallExpr:       return this->emit_call_expr(std::get<CallExprPayload>(expr.data));
+      case AstNodeKind::LiteralExpr:      return this->emit_literal_expr(std::get<LiteralValue>(expr.data));
+      case AstNodeKind::IdentifierExpr:   return this->emit_identifier_expr(std::get<NameRef>(expr.data));
+      case AstNodeKind::VarArgExpr:       return this->emit_vararg_expr();
+      case AstNodeKind::UnaryExpr:        return this->emit_unary_expr(std::get<UnaryExprPayload>(expr.data));
+      case AstNodeKind::UpdateExpr:       return this->emit_update_expr(std::get<UpdateExprPayload>(expr.data));
+      case AstNodeKind::BinaryExpr:       return this->emit_binary_expr(std::get<BinaryExprPayload>(expr.data));
+      case AstNodeKind::TernaryExpr:      return this->emit_ternary_expr(std::get<TernaryExprPayload>(expr.data));
+      case AstNodeKind::PresenceExpr:     return this->emit_presence_expr(std::get<PresenceExprPayload>(expr.data));
+      case AstNodeKind::PipeExpr:         return this->emit_pipe_expr(std::get<PipeExprPayload>(expr.data));
+      case AstNodeKind::MemberExpr:       return this->emit_member_expr(std::get<MemberExprPayload>(expr.data));
+      case AstNodeKind::IndexExpr:        return this->emit_index_expr(std::get<IndexExprPayload>(expr.data));
+      case AstNodeKind::SafeMemberExpr:   return this->emit_safe_member_expr(std::get<SafeMemberExprPayload>(expr.data));
+      case AstNodeKind::SafeIndexExpr:    return this->emit_safe_index_expr(std::get<SafeIndexExprPayload>(expr.data));
+      case AstNodeKind::SafeCallExpr:     return this->emit_safe_call_expr(std::get<CallExprPayload>(expr.data));
+      case AstNodeKind::CallExpr:         return this->emit_call_expr(std::get<CallExprPayload>(expr.data));
       case AstNodeKind::ResultFilterExpr: return this->emit_result_filter_expr(std::get<ResultFilterPayload>(expr.data));
       case AstNodeKind::TableExpr:        return this->emit_table_expr(std::get<TableExprPayload>(expr.data));
       case AstNodeKind::RangeExpr:        return this->emit_range_expr(std::get<RangeExprPayload>(expr.data));
@@ -1446,9 +1491,9 @@ ParserResult<ControlFlowEdge> IrEmitter::emit_condition_jump(const ExprNode& exp
    if (result.k IS ExpKind::Nil) result.k = ExpKind::False;
    bcemit_branch_t(&this->func_state, &result);
 
-   // After processing the condition expression, reset freereg to nactvar.
-   // The condition has been fully evaluated and emitted as a conditional jump -
-   // any temporary registers used during evaluation are no longer needed.
+   // After processing the condition expression, reset freereg to nactvar.  The condition has been fully evaluated
+   // and emitted as a conditional jump - any temporary registers used during evaluation are no longer needed.
+
    this->func_state.reset_freereg();
 
    return ParserResult<ControlFlowEdge>::success(this->control_flow.make_false_edge(BCPos(result.f)));
@@ -2299,3 +2344,4 @@ ParserResult<ExpDesc> IrEmitter::unsupported_expr(AstNodeKind kind, const Source
 #include "ir_emitter/emit_function.cpp"
 #include "ir_emitter/emit_table.cpp"
 #include "ir_emitter/emit_call.cpp"
+#include "ir_emitter/emit_try.cpp"

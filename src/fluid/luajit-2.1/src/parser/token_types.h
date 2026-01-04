@@ -77,6 +77,8 @@ enum class TokenKind : uint16_t {
    When = TK_when,
    CaseArrow = TK_case_arrow,
    Annotate = TK_annotate,
+   TryToken = TK_try,
+   ExceptToken = TK_except,
    EndOfFile = TK_eof,
 #undef TOKEN_KIND_ENUM
 #undef TOKEN_KIND_ENUM_SYM
@@ -168,6 +170,8 @@ enum class TokenKind : uint16_t {
       case TokenKind::When: return "when";
       case TokenKind::CaseArrow: return "->";
       case TokenKind::Annotate: return "@";
+      case TokenKind::TryToken: return "try";
+      case TokenKind::ExceptToken: return "except";
       case TokenKind::EndOfFile: return "<eof>";
       case TokenKind::LeftParen: return "(";
       case TokenKind::RightParen: return ")";

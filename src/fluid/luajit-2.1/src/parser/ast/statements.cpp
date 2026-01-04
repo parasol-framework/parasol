@@ -437,3 +437,112 @@ ParserResult<StmtNodePtr> AstBuilder::parse_return()
    stmt->data = std::move(payload.value_ref());
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
+
+//********************************************************************************************************************
+// Parses try...except...end exception handling blocks.
+//
+// Syntax:
+//   try
+//      <body>
+//   except [e] [when { ERR_A, ERR_B } | when ERR_C]
+//      <handler>
+//   [except ...]
+//   end
+
+ParserResult<StmtNodePtr> AstBuilder::parse_try()
+{
+   Token try_token = this->ctx.tokens().current();
+   this->ctx.tokens().advance();  // consume 'try'
+
+   // Parse try block body - terminates on 'except' or 'end'
+   const TokenKind try_terms[] = { TokenKind::ExceptToken, TokenKind::EndToken };
+   auto try_body = this->parse_block(try_terms);
+   if (not try_body.ok()) return ParserResult<StmtNodePtr>::failure(try_body.error_ref());
+
+   std::vector<ExceptClause> clauses;
+   bool has_catch_all = false;
+
+   // Parse except clauses
+   while (this->ctx.check(TokenKind::ExceptToken)) {
+      if (has_catch_all) {
+         // Error: catch-all must be last
+         return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, this->ctx.tokens().current(),
+            "catch-all 'except' must be the last clause");
+      }
+
+      Token except_token = this->ctx.tokens().current();
+      this->ctx.tokens().advance();  // consume 'except'
+
+      ExceptClause clause;
+      clause.span = this->ctx.tokens().current().span();
+
+      // Check for optional exception variable
+      // Patterns: `except e when ...`, `except e`, `except when ...`, `except`
+      // The exception variable must be on the same line as 'except'
+      if (this->ctx.check(TokenKind::Identifier)) {
+         Token name_token = this->ctx.tokens().current();
+         // Only treat as exception variable if on same line as 'except'
+         if (name_token.span().line IS except_token.span().line) {
+            this->ctx.tokens().advance();
+            clause.exception_var = make_identifier(name_token);
+         }
+      }
+
+      // Optional when clause for filtering
+      if (this->ctx.check(TokenKind::When)) {
+         Token when_token = this->ctx.tokens().current();
+         this->ctx.tokens().advance();  // consume 'when'
+
+         // Filter code(s) must be on the same line as 'when'
+         Token next_token = this->ctx.tokens().current();
+         if (next_token.span().line != when_token.span().line) {
+            return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, when_token,
+               "expected error code(s) after 'when' on the same line");
+         }
+
+         // Parse error code filter(s): when ERR_A or when ERR_A, ERR_B
+         auto first_code = this->parse_expression();
+         if (not first_code.ok()) return ParserResult<StmtNodePtr>::failure(first_code.error_ref());
+         clause.filter_codes.push_back(std::move(first_code.value_ref()));
+
+         // Continue parsing comma-separated codes on the same line as 'when'
+         while (this->ctx.check(TokenKind::Comma)) {
+            Token comma_token = this->ctx.tokens().current();
+            if (comma_token.span().line != when_token.span().line) break;
+            this->ctx.tokens().advance();  // consume ','
+
+            Token code_token = this->ctx.tokens().current();
+            if (code_token.span().line != when_token.span().line) {
+               return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, comma_token,
+                  "expected error code after ',' on the same line as 'when'");
+            }
+
+            auto next_code = this->parse_expression();
+            if (not next_code.ok()) return ParserResult<StmtNodePtr>::failure(next_code.error_ref());
+            clause.filter_codes.push_back(std::move(next_code.value_ref()));
+         }
+      }
+      else {
+         has_catch_all = true;  // No 'when' = catch-all
+      }
+
+      // Parse except block body - terminates on next 'except' or 'end'
+      const TokenKind except_terms[] = { TokenKind::ExceptToken, TokenKind::EndToken };
+      auto except_body = this->parse_block(except_terms);
+      if (not except_body.ok()) return ParserResult<StmtNodePtr>::failure(except_body.error_ref());
+      clause.block = std::move(except_body.value_ref());
+
+      clauses.push_back(std::move(clause));
+   }
+
+   this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
+
+   // Build the statement
+   auto stmt = std::make_unique<StmtNode>(AstNodeKind::TryExceptStmt, try_token.span());
+   TryExceptPayload payload;
+   payload.try_block = std::move(try_body.value_ref());
+   payload.except_clauses = std::move(clauses);
+   stmt->data = std::move(payload);
+
+   return ParserResult<StmtNodePtr>::success(std::move(stmt));
+}

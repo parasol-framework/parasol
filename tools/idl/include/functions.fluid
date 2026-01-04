@@ -4,7 +4,7 @@
 -- FDL function
 
 global function c_include(...)
-   for k,v in ipairs({...}) do
+   for _,v in ipairs({...}) do
       if v:find('^<(.+)>$') then
          priority('#include ' .. v)
       else
@@ -19,7 +19,7 @@ end
 
 global function cpp_include(...)
    priority('#ifdef __cplusplus')
-   for k,v in ipairs({...}) do
+   for _,v in ipairs({...}) do
       if v:find('^<(.+)>$') then
          inc = v:match('^<parasol/(.+)>$')
 

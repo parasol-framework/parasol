@@ -93,6 +93,7 @@ static void free_module(MODHANDLE handle);
 
 //********************************************************************************************************************
 
+static ERR GET_Defs(extModule *, CSTRING *);
 static ERR GET_Name(extModule *, CSTRING *);
 
 static ERR SET_Header(extModule *, struct ModHeader *);
@@ -107,10 +108,11 @@ static const FieldDef clFlags[] = {
 static const FieldArray glModuleFields[] = {
    { "FunctionList", FDF_POINTER|FDF_RW },
    { "ModBase",      FDF_POINTER|FDF_R },
-   { "Root",         FDF_POINTER|FDF_R },
-   { "Header",       FDF_POINTER|FDF_RI, nullptr, SET_Header },
+   { "Root",         FDF_OBJECT|FDF_R, nullptr, nullptr, "RootModule" }, // Not intended for client use
+   { "Header",       FDF_POINTER|FDF_STRUCT|FDF_RI, nullptr, SET_Header, "ModHeader" }, // For creating virtual modules only
    { "Flags",        FDF_INT|FDF_RI, nullptr, nullptr, &clFlags },
    // Virtual fields
+   { "Defs",         FDF_STRING|FDF_R, GET_Defs },
    { "Name",         FDF_STRING|FDF_RI, GET_Name, SET_Name },
    END_FIELD
 };
@@ -582,6 +584,21 @@ static ERR MODULE_Test(extModule *Self, struct mod::Test *Args)
 /*********************************************************************************************************************
 
 -FIELD-
+Defs: Returns the compiled IDL definition for the module.
+
+Returns the IDL definition string that was compiled from the module's FDL file.  Useful for introspection purposes.
+
+**********************************************************************************************************************/
+
+static ERR GET_Defs(extModule *Self, CSTRING *Value)
+{
+   if ((Self->Root) and (Self->Root->Header)) *Value = Self->Root->Header->Definitions;
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
 Flags: Optional flags.
 Lookup: MOF
 
@@ -597,8 +614,8 @@ FunctionList array consists of !Function structs in the following format:
 Header: For internal usage only.
 Status: private
 
-Setting the module Table prior to initialisation allows 'fake' modules to be created that reside in memory rather
-than on disk.
+Setting the module Table prior to initialisation allows virtual modules to be created that reside in memory rather
+than on solid media.
 
 **********************************************************************************************************************/
 
@@ -692,11 +709,14 @@ static RootModule * check_resident(extModule *Self, const std::string_view Modul
    if (iequals("core", ModuleName)) {
       if (!kminit) {
          kminit = true;
-         glCoreRoot.Class       = glRootModuleClass;
-         glCoreRoot.Name        = "Core";
-         glCoreRoot.OpenCount   = 1;
-         glCoreRoot.Table       = &glCoreHeader;
-         glCoreRoot.Header      = &glCoreHeader;
+         // NB: The Object constructor clears all values initially.
+         glCoreRoot.Class         = glRootModuleClass;
+         glCoreRoot.UID           = 1;
+         glCoreRoot.Object::Flags = NF::INITIALISED|NF::NAME|NF::UNIQUE;
+         glCoreRoot.Name          = "Core";
+         glCoreRoot.OpenCount     = 1;
+         glCoreRoot.Table         = &glCoreHeader;
+         glCoreRoot.Header        = &glCoreHeader;
       }
       Self->FunctionList = glFunctions;
       return &glCoreRoot;
@@ -803,4 +823,3 @@ extern ERR add_module_class(void)
 
    return ERR::Okay;
 }
-

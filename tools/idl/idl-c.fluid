@@ -47,6 +47,8 @@
 
 ----------------------------------------------------------------------------------------------------------------------
 
+global glCoreConstants = parseIDL('core')
+
 global glActionStubs = {
    -- Hidden actions
    Free          = '',
@@ -245,9 +247,9 @@ global glActionStubs = {
 
 ----------------------------------------------------------------------------------------------------------------------
 
-global function outputLookup(Name, List)
+global function outputLookup(Name:str, List):str
    sorted = { }
-   for _, v in pairs(List) do
+   for v in values(List) do
       table.insert(sorted, v)
    end
 
@@ -271,7 +273,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Output the CPP compatible class definition
 
-global function outputClassHeader(class, Private, Custom)
+global function outputClassHeader(class:table, Private, Custom)
    physicalFields = false
    for _, f in ipairs(class.fields) do
       if not f.virtual then physicalFields = true end
@@ -362,7 +364,7 @@ global function outputClassHeader(class, Private, Custom)
    output('   // Customised field setting\n')
    indent = '      '
 
-   for _, f in ipairs(class.fields) do
+   for f in values(class.fields) do
       field_name = cName(f, true)
       if field_name?? and f.write then
          fid_name = field_name
@@ -741,10 +743,10 @@ global function saveOutput()
             out ..= '#ifdef PARASOL_STATIC\n'
             out ..= '#define JUMPTABLE_' .. glModule.name:upper() .. ' [[maybe_unused]] static struct ' .. glModule.name .. 'Base *' .. glModule.name .. 'Base = nullptr;\n'
             out ..= '#else\n'
-            out ..= '#define JUMPTABLE_' .. glModule.name:upper() .. ' struct ' .. glModule.name .. 'Base *' .. glModule.name .. 'Base = nullptr;\n'
+            out ..= f'#define JUMPTABLE_{glModule.name:upper()} struct {glModule.name}Base *{glModule.name}Base = nullptr;\n'
             out ..= '#endif\n\n'
 
-            out ..= 'struct ' .. glModule.name .. 'Base {\n'
+            out ..= f'struct {glModule.name}Base {{\n'
             out ..= '#ifndef PARASOL_STATIC\n'
             for k, func in ipairs(glFunctions) do
                if func.def?? then
