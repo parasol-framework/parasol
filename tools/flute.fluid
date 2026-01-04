@@ -28,22 +28,30 @@ Example usage:
 ----------------------------------------------------------------------------------------------------------------------
 
 glNetworkAvailable = thunk():bool
-   global mNet ?= catch(function():any return mod.load('network') end)
+   try
+      global mNet ?= mod.load('network')
+   end
    return mNet != nil
 end
 
 glAudioAvailable = thunk():bool
-   global mAudio ?= catch(function():any return mod.load('audio') end)
+   try
+      global mAudio ?= mod.load('audio')
+   end
    return mAudio != nil
 end
 
 glFontAvailable = thunk():bool
-   global mFont ?= catch(function():any return mod.load('font') end)
+   try
+      global mFont ?= mod.load('font')
+   end
    return mFont != nil
 end
 
 glDisplayAvailable = thunk():bool
-   global mGfx ?= catch(function():any return mod.load('display') end)
+   try
+      global mGfx ?= mod.load('display')
+   end
    return mGfx != nil
 end
 
@@ -52,9 +60,10 @@ global glSSLAvailable = thunk():bool
 
    -- Test if SSL support is available by attempting to create SSL socket
 
-   ex, test_socket = catch(function():any
-      return obj.new('netsocket', { name = 'SSLSupportTest', port = glPort, flags = 'SERVER|SSL' })
-   end)
+   local test_socket
+   try
+      test_socket = obj.new('netsocket', { name = 'SSLSupportTest', port = glPort, flags = 'SERVER|SSL' })
+   end
 
    if test_socket then
       supported = test_socket.error is ERR_Okay
