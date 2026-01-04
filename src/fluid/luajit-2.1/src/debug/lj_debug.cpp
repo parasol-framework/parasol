@@ -13,6 +13,7 @@
 #include "lj_frame.h"
 #include "lj_bc.h"
 #include "lj_strfmt.h"
+#include "lj_gc.h"
 
 #if LJ_HASJIT
 #include "lj_jit.h"
@@ -613,4 +614,48 @@ extern void luaL_traceback(lua_State* L, lua_State* L1, const char* msg, int lev
       if ((int)(L->top - L->base) - top >= 15) lua_concat(L, (int)(L->top - L->base) - top);
    }
    lua_concat(L, (int)(L->top - L->base) - top);
+}
+
+//********************************************************************************************************************
+// Capture stack trace for try<trace> exception handling.
+// Allocates a CapturedStackTrace on the heap. Caller must free with lj_debug_free_trace().
+
+CapturedStackTrace * lj_debug_capture_trace(lua_State *L, int skip_levels)
+{
+   auto trace = (CapturedStackTrace *)lj_mem_new(L, sizeof(CapturedStackTrace));
+   trace->frame_count = 0;
+
+   lua_Debug ar;
+   int level = skip_levels;
+
+   while (trace->frame_count < LJ_MAX_TRACE_FRAMES and lua_getstack(L, level++, &ar)) {
+      lua_getinfo(L, "Snl", &ar);
+
+      CapturedFrame *cf = &trace->frames[trace->frame_count];
+
+      // Copy source name
+
+      if (ar.short_src[0] != '\0') cf->source = lj_str_newz(L, ar.short_src);
+      else cf->source = nullptr;
+
+      // Copy function name
+
+      if (ar.name and ar.name[0] != '\0') cf->funcname = lj_str_newz(L, ar.name);
+      else if (ar.what and *ar.what IS 'm') cf->funcname = lj_str_newlit(L, "main chunk");
+      else cf->funcname = nullptr;
+
+      cf->line = BCLine(ar.currentline > 0 ? ar.currentline : 0);
+
+      trace->frame_count++;
+   }
+
+   return trace;
+}
+
+//********************************************************************************************************************
+// Free a captured stack trace.
+
+void lj_debug_free_trace(lua_State *L, CapturedStackTrace *trace)
+{
+   if (trace) lj_mem_free(G(L), trace, sizeof(CapturedStackTrace));
 }

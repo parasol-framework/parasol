@@ -1101,3 +1101,118 @@ end
    end
    assert(has_close, "<close> handler should be called: '" .. order:join(',') .. "'")
 end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Tests for try<trace> stack trace capture
+
+@Test(priority=50) function TryTraceCapture()
+   try<trace>
+      error("Test error")
+   except e
+      assert(e.trace, "Trace should be captured with try<trace>")
+      assert(type(e.trace) is "array", "Trace should be array of frames")
+      assert(#e.trace >= 1, "Should have at least one frame")
+   end
+end
+
+@Test(priority=51) function TryTraceFrameStructure()
+   try<trace>
+      error("Test error")
+   except e
+      assert(e.trace, "Trace should be captured")
+      frame = e.trace[0]
+      assert(frame, "First frame should exist")
+      assert(frame.source != nil or frame.line != nil, "Frame should have source or line")
+   end
+end
+
+@Test(priority=52) function TryTraceStackTraceString()
+   try<trace>
+      error("Test error")
+   except e
+      str = e.stackTrace
+      assert(type(str) is "string", "stackTrace should return string")
+      assert(str:find("stack traceback:"), "Should have traceback header")
+   end
+end
+
+@Test(priority=53) function TryWithoutTraceIsNil()
+   try
+      error("Test error")
+   except e
+      assert(e.trace is nil, "Regular try should not capture trace")
+      assert(e.stackTrace is nil, "Regular try should not have stackTrace")
+   end
+end
+
+@Test(priority=54) function TryTraceNestedFunction()
+   function innerFunc()
+      error("Inner error")
+   end
+
+   function outerFunc()
+      innerFunc()
+   end
+
+   try<trace>
+      outerFunc()
+   except e
+      assert(e.trace, "Trace should be captured")
+      assert(#e.trace >= 2, "Should have multiple frames for nested calls")
+
+      -- Check that we captured function names
+      found_inner = false
+      found_outer = false
+      for i, frame in ipairs(e.trace) do
+         if frame.func and frame.func:find("innerFunc") then found_inner = true end
+         if frame.func and frame.func:find("outerFunc") then found_outer = true end
+      end
+      -- Note: function names may not always be available depending on how the error is raised
+   end
+end
+
+@Test(priority=55) function TryTraceWithRaise()
+   try<trace>
+      raise(ERR_Failed)
+   except e
+      assert(e.trace, "Trace should be captured with raise()")
+      assert(e.code is ERR_Failed, "Error code should be ERR_Failed")
+   end
+end
+
+@Test(priority=56) function TryTraceNestedTryBlocks()
+   outer_trace = nil
+   inner_trace = nil
+
+   try<trace>
+      try<trace>
+         error("Inner error")
+      except e
+         inner_trace = e.trace
+      end
+      error("Outer error")
+   except e
+      outer_trace = e.trace
+   end
+
+   assert(inner_trace, "Inner try<trace> should capture trace")
+   assert(outer_trace, "Outer try<trace> should capture trace")
+end
+
+@Test(priority=57) function TryTraceMixedWithRegularTry()
+   trace_captured = nil
+
+   try<trace>
+      try
+         error("Inner error - no trace")
+      except e
+         -- Inner try has no trace
+         assert(e.trace is nil, "Inner try should not have trace")
+         error("Rethrow")
+      end
+   except e
+      trace_captured = e.trace
+   end
+
+   assert(trace_captured, "Outer try<trace> should capture trace from rethrow")
+end

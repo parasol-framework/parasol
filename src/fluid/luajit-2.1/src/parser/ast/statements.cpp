@@ -454,6 +454,30 @@ ParserResult<StmtNodePtr> AstBuilder::parse_try()
    Token try_token = this->ctx.tokens().current();
    this->ctx.tokens().advance();  // consume 'try'
 
+   // Parse optional <trace> attribute
+   bool enable_trace = false;
+   if (this->ctx.tokens().current().raw() IS '<') {
+      this->ctx.tokens().advance();  // consume '<'
+      auto attribute = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+      if (not attribute.ok()) return ParserResult<StmtNodePtr>::failure(attribute.error_ref());
+
+      if (GCstr *attr_name = attribute.value_ref().identifier()) {
+         std::string_view view(strdata(attr_name), attr_name->len);
+         if (view IS std::string_view("trace")) {
+            enable_trace = true;
+         }
+         else {
+            return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken,
+               attribute.value_ref(), "unknown try attribute, expected 'trace'");
+         }
+      }
+
+      if (not this->ctx.lex_opt('>')) {
+         return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken,
+            this->ctx.tokens().current(), "expected '>' after try attribute");
+      }
+   }
+
    // Parse try block body - terminates on 'except' or 'end'
    const TokenKind try_terms[] = { TokenKind::ExceptToken, TokenKind::EndToken };
    auto try_body = this->parse_block(try_terms);
@@ -552,6 +576,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_try()
    TryExceptPayload payload;
    payload.try_block = std::move(try_body.value_ref());
    payload.except_clauses = std::move(clauses);
+   payload.enable_trace = enable_trace;
    stmt->data = std::move(payload);
 
    return ParserResult<StmtNodePtr>::success(std::move(stmt));

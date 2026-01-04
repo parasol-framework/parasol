@@ -371,9 +371,9 @@ static int regex_destruct(lua_State *Lua)
 {
    auto r = (struct fregex *)luaL_checkudata(Lua, 1, "Fluid.regex");
 
-   if (r and r->regex_obj) {
-      FreeResource(r->regex_obj);
-      r->regex_obj = nullptr;
+   if (r) {
+      if (r->regex_obj) { FreeResource(r->regex_obj); r->regex_obj = nullptr; }
+      r->~fregex();  // Explicitly call destructor to clean up std::string members
    }
 
    return 0;

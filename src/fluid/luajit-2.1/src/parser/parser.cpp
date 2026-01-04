@@ -80,8 +80,8 @@ static void raise_accumulated_diagnostics(ParserContext &Context)
 
    for (const auto& diagnostic : entries) {
       SourceSpan span = diagnostic.token.span();
-      std::string_view message = diagnostic.message.empty() ? "unexpected token" : diagnostic.message;
-      summary += std::format("   line {}:{} - {}\n", span.line, span.column, message);
+      if (diagnostic.message.empty()) summary += std::format("   line {}:{} - unexpected token\n", span.line, span.column);
+      else summary += std::format("   line {}:{} - {}\n", span.line, span.column, diagnostic.message);
    }
 
    lua_State *L = &Context.lua();
@@ -124,7 +124,7 @@ static void trace_ast_boundary(ParserContext &Context, const BlockStmt &Chunk, C
       Stage, statements.size(), int(span.line), int(span.column), span.offset);
 
    size_t index = 0;
-   for (const StmtNode& stmt : statements) {
+   for (const StmtNode &stmt : statements) {
       if (index >= kMaxLoggedStatements) {
          log.msg("... truncated after %" PRId64 " statements ...", index);
          break;
@@ -222,7 +222,7 @@ extern GCproto * lj_parse(LexState *State)
    pf::Log log("Parser");
    FuncState fs;
    FuncScope bl;
-   GCproto *pt;
+   GCproto   *pt;
    lua_State *L = State->L;
 
    auto prv = (prvFluid *)L->script->ChildPrivate;
@@ -238,10 +238,10 @@ extern GCproto * lj_parse(LexState *State)
    State->level = 0;
    State->fs_init(&fs);
    fs.linedefined = 0;
-   fs.numparams = 0;
-   fs.bcbase = nullptr;
-   fs.bclim = 0;
-   fs.flags |= PROTO_VARARG;  // Main chunk is always a vararg func.
+   fs.numparams   = 0;
+   fs.bcbase      = nullptr;
+   fs.bclim       = 0;
+   fs.flags      |= PROTO_VARARG;  // Main chunk is always a vararg func.
    fscope_begin(&fs, &bl, FuncScopeFlag::None);
    bcemit_AD(&fs, BC_FUNCV, 0, 0);  // Placeholder.
 
@@ -260,9 +260,7 @@ extern GCproto * lj_parse(LexState *State)
 
    flush_non_fatal_errors(root_context);
 
-   if (profiler.enabled()) {
-      profiler.log_results(log);
-   }
+   if (profiler.enabled()) profiler.log_results(log);
 
    if (State->tok != TK_eof) State->err_token(TK_eof);
    pt = State->fs_finish(State->linenumber);

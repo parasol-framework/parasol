@@ -54,10 +54,14 @@ ParserResult<IrEmitUnit> IrEmitter::emit_try_except_stmt(const TryExceptPayload 
    // Push a placeholder TryBlockDesc - first_handler will be updated after emitting try body
 
    uint8_t entry_slots = uint8_t(base_reg.raw());
+   uint8_t flags = 0;
+   if (Payload.enable_trace) flags |= TRY_FLAG_TRACE;
+
    fs->try_blocks.push_back(TryBlockDesc{
       0,             // Place-holder; set correctly after try body
       handler_count,
-      entry_slots
+      entry_slots,
+      flags
    });
 
    // Track try depth for break/continue cleanup

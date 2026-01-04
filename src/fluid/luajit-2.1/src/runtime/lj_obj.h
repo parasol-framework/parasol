@@ -45,6 +45,10 @@ struct StrInternState;
 
 class TipEmitter;
 
+// Debug objects
+
+struct CapturedStackTrace;
+
 // Value types
 
 union TValue;
@@ -505,7 +509,11 @@ struct TryBlockDesc {
    uint16_t first_handler;   // Index into proto's try_handlers array
    uint8_t  handler_count;   // Number of except clauses for this try block
    uint8_t  entry_slots;     // Active slot count at try entry (first free register)
+   uint8_t  flags;           // Bit 0 = TRY_FLAG_TRACE (capture stack trace on exception)
 };
+
+// Flags for TryBlockDesc.flags
+inline constexpr uint8_t TRY_FLAG_TRACE = 0x01;  // Capture stack trace on exception
 
 // Maximum nesting depth for try blocks
 inline constexpr int LJ_MAX_TRY_DEPTH = 32;
@@ -521,6 +529,7 @@ struct TryFrame {
    BCREG     saved_nactvar;    // Active slot count at try entry (first free register)
    GCfunc   *func;             // Function containing the try block
    uint8_t   depth;            // Nesting depth for validation
+   uint8_t   flags;            // Copy of TryBlockDesc.flags (e.g. TRY_FLAG_TRACE)
 };
 
 // Stack of try frames for exception unwinding
@@ -1028,6 +1037,7 @@ struct lua_State {
    // Try-except exception handling runtime state (lazily allocated)
    TryFrameStack try_stack;      // Exception frame stack (nullptr until first BC_TRYENTER)
    const BCIns   *try_handler_pc; // Handler PC for error re-entry (set during unwind)
+   CapturedStackTrace *pending_trace; // Trace captured during exception handling (for try<trace>)
 
    // Constructor/destructor not actually used as yet.
 /*

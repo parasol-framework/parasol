@@ -32,6 +32,7 @@
 #include "lj_obj.h"
 #include "lj_gc.h"
 #include "lj_err.h"
+#include "lj_debug.h"
 #include "lj_buf.h"
 #include "lj_str.h"
 #include "lj_tab.h"
@@ -482,6 +483,14 @@ static void gc_traverse_thread(global_State *g, lua_State* th)
          setnilV(o);
    }
    gc_markobj(g, tabref(th->env));
+   if (th->pending_trace) {
+      CapturedStackTrace *trace = th->pending_trace;
+      for (uint16_t i = 0; i < trace->frame_count; i++) {
+         CapturedFrame *cf = &trace->frames[i];
+         if (cf->source) gc_markobj(g, cf->source);
+         if (cf->funcname) gc_markobj(g, cf->funcname);
+      }
+   }
    lj_state_shrinkstack(th, gc_traverse_frames(g, th));
 }
 
