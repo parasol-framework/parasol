@@ -227,6 +227,7 @@ void ParserContext::emit_error(ParserErrorCode code, const Token &token, std::st
       this->log_trace(ParserChannel::Error, token, Message);
 
       // Save the diagnostics for client analysis
+      if (this->lua().parser_diagnostics) delete (ParserDiagnostics*)this->lua().parser_diagnostics;
       this->lua().parser_diagnostics = new ParserDiagnostics(this->diagnostics());
 
       lj_lex_error(this->lex_state, this->lex_state->tok, ErrMsg::XTOKEN, this->lex_state->token2str(token.raw()));

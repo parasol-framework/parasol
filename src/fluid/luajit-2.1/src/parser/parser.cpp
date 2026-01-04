@@ -87,6 +87,7 @@ static void raise_accumulated_diagnostics(ParserContext &Context)
    lua_State *L = &Context.lua();
 
    // Store diagnostic information in lua_State before throwing
+   if (L->parser_diagnostics) delete (ParserDiagnostics*)L->parser_diagnostics;
    L->parser_diagnostics = new ParserDiagnostics(Context.diagnostics());
 
    GCstr *message = lj_str_new(L, summary.data(), summary.size());
