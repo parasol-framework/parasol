@@ -8,6 +8,8 @@
 
 #include <stdarg.h>
 #include <inttypes.h>
+#include <string.h>
+#include <stdlib.h>
 
 #ifdef __cplusplus
 #include <list>
@@ -37,7 +39,7 @@ template <typename T> concept pcObject = std::is_base_of_v<Object, T>;
 
 #ifndef DEFINE_ENUM_FLAG_OPERATORS
 template <size_t S> struct _ENUM_FLAG_INTEGER_FOR_SIZE;
-template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<1> { typedef BYTE type; };
+template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<1> { typedef int8_t type; };
 template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<2> { typedef int16_t type; };
 template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<4> { typedef int type; };
 template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<8> { typedef int64_t type; };
@@ -297,6 +299,7 @@ enum class MEM : uint32_t {
    COLLECT = 0x00001000,
    NO_BLOCKING = 0x00002000,
    NO_BLOCK = 0x00002000,
+   PROTECTED = 0x00004000,
    READ = 0x00010000,
    WRITE = 0x00020000,
    READ_WRITE = 0x00030000,
@@ -651,12 +654,8 @@ DEFINE_ENUM_FLAG_OPERATORS(STR)
 
 enum class MSF : uint32_t {
    NIL = 0,
-   WAIT = 0x00000001,
-   UPDATE = 0x00000002,
-   NO_DUPLICATE = 0x00000004,
-   ADD = 0x00000008,
-   ADDRESS = 0x00000010,
-   MESSAGE_ID = 0x00000020,
+   UPDATE = 0x00000001,
+   NO_DUPLICATE = 0x00000002,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(MSF)
@@ -1103,19 +1102,18 @@ enum class RES : int {
    STATIC_BUILD = 9,
    LOG_LEVEL = 10,
    TOTAL_SHARED_MEMORY = 11,
-   MAX_PROCESSES = 12,
-   LOG_DEPTH = 13,
-   JNI_ENV = 14,
-   THREAD_ID = 15,
-   OPEN_INFO = 16,
-   EXCEPTION_HANDLER = 17,
-   NET_PROCESSING = 18,
-   PROCESS_STATE = 19,
-   TOTAL_MEMORY = 20,
-   TOTAL_SWAP = 21,
-   CPU_SPEED = 22,
-   FREE_MEMORY = 23,
-   MEMORY_USAGE = 24,
+   LOG_DEPTH = 12,
+   JNI_ENV = 13,
+   THREAD_ID = 14,
+   OPEN_INFO = 15,
+   EXCEPTION_HANDLER = 16,
+   NET_PROCESSING = 17,
+   PROCESS_STATE = 18,
+   TOTAL_MEMORY = 19,
+   TOTAL_SWAP = 20,
+   CPU_SPEED = 21,
+   FREE_MEMORY = 22,
+   MEMORY_USAGE = 23,
 };
 
 // Path types for SetResourcePath()
@@ -1342,7 +1340,7 @@ struct dcKeyEntry {
 };
 
 struct dcDeviceInput {
-   DOUBLE   Values[2];  // The value(s) associated with the Type
+   double   Values[2];  // The value(s) associated with the Type
    int64_t  Timestamp;  // ~Core.PreciseTime() of the recorded input
    OBJECTID DeviceID;   // The hardware device that this event originated from (note: This ID can be to a private/inaccessible object, the point is that the ID is unique)
    JTYPE    Flags;      // Broad descriptors for the given Type.  Automatically defined when delivered to the pointer object
@@ -1381,7 +1379,7 @@ typedef struct RGB8 {
    uint8_t Blue;   // Blue component value
    uint8_t Alpha;  // Alpha component value
    constexpr RGB8() noexcept = default;
-   constexpr RGB8(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255) noexcept 
+   constexpr RGB8(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255) noexcept
       : Red(r), Green(g), Blue(b), Alpha(a) { }
 } RGB8;
 
@@ -1512,7 +1510,7 @@ typedef std::map<std::string, std::string, std::less<>> KEYVALUE;
 #define TOSTRING(x) STRINGIFY(x)
 #endif
 
-#define MOD_IDL NULL
+#define MOD_IDL nullptr
 
 #ifdef PARASOL_STATIC
 __export void CloseCore(void);
@@ -1523,9 +1521,9 @@ __export struct ModHeader ModHeader;
 
 #ifdef MOD_NAME
 #ifdef PARASOL_STATIC
-#define PARASOL_MOD(init,close,open,expunge,IDL,Structures) static struct ModHeader ModHeader(init, close, open, expunge, IDL, Structures, TOSTRING(MOD_NAME), TOSTRING(MOD_NAMESPACE));
+#define PARASOL_MOD(init,close,open,expunge,test,IDL,Structures) static struct ModHeader ModHeader(init, close, open, expunge, test, IDL, Structures, TOSTRING(MOD_NAME), TOSTRING(MOD_NAMESPACE));
 #else
-#define PARASOL_MOD(init,close,open,expunge,IDL,Structures) struct ModHeader ModHeader(init, close, open, expunge, IDL, Structures, TOSTRING(MOD_NAME), TOSTRING(MOD_NAMESPACE));
+#define PARASOL_MOD(init,close,open,expunge,test,IDL,Structures) struct ModHeader ModHeader(init, close, open, expunge, test, IDL, Structures, TOSTRING(MOD_NAME), TOSTRING(MOD_NAMESPACE));
 #endif
 #define MOD_PATH ("modules:" TOSTRING(MOD_NAME))
 #else
@@ -1566,9 +1564,7 @@ template <class T> T roundup(T Num, int Alignment) {
 #if defined(__GNUC__) && defined(__x86__)
 
 constexpr int F2I(double val) noexcept {
-   if (std::is_constant_evaluated()) {
-      return (int)std::round(val);
-   }
+   if (std::is_constant_evaluated()) return (int)std::round(val);
    // This will round if the CPU is kept in its default rounding mode
    int ret;
    asm ("fistpl %0" : "=m" (ret) : "t" (val) : "st");
@@ -1584,16 +1580,8 @@ inline int F2I(double val) {
 
 #endif
 
-constexpr int F2T(double val) noexcept // For numbers no larger than 16 bit, standard (int) is faster than F2T().
-{
-   if ((val > 32767.0) or (val < -32767.0)) return((int)val);
-   else {
-      val = val + (68719476736.0 * 1.5);
-      if constexpr (std::endian::native == std::endian::little) {
-         return ((int *)(APTR)&val)[0]>>16;
-      }
-      else return ((int *)&val)[1]>>16;
-   }
+constexpr int F2T(double val) noexcept {
+   return int(val); // Expected to compile to a cvttsd2si instruction or equivalent
 }
 
 } // namespace
@@ -1624,122 +1612,17 @@ struct OpenInfo {
    ERR     Error;           // OPF::ERROR
 };
 
-// Flags for defining fields, methods, actions and functions.  CLASSDEF's can only be used in field definitions for
-// classes.  FUNCDEF's can only be used in argument definitions for methods, actions and functions.
-
 #ifdef _LP64
 #define FD_PTR64 FD_POINTER
 #else
 #define FD_PTR64 0
 #endif
 
-// Field flags for classes.  These are intended to simplify field definitions, e.g. using FDF_BYTEARRAY combines
-// FD_ARRAY with FD_BYTE.  DO NOT use these for function definitions, they are not intended to be compatible.
-
-// Sizes/Types
-
-#define FT_POINTER  FD_POINTER
-#define FT_FLOAT    FD_FLOAT
-#define FT_INT      FD_INT
-#define FT_DOUBLE   FD_DOUBLE
-#define FT_INT64    FD_INT64
-#define FT_STRING   (FD_POINTER|FD_STRING)
-#define FT_UNLISTED FD_UNLISTED
-#define FT_UNIT     FD_UNIT
-
-// Class field definitions.  See core.h for all FD definitions.
-
-#define FDF_BYTE       FD_BYTE
-#define FDF_WORD       FD_WORD     // Field is word sized (16-bit)
-#define FDF_INT        FD_INT      // Field is int sized (32-bit)
-#define FDF_DOUBLE     FD_DOUBLE   // Field is double floating point sized (64-bit)
-#define FDF_INT64      FD_INT64    // Field is large sized (64-bit)
-#define FDF_POINTER    FD_POINTER  // Field is an address pointer (typically 32-bit)
-#define FDF_ARRAY      FD_ARRAY    // Field is a pointer to an array
-#define FDF_CPP        FD_CPP      // Field is a C++ type variant
-#define FDF_PTR        FD_POINTER
-#define FDF_UNIT       FD_UNIT
-#define FDF_SYNONYM    FD_SYNONYM
-
-#define FDF_UNSIGNED    FD_UNSIGNED
-#define FDF_FUNCTION    FD_FUNCTION           // sizeof(FUNCTION) - use FDF_FUNCTIONPTR for sizeof(APTR)
-#define FDF_FUNCTIONPTR (FD_FUNCTION|FD_POINTER)
-#define FDF_STRUCT      FD_STRUCT
-#define FDF_RESOURCE    FD_RESOURCE
-#define FDF_OBJECT      (FD_POINTER|FD_OBJECT)   // Field refers to another object
-#define FDF_OBJECTID    (FD_INT|FD_OBJECT)      // Field refers to another object by ID
-#define FDF_LOCAL       (FD_POINTER|FD_LOCAL)    // Field refers to a local object
-#define FDF_STRING      (FD_POINTER|FD_STRING)   // Field points to a string.  NB: Ideally want to remove the FD_POINTER as it should be redundant
-#define FDF_STR         FDF_STRING
-#define FDF_SCALED      FD_SCALED
-#define FDF_FLAGS       FD_FLAGS                // Field contains flags
-#define FDF_ALLOC       FD_ALLOC                // Field is a dynamic allocation - either a memory block or object
-#define FDF_LOOKUP      FD_LOOKUP               // Lookup names for values in this field
-#define FDF_READ        FD_READ                 // Field is readable
-#define FDF_WRITE       FD_WRITE                // Field is writeable
-#define FDF_INIT        FD_INIT                 // Field can only be written prior to Init()
-#define FDF_SYSTEM      FD_SYSTEM
-#define FDF_ERROR       (FD_INT|FD_ERROR)
-#define FDF_RGB         (FD_RGB|FD_BYTE|FD_ARRAY)
-#define FDF_R           FD_READ
-#define FDF_W           FD_WRITE
-#define FDF_RW          (FD_READ|FD_WRITE)
-#define FDF_RI          (FD_READ|FD_INIT)
-#define FDF_I           FD_INIT
-#define FDF_VIRTUAL     FD_VIRTUAL
-#define FDF_INTFLAGS    (FDF_INT|FDF_FLAGS)
-#define FDF_FIELDTYPES  (FD_INT|FD_DOUBLE|FD_INT64|FD_POINTER|FD_UNIT|FD_BYTE|FD_ARRAY|FD_FUNCTION)
-
-// These constants have to match the FD* constants << 32
-
-#define TDOUBLE   0x8000000000000000LL
-#define TINT      0x4000000000000000LL
-#define TUNIT     0x2000000000000000LL
-#define TFLOAT    0x1000000000000000LL // NB: Floats are upscaled to doubles when passed as v-args.
-#define TPTR      0x0800000000000000LL
-#define TINT64    0x0400000000000000LL
-#define TFUNCTION 0x0200000000000000LL
-#define TSTR      0x0080000000000000LL
-#define TARRAY    0x0000100000000000LL
-#define TSCALE    0x0020000000000000LL
-#define TAGEND    0LL
-#define TAGDIVERT -1LL
-#define TSTRING   TSTR
-
 #define nextutf8(str) if (*(str)) for (++(str); (*(str) & 0xc0) IS 0x80; (str)++);
 
 //********************************************************************************************************************
-// FieldValue is used to simplify the initialisation of new objects.
 
 namespace pf {
-
-struct FieldValue {
-   uint32_t FieldID;
-   int Type;
-   union {
-      CSTRING String;
-      APTR    Pointer;
-      CPTR    CPointer;
-      double  Double;
-      SCALE   Percent;
-      int64_t Int64;
-      int     Int;
-   };
-
-   //std::string not included as not compatible with constexpr
-   constexpr FieldValue(uint32_t pFID, CSTRING pValue)  : FieldID(pFID), Type(FD_STRING), String(pValue) { };
-   constexpr FieldValue(uint32_t pFID, int pValue)      : FieldID(pFID), Type(FD_INT), Int(pValue) { };
-   constexpr FieldValue(uint32_t pFID, int64_t pValue)  : FieldID(pFID), Type(FD_INT64), Int64(pValue) { };
-   constexpr FieldValue(uint32_t pFID, size_t pValue)   : FieldID(pFID), Type(FD_INT64), Int64(pValue) { };
-   constexpr FieldValue(uint32_t pFID, double pValue)   : FieldID(pFID), Type(FD_DOUBLE), Double(pValue) { };
-   constexpr FieldValue(uint32_t pFID, SCALE pValue)    : FieldID(pFID), Type(FD_DOUBLE|FD_SCALED), Percent(pValue) { };
-   constexpr FieldValue(uint32_t pFID, const FUNCTION &pValue) : FieldID(pFID), Type(FDF_FUNCTIONPTR), CPointer(&pValue) { };
-   constexpr FieldValue(uint32_t pFID, const FUNCTION *pValue) : FieldID(pFID), Type(FDF_FUNCTIONPTR), CPointer(pValue) { };
-   constexpr FieldValue(uint32_t pFID, APTR pValue)     : FieldID(pFID), Type(FD_POINTER), Pointer(pValue) { };
-   constexpr FieldValue(uint32_t pFID, CPTR pValue)     : FieldID(pFID), Type(FD_POINTER), CPointer(pValue) { };
-   constexpr FieldValue(uint32_t pFID, CPTR pValue, int pCustom) : FieldID(pFID), Type(pCustom), CPointer(pValue) { };
-};
-
 
 class FloatRect {
    public:
@@ -1753,42 +1636,6 @@ class FloatRect {
    constexpr double bottom() const noexcept { return Y + Height; }
 };
 
-}
-
-#include <string.h> // memset()
-#include <stdlib.h> // strtol(), strtod()
-
-namespace dmf { // Helper functions for DMF flags
-inline bool has(DMF Value, DMF Flags) { return (Value & Flags) != DMF::NIL; }
-
-inline bool hasX(DMF Value) { return (Value & DMF::FIXED_X) != DMF::NIL; }
-inline bool hasY(DMF Value) { return (Value & DMF::FIXED_Y) != DMF::NIL; }
-inline bool hasWidth(DMF Value) { return (Value & DMF::FIXED_WIDTH) != DMF::NIL; }
-inline bool hasHeight(DMF Value) { return (Value & DMF::FIXED_HEIGHT) != DMF::NIL; }
-inline bool hasXOffset(DMF Value) { return (Value & DMF::FIXED_X_OFFSET) != DMF::NIL; }
-inline bool hasYOffset(DMF Value) { return (Value & DMF::FIXED_Y_OFFSET) != DMF::NIL; }
-inline bool hasRadiusX(DMF Value) { return (Value & DMF::FIXED_RADIUS_X) != DMF::NIL; }
-inline bool hasRadiusY(DMF Value) { return (Value & DMF::FIXED_RADIUS_Y) != DMF::NIL; }
-inline bool hasScaledX(DMF Value) { return (Value & DMF::SCALED_X) != DMF::NIL; }
-inline bool hasScaledY(DMF Value) { return (Value & DMF::SCALED_Y) != DMF::NIL; }
-inline bool hasScaledWidth(DMF Value) { return (Value & DMF::SCALED_WIDTH) != DMF::NIL; }
-inline bool hasScaledHeight(DMF Value) { return (Value & DMF::SCALED_HEIGHT) != DMF::NIL; }
-inline bool hasScaledXOffset(DMF Value) { return (Value & DMF::SCALED_X_OFFSET) != DMF::NIL; }
-inline bool hasScaledYOffset(DMF Value) { return (Value & DMF::SCALED_Y_OFFSET) != DMF::NIL; }
-inline bool hasScaledCenterX(DMF Value) { return (Value & DMF::SCALED_CENTER_X) != DMF::NIL; }
-inline bool hasScaledCenterY(DMF Value) { return (Value & DMF::SCALED_CENTER_Y) != DMF::NIL; }
-inline bool hasScaledRadiusX(DMF Value) { return (Value & DMF::SCALED_RADIUS_X) != DMF::NIL; }
-inline bool hasScaledRadiusY(DMF Value) { return (Value & DMF::SCALED_RADIUS_Y) != DMF::NIL; }
-
-inline bool hasAnyHorizontalPosition(DMF Value) { return (Value & (DMF::FIXED_X|DMF::SCALED_X|DMF::FIXED_X_OFFSET|DMF::SCALED_X_OFFSET)) != DMF::NIL; }
-inline bool hasAnyVerticalPosition(DMF Value) { return (Value & (DMF::FIXED_Y|DMF::SCALED_Y|DMF::FIXED_Y_OFFSET|DMF::SCALED_Y_OFFSET)) != DMF::NIL; }
-inline bool hasAnyScaledRadius(DMF Value) { return (Value & (DMF::SCALED_RADIUS_X|DMF::SCALED_RADIUS_Y)) != DMF::NIL; }
-inline bool hasAnyX(DMF Value) { return (Value & (DMF::SCALED_X|DMF::FIXED_X)) != DMF::NIL; }
-inline bool hasAnyY(DMF Value) { return (Value & (DMF::SCALED_Y|DMF::FIXED_Y)) != DMF::NIL; }
-inline bool hasAnyWidth(DMF Value) { return (Value & (DMF::SCALED_WIDTH|DMF::FIXED_WIDTH)) != DMF::NIL; }
-inline bool hasAnyHeight(DMF Value) { return (Value & (DMF::SCALED_HEIGHT|DMF::FIXED_HEIGHT)) != DMF::NIL; }
-inline bool hasAnyXOffset(DMF Value) { return (Value & (DMF::SCALED_X_OFFSET|DMF::FIXED_X_OFFSET)) != DMF::NIL; }
-inline bool hasAnyYOffset(DMF Value) { return (Value & (DMF::SCALED_Y_OFFSET|DMF::FIXED_Y_OFFSET)) != DMF::NIL; }
 }
 
 
@@ -1812,6 +1659,11 @@ struct Function {
    const struct FunctionField * Args;    // A list of parameters accepted by the function
 };
 
+using ModClose   = void (*)(OBJECTPTR);
+using ModInit    = ERR (*)(OBJECTPTR, struct CoreBase*);
+using ModOpen    = ERR (*)(OBJECTPTR);
+using ModExpunge = ERR (*)(void);
+using ModTest    = void (*)(CSTRING, int *, int *);
 struct ModHeader {
    MHF     Flags;                                 // Special flags, type of function table wanted from the Core
    CSTRING Definitions;                           // Module definition string, usable by run-time languages such as Fluid
@@ -1819,18 +1671,14 @@ struct ModHeader {
    void (*Close)(OBJECTPTR);                      // A function that will be called each time the module is closed.
    ERR (*Open)(OBJECTPTR);                        // A function that will be called each time the module is opened.
    ERR (*Expunge)(void);                          // Reference to an expunge function to terminate the module.
+   void (*Test)(CSTRING, int *, int *);           // A function that can run embedded unit tests in development builds.
    CSTRING Name;                                  // Name of the module
    CSTRING Namespace;                             // A reserved system-wide namespace for function names.
    STRUCTS *StructDefs;
    class RootModule *Root;
-   ModHeader(ERR (*pInit)(OBJECTPTR, struct CoreBase *),
-      void  (*pClose)(OBJECTPTR),
-      ERR (*pOpen)(OBJECTPTR),
-      ERR (*pExpunge)(void),
-      CSTRING pDef,
-      STRUCTS *pStructs,
-      CSTRING pName,
-      CSTRING pNamespace) {
+
+   ModHeader(ModInit pInit, ModClose pClose, ModOpen pOpen, ModExpunge pExpunge, ModTest pTest,
+      CSTRING pDef, STRUCTS *pStructs, CSTRING pName, CSTRING pNamespace) {
       Flags         = MHF::DEFAULT;
       Definitions   = pDef;
       StructDefs    = pStructs;
@@ -1838,9 +1686,10 @@ struct ModHeader {
       Close         = pClose;
       Open          = pOpen;
       Expunge       = pExpunge;
+      Test          = pTest;
       Name          = pName;
       Namespace     = pNamespace;
-      Root          = NULL;
+      Root          = nullptr;
    }
 };
 
@@ -1850,7 +1699,7 @@ struct FieldArray {
    APTR     SetField; // ERR SetField(*Object, APTR Value);
    MAXINT   Arg;    // Can be a pointer or an integer value
    uint32_t Flags;  // Special flags that describe the field
-  template <class G = APTR, class S = APTR, class T = MAXINT> FieldArray(CSTRING pName, uint32_t pFlags, G pGetField = NULL, S pSetField = NULL, T pArg = 0) :
+  template <class G = APTR, class S = APTR, class T = MAXINT> FieldArray(CSTRING pName, uint32_t pFlags, G pGetField = nullptr, S pSetField = nullptr, T pArg = 0) :
      Name(pName), GetField((APTR)pGetField), SetField((APTR)pSetField), Arg((MAXINT)pArg), Flags(pFlags)
      { }
 };
@@ -1901,8 +1750,8 @@ struct MethodEntry {
    CSTRING Name;                         // Name of the method
    const struct FunctionField * Args;    // List of parameters accepted by the method
    int     Size;                         // Total byte-size of all accepted parameters when they are assembled as a C structure.
-   MethodEntry() : MethodID(AC::NIL), Routine(NULL), Name(NULL) { }
-   MethodEntry(AC pID, APTR pRoutine, CSTRING pName, const struct FunctionField *pArgs, int pSize) :
+   MethodEntry() : MethodID(AC::NIL), Routine(nullptr), Name(nullptr), Args(nullptr), Size(0) { }
+   MethodEntry(AC pID, APTR pRoutine, CSTRING pName, const struct FunctionField *pArgs = nullptr, int pSize = 0) :
       MethodID(pID), Routine(pRoutine), Name(pName), Args(pArgs), Size(pSize) { }
 };
 
@@ -1963,7 +1812,7 @@ struct CompressionFeedback {
    int16_t Hour;            // Hour of the original file's datestamp.
    int16_t Minute;          // Minute of the original file's datestamp.
    int16_t Second;          // Second of the original file's datestamp.
-   CompressionFeedback() : FeedbackID(FDB::NIL), Index(0), Path(NULL), Dest(NULL),
+   CompressionFeedback() : FeedbackID(FDB::NIL), Index(0), Path(nullptr), Dest(nullptr),
       Progress(0), OriginalSize(0), CompressedSize(0),
       Year(0), Month(0), Day(0), Hour(0), Minute(0), Second(0) { }
 
@@ -2016,7 +1865,7 @@ struct DirInfo {
       int prvIndex;         // Current index within the folder when scanning
       APTR prvIndexPtr;
    };
-   WORD   prvResolveLen;    // Byte length of ResolvedPath
+   int16_t   prvResolveLen;    // Byte length of ResolvedPath
    #endif
 };
 
@@ -2027,7 +1876,7 @@ struct FileFeedback {
    STRING  Dest;        // Destination file/path if moving or copying
    FBK     FeedbackID;  // Set to one of the FBK values
    char    Reserved[32]; // Reserved in case of future expansion
-  FileFeedback() : Size(0), Position(0), Path(NULL), Dest(NULL), FeedbackID(FBK::NIL) { }
+  FileFeedback() : Size(0), Position(0), Path(nullptr), Dest(nullptr), FeedbackID(FBK::NIL) { }
 };
 
 struct Field {
@@ -2070,9 +1919,9 @@ struct ScriptArg { // For use with sc::Exec
 };
 
 #ifdef PARASOL_STATIC
-#define JUMPTABLE_CORE static struct CoreBase *CoreBase;
+#define JUMPTABLE_CORE [[maybe_unused]] static struct CoreBase *CoreBase = nullptr;
 #else
-#define JUMPTABLE_CORE struct CoreBase *CoreBase;
+#define JUMPTABLE_CORE struct CoreBase *CoreBase = nullptr;
 #endif
 
 struct CoreBase {
@@ -2116,8 +1965,8 @@ struct CoreBase {
    CLASSID (*_ResolveClassName)(CSTRING Name);
    ERR (*_SendMessage)(MSGID Type, MSF Flags, APTR Data, int Size);
    ERR (*_SetOwner)(OBJECTPTR Object, OBJECTPTR Owner);
-   OBJECTPTR (*_SetContext)(OBJECTPTR Object);
-   struct ObjectContext * (*_SetObjectContext)(struct ObjectContext *Context);
+   ERR (*_ProtectMemory)(APTR Address, MEM Flags);
+   void (*_SetObjectContext)(OBJECTPTR Object, struct Field *Field, AC ActionID);
    CSTRING (*_FieldName)(uint32_t FieldID);
    ERR (*_ScanDir)(struct DirInfo *Info);
    ERR (*_SetName)(OBJECTPTR Object, CSTRING Name);
@@ -2129,7 +1978,7 @@ struct CoreBase {
    ERR (*_UnsubscribeAction)(OBJECTPTR Object, AC Action);
    void (*_UnsubscribeEvent)(APTR Handle);
    ERR (*_BroadcastEvent)(APTR Event, int EventSize);
-   void (*_WaitTime)(int Seconds, int MicroSeconds);
+   void (*_WaitTime)(double Seconds);
    int64_t (*_GetEventID)(EVG Group, CSTRING SubGroup, CSTRING Event);
    uint32_t (*_GenCRC32)(uint32_t CRC, APTR Data, uint32_t Length);
    int64_t (*_GetResource)(RES Resource);
@@ -2165,11 +2014,11 @@ struct CoreBase {
    CSTRING (*_ResolveUserID)(int User);
    ERR (*_CreateLink)(CSTRING From, CSTRING To);
    OBJECTPTR (*_ParentContext)(void);
+   void (*_SetResourceMgr)(APTR Address, struct ResourceManager *Manager);
 #endif // PARASOL_STATIC
 };
 
-#ifndef PRV_CORE_MODULE
-#ifndef PARASOL_STATIC
+#if !defined(PARASOL_STATIC) and !defined(PRV_CORE_MODULE)
 extern struct CoreBase *CoreBase;
 inline ERR AccessMemory(MEMORYID Memory, MEM Flags, int MilliSeconds, APTR *Result) { return CoreBase->_AccessMemory(Memory,Flags,MilliSeconds,Result); }
 inline ERR Action(AC Action, OBJECTPTR Object, APTR Parameters) { return CoreBase->_Action(Action,Object,Parameters); }
@@ -2210,8 +2059,8 @@ inline ERR ReleaseMemory(MEMORYID MemoryID) { return CoreBase->_ReleaseMemory(Me
 inline CLASSID ResolveClassName(CSTRING Name) { return CoreBase->_ResolveClassName(Name); }
 inline ERR SendMessage(MSGID Type, MSF Flags, APTR Data, int Size) { return CoreBase->_SendMessage(Type,Flags,Data,Size); }
 inline ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner) { return CoreBase->_SetOwner(Object,Owner); }
-inline OBJECTPTR SetContext(OBJECTPTR Object) { return CoreBase->_SetContext(Object); }
-inline struct ObjectContext * SetObjectContext(struct ObjectContext *Context) { return CoreBase->_SetObjectContext(Context); }
+inline ERR ProtectMemory(APTR Address, MEM Flags) { return CoreBase->_ProtectMemory(Address,Flags); }
+inline void SetObjectContext(OBJECTPTR Object, struct Field *Field, AC ActionID) { return CoreBase->_SetObjectContext(Object,Field,ActionID); }
 inline CSTRING FieldName(uint32_t FieldID) { return CoreBase->_FieldName(FieldID); }
 inline ERR ScanDir(struct DirInfo *Info) { return CoreBase->_ScanDir(Info); }
 inline ERR SetName(OBJECTPTR Object, CSTRING Name) { return CoreBase->_SetName(Object,Name); }
@@ -2223,7 +2072,7 @@ inline ERR UpdateTimer(APTR Subscription, double Interval) { return CoreBase->_U
 inline ERR UnsubscribeAction(OBJECTPTR Object, AC Action) { return CoreBase->_UnsubscribeAction(Object,Action); }
 inline void UnsubscribeEvent(APTR Handle) { return CoreBase->_UnsubscribeEvent(Handle); }
 inline ERR BroadcastEvent(APTR Event, int EventSize) { return CoreBase->_BroadcastEvent(Event,EventSize); }
-inline void WaitTime(int Seconds, int MicroSeconds) { return CoreBase->_WaitTime(Seconds,MicroSeconds); }
+inline void WaitTime(double Seconds) { return CoreBase->_WaitTime(Seconds); }
 inline int64_t GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event) { return CoreBase->_GetEventID(Group,SubGroup,Event); }
 inline uint32_t GenCRC32(uint32_t CRC, APTR Data, uint32_t Length) { return CoreBase->_GenCRC32(CRC,Data,Length); }
 inline int64_t GetResource(RES Resource) { return CoreBase->_GetResource(Resource); }
@@ -2259,6 +2108,7 @@ inline CSTRING ResolveGroupID(int Group) { return CoreBase->_ResolveGroupID(Grou
 inline CSTRING ResolveUserID(int User) { return CoreBase->_ResolveUserID(User); }
 inline ERR CreateLink(CSTRING From, CSTRING To) { return CoreBase->_CreateLink(From,To); }
 inline OBJECTPTR ParentContext(void) { return CoreBase->_ParentContext(); }
+inline void SetResourceMgr(APTR Address, struct ResourceManager *Manager) { return CoreBase->_SetResourceMgr(Address,Manager); }
 #else
 extern "C" ERR AccessMemory(MEMORYID Memory, MEM Flags, int MilliSeconds, APTR *Result);
 extern "C" ERR Action(AC Action, OBJECTPTR Object, APTR Parameters);
@@ -2298,8 +2148,8 @@ extern "C" ERR ReleaseMemory(MEMORYID MemoryID);
 extern "C" CLASSID ResolveClassName(CSTRING Name);
 extern "C" ERR SendMessage(MSGID Type, MSF Flags, APTR Data, int Size);
 extern "C" ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner);
-extern "C" OBJECTPTR SetContext(OBJECTPTR Object);
-extern "C" struct ObjectContext * SetObjectContext(struct ObjectContext *Context);
+extern "C" ERR ProtectMemory(APTR Address, MEM Flags);
+extern "C" void SetObjectContext(OBJECTPTR Object, struct Field *Field, AC ActionID);
 extern "C" CSTRING FieldName(uint32_t FieldID);
 extern "C" ERR ScanDir(struct DirInfo *Info);
 extern "C" ERR SetName(OBJECTPTR Object, CSTRING Name);
@@ -2311,7 +2161,7 @@ extern "C" ERR UpdateTimer(APTR Subscription, double Interval);
 extern "C" ERR UnsubscribeAction(OBJECTPTR Object, AC Action);
 extern "C" void UnsubscribeEvent(APTR Handle);
 extern "C" ERR BroadcastEvent(APTR Event, int EventSize);
-extern "C" void WaitTime(int Seconds, int MicroSeconds);
+extern "C" void WaitTime(double Seconds);
 extern "C" int64_t GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event);
 extern "C" uint32_t GenCRC32(uint32_t CRC, APTR Data, uint32_t Length);
 extern "C" int64_t GetResource(RES Resource);
@@ -2347,14 +2197,11 @@ extern "C" CSTRING ResolveGroupID(int Group);
 extern "C" CSTRING ResolveUserID(int User);
 extern "C" ERR CreateLink(CSTRING From, CSTRING To);
 extern "C" OBJECTPTR ParentContext(void);
+extern "C" void SetResourceMgr(APTR Address, struct ResourceManager *Manager);
 #endif // PARASOL_STATIC
-#endif
 
 
 //********************************************************************************************************************
-
-#define END_FIELD FieldArray(nullptr, 0)
-#define FDEF static const struct FunctionField
 
 template <class T> inline MEMORYID GetMemoryID(T &&A) {
    return ((MEMORYID *)A)[-2];
@@ -2394,7 +2241,7 @@ inline ERR FreeResource(const void *Address) {
 }
 
 inline ERR AllocMemory(int Size, MEM Flags, APTR Address) {
-   return AllocMemory(Size, Flags, (APTR *)Address, NULL);
+   return AllocMemory(Size, Flags, (APTR *)Address, nullptr);
 }
 
 template<class T> inline ERR NewObject(CLASSID ClassID, T **Result) {
@@ -2414,7 +2261,7 @@ inline ERR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo) {
 }
 
 inline ERR QueueAction(AC Action, OBJECTID ObjectID) {
-   return QueueAction(Action, ObjectID, NULL);
+   return QueueAction(Action, ObjectID, nullptr);
 }
 #endif
 
@@ -2432,7 +2279,7 @@ inline void clearmem(APTR Memory, std::size_t Length) {
    if (Memory) memset(Memory, 0, Length);
 }
 
-static THREADVAR int _tlUniqueThreadID = 0;
+static thread_local int _tlUniqueThreadID = 0;
 
 [[nodiscard]] inline int _get_thread_id(void) {
    if (_tlUniqueThreadID) return _tlUniqueThreadID;
@@ -2440,1127 +2287,13 @@ static THREADVAR int _tlUniqueThreadID = 0;
    return _tlUniqueThreadID;
 }
 
-// For extremely verbose debug logs, run cmake with -DPARASOL_VLOG=ON
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-zero-length"
-
-class Log { // C++ wrapper for Parasol's log functionality
-   private:
-      int branches;
-      CSTRING header;
-
-   public:
-      Log() : branches(0), header(NULL) { }
-      Log(CSTRING Header) : branches(0), header(Header) { }
-
-      ~Log() {
-         while (branches > 0) { branches--; LogReturn(); }
-      }
-
-      void branch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) {
-         va_list arg;
-         va_start(arg, Message);
-         VLogF(VLF::API|VLF::BRANCH, header, Message, arg);
-         va_end(arg);
-         branches++;
-      }
-
-      #ifdef _DEBUG
-      void traceBranch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) {
-         va_list arg;
-         va_start(arg, Message);
-         VLogF(VLF::TRACE|VLF::BRANCH, header, Message, arg);
-         va_end(arg);
-         branches++;
-      }
-      #else
-      void traceBranch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) { }
-      #endif
-
-      inline void debranch() {
-         branches--;
-         LogReturn();
-      }
-
-      void app(CSTRING Message, ...) { // Info level, recommended for applications only
-         va_list arg;
-         va_start(arg, Message);
-         VLogF(VLF::INFO, header, Message, arg);
-         va_end(arg);
-      }
-
-      void msg(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Defaults to API level, recommended for modules
-         va_list arg;
-         va_start(arg, Message);
-         VLogF(VLF::API, header, Message, arg);
-         va_end(arg);
-      }
-
-      void msg(VLF Flags, CSTRING Message, ...) __attribute__((format(printf, 3, 4))) { // Defaults to API level, recommended for modules
-         va_list arg;
-         va_start(arg, Message);
-         VLogF(Flags, header, Message, arg);
-         va_end(arg);
-         if ((Flags & VLF::BRANCH) != VLF::NIL) branches++;
-      }
-
-      void detail(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Detailed API message
-         va_list arg;
-         va_start(arg, Message);
-         VLogF(VLF::DETAIL, header, Message, arg);
-         va_end(arg);
-      }
-
-      void pmsg(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // "Parent message", uses the scope of the caller
-         va_list arg;
-         va_start(arg, Message);
-         VLogF(VLF::API, NULL, Message, arg);
-         va_end(arg);
-      }
-
-      void warning(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) {
-         va_list arg;
-         va_start(arg, Message);
-         VLogF(VLF::WARNING, header, Message, arg);
-         va_end(arg);
-      }
-
-      void error(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // NB: Use for messages intended for the user, not the developer
-         va_list arg;
-         va_start(arg, Message);
-         VLogF(VLF::ERROR, header, Message, arg);
-         va_end(arg);
-      }
-
-      void function(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) { // Equivalent to branch() but without a new branch being created
-         va_list arg;
-         va_start(arg, Message);
-         VLogF(VLF::API|VLF::FUNCTION, header, Message, arg);
-         va_end(arg);
-      }
-
-      inline ERR error(ERR Code) { // Technically a warning
-         FuncError(header, Code);
-         return Code;
-      }
-
-      inline ERR warning(ERR Code) {
-         FuncError(header, Code);
-         return Code;
-      }
-
-      void trace(CSTRING Message, ...) {
-         #ifdef _DEBUG
-            va_list arg;
-            va_start(arg, Message);
-            VLogF(VLF::TRACE, header, Message, arg);
-            va_end(arg);
-         #endif
-      }
-
-      void traceWarning(CSTRING Message, ...) {
-         #ifdef _DEBUG
-            va_list arg;
-            va_start(arg, Message);
-            VLogF(VLF::WARNING, header, Message, arg);
-            va_end(arg);
-         #endif
-      }
-
-      inline ERR traceWarning(ERR Code) {
-         #ifdef _DEBUG
-            FuncError(header, Code);
-         #endif
-         return Code;
-      }
-};
-
-#pragma GCC diagnostic pop
-
-class LogLevel {
-   private:
-      int level;
-   public:
-      LogLevel(int Level) : level(Level) {
-         AdjustLogLevel(Level);
-      }
-
-      ~LogLevel() {
-         AdjustLogLevel(-level);
-      }
-};
-
 } // namespace
 
-class ScopedObjectAccess {
-   private:
-      OBJECTPTR obj;
-
-   public:
-      ERR error;
-
-      inline ScopedObjectAccess(OBJECTPTR Object);
-
-      inline ~ScopedObjectAccess();
-
-      inline bool granted() { return error == ERR::Okay; }
-
-      inline void release();
-};
-
-//********************************************************************************************************************
-// Refer to Object->get() to see what this is about...
-
-template <class T> inline int64_t FIELD_TAG()     { return 0; }
-template <> inline int64_t FIELD_TAG<double>()    { return TDOUBLE; }
-template <> inline int64_t FIELD_TAG<bool>()      { return TINT; }
-template <> inline int64_t FIELD_TAG<int>()       { return TINT; }
-template <> inline int64_t FIELD_TAG<int64_t>()   { return TINT64; }
-template <> inline int64_t FIELD_TAG<uint64_t>()  { return TINT64; }
-template <> inline int64_t FIELD_TAG<float>()     { return TFLOAT; }
-template <> inline int64_t FIELD_TAG<OBJECTPTR>() { return TPTR; }
-template <> inline int64_t FIELD_TAG<APTR>()      { return TPTR; }
-template <> inline int64_t FIELD_TAG<CSTRING>()   { return TSTRING; }
-template <> inline int64_t FIELD_TAG<STRING>()    { return TSTRING; }
-template <> inline int64_t FIELD_TAG<SCALE>()     { return TDOUBLE|TSCALE; }
-
-// For testing if type T can be matched to an FD flag.
-
-template <class T> inline int FIELD_TYPECHECK()     { return FD_PTR|FD_STRUCT|FD_STRING; }
-template <> inline int FIELD_TYPECHECK<double>()    { return FD_DOUBLE; }
-template <> inline int FIELD_TYPECHECK<bool>()      { return FD_INT; }
-template <> inline int FIELD_TYPECHECK<int>()       { return FD_INT; }
-template <> inline int FIELD_TYPECHECK<int64_t>()   { return FD_INT64; }
-template <> inline int FIELD_TYPECHECK<uint64_t>()  { return FD_INT64; }
-template <> inline int FIELD_TYPECHECK<float>()     { return FD_FLOAT; }
-template <> inline int FIELD_TYPECHECK<OBJECTPTR>() { return FD_PTR; }
-template <> inline int FIELD_TYPECHECK<APTR>()      { return FD_PTR; }
-template <> inline int FIELD_TYPECHECK<CSTRING>()   { return FD_STRING; }
-template <> inline int FIELD_TYPECHECK<STRING>()    { return FD_STRING; }
-template <> inline int FIELD_TYPECHECK<std::string>() { return FD_STRING|FD_CPP; }
-
-//********************************************************************************************************************
-
-class ObjectContext {
-public:
-   OBJECTPTR obj = nullptr;                 // The object that currently has the operating context.
-   struct Field *field = nullptr;           // Set if the context is linked to a get/set field operation.  For logging purposes only.
-   class extObjectContext *stack = nullptr; // Call stack.
-   AC action = AC::NIL;                     // Set if the context enters an action or method routine.
-};
-
-//********************************************************************************************************************
-// Header used for all objects.
-
-struct Object { // Must be 64-bit aligned
-   union {
-      objMetaClass *Class;          // [Public] Class pointer
-      class extMetaClass *ExtClass; // [Private] Internal version of the class pointer
-   };
-   APTR     ChildPrivate;        // Address for the ChildPrivate structure, if allocated
-   APTR     CreatorMeta;         // The creator of the object is permitted to store a custom data pointer here.
-   struct Object *Owner;         // The owner of this object
-   std::atomic_uint64_t NotifyFlags; // Action subscription flags - space for 64 actions max
-   std::atomic_uchar ThreadPending; // AsyncAction() increments this.
-   std::atomic_char Queue;       // Counter of locks attained by LockObject(); decremented by ReleaseObject()
-   std::atomic_char SleepQueue;  // For the use of LockObject() only
-   BYTE ActionDepth;             // Incremented each time an action or method is called on the object
-   OBJECTID UID;                 // Unique object identifier
-   NF       Flags;               // Object flags
-   std::atomic_int ThreadID;     // Managed by locking functions.  Atomic due to volatility.
-   char Name[MAX_NAME_LEN];      // The name of the object.  NOTE: This value can be adjusted to ensure that the struct is always 8-bit aligned.
-
-   // NB: This constructor is called by NewObject(), no need to call it manually from client code.
-
-   Object() : NotifyFlags(0), ThreadPending(0), Queue(0), SleepQueue(0), ThreadID(0) {
-      Class = nullptr;
-      ChildPrivate = nullptr;
-      CreatorMeta = nullptr;
-      Owner = nullptr;
-      NotifyFlags = 0;
-      ThreadPending = 0;
-      Queue = 0;
-      SleepQueue = 0;
-      ActionDepth = 0;
-      UID = 0;
-      Flags = NF::NIL;
-      Name[0] = '\0';
-   }
-
-   inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
-   inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
-   inline bool isSubClass();
-   inline OBJECTID ownerID() { return Owner ? Owner->UID : 0; }
-   inline CLASSID classID();
-   inline CLASSID baseClassID();
-   inline NF flags() { return Flags; }
-
-   CSTRING className();
-
-   inline bool collecting() { // Is object being freed or marked for collection?
-      return (Flags & (NF::FREE|NF::COLLECT|NF::FREE_ON_UNLOCK)) != NF::NIL;
-   }
-
-   inline bool terminating() { // Is object currently being freed?
-      return (Flags & NF::FREE) != NF::NIL;
-   }
-
-   // Use lock() to quickly obtain an object lock without a call to LockObject().  Can fail if the object is being collected.
-
-   inline ERR lock(int Timeout = -1) {
-      if (++Queue IS 1) {
-         ThreadID = pf::_get_thread_id();
-         return ERR::Okay;
-      }
-      else {
-         if (ThreadID IS pf::_get_thread_id()) return ERR::Okay; // If this is for the same thread then it's a nested lock, so there's no issue.
-         --Queue; // Restore the lock count
-         return LockObject(this, Timeout); // Can fail if object is marked for collection.
-      }
-   }
-
-   inline void unlock() {
-      // Prefer to use ReleaseObject() if there are threads that need to be woken
-      if ((SleepQueue > 0) or defined(NF::FREE_ON_UNLOCK)) ReleaseObject(this);
-      else --Queue;
-   }
-
-   inline bool locked() {
-      return Queue > 0;
-   }
-
-   inline bool hasOwner(OBJECTID ID) { // Return true if ID has ownership.
-      auto obj = this->Owner;
-      while ((obj) and (obj->UID != ID)) obj = obj->Owner;
-      return obj ? true : false;
-   }
-
-   // set() support for array fields
-
-   template <class T> ERR set(FIELD FieldID, const T *Data, size_t Elements, int Type = FIELD_TYPECHECK<T>()) {
-      Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if (!(field->Flags & FD_ARRAY)) return ERR::FieldTypeMismatch;
-         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         return field->WriteValue(target, field, FD_ARRAY|Type, Data, Elements);
-      }
-      else return ERR::UnsupportedField;
-   }
-
-   template <class T, std::size_t SIZE> ERR set(FIELD FieldID, const std::array<T, SIZE> &Value, int Type = FIELD_TYPECHECK<T>()) {
-      Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if (!(field->Flags & FD_ARRAY)) return ERR::FieldTypeMismatch;
-         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-
-         return field->WriteValue(target, field, FD_ARRAY|Type, Value.data(), SIZE);
-      }
-      else return ERR::UnsupportedField;
-   }
-
-   template <class T> ERR set(FIELD FieldID, const std::vector<T> &Value, int Type = FIELD_TYPECHECK<T>()) {
-      Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if (!(field->Flags & FD_ARRAY)) return ERR::FieldTypeMismatch;
-         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-
-         return field->WriteValue(target, field, FD_ARRAY|Type, const_cast<T *>(Value.data()), std::ssize(Value));
-      }
-      else return ERR::UnsupportedField;
-   }
-
-   template <class T> ERR set(FIELD FieldID, const pf::vector<T> &Value, int Type = FIELD_TYPECHECK<T>()) {
-      Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if (!(field->Flags & FD_ARRAY)) return ERR::FieldTypeMismatch;
-         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-
-         if (field->Flags & FD_CPP) return field->WriteValue(target, field, FD_ARRAY|Type, &Value, std::ssize(Value));
-         else return field->WriteValue(target, field, FD_ARRAY|Type, const_cast<T *>(Value.data()), std::ssize(Value));
-      }
-      else return ERR::UnsupportedField;
-   }
-
-   inline ERR set(FIELD FieldID, const FRGB &Value) {
-      Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if (!(field->Flags & FD_ARRAY)) return ERR::FieldTypeMismatch;
-         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         return field->WriteValue(target, field, FD_ARRAY|FD_FLOAT, &Value, 4);
-      }
-      else return ERR::UnsupportedField;
-   }
-
-   // set() support for numeric types
-
-   template <class T> ERR set(FIELD FieldID, const T Value) requires std::integral<T> || std::floating_point<T> {
-      Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         return field->WriteValue(target, field, FIELD_TYPECHECK<T>(), &Value, 1);
-      }
-      else return ERR::UnsupportedField;
-   }
-
-   inline ERR set(FIELD FieldID, const FUNCTION *Value) {
-      Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         return field->WriteValue(target, field, FD_FUNCTION, Value, 1);
-      }
-      else return ERR::UnsupportedField;
-   }
-
-   inline ERR set(FIELD FieldID, const char *Value) {
-      Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         return field->WriteValue(target, field, FD_STRING, Value, 1);
-      }
-      else return ERR::UnsupportedField;
-   }
-
-   inline ERR set(FIELD FieldID, const unsigned char *Value) {
-      Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         return field->WriteValue(target, field, FD_STRING, Value, 1);
-      }
-      else return ERR::UnsupportedField;
-   }
-
-   inline ERR set(FIELD FieldID, const std::string &Value) {
-      Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         return field->WriteValue(target, field, FD_STRING, Value.c_str(), 1);
-      }
-      else return ERR::UnsupportedField;
-   }
-
-   inline ERR set(FIELD FieldID, const Unit *Value) {
-      Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         return field->WriteValue(target, field, FD_UNIT, Value, 1);
-      }
-      else return ERR::UnsupportedField;
-   }
-
-   inline ERR set(FIELD FieldID, const Unit &Value) {
-      return set(FieldID, &Value);
-   }
-
-   // Works both for regular data pointers and function pointers if the field is defined correctly.
-
-   inline ERR set(FIELD FieldID, const void *Value) {
-      Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         return field->WriteValue(target, field, FD_POINTER, Value, 1);
-      }
-      else return ERR::UnsupportedField;
-   }
-
-   // There are two mechanisms for retrieving object values; the first allows the value to be retrieved with an error
-   // code and the value itself; the second ignores the error code and returns a value that could potentially be invalid.
-
-   private:
-   template <class T> ERR get_unit(Object *Object, struct Field &Field, T &Value) {
-      auto new_context = ObjectContext{ Object, &Field };
-      auto ctx = SetObjectContext(&new_context);
-
-      ERR error = ERR::Okay;
-      if (Field.Flags & (FD_DOUBLE|FD_INT64|FD_INT)) {
-          Unit var(0, FD_DOUBLE);
-          error = Field.GetValue(Object, &var);
-          if (error IS ERR::Okay) Value = var.Value;
-      }
-      else error = ERR::FieldTypeMismatch;
-
-      SetObjectContext(ctx);
-      return error;
-   }
-
-   inline std::pair<ERR, APTR> get_field_value(Object *Object, struct Field &Field, int8_t Buffer[8], int &ArraySize) {
-      if (Field.GetValue) {
-         auto new_context = ObjectContext{ Object, &Field };
-         auto ctx = SetObjectContext(&new_context);
-         auto get_field = (ERR (*)(APTR, APTR, int &))Field.GetValue;
-         SetObjectContext(ctx);
-         return std::make_pair(get_field(Object, Buffer, ArraySize), Buffer);
-      }
-      else return std::make_pair(ERR::Okay, ((BYTE *)Object) + Field.Offset);
-   }
-
-   public:
-
-   template <class T> ERR get(FIELD FieldID, T &Value) requires std::integral<T> || std::floating_point<T> {
-      Value = 0;
-      Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if (!field->readable()) return ERR::NoFieldAccess;
-
-         ScopedObjectAccess objlock(target);
-
-         auto flags = field->Flags;
-
-         if (flags & FD_UNIT) return get_unit<T>(target, *field, Value);
-
-         int8_t field_value[8];
-         int array_size;
-         auto fv = get_field_value(target, *field, field_value, array_size);
-
-         if (flags & FD_INT)         Value = *((int *)fv.second);
-         else if (flags & FD_INT64)  Value = *((int64_t *)fv.second);
-         else if (flags & FD_DOUBLE) Value = *((double *)fv.second);
-         else {
-            if ((fv.first IS ERR::Okay) and (flags & FD_ALLOC)) FreeResource(GetMemoryID(*((APTR *)fv.second)));
-            return ERR::FieldTypeMismatch;
-         }
-         return fv.first;
-      }
-      else return ERR::UnsupportedField;
-   }
-
-   inline ERR get(FIELD FieldID, std::string &Value) { // Retrieve field as a string, supports type conversion.
-      Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if (!field->readable()) return ERR::NoFieldAccess;
-
-         auto flags = field->Flags;
-         if (flags & FD_UNIT) {
-            double num;
-
-            if (auto error = get_unit<double>(target, *field, num); error IS ERR::Okay) {
-               char buffer[64];
-               snprintf(buffer, sizeof(buffer), "%f", num);
-               Value.assign(buffer);
-            }
-            else return error;
-         }
-
-         int8_t field_value[8];
-         int array_size = -1;
-         auto fv = get_field_value(target, *field, field_value, array_size);
-         APTR data = fv.second;
-
-         if (fv.first != ERR::Okay) return fv.first;
-
-         if (flags & FD_ARRAY) {
-            if (flags & FD_CPP) {
-               array_size = ((pf::vector<int> *)data)->size();
-               data = ((pf::vector<int> *)data)->data();
-            }
-
-            std::stringstream buffer;
-            if (array_size IS -1) return ERR::Failed; // Array sizing not supported by this field.
-
-            if (flags & FD_INT) {
-               auto array = (int *)data;
-               for (int i=0; i < array_size; i++) buffer << *array++ << ',';
-            }
-            else if (flags & FD_BYTE) {
-               auto array = (UBYTE *)data;
-               for (int i=0; i < array_size; i++) buffer << *array++ << ',';
-            }
-            else if (flags & FD_DOUBLE) {
-               auto array = (double *)data;
-               for (int i=0; i < array_size; i++) buffer << *array++ << ',';
-            }
-
-            Value = buffer.str();
-            if (!Value.empty()) Value.pop_back(); // Remove trailing comma
-            return ERR::Okay;
-         }
-
-         if (flags & FD_INT) {
-            if (flags & FD_LOOKUP) {
-               // Reading a lookup field as a string is permissible, we just return the string registered in the lookup table
-               if (auto lookup = (FieldDef *)field->Arg) {
-                  int v = ((int *)data)[0];
-                  while (lookup->Name) {
-                     if (v IS lookup->Value) {
-                        Value = lookup->Name;
-                        return ERR::Okay;
-                     }
-                     lookup++;
-                  }
-               }
-               Value.clear();
-            }
-            else if (flags & FD_FLAGS) {
-               if (auto lookup = (FieldDef *)field->Arg) {
-                  std::stringstream buffer;
-                  int v = ((int *)data)[0];
-                  while (lookup->Name) {
-                     if (v & lookup->Value) buffer << lookup->Name << '|';
-                     lookup++;
-                  }
-                  Value = buffer.str();
-                  if (!Value.empty()) Value.pop_back(); // Remove trailing pipe
-                  return ERR::Okay;
-               }
-            }
-            else Value = std::to_string(*((int *)data));
-         }
-         else if (flags & FD_INT64) {
-            Value = std::to_string(*((int64_t *)data));
-         }
-         else if (flags & FD_DOUBLE) {
-            char buffer[64];
-            auto written = snprintf(buffer, sizeof(buffer), "%f", *((double *)data));
-            Value.assign(buffer, written);
-         }
-         else if (flags & (FD_POINTER|FD_STRING)) {
-            Value.assign(*((CSTRING *)data));
-            if (flags & FD_ALLOC) FreeResource(GetMemoryID(*((CSTRING *)data)));
-         }
-         else return ERR::UnrecognisedFieldType;
-
-         return ERR::Okay;
-      }
-      else return ERR::UnsupportedField;
-   }
-
-   // Retrieve a direct pointer to a string field, no-copy operation.  Result will require deallocation by the client if the field is marked with ALLOC.
-
-   inline ERR get(FIELD FieldID, CSTRING &Value) {
-      Object *target;
-      Value = nullptr;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if (!field->readable()) return ERR::NoFieldAccess;
-
-         int8_t field_value[8];
-         int array_size;
-         auto fv = get_field_value(target, *field, field_value, array_size);
-         if (fv.first != ERR::Okay) return fv.first;
-
-         if ((field->Flags & FD_INT) and (field->Flags & FD_LOOKUP)) {
-            // Reading a lookup field as a string is permissible, we just return the string registered in the lookup table
-            if (auto lookup = (FieldDef *)field->Arg) {
-               int value = ((int *)fv.second)[0];
-               while (lookup->Name) {
-                  if (value IS lookup->Value) {
-                     Value = lookup->Name;
-                     return ERR::Okay;
-                  }
-                  lookup++;
-               }
-            }
-            return ERR::Okay;
-         }
-         else if (field->Flags & (FD_POINTER|FD_STRING)) {
-            Value = *((CSTRING *)fv.second);
-            return ERR::Okay;
-         }
-         else return ERR::FieldTypeMismatch;
-      }
-      else return ERR::UnsupportedField;
-   }
-
-   template <class T> ERR get(FIELD FieldID, T &Value) requires pcPointer<T> {
-      Object *target;
-      Value = nullptr;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if (!field->readable()) return ERR::NoFieldAccess;
-
-         int8_t field_value[8];
-         int array_size;
-         auto fv = get_field_value(target, *field, field_value, array_size);
-         if (fv.first != ERR::Okay) return fv.first;
-
-         if (field->Flags & (FD_POINTER|FD_STRING)) {
-            Value = *((T *)fv.second);
-            return ERR::Okay;
-         }
-         return ERR::FieldTypeMismatch;
-      }
-      else return ERR::UnsupportedField;
-   }
-
-   inline ERR get(FIELD FieldID, Unit &Value) {
-      Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if (!field->readable()) return ERR::NoFieldAccess;
-
-         if (field->Flags & FD_UNIT) {
-            auto new_context = ObjectContext{ target, field };
-            auto ctx = SetObjectContext(&new_context);
-            auto get_field = (ERR (*)(APTR, Unit &))field->GetValue;
-            auto error = get_field(target, Value);
-            SetObjectContext(ctx);
-            return error;
-         }
-         else return ERR::FieldTypeMismatch;
-      }
-      else return ERR::UnsupportedField;
-   }
-
-   inline ERR get(FIELD FieldID, DMF &Value) {
-      uint32_t result;
-      auto error = get<uint32_t>(FieldID, result);
-      Value = DMF(result);
-      return error;
-   }
-
-   template <class T> T get(FIELD FieldID)
-   requires pcPointer<T> || std::integral<T> || std::floating_point<T> {
-      T result(0);
-      get(FieldID, result);
-      return result;
-   };
-
-   template <class T> T get(FIELD FieldID) requires std::is_same_v<T, DMF> {
-      DMF result(DMF::NIL);
-      get(FieldID, result);
-      return result;
-   };
-   
-   // Fetch an array field.  Result is a direct pointer to the data, do not free it.  Elements is set to the number of elements
-
-   template <class T> ERR get(FIELD FieldID, T * &Result, int &Elements, bool TypeCheck = true) {
-      Object *target;
-      Result = nullptr;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if ((!field->readable()) or (!(field->Flags & FD_ARRAY))) return ERR::NoFieldAccess;
-
-         if ((TypeCheck) and (!(field->Flags & FIELD_TYPECHECK<T>()))) return ERR::FieldTypeMismatch;
-
-         ScopedObjectAccess objlock(target);
-
-         T *data;
-         Elements = -1;
-
-         if (field->GetValue) {
-            auto new_context = ObjectContext{ target, field };
-            auto ctx = SetObjectContext(&new_context);
-            auto get_field = (ERR (*)(APTR, T * &, int &))field->GetValue;
-            auto error = get_field(target, data, Elements);
-            SetObjectContext(ctx);
-            if (error != ERR::Okay) return error;
-         }
-         else if (field->Arg) { // Fixed-size array (embedded)
-            Elements = field->Arg;
-            data = (T *)(((int8_t *)target) + field->Offset);
-         }
-         else data = *((T **)((int8_t *)target) + field->Offset);
-
-         if (field->Flags & FD_CPP) {
-            auto vec = *((pf::vector<T> *)data);
-            Result = vec.data();
-            Elements = vec.size();
-         }
-         else {
-            if (Elements IS -1) return ERR::Failed;
-            Result = data;
-         }
-
-         return ERR::Okay;
-      }
-      else return ERR::UnsupportedField;
-   }
-
-   template <typename... Args> ERR setFields(Args&&... pFields) {
-      pf::Log log("setFields");
-
-      std::initializer_list<pf::FieldValue> Fields = { std::forward<Args>(pFields)... };
-
-      auto ctx = CurrentContext();
-      for (auto &f : Fields) {
-         OBJECTPTR target;
-         if (auto field = FindField(this, f.FieldID, &target)) {
-            if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (ctx != target)) {
-               log.warning("%s.%s is immutable.", className(), field->Name);
-            }
-            else if ((field->Flags & FD_INIT) and (target->initialised()) and (ctx != target)) {
-               log.warning("%s.%s is init-only.", className(), field->Name);
-            }
-            else {
-               if (target != this) target->lock();
-
-               ERR error;
-               if (f.Type & (FD_POINTER|FD_STRING|FD_ARRAY|FD_FUNCTION|FD_UNIT)) {
-                  error = field->WriteValue(target, field, f.Type, f.Pointer, 0);
-               }
-               else if (f.Type & (FD_DOUBLE|FD_FLOAT)) {
-                  error = field->WriteValue(target, field, f.Type, &f.Double, 1);
-               }
-               else if (f.Type & FD_INT64) {
-                  error = field->WriteValue(target, field, f.Type, &f.Int64, 1);
-               }
-               else error = field->WriteValue(target, field, f.Type, &f.Int, 1);
-
-               if (target != this) target->unlock();
-
-               // NB: NoSupport is considered a 'soft' error that does not warrant failure.
-
-               if ((error != ERR::Okay) and (error != ERR::NoSupport)) {
-                  log.warning("%s.%s: %s", target->className(), field->Name, GetErrorMsg(error));
-                  return error;
-               }
-            }
-         }
-         else return log.warning(ERR::UnsupportedField);
-      }
-
-      return ERR::Okay;
-   }
-
-} __attribute__ ((aligned (8)));
-
-namespace pf {
-
-template<class T = Object>
-class Create {
-   private:
-      T *obj;
-
-   public:
-      ERR error;
-
-      // Return an unscoped direct object pointer.  NB: Globals are still tracked to their owner; use untracked() if
-      // you don't want this.
-
-      template <typename... Args> static T * global(Args&&... Fields) {
-         pf::Create<T> object = { std::forward<Args>(Fields)... };
-         if (object.ok()) {
-            auto result = *object;
-            object.obj = NULL;
-            return result;
-         }
-         else return NULL;
-      }
-
-      inline static T * global(const std::initializer_list<FieldValue> Fields) {
-         pf::Create<T> object(Fields);
-         if (object.ok()) {
-            auto result = *object;
-            object.obj = NULL;
-            return result;
-         }
-         else return NULL;
-      }
-
-      // Return an unscoped local object (suitable for class allocations only).
-
-      template <typename... Args> static T * local(Args&&... Fields) {
-         pf::Create<T> object({ std::forward<Args>(Fields)... }, NF::LOCAL);
-         if (object.ok()) return *object;
-         else return NULL;
-      }
-
-      inline static T * local(const std::initializer_list<FieldValue> Fields) {
-         pf::Create<T> object(Fields, NF::LOCAL);
-         if (object.ok()) return *object;
-         else return NULL;
-      }
-
-      // Return an unscoped and untracked object pointer.
-
-      template <typename... Args> static T * untracked(Args&&... Fields) {
-         pf::Create<T> object({ std::forward<Args>(Fields)... }, NF::UNTRACKED);
-         if (object.ok()) return *object;
-         else return NULL;
-      }
-
-      inline static T * untracked(const std::initializer_list<FieldValue> Fields) {
-         pf::Create<T> object(Fields, NF::UNTRACKED);
-         if (object.ok()) return *object;
-         else return NULL;
-      }
-
-      // Create a scoped object that is not initialised.
-
-      Create(NF Flags = NF::NIL) : obj(NULL), error(ERR::NewObject) {
-         if (NewObject(T::CLASS_ID, Flags, (Object **)&obj) IS ERR::Okay) {
-            error = ERR::Okay;
-         }
-      }
-
-      // Create a scoped object that is fully initialised.
-
-      Create(const std::initializer_list<FieldValue> Fields, NF Flags = NF::NIL) : obj(NULL), error(ERR::Failed) {
-         pf::Log log("CreateObject");
-         log.branch(T::CLASS_NAME);
-
-         if (NewObject(T::CLASS_ID, NF::SUPPRESS_LOG|Flags, (Object **)&obj) IS ERR::Okay) {
-            for (auto &f : Fields) {
-               OBJECTPTR target;
-               if (auto field = FindField(obj, f.FieldID, &target)) {
-                  if (!(field->Flags & (FD_WRITE|FD_INIT))) {
-                     error = log.warning(ERR::NoFieldAccess);
-                     return;
-                  }
-                  else {
-                     target->lock();
-
-                     if (f.Type & (FD_POINTER|FD_STRING|FD_ARRAY|FD_FUNCTION|FD_UNIT)) {
-                        error = field->WriteValue(target, field, f.Type, f.Pointer, 0);
-                     }
-                     else if (f.Type & (FD_DOUBLE|FD_FLOAT)) {
-                        error = field->WriteValue(target, field, f.Type, &f.Double, 1);
-                     }
-                     else if (f.Type & FD_INT64) {
-                        error = field->WriteValue(target, field, f.Type, &f.Int64, 1);
-                     }
-                     else error = field->WriteValue(target, field, f.Type, &f.Int, 1);
-
-                     target->unlock();
-
-                     // NB: NoSupport is considered a 'soft' error that does not warrant failure.
-
-                     if ((error != ERR::Okay) and (error != ERR::NoSupport)) return;
-                  }
-               }
-               else {
-                  log.warning("%s.%s field not supported.", T::CLASS_NAME, FieldName(f.FieldID));
-                  error = log.warning(ERR::UnsupportedField);
-                  return;
-               }
-            }
-
-            if ((error = InitObject(obj)) != ERR::Okay) {
-               FreeResource(obj->UID);
-               obj = NULL;
-            }
-         }
-         else error = ERR::NewObject;
-      }
-
-      ~Create() {
-         if (obj) {
-            if (obj->initialised()) {
-               if ((obj->Object::Flags & (NF::UNTRACKED|NF::LOCAL)) != NF::NIL)  {
-                  return; // Detected a successfully created unscoped object
-               }
-            }
-            FreeResource(obj->UID);
-            obj = NULL;
-         }
-      }
-
-      T * operator->() { return obj; }; // Promotes underlying methods and fields
-      T * & operator*() { return obj; }; // To allow object pointer referencing when calling functions
-
-      inline bool ok() { return error == ERR::Okay; }
-};
-}
+#include <parasol/log.h>
+#include <parasol/objects.h>
 
 inline OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UID; }
 inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(SetResource(Res, (MAXINT)Value)); }
-
-//********************************************************************************************************************
-
-inline ScopedObjectAccess::ScopedObjectAccess(OBJECTPTR Object) {
-   error = Object->lock();
-   obj = Object;
-}
-
-inline ScopedObjectAccess::~ScopedObjectAccess() {
-   if (error IS ERR::Okay) obj->unlock();
-}
-
-inline void ScopedObjectAccess::release() {
-   if (error IS ERR::Okay) {
-      obj->unlock();
-      error = ERR::ResourceNotLocked;
-   }
-}
-
-// Action and Notification Structures
-
-struct acClipboard     { static const AC id = AC::Clipboard; CLIPMODE Mode; };
-struct acCopyData      { static const AC id = AC::CopyData; OBJECTPTR Dest; };
-struct acDataFeed      { static const AC id = AC::DataFeed; OBJECTPTR Object; DATA Datatype; const void *Buffer; int Size; };
-struct acDragDrop      { static const AC id = AC::DragDrop; OBJECTPTR Source; int Item; CSTRING Datatype; };
-struct acDraw          { static const AC id = AC::Draw; int X; int Y; int Width; int Height; };
-struct acGetKey        { static const AC id = AC::GetKey; CSTRING Key; STRING Value; int Size; };
-struct acMove          { static const AC id = AC::Move; double DeltaX; double DeltaY; double DeltaZ; };
-struct acMoveToPoint   { static const AC id = AC::MoveToPoint; double X; double Y; double Z; MTF Flags; };
-struct acNewChild      { static const AC id = AC::NewChild; OBJECTPTR Object; };
-struct acNewOwner      { static const AC id = AC::NewOwner; OBJECTPTR NewOwner; };
-struct acRead          { static const AC id = AC::Read; APTR Buffer; int Length; int Result; };
-struct acRedimension   { static const AC id = AC::Redimension; double X; double Y; double Z; double Width; double Height; double Depth; };
-struct acRedo          { static const AC id = AC::Redo; int Steps; };
-struct acRename        { static const AC id = AC::Rename; CSTRING Name; };
-struct acResize        { static const AC id = AC::Resize; double Width; double Height; double Depth; };
-struct acSaveImage     { static const AC id = AC::SaveImage; OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
-struct acSaveToObject  { static const AC id = AC::SaveToObject; OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
-struct acSeek          { static const AC id = AC::Seek; double Offset; SEEK Position; };
-struct acSetKey        { static const AC id = AC::SetKey; CSTRING Key; CSTRING Value; };
-struct acUndo          { static const AC id = AC::Undo; int Steps; };
-struct acWrite         { static const AC id = AC::Write; CPTR Buffer; int Length; int Result; };
-
-// Action Macros
-
-inline ERR acActivate(OBJECTPTR Object) { return Action(AC::Activate,Object,NULL); }
-inline ERR acClear(OBJECTPTR Object) { return Action(AC::Clear,Object,NULL); }
-inline ERR acDeactivate(OBJECTPTR Object) { return Action(AC::Deactivate,Object,NULL); }
-inline ERR acDisable(OBJECTPTR Object) { return Action(AC::Disable,Object,NULL); }
-inline ERR acDraw(OBJECTPTR Object) { return Action(AC::Draw,Object,NULL); }
-inline ERR acEnable(OBJECTPTR Object) { return Action(AC::Enable,Object,NULL); }
-inline ERR acFlush(OBJECTPTR Object) { return Action(AC::Flush,Object,NULL); }
-inline ERR acFocus(OBJECTPTR Object) { return Action(AC::Focus,Object,NULL); }
-inline ERR acHide(OBJECTPTR Object) { return Action(AC::Hide,Object,NULL); }
-inline ERR acLock(OBJECTPTR Object) { return Action(AC::Lock,Object,NULL); }
-inline ERR acLostFocus(OBJECTPTR Object) { return Action(AC::LostFocus,Object,NULL); }
-inline ERR acMoveToBack(OBJECTPTR Object) { return Action(AC::MoveToBack,Object,NULL); }
-inline ERR acMoveToFront(OBJECTPTR Object) { return Action(AC::MoveToFront,Object,NULL); }
-inline ERR acNext(OBJECTPTR Object) { return Action(AC::Next,Object,NULL); }
-inline ERR acPrev(OBJECTPTR Object) { return Action(AC::Prev,Object,NULL); }
-inline ERR acQuery(OBJECTPTR Object) { return Action(AC::Query,Object,NULL); }
-inline ERR acRefresh(OBJECTPTR Object) { return Action(AC::Refresh, Object, NULL); }
-inline ERR acReset(OBJECTPTR Object) { return Action(AC::Reset,Object,NULL); }
-inline ERR acSaveSettings(OBJECTPTR Object) { return Action(AC::SaveSettings,Object,NULL); }
-inline ERR acShow(OBJECTPTR Object) { return Action(AC::Show,Object,NULL); }
-inline ERR acSignal(OBJECTPTR Object) { return Action(AC::Signal,Object,NULL); }
-inline ERR acUnlock(OBJECTPTR Object) { return Action(AC::Unlock,Object,NULL); }
-
-inline ERR acClipboard(OBJECTPTR Object, CLIPMODE Mode) {
-   struct acClipboard args = { Mode };
-   return Action(AC::Clipboard, Object, &args);
-}
-
-inline ERR acDragDrop(OBJECTPTR Object, OBJECTPTR Source, int Item, CSTRING Datatype) {
-   struct acDragDrop args = { Source, Item, Datatype };
-   return Action(AC::DragDrop, Object, &args);
-}
-
-inline ERR acDrawArea(OBJECTPTR Object, int X, int Y, int Width, int Height) {
-   struct acDraw args = { X, Y, Width, Height };
-   return Action(AC::Draw, Object, &args);
-}
-
-inline ERR acDataFeed(OBJECTPTR Object, OBJECTPTR Sender, DATA Datatype, const void *Buffer, int Size) {
-   struct acDataFeed args = { Sender, Datatype, Buffer, Size };
-   return Action(AC::DataFeed, Object, &args);
-}
-
-inline ERR acGetKey(OBJECTPTR Object, CSTRING Key, STRING Value, int Size) {
-   struct acGetKey args = { Key, Value, Size };
-   ERR error = Action(AC::GetKey, Object, &args);
-   if ((error != ERR::Okay) and (Value)) Value[0] = 0;
-   return error;
-}
-
-inline ERR acMove(OBJECTPTR Object, double X, double Y, double Z) {
-   struct acMove args = { X, Y, Z };
-   return Action(AC::Move, Object, &args);
-}
-
-inline ERR acRead(OBJECTPTR Object, APTR Buffer, int Bytes, int *Read) {
-   struct acRead read = { (BYTE *)Buffer, Bytes };
-   if (auto error = Action(AC::Read, Object, &read); error IS ERR::Okay) {
-      if (Read) *Read = read.Result;
-      return ERR::Okay;
-   }
-   else {
-      if (Read) *Read = 0;
-      return error;
-   }
-}
-
-inline ERR acRedo(OBJECTPTR Object, int Steps = 1) {
-   struct acRedo args = { Steps };
-   return Action(AC::Redo, Object, &args);
-}
-
-inline ERR acRedimension(OBJECTPTR Object, double X, double Y, double Z, double Width, double Height, double Depth) {
-   struct acRedimension args = { X, Y, Z, Width, Height, Depth };
-   return Action(AC::Redimension, Object, &args);
-}
-
-inline ERR acRename(OBJECTPTR Object, CSTRING Name) {
-   struct acRename args = { Name };
-   return Action(AC::Rename, Object, &args);
-}
-
-inline ERR acResize(OBJECTPTR Object, double Width, double Height, double Depth) {
-   struct acResize args = { Width, Height, Depth };
-   return Action(AC::Resize, Object, &args);
-}
-
-inline ERR acMoveToPoint(OBJECTPTR Object, double X, double Y, double Z, MTF Flags) {
-   struct acMoveToPoint moveto = { X, Y, Z, Flags };
-   return Action(AC::MoveToPoint, Object, &moveto);
-}
-
-inline ERR acSaveImage(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) {
-   struct acSaveImage args = { Dest, { ClassID } };
-   return Action(AC::SaveImage, Object, &args);
-}
-
-inline ERR acSaveToObject(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) {
-   struct acSaveToObject args = { Dest, { ClassID } };
-   return Action(AC::SaveToObject, Object, &args);
-}
-
-inline ERR acSeek(OBJECTPTR Object, double Offset, SEEK Position) {
-   struct acSeek args = { Offset, Position };
-   return Action(AC::Seek, Object, &args);
-}
-
-inline ERR acSetKeys(OBJECTPTR Object, CSTRING tags, ...) {
-   struct acSetKey args;
-   va_list list;
-
-   va_start(list, tags);
-   while ((args.Key = va_arg(list, STRING)) != TAGEND) {
-      args.Value = va_arg(list, STRING);
-      if (auto error = Action(AC::SetKey, Object, &args); error != ERR::Okay) {
-         va_end(list);
-         return error;
-      }
-   }
-   va_end(list);
-   return ERR::Okay;
-}
-
-inline ERR acUndo(OBJECTPTR Object, int Steps) {
-   struct acUndo args = { Steps };
-   return Action(AC::Undo, Object, &args);
-}
-
-inline ERR acWrite(OBJECTPTR Object, CPTR Buffer, int Bytes, int *Result = NULL) {
-   struct acWrite write = { (BYTE *)Buffer, Bytes };
-   if (auto error = Action(AC::Write, Object, &write); error IS ERR::Okay) {
-      if (Result) *Result = write.Result;
-      return error;
-   }
-   else {
-      if (Result) *Result = 0;
-      return error;
-   }
-}
-
-inline int acWriteResult(OBJECTPTR Object, CPTR Buffer, int Bytes) {
-   struct acWrite write = { (BYTE *)Buffer, Bytes };
-   if (Action(AC::Write, Object, &write) IS ERR::Okay) return write.Result;
-   else return 0;
-}
-
-#define acSeekStart(a,b)    acSeek((a),(b),SEEK::START)
-#define acSeekEnd(a,b)      acSeek((a),(b),SEEK::END)
-#define acSeekCurrent(a,b)  acSeek((a),(b),SEEK::CURRENT)
-
-inline ERR acSetKey(OBJECTPTR Object, CSTRING Key, CSTRING Value) {
-   struct acSetKey args = { Key, Value };
-   return Action(AC::SetKey, Object, &args);
-}
 
 
 // MetaClass class definition
@@ -3596,6 +2329,10 @@ class objMetaClass : public Object {
    CLASSID BaseClassID;                 // Specifies the base class ID of a class object.
    int     OpenCount;                   // The total number of active objects that are linked back to the MetaClass.
    CCF     Category;                    // The system category that a class belongs to.
+
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
    inline ERR findField(int ID, struct Field ** Field, objMetaClass ** Source) noexcept {
       struct mc::FindField args = { ID, (struct Field *)0, (objMetaClass *)0 };
       ERR error = Action(AC(-1), this, &args);
@@ -3719,6 +2456,10 @@ class objStorageDevice : public Object {
    int64_t BytesFree;     // Total amount of storage space that is available, measured in bytes.
    int64_t BytesUsed;     // Total amount of storage space in use.
 
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
+
    // Customised field setting
 
    template <class T> inline ERR setVolume(T && Value) noexcept {
@@ -3765,7 +2506,7 @@ class objFile : public Object {
    inline CSTRING readLine() {
       struct fl::ReadLine args;
       if (Action(fl::ReadLine::id, this, &args) IS ERR::Okay) return args.Result;
-      else return NULL;
+      else return nullptr;
    }
 
    // Action stubs
@@ -3885,9 +2626,9 @@ class objFile : public Object {
    }
 
    inline ERR setFlags(const FL Value) noexcept {
-      if (this->initialised()) return ERR::NoFieldAccess;
-      this->Flags = Value;
-      return ERR::Okay;
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setStatic(const int Value) noexcept {
@@ -3989,8 +2730,8 @@ class objConfig : public Object {
    inline ERR read(std::string_view pGroup, std::string_view pKey, double &pValue) {
       for (auto& [group, keys] : Groups[0]) {
          if ((!pGroup.empty()) and (group.compare(pGroup))) continue;
-         if (pKey.empty()) pValue = strtod(keys.cbegin()->second.c_str(), NULL);
-         else if (auto it = keys.find(pKey); it != keys.end()) pValue = strtod(it->second.c_str(), NULL);
+         if (pKey.empty()) pValue = strtod(keys.cbegin()->second.c_str(), nullptr);
+         else if (auto it = keys.find(pKey); it != keys.end()) pValue = strtod(it->second.c_str(), nullptr);
          else return ERR::Search;
          return ERR::Okay;
       }
@@ -4000,8 +2741,8 @@ class objConfig : public Object {
    inline ERR read(std::string_view pGroup, std::string_view pKey, int &pValue) {
       for (auto& [group, keys] : Groups[0]) {
          if ((!pGroup.empty()) and (group.compare(pGroup))) continue;
-         if (pKey.empty()) pValue = strtol(keys.cbegin()->second.c_str(), NULL, 0);
-         else if (auto it = keys.find(pKey); it != keys.end()) pValue = strtol(it->second.c_str(), NULL, 0);
+         if (pKey.empty()) pValue = strtol(keys.cbegin()->second.c_str(), nullptr, 0);
+         else if (auto it = keys.find(pKey); it != keys.end()) pValue = strtol(it->second.c_str(), nullptr, 0);
          else return ERR::Search;
          return ERR::Okay;
       }
@@ -4130,6 +2871,7 @@ struct Exec { CSTRING Procedure; const struct ScriptArg * Args; int TotalArgs; s
 struct DerefProcedure { FUNCTION * Procedure; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Callback { int64_t ProcedureID; const struct ScriptArg * Args; int TotalArgs; ERR Error; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct GetProcedureID { CSTRING Procedure; int64_t ProcedureID; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DebugLog { CSTRING Options; CSTRING Result; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -4202,6 +2944,12 @@ class objScript : public Object {
       struct sc::GetProcedureID args = { Procedure, (int64_t)0 };
       ERR error = Action(AC(-4), this, &args);
       if (ProcedureID) *ProcedureID = args.ProcedureID;
+      return(error);
+   }
+   inline ERR debugLog(CSTRING Options, CSTRING * Result) noexcept {
+      struct sc::DebugLog args = { Options, (CSTRING)0 };
+      ERR error = Action(AC(-5), this, &args);
+      if (Result) *Result = args.Result;
       return(error);
    }
 
@@ -4287,12 +3035,12 @@ template <std::size_t SIZE> ERR Call(const FUNCTION &Function, const std::array<
 }
 
 inline ERR Call(const FUNCTION &Function) noexcept {
-   struct Callback args = { Function.ProcedureID, NULL, 0, ERR::Okay };
+   struct Callback args = { Function.ProcedureID, nullptr, 0, ERR::Okay };
    return Action(sc::Callback::id, Function.Context, &args);
 }
 
 inline ERR Call(const FUNCTION &Function, ERR &Result) noexcept {
-   struct Callback args = { Function.ProcedureID, NULL, 0, ERR::Okay };
+   struct Callback args = { Function.ProcedureID, nullptr, 0, ERR::Okay };
    ERR error = Action(sc::Callback::id, Function.Context, &args);
    Result = args.Error;
    return(error);
@@ -4553,6 +3301,7 @@ class objThread : public Object {
 
 namespace mod {
 struct ResolveSymbol { CSTRING Name; APTR Address; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Test { CSTRING Options; int Passed; int Total; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -4569,11 +3318,11 @@ class objModule : public Object {
    struct ModHeader * Header;               // For internal usage only.
    MOF  Flags;                              // Optional flags.
    public:
-   static ERR load(std::string Name, OBJECTPTR *Module = NULL, APTR Functions = NULL) {
+   static ERR load(std::string Name, OBJECTPTR *Module = nullptr, APTR Functions = nullptr) {
       if (auto module = objModule::create::global(pf::FieldValue(FID_Name, Name.c_str()))) {
          #ifdef PARASOL_STATIC
             if (Module) *Module = module;
-            if (Functions) ((APTR *)Functions)[0] = NULL;
+            if (Functions) ((APTR *)Functions)[0] = nullptr;
             return ERR::Okay;
          #else
             APTR functionbase;
@@ -4597,6 +3346,13 @@ class objModule : public Object {
       if (Address) *Address = args.Address;
       return(error);
    }
+   inline ERR test(CSTRING Options, int * Passed, int * Total) noexcept {
+      struct mod::Test args = { Options, (int)0, (int)0 };
+      ERR error = Action(AC(-2), this, &args);
+      if (Passed) *Passed = args.Passed;
+      if (Total) *Total = args.Total;
+      return(error);
+   }
 
    // Customised field setting
 
@@ -4608,7 +3364,7 @@ class objModule : public Object {
    inline ERR setHeader(struct ModHeader * Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
-      return field->WriteValue(target, field, 0x08000500, Value, 1);
+      return field->WriteValue(target, field, 0x08000510, Value, 1);
    }
 
    inline ERR setFlags(const MOF Value) noexcept {
@@ -4619,7 +3375,7 @@ class objModule : public Object {
 
    template <class T> inline ERR setName(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[5];
+      auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
@@ -4904,6 +3660,10 @@ class objCompressedStream : public Object {
    OBJECTPTR Output;       // A target object that will receive data compressed by the stream.
    CF        Format;       // The format of the compressed stream.  The default is GZIP.
 
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
+
    // Customised field setting
 
    inline ERR setInput(OBJECTPTR Value) noexcept {
@@ -5004,14 +3764,14 @@ typedef struct { EVENTID EventID; } evScreensaverOn;
 typedef struct { EVENTID EventID; } evScreensaverOff;
 typedef struct { EVENTID EventID; double Volume; int Muted; } evVolume;
 typedef struct { EVENTID EventID; KQ Qualifiers; KEY Code; int Unicode; } evKey;
-typedef struct { EVENTID EventID; WORD TotalWithFocus; WORD TotalLostFocus; OBJECTID FocusList[1]; } evFocus;
+typedef struct { EVENTID EventID; int16_t TotalWithFocus; int16_t TotalLostFocus; OBJECTID FocusList[1]; } evFocus;
 
 // Hotplug event structure.  The hotplug event is sent whenever a new hardware device is inserted by the user.
 
 struct evHotplug {
    EVENTID EventID;
-   WORD Type;            // HT ID
-   WORD Action;          // HTA_INSERTED, HTA_REMOVED
+   int16_t Type;            // HT ID
+   int16_t Action;          // HTA_INSERTED, HTA_REMOVED
    int VendorID;        // USB vendor ID
    union {
       int ProductID;    // USB product or device ID
@@ -5027,7 +3787,42 @@ struct evHotplug {
    char Vendor[40];      // Name of vendor
 };
 
-} // namespace
+// Speed efficient way of setting a string field that is managed with AllocMemory().
+
+inline ERR set_string_field(const std::string_view Source, STRING &Dest)
+{
+   MemInfo info;
+   if (auto error = MemoryIDInfo(GetMemoryID(Dest), &info, sizeof(info)); error IS ERR::Okay) {
+      if (Source.size()+1 < info.Size) {
+         copymem(Source.data(), Dest, Source.size());
+         Dest[Source.size()] = 0;
+         return ERR::Okay;
+      }
+      else {
+         FreeResource(GetMemoryID(Dest));
+         if (AllocMemory(Source.size() + 1, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Dest, nullptr) IS ERR::Okay) {
+            copymem(Source.data(), Dest, Source.size());
+            Dest[Source.size()] = 0;
+            return ERR::Okay;
+         }
+         else return ERR::AllocMemory;
+      }
+   }
+   else return error;
+}
+
+[[nodiscard]] inline char * strclone(const std::string_view String) noexcept
+{
+   char *newstr;
+   if (AllocMemory(String.size()+1, MEM::STRING|MEM::NO_CLEAR, (APTR *)&newstr, nullptr) IS ERR::Okay) {
+      copymem(String.data(), newstr, String.size());
+      newstr[String.size()] = 0;
+      return newstr;
+   }
+   else return nullptr;
+}
+
+} // pf namespace
 
 namespace fl {
 
@@ -5035,7 +3830,7 @@ namespace fl {
 
 template<class T> ERR ReadLE(OBJECTPTR Object, T *Result)
 {
-   UBYTE data[sizeof(T)];
+   uint8_t data[sizeof(T)];
    struct acRead read = { .Buffer = data, .Length = sizeof(T) };
    if (Action(AC::Read, Object, &read) IS ERR::Okay) {
       if (read.Result IS sizeof(T)) {
@@ -5059,7 +3854,7 @@ template<class T> ERR ReadLE(OBJECTPTR Object, T *Result)
 
 template<class T> ERR ReadBE(OBJECTPTR Object, T *Result)
 {
-   UBYTE data[sizeof(T)];
+   uint8_t data[sizeof(T)];
    struct acRead read = { .Buffer = data, .Length = sizeof(T) };
    if (Action(AC::Read, Object, &read) IS ERR::Okay) {
       if (read.Result IS sizeof(T)) {
@@ -5081,7 +3876,7 @@ template<class T> ERR ReadBE(OBJECTPTR Object, T *Result)
    else return ERR::Read;
 }
 
-} // namespace
+} // fl namespace
 
 // Function construction (refer types.h)
 

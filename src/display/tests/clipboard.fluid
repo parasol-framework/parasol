@@ -16,11 +16,11 @@ Manual test for confirming that the clibpoard works.
    local clipboard = obj.new('Clipboard', { })
 
    viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Value, Unicode)
-      if bit.band(Qualifiers, KQ_PRESSED) == 0 then return end
+      if bit.band(Qualifiers, KQ_PRESSED) is 0 then return end
 
       local err, datatype, files, flags = clipboard.mtGetFiles(0, 0)
-      assert(err == ERR_Okay, 'Clipboard retrieval failed.')
-      assert(flags == 0, 'Flag results not empty.')
+      assert(err is ERR_Okay, 'Clipboard retrieval failed.')
+      assert(flags is 0, 'Flag results not empty.')
 
       local output = #files .. ' clipboard items retrieved.\n\n'
       for k, v in pairs(files) do

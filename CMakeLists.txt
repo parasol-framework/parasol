@@ -1,17 +1,18 @@
 # Parasol Core Build File
 #
-# Release Config:  cmake -S . -B release -DCMAKE_BUILD_TYPE=Release
-# Debug Config:    cmake -S . -B debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
-# Git Release:     cmake -S . -B release-git -DCMAKE_BUILD_TYPE=Release -DINSTALL_EXAMPLES=TRUE -DCMAKE_INSTALL_PREFIX=parasol-linux64-$(date +'%Y%m%d') -DRUN_ANYWHERE=TRUE -DBUILD_TESTS=OFF -DBUILD_DEFS=OFF
+# Release Config:  cmake -S . -B build/release -DCMAKE_BUILD_TYPE=Release
+# Debug Config:    cmake -S . -B build/debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
+# Fast Config:     cmake -S . -B build/fast -DCMAKE_BUILD_TYPE=FastBuild -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
+#                  (FastBuild optimises for compilation speed rather than runtime performance - uses -O0, faster linkers, minimal debug info)
+# Git Release:     cmake -S . -B build/release-git -DCMAKE_BUILD_TYPE=Release -DINSTALL_EXAMPLES=TRUE -DCMAKE_INSTALL_PREFIX=parasol-linux64-$(date +'%Y%m%d') -DRUN_ANYWHERE=TRUE -DBUILD_TESTS=OFF -DBUILD_DEFS=OFF
 #
 # For GCC based Windows builds, -G"MinGW Makefiles" must be added to the above commands.
 #
 # A build can target a local folder by adding -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
 #
-# Build:   cmake --build release -j 8 -- -O
-# Install: sudo cmake --install release
-# Test:    [GCC] make -C release test ARGS=--verbose
-#          [MSVC] cd visual-studio; ctest -V -C Release
+# Build:   cmake --build build/release -j 8 -- -O
+# Install: sudo cmake --install build/release
+# Test:    ctest --testdir build/release -C Release --output-on-failure
 #
 # A static build can be enabled with -DPARASOL_STATIC=ON if the intention is to embed Parasol into another project.
 # This may be useful if you intend to use a limited feature-set, like the vector graphics API.  Static builds
@@ -49,6 +50,9 @@ endif()
 project (Parasol VERSION 2024.2.27 LANGUAGES C CXX)
 
 cmake_policy (SET CMP0082 NEW) # Process install commands in the order that they appear
+if(POLICY CMP0177)
+   cmake_policy(SET CMP0177 NEW) # Normalise install destination paths (converts slashes etc)
+endif()
 
 # To switch on a custom option use -D, e.g. -DPARASOL_VLOG=ON
 
@@ -74,24 +78,29 @@ option (DISABLE_MP3       "Disable MP3 support" OFF)
 option (DISABLE_NETWORK   "Disable Network API" OFF)
 option (DISABLE_PICTURE   "Disable Picture API" OFF)
 option (DISABLE_JPEG      "Disable JPEG support" OFF)
-option (DISABLE_SCINTILLA "Disable Scintilla API" OFF)
+option (DISABLE_SCINTILLA "Disable Scintilla API" ON)
 option (DISABLE_SVG       "Disable SVG support" OFF)
 option (DISABLE_VECTOR    "Disable Vector API" OFF)
+option (DISABLE_XSLT      "Disable XSLT API" OFF)
 option (INSTALL_EXAMPLES  "Install the example scripts, typically for compiling a distribution" OFF)
 option (INSTALL_INCLUDES  "Install the header files.  Turn this off for client releases." OFF)
 option (INSTALL_TESTS     "Install the test programs." OFF)
 option (ENABLE_ANALYSIS   "Enable run-time program analysis (with performance penalties) if available.  May negatively affect gdb." OFF)
 option (GENERATE_DEBIAN_PKG "Generate Debian packaging files" OFF)
 option (DISABLE_CPACK     "Disable CPack Windows packaging support" OFF)
+option (FULL_OPTIMISATION "Use the highest levels of optimisation available" OFF)
 
 set (CMAKE_CXX_STANDARD 20)
 set (CMAKE_CXX_STANDARD_REQUIRED True)
 set (CMAKE_POSITION_INDEPENDENT_CODE ON) # Enables -fPIC and -fPIE in gcc
+set (CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set (BUILD_RPATH_USE_ORIGIN TRUE)
 
 set (INCLUDE_OUTPUT "${PROJECT_SOURCE_DIR}/include/parasol")
 set (DOCS "${PROJECT_SOURCE_DIR}/docs/xml")
+
+set(REQUIRED_MODS core fluid xml xquery regex json)
 
 if (PARASOL_STATIC)
    set (BUILD_SHARED_LIBS OFF)
@@ -123,8 +132,11 @@ if (NOT DISABLE_SSL)
    if (WIN32)
       # Win32 SSL support is supported natively
    else ()
-      set (OPENSSL_USE_STATIC_LIBS TRUE) # Doesn't work as expected in MinGW env.
+      set (OPENSSL_USE_STATIC_LIBS TRUE)
       include (FindOpenSSL)
+      if (NOT OpenSSL_FOUND)
+         set (DISABLE_SSL TRUE)
+      endif ()
    endif ()
 endif ()
 
@@ -137,9 +149,23 @@ if (MINGW) # Undo the use of 'lib' as the default prefix set by MinGW
    set(CMAKE_STATIC_LIBRARY_PREFIX "")
 endif ()
 
+# MSVC-specific optimization flags for Release builds
+if (MSVC AND FULL_OPTIMISATION)
+   # Replace default /O2 with /Ox for maximum optimization
+   # /GL enables whole program optimization at compile time
+   # /LTCG enables link-time code generation for cross-module optimization
+   string(REPLACE "/O2" "/Ox /GL" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+   string(REPLACE "/O2" "/Ox /GL" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+
+   if (PARASOL_STATIC)
+      set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /LTCG")
+      set(CMAKE_STATIC_LINKER_FLAGS_RELEASE "${CMAKE_STATIC_LINKER_FLAGS_RELEASE} /LTCG")
+   endif ()
+endif ()
+
 include_directories("${PROJECT_SOURCE_DIR}/include"
    "${PROJECT_SOURCE_DIR}/include/parasol/3rdparty"
-   "${CMAKE_CURRENT_BINARY_DIR}")
+   "${CMAKE_CURRENT_BINARY_DIR}") # For config.h
 
 	CHECK_CXX_SOURCE_COMPILES ("
 #include <stdio.h>
@@ -170,6 +196,7 @@ int main() {
    FAIL_REGEX "warning")
 
 find_program (XXD_CMD "xxd")
+find_program (OD_CMD "od")
 find_program (PARASOL_CMD "parasol" NO_DEFAULT_PATH PATHS "${PARASOL_CMD_PATH}")
 find_file (IDL_C_SCRIPT "idl-c.fluid" PATHS "${PROJECT_SOURCE_DIR}/tools/idl")
 find_file (IDL_COMPILE_SCRIPT "idl-compile.fluid" PATHS "${PROJECT_SOURCE_DIR}/tools/idl")
@@ -211,7 +238,7 @@ if (WIN32)
       if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
          set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -static-libgcc -static-libstdc++")
       endif ()
-      set (INIT_LINK "init-win" core)
+      set (INIT_LINK "init-win" parasol_static)
    else ()
       set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
       set (INIT_LINK "init-win")
@@ -219,7 +246,7 @@ if (WIN32)
 else ()
    # Note that compiling with -static in Linux is disabled because it appears to cause segfaults when writing __thread variables.
    if (PARASOL_STATIC)
-      set (INIT_LINK "init-unix" core)
+      set (INIT_LINK "init-unix" parasol_static)
    else ()
       set (INIT_LINK "init-unix")
    endif ()
@@ -274,7 +301,7 @@ function (idl_gen)
       endif ()
 
       add_custom_command (OUTPUT ${IDLC_OUTPUT}
-         ${COMMAND_LIST}
+         ${COMMAND_LIST} || echo ""
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
          DEPENDS ${ARGV0}
          COMMENT "Generating C header file ${IDLC_OUTPUT} from ${ARGV0}"
@@ -360,6 +387,22 @@ function (set_module_defaults ARG_TARGET ARG_NAMESPACE)
          endif ()
       endif ()
    endif ()
+
+   # Ensure all modules depend on build_headers to prevent race conditions
+   # where C++ compilation starts before FDL processing completes
+   add_dependencies (${ARG_TARGET} build_headers)
+
+   # Ensure all modules have a minimum level of dependencies, this ensures a minimally
+   # functioning environment is created when building individual targets with --target
+
+   # Create a list of required modules excluding the current target to avoid circular dependencies
+   if (NOT (ARG_TARGET STREQUAL core))
+      if (ARG_TARGET IN_LIST REQUIRED_MODS)
+         add_dependencies (${ARG_TARGET} core)
+      else ()
+         add_dependencies (${ARG_TARGET} ${REQUIRED_MODS})
+      endif ()
+   endif ()
 endfunction ()
 
 # --------------------------------------------------------------------------------------------------------------------
@@ -383,8 +426,10 @@ endif ()
 if (MSVC)
    # Turn off ugly warnings
    add_compile_definitions ("_CRT_SECURE_NO_WARNINGS")
+
    # Use NODEFAULTLIB to override sub-projects linking to incorrect standard libraries.
    # https://learn.microsoft.com/en-us/previous-versions/visualstudio/visual-studio-6.0/aa267384(v=vs.60)?redirectedfrom=MSDN
+
    if (PARASOL_VLOG)
       set (CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDebugDLL")
       add_link_options ("/NODEFAULTLIB:libc.lib" "/NODEFAULTLIB:libcmt.lib" "/NODEFAULTLIB:libc.lib" "/NODEFAULTLIB:libcmtd.lib" "/NODEFAULTLIB:msvcrt.lib")
@@ -392,6 +437,7 @@ if (MSVC)
       set (CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
       add_link_options ("/NODEFAULTLIB:libcmt.lib" "/NODEFAULTLIB:libcmtd.lib" "/NODEFAULTLIB:msvcrtd.lib")
    endif ()
+
    # add_link_options ("/VERBOSE:LIB")
    if (ENABLE_ANALYSIS)
       # Note that this option is not compatible with /ZI (edit-and-continue).  To rectify complaints about the asan DLL, you may also need a line like this one added to each entry in launch.vs.json:
@@ -404,7 +450,7 @@ if (MSVC)
    if (CMAKE_BUILD_TYPE STREQUAL "Release")
       add_compile_definitions ("_HAS_EXCEPTIONS=0")
       string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-      string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+      string(REPLACE "/EHsc" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
       set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /EHs-c- /GR")
       set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHs-c- /GR")
    endif ()
@@ -459,6 +505,52 @@ else ()
    set (DEFAULT_GCXX_FLAGS "-Wall" "-Wno-empty-body" "-Wno-unused-result" "-Wno-format-zero-length" "-Wno-unused-but-set-variable" "-Wno-stringop-overflow")
 endif ()
 
+# --------------------------------------------------------------------------------------------------------------------
+# FastBuild configuration - optimised for compilation speed rather than runtime performance
+
+if (CMAKE_BUILD_TYPE STREQUAL "FastBuild")
+   message (STATUS "FastBuild configuration enabled - optimising for compilation speed")
+
+   if (MSVC)
+      # MSVC: Use /Od for no optimisation, /MP for parallel compilation, /Z7 for minimal debug info
+      set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /Od /MP /Z7")
+      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Od /MP /Z7")
+
+      # Disable exception handling for faster compilation (matches Release build behaviour)
+      add_compile_definitions ("_HAS_EXCEPTIONS=0")
+      string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+      set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /EHs-c- /GR")
+      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHs-c- /GR")
+   else ()
+      # GCC/Clang: Use -O0 for no optimisation, -g1 for minimal debug info
+      set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g1")
+      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g1")
+
+      # Disable variable tracking for faster compilation
+      set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-var-tracking -fno-var-tracking-assignments")
+      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-var-tracking -fno-var-tracking-assignments")
+
+      # Try to use faster linkers if available
+      include(CheckLinkerFlag)
+      check_linker_flag(CXX "-fuse-ld=lld" HAVE_LLD_LINKER)
+      if (HAVE_LLD_LINKER)
+         set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
+         set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fuse-ld=lld")
+         message (STATUS "Using LLD linker for faster linking")
+      else ()
+         check_linker_flag(CXX "-fuse-ld=gold" HAVE_GOLD_LINKER)
+         if (HAVE_GOLD_LINKER)
+            set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=gold")
+            set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fuse-ld=gold")
+            message (STATUS "Using Gold linker for faster linking")
+         endif ()
+      endif ()
+
+      # Disable exceptions for faster compilation (matches Release build behaviour)
+      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
+   endif ()
+endif ()
+
 # Support for building Windows resource files with MINGW
 
 if (MINGW)
@@ -482,48 +574,52 @@ include(ExternalProject)
 
 add_subdirectory (3rdparty/zlib-1.2.11) # Note that when upgrading, the CMakeLists.txt is customised
 
-add_subdirectory (3rdparty/freetype-2.13.2)
+if (NOT DISABLE_FONT)
+   add_subdirectory (3rdparty/freetype-2.13.2)
+endif()
 
 # --------------------------------------------------------------------------------------------------------------------
-# Build libjpeg-turbo as an external project
+# Build libjpeg-turbo as an external project (only if JPEG and Picture support is enabled)
 
-if (MSVC)
-   set(LIBJPEG_TURBO_LIB_PATH "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo/lib/jpeg-static.lib")
-else ()
-   set(LIBJPEG_TURBO_LIB_PATH "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo/lib/libjpeg.a")
-endif ()
+if (NOT DISABLE_JPEG AND NOT DISABLE_PICTURE)
+   if (MSVC)
+      set(LIBJPEG_TURBO_LIB_PATH "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo/lib/jpeg-static.lib")
+   else ()
+      set(LIBJPEG_TURBO_LIB_PATH "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo/lib/libjpeg.a")
+   endif ()
 
-ExternalProject_Add(libjpeg-turbo-project
-   URL https://github.com/libjpeg-turbo/libjpeg-turbo/archive/refs/tags/3.1.1.tar.gz
-   URL_HASH SHA512=4937b63a27818cdb5087091b2d78837f7f385fd6b4d3e3fcaf4d9ad2944fed4a00020dcacb33e9c2fd4b0f9d9851fb4051ed3da86f606aca5167357262a73e89
-   DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-   PREFIX "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo"
-   INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo"
-   BUILD_BYPRODUCTS ${LIBJPEG_TURBO_LIB_PATH}
-   CMAKE_ARGS
-      -DENABLE_SHARED=OFF
-      -DENABLE_STATIC=ON
-      -DWITH_TURBOJPEG=ON
-      -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-      -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
-      -DCMAKE_INSTALL_LIBDIR=<INSTALL_DIR>/lib
-      -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-   BUILD_ALWAYS FALSE
-)
+   ExternalProject_Add(libjpeg-turbo-project
+      URL https://github.com/libjpeg-turbo/libjpeg-turbo/archive/refs/tags/3.1.1.tar.gz
+      URL_HASH SHA512=4937b63a27818cdb5087091b2d78837f7f385fd6b4d3e3fcaf4d9ad2944fed4a00020dcacb33e9c2fd4b0f9d9851fb4051ed3da86f606aca5167357262a73e89
+      DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+      PREFIX "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo"
+      INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo"
+      BUILD_BYPRODUCTS ${LIBJPEG_TURBO_LIB_PATH}
+      CMAKE_ARGS
+         -DENABLE_SHARED=OFF
+         -DENABLE_STATIC=ON
+         -DWITH_TURBOJPEG=ON
+         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+         -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+         -DCMAKE_INSTALL_LIBDIR=<INSTALL_DIR>/lib
+         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+      BUILD_ALWAYS FALSE
+   )
 
-ExternalProject_Get_Property(libjpeg-turbo-project install_dir)
-set(LIBJPEG_TURBO_INCLUDE_DIRS "${install_dir}/include")
+   ExternalProject_Get_Property(libjpeg-turbo-project install_dir)
+   set(LIBJPEG_TURBO_INCLUDE_DIRS "${install_dir}/include")
 
-# Create the directory so changing INTERFACE_INCLUDE_DIRECTORIES doesn't fail
-file(MAKE_DIRECTORY ${LIBJPEG_TURBO_INCLUDE_DIRS})
+   # Create the directory so changing INTERFACE_INCLUDE_DIRECTORIES doesn't fail
+   file(MAKE_DIRECTORY ${LIBJPEG_TURBO_INCLUDE_DIRS})
 
-add_library(libjpeg-turbo STATIC IMPORTED)
+   add_library(libjpeg-turbo STATIC IMPORTED)
 
-set_target_properties(libjpeg-turbo PROPERTIES
-   IMPORTED_LOCATION ${LIBJPEG_TURBO_LIB_PATH}
-   INTERFACE_INCLUDE_DIRECTORIES ${LIBJPEG_TURBO_INCLUDE_DIRS})
+   set_target_properties(libjpeg-turbo PROPERTIES
+      IMPORTED_LOCATION ${LIBJPEG_TURBO_LIB_PATH}
+      INTERFACE_INCLUDE_DIRECTORIES ${LIBJPEG_TURBO_INCLUDE_DIRS})
 
-add_dependencies(libjpeg-turbo libjpeg-turbo-project)
+   add_dependencies(libjpeg-turbo libjpeg-turbo-project)
+endif()
 
 # --------------------------------------------------------------------------------------------------------------------
 
@@ -532,10 +628,10 @@ if (NOT DISABLE_AUDIO)
    list (APPEND LIB_LIST audio)
 endif ()
 
-if (NOT DISABLE_BACKSTAGE AND NOT DISABLE_NETWORK)
-   add_subdirectory (src/backstage)
-   list (APPEND LIB_LIST backstage)
-endif()
+#if (NOT DISABLE_BACKSTAGE AND NOT DISABLE_NETWORK)
+#   add_subdirectory (src/backstage)
+#   list (APPEND LIB_LIST backstage)
+#endif()
 
 if (NOT DISABLE_DISPLAY)
    add_subdirectory (src/display)
@@ -572,7 +668,7 @@ if (NOT DISABLE_PICTURE AND NOT DISABLE_DISPLAY)
    list (APPEND LIB_LIST picture)
 endif ()
 
-if (NOT DISABLE_JPEG AND NOT DISABLE_PICTURE)
+if (NOT DISABLE_JPEG AND NOT DISABLE_PICTURE AND NOT DISABLE_DISPLAY)
    add_subdirectory (src/picture_jpeg)
    list (APPEND LIB_LIST jpeg)
 endif ()
@@ -592,15 +688,30 @@ if (NOT DISABLE_VECTOR AND NOT DISABLE_DISPLAY AND NOT DISABLE_FONT)
    list (APPEND LIB_LIST vector)
 endif ()
 
-list (APPEND LIB_LIST fluid json jpeg xml)
+list (APPEND LIB_LIST ${REQUIRED_MODS})
 
 add_subdirectory (src/link)
 add_subdirectory (src/core)
 add_subdirectory (src/fluid)
 add_subdirectory (src/xml)
+add_subdirectory (src/xquery)
 add_subdirectory (src/json)
+add_subdirectory (src/regex)
 
 add_subdirectory (src/launcher)
+
+# --------------------------------------------------------------------------------------------------------------------
+# Create a combined static library that links all modules together
+# This breaks the circular dependencies by having a separate target own all the inter-module linkage
+
+if (PARASOL_STATIC)
+   # Create an interface library that groups all modules together
+   add_library (parasol_static INTERFACE)
+
+   target_link_libraries (parasol_static INTERFACE core ${LIB_LIST})
+
+   message(STATUS "Created combined interface library 'parasol_static' with modules: core ${LIB_LIST}")
+endif ()
 
 # --------------------------------------------------------------------------------------------------------------------
 # Generate the platform configuration header
@@ -947,4 +1058,3 @@ ExecuteParameters=\"\"
    message(STATUS "Windows packaging configured: ${PACKAGE_TYPES}")
    message(STATUS "Package name: ${CPACK_PACKAGE_FILE_NAME}")
 endif()
-

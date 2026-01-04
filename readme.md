@@ -24,7 +24,10 @@ Parasol's ongoing development is focused on enhancing vector graphics programmin
 * **W3C-Validated SVG Compliance:** We test against the W3C SVG test suite to maximise compatibility with the SVG standard.
 * **Advanced Text Layout Engine:** Leverage RIPL, our powerful text layout engine inspired by HTML, SVG, and word-processing standards, for flexible document rendering that doesn't come excessive overheads.
 * **Comprehensive Networking API:** Multi-platform networking support for TCP/IP sockets, HTTP, and SSL ensures secure and seamless connectivity.
-* **Integrated Data Handling:** Built-in APIs for efficient handling of XML, JSON, ZIP, PNG, JPEG, and SVG file formats.
+* **Integrated Data Handling:** Built-in APIs for efficient handling of ZIP, PNG, JPEG, and SVG file formats.
+* **Structured Data Support:** Full support for the XML 1.0 standard and JSON.
+* **Data Querying:** Support for XPath 2.0 and XQuery 1.0+, backed by a large test suite.  Querying is independent of the originating data source (i.e. will work with JSON data).
+* **REGEX:** Native support for ECMAScript compliant regular expressions.
 * **Cross-Platform System Abstraction:** Full system abstraction for platform-agnostic development, including file I/O, clipboard management, threading, and object management.
 * **Multi-Channel Audio Playback:** Supports high-quality audio playback for WAV and MP3 files, enabling rich multimedia experiences.
 * **Enhanced Lua Framework:** Ideal for Lua developers seeking robust UI features and comprehensive system integration. Parasol serves as an enhanced Lua framework for modern application development.

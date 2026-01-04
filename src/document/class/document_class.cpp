@@ -12,7 +12,7 @@ conjunction with the @Vector module.  This means that the output is compatible w
 detail with our existing vector API.  Consequently, document formatting is closely integrated with SVG concepts
 and seamlessly inherits SVG functionality such as filling and stroking commands.
 
-The native document format in Parasol is RIPL.  Documentation for RIPL is available in the Parasol Wiki.  Other 
+The native document format in Parasol is RIPL.  Documentation for RIPL is available in the Parasol Wiki.  Other
 document formats may be supported as sub-classes, but bear in mind that document parsing is a one-way trip and
 stateful information such as the HTML DOM is not supported.
 
@@ -39,10 +39,10 @@ static void notify_enable_viewport(OBJECTPTR Object, ACTIONID ActionID, ERR Resu
 static void notify_free_viewport(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extDocument *)CurrentContext();
-   Self->Scene = NULL;
-   Self->Viewport = NULL;
-   Self->Page = NULL;
-   Self->View = NULL;
+   Self->Scene = nullptr;
+   Self->Viewport = nullptr;
+   Self->Page = nullptr;
+   Self->View = nullptr;
 
    // If the viewport is being forcibly terminated (e.g. by window closure) then the cleanest way to deal with
    // lingering page resources is to remove them now.
@@ -80,7 +80,7 @@ static void notify_lostfocus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERR R
 
    // Redraw any selected link so that it is unhighlighted
 
-   if ((Self->FocusIndex >= 0) and (Self->FocusIndex < LONG(Self->Tabs.size()))) {
+   if ((Self->FocusIndex >= 0) and (Self->FocusIndex < int(Self->Tabs.size()))) {
       if (Self->Tabs[Self->FocusIndex].type IS TT::LINK) {
          for (auto &link : Self->Links) {
             if (link.origin.uid IS std::get<BYTECODE>(Self->Tabs[Self->FocusIndex].ref)) {
@@ -96,7 +96,7 @@ static void notify_listener_free(OBJECTPTR Listener, ACTIONID ActionID, ERR Resu
 {
    auto Self = (extDocument *)CurrentContext();
 
-   for (LONG t=0; t < LONG(DRT::END); t++) {
+   for (int t=0; t < int(DRT::END); t++) {
 restart:
       auto &triggers = Self->Triggers[t];
       for (auto cb=triggers.begin(); cb != triggers.end(); cb++) {
@@ -110,8 +110,8 @@ restart:
 
 //********************************************************************************************************************
 // Receiver for events from Self->View, primarily path changes.
-// 
-// Bear in mind that the XOffset and YOffset of the document's View must be zero initially, and will be controlled by 
+//
+// Bear in mind that the XOffset and YOffset of the document's View must be zero initially, and will be controlled by
 // the scrollbar.  For that reason we don't need to do much here other than update the layout of the page.
 
 static ERR feedback_view(objVectorViewport *View, FM Event)
@@ -130,16 +130,16 @@ static ERR feedback_view(objVectorViewport *View, FM Event)
 
    Self->VPWidth = width;
    Self->VPHeight = height;
-   
+
    // The resize event is triggered just prior to the layout of the document.  The recipient
    // function can resize elements on the page in advance of the new layout.
 
-   for (auto &trigger : Self->Triggers[LONG(DRT::BEFORE_LAYOUT)]) {
+   for (auto &trigger : Self->Triggers[int(DRT::BEFORE_LAYOUT)]) {
       if (trigger.isScript()) {
          sc::Call(trigger, std::to_array<ScriptArg>({ { "ViewWidth",  Self->VPWidth }, { "ViewHeight", Self->VPHeight } }));
       }
       else if (trigger.isC()) {
-         auto routine = (void (*)(APTR, extDocument *, LONG, LONG, APTR))trigger.Routine;
+         auto routine = (void (*)(APTR, extDocument *, int, int, APTR))trigger.Routine;
          pf::SwitchContext context(trigger.Context);
          routine(trigger.Context, Self, Self->VPWidth, Self->VPHeight, trigger.Meta);
       }
@@ -226,7 +226,7 @@ static ERR DOCUMENT_AddListener(extDocument *Self, doc::AddListener *Args)
 {
    if ((!Args) or (Args->Trigger IS DRT::NIL) or (!Args->Function)) return ERR::NullArgs;
 
-   Self->Triggers[LONG(Args->Trigger)].push_back(*Args->Function);
+   Self->Triggers[int(Args->Trigger)].push_back(*Args->Function);
 
    // Scripts can't auto-remove listeners, so a Free subscription is necessary.  Functional
    // subscribers are expected to self-manage however.
@@ -348,13 +348,13 @@ static ERR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
       objClipboard::create clipboard = { };
       if (clipboard.ok()) {
          CSTRING *files;
-         if (clipboard->getFiles(CLIPTYPE::TEXT, 0, NULL, &files, NULL) IS ERR::Okay) {
+         if (clipboard->getFiles(CLIPTYPE::TEXT, 0, nullptr, &files, nullptr) IS ERR::Okay) {
             objFile::create file = { fl::Path(files[0]), fl::Flags(FL::READ) };
             if (file.ok()) {
-               LONG size;
+               int size;
                if ((file->get(FID_Size, size) IS ERR::Okay) and (size > 0)) {
                   if (auto buffer = new (std::nothrow) char[size+1]) {
-                     LONG result;
+                     int result;
                      if (file->read(buffer, size, &result) IS ERR::Okay) {
                         buffer[result] = 0;
                         acDataText(Self, buffer);
@@ -623,7 +623,7 @@ static ERR DOCUMENT_Free(extDocument *Self)
 
    if ((Self->Focus) and (Self->Focus != Self->Viewport)) UnsubscribeAction(Self->Focus, AC::NIL);
 
-   if (Self->PretextXML) { FreeResource(Self->PretextXML); Self->PretextXML = NULL; }
+   if (Self->PretextXML) { FreeResource(Self->PretextXML); Self->PretextXML = nullptr; }
 
    if (Self->Viewport) UnsubscribeAction(Self->Viewport, AC::NIL);
 
@@ -634,10 +634,10 @@ static ERR DOCUMENT_Free(extDocument *Self)
 
    unload_doc(Self, ULD::TERMINATE);
 
-   if (Self->Templates) { FreeResource(Self->Templates); Self->Templates = NULL; }
+   if (Self->Templates) { FreeResource(Self->Templates); Self->Templates = nullptr; }
 
-   if (Self->Page) { FreeResource(Self->Page); Self->Page = NULL; }
-   if (Self->View) { FreeResource(Self->View); Self->View = NULL; }
+   if (Self->Page) { FreeResource(Self->Page); Self->Page = nullptr; }
+   if (Self->View) { FreeResource(Self->View); Self->View = nullptr; }
 
    Self->~extDocument();
    return ERR::Okay;
@@ -650,7 +650,7 @@ GetKey: Retrieves global variables and URI parameters.
 Use GetKey() to access the global variables and URI parameters of a document.  Priority is given to global
 variables if there is a name clash.
 
-The current value of each document widget is also available as a global variable accessible from GetKey().  The 
+The current value of each document widget is also available as a global variable accessible from GetKey().  The
 key-value will be given the same name as that specified in the widget's element.
 
 -END-
@@ -698,7 +698,7 @@ Search
 static ERR DOCUMENT_HideIndex(extDocument *Self, doc::HideIndex *Args)
 {
    pf::Log log(__FUNCTION__);
-   LONG tab;
+   int tab;
 
    if ((!Args) or (!Args->Name)) return log.warning(ERR::NullArgs);
 
@@ -811,7 +811,7 @@ static ERR DOCUMENT_Init(extDocument *Self)
    //else return ERR::CreateObject;
 
    Self->Scene = Self->Viewport->Scene;
-   
+
    // Note: Initially the view is set to match the size of its container and the document will automatically
    // adjust the page width if the container is resized.  If the client wants to maintain a fixed size
    // document, e.g. for scaling, the the Width and Height of the View can be overridden at any time -
@@ -902,7 +902,7 @@ static ERR DOCUMENT_InsertXML(extDocument *Self, doc::InsertXML *Args)
    pf::Log log;
 
    if ((!Args) or (!Args->XML)) return log.warning(ERR::NullArgs);
-   if ((Args->Index < -1) or (Args->Index > LONG(Self->Stream.size()))) return log.warning(ERR::OutOfRange);
+   if ((Args->Index < -1) or (Args->Index > int(Self->Stream.size()))) return log.warning(ERR::OutOfRange);
 
    if (Self->Stream.data.empty()) return ERR::NoData;
 
@@ -1022,7 +1022,7 @@ static ERR DOCUMENT_ReadContent(extDocument *Self, doc::ReadContent *Args)
 
    if (!Args) return log.warning(ERR::NullArgs);
 
-   Args->Result = NULL;
+   Args->Result = nullptr;
 
    if ((Args->Start < 0) or (Args->Start >= std::ssize(Self->Stream))) return log.warning(ERR::OutOfRange);
    if ((Args->End < 0) or (Args->End >= std::ssize(Self->Stream))) return log.warning(ERR::OutOfRange);
@@ -1073,7 +1073,7 @@ static ERR DOCUMENT_Refresh(extDocument *Self)
 
    Self->Processing++;
 
-   for (auto &trigger : Self->Triggers[LONG(DRT::REFRESH)]) {
+   for (auto &trigger : Self->Triggers[int(DRT::REFRESH)]) {
       if (trigger.isScript()) {
          // The refresh trigger can return ERR::Skip to prevent a complete reload of the document.
 
@@ -1198,7 +1198,7 @@ static ERR DOCUMENT_SaveToObject(extDocument *Self, struct acSaveToObject *Args)
    if (!Args) return log.warning(ERR::NullArgs);
 
    log.branch("Destination: %d", Args->Dest->UID);
-   acWrite(Args->Dest, "Save not supported.", 0, NULL);
+   acWrite(Args->Dest, "Save not supported.", 0, nullptr);
    return ERR::Okay;
 }
 
@@ -1381,23 +1381,23 @@ static const FieldArray clFields[] = {
    { "Author",       FDF_STRING|FDF_R },
    { "Copyright",    FDF_STRING|FDF_R },
    { "Keywords",     FDF_STRING|FDF_R },
-   { "Viewport",     FDF_OBJECT|FDF_RW, NULL, SET_Viewport, CLASSID::VECTORVIEWPORT },
-   { "Focus",        FDF_OBJECT|FDF_RI, NULL, NULL, CLASSID::VECTORVIEWPORT },
-   { "View",         FDF_OBJECT|FDF_R, NULL, NULL, CLASSID::VECTORVIEWPORT },
-   { "Page",         FDF_OBJECT|FDF_R, NULL, NULL, CLASSID::VECTORVIEWPORT },
+   { "Viewport",     FDF_OBJECT|FDF_RW, nullptr, SET_Viewport, CLASSID::VECTORVIEWPORT },
+   { "Focus",        FDF_OBJECT|FDF_RI, nullptr, nullptr, CLASSID::VECTORVIEWPORT },
+   { "View",         FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::VECTORVIEWPORT },
+   { "Page",         FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::VECTORVIEWPORT },
    { "TabFocus",     FDF_OBJECTID|FDF_RW },
-   { "EventMask",    FDF_INTFLAGS|FDF_FLAGS|FDF_RW, NULL, NULL, &clDocumentEventMask },
-   { "Flags",        FDF_INTFLAGS|FDF_RI, NULL, SET_Flags, &clDocumentFlags },
+   { "EventMask",    FDF_INTFLAGS|FDF_FLAGS|FDF_RW, nullptr, nullptr, &clDocumentEventMask },
+   { "Flags",        FDF_INTFLAGS|FDF_RI, nullptr, SET_Flags, &clDocumentFlags },
    { "PageHeight",   FDF_INT|FDF_R },
    { "Error",        FDF_INT|FDF_R },
    // Virtual fields
-   { "ClientScript",  FDF_OBJECT|FDF_I,        NULL, SET_ClientScript },
+   { "ClientScript",  FDF_OBJECT|FDF_I,        nullptr, SET_ClientScript },
    { "EventCallback", FDF_FUNCTIONPTR|FDF_RW,  GET_EventCallback, SET_EventCallback },
    { "Path",          FDF_STRING|FDF_RW,       GET_Path, SET_Path },
    { "Origin",        FDF_STRING|FDF_RW,       GET_Path, SET_Origin },
    { "PageWidth",     FDF_UNIT|FDF_INT|FDF_SCALED|FDF_RW, GET_PageWidth, SET_PageWidth },
-   { "Pretext",       FDF_STRING|FDF_W,        NULL, SET_Pretext },
+   { "Pretext",       FDF_STRING|FDF_W,        nullptr, SET_Pretext },
    { "Src",           FDF_SYNONYM|FDF_STRING|FDF_RW, GET_Path, SET_Path },
-   { "WorkingPath",   FDF_STRING|FDF_R,        GET_WorkingPath, NULL },
+   { "WorkingPath",   FDF_STRING|FDF_R,        GET_WorkingPath, nullptr },
    END_FIELD
 };

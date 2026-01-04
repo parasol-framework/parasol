@@ -58,7 +58,7 @@ class FilterConfig {
 
 static ERR GET_KeyFilter(extConfig *, CSTRING *);
 static ERR GET_GroupFilter(extConfig *, CSTRING *);
-static ERR GET_TotalGroups(extConfig *, LONG *);
+static ERR GET_TotalGroups(extConfig *, int *);
 
 static ERR CONFIG_SaveSettings(extConfig *);
 
@@ -66,12 +66,12 @@ static const FieldDef clFlags[] = {
    { "AutoSave",    CNF::AUTO_SAVE },
    { "StripQuotes", CNF::STRIP_QUOTES },
    { "New",         CNF::NEW },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
-#define CF_MATCHED  1
-#define CF_FAILED   0
-#define CF_KEY_FAIL -1
+constexpr int CF_MATCHED  = 1;
+constexpr int CF_FAILED   = 0;
+constexpr int CF_KEY_FAIL = -1;
 
 //********************************************************************************************************************
 
@@ -100,7 +100,7 @@ T next_group(T Data, std::string &GroupName)
 {
    while (*Data) {
       if (*Data IS '[') {
-         LONG len;
+         int len;
          for (len=1; (Data[len] != '\n') and (Data[len]); len++) {
             if (Data[len] IS '[') break; // Invalid character check
             if (Data[len] IS ']') {
@@ -122,17 +122,17 @@ static std::pair<std::string, KEYVALUE> * find_group(extConfig *Self, std::strin
    for (auto scan = Self->Groups->begin(); scan != Self->Groups->end(); scan++) {
       if (!scan->first.compare(GroupName)) return &(*scan);
    }
-   return NULL;
+   return nullptr;
 }
 
 //********************************************************************************************************************
 
-static ULONG calc_crc(extConfig *Self)
+static uint32_t calc_crc(extConfig *Self)
 {
-   ULONG crc = 0;
-   for (auto& [group, keys] : Self->Groups[0]) {
+   uint32_t crc = 0;
+   for (auto & [group, keys] : Self->Groups[0]) {
       crc = GenCRC32(crc, (APTR)group.c_str(), group.size());
-      for (auto& [k, v] : keys) {
+      for (auto & [k, v] : keys) {
          crc = GenCRC32(crc, (APTR)k.c_str(), k.size());
          crc = GenCRC32(crc, (APTR)v.c_str(), v.size());
       }
@@ -154,11 +154,11 @@ static ERR parse_file(extConfig *Self, CSTRING Path)
       objFile::create file = { fl::Path(Path), fl::Flags(FL::READ|FL::APPROXIMATE) };
 
       if (file.ok()) {
-         auto filesize = file->get<LONG>(FID_Size);
+         auto filesize = file->get<int>(FID_Size);
 
          if (filesize > 0) {
             STRING data;
-            if (AllocMemory(filesize + 3, MEM::DATA|MEM::NO_CLEAR, (APTR *)&data, NULL) IS ERR::Okay) {
+            if (AllocMemory(filesize + 3, MEM::DATA|MEM::NO_CLEAR, (APTR *)&data, nullptr) IS ERR::Okay) {
                file->read(data, filesize); // Read the entire file
                data[filesize++] = '\n';
                data[filesize] = 0;
@@ -186,8 +186,8 @@ Clear: Clears all configuration data.
 static ERR CONFIG_Clear(extConfig *Self)
 {
    if (Self->Groups) { Self->Groups->clear(); }
-   if (Self->KeyFilter) { FreeResource(Self->KeyFilter); Self->KeyFilter = NULL; }
-   if (Self->GroupFilter) { FreeResource(Self->GroupFilter); Self->GroupFilter = NULL; }
+   if (Self->KeyFilter) { FreeResource(Self->KeyFilter); Self->KeyFilter = nullptr; }
+   if (Self->GroupFilter) { FreeResource(Self->GroupFilter); Self->GroupFilter = nullptr; }
    return ERR::Okay;
 }
 
@@ -245,7 +245,7 @@ static ERR CONFIG_DeleteKey(extConfig *Self, struct cfg::DeleteKey *Args)
 
    log.msg("Group: %s, Key: %s", Args->Group, Args->Key);
 
-   for (auto& [group, keys] : Self->Groups[0]) {
+   for (auto & [group, keys] : Self->Groups[0]) {
       if (!group.compare(Args->Group)) {
          keys.erase(Args->Key);
          return ERR::Okay;
@@ -317,7 +317,7 @@ static ERR CONFIG_Free(extConfig *Self)
       }
    }
 
-   if (Self->Groups) { delete Self->Groups; Self->Groups = NULL; }
+   if (Self->Groups) { delete Self->Groups; Self->Groups = nullptr; }
    if (Self->Path) { FreeResource(Self->Path); Self->Path = 0; }
    if (Self->KeyFilter) { FreeResource(Self->KeyFilter); Self->KeyFilter = 0; }
    if (Self->GroupFilter) { FreeResource(Self->GroupFilter); Self->GroupFilter = 0; }
@@ -349,7 +349,7 @@ static ERR CONFIG_GetGroupFromIndex(extConfig *Self, struct cfg::GetGroupFromInd
 
    if ((!Args) or (Args->Index < 0)) return log.warning(ERR::Args);
 
-   if ((Args->Index >= 0) and (Args->Index < (LONG)Self->Groups->size())) {
+   if ((Args->Index >= 0) and (Args->Index < (int)Self->Groups->size())) {
       Args->Group = Self->Groups[0][Args->Index].first.c_str();
       return ERR::Okay;
    }
@@ -499,7 +499,7 @@ static ERR CONFIG_ReadValue(extConfig *Self, struct cfg::ReadValue *Args)
    }
 
    log.trace("Could not find key %s : %s.", Args->Group, Args->Key);
-   Args->Data = NULL;
+   Args->Data = nullptr;
    return ERR::Search;
 }
 
@@ -517,7 +517,7 @@ static ERR CONFIG_SaveSettings(extConfig *Self)
    pf::Log log;
    log.branch();
 
-   ULONG crc = calc_crc(Self);
+   uint32_t crc = calc_crc(Self);
    if (((Self->Flags & CNF::AUTO_SAVE) != CNF::NIL) and (crc IS Self->CRC)) return ERR::Okay;
 
    if (Self->Path) {
@@ -544,16 +544,16 @@ static ERR CONFIG_SaveToObject(extConfig *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
 
-   log.msg("Saving %d groups to object #%d.", (LONG)Self->Groups->size(), Args->Dest->UID);
+   log.msg("Saving %d groups to object #%d.", (int)Self->Groups->size(), Args->Dest->UID);
 
    ConfigGroups &groups = Self->Groups[0];
-   for (auto& [group, keys] : groups) {
+   for (auto & [group, keys] : groups) {
       std::string out_group("\n[" + group + "]\n");
-      acWrite(Args->Dest, out_group.c_str(), out_group.size(), NULL);
+      acWrite(Args->Dest, out_group.c_str(), out_group.size(), nullptr);
 
-      for (auto& [k, v] : keys) {
+      for (auto & [k, v] : keys) {
          std::string kv(k + " = " + v + "\n");
-         acWrite(Args->Dest, kv.c_str(), kv.size(), NULL);
+         acWrite(Args->Dest, kv.c_str(), kv.size(), nullptr);
       }
    }
 
@@ -629,13 +629,13 @@ static ERR CONFIG_SortByKey(extConfig *Self, struct cfg::SortByKey *Args)
 
    if (Args->Descending) {
       std::sort(Self->Groups->begin(), Self->Groups->end(),
-         [Args](ConfigGroup &a, ConfigGroup &b ) {
+         [Args](ConfigGroup &a, ConfigGroup &b) {
          return a.second[Args->Key] > b.second[Args->Key];
       });
    }
    else {
       std::sort(Self->Groups->begin(), Self->Groups->end(),
-         [Args](ConfigGroup &a, ConfigGroup &b ) {
+         [Args](ConfigGroup &a, ConfigGroup &b) {
          return a.second[Args->Key] < b.second[Args->Key];
       });
    }
@@ -680,7 +680,7 @@ static ERR CONFIG_WriteValue(extConfig *Self, struct cfg::WriteValue *Args)
    // Check if the named group already exists
 
    ConfigGroups &groups = *Self->Groups;
-   for (auto& [group, keys] : groups) {
+   for (auto & [group, keys] : groups) {
       if (!group.compare(Args->Group)) {
          keys[Args->Key] = Args->Data;
          return ERR::Okay;
@@ -742,14 +742,14 @@ static ERR GET_KeyFilter(extConfig *Self, CSTRING *Value)
       return ERR::Okay;
    }
    else {
-      *Value = NULL;
+      *Value = nullptr;
       return ERR::FieldNotSet;
    }
 }
 
 static ERR SET_KeyFilter(extConfig *Self, CSTRING Value)
 {
-   if (Self->KeyFilter) { FreeResource(Self->KeyFilter); Self->KeyFilter = NULL; }
+   if (Self->KeyFilter) { FreeResource(Self->KeyFilter); Self->KeyFilter = nullptr; }
 
    if ((Value) and (*Value)) {
       if (!(Self->KeyFilter = strclone(Value))) return ERR::AllocMemory;
@@ -784,14 +784,14 @@ static ERR GET_GroupFilter(extConfig *Self, CSTRING *Value)
       return ERR::Okay;
    }
    else {
-      *Value = NULL;
+      *Value = nullptr;
       return ERR::FieldNotSet;
    }
 }
 
 static ERR SET_GroupFilter(extConfig *Self, CSTRING Value)
 {
-   if (Self->GroupFilter) { FreeResource(Self->GroupFilter); Self->GroupFilter = NULL; }
+   if (Self->GroupFilter) { FreeResource(Self->GroupFilter); Self->GroupFilter = nullptr; }
 
    if ((Value) and (*Value)) {
       if (!(Self->GroupFilter = strclone(Value))) return ERR::AllocMemory;
@@ -810,7 +810,7 @@ Path: Set this field to the location of the source configuration file.
 
 static ERR SET_Path(extConfig *Self, CSTRING Value)
 {
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
 
    if ((Value) and (*Value)) {
       if (!(Self->Path = strclone(Value))) return ERR::AllocMemory;
@@ -825,7 +825,7 @@ TotalGroups: Returns the total number of groups in a config object.
 
 *********************************************************************************************************************/
 
-static ERR GET_TotalGroups(extConfig *Self, LONG *Value)
+static ERR GET_TotalGroups(extConfig *Self, int *Value)
 {
    *Value = Self->Groups->size();
    return ERR::Okay;
@@ -839,10 +839,10 @@ TotalKeys: The total number of key values loaded into the config object.
 
 *********************************************************************************************************************/
 
-static ERR GET_TotalKeys(extConfig *Self, LONG *Value)
+static ERR GET_TotalKeys(extConfig *Self, int *Value)
 {
-   LONG total = 0;
-   for (const auto& [group, keys] : Self->Groups[0]) {
+   int total = 0;
+   for (const auto & [group, keys] : Self->Groups[0]) {
       total += keys.size();
    }
    *Value = total;
@@ -856,10 +856,10 @@ static bool check_for_key(CSTRING Data)
 {
    if ((*Data != '\n') and (*Data != '\r') and (*Data != '[') and (*Data != '#')) {
       while ((*Data) and (*Data != '\n') and (*Data != '\r') and (*Data != '=')) Data++; // Skip key name
-      if (*Data != '=') return FALSE;
+      if (*Data != '=') return false;
       Data++;
       while ((*Data) and (*Data != '\n') and (*Data <= 0x20)) Data++; // Skip whitespace
-//      if ((*Data IS '\n') or (*Data IS 0)) return FALSE; // Check if data is present or the line terminates prematurely
+//      if ((*Data IS '\n') or (*Data IS 0)) return false; // Check if data is present or the line terminates prematurely
       return true;
    }
 
@@ -870,15 +870,15 @@ static bool check_for_key(CSTRING Data)
 
 void merge_groups(ConfigGroups &Dest, ConfigGroups &Source)
 {
-   for (auto& [src_group, src_keys] : Source) {
+   for (auto & [src_group, src_keys] : Source) {
       bool processed = false;
 
       // Check if the group already exists and merge the keys
 
-      for (auto& [dest_group, dest_keys] : Dest) {
+      for (auto & [dest_group, dest_keys] : Dest) {
          if (!dest_group.compare(src_group)) {
             processed = true;
-            for (auto& [k, v] : src_keys) {
+            for (auto & [k, v] : src_keys) {
                dest_keys[k] = v;
             }
          }
@@ -898,12 +898,12 @@ static FilterConfig parse_filter(std::string Filter, bool KeyValue = false)
 {
    FilterConfig f;
 
-   LONG start = 0, end = 0;
+   int start = 0, end = 0;
    if (Filter[start] IS '!') {
-      f.reverse = TRUE;
+      f.reverse = true;
       start++;
    }
-   else f.reverse = FALSE;
+   else f.reverse = false;
 
    for (; (Filter[start]) and (Filter[start] <= 0x20); start++);
 
@@ -953,12 +953,12 @@ static ERR parse_config(extConfig *Self, CSTRING Buffer)
          continue;
       }
 
-      std::pair<std::string, KEYVALUE> *current_group = NULL;
+      std::pair<std::string, KEYVALUE> *current_group = nullptr;
       while ((*data) and (*data != '[')) { // Keep processing keys until either a new group or EOF is reached
          if (check_for_key(data)) {
             std::string key, value;
 
-            LONG len;
+            int len;
             for (len=0; (data[len]) and (data[len] != '='); len++);
             if (!data[len]) break;
             while (data[len-1] <= 0x20) len--;
@@ -1059,13 +1059,13 @@ static void apply_group_filter(extConfig *Self, CSTRING Filter)
 
 static ConfigKeys * find_group_wild(extConfig *Self, CSTRING Group)
 {
-   if ((!Group) or (!*Group)) return NULL;
+   if ((!Group) or (!*Group)) return nullptr;
 
    for (auto & [group, keys] : Self->Groups[0]) {
       if (wildcmp(Group, group)) return &keys;
    }
 
-   return NULL;
+   return nullptr;
 }
 
 //********************************************************************************************************************
@@ -1073,10 +1073,10 @@ static ConfigKeys * find_group_wild(extConfig *Self, CSTRING Group)
 #include "class_config_def.c"
 
 static const FieldArray clFields[] = {
-   { "Path",        FDF_STRING|FDF_RW, NULL, SET_Path },
+   { "Path",        FDF_STRING|FDF_RW, nullptr, SET_Path },
    { "KeyFilter",   FDF_STRING|FDF_RW, GET_KeyFilter, SET_KeyFilter },
    { "GroupFilter", FDF_STRING|FDF_RW, GET_GroupFilter, SET_GroupFilter },
-   { "Flags",       FDF_INTFLAGS|FDF_RW, NULL, NULL, &clFlags },
+   { "Flags",       FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clFlags },
    // Virtual fields
    { "Data",        FDF_POINTER|FDF_R, GET_Data },
    { "TotalGroups", FDF_INT|FDF_R, GET_TotalGroups },

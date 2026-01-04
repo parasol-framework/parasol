@@ -6,7 +6,8 @@
 -----------------------------------------------------------------------------------------------------------------------
 -- This test must result in playback of a low-tone, then followed by a high tone.
 
-function testSequentialPlayback()
+@Test(requires='audio')
+function SequentialPlayback()
    local proc = processing.new()
 
    local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav', volume=0.25 })
@@ -21,7 +22,7 @@ function testSequentialPlayback()
    local duration = snd.duration
    collectgarbage()
 
-   assert(snd.acActivate() == ERR_Okay, 'Failed to playback low-tone sound sample.')
+   assert(snd.acActivate() is ERR_Okay, 'Failed to playback low-tone sound sample.')
    time = mSys.preciseTime()
 
    proc.sleep()
@@ -40,7 +41,7 @@ function testSequentialPlayback()
    end
 
    duration = snd.duration
-   assert(snd.acActivate() == ERR_Okay, 'Failed to playback high-tone sound sample.')
+   assert(snd.acActivate() is ERR_Okay, 'Failed to playback high-tone sound sample.')
    time = mSys.preciseTime()
 
    proc.sleep()
@@ -54,7 +55,8 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test left and right speaker panning
 
-function testPan()
+@Test(requires='audio')
+function Pan()
    local proc = processing.new()
 
    local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav', pan=-1.0, volume=0.25 })
@@ -66,7 +68,7 @@ function testPan()
 
    print('Play left speaker.')
 
-   assert(snd.acActivate() == ERR_Okay, 'Failed to playback low-tone sound sample.')
+   assert(snd.acActivate() is ERR_Okay, 'Failed to playback low-tone sound sample.')
 
    proc.sleep()
 
@@ -74,7 +76,7 @@ function testPan()
 
    print('Play right speaker.')
    snd.pan = 1.0
-   assert(snd.acActivate() == ERR_Okay, 'Failed to playback low-tone sound sample.')
+   assert(snd.acActivate() is ERR_Okay, 'Failed to playback low-tone sound sample.')
 
    proc.sleep()
 
@@ -84,7 +86,8 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test volume adjustment and OnStop trigger rates.
 
-function testVolume()
+@Test(requires='audio')
+function Volume()
    local proc = processing.new()
 
    local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav' })
@@ -114,7 +117,8 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Increase the pitch repeatedly
 
-function testTones()
+@Test(requires='audio')
+function Tones()
    local proc = processing.new()
 
    local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav', volume=0.25 })
@@ -139,7 +143,8 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testBeep()
+@Test(requires='audio')
+function Beep()
    glAudio.mtBeep(3000, 100, 5)
 end
 
@@ -147,13 +152,14 @@ end
 -- Test WAVE file saving by loading a file and saving it to a temp location, then comparing the binary content of
 -- both files.
 
-function testWaveSave()
+@Test(requires='audio')
+function WaveSave()
    local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav' })
    local output_file = obj.new('file', { path='temp:low-tone.wav', flags='!NEW|WRITE' })
 
    -- Save the sound as WAVE format to the temporary file
    local result = snd.acSaveToObject(output_file)
-   assert(result == ERR_Okay, 'Failed to save sound to temporary file: ' .. mSys.GetErrorMsg(result))
+   assert(result is ERR_Okay, 'Failed to save sound to temporary file: ' .. mSys.GetErrorMsg(result))
 
    -- Close the output file to ensure data is flushed
    output_file = nil
@@ -170,7 +176,7 @@ function testWaveSave()
    local original_size = original_file.size
    local saved_size = saved_file.size
 
-   assert(original_size == saved_size, 'File sizes do not match: original=' .. original_size .. ', saved=' .. saved_size)
+   assert(original_size is saved_size, 'File sizes do not match: original=' .. original_size .. ', saved=' .. saved_size)
 
    -- Compare file content in chunks
    local chunk_size = 4096
@@ -187,7 +193,7 @@ function testWaveSave()
 
       assert(original_data, 'Failed to read from original file at offset ' .. bytes_compared)
       assert(saved_data, 'Failed to read from saved file at offset ' .. bytes_compared)
-      assert(size_a == size_b, 'Read size mismatch at offset ' .. bytes_compared)
+      assert(size_a is size_b, 'Read size mismatch at offset ' .. bytes_compared)
 
       -- Compare byte by byte
       for i = 1, read_size do
@@ -209,14 +215,6 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
    return {
-      tests = {
-        'testSequentialPlayback',
-        'testPan',
-        'testVolume',
-        'testTones',
-        'testBeep',
-        'testWaveSave'
-      },
       init = function(Folder)
          glFolder = Folder
          glAudio = obj.new('audio', { name='SystemAudio' })

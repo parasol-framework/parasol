@@ -8,106 +8,99 @@
 
    require 'common'
 
-   glSelf = obj.find('self')
-   glPath = glSelf.workingPath
+   global glSelf = obj.find('self')
+   global glPath = glSelf.workingPath
+   global glOutput = { }
+   global glHeader = { }
 
-----------------------------------------------------------------------------------------------------------------------
+   global glProgram    = 'idl-compile'
+   global glSource     = arg('src')
+   global glOutputPath = arg('output')
+   global glFeedback   = arg('feedback')
+   global glFormat     = arg('format')
+   global glAppend     = arg('append')
 
-glOutput = { }
+   global glOrderedStructures = { }
+   global glStructures = { }
+   global glConstants = { }
 
-function output(String)
-   table.insert(glOutput, nz(String, ''))
-end
+-- Dummy functions for loaded FDL files to prevent errors.
 
-----------------------------------------------------------------------------------------------------------------------
+global function c_include(...) end
+global function cpp_include(...) end
+global function class(Name:str, Options:table, Def:str, Private:bool) end
+global function functionNames(Prefix:str, ...) end
+global function methods(ClassName:str, Prefix:str, Methods:table) end
+global function c_insert(Raw:str) end
+global function privateNames(List:table) end
 
-function checkOptions(Options)
-   if (type(Options) != 'table') then
-      if (type(Options) != 'nil') then
-         error("Invalid option type '" .. type(Options) .. "', expected table.")
-      else
-         return { }
-      end
-   end
-   return Options
-end
-
-----------------------------------------------------------------------------------------------------------------------
-
-function c_include(...) end
-function cpp_include(...) end
-function class(Name, Options, Def, Private) end
-function functionNames(Prefix, ...) end
-function methods(ClassName, Prefix, Methods) end
-function c_insert(Raw) end
-function privateNames(List) end
-function priority(Value) end
+   require './include/utils'
 
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 -- Restricts the output of anything declared within the referenced function.
 
-function restrict(Function)
+global function restrict(Function)
    local status = glRestrict
-   glRestrict = 'ALL'
+   global glRestrict = 'ALL'
    Function()
    glRestrict = status
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function module(Options, Function)
-   glModuleName = Options['name']
+global function module(Options, Function)
+   global glModuleName = Options['name']
    Function()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function header(Options, Function)
-   glHeaderPath = Options['path']
+global function header(Options, Function)
+   global glHeaderPath = Options['path']
    Function()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function flags(Prefix, Options, ...)
+global function flags(Prefix, Options, ...)
    Options = checkOptions(Options)
 
-   if (nz(Options.restrict)) or (glRestrict) then return end -- Restricted definitions are never exported
-   if nz(Options.module) and (Options.module:lower() != glModuleName:lower()) then return end
-   if (glFeedback == 'verbose') then print('Processing flags ' .. Prefix) end
+   if Options.restrict?? or glRestrict then return end -- Restricted definitions are never exported
+   if Options.module?? and (Options.module:lower() != glModuleName:lower()) then return end
+   verbose('Processing flags ' .. Prefix)
 
-   local list = { }
-   local f = 0
-   for _, flag_def in ipairs({...}) do
-      if (type(flag_def) == 'string') then
+   list = { }
+   f = 0
+   for flag_def in values({...}) do
+      if type(flag_def) is 'string' then
          local key, comment = flag_def:match('^(.+):%s+(.+)$')
-         if (key == nil) then key = flag_def end
+         if not key then key = flag_def end
 
-         for _, v in ipairs(key:split('|')) do
-            list[v] = bit.lshift(1, f)
+         for v in values(key:split('|')) do
+            list[v] = 1 << f
          end
-      elseif (type(flag_def) == 'table') then
+      elseif type(flag_def) is 'table' then
          for flag, ref in pairs(flag_def) do
             local key, comment
-            if (type(ref) != 'number') then
+            if type(ref) != 'number' then
                key, comment = ref:match('^(.+):%s+(.+)$')
-               if (key != nil) then
-                  if (key:find('^0x%d+$')) or (key:find('^[+-]?%d+$')) then
+               if key then
+                  if key:find('^0x%d+$') or key:find('^[+-]?%d+$') then
                      key = tonumber(key)
                   end
                end
             end
 
-            if (key == nil) then key = ref end
+            if not key then key = ref end
 
-            if (type(key) == 'number') then
+            if type(key) is 'number' then
                list[flag] = key
             else
                local f = 0
-               for _, v in ipairs(key:split('|')) do
-                  if (list[v] != nil) then
-                     f = bit.bor(f, list[v])
+               for v in values(key:split('|')) do
+                  if list[v] then
+                     f = f | list[v]
                   else
                      print("Failed to lookup reference '" .. v .. "'")
                   end
@@ -118,7 +111,7 @@ function flags(Prefix, Options, ...)
       else
          error("Invalid flag type for '" .. Prefix .. "', expected string, got '" .. type(flag_def) .. "'")
       end
-      f = f + 1
+      f++
    end
 
    glConstants[Prefix] = list
@@ -126,31 +119,31 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function enum(Prefix, Options, ...)
+global function enum(Prefix, Options, ...)
    Options = checkOptions(Options)
 
-   if (nz(Options.restrict)) or (glRestrict) then return end -- Restricted definitions are never exported
-   if nz(Options.module) and (Options.module:lower() != glModuleName:lower()) then return end
-   if (glFeedback == 'verbose') then print('Processing enum ' .. Prefix) end
+   if Options.restrict?? or glRestrict then return end -- Restricted definitions are never exported
+   if Options.module?? and (Options.module:lower() != glModuleName:lower()) then return end
+   verbose('Processing enum ' .. Prefix)
 
-   local list = { }
-   local inc = nz(Options.start, 0)
+   list = { }
+   inc = Options.start ?? 0
    for k, enum_def in ipairs({...}) do
-      if (type(enum_def) == 'string') then
-         local val = enum_def:match('^(.-):%s+.+$')  -- Scrap any comment for this value
-         if (val == nil) then val = enum_def end
+      if type(enum_def) is 'string' then
+         val = enum_def:match('^(.-):%s+.+$')  -- Scrap any comment for this value
+         val ??= enum_def
 
-         for _, name in ipairs(val:split('|')) do
+         for name in values(val:split('|')) do
             list[name] = inc
          end
-      elseif (type(enum_def) == 'table') then -- The client provided a table of fixed values
+      elseif type(enum_def) is 'table' then -- The client provided a table of fixed values
          for name, client_val in pairs(enum_def) do
             list[name] = client_val
          end
       else
          error("Invalid enum type for '" .. Prefix .. "', expected string, got '" .. type(enum_def) .. "'")
       end
-      inc = inc + 1
+      inc++
    end
 
    glConstants[Prefix] = list
@@ -158,31 +151,28 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function const(Prefix, Options, ...)
+global function const(Prefix, Options, ...)
    Options = checkOptions(Options)
 
-   if (nz(Options.restrict)) or (glRestrict) then return end -- Restricted definitions are never exported
-   if nz(Options.module) and (Options.module:lower() != glModuleName:lower()) then return end
-   if (glFeedback == 'verbose') then print('Processing constants ' .. Prefix) end
+   if Options.restrict?? or glRestrict then return end -- Restricted definitions are never exported
+   if Options.module?? and (Options.module:lower() != glModuleName:lower()) then return end
+   verbose('Processing constants ' .. Prefix)
 
-   local list = { }
+   list = { }
    for k, const_def in ipairs({...}) do
-      if (type(const_def) == 'table') then
-         for k, v in pairs(const_def) do
-            local val, comment
-            if (type(v) == 'string') then
-               val, comment = v:match('^(.-):%s+(.+)$')
-            end
-            if (val == nil) then val = v end
-
-            if (string.find(val, '^0x%d+$')) or (string.find(val, '^[+-]?%d+$')) then
-               val = tonumber(val)
-            end
-
-            list[k] = val
+      assert(type(const_def) is 'table', "Invalid const type for '" .. Prefix .. "', expected table, got '" .. type(const_def) .. "'")
+      for k, v in pairs(const_def) do
+         local val, comment
+         if type(v) is 'string' then
+            val, comment = v:match('^(.-):%s+(.+)$')
          end
-      else
-         error("Invalid const type for '" .. Prefix .. "', expected string, got '" .. type(const_def) .. "'")
+         if not val then val = v end
+
+         if string.find(val, '^0x%d+$') or string.find(val, '^[+-]?%d+$') then
+            val = tonumber(val)
+         end
+
+         list[k] = val
       end
    end
    glConstants[Prefix] = list
@@ -190,10 +180,10 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function hash(Prefix, Format, ...)
+global function hash(Prefix:str, Format:str, ...)
    for k, hash_def in ipairs({...}) do
-      local hash_name = hash_def:gsub('[^%w]', '_')
-      local hash_id = string.format('%08x', hash_name:hash()):sub(-8)
+      hash_name = hash_def:gsub('[^%w]', '_')
+      hash_id = string.format('%08x', hash_name:hash()):sub(-8)
       output('#define ' .. Prefix .. '_' .. hash_name .. ' ' .. string.format(Format, hash_id))
    end
    output()
@@ -201,12 +191,12 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function platform(Platform, Function)
-   if (Platform:lower() == 'windows') then
+global function platform(Platform:str, Function:func)
+   if (Platform:lower() is 'windows') then
       Function()
-   elseif (Platform:lower() == 'linux') then
+   elseif (Platform:lower() is 'linux') then
       Function()
-   elseif (Platform:lower() == 'x11') then
+   elseif (Platform:lower() is 'x11') then
       Function()
    else
       error("Unrecognised platform '" .. Platform .. "'")
@@ -215,12 +205,12 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function str_to_bytes(String)
+global function str_to_bytes(String:str):str
    local list
    String = String:gsub("\\n", string.char(10))
-   for i = 1, #String do
+   for i = 0, #String - 1 do
       if list then
-         list = list .. string.format(',%d', String:byte(i))
+         list ..= string.format(',%d', String:byte(i))
       else
          list = string.format('%d', String:byte(i))
       end
@@ -230,7 +220,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-glTypes = {
+global glTypes = {
    hhandle = 'l',
    mem     = 'l',
    int     = 'l',
@@ -258,14 +248,12 @@ glTypes = {
    resource = 'e'
 }
 
-function cType(Field, Origin)
-   if (Field.type == nil) then
-      error("Field definition incorrect, missing 'type' value for '" .. nz(Origin,"NIL") .. "'")
-   end
+global function cType(Field:table, Origin:str):table
+   assert(Field.type, "Field definition incorrect, missing 'type' value for '" .. (Origin ?? 'NIL') .. "'")
 
    do
-      local cpp_type = Field.type:match("^cpp%((.+)%)$")
-      if (cpp_type != nil) then
+      cpp_type = Field.type:match("^cpp%((.+)%)$")
+      if cpp_type then
          Field.cpp  = true
          Field.type = cpp_type
          cType(Field, Origin)
@@ -276,39 +264,30 @@ function cType(Field, Origin)
 
    do
       local const, struct = Field.type:match('^(c-)struct%((.+)%)$')
-      if (struct != nil) then
-         local ptr_struct = struct:match('%*(.+)')
-         if (ptr_struct != nil) then struct = ptr_struct end
+      if struct then
+         ptr_struct = struct:match('%*(.+)')
+         if ptr_struct then struct = ptr_struct end
 
          Field.struct = struct
-         if (ptr_struct != nil) then
-            Field.type = 'p'
-            Field.name = Field.name .. ':' .. struct
-         else
-            Field.type = 'e'
-            Field.name = Field.name .. ':' .. struct
-         end
+         Field.type = ptr_struct ? 'p' :> 'e'
+         Field.name ..= ':' .. struct
 
          return Field
       end
    end
 
    do
-      local object = Field.type:match('^obj%((.+)%)$')
-      if (object != nil) then
-         local ptr_struct = object:match('%*(.+)')
-         if (ptr_object != nil) then
-            Field.type = 'p'
-         else
-            Field.type = 'o'
-         end
+      object = Field.type:match('^obj%((.+)%)$')
+      if object then
+         ptr_struct = object:match('%*(.+)')
+         Field.type = ptr_struct ? 'p' :> 'o'
          return Field
       end
    end
 
    do
       local bit = Field.type:match('^bit%((.+)%)$')
-      if (bit != nil) then
+      if bit then
          Field.type = cType({ type=bit, name='Bit' }, Origin).type
          Field.name = 'Bit'
          return Field
@@ -316,28 +295,28 @@ function cType(Field, Origin)
    end
 
    do -- Char flags / Strong typing
-      if (Field.type:match('^char%((%a+)%)') != nil) then
+      if Field.type:match('^char%((%a+)%)') then
          Field.type = 'c'
          return Field
       end
    end
 
    do -- Short flags / Strong typing
-      if (Field.type:match('^short%((%a+)%)') != nil) then
+      if Field.type:match('^short%((%a+)%)') then
          Field.type = 'w'
          return Field
       end
    end
 
    do -- Integer flags / Strong typing
-      if (Field.type:match('^int%((%a+)%)') != nil) then
+      if Field.type:match('^int%((%a+)%)') then
          Field.type = 'l'
          return Field
       end
    end
 
    do -- Large flags / Strong typing
-      if (Field.type:match('^large%((%a+)%)') != nil) then
+      if Field.type:match('^large%((%a+)%)') then
          Field.type = 'x'
          return Field
       end
@@ -345,114 +324,112 @@ function cType(Field, Origin)
 
    do -- Char arrays
       local unsigned, count = Field.type:match('^(u-)char%((.+)%)$')
-      if (count != nil) then
+      if count then
          Field.type = 'c'
-         if nz(unsigned) then Field.type = 'uc' end
-         Field.name = Field.name .. '[' .. count .. ']'
+         if unsigned?? then Field.type = 'uc' end
+         Field.name ..= '[' .. count .. ']'
          return Field
       end
    end
 
    do -- Integer arrays
       local unsigned, count = Field.type:match('^(u-)int%((%d+)%)')
-      if (count != nil) then
-         if nz(unsigned) then
+      if count then
+         if unsigned?? then
             Field.type = 'ul'
          else
             Field.type = 'l'
          end
-         Field.name = Field.name .. '[' .. count .. ']'
+         Field.name ..= '[' .. count .. ']'
          return Field
       end
    end
 
    do -- Double arrays
-      local count = Field.type:match('^double%((.+)%)')
-      if (count != nil) then
+      count = Field.type:match('^double%((.+)%)')
+      if count then
          Field.type = 'd'
-         Field.name = Field.name .. '[' .. count .. ']'
+         Field.name ..= '[' .. count .. ']'
          return Field
       end
    end
 
    do -- Float arrays
-      local count = Field.type:match('^float%((.+)%)')
-      if (count != nil) then
+      count = Field.type:match('^float%((.+)%)')
+      if count then
          Field.type = 'f'
-         Field.name = Field.name .. '[' .. count .. ']'
+         Field.name ..= '[' .. count .. ']'
          return Field
       end
    end
 
    do
       local const, ptr_type = Field.type:match('^(c-)ptr%((.+)%)')
-      if (ptr_type != nil) then
+      if ptr_type then
          Field.type = 'p'
          return Field
       end
    end
 
    do
-      local array_type, array_size = Field.type:match('^array%((.+),(%d+)%)$')
-      if (array_type != nil) then
+      array_type, array_size = Field.type:match('^array%((.+),(%d+)%)$')
+      if array_type then
          Field.type = array_type
          Field = cType(Field, Origin)
-         Field.name = Field.name .. '[' .. array_size .. ']'
+         Field.name ..= '[' .. array_size .. ']'
          return Field
       end
    end
 
    do
-      local array_type = Field.type:match('^array%((.+)%)$')
-      if (array_type != nil) then
+      array_type = Field.type:match('^array%((.+)%)$')
+      if array_type then
          Field.type = array_type
          Field = cType(Field, Origin)
-         Field.name = Field.name .. '[]'
+         Field.name ..= '[]'
          return Field
       end
    end
 
    do
-      if (Field.type:match('^fptr%((.+)%)$') != nil) then
+      if Field.type:match('^fptr%((.+)%)$') then
          Field.type = 'p'
          return Field
       end
    end
 
-   if (glTypes[Field.type] == nil) then
-      error('No handling for field type "' .. Field.type .. '" from ' .. Origin)
-   end
+   assert(glTypes[Field.type], 'No handling for field type "' .. Field.type .. '" from ' .. Origin)
 
-   Field.type = nz(glTypes[Field.type], Field.type)
+   Field.type = glTypes[Field.type] ?? Field.type
    return Field
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Returns { type, name, comment }
 
-function extractFields(Def, Origin)
-   local fields = { }
-   for line, content in ipairs(Def:split('\n')) do
+global function extractFields(Def:str, Origin:str):table
+   fields = { }
+   for line, content in Def:split('\n') do
       -- Extract comment, if specified
-      local comment = content:match('^.+#%s-(.+)$')
-      if nz(comment) then
+      comment = content:match('^.+#%s-(.+)$')
+      if comment?? then
          content = content:match('^(.+)#%s-.+$')
       else
          -- Support for alternative comment format where the colon is used.
          comment = content:match('^.+:%s-(.+)$')
-         if nz(comment) then
+         if comment?? then
             content = content:match('^(.+):%s-.+$')
          end
       end
 
       local type, name = content:match('^%s*(.+)%s+([^%s]+)%s-$')
-      if (type != nil) then
+      if type then
          local field = cType({ type=type:trim(), name=name:trim() }, Origin)
          table.insert(fields, field)
-      elseif not nz(content:trim()) then
+      elseif not content:trim()?? then
          -- Ignore empty line
       else
-         error("Unable to process line '" .. nz(content,"NULL") .. "' for '" .. nz(Origin,'NIL') .. "'")
+         error("Unable to process line '" .. tostring(content) .. "' for '" .. tostring(Origin) .. "'")
       end
    end
 
@@ -461,11 +438,11 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function struct(Name, Options, Def, Append)
+global function struct(Name:str, Options:table, Def:str)
    Options = checkOptions(Options)
-   if nz(Options.restrict) or (glRestrict) then return end -- Restricted structures are never exported
-   if nz(Options.module) and (Options.module:lower() != glModuleName:lower()) then return end
-   if (glFeedback == 'verbose') then print('Processing structure ' .. Name) end
+   if Options.restrict?? or glRestrict then return end -- Restricted structures are never exported
+   if Options.module?? and (Options.module:lower() != glModuleName:lower()) then return end
+   verbose('Processing structure ' .. Name)
    local struct = {
       name    = Name,
       version = Options.version,
@@ -480,14 +457,14 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Convert a struct definition into a string-based field sequence.
 
-function sequenceStruct(fields)
-   local seq = ''
-   for _, f in ipairs(fields) do
-      if nz(seq) then seq = seq .. ',' end
-      if (f.sequence != nil) then
-         seq = seq .. 'e' .. f.name:cap() .. ':' .. f.type
+global function sequenceStruct(fields)
+   seq = ''
+   for f in values(fields) do
+      if seq?? then seq ..= ',' end
+      if f.sequence then
+         seq ..= 'e' .. f.name:cap() .. ':' .. f.type
       else
-         seq = seq .. f.type .. f.name:cap()
+         seq ..= f.type .. f.name:cap()
       end
    end
    return seq
@@ -495,21 +472,21 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function saveOutput()
-   local outPath = glOutputPath
+global function saveOutput()
+   outPath = glOutputPath
 
-   if (outPath == nil) then
-      if nz(glModuleName) then
-         outPath = 'sdk:data/config/defs/' .. glModuleName:lower() .. '.def'
+   if not outPath then
+      if glModuleName?? then
+         outPath = f'sdk:data/config/defs/{glModuleName:lower()}.def'
       else
-         error('No putput path specified in command-line.')
+         error('No output path specified in command-line.')
       end
    end
 
-   print('Saving compressed IDL output to "' .. outPath .. '"')
+   print(f'Saving compressed IDL output to "{outPath}"')
 
-   local err, file = catch(function()
-      if (glAppend) then
+   err, file = catch(function()
+      if glAppend then
          file = obj.new('file', { flags='WRITE', path=outPath } )
          file.acSeek(0, SEEK_END)
          return file
@@ -523,23 +500,23 @@ function saveOutput()
       return
    end
 
-   local EOL = '\n'
-   if (glFormat == 'c') then EOL = '\\n' end
+   EOL = '\n'
+   if glFormat is 'c' then EOL = '\\n' end
 
    -- Build structures string
 
-   local s = ''
-   for _, struct in pairs(glOrderedStructures) do
-      if (struct.fields != nil) then
-         s = s .. 's.' .. struct.name .. ':' .. struct.sequence .. EOL
+   s = ''
+   for struct in values(glOrderedStructures) do
+      if struct.fields then
+         s ..= 's.' .. struct.name .. ':' .. struct.sequence .. EOL
       end
    end
 
    -- Build constants strings
 
-   local sortedConstants = { }
+   sortedConstants = { }
    for prefix, tab in pairs(glConstants) do
-      local sortedkv = { }
+      sortedkv = { }
       for k, v in pairs(tab) do
          table.insert(sortedkv, { name = k, value = v })
       end
@@ -548,97 +525,55 @@ function saveOutput()
    end
    table.sort(sortedConstants, function(a,b) return a.prefix < b.prefix end)
 
-   local c = ''
-   for _, group in ipairs(sortedConstants) do
-      c = c .. 'c.' .. group.prefix .. ':'
-      local e = ''
-      for _, const in ipairs(group.table) do
-         if nz(e) then e = e .. ',' end
-         if (type(const.value) == 'string') then
-            local val = const.value:match('^(.-):%s+.+$') -- Scrap any defined comment for this value.
-            if (val == nil) then val = v end
-            e = e .. const.name .. '="' .. const.value .. '"'
+   c = ''
+   for group in values(sortedConstants) do
+      c ..= f'c.{group.prefix}:'
+      e = ''
+      for const in values(group.table) do
+         if e?? then e ..= ',' end
+         if type(const.value) is 'string' then
+            val = const.value:match('^(.-):%s+.+$') -- Scrap any defined comment for this value.
+            val ??= const.value
+            e ..= f'{const.name}="{const.value}"'
          else
-            local hexval = string.format('%x', const.value)
-            if (hexval:len() == 16) then hexval = hexval:sub(-8) end
-            e = e .. const.name .. '=0x' .. hexval
+            hexval = string.format('%x', const.value)
+            if hexval:len() is 16 then hexval = hexval:sub(-8) end
+            e ..= f'{const.name}=0x{hexval}'
          end
       end
-      c = c .. e .. EOL
+      c ..= e .. EOL
    end
 
-   if (glFormat == 'c') then
-      if (s:len() + c:len() >= 16 * 1024) then -- MSVC doesn't like defined strings > 16Kb, so we need this alternative
+   if glFormat is 'c' then
+      if s:len() + c:len() >= 16 * 1024 then -- MSVC doesn't like defined strings > 16Kb, so we need this alternative
          file.acWrite('char glIDL[] = { ')
-         file.acWrite(str_to_bytes(nz(s,'') .. nz(c,'')))
+         file.acWrite(str_to_bytes((s ?? '') .. (c ?? '')))
          file.acWrite(',0 };\n')
       else
          file.acWrite('#undef MOD_IDL\n#define MOD_IDL "')
-         if nz(s) then file.acWrite(s) end
-         if nz(c) then file.acWrite(c) end
+         if s?? then file.acWrite(s) end
+         if c?? then file.acWrite(c) end
          file.acWrite('"\n')
       end
    else
-      if nz(s) then file.acWrite(s) end
-      if nz(c) then file.acWrite(c) end
+      if s?? then file.acWrite(s) end
+      if c?? then file.acWrite(c) end
    end
-end
-
------------------------------------------------------------------------------------------------------------------------
--- Resolve the location of the Parasol SDK and create an 'sdk:' volume.
-
-function resolveSDKPath(Path)
-   local sdk_path
-   local err = ERR_Failed
-   if not Path then
-      local search_path = 'CMakeLists.txt'
-      local limit = 5
-      while (err != ERR_Okay) and (limit > 0) do
-         search_path = '../' .. search_path
-         err, sdk_path = mSys.ResolvePath(search_path)
-         limit = limit - 1
-      end
-   else
-      err, sdk_path = mSys.ResolvePath(Path .. '/CMakeLists.txt')
-   end
-
-   if (err == ERR_Okay) then
-      sdk_path = sdk_path:match("(.+)CMakeLists%.txt")
-   else
-      error('Failed to resolve a path to the Parasol SDK.')
-   end
-
-   mSys.SetVolume('sdk', sdk_path)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-   glProgram    = 'idl-compile'
-   glSource     = arg('src')
-   glOutputPath = arg('output')
-   glFeedback   = arg('feedback')
-   glFormat     = arg('format')
-   glAppend     = arg('append')
-
-   if (glSource == nil) then
+   if not glSource then
       print('This command is used to compile IDL definition files.  Provide a reference to a')
       print('source file, or directory of source files in the SRC argument.  The resulting data will be')
       print('printed to the output object that was used in executing the command.')
       return
    end
 
-   mSys = mod.load('core')
    resolveSDKPath(arg('sdk'))
 
-   glOrderedStructures = { }
-   glStructures = { }
-   glConstants = { }
-
    local err, type = mSys.AnalysePath(glSource)
-   if (type != LOC_FILE) then
-      error('The specified source "' .. glSource .. '" is invalid.')
-   end
+   assert(type is LOC_FILE, 'The specified source "' .. glSource .. '" is invalid.')
 
    loadFile(glSource)
    saveOutput()
-

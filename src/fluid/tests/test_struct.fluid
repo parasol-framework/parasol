@@ -1,41 +1,32 @@
---[[
-Flute tests for the struct interface.
---]]
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Retrieve a known struct from a function and then list its field values.  GetList() is chosen in particular because
 -- it features a null-terminated array in the Points field.
 
-function testFontList()
-   local mFont = mod.load("font")
-   local err, list = mFont.GetList()
-   if (list == nil) then error("Failed to retrieve list of fonts, error: " .. mSys.GetErrorMsg(err)) end
+@Test(hotpath=true); @Requires(font=true)
+function FontList()
+   err, list = mFont.GetList()
+   assert(list, "Failed to retrieve list of fonts, error: " .. mSys.GetErrorMsg(err))
 
-   local font = list
-   while (font) do
+   font = list
+   while font do
       if not font.hidden then
-         if (font.scalable == 1) then
-            print("Scalable: " .. font.name)
+         if font.scalable is 1 then
+            logOutput("Scalable: " .. font.name)
          else
-            print("Bitmap: " .. font.name)
+            logOutput("Bitmap: " .. font.name)
          end
-         print("Styles: " .. font.styles)
+         logOutput("Styles: " .. font.styles)
 
-         local points = ""
-         for _, p in ipairs(font.points) do
-            if nz(points) then points = points .. ", " end
-            points = points .. p
+         points = ""
+         for p in values(font.points) do
+            if points?? then points ..= ", " end
+            points ..= p
          end
-         if nz(points) then print("Available in fixed sizes: " .. points) end
-         print("")
+         not points ?? logOutput("Available in fixed sizes: " .. points)
+         logOutput("")
       end
 
       font = font.next
    end
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-   return {
-      tests = { 'testFontList' }
-   }

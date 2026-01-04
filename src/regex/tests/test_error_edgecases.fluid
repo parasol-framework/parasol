@@ -1,0 +1,33 @@
+-- Error handling and resilience edge cases
+
+@Test function InvalidEscapeRaises()
+   local err = catch(function() return regex.new("\\x") end)
+   assert(err != ERR_Okay, "Invalid escape should trigger compilation error")
+end
+
+@Test function MismatchedBracketRaises()
+   local err = catch(function() return regex.new("[abc") end)
+   assert(err != ERR_Okay, "Mismatched bracket should raise error")
+end
+
+@Test function UnknownUnicodeProperty()
+   local err = catch(function() return regex.new("\\p{NotAProperty}") end)
+   assert(err != ERR_Okay, "Unknown Unicode property should be rejected")
+end
+
+@Test function RegexObjectsSurviveGarbageCollection()
+   for index = 1, 50 do
+      local matcher = regex.new("item" .. index)
+      assert(matcher.test("item" .. index), "Compiled regex should operate before GC")
+   end
+   collectgarbage()
+   local matcher = regex.new("final")
+   assert(matcher.test("final"), "Regex creation should remain stable after GC cycle")
+end
+
+@Test function EmptyPatternMatch()
+   local matcher = regex.new("")
+   assert(matcher.test("anything"), "Empty pattern should match any string")
+   local replaced = matcher.replace("abc", "-")
+   assert(replaced:sub(0, 1) is "-", "Replacement on empty pattern should insert replacement at start")
+end

@@ -3,7 +3,7 @@ static void free_private_memory(void);
 
 //********************************************************************************************************************
 
-static void free_classes(void) 
+static void free_classes(void)
 {
    #ifdef __ANDROID__
    if (glAssetClass) { FreeResource(glAssetClass); glAssetClass = 0; }
@@ -53,8 +53,8 @@ static void remove_schedulers(void)
 
 //********************************************************************************************************************
 // Remove orphaned object locks
-   
-static void remove_object_locks(void) 
+
+static void remove_object_locks(void)
 {
    pf::Log log(__FUNCTION__);
 
@@ -91,7 +91,7 @@ void CloseCore(void)
    // Critical variables are re-calculated for the close process - this will 'repair' any possible damage that may have
    // been caused to our internal data.
 
-   tlContext = &glTopContext;
+   tlContext.resize(1);
    tlDepth   = 0;
 
    if (glClassFile) { FreeResource(glClassFile); glClassFile = nullptr; }
@@ -119,7 +119,7 @@ void CloseCore(void)
                SendMessage(MSGID::QUIT, MSF::NIL, nullptr, 0);
             #endif
 
-            WaitTime(0, -100000);
+            WaitTime(-0.1); // Wait 0.1 seconds without processing messages
          }
       #endif
    }
@@ -144,7 +144,7 @@ void CloseCore(void)
          it++;
       }
 
-      WaitTime(0, -100000);
+      WaitTime(-0.1); // Wait 0.1 seconds without processing messages
    }
 
    // If the time-to-die has elapsed and sub-tasks are still in the system, send kill messages to force them out.
@@ -157,7 +157,7 @@ void CloseCore(void)
                kill(task.ProcessID, SIGTERM);
             }
          }
-         WaitTime(0, -200000);
+         WaitTime(-0.2); // Wait 0.2 seconds without processing messages
          glTasks.clear();
       }
    #endif
@@ -228,7 +228,7 @@ void CloseCore(void)
 
       if (!glCrashStatus) {
          for (auto &fd : glFDTable) {
-            log.warning("FD %" PF64 " was not deregistered prior to program close.  Routine: %p, Data: %p, Flags: $%.8x", (LARGE)fd.FD, fd.Routine, fd.Data, int(fd.Flags));
+            log.warning("FD %" PRId64 " was not deregistered prior to program close.  Routine: %p, Data: %p, Flags: $%.8x", (int64_t)fd.FD, fd.Routine, fd.Data, int(fd.Flags));
          }
       }
    }
@@ -339,17 +339,17 @@ __export void Expunge(int16_t Force)
                   if (auto error = mod_master->Expunge(); error IS ERR::Okay) {
                      ccount++;
                      if (FreeResource(mod_master) != ERR::Okay) {
-                        log.warning("RootModule data is corrupt");
+                        log.warning("RootModule is corrupt");
                         mod_count = ccount; // Break the loop because the chain links are broken.
                         break;
                      }
                   }
-                  else if (error != ERR::DoNotExpunge) log.msg("Module \"%s\" does not want to be flushed.",mod_master->Name.c_str());
+                  else if (error != ERR::DoNotExpunge) log.msg("Module \"%s\" rejected expunge request.",mod_master->Name.c_str());
                }
                else {
                   ccount++;
                   if (FreeResource(mod_master) != ERR::Okay) {
-                     log.warning("RootModule data is corrupt");
+                     log.warning("RootModule is corrupt");
                      mod_count = ccount; // Break the loop because the chain links are broken.
                      break;
                   }
@@ -425,7 +425,7 @@ static void free_private_memory(void)
    pf::Log log("Shutdown");
 
    log.branch("Checking for orphaned memory allocations...");
-   
+
    int count = 0;
 
    if (auto lock = std::unique_lock{glmMemory}) {

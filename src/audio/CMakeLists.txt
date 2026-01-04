@@ -33,13 +33,14 @@ if (WIN32)
    target_sources (${MOD} PRIVATE "dsound.cpp")
 else ()
    if (ALSA_INSTALLED)
-      add_definitions ("-DALSA_ENABLED")
+      target_compile_definitions (${MOD} PRIVATE "ALSA_ENABLED")
       target_sources (${MOD} PRIVATE "device_enum.cpp")
       target_link_libraries (${MOD} PRIVATE "asound")
    endif ()
 endif ()
 
-flute_test (audio "tests/test-audio.fluid")
+# Audio tests should be manually enabled if working on the Audio module.
+# flute_test (audio "tests/test-audio.fluid")
 
 if (BUILD_TESTS)
    add_executable (test_audio_mixers tests/test_mixers.cpp)

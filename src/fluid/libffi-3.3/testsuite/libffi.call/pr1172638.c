@@ -18,9 +18,9 @@ typedef struct {
   long bottom;
 } RECT;
 
-static RECT ABI_ATTR pr_test(int i __UNUSED__, RECT ar __UNUSED__, 
-			     RECT* br __UNUSED__, POINT cp __UNUSED__, 
-			     RECT dr __UNUSED__, RECT *er __UNUSED__, 
+static RECT ABI_ATTR pr_test(int i __UNUSED__, RECT ar __UNUSED__,
+			     RECT* br __UNUSED__, POINT cp __UNUSED__,
+			     RECT dr __UNUSED__, RECT *er __UNUSED__,
 			     POINT fp, RECT gr __UNUSED__)
 {
   RECT result;
@@ -39,12 +39,12 @@ int main (void)
   ffi_type *args[MAX_ARGS];
   void *values[MAX_ARGS];
   ffi_type point_type, rect_type;
-  ffi_type *point_type_elements[3];  
-  ffi_type *rect_type_elements[5];  
-  
+  ffi_type *point_type_elements[3];
+  ffi_type *rect_type_elements[5];
+
   int i;
   POINT cp, fp;
-  RECT ar, br, dr, er, gr; 
+  RECT ar, br, dr, er, gr;
   RECT *p1, *p2;
 
   /* This is a hack to get a properly aligned result buffer */
@@ -77,7 +77,7 @@ int main (void)
   args[5] = &ffi_type_pointer;
   args[6] = &point_type;
   args[7] = &rect_type;
-  
+
   /* Initialize the cif */
   CHECK(ffi_prep_cif(&cif, ABI_NUM, 8, &rect_type, args) == FFI_OK);
 
@@ -106,7 +106,7 @@ int main (void)
   gr.right = 23;
   gr.top = 24;
   gr.bottom = 25;
-  
+
   values[0] = &i;
   values[1] = &ar;
   p1 = &br;
@@ -119,9 +119,9 @@ int main (void)
   values[7] = &gr;
 
   ffi_call (&cif, FFI_FN(pr_test), rect_result, values);
-  
+
   CHECK(rect_result->top == 20);
- 
+
   free (rect_result);
   exit(0);
 }

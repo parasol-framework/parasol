@@ -6,7 +6,7 @@
    Copyright (C) 2002, 2006, 2007, 2009, 2010 Free Software Foundation, Inc.
 
    FFI support for Darwin and AIX.
-   
+
    Permission is hereby granted, free of charge, to any person obtaining
    a copy of this software and associated documentation files (the
    ``Software''), to deal in the Software without restriction, including
@@ -36,7 +36,7 @@ extern void ffi_closure_ASM (void);
 extern void ffi_go_closure_ASM (void);
 
 enum {
-  /* The assembly depends on these exact flags.  
+  /* The assembly depends on these exact flags.
      For Darwin64 (when FLAG_RETURNS_STRUCT is set):
        FLAG_RETURNS_FP indicates that the structure embeds FP data.
        FLAG_RETURNS_128BITS signals a special struct size that is not
@@ -65,7 +65,7 @@ enum { ASM_NEEDS_REGISTERS = 4 }; /* r28-r31 */
 
 /* ffi_prep_args is called by the assembly routine once stack space
    has been allocated for the function's arguments.
-   
+
    m32/m64
 
    The stack layout we want looks like this:
@@ -97,7 +97,7 @@ enum { ASM_NEEDS_REGISTERS = 4 }; /* r28-r31 */
 
 #if defined(POWERPC_DARWIN64)
 static void
-darwin64_pass_struct_by_value 
+darwin64_pass_struct_by_value
   (ffi_type *, char *, unsigned, unsigned *, double **, unsigned long **);
 #endif
 
@@ -109,7 +109,7 @@ ffi_prep_args (extended_cif *ecif, unsigned long *const stack)
   const unsigned bytes = ecif->cif->bytes;
   const unsigned flags = ecif->cif->flags;
   const unsigned nargs = ecif->cif->nargs;
-#if !defined(POWERPC_DARWIN64) 
+#if !defined(POWERPC_DARWIN64)
   const ffi_abi abi = ecif->cif->abi;
 #endif
 
@@ -129,7 +129,7 @@ ffi_prep_args (extended_cif *ecif, unsigned long *const stack)
   void **p_argv = ecif->avalue;
   unsigned long gprvalue;
   ffi_type** ptr = ecif->cif->arg_types;
-#if !defined(POWERPC_DARWIN64) 
+#if !defined(POWERPC_DARWIN64)
   char *dest_cpy;
 #endif
   unsigned size_al = 0;
@@ -257,7 +257,7 @@ ffi_prep_args (extended_cif *ecif, unsigned long *const stack)
 	  size_al = (*ptr)->size;
 #if defined(POWERPC_DARWIN64)
 	  next_arg = (unsigned long *)FFI_ALIGN((char *)next_arg, (*ptr)->alignment);
-	  darwin64_pass_struct_by_value (*ptr, (char *) *p_argv, 
+	  darwin64_pass_struct_by_value (*ptr, (char *) *p_argv,
 					 (unsigned) size_al,
 					 (unsigned int *) &fparg_count,
 					 &fpr_base, &next_arg);
@@ -269,7 +269,7 @@ ffi_prep_args (extended_cif *ecif, unsigned long *const stack)
 	  if ((*ptr)->elements[0]->type == FFI_TYPE_DOUBLE)
 	    size_al = FFI_ALIGN((*ptr)->size, 8);
 
-#  if defined(POWERPC64) 
+#  if defined(POWERPC64)
 	  FFI_ASSERT (abi != FFI_DARWIN);
 	  memcpy ((char *) dest_cpy, (char *) *p_argv, size_al);
 	  next_arg += (size_al + 7) / 8;
@@ -337,7 +337,7 @@ darwin64_scan_struct_for_floats (ffi_type *s, unsigned *nfpr)
 	    (*nfpr) += 1;
 	    break;
 	  default:
-	    break;    
+	    break;
 	}
     }
 }
@@ -382,9 +382,9 @@ darwin64_struct_size_exceeds_gprs_p (ffi_type *s, char *src, unsigned *nfpr)
 	  default:
 	    /* If we try and place any item, that is non-float, once we've
 	       exceeded the 8 GPR mark, then we can't fit the struct.  */
-	    if ((unsigned long)item_base >= 8*8) 
+	    if ((unsigned long)item_base >= 8*8)
 	      return 1;
-	    break;    
+	    break;
 	}
       /* now count the size of what we just used.  */
       struct_offset += p->size;
@@ -393,37 +393,37 @@ darwin64_struct_size_exceeds_gprs_p (ffi_type *s, char *src, unsigned *nfpr)
 }
 
 /* Can this struct be returned by value?  */
-int 
+int
 darwin64_struct_ret_by_value_p (ffi_type *s)
 {
   unsigned nfp = 0;
 
   FFI_ASSERT (s && s->type == FFI_TYPE_STRUCT);
-  
+
   /* The largest structure we can return is 8long + 13 doubles.  */
   if (s->size > 168)
     return 0;
-  
+
   /* We can't pass more than 13 floats.  */
   darwin64_scan_struct_for_floats (s, &nfp);
   if (nfp > 13)
     return 0;
-  
+
   /* If there are not too many floats, and the struct is
      small enough to accommodate in the GPRs, then it must be OK.  */
   if (s->size <= 64)
     return 1;
-  
+
   /* Well, we have to look harder.  */
   nfp = 0;
   if (darwin64_struct_size_exceeds_gprs_p (s, NULL, &nfp))
     return 0;
-  
+
   return 1;
 }
 
 void
-darwin64_pass_struct_floats (ffi_type *s, char *src, 
+darwin64_pass_struct_floats (ffi_type *s, char *src,
 			     unsigned *nfpr, double **fprs)
 {
   int i;
@@ -463,7 +463,7 @@ darwin64_pass_struct_floats (ffi_type *s, char *src,
 	    (*nfpr) += 1;
 	    break;
 	  default:
-	    break;    
+	    break;
 	}
       /* now count the size of what we just used.  */
       struct_offset += p->size;
@@ -488,13 +488,13 @@ darwin64_pass_struct_by_value (ffi_type *s, char *src, unsigned size,
 
   /* First... special cases.  */
   if (size < 3
-      || (size == 4 
-	  && s->elements[0] 
+      || (size == 4
+	  && s->elements[0]
 	  && s->elements[0]->type != FFI_TYPE_FLOAT))
     {
-      /* Must be at least one GPR, padding is unspecified in value, 
+      /* Must be at least one GPR, padding is unspecified in value,
 	 let's make it zero.  */
-      *next_arg = 0UL; 
+      *next_arg = 0UL;
       dest_cpy += 8 - size;
       memcpy ((char *) dest_cpy, src, size);
       next_arg++;
@@ -511,7 +511,7 @@ darwin64_pass_struct_by_value (ffi_type *s, char *src, unsigned size,
       darwin64_pass_struct_floats (s, src, nfpr, fprs);
       next_arg += (size+7)/8;
     }
-    
+
   *arg = next_arg;
 }
 
@@ -559,7 +559,7 @@ darwin64_struct_floats_to_mem (ffi_type *s, char *dest, double *fprs, unsigned *
 	      }
 	    break;
 	  default:
-	    break;    
+	    break;
 	}
       /* now count the size of what we just used.  */
       struct_offset += p->size;
@@ -570,7 +570,7 @@ darwin64_struct_floats_to_mem (ffi_type *s, char *dest, double *fprs, unsigned *
 #endif
 
 /* Adjust the size of S to be correct for Darwin.
-   On Darwin m32, the first field of a structure has natural alignment.  
+   On Darwin m32, the first field of a structure has natural alignment.
    On Darwin m64, all fields have natural alignment.  */
 
 static void
@@ -586,7 +586,7 @@ darwin_adjust_aggregate_sizes (ffi_type *s)
     {
       ffi_type *p;
       int align;
-      
+
       p = s->elements[i];
       if (p->type == FFI_TYPE_STRUCT)
 	darwin_adjust_aggregate_sizes (p);
@@ -607,9 +607,9 @@ darwin_adjust_aggregate_sizes (ffi_type *s)
       /* Pad, if necessary, before adding the current item.  */
       s->size = FFI_ALIGN(s->size, align) + p->size;
     }
-  
+
   s->size = FFI_ALIGN(s->size, s->alignment);
-  
+
   /* This should not be necessary on m64, but harmless.  */
   if (s->elements[0]->type == FFI_TYPE_UINT64
       || s->elements[0]->type == FFI_TYPE_SINT64
@@ -635,7 +635,7 @@ aix_adjust_aggregate_sizes (ffi_type *s)
     {
       ffi_type *p;
       int align;
-      
+
       p = s->elements[i];
       aix_adjust_aggregate_sizes (p);
       align = p->alignment;
@@ -643,9 +643,9 @@ aix_adjust_aggregate_sizes (ffi_type *s)
 	align = 4;
       s->size = FFI_ALIGN(s->size, align) + p->size;
     }
-  
+
   s->size = FFI_ALIGN(s->size, s->alignment);
-  
+
   if (s->elements[0]->type == FFI_TYPE_UINT64
       || s->elements[0]->type == FFI_TYPE_SINT64
       || s->elements[0]->type == FFI_TYPE_DOUBLE
@@ -689,7 +689,7 @@ ffi_prep_cif_machdep (ffi_cif *cif)
 
   bytes = (LINKAGE_AREA_GPRS + ASM_NEEDS_REGISTERS) * sizeof(unsigned long);
 
-  /* Return value handling.  
+  /* Return value handling.
     The rules m32 are as follows:
      - 32-bit (or less) integer values are returned in gpr3;
      - structures of size <= 4 bytes also returned in gpr3;
@@ -782,9 +782,9 @@ ffi_prep_cif_machdep (ffi_cif *cif)
 
   /* The first NUM_GPR_ARG_REGISTERS words of integer arguments, and the
      first NUM_FPR_ARG_REGISTERS fp arguments, go in registers; the rest
-     goes on the stack.  
-     ??? Structures are passed as a pointer to a copy of the structure. 
-     Stuff on the stack needs to keep proper alignment.  
+     goes on the stack.
+     ??? Structures are passed as a pointer to a copy of the structure.
+     Stuff on the stack needs to keep proper alignment.
      For m64 the count is effectively of half-GPRs.  */
   for (ptr = cif->arg_types, i = cif->nargs; i > 0; i--, ptr++)
     {
@@ -827,7 +827,7 @@ ffi_prep_cif_machdep (ffi_cif *cif)
 	     on the stack.  If they go on the stack, they must
 	     be 8-byte-aligned.  */
 	  if (intarg_count == NUM_GPR_ARG_REGISTERS-1
-	      || (intarg_count >= NUM_GPR_ARG_REGISTERS 
+	      || (intarg_count >= NUM_GPR_ARG_REGISTERS
 	          && (intarg_count & 0x01) != 0))
 	    intarg_count++;
 	  intarg_count += 2;
@@ -851,7 +851,7 @@ ffi_prep_cif_machdep (ffi_cif *cif)
 	  if (align_words)
 	    intarg_count = FFI_ALIGN(intarg_count, align_words);
 	  /* If the first member of the struct is a double, then align
-	     the struct to double-word. 
+	     the struct to double-word.
 	  if ((*ptr)->elements[0]->type == FFI_TYPE_DOUBLE)
 	    size_al = FFI_ALIGN((*ptr)->size, 8); */
 #  ifdef POWERPC64
@@ -876,7 +876,7 @@ ffi_prep_cif_machdep (ffi_cif *cif)
 #if defined(POWERPC_DARWIN64)
   /* Space to image the FPR registers, if needed - which includes when they might be
      used in a struct return.  */
-  if (fparg_count != 0 
+  if (fparg_count != 0
       || ((flags & FLAG_RETURNS_STRUCT)
 	   && (flags & FLAG_RETURNS_FP)))
     bytes += NUM_FPR_ARG_REGISTERS * sizeof(double);
@@ -1125,7 +1125,7 @@ ffi_prep_go_closure (ffi_go_closure* closure,
         closure->cif = cif;
         closure->fun = fun;
         return FFI_OK;
-      
+
       // For now, ffi_prep_go_closure is only implemented for AIX, not for Darwin
       default:
         return FFI_BAD_ABI;
@@ -1284,10 +1284,10 @@ ffi_closure_helper_common (ffi_cif* cif,
 		  fpsused++;
 		}
 	    }
-	  else 
+	  else
 	    {
 	      if (size_al != 16)
-		pfr = (ffi_dblfl *) 
+		pfr = (ffi_dblfl *)
 		    darwin64_struct_floats_to_mem (arg_types[i], (char *)pgr,
 						   (double *)pfr, &fpsused);
 	      avalue[i] = pgr;

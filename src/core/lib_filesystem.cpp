@@ -59,6 +59,7 @@ typedef int HANDLE;
 #include <errno.h>
 #include <map>
 #include <mutex>
+#include <bit>
 
 #ifdef _WIN32
  #include <io.h>
@@ -98,21 +99,20 @@ typedef int HANDLE;
 
 struct extCacheFile : public CacheFile {
    std::string FullPath;
-   std::vector<BYTE> Buffer;
-   WORD Locks;       // Internal count of active locks for this element.
+   std::vector<int8_t> Buffer;
+   int16_t Locks;       // Internal count of active locks for this element.
 
-   extCacheFile() {}
+   extCacheFile() = default;
 
-   extCacheFile(std::string_view pPath, int64_t pSize, int64_t pTimestamp) {
-      FullPath  = pPath;
+   extCacheFile(std::string_view pPath, int64_t pSize, int64_t pTimestamp)
+      : FullPath(pPath), Buffer(pSize + 1), Locks(1)
+   {
       Path      = FullPath.c_str();
-      Locks     = 1;
       Size      = pSize;
       TimeStamp = pTimestamp;
       LastUse   = PreciseTime();
 
-      Buffer.resize(pSize + 1);
-      Buffer[pSize] = 0; // Null terminator is added to help with text file processing
+      Buffer.back() = 0; // Null terminator is added to help with text file processing
       Data = Buffer.data(); // Client has direct access
    }
 };
@@ -122,27 +122,28 @@ struct extCacheFile : public CacheFile {
 class CacheFileIndex {
 public:
    std::string path;
-   int64_t timestamp;
-   int64_t size;
+   int64_t timestamp{};
+   int64_t size{};
 
-   CacheFileIndex(std::string Path, int64_t Timestamp, int64_t Size) {
-      path      = Path;
-      timestamp = Timestamp;
-      size      = Size;
-   }
+   CacheFileIndex() = default;
 
-   bool operator==(const CacheFileIndex &other) const {
-      return (path == other.path && timestamp == other.timestamp && size == other.size);
-   }
+   CacheFileIndex(std::string_view Path, int64_t Timestamp, int64_t Size)
+      : path(Path), timestamp(Timestamp), size(Size) { }
+
+   friend bool operator==(const CacheFileIndex &, const CacheFileIndex &) = default;
 };
 
 namespace std {
    template <>
    struct hash<CacheFileIndex> {
-      std::size_t operator()(const CacheFileIndex& k) const {
-         return ((std::hash<std::string>()(k.path)
-            ^ (std::hash<int64_t>()(k.timestamp) << 1)) >> 1)
-            ^ (std::hash<int64_t>()(k.size) << 1);
+      std::size_t operator()(const CacheFileIndex& Index) const noexcept {
+         std::size_t path_hash = std::hash<std::string>()(Index.path);
+         const auto timestamp_hash = std::hash<int64_t>()(Index.timestamp);
+         const auto size_hash = std::hash<int64_t>()(Index.size);
+
+         path_hash ^= std::rotl(timestamp_hash, 1);
+         path_hash ^= std::rotl(size_hash, 1);
+         return path_hash;
       }
    };
 }
@@ -152,16 +153,16 @@ static std::mutex glCacheLock;
 
 //********************************************************************************************************************
 
-static const ULONG get_volume_id(std::string_view Path)
+[[nodiscard]] constexpr uint32_t get_volume_id(std::string_view Path) noexcept
 {
    if ((Path.starts_with(':')) or (Path.empty())) return 0;
 
-   ULONG hash = 5381;
-   for (LONG len=0; (len < std::ssize(Path)) and (Path[len] != ':'); len++) {
-      char c = Path[len];
+   uint32_t hash = 5381;
+   for (char c : Path) {
+      if (c IS ':') break;
       if ((c IS '/') or (c IS '\\')) return 0; // If a slash is encountered early, the path belongs to the local FS
       if ((c >= 'A') and (c <= 'Z')) hash = (hash<<5) + hash + c - 'A' + 'a';
-      else hash = (hash<<5) + hash + c;
+      else hash = (hash<<5) + hash + uint8_t(std::tolower(c));
    }
    return hash;
 }
@@ -241,9 +242,11 @@ ERR check_cache(OBJECTPTR Subscriber, int64_t Elapsed, int64_t CurrentTime)
 
    log.branch("Scanning file cache for unused entries...");
 
+   constexpr int64_t CACHE_EXPIRY_MICROSECONDS = 60LL * 1000000LL; // 60 seconds in microseconds
+
    const std::lock_guard<std::mutex> lock(glCacheLock);
    for (auto it=glCache.begin(); it != glCache.end(); ) {
-      if ((CurrentTime - it->second.LastUse >= 60LL * 1000000LL) and (it->second.Locks <= 0)) {
+      if ((CurrentTime - it->second.LastUse >= CACHE_EXPIRY_MICROSECONDS) and (it->second.Locks <= 0)) {
          log.msg("Removing expired cache file: %.80s", it->second.Path);
          it = glCache.erase(it);
       }
@@ -279,12 +282,19 @@ NullArgs:
 
 ERR AddInfoTag(FileInfo *Info, CSTRING Name, CSTRING Value)
 {
+   if ((!Info) or (!Name)) return ERR::NullArgs;
+
+   if (!Value) {
+      if (Info->Tags) Info->Tags->erase(Name);
+      return ERR::Okay;
+   }
+
    if (!Info->Tags) {
       Info->Tags = new (std::nothrow) ankerl::unordered_dense::map<std::string, std::string>();
       if (!Info->Tags) return ERR::CreateResource;
    }
 
-   Info->Tags[0][Name] = std::string(Value);
+   (*Info->Tags)[Name] = Value;
    return ERR::Okay;
 }
 
@@ -326,7 +336,7 @@ ERR AnalysePath(CSTRING Path, LOC *PathType)
    pf::Log log(__FUNCTION__);
 
    if (PathType) *PathType = LOC::NIL;
-   if (!Path) return ERR::NullArgs;
+   if ((not Path) or (not Path[0])) return ERR::NullArgs;
 
    // Special volumes 'string:' and 'memory:' are considered to be file paths.
 
@@ -343,7 +353,7 @@ ERR AnalysePath(CSTRING Path, LOC *PathType)
       Path++;
    }
 
-   LONG len = strlen(Path);
+   int len = strlen(Path);
    if (Path[len-1] IS ':') {
       if (auto lock = std::unique_lock{glmVolumes, 6s}) {
          std::string path_vol(Path, len-1);
@@ -491,14 +501,14 @@ cstr: The group name is returned, or `NULL` if the ID cannot be resolved.
 
 *********************************************************************************************************************/
 
-CSTRING ResolveGroupID(LONG GroupID)
+CSTRING ResolveGroupID(int GroupID)
 {
 #ifdef __unix__
 
-   static THREADVAR char group[40];
+   static thread_local char group[40];
 
    if (auto info = getgrgid(GroupID)) {
-      LONG i;
+      int i;
       for (i=0; (info->gr_name[i]) and ((size_t)i < sizeof(group)-1); i++) group[i] = info->gr_name[i];
       group[i] = 0;
       return group;
@@ -528,14 +538,14 @@ cstr: The user name is returned, or `NULL` if the ID cannot be resolved.
 
 *********************************************************************************************************************/
 
-CSTRING ResolveUserID(LONG UserID)
+CSTRING ResolveUserID(int UserID)
 {
 #ifdef __unix__
 
-   static THREADVAR char user[40];
+   static thread_local char user[40];
 
    if (auto info = getpwuid(UserID)) {
-      LONG i;
+      int i;
       for (i=0; (info->pw_name[i]) and ((size_t)i < sizeof(user)-1); i++) user[i] = info->pw_name[i];
       user[i] = 0;
       return user;
@@ -577,7 +587,7 @@ folder, a forward slash must terminate the string or it will be assumed that a f
 
 The Callback parameter can be set with a function that matches this prototype:
 
-`LONG Callback(struct FileFeedback *)`
+`INT Callback(FileFeedback *)`
 
 For each file that is processed during the copy operation, a &FileFeedback structure is passed that describes the
 source file and its target.  The callback must return a constant value that can potentially affect file processing.
@@ -736,7 +746,7 @@ int(PERMIT) Permissions: Permission flags to be applied to new files.
 
 *********************************************************************************************************************/
 
-void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions)
+void SetDefaultPermissions(int User, int Group, PERMIT Permissions)
 {
    pf::Log log(__FUNCTION__);
 
@@ -755,12 +765,12 @@ void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions)
 // Internal function for getting information from files, particularly virtual volumes.  If you know that a path
 // refers directly to the client's filesystem then you can revert to calling fs_getinfo() instead.
 
-static THREADVAR char glNameBuffer[MAX_FILENAME]; // Not thread-safe
+static thread_local char glNameBuffer[MAX_FILENAME]; // Not thread-safe
 
-ERR get_file_info(std::string_view Path, FileInfo *Info, LONG InfoSize)
+ERR get_file_info(std::string_view Path, FileInfo *Info, int InfoSize)
 {
    pf::Log log(__FUNCTION__);
-   LONG i;
+   int i;
    ERR error;
 
    if (Path.empty() or (!Info) or (InfoSize <= 0)) return log.warning(ERR::Args);
@@ -776,7 +786,7 @@ ERR get_file_info(std::string_view Path, FileInfo *Info, LONG InfoSize)
       Info->Flags = RDF::VOLUME;
 
       for (i=0; (i < MAX_FILENAME-1) and (i < std::ssize(Path)) and (Path[i] != ':'); i++) glNameBuffer[i] = Path[i];
-      LONG pos = i;
+      int pos = i;
       glNameBuffer[i] = 0;
 
       error = ERR::Okay;
@@ -868,7 +878,7 @@ ERR LoadFile(CSTRING Path, LDF Flags, CacheFile **Cache)
 
    const std::lock_guard<std::mutex> lock(glCacheLock);
 
-   log.branch("%.80s, Flags: $%.8x", path.c_str(), LONG(Flags));
+   log.branch("%.80s, Flags: $%.8x", path.c_str(), int(Flags));
 
    auto file = objFile::create { fl::Path(path), fl::Flags(FL::READ|FL::FILE) };
 
@@ -894,7 +904,7 @@ ERR LoadFile(CSTRING Path, LDF Flags, CacheFile **Cache)
       glCache.emplace(index, extCacheFile(path, file_size, timestamp));
 
       if (file_size) {
-         LONG result;
+         int result;
          error = file->read(glCache[index].Data, file_size, &result);
          if ((error IS ERR::Okay) and (file_size != result)) return ERR::Read;
       }
@@ -1049,7 +1059,7 @@ File
 
 *********************************************************************************************************************/
 
-ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRead)
+ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, int BufferSize, int *BytesRead)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1095,7 +1105,7 @@ ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRead
    extFile::create file = { fl::Path(Path), fl::Flags(FL::READ|FL::FILE|(approx ? FL::APPROXIMATE : FL::NIL)) };
 
    if (file.ok()) {
-      LONG result;
+      int result;
       if (!file->read(Buffer, BufferSize, &result)) {
          if (BytesRead) *BytesRead = result;
          return ERR::Okay;
@@ -1165,7 +1175,7 @@ static ERR test_path(std::string &Path, RSF Flags)
 
 #ifdef _WIN32
    // Convert forward slashes to back slashes
-   for (LONG j=0; j < std::ssize(Path); j++) if (Path[j] IS '/') Path[j] = '\\';
+   for (int j=0; j < std::ssize(Path); j++) if (Path[j] IS '/') Path[j] = '\\';
 #endif
 
    if (Path.ends_with('/') or Path.ends_with('\\')) {
@@ -1348,9 +1358,9 @@ ERR findfile(std::string &Path)
 
 //********************************************************************************************************************
 
-LONG convert_permissions(PERMIT Permissions)
+int convert_permissions(PERMIT Permissions)
 {
-   LONG flags = 0;
+   int flags = 0;
 
 #ifdef __unix__
    if ((Permissions & PERMIT::READ) != PERMIT::NIL)         flags |= S_IRUSR;
@@ -1378,7 +1388,7 @@ LONG convert_permissions(PERMIT Permissions)
 
 //********************************************************************************************************************
 
-PERMIT convert_fs_permissions(LONG Permissions)
+PERMIT convert_fs_permissions(int Permissions)
 {
    PERMIT flags = PERMIT::NIL;
 
@@ -1428,9 +1438,9 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
 {
    pf::Log log(Move ? "MoveFile" : "CopyFile");
 #ifdef __unix__
-   LONG gid, uid;
+   int gid, uid;
 #endif
-   LONG permissions;
+   int permissions;
    ERR error;
 
    if ((Source.empty()) or (Dest.empty())) return log.warning(ERR::NullArgs);
@@ -1520,7 +1530,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
             // Delete the source if we are moving folders
             if (Move) return DeleteFile(srcbuffer.c_str(), nullptr);
          }
-         else log.warning("Folder copy process failed, error %d.", LONG(error));
+         else log.warning("Folder copy process failed, error %d.", int(error));
 
          return error;
       }
@@ -1531,16 +1541,16 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
 
       // Use a reasonably small read buffer so that we can provide continuous feedback
 
-      const LONG bufsize = ((Callback) and (Callback->defined())) ? 65536 : 65536 * 2;
+      const int bufsize = ((Callback) and (Callback->defined())) ? 65536 : 65536 * 2;
 
       // This routine is designed to handle streams - where either the source is a stream or the destination is a stream.
 
-      std::vector<BYTE> data(bufsize);
+      std::vector<int8_t> data(bufsize);
       error = ERR::Okay;
       const int64_t STREAM_TIMEOUT = 10000LL;
       int64_t time = PreciseTime() / 1000LL;
       while (srcfile->Position < srcfile->Size) {
-         LONG len;
+         int len;
          error = srcfile->read(data.data(), bufsize, &len);
          if (error != ERR::Okay) {
             log.warning("acRead() failed: %s", GetErrorMsg(error));
@@ -1562,7 +1572,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
          // Write the data
 
          while (len > 0) {
-            LONG result;
+            int result;
             if (acWrite(*destfile, data.data(), len, &result) != ERR::Okay) return ERR::Write;
 
             if (result) time = (PreciseTime() / 1000LL);
@@ -1602,7 +1612,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
    // This code manages symbolic links
 
    struct stat64 stinfo;
-   LONG result;
+   int result;
    if (srcdir) {
       src.pop_back();
       result = lstat64(src.c_str(), &stinfo);
@@ -1611,7 +1621,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
    else result = lstat64(src.c_str(), &stinfo);
 
    if ((!result) and (S_ISLNK(stinfo.st_mode))) {
-      BYTE linkto[512];
+      char linkto[512];
 
       if (srcdir) src.pop_back();
 
@@ -1677,7 +1687,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
          // failed - drop through to file copy
       }
       else {
-         LONG parent_uid, parent_gid;
+         int parent_uid, parent_gid;
 
          // Move successful.  Now assign the user and group id's from the parent folder to the file.
 
@@ -1743,7 +1753,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
          // Delete the source if we are moving folders
          if (Move) return DeleteFile(srcbuffer.c_str(), nullptr);
       }
-      else log.warning("Folder copy process failed, error %d.", LONG(error));
+      else log.warning("Folder copy process failed, error %d.", int(error));
 
       return error;
    }
@@ -1756,7 +1766,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
       }
    }
 
-   if (LONG handle = open(src.c_str(), O_RDONLY|O_NONBLOCK|WIN32OPEN|O_LARGEFILE, nullptr); handle != -1) {
+   if (int handle = open(src.c_str(), O_RDONLY|O_NONBLOCK|WIN32OPEN|O_LARGEFILE, nullptr); handle != -1) {
       auto dc_handle = deferred_call([&handle] { close(handle); });
 
       // Get permissions of the source file to apply to the destination file
@@ -1810,7 +1820,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
          }
       }
 
-      LONG dhandle;
+      int dhandle;
       if ((dhandle = open(dest.c_str(), O_WRONLY|O_CREAT|O_TRUNC|O_LARGEFILE|WIN32OPEN, permissions)) IS -1) {
          // If the initial open failed, we may need to create preceding paths
          check_paths(dest.c_str(), convert_fs_permissions(permissions));
@@ -1843,12 +1853,12 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
 
          // Use a reasonably small read buffer so that we can provide continuous feedback
 
-         LONG bufsize = ((Callback) and (Callback->defined())) ? 65536 : 524288;
-         std::vector<BYTE> data(bufsize);
-         LONG len;
+         int bufsize = ((Callback) and (Callback->defined())) ? 65536 : 524288;
+         std::vector<int8_t> data(bufsize);
+         int len;
          error = ERR::Okay;
          while ((len = read(handle, data.data(), bufsize)) > 0) {
-            if (LONG result = write(dhandle, data.data(), len); result IS -1) {
+            if (int result = write(dhandle, data.data(), len); result IS -1) {
                if (errno IS ENOSPC) return log.warning(ERR::OutOfSpace);
                else return log.warning(ERR::Write);
             }
@@ -1983,7 +1993,7 @@ ERR fs_copydir(std::string &Source, std::string &Dest, FileFeedback *Feedback, F
 // Gets the permissions of the parent folder.  Typically used for permission inheritance. NB: It is often wise to
 // remove exec and suid flags returned from this function.
 
-PERMIT get_parent_permissions(std::string_view Path, LONG *UserID, LONG *GroupID)
+PERMIT get_parent_permissions(std::string_view Path, int *UserID, int *GroupID)
 {
    std::string_view folder(Path);
    while (folder.ends_with('/') or folder.ends_with('\\') or folder.ends_with(':')) folder.remove_suffix(1);
@@ -2013,7 +2023,7 @@ ERR fs_readlink(std::string_view Source, STRING *Link)
 {
 #ifdef __unix__
    char buffer[512];
-   if (LONG i = readlink(Source.data(), buffer, sizeof(buffer)-1); i != -1) {
+   if (int i = readlink(Source.data(), buffer, sizeof(buffer)-1); i != -1) {
       buffer[i] = 0;
       *Link = strclone(buffer);
       return ERR::Okay;
@@ -2071,10 +2081,10 @@ ERR fs_scandir(DirInfo *Dir)
    struct dirent *de;
    struct stat64 info, link;
    struct tm *local;
-   LONG j;
+   int j;
 
    char pathbuf[256];
-   LONG path_end = strcopy(Dir->prvResolvedPath, pathbuf, sizeof(pathbuf));
+   int path_end = strcopy(Dir->prvResolvedPath, pathbuf, sizeof(pathbuf));
    if ((size_t)path_end >= sizeof(pathbuf)-12) return(ERR::BufferOverflow);
    if (pathbuf[path_end-1] != '/') pathbuf[path_end++] = '/';
 
@@ -2154,7 +2164,7 @@ ERR fs_scandir(DirInfo *Dir)
 #elif _WIN32
 
    int8_t dir, hidden, readonly, archive;
-   LONG i;
+   int i;
 
    while (winScan(&Dir->prvHandle, Dir->prvResolvedPath, Dir->Info->Name, &Dir->Info->Size, &Dir->Info->Created, &Dir->Info->Modified, &dir, &hidden, &readonly, &archive)) {
       if (hidden)   Dir->Info->Flags |= RDF::HIDDEN;
@@ -2307,7 +2317,7 @@ ERR fs_testpath(std::string &Path, RSF Flags, LOC *Type)
 
 //********************************************************************************************************************
 
-ERR fs_getinfo(std::string_view Path, FileInfo *Info, LONG InfoSize)
+ERR fs_getinfo(std::string_view Path, FileInfo *Info, int InfoSize)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2315,7 +2325,7 @@ ERR fs_getinfo(std::string_view Path, FileInfo *Info, LONG InfoSize)
    // In order to tell if a folder is a symbolic link or not, we have to remove any trailing slash...
 
    char path_ref[256];
-   LONG len = strcopy(Path.data(), path_ref, sizeof(path_ref));
+   int len = strcopy(Path.data(), path_ref, sizeof(path_ref));
    if ((size_t)len >= sizeof(path_ref)-1) return ERR::BufferOverflow;
    if ((path_ref[len-1] IS '/') or (path_ref[len-1] IS '\\')) path_ref[len-1] = 0;
 
@@ -2340,7 +2350,7 @@ ERR fs_getinfo(std::string_view Path, FileInfo *Info, LONG InfoSize)
 
    // Extract file/folder name
 
-   LONG i = len;
+   int i = len;
    while ((i > 0) and (path_ref[i-1] != '/') and (path_ref[i-1] != '\\') and (path_ref[i-1] != ':')) i--;
    i = strcopy(path_ref + i, Info->Name, MAX_FILENAME-2);
 
@@ -2385,7 +2395,7 @@ ERR fs_getinfo(std::string_view Path, FileInfo *Info, LONG InfoSize)
 
 #else
    int8_t dir;
-   LONG i;
+   int i;
 
    Info->Flags = RDF::NIL;
    size_t isize;
@@ -2527,12 +2537,12 @@ restart:
 
       if (error IS ERR::Okay) {
          struct statfs fstat;
-         LONG result = statfs(location.c_str(), &fstat);
+         int result = statfs(location.c_str(), &fstat);
 
          if (result != -1) {
-            DOUBLE blocksize = (DOUBLE)fstat.f_bsize;
-            Info->BytesFree  = ((DOUBLE)fstat.f_bavail) * blocksize;
-            Info->DeviceSize = ((DOUBLE)fstat.f_blocks) * blocksize;
+            double blocksize = (double)fstat.f_bsize;
+            Info->BytesFree  = ((double)fstat.f_bavail) * blocksize;
+            Info->DeviceSize = ((double)fstat.f_blocks) * blocksize;
             Info->BytesUsed  = Info->DeviceSize - Info->BytesFree;
 
             /* statvfs()
@@ -2571,7 +2581,7 @@ ERR fs_makedir(std::string_view Path, PERMIT Permissions)
 
 #ifdef __unix__
 
-   LONG err, i;
+   int err, i;
 
    // The 'executable' bit must be set for folders in order to have any sort of access to their content.  So, if
    // the read or write flags are set, we automatically enable the executable bit for that folder.
@@ -2580,9 +2590,9 @@ ERR fs_makedir(std::string_view Path, PERMIT Permissions)
    if ((Permissions & PERMIT::GROUP) != PERMIT::NIL) Permissions |= PERMIT::GROUP_EXEC;
    if ((Permissions & PERMIT::OTHERS) != PERMIT::NIL) Permissions |= PERMIT::OTHERS_EXEC;
 
-   log.branch("%s, Permissions: $%.8x %s", Path.data(), LONG(Permissions), (glDefaultPermissions != PERMIT::NIL) ? "(forced)" : "");
+   log.branch("%s, Permissions: $%.8x %s", Path.data(), int(Permissions), (glDefaultPermissions != PERMIT::NIL) ? "(forced)" : "");
 
-   LONG secureflags = convert_permissions(Permissions);
+   int secureflags = convert_permissions(Permissions);
 
    if (mkdir(Path.data(), secureflags) IS -1) {
       auto buffer = std::make_unique<char[]>(Path.size()+1);
@@ -2761,5 +2771,3 @@ ERR delete_tree(std::string &Path, FUNCTION *Callback, FileFeedback *Feedback)
 #include "fs_folders.cpp"
 #include "fs_volumes.cpp"
 #include "fs_watch_path.cpp"
-
-

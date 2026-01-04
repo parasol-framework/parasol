@@ -309,7 +309,7 @@ SSL_HANDLE ssl_create_context(bool ValidateCredentials, bool ServerMode)
 
    ssl_context *ctx = new (std::nothrow) ssl_context;
    if (!ctx) return nullptr;
-   
+
    ctx->validate_credentials = ValidateCredentials;
    ctx->is_server_mode = ServerMode;
    return ctx;

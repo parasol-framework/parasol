@@ -33,7 +33,7 @@ Transitions are most effective when used in conjunction with the morph feature i
 
 // Applies the correct transform when given a relative Index position between 0.0 and 1.0
 
-void apply_transition(extVectorTransition *Self, DOUBLE Index, agg::trans_affine &Transform)
+void apply_transition(extVectorTransition *Self, double Index, agg::trans_affine &Transform)
 {
    if (Index <= Self->Stops[0].Offset) {
       Transform.multiply(*Self->Stops[0].AGGTransform);
@@ -44,7 +44,7 @@ void apply_transition(extVectorTransition *Self, DOUBLE Index, agg::trans_affine
    else {
       // Interpolate between transforms.
 
-      LONG left, right;
+      int left, right;
       for (left=Self->TotalStops-1; (left > 0) and (Index < Self->Stops[left].Offset); left--);
       for (right=left+1; (right < Self->TotalStops) and (Self->Stops[right].Offset < Index); right++);
 
@@ -52,7 +52,7 @@ void apply_transition(extVectorTransition *Self, DOUBLE Index, agg::trans_affine
          agg::trans_affine interp;
 
          // Normalise the index
-         DOUBLE scale = (Index - Self->Stops[left].Offset) / (Self->Stops[right].Offset - Self->Stops[left].Offset);
+         double scale = (Index - Self->Stops[left].Offset) / (Self->Stops[right].Offset - Self->Stops[left].Offset);
 
          interp.sx  = Self->Stops[left].AGGTransform->sx  + ((Self->Stops[right].AGGTransform->sx  - Self->Stops[left].AGGTransform->sx) * scale);
          interp.sy  = Self->Stops[left].AGGTransform->sy  + ((Self->Stops[right].AGGTransform->sy  - Self->Stops[left].AGGTransform->sy) * scale);
@@ -75,7 +75,7 @@ void apply_transition(extVectorTransition *Self, DOUBLE Index, agg::trans_affine
 //********************************************************************************************************************
 // Accurately interpolate the transform for Index and apply it to the coordinate (X,Y).
 
-void apply_transition_xy(extVectorTransition *Self, DOUBLE Index, DOUBLE *X, DOUBLE *Y)
+void apply_transition_xy(extVectorTransition *Self, double Index, double *X, double *Y)
 {
    if (Index <= Self->Stops[0].Offset) {
       Self->Stops[0].AGGTransform->transform(X, Y);
@@ -86,7 +86,7 @@ void apply_transition_xy(extVectorTransition *Self, DOUBLE Index, DOUBLE *X, DOU
    else {
       // Interpolate between transforms.
 
-      LONG left, right;
+      int left, right;
       for (left=0; (left < Self->TotalStops) and (Index < Self->Stops[left].Offset); left++);
       for (right=left+1; (right < Self->TotalStops) and (Self->Stops[right].Offset < Index); right++);
 
@@ -94,7 +94,7 @@ void apply_transition_xy(extVectorTransition *Self, DOUBLE Index, DOUBLE *X, DOU
          agg::trans_affine interp;
 
          // Normalise the index
-         DOUBLE scale = (Index - Self->Stops[left].Offset) / (Self->Stops[right].Offset - Self->Stops[left].Offset);
+         double scale = (Index - Self->Stops[left].Offset) / (Self->Stops[right].Offset - Self->Stops[left].Offset);
 
          interp.sx  = Self->Stops[left].AGGTransform->sx  + ((Self->Stops[right].AGGTransform->sx  - Self->Stops[left].AGGTransform->sx) * scale);
          interp.sy  = Self->Stops[left].AGGTransform->sy  + ((Self->Stops[right].AGGTransform->sy  - Self->Stops[left].AGGTransform->sy) * scale);
@@ -175,12 +175,12 @@ a transform string.  The Transition structure consists of the following fields:
 
 *********************************************************************************************************************/
 
-static ERR TRANSITION_SET_Stops(extVectorTransition *Self, Transition *Value, LONG Elements)
+static ERR TRANSITION_SET_Stops(extVectorTransition *Self, Transition *Value, int Elements)
 {
    pf::Log log;
    if ((Elements >= 2) and (Elements < MAX_TRANSITION_STOPS)) {
       Self->TotalStops = Elements;
-      DOUBLE last_offset = 0;
+      double last_offset = 0;
       for (auto i=0; i < Elements; i++) {
          if (Value[i].Offset < last_offset) return log.warning(ERR::InvalidValue); // Offsets must be in incrementing order.
          if ((Value[i].Offset < 0.0) or (Value[i].Offset > 1.0)) return log.warning(ERR::OutOfRange);
@@ -210,7 +210,7 @@ static const ActionArray clTransitionActions[] = {
    { AC::Free,      TRANSITION_Free },
    { AC::Init,      TRANSITION_Init },
    { AC::NewObject, TRANSITION_NewObject },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 static const FieldArray clTransitionFields[] = {

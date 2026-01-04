@@ -64,18 +64,19 @@ bool glEnableCrashHandler = true;
 struct CoreBase *LocalCoreBase = nullptr;
 
 // NB: During shutdown, elements in glPrivateMemory are not erased but will have their fields cleared.
-ankerl::unordered_dense::map<MEMORYID, PrivateAddress> glPrivateMemory;
+// Can't use ankerl here because removal of elements is too slow.
+std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;
 
-ankerl::unordered_dense::set<std::shared_ptr<std::jthread>> glAsyncThreads;
+std::set<std::shared_ptr<std::jthread>> glAsyncThreads;
 
 std::condition_variable_any cvObjects;
 std::condition_variable_any cvResources;
 
-std::list<CoreTimer> glTimers;
+std::list<CoreTimer> glTimers; // Locked with glmTimer.  std::list maintains stable pointers to elements.
 std::list<FDRecord> glFDTable;
 
 std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes;
-ankerl::unordered_dense::map<std::string, std::vector<Object *>, CaseInsensitiveHash, CaseInsensitiveEqual> glObjectLookup; // Name lookups
+std::unordered_map<std::string, std::vector<Object *>, CaseInsensitiveHash, CaseInsensitiveEqual> glObjectLookup; // Name lookups
 
 std::mutex glmPrint;
 std::recursive_mutex glmMemory;
@@ -92,9 +93,9 @@ std::timed_mutex glmVolumes;
 ankerl::unordered_dense::map<std::string, struct ModHeader *> glStaticModules;
 ankerl::unordered_dense::map<CLASSID, ClassRecord> glClassDB;
 ankerl::unordered_dense::map<CLASSID, extMetaClass *> glClassMap;
-ankerl::unordered_dense::map<OBJECTID, ObjectSignal> glWFOList;
-ankerl::unordered_dense::map<OBJECTID, ankerl::unordered_dense::set<MEMORYID>> glObjectMemory;
-ankerl::unordered_dense::map<OBJECTID, ankerl::unordered_dense::set<OBJECTID>> glObjectChildren;
+std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
+std::unordered_map<OBJECTID, ankerl::unordered_dense::set<MEMORYID>> glObjectMemory;
+std::unordered_map<OBJECTID, ankerl::unordered_dense::set<OBJECTID>> glObjectChildren;
 ankerl::unordered_dense::map<uint32_t, std::string> glFields;
 
 std::unordered_multimap<uint32_t, CLASSID> glWildClassMap;
@@ -126,9 +127,10 @@ TIMER glProcessJanitor = 0;
 uint8_t glTimerCycle = 1;
 int8_t glFDProtected = 0;
 std::atomic_int glUniqueMsgID = 1;
+size_t glPageSize = 4096; // Overwritten on opening the Core
 
 #ifdef __unix__
-  THREADVAR int glSocket = -1; // Implemented as thread-local because we don't want threads other than main to utilise the messaging system.
+  thread_local int glSocket = -1; // Implemented as thread-local because we don't want threads other than main to utilise the messaging system.
 #elif _WIN32
   WINHANDLE glProcessHandle = 0;
   WINHANDLE glTaskLock = 0;
@@ -187,24 +189,36 @@ ankerl::unordered_dense::map<uint32_t, virtual_drive> glVirtual;
 struct FileMonitor *glFileMonitor = nullptr;
 #endif
 
-THREADVAR char tlFieldName[10]; // $12345678\0
-THREADVAR int glForceUID = -1, glForceGID = -1;
-THREADVAR PERMIT glDefaultPermissions = PERMIT::NIL;
-THREADVAR int16_t tlDepth     = 0;
-THREADVAR int16_t tlLogStatus = 1;
-THREADVAR bool tlMainThread = false; // Will be set to TRUE on open, any other threads will remain FALSE.
-THREADVAR int16_t tlPreventSleep = 0;
-THREADVAR int16_t tlPublicLockCount = 0; // This variable is controlled by GLOBAL_LOCK() and can be used to check if locks are being held prior to sleeping.
-THREADVAR int16_t tlPrivateLockCount = 0; // Count of private *memory* locks held per-thread
+thread_local char tlFieldName[10]; // $12345678\0
+thread_local int glForceUID = -1, glForceGID = -1;
+thread_local PERMIT glDefaultPermissions = PERMIT::NIL;
+thread_local int16_t tlDepth     = 0;
+thread_local int16_t tlLogStatus = 1;
+thread_local bool tlMainThread = false; // Will be set to TRUE on open, any other threads will remain FALSE.
+thread_local int16_t tlPreventSleep = 0;
+thread_local int16_t tlPublicLockCount = 0; // This variable is controlled by GLOBAL_LOCK() and can be used to check if locks are being held prior to sleeping.
+thread_local int16_t tlPrivateLockCount = 0; // Count of private *memory* locks held per-thread
 
 Object glDummyObject;
-extObjectContext glTopContext; // Top-level context is a dummy and can be thread-shared
-THREADVAR extObjectContext *tlContext = &glTopContext;
+
+#if defined(__MINGW32__) || defined(__MINGW64__)
+thread_local pf::vector<ObjectContext> *tlContextPtr = nullptr; // Lazy init via tls_get_context()
+#else
+static pf::vector<ObjectContext> make_initial_context()
+{
+   pf::vector<ObjectContext> v;
+   v.reserve(16);
+   v.emplace_back(ObjectContext { &glDummyObject, nullptr, AC::NIL });
+   return v;
+}
+
+thread_local pf::vector<ObjectContext> tlContext = make_initial_context();
+#endif
 
 objTime *glTime = nullptr;
 
-THREADVAR int16_t tlMsgRecursion = 0;
-THREADVAR TaskMessage *tlCurrentMsg = nullptr;
+thread_local int16_t tlMsgRecursion = 0;
+thread_local TaskMessage *tlCurrentMsg = nullptr;
 
 ERR (*glMessageHandler)(struct Message *) = nullptr;
 void (*glVideoRecovery)(void) = nullptr;

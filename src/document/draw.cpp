@@ -172,7 +172,7 @@ ERR layout::gen_scene_init(objVectorViewport *Viewport)
          acMoveToBack(Self->Bkgd);
       }
    }
-   else Self->Bkgd = NULL;
+   else Self->Bkgd = nullptr;
 
    return ERR::Okay;
 }
@@ -402,14 +402,14 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                auto &cell = segment.stream->lookup<bc_cell>(cursor);
                auto table = stack_table.top();
-               
+
                if ((cell.width >= 1) and (cell.height >= 1)) {
                   cell.viewport->setFields(fl::X(cell.x), fl::Y(cell.y),
                      fl::Width(cell.width), fl::Height(cell.height));
 
                   if (!cell.rect_fill.empty()) {
                      if (!cell.fill.empty()) cell.rect_fill->setFields(fl::Fill(cell.fill));
-                     else cell.rect_fill->setFields(fl::Fill(NULL));
+                     else cell.rect_fill->setFields(fl::Fill(nullptr));
                   }
 
                   if (!cell.stroke.empty()) {
@@ -432,7 +432,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                   Self->VPToEntity.emplace(cell.viewport.id, vp_to_entity { &cell });
                }
-               else if (!cell.rect_fill.empty()) cell.rect_fill->setFields(fl::Stroke(NULL), fl::Fill(NULL));
+               else if (!cell.rect_fill.empty()) cell.rect_fill->setFields(fl::Stroke(nullptr), fl::Fill(nullptr));
 
                break;
             }

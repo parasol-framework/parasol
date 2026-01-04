@@ -20,6 +20,39 @@ endif()
 
 message(STATUS "Parasol version: ${PARASOL_VERSION_MAJOR}.${PARASOL_VERSION_MINOR}.${PARASOL_VERSION_PATCH}")
 
+# Extract git information if available
+find_package(Git QUIET)
+if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
+   execute_process(
+      COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+      WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+      OUTPUT_VARIABLE GIT_COMMIT_HASH
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      ERROR_QUIET
+   )
+   execute_process(
+      COMMAND ${GIT_EXECUTABLE} rev-parse --abbrev-ref HEAD
+      WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+      OUTPUT_VARIABLE GIT_BRANCH
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      ERROR_QUIET
+   )
+else()
+   set(GIT_COMMIT_HASH "unknown")
+   set(GIT_BRANCH "unknown")
+endif()
+
+message(STATUS "Git branch: ${GIT_BRANCH}, commit: ${GIT_COMMIT_HASH}")
+
+# Generate version header with git information
+# This uses configure_file which only updates the output if content changes,
+# preventing unnecessary rebuilds when git info hasn't changed
+configure_file(
+   "${CMAKE_CURRENT_SOURCE_DIR}/version.h.in"
+   "${CMAKE_CURRENT_BINARY_DIR}/version.h"
+   @ONLY
+)
+
 # Generate versioned manifest and resource files
 configure_file(
     "${PROJECT_SOURCE_DIR}/src/link/parasol.manifest.in"
@@ -42,7 +75,7 @@ endif ()
 if (WIN32)
    # Specifying the WIN32 option will generate a Windows GUI application
    add_executable (parasol_cmd WIN32 "parasol.cpp" "sandbox-win.cpp" "${PROJECT_SOURCE_DIR}/src/link/resource.rc")
-   
+
    # Disable automatic manifest generation since we provide our own
    if (MSVC)
       set_target_properties(parasol_cmd PROPERTIES LINK_FLAGS "/MANIFEST:NO")
@@ -53,11 +86,15 @@ endif ()
 
 target_link_libraries (parasol_cmd PRIVATE ${INIT_LINK})
 
-target_include_directories (parasol_cmd PRIVATE "${PROJECT_SOURCE_DIR}/src/link")
+target_include_directories (parasol_cmd PRIVATE "${PROJECT_SOURCE_DIR}/src/link" "${CMAKE_CURRENT_BINARY_DIR}")
 
 if (CMAKE_BUILD_TYPE MATCHES "Release")
    message (STATUS "Symbols will be stripped from this build (no debugging).")
-   set_target_properties (parasol_cmd PROPERTIES CXX_STANDARD 20 LINK_FLAGS_RELEASE "-s" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
+   if (NOT MSVC)
+      set_target_properties (parasol_cmd PROPERTIES CXX_STANDARD 20 LINK_FLAGS_RELEASE "-s" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
+   else ()
+      set_target_properties (parasol_cmd PROPERTIES CXX_STANDARD 20 RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
+   endif ()
 else ()
    message (STATUS "Symbols will be left intact in this build (debug enabled).")
    set_target_properties (parasol_cmd PROPERTIES CXX_STANDARD 20 RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
@@ -67,7 +104,13 @@ set_target_properties (parasol_cmd PROPERTIES OUTPUT_NAME "parasol")
 
 # Attach headers to the Parasol binary so that we can ensure that all headers are built
 
-add_dependencies (parasol_cmd build_headers)
+add_dependencies (parasol_cmd build_headers icon_package)
+
+if (PARASOL_STATIC)
+   add_dependencies (parasol_cmd parasol_static)
+else ()
+   add_dependencies (parasol_cmd ${REQUIRED_MODS})
+endif ()
 
 if (PARASOL_INSTALL)
    if (WIN32 AND NOT MSVC)

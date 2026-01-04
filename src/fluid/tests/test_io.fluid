@@ -1,36 +1,39 @@
 -- $FLUID
 -- Flute tests for the Lua IO library
 
-local glTestFolder
-local glTestFiles = { }
+glTestFolder = 'temp:'
+glTestFiles = array<string>
+
+@AfterAll function cleanup()
+   for _, path in glTestFiles do
+      logOutput('Deleting test file ' .. path)
+      mSys.DeleteFile(path)
+   end
+end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Test helper functions
 
 function createTestFile(name, content)
-   local path = glTestFolder .. name
-   local file = obj.new('file', { path=path, flags='NEW|WRITE' })
-   assert(file, 'Failed to create test file: ' .. name)
-   if content then
-      file.acWrite(content)
-   end
-   table.insert(glTestFiles, path)
+   path = glTestFolder .. name
+   file = obj.new('file', { path=path, flags=FL_NEW|FL_WRITE })
+   content and file.acWrite(content)
+
+   glTestFiles:push(path)
    return path
 end
 
 function fileExists(path)
-   local err, type = mSys.AnalysePath(path)
-   return err == ERR_Okay and type == LOC_FILE
+   err, type = mSys.AnalysePath(path)
+   return err is ERR_Okay and type is LOC_FILE
 end
 
 function readFileContent(path)
-   local file = obj.new('file', { path=path, flags='READ' })
-   if not file then return nil end
-
-   local buffer = string.alloc(4096)
-   local err, bytes = file.acRead(buffer)
-   if err == ERR_Okay and bytes > 0 then
-      return buffer:sub(1, bytes)
+   file = obj.new('file', { path=path, flags=FL_READ })
+   buffer = string.alloc(4096)
+   err, bytes = file.acRead(buffer)
+   if err is ERR_Okay and bytes > 0 then
+      return buffer:sub(0, bytes)
    end
    return nil
 end
@@ -38,23 +41,21 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Basic file operations tests
 
-function testIoOpen()
-   print('Testing io.open()...')
-
+@Test(labels=['io', 'file']) function IOOpen()
    -- Test opening an existing file for reading
-   local test_path = createTestFile('test_read.txt', 'Hello, World!')
-   local file = io.open(test_path, 'r')
+   test_path = createTestFile('test_read.txt', 'Hello, World!')
+   file = io.open(test_path, 'r')
    assert(file, 'Failed to open file for reading')
-   assert(io.type(file) == 'file', 'io.type should return "file"')
+   assert(io.type(file) is 'file', "io.type should return 'file'")
    file:close()
 
    -- Test opening a new file for writing
-   local write_path = glTestFolder .. 'test_write.txt'
+   write_path = glTestFolder .. 'test_write.txt'
    file = io.open(write_path, 'w')
    assert(file, 'Failed to open file for writing')
    file:write('Test content')
    file:close()
-   table.insert(glTestFiles, write_path)
+   glTestFiles:push(write_path)
    assert(fileExists(write_path), 'File should exist after writing')
 
    -- Test append mode
@@ -63,46 +64,50 @@ function testIoOpen()
    file:write(' - appended')
    file:close()
 
-   local content = readFileContent(write_path)
-   assert(content == 'Test content - appended', 'Append mode should add to end of file')
+   content = readFileContent(write_path)
+   assert(content is 'Test content - appended', 'Append mode should add to end of file')
 
    -- Test opening non-existent file for reading
-   local nonexistent_file, err = io.open(glTestFolder .. 'nonexistent.txt', 'r')
-   assert(nonexistent_file == nil, 'Should return nil for non-existent file')
+   nonexistent_file, err = io.open(glTestFolder .. 'nonexistent.txt', 'r')
+   assert(nonexistent_file is nil, 'Should return nil for non-existent file')
    assert(err != nil, 'Should return error message for non-existent file')
 end
 
-function testIoClose()
-   print('Testing io.close()...')
+----------------------------------------------------------------------------------------------------------------------
 
-   local test_path = createTestFile('test_close.txt', 'test')
-   local file = io.open(test_path, 'r')
+@Test(labels=['io', 'file']) function IOClose()
+   test_path = createTestFile('test_close.txt', 'test')
+   file = io.open(test_path, 'r')
    assert(file, 'Failed to open file')
 
-   local result = io.close(file)
-   assert(result == true, 'io.close should return true on success')
-   assert(io.type(file) == 'closed file', 'File should be marked as closed')
+   result = io.close(file)
+   assert(result is true, 'io.close should return true on success')
+   file_type = io.type(file)
+   assert(file_type is 'closed file', 'File should be marked as closed, got ' .. tostring(file_type))
 end
 
-function testIoType()
-   print('Testing io.type()...')
+----------------------------------------------------------------------------------------------------------------------
 
-   local test_path = createTestFile('test_type.txt', 'test')
-   local file = io.open(test_path, 'r')
+@Test(labels=['io', 'file']) function IOType()
+   test_path = createTestFile('test_type.txt', 'test')
+   file = io.open(test_path, 'r')
 
-   assert(io.type(file) == 'file', 'Should return "file" for open file')
-   assert(io.type('not a file') == nil, 'Should return nil for non-file object')
+   file_type = io.type(file)
+
+   assert(file_type is 'file', "Should return 'file' for open file, got " .. tostring(file_type))
+   assert(io.type('not a file') is nil, 'Should return nil for non-file object')
 
    file:close()
-   assert(io.type(file) == 'closed file', 'Should return "closed file" for closed file')
+   file_type = io.type(file)
+   assert(file_type is 'closed file', 'Should return "closed file" for closed file, got ' .. tostring(file_type))
 end
 
-function testIoTmpfile()
-   print('Testing io.tmpfile()...')
+----------------------------------------------------------------------------------------------------------------------
 
-   local tmpfile = io.tmpfile()
+@Test(labels=['io', 'file']) function IOTmpfile()
+   tmpfile = io.tmpfile()
    assert(tmpfile, 'Failed to create temporary file')
-   assert(io.type(tmpfile) == 'file', 'Temporary file should be a valid file object')
+   assert(io.type(tmpfile) is 'file', 'Temporary file should be a valid file object')
 
    -- Test writing and reading from tmpfile
    tmpfile:write('temporary data')
@@ -114,111 +119,109 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- File handle method tests
 
-function testFileWrite()
-   print('Testing file:write()...')
-
-   local test_path = glTestFolder .. 'test_file_write.txt'
-   local file = io.open(test_path, 'w')
+@Test(labels=['io', 'file']) function FileWrite()
+   test_path = glTestFolder .. 'test_file_write.txt'
+   file = io.open(test_path, 'w')
    assert(file, 'Failed to open file for writing')
-   table.insert(glTestFiles, test_path)
+   glTestFiles:push(test_path)
 
    -- Test single string write
-   local result = file:write('Hello')
-   assert(result == file, 'file:write should return the file handle')
+   result = file:write('Hello')
+   assert(result is file, 'file:write should return the file handle')
 
    -- Test multiple string writes
    result = file:write(' ', 'World', '!')
-   assert(result == file, 'file:write should handle multiple arguments')
+   assert(result is file, 'file:write should handle multiple arguments')
 
    file:close()
 
-   local content = readFileContent(test_path)
-   assert(content == 'Hello World!', 'Written content should match expected')
+   content = readFileContent(test_path)
+   assert(content is 'Hello World!', 'Written content should match expected')
 end
 
-function testFileRead()
-   print('Testing file:read()...')
+----------------------------------------------------------------------------------------------------------------------
 
+@Test(labels=['io', 'file']) function FileRead()
    -- Create test file with various content types
-   local test_content = '123\n456.789\nHello World\nLine 4\n'
-   local test_path = createTestFile('test_read.txt', test_content)
-   local file = io.open(test_path, 'r')
+   test_content = '123\n456.789\nHello World\nLine 4\n'
+   test_path = createTestFile('test_read.txt', test_content)
+   file = io.open(test_path, 'r')
    assert(file, 'Failed to open file for reading')
 
    -- Test reading a line (default behavior)
-   local line = file:read()
-   assert(line == '123', 'Should read first line: "123", got "' .. nz(line, 'NIL') .. '"')
+   line = file:read()
+   assert(line is '123', 'Should read first line: "123", got "' .. tostring(line) .. '"')
 
    -- Test reading a number
-   local num = file:read('*n')
-   assert(num == 456.789, 'Should read number 456.789, got ' .. nz(num, 'NIL'))
+   num = file:read('*n')
+   assert(num is 456.789, 'Should read number 456.789, got ' .. tostring(num))
 
    -- Test reading specific number of bytes
    file:seek('set', 0) -- Reset to start
-   local bytes = file:read(3)
-   assert(bytes == '123', 'Should read 3 bytes: "123", got "' .. nz(bytes, 'NIL') .. '"')
+   bytes = file:read(3)
+   assert(bytes is '123', 'Should read 3 bytes: "123", got "' .. tostring(bytes) .. '"')
 
    -- Test reading entire file
    file:seek('set', 0) -- Reset to start
-   local all = file:read('*a')
-   assert(all == test_content, 'Should read entire file content')
+   all = file:read('*a')
+   assert(all is test_content, 'Should read entire file content')
 
    -- Test reading line with *l format
    file:seek('set', 0) -- Reset to start
-   local line_l = file:read('*l')
-   assert(line_l == '123', 'Should read line with *l format')
+   line_l = file:read('*l')
+   assert(line_l is '123', 'Should read line with *l format')
 
    -- Test multiple read operations
    file:seek('set', 0) -- Reset to start
-   local first, second = file:read('*l', '*l')
-   assert(first == '123', 'First line should be "123"')
-   assert(second == '456.789', 'Second line should be "456.789"')
+   first, second = file:read('*l', '*l')
+   assert(first is '123', 'First line should be "123"')
+   assert(second is '456.789', 'Second line should be "456.789"')
 
    -- Test reading at end of file
    file:seek('end', 0)
-   local eof = file:read()
-   assert(eof == nil, 'Should return nil when reading at end of file')
+   eof = file:read()
+   assert(eof is nil, 'Should return nil when reading at end of file')
 
    file:close()
 end
 
-function testFileSeek()
-   print('Testing file:seek()...')
+----------------------------------------------------------------------------------------------------------------------
 
-   local test_path = createTestFile('test_seek.txt', '0123456789')
-   local file = io.open(test_path, 'r')
+@Test(labels=['io', 'file']) function FileSeek()
+   test_path = createTestFile('test_seek.txt', '0123456789')
+   file = io.open(test_path, 'r')
    assert(file, 'Failed to open file for seeking')
 
    -- Test seeking to start
-   local pos = file:seek('set', 0)
-   assert(pos == 0, 'Should return position 0 when seeking to start')
+   pos = file:seek('set', 0)
+   assert(pos is 0, 'Should return position 0 when seeking to start')
 
    -- Test seeking to specific position
    pos = file:seek('set', 5)
-   assert(pos == 5, 'Should return position 5 when seeking to offset 5')
+   assert(pos is 5, 'Should return position 5 when seeking to offset 5')
 
    -- Test seeking to end
    pos = file:seek('end', 0)
-   assert(pos == 10, 'Should return file size when seeking to end')
+   assert(pos is 10, 'Should return file size when seeking to end')
 
    -- Test relative seeking
    pos = file:seek('cur', -2)
-   assert(pos == 8, 'Should return position 8 when seeking back 2 from end')
+   assert(pos is 8, 'Should return position 8 when seeking back 2 from end')
 
    file:close()
 end
 
-function testFileFlush()
-   print('Testing file:flush()...')
+----------------------------------------------------------------------------------------------------------------------
 
-   local test_path = glTestFolder .. 'test_flush.txt'
-   local file = io.open(test_path, 'w')
+@Test(labels=['io', 'file']) function FileFlush()
+   test_path = glTestFolder .. 'test_flush.txt'
+   file = io.open(test_path, 'w')
    assert(file, 'Failed to open file for flushing')
-   table.insert(glTestFiles, test_path)
+   glTestFiles:push(test_path)
 
    file:write('test data')
-   local result = file:flush()
-   assert(result == true, 'file:flush should return true')
+   result = file:flush()
+   assert(result is true, 'file:flush should return true')
 
    file:close()
 end
@@ -226,46 +229,42 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Lines iteration tests
 
-function testIoLines()
-   print('Testing io.lines()...')
-
+@Test(labels=['io', "lines"]) function IOLines()
    -- Create test file with multiple lines
-   local lines_content = 'Line 1\nLine 2\nLine 3\n'
-   local test_path = createTestFile('test_lines.txt', lines_content)
+   lines_content = 'Line 1\nLine 2\nLine 3\n'
+   test_path = createTestFile('test_lines.txt', lines_content)
 
    -- Test io.lines with filename
-   local line_count = 0
-   local collected_lines = {}
+   line_count = 0
+   collected_lines = array<string>
    for line in io.lines(test_path) do
-      line_count = line_count + 1
-      table.insert(collected_lines, line)
+      line_count++
+      collected_lines:push(line)
    end
 
-   assert(line_count == 3, 'Should read 3 lines, got ' .. line_count)
-   assert(collected_lines[1] == 'Line 1', 'First line should be "Line 1", got ' .. nz(collected_lines[1], 'NIL'))
-   assert(collected_lines[2] == 'Line 2', 'Second line should be "Line 2"')
-   assert(collected_lines[3] == 'Line 3', 'Third line should be "Line 3"')
+   assert(line_count is 3, 'Should read 3 lines, got ' .. line_count)
+   assert(collected_lines[0] is 'Line 1', 'First line should be "Line 1", got ' .. tostring(collected_lines[0]))
+   assert(collected_lines[1] is 'Line 2', 'Second line should be "Line 2"')
+   assert(collected_lines[2] is 'Line 3', 'Third line should be "Line 3"')
 end
 
-function testFileLines()
-   print('Testing file:lines()...')
-
-   local lines_content = 'First\nSecond\nThird\n'
-   local test_path = createTestFile('test_file_lines.txt', lines_content)
-   local file = io.open(test_path, 'r')
+@Test(labels=['io', "lines"]) function FileLines()
+   lines_content = 'First\nSecond\nThird\n'
+   test_path = createTestFile('test_file_lines.txt', lines_content)
+   file = io.open(test_path, 'r')
    assert(file, 'Failed to open file for line iteration')
 
-   local line_count = 0
-   local collected_lines = {}
+   line_count = 0
+   collected_lines = array<string>
    for line in file:lines() do
-      line_count = line_count + 1
-      table.insert(collected_lines, line)
+      line_count++
+      collected_lines:push(line)
    end
 
-   assert(line_count == 3, 'Should read 3 lines from file handle')
-   assert(collected_lines[1] == 'First', 'First line should be "First", got ' .. nz(collected_lines[1], 'NIL'))
-   assert(collected_lines[2] == 'Second', 'Second line should be "Second"')
-   assert(collected_lines[3] == 'Third', 'Third line should be "Third"')
+   assert(line_count is 3, 'Should read 3 lines from file handle')
+   assert(collected_lines[0] is 'First', 'First line should be "First", got ' .. tostring(collected_lines[0]))
+   assert(collected_lines[1] is 'Second', 'Second line should be "Second"')
+   assert(collected_lines[2] is 'Third', 'Third line should be "Third"')
 
    file:close()
 end
@@ -273,34 +272,32 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Default input/output tests
 
-function testIoInputOutput()
-   print('Testing io.input() and io.output()...')
-
+@Test(labels=['io', "defaults"]) function InputOutput()
    -- Test setting default input
-   local input_path = createTestFile('test_input.txt', 'input test data')
-   local input_file = io.input(input_path)
+   input_path = createTestFile('test_input.txt', 'input test data')
+   input_file = io.input(input_path)
    assert(input_file, 'io.input should return file handle when setting')
 
    -- Test getting current default input
-   local current_input = io.input()
+   current_input = io.input()
    assert(current_input, 'io.input() should return current default input')
 
    -- Test setting default output
-   local output_path = glTestFolder .. 'test_output.txt'
-   local output_file = io.output(output_path)
-   table.insert(glTestFiles, output_path)
+   output_path = glTestFolder .. 'test_output.txt'
+   output_file = io.output(output_path)
+   glTestFiles:push(output_path)
    assert(output_file, 'io.output should return file handle when setting')
 
    -- Test getting current default output
-   local current_output = io.output()
+   current_output = io.output()
    assert(current_output, 'io.output() should return current default output')
 
    -- Test that we can use io.write with default output
    io.write('Default output test')
    io.output():close()
 
-   local content = readFileContent(output_path)
-   assert(content == 'Default output test', 'Default output should work with io.write')
+   content = readFileContent(output_path)
+   assert(content is 'Default output test', 'Default output should work with io.write')
 
    io.input():close()
 end
@@ -308,13 +305,13 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Constants tests
 
-function testIoConstants()
-   assert(io.stdin != nil, 'io.stdin not defined')
-   assert(io.stdout != nil, 'io.stdout not defined')
-   assert(io.stderr != nil, 'io.stderr not defined')
+@Test(labels=['io']) function IOConstants()
+   assert(io.stdin, 'io.stdin not defined')
+   assert(io.stdout, 'io.stdout not defined')
+   assert(io.stderr, 'io.stderr not defined')
 
    -- Test that constants can be used with io.input (if supported)
-   local err, result = catch(function()
+   err, result = catch(function()
       io.input(io.stdin)
    end)
 end
@@ -322,131 +319,93 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Error handling tests
 
-function testErrorHandling()
-   print('Testing error handling...')
-
+@Test(labels=['io', "error"]) function ErrorHandling()
    -- Test opening invalid file
-   local file, err = io.open('/invalid/path/file.txt', 'r')
-   assert(file == nil, 'Should return nil for invalid file path')
-   assert(err != nil, 'Should return error message for invalid file path')
+   file, err = io.open('/invalid/path/file.txt', 'r')
+   assert(file is nil, 'Should return nil for invalid file path')
+   assert(err, 'Should return error message for invalid file path')
 
    -- Test operations on closed file
-   local test_path = createTestFile('test_closed.txt', 'test')
+   test_path = createTestFile('test_closed.txt', 'test')
    file = io.open(test_path, 'r')
    file:close()
 
-   local success, error_msg = catch(function()
+   success, error_msg = catch(function()
       file:write('should fail')
    end)
-   assert(success == nil, 'Writing to closed file should fail')
+   assert(not success, 'Writing to closed file should fail')
 
    success, error_msg = catch(function()
       file:seek('set', 0)
    end)
-   assert(success == nil, 'Seeking in closed file should fail')
+   assert(not success, 'Seeking in closed file should fail')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Integration tests
 
-function testIoRead()
-   print('Testing io.read()...')
-
+@Test(labels=['io', "read"]) function IORead()
    -- Test reading from default input
-   local input_path = createTestFile('test_io_read.txt', 'io read test\nsecond line\n')
+   input_path = createTestFile('test_io_read.txt', 'io read test\nsecond line\n')
    io.input(input_path)
 
-   local line = io.read()
-   assert(line == 'io read test', 'Should read from default input')
+   line = io.read()
+   assert(line is 'io read test', 'Should read from default input')
 
-   local line2 = io.read('*l')
-   assert(line2 == 'second line', 'Should read second line from default input')
+   line2 = io.read('*l')
+   assert(line2 is 'second line', 'Should read second line from default input')
 
    io.input():close()
 end
 
-function testIntegration()
-   print('Testing integrated IO operations...')
+----------------------------------------------------------------------------------------------------------------------
 
+@Test(labels=['io', "full"]) function Integration()
    -- Create a test file, write data, read it back line by line
-   local test_data = 'First line of data\nSecond line of data\nThird line of data\n'
-   local test_path = glTestFolder .. 'integration_test.txt'
+   test_data = 'First line of data\nSecond line of data\nThird line of data\n'
+   test_path = glTestFolder .. 'integration_test.txt'
 
    -- Write the data
-   local write_file = io.open(test_path, 'w')
+   write_file = io.open(test_path, 'w')
    assert(write_file, 'Failed to open file for integration test')
    write_file:write(test_data)
    write_file:close()
-   table.insert(glTestFiles, test_path)
+   glTestFiles:push(test_path)
 
    -- Read it back and verify
-   local lines_read = {}
+   lines_read = array<string>
    for line in io.lines(test_path) do
-      table.insert(lines_read, line)
+      lines_read:push(line)
    end
 
-   assert(#lines_read == 3, 'Should read exactly 3 lines')
-   assert(lines_read[1] == 'First line of data', 'First line incorrect')
-   assert(lines_read[2] == 'Second line of data', 'Second line incorrect')
-   assert(lines_read[3] == 'Third line of data', 'Third line incorrect')
+   assert(#lines_read is 3, 'Should read exactly 3 lines')
+   assert(lines_read[0] is 'First line of data', 'First line incorrect')
+   assert(lines_read[1] is 'Second line of data', 'Second line incorrect')
+   assert(lines_read[2] is 'Third line of data', 'Third line incorrect')
 
    -- Test seek and read operations with file_read() implementation
-   local read_file = io.open(test_path, 'r')
+   read_file = io.open(test_path, 'r')
    read_file:seek('set', 6) -- Skip "First "
 
-   local partial = read_file:read(4) -- Read "line"
-   assert(partial == 'line', 'Should read 4 bytes after seek, got "' .. nz(partial, 'NIL') .. '"')
+   partial = read_file:read(4) -- Read "line"
+   assert(partial is 'line', 'Should read 4 bytes after seek, got "' .. tostring(partial) .. '"')
 
    -- Test reading entire remaining content
    read_file:seek('set', 0)
-   local all_content = read_file:read('*a')
-   assert(all_content == test_data, 'Should read entire file content')
+   all_content = read_file:read('*a')
+   assert(all_content is test_data, 'Should read entire file content')
 
    read_file:close()
 
    -- Test number reading
-   local number_path = createTestFile('test_numbers.txt', '42\n3.14159\n')
-   local num_file = io.open(number_path, 'r')
+   number_path = createTestFile('test_numbers.txt', '42\n3.14159\n')
+   num_file = io.open(number_path, 'r')
 
-   local int_num = num_file:read('*n')
-   assert(int_num == 42, 'Should read integer 42, got ' .. nz(int_num, 'NIL'))
+   int_num = num_file:read('*n')
+   assert(int_num is 42, 'Should read integer 42, got ' .. tostring(int_num))
 
-   local float_num = num_file:read('*n')
-   assert(math.abs(float_num - 3.14159) < 0.00001, 'Should read float 3.14159, got ' .. nz(float_num, 'NIL'))
+   float_num = num_file:read('*n')
+   assert(math.abs(float_num - 3.14159) < 0.00001, 'Should read float 3.14159, got ' .. tostring(float_num))
 
    num_file:close()
 end
-
-----------------------------------------------------------------------------------------------------------------------
--- Test suite definition
-
-return {
-   tests = {
-      'testIoOpen',
-      'testIoClose',
-      'testIoType',
-      'testIoTmpfile',
-      'testFileWrite',
-      'testFileRead',
-      'testFileSeek',
-      'testFileFlush',
-      'testIoLines',
-      'testFileLines',
-      'testIoInputOutput',
-      'testIoRead',
-      'testIoConstants',
-      'testErrorHandling',
-      'testIntegration'
-   },
-
-   init = function(Folder)
-      glTestFolder = 'temp:'
-   end,
-
-   cleanup = function()
-      for k, v in pairs(glTestFiles) do
-         print('Deleting test file ' .. v)
-         mSys.DeleteFile(v)
-      end
-   end
-}

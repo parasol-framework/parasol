@@ -43,6 +43,7 @@ void stop_async_actions(void)
 
    // Give threads time to respond to stop request
    constexpr auto STOP_TIMEOUT = std::chrono::milliseconds(2000);
+   constexpr auto POLL_INTERVAL = std::chrono::milliseconds(50);
    auto start_time = std::chrono::steady_clock::now();
 
    while (!glAsyncThreads.empty() and (std::chrono::steady_clock::now() - start_time) < STOP_TIMEOUT) {
@@ -50,7 +51,7 @@ void stop_async_actions(void)
       std::erase_if(glAsyncThreads, [](const auto &ptr) { return !ptr or !ptr->joinable(); });
 
       if (!glAsyncThreads.empty()) {
-         std::this_thread::sleep_for(std::chrono::milliseconds(50));
+         std::this_thread::sleep_for(POLL_INTERVAL);
       }
    }
 
@@ -219,10 +220,13 @@ static ERR object_free(Object *Object)
    free_children(Object);
 
    if (Object->defined(NF::TIMER_SUB)) {
-      if (auto lock = std::unique_lock{glmTimer, 200ms}) {
+      if (auto lock = std::unique_lock{glmTimer, 1000ms}) {
          for (auto it=glTimers.begin(); it != glTimers.end(); ) {
             if (it->SubscriberID IS Object->UID) {
                log.warning("%s object #%d has an unfreed timer subscription, routine %p, interval %" PF64, mc->ClassName, Object->UID, &it->Routine, (long long)it->Interval);
+               if (it->Routine.isScript()) {
+                  ((objScript *)it->Routine.Context)->derefProcedure(it->Routine);
+               }
                it = glTimers.erase(it);
             }
             else it++;
@@ -622,7 +626,7 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
                .Error    = error,
                .Callback = Callback
             };
-            SendMessage(MSGID::THREAD_ACTION, MSF::ADD, &msg, sizeof(msg));
+            SendMessage(MSGID::THREAD_ACTION, MSF::NIL, &msg, sizeof(msg));
          }
 
          cleanup();
@@ -637,7 +641,8 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
 }
 
 //********************************************************************************************************************
-// Called whenever a MSGID::THREAD_ACTION message is caught by ProcessMessages().  See thread_action() for usage.
+// Called whenever a MSGID::THREAD_ACTION message is caught by ProcessMessages().  Messages are sent by AsyncAction()
+// whenever the Callback parameter has been specified.
 
 ERR msg_threadaction(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize)
 {
@@ -762,7 +767,7 @@ obj: Returns an object pointer (of which the process has exclusive access to).  
 
 OBJECTPTR CurrentContext(void)
 {
-   return tlContext->object();
+   return tlContext.back().obj;
 }
 
 /*********************************************************************************************************************
@@ -784,9 +789,11 @@ obj: An object reference is returned, or `NULL` if there is no parent context.
 
 OBJECTPTR ParentContext(void)
 {
-   auto parent = tlContext->stack;
-   while ((parent) and (parent->object() IS tlContext->object())) parent = parent->stack;
-   return parent ? parent->object() : (OBJECTPTR)nullptr;
+   for (auto it=tlContext.rbegin()+1; it != tlContext.rend(); ++it) {
+      if (it->obj != tlContext.back().obj) return it->obj;
+   }
+
+   return nullptr;
 }
 
 /*********************************************************************************************************************
@@ -916,8 +923,8 @@ ERR FindObject(CSTRING InitialName, CLASSID ClassID, FOF Flags, OBJECTID *Result
       }
 
       if (iequals("owner", InitialName)) {
-         if ((tlContext != &glTopContext) and (tlContext->object()->Owner)) {
-            *Result = tlContext->object()->Owner->UID;
+         if (tlContext.back().obj->Owner) {
+            *Result = tlContext.back().obj->Owner->UID;
             return ERR::Okay;
          }
          else return ERR::DoesNotExist;
@@ -961,7 +968,7 @@ resource(Message): A !Message structure is returned if the function is called in
 
 Message * GetActionMsg(void)
 {
-   if (auto obj = tlContext->resource()) {
+   if (auto obj = current_action()) {
       if (obj->defined(NF::MESSAGE) and (obj->ActionDepth IS 1)) {
          return (Message *)tlCurrentMsg;
       }
@@ -1317,7 +1324,7 @@ ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object)
    MEMORYID head_id;
 
    if (AllocMemory(mc->Size, MEM::NO_CLEAR|MEM::MANAGED|MEM::OBJECT|MEM::NO_LOCK|(((Flags & NF::UNTRACKED) != NF::NIL) ? MEM::UNTRACKED : MEM::NIL), (APTR *)&head, &head_id) IS ERR::Okay) {
-      set_memory_manager(head, &glResourceObject);
+      SetResourceMgr(head, &glResourceObject);
 
       new (head) class Object; // Class constructors aren't expected to initialise the Object header, we do it for them
       pf::clearmem(head + 1, mc->Size - sizeof(class Object));
@@ -1354,8 +1361,9 @@ ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object)
             }
          }
       }
-      else if (tlContext != &glTopContext) { // Track the object to the current context
-         if (auto obj = tlContext->resource(); obj IS &glDummyObject) { // If dummy object, track to the task
+      else { // Track the object to the current context
+         auto obj = current_resource();
+         if (obj IS &glDummyObject) { // If dummy object, track to the task
             if (glCurrentTask) {
                ScopedObjectAccess lock(glCurrentTask);
                SetOwner(head, glCurrentTask);
@@ -1363,13 +1371,13 @@ ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object)
          }
          else SetOwner(head, obj);
       }
-      else if (glCurrentTask) {
-         ScopedObjectAccess lock(glCurrentTask);
-         SetOwner(head, glCurrentTask);
-      }
 
       // After the header has been created we can set the context, then call the base class's NewObject() support.  If this
       // object belongs to a sub-class, we will also call its supporting NewObject() action if it has specified one.
+      //
+      // Note: Hooking into NewObject gives sub-classes an opportunity to detect that they have been targeted by the client
+      // on creation, as opposed to during initialisation.  This can allow ChildPrivate to be configured early on in the
+      // process, making it possible to set custom fields that would depend on it.
 
       pf::SwitchContext context(head);
 
@@ -1502,7 +1510,7 @@ void NotifySubscribers(OBJECTPTR Object, AC ActionID, APTR Parameters, ERR Error
 QueueAction: Delay the execution of an action by adding the call to the message queue.
 
 Use QueueAction() to execute an action by way of the local message queue.  This means that the supplied `Action` and
-`Args` will be combined into a message for the queue.  This function then returns immediately.
+`Args` will be serialised into a message for the queue.  This function then returns immediately.
 
 The action will be executed on the next cycle of ~ProcessMessages() in line with the FIFO order of queued messages.
 
@@ -1711,80 +1719,24 @@ ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 /*********************************************************************************************************************
 
 -FUNCTION-
-SetContext: Declares the owner of future allocated resources.
-
-This function defines the object that has control of the current thread.  Once called, all further resource
-allocations are assigned to that object.  This is significant for the automatic collection of memory and object
-resources.  For example:
-
-<pre>
-InitObject(display);
-auto ctx = SetContext(display);
-
-   NewObject(CLASSID::BITMAP, &bitmap);
-   AllocMemory(1000, MEM::DATA, &memory, nullptr);
-
-SetContext(ctx);
-FreeResource(display->UID);
-</pre>
-
-The above code allocates a @Bitmap and a memory block, both of which will be contained by the display. When
-~FreeResource() is called, both the bitmap and memory block will be automatically removed as they have a dependency
-on the display's existence.  Please keep in mind that the following is incorrect:
-
-<pre>
-InitObject(display);
-auto ctx = SetContext(display);
-
-   NewObject(CLASSID::BITMAP, &bitmap);
-   AllocMemory(1000, MEM::DATA, &memory, nullptr);
-
-SetContext(ctx);
-FreeResource(display->UID); // The bitmap and memory would be auto-collected
-FreeResource(bitmap->UID);  // Reference is no longer valid
-FreeResource(memory);  // Reference is no longer valid
-</pre>
-
-As the bitmap and memory block would have been freed as members of the display, their references are invalid when
-manually terminated in the following instructions.
-
-SetContext() is intended for use by modules and classes.  Do not use it in an application unless conditions
-necessitate its use.  The Core automatically manages the context when calling class actions, methods and interactive
-fields.
-
--INPUT-
-obj Object: Pointer to the object that will take on the new context.  If `NULL`, no change to the context will be made.
-
--RESULT-
-obj: Returns a pointer to the previous context.  Because contexts nest, the client must call SetContext() a second time with this pointer in order to keep the process stable.
-
-*********************************************************************************************************************/
-
-OBJECTPTR SetContext(OBJECTPTR Object)
-{
-   if (Object) return tlContext->setContext(Object);
-   else return tlContext->object();
-}
-/*********************************************************************************************************************
-
--FUNCTION-
 SetObjectContext: Private.
 
 For internal use only.  Provides an access point for the Object class to manage object context in the Core.
 
--INPUT-
-struct(ObjectContext) Context: Reference to an ObjectContext structure.
+Set either one of Field or ActionID, never both.  If both are empty, the context is that of a resource node.
+Resource managers are expected to check up the stack if the operating context is required.
 
--RESULT-
-struct(ObjectContext): Returns a pointer to the previous context.
+-INPUT-
+obj Object: Object to host the current context.  If NULL, the current context is popped.
+ptr(struct(Field)) Field: Active field, if any.
+int(AC) ActionID: Active action, if any.
 
 *********************************************************************************************************************/
 
-ObjectContext * SetObjectContext(ObjectContext *Context)
+void SetObjectContext(OBJECTPTR Object, Field *Field, AC ActionID)
 {
-   auto stack = tlContext;
-   tlContext = (extObjectContext *)Context;
-   return stack;
+   if (not Object) tlContext.pop_back();
+   else tlContext.emplace_back(Object, Field, ActionID);
 }
 
 /*********************************************************************************************************************
@@ -1963,37 +1915,37 @@ ERR UnsubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
 
    if (ActionID IS AC::NIL) { // Unsubscribe all actions associated with the subscriber.
       if (glSubscriptions.contains(Object->UID)) {
-         auto subscriber = tlContext->object()->UID;
-restart:
-         for (auto & [action, list] : glSubscriptions[Object->UID]) {
-            for (auto it = list.begin(); it != list.end(); ) {
-               if (it->SubscriberID IS subscriber) it = list.erase(it);
-               else it++;
-            }
+         auto subscriber = tlContext.back().obj->UID;
+         bool need_restart = true;
+         while (need_restart) {
+            need_restart = false;
+            for (auto & [action, list] : glSubscriptions[Object->UID]) {
+               // Use C++20 std::erase_if for cleaner removal
+               std::erase_if(list, [subscriber](const auto &sub) { return sub.SubscriberID IS subscriber; });
 
-            if (list.empty()) {
-               Object->NotifyFlags.fetch_and(~(1<<(action & 63)), std::memory_order::relaxed);
+               if (list.empty()) {
+                  Object->NotifyFlags.fetch_and(~(1<<(action & 63)), std::memory_order::relaxed);
 
-               if (!Object->NotifyFlags.load()) {
-                  glSubscriptions.erase(Object->UID);
-                  break;
-               }
-               else {
-                  glSubscriptions[Object->UID].erase(action);
-                  goto restart;
+                  if (!Object->NotifyFlags.load()) {
+                     glSubscriptions.erase(Object->UID);
+                     break;
+                  }
+                  else {
+                     glSubscriptions[Object->UID].erase(action);
+                     need_restart = true;
+                     break;
+                  }
                }
             }
          }
       }
    }
    else if ((glSubscriptions.contains(Object->UID)) and (glSubscriptions[Object->UID].contains(int(ActionID)))) {
-      auto subscriber = tlContext->object()->UID;
+      auto subscriber = tlContext.back().obj->UID;
 
       auto &list = glSubscriptions[Object->UID][int(ActionID)];
-      for (auto it = list.begin(); it != list.end(); ) {
-         if (it->SubscriberID IS subscriber) it = list.erase(it);
-         else it++;
-      }
+      // Use C++20 std::erase_if for cleaner removal
+      std::erase_if(list, [subscriber](const auto &sub) { return sub.SubscriberID IS subscriber; });
 
       if (list.empty()) {
          Object->NotifyFlags.fetch_and(~(1<<(int(ActionID) & 63)), std::memory_order::relaxed);

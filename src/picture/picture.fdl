@@ -25,8 +25,8 @@ module({ name="Picture", copyright="Paul Manias © 2001-2025", version=1.0, time
   c_insert([[
 namespace fl {
    using namespace pf;
-constexpr FieldValue DisplayWidth(LONG Value) { return FieldValue(FID_DisplayWidth, Value); }
-constexpr FieldValue DisplayHeight(LONG Value) { return FieldValue(FID_DisplayHeight, Value); }
+constexpr FieldValue DisplayWidth(int Value) { return FieldValue(FID_DisplayWidth, Value); }
+constexpr FieldValue DisplayHeight(int Value) { return FieldValue(FID_DisplayHeight, Value); }
 }
   ]])
 end)

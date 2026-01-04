@@ -201,6 +201,7 @@ function declareErrors()
     "TaskExecutionFailed",     -- Task or process execution has failed.
     "InvalidCompression",      -- The compression data is invalid or corrupted.
     "SanityCheckFailed",       -- A sanity check has failed.
+    "NotAuthorised",           -- Client is not authorised to perform this operation.
     "END",
     { Notified = 0x40000000 }
   ) -- NB: Any new error messages need to be added to data_errors.c manually.
@@ -210,8 +211,8 @@ function declareErrors()
   })
 end
 
-   if (glProgram == "idl-c") then
+   if (glProgram is "idl-c") then
       header({ path="system/errors", copyright="Paul Manias © 1996-2025" }, declareErrors)
-   elseif (glProgram == "idl-compile") then
+   elseif (glProgram is "idl-compile") then
       declareErrors()
    end

@@ -933,6 +933,7 @@
 #define FID_EventCallback 0xfc356c74LL
 #define FID_EventMask 0x354f38b3LL
 #define FID_Exponent 0xd4513596LL
+#define FID_FeatureFlags 0xfc22b4beLL
 #define FID_L 0x0002b611LL
 #define FID_LoopLimit 0xf4c76a9eLL
 #define FID_MatrixRows 0x64419145LL
@@ -980,4 +981,5 @@
 #define FID_TabOrder 0xa10b2cb8LL
 #define FID_TextFlags 0x1bce45f7LL
 #define FID_TotalStops 0xc961c5a2LL
+#define FID_ResultString 0x7212b53bLL
 

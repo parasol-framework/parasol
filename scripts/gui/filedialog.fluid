@@ -10,36 +10,36 @@ Documentation is available in the Parasol Wiki.
    require 'gui/input'
    require 'gui/window'
 
-   if (gui == nil) then gui = { } end
-   if (gui.dialog == nil) then gui.dialog = { } end
+   global gui ?= { }
+   gui.dialog ?= { }
 
-local GAP = 8
+GAP = 8
 
 gui.dialog.file = function(Options)
-   local self = { -- Public variables
+   self = { -- Public variables
       windowID    = nil,
       currentPath = file.splitPath(Options.path),
-      multiSelect = nz(Options.multiSelect, false),
-      warnExists  = nz(Options.warnExists, false),
+      multiSelect = Options.multiSelect ?? false,
+      warnExists  = Options.warnExists ?? false,
       feedback    = Options.feedback,
       target      = Options.target
    }
 
-   local function processFeedback()
-      local list = self.fileview.view.selectedItems()
+   function processFeedback()
+      list = self.fileview.view.selectedItems()
 
-      if (self.warnExists == true) and (#list > 0) then
-         local error, type = mSys.AnalysePath(nz(self.fileview.path,'') .. list[1].filename)
-         if (type == LOC_FILE) then
+      if (self.warnExists is true) and (#list > 0) then
+         error, type = mSys.AnalysePath((self.fileview.path ?? '') .. list[0].filename)
+         if type is LOC_FILE then
             local msg
 
-            if #list == 1 then
-               msg = "You are about to overwrite the file '" .. list[1].filename .. "'.  Do you want to continue?"
+            if #list is 1 then
+               msg = "You are about to overwrite the file '" .. list[0].filename .. "'.  Do you want to continue?"
             else
                msg = 'You are about to overwrite ' .. #list .. ' files.  Do you want to continue?'
             end
 
-            local confirm = gui.dialog.message({
+            confirm = gui.dialog.message({
                target  = self.target,
                modal   = true,
                options = { { id=-1, text='No', icon='items/cancel' },
@@ -49,10 +49,8 @@ gui.dialog.file = function(Options)
                message = msg,
                popOver = windowID,
                feedback = function(Dialog, Response, State)
-                  if (Response) and (Response.id == 1) then
-                     if self.feedback then
-                        self.feedback(self, self.fileview.path, list)
-                     end
+                  if Response and (Response.id is 1) then
+                     self?.feedback(self, self.fileview.path, list)
                      self.window = nil
                   end
                end
@@ -63,7 +61,7 @@ gui.dialog.file = function(Options)
       end
 
       if self.feedback then
-         if (#list == 0) then list = nil end
+         if #list is 0 then list = nil end
          self.feedback(self, self.fileview.path, list)
       end
 
@@ -81,15 +79,12 @@ gui.dialog.file = function(Options)
       invertPalette = true,
       popOver      = Options.popOver,
       parent       = Options.target,
-      icon         = nz(Options.icon, 'icons:folders/folder'),
-      title        = nz(Options.title, 'Select a file'),
-      modal        = nz(Options.modal, false),
+      icon         = Options.icon ?? 'icons:folders/folder',
+      title        = Options.title ?? 'Select a file',
+      modal        = Options.modal ?? false,
       events = {
          close = function(Window)
-            if (Options.feedback != nil) then
-               Options.feedback(self, nil)
-            end
-
+            Options?.feedback(self, nil)
             table.clear(self)
             collectgarbage()
          end
@@ -123,28 +118,26 @@ gui.dialog.file = function(Options)
 
    -- Okay and cancel buttons
 
-   local footer = self.window.margins.bottom
+   footer = self.window.margins.bottom
 
-   local lCancelButton = gui.button({
+   lCancelButton = gui.button({
       target  = self.viewport,
-      text    = nz(Options.cancelText, 'Cancel'),
+      text    = Options.cancelText ?? 'Cancel',
       xOffset = GAP,
       yOffset = footer,
       icon    = 'items/cancel',
       events = {
          activate = function(Button)
-            if Options.feedback != nil then
-               Options.feedback(self, nil)
-            end
+            Options?.feedback(self, nil)
             table.clear(self)
             collectgarbage()
          end
       }
    })
 
-   local lOkayButton = gui.button({
+   lOkayButton = gui.button({
       target     = self.viewport,
-      text       = nz(Options.okText, 'Okay'),
+      text       = Options.okText ?? 'Okay',
       xOffset    = lCancelButton.viewport.width + (GAP * 2),
       yOffset    = footer,
       icon       = 'items/checkmark',
@@ -153,22 +146,23 @@ gui.dialog.file = function(Options)
       }
    })
 
-   footer = footer + lOkayButton.viewport.height + GAP
+   footer += lOkayButton.viewport.height + GAP
 
    -- Filter selection
 
-   local fv_filters = { name='All Files', ext='', selected=false }
+   fv_filters = { name='All Files', ext='', selected=false }
    if Options.filterList and (#Options.filterList > 0) then
       -- Pick the first item as being selected if none other is chosen.
 
-      local selection = false
+      selection = false
       for _, item in pairs(Options.filterList) do
          if item.selected then
             selection = true
             break
          end
       end
-      if not selection then Options.filterList[1].selected = true end
+
+      if not selection then Options.filterList[0].selected = true end
 
       for _, filter in pairs(Options.filterList) do
          table.insert(fv_filters, filter)
@@ -177,7 +171,7 @@ gui.dialog.file = function(Options)
 
    -- File view area
 
-   local viewRegion = self.viewport.new('VectorViewport', {
+   viewRegion = self.viewport.new('VectorViewport', {
       x        = 0,
       y        = self.pathbox.viewport.y + self.pathbox.viewport.height,
       width    = '100%',
@@ -213,9 +207,9 @@ end
    -- This sub-routine is provided for languages other than Fluid to utilise the module.
 
    do
-      local state = getExecutionState()
-      if (state.inRequire != true) then
-         local dlg = gui.dialog.file({
+      state = getExecutionState()
+      if state.inRequire != true then
+         dlg = gui.dialog.file({
             popOver      = arg('popOver'),
             target       = arg('target'),
             modal        = arg('modal'),

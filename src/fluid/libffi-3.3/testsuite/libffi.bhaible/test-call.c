@@ -106,7 +106,7 @@ void clear_traces (void)
 void
   void_tests (void)
 {
-#if (!defined(DGTEST)) || DGTEST == 1  
+#if (!defined(DGTEST)) || DGTEST == 1
   v_v();
   clear_traces();
   {
@@ -116,7 +116,7 @@ void
       FFI_CALL(cif,v_v,NULL,NULL);
     }
   }
-#endif  
+#endif
   return;
 }
 void
@@ -357,7 +357,7 @@ void
   double dr;
 
 #if (!defined(DGTEST)) || DGTEST == 14
-  
+
   dr = d_d(d1);
   fprintf(out,"->%g\n",dr);
   fflush(out);
@@ -445,7 +445,7 @@ void
   }
   fprintf(out,"->%g\n",dr);
   fflush(out);
-#endif  
+#endif
   return;
 }
 void
@@ -473,7 +473,7 @@ void
   }
   fprintf(out,"->0x%p\n",vpr);
   fflush(out);
-#endif  
+#endif
   return;
 }
 void
@@ -925,7 +925,7 @@ void
   }
   fprintf(out,"->%g\n",dr);
   fflush(out);
-#endif  
+#endif
   return;
 }
 void
@@ -1092,7 +1092,7 @@ void
     fflush(out);
   }
 #endif
-#if (!defined(DGTEST)) || DGTEST == 51  
+#if (!defined(DGTEST)) || DGTEST == 51
   {
     Size15 r = S15_v();
     fprintf(out,"->{%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c}\n",r.x1,r.x2,r.x3,r.x4,r.x5,r.x6,r.x7,r.x8,r.x9,r.x10,r.x11,r.x12,r.x13,r.x14,r.x15);
@@ -1115,7 +1115,7 @@ void
     fflush(out);
   }
 #endif
-#if (!defined(DGTEST)) || DGTEST == 52  
+#if (!defined(DGTEST)) || DGTEST == 52
   {
     Size16 r = S16_v();
     fprintf(out,"->{%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c}\n",r.x1,r.x2,r.x3,r.x4,r.x5,r.x6,r.x7,r.x8,r.x9,r.x10,r.x11,r.x12,r.x13,r.x14,r.x15,r.x16);
@@ -1147,12 +1147,12 @@ void
   Float Fr;
   Double Dr;
   J Jr;
-#ifndef SKIP_EXTRA_STRUCTS  
+#ifndef SKIP_EXTRA_STRUCTS
   T Tr;
   X Xr;
-#endif  
+#endif
 
-#if (!defined(DGTEST)) || DGTEST == 53  
+#if (!defined(DGTEST)) || DGTEST == 53
   Ir = I_III(I1,I2,I3);
   fprintf(out,"->{%d}\n",Ir.x);
   fflush(out);
@@ -1221,7 +1221,7 @@ void
   fprintf(out,"->{%g}\n",Fr.x);
   fflush(out);
 #endif
-#if (!defined(DGTEST)) || DGTEST == 56  
+#if (!defined(DGTEST)) || DGTEST == 56
   Dr = D_fDd(f1,D2,d3);
   fprintf(out,"->{%g}\n",Dr.x);
   fflush(out);
@@ -1244,7 +1244,7 @@ void
   fprintf(out,"->{%g}\n",Dr.x);
   fflush(out);
 #endif
-#if (!defined(DGTEST)) || DGTEST == 57  
+#if (!defined(DGTEST)) || DGTEST == 57
   Dr = D_Dfd(D1,f2,d3);
   fprintf(out,"->{%g}\n",Dr.x);
   fflush(out);
@@ -1267,7 +1267,7 @@ void
   fprintf(out,"->{%g}\n",Dr.x);
   fflush(out);
 #endif
-#if (!defined(DGTEST)) || DGTEST == 58  
+#if (!defined(DGTEST)) || DGTEST == 58
   Jr = J_JiJ(J1,i2,J2);
   fprintf(out,"->{%ld,%ld}\n",Jr.l1,Jr.l2);
   fflush(out);
@@ -1365,7 +1365,7 @@ void
   ffi_type_L.alignment = alignof_slot(L);
   ffi_type_L.elements = ffi_type_L_elements;
 
-#if (!defined(DGTEST)) || DGTEST == 61  
+#if (!defined(DGTEST)) || DGTEST == 61
   lr = l_l0K(K1,l9);
   fprintf(out,"->%ld\n",lr);
   fflush(out);
@@ -1382,7 +1382,7 @@ void
   fprintf(out,"->%ld\n",lr);
   fflush(out);
 #endif
-#if (!defined(DGTEST)) || DGTEST == 62  
+#if (!defined(DGTEST)) || DGTEST == 62
   lr = l_l1K(l1,K1,l9);
   fprintf(out,"->%ld\n",lr);
   fflush(out);
@@ -1399,7 +1399,7 @@ void
   fprintf(out,"->%ld\n",lr);
   fflush(out);
 #endif
-#if (!defined(DGTEST)) || DGTEST == 63  
+#if (!defined(DGTEST)) || DGTEST == 63
   lr = l_l2K(l1,l2,K1,l9);
   fprintf(out,"->%ld\n",lr);
   fflush(out);
@@ -1416,7 +1416,7 @@ void
   fprintf(out,"->%ld\n",lr);
   fflush(out);
 #endif
-#if (!defined(DGTEST)) || DGTEST == 64  
+#if (!defined(DGTEST)) || DGTEST == 64
   lr = l_l3K(l1,l2,l3,K1,l9);
   fprintf(out,"->%ld\n",lr);
   fflush(out);
@@ -1467,7 +1467,7 @@ void
   fprintf(out,"->%ld\n",lr);
   fflush(out);
 #endif
-#if (!defined(DGTEST)) || DGTEST == 67  
+#if (!defined(DGTEST)) || DGTEST == 67
   lr = l_l6K(l1,l2,l3,l4,l5,l6,K1,l9);
   fprintf(out,"->%ld\n",lr);
   fflush(out);
@@ -1484,7 +1484,7 @@ void
   fprintf(out,"->%ld\n",lr);
   fflush(out);
 #endif
-#if (!defined(DGTEST)) || DGTEST == 68  
+#if (!defined(DGTEST)) || DGTEST == 68
   fr = f_f17l3L(f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13,f14,f15,f16,f17,l6,l7,l8,L1);
   fprintf(out,"->%g\n",fr);
   fflush(out);
@@ -1501,7 +1501,7 @@ void
   fprintf(out,"->%g\n",fr);
   fflush(out);
 #endif
-#if (!defined(DGTEST)) || DGTEST == 69  
+#if (!defined(DGTEST)) || DGTEST == 69
   dr = d_d17l3L(d1,d2,d3,d4,d5,d6,d7,d8,d9,d10,d11,d12,d13,d14,d15,d16,d17,l6,l7,l8,L1);
   fprintf(out,"->%g\n",dr);
   fflush(out);
@@ -1518,7 +1518,7 @@ void
   fprintf(out,"->%g\n",dr);
   fflush(out);
 #endif
-#if (!defined(DGTEST)) || DGTEST == 70  
+#if (!defined(DGTEST)) || DGTEST == 70
   llr = ll_l2ll(l1,l2,ll1,l9);
   fprintf(out,"->0x%lx%08lx\n",(long)(llr>>32),(long)(llr&0xffffffff));
   fflush(out);
@@ -1552,7 +1552,7 @@ void
   fprintf(out,"->0x%lx%08lx\n",(long)(llr>>32),(long)(llr&0xffffffff));
   fflush(out);
 #endif
-#if (!defined(DGTEST)) || DGTEST == 72  
+#if (!defined(DGTEST)) || DGTEST == 72
   llr = ll_l4ll(l1,l2,l3,l4,ll1,l9);
   fprintf(out,"->0x%lx%08lx\n",(long)(llr>>32),(long)(llr&0xffffffff));
   fflush(out);
@@ -1569,7 +1569,7 @@ void
   fprintf(out,"->0x%lx%08lx\n",(long)(llr>>32),(long)(llr&0xffffffff));
   fflush(out);
 #endif
-#if (!defined(DGTEST)) || DGTEST == 73  
+#if (!defined(DGTEST)) || DGTEST == 73
   llr = ll_l5ll(l1,l2,l3,l4,l5,ll1,l9);
   fprintf(out,"->0x%lx%08lx\n",(long)(llr>>32),(long)(llr&0xffffffff));
   fflush(out);
@@ -1586,7 +1586,7 @@ void
   fprintf(out,"->0x%lx%08lx\n",(long)(llr>>32),(long)(llr&0xffffffff));
   fflush(out);
 #endif
-#if (!defined(DGTEST)) || DGTEST == 74  
+#if (!defined(DGTEST)) || DGTEST == 74
   llr = ll_l6ll(l1,l2,l3,l4,l5,l6,ll1,l9);
   fprintf(out,"->0x%lx%08lx\n",(long)(llr>>32),(long)(llr&0xffffffff));
   fflush(out);
@@ -1603,7 +1603,7 @@ void
   fprintf(out,"->0x%lx%08lx\n",(long)(llr>>32),(long)(llr&0xffffffff));
   fflush(out);
 #endif
-#if (!defined(DGTEST)) || DGTEST == 75  
+#if (!defined(DGTEST)) || DGTEST == 75
   llr = ll_l7ll(l1,l2,l3,l4,l5,l6,l7,ll1,l9);
   fprintf(out,"->0x%lx%08lx\n",(long)(llr>>32),(long)(llr&0xffffffff));
   fflush(out);
@@ -1620,7 +1620,7 @@ void
   fprintf(out,"->0x%lx%08lx\n",(long)(llr>>32),(long)(llr&0xffffffff));
   fflush(out);
 #endif
-#if (!defined(DGTEST)) || DGTEST == 76  
+#if (!defined(DGTEST)) || DGTEST == 76
   dr = d_l2d(l1,l2,d2,l9);
   fprintf(out,"->%g\n",dr);
   fflush(out);
@@ -1637,7 +1637,7 @@ void
   fprintf(out,"->%g\n",dr);
   fflush(out);
 #endif
-#if (!defined(DGTEST)) || DGTEST == 77  
+#if (!defined(DGTEST)) || DGTEST == 77
   dr = d_l3d(l1,l2,l3,d2,l9);
   fprintf(out,"->%g\n",dr);
   fflush(out);
@@ -1654,7 +1654,7 @@ void
   fprintf(out,"->%g\n",dr);
   fflush(out);
 #endif
-#if (!defined(DGTEST)) || DGTEST == 78  
+#if (!defined(DGTEST)) || DGTEST == 78
   dr = d_l4d(l1,l2,l3,l4,d2,l9);
   fprintf(out,"->%g\n",dr);
   fflush(out);
@@ -1671,7 +1671,7 @@ void
   fprintf(out,"->%g\n",dr);
   fflush(out);
 #endif
-#if (!defined(DGTEST)) || DGTEST == 79  
+#if (!defined(DGTEST)) || DGTEST == 79
   dr = d_l5d(l1,l2,l3,l4,l5,d2,l9);
   fprintf(out,"->%g\n",dr);
   fflush(out);
@@ -1688,7 +1688,7 @@ void
   fprintf(out,"->%g\n",dr);
   fflush(out);
 #endif
-#if (!defined(DGTEST)) || DGTEST == 80  
+#if (!defined(DGTEST)) || DGTEST == 80
   dr = d_l6d(l1,l2,l3,l4,l5,l6,d2,l9);
   fprintf(out,"->%g\n",dr);
   fflush(out);
@@ -1705,7 +1705,7 @@ void
   fprintf(out,"->%g\n",dr);
   fflush(out);
 #endif
-#if (!defined(DGTEST)) || DGTEST == 81  
+#if (!defined(DGTEST)) || DGTEST == 81
   dr = d_l7d(l1,l2,l3,l4,l5,l6,l7,d2,l9);
   fprintf(out,"->%g\n",dr);
   fflush(out);

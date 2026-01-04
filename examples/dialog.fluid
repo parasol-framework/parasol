@@ -4,7 +4,7 @@ Dialog test
 
    require 'gui/dialog'
 
-   local show_error = false
+   show_error = false
 
    if show_error then
       gui.dialog.error('Simple Error Dialog', 'Something went very wrong!', { quit = true })

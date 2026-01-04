@@ -1,46 +1,9 @@
 --$FLUID:Include
 
-module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestamp=20240611 }, function()
-  cpp_include("<functional>", "<sstream>", "<parasol/strings.hpp>")
+module({ name="XML", src="xml.cpp", copyright="Paul Manias © 2001-2025", version=1.0, timestamp=20240611 }, function()
+  cpp_include("<functional>", "<memory>", "<sstream>", "<parasol/strings.hpp>")
 
-  const("XMS", { type="int", comment="For SetAttrib()" }, {
-    NEW         = "-1: Adds a new attribute.  Note that if the attribute already exists, this will result in at least two attributes of the same name in the tag.",
-    UPDATE_ONLY = "-2: SetAttrib will find the target attribute and update it.  It is not possible to rename the attribute when using this technique.  `ERR::Search` is returned if the attribute cannot be found.",
-    UPDATE      = "-3: As for `UPDATE_ONLY`, but if the attribute does not exist, it will be created."
-  })
-
-  flags("XSF", { comment="Options for the Sort method." },
-    "DESC: Sort in descending order.",
-    "CHECK_SORT: Tells the algorithm to check for a 'sort' attribute in each analysed tag and if found, the algorithm will use that as the sort value instead of that indicated in the `Attrib` field.")
-
-  flags("XMF", { comment="Standard flags for the XML class." },
-    "WELL_FORMED: By default, the XML class will accept badly structured XML data.  This flag requires that XML statements must be well-formed (tags must balance) or an `ERR::BadData` error will be returned during processing.",
-    "INCLUDE_COMMENTS: By default, comments are stripped when parsing XML input unless this flag is specified.",
-    "STRIP_CONTENT: Strip all content from incoming XML data.",
-    "READABLE|INDENT: Indent the output of serialised XML to improve readability.",
-    "LOCK_REMOVE: Prevents removal of tags from the XML tree.  This specifically affects the RemoveTag and RemoveXPath methods.",
-    "STRIP_HEADERS: XML headers found in the source data will not be included in the parsed results.",
-    "NEW: Creates an empty XML object on initialisation - if the #Path field has been set, the source file will not be loaded.",
-    "NO_ESCAPE: Turns off escape code conversion.",
-    "INCLUDE_WHITESPACE: By default the XML parser will trim whitespace (such as return codes, spaces and tabs) found in the XML content between tags.  Setting this flag turns off this feature, allowing all whitespace to be included.",
-    "PARSE_HTML: Automatically parse HTML escape codes.",
-    "STRIP_CDATA: Do not echo `CDATA` sections.  Note that this option is used as a parameter, not an object flag.",
-    "LOG_ALL: Print extra log messages.",
-    "PARSE_ENTITY: Entity references in the DTD will be parsed automatically.",
-    "OMIT_TAGS: Prevents tags from being output when the XML is serialised (output content only).",
-    { INCLUDE_SIBLINGS = "0x80000000: Include siblings when building an XML string (#GetXMLString() only)" })
-
-  enum("XMI", { type="int", start=0, comment="Tag insertion options." },
-    "PREV|PREVIOUS: Insert as the previous tag of the target.",
-    "CHILD: Insert as the first child of the target.",
-    "NEXT: Insert as the next tag of the target.",
-    "CHILD_END: Insert as the last child of the target.",
-    "END: Private")
-
-  flags("XTF", { comment="Standard flags for XMLTag." },
-    "CDATA: Tag represents `CDATA`.",
-    "INSTRUCTION: Tag represents an instruction of the format `<?xml?>`.",
-    "NOTATION: Tag represents a notation of the format `<!XML>`.")
+  loadFile('constants.fdl')
 
   struct("XMLAttrib", { type="XMLAttrib" }, [[
    cpp(str) Name   # Name of the attribute
@@ -53,24 +16,28 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
    XMLAttrib() = default;
   ]])
 
-  struct("XMLTag", { type="XMLTag" }, [[
-    int ID         # Unique ID assigned to the tag on creation
-    int ParentID   # Unique ID of the parent tag
-    int LineNo     # Line number on which this tag was encountered
-    int(XTF) Flags # Optional flags
+  -- Note that if a tag specifies a namespace prefix then it will appear in the first XMLAttrib with the name
+
+  struct("XTag", { type="XTag" }, [[
+    int ID           # Globally unique ID assigned to the tag on creation.
+    int ParentID     # UID of the parent tag
+    int LineNo       # Line number on which this tag was encountered
+    int(XTF) Flags   # Optional flags
+    uint NamespaceID # Hash of namespace URI or 0 for no namespace
+    int Reserved     # Private
     cpp(array(struct(XMLAttrib))) Attribs # Array of attributes for this tag
-    cpp(array(struct(XMLTag))) Children   # Array of child tags
+    cpp(array(struct(XTag))) Children   # Array of child tags
   ]],
   [[
-   XMLTag(LONG pID, LONG pLine = 0) :
-      ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL)
+   XTag(int pID, int pLine = 0) :
+      ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL), NamespaceID(0), Reserved(0)
       { }
 
-   XMLTag(LONG pID, LONG pLine, pf::vector<XMLAttrib> pAttribs) :
-      ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL), Attribs(pAttribs)
+   XTag(int pID, int pLine, pf::vector<XMLAttrib> pAttribs) :
+      ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL), NamespaceID(0), Reserved(0), Attribs(pAttribs)
       { }
 
-   XMLTag() { XMLTag(0); }
+   XTag() { XTag(0); }
 
    inline CSTRING name() const { return Attribs[0].Name.c_str(); }
    inline bool hasContent() const { return (!Children.empty()) and (Children[0].Attribs[0].Name.empty()); }
@@ -92,16 +59,26 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
    }
 
    inline std::string getContent() const {
-      if (Children.empty()) return std::string("");
+      if (Children.empty()) return std::string();
 
-      std::ostringstream str;
+      std::string result;
+      // Pre-calculate total size to avoid reallocations
+      size_t total_size = 0;
       for (auto &scan : Children) {
-         if (scan.Attribs.empty()) continue; // Sanity check
-         if (scan.Attribs[0].isContent()) str << scan.Attribs[0].Value;
+         if (not scan.Attribs.empty() and scan.Attribs[0].isContent()) {
+            total_size += scan.Attribs[0].Value.size();
+         }
       }
-      return str.str();
+      result.reserve(total_size);
+
+      for (auto &scan : Children) {
+         if (not scan.Attribs.empty() and scan.Attribs[0].isContent()) {
+            result += scan.Attribs[0].Value;
+         }
+      }
+      return result;
    }
-   ]])
+  ]])
 
   methods("xml", "XML", {
     { id=1,  name="SetAttrib" },
@@ -113,32 +90,41 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
     { id=7,  name="MoveTags" },
     { id=8,  name="GetAttrib" },
     { id=9,  name="InsertXPath" },
-    { id=10, name="FindTag" },
+    { id=10, name="Search" },
     { id=11, name="Filter" },
-    { id=13, name="Count" },
+    { id=12, name="Evaluate" },
+    { id=13, name="ValidateDocument" },
     { id=14, name="InsertContent" },
     { id=15, name="RemoveXPath" },
-    { id=18, name="GetTag" }
+    { id=16, name="GetTag" },
+    { id=17, name="RegisterNamespace" },
+    { id=18, name="GetNamespaceURI" },
+    { id=19, name="SetTagNamespace" },
+    { id=20, name="ResolvePrefix" },
+    { id=21, name="GetEntity" },
+    { id=22, name="GetNotation" },
+    { id=23, name="LoadSchema" }
   })
 
-  class("XML", { src="xml.cpp", output="xml_def.c" }, [[
+  class("XML", { src="xml_class.cpp", output="xml_class_def.c" }, [[
     str Path         # Location of the XML data file
+    str DocType      # Root element name from DOCTYPE declaration
+    str PublicID     # Public identifier for external DTD
+    str SystemID     # System identifier for external DTD
     obj Source       # Alternative data source to specifying a `Path`
     int(XMF) Flags   # Optional user flags
-    int Start        # Starting cursor position (tag index) for some operations
     int Modified     # Modification timestamp
     error ParseError # Private
     int LineNo       # Private
   ]],
   nil,
   [[
-   typedef pf::vector<XMLTag> TAGS;
-   typedef pf::vector<XMLTag>::iterator CURSOR;
+   typedef pf::vector<XTag> TAGS;
    TAGS Tags;
 
-   template <class T> inline ERR insertStatement(LONG Index, XMI Where, T Statement, XMLTag **Result) {
-      LONG index_result;
-      XMLTag *tag_result;
+   template <class T> inline ERR insertStatement(int Index, XMI Where, T Statement, XTag **Result) {
+      int index_result;
+      XTag *tag_result;
       if (auto error = insertXML(Index, Where, to_cstring(Statement), &index_result); error IS ERR::Okay) {
          error = getTag(index_result, &tag_result);
          *Result = tag_result;
@@ -147,25 +133,122 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
       else return error;
    }
 
-   template <class T> inline ERR setAttribValue(LONG Tag, LONG Flags, T &&Attrib, LONG Value) {
+   template <class T> inline ERR setAttribValue(int Tag, int Flags, T &&Attrib, int Value) {
       auto attrib = to_cstring(Attrib);
       auto buffer = std::to_string(Value);
       return setAttrib(Tag, Flags, attrib, buffer.c_str());
    }
 
-   template <class T> inline ERR setAttribValue(LONG Tag, LONG Flags, T &&Attrib, DOUBLE Value) {
+   template <class T> inline ERR setAttribValue(int Tag, int Flags, T &&Attrib, double Value) {
       auto attrib = to_cstring(Attrib);
       auto buffer = std::to_string(Value);
       return setAttrib(Tag, Flags, attrib, buffer.c_str());
    }
   ]])
 
+  c_insert([[struct XPathValueSequence;
+struct XPathMapEntry;
+struct XPathMapStorage;
+struct XPathArrayStorage;]])
+
+  struct("XPathValue", { type="XPathValue" }, [[
+    int(XPVT) Type         # Identifies the type of value stored
+    double    NumberValue  # Defined if the type is Number or Boolean
+    cpp(str)  StringValue  # Defined if the type is String
+  ]],
+  [[
+   pf::vector<XTag *> node_set; // Defined if the type is NodeSet
+   std::optional<std::string> node_set_string_override; // If set, this string is returned for all nodes in the node set
+   std::vector<std::string> node_set_string_values; // If set, these strings are returned for all nodes in the node set
+   std::vector<const XMLAttrib *> node_set_attributes; // If set, these attributes are returned for all nodes in the node set
+   std::vector<std::shared_ptr<XPathValue>> node_set_composite_values; // Stores composite items for general sequences
+   bool preserve_node_order = false; // When true, node_set is already in the desired evaluation order
+   std::shared_ptr<XPathMapStorage> map_storage; // Defined if the type is Map
+   std::shared_ptr<XPathArrayStorage> array_storage; // Defined if the type is Array
+
+   XPathValue(XPVT pType) : Type(pType), NumberValue(0) { }
+
+   explicit XPathValue(const pf::vector<XTag *> &Nodes,
+      std::optional<std::string> NodeSetString = std::nullopt,
+      std::vector<std::string> NodeSetStrings = {},
+      std::vector<const XMLAttrib *> NodeSetAttributes = {})
+      : Type(XPVT::NodeSet),
+        node_set(Nodes),
+        node_set_string_override(std::move(NodeSetString)),
+        node_set_string_values(std::move(NodeSetStrings)),
+        node_set_attributes(std::move(NodeSetAttributes)),
+        preserve_node_order(false) {}
+
+   void reset();
+
+  ]])
+
+  c_insert([[struct XPathValueSequence
+{
+   std::vector<XPathValue> items;
+
+   inline void reset() { items.clear(); }
+   inline bool empty() const noexcept { return items.empty(); }
+   inline size_t size() const noexcept { return items.size(); }
+};
+
+struct XPathMapEntry
+{
+   std::string key;
+   XPathValueSequence value;
+
+   inline void reset() { value.reset(); }
+};
+
+struct XPathMapStorage
+{
+   std::vector<XPathMapEntry> entries;
+
+   inline void reset() {
+      for (auto &entry : entries) entry.reset();
+      entries.clear();
+   }
+
+   inline bool empty() const noexcept { return entries.empty(); }
+   inline size_t size() const noexcept { return entries.size(); }
+};
+
+struct XPathArrayStorage
+{
+   std::vector<XPathValueSequence> members;
+
+   void reset() {
+      for (auto &member : members) member.reset();
+      members.clear();
+   }
+
+   inline bool empty() const noexcept { return members.empty(); }
+   inline size_t size() const noexcept { return members.size(); }
+};
+
+inline void XPathValue::reset() {
+   Type = XPVT::Boolean;
+   NumberValue = 0.0;
+   StringValue.clear();
+   node_set.clear();
+   node_set_string_override.reset();
+   node_set_string_values.clear();
+   node_set_attributes.clear();
+   node_set_composite_values.clear();
+   preserve_node_order = false;
+   if (map_storage) map_storage->reset();
+   map_storage.reset();
+   if (array_storage) array_storage->reset();
+   array_storage.reset();
+}
+]])
+
   c_insert([[
 //********************************************************************************************************************
 
 namespace xml {
 
-inline void UpdateAttrib(XMLTag &Tag, const std::string Name, const std::string Value, bool CanCreate = false)
+inline void UpdateAttrib(XTag &Tag, const std::string Name, const std::string Value, bool CanCreate = false)
 {
    for (auto a = Tag.Attribs.begin(); a != Tag.Attribs.end(); a++) {
       if (pf::iequals(Name, a->Name)) {
@@ -178,15 +261,15 @@ inline void UpdateAttrib(XMLTag &Tag, const std::string Name, const std::string 
    if (CanCreate) Tag.Attribs.emplace_back(Name, Value);
 }
 
-inline void NewAttrib(XMLTag &Tag, const std::string Name, const std::string Value) {
+inline void NewAttrib(XTag &Tag, const std::string Name, const std::string Value) {
    Tag.Attribs.emplace_back(Name, Value);
 }
 
-inline void NewAttrib(XMLTag *Tag, const std::string Name, const std::string Value) {
+inline void NewAttrib(XTag *Tag, const std::string Name, const std::string Value) {
    Tag->Attribs.emplace_back(Name, Value);
 }
 
-inline std::string GetContent(const XMLTag &Tag) {
+inline std::string GetContent(const XTag &Tag) {
    std::string value;
    for (auto &scan : Tag.Children) {
       if (scan.Attribs.empty()) continue;
@@ -214,4 +297,9 @@ inline void ForEachAttrib(objXML::TAGS &Tags, std::function<void(XMLAttrib &)> &
 
 } // namespace
   ]])
+
+  functionNames("xml",
+     "XValueToNumber",
+     "XValueToString",
+     "XValueNodes")
 end)

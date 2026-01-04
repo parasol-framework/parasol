@@ -7,12 +7,12 @@ Documentation is available in the Parasol Wiki.
    require 'common'
    require 'gui'
 
-local FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
-local HEIGHT    = math.floor(FONT_MAX_HEIGHT * 1.25) + 1
-local ICON_SIZE = HEIGHT * 0.56
-local GAP       = HEIGHT * 0.35
+FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
+HEIGHT    = math.floor(FONT_MAX_HEIGHT * 1.25) + 1
+ICON_SIZE = HEIGHT * 0.56
+GAP       = HEIGHT * 0.35
 
-local function iconTheme()
+function iconTheme()
    if (gui.rgbValue(gui.strToRGB(gui.style.page.text)) > 127) then
       return 'pearl'
    else
@@ -20,8 +20,8 @@ local function iconTheme()
    end
 end
 
-local function toggleState(self)
-   if self.state == 1 then
+function toggleState(self)
+   if self.state is 1 then
       self.state = 0
       self.iconRender.opacity = 0.25
    else
@@ -33,10 +33,10 @@ local function toggleState(self)
 end
 
 gui.checkbox = function(Options)
-   local self = { -- Public variables
-      events         = nz(Options.events, { }),
+   self = { -- Public variables
+      events         = Options.events ?? { },
       parentViewport = Options.target,
-      state          = nz(Options.state, 0),
+      state          = Options.state ?? 0,
       text           = nil, -- A VectorText that represents the string
       viewport       = nil, -- The checkbox's primary viewport
    }
@@ -48,7 +48,7 @@ gui.checkbox = function(Options)
       self.viewport.acDisable()
       self.text.opacity = 0.5
       self.bkgd.fill = gui.style.page.bkgd
-      if self.events.disable then self.events.disable(self) end
+      self.events?.disable(self)
       self.viewport.acDraw()
    end
 
@@ -57,15 +57,15 @@ gui.checkbox = function(Options)
       self.viewport.acDisable()
       self.text.opacity = 1.0
       self.bkgd.fill = gui.style.page.bkgd
-      if self.events.enable then self.events.enable(self) end
+      self.events?.enable(self)
       self.viewport.acDraw()
    end
 
    -- Main entry point --
 
-   if not Options.target then error('A target viewport is required.') end
+   assert(Options.target, 'A target viewport is required.')
 
-   local vps = { -- Viewport settings
+   vps = { -- Viewport settings
       x        = Options.x,
       y        = Options.y,
       width    = Options.width,
@@ -75,7 +75,7 @@ gui.checkbox = function(Options)
       overflow = VOF_HIDDEN
    }
 
-   local calc_width = false
+   calc_width = false
    if not vps.x and not vps.xOffset then vps.x = 0 end
    if not vps.y and not vps.yOffset then vps.y = 0 end
    if not vps.width and not (vps.xOffset and vps.x) then
@@ -97,7 +97,7 @@ gui.checkbox = function(Options)
       strokeWidth = gui.style.page.strokeWidth,
    })
 
-   local chk_icon = gui.createIcon(self.viewport.scene, 'items/checkmark', ICON_SIZE, iconTheme())
+   chk_icon = gui.createIcon(self.viewport.scene, 'items/checkmark', ICON_SIZE, iconTheme())
 
    self.iconRender = self.viewport.new('VectorViewport', {
       x      = (HEIGHT - ICON_SIZE) * 0.5,
@@ -106,11 +106,7 @@ gui.checkbox = function(Options)
       height = ICON_SIZE,
       fill   = chk_icon.fill,
       opacity = (function()
-         if self.state == 1 then
-            return 1.0
-         else
-            return 0.25
-         end
+         return self.state is 1 ? 1.0 :> 0.25
       end)()
    })
 
@@ -129,7 +125,7 @@ gui.checkbox = function(Options)
       self.viewport.width = HEIGHT + GAP + self.text.textWidth
    end
 
-   if Options.align == 'right' then
+   if Options.align is 'right' then
       self.text.x = 0
       self.bkgd.x = self.viewport.width - HEIGHT + (gui.style.page.strokeWidth * 0.5)
       self.iconRender.x = self.viewport.width - HEIGHT + ((HEIGHT - ICON_SIZE) * 0.5)
@@ -137,16 +133,16 @@ gui.checkbox = function(Options)
       self.text.x = (GAP * 2) + ICON_SIZE
    end
 
-   self.viewport.mtSubscribeFeedback(bit.bor(FM_HAS_FOCUS, FM_CHILD_HAS_FOCUS, FM_LOST_FOCUS), function(Viewport, Event)
-      if (Event == FM_LOST_FOCUS) then
+   self.viewport.mtSubscribeFeedback(FM_HAS_FOCUS|FM_CHILD_HAS_FOCUS|FM_LOST_FOCUS, function(Viewport, Event)
+      if Event is FM_LOST_FOCUS then
          self.bkgd.stroke = gui.style.page.stroke
-         if self.events.lostFocus then self.events.lostFocus(self) end
+         self.events?.lostFocus(self)
       else
          if self.disabled then
             self.bkgd.stroke = gui.style.page.stroke
          else
             self.bkgd.stroke = gui.style.page.strokeFocus
-            if self.events.focus then self.events.focus(self) end
+            self.events?.focus(self)
          end
       end
 
@@ -154,27 +150,27 @@ gui.checkbox = function(Options)
    end)
 
    self.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Value, Unicode)
-      if bit.band(Qualifiers, KQ_PRESSED) == 0 then return end
+      if (Qualifiers & KQ_PRESSED) is 0 then return end
 
-      if (Value == KEY_ENTER) or (Value == KEY_SPACE) or (Value == KEY_NP_ENTER) then
+      if (Value is KEY_ENTER) or (Value is KEY_SPACE) or (Value is KEY_NP_ENTER) then
          toggleState(self)
       end
    end)
 
    self.viewport.mtSubscribeInput(JTYPE_BUTTON, function(Viewport, Msg)
       repeat
-         if Msg.type == JET_LMB then
-            if (Msg.value > 0) then
+         if Msg.type is JET_LMB then
+            if Msg.value > 0 then
                toggleState(self)
             end
          end
          Msg = Msg.next
-      until Msg == nil
+      until not Msg
 
       Viewport.acDraw()
    end)
 
-   if self.events.show then self.events.show(self) end
+   self.events?.show(self)
 
    return self
 end

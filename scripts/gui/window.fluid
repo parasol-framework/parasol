@@ -5,33 +5,28 @@ Documentation is available in the Parasol Wiki.
    require 'common'
    require 'gui'
    include 'display'
+   include 'vector'
 
-   if not mGfx then mGfx = mod.load('display') end
+   global mGfx ?= mod.load('display')
 
-local DEFAULT_WIDTH  = 600
-local DEFAULT_HEIGHT = 400
+DEFAULT_WIDTH  = 600
+DEFAULT_HEIGHT = 400
 
-local lStyle = (function()
-   if (mSys.AnalysePath('style:window.fluid') == ERR_Okay) then
+lStyle = (function()
+   if mSys.AnalysePath('style:window.fluid') is ERR_Okay then
       return loadFile('style:window.fluid')
    else
       return loadFile('styles:default/window.fluid')
    end
 end)()
 
-local function hosted(self)
-   if self.hosted == nil then
-      if self.surface and self.surface.parent then
-         self.hosted = false
-      else
-         self.hosted = true
-      end
-   end
+function hosted(self)
+   self.hosted ?= self.surface and self.surface.parent ? false :> true
    return self.hosted
 end
 
-local function iconTheme()
-   if (gui.rgbValue(gui.strToRGB(gui.style.widget.text)) > 127) then
+iconTheme = thunk():str
+   if gui.rgbValue(gui.strToRGB(gui.style.widget.text)) > 127 then
       return 'pearl'
    else
       return 'default' -- The default theme is dark
@@ -39,20 +34,20 @@ local function iconTheme()
 end
 
 gui.window = function(Options)
-   local self = { -- Public variables
-      events       = nz(Options.events, { }),
-      aspectRatio  = nz(Options.aspectRatio, false),
-      minimiseEnabled = nz(Options.minimise, true),
-      maximiseEnabled = nz(Options.maximise, true),
-      moveToBackEnabled = nz(Options.moveToBack, true),
-      invertedPalette = Options.invertPalette,
-      closeEnabled = nz(Options.close, true),
-      focus        = nz(Options.focus, true),
-      quit         = nz(Options.quit, true),
-      title        = nz(Options.title, 'Window'),
-      icon         = nz(Options.icon, 'devices/monitor'),
+   self = { -- Public variables
+      events       = Options.events ?? { },
+      aspectRatio  = Options.aspectRatio??,
+      minimiseEnabled   = Options.minimise??,
+      maximiseEnabled   = Options.maximise??,
+      moveToBackEnabled = Options.moveToBack??,
+      invertedPalette   = Options.invertPalette,
+      closeEnabled = Options.close??,
+      focus        = Options.focus??,
+      quit         = Options.quit is false ? nil :> true, -- Quit defaults to true, user can explicitly set false to disable
+      title        = Options.title ?? 'Window',
+      icon         = Options.icon ?? 'devices/monitor',
       restore      = nil, -- { x, y, width, height }
-      orientation  = nz(Options.orientation, 'landscape'),
+      orientation  = Options.orientation ?? 'landscape',
       client       = { }, -- Client margins
       menubar      = Options.menubar, -- Menubar configuration
       margins      = { left, right, top, bottom },
@@ -63,9 +58,9 @@ gui.window = function(Options)
 
    self.clientViewport = function(self, Options)
       if self._clientViewport then return self._clientViewport end
-      if not Options then Options = { } end
+      Options ?= { }
 
-      if not Options.aspectRatio then Options.aspectRatio = 'XMin|YMin|Meet' end
+      Options.aspectRatio ?= 'XMin|YMin|Meet'
 
       if hosted(self) then
          Options.x = 0
@@ -137,19 +132,19 @@ gui.window = function(Options)
    -- border of the window.
 
    self.resize = function(self, X, Y, Width, Height)
-      if not Width then Width = self.surface.width end
-      if not Height then Height = self.surface.height end
+      Width ?= self.surface.width
+      Height ?= self.surface.height
 
       if hosted(self) then
-         if not X then X = self.surface.x end
-         if not Y then Y = self.surface.y end
+         X ?= self.surface.x
+         Y ?= self.surface.y
          self.surface.acRedimension(X + self.client.left, Y + self.client.top, 0,
             Width - self.client.left - self.client.right,
             Height - self.client.top - self.client.bottom, 0)
       else
-         if (X) or (Y) then
-            if not X then X = self.surface.x end
-            if not Y then Y = self.surface.y end
+         if X or Y then
+            X ?= self.surface.x
+            Y ?= self.surface.y
             self.surface.acRedimension(X, Y, 0, Width, Height, 0)
          else
             self.surface.acResize(Width, Height, 0)
@@ -173,8 +168,8 @@ gui.window = function(Options)
    self.applySmartLimits = function(self)
       self.smartLimitsEnabled = true
       if not hosted(self) then
-         local err, info = mGfx.GetSurfaceInfo(self.surface.parent)
-         if (err == ERR_Okay) then
+         err, info = mGfx.GetSurfaceInfo(self.surface.parent)
+         if err is ERR_Okay then
             self.surface.topLimit    = 0
             self.surface.bottomLimit = -self.surface.height + self.surface.topMargin
             self.surface.leftLimit   = -(self.surface.width * 0.75)
@@ -186,10 +181,8 @@ gui.window = function(Options)
    -- Run the minimise procedure for the window (environment dependent).
 
    self.minimise = function(self)
-      if (self.MinimiseEnabled) then
-         if self.events and self.events.minimise then
-            self.events.minimise(self)
-         end
+      if self.MinimiseEnabled then
+         self?.events?.minimise(self)
       end
    end
 
@@ -210,25 +203,25 @@ gui.window = function(Options)
       end
 
       if hosted(self) then -- Send the maximisation request to the display
-         local display = obj.find(self.surface.display)
-         display.flags = bit.bor(display.flags, SCR_MAXIMISE)
+         display = obj.find(self.surface.display)
+         display.flags = display.flags | SCR_MAXIMISE
          return
       end
 --[[
-      local margins = { }
-      local parent = self.surface.parent
+      margins = { }
+      parent = self.surface.parent
 
       if ((margins.Left = parent.LeftMargin) < 0) margins.Left = 0
       if ((margins.Top = parent.TopMargin) < 0) margins.Top = 0
       margins.Right  = parent.Width - parent.RightMargin
       margins.Bottom = parent.Height - parent.BottomMargin
 
-      local err, vx, vy, _, _, vwidth, vheight = mGfx.GetVisibleArea(self.surface.parent)
+      err, vx, vy, _, _, vwidth, vheight = mGfx.GetVisibleArea(self.surface.parent)
 
-      local x = vx
-      local y = vy
-      local x2 = vx + vwidth
-      local y2 = vy + vheight
+      x = vx
+      y = vy
+      x2 = vx + vwidth
+      y2 = vy + vheight
 
       if (margins.left > x)    then x = margins.left end
       if (margins.top > y)     then y = margins.top end
@@ -237,16 +230,16 @@ gui.window = function(Options)
 
       if (Toggle) then
          if ((self.restore.width) and (self.restore.height)) then
-            if ((self.surface.x == x) and (self.surface.y == y) and
-                (self.surface.width == (x2-x)) and (self.surface.height == (y2-y))) then
+            if ((self.surface.x is x) and (self.surface.y is y) and
+                (self.surface.width is (x2-x)) and (self.surface.height is (y2-y))) then
                self.surface.acRedimension(self.restore.x, self.restore.y, 0.0, self.restore.width, self.restore.height, 0.0)
                return
             end
          end
       end
 
-      if (((x2-x) == self.surface.width) and ((y2-y) == self.surface.height)) then
-         self.surface.acMoveToPoint(x, y, 0.0, bit.bor(MTF_X, MTF_Y))
+      if (((x2-x) is self.surface.width) and ((y2-y) is self.surface.height)) then
+         self.surface.acMoveToPoint(x, y, 0.0, MTF_X|MTF_Y)
       else
          self.restore = {
             x = self.surface.x
@@ -270,51 +263,51 @@ gui.window = function(Options)
 
    self.parentSize = function(self)
       if hosted(self) then
-         local err, info = mGfx.getDisplayInfo(0)
+         err, info = mGfx.getDisplayInfo(0)
          return info.width, info.height
       else
-         local x, y, width, height = mGfx.getSurfaceCoords(self.surface.parent)
+         x, y, width, height = mGfx.getSurfaceCoords(self.surface.parent)
          return width, height
       end
    end
 
    self.show = function(self, Center)
       if Options.center or Center then -- Options.center is obsolete
-         local x, y = (function()
+         x, y = (function()
             if self.surface.popOver then
-               local err, _, _, x, y, powidth, poheight = mGfx.GetSurfaceCoords(self.surface.popOver)
-               if err == ERR_Okay then
-                  x = x + ((powidth - self.surface.width) / 2)
-                  y = y + ((poheight - self.surface.height) / 2)
-                  local err, _, _, px, py, _, _ = mGfx.GetSurfaceCoords(self.surface.parent)
-                  if err == ERR_Okay then
+               err, x, y, powidth, poheight = [*__*]mGfx.GetSurfaceCoords(self.surface.popOver)
+               if err is ERR_Okay then
+                  x += ((powidth - self.surface.width) / 2)
+                  y += ((poheight - self.surface.height) / 2)
+                  err, px, py = [*__**__]mGfx.GetSurfaceCoords(self.surface.parent)
+                  if err is ERR_Okay then
                      return x - px, y - py
                   end
                end
             elseif self.surface.parent then
-               local err, vx, vy, _, _, vwidth, vheight = mGfx.GetVisibleArea(self.surface.parent)
-               if (err == ERR_Okay) then
+               err, vx, vy, vwidth, vheight = [***__**]mGfx.GetVisibleArea(self.surface.parent)
+               if err is ERR_Okay then
                   x = vx + ((vwidth - self.surface.width) / 2)
                   y = vy + ((vheight - self.surface.height) / 2)
                   --check_overlap(self, x, y, 0, 0)
                   return x, y
                end
             else
-               local err, display = mGfx.GetDisplayInfo(0)
-               if err == ERR_Okay then
+               err, display = mGfx.GetDisplayInfo(0)
+               if err is ERR_Okay then
                   return (display.width - self.surface.width) / 2, (display.height - self.surface.height) / 2
                end
             end
          end)()
 
          if x and y then
-            self.surface.acMoveToPoint(x, y, 0, bit.bor(MTF_X, MTF_Y))
+            self.surface.acMoveToPoint(x, y, 0, MTF_X|MTF_Y)
          end
       end
 
       self.visible = true
       self.surface.acShow()
-      if bit.band(self.surface.flags, RNF_HAS_FOCUS) != 0 then
+      if (self.surface.flags & RNF_HAS_FOCUS)?? then
          self.surface.acFocus()
       end
 
@@ -338,35 +331,35 @@ gui.window = function(Options)
 
    self._desktop = obj.find('desktop')
 
-   local surface_opts = {
+   surface_opts = {
       name      = 'winsurface',
       parent    = self._desktop,
-      width     = nz(Options.width, DEFAULT_WIDTH),
-      height    = nz(Options.height, DEFAULT_HEIGHT),
+      width     = Options.width ?? DEFAULT_WIDTH,
+      height    = Options.height ?? DEFAULT_HEIGHT,
       type      = RT_ROOT,
-      modal     = nz(Options.modal, false),
+      modal     = Options.modal ?? false,
       popOver   = Options.popOver,
       flags = (function()
          local flags = 0
 
          if not hosted(self) then
             if Options.enableVideo then -- Allow video surface buffers when in full screen mode
-               flags = bit.bor(flags, RNF_VIDEO)
+               flags = flags | RNF_VIDEO
             end
 
-            flags = bit.bor(flags, RNF_PERVASIVE_COPY)
+            flags = flags | RNF_PERVASIVE_COPY
          end
 
          if Options.aspectRatio then
-            flags = bit.bor(flags, RNF_ASPECT_RATIO)
+            flags = flags | RNF_ASPECT_RATIO
          end
 
          return flags
       end)()
    }
 
-   surface_opts.minWidth  = nz(Options.minWidth, 20)
-   surface_opts.minHeight = nz(Options.minHeight, 10)
+   surface_opts.minWidth  = Options.minWidth ?? 20
+   surface_opts.minHeight = Options.minHeight ?? 10
 
    if Options.maxWidth  then surface_opts.maxWidth  = Options.maxWidth end
    if Options.maxHeight then surface_opts.maxHeight = Options.maxHeight end
@@ -374,22 +367,13 @@ gui.window = function(Options)
    self.surface = obj.new('surface', surface_opts)
 
    if Options.enableControllers then
-      self.surface.display.flags = bit.bor(self.surface.display.flags, SCR_GRAB_CONTROLLERS)
+      self.surface.display.flags = self.surface.display.flags | SCR_GRAB_CONTROLLERS
    end
 
-   if Options.x then
-      self.surface.x = Options.x
-   else
-      self.surface.x = 20
-   end
+   self.surface.x = Options.x ?? 20
+   self.surface.y = Options.y ?? 20
 
-   if Options.y then
-      self.surface.y = Options.y
-   else
-      self.surface.y = 20
-   end
-
-   if (self.surface.minWidth == self.surface.maxWidth) and (self.surface.minHeight == self.surface.maxHeight) then
+   if (self.surface.minWidth is self.surface.maxWidth) and (self.surface.minHeight is self.surface.maxHeight) then
       self.maximiseEnabled = false
    end
 
@@ -439,7 +423,7 @@ gui.window = function(Options)
          height = '100%'
       })
    else
-      if mGfx.GetDisplayType() == DT_NATIVE then
+      if mGfx.GetDisplayType() is DT_NATIVE then
          -- Full-screen mode (for video playback or gaming), do nothing.
       else
          lStyle.initialise(self)
@@ -451,39 +435,30 @@ gui.window = function(Options)
    self:setTitle(self.title)
 
    if Options.insideWidth then
-      if hosted(self) then
-         self.surface.width = Options.insideWidth
-      else
-         self.surface.width = Options.insideWidth + self.client.left + self.client.right
-      end
+      self.surface.width = hosted(self) ? Options.insideWidth :> Options.insideWidth + self.client.left + self.client.right
    end
 
    if Options.insideHeight then
-      if hosted(self) then
-         self.surface.height = Options.insideHeight
-      else
-         self.surface.height = Options.insideHeight + self.client.top + self.client.bottom
-      end
+      self.surface.height = hosted(self) ? Options.insideHeight :> Options.insideHeight + self.client.top + self.client.bottom
    end
 
    if self.surface.popOver != 0 then
       -- If a pop-over surface is stick-to-front, we also need that status to avoid being behind it.
 
-      local info = struct.new('SurfaceInfo')
-      if (mGfx.GetSurfaceInfo(self.surface.popOver, info) == ERR_Okay) then
-         if (bit.band(info.flags, RNF_STICK_TO_FRONT) != 0) then
-            self.surface.flags = bit.bor(self.surface.flags, RNF_STICK_TO_FRONT)
+      info = struct.new('SurfaceInfo')
+      if mGfx.GetSurfaceInfo(self.surface.popOver, info) is ERR_Okay then
+         if (info.flags & RNF_STICK_TO_FRONT)?? then
+            self.surface.flags = self.surface.flags | RNF_STICK_TO_FRONT
          end
       end
    end
 
-   self.viewport.mtSubscribeFeedback(bit.bor(FM_HAS_FOCUS, FM_CHILD_HAS_FOCUS, FM_LOST_FOCUS), function(Viewport, Event)
-      if (Event == FM_LOST_FOCUS) then
-         if self.events and self.events.lostFocus then self.events.lostFocus(self) end
+   self.viewport.mtSubscribeFeedback(FM_HAS_FOCUS | FM_CHILD_HAS_FOCUS | FM_LOST_FOCUS, function(Viewport, Event)
+      if Event is FM_LOST_FOCUS then
+         self.events?.lostFocus(self)
       else
-         if self.disabled then
-         else
-            if self.events and self.events.focus then self.events.focus(self) end
+         if not self.disabled then
+            self.events?.focus(self)
          end
       end
 
@@ -491,10 +466,10 @@ gui.window = function(Options)
    end)
 
    mGfx.windowHook(self.surface.id, WH_CLOSE, function()
-      if not self.closeEnabled then return end
+      self.closeEnabled ?? return
 
       if self.events and self.events.close then
-         local result = self.events.close(self)
+         result = self.events.close(self)
          if result != nil then -- If client returns something, the window stays open
             msg('Client requested that the window stay open.')
             raise(ERR_Cancelled)
@@ -504,7 +479,7 @@ gui.window = function(Options)
 
    self.surface.subscribe('focus', function(Surface, Args, self)
       Surface.acMoveToFront()
-      if self.visible and bit.band(Surface.flags, RNF_VISIBLE) == 0 then
+      if self.visible and (Surface.flags & RNF_VISIBLE) is 0 then
          Surface.acShow()
       end
 
@@ -526,8 +501,8 @@ gui.window = function(Options)
 
    -- Return an interface for the window so that garbage collection is correctly managed
 
-   local proxy = newproxy(true)
-   local m = getmetatable(proxy)
+   proxy = newproxy(true)
+   m = getmetatable(proxy)
 
    m.__index = function(t, k) return self[k] end
    m.__newindex = function(t, k, v) self[k] = v end

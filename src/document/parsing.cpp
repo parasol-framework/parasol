@@ -23,11 +23,11 @@ struct parser {
 
    RSTREAM *m_stream;                 // Generated stream content
    std::unique_ptr<RSTREAM> m_stream_alloc;
-   objXML *m_inject_xml = NULL;
-   objXML::TAGS *m_inject_tag = NULL, *m_header_tag = NULL, *m_footer_tag = NULL, *m_body_tag = NULL;
-   objTime *m_time = NULL;
+   objXML *m_inject_xml = nullptr;
+   objXML::TAGS *m_inject_tag = nullptr, *m_header_tag = nullptr, *m_footer_tag = nullptr, *m_body_tag = nullptr;
+   objTime *m_time = nullptr;
    int  m_loop_index  = 0;
-   UWORD m_paragraph_depth = 0;     // Incremented when inside <p> tags
+   uint16_t m_paragraph_depth = 0;     // Incremented when inside <p> tags
    char  m_in_template = 0;
    bool  m_strip_feeds = false;
    bool  m_check_else  = false;
@@ -40,7 +40,7 @@ struct parser {
    std::stack<bc_list *> m_list_stack;
    std::stack<process_table> m_table_stack;
 
-   parser(extDocument *pSelf, RSTREAM *pStream = NULL) : Self(pSelf) {
+   parser(extDocument *pSelf, RSTREAM *pStream = nullptr) : Self(pSelf) {
       if (pStream) {
          m_stream = pStream;
          m_index = stream_char(pStream->size());
@@ -52,7 +52,7 @@ struct parser {
       }
    }
 
-   parser(extDocument *pSelf, objXML *pXML, RSTREAM *pStream = NULL) : Self(pSelf), m_xml(pXML) {
+   parser(extDocument *pSelf, objXML *pXML, RSTREAM *pStream = nullptr) : Self(pSelf), m_xml(pXML) {
       if (pStream) {
          m_stream = pStream;
          m_index = stream_char(pStream->size());
@@ -64,13 +64,13 @@ struct parser {
       }
    }
 
-   inline ERR  calc(const std::string &, DOUBLE *, std::string &);
-   inline TRF  parse_tag(XMLTag &, IPF &);
+   inline ERR  calc(const std::string &, double *, std::string &);
+   inline TRF  parse_tag(XTag &, IPF &);
    inline TRF  parse_tags(objXML::TAGS &, IPF = IPF::NIL);
    inline TRF  parse_tags_with_style(objXML::TAGS &, bc_font &, IPF = IPF::NIL);
    inline TRF  parse_tags_with_embedded_style(objXML::TAGS &, bc_font &, IPF = IPF::NIL);
    inline void process_page(objXML *pXML);
-   inline void tag_xml_content(XMLTag &, PXF);
+   inline void tag_xml_content(XTag &, PXF);
    inline void translate_attrib_args(pf::vector<XMLAttrib> &);
    inline void translate_args(const std::string &, std::string &);
    inline void translate_calc(std::string &, size_t);
@@ -87,40 +87,40 @@ struct parser {
       return old;
    }
 
-   inline void tag_advance(XMLTag &);
-   inline void tag_body(XMLTag &);
-   inline void tag_button(XMLTag &);
-   inline void tag_call(XMLTag &);
-   inline void tag_cell(XMLTag &);
-   inline void tag_checkbox(XMLTag &);
-   inline void tag_combobox(XMLTag &);
-   inline void tag_debug(XMLTag &);
-   inline void tag_div(XMLTag &);
-   inline void tag_editdef(XMLTag &);
-   inline void tag_font(XMLTag &);
+   inline void tag_advance(XTag &);
+   inline void tag_body(XTag &);
+   inline void tag_button(XTag &);
+   inline void tag_call(XTag &);
+   inline void tag_cell(XTag &);
+   inline void tag_checkbox(XTag &);
+   inline void tag_combobox(XTag &);
+   inline void tag_debug(XTag &);
+   inline void tag_div(XTag &);
+   inline void tag_editdef(XTag &);
+   inline void tag_font(XTag &);
    inline void tag_font_style(objXML::TAGS &, FSO, std::string_view);
-   inline void tag_head(XMLTag &);
-   inline void tag_image(XMLTag &);
-   inline void tag_include(XMLTag &);
-   inline void tag_index(XMLTag &);
-   inline void tag_input(XMLTag &);
-   inline void tag_li(XMLTag &);
-   inline void tag_link(XMLTag &);
-   inline void tag_list(XMLTag &);
-   inline void tag_page(XMLTag &);
-   inline void tag_paragraph(XMLTag &);
-   inline void tag_parse(XMLTag &);
+   inline void tag_head(XTag &);
+   inline void tag_image(XTag &);
+   inline void tag_include(XTag &);
+   inline void tag_index(XTag &);
+   inline void tag_input(XTag &);
+   inline void tag_li(XTag &);
+   inline void tag_link(XTag &);
+   inline void tag_list(XTag &);
+   inline void tag_page(XTag &);
+   inline void tag_paragraph(XTag &);
+   inline void tag_parse(XTag &);
    inline void tag_pre(objXML::TAGS &);
-   inline void tag_print(XMLTag &);
-   inline void tag_repeat(XMLTag &);
-   inline void tag_row(XMLTag &);
-   inline void tag_script(XMLTag &);
-   inline void tag_svg(XMLTag &);
-   inline void tag_table(XMLTag &);
-   inline void tag_template(XMLTag &);
-   inline void tag_trigger(XMLTag &);
-   inline void tag_use(XMLTag &);
-   inline void tag_object(XMLTag &);
+   inline void tag_print(XTag &);
+   inline void tag_repeat(XTag &);
+   inline void tag_row(XTag &);
+   inline void tag_script(XTag &);
+   inline void tag_svg(XTag &);
+   inline void tag_table(XTag &);
+   inline void tag_template(XTag &);
+   inline void tag_trigger(XTag &);
+   inline void tag_use(XTag &);
+   inline void tag_object(XTag &);
    inline bool check_para_attrib(const XMLAttrib &, bc_paragraph *, bc_font &);
    inline bool check_font_attrib(const XMLAttrib &, bc_font &);
 
@@ -170,7 +170,7 @@ void parser::process_page(objXML *pXML)
    // Look for the first page that matches the requested page name (if a name is specified).  Pages can be located anywhere
    // within the XML source - they don't have to be at the root.
 
-   XMLTag *page = NULL;
+   XTag *page = nullptr;
    for (auto &scan : m_xml->Tags) {
       if (!iequals("page", scan.Attribs[0].Name)) continue;
 
@@ -700,9 +700,9 @@ void parser::translate_reserved(std::string &Output, size_t pos, bool &time_quer
 
 //********************************************************************************************************************
 
-static BYTE datatype(std::string_view String)
+static int8_t datatype(std::string_view String)
 {
-   int i = 0;
+   size_t i = 0;
    while ((i < String.size()) and (String[i]) and (String[i] <= 0x20)) i++; // Skip white-space
 
    if ((i < String.size()) and (String[i] IS '0') and (i+1 < String.size()) and (String[i+1] IS 'x')) {
@@ -743,7 +743,7 @@ static bool eval_condition(const std::string &String)
       { "<=", COND_LESS_EQUAL },
       { ">",  COND_GREATER_THAN },
       { ">=", COND_GREATER_EQUAL },
-      { NULL, 0 }
+      { nullptr, 0 }
    };
 
    int start = 0;
@@ -805,8 +805,8 @@ static bool eval_condition(const std::string &String)
          auto test_type = datatype(test);
 
          if (((test_type IS 'i') or (test_type IS 'f')) and ((cmp_type IS 'i') or (cmp_type IS 'f'))) {
-            auto cmp_float  = strtod(String.c_str()+i, NULL);
-            auto test_float = strtod(test.c_str(), NULL);
+            auto cmp_float  = strtod(String.c_str()+i, nullptr);
+            auto test_float = strtod(test.c_str(), nullptr);
             switch (condition) {
                case COND_NOT_EQUAL:     if (test_float != cmp_float) truth = true; break;
                case COND_EQUAL:         if (test_float IS cmp_float) truth = true; break;
@@ -836,7 +836,7 @@ static bool eval_condition(const std::string &String)
 //********************************************************************************************************************
 // Used by if, elseif, while statements to check the satisfaction of conditions.
 
-static bool check_tag_conditions(extDocument *Self, XMLTag &Tag)
+static bool check_tag_conditions(extDocument *Self, XTag &Tag)
 {
    pf::Log log("eval");
 
@@ -883,7 +883,7 @@ static bool check_tag_conditions(extDocument *Self, XMLTag &Tag)
 // Intended for use from parse_tags(), this is the principal function for the parsing of XML tags.  Insertion into
 // the stream will occur at Index, which is updated on completion.
 
-TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
+TRF parser::parse_tag(XTag &Tag, IPF &Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -892,7 +892,7 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
       return TRF::NIL;
    }
 
-   XMLTag *object_template = NULL;
+   XTag *object_template = nullptr;
 
    auto saved_attribs = Tag.Attribs;
    translate_attrib_args(Tag.Attribs);
@@ -900,7 +900,7 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
    auto tagname = Tag.Attribs[0].Name;
    if (tagname.starts_with('$')) tagname.erase(0, 1);
    auto tag_hash = strihash(tagname);
-   object_template = NULL;
+   object_template = nullptr;
 
    auto result = TRF::NIL;
    if (Tag.isContent()) {
@@ -929,7 +929,7 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
       if (Self->RefreshTemplates) {
          Self->TemplateIndex.clear();
 
-         for (XMLTag &scan : Self->Templates->Tags) {
+         for (XTag &scan : Self->Templates->Tags) {
             for (unsigned i=0; i < scan.Attribs.size(); i++) {
                if (iequals("name", scan.Attribs[i].Name)) {
                   Self->TemplateIndex[strihash(scan.Attribs[i].Value)] = &scan;
@@ -1419,7 +1419,7 @@ void parser::trim_preformat(extDocument *Self)
 //********************************************************************************************************************
 // Advances the cursor.  It is only possible to advance positively on either axis.
 
-void parser::tag_advance(XMLTag &Tag)
+void parser::tag_advance(XTag &Tag)
 {
    auto &adv = m_stream->emplace<bc_advance>(m_index);
 
@@ -1438,7 +1438,7 @@ void parser::tag_advance(XMLTag &Tag)
 // NB: If a <body> tag contains any children, it is treated as a template and must contain an <inject/> tag so that
 // the XML insertion point is known.
 
-void parser::tag_body(XMLTag &Tag)
+void parser::tag_body(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1572,7 +1572,7 @@ void parser::tag_body(XMLTag &Tag)
 //
 // <call function="[script].function" arg1="" arg2="" _global=""/>
 
-void parser::tag_call(XMLTag &Tag)
+void parser::tag_call(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objScript *script = Self->DefaultScript;
@@ -1624,7 +1624,7 @@ void parser::tag_call(XMLTag &Tag)
 
          script->exec(function.c_str(), args.data(), args.size());
       }
-      else script->exec(function.c_str(), NULL, 0);
+      else script->exec(function.c_str(), nullptr, 0);
    }
 
    // Check for a result and print it
@@ -1678,7 +1678,7 @@ const char glButtonSVG[] = R"-(
   <rect rx="7.5%" ry="7.5%" width="95%" height="93%" x="2.5%" y="2.5%" fill="url(#shading)"/>
 </svg>)-";
 
-void parser::tag_button(XMLTag &Tag)
+void parser::tag_button(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1775,7 +1775,7 @@ void parser::tag_button(XMLTag &Tag)
 
 //********************************************************************************************************************
 
-void parser::tag_checkbox(XMLTag &Tag)
+void parser::tag_checkbox(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1870,7 +1870,7 @@ void parser::tag_checkbox(XMLTag &Tag)
 
 //********************************************************************************************************************
 
-void parser::tag_combobox(XMLTag &Tag)
+void parser::tag_combobox(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1989,7 +1989,7 @@ void parser::tag_combobox(XMLTag &Tag)
 
 //********************************************************************************************************************
 
-void parser::tag_input(XMLTag &Tag)
+void parser::tag_input(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2032,7 +2032,7 @@ void parser::tag_input(XMLTag &Tag)
 
 //********************************************************************************************************************
 
-void parser::tag_debug(XMLTag &Tag)
+void parser::tag_debug(XTag &Tag)
 {
    pf::Log log("DocMsg");
    for (int i=1; i < std::ssize(Tag.Attribs); i++) {
@@ -2048,7 +2048,7 @@ void parser::tag_debug(XMLTag &Tag)
 // This tag can only be used ONCE per document.  Potentially we could improve this by appending to the existing
 // SVG object via data feeds.
 
-void parser::tag_svg(XMLTag &Tag)
+void parser::tag_svg(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2089,7 +2089,7 @@ void parser::tag_svg(XMLTag &Tag)
 // If more sophisticated inline or float embedding is required, the <image> tag is probably more applicable to the
 // client.
 
-void parser::tag_use(XMLTag &Tag)
+void parser::tag_use(XTag &Tag)
 {
    std::string id;
    for (int i = 1; i < std::ssize(Tag.Attribs); i++) {
@@ -2108,7 +2108,7 @@ void parser::tag_use(XMLTag &Tag)
 // Use div to structure the document in a similar way to paragraphs.  The main difference is that it impacts on style
 // attributes only, avoiding the declaration of paragraph start and end points and won't cause line breaks.
 
-void parser::tag_div(XMLTag &Tag)
+void parser::tag_div(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2134,7 +2134,7 @@ void parser::tag_div(XMLTag &Tag)
 // Creates a new edit definition.  These are stored in a linked list.  Edit definitions are used by referring to them
 // by name in table cells.
 
-void parser::tag_editdef(XMLTag &Tag)
+void parser::tag_editdef(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2188,7 +2188,7 @@ void parser::tag_editdef(XMLTag &Tag)
 //********************************************************************************************************************
 // Use of <meta> for custom information is allowed and is ignored by the parser.
 
-void parser::tag_head(XMLTag &Tag)
+void parser::tag_head(XTag &Tag)
 {
    // The head contains information about the document
 
@@ -2230,7 +2230,7 @@ void parser::tag_head(XMLTag &Tag)
 //********************************************************************************************************************
 // Include XML from another RIPL file.
 
-void parser::tag_include(XMLTag &Tag)
+void parser::tag_include(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2256,7 +2256,7 @@ void parser::tag_include(XMLTag &Tag)
 //********************************************************************************************************************
 // Parse a string value as XML
 
-void parser::tag_parse(XMLTag &Tag)
+void parser::tag_parse(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2292,7 +2292,7 @@ void parser::tag_parse(XMLTag &Tag)
 // A benefit to rendering SVG images in the <defs> area is that they are converted to cached bitmap textures ahead of
 // time.  This provides a considerable speed boost when drawing them, at a potential cost to image quality.
 
-void parser::tag_image(XMLTag &Tag)
+void parser::tag_image(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2371,7 +2371,7 @@ void parser::tag_image(XMLTag &Tag)
 // The developer can use indexes to bookmark areas of code that are of interest.  The FindIndex() method is used for
 // this purpose.
 
-void parser::tag_index(XMLTag &Tag)
+void parser::tag_index(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2421,7 +2421,7 @@ void parser::tag_index(XMLTag &Tag)
 // Dummy links that specify neither an href or onclick value can be useful in embedded documents if the
 // EventCallback feature is used.
 
-void parser::tag_link(XMLTag &Tag)
+void parser::tag_link(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2494,7 +2494,7 @@ void parser::tag_link(XMLTag &Tag)
 
 //********************************************************************************************************************
 
-void parser::tag_list(XMLTag &Tag)
+void parser::tag_list(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    bc_list list;
@@ -2550,7 +2550,7 @@ void parser::tag_list(XMLTag &Tag)
 //********************************************************************************************************************
 // Also see check_para_attrib() for paragraph attributes.
 
-void parser::tag_paragraph(XMLTag &Tag)
+void parser::tag_paragraph(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2593,7 +2593,7 @@ void parser::tag_paragraph(XMLTag &Tag)
 
 //********************************************************************************************************************
 
-void parser::tag_print(XMLTag &Tag)
+void parser::tag_print(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2624,7 +2624,7 @@ void parser::tag_print(XMLTag &Tag)
 //********************************************************************************************************************
 // Templates can be used to create custom tags.
 
-void parser::tag_template(XMLTag &Tag)
+void parser::tag_template(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2659,7 +2659,7 @@ void parser::tag_template(XMLTag &Tag)
 
 //********************************************************************************************************************
 
-ERR parser::calc(const std::string &String, DOUBLE *Result, std::string &Output)
+ERR parser::calc(const std::string &String, double *Result, std::string &Output)
 {
    enum SIGN { PLUS=1, MINUS, MULTIPLY, DIVIDE, MODULO };
 
@@ -2695,7 +2695,7 @@ ERR parser::calc(const std::string &String, DOUBLE *Result, std::string &Output)
          for (end=last_bracket+1; (in[end]) and (in[end-1] != ')'); end++);
          std::string buf(in, last_bracket, end - last_bracket);
 
-         DOUBLE calc_float;
+         double calc_float;
          std::string out;
          calc(buf.c_str()+1, &calc_float, out);
          in.replace(last_bracket, end - last_bracket, out);
@@ -2706,9 +2706,9 @@ ERR parser::calc(const std::string &String, DOUBLE *Result, std::string &Output)
    // Perform the calculation
 
    STRING end;
-   WORD precision = 9;
-   DOUBLE total   = 0;
-   DOUBLE overall = 0;
+   int16_t precision = 9;
+   double total   = 0;
+   double overall = 0;
    int index     = 0;
    SIGN sign      = PLUS;
    bool number    = false;
@@ -2744,7 +2744,7 @@ ERR parser::calc(const std::string &String, DOUBLE *Result, std::string &Output)
       }
       else if ((in[s] >= '0') and (in[s] <= '9')) {
          number = true;
-         DOUBLE fvalue = strtod(in.c_str() + s, &end);
+         double fvalue = strtod(in.c_str() + s, &end);
          s += end - in.c_str();
 
          if (sign IS MINUS)         total = total - fvalue;
@@ -2859,7 +2859,7 @@ ERR parser::tag_xml_content_eval(std::string &Buffer)
             num.assign(Buffer, pos+2, end-(pos+2));
 
             std::string calcbuffer;
-            DOUBLE value;
+            double value;
             calc(num, &value, calcbuffer);
             Buffer.insert(end-pos+1, calcbuffer);
          }
@@ -2958,7 +2958,7 @@ repeat:
 
 //********************************************************************************************************************
 
-void parser::tag_font(XMLTag &Tag)
+void parser::tag_font(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2981,7 +2981,7 @@ void parser::tag_font(XMLTag &Tag)
 
 //********************************************************************************************************************
 
-void parser::tag_object(XMLTag &Tag)
+void parser::tag_object(XTag &Tag)
 {
    /*
    pf::Log log(__FUNCTION__);
@@ -3240,7 +3240,7 @@ void parser::tag_pre(objXML::TAGS &Children)
 //
 // Only the first section of content enclosed within the <script> tag (CDATA) is accepted by the script parser.
 
-void parser::tag_script(XMLTag &Tag)
+void parser::tag_script(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objScript *script;
@@ -3423,7 +3423,7 @@ void parser::tag_font_style(objXML::TAGS &Children, FSO StyleFlag, std::string_v
 //********************************************************************************************************************
 // List item parser.  List items are essentially paragraphs with automated indentation management.
 
-void parser::tag_li(XMLTag &Tag)
+void parser::tag_li(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -3498,7 +3498,7 @@ void parser::tag_li(XMLTag &Tag)
 
 //********************************************************************************************************************
 
-void parser::tag_repeat(XMLTag &Tag)
+void parser::tag_repeat(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -3580,7 +3580,7 @@ void parser::tag_repeat(XMLTag &Tag)
 // (repeat, if statements, etc).  The table byte code is typically generated as SCODE::TABLE_START, SCODE::ROW,
 // SCODE::CELL..., SCODE::ROW_END, SCODE::TABLE_END.
 
-void parser::tag_table(XMLTag &Tag)
+void parser::tag_table(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -3647,7 +3647,7 @@ void parser::tag_table(XMLTag &Tag)
             break;
 
          case HASH_stroke_width:
-            table.stroke_width = std::clamp(strtod(value.c_str(), NULL), 0.0, 255.0);
+            table.stroke_width = std::clamp(strtod(value.c_str(), nullptr), 0.0, 255.0);
             break;
       }
    }
@@ -3671,7 +3671,7 @@ void parser::tag_table(XMLTag &Tag)
 
       size_t i;
       for (i=0; (i < table.columns.size()) and (i < list.size()); i++) {
-         table.columns[i].preset_width = strtod(list[i].c_str(), NULL);
+         table.columns[i].preset_width = strtod(list[i].c_str(), nullptr);
          if (list[i].find_first_of('%') != std::string::npos) {
             table.columns[i].preset_width *= 0.01;
             table.columns[i].preset_width_rel = true;
@@ -3693,7 +3693,7 @@ void parser::tag_table(XMLTag &Tag)
 
 //********************************************************************************************************************
 
-void parser::tag_row(XMLTag &Tag)
+void parser::tag_row(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -3707,7 +3707,7 @@ void parser::tag_row(XMLTag &Tag)
 
    for (int i=1; i < std::ssize(Tag.Attribs); i++) {
       if (iequals("height", Tag.Attribs[i].Name)) {
-         escrow.min_height = std::clamp(strtod(Tag.Attribs[i].Value.c_str(), NULL), 0.0, 4000.0);
+         escrow.min_height = std::clamp(strtod(Tag.Attribs[i].Value.c_str(), nullptr), 0.0, 4000.0);
       }
       else if (iequals("fill", Tag.Attribs[i].Name))   escrow.fill   = Tag.Attribs[i].Value;
       else if (iequals("stroke", Tag.Attribs[i].Name)) escrow.stroke = Tag.Attribs[i].Value;
@@ -3734,11 +3734,11 @@ void parser::tag_row(XMLTag &Tag)
 
 //********************************************************************************************************************
 
-void parser::tag_cell(XMLTag &Tag)
+void parser::tag_cell(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    auto new_style = m_style;
-   static UBYTE edit_recurse = 0;
+   static uint8_t edit_recurse = 0;
 
    if (m_table_stack.empty()) {
       log.warning("<cell> not defined inside <table> section.");
@@ -3871,7 +3871,7 @@ void parser::tag_cell(XMLTag &Tag)
 //********************************************************************************************************************
 // No response is required for page tags, but we can check for validity.
 
-void parser::tag_page(XMLTag &Tag)
+void parser::tag_page(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    if (auto name = Tag.attrib("name")) {
@@ -3894,7 +3894,7 @@ void parser::tag_page(XMLTag &Tag)
 //********************************************************************************************************************
 // Usage: <trigger event="resize" function="script.function"/>
 
-void parser::tag_trigger(XMLTag &Tag)
+void parser::tag_trigger(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    DRT trigger_code;

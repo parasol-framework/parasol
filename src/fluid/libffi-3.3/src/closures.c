@@ -124,7 +124,7 @@ ffi_closure_free (void *ptr)
 #  define HAVE_MNTENT 1
 # endif
 # if defined(X86_WIN32) || defined(X86_WIN64) || defined(_M_ARM64) || defined(__OS2__)
-/* Windows systems may have Data Execution Protection (DEP) enabled, 
+/* Windows systems may have Data Execution Protection (DEP) enabled,
    which requires the use of VirtualMalloc/VirtualFree to alloc/free
    executable memory. */
 #  define FFI_MMAP_EXEC_WRIT 1

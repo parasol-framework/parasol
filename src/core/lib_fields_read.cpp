@@ -83,7 +83,7 @@ cstr: The name of the field is returned.
 
 *********************************************************************************************************************/
 
-extern THREADVAR char tlFieldName[10]; // $12345678\0
+extern thread_local char tlFieldName[10]; // $12345678\0
 
 CSTRING FieldName(uint32_t FieldID)
 {

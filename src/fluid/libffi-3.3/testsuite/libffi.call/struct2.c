@@ -44,24 +44,24 @@ int main (void)
 
   args[0] = &ts2_type;
   values[0] = &ts2_arg;
-  
+
   /* Initialize the cif */
   CHECK(ffi_prep_cif(&cif, ABI_NUM, 1, &ts2_type, args) == FFI_OK);
-  
+
   ts2_arg.d1 = 5.55;
   ts2_arg.d2 = 6.66;
-  
+
   printf ("%g\n", ts2_arg.d1);
   printf ("%g\n", ts2_arg.d2);
-  
+
   ffi_call(&cif, FFI_FN(struct2), ts2_result, values);
-  
+
   printf ("%g\n", ts2_result->d1);
   printf ("%g\n", ts2_result->d2);
-  
+
   CHECK(ts2_result->d1 == 5.55 - 1);
   CHECK(ts2_result->d2 == 6.66 - 1);
-  
+
   free (ts2_result);
   exit(0);
 }

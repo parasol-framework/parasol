@@ -130,7 +130,7 @@ static bool delete_selected(extDocument *Self)
 
 //********************************************************************************************************************
 
-static ERR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Unicode)
+static ERR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, int Unicode)
 {
    pf::Log log(__FUNCTION__);
 
@@ -138,7 +138,7 @@ static ERR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Unic
 
    auto Self = (extDocument *)CurrentContext();
 
-   log.function("Value: %d, Flags: $%.8x, ActiveEdit: %p", LONG(Value), LONG(Flags), Self->ActiveEditDef);
+   log.function("Value: %d, Flags: $%.8x, ActiveEdit: %p", int(Value), int(Flags), Self->ActiveEditDef);
 
    if ((Self->ActiveEditDef) and ((Self->Page->Flags & VF::HAS_FOCUS) IS VF::NIL)) {
       deactivate_edit(Self, true);
@@ -312,7 +312,7 @@ static ERR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Unic
       case KEY::ENTER: {
          auto tab = Self->FocusIndex;
          if ((tab >= 0) and (tab < std::ssize(Self->Tabs))) {
-            log.branch("Key: Enter, Tab: %d/%d, Type: %d", tab, LONG(Self->Tabs.size()), LONG(Self->Tabs[tab].type));
+            log.branch("Key: Enter, Tab: %d/%d, Type: %d", tab, int(Self->Tabs.size()), int(Self->Tabs[tab].type));
 
             if ((Self->Tabs[tab].type IS TT::LINK) and (Self->Tabs[tab].active)) {
                for (auto &link : Self->Links) {
@@ -415,7 +415,7 @@ static void error_dialog(const std::string Title, const std::string Message)
          CSTRING *results;
          int size;
          if ((dialog->get(FID_Results, results, size) IS ERR::Okay) and (size > 0)) {
-            dialog_id = strtol(results[0], NULL, 0);
+            dialog_id = strtol(results[0], nullptr, 0);
          }
       }
    }
@@ -533,10 +533,10 @@ static void deactivate_edit(extDocument *Self, bool Redraw)
    // The edit tag needs to be found so that we can determine if on_exit needs to be called or not.
 
    auto edit = Self->ActiveEditDef;
-   LONG cell_index = Self->Stream.find_cell(Self->ActiveEditCellID);
+   int cell_index = Self->Stream.find_cell(Self->ActiveEditCellID);
 
    Self->ActiveEditCellID = 0;
-   Self->ActiveEditDef = NULL;
+   Self->ActiveEditDef = nullptr;
    Self->CursorIndex.reset();
    Self->SelectIndex.reset();
 
@@ -580,7 +580,7 @@ static void deactivate_edit(extDocument *Self, bool Redraw)
 //********************************************************************************************************************
 // TODO: This code needs to utilise cell viewports for managing UI interactivity.
 #if 0
-static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
+static void check_mouse_click(extDocument *Self, double X, double Y)
 {
    pf::Log log(__FUNCTION__);
 
@@ -681,7 +681,7 @@ static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
 #endif
 //********************************************************************************************************************
 #if 0
-static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
+static void check_mouse_pos(extDocument *Self, double X, double Y)
 {
    Self->MouseOverSegment = -1;
    Self->PointerX = X;
@@ -711,7 +711,7 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
       if (!Self->SelectIndex.valid()) Self->SelectIndex = Self->CursorIndex;
 
       if (Self->MouseOverSegment != -1) {
-         DOUBLE cursor_x;
+         double cursor_x;
          stream_char cursor_index;
          if (!resolve_font_pos(Self->Segments[Self->MouseOverSegment], X, cursor_x, cursor_index)) {
             if (Self->ActiveEditDef) {
@@ -780,7 +780,7 @@ static void deselect_text(extDocument *Self)
 #endif
 //********************************************************************************************************************
 
-static LONG find_tabfocus(extDocument *Self, TT Type, BYTECODE Reference)
+static int find_tabfocus(extDocument *Self, TT Type, BYTECODE Reference)
 {
    for (unsigned i=0; i < Self->Tabs.size(); i++) {
       if ((Self->Tabs[i].type IS Type) and (Reference IS std::get<BYTECODE>(Self->Tabs[i].ref))) return i;
@@ -791,7 +791,7 @@ static LONG find_tabfocus(extDocument *Self, TT Type, BYTECODE Reference)
 //********************************************************************************************************************
 // This function is used in tags.c by the link and object insertion code.
 
-static LONG add_tabfocus(extDocument *Self, TT Type, BYTECODE Reference)
+static int add_tabfocus(extDocument *Self, TT Type, BYTECODE Reference)
 {
    pf::Log log(__FUNCTION__);
 
@@ -819,7 +819,7 @@ static ERR link_callback(objVector *Vector, InputEvent *Event)
 
    auto Self = (extDocument *)CurrentContext();
 
-   ui_link *link = NULL;
+   ui_link *link = nullptr;
    for (unsigned i=0; i < Self->Links.size(); i++) {
       if (*Self->Links[i].origin.path IS Vector) {
          link = &Self->Links[i];
@@ -900,7 +900,7 @@ static ERR link_callback(objVector *Vector, InputEvent *Event)
    else if ((Event->Flags & JTYPE::BUTTON) != JTYPE::NIL) {
       if (Event->Value IS 0) link->exec(Self);
    }
-   else log.warning("Unknown event type %d for input vector %d", LONG(Event->Type), Vector->UID);
+   else log.warning("Unknown event type %d for input vector %d", int(Event->Type), Vector->UID);
 
    return ERR::Okay;
 }
@@ -921,8 +921,8 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
    }
 
    log.branch("Index: %d/%d, Type: %d, Ref: %d, HaveFocus: %d, Caller: %s",
-      Index, LONG(std::ssize(Self->Tabs)), (Index != -1) ? LONG(Self->Tabs[Index].type) : -1,
-      (Index != -1) ? std::get<ULONG>(Self->Tabs[Index].ref) : -1, Self->HasFocus, Caller);
+      Index, int(std::ssize(Self->Tabs)), (Index != -1) ? int(Self->Tabs[Index].type) : -1,
+      (Index != -1) ? std::get<uint32_t>(Self->Tabs[Index].ref) : -1, Self->HasFocus, Caller);
 
    if (Self->ActiveEditDef) deactivate_edit(Self, true);
 
@@ -972,7 +972,7 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
          for (unsigned i=0; i < Self->Links.size(); i++) {
             auto &link = Self->Links[i];
             if (link.origin.uid IS std::get<BYTECODE>(Self->Tabs[Index].ref)) {
-               DOUBLE link_x = 0, link_y = 0, link_width = 0, link_height = 0;
+               double link_x = 0, link_y = 0, link_width = 0, link_height = 0;
                for (++i; i < Self->Links.size(); i++) {
                   if (link.origin.uid IS std::get<BYTECODE>(Self->Tabs[Index].ref)) {
                      link.origin.path->getBoundary(VBF::NIL, &link_x, &link_y, &link_width, &link_height);
@@ -993,13 +993,13 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
 //********************************************************************************************************************
 // Scrolls any given area of the document into view.
 
-static bool view_area(extDocument *Self, DOUBLE Left, DOUBLE Top, DOUBLE Right, DOUBLE Bottom)
+static bool view_area(extDocument *Self, double Left, double Top, double Right, double Bottom)
 {
    pf::Log log(__FUNCTION__);
 
-   DOUBLE hgap = Self->VPWidth * 0.1, vgap = Self->VPHeight * 0.1;
-   DOUBLE view_x = -Self->XPosition, view_y = -Self->YPosition;
-   DOUBLE view_height = Self->VPHeight, view_width  = Self->VPWidth;
+   double hgap = Self->VPWidth * 0.1, vgap = Self->VPHeight * 0.1;
+   double view_x = -Self->XPosition, view_y = -Self->YPosition;
+   double view_height = Self->VPHeight, view_width  = Self->VPWidth;
 
    log.trace("View: %dx%d,%dx%d Link: %gx%g,%gx%g", view_x, view_y, view_width, view_height, Left, Top, Right, Bottom);
 
@@ -1046,7 +1046,7 @@ static bool view_area(extDocument *Self, DOUBLE Left, DOUBLE Top, DOUBLE Right, 
 
 //********************************************************************************************************************
 
-static void advance_tabfocus(extDocument *Self, BYTE Direction)
+static void advance_tabfocus(extDocument *Self, int8_t Direction)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1083,7 +1083,7 @@ static void advance_tabfocus(extDocument *Self, BYTE Direction)
       }
       else {
          Self->FocusIndex++;
-         if (Self->FocusIndex >= LONG(Self->Tabs.size())) Self->FocusIndex = 0;
+         if (Self->FocusIndex >= int(Self->Tabs.size())) Self->FocusIndex = 0;
       }
 
       if (!Self->Tabs[Self->FocusIndex].active) continue;
@@ -1165,7 +1165,7 @@ static ERR inputevent_cell(objVectorViewport *Viewport, const InputEvent *Event)
             if (extract_script(Self, cell->hooks.on_click, &script, func_name, s_args) IS ERR::Okay) {
                const ScriptArg args[] = {
                   { "Entity", cell->uid },
-                  { "Button", LONG(Event->Type) }, // JET::LMB etc
+                  { "Button", int(Event->Type) }, // JET::LMB etc
                   { "State", Event->Value }, // 1 = Pressed
                   { "X", Event->X },
                   { "Y", Event->Y },
@@ -1262,8 +1262,8 @@ static ERR inputevent_button(objVectorViewport *Viewport, const InputEvent *Even
                button->viewport->newMatrix(&matrix, false);
             }
 
-            const auto width  = button->viewport->get<DOUBLE>(FID_Width);
-            const auto height = button->viewport->get<DOUBLE>(FID_Height);
+            const auto width  = button->viewport->get<double>(FID_Width);
+            const auto height = button->viewport->get<double>(FID_Height);
 
             if (auto m = button->viewport->Matrices) {
                const auto SCALE = 0.95;
@@ -1360,7 +1360,7 @@ static ERR inputevent_checkbox(objVectorViewport *Viewport, const InputEvent *Ev
 // Using only a stream index, this function will determine the x coordinate of the character at that index.  This is
 // slower than resolve_font_pos(), because the segment has to be resolved by this function.
 
-static ERR resolve_fontx_by_index(extDocument *Self, stream_char Char, DOUBLE &CharX)
+static ERR resolve_fontx_by_index(extDocument *Self, stream_char Char, double &CharX)
 {
    pf::Log log("resolve_fontx");
 

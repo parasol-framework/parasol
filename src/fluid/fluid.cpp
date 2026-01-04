@@ -1,18 +1,6 @@
 /*********************************************************************************************************************
 
-This source code is placed in the public domain under no warranty from its
-authors.
-
-NOTE REGARDING LUAJIT PATCHES:
-  Search for 'PARASOL PATCHED IN' to discover what we've inserted into the code.
-  Packages removed from ljamalg.c are: lib_io lib_os lib_package lib_jit
-  Modify src/Makefile with the following changes:
-    Enable LUAJIT_ENABLE_LUA52COMPAT
-    Enable LUAJIT_DISABLE_FFI because FFI is not permitted.
-    Switch from BUILDMODE=mixed to BUILDMODE=static
-  Optional changes to src/Makefile:
-    Enable LUAJIT_USE_SYSMALLOC temporarily if you need to figure out memory management and overflow issues.
-    Enable LUAJIT_USE_GDBJIT temporarily if debugging with GDB.
+This source code is placed in the public domain under no warranty from its authors.
 
 **********************************************************************************************************************
 
@@ -44,30 +32,49 @@ For more information on the Fluid syntax, please refer to the official Fluid Ref
 #include <parasol/modules/xml.h>
 #include <parasol/modules/display.h>
 #include <parasol/modules/fluid.h>
+#include <parasol/modules/regex.h>
+#include <parasol/strings.hpp>
 
 #include <inttypes.h>
 #include <thread>
 #include <chrono>
+#include <vector>
+#include <iterator>
+#include <mutex>
 
-extern "C" {
 #include "lua.h"
 #include "lualib.h"
 #include "lauxlib.h"
 #include "lj_obj.h"
-}
+#include "parser/parser.h"
+#include "lj_bc.h"
+#include "lj_array.h"
+#include "lj_gc.h"
 
 #include "hashes.h"
 
 JUMPTABLE_CORE
+JUMPTABLE_REGEX
 
 #include "defs.h"
 
+constexpr size_t MAX_MODULE_NAME_LENGTH = 32;
+constexpr size_t MAX_STRING_PREFIX_LENGTH = 200;
+
 OBJECTPTR modDisplay = nullptr; // Required by fluid_input.c
 OBJECTPTR modFluid = nullptr;
+OBJECTPTR modRegex = nullptr;
 OBJECTPTR clFluid = nullptr;
+OBJECTPTR glFluidContext = nullptr;
 struct ActionTable *glActions = nullptr;
-ankerl::unordered_dense::map<std::string, ACTIONID, CaseInsensitiveHash, CaseInsensitiveEqual> glActionLookup;
-ankerl::unordered_dense::map<std::string, ULONG> glStructSizes;
+bool glPrintMsg = false;
+JOF glJitOptions = JOF::NIL;
+ankerl::unordered_dense::map<std::string_view, ACTIONID, CaseInsensitiveHashView, CaseInsensitiveEqualView> glActionLookup;
+ankerl::unordered_dense::map<std::string_view, uint32_t> glStructSizes;
+ankerl::unordered_dense::map<uint32_t, FluidConstant> glConstantRegistry;
+ankerl::unordered_dense::map<struct_name, struct_record, struct_hash> glStructs;
+std::shared_mutex glConstantMutex;
+static std::set<std::string> glLoadedConstants; // Stores the names of modules that have loaded constants (system wide)
 
 static struct MsgHandler *glMsgThread = nullptr; // Message handler for thread callbacks
 
@@ -75,119 +82,33 @@ static CSTRING load_include_struct(lua_State *, CSTRING, CSTRING);
 static CSTRING load_include_constant(lua_State *, CSTRING, CSTRING);
 static ERR flSetVariable(objScript *, CSTRING, LONG, ...);
 void hook_debug_step(lua_State *Lua, lua_Debug *Info);
+[[nodiscard]] static CSTRING load_include_struct(objScript *, CSTRING, CSTRING);
+[[nodiscard]] static CSTRING load_include_constant(CSTRING, CSTRING);
+
+constexpr auto HASH_TRACE_TOKENS         = pf::strhash("trace-tokens");
+constexpr auto HASH_TRACE_EXPECT         = pf::strhash("trace-expect");
+constexpr auto HASH_TRACE_BOUNDARY       = pf::strhash("trace-boundary");
+constexpr auto HASH_TRACE_OPERATORS      = pf::strhash("trace-operators");
+constexpr auto HASH_TRACE_REGISTERS      = pf::strhash("trace-registers");
+constexpr auto HASH_TRACE_CFG            = pf::strhash("trace-cfg");
+constexpr auto HASH_TRACE_ASSIGNMENTS    = pf::strhash("trace-assignments");
+constexpr auto HASH_TRACE_VALUE_CATEGORY = pf::strhash("trace-value-category");
+constexpr auto HASH_TRACE_TYPES          = pf::strhash("trace-types");
+constexpr auto HASH_DIAGNOSE             = pf::strhash("diagnose");
+constexpr auto HASH_DUMP_BYTECODE        = pf::strhash("dump-bytecode");
+constexpr auto HASH_PROFILE              = pf::strhash("profile");
+constexpr auto HASH_TRACE                = pf::strhash("trace");
+constexpr auto HASH_TOP_TIPS             = pf::strhash("top-tips");
+constexpr auto HASH_TIPS                 = pf::strhash("tips");
+constexpr auto HASH_ALL_TIPS             = pf::strhash("all-tips");
+
+#include "module_def.cpp"
 
 //********************************************************************************************************************
 
-FDEF argsSetVariable[] = { { "Error", FD_ERROR }, { "Script", FD_OBJECTPTR }, { "Name", FD_STR }, { "Type", FD_INT }, { "Variable", FD_TAGS }, { 0, 0 } };
-
-// These test calls are used to check that the dynamic assembler function calls are working as expected.
-
-#ifdef _DEBUG
-static void flTestCall1(void);
-static LONG flTestCall2(void);
-static CSTRING flTestCall3(void);
-static void flTestCall4(LONG, LARGE);
-static LONG flTestCall5(LONG, LONG, LONG, LONG, LONG, LARGE);
-static LARGE flTestCall6(LONG, LARGE, LARGE, LONG, LARGE, DOUBLE);
-static void flTestCall7(STRING a, STRING b, STRING c);
-
-FDEF argsTestCall1[]   = { { "Void", FD_VOID }, { 0, 0 } };
-FDEF argsTestCall2[]   = { { "Result", FD_INT }, { 0, 0 } };
-FDEF argsTestCall3[]   = { { "Result", FD_STR }, { 0, 0 } };
-FDEF argsTestCall4[]   = { { "Void", FD_VOID }, { "Long", FD_INT }, { "Large", FD_INT64 }, { 0, 0 } };
-FDEF argsTestCall5[]   = { { "Result", FD_INT }, { "LA", FD_INT }, { "LB", FD_INT }, { "LC", FD_INT }, { "LD", FD_INT }, { "LE", FD_INT }, { "LF", FD_INT64 }, { 0, 0 } };
-FDEF argsTestCall6[]   = { { "Result", FD_INT64 }, { "LA", FD_INT }, { "LLA", FD_INT64 }, { "LLB", FD_INT64 }, { "LB", FD_INT }, { "LLC", FD_INT64 }, { "DA", FD_DOUBLE }, { "LB", FD_INT64 }, { 0, 0 } };
-FDEF argsTestCall7[]   = { { "Void", FD_VOID }, { "StringA", FD_STRING }, { "StringB", FD_STRING }, { "StringC", FD_STRING }, { 0, 0 } };
-#endif
-
-static const struct Function JumpTableV1[] = {
-   { (APTR)flSetVariable, "SetVariable", argsSetVariable },
-   #ifdef _DEBUG
-   { (APTR)flTestCall1,   "TestCall1", argsTestCall1 },
-   { (APTR)flTestCall2,   "TestCall2", argsTestCall2 },
-   { (APTR)flTestCall3,   "TestCall3", argsTestCall3 },
-   { (APTR)flTestCall4,   "TestCall4", argsTestCall4 },
-   { (APTR)flTestCall5,   "TestCall5", argsTestCall5 },
-   { (APTR)flTestCall6,   "TestCall6", argsTestCall6 },
-   { (APTR)flTestCall7,   "TestCall7", argsTestCall7 },
-   #endif
-   { nullptr, nullptr, nullptr }
-};
-
-#ifdef _DEBUG
-
-static void flTestCall1(void)
+APTR get_meta(lua_State *Lua, int Arg, CSTRING MetaTable)
 {
-   pf::Log log(__FUNCTION__);
-   log.msg("No parameters.");
-}
-
-static LONG flTestCall2(void)
-{
-   pf::Log log(__FUNCTION__);
-   log.msg("Returning 0xdedbeef / %d", 0xdedbeef);
-   return 0xdedbeef;
-}
-
-static CSTRING flTestCall3(void)
-{
-   pf::Log log(__FUNCTION__);
-   log.msg("Returning 'hello world'");
-   return "hello world";
-}
-
-static void flTestCall4(LONG Long, LARGE Large)
-{
-   pf::Log log(__FUNCTION__);
-   log.msg("Received long %d / $%.8x", Long, Long);
-   log.msg("Received large %" PF64 " / $%.8x%.8x", Large, (ULONG)Large, (ULONG)(Large>>32));
-}
-
-static LONG flTestCall5(LONG LongA, LONG LongB, LONG LongC, LONG LongD, LONG LongE, LARGE LongF)
-{
-   pf::Log log(__FUNCTION__);
-   log.msg("Received ints: %d, %d, %d, %d, %d, %" PF64, LongA, LongB, LongC, LongD, LongE, LongF);
-   log.msg("Received ints: $%.8x, $%.8x, $%.8x, $%.8x, $%.8x, $%.8x", LongA, LongB, LongC, LongD, LongE, (LONG)LongF);
-   return LongF;
-}
-
-static LARGE flTestCall6(LONG long1, LARGE large1, LARGE large2, LONG long2, LARGE large3, DOUBLE float1)
-{
-   pf::Log log(__FUNCTION__);
-   log.msg("Received %d, %" PF64 ", %d, %d, %d", long1, large1, (LONG)large2, (LONG)long2, (LONG)large3);
-   log.msg("Received double %f", float1);
-   log.msg("Returning %" PF64, large2);
-   return large2;
-}
-
-static void flTestCall7(STRING a, STRING b, STRING c)
-{
-   pf::Log log(__FUNCTION__);
-   log.msg("Received string pointers %p, %p, %p", a, b, c);
-   log.msg("As '%s', '%s', '%s'", a, b, c);
-}
-#endif
-
-//********************************************************************************************************************
-
-CSTRING next_line(CSTRING String)
-{
-   if (!String) return nullptr;
-
-   while ((*String) and (*String != '\n') and (*String != '\r')) String++;
-   while (*String IS '\r') String++;
-   if (*String IS '\n') String++;
-   while (*String IS '\r') String++;
-   if (*String) return String;
-   else return nullptr;
-}
-
-//********************************************************************************************************************
-
-APTR get_meta(lua_State *Lua, LONG Arg, CSTRING MetaTable)
-{
-   APTR address;
-   if ((address = (struct object *)lua_touserdata(Lua, Arg))) {
+   if (auto address = (struct object *)lua_touserdata(Lua, Arg)) {
       if (lua_getmetatable(Lua, Arg)) {  // does it have a metatable?
          lua_getfield(Lua, LUA_REGISTRYINDEX, MetaTable);  // get correct metatable
          if (lua_rawequal(Lua, -1, -2)) {  // does it have the correct mt?
@@ -211,8 +132,9 @@ OBJECTPTR access_object(struct object *Object)
       Object->AccessCount++;
       return Object->ObjectPtr;
    }
-   else if (!Object->UID) return nullptr; // Object reference is dead
-   else if (!Object->ObjectPtr) { // If not pointer defined then treat the object as detached.
+   else if (not Object->UID) return nullptr; // Object reference is dead
+   else if ((!Object->ObjectPtr) or (Object->Detached)) {
+      // Detached objects are always accessed via UID, even if we have a pointer reference.
       if (auto error = AccessObject(Object->UID, 5000, &Object->ObjectPtr); error IS ERR::Okay) {
          Object->Locked = true;
       }
@@ -246,52 +168,34 @@ void release_object(struct object *Object)
 //********************************************************************************************************************
 // Automatically load the include file for the given metaclass, if it has not been loaded already.
 
-void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
+void load_include_for_class(lua_State *Lua, objMetaClass *MetaClass)
 {
-   pf::Log log(__FUNCTION__);
+   // Ensure that the base-class is loaded first, if applicable
+   if (MetaClass->BaseClassID != MetaClass->ClassID) {
+      if (auto base_class = FindClass(MetaClass->BaseClassID)) {
+         load_include_for_class(Lua, base_class);
+      }
+   }
 
    CSTRING module_name;
    if (auto error = MetaClass->get(FID_Module, module_name); error IS ERR::Okay) {
-      log.trace("Class: %s, Module: %s", MetaClass->ClassName, module_name);
-
-      auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-      if (!prv->Includes.contains(module_name)) {
-         prv->Includes.insert(module_name); // Mark the module as processed.
-
-         OBJECTPTR mod;
-         if ((error = MetaClass->get(FID_RootModule, mod)) IS ERR::Okay) {
-            struct ModHeader *header;
-
-            if (((error = mod->get(FID_Header, header)) IS ERR::Okay) and (header)) {
-               if (auto structs = header->StructDefs) {
-                  for (auto &s : structs[0]) {
-                     glStructSizes[s.first] = s.second;
-                  }
-               }
-
-               if (auto idl = header->Definitions) {
-                  log.trace("Parsing IDL for module %s", module_name);
-
-                  while ((idl) and (*idl)) {
-                     if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(Lua, idl+2, module_name);
-                     else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(Lua, idl+2, module_name);
-                     else idl = next_line(idl);
-                  }
-               }
-               else log.trace("No IDL defined for %s", module_name);
-            }
-         }
+      if (load_include(Lua->script, module_name) != ERR::Okay) {
+         luaL_error(Lua, "Failed to process module '%s' for class '%s'", module_name, MetaClass->ClassName);
       }
-      else log.trace("Module %s is marked as loaded.", module_name);
    }
-   else log.traceWarning("Failed to get module name from class '%s', \"%s\"", MetaClass->ClassName, GetErrorMsg(error));
+   else pf::Log(__FUNCTION__).traceWarning("Failed to get module name from class '%s', \"%s\"", MetaClass->ClassName, GetErrorMsg(error));
 }
 
 //********************************************************************************************************************
 
-static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+[[nodiscard]] static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
+   pf::Log log;
+
    CoreBase = argCoreBase;
+
+   glFluidContext = CurrentContext();
+   glPrintMsg = GetResource(RES::LOG_LEVEL) >= 4;
 
    argModule->get(FID_Root, modFluid);
 
@@ -299,13 +203,74 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // Create a lookup table for converting named actions to IDs.
 
-   for (LONG action_id=1; glActions[action_id].Name; action_id++) {
+   for (int action_id=1; glActions[action_id].Name; action_id++) {
       glActionLookup[glActions[action_id].Name] = AC(action_id);
    }
 
    FUNCTION call(CALL::STD_C);
    call.Routine = (APTR)msg_thread_script_callback;
    AddMsgHandler(MSGID::FLUID_THREAD_CALLBACK, &call, &glMsgThread);
+
+   pf::vector<std::string> *pargs;
+   auto task = CurrentTask();
+   if ((task->get(FID_Parameters, pargs) IS ERR::Okay) and (pargs)) {
+      pf::vector<std::string> &args = *pargs;
+      for (int i=0; i < std::ssize(args); i++) {
+         if (pf::startswith(args[i], "--jit-options")) {
+            // Parse --jit-options [csv] parameter
+            // Use in conjunction with --log-api to see the log messages.
+            // These options are system-wide, alternatively you can set JitOptions in the Script object.
+            std::string value;
+
+            if (i + 1 < std::ssize(args)) {
+               value = args[i + 1];
+               i++;
+            }
+
+            if (not value.empty()) {
+               // Split the CSV string and set appropriate global variables
+               std::vector<std::string> options;
+               pf::split(value, std::back_inserter(options), ',');
+
+               glJitOptions = JOF::NIL;
+               for (const auto &option : options) {
+                  std::string trimmed = option;
+                  pf::trim(trimmed);
+
+                  auto hash = pf::strhash(trimmed);
+                  if (hash IS HASH_TRACE_VALUE_CATEGORY)   glJitOptions |= JOF::TRACE_VALUE_CATEGORY;
+                  else if (hash IS HASH_TRACE_ASSIGNMENTS) glJitOptions |= JOF::TRACE_ASSIGNMENTS;
+                  else if (hash IS HASH_TRACE_OPERATORS) glJitOptions |= JOF::TRACE_OPERATORS;
+                  else if (hash IS HASH_TRACE_REGISTERS) glJitOptions |= JOF::TRACE_REGISTERS;
+                  else if (hash IS HASH_TRACE_BOUNDARY) glJitOptions |= JOF::TRACE_BOUNDARY;
+                  else if (hash IS HASH_TRACE_TOKENS)  glJitOptions |= JOF::TRACE_TOKENS;
+                  else if (hash IS HASH_TRACE_EXPECT)  glJitOptions |= JOF::TRACE_EXPECT;
+                  else if (hash IS HASH_TRACE_CFG)     glJitOptions |= JOF::TRACE_CFG;
+                  else if (hash IS HASH_TRACE_TYPES)   glJitOptions |= JOF::TRACE_TYPES;
+                  else if (hash IS HASH_DIAGNOSE)      glJitOptions |= JOF::DIAGNOSE;
+                  else if (hash IS HASH_DUMP_BYTECODE) glJitOptions |= JOF::DUMP_BYTECODE;
+                  else if (hash IS HASH_PROFILE)       glJitOptions |= JOF::PROFILE;
+                  else if (hash IS HASH_TRACE)         glJitOptions |= JOF::TRACE;
+                  else if (hash IS HASH_TOP_TIPS)      glJitOptions |= JOF::TOP_TIPS;
+                  else if (hash IS HASH_TIPS)          glJitOptions |= JOF::TIPS;
+                  else if (hash IS HASH_ALL_TIPS)      glJitOptions |= JOF::ALL_TIPS;
+                  else log.warning("Unknown JIT option \"%s\" specified.", trimmed.c_str());
+               }
+
+               log.msg("JIT options \"%s\" set to $%.8x", value.c_str(), (uint32_t)glJitOptions);
+
+               if ((glJitOptions & (JOF::TRACE|JOF::PROFILE)) != JOF::NIL) {
+                  if (GetResource(RES::LOG_LEVEL) < 5) {
+                     // Automatically raise the log level to see JIT messages.  Helpful for AI
+                     // agents that forget this requirement.
+                     SetResource(RES::LOG_LEVEL, 5);
+                  }
+               }
+            }
+            else log.warning("No value for --jit-options");
+         }
+      }
+   }
 
    return create_fluid();
 }
@@ -315,14 +280,69 @@ static ERR MODExpunge(void)
    if (glMsgThread) { FreeResource(glMsgThread); glMsgThread = nullptr; }
    if (clFluid)     { FreeResource(clFluid); clFluid = nullptr; }
    if (modDisplay)  { FreeResource(modDisplay); modDisplay = nullptr; }
+   if (modRegex)    { FreeResource(modRegex); modRegex = nullptr; }
    return ERR::Okay;
 }
 
+//********************************************************************************************************************
+
 static ERR MODOpen(OBJECTPTR Module)
 {
-   Module->set(FID_FunctionList, JumpTableV1);
+   Module->set(FID_FunctionList, glFunctions);
    return ERR::Okay;
 }
+
+//********************************************************************************************************************
+
+#ifdef ENABLE_UNIT_TESTS
+extern void indexing_unit_tests(int &, int &);
+extern void vm_asm_unit_tests(int &, int &);
+extern void jit_frame_unit_tests(int &, int &);
+extern void parser_unit_tests(int &, int &);
+extern void array_unit_tests(int &, int &);
+#endif
+
+static void MODTest(CSTRING Options, int *Passed, int *Total)
+{
+#ifdef ENABLE_UNIT_TESTS
+   {
+      pf::Log log("FluidTests");
+      log.branch("Running indexing unit tests...");
+      indexing_unit_tests(*Passed, *Total);
+   }
+   {
+      pf::Log log("FluidTests");
+      log.branch("Running parser unit tests...");
+      parser_unit_tests(*Passed, *Total);
+   }
+   {
+      pf::Log log("FluidTests");
+      log.branch("Running VM assembly unit tests...");
+      vm_asm_unit_tests(*Passed, *Total);
+   }
+   {
+      pf::Log log("FluidTests");
+      log.branch("Running JIT frame unit tests...");
+      jit_frame_unit_tests(*Passed, *Total);
+   }
+   {
+      pf::Log log("FluidTests");
+      log.branch("Running array unit tests...");
+      array_unit_tests(*Passed, *Total);
+   }
+#else
+   pf::Log("FluidTests").warning("Unit tests are disabled in this build.");
+#endif
+}
+
+//********************************************************************************************************************
+// Bytecode names for debugging purposes
+
+CSTRING const glBytecodeNames[] = {
+#define BCNAME(name, ma, mb, mc, mt) #name,
+   BCDEF(BCNAME)
+#undef BCNAME
+};
 
 /*********************************************************************************************************************
 
@@ -333,7 +353,7 @@ The SetVariable() function provides a method for setting global variables in a F
 script.  If the script is cached, the variable settings will be available on the next activation.
 
 -INPUT-
-obj Script: Pointer to a Fluid script.
+obj(Script) Script: Pointer to a Fluid script.
 cstr Name: The name of the variable to set.
 int Type: A valid field type must be indicated, e.g. `FD_STRING`, `FD_POINTER`, `FD_INT`, `FD_DOUBLE`, `FD_INT64`.
 tags Variable: A variable that matches the indicated `Type`.
@@ -346,8 +366,8 @@ ObjectCorrupt: Privately maintained memory has become inaccessible.
 -END-
 
 *********************************************************************************************************************/
-
-static ERR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
+namespace fl {
+ERR SetVariable(objScript *Script, CSTRING Name, int Type, ...)
 {
    pf::Log log(__FUNCTION__);
    prvFluid *prv;
@@ -357,15 +377,15 @@ static ERR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
 
    log.branch("Script: %d, Name: %s, Type: $%.8x", Script->UID, Name, Type);
 
-   if (!(prv = (prvFluid *)Script->ChildPrivate)) return log.warning(ERR::ObjectCorrupt);
+   if (not (prv = (prvFluid *)Script->ChildPrivate)) return log.warning(ERR::ObjectCorrupt);
 
    va_start(list, Type);
 
    if (Type & FD_STRING)       lua_pushstring(prv->Lua, va_arg(list, STRING));
    else if (Type & FD_POINTER) lua_pushlightuserdata(prv->Lua, va_arg(list, APTR));
-   else if (Type & FD_INT)    lua_pushinteger(prv->Lua, va_arg(list, LONG));
-   else if (Type & FD_INT64)   lua_pushnumber(prv->Lua, va_arg(list, LARGE));
-   else if (Type & FD_DOUBLE)  lua_pushnumber(prv->Lua, va_arg(list, DOUBLE));
+   else if (Type & FD_INT)     lua_pushinteger(prv->Lua, va_arg(list, int));
+   else if (Type & FD_INT64)   lua_pushnumber(prv->Lua, va_arg(list, int64_t));
+   else if (Type & FD_DOUBLE)  lua_pushnumber(prv->Lua, va_arg(list, double));
    else {
       va_end(list);
       return log.warning(ERR::FieldTypeMismatch);
@@ -376,7 +396,7 @@ static ERR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
    va_end(list);
    return ERR::Okay;
 }
-
+}
 //********************************************************************************************************************
 
 void hook_debug(lua_State *Lua, lua_Debug *Info)
@@ -385,15 +405,15 @@ void hook_debug(lua_State *Lua, lua_Debug *Info)
 
    if (Info->event IS LUA_HOOKCALL) {
       if (lua_getinfo(Lua, "nSl", Info)) {
-         if (Info->name) log.msg("%s: %s.%s(), Line: %d", Info->what, Info->namewhat, Info->name, Lua->Script->CurrentLine + Lua->Script->LineOffset);
+         if (Info->name) log.msg("%s: %s.%s(), Line: %d", Info->what, Info->namewhat, Info->name, Lua->script->CurrentLine + Lua->script->LineOffset);
       }
       else log.warning("lua_getinfo() failed.");
    }
    else if (Info->event IS LUA_HOOKRET) { }
    else if (Info->event IS LUA_HOOKTAILRET) { }
    else if (Info->event IS LUA_HOOKLINE) {
-      Lua->Script->CurrentLine = Info->currentline - 1; // Our line numbers start from zero
-      if (Lua->Script->CurrentLine < 0) Lua->Script->CurrentLine = 0; // Just to be certain :-)
+      Lua->script->CurrentLine = Info->currentline - 1; // Our line numbers start from zero
+      if (Lua->script->CurrentLine < 0) Lua->script->CurrentLine = 0; // Just to be certain :-)
 /*
       if (lua_getinfo(Lua, "nSl", Info)) {
          log.msg("Line %d: %s: %s", Info->currentline, Info->what, Info->name);
@@ -404,6 +424,7 @@ void hook_debug(lua_State *Lua, lua_Debug *Info)
 }
 
 //********************************************************************************************************************
+<<<<<<< HEAD
 // Debug stepping hook - pauses execution on line events when in debug mode
 
 void hook_debug_step(lua_State *Lua, lua_Debug *Info)
@@ -463,30 +484,47 @@ void hook_debug_step(lua_State *Lua, lua_Debug *Info)
 //********************************************************************************************************************
 // Builds an ordered Lua array from a fixed list of values.  Guaranteed to always return a table, empty or not.
 // Works with primitives only, for structs please use make_struct_[ptr|serial]_table() because the struct name
+=======
+// Builds an array from a fixed list of values.  Guaranteed to always return an array, empty or not.
+// Intended for primitives only, for structs please use make_struct_[ptr|serial]_table() because the struct name
+>>>>>>> master
 // will be required.
 
-void make_table(lua_State *Lua, LONG Type, LONG Elements, CPTR Data)
+void make_array(lua_State *Lua, AET Type, int Elements, CPTR Data, std::string_view StructName)
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("Type: $%.8x, Elements: %d, Data: %p", Type, Elements, Data);
+   log.traceBranch("Type: $%.8x, Elements: %d, Data: %p", int(Type), Elements, Data);
 
    if (Elements < 0) {
-      if (!Data) Elements = 0;
+      if (not Data) Elements = 0;
       else {
-         LONG i = 0;
-         switch (Type & (FD_DOUBLE|FD_INT64|FD_FLOAT|FD_POINTER|FD_OBJECT|FD_STRING|FD_INT|FD_WORD|FD_BYTE)) {
-            case FD_STRING:
-            case FD_OBJECT:
-            case FD_POINTER: for (i=0; ((APTR *)Data)[i]; i++); break;
-            case FD_FLOAT:   for (i=0; ((FLOAT *)Data)[i]; i++); break;
-            case FD_DOUBLE:  for (i=0; ((DOUBLE *)Data)[i]; i++); break;
-            case FD_INT64:   for (i=0; ((LARGE *)Data)[i]; i++); break;
-            case FD_INT:    for (i=0; ((LONG *)Data)[i]; i++); break;
-            case FD_WORD:    for (i=0; ((WORD *)Data)[i]; i++); break;
-            case FD_BYTE:    for (i=0; ((BYTE *)Data)[i]; i++); break;
+         int i = 0;
+         switch (Type) {
+            case AET::CSTR:
+            case AET::PTR:
+            case AET::OBJECT:
+               for (i=0; ((APTR *)Data)[i]; i++);
+               break;
+            case AET::FLOAT:
+            case AET::INT32:
+               for (i=0; ((int *)Data)[i]; i++);
+               break;
+            case AET::DOUBLE:
+            case AET::INT64:
+               for (i=0; ((int64_t *)Data)[i]; i++);
+               break;
+            case AET::INT16:
+               for (i=0; ((int16_t *)Data)[i]; i++);
+               break;
+            case AET::BYTE:
+               for (i=0; ((int8_t *)Data)[i]; i++);
+               break;
+            case AET::STRUCT: // Use make_struct_*() interfaces instead
+            case AET::STR_GC:
+            case AET::STR_CPP:
             default:
-               log.warning("Unsupported type $%.8x", Type);
+               log.warning("Unsupported type $%.8x", int(Type));
                lua_pushnil(Lua);
                return;
          }
@@ -495,120 +533,129 @@ void make_table(lua_State *Lua, LONG Type, LONG Elements, CPTR Data)
       }
    }
 
-   lua_createtable(Lua, Elements, 0); // Create a new table on the stack.
-   if (!Data) return;
+   // lj_array_new() with ARRAY_CACHED handles all data copying internally, including string caching
 
-   switch(Type & (FD_DOUBLE|FD_INT64|FD_FLOAT|FD_POINTER|FD_OBJECT|FD_STRING|FD_INT|FD_WORD|FD_BYTE)) {
-      case FD_STRING:  for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushstring(Lua, ((CSTRING *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_OBJECT:  for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); push_object(Lua, ((OBJECTPTR *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_POINTER: for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushlightuserdata(Lua, ((APTR *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_FLOAT:   for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushnumber(Lua, ((FLOAT *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_DOUBLE:  for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushnumber(Lua, ((DOUBLE *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_INT64:   for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushnumber(Lua, ((LARGE *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_INT:    for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushinteger(Lua, ((LONG *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_WORD:    for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushinteger(Lua, ((WORD *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_BYTE:    for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushinteger(Lua, ((BYTE *)Data)[i]); lua_settable(Lua, -3); } break;
-   }
+   GCarray *array = lj_array_new(Lua, Elements, Type, (void *)Data, ARRAY_CACHED, StructName);
+
+   // Push to the stack
+   lj_gc_check(Lua);
+   setarrayV(Lua, Lua->top++, array);
 }
 
 //********************************************************************************************************************
 // Create a Lua array from a list of structure pointers.
 
-void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, LONG Elements, CPTR *Values)
+void make_struct_ptr_array(lua_State *Lua, std::string_view StructName, int Elements, CPTR *Values)
 {
    pf::Log log(__FUNCTION__);
 
-   log.trace("%s, Elements: %d, Values: %p", StructName, Elements, Values);
+   log.trace("%.*s, Elements: %d, Values: %p", int(StructName.size()), StructName.data(), Elements, Values);
 
    if (Elements < 0) {
-      LONG i;
+      int i;
       for (i=0; Values[i]; i++);
       Elements = i;
    }
 
-   lua_createtable(Lua, Elements, 0); // Create a new table on the stack.
-   if (!Values) return;
-
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-
    auto s_name = struct_name(StructName);
-   if (prv->Structs.contains(s_name)) {
+   if (not glStructs.contains(s_name)) luaL_error(Lua, "Failed to find struct '%.*s'", int(StructName.size()), StructName.data());
+
+   GCarray *arr = lj_array_new(Lua, Elements, AET::TABLE);
+   setarrayV(Lua, Lua->top++, arr); // Push to stack immediately to protect from GC during loop
+   int arr_idx = lua_gettop(Lua);
+
+   if (Values) {
       std::vector<lua_ref> ref;
-      for (LONG i=0; i < Elements; i++) {
-         lua_pushinteger(Lua, i+1);
-         if (struct_to_table(Lua, ref, prv->Structs[s_name], Values[i]) != ERR::Okay) lua_pushnil(Lua);
-         lua_settable(Lua, -3);
+      auto &sdef = glStructs[s_name];
+
+      for (int i=0; i < Elements; i++) {
+         if (struct_to_table(Lua, ref, sdef, Values[i]) IS ERR::Okay) {
+            // Table is now on top of stack; retrieve arr from stack in case GC moved it
+            arr = arrayV(Lua->base + arr_idx - 1);
+            TValue *tv = Lua->top - 1;
+            GCtab *tab = tabV(tv);
+            setgcref(arr->get<GCRef>()[i], obj2gco(tab));
+            lj_gc_objbarrier(Lua, arr, tab);
+            Lua->top--;  // Pop the table
+         }
+         else {
+            arr = arrayV(Lua->base + arr_idx - 1);
+            setgcrefnull(arr->get<GCRef>()[i]);
+         }
       }
    }
-   else log.warning("Failed to find struct '%s'", StructName);
 }
 
 //********************************************************************************************************************
-// Create a Lua array from a serialised list of structures.
+// Create an array from a serialised list of structures aligned to a 64-bit boundary.
 
-void make_struct_serial_table(lua_State *Lua, CSTRING StructName, LONG Elements, CPTR Data)
+void make_struct_serial_array(lua_State *Lua, std::string_view StructName, int Elements, CPTR Input)
 {
    pf::Log log(__FUNCTION__);
 
    if (Elements < 0) Elements = 0; // The total number of structs is a hard requirement.
 
-   lua_createtable(Lua, Elements, 0); // Create a new table on the stack.
-   if (!Data) return;
-
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
    auto s_name = struct_name(StructName);
-   if (prv->Structs.contains(s_name)) {
-      auto def = &prv->Structs[s_name];
+   if (not glStructs.contains(s_name)) luaL_error(Lua, "Failed to find struct '%.*s'", int(StructName.size()), StructName.data());
+
+   GCarray *arr = lj_array_new(Lua, Elements, AET::TABLE);
+   setarrayV(Lua, Lua->top++, arr); // Push to stack immediately to protect from GC during loop
+   int arr_idx = lua_gettop(Lua);
+
+   if (Input) {
+      std::vector<lua_ref> ref;
+      auto &sdef = glStructs[s_name];
 
       // 64-bit compilers don't always align structures to 64-bit, and it's difficult to compute alignment with
       // certainty.  It is essential that structures that are intended to be serialised into arrays are manually
       // padded to 64-bit so that the potential for mishap is eliminated.
 
-      #ifdef _LP64
-      LONG def_size = ALIGN64(def->Size);
-      #else
-      LONG def_size = ALIGN32(def->Size);
-      #endif
-
-      char aligned = ((def->Size & 0x7) != 0) ? 'N': 'Y';
+      int def_size = ALIGN64(sdef.Size);
+      char aligned = ((sdef.Size & 0x7) != 0) ? 'N': 'Y';
       if (aligned IS 'N') {
-         log.msg("%s, Elements: %d, Values: %p, StructSize: %d, Aligned: %c", StructName, Elements, Data, def_size, aligned);
+         log.msg("%.*s, Elements: %d, Values: %p, StructSize: %d, Aligned: %c", int(StructName.size()), StructName.data(), Elements, Input, def_size, aligned);
       }
 
-      std::vector<lua_ref> ref;
+      for (int i=0; i < Elements; i++) {
+         if (struct_to_table(Lua, ref, sdef, Input) IS ERR::Okay) {
+            // Table is now on top of stack; retrieve arr from stack in case GC moved it
+            arr = arrayV(Lua->base + arr_idx - 1);
+            TValue *tv = Lua->top - 1;
+            GCtab *tab = tabV(tv);
+            setgcref(arr->get<GCRef>()[i], obj2gco(tab));
+            lj_gc_objbarrier(Lua, arr, tab);
+            Lua->top--;  // Pop the table
+         }
+         else {
+            arr = arrayV(Lua->base + arr_idx - 1);
+            setgcrefnull(arr->get<GCRef>()[i]);
+         }
 
-      for (LONG i=0; i < Elements; i++) {
-         lua_pushinteger(Lua, i+1);
-         if (struct_to_table(Lua, ref, *def, Data) != ERR::Okay) lua_pushnil(Lua);
-         Data = (BYTE *)Data + def_size;
-         lua_settable(Lua, -3);
+         Input = (int8_t *)Input + def_size;
       }
    }
-   else log.warning("Failed to find struct '%s'", StructName);
 }
 
 //********************************************************************************************************************
 // The TypeName can be in the format 'Struct:Arg' without causing any issues.
 
-void make_any_table(lua_State *Lua, LONG Type, CSTRING TypeName, LONG Elements, CPTR Values)
+void make_any_array(lua_State *Lua, int Flags, std::string_view TypeName, int Elements, CPTR Values)
 {
-   if (Type & FD_STRUCT) {
-      if (Type & FD_POINTER) make_struct_ptr_table(Lua, TypeName, Elements, (CPTR *)Values);
-      else make_struct_serial_table(Lua, TypeName, Elements, Values);
+   if (Flags & FD_STRUCT) {
+      if (Flags & FD_POINTER) make_struct_ptr_array(Lua, TypeName, Elements, (CPTR *)Values);
+      else make_struct_serial_array(Lua, TypeName, Elements, Values);
    }
-   else make_table(Lua, Type, Elements, Values);
+   else make_array(Lua, ff_to_aet(Flags), Elements, Values, TypeName);
 }
 
 //********************************************************************************************************************
 
-void get_line(objScript *Self, LONG Line, STRING Buffer, LONG Size)
+void get_line(objScript *Self, int Line, STRING Buffer, int Size)
 {
-   CSTRING str;
-
-   if ((str = Self->String)) {
-      LONG i;
+   if (CSTRING str = Self->String) {
+      int i;
       for (i=0; i < Line; i++) {
-         if (!(str = next_line(str))) {
+         if (not (str = next_line(str))) {
             Buffer[0] = 0;
             return;
          }
@@ -626,95 +673,84 @@ void get_line(objScript *Self, LONG Line, STRING Buffer, LONG Size)
 }
 
 //********************************************************************************************************************
+// For the 'include' keyword
 
-ERR load_include(objScript *Script, CSTRING IncName)
+[[nodiscard]] ERR load_include(objScript *Script, CSTRING IncName)
 {
-   pf::Log log(__FUNCTION__);
-
-   log.branch("Definition: %s", IncName);
-
-   auto prv = (prvFluid *)Script->ChildPrivate;
-
-   // For security purposes, check the validity of the include name.
-
-   LONG i;
-   for (i=0; IncName[i]; i++) {
-      if ((IncName[i] >= 'a') and (IncName[i] <= 'z')) continue;
-      if ((IncName[i] >= 'A') and (IncName[i] <= 'Z')) continue;
-      if ((IncName[i] >= '0') and (IncName[i] <= '9')) continue;
-      break;
-   }
-
-   if ((IncName[i]) or (i >= 32)) {
-      log.msg("Invalid module name; only alpha-numeric names are permitted with max 32 chars.");
-      return ERR::Syntax;
-   }
-
-   if (prv->Includes.contains(IncName)) {
-      log.trace("Include file '%s' already loaded.", IncName);
-      return ERR::Okay;
-   }
-
    ERR error = ERR::Okay;
 
-   AdjustLogLevel(1);
+   std::unique_lock lock(glConstantMutex); // Required to update the constant registry
 
-      objModule::create module = { fl::Name(IncName) };
-      if (module.ok()) {
-         prv->Includes.insert(IncName); // Mark the file as loaded.
+   // Constants are system-wide, so process only once per session.
 
-         OBJECTPTR root;
-         if ((error = module->get(FID_Root, root)) IS ERR::Okay) {
-            struct ModHeader *header;
-            if ((((error = root->get(FID_Header, header)) IS ERR::Okay) and (header))) {
-               if (auto structs = header->StructDefs) {
-                  for (auto &s : structs[0]) glStructSizes[s.first] = s.second;
-               }
+   bool process_constants = false;
+   if (not glLoadedConstants.contains(IncName)) {
+      process_constants = true;
+      glLoadedConstants.insert(IncName);
+   }
 
-               if (auto idl = header->Definitions) {
-                  log.trace("Parsing IDL for module %s", IncName);
+   if (process_constants) {
+      pf::Log log(__FUNCTION__);
+      log.branch("Definition: %s", IncName);
 
-                  while ((idl) and (*idl)) {
-                     if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(prv->Lua, idl+2, IncName);
-                     else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(prv->Lua, idl+2, IncName);
-                     else idl = next_line(idl);
+      AdjustLogLevel(1);
+
+         objModule::create module = { fl::Name(IncName) };
+         if (module.ok()) {
+            OBJECTPTR root;
+            if ((error = module->get(FID_Root, root)) IS ERR::Okay) {
+               struct ModHeader *header;
+               if ((((error = root->get(FID_Header, header)) IS ERR::Okay) and (header))) {
+                  if (auto structs = header->StructDefs) {
+                     for (auto &s : structs[0]) glStructSizes[s.first] = s.second;
                   }
+
+                  if (auto idl = header->Definitions) {
+                     log.trace("Parsing IDL for module %s", IncName);
+
+                     while ((idl) and (*idl)) {
+                        if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(Script, idl+2, IncName);
+                        else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(idl+2, IncName);
+                        else idl = next_line(idl);
+                     }
+                  }
+                  else log.trace("No IDL defined for %s", IncName);
                }
-               else log.trace("No IDL defined for %s", IncName);
             }
          }
-      }
-      else error = ERR::CreateObject;
+         else error = ERR::CreateObject;
 
-   AdjustLogLevel(-1);
+      AdjustLogLevel(-1);
+   }
+
    return error;
 }
 
 //********************************************************************************************************************
 // Format: s.Name:typeField,...
 
-static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
+static CSTRING load_include_struct(objScript *Script, CSTRING Line, CSTRING Source)
 {
    pf::Log log("load_include");
 
-   LONG i;
+   int i;
    for (i=0; (Line[i] >= 0x20) and (Line[i] != ':'); i++);
 
    if (Line[i] IS ':') {
       std::string name(Line, i);
       Line += i + 1;
 
-      LONG j;
+      int j;
       for (j=0; (Line[j] != '\n') and (Line[j] != '\r') and (Line[j]); j++);
 
       if ((Line[j] IS '\n') or (Line[j] IS '\r')) {
          std::string linebuf(Line, j);
-         make_struct(Lua, name, linebuf.c_str());
+         make_struct(Script, name, linebuf.c_str());
          while ((Line[j] IS '\n') or (Line[j] IS '\r')) j++;
          return Line + j;
       }
       else {
-         make_struct(Lua, name, Line);
+         make_struct(Script, name, Line);
          return Line + j;
       }
    }
@@ -726,14 +762,14 @@ static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
 
 //********************************************************************************************************************
 
-static BYTE datatype(std::string_view String)
+[[nodiscard]] static constexpr int8_t datatype(std::string_view String) noexcept
 {
    size_t i = 0;
    while ((i < String.size()) and (String[i] <= 0x20)) i++; // Skip white-space
 
    if ((String[i] IS '0') and (String[i+1] IS 'x')) {
       for (i+=2; i < String.size(); i++) {
-         if (!std::isxdigit(String[i])) return 's';
+         if (not std::isxdigit(String[i])) return 's';
       }
       return 'h';
    }
@@ -752,12 +788,14 @@ static BYTE datatype(std::string_view String)
 }
 
 //********************************************************************************************************************
+// Update the constant registry.
+// A lock on glConstantMutex must be held before calling this function.
 
-static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Source)
+static CSTRING load_include_constant(CSTRING Line, CSTRING Source)
 {
    pf::Log log("load_include");
 
-   LONG i;
+   int i;
    for (i=0; (unsigned(Line[i]) > 0x20) and (Line[i] != ':'); i++);
 
    if (Line[i] != ':') {
@@ -765,51 +803,43 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
       return next_line(Line);
    }
 
-   std::string prefix(Line, i);
-   prefix.reserve(200);
+   std::string name(Line, i);
+   name.reserve(MAX_STRING_PREFIX_LENGTH);
 
    Line += i + 1;
 
-   if (!prefix.empty()) prefix += '_';
-   auto append_from = prefix.size();
+   if (not name.empty()) name += '_';
+   auto append_from = name.size();
 
    while (*Line > 0x20) {
-      LONG n;
+      int n;
       for (n=0; (Line[n] > 0x20) and (Line[n] != '='); n++);
 
       if (Line[n] != '=') {
-         log.warning("Malformed const definition, expected '=' after name '%s'", prefix.c_str());
+         log.warning("Malformed const definition, expected '=' after name '%s'", name.c_str());
          break;
       }
 
-      prefix.erase(append_from);
-      prefix.append(Line, n);
+      name.erase(append_from);
+      name.append(Line, n);
       Line += n + 1;
 
       for (n=0; (Line[n] > 0x20) and (Line[n] != ','); n++);
       std::string value(Line, n);
       Line += n;
 
-      //log.warning("%s = %s", prefix.c_str(), value.c_str());
+      //log.warning("%s = %s", name.c_str(), value.c_str());
 
       if (n > 0) {
          auto dt = datatype(value);
-         if (dt IS 'i') {
-            lua_pushinteger(Lua, strtoll(value.c_str(), nullptr, 0));
-         }
-         else if (dt IS 'f') {
-            lua_pushnumber(Lua, strtod(value.c_str(), NULL));
-         }
-         else if (dt IS 'h') {
-            lua_pushnumber(Lua, strtoull(value.c_str(), NULL, 0)); // Using pushnumber() so that 64-bit hex is supported.
-         }
-         else if (value[0] IS '\"') {
-            if (value[n-1] IS '\"') lua_pushlstring(Lua, value.c_str()+1, n-2);
-            else lua_pushlstring(Lua, value.c_str(), n);
-         }
-         else lua_pushlstring(Lua, value.c_str(), n);
+         FluidConstant constant(int64_t(0));
 
-         lua_setglobal(Lua, prefix.c_str());
+         if (dt IS 'i') constant = FluidConstant(int64_t(strtoll(value.c_str(), nullptr, 0)));
+         else if (dt IS 'f') constant = FluidConstant(strtod(value.c_str(), nullptr));
+         else if (dt IS 'h') constant = FluidConstant(int64_t(strtoull(value.c_str(), nullptr, 0)));
+         else log.warning("Unsupported constant value: %s", value.c_str());
+
+         glConstantRegistry.emplace(pf::strhash(name), constant);
       }
 
       if (*Line IS ',') Line++;
@@ -831,7 +861,7 @@ int code_writer_id(lua_State *Lua, CPTR Data, size_t Size, void *FileID)
    if (file.granted()) {
       if (acWrite(*file, (APTR)Data, Size) IS ERR::Okay) return 0;
    }
-   log.warning("Failed writing %d bytes.", (LONG)Size);
+   log.warning("Failed writing %d bytes.", (int)Size);
    return 1;
 }
 
@@ -841,7 +871,7 @@ int code_writer(lua_State *Lua, CPTR Data, size_t Size, OBJECTPTR File)
 
    if (Size <= 0) return 0; // Ignore bad size requests
 
-   LONG result;
+   int result;
    if (acWrite(File, (APTR)Data, Size, &result) IS ERR::Okay) {
       if ((size_t)result != Size) {
          log.warning("Wrote %d bytes instead of %d.", result, (int)Size);
@@ -861,12 +891,12 @@ int code_writer(lua_State *Lua, CPTR Data, size_t Size, OBJECTPTR File)
 CSTRING code_reader(lua_State *Lua, void *Handle, size_t *Size)
 {
    auto handle = (code_reader_handle *)Handle;
-   LONG result;
+   int result;
    if (acRead(handle->File, handle->Buffer, SIZE_READ, &result) IS ERR::Okay) {
       *Size = result;
       return (CSTRING)handle->Buffer;
    }
-   else return NULL;
+   else return nullptr;
 }
 
 //********************************************************************************************************************
@@ -896,5 +926,5 @@ static void stack_dump(lua_State *L)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MOD_IDL, NULL)
+PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MODTest, MOD_IDL, nullptr)
 extern "C" struct ModHeader * register_fluid_module() { return &ModHeader; }

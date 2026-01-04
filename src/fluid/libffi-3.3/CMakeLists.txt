@@ -59,6 +59,11 @@ include_directories (include)
 if (MSVC)
    set (CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
    set (CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
+
+   # Disable MSVC run-time checks (RTC) for libffi because its alloca-heavy trampolines trigger benign _RTC_CheckStackVars2 frames
+   # This must be done before the cache is set, so we do it here rather than using target properties
+   STRING(REGEX REPLACE "/RTC(su|[1su])" "" CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
+   set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}" CACHE STRING "Flags used by the C compiler during DEBUG builds." FORCE)
 else ()
    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fomit-frame-pointer -fstrict-aliasing -ffast-math")
 endif ()

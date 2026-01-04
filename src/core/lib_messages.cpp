@@ -34,7 +34,7 @@ Name: Messages
 
 static ERR wake_task(void);
 #ifdef _WIN32
-static ERR sleep_task(int, BYTE);
+static ERR sleep_task(int, int8_t);
 #else
 static ERR sleep_task(int);
 ERR write_nonblock(int Handle, APTR Data, int Size, int64_t EndTime);
@@ -46,7 +46,7 @@ static std::recursive_mutex glQueueLock;
 static std::vector<TaskMessage> glQueue; // Available to all threads, use glQueueLock
 
 template <class T> inline APTR ResolveAddress(T *Pointer, int Offset) {
-   return APTR(((BYTE *)Pointer) + Offset);
+   return APTR(((int8_t *)Pointer) + Offset);
 }
 
 static ERR msghandler_free(APTR Address)
@@ -90,7 +90,7 @@ static void notify_signal_wfo(OBJECTPTR Object, ACTIONID ActionID, ERR Result, A
 
       if (glWFOList.empty()) {
          log.trace("All objects signalled.");
-         SendMessage(MSGID::WAIT_FOR_OBJECTS, MSF::WAIT, nullptr, 0); // Will result in ProcessMessages() terminating
+         SendMessage(MSGID::WAIT_FOR_OBJECTS, MSF::NIL, nullptr, 0); // Will result in ProcessMessages() terminating
       }
    }
 }
@@ -143,7 +143,7 @@ ERR AddMsgHandler(MSGID MsgType, FUNCTION *Routine, MsgHandler **Handle)
    if (auto lock = std::unique_lock{glmMsgHandler}) {
       MsgHandler *handler;
       if (AllocMemory(sizeof(MsgHandler), MEM::MANAGED, (APTR *)&handler, nullptr) IS ERR::Okay) {
-         set_memory_manager(handler, &glResourceMsgHandler);
+         SetResourceMgr(handler, &glResourceMsgHandler);
 
          handler->Prev     = nullptr;
          handler->Next     = nullptr;
@@ -261,7 +261,7 @@ timer_cycle:
             timer->LastCall = current_time;
             timer->Cycle = glTimerCycle;
 
-            //log.trace("Subscriber: %d, Interval: %d, Time: %" PF64, timer->SubscriberID, timer->Interval, current_time);
+            //log.trace("Subscriber: %d, Interval: %d, Time: %" PRId64, timer->SubscriberID, timer->Interval, current_time);
 
             timer->Locked = true; // Prevents termination of the structure irrespective of having a TL_TIMER lock.
 
@@ -315,6 +315,7 @@ timer_cycle:
 
          glmTimer.unlock();
       }
+      else log.detail("glmTimer lock failed.");
 
       // Consume queued messages
 
@@ -504,9 +505,9 @@ ERR ScanMessages(int *Handle, MSGID Type, APTR Buffer, int BufferSize)
             BufferSize -= sizeof(Message);
             if (BufferSize < it->Size) {
                ((Message *)Buffer)->Size = BufferSize;
-               copymem(it->getBuffer(), ((BYTE *)Buffer) + sizeof(Message), BufferSize);
+               copymem(it->getBuffer(), ((int8_t *)Buffer) + sizeof(Message), BufferSize);
             }
-            else copymem(it->getBuffer(), ((BYTE *)Buffer) + sizeof(Message), it->Size);
+            else copymem(it->getBuffer(), ((int8_t *)Buffer) + sizeof(Message), it->Size);
          }
 
          *Handle = index + 1;
@@ -613,7 +614,7 @@ ERR WaitForObjects(PMF Flags, int TimeOut, ObjectSignal *ObjectSignals)
    // Refer to the Task class for the message interception routines
    pf::Log log(__FUNCTION__);
 
-   ankerl::unordered_dense::map<OBJECTID, ObjectSignal> saved_list;
+   std::unordered_map<OBJECTID, ObjectSignal> saved_list;
 
    // Message processing is only possible from the main thread (for system design and synchronisation reasons)
    if (!tlMainThread) return log.warning(ERR::OutsideMainThread);
@@ -928,7 +929,7 @@ ERR sleep_task(int Timeout)
       }
    }
 
-   UBYTE buffer[64];
+   uint8_t buffer[64];
    if (result > 0) {
       glFDProtected++;
       for (auto &fd : glFDTable) {
@@ -998,7 +999,7 @@ ERR sleep_task(int Timeout)
 // sleep_task() - Windows version
 
 #ifdef _WIN32
-ERR sleep_task(int Timeout, BYTE SystemOnly)
+ERR sleep_task(int Timeout, int8_t SystemOnly)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1056,7 +1057,7 @@ ERR sleep_task(int Timeout, BYTE SystemOnly)
                handles[total++] = fd.FD;
             }
             else {
-               log.warning("FD %" PF64 " has no READ/WRITE/EXCEPT flag setting - de-registering.", (int64_t)fd.FD);
+               log.warning("FD %" PRId64 " has no READ/WRITE/EXCEPT flag setting - de-registering.", (int64_t)fd.FD);
                it = glFDTable.erase(it);
                continue;
             }
@@ -1103,7 +1104,7 @@ ERR sleep_task(int Timeout, BYTE SystemOnly)
          break;
       }
       else if (i IS -2) {
-         log.warning("WaitForObjects() failed, bad handle %" PF64 ".  Deregistering automatically.", (int64_t)handles[0]);
+         log.warning("WaitForObjects() failed, bad handle %" PRId64 ".  Deregistering automatically.", (int64_t)handles[0]);
          RegisterFD((HOSTHANDLE)handles[0], RFD::REMOVE|RFD::READ|RFD::WRITE|RFD::EXCEPT, nullptr, nullptr);
       }
       else if (i IS -4) {
@@ -1162,7 +1163,7 @@ static ERR wake_task(void)
    // NOTE: If sockets are not available on the host then you can use a mutex for sleeping, BUT this would mean that
    // every FD has to be given its own thread for processing.
 
-   UBYTE msg = 1;
+   uint8_t msg = 1;
 
    // Each thread gets its own comm socket for dispatch, because allowing them to all use the same socket has been
    // discovered to cause problems.  The use of pthread keys also ensures that the socket FD is automatically closed

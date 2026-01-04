@@ -21,10 +21,10 @@ This file is in the public domain and may be distributed and modified without re
 #endif
 
 struct CoreBase *CoreBase;
-static APTR glCoreHandle = NULL;
-typedef ERR OPENCORE(struct OpenInfo *, struct CoreBase **);
-typedef void CLOSECORE(void);
-static CLOSECORE *CloseCore = NULL;
+static APTR glCoreHandle = nullptr;
+using OPENCORE = ERR(struct OpenInfo *, struct CoreBase **);
+using CLOSECORE = void(void);
+static CLOSECORE *CloseCore = nullptr;
 #else
 static struct CoreBase *CoreBase; // Dummy
 #endif
@@ -45,7 +45,7 @@ extern "C" const char * init_parasol(int argc, CSTRING *argv)
    if (!stat("lib/core.so", &corestat)) {
       // The working directory will form the root path to the Parasol Framework
       if (getcwd(root_path, sizeof(root_path))) {
-         LONG i = strlen(root_path);
+         int i = strlen(root_path);
          if (root_path[i-1] != '/') root_path[i++] = '/';
          root_path[i] = 0;
       }
@@ -58,7 +58,7 @@ extern "C" const char * init_parasol(int argc, CSTRING *argv)
       char procfile[48];
       snprintf(procfile, sizeof(procfile), "/proc/%d/exe", getpid());
 
-      LONG path_len;
+      int path_len;
       if ((path_len = readlink(procfile, root_path, sizeof(root_path)-1)) > 0) {
          // Strip the process name
          while ((path_len > 0) and (root_path[path_len-1] != '/')) path_len--;
@@ -105,7 +105,7 @@ extern "C" const char * init_parasol(int argc, CSTRING *argv)
    info.Error     = ERR::Okay;
    info.Flags     = OPF::ARGS|OPF::ERROR;
 
-   if (OpenCore(&info, &CoreBase) IS ERR::Okay) return NULL;
+   if (OpenCore(&info, &CoreBase) IS ERR::Okay) return nullptr;
    else if (info.Error IS ERR::CoreVersion) return "This program requires the latest version of the Parasol framework.\nPlease visit www.parasol.ws to upgrade.";
    else return "Failed to initialise Parasol.  Run again with --log-info.";
 }

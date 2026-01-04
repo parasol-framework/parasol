@@ -35,7 +35,7 @@ Sa = max(Sr, Sg, Sb)
 <p>where</p>
 <pre>ks = Specular lighting constant
 N  = Surface normal unit vector, a function of x and y
-H  = "Halfway" unit vector between eye unit vector and light unit vector
+H  = &quot;Halfway&quot; unit vector between eye unit vector and light unit vector
 
 Lr,Lg,Lb = RGB components of light
 </pre>

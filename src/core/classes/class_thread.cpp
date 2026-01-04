@@ -40,15 +40,15 @@ thread routine.
 #include "../defs.h"
 #include <parasol/main.h>
 
-THREADVAR int8_t tlThreadCrashed;
-THREADVAR extThread *tlThreadRef;
+thread_local int8_t tlThreadCrashed;
+thread_local extThread *tlThreadRef;
 
 static void thread_entry_cleanup(void *);
 
 //********************************************************************************************************************
 // Returns a unique ID for the active thread.  The ID has no relationship with the host operating system.
 
-static THREADVAR THREADID tlUniqueThreadID(0);
+static thread_local THREADID tlUniqueThreadID(0);
 static std::atomic_int glThreadIDCount = 1;
 
 THREADID get_thread_id(void)
@@ -169,7 +169,7 @@ static ERR THREAD_Activate(extThread *Self)
       // if the client routine is persistently running during shutdown.
 
       // See msg_threadcallback()
-      SendMessage(MSGID::THREAD_CALLBACK, MSF::ADD|MSF::WAIT, &msg, sizeof(msg));
+      SendMessage(MSGID::THREAD_CALLBACK, MSF::NIL, &msg, sizeof(msg));
 
       // Reset the crash indicators and invoke the cleanup code.
       tlThreadRef     = nullptr;

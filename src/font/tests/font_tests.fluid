@@ -1,40 +1,29 @@
 -- $FLUID
 -- Flute tests for Font functionality
 
-   local mFont = mod.load("font")
+   mFont ?= mod.load("font")
 
-function testGetList()
-
-end
-
-function testStringWidth()
+function GetList()
 
 end
 
-function testSelectFont()
-   local err, path, meta = mFont.selectFont("Noto Sans", "Regular")
-   assert(err == ERR_Okay, "SelectFont() returned error " .. mSys.GetErrorMsg(err))
+function StringWidth()
 
-   local err, path, meta = mFont.selectFont("Does Not Exist,*", "Regular")
+end
+
+@Test function SelectFont()
+   err, path, meta = mFont.selectFont("Noto Sans", "Regular")
+   assert(err is ERR_Okay, "SelectFont() returned error " .. mSys.GetErrorMsg(err))
+
+   err, path, meta = mFont.selectFont("Does Not Exist,*", "Regular")
    assert(err != ERR_Okay, "SelectFont() returned error " .. mSys.GetErrorMsg(err))
 
-   local err, path, meta = mFont.selectFont("Does Not Exist", "Regular")
+   err, path, meta = mFont.selectFont("Does Not Exist", "Regular")
    assert(err != ERR_Okay, "SelectFont() returned error " .. mSys.GetErrorMsg(err))
 end
 
-function testResolveFamily()
-   local err, name = mFont.resolveFamilyName("Does Not Exist,*")
-   assert(err == ERR_Okay, "ResolveFamilyName() returned error " .. mSys.GetErrorMsg(err))
-   assert(name == "Noto Sans", "Expected ResolveFamilyName() to return 'Noto Sans' as the default font")
+@Test function ResolveFamily()
+   err, name = mFont.resolveFamilyName("Does Not Exist,*")
+   assert(err is ERR_Okay, "ResolveFamilyName() returned error " .. mSys.GetErrorMsg(err))
+   assert(name is "Noto Sans", "Expected ResolveFamilyName() to return 'Noto Sans' as the default font")
 end
-
-//=====================================================================================================================
-
-   return {
-      tests = {
-        'testGetList', 'testStringWidth', 'testSelectFont', 'testResolveFamily'
-      },
-      init = nil,
-      cleanup = function()
-      end
-   }

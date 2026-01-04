@@ -102,27 +102,25 @@ module({ name="HTTP", copyright="Paul Manias © 2005-2025", version=1.0, timesta
     "RAW: Forcibly turns off chunk detection and chunk handling on incoming data.  Also turns off automatic chunk encoding for outgoing data.",
     "DEBUG_SOCKET: Log all HTTP headers and data that goes out through the socket.  This should only be used when sending plain-text data.",
     "RECV_BUFFER: Enables buffering of all received HTTP content into a local buffer.  The buffer information can be read at any time during and after the transaction through the #RecvBuffer field.  Note that this option should only be used for limited data transfers to avoid excessive memory usage.",
-    "LOG_ALL: Print extra log messages during HTTP processing.",
     "SSL: Force SSL connectivity, irrespective of the HTTP port.  Note that this flag is automatically set (and remains set for all future transfers) if the #Port field is set to `443`.",
     "DISABLE_SERVER_VERIFY: Disable SSL server certificate verification (use with caution).")
 
-  class("HTTP", { src="http.cpp", output="http_def.c" }, [[
+  class("HTTP", { src={ "http.cpp", "http_fields.cpp" }, output="http_def.c" }, [[
    double DataTimeout     # Timeout for receiving data, measured in seconds
    double ConnectTimeout  # Timeout for initial connection, measured in seconds
    large Index            # Current read/write index, relative to content length so always starts from zero
    large ContentLength    # Content length as reported in the content length response field, -1 if streamed or unknown
-   large Size             # Content size to use when uploading data
+   large Size             # Content size to use when sending data
    str Host               # Host / Domain
    str Path               # Path for file retrieval
    str OutputFile         # Target file for downloaded content
    str InputFile          # Source file for uploads
    str UserAgent          # User agent to pass in the HTTP headers
-   ptr ClientData         # Client-specific data for the HTTP object
    oid InputObject        # An object to send HTTP content
    oid OutputObject       # An object to receive HTTP content
    int(HTM) Method        # HTTP Request: GET, HEAD, POST, PUT..
    int Port               # Socket port number, usually port 80
-   int(HOM) ObjectMode    # Either DataFeed or Write mode
+   int(HOM) ObjectMode    # Type of I/O transfer to objects
    int(HTF) Flags         # Optional flags
    int(HTS) Status        # Status code received in the HTTP response header
    error Error            # Result of the operation

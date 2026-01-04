@@ -53,11 +53,11 @@ that is distributed with this package.  Please refer to it for further informati
 #include "defs/hashes.h"
 #include "../link/unicode.h"
 
-using BYTECODE = ULONG;
-using CELL_ID = ULONG;
+using BYTECODE = uint32_t;
+using CELL_ID = uint32_t;
 
 static BYTECODE glByteCodeID = 1;
-static ULONG glUID = 1000; // Use for generating unique/incrementing ID's, e.g. cell ID
+static uint32_t glUID = 1000; // Use for generating unique/incrementing ID's, e.g. cell ID
 
 using namespace pf;
 
@@ -132,7 +132,7 @@ struct layout; // Pre-def
 static ERR  activate_cell_edit(extDocument *, int, stream_char);
 static ERR  add_document_class(void);
 static int add_tabfocus(extDocument *, TT, BYTECODE);
-static void advance_tabfocus(extDocument *, BYTE);
+static void advance_tabfocus(extDocument *, int8_t);
 static void deactivate_edit(extDocument *, bool);
 static ERR  extract_script(extDocument *, const std::string &, objScript **, std::string &, std::string &);
 static void error_dialog(const std::string, const std::string);
@@ -154,19 +154,19 @@ static void notify_free_event(OBJECTPTR, ACTIONID, ERR, APTR);
 static void notify_lostfocus_viewport(OBJECTPTR, ACTIONID, ERR, APTR);
 static ERR  feedback_view(objVectorViewport *, FM);
 static void process_parameters(extDocument *, const std::string_view);
-static CSTRING read_unit(CSTRING, DOUBLE &, bool &);
+static CSTRING read_unit(CSTRING, double &, bool &);
 static void redraw(extDocument *, bool);
 static ERR  report_event(extDocument *, DEF, entity *, KEYVALUE *);
 static void reset_cursor(extDocument *);
-static ERR  resolve_fontx_by_index(extDocument *, stream_char, DOUBLE &);
+static ERR  resolve_fontx_by_index(extDocument *, stream_char, double &);
 static int  safe_file_path(extDocument *, const std::string &);
 static void set_focus(extDocument *, int, CSTRING);
 static void show_bookmark(extDocument *, const std::string &);
 static std::string stream_to_string(RSTREAM &, stream_char, stream_char);
 static ERR  unload_doc(extDocument *, ULD = ULD::NIL);
 static bool valid_objectid(extDocument *, OBJECTID);
-static bool view_area(extDocument *, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
-static std::string write_calc(DOUBLE, WORD);
+static bool view_area(extDocument *, double, double, double, double);
+static std::string write_calc(double, int16_t);
 
 static ERR GET_WorkingPath(extDocument *, CSTRING *);
 
@@ -323,5 +323,5 @@ static ERR add_document_class(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, nullptr, nullptr, MODExpunge, MOD_IDL, nullptr)
+PARASOL_MOD(MODInit, nullptr, nullptr, MODExpunge, nullptr, MOD_IDL, nullptr)
 extern "C" struct ModHeader * register_document_module() { return &ModHeader; }

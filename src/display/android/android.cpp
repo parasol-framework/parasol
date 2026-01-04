@@ -5,7 +5,7 @@
 ** immediately.
 */
 
-static void android_init_window(LONG MsgID)
+static void android_init_window(int MsgID)
 {
    LogF("~android_init_window()","Display: %d", glActiveDisplayID); // glActiveDisplayID is typically the SystemDisplay (Display class)
 
@@ -36,7 +36,7 @@ static void android_init_window(LONG MsgID)
    LogReturn();
 }
 
-static void android_term_window(LONG MsgID)
+static void android_term_window(int MsgID)
 {
    LogF("~android_term_window()","");
    free_egl(); // It is OK to terminate EGL in this thread.  Note that this function will do the lock_graphics() for us.

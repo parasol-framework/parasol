@@ -659,9 +659,9 @@ module({ name="Vector", copyright="Paul Manias © 2010-2025", version=1.0, times
 
 inline void operator*=(VectorMatrix &This, const VectorMatrix &Other)
 {
-   DOUBLE t0 = This.ScaleX * Other.ScaleX + This.ShearY * Other.ShearX;
-   DOUBLE t2 = This.ShearX * Other.ScaleX + This.ScaleY * Other.ShearX;
-   DOUBLE t4 = This.TranslateX * Other.ScaleX + This.TranslateY * Other.ShearX + Other.TranslateX;
+   double t0 = This.ScaleX * Other.ScaleX + This.ShearY * Other.ShearX;
+   double t2 = This.ShearX * Other.ScaleX + This.ScaleY * Other.ShearX;
+   double t4 = This.TranslateX * Other.ScaleX + This.TranslateY * Other.ShearX + Other.TranslateX;
    This.ShearY     = This.ScaleX * Other.ShearY + This.ShearY * Other.ScaleY;
    This.ScaleY     = This.ShearX * Other.ShearY + This.ScaleY * Other.ScaleY;
    This.TranslateY = This.TranslateX  * Other.ShearY + This.TranslateY * Other.ScaleY + Other.TranslateY;
@@ -672,7 +672,7 @@ inline void operator*=(VectorMatrix &This, const VectorMatrix &Other)
 
 //********************************************************************************************************************
 
-inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green, DOUBLE Blue, DOUBLE Alpha) {
+inline void SET_VECTOR_COLOUR(objVectorColour *Colour, double Red, double Green, double Blue, double Alpha) {
    Colour->Class->ClassID = CLASSID::VECTORCOLOUR;
    Colour->Red   = Red;
    Colour->Green = Green;
@@ -1257,7 +1257,7 @@ inline ERR SubscribeFeedback(APTR Ob, FM Mask, FUNCTION Callback) {
 namespace fl {
    using namespace pf;
 
-constexpr FieldValue Flags(VCLF Value) { return FieldValue(FID_Flags, LONG(Value)); }
+constexpr FieldValue Flags(VCLF Value) { return FieldValue(FID_Flags, int(Value)); }
 
 constexpr FieldValue AppendPath(OBJECTPTR Value) { return FieldValue(FID_AppendPath, Value); }
 
@@ -1267,8 +1267,8 @@ constexpr FieldValue DragCallback(const FUNCTION *Value) { return FieldValue(FID
 constexpr FieldValue OnChange(const FUNCTION &Value) { return FieldValue(FID_OnChange, &Value); }
 constexpr FieldValue OnChange(const FUNCTION *Value) { return FieldValue(FID_OnChange, Value); }
 
-constexpr FieldValue TextFlags(VTXF Value) { return FieldValue(FID_TextFlags, LONG(Value)); }
-constexpr FieldValue Overflow(VOF Value) { return FieldValue(FID_Overflow, LONG(Value)); }
+constexpr FieldValue TextFlags(VTXF Value) { return FieldValue(FID_TextFlags, int(Value)); }
+constexpr FieldValue Overflow(VOF Value) { return FieldValue(FID_Overflow, int(Value)); }
 
 constexpr FieldValue Sequence(CSTRING Value) { return FieldValue(FID_Sequence, Value); }
 inline FieldValue Sequence(std::string &Value) { return FieldValue(FID_Sequence, Value.c_str()); }
@@ -1276,13 +1276,11 @@ inline FieldValue Sequence(std::string &Value) { return FieldValue(FID_Sequence,
 constexpr FieldValue FontStyle(CSTRING Value) { return FieldValue(FID_FontStyle, Value); }
 inline FieldValue FontStyle(std::string &Value) { return FieldValue(FID_FontStyle, Value.c_str()); }
 
-template <class T> FieldValue RoundX(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "RoundX value must be numeric");
+template <pf::NumericOrScale T> FieldValue RoundX(T Value) {
    return FieldValue(FID_RoundX, Value);
 }
 
-template <class T> FieldValue RoundY(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "RoundY value must be numeric");
+template <pf::NumericOrScale T> FieldValue RoundY(T Value) {
    return FieldValue(FID_RoundY, Value);
 }
 

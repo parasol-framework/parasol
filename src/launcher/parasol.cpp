@@ -5,7 +5,7 @@ that is distributed with this package.  Please refer to it for further informati
 
 **********************************************************************************************************************
 
-This version of the Parasol launcher is intended for use from the command-line only.
+This version of the launcher is intended for use from the command-line only.
 
 *********************************************************************************************************************/
 
@@ -17,6 +17,7 @@ This version of the Parasol launcher is intended for use from the command-line o
 #include <string.h>
 
 #include "common.h"
+#include "version.h"
 
 extern struct CoreBase *CoreBase;
 
@@ -26,6 +27,7 @@ pf::vector<std::string> *glArgs;
 static int glArgsIndex = 0;
 //static STRING glAllow = nullptr;
 static std::string glTargetFile;
+static std::string glStatement;
 static OBJECTPTR glTask = nullptr;
 static objScript *glScript = nullptr;
 static bool glSandbox = false;
@@ -34,41 +36,47 @@ static bool glTime = false;
 static bool glDialog = false;
 static bool glBackstage = false;
 
-static ERR exec_source(CSTRING, int, const std::string);
+static ERR exec_source(std::string, int, const std::string);
 
-static const char glHelp[] = {
-"This command-line program can execute Fluid scripts and PARC files developed for the Parasol framework.\n\
-\n\
-   parasol [options] [script.ext] arg1 arg2=value ...\n\
-\n\
-The following options can be used when executing script files:\n\
-\n\
- --procedure [n] The name of a procedure to execute.\n\
- --time          Print the amount of time that it took to execute the script.\n\
- --dialog        Display a file dialog for choosing a script manually.\n\
- --backstage     Enables the backstage REST API (see Wiki).\n\
-\n\
- --log-api       Activates run-time log messages at API level.\n\
- --log-info      Activates run-time log messages at INFO level.\n\
- --log-error     Activates run-time log messages at ERROR level.\n"
-};
+static const std::string glHelp =
+   "Parasol Framework " PARASOL_VERSION R"(
+
+This command-line program can execute Fluid scripts and PARC files developed for the Parasol framework.
+
+   parasol [options] [script.ext] arg1 arg2=value ...
+
+The following options can be used when executing script files:
+
+ --procedure [n] The name of a procedure to execute.
+ --time          Print the amount of time that it took to execute the script.
+ --dialog        Display a file dialog for choosing a script manually.
+ --backstage     Enables the backstage REST API (see Wiki).
+ --statement     Instead of running a script file, executes a single statement or expression.
+
+ --log-api       Activates run-time log messages at API level.
+ --log-info      Activates run-time log messages at INFO level.
+ --log-error     Activates run-time log messages at ERROR level.
+ --jit-options   Development options that control the behaviour of the compiler.
+ --version       Prints the version number on line 1 and git commit on line 2.
+)";
 
 static std::string glDialogScript =
-"STRING:require 'gui/filedialog'\n\
-gui.dialog.file({\n\
- filterList = { { name='Script Files', ext='.fluid' } },\n\
- title      = 'Run a Script',\n\
- okText     = 'Run Script',\n\
- cancelText = 'Exit',\n\
- path       = '%%PATH%%',\n\
- feedback = function(Dialog, Path, Files)\n\
-  if (Files == nil) then mSys.SendMessage(MSGID_QUIT) return end\n\
-  glRunFile = Path .. Files[1].filename\n\
-  processing.signal()\n\
- end\n\
-})\n\
-processing.sleep(nil, true)\n\
-if glRunFile then obj.new('script', { src = glRunFile }).acActivate() end\n";
+R"(STRING:require 'gui/filedialog'
+gui.dialog.file({
+ filterList = { { name='Script Files', ext='.fluid' } },
+ title      = 'Run a Script',
+ okText     = 'Run Script',
+ cancelText = 'Exit',
+ path       = '%%PATH%%',
+ feedback = function(Dialog, Path, Files)
+  if not Files then mSys.SendMessage(MSGID_QUIT) return end
+  global glRunFile = Path .. Files[0].filename
+  processing.signal()
+ end
+})
+processing.sleep(nil, true)
+if glRunFile then obj.new('script', { src = glRunFile }).acActivate() end
+)";
 
 //********************************************************************************************************************
 
@@ -84,7 +92,13 @@ static ERR process_args(void)
       pf::vector<std::string> &args = *glArgs;
       for (unsigned i=0; i < args.size(); i++) {
          if (pf::iequals(args[i], "--help")) { // Print help for the user
-            printf(glHelp);
+            printf("%s", glHelp.c_str());
+            return ERR::Terminate;
+         }
+         else if (pf::iequals(args[i], "--version")) { // Print version information
+            printf("%s\n", PARASOL_VERSION);
+            printf("%s:%s\n", PARASOL_GIT_BRANCH, PARASOL_GIT_COMMIT);
+            printf("Build Type: %s\n", PARASOL_BUILD_TYPE);
             return ERR::Terminate;
          }
          else if (pf::iequals(args[i], "--verify")) { // Dummy option for verifying installs
@@ -114,6 +128,20 @@ static ERR process_args(void)
                i++;
             }
          }
+         else if (pf::iequals(args[i], "--statement") or (pf::iequals(args[i], "-c")) or (pf::iequals(args[i], "-e"))) {
+            // NB: The support for -c and -e exists only for AI agents that like to use this syntax for whatever reason...
+            if (i + 1 < args.size()) {
+               glStatement.assign(args[i+1]);
+               i++;
+            }
+         }
+         else if (pf::iequals(args[i], "--jit-options")) {
+            // Handled by the Fluid module, we just need to skip the next argument.
+            if (i + 1 < args.size()) i++;
+         }
+         else if (pf::startswith("--", args[i])) {
+            // Unrecognised argument beginning with '--', ignore it.
+         }
          else { // If argument not recognised, assume this arg is the target file.
             if (ResolvePath(args[i], RSF::APPROXIMATE, &glTargetFile) != ERR::Okay) {
                printf("Unable to find file '%s'\n", args[i].c_str());
@@ -129,6 +157,8 @@ static ERR process_args(void)
 }
 
 //********************************************************************************************************************
+// Note: In Windows, if the program is failing to load and no output is printed, pipe to Out-Host to see error messages.
+// E.g. .\parasol.exe --version | Out-Host
 
 extern "C" int main(int argc, char **argv)
 {
@@ -136,7 +166,7 @@ extern "C" int main(int argc, char **argv)
 
    if (auto msg = init_parasol(argc, (CSTRING *)argv)) {
       for (int i=1; i < argc; i++) { // If in --verify mode, return with no error code and print nothing.
-         if (!strcmp(argv[i], "--verify")) return 0;
+         if (not strcmp(argv[i], "--verify")) return 0;
       }
       printf("%s\n", msg);
       return -1;
@@ -152,7 +182,7 @@ extern "C" int main(int argc, char **argv)
 
       if (glDialog) {
          auto start = glDialogScript.find("%%PATH%%");
-         if (!glTargetFile.empty()) {
+         if (not glTargetFile.empty()) {
             std::string::size_type n = 0;
             while ((n = glTargetFile.find('\\', n)) != std::string::npos) {
                 glTargetFile.replace(n, 1, "\\\\");
@@ -165,7 +195,10 @@ extern "C" int main(int argc, char **argv)
 
          result = int(exec_source(glDialogScript.c_str(), glTime, glProcedure));
       }
-      else if (!glTargetFile.empty()) {
+      else if (not glStatement.empty()) {
+         result = int(exec_source(std::string("STRING:") + glStatement, glTime, glProcedure));
+      }
+      else if (not glTargetFile.empty()) {
          CSTRING path;
          if (glTask->get(FID_Path, path) IS ERR::Okay) log.msg("Path: %s", path);
          else log.error("No working path.");
@@ -180,9 +213,9 @@ extern "C" int main(int argc, char **argv)
          // Check for the presence of package.zip or main.fluid files in the working directory
 
          auto path = glTask->get<CSTRING>(FID_ProcessPath);
-         if ((!path) or (!path[0])) path = ".";
+         if ((not path) or (not path[0])) path = ".";
          std::string exe_path(path);
-         if (!((exe_path.ends_with("/")) or (exe_path.ends_with("\\")))) {
+         if (not ((exe_path.ends_with("/")) or (exe_path.ends_with("\\")))) {
             exe_path.append("/");
          }
 
@@ -203,7 +236,7 @@ extern "C" int main(int argc, char **argv)
             if ((AnalysePath("main.fluid", &type) IS ERR::Okay) and (type IS LOC::FILE)) {
                result = (int)exec_source("main.fluid", glTime, glProcedure);
             }
-            else printf(glHelp);
+            else printf("%s", glHelp.c_str());
          }
       }
    }

@@ -155,7 +155,7 @@ static ERR GET_Path(extDocument *Self, CSTRING *Value)
 static ERR SET_Path(extDocument *Self, CSTRING Value)
 {
    pf::Log log;
-   static BYTE recursion = 0;
+   static int8_t recursion = 0;
 
    if (recursion) return log.warning(ERR::Recursion);
 
@@ -182,7 +182,7 @@ static ERR SET_Path(extDocument *Self, CSTRING Value)
    // Signal that we are leaving the current page
 
    recursion++;
-   for (auto &trigger : Self->Triggers[LONG(DRT::LEAVING_PAGE)]) {
+   for (auto &trigger : Self->Triggers[int(DRT::LEAVING_PAGE)]) {
       if (trigger.isScript()) {
          sc::Call(trigger, std::to_array<ScriptArg>({ { "OldURI", Self->Path }, { "NewURI", newpath } }));
       }
@@ -220,7 +220,7 @@ static ERR SET_Path(extDocument *Self, CSTRING Value)
    }
    else Self->Error = ERR::AllocMemory;
 
-   report_event(Self, DEF::PATH, 0, NULL);
+   report_event(Self, DEF::PATH, 0, nullptr);
 
    return Self->Error;
 }
@@ -256,7 +256,7 @@ PageWidth: Measures the page width of the document, in pixels.
 
 The page width indicates the width of the longest document line, including left and right page margins.  Although
 the PageWidth can be pre-defined by the client, a document can override this value at any time when it is parsed.  If
-imposing fixed page dimensions is desired, consider setting the `Width` and `Height` values of the #View viewport 
+imposing fixed page dimensions is desired, consider setting the `Width` and `Height` values of the #View viewport
 object instead.
 
 *********************************************************************************************************************/
@@ -310,7 +310,7 @@ A Pretext will always survive document unloading and resets.  It can be removed 
 static ERR SET_Pretext(extDocument *Self, CSTRING Value)
 {
    if (!Value) {
-      if (Self->PretextXML) { FreeResource(Self->PretextXML); Self->PretextXML = NULL; }
+      if (Self->PretextXML) { FreeResource(Self->PretextXML); Self->PretextXML = nullptr; }
       return ERR::Okay;
    }
    else if (Self->PretextXML) {
@@ -346,10 +346,10 @@ always `NULL` if a document does not declare a title.
 -FIELD-
 View: The viewing area of the document.
 
-The view is an internally allocated viewport that hosts the document #Page.  Its main purpose is to enforce a 
+The view is an internally allocated viewport that hosts the document #Page.  Its main purpose is to enforce a
 clipping boundary on the page.  By default, the view dimensions will always match that of the parent #Viewport.
 If a fixed viewing size is desired, set the `Width` and `Height` fields of the View's @VectorViewport after the
-initialisation of the document. 
+initialisation of the document.
 
 -FIELD-
 Viewport: A client-specific viewport that will host the document graphics.
@@ -432,7 +432,7 @@ static ERR GET_WorkingPath(extDocument *Self, CSTRING *Value)
 
       ResolvePath(buf, RSF::APPROXIMATE, &Self->WorkingPath);
    }
-   else { *Value = NULL; return ERR::NoData; }
+   else { *Value = nullptr; return ERR::NoData; }
 
    *Value = Self->WorkingPath.c_str();
    return ERR::Okay;

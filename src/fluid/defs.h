@@ -1,3 +1,4 @@
+#pragma once
 
 #define LUA_COMPILED "-- $FLUID:compiled"
 constexpr int SIZE_READ = 1024;
@@ -6,15 +7,44 @@ constexpr int SIZE_READ = 1024;
 #include <unordered_set>
 #include <set>
 #include <array>
-#include <regex>
+#include <shared_mutex>
 #include <parasol/strings.hpp>
+#include <parasol/modules/regex.h>
+#include <parasol/modules/fluid.h>
 #include <thread>
 #include <string_view>
+#include <span>
+#include <concepts>
+
+#include "lj_obj.h"
+#include "lauxlib.h"
 
 using namespace pf;
 
-#define ALIGN64(a) (((a) + 7) & (~7))
-#define ALIGN32(a) (((a) + 3) & (~3))
+template <class T> T ALIGN64(T a) { return (((a) + 7) & (~7)); }
+template <class T> T ALIGN32(T a) { return (((a) + 3) & (~3)); }
+
+extern CSTRING const glBytecodeNames[];
+extern bool glPrintMsg;
+
+//********************************************************************************************************************
+
+[[maybe_unused]] static AET ff_to_aet(int Type)
+{
+   if (Type & FD_POINTER)     return AET::PTR;
+   else if (Type & FD_OBJECT) return AET::STRUCT;
+   else if (Type & FD_STRING) {
+      if (Type & FD_CPP) return AET::STR_CPP;
+      else return AET::CSTR;
+   }
+   else if (Type & FD_FLOAT)   return AET::FLOAT;
+   else if (Type & FD_DOUBLE)  return AET::DOUBLE;
+   else if (Type & FD_INT64)   return AET::INT64;
+   else if (Type & FD_INT)     return AET::INT32;
+   else if (Type & FD_WORD)    return AET::INT16;
+   else if (Type & FD_BYTE)    return AET::BYTE;
+   else return AET::MAX;
+}
 
 //********************************************************************************************************************
 
@@ -38,23 +68,74 @@ struct CaseInsensitiveEqual {
    }
 };
 
-extern ankerl::unordered_dense::map<std::string, ACTIONID, CaseInsensitiveHash, CaseInsensitiveEqual> glActionLookup;
+struct CaseInsensitiveHashView {
+   std::size_t operator()(std::string_view s) const noexcept {
+      std::size_t hash = 5381;
+      for (char c : s) {
+         hash = ((hash << 5) + hash) + std::tolower(static_cast<unsigned char>(c));
+      }
+      return hash;
+   }
+};
+
+struct CaseInsensitiveEqualView {
+   bool operator()(std::string_view lhs, std::string_view rhs) const noexcept {
+      return iequals(lhs, rhs);
+   }
+};
+
+extern ankerl::unordered_dense::map<std::string_view, ACTIONID, CaseInsensitiveHashView, CaseInsensitiveEqualView> glActionLookup;
 extern struct ActionTable *glActions;
 extern OBJECTPTR modDisplay; // Required by fluid_input.c
 extern OBJECTPTR modFluid;
+extern OBJECTPTR modRegex;
+extern OBJECTPTR glFluidContext;
 extern OBJECTPTR clFluid;
-extern ankerl::unordered_dense::map<std::string, uint32_t> glStructSizes;
+extern JOF glJitOptions;
+extern ankerl::unordered_dense::map<std::string_view, uint32_t> glStructSizes;
+extern ankerl::unordered_dense::map<struct_name, struct_record, struct_hash> glStructs;
+
+//********************************************************************************************************************
+// Compile-time constant value (64-bit integer or double)
+
+struct FluidConstant {
+   enum class Type : uint8_t { Int64, Double };
+   Type type;
+   union {
+      int64_t i64;
+      double f64;
+   } value;
+
+   constexpr FluidConstant(int64_t v) : type(Type::Int64) { value.i64 = v; }
+   constexpr FluidConstant(double v) : type(Type::Double) { value.f64 = v; }
+
+   [[nodiscard]] constexpr lua_Number to_number() const {
+      return (type IS Type::Int64) ? lua_Number(value.i64) : value.f64;
+   }
+};
+
+// Global constant registry - case-sensitive, owns string keys
+// Protected by glConstantMutex for thread-safe access
+extern ankerl::unordered_dense::map<uint32_t, FluidConstant> glConstantRegistry;
+extern std::shared_mutex glConstantMutex;
 
 //********************************************************************************************************************
 // Helper: build a std::string_view from a Lua string argument.
 // Raises a Lua error if the argument at 'idx' is not a string (delegates to luaL_checklstring).
 
-static inline std::string_view luaL_checkstringview(lua_State *L, int idx) noexcept
+static inline std::string_view lua_checkstringview(lua_State *L, int idx)
 {
    size_t len = 0;
-   if (const char *s = luaL_checklstring(L, idx, &len)) {
-      return std::string_view{s, len};
-   }
+   if (auto s = luaL_checklstring(L, idx, &len)) return std::string_view{s, len};
+   else return std::string_view{};
+}
+
+// This version doesn't raise an error if the argument is not a string.
+
+static inline std::string_view lua_tostringview(lua_State *L, int idx)
+{
+   size_t len = 0;
+   if (auto s = lua_tolstring(L, idx, &len)) return std::string_view{s, len};
    else return std::string_view{};
 }
 
@@ -129,7 +210,7 @@ struct eventsub {
 
    eventsub(eventsub &&move) noexcept :
       Function(move.Function), EventID(move.EventID), EventHandle(move.EventHandle) {
-      move.EventHandle = NULL;
+      move.EventHandle = nullptr;
    }
 
    eventsub& operator=(eventsub &&move) = default;
@@ -147,77 +228,18 @@ struct datarequest {
    }
 };
 
-//********************************************************************************************************************
-
-struct struct_field {
-   std::string Name;      // Field name
-   std::string StructRef; // Named reference to other structure
-   uint16_t Offset = 0;   // Offset to the field value.
-   int  Type      = 0;    // FD flags
-   int  ArraySize = 0;    // Set if the field is an array
-
-   uint32_t nameHash() {
-      if (!NameHash) NameHash = strihash(Name);
-      return NameHash;
-   }
-
-   private:
-   uint32_t NameHash = 0;     // Lowercase hash of the field name
-};
-
-struct struct_record {
-   std::string Name;
-   std::vector<struct_field> Fields;
-   int Size = 0; // Total byte size of the structure
-   struct_record(std::string_view pName) : Name(pName) { }
-   struct_record() = default;
-};
+#include "struct_def.h"
 
 //********************************************************************************************************************
-// Structure names have their own handler due to the use of colons in struct references, i.e. "OfficialStruct:SomeName"
+// Variable information captured during parsing when JOF::DIAGNOSE is enabled.
 
-struct struct_name {
+struct VariableInfo {
+   BCLine line;
+   BCLine column;
+   std::string scope;
    std::string name;
-   struct_name(const std::string_view pName) {
-      auto colon = pName.find(':');
-
-      if (colon IS std::string::npos) name = pName;
-      else name = pName.substr(0, colon);
-   }
-
-   bool operator==(const std::string_view &other) const {
-      return (name == other);
-   }
-
-   bool operator==(const struct_name &other) const {
-      return (name == other.name);
-   }
-};
-
-struct struct_hash {
-   std::size_t operator()(const struct_name &k) const {
-      uint32_t hash = 5381;
-      for (auto c : k.name) {
-         if ((c >= 'A') and (c <= 'Z'));
-         else if ((c >= 'a') and (c <= 'z'));
-         else if ((c >= '0') and (c <= '9'));
-         else break;
-         hash = ((hash<<5) + hash) + uint8_t(c);
-      }
-      return hash;
-   }
-
-   std::size_t operator()(const std::string_view k) const {
-      uint32_t hash = 5381;
-      for (auto c : k) {
-         if ((c >= 'A') and (c <= 'Z'));
-         else if ((c >= 'a') and (c <= 'z'));
-         else if ((c >= '0') and (c <= '9'));
-         else break;
-         hash = ((hash<<5) + hash) + uint8_t(c);
-      }
-      return hash;
-   }
+   FluidType type;
+   bool is_global;
 };
 
 //********************************************************************************************************************
@@ -237,17 +259,17 @@ struct prvFluid {
    std::vector<actionmonitor> ActionList; // Action subscriptions managed by subscribe()
    std::vector<eventsub> EventList;       // Event subscriptions managed by subscribeEvent()
    std::vector<datarequest> Requests;     // For drag and drop requests
-   ankerl::unordered_dense::map<struct_name, struct_record, struct_hash> Structs;
    ankerl::unordered_dense::map<OBJECTID, int> StateMap;
-   std::set<std::string, CaseInsensitiveMap> Includes; // Stores the status of loaded include files.
    pf::vector<std::string> Procedures;
    std::vector<std::unique_ptr<std::jthread>> Threads; // Simple mechanism for auto-joining all the threads on object destruction
    APTR     FocusEventHandle;
    struct finput *InputList;           // Managed by the input interface
    DateTime CacheDate;
-   ERR      CaughtError;               // Set to -1 to enable catching of ERR results.
+   ERR      CaughtError;               // Set to -1 to enable catching of ERR results.  TODO: Should move to Lua internals, e.g. lua_State
    PERMIT   CachePermissions;
+   JOF      JitOptions;
    int      LoadedSize;
+   int      MainChunkRef;              // Registry reference to the main chunk for post-execution analysis
    uint8_t  Recurse;
    uint8_t  SaveCompiled;
    uint16_t Catch;                     // Operating within a catch() block if > 0
@@ -287,14 +309,18 @@ struct array {
       uint8_t *ptrByte;
       APTR    ptrVoid;
    };
+   int      CatchDepth = -1;           // Lua stack frame count for scope isolation in catch().
+                                       // Set by fcmd_catch() via lua_getstack() frame counting.
+                                       // Only calls at exactly this depth throw exceptions.
+   std::vector<VariableInfo> CapturedVariables; // Variable declarations captured during parsing (JOF::DIAGNOSE)
 };
 
 // This structure is created & managed through the 'struct' interface
 
 struct fstruct {
    APTR Data;          // Pointer to the structure data
-   int StructSize;    // Size of the structure
-   int AlignedSize;   // 64-bit alignment size of the structure.
+   int StructSize;     // Size of the structure
+   int AlignedSize;    // 64-bit alignment size of the structure.
    struct struct_record *Def; // The structure definition
    bool Deallocate;    // Deallocate the struct when Lua collects this resource.
 };
@@ -306,11 +332,11 @@ struct fprocessing {
 
 class fregex {
 public:
-   std::regex *regex_obj = nullptr;  // Compiled regex object
+   Regex *regex_obj = nullptr;  // Compiled regex object
    std::string pattern;     // Original pattern string
    std::string error_msg;   // Error message if compilation failed
-   int flags;               // Compilation flags
-   fregex(std::string_view Pattern, int Flags) : pattern(Pattern), flags(Flags) { }
+   REGEX flags;             // Compilation flags
+   fregex(std::string_view Pattern, REGEX Flags) : pattern(Pattern), flags(Flags) { }
 };
 
 struct metafield {
@@ -319,22 +345,22 @@ struct metafield {
    int SetFunction;
 };
 
-#define FIM_KEYBOARD 1
-#define FIM_DEVICE 2
+constexpr int FIM_KEYBOARD = 1;
+constexpr int FIM_DEVICE   = 2;
 
 struct finput {
    objScript *Script;
    struct finput *Next;
-   APTR  KeyEvent;
+   APTR   KeyEvent;
    OBJECTID SurfaceID;
-   int   InputHandle;
-   int   Callback;
-   int   InputValue;
-   JTYPE Mask;
-   BYTE  Mode;
+   int    InputHandle;
+   int    Callback;
+   int    InputValue;
+   JTYPE  Mask;
+   int8_t Mode;
 };
 
-enum { NUM_DOUBLE=1, NUM_FLOAT, NUM_LARGE, NUM_LONG, NUM_WORD, NUM_BYTE };
+enum { NUM_DOUBLE=1, NUM_FLOAT, NUM_INT64, NUM_INT, NUM_INT16, NUM_BYTE };
 
 struct fnumber { // TODO: Use std::variant
    int Type;     // Expressed as an FD_ flag.
@@ -344,7 +370,7 @@ struct fnumber { // TODO: Use std::variant
       int64_t i64;
       int     i32;
       int16_t i16;
-      BYTE    i8;
+      int8_t  i8;
    };
 };
 
@@ -395,6 +421,20 @@ typedef std::set<obj_read, decltype(read_hash)> READ_TABLE;
 
 //********************************************************************************************************************
 
+[[maybe_unused]] [[nodiscard]] constexpr CSTRING next_line(CSTRING String) noexcept
+{
+   if (!String) return nullptr;
+
+   while ((*String) and (*String != '\n') and (*String != '\r')) String++;
+   while (*String IS '\r') String++;
+   if (*String IS '\n') String++;
+   while (*String IS '\r') String++;
+   if (*String) return String;
+   else return nullptr;
+}
+
+//********************************************************************************************************************
+
 struct obj_write {
    typedef ERR JUMP(lua_State *, OBJECTPTR, struct Field *, int);
 
@@ -422,10 +462,10 @@ typedef std::set<obj_write, decltype(write_hash)> WRITE_TABLE;
 struct object {
    OBJECTPTR ObjectPtr;   // If the object is local then we can have the address
    objMetaClass *Class;   // Direct pointer to the object's class
-   READ_TABLE *ReadTable;
-   WRITE_TABLE *WriteTable;
+   READ_TABLE   *ReadTable;
+   WRITE_TABLE  *WriteTable;
    OBJECTID UID;          // If the object is referenced externally, access is managed by ID
-   uint16_t AccessCount;     // Controlled by access_object() and release_object()
+   uint16_t AccessCount;  // Controlled by access_object() and release_object()
    bool  Detached;        // True if the object is an external reference or is not to be garbage collected
    bool  Locked;          // Can be true ONLY if a lock has been acquired from AccessObject()
 };
@@ -437,32 +477,29 @@ struct lua_ref {
 
 OBJECTPTR access_object(struct object *);
 std::vector<lua_ref> * alloc_references(void);
-void auto_load_include(lua_State *, objMetaClass *);
-ERR build_args(lua_State *, const struct FunctionField *, int, BYTE *, int *);
+void load_include_for_class(lua_State *, objMetaClass *);
+ERR build_args(lua_State *, const struct FunctionField *, int, int8_t *, int *);
 const char * code_reader(lua_State *, void *, size_t *);
-int code_writer_id(lua_State *, CPTR, size_t, void *) __attribute__((unused));
-int code_writer(lua_State *, CPTR, size_t, void *) __attribute__((unused));
+[[maybe_unused]] int code_writer_id(lua_State *, CPTR, size_t, void *);
+[[maybe_unused]] int code_writer(lua_State *, CPTR, size_t, void *);
 ERR create_fluid(void);
 void get_line(objScript *, int, STRING, int);
 APTR get_meta(lua_State *Lua, int Arg, CSTRING);
 void hook_debug(lua_State *, lua_Debug *) __attribute__ ((unused));
 ERR load_include(objScript *, CSTRING);
 int MAKESTRUCT(lua_State *);
-void make_any_table(lua_State *, int, CSTRING, int, CPTR ) __attribute__((unused));
-void make_array(lua_State *, int, CSTRING, APTR *, int, bool);
-void make_table(lua_State *, int, int, CPTR ) __attribute__((unused));
-ERR make_struct(lua_State *, std::string_view, CSTRING) __attribute__((unused));
+[[maybe_unused]] void make_any_array(lua_State *, int, std::string_view, int, CPTR);
+[[maybe_unused]] void make_array(lua_State *, AET, int = 0, CPTR = nullptr, std::string_view = {});
+[[maybe_unused]] ERR make_struct(objScript *, std::string_view, CSTRING);
 ERR named_struct_to_table(lua_State *, std::string_view, CPTR);
-void make_struct_ptr_table(lua_State *, CSTRING, int, CPTR *);
-void make_struct_serial_table(lua_State *, CSTRING, int, CPTR);
-CSTRING next_line(CSTRING String);
+void make_struct_ptr_array(lua_State *, std::string_view, int, CPTR *);
+void make_struct_serial_array(lua_State *, std::string_view, int, CPTR);
 void notify_action(OBJECTPTR, ACTIONID, ERR, APTR);
 void process_error(objScript *, CSTRING);
 struct object * push_object(lua_State *, OBJECTPTR Object);
 ERR push_object_id(lua_State *, OBJECTID ObjectID);
 struct fstruct * push_struct(objScript *, APTR, std::string_view, bool, bool);
 struct fstruct * push_struct_def(lua_State *, APTR, struct struct_record &, bool);
-extern void register_array_class(lua_State *);
 extern void register_io_class(lua_State *);
 extern void register_input_class(lua_State *);
 extern void register_object_class(lua_State *);
@@ -490,15 +527,12 @@ int fcmd_print(lua_State *);
 int fcmd_include(lua_State *);
 int fcmd_loadfile(lua_State *);
 int fcmd_exec(lua_State *);
-int fcmd_nz(lua_State *);
 int fcmd_require(lua_State *);
 int fcmd_subscribe_event(lua_State *);
 int fcmd_unsubscribe_event(lua_State *);
 
 #ifdef __arm__
 extern void armExecFunction(APTR, APTR, int);
-#elif _LP64
-extern void x64ExecFunction(APTR, int, int64_t *, int);
 #else
-extern void x86ExecFunction(APTR, APTR, int);
+extern void x64ExecFunction(APTR, int, int64_t *, int);
 #endif

@@ -67,9 +67,9 @@
       vector.opacity = 0.3
       vector.mtInputSubscription(bit.bor(JTYPE_MOVEMENT, JTYPE_CROSSING), function(Vector, Msg)
          while (Msg) do
-            if Msg.type == JET_CROSSED_IN then
+            if Msg.type is JET_CROSSED_IN then
                Vector.opacity = 1.0
-            elseif Msg.type == JET_CROSSED_OUT then
+            elseif Msg.type is JET_CROSSED_OUT then
                Vector.opacity = 0.2
             end
             Msg = Msg.next
@@ -77,7 +77,7 @@
          Vector.acDraw()
       end)
 
-      if (vector.class.className == 'VectorViewport') then
+      if (vector.class.className is 'VectorViewport') then
          vector.dragCallback = function(Vector, X, Y)
             Vector.acMoveToPoint(X, Y, 0, bit.bor(MTF_X, MTF_Y))
             Vector.acDraw()

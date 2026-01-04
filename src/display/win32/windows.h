@@ -7,7 +7,7 @@ typedef void * HANDLE;
 typedef void * HINSTANCE;
 typedef void * WNDPROC;
 typedef void * HCURSOR;
-enum class PTC : LONG;
+enum class PTC : int;
 #endif
 
 struct WinCursor {
@@ -59,7 +59,7 @@ extern "C" {
 
 extern int glIgnoreClip;
 extern int glClipboardUpdates;
-extern BYTE glOleInit;
+extern int8_t glOleInit;
 
 int winLookupSurfaceID(HWND);
 void winCreateScreenClassClipboard(void);

@@ -68,14 +68,13 @@
             <ul class="btn-toggle-nav list-unstyled pb-1">
             <li class="api-ref"><a class="rounded" href="Fluid-Reference-Manual.html">Fluid Reference Manual</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-Common-API.html">Common API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-FileSearch-API.html">FileSearch API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-GUI-API.html">GUI API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-HTTPServer-API.html">HTTPServer API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-IO-API.html">I/O API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-JSON-API.html">JSON API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-URL-API.html">URL API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-VFX-API.html">VFX API</a></li>
-            <li class="api-ref"><a class="rounded" href="Widgets.html">Widgets</a></li>
+            <li class="api-ref"><a class="rounded" href="Fluid-Widgets.html">Widgets</a></li>
            </ul>
          </div></li>
 
@@ -127,7 +126,10 @@
       <li class="api-ref"><a href="../modules/fluid.html" class="rounded">Fluid</a></li>
       <li class="api-ref"><a href="../modules/font.html" class="rounded">Font</a></li>
       <li class="api-ref"><a href="../modules/network.html" class="rounded">Network</a></li>
+      <li class="api-ref"><a href="../modules/regex.html" class="rounded">Regex</a></li>
       <li class="api-ref"><a href="../modules/vector.html" class="rounded">Vector</a></li>
+      <li class="api-ref"><a href="../modules/xml.html" class="rounded">XML</a></li>
+      <li class="api-ref"><a href="../modules/xpath.html" class="rounded">XPath</a></li>
       </ul>
     </div>
   </li>
@@ -162,6 +164,7 @@
         <li>
         <button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#data-collapse" aria-expanded="false">Data</button><div class="collapse" id="data-collapse"><ul class="btn-toggle-nav list-unstyled pb-1">
         <li><a href="../modules/classes/compression.html" class="rounded">Compression</a></li>
+        <li><a href="../modules/classes/compressedstream.html" class="rounded">CompressedStream</a></li>
         <li><a href="../modules/classes/config.html" class="rounded">Config</a></li>
         <li><a href="../modules/classes/script.html" class="rounded">Script</a></li>
         <li><a href="../modules/classes/xml.html" class="rounded">XML</a></li>
@@ -213,6 +216,8 @@
         <button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#net-collapse" aria-expanded="false">Network</button><div class="collapse" id="net-collapse"><ul class="btn-toggle-nav list-unstyled pb-1">
         <li><a class="rounded" href="../modules/classes/clientsocket.html">ClientSocket</a></li>
         <li><a class="rounded" href="../modules/classes/http.html">HTTP</a></li>
+        <li><a class="rounded" href="../modules/classes/netclient.html">NetClient</a></li>
+        <li><a class="rounded" href="../modules/classes/netlookup.html">NetLookup</a></li>
         <li><a class="rounded" href="../modules/classes/netsocket.html">NetSocket</a></li>
         <li><a class="rounded" href="../modules/classes/proxy.html">Proxy</a></li>
         </ul></div>
@@ -393,7 +398,7 @@
 <p>The <code>CopyData</code> action is provided so that data in one object can be copied across to another. This may or may not involve data conversion. For example, copying data between files is a straight forward process of copying a raw binary stream. However, copying data between two Bitmaps would be more complicated, because we need to consider clipping and colour conversion issues. Copying between different classes is also permitted, for example copying a <code>Picture</code> to a <code>File</code> could output the image as raw data.</p>
 <p>If you wish to write your routine so that it only supports recognised classes, return <code>ERR::NoSupport</code> for those at are unsupported. To support all classes, include a fallback that uses the <a href="#Write"><code>Write</code></a> action to stream data to the destination object.</p>
 <h2 id="datafeed">DataFeed</h2>
-<pre><code>ERR acDataFeed(Object, OBJECTID Object, DATA Datatype, APTR Buffer, LONG Size)
+<pre><code>ERR acDataFeed(Object, OBJECTID Object, DATA Datatype, APTR Buffer, INT Size)
 ERR acDataXML(Object, CSTRING Buffer)
 ERR acDataContent(Object, CSTRING Buffer)
 ERR acDataText(Object, CSTRING Buffer)</code></pre>
@@ -423,7 +428,7 @@ ERR acDataText(Object, CSTRING Buffer)</code></pre>
 </tr>
 <tr>
 <td style="text-align: left;">Size</td>
-<td style="text-align: left;">LONG</td>
+<td style="text-align: left;">INT</td>
 <td style="text-align: left;">The size of the data in <code>Buffer</code>.</td>
 </tr>
 </tbody>
@@ -458,7 +463,7 @@ ERR acDataText(Object, CSTRING Buffer)</code></pre>
 <tbody>
 <tr>
 <td style="text-align: left;">Item</td>
-<td style="text-align: left;">LONG</td>
+<td style="text-align: left;">INT</td>
 <td style="text-align: left;">Item to retrieve from the source.</td>
 </tr>
 <tr>
@@ -489,7 +494,7 @@ ERR acDataText(Object, CSTRING Buffer)</code></pre>
 <p>If necessary, a class can nest multiple calls to the Disable action, although this would be considered to be an exception to the rule. If you are going to support nesting, document this fact in the class.</p>
 <p>Support for the <code>Disable</code> action should also be matched with support for the <a href="#Enable"><code>Enable</code></a> action. This will allow your disabled objects to return to a normal state, as disablement is usually only a temporary measure.</p>
 <h2 id="dragdrop">DragDrop</h2>
-<p><code>ERR acDragDrop(Object, OBJECTID Source, LONG Item, DATA Datatype)</code></p>
+<p><code>ERR acDragDrop(Object, OBJECTID Source, INT Item, DATA Datatype)</code></p>
 <table>
 <thead>
 <tr>
@@ -506,7 +511,7 @@ ERR acDataText(Object, CSTRING Buffer)</code></pre>
 </tr>
 <tr>
 <td style="text-align: left;">Item</td>
-<td style="text-align: left;">LONG</td>
+<td style="text-align: left;">INT</td>
 <td style="text-align: left;">An item ID, relevant to the source object.</td>
 </tr>
 <tr>
@@ -552,7 +557,7 @@ ERR acDataText(Object, CSTRING Buffer)</code></pre>
 <h3 id="implementation-details-5">Implementation Details</h3>
 <p>To support drag and drop, do not write a routine specifically targeting the <code>DragDrop</code> action. Instead, use <code>SubscribeAction()</code> to listen to the <code>DragDrop</code> action of the surface that is used by your object. In response to the receipt of a <code>DragDrop</code> action, send a <code>DATA::REQUEST</code> (via data feed) to the indicated Source object. The rest of your support code for drag and drop will need to be written in your <a href="#DataFeed"><code>DataFeed</code></a> support routine.</p>
 <h2 id="draw">Draw</h2>
-<pre><code>ERR acDrawArea(Object, LONG X, LONG Y, DOUBLE LONG, LONG Height)
+<pre><code>ERR acDrawArea(Object, INT X, INT Y, DOUBLE INT, INT Height)
 ERR acDraw(Object)</code></pre>
 <table>
 <thead>
@@ -565,12 +570,12 @@ ERR acDraw(Object)</code></pre>
 <tbody>
 <tr>
 <td style="text-align: left;">X, Y</td>
-<td style="text-align: left;">LONG</td>
+<td style="text-align: left;">INT</td>
 <td style="text-align: left;">The top-left position of the region to be drawn.</td>
 </tr>
 <tr>
 <td style="text-align: left;">Width, Height</td>
-<td style="text-align: left;">LONG</td>
+<td style="text-align: left;">INT</td>
 <td style="text-align: left;">The size of the region to be drawn.</td>
 </tr>
 </tbody>
@@ -619,7 +624,7 @@ ERR acDraw(Object)</code></pre>
 <p><code>FreeWarning</code> is useful for preventing an object from being terminated when it is in an unready state. This is achieved by returning an error code of <code>ERR::InUse</code>. All other error codes are ignored.</p>
 <p>If an object is in a <code>collecting</code> state, for instance if the app is shutting down, then it will not be possible to abort termination. If this is an important factor for your code, use the C++ <code>collecting()</code> method to verify the object&#39;s state.</p>
 <h2 id="getkey">GetKey</h2>
-<p><code>ERR acGetKey(Object, STRING Key, STRING Value, LONG Size)</code></p>
+<p><code>ERR acGetKey(Object, STRING Key, STRING Value, INT Size)</code></p>
 <table>
 <thead>
 <tr>
@@ -641,7 +646,7 @@ ERR acDraw(Object)</code></pre>
 </tr>
 <tr>
 <td style="text-align: left;">Size</td>
-<td style="text-align: left;">LONG</td>
+<td style="text-align: left;">INT</td>
 <td style="text-align: left;">Indicates the byte size of the Buffer.</td>
 </tr>
 </tbody>
@@ -812,7 +817,7 @@ ERR acDraw(Object)</code></pre>
 <p><code>Query</code> is useful action for ensuring that an object&#39;s state is reflective of the external source that it represents. Classes that are linked to some form of hardware will often benefit by supporting it. A basic example is the <code>Time</code> class, which updates its time values whenever <code>Query</code> is used.</p>
 <p>It is advised that your documentation specifies the exact fields that are updated after a successful <code>Query</code> call.</p>
 <h2 id="read">Read</h2>
-<p><code>ERR acRead(Object, APTR Buffer, LONG Length, LONG *Result)</code></p>
+<p><code>ERR acRead(Object, APTR Buffer, INT Length, INT *Result)</code></p>
 <table>
 <thead>
 <tr>
@@ -829,12 +834,12 @@ ERR acDraw(Object)</code></pre>
 </tr>
 <tr>
 <td style="text-align: left;">Length</td>
-<td style="text-align: left;">LONG</td>
+<td style="text-align: left;">INT</td>
 <td style="text-align: left;">The total number of bytes to read from the object. This value cannot exceed the size of the <code>Buffer</code>.</td>
 </tr>
 <tr>
 <td style="text-align: left;">Result</td>
-<td style="text-align: left;">LONG</td>
+<td style="text-align: left;">INT</td>
 <td style="text-align: left;">The Read action will write this parameter with the total number of bytes read into the <code>Buffer</code>.</td>
 </tr>
 </tbody>
@@ -999,7 +1004,7 @@ ERR acDraw(Object)</code></pre>
 <p>By supporting the <code>SaveToObject</code> action, you can make it possible to save an object&#39;s data to a <code>File</code> or similar data storage object.</p>
 <p>It is a requirement that the data being saved can be loaded by the class at a later time.</p>
 <h2 id="seek">Seek</h2>
-<pre><code>ERR acSeek(Object, DOUBLE Offset, LONG Position)
+<pre><code>ERR acSeek(Object, DOUBLE Offset, INT Position)
 ERR acSeekStart(Object, DOUBLE Offset)
 ERR acSeekEnd(Object, DOUBLE Offset)
 ERR acSeekCurrent(Object, DOUBLE Offset)</code></pre>
@@ -1086,7 +1091,7 @@ ERR acSeekCurrent(Object, DOUBLE Offset)</code></pre>
 <p>The <code>Unlock</code> action complements <a href="#lock"><code>Lock</code></a> in order to provide the necessary means for releasing locks. Unlocking an object will release all the locking conditions that have been placed on it (but bear in mind that multiple locks will nest).</p>
 <p>If you <a href="#Free"><code>Free</code></a> an object that is still under lock conditions, the object will automatically unlock itself.</p>
 <h2 id="write">Write</h2>
-<p><code>ERR acWrite(Object, APTR Buffer, LONG Length, LONG Result)</code></p>
+<p><code>ERR acWrite(Object, APTR Buffer, INT Length, INT Result)</code></p>
 <table>
 <thead>
 <tr>
@@ -1103,12 +1108,12 @@ ERR acSeekCurrent(Object, DOUBLE Offset)</code></pre>
 </tr>
 <tr>
 <td style="text-align: left;">Length</td>
-<td style="text-align: left;">LONG</td>
+<td style="text-align: left;">INT</td>
 <td style="text-align: left;">The total number of bytes to write to the object.</td>
 </tr>
 <tr>
 <td style="text-align: left;">Result</td>
-<td style="text-align: left;">LONG</td>
+<td style="text-align: left;">INT</td>
 <td style="text-align: left;">This parameter with be updated with the total number of bytes written from the buffer.</td>
 </tr>
 </tbody>

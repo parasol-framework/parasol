@@ -41,20 +41,20 @@ int main (void)
 
   args[0] = &ts3_type;
   values[0] = &ts3_arg;
-  
+
   /* Initialize the cif */
   CHECK(ffi_prep_cif(&cif, ABI_NUM, 1,
 		     &ts3_type, args) == FFI_OK);
-  
+
   ts3_arg.si = -123;
   compare_value = ts3_arg.si;
-  
+
   ffi_call(&cif, FFI_FN(struct3), ts3_result, values);
-  
+
   printf ("%d %d\n", ts3_result->si, -(compare_value*2));
-  
+
   CHECK(ts3_result->si == -(compare_value*2));
- 
+
   free (ts3_result);
   exit(0);
 }

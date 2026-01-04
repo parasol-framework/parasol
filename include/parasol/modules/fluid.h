@@ -9,31 +9,52 @@
 #define MODVERSION_FLUID (1)
 
 class objFluid;
+// JIT behaviour options
+
+enum class JOF : uint32_t {
+   NIL = 0,
+   DIAGNOSE = 0x00000001,
+   DUMP_BYTECODE = 0x00000002,
+   PROFILE = 0x00000004,
+   TOP_TIPS = 0x00000008,
+   TIPS = 0x00000010,
+   ALL_TIPS = 0x00000020,
+   TRACE_CFG = 0x00000040,
+   TRACE_TYPES = 0x00000080,
+   TRACE_TOKENS = 0x00000100,
+   TRACE_EXPECT = 0x00000200,
+   TRACE_BOUNDARY = 0x00000400,
+   TRACE_OPERATORS = 0x00000800,
+   TRACE_REGISTERS = 0x00001000,
+   TRACE_ASSIGNMENTS = 0x00002000,
+   TRACE_VALUE_CATEGORY = 0x00004000,
+   TRACE = 0x00007fc0,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(JOF)
 
 #ifdef PARASOL_STATIC
-#define JUMPTABLE_FLUID static struct FluidBase *FluidBase;
+#define JUMPTABLE_FLUID [[maybe_unused]] static struct FluidBase *FluidBase = nullptr;
 #else
-#define JUMPTABLE_FLUID struct FluidBase *FluidBase;
+#define JUMPTABLE_FLUID struct FluidBase *FluidBase = nullptr;
 #endif
 
 struct FluidBase {
 #ifndef PARASOL_STATIC
-   ERR (*_SetVariable)(OBJECTPTR Script, CSTRING Name, int Type, ...);
+   ERR (*_SetVariable)(objScript *Script, CSTRING Name, int Type, ...);
 #endif // PARASOL_STATIC
 };
 
-#ifndef PRV_FLUID_MODULE
-#ifndef PARASOL_STATIC
+#if !defined(PARASOL_STATIC) and !defined(PRV_FLUID_MODULE)
 extern struct FluidBase *FluidBase;
 namespace fl {
-template<class... Args> ERR SetVariable(OBJECTPTR Script, CSTRING Name, int Type, Args... Tags) { return FluidBase->_SetVariable(Script,Name,Type,Tags...); }
+template<class... Args> ERR SetVariable(objScript *Script, CSTRING Name, int Type, Args... Tags) { return FluidBase->_SetVariable(Script,Name,Type,Tags...); }
 } // namespace
 #else
 namespace fl {
-extern ERR SetVariable(OBJECTPTR Script, CSTRING Name, int Type, ...);
+extern ERR SetVariable(objScript *Script, CSTRING Name, int Type, ...);
 } // namespace
 #endif // PARASOL_STATIC
-#endif
 
 // Fluid class definition
 

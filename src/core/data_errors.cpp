@@ -129,7 +129,7 @@ const CSTRING glMessages[int(ERR::END)+1] = {
  "Operation finished.",
  "Invalid syntax detected.",
  "Object was in an incorrect state for the operation.",
- "The internet host name could not be resolved.",
+ "The Internet host name could not be resolved.",
  "Invalid Uniform Resource Identifier.",
  "The remote host refused the connection.",
  "The network was unreachable.",
@@ -194,6 +194,7 @@ const CSTRING glMessages[int(ERR::END)+1] = {
  "Task or process execution has failed.",
  "The compression data is invalid or corrupted.",
  "A sanity check has failed.",
+ "Client is not authorised to perform this operation.",
  nullptr // Needs to be null-terminated for Fluid support
 };
 

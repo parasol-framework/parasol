@@ -3,9 +3,9 @@
 --
 -- Support parameters:
 --
---   sdk:    Path to the parasol SDK (required if not discoverable)
---   filter: Filter for XML source files, defaults to "*.xml".
---   src:    Source folder for XML documents, defaults to "sdk:docs/xml/"
+--   sdk:     Path to the parasol SDK (required if not discoverable)
+--   output:  Optional output path for the generated script. If not specified, a temp: file will be used.
+--   dry-run: If set, the generated script will not be executed, but left in the temp: folder for inspection.
 
    require 'io/filesearch'
 
@@ -14,28 +14,28 @@
 
 function resolveSDKPath(Path)
    local sdk_path
-   local err = ERR_Failed
-   local search_list = { }
+   err = ERR_Failed
+   search_list = array<string>
    if not Path then
-      local search_path = 'CMakeLists.txt'
-      local limit = 5
+      search_path = 'CMakeLists.txt'
+      limit = 5
       while (err != ERR_Okay) and (limit > 0) do
-         table.insert(search_list, search_path)
+         search_list:push(search_path)
          err, sdk_path = mSys.ResolvePath(search_path)
          search_path = '../' .. search_path
-         limit = limit - 1
+         limit -= 1
       end
    else
-      table.insert(search_list, Path .. '/CMakeLists.txt')
+      search_list:push(Path .. '/CMakeLists.txt')
       err, sdk_path = mSys.ResolvePath(Path .. '/CMakeLists.txt')
    end
 
-   if (err == ERR_Okay) then
+   if err is ERR_Okay then
       sdk_path = sdk_path:match('(.+)CMakeLists%.txt')
    else
-      local msg = ''
-      for _, path in ipairs(search_list) do
-         msg = msg .. path .. '\n'
+      msg = ''
+      for path in values(search_list) do
+         msg ..= path .. '\n'
       end
       print('Unable to find CMakeLists.txt after searching the following paths:\n' .. msg)
       error('A path to the Parasol SDK could not be determined.')
@@ -48,39 +48,70 @@ end
 
    resolveSDKPath(arg('sdk'))
 
-   local xml_folder = arg('src', 'sdk:docs/xml/')
+   err, xsltproc_path = mSys.ResolvePath("xsltproc", RSF_PATH)
+   assert(xsltproc_path, 'xsltproc not found on system path, please install it first.')
 
-   file.search(xml_folder, {
-      nameFilter = arg('filter', '^.*%.xml$'),
+   cmdlist = ''
+
+   file.search('sdk:docs/xml/modules/', {
+      nameFilter = '^.*%.xml$',
       nameWild   = true,
       matchFeedback = function(Path, FileName, File)
-         local src_path = Path .. FileName
-         local output_path = src_path:gsub('/xml/', '/html/')
+         src_path = Path .. FileName
+         output_path = src_path:gsub('/xml/', '/html/')
          output_path = output_path:gsub('%.xml', '.html')
 
          err, res_output_path = mSys.ResolvePath(output_path, RSF_NO_FILE_CHECK)
-         assert(err == ERR_Okay, 'Failed to resolve path ' .. output_path)
+         assert(err is ERR_Okay, 'Failed to resolve path ' .. output_path)
 
          err, res_src_path = mSys.ResolvePath(src_path)
-         assert(err == ERR_Okay, 'Failed to resolve path ' .. src_path)
+         assert(err is ERR_Okay, 'Failed to resolve path ' .. src_path)
 
-         local module_folder = xml_folder .. '/modules'
+         module_folder = 'sdk:docs/xml/modules/'
          err, res_module_folder = mSys.ResolvePath(module_folder)
-         assert(err == ERR_Okay, 'Failed to resolve XML folder ' .. module_folder)
+         assert(err is ERR_Okay, 'Failed to resolve XML folder ' .. module_folder)
 
-         local class_folder = xml_folder .. '/modules/classes'
+         class_folder = 'sdk:docs/xml/modules/classes'
          err, res_class_folder = mSys.ResolvePath(class_folder)
-         assert(err == ERR_Okay, 'Failed to resolve XML folder ' .. class_folder)
+         assert(err is ERR_Okay, 'Failed to resolve XML folder ' .. class_folder)
 
-         local parameters = res_src_path .. ' --encoding UTF-8 -o ' .. res_output_path .. ' --path "' .. res_module_folder .. ' ' .. res_class_folder .. '"'
-         print('Running xsltproc ' .. parameters)
+         parameters = '"' .. res_src_path .. '" --encoding UTF-8 -o "' .. res_output_path .. '" --path "' .. res_module_folder .. ' ' .. res_class_folder .. '"'
 
-         local task = obj.new('task', {
-            src   = 'xsltproc',
-            args  = parameters,
-            flags = 'WAIT',
-            timeout = 5
-         })
-         task.acActivate()
+         cmdlist ..= 'xsltproc ' .. parameters .. '\n'
       end
    })
+
+   output_path = arg('output') -- Optional output path for the generated script.
+
+   state = mSys.GetSystemState()
+   if state.platform is 'Windows' then
+      output_path ??= 'temp:docgen.bat'
+      cmdlist = cmdlist:gsub('\\','\\\\')
+   else
+      output_path ??= 'temp:docgen.sh'
+      cmdlist = '#!/bin/bash\n' .. cmdlist
+   end
+
+   file = obj.new('file', { src=output_path, flags='NEW|WRITE', permissions='READ|WRITE|EXEC' })
+   file.acWrite(cmdlist)
+   file.free()
+
+   if not arg('dry-run') then
+      print('Running generated script from ' .. output_path)
+
+      task = obj.new('task', {
+         src     = output_path,
+         outputCallback = function(Task, Buffer)
+            print(Buffer:getString())
+         end,
+         flags   = 'WAIT',
+         timeout = 20
+      })
+
+      task.acActivate()
+
+      mSys.DeleteFile(output_path)
+      print('Finished.')
+   else
+      print('Dry run, generated script available at ' .. output_path)
+   end

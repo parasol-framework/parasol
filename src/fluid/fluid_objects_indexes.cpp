@@ -1,29 +1,29 @@
 
 //********************************************************************************************************************
-// Usage: object.field = newvalue
+// Usage: object.fieldName = newvalue
 //
-// Custom fields can be referenced by using _ as a prefix.
+// Custom key-values can be referenced by using _ as a prefix.
+// The fieldName is case sensitive and the first character is always lower case.
+// Using all caps abbreviations is discouraged when designing class fields, e.g. JITOptions won't work out, but
+// JitOptions is fine.
 
 static int object_newindex(lua_State *Lua)
 {
    if (auto def = (object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
-      if (auto keyname = luaL_checkstring(Lua, 2)) {
+      if (auto hash = luaL_checkstringhash(Lua, 2)) {
          if (auto obj = access_object(def)) {
             ERR error;
-            if (keyname[0] IS '_') error = acSetKey(obj, keyname+1, lua_tostring(Lua, 3));
-            else {
-               auto jt = get_write_table(def);
-               if (auto func = jt->find(obj_write(simple_hash(keyname))); func != jt->end()) {
-                  error = func->Call(Lua, obj, func->Field, 3);
-               }
-               else error = ERR::NoSupport;
+            auto jt = get_write_table(def);
+            if (auto func = jt->find(obj_write(hash)); func != jt->end()) {
+               error = func->Call(Lua, obj, func->Field, 3);
             }
+            else error = ERR::NoSupport;
             release_object(def);
 
             if (error >= ERR::ExceptionThreshold) {
                pf::Log log(__FUNCTION__);
-               log.warning("Unable to write %s.%s: %s", def->Class->ClassName, keyname, GetErrorMsg(error));
-               auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+               log.warning("Unable to write %s.%s: %s", def->Class->ClassName, luaL_checkstring(Lua, 2), GetErrorMsg(error));
+               auto prv = (prvFluid *)Lua->script->ChildPrivate;
                prv->CaughtError = error;
                /*if (prv->ThrowErrors)*/ luaL_error(Lua, GetErrorMsg(error));
             }
@@ -35,7 +35,7 @@ static int object_newindex(lua_State *Lua)
 
 //********************************************************************************************************************
 
-static ERR set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG Values, LONG total)
+static ERR set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, int Values, int total)
 {
    if (Field->Flags & FD_INT) {
       pf::vector<int> values((size_t)total);
@@ -50,7 +50,7 @@ static ERR set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG Values
    else if (Field->Flags & FD_STRING) {
       pf::vector<CSTRING> values((size_t)total);
       for (lua_pushnil(Lua); lua_next(Lua, Values); lua_pop(Lua, 1)) {
-         LONG index = lua_tointeger(Lua, -2) - 1;
+         int index = lua_tointeger(Lua, -2) - 1;
          if ((index >= 0) and (index < total)) {
             values[index] = lua_tostring(Lua, -1);
          }
@@ -60,16 +60,15 @@ static ERR set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG Values
    else if (Field->Flags & FD_STRUCT) {
       // Array structs can be set if the Lua table consists of Fluid.struct types.
 
-      auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-      if (auto def = prv->Structs.find(std::string_view((CSTRING)Field->Arg)); def != prv->Structs.end()) {
-         LONG aligned_size = ALIGN64(def->second.Size);
-         auto structbuf = std::make_unique<UBYTE[]>(total * aligned_size);
+      if (auto def = glStructs.find(std::string_view((CSTRING)Field->Arg)); def != glStructs.end()) {
+         int aligned_size = ALIGN64(def->second.Size);
+         auto structbuf = std::make_unique<uint8_t[]>(total * aligned_size);
 
          for (lua_pushnil(Lua); lua_next(Lua, Values); lua_pop(Lua, 1)) {
-            LONG index = lua_tointeger(Lua, -2) - 1;
+            int index = lua_tointeger(Lua, -2);
             if ((index >= 0) and (index < total)) {
                APTR sti = structbuf.get() + (aligned_size * index);
-               LONG type = lua_type(Lua, -1);
+               int type = lua_type(Lua, -1);
                if (type IS LUA_TTABLE) {
                   lua_pop(Lua, 2);
                   return ERR::SetValueNotArray;
@@ -95,46 +94,47 @@ static ERR set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG Values
 
 //********************************************************************************************************************
 
-static ERR object_set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG ValueIndex)
+static ERR object_set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, int ValueIndex)
 {
-   LONG type = lua_type(Lua, ValueIndex);
+   auto type = lua_type(Lua, ValueIndex);
 
    if (type IS LUA_TSTRING) { // Treat the source as a CSV field
       return Object->set(Field->FieldID, lua_tostring(Lua, ValueIndex));
    }
    else if (type IS LUA_TTABLE) {
       lua_settop(Lua, ValueIndex);
-      LONG t = lua_gettop(Lua);
-      LONG total = lua_objlen(Lua, t);
+      int t = lua_gettop(Lua);
+      int total = lua_objlen(Lua, t);
 
       if (total < 1024) {
          return set_array(Lua, Object, Field, t, total);
       }
       else return ERR::BufferOverflow;
    }
-   else if (auto farray = (struct array *)get_meta(Lua, ValueIndex, "Fluid.array")) {
-      return Object->set(Field->FieldID, farray->ptrPointer, farray->Total, farray->Type);
+   else if (type IS LUA_TARRAY) {
+      GCarray *arr = arrayV(Lua, ValueIndex);
+      return Object->set(Field->FieldID, arr->arraydata(), arr->len, arr->type_flags());
    }
    else return ERR::SetValueNotArray;
 }
 
-static ERR object_set_function(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG ValueIndex)
+static ERR object_set_function(lua_State *Lua, OBJECTPTR Object, Field *Field, int ValueIndex)
 {
-   LONG type = lua_type(Lua, ValueIndex);
+   int type = lua_type(Lua, ValueIndex);
    if (type IS LUA_TSTRING) {
       lua_getglobal(Lua, lua_tostring(Lua, ValueIndex));
-      auto func = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+      auto func = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
       return Object->set(Field->FieldID, &func);
    }
    else if (type IS LUA_TFUNCTION) {
       lua_pushvalue(Lua, ValueIndex);
-      auto func = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+      auto func = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
       return Object->set(Field->FieldID, &func);
    }
    else return ERR::SetValueNotFunction;
 }
 
-static ERR object_set_object(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG ValueIndex)
+static ERR object_set_object(lua_State *Lua, OBJECTPTR Object, Field *Field, int ValueIndex)
 {
    if (auto def = (object *)get_meta(Lua, ValueIndex, "Fluid.obj")) {
       if (auto ptr_obj = access_object(def)) {
@@ -147,7 +147,7 @@ static ERR object_set_object(lua_State *Lua, OBJECTPTR Object, Field *Field, LON
    else return Object->set(Field->FieldID, (APTR)nullptr);
 }
 
-static ERR object_set_ptr(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG ValueIndex)
+static ERR object_set_ptr(lua_State *Lua, OBJECTPTR Object, Field *Field, int ValueIndex)
 {
    auto type = lua_type(Lua, ValueIndex);
 
@@ -164,8 +164,9 @@ static ERR object_set_ptr(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG V
       }
       else return ERR::SetValueNotPointer;
    }
-   else if (auto array = (struct array *)get_meta(Lua, ValueIndex, "Fluid.array")) {
-      return Object->set(Field->FieldID, array->ptrVoid);
+   else if (type IS LUA_TARRAY) {
+      GCarray *arr = arrayV(Lua, ValueIndex);
+      return Object->set(Field->FieldID, arr->arraydata());
    }
    else if (auto fstruct = (struct fstruct *)get_meta(Lua, ValueIndex, "Fluid.struct")) {
       return Object->set(Field->FieldID, fstruct->Data);
@@ -176,7 +177,7 @@ static ERR object_set_ptr(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG V
    else return ERR::SetValueNotPointer;
 }
 
-static ERR object_set_double(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG ValueIndex)
+static ERR object_set_double(lua_State *Lua, OBJECTPTR Object, Field *Field, int ValueIndex)
 {
    switch(lua_type(Lua, ValueIndex)) {
       case LUA_TNUMBER:
@@ -193,16 +194,16 @@ static ERR object_set_double(lua_State *Lua, OBJECTPTR Object, Field *Field, LON
    }
 }
 
-static ERR object_set_lookup(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG ValueIndex)
+static ERR object_set_lookup(lua_State *Lua, OBJECTPTR Object, Field *Field, int ValueIndex)
 {
    switch(lua_type(Lua, ValueIndex)) {
-      case LUA_TNUMBER: return Object->set(Field->FieldID, (LONG)lua_tointeger(Lua, ValueIndex));
+      case LUA_TNUMBER: return Object->set(Field->FieldID, (int)lua_tointeger(Lua, ValueIndex));
       case LUA_TSTRING: return Object->set(Field->FieldID, lua_tostring(Lua, ValueIndex));
       default: return ERR::SetValueNotLookup;
    }
 }
 
-static ERR object_set_oid(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG ValueIndex)
+static ERR object_set_oid(lua_State *Lua, OBJECTPTR Object, Field *Field, int ValueIndex)
 {
    switch(lua_type(Lua, ValueIndex)) {
       default:          return ERR::SetValueNotObject;
@@ -232,7 +233,7 @@ static ERR object_set_oid(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG V
    return ERR::SetValueNotObject;
 }
 
-static ERR object_set_number(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG ValueIndex)
+static ERR object_set_number(lua_State *Lua, OBJECTPTR Object, Field *Field, int ValueIndex)
 {
    switch(lua_type(Lua, ValueIndex)) {
       case LUA_TBOOLEAN:
@@ -279,34 +280,34 @@ static int object_get(lua_State *Lua)
          return 1;
       }
       else if (auto field = FindField(obj, strihash(fieldname), &target)) {
-         LONG result = 0;
+         int result = 0;
          if (field->Flags & FD_ARRAY) {
             if (field->Flags & FD_RGB) result = object_get_rgb(Lua, obj_read(0, nullptr, field), def);
             else result = object_get_array(Lua, obj_read(0, nullptr, field), def);
          }
          else if (field->Flags & FD_STRUCT) {
-            result = object_get_struct(Lua, obj_read(0, NULL, field), def);
+            result = object_get_struct(Lua, obj_read(0, nullptr, field), def);
          }
          else if (field->Flags & FD_STRING) {
-            result = object_get_string(Lua, obj_read(0, NULL, field), def);
+            result = object_get_string(Lua, obj_read(0, nullptr, field), def);
          }
          else if (field->Flags & FD_POINTER) {
             if (field->Flags & (FD_OBJECT|FD_LOCAL)) {
-               result = object_get_object(Lua, obj_read(0, NULL, field), def);
+               result = object_get_object(Lua, obj_read(0, nullptr, field), def);
             }
-            else result = object_get_ptr(Lua, obj_read(0, NULL, field), def);
+            else result = object_get_ptr(Lua, obj_read(0, nullptr, field), def);
          }
          else if (field->Flags & FD_DOUBLE) {
-            result = object_get_double(Lua, obj_read(0, NULL, field), def);
+            result = object_get_double(Lua, obj_read(0, nullptr, field), def);
          }
          else if (field->Flags & FD_INT64) {
-            result = object_get_large(Lua, obj_read(0, NULL, field), def);
+            result = object_get_large(Lua, obj_read(0, nullptr, field), def);
          }
          else if (field->Flags & FD_INT) {
             if (field->Flags & FD_UNSIGNED) {
-               result = object_get_ulong(Lua, obj_read(0, NULL, field), def);
+               result = object_get_ulong(Lua, obj_read(0, nullptr, field), def);
             }
-            else result = object_get_long(Lua, obj_read(0, NULL, field), def);
+            else result = object_get_long(Lua, obj_read(0, nullptr, field), def);
          }
 
          release_object(def);
@@ -368,15 +369,15 @@ static int object_set(lua_State *Lua)
    if (!(fieldname = luaL_checkstring(Lua, 1))) return 0;
 
    if (auto obj = access_object(def)) {
-      LONG type = lua_type(Lua, 2);
+      int type = lua_type(Lua, 2);
       auto fieldhash = strihash(fieldname);
 
       ERR error;
       if (type IS LUA_TNUMBER) error = obj->set(fieldhash, luaL_checknumber(Lua, 2));
-      else error = obj->set(fieldhash, luaL_optstring(Lua, 2, NULL));
+      else error = obj->set(fieldhash, luaL_optstring(Lua, 2, nullptr));
 
       release_object(def);
-      lua_pushinteger(Lua, LONG(error));
+      lua_pushinteger(Lua, int(error));
       report_action_error(Lua, def, "set", error);
       return 1;
    }
@@ -390,11 +391,11 @@ static int object_setkey(lua_State *Lua)
 {
    auto def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
    if (auto fieldname = luaL_checkstring(Lua, 1)) {
-      auto value = luaL_optstring(Lua, 2, NULL);
+      auto value = luaL_optstring(Lua, 2, nullptr);
       if (auto obj = access_object(def)) {
          ERR error = acSetKey(obj, fieldname, value);
          release_object(def);
-         lua_pushinteger(Lua, LONG(error));
+         lua_pushinteger(Lua, int(error));
          report_action_error(Lua, def, "setKey", error);
          return 1;
       }
@@ -405,46 +406,43 @@ static int object_setkey(lua_State *Lua)
 
 //********************************************************************************************************************
 
-static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG ValueIndex)
+static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, int ValueIndex)
 {
    pf::Log log("obj.setfield");
 
-   LONG type = lua_type(Lua, ValueIndex);
+   int type = lua_type(Lua, ValueIndex);
 
    if (FName[0] IS '_') return acSetKey(obj, FName+1, lua_tostring(Lua, ValueIndex));
 
    OBJECTPTR target;
    if (auto field = FindField(obj, strihash(FName), &target)) {
       if (field->Flags & FD_ARRAY) {
-         struct array *farray;
-
          if (type IS LUA_TSTRING) { // Treat the source as a CSV field
             return target->set(field->FieldID, lua_tostring(Lua, ValueIndex));
          }
          else if (type IS LUA_TTABLE) {
             lua_settop(Lua, ValueIndex);
-            LONG t = lua_gettop(Lua);
-            LONG total = lua_objlen(Lua, t);
+            int t = lua_gettop(Lua);
+            int total = lua_objlen(Lua, t);
 
-            if (total < 1024) {
-               return set_array(Lua, target, field, t, total);
-            }
+            if (total < 1024) return set_array(Lua, target, field, t, total);
             else return ERR::BufferOverflow;
          }
-         else if ((farray = (struct array *)get_meta(Lua, ValueIndex, "Fluid.array"))) {
-            return target->set(field->FieldID, farray->ptrPointer, farray->Total, farray->Type);
+         else if (type IS LUA_TARRAY) {
+            GCarray *arr = arrayV(Lua, ValueIndex);
+            return target->set(field->FieldID, arr->arraydata(), arr->len, arr->type_flags());
          }
          else return ERR::SetValueNotArray;
       }
       else if (field->Flags & FD_FUNCTION) {
          if (type IS LUA_TSTRING) {
             lua_getglobal(Lua, lua_tostring(Lua, ValueIndex));
-            auto func = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+            auto func = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
             return target->set(field->FieldID, &func);
          }
          else if (type IS LUA_TFUNCTION) {
             lua_pushvalue(Lua, ValueIndex);
-            auto func = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+            auto func = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
             return target->set(field->FieldID, &func);
          }
          else return ERR::SetValueNotFunction;
@@ -453,9 +451,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG V
          if (field->Flags & (FD_OBJECT|FD_LOCAL)) { // Writing to an integral is permitted if marked as writeable.
             if (auto object = (struct object *)get_meta(Lua, ValueIndex, "Fluid.obj")) {
                OBJECTPTR ptr_obj;
-               if (object->ObjectPtr) {
-                  return target->set(field->FieldID, object->ObjectPtr);
-               }
+               if (object->ObjectPtr) return target->set(field->FieldID, object->ObjectPtr);
                else if ((ptr_obj = (OBJECTPTR)access_object(object))) {
                   ERR error = target->set(field->FieldID, object->ObjectPtr);
                   release_object(object);
@@ -463,30 +459,27 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG V
                }
                else return ERR::Failed;
             }
-            else return target->set(field->FieldID, (APTR)NULL);
+            else return target->set(field->FieldID, (APTR)nullptr);
          }
          else if (type IS LUA_TSTRING) {
             return target->set(field->FieldID, lua_tostring(Lua, ValueIndex));
          }
          else if (type IS LUA_TNUMBER) {
-            if (field->Flags & FD_STRING) {
-               return obj->set(field->FieldID, lua_tostring(Lua, ValueIndex));
-            }
+            if (field->Flags & FD_STRING) return obj->set(field->FieldID, lua_tostring(Lua, ValueIndex));
             else if (lua_tointeger(Lua, ValueIndex) IS 0) {
                // Setting pointer fields with numbers is only allowed if that number evaluates to zero (NULL)
-               return obj->set(field->FieldID, (APTR)NULL);
+               return obj->set(field->FieldID, (APTR)nullptr);
             }
             else return ERR::SetValueNotPointer;
          }
-         else if (auto array = (struct array *)get_meta(Lua, ValueIndex, "Fluid.array")) {
-            return obj->set(field->FieldID, array->ptrVoid);
+         else if (type IS LUA_TARRAY) {
+            GCarray *arr = arrayV(Lua, ValueIndex);
+            return obj->set(field->FieldID, arr->arraydata());
          }
          else if (auto fs = (fstruct *)get_meta(Lua, ValueIndex, "Fluid.struct")) {
             return obj->set(field->FieldID, fs->Data);
          }
-         else if (type IS LUA_TNIL) {
-            return obj->set(field->FieldID, (APTR)NULL);
-         }
+         else if (type IS LUA_TNIL) return obj->set(field->FieldID, (APTR)nullptr);
          else return ERR::SetValueNotPointer;
       }
       else if (field->Flags & (FD_DOUBLE|FD_FLOAT)) {
@@ -507,7 +500,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG V
       else if (field->Flags & (FD_FLAGS|FD_LOOKUP)) {
          switch(type) {
             case LUA_TNUMBER:
-               return target->set(field->FieldID, (LONG)lua_tointeger(Lua, ValueIndex));
+               return target->set(field->FieldID, (int)lua_tointeger(Lua, ValueIndex));
 
             case LUA_TSTRING:
                return target->set(field->FieldID, lua_tostring(Lua, ValueIndex));
@@ -585,17 +578,37 @@ static int object_get_array(lua_State *Lua, const obj_read &Handle, object *Def)
       auto field = (Field *)(Handle.Data);
       int total;
       APTR *list;
-      if ((error = obj->get(field->FieldID, list, total, false)) IS ERR::Okay) {
-         if (total <= 0) lua_pushnil(Lua);
-         else if (field->Flags & FD_STRING) {
-            make_table(Lua, FD_STRING, total, list);
-         }
-         else if (field->Flags & (FD_INT|FD_INT64|FD_FLOAT|FD_DOUBLE|FD_POINTER|FD_BYTE|FD_WORD|FD_STRUCT)) {
-            make_any_table(Lua, field->Flags, (CSTRING)field->Arg, total, list);
+      if (field->Flags & FD_CPP) {
+         if (field->Flags & FD_STRING) {
+            pf::vector<std::string> *values; // std::string doesn't work like standard primitives - at least not in MSVC - so it gets a special handler.
+            if ((error = obj->get(field->FieldID, values, total, false)) IS ERR::Okay) {
+               if (total <= 0) lua_pushnil(Lua);
+               else make_array(Lua, AET::STR_CPP, total, values);
+            }
          }
          else {
-            pf::Log log(__FUNCTION__);
-            log.warning("Invalid array type for '%s', flags: $%.8x", field->Name, field->Flags);
+            // For pf::vector primitives we can just convert to a raw data array.
+            pf::vector<APTR> *values; // The type doesn't matter.
+            if ((error = obj->get(field->FieldID, values, total, false)) IS ERR::Okay) {
+               if (total <= 0) lua_pushnil(Lua);
+               else {
+                  std::string_view struct_name = field->Flags & FD_STRUCT ? std::string_view((CSTRING)field->Arg) : std::string_view {};
+                  make_any_array(Lua, field->Flags, struct_name, total, values->data());
+               }
+            }
+         }
+      }
+      else if ((error = obj->get(field->FieldID, list, total, false)) IS ERR::Okay) {
+         if (total <= 0) lua_pushnil(Lua);
+         else if (field->Flags & FD_STRING) {
+            make_array(Lua, AET::CSTR, total, list);
+         }
+         else if (field->Flags & (FD_INT|FD_INT64|FD_FLOAT|FD_DOUBLE|FD_POINTER|FD_BYTE|FD_WORD|FD_STRUCT)) {
+            std::string_view struct_name = field->Flags & FD_STRUCT ? std::string_view((CSTRING)field->Arg) : std::string_view {};
+            make_any_array(Lua, field->Flags, struct_name, total, list);
+         }
+         else {
+            pf::Log(__FUNCTION__).warning("Invalid array type for '%s', flags: $%.8x", field->Name, field->Flags);
             error = ERR::FieldTypeMismatch;
          }
       }
@@ -604,7 +617,7 @@ static int object_get_array(lua_State *Lua, const obj_read &Handle, object *Def)
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    prv->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
@@ -620,7 +633,7 @@ static int object_get_rgb(lua_State *Lua, const obj_read &Handle, object *Def)
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    prv->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
@@ -635,7 +648,7 @@ static int object_get_struct(lua_State *Lua, const obj_read &Handle, object *Def
          if ((error = obj->get(field->FieldID, result)) IS ERR::Okay) {
             if (result) { // Structs are copied into standard Lua tables.
                if (field->Flags & FD_RESOURCE) {
-                   push_struct(Lua->Script, result, (CSTRING)field->Arg, (field->Flags & FD_ALLOC) ? TRUE : FALSE, TRUE);
+                   push_struct(Lua->script, result, (CSTRING)field->Arg, (field->Flags & FD_ALLOC) ? TRUE : FALSE, TRUE);
                }
                else named_struct_to_table(Lua, (CSTRING)field->Arg, result);
             }
@@ -643,15 +656,14 @@ static int object_get_struct(lua_State *Lua, const obj_read &Handle, object *Def
          }
       }
       else {
-         pf::Log log(__FUNCTION__);
-         log.warning("No struct name reference for field %s in class %s.", field->Name, obj->Class->ClassName);
+         pf::Log(__FUNCTION__).warning("No struct name reference for field %s in class %s.", field->Name, obj->Class->ClassName);
          error = ERR::Failed;
       }
       release_object(Def);
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    prv->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
@@ -670,7 +682,7 @@ static int object_get_string(lua_State *Lua, const obj_read &Handle, object *Def
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    prv->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
@@ -686,7 +698,7 @@ static int object_get_ptr(lua_State *Lua, const obj_read &Handle, object *Def)
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    prv->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
@@ -705,7 +717,7 @@ static int object_get_object(lua_State *Lua, const obj_read &Handle, object *Def
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    prv->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
@@ -715,13 +727,13 @@ static int object_get_double(lua_State *Lua, const obj_read &Handle, object *Def
    ERR error;
    if (auto obj = access_object(Def)) {
       auto field = (Field *)(Handle.Data);
-      DOUBLE result;
+      double result;
       if ((error = obj->get(field->FieldID, result)) IS ERR::Okay) lua_pushnumber(Lua, result);
       release_object(Def);
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    prv->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
@@ -737,7 +749,7 @@ static int object_get_large(lua_State *Lua, const obj_read &Handle, object *Def)
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    prv->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
@@ -747,7 +759,7 @@ static int object_get_long(lua_State *Lua, const obj_read &Handle, object *Def)
    ERR error;
    if (auto obj = access_object(Def)) {
       auto field = (Field *)(Handle.Data);
-      LONG result;
+      int result;
       if ((error = obj->get(field->FieldID, result)) IS ERR::Okay) {
          if (field->Flags & FD_OBJECT) push_object_id(Lua, result);
          else lua_pushinteger(Lua, result);
@@ -756,7 +768,7 @@ static int object_get_long(lua_State *Lua, const obj_read &Handle, object *Def)
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    prv->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
@@ -766,15 +778,15 @@ static int object_get_ulong(lua_State *Lua, const obj_read &Handle, object *Def)
    ERR error;
    if (auto obj = access_object(Def)) {
       auto field = (Field *)(Handle.Data);
-      ULONG result;
-      if ((error = obj->get(field->FieldID, (LONG &)result)) IS ERR::Okay) {
+      uint32_t result;
+      if ((error = obj->get(field->FieldID, (int &)result)) IS ERR::Okay) {
          lua_pushnumber(Lua, result);
       }
       release_object(Def);
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    prv->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }

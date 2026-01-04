@@ -34,8 +34,8 @@ std::recursive_mutex glVectorFocusLock;
 std::vector<extVector *> glVectorFocusList; // The first reference is the most foreground object with the focus
 
 std::recursive_mutex glFontMutex;
-ankerl::unordered_dense::map<ULONG, std::unique_ptr<bmp_font>> glBitmapFonts;
-ankerl::unordered_dense::map<ULONG, std::unique_ptr<freetype_font>> glFreetypeFonts;
+ankerl::unordered_dense::map<uint32_t, std::unique_ptr<bmp_font>> glBitmapFonts;
+ankerl::unordered_dense::map<uint32_t, std::unique_ptr<freetype_font>> glFreetypeFonts;
 
 static ERR init_clip(void);
 static ERR init_ellipse(void);
@@ -196,5 +196,5 @@ static STRUCTS glStructures = {
    { "VectorPoint",  sizeof(VectorPoint) }
 };
 
-PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MOD_IDL, &glStructures)
+PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, nullptr, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_vector_module() { return &ModHeader; }

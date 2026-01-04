@@ -200,7 +200,7 @@ static ERR TURBULENCEFX_Draw(extTurbulenceFX *Self, struct acDraw *Args)
          fl::BitsPerPixel(32),
          fl::Flags(BMF::ALPHA_CHANNEL),
          fl::BlendMode(BLM::NONE),
-         fl::ColourSpace(CS::SRGB)))) return ERR::CreateObject;    
+         fl::ColourSpace(CS::SRGB)))) return ERR::CreateObject;
    }
    else if ((Self->Bitmap->Width != width) or (Self->Bitmap->Height != height)) {
       Self->Dirty = true;
@@ -209,7 +209,7 @@ static ERR TURBULENCEFX_Draw(extTurbulenceFX *Self, struct acDraw *Args)
 
    if (Self->Dirty) {
       Self->Dirty = false;
-      
+
       int thread_count = std::thread::hardware_concurrency();
       if (thread_count > height/4) thread_count = height/4;
       if (thread_count < 1) thread_count = 1;
@@ -217,12 +217,12 @@ static ERR TURBULENCEFX_Draw(extTurbulenceFX *Self, struct acDraw *Args)
       BS::thread_pool pool(thread_count);
 
       for (int i=0; i < thread_count; i++) {
-         pool.detach_task([Self, Start = (height * i) / thread_count, End = (height * (i + 1)) / thread_count]() { 
+         pool.detach_task([Self, Start = (height * i) / thread_count, End = (height * (i + 1)) / thread_count]() {
             const uint8_t A = Self->Bitmap->ColourFormat->AlphaPos>>3;
             const uint8_t R = Self->Bitmap->ColourFormat->RedPos>>3;
             const uint8_t G = Self->Bitmap->ColourFormat->GreenPos>>3;
             const uint8_t B = Self->Bitmap->ColourFormat->BluePos>>3;
-   
+
             uint8_t *data = Self->Bitmap->Data;
 
             if (Self->Stitch) {

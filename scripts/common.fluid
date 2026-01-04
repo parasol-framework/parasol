@@ -3,45 +3,45 @@
 ------------------------------------------------------------------------------
 -- Serialise the key-values of a table into an XML string.
 
-table.toXML = function(t)
-   local out = ''
+table.toXML = function(t:table):str
+   out = ''
    for tag,v in pairs(t) do
-      if type(v) == 'table' then -- tag
-         out = out .. '<' .. tag
+      if type(v) is 'table' then -- tag
+         out ..= f'<{tag}'
          local child = ''
          for ak,av in pairs(v) do
-            if type(ak) == 'number' then -- key-less, can be child tag or content
-               if type(av) == 'table' then
+            if type(ak) is 'number' then -- key-less, can be child tag or content
+               if type(av) is 'table' then
                   for ck,cv in pairs(av) do
-                     if type(cv) == 'table' then
-                        child = child .. table.toXML({ [ck] = cv })
+                     if type(cv) is 'table' then
+                        child ..= table.toXML({ [ck] = cv })
                      else
-                        child = child .. string.escXML(cv)
+                        child ..= string.escXML(cv)
                      end
                   end
                else
-                  child = child .. string.escXML(tostring(av)) -- content
+                  child ..= string.escXML(tostring(av)) -- content
                end
-            elseif type(av) == 'string' then -- attribute
-               out = out .. ' ' .. ak .. '="' .. string.escXML(av) .. '"'
-            elseif type(av) == 'number' then -- attribute
-               out = out .. ' ' .. ak .. '=' .. av
-            elseif type(av) == 'boolean' then -- attribute
-               if av == true then
-                  out = out .. ' ' .. ak
+            elseif type(av) is 'string' then -- attribute
+               out ..= f' {ak}="{string.escXML(av)}"'
+            elseif type(av) is 'number' then -- attribute
+               out ..= f' {ak}={av}'
+            elseif type(av) is 'boolean' then -- attribute
+               if av is true then
+                  out ..= ' ' .. ak
                end
             else
-               child = child .. string.escXML(tostring(av)) -- content
+               child ..= string.escXML(tostring(av)) -- content
             end
          end
 
-         if child != '' then
-            out = out .. '>' .. child .. '</>'
+         if child?? then
+            out ..= f'>{child}</>'
          else
-            out = out .. '/>'
+            out ..= '/>'
          end
       else
-         out = '<' .. tag .. '/>'
+         out = f'<{tag}/>'
       end
    end
    return out
@@ -50,14 +50,14 @@ end
 ------------------------------------------------------------------------------
 -- Usage: for k,v in table.sortByKeys(the_table) do
 
-table.sortByKeys = function(t, f)
-   local a = {}
+table.sortByKeys = function(t:table, f:func):func
+   a = {}
    for n in pairs(t) do table.insert(a, n) end
    table.sort(a, f)
-   local i = 0
-   local iter = function()
-      i = i + 1
-      if a[i] == nil then return nil
+   i = -1
+   iter = function()
+      i++
+      if not a[i] then return nil
       else return a[i], t[a[i]]
       end
    end
@@ -66,51 +66,49 @@ end
 
 ------------------------------------------------------------------------------
 
-if file == nil then
-   file = { ui = { } }
-end
+global file <const> ?= { ui = { } }
 
+-- Read an entire file as a string.
 -- Will throw an exception if the file is not found or the complete data cannot be read.
 
-file.readAll = function(Path)
-   local ex, fl = catch(function() return obj.new('file', { flags='READ', path=Path } ) end)
-   
-   if ex then
-      error('Failed to open file "' .. nz(Path,'NIL') .. '": ' .. ex.message)
-   end
+file.readAll = function(Path:str):str
+   ex, fl = catch(function() return obj.new('file', { flags='READ', path=Path } ) end)
+   assert(not ex, 'Failed to open file "' .. tostring(Path) .. '": ' .. ex.message)
 
-   local fileBuffer = string.alloc(fl.size)
-   local err, bytesRead = fl.acRead(fileBuffer)
+   file_buffer = string.alloc(fl.size)
+   err, bytes_read = fl.acRead(file_buffer)
    fl.free()
-   if err == ERR_Okay then
-      return fileBuffer
-   else
-      error('Failed to read ' .. fl.size .. ' bytes from "' .. Path .. '"')
-   end
+   assert(err is ERR_Okay and bytes_read is #file_buffer, 'Failed to read ' .. #file_buffer .. ' bytes from "' .. Path .. '"')
+   return file_buffer
 end
 
 ------------------------------------------------------------------------------
 
-file.isFolder = function(Path)
-   local e = string.sub(Path, -1)
-   if (e == '/') or (e == '\\') or (e == ':') then return true end
+file.writeAll = function(Path:str, Content:str)
+   fl = obj.new('file', { path = Path, flags = 'WRITE|NEW' })
+   fl.acWrite(Content)
+   fl.free()
+end
+
+------------------------------------------------------------------------------
+
+file.isFolder = function(Path:str):bool
+   e = string.sub(Path, -1)
+   if (e is '/') or (e is '\\') or (e is ':') then return true end
    return false
 end
 
 ------------------------------------------------------------------------------
 
-file.splitPath = function(Path)
-   if Path == nil then return nil, nil end
-   local path, fl = string.match(Path, '^(.+[/:\\])(.+)$')
-   if path == nil then
-      return nil, Path
-   end
+file.splitPath = function(Path:str):<str,str>
+   Path ?? return nil, nil
+   path, fl = string.match(Path, '^(.+[/:\\])(.+)$')
+   path ?? return nil, Path
    return path, fl
 end
 
 ------------------------------------------------------------------------------
 
-file.sanitisePath = function(Path)
-   local v = string.gsub(Path, '[:/\\][:/\\]+', function(n) return n:sub(1,1) end)
-   return v
+file.sanitisePath = function(Path:str):str
+   return string.gsub(Path, '[:/\\][:/\\]+', function(n) return n:sub(0,1) end)
 end

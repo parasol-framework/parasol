@@ -3,8 +3,9 @@ Documentation is available in the Parasol Wiki.
 --]]
 
    require 'common'
+   include('display', 'vector')
 
-   if (gui == nil) then gui = { } end
+   if not gui then global gui = { } end
 
 gui.tooltip = function(Options)
    local self = { } -- Public variables
@@ -20,7 +21,7 @@ gui.tooltip = function(Options)
       name = 'rgnTip',
       x = ptr.x + 6, y = ptr.y, width = 300,
       parent = 0, windowType = 'none',
-      flags = bit.bor(RNF_STICK_TO_FRONT, RNF_COMPOSITE)
+      flags = RNF_STICK_TO_FRONT | RNF_COMPOSITE
    })
 
    self.scene = self.surface.new('VectorScene', { flags=VPF_RESIZE, surface=self.surface })
@@ -59,8 +60,8 @@ gui.tooltip = function(Options)
    self.surface.new('fluid', { name='flTip', _surface=self.surface.id, statement=[[
       include 'display'
       local surface = obj.find(arg('surface'))
-      if (surface != nil) then
-         input.subscribe(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON), nil, 0, function(Input, Message)
+      if surface then
+         input.subscribe(JTYPE_MOVEMENT | JTYPE_BUTTON, nil, 0, function(Input, Message)
             Input.unsubscribe()
             surface.free()
          end)
@@ -75,14 +76,14 @@ gui.tooltip = function(Options)
 
    -- Adjust the position of the tool tip so that it fits on the screen.
 --[[
-   if (systemSurface != nil) then
-      if (self.surface.right > systemSurface.width) then
+   if systemSurface != nil then
+      if self.surface.right > systemSurface.width then
          self.surface.x = ptr.x - self.surface.width
       end
    end
 --]]
 
-   if (self.surface.y < 0) then
+   if self.surface.y < 0 then
       self.surface.y = ptr.y + 20
    end
 
@@ -91,4 +92,3 @@ gui.tooltip = function(Options)
 
    return self
 end
-

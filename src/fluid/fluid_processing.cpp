@@ -10,13 +10,10 @@
 #include <inttypes.h>
 #include <mutex>
 
-extern "C" {
- #include "lua.h"
- #include "lualib.h"
- #include "lauxlib.h"
- #include "lj_obj.h"
-}
-
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
+#include "lj_obj.h"
 #include "hashes.h"
 #include "defs.h"
 
@@ -84,7 +81,7 @@ static int processing_new(lua_State *Lua)
       }
 
       if (fp->Signals->empty()) { // Monitor the script for a signal if the client did not specify any objects
-         ObjectSignal sig = { .Object = Lua->Script };
+         ObjectSignal sig = { .Object = Lua->script };
          fp->Signals->push_back(sig);
       }
 
@@ -100,6 +97,9 @@ static int processing_new(lua_State *Lua)
 //
 // Puts a process to sleep with message processing in the background.  Can be woken early with a signal (i.e.
 // proc.signal()).
+//
+// Lua's internal signal flag is always reset on entry in case it has been polluted by prior activity.  This behaviour
+// can be disabled by setting the third argument to false.
 //
 // Setting seconds to zero will process outstanding messages and return immediately.
 //
@@ -117,7 +117,7 @@ static int processing_sleep(lua_State *Lua)
    static std::recursive_mutex recursion; // Intentionally accessible to all threads
 
    ERR error;
-   LONG timeout;
+   int timeout;
 
    auto fp = (fprocessing *)get_meta(Lua, lua_upvalueindex(1), "Fluid.processing");
    if (fp) timeout = F2T(fp->Timeout * 1000.0);
@@ -131,40 +131,45 @@ static int processing_sleep(lua_State *Lua)
    else if (!timeout) wake_on_signal = false; // We don't want to intercept signals if just processing messages
    else wake_on_signal = true;
 
+   bool reset_state = true;
+   if (lua_type(Lua, 3) IS LUA_TBOOLEAN) reset_state = lua_toboolean(Lua, 3);
+
    log.branch("Timeout: %d, WakeOnSignal: %c", timeout, wake_on_signal ? 'Y' : 'N');
-
-   // The Lua signal flag is always reset on entry just in case it has been polluted by prior activity.
-   // All other objects can be pre-signalled legitimately.
-
-   Lua->Script->Object::Flags = Lua->Script->Object::Flags & (~NF::SIGNALLED);
 
    if (wake_on_signal) {
       if ((fp) and (fp->Signals) and (not fp->Signals->empty())) {
          // Use custom signals provided by the client (or Fluid if no objects were specified).
          auto signal_list_c = std::make_unique<ObjectSignal[]>(fp->Signals->size() + 1);
-         LONG i = 0;
+         int i = 0;
          for (auto &entry : *fp->Signals) signal_list_c[i++] = entry;
-         signal_list_c[i].Object = NULL;
+         signal_list_c[i].Object = nullptr;
 
          std::scoped_lock lock(recursion);
          error = WaitForObjects(PMF::NIL, timeout, signal_list_c.get());
       }
       else { // Default behaviour: Sleeping can be broken with a signal to the Fluid object.
-         ObjectSignal signal_list_c[2];
-         signal_list_c[0].Object   = Lua->Script;
-         signal_list_c[1].Object   = NULL;
+         if ((Lua->script->Object::Flags & NF::SIGNALLED) != NF::NIL) {
+            log.detail("Lua script already in signalled state.");
+            Lua->script->Object::Flags = Lua->script->Object::Flags & (~NF::SIGNALLED);
+            error = ERR::Okay;
+         }
+         else {
+            ObjectSignal signal_list_c[2];
+            signal_list_c[0].Object   = Lua->script;
+            signal_list_c[1].Object   = nullptr;
 
-         std::scoped_lock lock(recursion);
-         error = WaitForObjects(PMF::NIL, timeout, signal_list_c);
+            std::scoped_lock lock(recursion);
+            error = WaitForObjects(PMF::NIL, timeout, signal_list_c);
+         }
       }
    }
-   else {
+   else { // Ignore signals, just process messages for the specified time
       std::scoped_lock lock(recursion);
-      WaitTime(timeout / 1000, (timeout % 1000) * 1000);
+      WaitTime(timeout / 1000.0); // Convert milliseconds to seconds
       error = ERR::Okay;
    }
 
-   lua_pushinteger(Lua, LONG(error));
+   lua_pushinteger(Lua, int(error));
    return 1;
 }
 
@@ -175,18 +180,29 @@ static int processing_sleep(lua_State *Lua)
 
 static int processing_signal(lua_State *Lua)
 {
-   Action(AC::Signal, Lua->Script, NULL);
+   Action(AC::Signal, Lua->script, nullptr);
+   return 0;
+}
+
+//********************************************************************************************************************
+// Usage: processing.flush()
+//
+// Flushes any pending signals from the Fluid object.
+
+static int processing_flush(lua_State *Lua)
+{
+   Lua->script->Object::Flags = Lua->script->Object::Flags & (~NF::SIGNALLED);
    return 0;
 }
 
 //********************************************************************************************************************
 // Usage: task = processing.task()
 //
-// Returns a Fluid object that references the current task.
+// Returns an object that references the current task.
 
 static int processing_task(lua_State *Lua)
 {
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    object *obj = push_object(prv->Lua, CurrentTask());
    obj->Detached = true;  // External reference
    return 1;
@@ -208,7 +224,16 @@ static int processing_get(lua_State *Lua)
          lua_pushcclosure(Lua, &processing_signal, 1);
          return 1;
       }
-      else return luaL_error(Lua, "Unrecognised field name '%s'", fieldname);
+      else if (std::string_view("flush") IS fieldname) {
+         Lua->script->Object::Flags = Lua->script->Object::Flags & (~NF::SIGNALLED);
+         if (auto fp = (fprocessing *)get_meta(Lua, lua_upvalueindex(1), "Fluid.processing")) {
+            for (auto &entry : *fp->Signals) {
+               entry.Object->Flags &= (~NF::SIGNALLED);
+            }
+         }
+         return 0;
+      }
+      else luaL_error(Lua, "Unrecognised index '%s'", fieldname);
    }
 
    return 0;
@@ -221,17 +246,17 @@ static int processing_get(lua_State *Lua)
 
 static MsgHandler *delayed_call_handle;
 
-static ERR msg_handler(APTR Meta, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+static ERR msg_handler(APTR Meta, int MsgID, int MsgType, APTR Message, int MsgSize)
 {
    if (MsgSize != sizeof(int)) return pf::Log(__FUNCTION__).warning(ERR::Args);
 
    auto lua = (lua_State *)Meta;
-   auto prv = (prvFluid *)lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)lua->script->ChildPrivate;
    int ref = *(int *)Message;
    lua_rawgeti(lua, LUA_REGISTRYINDEX, ref); // Get the function from the registry
    luaL_unref(lua, LUA_REGISTRYINDEX, ref); // Remove it
    if (lua_pcall(prv->Lua, 0, 0, 0)) {
-      process_error(lua->Script, "delayedCall()");
+      process_error(lua->script, "delayedCall()");
    }
    return ERR::Okay;
 }
@@ -261,7 +286,7 @@ static int processing_delayed_call(lua_State *Lua)
 static int processing_destruct(lua_State *Lua)
 {
    auto fp = (fprocessing *)luaL_checkudata(Lua, 1, "Fluid.processing");
-   if (fp->Signals) { delete fp->Signals; fp->Signals = NULL; }
+   if (fp->Signals) { delete fp->Signals; fp->Signals = nullptr; }
    return 0;
 }
 
@@ -273,14 +298,15 @@ static const luaL_Reg processinglib_functions[] = {
    { "sleep",   processing_sleep },
    { "signal",  processing_signal },
    { "task",    processing_task },
+   { "flush",   processing_flush },
    { "delayedCall", processing_delayed_call },
-   { NULL, NULL }
+   { nullptr, nullptr }
 };
 
 static const luaL_Reg processinglib_methods[] = {
    { "__index",    processing_get },
    { "__gc",       processing_destruct },
-   { NULL, NULL }
+   { nullptr, nullptr }
 };
 
 void register_processing_class(lua_State *Lua)
@@ -289,10 +315,12 @@ void register_processing_class(lua_State *Lua)
    log.trace("Registering processing interface.");
 
    luaL_newmetatable(Lua, "Fluid.processing");
+   lua_pushstring(Lua, "Fluid.processing");
+   lua_setfield(Lua, -2, "__name");
    lua_pushstring(Lua, "__index");
    lua_pushvalue(Lua, -2);  // pushes the metatable created earlier
    lua_settable(Lua, -3);   // metatable.__index = metatable
-   luaL_openlib(Lua, NULL, processinglib_methods, 0);
+   luaL_openlib(Lua, nullptr, processinglib_methods, 0);
 
    luaL_openlib(Lua, "processing", processinglib_functions, 0);
 }

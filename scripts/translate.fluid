@@ -11,12 +11,12 @@ string.translateRefresh = function()
       -- TODO: Get the user's preferred language from the host system
       --err, language = mSys.StrReadLocale("language")
    end)
-   if (not language) or (language == 'eng') then return end
+   if (not language) or (language is 'eng') then return end
 
    local content = file.readAll('config:translations/' .. language:lower() .. '.cfg')
 
    for line in string.gmatch(content, '(.-\n)') do
-      if nz(line) then
+      if line?? then
          key, value = line:match('^(.+)=([^%s]+)$')
          if (string.len(key) > 0) and (string.len(value) > 0) then
             string._ttable[key] = value

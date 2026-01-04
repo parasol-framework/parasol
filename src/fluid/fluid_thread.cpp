@@ -21,11 +21,8 @@ variables with its creator, except via existing conventional means such as a Key
 #include <parasol/strings.hpp>
 #include <thread>
 
-extern "C" {
 #include "lauxlib.h"
 #include "lj_obj.h"
-}
-
 #include "hashes.h"
 #include "defs.h"
 
@@ -46,19 +43,19 @@ static int thread_script(lua_State *Lua)
 
       if (lua_isfunction(Lua, 2)) {
          lua_pushvalue(Lua, 2);
-         callback = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
-         callback.MetaValue = Lua->Script->UID;
+         callback = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+         callback.MetaValue = Lua->script->UID;
       }
 
-      auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-      
+      auto prv = (prvFluid *)Lua->script->ChildPrivate;
+
       prv->Threads.emplace_back(std::make_unique<std::jthread>(std::jthread([](objScript *Script, FUNCTION Callback) {
          acActivate(Script);
          FreeResource(Script);
 
          // Client callback must be executed in the main thread; send a message to do that.
          if (Callback.isScript()) {
-            SendMessage(MSGID::FLUID_THREAD_CALLBACK, MSF::ADD|MSF::WAIT, &Callback, sizeof(callback));
+            SendMessage(MSGID::FLUID_THREAD_CALLBACK, MSF::NIL, &Callback, sizeof(callback));
          }
       }, script, std::move(callback))));
    }
@@ -126,11 +123,11 @@ static int thread_action(lua_State *Lua)
    type = lua_type(Lua, 3); // Optional callback.
    if (type IS LUA_TSTRING) {
       lua_getglobal(Lua, lua_tostring(Lua, 3));
-      callback = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+      callback = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
    }
    else if (type IS LUA_TFUNCTION) {
       lua_pushvalue(Lua, 3);
-      callback = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+      callback = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
    }
 
    int arg_size = 0;
@@ -145,7 +142,7 @@ static int thread_action(lua_State *Lua)
    log.trace("#%d/%p, Action: %s/%d, Args: %d", object->UID, object->ObjectPtr, action, int(action_id), arg_size);
 
    if (arg_size > 0) {
-      auto arg_buffer = std::make_unique<BYTE[]>(arg_size+8); // +8 for overflow protection in build_args()
+      auto arg_buffer = std::make_unique<int8_t[]>(arg_size+8); // +8 for overflow protection in build_args()
       int result_count;
 
       if ((error = build_args(Lua, args, arg_size, arg_buffer.get(), &result_count)) IS ERR::Okay) {
@@ -226,17 +223,17 @@ static int thread_method(lua_State *Lua)
                int type = lua_type(Lua, 3); // Optional callback.
                if (type IS LUA_TSTRING) {
                   lua_getglobal(Lua, (STRING)lua_tostring(Lua, 3));
-                  callback = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+                  callback = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
                }
                else if (type IS LUA_TFUNCTION) {
                   lua_pushvalue(Lua, 3);
-                  callback = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+                  callback = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
                }
                else callback.Type = CALL::NIL;
                callback.Meta = APTR(lua_tointeger(Lua, 4));
 
                if (argsize > 0) {
-                  auto argbuffer = std::make_unique<BYTE[]>(argsize+8); // +8 for overflow protection in build_args()
+                  auto argbuffer = std::make_unique<int8_t[]>(argsize+8); // +8 for overflow protection in build_args()
                   int resultcount;
 
                   lua_remove(Lua, 1); // Remove all 4 required arguments so that the user's custom parameters are then left on the stack
@@ -315,6 +312,8 @@ void register_thread_class(lua_State *Lua)
    log.trace("Registering thread interface.");
 
    luaL_newmetatable(Lua, "Fluid.thread");
+   lua_pushstring(Lua, "Fluid.thread");
+   lua_setfield(Lua, -2, "__name");
    lua_pushstring(Lua, "__index");
    lua_pushvalue(Lua, -2);  // pushes the metatable created earlier
    lua_settable(Lua, -3);   // metatable.__index = metatable

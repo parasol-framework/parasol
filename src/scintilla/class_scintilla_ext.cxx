@@ -55,10 +55,10 @@ static const struct styledef c_styles[] = {
    { SCE_C_GLOBALCLASS,            COL_RED, FTF::NIL }
 };
 
-void ScintillaParasol::SetStyles(const struct styledef *Def, LONG Total)
+void ScintillaParasol::SetStyles(const struct styledef *Def, int Total)
 {
    pf::Log log("SetStyles");
-   LONG i, index;
+   int i, index;
 
    log.branch("%d", Total);
 
@@ -66,7 +66,7 @@ void ScintillaParasol::SetStyles(const struct styledef *Def, LONG Total)
       index = Def[i].Index;
       WndProc(SCI_STYLESETFONT, index, (MAXINT)"courier"); // Font name, must be set to something
       WndProc(SCI_STYLESETSIZE, index, 10); // Default Size
-      WndProc(SCI_STYLESETFORE, index, SCICOLOUR((UBYTE)(Def[i].Colour>>16), (UBYTE)(Def[i].Colour>>8), Def[i].Colour));
+      WndProc(SCI_STYLESETFORE, index, SCICOLOUR((uint8_t)(Def[i].Colour>>16), (uint8_t)(Def[i].Colour>>8), Def[i].Colour));
 
       if ((index IS STYLE_BRACELIGHT) or (index IS STYLE_BRACEBAD)) {
          WndProc(SCI_STYLESETBACK, index, SCICOLOUR(255, 255, 200));
@@ -145,10 +145,10 @@ void ScintillaParasol::AddToPopUp(const char *label, int cmD, bool enabled)
 
    // The one and only Menu object is a member of ScintillaBase: Menu popup;
 
-   OBJECTPTR menu = reinterpret_cast<OBJECTPTR>(popup.GetID());
+   auto menu = reinterpret_cast<OBJECTPTR>(popup.GetID());
 
    if (menu) {
-      BYTE buffer[200];
+      char buffer[200];
       snprintf(buffer, sizeof(buffer), "<item text=\"%s\"></item>", label);
       acDataXML(menu, buffer);
    }
@@ -327,10 +327,10 @@ void ScintillaParasol::Paste()
    objClipboard::create clipboard = { };
    if (clipboard.ok()) {
       CSTRING *files;
-      if (clipboard->getFiles(CLIPTYPE::TEXT, 0, NULL, &files, NULL) IS ERR::Okay) {
+      if (clipboard->getFiles(CLIPTYPE::TEXT, 0, nullptr, &files, nullptr) IS ERR::Okay) {
          objFile::create file = { fl::Path(files[0]), fl::Flags(FL::READ) };
          if (file.ok()) {
-            LONG len, size;
+            int len, size;
             if ((file->get(FID_Size, size) IS ERR::Okay) and (size > 0)) {
                STRING buffer;
                if (AllocMemory(size, MEM::STRING, &buffer) IS ERR::Okay) {
@@ -352,7 +352,7 @@ void ScintillaParasol::Paste()
 
                   FreeResource(buffer);
                }
-               else error_dialog("Paste Error", NULL, ERR::AllocMemory);
+               else error_dialog("Paste Error", nullptr, ERR::AllocMemory);
             }
          }
          else {
@@ -389,7 +389,7 @@ void ScintillaParasol::NotifyChange()
 void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
 {
    pf::Log log("SciMsg");
-   LONG code;
+   int code;
 
    if (!(code = scn.nmhdr.code)) return;
 
@@ -403,7 +403,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
 
       // Update the cursor-row and cursor-column fields if they've changed.
 
-      LONG pos = SendScintilla(SCI_GETCURRENTPOS);
+      int pos = SendScintilla(SCI_GETCURRENTPOS);
       if (pos != oldpos) {
          oldpos = pos;
          scintilla->CursorRow = SendScintilla(SCI_LINEFROMPOSITION, pos);
@@ -446,13 +446,13 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
 
       log.traceBranch("[CHARADDED]");
 
-      LONG pos = SendScintilla(SCI_GETSELECTIONSTART);
+      int pos = SendScintilla(SCI_GETSELECTIONSTART);
       if (pos != SendScintilla(SCI_GETSELECTIONEND)) return;
 
       // Auto-indent management for the enter key
 
       if ((scintilla->AutoIndent) and ((scn.ch IS '\r') or (scn.ch IS '\n'))) {
-         LONG row, indent, col;
+         int row, indent, col;
 
          pos = SendScintilla(SCI_GETCURRENTPOS);
          row = SendScintilla(SCI_LINEFROMPOSITION, pos);
@@ -469,7 +469,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
                // Move the cursor to the start of the line, after following the indentation whitespace
                pos = SendScintilla(SCI_GETLINEINDENTPOSITION, row);
 
-               SendScintilla(SCI_SETSEL, (ULONG)-1, pos);
+               SendScintilla(SCI_SETSEL, (uint32_t)-1, pos);
             }
          }
       }
@@ -548,7 +548,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
       // visible by calling SCI_ENSUREVISIBLE. The position and length fields of SCNotification indicate the range of the document that should be
       // made visible.
 
-      LONG i, first, last;
+      int i, first, last;
 
       first = SendScintilla(SCI_LINEFROMPOSITION, scn.position);
       last = SendScintilla(SCI_LINEFROMPOSITION, scn.position + scn.length - 1);
@@ -745,7 +745,7 @@ void ScintillaParasol::panDraw(objSurface *TargetSurface, objBitmap *Bitmap)
    // Create a new surface object (SurfacePan)
 
    if ((surface = Scintilla::Surface::Allocate())) {
-      surface->Init(Bitmap, NULL);
+      surface->Init(Bitmap, nullptr);
       this->Paint(surface, paintrect);      // Get Scintilla to do the painting.  See Editor::paint()
       surface->Release();
       delete surface;
@@ -787,7 +787,7 @@ void ScintillaParasol::panWordwrap(int Value)
    pf::Log log(__FUNCTION__);
    log.traceBranch("%d", Value);
 
-//   LONG bytepos = SendScintilla(SCI_POSITIONFROMLINE, topLine);
+//   int bytepos = SendScintilla(SCI_POSITIONFROMLINE, topLine);
 
    SendScintilla(SCI_SETWRAPMODE, Value);
 
@@ -824,9 +824,9 @@ void ScintillaParasol::panIdleEvent()
 
    if (ticking_on) {
 #ifdef _DEBUG
-      if ((LONG)((PreciseTime()/1000LL) - lastticktime) >= caret.period) {
+      if ((int)((PreciseTime()/1000LL) - lastticktime) >= caret.period) {
 #else
-      if ((LONG)((PreciseTime()/1000LL) - lastticktime) >= caret.period / 5) {
+      if ((int)((PreciseTime()/1000LL) - lastticktime) >= caret.period / 5) {
 #endif
     	 Tick();  // Goes to -> Editor::Tick()
          lastticktime = (PreciseTime()/1000LL);
@@ -957,7 +957,7 @@ void ScintillaParasol::panLostFocus()
 
 void ScintillaParasol::panGetCursorPosition(int *line, int *index)
 {
-   LONG pos, lin, linpos;
+   int pos, lin, linpos;
 
    pos = SendScintilla(SCI_GETCURRENTPOS);
    lin = SendScintilla(SCI_LINEFROMPOSITION,pos);
@@ -974,7 +974,7 @@ void ScintillaParasol::panGetCursorPosition(int *line, int *index)
 void ScintillaParasol::panSetCursorPosition(int line, int index)
 {
    pf::Log log(__FUNCTION__);
-   LONG pos, eol;
+   int pos, eol;
 
    log.trace("Line: %d, Index: %d", line, index);
 
@@ -1002,7 +1002,7 @@ void ScintillaParasol::panEnsureLineVisible(int line)
 void ScintillaParasol::SetLexer(uptr_t LexID)
 {
    pf::Log log(__FUNCTION__);
-   log.branch("Using lexer %d", (LONG)LexID);
+   log.branch("Using lexer %d", (int)LexID);
 
 //   SendScintilla(SCI_STYLERESETDEFAULT);
    SendScintilla(SCI_SETLEXER, LexID);

@@ -349,16 +349,14 @@ static ERR VECTORSCENE_FindDef(extVectorScene *Self, struct sc::FindDef *Args)
       std::string lookup;
       lookup.assign(name, 5, i-5);
 
-      auto def = Self->Defs.find(lookup);
-      if (def != Self->Defs.end()) {
+      if (auto def = Self->Defs.find(lookup); def != Self->Defs.end()) {
          Args->Def = def->second;
          return ERR::Okay;
       }
       else return ERR::Search;
    }
 
-   auto def = Self->Defs.find(name);
-   if (def != Self->Defs.end()) {
+   if (auto def = Self->Defs.find(name); def != Self->Defs.end()) {
       Args->Def = def->second;
       return ERR::Okay;
    }
@@ -712,7 +710,7 @@ The `RENDER_TIME` flag must be set before fetching this value, as it is required
 
 *********************************************************************************************************************/
 
-static ERR GET_RenderTime(extVectorScene *Self, LARGE *Value)
+static ERR GET_RenderTime(extVectorScene *Self, int64_t *Value)
 {
    Self->Flags |= VPF::RENDER_TIME;
    *Value = Self->RenderTime;
@@ -726,7 +724,7 @@ SampleMethod: The sampling method to use when interpolating images and patterns.
 
 The SampleMethod controls the sampling algorithm that is used when images and patterns in the vector definition are affected
 by rotate, skew and scale transforms.  The choice of method will have a significant impact on the speed and quality of
-the images that are displayed in the rendered scene.  The recommended default is `AUTO`, which allows the drawing 
+the images that are displayed in the rendered scene.  The recommended default is `AUTO`, which allows the drawing
 algorithms to choose the best quality option dynamically.
 
 *********************************************************************************************************************/

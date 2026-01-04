@@ -1,19 +1,19 @@
 -- Styling for the 'gui/scrollbar' script.
 
-   if mVec == nil then mVec = mod.load('vector') end
+   mVec ?= mod.load('vector')
 
-   local glCounter = 0
+   glCounter = 0
 
-local ARROW_FILL = 'rgba(0,0,0,.8)'
-local ARROW_FILL_ACTIVE = 'rgba(0,0,0,.95)'
+ARROW_FILL = 'rgba(0,0,0,.8)'
+ARROW_FILL_ACTIVE = 'rgba(0,0,0,.95)'
 
 return {
    arrange = function(State)
       State.slider.sequence = 'M1,' .. State.slider.viewport.height-1 .. ' L1,1 M' .. State.slider.viewport.width-2 .. ',1'
    end,
    background = function(State, Viewport)
-      local gradient = 'scrollbar' .. glCounter
-      glCounter = glCounter + 1
+      gradient = 'scrollbar' .. glCounter
+      glCounter++
 
       gui.simpleGradient(Viewport.scene, gradient, { { r=176,g=178,b=183,a=255 }, { r=212,g=211,b=215,a=255 } }, 0, 0, 0, '100%', nil, true)
 
@@ -22,11 +22,11 @@ return {
       })
    end,
    slider = function(State, Viewport)
-      local gradient = 'slider' .. glCounter
+      gradient = 'slider' .. glCounter
       glCounter = glCounter + 1
       State.slider = { viewport = Viewport }
 
-      if (State.direction == 'V') then
+      if State.direction is 'V' then
          gui.simpleGradient(Viewport.scene, gradient, { { r=252,g=251,b=255,a=255 }, { r=205,g=206,b=220,a=255 } }, 0, 0, '100%', 0, 'boundingbox', true)
       else
          gui.simpleGradient(Viewport.scene, gradient, { { r=252,g=251,b=255,a=255 }, { r=205,g=206,b=220,a=255 } }, 0, 0, 0, '100%', 'boundingbox', true)
@@ -45,17 +45,17 @@ return {
       State.slider.decoration = Viewport.new('VectorViewport', {
          aspectRatio = 'XMid|YMid|Meet', x = 0, y = 0, viewX = 0, viewY = 0,
       })
-      local dec = State.slider.decoration
+      dec = State.slider.decoration
 
-      local decA = dec.new('VectorPolygon', {
+      decA = dec.new('VectorPolygon', {
          strokeWidth = 1, stroke = 'rgba(0,0,0,.6)', dashArray = '3,6'
       })
 
-      local decB = dec.new('VectorPolygon', {
+      decB = dec.new('VectorPolygon', {
          strokeWidth = 1, stroke = 'rgba(255,255,255,.6)', dashArray = '3,6'
       })
 
-      if (State.direction == 'V') then
+      if State.direction is 'V' then
          dec.width      = Viewport.width
          dec.height     = '100%'
          dec.viewWidth  = Viewport.width
@@ -88,8 +88,8 @@ return {
       end
    end,
    negButton = function(State, Viewport)
-      local gradient = 'neg' .. glCounter
-      glCounter = glCounter + 1
+      gradient = 'neg' .. glCounter
+      glCounter++
       State.negButton = { viewport = Viewport }
 
       Viewport.viewX       = 23.6016 - 12
@@ -113,14 +113,14 @@ return {
          sequence = 'M 37.8516,35.625L 34.6849,38.7917L 23.6016,50.2708L 23.6016,39.9792L 37.8516,24.9375L 52.1016,39.9792L 52.1016,50.2708L 41.0182,38.7917L 37.8516,35.625 Z'
       })
 
-      if (State.direction == 'H') then -- Point left
+      if State.direction is 'H' then -- Point left
          local err, matrix = State.negButton.arrow.mtNewMatrix()
          mVec.rotate(matrix, 270, Viewport.viewX + (Viewport.viewWidth*0.5), Viewport.viewY + (Viewport.viewHeight*0.5))
       end
    end,
    posButton = function(State, Viewport)
-      local gradient = 'pos' .. glCounter
-      glCounter = glCounter + 1
+      gradient = 'pos' .. glCounter
+      glCounter++
       State.posButton = { viewport = Viewport }
 
       Viewport.viewX       = 23.6016 - 12
@@ -145,26 +145,18 @@ return {
       })
 
       local err, matrix = State.posButton.arrow.mtNewMatrix()
-      if (State.direction == 'V') then -- Point down
+      if State.direction is 'V' then -- Point down
          mVec.rotate(matrix, 180, Viewport.viewX + (Viewport.viewWidth * 0.5), Viewport.viewY + (Viewport.viewHeight * 0.5))
       else -- Point right
          mVec.rotate(matrix, 90, Viewport.viewX + (Viewport.viewWidth * 0.5), Viewport.viewY + (Viewport.viewHeight * 0.5))
       end
    end,
    negButtonPress = function(State, Value)
-      if (Value == 1) then
-         State.negButton.arrow.fill = ARROW_FILL_ACTIVE
-      else
-         State.negButton.arrow.fill = ARROW_FILL
-      end
+      State.negButton.arrow.fill = (Value is 1) ? ARROW_FILL_ACTIVE :> ARROW_FILL
       State.negButton.viewport.acDraw()
    end,
    posButtonPress = function(State, Value)
-      if (Value == 1) then
-         State.posButton.arrow.fill = ARROW_FILL_ACTIVE
-      else
-         State.posButton.arrow.fill = ARROW_FILL
-      end
+      State.posButton.arrow.fill = (Value is 1) ? ARROW_FILL_ACTIVE :> ARROW_FILL
       State.posButton.viewport.acDraw()
    end
 }

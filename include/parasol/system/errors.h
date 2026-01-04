@@ -222,7 +222,8 @@ enum class ERR : int32_t {
    TaskExecutionFailed = 191,
    InvalidCompression = 192,
    SanityCheckFailed = 193,
-   END = 194,
+   NotAuthorised = 194,
+   END = 195,
    Notified = 1073741824,
 };
 

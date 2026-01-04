@@ -1,10 +1,13 @@
 -- Flute tests for the object interface.
 
+@BeforeEach(hotpath=true)
+function enforce_hotpath() end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Using pairs() on an object will iterate over its field meta data.
 
-function testPairs()
-   local script = obj.find("self")
+@Test function Pairs()
+   script = obj.find("self")
    for k,v in pairs(script) do
       print(string.format("%20s", k), " ", string.format("$%.8x", v))
    end
@@ -13,8 +16,8 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Using ipairs() on an object will iterate over its field meta data.
 
-function testIPairs()
-   local script = obj.find("self")
+@Test function IPairs()
+   script = obj.find("self")
    for k,v in ipairs(script) do
       print(k, " ", v)
    end
@@ -22,6 +25,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-   return {
-      tests = { 'testPairs', 'testIPairs' }
-   }
+@Test function Type()
+   script = obj.find("self")
+   assert(getmetatable(script).__name is 'Fluid.obj', 'Expected metatable __name of Fluid.obj for script objecxt')
+end

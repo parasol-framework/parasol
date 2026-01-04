@@ -261,7 +261,7 @@ class objFont : public Object {
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
-   inline ERR setOpacity(const DOUBLE Value) noexcept {
+   inline ERR setOpacity(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
@@ -270,9 +270,9 @@ class objFont : public Object {
 };
 
 #ifdef PARASOL_STATIC
-#define JUMPTABLE_FONT static struct FontBase *FontBase;
+#define JUMPTABLE_FONT [[maybe_unused]] static struct FontBase *FontBase = nullptr;
 #else
-#define JUMPTABLE_FONT struct FontBase *FontBase;
+#define JUMPTABLE_FONT struct FontBase *FontBase = nullptr;
 #endif
 
 struct FontBase {
@@ -286,8 +286,7 @@ struct FontBase {
 #endif // PARASOL_STATIC
 };
 
-#ifndef PRV_FONT_MODULE
-#ifndef PARASOL_STATIC
+#if !defined(PARASOL_STATIC) and !defined(PRV_FONT_MODULE)
 extern struct FontBase *FontBase;
 namespace fnt {
 inline ERR GetList(struct FontList **Result) { return FontBase->_GetList(Result); }
@@ -307,5 +306,4 @@ extern ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta);
 extern ERR ResolveFamilyName(CSTRING String, CSTRING *Result);
 } // namespace
 #endif // PARASOL_STATIC
-#endif
 

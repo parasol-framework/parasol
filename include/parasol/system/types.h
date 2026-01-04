@@ -27,7 +27,7 @@ class strong_typedef {
       T val;
 };
 
-struct SCALE : strong_typedef<SCALE, DOUBLE> {
+struct SCALE : strong_typedef<SCALE, double> {
     // Make constructors available
     using strong_typedef::strong_typedef;
 };
@@ -36,7 +36,7 @@ struct SCALE : strong_typedef<SCALE, DOUBLE> {
 // Function structure, typically used for defining callbacks to functions and procedures of any kind (e.g. standard C,
 // Fluid).
 
-enum class CALL : char {
+enum class CALL : uint8_t {
    NIL=0,
    STD_C=1,
    SCRIPT=2
@@ -44,8 +44,8 @@ enum class CALL : char {
 
 struct FUNCTION {
    CALL Type;
-   unsigned char PadA;
-   unsigned short ID; // Unused.  Unique identifier for the function.
+   uint8_t PadA;
+   uint16_t ID; // Unused.  Unique identifier for the function.
    OBJECTPTR Context; // The context at the time the function was created, or a Script reference
    union {
       void * Meta;    // Additional meta data provided by the client.
@@ -61,7 +61,7 @@ struct FUNCTION {
 
    // Script constructor
 
-   FUNCTION(class objScript *pScript, LARGE pProcedure) {
+   FUNCTION(class objScript *pScript, int64_t pProcedure) {
       Type        = CALL::SCRIPT;
       Context     = (OBJECTPTR)pScript;
       ProcedureID = pProcedure;

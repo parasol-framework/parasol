@@ -57,6 +57,7 @@ FDEF argsOpenDir[] = { { "Error", FD_INT|FD_ERROR }, { "Path", FD_STR }, { "Flag
 FDEF argsParentContext[] = { { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsPreciseTime[] = { { "Result", FD_INT64 }, { 0, 0 } };
 FDEF argsProcessMessages[] = { { "Error", FD_INT|FD_ERROR }, { "Flags", FD_INT }, { "TimeOut", FD_INT }, { 0, 0 } };
+FDEF argsProtectMemory[] = { { "Error", FD_INT|FD_ERROR }, { "Address", FD_PTR }, { "Flags", FD_INT }, { 0, 0 } };
 FDEF argsQueueAction[] = { { "Error", FD_INT|FD_ERROR }, { "Action", FD_INT }, { "Object", FD_OBJECTID }, { "Args", FD_PTR }, { 0, 0 } };
 FDEF argsReadFileToBuffer[] = { { "Error", FD_INT|FD_ERROR }, { "Path", FD_STR }, { "Buffer", FD_BUFFER|FD_PTR }, { "BufferSize", FD_INT|FD_BUFSIZE }, { "Result", FD_INT|FD_RESULT }, { 0, 0 } };
 FDEF argsReadInfoTag[] = { { "Error", FD_INT|FD_ERROR }, { "FileInfo:Info", FD_PTR|FD_STRUCT }, { "Name", FD_STR }, { "Value", FD_STR|FD_RESULT }, { 0, 0 } };
@@ -72,12 +73,12 @@ FDEF argsResolveUserID[] = { { "Result", FD_STR }, { "User", FD_INT }, { 0, 0 } 
 FDEF argsScanDir[] = { { "Error", FD_INT|FD_ERROR }, { "DirInfo:Info", FD_PTR|FD_STRUCT|FD_RESOURCE }, { 0, 0 } };
 FDEF argsScanMessages[] = { { "Error", FD_INT|FD_ERROR }, { "Handle", FD_INT|FD_RESULT }, { "Type", FD_INT }, { "Buffer", FD_BUFFER|FD_PTR }, { "Size", FD_INT|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsSendMessage[] = { { "Error", FD_INT|FD_ERROR }, { "Type", FD_INT }, { "Flags", FD_INT }, { "Data", FD_BUFFER|FD_PTR }, { "Size", FD_INT|FD_BUFSIZE }, { 0, 0 } };
-FDEF argsSetContext[] = { { "Object", FD_OBJECTPTR }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsSetDefaultPermissions[] = { { "Void", FD_VOID }, { "User", FD_INT }, { "Group", FD_INT }, { "Permissions", FD_INT }, { 0, 0 } };
 FDEF argsSetName[] = { { "Error", FD_INT|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Name", FD_STR }, { 0, 0 } };
-FDEF argsSetObjectContext[] = { { "ObjectContext", FD_PTR|FD_STRUCT }, { "ObjectContext:Context", FD_PTR|FD_STRUCT }, { 0, 0 } };
+FDEF argsSetObjectContext[] = { { "Void", FD_VOID }, { "Object", FD_OBJECTPTR }, { "Field", FD_PTR }, { "ActionID", FD_INT }, { 0, 0 } };
 FDEF argsSetOwner[] = { { "Error", FD_INT|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Owner", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsSetResource[] = { { "Result", FD_INT64 }, { "Resource", FD_INT }, { "Value", FD_INT64 }, { 0, 0 } };
+FDEF argsSetResourceMgr[] = { { "Void", FD_VOID }, { "Address", FD_PTR }, { "Manager", FD_PTR }, { 0, 0 } };
 FDEF argsSetResourcePath[] = { { "Error", FD_INT|FD_ERROR }, { "PathType", FD_INT }, { "Path", FD_STR }, { 0, 0 } };
 FDEF argsSetVolume[] = { { "Error", FD_INT|FD_ERROR }, { "Name", FD_STR }, { "Path", FD_STR }, { "Icon", FD_STR }, { "Label", FD_STR }, { "Device", FD_STR }, { "Flags", FD_INT }, { 0, 0 } };
 FDEF argsSubscribeAction[] = { { "Error", FD_INT|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_INT }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
@@ -91,7 +92,7 @@ FDEF argsUpdateTimer[] = { { "Error", FD_INT|FD_ERROR }, { "Subscription", FD_PT
 FDEF argsVLogF[] = { { "Void", FD_VOID }, { "Flags", FD_INT }, { "Header", FD_STR }, { "Message", FD_STR }, { "Args", FD_PTR }, { 0, 0 } };
 FDEF argsVirtualVolume[] = { { "Error", FD_INT|FD_ERROR }, { "Name", FD_STR }, { "Tags", FD_TAGS }, { 0, 0 } };
 FDEF argsWaitForObjects[] = { { "Error", FD_INT|FD_ERROR }, { "Flags", FD_INT }, { "TimeOut", FD_INT }, { "ObjectSignal:ObjectSignals", FD_PTR|FD_STRUCT }, { 0, 0 } };
-FDEF argsWaitTime[] = { { "Void", FD_VOID }, { "Seconds", FD_INT }, { "MicroSeconds", FD_INT }, { 0, 0 } };
+FDEF argsWaitTime[] = { { "Void", FD_VOID }, { "Seconds", FD_DOUBLE }, { 0, 0 } };
 
 const struct Function glFunctions[] = {
    { (APTR)AccessMemory, "AccessMemory", argsAccessMemory },
@@ -133,7 +134,7 @@ const struct Function glFunctions[] = {
    { (APTR)ResolveClassName, "ResolveClassName", argsResolveClassName },
    { (APTR)SendMessage, "SendMessage", argsSendMessage },
    { (APTR)SetOwner, "SetOwner", argsSetOwner },
-   { (APTR)SetContext, "SetContext", argsSetContext },
+   { (APTR)ProtectMemory, "ProtectMemory", argsProtectMemory },
    { (APTR)SetObjectContext, "SetObjectContext", argsSetObjectContext },
    { (APTR)FieldName, "FieldName", argsFieldName },
    { (APTR)ScanDir, "ScanDir", argsScanDir },
@@ -182,6 +183,7 @@ const struct Function glFunctions[] = {
    { (APTR)ResolveUserID, "ResolveUserID", argsResolveUserID },
    { (APTR)CreateLink, "CreateLink", argsCreateLink },
    { (APTR)ParentContext, "ParentContext", argsParentContext },
+   { (APTR)SetResourceMgr, "SetResourceMgr", argsSetResourceMgr },
    { nullptr, nullptr, nullptr }
 };
 

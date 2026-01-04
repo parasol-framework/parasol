@@ -285,7 +285,7 @@ allocate_to_stack (struct arg_state *state, void *stack,
   if (alignment < 8)
     alignment = 8;
 #endif
-    
+
   nsaa = FFI_ALIGN (nsaa, alignment);
   state->nsaa = nsaa + size;
 
@@ -781,7 +781,7 @@ ffi_prep_closure_loc (ffi_closure *closure,
     return FFI_BAD_ABI;
 
   void (*start)(void);
-  
+
   if (cif->flags & AARCH64_FLAG_ARG_V)
     start = ffi_closure_SYSV_V;
   else
@@ -800,9 +800,9 @@ ffi_prep_closure_loc (ffi_closure *closure,
     0x00, 0x02, 0x1f, 0xd6	/* br	x16		*/
   };
   char *tramp = closure->tramp;
-  
+
   memcpy (tramp, trampoline, sizeof(trampoline));
-  
+
   *(UINT64 *)(tramp + 16) = (uintptr_t)start;
 
   ffi_clear_cache(tramp, tramp + FFI_TRAMPOLINE_SIZE);
@@ -921,7 +921,7 @@ ffi_closure_SYSV_inner (ffi_cif *cif,
                     {
                       void *reg = &context->x[state.ngrn];
                       state.ngrn += (unsigned int)n;
-    
+
                       /* Eeek! We need a pointer to the structure, however the
                        homogeneous float elements are being passed in individual
                        registers, therefore for float and double the structure

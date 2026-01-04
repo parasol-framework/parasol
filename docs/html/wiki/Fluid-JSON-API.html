@@ -68,14 +68,13 @@
             <ul class="btn-toggle-nav list-unstyled pb-1">
             <li class="api-ref"><a class="rounded" href="Fluid-Reference-Manual.html">Fluid Reference Manual</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-Common-API.html">Common API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-FileSearch-API.html">FileSearch API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-GUI-API.html">GUI API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-HTTPServer-API.html">HTTPServer API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-IO-API.html">I/O API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-JSON-API.html">JSON API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-URL-API.html">URL API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-VFX-API.html">VFX API</a></li>
-            <li class="api-ref"><a class="rounded" href="Widgets.html">Widgets</a></li>
+            <li class="api-ref"><a class="rounded" href="Fluid-Widgets.html">Widgets</a></li>
            </ul>
          </div></li>
 
@@ -127,7 +126,10 @@
       <li class="api-ref"><a href="../modules/fluid.html" class="rounded">Fluid</a></li>
       <li class="api-ref"><a href="../modules/font.html" class="rounded">Font</a></li>
       <li class="api-ref"><a href="../modules/network.html" class="rounded">Network</a></li>
+      <li class="api-ref"><a href="../modules/regex.html" class="rounded">Regex</a></li>
       <li class="api-ref"><a href="../modules/vector.html" class="rounded">Vector</a></li>
+      <li class="api-ref"><a href="../modules/xml.html" class="rounded">XML</a></li>
+      <li class="api-ref"><a href="../modules/xpath.html" class="rounded">XPath</a></li>
       </ul>
     </div>
   </li>
@@ -162,6 +164,7 @@
         <li>
         <button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#data-collapse" aria-expanded="false">Data</button><div class="collapse" id="data-collapse"><ul class="btn-toggle-nav list-unstyled pb-1">
         <li><a href="../modules/classes/compression.html" class="rounded">Compression</a></li>
+        <li><a href="../modules/classes/compressedstream.html" class="rounded">CompressedStream</a></li>
         <li><a href="../modules/classes/config.html" class="rounded">Config</a></li>
         <li><a href="../modules/classes/script.html" class="rounded">Script</a></li>
         <li><a href="../modules/classes/xml.html" class="rounded">XML</a></li>
@@ -213,6 +216,8 @@
         <button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#net-collapse" aria-expanded="false">Network</button><div class="collapse" id="net-collapse"><ul class="btn-toggle-nav list-unstyled pb-1">
         <li><a class="rounded" href="../modules/classes/clientsocket.html">ClientSocket</a></li>
         <li><a class="rounded" href="../modules/classes/http.html">HTTP</a></li>
+        <li><a class="rounded" href="../modules/classes/netclient.html">NetClient</a></li>
+        <li><a class="rounded" href="../modules/classes/netlookup.html">NetLookup</a></li>
         <li><a class="rounded" href="../modules/classes/netsocket.html">NetSocket</a></li>
         <li><a class="rounded" href="../modules/classes/proxy.html">Proxy</a></li>
         </ul></div>
@@ -253,7 +258,7 @@
 <h1>Fluid JSON API</h1>
 <p>The JSON API provides encoding and decoding functionality for moving data between JSON strings and Lua tables.</p>
 <p>The API can be loaded with the line:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">require</span> <span class="st">&#39;json&#39;</span></span></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="va">js</span> <span class="op">=</span> <span class="fu">require</span> <span class="st">&#39;json&#39;</span></span></code></pre></div>
 <h2 id="jsonencode">json.encode()</h2>
 <p>This expects the following to be true of any tables being encoded:</p>
 <ul>

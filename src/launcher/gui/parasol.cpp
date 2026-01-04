@@ -24,15 +24,15 @@ static CSTRING STR_UNPACK = "temp:scripts/";
 static CSTRING STR_MAIN   = "main.fluid";
 
 static OBJECTID glTargetID = 0;
-static STRING glDirectory = NULL, *glArgs = NULL;
+static STRING glDirectory = nullptr, *glArgs = nullptr;
 static char glBind[40] = { 0 };
 
-static OBJECTPTR glTask = NULL;
-static OBJECTPTR glScript = NULL;
+static OBJECTPTR glTask = nullptr;
+static OBJECTPTR glScript = nullptr;
 
 static ERROR decompress_archive(CSTRING);
-static ERROR prep_environment(LONG, LONG, LONG);
-static ERROR exec_script(CSTRING, OBJECTID *, LONG, STRING);
+static ERROR prep_environment(int, int, int);
+static ERROR exec_script(CSTRING, OBJECTID *, int, STRING);
 static ERROR PROGRAM_ActionNotify(OBJECTPTR, struct acActionNotify *);
 
 static const char Help[] = {
@@ -65,15 +65,15 @@ extern "C" void program(void)
 {
    pf::Log log;
 
-   LONG i, j;
+   int i, j;
 
    glTask = CurrentTask();
    bool time       = false;
-   LONG winhandle  = 0;
-   STRING procedure  = NULL;
-   STRING scriptfile = NULL;
-   LONG width      = 0;
-   LONG height     = 0;
+   int winhandle  = 0;
+   STRING procedure  = nullptr;
+   STRING scriptfile = nullptr;
+   int width      = 0;
+   int height     = 0;
 
    FileSystemBase = (struct FileSystemBase *)GetResourcePtr(RES::FILESYSTEM);
 
@@ -113,7 +113,7 @@ extern "C" void program(void)
             }
          }
          else if (iequals(Args[i], "--procedure")) {
-            if (procedure) { FreeResource(procedure); procedure = NULL; }
+            if (procedure) { FreeResource(procedure); procedure = nullptr; }
 
             if (Args[i+1]) {
                for (j=0; Args[i+1][j]; j++);
@@ -190,8 +190,8 @@ exit:
       }
    }
 
-   if (procedure) { FreeResource(procedure); procedure = NULL; }
-   if (scriptfile) { FreeResource(scriptfile); scriptfile = NULL; }
+   if (procedure) { FreeResource(procedure); procedure = nullptr; }
+   if (scriptfile) { FreeResource(scriptfile); scriptfile = nullptr; }
 
    if (glDirectory) {
       for (i=0; glDirectory[i]; i++);
@@ -213,7 +213,7 @@ exit:
 //********************************************************************************************************************
 // Prepares a special environment for running scripts.
 
-ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)
+ERROR prep_environment(int WindowHandle, int Width, int Height)
 {
    pf::Log log(__FUNCTION__);
 
@@ -237,11 +237,11 @@ ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)
 //********************************************************************************************************************
 // Runs scripts.
 
-ERROR exec_script(CSTRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRING Procedure)
+ERROR exec_script(CSTRING ScriptFile, OBJECTID *CoreObjectID, int ShowTime, STRING Procedure)
 {
-   LONG i, j, k;
+   int i, j, k;
    ERROR error;
-   BYTE argbuffer[100], *argname;
+   int8_t argbuffer[100], *argname;
 
    *CoreObjectID = 0;
 
@@ -267,7 +267,7 @@ ERROR exec_script(CSTRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STR
                argname = argbuffer+1; // Skip the first byte... reserved for '+'
                argbuffer[0] = '+'; // Append arg indicator
                for (i=0; glArgs[i]; i++) {
-                  for (j=0; (glArgs[i][j]) and (glArgs[i][j] != '=') and (j < (LONG)sizeof(argbuffer)-10); j++) argname[j] = glArgs[i][j];
+                  for (j=0; (glArgs[i][j]) and (glArgs[i][j] != '=') and (j < (int)sizeof(argbuffer)-10); j++) argname[j] = glArgs[i][j];
                   argname[j] = 0;
 
                   if (glArgs[i][j] IS '=') {
@@ -322,7 +322,7 @@ ERROR exec_script(CSTRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STR
          argname = argbuffer+1; // Skip the first byte... reserved for '+'
          argbuffer[0] = '+'; // Append arg indicator
          for (i=0; glArgs[i]; i++) {
-            for (j=0; (glArgs[i][j]) and (glArgs[i][j] != '=') and (j < (LONG)sizeof(argbuffer)-10); j++) argname[j] = glArgs[i][j];
+            for (j=0; (glArgs[i][j]) and (glArgs[i][j] != '=') and (j < (int)sizeof(argbuffer)-10); j++) argname[j] = glArgs[i][j];
             argname[j] = 0;
 
             if (glArgs[i][j] IS '=') {
@@ -357,14 +357,14 @@ ERROR exec_script(CSTRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STR
 
       // Start the timer if requested
 
-      LARGE start_time = 0;
+      int64_t start_time = 0;
       if (ShowTime) start_time = PreciseTime();
 
       if (!(error = InitObject(glScript))) {
          if (!(error = acActivate(glScript))) {
             if (ShowTime) {
-               DOUBLE startseconds = (DOUBLE)start_time / 1000000.0;
-               DOUBLE endseconds   = (DOUBLE)PreciseTime() / 1000000.0;
+               double startseconds = (double)start_time / 1000000.0;
+               double endseconds   = (double)PreciseTime() / 1000000.0;
                printf("Script executed in %f seconds.\n\n", endseconds - startseconds);
             }
          }
@@ -394,7 +394,7 @@ static ERROR decompress_archive(CSTRING Location)
 {
    if (!Location) return(ERR_NullArgs);
 
-   LONG len, i, j;
+   int len, i, j;
    for (len=0; Location[len]; len++);
 
    objCompression::create compress = { fl::Path(Location) };

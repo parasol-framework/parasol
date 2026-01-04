@@ -11,6 +11,7 @@ static const struct FieldDef clClientSocketState[] = {
 };
 
 static const struct ActionArray clClientSocketActions[] = {
+   { AC::Deactivate, CLIENTSOCKET_Deactivate },
    { AC::Free, CLIENTSOCKET_Free },
    { AC::Init, CLIENTSOCKET_Init },
    { AC::NewPlacement, CLIENTSOCKET_NewPlacement },

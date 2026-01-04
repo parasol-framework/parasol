@@ -5,7 +5,7 @@
 // are taken into account through use of BX1,BY1,BX2,BY2.  The list is sorted starting from the background to the
 // foreground.
 
-void get_viewport_at_xy_node(extVector *Vector, std::vector<std::vector<extVectorViewport *>> &Collection, DOUBLE X, DOUBLE Y, LONG Branch)
+void get_viewport_at_xy_node(extVector *Vector, std::vector<std::vector<extVectorViewport *>> &Collection, double X, double Y, int Branch)
 {
    if ((size_t)Branch >= Collection.size()) Collection.resize(Branch+1);
 
@@ -24,7 +24,7 @@ void get_viewport_at_xy_node(extVector *Vector, std::vector<std::vector<extVecto
 
 //********************************************************************************************************************
 
-extVectorViewport * get_viewport_at_xy(extVectorScene *Scene, DOUBLE X, DOUBLE Y)
+extVectorViewport * get_viewport_at_xy(extVectorScene *Scene, double X, double Y)
 {
    std::vector<std::vector<extVectorViewport *>> viewports;
    get_viewport_at_xy_node((extVector *)Scene->Viewport, viewports, X, Y, 0);
@@ -97,11 +97,11 @@ static void send_input_events(extVector *Vector, InputEvent *Event, bool Propaga
 
 //********************************************************************************************************************
 
-static void send_enter_event(extVector *Vector, const InputEvent *Event, DOUBLE X = 0, DOUBLE Y = 0)
+static void send_enter_event(extVector *Vector, const InputEvent *Event, double X = 0, double Y = 0)
 {
    InputEvent event = {
-      .Next        = NULL,
-      .Value       = DOUBLE(Vector->UID),
+      .Next        = nullptr,
+      .Value       = double(Vector->UID),
       .Timestamp   = Event->Timestamp,
       .RecipientID = Vector->UID,
       .OverID      = Vector->UID,
@@ -119,11 +119,11 @@ static void send_enter_event(extVector *Vector, const InputEvent *Event, DOUBLE 
 
 //********************************************************************************************************************
 
-static void send_left_event(extVector *Vector, const InputEvent *Event, DOUBLE X = 0, DOUBLE Y = 0)
+static void send_left_event(extVector *Vector, const InputEvent *Event, double X = 0, double Y = 0)
 {
    InputEvent event = {
-      .Next        = NULL,
-      .Value       = DOUBLE(Vector->UID),
+      .Next        = nullptr,
+      .Value       = double(Vector->UID),
       .Timestamp   = Event->Timestamp,
       .RecipientID = Vector->UID,
       .OverID      = Vector->UID,
@@ -144,7 +144,7 @@ static void send_left_event(extVector *Vector, const InputEvent *Event, DOUBLE X
 static void send_wheel_event(extVectorScene *Scene, extVector *Vector, const InputEvent *Event)
 {
    InputEvent event = {
-      .Next        = NULL,
+      .Next        = nullptr,
       .Value       = Event->Value,
       .Timestamp   = Event->Timestamp,
       .RecipientID = Vector->UID,
@@ -165,7 +165,7 @@ static void send_wheel_event(extVectorScene *Scene, extVector *Vector, const Inp
 // Receiver for input events from the Surface that hosts the scene graph.  Events are distributed to input
 // subscribers.
 
-ERR scene_input_events(const InputEvent *Events, LONG Handle)
+ERR scene_input_events(const InputEvent *Events, int Handle)
 {
    pf::Log log(__FUNCTION__);
 
@@ -219,7 +219,7 @@ ERR scene_input_events(const InputEvent *Events, LONG Handle)
             pf::ScopedObjectLock<extVector> lk_vector(target);
             if (lk_vector.granted()) {
                InputEvent event = *input;
-               event.Next   = NULL;
+               event.Next   = nullptr;
                event.OverID = Self->ActiveVector;
                event.AbsX   = input->X; // Absolute coordinates are not translated.
                event.AbsY   = input->Y;
@@ -264,7 +264,7 @@ ERR scene_input_events(const InputEvent *Events, LONG Handle)
                   }
 
                   if (!processed) {
-                     DOUBLE tx = input->X, ty = input->Y; // Invert the coordinates to pass localised coords to the vector.
+                     double tx = input->X, ty = input->Y; // Invert the coordinates to pass localised coords to the vector.
                      auto invert = ~vector->Transform; // Presume that prior path generation has configured the transform.
                      invert.transform(&tx, &ty);
 
@@ -336,7 +336,7 @@ ERR scene_input_events(const InputEvent *Events, LONG Handle)
             }
 
             if (!processed) {
-               DOUBLE tx = input->X, ty = input->Y; // Invert the coordinates to pass localised coords to the vector.
+               double tx = input->X, ty = input->Y; // Invert the coordinates to pass localised coords to the vector.
                auto invert = ~vector->Transform; // Presume that prior path generation has configured the transform.
                invert.transform(&tx, &ty);
 
@@ -345,7 +345,7 @@ ERR scene_input_events(const InputEvent *Events, LONG Handle)
                }
                else {
                   InputEvent event = *input;
-                  event.Next   = NULL;
+                  event.Next   = nullptr;
                   event.OverID = vector->UID;
                   event.AbsX   = input->X; // Absolute coordinates are not translated.
                   event.AbsY   = input->Y;
@@ -357,7 +357,7 @@ ERR scene_input_events(const InputEvent *Events, LONG Handle)
                      pf::ScopedObjectLock<extVector> lock(Self->ActiveVector);
                      if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
                   }
-               
+
                   Self->ActiveVector  = vector->UID;
                   Self->ActiveVectorX = tx;
                   Self->ActiveVectorY = ty;
@@ -379,7 +379,7 @@ ERR scene_input_events(const InputEvent *Events, LONG Handle)
             if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
          }
       }
-      else log.warning("Unrecognised movement type %d", LONG(input->Type));
+      else log.warning("Unrecognised movement type %d", int(input->Type));
    }
 
    if (!Self->ButtonLock) {

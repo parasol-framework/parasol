@@ -5,6 +5,7 @@ This file is in the public domain and may be distributed and modified without re
 *********************************************************************************************************************/
 
 #include <stdio.h>
+#include <string>
 
 #include <parasol/main.h>
 
@@ -14,15 +15,15 @@ This file is in the public domain and may be distributed and modified without re
 
 extern "C" {
 DLLCALL APTR WINAPI GetProcAddress(APTR, CSTRING);
-DLLCALL LONG WINAPI FreeLibrary(APTR);
+DLLCALL int WINAPI FreeLibrary(APTR);
 }
-typedef ERR OPENCORE(struct OpenInfo *, struct CoreBase **);
-typedef void CLOSECORE(void);
+using OPENCORE = ERR(struct OpenInfo *, struct CoreBase **);
+using CLOSECORE = void(void);
 
 struct CoreBase *CoreBase;
-static APTR find_core(char *PathBuffer, int Size);
-static APTR corehandle = NULL;
-CLOSECORE *CloseCore = NULL;
+static APTR find_core();
+static APTR corehandle = nullptr;
+CLOSECORE *CloseCore = nullptr;
 #else
 static struct CoreBase *CoreBase; // Dummy
 #endif
@@ -32,8 +33,7 @@ static struct CoreBase *CoreBase; // Dummy
 extern "C" const char * init_parasol(int argc, CSTRING *argv)
 {
 #ifndef PARASOL_STATIC
-   char path_buffer[256];
-   corehandle = find_core(path_buffer, sizeof(path_buffer));
+   corehandle = find_core();
    if (!corehandle) return "Failed to open Parasol's core library.";
 
    auto OpenCore = (OPENCORE *)GetProcAddress((APTR)corehandle, "OpenCore");
@@ -56,13 +56,13 @@ extern "C" const char * init_parasol(int argc, CSTRING *argv)
    info.Error = ERR::Okay;
    info.Flags = OPF::ARGS|OPF::ERROR;
 
-   if (OpenCore(&info, &CoreBase) == ERR::Okay) return NULL;
+   if (OpenCore(&info, &CoreBase) IS ERR::Okay) return nullptr;
    else if (info.Error IS ERR::CoreVersion) {
       return "This program requires the latest version of the Parasol framework.\nPlease visit www.parasol.ws to upgrade.";
    }
    else {
       static char msgbuf[120];
-      snprintf(msgbuf, sizeof(msgbuf), "Failed to initialise Parasol, error code %d.", LONG(info.Error));
+      snprintf(msgbuf, sizeof(msgbuf), "Failed to initialise Parasol, error code %d.", int(info.Error));
       return msgbuf;
    }
 }
@@ -77,4 +77,4 @@ extern "C" void close_parasol(void)
 #endif
 }
 
-#include "common-win.c"
+#include "common-win.cpp"

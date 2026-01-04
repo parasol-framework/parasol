@@ -400,7 +400,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The FillRule field indicates the algorithm which is to be used to determine what parts of the canvas are included when filling the shape. For a simple, non-intersecting path, it is intuitively clear what region lies "inside"; however, for a more complex path, such as a path that intersects itself or where one sub-path encloses another, the interpretation of "inside" is not so obvious.</p>
+<p>The FillRule field indicates the algorithm which is to be used to determine what parts of the canvas are included when filling the shape. For a simple, non-intersecting path, it is intuitively clear what region lies &quot;inside&quot;; however, for a more complex path, such as a path that intersects itself or where one sub-path encloses another, the interpretation of &quot;inside&quot; is not so obvious.</p>
       </description>
     </field>
 

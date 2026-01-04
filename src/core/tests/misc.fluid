@@ -3,10 +3,11 @@
 -----------------------------------------------------------------------------------------------------------------------
 -- Print a list of all actions returned by ActionList()
 
-function testActionList()
-   for id, actions in ipairs(mSys.ActionList()) do
-      if nz(actions) and nz(actions.name) then
-         print(string.format('%d: $%.8x: %s', id-1, actions.hash, actions.name))
+@Test function ActionList()
+   actions = mSys.ActionList()
+   for id=0,#actions-1 do
+      if actions[id].name?? then
+         print(string.format('%d: $%.8x: %s', id-1, actions[id].hash, actions[id].name))
       end
    end
 end
@@ -14,102 +15,87 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test the ability to inspect the MetaClass Fields array.
 
-function testMetaClassArrays()
-   local metaFile = mSys.FindClass(string.hash('File'), 0)
-   for k,f in ipairs(metaFile.fields) do
-      print(k .. ' ' .. f.name)
+@Test function MetaClassArrays()
+   field_names = { }
+   metaFile = mSys.FindClass('File':hash(), 0)
+   fields = metaFile.fields
+   for i=0,#fields-1 do
+      print(i .. ' ' .. fields[i].name)
+      field_names[fields[i].name] = true
    end
+   assert(#fields > 15, "Expected at least 15 fields in the File class.")
+   assert(field_names['Size'] is true, "Expected to find a field named 'size' in the File class.")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testEnvPath()
-   local task = mSys.CurrentTask()
-   local err, path = task.mtGetEnv('PATH')
-   if (err == ERR_Okay) then
-      print('PATH: ' .. path)
-   else
-      error('Failed to read PATH variable.')
-   end
+@Test function EnvPath()
+   task = mSys.CurrentTask()
+   err, path = task.mtGetEnv('PATH')
+   assert(err is ERR_Okay, 'Error reading PATH variable: ' .. mSys.GetErrorMsg(err))
+   print('PATH: ' .. path)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testPreciseTime()
-   local time = mSys.PreciseTime()
-   print(time)
+@Test function PreciseTime()
+   time = mSys.PreciseTime()
    assert(time > 0, 'PreciseTime() did not return a positive value.')
 
-   -- Wait for 1 second
-
-   mSys.WaitTime(1, 0)
+   processing.sleep(1)
 
    -- Acquire a new timestamp and check that the difference is between 1 and 1.5 seconds.
 
-   local endTime = mSys.PreciseTime()
-   print(endTime, ' = ', endTime - time, ' elapsed microseconds')
-   assert(((endTime - time) > 1000000) and ((endTime - time) < 1500000), 'Incorrect elapsed time measurement over a 1 second time interval.')
+   endTime = mSys.PreciseTime()
+   elapsed = endTime - time
+   assert((elapsed > 1000000) and (elapsed < 1500000), 'Incorrect elapsed time measurement over a 1 second time interval, got ' .. tostring(elapsed))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testRegistry()
-   local state = mSys.GetSystemState()
-   if (state.platform == 'Windows') then
-      local task = mSys.CurrentTask()
-      local err, progfiles = task.mtGetEnv('\\HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ProgramFilesDir')
+@Test function Registry()
+   state = mSys.GetSystemState()
+   if (state.platform is 'Windows') then
+      task = mSys.CurrentTask()
+      err, progfiles = task.mtGetEnv('\\HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ProgramFilesDir')
 
-      if (err == ERR_Okay) then
-         print('The Windows registry key for program files is "' .. progfiles .. '"')
-      else
-         error('Failed to read Windows registry.')
-      end
+      assert(err is ERR_Okay, 'Error reading registry key: ' .. mSys.GetErrorMsg(err))
+      print('The Windows registry key for program files is "' .. progfiles .. '"')
    end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testObjectSearches()
-   local parent = obj.new('xml', { name='TestParent', flags='NEW' })
-   local child = parent.new('xml', { name='TestFO', flags='NEW' })
+@Test function ObjectSearches()
+   parent = obj.new('xml', { name='TestParent', flags='NEW' })
+   child = parent.new('xml', { name='TestFO', flags='NEW' })
 
-   local objects = { }
+   objects = { }
    table.insert(objects, child)
 
    -- Test FindObject()
 
-   local err, obj = mSys.FindObject('TestFO')
-   assert(err == ERR_Okay, 'Failed to find object: ' .. mSys.GetErrorMsg(err))
+   err, obj = mSys.FindObject('TestFO')
+   assert(err is ERR_Okay, 'Failed to find object: ' .. mSys.GetErrorMsg(err))
 
    -- Test ListChildren()
 
-   for i=1,9 do
+   for i=0,8 do
       local obj = parent.new('xml', { name='TestFO', flags='NEW' })
       table.insert(objects, obj)
    end
 
    -- Expect 10 children with IDs in descending order.
-   local children = parent.children()
-   assert(err == ERR_Okay, 'Failed in call to ListChildren(): ' .. mSys.GetErrorMsg(err))
-   assert(#children == 10, 'Parent object listed ' .. #children .. ' objects.')
+   children = parent.children()
+   assert(err is ERR_Okay, 'Failed in call to ListChildren(): ' .. mSys.GetErrorMsg(err))
+   assert(#children is 10, 'Parent object listed ' .. #children .. ' objects.')
 
-   local check = { }
-   for i=1,10 do
+   check = { }
+   for i=0,9 do
       check[objects[i].id] = true
    end
-   for i=1,10 do
-      assert(check[children[i]] == true, "Object tables don't match")
+
+   for i=0,9 do
+      assert(check[children[i]] is true, "Object tables don't match")
    end
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-   return {
-      tests = {
-         'testActionList', 'testMetaClassArrays', 'testEnvPath', 'testPreciseTime', 'testRegistry', 'testObjectSearches'
-      },
-      init = function()
-      end,
-      cleanup = function()
-      end
-   }

@@ -76,7 +76,7 @@ ffi_status ffi_prep_cif_machdep(ffi_cif *cif)
       if (cif->rtype->size > 4 * 4) {
         /* returned structure is referenced by a register; use 8 bytes
            (including 4 bytes for potential additional alignment) */
-        cif->flags = FFI_TYPE_STRUCT;	
+        cif->flags = FFI_TYPE_STRUCT;
         cif->bytes += 8;
       }
       break;
@@ -198,7 +198,7 @@ void ffi_call(ffi_cif* cif, void(*fn)(void), void *rvalue, void **avalue)
   ecif.avalue = avalue;
 
   /* Note that for structures that are returned in registers (size <= 16 bytes)
-     we allocate a temporary buffer and use memcpy to copy it to the final 
+     we allocate a temporary buffer and use memcpy to copy it to the final
      destination. The reason is that the target address might be misaligned or
      the length not a multiple of 4 bytes. Handling all those cases would be
      very complex.  */
@@ -243,7 +243,7 @@ ffi_prep_closure_loc (ffi_closure* closure,
   closure->cif = cif;
   closure->fun = fun;
   closure->user_data = user_data;
-  return FFI_OK; 
+  return FFI_OK;
 }
 
 
@@ -268,7 +268,7 @@ ffi_closure_SYSV_inner(ffi_closure *closure, void **values, void *rvalue)
     areg++;
   }
 
-  cif = closure->cif; 
+  cif = closure->cif;
   arg_types = cif->arg_types;
   avalue = alloca(cif->nargs * sizeof(void *));
 

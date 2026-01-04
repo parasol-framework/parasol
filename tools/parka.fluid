@@ -30,7 +30,7 @@ function parseInfo()
    end
 
    glInfoXML = obj.new("xml", { path=infoPath })
-   if (glInfoXML == nil) then
+   if not glInfoXML then
       print("Failed to parse the parc.xml file at " .. infoPath)
       return
    end
@@ -55,14 +55,14 @@ function parseInfo()
    info.args = iArgs
    info.permissions = iPermissions
 
-   if not nz(info.built) then
+   if not info.built?? then
       local now = obj.new("time", { })
       now.acQuery()
       info.built = string.format("%d-%02d-%02d %02d:%02d", now.year, now.month, now.day, now.hour, now.minute)
       local error, index = glInfoXML.mtInsertXML(infoIndex, XMI_CHILD_END, "<built>" .. info.built .. "</built>")
    end
 
-   if nz(glPublicKey) then
+   if glPublicKey?? then
       local error, index = glInfoXML.mtInsertXML(infoIndex, XMI_CHILD_END, "<key>" .. glPublicKey .. "</key>")
    end
 
@@ -75,22 +75,22 @@ function printPackage()
    print("")
    print("Package Details")
    print("---------------")
-   print("Name:      " .. nz(glInfo.name, "NULL"))
-   print("Author:    " .. nz(glInfo.author, "NULL"))
-   print("Version:   " .. nz(glInfo.version, "NULL"))
-   print("Built:     " .. nz(glInfo.built, "NULL"))
-   print("WebSite:   " .. nz(glInfo.website, "NULL"))
-   print("Short:     " .. nz(glInfo.short, "NULL"))
-   print("Run:       " .. nz(glInfo.run, "NULL"))
-   print("License:   " .. nz(glInfo.license, "NULL"))
-   print("Copyright: " .. nz(glInfo.copyright, "NULL"))
+   print("Name:      " .. (glInfo.name ?? "NULL"))
+   print("Author:    " .. (glInfo.author ?? "NULL"))
+   print("Version:   " .. (glInfo.version ?? "NULL"))
+   print("Built:     " .. (glInfo.built ?? "NULL"))
+   print("WebSite:   " .. (glInfo.website ?? "NULL"))
+   print("Short:     " .. (glInfo.short ?? "NULL"))
+   print("Run:       " .. (glInfo.run ?? "NULL"))
+   print("License:   " .. (glInfo.license ?? "NULL"))
+   print("Copyright: " .. (glInfo.copyright ?? "NULL"))
    print("")
 end
 
 ------------------------------------------------------------------------------
 
 function validateInfo()
-   if not nz(glInfo) then print("A name is required in the info header."); return; end
+   if not glInfo?? then print("A name is required in the info header."); return; end
 
 
 --  <args>
@@ -103,20 +103,20 @@ end
 
 function zipPackage()
    local zip = obj.new("compression", { src=glTargetFile, flags="!NEW", compressionLevel=0 })
-   if (zip == nil) then
+   if (zip is nil) then
       print("Failed to create new zip package at " .. glTargetFile)
       return
    end
 
    local folder = obj.new("file", { path=glLocation } )
-   if not nz(folder) then
+   if not folder?? then
       print("Invalid location for packaging.")
       return
    end
 
    local err, file = folder.mtNext()
-   while (err == ERR_Okay) do
-      if bit.band(file.flags, FL_FOLDER) != 0 then
+   while (err is ERR_Okay) do
+      if (file.flags & FL_FOLDER)?? then
          local name = file.path:match("([^:/]+)/-$")
          print("Compressing " .. name)
          zip.mtCompressFile(file.path, "/")
@@ -126,9 +126,9 @@ function zipPackage()
 
    -- Compress glInfoXML as 'parc.xml' in the package's root folder.
 
-   if (glInfoXML != nil) then
+   if glInfoXML then
       local infoFile = obj.new("file", { path="temp:parc.xml", flags="!NEW|WRITE" })
-      if (infoFile != nil) then
+      if infoFile then
          glInfoXML.acSaveToObject(infoFile)
          zip.mtCompressFile("temp:parc.xml", nil)
          infoFile.mtDelete()
@@ -154,7 +154,7 @@ function signPackage(PrivateKey)
    local file = obj.new("file", { path=glTargetFile, flags="!READ|WRITE" } )
    if (file != nil) then
       local error, sig = mSSL.CalcSigFromObject(file, 0, PrivateKey, glKeyPassword, "sha256")
-      if (error == ERR_Okay) then
+      if (error is ERR_Okay) then
          print("Writing " .. sig:len() .. " byte signature to end of package.")
 
          file.acWrite(sig)
@@ -177,10 +177,10 @@ function readSignature(Path)
    local PSIG = 0x47495350
 
    local file = obj.new("file", { path=Path, flags="!READ" })
-   if (file != nil) then
+   if file then
       file.acSeek(-SIGLEN, SEEK_END)
       local header = mem.alloc(SIGLEN)
-      if (file.acRead(header) == ERR_Okay) then
+      if file.acRead(header) is ERR_Okay then
          header.indextype("integer")
          if (header[1] != PSIG) then
             print("The package has not been signed with an RSA key.")
@@ -190,7 +190,7 @@ function readSignature(Path)
          local siglen = header[0]
          file.acSeek(-SIGLEN-siglen, SEEK_END)
          local signature = mem.alloc(siglen)
-         if (file.acRead(signature) == ERR_Okay) then
+         if file.acRead(signature) is ERR_Okay then
             return signature
          else
             print("Failed to read signature of " .. siglen .. " bytes.")
@@ -209,7 +209,7 @@ end
 
 function verifyPackage()
    local zip = obj.new("compression", { src=glVerify, compressionLevel=0 })
-   if (zip == nil) then
+   if not zip then
       print("Failed to create new zip package at " .. glVerify)
       return
    end
@@ -223,13 +223,13 @@ function verifyPackage()
    -- Parse the parc.xml data into an XML object
 
    local xmlInfo = obj.new("xml", { flags="!NEW", statement=fileObject.buffer.getstring() } )
-   if (xmlInfo == nil) then
+   if not xmlInfo then
       print("Failed to parse the parc.xml file.")
       return
    end
 
    local publicKey = xmlInfo.get("/info/key")
-   if (publicKey == nil) then
+   if not publicKey then
       print("The package is not signed with an RSA key.")
       return
    end
@@ -237,7 +237,7 @@ function verifyPackage()
    -- Read the binary signature from the end of the PARC file.
 
    local signature = readSignature(glVerify)
-   if (signature == nil) then return end
+   signature ?? return
 
    local outsig = obj.new("file", { path="package_out.sig", flags="!NEW|WRITE" } )
    outsig.acWrite(signature)
@@ -245,7 +245,7 @@ function verifyPackage()
    -- Use the public key to recalculate the signature from the PARC file.
 
    local file = obj.new("file", { path=glVerify, flags="!READ" } )
-   if (file != nil) then
+   if file then
       local error = mSSL.VerifySig(file, file.size - SIGLEN - signature.size, publicKey, "sha256", signature)
       if (error != ERR_Okay) then print("Signature verification failed: " .. mSys.GetErrorMsg(error))
       else print("Signature verification passed.") end
@@ -267,13 +267,13 @@ end
    mSys = mod.load("core")
    mSSL = mod.load("openssl")
 
-   if nz(glVerify) then
+   if glVerify?? then
       // Verification mode - check that the signature of an existing package is correct.
       verifyPackage()
       return
    end
 
-   if not nz(glLocation) then
+   if not glLocation?? then
       print("Parka is used to generate Parasol archives (PARC files).  It requires a valid parc.xml file and release")
       print("folder containing the files to be archived.  More information on how to structure a build is documented in the")
       print("parasol-doc package, as well as on the Parasol website.")
@@ -288,28 +288,28 @@ end
    -- The source must be a folder reference.
 
    local lastChar = glLocation:sub(-1)
-   if ((lastChar != ':') and (lastChar != '/')) then
+   if (lastChar != ':') and (lastChar != '/') then
       glLocation = glLocation .. "/"
    end
 
-   if nz(glPrivateKeyFile) then
+   if glPrivateKeyFile?? then
       glPrivateKey = file.readAll(glPrivateKeyFile)
-      if (glPrivateKey == nil) then
+      if not glPrivateKey then
          print("Failed to load RSA key file: " .. glPrivateKeyFile)
          return
       end
    end
 
-   if nz(glPrivateKey) then
+   if glPrivateKey?? then
       error, glPublicKey = mSSL.GenerateRSAPublicKey(glPrivateKey, glKeyPassword)
-      if (glPublicKey == nil) then
+      if (glPublicKey is nil) then
          print("Failed to get generate the public key from " .. glPrivateKeyFile .. ", error " .. mSys.GetErrorMsg(error))
          print(glPrivateKey)
       end
    end
 
    glInfo = parseInfo()
-   if (glInfo == nil) then return end
+   if not glInfo then return end
 
    printPackage()
 
@@ -317,7 +317,7 @@ end
 
    zipPackage()
 
-   if nz(glPrivateKey) then
+   if glPrivateKey?? then
       signPackage(glPrivateKey)
    else
       print("No RSA private key supplied - the package will not be signed.")

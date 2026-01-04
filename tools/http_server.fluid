@@ -21,18 +21,14 @@ Parameters:
 Index files (checked in order): index.html, index.htm, default.html, default.htm
 ]]
 
-   local httplib = require 'net/httpserver'
+   httplib = require 'net/httpserver'
 
-   glConfigFile = arg('config')
+   glConfigFile = arg('config', 'user:config/http_server_cfg.fluid')
 
    glOptions = { }
 
-   if not glConfigFile then glConfigFile = 'user:config/http_server_cfg.fluid' end
-
-   if glConfigFile then
-      if mSys.AnalysePath(glConfigFile) == ERR_Okay then
-         loadFile(glConfigFile, glOptions)
-      end
+   if mSys.AnalysePath(glConfigFile) is ERR_Okay then
+      loadFile(glConfigFile, glOptions)
    end
 
    if arg('help') then
@@ -44,15 +40,15 @@ Index files (checked in order): index.html, index.htm, default.html, default.htm
    if arg('folder') then glOptions.folder = arg('folder') end
 
    if arg('verbose') then
-      local verbose = arg('verbose'):lower()
-      glOptions.verbose = (verbose == 'true' or verbose == '1')
+      verbose = arg('verbose'):lower()
+      glOptions.verbose = (verbose is 'true' or verbose is '1')
    end
 
    if arg('timeout') then glOptions.timeout = tonumber(arg('timeout')) end
 
    if arg('autoindex') then
-      local autoindex = arg('autoindex'):lower()
-      glOptions.autoIndex = (autoindex == 'true' or autoindex == '1')
+      autoindex = arg('autoindex'):lower()
+      glOptions.autoIndex = (autoindex is 'true' or autoindex is '1')
    end
 
    if arg('ratelimit') then glOptions.rateLimit = tonumber(arg('ratelimit')) end
@@ -66,17 +62,18 @@ Index files (checked in order): index.html, index.htm, default.html, default.htm
    end
 
    -- Convert to absolute path
-   local err, resolvedPath = mSys.ResolvePath(glOptions.folder)
-   if err == ERR_Okay and resolvedPath then
+   err, resolvedPath = mSys.ResolvePath(glOptions.folder)
+   if err is ERR_Okay and resolvedPath then
       glOptions.folder = resolvedPath
    end
 
-   local err, filetype = mSys.AnalysePath(glOptions.folder)
-   if filetype != LOC_FOLDER then
-      error('Error: folder "' .. nz(glOptions.folder,'NIL') .. '" does not exist')
+   err, filetype = mSys.AnalysePath(glOptions.folder)
+   assert(filetype is LOC_FOLDER, 'Error: folder "' .. (glOptions.folder ?? 'NIL') .. '" does not exist')
+
+   glOptions.logMessage = function(Message)
+      print(Message)
    end
 
    glServer = httplib.start(glOptions)
 
    processing.sleep()
-

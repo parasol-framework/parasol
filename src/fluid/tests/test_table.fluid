@@ -1,0 +1,182 @@
+-- Flute tests for table.empty()
+
+@BeforeEach(hotpath=true)
+function enforce_hotpath() end
+
+@Test function nilAndEmpty()
+   -- nil is treated as an empty table
+   assert(table.empty(nil) is true, "nil should be considered empty")
+
+   -- empty table literal
+   t = {}
+   assert(table.empty(t) is true, "{} should be empty")
+end
+
+@Test function arrayAndHash()
+   -- Non-empty array part
+   arr = {1}
+   assert(table.empty(arr) is false, "Array with one element should not be empty")
+
+   -- Non-empty hash part
+   map = { a = 1 }
+   assert(table.empty(map) is false, "Hash with one key should not be empty")
+end
+
+@Test function sparseAndHoles()
+   -- Sparse array with only a high index populated
+   t = {}
+   t[100] = 1
+   assert(table.empty(t) is false, "Sparse table with an entry should not be empty")
+
+   -- Table with only holes (all nil)
+   holes = {}
+   holes[0] = nil
+   holes[1] = nil
+   assert(table.empty(holes) is true, "Table with only nil entries should be empty")
+end
+
+@Test function clearAndMutation()
+   t = { a = 5, 7 }
+   assert(table.empty(t) is false, "Initially non-empty table should not be empty")
+
+   -- Use table.clear() provided by our LuaJIT patch to clear the table
+   table.clear(t)
+   assert(table.empty(t) is true, "table.clear() should result in an empty table")
+
+   -- Re-populate and re-check
+   t[0] = 10
+   assert(table.empty(t) is false, "Re-populated table should not be empty")
+end
+
+@Test function lookupWithField()
+   cfg = { }
+   table.insert(cfg, { apple = "banana", orange = "lemon" })
+   lookup = { value = "apple" }
+   assert(cfg[0][lookup.value] is "banana", "Lookup with field should return correct value")
+
+   m = {}
+   clients = { }
+   for i = 0, 1 do
+      m[i] = {}
+      table.insert(m[i], 'CLIENT_' .. i)
+   end
+   clients[0] = { }
+   clients[0].messageIndex = 0
+   result = m[0][clients[0].messageIndex]
+   assert(result is 'CLIENT_0', 'Expected CLIENT_0, got ' .. tostring(result))
+end
+
+@Test function sortByKeys()
+   t = { b = 2, a = 1, c = 3 }
+   keys = {}
+   for k, v in table.sortByKeys(t) do
+      table.insert(keys, k)
+   end
+   assert(#keys is 3, "Should have 3 keys after sorting, got " .. #keys)
+   assert(keys[0] is 'a', "First key should be 'a'")
+   assert(keys[1] is 'b', "Second key should be 'b'")
+   assert(keys[2] is 'c', "Third key should be 'c'")
+end
+
+-- Tests for table.getn()
+
+@Test function getnEmpty()
+   -- Test length of empty table
+   t = {}
+   assert(table.getn(t) is 0, "Empty table should have length 0")
+end
+
+@Test function getnArray()
+   -- Test length of array-style table
+   t = { 'a', 'b', 'c', 'd', 'e' }
+   assert(table.getn(t) is 5, "Array with 5 elements should have length 5, got " .. table.getn(t))
+end
+
+@Test function getnMatchesLengthOperator()
+   -- Test that getn matches the # operator
+   t = { 1, 2, 3 }
+   assert(table.getn(t) is #t, "getn should match # operator")
+end
+
+@Test function getnIgnoresHashPart()
+   -- Test that getn only counts array part
+   t = { 'x', 'y' }
+   t.name = 'test'
+   t.value = 42
+   assert(table.getn(t) is 2, "getn should only count array elements, got " .. table.getn(t))
+end
+
+@Test function getnAfterInsertRemove()
+   -- Test getn after modifications
+   t = {}
+   table.insert(t, 'a')
+   table.insert(t, 'b')
+   assert(table.getn(t) is 2, "After 2 inserts, length should be 2")
+   table.remove(t)
+   assert(table.getn(t) is 1, "After remove, length should be 1")
+end
+
+-- Tests for table.move()
+
+@Test function moveBasic()
+   -- Test basic move within same table
+   t = { 'a', 'b', 'c', 'd', 'e' }
+   result = table.move(t, 0, 2, 3)  -- Move indices 0-2 to start at 3
+   assert(result is t, "move should return the target table")
+   assert(t[3] is 'a', "t[3] should be 'a', got " .. tostring(t[3]))
+   assert(t[4] is 'b', "t[4] should be 'b', got " .. tostring(t[4]))
+   assert(t[5] is 'c', "t[5] should be 'c', got " .. tostring(t[5]))
+end
+
+@Test function moveToDifferentTable()
+   -- Test move to a different table
+   src = { 10, 20, 30 }
+   dst = {}
+   result = table.move(src, 0, 2, 0, dst)
+   assert(result is dst, "move should return destination table")
+   assert(dst[0] is 10, "dst[0] should be 10")
+   assert(dst[1] is 20, "dst[1] should be 20")
+   assert(dst[2] is 30, "dst[2] should be 30")
+end
+
+@Test function moveEmptyRange()
+   -- Test move with empty range (e < f)
+   t = { 1, 2, 3 }
+   original_len = #t
+   result = table.move(t, 2, 1, 5)  -- Empty range, should do nothing
+   assert(result is t, "move should return the table")
+   assert(#t is original_len, "Table length should be unchanged")
+end
+
+@Test function moveSingleElement()
+   -- Test moving a single element
+   t = { 'x', 'y', 'z' }
+   table.move(t, 1, 1, 5)  -- Move t[1] to t[5]
+   assert(t[5] is 'y', "t[5] should be 'y', got " .. tostring(t[5]))
+end
+
+@Test function moveOverlappingForward()
+   -- Test overlapping move (shifting forward)
+   t = { 1, 2, 3, 4, 5 }
+   table.move(t, 0, 2, 1)  -- Move 0-2 to 1-3 (overlapping)
+   assert(t[1] is 1, "t[1] should be 1, got " .. tostring(t[1]))
+   assert(t[2] is 2, "t[2] should be 2, got " .. tostring(t[2]))
+   assert(t[3] is 3, "t[3] should be 3, got " .. tostring(t[3]))
+end
+
+@Test function moveReturnsDestination()
+   -- Test that move returns the destination table
+   src = { 1, 2, 3 }
+   dst = { 'a', 'b' }
+   result = table.move(src, 0, 2, 0, dst)
+   assert(result is dst, "move should return destination table when provided")
+end
+
+@Test function moveNoDestination()
+   -- Test move without explicit destination (uses source)
+   t = { 'a', 'b', 'c' }
+   result = table.move(t, 0, 1, 5)
+   assert(result is t, "move should return source table when no destination")
+   assert(t[5] is 'a', "t[5] should be 'a'")
+   assert(t[6] is 'b', "t[6] should be 'b'")
+end

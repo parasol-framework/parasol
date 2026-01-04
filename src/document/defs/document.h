@@ -919,8 +919,8 @@ struct doc_menu {
    std::string m_font_style;
    int m_font_size;
 
-   LARGE m_show_time = 0; // Time of last acShow()
-   LARGE m_hide_time = 0; // Time of last acHide()
+   int64_t m_show_time = 0; // Time of last acShow()
+   int64_t m_hide_time = 0; // Time of last acHide()
 
    objSurface * create(double);
    objSurface * get();
@@ -1075,7 +1075,7 @@ class extDocument : public objDocument {
    FUNCTION EventCallback;
    KEYVALUE Vars;   // Variables as defined by the client program.  Transparently accessible like URI params.  Names have priority over params.
    KEYVALUE Params; // Incoming parameters provided via the URI
-   std::map<uint32_t, XMLTag *>   TemplateIndex;
+   std::map<uint32_t, XTag *>   TemplateIndex;
    std::vector<OBJECTID>       UIObjects;    // List of temporary objects in the UI
    std::vector<doc_segment>    Segments;
    std::vector<sorted_segment> SortSegments; // Used for UI interactivity when determining who is front-most
@@ -1087,7 +1087,7 @@ class extDocument : public objDocument {
    std::vector<edit_cell>      EditCells;
    ankerl::unordered_dense::map<std::string_view, doc_edit> EditDefs;
    std::array<std::vector<FUNCTION>, size_t(DRT::END)> Triggers;
-   std::vector<const XMLTag *> TemplateArgs; // If a template is called, the tag is referred here so that args can be pulled from it
+   std::vector<const XTag *> TemplateArgs; // If a template is called, the tag is referred here so that args can be pulled from it
    std::string FontFace;       // Default font face
    RSTREAM Stream;             // Internal stream buffer
    stream_char SelectStart, SelectEnd;  // Selection start & end (stream index)
@@ -1105,7 +1105,7 @@ class extDocument : public objDocument {
    objXML *PretextXML;         // Execute this XML prior to loading a new page.
    objSVG *SVG;                // Allocated by the <svg> tag
    objVectorRectangle *Bkgd;   // Background fill object
-   XMLTag    *PageTag;         // Refers to a specific page that is being processed for the layout
+   XTag    *PageTag;         // Refers to a specific page that is being processed for the layout
    objScript *ClientScript;    // Allows the developer to define a custom default script.
    objScript *DefaultScript;
    doc_edit  *ActiveEditDef; // As for ActiveEditCell, but refers to the active editing definition

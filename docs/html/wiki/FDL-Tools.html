@@ -68,14 +68,13 @@
             <ul class="btn-toggle-nav list-unstyled pb-1">
             <li class="api-ref"><a class="rounded" href="Fluid-Reference-Manual.html">Fluid Reference Manual</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-Common-API.html">Common API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-FileSearch-API.html">FileSearch API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-GUI-API.html">GUI API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-HTTPServer-API.html">HTTPServer API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-IO-API.html">I/O API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-JSON-API.html">JSON API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-URL-API.html">URL API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-VFX-API.html">VFX API</a></li>
-            <li class="api-ref"><a class="rounded" href="Widgets.html">Widgets</a></li>
+            <li class="api-ref"><a class="rounded" href="Fluid-Widgets.html">Widgets</a></li>
            </ul>
          </div></li>
 
@@ -127,7 +126,10 @@
       <li class="api-ref"><a href="../modules/fluid.html" class="rounded">Fluid</a></li>
       <li class="api-ref"><a href="../modules/font.html" class="rounded">Font</a></li>
       <li class="api-ref"><a href="../modules/network.html" class="rounded">Network</a></li>
+      <li class="api-ref"><a href="../modules/regex.html" class="rounded">Regex</a></li>
       <li class="api-ref"><a href="../modules/vector.html" class="rounded">Vector</a></li>
+      <li class="api-ref"><a href="../modules/xml.html" class="rounded">XML</a></li>
+      <li class="api-ref"><a href="../modules/xpath.html" class="rounded">XPath</a></li>
       </ul>
     </div>
   </li>
@@ -162,6 +164,7 @@
         <li>
         <button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#data-collapse" aria-expanded="false">Data</button><div class="collapse" id="data-collapse"><ul class="btn-toggle-nav list-unstyled pb-1">
         <li><a href="../modules/classes/compression.html" class="rounded">Compression</a></li>
+        <li><a href="../modules/classes/compressedstream.html" class="rounded">CompressedStream</a></li>
         <li><a href="../modules/classes/config.html" class="rounded">Config</a></li>
         <li><a href="../modules/classes/script.html" class="rounded">Script</a></li>
         <li><a href="../modules/classes/xml.html" class="rounded">XML</a></li>
@@ -213,6 +216,8 @@
         <button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#net-collapse" aria-expanded="false">Network</button><div class="collapse" id="net-collapse"><ul class="btn-toggle-nav list-unstyled pb-1">
         <li><a class="rounded" href="../modules/classes/clientsocket.html">ClientSocket</a></li>
         <li><a class="rounded" href="../modules/classes/http.html">HTTP</a></li>
+        <li><a class="rounded" href="../modules/classes/netclient.html">NetClient</a></li>
+        <li><a class="rounded" href="../modules/classes/netlookup.html">NetLookup</a></li>
         <li><a class="rounded" href="../modules/classes/netsocket.html">NetSocket</a></li>
         <li><a class="rounded" href="../modules/classes/proxy.html">Proxy</a></li>
         </ul></div>
@@ -299,9 +304,9 @@
 <p>This example from the Core API parses <code>errors.fdl</code> as a straight header file with no interface definitions:</p>
 <pre><code>parasol scripts/dev/idl-c src=defs/errors.fdl output=sdk:include/system/errors.h</code></pre>
 <p>This example parses every function interface for the Core API, and auto-generates C prototypes according to their definitions:</p>
-<pre><code>parasol scripts/dev/idl-c src=defs/core.fdl 
-  output-proto=prototypes.h 
-  output-defs=data_functions.c 
+<pre><code>parasol scripts/dev/idl-c src=defs/core.fdl
+  output-proto=prototypes.h
+  output-defs=data_functions.c
   files={ &quot;core.cpp&quot; &quot;lib_objects.cpp&quot; &quot;lib_base64.cpp&quot; &quot;lib_events.cpp&quot; &quot;lib_fields_read.cpp&quot;
    &quot;lib_fields_write.cpp&quot; &quot;lib_filesystem.cpp&quot; &quot;lib_functions.cpp&quot; &quot;lib_locking.cpp&quot;
    &quot;lib_log.cpp&quot; &quot;lib_messages.cpp&quot; &quot;lib_memory.cpp&quot; &quot;lib_strings.cpp&quot; &quot;lib_unicode.cpp&quot;

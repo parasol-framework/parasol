@@ -3,7 +3,7 @@
    local http = glSelf.owner
 
 function accept()
-   if nz(txtPassword.string) then
+   if txtPassword.string?? then
       http.username = txtName.string
       http.password = txtPassword.string
       win.mtClose()
@@ -43,7 +43,7 @@ end
       flags      = '!enteractivate|ignorefocus',
       string     = http.username,
       feedback   = function(Button, Value, Activated)
-         if (Activated == 1) then accept() end
+         if (Activated is 1) then accept() end
       end
    })
 
@@ -56,7 +56,7 @@ end
       tabfocus   = tabfocus.id,
       flags      = '!enteractivate|ignorefocus|secret',
       feedback   = function(Button, Value, Activated)
-         if (Activated == 1) then accept() end
+         if (Activated is 1) then accept() end
       end
    })
 

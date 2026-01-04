@@ -18,14 +18,14 @@ through obj.find(), push_object(), or children created with some_object.new() ar
 #include <parasol/modules/fluid.h>
 #include <parasol/strings.hpp>
 #include <inttypes.h>
+#include <string_view>
+#include <ranges>
+#include <algorithm>
 
-extern "C" {
- #include "lua.h"
- #include "lualib.h"
- #include "lauxlib.h"
- #include "lj_obj.h"
-}
-
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
+#include "lj_obj.h"
 #include "hashes.h"
 #include "defs.h"
 
@@ -33,54 +33,68 @@ template<class... Args> void RMSG(Args...) {
    //log.trace(Args)  // Enable if you want to debug results returned from functions, actions etc
 }
 
-static ULONG OJH_init, OJH_free, OJH_lock, OJH_children, OJH_detach, OJH_get, OJH_new, OJH_state, OJH_state_dep, OJH_getKey;
-static ULONG OJH_set, OJH_setKey, OJH_delayCall, OJH_exists, OJH_subscribe, OJH_unsubscribe;
+static constexpr uint32_t OJH_init = simple_hash("init");
+static constexpr uint32_t OJH_free = simple_hash("free");
+static constexpr uint32_t OJH_lock = simple_hash("lock");
+static constexpr uint32_t OJH_children = simple_hash("children");
+static constexpr uint32_t OJH_detach = simple_hash("detach");
+static constexpr uint32_t OJH_get = simple_hash("get");
+static constexpr uint32_t OJH_new = simple_hash("new");
+static constexpr uint32_t OJH_state = simple_hash("_state");
+static constexpr uint32_t OJH_state_dep = simple_hash("state"); // Deprecated, use _state
+static constexpr uint32_t OJH_getKey = simple_hash("getKey");
+static constexpr uint32_t OJH_set = simple_hash("set");
+static constexpr uint32_t OJH_setKey = simple_hash("setKey");
+static constexpr uint32_t OJH_delayCall = simple_hash("delayCall");
+static constexpr uint32_t OJH_exists = simple_hash("exists");
+static constexpr uint32_t OJH_subscribe = simple_hash("subscribe");
+static constexpr uint32_t OJH_unsubscribe = simple_hash("unsubscribe");
 
-static int object_action_call_args(lua_State *);
-static int object_method_call_args(lua_State *);
-static int object_action_call(lua_State *);
-static int object_method_call(lua_State *);
-static LONG get_results(lua_State *, const FunctionField *, const BYTE *);
-static ERR set_object_field(lua_State *, OBJECTPTR, CSTRING, LONG);
+[[nodiscard]] static int object_action_call_args(lua_State *);
+[[nodiscard]] static int object_method_call_args(lua_State *);
+[[nodiscard]] static int object_action_call(lua_State *);
+[[nodiscard]] static int object_method_call(lua_State *);
+[[nodiscard]] static int get_results(lua_State *, const FunctionField *, const int8_t *);
+[[nodiscard]] static ERR set_object_field(lua_State *, OBJECTPTR, CSTRING, int);
 
-static int object_children(lua_State *);
-static int object_delaycall(lua_State *);
-static int object_detach(lua_State *);
-static int object_exists(lua_State *);
-static int object_free(lua_State *);
-static int object_get(lua_State *);
-static int object_getkey(lua_State *);
-static int object_init(lua_State *);
-static int object_lock(lua_State *);
-static int object_newchild(lua_State *);
-static int object_newindex(lua_State *);
-static int object_set(lua_State *);
-static int object_setkey(lua_State *);
-static int object_state(lua_State *);
-static int object_state_dep(lua_State *);
-static int object_subscribe(lua_State *);
-static int object_unsubscribe(lua_State *);
+[[nodiscard]] static int object_children(lua_State *);
+[[nodiscard]] static int object_delaycall(lua_State *);
+[[nodiscard]] static int object_detach(lua_State *);
+[[nodiscard]] static int object_exists(lua_State *);
+[[nodiscard]] static int object_free(lua_State *);
+[[nodiscard]] static int object_get(lua_State *);
+[[nodiscard]] static int object_getkey(lua_State *);
+[[nodiscard]] static int object_init(lua_State *);
+[[nodiscard]] static int object_lock(lua_State *);
+[[nodiscard]] static int object_newchild(lua_State *);
+[[nodiscard]] static int object_newindex(lua_State *);
+[[nodiscard]] static int object_set(lua_State *);
+[[nodiscard]] static int object_setkey(lua_State *);
+[[nodiscard]] static int object_state(lua_State *);
+[[nodiscard]] static int object_state_dep(lua_State *);
+[[nodiscard]] static int object_subscribe(lua_State *);
+[[nodiscard]] static int object_unsubscribe(lua_State *);
 
-static int object_get_id(lua_State *, const obj_read &, object *);
-static int object_get_rgb(lua_State *, const obj_read &, object *);
-static int object_get_array(lua_State *, const obj_read &, object *);
-static int object_get_struct(lua_State *, const obj_read &, object *);
-static int object_get_string(lua_State *, const obj_read &, object *);
-static int object_get_object(lua_State *, const obj_read &, object *);
-static int object_get_ptr(lua_State *, const obj_read &, object *);
-static int object_get_double(lua_State *, const obj_read &, object *);
-static int object_get_large(lua_State *, const obj_read &, object *);
-static int object_get_ulong(lua_State *, const obj_read &, object *);
-static int object_get_long(lua_State *, const obj_read &, object *);
+[[nodiscard]] static int object_get_id(lua_State *, const obj_read &, object *);
+[[nodiscard]] static int object_get_rgb(lua_State *, const obj_read &, object *);
+[[nodiscard]] static int object_get_array(lua_State *, const obj_read &, object *);
+[[nodiscard]] static int object_get_struct(lua_State *, const obj_read &, object *);
+[[nodiscard]] static int object_get_string(lua_State *, const obj_read &, object *);
+[[nodiscard]] static int object_get_object(lua_State *, const obj_read &, object *);
+[[nodiscard]] static int object_get_ptr(lua_State *, const obj_read &, object *);
+[[nodiscard]] static int object_get_double(lua_State *, const obj_read &, object *);
+[[nodiscard]] static int object_get_large(lua_State *, const obj_read &, object *);
+[[nodiscard]] static int object_get_ulong(lua_State *, const obj_read &, object *);
+[[nodiscard]] static int object_get_long(lua_State *, const obj_read &, object *);
 
-static ERR object_set_array(lua_State *, OBJECTPTR, Field *, LONG);
-static ERR object_set_function(lua_State *, OBJECTPTR, Field *, LONG);
-static ERR object_set_object(lua_State *, OBJECTPTR, Field *, LONG);
-static ERR object_set_ptr(lua_State *, OBJECTPTR, Field *, LONG);
-static ERR object_set_double(lua_State *, OBJECTPTR, Field *, LONG);
-static ERR object_set_lookup(lua_State *, OBJECTPTR, Field *, LONG);
-static ERR object_set_oid(lua_State *, OBJECTPTR, Field *, LONG);
-static ERR object_set_number(lua_State *, OBJECTPTR, Field *, LONG);
+[[nodiscard]] static ERR object_set_array(lua_State *, OBJECTPTR, Field *, int);
+[[nodiscard]] static ERR object_set_function(lua_State *, OBJECTPTR, Field *, int);
+[[nodiscard]] static ERR object_set_object(lua_State *, OBJECTPTR, Field *, int);
+[[nodiscard]] static ERR object_set_ptr(lua_State *, OBJECTPTR, Field *, int);
+[[nodiscard]] static ERR object_set_double(lua_State *, OBJECTPTR, Field *, int);
+[[nodiscard]] static ERR object_set_lookup(lua_State *, OBJECTPTR, Field *, int);
+[[nodiscard]] static ERR object_set_oid(lua_State *, OBJECTPTR, Field *, int);
+[[nodiscard]] static ERR object_set_number(lua_State *, OBJECTPTR, Field *, int);
 
 //********************************************************************************************************************
 
@@ -94,36 +108,36 @@ inline void SET_CONTEXT(lua_State *Lua, APTR Function) {
    lua_pushcclosure(Lua, (lua_CFunction)Function, 1); // C function to call, +1 value for the object reference
 }
 
-static int stack_object_children(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_children); return 1; }
-static int stack_object_delayCall(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_delaycall); return 1; }
-static int stack_object_detach(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_detach); return 1; }
-static int stack_object_exists(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_exists); return 1; }
-static int stack_object_free(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_free); return 1; }
-static int stack_object_get(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_get); return 1; }
-static int stack_object_getKey(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_getkey); return 1; }
-static int stack_object_init(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_init); return 1; }
-static int stack_object_lock(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_lock); return 1; }
-static int stack_object_newchild(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_newchild); return 1; }
-static int stack_object_set(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_set); return 1; }
-static int stack_object_setKey(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_setkey); return 1; }
-static int stack_object_state(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_state); return 1; }
-static int stack_object_state_dep(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_state_dep); return 1; }
-static int stack_object_subscribe(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_subscribe); return 1; }
-static int stack_object_unsubscribe(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_unsubscribe); return 1; }
+[[nodiscard]] static int stack_object_children(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_children); return 1; }
+[[nodiscard]] static int stack_object_delayCall(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_delaycall); return 1; }
+[[nodiscard]] static int stack_object_detach(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_detach); return 1; }
+[[nodiscard]] static int stack_object_exists(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_exists); return 1; }
+[[nodiscard]] static int stack_object_free(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_free); return 1; }
+[[nodiscard]] static int stack_object_get(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_get); return 1; }
+[[nodiscard]] static int stack_object_getKey(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_getkey); return 1; }
+[[nodiscard]] static int stack_object_init(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_init); return 1; }
+[[nodiscard]] static int stack_object_lock(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_lock); return 1; }
+[[nodiscard]] static int stack_object_newchild(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_newchild); return 1; }
+[[nodiscard]] static int stack_object_set(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_set); return 1; }
+[[nodiscard]] static int stack_object_setKey(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_setkey); return 1; }
+[[nodiscard]] static int stack_object_state(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_state); return 1; }
+[[nodiscard]] static int stack_object_state_dep(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_state_dep); return 1; }
+[[nodiscard]] static int stack_object_subscribe(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_subscribe); return 1; }
+[[nodiscard]] static int stack_object_unsubscribe(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_unsubscribe); return 1; }
 
 //********************************************************************************************************************
 // Hash designed to handle cases like `UID` -> `uid` and `RGBValue` -> `rgbValue`
 
-static uint32_t field_hash(CSTRING Name) {
+[[nodiscard]] static uint32_t field_hash(std::string_view Name) {
    uint32_t hash = 5381;
-   int k = 0;
-   while (Name[k] and std::isupper(Name[k])) {
+   size_t k = 0;
+   while ((k < Name.size()) and std::isupper(Name[k])) {
       hash = char_hash(std::tolower(Name[k]), hash);
-      if (!Name[++k]) break;
-      if ((!Name[k+1]) or (std::isupper(Name[k+1]))) continue;
+      if (++k >= Name.size()) break;
+      if ((k + 1 >= Name.size()) or (std::isupper(Name[k+1]))) continue;
       else break;
    }
-   while (Name[k]) {
+   while (k < Name.size()) {
       hash = char_hash(Name[k], hash);
       k++;
    }
@@ -132,7 +146,7 @@ static uint32_t field_hash(CSTRING Name) {
 
 //********************************************************************************************************************
 
-static int obj_jump_method(lua_State *Lua, const obj_read &Handle, object *def)
+[[nodiscard]] static int obj_jump_method(lua_State *Lua, const obj_read &Handle, object *def)
 {
    lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
    lua_pushlightuserdata(Lua, Handle.Data); // Arg2: Method lookup table
@@ -158,51 +172,52 @@ inline void build_read_table(object *Def)
 
    // Every possible action is hashed because both sub-class and base-class actions require support.
 
-   for (LONG code=1; code < LONG(AC::END); code++) {
+   for (auto code : std::views::iota(1, int(AC::END))) {
       auto hash = simple_hash(glActions[code].Name, simple_hash("ac"));
       jmp.insert(obj_read(hash, glJumpActions[code]));
    }
 
    MethodEntry *methods;
-   LONG total_methods;
+   int total_methods;
    if (Def->Class->get(FID_Methods, methods, total_methods) IS ERR::Okay) {
-      for (LONG i=1; i < total_methods; i++) {
-         if (methods[i].MethodID != AC::NIL) {
-            auto hash = simple_hash(methods[i].Name, simple_hash("mt"));
-            jmp.insert(obj_read(hash, obj_jump_method, &methods[i]));
+      auto methods_span = std::span(methods, total_methods);
+      for (auto &method : methods_span | std::views::drop(1)) {
+         if (method.MethodID != AC::NIL) {
+            auto hash = simple_hash(method.Name, simple_hash("mt"));
+            jmp.insert(obj_read(hash, obj_jump_method, &method));
          }
       }
    }
 
    Field *dict;
-   LONG total_dict;
+   int total_dict;
    if (Def->Class->get(FID_Dictionary, dict, total_dict) IS ERR::Okay) {
       jmp.insert(obj_read(simple_hash("id"), object_get_id));
 
-      for (LONG i=0; i < total_dict; i++) {
-         if (!(dict[i].Flags & FDF_R)) continue;
+      auto dict_span = std::span(dict, total_dict);
+      for (auto &field : dict_span | std::views::filter([](const auto& f) { return f.Flags & FDF_R; })) {
+         auto hash = field_hash(field.Name);
 
-         auto hash = field_hash(dict[i].Name);
-
-         if (dict[i].Flags & FD_ARRAY) {
-            if (dict[i].Flags & FD_RGB) jmp.insert(obj_read(hash, object_get_rgb, &dict[i]));
-            else jmp.insert(obj_read(hash, object_get_array, &dict[i]));
+         if (field.Flags & FD_ARRAY) {
+            if (field.Flags & FD_RGB) jmp.insert(obj_read(hash, object_get_rgb, &field));
+            else jmp.insert(obj_read(hash, object_get_array, &field));
          }
-         else if (dict[i].Flags & FD_STRUCT) jmp.insert(obj_read(hash, object_get_struct, &dict[i]));
-         else if (dict[i].Flags & FD_STRING) jmp.insert(obj_read(hash, object_get_string, &dict[i]));
-         else if (dict[i].Flags & FD_POINTER) {
-            if (dict[i].Flags & (FD_OBJECT|FD_LOCAL)) { // Writing to an integral is permitted if marked as writeable.
-               jmp.insert(obj_read(hash, object_get_object, &dict[i]));
+         else if (field.Flags & FD_STRUCT) jmp.insert(obj_read(hash, object_get_struct, &field));
+         else if (field.Flags & FD_STRING) jmp.insert(obj_read(hash, object_get_string, &field));
+         else if (field.Flags & FD_POINTER) {
+            if (field.Flags & (FD_OBJECT|FD_LOCAL)) { // Writing to an integral is permitted if marked as writeable.
+               jmp.insert(obj_read(hash, object_get_object, &field));
             }
-            else jmp.insert(obj_read(hash, object_get_ptr, &dict[i]));
+            else jmp.insert(obj_read(hash, object_get_ptr, &field));
          }
-         else if (dict[i].Flags & FD_DOUBLE) jmp.insert(obj_read(hash, object_get_double, &dict[i]));
-         else if (dict[i].Flags & FD_INT64) jmp.insert(obj_read(hash, object_get_large, &dict[i]));
-         else if (dict[i].Flags & FD_INT) {
-            if (dict[i].Flags & FD_UNSIGNED) jmp.insert(obj_read(hash, object_get_ulong, &dict[i]));
-            else jmp.insert(obj_read(hash, object_get_long, &dict[i]));
+         else if (field.Flags & FD_DOUBLE) jmp.insert(obj_read(hash, object_get_double, &field));
+         else if (field.Flags & FD_INT64) jmp.insert(obj_read(hash, object_get_large, &field));
+         else if (field.Flags & FD_INT) {
+            if (field.Flags & FD_UNSIGNED) jmp.insert(obj_read(hash, object_get_ulong, &field));
+            else jmp.insert(obj_read(hash, object_get_long, &field));
          }
-         else pf::Log().warning("Unable to support field %s.%s for reading", Def->Class->Name, dict[i].Name);
+         else if (field.Flags & FD_FUNCTION); // Unsupported
+         else pf::Log().warning("Unable to support field %s.%s for reading", Def->Class->Name, field.Name);
       }
    }
 
@@ -229,7 +244,7 @@ inline void build_read_table(object *Def)
 
 //********************************************************************************************************************
 
-inline WRITE_TABLE * get_write_table(object *Def)
+[[nodiscard]] inline WRITE_TABLE * get_write_table(object *Def)
 {
    if (!Def->WriteTable) {
       if (auto it = glClassWriteTable.find(Def->Class); it != glClassWriteTable.end()) {
@@ -238,38 +253,37 @@ inline WRITE_TABLE * get_write_table(object *Def)
       else {
          WRITE_TABLE jmp;
          Field *dict;
-         LONG total_dict;
+         int total_dict;
          if (Def->Class->get(FID_Dictionary, dict, total_dict) IS ERR::Okay) {
-            for (LONG i=0; i < total_dict; i++) {
-               if (dict[i].Flags & (FD_W|FD_I)) {
-                  char ch[2] = { dict[i].Name[0], 0 };
-                  if ((ch[0] >= 'A') and (ch[0] <= 'Z')) ch[0] = ch[0] - 'A' + 'a';
-                  auto hash = simple_hash(dict[i].Name+1, simple_hash(ch));
+            auto dict_span = std::span(dict, total_dict);
+            for (auto& field : dict_span | std::views::filter([](const auto& f) { return f.Flags & (FD_W|FD_I); })) {
+               char ch[2] = { field.Name[0], 0 };
+               if ((ch[0] >= 'A') and (ch[0] <= 'Z')) ch[0] = ch[0] - 'A' + 'a';
+               auto hash = simple_hash(field.Name+1, simple_hash(ch));
 
-                  if (dict[i].Flags & FD_ARRAY) {
-                     jmp.insert(obj_write(hash, object_set_array, &dict[i]));
+               if (field.Flags & FD_ARRAY) {
+                  jmp.insert(obj_write(hash, object_set_array, &field));
+               }
+               else if (field.Flags & FD_FUNCTION) {
+                  jmp.insert(obj_write(hash, object_set_function, &field));
+               }
+               else if (field.Flags & FD_POINTER) {
+                  if (field.Flags & (FD_OBJECT|FD_LOCAL)) {
+                     jmp.insert(obj_write(hash, object_set_object, &field));
                   }
-                  else if (dict[i].Flags & FD_FUNCTION) {
-                     jmp.insert(obj_write(hash, object_set_function, &dict[i]));
-                  }
-                  else if (dict[i].Flags & FD_POINTER) {
-                     if (dict[i].Flags & (FD_OBJECT|FD_LOCAL)) {
-                        jmp.insert(obj_write(hash, object_set_object, &dict[i]));
-                     }
-                     else jmp.insert(obj_write(hash, object_set_ptr, &dict[i]));
-                  }
-                  else if (dict[i].Flags & (FD_DOUBLE|FD_FLOAT)) {
-                     jmp.insert(obj_write(hash, object_set_double, &dict[i]));
-                  }
-                  else if (dict[i].Flags & (FD_FLAGS|FD_LOOKUP)) {
-                     jmp.insert(obj_write(hash, object_set_lookup, &dict[i]));
-                  }
-                  else if (dict[i].Flags & FD_OBJECT) { // Object ID
-                     jmp.insert(obj_write(hash, object_set_oid, &dict[i]));
-                  }
-                  else if (dict[i].Flags & (FD_INT|FD_INT64)) {
-                     jmp.insert(obj_write(hash, object_set_number, &dict[i]));
-                  }
+                  else jmp.insert(obj_write(hash, object_set_ptr, &field));
+               }
+               else if (field.Flags & (FD_DOUBLE|FD_FLOAT)) {
+                  jmp.insert(obj_write(hash, object_set_double, &field));
+               }
+               else if (field.Flags & (FD_FLAGS|FD_LOOKUP)) {
+                  jmp.insert(obj_write(hash, object_set_lookup, &field));
+               }
+               else if (field.Flags & FD_OBJECT) { // Object ID
+                  jmp.insert(obj_write(hash, object_set_oid, &field));
+               }
+               else if (field.Flags & (FD_INT|FD_INT64)) {
+                  jmp.insert(obj_write(hash, object_set_number, &field));
                }
             }
          }
@@ -285,25 +299,26 @@ inline WRITE_TABLE * get_write_table(object *Def)
 // Any Read accesses to the object will pass through here.  The requested key must exist in the hashed jump-table for
 // the targeted class, or an error will be returned.
 
-static int object_index(lua_State *Lua)
+[[nodiscard]] static int object_index(lua_State *Lua)
 {
    if (auto def = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
       auto keyname = luaL_checkstring(Lua, 2);
-      build_read_table(def);
 
       if (!def->UID) { // Check if the object has been dereferenced by free() or similar
          luaL_error(Lua, "Object dereferenced, unable to read field %s", keyname);
-         auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+         auto prv = (prvFluid *)Lua->script->ChildPrivate;
          prv->CaughtError = ERR::DoesNotExist;
          return 0;
       }
 
-      if (auto func = def->ReadTable->find(obj_read(simple_hash(keyname))); func != def->ReadTable->end()) {
+      build_read_table(def);
+      auto hash_key = obj_read(simple_hash(keyname));
+      if (auto func = def->ReadTable->find(hash_key); func != def->ReadTable->end()) {
          return func->Call(Lua, *func, def);
       }
       else {
          pf::Log(__FUNCTION__).warning("Field does not exist or is unreadable: %s.%s", def->Class ? def->Class->ClassName: "?", keyname);
-         auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+         auto prv = (prvFluid *)Lua->script->ChildPrivate;
          prv->CaughtError = ERR::NoSupport;
          //if (prv->ThrowErrors) luaL_error(Lua, GetErrorMsg);
       }
@@ -314,7 +329,7 @@ static int object_index(lua_State *Lua)
 
 //********************************************************************************************************************
 
-static ACTIONID get_action_info(lua_State *Lua, CLASSID ClassID, CSTRING action, const FunctionField **Args)
+[[nodiscard]] static ACTIONID get_action_info(lua_State *Lua, CLASSID ClassID, CSTRING action, const FunctionField **Args)
 {
    pf::Log log;
 
@@ -322,9 +337,8 @@ static ACTIONID get_action_info(lua_State *Lua, CLASSID ClassID, CSTRING action,
       action += 2;
    }
    else {
-      auto it = glActionLookup.find(action);
-      if (it != glActionLookup.end()) {
-         *Args = glActions[LONG(it->second)].Args;
+      if (auto it = glActionLookup.find(action); it != glActionLookup.end()) {
+         *Args = glActions[int(it->second)].Args;
          return it->second;
       }
    }
@@ -332,10 +346,10 @@ static ACTIONID get_action_info(lua_State *Lua, CLASSID ClassID, CSTRING action,
    *Args = nullptr;
    if (auto mc = FindClass(ClassID)) {
       MethodEntry *table;
-      LONG total_methods;
+      int total_methods;
       ACTIONID action_id;
       if ((mc->get(FID_Methods, table, total_methods) IS ERR::Okay) and (table)) {
-         for (LONG i=1; i < total_methods; i++) {
+         for (int i=1; i < total_methods; i++) {
             if ((table[i].Name) and (iequals(action, table[i].Name))) {
                action_id = table[i].MethodID;
                *Args = table[i].Args;
@@ -364,28 +378,24 @@ static ACTIONID get_action_info(lua_State *Lua, CLASSID ClassID, CSTRING action,
 ** Never returns nil, errors are immediately thrown.
 */
 
-static int object_new(lua_State *Lua)
+[[nodiscard]] static int object_new(lua_State *Lua)
 {
    pf::Log log("obj.new");
    CSTRING class_name;
    CLASSID class_id;
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
 
    NF objflags = NF::NIL;
-   LONG type = lua_type(Lua, 1);
+   int type = lua_type(Lua, 1);
    if (type IS LUA_TNUMBER) {
       class_id = CLASSID(lua_tointeger(Lua, 1));
       class_name = nullptr;
-      log.trace("$%.8x", ULONG(class_id));
+      log.trace("$%.8x", uint32_t(class_id));
    }
    else if ((class_name = luaL_checkstring(Lua, 1))) {
-      if (class_name[0] IS '@') { // Deprecated
-         log.warning("Use of @ for allocating public objects is deprecated.");
-         class_name++;
-      }
       class_id = CLASSID(strihash(class_name));
-      log.trace("%s, $%.8x", class_name, ULONG(class_id));
+      log.trace("%s, $%.8x", class_name, uint32_t(class_id));
    }
    else {
       log.warning("String or ID expected for class name, got '%s'.", lua_typename(Lua, type));
@@ -396,11 +406,11 @@ static int object_new(lua_State *Lua)
 
    OBJECTPTR obj;
    if (auto error = NewObject(class_id, objflags, &obj); error IS ERR::Okay) {
-      if (Lua->Script->TargetID) obj->set(FID_Owner, Lua->Script->TargetID);
+      if (Lua->script->TargetID) obj->set(FID_Owner, Lua->script->TargetID);
 
       obj->CreatorMeta = Lua;
 
-      auto_load_include(Lua, obj->Class);
+      load_include_for_class(Lua, obj->Class);
 
       auto def = (object *)lua_newuserdata(Lua, sizeof(object));
       clearmem(def, sizeof(object));
@@ -411,9 +421,9 @@ static int object_new(lua_State *Lua)
          // Set fields against the object and initialise the object.  NOTE: Lua's table management code *does not*
          // preserve the order in which the fields were originally passed to the table.
 
-         ERR field_error  = ERR::Okay;
+         ERR field_error    = ERR::Okay;
          CSTRING field_name = nullptr;
-         LONG failed_type   = LUA_TNONE;
+         int failed_type    = LUA_TNONE;
          lua_pushnil(Lua);  // Access first key for lua_next()
          while (lua_next(Lua, 2) != 0) {
             if ((field_name = luaL_checkstring(Lua, -2))) {
@@ -431,6 +441,7 @@ static int object_new(lua_State *Lua)
          }
 
          if ((field_error != ERR::Okay) or ((error = InitObject(obj)) != ERR::Okay)) {
+            class_name = obj->className();
             FreeResource(obj);
 
             if (field_error != ERR::Okay) {
@@ -438,7 +449,7 @@ static int object_new(lua_State *Lua)
                luaL_error(Lua, "Failed to set field '%s.%s' with %s, error: %s", class_name, field_name, lua_typename(Lua, failed_type), GetErrorMsg(field_error));
             }
             else {
-               log.warning("Failed to Init() object '%s', error: %s", class_name, GetErrorMsg(error));
+               log.warning("Failed to Init() %s: %s", class_name, GetErrorMsg(error));
                prv->CaughtError = error;
                luaL_error(Lua, GetErrorMsg(error));
             }
@@ -472,14 +483,13 @@ static int object_state(lua_State *Lua)
       return 0;
    }
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
 
    // TODO: At this time no cleanup is performed on prv->StateMap.  Ideally this would be done with a hook into garbage
    // collection cycles.
 
    pf::Log log(__FUNCTION__);
-   auto it = prv->StateMap.find(def->UID);
-   if (it != prv->StateMap.end()) {
+   if (auto it = prv->StateMap.find(def->UID); it != prv->StateMap.end()) {
       lua_rawgeti(Lua, LUA_REGISTRYINDEX, it->second);
       return 1;
    }
@@ -513,12 +523,12 @@ static int object_newchild(lua_State *Lua)
       return 0;
    }
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
 
    CSTRING class_name;
    CLASSID class_id;
    NF objflags = NF::NIL;
-   LONG type = lua_type(Lua, 1);
+   int type = lua_type(Lua, 1);
    if (type IS LUA_TNUMBER) {
       class_id = CLASSID(lua_tointeger(Lua, 1));
       class_name = nullptr;
@@ -538,11 +548,11 @@ static int object_newchild(lua_State *Lua)
    OBJECTPTR obj;
    ERR error;
    if ((error = NewObject(class_id, objflags, &obj)) IS ERR::Okay) {
-      if (Lua->Script->TargetID) obj->set(FID_Owner, Lua->Script->TargetID);
+      if (Lua->script->TargetID) obj->set(FID_Owner, Lua->script->TargetID);
 
       obj->CreatorMeta = Lua;
 
-      auto_load_include(Lua, obj->Class);
+      load_include_for_class(Lua, obj->Class);
 
       auto def = (object *)lua_newuserdata(Lua, sizeof(object));
       clearmem(def, sizeof(object));
@@ -551,7 +561,13 @@ static int object_newchild(lua_State *Lua)
       lua_setmetatable(Lua, -2);
 
       lua_pushinteger(Lua, parent->UID); // ID of the would-be parent.
-      set_object_field(Lua, obj, "owner", lua_gettop(Lua));
+
+      if (set_object_field(Lua, obj, "owner", lua_gettop(Lua)) != ERR::Okay) {
+         FreeResource(obj);
+         luaL_error(Lua, "Failed to set object owner.");
+         return 0;
+      }
+
       lua_pop(Lua, 1);
 
       if (lua_istable(Lua, 2)) {
@@ -612,7 +628,7 @@ object * push_object(lua_State *Lua, OBJECTPTR Object)
    if (auto newobject = (object *)lua_newuserdata(Lua, sizeof(object))) {
       clearmem(newobject, sizeof(object));
 
-      auto_load_include(Lua, Object->Class);
+      load_include_for_class(Lua, Object->Class);
 
       newobject->ObjectPtr = nullptr;
       newobject->UID       = Object->UID;
@@ -659,12 +675,12 @@ ERR push_object_id(lua_State *Lua, OBJECTID ObjectID)
 ** The fluid object itself can be found by using the name "self".
 */
 
-static int object_find_ptr(lua_State *Lua, OBJECTPTR obj)
+[[nodiscard]] static int object_find_ptr(lua_State *Lua, OBJECTPTR obj)
 {
    // Private objects discovered by obj.find() have to be treated as an external reference at all times
    // (access must controlled by access_object() and release_object() calls).
 
-   auto_load_include(Lua, obj->Class);
+   load_include_for_class(Lua, obj->Class);
 
    auto def = (object *)lua_newuserdata(Lua, sizeof(object)); // +1 stack
    clearmem(def, sizeof(object));
@@ -678,16 +694,16 @@ static int object_find_ptr(lua_State *Lua, OBJECTPTR obj)
    return 1;
 }
 
-static int object_find(lua_State *Lua)
+[[nodiscard]] static int object_find(lua_State *Lua)
 {
    pf::Log log("object.find");
    CSTRING object_name;
    CLASSID class_id;
    OBJECTID object_id;
 
-   LONG type = lua_type(Lua, 1);
+   int type = lua_type(Lua, 1);
    if ((type IS LUA_TSTRING) and ((object_name = lua_tostring(Lua, 1)))) {
-      LONG class_type = lua_type(Lua, 2); // Optional
+      int class_type = lua_type(Lua, 2); // Optional
       if (class_type IS LUA_TNUMBER) {
          class_id = CLASSID(lua_tointeger(Lua, 2));
       }
@@ -699,10 +715,10 @@ static int object_find(lua_State *Lua)
       log.trace("obj.find(%s, $%.8x)", object_name, class_id);
 
       if ((iequals("self", object_name)) and (class_id IS CLASSID::NIL)) {
-         return object_find_ptr(Lua, Lua->Script);
+         return object_find_ptr(Lua, Lua->script);
       }
       else if (iequals("owner", object_name)) {
-         if (auto obj = Lua->Script->Owner) {
+         if (auto obj = Lua->script->Owner) {
             return object_find_ptr(Lua, obj);
          }
          else return 0;
@@ -718,7 +734,7 @@ static int object_find(lua_State *Lua)
 
       if (CheckObjectExists(object_id) != ERR::Okay) return 0;
 
-      if (auto obj = Lua->Script->Owner) {
+      if (auto obj = Lua->script->Owner) {
          return object_find_ptr(Lua, obj);
       }
    }
@@ -732,7 +748,7 @@ static int object_find(lua_State *Lua)
 //
 // Returns the MetaClass for an object, representing it as an inspectable object.
 
-static int object_class(lua_State *Lua)
+[[nodiscard]] static int object_class(lua_State *Lua)
 {
    object *query;
    if (!(query = (object *)get_meta(Lua, 1, "Fluid.obj"))) {
@@ -780,8 +796,8 @@ static int object_children(lua_State *Lua)
 
    pf::vector<ChildEntry> list;
    if (ListChildren(def->UID, &list) IS ERR::Okay) {
-      LONG index = 0;
-      auto id = std::make_unique<LONG[]>(list.size());
+      int index = 0;
+      auto id = std::make_unique<int[]>(list.size());
       for (auto &rec : list) {
          if (class_id != CLASSID::NIL) {
             if (rec.ClassID IS class_id) id[index++] = rec.ObjectID;
@@ -789,11 +805,11 @@ static int object_children(lua_State *Lua)
          else id[index++] = rec.ObjectID;
       }
 
-      make_table(Lua, FD_INT, index, id.get());
+      make_array(Lua, AET::INT32, index, id.get());
    }
-   else make_table(Lua, FD_INT, 0, nullptr);
+   else make_array(Lua, AET::INT32);
 
-   return 1; // make_table() always returns a value even if it is nil
+   return 1; // make_array() always returns a value even if it is nil
 }
 
 //********************************************************************************************************************
@@ -915,9 +931,9 @@ static int object_subscribe(lua_State *Lua)
    log.trace("Object: %d, Action: %s (ID %d)", def->UID, action, action_id);
 
    auto callback = C_FUNCTION(notify_action);
-   callback.Context = Lua->Script;
+   callback.Context = Lua->script;
    if (auto error = SubscribeAction(obj, action_id, &callback); error IS ERR::Okay) {
-      auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+      auto prv = (prvFluid *)Lua->script->ChildPrivate;
       auto &acsub = prv->ActionList.emplace_back();
 
       if (!lua_isnil(Lua, 3)) { // A custom reference for the callback can be specified in arg 3.
@@ -971,17 +987,15 @@ static int object_unsubscribe(lua_State *Lua)
 
    log.trace("Object: %d, Action: %s", def->UID, action);
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-   for (auto it=prv->ActionList.begin(); it != prv->ActionList.end(); ) {
-      if ((it->ObjectID IS def->UID) and
-          ((action_id IS AC::NIL) or (it->ActionID IS action_id))) {
-         luaL_unref(Lua, LUA_REGISTRYINDEX, it->Function);
-         if (it->Reference) luaL_unref(Lua, LUA_REGISTRYINDEX, it->Reference);
-         it = prv->ActionList.erase(it);
-         continue;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
+   std::erase_if(prv->ActionList, [&](auto& item) {
+      bool should_remove = (item.ObjectID IS def->UID) and ((action_id IS AC::NIL) or (item.ActionID IS action_id));
+      if (should_remove) {
+         luaL_unref(Lua, LUA_REGISTRYINDEX, item.Function);
+         if (item.Reference) luaL_unref(Lua, LUA_REGISTRYINDEX, item.Reference);
       }
-      it++;
-   }
+      return should_remove;
+   });
 
    return 0;
 }
@@ -1001,7 +1015,7 @@ static int object_delaycall(lua_State *Lua)
 // Fluid's environment.  This is commonplace for UI objects.  In addition the object's class may have been removed if
 // the termination process is running during an expunge.
 
-static int object_destruct(lua_State *Lua)
+[[nodiscard]] static int object_destruct(lua_State *Lua)
 {
    if (auto def = (object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
       while (def->AccessCount > 0) release_object(def);
@@ -1012,7 +1026,7 @@ static int object_destruct(lua_State *Lua)
          // owned by a Database object).
 
          if (auto obj = GetObjectPtr(def->UID)) {
-            if ((obj->Class->BaseClassID IS CLASSID::RECORDSET) or (obj->Owner IS Lua->Script) or (obj->ownerID() IS Lua->Script->TargetID)) {
+            if ((obj->Class->BaseClassID IS CLASSID::RECORDSET) or (obj->Owner IS Lua->script) or (obj->ownerID() IS Lua->script->TargetID)) {
                pf::Log log("obj.destruct");
                log.trace("Freeing Fluid-owned object #%d.", def->UID);
                FreeResource(obj); // We can't presume that the object pointer would be valid
@@ -1061,7 +1075,7 @@ static int object_init(lua_State *Lua)
 //********************************************************************************************************************
 // Prints the object interface as the object ID, e.g. #-10513
 
-static int object_tostring(lua_State *Lua)
+[[nodiscard]] static int object_tostring(lua_State *Lua)
 {
    if (auto def = (object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
       pf::Log log("obj.tostring");
@@ -1076,7 +1090,7 @@ static int object_tostring(lua_State *Lua)
 // Support for pairs() allows the meta fields of the object to be iterated.  Note that in next_pair(), the object
 // interface isn't used but could be pushed as an upvalue if needed.
 
-static int object_next_pair(lua_State *Lua)
+[[nodiscard]] static int object_next_pair(lua_State *Lua)
 {
    auto fields = (Field *)lua_touserdata(Lua, lua_upvalueindex(1));
    int field_total = lua_tointeger(Lua, lua_upvalueindex(2));
@@ -1093,7 +1107,7 @@ static int object_next_pair(lua_State *Lua)
    else return 0; // Terminates the iteration
 }
 
-static int object_pairs(lua_State *Lua)
+[[nodiscard]] static int object_pairs(lua_State *Lua)
 {
    if (auto def = (object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
       Field *fields;
@@ -1114,7 +1128,7 @@ static int object_pairs(lua_State *Lua)
 //********************************************************************************************************************
 // Similar to pairs(), but returns each field index and its name.
 
-static int object_next_ipair(lua_State *Lua)
+[[nodiscard]] static int object_next_ipair(lua_State *Lua)
 {
    auto fields = (Field *)lua_touserdata(Lua, lua_upvalueindex(1));
    int field_total = lua_tointeger(Lua, lua_upvalueindex(2));
@@ -1128,7 +1142,7 @@ static int object_next_ipair(lua_State *Lua)
    else return 0; // Terminates the iteration
 }
 
-static int object_ipairs(lua_State *Lua)
+[[nodiscard]] static int object_ipairs(lua_State *Lua)
 {
    if (auto def = (object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
       Field *fields;
@@ -1177,27 +1191,12 @@ void register_object_class(lua_State *Lua)
    log.trace("Registering object interface.");
 
    luaL_newmetatable(Lua, "Fluid.obj");
+   lua_pushstring(Lua, "Fluid.obj");
+   lua_setfield(Lua, -2, "__name");    // metatable.__name = "Fluid.obj"
    lua_pushstring(Lua, "__index");
    lua_pushvalue(Lua, -2);  // pushes the metatable
    lua_settable(Lua, -3);   // metatable.__index = metatable
 
    luaL_openlib(Lua, nullptr, objectlib_methods, 0);
    luaL_openlib(Lua, "obj", objectlib_functions, 0);
-
-   OJH_init        = simple_hash("init");
-   OJH_free        = simple_hash("free");
-   OJH_lock        = simple_hash("lock");
-   OJH_children    = simple_hash("children");
-   OJH_detach      = simple_hash("detach");
-   OJH_get         = simple_hash("get");
-   OJH_new         = simple_hash("new");
-   OJH_state_dep   = simple_hash("state"); // Deprecated, use _state
-   OJH_state       = simple_hash("_state");
-   OJH_getKey      = simple_hash("getKey");
-   OJH_set         = simple_hash("set");
-   OJH_setKey      = simple_hash("setKey");
-   OJH_delayCall   = simple_hash("delayCall");
-   OJH_exists      = simple_hash("exists");
-   OJH_subscribe   = simple_hash("subscribe");
-   OJH_unsubscribe = simple_hash("unsubscribe");
 }

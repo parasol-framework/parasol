@@ -94,7 +94,7 @@ void doc_menu::refresh()
    pf::Log log(__FUNCTION__);
 
    const double HGAP = std::trunc(m_font_size * 0.2);
-   LONG total_icons = 0;
+   int total_icons = 0;
 
    std::ostringstream buf;
    buf << "<body margins=\"" << HGAP << " " << HGAP << " " << HGAP << " " << 0 << "\" " <<

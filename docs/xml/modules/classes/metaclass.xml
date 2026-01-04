@@ -70,7 +70,7 @@
    { AC::SaveToObject,  PIC_SaveToObject },
    { AC::Seek,          PIC_Seek },
    { AC::Write,         PIC_Write },
-   { 0, NULL }
+   { AC::NIL, nullptr }
 };
 </pre>
 <p>Note: Never refer to method ID's in an action list - the <fl>Methods</fl> field is provided for this purpose.</p>

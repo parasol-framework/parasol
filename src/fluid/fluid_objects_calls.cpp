@@ -8,8 +8,8 @@ static int object_action_call_args(lua_State *Lua)
    AC action_id = AC(lua_tointeger(Lua, lua_upvalueindex(2)));
    bool release = false;
 
-   auto argbuffer = std::make_unique<BYTE[]>(glActions[int(action_id)].Size+8); // +8 for overflow protection in build_args()
-   ERR error = build_args(Lua, glActions[int(action_id)].Args, glActions[int(action_id)].Size, argbuffer.get(), NULL);
+   auto argbuffer = std::make_unique<int8_t[]>(glActions[int(action_id)].Size+8); // +8 for overflow protection in build_args()
+   ERR error = build_args(Lua, glActions[int(action_id)].Args, glActions[int(action_id)].Size, argbuffer.get(), nullptr);
    if (error != ERR::Okay) {
       luaL_error(Lua, "Argument build failure for %s.", glActions[int(action_id)].Name);
       return 0;
@@ -44,9 +44,9 @@ static int object_action_call(lua_State *Lua)
    ERR error;
    bool release = false;
 
-   if (def->ObjectPtr) error = Action(action_id, def->ObjectPtr, NULL);
+   if (def->ObjectPtr) error = Action(action_id, def->ObjectPtr, nullptr);
    else if (auto obj = access_object(def)) {
-      error = Action(action_id, obj, NULL);
+      error = Action(action_id, obj, nullptr);
       release = true;
    }
    else error = ERR::AccessObject;
@@ -66,7 +66,7 @@ static int object_method_call_args(lua_State *Lua)
    auto def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
    auto method = (MethodEntry *)lua_touserdata(Lua, lua_upvalueindex(2));
 
-   auto argbuffer = std::make_unique<BYTE[]>(method->Size+8); // +8 for overflow protection in build_args()
+   auto argbuffer = std::make_unique<int8_t[]>(method->Size+8); // +8 for overflow protection in build_args()
    int resultcount;
    ERR error = build_args(Lua, method->Args, method->Size, argbuffer.get(), &resultcount);
    if (error != ERR::Okay) {
@@ -86,7 +86,7 @@ static int object_method_call_args(lua_State *Lua)
 
    lua_pushinteger(Lua, int(error));
 
-   results += get_results(Lua, method->Args, (const BYTE *)argbuffer.get());
+   results += get_results(Lua, method->Args, (const int8_t *)argbuffer.get());
 
    if (release) release_object(def);
    report_action_error(Lua, def, method->Name, error);
@@ -102,9 +102,9 @@ static int object_method_call(lua_State *Lua)
    bool release = false;
    auto method = (MethodEntry *)lua_touserdata(Lua, lua_upvalueindex(2));
 
-   if (def->ObjectPtr) error = Action(method->MethodID, def->ObjectPtr, NULL);
+   if (def->ObjectPtr) error = Action(method->MethodID, def->ObjectPtr, nullptr);
    else if (auto obj = access_object(def)) {
-      error = Action(method->MethodID, obj, NULL);
+      error = Action(method->MethodID, obj, nullptr);
       release = true;
    }
    else error = ERR::AccessObject;
@@ -119,7 +119,7 @@ static int object_method_call(lua_State *Lua)
 //********************************************************************************************************************
 // Build argument buffer for actions and methods.
 
-ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, BYTE *argbuffer, int *ResultCount)
+ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, int8_t *argbuffer, int *ResultCount)
 {
    pf::Log log(__FUNCTION__);
 
@@ -140,26 +140,22 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, BYTE *ar
       //log.trace("Processing arg %s, type $%.8x", args[i].Name, args[i].Type);
 
       if ((args[i].Type & FD_BUFFER) or (args[i+1].Type & FD_BUFSIZE)) {
-         #ifdef _LP64
-            j = ALIGN64(j);
-         #endif
-         if (auto array = (struct array *)get_meta(Lua, n, "Fluid.array")) {
+         j = ALIGN64(j);
+         if (type IS LUA_TARRAY) {
             //log.trace("Arg: %s, Value: Buffer (Source is Memory)", args[i].Name);
 
-            ((APTR *)(argbuffer + j))[0] = array->ptrVoid;
+            auto array = lua_toarray(Lua, n);
+            ((APTR *)(argbuffer + j))[0] = array->arraydata();
             j += sizeof(APTR);
 
             if (args[i+1].Type & FD_BUFSIZE) {
-               // Buffer size is optional, so set the buffer size parameter by default.  The user can override it if
+               // Buffer size is optional (can be nil), so set the buffer size parameter by default.  The user can override it if
                // more arguments are specified in the function call.
 
-               int memsize = array->ArraySize;
-               if (args[i+1].Type & FD_INT)  ((int *)(argbuffer + j))[0] = memsize;
-               else if (args[i+1].Type & FD_INT64) ((LARGE *)(argbuffer + j))[0] = memsize;
-               //log.trace("Preset buffer size of %d bytes.", memsize);
+               size_t memsize = array->len * array->elemsize;
+               if (args[i+1].Type & FD_INT)  ((int *)(argbuffer + j))[0] = int(memsize);
+               else if (args[i+1].Type & FD_INT64) ((int64_t *)(argbuffer + j))[0] = int64_t(memsize);
             }
-
-            //n--; // Adjustment required due to successful get_meta()
          }
          else if (auto fstruct = (struct fstruct *)get_meta(Lua, n, "Fluid.struct")) {
             //log.trace("Arg: %s, Value: Buffer (Source is a struct)", args[i].Name);
@@ -168,29 +164,11 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, BYTE *ar
             j += sizeof(APTR);
 
             if (args[i+1].Type & FD_BUFSIZE) {
-               // Buffer size is optional, so set the buffer size parameter by default.
+               // Buffer size is optional (can be nil), so set the buffer size parameter by default.
                // The user can override it if more arguments are specified in the function call.
 
                if (args[i+1].Type & FD_INT) ((int *)(argbuffer + j))[0] = fstruct->AlignedSize;
-               else if (args[i+1].Type & FD_INT64) ((LARGE *)(argbuffer + j))[0] = fstruct->AlignedSize;
-            }
-            n--; // Adjustment required due to successful get_meta()
-         }
-         else if (auto farray = (struct array *)get_meta(Lua, n, "Fluid.array")) {
-            //log.trace("Arg: %s, Value: Buffer (Source is a array)", args[i].Name);
-
-            ((APTR *)(argbuffer + j))[0] = farray->ptrPointer;
-            j += sizeof(APTR);
-
-            if (args[i+1].Type & FD_BUFSIZE) {
-               // Buffer size is optional, so set the buffer size parameter by default.  The user can
-               // override it if more arguments are specified in the function call.
-
-               //log.trace("Advance setting of following BUFSIZE parameter to %d", farray->ArraySize);
-
-               if (args[i+1].Type & FD_INT) ((int *)(argbuffer + j))[0] = farray->ArraySize;
-               else if (args[i+1].Type & FD_INT64) ((LARGE *)(argbuffer + j))[0] = farray->ArraySize;
-               else log.trace("Cannot set BUFSIZE argument - unknown type.");
+               else if (args[i+1].Type & FD_INT64) ((int64_t *)(argbuffer + j))[0] = fstruct->AlignedSize;
             }
             n--; // Adjustment required due to successful get_meta()
          }
@@ -203,7 +181,7 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, BYTE *ar
 
             if (args[i+1].Type & FD_BUFSIZE) {
                if (args[i+1].Type & FD_INT) ((int *)(argbuffer + j))[0] = len;
-               else if (args[i+1].Type & FD_INT64) ((LARGE *)(argbuffer + j))[0] = len;
+               else if (args[i+1].Type & FD_INT64) ((int64_t *)(argbuffer + j))[0] = len;
             }
          }
          else if (type IS LUA_TNUMBER) {
@@ -217,14 +195,12 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, BYTE *ar
          }
       }
       else if (args[i].Type & FD_STR) {
-         #ifdef _LP64
-            j = ALIGN64(j);
-         #endif
+         j = ALIGN64(j);
          if ((type IS LUA_TSTRING) or (type IS LUA_TNUMBER)) {
             ((CSTRING *)(argbuffer + j))[0] = lua_tostring(Lua, n);
          }
          else if (type <= 0) {
-            ((CSTRING *)(argbuffer + j))[0] = NULL;
+            ((CSTRING *)(argbuffer + j))[0] = nullptr;
          }
          else if ((type IS LUA_TUSERDATA) or (type IS LUA_TLIGHTUSERDATA)) {
             luaL_error(Lua, "Arg #%d (%s) requires a string and not untyped pointer.", i, args[i].Name);
@@ -236,9 +212,7 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, BYTE *ar
          j += sizeof(STRING);
       }
       else if (args[i].Type & FD_PTR) {
-         #ifdef _LP64
-            j = ALIGN64(j);
-         #endif
+         j = ALIGN64(j);
          if (args[i].Type & FD_OBJECT) {
             struct object *object;
             if ((object = (struct object *)get_meta(Lua, n, "Fluid.obj"))) {
@@ -252,10 +226,10 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, BYTE *ar
                }
                else {
                   log.warning("Unable to resolve object pointer for #%d.", object->UID);
-                  ((OBJECTPTR *)(argbuffer + j))[0] = NULL;
+                  ((OBJECTPTR *)(argbuffer + j))[0] = nullptr;
                }
             }
-            else ((OBJECTPTR *)(argbuffer + j))[0] = NULL;
+            else ((OBJECTPTR *)(argbuffer + j))[0] = nullptr;
          }
          else if (args[i].Type & FD_FUNCTION) {
             if ((type IS LUA_TSTRING) or (type IS LUA_TFUNCTION)) {
@@ -264,11 +238,11 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, BYTE *ar
                if (AllocMemory(sizeof(FUNCTION), MEM::DATA, &func) IS ERR::Okay) {
                   if (type IS LUA_TSTRING) {
                      lua_getglobal(Lua, lua_tostring(Lua, n));
-                     *func = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+                     *func = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
                   }
                   else {
                      lua_pushvalue(Lua, n);
-                     *func = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+                     *func = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
                   }
 
                   ((FUNCTION **)(argbuffer + j))[0] = func;
@@ -287,14 +261,14 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, BYTE *ar
             luaL_argerror(Lua, n, "Unable to convert number to a pointer.");
             return ERR::WrongType;
          }
+         else if (type IS LUA_TARRAY) {
+            auto array = arrayV(Lua, n);
+            ((APTR *)(argbuffer + j))[0] = array->arraydata();
+         }
          else {
             //log.trace("Arg: %s, Value: Pointer, SrcType: %s", args[i].Name, lua_typename(Lua, type));
 
-            if (auto array = (struct array *)get_meta(Lua, n, "Fluid.array")) {
-               ((APTR *)(argbuffer + j))[0] = array->ptrVoid;
-               //n--; // Adjustment required due to successful get_meta()
-            }
-            else if (auto fstruct = (struct fstruct *)get_meta(Lua, n, "Fluid.struct")) {
+            if (auto fstruct = (struct fstruct *)get_meta(Lua, n, "Fluid.struct")) {
                ((APTR *)(argbuffer + j))[0] = fstruct->Data;
                //n--; // Adjustment required due to successful get_meta()
             }
@@ -325,9 +299,9 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, BYTE *ar
       }
       else if (args[i].Type & FD_INT64) {
          j = ALIGN64(j);
-         ((LARGE *)(argbuffer + j))[0] = lua_tointeger(Lua, n);
+         ((int64_t *)(argbuffer + j))[0] = lua_tointeger(Lua, n);
          //log.trace("Arg: %s, Value: %" PF64, args[i].Name, ((LARGE *)(argbuffer + j))[0]);
-         j += sizeof(LARGE);
+         j += sizeof(int64_t);
       }
       else {
          log.warning("Unsupported arg %s, flags $%.8x, aborting now.", args[i].Name, args[i].Type);
@@ -348,7 +322,7 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, BYTE *ar
 
 // Note: Please refer to process_results() in fluid_module.c for the 'official' take on result handling.
 
-static int get_results(lua_State *Lua, const FunctionField *args, const BYTE *ArgBuf)
+static int get_results(lua_State *Lua, const FunctionField *args, const int8_t *ArgBuf)
 {
    pf::Log log(__FUNCTION__);
    int i;
@@ -362,17 +336,17 @@ static int get_results(lua_State *Lua, const FunctionField *args, const BYTE *Ar
       if (type & FD_ARRAY) { // Pointer to an array.
          if (sizeof(APTR) IS 8) of = ALIGN64(of);
          if (type & FD_RESULT) {
-            int total_elements = -1;  // If -1, make_any_table() assumes the array is null terminated.
+            int total_elements = -1;  // If -1, make_any_array() assumes the array is null terminated.
             if (args[i+1].Type & FD_ARRAYSIZE) {
                const APTR size_var = ((APTR *)(ArgBuf + of + sizeof(APTR)))[0];
                if (args[i+1].Type & FD_INT) total_elements = ((int *)size_var)[0];
-               else if (args[i+1].Type & FD_INT64) total_elements = ((LARGE *)size_var)[0];
+               else if (args[i+1].Type & FD_INT64) total_elements = ((int64_t *)size_var)[0];
                else log.warning("Invalid parameter definition for '%s' of $%.8x", args[i+1].Name, args[i+1].Type);
             }
 
             CPTR values = ((APTR *)(ArgBuf + of))[0];
             if (values) {
-               make_any_table(Lua, type, args[i].Name, total_elements, values);
+               make_any_array(Lua, type, args[i].Name, total_elements, values);
                if (type & FD_ALLOC) FreeResource(values);
             }
             else lua_pushnil(Lua);
@@ -401,7 +375,7 @@ static int get_results(lua_State *Lua, const FunctionField *args, const BYTE *Ar
             RMSG("Result-Arg: %s, Struct: %p", args[i].Name, ptr_struct);
             if (ptr_struct) {
                if (type & FD_RESOURCE) {
-                  push_struct(Lua->Script, ptr_struct, args[i].Name, (type & FD_ALLOC) ? true : false, false);
+                  push_struct(Lua->script, ptr_struct, args[i].Name, (type & FD_ALLOC) ? true : false, false);
                }
                else {
                   if (named_struct_to_table(Lua, args[i].Name, ptr_struct) != ERR::Okay) {
@@ -489,11 +463,11 @@ static int get_results(lua_State *Lua, const FunctionField *args, const BYTE *Ar
       else if (type & FD_INT64) {
          of = ALIGN64(of);
          if (type & FD_RESULT) {
-            RMSG("Result-Arg: %s, Value: %" PF64 " (Large)", args[i].Name, ((LARGE *)(ArgBuf+of))[0]);
-            lua_pushnumber(Lua, ((LARGE *)(ArgBuf+of))[0]);
+            RMSG("Result-Arg: %s, Value: %" PF64 " (Large)", args[i].Name, ((int64_t *)(ArgBuf+of))[0]);
+            lua_pushnumber(Lua, ((int64_t *)(ArgBuf+of))[0]);
             total++;
          }
-         of += sizeof(LARGE);
+         of += sizeof(int64_t);
       }
       else if (type & FD_TAGS) {
          // Tags come last and have no result

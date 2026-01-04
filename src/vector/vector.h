@@ -1017,7 +1017,7 @@ inline double fast_inv_sqrt(double x) {
         double d;
         uint64_t i;
     } conv = {.d = x};
-    
+
     conv.i = 0x5fe6eb50c7b537a9ULL - (conv.i >> 1);  // Magic number for double
     conv.d *= 1.5 - (x * 0.5 * conv.d * conv.d);    // One Newton-Raphson iteration
     conv.d *= 1.5 - (x * 0.5 * conv.d * conv.d);    // Second iteration for better accuracy

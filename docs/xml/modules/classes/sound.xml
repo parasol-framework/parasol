@@ -310,7 +310,7 @@ proc.sleep()  -- Wait for completion
       <access read="R" write="S">Read/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The Pan field adjusts the "horizontal position" of a sample that is being played through stereo speakers. The default value for this field is zero, which plays the sound through both speakers at an equal level.  The minimum value is <code>-1.0</code> to force play through the left speaker and the maximum value is <code>1.0</code> for the right speaker.</p>
+<p>The Pan field adjusts the &quot;horizontal position&quot; of a sample that is being played through stereo speakers. The default value for this field is zero, which plays the sound through both speakers at an equal level.  The minimum value is <code>-1.0</code> to force play through the left speaker and the maximum value is <code>1.0</code> for the right speaker.</p>
       </description>
     </field>
 

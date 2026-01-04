@@ -28,7 +28,7 @@ The REST API and documentation on how to use Backstage is documented in the Para
 
 using namespace pf;
 
-static OBJECTPTR modNetwork = NULL;
+static OBJECTPTR modNetwork = nullptr;
 
 JUMPTABLE_CORE
 JUMPTABLE_NETWORK
@@ -49,23 +49,24 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // Parse commandline arguments to confirm if the user wants to enable Backstage.
 
-   auto info = (OpenInfo *)GetResourcePtr(RES::OPEN_INFO);
-   for (int i=0; i < info->ArgCount; i++) {
-      if (pf::iequals(info->Args[i], "--backstage")) {
-         if (i + 1 < info->ArgCount) {
-            int port = atoi(info->Args[i + 1]);
-            if (port > 0) {
-               init_backstage(port);
-               break;
+   if (auto info = (OpenInfo *)GetResourcePtr(RES::OPEN_INFO)) {
+      for (int i=0; i < info->ArgCount; i++) {
+         if (pf::iequals(info->Args[i], "--backstage")) {
+      	   if (i + 1 < info->ArgCount) {
+      		   int port = atoi(info->Args[i + 1]);
+      		   if (port > 0) {
+      		      init_backstage(port);
+      		      break;
+      	      }
+               else {
+                  log.warning("Invalid port number %d specified for --backstage.", port);
+                  return ERR::InvalidValue;
+               }
             }
             else {
-               log.warning("Invalid port number %d specified for --backstage.", port);
-               return ERR::InvalidValue;
+               log.warning("No port specified for --backstage.");
+               return ERR::Failed;
             }
-         }
-         else {
-            log.warning("No port specified for --backstage.");
-            return ERR::Failed;
          }
       }
    }
@@ -77,7 +78,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERR MODExpunge(void)
 {
-   if (modNetwork) { FreeResource(modNetwork); modNetwork = NULL; }
+   if (modNetwork) { FreeResource(modNetwork); modNetwork = nullptr; }
    return ERR::Okay;
 }
 
@@ -126,6 +127,6 @@ ERR init_backstage(int Port)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, NULL, NULL, MODExpunge, MOD_IDL, NULL)
+PARASOL_MOD(MODInit, nullptr, nullptr, MODExpunge, nullptr, MOD_IDL, nullptr)
 extern "C" struct ModHeader * register_backstage_module() { return &ModHeader; }
 

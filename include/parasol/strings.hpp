@@ -1,3 +1,5 @@
+// NB: Keep this code as pure C++ (no external library dependencies)
+
 #pragma once
 
 #include <sstream>
@@ -5,6 +7,10 @@
 #include <cctype>
 #include <string_view>
 #include <charconv>
+#include <concepts>
+#include <ranges>
+#include <span>
+#include <cstdint>
 
 namespace pf {
 
@@ -17,7 +23,7 @@ void split(InType Input, OutIt Output, char Sep = ',') noexcept
    auto end = Input.end();
    auto current = begin;
    while (begin != end) {
-      if (*begin IS Sep) {
+      if (*begin == Sep) {
          *Output++ = std::string(current, begin);
          current = ++begin;
       }
@@ -67,7 +73,7 @@ inline void camelcase(std::string &s) noexcept {
 {
    if (lhs.size() != rhs.size()) return false;
    return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), [](char a, char b) {
-       return std::tolower(static_cast<unsigned char>(a)) IS std::tolower(static_cast<unsigned char>(b));
+       return std::tolower((uint8_t)(a)) == std::tolower((uint8_t)(b));
    });
 }
 
@@ -80,13 +86,13 @@ inline void camelcase(std::string &s) noexcept {
    std::size_t w = 0, s = 0;
    while ((w < Wildcard.size()) and (s < String.size())) {
       bool fail = false;
-      if (Wildcard[w] IS '*') {
-         while (w < Wildcard.size() and Wildcard[w] IS '*') w++;
-         if (w IS Wildcard.size()) return true; // Wildcard terminated with a '*'; rest of String will match.
+      if (Wildcard[w] == '*') {
+         while (w < Wildcard.size() and Wildcard[w] == '*') w++;
+         if (w == Wildcard.size()) return true; // Wildcard terminated with a '*'; rest of String will match.
 
          auto i = Wildcard.find_first_of("*|", w); // Count the printable characters after the '*'
 
-         if ((i != std::string::npos) and (Wildcard[i] IS '|')) {
+         if ((i != std::string::npos) and (Wildcard[i] == '|')) {
             // Scan to the end of the string for wildcard situation like "*.txt"
 
             auto printable = i - w;
@@ -97,33 +103,35 @@ inline void camelcase(std::string &s) noexcept {
          else { // Skip past the non-matching characters
             while (s < String.size()) {
                if (Case) {
-                  if (Wildcard[w] IS String[s]) break;
+                  if (Wildcard[w] == String[s]) break;
                }
                else {
-                  auto char1 = std::tolower(static_cast<unsigned char>(Wildcard[w]));
-                  auto char2 = std::tolower(static_cast<unsigned char>(String[s]));
-                  if (char1 IS char2) break;
+                  auto char1 = std::tolower((uint8_t)(Wildcard[w]));
+                  auto char2 = std::tolower((uint8_t)(String[s]));
+                  if (char1 == char2) break;
                }
                s++;
             }
+            // If we reached end of string without finding the required character, fail
+            if (s == String.size()) fail = true;
          }
       }
-      else if (Wildcard[w] IS '?') { // Do not compare ? wildcards
+      else if (Wildcard[w] == '?') { // Do not compare ? wildcards
          w++;
          s++;
       }
-      else if ((Wildcard[w] IS '\\') and (w+1 < Wildcard.size())) { // Escape character
+      else if ((Wildcard[w] == '\\') and (w+1 < Wildcard.size())) { // Escape character
          w++;
          if (Case) {
             if (Wildcard[w++] != String[s++]) fail = true;
          }
          else {
-            auto char1 = std::tolower(static_cast<unsigned char>(Wildcard[w++]));
-            auto char2 = std::tolower(static_cast<unsigned char>(String[s++]));
+            auto char1 = std::tolower((uint8_t)(Wildcard[w++]));
+            auto char2 = std::tolower((uint8_t)(String[s++]));
             if (char1 != char2) fail = true;
          }
       }
-      else if ((Wildcard[w] IS '|') and (w + 1 < Wildcard.size())) {
+      else if ((Wildcard[w] == '|') and (w + 1 < Wildcard.size())) {
          w++;
          String = Original; // Restart the comparison
          s = 0;
@@ -133,8 +141,8 @@ inline void camelcase(std::string &s) noexcept {
             if (Wildcard[w++] != String[s++]) fail = true;
          }
          else {
-            auto char1 = std::tolower(static_cast<unsigned char>(Wildcard[w++]));
-            auto char2 = std::tolower(static_cast<unsigned char>(String[s++]));
+            auto char1 = std::tolower((uint8_t)(Wildcard[w++]));
+            auto char2 = std::tolower((uint8_t)(String[s++]));
             if (char1 != char2) fail = true;
          }
       }
@@ -143,7 +151,7 @@ inline void camelcase(std::string &s) noexcept {
          // Check for an or character, if we find one, we can restart the comparison process.
 
          auto or_index = Wildcard.find('|', w);
-         if (or_index IS std::string::npos) return false;
+         if (or_index == std::string::npos) return false;
 
          w = or_index + 1;
          String = Original;
@@ -151,34 +159,33 @@ inline void camelcase(std::string &s) noexcept {
       }
    }
 
-   if (String.size() IS s) {
-      if (w IS Wildcard.size() or Wildcard[w] IS '|') return true;
+   if (String.size() == s) {
+      if (w == Wildcard.size() or Wildcard[w] == '|') return true;
    }
 
-   if ((w < Wildcard.size()) and (Wildcard[w] IS '*')) return true;
+   while (w < Wildcard.size() && Wildcard[w] == '*') w++;
 
-   return false;
+   return (w == Wildcard.size() && s == String.size());
 }
 
 // A case insensitive alternative to std::string_view.starts_with()
 
-[[nodiscard]] inline bool startswith(const std::string_view StringA, const std::string_view StringB) noexcept
+[[nodiscard]] inline bool startswith(const std::string_view Prefix, const std::string_view String) noexcept
 {
-   if (StringA.size() > StringB.size()) return false;
-   return std::equal(StringA.begin(), StringA.end(), StringB.begin(), [](char a, char b) {
-       return std::tolower(static_cast<unsigned char>(a)) IS std::tolower(static_cast<unsigned char>(b));
-   });
+   if (Prefix.size() > String.size()) return false;
+   return std::ranges::equal(Prefix, String.substr(0, Prefix.size()),
+                            [](char a, char b) { return std::tolower((uint8_t)(a)) == std::tolower((uint8_t)(b)); });
 }
 
-[[nodiscard]] inline bool startswith(const std::string_view StringA, CSTRING StringB) noexcept
+[[nodiscard]] inline bool startswith(const std::string_view Prefix, const char * String) noexcept
 {
-   for (std::size_t i = 0; i < StringA.size(); i++) {
-      if (std::tolower(StringA[i]) != std::tolower(StringB[i])) return false;
+   for (std::size_t i = 0; i < Prefix.size(); i++) {
+      if (std::tolower(Prefix[i]) != std::tolower(String[i])) return false;
    }
    return true;
 }
 
-// Inline C++ implementations of the StrHash() function
+// Standardised hash functions, case sensitive and insensitive versions
 
 [[nodiscard]] constexpr inline uint32_t strhash(const std::string_view String) noexcept
 {
@@ -199,13 +206,15 @@ inline void camelcase(std::string &s) noexcept {
    return hash;
 }
 
-template <class T> inline LONG strcopy(T &&Source, STRING Dest, LONG Length = 0x7fffffff) noexcept
+// Simple string copy
+
+template <class T> inline int strcopy(T &&Source, char *Dest, int Length = 0x7fffffff) noexcept
 {
    auto src = to_cstring(Source);
    if ((Length > 0) and (src) and (Dest)) {
-      LONG i = 0;
+      int i = 0;
       while (*src) {
-         if (i IS Length) {
+         if (i == Length) {
             Dest[i-1] = 0;
             return i;
          }
@@ -218,16 +227,31 @@ template <class T> inline LONG strcopy(T &&Source, STRING Dest, LONG Length = 0x
    else return 0;
 }
 
+// String copy using std::span for better memory safety
+
+template <class T, std::size_t N>
+inline int strcopy(T &&Source, std::span<char, N> Dest) noexcept
+{
+   auto src = to_cstring(Source);
+   if (src and not Dest.empty()) {
+      std::size_t i = 0;
+      while (*src and i < Dest.size() - 1) Dest[i++] = *src++;
+      Dest[i] = 0;
+      return int(i);
+   }
+   else return 0;
+}
+
 // Case-sensitive keyword search
 
-[[nodiscard]] inline LONG strsearch(const std::string_view Keyword, CSTRING String) noexcept
+[[nodiscard]] inline int strsearch(const std::string_view Keyword, const char * String) noexcept
 {
    size_t i;
    size_t pos = 0;
    while (String[pos]) {
       for (i=0; i < Keyword.size(); i++) if (String[pos+i] != Keyword[i]) break;
-      if (i IS Keyword.size()) return pos;
-      for (++pos; (String[pos] & 0xc0) IS 0x80; pos++);
+      if (i == Keyword.size()) return int(pos);
+      for (++pos; (String[pos] & 0xc0) == 0x80; pos++);
    }
 
    return -1;
@@ -235,61 +259,29 @@ template <class T> inline LONG strcopy(T &&Source, STRING Dest, LONG Length = 0x
 
 // Case-insensitive keyword search
 
-[[nodiscard]] inline LONG strisearch(const std::string_view Keyword, CSTRING String) noexcept
+[[nodiscard]] inline int strisearch(const std::string_view Keyword, const char * String) noexcept
 {
    size_t i;
    size_t pos = 0;
    while (String[pos]) {
       for (i=0; i < Keyword.size(); i++) if (std::toupper(String[pos+i]) != std::toupper(Keyword[i])) break;
-      if (i IS Keyword.size()) return pos;
-      for (++pos; (String[pos] & 0xc0) IS 0x80; pos++);
+      if (i == Keyword.size()) return int(pos);
+      for (++pos; (String[pos] & 0xc0) == 0x80; pos++);
    }
 
    return -1;
 }
 
-[[nodiscard]] inline STRING strclone(const std::string_view String) noexcept
-{
-   STRING newstr;
-   if (AllocMemory(String.size()+1, MEM::STRING, (APTR *)&newstr, NULL) IS ERR::Okay) {
-      copymem(String.data(), newstr, String.size()+1);
-      return newstr;
-   }
-   else return NULL;
-}
-
 // std::string_view conversion to numeric type.  Returns zero on error.
 // Leading whitespace is not ignored, unlike strtol() and strtod()
 
-template <class T> [[nodiscard]] T svtonum(const std::string_view String) noexcept {
+template <class T>
+requires std::is_arithmetic_v<T>
+[[nodiscard]] T svtonum(const std::string_view String) noexcept {
    T val;
    auto [ v, error ] = std::from_chars(String.data(), String.data() + String.size(), val);
-   if (error IS std::errc()) return val;
+   if (error == std::errc()) return val;
    else return 0;
-}
-
-// Speed efficient way of setting a string field that is managed with AllocMemory().
-
-inline ERR set_string_field(const std::string_view Source, STRING &Dest)
-{
-   MemInfo info;
-   if (auto error = MemoryIDInfo(GetMemoryID(Dest), &info, sizeof(info)); error IS ERR::Okay) {
-      if (Source.size()+1 < info.Size) {
-         copymem(Source.data(), Dest, Source.size());
-         Dest[Source.size()] = 0;
-         return ERR::Okay;
-      }
-      else {
-         FreeResource(GetMemoryID(Dest));
-         if (AllocMemory(Source.size() + 1, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Dest, NULL) IS ERR::Okay) {
-            copymem(Source.data(), Dest, Source.size());
-            Dest[Source.size()] = 0;
-            return ERR::Okay;
-         }
-         else return ERR::AllocMemory;
-      }
-   }
-   else return error;
 }
 
 } // namespace

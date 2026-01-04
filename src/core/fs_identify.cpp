@@ -35,8 +35,8 @@ Read
 ERR IdentifyFile(CSTRING Path, CLASSID Filter, CLASSID *ClassID, CLASSID *SubClassID)
 {
    pf::Log log(__FUNCTION__);
-   LONG i, bytes_read;
-   constexpr LONG HEADER_SIZE = 80;
+   int i, bytes_read;
+   constexpr int HEADER_SIZE = 80;
 
    if ((!Path) or (!ClassID)) return log.warning(ERR::NullArgs);
 
@@ -49,7 +49,7 @@ ERR IdentifyFile(CSTRING Path, CLASSID Filter, CLASSID *ClassID, CLASSID *SubCla
    std::string res_path;
    if (ClassID) *ClassID = CLASSID::NIL;
    if (SubClassID) *SubClassID = CLASSID::NIL;
-   UBYTE buffer[400] = { 0 };
+   uint8_t buffer[400] = { 0 };
 
    if (auto res_error = ResolvePath(Path, RSF::APPROXIMATE|RSF::PATH|RSF::CHECK_VIRTUAL, &res_path); res_error != ERR::Okay) {
       if (res_error IS ERR::VirtualVolume) {
@@ -133,7 +133,7 @@ ERR IdentifyFile(CSTRING Path, CLASSID Filter, CLASSID *ClassID, CLASSID *SubCla
                   }
 
                   header.remove_prefix(1);
-                  LONG offset = svtonum<LONG>(header);
+                  int offset = svtonum<int>(header);
                   if (auto i = header.find(':'); i != std::string::npos) header.remove_prefix(i + 1);
                   else break;
 
@@ -146,7 +146,7 @@ ERR IdentifyFile(CSTRING Path, CLASSID Filter, CLASSID *ClassID, CLASSID *SubCla
                         header.remove_prefix(1);
                      }
 
-                     UBYTE byte;
+                     uint8_t byte;
                      while (!header.empty()) {
                         // Nibble 1
                         if ((header[0] >= '0') and (header[0] <= '9')) byte = (header[0] - '0')<<4;

@@ -239,7 +239,10 @@
                         <li class="api-ref"><a class="rounded" href="../fluid.html">Fluid</a></li>
                         <li class="api-ref"><a class="rounded" href="../font.html">Font</a></li>
                         <li class="api-ref"><a class="rounded" href="../network.html">Network</a></li>
+                        <li class="api-ref"><a class="rounded" href="../regex.html">Regex</a></li>
                         <li class="api-ref"><a class="rounded" href="../vector.html">Vector</a></li>
+                        <li class="api-ref"><a class="rounded" href="../xml.html">XML</a></li>
+                        <li class="api-ref"><a class="rounded" href="../xquery.html">XQuery</a></li>
                       </ul>
                     </div>
                   </li>
@@ -274,9 +277,11 @@
                     <div class="collapse" id="data-collapse">
                       <ul class="btn-toggle-nav list-unstyled pb-1">
                         <li class="api-ref"><a class="rounded" href="compression.html">Compression</a></li>
+                        <li class="api-ref"><a class="rounded" href="compressedstream.html">CompressedStream</a></li>
                         <li class="api-ref"><a class="rounded" href="config.html">Config</a></li>
                         <li class="api-ref"><a class="rounded" href="script.html">Script</a></li>
                         <li class="api-ref"><a class="rounded" href="xml.html">XML</a></li>
+                        <li class="api-ref"><a class="rounded" href="xquery.html">XQuery</a></li>
                       </ul>
                     </div>
                   </li>
@@ -343,6 +348,7 @@
                         <li class="api-ref"><a class="rounded" href="clientsocket.html">ClientSocket</a></li>
                         <li class="api-ref"><a class="rounded" href="http.html">HTTP</a></li>
                         <li class="api-ref"><a class="rounded" href="netclient.html">NetClient</a></li>
+                        <li class="api-ref"><a class="rounded" href="netlookup.html">NetLookup</a></li>
                         <li class="api-ref"><a class="rounded" href="netsocket.html">NetSocket</a></li>
                         <li class="api-ref"><a class="rounded" href="proxy.html">Proxy</a></li>
                       </ul>
@@ -656,7 +662,7 @@
 
         <script type="text/javascript" src="../../js/bootstrap.bundle.min.js"></script>
         <script type="text/javascript" src="../../js/base.js"></script>
-        <script type="text/javascript">
+        <script type="text/javascript"><xsl:text disable-output-escaping="yes">
 const ready = fn => document.readyState !== 'loading' ? fn() : document.addEventListener('DOMContentLoaded', fn);
 
    var xslt = false;
@@ -703,7 +709,7 @@ ready(function(){
    }
 });
 
-         </script>
+         </xsl:text></script>
       </body>
     </html>
   </xsl:template>
