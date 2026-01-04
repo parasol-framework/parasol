@@ -32,7 +32,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testConnectionFailures()
+function ConnectionFailures()
    local proc = processing.new({ timeout = 2.0 })
    glPort = glPort + 1
 
@@ -123,7 +123,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testBufferOverflowHandling()
+function BufferOverflowHandling()
    local proc = processing.new({ timeout = 10.0 })
    local overflow_handled = false
    glPort = glPort + 1
@@ -205,7 +205,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testNetworkTimeouts()
+function NetworkTimeouts()
    local proc = processing.new({ timeout = 8.0 })
    local timeout_handled = false
    glPort = glPort + 1
@@ -249,7 +249,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testNTECloseHandling()
+function NTECloseHandling()
    local proc = processing.new({ timeout = 8.0 })
    local close_handled = false
    glPort = glPort + 1
@@ -324,7 +324,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testInvalidParameters()
+function InvalidParameters()
    print('Testing invalid parameter handling...')
    glPort = glPort + 1
 
@@ -359,7 +359,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testResourceCleanup()
+function ResourceCleanup()
    local proc = processing.new({ timeout = 5.0 })
    glPort = glPort + 1
 

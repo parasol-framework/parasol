@@ -2,7 +2,7 @@
 
    fluid = mod.load('fluid')
 
-@Test function testUnitTests()
+@Test function UnitTests()
    passed, total = mod.test(fluid)
    assert(passed is total, "Passed " .. passed .. " of " .. total .. " Fluid unit tests.  Use --log-api for details.")
    print('Passed all ' .. total .. ' embedded unit tests.')

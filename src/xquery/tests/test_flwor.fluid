@@ -5,7 +5,7 @@
 ----------------------------------------------------------------------------------------------------------------------
 -- Basic LET expressions should evaluate arithmetic results
 
-function testLetSimpleArithmetic()
+@Test function LetSimpleArithmetic()
    local xq = obj.new('xquery', { statement = 'let $price := 10.99 return $price * 1.1' })
    local err = xq.acActivate()
    local result = tonumber(xq.resultString)
@@ -16,7 +16,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Multiple bindings should be available inside the return clause
 
-function testLetMultipleBindings()
+@Test function LetMultipleBindings()
    local xq = obj.new('xquery', { statement = 'let $a := 5, $b := 10 return $a + $b' })
    local err = xq.acActivate()
    local result = tonumber(xq.resultString)
@@ -26,7 +26,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- LET expressions can combine node lookups with arithmetic
 
-function testLetDocumentComputation()
+@Test function LetDocumentComputation()
    local xml = obj.new("xml", {
       statement = '<catalog>' ..
                   '<book id="bk-1" price="25"/>' ..
@@ -42,7 +42,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Invalid LET syntax should report descriptive parser errors
 
-function testLetSyntaxErrors()
+@Test function LetSyntaxErrors()
    local xq = obj.new('xquery')
    xq.statement = 'let $a return $a'
    local err = xq.init()
@@ -62,7 +62,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- FLWOR return expressions can now yield atomic values (wrapped as node-sets with string values)
 
-function testFlworNonNodeReturnError()
+@Test function FlworNonNodeReturnError()
    local xml = obj.new("xml", {
       statement = '<library>' ..
                   '<book id="a" genre="fiction" price="39"/>' ..
@@ -82,7 +82,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Repeated FLWOR evaluations should remain stable and performant
 
-function testFlworRepeatedEvaluationConsistency()
+@Test function FlworRepeatedEvaluationConsistency()
    local xml = obj.new("xml", {
       statement = '<library>' ..
                   '<book id="a" genre="fiction"/>' ..
@@ -111,7 +111,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- WHERE clause should filter bound sequences using boolean predicates
 
-function testWhereFiltersNodes()
+@Test function WhereFiltersNodes()
    local xml = obj.new('xml', {
       statement = '<library>' ..
                   '<book id="bk-1" genre="fiction" price="25"/>' ..
@@ -138,7 +138,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- ORDER BY clause should support ascending lexical ordering on attributes
 
-function testOrderByAscendingStrings()
+@Test function OrderByAscendingStrings()
    local xml = obj.new('xml', {
       statement = '<library>' ..
                   '<book id="bk-3" title="Gamma" price="19"/>' ..
@@ -164,7 +164,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- ORDER BY clause should support descending numeric ordering and tiebreakers
 
-function testOrderByDescendingNumbers()
+@Test function OrderByDescendingNumbers()
    local xml = obj.new('xml', {
       statement = '<library>' ..
                   '<book id="bk-1" title="Alpha" price="25"/>' ..
@@ -191,7 +191,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- GROUP BY clause should bucket items and expose grouped bindings
 
-function testGroupByAggregatesSequences()
+@Test function GroupByAggregatesSequences()
    local xml = obj.new('xml', {
       statement = '<library>' ..
                   '<book id="bk-1" genre="fiction" price="25"/>' ..
@@ -221,7 +221,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- GROUP BY clause should maintain access to grouped sequences for derived output
 
-function testGroupBySequenceAccess()
+@Test function GroupBySequenceAccess()
    local xml = obj.new('xml', {
       statement = '<library>' ..
                   '<book id="bk-1" genre="fiction" price="25"/>' ..
@@ -249,7 +249,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- COUNT clause should expose positional counters during iteration
 
-function testCountProvidesPosition()
+@Test function CountProvidesPosition()
    local xml = obj.new('xml', {
       statement = '<library>' ..
                   '<book id="bk-1" price="25"/>' ..
@@ -276,7 +276,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Nested FOR product should expand correctly and expose both bindings
 
-function testNestedForProduct()
+@Test function NestedForProduct()
    local xml = obj.new('xml', {
       statement = '<root>' ..
                   '<a id="a1"/><a id="a2"/>' ..
@@ -300,7 +300,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- ORDER BY with multiple keys and empty handling should respect empty-greatest/least
 
-function testOrderByMultipleKeysEmptyHandling()
+@Test function OrderByMultipleKeysEmptyHandling()
    local xml = obj.new('xml', {
       statement = '<library>' ..
                   '<book id="bk-1" genre="fiction" price="25"/>' ..
@@ -322,7 +322,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- LET variable shadowing should respect inner scope and preserve outer value
 
-function testLetVariableShadowing()
+@Test function LetVariableShadowing()
    local xq = obj.new('xquery', { statement = 'let $x := "outer" return (let $x := "inner" return $x, $x)' })
    local err = xq.acActivate()
    local s = tostring(xq.resultString)
@@ -333,7 +333,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Invalid clause ordering should report descriptive syntax errors
 
-function testInvalidOrdering()
+@Test function InvalidOrdering()
    local xml = obj.new('xml', { statement = '<root><value/></root>' })
 
    local err = xml.mtSearch('for $node in /root/value order by $node where $node return $node')
@@ -345,7 +345,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Incompatible grouping expressions should surface evaluation errors
 
-function testInvalidGroupByExpression()
+@Test function InvalidGroupByExpression()
    local xml = obj.new('xml', {
       statement = '<root><item id="a"/><item id="b"/></root>'
    })

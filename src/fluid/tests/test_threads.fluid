@@ -58,7 +58,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test function testParallel()
+@Test function Parallel()
    initPictures()
 
    glPicsProcessed = 0
@@ -83,7 +83,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- This is the control test for demonstrating how fast parallel execution can actually be versus sequential execution.
 
-@Test function testSequential()
+@Test function Sequential()
    initPictures()
 
    for v in values(glPictures) do
@@ -96,7 +96,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Create two dummy objects and use them to confirm that the signalling of multiple objects works.
 
-@Test function testMultipleSignals()
+@Test function MultipleSignals()
    signal_a = obj.new('xml', { flags='NEW' })
    signal_b = obj.new('xml', { flags='NEW' })
 

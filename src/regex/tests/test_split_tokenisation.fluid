@@ -1,20 +1,20 @@
 -- Splitting and tokenisation behaviour for regex.split
 
-@Test function testSimpleSplit()
+@Test function SimpleSplit()
    local matcher = regex.new(",\\s*")
    local result = matcher.split("apple, banana,carrot")
    assert(#result is 3, "Comma split should produce three tokens")
    assert(result[1] is "banana", "Whitespace should be trimmed by pattern")
 end
 
-@Test function testConsecutiveDelimiters()
+@Test function ConsecutiveDelimiters()
    local matcher = regex.new(",")
    local result = matcher.split("a,,b")
    assert(#result is 3, "Consecutive delimiters should yield empty field")
    assert(result[1] is "", "Empty field should be preserved between delimiters")
 end
 
-@Test function testLeadingTrailingDelimiters()
+@Test function LeadingTrailingDelimiters()
    -- Expecting [ "", "start", "end", "" ]
    local matcher = regex.new("\\|")
    local result = matcher.split("|start|end|")
@@ -25,13 +25,13 @@ end
    assert(#result is 4, "Expected 4 tokens, got " .. #result)
 end
 
-@Test function testWhitespaceSplit()
+@Test function WhitespaceSplit()
    local matcher = regex.new("\\s+")
    local result = matcher.split("line1\nline2\tline3")
    assert(#result is 3, "Whitespace split should separate newline and tab delimited tokens")
 end
 
-@Test function testSplitContinuousFlag()
+@Test function SplitContinuousFlag()
    local matcher = regex.new(",")
    local regular = matcher.split("a,b,c")
    local continuous = matcher.split("a,b,c", regex.CONTINUOUS)

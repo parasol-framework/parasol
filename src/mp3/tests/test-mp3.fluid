@@ -17,7 +17,7 @@ end
 -- Test ability to seek within an MP3 file.  Seeking within MP3 files is imprecise, so wide tolerances are used when
 -- confirming results.
 
-@Test function testSeek()
+@Test function Seek()
    proc = processing.new()
 
    time, time_taken
@@ -67,7 +67,7 @@ end
 -- Test code tolerance to files that are very small and have some non-consumable data.  A static noise must be
 -- produced.
 
-@Test function testTolerance()
+@Test function Tolerance()
    proc = processing.new()
 
    snd = obj.new('sound', { path=glFolder .. 'MEANDR90.mp3', volume=0.33 })

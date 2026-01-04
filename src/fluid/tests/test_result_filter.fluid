@@ -21,7 +21,7 @@ local obj = {
    end
 }
 
-@Test function testFilterKeepAll()
+@Test function FilterKeepAll()
    a, b, c, d, e = [*]multi()
    assert(a is 1, "filter keep all: expected a=1, got " .. tostring(a))
    assert(b is 2, "filter keep all: expected b=2, got " .. tostring(b))
@@ -30,7 +30,7 @@ local obj = {
    assert(e is 5, "filter keep all: expected e=5, got " .. tostring(e))
 end
 
-@Test function testFilterDropFirst()
+@Test function FilterDropFirst()
    a, b, c, d = [_*]multi()
    assert(a is 2, "filter drop first: expected a=2, got " .. tostring(a))
    assert(b is 3, "filter drop first: expected b=3, got " .. tostring(b))
@@ -38,26 +38,26 @@ end
    assert(d is 5, "filter drop first: expected d=5, got " .. tostring(d))
 end
 
-@Test function testFilterDropFirstTwo()
+@Test function FilterDropFirstTwo()
    a, b, c = [__*]multi()
    assert(a is 3, "filter drop first two: expected a=3, got " .. tostring(a))
    assert(b is 4, "filter drop first two: expected b=4, got " .. tostring(b))
    assert(c is 5, "filter drop first two: expected c=5, got " .. tostring(c))
 end
 
-@Test function testFilterKeepFirstOnly()
+@Test function FilterKeepFirstOnly()
    a, b = [*_]multi()
    assert(a is 1, "filter keep first only: expected a=1, got " .. tostring(a))
    assert(b is nil, "filter keep first only: expected b=nil, got " .. tostring(b))
 end
 
-@Test function testFilterDropFirstKeepSecondDropRest()
+@Test function FilterDropFirstKeepSecondDropRest()
    a, b = [_*_]multi()
    assert(a is 2, "filter drop first keep second drop rest: expected a=2, got " .. tostring(a))
    assert(b is nil, "filter drop first keep second drop rest: expected b=nil, got " .. tostring(b))
 end
 
-@Test function testFilterKeepValues234Only()
+@Test function FilterKeepValues234Only()
    a, b, c, d = [_***_]multi()
    assert(a is 2, "filter keep 2,3,4: expected a=2, got " .. tostring(a))
    assert(b is 3, "filter keep 2,3,4: expected b=3, got " .. tostring(b))
@@ -65,46 +65,46 @@ end
    assert(d is nil, "filter keep 2,3,4: expected d=nil, got " .. tostring(d))
 end
 
-@Test function testFilterKeepSecondAndFourthOnwards()
+@Test function FilterKeepSecondAndFourthOnwards()
    a, b, c = [_*_*]multi()
    assert(a is 2, "filter keep 2nd and 4th+: expected a=2, got " .. tostring(a))
    assert(b is 4, "filter keep 2nd and 4th+: expected b=4, got " .. tostring(b))
    assert(c is 5, "filter keep 2nd and 4th+: expected c=5, got " .. tostring(c))
 end
 
-@Test function testEmptyFilterDropsAll()
+@Test function EmptyFilterDropsAll()
    x = []multi()
    assert(x is nil, "empty filter drops all: expected nil, got " .. tostring(x))
 end
 
-@Test function testFilterWithMethodCalls()
+@Test function FilterWithMethodCalls()
    for i=0,100 do -- JIT warmup
       a = [_*]obj:method()
       assert(a is 20, "filter with method: expected 20, got " .. tostring(a))
    end
 end
 
-@Test function testFilterWithThreeReturnValues()
+@Test function FilterWithThreeReturnValues()
    a, b = [*_*]three()
    assert(a is "a", "filter first and third: expected a='a', got " .. tostring(a))
    assert(b is "c", "filter first and third: expected b='c', got " .. tostring(b))
 end
 
-@Test function testFilterFirstAndSecond()
+@Test function FilterFirstAndSecond()
    a, b = [**_]three()
    assert(a is "a", "filter first and second: expected a='a', got " .. tostring(a))
    assert(b is "b", "filter first and second: expected b='b', got " .. tostring(b))
 end
 
 -- Edge case: Filter with more positions than return values
-@Test function testFilterMorePositionsThanValues()
+@Test function FilterMorePositionsThanValues()
    a, b = [_____*]three()  -- Request 6th value from function returning 3
    assert(a is nil, "filter beyond values: expected nil, got " .. tostring(a))
    assert(b is nil, "filter beyond values: expected b=nil, got " .. tostring(b))
 end
 
 -- Edge case: Filter with exact number of positions
-@Test function testFilterExactPositions()
+@Test function FilterExactPositions()
    a, b, c = [*_*]three()  -- Keep 1st and 3rd of 3
    assert(a is "a", "filter exact: expected a='a', got " .. tostring(a))
    assert(b is "c", "filter exact: expected b='c', got " .. tostring(b))
@@ -112,7 +112,7 @@ end
 end
 
 -- Edge case: Filter on function returning single value
-@Test function testFilterSingleValue()
+@Test function FilterSingleValue()
    function single()
       return 42
    end
@@ -124,7 +124,7 @@ end
 end
 
 -- Edge case: Filter on function returning no values
-@Test function testFilterNoValues()
+@Test function FilterNoValues()
    function none()
       -- returns nothing
    end
@@ -136,7 +136,7 @@ end
 end
 
 -- Edge case: Nested filters
-@Test function testNestedFilters()
+@Test function NestedFilters()
    function outer()
       return [_*]multi()  -- Returns 2, 3, 4, 5
    end
@@ -148,7 +148,7 @@ end
 end
 
 -- Edge case: Filter applied via wrapper function
-@Test function testFilterOnFilteredResult()
+@Test function FilterOnFilteredResult()
    -- Use a wrapper function to chain filters
    function filtered()
       return [_*]multi()  -- Returns 2, 3, 4, 5
@@ -158,7 +158,7 @@ end
 end
 
 -- Edge case: Very long underscore pattern
-@Test function testLongUnderscorePattern()
+@Test function LongUnderscorePattern()
    function many()
       return 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
    end
@@ -168,7 +168,7 @@ end
 end
 
 -- Edge case: Alternating keep/drop pattern
-@Test function testAlternatingPattern()
+@Test function AlternatingPattern()
    function six()
       return 1, 2, 3, 4, 5, 6
    end
@@ -182,7 +182,7 @@ end
 end
 
 -- Edge case: Filter with mixed types
-@Test function testFilterMixedTypes()
+@Test function FilterMixedTypes()
    function mixed()
       return 1, "two", true, nil, { x = 5 }
    end
@@ -192,7 +192,7 @@ end
 end
 
 -- Edge case: Filter preserves table references
-@Test function testFilterPreservesReferences()
+@Test function FilterPreservesReferences()
    t = { value = 123 }
    function returnTable()
       return "prefix", t, "suffix"
@@ -204,21 +204,21 @@ end
 
 -- Test error case: Invalid pattern should fail at parse time
 
-@Test function testErrorInvalidPatternCharacter()
+@Test function ErrorInvalidPatternCharacter()
    ok, err = pcall(function()
       loadstring("[x]multi()")()
    end)
    assert(not ok, "invalid pattern char 'x' should fail to parse")
 end
 
-@Test function testErrorFilterOnNonCall()
+@Test function ErrorFilterOnNonCall()
    ok, err = pcall(function()
       loadstring("x = [_*]42")()
    end)
    assert(not ok, "filter on non-call should fail to parse")
 end
 
-@Test function testErrorFilterOnVariable()
+@Test function ErrorFilterOnVariable()
    ok, err = pcall(function()
       loadstring("t = {}; x = [_*]t")()
    end)

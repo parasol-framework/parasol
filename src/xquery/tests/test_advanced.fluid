@@ -5,7 +5,7 @@
 ----------------------------------------------------------------------------------------------------------------------
 -- Deeply nested path traversal combining multiple predicates and steps
 
-function testDeeplyNestedPathTraversal()
+@Test function DeeplyNestedPathTraversal()
    local xml = obj.new("xml", {
       statement = '<catalog><category name="fiction"><series name="modern"><book author="Smith"><chapter num="1"><section><paragraph>Intro</paragraph></section></chapter><chapter num="2"><section><paragraph>Body</paragraph><paragraph>Middle</paragraph></section></chapter><chapter num="3"><section><paragraph>Conclusion</paragraph></section></chapter></book></series></category></catalog>'
    })
@@ -20,7 +20,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Edge case: sequential predicates mixing numeric and functional tests
 
-function testSequentialPredicateEvaluation()
+@Test function SequentialPredicateEvaluation()
    local xml = obj.new("xml", {
       statement = '<data><entry type="record" priority="1"/><entry type="record" priority="2"/><entry type="log" priority="3"/><entry type="record" priority="4"/><entry type="record" priority="5"/></data>'
    })
@@ -35,7 +35,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Edge case: navigating relative to the current node using .// patterns
 
-function testRelativeCurrentNodeTraversal()
+@Test function RelativeCurrentNodeTraversal()
    local xml = obj.new("xml", {
       statement = '<root><section id="alpha"><item id="x"/><group><item id="y"/></group></section><section id="beta"><group><item id="z"/><item id="target"/></group></section></root>'
    })
@@ -53,7 +53,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Edge case: ensuring failed lookups return error codes cleanly
 
-function testMissingPathError()
+@Test function MissingPathError()
    local xml = obj.new("xml", {
       statement = '<root><item id="1"/><item id="2"/></root>'
    })
@@ -66,7 +66,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Complex descendant traversal mixing attribute and element access
 
-function testDescendantAxisAttributeAccess()
+@Test function DescendantAxisAttributeAccess()
    local xml = obj.new("xml", {
       statement = '<root category="library"><branch name="east"><shelf code="A"><book id="1">Intro</book></shelf></branch><branch name="west"><shelf code="B"><book id="2">Advanced</book></shelf></branch></root>'
    })
@@ -80,7 +80,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testSimpleDeep()
+@Test function SimpleDeep()
    local xml = obj.new("xml", {
       statement = '<root category="library"><branch name="east"><shelf code="A"><book id="1">Intro</book></shelf></branch><branch name="west"><shelf code="B"><book id="2">Advanced</book></shelf></branch></root>'
    })
@@ -96,7 +96,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Conditional expressions should select the correct branch
 
-function testConditionalIfExpression()
+@Test function ConditionalIfExpression()
    local xml = obj.new("xml", {
       statement = '<root><item id="a">Alpha</item><item id="b">Beta</item></root>'
    })
@@ -111,7 +111,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- For expressions should iterate sequences and aggregate node results
 
-function testForExpressionNodeAggregation()
+@Test function ForExpressionNodeAggregation()
    local xml = obj.new("xml", {
       statement = '<root><group name="one"><item id="a">Alpha</item><item id="b">Beta</item></group><group name="two"><item id="c">Gamma</item></group></root>'
    })
@@ -133,7 +133,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Quantified expressions should evaluate boolean logic correctly
 
-function testQuantifiedExpressions()
+@Test function QuantifiedExpressions()
    local xml = obj.new("xml", {
       statement = '<root><group name="alpha"><item id="a" class="one"/><item id="b" class="two"/></group><group name="beta"><item id="c" class="beta"/></group></root>'
    })
@@ -151,7 +151,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- For expressions with multiple bindings should iterate nested sequences
 
-function testForExpressionMultipleBindings()
+@Test function ForExpressionMultipleBindings()
    local xml = obj.new("xml", {
       statement = '<root><group name="one"><item id="a" class="one"/><item id="b" class="two"/></group><group name="two"><item id="c" class="two"/><item id="d" class="one"/></group></root>'
    })
@@ -171,7 +171,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- FLWOR expressions should allow mixing FOR and LET clauses with shared variables
 
-function testFlworForLetCombination()
+@Test function FlworForLetCombination()
    local xml = obj.new("xml", {
       statement = '<library>' ..
                   '<book id="a" genre="fiction" price="39"/>' ..
@@ -195,7 +195,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- LET clauses preceding FOR clauses should bind variables for subsequent iterations
 
-function testFlworLetForCombination()
+@Test function FlworLetForCombination()
    local xml = obj.new("xml", {
       statement = '<library>' ..
                   '<book id="a" price="39"/>' ..
@@ -219,7 +219,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Sequence set operators should merge and filter node collections
 
-function testSequenceSetOperators()
+@Test function SequenceSetOperators()
    local xml = obj.new("xml", {
       statement = '<root>' ..
                   '<item id="a" group="alpha"/>' ..
@@ -276,7 +276,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Node tests named after set operator keywords should continue to resolve
 
-function testSetOperatorKeywordNameTests()
+@Test function SetOperatorKeywordNameTests()
    local xml = obj.new("xml", {
       statement = '<root>' ..
                   '<union id="u"><leaf/></union>' ..
@@ -308,7 +308,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Lookup operator chains should navigate nested maps, arrays, and sequences
 
-function testLookupOperatorChains()
+@Test function LookupOperatorChains()
    local xml = obj.new('xml', { statement = '<root/>' })
 
    local err, first_price = xml.mtEvaluate('let $order := map { "items": array { map { "sku": "A1", "price": 29 }, map { "sku": "B2", "price": 35 } }, "customer": map { "name": "Ada" } } return string($order?items?1?price)')

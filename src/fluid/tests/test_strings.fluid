@@ -4,7 +4,7 @@
 @BeforeEach(hotpath=true)
 function enforce_hotpath() end
 
-@Test function testAlloc()
+@Test function Alloc()
    s = string.alloc(10)
    assert(#s is 10, "String size is not 10 characters, got " .. #s)
 
@@ -17,13 +17,13 @@ function enforce_hotpath() end
    assert(#big is 1000, "Large alloc failed, expected 1000, got " .. #big)
 end
 
-@Test function testIndex()
+@Test function Index()
 --   getmetatable('').__index = function(str,i) return string.sub(str,i,i) end
 --   hw = "Hello World"
 --   assert(string[1] is "H", "Expected 'H' at index 0, got '" .. tostring(string[1]) .. "'")
 end
 
-@Test function testSplit()
+@Test function Split()
    parts = string.split("\n\n\n", "\n")
    assert(#parts is 4, "Expected 4 parts for consecutive newlines, got " .. #parts)
    assert(parts[0] is "", "Expected empty string for first part, got '" .. parts[0] .. "'")
@@ -63,7 +63,7 @@ end
    assert(nosep[0] is "hello", "Expected 'hello', got '" .. nosep[0] .. "'")
 end
 
-@Test function testSplitReturnsArray()
+@Test function SplitReturnsArray()
    -- Verify that string.split() returns a first-class array
    parts = string.split("a,b,c", ",")
 
@@ -94,7 +94,7 @@ end
    assert(rejoined is "a,b,c", "concat should rejoin elements, got '" .. rejoined .. "'")
 end
 
-@Test function testTrim()
+@Test function Trim()
    -- Basic trim
    trimmed = string.trim("  hello world  ")
    assert(trimmed is "hello world", "Expected 'hello world', got '" .. trimmed .. "'")
@@ -124,7 +124,7 @@ end
    assert(none is "hello", "No whitespace should be unchanged, got '" .. none .. "'")
 end
 
-@Test function testRTrim()
+@Test function RTrim()
    -- Basic right trim
    trimmed = string.rtrim("hello world  ")
    assert(trimmed is "hello world", "Expected 'hello world', got '" .. trimmed .. "'")
@@ -150,7 +150,7 @@ end
    assert(none is "hello", "No whitespace should be unchanged, got '" .. none .. "'")
 end
 
-@Test function testJoin()
+@Test function Join()
    -- Basic join
    joined = string.join({"hello", "world"}, " ")
    assert(joined is "hello world", "Expected 'hello world', got '" .. joined .. "'")
@@ -180,7 +180,7 @@ end
    assert(withEmpty is "a,,b", "Expected 'a,,b', got '" .. withEmpty .. "'")
 end
 
-@Test function testStartsWith()
+@Test function StartsWith()
    -- Basic positive case
    assert(string.startsWith("hello world", "hello"), "Should start with 'hello'")
 
@@ -206,7 +206,7 @@ end
    assert(not string.startsWith("Hello", "hello"), "Should be case sensitive")
 end
 
-@Test function testEndsWith()
+@Test function EndsWith()
    -- Basic positive case
    assert(string.endsWith("hello world", "world"), "Should end with 'world'")
 
@@ -232,7 +232,7 @@ end
    assert(not string.endsWith("Hello", "hello"), "Should be case sensitive")
 end
 
-@Test function testCap()
+@Test function Cap()
    -- Basic capitalization
    capped = string.cap("hello")
    assert(capped is "Hello", "Expected 'Hello', got '" .. capped .. "'")
@@ -258,7 +258,7 @@ end
    assert(mixed is "HELLO", "Expected 'HELLO', got '" .. mixed .. "'")
 end
 
-@Test function testDecap()
+@Test function Decap()
    -- Basic decapitalization
    decapped = string.decap("Hello")
    assert(decapped is "hello", "Expected 'hello', got '" .. decapped .. "'")
@@ -284,7 +284,7 @@ end
    assert(mixed is "heLLo", "Expected 'heLLo', got '" .. mixed .. "'")
 end
 
-@Test function testHash()
+@Test function Hash()
    -- Basic hash (case insensitive by default)
    hash1 = string.hash("hello")
    hash2 = string.hash("HELLO")
@@ -310,7 +310,7 @@ end
    assert(diff1 != diff2, "Different strings produced same hash (collision): " .. diff1)
 end
 
-@Test function testEscXML()
+@Test function EscXML()
    -- Basic XML escaping
    escaped = string.escXML("Hello & goodbye")
    assert(escaped is "Hello &amp; goodbye", "Expected 'Hello &amp; goodbye', got '" .. escaped .. "'")
@@ -350,7 +350,7 @@ end
    assert(ue is "<<>>", "Received string is incorrect: " .. tostring(ue))
 end
 
-@Test function testSub()
+@Test function Sub()
    -- string.substr() and sub() use exclusive end index (like JavaScript substring/Python slicing)
    -- string.substr(s, start, end) extracts chars from start to end-1
    s = "hello world"
@@ -395,7 +395,7 @@ end
    end
 end
 
-@Test function testByte()
+@Test function Byte()
    for i=0,1000 do
       -- Single character (zero-indexed)
       b = string.byte("hello", 0)
@@ -430,7 +430,7 @@ end
    end
 end
 
-@Test function testChar()
+@Test function Char()
    for i=0,1000 do
       -- Single character
       c = string.char(65)
@@ -457,7 +457,7 @@ end
    end
 end
 
-@Test function testRep()
+@Test function Rep()
    for i=0,1000 do
       -- Basic repetition
       rep = string.rep("ab", 3)
@@ -485,7 +485,7 @@ end
    end
 end
 
-@Test function testReverse()
+@Test function Reverse()
    -- Basic reverse
    rev = string.reverse("hello")
    assert(rev is "olleh", "Expected 'olleh', got '" .. rev .. "'")
@@ -507,7 +507,7 @@ end
    assert(palindrome is "racecar", "Expected 'racecar', got '" .. palindrome .. "'")
 end
 
-@Test function testLowerUpper()
+@Test function LowerUpper()
    -- Lower case
    lower = string.lower("HELLO WORLD")
    assert(lower is "hello world", "Expected 'hello world', got '" .. lower .. "'")
@@ -547,7 +547,7 @@ end
    assert(numbersUpper is "123!@#", "Expected '123!@#', got '" .. numbersUpper .. "'")
 end
 
-@Test function testFind()
+@Test function Find()
    -- Basic find (zero-indexed positions)
    s = "hello world"
    start, finish = string.find(s, "world")
@@ -585,7 +585,7 @@ end
    assert(capture is "123", "Expected capture '123', got '" .. tostring(capture) .. "'")
 end
 
-@Test function testMatch()
+@Test function Match()
    -- Basic match
    m = string.match("hello world", "world")
    assert(m is "world", "Expected 'world', got '" .. tostring(m) .. "'")
@@ -615,7 +615,7 @@ end
    assert(digits is "123", "Expected '123', got '" .. tostring(digits) .. "'")
 end
 
-@Test function testGmatch()
+@Test function Gmatch()
    -- Iterate over words
    s = "hello world test"
    words = {}
@@ -655,7 +655,7 @@ end
    assert(count is 0, "Expected 0 matches for empty string, got " .. count)
 end
 
-@Test function testGsub()
+@Test function Gsub()
    -- Basic substitution
    result, count = string.gsub("hello world", "world", "Lua")
    assert(result is "hello Lua", "Expected 'hello Lua', got '" .. result .. "'")
@@ -694,7 +694,7 @@ end
    assert(count8 is 0, "Expected 0 substitutions, got " .. count8)
 end
 
-@Test function testFormat()
+@Test function Format()
    for i=0,1000 do
       -- Basic integer
       f1 = string.format("value: %d", 42)

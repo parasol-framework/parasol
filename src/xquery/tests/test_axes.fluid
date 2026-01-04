@@ -5,7 +5,7 @@
 -----------------------------------------------------------------------------------------------------------------------
 -- Test parent axis (..) navigation
 
-function testParentAxisNavigation()
+@Test function ParentAxisNavigation()
    local xml = obj.new("xml", {
       statement = '<root><section id="1"><item id="a"/><item id="b"/></section><section id="2"><item id="c"/></section></root>'
    })
@@ -21,7 +21,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test XPath 1.0 axes
 
-function testXPathAxes()
+@Test function XPathAxes()
    local xml = obj.new("xml", {
       statement = '<root><section><item id="1"/><item id="2"/></section><other><item id="3"/></other></root>'
    })
@@ -55,7 +55,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test XPath 1.0 union operator
 
-function testAttributeAxisHandling()
+@Test function AttributeAxisHandling()
    local xml = obj.new("xml", {
       statement = '<root><item id="one" category="fiction" data-extra="x"/></root>'
    })
@@ -91,7 +91,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Regression: Attribute axis steps should support parent and ancestor navigation
 
-function testAttributeAxisContinuation()
+@Test function AttributeAxisContinuation()
    local xml = obj.new("xml", {
       statement = '<root>' ..
                   '<section id="section-1"><item id="item-a"/></section>' ..
@@ -115,7 +115,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test XPath 1.0 union operator
 
-function testUnionOperator()
+@Test function UnionOperator()
    local xml = obj.new("xml", {
       statement = '<root><section><item/></section><other><item/></other></root>'
    })
@@ -126,7 +126,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Regression: Text nodes participate in axes per XPath 1.0
 
-function testTextNodeAxes()
+@Test function TextNodeAxes()
    local xml = obj.new("xml", {
       statement = '<root><a>First</a> Second <b>Third</b></root>'
    })
@@ -152,7 +152,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- XPath 1.0 comment() node test
 
-function testCommentNodeType()
+@Test function CommentNodeType()
    local xml = obj.new("xml", {
       statement = '<root><!-- marker --><item>Value</item><!-- trailer --></root>', flags = XMF_INCLUDE_COMMENTS
    })
@@ -175,7 +175,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- XPath 1.0 processing-instruction() node test
 
-function testProcessingInstructionNodeType()
+@Test function ProcessingInstructionNodeType()
    local xml = obj.new("xml", {
       statement = '<root><?target data?><item/><?other pi?></root>'
    })
@@ -196,7 +196,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- XPath 1.0 node()
 
-function testGenericNodeType()
+@Test function GenericNodeType()
    local xml = obj.new("xml", {
       statement = '<root><child/><other/></root>'
    })
@@ -211,7 +211,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- XPath 1.0 namespace axis
 
-function testNamespaceAxis()
+@Test function NamespaceAxis()
    local xml = obj.new("xml", {
       statement = '<root xmlns:ns="http://example.com/ns"><ns:item/></root>'
    })
@@ -226,7 +226,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- XPath Axes
 
-function testXPathForwardAxes()
+@Test function XPathForwardAxes()
    local xml = obj.new("xml", {
       statement = [[
          <library>
@@ -288,7 +288,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testXPathReverseAxes()
+@Test function XPathReverseAxes()
    local xml = obj.new("xml", {
       statement = [[
          <root>
@@ -344,7 +344,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testAncestorOrSelfAxis()
+@Test function AncestorOrSelfAxis()
    local xml = obj.new("xml", {
       statement = [[
          <root>
@@ -375,7 +375,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testXPathAxisCombinations()
+@Test function XPathAxisCombinations()
    local xml = obj.new("xml", {
       statement = [[
          <document>
@@ -440,7 +440,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testSiblingFilteringForNumericPredicates()
+@Test function SiblingFilteringForNumericPredicates()
    local xml = obj.new("xml", {
       statement = '<root><b/><a id="first"/><a id="second"/></root>'
    })

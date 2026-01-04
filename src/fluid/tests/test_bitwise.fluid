@@ -7,7 +7,7 @@ function returns6_99()
    return 6, 99
 end
 
-@Test function testUnaryBnot()
+@Test function UnaryBnot()
    assert(~0 is bit.bnot(0), '~ should map to bit.bnot')
    assert(~1 is bit.bnot(1), '~ should invert all bits')
    x = 0x7fffffff
@@ -16,7 +16,7 @@ end
    assert(~3.7 is bit.bnot(3.7), '~ should coerce numbers via tobit')
 end
 
-@Test function testBinaryBitwiseBasics()
+@Test function BinaryBitwiseBasics()
    -- AND, OR, XOR
    band_result = bit.band(5, 3)
    assert((5 & 3) is band_result, '& should map to bit.band')
@@ -28,7 +28,7 @@ end
 
 -- This test confirms that a series of operators returns only one value.
 
-@Test function testChainedOperators()
+@Test function ChainedOperators()
    single_value, second_value = 1 | 2 | 4
    assert(single_value, 'Expected value, got ' .. tostring(single_value))
    assert(second_value is nil, 'Unexpected second value, got ' .. tostring(second_value))
@@ -38,7 +38,7 @@ end
    assert(second_value is nil, 'Unexpected second value, got ' .. tostring(second_value))
 end
 
-@Test function testBitwisePrecedenceAndGrouping()
+@Test function BitwisePrecedenceAndGrouping()
    -- Parentheses control
    assert((1 | (2 & 4)) is (1 | bit.band(2, 4)), 'AND groups inside OR with parens')
    -- Power stays as exponentiation, not XOR
@@ -47,7 +47,7 @@ end
    assert(3 ~= 4, '~= remains not-equal')
 end
 
-@Test function testCStylePrecedence()
+@Test function CStylePrecedence()
    -- Test C-style precedence: AND > XOR > OR
    -- XOR should bind tighter than OR
    result1 = 1 | 2 ~ 3
@@ -60,7 +60,7 @@ end
    assert(result2 is expected2, 'Left-to-right within same precedence: 1 ~ 2 | 3 should be (1 ~ 2) | 3')
 end
 
-@Test function testCStylePrecedenceAND()
+@Test function CStylePrecedenceAND()
    -- AND should bind tighter than OR
    result3 = 1 | 2 & 3
    expected3 = bit.bor(1, bit.band(2, 3))  -- 1 | (2 & 3) = 1 | 2 = 3
@@ -72,7 +72,7 @@ end
    assert(result4 is expected4, 'AND should bind tighter than XOR: 7 & 5 ~ 3 should be (7 & 5) ~ 3')
 end
 
-@Test function testCStylePrecedenceComplex()
+@Test function CStylePrecedenceComplex()
    -- Complex expression with all three
    result5 = 8 | 4 ~ 2 & 1
    expected5 = bit.bor(8, bit.bxor(4, bit.band(2, 1)))  -- 8 | (4 ~ (2 & 1)) = 8 | (4 ~ 0) = 8 | 4 = 12
@@ -84,7 +84,7 @@ end
    assert(result6 is expected6, 'Shift should bind tighter than AND: 5 & 1 << 1 should be 5 & (1 << 1)')
 end
 
-@Test function testShiftBitwiseBinding()
+@Test function ShiftBitwiseBinding()
    result1 = 1 << 2 & 3
    expected1 = bit.band(bit.lshift(1, 2), 3)  -- (1 << 2) & 3 = 4 & 3 = 0
    assert(result1 is expected1, 'Shift should bind tighter than AND: 1 << 2 & 3 should be (1 << 2) & 3')
@@ -98,7 +98,7 @@ end
    assert(result3 is expected3, 'Shift should bind tighter than XOR: 1 << 2 ~ 3 should be (1 << 2) ~ 3')
 end
 
-@Test function testRHSFunctionCallsAndRegisterPreservation()
+@Test function RHSFunctionCallsAndRegisterPreservation()
    t = { 1, 2, 3 }
    i = 2
    function f(a)
@@ -112,7 +112,7 @@ end
    assert(t[2] is bit.band(bit.bor(3, bit.lshift(3, 1)), u[2]), 'indexed & RHS index usage is safe')
 end
 
-@Test function testMultipleReturnLHS()
+@Test function MultipleReturnLHS()
    -- Test multi-return on LHS of bitwise AND
    band_cmp = bit.band(6, 1)  -- 6 & 1 = 0
    x = returns6_99() & 1      -- Should use first return value (6)
@@ -134,7 +134,7 @@ end
    assert(x4 is rshift_cmp, 'rshift multi-return RHS failed: ' .. x4 .. ' vs ' .. rshift_cmp)
 end
 
-@Test function testMultipleReturnRHS()
+@Test function MultipleReturnRHS()
    cmp = bit.band(1, 6)
    x = 1 & 6
    assert(x is cmp, 'band literal failed: ' .. x .. ' vs ' .. cmp)
@@ -152,7 +152,7 @@ end
    assert(x2 is cmp, 'bxor failed: ' .. x2 .. ' vs ' .. cmp)
 end
 
-@Test function testByteStringKeysWithBitwise()
+@Test function ByteStringKeysWithBitwise()
    o = { a = 1, [5] = 2 }
    o['a'] = o['a'] | 2
    assert(o.a is 3, 'string key | should work')
@@ -160,7 +160,7 @@ end
    assert(o[5] is 2, 'byte/numeric key & should work')
 end
 
-@Test function testBitwiseInParameters()
+@Test function BitwiseInParameters()
    -- Intentionally global variables
    P1 = 0x1
    P2 = 0x2

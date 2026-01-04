@@ -3,7 +3,7 @@
 @BeforeEach(hotpath=true)
 function enforce_hotpath() end
 
-@Test function testCompoundAssignment()
+@Test function CompoundAssignment()
    value = 5
    value += 3
    assert(value is 8, 'value += 3 should add to value')
@@ -27,7 +27,7 @@ function enforce_hotpath() end
    assert(store.list[1] is 10, 'indexed table compound assignments should store results')
 end
 
-@Test function testIfEmptyAssignment()
+@Test function IfEmptyAssignment()
    count = 5
    count ??= 1
    assert(count is 5, 'count ??= should leave truthy values unchanged')
@@ -58,7 +58,7 @@ end
    assert(store.slots[1] is 'filled', 'indexed ??= should not reassign when entry is truthy')
 end
 
-@Test function testIfEmptyShortCircuit()
+@Test function IfEmptyShortCircuit()
    calls = 0
    function fallback()
       calls++
@@ -80,7 +80,7 @@ end
 -- Unlike ??= which checks for all falsey values (nil, false, 0, ""),
 -- ?= only checks for nil, making it simpler and faster.
 
-@Test function testIfNilAssignment()
+@Test function IfNilAssignment()
    -- Test that ?= does NOT assign when value is truthy
    count = 5
    count ?= 1
@@ -123,7 +123,7 @@ end
    assert(store.slots[1] is 'filled', 'indexed ?= should not reassign when entry is not nil')
 end
 
-@Test function testIfNilShortCircuit()
+@Test function IfNilShortCircuit()
    calls = 0
    function fallback()
       calls++
@@ -148,7 +148,7 @@ end
    assert(falseVal is false, 'false ?= should keep the false value')
 end
 
-@Test function testIfNilVsIfEmpty()
+@Test function IfNilVsIfEmpty()
    -- Test that ?= and ??= behave differently for false
    -- Use separate variables since ??= changes the type from bool to string
    bool_ifnil = false
@@ -183,7 +183,7 @@ end
    assert(nil_ifempty is 'assigned', '??= should assign when value is nil')
 end
 
-@Test function testGlobalIfNilBasic()
+@Test function GlobalIfNilBasic()
    -- Test global ?= assigns to undefined global
    global gTestNilVar1 ?= 'assigned'
    assert(gTestNilVar1 is 'assigned', 'global ?= should assign to undefined global')
@@ -204,7 +204,7 @@ end
    assert(gTestNilVar4 is 0, 'global ?= should not overwrite 0')
 end
 
-@Test function testLocalIfNilBasic()
+@Test function LocalIfNilBasic()
    -- local ?= should assign to a new undefined variable
    local newVar ?= 'created'
    assert(newVar is 'created', 'local ?= should assign to new variable')
@@ -215,7 +215,7 @@ end
    assert(existingVar is 'present', 'local ?= should not overwrite existing value')
 end
 
-@Test function testIncrement()
+@Test function Increment()
    counter = 0
    counter++
    assert(counter is 1, 'counter++ should increment value once')
@@ -231,7 +231,7 @@ end
    assert(data[2] is 4, 'indexed ++ should store incremented value')
 end
 
-@Test function testContinue()
+@Test function Continue()
    total = 0
    index = 0
 
@@ -266,7 +266,7 @@ end
    assert(attempts is 3, 'continue should jump to repeat condition without executing remainder')
 end
 
-@Test function testIndexedWithFunctionRHS()
+@Test function IndexedWithFunctionRHS()
    t = { 1, 2, 3 }
    i = 1
    function add_three(x)
@@ -276,7 +276,7 @@ end
    assert(t[1] is 9, 'indexed += with function RHS should preserve base/index registers')
 end
 
-@Test function testFieldWithFunctionRHS()
+@Test function FieldWithFunctionRHS()
    store = { count = 5 }
    function delta()
       z = 2
@@ -286,7 +286,7 @@ end
    assert(store.count is -3, 'field -= with function RHS should store correct result')
 end
 
-@Test function testConcatWithFunctionRHS()
+@Test function ConcatWithFunctionRHS()
    text = 'a'
    function tail()
       x = 'b'
@@ -296,7 +296,7 @@ end
    assert(text is 'abc', '..= should concatenate with function result')
 end
 
-@Test function testRegisterIndexPreservedAcrossRHS()
+@Test function RegisterIndexPreservedAcrossRHS()
    t = { 10, 20, 30 }
    i = 0
    u = { 3, 4, 5 }
@@ -304,7 +304,7 @@ end
    assert(t[0] is 18, 'indexed += should handle RHS table lookups without corrupting index')
 end
 
-@Test function testNestedIndexPreservation()
+@Test function NestedIndexPreservation()
    u = { { x = 1 }, { x = 2 } }
    i = 1
    function f()
@@ -314,7 +314,7 @@ end
    assert(u[1].x is 7, 'nested indexed field += should preserve inner base/index registers')
 end
 
-@Test function testByteAndStringKeyVariants()
+@Test function ByteAndStringKeyVariants()
    o = { a = 1, b = 'x' }
    o['a'] *= 2
    assert(o.a is 2, "byte/string key compound ops should use correct TSET variant (TSETS/TSETB)")
@@ -326,14 +326,14 @@ end
    assert(t[5] is 7, 'byte index += should work for numeric constant keys')
 end
 
-@Test function testSelfReferentialReadOnRHS()
+@Test function SelfReferentialReadOnRHS()
    t = { 6, 0 }
    i = 0
    t[i] += t[i]
    assert(t[0] is 12, 'indexed += with same element on RHS should double the value')
 end
 
-@Test function testMultipleReturnOnlyFirstUsed()
+@Test function MultipleReturnOnlyFirstUsed()
    function multi()
       return 7, 9
    end
@@ -349,7 +349,7 @@ end
    assert(s is 'qw', '..= should use only first return value from function')
 end
 
-@Test function testIndexRegisterReusedByRHS()
+@Test function IndexRegisterReusedByRHS()
    t = { 1, 2, 3 }
    i = 1
    function f(a, b)
@@ -359,7 +359,7 @@ end
    assert(t[1] is 4, 'indexed *= RHS using index register should keep index intact')
 end
 
-@Test function testBaseReusedByRHS()
+@Test function BaseReusedByRHS()
    t = { 3, 4 }
    function get_from_same(tbl)
       return tbl[0] + tbl[1]
@@ -368,7 +368,7 @@ end
    assert(t[0] is 10, 'indexed += RHS reading from same table should use original base for store')
 end
 
-@Test function testGlobalIfEmptyBasic()
+@Test function GlobalIfEmptyBasic()
    -- Test global ??= assigns to undefined global
    global gTestVar1 ??= 'assigned'
    assert(gTestVar1 is 'assigned', 'global ??= should assign to undefined global')
@@ -379,7 +379,7 @@ end
    assert(gTestVar2 is 'existing', 'global ??= should not overwrite truthy value')
 end
 
-@Test function testGlobalIfEmptyFalseyValues()
+@Test function GlobalIfEmptyFalseyValues()
    -- Test global ??= assigns when value is nil
    global gNilVar = nil
    global gNilVar ??= 'from nil'
@@ -401,7 +401,7 @@ end
    assert(gEmptyVar is 'from empty', 'global ??= should assign when value is empty string')
 end
 
-@Test function testGlobalIfEmptyWithFunctionCall()
+@Test function GlobalIfEmptyWithFunctionCall()
    -- Test global ??= with function call on RHS
    function getDefault()
       return 'default value'
@@ -410,7 +410,7 @@ end
    assert(gFuncVar is 'default value', 'global ??= should work with function call RHS')
 end
 
-@Test function testGlobalIfEmptyMultiReturn()
+@Test function GlobalIfEmptyMultiReturn()
    -- Test global ??= takes only first return value from multi-return function
    function multiReturn()
       return 'first', 'second', 'third'
@@ -419,7 +419,7 @@ end
    assert(gMultiVar is 'first', 'global ??= should take only first return value')
 end
 
-@Test function testGlobalIfEmptyShortCircuit()
+@Test function GlobalIfEmptyShortCircuit()
    -- Test global ??= does not evaluate RHS when LHS is truthy
    global gCallCount = 0
    function countedFallback()
@@ -439,13 +439,13 @@ end
    assert(gFalseyVar is 'fallback', 'global ??= should assign fallback when LHS is falsey')
 end
 
-@Test function testLocalIfEmptyBasic()
+@Test function LocalIfEmptyBasic()
    -- Test local ??= assigns to newly declared local
    local lTestVar ??= 'assigned'
    assert(lTestVar is 'assigned', 'local ??= should assign to new local')
 end
 
-@Test function testLocalIfEmptyWithFunctionCall()
+@Test function LocalIfEmptyWithFunctionCall()
    -- Test local ??= with function call on RHS
    function getLocalDefault()
       return 123
@@ -454,7 +454,7 @@ end
    assert(lFuncVar is 123, 'local ??= should work with function call RHS')
 end
 
-@Test function testLocalIfEmptyMultiReturn()
+@Test function LocalIfEmptyMultiReturn()
    -- Test local ??= takes only first return value from multi-return function
    function localMultiReturn()
       return 100, 200, 300
@@ -463,7 +463,7 @@ end
    assert(lMultiVar is 100, 'local ??= should take only first return value')
 end
 
-@Test function testLocalIfEmptyInLoop()
+@Test function LocalIfEmptyInLoop()
    -- Test local ??= works correctly in loop scope
    results = {}
    for i in {0..3} do
@@ -475,7 +475,7 @@ end
    assert(results[2] is 20, 'local ??= in loop should assign correctly for i=2')
 end
 
-@Test function testLocalIfEmptyInCondition()
+@Test function LocalIfEmptyInCondition()
    -- Test local ??= works correctly in conditional scope
    function maybeGet(flag)
       if flag then

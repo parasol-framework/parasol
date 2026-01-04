@@ -11,7 +11,7 @@ UDP Broadcast and Multicast Test
 ------------------------------------------------------------------------------------------------------------------------
 -- Test multicast group operations
 
-function testMulticastGroups()
+function MulticastGroups()
    local multicastSocket = obj.new('netsocket', { flags = 'UDP', multicastTTL = 2 })
 
    assert(multicastSocket.multicastTTL is 2, 'MulticastTTL not set correctly')
@@ -45,7 +45,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test multicast error handling
 
-function testMulticastErrorHandling()
+function MulticastErrorHandling()
    local udpSocket = obj.new('netsocket', { flags = 'UDP' })
 
    -- Test invalid multicast addresses
@@ -74,7 +74,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test multicast TTL/Hop limit configuration
 
-function testMulticastTTL()
+function MulticastTTL()
    -- Test different TTL values
    local ttlValues = { 1, 5, 10, 32, 255 }
 
@@ -93,7 +93,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test broadcast with loopback (safe test that doesn't require network broadcast permission)
 
-function testBroadcastLoopback()
+function BroadcastLoopback()
    local serverPort = glBasePort + 3
    local proc = processing.new({ timeout = glTestTimeout })
    local broadcastReceived = false

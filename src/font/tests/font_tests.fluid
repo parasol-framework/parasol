@@ -3,15 +3,15 @@
 
    mFont ?= mod.load("font")
 
-function testGetList()
+function GetList()
 
 end
 
-function testStringWidth()
+function StringWidth()
 
 end
 
-@Test function testSelectFont()
+@Test function SelectFont()
    err, path, meta = mFont.selectFont("Noto Sans", "Regular")
    assert(err is ERR_Okay, "SelectFont() returned error " .. mSys.GetErrorMsg(err))
 
@@ -22,7 +22,7 @@ end
    assert(err != ERR_Okay, "SelectFont() returned error " .. mSys.GetErrorMsg(err))
 end
 
-@Test function testResolveFamily()
+@Test function ResolveFamily()
    err, name = mFont.resolveFamilyName("Does Not Exist,*")
    assert(err is ERR_Okay, "ResolveFamilyName() returned error " .. mSys.GetErrorMsg(err))
    assert(name is "Noto Sans", "Expected ResolveFamilyName() to return 'Noto Sans' as the default font")

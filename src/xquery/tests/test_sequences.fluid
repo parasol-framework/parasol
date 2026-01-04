@@ -1,4 +1,4 @@
--- XPath sequence function tests
+-- XPath sequence @Test function s
 
    include 'xml'
 
@@ -42,7 +42,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Validate empty() behaviour
 
-function testEmptyFunction()
+@Test function EmptyFunction()
    local xml = createSequenceXml()
 
    local err, emptyValue = xml.mtEvaluate('empty(/root/empty/item)')
@@ -55,7 +55,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Verify index-of returns all matching positions
 
-function testIndexOfFunction()
+@Test function IndexOfFunction()
    local xml = createSequenceXml()
 
    local err, temp_matchCount = xml.mtEvaluate('count(index-of(/root/duplicates/value, "alpha"))')
@@ -78,7 +78,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Distinct values should preserve first occurrence order
 
-function testDistinctValuesFunction()
+@Test function DistinctValuesFunction()
    local xml = createSequenceXml()
 
    local err, temp_totalValues = xml.mtEvaluate('count(distinct-values(/root/duplicates/value))')
@@ -98,7 +98,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- insert-before, remove and reverse sequence operations
 
-function testInsertRemoveReverse()
+@Test function InsertRemoveReverse()
    local xml = createSequenceXml()
 
    local err, insertFirst = xml.mtEvaluate('insert-before(/root/order/step/@pos, 2, "2")[1]')
@@ -132,7 +132,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- subsequence, unordered and deep-equal checks
 
-function testSubsequenceDeepEqual()
+@Test function SubsequenceDeepEqual()
    local xml = createSequenceXml()
 
    local err, subseqFirst = xml.mtEvaluate('subsequence(/root/duplicates/value, 2, 2)[1]')
@@ -154,7 +154,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Cardinality helper functions
 
-function testCardinalityFunctions()
+@Test function CardinalityFunctions()
    local xml = createSequenceXml()
 
    local err, temp_zeroOneValue = xml.mtEvaluate('number(zero-or-one(/root/optional/value))')

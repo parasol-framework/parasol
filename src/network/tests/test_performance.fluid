@@ -33,7 +33,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testMessageThroughput()
+function MessageThroughput()
    local proc = processing.new({ timeout = 5.0 })
    local start_time = mSys.PreciseTime()
    local messages_sent = 0
@@ -122,7 +122,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testLargeMessagePerformance()
+function LargeMessagePerformance()
    local proc = processing.new({ timeout = 15.0 })
    local message_sizes = { 1024, 8192, 65536, 262144 } -- 1KB, 8KB, 64KB, 256KB
    local transfer_results = {}
@@ -231,7 +231,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testConnectionScaling()
+function ConnectionScaling()
    local proc = processing.new({ timeout = 20.0 })
    local max_clients = 20
    local connected_clients = 0
@@ -319,7 +319,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testWriteQueuePerformance()
+function WriteQueuePerformance()
    local proc = processing.new({ timeout = 15.0 })
    local queue_messages = 500
    local messages_queued = 0
@@ -402,7 +402,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testMemoryUsageUnderLoad()
+function MemoryUsageUnderLoad()
    print('Testing memory usage patterns under network load...')
 
    -- This test creates and destroys many network objects to check for leaks

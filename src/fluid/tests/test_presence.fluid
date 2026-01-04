@@ -4,43 +4,43 @@
 @BeforeEach(hotpath=true)
 function enforce_hotpath() end
 
-@Test function testNil()
+@Test function Nil()
    v = nil
    assert((v??) is false, "Failed nil case: expected false")
 end
 
-@Test function testFalse()
+@Test function False()
    v = false
    assert((v??) is false, "Failed false case: expected false")
 end
 
-@Test function testZero()
+@Test function Zero()
    v = 0
    assert((v??) is false, "Failed zero case: expected false")
 end
 
-@Test function testEmptyString()
+@Test function EmptyString()
    v = ""
    assert((v??) is false, "Failed empty string case: expected false")
 end
 
-@Test function testTruthyString()
+@Test function TruthyString()
    v = "X"
    assert((v??) is true, "Failed truthy string case: expected true")
 end
 
-@Test function testTruthyNumber()
+@Test function TruthyNumber()
    v = 5
    assert((v??) is true, "Failed truthy number case: expected true")
 end
 
-@Test function testTrue()
+@Test function True()
    v = true
    assert((v??) is true, "Failed true case: expected true")
 end
 
 -- Test in conditionals
-@Test function testInConditional()
+@Test function InConditional()
    comment = "Hello"
    if comment?? then
       -- Expected path
@@ -62,7 +62,7 @@ end
 end
 
 -- Test in expressions
-@Test function testInExpression()
+@Test function InExpression()
    name = "Alice"
    msg = name?? and "Hello, " .. name or "Hello, Guest"
    assert(msg is "Hello, Alice", "Failed expression test with truthy name")
@@ -73,7 +73,7 @@ end
 end
 
 -- Test chaining with logical operators
-@Test function testChaining()
+@Test function Chaining()
    comment = "Test"
    author = "User"
    if comment?? and author?? then
@@ -95,7 +95,7 @@ end
 end
 
 -- Test with parentheses
-@Test function testParentheses()
+@Test function Parentheses()
    x = 5
    y = 10
    v = (x + y)??
@@ -107,7 +107,7 @@ end
 end
 
 -- Test with table access
-@Test function testTableAccess()
+@Test function TableAccess()
    t = { name = "Test" }
    v = t.name??
    assert(v is true, "Failed table access test: expected true for non-empty string")
@@ -122,7 +122,7 @@ end
 end
 
 -- Test runtime values
-@Test function testRuntime()
+@Test function Runtime()
    x = 0
    v = x??
    assert(v is false, "Runtime zero test failed: expected false")
@@ -149,7 +149,7 @@ end
 end
 
 -- Test constant expressions
-@Test function testConstants()
+@Test function Constants()
    assert((nil??) is false, "Constant nil test failed")
    assert((false??) is false, "Constant false test failed")
    assert((0??) is false, "Constant zero test failed")
@@ -161,7 +161,7 @@ end
 end
 
 -- Test that ?? returns boolean, not the value
-@Test function testReturnsBool()
+@Test function ReturnsBool()
    v = "Hello"
    result = v??
    assert(result is true, "Should return true, not the value")
@@ -174,7 +174,7 @@ end
 end
 
 -- Test chained field access
-@Test function testChainedAccess()
+@Test function ChainedAccess()
    obj = { user = { name = "Alice" } }
    assert((obj.user.name??) is true, "Failed chained access test")
 
@@ -183,7 +183,7 @@ end
 end
 
 -- Test with negative numbers
-@Test function testNegativeNumbers()
+@Test function NegativeNumbers()
    v = -5
    assert((v??) is true, "Failed negative number test: expected true for -5")
 
@@ -196,35 +196,35 @@ end
 -- These tests verify the actual runtime behavior
 
 -- Test: Verify truthy string returns true (proves jumps don't fire incorrectly)
-@Test function testBytecodeSemanticsTruthyString()
+@Test function BytecodeSemanticsTruthyString()
    s = "test"
    result = s??
    assert(result is true, "Truthy string must return true - if false, BC_ISEQS may be skipping when equal (wrong)")
 end
 
 -- Test: Verify truthy number returns true
-@Test function testBytecodeSemanticsTruthyNumber()
+@Test function BytecodeSemanticsTruthyNumber()
    n = 42
    result = n??
    assert(result is true, "Truthy number must return true - if false, BC_ISEQN may be skipping when equal (wrong)")
 end
 
 -- Test: Verify falsey string returns false (proves jumps fire correctly)
-@Test function testBytecodeSemanticsFalseyString()
+@Test function BytecodeSemanticsFalseyString()
    s = ""
    result = s??
    assert(result is false, "Falsey string must return false - if true, BC_ISEQS may not be jumping when equal")
 end
 
 -- Test: Verify falsey number returns false
-@Test function testBytecodeSemanticsFalseyNumber()
+@Test function BytecodeSemanticsFalseyNumber()
    n = 0
    result = n??
    assert(result is false, "Falsey number must return false - if true, BC_ISEQN may not be jumping when equal")
 end
 
 -- Test: Verify type mismatch doesn't cause false positives (string vs number comparison)
-@Test function testBytecodeSemanticsTypeMismatchStringToNumber()
+@Test function BytecodeSemanticsTypeMismatchStringToNumber()
    s = "hello"
    -- Comparing string to number (zero check) should not trigger false jump
    result = s??
@@ -232,7 +232,7 @@ end
 end
 
 -- Test: Verify type mismatch doesn't cause false positives (number vs string comparison)
-@Test function testBytecodeSemanticsTypeMismatchNumberToString()
+@Test function BytecodeSemanticsTypeMismatchNumberToString()
    n = 42
    -- Comparing number to string (empty check) should not trigger false jump
    result = n??
@@ -240,21 +240,21 @@ end
 end
 
 -- Test: Verify nil returns false correctly
-@Test function testBytecodeSemanticsNil()
+@Test function BytecodeSemanticsNil()
    v = nil
    result = v??
    assert(result is false, "Nil must return false - verifies BC_ISEQP behavior")
 end
 
 -- Test: Verify false returns false correctly
-@Test function testBytecodeSemanticsFalse()
+@Test function BytecodeSemanticsFalse()
    v = false
    result = v??
    assert(result is false, "False must return false - verifies BC_ISEQP behavior")
 end
 
 -- Test: Comprehensive runtime truthy values
-@Test function testBytecodeSemanticsAllTruthyValues()
+@Test function BytecodeSemanticsAllTruthyValues()
    test_cases = {
       {val = "hello", name = "non-empty string"},
       {val = 1, name = "positive number"},
@@ -271,7 +271,7 @@ end
 end
 
 -- Test: Comprehensive runtime falsey values
-@Test function testBytecodeSemanticsAllFalseyValues()
+@Test function BytecodeSemanticsAllFalseyValues()
    test_cases = {
       {val = nil, name = "nil"},
       {val = false, name = "false"},
@@ -284,7 +284,7 @@ end
    end
 end
 
-@Test function testFlags()
+@Test function Flags()
    trigger = 0
    perm = PERMIT_READ|PERMIT_WRITE
    if (perm & PERMIT_READ)??  then trigger++ end
@@ -294,7 +294,7 @@ end
    assert(trigger is 3, "Expected 3 bit-flags to pass, got " .. trigger)
 end
 
-@Test function testShortCircuit()
+@Test function ShortCircuit()
    function sideEffect()
       error("This function should not be called due to short-circuiting")
    end
@@ -317,17 +317,17 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Array presence tests: empty arrays (len == 0) are considered falsey
 
-@Test function testEmptyArrayPresence()
+@Test function EmptyArrayPresence()
    local empty = array<int>
    assert((empty??) is false, "Empty array should return false for ??")
 end
 
-@Test function testNonEmptyArrayPresence()
+@Test function NonEmptyArrayPresence()
    local filled = array<int, 5>
    assert((filled??) is true, "Non-empty array should return true for ??")
 end
 
-@Test function testArrayInConditional()
+@Test function ArrayInConditional()
    local empty = array<int>
    if empty?? then
       error("Should not enter if block for empty array")
@@ -341,7 +341,7 @@ end
    assert(entered is true, "Should enter if block for non-empty array")
 end
 
-@Test function testArrayWithVariousTypes()
+@Test function ArrayWithVariousTypes()
    -- Test presence check with various array element types
    local int_empty = array<int>
    local double_empty = array<double>
@@ -354,7 +354,7 @@ end
    assert((int_filled??) is true, "Non-empty int array should return true")
 end
 
-@Test function testArrayInComprehensiveFalseyList()
+@Test function ArrayInComprehensiveFalseyList()
    -- Verify arrays are now included in the falsey value set
    test_cases = {
       {val = nil, name = "nil", expected = false},

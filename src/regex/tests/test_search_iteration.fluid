@@ -1,6 +1,6 @@
 -- Search iteration behaviour and result normalisation
 
-@Test function testSearchFindsAllMatches()
+@Test function SearchFindsAllMatches()
    local matcher = regex.new("\\d+")
    local results = matcher.search("a1b22c333")
    assert(results and #results is 3, "Search should locate all numeric runs")
@@ -9,13 +9,13 @@
    assert(results[2][0] is "333", "Third match should capture final run")
 end
 
-@Test function testSearchReturnsNilWhenMissing()
+@Test function SearchReturnsNilWhenMissing()
    local matcher = regex.new("xyz")
    local results = matcher.search("abc")
    assert(results is nil, "Search should return nil when no results are found")
 end
 
-@Test function testSearchProvidesFullAndGroup()
+@Test function SearchProvidesFullAndGroup()
    local matcher = regex.new("(ab)c?")
    local results = matcher.search("ab cab abc")
    assert(results and #results is 2, "Search should record both matches")
@@ -23,13 +23,13 @@ end
    assert(results[1][0] is "abc" and results[1][1] is "ab", "Second match should show shared capture")
 end
 
-@Test function testSearchNotNullFlag()
+@Test function SearchNotNullFlag()
    local matcher = regex.new("a*")
    local results = matcher.search("bbb", regex.NOT_NULL)
    assert(results is nil, "NOT_NULL should filter out zero length matches in search")
 end
 
-@Test function testSearchContinuousFlag()
+@Test function SearchContinuousFlag()
    local matcher = regex.new("\\w+")
    local results = matcher.search("skip this", regex.CONTINUOUS)
    assert(results and #results is 1, "CONTINUOUS should only match from start of string")

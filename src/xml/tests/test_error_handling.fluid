@@ -5,7 +5,7 @@
 -----------------------------------------------------------------------------------------------------------------------
 -- Test malformed XML handling
 
-@Test function testMalformedXML()
+@Test function MalformedXML()
    -- Test unclosed tags
    local xml = obj.new("xml", { flags = XMF_WELL_FORMED })
    local err = xml.setKey("Statement", "<root><unclosed></root>")
@@ -20,7 +20,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test empty XML document
 
-@Test function testEmptyDocument()
+@Test function EmptyDocument()
    local xml = obj.new("xml", { statement = "" })
    assert(not xml.tags or #xml.tags is 0, "Empty document should have no tags")
 
@@ -34,7 +34,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test very large XML documents
 
-@Test function testLargeDocument()
+@Test function LargeDocument()
    -- Generate a large XML document
    local parts = {'<root>'}
    for i = 1, 1000 do
@@ -51,7 +51,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test invalid method parameters
 
-@Test function testInvalidParameters()
+@Test function InvalidParameters()
    local xml = obj.new("xml", {
       statement = '<root><child id="test"/></root>'
    })
@@ -72,7 +72,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test readonly mode
 
-@Test function testReadOnlyMode()
+@Test function ReadOnlyMode()
    local xml = obj.new("xml", {
       statement = '<root><child/></root>',
       readOnly = true
@@ -94,7 +94,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test namespace handling
 
-@Test function testNamespaceHandling()
+@Test function NamespaceHandling()
    local xml = obj.new("xml", {
       statement = '<root xmlns:ns="http://example.com"><ns:child ns:attr="value"/></root>'
    })
@@ -112,7 +112,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test special characters and encoding
 
-@Test function testSpecialCharacters()
+@Test function SpecialCharacters()
    local xml = obj.new("xml", {
       statement = '<root attr="&lt;&gt;&amp;&quot;">&lt;special&gt; &amp; content</root>'
    })
@@ -128,7 +128,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test concurrent access (if supported)
 
-@Test function testConcurrentAccess()
+@Test function ConcurrentAccess()
    local xml = obj.new("xml", {
       statement = '<root><item>1</item><item>2</item><item>3</item></root>',
       readOnly = true  -- Readonly for safe concurrent access
@@ -151,7 +151,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test memory limits and cleanup
 
-@Test function testMemoryHandling()
+@Test function MemoryHandling()
    -- Test creating and destroying many XML objects
    for i = 1, 100 do
       local xml = obj.new("xml", {
@@ -163,7 +163,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test XPath edge cases
 
-@Test function testXPathEdgeCases()
+@Test function XPathEdgeCases()
    local xml = obj.new("xml", {
       statement = '<root><item name="test[1]"/><item name="test@attr"/></root>'
    })
@@ -181,7 +181,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test serialization edge cases
 
-@Test function testSerializationEdgeCases()
+@Test function SerializationEdgeCases()
    local xml = obj.new("xml", {
       statement = '<root><empty/><cdata><![CDATA[Special <content>]]></cdata></root>'
    })
@@ -200,7 +200,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test performance with deep nesting
 
-@Test function testDeepNesting()
+@Test function DeepNesting()
    -- Create deeply nested XML
    local parts = {}
    local depth = 100
@@ -231,7 +231,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test attribute limits
 
-@Test function testAttributeLimits()
+@Test function AttributeLimits()
    -- Create element with many attributes
    local parts = {'<root'}
    for i = 1, 100 do

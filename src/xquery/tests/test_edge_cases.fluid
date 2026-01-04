@@ -5,7 +5,7 @@
 -----------------------------------------------------------------------------------------------------------------------
 -- Medium-length additive chains should iterate without exhausting the stack
 
-function testMediumAdditionChain()
+@Test function MediumAdditionChain()
    local count = 40
    local terms = {}
    for index = 0, count do
@@ -23,7 +23,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Long additive chains should complete successfully after the iterative evaluator change
 
-function testLongAdditionChain()
+@Test function LongAdditionChain()
    local count = 400
    local terms = {}
    for index = 0, count-1 do
@@ -41,7 +41,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Multiplicative chains should respect left-to-right evaluation without recursion
 
-function testMultiplicationChain()
+@Test function MultiplicationChain()
    local factors = {}
    for index = 2, 10 do
       factors[#factors] = tostring(index)
@@ -63,7 +63,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Mixed associative and non-associative operators should fall back to recursive evaluation
 
-function testMixedAdditionAndSubtraction()
+@Test function MixedAdditionAndSubtraction()
    local xq = obj.new('xquery', { statement = '1 + 2 - 3 + 4' })
    local err = xq.acActivate()
    assert(err is ERR_Okay, 'Query execution failed: ' .. tostring(xq.errorMsg))
@@ -74,7 +74,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Unparenthesized multiplication should work without requiring parentheses
 
-function testUnparenthesizedMultiplication()
+@Test function UnparenthesizedMultiplication()
    local xq = obj.new('xquery', { statement = 'let $unit := 1 return 2 * 3 * 4' })
    local err = xq.acActivate()
    assert(err is ERR_Okay, 'Query execution failed: ' .. tostring(xq.errorMsg))
@@ -85,7 +85,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Multiplication directly after return keyword
 
-function testMultiplicationAfterReturn()
+@Test function MultiplicationAfterReturn()
    -- Expect failure, the statement is not valid XQuery
    local ex = catch(function()
       local xq = obj.new('xquery', { statement = 'return 2 * 3' })
@@ -106,7 +106,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Multiplication in assignment position
 
-function testMultiplicationAfterAssign()
+@Test function MultiplicationAfterAssign()
    local xq = obj.new('xquery', { statement = 'let $x := 2 * 3 return $x' })
    local err = xq.acActivate()
    assert(err is ERR_Okay, 'Query execution failed: ' .. tostring(xq.errorMsg))
@@ -117,7 +117,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Ensure wildcard paths still parse correctly after tokeniser changes
 
-function testWildcardPathsStillWork()
+@Test function WildcardPathsStillWork()
    local xml_doc = obj.new('xml', { statement = '<root><a><b>1</b></a><a><b>2</b></a></root>' })
 
    local xq = obj.new('xquery', { statement = 'count(/root/*/b)' })
@@ -129,7 +129,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Ensure QName wildcards still parse correctly
 
-function testQNameWildcardStillWorks()
+@Test function QNameWildcardStillWorks()
    local xml_doc = obj.new('xml', { statement = '<root><ns:item>1</ns:item><ns:other>2</ns:other></root>' })
    local xq = obj.new('xquery', { statement = '/root/*:item' })
    local err = xq.mtEvaluate(xml_doc)

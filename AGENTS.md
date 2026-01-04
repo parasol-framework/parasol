@@ -104,7 +104,9 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension to 
 - Zero-based indexing for tables and string functions.
 - Variables and functions are local by default.  Use `global` for defining global variables and `local` when controlling scope.
 - Anonymous function expressions with `=>`: `(i => print(i))`
-- Support for ranges: `for i in {0..10} do`
+- Ranges: `for i in {0..10} do`
+- Exception handling with `try-except-when` statements
+- String interpolation supporting expressions, e.g. `f"My {expression} here"`
 
 A complete breakdown of these features is located in `docs/wiki/Fluid-Reference-Manual.md`
 

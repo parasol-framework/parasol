@@ -11,7 +11,7 @@ local glTestTimeout = 3.0
 ------------------------------------------------------------------------------------------------------------------------
 -- Test basic UDP communication with IPv6
 
-function testUDPIPv6Basic()
+function UDPIPv6Basic()
    glBasePort++
    local serverPort = glBasePort
    local proc = processing.new({ timeout = glTestTimeout })
@@ -60,7 +60,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test dual-stack IPv4/IPv6 UDP communication
 
-function testUDPDualStack()
+function UDPDualStack()
    glBasePort++
    local serverPort = glBasePort
    local proc = processing.new({ timeout = glTestTimeout })
@@ -124,7 +124,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test IPv6 specific socket properties
 
-function testUDPIPv6Properties()
+function UDPIPv6Properties()
    local ipv6Socket = obj.new('netsocket', { address = '::1', flags = 'UDP', multicastTTL = 5 })
 
    assert(bit.band(ipv6Socket.flags, NSF_UDP) != 0, 'UDP flag not set on IPv6 socket')

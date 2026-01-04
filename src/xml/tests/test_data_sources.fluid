@@ -9,7 +9,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test loading from file path
 
-@Test(priority=1) function testPathLoading()
+@Test(priority=1) function PathLoading()
    -- Create a temporary XML file for testing
    testXML = '<?xml version="1.0"?><testRoot><testChild>Path content</testChild></testRoot>'
    file = obj.new('file', { path = 'temp:test_xml_path.xml', flags = 'WRITE|NEW' })
@@ -30,7 +30,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test loading from object source
 
-@Test(priority=2) function testObjectSource()
+@Test(priority=2) function ObjectSource()
    -- Create a memory object with XML content
    testXML = '<sourceRoot><sourceChild>Object content</sourceChild></sourceRoot>'
    memory = obj.new('file', { flags = 'READ|WRITE|NEW|BUFFER' })
@@ -50,7 +50,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test string: path prefix
 
-@Test(priority=3) function testStringPathPrefix()
+@Test(priority=3) function StringPathPrefix()
    testXML = '<stringRoot><stringChild>String path content</stringChild></stringRoot>'
 
    -- Use string: prefix to treat path as XML content
@@ -63,7 +63,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test DataFeed action
 
-@Test(priority=4) function testDataFeed()
+@Test(priority=4) function DataFeed()
    xml = obj.new("xml", { statement = '<root><existing>Original</existing></root>' })
 
    -- Feed additional XML data
@@ -78,7 +78,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test DataFeed with empty XML
 
-@Test(priority=5) function testDataFeedEmpty()
+@Test(priority=5) function DataFeedEmpty()
    xml = obj.new("xml") -- Start with empty XML
 
    -- Feed XML data to empty object
@@ -99,7 +99,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test reloading from different sources
 
-@Test(priority=6) function testSourceSwitching()
+@Test(priority=6) function SourceSwitching()
    -- Start with statement
    xml = obj.new("xml", { statement = '<initial>Statement content</initial>' })
    assert(xml.tags[0].attribs[0].name is "initial", "Initial load should work")
@@ -125,7 +125,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test loading large files
 
-@Test(priority=7) function testLargeFileLoading()
+@Test(priority=7) function LargeFileLoading()
    -- Generate large XML content
    parts = {'<largeRoot>'}
    for i = 0, 499 do
@@ -143,7 +143,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test invalid file handling
 
-@Test(priority=8) function testInvalidFileHandling()
+@Test(priority=8) function InvalidFileHandling()
    -- Try to load non-existent file
 
    ex, xml = catch(function() return obj.new("xml", { path = 'temp:nonexistent.xml' }) end)

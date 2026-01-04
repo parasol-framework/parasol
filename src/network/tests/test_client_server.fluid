@@ -25,7 +25,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test address validation and error handling
 
-@Test function testStrToAddress()
+@Test function StrToAddress()
    invalidAddresses = {
       'gggg::1',           -- Invalid hex digits
       '1::2::3',           -- Double double-colon
@@ -54,7 +54,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test function testClientServer()
+@Test function ClientServer()
    proc = processing.new({ timeout = 5.0 })
 
    sockServer = obj.new('netsocket', {
@@ -118,7 +118,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- One-on-one basic communication test between client and server.
 
-@Test function testBasicCommunication()
+@Test function BasicCommunication()
    proc = processing.new({ timeout = 10.0 })
 
    glPort = glPort + 1
@@ -243,7 +243,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test function testConnectionStates()
+@Test function ConnectionStates()
    proc = processing.new({ timeout = 5.0 })
    stateChanges = {}
 
@@ -294,7 +294,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test function testConnectionTimeout()
+@Test function ConnectionTimeout()
    timeoutDuration = 0.5
    startTime = mSys.PreciseTime()
    connectionTimedOut = false

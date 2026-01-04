@@ -5,7 +5,7 @@
 -----------------------------------------------------------------------------------------------------------------------
 -- Validate QName construction and decomposition helpers
 
-function testQNameConstruction()
+@Test function QNameConstruction()
    local xml = obj.new("xml", {
       flags = XMF_NAMESPACE_AWARE,
       statement = '<root xmlns="http://example.com/default" xmlns:ex="http://example.com/ns" xmlns:dup="http://example.com/dup">'
@@ -39,7 +39,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Validate namespace lookup helpers
 
-function testNamespaceUtilities()
+@Test function NamespaceUtilities()
    local xml = obj.new("xml", {
       flags = XMF_NAMESPACE_AWARE,
       statement = '<root xmlns="http://example.com/default" xmlns:ex="http://example.com/ns" xmlns:dup="http://example.com/dup">'

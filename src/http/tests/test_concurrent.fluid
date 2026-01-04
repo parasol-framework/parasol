@@ -9,7 +9,7 @@
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testParallelRequests()
+function ParallelRequests()
    local proc = processing.new({ timeout = 5.0 })
    local results = {}
    local completed = 0
@@ -55,7 +55,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testConcurrentPOST()
+function ConcurrentPOST()
    local proc = processing.new({ timeout = 10.0 })
    local results = {}
    local completed = 0
@@ -102,7 +102,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testHighLoadRequests()
+function HighLoadRequests()
    local proc = processing.new({ timeout = 5.0 })
    local results = {}
    local completed = 0

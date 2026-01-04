@@ -5,7 +5,7 @@
 -----------------------------------------------------------------------------------------------------------------------
 -- Verify string casing helpers
 
-function testStringCaseFunctions()
+@Test function StringCaseFunctions()
    local xml = obj.new("xml", {
       statement = '<root><item>Alpha Beta</item><item attr="MixedCase"/></root>'
    })
@@ -20,7 +20,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Check URI encoding helpers
 
-function testUriEncodingFunctions()
+@Test function UriEncodingFunctions()
    local xml = obj.new("xml", {
       statement = '<root><item path="docs/file one" link="a&b?c"/></root>'
    })
@@ -35,7 +35,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Validate regular expression helpers
 
-function testRegexFunctions()
+@Test function RegexFunctions()
    local xml = obj.new("xml", {
       statement = '<root><code>id123</code><code>ALPHA-001</code><csv>alpha,beta,gamma</csv></root>'
    })
@@ -53,7 +53,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Exercise numeric helper functions
 
-function testMathFunctions()
+@Test function MathFunctions()
    local xml = obj.new("xml", {
       statement = '<root><value amount="10" delta="-5"/><value amount="20" delta="5"/><value amount="30" delta="0"/></root>'
    })
@@ -99,7 +99,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Ensure trace() produces pass-through results while emitting diagnostics
 
-function testTraceFunction()
+@Test function TraceFunction()
    local xml = obj.new("xml", {
       statement = '<root><item id="a">Alpha</item><item id="b">Beta</item></root>'
    })
@@ -117,7 +117,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Verify error() reports diagnostics and halts XPath evaluation
 
-function testErrorFunction()
+@Test function ErrorFunction()
    local xml = obj.new("xml", {
       statement = '<root><item code="A">Alpha</item></root>'
    })
@@ -133,7 +133,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Validate date and time helper functions
 
-function testDateTimeFunctions()
+@Test function DateTimeFunctions()
    local xml = obj.new("xml", {
       statement = '<root><item id="a"/></root>'
    })
@@ -151,7 +151,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Check value comparison operators (eq, ne, lt, le, gt, ge)
 
-function testValueComparisonOperators()
+@Test function ValueComparisonOperators()
    local xml = obj.new("xml", {
       statement = '<root><value amount="10"/><value amount="20"/><value amount="30"/></root>'
    })

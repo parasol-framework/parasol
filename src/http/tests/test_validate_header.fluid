@@ -14,7 +14,7 @@ early header validation before the full request body is processed.
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testValidateHeaderSuccess()
+function ValidateHeaderSuccess()
    local proc = processing.new({ timeout = 5.0 })
    local content = ''
 
@@ -48,7 +48,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testValidateHeaderFailure()
+function ValidateHeaderFailure()
    local proc = processing.new({ timeout = 5.0 })
 
    local http = obj.new('http', {
@@ -75,7 +75,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testValidateHeaderCustomError()
+function ValidateHeaderCustomError()
    local proc = processing.new({ timeout = 5.0 })
 
    local http = obj.new('http', {
@@ -104,7 +104,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testValidateHeaderMissingAuth()
+function ValidateHeaderMissingAuth()
    local proc = processing.new({ timeout = 5.0 })
 
    local http = obj.new('http', {
@@ -130,7 +130,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testValidateHeaderContentType()
+function ValidateHeaderContentType()
    local proc = processing.new({ timeout = 5.0 })
 
    -- Send XML to an endpoint that only accepts JSON
@@ -162,7 +162,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testValidateHeaderException()
+function ValidateHeaderException()
    local proc = processing.new({ timeout = 5.0 })
 
    local http = obj.new('http', {
@@ -188,7 +188,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testNoValidateHeaderCallback()
+function NoValidateHeaderCallback()
    local proc = processing.new({ timeout = 5.0 })
    local content = ''
 

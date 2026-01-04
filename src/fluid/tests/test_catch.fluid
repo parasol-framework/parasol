@@ -6,7 +6,7 @@ function enforce_hotpath() end
 ----------------------------------------------------------------------------------------------------------------------
 -- Check that catch() does nothing if no error is raised.
 
-@Test function testCatchClean()
+@Test function CatchClean()
    err, a, b, c = catch(function()
       i = 1
       return 1, 2, 3, 4
@@ -28,7 +28,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Check that a standard error() will result in the exception being caught.
 
-@Test function testCatch()
+@Test function Catch()
    exception_raised = false
 
    err = catch(function()
@@ -46,7 +46,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Check that an ERROR result other than ERR_Okay will result in the generation of an exception.
 
-@Test function testCatchErrorCode()
+@Test function CatchErrorCode()
    exception_raised = false
 
    err, result = catch(function()
@@ -65,7 +65,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Check that obj.new() raises exceptions correctly.
 
-@Test function testCatchObject()
+@Test function CatchObject()
    exception_raised = false
 
    err, result = catch(function()
@@ -82,7 +82,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Check that object actions raise exceptions correctly.
 
-@Test function testCatchObjectAction()
+@Test function CatchObjectAction()
    exception_raised = false
 
    err, result = catch(function()
@@ -100,7 +100,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Check that errors returned from writing to object fields are caught.
 
-@Test function testSetField()
+@Test function SetField()
    exception_raised = false
 
    err, result = catch(function()
@@ -118,7 +118,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Test that filtering for error codes works.
 
-@Test function testCatchFilter()
+@Test function CatchFilter()
    catch(function()
       catch(function()
          pic, err = obj.new("xml", { src="nowhere:nofile.xml" })
@@ -137,7 +137,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Test that unfiltered errors are thrown to the parent block.
 
-@Test function testMissedFilter()
+@Test function MissedFilter()
    status, msg = pcall(function()
       catch(function()
          xml = obj.new("xml", { flags="NEW" })
@@ -160,7 +160,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Test simple catch() with no function defined to handle the exception.
 
-@Test function testNoThrow()
+@Test function NoThrow()
    ex, result = catch(function()
       error("Catch this! (Exception raised on purpose)")
    end)
@@ -172,7 +172,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- This test exercises deep nesting of exception handlers to reliably trigger frame chain issues
 
-@Test function testDeepNesting1()
+@Test function DeepNesting1()
    result = {}
 
    catch(function()
@@ -206,7 +206,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testCrossLuaC1()
+@Test function CrossLuaC1()
    result = {}
 
    catch(function()
@@ -231,7 +231,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testMultipleFilterLevels()
+@Test function MultipleFilterLevels()
    result = {}
 
    catch(function()
@@ -260,7 +260,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testMixedLuaErrors()
+@Test function MixedLuaErrors()
    result = {}
 
    catch(function()
@@ -292,7 +292,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testFilterChaining()
+@Test function FilterChaining()
    -- Test the specific pattern from testMissedFilter
    status, msg = pcall(function()
       catch(function()
@@ -310,7 +310,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testObjectMethodErrors()
+@Test function ObjectMethodErrors()
    result = {}
 
    catch(function()
@@ -333,7 +333,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testChainedObjectCalls()
+@Test function ChainedObjectCalls()
    result = {}
 
    catch(function()
@@ -368,7 +368,7 @@ end
 -- The catch() behavior should only apply to DIRECT calls within the catch block, not to
 -- functions called from within those functions.
 
-@Test function testScopeIsolation()
+@Test function ScopeIsolation()
    helper_called = false
    helper_error = nil
 
@@ -407,7 +407,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Test that object method errors in nested functions don't throw
 
-@Test function testScopeIsolationObjectMethod()
+@Test function ScopeIsolationObjectMethod()
    helper_result = nil
 
    function helper_with_action()
@@ -438,7 +438,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Test multiple levels of nested function calls
 
-@Test function testDeepNestedFunctions()
+@Test function DeepNestedFunctions()
    level1_called = false
    level2_called = false
    level3_error = nil

@@ -5,7 +5,7 @@
 -----------------------------------------------------------------------------------------------------------------------
 -- Numeric constructor coverage
 
-function testNumericConstructors()
+@Test function NumericConstructors()
    local xml = obj.new('xml', { statement = '<root/>' })
 
    local err, infValue = xml.mtEvaluate("xs:double('INF')")
@@ -28,7 +28,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Boolean and temporal constructors
 
-function testBooleanAndTemporalConstructors()
+@Test function BooleanAndTemporalConstructors()
    local xml = obj.new('xml', { statement = '<root/>' })
 
    local err, booleanValue = xml.mtEvaluate('xs:boolean(1)')
@@ -66,7 +66,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Node atomisation and sequence cardinality checks
 
-function testConstructorNodeAtomisation()
+@Test function ConstructorNodeAtomisation()
    local xml = obj.new('xml', { statement = '<root><value>42</value></root>' })
 
    local err, intValue = xml.mtEvaluate('xs:int(/root/value)')
@@ -85,7 +85,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Namespace-sensitive constructor behaviour
 
-function testQNameConstructors()
+@Test function QNameConstructors()
    local xml = obj.new('xml', { statement = '<root/>' })
 
    local err, qnameInstance = xml.mtEvaluate("declare namespace p='http://example.com/ns'; xs:QName('p:local') instance of xs:QName")
@@ -108,7 +108,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Error coverage for invalid lexical inputs and arity
 
-function testConstructorLexicalFailures()
+@Test function ConstructorLexicalFailures()
    local xml = obj.new('xml', { statement = '<root/>' })
 
    local err = xml.mtEvaluate("xs:double('not-a-number')")
@@ -125,7 +125,7 @@ function testConstructorLexicalFailures()
       'Invalid constructor lexemes should report FORG0001, got: ' .. message)
 end
 
-function testConstructorArityValidation()
+@Test function ConstructorArityValidation()
    local xml = obj.new('xml', { statement = '<root/>' })
 
    local err = xml.mtEvaluate('xs:double()')
@@ -138,7 +138,7 @@ function testConstructorArityValidation()
    assert(string.find(message, 'xpty0004', 0, true), 'Constructor arity errors should include XPTY0004, got: ' .. message)
 end
 
-function testConstructorUnsupportedType()
+@Test function ConstructorUnsupportedType()
    local xml = obj.new('xml', { statement = '<root/>' })
 
    local err = xml.mtEvaluate("xs:notARealType('5')")

@@ -26,7 +26,7 @@ unique messages to verify proper isolation and delivery.
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test function testMultipleConnections()
+@Test function MultipleConnections()
    proc = processing.new({ timeout = 3.0 })
 
    print('Testing multiple concurrent connections with NSF::MULTI_CONNECT and ' .. glMaxSockets .. ' clients')
@@ -163,7 +163,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test function testClientLimitEnforcement()
+@Test function ClientLimitEnforcement()
    proc = processing.new({ timeout = 3.0 })
    limit = 2
    connectAttempts = 4
@@ -231,7 +231,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test function testConnectionIsolation()
+@Test function ConnectionIsolation()
    proc = processing.new({ timeout = 3.0 })
    clientCount = 3
    clientMessages = {}

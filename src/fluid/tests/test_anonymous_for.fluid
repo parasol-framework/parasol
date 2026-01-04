@@ -4,7 +4,7 @@
 @BeforeEach(hotpath=true)
 function enforce_hotpath() end
 
-@Test function testAnonymousForBasicExclusive()
+@Test function AnonymousForBasicExclusive()
    -- Test basic anonymous for with exclusive constant range
    count = 0
    for {0..5} do
@@ -13,7 +13,7 @@ function enforce_hotpath() end
    assert(count is 5, "for {0..5} should iterate 5 times, got " .. count)
 end
 
-@Test function testAnonymousForBasicInclusive()
+@Test function AnonymousForBasicInclusive()
    -- Test basic anonymous for with inclusive constant range
    count = 0
    for {0...5} do
@@ -22,7 +22,7 @@ end
    assert(count is 6, "for {0...5} should iterate 6 times, got " .. count)
 end
 
-@Test function testAnonymousForReverseExclusive()
+@Test function AnonymousForReverseExclusive()
    -- Test anonymous for with reverse exclusive range
    count = 0
    for {5..0} do
@@ -31,7 +31,7 @@ end
    assert(count is 5, "for {5..0} should iterate 5 times, got " .. count)
 end
 
-@Test function testAnonymousForReverseInclusive()
+@Test function AnonymousForReverseInclusive()
    -- Test anonymous for with reverse inclusive range
    count = 0
    for {5...0} do
@@ -40,7 +40,7 @@ end
    assert(count is 6, "for {5...0} should iterate 6 times, got " .. count)
 end
 
-@Test function testAnonymousForEmpty()
+@Test function AnonymousForEmpty()
    -- Test anonymous for with empty range (exclusive same bounds)
    count = 0
    for {5..5} do
@@ -49,7 +49,7 @@ end
    assert(count is 0, "for {5..5} should iterate 0 times, got " .. count)
 end
 
-@Test function testAnonymousForSingleElement()
+@Test function AnonymousForSingleElement()
    -- Test anonymous for with single element range (inclusive same bounds)
    count = 0
    for {5...5} do
@@ -58,7 +58,7 @@ end
    assert(count is 1, "for {5...5} should iterate 1 time, got " .. count)
 end
 
-@Test function testAnonymousForWithVariableBounds()
+@Test function AnonymousForWithVariableBounds()
    -- Test anonymous for with variable bounds (non-constant range)
    start_val = 2
    end_val = 7
@@ -69,7 +69,7 @@ end
    assert(count is 5, "for {2..7} should iterate 5 times, got " .. count)
 end
 
-@Test function testAnonymousForNested()
+@Test function AnonymousForNested()
    -- Test nested anonymous for loops
    total = 0
    for {0..3} do
@@ -80,7 +80,7 @@ end
    assert(total is 12, "nested for {0..3} and {0..4} should iterate 12 times, got " .. total)
 end
 
-@Test function testAnonymousForWithSideEffects()
+@Test function AnonymousForWithSideEffects()
    -- Test that side effects work correctly inside anonymous for
    result = {}
    for {0..5} do
@@ -91,7 +91,7 @@ end
    assert(result[4] is "x", "last element should be 'x'")
 end
 
-@Test function testAnonymousForWithBreak()
+@Test function AnonymousForWithBreak()
    -- Test early termination with break
    count = 0
    for {0..100} do
@@ -101,7 +101,7 @@ end
    assert(count is 5, "for with break at 5 should count 5, got " .. count)
 end
 
-@Test function testAnonymousForWithContinue()
+@Test function AnonymousForWithContinue()
    -- Test continue inside anonymous for
    -- This tests that the internal loop variable is properly handled
    count = 0
@@ -113,7 +113,7 @@ end
    assert(count is 10, "for with continue should count 10, got " .. count)
 end
 
-@Test function testAnonymousForWithDefer()
+@Test function AnonymousForWithDefer()
    -- Test defer inside anonymous for
    result = {}
    for {0..3} do
@@ -126,7 +126,7 @@ end
    assert(result[1] is "deferred", "second should be 'deferred'")
 end
 
-@Test function testAnonymousForMixedWithNamed()
+@Test function AnonymousForMixedWithNamed()
    -- Test that anonymous and named for loops can coexist
    outer_count = 0
    inner_sum = 0
@@ -140,7 +140,7 @@ end
    assert(inner_sum is 18, "inner named should sum to 18 (3 * (1+2+3)), got " .. inner_sum)
 end
 
-@Test function testAnonymousForLargeRange()
+@Test function AnonymousForLargeRange()
    -- Test anonymous for with a larger range for JIT warm-up
    count = 0
    for {0..1000} do
@@ -149,7 +149,7 @@ end
    assert(count is 1000, "for {0..1000} should iterate 1000 times, got " .. count)
 end
 
-@Test function testAnonymousForNegativeRange()
+@Test function AnonymousForNegativeRange()
    -- Test anonymous for with negative values
    count = 0
    for {-5..0} do
@@ -158,7 +158,7 @@ end
    assert(count is 5, "for {-5..0} should iterate 5 times, got " .. count)
 end
 
-@Test function testAnonymousForFunctionCall()
+@Test function AnonymousForFunctionCall()
    -- Test calling functions inside anonymous for
    function increment(val)
       return val + 1
@@ -171,7 +171,7 @@ end
    assert(total is 5, "function calls should work, got " .. total)
 end
 
-@Test function testAnonymousForWithLocalVar()
+@Test function AnonymousForWithLocalVar()
    -- Test that local variables inside anonymous for work correctly
    results = {}
    for {0..3} do
@@ -185,7 +185,7 @@ end
    end
 end
 
-@Test function testAnonymousForComparedToNamed()
+@Test function AnonymousForComparedToNamed()
    -- Verify anonymous for produces same iteration count as named for
    anon_count = 0
    for {1..10} do

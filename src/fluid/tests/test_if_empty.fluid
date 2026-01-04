@@ -3,7 +3,7 @@
 @BeforeEach(hotpath=true)
 function enforce_hotpath() end
 
-@Test function testNil()
+@Test function Nil()
    v = nil ?? "A"
    assert(v is "A", "Failed nil case: expected 'A', got '" .. tostring(v) .. "'")
 
@@ -16,27 +16,27 @@ function enforce_hotpath() end
    assert(v is true, "Expected true, got " .. tostring(v))
 end
 
-@Test function testFalse()
+@Test function False()
    v = false ?? "A"
    assert(v is "A", "Failed false case: expected 'A', got '" .. tostring(v) .. "'")
 end
 
-@Test function testZero()
+@Test function Zero()
    v = 0 ?? "A"
    assert(v is "A", "Failed zero case: expected 'A', got '" .. tostring(v) .. "'")
 end
 
-@Test function testEmptyString()
+@Test function EmptyString()
    v = "" ?? "A"
    assert(v is "A", "Failed empty string case: expected 'A', got '" .. tostring(v) .. "'")
 end
 
-@Test function testTruthyString()
+@Test function TruthyString()
    v = "X" ?? "A"
    assert(v is "X", "Failed truthy string case: expected 'X', got '" .. tostring(v) .. "'")
 end
 
-@Test function testTruthyNumber()
+@Test function TruthyNumber()
    v = 5 ?? "A"
    assert(v is 5, "Failed truthy number case: expected 5, got '" .. tostring(v) .. "'")
 end
@@ -44,7 +44,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Basic checks with a function on either side
 
-@Test function testFunction()
+@Test function Function()
    function returnString()
       return "Result"
    end
@@ -60,7 +60,7 @@ end
 -- Test if-empty in conjunction with concatenation - note that bugs raised could be in either feature or in
 -- combination of both
 
-@Test function testConcat()
+@Test function Concat()
    function returnString()
       return "Result"
    end
@@ -76,7 +76,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- This unusual test has been observed as throwing errors in some cases
 
-@Test function testConcatMsg()
+@Test function ConcatMsg()
    function fakeFunction(value)
       assert(value is 1, "Expected LHS to be preserved, got '" .. tostring(value) .. "'")
       return nil
@@ -89,7 +89,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testTable()
+@Test function Table()
    t = { a=1, b=2, c=3}
    v = t ?? 'Nothing'
    assert(v['a'] is 1, "Failed table case: expected table, got '" .. tostring(v) .. "'")
@@ -103,7 +103,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testTableAccessLHS()
+@Test function TableAccessLHS()
    t = { }
    table.insert(t, 10)
    table.insert(t, 20)
@@ -130,7 +130,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Ensure RHS is not evaluated when LHS is truthy
 
-@Test function testShortCircuitTruth()
+@Test function ShortCircuitTruth()
    function rhs()
       error("RHS should not be evaluated when LHS is truthy")
    end
@@ -141,7 +141,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Ensure RHS is not evaluated when LHS is a RUNTIME truthy value (not compile-time constant)
 
-@Test function testShortCircuitRuntimeTruthy()
+@Test function ShortCircuitRuntimeTruthy()
    call_count = 0
    function rhs()
       call_count = call_count + 1
@@ -163,7 +163,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Ensure RHS is evaluated exactly once when LHS is extended-falsey
 
-@Test function testRHSOnce()
+@Test function RHSOnce()
    count = 0
    function rhs()
       count += 1
@@ -177,7 +177,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Chaining behaviour
 
-@Test function testChaining()
+@Test function Chaining()
    v1 = "" ?? 0 ?? "A"
    assert(v1 is "A", "Failed chaining case 1: expected 'A', got '" .. tostring(v1) .. "'")
 
@@ -188,7 +188,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Interaction with logical or: ensure semantics differ (0 and "" are treated as truthy by Lua or)
 
-@Test function testDifferenceFromLuaOr()
+@Test function DifferenceFromLuaOr()
    a = 0 or "B"      -- Lua or: 0 is truthy
    b = 0 ?? "B"        -- ??: 0 is falsey
    assert(a is 0, "Sanity: Lua 'or' should keep 0; got '" .. tostring(a) .. "'")
@@ -200,7 +200,7 @@ end
    assert(d is "C", "?? should replace empty string with RHS; got '" .. tostring(d) .. "'")
 end
 
-@Test function testRuntimeZero()
+@Test function RuntimeZero()
    x = 0
    v = x ?? "A"
    assert(v is "A", "Runtime zero test failed: expected 'A', got '" .. tostring(v) .. "'")
@@ -209,7 +209,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Test the use of if-empty within a function
 
-@Test function testIfEmptyArgumentLeakCapture()
+@Test function IfEmptyArgumentLeakCapture()
    Function = { status = 'Hello' }
    record = { count = 0, first = nil, second = nil }
 
@@ -227,7 +227,7 @@ end
    assert(record.second is nil, "Expected leaked slot to be cleared, got '" .. tostring(record.second) .. "'")
 end
 
-@Test function testIfEmptyStringFindError()
+@Test function IfEmptyStringFindError()
    Function = { status = 'Hello' }
 
    ok, start_index, end_index = pcall(function()
@@ -239,7 +239,7 @@ end
    assert(end_index is 1, "Expected search to end at index 1, got '" .. tostring(end_index) .. "'")
 end
 
-@Test function testMethodCallInOptionalForm()
+@Test function MethodCallInOptionalForm()
    obj = {
       getValue = function(self)
          return "method_result"
@@ -249,14 +249,14 @@ end
    assert(v is "method_result", "Failed method call in optional form: expected 'method_result', got " .. tostring(v))
 end
 
-@Test function testNestedOptional()
+@Test function NestedOptional()
    v = (nil ?? "A") ?? "B"
    -- First: nil ?? "A" = "A"
    -- Then: "A" ?? "B" = "A"
    assert(v is "A", "Failed nested optional: expected 'A', got " .. tostring(v))
 end
 
-@Test function testOptionalReturnValue()
+@Test function OptionalReturnValue()
    function test()
       return nil ?? "default"
    end
@@ -264,26 +264,26 @@ end
    assert(result is "default", "Failed optional return value: expected 'default', got " .. tostring(result))
 end
 
-@Test function testOptionalTableField()
+@Test function OptionalTableField()
    t = { msg = "Hello" }
    v = t.msg ?? "default"
    assert(v is "Hello", "Failed optional table field: expected 'Hello', got " .. tostring(v))
 end
 
-@Test function testOptionalMissingField()
+@Test function OptionalMissingField()
    t = {}
    v = t.missing ?? "default"
    assert(v is "default", "Failed optional missing field: expected 'default', got " .. tostring(v))
 end
 
 -- Optional - falsey condition (empty string)
-@Test function testOptionalEmptyString()
+@Test function OptionalEmptyString()
    name = "" ?? "Anonymous"
    assert(name is "Anonymous", "Failed optional empty string: expected 'Anonymous', got " .. tostring(name))
 end
 
 -- Optional - short-circuit
-@Test function testOptionalShortCircuit()
+@Test function OptionalShortCircuit()
    called = false
    function expensive()
       called = true
@@ -295,53 +295,53 @@ end
 end
 
 -- Optional - runtime condition
-@Test function testOptionalRuntimeTruthy()
+@Test function OptionalRuntimeTruthy()
    x = 10
    result = x ?? 0
    assert(result is 10, "Failed optional runtime truthy: expected 10, got " .. tostring(result))
 end
 
-@Test function testOptionalRuntimeFalsey()
+@Test function OptionalRuntimeFalsey()
    x = 0
    result = x ?? 100
    assert(result is 100, "Failed optional runtime falsey: expected 100, got " .. tostring(result))
 end
 
 -- Optional - truthy condition
-@Test function testOptionalTruthyString()
+@Test function OptionalTruthyString()
    msg = "Hello" ?? "No message"
    assert(msg is "Hello", "Failed optional truthy string: expected 'Hello', got " .. tostring(msg))
 end
 
-@Test function testOptionalTruthyNumber()
+@Test function OptionalTruthyNumber()
    count = 5 ?? 0
    assert(count is 5, "Failed optional truthy number: expected 5, got " .. tostring(count))
 end
 
-@Test function testOptionalTruthyNegative()
+@Test function OptionalTruthyNegative()
    num = -10 ?? 0
    assert(num is -10, "Failed optional truthy negative: expected -10, got " .. tostring(num))
 end
 
 -- Optional - falsey condition (nil)
-@Test function testOptionalNil()
+@Test function OptionalNil()
    msg = nil ?? "No message given"
    assert(msg is "No message given", "Failed optional nil: expected 'No message given', got " .. tostring(msg))
 end
 
 -- Optional - falsey condition (false)
-@Test function testOptionalFalse()
+@Test function OptionalFalse()
    msg = false ?? "No message given"
    assert(msg is "No message given", "Failed optional false: expected 'No message given', got " .. tostring(msg))
 end
 
 -- Optional - falsey condition (0)
-@Test function testOptionalZero()
+@Test function OptionalZero()
    count = 0 ?? 1
    assert(count is 1, "Failed optional zero: expected 1, got " .. tostring(count))
 end
 
-@Test function testInFunction()
+@Test function InFunction()
    Function = { status = 'Hello' }
 
    -- If-empty operator within a function
@@ -349,7 +349,7 @@ end
    assert(result is 1, "Failed test: expected 1, got " .. tostring(result))
 end
 
-@Test function testShortHand()
+@Test function ShortHand()
    not_true = false
    returned_early = true
    function test()
@@ -365,7 +365,7 @@ end
 end
 
 -- Test return with value
-@Test function testShortHandReturnValue()
+@Test function ShortHandReturnValue()
    function getValue(input)
       input ?? return "default"
       return input
@@ -380,7 +380,7 @@ end
 end
 
 -- Test break in loop
-@Test function testShortHandBreak()
+@Test function ShortHandBreak()
    iterations = 0
    values = { 1, 2, 0, 4, 5 }  -- 0 at index 2 should break
 
@@ -393,7 +393,7 @@ end
 end
 
 -- Test continue in loop
-@Test function testShortHandContinue()
+@Test function ShortHandContinue()
    sum = 0
    values = { 1, 0, 2, "", 3 }  -- Skip falsey values
 
@@ -406,7 +406,7 @@ end
 end
 
 -- Test with runtime values (not compile-time constants)
-@Test function testShortHandRuntimeCondition()
+@Test function ShortHandRuntimeCondition()
    function getCondition()
       return nil
    end
@@ -422,7 +422,7 @@ end
 end
 
 -- Test truthy condition does not execute body
-@Test function testShortHandTruthySkipsBody()
+@Test function ShortHandTruthySkipsBody()
    body_executed = false
    function test()
       "truthy" ?? return
@@ -433,7 +433,7 @@ end
    assert(body_executed is true, "Body should execute when condition is truthy")
 end
 
-@Test function testMultiValues()
+@Test function MultiValues()
    function getValues()
       return 1, 2, 3
    end
@@ -445,19 +445,19 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Array falsey tests: empty arrays (len == 0) are considered falsey
 
-@Test function testEmptyArray()
+@Test function EmptyArray()
    local empty = array<int>
    v = empty ?? 'default'
    assert(v is 'default', "Empty array should be falsey: expected 'default', got '" .. tostring(v) .. "'")
 end
 
-@Test function testNonEmptyArray()
+@Test function NonEmptyArray()
    local filled = array<int, 5>
    v = filled ?? 'default'
    assert(v is filled, "Non-empty array should be truthy: expected array, got '" .. tostring(v) .. "'")
 end
 
-@Test function testArrayShortCircuit()
+@Test function ArrayShortCircuit()
    call_count = 0
    function rhs()
       call_count += 1
@@ -469,14 +469,14 @@ end
    assert(call_count is 0, "RHS should not be called for non-empty array")
 end
 
-@Test function testEmptyArrayInChain()
+@Test function EmptyArrayInChain()
    local empty = array<double>
    local filled = array<double, 2>
    v = empty ?? filled ?? 'default'
    assert(v is filled, "Empty array should fall through to next truthy value")
 end
 
-@Test function testArrayWithZeroElements()
+@Test function ArrayWithZeroElements()
    -- Test with various element types
    local int_empty = array<int>
    local double_empty = array<double>
@@ -487,7 +487,7 @@ end
    assert((byte_empty ?? 'c') is 'c', "Empty byte array should be falsey")
 end
 
-@Test function testArrayWithOneElement()
+@Test function ArrayWithOneElement()
    local single = array<int, 1>
    v = single ?? 'default'
    assert(v is single, "Array with one element should be truthy")
@@ -496,13 +496,13 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Ternary operator with arrays: empty arrays (len == 0) are considered falsey
 
-@Test function testTernaryEmptyArray()
+@Test function TernaryEmptyArray()
    local empty = array<int>
    v = empty ? 'truthy' :> 'falsey'
    assert(v is 'falsey', "Empty array in ternary should be falsey: expected 'falsey', got '" .. tostring(v) .. "'")
 end
 
-@Test function testTernaryNonEmptyArray()
+@Test function TernaryNonEmptyArray()
    local filled = array<int, 5>
    v = filled ? 'truthy' :> 'falsey'
    assert(v is 'truthy', "Non-empty array in ternary should be truthy: expected 'truthy', got '" .. tostring(v) .. "'")

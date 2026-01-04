@@ -11,7 +11,7 @@ UDP Performance and Stress Test
 ------------------------------------------------------------------------------------------------------------------------
 -- Test high-frequency UDP messaging
 
-@Test(requires='network') function testUDPHighFrequency()
+@Test(requires='network') function UDPHighFrequency()
    glBasePort++
    serverPort = glBasePort
    proc = processing.new({ timeout = glTestTimeout })
@@ -74,7 +74,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test large UDP packet transmission
 
-@Test(requires='network') function testUDPLargePackets()
+@Test(requires='network') function UDPLargePackets()
    glBasePort++
    serverPort = glBasePort
    proc = processing.new({ timeout = glTestTimeout })
@@ -136,7 +136,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test UDP concurrent connections
 
-@Test(requires='network') function testUDPConcurrency()
+@Test(requires='network') function UDPConcurrency()
    glBasePort++
    serverPort = glBasePort
    proc = processing.new({ timeout = glTestTimeout })
@@ -204,7 +204,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test buffer overflow handling
 
-@Test(requires='network') function testUDPBufferHandling()
+@Test(requires='network') function UDPBufferHandling()
    glBasePort++
 
    client = obj.new('netsocket', { flags = 'UDP' })
@@ -242,7 +242,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test UDP performance benchmarks
 
-@Test(requires='network') function testUDPPerformanceBenchmark()
+@Test(requires='network') function UDPPerformanceBenchmark()
    glBasePort++
    serverPort = glBasePort
    proc = processing.new({ timeout = 10.0 })  -- Longer timeout for benchmark

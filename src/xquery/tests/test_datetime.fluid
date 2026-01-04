@@ -5,7 +5,7 @@
 -----------------------------------------------------------------------------------------------------------------------
 -- Validate component extraction across dateTime, date and time values
 
-function testDateTimeExtraction()
+@Test function DateTimeExtraction()
    local xml = obj.new("xml", {
       statement = '<root>'
          .. '<item id="dt" value="2024-03-15T09:30:00.5+05:30"/>'
@@ -45,7 +45,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Validate timezone adjustment helpers and constructor utilities
 
-function testDateTimeAdjustment()
+@Test function DateTimeAdjustment()
    local xml = obj.new("xml", { statement = '<root />' })
 
    local err, adjustedUtc = xml.mtEvaluate("adjust-dateTime-to-timezone('2023-01-01T12:00:00+02:00', 'PT0S')")
@@ -75,7 +75,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Validate constructor canonicalisation for date/time values and IEEE lexical tokens
 
-function testConstructorTimezoneNormalisation()
+@Test function ConstructorTimezoneNormalisation()
    local xml = obj.new("xml", { statement = '<root />' })
 
    local err, canonicalDate = xml.mtEvaluate("xs:date('2024-01-02+00:00')")

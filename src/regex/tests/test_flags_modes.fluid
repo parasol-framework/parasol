@@ -1,24 +1,24 @@
 -- Behavioural coverage for regex compilation and match flags
 
-@Test function testCaseInsensitiveFlag()
+@Test function CaseInsensitiveFlag()
    local matcher = regex.new("hello", regex.ICASE)
    assert(matcher.test("HeLlO"), "ICASE should ignore letter case")
    assert(not matcher.test("yellow"), "ICASE should still reject different words")
 end
 
-@Test function testMultilineAnchors()
+@Test function MultilineAnchors()
    local matcher = regex.new("^line", regex.MULTILINE)
    assert(matcher.test("first\nline two"), "MULTILINE should let caret match after newline")
 end
 
-@Test function testDotAllMatchesNewlines()
+@Test function DotAllMatchesNewlines()
    local matcher = regex.new("foo.*bar", regex.DOT_ALL)
    assert(matcher.test("foo\n\nbar"), "DOT_ALL should allow dot to traverse newlines")
    local baseline = regex.new("foo.*bar")
    assert(not baseline.test("foo\nbar"), "Default dot should stop at newline")
 end
 
-@Test function testPrevAvailableSupportsLookbehind()
+@Test function PrevAvailableSupportsLookbehind()
    local matcher = regex.new("(?<=a)b")
    local source = "ab"
    local baseline = matcher.search(source)

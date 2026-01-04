@@ -16,7 +16,7 @@ local glPort = 8089
 ------------------------------------------------------------------------------------------------------------------------
 -- Test IPv6 address parsing and conversion
 
-function testIPv6AddressParsing()
+function IPv6AddressParsing()
    print('Testing IPv6 address parsing and conversion...')
 
    local addresses = {
@@ -59,7 +59,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test IPv6 server binding and dual-stack support
 
-function testIPv6ServerBinding()
+function IPv6ServerBinding()
    local proc = processing.new({ timeout = 10.0 })
    local server_ready = false
    local client_connected = false
@@ -141,7 +141,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test IPv6 DNS resolution
 
-function testIPv6DNSResolution()
+function IPv6DNSResolution()
    local proc = processing.new({ timeout = 8.0 })
    local resolution_complete = false
 
@@ -182,7 +182,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test IPv6 address utility functions
 
-function testIPv6Utilities()
+function IPv6Utilities()
    print('Testing IPv6 utility functions...')
 
    -- Test various IPv6 address formats

@@ -3,7 +3,7 @@
 
    require 'common'
 
-@Test function testBasic() --
+@Test function Basic()
    item = table.toXML({
       file = {
          icon = 'my_icon',
@@ -34,7 +34,7 @@ end
 -- If sequential XML tags will share the same name, it is essential to place each of them in a separate table
 -- as seen in this test.
 
-@Test function testDuplicates()
+@Test function Duplicates()
    files = table.toXML({
       receipt = {
          totalitems = 2,

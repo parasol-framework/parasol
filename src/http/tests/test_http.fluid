@@ -63,7 +63,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Test GET, outputFile and stateChanged callback
 
-@Test(priority=1) function testGetLocal()
+@Test(priority=1) function GetLocal()
    proc = processing.new({ timeout = 10.0 })
    content = ''
 
@@ -96,7 +96,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- POST to a local server using chunking (contentLength is -1)
 
-@Test(priority=2) function testPostStringLocal()
+@Test(priority=2) function PostStringLocal()
    proc = processing.new({ timeout = 5.0 })
    content = ''
    testPostStringCompleted = nil
@@ -141,7 +141,7 @@ end
 -- curl -v -X POST http://httpbin.org/post -d "fname=smith&lname=jones"
 -- POST to an external server using chunking (contentLength is -1)
 
-@Test(priority=3) function testPostStringExt()
+@Test(priority=3) function PostStringExt()
    proc = processing.new({ timeout = 5.0 })
    local testPostStringCompleted
    content = ''
@@ -191,7 +191,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- POST to a local server using a string body and a predefined size (no chunking)
 
-@Test(priority=4) function testPostStringFile()
+@Test(priority=4) function PostStringFile()
    proc = processing.new({ timeout = 5.0 })
    outgoing_body = 'fname=joe&lname=bloggs'
    content = ''
@@ -229,7 +229,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
 @Test(priority=5); @Disabled(reason='Requires further development')
-function testSSLOverProxy()
+function SSLOverProxy()
    proc = processing.new({ timeout = 5.0 })
 
    http = obj.new('http', {
@@ -250,7 +250,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- curl -v -X GET https://www.google.com
 
-@Test(priority=6) function testHTTPS()
+@Test(priority=6) function HTTPS()
    content = nil
    proc = processing.new({ timeout = 5.0 })
 
@@ -283,7 +283,7 @@ end
 -- Making an HTTPS request to google.co.uk should cause a redirect to google.com, which should
 -- all be handled in the background.
 
-@Test(priority=7) function testRedirectedHTTPS()
+@Test(priority=7) function RedirectedHTTPS()
    local content
    proc = processing.new({ timeout = 5.0 })
 
@@ -314,7 +314,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test(priority=8); @Disabled(reason='Requires further development')
-function testMultiPart()
+function MultiPart()
    proc = processing.new({ timeout = 5.0 })
    content = ''
    boundary = '----------d6sXWGimDGTgb2GDuLZqbR'
@@ -375,7 +375,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- ipv6.google.com test-ipv6.com ipv6.he.net ipv6.cloudflare.com
 
-@Test(priority=9) function testIPV6()
+@Test(priority=9) function IPV6()
    proc = processing.new({ timeout = 10.0 })
    content = ''
 

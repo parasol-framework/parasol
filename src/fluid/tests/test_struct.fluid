@@ -4,7 +4,7 @@
 -- it features a null-terminated array in the Points field.
 
 @Test(hotpath=true); @Requires(font=true)
-function testFontList()
+function FontList()
    err, list = mFont.GetList()
    assert(list, "Failed to retrieve list of fonts, error: " .. mSys.GetErrorMsg(err))
 

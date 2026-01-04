@@ -14,7 +14,7 @@
 ------------------------------------------------------------------------------------------------------------------------
 -- Test binding to localhost only (IPv4)
 
-@Test function testBindLocalhost()
+@Test function BindLocalhost()
    port = glBasePort + 1
    proc = processing.new({ timeout = 3.0 })
 
@@ -43,7 +43,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test binding to all interfaces (0.0.0.0)
 
-@Test function testBindAllInterfaces()
+@Test function BindAllInterfaces()
    port = glBasePort + 2
    server = obj.new('netsocket', { port = port, address = '0.0.0.0', flags = 'SERVER' })
    assert(server, 'Failed to bind to 0.0.0.0:' .. port)
@@ -52,7 +52,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test default binding (no address specified)
 
-@Test function testDefaultBinding()
+@Test function DefaultBinding()
    port = glBasePort + 3
    server = obj.new('netsocket', { port = port, flags = 'SERVER' })
    assert(server, 'Failed to bind to port ' .. port)
@@ -61,7 +61,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test binding with wildcard '*'
 
-@Test function testBindWildcard()
+@Test function BindWildcard()
    port = glBasePort + 4
    server = obj.new('netsocket', { port = port, address = '*', flags = 'SERVER' })
    assert(server, 'Failed to bind with wildcard to port ' .. port)
@@ -70,7 +70,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test IPv6 localhost binding
 
-@Test function testBindIPv6Localhost()
+@Test function BindIPv6Localhost()
    port = glBasePort + 5
    server = obj.new('netsocket', { port = port, address = '::1', flags = 'SERVER' })
    assert(server, 'Failed to bind to ::1:' .. port .. ' (IPv6 may not be available)')
@@ -79,7 +79,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test IPv6 all interfaces binding
 
-@Test function testBindIPv6AllInterfaces()
+@Test function BindIPv6AllInterfaces()
    port = glBasePort + 6
    server = obj.new('netsocket', { port = port, address = '::', flags = 'SERVER' })
    assert(server,  'Failed to bind to :::' .. port .. ' (IPv6 may not be available)')
@@ -88,7 +88,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test binding with 'localhost' string
 
-@Test function testBindLocalhostString()
+@Test function BindLocalhostString()
    port = glBasePort + 7
    server = obj.new('netsocket', { port = port, address = 'localhost', flags = 'SERVER' })
    if not server then error('Failed to bind to localhost:' .. port) end
@@ -97,7 +97,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test invalid bind address
 
-@Test function testInvalidBindAddress()
+@Test function InvalidBindAddress()
    port = glBasePort + 8
    server = nil
    catch(function() server = obj.new('netsocket', { port = port, address = '999.999.999.999', flags = 'SERVER' }) end)
@@ -107,7 +107,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test concurrent servers on different addresses
 
-@Test function testConcurrentServers()
+@Test function ConcurrentServers()
    port = glBasePort + 9
 
    -- First server on localhost

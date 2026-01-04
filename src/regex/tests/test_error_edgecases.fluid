@@ -1,21 +1,21 @@
 -- Error handling and resilience edge cases
 
-@Test function testInvalidEscapeRaises()
+@Test function InvalidEscapeRaises()
    local err = catch(function() return regex.new("\\x") end)
    assert(err != ERR_Okay, "Invalid escape should trigger compilation error")
 end
 
-@Test function testMismatchedBracketRaises()
+@Test function MismatchedBracketRaises()
    local err = catch(function() return regex.new("[abc") end)
    assert(err != ERR_Okay, "Mismatched bracket should raise error")
 end
 
-@Test function testUnknownUnicodeProperty()
+@Test function UnknownUnicodeProperty()
    local err = catch(function() return regex.new("\\p{NotAProperty}") end)
    assert(err != ERR_Okay, "Unknown Unicode property should be rejected")
 end
 
-@Test function testRegexObjectsSurviveGarbageCollection()
+@Test function RegexObjectsSurviveGarbageCollection()
    for index = 1, 50 do
       local matcher = regex.new("item" .. index)
       assert(matcher.test("item" .. index), "Compiled regex should operate before GC")
@@ -25,7 +25,7 @@ end
    assert(matcher.test("final"), "Regex creation should remain stable after GC cycle")
 end
 
-@Test function testEmptyPatternMatch()
+@Test function EmptyPatternMatch()
    local matcher = regex.new("")
    assert(matcher.test("anything"), "Empty pattern should match any string")
    local replaced = matcher.replace("abc", "-")

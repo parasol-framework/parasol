@@ -11,7 +11,7 @@ local glTestTimeout = 3.0
 ------------------------------------------------------------------------------------------------------------------------
 -- Test basic UDP communication (IPv4)
 
-function testUDPBasicIPv4()
+function UDPBasicIPv4()
    glBasePort = glBasePort + 1
    local serverPort = glBasePort
    local proc = processing.new({ timeout = glTestTimeout })
@@ -85,7 +85,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test UDP socket configuration and properties
 
-function testUDPConfiguration()
+function UDPConfiguration()
    local udpSocket = obj.new('netsocket', { flags = 'UDP|BROADCAST', maxPacketSize = 8192, multicastTTL = 10 })
 
    assert(bit.band(udpSocket.flags, NSF_UDP) != 0, 'UDP flag not set')
@@ -97,7 +97,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test UDP error conditions
 
-function testUDPErrorHandling()
+function UDPErrorHandling()
    local udpSocket = obj.new('netsocket', { flags = 'UDP' })
 
    -- Test invalid address
@@ -123,7 +123,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test UDP with different packet sizes
 
-function testUDPPacketSizes()
+function UDPPacketSizes()
    glBasePort = glBasePort + 1
    local serverPort = glBasePort
    local proc = processing.new({ timeout = glTestTimeout })

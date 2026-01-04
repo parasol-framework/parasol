@@ -2,10 +2,17 @@
 
    include 'xml'
 
+function contains(table, element)
+   for value in values(table) do
+      if value is element then return true end
+   end
+   return false
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Test basic XPath navigation
 
-function testBasicXPath()
+@Test function BasicXPath()
    local xml = obj.new("xml", {
       statement = '<root><level1><level2><target>Found</target></level2></level1></root>'
    })
@@ -39,7 +46,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test attribute matching with [@attribute] syntax
 
-function testAttributeMatching()
+@Test function AttributeMatching()
    local xml = obj.new("xml", {
       statement = '<root><item type="book" title="Guide"/><item type="magazine" title="News"/><item type="book" title="Manual"/></root>'
    })
@@ -61,7 +68,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test attribute existence predicate [@attr] and wildcard attribute name [@*="value"]
 
-function testAttributePredicateExistence()
+@Test function AttributePredicateExistence()
    local xml = obj.new("xml", {
       statement = '<root><section title="Test" note="alpha"/><section/><section title="Other"/></root>'
    })
@@ -82,7 +89,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test indexed access with [position] syntax
 
-function testIndexedAccess()
+@Test function IndexedAccess()
    local xml = obj.new("xml", {
       statement = '<root><item>First</item><item>Second</item><item>Third</item></root>'
    })
@@ -107,7 +114,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test deep scanning with double-slash (//) syntax
 
-function testDeepScanning()
+@Test function DeepScanning()
    local xml = obj.new("xml", {
       statement = '<root><section><subsection><target id="1"/></subsection></section><othersection><target id="2"/></othersection></root>'
    })
@@ -123,13 +130,13 @@ function testDeepScanning()
    end)
 
    assert(targetCount is 2, "Expected 2 targets, found " .. targetCount)
-   assert(table.contains(foundIds, "1") and table.contains(foundIds, "2"), "Target IDs not found correctly")
+   assert(contains(foundIds, "1") and contains(foundIds, "2"), "Target IDs not found correctly")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Ensure deep scan mid-path currently fails gracefully: /root//target
 
-function testDeepScanMidPath()
+@Test function DeepScanMidPath()
    local xml = obj.new("xml", {
       statement = '<root><section><subsection><target id="a"/></subsection></section><othersection><target id="b"/></othersection></root>'
    })
@@ -141,7 +148,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test wildcard matching with * syntax
 
-function testWildcardMatching()
+@Test function WildcardMatching()
    local xml = obj.new("xml", {
       statement = '<root><item1/><item2/><item3/><other/></root>'
    })
@@ -158,7 +165,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test content matching (Parasol extension)
 
-function testContentMatching()
+@Test function ContentMatching()
    local xml = obj.new("xml", {
       statement = '<root><item>apple</item><item>banana</item><item>apple pie</item></root>'
    })
@@ -187,7 +194,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test attribute extraction with @ syntax
 
-function testAttributeExtraction()
+@Test function AttributeExtraction()
    local xml = obj.new("xml", {
       statement = '<root><book title="Guide" author="Smith"/></root>'
    })
@@ -211,7 +218,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test count operations
 
-function testCountOperations()
+@Test function CountOperations()
    local xml = obj.new("xml", {
       statement = '<root><section><item/><item/><item/></section><section><item/></section></root>'
    })
@@ -230,7 +237,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test exists operations
 
-function testExistsOperations()
+@Test function ExistsOperations()
    local xml = obj.new("xml", {
       statement = '<root><section title="Test"><item/></section></root>'
    })
@@ -253,7 +260,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test content extraction operations
 
-function testContentExtraction()
+@Test function ContentExtraction()
    local xml = obj.new("xml", {
       statement = '<root><section>Direct content <em>emphasized</em> more content</section></root>'
    })
@@ -271,7 +278,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test serialisation operations
 
-function testExtractOperations()
+@Test function ExtractOperations()
    local xml = obj.new("xml", {
       statement = '<root><section><item id="1">Content</item></section></root>'
    })
@@ -287,7 +294,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test complex XPath expressions
 
-function testComplexExpressions()
+@Test function ComplexExpressions()
    local xml = obj.new("xml", {
       statement = '<root><products><product category="electronics" price="100"/><product category="books" price="20"/><product category="electronics" price="50"/></products></root>'
    })
@@ -304,7 +311,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test namespace support
 
-function testNamespaceSupport()
+@Test function NamespaceSupport()
    local xml = obj.new("xml", {
       statement = '<root xmlns:book="http://books.com" xmlns:mag="http://magazines.com"><book:item title="Guide"/><mag:item title="News"/></root>'
    })
@@ -323,7 +330,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Prefixed node steps should resolve correctly
 
-function testNamespacePrefixedSteps()
+@Test function NamespacePrefixedSteps()
    local xml = obj.new("xml", {
       statement = '<root xmlns:book="http://books.com"><book:item title="Guide"/></root>'
    })
@@ -338,7 +345,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test attribute wildcard matching
 
-function testAttributeWildcards()
+@Test function AttributeWildcards()
    local xml = obj.new("xml", {
       statement = '<root><item type="book" title="Guide"/><item type="magazine" title="News"/></root>'
    })
@@ -369,7 +376,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Regression: Function predicates should receive node-set arguments
 
-function testFunctionPredicateNodeSets()
+@Test function FunctionPredicateNodeSets()
    local xml = obj.new("xml", {
       statement = '<root><item/><item/><item/></root>'
    })
@@ -384,7 +391,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test XPath 1.0 functions
 
-function testXPathFunctions()
+@Test function XPathFunctions()
    local xml = obj.new("xml", {
       statement = '<root><item>1</item><item>2</item><item>3</item></root>'
    })
@@ -411,7 +418,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Regression: Numeric position predicates should honour requested index
 
-function testNumericPositionPredicates()
+@Test function NumericPositionPredicates()
    local xml = obj.new("xml", {
       statement = '<root><item>First</item><item>Second</item><item>Third</item></root>'
    })
@@ -426,7 +433,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test XPath 1.0 boolean operators
 
-function testBooleanOperators()
+@Test function BooleanOperators()
    local xml = obj.new("xml", {
       statement = '<root><product price="100" category="electronics"/><product price="50" category="books"/></root>'
    })
@@ -444,28 +451,3 @@ function testBooleanOperators()
    err, productId = xml.mtSearch('/root/product[not(@category="books")]')
    assert(err is ERR_Okay, "'not()' should exclude the books category and return the electronics product")
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-return {
-   tests = {
-      testBasicXPath, testAttributeMatching, testAttributePredicateExistence,
-      testIndexedAccess, testDeepScanning, testDeepScanMidPath,
-      testWildcardMatching, testContentMatching, testAttributeExtraction,
-      testCountOperations, testExistsOperations, testContentExtraction,
-      testExtractOperations, testComplexExpressions, testNamespaceSupport,
-      testNamespacePrefixedSteps, testAttributeWildcards,
-      testFunctionPredicateNodeSets, testXPathFunctions,
-      testNumericPositionPredicates, testBooleanOperators
-   },
-   init = function(ScriptFolder)
-      table.contains = function(table, element)
-         for _, value in pairs(table) do
-            if value is element then return true end
-         end
-         return false
-      end
-   end,
-   cleanup = function()
-   end
-}

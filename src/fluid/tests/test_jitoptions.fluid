@@ -29,7 +29,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testTraceTokens()
+@Test function TraceTokens()
    -- Should print parse tokens to the log
    script = obj.new('fluid', { statement = glTestScript, jitOptions = JOF_TRACE_TOKENS })
    script.acActivate()
@@ -37,7 +37,7 @@ end
 
 -- When using diagnose, all syntax errors should be reported.
 
-@Test function testTraceDiagnose()
+@Test function TraceDiagnose()
    msg('--- Testing bad script without DIAGNOSE: Should print 1 error')
    script = obj.new('fluid', { statement = glBadScript })
    script.acActivate()
@@ -47,25 +47,25 @@ end
    script.acActivate()
 end
 
-@Test function testDumpBytecode()
+@Test function DumpBytecode()
    -- Will dump debug output to the log
    script = obj.new('fluid', { statement = glTestScript, jitOptions = JOF_DUMP_BYTECODE })
    script.acActivate()
 end
 
-@Test function testTraceExpect()
+@Test function TraceExpect()
    -- Will print traced expectations to the log
    script = obj.new('fluid', { statement = glTestScript, jitOptions = JOF_TRACE_EXPECT })
    script.acActivate()
 end
 
-@Test function testTraceBoundary()
+@Test function TraceBoundary()
    -- Will print AST boundary crossing to the log
    script = obj.new('fluid', { statement = glTestScript, jitOptions = JOF_TRACE_BOUNDARY })
    script.acActivate()
 end
 
-@Test function testProfile()
+@Test function Profile()
    -- Should print out timing information
    script = obj.new('fluid', { statement = glTestScript, jitOptions = JOF_PROFILE })
    script.acActivate()

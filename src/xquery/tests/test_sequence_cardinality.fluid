@@ -7,7 +7,7 @@
 -----------------------------------------------------------------------------------------------------------------------
 -- TYPESWITCH over data() should match xs:string when a single atomic item is present
 
-function testTypeswitchDataString()
+@Test function TypeswitchDataString()
    local xml = obj.new("xml", { statement = '<root><s>hello</s></root>' })
 
    local query = [[
@@ -24,7 +24,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- treat as / instance of on data() sequence with a single atomic item
 
-function testTreatAndInstanceOnData()
+@Test function TreatAndInstanceOnData()
    local xml = obj.new("xml", { statement = '<root><n>42</n></root>' })
 
    local err1, result1 = xml.mtEvaluate('data(/root/n/text()) treat as xs:string')
@@ -37,7 +37,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- cast and castable on data() sequences
 
-function testCastAndCastableOnData()
+@Test function CastAndCastableOnData()
    local xml = obj.new("xml", { statement = '<root><n>123</n><s>abc</s></root>' })
 
    local err1, result1 = xml.mtEvaluate('data(/root/n/text()) cast as xs:string')
@@ -53,7 +53,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Attribute value via data() must also count as one item
 
-function testAttributeDataCardinality()
+@Test function AttributeDataCardinality()
    local xml = obj.new("xml", { statement = '<root val="yes"/>' })
 
    local err1, result1 = xml.mtEvaluate('data(/root/@val) instance of xs:string')
@@ -69,13 +69,13 @@ end
 
 -- Optional vs one-or-more cardinality on empty data()
 
-function testTreatOptionalEmptyData()
+@Test function TreatOptionalEmptyData()
    local xml = obj.new("xml", { statement = '<root/>' })
    local err, result = xml.mtEvaluate('data(()) treat as xs:string?')
    assert(err is ERR_Okay, "treat as xs:string? should accept empty data(): " .. mSys.GetErrorMsg(err))
 end
 
-function testTreatOneOrMoreEmptyData()
+@Test function TreatOneOrMoreEmptyData()
    local xml = obj.new("xml", { statement = '<root/>' })
    local err, result = xml.mtEvaluate('data(()) treat as xs:string+')
    assert(err != ERR_Okay, "treat as xs:string+ should reject empty data()")

@@ -5,7 +5,7 @@
 -----------------------------------------------------------------------------------------------------------------------
 -- Validate component extraction from general xs:duration values
 
-function testGeneralDurationComponents()
+@Test function GeneralDurationComponents()
    local xml = obj.new("xml", {
       statement = '<root>'
          .. '<duration id="ym" value="P2Y11M"/>'
@@ -43,7 +43,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Validate specialised yearMonthDuration and dayTimeDuration helpers
 
-function testSpecificDurationTypes()
+@Test function SpecificDurationTypes()
    local xml = obj.new("xml", {
       statement = '<root>'
          .. '<duration id="ym-positive" value="P3Y4M"/>'

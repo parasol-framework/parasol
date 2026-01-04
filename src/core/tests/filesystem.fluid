@@ -19,7 +19,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Test that the standard extraction pattern for folder and file names works as expected.
 
-@Test function testPathExtract()
+@Test function PathExtract()
    pattern = '([^:/]+)/-$'
 
    assert(string.match('temp:test.txt', pattern) is 'test.txt', 'Failed to extract "test.txt"')
@@ -33,7 +33,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testFolderScan()
+@Test function FolderScan()
    folder = obj.new('file', { src=glPath } )
 
    names = nil
@@ -62,7 +62,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testScanDir()
+@Test function ScanDir()
    err, dir = mSys.OpenDir(glPath, bit.bor(RDF_FILES,RDF_FOLDERS,RDF_QUALIFY,RDF_DATE,RDF_SIZE,RDF_TAGS))
    if err is ERR_Okay then
       err = mSys.ScanDir(dir)
@@ -85,7 +85,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testScanVolumes()
+@Test function ScanVolumes()
    err, dir = mSys.OpenDir(':', RDF_FILES | RDF_FOLDERS | RDF_TAGS)
    if err is ERR_Okay then
       volumes = { }
@@ -111,7 +111,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- This code loads a raw file, converts it to a string, reverses it and then writes the string back to the file.
 
-@Test function testStringify()
+@Test function Stringify()
    fl = obj.new('file', { src=glRawPath, flags='!READ|WRITE' } )
    buf = string.alloc(fl.size)
    err, result = fl.acRead(buf, fl.size)
@@ -123,7 +123,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testFileIcons()
+@Test function FileIcons()
    if mSys.AnalysePath('icons:') != ERR_Okay then
       -- Icons not available, skip test
       return
@@ -145,7 +145,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testAnalyseVolume()
+@Test function AnalyseVolume()
    err, type = mSys.AnalysePath('user:')
    assert(err is ERR_Okay, 'AnalysePath() failed with error: ' .. mSys.GetErrorMsg(err))
    assert(type is LOC_VOLUME, 'AnalysePath() returned type ' .. type .. ' and not LOC_VOLUME')
@@ -153,7 +153,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testAnalyseFile()
+@Test function AnalyseFile()
    err, type = mSys.AnalysePath('scripts:gui.fluid')
    assert(err is ERR_Okay, 'AnalysePath() failed with error: ' .. mSys.GetErrorMsg(err))
    assert(type is LOC_FILE, 'AnalysePath() returned type ' .. type .. ' and not LOC_FILE')

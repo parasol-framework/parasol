@@ -31,7 +31,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Constant and trigonometric behaviour
 
-function testMathPiConstant()
+@Test function MathPiConstant()
    local xq, err = executeMath('math:pi()')
    assert(err is ERR_Okay, 'math:pi() should evaluate successfully: ' .. describeError(xq, err))
 
@@ -40,7 +40,7 @@ function testMathPiConstant()
    assertAlmostEqual(value, math.pi, 1e-12, 'math:pi() should match Lua math.pi')
 end
 
-function testMathTrigonometricBasics()
+@Test function MathTrigonometricBasics()
    local sin_query, err = executeMath('math:sin(0)')
    assert(err is ERR_Okay, 'math:sin(0) should evaluate successfully: ' .. describeError(sin_query, err))
    local sin_value = tonumber(sin_query.resultString)
@@ -72,7 +72,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Inverse trigonometric functions
 
-function testMathInverseFunctions()
+@Test function MathInverseFunctions()
    local asin_query, err = executeMath('math:asin(0.5)')
    assert(err is ERR_Okay, 'math:asin(0.5) should evaluate successfully: ' .. describeError(asin_query, err))
    local asin_value = tonumber(asin_query.resultString)
@@ -97,7 +97,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Two-argument arctangent coverage
 
-function testMathAtan2Quadrants()
+@Test function MathAtan2Quadrants()
    local q1_query, err = executeMath('math:atan2(1, 1)')
    assert(err is ERR_Okay, 'math:atan2(1, 1) should evaluate successfully: ' .. describeError(q1_query, err))
    local q1_value = tonumber(q1_query.resultString)
@@ -129,7 +129,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Exponential and logarithmic calculations
 
-function testMathExponentialsAndLogs()
+@Test function MathExponentialsAndLogs()
    local exp_query, err = executeMath('math:exp(2)')
    assert(err is ERR_Okay, 'math:exp(2) should evaluate successfully: ' .. describeError(exp_query, err))
    local exp_value = tonumber(exp_query.resultString)
@@ -161,7 +161,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Power and square root helpers
 
-function testMathPowAndSqrt()
+@Test function MathPowAndSqrt()
    local pow_query, err = executeMath('math:pow(2, 10)')
    assert(err is ERR_Okay, 'math:pow(2, 10) should evaluate successfully: ' .. describeError(pow_query, err))
    local pow_value = tonumber(pow_query.resultString)
@@ -186,7 +186,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Special value handling
 
-function testMathSpecialValues()
+@Test function MathSpecialValues()
    local empty_query, err = executeMath('math:sin(())')
    assert(err is ERR_Okay, 'math:sin(()) should evaluate successfully: ' .. describeError(empty_query, err))
    assert(empty_query.resultString is '' or empty_query.resultString is 'false',
@@ -208,7 +208,7 @@ function testMathSpecialValues()
    assert(log_negative_query.resultString is 'NaN', 'math:log(-1) should return NaN, got ' .. tostring(log_negative_query.resultString))
 end
 
-function testMathSignedZeroAndSpecialCases()
+@Test function MathSignedZeroAndSpecialCases()
    local sin_zero_query, err = executeMath('1 div math:sin(-0.0)')
    assert(err is ERR_Okay, '1 div math:sin(-0e0) should evaluate successfully: ' .. describeError(sin_zero_query, err))
    assert(sin_zero_query.resultString is '-Infinity',

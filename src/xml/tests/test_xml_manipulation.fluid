@@ -10,7 +10,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test InsertXML method with various insertion points
 
-@Test function testInsertXML()
+@Test function InsertXML()
    local xml = obj.new("xml", {
       statement = '<root><child1/><child2/></root>'
    })
@@ -35,7 +35,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test InsertXML with PREV and NEXT positions
 
-@Test function testInsertXMLSiblings()
+@Test function InsertXMLSiblings()
    local xml = obj.new("xml", {
       statement = '<root><child1/><child2/><child3/></root>'
    })
@@ -60,7 +60,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test SetAttrib method for adding and updating attributes
 
-@Test function testSetAttrib()
+@Test function SetAttrib()
    local xml = obj.new("xml", {
       statement = '<root existing="oldvalue"><child/></root>'
    })
@@ -86,7 +86,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test SetAttrib for removing attributes
 
-@Test function testSetAttribRemove()
+@Test function SetAttribRemove()
    local xml = obj.new("xml", {
       statement = '<root attr1="value1" attr2="value2" attr3="value3"/>'
    })
@@ -109,7 +109,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test InsertContent method
 
-@Test function testInsertContent()
+@Test function InsertContent()
    local xml = obj.new("xml", {
       statement = '<root><child>Original content</child></root>'
    })
@@ -128,7 +128,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test RemoveTag method
 
-@Test function testRemoveTag()
+@Test function RemoveTag()
    local xml = obj.new("xml", {
       statement = '<root><child1/><child2/><child3/><child4/></root>'
    })
@@ -148,7 +148,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test RemoveTag with multiple consecutive tags
 
-@Test function testRemoveMultipleTags()
+@Test function RemoveMultipleTags()
    local xml = obj.new("xml", {
       statement = '<root><child1/><child2/><child3/><child4/><child5/></root>'
    })
@@ -169,7 +169,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test MoveTags method
 
-@Test function testMoveTags()
+@Test function MoveTags()
    -- Test XMI_CHILD - move as first child
    local xml = obj.new("xml", {
       statement = '<root><source1/><source2/><dest><existing/></dest></root>'
@@ -192,7 +192,7 @@ end
    assert(destChildren[1].attribs[0].name is "existing", "XMI_CHILD: existing child moved incorrectly")
 end
 
-@Test function testMoveTagsChildEnd()
+@Test function MoveTagsChildEnd()
    -- Test XMI_CHILD_END - move as last child
    local xml = obj.new("xml", {
       statement = '<root><source/><dest><child1/><child2/></dest></root>'
@@ -213,7 +213,7 @@ end
    assert(destChildren[2].attribs[0].name is "source", "XMI_CHILD_END: moved tag not at end")
 end
 
-@Test function testMoveTagsPrev()
+@Test function MoveTagsPrev()
    -- Test XMI_PREV - move as previous sibling
    local xml = obj.new("xml", {
       statement = '<root><source/><target/><other/></root>'
@@ -234,7 +234,7 @@ end
    assert(rootChildren[2].attribs[0].name is "other", "XMI_PREV: other tag moved incorrectly")
 end
 
-@Test function testMoveTagsNext()
+@Test function MoveTagsNext()
    -- Test XMI_NEXT - move as next sibling
    local xml = obj.new("xml", {
       statement = '<root><other/><target/><source/></root>'
@@ -255,7 +255,7 @@ end
    assert(rootChildren[2].attribs[0].name is "source", "XMI_NEXT: moved tag not in correct position")
 end
 
-@Test function testMoveMultipleTags()
+@Test function MoveMultipleTags()
    -- Test moving multiple consecutive tags
    local xml = obj.new("xml", {
       statement = '<root><source1/><source2/><source3/><dest><existing/></dest></root>'
@@ -283,7 +283,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test InsertXPath method
 
-@Test function testInsertXPath()
+@Test function InsertXPath()
    local xml = obj.new("xml", {
       statement = '<root><section name="target"><item/></section></root>'
    })

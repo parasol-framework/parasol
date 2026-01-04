@@ -4,7 +4,7 @@ local ARRAY_NAMESPACE = 'http://www.w3.org/2005/xpath-functions/array'
 local MAP_ARRAY_DECLARE = 'declare namespace map = "' .. MAP_NAMESPACE .. '"; ' ..
    'declare namespace array = "' .. ARRAY_NAMESPACE .. '"; '
 
-function testMapFunctions()
+@Test function MapFunctions()
    local xq = obj.new('xquery')
 
    xq.statement = MAP_ARRAY_DECLARE .. 'map:size(map { "a": 1, "b": 2 })'
@@ -36,7 +36,7 @@ function testMapFunctions()
    assert(xq.resultString is 'ok', 'map:entry should create a single-entry map, got ' .. tostring(xq.resultString))
 end
 
-function testArrayFunctions()
+@Test function ArrayFunctions()
    local xq = obj.new('xquery')
 
    xq.statement = MAP_ARRAY_DECLARE .. 'array:size(array { "x", "y", "z" })'
@@ -68,7 +68,7 @@ function testArrayFunctions()
    assert(xq.resultString is '1,2,3,4', 'array:flatten should remove nested arrays, got ' .. tostring(xq.resultString))
 end
 
-function testMapArrayFunctionErrors()
+@Test function MapArrayFunctionErrors()
    local xq = obj.new('xquery')
 
    xq.statement = MAP_ARRAY_DECLARE .. 'map:get(map { "a": 1 }, map { "bad": 2 })'

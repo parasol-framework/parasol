@@ -2,7 +2,7 @@
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testAnnoSetTableInput()
+@Test function AnnoSetTableInput()
    function sampleFunc()
       return "test"
    end
@@ -20,7 +20,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testAnnoGet()
+@Test function AnnoGet()
    function myFunction()
       return 42
    end
@@ -40,7 +40,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testAnnoGetNonAnnotated()
+@Test function AnnoGetNonAnnotated()
    function unannotatedFunc()
       return "nothing"
    end
@@ -51,7 +51,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testAnnoList()
+@Test function AnnoList()
    function func1() end
    function func2() end
    function func3() end
@@ -74,7 +74,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testAnnoStringParsingSimple()
+@Test function AnnoStringParsingSimple()
    function testFunc() end
 
    entry = debug.anno.set(testFunc, '@Test(name="Simple Test")')
@@ -86,7 +86,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testAnnoStringParsingMultiple()
+@Test function AnnoStringParsingMultiple()
    function multiFunc() end
 
    entry = debug.anno.set(multiFunc, '@Test(name="Multi Test"); @Requires(network=true)')
@@ -99,7 +99,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testAnnoStringParsingArray()
+@Test function AnnoStringParsingArray()
    function arrayFunc() end
 
    entry = debug.anno.set(arrayFunc, '@Test(labels=["unit", "smoke", "critical"])')
@@ -115,7 +115,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testAnnoStringParsingBareIdentifiers()
+@Test function AnnoStringParsingBareIdentifiers()
    function bareFunc() end
 
    entry = debug.anno.set(bareFunc, '@SuppressWarnings(unused, deprecated)')
@@ -128,7 +128,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testAnnoStringParsingNumbers()
+@Test function AnnoStringParsingNumbers()
    function numFunc() end
 
    entry = debug.anno.set(numFunc, '@Test(timeoutMs=5000, priority=1)')
@@ -141,7 +141,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testAnnoStringParsingBooleans()
+@Test function AnnoStringParsingBooleans()
    function boolFunc() end
 
    entry = debug.anno.set(boolFunc, '@Requires(gfx=true, network=false)')
@@ -154,7 +154,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testAnnoStringParsingMixed()
+@Test function AnnoStringParsingMixed()
    function mixedFunc() end
 
    entry = debug.anno.set(mixedFunc, '@Test(name="Complex Test", labels=["a","b"], timeoutMs=3000, enabled=true)')
@@ -169,7 +169,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testAnnoStringParsingNoArgs()
+@Test function AnnoStringParsingNoArgs()
    function noArgsFunc() end
 
    entry = debug.anno.set(noArgsFunc, '@Disabled')
@@ -181,7 +181,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testAnnoSourceDefaultValue()
+@Test function AnnoSourceDefaultValue()
    function defaultSourceFunc() end
 
    -- Don't provide source parameter
@@ -191,7 +191,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testAnnoOverwriteExisting()
+@Test function AnnoOverwriteExisting()
    function overwriteFunc() end
 
    -- Set initial annotations
@@ -207,7 +207,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testAnnoAnonymousFunction()
+@Test function AnnoAnonymousFunction()
    anonymousFunc = function() return "anon" end
 
    entry = debug.anno.set(anonymousFunc, { { name = "Test", args = {} } })
@@ -217,7 +217,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testAnnoLocalFunction()
+@Test function AnnoLocalFunction()
    function localFunc()
       return "local"
    end
@@ -229,7 +229,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testAnnoListReturnsShallowCopy()
+@Test function AnnoListReturnsShallowCopy()
    function copyTestFunc() end
    debug.anno.set(copyTestFunc, { { name = "Test", args = {} } }, "<runtime>", "copyTestFunc")
 
@@ -242,7 +242,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testAnnoEmptyListWhenNoAnnotations()
+@Test function AnnoEmptyListWhenNoAnnotations()
    -- Clear _ANNO if it exists
    global _ANNO = nil
 

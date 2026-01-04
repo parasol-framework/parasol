@@ -41,20 +41,20 @@ glPrefixedRootXML = [[<?xml version="1.0" encoding="UTF-8"?>
 </inv:inventory>
 ]]
 
-@Test(priority=0) function testLoadSchema()
+@Test(priority=0) function LoadSchema()
    local err = glXML.mtLoadSchema(glScriptFolder .. "schema_inventory.xsd")
    assert(err is ERR_Okay, "LoadSchema() failed: " .. mSys.GetErrorMsg(err))
 
    assert(bit.band(glXML.flags, XMF_HAS_SCHEMA) != 0, "XMF_HAS_SCHEMA undefined")
 end
 
-@Test(priority=1) function testValidateDocumentPass()
+@Test(priority=1) function ValidateDocumentPass()
    local err = glXML.mtValidateDocument()
    assert(err is ERR_Okay, "ValidateDocument() returned error: " .. mSys.GetErrorMsg(err))
    assert(glXML.errorMsg is "" or glXML.errorMsg is nil, "ErrorMsg should be cleared after successful validation.")
 end
 
-@Test(priority=2) function testValidateDocumentPrefixedRoot()
+@Test(priority=2) function ValidateDocumentPrefixedRoot()
    local doc = obj.new("xml", { statement = glPrefixedRootXML })
    local err = doc.mtLoadSchema(glScriptFolder .. "schema_inventory.xsd")
    assert(err is ERR_Okay, "Failed to load schema for prefixed root document: " .. mSys.GetErrorMsg(err))
@@ -65,7 +65,7 @@ end
       "Prefixed root document should not report an error message, found: " .. tostring(doc.errorMsg))
 end
 
-@Test(priority=3) function testValidateDocumentFail()
+@Test(priority=3) function ValidateDocumentFail()
    local invalid = obj.new("xml", { statement = glInvalidXML })
    local err = invalid.mtLoadSchema(glScriptFolder .. "schema_inventory.xsd")
    assert(err is ERR_Okay, "Failed to load schema for invalid document: " .. mSys.GetErrorMsg(err))
@@ -76,7 +76,7 @@ end
       "ValidateDocument() did not populate errorMsg on failure.")
 end
 
-@Test(priority=4) function testValidateWithoutSchema()
+@Test(priority=4) function ValidateWithoutSchema()
    local doc = obj.new("xml", { path = glScriptFolder .. "schema_inventory.xml" })
    local err = doc.mtValidateDocument()
    assert(err is ERR_NoSupport, "ValidateDocument() without schema should return NoSupport, got: " .. mSys.GetErrorMsg(err))
@@ -84,7 +84,7 @@ end
       "Unexpected error message when schema is missing: " .. tostring(doc.errorMsg))
 end
 
-@Test(priority=5) function testValidateDocumentWithoutContent()
+@Test(priority=5) function ValidateDocumentWithoutContent()
    local doc = obj.new("xml")
    local err = doc.mtLoadSchema(glScriptFolder .. "schema_inventory.xsd")
    assert(err is ERR_Okay, "Failed to load schema for empty document: " .. mSys.GetErrorMsg(err))
@@ -95,7 +95,7 @@ end
       "Unexpected error message for document without parsed tags: " .. tostring(doc.errorMsg))
 end
 
-@Test(priority=6) function testValidateDocumentMismatchedRoot()
+@Test(priority=6) function ValidateDocumentMismatchedRoot()
    local doc = obj.new("xml", { statement = glMismatchedRootXML })
    local err = doc.mtLoadSchema(glScriptFolder .. "schema_inventory.xsd")
    assert(err is ERR_Okay, "Failed to load schema for mismatched root document: " .. mSys.GetErrorMsg(err))

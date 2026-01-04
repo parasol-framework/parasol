@@ -4,21 +4,21 @@
 @BeforeEach(hotpath=true)
 function enforce_hotpath() end
 
-@Test function testPipeIterationBasic()
+@Test function PipeIterationBasic()
    -- Basic pipe iteration: {1..6} |> func calls func for each value
    sum = 0
    {1..6} |> i => do sum += i end
    assert(sum is 15, "pipe iteration should sum to 15 (1+2+3+4+5), got " .. sum)
 end
 
-@Test function testPipeIterationInclusive()
+@Test function PipeIterationInclusive()
    -- Inclusive range pipe iteration
    sum = 0
    {1...5} |> i => do sum += i end
    assert(sum is 15, "pipe iteration of {1...5} should sum to 15, got " .. sum)
 end
 
-@Test function testPipeIterationWithPrint()
+@Test function PipeIterationWithPrint()
    -- Capture values via pipe iteration
    captured = {}
    {0..3} |> function(i) captured[#captured] = i end
@@ -27,7 +27,7 @@ end
    assert(captured[2] is 2, "last captured should be 2")
 end
 
-@Test function testPipeIterationChaining()
+@Test function PipeIterationChaining()
    -- Chaining: pipe returns range for chaining
    log1 = {}
    log2 = {}
@@ -39,7 +39,7 @@ end
    assert(log2[2] is 6, "log2[2] should be 6, got " .. tostring(log2[2]))
 end
 
-@Test function testPipeIterationEarlyTermination()
+@Test function PipeIterationEarlyTermination()
    -- Return false from callback to stop iteration
    count = 0
    {1..100} |> function(i)
@@ -49,7 +49,7 @@ end
    assert(count is 5, "should stop after 5 iterations, got " .. count)
 end
 
-@Test function testPipeIterationReverse()
+@Test function PipeIterationReverse()
    -- Reverse range pipe iteration
    result = {}
    {5...1} |> function(i) result[#result] = i end
@@ -58,14 +58,14 @@ end
    assert(result[4] is 1, "last element should be 1")
 end
 
-@Test function testPipeIterationEmpty()
+@Test function PipeIterationEmpty()
    -- Empty range should not iterate
    count = 0
    {5..5} |> function(i) count++ end
    assert(count is 0, "empty range should not iterate, got " .. count)
 end
 
-@Test function testPipeIterationWithClosure()
+@Test function PipeIterationWithClosure()
    -- Closure variables accessible in callback
    multiplier = 3
    results = {}
@@ -74,7 +74,7 @@ end
    assert(results[2] is 9, "results[2] should be 9, got " .. tostring(results[2]))
 end
 
-@Test function testPipeIterationReturnValue()
+@Test function PipeIterationReturnValue()
    -- Pipe iteration should return original range for chaining
    -- NOTE: When using a variable, use :each() directly since parser can't detect range type
    r = {1..5}
@@ -82,14 +82,14 @@ end
    assert(returned is r, "pipe iteration should return original range")
 end
 
-@Test function testPipeNormalBehaviour()
+@Test function PipeNormalBehaviour()
    -- Non-range pipes should work as before
    function double(x) return x * 2 end
    result = 5 |> double()
    assert(result is 10, "normal pipe should still work, got " .. tostring(result))
 end
 
-@Test function testPipeWithRangeVariable()
+@Test function PipeWithRangeVariable()
    -- Pipe iteration with range stored in variable
    -- NOTE: When using a variable, use :each() directly since parser can't detect range type
    r = {1..6}
@@ -98,7 +98,7 @@ end
    assert(sum is 15, "sum should be 15, got " .. sum)
 end
 
-@Test function testPipeIterationWithIdentifier()
+@Test function PipeIterationWithIdentifier()
    -- Pipe iteration with function stored in identifier
    sum = 0
    function accumulate(Value) sum += Value end
@@ -106,7 +106,7 @@ end
    assert(sum is 15, "pipe to identifier should sum to 15, got " .. sum)
 end
 
-@Test function testPipeIterationNested()
+@Test function PipeIterationNested()
    -- Nested pipe iteration
    combinations = {}
    {1..3} |> function(i)
@@ -120,7 +120,7 @@ end
    assert(combinations[3] is 22, "last combination should be 22, got " .. tostring(combinations[3]))
 end
 
-@Test function testPipeIterationSingleElement()
+@Test function PipeIterationSingleElement()
    -- Single element inclusive range
    count = 0
    value = nil
@@ -132,7 +132,7 @@ end
    assert(value is 5, "value should be 5, got " .. tostring(value))
 end
 
-@Test function testPipeIterationNegativeValues()
+@Test function PipeIterationNegativeValues()
    -- Negative values in range
    result = {}
    {-3..2} |> function(i) result[#result] = i end
@@ -141,7 +141,7 @@ end
    assert(result[4] is 1, "last should be 1")
 end
 
-@Test function testPipeIterationContinuesOnTrue()
+@Test function PipeIterationContinuesOnTrue()
    -- Returning true should NOT terminate
    sum = 0
    {1..6} |> function(i)
@@ -151,7 +151,7 @@ end
    assert(sum is 15, "returning true should complete iteration, got " .. sum)
 end
 
-@Test function testPipeIterationContinuesOnNil()
+@Test function PipeIterationContinuesOnNil()
    -- No return (nil) should continue
    count = 0
    {1..6} |> function(i)
@@ -160,7 +160,7 @@ end
    assert(count is 5, "no return should complete iteration, got " .. count)
 end
 
-@Test function testPipeWithArrowFunction()
+@Test function PipeWithArrowFunction()
    -- Arrow functions should work for pipe iteration
    sum = 0
    {1..6} |> (i => do sum += i end)

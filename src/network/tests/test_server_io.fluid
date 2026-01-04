@@ -14,7 +14,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test(requires='network') function testRawHTTP()
+@Test(requires='network') function RawHTTP()
    proc = processing.new({ timeout = 5.0 })
    netsocket = obj.new('netsocket', {
       feedback = function(Socket, State)

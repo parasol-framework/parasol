@@ -7,7 +7,7 @@
 -- This test must result in playback of a low-tone, then followed by a high tone.
 
 @Test(requires='audio')
-function testSequentialPlayback()
+function SequentialPlayback()
    local proc = processing.new()
 
    local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav', volume=0.25 })
@@ -56,7 +56,7 @@ end
 -- Test left and right speaker panning
 
 @Test(requires='audio')
-function testPan()
+function Pan()
    local proc = processing.new()
 
    local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav', pan=-1.0, volume=0.25 })
@@ -87,7 +87,7 @@ end
 -- Test volume adjustment and OnStop trigger rates.
 
 @Test(requires='audio')
-function testVolume()
+function Volume()
    local proc = processing.new()
 
    local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav' })
@@ -118,7 +118,7 @@ end
 -- Increase the pitch repeatedly
 
 @Test(requires='audio')
-function testTones()
+function Tones()
    local proc = processing.new()
 
    local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav', volume=0.25 })
@@ -144,7 +144,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
 @Test(requires='audio')
-function testBeep()
+function Beep()
    glAudio.mtBeep(3000, 100, 5)
 end
 
@@ -153,7 +153,7 @@ end
 -- both files.
 
 @Test(requires='audio')
-function testWaveSave()
+function WaveSave()
    local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav' })
    local output_file = obj.new('file', { path='temp:low-tone.wav', flags='!NEW|WRITE' })
 

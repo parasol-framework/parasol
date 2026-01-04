@@ -5,7 +5,7 @@
 -----------------------------------------------------------------------------------------------------------------------
 -- Direct element constructors should evaluate expressions inside tags and attributes
 
-function testDirectConstructorEvaluation()
+@Test function DirectConstructorEvaluation()
    local xml = obj.new("xml", { statement = '<root price="10"><item>5</item></root>' })
 
    local err, attributeValue = xml.mtEvaluate('string((<result price="{/root/@price}">{/root/item/text()}</result>)/@price)')
@@ -21,7 +21,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Direct constructors should preserve literal whitespace inside element content
 
-function testDirectConstructorWhitespace()
+@Test function DirectConstructorWhitespace()
    local xq = obj.new('xquery', { statement = 'string(<a>hello world</a>)' })
    local err = xq.acActivate()
 
@@ -40,7 +40,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Computed constructors should honour dynamic names and content expressions
 
-function testComputedConstructors()
+@Test function ComputedConstructors()
    local xml = obj.new("xml", { statement = '<root price="10"/>' })
 
    local err, elementName = xml.mtEvaluate('local-name(element summary { /root/@price })')
@@ -56,7 +56,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Text, comment, and processing-instruction constructors should produce textual nodes
 
-function testNonElementConstructors()
+@Test function NonElementConstructors()
    local xml = obj.new("xml", { statement = '<root price="10"/>' })
 
    local err, textValue = xml.mtEvaluate('string(text { /root/@price })')
@@ -78,7 +78,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Document constructors should wrap sequences into a standalone document node
 
-function testDocumentConstructor()
+@Test function DocumentConstructor()
    local xq = obj.new('xquery', { statement = 'count((document { <a/>, <b/> })/node())' })
    local err = xq.acActivate()
 
@@ -93,7 +93,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Attribute and sequence content should merge correctly inside constructors
 
-function testConstructorAttributeSequences()
+@Test function ConstructorAttributeSequences()
    local xq = obj.new('xquery', { statement = 'count(element wrapper { (attribute first { "1" }, attribute second { "2" }), element child { "value" } }/@*)' })
    assert(xq.acActivate() is ERR_Okay, 'XQuery execution failed.')
 
@@ -128,7 +128,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Map, array, and lookup constructors should evaluate and chain correctly
 
-function testMapArrayLookup()
+@Test function MapArrayLookup()
    local xml = obj.new('xml', { statement = '<root/>' })
 
    local err, lookup_result = xml.mtEvaluate('string((map { "price": 10 })?price)')
@@ -161,7 +161,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Literal map/array constructors should preserve overwrites, nesting, and sequence members
 
-function testMapArrayConstructorSemantics()
+@Test function MapArrayConstructorSemantics()
    local xml = obj.new('xml', { statement = '<root/>' })
 
    local err, overwritten = xml.mtEvaluate('string((map { "dup": 1, "dup": 42 })?dup)')

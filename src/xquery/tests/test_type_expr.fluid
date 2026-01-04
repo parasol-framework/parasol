@@ -13,7 +13,7 @@
 -- CAST EXPRESSION TESTS
 
 -- Test basic cast to string
-function testCastToString()
+@Test function CastToString()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('42 cast as xs:string')
@@ -22,7 +22,7 @@ function testCastToString()
 end
 
 -- Test basic cast to decimal
-function testCastToDecimal()
+@Test function CastToDecimal()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('"123.45" cast as xs:decimal')
@@ -31,7 +31,7 @@ function testCastToDecimal()
 end
 
 -- Test basic cast to integer
-function testCastToInteger()
+@Test function CastToInteger()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('"456" cast as xs:integer')
@@ -40,7 +40,7 @@ function testCastToInteger()
 end
 
 -- Test basic cast to boolean
-function testCastToBoolean()
+@Test function CastToBoolean()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('"true" cast as xs:boolean')
@@ -53,7 +53,7 @@ function testCastToBoolean()
 end
 
 -- Test basic cast to date
-function testCastToDate()
+@Test function CastToDate()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('"2025-10-22" cast as xs:date')
@@ -62,7 +62,7 @@ function testCastToDate()
 end
 
 -- Test cast to dateTime
-function testCastToDateTime()
+@Test function CastToDateTime()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('"2025-10-22T14:30:00" cast as xs:dateTime')
@@ -70,7 +70,7 @@ function testCastToDateTime()
 end
 
 -- Test invalid cast should raise XPTY0004 error
-function testCastInvalidConversion()
+@Test function CastInvalidConversion()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    -- Try to cast non-numeric string to integer
@@ -80,7 +80,7 @@ function testCastInvalidConversion()
 end
 
 -- Test cast with empty sequence
-function testCastEmptySequence()
+@Test function CastEmptySequence()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    -- Empty sequence cannot be cast (should raise error)
@@ -89,7 +89,7 @@ function testCastEmptySequence()
 end
 
 -- Test cast from attribute value
-function testCastFromAttribute()
+@Test function CastFromAttribute()
    local xml = obj.new("xml", { statement = '<root price="99.99"/>' })
 
    local err, result = xml.mtEvaluate('/root/@price cast as xs:decimal')
@@ -98,7 +98,7 @@ function testCastFromAttribute()
 end
 
 -- Test cast from element text
-function testCastFromElement()
+@Test function CastFromElement()
    local xml = obj.new("xml", { statement = '<root><count>42</count></root>' })
 
    local err, result = xml.mtEvaluate('/root/count/text() cast as xs:integer')
@@ -110,7 +110,7 @@ end
 -- CASTABLE EXPRESSION TESTS
 
 -- Test basic castable to string (always true for atomic values)
-function testCastableToString()
+@Test function CastableToString()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('42 castable as xs:string')
@@ -119,7 +119,7 @@ function testCastableToString()
 end
 
 -- Test castable with valid numeric conversion
-function testCastableValidNumeric()
+@Test function CastableValidNumeric()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('"123" castable as xs:integer')
@@ -128,7 +128,7 @@ function testCastableValidNumeric()
 end
 
 -- Test castable with invalid numeric conversion
-function testCastableInvalidNumeric()
+@Test function CastableInvalidNumeric()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('"abc" castable as xs:integer')
@@ -137,7 +137,7 @@ function testCastableInvalidNumeric()
 end
 
 -- Test castable with valid date
-function testCastableValidDate()
+@Test function CastableValidDate()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('"2025-10-22" castable as xs:date')
@@ -146,7 +146,7 @@ function testCastableValidDate()
 end
 
 -- Test castable with invalid date
-function testCastableInvalidDate()
+@Test function CastableInvalidDate()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('"not-a-date" castable as xs:date')
@@ -155,7 +155,7 @@ function testCastableInvalidDate()
 end
 
 -- Test castable with boolean
-function testCastableBoolean()
+@Test function CastableBoolean()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('"true" castable as xs:boolean')
@@ -168,7 +168,7 @@ function testCastableBoolean()
 end
 
 -- Test castable with empty sequence
-function testCastableEmptySequence()
+@Test function CastableEmptySequence()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('() castable as xs:string')
@@ -177,7 +177,7 @@ function testCastableEmptySequence()
 end
 
 -- Test castable from attribute
-function testCastableFromAttribute()
+@Test function CastableFromAttribute()
    local xml = obj.new("xml", { statement = '<root value="123.45"/>' })
 
    local err, result = xml.mtEvaluate('/root/@value castable as xs:decimal')
@@ -189,7 +189,7 @@ end
 -- TREAT AS EXPRESSION TESTS
 
 -- Test treat as with matching type
-function testTreatAsMatchingType()
+@Test function TreatAsMatchingType()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('42 treat as xs:integer')
@@ -198,7 +198,7 @@ function testTreatAsMatchingType()
 end
 
 -- Test treat as with string
-function testTreatAsString()
+@Test function TreatAsString()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('"hello" treat as xs:string')
@@ -207,7 +207,7 @@ function testTreatAsString()
 end
 
 -- Test treat as with mismatched type (should raise XPTY0004)
-function testTreatAsMismatchedType()
+@Test function TreatAsMismatchedType()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    -- Try to treat string as integer without conversion
@@ -216,7 +216,7 @@ function testTreatAsMismatchedType()
 end
 
 -- Test treat as with occurrence indicator ?
-function testTreatAsOptional()
+@Test function TreatAsOptional()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    -- Single value treated as optional
@@ -229,7 +229,7 @@ function testTreatAsOptional()
 end
 
 -- Test treat as with occurrence indicator +
-function testTreatAsOneOrMore()
+@Test function TreatAsOneOrMore()
    local xml = obj.new("xml", { statement = '<root><item>1</item><item>2</item></root>' })
 
    -- Multiple items treated as one-or-more
@@ -242,7 +242,7 @@ function testTreatAsOneOrMore()
 end
 
 -- Test treat as with occurrence indicator *
-function testTreatAsZeroOrMore()
+@Test function TreatAsZeroOrMore()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    -- Empty sequence treated as zero-or-more
@@ -255,7 +255,7 @@ function testTreatAsZeroOrMore()
 end
 
 -- Test treat as with element sequence
-function testTreatAsElementSequence()
+@Test function TreatAsElementSequence()
    local xml = obj.new("xml", { statement = '<root><child/></root>' })
 
    local err, result = xml.mtEvaluate('/root/child treat as element()')
@@ -266,7 +266,7 @@ end
 -- INSTANCE OF EXPRESSION TESTS
 
 -- Test instance of with matching primitive type
-function testInstanceOfInteger()
+@Test function InstanceOfInteger()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('42 instance of xs:integer')
@@ -275,7 +275,7 @@ function testInstanceOfInteger()
 end
 
 -- Test instance of with non-matching primitive type
-function testInstanceOfNonMatchingType()
+@Test function InstanceOfNonMatchingType()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('"hello" instance of xs:integer')
@@ -284,7 +284,7 @@ function testInstanceOfNonMatchingType()
 end
 
 -- Test instance of with string type
-function testInstanceOfString()
+@Test function InstanceOfString()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('"hello" instance of xs:string')
@@ -293,7 +293,7 @@ function testInstanceOfString()
 end
 
 -- Test instance of with boolean type
-function testInstanceOfBoolean()
+@Test function InstanceOfBoolean()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('true() instance of xs:boolean')
@@ -302,7 +302,7 @@ function testInstanceOfBoolean()
 end
 
 -- Regression: atomic sequences must not satisfy node() tests
-function testInstanceOfNodeWithAtomicSequence()
+@Test function InstanceOfNodeWithAtomicSequence()
    local xml = obj.new("xml", { statement = '<root attr="v">text</root>' })
 
    -- Purely atomic sequence should not be instance of node()
@@ -319,7 +319,7 @@ function testInstanceOfNodeWithAtomicSequence()
 end
 
 -- Test instance of with occurrence indicator ?
-function testInstanceOfOptional()
+@Test function InstanceOfOptional()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    -- Single value is instance of optional type
@@ -339,7 +339,7 @@ function testInstanceOfOptional()
 end
 
 -- Test instance of with occurrence indicator +
-function testInstanceOfOneOrMore()
+@Test function InstanceOfOneOrMore()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    -- Single value matches one-or-more
@@ -359,7 +359,7 @@ function testInstanceOfOneOrMore()
 end
 
 -- Test instance of with occurrence indicator *
-function testInstanceOfZeroOrMore()
+@Test function InstanceOfZeroOrMore()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    -- Empty sequence matches zero-or-more
@@ -379,7 +379,7 @@ function testInstanceOfZeroOrMore()
 end
 
 -- Test instance of with element type
-function testInstanceOfElement()
+@Test function InstanceOfElement()
    local xml = obj.new("xml", { statement = '<root><child/></root>' })
 
    local err, result = xml.mtEvaluate('/root/child instance of element()')
@@ -393,7 +393,7 @@ function testInstanceOfElement()
 end
 
 -- Test instance of with attribute type
-function testInstanceOfAttribute()
+@Test function InstanceOfAttribute()
    local xml = obj.new("xml", { statement = '<root name="test"/>' })
 
    local err, result = xml.mtEvaluate('/root/@name instance of attribute()')
@@ -402,7 +402,7 @@ function testInstanceOfAttribute()
 end
 
 -- Test instance of with text type
-function testInstanceOfText()
+@Test function InstanceOfText()
    local xml = obj.new("xml", { statement = '<root>text content</root>' })
 
    local err, result = xml.mtEvaluate('/root/text() instance of text()')
@@ -414,7 +414,7 @@ end
 -- TYPESWITCH EXPRESSION TESTS
 
 -- Test basic typeswitch with integer
-function testTypeswitchInteger()
+@Test function TypeswitchInteger()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local query = [[
@@ -430,7 +430,7 @@ function testTypeswitchInteger()
 end
 
 -- Test typeswitch with string
-function testTypeswitchString()
+@Test function TypeswitchString()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local query = [[
@@ -446,7 +446,7 @@ function testTypeswitchString()
 end
 
 -- Test typeswitch with default case
-function testTypeswitchDefault()
+@Test function TypeswitchDefault()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local query = [[
@@ -462,7 +462,7 @@ function testTypeswitchDefault()
 end
 
 -- Test typeswitch with variable binding
-function testTypeswitchVariableBinding()
+@Test function TypeswitchVariableBinding()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local query = [[
@@ -477,7 +477,7 @@ function testTypeswitchVariableBinding()
 end
 
 -- Test typeswitch with multiple cases
-function testTypeswitchMultipleCases()
+@Test function TypeswitchMultipleCases()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local query = [[
@@ -495,7 +495,7 @@ function testTypeswitchMultipleCases()
 end
 
 -- Test typeswitch first-match-wins behavior
-function testTypeswitchFirstMatchWins()
+@Test function TypeswitchFirstMatchWins()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    -- If integer matches multiple types, first should win
@@ -512,7 +512,7 @@ function testTypeswitchFirstMatchWins()
 end
 
 -- Test typeswitch with element nodes
-function testTypeswitchElement()
+@Test function TypeswitchElement()
    local xml = obj.new("xml", { statement = '<root><child>value</child></root>' })
 
    local query = [[
@@ -528,7 +528,7 @@ function testTypeswitchElement()
 end
 
 -- Test typeswitch with occurrence indicators
-function testTypeswitchOccurrenceIndicators()
+@Test function TypeswitchOccurrenceIndicators()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    -- Test optional type
@@ -557,7 +557,7 @@ end
 -- TO RANGE OPERATOR TESTS
 
 -- Test basic range generation
-function testRangeBasic()
+@Test function RangeBasic()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('1 to 5')
@@ -568,7 +568,7 @@ function testRangeBasic()
 end
 
 -- Test range with count
-function testRangeCount()
+@Test function RangeCount()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('count(1 to 10)')
@@ -577,7 +577,7 @@ function testRangeCount()
 end
 
 -- Test range with single element
-function testRangeSingleElement()
+@Test function RangeSingleElement()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('count(5 to 5)')
@@ -586,7 +586,7 @@ function testRangeSingleElement()
 end
 
 -- Test empty range (end < start)
-function testRangeEmpty()
+@Test function RangeEmpty()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('count(10 to 5)')
@@ -595,7 +595,7 @@ function testRangeEmpty()
 end
 
 -- Test range with negative numbers
-function testRangeNegative()
+@Test function RangeNegative()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('count(-5 to 5)')
@@ -604,7 +604,7 @@ function testRangeNegative()
 end
 
 -- Test range with zero
-function testRangeZero()
+@Test function RangeZero()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('count(0 to 10)')
@@ -613,7 +613,7 @@ function testRangeZero()
 end
 
 -- Test large range (with safeguards)
-function testRangeLarge()
+@Test function RangeLarge()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('count(1 to 1000)')
@@ -622,7 +622,7 @@ function testRangeLarge()
 end
 
 -- Test range in for expression
-function testRangeInFor()
+@Test function RangeInFor()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local query = 'sum(for $i in 1 to 5 return $i)'
@@ -633,7 +633,7 @@ function testRangeInFor()
 end
 
 -- Test range with position predicates
-function testRangeWithPredicates()
+@Test function RangeWithPredicates()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('(1 to 10)[5]')
@@ -642,7 +642,7 @@ function testRangeWithPredicates()
 end
 
 -- Test range with arithmetic
-function testRangeWithArithmetic()
+@Test function RangeWithArithmetic()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('count(1 to (5 + 5))')
@@ -651,7 +651,7 @@ function testRangeWithArithmetic()
 end
 
 -- Test range with non-integer values (should handle or error)
-function testRangeNonInteger()
+@Test function RangeNonInteger()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    -- XPath 2.0 spec: operands to 'to' must be integers
@@ -664,7 +664,7 @@ end
 -- COMBINED EXPRESSION TESTS
 
 -- Test cast with range
-function testCastWithRange()
+@Test function CastWithRange()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('count(for $i in 1 to 5 return $i cast as xs:string)')
@@ -673,7 +673,7 @@ function testCastWithRange()
 end
 
 -- Test instance of with typeswitch
-function testInstanceOfWithTypeswitch()
+@Test function InstanceOfWithTypeswitch()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local query = [[
@@ -690,7 +690,7 @@ function testInstanceOfWithTypeswitch()
 end
 
 -- Test castable in conditional
-function testCastableInConditional()
+@Test function CastableInConditional()
    local xml = obj.new("xml", { statement = '<root value="123"/>' })
 
    local query = [[
@@ -706,7 +706,7 @@ function testCastableInConditional()
 end
 
 -- Test treat as with range sequence
-function testTreatAsWithRange()
+@Test function TreatAsWithRange()
    local xml = obj.new("xml", { statement = '<root/>' })
 
    local err, result = xml.mtEvaluate('(1 to 5) treat as xs:integer+')
@@ -716,7 +716,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Constructor error tests
 
-function testConstructorUnknownType()
+@Test function ConstructorUnknownType()
    local xml = obj.new('xml', { statement = '<root/>' })
 
    local err = xml.mtEvaluate('xs:notAType("42")')
@@ -727,7 +727,7 @@ function testConstructorUnknownType()
       'Error message should include XPST0051 for unknown constructor types, got ' .. message)
 end
 
-function testConstructorUnboundPrefix()
+@Test function ConstructorUnboundPrefix()
    local xml = obj.new('xml', { statement = '<root/>' })
 
    local err = xml.mtEvaluate('abc:decimal("7")')
@@ -741,7 +741,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Constructor metadata propagation through cast/treat expressions
 
-function testConstructorCastChaining()
+@Test function ConstructorCastChaining()
    local xml = obj.new('xml', { statement = '<root/>' })
 
    local err, castDateTime = xml.mtEvaluate("let $value := xs:dateTime('2024-05-01T06:30:00+02:00') "
@@ -757,7 +757,7 @@ function testConstructorCastChaining()
       'Casting xs:date projections should retain their timezone component, got: ' .. tostring(castDate))
 end
 
-function testConstructorTreatAsChaining()
+@Test function ConstructorTreatAsChaining()
    local xml = obj.new('xml', { statement = '<root/>' })
 
    local err, treatDuration = xml.mtEvaluate("let $value := xs:duration('P2DT3H4M') "

@@ -38,7 +38,7 @@ end
 -- with SetSSL().
 
 @Test; @Requires(ssl=true)
-function testBasicSSLCommunication()
+function BasicSSLCommunication()
    proc = processing.new({ timeout = 5.0 })
    ssl_handshake_complete = false
    ssl_data_received = false
@@ -174,7 +174,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test; @Requires(ssl=true)
-function testSSLStateTransitions()
+function SSLStateTransitions()
    proc = processing.new({ timeout = 5.0 })
    state_sequence = {}
    ssl_handshake_complete = false
@@ -293,7 +293,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test; @Requires(ssl=true)
-function testSSLDataIntegrity()
+function SSLDataIntegrity()
    proc = processing.new({ timeout = 3.0 })
    test_messages = {
       'Binary data: ' .. string.char(0, 1, 2, 3, 255, 254, 253),
@@ -380,7 +380,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test; @Requires(ssl=true)
-function testHTTPSConnection()
+function HTTPSConnection()
    proc = processing.new({ timeout = 5.0 })
    data_received     = false
    page_content      = ""
@@ -563,7 +563,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test; @Requires(ssl=true)
-function testCustomCertificate()
+function CustomCertificate()
    if (not glSSLSupported) then return end
 
    proc = processing.new({ timeout = 10.0 })

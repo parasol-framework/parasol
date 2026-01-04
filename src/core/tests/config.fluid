@@ -35,7 +35,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testKeyFilter()
+@Test function KeyFilter()
    cfg = newConfig()
 
    cfg.keyFilter = 'Name=Clean' -- Keep the clean font and filter out Courier Sans
@@ -53,7 +53,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testGroupFilter()
+@Test function GroupFilter()
    cfg = newConfig()
 
    cfg.groupFilter = 'Courier Sans' -- Keep Courier Sans
@@ -71,7 +71,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testDeleteKeyAndGroup()
+@Test function DeleteKeyAndGroup()
    cfg = newConfig()
 
    err, value = cfg.mtReadValue('Clean', 'Styles')
@@ -92,7 +92,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testMerge()
+@Test function Merge()
    cfg = newConfig()
 
    cfgMerge = obj.new('config', { })
@@ -111,7 +111,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testWriteValues()
+@Test function WriteValues()
    cfg = newConfig()
 
    err = cfg.mtWriteValue('Clean', 'New', 'Value')
@@ -132,7 +132,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Test case sensitivity
 
-@Test function testReadValues()
+@Test function ReadValues()
    cfg = newConfig()
 
    err, value = cfg.mtReadValue('CLEAN', 'Styles')
@@ -144,7 +144,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testSorting()
+@Test function Sorting()
    cfg = newConfig()
 
    err = cfg.mtSortByKey('Sort', true)
@@ -160,7 +160,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testSave()
+@Test function Save()
    cfg = newConfig()
    err, value = cfg.mtDeleteGroup('Courier Sans')
    err, value = cfg.mtDeleteGroup('Alpha')
