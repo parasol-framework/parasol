@@ -728,6 +728,18 @@ LJ_FUNCA int lj_err_unwind_dwarf(int version, int actions, uint64_t uexclass, _U
       if ((actions & _UA_FORCE_UNWIND)) {
          return _URC_CONTINUE_UNWIND;
       }
+      else if (cf IS ERR_TRYHANDLER) {
+         // Try-except handler found. setup_try_handler() prepares the Lua state:
+         // - Restores L->base and L->top to try block entry state
+         // - Closes upvalues and <close> variables created inside the try block
+         // - Pops the try frame from the try stack
+         // - Builds exception table and places it in the handler's register
+         // - Sets L->try_handler_pc to point to the handler bytecode
+         setup_try_handler(L);
+         _Unwind_SetGR(ctx, LJ_TARGET_EHRETREG, errcode);
+         _Unwind_SetIP(ctx, (uintptr_t)lj_vm_resume_try_eh);
+         return _URC_INSTALL_CONTEXT;
+      }
       else if (cf) {
          _Unwind_SetGR(ctx, LJ_TARGET_EHRETREG, errcode);
          _Unwind_SetIP(ctx, (uintptr_t)(cframe_unwind_ff(cf) ? lj_vm_unwind_ff_eh : lj_vm_unwind_c_eh));
