@@ -4,7 +4,7 @@
 -- Test basic time object creation and Query action
 
 @Test function TimeCreation()
-   local time_obj = obj.new('time')
+   time_obj = obj.new('time')
    time_obj.acQuery()
 
    -- Verify all fields are populated with reasonable values
@@ -24,10 +24,10 @@ end
 -- Test SystemTime field functionality
 
 @Test function SystemTime()
-   local time_obj = obj.new('time')
+   time_obj = obj.new('time')
    time_obj.acQuery()
 
-   local system_time = time_obj.systemTime
+   system_time = time_obj.systemTime
    assert(system_time > 0, 'SystemTime should be positive, got: ' .. tostring(system_time))
 
    -- Let's examine what we actually get and make reasonable assertions
@@ -45,9 +45,9 @@ end
 -- Test TimeStamp field functionality
 
 @Test function TimeStamp()
-   local time_obj = obj.new('time')
+   time_obj = obj.new('time')
    time_obj.acQuery()
-   local timestamp = time_obj.timeStamp
+   timestamp = time_obj.timeStamp
    assert(timestamp > 0, 'TimeStamp should be positive, got: ' .. tostring(timestamp))
 end
 
@@ -55,7 +55,7 @@ end
 -- Test specific date and time setting
 
 @Test function SetTimeFields()
-   local time_obj = obj.new('time')
+   time_obj = obj.new('time')
 
    -- Set a specific date and time: 2024-03-15 14:30:45
    time_obj.year = 2024
@@ -84,11 +84,11 @@ end
 -- Test day of week calculation for known dates
 
 @Test function DayOfWeekCalculation()
-   local time_obj = obj.new('time')
+   time_obj = obj.new('time')
    time_obj.acQuery()
 
-   local current_dow = time_obj.dayOfWeek
-   local current_date = time_obj.year .. '-' .. string.format('%02d', time_obj.month) .. '-' .. string.format('%02d', time_obj.day)
+   current_dow = time_obj.dayOfWeek
+   current_date = time_obj.year .. '-' .. string.format('%02d', time_obj.month) .. '-' .. string.format('%02d', time_obj.day)
    assert(current_dow >= 0 and current_dow <= 6, 'Day of week should be 0-6, got: ' .. tostring(current_dow))
 end
 
@@ -96,15 +96,15 @@ end
 -- Test consistency between multiple queries
 
 @Test function ConsistentQueries()
-   local time1 = obj.new('time')
-   local time2 = obj.new('time')
+   time1 = obj.new('time')
+   time2 = obj.new('time')
 
    -- Query both times in quick succession
    time1.acQuery()
    time2.acQuery()
 
    -- Times should be very close (within a few seconds)
-   local time_diff = math.abs(time1.systemTime - time2.systemTime)
+   time_diff = math.abs(time1.systemTime - time2.systemTime)
    assert(time_diff < 10000000, 'Time difference too large between consecutive queries: ' .. tostring(time_diff) .. ' microseconds')
 
    assert(time1.year is time2.year, 'Years should match between consecutive queries')
@@ -116,7 +116,7 @@ end
 -- Test leap year handling
 
 @Test function LeapYearDates()
-   local time_obj = obj.new('time')
+   time_obj = obj.new('time')
 
    -- Test February 29th in leap year 2024
    time_obj.year = 2024
@@ -141,7 +141,7 @@ end
 -- Test edge case dates
 
 @Test function EdgeCaseDates()
-   local time_obj = obj.new('time')
+   time_obj = obj.new('time')
 
    -- Test end of year
    time_obj.year = 2023
@@ -170,16 +170,16 @@ end
 -- Test microsecond precision
 
 @Test function MicrosecondPrecision()
-   local time_obj = obj.new('time')
+   time_obj = obj.new('time')
    time_obj.acQuery()
 
-   local first_query_us = time_obj.microSecond
+   first_query_us = time_obj.microSecond
 
    -- Brief delay (but not enough to change microseconds in most cases)
    for i = 1, 1000 do end
 
    time_obj.acQuery()
-   local second_query_us = time_obj.microSecond
+   second_query_us = time_obj.microSecond
 
    -- Check that we have microsecond precision (the values should be different or at least in reasonable range)
    print('First query microseconds: ' .. tostring(first_query_us))
@@ -190,48 +190,42 @@ end
 end
 
 ------------------------------------------------------------------------------------------------------------------------
--- Test SetTime method (requires admin privileges on Windows)
+-- Test SetTime method
+-- Note: Requires administrator privileges
+-- On Windows: needs SE_SYSTEMTIME_NAME privilege or admin rights
+-- On Unix: needs root access
 
-@Test; @Disable function SetTimeMethod()
-   local time_obj = obj.new('time')
+@Test; @Disabled function SetTimeMethod()
+   time_obj = obj.new('time')
 
    -- Get current time first
+
    time_obj.acQuery()
-   local original_time = {
-      year = time_obj.year,
-      month = time_obj.month,
-      day = time_obj.day,
-      hour = time_obj.hour,
-      minute = time_obj.minute,
-      second = time_obj.second
+   original_time = {
+      year = time_obj.year, month = time_obj.month, day = time_obj.day,
+      hour = time_obj.hour, minute = time_obj.minute, second = time_obj.second
    }
 
-   -- Try to set time to a specific known value
-   time_obj.year = 2024
-   time_obj.month = 12
-   time_obj.day = 25
-   time_obj.hour = 10
-   time_obj.minute = 30
-   time_obj.second = 0
+   local err
+   try
+      -- Try to set time to a specific known value
+      time_obj.year   = 2024
+      time_obj.month  = 12
+      time_obj.day    = 25
+      time_obj.hour   = 10
+      time_obj.minute = 30
+      time_obj.second = 0
+      err = time_obj.mtSetTime()
 
-   -- Note: SetTime method requires administrator privileges
-   -- On Windows: needs SE_SYSTEMTIME_NAME privilege or admin rights
-   -- On Unix: needs root access
-   -- This test verifies the method exists and handles errors gracefully
-   local ex, err = catch(function()
-      return time_obj.mtSetTime()
-   end)
-
-   if err is ERR_Okay then
       -- Restore original time if setting succeeded
-      time_obj.year = original_time.year
-      time_obj.month = original_time.month
-      time_obj.day = original_time.day
-      time_obj.hour = original_time.hour
+      time_obj.year   = original_time.year
+      time_obj.month  = original_time.month
+      time_obj.day    = original_time.day
+      time_obj.hour   = original_time.hour
       time_obj.minute = original_time.minute
       time_obj.second = original_time.second
-      catch(function() time_obj.mtSetTime() end)
-   else
+      time_obj.mtSetTime()
+   except e
       print('SetTime method failed (expected if not running with admin privileges)')
    end
 end

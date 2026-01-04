@@ -160,48 +160,56 @@ end
 -- Test that reassigning local const fails at compile time
 
 @Test function LocalConstReassignmentError()
-   ex = catch(function()
+   try
       exec([[
 local x <const> = 1
 x = 2
 ]])
-   end)
-   assert(ex, 'Reassigning const local should fail to compile')
-   assert(tostring(ex.message):find('cannot assign to const local'), 'Error should mention const local: ' .. tostring(ex.message))
+   except ex
+      assert(ex.message:find('cannot assign to const local'), f'Error should mention const local: {ex.message}')
+      return -- Happy path
+   end
+   error('Reassigning const local should fail to compile')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Test that reassigning global const fails at compile time
 
 @Test function GlobalConstReassignmentError()
-   ex = catch(function()
+   try
       exec([[
 global X <const> = 1
 X = 2
 ]])
-   end)
-   assert(ex, 'Reassigning const global should fail to compile')
-   assert(tostring(ex.message):find('cannot assign to const global'), 'Error should mention const global: ' .. tostring(ex.message))
+   except ex
+      assert(ex.message:find('cannot assign to const global'), f'Error should mention const global: {ex.message}')
+      return -- Happy path
+   end
+   error('Reassigning const global should fail to compile')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Test that local const without initialiser fails at compile time
 
 @Test function LocalConstRequiresInitialiser()
-   ex = catch(function()
+   try
       exec([[local x <const>]])
-   end)
-   assert(ex, 'Local const without initialiser should fail to compile')
-   assert(tostring(ex.message):find('requires an initialiser'), 'Error should mention initialiser: ' .. tostring(ex.message))
+   except ex
+      assert(ex.message:find('requires an initialiser'), 'Error should mention initialiser: {ex.message}')
+      return -- Happy path
+   end
+   error('Local const without initialiser should fail to compile')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Test that global const without initialiser fails at compile time
 
 @Test function GlobalConstRequiresInitialiser()
-   ex = catch(function()
+   try
       exec([[global X <const>]])
-   end)
-   assert(ex, 'Global const without initialiser should fail to compile')
-   assert(tostring(ex.message):find('requires an initialiser'), 'Error should mention initialiser: ' .. tostring(ex.message))
+   except ex
+      assert(ex.message:find('requires an initialiser'), 'Error should mention initialiser: {ex.message}')
+      return -- Happy path
+   end
+   error('Global const without initialiser should fail to compile')
 end
