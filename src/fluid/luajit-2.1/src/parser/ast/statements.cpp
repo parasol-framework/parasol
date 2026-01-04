@@ -489,6 +489,16 @@ ParserResult<StmtNodePtr> AstBuilder::parse_try()
       }
 
       // Optional when clause for filtering
+      // Check for unexpected tokens on the same line after 'except [var]' (e.g., 'where' instead of 'when')
+      if (this->ctx.check(TokenKind::Identifier)) {
+         Token unexpected = this->ctx.tokens().current();
+         if (unexpected.span().line IS except_token.span().line) {
+            GCstr *ident = unexpected.identifier();
+            return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, unexpected,
+               "expected 'when' or newline after 'except', not '" + std::string(strdata(ident), ident->len) + "'");
+         }
+      }
+
       if (this->ctx.check(TokenKind::When)) {
          Token when_token = this->ctx.tokens().current();
          this->ctx.tokens().advance();  // consume 'when'

@@ -592,11 +592,11 @@ extern const char* lua_tolstring(lua_State *L, int idx, size_t* len)
 //********************************************************************************************************************
 // Check and convert value to string with error
 
-extern const char* luaL_checklstring(lua_State *L, int idx, size_t* len)
+extern const char * luaL_checklstring(lua_State *L, int idx, size_t* len)
 {
    TValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_at(L, idx) : index2adr(L, idx);
-   GCstr* s;
-   if (LJ_LIKELY(tvisstr(o))) {
+   GCstr *s;
+   if (tvisstr(o)) [[likely]] {
       s = strV(o);
    }
    else if (tvisnumber(o)) {
@@ -605,11 +605,31 @@ extern const char* luaL_checklstring(lua_State *L, int idx, size_t* len)
       s = lj_strfmt_number(L, o);
       setstrV(L, o, s);
    }
-   else {
-      lj_err_argt(L, idx, LUA_TSTRING);
-   }
+   else lj_err_argt(L, idx, LUA_TSTRING);
+
    if (len != nullptr) *len = s->len;
    return strdata(s);
+}
+
+//********************************************************************************************************************
+// Works as for luaL_checklstring but returns string hash
+
+extern uint32_t luaL_checkstringhash(lua_State *L, int idx)
+{
+   TValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_at(L, idx) : index2adr(L, idx);
+   GCstr *s;
+   if (tvisstr(o)) [[likely]] {
+      s = strV(o);
+   }
+   else if (tvisnumber(o)) {
+      lj_gc_check(L);
+      o = (idx > LUA_REGISTRYINDEX) ? index2adr_stack(L, idx) : index2adr(L, idx);
+      s = lj_strfmt_number(L, o);
+      setstrV(L, o, s);
+   }
+   else lj_err_argt(L, idx, LUA_TSTRING);
+
+   return s->hash;
 }
 
 //********************************************************************************************************************

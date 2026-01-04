@@ -16,23 +16,24 @@ struct luaL_Reg {
   lua_CFunction func;
 };
 
-extern void luaL_openlib(lua_State *, const char *libname, const luaL_Reg *l, int nup);
-extern void luaL_register(lua_State *, const char *libname, const luaL_Reg *l);
-extern int luaL_getmetafield(lua_State *, int obj, const char *e);
-extern int luaL_callmeta(lua_State *, int obj, const char *e);
-extern int luaL_typerror(lua_State *, int narg, const char *tname);
-extern int luaL_argerror(lua_State *, int numarg, const char *extramsg);
-extern const char * luaL_checklstring(lua_State *, int numArg, size_t *l);
-extern const char * luaL_optlstring(lua_State *, int numArg, const char *def, size_t *l);
-extern lua_Number luaL_checknumber(lua_State *, int numArg);
-extern lua_Number luaL_optnumber(lua_State *, int nArg, lua_Number def);
-extern lua_Integer luaL_checkinteger(lua_State *, int numArg);
-extern lua_Integer luaL_optinteger(lua_State *, int nArg, lua_Integer def);
-extern void luaL_checkstack(lua_State *, int sz, const char *msg);
-extern void luaL_checktype(lua_State *, int narg, int t);
-extern void luaL_checkany(lua_State *, int narg);
-extern int   luaL_newmetatable(lua_State *, const char *tname);
-extern void * luaL_checkudata(lua_State *, int ud, const char *tname);
+extern void luaL_openlib(lua_State *, const char *, const luaL_Reg *, int);
+extern void luaL_register(lua_State *, const char *, const luaL_Reg *);
+extern int luaL_getmetafield(lua_State *, int, const char *);
+extern int luaL_callmeta(lua_State *, int, const char *);
+extern int luaL_typerror(lua_State *, int, const char *);
+extern int luaL_argerror(lua_State *, int, const char *);
+extern const char * luaL_checklstring(lua_State *, int, size_t * = nullptr);
+extern uint32_t luaL_checkstringhash(lua_State *, int);
+extern const char * luaL_optlstring(lua_State *, int, const char *, size_t * = nullptr);
+extern lua_Number luaL_checknumber(lua_State *, int);
+extern lua_Number luaL_optnumber(lua_State *, int, lua_Number);
+extern lua_Integer luaL_checkinteger(lua_State *, int);
+extern lua_Integer luaL_optinteger(lua_State *, int, lua_Integer);
+extern void luaL_checkstack(lua_State *, int, const char *);
+extern void luaL_checktype(lua_State *, int, int);
+extern void luaL_checkany(lua_State *, int);
+extern int  luaL_newmetatable(lua_State *, const char *);
+extern void * luaL_checkudata(lua_State *, int ud, const char *);
 extern void luaL_where(lua_State *, int lvl);
 [[noreturn]] extern void luaL_error(lua_State *, const char *fmt, ...);
 extern int luaL_checkoption(lua_State *, int narg, const char *def, const char *const lst[]);
@@ -41,16 +42,16 @@ extern int luaL_checkoption(lua_State *, int narg, const char *def, const char *
 constexpr int LUA_NOREF = -2;
 constexpr int LUA_REFNIL = -1;
 
-extern int (luaL_ref) (lua_State *, int t);
-extern void (luaL_unref) (lua_State *, int t, int ref);
-extern lua_State *(luaL_newstate) (class objScript *);
-extern const char *(luaL_gsub) (lua_State *, const char *s, const char *p, const char *r);
-extern const char *(luaL_findtable) (lua_State *, int idx, const char *fname, int szhint);
+extern int luaL_ref(lua_State *, int t);
+extern void luaL_unref(lua_State *, int t, int ref);
+extern lua_State * luaL_newstate(class objScript *);
+extern const char * luaL_gsub(lua_State *, const char *s, const char *p, const char *r);
+extern const char * luaL_findtable(lua_State *, int idx, const char *fname, int szhint);
 extern void luaL_traceback (lua_State *, lua_State *L1, const char *msg, int level);
-extern void (luaL_setfuncs) (lua_State *, const luaL_Reg *l, int nup);
-extern void (luaL_pushmodule) (lua_State *, const char *modname, int sizehint);
-extern void *(luaL_testudata) (lua_State *, int ud, const char *tname);
-extern void (luaL_setmetatable) (lua_State *, const char *tname);
+extern void luaL_setfuncs(lua_State *, const luaL_Reg *l, int nup);
+extern void luaL_pushmodule(lua_State *, const char *modname, int sizehint);
+extern void *luaL_testudata(lua_State *, int ud, const char *tname);
+extern void luaL_setmetatable(lua_State *, const char *tname);
 
 inline void luaL_argcheck(lua_State *L, bool Cond, int NumArg, const char *ExtraMsg) {
    if (not Cond) luaL_argerror(L, NumArg, ExtraMsg);
@@ -97,7 +98,7 @@ inline void luaL_addchar(luaL_Buffer *B, char C) {
 inline void luaL_putchar(luaL_Buffer *B, char C) { luaL_addchar(B, C); }
 inline void luaL_addsize(luaL_Buffer *B, int N) { B->p += N; }
 
-extern void (luaL_addlstring) (luaL_Buffer *B, const char *s, std::size_t l);
-extern void (luaL_addstring) (luaL_Buffer *B, const char *s);
-extern void (luaL_addvalue) (luaL_Buffer *B);
-extern void (luaL_pushresult) (luaL_Buffer *B);
+extern void luaL_addlstring(luaL_Buffer *B, const char *s, std::size_t l);
+extern void luaL_addstring(luaL_Buffer *B, const char *s);
+extern void luaL_addvalue(luaL_Buffer *B);
+extern void luaL_pushresult(luaL_Buffer *B);
