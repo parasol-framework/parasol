@@ -19,6 +19,7 @@
 #include "lj_tab.h"
 #include "lj_gc.h"
 #include "lj_debug.h"
+#include "lj_array.h"
 #include "parser/parser_diagnostics.h"
 
 #include "hashes.h"
@@ -1114,8 +1115,9 @@ extern "C" void lj_try_build_exception_table(lua_State *L, ERR ErrorCode, CSTRIN
    TValue *stacktrace_slot = lj_tab_setstr(L, t, lj_str_newlit(L, "stackTrace"));
 
    if (Trace and Trace->frame_count > 0) {
-      // Build array of frame tables: [{source, line, func}, ...]
-      GCtab *frames = lj_tab_new(L, Trace->frame_count, 0);
+      // Build native array of frame tables: [{source, line, func}, ...]
+      GCarray *frames = lj_array_new(L, Trace->frame_count, AET::TABLE);
+      GCRef *frame_refs = (GCRef *)frames->arraydata();
 
       // Build formatted traceback string at the same time
       std::string traceback = "stack traceback:";
@@ -1137,11 +1139,10 @@ extern "C" void lj_try_build_exception_table(lua_State *L, ERR ErrorCode, CSTRIN
 
          lj_gc_anybarriert(L, frame);
 
-         TValue *arr_slot = lj_tab_setint(L, frames, i);
-         settabV(L, arr_slot, frame);
+         // Store table reference in array
+         setgcref(frame_refs[i], obj2gco(frame));
 
          // Build traceback string entry
-
          traceback += "\n\t";
          if (cf->source) traceback += strdata(cf->source);
          else traceback += "?";
@@ -1157,8 +1158,7 @@ extern "C" void lj_try_build_exception_table(lua_State *L, ERR ErrorCode, CSTRIN
          }
       }
 
-      lj_gc_anybarriert(L, frames);
-      settabV(L, slot, frames);
+      setarrayV(L, slot, frames);
 
       // Set stackTrace string
       setstrV(L, stacktrace_slot, lj_str_new(L, traceback.data(), traceback.size()));
