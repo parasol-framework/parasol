@@ -418,8 +418,9 @@ static bool check_try_handler(lua_State *L, int errcode)
 
       // Capture stack trace if TRY_FLAG_TRACE is enabled (before stack unwinding)
 
-      if (try_frame->flags & TRY_FLAG_TRACE) L->pending_trace = lj_debug_capture_trace(L, 0);
-      else L->pending_trace = nullptr;
+      if (try_frame->flags & TRY_FLAG_TRACE) {
+         if (!L->pending_trace) L->pending_trace = lj_debug_capture_trace(L, 0);
+      }
 
       // Just record that a handler exists - don't modify state yet
 
