@@ -529,7 +529,7 @@ extern "C" void setup_try_handler(lua_State *L)
    L->try_stack.depth--; // Pop try frame
 
    // Build exception table and place in handler's register (pass pending_trace, which may be null)
-   
+
    lj_try_build_exception_table(L, err_code, error_msg, line, exception_reg, L->pending_trace);
    L->pending_trace = nullptr;  // Ownership transferred to exception table builder
 

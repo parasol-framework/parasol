@@ -50,7 +50,7 @@ struct struct_name {
    }
 };
 
-struct struct_hash {
+struct struct_hash { // Stops when an invalid character is encountered (typically a colon separator)
    std::size_t operator()(const struct_name &k) const {
       uint32_t hash = 5381;
       for (auto c : k.name) {

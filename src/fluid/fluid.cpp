@@ -56,9 +56,6 @@ JUMPTABLE_REGEX
 
 #include "defs.h"
 
-constexpr size_t MAX_MODULE_NAME_LENGTH = 32;
-constexpr size_t MAX_STRING_PREFIX_LENGTH = 200;
-
 OBJECTPTR modDisplay = nullptr; // Required by fluid_input.c
 OBJECTPTR modFluid = nullptr;
 OBJECTPTR modRegex = nullptr;
@@ -72,12 +69,8 @@ ankerl::unordered_dense::map<std::string_view, uint32_t> glStructSizes;
 ankerl::unordered_dense::map<uint32_t, FluidConstant> glConstantRegistry;
 ankerl::unordered_dense::map<struct_name, struct_record, struct_hash> glStructs;
 std::shared_mutex glConstantMutex;
-static std::set<std::string> glLoadedConstants; // Stores the names of modules that have loaded constants (system wide)
 
 static struct MsgHandler *glMsgThread = nullptr; // Message handler for thread callbacks
-
-[[nodiscard]] static CSTRING load_include_struct(objScript *, CSTRING, CSTRING);
-[[nodiscard]] static CSTRING load_include_constant(CSTRING, CSTRING);
 
 constexpr auto HASH_TRACE_TOKENS         = pf::strhash("trace-tokens");
 constexpr auto HASH_TRACE_EXPECT         = pf::strhash("trace-expect");
@@ -602,182 +595,6 @@ void get_line(objScript *Self, int Line, STRING Buffer, int Size)
       Buffer[i] = 0;
    }
    else Buffer[0] = 0;
-}
-
-//********************************************************************************************************************
-// For the 'include' keyword
-
-[[nodiscard]] ERR load_include(objScript *Script, CSTRING IncName)
-{
-   ERR error = ERR::Okay;
-
-   std::unique_lock lock(glConstantMutex); // Required to update the constant registry
-
-   // Constants are system-wide, so process only once per session.
-
-   bool process_constants = false;
-   if (not glLoadedConstants.contains(IncName)) {
-      process_constants = true;
-      glLoadedConstants.insert(IncName);
-   }
-
-   if (process_constants) {
-      pf::Log log(__FUNCTION__);
-      log.branch("Definition: %s", IncName);
-
-      AdjustLogLevel(1);
-
-         objModule::create module = { fl::Name(IncName) };
-         if (module.ok()) {
-            OBJECTPTR root;
-            if ((error = module->get(FID_Root, root)) IS ERR::Okay) {
-               struct ModHeader *header;
-               if ((((error = root->get(FID_Header, header)) IS ERR::Okay) and (header))) {
-                  if (auto structs = header->StructDefs) {
-                     for (auto &s : structs[0]) glStructSizes[s.first] = s.second;
-                  }
-
-                  if (auto idl = header->Definitions) {
-                     log.trace("Parsing IDL for module %s", IncName);
-
-                     while ((idl) and (*idl)) {
-                        if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(Script, idl+2, IncName);
-                        else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(idl+2, IncName);
-                        else idl = next_line(idl);
-                     }
-                  }
-                  else log.trace("No IDL defined for %s", IncName);
-               }
-            }
-         }
-         else error = ERR::CreateObject;
-
-      AdjustLogLevel(-1);
-   }
-
-   return error;
-}
-
-//********************************************************************************************************************
-// Format: s.Name:typeField,...
-
-static CSTRING load_include_struct(objScript *Script, CSTRING Line, CSTRING Source)
-{
-   pf::Log log("load_include");
-
-   int i;
-   for (i=0; (Line[i] >= 0x20) and (Line[i] != ':'); i++);
-
-   if (Line[i] IS ':') {
-      std::string name(Line, i);
-      Line += i + 1;
-
-      int j;
-      for (j=0; (Line[j] != '\n') and (Line[j] != '\r') and (Line[j]); j++);
-
-      if ((Line[j] IS '\n') or (Line[j] IS '\r')) {
-         std::string linebuf(Line, j);
-         make_struct(Script, name, linebuf.c_str());
-         while ((Line[j] IS '\n') or (Line[j] IS '\r')) j++;
-         return Line + j;
-      }
-      else {
-         make_struct(Script, name, Line);
-         return Line + j;
-      }
-   }
-   else {
-      log.warning("Malformed struct name in %s.", Source);
-      return next_line(Line);
-   }
-}
-
-//********************************************************************************************************************
-
-[[nodiscard]] static constexpr int8_t datatype(std::string_view String) noexcept
-{
-   size_t i = 0;
-   while ((i < String.size()) and (String[i] <= 0x20)) i++; // Skip white-space
-
-   if ((String[i] IS '0') and (String[i+1] IS 'x')) {
-      for (i+=2; i < String.size(); i++) {
-         if (not std::isxdigit(String[i])) return 's';
-      }
-      return 'h';
-   }
-
-   bool is_number = true;
-   bool is_float  = false;
-
-   for (; (i < String.size()) and (is_number); i++) {
-      if ((!std::isdigit(String[i])) and (String[i] != '.') and (String[i] != '-')) is_number = false;
-      if (String[i] IS '.') is_float = true;
-   }
-
-   if ((is_float) and (is_number)) return 'f';
-   else if (is_number) return 'i';
-   else return 's';
-}
-
-//********************************************************************************************************************
-// Update the constant registry.
-// A lock on glConstantMutex must be held before calling this function.
-
-static CSTRING load_include_constant(CSTRING Line, CSTRING Source)
-{
-   pf::Log log("load_include");
-
-   int i;
-   for (i=0; (unsigned(Line[i]) > 0x20) and (Line[i] != ':'); i++);
-
-   if (Line[i] != ':') {
-      log.warning("Malformed const name in %s.", Source);
-      return next_line(Line);
-   }
-
-   std::string name(Line, i);
-   name.reserve(MAX_STRING_PREFIX_LENGTH);
-
-   Line += i + 1;
-
-   if (not name.empty()) name += '_';
-   auto append_from = name.size();
-
-   while (*Line > 0x20) {
-      int n;
-      for (n=0; (Line[n] > 0x20) and (Line[n] != '='); n++);
-
-      if (Line[n] != '=') {
-         log.warning("Malformed const definition, expected '=' after name '%s'", name.c_str());
-         break;
-      }
-
-      name.erase(append_from);
-      name.append(Line, n);
-      Line += n + 1;
-
-      for (n=0; (Line[n] > 0x20) and (Line[n] != ','); n++);
-      std::string value(Line, n);
-      Line += n;
-
-      //log.warning("%s = %s", name.c_str(), value.c_str());
-
-      if (n > 0) {
-         auto dt = datatype(value);
-         FluidConstant constant(int64_t(0));
-
-         if (dt IS 'i') constant = FluidConstant(int64_t(strtoll(value.c_str(), nullptr, 0)));
-         else if (dt IS 'f') constant = FluidConstant(strtod(value.c_str(), nullptr));
-         else if (dt IS 'h') constant = FluidConstant(int64_t(strtoull(value.c_str(), nullptr, 0)));
-         else log.warning("Unsupported constant value: %s", value.c_str());
-
-         glConstantRegistry.emplace(pf::strhash(name), constant);
-      }
-
-      if (*Line IS ',') Line++;
-   }
-
-   return next_line(Line);
 }
 
 //********************************************************************************************************************

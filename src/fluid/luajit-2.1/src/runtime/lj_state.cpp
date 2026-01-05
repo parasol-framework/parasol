@@ -376,14 +376,14 @@ lua_State * lj_state_new(lua_State *L)
    lua_State *L1 = lj_mem_newobj(L, lua_State);
 
    auto copy_a = L1->nextgc; // Copy any pre-configured values prior to placement-new.
-   auto copy_b = L1->marked; 
+   auto copy_b = L1->marked;
    auto copy_c = L1->gct;
-  
+
    new (L1) lua_State;
-   
+
    L1->nextgc = copy_a; // Restore copied values.
-   L1->marked = copy_b; 
-   L1->gct    = copy_c; 
+   L1->marked = copy_b;
+   L1->gct    = copy_c;
 
    L1->gct        = ~LJ_TTHREAD;
    L1->dummy_ffid = FF_C;
@@ -413,7 +413,7 @@ void LJ_FASTCALL lj_state_free(global_State* g, lua_State *L)
 {
    lj_assertG(L != mainthread(g), "free of main thread");
    if (obj2gco(L) == gcref(g->cur_L)) setgcrefnull(g->cur_L);
-   
+
    if (L->parser_diagnostics) { delete (ParserDiagnostics*)L->parser_diagnostics; L->parser_diagnostics = nullptr; }
    if (L->parser_tips) { delete L->parser_tips; L->parser_tips = nullptr; }
 

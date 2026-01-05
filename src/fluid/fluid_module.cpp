@@ -19,6 +19,7 @@
 #include <ffi.h>
 #include <unordered_map>
 #include <algorithm>
+#include <mutex>
 #include <memory>
 #include <span>
 
@@ -29,11 +30,205 @@ template<class... Args> void RMSG(Args...) {
 constexpr int MAX_MODULE_ARGS = 16;
 constexpr size_t BUFFER_ELEMENT_SIZE = 16;
 constexpr size_t BUFFER_SIZE = MAX_MODULE_ARGS * BUFFER_ELEMENT_SIZE;
+constexpr size_t MAX_STRING_PREFIX_LENGTH = 200;
+struct CaseInsensitiveCompare {
+   bool operator()(const std::string &A, const std::string &B) const {
+      return std::lexicographical_compare(
+         A.begin(), A.end(), B.begin(), B.end(),
+         [](char a, char b) { return std::tolower((unsigned char)a) < std::tolower((unsigned char)b); }
+      );
+   }
+};
+
+static std::set<std::string, CaseInsensitiveCompare> glLoadedConstants; // Stores the names of modules that have loaded constants (system wide)
+
+[[nodiscard]] static CSTRING load_include_struct(objScript *, CSTRING, CSTRING);
+[[nodiscard]] static CSTRING load_include_constant(CSTRING, CSTRING);
 
 static int module_call(lua_State *);
 static int process_results(prvFluid *, APTR, const FunctionField *);
 
 //********************************************************************************************************************
+
+[[nodiscard]] static constexpr int8_t datatype(std::string_view String) noexcept
+{
+   size_t i = 0;
+   while ((i < String.size()) and (String[i] <= 0x20)) i++; // Skip white-space
+
+   if ((String[i] IS '0') and (String[i+1] IS 'x')) {
+      for (i+=2; i < String.size(); i++) {
+         if (not std::isxdigit(String[i])) return 's';
+      }
+      return 'h';
+   }
+
+   bool is_number = true;
+   bool is_float  = false;
+
+   for (; (i < String.size()) and (is_number); i++) {
+      if ((!std::isdigit(String[i])) and (String[i] != '.') and (String[i] != '-')) is_number = false;
+      if (String[i] IS '.') is_float = true;
+   }
+
+   if ((is_float) and (is_number)) return 'f';
+   else if (is_number) return 'i';
+   else return 's';
+}
+
+//********************************************************************************************************************
+// Update the constant registry.
+// A lock on glConstantMutex must be held before calling this function.
+
+static CSTRING load_include_constant(CSTRING Line, CSTRING Source)
+{
+   pf::Log log("load_include");
+
+   int i;
+   for (i=0; (unsigned(Line[i]) > 0x20) and (Line[i] != ':'); i++);
+
+   if (Line[i] != ':') {
+      log.warning("Malformed const name in %s.", Source);
+      return next_line(Line);
+   }
+
+   std::string name(Line, i);
+   name.reserve(MAX_STRING_PREFIX_LENGTH);
+
+   Line += i + 1;
+
+   if (not name.empty()) name += '_';
+   auto append_from = name.size();
+
+   while (*Line > 0x20) {
+      int n;
+      for (n=0; (Line[n] > 0x20) and (Line[n] != '='); n++);
+
+      if (Line[n] != '=') {
+         log.warning("Malformed const definition, expected '=' after name '%s'", name.c_str());
+         break;
+      }
+
+      name.erase(append_from);
+      name.append(Line, n);
+      Line += n + 1;
+
+      for (n=0; (Line[n] > 0x20) and (Line[n] != ','); n++);
+      std::string value(Line, n);
+      Line += n;
+
+      //log.warning("%s = %s", name.c_str(), value.c_str());
+
+      if (n > 0) {
+         auto dt = datatype(value);
+         FluidConstant constant(int64_t(0));
+
+         if (dt IS 'i') constant = FluidConstant(int64_t(strtoll(value.c_str(), nullptr, 0)));
+         else if (dt IS 'f') constant = FluidConstant(strtod(value.c_str(), nullptr));
+         else if (dt IS 'h') constant = FluidConstant(int64_t(strtoull(value.c_str(), nullptr, 0)));
+         else log.warning("Unsupported constant value: %s", value.c_str());
+
+         glConstantRegistry.emplace(pf::strhash(name), constant);
+      }
+
+      if (*Line IS ',') Line++;
+   }
+
+   return next_line(Line);
+}
+
+//********************************************************************************************************************
+
+static ERR process_module_defs(objScript *Script, objModule *module, CSTRING Name)
+{
+   OBJECTPTR root;
+   if (auto error = module->get(FID_Root, root); error IS ERR::Okay) {
+      struct ModHeader *header;
+      if ((((error = root->get(FID_Header, header)) IS ERR::Okay) and (header))) {
+         if (auto structs = header->StructDefs) {
+            for (auto &s : structs[0]) glStructSizes[s.first] = s.second;
+         }
+
+         if (auto idl = header->Definitions) {
+            while ((idl) and (*idl)) {
+               if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(Script, idl+2, Name);
+               else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(idl+2, Name);
+               else idl = next_line(idl);
+            }
+         }
+      }
+      return ERR::Okay;
+   }
+   else return error;
+}
+
+//********************************************************************************************************************
+// For the 'include' keyword.  Creates a temporary module object to process the definitions without formally opening
+// an interface.
+
+[[nodiscard]] ERR load_include(objScript *Script, CSTRING Module)
+{
+   ERR error = ERR::Okay;
+
+   std::unique_lock lock(glConstantMutex); // Required to update the constant registry
+
+   // Constants are system-wide, so process only once per session.
+
+   bool process_constants = false;
+   if (not glLoadedConstants.contains(Module)) {
+      process_constants = true;
+      glLoadedConstants.insert(Module);
+   }
+
+   if (process_constants) {
+      pf::Log log(__FUNCTION__);
+      log.branch("Definition: %s", Module);
+
+      AdjustLogLevel(1);
+
+         objModule::create module = { fl::Name(Module) };
+         if (module.ok()) error = process_module_defs(Script, *module, Module);
+         else error = ERR::CreateObject;
+
+      AdjustLogLevel(-1);
+   }
+
+   return error;
+}
+
+//********************************************************************************************************************
+// Format: s.Name:typeField,...
+
+[[nodiscard]] static CSTRING load_include_struct(objScript *Script, CSTRING Line, CSTRING Source)
+{
+   int i;
+   for (i=0; (Line[i] >= 0x20) and (Line[i] != ':'); i++);
+
+   if (Line[i] IS ':') {
+      std::string name(Line, i);
+      Line += i + 1;
+
+      int j;
+      for (j=0; (Line[j] != '\n') and (Line[j] != '\r') and (Line[j]); j++);
+
+      if ((Line[j] IS '\n') or (Line[j] IS '\r')) {
+         std::string linebuf(Line, j);
+         make_struct(Script, name, linebuf.c_str());
+         while ((Line[j] IS '\n') or (Line[j] IS '\r')) j++;
+         return Line + j;
+      }
+      else {
+         make_struct(Script, name, Line);
+         return Line + j;
+      }
+   }
+   else {
+      pf::Log(__FUNCTION__).warning("Malformed struct name in %s.", Source);
+      return next_line(Line);
+   }
+}
+
+//********************************************************************************************************************
+// Configure a Fluid module object (post-loading).
 
 void new_module(lua_State *Lua, objModule *Module)
 {
@@ -61,7 +256,7 @@ void new_module(lua_State *Lua, objModule *Module)
 static int module_test(lua_State *Lua)
 {
    if (auto mod = (module *)luaL_checkudata(Lua, 1, "Fluid.mod")) {
-      CSTRING options = lua_tostring(Lua, 2);
+      auto options = lua_tostring(Lua, 2);
       int passed = 0, total = 0;
       ((objModule *)mod->Module)->test(options, &passed, &total);
       lua_pushinteger(Lua, passed);
@@ -76,11 +271,12 @@ static int module_test(lua_State *Lua)
 
 //********************************************************************************************************************
 // Usage: module = mod.load('core')
+// Runs the module's unit tests, if any
 
 static int module_load(lua_State *Lua)
 {
-   CSTRING modname;
-   if (!(modname = luaL_checkstring(Lua, 1))) {
+   auto modname = luaL_checkstring(Lua, 1);
+   if (!modname) {
       luaL_argerror(Lua, 1, "String expected for module name.");
       return 0;
    }
@@ -102,6 +298,20 @@ static int module_load(lua_State *Lua)
    }
 
    if (auto loaded_mod = objModule::create::global(fl::Name(modname))) {
+      {
+         std::unique_lock lock(glConstantMutex); // Required to update the constant registry
+
+         bool process_constants = false;
+         if (not glLoadedConstants.contains(modname)) {
+            process_constants = true;
+            glLoadedConstants.insert(modname);
+         }
+
+         if (process_constants) {
+            process_module_defs(Lua->script, loaded_mod, modname);
+         }
+      }
+
       new_module(Lua, loaded_mod);
       return 1;  // new userdatum is already on the stack
    }

@@ -2,7 +2,7 @@
 
    include 'xml'
 
-@BeforeAll 
+@BeforeAll
 function init(State)
    global glScriptFolder = State.folder
 end

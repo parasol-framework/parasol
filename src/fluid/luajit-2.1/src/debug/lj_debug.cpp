@@ -390,7 +390,7 @@ void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPOS pc)
 
    if (pt->firstline IS ~(BCLine)0) lj_strfmt_pushf(L, "builtin:%s", s);
    else if (*s IS '@') {
-      s++; 
+      s++;
       len--;
       for (i = len; i > 0; i--)
          if (s[i] IS '/' or s[i] IS '\\') {
