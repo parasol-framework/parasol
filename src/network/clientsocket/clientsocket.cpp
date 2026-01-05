@@ -184,6 +184,8 @@ static void server_incoming_from_client_impl(HOSTHANDLE SocketFD, extClientSocke
       return;
    }
 
+   pf::ScopedObjectLock lock(client); // Acquire a lock in case a callback tries to free the object.
+
 #ifndef DISABLE_SSL
    #ifdef _WIN32
       if (client->State IS NTC::HANDSHAKING) {
