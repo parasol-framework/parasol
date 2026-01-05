@@ -19,6 +19,7 @@
 #include <ffi.h>
 #include <unordered_map>
 #include <algorithm>
+#include <set>
 #include <mutex>
 #include <memory>
 #include <span>
