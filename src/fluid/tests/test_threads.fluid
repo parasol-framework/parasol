@@ -4,13 +4,14 @@
 -- until picLoaded() sends a signal().
 
    require 'io/filesearch'
-   include('xml','picture')
 
    proc = processing.new(5.0)
    glPicsProcessed = 0
    glPictures = { }
 
 @BeforeAll function init()
+   mGfx ?? return
+
    folder = 'icons:programs/'
    list = ''
    print(f'Scanning "{folder}" for SVGs')
@@ -44,7 +45,7 @@ end
 -- This callback function is called every time that a thread completes its Activate() action.
 
 function picProcessed(ActionID, pic, Error, Key)
-   if Error?? then
+   if Error != ERR_Okay then
       print('Failed to load picture, error: ' .. mSys.GetErrorMsg(Error))
    end
 
