@@ -199,21 +199,45 @@ ParserResult<std::vector<Identifier>> AstBuilder::parse_name_list()
          }
       }
 
-      if (this->ctx.tokens().current().raw() IS '<') {
-         this->ctx.tokens().advance();
+      // Check for attribute: either '<' (normal case) or 'const'/'close' followed by '<' (buffered case)
+      // The buffered case occurs when the lexer's '<identifier' handling put the identifier in the buffer
+      // before the '<', and then when we advanced past the variable name, we got the buffered identifier.
+      bool is_buffered_attribute = false;
+      if (this->ctx.tokens().current().kind() IS TokenKind::Identifier) {
+         GCstr *maybe_attr = this->ctx.tokens().current().identifier();
+         if (maybe_attr) {
+            std::string_view attr_view(strdata(maybe_attr), maybe_attr->len);
+            if ((attr_view IS "const" or attr_view IS "close") and this->ctx.tokens().peek(1).raw() IS '<') {
+               is_buffered_attribute = true;
+            }
+         }
+      }
 
-         auto attribute = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
-         if (not attribute.ok()) return ParserResult<Identifier>::failure(attribute.error_ref());
-
+      if (this->ctx.tokens().current().raw() IS '<' or is_buffered_attribute) {
          bool is_close_attribute = false;
          bool is_const_attribute = false;
-         if (GCstr *attr_name = attribute.value_ref().identifier()) {
+
+         if (is_buffered_attribute) {
+            // Current token is already the attribute name ('const' or 'close')
+            GCstr *attr_name = this->ctx.tokens().current().identifier();
             std::string_view view(strdata(attr_name), attr_name->len);
-            if (view IS std::string_view("close")) {
-               is_close_attribute = true;
-            }
-            else if (view IS std::string_view("const")) {
-               is_const_attribute = true;
+            if (view IS "close") is_close_attribute = true;
+            else if (view IS "const") is_const_attribute = true;
+
+            this->ctx.tokens().advance();  // Advance past 'const'/'close'
+            this->ctx.tokens().advance();  // Advance past '<'
+         }
+         else {
+            // Normal case: current is '<'
+            this->ctx.tokens().advance();  // Advance past '<'
+
+            auto attribute = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+            if (not attribute.ok()) return ParserResult<Identifier>::failure(attribute.error_ref());
+
+            if (GCstr *attr_name = attribute.value_ref().identifier()) {
+               std::string_view view(strdata(attr_name), attr_name->len);
+               if (view IS std::string_view("close")) is_close_attribute = true;
+               else if (view IS std::string_view("const")) is_const_attribute = true;
             }
          }
 
@@ -226,7 +250,9 @@ ParserResult<std::vector<Identifier>> AstBuilder::parse_name_list()
 
          if (is_close_attribute) identifier.has_close = true;
          else if (is_const_attribute) identifier.has_const = true;
-         else this->ctx.emit_error(ParserErrorCode::UnexpectedToken, attribute.value_ref(), "unknown attribute");
+         else {
+            this->ctx.emit_error(ParserErrorCode::UnexpectedToken, this->ctx.tokens().current(), "unknown attribute");
+         }
       }
 
       // Parse optional type annotation (:type) after attribute (supports `name <const>:type` syntax)

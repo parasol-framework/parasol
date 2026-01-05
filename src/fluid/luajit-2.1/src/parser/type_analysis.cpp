@@ -1498,7 +1498,7 @@ const FunctionExprPayload * TypeAnalyser::resolve_function(GCstr *Name) const
 }
 
 //********************************************************************************************************************
-// Fix (lock) a variable's type after the first concrete assignment.  Once fixed, the variable cannot be assigned 
+// Fix (lock) a variable's type after the first concrete assignment.  Once fixed, the variable cannot be assigned
 // values of different types.
 
 bool TypeAnalyser::is_local_const(GCstr *Name) const

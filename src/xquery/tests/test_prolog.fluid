@@ -357,9 +357,9 @@ end
 
 @Test function MultipleFunctionArities()
    expr = [[
-declare function local:f($a) { "one" }; 
-declare function local:f($a, $b) { "two" }; 
-declare function local:f($a, $b, $c) { "three" }; 
+declare function local:f($a) { "one" };
+declare function local:f($a, $b) { "two" };
+declare function local:f($a, $b, $c) { "three" };
 concat(local:f(1), ":", local:f(1, 2), ":", local:f(1, 2, 3))
 ]]
    xq = obj.new('xquery', { statement = expr })

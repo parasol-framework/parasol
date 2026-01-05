@@ -11,32 +11,37 @@
 
 //********************************************************************************************************************
 // Parses local variable declarations, local function statements and local thunk function statements.
+// Supports both explicit 'local' keyword and implicit local declarations with <const>/<close> attributes.
 
 ParserResult<StmtNodePtr> AstBuilder::parse_local()
 {
    Token local_token = this->ctx.tokens().current();
-   this->ctx.tokens().advance();
+   bool implicit_local = (local_token.kind() IS TokenKind::Identifier);
 
-   bool is_thunk = false;
-   if (this->ctx.check(TokenKind::ThunkToken)) {
-      is_thunk = true;
-      this->ctx.tokens().advance();
-   }
+   if (not implicit_local) {
+      this->ctx.tokens().advance();  // Consume the 'local' keyword
 
-   if (this->ctx.check(TokenKind::Function) or is_thunk) {
-      if (not is_thunk) {
+      bool is_thunk = false;
+      if (this->ctx.check(TokenKind::ThunkToken)) {
+         is_thunk = true;
          this->ctx.tokens().advance();
       }
-      Token function_token = local_token;  // Use local_token as span start
-      auto name_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
-      if (not name_token.ok()) return ParserResult<StmtNodePtr>::failure(name_token.error_ref());
-      auto fn = this->parse_function_literal(function_token, is_thunk);
-      if (not fn.ok()) return ParserResult<StmtNodePtr>::failure(fn.error_ref());
-      ExprNodePtr function_expr = std::move(fn.value_ref());
-      auto stmt = std::make_unique<StmtNode>(AstNodeKind::LocalFunctionStmt, this->span_from(local_token, name_token.value_ref()));
-      LocalFunctionStmtPayload payload(make_identifier(name_token.value_ref()), move_function_payload(function_expr));
-      stmt->data = std::move(payload);
-      return ParserResult<StmtNodePtr>::success(std::move(stmt));
+
+      if (this->ctx.check(TokenKind::Function) or is_thunk) {
+         if (not is_thunk) {
+            this->ctx.tokens().advance();
+         }
+         Token function_token = local_token;  // Use local_token as span start
+         auto name_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+         if (not name_token.ok()) return ParserResult<StmtNodePtr>::failure(name_token.error_ref());
+         auto fn = this->parse_function_literal(function_token, is_thunk);
+         if (not fn.ok()) return ParserResult<StmtNodePtr>::failure(fn.error_ref());
+         ExprNodePtr function_expr = std::move(fn.value_ref());
+         auto stmt = std::make_unique<StmtNode>(AstNodeKind::LocalFunctionStmt, this->span_from(local_token, name_token.value_ref()));
+         LocalFunctionStmtPayload payload(make_identifier(name_token.value_ref()), move_function_payload(function_expr));
+         stmt->data = std::move(payload);
+         return ParserResult<StmtNodePtr>::success(std::move(stmt));
+      }
    }
 
    auto names = this->parse_name_list();

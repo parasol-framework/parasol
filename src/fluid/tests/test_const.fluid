@@ -28,7 +28,7 @@ end
 
 @Test function ConstWithExpressions()
    local a <const> = 10 + 20
-   local b <const> = "hello" .. " world"
+   b <const> = "hello" .. " world"
 
    assert(a is 30, 'Const with arithmetic expression should work')
    assert(b is "hello world", 'Const with string concatenation should work')
@@ -38,7 +38,7 @@ end
 -- Test const in nested scopes
 
 @Test function ConstInNestedScopes()
-   local outer <const> = "outer"
+   outer <const> = "outer"
    do
       local inner <const> = "inner"
       assert(inner is "inner", 'Inner const should be accessible')
@@ -51,7 +51,7 @@ end
 -- Test const with function values
 
 @Test function ConstWithFunction()
-   local add <const> = function(a, b)
+   add <const> = function(a, b)
       return a + b
    end
 
@@ -74,7 +74,7 @@ end
 -- Test const with multiple declarations
 
 @Test function MultipleConstDeclarations()
-   local a <const>, b, c <const> = 1, 2, 3
+   a <const>, b, c <const> = 1, 2, 3
    assert(a is 1, 'First const should be 1')
    assert(b is 2, 'Middle non-const should be 2')
    assert(c is 3, 'Last const should be 3')

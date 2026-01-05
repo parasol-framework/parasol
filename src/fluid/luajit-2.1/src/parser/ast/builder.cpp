@@ -157,9 +157,9 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_chunk()
 }
 
 //********************************************************************************************************************
-// Parses a block of statements until a terminator token is encountered.
-// When abort_on_error is false (DIAGNOSE mode), uses panic-mode recovery to continue
-// parsing after errors, collecting multiple diagnostics and returning a partial AST.
+// Parses a block of statements until a terminator token is encountered.  When abort_on_error is false (DIAGNOSE
+// mode), uses panic-mode recovery to continue parsing after errors, collecting multiple diagnostics and returning a
+// partial AST.
 
 ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_block(std::span<const TokenKind> terminators)
 {
@@ -234,6 +234,63 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_block(std::span<const
 }
 
 //********************************************************************************************************************
+// Check if an identifier is followed by a <const> or <close> attribute.  Due to lexer lookahead buffer complexities,
+// we access the lexer's buffered_tokens directly when the special '<identifier' handling has been triggered.
+//
+// Patterns: `name <attr>`, `name:type <attr>`
+// Returns true if this looks like an implicit local declaration with an attribute.
+
+static bool is_implicit_local_with_attribute(TokenStreamAdapter& Tokens)
+{
+   // Current token must be an identifier (the variable name)
+   if (Tokens.current().kind() != TokenKind::Identifier) return false;
+
+   // The lexer has special handling for '<identifier': when it sees '<' followed immediately
+   // by an identifier, it buffers the identifier via push_front and returns '<'.
+   // This means when we peek, the buffered identifier appears BEFORE '<' in the peek order.
+   //
+   // For "b <const> = 10":
+   // - Current: b
+   // - peek(1): const (buffered via push_front by '<identifier' handling)
+   // - peek(2): <
+   // - peek(3): >
+   //
+   // We need to detect: identifier (current) followed by 'const'/'close' then '<' then '>'
+
+   size_t pos = 1;
+   Token next = Tokens.peek(pos);
+
+   // Handle optional type annotation before the attribute (:type <const>)
+   if (next.kind() IS TokenKind::Colon) {
+      pos++;
+      next = Tokens.peek(pos);
+      // Type name must be an identifier or reserved type keyword
+      if (next.kind() != TokenKind::Identifier and next.kind() != TokenKind::Function and next.kind() != TokenKind::Nil) {
+         return false;
+      }
+      pos++;
+      next = Tokens.peek(pos);
+   }
+
+   // Next should be 'const' or 'close' (the buffered identifier from '<identifier' handling)
+   if (next.kind() != TokenKind::Identifier) return false;
+
+   GCstr* attr_name = next.identifier();
+   if (!attr_name) return false;
+
+   std::string_view attr_str(strdata(attr_name), attr_name->len);
+   if (attr_str != "const" and attr_str != "close") return false;
+
+   // After the attribute name, we should see '<' (which was returned by the lexer)
+   Token angle_open = Tokens.peek(pos + 1);
+   if (angle_open.raw() != '<') return false;
+
+   // After '<', we should see '>'
+   Token angle_close = Tokens.peek(pos + 2);
+   return angle_close.raw() IS '>';
+}
+
+//********************************************************************************************************************
 // Statement dispatch - routes to the appropriate parser based on token type.
 
 ParserResult<StmtNodePtr> AstBuilder::parse_statement()
@@ -264,6 +321,14 @@ ParserResult<StmtNodePtr> AstBuilder::parse_statement()
       case TokenKind::Semicolon:
          this->ctx.tokens().advance();
          return ParserResult<StmtNodePtr>::success(nullptr);
+
+      case TokenKind::Identifier: {
+         // Check for implicit local declaration with <const> or <close> attribute
+         if (is_implicit_local_with_attribute(this->ctx.tokens())) {
+            return this->parse_local();
+         }
+         return this->parse_expression_stmt();
+      }
 
       default:
          return this->parse_expression_stmt();

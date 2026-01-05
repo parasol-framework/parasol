@@ -44,7 +44,7 @@ end
    -- Power stays as exponentiation, not XOR
    assert(2 ^ 3 is 8, '^ remains power operator')
    -- Not-equals unaffected
-   assert(3 ~= 4, '~= remains not-equal')
+   assert(3 != 4, '!= remains not-equal')
 end
 
 @Test function CStylePrecedence()

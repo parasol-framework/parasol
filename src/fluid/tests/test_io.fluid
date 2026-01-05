@@ -311,9 +311,9 @@ end
    assert(io.stderr, 'io.stderr not defined')
 
    -- Test that constants can be used with io.input (if supported)
-   err, result = catch(function()
+   try
       io.input(io.stdin)
-   end)
+   end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -330,15 +330,19 @@ end
    file = io.open(test_path, 'r')
    file:close()
 
-   success, error_msg = catch(function()
-      file:write('should fail')
-   end)
-   assert(not success, 'Writing to closed file should fail')
+   try
+      file:write('should fail') -- Expect failure
+      error('SUCCESS')
+   except e
+      assert(e.message != 'SUCCESS', 'Writing to closed file should fail')
+   end
 
-   success, error_msg = catch(function()
-      file:seek('set', 0)
-   end)
-   assert(not success, 'Seeking in closed file should fail')
+   try
+      file:seek('set', 0) -- Expect failure
+      error('SUCCESS')
+   except e
+      assert(e.message != 'SUCCESS', 'Seeking in closed file should fail')
+   end
 end
 
 ----------------------------------------------------------------------------------------------------------------------

@@ -121,9 +121,7 @@ function BasicSSLCommunication()
 
             -- Convert the socket to SSL using SetSSL
             err = mNet.SetSSL(Socket, "EnableSSL")
-            if err ~= ERR_Okay then
-               error('[Client] Failed to enable SSL: ' .. mSys.GetErrorMsg(err))
-            end
+            assert(err is ERR_Okay, '[Client] Failed to enable SSL: ' .. mSys.GetErrorMsg(err))
          elseif (State is NTC_DISCONNECTED) then
             logOutput('[Client] SSL connection closed')
          end
@@ -133,9 +131,7 @@ function BasicSSLCommunication()
          err, read_len = Socket.acRead(buffer)
 
          if err is ERR_Okay then
-            if read_len is 0 then
-               error('Received incoming data notification with no data to read.')
-            end
+            assert(read_len > 0, 'Received incoming data notification with no data to read.')
 
             emsg = buffer:sub(0, read_len)
             logOutput('[Client] Received encrypted message of ' .. read_len .. ' bytes: "' .. tostring(emsg) .. '"')
@@ -272,7 +268,7 @@ function SSLStateTransitions()
    -- Check if we got a connected state
    local server_connected, client_connected
 
-   for i, state in ipairs(state_sequence) do
+   for state in values(state_sequence) do
       if string.match(state, 'SERVER:CONNECTED') then
          server_connected = true
       end
@@ -281,13 +277,8 @@ function SSLStateTransitions()
       end
    end
 
-   if not server_connected then
-      error('Server never reached CONNECTED state - SSL handshake failed')
-   end
-
-   if not client_connected then
-      error('Client never reached CONNECTED state - SSL handshake failed')
-   end
+   assert(server_connected, 'Server never reached CONNECTED state - SSL handshake failed')
+   assert(client_connected, 'Client never reached CONNECTED state - SSL handshake failed')
 end
 
 ----------------------------------------------------------------------------------------------------------------------

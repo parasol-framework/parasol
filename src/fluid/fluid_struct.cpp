@@ -61,8 +61,8 @@ static constexpr int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 
 
 [[nodiscard]] ERR named_struct_to_table(lua_State *Lua, std::string_view StructName, CPTR Address)
 {
-   auto def = glStructs.find(StructName); // NB: Custom comparator will stop if a colon is encountered in StructName
-   if (def != glStructs.end()) {
+   // NB: Custom comparator will stop if a colon is encountered in StructName
+   if (auto def = glStructs.find(StructName); def != glStructs.end()) {
       std::vector<lua_ref> ref;
       return struct_to_table(Lua, ref, def->second, Address);
    }
@@ -72,11 +72,8 @@ static constexpr int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 
 
       return keyvalue_to_table(Lua, (const KEYVALUE *)Address);
    }
-   else {
-      pf::Log log(__FUNCTION__);
-      log.warning("Unknown struct name '%s'", StructName.data());
-      return ERR::Search;
-   }
+   else luaL_error(Lua, "Unknown struct name '%.*s' - use 'include' to load module definitions.", int(StructName.size()), StructName.data());
+   return ERR::Search;
 }
 
 //********************************************************************************************************************
@@ -385,7 +382,7 @@ static void make_camel_case(std::string &String)
       }
 
       switch (Sequence[pos]) {
-         case 'l': type |= FD_INT;     field_size = sizeof(int); break;
+         case 'l': type |= FD_INT;      field_size = sizeof(int); break;
          case 'd': type |= FD_DOUBLE;   field_size = sizeof(double); break;
          case 'x': type |= FD_INT64;    field_size = sizeof(int64_t); break;
          case 'f': type |= FD_FLOAT;    field_size = sizeof(float); break;
@@ -504,7 +501,7 @@ static void make_camel_case(std::string &String)
 }
 
 //********************************************************************************************************************
-// Parse a struct definition and permanently store it in the Structs dictionary.
+// Parse a struct definition and permanently store it in the glStructs dictionary.
 
 [[nodiscard]] ERR make_struct(objScript *Self, std::string_view StructName, CSTRING Sequence)
 {
