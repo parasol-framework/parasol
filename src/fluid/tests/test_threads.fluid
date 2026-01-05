@@ -4,16 +4,16 @@
 -- until picLoaded() sends a signal().
 
    require 'io/filesearch'
+   include('xml','picture')
 
    proc = processing.new(5.0)
    glPicsProcessed = 0
    glPictures = { }
-   mGfx ?= mod.load('display') -- Required for the 'icons:' volume
 
 @BeforeAll function init()
    folder = 'icons:programs/'
    list = ''
-   print('Scanning "' .. folder .. '" for SVGs')
+   print(f'Scanning "{folder}" for SVGs')
    file.search(folder, {
       nameFilter = '.+%.svg',
       nameWild   = 'lua',
@@ -23,14 +23,14 @@
       end
    })
 
-   print('Found ' .. #glPictures .. ' SVG files: ' .. list)
+   print(f'Found {#glPictures} SVG files: {list}')
 
    assert(#glPictures > 0, 'Failed to find any SVG files.')
 end
 
 function initPictures()
    for v in values(glPictures) do
-      v.pic = obj.new('picture', { path=v.path, flags='QUERY' } )
+      v.pic = obj.new('picture', { path=v.path, flags=PCF_QUERY } )
    end
 end
 
@@ -58,7 +58,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test function Parallel()
+@Test; @Requires(display=true) function Parallel()
    initPictures()
 
    glPicsProcessed = 0
@@ -83,7 +83,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- This is the control test for demonstrating how fast parallel execution can actually be versus sequential execution.
 
-@Test function Sequential()
+@Test; @Requires(display=true) function Sequential()
    initPictures()
 
    for v in values(glPictures) do
@@ -96,9 +96,9 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Create two dummy objects and use them to confirm that the signalling of multiple objects works.
 
-@Test function MultipleSignals()
-   signal_a = obj.new('xml', { flags='NEW' })
-   signal_b = obj.new('xml', { flags='NEW' })
+@Test; @Requires(display=true) function MultipleSignals()
+   signal_a = obj.new('xml', { flags=XMF_NEW })
+   signal_b = obj.new('xml', { flags=XMF_NEW })
 
    for i=1,2 do -- Run enough times to sufficiently test thread locking
       msg('Iteration ' .. i)
