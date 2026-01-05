@@ -79,6 +79,7 @@ enum class TokenKind : uint16_t {
    Annotate = TK_annotate,
    TryToken = TK_try,
    ExceptToken = TK_except,
+   SuccessToken = TK_success,
    EndOfFile = TK_eof,
 #undef TOKEN_KIND_ENUM
 #undef TOKEN_KIND_ENUM_SYM
@@ -172,6 +173,7 @@ enum class TokenKind : uint16_t {
       case TokenKind::Annotate: return "@";
       case TokenKind::TryToken: return "try";
       case TokenKind::ExceptToken: return "except";
+      case TokenKind::SuccessToken: return "success";
       case TokenKind::EndOfFile: return "<eof>";
       case TokenKind::LeftParen: return "(";
       case TokenKind::RightParen: return ")";

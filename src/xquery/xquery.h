@@ -707,7 +707,7 @@ struct XQueryModuleCache;
 struct CompiledXQuery {
    std::unique_ptr<XPathNode> expression;
    std::shared_ptr<XQueryProlog> prolog;
-   std::shared_ptr<XQueryModuleCache> module_cache;
+   std::weak_ptr<XQueryModuleCache> module_cache;  // weak_ptr to break circular reference with XQueryModuleCache::modules
    std::string error_msg;
 
    // Cache for loaded XML documents, e.g. via the doc() function in XQuery.
@@ -959,6 +959,7 @@ public:
    std::string Statement;
    std::string ErrorMsg;
    CompiledXQuery ParseResult; // Result of parsing the query.
+   std::shared_ptr<XQueryModuleCache> ModuleCache; // Strong reference; ParseResult.module_cache is weak to break cycles
    XPathVal Result; // Result of the last execution.
    pf::vector<std::string> ListVariables; // List of variable names.
    pf::vector<std::string> ListFunctions; // List of function names.
@@ -1628,6 +1629,6 @@ class VariableBindingGuard
 };
 
 [[nodiscard]] inline XTag * XPathEvaluator::get_context_node() const { return context.context_node; };
-[[nodiscard]] inline std::shared_ptr<XQueryModuleCache> XPathContext::modules() { return eval->parse_context->module_cache; };
+[[nodiscard]] inline std::shared_ptr<XQueryModuleCache> XPathContext::modules() { return eval->parse_context->module_cache.lock(); };
 
 extern "C" ERR load_regex(void);

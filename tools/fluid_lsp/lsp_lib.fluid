@@ -450,20 +450,19 @@ global function lspInitDocs(DocPath)
    DocPath ?? return false
 
    if not DocPath:match('[/\\]$') then -- Ensure path ends with separator
-      DocPath = DocPath .. '/'
+      DocPath ..= '/'
    end
 
    -- Load static definitions (builtins, keywords)
    defsPath = glSelf.workingPath .. 'lsp_defs.fluid'
-   success, result = pcall(function()
-      return loadFile(defsPath)
-   end)
-
-   if success and result then
+   local result
+   try
+      result = loadFile(defsPath)
+   except ex
+      print('Failed to load static definitions from ' .. defsPath)
+   success
       glDefs = result
       print('Loaded static definitions')
-   else
-      print('Failed to load static definitions from ' .. defsPath)
    end
 
    -- Try to load cached documentation

@@ -175,15 +175,15 @@ static ERR build_query(extXQuery *Self)
 
    // If the expression featured an XQuery prolog then attach it to the parse result only.
    // Evaluator reads from the parse context; do not mutate the AST.
+   // ModuleCache holds strong ref; ParseResult.module_cache is weak to break cycles with cached modules.
 
-   std::shared_ptr<XQueryModuleCache> module_cache = Self->ParseResult.module_cache;
-   if (not module_cache) {
-      module_cache = std::make_shared<XQueryModuleCache>();
-      module_cache->query = Self;
-      Self->ParseResult.module_cache = module_cache;
+   if (not Self->ModuleCache) {
+      Self->ModuleCache = std::make_shared<XQueryModuleCache>();
+      Self->ModuleCache->query = Self;
    }
+   Self->ParseResult.module_cache = Self->ModuleCache;
 
-   if (Self->ParseResult.prolog) Self->ParseResult.prolog->bind_module_cache(module_cache);
+   if (Self->ParseResult.prolog) Self->ParseResult.prolog->bind_module_cache(Self->ModuleCache);
 
    return ERR::Okay;
 }

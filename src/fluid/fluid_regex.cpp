@@ -165,14 +165,15 @@ static int regex_new(lua_State *Lua)
    if (auto r = (struct fregex *)lua_newuserdata(Lua, sizeof(struct fregex))) {
       new (r) fregex(pattern, flags);
 
-      std::string error_msg;
+      // Set metatable immediately so __gc is called even if compilation fails
+      luaL_getmetatable(Lua, "Fluid.regex");
+      lua_setmetatable(Lua, -2);
 
+      std::string error_msg;
       if (rx::Compile(pattern, flags, &error_msg, &r->regex_obj) != ERR::Okay) {
          luaL_error(Lua, "Regex compilation failed: %s", error_msg.c_str());
       }
 
-      luaL_getmetatable(Lua, "Fluid.regex");
-      lua_setmetatable(Lua, -2);
       return 1; // userdata is already on stack
    }
    else {

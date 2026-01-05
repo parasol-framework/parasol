@@ -41,11 +41,12 @@ end
 -- Parse a JSON-RPC 2.0 message
 
 function parseMessage(JsonBody)
-   local success, msg = pcall(function()
-      return json.decode(JsonBody)
-   end)
-
-   success ?? return nil, 'JSON parse error: ' .. tostring(msg)
+   local msg
+   try
+      msg = json.decode(JsonBody)
+   except ex
+      return nil, 'JSON parse error: ' .. tostring(ex.message)
+   end
 
    if msg.jsonrpc != '2.0' then
       return nil, 'Invalid JSON-RPC version: ' .. tostring(msg.jsonrpc)
@@ -100,7 +101,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Method Dispatch
 
-function dispatchMethod(Self:table, Message:table, State)
+function dispatchMethod(Self:table, Message:table, State:table)
    method = Message.method
 
    if not method then
@@ -113,16 +114,14 @@ function dispatchMethod(Self:table, Message:table, State)
 
    if handler then
       logVerbose(Self, 'Dispatching method: ' .. method)
-      success, result = pcall(function()
-         return handler(Message, State)
-      end)
 
-      if success then
-         return result
-      else
-         logMessage(Self, 'Handler error for ' .. method .. ': ' .. tostring(result))
+      local result
+      try
+         return handler(Message, State)
+      except ex
+         logMessage(Self, f'Handler error for {method}: {ex.message}')
          if Message.id then
-            return makeErrorResponse(Message.id, LSP_ERROR.INTERNAL_ERROR, tostring(result))
+            return makeErrorResponse(Message.id, LSP_ERROR.INTERNAL_ERROR, ex.message)
          end
          return nil
       end
@@ -130,7 +129,7 @@ function dispatchMethod(Self:table, Message:table, State)
       logWarning(Self, 'Unknown method: ' .. method)
       -- Unknown method: return error for requests, ignore notifications
       if Message.id then
-         return makeErrorResponse(Message.id, LSP_ERROR.METHOD_NOT_FOUND, 'Method not found: ' .. method)
+         return makeErrorResponse(Message.id, LSP_ERROR.METHOD_NOT_FOUND, f'Method not found: {method}')
       end
       return nil
    end
