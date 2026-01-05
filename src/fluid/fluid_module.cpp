@@ -56,7 +56,7 @@ static int process_results(prvFluid *, APTR, const FunctionField *);
    size_t i = 0;
    while ((i < String.size()) and (String[i] <= 0x20)) i++; // Skip white-space
 
-   if ((String[i] IS '0') and (String[i+1] IS 'x')) {
+   if ((i+1 < String.size()) and (String[i] IS '0') and (String[i+1] IS 'x')) {
       for (i+=2; i < String.size(); i++) {
          if (not std::isxdigit(String[i])) return 's';
       }
@@ -144,17 +144,18 @@ static ERR process_module_defs(objScript *Script, objModule *module, CSTRING Nam
    OBJECTPTR root;
    if (auto error = module->get(FID_Root, root); error IS ERR::Okay) {
       struct ModHeader *header;
-      if ((((error = root->get(FID_Header, header)) IS ERR::Okay) and (header))) {
-         if (auto structs = header->StructDefs) {
-            for (auto &s : structs[0]) glStructSizes[s.first] = s.second;
-         }
+      if ((error = root->get(FID_Header, header)) != ERR::Okay) return error;
+      if (not header) return ERR::NoData;
 
-         if (auto idl = header->Definitions) {
-            while ((idl) and (*idl)) {
-               if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(Script, idl+2, Name);
-               else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(idl+2, Name);
-               else idl = next_line(idl);
-            }
+      if (auto structs = header->StructDefs) {
+         for (auto &s : structs[0]) glStructSizes[s.first] = s.second;
+      }
+
+      if (auto idl = header->Definitions) {
+         while ((idl) and (*idl)) {
+            if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(Script, idl+2, Name);
+            else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(idl+2, Name);
+            else idl = next_line(idl);
          }
       }
       return ERR::Okay;
@@ -253,6 +254,7 @@ void new_module(lua_State *Lua, objModule *Module)
 
 //********************************************************************************************************************
 // Usage: passed, total, = mod.test(module, Options)
+// Runs the module's unit tests, if any
 
 static int module_test(lua_State *Lua)
 {
@@ -272,7 +274,6 @@ static int module_test(lua_State *Lua)
 
 //********************************************************************************************************************
 // Usage: module = mod.load('core')
-// Runs the module's unit tests, if any
 
 static int module_load(lua_State *Lua)
 {
