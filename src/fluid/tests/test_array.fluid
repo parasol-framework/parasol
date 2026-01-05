@@ -184,7 +184,7 @@ end
       t = arr:getString(-1, 5)
    success
       error('Should reject negative start index')
-  end
+   end
 
    -- Test invalid length (would exceed array bounds)
    try

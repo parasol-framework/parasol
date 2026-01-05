@@ -69,9 +69,22 @@
    }
 
 ----------------------------------------------------------------------------------------------------------------------
+-- HTML escape function for security
 
-function validatePort(port)
-   portNum = tonumber(port)
+function escHTML(str:str):str
+   str ?? return ''
+   str = str:gsub('&', '&amp;')
+   str = str:gsub('<', '&lt;')
+   str = str:gsub('>', '&gt;')
+   str = str:gsub('"', '&quot;')
+   str = str:gsub("'", '&#39;')
+   return str
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function validatePort(port:num):bool
+   portNum = port
    if not portNum or portNum < 1 or portNum > 65535 then
       return false
    end
@@ -81,7 +94,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Decode percent-encoded characters in URLs
 
-function urlDecode(str)
+function urlDecode(str:str):str
    if str then
       str = str:gsub('+', ' ') -- Replace + with space
       str = str:gsub('%%(%x%x)', function(hex)
@@ -94,8 +107,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Canonicalize path to prevent directory traversal attacks
 
-function canonicalizePath(self, Path)
-   if not Path then return nil end
+function canonicalizePath(self, Path:str):str
+   Path ?? return
 
    Path = Path:gsub('[%c]', '')   -- Remove any null bytes
    Path = urlDecode(Path)         -- Decode URL encoding first
@@ -111,7 +124,7 @@ function canonicalizePath(self, Path)
       if component is '..' then
          -- Attempt to go up - block this
          logMessage(self, 'Security: Blocked directory traversal attempt with ..')
-         return nil
+         return
       elseif component != '.' and component != '' then
          table.insert(components, component)
       end
@@ -235,7 +248,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function readRequestWithTimeout(client, maxSize, timeoutSeconds)
+function readRequestWithTimeout(client:table, maxSize:num, timeoutSeconds:num):<str, str>
    buffer = string.alloc(1024) -- Start with 1KB buffer
    requestData = ''
    totalRead = 0
@@ -722,41 +735,49 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function createErrorPage(statusCode, statusText, message, details)
-   html = '<!DOCTYPE html>\n<html>\n<head>\n'
-      .. '<meta charset="utf-8">\n'
-      .. '<title>' .. statusCode .. ' ' .. statusText .. '</title>\n'
-      .. '<style>\n'
-      .. 'body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }\n'
-      .. '.error-container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }\n'
-      .. 'h1 { color: #d32f2f; margin-top: 0; }\n'
-      .. 'p { color: #666; line-height: 1.6; }\n'
-      .. '.details { background: #f9f9f9; padding: 15px; border-radius: 4px; margin: 20px 0; font-family: monospace; }\n'
-      .. '</style>\n'
-      .. '</head>\n<body>\n'
-      .. '<div class="error-container">\n'
-      .. '<h1>' .. statusCode .. ' ' .. statusText .. '</h1>\n'
-      .. '<p>' .. message .. '</p>\n'
+function createErrorPage(statusCode:num, statusText:str, message:str, details:str)
+   html = [[<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>]] .. statusCode .. ' ' .. statusText .. [[</title>
+<style>
+body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+.error-container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }
+h1 { color: #d32f2f; margin-top: 0; }
+p { color: #666; line-height: 1.6; }
+.details { background: #f9f9f9; padding: 15px; border-radius: 4px; margin: 20px 0; font-family: monospace; }
+</style>
+</head>
+<body>
+<div class="error-container">
+<h1>]] .. statusCode .. ' ' .. statusText .. [[</h1>
+<p>]] .. message .. '</p>\n'
+
    if details then
-      html ..= '<div class="details">' .. details .. '</div>\n'
+      html ..= '<div class="details">' .. escHTML(details) .. '</div>\n'
    end
-   html ..= '<p><a href="/">Return to home</a></p>\n'
-   html ..= '</div>\n</body>\n</html>\n'
+
+   html ..= [[<p><a href="/">Return to home</a></p>
+</div>
+</body>
+</html>]]
+
    return html
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function serveFile(self, ClientSocket, FilePath, Request)
-   local ex, file = catch(function() return obj.new('file', { path = FilePath, flags = 'READ' }) end)
-   if not file then
+function serveFile(self, ClientSocket, FilePath:str, Request)
+   local file
+   try
+      file = obj.new('file', { path = FilePath, flags = 'READ' })
+   except ex
       local errorBody
       if Request.method != 'HEAD' then
          errorBody = createErrorPage(404, 'Not Found', 'The requested file was not found.', 'Path: ' .. FilePath)
       end
-      sendHttpResponse(self, ClientSocket, 404, "Not Found", {
-         ['content-type'] = 'text/html'
-      }, errorBody)
+      sendHttpResponse(self, ClientSocket, 404, "Not Found", { ['content-type'] = 'text/html' }, errorBody)
       return
    end
 
@@ -851,39 +872,32 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function generateDirectoryListing(self, DirPath, URIPath)
-   -- HTML escape function for security
-   function escapeHtml(str)
-      if not str then return '' end
-      str = tostring(str)
-      str = str:gsub('&', '&amp;')
-      str = str:gsub('<', '&lt;')
-      str = str:gsub('>', '&gt;')
-      str = str:gsub('"', '&quot;')
-      str = str:gsub("'", '&#39;')
-      return str
-   end
-
-   safeUrlPath = escapeHtml(URIPath)
-   html = '<!DOCTYPE html>\n<html>\n<head>\n'
-      .. '<meta charset="utf-8">\n'
-      .. '<title>Directory listing for ' .. safeUrlPath .. '</title>\n'
-      .. '<style>\n'
-      .. 'body { font-family: Arial, sans-serif; margin: 40px; }\n'
-      .. 'h1 { color: #333; }\n'
-      .. 'table { border-collapse: collapse; width: 100%; }\n'
-      .. 'th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #ddd; }\n'
-      .. 'th { background-color: #f5f5f5; font-weight: bold; }\n'
-      .. 'tr:hover { background-color: #f9f9f9; }\n'
-      .. 'a { text-decoration: none; color: #0066cc; }\n'
-      .. 'a:hover { text-decoration: underline; }\n'
-      .. '.dir { font-weight: bold; }\n'
-      .. '.size { text-align: right; }\n'
-      .. '</style>\n'
-      .. '</head>\n<body>\n'
-      .. '<h1>Directory listing for ' .. safeUrlPath .. '</h1>\n'
-      .. '<table>\n'
-      .. '<thead>\n<tr><th>Name</th><th>Size</th><th>Last Modified</th></tr>\n</thead>\n'
-      .. '<tbody>\n'
+   safeUrlPath = escHTML(URIPath)
+   html = [[<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Directory listing for ]] .. safeUrlPath .. [[</title>
+<style>
+body { font-family: Arial, sans-serif; margin: 40px; }
+h1 { color: #333; }
+table { border-collapse: collapse; width: 100%; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #ddd; }
+th { background-color: #f5f5f5; font-weight: bold; }
+tr:hover { background-color: #f9f9f9; }
+a { text-decoration: none; color: #0066cc; }
+a:hover { text-decoration: underline; }
+.dir { font-weight: bold; }
+.size { text-align: right; }
+</style>
+</head>
+<body>
+<h1>Directory listing for ]] .. safeUrlPath .. [[</h1>
+<table>
+<thead>
+<tr><th>Name</th><th>Size</th><th>Last Modified</th></tr>
+</thead>
+<tbody>]]
 
    -- Add parent directory link if not root
    if URIPath != '/' then
@@ -910,17 +924,17 @@ function generateDirectoryListing(self, DirPath, URIPath)
             href     = URIPath .. name
             if isFolder then href ..= '/' end
 
-            displayName = escapeHtml(name)
+            displayName = escHTML(name)
             if isFolder then displayName ..= '/' end
 
-            safeHref = escapeHtml(href)
+            safeHref = escHTML(href)
             cssClass = ''
             if isFolder then
                cssClass = ' class="dir"'
             end
             html ..= '<tr><td><a href="' .. safeHref .. '"' .. cssClass .. '>' .. displayName .. '</a></td>'
-            html ..= '<td class="size">' .. escapeHtml(size) .. '</td>'
-            html ..= '<td>' .. escapeHtml(modTime) .. '</td></tr>\n'
+            html ..= '<td class="size">' .. escHTML(size) .. '</td>'
+            html ..= '<td>' .. escHTML(modTime) .. '</td></tr>\n'
             count++
          end
       end
@@ -1195,12 +1209,11 @@ function matchRoute(serverInstance, method, path)
          regexPattern = regexPattern:gsub('\\%*', '(.*)') -- \* -> (.*)
          regexPattern = '^' .. regexPattern .. '$'
 
-         catch(function()
+         try
             route.compiledRegex = regex.new(regexPattern)
-         end,
-         function(Exception)
-            error('matchRoute: Failed to compile regex: ' .. Exception.message)
-         end)
+         except ex
+            error('matchRoute: Failed to compile regex: ' .. ex.message)
+         end
       end
 
       -- Test if path matches this route (skip invalid regex patterns)
@@ -1400,27 +1413,27 @@ function serverIncoming(self, ClientSocket)
       matchedRoute, params = matchRoute(self, state.request.method, state.request.path)
 
       if matchedRoute and matchedRoute.validateHeader then
-         local validationResult
+         local vres
          try
-            validationResult = matchedRoute.validateHeader(state.request.headers)
+            vres = matchedRoute.validateHeader(state.request.headers)
          except e -- validateHeader threw an error
-            logMessage(self, 'validateHeader callback error: ' .. tostring(validationResult))
+            logMessage(self, 'validateHeader callback error: ' .. e.message)
             errorBody = createErrorPage(500, 'Internal Server Error', 'Header validation failed.', 'Internal server error during header validation.')
             sendHttpResponse(self, ClientSocket, 500, "Internal Server Error", { ['content-type'] = 'text/html' }, errorBody)
             state.invalid_header = true
             state.phase = 'CANCELLED'
          success
-            if validationResult is false then -- Headers failed validation, send 400 Bad Request
+            if vres is false then -- Headers failed validation, send 400 Bad Request
                errorBody = createErrorPage(400, 'Bad Request', 'Request headers failed validation.', 'The request headers do not meet server requirements.')
                sendHttpResponse(self, ClientSocket, 400, "Bad Request", { ['content-type'] = 'text/html' }, errorBody)
                state.invalid_header = true
                state.phase = 'CANCELLED'
-            elseif type(validationResult) is 'table' and validationResult.status then
+            elseif type(vres) is 'table' and vres.status then
                -- Custom error response from validateHeader
-               statusCode = validationResult.status or 400
-               statusText = validationResult.statusText or 'Bad Request'
-               message = validationResult.message or 'Request headers failed validation.'
-               details = validationResult.details or 'The request headers do not meet server requirements.'
+               statusCode = vres.status or 400
+               statusText = vres.statusText or 'Bad Request'
+               message = vres.message or 'Request headers failed validation.'
+               details = vres.details or 'The request headers do not meet server requirements.'
 
                errorBody = createErrorPage(statusCode, statusText, message, details)
                sendHttpResponse(self, ClientSocket, statusCode, statusText, { ['content-type'] = 'text/html' }, errorBody)
@@ -1519,9 +1532,7 @@ function serverIncoming(self, ClientSocket)
       if not URIPath then
          errorBody = createErrorPage(400, 'Bad Request', 'Invalid path in request.', 'Original path: ' .. request.path)
          logMessage(self, 'Security: Invalid path blocked: ' .. request.path)
-         sendHttpResponse(self, ClientSocket, 400, "Bad Request", {
-            ['content-type'] = 'text/html'
-         }, errorBody)
+         sendHttpResponse(self, ClientSocket, 400, "Bad Request", { ['content-type'] = 'text/html' }, errorBody)
          return
       end
 
@@ -1559,21 +1570,17 @@ function serverIncoming(self, ClientSocket)
                matchedRoute.callback(req, res)
             except e
                -- Route callback failed, send 500 error
-               logMessage(self, 'Route handler error: ' .. tostring(result))
+               logMessage(self, 'Route handler error: ' .. e.message)
                if not res._sent then
-                  errorBody = createErrorPage(500, 'Internal Server Error', 'Route handler failed.', 'Error: ' .. tostring(result))
-                  sendHttpResponse(self, ClientSocket, 500, "Internal Server Error", {
-                     ['content-type'] = 'text/html'
-                  }, errorBody)
+                  errorBody = createErrorPage(500, 'Internal Server Error', 'Route handler failed.', 'Error: ' .. e.message)
+                  sendHttpResponse(self, ClientSocket, 500, "Internal Server Error", { ['content-type'] = 'text/html' }, errorBody)
                end
             success
                if not res._sent then
                   -- Route executed successfully but didn't send a response
                   logMessage(self, 'Warning: Route handler completed without sending response')
                   errorBody = createErrorPage(500, 'Internal Server Error', 'Route handler did not send a response.', 'Path: ' .. URIPath)
-                  sendHttpResponse(self, ClientSocket, 500, "Internal Server Error", {
-                     ['content-type'] = 'text/html'
-                  }, errorBody)
+                  sendHttpResponse(self, ClientSocket, 500, "Internal Server Error", { ['content-type'] = 'text/html' }, errorBody)
                end
             end
          end
