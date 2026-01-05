@@ -617,36 +617,51 @@ extern void luaL_traceback(lua_State* L, lua_State* L1, const char* msg, int lev
 }
 
 //********************************************************************************************************************
-// Capture stack trace for try<trace> exception handling.
-// Allocates a CapturedStackTrace on the heap. Caller must free with lj_debug_free_trace().
+// Capture stack trace for try<trace> exception handling.  Allocates a CapturedStackTrace on the heap. Caller must
+// free with lj_debug_free_trace().
+//
+// Building traces isn't super fast but that's OK - it only runs if the user requests it.
+//
+// NB: This function sets L->pending_trace early to root the trace structure during string allocations. The GC marks
+// strings in pending_trace via gc_traverse_thread(), preventing them from being collected during incremental GC
+// cycles.
 
 CapturedStackTrace * lj_debug_capture_trace(lua_State *L, int skip_levels)
 {
    auto trace = (CapturedStackTrace *)lj_mem_new(L, sizeof(CapturedStackTrace));
    trace->frame_count = 0;
 
+   // Root the trace immediately so GC can mark strings as they're added.
+   // Safety: The caller (check_try_handler) only calls this function when L->pending_trace is null,
+   // so we never overwrite an existing trace. The caller's subsequent assignment of the return value
+   // to L->pending_trace is effectively a no-op since we set it here.
+
+   L->pending_trace = trace;
+
    lua_Debug ar;
    int level = skip_levels;
 
-   while (trace->frame_count < LJ_MAX_TRACE_FRAMES and lua_getstack(L, level++, &ar)) {
+   while ((trace->frame_count < LJ_MAX_TRACE_FRAMES) and lua_getstack(L, level++, &ar)) {
       lua_getinfo(L, "Snl", &ar);
 
       CapturedFrame *cf = &trace->frames[trace->frame_count];
 
-      // Copy source name
+      // Initialize frame to null first, then increment frame_count.  This ensures GC will traverse this frame
+      // (via frame_count) and find null pointers rather than uninitialized garbage, while we allocate the strings.
+
+      cf->source = nullptr;
+      cf->funcname = nullptr;
+      cf->line = 0;
+      trace->frame_count++;  // Increment before allocating strings so GC sees this frame
+
+      // Copy source name (GC can now mark this frame via pending_trace)
 
       if (ar.short_src[0] != '\0') cf->source = lj_str_newz(L, ar.short_src);
-      else cf->source = nullptr;
-
-      // Copy function name
 
       if (ar.name and ar.name[0] != '\0') cf->funcname = lj_str_newz(L, ar.name);
       else if (ar.what and *ar.what IS 'm') cf->funcname = lj_str_newlit(L, "main chunk");
-      else cf->funcname = nullptr;
 
       cf->line = BCLine(ar.currentline > 0 ? ar.currentline : 0);
-
-      trace->frame_count++;
    }
 
    return trace;

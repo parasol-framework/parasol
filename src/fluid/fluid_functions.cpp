@@ -98,43 +98,7 @@ int fcmd_raise(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Use catch() to switch on exception handling for functions that return an error code other than ERR::Okay, as well as
-// normal exceptions that would otherwise be caught by pcall().  Areas affected include obj.new(); any module function
-// that returns an ERROR; any method or action called on an object.
-//
-// The caught error code is returned by default, or if no exception handler is defined then the entire exception table
-// is returned.
-//
-// catch() is most useful for creating small code segments that limit any failures to their own scope.
-//
-//   err, result = catch(function()
-//      // Code to execute
-//      return 'success'
-//   end,
-//   function(Exception)
-//      // Exception handler
-//      print("Code: " .. (Exception.code ? "LUA") .. ", Message: " .. Exception.message)
-//   end)
-//
-// As above, but the handler is only called if certain codes are raised.  Any mismatched errors will throw to the parent code.
-//
-//   err, result = catch(function()
-//      // Code to execute
-//      return 'success'
-//   end,
-//   { ERR::Failed, ERR::Terminate }, // Errors to filter for
-//   fuction(Exception) // Exception handler for the filtered errors
-//   end)
-//
-// To silently ignore exceptions, or to receive the thrown exception details as a table result:
-//
-//   local exception, result, ... = catch(function()
-//      // Code to execute
-//      return result, ...
-//   end)
-//
-// Errors that are NOT treated as exceptions are Okay, False, LimitedSuccess, Cancelled, NothingDone, Continue, Skip,
-// Retry, DirEmpty.
+// DEPRECATED
 
 int fcmd_catch_handler(lua_State *Lua)
 {
@@ -1070,25 +1034,25 @@ extern "C" bool lj_try_find_handler(lua_State *L, const TryFrame *Frame, ERR Err
 
 extern "C" void lj_try_build_exception_table(lua_State *L, ERR ErrorCode, CSTRING Message, int Line, BCREG ExceptionReg, CapturedStackTrace *Trace)
 {
-   if (ExceptionReg IS 0xFF) {
-      // No exception variable - just free the trace and return
+   if (ExceptionReg IS 0xff) { // No exception variable - just free the trace and return
       if (Trace) lj_debug_free_trace(L, Trace);
       return;
    }
 
-   // Validate stack state before placing exception table
    lj_assertL(L->base >= tvref(L->stack), "lj_try_build_exception_table: L->base below stack start");
    lj_assertL(L->base <= tvref(L->maxstack), "lj_try_build_exception_table: L->base above maxstack");
 
-   // Validate target slot is within valid stack bounds
    TValue *target_slot = L->base + ExceptionReg;
    lj_assertL(target_slot >= tvref(L->stack), "lj_try_build_exception_table: target slot below stack start");
    lj_assertL(target_slot < tvref(L->maxstack), "lj_try_build_exception_table: target slot at or above maxstack");
 
-   // Create exception table
+   // Create exception table and store immediately at target_slot to root it.
+   // This protects it from GC during subsequent allocations without modifying L->top.
 
    GCtab *t = lj_tab_new(L, 0, 5);
    lj_assertL(t != nullptr, "lj_try_build_exception_table: table allocation failed");
+   settabV(L, target_slot, t);  // Root immediately - don't modify L->top
+
    TValue *slot;
 
    // Set e.code
@@ -1109,13 +1073,13 @@ extern "C" void lj_try_build_exception_table(lua_State *L, ERR ErrorCode, CSTRIN
    slot = lj_tab_setstr(L, t, lj_str_newlit(L, "line"));
    setintV(slot, Line);
 
-   // Set e.trace - array of frame tables if trace was captured
-   // Also build e.stackTrace string at the same time
-   slot = lj_tab_setstr(L, t, lj_str_newlit(L, "trace"));
-   TValue *stacktrace_slot = lj_tab_setstr(L, t, lj_str_newlit(L, "stackTrace"));
+   // NB: We do not get the "trace" and "stackTrace" slots here because subsequent allocations (lj_array_new, 
+   // lj_tab_new, lj_str_new) can cause table t to be rehashed, which would invalidate any slot pointers. 
+   // We get the slots right before storing values into them.
 
    if (Trace and Trace->frame_count > 0) {
       // Build native array of frame tables: [{source, line, func}, ...]
+      // The array is rooted in the exception table t (at the "trace" field) after creation.
       GCarray *frames = lj_array_new(L, Trace->frame_count, AET::TABLE);
       GCRef *frame_refs = (GCRef *)frames->arraydata();
 
@@ -1124,7 +1088,12 @@ extern "C" void lj_try_build_exception_table(lua_State *L, ERR ErrorCode, CSTRIN
 
       for (uint16_t i = 0; i < Trace->frame_count; i++) {
          CapturedFrame *cf = &Trace->frames[i];
+
+         // Create frame table - it will be rooted in the frames array immediately
          GCtab *frame = lj_tab_new(L, 0, 3);
+
+         // Store table reference in array first (roots it for GC)
+         setgcref(frame_refs[i], obj2gco(frame));
 
          TValue *frame_slot = lj_tab_setstr(L, frame, lj_str_newlit(L, "source"));
          if (cf->source) setstrV(L, frame_slot, cf->source);
@@ -1139,9 +1108,6 @@ extern "C" void lj_try_build_exception_table(lua_State *L, ERR ErrorCode, CSTRIN
 
          lj_gc_anybarriert(L, frame);
 
-         // Store table reference in array
-         setgcref(frame_refs[i], obj2gco(frame));
-
          // Build traceback string entry
          traceback += "\n\t";
          if (cf->source) traceback += strdata(cf->source);
@@ -1151,6 +1117,7 @@ extern "C" void lj_try_build_exception_table(lua_State *L, ERR ErrorCode, CSTRIN
             traceback += ":";
             traceback += std::to_string(cf->line);
          }
+
          if (cf->funcname) {
             traceback += ": in function '";
             traceback += strdata(cf->funcname);
@@ -1158,21 +1125,28 @@ extern "C" void lj_try_build_exception_table(lua_State *L, ERR ErrorCode, CSTRIN
          }
       }
 
+      // Now that all allocations are done, get the slots and store values knowing that
+      // the table won't be rehashed.
+
+      slot = lj_tab_setstr(L, t, lj_str_newlit(L, "trace"));
       setarrayV(L, slot, frames);
 
-      // Set stackTrace string
+      // Set stackTrace string - get slot first, then create string
+      // (avoids allocation window where the string would be unrooted)
+      TValue *stacktrace_slot = lj_tab_setstr(L, t, lj_str_newlit(L, "stackTrace"));
       setstrV(L, stacktrace_slot, lj_str_new(L, traceback.data(), traceback.size()));
 
       lj_debug_free_trace(L, Trace);
    }
    else {
+      // Get slots right before storing nil values
+      slot = lj_tab_setstr(L, t, lj_str_newlit(L, "trace"));
+      TValue *stacktrace_slot = lj_tab_setstr(L, t, lj_str_newlit(L, "stackTrace"));
       setnilV(slot);
       setnilV(stacktrace_slot);
       if (Trace) lj_debug_free_trace(L, Trace);
    }
 
-   lj_gc_anybarriert(L, t);
-
-   // Place exception table in the handler's expected register
-   settabV(L, target_slot, t);
+   lj_gc_anybarriert(L, t);  // Final barrier check
+   // Note: t is already stored at target_slot (done at the start)
 }
