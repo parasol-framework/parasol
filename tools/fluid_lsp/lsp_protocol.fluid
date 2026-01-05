@@ -45,7 +45,7 @@ function parseMessage(JsonBody)
    try
       msg = json.decode(JsonBody)
    except ex
-      return nil, 'JSON parse error: ' .. tostring(msg)
+      return nil, 'JSON parse error: ' .. tostring(ex.message)
    end
 
    if msg.jsonrpc != '2.0' then
@@ -101,7 +101,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Method Dispatch
 
-function dispatchMethod(Self:table, Message:table, State)
+function dispatchMethod(Self:table, Message:table, State:table)
    method = Message.method
 
    if not method then
@@ -118,18 +118,18 @@ function dispatchMethod(Self:table, Message:table, State)
       local result
       try
          return handler(Message, State)
+      except ex
+         logMessage(Self, f'Handler error for {method}: {ex.message}')
+         if Message.id then
+            return makeErrorResponse(Message.id, LSP_ERROR.INTERNAL_ERROR, ex.message)
+         end
+         return nil
       end
-
-      logMessage(Self, 'Handler error for ' .. method .. ': ' .. tostring(result))
-      if Message.id then
-         return makeErrorResponse(Message.id, LSP_ERROR.INTERNAL_ERROR, tostring(result))
-      end
-      return nil
    else
       logWarning(Self, 'Unknown method: ' .. method)
       -- Unknown method: return error for requests, ignore notifications
       if Message.id then
-         return makeErrorResponse(Message.id, LSP_ERROR.METHOD_NOT_FOUND, 'Method not found: ' .. method)
+         return makeErrorResponse(Message.id, LSP_ERROR.METHOD_NOT_FOUND, f'Method not found: {method}')
       end
       return nil
    end

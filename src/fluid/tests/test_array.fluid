@@ -405,7 +405,7 @@ end
    try
       arr:copy(empty_table)
    success
-     error('Should reject empty table')
+      error('Should reject empty table')
    end
 end
 

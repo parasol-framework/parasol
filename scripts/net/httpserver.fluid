@@ -443,11 +443,9 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Parse query string into key-value pairs
 
-function parseQueryString(QueryString)
+function parseQueryString(QueryString:str):table
    query = {}
-   if not QueryString or QueryString is '' then
-      return query
-   end
+   QueryString ?? return query
 
    for pair in QueryString:gmatch('[^&]+') do
       key, value = pair:match('([^=]+)=(.+)')
@@ -474,7 +472,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Parse JSON body
 
-function parseJsonBody(Body)
+function parseJsonBody(Body:str):table
    Body ?? return {}
 
    try
@@ -487,14 +485,14 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Parse form-encoded body (application/x-www-form-urlencoded)
 
-function parseFormBody(Body)
+function parseFormBody(Body:str):table
    return parseQueryString(Body) -- Same parsing logic as query strings
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Parse cookies from Cookie header
 
-function parseCookies(CookieHeader)
+function parseCookies(CookieHeader:str):table
    cookies = {}
    CookieHeader ?? return cookies
 
@@ -1007,7 +1005,7 @@ function executeMiddleware(middlewareList, request, response, finalCallback)
       try
          result = middleware(request, response, next)
       except e -- Middleware failed, pass error to next()
-         next(result)
+         next(e.message)
       end
    end
 
