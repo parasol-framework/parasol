@@ -332,12 +332,16 @@ end
 
    try
       file:write('should fail') -- Expect failure
-      error('Writing to closed file should fail')
+      error('SUCCESS')
+   except e
+      assert(e.message != 'SUCCESS', 'Writing to closed file should fail')
    end
 
    try
       file:seek('set', 0) -- Expect failure
-      error('Seeking in closed file should fail')
+      error('SUCCESS')
+   except e
+      assert(e.message != 'SUCCESS', 'Seeking in closed file should fail')
    end
 end
 

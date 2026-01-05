@@ -16,7 +16,9 @@
    -- Test invalid regex
 
    local invalid_regex
-   catch(function() invalid_regex = regex.new("[unclosed") end)
+   try
+      invalid_regex = regex.new("[unclosed")
+   end
    assert(invalid_regex is nil, "Invalid regex should have failed")
 end
 
@@ -147,7 +149,9 @@ end
    assert(empty_regex.test("anything") is true, "Empty pattern should match anything")
 
    local invalid
-   catch(function() invalid = regex.new("(unclosed") end)
+   try
+      invalid = regex.new("(unclosed")
+   end
    assert(invalid is nil, "Invalid regex pattern should error")
 end
 
