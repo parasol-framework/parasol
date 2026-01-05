@@ -22,24 +22,26 @@ end
 -- Basic assert that fails
 
 @Test(priority=2) function AssertFails()
-   success, err = pcall(function()
+   try
       assert(false, 'Custom error message')
-   end)
-
-   assert(success is false, 'Assert should have failed')
-   assert(err:find('Custom error message') != nil, 'Error message should contain custom message')
+   except ex
+      assert(ex.message:find('Custom error message'), 'Error message should contain custom message')
+   success
+      error('Assert should have failed')
+   end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Assert with no message (uses default)
 
 @Test(priority=3) function AssertDefaultMessage()
-   success, err = pcall(function()
+   try
       assert(false)
-   end)
-
-   assert(success is false, 'Assert should have failed')
-   assert(err:find('assertion failed') != nil, 'Error should contain default message')
+   except ex
+      assert(ex.message:find('assertion failed'), 'Error should contain default message')
+   success
+      error('Assert should have failed')
+   end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -93,11 +95,11 @@ end
 -- Assert with nil condition
 
 @Test(priority=8) function AssertNil()
-   success, err = pcall(function()
+   try
       assert(nil, 'nil is falsey')
-   end)
-
-   assert(success is false, 'Assert on nil should fail')
+   success
+      error('Assert on nil should fail')
+   end
 end
 
 ----------------------------------------------------------------------------------------------------------------------

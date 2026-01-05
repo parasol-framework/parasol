@@ -114,7 +114,7 @@ return {
       -- Close Gadget
 
       if Window.close?? then
-         catch(function()
+         try
             rgnClose = bar.new('surface', { xoffset=xoffset, y=2, width=17, height=17, region=true })
             rgnClose.acShow()
             input.subscribe(JTYPE_BUTTON, rgnClose, 0, function(Handler, Msg)
@@ -122,12 +122,12 @@ return {
             end)
             rgnClose.new('image', { path='icons:items/checkmark_cross(16)', iconFilter='pearl', align='center' })
             xoffset += 22
-         end)
+         end
       end
 
       -- Maximise Gadget
 
-      catch(function()
+      try
          max = bar.new('surface', { width=17, height=17, y=2, xoffset=xoffset, region=true })
          max.acShow()
          input.subscribe(JTYPE_BUTTON, max, 0, function(Handler, Msg)
@@ -139,11 +139,11 @@ return {
             max.new('image', { path='icons:items/window_maximise(16)', iconFilter='pearl', align='center', opacity='33%' })
          end
          xoffset += 22
-      end)
+      end
 
       -- Minimise Gadget
 
-      catch(function()
+      try
          min = bar.new('surface', { width=17, height=17, y=2, xoffset=xoffset, region=true })
          min.acShow()
          input.subscribe(JTYPE_BUTTON, min, 0, function(Handler, Msg)
@@ -155,12 +155,12 @@ return {
             min.new('image', { path='icons:items/window_minimise(16)', iconFilter='pearl', align='center', opacity='33%' })
          end
          xoffset += 22
-      end)
+      end
 
       -- Move-To-Back Gadget
 
       if Window.moveToBack?? then
-         catch(function()
+         try
             mtb = bar.new('surface', { width=17, height=17, y=2, xoffset=xoffset, region=true })
             mtb.acShow()
             input.subscribe(JTYPE_BUTTON, mtb, 0, function(Handler, Msg)
@@ -168,7 +168,7 @@ return {
             end)
             mtb.new('image', { path='icons:layers/bringforward(16)', align='center' })
             xoffset += 22
-         end)
+         end
       end
 
       bar.acShow()

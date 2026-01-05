@@ -1545,7 +1545,7 @@ gui.fileview = function(Options)
 
       msg('Performing a full refresh of the file view: ' .. tostring(self.path))
 
-      success, err = pcall(function()
+      try
          if lDir then lDir = nil end
 
          if self.path?? then
@@ -1585,10 +1585,8 @@ gui.fileview = function(Options)
          else
             self.view.sort()
          end
-      end)
-
-      if not success then
-         msg(err)
+      except ex
+         msg(ex.message)
       end
 
       self.inRefresh = false

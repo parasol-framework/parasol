@@ -24,18 +24,36 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
 @Test(priority=1) function SilentTry()
-   success = false
+   executed = false
    try
-      success = true
+      executed = true
    end
-   assert(success, "Simple try block should execute with no exception handling")
+   assert(executed, "Simple try block should execute with no exception handling")
 
-   success = false
+   executed = false
    try
-      success = true
+      executed = true
       error('Ignore exception')
    end
-   assert(success, "Exception should be handled silently.")
+   assert(executed, "Exception should be handled silently.")
+
+   -- Test success block without except clause
+   success_executed = false
+   try
+      x = 42
+   success
+      success_executed = true
+   end
+   assert(success_executed, "Success block should execute with try...success...end (no except)")
+
+   -- Test success block not executing when exception occurs in silent try
+   success_executed = false
+   try
+      error('Test error')
+   success
+      success_executed = true
+   end
+   assert(not success_executed, "Success block should NOT execute when exception occurs in silent try")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -44,15 +62,19 @@ end
 @Test(priority=2) function NoException()
    try_executed = false
    except_executed = false
+   success_executed = false
 
    try
       try_executed = true
    except e
       except_executed = true
+   success
+      success_executed = true
    end
 
    assert(try_executed, "Try block should have executed")
    assert(not except_executed, "Except block should not have executed")
+   assert(success_executed, "Success block should have executed when no exception")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -60,22 +82,28 @@ end
 
 @Test(priority=3) function WithoutExceptionVariable()
    handled = false
+   success_executed = false
 
    try
       error("Test error")
    except
       handled = true
+   success
+      success_executed = true
    end
 
    assert(handled, "Exception should have been handled without variable")
+   assert(not success_executed, "Success block should NOT execute when exception was caught")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Nested try blocks
+-- Nested try blocks with success
 
 @Test(priority=4) function NestedTry()
    outer_handled = false
    inner_handled = false
+   outer_success = false
+   inner_success = false
 
    try
       try
@@ -83,13 +111,19 @@ end
       except e
          inner_handled = true
          assert(e.message:find("Inner"), "Inner handler should get inner error")
+      success
+         inner_success = true
       end
    except e
       outer_handled = true
+   success
+      outer_success = true
    end
 
    assert(inner_handled, "Inner exception should have been handled")
    assert(not outer_handled, "Outer handler should not execute for inner error")
+   assert(not inner_success, "Inner success should not execute when exception caught")
+   assert(outer_success, "Outer success should execute (inner try completed normally after catching)")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -455,12 +489,34 @@ end
          return "from_try"
       except e
          return "from_except"
+      success
+         return "from_success"
       end
       return "after_try"
    end
 
    result = test_return()
-   assert(result is "from_try", "Should return from try block")
+   assert(result is "from_try", "Should return from try block (success not reached due to early return)")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Return from success block
+
+@Test(priority=25) function ReturnFromSuccess()
+   function test_return()
+      try
+         -- No exception, no early return
+         x = 42
+      except e
+         return "from_except"
+      success
+         return "from_success"
+      end
+      return "after_try"
+   end
+
+   result = test_return()
+   assert(result is "from_success", "Should return from success block")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -526,6 +582,28 @@ end
 
    assert(count is 5, "Should count all iterations, got " .. tostring(count))
    assert(sum is 0+1+3+4, "Should skip i=2 in sum, got " .. sum)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Break from success block in loop
+
+@Test(priority=28) function BreakFromSuccess()
+   count = 0
+   success_count = 0
+   for i in {0..10} do
+      try
+         count++
+      except e
+      success
+         success_count++
+         if i is 3 then
+            break
+         end
+      end
+   end
+
+   assert(count is 4, "Should count 4 iterations (0, 1, 2, 3) before break in success, got " .. count)
+   assert(success_count is 4, "Success should execute 4 times before break, got " .. success_count)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -646,27 +724,27 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- <close> cleanup when no exception occurs in try block
+-- <close> cleanup when no exception occurs in try block, runs before success
 
 @Test(priority=34) function CloseInTryNoException()
-   closed = false
-   received_err = nil
+   order = array<string>
    mt = {
       __close = function(self, err)
-         closed = true
-         received_err = err
+         order:push('close')
       end
    }
 
    try
       local obj <close> = setmetatable({}, mt)
-      -- No exception
+      order:push('try-body')
    except e
       assert(false, "No exception expected")
+   success
+      order:push('success')
    end
 
-   assert(closed, "<close> handler should be called even without exception")
-   assert(received_err is nil, "No error should be passed to __close on normal exit")
+   result = order:join(',')
+   assert(result is 'try-body,close,success', "<close> should run before success: '" .. result .. "'")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -860,7 +938,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Tests for defer interaction with try-except blocks
 
--- Defer runs when try block exits normally (no exception)
+-- Defer runs when try block exits normally (no exception), before success block
 
 @Test(priority=40) function DeferInTryBlockNormal()
    order = array<string>
@@ -873,12 +951,14 @@ end
          order:push('try-body')
       except e
          order:push('except')
+      success
+         order:push('success')
       end
    end
 
    subject()
    result = order:join(',')
-   assert(result is 'try-body,deferred', "Defer should run when try block exits normally: '" .. tostring(result) .. "'")
+   assert(result is 'try-body,deferred,success', "Defer should run before success block: '" .. tostring(result) .. "'")
 end
 
 -- Test defer behavior when exception is caught by try-except

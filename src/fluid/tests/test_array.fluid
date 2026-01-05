@@ -97,22 +97,25 @@ end
    assert(result is '10, 20', "Valid format test failed, expected '10, 20', got '" .. result .. "'")
 
    -- Test multiple format specifiers are rejected
-   success = pcall(function()
-      return int_array:concat('%d %s', ', ')
-   end)
-   assert(not success, "Multiple format specifiers should be rejected")
+   try
+      int_array:concat('%d %s', ', ')
+   success
+      error("Multiple format specifiers should be rejected")
+   end
 
    -- Test no format specifier is rejected
-   success = pcall(function()
-      return int_array:concat('no format', ', ')
-   end)
-   assert(not success, "No format specifier should be rejected")
+   try
+      int_array:concat('no format', ', ')
+   success
+      error("No format specifier should be rejected")
+   end
 
    -- Test incomplete format specifier is rejected
-   success3 = pcall(function()
-      return int_array:concat('incomplete %', ', ')
-   end)
-   assert(not success3, "Incomplete format specifier should be rejected")
+   try
+      int_array:concat('incomplete %', ', ')
+   success
+      error("Incomplete format specifier should be rejected")
+   end
 
    -- Test escaped %% works
    result_escaped = int_array:concat('%%d:%d', ', ')
@@ -141,29 +144,30 @@ end
    assert(arr[0] is 100, 'Valid array access failed')
 
    -- Test invalid negative index
-   status, err = pcall(function()
-      return arr[-1]
-   end)
-   assert(not status, 'Should reject negative array index')
+   try
+      t = arr[-1]
+   success
+      error('Should reject negative array index')
+   end
 
    -- Test invalid high index
-   status, err = pcall(function()
-      return arr[10]
-   end)
-   assert(not status, 'Should reject index beyond array size')
+   try
+      t = arr[10]
+   success
+      error('Should reject index beyond array size')
+   end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test array size validation during creation
+-- Test negative size rejection
 
 @Test function ArraySizeValidation()
-   -- Test negative size rejection
-   status, err = pcall(function()
-      return array.new(-5, 'int')
-   end)
-   assert(not status, 'Should reject negative array size')
+   try
+      t = array.new(-5, 'int')
+   success
+      error('Should reject negative array size')
+   end
 end
-
 -----------------------------------------------------------------------------------------------------------------------
 -- Test getString bounds checking on byte arrays
 
@@ -176,22 +180,25 @@ end
    assert(result is 'Hello', 'Valid substring extraction failed')
 
    -- Test invalid start index
-   status, err = pcall(function()
-      return arr:getString(-1, 5)
-   end)
-   assert(not status, 'Should reject negative start index')
+   try
+      t = arr:getString(-1, 5)
+   success
+      error('Should reject negative start index')
+  end
 
    -- Test invalid length (would exceed array bounds)
-   status, err = pcall(function()
-      return arr:getString(5, 100)
-   end)
-   assert(not status, 'Should reject length that exceeds array bounds')
+   try
+      t = arr:getString(5, 100)
+   success
+      error('Should reject length that exceeds array bounds')
+   end
 
    -- Test negative length
-   status, err = pcall(function()
-      return arr:getString(0, -5)
-   end)
-   assert(not status, 'Should reject negative length')
+   try
+      t = arr:getString(0, -5)
+   success
+      error('Should reject negative length')
+   end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -205,21 +212,24 @@ end
    dest:copy(source)
 
    -- Test copy beyond array bounds
-   status, err = pcall(function()
+   try
       dest:copy(source, 8) -- Target index 8, copy 5 chars = positions 8-12 (exceeds size 10)
-   end)
-   assert(not status, 'Should reject copy that would exceed array bounds')
+   success
+      error('Should reject copy that would exceed array bounds')
+   end
 
-   status, err = pcall(function()
+   try
       dest:copy(source, -1)
-   end)
-   assert(not status, 'Should reject invalid destination index')
+   success
+      error('Should reject invalid destination index')
+   end
 
    -- Test destination index beyond array size
-   status, err = pcall(function()
+   try
       dest:copy(source, 15) -- Beyond array size 10
-   end)
-   assert(not status, 'Should reject destination index beyond array size')
+   success
+      error('Should reject destination index beyond array size')
+   end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -248,21 +258,20 @@ end
 @Test function ArrayWriteBounds()
    arr = array<int, 5>
 
-   -- Test valid write
    arr[3] = 42
    assert(arr[3] is 42, 'Valid array write failed')
 
-   -- Test write beyond bounds
-   status, err = pcall(function()
+   try
       arr[6] = 100
-   end)
-   assert(not status, 'Should reject write beyond array bounds')
+   success
+      error('Should reject write beyond array bounds')
+   end
 
-   -- Test write at invalid index
-   status, err = pcall(function()
+   try
       arr[-1] = 100
-   end)
-   assert(not status, 'Should reject write at invalid index')
+   success
+      error('Should reject write at invalid index')
+   end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -378,23 +387,26 @@ end
    table_data = {10, 20, 30, 40}  -- Table larger than array
 
    -- Test copying to invalid destination index
-   status = pcall(function()
+   try
       arr:copy(table_data, 0)  -- Invalid index (0)
-   end)
-   assert(not status, 'Should reject invalid destination index')
+   success
+      error('Should reject invalid destination index')
+   end
 
    -- Test copying beyond array bounds
-   status2 = pcall(function()
+   try
       arr:copy(table_data, 2)  -- Start at 2, table has 4 elements, would exceed array size 3
-   end)
-   assert(not status2, 'Should reject copy that would exceed array bounds')
+   success
+      error('Should reject copy that would exceed array bounds')
+   end
 
    -- Test with empty table
    empty_table = {}
-   status3 = pcall(function()
+   try
       arr:copy(empty_table)
-   end)
-   assert(not status3, 'Should reject empty table')
+   success
+     error('Should reject empty table')
+   end
 end
 
 @Test function TableCopyTypeConversion()
@@ -1094,25 +1106,28 @@ end
    arr[0] = {a = 1}
    arr[1] = {b = 2}
 
-   status = pcall(function()
-      return arr:concat('%s', ', ')
-   end)
-   assert(not status, "Concat should be rejected for table arrays")
+   try
+      arr:concat('%s', ', ')
+   success
+      error("Concat should be rejected for table arrays")
+   end
 end
 
 @Test function TableArrayTypeValidation()
    arr = array<table, 2>
 
    -- Storing non-table values should fail
-   status = pcall(function()
+   try
       arr[0] = 42
-   end)
-   assert(not status, "Storing number in table array should fail")
+   success
+      error("Storing number in table array should fail")
+   end
 
-   status2 = pcall(function()
+   try
       arr[0] = "string"
-   end)
-   assert(not status2, "Storing string in table array should fail")
+   success
+      error("Storing string in table array should fail")
+   end
 end
 
 @Test function TableArrayGCStress()
@@ -1298,39 +1313,39 @@ end
 -- Test array.of() error cases
 
 @Test function ArrayOfNoValues()
-   status = pcall(function()
-      return array.of('int')
-   end)
-   assert(not status, "array.of() with no values should fail")
+   try
+      array.of('int')
+   success
+      error("array.of() with no values should fail")
+   end
 end
 
 @Test function ArrayOfInvalidType()
-   status = pcall(function()
-      return array<invalid> { 1, 2, 3 }
-   end)
-   assert(not status, "array.of() with invalid type should fail")
+   try
+      t = array<invalid> { 1, 2, 3 }
+   success
+      error("array.of() with invalid type should fail")
+   end
 end
 
 @Test function ArrayOfPointerRejected()
-   status = pcall(function()
-      return array<pointer> { 1, 2, 3 }
-   end)
-   assert(not status, "array.of() with pointer type should be rejected")
+   try
+      t = array<pointer> { 1, 2, 3 }
+   success
+      error("array.of() with pointer type should be rejected")
+   end
 end
 
 @Test function ArrayOfStructRejected()
-   status = pcall(function()
-      return array<struct> { 1, 2, 3 }
-   end)
-   assert(not status, "array.of() with struct type should be rejected")
+   try
+      t = array<struct> { 1, 2, 3 }
+   success
+      error("array.of() with struct type should be rejected")
+   end
 end
 
 @Test function ArrayOfTableAccepted()
-   -- array<table> { ... } is now supported
-   status, arr = pcall(function()
-      return array<table> { { x = 1 }, { y = 2 }, { z = 3 } }
-   end)
-   assert(status, "array.of() with table type should succeed")
+   arr = array<table> { { x = 1 }, { y = 2 }, { z = 3 } }
    assert(#arr is 3, "array should have 3 elements")
    assert(arr[0].x is 1, "first table should have x=1")
    assert(arr[2].z is 3, "third table should have z=3")
@@ -1338,17 +1353,19 @@ end
 
 @Test function ArrayOfStringWithTable()
    -- Tables cannot be converted to strings and should fail
-   status = pcall(function()
-      return array<string> { 'hello', {}, 'world' }
-   end)
-   assert(not status, "array.of('string') with table value should fail")
+   try
+      t = array<string> { 'hello', {}, 'world' }
+   success
+      error("array.of('string') with table value should fail")
+   end
 end
 
 @Test function ArrayOfIntTypeMismatch()
-   status = pcall(function()
-      return array<int> { 1, 'not a number', 3 }
-   end)
-   assert(not status, "array.of('int') with non-number value should fail")
+   try
+      t = array<int> { 1, 'not a number', 3 }
+   success
+      error("array.of('int') with non-number value should fail")
+   end
 end
 
 -----------------------------------------------------------------------------------------------------------------------

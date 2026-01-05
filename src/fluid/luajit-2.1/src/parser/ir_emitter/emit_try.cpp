@@ -97,6 +97,15 @@ ParserResult<IrEmitUnit> IrEmitter::emit_try_except_stmt(const TryExceptPayload 
       // ScopeGuard destructor runs here, calling fscope_end() which executes defers
    }
 
+   // Emit success block (if present) - runs after defers, before jump over handlers
+   if (Payload.success_block) {
+      auto success_result = this->emit_block(*Payload.success_block, FuncScopeFlag::None);
+      if (not success_result.ok()) {
+         fs->try_depth = saved_try_depth;
+         return success_result;
+      }
+   }
+
    // Jump over handlers (successful completion)
    ControlFlowEdge exit_jmp = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
 

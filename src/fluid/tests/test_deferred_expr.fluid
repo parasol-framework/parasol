@@ -245,11 +245,13 @@ end
    context = 'test context'
    value = 42
 
-   success, err = pcall(function()
+   try
       assert(false, <string{ 'Error in ' .. context .. ': value = ' .. tostring(value) }>)
-   end)
-   assert(success is false, 'assert(false) should fail')
-   assert(err != nil, 'Error message should not be nil')
-   -- Verify the error message contains expected content
-   assert(string.find(err, 'Error in test context') != nil, 'Error should contain context')
+   except e
+      assert(e.message != nil, 'Error message should not be nil')
+      -- Verify the error message contains expected content
+     assert(string.find(e.message, 'Error in test context'), 'Error should contain context')
+   success
+      error('assert(false) should fail')
+   end
 end

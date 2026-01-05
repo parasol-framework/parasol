@@ -475,13 +475,13 @@ end
 -- Parse JSON body
 
 function parseJsonBody(Body)
-   if not Body?? then return {} end
+   Body ?? return {}
 
-   success, result = pcall(function()
+   try
       return json.decode(Body)
-   end)
-
-   return success ? result :> {}
+   except e
+      return {}
+   end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -1004,11 +1004,9 @@ function executeMiddleware(middlewareList, request, response, finalCallback)
       currentIndex++
 
       -- Execute middleware function safely
-      success, result = pcall(function()
-         return middleware(request, response, next)
-      end)
-
-      if not success then -- Middleware failed, pass error to next()
+      try
+         result = middleware(request, response, next)
+      except e -- Middleware failed, pass error to next()
          next(result)
       end
    end
@@ -1404,31 +1402,35 @@ function serverIncoming(self, ClientSocket)
       matchedRoute, params = matchRoute(self, state.request.method, state.request.path)
 
       if matchedRoute and matchedRoute.validateHeader then
-         success, validationResult = pcall(matchedRoute.validateHeader, state.request.headers)
-
-         if not success then -- validateHeader threw an error
+         local validationResult
+         try
+            validationResult = matchedRoute.validateHeader(state.request.headers)
+         except e -- validateHeader threw an error
             logMessage(self, 'validateHeader callback error: ' .. tostring(validationResult))
             errorBody = createErrorPage(500, 'Internal Server Error', 'Header validation failed.', 'Internal server error during header validation.')
             sendHttpResponse(self, ClientSocket, 500, "Internal Server Error", { ['content-type'] = 'text/html' }, errorBody)
             state.invalid_header = true
             state.phase = 'CANCELLED'
-         elseif validationResult is false then -- Headers failed validation, send 400 Bad Request
-            errorBody = createErrorPage(400, 'Bad Request', 'Request headers failed validation.', 'The request headers do not meet server requirements.')
-            sendHttpResponse(self, ClientSocket, 400, "Bad Request", { ['content-type'] = 'text/html' }, errorBody)
-            state.invalid_header = true
-            state.phase = 'CANCELLED'
-         elseif type(validationResult) is 'table' and validationResult.status then
-            -- Custom error response from validateHeader
-            statusCode = validationResult.status or 400
-            statusText = validationResult.statusText or 'Bad Request'
-            message = validationResult.message or 'Request headers failed validation.'
-            details = validationResult.details or 'The request headers do not meet server requirements.'
+         success
+            if validationResult is false then -- Headers failed validation, send 400 Bad Request
+               errorBody = createErrorPage(400, 'Bad Request', 'Request headers failed validation.', 'The request headers do not meet server requirements.')
+               sendHttpResponse(self, ClientSocket, 400, "Bad Request", { ['content-type'] = 'text/html' }, errorBody)
+               state.invalid_header = true
+               state.phase = 'CANCELLED'
+            elseif type(validationResult) is 'table' and validationResult.status then
+               -- Custom error response from validateHeader
+               statusCode = validationResult.status or 400
+               statusText = validationResult.statusText or 'Bad Request'
+               message = validationResult.message or 'Request headers failed validation.'
+               details = validationResult.details or 'The request headers do not meet server requirements.'
 
-            errorBody = createErrorPage(statusCode, statusText, message, details)
-            sendHttpResponse(self, ClientSocket, statusCode, statusText, { ['content-type'] = 'text/html' }, errorBody)
-            state.invalid_header = true
-            state.phase = 'CANCELLED'
+               errorBody = createErrorPage(statusCode, statusText, message, details)
+               sendHttpResponse(self, ClientSocket, statusCode, statusText, { ['content-type'] = 'text/html' }, errorBody)
+               state.invalid_header = true
+               state.phase = 'CANCELLED'
+            end
          end
+
          -- If validateHeader returns true or nil, continue processing
       end
 
@@ -1555,11 +1557,9 @@ function serverIncoming(self, ClientSocket)
 
          -- Execute middleware pipeline followed by route handler
          function routeHandler(req, res)
-            success, result = pcall(function()
-               return matchedRoute.callback(req, res)
-            end)
-
-            if not success then
+            try
+               matchedRoute.callback(req, res)
+            except e
                -- Route callback failed, send 500 error
                logMessage(self, 'Route handler error: ' .. tostring(result))
                if not res._sent then
@@ -1568,13 +1568,15 @@ function serverIncoming(self, ClientSocket)
                      ['content-type'] = 'text/html'
                   }, errorBody)
                end
-            elseif not res._sent then
-               -- Route executed successfully but didn't send a response
-               logMessage(self, 'Warning: Route handler completed without sending response')
-               errorBody = createErrorPage(500, 'Internal Server Error', 'Route handler did not send a response.', 'Path: ' .. URIPath)
-               sendHttpResponse(self, ClientSocket, 500, "Internal Server Error", {
-                  ['content-type'] = 'text/html'
-               }, errorBody)
+            success
+               if not res._sent then
+                  -- Route executed successfully but didn't send a response
+                  logMessage(self, 'Warning: Route handler completed without sending response')
+                  errorBody = createErrorPage(500, 'Internal Server Error', 'Route handler did not send a response.', 'Path: ' .. URIPath)
+                  sendHttpResponse(self, ClientSocket, 500, "Internal Server Error", {
+                     ['content-type'] = 'text/html'
+                  }, errorBody)
+               end
             end
          end
 

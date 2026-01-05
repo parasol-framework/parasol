@@ -53,25 +53,28 @@ static int process_results(prvFluid *, APTR, const FunctionField *);
 
 [[nodiscard]] static constexpr int8_t datatype(std::string_view String) noexcept
 {
-   size_t i = 0;
-   while ((i < String.size()) and (String[i] <= 0x20)) i++; // Skip white-space
+   auto it = std::ranges::find_if(String, [](char c) { return c > 0x20; });
+   if (it IS String.end()) return 's';
 
-   if ((i+1 < String.size()) and (String[i] IS '0') and (String[i+1] IS 'x')) {
-      for (i+=2; i < String.size(); i++) {
-         if (not std::isxdigit(String[i])) return 's';
-      }
-      return 'h';
+   auto remaining = String.substr(it - String.begin());
+
+   if (remaining.starts_with("0x")) {
+      auto hex_digits = remaining.substr(2);
+      if (hex_digits.empty()) return 's';
+      bool all_hex = std::ranges::all_of(hex_digits, [](char c) { return std::isxdigit(c); });
+      return all_hex ? 'h' : 's';
    }
 
+   // Check for numeric content
    bool is_number = true;
    bool is_float  = false;
 
-   for (; (i < String.size()) and (is_number); i++) {
-      if ((!std::isdigit(String[i])) and (String[i] != '.') and (String[i] != '-')) is_number = false;
-      if (String[i] IS '.') is_float = true;
+   for (char c : remaining) {
+      if ((not std::isdigit(c)) and (c != '.') and (c != '-')) is_number = false;
+      if (c IS '.') is_float = true;
    }
 
-   if ((is_float) and (is_number)) return 'f';
+   if (is_float and is_number) return 'f';
    else if (is_number) return 'i';
    else return 's';
 }

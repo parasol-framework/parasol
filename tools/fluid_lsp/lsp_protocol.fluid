@@ -41,11 +41,12 @@ end
 -- Parse a JSON-RPC 2.0 message
 
 function parseMessage(JsonBody)
-   local success, msg = pcall(function()
-      return json.decode(JsonBody)
-   end)
-
-   success ?? return nil, 'JSON parse error: ' .. tostring(msg)
+   local msg
+   try
+      msg = json.decode(JsonBody)
+   except ex
+      return nil, 'JSON parse error: ' .. tostring(msg)
+   end
 
    if msg.jsonrpc != '2.0' then
       return nil, 'Invalid JSON-RPC version: ' .. tostring(msg.jsonrpc)
@@ -113,19 +114,17 @@ function dispatchMethod(Self:table, Message:table, State)
 
    if handler then
       logVerbose(Self, 'Dispatching method: ' .. method)
-      success, result = pcall(function()
-         return handler(Message, State)
-      end)
 
-      if success then
-         return result
-      else
-         logMessage(Self, 'Handler error for ' .. method .. ': ' .. tostring(result))
-         if Message.id then
-            return makeErrorResponse(Message.id, LSP_ERROR.INTERNAL_ERROR, tostring(result))
-         end
-         return nil
+      local result
+      try
+         return handler(Message, State)
       end
+
+      logMessage(Self, 'Handler error for ' .. method .. ': ' .. tostring(result))
+      if Message.id then
+         return makeErrorResponse(Message.id, LSP_ERROR.INTERNAL_ERROR, tostring(result))
+      end
+      return nil
    else
       logWarning(Self, 'Unknown method: ' .. method)
       -- Unknown method: return error for requests, ignore notifications

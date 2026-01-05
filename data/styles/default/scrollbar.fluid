@@ -8,10 +8,10 @@ ARROW_FILL = 'rgba(0,0,0,.8)'
 ARROW_FILL_ACTIVE = 'rgba(0,0,0,.95)'
 
 return {
-   arrange = function(State)
+   arrange = function(State:table)
       State.slider.sequence = 'M1,' .. State.slider.viewport.height-1 .. ' L1,1 M' .. State.slider.viewport.width-2 .. ',1'
    end,
-   background = function(State, Viewport)
+   background = function(State:table, Viewport)
       gradient = 'scrollbar' .. glCounter
       glCounter++
 
@@ -21,7 +21,7 @@ return {
          width = '100%', height = '100%', fill = 'url(#' .. gradient .. ')'
       })
    end,
-   slider = function(State, Viewport)
+   slider = function(State:table, Viewport)
       gradient = 'slider' .. glCounter
       glCounter = glCounter + 1
       State.slider = { viewport = Viewport }
@@ -87,7 +87,7 @@ return {
          decB.x2 = dec.viewWidth
       end
    end,
-   negButton = function(State, Viewport)
+   negButton = function(State:table, Viewport)
       gradient = 'neg' .. glCounter
       glCounter++
       State.negButton = { viewport = Viewport }
@@ -118,7 +118,7 @@ return {
          mVec.rotate(matrix, 270, Viewport.viewX + (Viewport.viewWidth*0.5), Viewport.viewY + (Viewport.viewHeight*0.5))
       end
    end,
-   posButton = function(State, Viewport)
+   posButton = function(State:table, Viewport)
       gradient = 'pos' .. glCounter
       glCounter++
       State.posButton = { viewport = Viewport }
@@ -151,11 +151,11 @@ return {
          mVec.rotate(matrix, 90, Viewport.viewX + (Viewport.viewWidth * 0.5), Viewport.viewY + (Viewport.viewHeight * 0.5))
       end
    end,
-   negButtonPress = function(State, Value)
+   negButtonPress = function(State:table, Value:num)
       State.negButton.arrow.fill = (Value is 1) ? ARROW_FILL_ACTIVE :> ARROW_FILL
       State.negButton.viewport.acDraw()
    end,
-   posButtonPress = function(State, Value)
+   posButtonPress = function(State:table, Value:num)
       State.posButton.arrow.fill = (Value is 1) ? ARROW_FILL_ACTIVE :> ARROW_FILL
       State.posButton.viewport.acDraw()
    end

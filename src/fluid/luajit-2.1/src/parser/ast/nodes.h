@@ -793,7 +793,7 @@ struct ExceptClause {
    ~ExceptClause();
 };
 
-// Try-except statement payload: try ... except ... end
+// Try-except statement payload: try ... except ... success ... end
 struct TryExceptPayload {
    TryExceptPayload() = default;
    TryExceptPayload(const TryExceptPayload&) = delete;
@@ -801,9 +801,10 @@ struct TryExceptPayload {
    TryExceptPayload(TryExceptPayload&&) noexcept = default;
    TryExceptPayload& operator=(TryExceptPayload&&) noexcept = default;
 
-   std::unique_ptr<BlockStmt> try_block;     // The try body
-   std::vector<ExceptClause> except_clauses; // One or more except handlers
-   bool enable_trace = false;                // If true, capture stack trace on exception
+   std::unique_ptr<BlockStmt> try_block;       // The try body
+   std::vector<ExceptClause> except_clauses;   // Zero or more except handlers
+   std::unique_ptr<BlockStmt> success_block;   // Optional success block (runs after defers, only if no exception)
+   bool enable_trace = false;                  // If true, capture stack trace on exception
 
    ~TryExceptPayload();
 };
