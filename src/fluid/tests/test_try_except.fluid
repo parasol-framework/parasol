@@ -394,9 +394,9 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Parser error tests using try...except to catch exec() errors
 
-@Test(priority=23) function ParserErrors()
+@Test(priority=23,hotpath=false) function ParserErrors()
    -- Test: catch-all before filtered (should be a parse error)
-   parse_error = false
+
    try
       exec([[
          try
@@ -407,13 +407,12 @@ end
             print("filtered")
          end
       ]])
-   except e
-      parse_error = true
+   success
+      error("catch-all before filtered should fail to parse")
    end
-   assert(parse_error, "catch-all before filtered should fail to parse")
 
    -- Test: duplicate catch-all (should be a parse error)
-   parse_error = false
+
    try
       exec([[
          try
@@ -424,14 +423,12 @@ end
             print("second")
          end
       ]])
-   except e
-      parse_error = true
+   success
+      error("duplicate catch-all should fail to parse")
    end
-   assert(parse_error, "duplicate catch-all should fail to parse")
 
    -- Test: when without error code
 
-   parse_error = false
    try
       exec([[
          try
@@ -440,10 +437,9 @@ end
             print("test")
          end
       ]])
-   except e
-      parse_error = true
+   success
+      error("when without error code should fail to parse")
    end
-   assert(parse_error, "when without error code should fail to parse")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -974,7 +970,7 @@ end
          order:push('before-error')
          error('test error')
          order:push('after-error')
-      except e
+      except
          order:push('except')
       end
    end
@@ -1024,7 +1020,7 @@ end
    function subject()
       try
          error('test error')
-      except e
+      except
          defer
             order:push('except-defer')
          end
@@ -1165,7 +1161,7 @@ end
          local obj <close> = setmetatable({}, mt)
          order:push('body')
          error('test error')
-      except e
+      except
          order:push('except')
       end
    end

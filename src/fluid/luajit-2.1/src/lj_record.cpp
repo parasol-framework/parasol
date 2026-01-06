@@ -2634,7 +2634,6 @@ void lj_record_ins(jit_State *J)
    if (not rec_handle_postproc(J)) return;
 
    // Need snapshot before recording next bytecode (e.g. after a store).
-
    if (J->needsnap) {
       J->needsnap = 0;
       if (J->pt) lj_snap_purge(J);
@@ -2650,8 +2649,9 @@ void lj_record_ins(jit_State *J)
 
    // Record only closed loops for root traces.
    pc = J->pc;
-   if (FRC::at_root_depth(J) and (MSize)((char*)pc - (char*)J->bc_min) >= J->bc_extent)
+   if (FRC::at_root_depth(J) and (MSize)((char*)pc - (char*)J->bc_min) >= J->bc_extent) {
       lj_trace_err(J, LJ_TRERR_LLEAVE);
+   }
 
 #ifdef LUA_USE_ASSERT
    rec_check_slots(J);
@@ -2982,6 +2982,9 @@ void lj_record_ins(jit_State *J)
    }
 
    case BC_TRYLEAVE: {
+      // Note: The main protection against jit_base corruption is in rec_ret(),
+      // which aborts trace recording if returning to BC_TRYLEAVE.
+
       // Emit call to lj_try_leave(L)
       lj_ir_call(J, IRCALL_lj_try_leave); // L is implicit (CCI_L flag), no explicit args needed
       J->needsnap = 1; // Snapshot after try_leave to mark the end of the try block scope
@@ -3181,6 +3184,7 @@ void lj_record_setup(jit_State *J)
       // The exceptions are BC_ITERN and BC_ITERA, which set LJ_TRACE_RECORD_1ST.
 
       lj_snap_add(J);
+
       if (bc_op(J->cur.startins) IS BC_FORL) rec_for_loop(J, J->pc - 1, &J->scev, 1);
       else if (bc_op(J->cur.startins) IS BC_ITERC) J->startpc = nullptr;
 

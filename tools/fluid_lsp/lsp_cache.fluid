@@ -1,4 +1,3 @@
-
 ----------------------------------------------------------------------------------------------------------------------
 -- Documentation Cache Builder
 --
@@ -24,7 +23,7 @@ function encodeMethod(Prototype, ByteStart, ByteEnd, Comment)
 end
 
 -- Decode a field from compact string format
-function decodeField(Str:any):table
+global function decodeField(Str:any):table
    if type(Str) != 'string' then return Str end  -- Already decoded or nil
 
    result = {}
@@ -50,7 +49,7 @@ end
 
 -- Decode a method/action/function from compact string format
 
-function decodeMethod(Str:any):table
+global function decodeMethod(Str:any):table
    if type(Str) is 'table' then return Str end  -- Already decoded or nil
 
    result = {}

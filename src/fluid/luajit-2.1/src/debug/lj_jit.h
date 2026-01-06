@@ -492,10 +492,6 @@ struct jit_State {
   MSize     sizesnapmap;  //  Size of temp. snapshot map buffer.
 
   PostProc postproc;   //  Required post-processing after execution.
-#if LJ_SOFTFP32 or (LJ_32 and LJ_HASFFI)
-  uint8_t needsplit;   //  Need SPLIT pass.
-#endif
-  uint8_t retryrec;   //  Retry recording.
 
   GCRef *trace;      // Array of traces.
   TraceNo freetrace; // Start of scan for next free trace.
@@ -526,17 +522,19 @@ struct jit_State {
   ExitNo exitno;        //  Exit number in parent of current side trace.
   int exitcode;         //  Exit code from unwound trace.
 
-  BCIns *patchpc;   //  PC for pending re-patch.
-  BCIns patchins;   //  Instruction for pending re-patch.
+  BCIns *patchpc;     //  PC for pending re-patch.
+  BCIns patchins;     //  Instruction for pending re-patch.
 
-  int mcprot;        //  Protection of current mcode area.
-  MCode *mcarea;     //  Base of current mcode area.
-  MCode *mctop;      //  Top of current mcode area.
-  MCode *mcbot;      //  Bottom of current mcode area.
-  size_t szmcarea;   //  Size of current mcode area.
-  size_t szallmcarea;   //  Total size of all allocated mcode areas.
+  int mcprot;         //  Protection of current mcode area.
+  MCode *mcarea;      //  Base of current mcode area.
+  MCode *mctop;       //  Top of current mcode area.
+  MCode *mcbot;       //  Bottom of current mcode area.
+  size_t szmcarea;    //  Size of current mcode area.
+  size_t szallmcarea; //  Total size of all allocated mcode areas.
 
-  TValue errinfo;   //  Additional info element for trace errors.
+  TValue errinfo;     //  Additional info element for trace errors.
+  uint8_t retryrec;   //  Retry recording.
+  bool abort_in_progress; //  True while aborting trace recording (skip try handlers)
 };
 
 #ifdef LUA_USE_ASSERT

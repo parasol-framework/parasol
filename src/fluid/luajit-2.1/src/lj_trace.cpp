@@ -32,21 +32,40 @@
 #include "../../defs.h"
 
 //********************************************************************************************************************
-// Error handling
+// Synchronous abort of the JIT tracing process, with error message.
 
-// Synchronous abort with error message.
 void lj_trace_err(jit_State *J, TraceError e)
 {
+   pf::Log(__FUNCTION__).msg("Aborting JIT trace.");
+
+   // Mark that we're aborting trace recording. This flag survives through Windows SEH unwinding
+   // and tells err_unwind() to skip try-except handlers (this is a JIT internal abort, not a user error).
+   J->abort_in_progress = true;
+
+   // During JIT trace recording, L->top may not be synchronized with the actual stack state
+   // (the JIT uses its own slot tracking via J->maxslot and snapshots). Ensure L->top is valid
+   // before pushing the error value, otherwise we could corrupt the frame link slot.
+   // This was primarily added to resolve problems with the try-except implementation.
+
+   if (J->L->top < J->L->base) J->L->top = J->L->base;
+
    setnilV(&J->errinfo);  //  No error info.
    setintV(J->L->top++, (int32_t)e);
    lj_err_throw(J->L, LUA_ERRRUN);
 }
 
 //********************************************************************************************************************
-// Synchronous abort with error message and error info.
+// Synchronous abort of the JIT tracing process, with error message and error info.
 
 void lj_trace_err_info(jit_State *J, TraceError e)
 {
+   pf::Log(__FUNCTION__).msg("Aborting JIT trace.");
+
+   J->abort_in_progress = true; // Mark that we're aborting trace recording.
+
+   // Ensure L->top is valid before pushing error
+   if (J->L->top < J->L->base) J->L->top = J->L->base;
+
    setintV(J->L->top++, (int32_t)e);
    lj_err_throw(J->L, LUA_ERRRUN);
 }
@@ -318,6 +337,8 @@ void lj_trace_initstate(global_State* g)
 {
    jit_State *J = G2J(g);
    TValue* tv;
+
+   J->abort_in_progress = false;
 
    // Initialize aligned SIMD constants.
    tv = LJ_KSIMD(J, LJ_KSIMD_ABS);
@@ -723,6 +744,8 @@ retry:
             return nullptr;
 
          default:  //  Trace aborted asynchronously.
+            // Ensure L->top is valid before writing (same fix as lj_trace_err)
+            if (L->top < L->base) L->top = L->base;
             setintV(L->top++, (int32_t)LJ_TRERR_RECERR);
             [[fallthrough]];
 
@@ -745,6 +768,7 @@ retry:
 void lj_trace_ins(jit_State *J, const BCIns *pc)
 {
    // Note: J->L must already be set. pc is the true bytecode PC here.
+   pf::Log log(__FUNCTION__);
 
    J->pc = pc;
    J->fn = curr_func(J->L);
@@ -758,13 +782,14 @@ void lj_trace_ins(jit_State *J, const BCIns *pc)
    }
 
    if (not (J->L->base IS base_before) or not (J->L->top IS top_before)) {
+      log.msg("Stack changed.  Base: %p→%p, Top: %p→%p, State: %d", base_before, J->L->base, top_before, J->L->top, (int)J->state);
 #ifdef LUA_USE_ASSERT
-      lj_assertJ(J->state IS TraceState::ERR or J->state IS TraceState::IDLE,
-         "trace recorder mutated stack");
+      lj_assertJ(J->state IS TraceState::ERR or J->state IS TraceState::IDLE, "trace recorder mutated stack");
 #endif
       if (J->state IS TraceState::ERR or J->state IS TraceState::IDLE) {
          // try-except may have changed the stack, this stabilises it.  Ideally this
          // doesn't happen in practice, hence the assert above.
+         log.msg("Restoring stack: base=%p, top=%p", (void*)base_before, (void*)top_before);
          J->L->base = base_before;
          J->L->top = top_before;
       }
@@ -787,7 +812,7 @@ void LJ_FASTCALL lj_trace_hot(jit_State *J, const BCIns *pc)
    hotcount_set(J2GG(J), pc, J->param[JIT_P_hotloop] * HOTCOUNT_LOOP);
 
    if (J->L->try_stack.depth > 0) { // Help aid debugging of the JIT compiler - triggering in itself is not an issue.
-      log.detail("JIT compilation detected within try block");
+      log.detail("JIT trace recording starting inside try block (depth=%d)", J->L->try_stack.depth);
    }
 
    // Only start a new trace if not recording or inside __gc call or vmevent.

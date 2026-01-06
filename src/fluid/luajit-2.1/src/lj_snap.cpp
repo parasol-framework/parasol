@@ -32,6 +32,7 @@
 #define lj_snap_c
 #define LUA_CORE
 
+#include <parasol/main.h>
 #include "lj_obj.h"
 
 #if LJ_HASJIT
@@ -176,11 +177,24 @@ static void snapshot_stack(jit_State* J, SnapShot* snap, MSize nsnapmap)
    J->cur.nsnapmap = (uint32_t)(nsnapmap + nent);
 }
 
+//********************************************************************************************************************
 // Add or merge a snapshot.
+
 void lj_snap_add(jit_State* J)
 {
    MSize nsnap = J->cur.nsnap;
    MSize nsnapmap = J->cur.nsnapmap;
+
+   // If creating a snapshot at BC_TRYLEAVE after frame changes (retdepth > 0), abort trace recording. Such
+   // snapshots would have stale jit_base information because jit_base is only updated at trace entry,
+   // not during inlined returns.
+   //
+   // TODO: Implement a fix for this issue.  Multiple embedded for loops inside try-loops demonstrate the problem.
+
+   if (J->pc and (bc_op(*J->pc) IS BC_TRYLEAVE) and (J->retdepth > 0)) {
+      lj_trace_err(J, LJ_TRERR_NYIRETL);  // Abort: snapshot at try-leave after return
+   }
+
    // Merge if no ins. inbetween or if requested and no guard inbetween.
    if ((nsnap > 0 and J->cur.snap[nsnap - 1].ref == J->cur.nins) ||
       (J->mergesnap and !irt_isguard(J->guardemit))) {
