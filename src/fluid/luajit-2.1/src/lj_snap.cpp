@@ -181,6 +181,7 @@ void lj_snap_add(jit_State* J)
 {
    MSize nsnap = J->cur.nsnap;
    MSize nsnapmap = J->cur.nsnapmap;
+
    // Merge if no ins. inbetween or if requested and no guard inbetween.
    if ((nsnap > 0 and J->cur.snap[nsnap - 1].ref == J->cur.nins) ||
       (J->mergesnap and !irt_isguard(J->guardemit))) {

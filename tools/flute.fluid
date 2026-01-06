@@ -281,8 +281,17 @@ function runTests()
             end
          end
 
-         local status, error_msg = pcall(test.func)
+         local status = true
+         local error_msg
+         try
+            test.func()
+         except e
+            status = false
+            error_msg = e.message
+         end
+
          hotpath_status = true
+
          if status and (test.hotpath or glHotPath) then
             -- First test succeeded.  The hot-path test involves calling the test repeatedly to exercise the JIT compiler.
             local count = 0

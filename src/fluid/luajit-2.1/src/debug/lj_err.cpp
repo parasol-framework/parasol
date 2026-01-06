@@ -523,6 +523,7 @@ extern "C" void setup_try_handler(lua_State *L)
    }
 
    lj_func_closeuv(L, saved_top); // Close upvalues and restore stack state
+
    L->base = saved_base;
    L->top = saved_top;
 
@@ -544,15 +545,26 @@ extern "C" void setup_try_handler(lua_State *L)
 //********************************************************************************************************************
 // Unwind until stop frame. Optionally cleanup frames.
 
-extern void * err_unwind(lua_State *L, void *stopcf, int errcode)
+void * err_unwind(lua_State *L, void *stopcf, int errcode)
 {
-   // Check for try-except handlers first.
+   // Check for try-except handlers first (unless we're aborting JIT trace recording).
    // On Windows, errcode is 0 during search phase and non-zero during unwind phase.
    // We need to check for try handlers even during search phase (errcode=0).
    // Use LUA_ERRRUN as default for search phase.
 
-   int try_errcode = errcode ? errcode : LUA_ERRRUN;
-   if (check_try_handler(L, try_errcode)) return ERR_TRYHANDLER;
+
+   // Check if JIT trace recording abort is in progress. If so, this error should not be caught by
+   // try-except handlers - the trace recording protected call (cpcall) should handle it instead.
+   // The flag is set in lj_trace_err() before lj_err_throw(), so it survives Windows SEH unwinding.
+
+   jit_State *J = G2J(G(L));
+   if (J->abort_in_progress) {
+      J->abort_in_progress = false;  // Clear the flag
+   }
+   else {
+      int try_errcode = errcode ? errcode : LUA_ERRRUN;
+      if (check_try_handler(L, try_errcode)) return ERR_TRYHANDLER;
+   }
 
    TValue *frame = L->base - 1;
    void *cf = L->cframe;
@@ -1029,6 +1041,7 @@ static void err_raise_ext(global_State* g, int errcode)
 LJ_NOINLINE void LJ_FASTCALL lj_err_throw(lua_State *L, int errcode)
 {
    global_State* g = G(L);
+
    lj_trace_abort(g);
    L->status = LUA_OK;
 

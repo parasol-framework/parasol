@@ -470,6 +470,7 @@ struct jit_State {
   MSize bc_extent;      //  Extent of the range.
 
   TraceState state;     //  Trace compiler state.
+  bool abort_in_progress; //  True while aborting trace recording (skip try handlers)
 
   int32_t instunroll;   //  Unroll counter for instable loops.
   int32_t loopunroll;   //  Unroll counter for loop ops in side traces.

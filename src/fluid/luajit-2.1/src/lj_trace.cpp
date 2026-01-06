@@ -30,23 +30,38 @@
 #include "lj_target.h"
 #include "lj_prng.h"
 #include "../../defs.h"
-
+ 
 //********************************************************************************************************************
-// Error handling
+// Synchronous abort of the JIT tracing process, with error message.
 
-// Synchronous abort with error message.
 void lj_trace_err(jit_State *J, TraceError e)
 {
+   // Mark that we're aborting trace recording. This flag survives through Windows SEH unwinding
+   // and tells err_unwind() to skip try-except handlers (this is a JIT internal abort, not a user error).
+   J->abort_in_progress = true;
+
+   // During JIT trace recording, L->top may not be synchronized with the actual stack state
+   // (the JIT uses its own slot tracking via J->maxslot and snapshots). Ensure L->top is valid
+   // before pushing the error value, otherwise we could corrupt the frame link slot.
+   // This was primarily added to resolve problems with the try-except implementation.
+
+   if (J->L->top < J->L->base) J->L->top = J->L->base;
+
    setnilV(&J->errinfo);  //  No error info.
    setintV(J->L->top++, (int32_t)e);
    lj_err_throw(J->L, LUA_ERRRUN);
 }
 
 //********************************************************************************************************************
-// Synchronous abort with error message and error info.
+// Synchronous abort of the JIT tracing process, with error message and error info.
 
 void lj_trace_err_info(jit_State *J, TraceError e)
 {
+   J->abort_in_progress = true; // Mark that we're aborting trace recording.
+
+   // Ensure L->top is valid before pushing error
+   if (J->L->top < J->L->base) J->L->top = J->L->base;
+
    setintV(J->L->top++, (int32_t)e);
    lj_err_throw(J->L, LUA_ERRRUN);
 }
@@ -318,6 +333,8 @@ void lj_trace_initstate(global_State* g)
 {
    jit_State *J = G2J(g);
    TValue* tv;
+
+   J->abort_in_progress = false;
 
    // Initialize aligned SIMD constants.
    tv = LJ_KSIMD(J, LJ_KSIMD_ABS);
@@ -787,7 +804,7 @@ void LJ_FASTCALL lj_trace_hot(jit_State *J, const BCIns *pc)
    hotcount_set(J2GG(J), pc, J->param[JIT_P_hotloop] * HOTCOUNT_LOOP);
 
    if (J->L->try_stack.depth > 0) { // Help aid debugging of the JIT compiler - triggering in itself is not an issue.
-      log.detail("JIT compilation detected within try block");
+      log.detail("JIT trace recording starting inside try block (depth=%d)", J->L->try_stack.depth);
    }
 
    // Only start a new trace if not recording or inside __gc call or vmevent.
