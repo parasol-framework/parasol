@@ -1,7 +1,15 @@
 -- Flute tests that need to exercise the JIT in specific ways.
 
-jit.on()
-jit.opt.start()  -- Reset to default JIT options before starting tests.
+@BeforeAll
+function SetupJitTests()
+   jit.on()
+   jit.opt.start()  -- Reset to default JIT options before starting tests.
+end
+
+@AfterAll
+function TeardownJitTests()
+   jit.opt.start()
+end
 
 cached_trace_no = nil
 cached_trace_info = nil

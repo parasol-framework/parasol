@@ -30,12 +30,14 @@
 #include "lj_target.h"
 #include "lj_prng.h"
 #include "../../defs.h"
- 
+
 //********************************************************************************************************************
 // Synchronous abort of the JIT tracing process, with error message.
 
 void lj_trace_err(jit_State *J, TraceError e)
 {
+   pf::Log(__FUNCTION__).msg("Aborting JIT trace.");
+
    // Mark that we're aborting trace recording. This flag survives through Windows SEH unwinding
    // and tells err_unwind() to skip try-except handlers (this is a JIT internal abort, not a user error).
    J->abort_in_progress = true;
@@ -57,6 +59,8 @@ void lj_trace_err(jit_State *J, TraceError e)
 
 void lj_trace_err_info(jit_State *J, TraceError e)
 {
+   pf::Log(__FUNCTION__).msg("Aborting JIT trace.");
+
    J->abort_in_progress = true; // Mark that we're aborting trace recording.
 
    // Ensure L->top is valid before pushing error
@@ -740,6 +744,8 @@ retry:
             return nullptr;
 
          default:  //  Trace aborted asynchronously.
+            // Ensure L->top is valid before writing (same fix as lj_trace_err)
+            if (L->top < L->base) L->top = L->base;
             setintV(L->top++, (int32_t)LJ_TRERR_RECERR);
             [[fallthrough]];
 
@@ -762,6 +768,7 @@ retry:
 void lj_trace_ins(jit_State *J, const BCIns *pc)
 {
    // Note: J->L must already be set. pc is the true bytecode PC here.
+   pf::Log log(__FUNCTION__);
 
    J->pc = pc;
    J->fn = curr_func(J->L);
@@ -775,13 +782,14 @@ void lj_trace_ins(jit_State *J, const BCIns *pc)
    }
 
    if (not (J->L->base IS base_before) or not (J->L->top IS top_before)) {
+      log.msg("Stack changed.  Base: %p→%p, Top: %p→%p, State: %d", base_before, J->L->base, top_before, J->L->top, (int)J->state);
 #ifdef LUA_USE_ASSERT
-      lj_assertJ(J->state IS TraceState::ERR or J->state IS TraceState::IDLE,
-         "trace recorder mutated stack");
+      lj_assertJ(J->state IS TraceState::ERR or J->state IS TraceState::IDLE, "trace recorder mutated stack");
 #endif
       if (J->state IS TraceState::ERR or J->state IS TraceState::IDLE) {
          // try-except may have changed the stack, this stabilises it.  Ideally this
          // doesn't happen in practice, hence the assert above.
+         log.msg("Restoring stack: base=%p, top=%p", (void*)base_before, (void*)top_before);
          J->L->base = base_before;
          J->L->top = top_before;
       }

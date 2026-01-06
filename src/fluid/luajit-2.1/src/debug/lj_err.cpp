@@ -434,6 +434,7 @@ static bool check_try_handler(lua_State *L, int errcode)
 //********************************************************************************************************************
 // Called to actually set up the try handler state before resuming execution.
 // This should be called right before jumping to the handler, NOT during search phase.
+// On Windows this is called from lj_err_unwind_win()
 
 extern "C" void setup_try_handler(lua_State *L)
 {
@@ -489,6 +490,9 @@ extern "C" void setup_try_handler(lua_State *L)
    TValue *saved_base = restorestack(L, try_frame->frame_base);
    TValue *saved_top = restorestack(L, try_frame->saved_top);
 
+   pf::Log("setup_try_handler").msg("Restoring: L->base=%p→%p, L->top=%p→%p, offsets(base=%td, top=%td)",
+      L->base, saved_base, L->top, saved_top, try_frame->frame_base, try_frame->saved_top);
+
    // Validate restored pointers are within stack bounds
    lj_assertL(saved_base >= tvref(L->stack), "setup_try_handler: saved_base below stack start");
    lj_assertL(saved_base <= tvref(L->maxstack), "setup_try_handler: saved_base above maxstack");
@@ -507,7 +511,7 @@ extern "C" void setup_try_handler(lua_State *L)
    TValue *final_err = unwind_close_try_block(L, try_frame_ptr, errobj, min_slot_index);
 
    // If a __close handler threw, the error was updated. Re-extract the error message.
-   if (final_err and final_err != errobj and tvisstr(final_err)) {
+   if (final_err and (final_err != errobj) and tvisstr(final_err)) {
       error_msg = strVdata(final_err);
       // Re-extract line number from new error message
       line = 0;
@@ -543,25 +547,23 @@ extern "C" void setup_try_handler(lua_State *L)
 }
 
 //********************************************************************************************************************
-// Unwind until stop frame. Optionally cleanup frames.
+// Unwind until stop frame. Optionally cleanup frames.  NB: Can be called from lj_err_win32.cpp
+// On Windows, errcode is 0 during search phase and non-zero during unwind phase.
 
-void * err_unwind(lua_State *L, void *stopcf, int errcode)
+void * err_unwind(lua_State *L, void *StopCatchFrame, int errcode)
 {
-   // Check for try-except handlers first (unless we're aborting JIT trace recording).
-   // On Windows, errcode is 0 during search phase and non-zero during unwind phase.
-   // We need to check for try handlers even during search phase (errcode=0).
-   // Use LUA_ERRRUN as default for search phase.
+   pf::Log log(__FUNCTION__);
 
-
-   // Check if JIT trace recording abort is in progress. If so, this error should not be caught by
-   // try-except handlers - the trace recording protected call (cpcall) should handle it instead.
-   // The flag is set in lj_trace_err() before lj_err_throw(), so it survives Windows SEH unwinding.
+   // Check for try-except handlers first, unless we're aborting JIT trace recording.
+   // If JIT tracing is being aborted then this is not an error that originates from the code - the trace recording
+   // protected call (cpcall) should handle it instead.  The flag is set in lj_trace_err() before lj_err_throw(), so
+   // it survives Windows SEH unwinding.
 
    jit_State *J = G2J(G(L));
-   if (J->abort_in_progress) {
-      J->abort_in_progress = false;  // Clear the flag
-   }
-   else {
+   if (not J->abort_in_progress) {
+      // We need to check for try handlers even during search phase (errcode=0).
+      // Use LUA_ERRRUN as default for search phase.
+
       int try_errcode = errcode ? errcode : LUA_ERRRUN;
       if (check_try_handler(L, try_errcode)) return ERR_TRYHANDLER;
    }
@@ -579,6 +581,7 @@ void * err_unwind(lua_State *L, void *stopcf, int errcode)
                L->cframe = cframe_prev(cf);
                unwindstack(L, top);
             }
+            J->abort_in_progress = false;
             return cf;
          }
       }
@@ -600,11 +603,12 @@ void * err_unwind(lua_State *L, void *stopcf, int errcode)
                L->cframe = cframe_prev(cf);
                unwindstack(L, target);
             }
-            else if (cf != stopcf) {
+            else if (cf != StopCatchFrame) {
                cf = cframe_prev(cf);
                frame = frame_prevd(frame);
                break;
             }
+            J->abort_in_progress = false;
             return nullptr;  //  Continue unwinding.
    #else
             cf = cframe_prev(cf);
@@ -618,17 +622,19 @@ void * err_unwind(lua_State *L, void *stopcf, int errcode)
                   L->cframe = nullptr;
                   L->status = (uint8_t)errcode;
                }
+               J->abort_in_progress = false;
                return cf;
             }
+
             if (errcode) {
                L->base = frame_prevd(frame) + 1;
                L->cframe = cframe_prev(cf);
                unwindstack(L, frame - LJ_FR2);
             }
+            J->abort_in_progress = false;
             return cf;
          case FRAME_CONT:  //  Continuation frame.
-            if (frame_iscont_fficb(frame))
-               goto unwind_c;
+            if (frame_iscont_fficb(frame)) goto unwind_c;
             // fallthrough
          case FRAME_VARG:  //  Vararg frame.
             frame = frame_prevd(frame);
@@ -649,6 +655,7 @@ void * err_unwind(lua_State *L, void *stopcf, int errcode)
                L->cframe = cf;
                unwindstack(L, L->base);
             }
+            J->abort_in_progress = false;
             return (void*)((intptr_t)cf | CFRAME_UNWIND_FF);
       }
    }
@@ -664,6 +671,8 @@ void * err_unwind(lua_State *L, void *stopcf, int errcode)
       if (G(L)->panic) G(L)->panic(L);
       exit(EXIT_FAILURE);
    }
+
+   J->abort_in_progress = false;
    return L;  //  Anything non-nullptr will do.
 }
 
@@ -722,34 +731,28 @@ LJ_FUNCA int lj_err_unwind_dwarf(int version, int actions, uint64_t uexclass, _U
 {
    void* cf;
    lua_State *L;
-   if (version != 1)
-      return _URC_FATAL_PHASE1_ERROR;
+   if (version != 1) return _URC_FATAL_PHASE1_ERROR;
    cf = (void*)_Unwind_GetCFA(ctx);
    L = cframe_L(cf);
+
    if ((actions & _UA_SEARCH_PHASE)) {
 #if LJ_UNWIND_EXT
       if (err_unwind(L, cf, 0) == nullptr) return _URC_CONTINUE_UNWIND;
 #endif
-      if (!LJ_UEXCLASS_CHECK(uexclass)) {
-         setstrV(L, L->top++, lj_err_str(L, ErrMsg::ERRCPP));
-      }
+      if (!LJ_UEXCLASS_CHECK(uexclass)) setstrV(L, L->top++, lj_err_str(L, ErrMsg::ERRCPP));
       return _URC_HANDLER_FOUND;
    }
+
    if ((actions & _UA_CLEANUP_PHASE)) {
       int errcode;
-      if (LJ_UEXCLASS_CHECK(uexclass)) {
-         errcode = LJ_UEXCLASS_ERRCODE(uexclass);
-      }
+      if (LJ_UEXCLASS_CHECK(uexclass)) errcode = LJ_UEXCLASS_ERRCODE(uexclass);
       else {
-         if ((actions & _UA_HANDLER_FRAME))
-            _Unwind_DeleteException(uex);
+         if ((actions & _UA_HANDLER_FRAME)) _Unwind_DeleteException(uex);
          errcode = LUA_ERRRUN;
       }
 #if LJ_UNWIND_EXT
       cf = err_unwind(L, cf, errcode);
-      if ((actions & _UA_FORCE_UNWIND)) {
-         return _URC_CONTINUE_UNWIND;
-      }
+      if ((actions & _UA_FORCE_UNWIND)) return _URC_CONTINUE_UNWIND;
       else if (cf IS ERR_TRYHANDLER) {
          // Try-except handler found. setup_try_handler() prepares the Lua state:
          // - Restores L->base and L->top to try block entry state
@@ -778,13 +781,10 @@ LJ_FUNCA int lj_err_unwind_dwarf(int version, int actions, uint64_t uexclass, _U
       }
 #endif
 #else
-      /* This is not the proper way to escape from the unwinder. We get away with
-      ** it on non-x64 because the interpreter restores all callee-saved regs.
-      */
+      // This is not the proper way to escape from the unwinder. We get away with
+      // it on non-x64 because the interpreter restores all callee-saved regs.
+
       lj_err_throw(L, errcode);
-#if LJ_TARGET_X64
-#error "Broken build system -- only use the provided Makefiles!"
-#endif
 #endif
    }
    return _URC_CONTINUE_UNWIND;
@@ -1042,6 +1042,9 @@ LJ_NOINLINE void LJ_FASTCALL lj_err_throw(lua_State *L, int errcode)
 {
    global_State* g = G(L);
 
+   auto J = G2J(g);
+   pf::Log(__FUNCTION__).detail("Throwing error: code=%d, Abort: %d, Top: %p, Base: %p, Valid Stack: %d", errcode, J->abort_in_progress, L->top, L->base, L->top >= L->base);
+
    lj_trace_abort(g);
    L->status = LUA_OK;
 
@@ -1073,10 +1076,8 @@ LJ_NOINLINE void LJ_FASTCALL lj_err_throw(lua_State *L, int errcode)
          // Resume execution at the handler PC using the VM entry point.
          lj_vm_resume_try(cframe_raw(L->cframe));
       }
-      else if (cframe_unwind_ff(cf))
-         lj_vm_unwind_ff(cframe_raw(cf));
-      else
-         lj_vm_unwind_c(cframe_raw(cf), errcode);
+      else if (cframe_unwind_ff(cf)) lj_vm_unwind_ff(cframe_raw(cf));
+      else lj_vm_unwind_c(cframe_raw(cf), errcode);
    }
 #endif
    exit(EXIT_FAILURE);

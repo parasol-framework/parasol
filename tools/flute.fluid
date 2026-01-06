@@ -99,7 +99,7 @@ function sortTests(Tests:table)
    if #Tests <= 1 then return end
 
    table.sort(Tests, function(a:table, b:table):bool
-      return (a.priority ?? 0) < (b.priority ?? 0)
+      return (a.priority ?? 255) < (b.priority ?? 255)
    end)
 end
 
@@ -157,7 +157,7 @@ function runTests()
                      'timeout'  -> test_timeout  = v
                      'priority' -> test_priority = v
                      'labels'   -> test_labels   = v
-                     'hotpath'  -> test_hotpath  = v
+                     'hotpath'  -> test_hotpath  = v -- Number or boolean permitted
                   end
                end
             elseif v.name is 'Disabled' then
@@ -275,32 +275,33 @@ function runTests()
          if #before_each > 0 then
             for entry in values(before_each) do
                if entry.args.hotpath then
-                  test.hotpath ?= true
+                  test.hotpath ?= entry.args.hotpath
                end
                entry.func()
             end
          end
 
-         local status = true
-         local error_msg
-         try
-            test.func()
-         except e
-            status = false
-            error_msg = e.message
+         local stop = 0 -- One attempt by default
+         if test.hotpath or glHotPath then
+            if type(test.hotpath) is 'number' then
+               stop = tonumber(test.hotpath)-1
+            else
+               stop = 5
+            end
          end
 
-         hotpath_status = true
+         local error_msg
+         local succeeded = true
+         success_count = 0
 
-         if status and (test.hotpath or glHotPath) then
-            -- First test succeeded.  The hot-path test involves calling the test repeatedly to exercise the JIT compiler.
-            local count = 0
-            hotpath_status, error_msg = pcall(function()
-               for {0..5} do
-                  test.func()
-                  count++
-               end
-            end)
+         for i=0,stop do
+            try
+               test.func()
+               success_count++
+            except e
+               succeeded = false
+               error_msg = e.message
+            end
          end
 
          totalTime = (mSys.PreciseTime() - startTime) / 1000000
@@ -313,17 +314,16 @@ function runTests()
 
          collectgarbage()
 
-         if not status then
+         if not succeeded then
             not error_msg ?? print(error_msg)
-            print(string.format('FAIL: %.6f sec', totalTime))
-         else
-            if not hotpath_status then
-               not error_msg ?? print(error_msg)
-               print(string.format('FAIL (HOT-PATH): %.6f sec', totalTime))
+            if success_count is 0 then
+               print(string.format('FAIL: %.6f sec', totalTime))
             else
-               print(string.format('PASS: %.6f sec', totalTime))
-               glTestsPassed++
+               print(string.format('FAIL (HOT-PATH: %d): %.6f sec', success_count, totalTime))
             end
+         else
+            print(string.format('PASS: %.6f sec', totalTime))
+            glTestsPassed++
          end
       else
          print('SKIPPED')
@@ -341,12 +341,12 @@ function runTests()
 
    if glTestsPassed < glTestTotal then
       -- Setting the errorString will ensure that an error code is returned to the shell.
-      glSelf.errorString = 'Ran ' .. glTestTotal .. ' tests, passed ' .. glTestsPassed
+      glSelf.errorString = f'Ran {glTestTotal} tests, passed {glTestsPassed}'
    else
       glSelf.errorString = nil
    end
 
-   print('--\nRan ' .. glTestTotal .. ' tests, passed ' .. glTestsPassed)
+   print(f'--\nRan {glTestTotal} tests, passed {glTestsPassed}')
 end
 
 ----------------------------------------------------------------------------------------------------------------------

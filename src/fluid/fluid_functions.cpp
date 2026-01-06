@@ -116,6 +116,8 @@ int fcmd_catch_handler(lua_State *Lua)
 
 int fcmd_catch(lua_State *Lua)
 {
+   pf::Log("catch").warning("catch() is deprecated; use try-except blocks instead.");
+
    auto prv = (prvFluid *)Lua->script->ChildPrivate;
 
    if (lua_gettop(Lua) >= 2) {
@@ -912,13 +914,17 @@ extern "C" void lj_try_enter(lua_State *L, GCfunc *Func, TValue *Base, uint16_t 
 
    if (L->try_stack.depth >= LJ_MAX_TRY_DEPTH) lj_err_msg(L, ErrMsg::XNEST);  // "try blocks nested too deeply"
 
+   pf::Log log(__FUNCTION__);
+   log.branch("Entering try block %u: L->base=%p, Base(VM)=%p, L->top=%p, depth=%u", TryBlockIndex, L->base, Base, L->top, L->try_stack.depth);
+   log.resetBranch(); // NB: Matched with debranch in lj_try_leave()
+
    // Sync L->base with the passed Base pointer.  This is critical for JIT mode where L->base may be stale (the JIT keeps the
    // base in a CPU register). If an error occurs after this call, the error handling code uses L->base to walk frames - it
    // must be valid.  Note: Do NOT modify L->top here - it was synced by the VM before this call, and modifying it would
    // truncate the live stack.
 
    if (L->base != Base) {
-      pf::Log(__FUNCTION__).traceWarning("L->base != Base; syncing L->base for try-enter");
+      log.detail("L->base != Base; syncing L->base for try-enter");
       L->base = Base;
    }
 
@@ -954,6 +960,10 @@ extern "C" void lj_try_enter(lua_State *L, GCfunc *Func, TValue *Base, uint16_t 
 
 extern "C" void lj_try_leave(lua_State *L)
 {
+   pf::Log log(__FUNCTION__);
+   log.msg("Stack Depth: %d, Base: %p, Top: %p", L->try_stack.depth, L->base, L->top);
+   log.debranch();
+   // NB: The setup_try_handler() also decrements the depth, so the check prevents a repeat
    if (L->try_stack.depth > 0) L->try_stack.depth--;
 }
 
@@ -1073,8 +1083,8 @@ extern "C" void lj_try_build_exception_table(lua_State *L, ERR ErrorCode, CSTRIN
    slot = lj_tab_setstr(L, t, lj_str_newlit(L, "line"));
    setintV(slot, Line);
 
-   // NB: We do not get the "trace" and "stackTrace" slots here because subsequent allocations (lj_array_new, 
-   // lj_tab_new, lj_str_new) can cause table t to be rehashed, which would invalidate any slot pointers. 
+   // NB: We do not get the "trace" and "stackTrace" slots here because subsequent allocations (lj_array_new,
+   // lj_tab_new, lj_str_new) can cause table t to be rehashed, which would invalidate any slot pointers.
    // We get the slots right before storing values into them.
 
    if (Trace and Trace->frame_count > 0) {

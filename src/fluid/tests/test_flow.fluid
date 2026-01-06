@@ -1,6 +1,6 @@
 -- Tests for break and continue statements across all loop types
 
-@BeforeEach(hotpath=true)
+@BeforeEach(hotpath=100)
 function enforce_hotpath() end
 
 ----------------------------------------------------------------------------------------------------------------------
