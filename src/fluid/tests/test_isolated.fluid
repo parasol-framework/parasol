@@ -1,0 +1,27 @@
+test_no = 0
+
+@Test(hotpath=11) function NestedBreak()
+   test_no++
+   print('Test ', test_no, ': NestedBreak')
+
+   lb = { 'a', 'b', 'c' }
+   tlb = { 'c', 'd', 'e' }
+
+   match = false
+
+   for a in values(lb) do
+      for b in values(tlb) do
+         if a is b then
+            match = true
+            break
+         end
+      end
+      if match then break end
+   end
+
+   assert(match, 'Should have found matching label')
+   --error('Intentional throw')
+end
+
+   err, result = obj.find('self').mtDebugLog('disasm')
+   print(result)
