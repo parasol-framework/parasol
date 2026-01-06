@@ -31,6 +31,7 @@
   _(BASE,   N , lit, lit) \
   _(PVAL,   N , lit, ___) \
   _(GCSTEP,   S , ___, ___) \
+  _(SYNCBASE, S , ref, ___) /* Sync jit_base with BASE register */ \
   _(HIOP,   S , ref, ref) \
   _(LOOP,   S , ___, ___) \
   _(USE,   S , ref, ___) \

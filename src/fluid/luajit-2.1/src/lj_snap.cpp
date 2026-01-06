@@ -185,15 +185,9 @@ void lj_snap_add(jit_State* J)
    MSize nsnap = J->cur.nsnap;
    MSize nsnapmap = J->cur.nsnapmap;
 
-   // If creating a snapshot at BC_TRYLEAVE after frame changes (retdepth > 0), abort trace recording. Such
-   // snapshots would have stale jit_base information because jit_base is only updated at trace entry,
-   // not during inlined returns.
-   //
-   // TODO: Implement a fix for this issue.  Multiple embedded for loops inside try-loops demonstrate the problem.
-
-   if (J->pc and (bc_op(*J->pc) IS BC_TRYLEAVE) and (J->retdepth > 0)) {
-      lj_trace_err(J, LJ_TRERR_NYIRETL);  // Abort: snapshot at try-leave after return
-   }
+   // The jit_base synchronisation issue for BC_TRYLEAVE after frame changes is now handled
+   // by IR_SYNCBASE, which is emitted immediately after IR_RETF to update jit_base before
+   // any subsequent snapshots fire.
 
    // Merge if no ins. inbetween or if requested and no guard inbetween.
    if ((nsnap > 0 and J->cur.snap[nsnap - 1].ref == J->cur.nins) ||

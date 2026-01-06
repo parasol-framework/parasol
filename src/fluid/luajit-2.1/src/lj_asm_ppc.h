@@ -402,12 +402,19 @@ static void asm_retf(ASMState* as, IRIns* ir)
    as->topslot -= (BCREG)delta;
    if ((int32_t)as->topslot < 0) as->topslot = 0;
    irt_setmark(IR(REF_BASE)->t);  //  Children must not coalesce with BASE reg.
-   emit_setgl(as, base, jit_base);
+   // jit_base update moved to IR_SYNCBASE to ensure it happens after the guard.
    emit_addptr(as, base, -8 * delta);
    asm_guardcc(as, CC_NE);
    emit_ab(as, PPCI_CMPW, RID_TMP,
       ra_allock(as, i32ptr(pc), rset_exclude(RSET_GPR, base)));
    emit_tai(as, PPCI_LWZ, RID_TMP, base, -8);
+}
+
+// Sync jit_base with the adjusted BASE register.
+static void asm_syncbase(ASMState* as, IRIns* ir)
+{
+   Reg base = ra_alloc1(as, ir->op1, RSET_GPR);
+   emit_setgl(as, base, jit_base);
 }
 
 // -- Type conversions ----------------------------------------------------
