@@ -266,10 +266,58 @@ The following parameters can be used when executing script files:
 
  --procedure [n] The name of a procedure to execute.
  --time          Print the amount of time that it took to execute the program.
+ --dialog        Display a file dialog for choosing a script manually.
+ --statement     Instead of running a script file, executes a single statement or expression.
 
  --log-api       Activates run-time log messages at API level.
  --log-info      Activates run-time log messages at INFO level.
- --log-error     Activates run-time log messages at ERROR level.</code></pre>
+ --log-error     Activates run-time log messages at ERROR level.
+ --jit-options   Development options that control the behaviour of the compiler.
+ --version       Prints the version number on line 1 and git commit on line 2.</code></pre>
+<h2 id="jit-options">JIT Options</h2>
+<p>The <code>--jit-options</code> parameter accepts a comma-separated list of development options that control the Fluid compiler&#39;s behaviour. These options are primarily useful for debugging scripts, diagnosing parser issues, and profiling performance.</p>
+<p><strong>Usage:</strong></p>
+<pre><code>parasol --jit-options trace-tokens,dump-bytecode script.fluid</code></pre>
+<h3 id="available-options">Available Options</h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>diagnose</code></td>
+<td>Continues parsing after the first error to report all syntax issues.</td>
+</tr>
+<tr>
+<td><code>dump-bytecode</code></td>
+<td>Prints a disassembly of bytecode instructions after parsing.</td>
+</tr>
+<tr>
+<td><code>profile</code></td>
+<td>Enables timers to profile JIT parsing and configures run-time profiling.</td>
+</tr>
+<tr>
+<td><code>tips</code></td>
+<td>Print tips that address performance and code quality issues.</td>
+</tr>
+<tr>
+<td><code>top-tips</code></td>
+<td>Print important tips that relate to type safety and correctness issues only.</td>
+</tr>
+<tr>
+<td><code>all-tips</code></td>
+<td>Print all tips and style suggestions (noisy).</td>
+</tr>
+<tr>
+<td><code>trace</code></td>
+<td>Enables parser tracing; intended for AI agents only.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="examples">Examples</h3>
 <p>Example scripts are provided in the <code>examples</code> folder of this distribution. We recommend starting with the widget example as follows, where <code>install-path</code> and <code>source-path</code> are replaced appropriately:</p>
 <pre><code>[install-path]/parasol --log-error [source-path]/examples/widgets.fluid</code></pre>
 <div class="tip">

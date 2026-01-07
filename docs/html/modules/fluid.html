@@ -21,10 +21,14 @@
 <tr><th class="col-md-1">ObjectCorrupt</th><td>Privately maintained memory has become inaccessible.</td></tr>
 <tr><th class="col-md-1">FieldTypeMismatch</th><td>A valid field type was not specified in the <code>Type</code> parameter.</td></tr>
 </tbody></table><div class="footer copyright text-right">Fluid module documentation © Paul Manias © 2006-2025</div></div>
-<div class="docs-content" style="display:none;" id="JOF"><h1>JOF Type</h1><p class="lead">JIT behaviour options</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>JOF::DIAGNOSE</th><td>Cancels aborting on error so that the full script is parsed.  Enables deeper log tracing.</td></tr>
+<div class="docs-content" style="display:none;" id="JOF"><h1>JOF Type</h1><p class="lead">JIT behaviour options</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>JOF::ALL_TIPS</th><td>Include all tips and style suggestions.</td></tr>
+<tr><th>JOF::DIAGNOSE</th><td>Cancels aborting on error so that the full script is parsed.  Enables deeper log tracing.</td></tr>
+<tr><th>JOF::DISABLE_JIT</th><td>Disable the JIT compiler.</td></tr>
 <tr><th>JOF::DUMP_BYTECODE</th><td>Print a disassembly of bytecode instructions after parsing.</td></tr>
 <tr><th>JOF::PROFILE</th><td>Use timers to profile JIT parsing.  Required to configure run-time profiling.</td></tr>
-<tr><th>JOF::TRACE</th><td>Synonym for <code>TRACE_TOKENS | TRACE_EXPECT | TRACE_BOUNDARY | TRACE_OPERATORS | TRACE_REGISTERS | TRACE_CFG | TRACE_ASSIGNMENTS | TRACE_VALUE_CATEGORY</code></td></tr>
+<tr><th>JOF::TIPS</th><td>Filter tips down to performance and code quality issues.</td></tr>
+<tr><th>JOF::TOP_TIPS</th><td>Filter tips down to type safety and correctness issues.</td></tr>
+<tr><th>JOF::TRACE</th><td>Synonym for <code>TRACE_TOKENS | TRACE_EXPECT | TRACE_BOUNDARY | TRACE_OPERATORS | TRACE_REGISTERS | TRACE_CFG | TRACE_ASSIGNMENTS | TRACE_VALUE_CATEGORY | TRACE_TYPES</code></td></tr>
 <tr><th>JOF::TRACE_ASSIGNMENTS</th><td>Trace PreparedAssignment lifecycle and hazard handling.</td></tr>
 <tr><th>JOF::TRACE_BOUNDARY</th><td>Enable log messages for AST boundary crossing.</td></tr>
 <tr><th>JOF::TRACE_CFG</th><td>Trace ControlFlowGraph edge creation and patching.</td></tr>
@@ -32,6 +36,7 @@
 <tr><th>JOF::TRACE_OPERATORS</th><td>Trace OperatorEmitter method calls and decisions.</td></tr>
 <tr><th>JOF::TRACE_REGISTERS</th><td>Trace RegisterAllocator reservations and releases.</td></tr>
 <tr><th>JOF::TRACE_TOKENS</th><td>Trace the emission of tokens.</td></tr>
+<tr><th>JOF::TRACE_TYPES</th><td>Trace type inference and type checking decisions.</td></tr>
 <tr><th>JOF::TRACE_VALUE_CATEGORY</th><td>Trace ValueUse/ValueSlot/LValue operations.</td></tr>
 </tbody></table><div class="footer copyright text-right">Fluid module documentation © Paul Manias © 2006-2025</div></div>
 </div></div></div><script type="text/javascript" src="../js/bootstrap.bundle.min.js"></script><script type="text/javascript" src="../js/base.js"></script><script type="text/javascript">
