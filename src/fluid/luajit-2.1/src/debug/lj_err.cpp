@@ -438,7 +438,8 @@ static bool check_try_handler(lua_State *L, int errcode)
 
 extern "C" void setup_try_handler(lua_State *L)
 {
-   pf::Log(__FUNCTION__).msg("Activated try handler.");
+   pf::Log log(__FUNCTION__);
+   log.msg("Activated try handler.");
 
    if (L->try_stack.depth IS 0) return;
 
@@ -492,8 +493,7 @@ extern "C" void setup_try_handler(lua_State *L)
    TValue *saved_base = restorestack(L, try_frame->frame_base);
    TValue *saved_top = restorestack(L, try_frame->saved_top);
 
-   pf::Log("setup_try_handler").msg("Restoring: L->base=%p→%p, L->top=%p→%p, offsets(base=%td, top=%td)",
-      L->base, saved_base, L->top, saved_top, try_frame->frame_base, try_frame->saved_top);
+   log.msg("Restoring: L->base=%p→%p, L->top=%p→%p", L->base, saved_base, L->top, saved_top);
 
    // Validate restored pointers are within stack bounds
    lj_assertL(saved_base >= tvref(L->stack), "setup_try_handler: saved_base below stack start");

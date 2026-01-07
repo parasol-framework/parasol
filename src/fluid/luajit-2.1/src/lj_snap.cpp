@@ -191,17 +191,6 @@ void lj_snap_add(jit_State* J)
    pf::Log log(__FUNCTION__);
    log.msg(VLF::BRANCH|VLF::DETAIL, "Adding snapshot %d, baseslot=%d, maxslot=%d, retdepth=%d, ByteCode: %d", nsnap, J->baseslot, J->maxslot, J->retdepth, bc_op(*J->pc));
 
-   // If creating a snapshot at BC_TRYLEAVE after frame changes (retdepth > 0), abort trace recording. Such
-   // snapshots would have stale jit_base information because jit_base is only updated at trace entry,
-   // not during inlined returns.
-   //
-   // TODO: Implement a fix for this issue.  Multiple embedded for loops inside try-loops demonstrate the problem.
-
-   if ((bc_op(*J->pc) IS BC_TRYLEAVE) and (J->retdepth > 0)) {
-      log.warning("BC_TRYLEAVE with retdepth=%d (stale snapshot issue)", J->retdepth);
-      //lj_trace_err(J, LJ_TRERR_NYIRETL);  // Abort: snapshot at try-leave after return
-   }
-
    // Merge if no ins. inbetween or if requested and no guard inbetween.
    if ((nsnap > 0 and J->cur.snap[nsnap - 1].ref IS J->cur.nins) or
       (J->mergesnap and !irt_isguard(J->guardemit))) {
@@ -943,14 +932,9 @@ const BCIns * lj_snap_restore(jit_State *J, void *exptr)
    lua_State* L = J->L;
 
    pf::Log log(__FUNCTION__);
-   log.branch("Restoring snapshot %d for trace %d", snapno, J->parent);
-   log.detail("Snapshot: nent=%d, nslots=%d, topslot=%d, mapofs=%d", nent, snap->nslots, snap->topslot, snap->mapofs);
-   log.detail("Before restore: L->base=%p, L->top=%p, jit_base=%p", L->base, L->top, tvref(G(L)->jit_base));
-
-   if (L->base != tvref(G(L)->jit_base)) {
-      // NB: This mismatch can be common and not necessarily an indication of a problem.
-      log.detail("L->base != jit_base");
-   }
+   log.traceBranch("Restoring snapshot %d for trace %d", snapno, J->parent);
+   log.trace("Snapshot: nent=%d, nslots=%d, topslot=%d, mapofs=%d", nent, snap->nslots, snap->topslot, snap->mapofs);
+   log.trace("Before restore: L->base=%p, L->top=%p, jit_base=%p", L->base, L->top, tvref(G(L)->jit_base));
 
    // Set interpreter PC to the next PC to get correct error messages.
    setcframe_pc(cframe_raw(L->cframe), pc + 1);
@@ -1034,7 +1018,8 @@ const BCIns * lj_snap_restore(jit_State *J, void *exptr)
       L->top = frame + snap->nslots;
       break;
    }
-   log.detail("Final: L->base=%p, L->top=%p, slots=%d", L->base, L->top, (int)(L->top - L->base));
+
+   log.trace("Final: L->base=%p, L->top=%p, slots=%d", L->base, L->top, (int)(L->top - L->base));
    return pc;
 }
 

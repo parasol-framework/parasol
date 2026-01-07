@@ -2986,10 +2986,9 @@ void lj_record_ins(jit_State *J)
    }
 
    case BC_TRYLEAVE: {
-      // Note: The main protection against jit_base corruption is in rec_ret(),
-      // which aborts trace recording if returning to BC_TRYLEAVE.
-
       // Emit call to lj_try_leave(L)
+      // Note: vm_exit_interp in vm_x64.dasc must correctly dispatch BC_TRYLEAVE to its handler,
+      // not to the C function path. See the bytecode dispatch logic after trace exit.
       lj_ir_call(J, IRCALL_lj_try_leave); // L is implicit (CCI_L flag), no explicit args needed
       J->needsnap = 1; // Snapshot after try_leave to mark the end of the try block scope
       break;
