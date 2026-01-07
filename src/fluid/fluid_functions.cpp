@@ -956,12 +956,11 @@ extern "C" void lj_try_enter(lua_State *L, GCfunc *Func, TValue *Base, uint16_t 
 
 //********************************************************************************************************************
 // Called by BC_TRYLEAVE to pop an exception frame from the try stack.  Note that this operation is also replicated
-// in the *.dasc files when JIT optimised.
+// in the *.dasc files when JIT optimised, so it may be shadowed.
 
 extern "C" void lj_try_leave(lua_State *L)
 {
-   pf::Log log(__FUNCTION__);
-   log.msg("Stack Depth: %d, Base: %p, Top: %p", L->try_stack.depth, L->base, L->top);
+   pf::Log(__FUNCTION__).trace("Stack Depth: %d, Base: %p, Top: %p", L->try_stack.depth, L->base, L->top);
 
    // NB: The setup_try_handler() also decrements the depth, so the check prevents a repeat
    if (L->try_stack.depth > 0) L->try_stack.depth--;

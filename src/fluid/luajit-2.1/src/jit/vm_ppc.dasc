@@ -3301,8 +3301,10 @@ static void build_subroutines(BuildCtx *ctx)
   |   decode_RC8 RC, INS
   |  bctr
   |2:
-  |  cmplwi TMP1, (BC_FUNCC+2)*4	// Fast function?
-  |  blt >3
+  |  cmplwi TMP1, BC_FUNCC*4		// C function? (BC_FUNCC or BC_FUNCCW = 105 or 106)
+  |  blt >3			// < BC_FUNCC: function header handling
+  |  cmplwi TMP1, BC_FUNCCW*4
+  |  bgt >3			// > BC_FUNCCW: dispatch normally (BC_TRYENTER, BC_TRYLEAVE, etc.)
   |  // Check frame below fast function.
   |  lwz TMP1, FRAME_PC(BASE)
   |  andix. TMP0, TMP1, FRAME_TYPE
