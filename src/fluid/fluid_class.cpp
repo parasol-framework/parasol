@@ -67,6 +67,7 @@ static ERR save_binary(objScript *, OBJECTPTR);
 
 static const FieldDef clJitOptions[] = {
    { "Diagnose",           JOF::DIAGNOSE },
+   { "DisableJit",         JOF::DISABLE_JIT },
    { "DumpBytecode",       JOF::DUMP_BYTECODE },
    { "Profile",            JOF::PROFILE },
    { "TopTips",            JOF::TOP_TIPS },
@@ -298,6 +299,10 @@ static ERR FLUID_Activate(objScript *Self)
 
    if ((error = acQuery(Self)) IS ERR::Okay) {
       prv->Recurse++;
+
+      if ((prv->JitOptions & JOF::DISABLE_JIT) != JOF::NIL) {
+         luaJIT_setmode(prv->Lua, 0, LUAJIT_MODE_ENGINE | LUAJIT_MODE_OFF);
+      }
 
       if ((Self->Procedure) or (Self->ProcedureID)) {
          // The Lua script needs to have been executed at least once in order for the procedures to be initialised and recognised.

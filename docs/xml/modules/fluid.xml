@@ -37,6 +37,7 @@
     <constants lookup="JOF" comment="JIT behaviour options">
       <const name="ALL_TIPS">Include all tips and style suggestions.</const>
       <const name="DIAGNOSE">Cancels aborting on error so that the full script is parsed.  Enables deeper log tracing.</const>
+      <const name="DISABLE_JIT">Disable the JIT compiler.</const>
       <const name="DUMP_BYTECODE">Print a disassembly of bytecode instructions after parsing.</const>
       <const name="PROFILE">Use timers to profile JIT parsing.  Required to configure run-time profiling.</const>
       <const name="TIPS">Filter tips down to performance and code quality issues.</const>

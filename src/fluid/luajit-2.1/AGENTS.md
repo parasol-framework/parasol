@@ -69,24 +69,25 @@ cmake --install build/agents --config <BuildType>
 
 Run `parasol` with `--jit-options` to pass JIT engine flags as a CSV list:
 
-| Option | Purpose |
-|--------|---------|
-| `trace-tokens` | Trace tokenisation |
-| `trace-expect` | Trace parser expectations |
-| `trace-boundary` | Trace boundary crossings between interpreted and JIT code |
-| `trace-operators` | Trace operator emission |
-| `trace-registers` | Trace register allocation |
-| `trace-cfg` | Trace control flow graph operations |
-| `trace-assignments` | Trace assignment emission |
-| `trace-value-category` | Trace value category analysis |
-| `trace-types` | Trace type analysis |
-| `trace` | Enable all trace messages |
-| `dump-bytecode` | Dump disassembled bytecode at the end of parsing |
-| `diagnose` | Disable abort-on-error for full script parsing |
-| `profile` | Profile JIT parsing and runtime |
-| `tips` | Enable parser tips |
-| `top-tips` | Enable top-level tips only |
-| `all-tips` | Enable all tips |
+|Option|Purpose|
+|-|-|
+|`off`|Disable the JIT compiler|
+|`trace-tokens`|Trace tokenisation|
+|`trace-expect`|Trace parser expectations|
+|`trace-boundary`|Trace boundary crossings between interpreted and JIT code|
+|`trace-operators`|Trace operator emission|
+|`trace-registers`|Trace register allocation|
+|`trace-cfg`|Trace control flow graph operations|
+|`trace-assignments`|Trace assignment emission|
+|`trace-value-category`|Trace value category analysis|
+|`trace-types`|Trace type analysis|
+|`trace`|Enable all trace messages|
+|`dump-bytecode`|Dump disassembled bytecode at the end of parsing|
+|`diagnose`|Disable abort-on-error for full script parsing|
+|`profile`|Profile JIT parsing and runtime|
+|`tips`|Enable parser tips|
+|`top-tips`|Enable top-level tips only|
+|`all-tips`|Enable all tips|
 
 Example: `--jit-options dump-bytecode,trace-registers`
 
@@ -147,11 +148,11 @@ When adding entries to `MMDEF` in `lj_obj.h`:
 
 ## Quick Reference
 
-| Resource | Location |
-|----------|----------|
-| Parser source | `src/fluid/luajit-2.1/src/parser/` |
-| AST definitions | `src/fluid/luajit-2.1/src/parser/ast/` |
-| IR emission | `src/fluid/luajit-2.1/src/parser/ir_emitter/` |
-| Bytecode reference | `src/fluid/luajit-2.1/BYTECODE.md` |
-| JIT assembly notes | `src/fluid/luajit-2.1/src/jit/AGENTS.md` |
-| Fluid tests | `src/fluid/tests/` |
+|Resource|Location|
+|-|-|
+|Parser source|`src/fluid/luajit-2.1/src/parser/`|
+|AST definitions|`src/fluid/luajit-2.1/src/parser/ast/`|
+|IR emission|`src/fluid/luajit-2.1/src/parser/ir_emitter/`|
+|Bytecode reference|`src/fluid/luajit-2.1/BYTECODE.md`|
+|JIT assembly notes|`src/fluid/luajit-2.1/src/jit/AGENTS.md`|
+|Fluid tests|`src/fluid/tests/`|
