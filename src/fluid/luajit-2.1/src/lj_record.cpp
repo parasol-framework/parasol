@@ -2152,9 +2152,13 @@ static void rec_comp_prep(jit_State *J)
 
 static void rec_comp_fixup(jit_State *J, const BCIns *pc, int cond)
 {
+   pf::Log log(__FUNCTION__);
+
    BCIns jmpins = pc[1];
    const BCIns *npc = pc + 2 + (cond ? bc_j(jmpins) : 0);
    SnapShot *snap = &J->cur.snap[J->cur.nsnap - 1];
+   
+   log.branch("Cond: %d, Try Depth: %d", cond, J->L->try_stack.depth);
 
    // Skip PC modification inside try blocks to prevent snapshot restoration issues.
    // See function header comment for detailed explanation.

@@ -8,7 +8,6 @@
 
 #include "lj_obj.h"
 
-#if LJ_HASJIT
 
 #include "lj_gc.h"
 #include "lj_buf.h"
@@ -195,7 +194,7 @@ IRFLDEF(FLOFS)
 
 // -- Register allocator debugging ----------------------------------------
 
-// #define LUAJIT_DEBUG_RA
+//#define LUAJIT_DEBUG_RA
 
 #ifdef LUAJIT_DEBUG_RA
 
@@ -2469,15 +2468,12 @@ void lj_asm_trace(jit_State* J, GCtrace* T)
       // Assemble a trace in linear backwards order.
       for (as->curins--; as->curins > as->stopins; as->curins--) {
          IRIns* ir = IR(as->curins);
-         // 64 bit types handled by SPLIT for 32 bit archs.
-         lj_assertA(!(LJ_32 and irt_isint64(ir->t)),
-            "IR %04d has unsplit 64 bit type",
-            (int)(ir - as->ir) - REF_BIAS);
          asm_snap_prev(as);
          if (!ra_used(ir) and !ir_sideeff(ir) and (as->flags & JIT_F_OPT_DCE))
             continue;  //  Dead-code elimination can be soooo easy.
-         if (irt_isguard(ir->t))
+         if (irt_isguard(ir->t)) {
             asm_snap_prep(as);
+         }
          RA_DBG_REF();
          checkmclim(as);
          asm_ir(as, ir);
@@ -2495,11 +2491,10 @@ void lj_asm_trace(jit_State* J, GCtrace* T)
          asm_gc_check(as);
          as->curins = as->stopins;
       }
+
       ra_evictk(as);
-      if (as->parent)
-         asm_head_side(as);
-      else
-         asm_head_root(as);
+      if (as->parent) asm_head_side(as);
+      else asm_head_root(as);
       asm_phi_fixup(as);
 
       if (J->curfinal->nins >= T->nins) {  // IR didn't grow?
@@ -2541,5 +2536,3 @@ void lj_asm_trace(jit_State* J, GCtrace* T)
 }
 
 #undef IR
-
-#endif
