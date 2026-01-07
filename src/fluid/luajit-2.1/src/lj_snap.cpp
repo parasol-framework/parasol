@@ -189,7 +189,7 @@ void lj_snap_add(jit_State* J)
    MSize nsnapmap = J->cur.nsnapmap;
 
    pf::Log log(__FUNCTION__);
-   log.branch("Adding snapshot %d", nsnap);
+   log.branch("Adding snapshot %d, baseslot=%d, maxslot=%d, retdepth=%d, ByteCode: %d", nsnap, J->baseslot, J->maxslot, J->retdepth, bc_op(*J->pc));
 
    // If creating a snapshot at BC_TRYLEAVE after frame changes (retdepth > 0), abort trace recording. Such
    // snapshots would have stale jit_base information because jit_base is only updated at trace entry,
@@ -197,9 +197,10 @@ void lj_snap_add(jit_State* J)
    //
    // TODO: Implement a fix for this issue.  Multiple embedded for loops inside try-loops demonstrate the problem.
 
-   //if (J->pc and (bc_op(*J->pc) IS BC_TRYLEAVE) and (J->retdepth > 0)) {
-   //   lj_trace_err(J, LJ_TRERR_NYIRETL);  // Abort: snapshot at try-leave after return
-   //}
+   if ((bc_op(*J->pc) IS BC_TRYLEAVE) and (J->retdepth > 0)) {
+      log.warning("BC_TRYLEAVE with retdepth=%d (stale snapshot issue)", J->retdepth);
+      //lj_trace_err(J, LJ_TRERR_NYIRETL);  // Abort: snapshot at try-leave after return
+   }
 
    // Merge if no ins. inbetween or if requested and no guard inbetween.
    if ((nsnap > 0 and J->cur.snap[nsnap - 1].ref IS J->cur.nins) or
@@ -942,7 +943,10 @@ const BCIns * lj_snap_restore(jit_State *J, void *exptr)
    lua_State* L = J->L;
 
    pf::Log log(__FUNCTION__);
-   log.detail("Restoring snapshot %d for trace %d", snapno, J->parent);
+   log.branch("Restoring snapshot %d for trace %d", snapno, J->parent);
+   log.detail("Snapshot: nent=%d, nslots=%d, topslot=%d, mapofs=%d", nent, snap->nslots, snap->topslot, snap->mapofs);
+   log.detail("Before restore: L->base=%p, L->top=%p, jit_base=%p", L->base, L->top, tvref(G(L)->jit_base));
+   if (L->base != tvref(G(L)->jit_base)) log.warning("MISMATCH: L->base != jit_base!");
 
    // Set interpreter PC to the next PC to get correct error messages.
    setcframe_pc(cframe_raw(L->cframe), pc + 1);
@@ -955,6 +959,29 @@ const BCIns * lj_snap_restore(jit_State *J, void *exptr)
 
    // Fill stack slots with data from the registers and spill slots.
    frame = L->base - 1 - LJ_FR2;
+
+   // Debug: dump stack BEFORE restoration to see what JIT left
+   log.detail("Stack BEFORE restoration (frame=%p):", frame);
+   for (int i = 0; i < 20; i++) {
+      TValue* slot = &frame[i];
+      if (tvisgcv(slot)) {
+         GCobj *gc = gcval(slot);
+         log.detail("  frame[%d] %p: type=%d gcobj=%p (gct=%d)", i, slot, itype(slot), gc, gc ? gc->gch.gct : -1);
+      }
+      else log.detail("  frame[%d] %p: type=%d val=0x%llx", i, slot, itype(slot), (unsigned long long)slot->u64);
+   }
+
+   // Log all snapshot entries first
+   log.detail("Snapshot entries (nent=%d):", nent);
+   for (n = 0; n < nent; n++) {
+      SnapEntry sn = map[n];
+      BCREG slot = snap_slot(sn);
+      bool norestore = (sn & SNAP_NORESTORE) != 0;
+      bool is_frame = (sn & SNAP_FRAME) != 0;
+      bool is_cont = (sn & SNAP_CONT) != 0;
+      log.detail("  entry[%d]: slot=%d, norestore=%d, frame=%d, cont=%d, ref=%d",
+         n, slot, norestore, is_frame, is_cont, snap_ref(sn));
+   }
 
    for (n = 0; n < nent; n++) {
       SnapEntry sn = map[n];
@@ -971,31 +998,70 @@ const BCIns * lj_snap_restore(jit_State *J, void *exptr)
                }
             snap_unsink(J, T, ex, snapno, rfilt, ir, o);
          dupslot:
+            log.detail("Slot %d (sunk): restored at %p", snap_slot(sn), o);
             continue;
          }
          snap_restoreval(J, T, ex, snapno, rfilt, ref, o);
+         // Log restored slot info
+         if (tvisgcv(o)) {
+            GCobj* gc = gcval(o);
+            log.detail("Slot %d: restored GC obj type=%d at %p, gcobj=%p",
+               snap_slot(sn), itype(o), o, gc);
+         }
+         else {
+            log.detail("Slot %d: restored value type=%d at %p, u64=0x%llx",
+               snap_slot(sn), itype(o), o, (unsigned long long)o->u64);
+         }
          if ((sn & SNAP_KEYINDEX)) {
             // A IRT_INT key index slot is restored as a number. Undo this.
             o->u32.lo = (uint32_t)(LJ_DUALNUM ? intV(o) : lj_num2int(numV(o)));
             o->u32.hi = LJ_KEYINDEX;
          }
       }
+      else {
+         log.detail("Slot %d: NORESTORE (skipped)", snap_slot(sn));
+      }
    }
-   L->base += (map[nent + LJ_BE] & 0xff);
+
+   uint8_t base_adj = (map[nent + LJ_BE] & 0xff);
+   log.detail("Base adjustment: %d bytes (from snapmap[%d])", base_adj, nent + LJ_BE);
+   log.detail("L->base before adj: %p, frame: %p", L->base, frame);
+
+   L->base += base_adj;
    lj_assertJ(map + nent IS flinks, "inconsistent frames in snapshot");
+
+   log.detail("After restore: L->base=%p, L->top=%p", L->base, L->top);
+
+   // Debug: dump a few stack slots around L->base to see what's there
+   log.detail("Stack dump around L->base:");
+   for (int i = -2; i < 10; i++) {
+      TValue *slot = L->base + i;
+      if (tvisgcv(slot)) {
+         GCobj *gc = gcval(slot);
+         log.detail("  [base%+d] %p: type=%d gcobj=%p (gct=%d)", i, slot, itype(slot), gc, gc ? gc->gch.gct : -1);
+      }
+      else log.detail("  [base%+d] %p: type=%d val=0x%llx", i, slot, itype(slot), (unsigned long long)slot->u64);
+   }
 
    // Compute current stack top.
    switch (bc_op(*pc)) {
       default:
          if (bc_op(*pc) < BC_FUNCF) {
-            L->top = curr_topL(L);
+            TValue* new_top = curr_topL(L);
+            GCfunc* fn = curr_func(L);
+            GCproto* pt = isluafunc(fn) ? funcproto(fn) : nullptr;
+            log.detail("Setting L->top via curr_topL: pc_op=%d, fn=%p, proto=%p, framesize=%d, new_top=%p",
+               bc_op(*pc), fn, pt, pt ? pt->framesize : -1, new_top);
+            L->top = new_top;
             break;
          }
          [[fallthrough]];
       case BC_CALLM: case BC_CALLMT: case BC_RETM: case BC_TSETM:
+         log.detail("Setting L->top via snap->nslots: %p", frame + snap->nslots);
          L->top = frame + snap->nslots;
          break;
    }
+   log.detail("Final: L->base=%p, L->top=%p, slots=%d", L->base, L->top, (int)(L->top - L->base));
    return pc;
 }
 

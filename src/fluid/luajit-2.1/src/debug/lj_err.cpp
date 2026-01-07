@@ -438,6 +438,8 @@ static bool check_try_handler(lua_State *L, int errcode)
 
 extern "C" void setup_try_handler(lua_State *L)
 {
+   pf::Log(__FUNCTION__).msg("Activated try handler.");
+
    if (L->try_stack.depth IS 0) return;
 
    lj_assertL(L->try_stack.depth <= LJ_MAX_TRY_DEPTH, "setup_try_handler: try_stack depth %u exceeds LJ_MAX_TRY_DEPTH", L->try_stack.depth);
