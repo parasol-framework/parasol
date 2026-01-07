@@ -88,6 +88,7 @@ constexpr auto HASH_TRACE                = pf::strhash("trace");
 constexpr auto HASH_TOP_TIPS             = pf::strhash("top-tips");
 constexpr auto HASH_TIPS                 = pf::strhash("tips");
 constexpr auto HASH_ALL_TIPS             = pf::strhash("all-tips");
+constexpr auto HASH_OFF                  = pf::strhash("off");
 
 #include "module_def.cpp"
 
@@ -241,6 +242,7 @@ void load_include_for_class(lua_State *Lua, objMetaClass *MetaClass)
                   else if (hash IS HASH_TOP_TIPS)      glJitOptions |= JOF::TOP_TIPS;
                   else if (hash IS HASH_TIPS)          glJitOptions |= JOF::TIPS;
                   else if (hash IS HASH_ALL_TIPS)      glJitOptions |= JOF::ALL_TIPS;
+                  else if (hash IS HASH_OFF)           glJitOptions |= JOF::DISABLE_JIT;
                   else log.warning("Unknown JIT option \"%s\" specified.", trimmed.c_str());
                }
 
