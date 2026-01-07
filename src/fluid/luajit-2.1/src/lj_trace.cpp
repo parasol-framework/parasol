@@ -935,6 +935,7 @@ int LJ_FASTCALL lj_trace_exit(jit_State *J, void *exptr)
    [[maybe_unused]] GCtrace *T;
 
    setnilV(&exiterr);
+
    if (exitcode) {  // Trace unwound with error code.
       J->exitcode = 0;
       copyTV(L, &exiterr, L->top - 1);

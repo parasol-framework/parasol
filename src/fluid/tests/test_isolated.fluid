@@ -1,3 +1,15 @@
+--[[
+Known facts to generate the corrupted stack:
+
+* There must be try-except block external to the test function that contains a for loop exercising the hot path.
+* The test must feature a for loop that breaks out of the loop based on a condition.
+* If the test throws an error instead of returning normally, the exit path routes through setup_try_handler() which
+  resets the stack.  The process of resetting the stack prevents the corruption from occurring.
+* The test needs to be run 11 times to cause the error on returning to the try block.  10 or less times prevents it.
+
+--]]
+
+
 test_no = 0
 
 @Test(hotpath=11) function NestedBreak()
@@ -7,19 +19,10 @@ test_no = 0
    lb = { 'a', 'b', 'c' }
    tlb = { 'c', 'd', 'e' }
 
-   match = false
-
-   for a in values(lb) do
-      for b in values(tlb) do
-         if a is b then
-            match = true
-            break
-         end
-      end
-      if match then break end
+   for _,a in pairs(lb) do
+      break
    end
 
-   assert(match, 'Should have found matching label')
    --error('Intentional throw')
 end
 

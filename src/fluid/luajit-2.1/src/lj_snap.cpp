@@ -35,8 +35,6 @@
 #include <parasol/main.h>
 #include "lj_obj.h"
 
-#if LJ_HASJIT
-
 #include "lj_gc.h"
 #include "lj_tab.h"
 #include "lj_state.h"
@@ -134,21 +132,16 @@ static MSize snapshot_framelinks(jit_State* J, SnapEntry* map, uint8_t* topslot)
    lj_assertJ(2 <= J->baseslot and J->baseslot <= 257, "bad baseslot");
    memcpy(map, &pcbase, sizeof(uint64_t));
 
-   lj_assertJ(!J->pt ||
-      (J->pc >= proto_bc(J->pt) &&
-         J->pc < proto_bc(J->pt) + J->pt->sizebc), "bad snapshot PC");
+   lj_assertJ(!J->pt || (J->pc >= proto_bc(J->pt) && J->pc < proto_bc(J->pt) + J->pt->sizebc), "bad snapshot PC");
    while (frame > lim) {  // Backwards traversal of all frames above base.
-      if (frame_islua(frame)) {
-         frame = frame_prevl(frame);
-      }
-      else if (frame_iscont(frame)) {
-         frame = frame_prevd(frame);
-      }
+      if (frame_islua(frame)) frame = frame_prevl(frame);
+      else if (frame_iscont(frame)) frame = frame_prevd(frame);
       else {
          lj_assertJ(!frame_isc(frame), "broken frame chain");
          frame = frame_prevd(frame);
          continue;
       }
+
       if (frame + funcproto(frame_func(frame))->framesize > ftop)
          ftop = frame + funcproto(frame_func(frame))->framesize;
    }
@@ -360,14 +353,12 @@ void lj_snap_purge(jit_State* J)
 {
    uint8_t udf[SNAP_USEDEF_SLOTS];
    BCREG s, maxslot = J->maxslot;
-   if (bc_op(*J->pc) == BC_FUNCV and maxslot > J->pt->numparams)
-      maxslot = J->pt->numparams;
+   if (bc_op(*J->pc) == BC_FUNCV and maxslot > J->pt->numparams) maxslot = J->pt->numparams;
    s = snap_usedef(J, udf, J->pc, maxslot);
    if (s < maxslot) {
       snap_useuv(J->pt, udf);
       for (; s < maxslot; s++)
-         if (udf[s] != 0)
-            J->base[s] = 0;  //  Purge dead slots.
+         if (udf[s] != 0) J->base[s] = 0;  //  Purge dead slots.
    }
 }
 
@@ -999,5 +990,3 @@ const BCIns* lj_snap_restore(jit_State* J, void* exptr)
 
 #undef emitir_raw
 #undef emitir
-
-#endif
