@@ -544,7 +544,7 @@ static void asm_retf(ASMState* as, IRIns* ir)
    irt_setmark(IR(REF_BASE)->t);  //  Children must not coalesce with BASE reg.
    // Need to force a spill on REF_BASE now to update the stack slot.
    emit_lso(as, A64I_STRx, base, RID_SP, ra_spill(as, IR(REF_BASE)));
-   // jit_base update moved to IR_SYNCBASE to ensure it happens after the guard.
+   emit_setgl(as, base, jit_base);
    emit_addptr(as, base, -8 * delta);
    asm_guardcc(as, CC_NE);
    emit_nm(as, A64I_CMPx, RID_TMP,
@@ -552,11 +552,11 @@ static void asm_retf(ASMState* as, IRIns* ir)
    emit_lso(as, A64I_LDRx, RID_TMP, base, -8);
 }
 
-// Sync jit_base with the adjusted BASE register.
-static void asm_syncbase(ASMState* as, IRIns* ir)
+// Debug facility - use for temporary debugging messages, breakpoints etc.
+
+static void asm_debug(ASMState* as, IRIns* ir)
 {
-   Reg base = ra_alloc1(as, ir->op1, RSET_GPR);
-   emit_setgl(as, base, jit_base);
+
 }
 
 // -- Type conversions ----------------------------------------------------

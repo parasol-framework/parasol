@@ -8,7 +8,7 @@
 
 #include "lj_obj.h"
 
-#if LJ_HASJIT
+#include <parasol/main.h>
 
 #include "lj_gc.h"
 #include "lj_buf.h"
@@ -1730,7 +1730,7 @@ static void asm_ir(ASMState* as, IRIns* ir)
    case IR_PHI: asm_phi(as, ir); break;
    case IR_HIOP: asm_hiop(as, ir); break;
    case IR_GCSTEP: asm_gcstep(as, ir); break;
-   case IR_SYNCBASE: asm_syncbase(as, ir); break;
+   case IR_DEBUG: asm_debug(as, ir); break;
    case IR_PROF: asm_prof(as, ir); break;
 
       // Guarded assertions.
@@ -2542,5 +2542,3 @@ void lj_asm_trace(jit_State* J, GCtrace* T)
 }
 
 #undef IR
-
-#endif

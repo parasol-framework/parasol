@@ -1062,7 +1062,7 @@ void lj_record_ret(jit_State *J, BCREG rbase, ptrdiff_t gotresults)
          TRef trpt = lj_ir_kgc(J, obj2gco(pt), IRT_PROTO);
          TRef trpc = ir.kptr((void*)frame_pc(frame));
          ir.guard(IR_RETF, IRT_PGC, trpt, trpc);
-         emitir_raw(IRT(IR_SYNCBASE, IRT_NIL), REF_BASE, 0);  // Sync jit_base after guard.
+         emitir_raw(IRT(IR_DEBUG, IRT_NIL), REF_BASE, 0); // TEMPORARY
          J->retdepth++;
          J->needsnap = 1;
          lj_assertJ(fm.at_root_baseslot(), "bad baseslot for return");

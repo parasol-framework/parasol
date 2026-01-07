@@ -644,18 +644,18 @@ static void asm_retf(ASMState* as, IRIns* ir)
    as->topslot -= (BCREG)delta;
    if ((int32_t)as->topslot < 0) as->topslot = 0;
    irt_setmark(IR(REF_BASE)->t);  /* Children must not coalesce with BASE reg. */
-   // jit_base update moved to IR_SYNCBASE to ensure it happens after the guard.
+   emit_setgl(as, base, jit_base);
    emit_addptr(as, base, -8 * delta);
    asm_guardcc(as, CC_NE);
    emit_rmro(as, XO_CMP, rpc | REX_GC64, base, -8);
    emit_loadu64(as, rpc, u64ptr(pc));
 }
 
-// Sync jit_base with the adjusted BASE register.
-static void asm_syncbase(ASMState* as, IRIns* ir)
+// Debug facility
+
+static void asm_debug(ASMState* as, IRIns* ir)
 {
-   Reg base = ra_alloc1(as, ir->op1, RSET_GPR);
-   emit_setgl(as, base, jit_base);
+   pf::Log(__FUNCTION__).msg("Debug message here.");
 }
 
 // -- Type conversions ----------------------------------------------------
