@@ -105,6 +105,7 @@ static MSize snapshot_slots(jit_State *J, SnapEntry *map, BCREG nslots)
          tr = J->slot[s] = (tr & 0xff0000) | lj_ir_k64(J, IR_KNUM, base[s].u64);
          ref = tref_ref(tr);
       }
+
       if (ref) {
          SnapEntry sn = SNAP_TR(s, tr);
          IRIns* ir = &J->cur.ir[ref];
@@ -187,14 +188,18 @@ void lj_snap_add(jit_State* J)
    MSize nsnap = J->cur.nsnap;
    MSize nsnapmap = J->cur.nsnapmap;
 
+   pf::Log log(__FUNCTION__);
+   log.msg(VLF::BRANCH|VLF::DETAIL, "Adding snapshot %d, baseslot=%d, maxslot=%d, retdepth=%d, ByteCode: %d", nsnap, J->baseslot, J->maxslot, J->retdepth, bc_op(*J->pc));
+
    // If creating a snapshot at BC_TRYLEAVE after frame changes (retdepth > 0), abort trace recording. Such
    // snapshots would have stale jit_base information because jit_base is only updated at trace entry,
    // not during inlined returns.
    //
    // TODO: Implement a fix for this issue.  Multiple embedded for loops inside try-loops demonstrate the problem.
 
-   if (J->pc and (bc_op(*J->pc) IS BC_TRYLEAVE) and (J->retdepth > 0)) {
-      lj_trace_err(J, LJ_TRERR_NYIRETL);  // Abort: snapshot at try-leave after return
+   if ((bc_op(*J->pc) IS BC_TRYLEAVE) and (J->retdepth > 0)) {
+      log.warning("BC_TRYLEAVE with retdepth=%d (stale snapshot issue)", J->retdepth);
+      //lj_trace_err(J, LJ_TRERR_NYIRETL);  // Abort: snapshot at try-leave after return
    }
 
    // Merge if no ins. inbetween or if requested and no guard inbetween.
@@ -937,6 +942,16 @@ const BCIns * lj_snap_restore(jit_State *J, void *exptr)
    const BCIns* pc = snap_pc(&map[nent]);
    lua_State* L = J->L;
 
+   pf::Log log(__FUNCTION__);
+   log.branch("Restoring snapshot %d for trace %d", snapno, J->parent);
+   log.detail("Snapshot: nent=%d, nslots=%d, topslot=%d, mapofs=%d", nent, snap->nslots, snap->topslot, snap->mapofs);
+   log.detail("Before restore: L->base=%p, L->top=%p, jit_base=%p", L->base, L->top, tvref(G(L)->jit_base));
+
+   if (L->base != tvref(G(L)->jit_base)) {
+      // NB: This mismatch can be common and not necessarily an indication of a problem.
+      log.detail("L->base != jit_base");
+   }
+
    // Set interpreter PC to the next PC to get correct error messages.
    setcframe_pc(cframe_raw(L->cframe), pc + 1);
 
@@ -948,6 +963,30 @@ const BCIns * lj_snap_restore(jit_State *J, void *exptr)
 
    // Fill stack slots with data from the registers and spill slots.
    frame = L->base - 1 - LJ_FR2;
+
+#if 0
+   // Debug: dump stack BEFORE restoration to see what JIT left
+   log.detail("Stack BEFORE restoration (frame=%p):", frame);
+   for (int i = 0; i < 20; i++) {
+      TValue* slot = &frame[i];
+      if (tvisgcv(slot)) {
+         GCobj *gc = gcval(slot);
+         log.detail("  frame[%d] %p: type=%d gcobj=%p (gct=%d)", i, slot, itype(slot), gc, gc ? gc->gch.gct : -1);
+      }
+      else log.detail("  frame[%d] %p: type=%d val=0x%llx", i, slot, itype(slot), (unsigned long long)slot->u64);
+   }
+
+   // Log all snapshot entries first
+   log.detail("Snapshot entries (nent=%d):", nent);
+   for (n = 0; n < nent; n++) {
+      SnapEntry sn = map[n];
+      BCREG slot = snap_slot(sn);
+      bool norestore = (sn & SNAP_NORESTORE) != 0;
+      bool is_frame = (sn & SNAP_FRAME) != 0;
+      bool is_cont = (sn & SNAP_CONT) != 0;
+      log.detail("  entry[%d]: slot=%d, norestore=%d, frame=%d, cont=%d, ref=%d", n, slot, norestore, is_frame, is_cont, snap_ref(sn));
+   }
+#endif
 
    for (n = 0; n < nent; n++) {
       SnapEntry sn = map[n];
@@ -966,16 +1005,22 @@ const BCIns * lj_snap_restore(jit_State *J, void *exptr)
          dupslot:
             continue;
          }
+
          snap_restoreval(J, T, ex, snapno, rfilt, ref, o);
+
          if ((sn & SNAP_KEYINDEX)) {
             // A IRT_INT key index slot is restored as a number. Undo this.
             o->u32.lo = (uint32_t)(LJ_DUALNUM ? intV(o) : lj_num2int(numV(o)));
             o->u32.hi = LJ_KEYINDEX;
          }
       }
+      else log.detail("Slot %d: NORESTORE (skipped)", snap_slot(sn));
    }
-   L->base += (map[nent + LJ_BE] & 0xff);
-   lj_assertJ(map + nent == flinks, "inconsistent frames in snapshot");
+
+   uint8_t base_adj = (map[nent + LJ_BE] & 0xff);
+
+   L->base += base_adj;
+   lj_assertJ(map + nent IS flinks, "inconsistent frames in snapshot");
 
    // Compute current stack top.
    switch (bc_op(*pc)) {
@@ -989,6 +1034,7 @@ const BCIns * lj_snap_restore(jit_State *J, void *exptr)
       L->top = frame + snap->nslots;
       break;
    }
+   log.detail("Final: L->base=%p, L->top=%p, slots=%d", L->base, L->top, (int)(L->top - L->base));
    return pc;
 }
 
