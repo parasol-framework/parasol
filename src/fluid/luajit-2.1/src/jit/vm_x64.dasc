@@ -5382,16 +5382,17 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
   case BC_TRYLEAVE:
     |  ins_AD  // A=base_reg, D=unused
     |  mov L:RB, SAVE_L
-// If needed for debugging, the C version can be called:
-// mov CARG1, L:RB      // First arg: lua_State *L
-// call extern lj_try_leave
-// ins_next
-    |  // Inline: if (L->try_stack.depth > 0) L->try_stack.depth--;
-    |  mov RCd, dword [L:RB + L_TRY_DEPTH_OFS]
-    |  test RCd, RCd
-    |  jz >1
-    |  dec dword [L:RB + L_TRY_DEPTH_OFS]
-    |1:
+    //  // Inline: if (L->try_stack.depth > 0) L->try_stack.depth--;
+    //  mov RCd, dword [L:RB + L_TRY_DEPTH_OFS]
+    //  test RCd, RCd
+    //  jz >1
+    //  dec dword [L:RB + L_TRY_DEPTH_OFS]
+    //1:
+    |  mov L:RB->base, BASE         // Sync L->base (for GC and error handling)
+    |  mov L:RB->top, BASE          // Sync L->top (required for error handling)
+    |  mov CARG1, L:RB      // First arg: lua_State *L
+    |  call extern lj_try_leave
+    |  mov BASE, L:RB->base          // Restore BASE from L->base
     |  ins_next
     break;
 

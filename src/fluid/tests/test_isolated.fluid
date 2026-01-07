@@ -1,0 +1,31 @@
+--[[
+Known facts to generate the corrupted stack:
+
+* There must be try-except block external to the test function that contains a for loop exercising the hot path.
+* The test must feature a for loop that breaks out of the loop based on a condition.
+* If the test throws an error instead of returning normally, the exit path routes through setup_try_handler() which
+  resets the stack.  The process of resetting the stack prevents the corruption from occurring.
+* The test needs to be run 11 times to cause the error on returning to the try block.  10 or less times prevents it.
+* The problem involves the taking and restoration of JIT snaphots
+
+--]]
+
+
+test_no = 0
+
+@Test(hotpath=10) function NestedBreak()
+   test_no++
+   print('Test ', test_no, ': NestedBreak')
+
+   lb = { 'a', 'b', 'c' }
+   tlb = { 'c', 'd', 'e' }
+
+   for _,a in pairs(lb) do
+      break
+   end
+
+   if (test_no is 20) then error('Intentional throw at iteration ' .. test_no) end
+end
+
+   err, result = obj.find('self').mtDebugLog('disasm')
+   print(result)

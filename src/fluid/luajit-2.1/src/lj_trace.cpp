@@ -811,14 +811,14 @@ void LJ_FASTCALL lj_trace_hot(jit_State *J, const BCIns *pc)
    // Reset hotcount.
    hotcount_set(J2GG(J), pc, J->param[JIT_P_hotloop] * HOTCOUNT_LOOP);
 
-   if (J->L->try_stack.depth > 0) { // Help aid debugging of the JIT compiler - triggering in itself is not an issue.
-      log.detail("JIT trace recording starting inside try block (depth=%d)", J->L->try_stack.depth);
+   if (J->L->try_stack.depth > 0) {
+      //return; // Optimisation within try blocks can be disabled by returning here.
    }
 
    // Only start a new trace if not recording or inside __gc call or vmevent.
    if (J->state IS TraceState::IDLE and !(J2G(J)->hookmask & (HOOK_GC | HOOK_VMEVENT))) {
       BCOp op = bc_op(*actual_pc);
-      log.detail("Recording JIT trace: %s", (op < BC__MAX) ? glBytecodeNames[op] : "???");
+      log.msg(VLF::BRANCH|VLF::DETAIL, "Recording JIT trace: %s, Try-Stack: %d", (op < BC__MAX) ? glBytecodeNames[op] : "???", J->L->try_stack.depth);
       J->parent = 0;  //  Root trace.
       J->exitno = 0;
       J->state = TraceState::START;
@@ -832,6 +832,10 @@ void LJ_FASTCALL lj_trace_hot(jit_State *J, const BCIns *pc)
 
 static void trace_hotside(jit_State *J, const BCIns *pc)
 {
+   if (J->L->try_stack.depth > 0) {
+      //return; // Optimisation within try blocks can be disabled by returning here.
+   }
+
    SnapShot* snap = &traceref(J, J->parent)->snap[J->exitno];
    if (not (J2G(J)->hookmask & (HOOK_GC | HOOK_VMEVENT)) and
       isluafunc(curr_func(J->L)) and
@@ -935,6 +939,7 @@ int LJ_FASTCALL lj_trace_exit(jit_State *J, void *exptr)
    [[maybe_unused]] GCtrace *T;
 
    setnilV(&exiterr);
+
    if (exitcode) {  // Trace unwound with error code.
       J->exitcode = 0;
       copyTV(L, &exiterr, L->top - 1);

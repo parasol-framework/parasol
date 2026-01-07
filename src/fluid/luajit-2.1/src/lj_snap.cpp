@@ -35,8 +35,6 @@
 #include <parasol/main.h>
 #include "lj_obj.h"
 
-#if LJ_HASJIT
-
 #include "lj_gc.h"
 #include "lj_tab.h"
 #include "lj_state.h"
@@ -59,9 +57,11 @@
 // Emit raw IR without passing through optimizations.
 #define emitir_raw(ot, a, b)   (lj_ir_set(J, (ot), (a), (b)), lj_ir_emit(J))
 
-// -- Snapshot buffer allocation ------------------------------------------
+//********************************************************************************************************************
+// Snapshot buffer allocation
 
 // Grow snapshot buffer.
+
 void lj_snap_grow_buf_(jit_State* J, MSize need)
 {
    MSize maxsnap = (MSize)J->param[JIT_P_maxsnap];
@@ -81,10 +81,12 @@ void lj_snap_grow_map_(jit_State* J, MSize need)
    J->sizesnapmap = need;
 }
 
-// -- Snapshot generation -------------------------------------------------
+//********************************************************************************************************************
+// Snapshot generation
 
 // Add all modified slots to the snapshot.
-static MSize snapshot_slots(jit_State* J, SnapEntry* map, BCREG nslots)
+
+static MSize snapshot_slots(jit_State *J, SnapEntry *map, BCREG nslots)
 {
    IRRef retf = J->chain[IR_RETF];  //  Limits SLOAD restore elimination.
    BCREG s;
@@ -92,11 +94,12 @@ static MSize snapshot_slots(jit_State* J, SnapEntry* map, BCREG nslots)
    for (s = 0; s < nslots; s++) {
       TRef tr = J->slot[s];
       IRRef ref = tref_ref(tr);
-      if (s == 1) {  // Ignore slot 1 in LJ_FR2 mode, except if tailcalled.
+      if (s IS 1) {  // Ignore slot 1 in LJ_FR2 mode, except if tailcalled.
          if ((tr & TREF_FRAME))
             map[n++] = SNAP(1, SNAP_FRAME | SNAP_NORESTORE, REF_NIL);
          continue;
       }
+
       if ((tr & (TREF_FRAME | TREF_CONT)) and !ref) {
          cTValue* base = J->L->base - J->baseslot;
          tr = J->slot[s] = (tr & 0xff0000) | lj_ir_k64(J, IR_KNUM, base[s].u64);
@@ -105,15 +108,15 @@ static MSize snapshot_slots(jit_State* J, SnapEntry* map, BCREG nslots)
       if (ref) {
          SnapEntry sn = SNAP_TR(s, tr);
          IRIns* ir = &J->cur.ir[ref];
-         if ((!(sn & (SNAP_CONT | SNAP_FRAME))) and ir->o == IR_SLOAD and ir->op1 == s and ref > retf) {
+         if ((!(sn & (SNAP_CONT | SNAP_FRAME))) and ir->o IS IR_SLOAD and ir->op1 IS s and ref > retf) {
             // No need to snapshot unmodified non-inherited slots.
             // But always snapshot the function below a frame in LJ_FR2 mode.
 
-            if (!(ir->op2 & IRSLOAD_INHERIT) and (!LJ_FR2 or s == 0 or s + 1 == nslots ||
+            if (!(ir->op2 & IRSLOAD_INHERIT) and (!LJ_FR2 or s IS 0 or s + 1 IS nslots or
                   !(J->slot[s + 1] & (TREF_CONT | TREF_FRAME))))
                continue;
             // No need to restore readonly slots and unmodified non-parent slots.
-            if (!(LJ_DUALNUM and (ir->op2 & IRSLOAD_CONVERT)) &&
+            if (!(LJ_DUALNUM and (ir->op2 & IRSLOAD_CONVERT))  and
                (ir->op2 & (IRSLOAD_READONLY | IRSLOAD_PARENT)) != IRSLOAD_PARENT)
                sn |= SNAP_NORESTORE;
          }
@@ -123,7 +126,9 @@ static MSize snapshot_slots(jit_State* J, SnapEntry* map, BCREG nslots)
    return n;
 }
 
+//********************************************************************************************************************
 // Add frame links at the end of the snapshot.
+
 static MSize snapshot_framelinks(jit_State* J, SnapEntry* map, uint8_t* topslot)
 {
    cTValue* frame = J->L->base - 1;
@@ -157,7 +162,9 @@ static MSize snapshot_framelinks(jit_State* J, SnapEntry* map, uint8_t* topslot)
    return 2;
 }
 
+//********************************************************************************************************************
 // Take a snapshot of the current stack.
+
 static void snapshot_stack(jit_State* J, SnapShot* snap, MSize nsnapmap)
 {
    BCREG nslots = J->baseslot + J->maxslot;
@@ -214,16 +221,17 @@ void lj_snap_add(jit_State* J)
    snapshot_stack(J, &J->cur.snap[nsnap], nsnapmap);
 }
 
-// -- Snapshot modification -----------------------------------------------
+//********************************************************************************************************************
+// Snapshot modification
 
 #define SNAP_USEDEF_SLOTS   (LJ_MAX_JSLOTS+LJ_STACK_EXTRA)
 
 // Find unused slots with reaching-definitions bytecode data-flow analysis.
-static BCREG snap_usedef(jit_State* J, uint8_t* udf,
-   const BCIns* pc, BCREG maxslot)
+
+static BCREG snap_usedef(jit_State *J, uint8_t *udf, const BCIns *pc, BCREG maxslot)
 {
    BCREG s;
-   GCobj* o;
+   GCobj *o;
 
    if (maxslot == 0) return 0;
 #ifdef LUAJIT_USE_VALGRIND
@@ -447,45 +455,45 @@ static RegSP snap_renameref(GCtrace* T, SnapNo lim, IRRef ref, RegSP rs)
    return rs;
 }
 
+//********************************************************************************************************************
 // Copy RegSP from parent snapshot to the parent links of the IR.
-IRIns* lj_snap_regspmap(jit_State* J, GCtrace* T, SnapNo snapno, IRIns* ir)
+
+IRIns * lj_snap_regspmap(jit_State *J, GCtrace *T, SnapNo snapno, IRIns *ir)
 {
    SnapShot* snap = &T->snap[snapno];
    SnapEntry* map = &T->snapmap[snap->mapofs];
    BloomFilter rfilt = snap_renamefilter(T, snapno);
    MSize n = 0;
    IRRef ref = 0;
-   UNUSED(J);
+
    for (; ; ir++) {
       uint32_t rs;
-      if (ir->o == IR_SLOAD) {
+      if (ir->o IS IR_SLOAD) {
          if (!(ir->op2 & IRSLOAD_PARENT)) break;
          for (; ; n++) {
             lj_assertJ(n < snap->nent, "slot %d not found in snapshot", ir->op1);
-            if (snap_slot(map[n]) == ir->op1) {
+            if (snap_slot(map[n]) IS ir->op1) {
                ref = snap_ref(map[n++]);
                break;
             }
          }
       }
-      else if (ir->o == IR_PVAL) {
-         ref = ir->op1 + REF_BIAS;
-      }
-      else {
-         break;
-      }
+      else if (ir->o IS IR_PVAL) ref = ir->op1 + REF_BIAS;
+      else break;
+
       rs = T->ir[ref].prev;
-      if (bloomtest(rfilt, ref))
-         rs = snap_renameref(T, snapno, ref, rs);
+      if (bloomtest(rfilt, ref)) rs = snap_renameref(T, snapno, ref, rs);
       ir->prev = (uint16_t)rs;
       lj_assertJ(regsp_used(rs), "unused IR %04d in snapshot", ref - REF_BIAS);
    }
    return ir;
 }
 
-// -- Snapshot replay -----------------------------------------------------
+//********************************************************************************************************************
+// Snapshot replay
 
 // Replay constant from parent trace.
+
 static TRef snap_replay_const(jit_State* J, IRIns* ir)
 {
    // Only have to deal with constants that can occur in stack slots.
@@ -555,7 +563,9 @@ void lj_snap_replay(jit_State* J, GCtrace* T)
    BloomFilter seen = 0;
    int pass23 = 0;
    J->framedepth = 0;
+
    // Emit IR for slots inherited from parent snapshot.
+
    for (n = 0; n < nent; n++) {
       SnapEntry sn = map[n];
       BCREG s = snap_slot(sn);
@@ -568,10 +578,8 @@ void lj_snap_replay(jit_State* J, GCtrace* T)
       bloomset(seen, ref);
       if (irref_isk(ref)) {
          // See special treatment of LJ_FR2 slot 1 in snapshot_slots() above.
-         if ((sn == SNAP(1, SNAP_FRAME | SNAP_NORESTORE, REF_NIL)))
-            tr = 0;
-         else
-            tr = snap_replay_const(J, ir);
+         if ((sn IS SNAP(1, SNAP_FRAME | SNAP_NORESTORE, REF_NIL))) tr = 0;
+         else tr = snap_replay_const(J, ir);
       }
       else if (!regsp_used(ir->prev)) {
          pass23 = 1;
@@ -581,7 +589,7 @@ void lj_snap_replay(jit_State* J, GCtrace* T)
       else {
          IRType t = irt_type(ir->t);
          uint32_t mode = IRSLOAD_INHERIT | IRSLOAD_PARENT;
-         if (ir->o == IR_SLOAD) mode |= (ir->op2 & IRSLOAD_READONLY);
+         if (ir->o IS IR_SLOAD) mode |= (ir->op2 & IRSLOAD_READONLY);
          if ((sn & SNAP_KEYINDEX)) mode |= IRSLOAD_KEYINDEX;
          tr = emitir_raw(IRT(IR_SLOAD, t), s, mode);
       }
@@ -589,9 +597,9 @@ void lj_snap_replay(jit_State* J, GCtrace* T)
       // Same as TREF_* flags.
       J->slot[s] = tr | (sn & (SNAP_KEYINDEX | SNAP_CONT | SNAP_FRAME));
       J->framedepth += ((sn & (SNAP_CONT | SNAP_FRAME)) and (s != LJ_FR2));
-      if ((sn & SNAP_FRAME))
-         J->baseslot = s + 1;
+      if (sn & SNAP_FRAME) J->baseslot = s + 1;
    }
+
    if (pass23) {
       IRIns* irlast = &T->ir[snap->ref];
       pass23 = 0;
