@@ -6,6 +6,7 @@ Known facts to generate the corrupted stack:
 * If the test throws an error instead of returning normally, the exit path routes through setup_try_handler() which
   resets the stack.  The process of resetting the stack prevents the corruption from occurring.
 * The test needs to be run 11 times to cause the error on returning to the try block.  10 or less times prevents it.
+* The problem involves the taking and restoration of JIT snaphots
 
 --]]
 
@@ -23,7 +24,7 @@ test_no = 0
       break
    end
 
-   --error('Intentional throw')
+   if (test_no is 20) then error('Intentional throw at iteration ' .. test_no) end
 end
 
    err, result = obj.find('self').mtDebugLog('disasm')
