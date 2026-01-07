@@ -2717,8 +2717,10 @@ static void build_subroutines(BuildCtx *ctx)
   |  cmp OP, BC_FUNCC         // Lua function header? (BC_FUNCF..BC_JFUNCV = 99..104)
   |  jb >2
   |  cmp OP, BC_FUNCCW        // C function? (BC_FUNCC or BC_FUNCCW = 105 or 106)
-  |  ja >3                    // OP > 106: dispatch normally (BC_TRYENTER, BC_TRYLEAVE, etc.)
-  |  jmp >4                   // C function: set up KBASE below
+  |  jbe >4                   // C function: set up KBASE below
+  |  cmp OP, BC__MAX
+  |  jae >4                   // Fast function: set up KBASE below
+  |  jmp >3                   // Dispatch normally (BC_TRYENTER, BC_TRYLEAVE, etc.)
   |2:
   |  mov RCd, MULTRES         // RC/RD holds nres+1.
   |3:

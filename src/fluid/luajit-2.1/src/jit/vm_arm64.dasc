@@ -2206,8 +2206,10 @@ static void build_subroutines(BuildCtx *ctx)
   |   add TMP1, GL, INS, uxtb #3
   |  blo >2			// < BC_FUNCC: check if Lua function header
   |  cmp RBw, #BC_FUNCCW
-  |  bhi >2			// > BC_FUNCCW: dispatch normally (BC_TRYENTER, BC_TRYLEAVE, etc.)
-  |  b >4			// BC_FUNCC or BC_FUNCCW: set up KBASE below
+  |  bls >4			// BC_FUNCC or BC_FUNCCW: set up KBASE below
+  |  cmp RBw, #BC__MAX
+  |  bhs >4			// Fast function: set up KBASE below
+  |  b >2			// Dispatch normally (BC_TRYENTER, BC_TRYLEAVE, etc.)
   |2:
   |  cmp RBw, #BC_FUNCF			// Function header? (BC_FUNCF..BC_JFUNCV = 99..104)
   |  add TMP0, GL, RB, uxtb #3
