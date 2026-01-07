@@ -20,6 +20,7 @@
 #include "lj_gc.h"
 #include "lj_debug.h"
 #include "lj_array.h"
+#include "lj_trace.h"
 #include "parser/parser_diagnostics.h"
 
 #include "hashes.h"
@@ -961,7 +962,7 @@ extern "C" void lj_try_leave(lua_State *L)
 {
    pf::Log log(__FUNCTION__);
    log.msg("Stack Depth: %d, Base: %p, Top: %p", L->try_stack.depth, L->base, L->top);
-   log.debranch();
+
    // NB: The setup_try_handler() also decrements the depth, so the check prevents a repeat
    if (L->try_stack.depth > 0) L->try_stack.depth--;
 }
