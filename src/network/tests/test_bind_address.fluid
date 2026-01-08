@@ -45,8 +45,11 @@ end
 
 @Test function BindAllInterfaces()
    port = glBasePort + 2
-   server = obj.new('netsocket', { port = port, address = '0.0.0.0', flags = 'SERVER' })
-   assert(server, 'Failed to bind to 0.0.0.0:' .. port)
+   try
+      obj.new('netsocket', { port = port, address = '0.0.0.0', flags = 'SERVER' })
+   except ex
+      error('Failed to bind to 0.0.0.0:' .. port)
+   end
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -54,8 +57,11 @@ end
 
 @Test function DefaultBinding()
    port = glBasePort + 3
-   server = obj.new('netsocket', { port = port, flags = 'SERVER' })
-   assert(server, 'Failed to bind to port ' .. port)
+   try
+      obj.new('netsocket', { port = port, flags = 'SERVER' })
+   except ex
+      error('Failed to bind to port ' .. port)
+   end
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -63,8 +69,11 @@ end
 
 @Test function BindWildcard()
    port = glBasePort + 4
-   server = obj.new('netsocket', { port = port, address = '*', flags = 'SERVER' })
-   assert(server, 'Failed to bind with wildcard to port ' .. port)
+   try
+      obj.new('netsocket', { port = port, address = '*', flags = 'SERVER' })
+   except ex
+      error('Failed to bind with wildcard to port ' .. port)
+   end
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -72,8 +81,11 @@ end
 
 @Test function BindIPv6Localhost()
    port = glBasePort + 5
-   server = obj.new('netsocket', { port = port, address = '::1', flags = 'SERVER' })
-   assert(server, 'Failed to bind to ::1:' .. port .. ' (IPv6 may not be available)')
+   try
+      obj.new('netsocket', { port = port, address = '::1', flags = 'SERVER' })
+   except ex
+      error('Failed to bind to ::1:' .. port .. ' (IPv6 may not be available)')
+   end
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -81,8 +93,11 @@ end
 
 @Test function BindIPv6AllInterfaces()
    port = glBasePort + 6
-   server = obj.new('netsocket', { port = port, address = '::', flags = 'SERVER' })
-   assert(server,  'Failed to bind to :::' .. port .. ' (IPv6 may not be available)')
+   try
+      obj.new('netsocket', { port = port, address = '::', flags = 'SERVER' })
+   except ex
+      error('Failed to bind to :::' .. port .. ' (IPv6 may not be available)')
+   end
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -90,8 +105,11 @@ end
 
 @Test function BindLocalhostString()
    port = glBasePort + 7
-   server = obj.new('netsocket', { port = port, address = 'localhost', flags = 'SERVER' })
-   if not server then error('Failed to bind to localhost:' .. port) end
+   try
+     obj.new('netsocket', { port = port, address = 'localhost', flags = 'SERVER' })
+   except ex
+      error('Failed to bind to localhost:' .. port)
+   end
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -99,9 +117,11 @@ end
 
 @Test function InvalidBindAddress()
    port = glBasePort + 8
-   server = nil
-   catch(function() server = obj.new('netsocket', { port = port, address = '999.999.999.999', flags = 'SERVER' }) end)
-   if server then error('Unexpectedly succeeded binding to invalid address') end
+   try
+      server = obj.new('netsocket', { port = port, address = '999.999.999.999', flags = 'SERVER' })
+   success
+      error('Unexpectedly succeeded binding to invalid address')
+   end
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -110,11 +130,13 @@ end
 @Test function ConcurrentServers()
    port = glBasePort + 9
 
-   -- First server on localhost
-   server1 = obj.new('netsocket', { port = port, address = '127.0.0.1', flags = 'SERVER' })
+   try
+      -- First server on localhost
+      obj.new('netsocket', { port = port, address = '127.0.0.1', flags = 'SERVER' })
 
-   -- Second server on different port, all interfaces
-   server2 = obj.new('netsocket', { port = port + 1, address = '0.0.0.0', flags = 'SERVER' })
-
-   assert(server1 and server2, 'Failed to create concurrent servers')
+      -- Second server on different port, all interfaces
+      obj.new('netsocket', { port = port + 1, address = '0.0.0.0', flags = 'SERVER' })
+   except ex
+      error('Failed to create concurrent servers')
+   end
 end

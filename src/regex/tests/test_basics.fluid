@@ -21,9 +21,13 @@ end
 end
 
 @Test function InvalidPatternRaises()
-   ex = catch(function() return regex.new("(broken") end)
-   assert(ex != nil, "Invalid pattern should raise an exception")
-   assert(ex.message:find("Regex compilation failed"), "Error message should mention compilation failure, got: " .. ex.message)
+   try
+     regex.new("(broken")
+   except ex
+      assert(ex.message:find("Regex compilation failed"), "Error message should mention compilation failure, got: " .. ex.message)
+   success
+      error("Invalid pattern should raise an exception")
+   end
 end
 
 @Test function MatchWholeEnforcement()

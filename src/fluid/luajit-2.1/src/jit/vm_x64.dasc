@@ -1688,37 +1688,6 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov RDd, 1+3
   |  jmp ->fff_res
   |
-  |//-- Base library: catch errors ----------------------------------------
-  |
-  |.ffunc_1 pcall
-  |  lea RA, [BASE+16]
-  |  sub NARGS:RDd, 1
-  |  mov PCd, 16+FRAME_PCALL
-  |1:
-  |  movzx RBd, byte [DISPATCH+DISPATCH_GL(hookmask)]
-  |  shr RB, HOOK_ACTIVE_SHIFT
-  |  and RB, 1
-  |  add PC, RB            // Remember active hook before pcall.
-  |  // Note: this does a (harmless) copy of the function to the PC slot, too.
-  |  mov KBASE, RD
-  |2:
-  |  mov RB, [RA+KBASE*8-24]
-  |  mov [RA+KBASE*8-16], RB
-  |  sub KBASE, 1
-  |  ja <2
-  |  jmp ->vm_call_dispatch
-  |
-  |.ffunc_2 xpcall
-  |  mov LFUNC:RA, [BASE+8]
-  |  checktp_nc LFUNC:RA, LJ_TFUNC, ->fff_fallback
-  |  mov LFUNC:RB, [BASE]     // Swap function and traceback.
-  |  mov [BASE], LFUNC:RA
-  |  mov [BASE+8], LFUNC:RB
-  |  lea RA, [BASE+24]
-  |  sub NARGS:RDd, 2
-  |  mov PCd, 24+FRAME_PCALL
-  |  jmp <1
-  |
   |//-- Coroutine library --------------------------------------------------
   |
   |.macro coroutine_resume_wrap, resume
@@ -4992,9 +4961,6 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
 
   case BC_JFORI:
   case BC_JFORL:
-#if !LJ_HASJIT
-    break;
-#endif
   case BC_FORI:
   case BC_IFORL:
     vk = (op == BC_IFORL || op == BC_JFORL);
@@ -5142,9 +5108,6 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     break;
 
   case BC_JITERL:
-#if !LJ_HASJIT
-    break;
-#endif
   case BC_IITERL:
     |  ins_AJ  // RA = base, RD = target
     |  lea RA, [BASE+RA*8]
@@ -5236,9 +5199,6 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     break;
 
   case BC_JFUNCF:
-#if !LJ_HASJIT
-    break;
-#endif
   case BC_IFUNCF:
     |  ins_AD  // BASE = new base, RA = framesize, RD = nargs+1
     |  mov KBASE, [PC-4+PC2PROTO(k)]
@@ -5266,9 +5226,6 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     break;
 
   case BC_JFUNCV:
-#if !LJ_HASJIT
-    break;
-#endif
     | int3  // NYI: compiled vararg functions
     break;  //  NYI: compiled vararg functions.
 
@@ -5460,21 +5417,6 @@ static void emit_asm_debug(BuildCtx *ctx)
 #endif
    "\t.align 8\n"
    ".LEFDE0:\n\n", fcofs, CFRAME_SIZE);
-#if LJ_HASFFI
-    fprintf(ctx->fp,
-   ".LSFDE1:\n"
-   "\t.long .LEFDE1-.LASFDE1\n"
-   ".LASFDE1:\n"
-   "\t.long .Lframe0\n"
-   "\t.quad lj_vm_ffi_call\n"
-   "\t.quad %d\n"
-   "\t.byte 0xe\n\t.uleb128 16\n"      //  def_cfa_offset
-   "\t.byte 0x86\n\t.uleb128 0x2\n" //  offset rbp
-   "\t.byte 0xd\n\t.uleb128 0x6\n"     //  def_cfa_register rbp
-   "\t.byte 0x83\n\t.uleb128 0x3\n" //  offset rbx
-   "\t.align 8\n"
-   ".LEFDE1:\n\n", (int)ctx->codesz - fcofs);
-#endif
 #if !LJ_NO_UNWIND
 #if LJ_TARGET_SOLARIS
     fprintf(ctx->fp, "\t.section .eh_frame,\"a\",@unwind\n");
@@ -5514,38 +5456,6 @@ static void emit_asm_debug(BuildCtx *ctx)
    "\t.byte 0x8e\n\t.uleb128 0x5\n" //  offset r14
    "\t.align 8\n"
    ".LEFDE2:\n\n", fcofs, CFRAME_SIZE);
-#if LJ_HASFFI
-    fprintf(ctx->fp,
-   ".Lframe2:\n"
-   "\t.long .LECIE2-.LSCIE2\n"
-   ".LSCIE2:\n"
-   "\t.long 0\n"
-   "\t.byte 0x1\n"
-   "\t.string \"zR\"\n"
-   "\t.uleb128 0x1\n"
-   "\t.sleb128 -8\n"
-   "\t.byte 0x10\n"
-   "\t.uleb128 1\n"        //  augmentation length
-   "\t.byte 0x1b\n"        //  pcrel|sdata4
-   "\t.byte 0xc\n\t.uleb128 0x7\n\t.uleb128 8\n"
-   "\t.byte 0x80+0x10\n\t.uleb128 0x1\n"
-   "\t.align 8\n"
-   ".LECIE2:\n\n");
-    fprintf(ctx->fp,
-   ".LSFDE3:\n"
-   "\t.long .LEFDE3-.LASFDE3\n"
-   ".LASFDE3:\n"
-   "\t.long .LASFDE3-.Lframe2\n"
-   "\t.long lj_vm_ffi_call-.\n"
-   "\t.long %d\n"
-   "\t.uleb128 0\n"        //  augmentation length
-   "\t.byte 0xe\n\t.uleb128 16\n"      //  def_cfa_offset
-   "\t.byte 0x86\n\t.uleb128 0x2\n" //  offset rbp
-   "\t.byte 0xd\n\t.uleb128 0x6\n"     //  def_cfa_register rbp
-   "\t.byte 0x83\n\t.uleb128 0x3\n" //  offset rbx
-   "\t.align 8\n"
-   ".LEFDE3:\n\n", (int)ctx->codesz - fcofs);
-#endif
 #endif
     break;
 #if !LJ_NO_UNWIND
@@ -5553,9 +5463,6 @@ static void emit_asm_debug(BuildCtx *ctx)
   ** Or a linker. Or a plastic case. But I digress.
   */
   case BUILD_machasm: {
-#if LJ_HASFFI
-    int fcsize = 0;
-#endif
     int i;
     fprintf(ctx->fp, "\t.section __TEXT,__eh_frame,coalesced,no_toc+strip_static_syms+live_support\n");
     fprintf(ctx->fp,
@@ -5581,9 +5488,6 @@ static void emit_asm_debug(BuildCtx *ctx)
       const char *name = ctx->sym[i].name;
       int32_t size = ctx->sym[i+1].ofs - ctx->sym[i].ofs;
       if (size == 0) continue;
-#if LJ_HASFFI
-      if (!strcmp(name, "_lj_vm_ffi_call")) { fcsize = size; continue; }
-#endif
       fprintf(ctx->fp,
      "%s.eh:\n"
      "LSFDE%d:\n"
@@ -5603,43 +5507,6 @@ static void emit_asm_debug(BuildCtx *ctx)
      "LEFDE%d:\n\n",
      name, i, i, i, i, i, i, i, name, size, CFRAME_SIZE, i);
     }
-#if LJ_HASFFI
-    if (fcsize) {
-      fprintf(ctx->fp,
-     "EH_frame2:\n"
-     "\t.set L$set$y,LECIEY-LSCIEY\n"
-     "\t.long L$set$y\n"
-     "LSCIEY:\n"
-     "\t.long 0\n"
-     "\t.byte 0x1\n"
-     "\t.ascii \"zR\\0\"\n"
-     "\t.byte 0x1\n"
-     "\t.byte 128-8\n"
-     "\t.byte 0x10\n"
-     "\t.byte 1\n"            //  augmentation length
-     "\t.byte 0x1b\n"         //  pcrel|sdata4
-     "\t.byte 0xc\n\t.byte 0x7\n\t.byte 8\n"
-     "\t.byte 0x80+0x10\n\t.byte 0x1\n"
-     "\t.align 3\n"
-     "LECIEY:\n\n");
-      fprintf(ctx->fp,
-     "_lj_vm_ffi_call.eh:\n"
-     "LSFDEY:\n"
-     "\t.set L$set$yy,LEFDEY-LASFDEY\n"
-     "\t.long L$set$yy\n"
-     "LASFDEY:\n"
-     "\t.long LASFDEY-EH_frame2\n"
-     "\t.long _lj_vm_ffi_call-.\n"
-     "\t.long %d\n"
-     "\t.byte 0\n"            //  augmentation length
-     "\t.byte 0xe\n\t.byte 16\n"    //  def_cfa_offset
-     "\t.byte 0x86\n\t.byte 0x2\n"     //  offset rbp
-     "\t.byte 0xd\n\t.byte 0x6\n"      //  def_cfa_register rbp
-     "\t.byte 0x83\n\t.byte 0x3\n"     //  offset rbx
-     "\t.align 3\n"
-     "LEFDEY:\n\n", fcsize);
-    }
-#endif
     fprintf(ctx->fp, ".subsections_via_symbols\n");
     }
     break;

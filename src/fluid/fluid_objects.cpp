@@ -306,8 +306,7 @@ inline void build_read_table(object *Def)
 
       if (!def->UID) { // Check if the object has been dereferenced by free() or similar
          luaL_error(Lua, "Object dereferenced, unable to read field %s", keyname);
-         auto prv = (prvFluid *)Lua->script->ChildPrivate;
-         prv->CaughtError = ERR::DoesNotExist;
+         Lua->CaughtError = ERR::DoesNotExist;
          return 0;
       }
 
@@ -318,9 +317,7 @@ inline void build_read_table(object *Def)
       }
       else {
          pf::Log(__FUNCTION__).warning("Field does not exist or is unreadable: %s.%s", def->Class ? def->Class->ClassName: "?", keyname);
-         auto prv = (prvFluid *)Lua->script->ChildPrivate;
-         prv->CaughtError = ERR::NoSupport;
-         //if (prv->ThrowErrors) luaL_error(Lua, GetErrorMsg);
+         Lua->CaughtError = ERR::NoSupport;
       }
    }
 
@@ -384,8 +381,6 @@ inline void build_read_table(object *Def)
    CSTRING class_name;
    CLASSID class_id;
 
-   auto prv = (prvFluid *)Lua->script->ChildPrivate;
-
    NF objflags = NF::NIL;
    int type = lua_type(Lua, 1);
    if (type IS LUA_TNUMBER) {
@@ -399,7 +394,7 @@ inline void build_read_table(object *Def)
    }
    else {
       log.warning("String or ID expected for class name, got '%s'.", lua_typename(Lua, type));
-      prv->CaughtError = ERR::Mismatch;
+      Lua->CaughtError = ERR::Mismatch;
       luaL_error(Lua, GetErrorMsg(ERR::Mismatch));
       return 0;
    }
@@ -445,12 +440,12 @@ inline void build_read_table(object *Def)
             FreeResource(obj);
 
             if (field_error != ERR::Okay) {
-               prv->CaughtError = field_error;
+               Lua->CaughtError = field_error;
                luaL_error(Lua, "Failed to set field '%s.%s' with %s, error: %s", class_name, field_name, lua_typename(Lua, failed_type), GetErrorMsg(field_error));
             }
             else {
                log.warning("Failed to Init() %s: %s", class_name, GetErrorMsg(error));
-               prv->CaughtError = error;
+               Lua->CaughtError = error;
                luaL_error(Lua, GetErrorMsg(error));
             }
             return 0;
@@ -463,7 +458,7 @@ inline void build_read_table(object *Def)
       return 1;
    }
    else {
-      prv->CaughtError = ERR::NewObject;
+      Lua->CaughtError = ERR::NewObject;
       luaL_error(Lua, "NewObject() failed for class '%s', error: %s", class_name, GetErrorMsg(error));
       return 0;
    }
@@ -523,8 +518,6 @@ static int object_newchild(lua_State *Lua)
       return 0;
    }
 
-   auto prv = (prvFluid *)Lua->script->ChildPrivate;
-
    CSTRING class_name;
    CLASSID class_id;
    NF objflags = NF::NIL;
@@ -540,7 +533,7 @@ static int object_newchild(lua_State *Lua)
    }
    else {
       log.warning("String or ID expected for class name, got '%s'.", lua_typename(Lua, type));
-      prv->CaughtError = ERR::Mismatch;
+      Lua->CaughtError = ERR::Mismatch;
       luaL_error(Lua, GetErrorMsg(ERR::Mismatch));
       return 0;
    }
@@ -595,12 +588,12 @@ static int object_newchild(lua_State *Lua)
             FreeResource(obj);
 
             if (field_error != ERR::Okay) {
-               prv->CaughtError = field_error;
+               Lua->CaughtError = field_error;
                luaL_error(Lua, "Failed to set field '%s', error: %s", field_name, GetErrorMsg(field_error));
             }
             else {
                log.warning("Failed to Init() object '%s', error: %s", class_name, GetErrorMsg(error));
-               prv->CaughtError = ERR::Init;
+               Lua->CaughtError = ERR::Init;
                luaL_error(Lua, GetErrorMsg(ERR::Init));
             }
             return 0;
@@ -614,7 +607,7 @@ static int object_newchild(lua_State *Lua)
       return 1;
    }
    else {
-      prv->CaughtError = ERR::NewObject;
+      Lua->CaughtError = ERR::NewObject;
       luaL_error(Lua, GetErrorMsg(ERR::NewObject));
       return 0;
    }

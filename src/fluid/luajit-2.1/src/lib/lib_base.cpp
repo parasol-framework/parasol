@@ -546,16 +546,6 @@ LJLIB_CF(error)
 }
 
 //********************************************************************************************************************
-
-LJLIB_ASM(pcall)      LJLIB_REC(.)
-{
-   lj_lib_checkany(L, 1);
-   lj_lib_checkfunc(L, 2);  //  For xpcall only.
-   return FFH_UNREACHABLE;
-}
-LJLIB_ASM_(xpcall)      LJLIB_REC(.)
-
-//********************************************************************************************************************
 // Base library: GC control
 
 LJLIB_CF(collectgarbage)
@@ -849,7 +839,7 @@ extern int luaopen_base(lua_State* L)
    // NOBARRIER: Table and value are the same.
    GCtab *env = tabref(L->env);
    settabV(L, lj_tab_setstr(L, env, lj_str_newlit(L, "_G")), env);
-   lua_pushliteral(L, "5.2");  //  top-3. // Lua version number, set as _VERSION
+   lua_pushliteral(L, "5.4");  //  top-3. // Lua version number, set as _VERSION
    newproxy_weaktable(L);  //  top-2.
    LJ_LIB_REG(L, "_G", base);
    LJ_LIB_REG(L, LUA_COLIBNAME, coroutine);

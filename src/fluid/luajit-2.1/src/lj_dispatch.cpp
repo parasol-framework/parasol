@@ -18,9 +18,6 @@
 #include "lj_ff.h"
 #include "lj_strfmt.h"
 #include "lj_jit.h"
-#if LJ_HASFFI
-#include "lj_ccallback.h"
-#endif
 #include "lj_trace.h"
 #include "lj_dispatch.h"
 #include "lj_vm.h"

@@ -58,7 +58,7 @@ static int lua_load(lua_State *Lua, class objFile *File, CSTRING SourceName)
 //********************************************************************************************************************
 // check() is the equivalent of an assert() for error codes.  Any major error code will be converted to an
 // exception containing a readable string for the error code.  It is most powerful when used in conjunction with
-// the catch() function, which will apply the line number of the exception to the result.  The error code will
+// the try statement, which will apply the line number of the exception to the result.  The error code will
 // also be propagated to the Script object's Error field.
 //
 // This function also serves a dual purpose in that it can be used to raise exceptions when an error condition needs to
@@ -71,10 +71,9 @@ int fcmd_check(lua_State *Lua)
    int param_count = lua_gettop(Lua); // Get the total number of parameters
 
    if (lua_type(Lua, 1) IS LUA_TNUMBER) {
-      ERR error = ERR(lua_tointeger(Lua, 1));
+      auto error = ERR(lua_tointeger(Lua, 1));
       if (int(error) >= int(ERR::ExceptionThreshold)) {
-         auto prv = (prvFluid *)Lua->script->ChildPrivate;
-         prv->CaughtError = error;
+         Lua->CaughtError = error;
          luaL_error(Lua, GetErrorMsg(error));
       }
    }
@@ -90,232 +89,10 @@ int fcmd_check(lua_State *Lua)
 int fcmd_raise(lua_State *Lua)
 {
    if (lua_type(Lua, 1) IS LUA_TNUMBER) {
-      ERR error = ERR(lua_tointeger(Lua, 1));
-      auto prv = (prvFluid *)Lua->script->ChildPrivate;
-      prv->CaughtError = error;
+      auto error = ERR(lua_tointeger(Lua, 1));
+      Lua->CaughtError = error;
       luaL_error(Lua, GetErrorMsg(error));
    }
-   return 0;
-}
-
-//********************************************************************************************************************
-// DEPRECATED
-
-int fcmd_catch_handler(lua_State *Lua)
-{
-   lua_Debug ar;
-   auto prv = (prvFluid *)Lua->script->ChildPrivate;
-   if (lua_getstack(Lua, 2, &ar)) {
-      lua_getinfo(Lua, "nSl", &ar);
-      // ar.currentline, ar.name, ar.source, ar.short_src, ar.linedefined, ar.lastlinedefined, ar.what
-      prv->ErrorLine = ar.currentline;
-   }
-   else prv->ErrorLine = -1;
-
-   return 1; // Return 1 to rethrow the exception table, no need to re-push the value
-}
-
-int fcmd_catch(lua_State *Lua)
-{
-   pf::Log("catch").warning("catch() is deprecated; use try-except blocks instead.");
-
-   auto prv = (prvFluid *)Lua->script->ChildPrivate;
-
-   if (lua_gettop(Lua) >= 2) {
-      auto type = lua_type(Lua, 1);
-      if (type IS LUA_TFUNCTION) {
-         int catch_filter = 0;
-         type = lua_type(Lua, 2);
-
-         int a = 2;
-         if (type IS LUA_TTABLE) {
-            // First argument is a list of error codes to filter on, second argument is the exception handler.
-            lua_pushvalue(Lua, a++);
-            catch_filter = luaL_ref(Lua, LUA_REGISTRYINDEX);
-            type = lua_type(Lua, a);
-         }
-
-         if (type IS LUA_TFUNCTION) {
-            bool caught_by_filter = false;
-            prv->Catch++; // Flag to convert ERR results to exceptions.
-            prv->CaughtError = ERR::Okay;
-
-            // Scope isolation: Only direct calls within catch() should throw exceptions,
-            // not calls made from nested Lua functions.
-            //
-            // We count Lua stack frames using lua_getstack(). This function returns non-zero
-            // if a stack frame exists at the given level (0 = current function, 1 = caller, etc).
-            // The lua_Debug struct is populated but we only use lua_getstack() as a probe here.
-            //
-            // Note: lua_Debug.i_ci is an internal LuaJIT field that proved unreliable for depth
-            // tracking - its values are not predictable across different call contexts. Counting
-            // frames via lua_getstack() is portable and consistent.
-            //
-            // The +2 offset accounts for frames added by lua_pcall: the catch function itself
-            // and the pcall error handler. Direct calls from the catch body will have exactly
-            // CatchDepth frames; nested function calls will have more.
-
-            int prev_depth = prv->CatchDepth;
-            lua_Debug ar;
-            int depth = 0;
-            while (lua_getstack(Lua, depth, &ar)) depth++;
-            prv->CatchDepth = depth + 2;
-
-            lua_pushcfunction(Lua, fcmd_catch_handler);
-            lua_pushvalue(Lua, 1); // Parameter #1 is the function to call.
-            int result_top = lua_gettop(Lua);
-            if (lua_pcall(Lua, 0, LUA_MULTRET, -2)) { // An exception was raised!
-               prv->Catch--;
-               prv->CatchDepth = prev_depth;
-
-               // lua_pcall() leaves the error object on the top of the stack.  luaL_ref() will
-               // pop that value and store a registry reference for later use.
-               int raw_error_ref = luaL_ref(Lua, LUA_REGISTRYINDEX);
-               bool raw_error_valid = (raw_error_ref != LUA_NOREF) and (raw_error_ref != LUA_REFNIL);
-
-               ERR filter_error = prv->CaughtError;
-               if (filter_error < ERR::ExceptionThreshold) filter_error = ERR::Exception;
-
-               if ((filter_error >= ERR::ExceptionThreshold) and (catch_filter)) { // Apply error code filtering
-                  lua_rawgeti(Lua, LUA_REGISTRYINDEX, catch_filter);
-                  lua_pushnil(Lua);  // First key
-                  while ((not caught_by_filter) and (lua_next(Lua, -2) != 0)) { // Iterate over each table key
-                     // -1 is the value and -2 is the key.
-                     if (lua_type(Lua, -1) IS LUA_TNUMBER) {
-                        if (lua_tointeger(Lua, -1) IS int(filter_error)) {
-                           caught_by_filter = true;
-                        }
-                     }
-                     lua_pop(Lua, 1); // Removes 'value'; keeps 'key' for next iteration
-                  }
-                  lua_pop(Lua, 1); // Pop the catch_filter
-               }
-               else caught_by_filter = true;
-
-               if (catch_filter) luaL_unref(Lua, LUA_REGISTRYINDEX, catch_filter);
-
-               if (caught_by_filter) {
-                  lua_pushvalue(Lua, a); // For lua_call()
-
-                  // Build an exception table: { code=123, message="Description" }
-
-                  lua_newtable(Lua);
-                  lua_pushstring(Lua, "code");
-                  if (prv->CaughtError >= ERR::ExceptionThreshold) lua_pushinteger(Lua, int(prv->CaughtError));
-                  else lua_pushnil(Lua);
-                  lua_settable(Lua, -3);
-
-                  lua_pushstring(Lua, "message");
-                  if (raw_error_valid) {
-                     lua_rawgeti(Lua, LUA_REGISTRYINDEX, raw_error_ref);
-                     if (lua_type(Lua, -1) IS LUA_TSTRING) {
-                        // Leave the string for the table assignment.
-                     }
-                     else {
-                        lua_pop(Lua, 1);
-                        if (prv->CaughtError != ERR::Okay) lua_pushstring(Lua, GetErrorMsg(prv->CaughtError));
-                        else lua_pushstring(Lua, "<No message>");
-                     }
-                  }
-                  else if (prv->CaughtError != ERR::Okay) lua_pushstring(Lua, GetErrorMsg(prv->CaughtError));
-                  else lua_pushstring(Lua, "<No message>");
-                  lua_settable(Lua, -3);
-
-                  lua_pushstring(Lua, "line");
-                  lua_pushinteger(Lua, prv->ErrorLine);
-                  lua_settable(Lua, -3);
-
-                  if (raw_error_valid) luaL_unref(Lua, LUA_REGISTRYINDEX, raw_error_ref);
-
-                  lua_call(Lua, 1, 0); // nargs, nresults
-               }
-               else if (raw_error_valid) {
-                  lua_rawgeti(Lua, LUA_REGISTRYINDEX, raw_error_ref);
-                  luaL_unref(Lua, LUA_REGISTRYINDEX, raw_error_ref);
-                  lua_error(Lua);
-               }
-               else luaL_error(Lua, "<No message>");
-
-               lua_pushinteger(Lua, prv->CaughtError != ERR::Okay ? int(prv->CaughtError) : int(ERR::Exception));
-               return 1;
-            }
-            else { // pcall() was successful
-               prv->Catch--;
-               prv->CatchDepth = prev_depth;
-               if (catch_filter) luaL_unref(Lua, LUA_REGISTRYINDEX, catch_filter);
-               lua_pushinteger(Lua, int(ERR::Okay));
-               int result_count = lua_gettop(Lua) - result_top + 1;
-               lua_insert(Lua, -result_count); // Push the error code in front of any other results
-               return result_count;
-            }
-         }
-         else {
-            if (catch_filter) luaL_unref(Lua, LUA_REGISTRYINDEX, catch_filter);
-            luaL_argerror(Lua, 2, "Expected function.");
-         }
-      }
-      else luaL_argerror(Lua, 1, "Expected function.");
-   }
-   else { // In single-function mode, exceptions are returned as a result.
-      auto type = lua_type(Lua, 1);
-      if (type IS LUA_TFUNCTION) {
-         prv->Catch++; // Indicate to other routines that errors must be converted to exceptions.
-         prv->CaughtError = ERR::Okay;
-
-         // Scope isolation via stack frame counting - see detailed comment in the
-         // two-function catch() branch above. Save previous depth for nested catch() support.
-
-         int prev_depth = prv->CatchDepth;
-         lua_Debug ar;
-         int depth = 0;
-         while (lua_getstack(Lua, depth, &ar)) depth++;
-         prv->CatchDepth = depth + 2;
-
-         lua_pushcfunction(Lua, fcmd_catch_handler);
-         lua_pushvalue(Lua, 1); // Parameter #1 is the function to call.
-         auto result_top = lua_gettop(Lua);
-         if (lua_pcall(Lua, 0, LUA_MULTRET, -2)) {
-            prv->Catch--;
-            prv->CatchDepth = prev_depth;
-
-            // -1 is the pcall() error string result
-            // -2 is fcmd_catch_handler()
-            // -3 is the function we called.
-
-            lua_remove(Lua, -2); // Pop the handler
-            lua_remove(Lua, -2); // Pop the function
-
-            // Return an exception table: { code=123, message="Description", line=123 }
-
-            lua_newtable(Lua); // +1 stack
-            lua_pushstring(Lua, "code");
-            if (prv->CaughtError >= ERR::ExceptionThreshold) lua_pushinteger(Lua, int(prv->CaughtError));
-            else lua_pushnil(Lua); // Distinguish Lua exceptions by setting the code to nil.
-            lua_settable(Lua, -3);
-
-            lua_pushstring(Lua, "message");
-            lua_pushvalue(Lua, -3); // Temp duplicate of the reference to -3; the error message returned by pcall()
-            lua_settable(Lua, -3);
-
-            lua_pushstring(Lua, "line");
-            lua_pushinteger(Lua, prv->ErrorLine);
-            lua_settable(Lua, -3);
-
-            lua_remove(Lua, -2); // Remove the error msg to balance the stack
-            return 1;
-         }
-         else {
-            prv->Catch--; // Successful call
-            prv->CatchDepth = prev_depth;
-            lua_pushnil(Lua); // Use nil to indicate that no exception occurred
-            auto result_count = lua_gettop(Lua) - result_top + 1;
-            lua_insert(Lua, -result_count); // Push the error code in front of any other results
-            return result_count;
-         }
-      }
-      else luaL_argerror(Lua, 1, "Expected function.");
-   }
-
    return 0;
 }
 
@@ -888,7 +665,6 @@ int fcmd_arg(lua_State *Lua)
 #include "lj_err.h"
 #include "lj_func.h"
 #include "lj_frame.h"
-#include "lj_gc.h"
 #include "lj_state.h"
 
 //********************************************************************************************************************
@@ -916,7 +692,7 @@ extern "C" void lj_try_enter(lua_State *L, GCfunc *Func, TValue *Base, uint16_t 
    if (L->try_stack.depth >= LJ_MAX_TRY_DEPTH) lj_err_msg(L, ErrMsg::XNEST);  // "try blocks nested too deeply"
 
    pf::Log log(__FUNCTION__);
-   log.msg("Entering try block %u: L->base=%p, Base(VM)=%p, L->top=%p, depth=%u", TryBlockIndex, L->base, Base, L->top, L->try_stack.depth);
+   log.trace("Entering try block %u: L->base=%p, Base(VM)=%p, L->top=%p, depth=%u", TryBlockIndex, L->base, Base, L->top, L->try_stack.depth);
 
    // Sync L->base with the passed Base pointer.  This is critical for JIT mode where L->base may be stale (the JIT keeps the
    // base in a CPU register). If an error occurs after this call, the error handling code uses L->base to walk frames - it
@@ -934,24 +710,24 @@ extern "C" void lj_try_enter(lua_State *L, GCfunc *Func, TValue *Base, uint16_t 
    ptrdiff_t saved_top_offset = savestack(L, safe_top);
    lj_assertL(saved_top_offset >= frame_base_offset, "lj_try_enter: saved_top below base (top=%p base=%p)", safe_top, Base);
 
+   // Note: We leave L->top at safe_top. In JIT mode, the JIT will restore state from snapshots if needed. In
+   // interpreter mode, the VM will continue with the correct top. This ensures L->top is always valid if an
+   // error occurs.
+
    GCproto *proto = funcproto(Func); // Retrieve for try metadata
    lj_assertL(TryBlockIndex < proto->try_block_count, "lj_try_enter: TryBlockIndex %u >= try_block_count %u", TryBlockIndex, proto->try_block_count);
    lj_assertL(proto->try_blocks != nullptr, "lj_try_enter: try_blocks is null");
    TryBlockDesc *block_desc = &proto->try_blocks[TryBlockIndex];
-   uint8_t entry_slots = block_desc->entry_slots;
 
    TryFrame *try_frame = &L->try_stack.frames[L->try_stack.depth++];
    try_frame->try_block_index = TryBlockIndex;
    try_frame->frame_base      = frame_base_offset;
    try_frame->saved_top       = saved_top_offset;
-   try_frame->saved_nactvar   = BCREG(entry_slots);
+   try_frame->saved_nactvar   = BCREG(block_desc->entry_slots);
    try_frame->func            = Func;
    try_frame->depth           = (uint8_t)L->try_stack.depth;
    try_frame->flags           = block_desc->flags;
-
-   // Note: We leave L->top at safe_top. In JIT mode, the JIT will restore state
-   // from snapshots if needed. In interpreter mode, the VM will continue with the
-   // correct top. This ensures L->top is always valid if an error occurs.
+   try_frame->catch_depth     = Base - tvref(L->stack) + 2;
 }
 
 //********************************************************************************************************************

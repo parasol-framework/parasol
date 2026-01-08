@@ -625,17 +625,36 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- ERR_Okay and other non-exception codes should not trigger except
 
-@Test(priority=30) function NonExceptionErrors()
-   except_triggered = false
-
+@Test(priority=30,hotpath=false) function NonExceptionErrors()
    try
       -- This should NOT trigger an exception (ERR_Okay is below threshold)
-      result = mSys.AnalysePath(".", 0)
+      err = mSys.AnalysePath(".", 0)
    except e
-      except_triggered = true
+      error("ERR_Okay should not trigger except, got " .. tostring(e.message))
+   end
+end
+
+@Test(priority=30,hotpath=false) function ErrorCodeRaised()
+   try
+      -- Trigger an ERR_Args exception
+      err = mSys.AllocMemory(-1024, MEM_DATA)
+   except e when ERR_Args
+      -- Expected result
+   except e
+      error(f"Expected ERR_Args code, got {e.code}")
+   success
+      error("Error should have been raised by faulty sytem call.")
    end
 
-   assert(not except_triggered, "ERR_Okay should not trigger except")
+   -- Try can only check ERR codes in its immediate scope, so the AllocMemory() result would not be tested in this case
+   try
+      function internal()
+         mSys.AllocMemory(-1024, MEM_DATA)
+      end
+      internal()
+   except e
+      error(f"AllocMemory() should not have its ERR code tested.")
+   end
 end
 
 -----------------------------------------------------------------------------------------------------------------------

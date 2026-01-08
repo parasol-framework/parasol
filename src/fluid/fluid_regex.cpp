@@ -147,6 +147,7 @@ static ERR match_none(int Index, std::vector<std::string_view> &Captures, size_t
 
 //********************************************************************************************************************
 // Constructor: regex.new(pattern [, flags])
+// Will throw if compilation of the pattern fails.
 
 static int regex_new(lua_State *Lua)
 {

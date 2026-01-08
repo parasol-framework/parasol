@@ -602,57 +602,6 @@ static void LJ_FASTCALL recff_xpairs(jit_State* J, RecordFFData* rd)
 
 //********************************************************************************************************************
 
-static void LJ_FASTCALL recff_pcall(jit_State* J, RecordFFData* rd)
-{
-   if (J->maxslot >= 1) {
-      // Shift function arguments up.
-      memmove(J->base + 1, J->base, sizeof(TRef) * J->maxslot);
-      lj_record_call(J, 0, J->maxslot - 1);
-      rd->nres = -1;  //  Pending call.
-      J->needsnap = 1;  //  Start catching on-trace errors.
-   }  // else: Interpreter will throw.
-}
-
-//********************************************************************************************************************
-
-static TValue* recff_xpcall_cp(lua_State* L, lua_CFunction dummy, void* ud)
-{
-   jit_State* J = (jit_State*)ud;
-   lj_record_call(J, 1, J->maxslot - 2);
-   UNUSED(L); UNUSED(dummy);
-   return nullptr;
-}
-
-//********************************************************************************************************************
-
-static void LJ_FASTCALL recff_xpcall(jit_State* J, RecordFFData* rd)
-{
-   if (J->maxslot >= 2) {
-      TValue argv0, argv1;
-      TRef tmp;
-      int errcode;
-      // Swap function and traceback.
-      tmp = J->base[0]; J->base[0] = J->base[1]; J->base[1] = tmp;
-      copyTV(J->L, &argv0, &rd->argv[0]);
-      copyTV(J->L, &argv1, &rd->argv[1]);
-      copyTV(J->L, &rd->argv[0], &argv1);
-      copyTV(J->L, &rd->argv[1], &argv0);
-      // Shift function arguments up.
-      memmove(J->base + 2, J->base + 1, sizeof(TRef) * (J->maxslot - 1));
-      // Need to protect lj_record_call because it may throw.
-      errcode = lj_vm_cpcall(J->L, nullptr, J, recff_xpcall_cp);
-      // Always undo Lua stack swap to avoid confusing the interpreter.
-      copyTV(J->L, &rd->argv[0], &argv0);
-      copyTV(J->L, &rd->argv[1], &argv1);
-      if (errcode)
-         lj_err_throw(J->L, errcode);  //  Propagate errors.
-      rd->nres = -1;  //  Pending call.
-      J->needsnap = 1;  //  Start catching on-trace errors.
-   }  // else: Interpreter will throw.
-}
-
-//********************************************************************************************************************
-
 static void LJ_FASTCALL recff_next(jit_State* J, RecordFFData* rd)
 {
 #if LJ_BE

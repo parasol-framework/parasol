@@ -255,19 +255,13 @@ struct prvFluid {
    APTR     FocusEventHandle;
    struct finput *InputList;           // Managed by the input interface
    DateTime CacheDate;
-   ERR      CaughtError;               // Set to -1 to enable catching of ERR results.  TODO: Should move to Lua internals, e.g. lua_State
    PERMIT   CachePermissions;
    JOF      JitOptions;
    int      LoadedSize;
    int      MainChunkRef;              // Registry reference to the main chunk for post-execution analysis
    uint8_t  Recurse;
    uint8_t  SaveCompiled;
-   uint16_t Catch;                     // Operating within a catch() block if > 0
    uint16_t RequireCounter;
-   int      ErrorLine;                 // Line at which the last error was thrown.
-   int      CatchDepth = -1;           // Lua stack frame count for scope isolation in catch().
-                                       // Set by fcmd_catch() via lua_getstack() frame counting.
-                                       // Only calls at exactly this depth throw exceptions.
    std::vector<VariableInfo> CapturedVariables; // Variable declarations captured during parsing (JOF::DIAGNOSE)
 };
 
@@ -474,7 +468,6 @@ ERR keyvalue_to_table(lua_State *, const KEYVALUE *);
 ERR msg_thread_script_callback(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize);
 
 int fcmd_arg(lua_State *);
-int fcmd_catch(lua_State *);
 int fcmd_check(lua_State *);
 int fcmd_raise(lua_State *);
 int fcmd_get_execution_state(lua_State *);

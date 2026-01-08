@@ -1,7 +1,5 @@
-/*
-** LuaJIT common internal definitions.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-*/
+// LuaJIT common internal definitions.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 
 #pragma once
 
@@ -267,15 +265,8 @@ unsigned char _BitScanReverse(unsigned long*, unsigned long);
 #pragma intrinsic(_BitScanForward)
 #pragma intrinsic(_BitScanReverse)
 
-inline uint32_t lj_ffs(uint32_t x)
-{
-   unsigned long r; _BitScanForward(&r, x); return (uint32_t)r;
-}
-
-inline uint32_t lj_fls(uint32_t x)
-{
-   unsigned long r; _BitScanReverse(&r, x); return (uint32_t)r;
-}
+inline uint32_t lj_ffs(uint32_t x) { unsigned long r; _BitScanForward(&r, x); return (uint32_t)r; }
+inline uint32_t lj_fls(uint32_t x) { unsigned long r; _BitScanReverse(&r, x); return (uint32_t)r; }
 #endif
 
 unsigned long _byteswap_ulong(unsigned long);
@@ -353,8 +344,7 @@ static LJ_AINLINE uint32_t lj_getu32(const void* v)
 #if defined(LUA_USE_ASSERT) || defined(LUA_USE_APICHECK)
 // Forward declaration needed before macro definitions (full definition in lj_obj.h)
 struct global_State;
-LJ_FUNC_NORET void lj_assert_fail(global_State* g, const char* file, int line,
-   const char* func, const char* fmt, ...);
+LJ_FUNC_NORET void lj_assert_fail(global_State* g, const char* file, int line, const char* func, const char* fmt, ...);
 
 // Use comma operator to ensure consistent void type for MSVC compatibility.
 // The (void)0 cast ensures both branches of the ternary have the same type.

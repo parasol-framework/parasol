@@ -27,9 +27,11 @@
     </constants>
 
     <constants lookup="XPVT" comment="Type descriptors for XPathValue">
+      <const name="Array"/>
       <const name="Boolean"/>
       <const name="Date"/>
       <const name="DateTime"/>
+      <const name="Map"/>
       <const name="NodeSet"/>
       <const name="Number"/>
       <const name="String"/>
@@ -52,6 +54,7 @@
     </constants>
 
     <constants lookup="XQueryNodeType">
+      <const name="ARRAY_CONSTRUCTOR"/>
       <const name="ATTRIBUTE_VALUE_TEMPLATE"/>
       <const name="AXIS_SPECIFIER"/>
       <const name="BINARY_OP"/>
@@ -81,6 +84,8 @@
       <const name="LET_EXPRESSION"/>
       <const name="LITERAL"/>
       <const name="LOCATION_PATH"/>
+      <const name="LOOKUP_EXPRESSION"/>
+      <const name="MAP_CONSTRUCTOR"/>
       <const name="NAME_TEST"/>
       <const name="NODE_TEST"/>
       <const name="NODE_TYPE_TEST"/>

@@ -18,6 +18,8 @@
 #include <parasol/config.h>
 #endif
 
+#include <parasol/system/errors.h>
+
 // GC object types
 
 union GCobj;
@@ -524,6 +526,7 @@ inline constexpr int LJ_MAX_TRY_DEPTH = 32;
 // Use savestack(L, ptr) to convert to offset, restorestack(L, offset) to convert back.
 struct TryFrame {
    uint16_t  try_block_index;  // Index into GCproto::try_blocks
+   uint16_t  catch_depth;      // Depth of stack at try entry
    ptrdiff_t frame_base;       // Offset of L->base when BC_TRYENTER executed
    ptrdiff_t saved_top;        // Offset of L->top when BC_TRYENTER executed
    BCREG     saved_nactvar;    // Active slot count at try entry (first free register)
@@ -1038,6 +1041,7 @@ struct lua_State {
    TryFrameStack try_stack;      // Exception frame stack (nullptr until first BC_TRYENTER)
    const BCIns   *try_handler_pc; // Handler PC for error re-entry (set during unwind)
    CapturedStackTrace *pending_trace; // Trace captured during exception handling (for try<trace>)
+   ERR      CaughtError;              // Catches ERR results from module functions.
 
    // Constructor/destructor not actually used as yet.
 /*
@@ -1256,7 +1260,6 @@ inline void setrawlightudV(TValue* o, void* p) { o->u64 = (uint64_t)p | (((uint6
 
 inline void checklivetv(lua_State* L, TValue* o, const char* msg) noexcept
 {
-   UNUSED(L); UNUSED(o); UNUSED(msg);
 #if LUA_USE_ASSERT
    if (tvisgcv(o)) {
       lj_assertL(~itype(o) IS gcval(o)->gch.gct,
