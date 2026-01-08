@@ -406,11 +406,11 @@ end
       error('original error')
    end
 
-   caught_err = nil
+   caught_ex = nil
    try
       inner()
    except err
-      caught_err = err
+      caught_ex = err
    end
 
    -- Both close handlers should be called even when one throws
@@ -418,8 +418,8 @@ end
    assert(order[0] is 'close1', 'close1 first (LIFO)')
    assert(order[1] is 'close2', 'close2 second (LIFO)')
    -- The error should be from close1, not the original (per Lua 5.4)
-   assert(caught_err != nil, 'Exception should be caught')
-   assert(tostring(caught_err.message):find('close1 error'), 'Error from __close should replace original: ' .. tostring(caught_err.message))
+   assert(caught_ex != nil, 'Exception should be caught')
+   assert(tostring(caught_ex.message):find('close1 error'), 'Error from __close should replace original: ' .. tostring(caught_ex.message))
 end
 
 -- Multiple __close errors - last one wins
@@ -428,12 +428,14 @@ end
    order = {}
    mt1 = {
       __close = function(self, err)
+         msg('mt1 __close called')
          table.insert(order, 'close1')
          error('close1 error')
       end
    }
    mt2 = {
       __close = function(self, err)
+         msg('mt2 __close called')
          table.insert(order, 'close2')
          error('close2 error')
       end
@@ -442,18 +444,21 @@ end
    function inner()
       local obj2 <close> = setmetatable({}, mt2)  -- Called second, also throws
       local obj1 <close> = setmetatable({}, mt1)  -- Called first, throws
-      error('original error')
+      error('Intentional error')
    end
 
-   caught_err = nil
+   caught_ex = nil
    try
       inner()
-   except err
-      caught_err = err
+   except ex
+      print('Caught error: ' .. ex.message)
+      caught_ex = ex
+   success
+      error('Expected failure from inner()')
    end
 
    assert(#order is 2, 'Both close handlers should be called, got ' .. #order)
    -- The last error (from close2) should be the final error
-   assert(caught_err != nil, 'Exception should be caught')
-   assert(tostring(caught_err.message):find('close2 error'), 'Last __close error should win: ' .. tostring(caught_err.message))
+   assert(caught_ex, 'Exception should be caught')
+   assert(caught_ex.message:find('close2 error'), 'Last __close error should win: ' .. caught_ex.message)
 end
