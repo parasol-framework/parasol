@@ -1256,7 +1256,6 @@ inline void setrawlightudV(TValue* o, void* p) { o->u64 = (uint64_t)p | (((uint6
 
 inline void checklivetv(lua_State* L, TValue* o, const char* msg) noexcept
 {
-   UNUSED(L); UNUSED(o); UNUSED(msg);
 #if LUA_USE_ASSERT
    if (tvisgcv(o)) {
       lj_assertL(~itype(o) IS gcval(o)->gch.gct,
