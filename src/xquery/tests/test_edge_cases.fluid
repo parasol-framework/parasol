@@ -86,7 +86,7 @@ end
 @Test function MultiplicationAfterReturn()
    -- Expect failure, the statement is not valid XQuery
    try
-      obj.new('xquery', { statement = 'return 2 * 3' })
+      xq = obj.new('xquery', { statement = 'return 2 * 3' })
       xq.acActivate()
    success
       error('Expected query to fail but it succeeded')

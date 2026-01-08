@@ -1138,11 +1138,6 @@ static ptrdiff_t finderrfunc(lua_State *L)
             cf = cframe_prev(cf);
             frame = frame_prevd(frame);
             break;
-         case FRAME_PCALL:
-         case FRAME_PCALLH:
-            if (frame_func(frame_prevd(frame))->c.ffid IS FF_xpcall)
-               return savestack(L, frame_prevd(frame) + 1);  //  xpcall's errorfunc.
-            return 0;
          default:
             lj_assertL(0, "bad frame type");
             return 0;

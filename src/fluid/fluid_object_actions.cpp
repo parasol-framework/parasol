@@ -7,7 +7,7 @@ inline void report_action_error(lua_State *Lua, struct object *Object, CSTRING A
    if ((Error >= ERR::ExceptionThreshold) and (Lua->try_stack.depth)) {
       // Scope isolation: Only throw exceptions for direct calls within a try block
       int16_t depth = Lua->base - tvref(Lua->stack);
-      if (depth IS Lua->try_stack.frames[Lua->try_stack.depth].catch_depth) {
+      if (depth IS Lua->try_stack.frames[Lua->try_stack.depth-1].catch_depth) {
          char msg[180];
          Lua->CaughtError = Error;
          snprintf(msg, sizeof(msg), "%s.%s() failed: %s", Object->Class->ClassName, Action, GetErrorMsg(Error));

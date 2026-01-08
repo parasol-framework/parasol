@@ -5,6 +5,7 @@ WaveFunction Demonstration
    require 'gui/window'
    require 'gui/combobox'
    require 'gui/slider'
+   include 'vector'
 
    local win, viewport, waveFunction, waveVP, rect, filter, text
    config = { n = 3, l = 2, m = 1, scale = 0.2 }
@@ -28,7 +29,7 @@ end
    waveFunction = filter.new('WaveFunctionFX', {
       n = config.n, l = config.l, m = config.m, scale = config.scale,
       colourMap = 'cmap:plasma', resolution = 0,
-      aspectRatio = bit.bor(ARF_X_MID, ARF_Y_MID, ARF_SLICE)
+      aspectRatio = ARF_X_MID|ARF_Y_MID|ARF_SLICE
    })
 
    viewport.scene.mtAddDef('wavefunction', filter)

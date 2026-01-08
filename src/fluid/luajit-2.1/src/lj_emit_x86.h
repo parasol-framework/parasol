@@ -456,19 +456,6 @@ static void emit_loadk64(ASMState* as, Reg r, IRIns* ir)
 // Label for short jumps.
 typedef MCode* MCLabel;
 
-#if LJ_32 && LJ_HASFFI
-// jmp short target
-static void emit_sjmp(ASMState* as, MCLabel target)
-{
-   MCode* p = as->mcp;
-   ptrdiff_t delta = target - p;
-   lj_assertA(delta == (int8_t)delta, "short jump target out of range");
-   p[-1] = (MCode)(int8_t)delta;
-   p[-2] = XI_JMPs;
-   as->mcp = p - 2;
-}
-#endif
-
 // jcc short target
 static void emit_sjcc(ASMState* as, int cc, MCLabel target)
 {
