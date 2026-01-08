@@ -72,8 +72,12 @@ global file <const> ?= { ui = { } }
 -- Will throw an exception if the file is not found or the complete data cannot be read.
 
 file.readAll = function(Path:str):str
-   ex, fl = catch(function() return obj.new('file', { flags='READ', path=Path } ) end)
-   assert(not ex, 'Failed to open file "' .. tostring(Path) .. '": ' .. ex.message)
+   local fl
+   try
+      fl = obj.new('file', { flags='READ', path=Path } )
+   except ex
+      error(f'Failed to open {Path}: {ex.message}')
+   end
 
    file_buffer = string.alloc(fl.size)
    err, bytes_read = fl.acRead(file_buffer)

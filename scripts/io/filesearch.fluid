@@ -14,11 +14,9 @@ file.search = function(Path, Options)
    function contentMatch(Path)
       lOptions.contentFilter ?? return true
 
-      ex, fl = catch(function()
-         return obj.new('file', { path=Path, flags='READ' } )
-      end)
+      try
+         fl = obj.new('file', { path=Path, flags='READ' } )
 
-      if fl then
          -- By default, symbolic links are not scanned for content unless the scanLinks option is set.
 
          if (fl.flags & FL_LINK)?? and (lOptions.scanLinks != true) then
@@ -85,11 +83,12 @@ file.search = function(Path, Options)
       if not lOptions.matchFolders then flags = flags | FL_EXCLUDE_FOLDERS end
       if lOptions.ignoreFiles then flags = flags | FL_EXCLUDE_FILES end
 
-      ex, folder = catch(function()
-         return obj.new('file', { src=Path, flags=flags } )
-      end)
-
-      folder ?? return
+      local folder
+      try
+         folder = obj.new('file', { src=Path, flags=flags })
+      except ex
+         return
+      end
 
       err, fl = folder.mtNext()
       while (err is ERR_Okay) and (not lStop) do
@@ -153,11 +152,9 @@ file.search = function(Path, Options)
       -- Recursively scan directory content (if we haven't reached max depth)
 
       if not lOptions.maxDepth or currentDepth < lOptions.maxDepth then
-         ex, folder = catch(function()
-            return obj.new('file', { src=Path, flags='!ExcludeFiles|Folder' } )
-         end)
+         try
+            folder = obj.new('file', { src=Path, flags='!ExcludeFiles|Folder' } )
 
-         if folder then
             err, fl = folder.mtNext()
             while (err is ERR_Okay) and (not lStop) do
                count++
@@ -178,7 +175,7 @@ file.search = function(Path, Options)
    end
 
    function processPath(Path:str)
-      msg(string.format('Path: %s, Filter: %s, Regex: %s, Content: %s', Path, Options.nameFilter, tostring(isRegexFilter), Options.contentFilter))
+      msg(f'Path: {Path}, Filter: {Options.nameFilter}, Regex: {isRegexFilter}, Content: {Options.contentFilter}')
 
       if file.isFolder(Path) then
          mSys.AdjustLogLevel(ADJUST_LOG)

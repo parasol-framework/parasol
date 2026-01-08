@@ -359,10 +359,11 @@ end
 
 global function saveDocCache(CachePath, Cache)
    -- Save the cache as a Fluid script
-   content = '-- Fluid LSP Documentation Cache\n'
-   content ..= '-- Auto-generated, do not edit manually\n'
-   content ..= '-- Built: ' .. timestamp() .. '\n\n'
-   content ..= 'return ' .. serializeTable(Cache) .. '\n'
+   content = [[-- Fluid LSP Documentation Cache
+-- Auto-generated, do not edit manually
+-- Built: ]] .. timestamp() .. [[
+
+return ]] .. serializeTable(Cache) .. '\n'
 
    file.writeAll(CachePath, content)
 end
@@ -372,11 +373,15 @@ end
 global function loadDocCache(DocPath)
    -- Attempt to load the cache, returns nil if invalid
    msg('Loading document cache from ' .. CACHE_PATH)
-   ex, cache = catch(function()
-      return loadFile(CACHE_PATH)
-   end)
 
-   if ex or not cache then msg('Failed to run cache file.  Error: ' .. tostring(ex.message)); return nil end
+   local cache
+   try
+      cache = loadFile(CACHE_PATH)
+   except ex
+      msg('Failed to run cache file.  Error: ' .. ex.message)
+      return nil
+   end
+
    if cache.version != 1 then msg('Unsupported version'); return nil end
    if cache.sdkPath != DocPath then msg('Path mismatch: ' .. cache.sdkPath .. ' != ' .. DocPath); return nil end
 

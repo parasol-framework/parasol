@@ -133,7 +133,7 @@ gui.listView = function(Options:table)
          vp = item._vectors.viewport
 
          if item.icon then
-            pcall(function()
+            try
                if not View.icons[item.icon] then
                   gui.createIcon(View.scene, item.icon, ICON_SIZE, gui.style.page.icon, item.icon)
                   View.icons[item.icon] = true
@@ -157,7 +157,7 @@ gui.listView = function(Options:table)
                      height = ICON_SIZE
                   })
                end
-            end)
+            end
          end
 
          item_name = item[lTextAttrib]

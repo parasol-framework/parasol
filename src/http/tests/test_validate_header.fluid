@@ -311,7 +311,7 @@ end
                { pattern = '/error/validation-crash',
                  method = 'GET',
                  validateHeader = function(headers):any
-                    error('Intentional validation error') -- This will be caught by pcall
+                    error('Intentional validation error')
                  end,
                  handler = function(req, res)
                     res.json({ message = 'This should never be reached' })

@@ -485,15 +485,15 @@ global function saveOutput()
 
    print(f'Saving compressed IDL output to "{outPath}"')
 
-   err, file = catch(function()
+   local file
+   try
       if glAppend then
          file = obj.new('file', { flags='WRITE', path=outPath } )
          file.acSeek(0, SEEK_END)
-         return file
       else
-         return obj.new('file', { flags='WRITE|NEW', path=outPath } )
+         file = obj.new('file', { flags='WRITE|NEW', path=outPath } )
       end
-   end)
+   end
 
    if err then
       print('Failed to write output to ' .. outPath)

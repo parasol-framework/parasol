@@ -328,9 +328,9 @@ end
    })
    y += input.viewport.height + 16
 
-   catch(function()
+   try
       global sndAlarm = obj.new('sound', { path=glPath .. 'data/alarm.mp3', volume=0.2 })
-   end)
+   end
 
    gui.icon({
       target = viewport,
@@ -354,9 +354,9 @@ end
       }
    })
 
-   catch(function()
+   try
       global sndWilhelm = obj.new('sound', { path=glPath .. 'data/wilhelm.mp3', volume=0.2 })
-   end)
+   end
 
    gui.icon({
       target = viewport,

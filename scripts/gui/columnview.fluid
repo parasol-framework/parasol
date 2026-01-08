@@ -548,7 +548,7 @@ gui.columnView = function(Options)
             if not item._col[attrib] then item._col[attrib] = { } end
 
             if col.showIcons and item.icon then
-               pcall(function()
+               try
                   theme = item.iconTheme ?? gui.style.page.icon
                   uid   = theme .. '+' .. item.icon
                   info  = gui.createIcon(View.scene, item.icon, ICON_SIZE, theme, uid)
@@ -575,7 +575,7 @@ gui.columnView = function(Options)
                      item._vectors.iconImage.y = y + ICON_OFFSET
                      item._vectors.iconImage.visibility = vis
                   end
-               end)
+               end
             elseif col.checkBoxes then
                -- Checkbox mode leverages the icon mechanisms that are already in place.
 --[[

@@ -35,7 +35,7 @@ gui.dropdown = function(Options)
 
       if showIcons then
          iconsPresent = false
-         for _, item in ipairs(Options.config) do
+         for item in values(Options.config) do
             if item.icon then
                iconsPresent = true
                TEXT_X = HMARGIN + ICON_SIZE + HMARGIN + HMARGIN
@@ -77,7 +77,7 @@ gui.dropdown = function(Options)
       widestItem = 0
       widestKey = 0
       y = VMARGIN
-      for _, item in ipairs(Options.config) do
+      for item in values(Options.config) do
          if item['item'] then
             mi = { y=y, config=item }
             vText = self.viewport.new('VectorText', {
@@ -98,8 +98,8 @@ gui.dropdown = function(Options)
             if bw > widestItem then widestItem = bw end
 
             if showIcons and item.icon then
-               pcall(function()
-                  local info = gui.createIcon(self.viewport.scene, item.icon, ICON_SIZE, gui.style.dropdown.icon)
+               try
+                  info = gui.createIcon(self.viewport.scene, item.icon, ICON_SIZE, gui.style.dropdown.icon)
                   mi.iconFill = info.fill
 
                   if gui.style.dropdown.iconHighlight and gui.style.dropdown.iconHighlight != gui.style.dropdown.icon then
@@ -110,7 +110,7 @@ gui.dropdown = function(Options)
                   mi.iconView = self.viewport.new('VectorRectangle', {
                      x = HMARGIN, y = y + math.floor((ITEM_HEIGHT - ICON_SIZE) * 0.5), width = ICON_SIZE, height = ICON_SIZE, fill = info.fill
                   })
-               end)
+               end
             end
 
             vText.y = mi.textY
@@ -304,7 +304,7 @@ gui.dropdown = function(Options)
             end
          elseif ev.type is JET_ABS_XY then
             highlightFound = false
-            for _, item in pairs(self.items) do
+            for item in values(self.items) do
                if not item.lineBreak then
                   if (ev.y >= item.y) and (ev.y < item.y + item.height) then
                      if self.hItem != item then

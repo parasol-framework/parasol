@@ -339,9 +339,9 @@ global function saveDocuments()
    -- Save module functions, if any
 
    outPath = glDocPath ?? 'sdk:docs/xml/modules/'
-   if outPath:sub(-1) != '/' then outPath ..= '/' end
+   if not outPath:endsWith('/') then outPath ..= '/' end
 
-   if not table.empty(glFunctions) then
+   if glFunctions?? then
       out = docModuleHeader()
       for _, func in ipairs(glFunctions) do
          out ..= docFunction(func)
@@ -351,9 +351,9 @@ global function saveDocuments()
       out ..= '</book>\n'
 
       if glModule.name?? then
-         local file = obj.new('file', { flags='WRITE|NEW', path=outPath .. glModule.name:lower() .. '.xml' } )
-         print("Saving module documentation to \"" .. file.path .. '"')
-         file.acWrite(out)
+         fl = obj.new('file', { flags=FL_WRITE|FL_NEW, path=f'{outPath}{glModule.name:lower()}.xml' } )
+         print(f"Saving module documentation to {file.path}")
+         fl.acWrite(out)
       end
    end
 
@@ -365,14 +365,14 @@ global function saveDocuments()
          verbose('Processing documentation for class ' .. tostring(className))
 
          if cl.meta then
-            status, err = pcall(function()
+            try
                out = docClass(cl) .. docTypes(cl.references) .. docStructures(cl.references) .. '</book>\n'
-               local file = obj.new('file', { flags='WRITE|NEW', path=outPath .. 'classes/' .. className:lower() .. '.xml' } )
-               print("Saving XML class documentation to \"" .. file.path .. '"')
-               file.acWrite(out)
-            end)
-
-            status ?? print('Failed to produce documentation for class ' .. className .. ': ' .. err)
+               fl = obj.new('file', { flags = FL_WRITE|FL_NEW, path = f'{outPath}classes/{className:lower()}.xml' } )
+               print(f'Saving XML class documentation to "{fl.path}"')
+               fl.acWrite(out)
+            except ex
+               print('Failed to produce documentation for class ' .. className .. ': ' .. ex.message)
+            end
          else
             print('No meta information for class ' .. className)
          end
@@ -384,8 +384,8 @@ end
 -- Used for extracting descriptions, notes etc.  NB: <pre> should be used for multi-line preformatting, while <code>
 -- should be used for in-place code formatting.
 
-global function extractParagraph(Input, Caller, References)
-   if not Input?? then error('No Input provided to extractParagraph()') end
+global function extractParagraph(Input:str, Caller:str, References)
+   Input ?? error('No Input provided to extractParagraph()')
 
    Input = Input:trim()
 
@@ -549,32 +549,32 @@ global function substituteReferences(String, Class)
             if Field:match('[A-Z0-9]+') then return end
          end
 
-         return '<fl>' .. Field .. '</fl>'
+         return f'<fl>{Field}</fl>'
       elseif (Class.lookupFields) and (Class.lookupFields[Field]) then
-         return '<fl>' .. Field .. '</fl>'
+         return f'<fl>{Field}</fl>'
       else
          -- Don't print errors regarding hexadecimal colours.
          if (Field:len() is 6) or (Field:len() is 8) then
             if Field:match('[A-Z0-9]+') then return end
          end
 
-         print('Unrecognised ' .. Class.name .. ' field "' .. Field .. '"')
+         print(f'Unrecognised {Class.name} field "{Field}"')
       end
    end)
 
    -- Substitute external function references, identified as ~Module.Function()
 
    String = String:gsub('~([A-Z]%w+)%.([A-Z]%w+)%(%)', function(ModuleName, FunctionName)
-      return '<function module="' .. ModuleName .. '">' .. FunctionName .. '</function>'
+      return f'<function module="{ModuleName}">{FunctionName}</function>'
    end)
 
    -- Substitue local function references, identified as ~Function()
 
    String = String:gsub('~([A-Z]%w+)%(%)', function(FunctionName)
       if glFunctionLookup[FunctionName] then
-         return '<function>' .. FunctionName .. '</function>'
+         return f'<function>{FunctionName}</function>'
       else
-         print('Unrecognised function reference ~' .. FunctionName .. '()')
+         print(f'Unrecognised function reference ~{FunctionName}()')
       end
    end)
 
@@ -583,7 +583,7 @@ global function substituteReferences(String, Class)
    String = String:gsub('@([A-Z]%w+)%.([A-Z]%w+)%(%)', function(ClassName, MethodName)
       if mSys.FindClass(ClassName:hash(), 0) then
          -- TODO: Check that the method name is valid according to the class spec
-         return '<class name="' .. ClassName .. '" method="' .. MethodName .. '">' .. ClassName .. '.' .. MethodName .. '()</class>'
+         return f'<class name="{ClassName}" method="{MethodName}">{ClassName}.{MethodName}()</class>'
       else
          print('Unrecognised method/action reference @' .. ClassName .. '.' .. MethodName .. '()')
       end
@@ -685,7 +685,7 @@ global function docClass(Class)
             end
 
             if glActions[a.name].params?? then
-               out = out .. '      <input>\n'
+               out ..= '      <input>\n'
                for _, param in ipairs(glActions[a.name].params) do
                   ref = ''
                   if param.lookup?? then ref = ' lookup="' .. param.lookup .. '"' end
@@ -734,7 +734,7 @@ global function docClass(Class)
             out ..= '    <method>\n'
             out ..= '      <name>' .. method.name .. '</name>\n'
             out ..= '      <comment>' .. substituteReferences((method.comment ?? ''):escXML(), Class) .. '</comment>\n'
-            if method.prototype?? then out = out .. '      <prototype>' .. method.prototype:escXML() .. '</prototype>\n' end
+            if method.prototype?? then out ..= '      <prototype>' .. method.prototype:escXML() .. '</prototype>\n' end
 
             if not table.empty(method.params) then
                out ..= '      <input>\n'
@@ -771,7 +771,7 @@ global function docClass(Class)
    if not table.empty(Class.fields) then
       -- Process fields
       Class.sortedFields = { }
-      for _, f in pairs(Class.fields) do
+      for f in values(Class.fields) do
          table.insert(Class.sortedFields, f)
       end
 

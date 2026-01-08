@@ -7,13 +7,13 @@ called manually if the user changes the default system language or if the curren
 string.translateRefresh = function()
    string._ttable = { }
    local err, language
-   catch(function()
+   --try
       -- TODO: Get the user's preferred language from the host system
       --err, language = mSys.StrReadLocale("language")
-   end)
+   --end
    if (not language) or (language is 'eng') then return end
 
-   local content = file.readAll('config:translations/' .. language:lower() .. '.cfg')
+   content = file.readAll('config:translations/' .. language:lower() .. '.cfg')
 
    for line in string.gmatch(content, '(.-\n)') do
       if line?? then
@@ -40,9 +40,9 @@ string.translate = function(Text)
       if not string._ttable then return Text end
    end
 
-   local lcase = Text:lower()
+   lcase = Text:lower()
    if string._ttable[lcase] then
-      local result = string._ttable[lcase]
+      result = string._ttable[lcase]
       if ((Text[0] >= 'a') and (Text[0] <= 'z')) then
          return string.lower(result)
       elseif (Text[0] >= 'A') and (Text[0] <= 'Z') and (Text[1] >= 'A') and (Text[1] <= 'A') then
