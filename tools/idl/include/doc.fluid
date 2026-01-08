@@ -352,7 +352,7 @@ global function saveDocuments()
 
       if glModule.name?? then
          fl = obj.new('file', { flags=FL_WRITE|FL_NEW, path=f'{outPath}{glModule.name:lower()}.xml' } )
-         print(f"Saving module documentation to {file.path}")
+         print(f"Saving module documentation to {fl.path}")
          fl.acWrite(out)
       end
    end
