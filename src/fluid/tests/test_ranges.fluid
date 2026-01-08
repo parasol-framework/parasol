@@ -272,26 +272,41 @@ end
 
 @Test function RangeErrorNonInteger()
    -- Test that non-integer values throw errors
-   ok, err = pcall(function() return range(1.5, 5) end)
-   assert(ok is false, "non-integer start should throw error")
+   try
+      tmp = range(1.5, 5)
+   success
+      error("non-integer start should throw error")
+   end
 
-   ok, err = pcall(function() return range(0, 5.5) end)
-   assert(ok is false, "non-integer stop should throw error")
+   try
+      range(0, 5.5)
+   success
+      error("non-integer stop should throw error")
+   end
 end
 
 @Test function RangeErrorNilValues()
    -- Test that nil values throw errors
-   ok, err = pcall(function() return range(nil, 5) end)
-   assert(ok is false, "nil start should throw error")
+   try
+      range(nil, 5)
+   success
+     error("nil start should throw error")
+   end
 
-   ok, err = pcall(function() return range(0, nil) end)
-   assert(ok is false, "nil stop should throw error")
+   try
+      return range(0, nil)
+   success
+      error("nil stop should throw error")
+   end
 end
 
 @Test function RangeErrorInvalidStep()
    -- Test that zero step throws error
-   ok, err = pcall(function() return range(0, 10, false, 0) end)
-   assert(ok is false, "zero step should throw error")
+   try
+      range(0, 10, false, 0)
+   success
+      error("zero step should throw error")
+   end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -501,17 +516,29 @@ end
 
 @Test function RangeConstructorTypeErrors()
    -- Test that range constructor throws on invalid types
-   ok, err = pcall(function() return range("a", 5) end)
-   assert(ok is false, "string start should throw error")
+   try
+      tmp = range("a", 5)
+   success
+      error("string start should throw error")
+   end
 
-   ok, err = pcall(function() return range(0, "b") end)
-   assert(ok is false, "string stop should throw error")
+   try
+      tmp = range(0, "b")
+   success
+      error("string stop should throw error")
+   end
 
-   ok, err = pcall(function() return range({}, 5) end)
-   assert(ok is false, "table start should throw error")
+   try
+      range({}, 5)
+   success
+      error("table start should throw error")
+   end
 
-   ok, err = pcall(function() return range(0, {}) end)
-   assert(ok is false, "table stop should throw error")
+   try
+      return range(0, {})
+   success
+      error("table stop should throw error")
+   end
 end
 
 @Test function RangeLiteralTypeErrors()
@@ -519,44 +546,46 @@ end
    -- The parser interprets {a..b} as a range literal, so invalid operands
    -- will cause a runtime error when the range() function is called
 
-   ok, err = pcall(function()
+   try
       a = "x"
       b = "y"
-      return {a..b}  -- Parser treats this as range literal, throws at runtime
-   end)
-   assert(ok is false, "range literal with string variables should throw")
+      tmp = {a..b}  -- Parser treats this as range literal, throws at runtime
+   success
+      error("range literal with string variables should throw")
+   end
 
    -- Direct range() call with strings should also throw
-   ok, err = pcall(function()
+   try
       bad = range("start", "stop")
-      return bad
-   end)
-   assert(ok is false, "range with string arguments should throw")
+   success
+      error("range with string arguments should throw")
+   end
 
    -- Non-integer numeric values in literals
-   ok, err = pcall(function()
-      return {1.5..5}
-   end)
-   assert(ok is false, "range literal with non-integer start should throw")
+   try
+      tmp = {1.5..5}
+   success
+      error("range literal with non-integer start should throw")
+   end
 
-   ok, err = pcall(function()
-      return {0..5.5}
-   end)
-   assert(ok is false, "range literal with non-integer stop should throw")
+   try
+      tmp = {0..5.5}
+   success
+      error("range literal with non-integer stop should throw")
+   end
 
    -- Nil values in literals - when range literal parsing fails (due to nil operands),
    -- the parser falls back to table constructor with string concatenation.
    -- nil as the first operand throws an error (must establish string context first).
    -- nil as a subsequent operand is treated as empty string.
-   ok, err = pcall(function()
-      return {nil..5}
-   end)
-   assert(ok is false, "nil..5 should throw (nil cannot be first concat operand)")
 
-   ok, result = pcall(function()
-      return {0..nil}
-   end)
-   assert(ok is true, "0..nil should fall back to string concatenation")
+   try
+      result = {nil..5}
+   success
+      error("nil..5 should throw (nil cannot be first concat operand)")
+   end
+
+   result = {0..nil} -- 0..nil should fall back to string concatenation
    assert(type(result) is "table", "result should be a table")
    assert(result[0] is "0", "0..nil should concatenate to '0'")
 end

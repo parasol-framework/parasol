@@ -461,16 +461,18 @@ end
    arr = array<int> { 1, 2, 3 }
 
    -- Test negative index
-   status = pcall(function()
+   try
       arr:insert(-1, 0)
-   end)
-   assert(not status, "Should reject negative index")
+   success
+      error("Should reject negative index")
+   end
 
    -- Test index beyond length
-   status2 = pcall(function()
+   try
       arr:insert(5, 0)
-   end)
-   assert(not status2, "Should reject index beyond array length")
+   success
+      error("Should reject index beyond array length")
+   end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -658,29 +660,33 @@ end
    arr = array<int> { 1, 2, 3 }
 
    -- Test negative index
-   status = pcall(function()
+   try
       arr:remove(-1)
-   end)
-   assert(not status, "Should reject negative index")
+   success
+      error("Should reject negative index")
+   end
 
    -- Test index at or beyond length
-   status2 = pcall(function()
+   try
       arr:remove(3)
-   end)
-   assert(not status2, "Should reject index at array length")
+   success
+      error("Should reject index at array length")
+   end
 
-   status3 = pcall(function()
+   try
       arr:remove(5)
-   end)
-   assert(not status3, "Should reject index beyond array length")
+   success
+      error("Should reject index beyond array length")
+   end
 end
 
 @Test function ArrayRemoveNegativeCount()
    arr = array<int> { 1, 2, 3 }
-   status = pcall(function()
+   try
       arr:remove(0, -1)
-   end)
-   assert(not status, "Should reject negative count")
+   success
+      error("Should reject negative count")
+   end
 end
 
 @Test function ArrayRemoveSingle()

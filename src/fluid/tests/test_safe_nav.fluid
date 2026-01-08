@@ -139,12 +139,13 @@ end
    function capture(value)
       return value
    end
-   result = ""
-   ok, err = pcall(function()
+
+   try
       result = capture(guest?.profile?.name ?? "Guest")
-   end)
-   assert(ok is true, "Function call should succeed, err=" .. tostring(err))
-   assert(result is "Guest", "BUG: safe-nav + ?? argument currently yields " .. tostring(result) .. " instead of fallback")
+      assert(result is "Guest", f"BUG: safe-nav + ?? argument currently yields {result} instead of fallback")
+   except ex
+      error("Function call should succeed, err=" .. ex.message)
+   end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -154,12 +155,9 @@ end
    function capture(first, second)
       return first, second
    end
-   firstResult, secondResult = "", ""
-   ok, err = pcall(function()
-      firstResult, secondResult = capture(guest?.profile?.name ?? "Guest", "suffix")
-   end)
-   assert(ok is true, "Function call with extra argument should succeed, err=" .. tostring(err))
-   assert(firstResult is "Guest", "BUG: safe-nav + ?? argument produced " .. tostring(firstResult) .. " instead of fallback")
+
+   firstResult, secondResult = capture(guest?.profile?.name ?? "Guest", "suffix")
+   assert(firstResult is "Guest", f"BUG: safe-nav + ?? argument produced {firstResult} instead of fallback")
    assert(secondResult is "suffix", "BUG: sibling argument should pass through unchanged")
 end
 

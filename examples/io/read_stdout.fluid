@@ -2,11 +2,11 @@
 Demonstrates how to launch a sub-process and intercept the data that it prints to stderr and stdout.
 --]]
 
-   local file_out = obj.new("file", { path="temp:output-data.txt", flags="NEW|WRITE" } )
-   local file_err = obj.new("file", { path="temp:error-data.txt", flags="NEW|WRITE" } )
+   file_out = obj.new("file", { path="temp:output-data.txt", flags="NEW|WRITE" } )
+   file_err = obj.new("file", { path="temp:error-data.txt", flags="NEW|WRITE" } )
 
-   catch(function()
-      local task = obj.new("task", {
+   try
+      task = obj.new("task", {
          location = "parasol:fluid",
          args   = "--help",
          outputCallback = function(Task, Data)
@@ -24,7 +24,6 @@ Demonstrates how to launch a sub-process and intercept the data that it prints t
       print("Press CTRL-C to exit or wait for program to finish.  Received output is saved to '" .. file_out.path .. "' and '" .. file_err.path .. "'")
       task.acActivate()
       processing.sleep()
-   end,
-   function(Exception)
-      error("Failed to launch process, " .. Exception.message)
-   end)
+   except ex
+      error("Failed to launch process, " .. ex.message)
+   end

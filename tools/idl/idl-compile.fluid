@@ -74,8 +74,8 @@ global function flags(Prefix, Options, ...)
    f = 0
    for flag_def in values({...}) do
       if type(flag_def) is 'string' then
-         local key, comment = flag_def:match('^(.+):%s+(.+)$')
-         if not key then key = flag_def end
+         key, comment = flag_def:match('^(.+):%s+(.+)$')
+         key ?= flag_def
 
          for v in values(key:split('|')) do
             list[v] = 1 << f
@@ -92,7 +92,7 @@ global function flags(Prefix, Options, ...)
                end
             end
 
-            if not key then key = ref end
+            key ?= ref
 
             if type(key) is 'number' then
                list[flag] = key
@@ -323,7 +323,7 @@ global function cType(Field:table, Origin:str):table
    end
 
    do -- Char arrays
-      local unsigned, count = Field.type:match('^(u-)char%((.+)%)$')
+      unsigned, count = Field.type:match('^(u-)char%((.+)%)$')
       if count then
          Field.type = 'c'
          if unsigned?? then Field.type = 'uc' end
@@ -333,7 +333,7 @@ global function cType(Field:table, Origin:str):table
    end
 
    do -- Integer arrays
-      local unsigned, count = Field.type:match('^(u-)int%((%d+)%)')
+      unsigned, count = Field.type:match('^(u-)int%((%d+)%)')
       if count then
          if unsigned?? then
             Field.type = 'ul'
@@ -364,7 +364,7 @@ global function cType(Field:table, Origin:str):table
    end
 
    do
-      local const, ptr_type = Field.type:match('^(c-)ptr%((.+)%)')
+      const, ptr_type = Field.type:match('^(c-)ptr%((.+)%)')
       if ptr_type then
          Field.type = 'p'
          return Field
@@ -424,7 +424,7 @@ global function extractFields(Def:str, Origin:str):table
 
       local type, name = content:match('^%s*(.+)%s+([^%s]+)%s-$')
       if type then
-         local field = cType({ type=type:trim(), name=name:trim() }, Origin)
+         field = cType({ type=type:trim(), name=name:trim() }, Origin)
          table.insert(fields, field)
       elseif not content:trim()?? then
          -- Ignore empty line
@@ -485,17 +485,15 @@ global function saveOutput()
 
    print(f'Saving compressed IDL output to "{outPath}"')
 
-   err, file = catch(function()
+   local file
+   try
       if glAppend then
-         file = obj.new('file', { flags='WRITE', path=outPath } )
+         file = obj.new('file', { flags=FL_WRITE, path=outPath } )
          file.acSeek(0, SEEK_END)
-         return file
       else
-         return obj.new('file', { flags='WRITE|NEW', path=outPath } )
+         file = obj.new('file', { flags=FL_WRITE | FL_NEW, path=outPath } )
       end
-   end)
-
-   if err then
+   except
       print('Failed to write output to ' .. outPath)
       return
    end

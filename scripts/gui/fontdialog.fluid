@@ -91,7 +91,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
          self.exampleText = nil
       end
 
-      catch(function()
+      try
          self.exampleText = self.examplePage.new('VectorText', {
             x          = gap,
             fill       = 'rgb(0,0,0)',
@@ -102,10 +102,9 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
             string     = lLongText,
             textFlags  = VTXF_RASTER
          })
-      end,
-      function()
+      except ex
          msg('Failed to create example text for ' .. self.face .. ' ' .. (self.style ?? 'NIL'))
-      end)
+      end
 
       if self.exampleText then
          self.exampleText.y = math.floor(gap + self.exampleText.displaySize)
@@ -124,7 +123,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       assert(list, 'Failed to retrieve list of fonts, error: ' .. mSys.GetErrorMsg(err))
 
       lFonts       = { }
-      lFontsSorted = { }
+      lFontsSorted = array<table>
       font   = list
       index  = 0
       while font do
@@ -139,7 +138,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
             lFonts[font.name].scalable = true
          end
          if not font.hidden?? then
-            table.insert(lFontsSorted, lFonts[font.name])
+            lFontsSorted:push(lFonts[font.name])
          end
          index++
          font = font.next
@@ -358,7 +357,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
          end
 
          vwStyle.selectItems(function(Item)
-            if (Item.id is self.style) then return true end
+            if Item.id is self.style then return true end
          end)
 
          refreshExample()
@@ -370,13 +369,13 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
          showFontSizes(sizes)
 
-         if (sizes[0] > self.pointSize) then self.pointSize = sizes[0] end
+         if sizes[0] > self.pointSize then self.pointSize = sizes[0] end
          highlightSize(self.pointSize)
       end
    })
 
    faces = { }
-   for _, font in ipairs(lFontsSorted) do
+   for font in values(lFontsSorted) do
       new_font = { id=font.name, name=font.name }
       if font.alias?? then font = lFonts[font.alias] end
       new_font.icon = font.scalable ? 'items/font' :> 'layout/text_sans'

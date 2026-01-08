@@ -349,8 +349,8 @@ gui.toolbar = function(Options)
       end
 
       if Icon then
-         pcall(function()
-            local info = gui.createIcon(self.viewport.scene, Icon, self._iconSize, self._iconTheme)
+         try
+            info = gui.createIcon(self.viewport.scene, Icon, self._iconSize, self._iconTheme)
             item.iconFill = info.fill
 
             if self._iconHighlight and (self._iconTheme != self._iconHighlight) then
@@ -361,7 +361,7 @@ gui.toolbar = function(Options)
             item.icon = self.viewport.new('VectorRectangle', {
                fill = info.fill, x=0, y=0, width=self._iconSize, height=self._iconSize
             })
-         end)
+         end
       end
 
       self._arranged = false
@@ -467,7 +467,7 @@ gui.toolbar = function(Options)
 
    self.removeSticker = function(ID)
       item = self._lookup[ID]
-      if not item then return end
+      item ?? return
       if item.sticker then
          item.sticker.viewport.free()
          item.sticker = { }
@@ -500,7 +500,7 @@ gui.toolbar = function(Options)
 
       if redraw then self.viewport.acDraw() end
 
-      if not found then raise(ERR_Search) end
+      found ?? raise(ERR_Search)
    end
 
    function hoverUpdate(Item, StateChanged) -- Highlight items that the user hovers over.

@@ -205,22 +205,25 @@ end
 -- Test error case: Invalid pattern should fail at parse time
 
 @Test function ErrorInvalidPatternCharacter()
-   ok, err = pcall(function()
+   try
       loadstring("[x]multi()")()
-   end)
-   assert(not ok, "invalid pattern char 'x' should fail to parse")
+   success
+      error("Invalid pattern char 'x' should fail to parse")
+   end
 end
 
 @Test function ErrorFilterOnNonCall()
-   ok, err = pcall(function()
+   try
       loadstring("x = [_*]42")()
-   end)
-   assert(not ok, "filter on non-call should fail to parse")
+   success
+      error("filter on non-call should fail to parse")
+   end
 end
 
 @Test function ErrorFilterOnVariable()
-   ok, err = pcall(function()
+   try
       loadstring("t = {}; x = [_*]t")()
-   end)
-   assert(not ok, "filter on variable should fail to parse")
+   success
+      error("filter on variable should fail to parse")
+   end
 end

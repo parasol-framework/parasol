@@ -230,11 +230,7 @@ end
 @Test function IfEmptyStringFindError()
    Function = { status = 'Hello' }
 
-   ok, start_index, end_index = pcall(function()
-      return string.find((Function.status ?? 'then'), 'e')
-   end)
-
-   assert(ok is true, "string.find should succeed once the argument leak is fixed")
+   start_index, end_index = string.find((Function.status ?? 'then'), 'e')
    assert(start_index is 1, "Expected search to start at index 1, got '" .. tostring(start_index) .. "'")
    assert(end_index is 1, "Expected search to end at index 1, got '" .. tostring(end_index) .. "'")
 end

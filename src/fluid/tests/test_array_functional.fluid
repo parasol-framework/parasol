@@ -358,25 +358,29 @@ end
 @Test function FunctionalMethodsRequireFunction()
    arr = array<int> { 1, 2, 3 }
 
-   status = pcall(function()
+   try
       arr:each("not a function")
-   end)
-   assert(not status, "each() should reject non-function argument")
+   success
+      error("each() should reject non-function argument")
+   end
 
-   status = pcall(function()
+   try
       arr:map(42)
-   end)
-   assert(not status, "map() should reject non-function argument")
+   success
+      error("map() should reject non-function argument")
+   end
 
-   status = pcall(function()
+   try
       arr:filter({})
-   end)
-   assert(not status, "filter() should reject non-function argument")
+   success
+      error("filter() should reject non-function argument")
+   end
 
-   status = pcall(function()
+   try
       arr:reduce(0, nil)
-   end)
-   assert(not status, "reduce() should reject non-function reducer")
+   success
+      error("reduce() should reject non-function reducer")
+   end
 end
 
 @Test function MapWithByteArray()

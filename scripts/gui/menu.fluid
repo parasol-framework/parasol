@@ -101,12 +101,12 @@ gui.menu = function(Options)
             if bw > widestItem then widestItem = bw end
 
             if showIcons and item['icon'] then
-               pcall(function()
+               try
                   info = gui.createIcon(self.viewport.scene, item.icon, ICON_SIZE, gui.style.menu.icon)
                   item.iconView = self.viewport.new('VectorRectangle', {
                      x = HMARGIN, y = y + math.floor((ITEM_HEIGHT - ICON_SIZE) * 0.5), width = ICON_SIZE, height = ICON_SIZE, fill = info.fill
                   })
-               end)
+               end
             end
 
             if item['key'] then

@@ -229,11 +229,11 @@ end
    assert(order[1] is 'a', 'LIFO: a second')
 end
 
--- Close on error path (using pcall)
--- Tests that __close IS called when using pcall to catch errors,
+-- Close on error path (using try)
+-- Tests that __close IS called when using try to catch errors,
 -- AND that the error value is passed to the __close handler.
 
-@Test function CloseWithPcall()
+@Test function CloseWithTry()
    closed = false
    received_err = nil
    mt = {
@@ -248,9 +248,13 @@ end
       error('test error message')
    end
 
-   ok, err = pcall(inner)
-   assert(not ok, 'pcall should catch error')
-   assert(closed, 'Close should be called when error is caught by pcall')
+   try
+      inner()
+   success
+      error('try should catch error')
+   end
+
+   assert(closed, 'Close should be called when error is caught by try')
    -- The error must be passed to __close during error unwinding
    assert(received_err != nil, 'Error should be passed to __close handler')
    assert(tostring(received_err):find('test error message'), 'Error message should contain "test error message": got ' .. tostring(received_err))
@@ -293,8 +297,12 @@ end
       error('multi close error')
    end
 
-   ok = pcall(inner)
-   assert(not ok, 'pcall should catch error')
+   try
+      inner()
+   success
+      error('try should catch error')
+   end
+
    assert(#order is 3, 'All three close handlers should be called: ' .. #order)
    assert(order[0] is 2, 'LIFO: 3 first, got ' .. tostring(order[0]))
    assert(order[1] is 1, 'LIFO: 2 second, got ' .. tostring(order[1]))
@@ -319,36 +327,6 @@ end
    end
 
    assert(close_count is 3, 'Close should be called each while iteration: ' .. close_count)
-end
-
--- Close with xpcall
-
-@Test function CloseWithXpcall()
-   closed = false
-   received_err = nil
-   error_handler_called = false
-   mt = {
-      __close = function(self, err)
-         closed = true
-         received_err = err
-      end
-   }
-
-   function inner()
-      local obj <close> = setmetatable({}, mt)
-      error('xpcall test error')
-   end
-
-   function errorHandler(err)
-      error_handler_called = true
-      return 'handled: ' .. tostring(err)
-   end
-
-   ok, err = xpcall(inner, errorHandler)
-   assert(not ok, 'xpcall should catch error')
-   assert(error_handler_called, 'Error handler should be called')
-   assert(closed, 'Close should be called with xpcall')
-   assert(received_err != nil, 'Error should be passed to __close')
 end
 
 -- Nested function calls with close
@@ -423,19 +401,25 @@ end
    }
 
    function inner()
-      local obj2 <close> = setmetatable({}, mt2)  -- Called second (LIFO)
-      local obj1 <close> = setmetatable({}, mt1)  -- Called first (LIFO), throws
+      obj2 <close> = setmetatable({}, mt2)  -- Called second (LIFO)
+      obj1 <close> = setmetatable({}, mt1)  -- Called first (LIFO), throws
       error('original error')
    end
 
-   ok, err = pcall(inner)
-   assert(not ok, 'pcall should catch error')
+   caught_err = nil
+   try
+      inner()
+   except err
+      caught_err = err
+   end
+
    -- Both close handlers should be called even when one throws
    assert(#order is 2, 'Both close handlers should be called: ' .. #order)
    assert(order[0] is 'close1', 'close1 first (LIFO)')
    assert(order[1] is 'close2', 'close2 second (LIFO)')
    -- The error should be from close1, not the original (per Lua 5.4)
-   assert(tostring(err):find('close1 error'), 'Error from __close should replace original: ' .. tostring(err))
+   assert(caught_err != nil, 'Exception should be caught')
+   assert(tostring(caught_err.message):find('close1 error'), 'Error from __close should replace original: ' .. tostring(caught_err.message))
 end
 
 -- Multiple __close errors - last one wins
@@ -461,9 +445,15 @@ end
       error('original error')
    end
 
-   ok, err = pcall(inner)
-   assert(not ok, 'pcall should catch error')
-   assert(#order is 2, 'Both close handlers should be called')
+   caught_err = nil
+   try
+      inner()
+   except err
+      caught_err = err
+   end
+
+   assert(#order is 2, 'Both close handlers should be called, got ' .. #order)
    -- The last error (from close2) should be the final error
-   assert(tostring(err):find('close2 error'), 'Last __close error should win: ' .. tostring(err))
+   assert(caught_err != nil, 'Exception should be caught')
+   assert(tostring(caught_err.message):find('close2 error'), 'Last __close error should win: ' .. tostring(caught_err.message))
 end

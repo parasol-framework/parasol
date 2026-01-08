@@ -109,7 +109,7 @@ function displayDoc(Path)
 end
 
 function displayImage(Path)
-   catch(function()
+   try
       pic = glWindow.scene.new('picture', { src=Path, flags='ForceAlpha32' })
       img = glWindow.scene.new('VectorImage', { picture = pic })
       glWindow.scene.mtAddDef('Image', img)
@@ -129,10 +129,9 @@ function displayImage(Path)
       configureScrollbar(window, page)
 
       glStats = { width = pic.bitmap.width, height = pic.bitmap.height }
-   end,
-   function(Exception)
+   except
       displayError([[<p>Failed to process selected file.</p>]])
-   end)
+   end
 end
 
 function displayText(Path)

@@ -52,7 +52,7 @@ gui.strToRGB = function(Value:str):table
    assert(Value, 'Empty value passed to strToRGB()')
 
    local result, fail
-   xpcall(function()
+   try
       if string.byte(Value) is 35 then
          colour = tonumber(string.sub(Value,1), 16) -- Convert hex string to number
 
@@ -103,10 +103,9 @@ gui.strToRGB = function(Value:str):table
          if a < 0 then a = 0 end
          result = { r=r, g=g, b=b, a=a }
       end
-   end,
-   function(Error)
-      fail = Error .. '\nInput value: ' .. Value
-   end)
+   except ex
+      fail = ex.message .. '\nInput value: ' .. Value
+   end
 
    assert(not fail, fail)
    return result
@@ -284,14 +283,12 @@ gui.simpleGradient = function(Scene, Name:str, Colours, X1:num, Y1:num, X2:num, 
    })
 
    if IgnoreClashes then -- Do not fail if a resource with the same name already exists (nb: will return nil).
-      ex = catch(function()
+      try
          Scene.mtAddDef(Name, gradient)
-      end)
-
-      if ex then
+      except ex
          if ex.code is ERR_ResourceExists then
             gradient.free()
-            return nil
+            return
          else
             error(ex)
          end

@@ -235,7 +235,7 @@ gui.menubar = function(Options)
 
    -- Main entry point
 
-   xpcall(function()
+   try
       assert(Options.target, 'A target viewport is required.')
 
       self.viewport = Options.target.new('vectorviewport')
@@ -365,10 +365,9 @@ gui.menubar = function(Options)
       })
 
       arrangeItems(self)
-   end,
-   function(Error)
-      print(Error)
-   end)
+   except ex
+      print(ex.message)
+   end
 
    return self
 end

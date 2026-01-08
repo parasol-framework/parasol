@@ -152,19 +152,19 @@ end
 --  )
 
 global function flags(Prefix, Options, ...)
-   verbose('Processing ' .. tostring(Prefix) .. ' flags.')
-   if glCustomTypes[Prefix] then print('WARN: A "' .. Prefix .. '" constant already exists.') end
+   verbose(f'Processing {Prefix} flags.')
+   if glCustomTypes[Prefix] then print(f'WARN: A "{Prefix}" constant already exists.') end
 
    Options = checkOptions(Options)
 
-   out = { }
+   out = array<string>
    sortedFlags = { }
    if Options.comment?? then
-      table.insert(out, '// ' .. Options.comment)
-      table.insert(out, '')
+      out:push('// ' .. Options.comment)
+      out:push('')
    end
 
-   function outputFlagDef(Options, Prefix, flag_name, val)
+   function outputFlagDef(Options:table, Prefix:str, flag_name:str, val)
       if not Options.weak then
          if Options.bits is 16 then
             table.insert(sortedFlags, { value = val, define = string.format('   %s = 0x%.4x,', flag_name, val) } )
@@ -188,8 +188,8 @@ global function flags(Prefix, Options, ...)
          8  -> 'uint8_t'
          else -> 'uint32_t'
       end
-      table.insert(out, string.format('enum class %s : ' .. type_size .. ' {', Prefix))
-      table.insert(out, '   NIL = 0,')
+      out:push(string.format('enum class %s : ' .. type_size .. ' {', Prefix))
+      out:push('   NIL = 0,')
    end
 
    lookup = { }
@@ -243,26 +243,24 @@ global function flags(Prefix, Options, ...)
 
    table.sort(sortedFlags, function(a,b) return a.value < b.value end)
    for _, flag in ipairs(sortedFlags) do
-      table.insert(out, flag.define)
+      out:push(flag.define)
    end
 
    if not Options.weak then
-      table.insert(out, '};')
-      table.insert(out, '')
-      table.insert(out, 'DEFINE_ENUM_FLAG_OPERATORS(' .. Prefix .. ')')
+      out:push('};')
+      out:push('')
+      out:push('DEFINE_ENUM_FLAG_OPERATORS(' .. Prefix .. ')')
    end
 
-   table.insert(out, '')
-
+   out:push('')
    if Options.module?? and (Options.module:lower() != glModule.name:lower()) then
-     -- Do nothing, module restriction imposed.
+      -- Do nothing, module restriction imposed.
    elseif not glRestrict then
-      for k,v in pairs(out) do table.insert(glConstants, v) end
+      for v in values(out) do table.insert(glConstants, v) end
    end
 
    glCustomTypes[Prefix] = {
-      prefix=Prefix, grouping='flags', list=lookup, comment=Options.comment,
-      restrict=glRestrict
+      prefix=Prefix, grouping='flags', list=lookup, comment=Options.comment, restrict=glRestrict
    }
 
    if not Options.weak then -- Promote strong-typing to other C++ definitions
@@ -274,7 +272,7 @@ end
 -- FDL function
 
 global function privateNames(List)
-   for k,v in pairs(List) do
+   for _,v in pairs(List) do
       glPrivateNames[v] = true
    end
 end
@@ -531,7 +529,7 @@ global function struct(Name, Options, Def, Append)
    prevStruct = glCurrentStructure
    global glCurrentStructure = Name
 
-   catch(function()
+   try
       Options = checkOptions(Options)
 
       out = { }
@@ -611,11 +609,10 @@ global function struct(Name, Options, Def, Append)
          version = Options.version, type = Options.type, comment = Options.comment, fields = fields,
          restrict = (glRestrict ?? Options.restrict), name = Name
       }
-   end,
-   function(Exception)
+   except ex
       glCurrentStructure = prevStruct
-      error(Exception.message)
-   end)
+      error(ex.message)
+   end
 
    glCurrentStructure = prevStruct
 end
@@ -921,19 +918,19 @@ global function class(Name, Options, Spec, Private, Custom)
       if not table.empty(class.methods) then
          for m in values(class.methods) do
             if not table.empty(m.params) then
-               mdef ..= 'FDEF ma' .. m.name .. '[] = { ' .. buildInputParameters(m.params) .. ' };\n'
+               mdef ..= f'FDEF ma{m.name}[] = {{ {buildInputParameters(m.params)} }};\n'
             end
          end
          mdef ..= '\n'
 
-         mdef ..= 'static const struct MethodEntry cl' .. Name .. 'Methods[] = {\n'
+         mdef ..= f'static const struct MethodEntry cl{Name}Methods[] = {{\n'
          for m in values(class.methods) do
             local structSize
             if table.empty(m.params) then
-               mdef ..= '   { AC(-' .. m.id .. '), (APTR)' .. Name:upper() .. '_' .. m.funcName .. ', "' .. m.name .. '", 0, 0 },\n'
+               mdef ..= f'   {{ AC(-{m.id}), (APTR){Name:upper()}_{m.funcName}, "{m.name}", 0, 0 }},\n'
             else
-               structSize = 'sizeof(struct ' .. class.methodPrefix:lower() .. '::' .. m.name .. ')'
-               mdef ..= '   { AC(-' .. m.id .. '), (APTR)' .. Name:upper() .. '_' .. m.funcName .. ', "' .. m.name .. '", ma' .. m.name .. ', ' .. structSize .. ' },\n'
+               structSize = f'sizeof(struct {class.methodPrefix:lower()}::{m.name})'
+               mdef ..= f'   {{ AC(-{m.id}), (APTR){Name:upper()}_{m.funcName}, "{m.name}", ma{m.name}, {structSize} }},\n'
             end
          end
          mdef ..= '   { AC::NIL, 0, 0, 0, 0 }\n};\n\n'
@@ -942,12 +939,12 @@ global function class(Name, Options, Spec, Private, Custom)
       if not table.empty(class.sortedActions) then
          mdef ..= "static const struct ActionArray cl" .. Name .. "Actions[] = {\n"
          for action in values(class.sortedActions) do
-            mdef ..= "   { AC::" .. action.name .. ", " .. Name:upper() .. "_" .. action.name .. " },\n"
+            mdef ..= f"   {{ AC::{action.name}, {Name:upper()}_{action.name} }},\n"
          end
          mdef ..= "   { AC::NIL, nullptr }\n};\n\n"
       end
 
-      file = obj.new("file", { flags="WRITE|NEW", location=glFDLFolder .. Options.output } )
+      file = obj.new("file", { flags=FL_WRITE|FL_NEW, location=glFDLFolder .. Options.output } )
       file.acWrite("// Auto-generated by idl-c.fluid\n\n")
       if cdef?? then file.acWrite(cdef) end
       if mdef?? then file.acWrite(mdef) end
@@ -963,18 +960,17 @@ global function functionNames(Prefix, ...)
    global glFunctionPrefix = Prefix ?? ''
    for fname in values({...}) do
       if fname:find('[^%w]') then
-         error('Invalid function name "' .. fname .. '"')
+         error(f'Invalid function name "{fname}"')
       end
 
       func = {
          name  = fname,
-         def   = '   void (*_' .. fname .. ')(void);',
+         def   = f'   void (*_{fname})(void);',
          macro = function() -- Default macro, to be overridden by documented function
-            return 'template <typename... Args> inline ERR ' .. glFunctionPrefix:lower() .. fname ..
-               '(Args... pArgs) noexcept { return ' .. glModule.name .. 'Base->_' .. fname .. '(pArgs...); }'
+            return f'template <typename... Args> inline ERR {glFunctionPrefix:lower()}{fname}(Args... pArgs) noexcept {{ return {glModule.name}Base->_{fname}(pArgs...); }}'
          end,
          staticMacro = function()
-            return 'template <typename... Args> ERR ' .. glFunctionPrefix:lower() .. fname .. '(Args... pArgs);'
+            return f'template <typename... Args> ERR {glFunctionPrefix:lower()}{fname}(Args... pArgs);'
          end
       }
 
@@ -990,7 +986,7 @@ end
 -- Register methods for a class.  This must be declared prior to the corresponding class() function call.
 
 global function methods(ClassName, Prefix, Methods)
-   verbose('Processing ' .. #Methods .. ' methods for class ' .. tostring(ClassName))
+   verbose(<{ 'Processing ' .. #Methods .. ' methods for class ' .. tostring(ClassName) }>)
 
    local class = registerClass(ClassName)
    class.methodPrefix = Prefix

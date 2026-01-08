@@ -89,7 +89,7 @@ gui.button = function(Options)
    })
 
    if Options.icon then
-      pcall(function()
+      try
          icon = gui.createIcon(self.viewport.scene, Options.icon, ICON_SIZE, gui.rgbToIconTheme(gui.style.widget.text))
 
          if icon then
@@ -103,7 +103,7 @@ gui.button = function(Options)
 
             label_offset = (GAP * 0.5) + ICON_SIZE
          end
-      end)
+      end
    end
 
    self._textClip = self.viewport.new('VectorViewport', {
@@ -202,7 +202,7 @@ gui.button = function(Options)
       Viewport.acDraw()
    end)
 
-   if self.events.show then self.events.show(self) end
+   self.events?.show(self)
 
    return self
 end

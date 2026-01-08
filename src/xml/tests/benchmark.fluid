@@ -55,31 +55,29 @@ function measureTime(func, iterations)
 end
 
 function benchmarkTest(TestName, Function, Iterations)
-   Iterations = Iterations or 300
+   Iterations ??= 300
 
    print(string.format('  Running: %-30s (%d iterations)', TestName, Iterations))
 
-   local success, msg = pcall(function()
+   try
       -- Perform warmup to eliminate cold-start effects
-      local warmupIterations = math.min(10, Iterations / 10)
+      warmupIterations = math.min(10, Iterations / 10)
       performWarmup(Function, warmupIterations)
 
       -- Actual benchmark measurement
-      local avg_time, total_time, best_time, mem_usage = measureTime(Function, Iterations)
+      avg_time, total_time, best_time, mem_usage = measureTime(Function, Iterations)
       benchmarkResults[TestName] = { avg_time = avg_time, total_time = total_time, best_time = best_time, iterations = Iterations, mem_usage = mem_usage }
       fastestResults[TestName] = best_time
       passedTests += 1
-   end)
-
-   if not success then
-      print('    ERROR: ' .. msg)
+   except ex
+      print('    ERROR: ' .. ex.message)
       benchmarkResults[TestName] = -1
       fastestResults[TestName] = -1
-   else
-      local result = benchmarkResults[TestName]
+   success
+      result = benchmarkResults[TestName]
    end
 
-   totalTests += 1
+   totalTests++
 end
 
 -----------------------------------------------------------------------------------------------------------------------
