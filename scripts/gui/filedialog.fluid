@@ -155,7 +155,7 @@ gui.dialog.file = function(Options)
       -- Pick the first item as being selected if none other is chosen.
 
       selection = false
-      for _, item in pairs(Options.filterList) do
+      for item in values(Options.filterList) do
          if item.selected then
             selection = true
             break
@@ -164,7 +164,7 @@ gui.dialog.file = function(Options)
 
       if not selection then Options.filterList[0].selected = true end
 
-      for _, filter in pairs(Options.filterList) do
+      for filter in values(Options.filterList) do
          table.insert(fv_filters, filter)
       end
    end

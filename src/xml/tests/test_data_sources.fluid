@@ -12,7 +12,7 @@ end
 @Test(priority=1) function PathLoading()
    -- Create a temporary XML file for testing
    testXML = '<?xml version="1.0"?><testRoot><testChild>Path content</testChild></testRoot>'
-   file = obj.new('file', { path = 'temp:test_xml_path.xml', flags = 'WRITE|NEW' })
+   file = obj.new('file', { path = 'temp:test_xml_path.xml', flags = FL_WRITE|FL_NEW })
    file.acWrite(testXML)
    file = nil
 
@@ -33,7 +33,7 @@ end
 @Test(priority=2) function ObjectSource()
    -- Create a memory object with XML content
    testXML = '<sourceRoot><sourceChild>Object content</sourceChild></sourceRoot>'
-   memory = obj.new('file', { flags = 'READ|WRITE|NEW|BUFFER' })
+   memory = obj.new('file', { flags = FL_READ | FL_WRITE | FL_NEW | FL_BUFFER })
    memory.acWrite(testXML)
    memory.acSeek(0, SEEK_SET)
 
@@ -110,7 +110,7 @@ end
 
    -- Create file for path switching
    fileXML = '<pathSwitched>Path content</pathSwitched>'
-   file = obj.new('file', { path = 'temp:test_switch.xml', flags = 'WRITE|NEW' })
+   file = obj.new('file', { path = 'temp:test_switch.xml', flags = FL_WRITE | FL_NEW })
    file.acWrite(fileXML)
    file = nil
 
@@ -146,12 +146,15 @@ end
 @Test(priority=8) function InvalidFileHandling()
    -- Try to load non-existent file
 
-   ex, xml = catch(function() return obj.new("xml", { path = 'temp:nonexistent.xml' }) end)
-   assert(xml is nil, "Should report error for non-existent file")
+   try
+      xml = obj.new("xml", { path = 'temp:nonexistent.xml' })
+   success
+      error("Should report error for non-existent file")
+   end
 
    -- Try to parse invalid XML content.  Throwing an exception is considered acceptable if content is unparseable
-   catch(function()
-      local xml2 = obj.new("xml", { statement = 'This is not valid XML content' })
+   try
+      xml2 = obj.new("xml", { statement = 'This is not valid XML content' })
       assert(xml2.parseError != ERR_Okay, "Should report error for invalid XML")
-   end)
+   end
 end

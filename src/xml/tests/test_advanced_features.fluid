@@ -42,7 +42,7 @@ end
 -- Test content stripping
 
 @Test function ContentStripping()
-   local xmlWithContent = '<root><element>Text content</element><empty/></root>'
+   xmlWithContent = '<root><element>Text content</element><empty/></root>'
 
    -- Test with content stripping
    xml = obj.new("xml", {
@@ -82,12 +82,11 @@ end
    -- Should parse in loose mode
 
    -- Test with well-formed flag (should reject)
-   ex, xml2 = catch(function() return obj.new("xml", {
-      statement = malformedXML,
-      flags = XMF_WELL_FORMED
-   }) end)
-
-   assert(ex.code != ERR_Okay, "Should reject malformed XML in well-formed mode")
+   try
+      obj.new("xml", { statement = malformedXML, flags = XMF_WELL_FORMED })
+   success
+      error("Should reject malformed XML in well-formed mode")
+   end
 end
 
 -----------------------------------------------------------------------------------------------------------------------

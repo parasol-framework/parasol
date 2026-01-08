@@ -7,8 +7,11 @@
 end
 
 @Test function AbsoluteAnchors()
-   ex, matcher = catch(function() return regex.new("\\Astart.+finish\\Z") end)
-   assert(matcher is nil, "\\A and \\Z are not supported by ECMAScript")
+   try
+      matcher = regex.new("\\Astart.+finish\\Z")
+   success
+      error("\\A and \\Z are not supported by ECMAScript")
+   end
 end
 
 @Test function WordBoundaries()

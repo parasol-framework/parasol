@@ -76,7 +76,7 @@ function ConnectionFailures()
 
    -- Test 3: Port conflict (two servers on same port)
    print('[Test 3] Testing port binding conflicts...')
-   local server1 = obj.new('netsocket', {
+   server1 = obj.new('netsocket', {
       name = 'FirstServer',
       port = glPort,
       flags = 'SERVER'
@@ -85,13 +85,13 @@ function ConnectionFailures()
    assert(server1, 'Failed to create first server')
 
    local server2
-   catch(function()
+   try
        server2 = obj.new('netsocket', {
           name = 'ConflictServer',
           port = glPort, -- Same port
           flags = 'SERVER'
        })
-   end)
+   end
 
    if (server2 and server2.error != ERR_Okay) then
       print('[Test3] Port conflict correctly detected: ' .. mSys.GetErrorMsg(server2.error))

@@ -176,61 +176,69 @@ end
 -- RETURN TYPE MISMATCH ERRORS (compile-time detection)
 
 @Test function ReturnTypeMismatchNumToStr()
-   ex = catch(function()
-      return exec([[
+   try
+      exec([[
          function bad():num
             return "not a number"
          end
       ]])
-   end)
-   assert(ex, "should detect return type mismatch: str returned for num declaration")
+   success
+      error("should detect return type mismatch: str returned for num declaration")
+   end
 end
 
 @Test function ReturnTypeMismatchStrToNum()
-   ex = catch(function()
-      return exec([[
+   try
+      exec([[
          function bad():str
             return 42
          end
       ]])
-   end)
-   assert(ex, "should detect return type mismatch: num returned for str declaration")
+   end
+   success
+      error("should detect return type mismatch: num returned for str declaration")
+   end
 end
 
 @Test function ReturnTypeMismatchBoolToTable()
-   ex = catch(function()
-      return exec([[
+   try
+      exec([[
          function bad():bool
             return {}
          end
       ]])
-   end)
-   assert(ex, "should detect return type mismatch: table returned for bool declaration")
+   end
+   success
+      error("should detect return type mismatch: table returned for bool declaration")
+   end
 end
 
 @Test function ReturnTypeMismatchInMultiple()
-   ex = catch(function()
-      return exec([[
+   try
+      exec([[
          function bad():<num, str>
             return "wrong", 42
          end
       ]])
-   end)
-   assert(ex, "should detect return type mismatch in multiple returns")
+   end
+   success
+      error("should detect return type mismatch in multiple returns")
+   end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- RETURN COUNT VALIDATION
 
 @Test function TooManyReturnsError()
-   ex = catch(function()
-      return exec([[
+   try
+      exec([[
          function bad():<num, str>
             return 1, "a", "extra"
          end
       ]])
-   end)
-   assert(ex, "should detect too many return values")
+   success
+      error("should detect too many return values")
+   end
 end
 
 @Test function FewerReturnsAllowed()
@@ -281,15 +289,17 @@ end
 end
 
 @Test function RecursiveFunctionWithoutTypeError()
-   ex = catch(function()
-      return exec([[
+   try
+      exec([[
          function factorial(N)
             if N <= 1 then return 1 end
             return N * factorial(N - 1)
          end
       ]])
-   end)
-   assert(ex, "recursive function without explicit return type should error")
+   end
+   success
+      error("recursive function without explicit return type should error")
+   end
 end
 
 @Test function MutualRecursionNeedsTypes()
@@ -341,12 +351,14 @@ end
 end
 
 @Test function ArrowFunctionTypeMismatch()
-   ex = catch(function()
-      return exec([[
+   try
+      exec([[
          bad = (x => num: "not a number")
       ]])
-   end)
-   assert(ex, "arrow function with mismatched return type should error")
+   end
+   success
+      error("arrow function with mismatched return type should error")
+   end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -378,8 +390,8 @@ end
 
 @Test function FirstReturnFixesType()
    -- First return should fix the type, subsequent returns must match
-   ex = catch(function()
-      return exec([[
+   try
+      exec([[
          function inconsistent(X)
             if X > 0 then
                return 42
@@ -388,8 +400,10 @@ end
             end
          end
       ]])
-   end)
-   assert(ex, "inconsistent return types should error (first wins rule)")
+   end
+   success
+      error("inconsistent return types should error (first wins rule)")
+   end
 end
 
 @Test function FirstReturnFixesTypeConsistent()
@@ -405,8 +419,8 @@ end
 end
 
 @Test function FirstReturnFixesMultipleTypes()
-   ex = catch(function()
-      return exec([[
+   try
+      exec([[
          function inconsistentPair(X)
             if X > 0 then
                return 1, "a"
@@ -415,8 +429,10 @@ end
             end
          end
       ]])
-   end)
-   assert(ex, "inconsistent multiple return types should error")
+   end
+   success
+      error("inconsistent multiple return types should error")
+   end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -512,15 +528,16 @@ end
 -- Detect type mismatch when assigning function result to typed variable
 
 @Test function TypedFunctionResultTypeMismatch()
-   ex = catch(function()
-      return exec([[
+   try
+      exec([[
          function getNum():num
             return 42
          end
          result: str = getNum()
       ]])
-   end)
-   assert(ex, "Expected exception to be raised from invalid typed assignment")
+   success
+      error("Expected exception to be raised from invalid typed assignment")
+   end
 end
 
 @Test function MultipleAssignmentFromTypedFunction()
@@ -644,16 +661,18 @@ end
 -- ERROR MESSAGE QUALITY
 
 @Test function ErrorMessageMentionsTypes()
-   ex = catch(function()
-      return exec([[
+   try
+      exec([[
          function bad():num
             return "text"
          end
       ]])
-   end)
-   assert(ex, "should have caught type error")
-   -- Check that error message is helpful
-   local msg = ex.message or tostring(ex)
-   assert(string.find(msg, "type") or string.find(msg, "num") or string.find(msg, "str"),
-      "error message should mention type information")
+   success
+      error("should have caught type error")
+   except ex
+      -- Check that error message is helpful
+      msg = ex.message
+      assert(string.find(msg, "type") or string.find(msg, "num") or string.find(msg, "str"),
+         "error message should mention type information")
+   end
 end
