@@ -33,10 +33,9 @@ end
    assert(match and match[0][0] is "support", "Lookarounds should not consume delimiter characters")
 end
 
-@Test function InvalidVariableWidthLookbehind()
-   try
-      regex.new("(?<=\\w+)x")
-   success
-      error("Variable width lookbehind should raise compilation error")
-   end
+@Test function VariableWidthLookbehind()
+   matcher = regex.new("(?<=\\w+)x")
+   match = matcher.search("abcx")
+   assert(match and match[0][0] is "x", "Variable width lookbehind should match 'x' preceded by word characters")
+   assert(not matcher.test(" x"), "Should not match 'x' preceded by space")
 end

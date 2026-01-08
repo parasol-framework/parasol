@@ -145,8 +145,8 @@ void process_error(objScript *Self, CSTRING Procedure)
    auto prv = (prvFluid *)Self->ChildPrivate;
 
    auto flags = VLF::WARNING;
-   if (prv->CaughtError != ERR::Okay) {
-      Self->Error = prv->CaughtError;
+   if (prv->Lua->CaughtError != ERR::Okay) {
+      Self->Error = prv->Lua->CaughtError;
       if (Self->Error <= ERR::Terminate) flags = VLF::DETAIL; // Non-critical errors are muted to prevent log noise.
    }
    else Self->Error = ERR::Exception; // Unspecified exception, e.g. an error() or assert().  The result string will indicate detail.
@@ -856,7 +856,7 @@ static ERR run_script(objScript *Self)
 
    log.traceBranch("Procedure: %s, Top: %d", Self->Procedure, lua_gettop(prv->Lua));
 
-   prv->CaughtError = ERR::Okay;
+   prv->Lua->CaughtError = ERR::Okay;
    std::array<object*, 8> release_list;
    size_t r = 0;
    int top;

@@ -71,10 +71,9 @@ int fcmd_check(lua_State *Lua)
    int param_count = lua_gettop(Lua); // Get the total number of parameters
 
    if (lua_type(Lua, 1) IS LUA_TNUMBER) {
-      ERR error = ERR(lua_tointeger(Lua, 1));
+      auto error = ERR(lua_tointeger(Lua, 1));
       if (int(error) >= int(ERR::ExceptionThreshold)) {
-         auto prv = (prvFluid *)Lua->script->ChildPrivate;
-         prv->CaughtError = error;
+         Lua->CaughtError = error;
          luaL_error(Lua, GetErrorMsg(error));
       }
    }
@@ -90,9 +89,8 @@ int fcmd_check(lua_State *Lua)
 int fcmd_raise(lua_State *Lua)
 {
    if (lua_type(Lua, 1) IS LUA_TNUMBER) {
-      ERR error = ERR(lua_tointeger(Lua, 1));
-      auto prv = (prvFluid *)Lua->script->ChildPrivate;
-      prv->CaughtError = error;
+      auto error = ERR(lua_tointeger(Lua, 1));
+      Lua->CaughtError = error;
       luaL_error(Lua, GetErrorMsg(error));
    }
    return 0;
@@ -712,24 +710,24 @@ extern "C" void lj_try_enter(lua_State *L, GCfunc *Func, TValue *Base, uint16_t 
    ptrdiff_t saved_top_offset = savestack(L, safe_top);
    lj_assertL(saved_top_offset >= frame_base_offset, "lj_try_enter: saved_top below base (top=%p base=%p)", safe_top, Base);
 
+   // Note: We leave L->top at safe_top. In JIT mode, the JIT will restore state from snapshots if needed. In
+   // interpreter mode, the VM will continue with the correct top. This ensures L->top is always valid if an
+   // error occurs.
+
    GCproto *proto = funcproto(Func); // Retrieve for try metadata
    lj_assertL(TryBlockIndex < proto->try_block_count, "lj_try_enter: TryBlockIndex %u >= try_block_count %u", TryBlockIndex, proto->try_block_count);
    lj_assertL(proto->try_blocks != nullptr, "lj_try_enter: try_blocks is null");
    TryBlockDesc *block_desc = &proto->try_blocks[TryBlockIndex];
-   uint8_t entry_slots = block_desc->entry_slots;
 
    TryFrame *try_frame = &L->try_stack.frames[L->try_stack.depth++];
    try_frame->try_block_index = TryBlockIndex;
    try_frame->frame_base      = frame_base_offset;
    try_frame->saved_top       = saved_top_offset;
-   try_frame->saved_nactvar   = BCREG(entry_slots);
+   try_frame->saved_nactvar   = BCREG(block_desc->entry_slots);
    try_frame->func            = Func;
    try_frame->depth           = (uint8_t)L->try_stack.depth;
    try_frame->flags           = block_desc->flags;
-
-   // Note: We leave L->top at safe_top. In JIT mode, the JIT will restore state
-   // from snapshots if needed. In interpreter mode, the VM will continue with the
-   // correct top. This ensures L->top is always valid if an error occurs.
+   try_frame->catch_depth     = Base - tvref(L->stack) + 2;
 }
 
 //********************************************************************************************************************

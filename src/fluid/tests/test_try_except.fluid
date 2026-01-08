@@ -640,11 +640,20 @@ end
       err = mSys.AllocMemory(-1024, MEM_DATA)
    except e when ERR_Args
       -- Expected result
-      print('ok')
    except e
       error(f"Expected ERR_Args code, got {e.code}")
    success
       error("Error should have been raised by faulty sytem call.")
+   end
+
+   -- Try can only check ERR codes in its immediate scope, so the AllocMemory() result would not be tested in this case
+   try
+      function internal()
+         mSys.AllocMemory(-1024, MEM_DATA)
+      end
+      internal()
+   except e
+      error(f"AllocMemory() should not have its ERR code tested.")
    end
 end
 

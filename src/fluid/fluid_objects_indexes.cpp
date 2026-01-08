@@ -21,11 +21,9 @@ static int object_newindex(lua_State *Lua)
             release_object(def);
 
             if (error >= ERR::ExceptionThreshold) {
-               pf::Log log(__FUNCTION__);
-               log.warning("Unable to write %s.%s: %s", def->Class->ClassName, luaL_checkstring(Lua, 2), GetErrorMsg(error));
-               auto prv = (prvFluid *)Lua->script->ChildPrivate;
-               prv->CaughtError = error;
-               /*if (prv->ThrowErrors)*/ luaL_error(Lua, GetErrorMsg(error));
+               pf::Log(__FUNCTION__).warning("Unable to write %s.%s: %s", def->Class->ClassName, luaL_checkstring(Lua, 2), GetErrorMsg(error));
+               Lua->CaughtError = error;
+               luaL_error(Lua, GetErrorMsg(error));
             }
          }
       }
@@ -617,8 +615,7 @@ static int object_get_array(lua_State *Lua, const obj_read &Handle, object *Def)
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->script->ChildPrivate;
-   prv->CaughtError = error;
+   Lua->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
 
@@ -633,8 +630,7 @@ static int object_get_rgb(lua_State *Lua, const obj_read &Handle, object *Def)
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->script->ChildPrivate;
-   prv->CaughtError = error;
+   Lua->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
 
@@ -663,8 +659,7 @@ static int object_get_struct(lua_State *Lua, const obj_read &Handle, object *Def
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->script->ChildPrivate;
-   prv->CaughtError = error;
+   Lua->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
 
@@ -682,8 +677,7 @@ static int object_get_string(lua_State *Lua, const obj_read &Handle, object *Def
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->script->ChildPrivate;
-   prv->CaughtError = error;
+   Lua->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
 
@@ -698,8 +692,7 @@ static int object_get_ptr(lua_State *Lua, const obj_read &Handle, object *Def)
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->script->ChildPrivate;
-   prv->CaughtError = error;
+   Lua->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
 
@@ -717,8 +710,7 @@ static int object_get_object(lua_State *Lua, const obj_read &Handle, object *Def
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->script->ChildPrivate;
-   prv->CaughtError = error;
+   Lua->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
 
@@ -733,8 +725,7 @@ static int object_get_double(lua_State *Lua, const obj_read &Handle, object *Def
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->script->ChildPrivate;
-   prv->CaughtError = error;
+   Lua->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
 
@@ -749,8 +740,7 @@ static int object_get_large(lua_State *Lua, const obj_read &Handle, object *Def)
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->script->ChildPrivate;
-   prv->CaughtError = error;
+   Lua->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
 
@@ -768,8 +758,7 @@ static int object_get_long(lua_State *Lua, const obj_read &Handle, object *Def)
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->script->ChildPrivate;
-   prv->CaughtError = error;
+   Lua->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
 
@@ -786,7 +775,6 @@ static int object_get_ulong(lua_State *Lua, const obj_read &Handle, object *Def)
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->script->ChildPrivate;
-   prv->CaughtError = error;
+   Lua->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }

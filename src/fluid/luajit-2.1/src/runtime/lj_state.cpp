@@ -390,19 +390,20 @@ lua_State * lj_state_new(lua_State *L)
    L1->status     = LUA_OK;
    L1->stacksize  = 0;
    setmref(L1->stack, nullptr);
+   setnilV(&L1->close_err);  // Initialize __close error to nil
    L1->cframe             = nullptr;
    L1->parser_diagnostics = nullptr;
    L1->parser_tips        = nullptr;
-   setnilV(&L1->close_err);  // Initialize __close error to nil
    L1->try_stack.depth    = 0;
    L1->try_handler_pc     = nullptr;
+   L1->CaughtError        = ERR::Okay;
 
    // NOBARRIER: The lua_State is new (marked white).
 
    setgcrefnull(L1->openupval);
    setmrefr(L1->glref, L->glref);
    setgcrefr(L1->env, L->env);
-   stack_init(L1, L);  //  init stack
+   stack_init(L1, L);
    lj_assertL(iswhite(obj2gco(L1)), "new thread object is not white");
    return L1;
 }

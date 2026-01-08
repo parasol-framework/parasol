@@ -404,10 +404,7 @@ static bool check_try_handler(lua_State *L, int errcode)
    // Extract error code from prvFluid if available
 
    ERR err_code = ERR::Exception;  // Default for Lua errors
-   if (L->script) {
-      auto prv = (prvFluid *)L->script->ChildPrivate;
-      if (prv and prv->CaughtError >= ERR::ExceptionThreshold) err_code = prv->CaughtError;
-   }
+   if (L->CaughtError >= ERR::ExceptionThreshold) err_code = L->CaughtError;
 
    const BCIns *handler_pc = nullptr;
    BCREG exception_reg = 0xFF;
@@ -450,14 +447,7 @@ extern "C" void setup_try_handler(lua_State *L)
 
    lj_assertL(try_frame->func != nullptr, "setup_try_handler: try_frame->func is null");
 
-   // Extract error code from prvFluid if available
-   ERR err_code = ERR::Exception;
-   if (L->script) {
-      auto prv = (prvFluid *)L->script->ChildPrivate;
-      if (prv and prv->CaughtError >= ERR::ExceptionThreshold) {
-         err_code = prv->CaughtError;
-      }
-   }
+   ERR err_code = (L->CaughtError >= ERR::ExceptionThreshold) ? L->CaughtError : ERR::Exception;
 
    const BCIns *handler_pc = nullptr;
    BCREG exception_reg = 0xFF;
@@ -549,12 +539,7 @@ extern "C" void setup_try_handler(lua_State *L)
 
    lj_try_build_exception_table(L, err_code, error_msg, line, exception_reg, L->pending_trace);
    L->pending_trace = nullptr;  // Ownership transferred to exception table builder
-
-   // Reset CaughtError so it doesn't leak to subsequent exceptions
-
-   auto prv = (prvFluid *)L->script->ChildPrivate;
-   prv->CaughtError = ERR::Okay;
-
+   L->CaughtError = ERR::Okay; // Reset CaughtError so it doesn't leak to subsequent exceptions
    L->try_handler_pc = handler_pc; // Stash handler PC for VM re-entry (already set, but confirm)
 }
 
