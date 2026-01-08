@@ -24,10 +24,6 @@
 #include "lj_meta.h"
 #include "lj_state.h"
 #include "lj_frame.h"
-#if LJ_HASFFI
-#include "lj_ctype.h"
-#include "lj_cconv.h"
-#endif
 #include "lj_bc.h"
 #include "lj_ff.h"
 #include "lj_dispatch.h"
@@ -131,7 +127,7 @@ LJLIB_PUSH("thread")
 LJLIB_PUSH("proto")
 LJLIB_PUSH("function")
 LJLIB_PUSH("trace")
-LJLIB_PUSH("cdata")
+LJLIB_PUSH("cdata") // Deprecated
 LJLIB_PUSH("table")
 LJLIB_PUSH(top-9)  //  userdata
 LJLIB_PUSH("array")
@@ -481,25 +477,6 @@ LJLIB_ASM(tonumber)      LJLIB_REC(.)
          copyTV(L, L->base - 2, o);
          return FFH_RES(1);
       }
-#if LJ_HASFFI
-      if (tviscdata(o)) {
-         CTState* cts = ctype_cts(L);
-         CType* ct = lj_ctype_rawref(cts, cdataV(o)->ctypeid);
-         if (ctype_isenum(ct->info)) ct = ctype_child(cts, ct);
-         if (ctype_isnum(ct->info) or ctype_iscomplex(ct->info)) {
-            if (LJ_DUALNUM and ctype_isinteger_or_bool(ct->info) &&
-               ct->size <= 4 and !(ct->size IS 4 and (ct->info & CTF_UNSIGNED))) {
-               int32_t i;
-               lj_cconv_ct_tv(cts, ctype_get(cts, CTID_INT32), (uint8_t*)&i, o, 0);
-               setintV(L->base - 2, i);
-               return FFH_RES(1);
-            }
-            lj_cconv_ct_tv(cts, ctype_get(cts, CTID_DOUBLE),
-               (uint8_t*)&(L->base - 2)->n, o, 0);
-            return FFH_RES(1);
-         }
-      }
-#endif
    }
    else {
       const char* p = strdata(lj_lib_checkstr(L, 1));

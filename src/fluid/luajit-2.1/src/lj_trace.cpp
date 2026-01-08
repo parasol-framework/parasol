@@ -36,7 +36,9 @@
 
 void lj_trace_err(jit_State *J, TraceError e)
 {
+#ifdef LUA_USE_ASSERT
    pf::Log(__FUNCTION__).msg("Aborting JIT trace.");
+#endif
 
    // Mark that we're aborting trace recording. This flag survives through Windows SEH unwinding
    // and tells err_unwind() to skip try-except handlers (this is a JIT internal abort, not a user error).
@@ -59,7 +61,9 @@ void lj_trace_err(jit_State *J, TraceError e)
 
 void lj_trace_err_info(jit_State *J, TraceError e)
 {
+#ifdef LUA_USE_ASSERT
    pf::Log(__FUNCTION__).msg("Aborting JIT trace.");
+#endif
 
    J->abort_in_progress = true; // Mark that we're aborting trace recording.
 
@@ -369,8 +373,7 @@ void lj_trace_freestate(global_State* g)
    {  // This assumes all traces have already been freed.
       ptrdiff_t i;
       for (i = 1; i < (ptrdiff_t)J->sizetrace; i++)
-         lj_assertG(i IS (ptrdiff_t)J->cur.traceno or traceref(J, i) IS nullptr,
-            "trace still allocated");
+         lj_assertG(i IS (ptrdiff_t)J->cur.traceno or traceref(J, i) IS nullptr, "trace still allocated");
    }
 #endif
    lj_mcode_free(J);
@@ -898,13 +901,12 @@ static void trace_exit_regs(lua_State* L, ExitState* ex)
       else
          setnumV(L->top++, (lua_Number)ex->gpr[i]);
    }
-#if !LJ_SOFTFP
+
    for (i = 0; i < RID_NUM_FPR; i++) {
       setnumV(L->top, ex->fpr[i]);
-      if (LJ_UNLIKELY(tvisnan(L->top))) setnanV(L->top);
+      if (tvisnan(L->top)) setnanV(L->top);
       L->top++;
    }
-#endif
 }
 #endif
 
@@ -967,8 +969,7 @@ int LJ_FASTCALL lj_trace_exit(jit_State *J, void *exptr)
    if (exitcode) copyTV(L, L->top++, &exiterr);  //  Anchor the error object.
 
    if (not (LJ_HASPROFILE and (G(L)->hookmask & HOOK_PROFILE)))
-      lj_vmevent_send(L, TEXIT,
-         lj_state_checkstack(L, 4 + RID_NUM_GPR + RID_NUM_FPR + LUA_MINSTACK);
+      lj_vmevent_send(L, TEXIT, lj_state_checkstack(L, 4 + RID_NUM_GPR + RID_NUM_FPR + LUA_MINSTACK);
    setintV(L->top++, J->parent);
    setintV(L->top++, J->exitno);
    trace_exit_regs(L, ex);
@@ -1016,8 +1017,7 @@ int LJ_FASTCALL lj_trace_exit(jit_State *J, void *exptr)
       case BC_TSETM:
          return (int)((BCREG)(L->top - L->base) + 1 - bc_a(*pc));
       default:
-         if (bc_op(*pc) >= BC_FUNCF)
-            return (int)((BCREG)(L->top - L->base) + 1);
+         if (bc_op(*pc) >= BC_FUNCF) return (int)((BCREG)(L->top - L->base) + 1);
          return 0;
       }
 }

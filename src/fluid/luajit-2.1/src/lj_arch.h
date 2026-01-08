@@ -266,17 +266,11 @@
 
 #define LJ_GC64 1   // 64 bit GC references - always enabled.
 #define LJ_FR2 1    // 2-slot frame info - always enabled.
-#define LJ_HASJIT 1 // Always enabled (user can switch it off at run time)
+#define LJ_HASJIT 1 // JIT is always compiled in (user can switch it off at run time)
 
-// Disable or enable the FFI extension.
-#if defined(LUAJIT_DISABLE_FFI) || defined(LJ_ARCH_NOFFI)
-#define LJ_HASFFI      0
-#else
-#define LJ_HASFFI      1
-#endif
-
-#define LJ_HASBUFFER      0 // Always 0
-#define LJ_HASPROFILE      0
+#define LJ_HASFFI      0 // Always 0
+#define LJ_HASBUFFER   0 // Always 0
+#define LJ_HASPROFILE  0
 
 #ifndef LJ_ARCH_HASFPU
 #define LJ_ARCH_HASFPU      1 // Always 1
@@ -301,8 +295,8 @@
 #define LJ_ENDIAN_LOHI(lo, hi)      lo hi
 #endif
 
-#define LJ_32         0
-#define LJ_64         1
+#define LJ_32         0 // Always 0, builds are 64-bit only
+#define LJ_64         1 // Always 1, builds are 64-bit only
 
 #ifndef LJ_TARGET_UNALIGNED
 #define LJ_TARGET_UNALIGNED   0

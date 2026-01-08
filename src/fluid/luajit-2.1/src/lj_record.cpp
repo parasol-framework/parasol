@@ -13,11 +13,6 @@
 #include "lj_tab.h"
 #include "lj_meta.h"
 #include "lj_frame.h"
-
-#if LJ_HASFFI
-#include "lj_ctype.h"
-#endif
-
 #include "lj_bc.h"
 #include "lj_ff.h"
 #include "lj_ir.h"
@@ -698,10 +693,7 @@ static void rec_loop_jit(jit_State *J, TraceNo lnk, LoopEvent ev)
 static LoopEvent rec_itern(jit_State *J, BCREG ra, BCREG rb)
 {
 #if LJ_BE
-   /* YAGNI: Disabled on big-endian due to issues with lj_vm_next,
-   ** IR_HIOP, RID_RETLO/RID_RETHI and ra_destpair.
-   */
-   UNUSED(ra); UNUSED(rb);
+   // YAGNI: Disabled on big-endian due to issues with lj_vm_next, IR_HIOP, RID_RETLO/RID_RETHI and ra_destpair.
    setintV(&J->errinfo, (int32_t)BC_ITERN);
    lj_trace_err_info(J, LJ_TRERR_NYIBC);
 #else
@@ -1344,27 +1336,6 @@ static void rec_mm_comp(jit_State *J, RecordIndex* ix, int op)
 }
 
 //********************************************************************************************************************
-
-#if LJ_HASFFI
-// Setup call to cdata comparison metamethod.
-static void rec_mm_comp_cdata(jit_State *J, RecordIndex* ix, int op, MMS mm)
-{
-   lj_snap_add(J);
-   if (tref_iscdata(ix->val)) {
-      ix->tab = ix->val;
-      copyTV(J->L, &ix->tabv, &ix->valv);
-   }
-   else {
-      lj_assertJ(tref_iscdata(ix->key), "cdata expected");
-      ix->tab = ix->key;
-      copyTV(J->L, &ix->tabv, &ix->keyv);
-   }
-   lj_record_mm_lookup(J, ix, mm);
-   rec_mm_callcomp(J, ix, op);
-}
-#endif
-
-//********************************************************************************************************************
 // Indexed access
 
 #ifdef LUAJIT_ENABLE_TABLE_BUMP
@@ -1775,8 +1746,7 @@ static void rec_tsetm(jit_State *J, BCREG ra, BCREG rn, int32_t i)
 
 #ifdef LUAJIT_ENABLE_TABLE_BUMP
    if ((J->flags & JIT_F_OPT_SINK)) {
-      if (t->asize < i + rn - ra)
-         lj_tab_reasize(J->L, t, i + rn - ra);
+      if (t->asize < i + rn - ra) lj_tab_reasize(J->L, t, i + rn - ra);
       setnilV(&ix.keyv);
       rec_idx_bump(J, &ix);
    }
@@ -1799,19 +1769,7 @@ static int rec_upvalue_constify(jit_State *J, GCupval* uvp)
    if (uvp->immutable) {
       cTValue *o = uvval(uvp);
       // Don't constify objects that may retain large amounts of memory.
-#if LJ_HASFFI
-      if (tviscdata(o)) {
-         GCcdata* cd = cdataV(o);
-         if (not cdataisv(cd) and !(cd->marked & LJ_GC_CDATA_FIN)) {
-            CType* ct = ctype_raw(ctype_ctsG(J2G(J)), cd->ctypeid);
-            if (not ctype_hassize(ct->info) or ct->size <= 16)
-               return 1;
-         }
-         return 0;
-      }
-#endif
-      if (not (tvistab(o) or tvisudata(o) or tvisthread(o)))
-         return 1;
+      if (not (tvistab(o) or tvisudata(o) or tvisthread(o))) return 1;
    }
    return 0;
 }
@@ -2152,16 +2110,13 @@ static void rec_comp_prep(jit_State *J)
 
 static void rec_comp_fixup(jit_State *J, const BCIns *pc, int cond)
 {
-   pf::Log log(__FUNCTION__);
-
    BCIns jmpins = pc[1];
    const BCIns *npc = pc + 2 + (cond ? bc_j(jmpins) : 0);
    SnapShot *snap = &J->cur.snap[J->cur.nsnap - 1];
-   
-   log.branch("Cond: %d, Try Depth: %d", cond, J->L->try_stack.depth);
 
    // Skip PC modification inside try blocks to prevent snapshot restoration issues.
    // See function header comment for detailed explanation.
+
    if (J->L->try_stack.depth > 0) {
       J->needsnap = 1;
       return;
@@ -2170,7 +2125,8 @@ static void rec_comp_fixup(jit_State *J, const BCIns *pc, int cond)
    // Set PC to opposite target to avoid re-recording the comparison in side trace.
    // The PC is stored in the snapmap at position (mapofs + nent) as a 64-bit value:
    //   pcbase = (pc_pointer << 8) | baseslot
-   SnapEntry* flink = &J->cur.snapmap[snap->mapofs + snap->nent];
+
+   SnapEntry *flink = &J->cur.snapmap[snap->mapofs + snap->nent];
    uint64_t pcbase;
    memcpy(&pcbase, flink, sizeof(uint64_t));
    pcbase = (pcbase & 0xff) | (u64ptr(npc) << 8);
@@ -2315,13 +2271,6 @@ static void rec_comp_ordered(jit_State *J, RecordOps *ops)
    RecordIndex *ix = &ops->ix;
    TValue *rav = ops->rav(), *rcv = ops->rcv();
 
-#if LJ_HASFFI
-   if (tref_iscdata(ra) or tref_iscdata(rc)) {
-      rec_mm_comp_cdata(J, ix, op, ((int)op & 2) ? MM_le : MM_lt);
-      return;
-   }
-#endif
-
    // Emit nothing for two numeric or string consts.
    if (tref_isk2(ra, rc) and tref_isnumber_str(ra) and tref_isnumber_str(rc))
       return;
@@ -2379,13 +2328,6 @@ static void rec_comp_equality(jit_State *J, RecordOps *ops)
    BCOp op = ops->op;
    RecordIndex *ix = &ops->ix;
    TValue *rav = ops->rav(), *rcv = ops->rcv();
-
-#if LJ_HASFFI
-   if (tref_iscdata(ra) or tref_iscdata(rc)) {
-      rec_mm_comp_cdata(J, ix, op, MM_eq);
-      return;
-   }
-#endif
 
    // Emit nothing for two non-table, non-udata consts.
 
@@ -2788,12 +2730,6 @@ void lj_record_ins(jit_State *J)
          if (rc >= slots.maxslot()) slots.set_maxslot(rc + 1);
       }
       break;
-
-#if LJ_HASFFI
-   case BC_KCDATA:
-      rc = lj_ir_kgc(J, proto_kgc(J->pt, ~(ptrdiff_t)rc), IRT_CDATA);
-      break;
-#endif
 
       // Upvalue and function ops
 
