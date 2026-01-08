@@ -257,6 +257,9 @@
 #define GL_J(field)	(GG_G2J + (int)offsetof(jit_State, field))
 |
 #define PC2PROTO(field)  ((int)offsetof(GCproto, field)-(int)sizeof(GCproto))
+
+// Offset to lua_State.try_stack.depth for exception handling
+#define L_TRY_DEPTH_OFS ((int)(offsetof(lua_State, try_stack) + offsetof(TryFrameStack, depth)))
 |
 |.macro hotcheck, delta
 |  lsr CARG1, PC, #1
@@ -392,12 +395,14 @@ static void build_subroutines(BuildCtx *ctx)
   |  // (void *cframe, int errcode)
   |  mov sp, CARG1
   |  mov CRET1, CARG2
-  |->vm_unwind_c_eh:			// Landing pad for external unwinder.
-  |  ldr L, SAVE_L
-  |   mv_vmstate TMP0w, C
-  |  ldr GL, L->glref
-  |   st_vmstate TMP0w
-  |  b ->vm_leave_unw
+|->vm_unwind_c_eh:			// Landing pad for external unwinder.
+|  ldr L, SAVE_L
+|  ldr CARG1, SAVE_CFRAME		// Restore previous C frame.
+|   mv_vmstate TMP0w, C
+|  str CARG1, L->cframe
+|  ldr GL, L->glref
+|   st_vmstate TMP0w
+|  b ->vm_leave_unw
   |
   |->vm_unwind_ff:			// Unwind C stack, return from ff pcall.
   |  // (void *cframe)
@@ -414,13 +419,34 @@ static void build_subroutines(BuildCtx *ctx)
   |  sub RA, BASE, #8			// Results start at BASE-8.
   |  ldr PC, [BASE, FRAME_PC]		// Fetch PC of previous frame.
   |    str TMP0, [BASE, #-8]		// Prepend false to error message.
-  |   st_vmstate ST_INTERP
-  |  b ->vm_returnc
-  |
-  |//-----------------------------------------------------------------------
-  |//-- Grow stack for calls -----------------------------------------------
-  |//-----------------------------------------------------------------------
-  |
+|   st_vmstate ST_INTERP
+|  b ->vm_returnc
+|
+|->vm_resume_try:			// Resume execution at try-except handler.
+|  // (void *cframe)
+|  // Called when a try-except handler is found during error unwinding.
+|  // L->base, L->top already restored, exception table in handler register.
+|  // L->try_handler_pc points to handler bytecode.
+|  and sp, CARG1, #CFRAME_RAWMASK
+|->vm_resume_try_eh:			// Landing pad for external unwinder.
+|  ldr L, SAVE_L
+|  ldr BASE, L->base
+|   ldr GL, L->glref			// Setup pointer to global state.
+|  ldr PC, L->try_handler_pc		// Load handler PC from lua_State.
+|   str xzr, L->try_handler_pc		// Clear it to allow future exceptions.
+|  // Load KBASE (constant table) from the function in the frame.
+|  ldr LFUNC:CARG1, [BASE, FRAME_FUNC]
+|  and LFUNC:CARG1, CARG1, #LJ_GCVMASK
+|  ldr CARG1, LFUNC:CARG1->pc
+|  ldr KBASE, [CARG1, #PC2PROTO(k)]
+|   mv_vmstate TMP0w, INTERP
+|    st_vmstate TMP0w
+|  ins_next
+|
+|//-----------------------------------------------------------------------
+|//-- Grow stack for calls -----------------------------------------------
+|//-----------------------------------------------------------------------
+|
   |->vm_growstack_c:			// Grow stack for C function.
   |  // CARG1 = L
   |  mov CARG2, #LUA_MINSTACK
@@ -4429,6 +4455,43 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ldr PC, [BASE, FRAME_PC]
     |   sub RA, TMP1, RC		// RA = L->top - nresults*8
     |  b ->vm_returnc
+    break;
+
+  // -- Exception handling opcodes -----------------------------------------
+
+  case BC_TRYENTER:
+    // lj_try_enter(L, Func, Base, TryBlockIndex)
+    // Func is at BASE-16 (frame[-2] in 2-slot model)
+    // Base is passed explicitly so the function can compute the offset correctly
+    |  ins_AD  // A=base_reg, D=try_block_index
+    |  ldr L, SAVE_L
+    |  str BASE, L->base			// Sync L->base (for GC and error handling)
+    |  str BASE, L->top			// Sync L->top (required for error handling)
+    |  ldr CARG2, [BASE, FRAME_FUNC]	// Load function pointer from frame slot
+    |  and CARG2, CARG2, #LJ_GCVMASK
+    |  mov CARG1, L			// 1st arg: L
+    |  mov CARG3, BASE			// 3rd arg: Base
+    |  mov CARG4w, RCw			// 4th arg: TryBlockIndex
+    |  bl extern lj_try_enter
+    |  ldr BASE, L->base			// Restore BASE from L->base
+    |  ins_next
+    break;
+
+  case BC_TRYLEAVE:
+    |  ins_AD  // A=base_reg, D=unused
+    |  ldr L, SAVE_L
+    |  // Inline: if (L->try_stack.depth > 0) L->try_stack.depth--;
+    |  ldr TMP0w, [L, #L_TRY_DEPTH_OFS]
+    |  cbz TMP0w, >1
+    |  sub TMP0w, TMP0w, #1
+    |  str TMP0w, [L, #L_TRY_DEPTH_OFS]
+    |1:
+    // This C implementation can be used if you need to debug try blocks
+    //  str BASE, L->base	// Sync L->base (for GC and error handling)
+    //  mov CARG1, L		// First arg: lua_State *L
+    //  bl extern lj_try_leave
+    //  ldr BASE, L->base	// Restore BASE from L->base
+    |  ins_next
     break;
 
   //  ----------------------------------------------------------------------
