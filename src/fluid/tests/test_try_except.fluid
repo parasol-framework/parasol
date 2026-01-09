@@ -1,6 +1,6 @@
 -- Tests for try...except...end exception handling syntax
 
-@BeforeEach(hotpath=true)
+@BeforeEach(hotpath=200)
 function enforce_hotpath() end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -129,7 +129,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Re-throwing exceptions
 
-@Test(priority=5) function Rethrow()
+@Test(priority=5,hotpath=3) function Rethrow()
    outer_handled = false
 
    try
