@@ -60,31 +60,21 @@ static int lua_load(lua_State *Lua, class objFile *File, CSTRING SourceName)
 // These are called from VM assembly after type checking and L->CaughtError is already set.
 // All three functions are noreturn - they always throw an exception.
 
-static void prepare_vm_error(lua_State *L)
-{
-   // VM helper calls must ensure L->top covers the current Lua frame.
-   if (curr_funcisL(L)) L->top = curr_topL(L);
-   else if (L->top < L->base) L->top = L->base;
-}
-
 extern "C" LJ_NORET void lj_check_raise(lua_State *L, int32_t ErrorCode)
 {
    // L->CaughtError is already set by the VM
-   prepare_vm_error(L);
    luaL_error(L, GetErrorMsg(ERR(ErrorCode)));
 }
 
 extern "C" LJ_NORET void lj_raise_with_msg(lua_State *L, int32_t ErrorCode, GCstr *Msg)
 {
    // L->CaughtError is already set by the VM
-   prepare_vm_error(L);
    luaL_error(L, "%s", strdata(Msg));
 }
 
 extern "C" LJ_NORET void lj_raise_default(lua_State *L, int32_t ErrorCode)
 {
    // L->CaughtError is already set by the VM
-   prepare_vm_error(L);
    luaL_error(L, GetErrorMsg(ERR(ErrorCode)));
 }
 
