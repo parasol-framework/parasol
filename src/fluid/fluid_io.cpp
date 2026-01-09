@@ -73,12 +73,13 @@ inline int file_gc(lua_State *Lua)
 
 static int io_input(lua_State *);
 static int io_output(lua_State *);
+
 static int file_read(lua_State *);
 static int file_write(lua_State *);
 static int file_flush(lua_State *);
 
 //********************************************************************************************************************
-// Lua IO functions
+// Usage: file = io.open(path, [mode])
 
 static int io_open(lua_State *Lua)
 {
@@ -115,6 +116,7 @@ static int io_open(lua_State *Lua)
 }
 
 //********************************************************************************************************************
+// Usage: io.close([file])
 
 static int io_close(lua_State *Lua)
 {
@@ -133,6 +135,7 @@ static int io_close(lua_State *Lua)
 }
 
 //********************************************************************************************************************
+// Usage: data1, data2, ... = io.read(...)
 
 static int io_read(lua_State *Lua)
 {
@@ -159,6 +162,9 @@ static int io_read(lua_State *Lua)
 }
 
 //********************************************************************************************************************
+// Usage: io.write(data1, data2, ...)
+//
+// Forwards the parameters to the default output file's write() method.
 
 static int io_write(lua_State *Lua)
 {
@@ -185,6 +191,7 @@ static int io_write(lua_State *Lua)
 }
 
 //********************************************************************************************************************
+// Usage: success = io.flush()
 
 static int io_flush(lua_State *Lua)
 {
@@ -209,6 +216,7 @@ static int io_flush(lua_State *Lua)
 }
 
 //********************************************************************************************************************
+// Usage: file = io.input([file|string|fd])
 
 static int io_input(lua_State *Lua)
 {
@@ -282,6 +290,7 @@ static int io_input(lua_State *Lua)
 }
 
 //********************************************************************************************************************
+// Usage: file = io.output([file|string])
 
 static int io_output(lua_State *Lua)
 {
