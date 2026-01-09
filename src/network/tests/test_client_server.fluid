@@ -215,7 +215,7 @@ end
             print('[Client] Server confirmed data receipt, completing test...')
             err, len = Socket.acWrite('COMPLETE:Test finished')
             assert(err is ERR_Okay, '[Client] Failed to send completion: ' .. mSys.GetErrorMsg(err))
-            raise(ERR_Terminate)
+            raise ERR_Terminate
          end
       end
    })

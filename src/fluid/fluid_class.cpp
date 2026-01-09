@@ -1047,9 +1047,11 @@ static ERR register_interfaces(objScript *Self)
    register_processing_class(prv->Lua);
 
    lua_register(prv->Lua, "arg", fcmd_arg);
-   lua_register(prv->Lua, "check", fcmd_check);
-   lua_register(prv->Lua, "raise", fcmd_raise);
    lua_register(prv->Lua, "loadFile", fcmd_loadfile);
+
+   // Internal functions for raise/check keywords (not exposed to user code under these names)
+   lua_register(prv->Lua, "lj_raise_internal", lj_raise_internal);
+   lua_register(prv->Lua, "lj_check_internal", lj_check_internal);
    lua_register(prv->Lua, "exec", fcmd_exec);
    lua_register(prv->Lua, "getExecutionState", fcmd_get_execution_state);
    lua_register(prv->Lua, "print", fcmd_print);

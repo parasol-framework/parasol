@@ -118,7 +118,7 @@ gui.divider = function(Options)
          self._pattern.viewport.new('VectorPolygon', { points = pt, fill = gui.palette.base, opacity = opacity })
       end
 
-      check(self._vp.scene.mtAddDef(div_name, self._pattern))
+      check self._vp.scene.mtAddDef(div_name, self._pattern)
    end
 
    self._vp.subscribe('free', function(Viewport)
@@ -159,7 +159,7 @@ gui.divider = function(Options)
       Viewport.acDraw()
    end)
 
-   check(self._dividerVP.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON), function(Viewport, Events)
+   check self._dividerVP.mtSubscribeInput(JTYPE_MOVEMENT|JTYPE_BUTTON, function(Viewport, Events)
       ev = Events
       while ev do
          if ev.type is JET_ABS_XY then
@@ -186,7 +186,7 @@ gui.divider = function(Options)
          end
          ev = ev.next
       end
-   end))
+   end)
 
    return self
 end

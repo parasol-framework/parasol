@@ -1577,7 +1577,7 @@ gui.fileview = function(Options)
             -- Complete refresh required due to edge-case of the user changing the folder again.
             mSys.SubscribeTimer(0.1, function()
                self.refresh()
-               check(ERR_Terminate)
+               check ERR_Terminate
             end)
          else
             self.view.sort()

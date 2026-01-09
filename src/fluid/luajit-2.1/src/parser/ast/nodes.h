@@ -809,6 +809,33 @@ struct TryExceptPayload {
    ~TryExceptPayload();
 };
 
+// Raise statement payload: raise error_code [, message]
+struct RaiseStmtPayload {
+   RaiseStmtPayload() = default;
+   RaiseStmtPayload(const RaiseStmtPayload&) = delete;
+   RaiseStmtPayload& operator=(const RaiseStmtPayload&) = delete;
+   RaiseStmtPayload(RaiseStmtPayload&&) noexcept = default;
+   RaiseStmtPayload& operator=(RaiseStmtPayload&&) noexcept = default;
+
+   ExprNodePtr error_code;   // Required: expression evaluating to error code
+   ExprNodePtr message;      // Optional: custom error message
+
+   ~RaiseStmtPayload();
+};
+
+// Check statement payload: check expression
+struct CheckStmtPayload {
+   CheckStmtPayload() = default;
+   CheckStmtPayload(const CheckStmtPayload&) = delete;
+   CheckStmtPayload& operator=(const CheckStmtPayload&) = delete;
+   CheckStmtPayload(CheckStmtPayload&&) noexcept = default;
+   CheckStmtPayload& operator=(CheckStmtPayload&&) noexcept = default;
+
+   ExprNodePtr error_code;   // Expression evaluating to error code
+
+   ~CheckStmtPayload();
+};
+
 struct ExpressionStmtPayload {
    ExpressionStmtPayload(ExprNodePtr expression)
       : expression(std::move(expression)) {}
@@ -829,7 +856,8 @@ struct StmtNode {
       LocalFunctionStmtPayload, FunctionStmtPayload, IfStmtPayload,
       LoopStmtPayload, NumericForStmtPayload, GenericForStmtPayload,
       ReturnStmtPayload, BreakStmtPayload, ContinueStmtPayload, DeferStmtPayload,
-      DoStmtPayload, ConditionalShorthandStmtPayload, TryExceptPayload, ExpressionStmtPayload>
+      DoStmtPayload, ConditionalShorthandStmtPayload, TryExceptPayload,
+      RaiseStmtPayload, CheckStmtPayload, ExpressionStmtPayload>
       data;
 
    StmtNode() = default;

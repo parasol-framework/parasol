@@ -579,11 +579,11 @@ gui.dialog.colour = function(Options)
       end
    })
 
-   check(self.scene.mtAddDef('Rainbow', self.scene.new('VectorImage', { bitmap = getRainbowBitmap() })))
+   check self.scene.mtAddDef('Rainbow', self.scene.new('VectorImage', { bitmap = getRainbowBitmap() }))
 
    self.viewport.viewWidth, self.viewport.viewHeight = buildLayout(self, Options)
 
-   check(self.viewport.mtSubscribeInput(JTYPE_MOVEMENT|JTYPE_BUTTON, inputFeedback))
+   check self.viewport.mtSubscribeInput(JTYPE_MOVEMENT|JTYPE_BUTTON, inputFeedback)
 
    -- Manage the aspect ratio.  The current width will determine the height
 

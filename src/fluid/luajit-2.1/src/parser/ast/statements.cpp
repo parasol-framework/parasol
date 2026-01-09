@@ -599,3 +599,55 @@ ParserResult<StmtNodePtr> AstBuilder::parse_try()
 
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
+
+//********************************************************************************************************************
+// Parses raise statements: raise expression [, message]
+//
+// The raise keyword always triggers an exception with the given error code.
+
+ParserResult<StmtNodePtr> AstBuilder::parse_raise()
+{
+   Token raise_token = this->ctx.tokens().current();
+   this->ctx.tokens().advance();  // consume 'raise'
+
+   // Parse error code expression (required)
+   auto error_code = this->parse_expression();
+   if (not error_code.ok()) return ParserResult<StmtNodePtr>::failure(error_code.error_ref());
+
+   RaiseStmtPayload payload;
+   payload.error_code = std::move(error_code.value_ref());
+
+   // Check for optional message
+   if (this->ctx.check(TokenKind::Comma)) {
+      this->ctx.tokens().advance();  // consume ','
+      auto message = this->parse_expression();
+      if (not message.ok()) return ParserResult<StmtNodePtr>::failure(message.error_ref());
+      payload.message = std::move(message.value_ref());
+   }
+
+   auto stmt = std::make_unique<StmtNode>(AstNodeKind::RaiseStmt, raise_token.span());
+   stmt->data = std::move(payload);
+   return ParserResult<StmtNodePtr>::success(std::move(stmt));
+}
+
+//********************************************************************************************************************
+// Parses check statements: check expression
+//
+// The check keyword raises an exception only if the error code >= ERR::ExceptionThreshold.
+
+ParserResult<StmtNodePtr> AstBuilder::parse_check()
+{
+   Token check_token = this->ctx.tokens().current();
+   this->ctx.tokens().advance();  // consume 'check'
+
+   // Parse error code expression (required)
+   auto error_code = this->parse_expression();
+   if (not error_code.ok()) return ParserResult<StmtNodePtr>::failure(error_code.error_ref());
+
+   CheckStmtPayload payload;
+   payload.error_code = std::move(error_code.value_ref());
+
+   auto stmt = std::make_unique<StmtNode>(AstNodeKind::CheckStmt, check_token.span());
+   stmt->data = std::move(payload);
+   return ParserResult<StmtNodePtr>::success(std::move(stmt));
+}

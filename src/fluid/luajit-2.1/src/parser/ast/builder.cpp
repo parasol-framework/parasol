@@ -56,6 +56,8 @@ static bool is_shorthand_statement_keyword(TokenKind Kind)
       case TokenKind::ReturnToken:
       case TokenKind::BreakToken:
       case TokenKind::ContinueToken:
+      case TokenKind::RaiseToken:
+      case TokenKind::CheckToken:
          return true;
       default:
          return false;
@@ -311,6 +313,8 @@ ParserResult<StmtNodePtr> AstBuilder::parse_statement()
       case TokenKind::DeferToken:    return this->parse_defer();
       case TokenKind::ReturnToken:   return this->parse_return();
       case TokenKind::TryToken:      return this->parse_try();
+      case TokenKind::RaiseToken:    return this->parse_raise();
+      case TokenKind::CheckToken:    return this->parse_check();
       case TokenKind::Choose: {
          auto expr = this->parse_choose_expr();
          if (not expr.ok()) return ParserResult<StmtNodePtr>::failure(expr.error_ref());
@@ -378,6 +382,8 @@ bool AstBuilder::is_statement_start(TokenKind kind) const
       case TokenKind::ContinueToken:
       case TokenKind::Choose:
       case TokenKind::TryToken:
+      case TokenKind::RaiseToken:
+      case TokenKind::CheckToken:
          return true;
       default:
          return false;

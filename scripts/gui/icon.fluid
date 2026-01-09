@@ -201,7 +201,7 @@ gui.icon = function(Options)
       0, self.iconVP.y, 0, self.iconVP.height, 'boundingbox')
    gui.applyFill(self.iconVP, 'url(#' .. gname .. ')')
 
-   check(self.viewport.mtSubscribeInput(JTYPE_BUTTON, inputFeedback))
+   check self.viewport.mtSubscribeInput(JTYPE_BUTTON, inputFeedback)
 
    gap = self.viewport.height * 0.1
    if gap < 2 then gap = 2 end

@@ -453,6 +453,18 @@ struct StatementChildCounter {
       return total;
    }
 
+   [[nodiscard]] inline size_t operator()(const RaiseStmtPayload &Payload) const
+   {
+      size_t total = Payload.error_code ? 1 : 0;
+      if (Payload.message) total++;
+      return total;
+   }
+
+   [[nodiscard]] inline size_t operator()(const CheckStmtPayload &Payload) const
+   {
+      return Payload.error_code ? 1 : 0;
+   }
+
    [[nodiscard]] inline size_t operator()(const ExpressionStmtPayload &Payload) const
    {
       return Payload.expression ? 1 : 0;
@@ -500,6 +512,8 @@ ExpressionStmtPayload::~ExpressionStmtPayload() = default;
 ConditionalShorthandStmtPayload::~ConditionalShorthandStmtPayload() = default;
 ExceptClause::~ExceptClause() = default;
 TryExceptPayload::~TryExceptPayload() = default;
+RaiseStmtPayload::~RaiseStmtPayload() = default;
+CheckStmtPayload::~CheckStmtPayload() = default;
 BlockStmt::~BlockStmt() = default;
 
 ExprNodePtr make_literal_expr(SourceSpan Span, const LiteralValue &Literal)
