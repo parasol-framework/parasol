@@ -864,13 +864,12 @@ const BCIns * lj_snap_restore(jit_State *J, void *exptr)
    lj_assertJ(map + nent IS flinks, "inconsistent frames in snapshot");
 
    // Compute current stack top.
-   switch (bc_op(*pc)) {
+   BCOp op = bc_op(*pc);
+   switch (op) {
    default:
-      if (bc_op(*pc) < BC_FUNCF) {
-         L->top = curr_topL(L);
-         break;
-      }
-      // fallthrough
+      if (bc_is_func_header(op)) L->top = frame + snap->nslots;
+      else L->top = curr_topL(L);
+      break;
    case BC_CALLM: case BC_CALLMT: case BC_RETM: case BC_TSETM:
       L->top = frame + snap->nslots;
       break;
