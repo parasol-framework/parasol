@@ -477,8 +477,6 @@ int fcmd_exec(lua_State *);
 int fcmd_require(lua_State *);
 int fcmd_subscribe_event(lua_State *);
 int fcmd_unsubscribe_event(lua_State *);
-int lj_check_internal(lua_State *);
-int lj_raise_internal(lua_State *);
 
 #ifdef __arm__
 extern void armExecFunction(APTR, APTR, int);

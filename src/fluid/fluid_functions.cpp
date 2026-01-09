@@ -56,42 +56,26 @@ static int lua_load(lua_State *Lua, class objFile *File, CSTRING SourceName)
 }
 
 //********************************************************************************************************************
-// Internal implementation for 'check' keyword.
-// Called by bytecode emitted for check statements.
+// Native bytecode helpers for BC_CHECK and BC_RAISE opcodes.
+// These are called from VM assembly after type checking and L->CaughtError is already set.
+// All three functions are noreturn - they always throw an exception.
 
-int lj_check_internal(lua_State *Lua)
+extern "C" LJ_NORET void lj_check_raise(lua_State *L, int32_t ErrorCode)
 {
-   if (lua_type(Lua, 1) IS LUA_TNUMBER) {
-      auto error = ERR(lua_tointeger(Lua, 1));
-      if (int(error) >= int(ERR::ExceptionThreshold)) {
-         Lua->CaughtError = error;
-         luaL_error(Lua, GetErrorMsg(error));
-      }
-   }
-   return 0;
+   // L->CaughtError is already set by the VM
+   luaL_error(L, GetErrorMsg(ERR(ErrorCode)));
 }
 
-//********************************************************************************************************************
-// Internal implementation for 'raise' keyword.
-// Called by bytecode emitted for raise statements.
-// Arg 1: error code (required)
-// Arg 2: custom message (optional)
-
-int lj_raise_internal(lua_State *Lua)
+extern "C" LJ_NORET void lj_raise_with_msg(lua_State *L, int32_t ErrorCode, GCstr *Msg)
 {
-   if (lua_type(Lua, 1) IS LUA_TNUMBER) {
-      auto error = ERR(lua_tointeger(Lua, 1));
-      Lua->CaughtError = error;
+   // L->CaughtError is already set by the VM
+   luaL_error(L, "%s", strdata(Msg));
+}
 
-      // Use custom message if provided, otherwise use default message
-      if (lua_type(Lua, 2) IS LUA_TSTRING) {
-         luaL_error(Lua, "%s", lua_tostring(Lua, 2));
-      }
-      else {
-         luaL_error(Lua, GetErrorMsg(error));
-      }
-   }
-   return 0;
+extern "C" LJ_NORET void lj_raise_default(lua_State *L, int32_t ErrorCode)
+{
+   // L->CaughtError is already set by the VM
+   luaL_error(L, GetErrorMsg(ERR(ErrorCode)));
 }
 
 //********************************************************************************************************************
