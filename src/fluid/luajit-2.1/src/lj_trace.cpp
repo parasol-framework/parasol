@@ -44,12 +44,16 @@ void lj_trace_err(jit_State *J, TraceError e)
    // and tells err_unwind() to skip try-except handlers (this is a JIT internal abort, not a user error).
    J->abort_in_progress = true;
 
-   // During JIT trace recording, L->top may not be synchronized with the actual stack state
+   // During JIT trace recording, L->top may not be synchronised with the actual stack state
    // (the JIT uses its own slot tracking via J->maxslot and snapshots). Ensure L->top is valid
    // before pushing the error value, otherwise we could corrupt the frame link slot.
    // This was primarily added to resolve problems with the try-except implementation.
 
-   if (J->L->top < J->L->base) J->L->top = J->L->base;
+   // Prefer the interpreter's view of the current frame to avoid clobbering live locals.
+   TValue *safe_top = curr_top(J->L);
+   if (safe_top < J->L->base) safe_top = J->L->base;
+   J->L->top = safe_top;
+   if (J->L->cframe) cframe_nres(cframe_raw(J->L->cframe)) = -int32_t(savestack(J->L, safe_top));
 
    setnilV(&J->errinfo);  //  No error info.
    setintV(J->L->top++, (int32_t)e);
@@ -68,7 +72,11 @@ void lj_trace_err_info(jit_State *J, TraceError e)
    J->abort_in_progress = true; // Mark that we're aborting trace recording.
 
    // Ensure L->top is valid before pushing error
-   if (J->L->top < J->L->base) J->L->top = J->L->base;
+   // Prefer the interpreter's view of the current frame to avoid clobbering live locals.
+   TValue *safe_top = curr_top(J->L);
+   if (safe_top < J->L->base) safe_top = J->L->base;
+   J->L->top = safe_top;
+   if (J->L->cframe) cframe_nres(cframe_raw(J->L->cframe)) = -int32_t(savestack(J->L, safe_top));
 
    setintV(J->L->top++, (int32_t)e);
    lj_err_throw(J->L, LUA_ERRRUN);
