@@ -2935,6 +2935,15 @@ void lj_record_ins(jit_State *J)
       break;
    }
 
+   case BC_CHECK:
+   case BC_RAISE:
+      // These bytecodes throw exceptions and cannot be compiled into traces.
+      // Exit to interpreter to handle them. This avoids trace abort and ensures
+      // clean handoff without corrupting interpreter state.
+      lj_snap_add(J);
+      lj_record_stop(J, TraceLink::INTERP, 0);
+      break;
+
    default:
       if (op >= BC__MAX) {
          lj_ffrecord_func(J);
