@@ -259,8 +259,8 @@ static BCREG snap_usedef(jit_State *J, uint8_t *udf, const BCIns *pc, BCREG maxs
          case BCMjump:
          handle_jump: {
             BCREG minslot = bc_a(ins);
-            if (op >= BC_FORI and op <= BC_JFORL) minslot += FORL_EXT;
-            else if (op >= BC_ITERL and op <= BC_JITERL) minslot += bc_b(pc[-2]) - 1;
+            if (bc_is_for_loop(op)) minslot += FORL_EXT;
+            else if (bc_is_iter_loop(op)) minslot += bc_b(pc[-2]) - 1;
             else if (op IS BC_UCLO) {
                ptrdiff_t delta = bc_j(ins);
                if (delta < 0) return maxslot;  //  Prevent loop.
@@ -271,7 +271,7 @@ static BCREG snap_usedef(jit_State *J, uint8_t *udf, const BCIns *pc, BCREG maxs
             return minslot < maxslot ? minslot : maxslot;
          }
          case BCMlit:
-            if (op IS BC_JFORL or op IS BC_JITERL or op IS BC_JLOOP) {
+            if (bc_is_jloop(op)) {
                goto handle_jump;
             }
             else if (bc_isret(op)) {
@@ -292,7 +292,7 @@ static BCREG snap_usedef(jit_State *J, uint8_t *udf, const BCIns *pc, BCREG maxs
             if (!(op IS BC_ISTC or op IS BC_ISFC)) DEF_SLOT(bc_a(ins));
             break;
          case BCMbase:
-            if (op >= BC_CALLM and op <= BC_ITERA) {
+            if (bc_is_call_or_iter(op)) {
                BCREG top = (op IS BC_CALLM or op IS BC_CALLMT or bc_c(ins) IS 0) ?
                   maxslot : (bc_a(ins) + bc_c(ins) + LJ_FR2);
                DEF_SLOT(bc_a(ins) + 1);
