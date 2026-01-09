@@ -56,6 +56,8 @@ static bool is_shorthand_statement_keyword(TokenKind Kind)
       case TokenKind::ReturnToken:
       case TokenKind::BreakToken:
       case TokenKind::ContinueToken:
+      case TokenKind::RaiseToken:
+      case TokenKind::CheckToken:
          return true;
       default:
          return false;

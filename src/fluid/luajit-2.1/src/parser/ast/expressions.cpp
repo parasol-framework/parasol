@@ -39,7 +39,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_expression_stmt()
       return ParserResult<StmtNodePtr>::success(std::move(stmt));
    }
 
-   // Conditional shorthand pattern: value ?? return/break/continue
+   // Conditional shorthand pattern: value ?? return/break/continue/raise/check
 
    if (targets.size() IS 1 and is_presence_expr(targets[0])) {
       Token next = this->ctx.tokens().current();
@@ -69,6 +69,16 @@ ParserResult<StmtNodePtr> AstBuilder::parse_expression_stmt()
                auto control = make_control_stmt(this->ctx, AstNodeKind::ContinueStmt, next);
                if (not control.ok()) return ParserResult<StmtNodePtr>::failure(control.error_ref());
                body = std::move(control.value_ref());
+            }
+            else if (next.kind() IS TokenKind::RaiseToken) {
+               auto raise_stmt = this->parse_raise();
+               if (not raise_stmt.ok()) return raise_stmt;
+               body = std::move(raise_stmt.value_ref());
+            }
+            else if (next.kind() IS TokenKind::CheckToken) {
+               auto check_stmt = this->parse_check();
+               if (not check_stmt.ok()) return check_stmt;
+               body = std::move(check_stmt.value_ref());
             }
 
             if (body) {

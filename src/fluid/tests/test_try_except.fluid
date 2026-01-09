@@ -1379,3 +1379,43 @@ end
 
    assert(caught, "Exception should have been caught")
 end
+
+@Test(priority=66) function RaiseConditionalShorthand()
+   truthy_value = "has_something"
+   falsy_value = nil
+
+   try
+      truthy_value ?? raise ERR_Failed
+   except e
+      error("Truthy value should not trigger raise")
+   end
+
+   caught = false
+   try
+      falsy_value ?? raise ERR_Failed
+   except e
+      caught = true
+      assert(e.code is ERR_Failed, "Should catch ERR_Failed")
+   end
+   assert(caught, "Falsy value should have triggered raise")
+end
+
+@Test(priority=67) function CheckConditionalShorthand()
+   truthy_value = true
+   falsy_value = nil
+
+   try
+      truthy_value ?? check ERR_Failed  -- Would fail if executed, but shouldn't execute
+   except e
+      error("Truthy value should not trigger check")
+   end
+
+   caught = false
+   try
+      falsy_value ?? check ERR_Failed
+   except e
+      caught = true
+      assert(e.code is ERR_Failed, "Should catch ERR_Failed")
+   end
+   assert(caught, "Falsy value should have triggered check")
+end
