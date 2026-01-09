@@ -361,6 +361,26 @@ typedef enum {
    return Op >= BC_FUNCF and Op <= BC_FUNCCW;
 }
 
+[[nodiscard]] inline constexpr bool bc_is_for_loop(BCOp Op) noexcept
+{
+   return Op >= BC_FORI and Op <= BC_JFORL;
+}
+
+[[nodiscard]] inline constexpr bool bc_is_iter_loop(BCOp Op) noexcept
+{
+   return Op >= BC_ITERL and Op <= BC_JITERL;
+}
+
+[[nodiscard]] inline constexpr bool bc_is_jloop(BCOp Op) noexcept
+{
+   return Op IS BC_JFORL or Op IS BC_JITERL or Op IS BC_JLOOP;
+}
+
+[[nodiscard]] inline constexpr bool bc_is_call_or_iter(BCOp Op) noexcept
+{
+   return Op >= BC_CALLM and Op <= BC_ITERA;
+}
+
 static_assert((int)BC_ISEQV + 1 == (int)BC_ISNEV);
 static_assert(((int)BC_ISEQV ^ 1) == (int)BC_ISNEV);
 static_assert(((int)BC_ISEQS ^ 1) == (int)BC_ISNES);
