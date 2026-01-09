@@ -106,6 +106,7 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension to 
 - Anonymous function expressions with `=>`: `(i => print(i))`
 - Ranges: `for i in {0..10} do`
 - Exception handling with `try-except-when` statements
+- `pcall()` and `xpcall()` are deprecated in favour of `try-except` statements.
 - String interpolation supporting expressions, e.g. `f"My {expression} here"`
 
 A complete breakdown of these features is located in `docs/wiki/Fluid-Reference-Manual.md`
