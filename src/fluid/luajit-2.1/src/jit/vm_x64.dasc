@@ -5367,8 +5367,17 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     // Slow path: call lj_check_raise to throw exception
     |  ins_AD                         // A = error code register
     |  mov RA, [BASE+RA*8]            // Load error code value from slot
-    |  checkint RA, >1                // Type check - must be integer, else skip
-    // Note: Integer value is in low 32 bits (RAd), no need to cleartp
+    |  checknumber RA, >1             // Type check - must be numeric, else skip
+    |.if DUALNUM
+    |  cmp ITYPEd, LJ_TISNUM
+    |  je >2
+    |  movd xmm0, RA
+    |  cvttsd2si RAd, xmm0
+    |2:
+    |.else
+    |  movd xmm0, RA
+    |  cvttsd2si RAd, xmm0
+    |.endif
     |  cmp RAd, 9                     // Compare with ExceptionThreshold (ERR::Terminate = 9)
     |  jb >1                          // Below threshold? Skip to fast path exit
     |  // Error >= threshold: raise exception
@@ -5395,8 +5404,17 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  mov L:RB, SAVE_L
     |  mov L:RB->base, BASE           // Sync L->base for error handling
     |  mov L:RB->top, BASE            // Sync L->top for error handling
-    |  checkint RA, >3                // Type check - must be integer, else skip to end
-    // Note: Integer value is in low 32 bits (RAd), no need to cleartp
+    |  checknumber RA, >3             // Type check - must be numeric, else skip to end
+    |.if DUALNUM
+    |  cmp ITYPEd, LJ_TISNUM
+    |  je >4
+    |  movd xmm0, RA
+    |  cvttsd2si RAd, xmm0
+    |4:
+    |.else
+    |  movd xmm0, RA
+    |  cvttsd2si RAd, xmm0
+    |.endif
     |  mov dword [L:RB + L_CAUGHTERROR_OFS], RAd  // Set L->CaughtError
     |  cmp RDd, 255                   // Check for message (0xFF = no message)
     |  je >2                          // No message - use default
