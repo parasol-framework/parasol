@@ -5383,6 +5383,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  // Error >= threshold: raise exception
     |  mov L:RB, SAVE_L
     |  mov L:RB->base, BASE           // Sync L->base for error handling
+    |  mov SAVE_PC, PC                // Ensure cframe has a valid PC for trace capture
     |  mov dword [L:RB + L_CAUGHTERROR_OFS], RAd  // Set L->CaughtError
     |.if X64WIN
     |  mov CARG2d, RAd                // 2nd arg: error code
@@ -5404,6 +5405,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  mov L:RB, SAVE_L
     |  mov L:RB->base, BASE           // Sync L->base for error handling
     |  mov L:RB->top, BASE            // Sync L->top for error handling
+    |  mov SAVE_PC, PC                // Ensure cframe has a valid PC for trace capture
     |  checknumber RA, >3             // Type check - must be numeric, else skip to end
     |.if DUALNUM
     |  cmp ITYPEd, LJ_TISNUM

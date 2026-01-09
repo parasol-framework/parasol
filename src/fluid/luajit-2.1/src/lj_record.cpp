@@ -2238,6 +2238,11 @@ static void rec_decode_operands(jit_State *J, cTValue *lbase, RecordOps *ops)
    // Decode 'C' operand based on its mode
    switch (bcmode_c(op)) {
       case BCMvar:
+         if (op IS BC_RAISE and ops->rc IS NO_REG) { // BC_RAISE uses 0xFF sentinel for "no message".
+            setnilV(ops->rcv());
+            ops->rc = 0;
+            break;
+         }
          copyTV(J->L, ops->rcv(), &lbase[ops->rc]);
          ops->ix.key = ops->rc = getslot(J, ops->rc);
          break;
