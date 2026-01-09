@@ -472,7 +472,7 @@ gui.window = function(Options)
          result = self.events.close(self)
          if result != nil then -- If client returns something, the window stays open
             msg('Client requested that the window stay open.')
-            raise(ERR_Cancelled)
+            raise ERR_Cancelled
          end
       end
    end)

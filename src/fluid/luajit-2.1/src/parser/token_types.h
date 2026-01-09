@@ -80,6 +80,8 @@ enum class TokenKind : uint16_t {
    TryToken = TK_try,
    ExceptToken = TK_except,
    SuccessToken = TK_success,
+   RaiseToken = TK_raise,
+   CheckToken = TK_check,
    EndOfFile = TK_eof,
 #undef TOKEN_KIND_ENUM
 #undef TOKEN_KIND_ENUM_SYM
@@ -174,6 +176,8 @@ enum class TokenKind : uint16_t {
       case TokenKind::TryToken: return "try";
       case TokenKind::ExceptToken: return "except";
       case TokenKind::SuccessToken: return "success";
+      case TokenKind::RaiseToken: return "raise";
+      case TokenKind::CheckToken: return "check";
       case TokenKind::EndOfFile: return "<eof>";
       case TokenKind::LeftParen: return "(";
       case TokenKind::RightParen: return ")";
@@ -249,6 +253,16 @@ public:
    [[nodiscard]] constexpr bool is_identifier() const noexcept { return this->token_kind IS TokenKind::Identifier; }
    [[nodiscard]] constexpr bool is_eof() const noexcept { return this->token_kind IS TokenKind::EndOfFile; }
    [[nodiscard]] inline GCstr * identifier() const { return this->data.as_string(); }
+
+   // Returns true if this token is a reserved keyword (can be contextually used as a name after . or :)
+   [[nodiscard]] constexpr bool is_keyword() const noexcept {
+      return this->raw_token >= TK_OFS + 1 and this->raw_token < TK_number;
+   }
+
+   // Returns true if this token can be used as a name (identifier or contextual keyword)
+   [[nodiscard]] constexpr bool is_name() const noexcept {
+      return this->is_identifier() or this->is_keyword();
+   }
 
 private:
    TokenKind token_kind = TokenKind::Unknown;

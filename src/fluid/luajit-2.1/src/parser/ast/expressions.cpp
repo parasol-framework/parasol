@@ -796,7 +796,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
       Token token = this->ctx.tokens().current();
       if (token.kind() IS TokenKind::Dot) {
          this->ctx.tokens().advance();
-         auto name_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+         auto name_token = this->ctx.expect_name(ParserErrorCode::ExpectedIdentifier);
          if (not name_token.ok()) return ParserResult<ExprNodePtr>::failure(name_token.error_ref());
 
          base = make_member_expr(span_from(token, name_token.value_ref()), std::move(base),
@@ -806,7 +806,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
 
       if (token.kind() IS TokenKind::SafeField) {
          this->ctx.tokens().advance();
-         auto name_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+         auto name_token = this->ctx.expect_name(ParserErrorCode::ExpectedIdentifier);
          if (not name_token.ok()) return ParserResult<ExprNodePtr>::failure(name_token.error_ref());
 
          base = make_safe_member_expr(span_from(token, name_token.value_ref()), std::move(base),
@@ -838,7 +838,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
 
       if (token.kind() IS TokenKind::Colon) {
          this->ctx.tokens().advance();
-         auto name_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+         auto name_token = this->ctx.expect_name(ParserErrorCode::ExpectedIdentifier);
          if (not name_token.ok()) return ParserResult<ExprNodePtr>::failure(name_token.error_ref());
 
          bool forwards = false;
@@ -853,7 +853,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
 
       if (token.kind() IS TokenKind::SafeMethod) {
          this->ctx.tokens().advance();
-         auto name_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+         auto name_token = this->ctx.expect_name(ParserErrorCode::ExpectedIdentifier);
          if (not name_token.ok()) return ParserResult<ExprNodePtr>::failure(name_token.error_ref());
 
          bool forwards = false;

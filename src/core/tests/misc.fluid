@@ -67,8 +67,8 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
 @Test function ObjectSearches()
-   parent = obj.new('xml', { name='TestParent', flags='NEW' })
-   child = parent.new('xml', { name='TestFO', flags='NEW' })
+   parent = obj.new('xml', { name='TestParent', flags=XMF_NEW })
+   child = parent.new('xml', { name='TestFO', flags=XMF_NEW })
 
    objects = { }
    table.insert(objects, child)
@@ -81,7 +81,7 @@ end
    -- Test ListChildren()
 
    for i=0,8 do
-      local obj = parent.new('xml', { name='TestFO', flags='NEW' })
+      local obj = parent.new('xml', { name='TestFO', flags=XMF_NEW })
       table.insert(objects, obj)
    end
 
@@ -90,12 +90,12 @@ end
    assert(err is ERR_Okay, 'Failed in call to ListChildren(): ' .. mSys.GetErrorMsg(err))
    assert(#children is 10, 'Parent object listed ' .. #children .. ' objects.')
 
-   check = { }
+   chk = { }
    for i=0,9 do
-      check[objects[i].id] = true
+      chk[objects[i].id] = true
    end
 
    for i=0,9 do
-      assert(check[children[i]] is true, "Object tables don't match")
+      assert(chk[children[i]] is true, "Object tables don't match")
    end
 end

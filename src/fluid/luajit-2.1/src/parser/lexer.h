@@ -71,6 +71,8 @@ struct TokenDefinition {
    TOKEN_DEF(until,        "until",    true) \
    TOKEN_DEF(when,         "when",     true) \
    TOKEN_DEF(success,      "success",  true) \
+   TOKEN_DEF(raise,        "raise",    true) \
+   TOKEN_DEF(check,        "check",    true) \
    TOKEN_DEF(while,        "while",    true) \
    TOKEN_DEF(case_arrow,   "->",       false) \
    TOKEN_DEF(if_empty,     "??",       false) \

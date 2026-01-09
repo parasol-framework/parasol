@@ -96,7 +96,7 @@ function BasicSSLCommunication()
                error('[Server] SSL message integrity check failed. Got: "' .. emsg .. '"')
             end
          elseif err is ERR_Disconnected then
-            raise(ERR_Terminate)
+            raise ERR_Terminate
          else
             error('[Server] SSL read error: ' .. mSys.GetErrorMsg(err))
          end
@@ -146,7 +146,7 @@ function BasicSSLCommunication()
                error('[Client] Failed to send encrypted echo: ' .. mSys.GetErrorMsg(err))
             end
          elseif err is ERR_Disconnected then
-            raise(ERR_Terminate)
+            raise ERR_Terminate
          else
             error('[Client] SSL read error: ' .. mSys.GetErrorMsg(err))
          end
@@ -428,7 +428,7 @@ function HTTPSConnection()
             end
 
             proc.signal()
-            raise(ERR_Terminate)
+            raise ERR_Terminate
          end
       end,
       incoming = function(Socket)
@@ -480,10 +480,10 @@ function HTTPSConnection()
                response_complete = true
                if #page_content > 0 then data_received = true end
                proc.signal()
-               raise(ERR_Terminate)
+               raise ERR_Terminate
             else
                logOutput('HTTPS read error: ' .. mSys.GetErrorMsg(err))
-               raise(ERR_Terminate)
+               raise ERR_Terminate
             end
          end
 

@@ -56,20 +56,11 @@ static int lua_load(lua_State *Lua, class objFile *File, CSTRING SourceName)
 }
 
 //********************************************************************************************************************
-// check() is the equivalent of an assert() for error codes.  Any major error code will be converted to an
-// exception containing a readable string for the error code.  It is most powerful when used in conjunction with
-// the try statement, which will apply the line number of the exception to the result.  The error code will
-// also be propagated to the Script object's Error field.
-//
-// This function also serves a dual purpose in that it can be used to raise exceptions when an error condition needs to
-// be propagated.
-//
-// All incoming parameters are returned without modification, allowing check() to operate seamlessly in function call chains.
+// Internal implementation for 'check' keyword.
+// Called by bytecode emitted for check statements.
 
-int fcmd_check(lua_State *Lua)
+int lj_check_internal(lua_State *Lua)
 {
-   int param_count = lua_gettop(Lua); // Get the total number of parameters
-
    if (lua_type(Lua, 1) IS LUA_TNUMBER) {
       auto error = ERR(lua_tointeger(Lua, 1));
       if (int(error) >= int(ERR::ExceptionThreshold)) {
@@ -77,21 +68,28 @@ int fcmd_check(lua_State *Lua)
          luaL_error(Lua, GetErrorMsg(error));
       }
    }
-
-   // Return all parameters that were passed in
-   return param_count;
+   return 0;
 }
 
 //********************************************************************************************************************
-// raise() will raise an error immediately from an error code.  Unlike check(), all codes have coverage, including
-// minor codes.  The error code will also be propagated to the Script object's Error field.
+// Internal implementation for 'raise' keyword.
+// Called by bytecode emitted for raise statements.
+// Arg 1: error code (required)
+// Arg 2: custom message (optional)
 
-int fcmd_raise(lua_State *Lua)
+int lj_raise_internal(lua_State *Lua)
 {
    if (lua_type(Lua, 1) IS LUA_TNUMBER) {
       auto error = ERR(lua_tointeger(Lua, 1));
       Lua->CaughtError = error;
-      luaL_error(Lua, GetErrorMsg(error));
+
+      // Use custom message if provided, otherwise use default message
+      if (lua_type(Lua, 2) IS LUA_TSTRING) {
+         luaL_error(Lua, "%s", lua_tostring(Lua, 2));
+      }
+      else {
+         luaL_error(Lua, GetErrorMsg(error));
+      }
    }
    return 0;
 }

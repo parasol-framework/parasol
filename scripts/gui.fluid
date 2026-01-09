@@ -355,7 +355,7 @@ gui.createIcon = function(Scene, Path:str, Size:num, Theme:any, Name:str):table
       end
    end)
 
-   check(Scene.mtAddDef(Name, icon.pattern))
+   check Scene.mtAddDef(Name, icon.pattern)
 
    return { name = Name, theme = Theme, size = Size, path = Path, fill = 'url(#' .. Name .. ')' }
 end

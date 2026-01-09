@@ -120,7 +120,7 @@ unique messages to verify proper isolation and delivery.
                   err, len = Socket.acWrite(test_msg)
                   assert(err is ERR_Okay, '[Client ' .. data.id .. '] Failed to send: ' .. mSys.GetErrorMsg(err))
                else
-                  raise(ERR_Terminate) -- Disconnect
+                  raise ERR_Terminate -- Disconnect
                end
             end
 

@@ -93,7 +93,7 @@ gui.toolbar = function(Options)
                gui.tooltip({ text=self._current.tip })
             end
             self._tipTimer = nil
-            raise(ERR_Terminate)
+            raise ERR_Terminate
          end)
       end
    end
@@ -409,7 +409,7 @@ gui.toolbar = function(Options)
          item.selected = false
          self.viewport.acDraw()
       else
-         raise(ERR_Search)
+         raise ERR_Search
       end
    end
 
@@ -500,7 +500,7 @@ gui.toolbar = function(Options)
 
       if redraw then self.viewport.acDraw() end
 
-      found ?? raise(ERR_Search)
+      found ?? raise ERR_Search
    end
 
    function hoverUpdate(Item, StateChanged) -- Highlight items that the user hovers over.

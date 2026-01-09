@@ -153,6 +153,7 @@ public:
    ParserResult<Token> match(TokenKind kind);
    ParserResult<Token> consume(TokenKind kind, ParserErrorCode code);
    ParserResult<Token> expect_identifier(ParserErrorCode code);
+   ParserResult<Token> expect_name(ParserErrorCode code);  // Accepts identifiers or keywords (for field/method names)
 
    [[nodiscard]] inline bool check(TokenKind kind) const { return this->tokens().current().is(kind); }
 

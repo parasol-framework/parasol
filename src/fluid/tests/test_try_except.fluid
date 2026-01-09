@@ -170,7 +170,7 @@ end
 
 @Test(priority=7) function ErrCodeException()
    try
-      raise(ERR_Failed)
+      raise ERR_Failed
    except e
       assert(e.code is ERR_Failed, "ERR exceptions should have numeric code")
    end
@@ -183,7 +183,7 @@ end
    correct_handler = false
 
    try
-      raise(ERR_Args)
+      raise ERR_Args
    except e when ERR_Args
       correct_handler = true
    except e
@@ -200,7 +200,7 @@ end
    correct_handler = false
 
    try
-      raise(ERR_Failed)
+      raise ERR_Failed
    except e when ERR_Failed, ERR_Search
       correct_handler = true
    except e
@@ -217,7 +217,7 @@ end
    catchall_handler = false
 
    try
-      raise(ERR_Write)
+      raise ERR_Write
    except e when ERR_Read
       assert(false, "Should not match ERR_Read filter")
    except e
@@ -235,7 +235,7 @@ end
 
    -- Test first handler matches
    try
-      raise(ERR_Args)
+      raise ERR_Args
    except e when ERR_Args
       handler_index = 1
    except e when ERR_Failed
@@ -247,7 +247,7 @@ end
 
    -- Test second handler matches
    try
-      raise(ERR_Failed)
+      raise ERR_Failed
    except e when ERR_Args
       handler_index = 1
    except e when ERR_Failed
@@ -259,7 +259,7 @@ end
 
    -- Test catch-all matches
    try
-      raise(ERR_Search)
+      raise ERR_Search
    except e when ERR_Args
       handler_index = 1
    except e when ERR_Failed
@@ -381,7 +381,7 @@ end
    matched = false
 
    try
-      raise(ERR_Search)
+      raise ERR_Search
    except e when ERR_Args, ERR_Failed, ERR_Read, ERR_Search
       matched = true
    except e
@@ -449,7 +449,7 @@ end
    -- Multiple filtered handlers, no catch-all
    handled = false
    try
-      raise(ERR_Args)
+      raise ERR_Args
    except e when ERR_Args
       handled = true
    except e when ERR_Failed
@@ -460,7 +460,7 @@ end
    -- Single filtered handler only
    handled = false
    try
-      raise(ERR_Failed)
+      raise ERR_Failed
    except e when ERR_Failed
       handled = true
    end
@@ -1268,7 +1268,7 @@ end
 
 @Test(priority=55) function TryTraceWithRaise()
    try<trace>
-      raise(ERR_Failed)
+      raise ERR_Failed
    except e
       assert(e.trace, "Trace should be captured with raise()")
       assert(e.code is ERR_Failed, "Error code should be ERR_Failed")
@@ -1310,4 +1310,72 @@ end
    end
 
    assert(trace_captured, "Outer try<trace> should capture trace from rethrow")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Tests for raise and check keywords
+
+@Test(priority=60) function RaiseBasic()
+   try
+      raise ERR_Failed
+   except e
+      assert(e.code is ERR_Failed, "raise should set error code")
+      return
+   end
+   error("raise did not throw an exception")
+end
+
+@Test(priority=61) function RaiseWithMessage()
+   try
+      raise ERR_Args, "Custom error message"
+   except e
+      assert(e.code is ERR_Args, "raise should set error code")
+      assert(e.message:find("Custom error message"), "raise should use custom message")
+      return
+   end
+   error("raise with message did not throw an exception")
+end
+
+@Test(priority=62) function CheckBelowThreshold()
+   -- ERR_Okay should not raise an exception
+   check ERR_Okay
+   -- If we reach here, the test passed
+end
+
+@Test(priority=63) function CheckAboveThreshold()
+   try
+      check ERR_Failed
+   except e
+      assert(e.code is ERR_Failed, "check should raise for codes >= threshold")
+      return
+   end
+   error("check should have raised an exception for ERR_Failed")
+end
+
+@Test(priority=64) function CheckWithExpression()
+   function returns_error()
+      return ERR_Args
+   end
+
+   try
+      check returns_error()
+   except e when ERR_Args
+      return  -- Expected
+   end
+   error("check with expression should have thrown")
+end
+
+@Test(priority=65) function RaiseWithVariable()
+   -- Test that raise works with variables, not just constants
+   err_code = ERR_Failed
+   caught = false
+
+   try
+      raise err_code
+   except e
+      caught = true
+      assert(e.code is ERR_Failed, "Should catch ERR_Failed, got " .. tostring(e.code))
+   end
+
+   assert(caught, "Exception should have been caught")
 end

@@ -90,6 +90,21 @@ ParserResult<Token> ParserContext::expect_identifier(ParserErrorCode code)
 }
 
 //********************************************************************************************************************
+// Expects an identifier or a reserved keyword that can be used as a name (e.g., after . or : for field/method access).
+// This allows keywords like 'check' or 'raise' to be used as method names: object.check(), object:raise()
+
+ParserResult<Token> ParserContext::expect_name(ParserErrorCode code)
+{
+   Token current = this->tokens().current();
+   if (current.is_name()) {
+      this->token_stream.advance();
+      return ParserResult<Token>::success(current);
+   }
+   this->emit_error(code, current, "expected identifier");
+   return ParserResult<Token>::failure(this->make_error(code, current, "expected identifier"));
+}
+
+//********************************************************************************************************************
 
 int ParserContext::lex_opt(LexToken Token)
 {

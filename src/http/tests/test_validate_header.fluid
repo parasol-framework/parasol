@@ -119,7 +119,7 @@ function ValidateHeaderMissingAuth()
       end
    })
 
-   check(http.acActivate())
+   check http.acActivate()
 
    local err = proc.sleep()
    assert(err is ERR_Okay, 'Missing auth processing failed: ' .. mSys.GetErrorMsg(err))

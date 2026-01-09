@@ -117,7 +117,7 @@ vfx.fadeIn = function(Viewport, Seconds, Delay, CallbackOnCompletion)
    local err
    Viewport.opacity = 0
    err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
-      Viewport.exists() ?? check(ERR_Terminate)
+      Viewport.exists() ?? check ERR_Terminate
 
       state.time ?= CurrentTime
       if state.delay > 0 then
@@ -132,7 +132,7 @@ vfx.fadeIn = function(Viewport, Seconds, Delay, CallbackOnCompletion)
             Viewport.opacity = 1.0
             Viewport.acDraw()
             if state.callback then state.callback(state) end
-            check(ERR_Terminate)
+            check ERR_Terminate
          else
             Viewport.opacity = value
             Viewport.acDraw()
@@ -157,7 +157,7 @@ vfx.zoomIn = function(Viewport, Seconds, Delay, CallbackOnCompletion)
    Viewport.acDraw()
 
    err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
-      Viewport.exists() ?? check(ERR_Terminate)
+      Viewport.exists() ?? check ERR_Terminate
 
       state.time ?= CurrentTime
       if state.delay > 0 then
@@ -178,7 +178,7 @@ vfx.zoomIn = function(Viewport, Seconds, Delay, CallbackOnCompletion)
 
          if value >= 1.0 then
             if state.callback then state.callback(state) end
-            check(ERR_Terminate)
+            check ERR_Terminate
          end
       end
    end)
@@ -200,7 +200,7 @@ vfx.zoomOut = function(Viewport, Seconds, Delay, CallbackOnCompletion)
    Viewport.acDraw()
 
    err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
-      Viewport.exists() ?? check(ERR_Terminate)
+      Viewport.exists() ?? check ERR_Terminate
 
       state.time ?= CurrentTime
       if state.delay > 0 then
@@ -221,7 +221,7 @@ vfx.zoomOut = function(Viewport, Seconds, Delay, CallbackOnCompletion)
 
          if value >= 1.0 then
             if state.callback then state.callback(state) end
-            check(ERR_Terminate)
+            check ERR_Terminate
          end
       end
    end)
@@ -249,7 +249,7 @@ vfx.shake = function(Viewport, Seconds, Delay, Intensity, CallbackOnCompletion)
    local err
    err, state.matrix = Viewport.mtNewMatrix(false)
    err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
-      Viewport.exists() ?? check(ERR_Terminate)
+      Viewport.exists() ?? check ERR_Terminate
 
       state.time ?= CurrentTime
       if state.delay > 0 then
@@ -264,7 +264,7 @@ vfx.shake = function(Viewport, Seconds, Delay, Intensity, CallbackOnCompletion)
          if CurrentTime > state.time + (state.seconds * 1000000) then
             Viewport.acDraw()
             if state.callback then state.callback(state) end
-            check(ERR_Terminate)
+            check ERR_Terminate
          end
 
          cycle = (state.seconds / SHAKES) * 1000000
@@ -296,7 +296,7 @@ vfx.rotate = function(Viewport, Seconds, Delay, CallbackOnCompletion)
    local err
    err, state.matrix = Viewport.mtNewMatrix(false)
    err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
-      Viewport.exists() ?? check(ERR_Terminate)
+      Viewport.exists() ?? check ERR_Terminate
 
       state.time ?= CurrentTime
       if state.delay > 0 then
@@ -316,7 +316,7 @@ vfx.rotate = function(Viewport, Seconds, Delay, CallbackOnCompletion)
 
          if value >= 1.0 then
             if state.callback then state.callback(state) end
-            check(ERR_Terminate)
+            check ERR_Terminate
          end
       end
    end)
@@ -557,7 +557,7 @@ end
 vfx.initTimer = function(State, Options)
    local err
    err, State.timerID = mSys.SubscribeTimer(1 * vfx.fps, function(Subscriber, Elapsed, CurrentTime)
-      State.viewport.exists() ?? check(ERR_Terminate)
+      State.viewport.exists() ?? check ERR_Terminate
 
       State.time ?= CurrentTime
       if State.delay > 0 then
@@ -571,7 +571,7 @@ vfx.initTimer = function(State, Options)
          if value >= 1.0 then
             if (State.free != nil) then State:free() end
             if State.callback then State.callback(State) end
-            check(ERR_Terminate)
+            check ERR_Terminate
          else
             State.animate(State, Options, Options.invert ? 1.0 - value :> value)
             State.viewport.acDraw()

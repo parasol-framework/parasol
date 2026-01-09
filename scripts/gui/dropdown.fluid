@@ -275,7 +275,7 @@ gui.dropdown = function(Options)
          if self.client.mtSubscribeKeyboard(function(Viewport, Qualifiers, Value, Unicode)
             if not self.visible then
                self._subscribedKb = false
-               check(ERR_Terminate)
+               check ERR_Terminate
             end
 
             if (Qualifiers & KQ_PRESSED) is 0 then return end

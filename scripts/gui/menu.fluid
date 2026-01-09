@@ -370,7 +370,7 @@ gui.menu = function(Options)
          gui.tooltip({ text=lCurrentItem.tip })
       end
       self.tipTimer = nil
-      check(ERR_Terminate)
+      check ERR_Terminate
    end
 
    -- Main entry point --
@@ -420,7 +420,7 @@ gui.menu = function(Options)
          if self.client.mtSubscribeKeyboard(function(Viewport, Qualifiers, Value, Unicode)
             if not self.visible then
                self._subscribedKb = false
-               check(ERR_Terminate)
+               check ERR_Terminate
             end
 
             if (Qualifiers & KQ_PRESSED) is 0 then return end

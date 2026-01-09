@@ -427,6 +427,9 @@ static UnsupportedNodeRecorder glUnsupportedNodes;
       case AstNodeKind::DeferStmt:      return "DeferStmt";
       case AstNodeKind::DoStmt:         return "DoStmt";
       case AstNodeKind::ConditionalShorthandStmt: return "ConditionalShorthandStmt";
+      case AstNodeKind::TryExceptStmt: return "TryExceptStmt";
+      case AstNodeKind::RaiseStmt:     return "RaiseStmt";
+      case AstNodeKind::CheckStmt:     return "CheckStmt";
       case AstNodeKind::ExpressionStmt: return "ExpressionStmt";
       default: return "Unknown";
    }
@@ -672,6 +675,14 @@ ParserResult<IrEmitUnit> IrEmitter::emit_statement(const StmtNode& stmt)
    case AstNodeKind::TryExceptStmt: {
       const auto &payload = std::get<TryExceptPayload>(stmt.data);
       return this->emit_try_except_stmt(payload);
+   }
+   case AstNodeKind::RaiseStmt: {
+      const auto &payload = std::get<RaiseStmtPayload>(stmt.data);
+      return this->emit_raise_stmt(payload, stmt.span);
+   }
+   case AstNodeKind::CheckStmt: {
+      const auto &payload = std::get<CheckStmtPayload>(stmt.data);
+      return this->emit_check_stmt(payload, stmt.span);
    }
    default:
       return this->unsupported_stmt(stmt.kind, stmt.span);
