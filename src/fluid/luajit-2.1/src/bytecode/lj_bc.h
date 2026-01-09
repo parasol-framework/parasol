@@ -356,6 +356,11 @@ typedef enum {
    BC__MAX   = 111
 } BCOp;
 
+[[nodiscard]] inline constexpr bool bc_is_func_header(BCOp Op) noexcept
+{
+   return Op >= BC_FUNCF and Op <= BC_FUNCCW;
+}
+
 static_assert((int)BC_ISEQV + 1 == (int)BC_ISNEV);
 static_assert(((int)BC_ISEQV ^ 1) == (int)BC_ISNEV);
 static_assert(((int)BC_ISEQS ^ 1) == (int)BC_ISNES);
