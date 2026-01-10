@@ -5400,7 +5400,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
 
   case BC_RAISE:
     // BC_RAISE A, D: Raise exception with error code in RA, optional message in RD
-    // A = error code register, D = message register (0xFF = no message)
+    // A = error code register, D = message register
     |  ins_AD
     |  mov RA, [BASE+RA*8]            // Load error code value from slot
     |  mov L:RB, SAVE_L
@@ -5418,36 +5418,22 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  movd xmm0, RA
     |  cvttsd2si RAd, xmm0
     |.endif
+    |2:
     |  mov dword [L:RB + L_CAUGHTERROR_OFS], RAd  // Set L->CaughtError
-    |  cmp RDd, 255                   // Check for message (0xFF = no message)
-    |  je >2                          // No message - use default
-    |  // Message register provided - check if it's a string
-    |  mov RC, [BASE+RD*8]            // Load message value from slot
-    |  checkstr RC, >2                // Type check - must be string, else use default
-    |  cleartp RC                     // Clear type bits to get raw GCstr*
+    |  lea RC, [BASE+RD*8]            // Get address of message slot (TValue*)
     |.if X64WIN
-    |  mov CARG3, RC                  // 3rd arg: message string (r8)
+    |  mov CARG3, RC                  // 3rd arg: message TValue* (r8)
     |  mov CARG2d, RAd                // 2nd arg: error code (edx)
     |  mov CARG1, L:RB                // 1st arg: lua_State *L (rcx)
     |.else
-    |  mov CARG3, RC                  // 3rd arg: message string (rdx)
+    |  mov CARG3, RC                  // 3rd arg: message TValue* (rdx)
     |  mov CARG2d, RAd                // 2nd arg: error code (esi)
     |  mov CARG1, L:RB                // 1st arg: lua_State *L (rdi)
     |.endif
     |  call extern lj_raise_with_msg  // Never returns
-    |2:  // No message or not a string - use default message
-    |.if X64WIN
-    |  mov CARG2d, RAd                // 2nd arg: error code (edx)
-    |  mov CARG1, L:RB                // 1st arg: lua_State *L (rcx)
-    |.else
-    |  mov CARG2d, RAd                // 2nd arg: error code (esi)
-    |  mov CARG1, L:RB                // 1st arg: lua_State *L (rdi)
-    |.endif
-    |  call extern lj_raise_default   // Never returns
-    |3:  // Not a number - use ERR_Failed (13) as default error code
+    |3:
     |  mov RAd, 13                      // ERR_Failed = 13
-    |  mov dword [L:RB + L_CAUGHTERROR_OFS], RAd  // Set L->CaughtError
-    |  jmp <2                           // Jump to lj_raise_default call
+    |  jmp <2
     break;
 
   //  ----------------------------------------------------------------------

@@ -4526,7 +4526,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
 
   case BC_RAISE:
     // BC_RAISE A, D: Raise exception with error code in RA, optional message in RD
-    // A = error code register, D = message register (0xFF = no message)
+    // A = error code register, D = message register
     |  ins_AD
     |  ldr RA, [BASE, RA, lsl #3]      // Load error code value from slot
     |  ldr L, SAVE_L
@@ -4540,23 +4540,15 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  fcvtzs RAw, d0
     |4:
     |  str RAw, [L, #L_CAUGHTERROR_OFS]  // Set L->CaughtError
-    |  cmp RCw, #255                  // Check for message (0xFF = no message)
-    |  beq >2                         // No message - use default
-    |  // Message register provided - check if it's a string
-    |  ldr TMP0, [BASE, RC, lsl #3]   // Load message value from slot
-    |  checkstr TMP0, >2              // Type check - must be string, else use default
-    |  mov CARG3, TMP0                // 3rd arg: message string
+    |2:
+    |  add CARG3, BASE, RC, lsl #3    // 3rd arg: message TValue*
     |  mov CARG2w, RAw                // 2nd arg: error code
     |  mov CARG1, L                   // 1st arg: lua_State *L
     |  bl extern lj_raise_with_msg    // Never returns
-    |2:  // No message or not a string - use default message
-    |  mov CARG2w, RAw                // 2nd arg: error code
-    |  mov CARG1, L                   // 1st arg: lua_State *L
-    |  bl extern lj_raise_default     // Never returns
     |3:  // Not a number - use ERR_Failed (13) as default error code
     |  mov RAw, #13                    // ERR_Failed = 13
     |  str RAw, [L, #L_CAUGHTERROR_OFS]  // Set L->CaughtError
-    |  b <2                            // Branch to lj_raise_default call
+    |  b <2
     break;
 
   //  ----------------------------------------------------------------------

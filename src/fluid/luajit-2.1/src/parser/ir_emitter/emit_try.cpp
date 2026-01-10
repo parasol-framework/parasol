@@ -261,9 +261,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_raise_stmt(const RaiseStmtPayload &Payl
    ExpDesc code_expr = code_result.value_ref();
    expr_toanyreg(fs, &code_expr);
    auto error_reg = BCReg(code_expr.u.s.info);
-   auto msg_reg = BCReg(0xFF);  // No message by default
+   BCReg msg_reg = BCReg(0);
 
-   // Evaluate optional message expression
+   // Evaluate optional message expression, or emit nil if not provided
 
    if (Payload.message) {
       auto msg_result = this->emit_expression(*Payload.message);
@@ -276,8 +276,14 @@ ParserResult<IrEmitUnit> IrEmitter::emit_raise_stmt(const RaiseStmtPayload &Payl
       msg_reg = BCReg(msg_expr.u.s.info);
       expr_free(fs, &msg_expr);
    }
+   else {
+      // No message provided - emit nil to a register
+      msg_reg = BCReg(fs->freereg++);
+      bcemit_AD(fs, BC_KPRI, msg_reg, BCREG(ExpKind::Nil));
+      fs->freereg--;  // Free the nil register
+   }
 
-   // Emit BC_RAISE: A=error_reg, D=msg_reg (0xFF = no message)
+   // Emit BC_RAISE: A=error_reg, D=msg_reg
    bcemit_AD(fs, BC_RAISE, error_reg, msg_reg);
    expr_free(fs, &code_expr);
 
