@@ -1289,57 +1289,6 @@ dotypecheck:
    }
 }
 
-// -- Allocations ---------------------------------------------------------
-
-#if LJ_HASFFI
-static void asm_cnew(ASMState* as, IRIns* ir)
-{
-   CTState* cts = ctype_ctsG(J2G(as->J));
-   CTypeID id = (CTypeID)IR(ir->op1)->i;
-   CTSize sz;
-   CTInfo info = lj_ctype_info(cts, id, &sz);
-   const CCallInfo* ci = &lj_ir_callinfo[IRCALL_lj_mem_newgco];
-   IRRef args[4];
-   RegSet allow = (RSET_GPR & ~RSET_SCRATCH);
-   lj_assertA(sz != CTSIZE_INVALID || (ir->o == IR_CNEW && ir->op2 != REF_NIL),
-      "bad CNEW/CNEWI operands");
-
-   as->gcsteps++;
-   asm_setupresult(as, ir, ci);  //  GCcdata *
-   // Initialize immutable cdata object.
-   if (ir->o == IR_CNEWI) {
-      int32_t ofs = sizeof(GCcdata);
-      Reg r = ra_alloc1(as, ir->op2, allow);
-      lj_assertA(sz == 4 || sz == 8, "bad CNEWI size %d", sz);
-      emit_lso(as, sz == 8 ? A64I_STRx : A64I_STRw, r, RID_RET, ofs);
-   }
-   else if (ir->op2 != REF_NIL) {  // Create VLA/VLS/aligned cdata.
-      ci = &lj_ir_callinfo[IRCALL_lj_cdata_newv];
-      args[0] = ASMREF_L;     //  lua_State *L
-      args[1] = ir->op1;      //  CTypeID id
-      args[2] = ir->op2;      //  CTSize sz
-      args[3] = ASMREF_TMP1;  //  CTSize align
-      asm_gencall(as, ci, args);
-      emit_loadi(as, ra_releasetmp(as, ASMREF_TMP1), (int32_t)ctype_align(info));
-      return;
-   }
-
-   // Initialize gct and ctypeid. lj_mem_newgco() already sets marked.
-   {
-      Reg r = (id < 65536) ? RID_X1 : ra_allock(as, id, allow);
-      emit_lso(as, A64I_STRB, RID_TMP, RID_RET, offsetof(GCcdata, gct));
-      emit_lso(as, A64I_STRH, r, RID_RET, offsetof(GCcdata, ctypeid));
-      emit_d(as, A64I_MOVZw | A64F_U16(~LJ_TCDATA), RID_TMP);
-      if (id < 65536) emit_d(as, A64I_MOVZw | A64F_U16(id), RID_X1);
-   }
-   args[0] = ASMREF_L;     //  lua_State *L
-   args[1] = ASMREF_TMP1;  //  MSize size
-   asm_gencall(as, ci, args);
-   ra_allockreg(as, (int32_t)(sz + sizeof(GCcdata)),
-      ra_releasetmp(as, ASMREF_TMP1));
-}
-#endif
-
 // -- Write barriers ------------------------------------------------------
 
 static void asm_tbar(ASMState* as, IRIns* ir)

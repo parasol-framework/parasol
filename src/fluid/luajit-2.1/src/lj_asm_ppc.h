@@ -1219,69 +1219,6 @@ dotypecheck:
    if (ra_hasreg(type)) emit_tai(as, PPCI_LWZ, type, base, ofs - 4);
 }
 
-// -- Allocations ---------------------------------------------------------
-
-#if LJ_HASFFI
-static void asm_cnew(ASMState* as, IRIns* ir)
-{
-   CTState* cts = ctype_ctsG(J2G(as->J));
-   CTypeID id = (CTypeID)IR(ir->op1)->i;
-   CTSize sz;
-   CTInfo info = lj_ctype_info(cts, id, &sz);
-   const CCallInfo* ci = &lj_ir_callinfo[IRCALL_lj_mem_newgco];
-   IRRef args[4];
-   RegSet drop = RSET_SCRATCH;
-   lj_assertA(sz != CTSIZE_INVALID or (ir->o == IR_CNEW and ir->op2 != REF_NIL),
-      "bad CNEW/CNEWI operands");
-
-   as->gcsteps++;
-   if (ra_hasreg(ir->r))
-      rset_clear(drop, ir->r);  //  Dest reg handled below.
-   ra_evictset(as, drop);
-   if (ra_used(ir))
-      ra_destreg(as, ir, RID_RET);  //  GCcdata *
-
-   // Initialize immutable cdata object.
-   if (ir->o == IR_CNEWI) {
-      RegSet allow = (RSET_GPR & ~RSET_SCRATCH);
-      int32_t ofs = sizeof(GCcdata);
-      lj_assertA(sz == 4 or sz == 8, "bad CNEWI size %d", sz);
-      if (sz == 8) {
-         ofs += 4;
-         lj_assertA((ir + 1)->o == IR_HIOP, "expected HIOP for CNEWI");
-      }
-      for (;;) {
-         Reg r = ra_alloc1(as, ir->op2, allow);
-         emit_tai(as, PPCI_STW, r, RID_RET, ofs);
-         rset_clear(allow, r);
-         if (ofs == sizeof(GCcdata)) break;
-         ofs -= 4; ir++;
-      }
-   }
-   else if (ir->op2 != REF_NIL) {  // Create VLA/VLS/aligned cdata.
-      ci = &lj_ir_callinfo[IRCALL_lj_cdata_newv];
-      args[0] = ASMREF_L;     //  lua_State *L
-      args[1] = ir->op1;      //  CTypeID id
-      args[2] = ir->op2;      //  CTSize sz
-      args[3] = ASMREF_TMP1;  //  CTSize align
-      asm_gencall(as, ci, args);
-      emit_loadi(as, ra_releasetmp(as, ASMREF_TMP1), (int32_t)ctype_align(info));
-      return;
-   }
-
-   // Initialize gct and ctypeid. lj_mem_newgco() already sets marked.
-   emit_tai(as, PPCI_STB, RID_RET + 1, RID_RET, offsetof(GCcdata, gct));
-   emit_tai(as, PPCI_STH, RID_TMP, RID_RET, offsetof(GCcdata, ctypeid));
-   emit_ti(as, PPCI_LI, RID_RET + 1, ~LJ_TCDATA);
-   emit_ti(as, PPCI_LI, RID_TMP, id);  //  Lower 16 bit used. Sign-ext ok.
-   args[0] = ASMREF_L;     //  lua_State *L
-   args[1] = ASMREF_TMP1;  //  MSize size
-   asm_gencall(as, ci, args);
-   ra_allockreg(as, (int32_t)(sz + sizeof(GCcdata)),
-      ra_releasetmp(as, ASMREF_TMP1));
-}
-#endif
-
 // -- Write barriers ------------------------------------------------------
 
 static void asm_tbar(ASMState* as, IRIns* ir)
@@ -1512,87 +1449,6 @@ static void asm_arithov(ASMState* as, IRIns* ir, PPCIns pi)
 #define asm_addov(as, ir)   asm_arithov(as, ir, PPCI_ADDO)
 #define asm_subov(as, ir)   asm_arithov(as, ir, PPCI_SUBFO)
 #define asm_mulov(as, ir)   asm_arithov(as, ir, PPCI_MULLWO)
-
-#if LJ_HASFFI
-static void asm_add64(ASMState* as, IRIns* ir)
-{
-   Reg dest = ra_dest(as, ir, RSET_GPR);
-   Reg right, left = ra_alloc1(as, ir->op1, RSET_GPR);
-   PPCIns pi = PPCI_ADDE;
-   if (irref_isk(ir->op2)) {
-      int32_t k = IR(ir->op2)->i;
-      if (k == 0)
-         pi = PPCI_ADDZE;
-      else if (k == -1)
-         pi = PPCI_ADDME;
-      else
-         goto needright;
-      right = 0;
-   }
-   else {
-   needright:
-      right = ra_alloc1(as, ir->op2, rset_exclude(RSET_GPR, left));
-   }
-   emit_tab(as, pi, dest, left, right);
-   ir--;
-   dest = ra_dest(as, ir, RSET_GPR);
-   left = ra_alloc1(as, ir->op1, RSET_GPR);
-   if (irref_isk(ir->op2)) {
-      int32_t k = IR(ir->op2)->i;
-      if (checki16(k)) {
-         emit_tai(as, PPCI_ADDIC, dest, left, k);
-         return;
-      }
-   }
-   right = ra_alloc1(as, ir->op2, rset_exclude(RSET_GPR, left));
-   emit_tab(as, PPCI_ADDC, dest, left, right);
-}
-
-static void asm_sub64(ASMState* as, IRIns* ir)
-{
-   Reg dest = ra_dest(as, ir, RSET_GPR);
-   Reg left, right = ra_alloc1(as, ir->op2, RSET_GPR);
-   PPCIns pi = PPCI_SUBFE;
-   if (irref_isk(ir->op1)) {
-      int32_t k = IR(ir->op1)->i;
-      if (k == 0)
-         pi = PPCI_SUBFZE;
-      else if (k == -1)
-         pi = PPCI_SUBFME;
-      else
-         goto needleft;
-      left = 0;
-   }
-   else {
-   needleft:
-      left = ra_alloc1(as, ir->op1, rset_exclude(RSET_GPR, right));
-   }
-   emit_tab(as, pi, dest, right, left);  //  Subtract right _from_ left.
-   ir--;
-   dest = ra_dest(as, ir, RSET_GPR);
-   right = ra_alloc1(as, ir->op2, RSET_GPR);
-   if (irref_isk(ir->op1)) {
-      int32_t k = IR(ir->op1)->i;
-      if (checki16(k)) {
-         emit_tai(as, PPCI_SUBFIC, dest, right, k);
-         return;
-      }
-   }
-   left = ra_alloc1(as, ir->op1, rset_exclude(RSET_GPR, right));
-   emit_tab(as, PPCI_SUBFC, dest, right, left);
-}
-
-static void asm_neg64(ASMState* as, IRIns* ir)
-{
-   Reg dest = ra_dest(as, ir, RSET_GPR);
-   Reg left = ra_alloc1(as, ir->op1, RSET_GPR);
-   emit_tab(as, PPCI_SUBFZE, dest, left, 0);
-   ir--;
-   dest = ra_dest(as, ir, RSET_GPR);
-   left = ra_alloc1(as, ir->op1, RSET_GPR);
-   emit_tai(as, PPCI_SUBFIC, dest, left, 0);
-}
-#endif
 
 static void asm_bnot(ASMState* as, IRIns* ir)
 {
@@ -1977,31 +1833,6 @@ static void asm_sfpcomp(ASMState* as, IRIns* ir)
 }
 #endif
 
-#if LJ_HASFFI
-// 64 bit integer comparisons.
-static void asm_comp64(ASMState* as, IRIns* ir)
-{
-   PPCCC cc = asm_compmap[(ir - 1)->o];
-   if ((cc & 3) == (CC_EQ & 3)) {
-      asm_guardcc(as, cc);
-      emit_tab(as, (cc & 4) ? PPCI_CRAND : PPCI_CROR,
-         (CC_EQ & 3), (CC_EQ & 3), 4 + (CC_EQ & 3));
-   }
-   else {
-      asm_guardcc(as, CC_EQ);
-      emit_tab(as, PPCI_CROR, (CC_EQ & 3), (CC_EQ & 3), ((cc ^ ~(cc >> 2)) & 1));
-      emit_tab(as, (cc & 4) ? PPCI_CRAND : PPCI_CRANDC,
-         (CC_EQ & 3), (CC_EQ & 3), 4 + (cc & 3));
-   }
-   // Loword comparison sets cr1 and is unsigned, except for equality.
-   asm_intcomp_(as, (ir - 1)->op1, (ir - 1)->op2, 4,
-      cc | ((cc & 3) == (CC_EQ & 3) ? 0 : CC_UNSIGNED));
-   // Hiword comparison sets cr0.
-   asm_intcomp_(as, ir->op1, ir->op2, 0, cc);
-   as->flagmcp = NULL;  //  Doesn't work here.
-}
-#endif
-
 // -- Split register ops --------------------------------------------------
 
 // Hiword op of a split 32/32 bit op. Previous op is be the loword op.
@@ -2010,68 +1841,11 @@ static void asm_hiop(ASMState* as, IRIns* ir)
    // HIOP is marked as a store because it needs its own DCE logic.
    int uselo = ra_used(ir - 1), usehi = ra_used(ir);  //  Loword/hiword used?
    if (LJ_UNLIKELY(!(as->flags & JIT_F_OPT_DCE))) uselo = usehi = 1;
-#if LJ_HASFFI or LJ_SOFTFP
-   if ((ir - 1)->o == IR_CONV) {  // Conversions to/from 64 bit.
-      as->curins--;  //  Always skip the CONV.
-#if LJ_HASFFI and !LJ_SOFTFP
-      if (usehi or uselo)
-         asm_conv64(as, ir);
-      return;
-#endif
-   }
-   else if ((ir - 1)->o <= IR_NE) {  // 64 bit integer comparisons. ORDER IR.
-      as->curins--;  //  Always skip the loword comparison.
-#if LJ_SOFTFP
-      if (!irt_isint(ir->t)) {
-         asm_sfpcomp(as, ir - 1);
-         return;
-      }
-#endif
-#if LJ_HASFFI
-      asm_comp64(as, ir);
-#endif
-      return;
-#if LJ_SOFTFP
-   }
-   else if ((ir - 1)->o == IR_MIN or (ir - 1)->o == IR_MAX) {
-      as->curins--;  //  Always skip the loword min/max.
-      if (uselo or usehi)
-         asm_sfpmin_max(as, ir - 1);
-      return;
-#endif
-   }
-   else if ((ir - 1)->o == IR_XSTORE) {
-      as->curins--;  //  Handle both stores here.
-      if ((ir - 1)->r != RID_SINK) {
-         asm_xstore_(as, ir, 0);
-         asm_xstore_(as, ir - 1, 4);
-      }
-      return;
-   }
-#endif
    if (!usehi) return;  //  Skip unused hiword op for all remaining ops.
    switch ((ir - 1)->o) {
-#if LJ_HASFFI
-   case IR_ADD: as->curins--; asm_add64(as, ir); break;
-   case IR_SUB: as->curins--; asm_sub64(as, ir); break;
-   case IR_NEG: as->curins--; asm_neg64(as, ir); break;
-   case IR_CNEWI:
-      // Nothing to do here. Handled by lo op itself.
-      break;
-#endif
-#if LJ_SOFTFP
-   case IR_SLOAD: case IR_ALOAD: case IR_HLOAD: case IR_ULOAD: case IR_VLOAD:
-   case IR_STRTO:
-      if (!uselo)
-         ra_allocref(as, ir->op1, RSET_GPR);  //  Mark lo op as used.
-      break;
-   case IR_ASTORE: case IR_HSTORE: case IR_USTORE: case IR_TOSTR: case IR_TMPREF:
-      // Nothing to do here. Handled by lo op itself.
-      break;
-#endif
+
    case IR_CALLN: case IR_CALLL: case IR_CALLS: case IR_CALLXS:
-      if (!uselo)
-         ra_allocref(as, ir->op1, RID2RSET(RID_RETLO));  //  Mark lo op as used.
+      if (!uselo) ra_allocref(as, ir->op1, RID2RSET(RID_RETLO));  //  Mark lo op as used.
       break;
    default: lj_assertA(0, "bad HIOP for op %d", (ir - 1)->o); break;
    }
