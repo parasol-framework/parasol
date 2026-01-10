@@ -4553,8 +4553,10 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  mov CARG2w, RAw                // 2nd arg: error code
     |  mov CARG1, L                   // 1st arg: lua_State *L
     |  bl extern lj_raise_default     // Never returns
-    |3:  // Not an integer - just continue (shouldn't happen)
-    |  ins_next
+    |3:  // Not a number - use ERR_Failed (13) as default error code
+    |  mov RAw, #13                    // ERR_Failed = 13
+    |  str RAw, [L, #L_CAUGHTERROR_OFS]  // Set L->CaughtError
+    |  b <2                            // Branch to lj_raise_default call
     break;
 
   //  ----------------------------------------------------------------------
