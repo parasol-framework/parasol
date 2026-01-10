@@ -22,8 +22,7 @@ static int object_newindex(lua_State *Lua)
 
             if (error >= ERR::ExceptionThreshold) {
                pf::Log(__FUNCTION__).warning("Unable to write %s.%s: %s", def->Class->ClassName, luaL_checkstring(Lua, 2), GetErrorMsg(error));
-               Lua->CaughtError = error;
-               luaL_error(Lua, GetErrorMsg(error));
+               luaL_error(Lua, error);
             }
          }
       }

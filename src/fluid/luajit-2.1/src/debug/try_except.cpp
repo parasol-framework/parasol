@@ -30,13 +30,13 @@
 
 extern "C" LJ_NORET void lj_raise(lua_State *L, int32_t ErrorCode)
 {
-   luaL_error(L, GetErrorMsg(ERR(ErrorCode)));
+   luaL_error(L, ERR(ErrorCode));
 }
 
 extern "C" LJ_NORET void lj_raise_with_msg(lua_State *L, int32_t ErrorCode, TValue *Msg)
 {
-   if (tvisstr(Msg)) luaL_error(L, "%s", strdata(strV(Msg)));
-   else luaL_error(L, GetErrorMsg(ERR(ErrorCode)));
+   if (tvisstr(Msg)) luaL_error(L, ERR(ErrorCode), "%s", strdata(strV(Msg)));
+   else luaL_error(L, ERR(ErrorCode));
 }
 
 //********************************************************************************************************************

@@ -160,7 +160,7 @@ LJLIB_CF(array_of)
 
    int num_values = lua_gettop(L) - 1;
    if (num_values < 1) {
-      luaL_error(L, "array.of() requires at least one value");
+      luaL_error(L, ERR::Args, "array.of() requires at least one value");
       return 0;
    }
 
@@ -268,7 +268,7 @@ LJLIB_CF(array_concat)
          }
 
          if (in_format) {
-            luaL_error(L, "Invalid format string: multiple format specifiers not allowed");
+            luaL_error(L, ERR::Syntax, "Invalid format string: multiple format specifiers not allowed");
             return 0;
          }
          in_format = true;
@@ -285,19 +285,19 @@ LJLIB_CF(array_concat)
          // Allow format modifiers and flags
          else if (!(*p IS '-' or *p IS '+' or *p IS ' ' or *p IS '#' or *p IS '0' or
                     (*p >= '1' and *p <= '9') or *p IS '.' or *p IS 'l' or *p IS 'h')) {
-            luaL_error(L, "Invalid character '%c' in format string", *p);
+            luaL_error(L, ERR::Syntax, "Invalid character '%c' in format string", *p);
             return 0;
          }
       }
    }
 
    if (in_format) {
-      luaL_error(L, "Incomplete format specifier");
+      luaL_error(L, ERR::Syntax, "Incomplete format specifier");
       return 0;
    }
 
    if (format_count != 1) {
-      luaL_error(L, "Format string must contain exactly one format specifier, found %d", format_count);
+      luaL_error(L, ERR::Syntax, "Format string must contain exactly one format specifier, found %d", format_count);
       return 0;
    }
 
@@ -346,7 +346,7 @@ LJLIB_CF(array_concat)
          case AET::STRUCT:
          case AET::ARRAY:
          default:
-            luaL_error(L, "concat() does not support %s types.", elemtype_name(arr->elemtype));
+            luaL_error(L, ERR::InvalidType, "concat() does not support %s types.", elemtype_name(arr->elemtype));
             return 0;
       }
 
@@ -960,7 +960,7 @@ LJLIB_CF(array_copy)
       // Bounds check source
 
       if ((src_idx < 0) or (size_t(src_idx) >= strlen)) {
-         luaL_error(L, "Source index %d out of bounds (string length: %d).", src_idx, int(strlen));
+         luaL_error(L, ERR::OutOfRange, "Source index %d out of bounds (string length: %d).", src_idx, int(strlen));
          return 0;
       }
       if (size_t(src_idx + copy_total) > strlen) copy_total = int32_t(strlen) - src_idx;
@@ -968,12 +968,12 @@ LJLIB_CF(array_copy)
       // Bounds check destination
 
       if ((dest_idx < 0) or (MSize(dest_idx) >= dest->len)) {
-         luaL_error(L, "Destination index %d out of bounds (array size: %d).", dest_idx, int(dest->len));
+         luaL_error(L, ERR::OutOfRange, "Destination index %d out of bounds (array size: %d).", dest_idx, int(dest->len));
          return 0;
       }
 
       if (MSize(dest_idx + copy_total) > dest->len) {
-         luaL_error(L, "String copy would exceed array bounds (%d+%d > %d).", dest_idx, copy_total, int(dest->len));
+         luaL_error(L, ERR::OutOfRange, "String copy would exceed array bounds (%d+%d > %d).", dest_idx, copy_total, int(dest->len));
          return 0;
       }
 
@@ -996,7 +996,7 @@ LJLIB_CF(array_copy)
 
       // Bounds check source index
       if ((src_idx < 0) or (MSize(src_idx) >= table_len)) {
-         luaL_error(L, "Source index %d out of bounds (table length: %d).", src_idx, int(table_len));
+         luaL_error(L, ERR::OutOfRange, "Source index %d out of bounds (table length: %d).", src_idx, int(table_len));
          return 0;
       }
 
@@ -1004,12 +1004,12 @@ LJLIB_CF(array_copy)
 
       // Check bounds for destination array
       if ((dest_idx < 0) or (MSize(dest_idx) >= dest->len)) {
-         luaL_error(L, "Destination index out of bounds: %d (array size: %d).", dest_idx, dest->len);
+         luaL_error(L, ERR::OutOfRange, "Destination index out of bounds: %d (array size: %d).", dest_idx, dest->len);
          return 0;
       }
 
       if (MSize(dest_idx + copy_total) > dest->len) {
-         luaL_error(L, "Table copy would exceed array bounds (%d+%d > %d).", dest_idx, copy_total, dest->len);
+         luaL_error(L, ERR::OutOfRange, "Table copy would exceed array bounds (%d+%d > %d).", dest_idx, copy_total, dest->len);
          return 0;
       }
 
@@ -1032,14 +1032,14 @@ LJLIB_CF(array_copy)
                break;
             case AET::STR_GC:
                if (lua_tostring(L, -1)) {
-                  luaL_error(L, "Writing to string arrays from tables is not yet supported.");
+                  luaL_error(L, ERR::NoSupport, "Writing to string arrays from tables is not yet supported.");
                   lua_pop(L, 1);
                   return 0;
                }
                break;
             case AET::CSTR:
             case AET::PTR:
-               luaL_error(L, "Writing to pointer arrays from tables is not supported.");
+               luaL_error(L, ERR::NoSupport, "Writing to pointer arrays from tables is not supported.");
                lua_pop(L, 1);
                return 0;
             case AET::FLOAT:
@@ -1063,7 +1063,7 @@ LJLIB_CF(array_copy)
             case AET::STRUCT:
                // TODO: We should check the struct fields to confirm if its content can be safely copied.
                // This would only have to be done once per struct type, so we could cache the result.
-               luaL_error(L, "Writing to struct arrays from tables is not yet supported.");
+               luaL_error(L, ERR::NoSupport, "Writing to struct arrays from tables is not yet supported.");
                lua_pop(L, 1);
                return 0;
             case AET::TABLE:
@@ -1077,7 +1077,7 @@ LJLIB_CF(array_copy)
                   setgcrefnull(dest->get<GCRef>()[dest_index]);
                }
                else {
-                  luaL_error(L, "Expected table value at index %d.", src_idx + i);
+                  luaL_error(L, ERR::InvalidType, "Expected table value at index %d.", src_idx + i);
                   lua_pop(L, 1);
                   return 0;
                }
@@ -1093,13 +1093,13 @@ LJLIB_CF(array_copy)
                   setgcrefnull(dest->get<GCRef>()[dest_index]);
                }
                else {
-                  luaL_error(L, "Expected array value at index %d.", src_idx + i);
+                  luaL_error(L, ERR::InvalidType, "Expected array value at index %d.", src_idx + i);
                   lua_pop(L, 1);
                   return 0;
                }
                break;
             default:
-               luaL_error(L, "Unsupported array type $%.8x", dest->elemtype);
+               luaL_error(L, ERR::InvalidType, "Unsupported array type $%.8x", dest->elemtype);
                lua_pop(L, 1);
                return 0;
          }
@@ -1739,7 +1739,7 @@ LJLIB_CF(array_sort)
          });
          break;
       }
-      default: luaL_error(L, "sort() does not support this array type."); return 0;
+      default: luaL_error(L, ERR::WrongType, "sort() does not support this array type."); return 0;
    }
 
    return 0;
@@ -2293,7 +2293,7 @@ LJLIB_CF(array_remove)
 
    int32_t count = lj_lib_optint(L, 3, 1);
    if (count < 0) {
-      luaL_error(L, "count must be non-negative");
+      luaL_error(L, ERR::Args, "count must be non-negative");
       return 0;
    }
    if (count IS 0) {
@@ -2382,7 +2382,7 @@ LJLIB_CF(array_clone)
          break;
       }
       case AET::STRUCT: {
-         luaL_error(L, "array.clone() does not support struct types.");
+         luaL_error(L, ERR::NoSupport, "array.clone() does not support struct types.");
          break;
       }
       default: {

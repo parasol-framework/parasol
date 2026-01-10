@@ -168,7 +168,7 @@ void load_include_for_class(lua_State *Lua, objMetaClass *MetaClass)
    CSTRING module_name;
    if (auto error = MetaClass->get(FID_Module, module_name); error IS ERR::Okay) {
       if (load_include(Lua->script, module_name) != ERR::Okay) {
-         luaL_error(Lua, "Failed to process module '%s' for class '%s'", module_name, MetaClass->ClassName);
+         luaL_error(Lua, ERR::Failed, "Failed to process module '%s' for class '%s'", module_name, MetaClass->ClassName);
       }
    }
    else pf::Log(__FUNCTION__).traceWarning("Failed to get module name from class '%s', \"%s\"", MetaClass->ClassName, GetErrorMsg(error));
@@ -485,7 +485,7 @@ void make_struct_ptr_array(lua_State *Lua, std::string_view StructName, int Elem
    }
 
    auto s_name = struct_name(StructName);
-   if (not glStructs.contains(s_name)) luaL_error(Lua, "Failed to find struct '%.*s'", int(StructName.size()), StructName.data());
+   if (not glStructs.contains(s_name)) luaL_error(Lua, ERR::Search, "Failed to find struct '%.*s'", int(StructName.size()), StructName.data());
 
    GCarray *arr = lj_array_new(Lua, Elements, AET::TABLE);
    setarrayV(Lua, Lua->top++, arr); // Push to stack immediately to protect from GC during loop
@@ -523,7 +523,7 @@ void make_struct_serial_array(lua_State *Lua, std::string_view StructName, int E
    if (Elements < 0) Elements = 0; // The total number of structs is a hard requirement.
 
    auto s_name = struct_name(StructName);
-   if (not glStructs.contains(s_name)) luaL_error(Lua, "Failed to find struct '%.*s'", int(StructName.size()), StructName.data());
+   if (not glStructs.contains(s_name)) luaL_error(Lua, ERR::Search, "Failed to find struct '%.*s'", int(StructName.size()), StructName.data());
 
    GCarray *arr = lj_array_new(Lua, Elements, AET::TABLE);
    setarrayV(Lua, Lua->top++, arr); // Push to stack immediately to protect from GC during loop

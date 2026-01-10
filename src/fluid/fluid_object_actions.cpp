@@ -8,10 +8,7 @@ inline void report_action_error(lua_State *Lua, struct object *Object, CSTRING A
       // Scope isolation: Only throw exceptions for direct calls within a try block
       int16_t depth = Lua->base - tvref(Lua->stack);
       if (depth IS Lua->try_stack.frames[Lua->try_stack.depth-1].catch_depth) {
-         char msg[180];
-         Lua->CaughtError = Error;
-         snprintf(msg, sizeof(msg), "%s.%s() failed: %s", Object->Class->ClassName, Action, GetErrorMsg(Error));
-         luaL_error(prv->Lua, msg);
+         luaL_error(prv->Lua, Error, "%s.%s() failed: %s", Object->Class->ClassName, Action, GetErrorMsg(Error));
       }
    }
 }
@@ -44,7 +41,7 @@ static int action_draw(lua_State *Lua)
    int8_t argbuffer[sizeof(struct acDraw)+8]; // +8 for overflow protection in build_args()
 
    if ((error = build_args(Lua, glActions[int(AC::Draw)].Args, glActions[int(AC::Draw)].Size, argbuffer, nullptr)) != ERR::Okay) {
-      luaL_error(Lua, "Argument build failed for Draw().");
+      luaL_error(Lua, ERR::Args, "Argument build failed for Draw().");
       return 0;
    }
 

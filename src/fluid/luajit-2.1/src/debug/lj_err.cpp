@@ -68,6 +68,8 @@
 #define lj_err_c
 #define LUA_CORE
 
+#include <parasol/main.h>
+
 #include "lj_obj.h"
 #include "lj_err.h"
 #include "lj_debug.h"
@@ -1093,8 +1095,9 @@ LJ_NOINLINE GCstr* lj_err_str(lua_State *L, ErrMsg em)
 
 LJ_NOINLINE void lj_err_mem(lua_State *L)
 {
-   if (L->status IS LUA_ERRERR + 1)  //  Don't touch the stack during lua_open.
+   if (L->status IS LUA_ERRERR + 1) { //  Don't touch the stack during lua_open.
       lj_vm_unwind_c(L->cframe, LUA_ERRMEM);
+   }
    setstrV(L, L->top++, lj_err_str(L, ErrMsg::ERRMEM));
    lj_err_throw(L, LUA_ERRMEM);
 }
@@ -1418,6 +1421,7 @@ extern int lua_error(lua_State *L)
 
 extern int luaL_argerror(lua_State *L, int narg, CSTRING msg)
 {
+   L->CaughtError = ERR::Args;
    err_argmsg(L, narg, msg);
    return 0;  //  unreachable
 }
@@ -1435,12 +1439,30 @@ extern void luaL_where(lua_State *L, int level)
    lj_debug_addloc(L, "", frame, size ? frame + size : nullptr);
 }
 
-[[noreturn]] extern void luaL_error(lua_State *L, CSTRING fmt, ...)
+[[noreturn]] extern void luaL_error(lua_State *L, CSTRING Format, ...)
 {
-   CSTRING msg;
+   if (L->CaughtError <= ERR::ExceptionThreshold) L->CaughtError = ERR::Exception;
    va_list argp;
-   va_start(argp, fmt);
-   msg = lj_strfmt_pushvf(L, fmt, argp);
+   va_start(argp, Format);
+   auto msg = lj_strfmt_pushvf(L, Format, argp);
+   va_end(argp);
+   lj_err_callermsg(L, msg);
+}
+
+[[noreturn]] extern void luaL_error(lua_State *L, ERR ErrorCode)
+{
+   L->CaughtError = ErrorCode;
+   lj_err_callermsg(L, GetErrorMsg(ErrorCode));
+}
+
+// Associates an error code with the formatted error message - allows try-except to catch specific errors.
+
+[[noreturn]] extern void luaL_error(lua_State *L, ERR ErrorCode, CSTRING Format, ...)
+{
+   L->CaughtError = ErrorCode;
+   va_list argp;
+   va_start(argp, Format);
+   auto msg = lj_strfmt_pushvf(L, Format, argp);
    va_end(argp);
    lj_err_callermsg(L, msg);
 }

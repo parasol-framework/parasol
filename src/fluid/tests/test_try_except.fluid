@@ -1346,7 +1346,7 @@ end
    try
       check ERR_Failed
    except e
-      assert(e.code is ERR_Failed, "check should raise for codes >= threshold")
+      assert(e.code is ERR_Failed, "check should raise for codes >= threshold, got " .. e.code)
       return
    end
    error("check should have raised an exception for ERR_Failed")

@@ -58,7 +58,6 @@ static constexpr uint32_t OJH_unsubscribe = simple_hash("unsubscribe");
 [[nodiscard]] static ERR set_object_field(lua_State *, OBJECTPTR, CSTRING, int);
 
 [[nodiscard]] static int object_children(lua_State *);
-[[nodiscard]] static int object_delaycall(lua_State *);
 [[nodiscard]] static int object_detach(lua_State *);
 [[nodiscard]] static int object_exists(lua_State *);
 [[nodiscard]] static int object_free(lua_State *);
@@ -109,7 +108,6 @@ inline void SET_CONTEXT(lua_State *Lua, APTR Function) {
 }
 
 [[nodiscard]] static int stack_object_children(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_children); return 1; }
-[[nodiscard]] static int stack_object_delayCall(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_delaycall); return 1; }
 [[nodiscard]] static int stack_object_detach(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_detach); return 1; }
 [[nodiscard]] static int stack_object_exists(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_exists); return 1; }
 [[nodiscard]] static int stack_object_free(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_free); return 1; }
@@ -233,7 +231,6 @@ inline void build_read_table(object *Def)
    jmp.emplace(OJH_getKey, stack_object_getKey);
    jmp.emplace(OJH_set, stack_object_set);
    jmp.emplace(OJH_setKey, stack_object_setKey);
-   jmp.emplace(OJH_delayCall, stack_object_delayCall);
    jmp.emplace(OJH_exists, stack_object_exists);
    jmp.emplace(OJH_subscribe, stack_object_subscribe);
    jmp.emplace(OJH_unsubscribe, stack_object_unsubscribe);
@@ -305,8 +302,7 @@ inline void build_read_table(object *Def)
       auto keyname = luaL_checkstring(Lua, 2);
 
       if (!def->UID) { // Check if the object has been dereferenced by free() or similar
-         luaL_error(Lua, "Object dereferenced, unable to read field %s", keyname);
-         Lua->CaughtError = ERR::DoesNotExist;
+         luaL_error(Lua, ERR::DoesNotExist, "Object dereferenced, unable to read field %s", keyname);
          return 0;
       }
 
@@ -357,7 +353,7 @@ inline void build_read_table(object *Def)
       }
       else log.warning("No methods declared for class %s, cannot call %s()", mc->ClassName, action);
    }
-   else luaL_error(Lua, GetErrorMsg(ERR::Search));
+   else luaL_error(Lua, ERR::Search);
 
    return AC::NIL;
 }
@@ -394,8 +390,7 @@ inline void build_read_table(object *Def)
    }
    else {
       log.warning("String or ID expected for class name, got '%s'.", lua_typename(Lua, type));
-      Lua->CaughtError = ERR::Mismatch;
-      luaL_error(Lua, GetErrorMsg(ERR::Mismatch));
+      luaL_error(Lua, ERR::Mismatch);
       return 0;
    }
 
@@ -440,13 +435,11 @@ inline void build_read_table(object *Def)
             FreeResource(obj);
 
             if (field_error != ERR::Okay) {
-               Lua->CaughtError = field_error;
-               luaL_error(Lua, "Failed to set field '%s.%s' with %s, error: %s", class_name, field_name, lua_typename(Lua, failed_type), GetErrorMsg(field_error));
+               luaL_error(Lua, field_error, "Failed to set field '%s.%s' with %s, error: %s", class_name, field_name, lua_typename(Lua, failed_type), GetErrorMsg(field_error));
             }
             else {
                log.warning("Failed to Init() %s: %s", class_name, GetErrorMsg(error));
-               Lua->CaughtError = error;
-               luaL_error(Lua, GetErrorMsg(error));
+               luaL_error(Lua, error);
             }
             return 0;
          }
@@ -458,8 +451,7 @@ inline void build_read_table(object *Def)
       return 1;
    }
    else {
-      Lua->CaughtError = ERR::NewObject;
-      luaL_error(Lua, "NewObject() failed for class '%s', error: %s", class_name, GetErrorMsg(error));
+      luaL_error(Lua, ERR::NewObject, "NewObject() failed for class '%s', error: %s", class_name, GetErrorMsg(error));
       return 0;
    }
 }
@@ -533,8 +525,7 @@ static int object_newchild(lua_State *Lua)
    }
    else {
       log.warning("String or ID expected for class name, got '%s'.", lua_typename(Lua, type));
-      Lua->CaughtError = ERR::Mismatch;
-      luaL_error(Lua, GetErrorMsg(ERR::Mismatch));
+      luaL_error(Lua, ERR::Mismatch);
       return 0;
    }
 
@@ -557,7 +548,7 @@ static int object_newchild(lua_State *Lua)
 
       if (set_object_field(Lua, obj, "owner", lua_gettop(Lua)) != ERR::Okay) {
          FreeResource(obj);
-         luaL_error(Lua, "Failed to set object owner.");
+         luaL_error(Lua, ERR::SetField);
          return 0;
       }
 
@@ -588,13 +579,11 @@ static int object_newchild(lua_State *Lua)
             FreeResource(obj);
 
             if (field_error != ERR::Okay) {
-               Lua->CaughtError = field_error;
-               luaL_error(Lua, "Failed to set field '%s', error: %s", field_name, GetErrorMsg(field_error));
+               luaL_error(Lua, field_error, "Failed to set field '%s', error: %s", field_name, GetErrorMsg(field_error));
             }
             else {
                log.warning("Failed to Init() object '%s', error: %s", class_name, GetErrorMsg(error));
-               Lua->CaughtError = ERR::Init;
-               luaL_error(Lua, GetErrorMsg(ERR::Init));
+               luaL_error(Lua, ERR::Init);
             }
             return 0;
          }
@@ -607,8 +596,7 @@ static int object_newchild(lua_State *Lua)
       return 1;
    }
    else {
-      Lua->CaughtError = ERR::NewObject;
-      luaL_error(Lua, GetErrorMsg(ERR::NewObject));
+      luaL_error(Lua, ERR::NewObject);
       return 0;
    }
 }
@@ -632,7 +620,7 @@ object * push_object(lua_State *Lua, OBJECTPTR Object)
       lua_setmetatable(Lua, -2);
       return newobject;
    }
-   else luaL_error(Lua, "Failed to create new object.");
+   else luaL_error(Lua, ERR::Failed, "Failed to create new object.");
    return nullptr;
 }
 
@@ -891,7 +879,7 @@ static int object_subscribe(lua_State *Lua)
    object *def;
 
    if (!(def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
-      luaL_error(Lua, "Expected object.");
+      luaL_error(Lua, ERR::Args, "Expected object.");
       return 0;
    }
 
@@ -916,7 +904,7 @@ static int object_subscribe(lua_State *Lua)
 
    OBJECTPTR obj;
    if (!(obj = access_object(def))) {
-      luaL_error(Lua, GetErrorMsg(ERR::AccessObject));
+      luaL_error(Lua, ERR::AccessObject);
       return 0;
    }
 
@@ -946,7 +934,7 @@ static int object_subscribe(lua_State *Lua)
    }
    else {
       release_object(def);
-      luaL_error(Lua, GetErrorMsg(error));
+      luaL_error(Lua, error);
    }
    return 0;
 }
@@ -960,7 +948,7 @@ static int object_unsubscribe(lua_State *Lua)
 
    object *def;
    if (!(def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
-      luaL_error(Lua, "Expected object.");
+      luaL_error(Lua, ERR::Args, "Expected object.");
       return 0;
    }
 
@@ -990,14 +978,6 @@ static int object_unsubscribe(lua_State *Lua)
       return should_remove;
    });
 
-   return 0;
-}
-
-//********************************************************************************************************************
-
-static int object_delaycall(lua_State *Lua)
-{
-   luaL_error(Lua, "DEPRECATED: Use processing.delayedCall()");
    return 0;
 }
 
@@ -1055,12 +1035,12 @@ static int object_init(lua_State *Lua)
          return 1;
       }
       else {
-         luaL_error(Lua, GetErrorMsg(ERR::AccessObject));
+         luaL_error(Lua, ERR::AccessObject);
          return 0;
       }
    }
    else {
-      luaL_error(Lua, GetErrorMsg(ERR::SystemCorrupt));
+      luaL_error(Lua, ERR::SystemCorrupt);
       return 0;
    }
 }
@@ -1112,9 +1092,9 @@ static int object_init(lua_State *Lua)
          lua_pushcclosure(Lua, object_next_pair, 3);
          return 1;
       }
-      else luaL_error(Lua, "Object class defines no fields.");
+      else luaL_error(Lua, ERR::FieldSearch, "Object class defines no fields.");
    }
-   else luaL_error(Lua, "Expected object.");
+   else luaL_error(Lua, ERR::Args, "Expected object.");
    return 0;
 }
 
@@ -1146,9 +1126,9 @@ static int object_init(lua_State *Lua)
          lua_pushcclosure(Lua, object_next_ipair, 2);
          return 1;
       }
-      else luaL_error(Lua, "Object class defines no fields.");
+      else luaL_error(Lua, ERR::FieldSearch, "Object class defines no fields.");
    }
-   else luaL_error(Lua, "Expected object.");
+   else luaL_error(Lua, ERR::Args, "Expected object.");
    return 0;
 }
 

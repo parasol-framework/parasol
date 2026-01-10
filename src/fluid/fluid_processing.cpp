@@ -35,7 +35,7 @@ static int processing_new(lua_State *Lua)
       fp->Signals = 0;
 
       if (not (fp->Signals = new (std::nothrow) std::list<ObjectSignal>)) {
-         luaL_error(Lua, "Memory allocation failed.");
+         luaL_error(Lua, ERR::Memory);
       }
 
       if (lua_istable(Lua, 1)) {
@@ -267,8 +267,8 @@ static int processing_delayed_call(lua_State *Lua)
    if (msgid IS MSGID::NIL) {
       msgid = MSGID(AllocateID(IDTYPE::MESSAGE));
       auto func = C_FUNCTION(msg_handler, Lua);
-      if (AddMsgHandler(msgid, &func, &delayed_call_handle) != ERR::Okay) {
-         luaL_error(Lua, "Failed to register handler for delayedCall().");
+      if (auto error = AddMsgHandler(msgid, &func, &delayed_call_handle); error != ERR::Okay) {
+         luaL_error(Lua, error);
       }
    }
 

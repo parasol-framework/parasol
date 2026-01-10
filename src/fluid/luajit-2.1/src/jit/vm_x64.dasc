@@ -327,9 +327,6 @@
 // Offset to lua_State.try_stack.depth for exception handling
 #define L_TRY_DEPTH_OFS ((int)(offsetof(lua_State, try_stack) + offsetof(TryFrameStack, depth)))
 
-// Offset to lua_State.CaughtError for raise/check bytecodes
-#define L_CAUGHTERROR_OFS ((int)offsetof(lua_State, CaughtError))
-|
 |// Decrement hashed hotcount and trigger trace recorder if zero.
 |.macro hotloop, reg
 |  mov reg, PCd
@@ -5385,7 +5382,6 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  mov L:RB->base, BASE           // Sync L->base for error handling
     |  mov L:RB->top, BASE            // Sync L->top for error handling
     |  mov SAVE_PC, PC                // Ensure cframe has a valid PC for trace capture
-    |  mov dword [L:RB + L_CAUGHTERROR_OFS], RAd  // Set L->CaughtError
     |.if X64WIN
     |  mov CARG2d, RAd                // 2nd arg: error code
     |  mov CARG1, L:RB                // 1st arg: lua_State *L
@@ -5419,7 +5415,6 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  cvttsd2si RAd, xmm0
     |.endif
     |2:
-    |  mov dword [L:RB + L_CAUGHTERROR_OFS], RAd  // Set L->CaughtError
     |  lea RC, [BASE+RD*8]            // Get address of message slot (TValue*)
     |.if X64WIN
     |  mov CARG3, RC                  // 3rd arg: message TValue* (r8)
