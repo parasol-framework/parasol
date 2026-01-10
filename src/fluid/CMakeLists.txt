@@ -558,7 +558,7 @@ else ()
             ${LUAJIT_INCLUDE_DIRS}
             -Wno-trigraphs
             -c ${SOURCE_FILE} -o ${OBJECT_FILE}
-         DEPENDS ${SOURCE_FILE} ${LUAJIT_GENERATED_HEADERS}
+         DEPENDS ${SOURCE_FILE} ${LUAJIT_GENERATED_HEADERS} "${LUAJIT_SRC}/lj_ircall.h"
          COMMENT "Compiling ${FILENAME}.cpp"
          VERBATIM
       )
