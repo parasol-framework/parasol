@@ -68,9 +68,11 @@ end
    assert(content is 'Test content - appended', 'Append mode should add to end of file')
 
    -- Test opening non-existent file for reading
-   nonexistent_file, err = io.open(glTestFolder .. 'nonexistent.txt', 'r')
-   assert(nonexistent_file is nil, 'Should return nil for non-existent file')
-   assert(err != nil, 'Should return error message for non-existent file')
+   try
+      io.open(glTestFolder .. 'nonexistent.txt', 'r')
+   success
+      error('Should fail for non-existent file')
+   end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -321,9 +323,13 @@ end
 
 @Test(labels=['io', "error"]) function ErrorHandling()
    -- Test opening invalid file
-   file, err = io.open('/invalid/path/file.txt', 'r')
-   assert(file is nil, 'Should return nil for invalid file path')
-   assert(err, 'Should return error message for invalid file path')
+   try 
+      io.open('/invalid/path/file.txt', 'r')
+   except ex
+      assert(ex.code is ERR_OpenFile, 'Should return relevant error code, got: ' .. ex.message)
+   success
+      error('Should fail for invalid file path')
+   end
 
    -- Test operations on closed file
    test_path = createTestFile('test_closed.txt', 'test')
