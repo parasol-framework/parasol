@@ -6587,7 +6587,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
 
   case BC_RAISE:
     // BC_RAISE A, D: Raise exception with error code in RA, optional message in RD
-    // A = error code register, D = message register (0xFF = no message)
+    // A = error code register, D = message register
     |  ins_AD
     |  lwzx TMP0, BASE, RA            // Load type tag/high word
     |  lwz L, SAVE_L
@@ -6622,24 +6622,16 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |.endif
     |.endif
     |  stw TMP1, L_CAUGHTERROR_OFS(L) // Set L->CaughtError
-    |  cmplwi RD, 255                 // Check for message (0xFF = no message)
-    |  beq >2                         // No message - use default
+    |2:
     |  slwi TMP2, RD, 3
-    |  lwzx TMP0, BASE, TMP2          // Load message type tag
-    |  checkstr TMP0; bne >2          // Type check - must be string, else use default
-    |  add TMP2, BASE, TMP2
-    |  lwz CARG3, 4(TMP2)             // Load GCstr* from slot
+    |  add CARG3, BASE, TMP2          // 3rd arg: message TValue*
     |  mr CARG2, TMP1                 // 2nd arg: error code
     |  mr CARG1, L                    // 1st arg: lua_State *L
     |  bl extern lj_raise_with_msg    // Never returns
-    |2:  // No message or not a string - use default message
-    |  mr CARG2, TMP1                 // 2nd arg: error code
-    |  mr CARG1, L                    // 1st arg: lua_State *L
-    |  bl extern lj_raise_default     // Never returns
     |3:  // Not a number - use ERR_Failed (13) as default error code
     |  li TMP1, 13                     // ERR_Failed = 13
     |  stw TMP1, L_CAUGHTERROR_OFS(L)  // Set L->CaughtError
-    |  b <2                            // Branch to lj_raise_default call
+    |  b <2
     break;
 
   //  ----------------------------------------------------------------------
