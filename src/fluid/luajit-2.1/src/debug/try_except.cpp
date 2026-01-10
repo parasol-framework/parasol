@@ -26,7 +26,7 @@
 //********************************************************************************************************************
 // Native bytecode helpers for BC_CHECK and BC_RAISE opcodes.
 // These are called from VM assembly after type checking and L->CaughtError is already set.
-// All three functions are noreturn - they always throw an exception.
+// Both functions are noreturn - they always throw an exception.
 
 extern "C" LJ_NORET void lj_raise(lua_State *L, int32_t ErrorCode)
 {
