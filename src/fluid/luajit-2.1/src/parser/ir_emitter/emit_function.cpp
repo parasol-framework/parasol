@@ -159,10 +159,6 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
    ExpDesc expr;
    expr.init(ExpKind::Relocable, bcemit_AD(parent_state, BC_FNEW, 0, const_gc(parent_state, obj2gco(pt), LJ_TPROTO)));
 
-#if LJ_HASFFI
-   parent_state->flags |= (child_state.flags & PROTO_FFI);
-#endif
-
    if (not (parent_state->flags & PROTO_CHILD)) {
       if (parent_state->flags & PROTO_HAS_RETURN) parent_state->flags |= PROTO_FIXUP_RETURN;
       parent_state->flags |= PROTO_CHILD;

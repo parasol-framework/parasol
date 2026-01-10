@@ -863,12 +863,7 @@ enum {
 // New metamethods must be added at the end to avoid shifting indices.
 // Inserting in the middle breaks all metamethod dispatch until lj_vm.obj is rebuilt.
 
-#ifdef LJ_HASFFI
-#define MMDEF_FFI(_) _(new)
-#else
 #define MMDEF_FFI(_)
-#endif
-
 #define MMDEF_PAIRS(_) _(pairs) _(ipairs)
 
 // X-macro defining all metamethods - used for enum generation and name strings

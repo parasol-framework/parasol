@@ -139,11 +139,4 @@ double lj_vm_foldfpm(double x, int fpm)
    return 0;
 }
 
-#if LJ_HASFFI
-int lj_vm_errno(void)
-{
-   return errno;
-}
-#endif
-
 #endif

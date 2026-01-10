@@ -123,11 +123,7 @@ inline void markfinalized(GCobj* x) noexcept
 // Collector.
 extern "C" size_t lj_gc_separateudata(global_State* g, int all);
 extern "C" void lj_gc_finalize_udata(lua_State* L);
-#if LJ_HASFFI
-extern "C" void lj_gc_finalize_cdata(lua_State* L);
-#else
 #define lj_gc_finalize_cdata(L)      UNUSED(L)
-#endif
 extern "C" void lj_gc_freeall(global_State* g);
 extern "C" int LJ_FASTCALL lj_gc_step(lua_State* L);
 extern "C" void LJ_FASTCALL lj_gc_step_fixtop(lua_State* L);
@@ -325,13 +321,6 @@ public:
    void finalizeUdata(lua_State* L) noexcept {
       lj_gc_finalize_udata(L);
    }
-
-#if LJ_HASFFI
-   // Finalize all pending cdata objects.
-   void finalizeCdata(lua_State* L) noexcept {
-      lj_gc_finalize_cdata(L);
-   }
-#endif
 
    // Free all GC objects (called during state shutdown).
    void freeAll() noexcept {

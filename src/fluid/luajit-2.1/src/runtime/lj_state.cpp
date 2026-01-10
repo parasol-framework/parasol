@@ -17,11 +17,6 @@
 #include "lj_meta.h"
 #include "lj_state.h"
 #include "lj_frame.h"
-
-#if LJ_HASFFI
-#include "lj_ctype.h"
-#endif
-
 #include "lj_trace.h"
 #include "lj_dispatch.h"
 #include "lj_vm.h"
@@ -227,9 +222,6 @@ static void close_state(lua_State *L)
    lj_assertG(gcref(g->gc.root) == obj2gco(L), "main thread is not first GC object");
    lj_assertG(g->str.num == 0, "leaked %d strings", g->str.num);
    lj_trace_freestate(g);
-#if LJ_HASFFI
-   lj_ctype_freestate(g);
-#endif
    lj_str_freetab(g);
    lj_buf_free(g, &g->tmpbuf);
    lj_mem_freevec(g, tvref(L->stack), L->stacksize, TValue);
@@ -327,9 +319,6 @@ extern lua_State* lua_newstate(lua_Alloc allocf, void* allocd)
 static TValue* cpfinalize(lua_State *L, lua_CFunction dummy, void* ud)
 {
    GarbageCollector collector = gc(G(L));
-#if LJ_HASFFI
-   collector.finalizeCdata(L);
-#endif
    collector.finalizeUdata(L);
    // Frame pop omitted.
    return nullptr;

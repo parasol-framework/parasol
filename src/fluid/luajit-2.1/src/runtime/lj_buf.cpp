@@ -121,7 +121,6 @@ SBuf* lj_buf_putmem(SBuf* sb, const void* q, MSize len)
    return sb;
 }
 
-#if LJ_HASJIT or LJ_HASFFI
 static LJ_NOINLINE SBuf* LJ_FASTCALL lj_buf_putchar2(SBuf* sb, int c)
 {
    char* w = lj_buf_more2(sb, 1);
@@ -140,7 +139,6 @@ SBuf* LJ_FASTCALL lj_buf_putchar(SBuf* sb, int c)
    }
    return lj_buf_putchar2(sb, c);
 }
-#endif
 
 SBuf* LJ_FASTCALL lj_buf_putstr(SBuf* sb, GCstr* s)
 {

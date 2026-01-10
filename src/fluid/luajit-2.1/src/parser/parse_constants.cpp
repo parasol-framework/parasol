@@ -58,28 +58,10 @@ GCstr* LexState::intern_empty_string()
    return this->empty_string_constant;
 }
 
-#if LJ_HASFFI
-// Anchor cdata to avoid GC.
-void LexState::keepcdata(TValue* tv, GCcdata* cd)
-{
-   // NOBARRIER: the key is new or kept alive.
-   lua_State* L = this->L;
-   setcdataV(L, tv, cd);
-   setboolV(lj_tab_set(L, this->fs->kt, tv), 1);
-}
-#endif
-
 extern GCstr * lj_parse_keepstr(LexState* ls, const char* str, size_t len)
 {
    return ls->keepstr(std::string_view(str, len));
 }
-
-#if LJ_HASFFI
-LJ_USED LJ_FUNC void lj_parse_keepcdata(LexState* ls, TValue* tv, GCcdata* cd)
-{
-   ls->keepcdata(tv, cd);
-}
-#endif
 
 // Jump list handling
 

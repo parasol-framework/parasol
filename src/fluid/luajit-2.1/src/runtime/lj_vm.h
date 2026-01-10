@@ -105,9 +105,6 @@ LJ_ASMF double lj_vm_trunc(double);
 LJ_ASMF double lj_vm_trunc_sf(double);
 #endif
 #endif
-#if LJ_HASFFI
-LJ_ASMF int lj_vm_errno(void);
-#endif
 LJ_ASMF TValue *lj_vm_next(GCtab *t, uint32_t idx);
 #endif
 

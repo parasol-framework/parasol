@@ -11,13 +11,6 @@
 #include "lj_str.h"
 #include "lj_tab.h"
 #include "lj_bc.h"
-
-#if LJ_HASFFI
-#include "lj_ctype.h"
-#include "lj_cdata.h"
-#include "lualib.h"
-#endif
-
 #include "../parser/lexer.h"
 #include "lj_bcdump.h"
 #include "lj_state.h"
@@ -266,22 +259,6 @@ static void bcread_kgc(LexState *State, GCproto *pt, MSize sizekgc)
       }
       else if (tp == BCDUMP_KGC_TAB) {
          setgcref(*kr, obj2gco(bcread_ktab(State)));
-#if LJ_HASFFI
-      }
-      else if (tp != BCDUMP_KGC_CHILD) {
-         CTypeID id = tp == BCDUMP_KGC_COMPLEX ? CTID_COMPLEX_DOUBLE :
-            tp == BCDUMP_KGC_I64 ? CTID_INT64 : CTID_UINT64;
-         CTSize sz = tp == BCDUMP_KGC_COMPLEX ? 16 : 8;
-         GCcdata* cd = lj_cdata_new_(State->L, id, sz);
-         TValue* p = (TValue*)cdataptr(cd);
-         setgcref(*kr, obj2gco(cd));
-         p[0].u32.lo = bcread_uleb128(State);
-         p[0].u32.hi = bcread_uleb128(State);
-         if (tp == BCDUMP_KGC_COMPLEX) {
-            p[1].u32.lo = bcread_uleb128(State);
-            p[1].u32.hi = bcread_uleb128(State);
-         }
-#endif
       }
       else {
          lua_State* L = State->L;
@@ -442,14 +419,7 @@ static int bcread_header(LexState *State)
    bcread_flags(State) = flags = bcread_uleb128(State);
    if ((flags & ~(BCDUMP_F_KNOWN)) != 0) return 0;
    if ((flags & BCDUMP_F_FR2) != LJ_FR2 * BCDUMP_F_FR2) return 0;
-   if ((flags & BCDUMP_F_FFI)) {
-#if LJ_HASFFI
-      lua_State* L = State->L;
-      ctype_loadffi(L);
-#else
-      return 0;
-#endif
-   }
+   if ((flags & BCDUMP_F_FFI)) return 0;
 
    if ((flags & BCDUMP_F_STRIP)) {
       State->chunkname = lj_str_newz(State->L, State->chunkarg);

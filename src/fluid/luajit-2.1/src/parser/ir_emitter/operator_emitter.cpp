@@ -585,7 +585,7 @@ static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
          e->k = ExpKind::True;
          return;
       }
-      else if (e->is_constant() or (LJ_HASFFI and e->k IS ExpKind::CData)) {
+      else if (e->is_constant()) {
          e->k = ExpKind::False;
          return;
       }
@@ -606,29 +606,19 @@ static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
    else {
       fs_check_assert(fs,op IS BC_UNM or op IS BC_LEN, "bad unop %d", op);
       if (op IS BC_UNM and not e->has_jump()) {  // Constant-fold negations.
-#if LJ_HASFFI
-         if (e->k IS ExpKind::CData) {  // Fold in-place since cdata is not interned.
-            GCcdata* cd = cdataV(&e->u.nval);
-            int64_t* p = (int64_t*)cdataptr(cd);
-            if (cd->ctypeid IS CTID_COMPLEX_DOUBLE) p[1] ^= (int64_t)U64x(80000000, 00000000);
-            else *p = -*p;
-            return;
-         }
-         else
-#endif
-            if (e->is_num_constant() and !e->is_num_zero()) {  // Avoid folding to -0.
-               TValue* o = e->num_tv();
-               if (tvisint(o)) {
-                  int32_t k = intV(o);
-                  if (k IS -k) setnumV(o, -lua_Number(k));
-                  else setintV(o, -k);
-                  return;
-               }
-               else {
-                  o->u64 ^= U64x(80000000, 00000000);
-                  return;
-               }
+         if (e->is_num_constant() and !e->is_num_zero()) {  // Avoid folding to -0.
+            TValue* o = e->num_tv();
+            if (tvisint(o)) {
+               int32_t k = intV(o);
+               if (k IS -k) setnumV(o, -lua_Number(k));
+               else setintV(o, -k);
+               return;
             }
+            else {
+               o->u64 ^= U64x(80000000, 00000000);
+               return;
+            }
+         }
       }
       ExpressionValue e_value(fs, *e);
       e_value.discharge_to_any_reg(allocator);
