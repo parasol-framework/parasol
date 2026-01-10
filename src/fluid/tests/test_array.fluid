@@ -1,6 +1,6 @@
 -- Flute tests for array functionality
 
-@BeforeEach(hotpath=true)
+@BeforeEach(hotpath=200)
 function enforce_hotpath() end
 
 @Test function IntegerArrayConcat()
