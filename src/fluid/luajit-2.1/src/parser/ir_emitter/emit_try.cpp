@@ -243,12 +243,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_try_except_stmt(const TryExceptPayload 
 // Emit bytecode for raise statement: raise error_code [, message]
 //
 // Bytecode structure:
-//   <evaluate error_code to register>
-//   [<evaluate message to register>]
-//   GGET     R(base)   "lj_raise_internal"    ; Get internal raise function
-//   MOV      R(base+1) R(error_code)          ; Move error code to arg slot
-//   [MOV     R(base+2) R(message)]            ; Move message if present
-//   CALL     R(base)   1   2+has_msg          ; Call raise function (no results)
+//   BC_RAISE  A=error_reg, D=msg_reg (0xFF if no message)
 
 ParserResult<IrEmitUnit> IrEmitter::emit_raise_stmt(const RaiseStmtPayload &Payload, const SourceSpan &Span)
 {
@@ -259,40 +254,32 @@ ParserResult<IrEmitUnit> IrEmitter::emit_raise_stmt(const RaiseStmtPayload &Payl
          ParserErrorCode::InternalInvariant, "raise statement requires error code expression", Span));
    }
 
-   // Save starting register state
-   BCREG saved_freereg = fs->freereg;
-   bool has_message = (Payload.message != nullptr);
-
-   // Allocate registers for the call: function + frame slot + args
-   // Layout: [base]=func, [base+1]=frame, [base+2]=arg1, [base+3]=arg2
-   BCREG base = BCReg(fs->freereg);
-   fs->freereg += 2 + LJ_FR2 + (has_message ? 1 : 0);  // func + frame + args
-
-   // Load function from global: lj_raise_internal
-   GCstr *fname = this->lex_state.keepstr("lj_raise_internal");
-   bcemit_AD(fs, BC_GGET, base, const_gc(fs, obj2gco(fname), LJ_TSTR));
-
-   // Evaluate error code expression and move to argument slot
+   // Evaluate error code expression to a register
    auto code_result = this->emit_expression(*Payload.error_code);
-   if (not code_result.ok()) { fs->freereg = saved_freereg; return ParserResult<IrEmitUnit>::failure(code_result.error_ref()); }
+   if (not code_result.ok()) return ParserResult<IrEmitUnit>::failure(code_result.error_ref());
+
    ExpDesc code_expr = code_result.value_ref();
    expr_toanyreg(fs, &code_expr);
-   bcemit_AD(fs, BC_MOV, base + 1 + LJ_FR2, BCReg(code_expr.u.s.info));
+   auto error_reg = BCReg(code_expr.u.s.info);
+   auto msg_reg = BCReg(0xFF);  // No message by default
 
-   // Evaluate optional message expression and move to argument slot
-   if (has_message) {
+   // Evaluate optional message expression
+
+   if (Payload.message) {
       auto msg_result = this->emit_expression(*Payload.message);
-      if (not msg_result.ok()) { fs->freereg = saved_freereg; return ParserResult<IrEmitUnit>::failure(msg_result.error_ref()); }
+      if (not msg_result.ok()) {
+         expr_free(fs, &code_expr);
+         return ParserResult<IrEmitUnit>::failure(msg_result.error_ref());
+      }
       ExpDesc msg_expr = msg_result.value_ref();
       expr_toanyreg(fs, &msg_expr);
-      bcemit_AD(fs, BC_MOV, base + 2 + LJ_FR2, BCReg(msg_expr.u.s.info));
+      msg_reg = BCReg(msg_expr.u.s.info);
+      expr_free(fs, &msg_expr);
    }
 
-   // Emit call: B = number of results + 1 (0 results = B=1), C = number of args + 1
-   bcemit_ABC(fs, BC_CALL, base, 1, has_message ? 3 : 2);
-
-   // Restore freereg
-   fs->freereg = saved_freereg;
+   // Emit BC_RAISE: A=error_reg, D=msg_reg (0xFF = no message)
+   bcemit_AD(fs, BC_RAISE, error_reg, msg_reg);
+   expr_free(fs, &code_expr);
 
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
@@ -301,10 +288,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_raise_stmt(const RaiseStmtPayload &Payl
 // Emit bytecode for check statement: check expression
 //
 // Bytecode structure:
-//   <evaluate expression to register>
-//   GGET     R(base)   "lj_check_internal"    ; Get internal check function
-//   MOV      R(base+1) R(error_code)          ; Move error code to arg slot
-//   CALL     R(base)   1   2                  ; Call check function (no results, 1 arg)
+//   BC_CHECK  A=error_reg, D=0
 
 ParserResult<IrEmitUnit> IrEmitter::emit_check_stmt(const CheckStmtPayload &Payload, const SourceSpan &Span)
 {
@@ -315,30 +299,16 @@ ParserResult<IrEmitUnit> IrEmitter::emit_check_stmt(const CheckStmtPayload &Payl
          ParserErrorCode::InternalInvariant, "check statement requires error code expression", Span));
    }
 
-   // Save starting register state
-   BCREG saved_freereg = fs->freereg;
-
-   // Allocate registers for the call: function + frame slot + arg
-   // Layout: [base]=func, [base+1]=frame, [base+2]=arg1
-   BCREG base = BCReg(fs->freereg);
-   fs->freereg += 2 + LJ_FR2;  // func + frame + arg
-
-   // Load function from global: lj_check_internal
-   GCstr *check_fname = this->lex_state.keepstr("lj_check_internal");
-   bcemit_AD(fs, BC_GGET, base, const_gc(fs, obj2gco(check_fname), LJ_TSTR));
-
-   // Evaluate error code expression and move to argument slot
+   // Evaluate error code expression to a register
    auto code_result = this->emit_expression(*Payload.error_code);
-   if (not code_result.ok()) { fs->freereg = saved_freereg; return ParserResult<IrEmitUnit>::failure(code_result.error_ref()); }
+   if (not code_result.ok()) return ParserResult<IrEmitUnit>::failure(code_result.error_ref());
+
    ExpDesc code_expr = code_result.value_ref();
    expr_toanyreg(fs, &code_expr);
-   bcemit_AD(fs, BC_MOV, base + 1 + LJ_FR2, BCReg(code_expr.u.s.info));
 
-   // Emit call: B = 1 (no results), C = 2 (1 arg + 1)
-   bcemit_ABC(fs, BC_CALL, base, 1, 2);
-
-   // Restore freereg
-   fs->freereg = saved_freereg;
+   // Emit BC_CHECK: A=error_reg, D=0
+   bcemit_AD(fs, BC_CHECK, BCReg(code_expr.u.s.info), BCReg(0));
+   expr_free(fs, &code_expr);
 
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }

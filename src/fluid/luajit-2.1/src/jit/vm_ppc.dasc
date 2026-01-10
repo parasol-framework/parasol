@@ -488,6 +488,9 @@
 
 // Offset to lua_State.try_stack.depth for exception handling
 #define L_TRY_DEPTH_OFS ((int)(offsetof(lua_State, try_stack) + offsetof(TryFrameStack, depth)))
+
+// Offset to lua_State.CaughtError for raise/check bytecodes
+#define L_CAUGHTERROR_OFS ((int)offsetof(lua_State, CaughtError))
 |
 |.macro hotcheck, delta, target
 |  rlwinm TMP1, PC, 31, 25, 30
@@ -6533,6 +6536,110 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     //  bl extern lj_try_leave
     //  lp BASE, L->base	// Restore BASE from L->base
     |  ins_next
+    break;
+
+  case BC_CHECK:
+    // BC_CHECK A, D: Check error code in RA, raise if >= ExceptionThreshold (9)
+    // Fast path: if error code < 9, just continue (no exception)
+    // Slow path: call lj_check_raise to throw exception
+    |  ins_AD                         // A = error code register
+    |  lwzx TMP0, BASE, RA            // Load type tag/high word
+    |  checknum TMP0
+    |  bgt >1                         // Not a number - skip
+    |.if DUALNUM
+    |  beq >2                         // Integer path
+    |.if FPU
+    |  lfdx f0, BASE, RA
+    |  toint TMP1, f0
+    |.else
+    |  add TMP2, BASE, RA
+    |  lwz CARG2, 4(TMP2)
+    |  mr CARG1, TMP0
+    |  bl ->vm_tobit
+    |  mr TMP1, CARG1
+    |.endif
+    |  b >3
+    |2:
+    |  add TMP2, BASE, RA
+    |  lwz TMP1, 4(TMP2)
+    |3:
+    |.else
+    |.if FPU
+    |  lfdx f0, BASE, RA
+    |  toint TMP1, f0
+    |.else
+    |  b >1
+    |.endif
+    |.endif
+    |  cmplwi TMP1, 9                // Compare with ExceptionThreshold (ERR::Terminate = 9)
+    |  blt >1                         // Below threshold? Skip to fast path exit
+    |  lwz L, SAVE_L
+    |  stp BASE, L->base              // Sync L->base for error handling
+    |  stp BASE, L->top               // Sync L->top for error handling
+    |  stw PC, SAVE_PC                // Ensure cframe has a valid PC for trace capture
+    |  stw TMP1, L_CAUGHTERROR_OFS(L) // Set L->CaughtError
+    |  mr CARG2, TMP1                 // 2nd arg: error code
+    |  mr CARG1, L                    // 1st arg: lua_State *L
+    |  bl extern lj_check_raise       // Never returns
+    |1:
+    |  ins_next
+    break;
+
+  case BC_RAISE:
+    // BC_RAISE A, D: Raise exception with error code in RA, optional message in RD
+    // A = error code register, D = message register (0xFF = no message)
+    |  ins_AD
+    |  lwzx TMP0, BASE, RA            // Load type tag/high word
+    |  lwz L, SAVE_L
+    |  stp BASE, L->base              // Sync L->base for error handling
+    |  stp BASE, L->top               // Sync L->top for error handling
+    |  stw PC, SAVE_PC                // Ensure cframe has a valid PC for trace capture
+    |  checknum TMP0
+    |  bgt >3                         // Not a number - skip
+    |.if DUALNUM
+    |  beq >4                         // Integer path
+    |.if FPU
+    |  lfdx f0, BASE, RA
+    |  toint TMP1, f0
+    |.else
+    |  add TMP2, BASE, RA
+    |  lwz CARG2, 4(TMP2)
+    |  mr CARG1, TMP0
+    |  bl ->vm_tobit
+    |  mr TMP1, CARG1
+    |.endif
+    |  b >5
+    |4:
+    |  add TMP2, BASE, RA
+    |  lwz TMP1, 4(TMP2)
+    |5:
+    |.else
+    |.if FPU
+    |  lfdx f0, BASE, RA
+    |  toint TMP1, f0
+    |.else
+    |  b >3
+    |.endif
+    |.endif
+    |  stw TMP1, L_CAUGHTERROR_OFS(L) // Set L->CaughtError
+    |  cmplwi RD, 255                 // Check for message (0xFF = no message)
+    |  beq >2                         // No message - use default
+    |  slwi TMP2, RD, 3
+    |  lwzx TMP0, BASE, TMP2          // Load message type tag
+    |  checkstr TMP0; bne >2          // Type check - must be string, else use default
+    |  add TMP2, BASE, TMP2
+    |  lwz CARG3, 4(TMP2)             // Load GCstr* from slot
+    |  mr CARG2, TMP1                 // 2nd arg: error code
+    |  mr CARG1, L                    // 1st arg: lua_State *L
+    |  bl extern lj_raise_with_msg    // Never returns
+    |2:  // No message or not a string - use default message
+    |  mr CARG2, TMP1                 // 2nd arg: error code
+    |  mr CARG1, L                    // 1st arg: lua_State *L
+    |  bl extern lj_raise_default     // Never returns
+    |3:  // Not a number - use ERR_Failed (13) as default error code
+    |  li TMP1, 13                     // ERR_Failed = 13
+    |  stw TMP1, L_CAUGHTERROR_OFS(L)  // Set L->CaughtError
+    |  b <2                            // Branch to lj_raise_default call
     break;
 
   //  ----------------------------------------------------------------------

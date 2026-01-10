@@ -2238,6 +2238,11 @@ static void rec_decode_operands(jit_State *J, cTValue *lbase, RecordOps *ops)
    // Decode 'C' operand based on its mode
    switch (bcmode_c(op)) {
       case BCMvar:
+         if (op IS BC_RAISE and ops->rc IS NO_REG) { // BC_RAISE uses 0xFF sentinel for "no message".
+            setnilV(ops->rcv());
+            ops->rc = 0;
+            break;
+         }
          copyTV(J->L, ops->rcv(), &lbase[ops->rc]);
          ops->ix.key = ops->rc = getslot(J, ops->rc);
          break;
@@ -2929,6 +2934,15 @@ void lj_record_ins(jit_State *J)
       J->needsnap = 1; // Snapshot after try_leave to mark the end of the try block scope
       break;
    }
+
+   case BC_CHECK:
+   case BC_RAISE:
+      // These bytecodes throw exceptions and cannot be compiled into traces.
+      // Exit to interpreter to handle them. This avoids trace abort and ensures
+      // clean handoff without corrupting interpreter state.
+      lj_snap_add(J);
+      lj_record_stop(J, TraceLink::INTERP, 0);
+      break;
 
    default:
       if (op >= BC__MAX) {

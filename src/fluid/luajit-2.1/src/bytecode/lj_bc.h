@@ -207,7 +207,9 @@ constexpr uint8_t  NO_REG = BCMAX_A;
   \
   /* Exception handling. */ \
   _(TRYENTER,   base,   ___,   lit,   ___) \
-  _(TRYLEAVE,   base,   ___,   ___,   ___)
+  _(TRYLEAVE,   base,   ___,   ___,   ___) \
+  _(CHECK,   var,   ___,   lit,   ___) \
+  _(RAISE,   var,   ___,   var,   ___)
 
 // Bytecode opcode numbers.
 // Explicitly enumerated for debugger visibility and easy value lookup.
@@ -345,11 +347,13 @@ typedef enum {
    BC_FUNCC  = 105,
    BC_FUNCCW = 106,
 
-   // Exception handling (107-108)
+   // Exception handling (107-110)
    BC_TRYENTER = 107,
    BC_TRYLEAVE = 108,
+   BC_CHECK  = 109,  // Check error code, raise if >= threshold
+   BC_RAISE  = 110,  // Raise exception with error code and optional message
 
-   BC__MAX   = 109
+   BC__MAX   = 111
 } BCOp;
 
 [[nodiscard]] inline constexpr bool bc_is_func_header(BCOp Op) noexcept
