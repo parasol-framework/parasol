@@ -289,11 +289,7 @@ static char* serialize_put(char* w, SBufExt* sbx, cTValue* o)
          *w++ = SER_TAG_NULL;
       }
       else if (LJ_32 or checku32(ud)) {
-#if LJ_BE
          ud = lj_bswap64(ud);
-#elif LJ_BE
-         ud = lj_bswap(ud);
-#endif
          * w++ = SER_TAG_LIGHTUD32; memcpy(w, &ud, 4); w += 4;
       }
       else {
@@ -394,7 +390,6 @@ static char* serialize_get(char* r, SBufExt* sbx, TValue* o)
          ud = (uintptr_t)(LJ_BE ? lj_bswap(lj_getu32(r)) : lj_getu32(r));
          r += 4;
       }
-#if LJ_64
       else if (tp == SER_TAG_LIGHTUD64) {
          if (LJ_UNLIKELY(r + 8 > w)) goto eob;
          memcpy(&ud, r, 8); r += 8;
@@ -403,9 +398,6 @@ static char* serialize_get(char* r, SBufExt* sbx, TValue* o)
 #endif
       }
       setrawlightudV(o, lj_lightud_intern(sbufL(sbx), (void*)ud));
-#else
-      setrawlightudV(o, (void*)ud);
-#endif
    }
    else {
    badtag:
