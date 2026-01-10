@@ -3046,17 +3046,6 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  str TMP0, [BASE, RA, lsl #3]
     |  ins_next
     break;
-  case BC_KCDATA:
-    |.if FFI
-    |  // RA = dst, RC = cdata_const (~)
-    |  mvn RC, RC
-    |  ldr TMP0, [KBASE, RC, lsl #3]
-    |   movn TMP1, #~LJ_TCDATA
-    |  add TMP0, TMP0, TMP1, lsl #47
-    |  str TMP0, [BASE, RA, lsl #3]
-    |  ins_next
-    |.endif
-    break;
   case BC_KSHORT:
     |  // RA = dst, RC = int16_literal
     |  sxth RCw, RCw
@@ -4614,21 +4603,6 @@ static void emit_asm_debug(BuildCtx *ctx)
     fprintf(ctx->fp,
 	"\t.align 3\n"
 	".LEFDE0:\n\n");
-#if LJ_HASFFI
-    fprintf(ctx->fp,
-	".LSFDE1:\n"
-	"\t.long .LEFDE1-.LASFDE1\n"
-	".LASFDE1:\n"
-	"\t.long .Lframe0\n"
-	"\t.quad lj_vm_ffi_call\n"
-	"\t.quad %d\n"
-	"\t.byte 0x9e\n\t.uleb128 1\n"		//  offset lr
-	"\t.byte 0x9d\n\t.uleb128 2\n"		//  offset fp
-	"\t.byte 0x93\n\t.uleb128 3\n"		//  offset x19
-	"\t.byte 0x94\n\t.uleb128 4\n"		//  offset x20
-	"\t.align 3\n"
-	".LEFDE1:\n\n", (int)ctx->codesz - fcofs);
-#endif
     fprintf(ctx->fp, "\t.section .eh_frame,\"a\",%%progbits\n");
     fprintf(ctx->fp,
 	".Lframe1:\n"
@@ -4666,43 +4640,9 @@ static void emit_asm_debug(BuildCtx *ctx)
     fprintf(ctx->fp,
 	"\t.align 3\n"
 	".LEFDE2:\n\n");
-#if LJ_HASFFI
-    fprintf(ctx->fp,
-	".Lframe2:\n"
-	"\t.long .LECIE2-.LSCIE2\n"
-	".LSCIE2:\n"
-	"\t.long 0\n"
-	"\t.byte 0x1\n"
-	"\t.string \"zR\"\n"
-	"\t.uleb128 0x1\n"
-	"\t.sleb128 -8\n"
-	"\t.byte 30\n"				//  Return address is in lr.
-	"\t.uleb128 1\n"			//  augmentation length
-	"\t.byte 0x1b\n"			//  pcrel|sdata4
-	"\t.byte 0xc\n\t.uleb128 29\n\t.uleb128 16\n"	//  def_cfa fp 16
-	"\t.align 3\n"
-	".LECIE2:\n\n");
-    fprintf(ctx->fp,
-	".LSFDE3:\n"
-	"\t.long .LEFDE3-.LASFDE3\n"
-	".LASFDE3:\n"
-	"\t.long .LASFDE3-.Lframe2\n"
-	"\t.long lj_vm_ffi_call-.\n"
-	"\t.long %d\n"
-	"\t.uleb128 0\n"			//  augmentation length
-	"\t.byte 0x9e\n\t.uleb128 1\n"		//  offset lr
-	"\t.byte 0x9d\n\t.uleb128 2\n"		//  offset fp
-	"\t.byte 0x93\n\t.uleb128 3\n"		//  offset x19
-	"\t.byte 0x94\n\t.uleb128 4\n"		//  offset x20
-	"\t.align 3\n"
-	".LEFDE3:\n\n", (int)ctx->codesz - fcofs);
-#endif
     break;
 #if !LJ_NO_UNWIND
   case BUILD_machasm: {
-#if LJ_HASFFI
-    int fcsize = 0;
-#endif
     int j;
     fprintf(ctx->fp, "\t.section __TEXT,__eh_frame,coalesced,no_toc+strip_static_syms+live_support\n");
     fprintf(ctx->fp,
@@ -4727,9 +4667,6 @@ static void emit_asm_debug(BuildCtx *ctx)
       const char *name = ctx->sym[j].name;
       int32_t size = ctx->sym[j+1].ofs - ctx->sym[j].ofs;
       if (size == 0) continue;
-#if LJ_HASFFI
-      if (!strcmp(name, "_lj_vm_ffi_call")) { fcsize = size; continue; }
-#endif
       fprintf(ctx->fp,
 	"LSFDE%d:\n"
 	"\t.set L$set$%d,LEFDE%d-LASFDE%d\n"
@@ -4751,41 +4688,6 @@ static void emit_asm_debug(BuildCtx *ctx)
 	"\t.align 3\n"
 	"LEFDE%d:\n\n", j);
     }
-#if LJ_HASFFI
-    if (fcsize) {
-      fprintf(ctx->fp,
-	"EH_frame2:\n"
-	"\t.set L$set$y,LECIEY-LSCIEY\n"
-	"\t.long L$set$y\n"
-	"LSCIEY:\n"
-	"\t.long 0\n"
-	"\t.byte 0x1\n"
-	"\t.ascii \"zR\\0\"\n"
-	"\t.uleb128 0x1\n"
-	"\t.sleb128 -8\n"
-	"\t.byte 30\n"				//  Return address is in lr.
-	"\t.uleb128 1\n"			//  augmentation length
-	"\t.byte 0x1b\n"			//  pcrel|sdata4
-	"\t.byte 0xc\n\t.uleb128 29\n\t.uleb128 16\n"	//  def_cfa fp 16
-	"\t.align 3\n"
-	"LECIEY:\n\n");
-      fprintf(ctx->fp,
-	"LSFDEY:\n"
-	"\t.set L$set$yy,LEFDEY-LASFDEY\n"
-	"\t.long L$set$yy\n"
-	"LASFDEY:\n"
-	"\t.long LASFDEY-EH_frame2\n"
-	"\t.long _lj_vm_ffi_call-.\n"
-	"\t.long %d\n"
-	"\t.uleb128 0\n"			//  augmentation length
-	"\t.byte 0x9e\n\t.uleb128 1\n"		//  offset lr
-	"\t.byte 0x9d\n\t.uleb128 2\n"		//  offset fp
-	"\t.byte 0x93\n\t.uleb128 3\n"		//  offset x19
-	"\t.byte 0x94\n\t.uleb128 4\n"		//  offset x20
-	"\t.align 3\n"
-	"LEFDEY:\n\n", fcsize);
-    }
-#endif
     fprintf(ctx->fp, ".subsections_via_symbols\n");
     }
     break;
