@@ -1095,8 +1095,9 @@ LJ_NOINLINE GCstr* lj_err_str(lua_State *L, ErrMsg em)
 
 LJ_NOINLINE void lj_err_mem(lua_State *L)
 {
-   if (L->status IS LUA_ERRERR + 1)  //  Don't touch the stack during lua_open.
+   if (L->status IS LUA_ERRERR + 1) { //  Don't touch the stack during lua_open.
       lj_vm_unwind_c(L->cframe, LUA_ERRMEM);
+   }
    setstrV(L, L->top++, lj_err_str(L, ErrMsg::ERRMEM));
    lj_err_throw(L, LUA_ERRMEM);
 }
@@ -1420,6 +1421,7 @@ extern int lua_error(lua_State *L)
 
 extern int luaL_argerror(lua_State *L, int narg, CSTRING msg)
 {
+   L->CaughtError = ERR::Args;
    err_argmsg(L, narg, msg);
    return 0;  //  unreachable
 }
@@ -1439,10 +1441,10 @@ extern void luaL_where(lua_State *L, int level)
 
 [[noreturn]] extern void luaL_error(lua_State *L, CSTRING Format, ...)
 {
-   CSTRING msg;
+   if (L->CaughtError <= ERR::ExceptionThreshold) L->CaughtError = ERR::Exception;
    va_list argp;
    va_start(argp, Format);
-   msg = lj_strfmt_pushvf(L, Format, argp);
+   auto msg = lj_strfmt_pushvf(L, Format, argp);
    va_end(argp);
    lj_err_callermsg(L, msg);
 }

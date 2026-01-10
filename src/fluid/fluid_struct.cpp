@@ -72,7 +72,7 @@ static constexpr int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 
 
       return keyvalue_to_table(Lua, (const KEYVALUE *)Address);
    }
-   else luaL_error(Lua, "Unknown struct name '%.*s' - use 'include' to load module definitions.", int(StructName.size()), StructName.data());
+   else luaL_error(Lua, ERR::Search, "Unknown struct name '%.*s' - use 'include' to load module definitions.", int(StructName.size()), StructName.data());
    return ERR::Search;
 }
 
@@ -289,7 +289,7 @@ struct fstruct * push_struct(objScript *Self, APTR Address, std::string_view Str
    }
    else {
       if (Deallocate) FreeResource(Address);
-      luaL_error(prv->Lua, "Unrecognised struct '%s'", StructName.data());
+      luaL_error(prv->Lua, ERR::Search, "Unrecognised struct '%s'", StructName.data());
       return nullptr;
    }
 }
@@ -306,7 +306,7 @@ struct fstruct * push_struct_def(lua_State *Lua, APTR Address, struct_record &St
       lua_setmetatable(Lua, -2);
       return fs;
    }
-   else luaL_error(Lua, "Failed to create new struct.");
+   else luaL_error(Lua, ERR::Memory, "Failed to create new struct.");
 
    return nullptr;
 }
@@ -634,7 +634,7 @@ static int struct_new(lua_State *Lua)
 
          return 1;  // new userdatum is already on the stack
       }
-      else luaL_error(Lua, "Failed to create new struct.");
+      else luaL_error(Lua, ERR::Memory, "Failed to create new struct.");
    }
    else luaL_argerror(Lua, 1, "Structure name required.");
 
@@ -687,7 +687,7 @@ static int struct_get(lua_State *Lua)
          }
 
          if (!fs->Data) {
-            luaL_error(Lua, "Cannot reference field '%s' because struct address is NULL.", fieldname);
+            luaL_error(Lua, ERR::Failed, "Cannot reference field '%s' because struct address is NULL.", fieldname);
             return 0;
          }
 
@@ -764,13 +764,13 @@ static int struct_get(lua_State *Lua)
                else lua_pushinteger(Lua, ((uint8_t *)address)[0]);
             }
             else {
-               luaL_error(Lua, "%s", std::format("Field '{}' does not use a supported type of {:x}", fieldname, field.Type).c_str());
+               luaL_error(Lua, ERR::InvalidType, "%s", std::format("Field '{}' does not use a supported type of {:x}", fieldname, field.Type).c_str());
                return 0;
             }
             return 1;
          }
          else {
-            luaL_error(Lua, "Field '%s' does not exist in structure.", fieldname);
+            luaL_error(Lua, ERR::FieldSearch, "Field '%s' does not exist in structure.", fieldname);
             return 0;
          }
       }

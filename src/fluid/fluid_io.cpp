@@ -413,7 +413,7 @@ static int io_lines(lua_State *Lua)
       }
 
       if (lua_isnil(Lua, -1)) {
-         luaL_error(Lua, "No default input file available");
+         luaL_error(Lua, ERR::InvalidState, "No default input file available");
          return 0;
       }
 
@@ -429,7 +429,7 @@ static int io_lines(lua_State *Lua)
          close_on_finish = true; // Close when iteration ends
       }
       else {
-         luaL_error(Lua, "Cannot open file: %s", path);
+         luaL_error(Lua, ERR::File, "Cannot open file: %s", path);
          return 0;
       }
    }
@@ -459,7 +459,7 @@ static int io_lines(lua_State *Lua)
 
 static int io_popen(lua_State *Lua)
 {
-   luaL_error(Lua, "io.popen not yet implemented");
+   luaL_error(Lua, ERR::NoSupport, "io.popen not yet implemented");
    return 0;
 }
 
@@ -693,7 +693,7 @@ static int file_lines(lua_State *Lua)
 {
    auto handle = check_file_handle(Lua, 1);
    if (not handle->file_id) {
-      luaL_error(Lua, "Attempted to use a closed file");
+      luaL_error(Lua, ERR::File, "Attempted to use a closed file");
       return 0;
    }
 

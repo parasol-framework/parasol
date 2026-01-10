@@ -1026,7 +1026,7 @@ static int range_call(lua_State *L)
    if (lua_gettop(L) >= 2) {
       int arg2_type = lua_type(L, 2);
       if (arg2_type IS LUA_TNIL or arg2_type IS LUA_TNUMBER) {
-         luaL_error(L, "range used incorrectly in for loop; use 'for i in range()' not 'for i in range'");
+         luaL_error(L, ERR::Syntax, "range used incorrectly in for loop; use 'for i in range()' not 'for i in range'");
          return 0;
       }
    }

@@ -11,7 +11,7 @@ static int object_action_call_args(lua_State *Lua)
    auto argbuffer = std::make_unique<int8_t[]>(glActions[int(action_id)].Size+8); // +8 for overflow protection in build_args()
    ERR error = build_args(Lua, glActions[int(action_id)].Args, glActions[int(action_id)].Size, argbuffer.get(), nullptr);
    if (error != ERR::Okay) {
-      luaL_error(Lua, "Argument build failure for %s.", glActions[int(action_id)].Name);
+      luaL_error(Lua, ERR::Args, "Argument build failure for %s.", glActions[int(action_id)].Name);
       return 0;
    }
 
@@ -70,7 +70,7 @@ static int object_method_call_args(lua_State *Lua)
    int resultcount;
    ERR error = build_args(Lua, method->Args, method->Size, argbuffer.get(), &resultcount);
    if (error != ERR::Okay) {
-      luaL_error(Lua, "Argument build failure for method %s.", method->Name);
+      luaL_error(Lua, ERR::Args, "Argument build failure for method %s.", method->Name);
       return 0;
    }
 
@@ -203,9 +203,9 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, int8_t *
             ((CSTRING *)(argbuffer + j))[0] = nullptr;
          }
          else if ((type IS LUA_TUSERDATA) or (type IS LUA_TLIGHTUSERDATA)) {
-            luaL_error(Lua, "Arg #%d (%s) requires a string and not untyped pointer.", i, args[i].Name);
+            luaL_error(Lua, ERR::InvalidType, "Arg #%d (%s) requires a string and not untyped pointer.", i, args[i].Name);
          }
-         else luaL_error(Lua, "Arg #%d (%s) requires a string, got %s '%s'.", i, args[i].Name, lua_typename(Lua, type), lua_tostring(Lua, n));
+         else luaL_error(Lua, ERR::InvalidType, "Arg #%d (%s) requires a string, got %s '%s'.", i, args[i].Name, lua_typename(Lua, type), lua_tostring(Lua, n));
 
          //log.trace("Arg: %s, Value: %s", args[i].Name, ((STRING *)(argbuffer + j))[0]);
 
@@ -251,7 +251,7 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, int8_t *
                }
                else luaL_error(Lua, ERR::AllocMemory);
             }
-            else luaL_error(Lua, "Arg #%d (%s) requires a string or function, got %s '%s'.", i, args[i].Name, lua_typename(Lua, type), lua_tostring(Lua, n));
+            else luaL_error(Lua, ERR::InvalidType, "Arg #%d (%s) requires a string or function, got %s '%s'.", i, args[i].Name, lua_typename(Lua, type), lua_tostring(Lua, n));
          }
          else if (type IS LUA_TSTRING) {
             //log.trace("Arg: %s, Value: Pointer (Source is String)", args[i].Name);
@@ -379,7 +379,7 @@ static int get_results(lua_State *Lua, const FunctionField *args, const int8_t *
                }
                else {
                   if (named_struct_to_table(Lua, args[i].Name, ptr_struct) != ERR::Okay) {
-                     luaL_error(Lua, "Failed to create struct for %s, %p", args[i].Name, ptr_struct);
+                     luaL_error(Lua, ERR::Failed, "Failed to create struct for %s, %p", args[i].Name, ptr_struct);
                      return total;
                   }
                   if (type & FD_ALLOC) FreeResource(ptr_struct);

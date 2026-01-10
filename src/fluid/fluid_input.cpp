@@ -112,7 +112,7 @@ static void key_event(evKey *, int, struct finput *);
             return 1;
 
          default:
-            luaL_error(Lua, "Unknown field reference '%s'", field);
+            luaL_error(Lua, ERR::UnknownProperty, "Unknown field reference '%s'", field);
       }
    }
    return 0;
@@ -152,7 +152,7 @@ static void key_event(evKey *, int, struct finput *);
          if (surface->hasFocus()) sub_keyevent = true;
       }
       else {
-         luaL_error(Lua, "Failed to access surface #%d.", object_id);
+         luaL_error(Lua, ERR::AccessObject, "Failed to access surface #%d.", object_id);
          return 0;
       }
    }
@@ -187,7 +187,7 @@ static void key_event(evKey *, int, struct finput *);
       return 1;
    }
    else {
-      luaL_error(Lua, "Failed to create Fluid.input object.");
+      luaL_error(Lua, ERR::Memory, "Failed to create Fluid.input object.");
       return 0;
    }
 }
@@ -266,7 +266,7 @@ static void key_event(evKey *, int, struct finput *);
          };
 
          auto error = acDataFeed(*src, Lua->script, DATA::REQUEST, &dcr, sizeof(dcr));
-         if (error != ERR::Okay) luaL_error(Lua, "Failed to request item %d from source #%d: %s", item, source_id, GetErrorMsg(error));
+         if (error != ERR::Okay) luaL_error(Lua, ERR::Failed, "Failed to request item %d from source #%d: %s", item, source_id, GetErrorMsg(error));
       }
    }
 
@@ -303,7 +303,7 @@ static void key_event(evKey *, int, struct finput *);
    if (not modDisplay) {
       pf::SwitchContext context(modFluid);
       if ((error = objModule::load("display", &modDisplay, &DisplayBase)) != ERR::Okay) {
-         luaL_error(Lua, "Failed to load display module.");
+         luaL_error(Lua, ERR::LoadModule);
          return 0;
       }
    }
@@ -337,13 +337,13 @@ static void key_event(evKey *, int, struct finput *);
       prv->InputList = input;
 
       auto callback = C_FUNCTION(consume_input_events);
-      if ((error = gfx::SubscribeInput(&callback, input->SurfaceID, mask, device_id, &input->InputHandle)) != ERR::Okay) goto failed;
+      if ((error = gfx::SubscribeInput(&callback, input->SurfaceID, mask, device_id, &input->InputHandle)) != ERR::Okay) {
+         luaL_error(Lua, error);
+      }
 
       return 1;
    }
-
-failed:
-   luaL_error(Lua, "Failed to initialise input subscription.");
+   else luaL_error(Lua, ERR::Memory, "Failed to initialise input subscription.");
    return 0;
 }
 

@@ -18,9 +18,8 @@ The num interface provides support for processing a range of numeric types other
 #include "hashes.h"
 #include "defs.h"
 
-/*********************************************************************************************************************
-** Any Read accesses to the object will pass through here.
-*/
+//********************************************************************************************************************
+// Any Read accesses to the object will pass through here.
 
 static int number_index(lua_State *Lua)
 {

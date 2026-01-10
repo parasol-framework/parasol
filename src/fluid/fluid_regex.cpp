@@ -153,8 +153,8 @@ static int regex_new(lua_State *Lua)
 {
    pf::Log log(__FUNCTION__);
 
-   if (load_regex() != ERR::Okay) {
-      luaL_error(Lua, "Failed to load regex module");
+   if (auto error = load_regex(); error != ERR::Okay) {
+      luaL_error(Lua, error, "Failed to load regex module");
       return 0;
    }
 
@@ -172,13 +172,13 @@ static int regex_new(lua_State *Lua)
 
       std::string error_msg;
       if (rx::Compile(pattern, flags, &error_msg, &r->regex_obj) != ERR::Okay) {
-         luaL_error(Lua, "Regex compilation failed: %s", error_msg.c_str());
+         luaL_error(Lua, ERR::Syntax, "Regex compilation failed: %s", error_msg.c_str());
       }
 
       return 1; // userdata is already on stack
    }
    else {
-      luaL_error(Lua, "Failed to create regex object");
+      luaL_error(Lua, ERR::Memory, "Failed to create regex object");
       return 0;
    }
 }
@@ -357,11 +357,11 @@ static int regex_get(lua_State *Lua)
                return 1;
          }
 
-         luaL_error(Lua, "Unknown regex property/method: %s", field);
+         luaL_error(Lua, ERR::UnknownProperty, "Unknown regex property/method: %s", field);
       }
-      else luaL_error(Lua, "No field reference provided");
+      else luaL_error(Lua, ERR::Args, "No field reference provided");
    }
-   else luaL_error(Lua, "Invalid caller, expected Fluid.regex");
+   else luaL_error(Lua, ERR::Args, "Invalid caller, expected Fluid.regex");
 
    return 0;
 }

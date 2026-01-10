@@ -195,6 +195,7 @@ const CSTRING glMessages[int(ERR::END)+1] = {
  "The compression data is invalid or corrupted.",
  "A sanity check has failed.",
  "Client is not authorised to perform this operation.",
+ "The specified property is not recognised.",
  nullptr // Needs to be null-terminated for Fluid support
 };
 

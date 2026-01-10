@@ -299,7 +299,7 @@ static int module_load(lua_State *Lua)
    }
 
    if ((modname[i]) or (i >= 32)) {
-      luaL_error(Lua, "Invalid module name; only alpha-numeric names are permitted with max 32 chars.");
+      luaL_error(Lua, ERR::Syntax, "Invalid module name; only alpha-numeric names are permitted with max 32 chars.");
       return 0;
    }
 
@@ -323,7 +323,7 @@ static int module_load(lua_State *Lua)
    }
    else {
       log.debranch();
-      luaL_error(Lua, "Failed to load the %s module.", modname);
+      luaL_error(Lua, ERR::LoadModule, "Failed to load the %s module.", modname);
       return 0;
    }
 }
@@ -373,9 +373,9 @@ static int module_index(lua_State *Lua)
                return 1;
             }
 
-            luaL_error(Lua, "Call to function %s() not recognised.", function);
+            luaL_error(Lua, ERR::UnknownProperty, "Call to function %s() not recognised.", function);
          }
-         else luaL_error(Lua, "No exported function list for this module.", function);
+         else luaL_error(Lua, ERR::UnknownProperty, "No exported function list for this module.", function);
       }
       else luaL_argerror(Lua, 2, "Expected function string.");
    }
@@ -413,7 +413,7 @@ static int module_call(lua_State *Lua)
 
    auto mod = (module *)get_meta(Lua, lua_upvalueindex(1), "Fluid.mod");
    if (!mod) {
-      luaL_error(Lua, "module_call() expected module in upvalue.");
+      luaL_error(Lua, ERR::Args, "module_call() expected module in upvalue.");
       return 0;
    }
 
@@ -464,7 +464,7 @@ static int module_call(lua_State *Lua)
 
             if (argtype & FD_CPP) {
                cleanup();
-               luaL_error(Lua, "No support for calls utilising C++ arrays.");
+               luaL_error(Lua, ERR::NoSupport, "No support for calls utilising C++ arrays.");
                return 0;
             }
 
@@ -494,13 +494,13 @@ static int module_call(lua_State *Lua)
                }
                else {
                   cleanup();
-                  luaL_error(Lua, "Function '%s' is not compatible with Fluid.", mod->Functions[index].Name);
+                  luaL_error(Lua, ERR::InvalidType, "Function '%s' is not compatible with Fluid.", mod->Functions[index].Name);
                   return 0;
                }
             }
             else {
                cleanup();
-               luaL_error(Lua, "A memory buffer is required in arg #%d.", i);
+               luaL_error(Lua, ERR::Args, "A memory buffer is required in arg #%d.", i);
                return 0;
             }
          }
@@ -550,13 +550,13 @@ static int module_call(lua_State *Lua)
          }
          else {
             cleanup();
-            luaL_error(Lua, "Unrecognised arg %d type %d", i, argtype);
+            luaL_error(Lua, ERR::InvalidType, "Unrecognised arg %d type %d", i, argtype);
             return 0;
          }
       }
       else if (argtype & FD_FUNCTION) {
          if (func.defined()) { // Is the function reserve already used?
-            luaL_error(Lua, "Multiple function arguments are not supported.");
+            luaL_error(Lua, ERR::Args, "Multiple function arguments are not supported.");
             return 0;
          }
 
@@ -582,7 +582,7 @@ static int module_call(lua_State *Lua)
 
             default:
                cleanup();
-               luaL_error(Lua, "Type mismatch, arg #%d (%s) expected function, got %s '%s'.", i, args[i].Name, lua_typename(Lua, lua_type(Lua, i)), lua_tostring(Lua, i));
+               luaL_error(Lua, ERR::InvalidType, "Type mismatch, arg #%d (%s) expected function, got %s '%s'.", i, args[i].Name, lua_typename(Lua, lua_type(Lua, i)), lua_tostring(Lua, i));
                return 0;
          }
 
@@ -608,12 +608,12 @@ static int module_call(lua_State *Lua)
          }
          else if ((type IS LUA_TUSERDATA) or (type IS LUA_TLIGHTUSERDATA)) {
             cleanup();
-            luaL_error(Lua, "Arg #%d (%s) requires a string and not untyped pointer.", i, args[i].Name, lua_typename(Lua, lua_type(Lua, i)), lua_tostring(Lua, i));
+            luaL_error(Lua, ERR::InvalidType, "Arg #%d (%s) requires a string and not untyped pointer.", i, args[i].Name, lua_typename(Lua, lua_type(Lua, i)), lua_tostring(Lua, i));
             return 0;
          }
          else {
             cleanup();
-            luaL_error(Lua, "Type mismatch, arg #%d (%s) expected string, got %s '%s'.", i, args[i].Name, lua_typename(Lua, lua_type(Lua, i)), lua_tostring(Lua, i));
+            luaL_error(Lua, ERR::InvalidType, "Type mismatch, arg #%d (%s) expected string, got %s '%s'.", i, args[i].Name, lua_typename(Lua, lua_type(Lua, i)), lua_tostring(Lua, i));
             return 0;
          }
 
@@ -623,7 +623,7 @@ static int module_call(lua_State *Lua)
       }
       else if (argtype & FD_ARRAY) { // Pass array data pointer
          if (argtype & FD_CPP) {
-            luaL_error(Lua, "No support for calls utilising C++ arrays.");
+            luaL_error(Lua, ERR::NoSupport, "No support for calls utilising C++ arrays.");
             return 0;
          }
 
@@ -654,7 +654,7 @@ static int module_call(lua_State *Lua)
                      i++;
                   }
                   else {
-                     luaL_error(Lua, "Function '%s' is not compatible with Fluid.", mod->Functions[index].Name);
+                     luaL_error(Lua, ERR::NoSupport, "Function '%s' is not compatible with Fluid.", mod->Functions[index].Name);
                      return 0;
                   }
                }
@@ -675,20 +675,20 @@ static int module_call(lua_State *Lua)
                   }
                   else {
                      cleanup();
-                     luaL_error(Lua, "Function '%s' is not compatible with Fluid.", mod->Functions[index].Name);
+                     luaL_error(Lua, ERR::NoSupport, "Function '%s' is not compatible with Fluid.", mod->Functions[index].Name);
                      return 0;
                   }
                }
             }
             else {
                cleanup();
-               luaL_error(Lua, "Function '%s' is not compatible with Fluid.", mod->Functions[index].Name);
+               luaL_error(Lua, ERR::NoSupport, "Function '%s' is not compatible with Fluid.", mod->Functions[index].Name);
                return 0;
             }
          }
          else {
             cleanup();
-            luaL_error(Lua, "Type mismatch, arg #%d (%s) expected array, got '%s'.", i, args[i].Name, lua_typename(Lua, lua_type(Lua, i)));
+            luaL_error(Lua, ERR::InvalidType, "Type mismatch, arg #%d (%s) expected array, got '%s'.", i, args[i].Name, lua_typename(Lua, lua_type(Lua, i)));
             return 0;
          }
       }
@@ -799,13 +799,13 @@ static int module_call(lua_State *Lua)
                }
                else {
                   cleanup();
-                  luaL_error(Lua, "Failed to convert table to struct for arg #%d (%s).", i, args[i].Name);
+                  luaL_error(Lua, ERR::Failed, "Failed to convert table to struct for arg #%d (%s).", i, args[i].Name);
                   return 0;
                }
             }
             else {
                cleanup();
-               luaL_error(Lua, "Type mismatch, arg #%d (%s) expected pointer, got table.", i, args[i].Name);
+               luaL_error(Lua, ERR::InvalidType, "Type mismatch, arg #%d (%s) expected pointer, got table.", i, args[i].Name);
                return 0;
             }
          }
@@ -849,7 +849,7 @@ static int module_call(lua_State *Lua)
       }
       else if (argtype & (FD_TAGS|FD_VARTAGS)) {
          cleanup();
-         luaL_error(Lua, "Functions using tags are not supported.");
+         luaL_error(Lua, ERR::NoSupport, "Functions using tags are not supported.");
          return 0;
       }
       else {
@@ -913,7 +913,7 @@ static int module_call(lua_State *Lua)
                   }
                   else {
                      cleanup();
-                     luaL_error(Lua, "Failed to resolve struct %s, error: %s", args->Name, GetErrorMsg(error));
+                     luaL_error(Lua, ERR::Search, "Failed to resolve struct %s, error: %s", args->Name, GetErrorMsg(error));
                      return 0;
                   }
                }
@@ -935,8 +935,7 @@ static int module_call(lua_State *Lua)
                // Scope isolation: Only throw exceptions for direct calls within the try block.
                int16_t depth = Lua->base - tvref(Lua->stack);
                if (depth IS Lua->try_stack.frames[Lua->try_stack.depth-1].catch_depth) {
-                  Lua->CaughtError = ERR(rc);
-                  luaL_error(Lua, GetErrorMsg(ERR(rc)));
+                  luaL_error(Lua, ERR(rc));
                }
             }
          }
