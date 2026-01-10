@@ -62,20 +62,13 @@ static int lua_load(lua_State *Lua, class objFile *File, CSTRING SourceName)
 
 extern "C" LJ_NORET void lj_check_raise(lua_State *L, int32_t ErrorCode)
 {
-   // L->CaughtError is already set by the VM
    luaL_error(L, GetErrorMsg(ERR(ErrorCode)));
 }
 
-extern "C" LJ_NORET void lj_raise_with_msg(lua_State *L, int32_t ErrorCode, GCstr *Msg)
+extern "C" LJ_NORET void lj_raise_with_msg(lua_State *L, int32_t ErrorCode, TValue *Msg)
 {
-   // L->CaughtError is already set by the VM
-   luaL_error(L, "%s", strdata(Msg));
-}
-
-extern "C" LJ_NORET void lj_raise_default(lua_State *L, int32_t ErrorCode)
-{
-   // L->CaughtError is already set by the VM
-   luaL_error(L, GetErrorMsg(ERR(ErrorCode)));
+   if (tvisstr(Msg)) luaL_error(L, "%s", strdata(strV(Msg)));
+   else luaL_error(L, GetErrorMsg(ERR(ErrorCode)));
 }
 
 //********************************************************************************************************************
