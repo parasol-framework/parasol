@@ -59,7 +59,7 @@ static int thread_script(lua_State *Lua)
          }
       }, script, std::move(callback))));
    }
-   else luaL_error(Lua, "Failed to create script for threaded execution.");
+   else luaL_error(Lua, ERR::CreateObject);
 
    return 0;
 }
@@ -181,7 +181,7 @@ static int thread_action(lua_State *Lua)
 
    if (error != ERR::Okay) {
       if (callback.defined()) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
-      luaL_error(Lua, "Failed with error %s", GetErrorMsg(error));
+      luaL_error(Lua, error);
    }
 
    return 0;
@@ -273,7 +273,7 @@ static int thread_method(lua_State *Lua)
 
                if (error != ERR::Okay) {
                   if (callback.defined()) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
-                  luaL_error(Lua, "Failed with error %s", GetErrorMsg(error));
+                  luaL_error(Lua, error);
                }
 
                return 0;

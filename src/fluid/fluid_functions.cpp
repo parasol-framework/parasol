@@ -135,7 +135,7 @@ int fcmd_subscribe_event(lua_State *Lua)
    auto first_dot = event_view.find('.');
    if (first_dot != std::string_view::npos) {
       auto group_part = event_view.substr(0, first_dot);
-      if (group_part.size() >= GROUP_BUFFER_SIZE) luaL_error(Lua, "Buffer overflow.");
+      if (group_part.size() >= GROUP_BUFFER_SIZE) luaL_error(Lua, ERR::BufferOverflow);
 
       group_str = std::string(group_part);
       group_hash = strihash(group_str.c_str());
@@ -144,7 +144,7 @@ int fcmd_subscribe_event(lua_State *Lua)
       auto second_dot = event_view.find('.');
       if (second_dot != std::string_view::npos) {
          auto subgroup_part = event_view.substr(0, second_dot);
-         if (subgroup_part.size() >= GROUP_BUFFER_SIZE) luaL_error(Lua, "Buffer overflow.");
+         if (subgroup_part.size() >= GROUP_BUFFER_SIZE) luaL_error(Lua, ERR::BufferOverflow);
 
          subgroup_str = std::string(subgroup_part);
          subgroup_hash = strihash(subgroup_str.c_str());
@@ -288,7 +288,7 @@ int fcmd_include(lua_State *Lua)
 
       if (auto error = load_include(Lua->script, include); error != ERR::Okay) {
          if (error IS ERR::FileNotFound) luaL_error(Lua, "Requested include file '%s' does not exist.", include);
-         else luaL_error(Lua, "Failed to process include file: %s", GetErrorMsg(error));
+         else luaL_error(Lua, error, "Failed to process include file: %s", GetErrorMsg(error));
          return 0;
       }
    }
@@ -393,12 +393,12 @@ int fcmd_require(lua_State *Lua)
       else { lua_load_failed(Lua); return 0; }
    }
    else {
-      luaL_error(Lua, "Failed to open file '%s', may not exist.", path.c_str());
+      luaL_error(Lua, "Failed to open file '%s': %s.", path.c_str(), GetErrorMsg(file.error));
       return 0;
    }
 
    if (error_msg) luaL_error(Lua, error_msg);
-   else if (error != ERR::Okay) luaL_error(Lua, GetErrorMsg(error));
+   else if (error != ERR::Okay) luaL_error(Lua, error);
 
    return 0;
 }

@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <cstdio>
+#include <parasol/system/errors.h>
 #include "lua.h"
 
 // extra error code for `luaL_load'
@@ -36,6 +37,8 @@ extern int  luaL_newmetatable(lua_State *, const char *);
 extern void * luaL_checkudata(lua_State *, int ud, const char *);
 extern void luaL_where(lua_State *, int lvl);
 [[noreturn]] extern void luaL_error(lua_State *, const char *fmt, ...);
+[[noreturn]] extern void luaL_error(lua_State *, ERR);
+[[noreturn]] extern void luaL_error(lua_State *, ERR, const char *, ...);
 extern int luaL_checkoption(lua_State *, int narg, const char *def, const char *const lst[]);
 
 // pre-defined references

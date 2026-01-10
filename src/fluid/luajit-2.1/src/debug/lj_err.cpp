@@ -68,6 +68,8 @@
 #define lj_err_c
 #define LUA_CORE
 
+#include <parasol/main.h>
+
 #include "lj_obj.h"
 #include "lj_err.h"
 #include "lj_debug.h"
@@ -1435,12 +1437,30 @@ extern void luaL_where(lua_State *L, int level)
    lj_debug_addloc(L, "", frame, size ? frame + size : nullptr);
 }
 
-[[noreturn]] extern void luaL_error(lua_State *L, CSTRING fmt, ...)
+[[noreturn]] extern void luaL_error(lua_State *L, CSTRING Format, ...)
 {
    CSTRING msg;
    va_list argp;
-   va_start(argp, fmt);
-   msg = lj_strfmt_pushvf(L, fmt, argp);
+   va_start(argp, Format);
+   msg = lj_strfmt_pushvf(L, Format, argp);
+   va_end(argp);
+   lj_err_callermsg(L, msg);
+}
+
+[[noreturn]] extern void luaL_error(lua_State *L, ERR ErrorCode)
+{
+   L->CaughtError = ErrorCode;
+   lj_err_callermsg(L, GetErrorMsg(ErrorCode));
+}
+
+// Associates an error code with the formatted error message - allows try-except to catch specific errors.
+
+[[noreturn]] extern void luaL_error(lua_State *L, ERR ErrorCode, CSTRING Format, ...)
+{
+   L->CaughtError = ErrorCode;
+   va_list argp;
+   va_start(argp, Format);
+   auto msg = lj_strfmt_pushvf(L, Format, argp);
    va_end(argp);
    lj_err_callermsg(L, msg);
 }

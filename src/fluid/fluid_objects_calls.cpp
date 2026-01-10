@@ -249,7 +249,7 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, int8_t *
 
                   // The FUNCTION structure is freed when processing results
                }
-               else luaL_error(Lua, "Memory allocation error.");
+               else luaL_error(Lua, ERR::AllocMemory);
             }
             else luaL_error(Lua, "Arg #%d (%s) requires a string or function, got %s '%s'.", i, args[i].Name, lua_typename(Lua, type), lua_tostring(Lua, n));
          }

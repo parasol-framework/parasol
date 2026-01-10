@@ -43,8 +43,8 @@ struct CaseInsensitiveCompare {
 
 static std::set<std::string, CaseInsensitiveCompare> glLoadedConstants; // Stores the names of modules that have loaded constants (system wide)
 
-[[nodiscard]] static CSTRING load_include_struct(objScript *, CSTRING, CSTRING);
-[[nodiscard]] static CSTRING load_include_constant(CSTRING, CSTRING);
+[[nodiscard]] static CSTRING load_include_struct(objScript *, CSTRING, std::string_view);
+[[nodiscard]] static CSTRING load_include_constant(CSTRING, std::string_view);
 
 static int module_call(lua_State *);
 static int process_results(prvFluid *, APTR, const FunctionField *);
@@ -83,7 +83,7 @@ static int process_results(prvFluid *, APTR, const FunctionField *);
 // Update the constant registry.
 // A lock on glConstantMutex must be held before calling this function.
 
-static CSTRING load_include_constant(CSTRING Line, CSTRING Source)
+static CSTRING load_include_constant(CSTRING Line, std::string_view Source)
 {
    pf::Log log("load_include");
 
@@ -91,7 +91,7 @@ static CSTRING load_include_constant(CSTRING Line, CSTRING Source)
    for (i=0; (unsigned(Line[i]) > 0x20) and (Line[i] != ':'); i++);
 
    if (Line[i] != ':') {
-      log.warning("Malformed const name in %s.", Source);
+      log.warning("Malformed const name in %.*s.", int(Source.size()), Source.data());
       return next_line(Line);
    }
 
@@ -204,7 +204,7 @@ static ERR process_module_defs(objScript *Script, objModule *module, CSTRING Nam
 // Format: s.Name:typeField,...
 // TODO: This parses the struct definitions in advance - ideally we'd record the definition string and parse on first-use.
 
-[[nodiscard]] static CSTRING load_include_struct(objScript *Script, CSTRING Line, CSTRING Source)
+[[nodiscard]] static CSTRING load_include_struct(objScript *Script, CSTRING Line, std::string_view Source)
 {
    int i;
    for (i=0; (Line[i] >= 0x20) and (Line[i] != ':'); i++);
@@ -228,7 +228,7 @@ static ERR process_module_defs(objScript *Script, objModule *module, CSTRING Nam
       }
    }
    else {
-      pf::Log(__FUNCTION__).warning("Malformed struct name in %s.", Source);
+      pf::Log(__FUNCTION__).warning("Malformed struct name in %.*s.", int(Source.size()), Source.data());
       return next_line(Line);
    }
 }
