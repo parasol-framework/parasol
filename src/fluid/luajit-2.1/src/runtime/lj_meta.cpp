@@ -405,38 +405,6 @@ TValue * lj_meta_equal(lua_State *L, GCobj* o1, GCobj* o2, int ne)
 }
 
 //********************************************************************************************************************
-
-#if LJ_HASFFI
-TValue * LJ_FASTCALL lj_meta_equal_cd(lua_State *L, BCIns ins)
-{
-   ASMFunction cont = (bc_op(ins) & 1) ? lj_cont_condf : lj_cont_condt;
-   int op = (int)bc_op(ins) & ~1;
-   TValue tv;
-   cTValue *mo, * o2, * o1 = &L->base[bc_a(ins)];
-   cTValue *o1mm = o1;
-   if (op IS BC_ISEQV) {
-      o2 = &L->base[bc_d(ins)];
-      if (not tviscdata(o1mm)) o1mm = o2;
-   }
-   else if (op IS BC_ISEQS) {
-      setstrV(L, &tv, gco_to_string(proto_kgc(curr_proto(L), ~(ptrdiff_t)bc_d(ins))));
-      o2 = &tv;
-   }
-   else if (op IS BC_ISEQN) {
-      o2 = &mref<cTValue>(curr_proto(L)->k)[bc_d(ins)];
-   }
-   else {
-      lj_assertL(op IS BC_ISEQP, "bad bytecode op %d", op);
-      setpriV(&tv, ~bc_d(ins));
-      o2 = &tv;
-   }
-   mo = lj_meta_lookup(L, o1mm, MM_eq);
-   if (LJ_LIKELY(not tvisnil(mo))) return mmcall(L, cont, mo, o1, o2);
-   else return (TValue *)(intptr_t)(bc_op(ins) & 1);
-}
-#endif
-
-//********************************************************************************************************************
 // Helper for thunk equality comparisons. Resolves thunk and compares with any type.
 // Called from VM assembler (vmeta_equal_thunk) which does NOT set L->top.
 
@@ -512,38 +480,26 @@ TValue * LJ_FASTCALL lj_meta_equal_thunk(lua_State *L, BCIns ins)
 
 TValue * lj_meta_comp(lua_State *L, cTValue *o1, cTValue *o2, int op)
 {
-   if (LJ_HASFFI and (tviscdata(o1) or tviscdata(o2))) {
-      ASMFunction cont = (op & 1) ? lj_cont_condf : lj_cont_condt;
-      MMS mm = (op & 2) ? MM_le : MM_lt;
-      cTValue *mo = lj_meta_lookup(L, tviscdata(o1) ? o1 : o2, mm);
-      if (tvisnil(mo)) {
-         lj_err_comp(L, o1, o2);
-         return nullptr;
-      }
-      return mmcall(L, cont, mo, o1, o2);
+   // Never called with two numbers.
+   if (tvisstr(o1) and tvisstr(o2)) {
+      int32_t res = lj_str_cmp(strV(o1), strV(o2));
+      return (TValue *)(intptr_t)(((op & 2) ? res <= 0 : res < 0) ^ (op & 1));
    }
    else {
-      // Never called with two numbers.
-      if (tvisstr(o1) and tvisstr(o2)) {
-         int32_t res = lj_str_cmp(strV(o1), strV(o2));
-         return (TValue *)(intptr_t)(((op & 2) ? res <= 0 : res < 0) ^ (op & 1));
-      }
-      else {
-         while (true) {
-            ASMFunction cont = (op & 1) ? lj_cont_condf : lj_cont_condt;
-            MMS mm = (op & 2) ? MM_le : MM_lt;
-            cTValue *mo = lj_meta_lookup(L, o1, mm);
-            if (tvisnil(mo) and tvisnil((mo = lj_meta_lookup(L, o2, mm)))) {
-               if (op & 2) {  // MM_le not found: retry with MM_lt.
-                  cTValue *ot = o1; o1 = o2; o2 = ot;  //  Swap operands.
-                  op ^= 3;  //  Use LT and flip condition.
-                  continue;
-               }
-               lj_err_comp(L, o1, o2);
-               return nullptr;
+      while (true) {
+         ASMFunction cont = (op & 1) ? lj_cont_condf : lj_cont_condt;
+         MMS mm = (op & 2) ? MM_le : MM_lt;
+         cTValue *mo = lj_meta_lookup(L, o1, mm);
+         if (tvisnil(mo) and tvisnil((mo = lj_meta_lookup(L, o2, mm)))) {
+            if (op & 2) {  // MM_le not found: retry with MM_lt.
+               cTValue *ot = o1; o1 = o2; o2 = ot;  //  Swap operands.
+               op ^= 3;  //  Use LT and flip condition.
+               continue;
             }
-            return mmcall(L, cont, mo, o1, o2);
+            lj_err_comp(L, o1, o2);
+            return nullptr;
          }
+         return mmcall(L, cont, mo, o1, o2);
       }
    }
 }

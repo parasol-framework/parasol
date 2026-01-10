@@ -16,17 +16,11 @@
 #include "lj_tab.h"
 #include "lj_state.h"
 #include "lj_bc.h"
-
-#if LJ_HASFFI
-#include "lj_ctype.h"
-#endif
-
 #include "lj_ir.h"
 #include "lj_jit.h"
 #include "lj_ircall.h"
 #include "lj_iropt.h"
 #include "lj_target.h"
-
 #include "lj_trace.h"
 #include "lj_dispatch.h"
 #include "lj_vm.h"
@@ -359,9 +353,6 @@ LJLIB_CF(jit_util_tracek)
          slot = ir->op2;
          ir = &T->ir[ir->op1];
       }
-#if LJ_HASFFI
-      if (ir->o == IR_KINT64) ctype_loadffi(L);
-#endif
       lj_ir_kvalue(L, L->top - 2, ir);
       setintV(L->top - 1, (int32_t)irt_type(ir->t));
       if (slot == -1) return 2;

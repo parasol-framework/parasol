@@ -421,12 +421,6 @@ static void LJ_FASTCALL recff_tonumber(jit_State* J, RecordFFData* rd)
          }
          tr = emitir(IRTG(IR_STRTO, IRT_NUM), tr, 0);
       }
-#if LJ_HASFFI
-   }
-   else if (tref_iscdata(tr)) {
-      lj_crecord_tonumber(J, rd);
-      return;
-#endif
    }
    else {
       tr = TREF_NIL;
@@ -1204,13 +1198,6 @@ static void recff_format(jit_State* J, RecordFFData* rd, TRef hdr, int sbufx)
          id = IRCALL_lj_strfmt_putfnum_int;
       handle_int:
          if (!tref_isinteger(tra)) {
-#if LJ_HASFFI
-            if (tref_iscdata(tra)) {
-               tra = lj_crecord_loadiu64(J, tra, &rd->argv[arg]);
-               tr = lj_ir_call(J, IRCALL_lj_strfmt_putfxint, tr, trsf, tra);
-               break;
-            }
-#endif
             goto handle_num;
          }
          if (sf == STRFMT_INT) {  // Shortcut for plain %d.
@@ -1218,15 +1205,8 @@ static void recff_format(jit_State* J, RecordFFData* rd, TRef hdr, int sbufx)
                emitir(IRT(IR_TOSTR, IRT_STR), tra, IRTOSTR_INT));
          }
          else {
-#if LJ_HASFFI
-            tra = emitir(IRT(IR_CONV, IRT_U64), tra,
-               (IRT_INT | (IRT_U64 << 5) | IRCONV_SEXT));
-            tr = lj_ir_call(J, IRCALL_lj_strfmt_putfxint, tr, trsf, tra);
-            lj_needsplit(J);
-#else
             recff_nyiu(J, rd);  //  Don't bother working around this NYI.
             return;
-#endif
          }
          break;
       case STRFMT_UINT:

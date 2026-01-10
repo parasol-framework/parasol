@@ -404,13 +404,6 @@ static void expr_toreg_nobranch(FuncState *fs, ExpDesc *e, BCREG reg)
       else
 #endif
          ins = BCINS_AD(BC_KNUM, reg, const_num(fs, e));
-#if LJ_HASFFI
-   }
-   else if (e->k IS ExpKind::CData) {
-      fs->flags |= PROTO_FFI;
-      ins = BCINS_AD(BC_KCDATA, reg,
-         const_gc(fs, obj2gco(cdataV(&e->u.nval)), LJ_TCDATA));
-#endif
    }
    else if (e->k IS ExpKind::Relocable) {
       setbc_a(bcptr(fs, e), reg);

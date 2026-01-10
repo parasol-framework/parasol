@@ -333,10 +333,6 @@ public:
    void apply_buffered_token(const BufferedToken& token);
    BufferedToken scan_buffered_token();
 
-#if LJ_HASFFI
-   void keepcdata(TValue* Value, GCcdata* Cdata);
-#endif
-
 #ifdef LUA_USE_ASSERT
    template<typename... Args>
    void assert_condition(bool Condition, const char* Format, Args... Arguments) {

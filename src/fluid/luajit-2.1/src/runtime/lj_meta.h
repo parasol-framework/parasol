@@ -9,9 +9,6 @@
 LJ_FUNC void lj_meta_init(lua_State* L);
 LJ_FUNC [[nodiscard]] cTValue* lj_meta_cache(GCtab* mt, MMS mm, GCstr* name);
 LJ_FUNC [[nodiscard]] cTValue* lj_meta_lookup(lua_State* L, cTValue* o, MMS mm);
-#if LJ_HASFFI
-LJ_FUNC int lj_meta_tailcall(lua_State* L, cTValue* tv);
-#endif
 
 [[nodiscard]] inline cTValue* lj_meta_fastg(global_State* g, GCtab* mt, MMS mm) noexcept
 {

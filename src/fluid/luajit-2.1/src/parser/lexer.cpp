@@ -16,14 +16,6 @@
 #include "lj_err.h"
 #include "lj_buf.h"
 #include "lj_str.h"
-
-#if LJ_HASFFI
-#include "lj_tab.h"
-#include "lj_ctype.h"
-#include "lj_cdata.h"
-#include "lualib.h"
-#endif
-
 #include "lj_state.h"
 #include "lj_err.h"
 #include "lexer.h"
@@ -179,30 +171,6 @@ static void lex_number(LexState *State, TValue* tv)
    }
 
    if (fmt IS STRSCAN_NUM) return; // Already in correct format
-
-#if LJ_HASFFI
-   if (fmt != STRSCAN_ERROR) {
-      State->assert_condition(fmt IS STRSCAN_I64 or fmt IS STRSCAN_U64 or fmt IS STRSCAN_IMAG,
-         "unexpected number format %d", fmt);
-
-      lua_State* L = State->L;
-      ctype_loadffi(L);
-
-      GCcdata* cd;
-      if (fmt IS STRSCAN_IMAG) {
-         cd = lj_cdata_new_(L, CTID_COMPLEX_DOUBLE, 2 * sizeof(double));
-         auto* complex_ptr = (double*)cdataptr(cd);
-         complex_ptr[0] = 0.0;
-         complex_ptr[1] = numV(tv);
-      }
-      else {
-         cd = lj_cdata_new_(L, fmt IS STRSCAN_I64 ? CTID_INT64 : CTID_UINT64, 8);
-         *(uint64_t*)(cdataptr(cd)) = tv->u64;
-      }
-      lj_parse_keepcdata(State, tv, cd);
-      return;
-   }
-#endif
 
    State->assert_condition(fmt IS STRSCAN_ERROR, "unexpected number format %d", fmt);
 

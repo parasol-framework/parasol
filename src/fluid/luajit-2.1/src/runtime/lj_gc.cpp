@@ -41,10 +41,6 @@
 #include "lj_meta.h"
 #include "lj_state.h"
 #include "lj_frame.h"
-#if LJ_HASFFI
-#include "lj_ctype.h"
-#include "lj_cdata.h"
-#endif
 #include "lj_trace.h"
 #include "lj_dispatch.h"
 #include "lj_vm.h"
@@ -333,13 +329,6 @@ static int gc_traverse_tab(global_State *g, GCtab* t)
          else if (c IS 'v') weak |= LJ_GC_WEAKVAL;
       }
       if (weak) {  // Weak tables are cleared in the atomic phase.
-#if LJ_HASFFI
-         CTState* cts = ctype_ctsG(g);
-         if (cts and cts->finaliser IS t) {
-            weak = (int)(~0u & ~LJ_GC_WEAKVAL);
-         }
-         else
-#endif
          {
             t->marked = (uint8_t)((t->marked & ~LJ_GC_WEAK) | weak);
             setgcrefr(t->gclist, g->gc.weak);
@@ -563,11 +552,7 @@ static const std::array<GCFreeFunc, 10> gc_freefunc = {{
    (GCFreeFunc)lj_func_freeproto, // LJ_TPROTO
    (GCFreeFunc)lj_func_free,      // LJ_TFUNC
    (GCFreeFunc)lj_trace_free,     // LJ_TTRACE
-#if LJ_HASFFI
-   (GCFreeFunc)lj_cdata_free,     // LJ_TCDATA
-#else
    nullptr,                       // LJ_TCDATA (disabled)
-#endif
    (GCFreeFunc)lj_tab_free,       // LJ_TTAB
    (GCFreeFunc)lj_udata_free,     // LJ_TUDATA
    (GCFreeFunc)lj_array_free      // LJ_TARRAY
@@ -717,30 +702,8 @@ static void gc_finalize(lua_State *L)
    cTValue* mo;
    lj_assertG(tvref(g->jit_base) IS nullptr, "finaliser called on trace");
    // Unchain from list of userdata to be finalized.
-   if (o IS gcref(g->gc.mmudata))
-      setgcrefnull(g->gc.mmudata);
-   else
-      setgcrefr(gcref(g->gc.mmudata)->gch.nextgc, o->gch.nextgc);
-#if LJ_HASFFI
-   if (o->gch.gct IS ~LJ_TCDATA) {
-      TValue tmp, * tv;
-      // Add cdata back to the GC list and make it white.
-      setgcrefr(o->gch.nextgc, g->gc.root);
-      setgcref(g->gc.root, o);
-      makewhite(g, o);
-      o->gch.marked &= (uint8_t)~LJ_GC_CDATA_FIN;
-      // Resolve finaliser.
-      setcdataV(L, &tmp, gco_to_cdata(o));
-      tv = lj_tab_set(L, ctype_ctsG(g)->finaliser, &tmp);
-      if (not tvisnil(tv)) {
-         g->gc.nocdatafin = 0;
-         copyTV(L, &tmp, tv);
-         setnilV(tv);  //  Clear entry in finaliser table.
-         gc_call_finaliser(g, L, &tmp, o);
-      }
-      return;
-   }
-#endif
+   if (o IS gcref(g->gc.mmudata)) setgcrefnull(g->gc.mmudata);
+   else setgcrefr(gcref(g->gc.mmudata)->gch.nextgc, o->gch.nextgc);
    // Add userdata back to the main userdata list and make it white.
    setgcrefr(o->gch.nextgc, mainthread(g)->nextgc);
    setgcref(mainthread(g)->nextgc, o);
@@ -757,31 +720,6 @@ void lj_gc_finalize_udata(lua_State *L)
 {
    while (gcref(G(L)->gc.mmudata) != nullptr) gc_finalize(L);
 }
-
-#if LJ_HASFFI
-// Finalize all cdata objects from finaliser table.
-void lj_gc_finalize_cdata(lua_State *L)
-{
-   global_State *g = G(L);
-   CTState* cts = ctype_ctsG(g);
-   if (cts) {
-      GCtab* t = cts->finaliser;
-      Node* node = noderef(t->node);
-      ptrdiff_t i;
-      setgcrefnull(t->metatable);  //  Mark finaliser table as disabled.
-      for (i = (ptrdiff_t)t->hmask; i >= 0; i--)
-         if (not tvisnil(&node[i].val) and tviscdata(&node[i].key)) {
-            GCobj* o = gcV(&node[i].key);
-            TValue tmp;
-            makewhite(g, o);
-            o->gch.marked &= (uint8_t)~LJ_GC_CDATA_FIN;
-            copyTV(L, &tmp, &node[i].val);
-            setnilV(&node[i].val);
-            gc_call_finaliser(g, L, &tmp, o);
-         }
-   }
-}
-#endif
 
 //********************************************************************************************************************
 // Free all remaining GC objects.
@@ -878,9 +816,6 @@ static size_t gc_onestep(lua_State *L)
             lj_str_resize(L, g->str.mask >> 1);  //  Shrink string table.
          if (gcref(g->gc.mmudata)) {  // Need any finalizations?
             g->gc.state = GCPhase::Finalize;
-#if LJ_HASFFI
-            g->gc.nocdatafin = 1;
-#endif
          }
          else {  // Otherwise skip this phase to help the JIT.
             g->gc.state = (GCPhase::Pause);  //  End of GC cycle.
@@ -901,9 +836,6 @@ static size_t gc_onestep(lua_State *L)
             g->gc.estimate -= GCFINALIZECOST;
          return GCFINALIZECOST;
       }
-#if LJ_HASFFI
-      if (not g->gc.nocdatafin) lj_tab_rehash(L, ctype_ctsG(g)->finaliser);
-#endif
       g->gc.state = (GCPhase::Pause);  //  End of GC cycle.
       g->gc.debt = 0;
       return 0;

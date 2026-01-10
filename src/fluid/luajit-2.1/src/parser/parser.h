@@ -12,6 +12,3 @@ extern void parser_unit_tests(int &Passed, int &Total);
 
 extern GCproto *lj_parse(LexState *ls);
 extern GCstr *lj_parse_keepstr(LexState *ls, const char *str, size_t l);
-#if LJ_HASFFI
-LJ_FUNC void lj_parse_keepcdata(LexState *ls, TValue *tv, GCcdata *cd);
-#endif

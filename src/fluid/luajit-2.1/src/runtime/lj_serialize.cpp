@@ -16,13 +16,7 @@
 #include "lj_str.h"
 #include "lj_tab.h"
 #include "lj_udata.h"
-#if LJ_HASFFI
-#include "lj_ctype.h"
-#include "lj_cdata.h"
-#endif
-#if LJ_HASJIT
 #include "lj_ir.h"
-#endif
 #include "lj_serialize.h"
 
 // Tags for internal serialization format.
@@ -287,39 +281,6 @@ static char* serialize_put(char* w, SBufExt* sbx, cTValue* o)
          }
       }
       sbx->depth++;
-#if LJ_HASFFI
-   }
-   else if (tviscdata(o)) {
-      CTState* cts = ctype_cts(sbufL(sbx));
-      CType* s = ctype_raw(cts, cdataV(o)->ctypeid);
-      uint8_t* sp = (uint8_t*)cdataptr(cdataV(o));
-      if (ctype_isinteger(s->info) and s->size == 8) {
-         w = serialize_more(w, sbx, 1 + 8);
-         *w++ = (s->info & CTF_UNSIGNED) ? SER_TAG_UINT64 : SER_TAG_INT64;
-#if LJ_BE
-         { uint64_t u = lj_bswap64(*(uint64_t*)sp); memcpy(w, &u, 8); }
-#else
-         memcpy(w, sp, 8);
-#endif
-         w += 8;
-      }
-      else if (ctype_iscomplex(s->info) and s->size == 16) {
-         w = serialize_more(w, sbx, 1 + 16);
-         *w++ = SER_TAG_COMPLEX;
-#if LJ_BE
-         {  // Only swap the doubles. The re/im order stays the same.
-            uint64_t u = lj_bswap64(((uint64_t*)sp)[0]); memcpy(w, &u, 8);
-            u = lj_bswap64(((uint64_t*)sp)[1]); memcpy(w + 8, &u, 8);
-         }
-#else
-         memcpy(w, sp, 16);
-#endif
-         w += 16;
-      }
-      else {
-         goto badenc;  //  NYI other cdata
-      }
-#endif
    }
    else if (tvislightud(o)) {
       uintptr_t ud = (uintptr_t)lightudV(G(sbufL(sbx)), o);
@@ -328,27 +289,18 @@ static char* serialize_put(char* w, SBufExt* sbx, cTValue* o)
          *w++ = SER_TAG_NULL;
       }
       else if (LJ_32 or checku32(ud)) {
-#if LJ_BE && LJ_64
          ud = lj_bswap64(ud);
-#elif LJ_BE
-         ud = lj_bswap(ud);
-#endif
          * w++ = SER_TAG_LIGHTUD32; memcpy(w, &ud, 4); w += 4;
-#if LJ_64
       }
       else {
 #if LJ_BE
          ud = lj_bswap64(ud);
 #endif
          * w++ = SER_TAG_LIGHTUD64; memcpy(w, &ud, 8); w += 8;
-#endif
       }
    }
    else {
       // NYI userdata
-#if LJ_HASFFI
-      badenc :
-#endif
       lj_err_callerv(sbufL(sbx), ErrMsg::BUFFER_BADENC, lj_typename(o));
    }
    return w;
@@ -430,30 +382,6 @@ static char* serialize_get(char* r, SBufExt* sbx, TValue* o)
          } while (--nhash);
       }
       sbx->depth++;
-#if LJ_HASFFI
-   }
-   else if (tp >= SER_TAG_INT64 and tp <= SER_TAG_COMPLEX) {
-      uint32_t sz = tp == SER_TAG_COMPLEX ? 16 : 8;
-      GCcdata* cd;
-      if (LJ_UNLIKELY(r + sz > w)) goto eob;
-      if (LJ_UNLIKELY(!ctype_ctsG(G(sbufL(sbx))))) goto badtag;
-      cd = lj_cdata_new_(sbufL(sbx),
-         tp == SER_TAG_INT64 ? CTID_INT64 :
-         tp == SER_TAG_UINT64 ? CTID_UINT64 : CTID_COMPLEX_DOUBLE,
-         sz);
-      memcpy(cdataptr(cd), r, sz); r += sz;
-#if LJ_BE
-      * (uint64_t*)cdataptr(cd) = lj_bswap64(*(uint64_t*)cdataptr(cd));
-      if (sz == 16)
-         ((uint64_t*)cdataptr(cd))[1] = lj_bswap64(((uint64_t*)cdataptr(cd))[1]);
-#endif
-      if (sz == 16) {  // Fix non-canonical NaNs.
-         TValue* cdo = (TValue*)cdataptr(cd);
-         if (!tvisnum(&cdo[0])) setnanV(&cdo[0]);
-         if (!tvisnum(&cdo[1])) setnanV(&cdo[1]);
-      }
-      setcdataV(sbufL(sbx), o, cd);
-#endif
    }
    else if (tp <= (LJ_64 ? SER_TAG_LIGHTUD64 : SER_TAG_LIGHTUD32)) {
       uintptr_t ud = 0;
@@ -462,7 +390,6 @@ static char* serialize_get(char* r, SBufExt* sbx, TValue* o)
          ud = (uintptr_t)(LJ_BE ? lj_bswap(lj_getu32(r)) : lj_getu32(r));
          r += 4;
       }
-#if LJ_64
       else if (tp == SER_TAG_LIGHTUD64) {
          if (LJ_UNLIKELY(r + 8 > w)) goto eob;
          memcpy(&ud, r, 8); r += 8;
@@ -471,9 +398,6 @@ static char* serialize_get(char* r, SBufExt* sbx, TValue* o)
 #endif
       }
       setrawlightudV(o, lj_lightud_intern(sbufL(sbx), (void*)ud));
-#else
-      setrawlightudV(o, (void*)ud);
-#endif
    }
    else {
    badtag:

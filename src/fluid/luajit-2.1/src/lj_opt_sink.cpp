@@ -101,31 +101,16 @@ static void sink_mark_ins(jit_State* J)
          irt_setmark(IR(ir->op2)->t);  //  Mark stored value.
          break;
       }
-#if LJ_HASFFI
-      case IR_CNEWI:
-         if (irt_isphi(ir->t) &&
-            (!sink_checkphi(J, ir, ir->op2) ||
-               (LJ_32 and ir + 1 < irlast and (ir + 1)->o == IR_HIOP &&
-                  !sink_checkphi(J, ir, (ir + 1)->op2))))
-            irt_setmark(ir->t);  //  Mark ineligible allocation.
-#endif
-         // fallthrough
       case IR_USTORE:
          irt_setmark(IR(ir->op2)->t);  //  Mark stored value.
          break;
-#if LJ_HASFFI
-      case IR_CALLXS:
-#endif
       case IR_CALLS:
          irt_setmark(IR(ir->op1)->t);  //  Mark (potentially) stored values.
          break;
       case IR_PHI: {
          IRIns* irl = IR(ir->op1), * irr = IR(ir->op2);
          irl->prev = irr->prev = 0;  //  Clear PHI value counts.
-         if (irl->o == irr->o &&
-            (irl->o == IR_TNEW or irl->o == IR_TDUP ||
-               (LJ_HASFFI and (irl->o == IR_CNEW or irl->o == IR_CNEWI))))
-            break;
+         if (irl->o == irr->o && (irl->o == IR_TNEW or irl->o == IR_TDUP)) break;
          irt_setmark(irl->t);
          irt_setmark(irr->t);
          break;
@@ -196,9 +181,6 @@ static void sink_sweep_ins(jit_State* J)
             ir->prev = REGSP_INIT;
          }
          break;
-#if LJ_HASFFI
-      case IR_CNEW: case IR_CNEWI:
-#endif
       case IR_TNEW: case IR_TDUP:
          if (!irt_ismarked(ir->t)) {
             ir->t.irt &= ~IRT_GUARD;
@@ -212,14 +194,10 @@ static void sink_sweep_ins(jit_State* J)
          break;
       case IR_PHI: {
          IRIns* ira = IR(ir->op2);
-         if (!irt_ismarked(ira->t) &&
-            (ira->o == IR_TNEW or ira->o == IR_TDUP ||
-               (LJ_HASFFI and (ira->o == IR_CNEW or ira->o == IR_CNEWI)))) {
+         if (!irt_ismarked(ira->t) && (ira->o == IR_TNEW or ira->o == IR_TDUP)) {
             ir->prev = REGSP(RID_SINK, 0);
          }
-         else {
-            ir->prev = REGSP_INIT;
-         }
+         else ir->prev = REGSP_INIT;
          break;
       }
       default:
@@ -242,18 +220,15 @@ static void sink_sweep_ins(jit_State* J)
 ** 1. Mark all non-sinkable allocations.
 ** 2. Then sink all remaining allocations and the related stores.
 */
+
 void lj_opt_sink(jit_State* J)
 {
    const uint32_t need = (JIT_F_OPT_SINK | JIT_F_OPT_FWD |
       JIT_F_OPT_DCE | JIT_F_OPT_CSE | JIT_F_OPT_FOLD);
-   if ((J->flags & need) == need &&
-      (J->chain[IR_TNEW] or J->chain[IR_TDUP] ||
-         (LJ_HASFFI and (J->chain[IR_CNEW] or J->chain[IR_CNEWI])))) {
-      if (!J->loopref)
-         sink_mark_snap(J, &J->cur.snap[J->cur.nsnap - 1]);
+   if ((J->flags & need) == need and (J->chain[IR_TNEW] or J->chain[IR_TDUP])) {
+      if (!J->loopref) sink_mark_snap(J, &J->cur.snap[J->cur.nsnap - 1]);
       sink_mark_ins(J);
-      if (J->loopref)
-         sink_remark_phi(J);
+      if (J->loopref) sink_remark_phi(J);
       sink_sweep_ins(J);
    }
 }

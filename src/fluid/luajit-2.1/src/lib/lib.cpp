@@ -14,9 +14,6 @@
 #include "lj_func.h"
 #include "lj_bc.h"
 #include "lj_dispatch.h"
-#if LJ_HASFFI
-#include "lj_ctype.h"
-#endif
 #include "lj_vm.h"
 #include "lj_strscan.h"
 #include "lj_strfmt.h"

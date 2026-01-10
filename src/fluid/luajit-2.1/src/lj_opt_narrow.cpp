@@ -506,20 +506,6 @@ TRef LJ_FASTCALL lj_opt_narrow_tobit(jit_State* J, TRef tr)
    return narrow_stripov(J, tr, IR_SUBOV, (IRT_INT << 5) | IRT_INT | IRCONV_TOBIT);
 }
 
-#if LJ_HASFFI
-// Narrow C array index (overflow undefined).
-TRef LJ_FASTCALL lj_opt_narrow_cindex(jit_State* J, TRef tr)
-{
-   lj_assertJ(tref_isnumber(tr), "expected number type");
-   if (tref_isnum(tr))
-      return emitir(IRT(IR_CONV, IRT_INTP), tr, (IRT_INTP << 5) | IRT_NUM | IRCONV_ANY);
-   // Undefined overflow semantics allow stripping of ADDOV, SUBOV and MULOV.
-   return narrow_stripov(J, tr, IR_MULOV,
-      LJ_64 ? ((IRT_INTP << 5) | IRT_INT | IRCONV_SEXT) :
-      ((IRT_INTP << 5) | IRT_INT | IRCONV_TOBIT));
-}
-#endif
-
 // -- Narrowing of arithmetic operators -----------------------------------
 
 // Check whether a number fits into an int32_t (-0 is ok, too).

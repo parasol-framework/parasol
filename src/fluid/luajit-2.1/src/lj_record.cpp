@@ -1169,8 +1169,6 @@ int lj_record_mm_lookup(jit_State *J, RecordIndex* ix, MMS mm)
          ix->mt = TREF_NIL;
          return 0;  //  No metamethod.
       }
-      // The cdata metatable is treated as immutable.
-      if (LJ_HASFFI and tref_iscdata(ix->tab)) goto immutable_mt;
       ix->mt = mix.tab = lj_ir_ggfload(J, IRT_TAB, GG_OFS(g.gcroot) + (int)((GCROOT_BASEMT + itypemap(&ix->tabv)) * sizeof(GCRef)));
       goto nocheck;
    }

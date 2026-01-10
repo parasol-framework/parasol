@@ -14,11 +14,6 @@
 #include "lj_func.h"
 #include "lj_state.h"
 #include "lj_bc.h"
-
-#if LJ_HASFFI
-#include "lj_ctype.h"
-#endif
-
 #include "lj_strfmt.h"
 #include "lexer.h"
 #include "parser.h"
