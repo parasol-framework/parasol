@@ -488,8 +488,8 @@ static void LJ_FASTCALL recff_tostring(jit_State* J, RecordFFData* rd)
          J->base[0] = lj_ir_kstr(J, lj_strfmt_obj(J->L, &rd->argv[0]));
       }
       else {
-         recff_nyiu(J, rd);
-         return;
+         TRef tmp_ref = recff_tmpref(J, tr, IRTMPREF_IN1);
+         J->base[0] = lj_ir_call(J, IRCALL_lj_strfmt_obj, tmp_ref);
       }
    }
 }
