@@ -182,6 +182,7 @@ if (MSVC)
 
    file(GLOB LUAJIT_CORE_SOURCES
       "${LUAJIT_SRC}/debug/lj_*.cpp"
+      "${LUAJIT_SRC}/debug/try_except.cpp"
       "${LUAJIT_SRC}/runtime/lj_*.cpp"
       "${LUAJIT_SRC}/lj_*.cpp")
 
@@ -529,6 +530,7 @@ else ()
 
    file(GLOB LUAJIT_CORE_SOURCES
       "${LUAJIT_SRC}/debug/lj_*.cpp"
+      "${LUAJIT_SRC}/debug/try_except.cpp"
       "${LUAJIT_SRC}/runtime/lj_*.cpp"
       "${LUAJIT_SRC}/lj_*.cpp")
 

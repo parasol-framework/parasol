@@ -4499,8 +4499,8 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
 
   case BC_CHECK:
     // BC_CHECK A, D: Check error code in RA, raise if >= ExceptionThreshold (9)
-    // Fast path: if error code < 9, just continue (no exception)
-    // Slow path: call lj_check_raise to throw exception
+    // Fast path: If error code < 9, return
+    // Slow path: Throw exception
     |  ins_AD                         // A = error code register
     |  ldr RA, [BASE, RA, lsl #3]      // Load error code value from slot
     |  checknumber RA, >1             // Type check - must be numeric, else skip
@@ -4519,7 +4519,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  str RAw, [L, #L_CAUGHTERROR_OFS]  // Set L->CaughtError
     |  mov CARG2w, RAw                // 2nd arg: error code
     |  mov CARG1, L                   // 1st arg: lua_State *L
-    |  bl extern lj_check_raise       // Never returns
+    |  bl extern lj_raise             // Never returns
     |1:
     |  ins_next
     break;

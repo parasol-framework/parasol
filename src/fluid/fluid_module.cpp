@@ -202,6 +202,7 @@ static ERR process_module_defs(objScript *Script, objModule *module, CSTRING Nam
 
 //********************************************************************************************************************
 // Format: s.Name:typeField,...
+// TODO: This parses the struct definitions in advance - ideally we'd record the definition string and parse on first-use.
 
 [[nodiscard]] static CSTRING load_include_struct(objScript *Script, CSTRING Line, CSTRING Source)
 {

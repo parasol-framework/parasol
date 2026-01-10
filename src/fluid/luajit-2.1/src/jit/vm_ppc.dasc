@@ -6580,7 +6580,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  stw TMP1, L_CAUGHTERROR_OFS(L) // Set L->CaughtError
     |  mr CARG2, TMP1                 // 2nd arg: error code
     |  mr CARG1, L                    // 1st arg: lua_State *L
-    |  bl extern lj_check_raise       // Never returns
+    |  bl extern lj_raise             // Never returns
     |1:
     |  ins_next
     break;
