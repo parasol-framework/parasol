@@ -1841,61 +1841,11 @@ static void asm_hiop(ASMState* as, IRIns* ir)
    // HIOP is marked as a store because it needs its own DCE logic.
    int uselo = ra_used(ir - 1), usehi = ra_used(ir);  //  Loword/hiword used?
    if (LJ_UNLIKELY(!(as->flags & JIT_F_OPT_DCE))) uselo = usehi = 1;
-#if LJ_HASFFI or LJ_SOFTFP
-   if ((ir - 1)->o == IR_CONV) {  // Conversions to/from 64 bit.
-      as->curins--;  //  Always skip the CONV.
-#if LJ_HASFFI and !LJ_SOFTFP
-      if (usehi or uselo)
-         asm_conv64(as, ir);
-      return;
-#endif
-   }
-   else if ((ir - 1)->o <= IR_NE) {  // 64 bit integer comparisons. ORDER IR.
-      as->curins--;  //  Always skip the loword comparison.
-#if LJ_SOFTFP
-      if (!irt_isint(ir->t)) {
-         asm_sfpcomp(as, ir - 1);
-         return;
-      }
-#endif
-#if LJ_HASFFI
-      asm_comp64(as, ir);
-#endif
-      return;
-#if LJ_SOFTFP
-   }
-   else if ((ir - 1)->o == IR_MIN or (ir - 1)->o == IR_MAX) {
-      as->curins--;  //  Always skip the loword min/max.
-      if (uselo or usehi)
-         asm_sfpmin_max(as, ir - 1);
-      return;
-#endif
-   }
-   else if ((ir - 1)->o == IR_XSTORE) {
-      as->curins--;  //  Handle both stores here.
-      if ((ir - 1)->r != RID_SINK) {
-         asm_xstore_(as, ir, 0);
-         asm_xstore_(as, ir - 1, 4);
-      }
-      return;
-   }
-#endif
    if (!usehi) return;  //  Skip unused hiword op for all remaining ops.
    switch ((ir - 1)->o) {
 
-#if LJ_SOFTFP
-   case IR_SLOAD: case IR_ALOAD: case IR_HLOAD: case IR_ULOAD: case IR_VLOAD:
-   case IR_STRTO:
-      if (!uselo)
-         ra_allocref(as, ir->op1, RSET_GPR);  //  Mark lo op as used.
-      break;
-   case IR_ASTORE: case IR_HSTORE: case IR_USTORE: case IR_TOSTR: case IR_TMPREF:
-      // Nothing to do here. Handled by lo op itself.
-      break;
-#endif
    case IR_CALLN: case IR_CALLL: case IR_CALLS: case IR_CALLXS:
-      if (!uselo)
-         ra_allocref(as, ir->op1, RID2RSET(RID_RETLO));  //  Mark lo op as used.
+      if (!uselo) ra_allocref(as, ir->op1, RID2RSET(RID_RETLO));  //  Mark lo op as used.
       break;
    default: lj_assertA(0, "bad HIOP for op %d", (ir - 1)->o); break;
    }
