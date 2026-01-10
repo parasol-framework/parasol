@@ -87,7 +87,6 @@ static int io_open(lua_State *Lua)
    auto mode = luaL_optstring(Lua, 2, "r");
 
    auto flags = FL::NIL;
-
    for (int i = 0; mode[i]; i++) {
       switch (mode[i]) {
          case 'r': flags |= FL::READ; break;
@@ -109,9 +108,8 @@ static int io_open(lua_State *Lua)
       return 1;
    }
    else {
-      lua_pushnil(Lua);
-      lua_pushstring(Lua, "Failed to open file.");
-      return 2;
+      luaL_error(Lua, ERR::OpenFile);
+      return 0;
    }
 }
 
@@ -150,11 +148,7 @@ static int io_read(lua_State *Lua)
       lua_call(Lua, 0, 1);  // Call io.input() with no args
    }
 
-   if (lua_isnil(Lua, -1)) {
-      lua_pushnil(Lua);
-      lua_pushstring(Lua, "No default input file");
-      return 2;
-   }
+   if (lua_isnil(Lua, -1)) luaL_error(Lua, ERR::ExpectedFile);
 
    // Insert the file handle as first argument and call file:read
    lua_insert(Lua, 1);
@@ -179,11 +173,7 @@ static int io_write(lua_State *Lua)
       lua_call(Lua, 0, 1);  // Call io.output() with no args
    }
 
-   if (lua_isnil(Lua, -1)) {
-      lua_pushnil(Lua);
-      lua_pushstring(Lua, "No default output file");
-      return 2;
-   }
+   if (lua_isnil(Lua, -1)) luaL_error(Lua, ERR::ExpectedFile);
 
    // Insert the file handle as first argument and call file:write
    lua_insert(Lua, 1);
@@ -206,10 +196,7 @@ static int io_flush(lua_State *Lua)
       lua_call(Lua, 0, 1);  // Call io.output() with no args
    }
 
-   if (lua_isnil(Lua, -1)) {
-      lua_pushboolean(Lua, 0);  // Failed
-      return 1;
-   }
+   if (lua_isnil(Lua, -1)) luaL_error(Lua, ERR::File);
 
    // Call file:flush on the default output
    return file_flush(Lua);
@@ -238,7 +225,7 @@ static int io_input(lua_State *Lua)
             lua_pushvalue(Lua, -2);  // Copy the file handle
             lua_settable(Lua, LUA_REGISTRYINDEX);
          }
-         else lua_pushnil(Lua);
+         else luaL_error(Lua, ERR::OpenFile);
       }
       return 1;
    }
@@ -249,10 +236,7 @@ static int io_input(lua_State *Lua)
       if (lua_type(Lua, 1) IS LUA_TNUMBER) {
          switch(lua_tointeger(Lua, 1)) {
             case CONST_STDIN: path = "std:in"; break;
-            default:
-               lua_pushnil(Lua);
-               lua_pushstring(Lua, "Invalid file descriptor");
-               return 2;
+            default: luaL_error(Lua, ERR::File, "Invalid file descriptor");
          }
       }
       else path = lua_tostring(Lua, 1);
@@ -269,11 +253,7 @@ static int io_input(lua_State *Lua)
 
          return 1;
       }
-      else {
-         lua_pushnil(Lua);
-         lua_pushstring(Lua, "Cannot open file for reading");
-         return 2;
-      }
+      else luaL_error(Lua, ERR::OpenFile);
    }
    else if (check_file_handle(Lua, 1)) { // Use provided file handle as the new default
       lua_pushstring(Lua, "io.defaultInput");
@@ -282,11 +262,9 @@ static int io_input(lua_State *Lua)
       lua_pushvalue(Lua, 1);  // Return the file handle
       return 1;
    }
-   else {
-      lua_pushnil(Lua);
-      lua_pushstring(Lua, "Invalid argument, expected string or file handle");
-      return 2;
-   }
+   else luaL_argerror(Lua, 1, "Invalid argument, expected string or file handle");
+
+   return 0;
 }
 
 //********************************************************************************************************************
@@ -310,7 +288,7 @@ static int io_output(lua_State *Lua)
             lua_pushvalue(Lua, -2);  // Copy the file handle
             lua_settable(Lua, LUA_REGISTRYINDEX);
          }
-         else lua_pushnil(Lua);
+         else luaL_error(Lua, ERR::OpenFile);
       }
       return 1;
    }
@@ -327,14 +305,9 @@ static int io_output(lua_State *Lua)
          lua_pushstring(Lua, "io.defaultOutput");
          lua_pushvalue(Lua, -2);  // Copy the file handle
          lua_settable(Lua, LUA_REGISTRYINDEX);
-
          return 1;
       }
-      else {
-         lua_pushnil(Lua);
-         lua_pushstring(Lua, "Cannot open file for writing");
-         return 2;
-      }
+      else luaL_error(Lua, ERR::OpenFile);
    }
    else if (check_file_handle(Lua, 1)) { // Use provided file handle
       // Store as default
@@ -344,11 +317,9 @@ static int io_output(lua_State *Lua)
       lua_pushvalue(Lua, 1);  // Return the file handle
       return 1;
    }
-   else {
-      lua_pushnil(Lua);
-      lua_pushstring(Lua, "Invalid argument, expected string or file handle");
-      return 2;
-   }
+   else luaL_argerror(Lua, 1, "Invalid argument, expected string or file handle");
+
+   return 0;
 }
 
 //********************************************************************************************************************
@@ -428,10 +399,7 @@ static int io_lines(lua_State *Lua)
          file_handle = check_file_handle(Lua, -1);
          close_on_finish = true; // Close when iteration ends
       }
-      else {
-         luaL_error(Lua, ERR::File, "Cannot open file: %s", path);
-         return 0;
-      }
+      else luaL_error(Lua, ERR::File, "Cannot open file: %s", path);
    }
    else {
       // File handle provided
@@ -439,19 +407,22 @@ static int io_lines(lua_State *Lua)
       close_on_finish = false; // Don't close provided handle - we don't own it
    }
 
-   // Create iterator state
-   auto iter = (LinesIterator *)lua_newuserdata(Lua, sizeof(LinesIterator));
-   new(iter) LinesIterator(file_handle, close_on_finish);
+   if (file_handle) {
+      // Create iterator state
+      auto iter = (LinesIterator *)lua_newuserdata(Lua, sizeof(LinesIterator));
+      new (iter) LinesIterator(file_handle, close_on_finish);
 
-   // Set up GC metamethod for iterator state
-   lua_newtable(Lua);
-   lua_pushcfunction(Lua, lines_iterator_gc);
-   lua_setfield(Lua, -2, "__gc");
-   lua_setmetatable(Lua, -2);
+      // Set up GC metamethod for iterator state
+      lua_newtable(Lua);
+      lua_pushcfunction(Lua, lines_iterator_gc);
+      lua_setfield(Lua, -2, "__gc");
+      lua_setmetatable(Lua, -2);
 
-   // Return the iterator function with the state as upvalue
-   lua_pushcclosure(Lua, lines_iterator, 1);
-   return 1;
+      // Return the iterator function with the state as upvalue
+      lua_pushcclosure(Lua, lines_iterator, 1);
+      return 1;
+   }
+   else luaL_error(Lua, ERR::File);
 }
 
 //********************************************************************************************************************
@@ -473,10 +444,7 @@ static int io_tmpfile(lua_State *Lua)
       push_file_handle(Lua, file);
       return 1;
    }
-   else {
-      lua_pushnil(Lua);
-      return 1;
-   }
+   else luaL_error(Lua, ERR::CreateFile);
 }
 
 //********************************************************************************************************************
@@ -502,18 +470,10 @@ static int io_type(lua_State *Lua)
 static int file_read(lua_State *Lua)
 {
    if (auto handle = check_file_handle(Lua, 1)) {
-      if (not handle->file_id) {
-         lua_pushnil(Lua);
-         lua_pushstring(Lua, "Attempted to use a closed file");
-         return 2;
-      }
+      if (not handle->file_id) luaL_error(Lua, ERR::InvalidState, "Attempted to use a closed file");
 
       auto file = (objFile *)GetObjectPtr(handle->file_id);
-      if (not file) {
-         lua_pushnil(Lua);
-         lua_pushstring(Lua, "Attempted to use an orphaned file handle");
-         return 2;
-      }
+      if (not file) luaL_error(Lua, ERR::InvalidState, "Attempted to use an orphaned file handle");
 
       int nargs = lua_gettop(Lua);
 
@@ -596,7 +556,7 @@ static int file_read(lua_State *Lua)
             }
             else lua_pushstring(Lua, "");
          }
-         else lua_pushnil(Lua);
+         else luaL_error(Lua, ERR::InvalidType);
       }
 
       return nargs - 1; // Return number of results (excluding file handle)
@@ -609,29 +569,23 @@ static int file_read(lua_State *Lua)
 
 static int file_write(lua_State *Lua)
 {
-   auto handle = check_file_handle(Lua, 1);
-   auto file = (objFile *)GetObjectPtr(handle->file_id);
-   if (not file) {
-      lua_pushnil(Lua);
-      lua_pushstring(Lua, "Attempted to use a closed file");
-      return 2;
-   }
+   if (auto handle = check_file_handle(Lua, 1)) {
+      auto file = (objFile *)GetObjectPtr(handle->file_id);
+      if (not file) luaL_error(Lua, ERR::InvalidState);
 
-   int nargs = lua_gettop(Lua);
-   for (int i = 2; i <= nargs; i++) {
-      size_t len;
-      auto str = luaL_checklstring(Lua, i, &len);
+      int nargs = lua_gettop(Lua);
+      for (int i = 2; i <= nargs; i++) {
+         size_t len;
+         auto str = luaL_checklstring(Lua, i, &len);
 
-      int result;
-      if (acWrite(file, str, len, &result) != ERR::Okay) {
-         lua_pushnil(Lua);
-         lua_pushstring(Lua, "Write failed");
-         return 2;
+         int result;
+         if (acWrite(file, str, len, &result) != ERR::Okay) luaL_error(Lua, ERR::Write);
       }
-   }
 
-   lua_pushvalue(Lua, 1); // Return file handle
-   return 1;
+      lua_pushvalue(Lua, 1); // Return file handle
+      return 1;
+   }
+   else luaL_error(Lua, ERR::File);
 }
 
 //********************************************************************************************************************
@@ -650,66 +604,56 @@ static int file_flush(lua_State *Lua)
       lua_pushboolean(Lua, 1);
       return 1;
    }
-   else { // Should never happen
-      lua_pushnil(Lua);
-      return 1;
-   }
+   else luaL_error(Lua, ERR::File);
 }
 
 //********************************************************************************************************************
 
 static int file_seek(lua_State *Lua)
 {
-   auto handle = check_file_handle(Lua, 1);
-   auto file = (objFile *)GetObjectPtr(handle->file_id);
-   if (not file) {
-      lua_pushnil(Lua);
-      lua_pushstring(Lua, "Attempted to use a closed file");
-      return 2;
-   }
+   if (auto handle = check_file_handle(Lua, 1)) {
+      auto file = (objFile *)GetObjectPtr(handle->file_id);
+      if (not file) luaL_error(Lua, ERR::InvalidState);
 
-   auto whence_str = luaL_optstring(Lua, 2, "cur");
-   auto offset = luaL_optnumber(Lua, 3, 0);
+      auto whence_str = luaL_optstring(Lua, 2, "cur");
+      auto offset = luaL_optnumber(Lua, 3, 0);
 
-   SEEK whence = SEEK::CURRENT;
-   if (iequals("set", whence_str)) whence = SEEK::START;
-   else if (iequals("cur", whence_str)) whence = SEEK::CURRENT;
-   else if (iequals("end", whence_str)) whence = SEEK::END;
+      auto whence = SEEK::CURRENT;
+      if (iequals("set", whence_str)) whence = SEEK::START;
+      else if (iequals("cur", whence_str)) whence = SEEK::CURRENT;
+      else if (iequals("end", whence_str)) whence = SEEK::END;
 
-   if (acSeek(file, offset, whence) IS ERR::Okay) {
-      lua_pushnumber(Lua, file->Position);
-      return 1;
+      if (acSeek(file, offset, whence) IS ERR::Okay) {
+         lua_pushnumber(Lua, file->Position);
+         return 1;
+      }
+      else luaL_error(Lua, ERR::Seek);
    }
-   else {
-      lua_pushnil(Lua);
-      lua_pushstring(Lua, "Seek failed");
-      return 2;
-   }
+   else luaL_error(Lua, ERR::File);
 }
 
 //********************************************************************************************************************
 
 static int file_lines(lua_State *Lua)
 {
-   auto handle = check_file_handle(Lua, 1);
-   if (not handle->file_id) {
-      luaL_error(Lua, ERR::File, "Attempted to use a closed file");
-      return 0;
+   if (auto handle = check_file_handle(Lua, 1)) {
+      if (not handle->file_id) luaL_error(Lua, ERR::InvalidState);
+
+      // Create iterator state - don't close the file when iteration ends since it's a file method
+      auto iter = (LinesIterator *)lua_newuserdata(Lua, sizeof(LinesIterator));
+      new(iter) LinesIterator(handle, false);
+
+      // Set up GC metamethod for iterator state
+      lua_newtable(Lua);
+      lua_pushcfunction(Lua, lines_iterator_gc);
+      lua_setfield(Lua, -2, "__gc");
+      lua_setmetatable(Lua, -2);
+
+      // Return the iterator function with the state as upvalue
+      lua_pushcclosure(Lua, lines_iterator, 1);
+      return 1;
    }
-
-   // Create iterator state - don't close the file when iteration ends since it's a file method
-   auto iter = (LinesIterator *)lua_newuserdata(Lua, sizeof(LinesIterator));
-   new(iter) LinesIterator(handle, false);
-
-   // Set up GC metamethod for iterator state
-   lua_newtable(Lua);
-   lua_pushcfunction(Lua, lines_iterator_gc);
-   lua_setfield(Lua, -2, "__gc");
-   lua_setmetatable(Lua, -2);
-
-   // Return the iterator function with the state as upvalue
-   lua_pushcclosure(Lua, lines_iterator, 1);
-   return 1;
+   else luaL_error(Lua, ERR::File);
 }
 
 //********************************************************************************************************************
