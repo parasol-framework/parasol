@@ -90,8 +90,7 @@ enum class LiteralKind : uint8_t {
    Nil,
    Boolean,
    Number,
-   String,
-   CData
+   String
 };
 
 // Annotation argument value - supports the types allowed in annotation syntax
@@ -224,7 +223,6 @@ struct LiteralValue {
    bool bool_value = false;
    lua_Number number_value = 0.0;
    GCstr* string_value = nullptr;
-   TValue cdata_value{};
 
    // Default constructor (nil)
    LiteralValue() = default;
@@ -253,14 +251,6 @@ struct LiteralValue {
       LiteralValue lit;
       lit.kind = LiteralKind::String;
       lit.string_value = Value;
-      return lit;
-   }
-
-   // Construct a cdata literal
-   static LiteralValue cdata(const TValue& Value) {
-      LiteralValue lit;
-      lit.kind = LiteralKind::CData;
-      lit.cdata_value = Value;
       return lit;
    }
 };

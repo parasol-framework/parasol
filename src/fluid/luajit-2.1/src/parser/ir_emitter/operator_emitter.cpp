@@ -74,7 +74,6 @@ static CSTRING get_expkind_name(ExpKind k)
       case ExpKind::False: return "false";
       case ExpKind::Num: return "num";
       case ExpKind::Str: return "str";
-      case ExpKind::CData: return "cdata";
       case ExpKind::Local: return "local";
       case ExpKind::Upval: return "upval";
       case ExpKind::Global: return "global";

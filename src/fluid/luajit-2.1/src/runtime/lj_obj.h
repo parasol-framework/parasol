@@ -25,8 +25,6 @@
 union GCobj;
 struct GCstr;
 struct GCudata;
-struct GCcdata;
-struct GCcdataVar;
 struct GCproto;
 struct GCupval;
 union GCfunc;
@@ -124,7 +122,6 @@ enum class FluidType : uint8_t {
    Array,
    Func,
    Thread,
-   CData,
    Object,       // Parasol userdata
    Unknown
 };
@@ -439,28 +436,6 @@ typedef struct ThunkPayload {
 
 [[nodiscard]] inline void* uddata(GCudata* u) noexcept { return (void*)(u + 1); }
 [[nodiscard]] inline MSize sizeudata(const GCudata* u) noexcept { return sizeof(GCudata) + u->len; }
-
-//********************************************************************************************************************
-// C data object
-
-typedef struct GCcdata {
-   GCHeader;
-   uint16_t ctypeid;   //  C type ID.
-} GCcdata;
-
-// Prepended to variable-sized or realigned C data objects.
-typedef struct GCcdataVar {
-   uint16_t offset;   //  Offset to allocated memory (relative to GCcdata).
-   uint16_t extra;    //  Extra space allocated (incl. GCcdata + GCcdatav).
-   MSize len;         //  Size of payload.
-} GCcdataVar;
-
-[[nodiscard]] inline void* cdataptr(GCcdata* cd) noexcept { return (void*)(cd + 1); }
-[[nodiscard]] inline bool cdataisv(const GCcdata* cd) noexcept { return (cd->marked & 0x80) != 0; }
-[[nodiscard]] inline GCcdataVar* cdatav(GCcdata* cd) noexcept { return (GCcdataVar*)((char*)cd - sizeof(GCcdataVar)); }
-[[nodiscard]] inline MSize cdatavlen(GCcdata* cd) noexcept { return check_exp(cdataisv(cd), cdatav(cd)->len); }
-[[nodiscard]] inline MSize sizecdatav(GCcdata* cd) noexcept { return cdatavlen(cd) + cdatav(cd)->extra; }
-[[nodiscard]] inline void* memcdatav(GCcdata* cd) noexcept { return (void*)((char*)cd - cdatav(cd)->offset); }
 
 //********************************************************************************************************************
 // Function Prototype Object
@@ -1101,7 +1076,6 @@ typedef union GCobj {
    lua_State th;
    GCproto   pt;
    GCfunc    fn;
-   GCcdata   cd;
    GCtab     tab;
    GCarray   arr;
    GCudata   ud;

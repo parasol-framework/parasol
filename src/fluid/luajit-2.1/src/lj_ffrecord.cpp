@@ -845,9 +845,6 @@ static void LJ_FASTCALL recff_math_random(jit_State* J, RecordFFData* rd)
 static void LJ_FASTCALL recff_bit_tobit(jit_State* J, RecordFFData* rd)
 {
    TRef tr = J->base[0];
-#if LJ_HASFFI
-   if (tref_iscdata(tr)) { recff_bit64_tobit(J, rd); return; }
-#endif
    J->base[0] = lj_opt_narrow_tobit(J, tr);
    UNUSED(rd);
 }

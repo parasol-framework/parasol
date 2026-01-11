@@ -12,12 +12,12 @@
 
 LJ_DATADEF CSTRING const lj_obj_typename[] = {  // ORDER LUA_T
   "no value", "nil", "boolean", "userdata", "number", "string",
-  "table", "function", "userdata", "thread", "proto", "cdata", "array"
+  "table", "function", "userdata", "thread", "proto", "object", "array"
 };
 
 LJ_DATADEF CSTRING const lj_obj_itypename[] = {  // ORDER LJ_T
   "nil", "boolean", "boolean", "userdata", "string", "upval", "thread",
-  "proto", "function", "trace", "cdata", "table", "userdata", "array", "number"
+  "proto", "function", "trace", "object", "table", "userdata", "array", "number"
 };
 
 //********************************************************************************************************************

@@ -469,8 +469,8 @@ LJ_FUNC MSize LJ_FASTCALL lj_serialize_peektype(SBufExt* sbx)
       case SER_TAG_TAB + 3: case SER_TAG_TAB + 4: case SER_TAG_TAB + 5:
       case SER_TAG_DICT_MT:
          return IRT_TAB;
-      case SER_TAG_INT64: case SER_TAG_UINT64: case SER_TAG_COMPLEX:
-         return IRT_CDATA;
+      //case SER_TAG_INT64: case SER_TAG_UINT64: case SER_TAG_COMPLEX:
+      //   return IRT_CDATA;
       case SER_TAG_DICT_STR:
       default:
          return IRT_STR;

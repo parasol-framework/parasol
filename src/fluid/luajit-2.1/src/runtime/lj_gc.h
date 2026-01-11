@@ -123,7 +123,6 @@ inline void markfinalized(GCobj* x) noexcept
 // Collector.
 extern "C" size_t lj_gc_separateudata(global_State* g, int all);
 extern "C" void lj_gc_finalize_udata(lua_State* L);
-#define lj_gc_finalize_cdata(L)      UNUSED(L)
 extern "C" void lj_gc_freeall(global_State* g);
 extern "C" int LJ_FASTCALL lj_gc_step(lua_State* L);
 extern "C" void LJ_FASTCALL lj_gc_step_fixtop(lua_State* L);

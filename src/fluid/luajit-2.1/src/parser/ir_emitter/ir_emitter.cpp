@@ -1511,7 +1511,7 @@ ParserResult<ControlFlowEdge> IrEmitter::emit_condition_jump(const ExprNode& exp
 }
 
 //********************************************************************************************************************
-// Emit bytecode for a literal expression (nil, boolean, number, string, or CData).
+// Emit bytecode for a literal expression (nil, boolean, number, string).
 
 ParserResult<ExpDesc> IrEmitter::emit_literal_expr(const LiteralValue& literal)
 {
@@ -1521,10 +1521,6 @@ ParserResult<ExpDesc> IrEmitter::emit_literal_expr(const LiteralValue& literal)
       case LiteralKind::Boolean: expr = ExpDesc(literal.bool_value); break;
       case LiteralKind::Number:  expr = ExpDesc(literal.number_value); break;
       case LiteralKind::String:  expr = ExpDesc(literal.string_value); break;
-      case LiteralKind::CData:
-         expr.init(ExpKind::CData, 0);
-         expr.u.nval = literal.cdata_value;
-         break;
    }
    return ParserResult<ExpDesc>::success(expr);
 }

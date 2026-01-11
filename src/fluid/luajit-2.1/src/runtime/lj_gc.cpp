@@ -664,7 +664,7 @@ static void gc_clearweak(global_State *g, GCobj* o)
 }
 
 //********************************************************************************************************************
-// Call a userdata or cdata finaliser.
+// Call a userdata finaliser.
 
 static void gc_call_finaliser(global_State *g, lua_State *L, cTValue* mo, GCobj* o)
 {
@@ -693,7 +693,7 @@ static void gc_call_finaliser(global_State *g, lua_State *L, cTValue* mo, GCobj*
 }
 
 //********************************************************************************************************************
-// Finalize one userdata or cdata object from the mmudata list.
+// Finalize one userdata object from the mmudata list.
 
 static void gc_finalize(lua_State *L)
 {

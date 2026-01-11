@@ -65,7 +65,6 @@ end
    assert_compiles("ThreadVal:thread")
    assert_compiles("ObjVal:obj")
    assert_compiles("ObjectVal:object")
-   assert_compiles("Data:cdata")
 end
 
 @Test function UnknownTypeRejected()

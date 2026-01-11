@@ -25,7 +25,7 @@
 #include "parser/parser_tips.h"
 #endif
 
-// Infer the type of a literal value (nil, boolean, number, string, cdata).  Literal types are always marked as
+// Infer the type of a literal value (nil, boolean, number, string).  Literal types are always marked as
 // constant since their values cannot change.
 
 [[nodiscard]] static InferredType infer_literal_type(const LiteralValue &Literal)
@@ -41,7 +41,6 @@
       case LiteralKind::Boolean: result.primary = FluidType::Bool; break;
       case LiteralKind::Number:  result.primary = FluidType::Num; break;
       case LiteralKind::String:  result.primary = FluidType::Str; break;
-      case LiteralKind::CData:   result.primary = FluidType::CData; break;
    }
    return result;
 }
@@ -1217,7 +1216,7 @@ void TypeAnalyser::check_argument_type(const ExprNode& Argument, FluidType Expec
 // primary type and metadata (constant, nullable, fixed).
 //
 // Inference rules by expression type:
-// - Literals: Type determined by literal kind (nil, bool, num, str, cdata)
+// - Literals: Type determined by literal kind (nil, bool, num, str)
 // - Identifiers: Looked up in scope stack, returns declared or inferred type
 // - Tables: Always FluidType::Table
 // - Functions: Always FluidType::Func

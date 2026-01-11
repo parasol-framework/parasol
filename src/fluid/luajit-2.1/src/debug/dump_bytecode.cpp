@@ -98,10 +98,6 @@ static std::string describe_gc_constant(GCproto *Proto, ptrdiff_t Index)
 
    if (gc_obj->gch.gct IS (uint8_t)~LJ_TTAB) return "K<table>";
 
-#if LJ_HASFFI
-   if (gc_obj->gch.gct IS (uint8_t)~LJ_TCDATA) return "K<cdata>";
-#endif
-
    return "K<gc>";
 }
 
@@ -192,7 +188,6 @@ static std::string describe_operand_value(GCproto *Proto, BCMode Mode, int Value
       case BCMstr:
       case BCMfunc:
       case BCMtab:
-      case BCMcdata:
          return describe_gc_constant(Proto, -(ptrdiff_t)Value - 1);
 
       case BCMjump: {
@@ -264,8 +259,7 @@ static std::string describe_operand_from_fs(FuncState *fs, BCMode Mode, int Valu
 
       case BCMstr:
       case BCMfunc:
-      case BCMtab:
-      case BCMcdata: {
+      case BCMtab: {
          // Look up GC constant in the constant table
          GCtab *kt = fs->kt;
          Node *node = noderef(kt->node);

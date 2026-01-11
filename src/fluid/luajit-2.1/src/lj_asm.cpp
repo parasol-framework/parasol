@@ -7,16 +7,11 @@
 #define LUA_CORE
 
 #include "lj_obj.h"
-
-
 #include "lj_gc.h"
 #include "lj_buf.h"
 #include "lj_str.h"
 #include "lj_tab.h"
 #include "lj_frame.h"
-#if LJ_HASFFI
-#include "lj_ctype.h"
-#endif
 #include "lj_ir.h"
 #include "lj_jit.h"
 #include "lj_ircall.h"
@@ -2254,26 +2249,13 @@ static void asm_setup_regsp(ASMState* as)
             break;
          }
          break;
-#if LJ_SOFTFP
-      case IR_MIN: case IR_MAX:
-         if ((ir + 1)->o != IR_HIOP) break;
-#endif
          // fallthrough
          // C calls evict all scratch regs and return results in RID_RET.
       case IR_SNEW: case IR_XSNEW: case IR_NEWREF: case IR_BUFPUT:
          if (REGARG_NUMGPR < 3 and as->evenspill < 3)
             as->evenspill = 3;  //  lj_str_new and lj_tab_newkey need 3 args.
-#if LJ_TARGET_X86 and LJ_HASFFI
-         if (0) {
-      case IR_CNEW:
-         if (ir->op2 != REF_NIL and as->evenspill < 4)
-            as->evenspill = 4;  //  lj_cdata_newv needs 4 args.
-         }
-         // fallthrough
-#else
          // fallthrough
       case IR_CNEW:
-#endif
          // fallthrough
       case IR_TNEW: case IR_TDUP: case IR_CNEWI: case IR_TOSTR:
       case IR_BUFSTR:

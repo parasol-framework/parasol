@@ -127,7 +127,7 @@ LJLIB_PUSH("thread")
 LJLIB_PUSH("proto")
 LJLIB_PUSH("function")
 LJLIB_PUSH("trace")
-LJLIB_PUSH("cdata") // Deprecated
+LJLIB_PUSH("object")
 LJLIB_PUSH("table")
 LJLIB_PUSH(top-9)  //  userdata
 LJLIB_PUSH("array")

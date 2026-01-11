@@ -23,11 +23,6 @@
 #include "lj_ircall.h"
 #include "lj_iropt.h"
 #include "lj_trace.h"
-#if LJ_HASFFI
-#include "lj_ctype.h"
-#include "lj_cdata.h"
-#include "lj_carith.h"
-#endif
 #include "lj_vm.h"
 #include "lj_strscan.h"
 #include "lj_serialize.h"
@@ -385,7 +380,6 @@ found:
 // Copy value of IR constant.
 void lj_ir_kvalue(lua_State* L, TValue* tv, const IRIns* ir)
 {
-   UNUSED(L);
    lj_assertL(ir->o != IR_KSLOT, "unexpected KSLOT");  //  Common mistake.
    switch (ir->o) {
    case IR_KPRI: setpriV(tv, uint64_t(irt_toitype(ir->t))); break;
@@ -396,14 +390,6 @@ void lj_ir_kvalue(lua_State* L, TValue* tv, const IRIns* ir)
       break;
    case IR_KNULL: setintV(tv, 0); break;
    case IR_KNUM: setnumV(tv, ir_knum(ir)->n); break;
-#if LJ_HASFFI
-   case IR_KINT64: {
-      GCcdata* cd = lj_cdata_new_(L, CTID_INT64, 8);
-      *(uint64_t*)cdataptr(cd) = ir_kint64(ir)->u64;
-      setcdataV(L, tv, cd);
-      break;
-   }
-#endif
    default: lj_assertL(0, "bad IR constant op %d", ir->o); break;
    }
 }

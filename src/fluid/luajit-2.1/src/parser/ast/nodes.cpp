@@ -20,7 +20,6 @@ FluidType parse_type_name(std::string_view Name)
       { "func",      FluidType::Func },
       { "function",  FluidType::Func },
       { "thread",    FluidType::Thread },
-      { "cdata",     FluidType::CData },
       { "obj",       FluidType::Object },
       { "object",    FluidType::Object }
    };
@@ -85,7 +84,6 @@ FluidType infer_expression_type(const ExprNode& Expr)
             case LiteralKind::Boolean: return FluidType::Bool;
             case LiteralKind::Number:  return FluidType::Num;
             case LiteralKind::String:  return FluidType::Str;
-            case LiteralKind::CData:   return FluidType::CData;
          }
          break;
       }
