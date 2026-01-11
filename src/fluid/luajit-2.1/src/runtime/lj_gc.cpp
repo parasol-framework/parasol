@@ -214,7 +214,7 @@ static void gc_mark(global_State *g, GCobj* o)
          }
       }
    }
-   else if (gct != ~LJ_TSTR and gct != ~LJ_TCDATA) {
+   else if (gct != ~LJ_TSTR) {
       lj_assertG(gct IS ~LJ_TFUNC or gct IS ~LJ_TTAB or
          gct IS ~LJ_TTHREAD or gct IS ~LJ_TPROTO or gct IS ~LJ_TTRACE, "bad GC type %d", gct);
       setgcrefr(o->gch.gclist, g->gc.gray);

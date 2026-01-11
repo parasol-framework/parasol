@@ -65,7 +65,7 @@ constexpr int LUA_TFUNCTION = 6;
 constexpr int LUA_TUSERDATA = 7;
 constexpr int LUA_TTHREAD = 8;
 constexpr int LUA_TPROTO = 9;
-constexpr int LUA_TCDATA = 10;
+constexpr int LUA_TOBJECT = 10;
 constexpr int LUA_TARRAY = 11;
 
 // minimum Lua stack available to a C function

@@ -286,10 +286,6 @@ static std::string describe_operand_from_fs(FuncState *fs, BCMode Mode, int Valu
                }
 
                if (tvistab(key_tv)) return "K<table>";
-
-#if LJ_HASFFI
-               if (tviscdata(key_tv)) return "K<cdata>";
-#endif
                break;
             }
          }

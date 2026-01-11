@@ -780,20 +780,7 @@ LJFOLD(ADD KGC KINT64)
 LJFOLDF(kfold_add_kgc)
 {
    GCobj* o = ir_kgc(fleft);
-#if LJ_64
    ptrdiff_t ofs = (ptrdiff_t)ir_kint64(fright)->u64;
-#else
-   ptrdiff_t ofs = fright->i;
-#endif
-#if LJ_HASFFI
-   if (irt_iscdata(fleft->t)) {
-      CType* ct = ctype_raw(ctype_ctsG(J2G(J)), gco_to_cdata(o)->ctypeid);
-      if (ctype_isnum(ct->info) or ctype_isenum(ct->info) ||
-         ctype_isptr(ct->info) or ctype_isfunc(ct->info) ||
-         ctype_iscomplex(ct->info) or ctype_isvector(ct->info))
-         return lj_ir_kkptr(J, (char*)o + ofs);
-   }
-#endif
    return lj_ir_kptr(J, (char*)o + ofs);
 }
 
@@ -804,11 +791,7 @@ LJFOLD(ADD KKPTR KINT64)
 LJFOLDF(kfold_add_kptr)
 {
    void* p = ir_kptr(fleft);
-#if LJ_64
    ptrdiff_t ofs = (ptrdiff_t)ir_kint64(fright)->u64;
-#else
-   ptrdiff_t ofs = fright->i;
-#endif
    return lj_ir_kptr_(J, IROp(fleft->o), (char*)p + ofs);
 }
 
@@ -864,10 +847,8 @@ LJFOLD(CONV KINT IRCONV_I64_U32)
 LJFOLD(CONV KINT IRCONV_U64_U32)
 LJFOLDF(kfold_conv_kint_i64)
 {
-   if ((fins->op2 & IRCONV_SEXT))
-      return INT64FOLD((uint64_t)(int64_t)fleft->i);
-   else
-      return INT64FOLD((uint64_t)(int64_t)(uint32_t)fleft->i);
+   if ((fins->op2 & IRCONV_SEXT)) return INT64FOLD((uint64_t)(int64_t)fleft->i);
+   else return INT64FOLD((uint64_t)(int64_t)(uint32_t)fleft->i);
 }
 
 LJFOLD(CONV KINT64 IRCONV_NUM_I64)
@@ -2320,51 +2301,6 @@ LJFOLDF(fload_func_ffid_kgc)
 {
    if (LJ_LIKELY(J->flags & JIT_F_OPT_FOLD))
       return INTFOLD((int32_t)ir_kfunc(fleft)->c.ffid);
-   return NEXTFOLD;
-}
-
-// The C type ID of cdata objects is immutable.
-LJFOLD(FLOAD KGC IRFL_CDATA_CTYPEID)
-LJFOLDF(fload_cdata_typeid_kgc)
-{
-   if (LJ_LIKELY(J->flags & JIT_F_OPT_FOLD))
-      return INTFOLD((int32_t)ir_kcdata(fleft)->ctypeid);
-   return NEXTFOLD;
-}
-
-// Get the contents of immutable cdata objects.
-LJFOLD(FLOAD KGC IRFL_CDATA_PTR)
-LJFOLD(FLOAD KGC IRFL_CDATA_INT)
-LJFOLD(FLOAD KGC IRFL_CDATA_INT64)
-LJFOLDF(fload_cdata_int64_kgc)
-{
-   if (LJ_LIKELY(J->flags & JIT_F_OPT_FOLD)) {
-      void* p = cdataptr(ir_kcdata(fleft));
-      if (irt_is64(fins->t))
-         return INT64FOLD(*(uint64_t*)p);
-      else
-         return INTFOLD(*(int32_t*)p);
-   }
-   return NEXTFOLD;
-}
-
-LJFOLD(FLOAD CNEW IRFL_CDATA_CTYPEID)
-LJFOLD(FLOAD CNEWI IRFL_CDATA_CTYPEID)
-LJFOLDF(fload_cdata_typeid_cnew)
-{
-   if (LJ_LIKELY(J->flags & JIT_F_OPT_FOLD))
-      return fleft->op1;  //  No PHI barrier needed. CNEW/CNEWI op1 is const.
-   return NEXTFOLD;
-}
-
-// Pointer, int and int64 cdata objects are immutable.
-LJFOLD(FLOAD CNEWI IRFL_CDATA_PTR)
-LJFOLD(FLOAD CNEWI IRFL_CDATA_INT)
-LJFOLD(FLOAD CNEWI IRFL_CDATA_INT64)
-LJFOLDF(fload_cdata_ptr_int64_cnew)
-{
-   if (LJ_LIKELY(J->flags & JIT_F_OPT_FOLD))
-      return fleft->op2;  //  Fold even across PHI to avoid allocations.
    return NEXTFOLD;
 }
 

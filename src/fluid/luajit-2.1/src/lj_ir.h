@@ -579,7 +579,6 @@ union IRIns {
 #define ir_kstr(ir)   (gco_to_string(ir_kgc((ir))))
 #define ir_ktab(ir)   (gco_to_table(ir_kgc((ir))))
 #define ir_kfunc(ir)  (gco_to_function(ir_kgc((ir))))
-#define ir_kcdata(ir) (gco_to_cdata(ir_kgc((ir))))
 #define ir_knum(ir)   check_exp((ir)->o == IR_KNUM, &(ir)[1].tv)
 #define ir_kint64(ir) check_exp((ir)->o == IR_KINT64, &(ir)[1].tv)
 #define ir_k64(ir)    check_exp(ir_isk64(ir), &(ir)[1].tv)

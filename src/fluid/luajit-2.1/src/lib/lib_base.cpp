@@ -537,6 +537,19 @@ LJLIB_CF(error)
 {
    int32_t level = lj_lib_optint(L, 2, 1);
    lua_settop(L, 1);
+
+   // Handle exception tables (as received by 'except' keyword) by extracting the message field
+   // The error code will remain in the lua_State, so does not require management.
+   // There is room for improvement (e.g. retaining stack traces if a stack trace is present) but this will do for
+   // now - a rewrite of exception management is probably in order later.
+
+   if (lua_istable(L, 1)) {
+      lua_getfield(L, 1, "message");
+      if (lua_isstring(L, -1)) lua_replace(L, 1);  // Replace the table with the message string
+      else lua_pop(L, 1);  // Pop the nil/non-string value, keep original table
+   }
+
+   // Handle regular string errors.
    if (lua_isstring(L, 1) and level > 0) {
       luaL_where(L, level);
       lua_pushvalue(L, 1);
