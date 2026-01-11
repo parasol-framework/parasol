@@ -46,7 +46,6 @@ concept GCObjectType = requires(T* obj) {
 #define LJ_GC_FINALIZED 0x08
 #define LJ_GC_WEAKKEY   0x08
 #define LJ_GC_WEAKVAL   0x10
-#define LJ_GC_CDATA_FIN 0x10
 #define LJ_GC_FIXED     0x20
 #define LJ_GC_SFIXED    0x40
 

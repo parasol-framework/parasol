@@ -207,11 +207,6 @@ typedef enum {
   _(SBUF_L,   sizeof(GCudata) + offsetof(SBufExt, L)) \
   _(SBUF_REF,   sizeof(GCudata) + offsetof(SBufExt, cowref)) \
   _(SBUF_R,   sizeof(GCudata) + offsetof(SBufExt, r)) \
-  _(CDATA_CTYPEID, offsetof(GCcdata, ctypeid)) \
-  _(CDATA_PTR,   sizeof(GCcdata)) \
-  _(CDATA_INT,   sizeof(GCcdata)) \
-  _(CDATA_INT64, sizeof(GCcdata)) \
-  _(CDATA_INT64_4, sizeof(GCcdata) + 4) \
   _(ARRAY_STORAGE, offsetof(GCarray, storage)) \
   _(ARRAY_LEN,   offsetof(GCarray, len)) \
   _(ARRAY_ELEMTYPE, offsetof(GCarray, elemtype)) \
@@ -323,7 +318,7 @@ LJ_DATA const uint8_t lj_ir_mode[IR__MAX + 1];
 #define IRTDEF(_) \
   _(NIL, 4) _(FALSE, 4) _(TRUE, 4) _(LIGHTUD, LJ_64 ? 8 : 4) \
   _(STR, IRTSIZE_PGC) _(P32, 4) _(THREAD, IRTSIZE_PGC) _(PROTO, IRTSIZE_PGC) \
-  _(FUNC, IRTSIZE_PGC) _(P64, 8) _(CDATA, IRTSIZE_PGC) _(TAB, IRTSIZE_PGC) \
+  _(FUNC, IRTSIZE_PGC) _(P64, 8) _(OBJECT, IRTSIZE_PGC) _(TAB, IRTSIZE_PGC) \
   _(UDATA, IRTSIZE_PGC) _(ARRAY, IRTSIZE_PGC) \
   _(FLOAT, 4) _(NUM, 8) _(I8, 1) _(U8, 1) _(I16, 2) _(U16, 2) \
   _(INT, 4) _(U32, 4) _(I64, 8) _(U64, 8) \
@@ -376,7 +371,7 @@ struct IRType1 { uint8_t irt; };
 #define irt_isstr(t)      (irt_type(t) == IRT_STR)
 #define irt_istab(t)      (irt_type(t) == IRT_TAB)
 #define irt_isarray(t)    (irt_type(t) == IRT_ARRAY)
-#define irt_iscdata(t)    (irt_type(t) == IRT_CDATA)
+#define irt_isobject(t)   (irt_type(t) == IRT_OBJECT)
 #define irt_isfloat(t)    (irt_type(t) == IRT_FLOAT)
 #define irt_isnum(t)      (irt_type(t) == IRT_NUM)
 #define irt_isint(t)      (irt_type(t) == IRT_INT)
@@ -399,7 +394,7 @@ struct IRType1 { uint8_t irt; };
 #define IRT_IS64 \
   ((1u<<IRT_NUM)|(1u<<IRT_I64)|(1u<<IRT_U64)|(1u<<IRT_P64)|\
    (1u<<IRT_LIGHTUD)|(1u<<IRT_STR)|(1u<<IRT_THREAD)|(1u<<IRT_PROTO)|\
-   (1u<<IRT_FUNC)|(1u<<IRT_CDATA)|(1u<<IRT_TAB)|(1u<<IRT_UDATA)|\
+   (1u<<IRT_FUNC)|(1u<<IRT_OBJECT)|(1u<<IRT_TAB)|(1u<<IRT_UDATA)|\
    (1u<<IRT_ARRAY)|(1u<<IRT_NIL))
 #elif LJ_64
 #define IRT_IS64 \
@@ -507,7 +502,7 @@ static constexpr TRef TREF(uint32_t ref, IRType t) {
 #define tref_islightud(tr)   (tref_istype((tr), IRT_LIGHTUD))
 #define tref_isstr(tr)       (tref_istype((tr), IRT_STR))
 #define tref_isfunc(tr)      (tref_istype((tr), IRT_FUNC))
-#define tref_iscdata(tr)     (tref_istype((tr), IRT_CDATA))
+#define tref_isobject(tr)    (tref_istype((tr), IRT_OBJECT))
 #define tref_istab(tr)       (tref_istype((tr), IRT_TAB))
 #define tref_isudata(tr)     (tref_istype((tr), IRT_UDATA))
 #define tref_isarray(tr)     (tref_istype((tr), IRT_ARRAY))
