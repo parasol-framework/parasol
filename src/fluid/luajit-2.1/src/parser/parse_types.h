@@ -28,7 +28,6 @@ enum class ExpKind : uint8_t {
    Str,        // sval = string value
    Num,        // nval = number value
    Last = Num,
-   CData,      // nval = cdata value, not treated as a constant expression
    // Non-constant expressions follow:
    Local,      // info = local register, aux = vstack index
    Upval,      // info = upvalue index, aux = vstack index

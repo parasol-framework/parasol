@@ -3182,10 +3182,6 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |
     if (op == BC_ISEQV || op == BC_ISNEV) {
       |5:  // Either or both types are not numbers.
-      |.if FFI
-      |  cmp RBd, LJ_TCDATA; je ->vmeta_equal_cd
-      |  cmp ITYPEd, LJ_TCDATA; je ->vmeta_equal_cd
-      |.endif
       |  // Check for thunk userdata in either operand (RB has type of RD, ITYPE has type of RA)
       |  cmp RBd, LJ_TUDATA; jne >6
       |  mov TMPR, RD; cleartp TMPR
@@ -3216,17 +3212,6 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
    |  mov RBd, 1        // ne = 1
       }
       |  jmp ->vmeta_equal    // Handle __eq metamethod.
-    } else {
-      |.if FFI
-      |3:
-      |  cmp ITYPEd, LJ_TCDATA
-      if (LJ_DUALNUM && vk) {
-   |  jne <9
-      } else {
-   |  jne <2
-      }
-      |  jmp ->vmeta_equal_cd
-      |.endif
     }
     break;
   case BC_ISEQS: case BC_ISNES:
@@ -3369,7 +3354,6 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
       |2:
       |  ins_next
       |3:
-      |  cmp RBd, LJ_TCDATA; je ->vmeta_equal_cd
       |  cmp RBd, LJ_TUDATA; jne <2  // Not userdata, not equal
       |  mov TMPR, [BASE+RA*8]  // Reload and check udtype
       |  cleartp TMPR
@@ -3378,7 +3362,6 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
       |  jmp ->vmeta_equal_thunk
     } else {
       |  je >2
-      |  cmp RBd, LJ_TCDATA; je ->vmeta_equal_cd
       |  cmp RBd, LJ_TUDATA
       |  jne >3  // Not userdata
       |  mov TMPR, [BASE+RA*8]  // Reload and check udtype
@@ -3704,13 +3687,6 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_next
     break;
   case BC_KCDATA:
-    |.if FFI
-    |  ins_AND // RA = dst, RD = cdata const (~)
-    |  mov RD, [KBASE+RD*8]
-    |  settp RD, LJ_TCDATA
-    |  mov [BASE+RA*8], RD
-    |  ins_next
-    |.endif
     break;
   case BC_KSHORT:
     |  ins_AD  // RA = dst, RD = signed int16 literal

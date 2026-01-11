@@ -20,7 +20,6 @@ FluidType parse_type_name(std::string_view Name)
       { "func",      FluidType::Func },
       { "function",  FluidType::Func },
       { "thread",    FluidType::Thread },
-      { "cdata",     FluidType::CData },
       { "obj",       FluidType::Object },
       { "object",    FluidType::Object }
    };
@@ -40,7 +39,6 @@ std::string_view type_name(FluidType Type)
       case FluidType::Array:  return "array";
       case FluidType::Func:   return "func";
       case FluidType::Thread: return "thread";
-      case FluidType::CData:  return "cdata";
       case FluidType::Object: return "obj";
       case FluidType::Any:
       default: return "any";
@@ -62,9 +60,8 @@ uint8_t fluid_type_to_lj_tag(FluidType Type)
       case FluidType::Str:    return 4;   // ~4 = LJ_TSTR
       case FluidType::Thread: return 6;   // ~6 = LJ_TTHREAD
       case FluidType::Func:   return 8;   // ~8 = LJ_TFUNC
-      case FluidType::CData:  return 10;  // ~10 = LJ_TCDATA
+      case FluidType::Object: return 10;  // ~10 = LJ_TOBJECT
       case FluidType::Table:  return 11;  // ~11 = LJ_TTAB
-      case FluidType::Object: return 12;  // ~12 = LJ_TUDATA
       case FluidType::Array:  return 13;  // ~13 = LJ_TARRAY
       case FluidType::Num:    return 14;  // ~14 = LJ_TNUMX
       case FluidType::Any:
@@ -87,7 +84,6 @@ FluidType infer_expression_type(const ExprNode& Expr)
             case LiteralKind::Boolean: return FluidType::Bool;
             case LiteralKind::Number:  return FluidType::Num;
             case LiteralKind::String:  return FluidType::Str;
-            case LiteralKind::CData:   return FluidType::CData;
          }
          break;
       }

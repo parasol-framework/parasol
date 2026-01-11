@@ -25,8 +25,6 @@
 union GCobj;
 struct GCstr;
 struct GCudata;
-struct GCcdata;
-struct GCcdataVar;
 struct GCproto;
 struct GCupval;
 union GCfunc;
@@ -124,7 +122,6 @@ enum class FluidType : uint8_t {
    Array,
    Func,
    Thread,
-   CData,
    Object,       // Parasol userdata
    Unknown
 };
@@ -350,7 +347,7 @@ inline constexpr uint32_t LJ_TTHREAD   = ~6u;  // Unused?
 inline constexpr uint32_t LJ_TPROTO    = ~7u;  // Function prototype
 inline constexpr uint32_t LJ_TFUNC     = ~8u;  // Function
 inline constexpr uint32_t LJ_TTRACE    = ~9u;  // Unused in TValue(?) could be shared?
-inline constexpr uint32_t LJ_TCDATA    = ~10u; // Unused (disabled)
+inline constexpr uint32_t LJ_TOBJECT   = ~10u; // Object (Parasol)
 inline constexpr uint32_t LJ_TTAB      = ~11u; // Table
 inline constexpr uint32_t LJ_TUDATA    = ~12u; // Userdata
 inline constexpr uint32_t LJ_TARRAY    = ~13u; // Native array type
@@ -439,28 +436,6 @@ typedef struct ThunkPayload {
 
 [[nodiscard]] inline void* uddata(GCudata* u) noexcept { return (void*)(u + 1); }
 [[nodiscard]] inline MSize sizeudata(const GCudata* u) noexcept { return sizeof(GCudata) + u->len; }
-
-//********************************************************************************************************************
-// C data object
-
-typedef struct GCcdata {
-   GCHeader;
-   uint16_t ctypeid;   //  C type ID.
-} GCcdata;
-
-// Prepended to variable-sized or realigned C data objects.
-typedef struct GCcdataVar {
-   uint16_t offset;   //  Offset to allocated memory (relative to GCcdata).
-   uint16_t extra;    //  Extra space allocated (incl. GCcdata + GCcdatav).
-   MSize len;         //  Size of payload.
-} GCcdataVar;
-
-[[nodiscard]] inline void* cdataptr(GCcdata* cd) noexcept { return (void*)(cd + 1); }
-[[nodiscard]] inline bool cdataisv(const GCcdata* cd) noexcept { return (cd->marked & 0x80) != 0; }
-[[nodiscard]] inline GCcdataVar* cdatav(GCcdata* cd) noexcept { return (GCcdataVar*)((char*)cd - sizeof(GCcdataVar)); }
-[[nodiscard]] inline MSize cdatavlen(GCcdata* cd) noexcept { return check_exp(cdataisv(cd), cdatav(cd)->len); }
-[[nodiscard]] inline MSize sizecdatav(GCcdata* cd) noexcept { return cdatavlen(cd) + cdatav(cd)->extra; }
-[[nodiscard]] inline void* memcdatav(GCcdata* cd) noexcept { return (void*)((char*)cd - cdatav(cd)->offset); }
 
 //********************************************************************************************************************
 // Function Prototype Object
@@ -1101,7 +1076,6 @@ typedef union GCobj {
    lua_State th;
    GCproto   pt;
    GCfunc    fn;
-   GCcdata   cd;
    GCtab     tab;
    GCarray   arr;
    GCudata   ud;
@@ -1115,7 +1089,6 @@ typedef union GCobj {
 [[nodiscard]] inline lua_State * gco_to_thread(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TTHREAD, &o->th); }
 [[nodiscard]] inline GCproto *   gco_to_proto(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TPROTO, &o->pt); }
 [[nodiscard]] inline GCfunc *    gco_to_function(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TFUNC, &o->fn); }
-[[nodiscard]] inline GCcdata *   gco_to_cdata(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TCDATA, &o->cd); }
 [[nodiscard]] inline GCtab *     gco_to_table(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TTAB, &o->tab); }
 [[nodiscard]] inline GCudata *   gco_to_userdata(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TUDATA, &o->ud); }
 [[nodiscard]] inline GCarray *   gco_to_array(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TARRAY, &o->arr); }
@@ -1178,7 +1151,6 @@ template<typename T> [[nodiscard]] inline GCobj * obj2gco(T *v) noexcept { retur
 [[nodiscard]] constexpr inline bool tvisfunc(cTValue *o) noexcept { return itype(o) IS LJ_TFUNC; }
 [[nodiscard]] constexpr inline bool tvisthread(cTValue *o) noexcept { return itype(o) IS LJ_TTHREAD; }
 [[nodiscard]] constexpr inline bool tvisproto(cTValue *o) noexcept { return itype(o) IS LJ_TPROTO; }
-[[nodiscard]] constexpr inline bool tviscdata(cTValue *o) noexcept { return itype(o) IS LJ_TCDATA; }
 [[nodiscard]] constexpr inline bool tvistab(cTValue *o) noexcept { return itype(o) IS LJ_TTAB; }
 [[nodiscard]] constexpr inline bool tvisudata(cTValue *o) noexcept { return itype(o) IS LJ_TUDATA; }
 [[nodiscard]] constexpr inline bool tvisarray(cTValue *o) noexcept { return itype(o) IS LJ_TARRAY; }
@@ -1230,7 +1202,6 @@ template<typename T> [[nodiscard]] inline GCobj * obj2gco(T *v) noexcept { retur
 [[nodiscard]] inline GCfunc* funcV(cTValue *o) noexcept { return check_exp(tvisfunc(o), &gcval(o)->fn); }
 [[nodiscard]] inline lua_State * threadV(cTValue *o) noexcept { return check_exp(tvisthread(o), &gcval(o)->th); }
 [[nodiscard]] inline GCproto * protoV(cTValue *o) noexcept { return check_exp(tvisproto(o), &gcval(o)->pt); }
-[[nodiscard]] inline GCcdata * cdataV(cTValue *o) noexcept { return check_exp(tviscdata(o), &gcval(o)->cd); }
 [[nodiscard]] inline GCtab * tabV(cTValue *o) noexcept { return check_exp(tvistab(o), &gcval(o)->tab); }
 [[nodiscard]] inline GCudata * udataV(cTValue *o) noexcept { return check_exp(tvisudata(o), &gcval(o)->ud); }
 [[nodiscard]] inline GCarray * arrayV(cTValue *o) noexcept { return check_exp(tvisarray(o), &gcval(o)->arr); }
@@ -1299,7 +1270,6 @@ inline void setfuncV(lua_State* L, TValue* o, const GCfunc* v) noexcept
    setgcV(L, o, obj2gco(v), LJ_TFUNC);
 }
 
-inline void setcdataV(lua_State* L, TValue* o, const GCcdata* v) noexcept { setgcV(L, o, obj2gco(v), LJ_TCDATA); }
 inline void settabV(lua_State* L, TValue* o, const GCtab* v) noexcept { setgcV(L, o, obj2gco(v), LJ_TTAB); }
 inline void setudataV(lua_State* L, TValue* o, const GCudata* v) noexcept { setgcV(L, o, obj2gco(v), LJ_TUDATA); }
 inline void setarrayV(lua_State* L, TValue* o, const GCarray* v) noexcept { setgcV(L, o, obj2gco(v), LJ_TARRAY); }

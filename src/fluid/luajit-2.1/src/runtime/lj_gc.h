@@ -46,7 +46,6 @@ concept GCObjectType = requires(T* obj) {
 #define LJ_GC_FINALIZED 0x08
 #define LJ_GC_WEAKKEY   0x08
 #define LJ_GC_WEAKVAL   0x10
-#define LJ_GC_CDATA_FIN 0x10
 #define LJ_GC_FIXED     0x20
 #define LJ_GC_SFIXED    0x40
 
@@ -123,7 +122,6 @@ inline void markfinalized(GCobj* x) noexcept
 // Collector.
 extern "C" size_t lj_gc_separateudata(global_State* g, int all);
 extern "C" void lj_gc_finalize_udata(lua_State* L);
-#define lj_gc_finalize_cdata(L)      UNUSED(L)
 extern "C" void lj_gc_freeall(global_State* g);
 extern "C" int LJ_FASTCALL lj_gc_step(lua_State* L);
 extern "C" void LJ_FASTCALL lj_gc_step_fixtop(lua_State* L);

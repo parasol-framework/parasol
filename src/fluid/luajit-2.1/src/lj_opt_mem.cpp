@@ -664,7 +664,7 @@ int LJ_FASTCALL lj_opt_fwd_sbuf(jit_State* J, IRRef lim)
 
 // -- XLOAD forwarding and XSTORE elimination
 
-// Find cdata allocation for a reference (if any).
+// Find cdata allocation for a reference (if any). DEPRECATED
 static IRIns* aa_findcnew(jit_State* J, IRIns* ir)
 {
    while (ir->o == IR_ADD) {
@@ -678,7 +678,7 @@ static IRIns* aa_findcnew(jit_State* J, IRIns* ir)
    return ir->o == IR_CNEW ? ir : nullptr;
 }
 
-// Alias analysis for two cdata allocations.
+// Alias analysis for two cdata allocations. DEPRECATED
 static AliasRet aa_cnew(jit_State* J, IRIns* refa, IRIns* refb)
 {
    IRIns* cnewa = aa_findcnew(J, refa);

@@ -9,33 +9,17 @@
 #include "lua.h"
 #include "lauxlib.h"
 #include "lualib.h"
-
 #include "lj_obj.h"
 #include "lj_err.h"
 #include "lj_buf.h"
 #include "lj_strscan.h"
 #include "lj_strfmt.h"
-#if LJ_HASFFI
-#include "lj_ctype.h"
-#include "lj_cdata.h"
-#include "lj_cconv.h"
-#include "lj_carith.h"
-#endif
 #include "lj_ff.h"
 #include "lib.h"
 #include "debug/error_guard.h"
 
 #define LJLIB_MODULE_bit
 
-#if LJ_HASFFI
-static int bit_result64(lua_State* L, CTypeID id, uint64_t x)
-{
-   GCcdata* cd = lj_cdata_new_(L, id, 8);
-   *(uint64_t*)cdataptr(cd) = x;
-   setcdataV(L, L->base - 1 - LJ_FR2, cd);
-   return FFH_RES(1);
-}
-#else
 static int32_t bit_checkbit(lua_State* L, int narg)
 {
    TValue* o = L->base + narg - 1;
@@ -53,18 +37,11 @@ static int32_t bit_checkbit(lua_State* L, int narg)
       return i;
    }
 }
-#endif
 
 LJLIB_ASM(bit_tobit)      LJLIB_REC(bit_tobit)
 {
-#if LJ_HASFFI
-   CTypeID id = 0;
-   setintV(L->base - 1 - LJ_FR2, (int32_t)lj_carith_check64(L, 1, &id));
-   return FFH_RES(1);
-#else
    lj_lib_checknumber(L, 1);
    return FFH_RETRY;
-#endif
 }
 
 LJLIB_ASM(bit_bnot)      LJLIB_REC(bit_unary IR_BNOT)

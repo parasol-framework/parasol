@@ -38,7 +38,7 @@ static FluidType lj_tag_to_fluid_type(uint32_t tag)
       case LJ_TSTR:    return FluidType::Str;
       case LJ_TTHREAD: return FluidType::Thread;
       case LJ_TFUNC:   return FluidType::Func;
-      case LJ_TCDATA:  return FluidType::CData;
+      case LJ_TOBJECT: return FluidType::Object;
       case LJ_TTAB:    return FluidType::Table;
       case LJ_TUDATA:  return FluidType::Object;
       case LJ_TARRAY:  return FluidType::Array;

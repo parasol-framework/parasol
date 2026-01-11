@@ -277,7 +277,7 @@ static void asm_fusexref(ASMState* as, IRRef ref, RegSet allow)
    else {
       as->mrm.ofs = 0;
       if (canfuse(as, ir) and ir->o == IR_ADD and ra_noreg(ir->r)) {
-         // Gather (base+idx*sz)+ofs as emitted by cdata ptr/array indexing.
+         // Gather (base+idx*sz)+ofs as emitted by ptr/array indexing.
          IRIns* irx;
          IRRef idx;
          Reg r;

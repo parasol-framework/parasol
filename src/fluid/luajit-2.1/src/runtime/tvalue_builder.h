@@ -129,12 +129,6 @@ public:
       return *this;
    }
 
-   // Set to cdata (FFI type)
-   constexpr TValueBuilder & set_cdata(GCcdata* cd) noexcept {
-      setcdataV(L_, tv_, cd);
-      return *this;
-   }
-
    // Set to prototype (internal function prototype)
    constexpr TValueBuilder & set_proto(GCproto* p) noexcept {
       setprotoV(L_, tv_, p);
