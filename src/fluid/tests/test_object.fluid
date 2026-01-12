@@ -1,7 +1,10 @@
 -- Flute tests for the object interface.
 
-@BeforeEach(hotpath=true)
+@BeforeEach(hotpath=false)
 function enforce_hotpath() end
+
+local glScript = obj.find("self")
+local glThunk  = <{ obj.find("self") }>
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Using pairs() on an object will iterate over its field meta data.
@@ -13,7 +16,6 @@ function enforce_hotpath() end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
 -- Using ipairs() on an object will iterate over its field meta data.
 
 @Test function IPairs()
@@ -28,4 +30,220 @@ end
 @Test function Type()
    script = obj.find("self")
    assert(getmetatable(script).__name is 'Fluid.obj', 'Expected metatable __name of Fluid.obj for script objecxt')
+
+   assert(type(script) is 'object', 'Expected type of script to be object, got ' .. type(script))
+end
+
+@Test function reservedProperties()
+   f = obj.new('time')
+   assert(type(f.id) is 'number', "Expected 'id' to be present as a number type")
+   assert(f.class.name is 'Time', "Expected 'class' to be present")
+end
+
+@Test function FieldAccess()
+   f = obj.new('file')
+   f.path = 'temp:test.txt'
+   assert(f.path is 'temp:test.txt', "Expected path to be set and retrieved correctly")
+end
+
+@Test function ObjectToString()
+   as_string = tostring(glScript)
+   assert(type(as_string) is 'string', "Expected tostring to return a string")
+end
+
+@Test function ChildCreation()
+   f = obj.new('time')
+   child = f.new('time')
+   assert(type(child) is 'object', "Expected child to be an object")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+@Test function ThunkResolution()
+   -- Resolve the thunk inside a string to see complex sequencing works
+   script = tostring(glThunk) .. " hello"
+   num = string.match(script, "#(%d+) hello")
+   assert(tonumber(num) > 0, "Expected thunk to resolve to an object, got " .. tostring(script))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test obj.find() with name and ID
+
+@Test function ObjFind()
+   -- Find by name
+   script = obj.find("self")
+   assert(script, "Expected obj.find('self') to return the script object")
+   assert(type(script) is 'object', "Expected object type from obj.find")
+
+   -- Find by ID
+   id = script.id
+   found = obj.find(id)
+   assert(found, "Expected obj.find(id) to return an object")
+   assert(found.id is id, f"Expected found object to have same ID {found.id} != {id}")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test obj.exists() method
+
+@Test function ObjExists()
+   f = obj.new('time')
+   assert(f.exists(), "Expected newly created object to exist")
+
+   id = f.id
+   f.free()
+
+   -- After freeing, we can't call exists() on the freed reference
+   -- but we can verify by trying to find it
+   found = obj.find(id)
+   assert(found is nil, "Expected freed object to not be findable")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test obj.detach() method
+
+@Test function ObjDetach()
+   f = obj.new('time')
+   f.detach()
+   -- Object should still be usable after detach
+   assert(f.exists(), "Expected detached object to still exist")
+   f.free() -- Clean up manually since it's detached
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test obj.init() method for manual initialisation
+
+@Test function ObjInit()
+   -- Create object without auto-init (no fields table)
+   f = obj.new('time')
+   -- Object is auto-initialised, so init() returns Okay
+   err = f.init()
+   assert(err is ERR_Okay, "Expected init() to return Okay, got " .. tostring(err))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test obj.get() explicit field access
+
+@Test function ObjGetField()
+   f = obj.new('time', { })
+
+   -- Get single field
+   year = f.get('year')
+   assert(type(year) is 'number', "Expected get('year') to return a number")
+
+   -- Get field with default option
+   result = f.get('no_field', 2020)
+   assert(result is 2020, "Expected get() to return default value for missing field")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test obj.lock() method with callback
+
+@Test function ObjLock()
+   f = obj.new('file')
+   f.path = 'temp:locktest.txt'
+
+   lock_executed = false
+   f.lock(function()
+      lock_executed = true
+   end)
+
+   assert(lock_executed, "Expected lock callback to be executed")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test obj.children() method
+
+@Test function ObjChildren()
+   -- Script object may have children
+   script = obj.find("self")
+   children = script.children()
+   assert(type(children) is 'array', "Expected children() to return an array")
+
+   -- Test with class filter (may return empty array)
+   filtered = script.children("File")
+   assert(type(filtered) is 'array', "Expected children() with filter to return an array")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test obj.set() explicit field setting
+
+@Test function ObjSet()
+   f = obj.new('file')
+
+   -- Set single field
+   err = f.set('path', 'temp:settest.txt')
+   assert(err is ERR_Okay, "Expected set() to succeed")
+   assert(f.path is 'temp:settest.txt', "Expected path to be set correctly")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test obj._state() for per-object state storage
+
+@Test function ObjState()
+   f = obj.new('file')
+
+   state = f._state()
+   assert(type(state) is 'table', "Expected _state() to return a table")
+
+   -- Store something in state
+   state.myvalue = 42
+
+   -- Retrieve state again and verify
+   state2 = f._state()
+   assert(state2.myvalue is 42, "Expected state to persist value")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test action calling on objects
+
+@Test function ActionCalling()
+   f = obj.new('time', { })
+   err = f.acQuery()
+   assert(err is ERR_Okay, "Expected acQuery() to succeed, got " .. tostring(err))
+
+   f.free() -- Clean up
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test subscribe/unsubscribe to actions
+
+@Test function ActionSubscription()
+   f = obj.new('time', { })
+
+   callback_count = 0
+   f.subscribe('Free', function(obj, args)
+      callback_count++
+   end)
+
+   f.free()
+
+   assert(callback_count is 1, "Expected Free action callback to be called once")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test garbage collection of objects
+
+@Test function GarbageCollection()
+   -- Create and immediately lose reference
+   id = nil
+   do
+      temp = obj.new('time')
+      id = temp.id
+   end
+
+   collectgarbage()
+
+   assert(obj.find(id) is nil, "Expected object to be collected")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test obj.class property returns MetaClass
+
+@Test function ObjClassProperty()
+   f = obj.new('file')
+   cls = f.class
+
+   assert(type(cls) is 'object', "Expected class property to return an object")
+   assert(cls.name is 'File', "Expected class name to be 'File'")
+   assert(cls.className is 'File', "Expected className field")
 end

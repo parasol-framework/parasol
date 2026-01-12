@@ -10,10 +10,12 @@
 #include <inttypes.h>
 #include <mutex>
 
+#include "lib.h"
 #include "lua.h"
 #include "lualib.h"
 #include "lauxlib.h"
 #include "lj_obj.h"
+#include "lj_object.h"
 #include "hashes.h"
 #include "defs.h"
 
@@ -25,8 +27,7 @@
 
 static int processing_new(lua_State *Lua)
 {
-   fprocessing *fp;
-   if ((fp = (fprocessing *)lua_newuserdata(Lua, sizeof(fprocessing)))) {
+   if (auto fp = (fprocessing *)lua_newuserdata(Lua, sizeof(fprocessing))) {
       luaL_getmetatable(Lua, "Fluid.processing");
       lua_setmetatable(Lua, -2);
 
@@ -53,15 +54,11 @@ static int processing_new(lua_State *Lua)
                      if (lua_istable(Lua, -1)) { // { obj1, obj2, ... }
                         lua_pushnil(Lua);
                         while (lua_next(Lua, -2)) {
-                           struct object *obj;
-                           if ((obj = (struct object *)get_meta(Lua, -1, "Fluid.obj"))) {
-                              ObjectSignal sig = { .Object = obj->ObjectPtr };
+                           if (auto obj = lua_optobject(Lua, -1)) {
+                              ObjectSignal sig = { .Object = obj->ptr };
                               fp->Signals->push_back(sig);
                            }
-                           else {
-                              luaL_error(Lua, "Expected object in signal list, got %s.", lua_typename(Lua, lua_type(Lua, -2)));
-                              return 0;
-                           }
+                           else luaL_error(Lua, ERR::InvalidType, "Expected object in signal list, got %s.", lua_typename(Lua, lua_type(Lua, -1)));
 
                            lua_pop(Lua, 1); // Remove value, keep the key
                         }
@@ -71,10 +68,10 @@ static int processing_new(lua_State *Lua)
                   }
 
                   default:
-                     luaL_error(Lua, "Unrecognised option '%s'", field_name);
+                     luaL_error(Lua, ERR::UnknownProperty, "Unrecognised option '%s'", field_name);
                }
             }
-            else luaL_error(Lua, "Unrecognised option.");
+            else luaL_error(Lua, ERR::UnknownProperty, "Unrecognised option.");
 
             lua_pop(Lua, 1);  // removes 'value'; keeps 'key' for the proceeding lua_next() iteration
          }
@@ -203,8 +200,8 @@ static int processing_flush(lua_State *Lua)
 static int processing_task(lua_State *Lua)
 {
    auto prv = (prvFluid *)Lua->script->ChildPrivate;
-   object *obj = push_object(prv->Lua, CurrentTask());
-   obj->Detached = true;  // External reference
+   GCobject *obj = push_object(prv->Lua, CurrentTask());
+   obj->set_detached(true);  // External reference
    return 1;
 }
 

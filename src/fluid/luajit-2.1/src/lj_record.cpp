@@ -1149,7 +1149,7 @@ int lj_record_mm_lookup(jit_State *J, RecordIndex* ix, MMS mm)
             TRef tr = ir.fload(ix->tab, IRFL_UDATA_UDTYPE, IRT_U8);
             ir.guard_eq_int(tr, ir.kint(udtype));
          }
-      immutable_mt:
+
          mo = lj_tab_getstr(mt, mmname_str(J2G(J), mm));
          if (not mo or tvisnil(mo)) return 0;  //  No metamethod.
          // Treat metamethod or index table as immutable, too.

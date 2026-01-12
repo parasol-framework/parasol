@@ -102,7 +102,7 @@ gui.dialog.message = function(Options)
       end
    end
 
-   function buildDocument()
+   function buildDocument():str
       option_icons = ''
 
       -- At minimum, there must be an OK option.
@@ -214,7 +214,7 @@ gui.dialog.message = function(Options)
          self.fmtMessage = nil
       end
       lDoc.acClear()
-      lDoc.acDataFeed(0, DATA_XML, buildDocument())
+      lDoc.acDataFeed(nil, DATA_XML, buildDocument())
    end
 
    -- Work out the dialog width based on the message.
@@ -271,7 +271,7 @@ gui.dialog.message = function(Options)
       clientScript  = obj.find('self')
    })
 
-   lDoc.acDataFeed(0, DATA_XML, buildDocument())
+   lDoc.acDataFeed(nil, DATA_XML, buildDocument())
 
    self?.input?.textinput?.mtSelectArea(0, 0, 20000, 20000)
 

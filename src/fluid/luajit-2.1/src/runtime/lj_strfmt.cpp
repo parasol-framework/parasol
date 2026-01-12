@@ -108,7 +108,7 @@ retlit:
 
 // Write integer to buffer.
 
-char* LJ_FASTCALL lj_strfmt_wint(char* p, int32_t k)
+char * LJ_FASTCALL lj_strfmt_wint(char *p, int32_t k)
 {
    uint32_t u = (uint32_t)k;
    if (k < 0) { u = (uint32_t)-k; *p++ = '-'; }
@@ -515,13 +515,20 @@ GCstr* LJ_FASTCALL lj_strfmt_char(lua_State* L, int c)
 
 // Raw conversion of object to string.
 
-GCstr* LJ_FASTCALL lj_strfmt_obj(lua_State* L, cTValue* o)
+GCstr * LJ_FASTCALL lj_strfmt_obj(lua_State *L, cTValue *o)
 {
    if (tvisstr(o)) return strV(o);
    else if (tvisnumber(o)) return lj_strfmt_number(L, o);
    else if (tvisnil(o)) return lj_str_newlit(L, "nil");
    else if (tvisfalse(o)) return lj_str_newlit(L, "false");
    else if (tvistrue(o)) return lj_str_newlit(L, "true");
+   else if (tvisobject(o)) {
+      GCobject *obj = objectV(o);
+      char buf[STRFMT_MAXBUF_INT+1];
+      buf[0] = '#';
+      auto len = MSize(lj_strfmt_wint(buf+1, obj->uid) - buf);
+      return lj_str_new(L, buf, len);
+   }
    else if (tvisfunc(o)) {
       GCfunc *fn = funcV(o);
       if (isffunc(fn)) {

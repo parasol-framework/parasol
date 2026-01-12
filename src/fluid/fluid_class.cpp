@@ -857,7 +857,7 @@ static ERR run_script(objScript *Self)
    log.traceBranch("Procedure: %s, Top: %d", Self->Procedure, lua_gettop(prv->Lua));
 
    prv->Lua->CaughtError = ERR::Okay;
-   std::array<object*, 8> release_list;
+   std::array<GCobject*, 8> release_list;
    size_t r = 0;
    int top;
    bool pcall_failed = false;
@@ -929,7 +929,7 @@ static ERR run_script(objScript *Self)
                      // solid optimisation that also protects the object from unwarranted termination during the call.
 
                      if (args->Address) {
-                        struct object *obj = push_object(prv->Lua, (OBJECTPTR)args->Address);
+                        GCobject *obj = push_object(prv->Lua, (OBJECTPTR)args->Address);
                         if ((r < release_list.size()) and (access_object(obj))) {
                            release_list[r++] = obj;
                         }

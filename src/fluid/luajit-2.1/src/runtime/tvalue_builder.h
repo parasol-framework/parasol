@@ -129,6 +129,12 @@ public:
       return *this;
    }
 
+   // Set to object
+   constexpr TValueBuilder & set_object(GCobject *obj) noexcept {
+      setobjectV(L_, tv_, obj);
+      return *this;
+   }
+
    // Set to prototype (internal function prototype)
    constexpr TValueBuilder & set_proto(GCproto* p) noexcept {
       setprotoV(L_, tv_, p);

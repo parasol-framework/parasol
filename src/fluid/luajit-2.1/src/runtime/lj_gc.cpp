@@ -45,6 +45,7 @@
 #include "lj_dispatch.h"
 #include "lj_vm.h"
 #include "lj_array.h"
+#include "lj_object.h"
 #include <parasol/main.h>
 
 #include <array>
@@ -133,6 +134,10 @@ inline void gray2black(GCobj *x) noexcept { x->gch.marked |= LJ_GC_BLACK; }
 
 [[nodiscard]] inline bool isfinalized(const GCudata* u) noexcept { return (u->marked & LJ_GC_FINALIZED) != 0; }
 
+// Check if GCobject has been finalised.
+
+[[nodiscard]] inline bool isfinalized(const GCobject* o) noexcept { return (o->marked & LJ_GC_FINALIZED) != 0; }
+
 // Mark a string object (strings go directly to black, never grey).
 
 inline void gc_mark_str(GCstr* s) noexcept { s->marked &= uint8_t(~LJ_GC_WHITES); }
@@ -214,6 +219,14 @@ static void gc_mark(global_State *g, GCobj* o)
          }
       }
    }
+   else if (gct IS ~LJ_TOBJECT) { // Native Parasol object type - has no child GC references except optional metatable
+      GCobject *obj = gco_to_object(o);
+      gray2black(o);  // Objects are never gray (like userdata)
+
+      // Mark metatable if present
+      GCtab *mt = tabref(obj->metatable);
+      if (mt) gc_markobj(g, mt);
+   }
    else if (gct != ~LJ_TSTR) {
       lj_assertG(gct IS ~LJ_TFUNC or gct IS ~LJ_TTAB or
          gct IS ~LJ_TTHREAD or gct IS ~LJ_TPROTO or gct IS ~LJ_TTRACE, "bad GC type %d", gct);
@@ -277,6 +290,25 @@ static void gc_mark_mmudata(global_State *g)
 }
 
 //********************************************************************************************************************
+// Helper to move an object to the mmudata finalization list.
+
+static void gc_move_to_mmudata(global_State *g, GCobj *o, GCRef *p)
+{
+   markfinalized(o);
+   *p = o->gch.nextgc;
+   if (gcref(g->gc.mmudata)) {  // Link to end of mmudata list.
+      GCobj *root = gcref(g->gc.mmudata);
+      setgcrefr(o->gch.nextgc, root->gch.nextgc);
+      setgcref(root->gch.nextgc, o);
+      setgcref(g->gc.mmudata, o);
+   }
+   else {  // Create circular list.
+      setgcref(o->gch.nextgc, o);
+      setgcref(g->gc.mmudata, o);
+   }
+}
+
+//********************************************************************************************************************
 // Separate userdata objects to be finalized to mmudata list.
 
 size_t lj_gc_separateudata(global_State *g, int all)
@@ -294,19 +326,35 @@ size_t lj_gc_separateudata(global_State *g, int all)
       }
       else {  // Otherwise move userdata to be finalized to mmudata list.
          m += sizeudata(gco_to_userdata(o));
-         markfinalized(o);
-         *p = o->gch.nextgc;
-         if (gcref(g->gc.mmudata)) {  // Link to end of mmudata list.
-            GCobj *root = gcref(g->gc.mmudata);
-            setgcrefr(o->gch.nextgc, root->gch.nextgc);
-            setgcref(root->gch.nextgc, o);
-            setgcref(g->gc.mmudata, o);
+         gc_move_to_mmudata(g, o, p);
+      }
+   }
+   return m;
+}
+
+//********************************************************************************************************************
+// Separate GCobject (native Parasol objects) to be finalized to mmudata list.
+// All GCobject instances require finalization via lj_object_finalize() to free the Parasol object.
+
+static size_t gc_separateobjects(global_State *g, int all)
+{
+   size_t m = 0;
+   GCRef *p = &g->gc.root;
+   GCobj *o;
+
+   while ((o = gcref(*p)) != nullptr) {
+      if (o->gch.gct IS ~LJ_TOBJECT) {
+         GCobject *obj = gco_to_object(o);
+         if (not (iswhite(o) or all) or isfinalized(obj)) {
+            p = &o->gch.nextgc;  //  Nothing to do.
          }
-         else {  // Create circular list.
-            setgcref(o->gch.nextgc, o);
-            setgcref(g->gc.mmudata, o);
+         else {
+            // Move GCobject to mmudata list for finalization.
+            m += sizeof(GCobject);
+            gc_move_to_mmudata(g, o, p);
          }
       }
+      else p = &o->gch.nextgc;
    }
    return m;
 }
@@ -319,7 +367,9 @@ static int gc_traverse_tab(global_State *g, GCtab* t)
    int weak = 0;
    cTValue *mode;
    GCtab *mt = tabref(t->metatable);
+
    if (mt) gc_markobj(g, mt);
+
    mode = lj_meta_fastg(g, mt, MM_mode);
    if (mode and tvisstr(mode)) {  // Valid __mode field?
       const char* modestr = strVdata(mode);
@@ -328,6 +378,7 @@ static int gc_traverse_tab(global_State *g, GCtab* t)
          if (c IS 'k') weak |= LJ_GC_WEAKKEY;
          else if (c IS 'v') weak |= LJ_GC_WEAKVAL;
       }
+
       if (weak) {  // Weak tables are cleared in the atomic phase.
          {
             t->marked = (uint8_t)((t->marked & ~LJ_GC_WEAK) | weak);
@@ -337,14 +388,13 @@ static int gc_traverse_tab(global_State *g, GCtab* t)
       }
    }
 
-   if (weak IS LJ_GC_WEAK)  //  Nothing to mark if both keys/values are weak.
-      return 1;
+   if (weak IS LJ_GC_WEAK) return 1; //  Nothing to mark if both keys/values are weak.
 
    // Mark array part (TValue has alignment attributes incompatible with std::span).
+
    if (not (weak & LJ_GC_WEAKVAL) and t->asize > 0) {
-      TValue* array_start = arrayslot(t, 0);
-      for (MSize i = 0; i < t->asize; i++)
-         gc_marktv(g, &array_start[i]);
+      TValue *array_start = arrayslot(t, 0);
+      for (MSize i = 0; i < t->asize; i++) gc_marktv(g, &array_start[i]);
    }
 
    // Mark hash part using std::span for cleaner iteration.
@@ -494,7 +544,8 @@ static size_t propagatemark(global_State *g)
    lj_assertG(isgray(o), "propagation of non-gray object");
    gray2black(o);
    setgcrefr(g->gc.gray, o->gch.gclist);  //  Remove from gray list.
-   if (LJ_LIKELY(gct IS ~LJ_TTAB)) {
+
+   if (gct IS ~LJ_TTAB) [[likely]] {
       GCtab* t = gco_to_table(o);
       if (gc_traverse_tab(g, t) > 0) black2gray(o);  //  Keep weak tables gray.
       return sizeof(GCtab) + sizeof(TValue) * t->asize + (t->hmask ? sizeof(Node) * (t->hmask + 1) : 0);
@@ -552,7 +603,7 @@ static const std::array<GCFreeFunc, 10> gc_freefunc = {{
    (GCFreeFunc)lj_func_freeproto, // LJ_TPROTO
    (GCFreeFunc)lj_func_free,      // LJ_TFUNC
    (GCFreeFunc)lj_trace_free,     // LJ_TTRACE
-   nullptr,                       // LJ_TCDATA (disabled)
+   (GCFreeFunc)lj_object_free,    // LJ_TOBJECT (native Parasol object)
    (GCFreeFunc)lj_tab_free,       // LJ_TTAB
    (GCFreeFunc)lj_udata_free,     // LJ_TUDATA
    (GCFreeFunc)lj_array_free      // LJ_TARRAY
@@ -582,7 +633,17 @@ static GCRef* gc_sweep(global_State *g, GCRef* p, uint32_t lim)
          p = &o->gch.nextgc;
       }
       else {  // Otherwise value is dead, free it.
-         lj_assertG(isdead(g, o) or ow IS LJ_GC_SFIXED, "sweep of unlive object");
+#ifdef LUA_USE_ASSERT
+         if (not (isdead(g, o) or ow IS LJ_GC_SFIXED)) {
+            // NB: The indicated type isn't necessarily the source of the problem, it may be a symptom (e.g.
+            // managed by the thing that has resource management issues).
+            char buffer[80];
+            int i = ~o->gch.gct;
+            CSTRING name = (i >= 0 and i < 16) ? lj_obj_itypename[i] : "unknown";
+            snprintf(buffer, sizeof(buffer), "sweep of unlive object, type: %s", name);
+            lj_assertG(false, buffer);
+         }
+#endif
          setgcrefr(*p, o->gch.nextgc);
          if (o IS gcref(g->gc.root)) setgcrefr(g->gc.root, o->gch.nextgc);  //  Adjust list anchor.
          gc_freefunc[o->gch.gct - ~LJ_TSTR](g, o);
@@ -645,7 +706,7 @@ static void gc_clearweak(global_State *g, GCobj* o)
 
       // Clear array part (TValue has alignment attributes incompatible with std::span).
       if ((t->marked & LJ_GC_WEAKVAL) and t->asize > 0) {
-         TValue* array_start = arrayslot(t, 0);
+         TValue *array_start = arrayslot(t, 0);
          for (MSize i = 0; i < t->asize; i++) {
             if (gc_mayclear(&array_start[i], 1)) setnilV(&array_start[i]);
          }
@@ -654,7 +715,7 @@ static void gc_clearweak(global_State *g, GCobj* o)
       // Clear hash part using std::span.
       if (t->hmask > 0) {
          std::span<Node> hash_part(noderef(t->node), t->hmask + 1);
-         for (Node& n : hash_part) {
+         for (Node &n : hash_part) {
             if (not tvisnil(&n.val) and (gc_mayclear(&n.key, 0) or gc_mayclear(&n.val, 1)))
                setnilV(&n.val);
          }
@@ -676,7 +737,8 @@ static void gc_call_finaliser(global_State *g, lua_State *L, cTValue* mo, GCobj*
    if (LJ_HASPROFILE and (guard.savedHook() & HOOK_PROFILE)) lj_dispatch_update(g);
 
    // Set up the stack for the finaliser call.
-   TValue* top = L->top;
+
+   TValue *top = L->top;
    copyTV(L, top++, mo);
    if (LJ_FR2) setnilV(top++);
    setgcV(L, top, o, ~o->gch.gct);
@@ -687,30 +749,42 @@ static void gc_call_finaliser(global_State *g, lua_State *L, cTValue* mo, GCobj*
 
    if (LJ_HASPROFILE and (guard.savedHook() & HOOK_PROFILE)) lj_dispatch_update(g);
 
-   // Guard destructor restores hook state and threshold here.
-   // Propagate errors after state restoration.
+   // Guard destructor restores hook state and threshold here.  Propagate errors after state restoration.
+
    if (errcode) lj_err_throw(L, errcode);
 }
 
 //********************************************************************************************************************
-// Finalize one userdata object from the mmudata list.
+// Finalize one object from the mmudata list (handles both userdata and GCobject).
 
 static void gc_finalize(lua_State *L)
 {
    global_State *g = G(L);
    GCobj* o = gcnext(gcref(g->gc.mmudata));
-   cTValue* mo;
    lj_assertG(tvref(g->jit_base) IS nullptr, "finaliser called on trace");
-   // Unchain from list of userdata to be finalized.
+
+   // Unchain from list of objects to be finalized.
    if (o IS gcref(g->gc.mmudata)) setgcrefnull(g->gc.mmudata);
    else setgcrefr(gcref(g->gc.mmudata)->gch.nextgc, o->gch.nextgc);
-   // Add userdata back to the main userdata list and make it white.
-   setgcrefr(o->gch.nextgc, mainthread(g)->nextgc);
-   setgcref(mainthread(g)->nextgc, o);
-   makewhite(g, o);
-   // Resolve the __gc metamethod.
-   mo = lj_meta_fastg(g, tabref(gco_to_userdata(o)->metatable), MM_gc);
-   if (mo) gc_call_finaliser(g, L, mo, o);
+
+   // Add object back to its original list and make it white.
+   if (o->gch.gct IS ~LJ_TOBJECT) {
+      // GCobject goes back to the main GC root list.
+      setgcrefr(o->gch.nextgc, g->gc.root);
+      setgcref(g->gc.root, o);
+      makewhite(g, o);
+      // Call the finalization function directly (no metamethod lookup).
+      lj_object_finalize(L, gco_to_object(o));
+   }
+   else {
+      // Userdata goes back to the main userdata list.
+      setgcrefr(o->gch.nextgc, mainthread(g)->nextgc);
+      setgcref(mainthread(g)->nextgc, o);
+      makewhite(g, o);
+      // Resolve the __gc metamethod from userdata's metatable.
+      cTValue *mo = lj_meta_fastg(g, tabref(gco_to_userdata(o)->metatable), MM_gc);
+      if (mo) gc_call_finaliser(g, L, mo, o);
+   }
 }
 
 //********************************************************************************************************************
@@ -758,6 +832,7 @@ static void atomic(global_State *g, lua_State *L)
    gc_propagate_gray(g);  //  Propagate it.
 
    udsize = lj_gc_separateudata(g, 0);  //  Separate userdata to be finalized.
+   udsize += gc_separateobjects(g, 0);  //  Separate GCobjects to be finalized.
    gc_mark_mmudata(g);  //  Mark them.
    udsize += gc_propagate_gray(g);  //  And propagate the marks.
 
@@ -780,65 +855,63 @@ static size_t gc_onestep(lua_State *L)
 {
    global_State *g = G(L);
    switch (GCPhase(g->gc.state)) {
-   case GCPhase::Pause:
-      gc_mark_start(g);  //  Start a new GC cycle by marking all GC roots.
-      return 0;
-   case GCPhase::Propagate:
-      if (gcref(g->gc.gray) != nullptr)
-         return propagatemark(g);  //  Propagate one gray object.
-      g->gc.state = (GCPhase::Atomic);  //  End of mark phase.
-      return 0;
-   case GCPhase::Atomic:
-      if (tvref(g->jit_base))  //  Don't run atomic phase on trace.
-         return LJ_MAX_MEM;
-      atomic(g, L);
-      g->gc.state = (GCPhase::SweepString);  //  Start of sweep phase.
-      g->gc.sweepstr = 0;
-      return 0;
+      case GCPhase::Pause:
+         gc_mark_start(g);  //  Start a new GC cycle by marking all GC roots.
+         return 0;
 
-   case GCPhase::SweepString: {
-      GCSize old = g->gc.total;
-      gc_sweepstr(g, &g->str.tab[g->gc.sweepstr++]);  //  Sweep one chain.
-      if (g->gc.sweepstr > g->str.mask)
-         g->gc.state = (GCPhase::Sweep);  //  All string hash chains sweeped.
-      lj_assertG(old >= g->gc.total, "sweep increased memory");
-      g->gc.estimate -= old - g->gc.total;
-      return GCSWEEPCOST;
-   }
+      case GCPhase::Propagate:
+         if (gcref(g->gc.gray) != nullptr) return propagatemark(g);  //  Propagate one gray object.
+         g->gc.state = (GCPhase::Atomic);  //  End of mark phase.
+         return 0;
 
-   case GCPhase::Sweep: {
-      GCSize old = g->gc.total;
-      setmref(g->gc.sweep, gc_sweep(g, mref<GCRef>(g->gc.sweep), GCSWEEPMAX));
-      lj_assertG(old >= g->gc.total, "sweep increased memory");
-      g->gc.estimate -= old - g->gc.total;
-      if (gcref(*mref<GCRef>(g->gc.sweep)) IS nullptr) {
-         if (g->str.num <= (g->str.mask >> 2) and g->str.mask > LJ_MIN_STRTAB * 2 - 1)
-            lj_str_resize(L, g->str.mask >> 1);  //  Shrink string table.
-         if (gcref(g->gc.mmudata)) {  // Need any finalizations?
-            g->gc.state = GCPhase::Finalize;
-         }
-         else {  // Otherwise skip this phase to help the JIT.
-            g->gc.state = (GCPhase::Pause);  //  End of GC cycle.
-            g->gc.debt = 0;
-         }
-      }
-      return GCSWEEPMAX * GCSWEEPCOST;
-   }
-   case GCPhase::Finalize:
-      if (gcref(g->gc.mmudata) != nullptr) {
+      case GCPhase::Atomic:
+         if (tvref(g->jit_base)) return LJ_MAX_MEM; //  Don't run atomic phase on trace.
+         atomic(g, L);
+         g->gc.state = (GCPhase::SweepString);  //  Start of sweep phase.
+         g->gc.sweepstr = 0;
+         return 0;
+
+      case GCPhase::SweepString: {
          GCSize old = g->gc.total;
-         if (tvref(g->jit_base))  //  Don't call finalisers on trace.
-            return LJ_MAX_MEM;
-         gc_finalize(L);  //  Finalize one userdata object.
-         if (old >= g->gc.total and g->gc.estimate > old - g->gc.total)
-            g->gc.estimate -= old - g->gc.total;
-         if (g->gc.estimate > GCFINALIZECOST)
-            g->gc.estimate -= GCFINALIZECOST;
-         return GCFINALIZECOST;
+         gc_sweepstr(g, &g->str.tab[g->gc.sweepstr++]);  //  Sweep one chain.
+         if (g->gc.sweepstr > g->str.mask)
+            g->gc.state = (GCPhase::Sweep);  //  All string hash chains sweeped.
+         lj_assertG(old >= g->gc.total, "sweep increased memory");
+         g->gc.estimate -= old - g->gc.total;
+         return GCSWEEPCOST;
       }
-      g->gc.state = (GCPhase::Pause);  //  End of GC cycle.
-      g->gc.debt = 0;
-      return 0;
+
+      case GCPhase::Sweep: {
+         GCSize old = g->gc.total;
+         setmref(g->gc.sweep, gc_sweep(g, mref<GCRef>(g->gc.sweep), GCSWEEPMAX));
+         lj_assertG(old >= g->gc.total, "sweep increased memory");
+         g->gc.estimate -= old - g->gc.total;
+         if (gcref(*mref<GCRef>(g->gc.sweep)) IS nullptr) {
+            if (g->str.num <= (g->str.mask >> 2) and g->str.mask > LJ_MIN_STRTAB * 2 - 1)
+               lj_str_resize(L, g->str.mask >> 1);  //  Shrink string table.
+            if (gcref(g->gc.mmudata)) {  // Need any finalizations?
+               g->gc.state = GCPhase::Finalize;
+            }
+            else {  // Otherwise skip this phase to help the JIT.
+               g->gc.state = (GCPhase::Pause);  //  End of GC cycle.
+               g->gc.debt = 0;
+            }
+         }
+         return GCSWEEPMAX * GCSWEEPCOST;
+      }
+
+      case GCPhase::Finalize:
+         if (gcref(g->gc.mmudata) != nullptr) {
+            GCSize old = g->gc.total;
+            if (tvref(g->jit_base)) return LJ_MAX_MEM; //  Don't call finalisers on trace.
+            gc_finalize(L);  //  Finalize one userdata object.
+            if (old >= g->gc.total and g->gc.estimate > old - g->gc.total) g->gc.estimate -= old - g->gc.total;
+            if (g->gc.estimate > GCFINALIZECOST) g->gc.estimate -= GCFINALIZECOST;
+            return GCFINALIZECOST;
+         }
+         g->gc.state = (GCPhase::Pause);  //  End of GC cycle.
+         g->gc.debt = 0;
+         return 0;
    }
    lj_assertG(0, "bad GC state");
    return 0;

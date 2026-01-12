@@ -4,7 +4,7 @@
 
 static int object_action_call_args(lua_State *Lua)
 {
-   auto object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
+   auto obj_ref = object_context(Lua);
    AC action_id = AC(lua_tointeger(Lua, lua_upvalueindex(2)));
    bool release = false;
 
@@ -16,8 +16,8 @@ static int object_action_call_args(lua_State *Lua)
    }
 
    int results = 1;
-   if (object->ObjectPtr) error = Action(action_id, object->ObjectPtr, argbuffer.get());
-   else if (auto obj = access_object(object)) {
+   if (obj_ref->ptr) error = Action(action_id, obj_ref->ptr, argbuffer.get());
+   else if (auto obj = access_object(obj_ref)) {
       error = Action(action_id, obj, argbuffer.get());
       release = true;
    }
@@ -30,8 +30,8 @@ static int object_action_call_args(lua_State *Lua)
    lua_pushinteger(Lua, int(error));
    results += get_results(Lua, glActions[int(action_id)].Args, argbuffer.get());
 
-   if (release) release_object(object);
-   report_action_error(Lua, object, glActions[int(action_id)].Name, error);
+   if (release) release_object(obj_ref);
+   report_action_error(Lua, obj_ref, glActions[int(action_id)].Name, error);
    return results;
 }
 
@@ -39,12 +39,12 @@ static int object_action_call_args(lua_State *Lua)
 
 static int object_action_call(lua_State *Lua)
 {
-   auto def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
+   auto def = object_context(Lua);
    AC action_id = AC(lua_tointeger(Lua, lua_upvalueindex(2)));
    ERR error;
    bool release = false;
 
-   if (def->ObjectPtr) error = Action(action_id, def->ObjectPtr, nullptr);
+   if (def->ptr) error = Action(action_id, def->ptr, nullptr);
    else if (auto obj = access_object(def)) {
       error = Action(action_id, obj, nullptr);
       release = true;
@@ -63,7 +63,7 @@ static int object_action_call(lua_State *Lua)
 
 static int object_method_call_args(lua_State *Lua)
 {
-   auto def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
+   auto def = object_context(Lua);
    auto method = (MethodEntry *)lua_touserdata(Lua, lua_upvalueindex(2));
 
    auto argbuffer = std::make_unique<int8_t[]>(method->Size+8); // +8 for overflow protection in build_args()
@@ -77,7 +77,7 @@ static int object_method_call_args(lua_State *Lua)
    int results = 1;
    bool release = false;
 
-   if (def->ObjectPtr) error = Action(method->MethodID, def->ObjectPtr, argbuffer.get());
+   if (def->ptr) error = Action(method->MethodID, def->ptr, argbuffer.get());
    else if (auto obj = access_object(def)) {
       error = Action(method->MethodID, obj, argbuffer.get());
       release = true;
@@ -97,12 +97,12 @@ static int object_method_call_args(lua_State *Lua)
 
 static int object_method_call(lua_State *Lua)
 {
-   auto def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
+   auto def = object_context(Lua);
    ERR error;
    bool release = false;
    auto method = (MethodEntry *)lua_touserdata(Lua, lua_upvalueindex(2));
 
-   if (def->ObjectPtr) error = Action(method->MethodID, def->ObjectPtr, nullptr);
+   if (def->ptr) error = Action(method->MethodID, def->ptr, nullptr);
    else if (auto obj = access_object(def)) {
       error = Action(method->MethodID, obj, nullptr);
       release = true;
@@ -214,18 +214,17 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, int8_t *
       else if (args[i].Type & FD_PTR) {
          j = ALIGN64(j);
          if (args[i].Type & FD_OBJECT) {
-            struct object *object;
-            if ((object = (struct object *)get_meta(Lua, n, "Fluid.obj"))) {
+            if (auto obj_ref = lj_lib_optobject(Lua, n)) {
                OBJECTPTR ptr_obj;
-               if (object->ObjectPtr) {
-                  ((OBJECTPTR *)(argbuffer + j))[0] = object->ObjectPtr;
+               if (obj_ref->ptr) {
+                  ((OBJECTPTR *)(argbuffer + j))[0] = obj_ref->ptr;
                }
-               else if ((ptr_obj = access_object(object))) {
+               else if ((ptr_obj = access_object(obj_ref))) {
                   ((OBJECTPTR *)(argbuffer + j))[0] = ptr_obj;
-                  release_object(object);
+                  release_object(obj_ref);
                }
                else {
-                  log.warning("Unable to resolve object pointer for #%d.", object->UID);
+                  log.warning("Unable to resolve object pointer for #%d.", obj_ref->uid);
                   ((OBJECTPTR *)(argbuffer + j))[0] = nullptr;
                }
             }
@@ -279,8 +278,8 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, int8_t *
       }
       else if (args[i].Type & FD_INT) {
          if ((type IS LUA_TUSERDATA) or (type IS LUA_TLIGHTUSERDATA)) {
-            if (auto obj = (struct object *)get_meta(Lua, n, "Fluid.obj")) {
-               ((int *)(argbuffer + j))[0] = obj->UID;
+            if (auto obj = lj_lib_checkobject(Lua, n)) {
+               ((int *)(argbuffer + j))[0] = obj->uid;
             }
             else luaL_argerror(Lua, n, "Unable to convert usertype to an integer.");
          }
@@ -408,7 +407,7 @@ static int get_results(lua_State *Lua, const FunctionField *args, const int8_t *
 
                if (obj) {
                   auto new_obj = push_object(Lua, obj);
-                  new_obj->Detached = (type & FD_ALLOC) ? false : true;
+                  new_obj->set_detached((type & FD_ALLOC) ? false : true);
                }
                else lua_pushnil(Lua);
             }

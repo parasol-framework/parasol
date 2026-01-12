@@ -116,11 +116,15 @@ extern int (lua_rawequal) (lua_State *L, int idx1, int idx2);
 extern int (lua_lessthan) (lua_State *L, int idx1, int idx2);
 
 struct GCarray;
+struct GCobject;
+
 extern GCarray *     lua_toarray(lua_State *, int);
 extern lua_Number    lua_tonumber(lua_State *, int);
 extern lua_Integer   lua_tointeger(lua_State *, int);
 extern int           lua_toboolean(lua_State *, int);
 extern const char *  lua_tolstring(lua_State *, int, size_t *);
+extern GCobject *    lua_toobject(lua_State *, int);
+extern GCobject *    lua_optobject(lua_State *, int);
 extern size_t        lua_objlen(lua_State *, int);
 extern lua_CFunction lua_tocfunction(lua_State *, int);
 extern void *        lua_touserdata(lua_State *, int);
@@ -152,6 +156,12 @@ extern void   lua_rawgeti(lua_State *L, int idx, int n);
 extern void   lua_createtable(lua_State *L, int narr, int nrec);
 extern void   lua_createarray(lua_State *L, uint32_t Length, AET Type, void *Data = nullptr, uint8_t Flags = 0, std::string_view StructName = {});
 extern void * lua_newuserdata(lua_State *L, size_t sz);
+
+// Native Parasol object support
+struct GCobject;
+struct Object;
+struct objMetaClass;
+extern GCobject * lua_pushobject(lua_State *L, int32_t UID, Object *Ptr, objMetaClass *ClassPtr, uint8_t Flags);
 extern int    lua_getmetatable(lua_State *L, int objindex);
 extern void   lua_getfenv(lua_State *L, int idx);
 
@@ -162,6 +172,7 @@ extern void  (lua_setfield) (lua_State *L, int idx, const char *k);
 extern void  (lua_rawset) (lua_State *L, int idx);
 extern void  (lua_rawseti) (lua_State *L, int idx, int n);
 extern int   (lua_setmetatable) (lua_State *L, int objindex);
+extern void  (lua_setbasemetatable) (lua_State *L, uint32_t itype);  // Set base metatable for a type
 extern int   (lua_setfenv) (lua_State *L, int idx);
 
 // `load' and `call' functions (load and run Lua code)

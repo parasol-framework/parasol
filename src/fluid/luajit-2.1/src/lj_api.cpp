@@ -8,6 +8,7 @@
 #define LUA_CORE
 
 #include "lj_obj.h"
+#include "lj_object.h"
 #include "lj_gc.h"
 #include "lj_err.h"
 #include "lj_debug.h"
@@ -99,25 +100,21 @@ static TValue * index2adr_stack(lua_State *L, int idx)
 //********************************************************************************************************************
 // Get current environment table
 
-static GCtab* getcurrenv(lua_State *L)
+static GCtab * getcurrenv(lua_State *L)
 {
    GCfunc *fn = curr_func(L);
    return fn->c.gct IS ~LJ_TFUNC ? tabref(fn->c.env) : tabref(L->env);
 }
 
 //********************************************************************************************************************
-// Thunk resolution helpers
+// Index resolution helpers
 //
-// These helpers resolve thunk userdata when values are retrieved from the stack via C API functions. This ensures
-// that when C code calls lua_tostring, lua_tonumber, etc., it receives the resolved value rather than the thunk userdata.
+// For use in resolve stack indexes that may contain a thunk. This ensures that when C code calls lua_tostring,
+// lua_tonumber, etc., it receives the resolved value rather than the thunk userdata.
 //
 // The resolving_thunk flag is stored in lua_State to prevent recursive resolution within the same thread/coroutine.
-//
-// Resolve thunk at stack position, replacing the slot with the resolved value.
-// Returns pointer to the (possibly updated) value.
-// For positive indices, checks if the slot exists before attempting resolution.
 
-static TValue * thunk_resolve_at(lua_State *L, int idx)
+extern TValue * resolve_index(lua_State *L, int idx)
 {
    // For positive indices, check if slot exists before accessing
 
@@ -135,9 +132,7 @@ static TValue * thunk_resolve_at(lua_State *L, int idx)
 
       if (payload->resolved) return &payload->cached_value;
 
-      // Track slot position (may move during resolution)
-
-      ptrdiff_t slot_offset = savestack(L, o);
+      ptrdiff_t slot_offset = savestack(L, o); // Track slot position (may move during resolution)
 
       // Set flag to prevent infinite recursion
 
@@ -145,39 +140,31 @@ static TValue * thunk_resolve_at(lua_State *L, int idx)
       TValue *result = lj_thunk_resolve(L, ud);
       L->resolving_thunk = 0;
 
-      // Restore slot pointer (stack may have been reallocated)
-
-      o = restorestack(L, slot_offset);
+      o = restorestack(L, slot_offset); // Restore slot pointer (stack may have been reallocated)
 
       // If resolution failed (e.g., error in thunk function), return the original slot
       // which still contains the thunk userdata - let caller handle the error
 
       if (not result) return o;
 
-      // Copy resolved value to stack slot for consistency
-
-      copyTV(L, o, result);
+      copyTV(L, o, result); // Copy resolved value to stack slot for consistency
       return o;
    }
    return o;
 }
 
-//********************************************************************************************************************
 // Const variant for read-only access - resolves but returns const pointer
-// For positive indices, checks if the slot exists before attempting resolution.
-// This is important for optional arguments where the stack slot may not exist.
 
-static cTValue * thunk_resolve_const(lua_State *L, int idx)
+static cTValue * resolve_index_const(lua_State *L, int idx)
 {
-   if (idx <= LUA_REGISTRYINDEX) {
-      return index2adr(L, idx);  // Pseudo-indices can't be thunks
-   }
-   // For positive indices, check if slot exists before attempting thunk resolution
+   if (idx <= LUA_REGISTRYINDEX) return index2adr(L, idx);  // Pseudo-indices can't be thunks
+
+   // For positive indices, check if slot exists before attempting resolution
    if (idx > 0) {
       TValue *o = L->base + (idx - 1);
       if (o >= L->top) return niltv(L);  // Slot doesn't exist, return nil
    }
-   return thunk_resolve_at(L, idx);
+   return resolve_index(L, idx);
 }
 
 //********************************************************************************************************************
@@ -455,7 +442,7 @@ extern int lua_lessthan(lua_State *L, int idx1, int idx2)
 
 extern lua_Number lua_tonumber(lua_State *L, int idx)
 {
-   cTValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_const(L, idx) : index2adr(L, idx);
+   cTValue *o = (idx > LUA_REGISTRYINDEX) ? resolve_index_const(L, idx) : index2adr(L, idx);
    TValue tmp;
    if (auto num = try_to_number(o, &tmp)) return *num;
    return 0;
@@ -466,7 +453,7 @@ extern lua_Number lua_tonumber(lua_State *L, int idx)
 
 extern lua_Number lua_tonumberx(lua_State *L, int idx, int* ok)
 {
-   cTValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_const(L, idx) : index2adr(L, idx);
+   cTValue *o = (idx > LUA_REGISTRYINDEX) ? resolve_index_const(L, idx) : index2adr(L, idx);
    TValue tmp;
    if (auto num = try_to_number(o, &tmp)) {
       if (ok) *ok = 1;
@@ -481,7 +468,7 @@ extern lua_Number lua_tonumberx(lua_State *L, int idx, int* ok)
 
 extern lua_Number luaL_checknumber(lua_State *L, int idx)
 {
-   cTValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_const(L, idx) : index2adr(L, idx);
+   cTValue *o = (idx > LUA_REGISTRYINDEX) ? resolve_index_const(L, idx) : index2adr(L, idx);
    TValue tmp;
    if (auto num = try_to_number(o, &tmp)) return *num;
    lj_err_argt(L, idx, LUA_TNUMBER);
@@ -492,7 +479,7 @@ extern lua_Number luaL_checknumber(lua_State *L, int idx)
 
 extern lua_Number luaL_optnumber(lua_State *L, int idx, lua_Number def)
 {
-   cTValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_const(L, idx) : index2adr(L, idx);
+   cTValue *o = (idx > LUA_REGISTRYINDEX) ? resolve_index_const(L, idx) : index2adr(L, idx);
    TValue tmp;
    if (tvisnil(o)) return def;
    if (auto num = try_to_number(o, &tmp)) return *num;
@@ -504,7 +491,7 @@ extern lua_Number luaL_optnumber(lua_State *L, int idx, lua_Number def)
 
 extern lua_Integer lua_tointeger(lua_State *L, int idx)
 {
-   cTValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_const(L, idx) : index2adr(L, idx);
+   cTValue *o = (idx > LUA_REGISTRYINDEX) ? resolve_index_const(L, idx) : index2adr(L, idx);
    TValue tmp;
    if (auto i = try_to_integer(o, &tmp)) return *i;
    return 0;
@@ -515,7 +502,7 @@ extern lua_Integer lua_tointeger(lua_State *L, int idx)
 
 extern lua_Integer lua_tointegerx(lua_State *L, int idx, int* ok)
 {
-   cTValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_const(L, idx) : index2adr(L, idx);
+   cTValue *o = (idx > LUA_REGISTRYINDEX) ? resolve_index_const(L, idx) : index2adr(L, idx);
    TValue tmp;
    if (auto i = try_to_integer(o, &tmp)) {
       if (ok) *ok = 1;
@@ -530,7 +517,7 @@ extern lua_Integer lua_tointegerx(lua_State *L, int idx, int* ok)
 
 extern lua_Integer luaL_checkinteger(lua_State *L, int idx)
 {
-   cTValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_const(L, idx) : index2adr(L, idx);
+   cTValue *o = (idx > LUA_REGISTRYINDEX) ? resolve_index_const(L, idx) : index2adr(L, idx);
    TValue tmp;
    if (auto i = try_to_integer(o, &tmp)) return *i;
    lj_err_argt(L, idx, LUA_TNUMBER);
@@ -541,7 +528,7 @@ extern lua_Integer luaL_checkinteger(lua_State *L, int idx)
 
 extern lua_Integer luaL_optinteger(lua_State *L, int idx, lua_Integer def)
 {
-   cTValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_const(L, idx) : index2adr(L, idx);
+   cTValue *o = (idx > LUA_REGISTRYINDEX) ? resolve_index_const(L, idx) : index2adr(L, idx);
    TValue tmp;
    if (tvisnil(o)) return def;
    if (auto i = try_to_integer(o, &tmp)) return *i;
@@ -553,7 +540,7 @@ extern lua_Integer luaL_optinteger(lua_State *L, int idx, lua_Integer def)
 
 extern int lua_toboolean(lua_State *L, int idx)
 {
-   cTValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_const(L, idx) : index2adr(L, idx);
+   cTValue *o = (idx > LUA_REGISTRYINDEX) ? resolve_index_const(L, idx) : index2adr(L, idx);
    return tvistruecond(o);
 }
 
@@ -562,9 +549,28 @@ extern int lua_toboolean(lua_State *L, int idx)
 
 extern GCarray * lua_toarray(lua_State *L, int Arg)
 {
-   TValue *o = (Arg > LUA_REGISTRYINDEX) ? thunk_resolve_at(L, Arg) : index2adr(L, Arg);
+   TValue *o = (Arg > LUA_REGISTRYINDEX) ? resolve_index(L, Arg) : index2adr(L, Arg);
    if (tvisarray(o)) return &gcval(o)->arr;
    lj_err_argt(L, Arg, LUA_TARRAY);
+}
+
+//********************************************************************************************************************
+// Return object value (validates but does not perform any conversion)
+// Handles thunk resolution
+
+extern GCobject * lua_toobject(lua_State *L, int Arg)
+{
+   TValue *o = (Arg > LUA_REGISTRYINDEX) ? resolve_index(L, Arg) : index2adr(L, Arg);
+   if (tvisobject(o)) return &gcval(o)->obj;
+   lj_err_argt(L, Arg, LUA_TOBJECT);
+}
+
+extern GCobject * lua_optobject(lua_State *L, int Arg)
+{
+   TValue *o = (Arg > LUA_REGISTRYINDEX) ? resolve_index(L, Arg) : index2adr(L, Arg);
+   if (tvisobject(o)) return &gcval(o)->obj;
+   else if (tvisnil(o)) return nullptr;
+   lj_err_argt(L, Arg, LUA_TOBJECT);
 }
 
 //********************************************************************************************************************
@@ -572,7 +578,7 @@ extern GCarray * lua_toarray(lua_State *L, int Arg)
 
 extern const char* lua_tolstring(lua_State *L, int idx, size_t* len)
 {
-   TValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_at(L, idx) : index2adr(L, idx);
+   TValue *o = (idx > LUA_REGISTRYINDEX) ? resolve_index(L, idx) : index2adr(L, idx);
    GCstr *s;
    if (tvisstr(o)) s = strV(o);
    else if (tvisnumber(o)) {
@@ -594,7 +600,7 @@ extern const char* lua_tolstring(lua_State *L, int idx, size_t* len)
 
 extern const char * luaL_checklstring(lua_State *L, int idx, size_t* len)
 {
-   TValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_at(L, idx) : index2adr(L, idx);
+   TValue *o = (idx > LUA_REGISTRYINDEX) ? resolve_index(L, idx) : index2adr(L, idx);
    GCstr *s;
    if (tvisstr(o)) [[likely]] {
       s = strV(o);
@@ -616,7 +622,7 @@ extern const char * luaL_checklstring(lua_State *L, int idx, size_t* len)
 
 extern uint32_t luaL_checkstringhash(lua_State *L, int idx)
 {
-   TValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_at(L, idx) : index2adr(L, idx);
+   TValue *o = (idx > LUA_REGISTRYINDEX) ? resolve_index(L, idx) : index2adr(L, idx);
    GCstr *s;
    if (tvisstr(o)) [[likely]] {
       s = strV(o);
@@ -637,9 +643,10 @@ extern uint32_t luaL_checkstringhash(lua_State *L, int idx)
 
 extern const char* luaL_optlstring(lua_State *L, int idx, const char* def, size_t* len)
 {
-   TValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_at(L, idx) : index2adr(L, idx);
-   GCstr* s;
-   if (LJ_LIKELY(tvisstr(o))) {
+   TValue *o = (idx > LUA_REGISTRYINDEX) ? resolve_index(L, idx) : index2adr(L, idx);
+   GCstr *s;
+
+   if (tvisstr(o)) [[likely]] {
       s = strV(o);
    }
    else if (tvisnil(o)) {
@@ -862,6 +869,18 @@ extern void lua_createarray(lua_State *L, uint32_t Length, AET Type, void *Data,
 }
 
 //********************************************************************************************************************
+// Create native Parasol object and push onto stack. Returns pointer for additional configuration.
+
+extern GCobject * lua_pushobject(lua_State *L, OBJECTID UID, OBJECTPTR Ptr, objMetaClass *ClassPtr, uint8_t Flags)
+{
+   lj_gc_check(L);
+   auto obj = lj_object_new(L, UID, Ptr, ClassPtr, Flags);
+   setobjectV(L, L->top, obj);
+   incr_top(L);
+   return obj;
+}
+
+//********************************************************************************************************************
 // Create new metatable in registry
 
 extern int luaL_newmetatable(lua_State *L, const char* tname)
@@ -894,7 +913,7 @@ extern int lua_pushthread(lua_State *L)
 //********************************************************************************************************************
 // Create new coroutine thread
 
-extern lua_State* lua_newthread(lua_State *L)
+extern lua_State * lua_newthread(lua_State *L)
 {
    lua_State *L1;
    lj_gc_check(L);
@@ -907,7 +926,7 @@ extern lua_State* lua_newthread(lua_State *L)
 //********************************************************************************************************************
 // Create userdata and push onto stack
 
-extern void* lua_newuserdata(lua_State *L, size_t size)
+extern void * lua_newuserdata(lua_State *L, size_t size)
 {
    GCudata *ud;
    lj_gc_check(L);
@@ -1027,7 +1046,7 @@ extern int luaL_getmetafield(lua_State *L, int idx, const char* field)
 
 extern void lua_getfenv(lua_State *L, int idx)
 {
-   cTValue* o = index2adr_check(L, idx);
+   cTValue *o = index2adr_check(L, idx);
    if (tvisfunc(o)) settabV(L, L->top, tabref(funcV(o)->c.env));
    else if (tvisudata(o)) settabV(L, L->top, tabref(udataV(o)->env));
    else if (tvisthread(o)) settabV(L, L->top, tabref(threadV(o)->env));
@@ -1040,7 +1059,7 @@ extern void lua_getfenv(lua_State *L, int idx)
 
 extern int lua_next(lua_State *L, int idx)
 {
-   cTValue* t = index2adr(L, idx);
+   cTValue *t = index2adr(L, idx);
    int more;
    lj_checkapi(tvistab(t), "stack slot %d is not a table", idx);
    more = lj_tab_next(tabV(t), L->top - 1, L->top - 1);
@@ -1070,9 +1089,9 @@ extern const char* lua_getupvalue(lua_State *L, int idx, int n)
 //********************************************************************************************************************
 // Get unique identifier for upvalue
 
-extern void* lua_upvalueid(lua_State *L, int idx, int n)
+extern void * lua_upvalueid(lua_State *L, int idx, int n)
 {
-   GCfunc* fn = funcV(index2adr(L, idx));
+   GCfunc *fn = funcV(index2adr(L, idx));
    n--;
    lj_checkapi((uint32_t)n < fn->l.nupvalues, "bad upvalue %d", n);
    return isluafunc(fn) ? (void*)gcref(fn->l.uvptr[n]) : (void*)&fn->c.upvalue[n];
@@ -1239,6 +1258,26 @@ extern void luaL_setmetatable(lua_State *L, const char* tname)
 {
    lua_getfield(L, LUA_REGISTRYINDEX, tname);
    lua_setmetatable(L, -2);
+}
+
+//********************************************************************************************************************
+// Set base metatable for a type (used for custom native types like LJ_TOBJECT)
+// Takes the metatable from the top of the stack and pops it.
+
+extern void lua_setbasemetatable(lua_State *L, uint32_t itype)
+{
+   lj_checkapi_slot(1);
+   lj_checkapi(tvistab(L->top - 1), "top stack slot is not a table");
+
+   auto mt = tabV(L->top - 1);
+   auto g = G(L);
+
+   if (lj_trace_flushall(L)) lj_err_caller(L, ErrMsg::NOGCMM);
+
+   // NOBARRIER: basemt is a GC root.
+   setgcref(basemt_it(g, itype), obj2gco(mt));
+
+   L->top--;
 }
 
 //********************************************************************************************************************

@@ -35,6 +35,7 @@ For drag and drop operations, data can be requested from a source as follows:
 #include <inttypes.h>
 #include <string_view>
 
+#include "lib.h"
 #include "lauxlib.h"
 #include "lj_obj.h"
 
@@ -127,8 +128,8 @@ static void key_event(evKey *, int, struct finput *);
    auto prv = (prvFluid *)Lua->script->ChildPrivate;
 
    OBJECTID object_id;
-   struct object *obj;
-   if ((obj = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) object_id = obj->UID;
+   GCobject *obj;
+   if ((obj = lj_lib_checkobject(Lua, 1))) object_id = obj->uid;
    else object_id = lua_tointeger(Lua, 1);
 
    if ((object_id) and (GetClassID(object_id) != CLASSID::SURFACE)) luaL_argerror(Lua, 1, "Surface object required.");
@@ -206,10 +207,10 @@ static void key_event(evKey *, int, struct finput *);
       return 0;
    }
 
-   auto obj = (struct object *)get_meta(Lua, 1, "Fluid.obj");
+   auto obj = lj_lib_checkobject(Lua, 1);
    OBJECTID source_id;
 
-   if (obj) source_id = obj->UID;
+   if (obj) source_id = obj->uid;
    else if (not (source_id = lua_tointeger(Lua, 1))) {
       luaL_argerror(Lua, 1, "Invalid object reference");
       return 0;
@@ -286,8 +287,8 @@ static void key_event(evKey *, int, struct finput *);
    auto mask = JTYPE(lua_tointeger(Lua, 1)); // Optional
 
    OBJECTID object_id;
-   struct object *object;
-   if ((object = (struct object *)get_meta(Lua, 2, "Fluid.obj"))) object_id = object->UID;
+   GCobject *object_ref;
+   if ((object_ref = lj_lib_checkobject(Lua, 2))) object_id = object_ref->uid;
    else object_id = lua_tointeger(Lua, 2);
 
    int device_id = lua_tointeger(Lua, 3); // Optional

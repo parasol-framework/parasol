@@ -11,6 +11,7 @@
 #include "lualib.h"
 #include "lauxlib.h"
 #include "lj_obj.h"
+#include "lj_object.h"
 #include "lib.h"
 
 #include "hashes.h"
@@ -743,16 +744,17 @@ static int module_call(lua_State *Lua)
                }
             }
          }
-         else if (auto obj = (object *)get_meta(Lua, i, "Fluid.obj")) {
-            if (obj->ObjectPtr) {
-               ((OBJECTPTR *)(buffer + j))[0] = obj->ObjectPtr;
+         else if (arg_type IS LUA_TOBJECT) {
+            auto obj = lua_toobject(Lua, i);
+            if (obj->ptr) {
+               ((OBJECTPTR *)(buffer + j))[0] = obj->ptr;
             }
             else if (auto ptr_obj = (OBJECTPTR)access_object(obj)) {
                ((OBJECTPTR *)(buffer + j))[0] = ptr_obj;
                release_object(obj);
             }
             else {
-               log.warning("Unable to resolve object pointer for #%d.", obj->UID);
+               log.warning("Unable to resolve object pointer for #%d.", obj->uid);
                ((OBJECTPTR *)(buffer + j))[0] = nullptr;
             }
 
@@ -761,7 +763,7 @@ static int module_call(lua_State *Lua)
             j += sizeof(APTR);
          }
          else if (arg_type IS LUA_TARRAY) {
-            GCarray *array = lj_lib_checkarray(Lua, i);
+            GCarray *array = lua_toarray(Lua, i);
 
             ((APTR *)(buffer + j))[0] = array->arraydata();
             arg_values[in] = buffer + j;
@@ -817,10 +819,10 @@ static int module_call(lua_State *Lua)
          }
       }
       else if (argtype & FD_INT) {
+         auto tv = resolve_index(Lua, i);
+
          if (argtype & FD_OBJECT) {
-            if (auto obj = (object *)get_meta(Lua, i, "Fluid.obj")) {
-               ((int *)(buffer + j))[0] = obj->UID;
-            }
+            if (tvisobject(tv)) ((int *)(buffer + j))[0] = objectV(tv)->uid;
             else ((int *)(buffer + j))[0] = lua_tointeger(Lua, i);
          }
          else if (argtype & FD_UNSIGNED) ((uint32_t *)(buffer + j))[0] = lua_tointeger(Lua, i);
@@ -891,8 +893,7 @@ static int module_call(lua_State *Lua)
       }
       else if (restype & FD_OBJECT) {
          if ((OBJECTPTR)rc) {
-            object *obj = push_object(Lua, (OBJECTPTR)rc);
-            if (restype & FD_ALLOC) obj->Detached = false;
+            push_object(Lua, (OBJECTPTR)rc,  (restype & FD_ALLOC) ? false : true);
          }
          else lua_pushnil(Lua);
       }
@@ -1023,8 +1024,7 @@ static int process_results(prvFluid *prv, APTR resultsidx, const FunctionField *
             if (var) {
                if (argtype & FD_OBJECT) {
                   if (((APTR *)var)[0]) {
-                     object *obj = push_object(prv->Lua, ((OBJECTPTR *)var)[0]);
-                     if (argtype & FD_ALLOC) obj->Detached = false;
+                     push_object(prv->Lua, ((OBJECTPTR *)var)[0], (argtype & FD_ALLOC) ? false : true);
                   }
                   else lua_pushnil(prv->Lua);
                }

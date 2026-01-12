@@ -165,7 +165,7 @@ struct code_reader_handle {
 };
 
 struct actionmonitor {
-   struct object *Object;      // Fluid.obj original passed in for the subscription.
+   GCobject *Object;           // Native GCobject for the subscription.
    const FunctionField *Args;  // The args of the action/method are stored here so that we can build the arg value table later.
    int     Function;          // Index of function to call back.
    int     Reference;         // A custom reference to pass to the callback (optional)
@@ -348,7 +348,7 @@ constexpr uint32_t char_hash(char Char, uint32_t Hash = 5381) {
 // obj_read is used to build efficient customised jump tables for object calls.
 
 struct obj_read {
-   typedef int JUMP(lua_State *, const struct obj_read &, struct object *);
+   typedef int JUMP(lua_State *, const struct obj_read &, GCobject *);
 
    uint32_t Hash;
    JUMP *Call;
@@ -408,24 +408,25 @@ inline auto write_hash = [](const obj_write &a, const obj_write &b) { return a.H
 typedef std::set<obj_write, decltype(write_hash)> WRITE_TABLE;
 
 //********************************************************************************************************************
+// Per-class field table cache - eliminates per-instance hash tables.  These are populated lazily when an object of
+// that class is first accessed
 
-struct object {
-   OBJECTPTR ObjectPtr;   // If the object is local then we can have the address
-   objMetaClass *Class;   // Direct pointer to the object's class
-   READ_TABLE   *ReadTable;
-   WRITE_TABLE  *WriteTable;
-   OBJECTID UID;          // If the object is referenced externally, access is managed by ID
-   uint16_t AccessCount;  // Controlled by access_object() and release_object()
-   bool  Detached;        // True if the object is an external reference or is not to be garbage collected
-   bool  Locked;          // Can be true ONLY if a lock has been acquired from AccessObject()
-};
+extern std::unordered_map<objMetaClass *, READ_TABLE> glClassReadTable;
+extern std::unordered_map<objMetaClass *, WRITE_TABLE> glClassWriteTable;
+
+// Retrieve cached read/write tables for a class (creates if not present)
+
+READ_TABLE * get_read_table(lua_State *L, objMetaClass *Class);
+WRITE_TABLE * get_write_table(objMetaClass *Class);
+
+//********************************************************************************************************************
 
 struct lua_ref {
    CPTR Address;
    int Ref;
 };
 
-OBJECTPTR access_object(struct object *);
+OBJECTPTR access_object(GCobject *);
 std::vector<lua_ref> * alloc_references(void);
 void load_include_for_class(lua_State *, objMetaClass *);
 ERR build_args(lua_State *, const struct FunctionField *, int, int8_t *, int *);
@@ -446,8 +447,9 @@ void make_struct_ptr_array(lua_State *, std::string_view, int, CPTR *);
 void make_struct_serial_array(lua_State *, std::string_view, int, CPTR);
 void notify_action(OBJECTPTR, ACTIONID, ERR, APTR);
 void process_error(objScript *, CSTRING);
-struct object * push_object(lua_State *, OBJECTPTR Object);
 ERR push_object_id(lua_State *, OBJECTID ObjectID);
+int object_index(lua_State *);
+int object_newindex(lua_State *);
 struct fstruct * push_struct(objScript *, APTR, std::string_view, bool, bool);
 struct fstruct * push_struct_def(lua_State *, APTR, struct struct_record &, bool);
 extern void register_io_class(lua_State *);
@@ -460,7 +462,7 @@ extern void register_regex_class(lua_State *);
 extern void register_struct_class(lua_State *);
 extern void register_thread_class(lua_State *);
 //static void register_widget_class(lua_State *);
-void release_object(struct object *);
+void release_object(GCobject *);
 void new_module(lua_State *, objModule *);
 ERR struct_to_table(lua_State *, std::vector<lua_ref> &, struct struct_record &, CPTR);
 ERR table_to_struct(lua_State *, std::string_view, APTR *);
@@ -483,3 +485,11 @@ extern void armExecFunction(APTR, APTR, int);
 #else
 extern void x64ExecFunction(APTR, int, int64_t *, int);
 #endif
+
+// Throws exceptions.  Used for returning objects to the user.
+
+inline GCobject * push_object(lua_State *Lua, OBJECTPTR Object, bool Detached = true)
+{
+   load_include_for_class(Lua, Object->Class);
+   return lua_pushobject(Lua, Object->UID, nullptr, Object->Class, Detached ? GCOBJ_DETACHED : 0);
+}
