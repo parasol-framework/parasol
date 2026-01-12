@@ -121,6 +121,21 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Test obj.get() explicit field access
+
+@Test function ObjGetField()
+   f = obj.new('time', { })
+
+   -- Get single field
+   year = f.get('year')
+   assert(type(year) is 'number', "Expected get('year') to return a number")
+
+   -- Get field with default option
+   result = f.get('no_field', 2020)
+   assert(result is 2020, "Expected get() to return default value for missing field")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- Test obj.lock() method with callback
 
 @Test function ObjLock()
@@ -147,21 +162,6 @@ end
    -- Test with class filter (may return empty array)
    filtered = script.children("File")
    assert(type(filtered) is 'array', "Expected children() with filter to return an array")
-end
-
------------------------------------------------------------------------------------------------------------------------
--- Test obj.get() explicit field access
-
-@Test function ObjInit()
-   f = obj.new('time', { })
-
-   -- Get single field
-   year = f.get('year')
-   assert(type(year) is 'number', "Expected get('year') to return a number")
-
-   -- Get field with default option
-   result = f.get('no_field', 2020)
-   assert(result is 2020, "Expected get() to return default value for missing field")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
