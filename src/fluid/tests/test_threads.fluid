@@ -59,7 +59,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test; @Requires(display=true) function Parallel()
+@Test(priority=1); @Requires(display=true) function Parallel()
    initPictures()
 
    glPicsProcessed = 0
@@ -84,7 +84,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- This is the control test for demonstrating how fast parallel execution can actually be versus sequential execution.
 
-@Test; @Requires(display=true) function Sequential()
+@Test(priority=2); @Requires(display=true) function Sequential()
    initPictures()
 
    for v in values(glPictures) do
@@ -97,7 +97,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Create two dummy objects and use them to confirm that the signalling of multiple objects works.
 
-@Test; @Requires(display=true) function MultipleSignals()
+@Test(priority=3) function MultipleSignals()
    signal_a = obj.new('xml', { flags=XMF_NEW })
    signal_b = obj.new('xml', { flags=XMF_NEW })
 
@@ -113,9 +113,13 @@ end
          signal_b.acSignal()
       end)
 
-      proc = processing.new({ timeout=1.0, signals = { signal_a, signal_b } })
-      msg('Sleeping....')
-      err = proc.sleep()
-      assert(err is ERR_Okay, "Unexpected error: " .. mSys.GetErrorMsg(err))
+      try
+         proc = processing.new({ timeout=1.0, signals = { signal_a, signal_b } })
+         msg('Sleeping....')
+         err = proc.sleep()
+         assert(err is ERR_Okay, "Unexpected error: " .. mSys.GetErrorMsg(err))
+      except e
+         error('Error during MultipleSignals test: ' .. e.message)
+      end
    end
 end

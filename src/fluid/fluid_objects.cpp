@@ -391,15 +391,15 @@ WRITE_TABLE * get_write_table(objMetaClass *Class)
       class_id = CLASSID(strihash(class_name));
       log.trace("%s, $%.8x", class_name, uint32_t(class_id));
    }
-   else {
-      log.warning("String or ID expected for class name, got '%s'.", lua_typename(Lua, type));
-      luaL_error(Lua, ERR::Mismatch);
-      return 0;
-   }
+   else luaL_error(Lua, ERR::Mismatch, "String or ID expected for class name, got '%s'.", lua_typename(Lua, type));
 
    OBJECTPTR obj;
    if (auto error = NewObject(class_id, objflags, &obj); error IS ERR::Okay) {
-      if (Lua->script->TargetID) obj->set(FID_Owner, Lua->script->TargetID);
+      if (Lua->script->TargetID) {
+         ScopedObjectLock new_owner(Lua->script->TargetID);
+         if (new_owner.granted()) SetOwner(obj, *new_owner);
+         else luaL_error(Lua, ERR::LockFailed);
+      }
 
       obj->CreatorMeta = Lua;
 
@@ -436,20 +436,17 @@ WRITE_TABLE * get_write_table(objMetaClass *Class)
             if (field_error != ERR::Okay) {
                luaL_error(Lua, field_error, "Failed to set field '%s.%s' with %s, error: %s", class_name, field_name, lua_typename(Lua, failed_type), GetErrorMsg(field_error));
             }
-            else {
-               log.warning("Failed to Init() %s: %s", class_name, GetErrorMsg(error));
-               luaL_error(Lua, error);
-            }
+            else luaL_error(Lua, error, "Failed to Init() %s: %s", class_name, GetErrorMsg(error));
+
             return 0;
          }
       }
 
       return 1;
    }
-   else {
-      luaL_error(Lua, ERR::NewObject, "NewObject() failed for class '%s', error: %s", class_name, GetErrorMsg(error));
-      return 0;
-   }
+   else luaL_error(Lua, ERR::NewObject, "NewObject() failed for class '%s', error: %s", class_name, GetErrorMsg(error));
+
+   return 0;
 }
 
 //********************************************************************************************************************
@@ -513,13 +510,13 @@ static int object_newchild(lua_State *Lua)
    else {
       log.warning("String or ID expected for class name, got '%s'.", lua_typename(Lua, type));
       luaL_error(Lua, ERR::Mismatch);
-      return 0;
    }
 
    OBJECTPTR obj;
-   ERR error;
-   if ((error = NewObject(class_id, objflags, &obj)) IS ERR::Okay) {
-      if (Lua->script->TargetID) obj->set(FID_Owner, Lua->script->TargetID);
+   if (auto error = NewObject(class_id, objflags, &obj); error IS ERR::Okay) {
+      ScopedObjectLock new_owner(Lua->script->TargetID);
+      if (new_owner.granted()) SetOwner(obj, *new_owner);
+      else luaL_error(Lua, ERR::LockFailed);
 
       obj->CreatorMeta = Lua;
 

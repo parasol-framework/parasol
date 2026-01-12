@@ -54,14 +54,11 @@ static int processing_new(lua_State *Lua)
                      if (lua_istable(Lua, -1)) { // { obj1, obj2, ... }
                         lua_pushnil(Lua);
                         while (lua_next(Lua, -2)) {
-                           if (auto obj = lj_lib_checkobject(Lua, -1)) {
+                           if (auto obj = lua_optobject(Lua, -1)) {
                               ObjectSignal sig = { .Object = obj->ptr };
                               fp->Signals->push_back(sig);
                            }
-                           else {
-                              luaL_error(Lua, ERR::InvalidType, "Expected object in signal list, got %s.", lua_typename(Lua, lua_type(Lua, -2)));
-                              return 0;
-                           }
+                           else luaL_error(Lua, ERR::InvalidType, "Expected object in signal list, got %s.", lua_typename(Lua, lua_type(Lua, -1)));
 
                            lua_pop(Lua, 1); // Remove value, keep the key
                         }
