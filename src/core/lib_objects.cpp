@@ -289,6 +289,8 @@ static void free_children(OBJECTPTR Object)
             if (((mem.Flags & MEM::COLLECT) != MEM::NIL) or (!mem.Object)) continue;
 
             if ((mem.Object->Owner) and (mem.Object->Owner != Object)) {
+               // Indicates that glObjectChildren[Object->UID] doesn't coincide with the owner declared by the child.
+               // Preference is given to the child object, which means glObjectChildren hasn't been kept up to date.
                log.warning("Failed sanity test: Child object #%d has owner ID of #%d that does not match #%d.", mem.Object->UID, mem.Object->ownerID(), Object->UID);
                continue;
             }

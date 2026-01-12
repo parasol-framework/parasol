@@ -134,6 +134,10 @@ inline void gray2black(GCobj *x) noexcept { x->gch.marked |= LJ_GC_BLACK; }
 
 [[nodiscard]] inline bool isfinalized(const GCudata* u) noexcept { return (u->marked & LJ_GC_FINALIZED) != 0; }
 
+// Check if GCobject has been finalised.
+
+[[nodiscard]] inline bool isfinalized(const GCobject* o) noexcept { return (o->marked & LJ_GC_FINALIZED) != 0; }
+
 // Mark a string object (strings go directly to black, never grey).
 
 inline void gc_mark_str(GCstr* s) noexcept { s->marked &= uint8_t(~LJ_GC_WHITES); }
@@ -287,6 +291,25 @@ static void gc_mark_mmudata(global_State *g)
 }
 
 //********************************************************************************************************************
+// Helper to move an object to the mmudata finalization list.
+
+static void gc_move_to_mmudata(global_State *g, GCobj *o, GCRef *p)
+{
+   markfinalized(o);
+   *p = o->gch.nextgc;
+   if (gcref(g->gc.mmudata)) {  // Link to end of mmudata list.
+      GCobj *root = gcref(g->gc.mmudata);
+      setgcrefr(o->gch.nextgc, root->gch.nextgc);
+      setgcref(root->gch.nextgc, o);
+      setgcref(g->gc.mmudata, o);
+   }
+   else {  // Create circular list.
+      setgcref(o->gch.nextgc, o);
+      setgcref(g->gc.mmudata, o);
+   }
+}
+
+//********************************************************************************************************************
 // Separate userdata objects to be finalized to mmudata list.
 
 size_t lj_gc_separateudata(global_State *g, int all)
@@ -304,18 +327,36 @@ size_t lj_gc_separateudata(global_State *g, int all)
       }
       else {  // Otherwise move userdata to be finalized to mmudata list.
          m += sizeudata(gco_to_userdata(o));
-         markfinalized(o);
-         *p = o->gch.nextgc;
-         if (gcref(g->gc.mmudata)) {  // Link to end of mmudata list.
-            GCobj *root = gcref(g->gc.mmudata);
-            setgcrefr(o->gch.nextgc, root->gch.nextgc);
-            setgcref(root->gch.nextgc, o);
-            setgcref(g->gc.mmudata, o);
+         gc_move_to_mmudata(g, o, p);
+      }
+   }
+   return m;
+}
+
+//********************************************************************************************************************
+// Separate GCobject (native Parasol objects) to be finalized to mmudata list.
+// All GCobject instances require finalization via lj_object_finalize() to free the Parasol object.
+
+static size_t gc_separateobjects(global_State *g, int all)
+{
+   size_t m = 0;
+   GCRef *p = &g->gc.root;
+   GCobj *o;
+
+   while ((o = gcref(*p)) != nullptr) {
+      if (o->gch.gct IS ~LJ_TOBJECT) {
+         GCobject *obj = gco_to_object(o);
+         if (not (iswhite(o) or all) or isfinalized(obj)) {
+            p = &o->gch.nextgc;  //  Nothing to do.
          }
-         else {  // Create circular list.
-            setgcref(o->gch.nextgc, o);
-            setgcref(g->gc.mmudata, o);
+         else {
+            // Move GCobject to mmudata list for finalization.
+            m += sizeof(GCobject);
+            gc_move_to_mmudata(g, o, p);
          }
+      }
+      else {
+         p = &o->gch.nextgc;
       }
    }
    return m;
@@ -711,24 +752,36 @@ static void gc_call_finaliser(global_State *g, lua_State *L, cTValue* mo, GCobj*
 }
 
 //********************************************************************************************************************
-// Finalize one userdata object from the mmudata list.
+// Finalize one object from the mmudata list (handles both userdata and GCobject).
 
 static void gc_finalize(lua_State *L)
 {
    global_State *g = G(L);
    GCobj* o = gcnext(gcref(g->gc.mmudata));
-   cTValue* mo;
    lj_assertG(tvref(g->jit_base) IS nullptr, "finaliser called on trace");
-   // Unchain from list of userdata to be finalized.
+
+   // Unchain from list of objects to be finalized.
    if (o IS gcref(g->gc.mmudata)) setgcrefnull(g->gc.mmudata);
    else setgcrefr(gcref(g->gc.mmudata)->gch.nextgc, o->gch.nextgc);
-   // Add userdata back to the main userdata list and make it white.
-   setgcrefr(o->gch.nextgc, mainthread(g)->nextgc);
-   setgcref(mainthread(g)->nextgc, o);
-   makewhite(g, o);
-   // Resolve the __gc metamethod.
-   mo = lj_meta_fastg(g, tabref(gco_to_userdata(o)->metatable), MM_gc);
-   if (mo) gc_call_finaliser(g, L, mo, o);
+
+   // Add object back to its original list and make it white.
+   if (o->gch.gct IS ~LJ_TOBJECT) {
+      // GCobject goes back to the main GC root list.
+      setgcrefr(o->gch.nextgc, g->gc.root);
+      setgcref(g->gc.root, o);
+      makewhite(g, o);
+      // Call the finalization function directly (no metamethod lookup).
+      lj_object_finalize(L, gco_to_object(o));
+   }
+   else {
+      // Userdata goes back to the main userdata list.
+      setgcrefr(o->gch.nextgc, mainthread(g)->nextgc);
+      setgcref(mainthread(g)->nextgc, o);
+      makewhite(g, o);
+      // Resolve the __gc metamethod from userdata's metatable.
+      cTValue *mo = lj_meta_fastg(g, tabref(gco_to_userdata(o)->metatable), MM_gc);
+      if (mo) gc_call_finaliser(g, L, mo, o);
+   }
 }
 
 //********************************************************************************************************************
@@ -776,6 +829,7 @@ static void atomic(global_State *g, lua_State *L)
    gc_propagate_gray(g);  //  Propagate it.
 
    udsize = lj_gc_separateudata(g, 0);  //  Separate userdata to be finalized.
+   udsize += gc_separateobjects(g, 0);  //  Separate GCobjects to be finalized.
    gc_mark_mmudata(g);  //  Mark them.
    udsize += gc_propagate_gray(g);  //  And propagate the marks.
 

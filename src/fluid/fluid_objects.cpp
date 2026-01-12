@@ -405,7 +405,7 @@ WRITE_TABLE * get_write_table(objMetaClass *Class)
 
       load_include_for_class(Lua, obj->Class);
 
-      auto def = lua_pushobject(Lua, obj->UID, obj, obj->Class, 0);
+      lua_pushobject(Lua, obj->UID, obj, obj->Class, 0);
       if (lua_istable(Lua, 2)) {
          // Set fields against the object and initialise the object.  NOTE: Lua's table management code *does not*
          // preserve the order in which the fields were originally passed to the table.
@@ -879,36 +879,6 @@ static int object_unsubscribe(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Object garbage collector.
-//
-// NOTE: It is possible for the referenced object to have already been destroyed if it is owned by something outside of
-// Fluid's environment.  This is commonplace for UI objects.  In addition the object's class may have been removed if
-// the termination process is running during an expunge.
-
-[[nodiscard]] static int object_destruct(lua_State *Lua)
-{
-   auto def = objectV(Lua->base);
-
-   while (def->accesscount > 0) release_object(def);
-
-   if (not def->is_detached()) {
-      // Note that if the object's owner has switched to something out of our context, we
-      // don't terminate it (an exception is applied for Recordset objects as these must be
-      // owned by a Database object).
-
-      if (auto obj = GetObjectPtr(def->uid)) {
-         if ((obj->Class->BaseClassID IS CLASSID::RECORDSET) or (obj->Owner IS Lua->script) or (obj->ownerID() IS Lua->script->TargetID)) {
-            pf::Log log("obj.destruct");
-            log.trace("Freeing Fluid-owned object #%d.", def->uid);
-            FreeResource(obj); // We can't presume that the object pointer would be valid
-         }
-      }
-   }
-
-   return 0;
-}
-
-//********************************************************************************************************************
 
 static int object_free(lua_State *Lua)
 {
@@ -1045,7 +1015,6 @@ static const luaL_Reg objectlib_methods[] = {
    { "__index",    object_index },
    { "__newindex", object_newindex },
    { "__tostring", object_tostring },
-   { "__gc",       object_destruct },
    { "__pairs",    object_pairs },
    { "__ipairs",   object_ipairs },
    { nullptr, nullptr }

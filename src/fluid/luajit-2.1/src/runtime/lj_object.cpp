@@ -7,6 +7,7 @@
 #include "lj_obj.h"
 #include "lj_gc.h"
 #include "lj_object.h"
+#include "../../defs.h"
 
 //********************************************************************************************************************
 // Create a new GCobject for a Parasol object reference.  The object is allocated via the GC.
@@ -29,12 +30,37 @@ GCobject * lj_object_new(lua_State *L, OBJECTID UID, OBJECTPTR Ptr, objMetaClass
 }
 
 //********************************************************************************************************************
-// Free a GCobject during garbage collection.
-// If the object owns the Parasol object (not detached), it will be freed.
+// Finalize a GCobject during GC finalization phase. This is called directly by the GC without metamethod lookup.
+// Releases any locks and frees the underlying Parasol object if owned by this script.
+
+void lj_object_finalize(lua_State *L, GCobject *obj)
+{
+   while (obj->accesscount > 0) release_object(obj);
+
+   if (not obj->is_detached()) {
+      // Only free the Parasol object if it's owned by this script.
+      // Exception: Recordset objects are always freed as they must be owned by a Database object.
+      if (auto ptr = GetObjectPtr(obj->uid)) {
+         if ((ptr->Class->BaseClassID IS CLASSID::RECORDSET) or
+             (ptr->Owner IS L->script) or
+             (ptr->ownerID() IS L->script->TargetID)) {
+            pf::Log log("obj.destruct");
+            log.trace("Freeing Fluid-owned object #%d.", obj->uid);
+            FreeResource(ptr);
+         }
+      }
+   }
+}
+
+//********************************************************************************************************************
+// Free a GCobject during garbage collection sweep phase.
+// NOTE: The underlying Parasol object is NOT freed here. It should have been freed earlier
+// during the finalization phase by lj_object_finalize().
+// This function only releases any remaining locks and frees the GCobject wrapper itself.
 
 void LJ_FASTCALL lj_object_free(global_State *g, GCobject *obj)
 {
-   // Release any active locks before freeing
+   // Release any active locks before freeing the wrapper
    while (obj->accesscount > 0) {
       if (obj->flags & GCOBJ_LOCKED) {
          ReleaseObject((OBJECTPTR)obj->ptr);
@@ -44,21 +70,6 @@ void LJ_FASTCALL lj_object_free(global_State *g, GCobject *obj)
       obj->accesscount--;
    }
 
-   // If we own the object (not detached), free it
-   if (!(obj->flags & GCOBJ_DETACHED) and obj->uid) {
-      if (auto target = GetObjectPtr(obj->uid)) {
-         // Only free if we're still the owner
-         auto *L = mainthread(g);
-         if (L and L->script) {
-            if ((target->Class->BaseClassID IS CLASSID::RECORDSET) or
-                (target->Owner IS L->script) or
-                (target->ownerID() IS L->script->TargetID)) {
-               FreeResource(target);
-            }
-         }
-      }
-   }
-
-   // Free the GCobject structure
+   // Free the GCobject structure (Parasol object should have been freed by __gc finalizer)
    lj_mem_free(g, obj, sizeof(GCobject));
 }
