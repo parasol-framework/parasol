@@ -133,6 +133,7 @@ inline void gray2black(GCobj *x) noexcept { x->gch.marked |= LJ_GC_BLACK; }
 // Check if userdata has been finalised.
 
 [[nodiscard]] inline bool isfinalized(const GCudata* u) noexcept { return (u->marked & LJ_GC_FINALIZED) != 0; }
+[[nodiscard]] inline bool isfinalized_obj(const GCobj* o) noexcept { return (o->gch.marked & LJ_GC_FINALIZED) != 0; }
 
 // Mark a string object (strings go directly to black, never grey).
 
@@ -287,6 +288,22 @@ static void gc_mark_mmudata(global_State *g)
 }
 
 //********************************************************************************************************************
+// Mark objects in mmobject list.
+
+static void gc_mark_mmobject(global_State *g)
+{
+   GCobj *root = gcref(g->gc.mmobject);
+
+   if (GCobj *o = root) {
+      do {
+         o = gcnext(o);
+         makewhite(g, o);  //  Could be from previous GC.
+         gc_mark(g, o);
+      } while (o != root);
+   }
+}
+
+//********************************************************************************************************************
 // Separate userdata objects to be finalized to mmudata list.
 
 size_t lj_gc_separateudata(global_State *g, int all)
@@ -315,6 +332,42 @@ size_t lj_gc_separateudata(global_State *g, int all)
          else {  // Create circular list.
             setgcref(o->gch.nextgc, o);
             setgcref(g->gc.mmudata, o);
+         }
+      }
+   }
+   return m;
+}
+
+//********************************************************************************************************************
+// Separate objects to be finalized to mmobject list.
+
+size_t lj_gc_separateobject(global_State *g, int all)
+{
+   size_t m = 0;
+   GCRef *p = &g->gc.root;
+   GCobj *o;
+   while ((o = gcref(*p)) != nullptr) {
+      if (o->gch.gct != ~LJ_TOBJECT) {
+         p = &o->gch.nextgc;  //  Nothing to do.
+         continue;
+      }
+
+      if (not (iswhite(o) or all) or isfinalized_obj(o)) {
+         p = &o->gch.nextgc;  //  Nothing to do.
+      }
+      else {  // Otherwise move object to be finalized to mmobject list.
+         m += sizeof(GCobject);
+         markfinalized(o);
+         *p = o->gch.nextgc;
+         if (gcref(g->gc.mmobject)) {  // Link to end of mmobject list.
+            GCobj *root = gcref(g->gc.mmobject);
+            setgcrefr(o->gch.nextgc, root->gch.nextgc);
+            setgcref(root->gch.nextgc, o);
+            setgcref(g->gc.mmobject, o);
+         }
+         else {  // Create circular list.
+            setgcref(o->gch.nextgc, o);
+            setgcref(g->gc.mmobject, o);
          }
       }
    }
@@ -713,7 +766,7 @@ static void gc_call_finaliser(global_State *g, lua_State *L, cTValue* mo, GCobj*
 //********************************************************************************************************************
 // Finalize one userdata object from the mmudata list.
 
-static void gc_finalize(lua_State *L)
+static void gc_finalize_udata(lua_State *L)
 {
    global_State *g = G(L);
    GCobj* o = gcnext(gcref(g->gc.mmudata));
@@ -732,11 +785,46 @@ static void gc_finalize(lua_State *L)
 }
 
 //********************************************************************************************************************
-// Finalize all userdata objects from mmudata list.
+// Finalize one object from the mmobject list.
+
+static void gc_finalize_object(lua_State *L)
+{
+   global_State *g = G(L);
+   GCobj* o = gcnext(gcref(g->gc.mmobject));
+   cTValue* mo;
+   lj_assertG(tvref(g->jit_base) IS nullptr, "finaliser called on trace");
+   // Unchain from list of objects to be finalized.
+   if (o IS gcref(g->gc.mmobject)) setgcrefnull(g->gc.mmobject);
+   else setgcrefr(gcref(g->gc.mmobject)->gch.nextgc, o->gch.nextgc);
+   // Add object back to the main GC list and make it white.
+   setgcrefr(o->gch.nextgc, g->gc.root);
+   setgcref(g->gc.root, o);
+   makewhite(g, o);
+   // Resolve the __gc metamethod (fall back to base metatable if unset).
+   auto mt = tabref(gco_to_object(o)->metatable);
+   if (not mt) mt = tabref(basemt_it(g, LJ_TOBJECT));
+   mo = lj_meta_fastg(g, mt, MM_gc);
+   if (mo) gc_call_finaliser(g, L, mo, o);
+}
+
+//********************************************************************************************************************
+// Finalize one pending finaliser (userdata first, then objects).
+
+static void gc_finalize_any(lua_State *L)
+{
+   global_State *g = G(L);
+   if (gcref(g->gc.mmudata) != nullptr) gc_finalize_udata(L);
+   else if (gcref(g->gc.mmobject) != nullptr) gc_finalize_object(L);
+}
+
+//********************************************************************************************************************
+// Finalize all pending userdata and object finalisers.
 
 void lj_gc_finalize_udata(lua_State *L)
 {
-   while (gcref(G(L)->gc.mmudata) != nullptr) gc_finalize(L);
+   while (gcref(G(L)->gc.mmudata) != nullptr or gcref(G(L)->gc.mmobject) != nullptr) {
+      gc_finalize_any(L);
+   }
 }
 
 //********************************************************************************************************************
@@ -758,7 +846,7 @@ void lj_gc_freeall(global_State *g)
 
 static void atomic(global_State *g, lua_State *L)
 {
-   size_t udsize;
+   size_t finaliser_size;
 
    gc_mark_uv(g);  //  Need to remark open upvalues (the thread may be dead).
    gc_propagate_gray(g);  //  Propagate any left-overs.
@@ -775,9 +863,11 @@ static void atomic(global_State *g, lua_State *L)
    setgcrefnull(g->gc.grayagain);
    gc_propagate_gray(g);  //  Propagate it.
 
-   udsize = lj_gc_separateudata(g, 0);  //  Separate userdata to be finalized.
+   finaliser_size = lj_gc_separateudata(g, 0);  //  Separate userdata to be finalized.
+   finaliser_size += lj_gc_separateobject(g, 0);  //  Separate objects to be finalized.
    gc_mark_mmudata(g);  //  Mark them.
-   udsize += gc_propagate_gray(g);  //  And propagate the marks.
+   gc_mark_mmobject(g);  //  Mark object finalisers.
+   finaliser_size += gc_propagate_gray(g);  //  And propagate the marks.
 
    // All marking done, clear weak tables.
    gc_clearweak(g, gcref(g->gc.weak));
@@ -788,7 +878,7 @@ static void atomic(global_State *g, lua_State *L)
    g->gc.currentwhite = (uint8_t)otherwhite(g);  //  Flip current white.
    g->strempty.marked = g->gc.currentwhite;
    setmref(g->gc.sweep, &g->gc.root);
-   g->gc.estimate = g->gc.total - (GCSize)udsize;  //  Initial estimate.
+   g->gc.estimate = g->gc.total - (GCSize)finaliser_size;  //  Initial estimate.
 }
 
 //********************************************************************************************************************
@@ -832,7 +922,7 @@ static size_t gc_onestep(lua_State *L)
       if (gcref(*mref<GCRef>(g->gc.sweep)) IS nullptr) {
          if (g->str.num <= (g->str.mask >> 2) and g->str.mask > LJ_MIN_STRTAB * 2 - 1)
             lj_str_resize(L, g->str.mask >> 1);  //  Shrink string table.
-         if (gcref(g->gc.mmudata)) {  // Need any finalizations?
+         if (gcref(g->gc.mmudata) or gcref(g->gc.mmobject)) {  // Need any finalizations?
             g->gc.state = GCPhase::Finalize;
          }
          else {  // Otherwise skip this phase to help the JIT.
@@ -843,11 +933,11 @@ static size_t gc_onestep(lua_State *L)
       return GCSWEEPMAX * GCSWEEPCOST;
    }
    case GCPhase::Finalize:
-      if (gcref(g->gc.mmudata) != nullptr) {
+      if (gcref(g->gc.mmudata) != nullptr or gcref(g->gc.mmobject) != nullptr) {
          GCSize old = g->gc.total;
          if (tvref(g->jit_base))  //  Don't call finalisers on trace.
             return LJ_MAX_MEM;
-         gc_finalize(L);  //  Finalize one userdata object.
+         gc_finalize_any(L);  //  Finalize one userdata/object.
          if (old >= g->gc.total and g->gc.estimate > old - g->gc.total)
             g->gc.estimate -= old - g->gc.total;
          if (g->gc.estimate > GCFINALIZECOST)

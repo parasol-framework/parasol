@@ -30,7 +30,7 @@ GCobject * lj_object_new(lua_State *L, OBJECTID UID, OBJECTPTR Ptr, objMetaClass
 
 //********************************************************************************************************************
 // Free a GCobject during garbage collection.
-// If the object owns the Parasol object (not detached), it will be freed.
+// The Parasol object is released via the __gc finaliser, not during sweep.
 
 void LJ_FASTCALL lj_object_free(global_State *g, GCobject *obj)
 {
@@ -42,21 +42,6 @@ void LJ_FASTCALL lj_object_free(global_State *g, GCobject *obj)
          obj->ptr = nullptr;
       }
       obj->accesscount--;
-   }
-
-   // If we own the object (not detached), free it
-   if (!(obj->flags & GCOBJ_DETACHED) and obj->uid) {
-      if (auto target = GetObjectPtr(obj->uid)) {
-         // Only free if we're still the owner
-         auto *L = mainthread(g);
-         if (L and L->script) {
-            if ((target->Class->BaseClassID IS CLASSID::RECORDSET) or
-                (target->Owner IS L->script) or
-                (target->ownerID() IS L->script->TargetID)) {
-               FreeResource(target);
-            }
-         }
-      }
    }
 
    // Free the GCobject structure

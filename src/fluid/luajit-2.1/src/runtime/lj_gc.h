@@ -121,6 +121,7 @@ inline void markfinalized(GCobj* x) noexcept
 
 // Collector.
 extern "C" size_t lj_gc_separateudata(global_State* g, int all);
+extern "C" size_t lj_gc_separateobject(global_State* g, int all);
 extern "C" void lj_gc_finalize_udata(lua_State* L);
 extern "C" void lj_gc_freeall(global_State* g);
 extern "C" int LJ_FASTCALL lj_gc_step(lua_State* L);
@@ -166,7 +167,7 @@ static LJ_AINLINE void lj_gc_barrierback(global_State* g, GCtab* t)
 // - State Queries: phase(), totalMemory(), isPaused(), isMarking(), etc.
 // - Collection Control: step(), fullCycle(), check()
 // - Write Barriers: barrierForward(), barrierBack(), barrierUpvalue()
-// - Finalization: separateUdata(), finalizeUdata(), freeAll()
+// - Finalization: separateUdata(), finalizeUdata(), freeAll() (userdata and objects)
 // - Upvalue Management: closeUpvalue()
 // - JIT Integration: barrierTrace(), stepJit()
 //
@@ -252,7 +253,7 @@ public:
 
    // Check if there are pending finalisers.
    [[nodiscard]] bool hasPendingFinalisers() const noexcept {
-      return gcref(gs->gc.mmudata) != nullptr;
+      return (gcref(gs->gc.mmudata) != nullptr) or (gcref(gs->gc.mmobject) != nullptr);
    }
 
    // -- Collection Control --
@@ -309,13 +310,15 @@ public:
 
    // -- Finalization --
 
-   // Separate userdata with finalisers to the mmudata list.
-   // Returns the total size of userdata to be finalized.
+   // Separate userdata and objects with finalisers to their respective lists.
+   // Returns the total size of objects moved to finaliser lists.
    size_t separateUdata(int all) noexcept {
-      return lj_gc_separateudata(gs, all);
+      size_t finaliser_size = lj_gc_separateudata(gs, all);
+      finaliser_size += lj_gc_separateobject(gs, all);
+      return finaliser_size;
    }
 
-   // Finalize all pending userdata objects.
+   // Finalize all pending userdata and object finalisers.
    void finalizeUdata(lua_State* L) noexcept {
       lj_gc_finalize_udata(L);
    }

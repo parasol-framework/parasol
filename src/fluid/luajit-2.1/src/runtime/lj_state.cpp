@@ -335,7 +335,7 @@ extern void lua_close(lua_State *L)
    setgcrefnull(g->cur_L);
    lj_func_closeuv(L, tvref(L->stack));
 
-   // Separate userdata which have GC metamethods
+   // Separate userdata and objects which have GC metamethods
    collector.separateUdata(1);
 
    G2J(g)->flags &= ~JIT_F_ON;
@@ -349,10 +349,10 @@ extern void lua_close(lua_State *L)
       if (lj_vm_cpcall(L, nullptr, nullptr, cpfinalize) == LUA_OK) {
          if (++i >= 10) break;
 
-         // Separate userdata again
+         // Separate userdata and objects again
          collector.separateUdata(1);
 
-         if (gcref(g->gc.mmudata) == nullptr) break;  //  Until nothing is left to do.
+         if (gcref(g->gc.mmudata) IS nullptr and gcref(g->gc.mmobject) IS nullptr) break;  //  Until nothing is left to do.
       }
    }
    close_state(L);
