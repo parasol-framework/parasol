@@ -21,7 +21,7 @@ unique messages to verify proper isolation and delivery.
    glActiveClients = 0
    glMaxSockets = 5
    glMessagesPerClient = 3
-   glClientResponses = {}
+   glClientResponses = array<string>
    glServerReceived = {}
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -103,7 +103,7 @@ unique messages to verify proper isolation and delivery.
             data.messagesReceived++
 
             -- Store response for verification
-            table.insert(glClientResponses, msg)
+            glClientResponses:push(msg)
 
             if (string.match(msg, 'WELCOME:')) then
                -- Send first test message
@@ -341,6 +341,6 @@ end
 
 @AfterAll function cleanup()
    glActiveClients = 0
-   glClientResponses = {}
-   glServerReceived = {}
+   glClientResponses = nil
+   glServerReceived = nil
 end

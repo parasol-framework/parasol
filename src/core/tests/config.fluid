@@ -28,7 +28,7 @@ glMerge = 'Ignore this\r\n[MergedGroup]\r\nHello=World\r\n'
 
 function newConfig()
    cfg = obj.new('config', { })
-   err = cfg.acDataFeed(0, DATA_TEXT, glLegalData, 0)
+   err = cfg.acDataFeed(nil, DATA_TEXT, glLegalData, 0)
    assert(err is ERR_Okay, 'DataFeed() returned ' .. mSys.GetErrorMsg(err))
    return cfg
 end
@@ -96,7 +96,7 @@ end
    cfg = newConfig()
 
    cfgMerge = obj.new('config', { })
-   err = cfg.acDataFeed(0, DATA_TEXT, glMerge, 0)
+   err = cfg.acDataFeed(nil, DATA_TEXT, glMerge, 0)
 
    err = cfg.mtMerge(cfgMerge);
    assert(err is ERR_Okay, 'Merge() returned ' .. mSys.GetErrorMsg(err))

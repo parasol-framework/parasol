@@ -18,6 +18,7 @@
 #include "lj_thunk.h"
 #include "lj_trace.h"
 #include "lj_dispatch.h"
+#include "../../defs.h"
 
 using std::floor;
 using std::pow;
@@ -297,6 +298,8 @@ static int thunk_concat(lua_State *L)
 {
    TValue *a = resolve_at(L, 0);
    TValue *b = resolve_at(L, 1);
+   lj_assertL(a != nullptr, "Invalid LHS (null)");
+   lj_assertL(b != nullptr, "Invalid RHS (null)");
    copyTV(L, L->top, a);
    L->top++;
    copyTV(L, L->top, b);
@@ -458,7 +461,7 @@ static int thunk_index(lua_State *L)
       return 1;
    }
 
-   // Handle userdata (e.g., Parasol objects) - delegate to their metatable's __index
+   // Handle userdata - delegate to their metatable's __index
 
    if (tvisudata(o)) {
       GCudata *ud = udataV(o);
@@ -488,7 +491,15 @@ static int thunk_index(lua_State *L)
       return 0;
    }
 
-   // Not a table or userdata - error
+   // Handle native GCobject (Parasol objects) - call object_index directly
+   // object_index expects the object at L->base[0], so copy the resolved value there
+
+   if (tvisobject(o)) {
+      copyTV(L, L->base, o);  // Replace thunk at base with resolved object
+      return object_index(L);
+   }
+
+   // Not a table, userdata, or object - error
    lj_err_optype(L, o, ErrMsg::OPINDEX);
    return 0;
 }
@@ -574,7 +585,15 @@ static int thunk_newindex(lua_State *L)
       return 0;
    }
 
-   // Not a table or userdata - error
+   // Handle native GCobject (Parasol objects) - call object_newindex directly
+   // object_newindex expects the object at L->base[0], so copy the resolved value there
+
+   if (tvisobject(o)) {
+      copyTV(L, L->base, o);  // Replace thunk at base with resolved object
+      return object_newindex(L);
+   }
+
+   // Not a table, userdata, or object - error
    lj_err_optype(L, o, ErrMsg::OPINDEX);
    return 0;
 }

@@ -729,7 +729,7 @@ enum class AET : uint8_t {
    ARRAY,      // GCarray * (array reference)
    ANY,        // TValue (mixed type storage)
    STRUCT,     // Structured data (uses structdef)
-   OBJECT,     // OBJECTPTR for external object references; otherwise Fluid.object
+   OBJECT,     // OBJECTPTR for external object references originating from the Parasol API; otherwise GCobject
    MAX,
    VULNERABLE = PTR
 };
@@ -819,6 +819,38 @@ static_assert(offsetof(GCarray, gclist) IS offsetof(GCtab, gclist));
 inline GCarray* arrayref(GCRef r) noexcept;
 
 //********************************************************************************************************************
+// Field tables are maintained per-class (cached globally) rather than per-instance.
+
+// Object flags for GCobject.flags field
+inline constexpr uint8_t GCOBJ_DETACHED = 0x01;  // Object is external reference, not owned
+inline constexpr uint8_t GCOBJ_LOCKED   = 0x02;  // Lock acquired via AccessObject()
+
+struct GCobject {
+   GCHeader;                    // [0]  nextgc, marked, gct (10 bytes)
+   uint8_t udtype;              // [10] Reserved for sub-types (future use)
+   uint8_t flags;               // [11] Object flags (GCOBJ_DETACHED, GCOBJ_LOCKED)
+   int32_t uid;                 // [12] Parasol object unique ID (OBJECTID)
+   uint32_t accesscount;        // [16] Access count for lock management
+   uint32_t reserved;           // [20] Reserved for alignment
+   GCRef gclist;                // [24] GC list for marking (must match GCtab.gclist)
+   GCRef metatable;             // [32] Optional metatable (must match GCtab.metatable)
+   struct Object *ptr;            // [40] Direct pointer to Parasol object (OBJECTPTR, null if detached)
+   struct objMetaClass *classptr; // [48] Direct pointer to class metadata (objMetaClass*)
+
+   inline bool is_detached() { return (flags & GCOBJ_DETACHED) != 0; }
+   inline bool is_locked() { return (flags & GCOBJ_LOCKED) != 0; }
+   inline void set_detached(bool v) { if (v) flags |= GCOBJ_DETACHED; else flags &= ~GCOBJ_DETACHED; }
+   inline void set_locked(bool v) { if (v) flags |= GCOBJ_LOCKED; else flags &= ~GCOBJ_LOCKED; }
+};
+
+// Ensure metatable and gclist fields are at same offset as other GC types
+static_assert(offsetof(GCobject, metatable) == offsetof(GCtab, metatable));
+static_assert(offsetof(GCobject, gclist) == offsetof(GCtab, gclist));
+
+// Forward declaration - defined after GCobj is complete
+inline GCobject* objectref(GCRef r) noexcept;
+
+//********************************************************************************************************************
 // VM states.
 
 enum {
@@ -901,7 +933,7 @@ typedef struct GCState {
    GCSize  threshold;    // Memory threshold.
    uint8_t currentwhite; // Current white color.
    GCPhase state;        // GC state.
-   uint8_t nocdatafin;   // No cdata finaliser called.
+   uint8_t nocdatafin;   // No cdata finaliser called. [DEPRECATED]
    uint8_t lightudnum;   //  Number of lightuserdata segments - 1 (64-bit only).
    MSize   sweepstr;     // Sweep position in string table.
    GCRef   root;         // List of all collectable objects.
@@ -1079,6 +1111,7 @@ typedef union GCobj {
    GCtab     tab;
    GCarray   arr;
    GCudata   ud;
+   GCobject  obj;  // Native Parasol object
    ~GCobj() = delete;
 } GCobj;
 
@@ -1092,6 +1125,7 @@ typedef union GCobj {
 [[nodiscard]] inline GCtab *     gco_to_table(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TTAB, &o->tab); }
 [[nodiscard]] inline GCudata *   gco_to_userdata(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TUDATA, &o->ud); }
 [[nodiscard]] inline GCarray *   gco_to_array(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TARRAY, &o->arr); }
+[[nodiscard]] inline GCobject *  gco_to_object(GCobj *o) noexcept { return check_exp(o->gch.gct IS ~LJ_TOBJECT, &o->obj); }
 
 // Convert any collectable object into a GCobj pointer.
 template<typename T> [[nodiscard]] inline GCobj * obj2gco(T *v) noexcept { return (GCobj*)v; }
@@ -1117,6 +1151,9 @@ template<typename T> [[nodiscard]] inline GCobj * obj2gco(T *v) noexcept { retur
 // Array accessors
 [[nodiscard]] inline GCarray * arrayref(GCRef r) noexcept { return &gcref(r)->arr; }
 
+// Parasol object accessors
+[[nodiscard]] inline GCobject * objectref(GCRef r) noexcept { return &gcref(r)->obj; }
+
 // Thread/state accessors
 
 [[nodiscard]] inline lua_State * mainthread(global_State *g) noexcept { return &gcref(g->mainthref)->th; }
@@ -1133,6 +1170,12 @@ template<typename T> [[nodiscard]] inline GCobj * obj2gco(T *v) noexcept { retur
 
 [[nodiscard]] inline GCupval * uvprev(GCupval *uv) noexcept { return &gcref(uv->prev)->uv; }
 [[nodiscard]] inline GCupval * uvnext(GCupval *uv) noexcept { return &gcref(uv->next)->uv; }
+
+// method_context() is for use from inline Lua methods, such as those used in the object interface design.
+// This is a highly efficient equivalent to calling index2adr() on lua_upvalueindex(1) and there are no checks, so use
+// cautiously.
+
+[[nodiscard]] inline TValue * method_context(lua_State *L) { return &curr_func(L)->c.upvalue[0]; }
 
 // niltv defined at end of file (needs tvisnil which is defined below)
 
@@ -1154,6 +1197,7 @@ template<typename T> [[nodiscard]] inline GCobj * obj2gco(T *v) noexcept { retur
 [[nodiscard]] constexpr inline bool tvistab(cTValue *o) noexcept { return itype(o) IS LJ_TTAB; }
 [[nodiscard]] constexpr inline bool tvisudata(cTValue *o) noexcept { return itype(o) IS LJ_TUDATA; }
 [[nodiscard]] constexpr inline bool tvisarray(cTValue *o) noexcept { return itype(o) IS LJ_TARRAY; }
+[[nodiscard]] constexpr inline bool tvisobject(cTValue *o) noexcept { return itype(o) IS LJ_TOBJECT; }
 [[nodiscard]] constexpr inline bool tvisnumber(cTValue *o) noexcept { return itype(o) <= LJ_TISNUM; }
 [[nodiscard]] constexpr inline bool tvisint(cTValue *o) noexcept { return LJ_DUALNUM and itype(o) IS LJ_TISNUM; }
 [[nodiscard]] constexpr inline bool tvisnum(cTValue *o) noexcept { return itype(o) < LJ_TISNUM; }
@@ -1206,6 +1250,8 @@ template<typename T> [[nodiscard]] inline GCobj * obj2gco(T *v) noexcept { retur
 [[nodiscard]] inline GCudata * udataV(cTValue *o) noexcept { return check_exp(tvisudata(o), &gcval(o)->ud); }
 [[nodiscard]] inline GCarray * arrayV(cTValue *o) noexcept { return check_exp(tvisarray(o), &gcval(o)->arr); }
 [[nodiscard]] inline GCarray * arrayV(lua_State *L, int Arg) noexcept { return arrayV(L->base + Arg - 1); }
+[[nodiscard]] inline GCobject * objectV(cTValue *o) noexcept { return check_exp(tvisobject(o), &gcval(o)->obj); }
+[[nodiscard]] inline GCobject * objectV(lua_State *L, int Arg) noexcept { return objectV(L->base + Arg - 1); }
 [[nodiscard]] inline lua_Number numV(cTValue *o) noexcept { return check_exp(tvisnum(o), o->n); }
 [[nodiscard]] inline int32_t intV(cTValue *o) noexcept { return check_exp(tvisint(o), int32_t(o->i)); }
 
@@ -1273,6 +1319,7 @@ inline void setfuncV(lua_State* L, TValue* o, const GCfunc* v) noexcept
 inline void settabV(lua_State* L, TValue* o, const GCtab* v) noexcept { setgcV(L, o, obj2gco(v), LJ_TTAB); }
 inline void setudataV(lua_State* L, TValue* o, const GCudata* v) noexcept { setgcV(L, o, obj2gco(v), LJ_TUDATA); }
 inline void setarrayV(lua_State* L, TValue* o, const GCarray* v) noexcept { setgcV(L, o, obj2gco(v), LJ_TARRAY); }
+inline void setobjectV(lua_State* L, TValue* o, const GCobject* v) noexcept { setgcV(L, o, obj2gco(v), LJ_TOBJECT); }
 constexpr inline void setnumV(TValue* o, lua_Number x) noexcept { o->n = x; }
 inline void setnanV(TValue* o) noexcept { o->u64 = U64x(fff80000, 00000000); }
 inline void setpinfV(TValue* o) noexcept { o->u64 = U64x(7ff00000, 00000000); }
@@ -1300,6 +1347,11 @@ inline void copyTV(lua_State* L, TValue* o1, const TValue* o2)
    *o1 = *o2;
    checklivetv(L, o1, "copy of dead GC object");
 }
+
+//********************************************************************************************************************
+// Domain specific context helpers
+
+[[nodiscard]] inline GCobject * object_context(lua_State *L) { return objectV(&curr_func(L)->c.upvalue[0]); }
 
 //********************************************************************************************************************
 // Number to integer conversion

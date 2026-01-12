@@ -348,9 +348,7 @@ LJ_FUNC_NORET void lj_assert_fail(global_State* g, const char* file, int line, c
 
 // Use comma operator to ensure consistent void type for MSVC compatibility.
 // The (void)0 cast ensures both branches of the ternary have the same type.
-#define lj_assert_check(g, c, ...) \
-  ((c) ? (void)0 : \
-   (lj_assert_fail((g), __FILE__, __LINE__, __func__, __VA_ARGS__), (void)0))
+#define lj_assert_check(g, c, ...) ((c) ? (void)0 : (lj_assert_fail((g), __FILE__, __LINE__, __func__, __VA_ARGS__), (void)0))
 #define lj_checkapi(c, ...)   lj_assert_check(G(L), (c), __VA_ARGS__)
 #else
 #define lj_checkapi(c, ...)   ((void)L)

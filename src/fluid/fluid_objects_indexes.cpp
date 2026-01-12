@@ -7,13 +7,13 @@
 // Using all caps abbreviations is discouraged when designing class fields, e.g. JITOptions won't work out, but
 // JitOptions is fine.
 
-static int object_newindex(lua_State *Lua)
+int object_newindex(lua_State *Lua)
 {
-   if (auto def = (object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
+   if (auto def = lj_get_object_fast(Lua, 1)) {
       if (auto hash = luaL_checkstringhash(Lua, 2)) {
          if (auto obj = access_object(def)) {
             ERR error;
-            auto jt = get_write_table(def);
+            auto jt = get_write_table(def->classptr);
             if (auto func = jt->find(obj_write(hash)); func != jt->end()) {
                error = func->Call(Lua, obj, func->Field, 3);
             }
@@ -21,7 +21,7 @@ static int object_newindex(lua_State *Lua)
             release_object(def);
 
             if (error >= ERR::ExceptionThreshold) {
-               pf::Log(__FUNCTION__).warning("Unable to write %s.%s: %s", def->Class->ClassName, luaL_checkstring(Lua, 2), GetErrorMsg(error));
+               pf::Log(__FUNCTION__).warning("Unable to write %s.%s: %s", def->classptr->ClassName, luaL_checkstring(Lua, 2), GetErrorMsg(error));
                luaL_error(Lua, error);
             }
          }
@@ -133,7 +133,7 @@ static ERR object_set_function(lua_State *Lua, OBJECTPTR Object, Field *Field, i
 
 static ERR object_set_object(lua_State *Lua, OBJECTPTR Object, Field *Field, int ValueIndex)
 {
-   if (auto def = (object *)get_meta(Lua, ValueIndex, "Fluid.obj")) {
+   if (auto def = lua_toobject(Lua, ValueIndex)) {
       if (auto ptr_obj = access_object(def)) {
          ERR error = Object->set(Field->FieldID, ptr_obj);
          release_object(def);
@@ -207,11 +207,9 @@ static ERR object_set_oid(lua_State *Lua, OBJECTPTR Object, Field *Field, int Va
       case LUA_TNUMBER: return Object->set(Field->FieldID, (OBJECTID)lua_tointeger(Lua, ValueIndex));
       case LUA_TNIL:    return Object->set(Field->FieldID, 0);
 
-      case LUA_TUSERDATA: {
-         if (auto def = (struct object *)get_meta(Lua, ValueIndex, "Fluid.obj")) {
-            return Object->set(Field->FieldID, def->UID);
-         }
-         return ERR::SetValueNotObject;
+      case LUA_TOBJECT: {
+         auto def = lua_toobject(Lua, ValueIndex);
+         return Object->set(Field->FieldID, def->uid);
       }
 
       case LUA_TSTRING: {
@@ -260,10 +258,10 @@ static int object_get(lua_State *Lua)
    pf::Log log("obj.get");
 
    if (auto fieldname = luaL_checkstring(Lua, 1)) {
-      auto def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
+      auto def = object_context(Lua);
 
       auto obj = access_object(def);
-      if (!obj) {
+      if (not obj) {
          lua_pushvalue(Lua, 2); // Push the client's default value
          return 1;
       }
@@ -334,7 +332,7 @@ static int object_get(lua_State *Lua)
 static int object_getkey(lua_State *Lua)
 {
    if (auto fieldname = luaL_checkstring(Lua, 1)) {
-      auto def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
+      auto def = object_context(Lua);
       ERR error;
       if (auto obj = access_object(def)) {
          char buffer[8192];
@@ -360,7 +358,7 @@ static int object_getkey(lua_State *Lua)
 
 static int object_set(lua_State *Lua)
 {
-   auto def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
+   auto def = object_context(Lua);
 
    CSTRING fieldname;
    if (!(fieldname = luaL_checkstring(Lua, 1))) return 0;
@@ -386,7 +384,7 @@ static int object_set(lua_State *Lua)
 
 static int object_setkey(lua_State *Lua)
 {
-   auto def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
+   auto def = object_context(Lua);
    if (auto fieldname = luaL_checkstring(Lua, 1)) {
       auto value = luaL_optstring(Lua, 2, nullptr);
       if (auto obj = access_object(def)) {
@@ -446,12 +444,12 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, int Va
       }
       else if (field->Flags & FD_POINTER) {
          if (field->Flags & (FD_OBJECT|FD_LOCAL)) { // Writing to an integral is permitted if marked as writeable.
-            if (auto object = (struct object *)get_meta(Lua, ValueIndex, "Fluid.obj")) {
+            if (auto obj_ref = lua_toobject(Lua, ValueIndex)) {
                OBJECTPTR ptr_obj;
-               if (object->ObjectPtr) return target->set(field->FieldID, object->ObjectPtr);
-               else if ((ptr_obj = (OBJECTPTR)access_object(object))) {
-                  ERR error = target->set(field->FieldID, object->ObjectPtr);
-                  release_object(object);
+               if (obj_ref->ptr) return target->set(field->FieldID, obj_ref->ptr);
+               else if ((ptr_obj = (OBJECTPTR)access_object(obj_ref))) {
+                  ERR error = target->set(field->FieldID, obj_ref->ptr);
+                  release_object(obj_ref);
                   return error;
                }
                else return ERR::Failed;
@@ -511,11 +509,9 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, int Va
             case LUA_TNUMBER:
                return target->set(field->FieldID, (OBJECTID)lua_tointeger(Lua, ValueIndex));
 
-            case LUA_TUSERDATA: {
-               if (auto object = (struct object *)get_meta(Lua, ValueIndex, "Fluid.obj")) {
-                  return target->set(field->FieldID, object->UID);
-               }
-               return ERR::SetValueNotObject;
+            case LUA_TOBJECT: {
+               auto obj_ref = lua_toobject(Lua, ValueIndex);
+               return target->set(field->FieldID, obj_ref->uid);            
             }
 
             case LUA_TSTRING: {
@@ -562,13 +558,13 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, int Va
 //********************************************************************************************************************
 // Support for direct field indexing.  These functions are utilised if a field reference is easily resolved to a hash.
 
-static int object_get_id(lua_State *Lua, const obj_read &Handle, object *Def)
+static int object_get_id(lua_State *Lua, const obj_read &Handle, GCobject *Def)
 {
-   lua_pushnumber(Lua, Def->UID);
+   lua_pushnumber(Lua, Def->uid);
    return 1;
 }
 
-static int object_get_array(lua_State *Lua, const obj_read &Handle, object *Def)
+static int object_get_array(lua_State *Lua, const obj_read &Handle, GCobject *Def)
 {
    ERR error;
    if (auto obj = access_object(Def)) {
@@ -618,7 +614,7 @@ static int object_get_array(lua_State *Lua, const obj_read &Handle, object *Def)
    return error != ERR::Okay ? 0 : 1;
 }
 
-static int object_get_rgb(lua_State *Lua, const obj_read &Handle, object *Def)
+static int object_get_rgb(lua_State *Lua, const obj_read &Handle, GCobject *Def)
 {
    ERR error;
    if (auto obj = access_object(Def)) {
@@ -633,7 +629,7 @@ static int object_get_rgb(lua_State *Lua, const obj_read &Handle, object *Def)
    return error != ERR::Okay ? 0 : 1;
 }
 
-static int object_get_struct(lua_State *Lua, const obj_read &Handle, object *Def)
+static int object_get_struct(lua_State *Lua, const obj_read &Handle, GCobject *Def)
 {
    ERR error;
    if (auto obj = access_object(Def)) {
@@ -662,7 +658,7 @@ static int object_get_struct(lua_State *Lua, const obj_read &Handle, object *Def
    return error != ERR::Okay ? 0 : 1;
 }
 
-static int object_get_string(lua_State *Lua, const obj_read &Handle, object *Def)
+static int object_get_string(lua_State *Lua, const obj_read &Handle, GCobject *Def)
 {
    ERR error;
    if (auto obj = access_object(Def)) {
@@ -680,7 +676,7 @@ static int object_get_string(lua_State *Lua, const obj_read &Handle, object *Def
    return error != ERR::Okay ? 0 : 1;
 }
 
-static int object_get_ptr(lua_State *Lua, const obj_read &Handle, object *Def)
+static int object_get_ptr(lua_State *Lua, const obj_read &Handle, GCobject *Def)
 {
    ERR error;
    if (auto obj = access_object(Def)) {
@@ -695,7 +691,7 @@ static int object_get_ptr(lua_State *Lua, const obj_read &Handle, object *Def)
    return error != ERR::Okay ? 0 : 1;
 }
 
-static int object_get_object(lua_State *Lua, const obj_read &Handle, object *Def)
+static int object_get_object(lua_State *Lua, const obj_read &Handle, GCobject *Def)
 {
    ERR error;
    if (auto obj = access_object(Def)) {
@@ -713,7 +709,7 @@ static int object_get_object(lua_State *Lua, const obj_read &Handle, object *Def
    return error != ERR::Okay ? 0 : 1;
 }
 
-static int object_get_double(lua_State *Lua, const obj_read &Handle, object *Def)
+static int object_get_double(lua_State *Lua, const obj_read &Handle, GCobject *Def)
 {
    ERR error;
    if (auto obj = access_object(Def)) {
@@ -728,7 +724,7 @@ static int object_get_double(lua_State *Lua, const obj_read &Handle, object *Def
    return error != ERR::Okay ? 0 : 1;
 }
 
-static int object_get_large(lua_State *Lua, const obj_read &Handle, object *Def)
+static int object_get_large(lua_State *Lua, const obj_read &Handle, GCobject *Def)
 {
    ERR error;
    if (auto obj = access_object(Def)) {
@@ -743,7 +739,7 @@ static int object_get_large(lua_State *Lua, const obj_read &Handle, object *Def)
    return error != ERR::Okay ? 0 : 1;
 }
 
-static int object_get_long(lua_State *Lua, const obj_read &Handle, object *Def)
+static int object_get_long(lua_State *Lua, const obj_read &Handle, GCobject *Def)
 {
    ERR error;
    if (auto obj = access_object(Def)) {
@@ -761,7 +757,7 @@ static int object_get_long(lua_State *Lua, const obj_read &Handle, object *Def)
    return error != ERR::Okay ? 0 : 1;
 }
 
-static int object_get_ulong(lua_State *Lua, const obj_read &Handle, object *Def)
+static int object_get_ulong(lua_State *Lua, const obj_read &Handle, GCobject *Def)
 {
    ERR error;
    if (auto obj = access_object(Def)) {

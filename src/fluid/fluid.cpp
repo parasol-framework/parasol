@@ -48,6 +48,7 @@ For more information on the Fluid syntax, please refer to the official Fluid Ref
 #include "lj_bc.h"
 #include "lj_array.h"
 #include "lj_gc.h"
+#include "lj_object.h"
 
 #include "hashes.h"
 
@@ -114,47 +115,49 @@ APTR get_meta(lua_State *Lua, int Arg, CSTRING MetaTable)
 // Returns a pointer to an object (if the object exists).  To guarantee safety, object access always utilises the ID
 // so that we don't run into issues if the object has been collected.
 
-OBJECTPTR access_object(struct object *Object)
+OBJECTPTR access_object(GCobject *Object)
 {
-   if (Object->AccessCount) {
-      Object->AccessCount++;
-      return Object->ObjectPtr;
+   if (Object->accesscount) {
+      Object->accesscount++;
+      return Object->ptr;
    }
-   else if (not Object->UID) return nullptr; // Object reference is dead
-   else if ((!Object->ObjectPtr) or (Object->Detached)) {
+   else if (not Object->uid) return nullptr; // Object reference is dead
+   else if ((!Object->ptr) or Object->is_detached()) {
       // Detached objects are always accessed via UID, even if we have a pointer reference.
-      if (auto error = AccessObject(Object->UID, 5000, &Object->ObjectPtr); error IS ERR::Okay) {
-         Object->Locked = true;
+      OBJECTPTR obj_ptr;
+      if (auto error = AccessObject(Object->uid, 5000, &obj_ptr); error IS ERR::Okay) {
+         Object->ptr = obj_ptr;
+         Object->set_locked(true);
       }
       else if (error IS ERR::DoesNotExist) {
          pf::Log log(__FUNCTION__);
-         log.trace("Object #%d has been terminated.", Object->UID);
-         Object->ObjectPtr = nullptr;
-         Object->UID = 0;
+         log.trace("Object #%d has been terminated.", Object->uid);
+         Object->ptr = nullptr;
+         Object->uid = 0;
       }
    }
-   else Object->ObjectPtr->lock(); // 'soft' lock in case of threading involving private objects
+   else Object->ptr->lock(); // 'soft' lock in case of threading involving private objects
 
-   if (Object->ObjectPtr) Object->AccessCount++;
-   return Object->ObjectPtr;
+   if (Object->ptr) Object->accesscount++;
+   return Object->ptr;
 }
 
-void release_object(struct object *Object)
+void release_object(GCobject *Object)
 {
-   if (Object->AccessCount > 0) {
-      if (--Object->AccessCount IS 0) {
-         if (Object->Locked) {
-            ReleaseObject(Object->ObjectPtr);
-            Object->Locked = false;
-            Object->ObjectPtr = nullptr;
+   if (Object->accesscount > 0) {
+      if (--Object->accesscount IS 0) {
+         if (Object->is_locked()) {
+            ReleaseObject(Object->ptr);
+            Object->set_locked(false);
+            Object->ptr = nullptr;
          }
-         else Object->ObjectPtr->unlock();
+         else Object->ptr->unlock();
       }
    }
 }
 
 //********************************************************************************************************************
-// Automatically load the include file for the given metaclass, if it has not been loaded already.
+// Automatically load the definitions for the given metaclass, if it has not been loaded already.
 
 void load_include_for_class(lua_State *Lua, objMetaClass *MetaClass)
 {
@@ -167,8 +170,8 @@ void load_include_for_class(lua_State *Lua, objMetaClass *MetaClass)
 
    CSTRING module_name;
    if (auto error = MetaClass->get(FID_Module, module_name); error IS ERR::Okay) {
-      if (load_include(Lua->script, module_name) != ERR::Okay) {
-         luaL_error(Lua, ERR::Failed, "Failed to process module '%s' for class '%s'", module_name, MetaClass->ClassName);
+      if (auto error = load_include(Lua->script, module_name); error != ERR::Okay) {
+         luaL_error(Lua, error, "Failed to process module '%s' for class '%s'", module_name, MetaClass->ClassName);
       }
    }
    else pf::Log(__FUNCTION__).traceWarning("Failed to get module name from class '%s', \"%s\"", MetaClass->ClassName, GetErrorMsg(error));

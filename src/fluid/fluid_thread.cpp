@@ -21,8 +21,10 @@ variables with its creator, except via existing conventional means such as a Key
 #include <parasol/strings.hpp>
 #include <thread>
 
+#include "lib.h"
 #include "lauxlib.h"
 #include "lj_obj.h"
+#include "lj_object.h"
 #include "hashes.h"
 #include "defs.h"
 
@@ -90,8 +92,8 @@ static int thread_action(lua_State *Lua)
 
    // Args: Object (1), Action (2), Callback (3), Key (4), Parameters...
 
-   struct object *object;
-   if (!(object = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) {
+   GCobject *obj_ref;
+   if (not (obj_ref = lj_lib_checkobject(Lua, 1))) {
       luaL_argerror(Lua, 1, "Object required.");
       return 0;
    }
@@ -139,7 +141,7 @@ static int thread_action(lua_State *Lua)
       args = glActions[int(action_id)].Args;
    }
 
-   log.trace("#%d/%p, Action: %s/%d, Args: %d", object->UID, object->ObjectPtr, action, int(action_id), arg_size);
+   log.trace("#%d/%p, Action: %s/%d, Args: %d", obj_ref->uid, obj_ref->ptr, action, int(action_id), arg_size);
 
    if (arg_size > 0) {
       auto arg_buffer = std::make_unique<int8_t[]>(arg_size+8); // +8 for overflow protection in build_args()
@@ -147,14 +149,14 @@ static int thread_action(lua_State *Lua)
 
       if ((error = build_args(Lua, args, arg_size, arg_buffer.get(), &result_count)) IS ERR::Okay) {
          callback.Meta = (APTR)key;
-         if (object->ObjectPtr) {
-            error = AsyncAction(action_id, object->ObjectPtr, arg_buffer.get(), &callback);
+         if (obj_ref->ptr) {
+            error = AsyncAction(action_id, obj_ref->ptr, arg_buffer.get(), &callback);
          }
          else {
             if (!result_count) {
-               if (auto obj = access_object(object)) {
+               if (auto obj = access_object(obj_ref)) {
                   error = AsyncAction(action_id, obj, arg_buffer.get(), &callback);
-                  release_object(object);
+                  release_object(obj_ref);
                }
             }
             else log.warning("Actions that return results have not been tested/supported for release of resources.");
@@ -169,12 +171,12 @@ static int thread_action(lua_State *Lua)
    else {
       // No parameters.
       callback.Meta = (APTR)key;
-      if (object->ObjectPtr) {
-         error = AsyncAction(action_id, object->ObjectPtr, nullptr, &callback);
+      if (obj_ref->ptr) {
+         error = AsyncAction(action_id, obj_ref->ptr, nullptr, &callback);
       }
-      else if (auto obj = access_object(object)) {
+      else if (auto obj = access_object(obj_ref)) {
          error = AsyncAction(action_id, obj, nullptr, &callback);
-         release_object(object);
+         release_object(obj_ref);
       }
       else error = log.warning(ERR::AccessObject);
    }
@@ -196,14 +198,14 @@ static int thread_method(lua_State *Lua)
 
    // Args: Object (1), Action (2), Callback (3), Key (4), Parameters...
 
-   if (auto object = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
+   if (auto obj_ref = lj_lib_checkobject(Lua, 1)) {
       if (auto method = luaL_checkstring(Lua, 2)) {
          MethodEntry *table;
          int total_methods, i;
 
          // TODO: We should be using a hashmap here.
 
-         if ((object->Class->get(FID_Methods, table, total_methods) IS ERR::Okay) and (table)) {
+         if ((obj_ref->classptr->get(FID_Methods, table, total_methods) IS ERR::Okay) and (table)) {
             bool found = false;
             for (i=1; i < total_methods; i++) {
                if ((table[i].Name) and (iequals(table[i].Name, method))) { found = true; break; }
@@ -241,14 +243,14 @@ static int thread_method(lua_State *Lua)
                   lua_remove(Lua, 1);
                   lua_remove(Lua, 1);
                   if ((error = build_args(Lua, args, argsize, argbuffer.get(), &resultcount)) IS ERR::Okay) {
-                     if (object->ObjectPtr) {
-                        error = AsyncAction(action_id, object->ObjectPtr, argbuffer.get(), &callback);
+                     if (obj_ref->ptr) {
+                        error = AsyncAction(action_id, obj_ref->ptr, argbuffer.get(), &callback);
                      }
                      else {
                         if (!resultcount) {
-                           if ((obj = access_object(object))) {
+                           if ((obj = access_object(obj_ref))) {
                               error = AsyncAction(action_id, obj, argbuffer.get(), &callback);
-                              release_object(object);
+                              release_object(obj_ref);
                            }
                         }
                         else log.warning("Actions that return results have not been tested/supported for release of resources.");
@@ -261,12 +263,12 @@ static int thread_method(lua_State *Lua)
                   }
                }
                else { // No parameters.
-                  if (object->ObjectPtr) {
-                     error = AsyncAction(action_id, object->ObjectPtr, nullptr, &callback);
+                  if (obj_ref->ptr) {
+                     error = AsyncAction(action_id, obj_ref->ptr, nullptr, &callback);
                   }
-                  else if ((obj = access_object(object))) {
+                  else if ((obj = access_object(obj_ref))) {
                      error = AsyncAction(action_id, obj, nullptr, &callback);
-                     release_object(object);
+                     release_object(obj_ref);
                   }
                   else error = log.warning(ERR::AccessObject);
                }
@@ -280,7 +282,7 @@ static int thread_method(lua_State *Lua)
             }
          }
 
-         luaL_error(Lua, "No '%s' method for class %s.", method, object->Class->ClassName);
+         luaL_error(Lua, "No '%s' method for class %s.", method, obj_ref->classptr->ClassName);
       }
       else luaL_argerror(Lua, 2, "Method name required.");
    }

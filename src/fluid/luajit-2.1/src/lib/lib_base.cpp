@@ -516,14 +516,16 @@ LJLIB_ASM(tostring)      LJLIB_REC(.)
 {
    StackFrame frame(L);
 
-   TValue* o = lj_lib_checkany(L, 1);
-   cTValue* mo;
+   TValue *o = lj_lib_checkany(L, 1);
+   cTValue *mo;
    L->top = o + 1;  //  Only keep one argument.
+
    if (!tvisnil(mo = lj_meta_lookup(L, o, MM_tostring))) {
       copyTV(L, L->base - 2, mo);  //  Replace callable.
       frame.disarm();  // Disarm before tail call
       return FFH_TAILCALL;
    }
+
    lj_gc_check(L);
    setstrV(L, L->base - 2, lj_strfmt_obj(L, L->base));
    frame.disarm();  // Disarm - result already in place

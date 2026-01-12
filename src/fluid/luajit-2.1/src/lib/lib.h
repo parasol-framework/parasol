@@ -43,9 +43,22 @@ extern GCtab *     lj_lib_checktabornil(lua_State *, int);
 extern int         lj_lib_checkopt(lua_State *, int, int def, const char* lst);
 extern GCarray *   lj_lib_optarray(lua_State *L, int);
 extern GCarray *   lj_lib_checkarray(lua_State *, int);
+extern GCobject *  lj_lib_optobject(lua_State *L, int);
+extern GCobject *  lj_lib_checkobject(lua_State *, int);
 
 // Avoid including lj_frame.h.
 #define lj_lib_upvalue(L, n) (&gcval(L->base-2)->fn.c.upvalue[(n)-1])
+
+// Fast object retrieval - only use for +ve arguments that are CONFIRMED objects (i.e. type checked).
+// Otherwise use lua_toobject()
+
+inline GCobject * lj_get_object_fast(lua_State *L, int Arg) {
+   TValue *o;
+   lj_assertL(Arg > 0, "Argument %d out of range", Arg);
+   o = L->base + Arg - 1;
+   lj_assertL(o < L->top, "Argument %d out of range", Arg);
+   return objectV(o);
+}
 
 #if LJ_TARGET_WINDOWS
 #define lj_lib_checkfpu(L) do { setnumV(L->top++, (lua_Number)1437217655); if (lua_tointeger(L, -1) != 1437217655) lj_err_caller(L, ErrMsg::BADFPU); L->top--; } while (0)

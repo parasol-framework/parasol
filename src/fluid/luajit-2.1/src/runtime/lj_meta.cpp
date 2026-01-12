@@ -93,6 +93,11 @@ cTValue * lj_meta_lookup(lua_State *L, cTValue *o, MMS mm)
       mt = tabref(arrayV(o)->metatable);
       if (not mt) mt = tabref(basemt_it(G(L), LJ_TARRAY));
    }
+   else if (tvisobject(o)) {
+      // Check per-instance metatable first, then fall back to base metatable
+      mt = tabref(objectV(o)->metatable);
+      if (not mt) mt = tabref(basemt_it(G(L), LJ_TOBJECT));
+   }
    else mt = tabref(basemt_obj(G(L), o));
 
    if (mt) {

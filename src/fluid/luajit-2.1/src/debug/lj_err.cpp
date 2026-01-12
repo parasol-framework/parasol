@@ -1475,8 +1475,7 @@ extern void luaL_where(lua_State *L, int level)
 #include <cstdio>
 #include <cstdarg>
 
-LJ_NOINLINE void lj_assert_fail(global_State* g, CSTRING file, int line,
-   CSTRING func, CSTRING fmt, ...)
+LJ_NOINLINE void lj_assert_fail(global_State *g, CSTRING file, int line, CSTRING func, CSTRING fmt, ...)
 {
    va_list argp;
    va_start(argp, fmt);

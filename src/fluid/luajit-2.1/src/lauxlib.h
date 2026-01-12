@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <parasol/system/errors.h>
 #include "lua.h"
+#include "lj_obj.h"
 
 // extra error code for `luaL_load'
 constexpr int LUA_ERRFILE = (LUA_ERRERR+1);
@@ -39,7 +40,8 @@ extern void luaL_where(lua_State *, int lvl);
 [[noreturn]] extern void luaL_error(lua_State *, const char *fmt, ...);
 [[noreturn]] extern void luaL_error(lua_State *, ERR);
 [[noreturn]] extern void luaL_error(lua_State *, ERR, const char *, ...);
-extern int luaL_checkoption(lua_State *, int narg, const char *def, const char *const lst[]);
+extern int luaL_checkoption(lua_State *, int, const char *, const char *const lst[]);
+extern TValue * resolve_index(lua_State *L, int);
 
 // pre-defined references
 constexpr int LUA_NOREF = -2;

@@ -45,6 +45,7 @@
 #include "lj_dispatch.h"
 #include "lj_vm.h"
 #include "lj_array.h"
+#include "lj_object.h"
 #include <parasol/main.h>
 
 #include <array>
@@ -213,6 +214,15 @@ static void gc_mark(global_State *g, GCobj* o)
             gc_marktv(g, &slots[i]);
          }
       }
+   }
+   else if (gct IS ~LJ_TOBJECT) {
+      // Native Parasol object type - has no child GC references except optional metatable
+      GCobject *obj = gco_to_object(o);
+      gray2black(o);  // Objects are never gray (like userdata)
+
+      // Mark metatable if present
+      GCtab *mt = tabref(obj->metatable);
+      if (mt) gc_markobj(g, mt);
    }
    else if (gct != ~LJ_TSTR) {
       lj_assertG(gct IS ~LJ_TFUNC or gct IS ~LJ_TTAB or
@@ -552,7 +562,7 @@ static const std::array<GCFreeFunc, 10> gc_freefunc = {{
    (GCFreeFunc)lj_func_freeproto, // LJ_TPROTO
    (GCFreeFunc)lj_func_free,      // LJ_TFUNC
    (GCFreeFunc)lj_trace_free,     // LJ_TTRACE
-   nullptr,                       // LJ_TCDATA (disabled)
+   (GCFreeFunc)lj_object_free,    // LJ_TOBJECT (native Parasol object)
    (GCFreeFunc)lj_tab_free,       // LJ_TTAB
    (GCFreeFunc)lj_udata_free,     // LJ_TUDATA
    (GCFreeFunc)lj_array_free      // LJ_TARRAY
@@ -582,7 +592,15 @@ static GCRef* gc_sweep(global_State *g, GCRef* p, uint32_t lim)
          p = &o->gch.nextgc;
       }
       else {  // Otherwise value is dead, free it.
-         lj_assertG(isdead(g, o) or ow IS LJ_GC_SFIXED, "sweep of unlive object");
+#ifdef LUA_USE_ASSERT
+         if (!(isdead(g, o) or ow IS LJ_GC_SFIXED)) {
+            // NB: The indicated type isn't necessarily the source of the problem, it may be a symptom (e.g.
+            // managed by the thing that has resource management issues).
+            char buffer[80];
+            snprintf(buffer, sizeof(buffer), "sweep of unlive object, type: %s", lj_obj_itypename[~o->gch.gct]);
+            lj_assertG(false, buffer);
+         }
+#endif
          setgcrefr(*p, o->gch.nextgc);
          if (o IS gcref(g->gc.root)) setgcrefr(g->gc.root, o->gch.nextgc);  //  Adjust list anchor.
          gc_freefunc[o->gch.gct - ~LJ_TSTR](g, o);

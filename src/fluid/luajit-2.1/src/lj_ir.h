@@ -306,8 +306,6 @@ LJ_DATA const uint8_t lj_ir_mode[IR__MAX + 1];
 
 // IR instruction types
 
-#define IRTSIZE_PGC      (LJ_GC64 ? 8 : 4)
-
 // Map of itypes to non-negative numbers and their sizes. ORDER LJ_T.
 // LJ_TUPVAL/LJ_TTRACE never appear in a TValue. Use these itypes for
 // IRT_P32 and IRT_P64, which never escape the IR.
@@ -316,10 +314,8 @@ LJ_DATA const uint8_t lj_ir_mode[IR__MAX + 1];
 // contiguous and next to IRT_NUM (see the typerange macros below).
 
 #define IRTDEF(_) \
-  _(NIL, 4) _(FALSE, 4) _(TRUE, 4) _(LIGHTUD, LJ_64 ? 8 : 4) \
-  _(STR, IRTSIZE_PGC) _(P32, 4) _(THREAD, IRTSIZE_PGC) _(PROTO, IRTSIZE_PGC) \
-  _(FUNC, IRTSIZE_PGC) _(P64, 8) _(OBJECT, IRTSIZE_PGC) _(TAB, IRTSIZE_PGC) \
-  _(UDATA, IRTSIZE_PGC) _(ARRAY, IRTSIZE_PGC) \
+  _(NIL, 4) _(FALSE, 4) _(TRUE, 4) _(LIGHTUD, 8) _(STR, 8) _(P32, 4) _(THREAD, 8) _(PROTO, 8) \
+  _(FUNC, 8) _(P64, 8) _(OBJECT, 8) _(TAB, 8) _(UDATA, 8) _(ARRAY, 8) \
   _(FLOAT, 4) _(NUM, 8) _(I8, 1) _(U8, 1) _(I16, 2) _(U16, 2) \
   _(INT, 4) _(U32, 4) _(I64, 8) _(U64, 8) \
   _(SOFTFP, 4)  //  There is room for 8 more types.
@@ -333,11 +329,11 @@ typedef enum : uint32_t {
    IRT__MAX,
 
    // Native pointer type and the corresponding integer type.
-   IRT_PTR = LJ_64 ? IRT_P64 : IRT_P32,
-   IRT_PGC = LJ_GC64 ? IRT_P64 : IRT_P32,
-   IRT_IGC = LJ_GC64 ? IRT_I64 : IRT_INT,
-   IRT_INTP = LJ_64 ? IRT_I64 : IRT_INT,
-   IRT_UINTP = LJ_64 ? IRT_U64 : IRT_U32,
+   IRT_PTR = IRT_P64,
+   IRT_PGC = IRT_P64,
+   IRT_IGC = IRT_I64,
+   IRT_INTP = IRT_I64,
+   IRT_UINTP = IRT_U64,
 
    // Additional flags.
    IRT_MARK = 0x20,   //  Marker for misc. purposes.
