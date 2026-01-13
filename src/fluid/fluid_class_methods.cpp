@@ -28,6 +28,7 @@ static std::string_view fluid_type_name(FluidType Type)
       case FluidType::Func:    return "function";
       case FluidType::Thread:  return "thread";
       case FluidType::Object:  return "object";
+      case FluidType::Range:   return "range";
       case FluidType::Unknown: return "unknown";
       case FluidType::Any:
       default: return "any";
