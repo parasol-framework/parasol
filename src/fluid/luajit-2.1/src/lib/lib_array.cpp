@@ -49,8 +49,39 @@ constexpr auto HASH_ANY     = pf::strhash("any");
 
 // Forward declarations for find helpers
 static int32_t find_in_array(GCarray *Arr, lua_Number Value, int32_t Start, int32_t Stop, int32_t Step);
-static int32_t find_object_in_array(GCarray *Arr, int32_t SearchUid, int32_t Start, int32_t Stop, int32_t Step);
-static int32_t object_uid_from_value(lua_State *L, int ArgIndex);
+static int32_t find_object_in_array(GCarray *Arr, OBJECTID SearchUid, int32_t Start, int32_t Stop, int32_t Step);
+
+const array_meta glArrayConversion[size_t(AET::MAX)] = {
+   { LJ_TNUMX,   LUA_TNUMBER, true },         // AET::BYTE
+   { LJ_TNUMX,   LUA_TNUMBER, true },         // AET::INT16
+   { LJ_TNUMX,   LUA_TNUMBER, true },         // AET::INT32
+   { LJ_TNUMX,   LUA_TNUMBER, true },         // AET::INT64
+   { LJ_TNUMX,   LUA_TNUMBER, true },         // AET::FLOAT
+   { LJ_TNUMX,   LUA_TNUMBER, true },         // AET::DOUBLE
+   { LJ_TLIGHTUD, LUA_TLIGHTUSERDATA, false },  // AET::PTR
+   { LJ_TSTR,    LUA_TSTRING, false },         // AET::CSTR
+   { LJ_TSTR,    LUA_TSTRING, false },         // AET::STR_CPP
+   { LJ_TSTR,    LUA_TSTRING, false },         // AET::STR_GC
+   { LJ_TTAB,    LUA_TTABLE, false },          // AET::TABLE
+   { LJ_TARRAY,  LUA_TARRAY, false },          // AET::ARRAY
+   { LJ_TNIL,    0, false },                   // AET::ANY
+   { LJ_TUDATA,  LUA_TUSERDATA, false },       // AET::STRUCT
+   { LJ_TOBJECT, LUA_TOBJECT, false }          // AET::OBJECT
+};
+
+//********************************************************************************************************************
+
+static OBJECTID object_uid_from_value(lua_State *L, int ArgIndex)
+{
+   if (lua_isobject(L, ArgIndex)) {
+      TValue *tv = L->base + ArgIndex - 1;
+      GCobject *obj = objectV(tv);
+      return obj->uid;
+   }
+   if (lua_isnumber(L, ArgIndex)) return OBJECTID(lua_tointeger(L, ArgIndex));
+   lj_err_argv(L, ArgIndex, ErrMsg::BADTYPE, "object or uid", luaL_typename(L, ArgIndex));
+   return 0;
+}
 
 //********************************************************************************************************************
 // Helper to parse element type string
@@ -483,20 +514,6 @@ LJLIB_CF(array_join)
 //
 // Returns: true if found, false otherwise
 
-static int32_t object_uid_from_value(lua_State *L, int ArgIndex)
-{
-   if (lua_isobject(L, ArgIndex)) {
-      TValue *tv = L->base + ArgIndex - 1;
-      GCobject *obj = objectV(tv);
-      return obj->uid;
-   }
-   if (lua_isnumber(L, ArgIndex)) {
-      return int32_t(lua_tointeger(L, ArgIndex));
-   }
-   lj_err_argv(L, ArgIndex, ErrMsg::BADTYPE, "object or uid", luaL_typename(L, ArgIndex));
-   return 0;
-}
-
 LJLIB_CF(array_contains)
 {
    GCarray *arr = lj_lib_checkarray(L, 1);
@@ -507,7 +524,7 @@ LJLIB_CF(array_contains)
    }
 
    if (arr->elemtype IS AET::OBJECT) {
-      int32_t search_uid = object_uid_from_value(L, 2);
+      OBJECTID search_uid = object_uid_from_value(L, 2);
       int32_t result = find_object_in_array(arr, search_uid, 0, int32_t(arr->len - 1), 1);
       lua_pushboolean(L, result >= 0 ? 1 : 0);
       return 1;
@@ -568,36 +585,42 @@ LJLIB_CF(array_first)
       case AET::INT64:  lua_pushnumber(L, lua_Number(*(int64_t *)elem)); break;
       case AET::FLOAT:  lua_pushnumber(L, *(float *)elem); break;
       case AET::DOUBLE: lua_pushnumber(L, *(double *)elem); break;
+
       case AET::STR_GC: {
          GCRef ref = *(GCRef *)elem;
          if (gcref(ref)) setstrV(L, L->top++, gco_to_string(gcref(ref)));
          else lua_pushnil(L);
          return 1;
       }
+
       case AET::CSTR: {
          CSTRING str = *(CSTRING *)elem;
          if (str) lua_pushstring(L, str);
          else lua_pushnil(L);
          break;
       }
+
       case AET::OBJECT: {
          GCRef ref = *(GCRef *)elem;
          if (gcref(ref)) setobjectV(L, L->top++, gco_to_object(gcref(ref)));
          else lua_pushnil(L);
          return 1;
       }
+
       case AET::TABLE: {
          GCRef ref = *(GCRef *)elem;
          if (gcref(ref)) settabV(L, L->top++, gco_to_table(gcref(ref)));
          else lua_pushnil(L);
          return 1;
       }
+
       case AET::ARRAY: {
          GCRef ref = *(GCRef *)elem;
          if (gcref(ref)) setarrayV(L, L->top++, gco_to_array(gcref(ref)));
          else lua_pushnil(L);
          return 1;
       }
+
       case AET::ANY: {
          TValue *source = (TValue *)elem;
          copyTV(L, L->top++, source);
@@ -748,11 +771,13 @@ LJLIB_CF(array_resize)
             for (MSize i = old_len; i < target_len; i++) setgcrefnull(refs[i]);
             break;
          }
+
          case AET::ANY: {
             auto slots = arr->get<TValue>();
             for (MSize i = old_len; i < target_len; i++) setnilV(&slots[i]);
             break;
          }
+
          default: {
             // Numeric types: zero-fill the new region
             void *start = (char*)arr->arraydata() + (old_len * arr->elemsize);
@@ -773,11 +798,13 @@ LJLIB_CF(array_resize)
             for (MSize i = target_len; i < old_len; i++) setgcrefnull(refs[i]);
             break;
          }
+
          case AET::ANY: {
             auto slots = arr->get<TValue>();
             for (MSize i = target_len; i < old_len; i++) setnilV(&slots[i]);
             break;
          }
+
          default:
             break; // Numeric types don't need clearing
       }
@@ -1533,7 +1560,7 @@ static int32_t find_in_array(GCarray *Arr, lua_Number Value, int32_t Start, int3
 //********************************************************************************************************************
 // Object search by UID for stepped ranges.
 
-static int32_t find_object_in_array(GCarray *Arr, int32_t SearchUid, int32_t Start, int32_t Stop, int32_t Step)
+static int32_t find_object_in_array(GCarray *Arr, OBJECTID SearchUid, int32_t Start, int32_t Stop, int32_t Step)
 {
    auto refs = Arr->get<GCRef>();
    if (Step > 0) {
@@ -1579,12 +1606,12 @@ LJLIB_CF(array_find)
    GCarray *arr = lj_lib_checkarray(L, 1);
 
    if (arr->elemtype IS AET::OBJECT) {
-      int32_t search_uid = object_uid_from_value(L, 2);
+      auto search_uid = object_uid_from_value(L, 2);
 
       // Check if third argument is a range
       fluid_range *r = check_range(L, 3);
       if (r) {
-         int32_t len = int32_t(arr->len);
+         auto len = int32_t(arr->len);
          int32_t start = r->start;
          int32_t stop = r->stop;
          int32_t step = r->step;
@@ -1747,55 +1774,21 @@ LJLIB_CF(array_reverse)
    void *data = arr->arraydata();
 
    // Use std::reverse with typed pointers for optimal performance
+
    switch (arr->elemtype) {
-      case AET::BYTE: {
-         auto *p = (uint8_t *)data;
-         std::reverse(p, p + arr->len);
-         break;
-      }
-      case AET::INT16: {
-         auto *p = (int16_t *)data;
-         std::reverse(p, p + arr->len);
-         break;
-      }
-      case AET::INT32: {
-         auto *p = (int32_t *)data;
-         std::reverse(p, p + arr->len);
-         break;
-      }
-      case AET::INT64: {
-         auto *p = (int64_t *)data;
-         std::reverse(p, p + arr->len);
-         break;
-      }
-      case AET::FLOAT: {
-         auto *p = (float *)data;
-         std::reverse(p, p + arr->len);
-         break;
-      }
-      case AET::DOUBLE: {
-         auto *p = (double *)data;
-         std::reverse(p, p + arr->len);
-         break;
-      }
-      case AET::PTR: {
-         auto *p = (void **)data;
-         std::reverse(p, p + arr->len);
-         break;
-      }
+      case AET::BYTE:   { auto *p = (uint8_t *)data; std::reverse(p, p + arr->len); break; }
+      case AET::INT16:  { auto *p = (int16_t *)data; std::reverse(p, p + arr->len); break; }
+      case AET::INT32:  { auto *p = (int32_t *)data; std::reverse(p, p + arr->len); break; }
+      case AET::INT64:  { auto *p = (int64_t *)data; std::reverse(p, p + arr->len); break; }
+      case AET::FLOAT:  { auto *p = (float *)data; std::reverse(p, p + arr->len); break; }
+      case AET::DOUBLE: { auto *p = (double *)data; std::reverse(p, p + arr->len); break; }
+      case AET::PTR:    { auto *p = (void **)data; std::reverse(p, p + arr->len); break; }
       case AET::STR_GC:
       case AET::TABLE:
       case AET::ARRAY:
-      case AET::OBJECT: {
-         auto *p = (GCRef *)data;
-         std::reverse(p, p + arr->len);
-         break;
-      }
-      case AET::ANY: {
-         auto *p = (TValue *)data;
-         std::reverse(p, p + arr->len);
-         break;
-      }
+      case AET::OBJECT: { auto *p = (GCRef *)data; std::reverse(p, p + arr->len); break; }
+      case AET::ANY: { auto *p = (TValue *)data; std::reverse(p, p + arr->len); break; }
+
       default: {
          // Fallback for struct types using byte-level swap
          auto *base = (uint8_t *)data;

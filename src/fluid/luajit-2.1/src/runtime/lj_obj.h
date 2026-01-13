@@ -714,6 +714,7 @@ inline void setfreetop(GCtab *t, Node *, Node *v) noexcept { t->freetop.set(v); 
 // Array element type constants
 
 enum class AET : uint8_t {
+   // NOTE: Changes to this table require an update to glArrayConversion
    // Primitive types first
    BYTE = 0,   // byte
    INT16,      // int16_t
@@ -740,6 +741,14 @@ inline constexpr uint8_t ARRAY_READONLY  = 0x01;  // Cannot modify elements
 inline constexpr uint8_t ARRAY_EXTERNAL  = 0x02;  // Data not owned by array (storage is raw pointer)
 inline constexpr uint8_t ARRAY_CACHED    = 0x00;  // Copy external data into owned storage (default, flag is 0)
 
+struct array_meta {
+   uint8_t itype = 0;  // Internal type tag (LJ_T*).  NB: Shortened to 8 bits
+   int8_t type = 0;    // Lua type (LUA_T*)
+   bool primitive = true;
+};
+
+extern const array_meta glArrayConversion[size_t(AET::MAX)];
+
 // Native typed array object. Fixed-size, homogeneous element storage.
 // Storage uses a heap-allocated buffer for owned data.
 
@@ -747,7 +756,9 @@ struct GCarray {
    GCHeader;
    AET     elemtype;    // [10] Element type
    uint8_t flags;       // [11] Array flags
-   uint32_t _pad0;      // Padding to align storage at offset 16 (like GCtab.array)
+   uint8_t luatype;     // [12] Lua type (LUA_T*)
+   uint8_t itype;       // [13] Internal type (LJ_T*).  NB: Shortened to 8 bits
+   uint16_t _pad0;      // [14] Padding to align storage at offset 16 (like GCtab.array)
    void    *storage;    // [16] Heap-allocated storage for owned data, or external pointer (matches GCtab.array)
    GCRef   gclist;      // [24] GC list for marking (must match GCudata.gclist)
    GCRef   metatable;   // [32] Optional metatable (must match GCudata.metatable)
@@ -766,6 +777,8 @@ public:
              struct struct_record *StructDef = nullptr) noexcept
    {
       gct       = ~LJ_TARRAY;
+      luatype   = glArrayConversion[size_t(Type)].type;
+      itype     = glArrayConversion[size_t(Type)].itype;
       elemtype  = Type;
       flags     = Flags;
       _pad0     = 0;
@@ -836,7 +849,7 @@ struct GCobject {
    GCRef gclist;                // [24] GC list for marking (must match GCtab.gclist)
    GCRef metatable;             // [32] Optional metatable (must match GCtab.metatable)
    struct Object *ptr;          // [40] Direct pointer to Parasol object (OBJECTPTR, null if detached)
-   struct objMetaClass *classptr; // [48] Direct pointer to class metadata (objMetaClass*)
+   class objMetaClass *classptr; // [48] Direct pointer to class metadata (objMetaClass*)
    void *read_table;            // [56] Cached READ_TABLE* for fast __index lookup
    void *write_table;           // [64] Cached WRITE_TABLE* for fast __newindex lookup
 
