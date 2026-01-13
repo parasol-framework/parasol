@@ -208,10 +208,10 @@ TValue * lj_meta_tset(lua_State *L, cTValue *o, cTValue *k)
    int loop;
    for (loop = 0; loop < LJ_MAX_IDXCHAIN; loop++) {
       cTValue *mo;
-      if (LJ_LIKELY(tvistab(o))) {
+      if (tvistab(o)) [[likely]] {
          GCtab *t = tabV(o);
          cTValue *tv = lj_tab_get(L, t, k);
-         if (LJ_LIKELY(not tvisnil(tv))) {
+         if (not tvisnil(tv)) [[likely]] {
             t->nomm = 0;  //  Invalidate negative metamethod cache.
             lj_gc_anybarriert(L, t);
             return (TValue *)tv;

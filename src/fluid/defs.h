@@ -454,7 +454,6 @@ struct fstruct * push_struct(objScript *, APTR, std::string_view, bool, bool);
 struct fstruct * push_struct_def(lua_State *, APTR, struct struct_record &, bool);
 extern void register_io_class(lua_State *);
 extern void register_input_class(lua_State *);
-extern void register_object_class(lua_State *);
 extern void register_module_class(lua_State *);
 extern void register_number_class(lua_State *);
 extern void register_processing_class(lua_State *);

@@ -29,7 +29,6 @@ end
 
 @Test function Type()
    script = obj.find("self")
-   assert(getmetatable(script).__name is 'Fluid.obj', 'Expected metatable __name of Fluid.obj for script objecxt')
 
    assert(type(script) is 'object', 'Expected type of script to be object, got ' .. type(script))
 end

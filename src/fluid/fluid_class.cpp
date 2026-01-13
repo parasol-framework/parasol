@@ -1035,7 +1035,6 @@ static ERR register_interfaces(objScript *Self)
    auto prv = (prvFluid *)Self->ChildPrivate;
 
    register_io_class(prv->Lua);
-   register_object_class(prv->Lua);
    register_module_class(prv->Lua);
    register_regex_class(prv->Lua);
    register_struct_class(prv->Lua);
