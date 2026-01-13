@@ -155,21 +155,35 @@ static void arr_store_elem(lua_State *L, GCarray *Array, uint32_t Idx, cTValue *
       lj_err_msgv(L, ErrMsg::ARRTYPE);
    }
    else { // All primitive types are numeric
-      lua_Number num;
-      if (tvisint(Val)) num = lua_Number(intV(Val));
-      else if (tvisnum(Val)) num = numV(Val);
-      else if (tvisnil(Val)) num = 0;
-      else lj_err_msgv(L, ErrMsg::ARRTYPE);
-
-      switch (Array->elemtype) {
-         case AET::BYTE:   *(uint8_t*)elem = uint8_t(num); return;
-         case AET::INT16:  *(int16_t*)elem = int16_t(num); return;
-         case AET::INT32:  *(int32_t*)elem = int32_t(num); return;
-         case AET::INT64:  *(int64_t*)elem = int64_t(num); return;
-         case AET::FLOAT:  *(float*)elem = float(num); return;
-         case AET::DOUBLE: *(double*)elem = num; return;
-         default: lj_err_msgv(L, ErrMsg::ARRTYPE); break;
+      if (tvisint(Val)) {
+         int32_t ival = intV(Val);
+         switch (Array->elemtype) {
+            case AET::BYTE:   *(uint8_t*)elem = uint8_t(ival); return;
+            case AET::INT16:  *(int16_t*)elem = int16_t(ival); return;
+            case AET::INT32:  *(int32_t*)elem = ival; return;
+            case AET::INT64:  *(int64_t*)elem = ival; return;
+            case AET::FLOAT:  *(float*)elem = float(ival); return;
+            case AET::DOUBLE: *(double*)elem = double(ival); return;
+            default: break;
+         }
       }
+      else if (tvisnum(Val)) {
+         lua_Number num = numV(Val);
+         switch (Array->elemtype) {
+            case AET::BYTE:   *(uint8_t*)elem = uint8_t(num); return;
+            case AET::INT16:  *(int16_t*)elem = int16_t(num); return;
+            case AET::INT32:  *(int32_t*)elem = int32_t(num); return;
+            case AET::INT64:  *(int64_t*)elem = int64_t(num); return;
+            case AET::FLOAT:  *(float*)elem = float(num); return;
+            case AET::DOUBLE: *(double*)elem = num; return;
+            default: break;
+         }
+      }
+      else if (tvisnil(Val)) {
+         memset(elem, 0, Array->elemsize);
+         return;
+      }
+      lj_err_msgv(L, ErrMsg::ARRTYPE);
    }
 }
 
