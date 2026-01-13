@@ -139,12 +139,12 @@ end
          error("Raising error")
       except e
          msg("Captured inner error: " .. e.message)
-         error("Rethrowing '" .. e.message .. "'")
+         error(e)
       end
    except e
       outer_handled = true
       msg("Captured rethrown error in outer try: " .. e.message)
-      assert(e.message:find("Rethrowing"), "Outer should catch rethrown error, got: " .. tostring(e.message))
+      assert(e.message:find("Raising error"), "Outer should catch rethrown error, got: " .. e.message)
    end
 
    assert(outer_handled, "Rethrown exception should be caught by outer handler")
@@ -158,7 +158,7 @@ end
       error("Test message")
    except e
       assert(e.code is ERR_Exception, "Lua errors should have ERR_Exception code")
-      assert(e.message:find("Test message"), "Message should match, got " .. tostring(e.message))
+      assert(e.message:find("Test message"), "Message should match, got " .. e.message)
       assert(e.line > 0, "Should have line number, got " .. tostring(e.line))
       -- TODO: trace capture not yet implemented (requires saving before stack restoration)
       -- assert(e.trace != nil, "Should have stack trace")
@@ -630,7 +630,7 @@ end
       -- This should NOT trigger an exception (ERR_Okay is below threshold)
       err = mSys.AnalysePath(".", 0)
    except e
-      error("ERR_Okay should not trigger except, got " .. tostring(e.message))
+      error("ERR_Okay should not trigger except, got " .. e.message)
    end
 end
 
@@ -907,7 +907,7 @@ end
          local obj <close> = setmetatable({}, mt)
          error("inner")
       except e
-         error("outer " .. tostring(e.message))
+         error("outer " .. e.message)
       end
    except e
       caught_error = e
