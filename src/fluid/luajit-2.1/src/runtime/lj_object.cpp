@@ -73,3 +73,95 @@ void LJ_FASTCALL lj_object_free(global_State *g, GCobject *obj)
    // Free the GCobject structure (Parasol object should have been freed by __gc finalizer)
    lj_mem_free(g, obj, sizeof(GCobject));
 }
+
+//********************************************************************************************************************
+// pairs() iterator for objects - returns field name and flags for each iteration.
+
+static int object_next_pair(lua_State *L)
+{
+   auto fields = (Field *)lua_touserdata(L, lua_upvalueindex(1));
+   int field_total = lua_tointeger(L, lua_upvalueindex(2));
+   int field_index = lua_tointeger(L, lua_upvalueindex(3));
+
+   if ((field_index >= 0) and (field_index < field_total)) {
+      lua_pushinteger(L, field_index + 1);
+      lua_replace(L, lua_upvalueindex(3)); // Update the field counter
+
+      lua_pushstring(L, fields[field_index].Name);
+      lua_pushinteger(L, fields[field_index].Flags);
+      return 2;
+   }
+   else return 0; // Terminates the iteration
+}
+
+int lj_object_pairs(lua_State *L)
+{
+   auto def = objectV(L->base);
+
+   Field *fields;
+   int total;
+   if (def->classptr->get(FID_Dictionary, fields, total) IS ERR::Okay) {
+      // Create the iterator closure with upvalues
+      lua_pushlightuserdata(L, fields);
+      lua_pushinteger(L, total);
+      lua_pushinteger(L, 0);
+      lua_pushcclosure(L, object_next_pair, 3);
+
+      // FFH return values are placed at specific stack positions:
+      // L->base - 2: Iterator function
+      // L->base - 1: State (unused)
+      // L->base:     Initial key (nil for pairs)
+      TValue *o = L->base;
+      copyTV(L, o - 2, L->top - 1);  // Copy closure to return position
+      setnilV(o - 1);  // State (unused, closure uses upvalues)
+      setnilV(o);      // Initial control variable
+      L->top--;        // Pop the closure from top (now at FFH return position)
+      return 3;
+   }
+   else luaL_error(L, ERR::FieldSearch, "Object class defines no fields.");
+   return 0;
+}
+
+//********************************************************************************************************************
+// ipairs() iterator for objects - returns field index and name for each iteration.
+
+static int object_next_ipair(lua_State *L)
+{
+   auto fields = (Field *)lua_touserdata(L, lua_upvalueindex(1));
+   int field_total = lua_tointeger(L, lua_upvalueindex(2));
+   int field_index = lua_tointeger(L, 2); // Arg 2 is the previous index. It's nil if this is the first iteration.
+
+   if ((field_index >= 0) and (field_index < field_total)) {
+      lua_pushinteger(L, field_index + 1);
+      lua_pushstring(L, fields[field_index].Name);
+      return 2;
+   }
+   else return 0; // Terminates the iteration
+}
+
+int lj_object_ipairs(lua_State *L)
+{
+   auto def = objectV(L->base);
+
+   Field *fields;
+   int total;
+   if (def->classptr->get(FID_Dictionary, fields, total) IS ERR::Okay) {
+      // Create the iterator closure with upvalues
+      lua_pushlightuserdata(L, fields);
+      lua_pushinteger(L, total);
+      lua_pushcclosure(L, object_next_ipair, 2);
+
+      // FFH return values are placed at specific stack positions:
+      // L->base - 2: Iterator function
+      // L->base - 1: State (unused)
+      // L->base:     Initial key (0 for ipairs)
+      TValue *o = L->base;
+      copyTV(L, o - 2, L->top - 1);  // Copy closure to return position
+      setnilV(o - 1);  // State (unused, closure uses upvalues)
+      setintV(o, 0);   // Initial control variable (field index starts at 0)
+      L->top--;        // Pop the closure from top (now at FFH return position)
+      return 3;
+   }
+   else luaL_error(L, ERR::FieldSearch, "Object class defines no fields.");
+   return 0;
+}

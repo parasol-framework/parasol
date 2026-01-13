@@ -913,87 +913,6 @@ static int object_init(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Prints the object interface as the object ID, e.g. #-10513
-
-[[nodiscard]] static int object_tostring(lua_State *Lua)
-{
-   auto def = objectV(Lua->base);
-   lua_pushfstring(Lua, "#%d", def->uid);
-   return 1;
-}
-
-//********************************************************************************************************************
-// Support for pairs() allows the meta fields of the object to be iterated.  Note that in next_pair(), the object
-// interface isn't used but could be pushed as an upvalue if needed.
-
-[[nodiscard]] static int object_next_pair(lua_State *Lua)
-{
-   auto fields = (Field *)lua_touserdata(Lua, lua_upvalueindex(1));
-   int field_total = lua_tointeger(Lua, lua_upvalueindex(2));
-   int field_index = lua_tointeger(Lua, lua_upvalueindex(3));
-
-   if ((field_index >= 0) and (field_index < field_total)) {
-      lua_pushinteger(Lua, field_index + 1);
-      lua_replace(Lua, lua_upvalueindex(3)); // Update the field counter
-
-      lua_pushstring(Lua, fields[field_index].Name);
-      lua_pushinteger(Lua, fields[field_index].Flags);
-      return 2;
-   }
-   else return 0; // Terminates the iteration
-}
-
-[[nodiscard]] static int object_pairs(lua_State *Lua)
-{
-   auto def = objectV(Lua->base);
-
-   Field *fields;
-   int total;
-   if (def->classptr->get(FID_Dictionary, fields, total) IS ERR::Okay) {
-      lua_pushlightuserdata(Lua, fields);
-      lua_pushinteger(Lua, total);
-      lua_pushinteger(Lua, 0);
-      lua_pushcclosure(Lua, object_next_pair, 3);
-      return 1;
-   }
-   else luaL_error(Lua, ERR::FieldSearch, "Object class defines no fields.");
-   return 0;
-}
-
-//********************************************************************************************************************
-// Similar to pairs(), but returns each field index and its name.
-
-[[nodiscard]] static int object_next_ipair(lua_State *Lua)
-{
-   auto fields = (Field *)lua_touserdata(Lua, lua_upvalueindex(1));
-   int field_total = lua_tointeger(Lua, lua_upvalueindex(2));
-   int field_index = lua_tointeger(Lua, 2); // Arg 2 is the previous index.  It's nil if this is the first iteration.
-
-   if ((field_index >= 0) and (field_index < field_total)) {
-      lua_pushinteger(Lua, field_index + 1);
-      lua_pushstring(Lua, fields[field_index].Name);
-      return 2;
-   }
-   else return 0; // Terminates the iteration
-}
-
-[[nodiscard]] static int object_ipairs(lua_State *Lua)
-{
-   auto def = objectV(Lua->base);
-
-   Field *fields;
-   int total;
-   if (def->classptr->get(FID_Dictionary, fields, total) IS ERR::Okay) {
-      lua_pushlightuserdata(Lua, fields);
-      lua_pushinteger(Lua, total);
-      lua_pushcclosure(Lua, object_next_ipair, 2);
-      return 1;
-   }
-   else luaL_error(Lua, ERR::FieldSearch, "Object class defines no fields.");
-   return 0;
-}
-
-//********************************************************************************************************************
 
 #include "fluid_objects_indexes.cpp"
 #include "fluid_objects_calls.cpp"
@@ -1011,9 +930,6 @@ static const luaL_Reg objectlib_functions[] = {
 static const luaL_Reg objectlib_methods[] = {
    { "__index",    object_index },
    { "__newindex", object_newindex },
-   { "__tostring", object_tostring },
-   { "__pairs",    object_pairs },
-   { "__ipairs",   object_ipairs },
    { nullptr, nullptr }
 };
 
