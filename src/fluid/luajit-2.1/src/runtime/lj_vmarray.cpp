@@ -85,6 +85,13 @@ static void arr_load_elem(lua_State *L, GCarray *Array, uint32_t Idx, TValue *Re
          break;
       }
 
+      case AET::OBJECT: {
+         GCRef ref = *(GCRef*)elem;
+         if (gcref(ref)) setobjectV(L, Result, gco_to_object(gcref(ref)));
+         else setnilV(Result);
+         break;
+      }
+
       case AET::ANY: {
          TValue *source = (TValue*)elem;
          copyTV(L, Result, source);
@@ -109,6 +116,16 @@ static void arr_store_elem(lua_State *L, GCarray *Array, uint32_t Idx, cTValue *
          GCstr *str = strV(Val);
          setgcref(*(GCRef*)elem, obj2gco(str));
          lj_gc_objbarrier(L, Array, str);
+      }
+      else if (tvisnil(Val)) setgcrefnull(*(GCRef*)elem);
+      else lj_err_msgv(L, ErrMsg::ARRTYPE);
+      return;
+   }
+   else if (Array->elemtype IS AET::OBJECT) {
+      if (tvisobject(Val)) {
+         GCobject *obj = objectV(Val);
+         setgcref(*(GCRef*)elem, obj2gco(obj));
+         lj_gc_objbarrier(L, Array, obj);
       }
       else if (tvisnil(Val)) setgcrefnull(*(GCRef*)elem);
       else lj_err_msgv(L, ErrMsg::ARRTYPE);
