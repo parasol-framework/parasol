@@ -472,6 +472,20 @@ end
    assert(arr:find(5.5) is nil, "find(5.5) should return nil")
 end
 
+@Test function ArrayFindObject()
+   obj_one = obj.new('time')
+   obj_two = obj.new('file')
+   arr = array<object> { obj_one, obj_two }
+
+   assert(arr:find(obj_one) is 0, "find(object) should return 0")
+   assert(arr:find(obj_two.id) is 1, "find(uid) should return 1")
+   assert(arr:find(obj_one, 1) is nil, "find(object, 1) should return nil")
+   assert(arr:find(obj_two, {0...1}) is 1, "find(object, range) should return 1")
+
+   obj_one.free()
+   obj_two.free()
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Test array.reverse() functionality
 
@@ -1079,6 +1093,23 @@ end
    assert(t[2] is nil, "converted table[2] should be nil")
 end
 
+@Test function ObjectArrayToTable()
+   obj_one = obj.new('time')
+   obj_two = obj.new('file')
+   arr = array<object, 2>
+   arr[0] = obj_one
+   arr[1] = obj_two
+
+   t = arr:table()
+
+   assert(type(t[0]) is 'object', "converted table[0] should be object")
+   assert(t[0].id is obj_one.id, "converted table[0] should match obj_one")
+   assert(t[1].id is obj_two.id, "converted table[1] should match obj_two")
+
+   obj_one.free()
+   obj_two.free()
+end
+
 @Test function TableArrayCopyFromTable()
    arr = array<table, 3>
    source = {{x = 10}, {x = 20}, {x = 30}}
@@ -1349,6 +1380,20 @@ end
    assert(#arr is 3, "array should have 3 elements")
    assert(arr[0].x is 1, "first table should have x=1")
    assert(arr[2].z is 3, "third table should have z=3")
+end
+
+@Test function ArrayOfObject()
+   obj_one = obj.new('time')
+   obj_two = obj.new('file')
+   arr = array<object> { obj_one, obj_two }
+
+   assert(#arr is 2, "array<object> should have 2 elements")
+   assert(arr:type() is 'object', "array<object> type should be 'object'")
+   assert(arr[0].id is obj_one.id, "first object should match obj_one")
+   assert(arr[1].id is obj_two.id, "second object should match obj_two")
+
+   obj_one.free()
+   obj_two.free()
 end
 
 @Test function ArrayOfStringWithTable()
@@ -1680,6 +1725,19 @@ end
    assert(arr:contains(0) is false, "contains(0) should return false")
 end
 
+@Test function ArrayContainsObject()
+   obj_one = obj.new('time')
+   obj_two = obj.new('file')
+   arr = array<object> { obj_one }
+
+   assert(arr:contains(obj_one) is true, "contains(object) should return true")
+   assert(arr:contains(obj_one.id) is true, "contains(uid) should return true")
+   assert(arr:contains(obj_two) is false, "contains(object) should return false")
+
+   obj_one.free()
+   obj_two.free()
+end
+
 @Test function ArrayContainsEmpty()
    arr = array<int>
 
@@ -1763,6 +1821,16 @@ end
    assert(result.x is 100, "first() should return table with x=100")
 end
 
+@Test function ArrayFirstObject()
+   obj_one = obj.new('time')
+   obj_two = obj.new('file')
+   arr = array<object> { obj_one, obj_two }
+   result = arr:first()
+   assert(result.id is obj_one.id, "first() should return obj_one")
+   obj_one.free()
+   obj_two.free()
+end
+
 @Test function ArrayFirstEmpty()
    arr = array<int>
    assert(arr:first() is nil, "first() on empty array should return nil")
@@ -1812,6 +1880,16 @@ end
    arr[1] = {y = 200}
    result = arr:last()
    assert(result.y is 200, "last() should return table with y=200")
+end
+
+@Test function ArrayLastObject()
+   obj_one = obj.new('time')
+   obj_two = obj.new('file')
+   arr = array<object> { obj_one, obj_two }
+   result = arr:last()
+   assert(result.id is obj_two.id, "last() should return obj_two")
+   obj_one.free()
+   obj_two.free()
 end
 
 @Test function ArrayLastEmpty()

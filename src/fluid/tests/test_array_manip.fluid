@@ -114,6 +114,21 @@ end
    assert(arr[1].y is 20, 'arr[1].y should be 20')
 end
 
+@Test function ArrayPushObject()
+   obj_one = obj.new('time')
+   obj_two = obj.new('file')
+   arr = array<object>
+   arr:push(obj_one)
+   arr:push(obj_two)
+
+   assert(#arr is 2, 'Object array length should be 2')
+   assert(arr[0].id is obj_one.id, 'arr[0] should be obj_one')
+   assert(arr[1].id is obj_two.id, 'arr[1] should be obj_two')
+
+   obj_one.free()
+   obj_two.free()
+end
+
 @Test function ArrayPushNoArgs()
    arr = array<int, 3>
    arr[0] = 1
@@ -208,6 +223,20 @@ end
    assert(arr[0].x is 10, 'arr[0].x should still be 10')
 end
 
+@Test function ArrayPopObject()
+   obj_one = obj.new('time')
+   obj_two = obj.new('file')
+   arr = array<object> { obj_one, obj_two }
+
+   val = arr:pop()
+   assert(val.id is obj_two.id, 'pop() should return obj_two')
+   assert(#arr is 1, 'Array length should be 1')
+   assert(arr[0].id is obj_one.id, 'arr[0] should be obj_one')
+
+   obj_one.free()
+   obj_two.free()
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Test array.clear() functionality (updated behavior - resets length, preserves capacity)
 
@@ -252,6 +281,18 @@ end
 
    arr:clear()
    assert(#arr is 0, 'Table array should be empty after clear')
+end
+
+@Test function ArrayClearObject()
+   obj_one = obj.new('time')
+   obj_two = obj.new('file')
+   arr = array<object> { obj_one, obj_two }
+
+   arr:clear()
+   assert(#arr is 0, 'Object array should be empty after clear')
+
+   obj_one.free()
+   obj_two.free()
 end
 
 @Test function ArrayClearEmpty()
@@ -430,6 +471,21 @@ end
    assert(arr[2].x is 3, "arr[2].x should be 3")
 end
 
+@Test function ArrayInsertObject()
+   obj_one = obj.new('time')
+   obj_two = obj.new('file')
+   obj_three = obj.new('time')
+   arr = array<object> { obj_one, obj_three }
+   arr:insert(1, obj_two)
+   assert(#arr is 3, "Object array length should be 3")
+   assert(arr[0].id is obj_one.id, "arr[0] should be obj_one")
+   assert(arr[1].id is obj_two.id, "arr[1] should be obj_two")
+   assert(arr[2].id is obj_three.id, "arr[2] should be obj_three")
+   obj_one.free()
+   obj_two.free()
+   obj_three.free()
+end
+
 @Test function ArrayInsertGrowth()
    arr = array<int, 2>
    arr[0] = 1
@@ -565,6 +621,21 @@ end
    assert(#arr is 2, "Array length should be 2")
    assert(arr[0].x is 1, "arr[0].x should be 1")
    assert(arr[1].x is 3, "arr[1].x should be 3")
+end
+
+@Test function ArrayRemoveObject()
+   obj_one = obj.new('time')
+   obj_two = obj.new('file')
+   obj_three = obj.new('time')
+   arr = array<object> { obj_one, obj_two, obj_three }
+   len = arr:remove(1)
+   assert(len is 2, "remove(1) should return new length 2")
+   assert(#arr is 2, "Array length should be 2")
+   assert(arr[0].id is obj_one.id, "arr[0] should be obj_one")
+   assert(arr[1].id is obj_three.id, "arr[1] should be obj_three")
+   obj_one.free()
+   obj_two.free()
+   obj_three.free()
 end
 
 @Test function ArrayRemoveStringGC()
@@ -789,6 +860,21 @@ end
    -- Note: For tables, it's a shallow copy (same table references)
    original[0].x = 100
    assert(copy[0].x is 100, "Table clone is shallow - same reference")
+end
+
+@Test function ArrayCloneObject()
+   obj_one = obj.new('file')
+   obj_one.path = 'temp:clone-object.txt'
+   original = array<object> { obj_one }
+   copy = original:clone()
+
+   assert(#copy is 1, "Clone should have same length")
+   assert(copy[0].id is obj_one.id, "Clone should copy object references")
+
+   obj_one.path = 'temp:clone-object-updated.txt'
+   assert(copy[0].path is 'temp:clone-object-updated.txt', "Object clone should be shallow")
+
+   obj_one.free()
 end
 
 @Test function ArrayCloneEmpty()

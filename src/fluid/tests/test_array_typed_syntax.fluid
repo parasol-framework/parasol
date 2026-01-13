@@ -30,6 +30,12 @@ end
    assert(arr:type() is 'table', "Type should be 'table'")
 end
 
+@Test function ArrayTypedBasicObject()
+   arr = array<object>
+   assert(#arr is 0, "Empty array<object> should have length 0")
+   assert(arr:type() is 'object', "Type should be 'object'")
+end
+
 ----------------------------------------------------------------------------------------------------------------------
 -- Typed arrays with pre-allocated size
 
@@ -604,4 +610,20 @@ end
    assert(arr[0] is 'a', "First element preserved")
    assert(arr[1] is 'b', "Second element preserved")
    assert(arr[2] is nil, "New string element should be nil")
+end
+
+@Test function ArrayResizeObjectArray()
+   obj_one = obj.new('time')
+   obj_two = obj.new('file')
+   arr = array<object> { obj_one, obj_two }
+   array.resize(arr, 4)
+   assert(#arr is 4, "Length should be 4")
+   assert(arr[0].id is obj_one.id, "First object preserved")
+   assert(arr[1].id is obj_two.id, "Second object preserved")
+   assert(arr[2] is nil, "New object slot should be nil")
+   array.resize(arr, 1)
+   assert(#arr is 1, "Length should shrink to 1")
+   assert(arr[0].id is obj_one.id, "First object should remain after shrink")
+   obj_one.free()
+   obj_two.free()
 end

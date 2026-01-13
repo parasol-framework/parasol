@@ -47,8 +47,10 @@ constexpr auto HASH_TABLE   = pf::strhash("table");
 constexpr auto HASH_ARRAY   = pf::strhash("array");
 constexpr auto HASH_ANY     = pf::strhash("any");
 
-// Forward declaration for find_in_array (used by contains)
+// Forward declarations for find helpers
 static int32_t find_in_array(GCarray *Arr, lua_Number Value, int32_t Start, int32_t Stop, int32_t Step);
+static int32_t find_object_in_array(GCarray *Arr, int32_t SearchUid, int32_t Start, int32_t Stop, int32_t Step);
+static int32_t object_uid_from_value(lua_State *L, int ArgIndex);
 
 //********************************************************************************************************************
 // Helper to parse element type string
@@ -481,12 +483,33 @@ LJLIB_CF(array_join)
 //
 // Returns: true if found, false otherwise
 
+static int32_t object_uid_from_value(lua_State *L, int ArgIndex)
+{
+   if (lua_isobject(L, ArgIndex)) {
+      TValue *tv = L->base + ArgIndex - 1;
+      GCobject *obj = objectV(tv);
+      return obj->uid;
+   }
+   if (lua_isnumber(L, ArgIndex)) {
+      return int32_t(lua_tointeger(L, ArgIndex));
+   }
+   lj_err_argv(L, ArgIndex, ErrMsg::BADTYPE, "object or uid", luaL_typename(L, ArgIndex));
+   return 0;
+}
+
 LJLIB_CF(array_contains)
 {
    GCarray *arr = lj_lib_checkarray(L, 1);
 
    if (arr->len IS 0) {
       lua_pushboolean(L, 0);
+      return 1;
+   }
+
+   if (arr->elemtype IS AET::OBJECT) {
+      int32_t search_uid = object_uid_from_value(L, 2);
+      int32_t result = find_object_in_array(arr, search_uid, 0, int32_t(arr->len - 1), 1);
+      lua_pushboolean(L, result >= 0 ? 1 : 0);
       return 1;
    }
 
@@ -557,6 +580,12 @@ LJLIB_CF(array_first)
          else lua_pushnil(L);
          break;
       }
+      case AET::OBJECT: {
+         GCRef ref = *(GCRef *)elem;
+         if (gcref(ref)) setobjectV(L, L->top++, gco_to_object(gcref(ref)));
+         else lua_pushnil(L);
+         return 1;
+      }
       case AET::TABLE: {
          GCRef ref = *(GCRef *)elem;
          if (gcref(ref)) settabV(L, L->top++, gco_to_table(gcref(ref)));
@@ -620,6 +649,12 @@ LJLIB_CF(array_last)
          else lua_pushnil(L);
          break;
       }
+      case AET::OBJECT: {
+         GCRef ref = *(GCRef *)elem;
+         if (gcref(ref)) setobjectV(L, L->top++, gco_to_object(gcref(ref)));
+         else lua_pushnil(L);
+         return 1;
+      }
       case AET::TABLE: {
          GCRef ref = *(GCRef *)elem;
          if (gcref(ref)) settabV(L, L->top++, gco_to_table(gcref(ref)));
@@ -659,7 +694,8 @@ LJLIB_CF(array_clear)
    if (arr->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
 
    // For GC-tracked types, clear references to allow garbage collection
-   if (arr->elemtype IS AET::STR_GC or arr->elemtype IS AET::TABLE or arr->elemtype IS AET::ARRAY) {
+   if (arr->elemtype IS AET::STR_GC or arr->elemtype IS AET::TABLE or arr->elemtype IS AET::ARRAY or
+       arr->elemtype IS AET::OBJECT) {
       auto refs = arr->get<GCRef>();
       for (MSize i = 0; i < arr->len; i++) setgcrefnull(refs[i]);
    }
@@ -706,7 +742,8 @@ LJLIB_CF(array_resize)
       switch (arr->elemtype) {
          case AET::STR_GC:
          case AET::TABLE:
-         case AET::ARRAY: {
+         case AET::ARRAY:
+         case AET::OBJECT: {
             auto refs = arr->get<GCRef>();
             for (MSize i = old_len; i < target_len; i++) setgcrefnull(refs[i]);
             break;
@@ -730,7 +767,8 @@ LJLIB_CF(array_resize)
       switch (arr->elemtype) {
          case AET::STR_GC:
          case AET::TABLE:
-         case AET::ARRAY: {
+         case AET::ARRAY:
+         case AET::OBJECT: {
             auto refs = arr->get<GCRef>();
             for (MSize i = target_len; i < old_len; i++) setgcrefnull(refs[i]);
             break;
@@ -1493,6 +1531,33 @@ static int32_t find_in_array(GCarray *Arr, lua_Number Value, int32_t Start, int3
 }
 
 //********************************************************************************************************************
+// Object search by UID for stepped ranges.
+
+static int32_t find_object_in_array(GCarray *Arr, int32_t SearchUid, int32_t Start, int32_t Stop, int32_t Step)
+{
+   auto refs = Arr->get<GCRef>();
+   if (Step > 0) {
+      for (int32_t i = Start; i <= Stop; i += Step) {
+         GCRef ref = refs[i];
+         if (gcref(ref)) {
+            GCobject *obj = gco_to_object(gcref(ref));
+            if (obj and obj->uid IS SearchUid) return i;
+         }
+      }
+   }
+   else {
+      for (int32_t i = Start; i >= Stop; i += Step) {
+         GCRef ref = refs[i];
+         if (gcref(ref)) {
+            GCobject *obj = gco_to_object(gcref(ref));
+            if (obj and obj->uid IS SearchUid) return i;
+         }
+      }
+   }
+   return -1;
+}
+
+//********************************************************************************************************************
 // Usage: array.find(arr, value [, start]) or array.find(arr, value, {range})
 //
 // Searches for a value in the array.
@@ -1512,6 +1577,82 @@ static int32_t find_in_array(GCarray *Arr, lua_Number Value, int32_t Start, int3
 LJLIB_CF(array_find)
 {
    GCarray *arr = lj_lib_checkarray(L, 1);
+
+   if (arr->elemtype IS AET::OBJECT) {
+      int32_t search_uid = object_uid_from_value(L, 2);
+
+      // Check if third argument is a range
+      fluid_range *r = check_range(L, 3);
+      if (r) {
+         int32_t len = int32_t(arr->len);
+         int32_t start = r->start;
+         int32_t stop = r->stop;
+         int32_t step = r->step;
+
+         // Handle negative indices
+         bool use_inclusive = r->inclusive;
+         if (start < 0 or stop < 0) {
+            use_inclusive = true;
+            if (start < 0) start += len;
+            if (stop < 0) stop += len;
+         }
+
+         // Determine iteration direction
+         bool forward = (start <= stop);
+         if (step IS 0) step = forward ? 1 : -1;
+         if (forward and step < 0) step = 1;
+         if (not forward and step > 0) step = -1;
+
+         // Calculate effective stop for exclusive ranges
+         int32_t effective_stop = stop;
+         if (not use_inclusive) {
+            if (forward) effective_stop = stop - 1;
+            else effective_stop = stop + 1;
+         }
+
+         // Bounds clipping
+         if (forward) {
+            if (start < 0) start = 0;
+            if (effective_stop >= len) effective_stop = len - 1;
+         }
+         else {
+            if (start >= len) start = len - 1;
+            if (effective_stop < 0) effective_stop = 0;
+         }
+
+         // Check for empty/invalid ranges
+         if (len IS 0 or (forward and start > effective_stop) or (not forward and start < effective_stop)) {
+            lua_pushnil(L);
+            return 1;
+         }
+
+         int32_t result = find_object_in_array(arr, search_uid, start, effective_stop, step);
+         if (result >= 0) {
+            setintV(L->top++, result);
+            return 1;
+         }
+         lua_pushnil(L);
+         return 1;
+      }
+
+      auto start = lj_lib_optint(L, 3, 0);
+
+      if (start < 0) start = 0;
+      if (MSize(start) >= arr->len) {
+         lua_pushnil(L);
+         return 1;
+      }
+
+      int32_t result = find_object_in_array(arr, search_uid, start, int32_t(arr->len - 1), 1);
+      if (result >= 0) {
+         setintV(L->top++, result);
+         return 1;
+      }
+
+      lua_pushnil(L);
+      return 1;
+   }
+
    lua_Number value = lj_lib_checknum(L, 2);
 
    // Check if third argument is a range
@@ -1644,7 +1785,8 @@ LJLIB_CF(array_reverse)
       }
       case AET::STR_GC:
       case AET::TABLE:
-      case AET::ARRAY: {
+      case AET::ARRAY:
+      case AET::OBJECT: {
          auto *p = (GCRef *)data;
          std::reverse(p, p + arr->len);
          break;
@@ -1838,6 +1980,12 @@ static void array_push_element(lua_State *L, GCarray *Arr, MSize Idx)
       case AET::CSTR: {
          CSTRING str = *(CSTRING *)elem;
          if (str) lua_pushstring(L, str);
+         else lua_pushnil(L);
+         break;
+      }
+      case AET::OBJECT: {
+         GCRef ref = *(GCRef *)elem;
+         if (gcref(ref)) setobjectV(L, L->top++, gco_to_object(gcref(ref)));
          else lua_pushnil(L);
          break;
       }
@@ -2107,7 +2255,8 @@ LJLIB_CF(array_filter)
          switch (result->elemtype) {
             case AET::STR_GC:
             case AET::TABLE:
-            case AET::ARRAY: {
+            case AET::ARRAY:
+            case AET::OBJECT: {
                GCRef ref = *(GCRef *)src;
                *(GCRef *)dst = ref;
                if (gcref(ref)) lj_gc_objbarrier(L, result, gcref(ref));
@@ -2409,7 +2558,7 @@ LJLIB_CF(array_remove)
    }
 
    // Clear trailing elements for GC-tracked types
-   if (arr->elemtype IS AET::STR_GC or arr->elemtype IS AET::TABLE) {
+   if (arr->elemtype IS AET::STR_GC or arr->elemtype IS AET::TABLE or arr->elemtype IS AET::OBJECT) {
       auto refs = arr->get<GCRef>();
       for (MSize i = arr->len - MSize(count); i < arr->len; i++) {
          setgcrefnull(refs[i]);
@@ -2454,7 +2603,8 @@ LJLIB_CF(array_clone)
    switch (arr->elemtype) {
       case AET::STR_GC:
       case AET::TABLE:
-      case AET::ARRAY: {
+      case AET::ARRAY:
+      case AET::OBJECT: {
          // For GC-tracked types, copy references and set up barriers
          auto src_refs = arr->get<GCRef>();
          auto dst_refs = result->get<GCRef>();

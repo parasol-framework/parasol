@@ -33,7 +33,8 @@ static const uint8_t glElemSizes[] = {
    sizeof(GCRef),        // AET::TABLE
    sizeof(GCRef),        // AET::ARRAY
    sizeof(TValue),       // AET::ANY
-   0                     // AET::STRUCT (variable)
+   0,                    // AET::STRUCT (variable)
+   sizeof(GCRef)         // AET::OBJECT
 };
 
 //********************************************************************************************************************
@@ -274,6 +275,12 @@ GCtab * lj_array_to_table(lua_State *L, GCarray *Array)
          case AET::ARRAY: {
             GCRef ref = *(GCRef*)elem;
             if (gcref(ref)) setarrayV(L, slot, gco_to_array(gcref(ref)));
+            else setnilV(slot);
+            break;
+         }
+         case AET::OBJECT: {
+            GCRef ref = *(GCRef*)elem;
+            if (gcref(ref)) setobjectV(L, slot, gco_to_object(gcref(ref)));
             else setnilV(slot);
             break;
          }
