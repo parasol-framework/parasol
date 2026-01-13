@@ -22,9 +22,11 @@ GCobject * lj_object_new(lua_State *L, OBJECTID UID, OBJECTPTR Ptr, objMetaClass
    obj->accesscount = 0;
    setgcrefnull(obj->metatable);
    setgcrefnull(obj->gclist);
-   obj->uid      = UID;
-   obj->ptr      = Ptr;
-   obj->classptr = ClassPtr;
+   obj->uid         = UID;
+   obj->ptr         = Ptr;
+   obj->classptr    = ClassPtr;
+   obj->read_table  = nullptr;  // Lazily populated on first __index access
+   obj->write_table = nullptr;  // Lazily populated on first __newindex access
 
    return obj;
 }

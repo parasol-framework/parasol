@@ -13,7 +13,14 @@ int object_newindex(lua_State *Lua)
       if (auto hash = luaL_checkstringhash(Lua, 2)) {
          if (auto obj = access_object(def)) {
             ERR error;
-            auto jt = get_write_table(def->classptr);
+
+            // Use cached write_table or lazily populate it
+            WRITE_TABLE *jt = (WRITE_TABLE *)def->write_table;
+            if (!jt) {
+               jt = get_write_table(def->classptr);
+               def->write_table = (void *)jt;
+            }
+
             if (auto func = jt->find(obj_write(hash)); func != jt->end()) {
                error = func->Call(Lua, obj, func->Field, 3);
             }

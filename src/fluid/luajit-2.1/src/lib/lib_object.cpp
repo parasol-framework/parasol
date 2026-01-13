@@ -446,25 +446,34 @@ WRITE_TABLE * get_write_table(objMetaClass *Class)
 
 [[nodiscard]] int object_index(lua_State *Lua)
 {
-   auto tv = Lua->base;
-   if (tvisobject(tv)) {
-      auto def = objectV(tv);
-      auto keyname = luaL_checkstring(Lua, 2);
+   auto def = objectV(Lua->base);
 
-      if (!def->uid) {
-         luaL_error(Lua, ERR::DoesNotExist, "Object dereferenced, unable to read field %s", keyname);
-         return 0;
-      }
+   if (!def->uid) {
+      luaL_error(Lua, ERR::DoesNotExist, "Object dereferenced, unable to read field.");
+      return 0;
+   }
 
-      auto read_table = get_read_table(Lua, def->classptr);
-      auto hash_key = obj_read(simple_hash(keyname));
-      if (auto func = read_table->find(hash_key); func != read_table->end()) {
-         return func->Call(Lua, *func, def);
-      }
-      else {
-         pf::Log(__FUNCTION__).warning("Field does not exist or is unreadable: %s.%s", def->classptr ? def->classptr->ClassName: "?", keyname);
-         Lua->CaughtError = ERR::NoSupport;
-      }
+   // Get key as GCstr to access precomputed hash
+   TValue *tv_key = Lua->base + 1;
+   if (!tvisstr(tv_key)) {
+      lj_err_argt(Lua, 2, LUA_TSTRING);
+      return 0;
+   }
+   GCstr *keystr = strV(tv_key);
+
+   // Use cached read_table or lazily populate it
+   auto read_table = (READ_TABLE *)def->read_table;
+   if (!read_table) {
+      read_table = get_read_table(Lua, def->classptr);
+      def->read_table = (void *)read_table;
+   }
+
+   auto hash_key = obj_read(keystr->hash);
+   if (auto func = read_table->find(hash_key); func != read_table->end()) {
+      return func->Call(Lua, *func, def);
+   }
+   else {
+      luaL_error(Lua, ERR::NoFieldAccess, "Field does not exist or is unreadable: %s.%s", def->classptr ? def->classptr->ClassName: "?", strdata(keystr));
    }
 
    return 0;
