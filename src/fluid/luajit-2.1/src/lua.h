@@ -52,7 +52,7 @@ using lua_Writer = int(*)(lua_State *L, const void* p, size_t sz, void* ud);
 
 using lua_Alloc = void*(*)(void *ud, void *ptr, size_t osize, size_t nsize);
 
-// basic types
+// Basic types. These also exist as LJ_* types in lj_obj.h but are not perfectly mirrored.
 
 constexpr int LUA_TNONE = -1;
 constexpr int LUA_TNIL = 0;
@@ -160,7 +160,7 @@ extern void * lua_newuserdata(lua_State *L, size_t sz);
 // Native Parasol object support
 struct GCobject;
 struct Object;
-struct objMetaClass;
+class objMetaClass;
 extern GCobject * lua_pushobject(lua_State *L, int32_t UID, Object *Ptr, objMetaClass *ClassPtr, uint8_t Flags);
 extern int    lua_getmetatable(lua_State *L, int objindex);
 extern void   lua_getfenv(lua_State *L, int idx);

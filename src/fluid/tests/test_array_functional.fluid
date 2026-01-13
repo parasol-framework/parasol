@@ -48,6 +48,19 @@ end
    assert(values[0] is 'hello' and values[1] is 'world', "each() should work with string arrays")
 end
 
+@Test function EachWithObjectArray()
+   obj_one = obj.new('time')
+   obj_two = obj.new('file')
+   arr = array<object> { obj_one, obj_two }
+   ids = array<int, 2>
+   arr:each(function(Value, Index)
+      ids[Index] = Value.id
+   end)
+   assert(ids[0] is obj_one.id and ids[1] is obj_two.id, "each() should pass object values")
+   obj_one.free()
+   obj_two.free()
+end
+
 @Test function EachWithArrowFunction()
    arr = array<int> { 5, 10, 15 }
    total = 0
@@ -99,6 +112,16 @@ end
    assert(upper[0] is 'HELLO' and upper[1] is 'WORLD', "map() should work with string arrays")
 end
 
+@Test function MapObjectArray()
+   obj_one = obj.new('time')
+   obj_two = obj.new('file')
+   arr = array<object> { obj_one, obj_two }
+   copied = arr:map(Value => Value)
+   assert(copied[0].id is obj_one.id and copied[1].id is obj_two.id, "map() should preserve objects")
+   obj_one.free()
+   obj_two.free()
+end
+
 @Test function MapSingleElement()
    arr = array<int> { 42 }
    result = arr:map(v => v * 2)
@@ -119,6 +142,17 @@ end
    arr = array<int> { 1, 2, 3, 4, 5 }
    evens = arr:filter(v => v % 2 is 0)
    assert(#arr is 5, "filter() should not modify original array")
+end
+
+@Test function FilterObjectArray()
+   obj_one = obj.new('time')
+   obj_two = obj.new('file')
+   arr = array<object> { obj_one, obj_two }
+   filtered = arr:filter(Value => Value.id is obj_two.id)
+   assert(#filtered is 1, "filter() should return one object")
+   assert(filtered[0].id is obj_two.id, "filter() should keep matching object")
+   obj_one.free()
+   obj_two.free()
 end
 
 @Test function FilterAllMatch()
