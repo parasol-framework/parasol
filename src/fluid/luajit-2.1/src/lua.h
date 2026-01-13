@@ -222,6 +222,7 @@ inline void lua_register(lua_State *L, const char *N, lua_CFunction F) {
 inline size_t lua_strlen(lua_State *L, int I) { return lua_objlen(L, I); }
 inline bool lua_isfunction(lua_State *L, int N) { return lua_type(L, N) == LUA_TFUNCTION; }
 inline bool lua_istable(lua_State *L, int N) { return lua_type(L, N) == LUA_TTABLE; }
+inline bool lua_isobject(lua_State *L, int N) { return lua_type(L, N) == LUA_TOBJECT; }
 inline bool lua_islightuserdata(lua_State *L, int N) { return lua_type(L, N) == LUA_TLIGHTUSERDATA; }
 inline bool lua_isnil(lua_State *L, int N) { return lua_type(L, N) == LUA_TNIL; }
 inline bool lua_isboolean(lua_State *L, int N) { return lua_type(L, N) == LUA_TBOOLEAN; }

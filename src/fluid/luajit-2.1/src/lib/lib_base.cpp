@@ -36,6 +36,7 @@
 #include "lj_vmarray.h"
 #include "runtime/stack_utils.h"
 #include "runtime/lj_thunk.h"
+#include "runtime/lj_object.h"
 #include "debug/error_guard.h"
 
 #define LJLIB_MODULE_base
@@ -189,6 +190,11 @@ static int ffh_pairs(lua_State* L, MMS mm)
       if (mm IS MM_pairs) setnilV(o + 1);
       else setintV(o + 1, -1);  // ipairs starts at -1, increments to 0
       return FFH_RES(3);
+   }
+   else if (tvisobject(o)) {
+      // Direct integration for LJ_TOBJECT - iterate over field dictionary
+      int nres = (mm IS MM_pairs) ? lj_object_pairs(L) : lj_object_ipairs(L);
+      return FFH_RES(nres);
    }
    else lj_err_argt(L, 1, LUA_TTABLE);
 }

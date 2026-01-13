@@ -177,6 +177,13 @@ cTValue *lj_meta_tget(lua_State *L, cTValue *o, cTValue *k)
          cTValue *tv = lj_tab_get(L, t, k);
          if (not tvisnil(tv) or !(mo = lj_meta_fast(L, tabref(t->metatable), MM_index))) return tv;
       }
+      else if (tvisobject(o)) {
+         mo = lj_meta_fast(L, tabref(basemt_it(G(L), LJ_TOBJECT)), MM_index);
+         if (tvisnil(mo)) {
+            lj_err_optype(L, o, ErrMsg::OPINDEX);
+            return nullptr;
+         }
+      }
       else if (tvisnil(mo = lj_meta_lookup(L, o, MM_index))) {
          lj_err_optype(L, o, ErrMsg::OPINDEX);
          return nullptr;  //  unreachable
@@ -201,10 +208,10 @@ TValue * lj_meta_tset(lua_State *L, cTValue *o, cTValue *k)
    int loop;
    for (loop = 0; loop < LJ_MAX_IDXCHAIN; loop++) {
       cTValue *mo;
-      if (LJ_LIKELY(tvistab(o))) {
+      if (tvistab(o)) [[likely]] {
          GCtab *t = tabV(o);
          cTValue *tv = lj_tab_get(L, t, k);
-         if (LJ_LIKELY(not tvisnil(tv))) {
+         if (not tvisnil(tv)) [[likely]] {
             t->nomm = 0;  //  Invalidate negative metamethod cache.
             lj_gc_anybarriert(L, t);
             return (TValue *)tv;
@@ -217,6 +224,13 @@ TValue * lj_meta_tset(lua_State *L, cTValue *o, cTValue *k)
             else if (tvisint(k)) { setnumV(&tmp, (lua_Number)intV(k)); k = &tmp; }
             else if (tvisnum(k) and tvisnan(k)) lj_err_msg(L, ErrMsg::NANIDX);
             return lj_tab_newkey(L, t, k);
+         }
+      }
+      else if (tvisobject(o)) {
+         mo = lj_meta_fast(L, tabref(basemt_it(G(L), LJ_TOBJECT)), MM_newindex);
+         if (tvisnil(mo)) {
+            lj_err_optype(L, o, ErrMsg::OPINDEX);
+            return nullptr;
          }
       }
       else if (tvisnil(mo = lj_meta_lookup(L, o, MM_newindex))) {

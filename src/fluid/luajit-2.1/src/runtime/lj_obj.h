@@ -834,8 +834,10 @@ struct GCobject {
    uint32_t reserved;           // [20] Reserved for alignment
    GCRef gclist;                // [24] GC list for marking (must match GCtab.gclist)
    GCRef metatable;             // [32] Optional metatable (must match GCtab.metatable)
-   struct Object *ptr;            // [40] Direct pointer to Parasol object (OBJECTPTR, null if detached)
+   struct Object *ptr;          // [40] Direct pointer to Parasol object (OBJECTPTR, null if detached)
    struct objMetaClass *classptr; // [48] Direct pointer to class metadata (objMetaClass*)
+   void *read_table;            // [56] Cached READ_TABLE* for fast __index lookup
+   void *write_table;           // [64] Cached WRITE_TABLE* for fast __newindex lookup
 
    inline bool is_detached() { return (flags & GCOBJ_DETACHED) != 0; }
    inline bool is_locked() { return (flags & GCOBJ_LOCKED) != 0; }

@@ -42,6 +42,7 @@ constexpr auto HASH_DOUBLE  = pf::strhash("double");
 constexpr auto HASH_STRING  = pf::strhash("string");
 constexpr auto HASH_STRUCT  = pf::strhash("struct");
 constexpr auto HASH_POINTER = pf::strhash("pointer");
+constexpr auto HASH_OBJECT  = pf::strhash("object");
 constexpr auto HASH_TABLE   = pf::strhash("table");
 constexpr auto HASH_ARRAY   = pf::strhash("array");
 constexpr auto HASH_ANY     = pf::strhash("any");
@@ -67,6 +68,7 @@ static AET parse_elemtype(lua_State *L, int NArg)
       case HASH_STRING:  return AET::STR_GC;
       case HASH_STRUCT:  return AET::STRUCT;
       case HASH_POINTER: return AET::PTR;
+      case HASH_OBJECT:  return AET::OBJECT;
       case HASH_TABLE:   return AET::TABLE;
       case HASH_ARRAY:   return AET::ARRAY;
       case HASH_ANY:     return AET::ANY;
@@ -92,9 +94,10 @@ static CSTRING elemtype_name(AET Type)
       case AET::STRUCT:     return "struct";
       case AET::TABLE:      return "table";
       case AET::ARRAY:      return "array";
+      case AET::OBJECT:     return "object";
       case AET::CSTR:
       case AET::STR_GC:
-      case AET::STR_CPP: return "string";
+      case AET::STR_CPP:    return "string";
       case AET::ANY:        return "any";
       default: return "unknown";
    }
@@ -185,6 +188,18 @@ LJLIB_CF(array_of)
          case AET::INT32:  arr->get<int32_t>()[i] = int32_t(luaL_checkinteger(L, arg_idx)); break;
          case AET::INT16:  arr->get<int16_t>()[i] = int16_t(luaL_checkinteger(L, arg_idx)); break;
          case AET::BYTE:   arr->get<uint8_t>()[i] = uint8_t(luaL_checkinteger(L, arg_idx)); break;
+
+         case AET::OBJECT: {
+            if (not lua_isobject(L, arg_idx)) {
+               lj_err_argv(L, arg_idx, ErrMsg::BADTYPE, "object", luaL_typename(L, arg_idx));
+            }
+            TValue *tv = L->base + arg_idx - 1;
+            GCobject *obj = objectV(tv);
+            setgcref(arr->get<GCRef>()[i], obj2gco(obj));
+            lj_gc_objbarrier(L, arr, obj);
+            break;
+         }
+
          case AET::TABLE: {
             if (not lua_istable(L, arg_idx)) {
                lj_err_argv(L, arg_idx, ErrMsg::BADTYPE, "table", luaL_typename(L, arg_idx));
@@ -205,6 +220,7 @@ LJLIB_CF(array_of)
             lj_gc_objbarrier(L, arr, a);
             break;
          }
+
          case AET::ANY: {
             // Copy the TValue directly (any type is allowed)
             TValue *dest = &arr->get<TValue>()[i];
@@ -778,6 +794,18 @@ LJLIB_CF(array_push)
             lj_gc_objbarrier(L, arr, s);
             break;
          }
+
+         case AET::OBJECT: {
+            if (not lua_isobject(L, arg_idx)) {
+               lj_err_argv(L, arg_idx, ErrMsg::BADTYPE, "object", luaL_typename(L, arg_idx));
+            }
+            TValue *tv = L->base + arg_idx - 1;
+            GCobject *obj = objectV(tv);
+            setgcref(arr->get<GCRef>()[idx], obj2gco(obj));
+            lj_gc_objbarrier(L, arr, obj);
+            break;
+         }
+
          case AET::TABLE: {
             if (not lua_istable(L, arg_idx)) {
                lj_err_argv(L, arg_idx, ErrMsg::BADTYPE, "table", luaL_typename(L, arg_idx));
@@ -788,6 +816,7 @@ LJLIB_CF(array_push)
             lj_gc_objbarrier(L, arr, tab);
             break;
          }
+
          case AET::ARRAY: {
             if (not lua_isarray(L, arg_idx)) {
                lj_err_argv(L, arg_idx, ErrMsg::BADTYPE, "array", luaL_typename(L, arg_idx));
@@ -798,12 +827,14 @@ LJLIB_CF(array_push)
             lj_gc_objbarrier(L, arr, a);
             break;
          }
+
          case AET::FLOAT:  arr->get<float>()[idx] = float(luaL_checknumber(L, arg_idx)); break;
          case AET::DOUBLE: arr->get<double>()[idx] = luaL_checknumber(L, arg_idx); break;
          case AET::INT64:  arr->get<int64_t>()[idx] = int64_t(luaL_checknumber(L, arg_idx)); break;
          case AET::INT32:  arr->get<int32_t>()[idx] = int32_t(luaL_checkinteger(L, arg_idx)); break;
          case AET::INT16:  arr->get<int16_t>()[idx] = int16_t(luaL_checkinteger(L, arg_idx)); break;
          case AET::BYTE:   arr->get<uint8_t>()[idx] = uint8_t(luaL_checkinteger(L, arg_idx)); break;
+
          case AET::ANY: {
             TValue *dest = &arr->get<TValue>()[idx];
             TValue *src = L->base + arg_idx - 1;
@@ -811,6 +842,7 @@ LJLIB_CF(array_push)
             if (tvisgcv(src)) lj_gc_objbarrier(L, arr, gcV(src));
             break;
          }
+
          default:
             lj_err_argv(L, 1, ErrMsg::BADTYPE, "pushable type", elemtype_name(arr->elemtype));
             return 0;
@@ -862,6 +894,7 @@ LJLIB_CF(array_pop)
          case AET::INT64:  lua_pushnumber(L, lua_Number(*(int64_t *)elem)); break;
          case AET::FLOAT:  lua_pushnumber(L, *(float *)elem); break;
          case AET::DOUBLE: lua_pushnumber(L, *(double *)elem); break;
+
          case AET::STR_GC: {
             GCRef ref = *(GCRef *)elem;
             if (gcref(ref)) {
@@ -871,12 +904,24 @@ LJLIB_CF(array_pop)
             else lua_pushnil(L);
             break;
          }
+
          case AET::CSTR: {
             CSTRING str = *(CSTRING *)elem;
             if (str) lua_pushstring(L, str);
             else lua_pushnil(L);
             break;
          }
+
+         case AET::OBJECT: {
+            GCRef ref = *(GCRef *)elem;
+            if (gcref(ref)) {
+               setobjectV(L, L->top++, gco_to_object(gcref(ref)));
+               setgcrefnull(*(GCRef *)elem);  // Clear reference
+            }
+            else lua_pushnil(L);
+            break;
+         }
+
          case AET::TABLE: {
             GCRef ref = *(GCRef *)elem;
             if (gcref(ref)) {
@@ -886,6 +931,7 @@ LJLIB_CF(array_pop)
             else lua_pushnil(L);
             break;
          }
+
          case AET::ARRAY: {
             GCRef ref = *(GCRef *)elem;
             if (gcref(ref)) {
@@ -895,12 +941,14 @@ LJLIB_CF(array_pop)
             else lua_pushnil(L);
             break;
          }
+
          case AET::ANY: {
             TValue *source = (TValue *)elem;
             copyTV(L, L->top++, source);
             setnilV(source);  // Clear the slot
             break;
          }
+
          default:
             lua_pushnil(L);
             break;
@@ -935,8 +983,8 @@ LJLIB_CF(array_copy)
    if (dest->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
 
    size_t strlen;
-   auto type = lua_type(L, 2);
-   if (type IS LUA_TARRAY) {
+   auto src_type = lua_type(L, 2);
+   if (src_type IS LUA_TARRAY) {
       GCarray *src = lj_lib_checkarray(L, 2);
       auto dest_idx = lj_lib_optint(L, 3, 0);
       auto src_idx  = lj_lib_optint(L, 4, 0);
@@ -945,7 +993,7 @@ LJLIB_CF(array_copy)
       lj_array_copy(L, dest, dest_idx, src, src_idx, count);
       return 0;
    }
-   else if (type IS LUA_TSTRING) {
+   else if (src_type IS LUA_TSTRING) {
       // Treat string sequences as a byte array
       auto str = lua_tolstring(L, 2, &strlen);
       if (!str or strlen < 1) {
@@ -982,7 +1030,7 @@ LJLIB_CF(array_copy)
       memcpy(data, str + src_idx, copy_total);
       return 0;
    }
-   else if (type IS LUA_TTABLE) {
+   else if (src_type IS LUA_TTABLE) {
       // Get table length for bounds checking
       MSize table_len = lua_objlen(L, 2);
       if (table_len < 1) {
@@ -1060,12 +1108,31 @@ LJLIB_CF(array_copy)
             case AET::BYTE:
                dest->get<int8_t>()[dest_index] = lua_tointeger(L, -1);
                break;
+
             case AET::STRUCT:
                // TODO: We should check the struct fields to confirm if its content can be safely copied.
                // This would only have to be done once per struct type, so we could cache the result.
                luaL_error(L, ERR::NoSupport, "Writing to struct arrays from tables is not yet supported.");
                lua_pop(L, 1);
                return 0;
+
+            case AET::OBJECT:
+               if (lua_isobject(L, -1)) {
+                  TValue *tv = L->top - 1;
+                  GCobject *obj = objectV(tv);
+                  setgcref(dest->get<GCRef>()[dest_index], obj2gco(obj));
+                  lj_gc_objbarrier(L, dest, obj);
+               }
+               else if (lua_isnil(L, -1)) {
+                  setgcrefnull(dest->get<GCRef>()[dest_index]);
+               }
+               else {
+                  luaL_error(L, ERR::InvalidType, "Expected object value at index %d.", src_idx + i);
+                  lua_pop(L, 1);
+                  return 0;
+               }
+               break;
+
             case AET::TABLE:
                if (lua_istable(L, -1)) {
                   TValue *tv = L->top - 1;
@@ -1082,6 +1149,7 @@ LJLIB_CF(array_copy)
                   return 0;
                }
                break;
+
             case AET::ARRAY:
                if (lua_isarray(L, -1)) {
                   TValue *tv = L->top - 1;
@@ -1098,6 +1166,7 @@ LJLIB_CF(array_copy)
                   return 0;
                }
                break;
+
             default:
                luaL_error(L, ERR::InvalidType, "Unsupported array type $%.8x", dest->elemtype);
                lua_pop(L, 1);
@@ -1936,6 +2005,18 @@ LJLIB_CF(array_map)
             }
             break;
          }
+
+         case AET::OBJECT: {
+            if (lua_isobject(L, -1)) {
+               TValue *tv = L->top - 1;
+               GCobject *obj = objectV(tv);
+               setgcref(result->get<GCRef>()[i], obj2gco(obj));
+               lj_gc_objbarrier(L, result, obj);
+            }
+            else setgcrefnull(result->get<GCRef>()[i]);
+            break;
+         }
+
          case AET::TABLE: {
             if (lua_istable(L, -1)) {
                TValue *tv = L->top - 1;
@@ -1943,11 +2024,10 @@ LJLIB_CF(array_map)
                setgcref(result->get<GCRef>()[i], obj2gco(tab));
                lj_gc_objbarrier(L, result, tab);
             }
-            else {
-               setgcrefnull(result->get<GCRef>()[i]);
-            }
+            else setgcrefnull(result->get<GCRef>()[i]);
             break;
          }
+
          case AET::ARRAY: {
             if (lua_isarray(L, -1)) {
                TValue *tv = L->top - 1;
@@ -1955,11 +2035,10 @@ LJLIB_CF(array_map)
                setgcref(result->get<GCRef>()[i], obj2gco(a));
                lj_gc_objbarrier(L, result, a);
             }
-            else {
-               setgcrefnull(result->get<GCRef>()[i]);
-            }
+            else setgcrefnull(result->get<GCRef>()[i]);
             break;
          }
+
          case AET::ANY: {
             TValue *dest = &result->get<TValue>()[i];
             TValue *src = L->top - 1;
@@ -1967,6 +2046,7 @@ LJLIB_CF(array_map)
             if (tvisgcv(src)) lj_gc_objbarrier(L, result, gcV(src));
             break;
          }
+
          case AET::FLOAT:  result->get<float>()[i] = float(lua_tonumber(L, -1)); break;
          case AET::DOUBLE: result->get<double>()[i] = lua_tonumber(L, -1); break;
          case AET::INT64:  result->get<int64_t>()[i] = int64_t(lua_tonumber(L, -1)); break;
@@ -2222,6 +2302,18 @@ LJLIB_CF(array_insert)
             lj_gc_objbarrier(L, arr, s);
             break;
          }
+
+         case AET::OBJECT: {
+            if (not lua_isobject(L, arg_idx)) {
+               lj_err_argv(L, arg_idx, ErrMsg::BADTYPE, "object", luaL_typename(L, arg_idx));
+            }
+            TValue *tv = L->base + arg_idx - 1;
+            GCobject *obj = objectV(tv);
+            setgcref(arr->get<GCRef>()[idx], obj2gco(obj));
+            lj_gc_objbarrier(L, arr, obj);
+            break;
+         }
+
          case AET::TABLE: {
             if (not lua_istable(L, arg_idx)) {
                lj_err_argv(L, arg_idx, ErrMsg::BADTYPE, "table", luaL_typename(L, arg_idx));
@@ -2232,6 +2324,7 @@ LJLIB_CF(array_insert)
             lj_gc_objbarrier(L, arr, tab);
             break;
          }
+
          case AET::ARRAY: {
             if (not lua_isarray(L, arg_idx)) {
                lj_err_argv(L, arg_idx, ErrMsg::BADTYPE, "array", luaL_typename(L, arg_idx));
@@ -2242,6 +2335,7 @@ LJLIB_CF(array_insert)
             lj_gc_objbarrier(L, arr, a);
             break;
          }
+
          case AET::FLOAT:  arr->get<float>()[idx] = float(luaL_checknumber(L, arg_idx)); break;
          case AET::DOUBLE: arr->get<double>()[idx] = luaL_checknumber(L, arg_idx); break;
          case AET::INT64:  arr->get<int64_t>()[idx] = int64_t(luaL_checknumber(L, arg_idx)); break;
