@@ -109,86 +109,67 @@ static void arr_store_elem(lua_State *L, GCarray *Array, uint32_t Idx, cTValue *
 {
    void *elem = lj_array_index(Array, Idx);
 
-   // Handle non-numeric types first (string, table) - these don't accept numeric values
+   // Handle non-numeric types first
 
-   if (Array->elemtype IS AET::STR_GC) {
-      if (tvisstr(Val)) {
-         GCstr *str = strV(Val);
-         setgcref(*(GCRef*)elem, obj2gco(str));
-         lj_gc_objbarrier(L, Array, str);
-      }
-      else if (tvisnil(Val)) setgcrefnull(*(GCRef*)elem);
-      else lj_err_msgv(L, ErrMsg::ARRTYPE);
-      return;
-   }
-   else if (Array->elemtype IS AET::OBJECT) {
-      if (tvisobject(Val)) {
-         GCobject *obj = objectV(Val);
-         setgcref(*(GCRef*)elem, obj2gco(obj));
-         lj_gc_objbarrier(L, Array, obj);
-      }
-      else if (tvisnil(Val)) setgcrefnull(*(GCRef*)elem);
-      else lj_err_msgv(L, ErrMsg::ARRTYPE);
-      return;
-   }
-   else if (Array->elemtype IS AET::TABLE) {
-      if (tvistab(Val)) {
-         GCtab *tab = tabV(Val);
-         setgcref(*(GCRef*)elem, obj2gco(tab));
-         lj_gc_objbarrier(L, Array, tab);
-      }
-      else if (tvisnil(Val)) setgcrefnull(*(GCRef*)elem);
-      else lj_err_msgv(L, ErrMsg::ARRTYPE);
-      return;
-   }
-   else if (Array->elemtype IS AET::ARRAY) {
-      if (tvisarray(Val)) {
-         GCarray *array = arrayV(Val);
-         setgcref(*(GCRef*)elem, obj2gco(array));
-         lj_gc_objbarrier(L, Array, array);
-      }
-      else if (tvisnil(Val)) setgcrefnull(*(GCRef*)elem);
-      else lj_err_msgv(L, ErrMsg::ARRTYPE);
-      return;
-   }
-   else if (Array->elemtype IS AET::ANY) {
-      TValue *dest = (TValue*)elem;
-      copyTV(L, dest, Val);
-      // Apply write barrier for any GC value
-      if (tvisgcv(Val)) lj_gc_objbarrier(L, Array, gcV(Val));
-      return;
-   }
+   if (not glArrayConversion[uint8_t(Array->elemtype)].primitive) {
+      switch (Array->elemtype) {
+         case AET::STR_GC:
+         case AET::TABLE:
+         case AET::ARRAY:
+         case AET::OBJECT: {
+            if (tvisnil(Val)) setgcrefnull(*(GCRef*)elem);
+            else {
+               if (Array->itype IS uint8_t(itype(Val))) {
+                  auto gcobj = gcV(Val);
+                  setgcref(*(GCRef*)elem, gcobj);
+                  lj_gc_objbarrier(L, Array, gcobj);
+               }
+               else lj_err_msgv(L, ErrMsg::ARRTYPE);
+            }
+            return;
+         }
 
-   // Get numeric value from TValue for primitive types
+         case AET::ANY: {
+            auto dest = (TValue *)elem;
+            copyTV(L, dest, Val);
+            if (tvisgcv(Val)) lj_gc_objbarrier(L, Array, gcV(Val));
+            return;
+         }
 
-   lua_Number num = 0;
-   if (tvisint(Val)) num = lua_Number(intV(Val));
-   else if (tvisnum(Val)) num = numV(Val);
-   else if (Array->elemtype IS AET::PTR and tvislightud(Val)) [[unlikely]] {
-      // Extract raw pointer (note: lightudV on 64-bit requires global_State)
-      *(void**)elem = (void*)(Val->u64 & LJ_GCVMASK);
-      return;
-   }
-   else if ((Array->elemtype IS AET::CSTR) or (Array->elemtype IS AET::STR_CPP)) [[unlikely]] {
-      // Storing pointers to Lua strings is somewhat feasible but unsafe; for this reason we disallow it.
+         case AET::PTR:
+            if (tvislightud(Val)) { // Extract raw pointer (note: lightudV on 64-bit requires global_State)
+               *(void**)elem = (void*)(Val->u64 & LJ_GCVMASK);
+               return;
+            }
+            break;
+
+         case AET::CSTR:
+         case AET::STR_CPP:
+            // Storing pointers to C strings is potentially feasible but currently unsafe; for this reason we disallow it.
+         default: break;
+      }
+
+      // We could attempt automated conversion (e.g. string to int), but this would be unpredictable
+      // between releases and the user can perform explicit conversion if desired.
+
       lj_err_msgv(L, ErrMsg::ARRTYPE);
-      return;
    }
-   else { // Type mismatch - attempt numeric conversion or error
-      if (tvisnil(Val)) num = 0;
+   else { // All primitive types are numeric
+      lua_Number num;
+      if (tvisint(Val)) num = lua_Number(intV(Val));
+      else if (tvisnum(Val)) num = numV(Val);
+      else if (tvisnil(Val)) num = 0;
       else lj_err_msgv(L, ErrMsg::ARRTYPE);
-   }
 
-   // Primitive types
-
-   switch (Array->elemtype) {
-      case AET::BYTE:   *(uint8_t*)elem = uint8_t(num); break;
-      case AET::INT16:  *(int16_t*)elem = int16_t(num); break;
-      case AET::INT32:  *(int32_t*)elem = int32_t(num); break;
-      case AET::INT64:  *(int64_t*)elem = int64_t(num); break;
-      case AET::FLOAT:  *(float*)elem = float(num); break;
-      case AET::DOUBLE: *(double*)elem = num; break;
-      default: lj_err_msgv(L, ErrMsg::ARRTYPE); break;
+      switch (Array->elemtype) {
+         case AET::BYTE:   *(uint8_t*)elem = uint8_t(num); return;
+         case AET::INT16:  *(int16_t*)elem = int16_t(num); return;
+         case AET::INT32:  *(int32_t*)elem = int32_t(num); return;
+         case AET::INT64:  *(int64_t*)elem = int64_t(num); return;
+         case AET::FLOAT:  *(float*)elem = float(num); return;
+         case AET::DOUBLE: *(double*)elem = num; return;
+         default: lj_err_msgv(L, ErrMsg::ARRTYPE); break;
+      }
    }
 }
 
