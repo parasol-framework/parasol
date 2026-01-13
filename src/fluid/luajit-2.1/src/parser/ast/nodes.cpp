@@ -21,7 +21,8 @@ FluidType parse_type_name(std::string_view Name)
       { "function",  FluidType::Func },
       { "thread",    FluidType::Thread },
       { "obj",       FluidType::Object },
-      { "object",    FluidType::Object }
+      { "object",    FluidType::Object },
+      { "range",     FluidType::Range }
    };
 
    auto it = type_map.find(Name);
@@ -40,6 +41,7 @@ std::string_view type_name(FluidType Type)
       case FluidType::Func:   return "func";
       case FluidType::Thread: return "thread";
       case FluidType::Object: return "obj";
+      case FluidType::Range:  return "range";
       case FluidType::Any:
       default: return "any";
    }
@@ -62,6 +64,7 @@ uint8_t fluid_type_to_lj_tag(FluidType Type)
       case FluidType::Func:   return 8;   // ~8 = LJ_TFUNC
       case FluidType::Object: return 10;  // ~10 = LJ_TOBJECT
       case FluidType::Table:  return 11;  // ~11 = LJ_TTAB
+      case FluidType::Range:  return 12;  // ~12 = LJ_TUDATA (ranges are userdata at runtime)
       case FluidType::Array:  return 13;  // ~13 = LJ_TARRAY
       case FluidType::Num:    return 14;  // ~14 = LJ_TNUMX
       case FluidType::Any:
@@ -192,9 +195,9 @@ FluidType infer_expression_type(const ExprNode& Expr)
          return FluidType::Unknown;
       }
 
-      // Range expressions are userdata objects
+      // Range expressions have their own type for static tracking
       case AstNodeKind::RangeExpr:
-         return FluidType::Object;
+         return FluidType::Range;
       default:
          break;
    }

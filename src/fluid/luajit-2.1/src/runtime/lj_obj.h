@@ -122,7 +122,8 @@ enum class FluidType : uint8_t {
    Array,
    Func,
    Thread,
-   Object,       // Parasol userdata
+   Object,       // Parasol object (LT_TOBJECT)
+   Range,        // Range expression (runtime: LJ_TUDATA)
    Unknown
 };
 
