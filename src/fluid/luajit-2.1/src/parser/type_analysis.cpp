@@ -118,7 +118,7 @@ private:
    [[nodiscard]] bool is_local_const(GCstr *) const;
 
    // Type fixation - locks variable type after first concrete assignment
-   void fix_local_type(GCstr *, FluidType);
+   void fix_local_type(GCstr *, FluidType, CLASSID ObjectClassId = CLASSID::NIL);
 
    // Usage tracking - marks variables as used for unused variable detection
    void mark_identifier_used(GCstr *);
@@ -169,7 +169,7 @@ private:
    void declare_global_function(GCstr *Name, const FunctionExprPayload *Function, SourceSpan Location);
    [[nodiscard]] std::optional<InferredType> lookup_global_type(GCstr *Name) const;
    [[nodiscard]] bool is_global_const(GCstr *Name) const;
-   void fix_global_type(GCstr *Name, FluidType Type);
+   void fix_global_type(GCstr *Name, FluidType Type, CLASSID ObjectClassId = CLASSID::NIL);
 
    ParserContext &ctx_;                             // Parser context for diagnostics and lexer access
    std::vector<TypeCheckScope> scope_stack_{};      // Stack of scopes for variable tracking
@@ -684,6 +684,20 @@ void TypeAnalyser::analyse_assignment(const AssignmentStmtPayload &Payload)
                   type_name(value_type.primary), is_global ? "global" : "variable", type_name(existing->primary));
                this->diagnostics_.push_back(std::move(diag));
             }
+            // Check for object class ID mismatch (both types are Object but different classes)
+            else if (existing->primary IS FluidType::Object and value_type.primary IS FluidType::Object and
+               existing->object_class_id != CLASSID::NIL) {
+               if (existing->object_class_id != value_type.object_class_id) {
+                  TypeDiagnostic diag;
+                  diag.location = target.span;
+                  diag.expected = FluidType::Object;
+                  diag.actual = FluidType::Object;
+                  diag.code = ParserErrorCode::ObjectClassMismatch;
+                  diag.message = std::format("object class mismatch: cannot assign object of different class to {} ({} vs {})",
+                     is_global ? "global" : "variable", ResolveClassID(value_type.object_class_id), ResolveClassID(existing->object_class_id));
+                  this->diagnostics_.push_back(std::move(diag));
+               }
+            }
          }
          else {
             // Unfixed variable: first non-nil assignment fixes the type
@@ -691,10 +705,10 @@ void TypeAnalyser::analyse_assignment(const AssignmentStmtPayload &Payload)
             if ((existing->primary != FluidType::Any) and (value_type.primary != FluidType::Nil) and
                 (value_type.primary != FluidType::Any)) {
                if (is_global) {
-                  this->fix_global_type(name, value_type.primary);
+                  this->fix_global_type(name, value_type.primary, value_type.object_class_id);
                }
                else {
-                  this->fix_local_type(name, value_type.primary);
+                  this->fix_local_type(name, value_type.primary, value_type.object_class_id);
                }
             }
          }
@@ -1254,6 +1268,16 @@ InferredType TypeAnalyser::infer_expression_type(const ExprNode& Expr)
          // For call expressions, try to infer from the function's declared return type
          auto *payload = std::get_if<CallExprPayload>(&Expr.data);
          if (payload) {
+            // First check if the call has a known result type (e.g., obj.new() returns Object)
+            if (payload->result_type != FluidType::Unknown) {
+               result.primary = payload->result_type;
+               // Propagate object class ID for Object types
+               if (payload->result_type IS FluidType::Object) {
+                  result.object_class_id = payload->object_class_id;
+               }
+               return result;
+            }
+            // Otherwise try to infer from the function's declared return type
             const FunctionExprPayload* target = this->resolve_call_target(payload->target);
             if (target and target->return_types.is_explicit and target->return_types.count > 0) {
                result.primary = target->return_types.types[0];
@@ -1508,12 +1532,12 @@ bool TypeAnalyser::is_local_const(GCstr *Name) const
    return false;
 }
 
-void TypeAnalyser::fix_local_type(GCstr *Name, FluidType Type)
+void TypeAnalyser::fix_local_type(GCstr *Name, FluidType Type, CLASSID ObjectClassId)
 {
    for (auto it = this->scope_stack_.rbegin(); it != this->scope_stack_.rend(); ++it) {
       auto existing = it->lookup_local_type(Name);
       if (existing) {
-         it->fix_local_type(Name, Type);
+         it->fix_local_type(Name, Type, ObjectClassId);
          this->trace_fix(this->ctx_.lex().linenumber, Name, Type);
          return;
       }
@@ -1557,12 +1581,13 @@ std::optional<InferredType> TypeAnalyser::lookup_global_type(GCstr *Name) const
    return std::nullopt;
 }
 
-void TypeAnalyser::fix_global_type(GCstr *Name, FluidType Type)
+void TypeAnalyser::fix_global_type(GCstr *Name, FluidType Type, CLASSID ObjectClassId)
 {
    if (not Name) return;
    if (auto it = this->global_types_.find(Name); it != this->global_types_.end()) {
       it->second.type.primary = Type;
       it->second.type.is_fixed = true;
+      it->second.type.object_class_id = ObjectClassId;
       this->trace_fix(this->ctx_.lex().linenumber, Name, Type);
    }
 }
@@ -1943,8 +1968,14 @@ static void publish_type_diagnostics(ParserContext& Context, const std::vector<T
 {
    for (const auto &diag : Diagnostics) {
       ParserDiagnostic diagnostic;
-      diagnostic.severity = Context.config().type_errors_are_fatal ? ParserDiagnosticSeverity::Error
-         : ParserDiagnosticSeverity::Warning;
+      // Object class mismatches are always errors (user preference for strict type safety)
+      if (diag.code IS ParserErrorCode::ObjectClassMismatch) {
+         diagnostic.severity = ParserDiagnosticSeverity::Error;
+      }
+      else {
+         diagnostic.severity = Context.config().type_errors_are_fatal ? ParserDiagnosticSeverity::Error
+            : ParserDiagnosticSeverity::Warning;
+      }
       diagnostic.code = diag.code;
       diagnostic.message = diag.message;
       diagnostic.token = Token::from_span(diag.location);

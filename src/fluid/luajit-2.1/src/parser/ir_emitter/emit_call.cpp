@@ -221,6 +221,13 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
    auto base = BCReg(0);
    bool is_safe_callable = false;
    FluidType callee_return_type = FluidType::Unknown;  // First return type of callee (if known)
+   CLASSID callee_object_class_id = CLASSID::NIL;  // CLASSID if return type is Object
+
+   // Check if the AST has pre-computed type info (e.g., from obj.new() pattern detection)
+   if (Payload.result_type != FluidType::Unknown) {
+      callee_return_type = Payload.result_type;
+      callee_object_class_id = Payload.object_class_id;
+   }
 
    if (const auto *direct = std::get_if<DirectCallTarget>(&Payload.target)) {
       if (not direct->callable) return this->unsupported_expr(AstNodeKind::CallExpr, SourceSpan{});
@@ -313,6 +320,7 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
    result.init(ExpKind::Call, call_pc);
    result.u.s.aux = base;
    result.result_type = callee_return_type;  // Propagate known return type
+   result.object_class_id = callee_object_class_id;  // Propagate object class ID for Object types
    this->func_state.freereg = base + 1;
    return ParserResult<ExpDesc>::success(result);
 }

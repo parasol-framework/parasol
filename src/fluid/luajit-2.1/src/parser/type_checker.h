@@ -12,10 +12,13 @@ struct InferredType {
    bool is_constant = false;
    bool is_nullable = false;
    bool is_fixed = false;  // Type is locked, cannot change
+   CLASSID object_class_id = CLASSID::NIL;  // CLASSID for Object types
 
    InferredType() = default;
-   explicit InferredType(FluidType Primary, bool IsConstant = false, bool IsNullable = false, bool IsFixed = false)
-      : primary(Primary), is_constant(IsConstant), is_nullable(IsNullable), is_fixed(IsFixed) {}
+   explicit InferredType(FluidType Primary, bool IsConstant = false, bool IsNullable = false, bool IsFixed = false,
+      CLASSID ObjectClassId = CLASSID::NIL)
+      : primary(Primary), is_constant(IsConstant), is_nullable(IsNullable), is_fixed(IsFixed),
+        object_class_id(ObjectClassId) {}
 
    [[nodiscard]] bool matches(FluidType Expected) const
    {
@@ -68,7 +71,7 @@ public:
    void declare_parameter(GCstr *, FluidType Type, SourceSpan Location = {});
    void declare_local(GCstr *, const InferredType &, SourceSpan Location = {}, bool IsConst = false);
    void declare_function(GCstr *, const FunctionExprPayload *, SourceSpan Location = {});
-   void fix_local_type(GCstr *, FluidType Type);
+   void fix_local_type(GCstr *, FluidType Type, CLASSID ObjectClassId = CLASSID::NIL);
 
    // Mark a variable as used (called when variable is referenced)
    void mark_used(GCstr *);

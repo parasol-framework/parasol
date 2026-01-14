@@ -1,6 +1,7 @@
 #include "ast/nodes.h"
 
 #include "lj_def.h"
+#include "parasol/strings.hpp"
 
 #include <unordered_map>
 
@@ -77,7 +78,7 @@ uint8_t fluid_type_to_lj_tag(FluidType Type)
 // Infer the result type of an expression from its AST structure.
 // This is used for type-carrying deferred expressions to store the expected result type.
 
-FluidType infer_expression_type(const ExprNode& Expr)
+FluidType infer_expression_type(const ExprNode &Expr)
 {
    switch (Expr.kind) {
       case AstNodeKind::LiteralExpr: {
@@ -174,11 +175,19 @@ FluidType infer_expression_type(const ExprNode& Expr)
       case AstNodeKind::PresenceExpr:
          return FluidType::Bool;
 
+      // Call expressions may have a known result type (e.g., obj.new() returns Object)
+      case AstNodeKind::CallExpr:
+      case AstNodeKind::SafeCallExpr: {
+         const auto& payload = std::get<CallExprPayload>(Expr.data);
+         if (payload.result_type != FluidType::Unknown) {
+            return payload.result_type;
+         }
+         return FluidType::Unknown;
+      }
+
       // For these, we cannot infer without runtime information
       case AstNodeKind::IdentifierExpr:
       case AstNodeKind::VarArgExpr:
-      case AstNodeKind::CallExpr:
-      case AstNodeKind::SafeCallExpr:
       case AstNodeKind::MemberExpr:
       case AstNodeKind::IndexExpr:
       case AstNodeKind::SafeMemberExpr:
@@ -204,36 +213,40 @@ FluidType infer_expression_type(const ExprNode& Expr)
    return FluidType::Unknown;
 }
 
+//********************************************************************************************************************
+// Extended type inference that also returns object class ID for Object types.
+// This is used when creating local variables to capture the full type information.
+
+InferredTypeInfo infer_expression_type_ext(const ExprNode &Expr)
+{
+   InferredTypeInfo result;
+   result.type = infer_expression_type(Expr);
+
+   // For call expressions, also extract the object class ID if available
+   if (Expr.kind IS AstNodeKind::CallExpr or Expr.kind IS AstNodeKind::SafeCallExpr) {
+      const auto &payload = std::get<CallExprPayload>(Expr.data);
+      if (payload.result_type IS FluidType::Object) {
+         result.object_class_id = payload.object_class_id;
+      }
+   }
+
+   return result;
+}
+
 namespace {
 
-[[nodiscard]] inline bool ensure_operand(const ExprNodePtr &node)
-{
-   return node != nullptr;
-}
+[[nodiscard]] inline bool ensure_operand(const ExprNodePtr &node) { return node != nullptr; }
 
-inline void assert_node(bool condition, CSTRING message)
-{
-   lj_assertX(condition, message);
-}
+inline void assert_node(bool condition, CSTRING message) { lj_assertX(condition, message); }
 
-[[nodiscard]] inline size_t block_child_count(const std::unique_ptr<BlockStmt> &block)
-{
+[[nodiscard]] inline size_t block_child_count(const std::unique_ptr<BlockStmt> &block) {
    return block ? block->view().size() : 0;
 }
 
 struct CallTargetChildCounter {
-   [[nodiscard]] size_t operator()(const DirectCallTarget &Target) const {
-      return Target.callable ? 1 : 0;
-   }
-
-   [[nodiscard]] size_t operator()(const MethodCallTarget &Target) const {
-      return Target.receiver ? 1 : 0;
-   }
-
-   [[nodiscard]] size_t operator()(const SafeMethodCallTarget &Target) const
-   {
-      return Target.receiver ? 1 : 0;
-   }
+   [[nodiscard]] size_t operator()(const DirectCallTarget &Target) const { return Target.callable ? 1 : 0; }
+   [[nodiscard]] size_t operator()(const MethodCallTarget &Target) const { return Target.receiver ? 1 : 0; }
+   [[nodiscard]] size_t operator()(const SafeMethodCallTarget &Target) const { return Target.receiver ? 1 : 0; }
 };
 
 struct ExpressionChildCounter {
@@ -241,57 +254,48 @@ struct ExpressionChildCounter {
    [[nodiscard]] inline size_t operator()(const NameRef &) const { return 0; }
    [[nodiscard]] inline size_t operator()(const VarArgExprPayload &) const { return 0; }
 
-   [[nodiscard]] inline size_t operator()(const UnaryExprPayload &Payload) const
-   {
+   [[nodiscard]] inline size_t operator()(const UnaryExprPayload &Payload) const {
       return Payload.operand ? 1 : 0;
    }
 
-   [[nodiscard]] inline size_t operator()(const UpdateExprPayload &Payload) const
-   {
+   [[nodiscard]] inline size_t operator()(const UpdateExprPayload &Payload) const {
       return Payload.target ? 1 : 0;
    }
 
-   [[nodiscard]] inline size_t operator()(const BinaryExprPayload &Payload) const
-   {
+   [[nodiscard]] inline size_t operator()(const BinaryExprPayload &Payload) const {
       size_t total = Payload.left ? 1 : 0;
       if (Payload.right) total++;
       return total;
    }
 
-   [[nodiscard]] inline size_t operator()(const TernaryExprPayload &Payload) const
-   {
+   [[nodiscard]] inline size_t operator()(const TernaryExprPayload &Payload) const {
       size_t total = Payload.condition ? 1 : 0;
       if (Payload.if_true) total++;
       if (Payload.if_false) total++;
       return total;
    }
 
-   [[nodiscard]] inline size_t operator()(const PresenceExprPayload &Payload) const
-   {
+   [[nodiscard]] inline size_t operator()(const PresenceExprPayload &Payload) const {
       return Payload.value ? 1 : 0;
    }
 
-   [[nodiscard]] inline size_t operator()(const PipeExprPayload &Payload) const
-   {
+   [[nodiscard]] inline size_t operator()(const PipeExprPayload &Payload) const {
       size_t total = Payload.lhs ? 1 : 0;
       if (Payload.rhs_call) total++;
       return total;
    }
 
-   [[nodiscard]] inline size_t operator()(const CallExprPayload &Payload) const
-   {
+   [[nodiscard]] inline size_t operator()(const CallExprPayload &Payload) const {
       size_t total = std::visit(CallTargetChildCounter{}, Payload.target);
       total += Payload.arguments.size();
       return total;
    }
 
-   [[nodiscard]] inline size_t operator()(const MemberExprPayload &Payload) const
-   {
+   [[nodiscard]] inline size_t operator()(const MemberExprPayload &Payload) const {
       return Payload.table ? 1 : 0;
    }
 
-   [[nodiscard]] inline size_t operator()(const IndexExprPayload &Payload) const
-   {
+   [[nodiscard]] inline size_t operator()(const IndexExprPayload &Payload) const {
       size_t total = Payload.table ? 1 : 0;
       if (Payload.index) total++;
       return total;
@@ -626,10 +630,62 @@ ExprNodePtr make_pipe_expr(SourceSpan Span, ExprNodePtr lhs, ExprNodePtr rhs_cal
    return node;
 }
 
+//********************************************************************************************************************
+// Helper to detect obj.new("classname", ...) pattern and extract class information.
+// Returns true if the pattern is detected and sets result_type and object_class_id.
+
+static bool detect_obj_new_call(const ExprNode &Callee, const ExprNodeList &Arguments, FluidType &ResultType, CLASSID &ClassID)
+{
+   // Pattern: obj.new("classname", ...) where callee is MemberExpr(obj, "new")
+   if (Callee.kind != AstNodeKind::MemberExpr) return false;
+
+   const auto& member_payload = std::get<MemberExprPayload>(Callee.data);
+
+   // Check if member name is "new"
+   if (not member_payload.member.symbol) return false;
+   if (strcmp(strdata(member_payload.member.symbol), "new") != 0) return false;
+
+   // Check if table is identifier "obj"
+   if (not member_payload.table) return false;
+   if (member_payload.table->kind != AstNodeKind::IdentifierExpr) return false;
+
+   const auto& name_ref = std::get<NameRef>(member_payload.table->data);
+   if (not name_ref.identifier.symbol) return false;
+   if (strcmp(strdata(name_ref.identifier.symbol), "obj") != 0) return false;
+
+   ResultType = FluidType::Object; // obj.new() always returns an Object
+
+   // Check if first argument is a string literal (class name)
+   if (Arguments.empty()) {
+      // TODO: Report a parsing error, class name is required
+      return true;
+   }
+
+   const ExprNode& first_arg = *Arguments[0];
+   if (first_arg.kind != AstNodeKind::LiteralExpr) return true;
+
+   const auto &literal = std::get<LiteralValue>(first_arg.data);
+   if (literal.kind != LiteralKind::String or not literal.string_value) {
+      // Technically allowed, object type will be class-less
+      return true;
+   }
+
+   // Compute CLASSID from class name (case-insensitive hash)
+   std::string_view class_name(strdata(literal.string_value), literal.string_value->len);
+   ClassID = CLASSID(pf::strihash(class_name));
+   return true;
+}
+
+//********************************************************************************************************************
+
 ExprNodePtr make_call_expr(SourceSpan Span, ExprNodePtr callee, ExprNodeList arguments, bool forwards_multret)
 {
    assert_node(ensure_operand(callee), "call expression requires callee");
    CallExprPayload payload;
+
+   // Detect obj.new("classname", ...) pattern before moving callee
+   detect_obj_new_call(*callee, arguments, payload.result_type, payload.object_class_id);
+
    DirectCallTarget target;
    target.callable = std::move(callee);
    payload.target = std::move(target);
@@ -682,6 +738,8 @@ ExprNodePtr make_member_expr(SourceSpan Span, ExprNodePtr Table, Identifier memb
 {
    assert_node(ensure_operand(Table), "member expression requires table value");
    MemberExprPayload payload;
+   // Infer base type before moving the table expression
+   payload.base_type = infer_expression_type(*Table);
    payload.table = std::move(Table);
    payload.member = member;
    payload.uses_method_dispatch = uses_method_dispatch;
@@ -709,6 +767,8 @@ ExprNodePtr make_safe_member_expr(SourceSpan Span, ExprNodePtr Table, Identifier
 {
    assert_node(ensure_operand(Table), "safe member expression requires table value");
    SafeMemberExprPayload payload;
+   // Infer base type before moving the table expression
+   payload.base_type = infer_expression_type(*Table);
    payload.table = std::move(Table);
    payload.member = Member;
    ExprNodePtr node = std::make_unique<ExprNode>();

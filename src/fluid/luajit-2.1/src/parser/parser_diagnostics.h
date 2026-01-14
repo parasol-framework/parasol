@@ -25,6 +25,7 @@ enum class ParserErrorCode : uint16_t {
    UnknownTypeName,
    TypeMismatchArgument,
    TypeMismatchAssignment,
+   ObjectClassMismatch,      // Object class ID mismatch in assignment
    TypeMismatchReturn,
    DeferredTypeRequired,
    UndefinedVariable,

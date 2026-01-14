@@ -12,6 +12,7 @@
 
 #include "ast/nodes.h"  // For FluidType, fluid_type_to_lj_tag(), type_name()
 #include "lj_err.h"     // For lj_err_throw, ErrMsg
+#include "lj_tab.h"     // For lj_tab_getstr
 
 [[nodiscard]] BCPOS bcemit_jmp(FuncState *);
 
@@ -19,21 +20,18 @@
 // Emit a compile-time type mismatch error.
 // This is called when we can statically determine that an assignment will fail type checking.
 
-[[noreturn]] static void err_type_mismatch(FuncState *fs, FluidType actual_type, FluidType expected_type)
+static void err_type_mismatch(FuncState *fs, FluidType actual_type, FluidType expected_type)
 {
-   lua_State *L = fs->L;
-   LexState *ls = fs->ls;
+   lj_lex_error(fs->ls, 0, ErrMsg::BADASSIGN, type_name(actual_type).data(), type_name(expected_type).data());
+}
 
-   std::string msg = std::format("type mismatch: cannot assign {} to {} variable",
-      type_name(actual_type), type_name(expected_type));
+//********************************************************************************************************************
+// Emit a compile-time object class mismatch error.
+// This is called when both LHS and RHS are Object types but have different class IDs.
 
-   // Build the full error message with source location
-
-   char buff[LUA_IDSIZE];
-   lj_debug_shortname(buff, ls->chunkname, ls->lastline);
-   lj_strfmt_pushf(L, "%s:%d: %s", buff, ls->lastline, msg.c_str());
-
-   lj_err_throw(L, LUA_ERRSYNTAX);
+static void err_object_class_mismatch(FuncState *fs, CLASSID actual_class_id, CLASSID expected_class_id)
+{
+   lj_lex_error(fs->ls, 0, ErrMsg::BADCLASS, ResolveClassID(expected_class_id), ResolveClassID(actual_class_id));
 }
 
 [[nodiscard]] inline bool is_register_key(int32_t Aux) { return (Aux >= 0) and (Aux <= BCMAX_C); }
@@ -54,7 +52,7 @@ BCReg RegisterAllocator::reserve_slots(BCReg Count)
 {
    if (not Count.raw()) return BCReg(this->func_state->freereg);
 
-   BCReg start = BCReg(this->func_state->freereg);
+   auto start = BCReg(this->func_state->freereg);
    this->bump(Count);
    this->func_state->freereg += Count.raw();
    this->trace_allocation(start, Count, "reserve_slots");
@@ -285,7 +283,8 @@ static void expr_discharge(FuncState *fs, ExpDesc *e)
       if (is_blank_identifier(e->u.sval)) {
          lj_lex_error(fs->ls, 0, ErrMsg::XBLANKREAD);
       }
-      // For reads, both Global and Unscoped resolve to global table lookup
+      // For *reads*, if an expression remains Unscoped on discharge then it defaults to global table lookup as this
+      // allows externally defined globals (e.g. from 'require' or 'loadFile') to work as expected.
       ins = BCINS_AD(BC_GGET, 0, const_str(fs, e));
    }
    else if (e->k IS ExpKind::Indexed) {
@@ -558,6 +557,14 @@ static void bcemit_store(FuncState *fs, ExpDesc *LHS, ExpDesc *RHS)
             // Otherwise, fall through to runtime check (we don't emit compile-time errors for
             // expression results because source location tracking isn't accurate at this point)
             needs_check = (RHS->result_type != fixed);
+
+            // For Object types with known class IDs, check for class mismatch at compile time
+            if (not needs_check and fixed IS FluidType::Object and vinfo->object_class_id != CLASSID::NIL) {
+               if (vinfo->object_class_id != RHS->object_class_id) {
+                  // Object class mismatch - emit compile-time error
+                  err_object_class_mismatch(fs, RHS->object_class_id, vinfo->object_class_id);
+               }
+            }
          }
 
          if (needs_check) {

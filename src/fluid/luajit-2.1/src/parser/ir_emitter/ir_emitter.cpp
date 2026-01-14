@@ -1545,6 +1545,14 @@ ParserResult<ExpDesc> IrEmitter::emit_identifier_expr(const NameRef& reference)
    // Normal variable lookup
    ExpDesc resolved;
    this->lex_state.var_lookup_symbol(reference.identifier.symbol, &resolved);
+
+   // If unscoped, check if this was explicitly declared as global
+   if (resolved.k IS ExpKind::Unscoped) {
+      if (this->func_state.declared_globals.count(reference.identifier.symbol) > 0) {
+         resolved.k = ExpKind::Global;
+      }
+   }
+
    return ParserResult<ExpDesc>::success(resolved);
 }
 
@@ -2001,6 +2009,7 @@ ParserResult<ExpDesc> IrEmitter::emit_presence_expr(const PresenceExprPayload &P
 
 //********************************************************************************************************************
 // Emit bytecode for a member access expression (table.field), indexing a table with a string key.
+// base_type and class_id are tracked for potential future optimizations (Object-specific bytecode paths).
 
 ParserResult<ExpDesc> IrEmitter::emit_member_expr(const MemberExprPayload &Payload)
 {
@@ -2018,6 +2027,13 @@ ParserResult<ExpDesc> IrEmitter::emit_member_expr(const MemberExprPayload &Paylo
    table = table_value.legacy();
    ExpDesc key(Payload.member.symbol);
    expr_index(&this->func_state, &table, &key);
+
+   // Propagate known base type information for downstream optimizations.
+   // When base_type is Object and class_id is set, field-level type resolution may be possible.
+   if (Payload.base_type IS FluidType::Object) {
+      table.result_type = FluidType::Object;
+   }
+
    return ParserResult<ExpDesc>::success(table);
 }
 
@@ -2123,6 +2139,7 @@ ParserResult<ExpDesc> IrEmitter::emit_table_slice_call(const IndexExprPayload &P
 
 //********************************************************************************************************************
 // Emit bytecode for a safe member access expression (table?.field), returning nil if the table is nil.
+// base_type and class_id are tracked for potential future optimizations (Object-specific bytecode paths).
 
 ParserResult<ExpDesc> IrEmitter::emit_safe_member_expr(const SafeMemberExprPayload &Payload)
 {
@@ -2139,6 +2156,12 @@ ParserResult<ExpDesc> IrEmitter::emit_safe_member_expr(const SafeMemberExprPaylo
    ExpDesc table = guard.base_expression();
    ExpDesc key(Payload.member.symbol);
    expr_index(&this->func_state, &table, &key);
+
+   // Propagate known base type information for downstream optimizations.
+   // When base_type is Object and class_id is set, field-level type resolution may be possible.
+   if (Payload.base_type IS FluidType::Object) {
+      table.result_type = FluidType::Object;
+   }
 
    // Materialize the indexed result to a new register.
    // Do NOT reuse base_register() as that would clobber the table variable
