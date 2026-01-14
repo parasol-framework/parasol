@@ -864,9 +864,12 @@ void AstBuilder::skip_to_compile_end()
 //********************************************************************************************************************
 // Parses compile-time conditional: @if(condition) ... @end
 //
-// Currently supports only:
-//   @if(imported=true)  - Include block only when file is being imported
-//   @if(imported=false) - Include block only when file is the main script
+// Supported conditions:
+//   @if(imported=true)     - Include block only when file is being imported
+//   @if(imported=false)    - Include block only when file is the main script
+//   @if(debug=true)        - Include block only when log level > 0 (debugging enabled)
+//   @if(debug=false)       - Include block only when log level == 0 (no debugging)
+//   @if(platform="name")   - Include block only when platform matches (windows, linux, osx, native)
 //
 // When condition is true, parses the block normally.
 // When condition is false, skips tokens until @end without parsing.
@@ -885,11 +888,10 @@ ParserResult<StmtNodePtr> AstBuilder::parse_compile_if()
    }
    this->ctx.tokens().advance();  // consume '('
 
-   // Parse condition: identifier '=' 'true'|'false'
+   // Parse condition: identifier '=' value
    Token ident_token = this->ctx.tokens().current();
    if (not ident_token.is(TokenKind::Identifier)) {
-      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, ident_token,
-         "Expected identifier in @if condition");
+      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, ident_token, "Expected identifier in @if condition");
    }
 
    GCstr *ident_str = ident_token.payload().as_string();
@@ -898,28 +900,37 @@ ParserResult<StmtNodePtr> AstBuilder::parse_compile_if()
 
    // Expect '='
    if (not this->ctx.tokens().current().is(TokenKind::Equals)) {
-      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, this->ctx.tokens().current(),
-         "Expected '=' in @if condition");
+      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, this->ctx.tokens().current(), "Expected '=' in @if condition");
    }
    this->ctx.tokens().advance();  // consume '='
 
-   // Expect 'true' or 'false'
-   Token bool_token = this->ctx.tokens().current();
-   bool expected_value;
+   // Parse the condition value - can be true, false, or a string
+   Token value_token = this->ctx.tokens().current();
+   bool is_bool_value = false;
+   bool bool_value = false;
+   std::string_view string_value;
 
-   if (bool_token.is(TokenKind::TrueToken)) expected_value = true;
-   else if (bool_token.is(TokenKind::FalseToken)) expected_value = false;
-   else {
-      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, bool_token,
-         "Expected 'true' or 'false' in @if condition");
+   if (value_token.is(TokenKind::TrueToken)) {
+      is_bool_value = true;
+      bool_value = true;
    }
-   this->ctx.tokens().advance();  // consume true/false
+   else if (value_token.is(TokenKind::FalseToken)) {
+      is_bool_value = true;
+      bool_value = false;
+   }
+   else if (value_token.is(TokenKind::String)) {
+      is_bool_value = false;
+      GCstr *str = value_token.payload().as_string();
+      if (str) string_value = std::string_view(strdata(str), str->len);
+   }
+   else return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, value_token, "Expected 'true', 'false', or a string literal in @if condition");
+
+   this->ctx.tokens().advance();  // consume value
 
    // Expect ')'
 
    if (not this->ctx.tokens().current().is(TokenKind::RightParen)) {
-      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, this->ctx.tokens().current(),
-         "Expected ')' after @if condition");
+      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, this->ctx.tokens().current(), "Expected ')' after @if condition");
    }
    this->ctx.tokens().advance();  // consume ')'
 
@@ -928,13 +939,32 @@ ParserResult<StmtNodePtr> AstBuilder::parse_compile_if()
    bool condition_result = false;
 
    if (condition_name IS "imported") {
+      if (not is_bool_value) {
+         return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, value_token, "Condition 'imported' requires a boolean value");
+      }
       bool is_imported = this->ctx.is_being_imported();
-      condition_result = is_imported IS expected_value;
-      log.msg("Condition: imported=%s, is_imported=%s, result=%s", expected_value ? "true" : "false",
-         is_imported ? "true" : "false", condition_result ? "true" : "false");
+      condition_result = is_imported IS bool_value;
    }
-   else return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, ident_token,
-      "Unknown @if condition: " + std::string(condition_name) + " (only 'imported' is supported)");
+   else if (condition_name IS "debug") {
+      if (not is_bool_value) {
+         return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, value_token, "Condition 'debug' requires a boolean value");
+      }
+      int64_t log_level = GetResource(RES::LOG_LEVEL);
+      bool is_debug = log_level > 0;
+      condition_result = is_debug IS bool_value;
+   }
+   else if (condition_name IS "platform") {
+      if (is_bool_value) {
+         return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, value_token, "Condition 'platform' requires a string value");
+      }
+      const SystemState *state = GetSystemState();
+      std::string_view current_platform = state->Platform ? state->Platform : "";
+      // Case-insensitive comparison
+      condition_result = std::equal(current_platform.begin(), current_platform.end(),
+         string_value.begin(), string_value.end(),
+         [](char a, char b) { return std::tolower(uint8_t(a)) IS std::tolower(uint8_t(b)); });
+   }
+   else return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, ident_token, "Unknown @if condition: " + std::string(condition_name));
 
    if (condition_result) { // Condition is true - parse statements until @end
       log.msg("Condition true, parsing block");
