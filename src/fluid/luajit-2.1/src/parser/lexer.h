@@ -109,6 +109,8 @@ struct TokenDefinition {
    TOKEN_DEF(defer_close,  "}>",       false) \
    TOKEN_DEF(array_typed,  "array<type>", false) \
    TOKEN_DEF(annotate,     "@",        false) \
+   TOKEN_DEF(compif,       "@if",      false) \
+   TOKEN_DEF(compend,      "@end",     false) \
    TOKEN_DEF(eof,          "<eof>",    false)
 
 // Generate TOKEN_DEFINITIONS array from TOKEN_DEF_LIST

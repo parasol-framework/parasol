@@ -1201,6 +1201,27 @@ static LexToken lex_scan(LexState *State, TValue *tv)
          case '@':
             State->mark_token_start();
             lex_next(State);
+            // Check for @if compile-time conditional
+            if (State->c IS 'i' and State->pos < State->source.size() and State->source[State->pos] IS 'f') {
+               // Verify 'f' is followed by non-identifier char
+               size_t after_f = State->pos + 1;
+               if (after_f >= State->source.size() or (not isalnum(uint8_t(State->source[after_f])) and State->source[after_f] != '_')) {
+                  lex_next(State); // consume 'i'
+                  lex_next(State); // consume 'f'
+                  return TK_compif;
+               }
+            }
+            // Check for @end compile-time conditional
+            else if (State->c IS 'e' and State->pos + 1 < State->source.size() and State->source[State->pos] IS 'n' and State->source[State->pos + 1] IS 'd') {
+               // Verify 'd' is followed by non-identifier char
+               size_t after_d = State->pos + 2;
+               if (after_d >= State->source.size() or (not isalnum(uint8_t(State->source[after_d])) and State->source[after_d] != '_')) {
+                  lex_next(State); // consume 'e'
+                  lex_next(State); // consume 'n'
+                  lex_next(State); // consume 'd'
+                  return TK_compend;
+               }
+            }
             return TK_annotate;
 
          case LEX_EOF:
