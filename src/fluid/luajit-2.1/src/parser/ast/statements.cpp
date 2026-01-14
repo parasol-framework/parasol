@@ -774,6 +774,11 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(const s
 
    lua_State *L = &this->ctx.lua();
 
+   // Use the import statement's line number as a line offset for all imported content.
+   // This ensures bytecode line deltas remain valid (always positive from first line).
+
+   BCLine import_line = ImportToken.span().line;
+
    // Create a new LexState for the imported file
 
    LexState import_lex(L, source, std::string("@") + Path);
