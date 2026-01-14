@@ -2,9 +2,9 @@
 Basic demo of the View widget
 --]]
 
-   require 'gui/fileview'
-   require 'gui/columnview'
-   require 'gui/window'
+   import 'gui/fileview'
+   import 'gui/columnview'
+   import 'gui/window'
 
    local lWindow = gui.window({ title='View Widget Example', insideWidth=400, insideHeight=200 })
    local lViewport = lWindow:clientViewport()

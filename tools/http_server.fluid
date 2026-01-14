@@ -21,7 +21,7 @@ Parameters:
 Index files (checked in order): index.html, index.htm, default.html, default.htm
 ]]
 
-   httplib = require 'net/httpserver'
+   httplib = import 'net/httpserver'
 
    glConfigFile = arg('config', 'user:config/http_server_cfg.fluid')
 

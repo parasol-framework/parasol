@@ -2,8 +2,8 @@
 Internal script for combobox drop-down menus.
 --]]
 
-   require 'common'
-   require 'gui'
+   import 'common'
+   import 'gui'
    include 'display'
 
 mGfx ?= mod.load('display')

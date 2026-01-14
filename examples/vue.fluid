@@ -2,13 +2,13 @@
 A file viewer for recognised documents like SVG and RIPL
 --]]
 
-   require 'gui'
-   require 'gui/window'
-   require 'gui/divider'
-   require 'gui/fileview'
-   require 'gui/listview'
-   require 'gui/scrollbar'
-   require 'gui/filedialog'
+   import 'gui'
+   import 'gui/window'
+   import 'gui/divider'
+   import 'gui/fileview'
+   import 'gui/listview'
+   import 'gui/scrollbar'
+   import 'gui/filedialog'
 
    glBody = [[<body fill="rgb(20,20,40)" font-fill="rgb(255,255,255)" font-size="12pt" margins="2em"/>]]
 

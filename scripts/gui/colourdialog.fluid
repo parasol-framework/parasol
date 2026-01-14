@@ -2,8 +2,8 @@
 Documentation is available in the Parasol Wiki.
 --]]
 
-   require 'common'
-   require 'gui'
+   import 'common'
+   import 'gui'
    json = require('json')
 
    local mGfx = mod.load('display')

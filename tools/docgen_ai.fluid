@@ -6,7 +6,7 @@
 --
 -- Usage: parasol docgen-ai.fluid [output=folder]
 
-   require 'io/filesearch'
+   import 'io/filesearch'
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Resolve the location of the Parasol SDK and create an 'sdk:' volume.

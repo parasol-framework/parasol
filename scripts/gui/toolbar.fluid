@@ -2,10 +2,10 @@
 Documentation is available in the Parasol Wiki.
 --]]
 
-   require 'common'
-   require 'gui'
-   require 'gui/tooltip'
-   require 'translate'
+   import 'common'
+   import 'gui'
+   import 'gui/tooltip'
+   import 'translate'
    include 'vector'
 
 local lClickX, lClickY

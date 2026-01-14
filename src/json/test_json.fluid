@@ -1,7 +1,7 @@
 -- JSON support is made available as an extension of the XML class
 -- Alternatively the native JSON module can be used by script writers.
 
-   json = require 'json'
+   json = import 'json'
    mJson = mod.load('json')
 
 glJSON = [[

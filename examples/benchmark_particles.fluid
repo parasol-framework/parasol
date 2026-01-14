@@ -5,9 +5,9 @@ Parameters:
   mode: primitive; directvector; vector
 --]]
 
-   require 'gui'
-   require 'common'
-   require 'gui/window'
+   import 'gui'
+   import 'common'
+   import 'gui/window'
    include 'display'
    include 'vector'
 

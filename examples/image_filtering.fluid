@@ -2,10 +2,10 @@
 Image Filter Demonstration
 --]]
 
-   require 'gui/window'
-   require 'gui/combobox'
-   require 'gui/slider'
-   require 'gui/button'
+   import 'gui/window'
+   import 'gui/combobox'
+   import 'gui/slider'
+   import 'gui/button'
 
    mVec ?= mod.load('vector')
 

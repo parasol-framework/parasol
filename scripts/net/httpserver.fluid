@@ -1,6 +1,6 @@
 -- Refer to the Wiki for usage.
 --
--- local hslib = require 'net/httpserver'
+-- local hslib = import 'net/httpserver'
 -- local httpServer = hslib.start({ Options... })
 -- httpServer.stop()
 

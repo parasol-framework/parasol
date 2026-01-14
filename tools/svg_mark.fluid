@@ -19,10 +19,10 @@ Parameters:
   cpu-affinity - CPU affinity bitmask (default: 6 = cores 1&2, 1=core 0, 3=cores 0&1, etc.)
 --]]
 
-   require 'gui'
-   require 'gui/window'
-   require 'gui/listview'
-   require 'gui/filedialog'
+   import 'gui'
+   import 'gui/window'
+   import 'gui/listview'
+   import 'gui/filedialog'
 
    glSelf = obj.find('self')
    glPath = glSelf.workingPath

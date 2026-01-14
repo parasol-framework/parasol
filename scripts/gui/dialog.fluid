@@ -4,8 +4,8 @@ Display a dialog message to the user.
 Documentation is available in the Parasol Wiki.
 --]]
 
-   require 'common'
-   require 'gui/window'
+   import 'common'
+   import 'gui/window'
    include 'document'
 
 LINE_SPACING, FONT_HEIGHT = gui.getFontHeight(gui.fonts.window)

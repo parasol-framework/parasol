@@ -4,22 +4,22 @@ Enhances any view object, such as listview or columnview to create a file system
 Documentation is available in the Parasol Wiki.
 --]]
 
-   require 'common'
-   require 'gui'
-   require 'gui/menu'
-   require 'gui/dialog'
-   require 'gui/toolbar'
-   require 'gui/columnview'
-   require 'gui/listview'
-   require 'gui/fontdialog'
-   require 'io/filemgr'
-   require 'json'
+   import 'common'
+   import 'gui'
+   import 'gui/menu'
+   import 'gui/dialog'
+   import 'gui/toolbar'
+   import 'gui/columnview'
+   import 'gui/listview'
+   import 'gui/fontdialog'
+   import 'io/filemgr'
+   import 'json'
    include 'vector'
 
 glState = mSys.GetSystemState()
 
 glCopyList = [[
-   require 'gui/file'
+   import 'gui/file'
    source_size = arg('source:size')
    if source_size?? then
       glList = { }
@@ -406,7 +406,7 @@ function pasteFromClipboard(Folder)
    if not file.isFolder(Folder) then error('Invalid folder target of ' .. Folder) end
 
    paste_script = obj.new('script', { statement = [[
-   require 'io/filemgr'
+   import 'io/filemgr'
    file.ui.paste(arg('dest'))
 ]] })
    paste_script.acSetKey('dest', Folder)

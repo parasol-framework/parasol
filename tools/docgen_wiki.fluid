@@ -5,7 +5,7 @@
 --
 --   src: Source folder for markdown documents
 
-   require 'io/filesearch'
+   import 'io/filesearch'
 
    glSelf = <{ obj.find('self') }>
 

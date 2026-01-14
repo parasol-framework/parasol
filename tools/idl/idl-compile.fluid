@@ -6,7 +6,7 @@
 -- Usage: parasol sdk:scripts/idl-fluid.fluid src=source.fdl
 -- Example: parasol sdk:scripts/idl-fluid.fluid src=sdk:core/modules/core/core.fdl
 
-   require 'common'
+   import 'common'
 
    global glSelf = obj.find('self')
    global glPath = glSelf.workingPath
@@ -34,7 +34,7 @@ global function methods(ClassName:str, Prefix:str, Methods:table) end
 global function c_insert(Raw:str) end
 global function privateNames(List:table) end
 
-   require './include/utils'
+   import './include/utils'
 
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function

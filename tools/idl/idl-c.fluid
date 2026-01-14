@@ -6,7 +6,7 @@
    include 'core'
    include 'xml'
 
-   require 'common'
+   import 'common'
 
    global glHeader = { }
    global glOutput = { }
@@ -39,11 +39,11 @@
    global glOutputProto = arg('output-proto')
    global glPrototypes  = arg('prototypes')
 
-   require './include/utils'
-   require './include/parser'
-   require './include/types'
-   require './include/functions'
-   require './include/doc'
+   import './include/utils'
+   import './include/parser'
+   import './include/types'
+   import './include/functions'
+   import './include/doc'
 
 ----------------------------------------------------------------------------------------------------------------------
 

@@ -3,7 +3,7 @@ The FileSearch interface simplifies the process of searching for files and folde
 Refer to the Fluid I/O Wiki page for documentation.
 --]]
 
-   require 'common'
+   import 'common'
 
 file.search = function(Path, Options)
    lOptions      = Options

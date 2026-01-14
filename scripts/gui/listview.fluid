@@ -4,7 +4,7 @@ The ListView API is used to display data to the user in the form of a list of it
 Documentation is available in the Parasol Wiki.
 --]]
 
-   require 'gui/libview'
+   import 'gui/libview'
 
 ICON_SIZE = 16
 VSPACING  = 1

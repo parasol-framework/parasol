@@ -2,7 +2,7 @@
 Documentation is available in the Parasol Wiki.
 --]]
 
-   require 'common'
+   import 'common'
    include('display', 'vector')
 
    if not gui then global gui = { } end

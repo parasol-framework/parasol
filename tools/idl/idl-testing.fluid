@@ -3,11 +3,11 @@
    include 'core'
    include 'xml'
 
-   require './include/utils'
-   require './include/parser'
-   require './include/functions'
-   require './include/types'
-   require './include/doc'
+   import './include/utils'
+   import './include/parser'
+   import './include/functions'
+   import './include/types'
+   import './include/doc'
 
    glHeader = { }
    glOutput = { }

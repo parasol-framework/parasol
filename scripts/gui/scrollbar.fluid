@@ -2,8 +2,8 @@
 Documentation is available in the Parasol Wiki.
 --]]
 
-   require 'common'
-   require 'gui'
+   import 'common'
+   import 'gui'
 
    local lStyle
    if mSys.AnalysePath('style:scrollbar.fluid') is ERR_Okay then
