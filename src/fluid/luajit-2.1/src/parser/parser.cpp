@@ -229,6 +229,8 @@ extern GCproto * lj_parse(LexState *State)
    State->chunkname = lj_str_newz(L, State->chunkarg);
 #endif
 
+   log.branch("Chunk: %.*s", State->chunkname->len, strdata(State->chunkname));
+
    setstrV(L, L->top, State->chunkname);  // Anchor chunkname string.
    incr_top(L);
    State->level = 0;

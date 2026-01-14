@@ -622,37 +622,36 @@ static size_t fs_prep_line(FuncState* fs, BCLine numline)
 //********************************************************************************************************************
 // Fixup lineinfo for prototype.
 
-static void fs_fixup_line(FuncState* fs, GCproto* pt,
-   void* lineinfo, BCLine numline)
+static void fs_fixup_line(FuncState *fs, GCproto *pt, void *lineinfo, BCLine numline)
 {
-   BCInsLine* base = fs->bcbase + 1;
+   BCInsLine *base = fs->bcbase + 1;
    BCLine first = fs->linedefined;
    MSize i = 0, n = fs->pc - 1;
    pt->firstline = fs->linedefined;
    pt->numline = numline;
    setmref(pt->lineinfo, lineinfo);
 
-   if (LJ_LIKELY(numline < 256)) {
-      uint8_t* li = (uint8_t*)lineinfo;
+   if (numline < 256) [[likely]] {
+      auto li = (uint8_t*)lineinfo;
       do {
          BCLine delta = base[i].line - first;
-         fs_check_assert(fs,delta >= 0 and delta < 256, "bad line delta");
+         fs_check_assert(fs,delta >= 0 and delta < 256, "bad line delta %d for line %d", delta, numline);
          li[i] = uint8_t(delta);
       } while (++i < n);
    }
-   else if (LJ_LIKELY(numline < 65536)) {
-      uint16_t* li = (uint16_t*)lineinfo;
+   else if (numline < 65536) [[likely]] {
+      auto li = (uint16_t*)lineinfo;
       do {
          BCLine delta = base[i].line - first;
-         fs_check_assert(fs,delta >= 0 and delta < 65536, "bad line delta");
+         fs_check_assert(fs,delta >= 0 and delta < 65536, "bad line delta %d for line %d", delta, numline);
          li[i] = uint16_t(delta);
       } while (++i < n);
    }
    else {
-      uint32_t* li = (uint32_t*)lineinfo;
+      auto li = (uint32_t*)lineinfo;
       do {
          BCLine delta = base[i].line - first;
-         fs_check_assert(fs,delta >= 0, "bad line delta");
+         fs_check_assert(fs,delta >= 0, "bad line delta %d for line %d", delta, numline);
          li[i] = uint32_t(delta);
       } while (++i < n);
    }
