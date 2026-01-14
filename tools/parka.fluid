@@ -11,7 +11,7 @@
 --   fluid parka.fluid verify=parasol-doc.parc
 
    include "xml"
-   require "common"
+   import "common"
 
    SIGLEN = 8
 

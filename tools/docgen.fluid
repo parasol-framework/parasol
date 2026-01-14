@@ -7,7 +7,7 @@
 --   output:  Optional output path for the generated script. If not specified, a temp: file will be used.
 --   dry-run: If set, the generated script will not be executed, but left in the temp: folder for inspection.
 
-   require 'io/filesearch'
+   import 'io/filesearch'
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Resolve the location of the Parasol SDK and create an 'sdk:' volume.

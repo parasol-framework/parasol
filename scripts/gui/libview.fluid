@@ -1,8 +1,8 @@
 -- Internal support functions for listview, columnview etc
 
-   require 'common'
-   require 'gui'
-   require 'gui/scrollbar'
+   import 'common'
+   import 'gui'
+   import 'gui/scrollbar'
 
    mGfx ?= mod.load('display')
    mVec ?= mod.load('vector')

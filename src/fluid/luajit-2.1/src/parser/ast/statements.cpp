@@ -666,43 +666,43 @@ ParserResult<StmtNodePtr> AstBuilder::parse_check()
 
 ParserResult<StmtNodePtr> AstBuilder::parse_import()
 {
+   pf::Log log(__FUNCTION__);
+
    Token import_token = this->ctx.tokens().current();
    this->ctx.tokens().advance();  // consume 'import'
 
    // Require a string literal for the module path
    Token path_token = this->ctx.tokens().current();
    if (not path_token.is(TokenKind::String)) {
-      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, path_token,
-         "import path must be a string literal");
+      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, path_token, "Import path must be a string literal");
    }
 
-   // Get the path string
-   GCstr* path_str = path_token.payload().as_string();
+   GCstr *path_str = path_token.payload().as_string();
    if (not path_str) {
-      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, path_token,
-         "invalid import path");
+      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, path_token, "Invalid import path");
    }
 
-   std::string relative_path(strdata(path_str), path_str->len);
+   std::string_view mod_name(strdata(path_str), path_str->len);
    this->ctx.tokens().advance();  // consume string
 
-   // Resolve the path relative to current file
-   std::string resolved_path = this->ctx.resolve_import_path(relative_path);
+   log.branch("Module: %.*s", int(mod_name.size()), mod_name.data());
+
+   std::string path = this->ctx.resolve_module_to_path(mod_name);
 
    // Check for circular import
-   if (this->ctx.is_importing(resolved_path)) {
+   if (this->ctx.is_importing(path)) {
       return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, import_token,
-         "circular import detected: " + resolved_path);
+         "circular import detected: " + path);
    }
 
    // Parse the imported file
-   auto imported_body = this->parse_imported_file(resolved_path, import_token);
+   auto imported_body = this->parse_imported_file(path, mod_name, import_token);
    if (not imported_body.ok()) return ParserResult<StmtNodePtr>::failure(imported_body.error_ref());
 
    // Create ImportStmtPayload
    auto stmt = std::make_unique<StmtNode>(AstNodeKind::ImportStmt, import_token.span());
    ImportStmtPayload payload;
-   payload.module_path = resolved_path;
+   payload.module_path = path;
    payload.inlined_body = std::move(imported_body.value_ref());
    stmt->data = std::move(payload);
 
@@ -716,8 +716,31 @@ ParserResult<StmtNodePtr> AstBuilder::parse_import()
 // Line numbers from imported content are offset so line 1 maps to the import statement line.
 // This keeps bytecode line deltas non-negative while preserving relative positions.
 
-ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(const std::string& Path, const Token& ImportToken)
+ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(const std::string &Path, std::string_view Module, const Token& ImportToken)
 {
+   // Check if the module is already loaded, in which case return early.
+
+   std::string modkey("require.");
+   modkey.append(Module);
+
+   lua_getfield(&ctx.lua(), LUA_REGISTRYINDEX, modkey.c_str());
+   auto mod_value = lua_type(&ctx.lua(), -1);
+   if (mod_value IS LUA_TTABLE) {
+      // Module was previously loaded and returned a table interface.
+      // Skip re-importing; the table is already available via require() if needed.
+      lua_pop(&ctx.lua(), 1);
+      return ParserResult<std::unique_ptr<BlockStmt>>::success(make_block(ImportToken.span(), {}));
+   }
+   else if (mod_value IS LUA_TBOOLEAN and lua_toboolean(&ctx.lua(), -1)) {
+      // Module was previously loaded but returned no table.
+      // Skip re-importing since the module's side effects have already run.
+      lua_pop(&ctx.lua(), 1);
+      return ParserResult<std::unique_ptr<BlockStmt>>::success(make_block(ImportToken.span(), {}));
+   }
+   else {
+      lua_pop(&ctx.lua(), 1);  // Pop nil or false
+   }
+
    // Push this file onto the import stack to detect circular imports
    this->ctx.push_import(Path);
 
@@ -749,23 +772,22 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(const s
    }
    source.resize(size_t(bytes_read));
 
-   // Create a new LexState for the imported file
    lua_State *L = &this->ctx.lua();
 
-   // Use the import statement's line number as a line offset for all imported content.
-   // This ensures bytecode line deltas remain valid (always positive from first line).
-   BCLine import_line = ImportToken.span().line;
+   // Create a new LexState for the imported file
 
    LexState import_lex(L, source, std::string("@") + Path);
 
    // Set a line offset so imported tokens align with the import statement line.
+
    BCLine line_offset = 0;
    if (import_line > 1) line_offset = import_line - 1;
    import_lex.line_offset = line_offset;
 
    // Point the FuncState to the new lexer temporarily
-   FuncState& fs = this->ctx.func();
-   LexState* saved_ls = fs.ls;
+
+   FuncState &fs = this->ctx.func();
+   LexState *saved_ls = fs.ls;
    fs.ls = &import_lex;
 
    // Initialize the import lexer
@@ -800,6 +822,11 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(const s
       error.message = "in imported file '" + Path + "': " + error.message;
       return ParserResult<std::unique_ptr<BlockStmt>>::failure(error);
    }
+
+   // Mark this module as loaded in the registry to prevent re-importing.
+   // Use the same key format as require() for interoperability.
+   lua_pushboolean(&ctx.lua(), 1);
+   lua_setfield(&ctx.lua(), LUA_REGISTRYINDEX, modkey.c_str());
 
    return result;
 }

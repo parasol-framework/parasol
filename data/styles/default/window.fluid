@@ -1,5 +1,5 @@
 
-   require 'gui'
+   import 'gui'
 
    lVec = mVec
 

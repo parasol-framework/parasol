@@ -2,8 +2,8 @@
 Documentation is available in the Parasol Wiki.
 --]]
 
-   require 'common'
-   require 'gui'
+   import 'common'
+   import 'gui'
 
    if not mGfx then global mGfx = mod.load('display') end
 

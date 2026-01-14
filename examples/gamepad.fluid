@@ -2,7 +2,7 @@
 Gamepad demonstration
 --]]
 
-   require 'gui/window'
+   import 'gui/window'
 
    glSelf = obj.find('self')
    glPath = glSelf.workingPath

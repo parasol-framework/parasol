@@ -1,6 +1,6 @@
 --$FLUID:Batch
 
-   require "common"
+   import "common"
 
    srcPath    = arg("input")
    outputPath = arg("output")

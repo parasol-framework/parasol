@@ -7,17 +7,17 @@
 -- * Progressive output showing test progress and individual results
 
    include 'xml'
-   require 'common'
+   import 'common'
 
-   local glXML = nil
-   local glXQuery = obj.new('xquery', { })
-   local benchmarkResults = {}
-   local fastestResults = {}
-   local totalTests = 0
-   local passedTests = 0
+   glXML = nil
+   glXQuery = obj.new('xquery', { })
+   benchmarkResults = {}
+   fastestResults = {}
+   totalTests = 0
+   passedTests = 0
 
-   local glSelf = obj.find('self')
-   local glPath = glSelf.workingPath
+   glSelf = obj.find('self')
+   glPath = glSelf.workingPath
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Utility functions for benchmarking

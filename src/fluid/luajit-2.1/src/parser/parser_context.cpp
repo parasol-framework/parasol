@@ -378,40 +378,36 @@ void ParserContext::pop_import()
 
 //********************************************************************************************************************
 // Resolve an import path relative to the file currently being parsed.
-// Uses the LexState's chunkarg to get the directory of the current source file.
+// The Module parameter will be sanitised on return.
 
-std::string ParserContext::resolve_import_path(const std::string &RelativePath) const
+std::string ParserContext::resolve_module_to_path(std::string_view &Module) const
 {
-   pf::Log log(__FUNCTION__);
-
-   log.branch("Path: %s", RelativePath.c_str());
-
-   std::string result = RelativePath;
-
    // For security purposes, check the validity of the module name.
 
    int slash_count = 0;
 
    bool local = false;
-   if (result.starts_with("./")) { // Local modules are permitted if the name starts with "./" and otherwise adheres to path rules
+   if (Module.starts_with("./")) { // Local modules are permitted if the name starts with "./" and otherwise adheres to path rules
       local = true;
-      result.erase(0, 2);
+      Module.remove_prefix(2);
    }
 
    size_t i;
-   for (i=0; i < result.size(); i++) {
-      if ((result[i] >= 'a') and (result[i] <= 'z')) continue;
-      if ((result[i] >= 'A') and (result[i] <= 'Z')) continue;
-      if ((result[i] >= '0') and (result[i] <= '9')) continue;
-      if ((result[i] IS '-') or (result[i] IS '_')) continue;
-      if (result[i] IS '/') { slash_count++; continue; }
+   for (i=0; i < Module.size(); i++) {
+      if ((Module[i] >= 'a') and (Module[i] <= 'z')) continue;
+      if ((Module[i] >= 'A') and (Module[i] <= 'Z')) continue;
+      if ((Module[i] >= '0') and (Module[i] <= '9')) continue;
+      if ((Module[i] IS '-') or (Module[i] IS '_')) continue;
+      if (Module[i] IS '/') { slash_count++; continue; }
       break;
    }
 
-   if ((i < result.size()) or (i >= 96) or (slash_count > 2)) {
+   if ((i < Module.size()) or (i >= 96) or (slash_count > 2)) {
       lj_lex_error(this->lex_state, 0, ErrMsg::BADMODULE);
       return "";
    }
+
+   std::string result(Module);
 
    // Prepend the base path
 

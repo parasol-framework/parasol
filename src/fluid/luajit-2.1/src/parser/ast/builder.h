@@ -54,7 +54,7 @@ private:
    ParserResult<StmtNodePtr> parse_raise();
    ParserResult<StmtNodePtr> parse_check();
    ParserResult<StmtNodePtr> parse_import();
-   ParserResult<std::unique_ptr<BlockStmt>> parse_imported_file(const std::string& path, const Token& import_token);
+   ParserResult<std::unique_ptr<BlockStmt>> parse_imported_file(const std::string &, std::string_view, const Token& import_token);
    ParserResult<StmtNodePtr> parse_expression_stmt();
    ParserResult<ExprNodePtr> parse_choose_expr();
    ParserResult<ExprNodePtr> parse_unary();

@@ -2,13 +2,13 @@
 Documentation is available in the Parasol Wiki.
 --]]
 
-   require 'common'
-   require 'gui/fileview'
-   require 'gui/columnview'
-   require 'gui/button'
-   require 'gui/combobox'
-   require 'gui/input'
-   require 'gui/window'
+   import 'common'
+   import 'gui/fileview'
+   import 'gui/columnview'
+   import 'gui/button'
+   import 'gui/combobox'
+   import 'gui/input'
+   import 'gui/window'
 
    global gui ?= { }
    gui.dialog ?= { }
