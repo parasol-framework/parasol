@@ -382,6 +382,10 @@ void ParserContext::pop_import()
 
 std::string ParserContext::resolve_import_path(const std::string &RelativePath) const
 {
+   pf::Log log(__FUNCTION__);
+
+   log.branch("Path: %s", RelativePath.c_str());
+
    std::string result = RelativePath;
 
    // For security purposes, check the validity of the module name.
@@ -409,42 +413,37 @@ std::string ParserContext::resolve_import_path(const std::string &RelativePath) 
       return "";
    }
 
-   // Add .fluid extension if not present
-   if (result.size() < 6 or result.substr(result.size() - 6) != ".fluid") {
-      result += ".fluid";
-   }
+   // Prepend the base path
 
-   // Get the directory of the current file from chunkarg
-   if (this->lex_state and this->lex_state->chunkarg) {
-      std::string current_file(this->lex_state->chunkarg);
+   if (local) {
+      if (this->lex_state->chunkarg) {
+         // Get the directory of the current file from chunkarg
+         std::string current_file(this->lex_state->chunkarg);
 
-      // Strip leading '@' or '=' from chunkarg (Lua conventions for source naming)
-      if (not current_file.empty() and (current_file[0] == '@' or current_file[0] == '=')) {
-         current_file = current_file.substr(1);
-      }
+         // Strip leading '@' or '=' from chunkarg (Lua conventions for source naming)
+         if (not current_file.empty() and (current_file[0] == '@' or current_file[0] == '=')) {
+            current_file = current_file.substr(1);
+         }
 
-      // Find the last path separator
-      size_t last_sep = current_file.find_last_of("/\\");
-      if (last_sep != std::string::npos) {
-         std::string dir = current_file.substr(0, last_sep + 1);
-         result = dir + result;
-      }
-      else if (this->lua_state and this->lua_state->script) {
-         // No path separator in chunkarg - use script's working path as fallback
-         auto working_path = this->lua_state->script->get<CSTRING>(FID_WorkingPath);
-         if (working_path and working_path[0]) {
-            result = std::string(working_path) + result;
+         // Find the last path separator
+         size_t last_sep = current_file.find_last_of("/\\");
+         if (last_sep != std::string::npos) {
+            std::string dir = current_file.substr(0, last_sep + 1);
+            result = dir + result;
+         }
+         else { // Use script's working path as fallback
+            auto working_path = this->lua_state->script->get<CSTRING>(FID_WorkingPath);
+            if (working_path) result.insert(0, working_path);
          }
       }
-   }
-   else if (this->lua_state->script) {
-      // No chunkarg - use script's working path as fallback
-      auto working_path = this->lua_state->script->get<CSTRING>(FID_WorkingPath);
-      if (working_path and working_path[0]) {
-         result = std::string(working_path) + result;
+      else { // Use script's working path as fallback
+         auto working_path = this->lua_state->script->get<CSTRING>(FID_WorkingPath);
+         if (working_path) result.insert(0, working_path);
       }
    }
+   else result.insert(0, "scripts:");
 
+   result.append(".fluid");
    return result;
 }
 
