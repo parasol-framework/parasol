@@ -518,7 +518,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, int Va
 
             case LUA_TOBJECT: {
                auto obj_ref = lua_toobject(Lua, ValueIndex);
-               return target->set(field->FieldID, obj_ref->uid);            
+               return target->set(field->FieldID, obj_ref->uid);
             }
 
             case LUA_TSTRING: {

@@ -323,7 +323,7 @@ end
 
 @Test(labels=['io', "error"]) function ErrorHandling()
    -- Test opening invalid file
-   try 
+   try
       io.open('/invalid/path/file.txt', 'r')
    except ex
       assert(ex.code is ERR_OpenFile, 'Should return relevant error code, got: ' .. ex.message)
