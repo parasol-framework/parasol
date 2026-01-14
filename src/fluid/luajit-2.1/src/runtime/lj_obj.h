@@ -12,6 +12,7 @@
 #include "lj_arch.h"
 #include <array>
 #include <vector>
+#include <unordered_set>
 #include "../../../struct_def.h"
 
 #ifndef PLATFORM_CONFIG_H
@@ -1037,7 +1038,8 @@ inline void hook_leave(global_State *g) noexcept { g->hookmask &= ~HOOK_ACTIVE; 
 [[nodiscard]] inline uint8_t hook_save(const global_State *g) noexcept { return g->hookmask & ~HOOK_EVENTMASK; }
 inline void hook_restore(global_State *g, uint8_t h) noexcept { g->hookmask = (g->hookmask & HOOK_EVENTMASK) | h; }
 
-// Per-thread state object.  See lj_state_new() for initialisation.
+// Per-thread state object.  See lua_newstate() in lj_state.cpp for initialisation.
+
 struct lua_State {
    GCHeader;            // NB: C++ placement new can trash any preset values here.
    uint8_t dummy_ffid;  //  Fake FF_C for curr_funcisL() on dummy frames.
@@ -1062,7 +1064,8 @@ struct lua_State {
    TryFrameStack try_stack;      // Exception frame stack (nullptr until first BC_TRYENTER)
    const BCIns   *try_handler_pc; // Handler PC for error re-entry (set during unwind)
    CapturedStackTrace *pending_trace; // Trace captured during exception handling (for try<trace>)
-   ERR      CaughtError;              // Catches ERR results from module functions.
+   ERR      CaughtError = ERR::Okay; // Catches ERR results from module functions.
+   std::unordered_set<uint32_t> imports;
 
    // Constructor/destructor not actually used as yet.
 /*

@@ -613,7 +613,9 @@ static void fs_fixup_uv1(FuncState* fs, GCproto* pt, uint16_t* uv)
 //********************************************************************************************************************
 
 #ifndef LUAJIT_DISABLE_DEBUGINFO
+
 // Prepare lineinfo for prototype.
+
 static size_t fs_prep_line(FuncState* fs, BCLine numline)
 {
    return (fs->pc - 1) << (numline < 256 ? 0 : numline < 65536 ? 1 : 2);
@@ -665,8 +667,11 @@ size_t LexState::fs_prep_var(FuncState* FunctionState, size_t* OffsetVar)
    FuncState *fs = FunctionState;
    VarInfo *vs = this->vstack, * ve;
    BCPOS lastpc;
+
    lj_buf_reset(&this->sb);  // Copy to temp. string buffer.
+
    // Store upvalue names using range-based iteration.
+
    auto uvmap_range = std::span(fs->uvmap.data(), fs->nuv);
    for (auto uv_idx : uvmap_range) {
       GCstr *s = strref(vs[uv_idx].name);
@@ -708,12 +713,13 @@ size_t LexState::fs_prep_var(FuncState* FunctionState, size_t* OffsetVar)
 //********************************************************************************************************************
 // Fixup variable info for prototype.
 
-void LexState::fs_fixup_var(GCproto* Prototype, uint8_t* Buffer, size_t OffsetVar)
+void LexState::fs_fixup_var(GCproto *Prototype, uint8_t *Buffer, size_t OffsetVar)
 {
    setmref(Prototype->uvinfo, Buffer);
    setmref(Prototype->varinfo, (char*)Buffer + OffsetVar);
    memcpy(Buffer, this->sb.b, sbuflen(&this->sb));  // Copy from temp. buffer.
 }
+
 #else
 
 // Initialize with empty debug info, if disabled.
@@ -751,7 +757,7 @@ void LexState::fs_fixup_var(GCproto* Prototype, uint8_t* Buffer, size_t OffsetVa
 //********************************************************************************************************************
 // Fixup return instruction for prototype.
 
-static void fs_fixup_ret(FuncState* fs)
+static void fs_fixup_ret(FuncState *fs)
 {
    BCPOS lastpc = fs->pc;
    if (lastpc <= fs->lasttarget or !bcopisret(bc_op(fs->bytecode_at(BCPos(lastpc - 1)).ins))) {
@@ -828,6 +834,7 @@ GCproto * LexState::fs_finish(BCLine Line)
          if (bc_line > line) line = bc_line;
       }
    }
+
    BCLine numline = line - fs->linedefined;
    size_t sizept, ofsk, ofsuv, ofsli, ofsdbg, ofsvar;
    GCproto *pt;
@@ -887,7 +894,7 @@ GCproto * LexState::fs_finish(BCLine Line)
 
    // Allocate prototype and initialize its fields.
 
-   pt = (GCproto*)lj_mem_newgco(L, MSize(sizept));
+   pt = (GCproto *)lj_mem_newgco(L, MSize(sizept));
    pt->gct = ~LJ_TPROTO;
    pt->sizept = MSize(sizept);
    pt->trace = 0;
@@ -978,7 +985,8 @@ void LexState::fs_init(FuncState *FunctionState)
 {
    FuncState *fs = FunctionState;
    lua_State *L = this->L;
-   fs->prev  = this->fs; this->fs = fs;  // Append to list.
+   fs->prev  = this->fs; 
+   this->fs = fs;  // Append to list.
    fs->ls    = this;
    fs->vbase = this->vtop;
    fs->L     = L;

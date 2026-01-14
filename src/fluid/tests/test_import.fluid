@@ -1,5 +1,5 @@
 
-   import './import_helper'
+   import './compile_if_helper'
 
 @Test function ImportBasic()
    assert(helper_message is "Hello from imported module!",

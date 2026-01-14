@@ -655,14 +655,8 @@ ParserResult<StmtNodePtr> AstBuilder::parse_check()
 //********************************************************************************************************************
 // Parses import statements: import 'module'
 //
-// The import statement is a compile-time feature that reads and parses the referenced file,
-// inlining its content as statements executed within the current scope.
-//
-// Syntax:
-//   import 'script'        -- Execute script inline
-//
-// The import path is resolved relative to the current file's directory. If the path
-// doesn't end with '.fluid', the extension is added automatically.
+// The import statement is a compile-time feature that reads and parses the referenced file, inlining its content as 
+// statements executed within the current scope.
 
 ParserResult<StmtNodePtr> AstBuilder::parse_import()
 {
@@ -678,9 +672,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_import()
    }
 
    GCstr *path_str = path_token.payload().as_string();
-   if (not path_str) {
-      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, path_token, "Invalid import path");
-   }
+   if (not path_str) return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, path_token, "Invalid import path");
 
    std::string_view mod_name(strdata(path_str), path_str->len);
    this->ctx.tokens().advance();  // consume string
@@ -691,8 +683,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_import()
 
    // Check for circular import
    if (this->ctx.is_importing(path)) {
-      return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, import_token,
-         "circular import detected: " + path);
+      return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, import_token, "circular import detected: " + path);
    }
 
    // Parse the imported file
@@ -721,28 +712,15 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(const s
    pf::Log log(__FUNCTION__);
    // Check if the module is already loaded, in which case return early.
 
-   std::string modkey("require.");
-   modkey.append(Module);
+   lua_State *L = &this->ctx.lua();
+   auto modhash = pf::strihash(Module);
 
-   lua_getfield(&ctx.lua(), LUA_REGISTRYINDEX, modkey.c_str());
-   auto mod_value = lua_type(&ctx.lua(), -1);
-   if (mod_value IS LUA_TTABLE) {
-      // Module was previously loaded and returned a table interface.
-      // Skip re-importing; the table is already available via require() if needed.
-      lua_pop(&ctx.lua(), 1);
-      log.msg("Module already loaded, use existing table: %s", modkey.c_str());
+   if ((not L->imports.empty()) and (L->imports.contains(modhash))) {
+      log.detail("Module %.*s already loaded", int(Module.size()), Module.data());
       return ParserResult<std::unique_ptr<BlockStmt>>::success(make_block(ImportToken.span(), {}));
    }
-   else if (mod_value IS LUA_TBOOLEAN and lua_toboolean(&ctx.lua(), -1)) {
-      // Module was previously loaded but returned no table.
-      // Skip re-importing since the module's side effects have already run.
-      lua_pop(&ctx.lua(), 1);
-      log.msg("Module already loaded, skipping import: %s", modkey.c_str());
-      return ParserResult<std::unique_ptr<BlockStmt>>::success(make_block(ImportToken.span(), {}));
-   }
-   else {
-      lua_pop(&ctx.lua(), 1);  // Pop nil or false
-   }
+
+   L->imports.insert(modhash); // Set as loaded, irrespective of success
 
    // Push this file onto the import stack to detect circular imports
    this->ctx.push_import(Path);
@@ -775,8 +753,6 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(const s
    }
    source.resize(size_t(bytes_read));
 
-   lua_State *L = &this->ctx.lua();
-
    // Use the import statement's line number as a line offset for all imported content.
    // This ensures bytecode line deltas remain valid (always positive from first line).
 
@@ -802,12 +778,11 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(const s
    import_lex.fs = &fs;
    import_lex.L = L;
 
-   // Prime the lexer
-   import_lex.next();
+   import_lex.next(); // Prime the lexer
 
    // Create a temporary parser context for the imported file
-   ParserContext import_ctx(import_lex, fs, *L,
-      ParserAllocator::from(L), this->ctx.config());
+
+   ParserContext import_ctx(import_lex, fs, *L, ParserAllocator::from(L), this->ctx.config());
 
    // Copy the import stack to the child context for circular detection
    for (const auto& imported_path : this->ctx.import_stack()) {
@@ -830,11 +805,6 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(const s
       error.message = "in imported file '" + Path + "': " + error.message;
       return ParserResult<std::unique_ptr<BlockStmt>>::failure(error);
    }
-
-   // Mark this module as loaded in the registry to prevent re-importing.
-   // Use the same key format as require() for interoperability.
-   lua_pushboolean(&ctx.lua(), 1);
-   lua_setfield(&ctx.lua(), LUA_REGISTRYINDEX, modkey.c_str());
 
    return result;
 }
@@ -960,7 +930,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_compile_if()
          return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, value_token, "Condition 'debug' requires a boolean value");
       }
       int64_t log_level = GetResource(RES::LOG_LEVEL);
-      bool is_debug = log_level > 0;
+      bool is_debug = log_level > 2;
       condition_result = is_debug IS bool_value;
    }
    else if (condition_name IS "platform") {

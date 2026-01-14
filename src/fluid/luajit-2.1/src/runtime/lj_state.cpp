@@ -179,8 +179,7 @@ static void stack_init(lua_State *L1, lua_State *L)
    setthreadV(L1, st++, L1);  //  Needed for curr_funcisL() on empty stack.
    if (LJ_FR2) setnilV(st++);
    L1->base = L1->top = st;
-   while (st < stend)  //  Clear new slots.
-      setnilV(st++);
+   while (st < stend) setnilV(st++); //  Clear new slots.
 }
 
 //********************************************************************************************************************
@@ -231,9 +230,7 @@ static void close_state(lua_State *L)
       lj_mem_freevec(g, mref<uint32_t>(g->gc.lightudseg), segnum, uint32_t);
    }
 
-   lj_assertG(g->gc.total == sizeof(GG_State),
-      "memory leak of %lld bytes",
-      (long long)(g->gc.total - sizeof(GG_State)));
+   lj_assertG(g->gc.total == sizeof(GG_State), "memory leak of %lld bytes", (long long)(g->gc.total - sizeof(GG_State)));
 #ifndef LUAJIT_USE_SYSMALLOC
    if (g->allocf == lj_alloc_f)
       lj_alloc_destroy(g->allocd);
@@ -244,13 +241,15 @@ static void close_state(lua_State *L)
 
 //********************************************************************************************************************
 
-extern lua_State* lua_newstate(lua_Alloc allocf, void* allocd)
+extern lua_State * lua_newstate(lua_Alloc allocf, void* allocd)
 {
    PRNGState prng;
-   GG_State* GG;
+   GG_State *GG;
    lua_State *L;
-   global_State* g;
+   global_State *g;
+
    // We need the PRNG for the memory allocator, so initialize this first.
+
    if (!lj_prng_seed_secure(&prng)) {
       lj_assertX(0, "secure PRNG seeding failed");
       // Can only return nullptr here, so this errors with "not enough memory".
@@ -269,6 +268,9 @@ extern lua_State* lua_newstate(lua_Alloc allocf, void* allocd)
    if (GG == nullptr or !checkptrGC(GG)) return nullptr;
    memset(GG, 0, sizeof(GG_State));
    L = &GG->L;
+   
+   new (L) lua_State;
+
    g = &GG->g;
    L->gct = ~LJ_TTHREAD;
    L->marked = LJ_GC_WHITE0 | LJ_GC_FIXED | LJ_GC_SFIXED;  //  Prevent free.
@@ -359,6 +361,7 @@ extern void lua_close(lua_State *L)
 }
 
 //********************************************************************************************************************
+// NB: This is used by the coroutine API.  See lua_newstate() for full state initialization.
 
 lua_State * lj_state_new(lua_State *L)
 {

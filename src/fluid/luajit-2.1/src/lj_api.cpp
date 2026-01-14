@@ -911,19 +911,6 @@ extern int lua_pushthread(lua_State *L)
 }
 
 //********************************************************************************************************************
-// Create new coroutine thread
-
-extern lua_State * lua_newthread(lua_State *L)
-{
-   lua_State *L1;
-   lj_gc_check(L);
-   L1 = lj_state_new(L);
-   setthreadV(L, L->top, L1);
-   incr_top(L);
-   return L1;
-}
-
-//********************************************************************************************************************
 // Create userdata and push onto stack
 
 extern void * lua_newuserdata(lua_State *L, size_t size)

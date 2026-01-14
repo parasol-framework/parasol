@@ -607,18 +607,15 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- This sub-routine is provided for languages other than Fluid to use the interface.
 
-   do
-      state = getExecutionState()
-      if state.inRequire != true then
-         dlg = colour.dialog({
-            popOver    = arg('popOver'),
-            target     = arg('target'),
-            modal      = arg('modal'),
-            okText     = arg('okText'),
-            cancelText = arg('cancelText'),
-            icon       = arg('icon')
-         })
+@if(imported=false)
+   dlg = colour.dialog({
+      popOver    = arg('popOver'),
+      target     = arg('target'),
+      modal      = arg('modal'),
+      okText     = arg('okText'),
+      cancelText = arg('cancelText'),
+      icon       = arg('icon')
+   })
 
-         return dlg.windowID
-      end
-   end
+   return dlg.windowID
+@end
