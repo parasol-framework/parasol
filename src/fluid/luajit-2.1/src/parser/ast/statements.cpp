@@ -651,3 +651,155 @@ ParserResult<StmtNodePtr> AstBuilder::parse_check()
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
+
+//********************************************************************************************************************
+// Parses import statements: import 'module'
+//
+// The import statement is a compile-time feature that reads and parses the referenced file,
+// inlining its content as statements executed within the current scope.
+//
+// Syntax:
+//   import 'script'        -- Execute script inline
+//
+// The import path is resolved relative to the current file's directory. If the path
+// doesn't end with '.fluid', the extension is added automatically.
+
+ParserResult<StmtNodePtr> AstBuilder::parse_import()
+{
+   Token import_token = this->ctx.tokens().current();
+   this->ctx.tokens().advance();  // consume 'import'
+
+   // Require a string literal for the module path
+   Token path_token = this->ctx.tokens().current();
+   if (not path_token.is(TokenKind::String)) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, path_token,
+         "import path must be a string literal");
+   }
+
+   // Get the path string
+   GCstr* path_str = path_token.payload().as_string();
+   if (not path_str) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, path_token,
+         "invalid import path");
+   }
+
+   std::string relative_path(strdata(path_str), path_str->len);
+   this->ctx.tokens().advance();  // consume string
+
+   // Resolve the path relative to current file
+   std::string resolved_path = this->ctx.resolve_import_path(relative_path);
+
+   // Check for circular import
+   if (this->ctx.is_importing(resolved_path)) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, import_token,
+         "circular import detected: " + resolved_path);
+   }
+
+   // Parse the imported file
+   auto imported_body = this->parse_imported_file(resolved_path, import_token);
+   if (not imported_body.ok()) return ParserResult<StmtNodePtr>::failure(imported_body.error_ref());
+
+   // Create ImportStmtPayload
+   auto stmt = std::make_unique<StmtNode>(AstNodeKind::ImportStmt, import_token.span());
+   ImportStmtPayload payload;
+   payload.module_path = resolved_path;
+   payload.inlined_body = std::move(imported_body.value_ref());
+   stmt->data = std::move(payload);
+
+   return ParserResult<StmtNodePtr>::success(std::move(stmt));
+}
+
+//********************************************************************************************************************
+// Reads a file and parses its contents, returning the parsed block.
+// This is used by parse_import() to inline imported modules at compile time.
+//
+// All statements in the imported file will have their line numbers set to the import statement's line.
+// This is necessary because the bytecode emitter expects line deltas from the function's first line,
+// and the imported content's original line numbers would cause negative or out-of-range deltas.
+
+ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(const std::string& Path, const Token& ImportToken)
+{
+   // Push this file onto the import stack to detect circular imports
+   this->ctx.push_import(Path);
+
+   // Read the file contents using Parasol File API
+   objFile::create file = { fl::Path(Path.c_str()), fl::Flags(FL::READ) };
+   if (not file.ok()) {
+      this->ctx.pop_import();
+      return this->fail<std::unique_ptr<BlockStmt>>(ParserErrorCode::UnexpectedToken, ImportToken,
+         "cannot open imported file: " + Path);
+   }
+
+   // Get file size and read contents
+   int file_size = 0;
+   if (file->get(FID_Size, file_size) != ERR::Okay or file_size <= 0) {
+      this->ctx.pop_import();
+      // Empty file - return an empty block
+      return ParserResult<std::unique_ptr<BlockStmt>>::success(make_block(ImportToken.span(), {}));
+   }
+
+   std::string source;
+   source.resize(size_t(file_size));
+   int bytes_read = 0;
+   ERR err = file->read(source.data(), file_size, &bytes_read);
+
+   if (err != ERR::Okay or bytes_read <= 0) {
+      this->ctx.pop_import();
+      return this->fail<std::unique_ptr<BlockStmt>>(ParserErrorCode::UnexpectedToken, ImportToken,
+         "cannot read imported file: " + Path);
+   }
+   source.resize(size_t(bytes_read));
+
+   // Create a new LexState for the imported file
+   lua_State *L = &this->ctx.lua();
+
+   // Use the import statement's line number as a line offset for all imported content.
+   // This ensures bytecode line deltas remain valid (always positive from first line).
+   BCLine import_line = ImportToken.span().line;
+
+   LexState import_lex(L, source, std::string("@") + Path);
+
+   // Set a line offset so all tokens from the imported file appear at the import line
+   // The offset is (import_line - 1) because the lexer starts at line 1
+   //import_lex.line_offset = import_line - 1;
+
+   // Point the FuncState to the new lexer temporarily
+   FuncState& fs = this->ctx.func();
+   LexState* saved_ls = fs.ls;
+   fs.ls = &import_lex;
+
+   // Initialize the import lexer
+   import_lex.fs = &fs;
+   import_lex.L = L;
+
+   // Prime the lexer
+   import_lex.next();
+
+   // Create a temporary parser context for the imported file
+   ParserContext import_ctx(import_lex, fs, *L,
+      ParserAllocator::from(L), this->ctx.config());
+
+   // Copy the import stack to the child context for circular detection
+   for (const auto& imported_path : this->ctx.import_stack()) {
+      import_ctx.push_import(imported_path);
+   }
+
+   // Parse just the block of statements (not a full chunk)
+   AstBuilder import_builder(import_ctx);
+   const TokenKind terms[] = { TokenKind::EndOfFile };
+   auto result = import_builder.parse_block(terms);
+
+   // Restore the parent FuncState's lexer reference
+   fs.ls = saved_ls;
+
+   this->ctx.pop_import();
+
+   if (not result.ok()) {
+      // Prepend import context to error message
+      ParserError error = result.error_ref();
+      error.message = "in imported file '" + Path + "': " + error.message;
+      return ParserResult<std::unique_ptr<BlockStmt>>::failure(error);
+   }
+
+   return result;
+}

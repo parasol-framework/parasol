@@ -108,6 +108,7 @@ enum class AstNodeKind : uint16_t {
    TryExceptStmt,  // try...except...end exception handling
    RaiseStmt,      // raise expression [, message]
    CheckStmt,      // check expression
+   ImportStmt,     // import 'module' statement
    ExpressionStmt
 };
 

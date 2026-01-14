@@ -839,6 +839,21 @@ struct CheckStmtPayload {
    ~CheckStmtPayload();
 };
 
+// Import statement payload: import 'module' - compile-time file inlining
+struct ImportStmtPayload {
+   ImportStmtPayload() = default;
+   ImportStmtPayload(const ImportStmtPayload&) = delete;
+   ImportStmtPayload& operator=(const ImportStmtPayload&) = delete;
+   ImportStmtPayload(ImportStmtPayload&&) noexcept = default;
+   ImportStmtPayload& operator=(ImportStmtPayload&&) noexcept = default;
+
+   std::optional<Identifier> namespace_name;  // Variable to capture result (if assigned)
+   std::string module_path;                   // Resolved path to module file
+   std::unique_ptr<BlockStmt> inlined_body;   // Parsed content of imported file
+
+   ~ImportStmtPayload();
+};
+
 struct ExpressionStmtPayload {
    ExpressionStmtPayload(ExprNodePtr expression)
       : expression(std::move(expression)) {}
@@ -860,7 +875,7 @@ struct StmtNode {
       LoopStmtPayload, NumericForStmtPayload, GenericForStmtPayload,
       ReturnStmtPayload, BreakStmtPayload, ContinueStmtPayload, DeferStmtPayload,
       DoStmtPayload, ConditionalShorthandStmtPayload, TryExceptPayload,
-      RaiseStmtPayload, CheckStmtPayload, ExpressionStmtPayload>
+      RaiseStmtPayload, CheckStmtPayload, ImportStmtPayload, ExpressionStmtPayload>
       data;
 
    StmtNode() = default;

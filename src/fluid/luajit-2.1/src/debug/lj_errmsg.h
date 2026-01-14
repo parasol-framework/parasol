@@ -148,43 +148,11 @@ ERRDEF(XLDUP,      "duplicate label " LUA_QS)
 ERRDEF(XFSTR_EMPTY, "empty interpolation in f-string")
 ERRDEF(XFSTR_BRACE, "unclosed brace in f-string interpolation")
 ERRDEF(XNEST,       "try blocks nested too deeply")
+ERRDEF(BADMODULE,   "Invalid module name; only alpha-numeric names are permitted with max 96 chars.")
 
 // Bytecode reader errors.
 ERRDEF(BCFMT,   "cannot load incompatible bytecode")
 ERRDEF(BCBAD,   "cannot load malformed bytecode")
-
-#if LJ_HASFFI
-// FFI errors.
-ERRDEF(FFI_INVTYPE,   "invalid C type")
-ERRDEF(FFI_INVSIZE,   "size of C type is unknown or too large")
-ERRDEF(FFI_BADSCL,   "bad storage class")
-ERRDEF(FFI_DECLSPEC,   "declaration specifier expected")
-ERRDEF(FFI_BADTAG,   "undeclared or implicit tag " LUA_QS)
-ERRDEF(FFI_REDEF,   "attempt to redefine " LUA_QS)
-ERRDEF(FFI_NUMPARAM,   "wrong number of type parameters")
-ERRDEF(FFI_INITOV,   "too many initialisers for " LUA_QS)
-ERRDEF(FFI_BADCONV,   "cannot convert " LUA_QS " to " LUA_QS)
-ERRDEF(FFI_BADLEN,   "attempt to get length of " LUA_QS)
-ERRDEF(FFI_BADCONCAT,   "attempt to concatenate " LUA_QS " and " LUA_QS)
-ERRDEF(FFI_BADARITH,   "attempt to perform arithmetic on " LUA_QS " and " LUA_QS)
-ERRDEF(FFI_BADCOMP,   "attempt to compare " LUA_QS " with " LUA_QS)
-ERRDEF(FFI_BADCALL,   LUA_QS " is not callable")
-ERRDEF(FFI_NUMARG,   "wrong number of arguments for function call")
-ERRDEF(FFI_BADMEMBER,   LUA_QS " has no member named " LUA_QS)
-ERRDEF(FFI_BADIDX,   LUA_QS " cannot be indexed")
-ERRDEF(FFI_BADIDXW,   LUA_QS " cannot be indexed with " LUA_QS)
-ERRDEF(FFI_BADMM,   LUA_QS " has no " LUA_QS " metamethod")
-ERRDEF(FFI_WRCONST,   "attempt to write to constant location")
-ERRDEF(FFI_NODECL,   "missing declaration for symbol " LUA_QS)
-ERRDEF(FFI_BADCBACK,   "bad callback")
-#if LJ_OS_NOJIT
-ERRDEF(FFI_CBACKOV,   "no support for callbacks on this OS")
-#else
-ERRDEF(FFI_CBACKOV,   "too many callbacks")
-#endif
-ERRDEF(FFI_NYIPACKBIT,   "NYI: packed bit fields")
-ERRDEF(FFI_NYICALL,   "NYI: cannot call this C function (yet)")
-#endif
 
 // Array errors.
 ERRDEF(ARROB,   "array index %d out of bounds (size %d)")

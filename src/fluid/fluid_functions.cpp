@@ -494,7 +494,7 @@ int fcmd_loadfile(lua_State *Lua)
 
             file->setPosition(i);
          }
-
+#if 1
          int i;
          for (i=strlen(path); i > 0; i--) { // Get the file name from the path
             if ((path[i-1] IS '\\') or (path[i-1] IS '/') or (path[i-1] IS ':')) break;
@@ -502,6 +502,19 @@ int fcmd_loadfile(lua_State *Lua)
 
          // Prefix chunk name with '@' (Lua convention for file-based chunks) for better debug output
          std::string chunk_name = std::string("@") + (path + i);
+
+#else // NB: For some reason, this alternative causes error() to not define the exception line number correctly.
+
+         // Resolve the full path for the chunk name (needed for import statement path resolution)
+         std::string resolved_path;
+         if (ResolvePath(path, RSF::NIL, &resolved_path) IS ERR::Okay) {
+            // Use resolved path for chunk name
+         }
+         else resolved_path = path;  // Fall back to original if resolution fails
+
+         // Prefix chunk name with '@' (Lua convention for file-based chunks) for better debug output
+         std::string chunk_name = std::string("@") + resolved_path;
+#endif
 
          if (not lua_load(Lua, *file, chunk_name.c_str())) {
             // TODO Code compilation not currently supported

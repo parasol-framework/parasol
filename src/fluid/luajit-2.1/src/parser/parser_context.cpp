@@ -15,7 +15,7 @@
 
 //********************************************************************************************************************
 
-ParserContext & ParserContext::operator=(ParserContext&& other) noexcept
+ParserContext & ParserContext::operator=(ParserContext &&other) noexcept
 {
    if (this != &other) {
       this->detach_from_lex();
@@ -346,6 +346,109 @@ void ParserContext::log_trace(ParserChannel Channel, const Token &Token, std::st
 //********************************************************************************************************************
 // Check if tip at the given priority level would be emitted.
 // This allows callers to skip expensive checks when tip would be filtered out anyway.
+
+//********************************************************************************************************************
+// Check if a file path is already in the import stack (circular dependency detection).
+
+bool ParserContext::is_importing(const std::string& Path) const
+{
+   for (const auto& imported : this->import_stack_) {
+      if (imported == Path) return true;
+   }
+   return false;
+}
+
+//********************************************************************************************************************
+// Push a file path onto the import stack.
+
+void ParserContext::push_import(const std::string& Path)
+{
+   this->import_stack_.push_back(Path);
+}
+
+//********************************************************************************************************************
+// Pop the most recent file path from the import stack.
+
+void ParserContext::pop_import()
+{
+   if (not this->import_stack_.empty()) {
+      this->import_stack_.pop_back();
+   }
+}
+
+//********************************************************************************************************************
+// Resolve an import path relative to the file currently being parsed.
+// Uses the LexState's chunkarg to get the directory of the current source file.
+
+std::string ParserContext::resolve_import_path(const std::string &RelativePath) const
+{
+   std::string result = RelativePath;
+
+   // For security purposes, check the validity of the module name.
+
+   int slash_count = 0;
+
+   bool local = false;
+   if (result.starts_with("./")) { // Local modules are permitted if the name starts with "./" and otherwise adheres to path rules
+      local = true;
+      result.erase(0, 2);
+   }
+
+   size_t i;
+   for (i=0; i < result.size(); i++) {
+      if ((result[i] >= 'a') and (result[i] <= 'z')) continue;
+      if ((result[i] >= 'A') and (result[i] <= 'Z')) continue;
+      if ((result[i] >= '0') and (result[i] <= '9')) continue;
+      if ((result[i] IS '-') or (result[i] IS '_')) continue;
+      if (result[i] IS '/') { slash_count++; continue; }
+      break;
+   }
+
+   if ((i < result.size()) or (i >= 96) or (slash_count > 2)) {
+      lj_lex_error(this->lex_state, 0, ErrMsg::BADMODULE);
+      return "";
+   }
+
+   // Add .fluid extension if not present
+   if (result.size() < 6 or result.substr(result.size() - 6) != ".fluid") {
+      result += ".fluid";
+   }
+
+   // Get the directory of the current file from chunkarg
+   if (this->lex_state and this->lex_state->chunkarg) {
+      std::string current_file(this->lex_state->chunkarg);
+
+      // Strip leading '@' or '=' from chunkarg (Lua conventions for source naming)
+      if (not current_file.empty() and (current_file[0] == '@' or current_file[0] == '=')) {
+         current_file = current_file.substr(1);
+      }
+
+      // Find the last path separator
+      size_t last_sep = current_file.find_last_of("/\\");
+      if (last_sep != std::string::npos) {
+         std::string dir = current_file.substr(0, last_sep + 1);
+         result = dir + result;
+      }
+      else if (this->lua_state and this->lua_state->script) {
+         // No path separator in chunkarg - use script's working path as fallback
+         auto working_path = this->lua_state->script->get<CSTRING>(FID_WorkingPath);
+         if (working_path and working_path[0]) {
+            result = std::string(working_path) + result;
+         }
+      }
+   }
+   else if (this->lua_state->script) {
+      // No chunkarg - use script's working path as fallback
+      auto working_path = this->lua_state->script->get<CSTRING>(FID_WorkingPath);
+      if (working_path and working_path[0]) {
+         result = std::string(working_path) + result;
+      }
+   }
+
+   return result;
+}
+
+//********************************************************************************************************************
 
 #ifdef INCLUDE_TIPS
 bool ParserContext::should_emit_tip(uint8_t Priority) const

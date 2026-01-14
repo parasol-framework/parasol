@@ -170,6 +170,13 @@ public:
    void emit_error(ParserErrorCode code, const Token& token, std::string_view message);
    void emit_warning(ParserErrorCode code, const Token& token, std::string_view message);
 
+   // Import stack tracking for compile-time import statement
+   [[nodiscard]] bool is_importing(const std::string& path) const;
+   void push_import(const std::string& path);
+   void pop_import();
+   [[nodiscard]] const std::vector<std::string>& import_stack() const { return import_stack_; }
+   [[nodiscard]] std::string resolve_import_path(const std::string& relative_path) const;
+
 private:
    void attach_to_lex();
    void detach_from_lex();
@@ -187,6 +194,7 @@ private:
    ParserDiagnostics diag;
    TokenStreamAdapter token_stream;
    ParserContext *previous_context = nullptr;
+   std::vector<std::string> import_stack_;  // Stack of imported file paths for circular dependency detection
 };
 
 //********************************************************************************************************************

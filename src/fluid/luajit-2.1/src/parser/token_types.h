@@ -27,6 +27,7 @@ enum class TokenKind : uint16_t {
    EndToken = TK_end,
    ReturnToken = TK_return,
    If = TK_if,
+   ImportToken = TK_import,
    Else = TK_else,
    ElseIf = TK_elseif,
    For = TK_for,
@@ -124,6 +125,7 @@ enum class TokenKind : uint16_t {
       case TokenKind::EndToken: return "end";
       case TokenKind::ReturnToken: return "return";
       case TokenKind::If: return "if";
+      case TokenKind::ImportToken: return "import";
       case TokenKind::Else: return "else";
       case TokenKind::ElseIf: return "elseif";
       case TokenKind::For: return "for";

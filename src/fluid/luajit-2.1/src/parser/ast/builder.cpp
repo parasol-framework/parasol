@@ -17,6 +17,11 @@
 #include "../token_types.h"
 #include "../parse_types.h"
 #include "runtime/lj_str.h"
+#include "runtime/lj_tab.h"
+#include "runtime/lj_gc.h"
+
+#include <parasol/main.h>    // For objFile, ERR
+#include <parasol/modules/core.h>  // For File access
 
 #ifdef INCLUDE_TIPS
 #include "../parser_tips.h"
@@ -315,6 +320,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_statement()
       case TokenKind::TryToken:      return this->parse_try();
       case TokenKind::RaiseToken:    return this->parse_raise();
       case TokenKind::CheckToken:    return this->parse_check();
+      case TokenKind::ImportToken:   return this->parse_import();
       case TokenKind::Choose: {
          auto expr = this->parse_choose_expr();
          if (not expr.ok()) return ParserResult<StmtNodePtr>::failure(expr.error_ref());
@@ -384,6 +390,7 @@ bool AstBuilder::is_statement_start(TokenKind kind) const
       case TokenKind::TryToken:
       case TokenKind::RaiseToken:
       case TokenKind::CheckToken:
+      case TokenKind::ImportToken:
          return true;
       default:
          return false;

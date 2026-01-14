@@ -318,3 +318,23 @@ ParserResult<IrEmitUnit> IrEmitter::emit_check_stmt(const CheckStmtPayload &Payl
 
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
+
+//********************************************************************************************************************
+// Emit bytecode for import statement: import 'path'
+//
+// The import statement inlines the content of the referenced file at compile time.
+// The inlined_body block is emitted as if its statements were written directly at the import location.
+// This creates a new scope for the imported content to provide some isolation.
+
+ParserResult<IrEmitUnit> IrEmitter::emit_import_stmt(const ImportStmtPayload &Payload)
+{
+   // If there's no body (empty file or failed parse), nothing to emit
+   if (not Payload.inlined_body) {
+      return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+   }
+
+   // Emit the inlined body as a scoped block
+   // This creates a new scope so that local variables from the imported file
+   // don't pollute the importing file's scope (unless returned/exported)
+   return this->emit_block(*Payload.inlined_body, FuncScopeFlag::None);
+}
