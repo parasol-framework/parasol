@@ -713,9 +713,8 @@ ParserResult<StmtNodePtr> AstBuilder::parse_import()
 // Reads a file and parses its contents, returning the parsed block.
 // This is used by parse_import() to inline imported modules at compile time.
 //
-// All statements in the imported file will have their line numbers set to the import statement's line.
-// This is necessary because the bytecode emitter expects line deltas from the function's first line,
-// and the imported content's original line numbers would cause negative or out-of-range deltas.
+// Line numbers from imported content are offset so line 1 maps to the import statement line.
+// This keeps bytecode line deltas non-negative while preserving relative positions.
 
 ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(const std::string& Path, const Token& ImportToken)
 {
@@ -759,9 +758,10 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(const s
 
    LexState import_lex(L, source, std::string("@") + Path);
 
-   // Set a line offset so all tokens from the imported file appear at the import line
-   // The offset is (import_line - 1) because the lexer starts at line 1
-   //import_lex.line_offset = import_line - 1;
+   // Set a line offset so imported tokens align with the import statement line.
+   BCLine line_offset = 0;
+   if (import_line > 1) line_offset = import_line - 1;
+   import_lex.line_offset = line_offset;
 
    // Point the FuncState to the new lexer temporarily
    FuncState& fs = this->ctx.func();

@@ -821,7 +821,14 @@ GCproto * LexState::fs_finish(BCLine Line)
 {
    lua_State *L = this->L;
    FuncState *fs = this->fs;
-   BCLine numline = Line - fs->linedefined;
+   BCLine line = Line;
+   if (fs->bcbase != nullptr and fs->pc > 0) {
+      for (BCPOS pc = 0; pc < fs->pc; ++pc) {
+         BCLine bc_line = fs->bcbase[pc].line;
+         if (bc_line > line) line = bc_line;
+      }
+   }
+   BCLine numline = line - fs->linedefined;
    size_t sizept, ofsk, ofsuv, ofsli, ofsdbg, ofsvar;
    GCproto *pt;
 

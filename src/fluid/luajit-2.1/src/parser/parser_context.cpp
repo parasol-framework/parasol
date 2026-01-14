@@ -121,7 +121,7 @@ void ParserContext::lex_match(LexToken what, LexToken who, BCLine line)
 {
    if (this->lex_opt(what)) return;
 
-   if (line IS this->lex_state->linenumber) {
+   if (line IS this->lex_state->effective_line()) {
       this->err_token(what);
       return;
    }

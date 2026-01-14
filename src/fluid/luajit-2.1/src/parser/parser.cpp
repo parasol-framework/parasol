@@ -261,7 +261,7 @@ extern GCproto * lj_parse(LexState *State)
    if (profiler.enabled()) profiler.log_results(log);
 
    if (State->tok != TK_eof) State->err_token(TK_eof);
-   pt = State->fs_finish(State->linenumber);
+   pt = State->fs_finish(State->effective_line());
    L->top--;  // Drop chunkname.
 
    // Transfer tips to lua_State for debug.validate() access

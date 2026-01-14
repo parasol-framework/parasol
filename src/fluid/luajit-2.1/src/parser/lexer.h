@@ -238,6 +238,13 @@ public:
 
    BCLine     linenumber;   // Input line counter.
    BCLine     lastline;     // Line of last token.
+   BCLine     line_offset = 0;  // Line offset applied to token spans (used for import inlining).
+
+   [[nodiscard]] inline BCLine effective_line() const noexcept
+   {
+      BCLine line = this->linenumber + this->line_offset;
+      return (line > 0) ? line : 1;
+   }
    GCstr *    chunkname;    // Current chunk name (interned string).
    const char *chunkarg;    // Chunk name argument.
    const char *mode;        // Allow loading bytecode (b) and/or source text (t).
