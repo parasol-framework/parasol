@@ -78,6 +78,8 @@ enum class TokenKind : uint16_t {
    When = TK_when,
    CaseArrow = TK_case_arrow,
    Annotate = TK_annotate,
+   CompileIf = TK_compif,
+   CompileEnd = TK_compend,
    TryToken = TK_try,
    ExceptToken = TK_except,
    SuccessToken = TK_success,
@@ -175,6 +177,8 @@ enum class TokenKind : uint16_t {
       case TokenKind::When: return "when";
       case TokenKind::CaseArrow: return "->";
       case TokenKind::Annotate: return "@";
+      case TokenKind::CompileIf: return "@if";
+      case TokenKind::CompileEnd: return "@end";
       case TokenKind::TryToken: return "try";
       case TokenKind::ExceptToken: return "except";
       case TokenKind::SuccessToken: return "success";

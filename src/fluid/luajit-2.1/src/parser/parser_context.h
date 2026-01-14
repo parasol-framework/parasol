@@ -175,6 +175,7 @@ public:
    void push_import(const std::string &);
    void pop_import();
    [[nodiscard]] const std::vector<std::string> & import_stack() const { return import_stack_; }
+   [[nodiscard]] bool is_being_imported() const { return not import_stack_.empty(); }
    [[nodiscard]] std::string resolve_module_to_path(std::string_view &) const;
 
 private:

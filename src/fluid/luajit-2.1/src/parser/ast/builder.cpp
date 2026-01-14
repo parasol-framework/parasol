@@ -321,6 +321,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_statement()
       case TokenKind::RaiseToken:    return this->parse_raise();
       case TokenKind::CheckToken:    return this->parse_check();
       case TokenKind::ImportToken:   return this->parse_import();
+      case TokenKind::CompileIf:     return this->parse_compile_if();
       case TokenKind::Choose: {
          auto expr = this->parse_choose_expr();
          if (not expr.ok()) return ParserResult<StmtNodePtr>::failure(expr.error_ref());
@@ -391,6 +392,7 @@ bool AstBuilder::is_statement_start(TokenKind kind) const
       case TokenKind::RaiseToken:
       case TokenKind::CheckToken:
       case TokenKind::ImportToken:
+      case TokenKind::CompileIf:
          return true;
       default:
          return false;

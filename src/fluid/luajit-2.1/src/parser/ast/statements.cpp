@@ -684,17 +684,17 @@ ParserResult<StmtNodePtr> AstBuilder::parse_import()
 
    std::string_view mod_name(strdata(path_str), path_str->len);
    this->ctx.tokens().advance();  // consume string
-   
+
    log.branch("Module: %.*s", int(mod_name.size()), mod_name.data());
-   
+
    std::string path = this->ctx.resolve_module_to_path(mod_name);
-   
+
    // Check for circular import
    if (this->ctx.is_importing(path)) {
       return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, import_token,
          "circular import detected: " + path);
    }
-   
+
    // Parse the imported file
    auto imported_body = this->parse_imported_file(path, mod_name, import_token);
    if (not imported_body.ok()) return ParserResult<StmtNodePtr>::failure(imported_body.error_ref());
@@ -719,6 +719,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_import()
 
 ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(const std::string &Path, std::string_view Module, const Token& ImportToken)
 {
+   pf::Log log(__FUNCTION__);
    // Check if the module is already loaded, in which case return early.
 
    std::string modkey("require.");
@@ -730,12 +731,14 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(const s
       // Module was previously loaded and returned a table interface.
       // Skip re-importing; the table is already available via require() if needed.
       lua_pop(&ctx.lua(), 1);
+      log.msg("Module already loaded, use existing table: %s", modkey.c_str());
       return ParserResult<std::unique_ptr<BlockStmt>>::success(make_block(ImportToken.span(), {}));
    }
    else if (mod_value IS LUA_TBOOLEAN and lua_toboolean(&ctx.lua(), -1)) {
       // Module was previously loaded but returned no table.
       // Skip re-importing since the module's side effects have already run.
       lua_pop(&ctx.lua(), 1);
+      log.msg("Module already loaded, skipping import: %s", modkey.c_str());
       return ParserResult<std::unique_ptr<BlockStmt>>::success(make_block(ImportToken.span(), {}));
    }
    else {
@@ -824,4 +827,147 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(const s
    lua_setfield(&ctx.lua(), LUA_REGISTRYINDEX, modkey.c_str());
 
    return result;
+}
+
+//********************************************************************************************************************
+// Skips tokens until a matching @end is found, handling nested @if/@end blocks.  Called when the @if condition
+// evaluates to false.
+
+void AstBuilder::skip_to_compile_end()
+{
+   pf::Log log(__FUNCTION__);
+
+   int depth = 1;  // Already consumed one @if
+
+   while (depth > 0) {
+      Token current = this->ctx.tokens().current();
+
+      if (current.is(TokenKind::EndOfFile)) {
+         // Unclosed @if - emit error and return
+         this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, "Unclosed @if - expected @end");
+         return;
+      }
+
+      if (current.is(TokenKind::CompileIf)) {
+         depth++;
+         log.detail("Found nested @if, depth now %d", depth);
+      }
+      else if (current.is(TokenKind::CompileEnd)) {
+         depth--;
+         log.detail("Found @end, depth now %d", depth);
+      }
+
+      this->ctx.tokens().advance();
+   }
+}
+
+//********************************************************************************************************************
+// Parses compile-time conditional: @if(condition) ... @end
+//
+// Currently supports only:
+//   @if(imported=true)  - Include block only when file is being imported
+//   @if(imported=false) - Include block only when file is the main script
+//
+// When condition is true, parses the block normally.
+// When condition is false, skips tokens until @end without parsing.
+
+ParserResult<StmtNodePtr> AstBuilder::parse_compile_if()
+{
+   pf::Log log(__FUNCTION__);
+
+   Token compif_token = this->ctx.tokens().current();
+   this->ctx.tokens().advance();  // consume @if
+
+   // Expect '('
+   if (not this->ctx.tokens().current().is(TokenKind::LeftParen)) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, this->ctx.tokens().current(),
+         "Expected '(' after @if");
+   }
+   this->ctx.tokens().advance();  // consume '('
+
+   // Parse condition: identifier '=' 'true'|'false'
+   Token ident_token = this->ctx.tokens().current();
+   if (not ident_token.is(TokenKind::Identifier)) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, ident_token,
+         "Expected identifier in @if condition");
+   }
+
+   GCstr *ident_str = ident_token.payload().as_string();
+   std::string_view condition_name(strdata(ident_str), ident_str->len);
+   this->ctx.tokens().advance();  // consume identifier
+
+   // Expect '='
+   if (not this->ctx.tokens().current().is(TokenKind::Equals)) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, this->ctx.tokens().current(),
+         "Expected '=' in @if condition");
+   }
+   this->ctx.tokens().advance();  // consume '='
+
+   // Expect 'true' or 'false'
+   Token bool_token = this->ctx.tokens().current();
+   bool expected_value;
+
+   if (bool_token.is(TokenKind::TrueToken)) expected_value = true;
+   else if (bool_token.is(TokenKind::FalseToken)) expected_value = false;
+   else {
+      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, bool_token,
+         "Expected 'true' or 'false' in @if condition");
+   }
+   this->ctx.tokens().advance();  // consume true/false
+
+   // Expect ')'
+
+   if (not this->ctx.tokens().current().is(TokenKind::RightParen)) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, this->ctx.tokens().current(),
+         "Expected ')' after @if condition");
+   }
+   this->ctx.tokens().advance();  // consume ')'
+
+   // Evaluate condition
+
+   bool condition_result = false;
+
+   if (condition_name IS "imported") {
+      bool is_imported = this->ctx.is_being_imported();
+      condition_result = is_imported IS expected_value;
+      log.msg("Condition: imported=%s, is_imported=%s, result=%s", expected_value ? "true" : "false",
+         is_imported ? "true" : "false", condition_result ? "true" : "false");
+   }
+   else return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, ident_token,
+      "Unknown @if condition: " + std::string(condition_name) + " (only 'imported' is supported)");
+
+   if (condition_result) { // Condition is true - parse statements until @end
+      log.msg("Condition true, parsing block");
+
+      std::vector<StmtNodePtr> statements;
+
+      while (not this->ctx.tokens().current().is(TokenKind::CompileEnd) and
+             not this->ctx.tokens().current().is(TokenKind::EndOfFile)) {
+         auto stmt = this->parse_statement();
+         if (not stmt.ok()) return ParserResult<StmtNodePtr>::failure(stmt.error_ref());
+         if (stmt.value_ref()) {
+            statements.push_back(std::move(stmt.value_ref()));
+         }
+      }
+
+      // Expect @end
+
+      if (not this->ctx.tokens().current().is(TokenKind::CompileEnd)) {
+         return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, this->ctx.tokens().current(),
+            "Expected @end to close @if block");
+      }
+      this->ctx.tokens().advance();  // consume @end
+
+      // Return a do block containing the statements (transparent wrapper)
+
+      auto block = make_block(compif_token.span(), std::move(statements));
+      auto stmt = std::make_unique<StmtNode>(AstNodeKind::DoStmt, compif_token.span());
+      stmt->data = DoStmtPayload(std::move(block));
+      return ParserResult<StmtNodePtr>::success(std::move(stmt));
+   }
+   else {
+      log.msg("Condition false, skipping to @end");
+      this->skip_to_compile_end();
+      return ParserResult<StmtNodePtr>::success(nullptr);
+   }
 }
