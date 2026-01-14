@@ -214,6 +214,7 @@ struct ExpDesc {
    ExpKind k;      // Expression kind.
    ExprFlag flags; // Expression flags.
    FluidType result_type = FluidType::Unknown;  // Known result type (for Call: callee's first return type)
+   CLASSID object_class_id = CLASSID::NIL; // CLASSID for Object result types
    BCPOS t;        // True condition jump list.
    BCPOS f;        // False condition jump list.
 

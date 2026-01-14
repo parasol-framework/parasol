@@ -51,10 +51,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
 
             // Infer type from initialiser expression (same logic as emit_local_decl_stmt)
             if (i.raw() < values.size()) {
-               FluidType inferred = infer_expression_type(*values[i.raw()]);
-               if (inferred != FluidType::Unknown and inferred != FluidType::Any and inferred != FluidType::Nil) {
+               auto inferred = infer_expression_type_ext(*values[i.raw()]);
+               if (inferred.type != FluidType::Unknown and inferred.type != FluidType::Any and inferred.type != FluidType::Nil) {
                   VarInfo* info = &this->func_state.var_get(base.raw() + i.raw());
-                  info->fixed_type = inferred;
+                  info->fixed_type = inferred.type;
+                  info->object_class_id = inferred.object_class_id;
                }
             }
          }
@@ -122,10 +123,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
 
             // Infer type from initialiser expression
             if (i < values.size()) {
-               FluidType inferred = infer_expression_type(*values[i]);
-               if (inferred != FluidType::Unknown and inferred != FluidType::Any and inferred != FluidType::Nil) {
+               auto inferred = infer_expression_type_ext(*values[i]);
+               if (inferred.type != FluidType::Unknown and inferred.type != FluidType::Any and inferred.type != FluidType::Nil) {
                   VarInfo* info = &this->func_state.var_get(local_slot.raw());
-                  info->fixed_type = inferred;
+                  info->fixed_type = inferred.type;
+                  info->object_class_id = inferred.object_class_id;
                }
             }
 

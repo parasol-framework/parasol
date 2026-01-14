@@ -137,7 +137,12 @@ static MSize var_lookup_(FuncState* fs, GCstr* name, ExpDesc* e, int first)
       if (reg.has_value()) {  // Local in this function?
          e->init(ExpKind::Local, reg.value());
          if (!first) fscope_uvmark(fs, reg.value());  // Scope now has an upvalue.
-         return MSize(e->u.s.aux = uint32_t(fs->varmap[reg.value()]));
+         auto vidx = MSize(e->u.s.aux = uint32_t(fs->varmap[reg.value()]));
+         // Propagate type info from VarInfo to ExpDesc for type checking on re-assignment
+         VarInfo &vinfo = fs->ls->vstack[vidx];
+         e->result_type = vinfo.fixed_type;
+         e->object_class_id = vinfo.object_class_id;
+         return vidx;
       }
       else {
          MSize vidx = var_lookup_(fs->prev, name, e, 0);  // Var in outer func?

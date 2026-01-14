@@ -81,6 +81,13 @@ struct FunctionReturnTypes {
 // Returns FluidType::Unknown if type cannot be inferred (e.g., function calls without return type info)
 [[nodiscard]] FluidType infer_expression_type(const ExprNode& Expr);
 
+// Extended type inference that also returns object class ID for object types
+struct InferredTypeInfo {
+   FluidType type = FluidType::Unknown;
+   CLASSID object_class_id = CLASSID::NIL; // Object type identifier
+};
+[[nodiscard]] InferredTypeInfo infer_expression_type_ext(const ExprNode& Expr);
+
 // Convert FluidType to LJ type tag base value (0-13)
 // The LJ_T* tags are defined as ~value, so LJ_TNIL = ~0, LJ_TSTR = ~4, etc.
 // Returns 0xFF (255) for Unknown/Any types that should trigger evaluation
@@ -222,7 +229,7 @@ struct LiteralValue {
    LiteralKind kind = LiteralKind::Nil;
    bool bool_value = false;
    lua_Number number_value = 0.0;
-   GCstr* string_value = nullptr;
+   GCstr *string_value = nullptr;
 
    // Default constructor (nil)
    LiteralValue() = default;
@@ -375,6 +382,8 @@ struct CallExprPayload {
    CallTarget target;
    ExprNodeList arguments;
    bool forwards_multret = false;
+   mutable FluidType result_type = FluidType::Unknown;  // Inferred return type (e.g., Object for obj.new())
+   mutable CLASSID object_class_id = CLASSID::NIL; // CLASSID if result is Object
    ~CallExprPayload();
 };
 
@@ -387,6 +396,8 @@ struct MemberExprPayload {
    ExprNodePtr table;
    Identifier member;
    bool uses_method_dispatch = false;
+   mutable FluidType base_type = FluidType::Unknown;  // Known type of the base (table/object) expression
+   mutable CLASSID class_id = CLASSID::NIL;           // CLASSID if base is Object
    ~MemberExprPayload();
 };
 
@@ -410,6 +421,8 @@ struct SafeMemberExprPayload {
    SafeMemberExprPayload& operator=(SafeMemberExprPayload&&) noexcept = default;
    ExprNodePtr table;
    Identifier member;
+   mutable FluidType base_type = FluidType::Unknown;  // Known type of the base (table/object) expression
+   mutable CLASSID class_id = CLASSID::NIL;           // CLASSID if base is Object
    ~SafeMemberExprPayload();
 };
 

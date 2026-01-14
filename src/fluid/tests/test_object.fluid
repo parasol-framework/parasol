@@ -246,3 +246,18 @@ end
    assert(cls.name is 'File', "Expected class name to be 'File'")
    assert(cls.className is 'File', "Expected className field")
 end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Create objects of different classes and expect failure on assignment
+
+@Test function ClassIDTracking()
+   try
+      exec([[
+         time_obj = obj.new('time')
+         file_obj = obj.new('file')
+         time_obj = file_obj
+      ]])
+   success
+      error("Expected error when assigning object of different class")
+   end
+end

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <parasol/main.h>
 #include <algorithm>
 #include <array>
 #include <cstddef>
@@ -181,6 +182,7 @@ typedef struct VarInfo {
    uint8_t slot;      //  Variable slot.
    VarInfoFlag info;  //  Variable info flags.
    FluidType fixed_type;  // Type once established (Unknown = not yet fixed)
+   CLASSID object_class_id = CLASSID::NIL;  // CLASSID for Object types (0 = unknown class)
    BCLine line = 0;    // Line number where the variable was declared (for diagnostics)
    BCLine column = 0;  // Column number where the variable was declared (for diagnostics)
 } VarInfo;

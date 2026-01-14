@@ -62,7 +62,7 @@ global glSSLAvailable = thunk():bool
 
    local test_socket
    try
-      test_socket = obj.new('netsocket', { name = 'SSLSupportTest', port = glPort, flags = 'SERVER|SSL' })
+      test_socket = obj.new('netsocket', { name = 'SSLSupportTest', port = 0, flags = 'SERVER|SSL' })
    end
 
    if test_socket then
