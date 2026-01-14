@@ -397,7 +397,7 @@ struct MemberExprPayload {
    Identifier member;
    bool uses_method_dispatch = false;
    mutable FluidType base_type = FluidType::Unknown;  // Known type of the base (table/object) expression
-   mutable uint32_t class_id = 0;                     // CLASSID if base is Object (0 = unknown)
+   mutable CLASSID class_id = CLASSID::NIL;           // CLASSID if base is Object
    ~MemberExprPayload();
 };
 
@@ -422,7 +422,7 @@ struct SafeMemberExprPayload {
    ExprNodePtr table;
    Identifier member;
    mutable FluidType base_type = FluidType::Unknown;  // Known type of the base (table/object) expression
-   mutable uint32_t class_id = 0;                     // CLASSID if base is Object (0 = unknown)
+   mutable CLASSID class_id = CLASSID::NIL;           // CLASSID if base is Object
    ~SafeMemberExprPayload();
 };
 
