@@ -238,7 +238,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Call a client function for each vector in the tree
 
-gui.forVector = function(Vector, Function)
+gui.forVector = function(Vector:obj, Function)
    while Vector do
       Function(Vector)
       child = Vector.child
@@ -249,7 +249,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-gui.applyFill = function(Vector, Fill)
+gui.applyFill = function(Vector:obj, Fill)
    while Vector do
       if Vector.fill != 'none' then
          Vector.fill = Fill
