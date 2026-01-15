@@ -295,12 +295,12 @@ constexpr bool defined(T flags, T test_flag) noexcept {
     }
   )
 
-  const("MAX", { }, {
+  constants("MAX", { }, {
      FILENAME = 256, -- Maximum length for file names (not necessarily including path)
      NAME_LEN = 31   -- Refer to the 'Object' struct for more info on the NAME_LEN value
   })
 
-  const("MSGID", { type="int", comment="Reserved message ID's that are handled internally." }, {
+  constants("MSGID", { type="int", comment="Reserved message ID's that are handled internally." }, {
      QUIT             = 1000,   -- Note that IDs >= 100 may be handled by non-Core code (external modules and applications)
      COMMAND          = 101,
      BREAK            = 100,
@@ -372,7 +372,7 @@ constexpr bool defined(T flags, T test_flag) noexcept {
 -- Please note that when the user is using an international keyboard, the name of the key will not
 -- actually match what the symbol represents for some key types.
 
-  const("KEY", { type="int", comment="Raw key codes" }, {
+  constants("KEY", { type="int", comment="Raw key codes" }, {
     A = 1,
     B = 2,
     C = 3,

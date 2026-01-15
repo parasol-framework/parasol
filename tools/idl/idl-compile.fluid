@@ -151,7 +151,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-global function const(Prefix, Options, ...)
+global function constants(Prefix, Options, ...)
    Options = checkOptions(Options)
 
    if Options.restrict?? or glRestrict then return end -- Restricted definitions are never exported
@@ -485,13 +485,13 @@ global function saveOutput()
 
    print(f'Saving compressed IDL output to "{outPath}"')
 
-   local file
+   local fl
    try
       if glAppend then
-         file = obj.new('file', { flags=FL_WRITE, path=outPath } )
-         file.acSeek(0, SEEK_END)
+         fl = obj.new('file', { flags=FL_WRITE, path=outPath } )
+         fl.acSeek(0, SEEK_END)
       else
-         file = obj.new('file', { flags=FL_WRITE | FL_NEW, path=outPath } )
+         fl = obj.new('file', { flags=FL_WRITE | FL_NEW, path=outPath } )
       end
    except
       print('Failed to write output to ' .. outPath)
@@ -544,18 +544,18 @@ global function saveOutput()
 
    if glFormat is 'c' then
       if s:len() + c:len() >= 16 * 1024 then -- MSVC doesn't like defined strings > 16Kb, so we need this alternative
-         file.acWrite('char glIDL[] = { ')
-         file.acWrite(str_to_bytes((s ?? '') .. (c ?? '')))
-         file.acWrite(',0 };\n')
+         fl.acWrite('char glIDL[] = { ')
+         fl.acWrite(str_to_bytes((s ?? '') .. (c ?? '')))
+         fl.acWrite(',0 };\n')
       else
-         file.acWrite('#undef MOD_IDL\n#define MOD_IDL "')
-         if s?? then file.acWrite(s) end
-         if c?? then file.acWrite(c) end
-         file.acWrite('"\n')
+         fl.acWrite('#undef MOD_IDL\n#define MOD_IDL "')
+         if s?? then fl.acWrite(s) end
+         if c?? then fl.acWrite(c) end
+         fl.acWrite('"\n')
       end
    else
-      if s?? then file.acWrite(s) end
-      if c?? then file.acWrite(c) end
+      if s?? then fl.acWrite(s) end
+      if c?? then fl.acWrite(c) end
    end
 end
 
