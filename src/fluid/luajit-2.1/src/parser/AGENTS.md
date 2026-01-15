@@ -41,8 +41,7 @@ This separation allows the AST and bytecode emission to evolve independently whi
 | File | Purpose |
 |------|---------|
 | `parser.h` / `parser.cpp` | Main parser entry point (`lj_parse`) |
-| `parser_context.h` / `parser_context.cpp` | `ParserContext` class managing lexer state, diagnostics, and configuration |
-| `parser_config.h` | `ParserConfig` struct with type analysis and error handling options |
+| `parser_context.h` / `parser_context.cpp` | `ParserContext` class managing lexer state, diagnostics, configuration, and `ParserConfig` struct |
 | `parser_diagnostics.h` / `parser_diagnostics.cpp` | `ParserDiagnostics` for error and warning collection |
 | `parser_tips.h` / `parser_tips.cpp` | Optional tips system for IDE integration |
 | `parser_profiler.h` | Profiling instrumentation for parser performance analysis |
@@ -69,9 +68,10 @@ This separation allows the AST and bytecode emission to evolve independently whi
 | `emit_assignment.cpp` | Assignment statement emission (plain, compound, conditional) |
 | `emit_call.cpp` | Function call emission |
 | `emit_choose.cpp` | `choose` expression bytecode generation |
-| `emit_decl.cpp` | Declaration emission (local, global) |
 | `emit_function.cpp` | Function literal and closure emission |
+| `emit_global.cpp` | Global declaration emission with const tracking |
 | `emit_table.cpp` | Table constructor emission |
+| `emit_try.cpp` | Try-except exception handling bytecode generation |
 
 ### Register and Control Flow Management
 

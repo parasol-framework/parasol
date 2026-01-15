@@ -814,7 +814,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_namespace()
 
    // Check for namespace conflict with already-loaded libraries
    for (const auto& [hash, existing_ns] : L->imports) {
-      if ((not existing_ns.empty()) and (existing_ns == ns_name)) {
+      if ((not existing_ns.empty()) and (existing_ns IS ns_name)) {
          return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, name_token,
             std::string("namespace '") + std::string(ns_name) + "' already defined by another library");
       }
@@ -1022,6 +1022,7 @@ void AstBuilder::skip_to_compile_end()
 //   @if(debug=true)        - Include block only when log level > 0 (debugging enabled)
 //   @if(debug=false)       - Include block only when log level == 0 (no debugging)
 //   @if(platform="name")   - Include block only when platform matches (windows, linux, osx, native)
+//   @if(exists="path")     - Include block only if file/folder exists (relative to script)
 //
 // When condition is true, parses the block normally.
 // When condition is false, skips tokens until @end without parsing.
@@ -1104,6 +1105,34 @@ ParserResult<StmtNodePtr> AstBuilder::parse_compile_if()
       const SystemState *state = GetSystemState();
       std::string_view current_platform = state->Platform ? state->Platform : "";
       condition_result = pf::iequals(current_platform, string_value);
+   }
+   else if (condition_name IS "exists") {
+      if (is_bool_value) return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, value_token, "Condition 'exists' requires a string path value");
+
+      // Resolve the path relative to the current script
+      std::string check_path;
+      if (this->ctx.lex().chunkarg) {
+         std::string current_file(this->ctx.lex().chunkarg);
+         if (not current_file.empty() and (current_file[0] IS '@' or current_file[0] IS '=')) {
+            current_file = current_file.substr(1);
+         }
+         size_t last_sep = current_file.find_last_of("/\\");
+         if (last_sep != std::string::npos) {
+            check_path = current_file.substr(0, last_sep + 1) + std::string(string_value);
+         }
+         else {
+            auto working_path = this->ctx.lua().script->get<CSTRING>(FID_WorkingPath);
+            if (working_path) check_path = std::string(working_path) + std::string(string_value);
+            else check_path = std::string(string_value);
+         }
+      }
+      else {
+         auto working_path = this->ctx.lua().script->get<CSTRING>(FID_WorkingPath);
+         if (working_path) check_path = std::string(working_path) + std::string(string_value);
+         else check_path = std::string(string_value);
+      }
+
+      condition_result = (AnalysePath(check_path.c_str(), nullptr) IS ERR::Okay);
    }
    else return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, ident_token, "Unknown @if condition: " + std::string(condition_name));
 
