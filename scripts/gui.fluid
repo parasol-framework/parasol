@@ -1,9 +1,9 @@
 -- Graphical User Interface functions
 
+   namespace 'gui'
+
    global mVec ?= mod.load('vector') -- Configure mVec as a global convenience.  For fast access, clients assign to lVec
    lVec = mVec
-
-   namespace 'gui'
 
    _LIB[_NS] = {
      theme = 'light',
