@@ -839,7 +839,7 @@ struct CheckStmtPayload {
    ~CheckStmtPayload();
 };
 
-// Import statement payload: import 'module' - compile-time file inlining
+// Import statement payload: import 'library' - compile-time file inlining
 struct ImportStmtPayload {
    ImportStmtPayload() = default;
    ImportStmtPayload(const ImportStmtPayload&) = delete;
@@ -847,9 +847,11 @@ struct ImportStmtPayload {
    ImportStmtPayload(ImportStmtPayload&&) noexcept = default;
    ImportStmtPayload& operator=(ImportStmtPayload&&) noexcept = default;
 
-   std::optional<Identifier> namespace_name;  // Variable to capture result (if assigned)
-   std::string module_path;                   // Resolved path to module file
+   std::optional<Identifier> namespace_name;  // The local variable name (alias or default)
+   std::string lib_path;                      // Resolved path to library file
+   std::string default_namespace;             // The declared namespace for _LIB lookup
    std::unique_ptr<BlockStmt> inlined_body;   // Parsed content of imported file
+   uint8_t file_source_idx = 0;               // FileSource index for this imported file
 
    ~ImportStmtPayload();
 };

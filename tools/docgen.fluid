@@ -92,9 +92,9 @@ end
       cmdlist = '#!/bin/bash\n' .. cmdlist
    end
 
-   file = obj.new('file', { src=output_path, flags='NEW|WRITE', permissions='READ|WRITE|EXEC' })
-   file.acWrite(cmdlist)
-   file.free()
+   fl = obj.new('file', { src=output_path, flags='NEW|WRITE', permissions='READ|WRITE|EXEC' })
+   fl.acWrite(cmdlist)
+   fl.free()
 
    if not arg('dry-run') then
       print('Running generated script from ' .. output_path)

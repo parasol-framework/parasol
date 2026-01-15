@@ -1,6 +1,6 @@
 
-   require 'gui/window'
-   require 'gui/scrollbar'
+   import 'gui/window'
+   import 'gui/scrollbar'
 
    glScript = obj.find('self')
 

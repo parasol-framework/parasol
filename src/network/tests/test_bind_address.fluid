@@ -6,7 +6,7 @@
 -- - Default binding behavior
 -- - IPv4 and IPv6 dual-stack binding
 
-   require 'common'
+   import 'common'
    include 'network'
 
    glBasePort = 19760  -- Base port for tests (each test uses a different port)

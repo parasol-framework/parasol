@@ -2,6 +2,7 @@
 A demonstration of standard widgets
 --]]
 
+   import 'gui'
    import 'gui/toolbar'
    import 'gui/menubar'
    import 'gui/colourdialog'
@@ -387,4 +388,3 @@ end
 
    win:show(true)
    processing.sleep() -- Will sleep until the window sends MSGID_QUIT
-

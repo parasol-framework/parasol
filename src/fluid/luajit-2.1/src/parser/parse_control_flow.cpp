@@ -190,7 +190,7 @@ void ControlFlowGraph::trace_edge_creation(ControlFlowEdgeKind Kind, BCPos Head,
          case ControlFlowEdgeKind::Break: kind_name = "break"; break;
          case ControlFlowEdgeKind::Continue: kind_name = "continue"; break;
       }
-      pf::Log("Parser").msg("[%d] cfg: create edge #%" PRId64 " kind=%s head=%d", this->func_state->ls->linenumber, Index, kind_name, int(Head.raw()));
+      pf::Log("Parser").msg("[%d] cfg: create edge #%" PRId64 " kind=%s head=%d", this->func_state->ls->linenumber.lineNumber(), Index, kind_name, int(Head.raw()));
    }
 }
 
@@ -200,7 +200,7 @@ void ControlFlowGraph::trace_edge_patch(size_t Index, BCPos Target) const
 {
    auto prv = (prvFluid *)this->func_state->L->script->ChildPrivate;
    if ((prv->JitOptions & JOF::TRACE_CFG) != JOF::NIL) {
-      pf::Log("Parser").msg("[%d] cfg: patch edge #%" PRId64 " to target=%d", this->func_state->ls->linenumber, Index, int(Target.raw()));
+      pf::Log("Parser").msg("[%d] cfg: patch edge #%" PRId64 " to target=%d", this->func_state->ls->linenumber.lineNumber(), Index, int(Target.raw()));
    }
 }
 
@@ -210,6 +210,6 @@ void ControlFlowGraph::trace_edge_append(size_t Index, BCPos Head) const
 {
    auto prv = (prvFluid *)this->func_state->L->script->ChildPrivate;
    if ((prv->JitOptions & JOF::TRACE_CFG) != JOF::NIL) {
-      pf::Log("Parser").msg("[%d] cfg: append to edge #%" PRId64 " head=%d", this->func_state->ls->linenumber, Index, int(Head.raw()));
+      pf::Log("Parser").msg("[%d] cfg: append to edge #%" PRId64 " head=%d", this->func_state->ls->linenumber.lineNumber(), Index, int(Head.raw()));
    }
 }

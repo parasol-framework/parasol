@@ -38,7 +38,9 @@ ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(const Token &functi
    }
 
    const TokenKind terms[] = { TokenKind::EndToken };
+   ++this->function_depth_;
    auto body = this->parse_block(terms);
+   --this->function_depth_;
    if (not body.ok()) return ParserResult<ExprNodePtr>::failure(body.error_ref());
 
    this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);

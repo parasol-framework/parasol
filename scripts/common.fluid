@@ -89,7 +89,7 @@ end
 ------------------------------------------------------------------------------
 
 file.writeAll = function(Path:str, Content:str)
-   fl = obj.new('file', { path = Path, flags = 'WRITE|NEW' })
+   fl = obj.new('file', { path = Path, flags = FL_WRITE|FL_NEW })
    fl.acWrite(Content)
    fl.free()
 end

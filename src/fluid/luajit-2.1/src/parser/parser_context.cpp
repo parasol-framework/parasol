@@ -121,7 +121,7 @@ void ParserContext::lex_match(LexToken what, LexToken who, BCLine line)
 {
    if (this->lex_opt(what)) return;
 
-   if (line IS this->lex_state->linenumber) {
+   if (line IS this->lex_state->effective_line()) {
       this->err_token(what);
       return;
    }
@@ -378,36 +378,36 @@ void ParserContext::pop_import()
 
 //********************************************************************************************************************
 // Resolve an import path relative to the file currently being parsed.
-// The Module parameter will be sanitised on return.
+// The Library parameter will be sanitised on return.
 
-std::string ParserContext::resolve_module_to_path(std::string_view &Module) const
+std::string ParserContext::resolve_lib_to_path(std::string_view &Library) const
 {
-   // For security purposes, check the validity of the module name.
+   // For security purposes, check the validity of the library name.
 
    int slash_count = 0;
 
    bool local = false;
-   if (Module.starts_with("./")) { // Local modules are permitted if the name starts with "./" and otherwise adheres to path rules
+   if (Library.starts_with("./")) { // Local libraries are permitted if the name starts with "./" and otherwise adheres to path rules
       local = true;
-      Module.remove_prefix(2);
+      Library.remove_prefix(2);
    }
 
    size_t i;
-   for (i=0; i < Module.size(); i++) {
-      if ((Module[i] >= 'a') and (Module[i] <= 'z')) continue;
-      if ((Module[i] >= 'A') and (Module[i] <= 'Z')) continue;
-      if ((Module[i] >= '0') and (Module[i] <= '9')) continue;
-      if ((Module[i] IS '-') or (Module[i] IS '_')) continue;
-      if (Module[i] IS '/') { slash_count++; continue; }
+   for (i=0; i < Library.size(); i++) {
+      if ((Library[i] >= 'a') and (Library[i] <= 'z')) continue;
+      if ((Library[i] >= 'A') and (Library[i] <= 'Z')) continue;
+      if ((Library[i] >= '0') and (Library[i] <= '9')) continue;
+      if ((Library[i] IS '-') or (Library[i] IS '_')) continue;
+      if (Library[i] IS '/') { slash_count++; continue; }
       break;
    }
 
-   if ((i < Module.size()) or (i >= 96) or (slash_count > 2)) {
-      lj_lex_error(this->lex_state, 0, ErrMsg::BADMODULE);
+   if ((i < Library.size()) or (i >= 96) or (slash_count > 2)) {
+      lj_lex_error(this->lex_state, 0, ErrMsg::BADLIBRARY);
       return "";
    }
 
-   std::string result(Module);
+   std::string result(Library);
 
    // Prepend the base path
 

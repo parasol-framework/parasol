@@ -462,12 +462,13 @@ LexState::BufferedToken make_name_token(LexState *State, std::string_view name, 
 
 void fstring_flush_literal(LexState *State, size_t Offset, bool &NeedConcat) {
    if (sbuflen(&State->sb) > 0) {
+      BCLine line = State->linenumber;  // Use raw line for token spans
       if (NeedConcat) {
-         State->buffered_tokens.push_back(make_buffered_token(State, TK_concat, State->linenumber,
+         State->buffered_tokens.push_back(make_buffered_token(State, TK_concat, line,
                BCLine(State->current_offset - State->line_start_offset), Offset));
       }
       State->buffered_tokens.push_back(make_string_token(State, std::string_view(State->sb.b, sbuflen(&State->sb)),
-            State->linenumber, BCLine(State->current_offset - State->line_start_offset), Offset));
+            line, BCLine(State->current_offset - State->line_start_offset), Offset));
       lj_buf_reset(&State->sb);
       NeedConcat = true;
    }
@@ -477,7 +478,7 @@ void fstring_flush_literal(LexState *State, size_t Offset, bool &NeedConcat) {
 // Returns true if expression had content, false if empty
 
 bool fstring_scan_expression(LexState *State, size_t Offset, bool &NeedConcat) {
-   BCLine expr_line = State->linenumber;
+   BCLine expr_line = State->linenumber;  // Use raw line for token spans
    BCLine expr_col = BCLine(State->current_offset - State->line_start_offset);
 
    if (NeedConcat) State->buffered_tokens.push_back(make_buffered_token(State, TK_concat, expr_line, expr_col, Offset));
@@ -538,8 +539,9 @@ bool fstring_scan_expression(LexState *State, size_t Offset, bool &NeedConcat) {
    }
 
    // Add )) closing wrapper
-   State->buffered_tokens.push_back(make_buffered_token(State, ')', State->linenumber, BCLine(State->current_offset - State->line_start_offset), Offset));
-   State->buffered_tokens.push_back(make_buffered_token(State, ')', State->linenumber, BCLine(State->current_offset - State->line_start_offset), Offset));
+   BCLine line = State->linenumber;  // Use raw line for token spans
+   State->buffered_tokens.push_back(make_buffered_token(State, ')', line, BCLine(State->current_offset - State->line_start_offset), Offset));
+   State->buffered_tokens.push_back(make_buffered_token(State, ')', line, BCLine(State->current_offset - State->line_start_offset), Offset));
 
    NeedConcat = true;
    return got_tokens;
@@ -1051,7 +1053,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
             if (State->c IS '=') {
                lex_next(State);
                pf::Log("Fluid").warning("%s:%d: Deprecated '==' operator, use 'is' instead",
-                  strdata(State->chunkname), State->linenumber);
+                  strdata(State->chunkname), State->effective_line().lineNumber());
                return TK_eq;
             }
             return '=';
@@ -1066,6 +1068,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
             // Only enter this if we see a letter/underscore immediately (no whitespace)
             if (isalpha(State->c) or State->c IS '_') {
                // Save token position before scanning the identifier
+               // Use raw linenumber for token spans (not encoded effective_line)
                BCLine ident_line = State->linenumber;
                BCLine ident_column = BCLine(State->current_offset - State->line_start_offset + 1);
                size_t ident_offset = State->current_offset;
@@ -1112,7 +1115,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
             if (State->c IS '=') {
                lex_next(State);
                pf::Log("Fluid").warning("%s:%d: Deprecated '~=' operator, use '!=' instead",
-                  strdata(State->chunkname), State->linenumber);
+                  strdata(State->chunkname), State->effective_line().lineNumber());
                return TK_ne;
             }
             return '~';
@@ -1263,6 +1266,7 @@ LexState::LexState(lua_State* L, std::string_view Source, std::string_view Chunk
    , lookahead(TK_eof)
    , linenumber(1)
    , lastline(1)
+   , line_offset(0)
    , chunkname(nullptr)
    , chunkarg(Chunkarg.data())
    , mode(Mode.has_value() ? Mode->data() : nullptr)
@@ -1353,6 +1357,7 @@ LexState::LexState(lua_State* L, const char* BytecodePtr, GCstr* ChunkName)
    , pe((const char*)~uintptr_t(0))  // Unlimited - bytecode reader handles its own bounds
    , linenumber(1)
    , lastline(1)
+   , line_offset(0)
    , chunkname(ChunkName)
    , chunkarg(nullptr)
    , mode(nullptr)
@@ -1398,6 +1403,7 @@ LexState::LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view
    , rdata(Rdata)
    , linenumber(1)
    , lastline(1)
+   , line_offset(0)
    , chunkname(nullptr)
    , chunkarg(Chunkarg.data())
    , mode(Mode.has_value() ? Mode->data() : nullptr)
@@ -1530,6 +1536,8 @@ const char* LexState::token2str(LexToken Tok)
 void LexState::mark_token_start()
 {
    size_t token_offset = (this->c IS LEX_EOF) ? this->pos : this->current_offset;
+   // Store raw line number for token spans (displayed in error messages)
+   // FileSource encoding is applied only in bcemit_INS for bytecode
    this->pending_token_line = this->linenumber;
 
    if (token_offset >= this->line_start_offset) {

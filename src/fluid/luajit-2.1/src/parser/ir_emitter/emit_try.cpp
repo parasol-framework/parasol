@@ -320,21 +320,74 @@ ParserResult<IrEmitUnit> IrEmitter::emit_check_stmt(const CheckStmtPayload &Payl
 }
 
 //********************************************************************************************************************
-// Emit bytecode for import statement: import 'path'
+// Emit bytecode for import statement: import 'path' [as alias]
 //
 // The import statement inlines the content of the referenced file at compile time.
 // The inlined_body block is emitted as if its statements were written directly at the import location.
 // This creates a new scope for the imported content to provide some isolation.
+//
+// When namespace_name is set (from 'as alias' or module's default namespace), emits:
+//   local <namespace_name> <const> = _LIB['<default_namespace>']
 
 ParserResult<IrEmitUnit> IrEmitter::emit_import_stmt(const ImportStmtPayload &Payload)
 {
-   // If there's no body (empty file or failed parse), nothing to emit
-   if (not Payload.inlined_body) {
-      return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+   FuncState *fs = &this->func_state;
+   lua_State *L = this->lex_state.L;
+
+   // If there's a body, emit the inlined content first
+   if (Payload.inlined_body) {
+      // Temporarily switch to the imported file's FileSource index
+      // so that prototypes created for functions in the import get the correct file_source_idx
+      uint8_t saved_file_index = this->lex_state.current_file_index;
+      this->lex_state.current_file_index = Payload.file_source_idx;
+
+      auto result = this->emit_block(*Payload.inlined_body, FuncScopeFlag::None);
+
+      // Restore the parent file's index
+      this->lex_state.current_file_index = saved_file_index;
+
+      if (not result.ok()) return result;
    }
 
-   // Emit the inlined body as a scoped block
-   // This creates a new scope so that local variables from the imported file
-   // don't pollute the importing file's scope (unless returned/exported)
-   return this->emit_block(*Payload.inlined_body, FuncScopeFlag::None);
+   // If namespace_name is set, emit: local <name> <const> = _LIB['<default_namespace>']
+   if (Payload.namespace_name) {
+      const Identifier& ns_id = *Payload.namespace_name;
+      const std::string& default_ns = Payload.default_namespace;
+
+      if (default_ns.empty()) {
+         return ParserResult<IrEmitUnit>::failure(this->make_error(
+            ParserErrorCode::InternalInvariant,
+            "import namespace_name is set but default_namespace is empty"));
+      }
+
+      // Helper to get constant string index
+      auto str_const = [fs](GCstr* s) -> BCREG {
+         return const_gc(fs, obj2gco(s), LJ_TSTR);
+      };
+
+      // Allocate a register for the namespace local variable
+      BCReg dest = BCReg(fs->freereg);
+      bcreg_reserve(fs, BCReg(1));
+
+      // GGET _LIB -> dest
+      bcemit_AD(fs, BC_GGET, dest, str_const(lj_str_newlit(L, "_LIB")));
+
+      // TGETS <default_namespace> -> dest
+      GCstr* ns_str = lj_str_new(L, default_ns.c_str(), default_ns.size());
+      bcemit_ABC(fs, BC_TGETS, dest.raw(), dest.raw(), str_const(ns_str));
+
+      // Create the local variable
+      this->lex_state.var_new(BCReg(0), ns_id.symbol, ns_id.span.line, ns_id.span.column);
+      this->lex_state.var_add(BCReg(1));
+
+      // Mark as const
+      VarInfo* info = &fs->var_get(fs->nactvar - 1);
+      info->info |= VarInfoFlag::Const;
+
+      // Update binding table
+      this->update_local_binding(ns_id.symbol, BCReg(fs->nactvar - 1));
+      fs->reset_freereg();
+   }
+
+   return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }

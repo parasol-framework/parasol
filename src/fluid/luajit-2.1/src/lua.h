@@ -87,7 +87,6 @@ using lua_Integer = LUA_INTEGER;
 
 extern lua_State *(lua_newstate) (lua_Alloc f, void *ud);
 extern void       (lua_close) (lua_State *L);
-extern lua_State *(lua_newthread) (lua_State *L);
 
 extern lua_CFunction (lua_atpanic) (lua_State *L, lua_CFunction panicf);
 

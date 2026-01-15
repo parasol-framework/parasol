@@ -1,15 +1,15 @@
 -- Refer to the Wiki for usage.
 --
--- local hslib = import 'net/httpserver'
+-- import 'net/httpserver'
 -- local httpServer = hslib.start({ Options... })
 -- httpServer.stop()
 
    include 'network'
-   json = require('json')
+   import 'json'
 
    glTime = obj.new('time')
 
-   httpServer = { }
+   global hslib = { }
 
    glStatusTexts = {
        [200] = 'OK', [201] = 'Created', [204] = 'No Content',
@@ -22,25 +22,25 @@
    glMimeTypes = {
       -- Text
       html = 'text/html',
-      htm = 'text/html',
-      css = 'text/css',
-      js = 'application/javascript',
-      mjs = 'application/javascript',
+      htm  = 'text/html',
+      css  = 'text/css',
+      js   = 'application/javascript',
+      mjs  = 'application/javascript',
       json = 'application/json',
-      xml = 'application/xml',
-      txt = 'text/plain',
-      md = 'text/markdown',
-      csv = 'text/csv',
+      xml  = 'application/xml',
+      txt  = 'text/plain',
+      md   = 'text/markdown',
+      csv  = 'text/csv',
 
       -- Images
-      png = 'image/png',
-      jpg = 'image/jpeg',
+      png  = 'image/png',
+      jpg  = 'image/jpeg',
       jpeg = 'image/jpeg',
-      gif = 'image/gif',
-      svg = 'image/svg+xml',
-      ico = 'image/x-icon',
+      gif  = 'image/gif',
+      svg  = 'image/svg+xml',
+      ico  = 'image/x-icon',
       webp = 'image/webp',
-      bmp = 'image/bmp',
+      bmp  = 'image/bmp',
       tiff = 'image/tiff',
 
       -- Documents
@@ -1651,7 +1651,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-httpServer.start = function(Options)
+hslib.start = function(Options)
    self = {
       port            = 8080,   -- Server port number
       folder          = nil,    -- Path from which to serve files
@@ -1884,5 +1884,3 @@ httpServer.start = function(Options)
 
    return self
 end
-
-   return httpServer

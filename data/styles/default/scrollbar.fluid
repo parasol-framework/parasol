@@ -1,5 +1,7 @@
 -- Styling for the 'gui/scrollbar' script.
 
+   import 'gui'
+
    mVec ?= mod.load('vector')
 
    glCounter = 0

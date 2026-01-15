@@ -5,12 +5,12 @@ Tests the new validateHeader callback feature for routes, which allows
 early header validation before the full request body is processed.
 --]]
 
-   require 'common'
-   local hslib = require 'net/httpserver'
-   local json = require 'json'
+   import 'common'
+   import 'net/httpserver'
+   import 'json'
    include 'http'
 
-   local SERVER_PORT = 18940
+   SERVER_PORT = 18940
 
 ----------------------------------------------------------------------------------------------------------------------
 

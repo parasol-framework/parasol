@@ -7,6 +7,7 @@
 #include "lj_obj.h"
 #include "lj_err.h"
 #include "lj_debug.h"
+#include "filesource.h"
 #include "lj_buf.h"
 #include "lj_tab.h"
 #include "lj_state.h"
@@ -344,7 +345,7 @@ void lj_debug_shortname(char* out, GCstr* str, BCLine line)
       size_t len;  //  Length, up to first control char.
       for (len = 0; len < LUA_IDSIZE - 12; len++)
          if (((const unsigned char*)src)[len] < ' ') break;
-      strcpy(out, line IS ~(BCLine)0 ? "[builtin:" : "[string \""); out += 9;
+      strcpy(out, line.isBuiltin() ? "[builtin:" : "[string \""); out += 9;
       if (src[len] != '\0') {  //  Must truncate?
          if (len > LUA_IDSIZE - 15) len = LUA_IDSIZE - 15;
          strncpy(out, src, len); out += len;
@@ -353,12 +354,13 @@ void lj_debug_shortname(char* out, GCstr* str, BCLine line)
       else {
          strcpy(out, src); out += len;
       }
-      strcpy(out, line IS ~(BCLine)0 ? "]" : "\"]");
+      strcpy(out, line.isBuiltin() ? "]" : "\"]");
    }
 }
 
 //********************************************************************************************************************
 // Add current location of a frame to error message.
+// Uses FileSource tracking to display accurate file:line for imported code.
 
 void lj_debug_addloc(lua_State* L, const char* msg, cTValue* frame, cTValue* nextframe)
 {
@@ -366,11 +368,22 @@ void lj_debug_addloc(lua_State* L, const char* msg, cTValue* frame, cTValue* nex
       GCfunc* fn = frame_func(frame);
       if (isluafunc(fn)) {
          BCLine line = debug_frameline(L, fn, nextframe);
-         if (line >= 0) {
+         if (line.isValid()) {
             GCproto* pt = funcproto(fn);
+
+            // Use the prototype's file_source_idx to get the correct filename
+            if (not L->file_sources.empty()) {
+               const FileSource* src = get_file_source(L, pt->file_source_idx);
+               if (src and not src->filename.empty()) {
+                  lj_strfmt_pushf(L, "%s:%d: %s", src->filename.c_str(), line.lineNumber(), msg);
+                  return;
+               }
+            }
+
+            // Fallback to prototype chunkname
             char buf[LUA_IDSIZE];
             lj_debug_shortname(buf, proto_chunkname(pt), pt->firstline);
-            lj_strfmt_pushf(L, "%s:%d: %s", buf, line, msg);
+            lj_strfmt_pushf(L, "%s:%d: %s", buf, line.lineNumber(), msg);
             return;
          }
       }
@@ -380,15 +393,27 @@ void lj_debug_addloc(lua_State* L, const char* msg, cTValue* frame, cTValue* nex
 
 //********************************************************************************************************************
 // Push location string for a bytecode position to Lua stack.
+// Uses FileSource tracking to display accurate file:line for imported code.
 
 void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPOS pc)
 {
+   BCLine line = lj_debug_line(pt, pc);
+
+   // Use the prototype's file_source_idx to get the correct filename
+   if (not L->file_sources.empty()) {
+      const FileSource* src = get_file_source(L, pt->file_source_idx);
+      if (src and not src->filename.empty()) {
+         lj_strfmt_pushf(L, "%s:%d", src->filename.c_str(), line.lineNumber());
+         return;
+      }
+   }
+
+   // Fallback to prototype chunkname for legacy behaviour
    GCstr* name = proto_chunkname(pt);
    const char* s = strdata(name);
    MSize i, len = name->len;
-   BCLine line = lj_debug_line(pt, pc);
 
-   if (pt->firstline IS ~(BCLine)0) lj_strfmt_pushf(L, "builtin:%s", s);
+   if (pt->firstline.isBuiltin()) lj_strfmt_pushf(L, "builtin:%s", s);
    else if (*s IS '@') {
       s++;
       len--;
@@ -397,11 +422,11 @@ void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPOS pc)
             s += i + 1;
             break;
          }
-      lj_strfmt_pushf(L, "%s:%d", s, line);
+      lj_strfmt_pushf(L, "%s:%d", s, line.lineNumber());
    }
-   else if (len > 40) lj_strfmt_pushf(L, "%p:%d", pt, line);
-   else if (*s IS '=') lj_strfmt_pushf(L, "%s:%d", s + 1, line);
-   else lj_strfmt_pushf(L, "\"%s\":%d", s, line);
+   else if (len > 40) lj_strfmt_pushf(L, "%p:%d", pt, line.lineNumber());
+   else if (*s IS '=') lj_strfmt_pushf(L, "%s:%d", s + 1, line.lineNumber());
+   else lj_strfmt_pushf(L, "\"%s\":%d", s, line.lineNumber());
 }
 
 //********************************************************************************************************************
@@ -486,7 +511,7 @@ int lj_debug_getinfo(lua_State *L, CSTRING what, lj_Debug *ar, int ext)
          }
       }
       else if (*what IS 'l') {
-         ar->currentline = frame ? debug_frameline(L, fn, nextframe) : -1;
+         ar->currentline = frame ? debug_frameline(L, fn, nextframe) : BCLine(BCLine::NO_LINE);
       }
       else if (*what IS 'u') {
          ar->nups = fn->c.nupvalues;

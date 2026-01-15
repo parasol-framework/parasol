@@ -7,6 +7,7 @@ Documentation is available in the Parasol Wiki.
    import 'common'
    import 'gui/window'
    include 'document'
+   include 'xml'
 
 LINE_SPACING, FONT_HEIGHT = gui.getFontHeight(gui.fonts.window)
 MIN_WIDTH = 300
@@ -296,23 +297,20 @@ end
 
    -- This sub-routine is provided for languages other than Fluid to utilise the module.
 
-   do
-      state = getExecutionState()
-      if state.inRequire != true then
-         dlg = gui.dialog.message({
-            popover    = arg('popover'),
-            target     = arg('target'),
-            modal      = arg('modal'),
-            options    = arg('options'),
-            message    = arg('message'),
-            checkboxLabel = arg('checkboxLabel'),
-            checkboxState = arg('checkboxState'),
-            icon       = arg('icon'),
-            image      = arg('image'),
-            userInput  = arg('userInput', nil),
-            secret     = arg('secret')
-         })
+@if(imported=false)
+   dlg = gui.dialog.message({
+      popover    = arg('popover'),
+      target     = arg('target'),
+      modal      = arg('modal'),
+      options    = arg('options'),
+      message    = arg('message'),
+      checkboxLabel = arg('checkboxLabel'),
+      checkboxState = arg('checkboxState'),
+      icon       = arg('icon'),
+      image      = arg('image'),
+      userInput  = arg('userInput', nil),
+      secret     = arg('secret')
+   })
 
-         return dlg.windowID, dlg.document.id
-      end
-   end
+   return dlg.windowID, dlg.document.id
+@end

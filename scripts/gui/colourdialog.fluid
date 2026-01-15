@@ -4,9 +4,9 @@ Documentation is available in the Parasol Wiki.
 
    import 'common'
    import 'gui'
-   json = require('json')
+   import 'json'
 
-   local mGfx = mod.load('display')
+   mGfx ?= mod.load('display')
 
    gui.dialog ?= { }
 
@@ -607,18 +607,15 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- This sub-routine is provided for languages other than Fluid to use the interface.
 
-   do
-      state = getExecutionState()
-      if state.inRequire != true then
-         dlg = colour.dialog({
-            popOver    = arg('popOver'),
-            target     = arg('target'),
-            modal      = arg('modal'),
-            okText     = arg('okText'),
-            cancelText = arg('cancelText'),
-            icon       = arg('icon')
-         })
+@if(imported=false)
+   dlg = colour.dialog({
+      popOver    = arg('popOver'),
+      target     = arg('target'),
+      modal      = arg('modal'),
+      okText     = arg('okText'),
+      cancelText = arg('cancelText'),
+      icon       = arg('icon')
+   })
 
-         return dlg.windowID
-      end
-   end
+   return dlg.windowID
+@end

@@ -1,6 +1,6 @@
 -- Visual FX interface.  Applies cosmetic effects to viewports.
 
-   local mVec = mod.load('vector')
+   mVec ?= mod.load('vector')
 
    global vfx ?= {
       fps = 1/60 -- Desired FPS for the effects, ideally matches the display

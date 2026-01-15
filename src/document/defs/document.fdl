@@ -9,7 +9,7 @@ module({ name="Document", copyright="Paul Manias © 2005-2025", version=1.0, tim
 
   loadFile(glPath .. 'common.fdl')
 
-  const("RIPL", { comment="Official version number (date format).  Any changes to the handling of document content require that this number be updated." }, {
+  constants("RIPL", { comment="Official version number (date format).  Any changes to the handling of document content require that this number be updated." }, {
     VERSION = "\"20240126\""
   })
 

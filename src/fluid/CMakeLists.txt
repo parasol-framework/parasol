@@ -164,7 +164,7 @@ set (BUILDVM_SOURCES
 # Common compiler flags and paths (use lists instead of strings for proper handling)
 set (LUAJIT_HOST_CFLAGS -O2 -Wall)
 set (LUAJIT_INCLUDE_DIRS -I${PROJECT_SOURCE_DIR}/include -I${CMAKE_BINARY_DIR} -I${LUAJIT_SRC} -I${LUAJIT_BUILD_DIR} -I${LUAJIT_SRC}/bytecode -I${LUAJIT_SRC}/debug -I${LUAJIT_SRC}/jit -I${LUAJIT_SRC}/lib -I${LUAJIT_SRC}/parser -I${LUAJIT_SRC}/runtime)
-set (LUAJIT_COMMON_CXXFLAGS -fPIC -O2 -fomit-frame-pointer -Wall -std=c++20)
+set (LUAJIT_COMMON_CXXFLAGS -fPIC -O2 -fomit-frame-pointer -Wall -std=c++20 -Wno-invalid-offsetof)
 
 # Platform-specific math library (empty on Windows, -lm on Unix)
 if (WIN32)
@@ -644,6 +644,7 @@ set (FLUID_SOURCES "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_str
    "${LUAJIT_SRC}/bytecode/lj_bcread.cpp"
    "${LUAJIT_SRC}/bytecode/lj_bcwrite.cpp"
    "${LUAJIT_SRC}/debug/dump_bytecode.cpp"
+   "${LUAJIT_SRC}/debug/filesource.cpp"
    "${LUAJIT_SRC}/parser/parser.cpp"
    "${LUAJIT_SRC}/parser/lexer.cpp"
    "${LUAJIT_SRC}/parser/parser_unit_tests.cpp")
@@ -695,6 +696,9 @@ target_compile_definitions(${MOD} PRIVATE
 if (MSVC)
    # /MP enables multi-processor compilation for parallel builds within this target
    target_compile_options(${MOD} PRIVATE /MP)
+else ()
+   # Suppress offsetof warnings for non-standard-layout types (lua_State, GG_State contain C++ members)
+   target_compile_options(${MOD} PRIVATE -Wno-invalid-offsetof)
 endif ()
 
 if (ENABLE_UNIT_TESTS)

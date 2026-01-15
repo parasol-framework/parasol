@@ -2,6 +2,9 @@
 -- This file will be imported by test_compile_if_import.fluid
 
 global helper_always_visible = true
+global helper_message = "Hello from imported module!"
+global function add_numbers(a, b) return a + b end
+global function multiply(a, b) return a * b end
 
 @if(imported=false)
    -- Only runs when this file is executed directly
