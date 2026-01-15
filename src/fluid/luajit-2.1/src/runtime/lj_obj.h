@@ -13,6 +13,7 @@
 #include <array>
 #include <vector>
 #include <unordered_set>
+#include <unordered_map>
 #include "../../../struct_def.h"
 
 #ifndef PLATFORM_CONFIG_H
@@ -1065,7 +1066,7 @@ struct lua_State {
    const BCIns   *try_handler_pc; // Handler PC for error re-entry (set during unwind)
    CapturedStackTrace *pending_trace; // Trace captured during exception handling (for try<trace>)
    ERR      CaughtError = ERR::Okay; // Catches ERR results from module functions.
-   std::unordered_set<uint32_t> imports;
+   std::unordered_map<uint32_t, std::string> imports;  // Module hash -> declared namespace name
 
    // Constructor/destructor not actually used as yet.
 /*

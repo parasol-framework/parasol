@@ -661,10 +661,13 @@ ParserResult<StmtNodePtr> AstBuilder::parse_check()
 }
 
 //********************************************************************************************************************
-// Parses import statements: import 'module'
+// Parses import statements: import 'library' [as alias]
 //
 // The import statement is a compile-time feature that reads and parses the referenced file, inlining its content as
 // statements executed within the current scope.
+//
+// When using 'as alias' syntax, the imported library must declare a namespace. The alias creates a local const variable
+// that references _LIB['namespace'] for convenient access to the library exports.
 
 ParserResult<StmtNodePtr> AstBuilder::parse_import()
 {
@@ -673,13 +676,15 @@ ParserResult<StmtNodePtr> AstBuilder::parse_import()
    Token import_token = this->ctx.tokens().current();
 
    // Import statements must be at the top level of the script
+
    if (not this->at_top_level()) {
       return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, import_token, "Use of 'import' is not permitted inside function blocks");
    }
 
    this->ctx.tokens().advance();  // consume 'import'
 
-   // Require a string literal for the module path
+   // Require a string literal for the library path
+
    Token path_token = this->ctx.tokens().current();
    if (not path_token.is(TokenKind::String)) {
       return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, path_token, "Import path must be a string literal");
@@ -691,50 +696,182 @@ ParserResult<StmtNodePtr> AstBuilder::parse_import()
    std::string_view mod_name(strdata(path_str), path_str->len);
    this->ctx.tokens().advance();  // consume string
 
-   log.branch("Module: %.*s", int(mod_name.size()), mod_name.data());
+   log.branch("Library: %.*s", int(mod_name.size()), mod_name.data());
 
-   std::string path = this->ctx.resolve_module_to_path(mod_name);
+   // Check for 'as' alias syntax
+
+   std::optional<Identifier> alias;
+   Token as_token;
+   if (this->ctx.check(TokenKind::AsToken)) {
+      as_token = this->ctx.tokens().current();
+      this->ctx.tokens().advance();  // consume 'as'
+
+      auto alias_result = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+      if (not alias_result.ok()) return ParserResult<StmtNodePtr>::failure(alias_result.error_ref());
+
+      alias = make_identifier(alias_result.value_ref());
+      alias->has_const = true;  // Namespace alias is const
+   }
+
+   std::string path = this->ctx.resolve_lib_to_path(mod_name);
 
    // Check for circular import
+
    if (this->ctx.is_importing(path)) {
-      return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, import_token, "circular import detected: " + path);
+      return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, import_token, "Circular import detected: " + path);
    }
 
    // Parse the imported file
+
    auto imported_body = this->parse_imported_file(path, mod_name, import_token);
    if (not imported_body.ok()) return ParserResult<StmtNodePtr>::failure(imported_body.error_ref());
 
+   // Look up the namespace from the imports map using the resolved path
+
+   lua_State *L = &this->ctx.lua();
+   auto libhash = pf::strihash(path);
+   std::string default_ns;
+   auto it = L->imports.find(libhash);
+   if (it != L->imports.end()) default_ns = it->second;
+
+   // If using 'as' alias, the library must declare a namespace
+
+   if (alias and default_ns.empty()) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, as_token,
+         std::string("cannot use 'as' alias: library '") + std::string(mod_name) + "' does not declare a namespace");
+   }
+
+   // Determine final namespace name (alias takes precedence)
+
+   std::string final_ns;
+   if (alias) final_ns = std::string(strdata(alias->symbol), alias->symbol->len);
+   else if (not default_ns.empty()) final_ns = default_ns;
+
    // Create ImportStmtPayload
+
    auto stmt = std::make_unique<StmtNode>(AstNodeKind::ImportStmt, import_token.span());
    ImportStmtPayload payload;
-   payload.module_path = path;
+   payload.lib_path = path;
    payload.inlined_body = std::move(imported_body.value_ref());
+
+   // If we have a namespace (either from alias or default), set up the namespace binding
+   if (not final_ns.empty()) {
+      Identifier ns_id;
+      ns_id.symbol = lj_str_new(L, final_ns.c_str(), final_ns.size());
+      ns_id.span = import_token.span();
+      ns_id.has_const = true;
+      payload.namespace_name = std::move(ns_id);
+      payload.default_namespace = default_ns;  // Store original for _LIB lookup
+   }
+
    stmt->data = std::move(payload);
 
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
 
 //********************************************************************************************************************
+// Parses namespace statements: namespace 'name'
+//
+// The namespace statement declares a default namespace for a library. When this library is imported, the
+// importing file can reference the library exports via `_LIB['name']`. This statement generates:
+//   local _NS <const> = 'name'
+//
+// The namespace is also recorded in L->imports so import statements can look up the declared namespace.
+
+ParserResult<StmtNodePtr> AstBuilder::parse_namespace()
+{
+   pf::Log log(__FUNCTION__);
+
+   Token ns_token = this->ctx.tokens().current();
+
+   // Namespace must be at top level
+   if (not this->at_top_level()) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, ns_token, "'namespace' must be at library level");
+   }
+
+   this->ctx.tokens().advance();  // consume 'namespace'
+
+   // Require string literal for namespace name
+   Token name_token = this->ctx.tokens().current();
+   if (not name_token.is(TokenKind::String)) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, name_token,
+         "namespace name must be a string literal");
+   }
+
+   GCstr *name_str = name_token.payload().as_string();
+   std::string_view ns_name(strdata(name_str), name_str->len);
+   this->ctx.tokens().advance();  // consume string
+
+   log.detail("Namespace: %.*s", int(ns_name.size()), ns_name.data());
+
+   lua_State *L = &this->ctx.lua();
+
+   // Check for namespace conflict with already-loaded libraries
+   for (const auto& [hash, existing_ns] : L->imports) {
+      if ((not existing_ns.empty()) and (existing_ns == ns_name)) {
+         return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, name_token,
+            std::string("namespace '") + std::string(ns_name) + "' already defined by another library");
+      }
+   }
+
+   // If we're being imported, record the namespace in the imports map
+
+   if (this->ctx.is_being_imported()) {
+      const auto& import_stack = this->ctx.import_stack();
+      if (not import_stack.empty()) {
+         auto libhash = pf::strihash(import_stack.back());
+         L->imports[libhash] = std::string(ns_name);
+      }
+   }
+
+   // Transform to: local _NS <const> = 'name'
+   Identifier id;
+   id.symbol = lj_str_new(L, "_NS", 3);
+   id.span = ns_token.span();
+   id.has_const = true;
+
+   std::vector<Identifier> names;
+   names.push_back(std::move(id));
+
+   ExprNodeList values;
+   auto str_expr = std::make_unique<ExprNode>(AstNodeKind::LiteralExpr, name_token.span());
+   LiteralValue lit;
+   lit.kind = LiteralKind::String;
+   lit.string_value = name_str;
+   str_expr->data = lit;
+   values.push_back(std::move(str_expr));
+
+   auto stmt = std::make_unique<StmtNode>(AstNodeKind::LocalDeclStmt, ns_token.span());
+   stmt->data.emplace<LocalDeclStmtPayload>(AssignmentOperator::Plain,
+      std::move(names), std::move(values));
+
+   return ParserResult<StmtNodePtr>::success(std::move(stmt));
+}
+
+//********************************************************************************************************************
 // Reads a file and parses its contents, returning the parsed block.
-// This is used by parse_import() to inline imported modules at compile time.
+// This is used by parse_import() to inline imported libraries at compile time.
 //
 // Line numbers from imported content are offset so line 1 maps to the import statement line.
 // This keeps bytecode line deltas non-negative while preserving relative positions.
 
-ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(const std::string &Path, std::string_view Module, const Token& ImportToken)
+ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(const std::string &Path, std::string_view Library, const Token& ImportToken)
 {
    pf::Log log(__FUNCTION__);
-   // Check if the module is already loaded, in which case return early.
+
+   // Check if the library is already loaded, in which case return early.
+   // Use the resolved Path for the hash to ensure consistency with namespace lookups.
 
    lua_State *L = &this->ctx.lua();
-   auto modhash = pf::strihash(Module);
+   auto libhash = pf::strihash(Path);
 
-   if ((not L->imports.empty()) and (L->imports.contains(modhash))) {
-      log.detail("Module %.*s already loaded", int(Module.size()), Module.data());
+   auto it = L->imports.find(libhash);
+   if (it != L->imports.end()) {
+      log.detail("Library %.*s already loaded", int(Library.size()), Library.data());
       return ParserResult<std::unique_ptr<BlockStmt>>::success(make_block(ImportToken.span(), {}));
    }
 
-   L->imports.insert(modhash); // Set as loaded, irrespective of success
+   L->imports[libhash] = "";  // Set as loaded with empty namespace (updated when namespace statement is parsed)
 
    // Push this file onto the import stack to detect circular imports
    this->ctx.push_import(Path);
@@ -744,7 +881,7 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(const s
    if (not file.ok()) {
       this->ctx.pop_import();
       return this->fail<std::unique_ptr<BlockStmt>>(ParserErrorCode::UnexpectedToken, ImportToken,
-         "cannot open imported file: " + Path);
+         "Cannot open imported file: " + Path);
    }
 
    // Get file size and read contents

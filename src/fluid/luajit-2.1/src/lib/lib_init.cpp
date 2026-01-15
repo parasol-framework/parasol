@@ -56,5 +56,9 @@ extern void luaL_openlibs(lua_State* L)
 
    // Initialize thunk metatable for deferred evaluation support
    lj_thunk_init(L);
+
+   // Create _LIB global table for namespace registry
+   lua_newtable(L);
+   lua_setglobal(L, "_LIB");
 }
 

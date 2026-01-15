@@ -42,6 +42,7 @@ struct TokenDefinition {
 // Format: TOKEN_DEF(name, symbol, reserved)
 #define TOKEN_DEF_LIST \
    TOKEN_DEF(and,          "and",      true) \
+   TOKEN_DEF(as,           "as",       true) \
    TOKEN_DEF(break,        "break",    true) \
    TOKEN_DEF(choose,       "choose",   true) \
    TOKEN_DEF(continue,     "continue", true) \
@@ -60,6 +61,7 @@ struct TokenDefinition {
    TOKEN_DEF(in,           "in",       true) \
    TOKEN_DEF(is,           "is",       true) \
    TOKEN_DEF(local,        "local",    true) \
+   TOKEN_DEF(namespace,    "namespace", true) \
    TOKEN_DEF(nil,          "nil",      true) \
    TOKEN_DEF(not,          "not",      true) \
    TOKEN_DEF(or,           "or",       true) \

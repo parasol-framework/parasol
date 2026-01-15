@@ -24,9 +24,16 @@
 --
 -- If you have control over the data, avoid null values in your data to begin with.
 
-   global json = { ['null'] = {} }
+   namespace 'json'
+
+   _LIB[_NS] = {
+      ['null'] = {}
+   }
+
    in_char  = array<string> { '\\', '"', '/', '\b', '\f', '\n', '\r', '\t' }
    out_char = array<string> { '\\', '"', '/',  'b',  'f',  'n',  'r',  't' }
+
+   json = _LIB[_NS]
 
 function escape_str(String:str):str
    for i, c in in_char do

@@ -3,7 +3,9 @@
    global mVec ?= mod.load('vector') -- Configure mVec as a global convenience.  For fast access, clients assign to lVec
    lVec = mVec
 
-   global gui <const> = {
+   namespace 'gui'
+
+   _LIB[_NS] = {
      theme = 'light',
      dpi = 160,
      _counter = 0,
@@ -11,6 +13,8 @@
         -- A custom configure function can be defined that adds definitions to the window scene, e.g. images and patterns for fills.
      end
    }
+
+   gui = _LIB[_NS]
 
 ----------------------------------------------------------------------------------------------------------------------
 
