@@ -14,6 +14,7 @@
 #include <vector>
 #include <unordered_set>
 #include <unordered_map>
+#include <ankerl/unordered_dense.h>
 #include "../../../struct_def.h"
 
 #ifndef PLATFORM_CONFIG_H
@@ -50,6 +51,7 @@ class TipEmitter;
 // Debug objects
 
 struct CapturedStackTrace;
+struct FileSource;
 
 // Value types
 
@@ -541,6 +543,7 @@ typedef struct GCproto {
    GCRef  chunkname;  //  Name of the chunk this function was defined in.
    BCLine firstline;  //  First line of the function definition.
    BCLine numline;    //  Number of lines for the function definition.
+   uint8_t file_source_idx;  //  Index into lua_State::file_sources for error reporting.
    MRef   lineinfo;   //  Compressed map from bytecode ins. to source line.
    MRef   uvinfo;     //  Upvalue names.
    MRef   varinfo;    //  Names and compressed extents of local variables.
@@ -1067,6 +1070,10 @@ struct lua_State {
    CapturedStackTrace *pending_trace; // Trace captured during exception handling (for try<trace>)
    ERR      CaughtError = ERR::Okay; // Catches ERR results from module functions.
    std::unordered_map<uint32_t, std::string> imports;  // Module hash -> declared namespace name
+
+   // FileSource tracking for accurate error reporting in imported files
+   std::vector<FileSource> file_sources;  // Index 0 = main file, 255 = overflow
+   ankerl::unordered_dense::map<uint32_t, uint8_t> file_index_map;  // path_hash -> index
 
    // Constructor/destructor not actually used as yet.
 /*

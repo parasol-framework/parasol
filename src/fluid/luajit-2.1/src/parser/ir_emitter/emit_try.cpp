@@ -336,7 +336,16 @@ ParserResult<IrEmitUnit> IrEmitter::emit_import_stmt(const ImportStmtPayload &Pa
 
    // If there's a body, emit the inlined content first
    if (Payload.inlined_body) {
+      // Temporarily switch to the imported file's FileSource index
+      // so that prototypes created for functions in the import get the correct file_source_idx
+      uint8_t saved_file_index = this->lex_state.current_file_index;
+      this->lex_state.current_file_index = Payload.file_source_idx;
+
       auto result = this->emit_block(*Payload.inlined_body, FuncScopeFlag::None);
+
+      // Restore the parent file's index
+      this->lex_state.current_file_index = saved_file_index;
+
       if (not result.ok()) return result;
    }
 

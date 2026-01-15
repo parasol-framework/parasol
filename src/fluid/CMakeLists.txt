@@ -644,6 +644,7 @@ set (FLUID_SOURCES "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_str
    "${LUAJIT_SRC}/bytecode/lj_bcread.cpp"
    "${LUAJIT_SRC}/bytecode/lj_bcwrite.cpp"
    "${LUAJIT_SRC}/debug/dump_bytecode.cpp"
+   "${LUAJIT_SRC}/debug/filesource.cpp"
    "${LUAJIT_SRC}/parser/parser.cpp"
    "${LUAJIT_SRC}/parser/lexer.cpp"
    "${LUAJIT_SRC}/parser/parser_unit_tests.cpp")

@@ -623,6 +623,8 @@ static size_t fs_prep_line(FuncState* fs, BCLine numline)
 
 //********************************************************************************************************************
 // Fixup lineinfo for prototype.
+// Note: bcbase[].line values may be encoded with file index in upper 8 bits (from FileSource tracking).
+// We decode them to raw line numbers before computing deltas for the lineinfo array.
 
 static void fs_fixup_line(FuncState *fs, GCproto *pt, void *lineinfo, BCLine numline)
 {
@@ -636,24 +638,27 @@ static void fs_fixup_line(FuncState *fs, GCproto *pt, void *lineinfo, BCLine num
    if (numline < 256) [[likely]] {
       auto li = (uint8_t*)lineinfo;
       do {
-         BCLine delta = base[i].line - first;
-         fs_check_assert(fs,delta >= 0 and delta < 256, "bad line delta %d for line %d", delta, numline);
+         BCLine raw_line = bcline_line_number(base[i].line);
+         BCLine delta = raw_line - first;
+         fs_check_assert(fs, delta >= 0 and delta < 256, "bad line delta %d for line %d (raw=%d, first=%d)", delta, numline, raw_line, first);
          li[i] = uint8_t(delta);
       } while (++i < n);
    }
    else if (numline < 65536) [[likely]] {
       auto li = (uint16_t*)lineinfo;
       do {
-         BCLine delta = base[i].line - first;
-         fs_check_assert(fs,delta >= 0 and delta < 65536, "bad line delta %d for line %d", delta, numline);
+         BCLine raw_line = bcline_line_number(base[i].line);
+         BCLine delta = raw_line - first;
+         fs_check_assert(fs, delta >= 0 and delta < 65536, "bad line delta %d for line %d (raw=%d, first=%d)", delta, numline, raw_line, first);
          li[i] = uint16_t(delta);
       } while (++i < n);
    }
    else {
       auto li = (uint32_t*)lineinfo;
       do {
-         BCLine delta = base[i].line - first;
-         fs_check_assert(fs,delta >= 0, "bad line delta %d for line %d", delta, numline);
+         BCLine raw_line = bcline_line_number(base[i].line);
+         BCLine delta = raw_line - first;
+         fs_check_assert(fs, delta >= 0, "bad line delta %d for line %d (raw=%d, first=%d)", delta, numline, raw_line, first);
          li[i] = uint32_t(delta);
       } while (++i < n);
    }
@@ -724,8 +729,7 @@ void LexState::fs_fixup_var(GCproto *Prototype, uint8_t *Buffer, size_t OffsetVa
 
 // Initialize with empty debug info, if disabled.
 #define fs_prep_line(fs, numline)		(UNUSED(numline), 0)
-#define fs_fixup_line(fs, pt, li, numline) \
-  pt->firstline = pt->numline = 0, setmref((pt)->lineinfo, nullptr)
+#define fs_fixup_line(fs, pt, li, numline) pt->firstline = pt->numline = 0, setmref((pt)->lineinfo, nullptr)
 
 size_t LexState::fs_prep_var(FuncState* FunctionState, size_t* OffsetVar)
 {
@@ -827,12 +831,28 @@ GCproto * LexState::fs_finish(BCLine Line)
 {
    lua_State *L = this->L;
    FuncState *fs = this->fs;
+
+   // Find the min/max raw line numbers in the bytecode.
+   // Note: bcbase[].line values may be encoded with file index in upper 8 bits,
+   // so we decode them to get raw line numbers for computing numline.
+   // We also need to find the minimum line to handle cases where AST-constructed
+   // functions (like thunks) contain expressions from earlier source lines.
    BCLine line = Line;
+   BCLine min_line = fs->linedefined;
    if (fs->bcbase != nullptr and fs->pc > 0) {
       for (BCPOS pc = 0; pc < fs->pc; ++pc) {
-         BCLine bc_line = fs->bcbase[pc].line;
-         if (bc_line > line) line = bc_line;
+         BCLine raw_line = bcline_line_number(fs->bcbase[pc].line);
+         if (raw_line > 0) {  // Skip zero lines (shouldn't happen, but be safe)
+            if (raw_line > line) line = raw_line;
+            if (raw_line < min_line) min_line = raw_line;
+         }
       }
+   }
+
+   // Adjust linedefined if bytecode contains instructions from earlier lines.
+   // This can happen with AST-constructed functions (e.g., thunks wrapping f-strings).
+   if (min_line < fs->linedefined) {
+      fs->linedefined = min_line;
    }
 
    BCLine numline = line - fs->linedefined;
@@ -901,6 +921,7 @@ GCproto * LexState::fs_finish(BCLine Line)
    pt->flags = uint8_t(fs->flags & ~(PROTO_HAS_RETURN | PROTO_FIXUP_RETURN));
    pt->numparams = fs->numparams;
    pt->framesize = fs->framesize;
+   pt->file_source_idx = this->current_file_index;  // FileSource tracking for error reporting
    setgcref(pt->chunkname, obj2gco(this->chunkname));
 
    // Register the function name if one was provided (for named function declarations).
@@ -985,7 +1006,7 @@ void LexState::fs_init(FuncState *FunctionState)
 {
    FuncState *fs = FunctionState;
    lua_State *L = this->L;
-   fs->prev  = this->fs; 
+   fs->prev  = this->fs;
    this->fs = fs;  // Append to list.
    fs->ls    = this;
    fs->vbase = this->vtop;
