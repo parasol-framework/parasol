@@ -1,11 +1,9 @@
 -- Graphical User Interface functions
 
-   if gui then return end
-
    global mVec ?= mod.load('vector') -- Configure mVec as a global convenience.  For fast access, clients assign to lVec
    lVec = mVec
 
-   global gui = {
+   global gui <const> = {
      theme = 'light',
      dpi = 160,
      _counter = 0,
@@ -190,7 +188,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-gui.rgbToIconTheme = function(Value)
+gui.rgbToIconTheme = function(Value:any):str
    if type(Value) is 'string' then
       Value = gui.strToRGB(Value)
    end
@@ -262,7 +260,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Generate a simple gradient fill for vectors.
 
-gui.simpleGradient = function(Scene, Name:str, Colours, X1:num, Y1:num, X2:num, Y2:num, Units:str, IgnoreClashes:bool)
+gui.simpleGradient = function(Scene:obj, Name:str, Colours, X1:num, Y1:num, X2:num, Y2:num, Units:str, IgnoreClashes:bool)
    assert(Name, 'A name for the gradient is required.')
 
    stops = { }
@@ -305,7 +303,7 @@ end
 -- i.e. "url(#Path)".  Using it in a VectorRectangle is akin to a cached bitmap (fast), or apply to a VectorViewport
 -- for live rendering (higher quality transforms).
 
-gui.createIcon = function(Scene, Path:str, Size:num, Theme:any, Name:str):table
+gui.createIcon = function(Scene:obj, Path:str, Size:num, Theme:any, Name:str):table
    Size ??= 16
    assert(Path, 'No Path specified.')
    lGradient = gui.iconThemes.default

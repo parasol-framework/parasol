@@ -1,8 +1,8 @@
 --[[ Concurrent Requests Testing --]]
 
-   require 'common'
-   local hslib = require 'net/httpserver'
-   local json = require 'json'
+   import 'common'
+   local hslib = import 'net/httpserver'
+   import 'json'
    include 'http'
 
    local SERVER_PORT = 18948

@@ -388,7 +388,6 @@ lua_State * lj_state_new(lua_State *L)
    L1->parser_tips        = nullptr;
    L1->try_stack.depth    = 0;
    L1->try_handler_pc     = nullptr;
-   L1->CaughtError        = ERR::Okay;
 
    // NOBARRIER: The lua_State is new (marked white).
 

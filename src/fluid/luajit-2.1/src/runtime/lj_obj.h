@@ -1043,7 +1043,7 @@ inline void hook_restore(global_State *g, uint8_t h) noexcept { g->hookmask = (g
 struct lua_State {
    GCHeader;            // NB: C++ placement new can trash any preset values here.
    uint8_t dummy_ffid;  //  Fake FF_C for curr_funcisL() on dummy frames.
-   uint8_t status;      //  Thread status.
+   uint8_t status = LUA_OK; //  Thread status.
    MRef    glref;       //  Link to global state.
    GCRef   gclist;      //  GC chain.
    TValue  *base;       //  Base of currently executing function.

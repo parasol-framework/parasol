@@ -434,6 +434,14 @@ ParserResult<ReturnStmtPayload> AstBuilder::parse_return_payload(const Token& re
 ParserResult<StmtNodePtr> AstBuilder::parse_return()
 {
    Token token = this->ctx.tokens().current();
+
+   // Warn if this is a top-level return in an imported file, as it will affect
+   // control flow in the importing script (since imports are inlined at parse time).
+   if (this->ctx.is_being_imported() and this->at_top_level()) {
+      this->ctx.emit_warning(ParserErrorCode::UnexpectedToken, token,
+         "Top-level 'return' in imported file will return from the importing script's scope");
+   }
+
    this->ctx.tokens().advance();
    auto payload = this->parse_return_payload(token, false);
    if (not payload.ok()) return ParserResult<StmtNodePtr>::failure(payload.error_ref());
@@ -655,7 +663,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_check()
 //********************************************************************************************************************
 // Parses import statements: import 'module'
 //
-// The import statement is a compile-time feature that reads and parses the referenced file, inlining its content as 
+// The import statement is a compile-time feature that reads and parses the referenced file, inlining its content as
 // statements executed within the current scope.
 
 ParserResult<StmtNodePtr> AstBuilder::parse_import()
@@ -663,6 +671,12 @@ ParserResult<StmtNodePtr> AstBuilder::parse_import()
    pf::Log log(__FUNCTION__);
 
    Token import_token = this->ctx.tokens().current();
+
+   // Import statements must be at the top level of the script
+   if (not this->at_top_level()) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, import_token, "Use of 'import' is not permitted inside function blocks");
+   }
+
    this->ctx.tokens().advance();  // consume 'import'
 
    // Require a string literal for the module path
@@ -919,35 +933,24 @@ ParserResult<StmtNodePtr> AstBuilder::parse_compile_if()
    bool condition_result = false;
 
    if (condition_name IS "imported") {
-      if (not is_bool_value) {
-         return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, value_token, "Condition 'imported' requires a boolean value");
-      }
+      if (not is_bool_value) return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, value_token, "Condition 'imported' requires a boolean value");
       bool is_imported = this->ctx.is_being_imported();
       condition_result = is_imported IS bool_value;
    }
    else if (condition_name IS "debug") {
-      if (not is_bool_value) {
-         return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, value_token, "Condition 'debug' requires a boolean value");
-      }
-      int64_t log_level = GetResource(RES::LOG_LEVEL);
-      bool is_debug = log_level > 2;
-      condition_result = is_debug IS bool_value;
+      if (not is_bool_value) return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, value_token, "Condition 'debug' requires a boolean value");
+      condition_result = (GetResource(RES::LOG_LEVEL) > 2) IS bool_value;
    }
    else if (condition_name IS "platform") {
-      if (is_bool_value) {
-         return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, value_token, "Condition 'platform' requires a string value");
-      }
+      if (is_bool_value) return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, value_token, "Condition 'platform' requires a string value");
       const SystemState *state = GetSystemState();
       std::string_view current_platform = state->Platform ? state->Platform : "";
-      // Case-insensitive comparison
-      condition_result = std::equal(current_platform.begin(), current_platform.end(),
-         string_value.begin(), string_value.end(),
-         [](char a, char b) { return std::tolower(uint8_t(a)) IS std::tolower(uint8_t(b)); });
+      condition_result = pf::iequals(current_platform, string_value);
    }
    else return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, ident_token, "Unknown @if condition: " + std::string(condition_name));
 
    if (condition_result) { // Condition is true - parse statements until @end
-      log.msg("Condition true, parsing block");
+      log.detail("@if condition true, parsing block");
 
       std::vector<StmtNodePtr> statements;
 
@@ -955,9 +958,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_compile_if()
              not this->ctx.tokens().current().is(TokenKind::EndOfFile)) {
          auto stmt = this->parse_statement();
          if (not stmt.ok()) return ParserResult<StmtNodePtr>::failure(stmt.error_ref());
-         if (stmt.value_ref()) {
-            statements.push_back(std::move(stmt.value_ref()));
-         }
+         if (stmt.value_ref()) statements.push_back(std::move(stmt.value_ref()));
       }
 
       // Expect @end
@@ -976,7 +977,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_compile_if()
       return ParserResult<StmtNodePtr>::success(std::move(stmt));
    }
    else {
-      log.msg("Condition false, skipping to @end");
+      log.detail("@if condition false, skipping to @end");
       this->skip_to_compile_end();
       return ParserResult<StmtNodePtr>::success(nullptr);
    }

@@ -23,10 +23,13 @@ public:
    ParserResult<ExprNodePtr> parse_expression(uint8_t precedence = 0);
    ParserResult<ExprNodeList> parse_expression_list();
 
+   [[nodiscard]] bool at_top_level() const { return function_depth_ == 0; }
+
 private:
    ParserContext& ctx;
    bool in_guard_expression = false;  // True when parsing 'when' clause guard expression
    bool in_choose_expression = false; // True when parsing choose expression cases (for tuple pattern detection)
+   int function_depth_ = 0;           // Tracks nesting depth inside function bodies
 
    struct BinaryOpInfo {
       AstBinaryOperator op = AstBinaryOperator::Add;

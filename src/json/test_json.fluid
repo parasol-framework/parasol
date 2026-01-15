@@ -1,8 +1,8 @@
 -- JSON support is made available as an extension of the XML class
 -- Alternatively the native JSON module can be used by script writers.
 
-   json = import 'json'
    mJson = mod.load('json')
+   import 'json'
 
 glJSON = [[
 { "string":  "foo bar",

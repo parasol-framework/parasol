@@ -24,7 +24,7 @@
 --
 -- If you have control over the data, avoid null values in your data to begin with.
 
-   local json = { ['null'] = {} }
+   global json = { ['null'] = {} }
    in_char  = array<string> { '\\', '"', '/', '\b', '\f', '\n', '\r', '\t' }
    out_char = array<string> { '\\', '"', '/',  'b',  'f',  'n',  'r',  't' }
 
@@ -167,5 +167,3 @@ json.decode = function(str:str, pos:num, EndToken:str):<any, num>
       error('Invalid json syntax starting at ' .. pos_info_str)
    end
 end
-
-   return json

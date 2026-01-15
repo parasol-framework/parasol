@@ -1,8 +1,8 @@
 -- URL parsing and handling module for Parasol
 --
 -- Usage:
---   local urllib = require('net/url') -- Choose a name that avoids namespace conflicts
---   local parts = urllib.parse('https://example.com/path?query=value')
+--   urllib = import 'net/url' -- Choose a name that avoids namespace conflicts
+--   parts = urllib.parse('https://example.com/path?query=value')
 
     local url = { }
 

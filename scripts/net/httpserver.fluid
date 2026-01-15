@@ -1,15 +1,15 @@
 -- Refer to the Wiki for usage.
 --
--- local hslib = import 'net/httpserver'
+-- import 'net/httpserver'
 -- local httpServer = hslib.start({ Options... })
 -- httpServer.stop()
 
    include 'network'
-   json = require('json')
+   import 'json'
 
    glTime = obj.new('time')
 
-   httpServer = { }
+   global hslib = { }
 
    glStatusTexts = {
        [200] = 'OK', [201] = 'Created', [204] = 'No Content',
@@ -1651,7 +1651,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-httpServer.start = function(Options)
+hslib.start = function(Options)
    self = {
       port            = 8080,   -- Server port number
       folder          = nil,    -- Path from which to serve files
@@ -1884,5 +1884,3 @@ httpServer.start = function(Options)
 
    return self
 end
-
-   return httpServer

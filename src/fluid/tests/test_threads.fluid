@@ -3,7 +3,7 @@
 -- The  testParallel() function executes the threads and then waits for them to complete by calling proc.sleep()
 -- until picLoaded() sends a signal().
 
-   require 'io/filesearch'
+   import 'io/filesearch'
 
    proc = processing.new(5.0)
    glPicsProcessed = 0

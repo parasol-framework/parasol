@@ -1,7 +1,7 @@
 -- XPath document and text retrieval @Test function s
 
    include 'xml'
-   require 'common'
+   import 'common'
 
 glBaseFolder       = 'temp:xpath_documents/'
 glCollectionFolder = glBaseFolder .. 'collection/'

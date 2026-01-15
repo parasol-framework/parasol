@@ -297,16 +297,13 @@ int fcmd_include(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Usage: require 'ScriptFile'
-//
-// Loads a Fluid language file from "scripts:" and executes it.  Differs from loadFile() in that registration
-// prevents multiple executions, and the volume restriction improves security.
-//
-// The loaded script can opt to return a table that represents the interface.  This allows the user to avoid namespace
-// conflicts that could occur if the interface would otherwise be accessed as a global.
 
 int fcmd_require(lua_State *Lua)
 {
+   pf::Log log(__FUNCTION__);
+
+   log.warning("DEPRECATED");
+
    auto prv = (prvFluid *)Lua->script->ChildPrivate;
 
    CSTRING error_msg = nullptr;

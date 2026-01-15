@@ -61,7 +61,7 @@ The following options can be used when executing script files:
 )";
 
 static std::string glDialogScript =
-R"(STRING:require 'gui/filedialog'
+R"(STRING:import 'gui/filedialog'
 gui.dialog.file({
  filterList = { { name='Script Files', ext='.fluid' } },
  title      = 'Run a Script',
