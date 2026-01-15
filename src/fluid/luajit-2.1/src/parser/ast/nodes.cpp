@@ -468,6 +468,11 @@ struct StatementChildCounter {
       return Payload.error_code ? 1 : 0;
    }
 
+   [[nodiscard]] inline size_t operator()(const ImportStmtPayload &Payload) const
+   {
+      return block_child_count(Payload.inlined_body);
+   }
+
    [[nodiscard]] inline size_t operator()(const ExpressionStmtPayload &Payload) const
    {
       return Payload.expression ? 1 : 0;
@@ -517,6 +522,7 @@ ExceptClause::~ExceptClause() = default;
 TryExceptPayload::~TryExceptPayload() = default;
 RaiseStmtPayload::~RaiseStmtPayload() = default;
 CheckStmtPayload::~CheckStmtPayload() = default;
+ImportStmtPayload::~ImportStmtPayload() = default;
 BlockStmt::~BlockStmt() = default;
 
 ExprNodePtr make_literal_expr(SourceSpan Span, const LiteralValue &Literal)

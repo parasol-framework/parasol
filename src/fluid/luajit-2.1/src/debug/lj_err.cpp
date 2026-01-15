@@ -468,13 +468,14 @@ extern "C" void setup_try_handler(lua_State *L)
    if (L->top > L->base and tvisstr(L->top - 1)) error_msg = strVdata(L->top - 1);
 
    // Extract line number from error message (format: "filename:line: message")
+   // On Windows, filenames may contain colons (e.g., "E:\path\file.fluid:10: msg")
+   // so we search for the first colon followed by a digit.
    int line = 0;
    if (error_msg) {
-      if (auto colon1 = strchr(error_msg, ':')) {
-         // Check if next character starts a number (line number)
-         auto num_start = colon1 + 1;
-         if (*num_start >= '0' and *num_start <= '9') {
-            line = int(strtol(num_start, nullptr, 10));
+      for (auto p = error_msg; *p; p++) {
+         if (*p IS ':' and p[1] >= '0' and p[1] <= '9') {
+            line = int(strtol(p + 1, nullptr, 10));
+            break;
          }
       }
    }
@@ -521,12 +522,12 @@ extern "C" void setup_try_handler(lua_State *L)
    TValue *current_err = final_err ? final_err : errobj;
    if (current_err and tvisstr(current_err)) {
       error_msg = strVdata(current_err);
-      // Re-extract line number from new error message
+      // Re-extract line number from new error message (same Windows-aware logic)
       line = 0;
-      if (auto colon1 = strchr(error_msg, ':')) {
-         auto num_start = colon1 + 1;
-         if (*num_start >= '0' and *num_start <= '9') {
-            line = int(strtol(num_start, nullptr, 10));
+      for (auto p = error_msg; *p; p++) {
+         if (*p IS ':' and p[1] >= '0' and p[1] <= '9') {
+            line = int(strtol(p + 1, nullptr, 10));
+            break;
          }
       }
    }

@@ -2,7 +2,7 @@
 Manual test for confirming that the clibpoard works.
 --]]
 
-   require 'gui/window'
+   import 'gui/window'
 
    local win = gui.window({ title='Keyboard Example', insideWidth=400, insideHeight=200,
       maxWidth=600, maxHeight=300, minWidth=400, minHeight=200 })

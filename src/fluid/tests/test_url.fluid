@@ -1,7 +1,7 @@
 -- $FLUID
 -- Comprehensive test suite for the URL module
 
-   url = require 'net/url'
+   import 'net/url'
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Test URL encoding/decoding

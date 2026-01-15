@@ -7,9 +7,9 @@
 --    server.registerHandler('textDocument/hover', function(msg, state) ... end)
 
    include 'network'
-   global json = require('json')
-   require 'common'
-   require 'io/filesearch'
+   global json = import 'json'
+   import 'common'
+   import 'io/filesearch'
 
    global CACHE_PATH = 'user:config/lsp_doc_cache.fluid'
    global HTML_URI = 'https://parasol.ws/modules/'
@@ -189,13 +189,13 @@ global FLUID_KEYWORDS = {
    ['if'] = true, ['then'] = true, ['else'] = true, ['elseif'] = true,
    ['for'] = true, ['in'] = true, ['while'] = true, ['do'] = true,
    ['repeat'] = true, ['until'] = true, ['break'] = true, ['continue'] = true,
-   ['return'] = true, ['end'] = true,
+   ['return'] = true, ['end'] = true, ['try'] = true, ['except'] = true, ['success'] = true,
 
    -- Pattern matching
    ['choose'] = true, ['from'] = true, ['when'] = true,
 
    -- Declarations
-   ['function'] = true, ['local'] = true, ['global'] = true, ['thunk'] = true,
+   ['function'] = true, ['local'] = true, ['global'] = true, ['thunk'] = true, ['import'] = true,
 
    -- Special
    ['defer'] = true, ['catch'] = true, ['raise'] = true, ['check'] = true
@@ -293,7 +293,7 @@ global function logWarning(Self:table, Message:str)
    Self?.logMessage('[' .. timestamp() .. '] [WARN] ' .. Message)
 end
 
-   require './lsp_protocol'
+   import './lsp_protocol'
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Compute diagnostics for a document using debug.validate()
@@ -434,10 +434,10 @@ global function computeDiagnostics(Doc:table)
    return { uri = Doc.uri, version = Doc.version, diagnostics = lsp_diags }
 end
 
-   require './lsp_parsing'
-   require './lsp_handlers'
-   require './lsp_cache'
-   require './lsp_hover'
+   import './lsp_parsing'
+   import './lsp_handlers'
+   import './lsp_cache'
+   import './lsp_hover'
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Public API

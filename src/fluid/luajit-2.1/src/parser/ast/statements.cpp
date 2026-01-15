@@ -434,6 +434,14 @@ ParserResult<ReturnStmtPayload> AstBuilder::parse_return_payload(const Token& re
 ParserResult<StmtNodePtr> AstBuilder::parse_return()
 {
    Token token = this->ctx.tokens().current();
+
+   // Warn if this is a top-level return in an imported file, as it will affect
+   // control flow in the importing script (since imports are inlined at parse time).
+   if (this->ctx.is_being_imported() and this->at_top_level()) {
+      this->ctx.emit_warning(ParserErrorCode::UnexpectedToken, token,
+         "Top-level 'return' in imported file will return from the importing script's scope");
+   }
+
    this->ctx.tokens().advance();
    auto payload = this->parse_return_payload(token, false);
    if (not payload.ok()) return ParserResult<StmtNodePtr>::failure(payload.error_ref());
@@ -650,4 +658,485 @@ ParserResult<StmtNodePtr> AstBuilder::parse_check()
    auto stmt = std::make_unique<StmtNode>(AstNodeKind::CheckStmt, check_token.span());
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
+}
+
+//********************************************************************************************************************
+// Parses import statements: import 'library' [as alias]
+//
+// The import statement is a compile-time feature that reads and parses the referenced file, inlining its content as
+// statements executed within the current scope.
+//
+// When using 'as alias' syntax, the imported library must declare a namespace. The alias creates a local const variable
+// that references _LIB['namespace'] for convenient access to the library exports.
+
+ParserResult<StmtNodePtr> AstBuilder::parse_import()
+{
+   pf::Log log(__FUNCTION__);
+
+   Token import_token = this->ctx.tokens().current();
+
+   // Import statements must be at the top level of the script
+
+   if (not this->at_top_level()) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, import_token, "Use of 'import' is not permitted inside function blocks");
+   }
+
+   this->ctx.tokens().advance();  // consume 'import'
+
+   // Require a string literal for the library path
+
+   Token path_token = this->ctx.tokens().current();
+   if (not path_token.is(TokenKind::String)) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, path_token, "Import path must be a string literal");
+   }
+
+   GCstr *path_str = path_token.payload().as_string();
+   if (not path_str) return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, path_token, "Invalid import path");
+
+   std::string_view mod_name(strdata(path_str), path_str->len);
+   this->ctx.tokens().advance();  // consume string
+
+   log.branch("Library: %.*s", int(mod_name.size()), mod_name.data());
+
+   // Check for 'as' alias syntax
+
+   std::optional<Identifier> alias;
+   Token as_token;
+   if (this->ctx.check(TokenKind::AsToken)) {
+      as_token = this->ctx.tokens().current();
+      this->ctx.tokens().advance();  // consume 'as'
+
+      auto alias_result = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+      if (not alias_result.ok()) return ParserResult<StmtNodePtr>::failure(alias_result.error_ref());
+
+      alias = make_identifier(alias_result.value_ref());
+      alias->has_const = true;  // Namespace alias is const
+   }
+
+   std::string path = this->ctx.resolve_lib_to_path(mod_name);
+
+   // Check for circular import
+
+   if (this->ctx.is_importing(path)) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, import_token, "Circular import detected: " + path);
+   }
+
+   // Parse the imported file
+
+   auto imported_body = this->parse_imported_file(path, mod_name, import_token);
+   if (not imported_body.ok()) return ParserResult<StmtNodePtr>::failure(imported_body.error_ref());
+
+   // Look up the namespace from the imports map using the resolved path
+
+   lua_State *L = &this->ctx.lua();
+   auto libhash = pf::strihash(path);
+   std::string default_ns;
+   auto it = L->imports.find(libhash);
+   if (it != L->imports.end()) default_ns = it->second;
+
+   // If using 'as' alias, the library must declare a namespace
+
+   if (alias and default_ns.empty()) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, as_token,
+         std::string("cannot use 'as' alias: library '") + std::string(mod_name) + "' does not declare a namespace");
+   }
+
+   // Determine final namespace name (alias takes precedence)
+
+   std::string final_ns;
+   if (alias) final_ns = std::string(strdata(alias->symbol), alias->symbol->len);
+   else if (not default_ns.empty()) final_ns = default_ns;
+
+   // Create ImportStmtPayload
+
+   auto stmt = std::make_unique<StmtNode>(AstNodeKind::ImportStmt, import_token.span());
+   ImportStmtPayload payload;
+   payload.lib_path = path;
+   payload.inlined_body = std::move(imported_body.value_ref());
+
+   // Look up the FileSource index for this import (registered during parse_imported_file)
+   auto file_idx = find_file_source(L, pf::strihash(path));
+   if (file_idx.has_value()) {
+      payload.file_source_idx = file_idx.value();
+   }
+
+   // If we have a namespace (either from alias or default), set up the namespace binding
+   if (not final_ns.empty()) {
+      Identifier ns_id;
+      ns_id.symbol = lj_str_new(L, final_ns.c_str(), final_ns.size());
+      ns_id.span = import_token.span();
+      ns_id.has_const = true;
+      payload.namespace_name = std::move(ns_id);
+      payload.default_namespace = default_ns;  // Store original for _LIB lookup
+   }
+
+   stmt->data = std::move(payload);
+
+   return ParserResult<StmtNodePtr>::success(std::move(stmt));
+}
+
+//********************************************************************************************************************
+// Parses namespace statements: namespace 'name'
+//
+// The namespace statement declares a default namespace for a library. When this library is imported, the
+// importing file can reference the library exports via `_LIB['name']`. This statement generates:
+//   local _NS <const> = 'name'
+//
+// The namespace is also recorded in L->imports so import statements can look up the declared namespace.
+
+ParserResult<StmtNodePtr> AstBuilder::parse_namespace()
+{
+   pf::Log log(__FUNCTION__);
+
+   Token ns_token = this->ctx.tokens().current();
+
+   // Namespace must be at top level
+   if (not this->at_top_level()) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, ns_token, "'namespace' must be at library level");
+   }
+
+   this->ctx.tokens().advance();  // consume 'namespace'
+
+   // Require string literal for namespace name
+   Token name_token = this->ctx.tokens().current();
+   if (not name_token.is(TokenKind::String)) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, name_token,
+         "namespace name must be a string literal");
+   }
+
+   GCstr *name_str = name_token.payload().as_string();
+   std::string_view ns_name(strdata(name_str), name_str->len);
+   this->ctx.tokens().advance();  // consume string
+
+   log.detail("Namespace: %.*s", int(ns_name.size()), ns_name.data());
+
+   lua_State *L = &this->ctx.lua();
+
+   // Check for namespace conflict with already-loaded libraries
+   for (const auto& [hash, existing_ns] : L->imports) {
+      if ((not existing_ns.empty()) and (existing_ns == ns_name)) {
+         return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, name_token,
+            std::string("namespace '") + std::string(ns_name) + "' already defined by another library");
+      }
+   }
+
+   // If we're being imported, record the namespace in the imports map
+
+   if (this->ctx.is_being_imported()) {
+      const auto& import_stack = this->ctx.import_stack();
+      if (not import_stack.empty()) {
+         auto libhash = pf::strihash(import_stack.back());
+         L->imports[libhash] = std::string(ns_name);
+      }
+   }
+
+   // Transform to: local _NS <const> = 'name'
+   Identifier id;
+   id.symbol = lj_str_new(L, "_NS", 3);
+   id.span = ns_token.span();
+   id.has_const = true;
+
+   std::vector<Identifier> names;
+   names.push_back(std::move(id));
+
+   ExprNodeList values;
+   auto str_expr = std::make_unique<ExprNode>(AstNodeKind::LiteralExpr, name_token.span());
+   LiteralValue lit;
+   lit.kind = LiteralKind::String;
+   lit.string_value = name_str;
+   str_expr->data = lit;
+   values.push_back(std::move(str_expr));
+
+   auto stmt = std::make_unique<StmtNode>(AstNodeKind::LocalDeclStmt, ns_token.span());
+   stmt->data.emplace<LocalDeclStmtPayload>(AssignmentOperator::Plain,
+      std::move(names), std::move(values));
+
+   return ParserResult<StmtNodePtr>::success(std::move(stmt));
+}
+
+//********************************************************************************************************************
+// Reads a file and parses its contents, returning the parsed block.
+// This is used by parse_import() to inline imported libraries at compile time.
+//
+// Each imported file is registered with a unique FileSource index for accurate error reporting.
+// The file index is encoded in the upper 8 bits of BCLine values.
+
+ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(const std::string &Path, std::string_view Library, const Token& ImportToken)
+{
+   pf::Log log(__FUNCTION__);
+
+   lua_State *L = &this->ctx.lua();
+   auto libhash = pf::strihash(Path);
+
+   // Check if this file is already registered in FileSource (more authoritative than imports map)
+   auto existing_index = find_file_source(L, libhash);
+   if (existing_index.has_value()) {
+      log.detail("Library %.*s already loaded (file index %d)", int(Library.size()), Library.data(), existing_index.value());
+      return ParserResult<std::unique_ptr<BlockStmt>>::success(make_block(ImportToken.span(), {}));
+   }
+
+   // Also check legacy imports map for backward compatibility
+   auto it = L->imports.find(libhash);
+   if (it != L->imports.end()) {
+      log.detail("Library %.*s already loaded (legacy check)", int(Library.size()), Library.data());
+      return ParserResult<std::unique_ptr<BlockStmt>>::success(make_block(ImportToken.span(), {}));
+   }
+
+   L->imports[libhash] = "";  // Set as loaded with empty namespace (updated when namespace statement is parsed)
+
+   // Push this file onto the import stack to detect circular imports
+   this->ctx.push_import(Path);
+
+   // Read the file contents using Parasol File API
+   objFile::create file = { fl::Path(Path.c_str()), fl::Flags(FL::READ) };
+   if (not file.ok()) {
+      this->ctx.pop_import();
+      return this->fail<std::unique_ptr<BlockStmt>>(ParserErrorCode::UnexpectedToken, ImportToken,
+         "Cannot open imported file: " + Path);
+   }
+
+   // Get file size and read contents
+   int file_size = 0;
+   if (file->get(FID_Size, file_size) != ERR::Okay or file_size <= 0) {
+      this->ctx.pop_import();
+      // Empty file - return an empty block
+      return ParserResult<std::unique_ptr<BlockStmt>>::success(make_block(ImportToken.span(), {}));
+   }
+
+   std::string source;
+   source.resize(size_t(file_size));
+   int bytes_read = 0;
+   ERR err = file->read(source.data(), file_size, &bytes_read);
+
+   if (err != ERR::Okay or bytes_read <= 0) {
+      this->ctx.pop_import();
+      return this->fail<std::unique_ptr<BlockStmt>>(ParserErrorCode::UnexpectedToken, ImportToken,
+         "cannot read imported file: " + Path);
+   }
+   source.resize(size_t(bytes_read));
+
+   // Count source lines for FileSource metadata
+   BCLine source_lines = 1;
+   for (char c : source) {
+      if (c IS '\n') source_lines++;
+   }
+
+   // Extract filename from path for display
+   std::string filename = Path;
+   auto pos = Path.find_last_of("/\\");
+   if (pos != std::string::npos) filename = Path.substr(pos + 1);
+
+   // Get the parent file's index and the line where import occurred
+   uint8_t parent_index = this->ctx.lex().current_file_index;
+   BCLine import_line = ImportToken.span().line.lineNumber();  // Decode line from parent's encoded BCLine
+
+   // Register this imported file with FileSource tracking
+   uint8_t new_file_index = register_file_source(L, Path, filename, 1, source_lines, parent_index, import_line);
+
+   // Create a new LexState for the imported file
+   LexState import_lex(L, source, std::string("@") + Path);
+
+   // Set the file index for this imported file (no line_offset needed with FileSource)
+   import_lex.current_file_index = new_file_index;
+
+   // Set chunkname for error reporting (normally done in lj_parse for the main file)
+   import_lex.chunkname = lj_str_newz(L, import_lex.chunkarg);
+
+   // Point the FuncState to the new lexer temporarily
+   FuncState &fs = this->ctx.func();
+   LexState *saved_ls = fs.ls;
+   fs.ls = &import_lex;
+
+   // Initialize the import lexer
+   import_lex.fs = &fs;
+   import_lex.L = L;
+
+   import_lex.next(); // Prime the lexer
+
+   // Create a temporary parser context for the imported file
+   ParserContext import_ctx(import_lex, fs, *L, ParserAllocator::from(L), this->ctx.config());
+
+   // Copy the import stack to the child context for circular detection
+   for (const auto& imported_path : this->ctx.import_stack()) {
+      import_ctx.push_import(imported_path);
+   }
+
+   // Parse just the block of statements (not a full chunk)
+   AstBuilder import_builder(import_ctx);
+   const TokenKind terms[] = { TokenKind::EndOfFile };
+   auto result = import_builder.parse_block(terms);
+
+   // Restore the parent FuncState's lexer reference
+   fs.ls = saved_ls;
+
+   this->ctx.pop_import();
+
+   if (not result.ok()) {
+      // Prepend import context to error message
+      ParserError error = result.error_ref();
+      error.message = "in imported file '" + Path + "': " + error.message;
+      return ParserResult<std::unique_ptr<BlockStmt>>::failure(error);
+   }
+
+   return result;
+}
+
+//********************************************************************************************************************
+// Skips tokens until a matching @end is found, handling nested @if/@end blocks.  Called when the @if condition
+// evaluates to false.
+
+void AstBuilder::skip_to_compile_end()
+{
+   pf::Log log(__FUNCTION__);
+
+   int depth = 1;  // Already consumed one @if
+
+   while (depth > 0) {
+      Token current = this->ctx.tokens().current();
+
+      if (current.is(TokenKind::EndOfFile)) {
+         // Unclosed @if - emit error and return
+         this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, "Unclosed @if - expected @end");
+         return;
+      }
+
+      if (current.is(TokenKind::CompileIf)) {
+         depth++;
+         log.detail("Found nested @if, depth now %d", depth);
+      }
+      else if (current.is(TokenKind::CompileEnd)) {
+         depth--;
+         log.detail("Found @end, depth now %d", depth);
+      }
+
+      this->ctx.tokens().advance();
+   }
+}
+
+//********************************************************************************************************************
+// Parses compile-time conditional: @if(condition) ... @end
+//
+// Supported conditions:
+//   @if(imported=true)     - Include block only when file is being imported
+//   @if(imported=false)    - Include block only when file is the main script
+//   @if(debug=true)        - Include block only when log level > 0 (debugging enabled)
+//   @if(debug=false)       - Include block only when log level == 0 (no debugging)
+//   @if(platform="name")   - Include block only when platform matches (windows, linux, osx, native)
+//
+// When condition is true, parses the block normally.
+// When condition is false, skips tokens until @end without parsing.
+
+ParserResult<StmtNodePtr> AstBuilder::parse_compile_if()
+{
+   pf::Log log(__FUNCTION__);
+
+   Token compif_token = this->ctx.tokens().current();
+   this->ctx.tokens().advance();  // consume @if
+
+   // Expect '('
+   if (not this->ctx.tokens().current().is(TokenKind::LeftParen)) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, this->ctx.tokens().current(),
+         "Expected '(' after @if");
+   }
+   this->ctx.tokens().advance();  // consume '('
+
+   // Parse condition: identifier '=' value
+   Token ident_token = this->ctx.tokens().current();
+   if (not ident_token.is(TokenKind::Identifier)) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, ident_token, "Expected identifier in @if condition");
+   }
+
+   GCstr *ident_str = ident_token.payload().as_string();
+   std::string_view condition_name(strdata(ident_str), ident_str->len);
+   this->ctx.tokens().advance();  // consume identifier
+
+   // Expect '='
+   if (not this->ctx.tokens().current().is(TokenKind::Equals)) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, this->ctx.tokens().current(), "Expected '=' in @if condition");
+   }
+   this->ctx.tokens().advance();  // consume '='
+
+   // Parse the condition value - can be true, false, or a string
+   Token value_token = this->ctx.tokens().current();
+   bool is_bool_value = false;
+   bool bool_value = false;
+   std::string_view string_value;
+
+   if (value_token.is(TokenKind::TrueToken)) {
+      is_bool_value = true;
+      bool_value = true;
+   }
+   else if (value_token.is(TokenKind::FalseToken)) {
+      is_bool_value = true;
+      bool_value = false;
+   }
+   else if (value_token.is(TokenKind::String)) {
+      is_bool_value = false;
+      GCstr *str = value_token.payload().as_string();
+      if (str) string_value = std::string_view(strdata(str), str->len);
+   }
+   else return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, value_token, "Expected 'true', 'false', or a string literal in @if condition");
+
+   this->ctx.tokens().advance();  // consume value
+
+   // Expect ')'
+
+   if (not this->ctx.tokens().current().is(TokenKind::RightParen)) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, this->ctx.tokens().current(), "Expected ')' after @if condition");
+   }
+   this->ctx.tokens().advance();  // consume ')'
+
+   // Evaluate condition
+
+   bool condition_result = false;
+
+   if (condition_name IS "imported") {
+      if (not is_bool_value) return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, value_token, "Condition 'imported' requires a boolean value");
+      bool is_imported = this->ctx.is_being_imported();
+      condition_result = is_imported IS bool_value;
+   }
+   else if (condition_name IS "debug") {
+      if (not is_bool_value) return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, value_token, "Condition 'debug' requires a boolean value");
+      condition_result = (GetResource(RES::LOG_LEVEL) > 2) IS bool_value;
+   }
+   else if (condition_name IS "platform") {
+      if (is_bool_value) return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, value_token, "Condition 'platform' requires a string value");
+      const SystemState *state = GetSystemState();
+      std::string_view current_platform = state->Platform ? state->Platform : "";
+      condition_result = pf::iequals(current_platform, string_value);
+   }
+   else return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, ident_token, "Unknown @if condition: " + std::string(condition_name));
+
+   if (condition_result) { // Condition is true - parse statements until @end
+      log.detail("@if condition true, parsing block");
+
+      std::vector<StmtNodePtr> statements;
+
+      while (not this->ctx.tokens().current().is(TokenKind::CompileEnd) and
+             not this->ctx.tokens().current().is(TokenKind::EndOfFile)) {
+         auto stmt = this->parse_statement();
+         if (not stmt.ok()) return ParserResult<StmtNodePtr>::failure(stmt.error_ref());
+         if (stmt.value_ref()) statements.push_back(std::move(stmt.value_ref()));
+      }
+
+      // Expect @end
+
+      if (not this->ctx.tokens().current().is(TokenKind::CompileEnd)) {
+         return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, this->ctx.tokens().current(),
+            "Expected @end to close @if block");
+      }
+      this->ctx.tokens().advance();  // consume @end
+
+      // Return a do block containing the statements (transparent wrapper)
+
+      auto block = make_block(compif_token.span(), std::move(statements));
+      auto stmt = std::make_unique<StmtNode>(AstNodeKind::DoStmt, compif_token.span());
+      stmt->data = DoStmtPayload(std::move(block));
+      return ParserResult<StmtNodePtr>::success(std::move(stmt));
+   }
+   else {
+      log.detail("@if condition false, skipping to @end");
+      this->skip_to_compile_end();
+      return ParserResult<StmtNodePtr>::success(nullptr);
+   }
 }

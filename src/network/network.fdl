@@ -140,7 +140,7 @@ typedef int SOCKET_HANDLE;
     int MulticastTTL      # Time-to-live for multicast packets (UDP only)
   ]])
 
-  const("SCV", { comment="These error codes for certificate validation match the OpenSSL error codes (X509 definitions)" }, {
+  constants("SCV", { comment="These error codes for certificate validation match the OpenSSL error codes (X509 definitions)" }, {
     OK                                  = 0,
     UNABLE_TO_GET_ISSUER_CERT           = 2,
     UNABLE_TO_GET_CRL                   = 3,

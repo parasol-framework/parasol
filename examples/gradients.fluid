@@ -2,11 +2,11 @@
 Gradient Demonstration
 --]]
 
-   require 'gui/window'
-   require 'gui/combobox'
-   require 'gui/slider'
-   require 'gui/button'
-   require 'gui/filedialog'
+   import 'gui/window'
+   import 'gui/combobox'
+   import 'gui/slider'
+   import 'gui/button'
+   import 'gui/filedialog'
 
    local win, viewport, gradient, gradientVP, rect
    local focalEllipse, contourShape, uiEvent

@@ -1,8 +1,8 @@
 -- Support for the mass copying of files to a folder
 -- Designed for calling from a script in a dedicated thread.
 
-   require 'common'
-   require 'gui/dialog'
+   import 'common'
+   import 'gui/dialog'
 
 local progress_status, progress_dialog, progress_time
 

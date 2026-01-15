@@ -16,6 +16,7 @@
 
 #include "lj_obj.h"
 #include "lj_err.h"
+#include "../debug/filesource.h"
 
 #ifdef INCLUDE_TIPS
 #include <memory>
@@ -42,6 +43,7 @@ struct TokenDefinition {
 // Format: TOKEN_DEF(name, symbol, reserved)
 #define TOKEN_DEF_LIST \
    TOKEN_DEF(and,          "and",      true) \
+   TOKEN_DEF(as,           "as",       true) \
    TOKEN_DEF(break,        "break",    true) \
    TOKEN_DEF(choose,       "choose",   true) \
    TOKEN_DEF(continue,     "continue", true) \
@@ -56,9 +58,11 @@ struct TokenDefinition {
    TOKEN_DEF(function,     "function", true) \
    TOKEN_DEF(global,       "global",   true) \
    TOKEN_DEF(if,           "if",       true) \
+   TOKEN_DEF(import,       "import",   true) \
    TOKEN_DEF(in,           "in",       true) \
    TOKEN_DEF(is,           "is",       true) \
    TOKEN_DEF(local,        "local",    true) \
+   TOKEN_DEF(namespace,    "namespace", true) \
    TOKEN_DEF(nil,          "nil",      true) \
    TOKEN_DEF(not,          "not",      true) \
    TOKEN_DEF(or,           "or",       true) \
@@ -108,6 +112,8 @@ struct TokenDefinition {
    TOKEN_DEF(defer_close,  "}>",       false) \
    TOKEN_DEF(array_typed,  "array<type>", false) \
    TOKEN_DEF(annotate,     "@",        false) \
+   TOKEN_DEF(compif,       "@if",      false) \
+   TOKEN_DEF(compend,      "@end",     false) \
    TOKEN_DEF(eof,          "<eof>",    false)
 
 // Generate TOKEN_DEFINITIONS array from TOKEN_DEF_LIST
@@ -237,6 +243,9 @@ public:
 
    BCLine     linenumber;   // Input line counter.
    BCLine     lastline;     // Line of last token.
+   BCLine     line_offset = 0;  // Line offset applied to token spans (used for import inlining).
+   uint8_t    current_file_index = 0;  // File index for FileSource tracking (0 = main file)
+
    GCstr *    chunkname;    // Current chunk name (interned string).
    const char *chunkarg;    // Chunk name argument.
    const char *mode;        // Allow loading bytecode (b) and/or source text (t).
@@ -334,6 +343,16 @@ public:
    void mark_token_start();
    void apply_buffered_token(const BufferedToken& token);
    BufferedToken scan_buffered_token();
+
+   // Returns an encoded BCLine with file index in upper 8 bits and line number in lower 24 bits.
+   // This allows error reporting to identify both the source file and line number.
+   // Uses lastline (the line of the most recently consumed token) for bytecode emission.
+
+   [[nodiscard]] inline BCLine effective_line() const noexcept {
+      BCLine line = this->lastline;
+      if (line < 1) line = 1;
+      return BCLine::encode(this->current_file_index, line);
+   }
 
 #ifdef LUA_USE_ASSERT
    template<typename... Args>

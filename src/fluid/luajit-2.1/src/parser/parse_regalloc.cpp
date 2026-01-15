@@ -97,14 +97,14 @@ void RegisterAllocator::release_span_internal(BCReg Start, BCReg Count, BCReg Ex
          pf::Log("Parser").warning("Register depth mismatch, %d != %d, function @ line %d - "
             "RegisterSpan was created with freereg=%d but released as %d. "
             "This indicates intermediate operations modified freereg or cleanup is out of order.",
-            ExpectedTop.raw(), this->func_state->freereg, this->func_state->linedefined,
+            ExpectedTop.raw(), this->func_state->freereg, this->func_state->linedefined.lineNumber(),
             ExpectedTop.raw(), this->func_state->freereg);
       }
 
       // Check for span size mismatch
       if (Start.raw() + Count.raw() != ExpectedTop.raw()) {
          pf::Log("Parser").warning("Span size mismatch: start=%u count=%u expected_top=%u at line %d",
-            Start.raw(), Count.raw(), ExpectedTop.raw(), this->func_state->linedefined);
+            Start.raw(), Count.raw(), ExpectedTop.raw(), this->func_state->linedefined.lineNumber());
       }
 
       this->func_state->freereg = ExpectedTop.raw() - Count.raw();
@@ -112,7 +112,7 @@ void RegisterAllocator::release_span_internal(BCReg Start, BCReg Count, BCReg Ex
       // Check that after release, freereg equals the span start
       if (this->func_state->freereg != Start.raw()) {
          pf::Log("Parser").warning("Bad regfree: freereg=%u should equal start=%u at line %d",
-            this->func_state->freereg, Start.raw(), this->func_state->linedefined);
+            this->func_state->freereg, Start.raw(), this->func_state->linedefined.lineNumber());
       }
 
       this->trace_release(Start, Count, "release_span_internal");
@@ -262,7 +262,7 @@ BCPOS bcemit_INS(FuncState *fs, BCIns ins)
    }
 
    fs->bcbase[pc].ins = ins;
-   fs->bcbase[pc].line = ls->lastline;
+   fs->bcbase[pc].line = ls->effective_line();
    fs->pc = pc + 1;
    return pc;
 }

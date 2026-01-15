@@ -3,8 +3,8 @@ Documentation is available in the Parasol Wiki.
 To be used in conjunction with the gui.menubar or as an independent pop-up only.
 --]]
 
-   require 'common'
-   require 'gui'
+   import 'common'
+   import 'gui'
    include 'display'
 
    global mGfx ?= mod.load('display')

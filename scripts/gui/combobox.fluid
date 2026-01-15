@@ -4,9 +4,9 @@ The gui.combobox API creates and manages combobox boxes in the user interface.
 Documentation is available in the Parasol Wiki.
 --]]
 
-   require 'common'
-   require 'gui'
-   require 'gui/dropdown'
+   import 'common'
+   import 'gui'
+   import 'gui/dropdown'
 
 FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
 BOX_HEIGHT    = math.floor(FONT_MAX_HEIGHT * 1.35) + 1

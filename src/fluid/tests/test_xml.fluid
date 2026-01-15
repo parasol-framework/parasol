@@ -1,7 +1,7 @@
 -- $FLUID
 -- Flute tests for the table.toXML() method
 
-   require 'common'
+   import 'common'
 
 @Test function Basic()
    item = table.toXML({

@@ -7,9 +7,9 @@ this by maintaining at least one reference to the object at all times and this w
 collected too early.
 --]]
 
-   require 'common'
-   hslib = require 'net/httpserver'
-   json = require 'json'
+   import 'common'
+   import 'net/httpserver'
+   import 'json'
    include 'http'
 
    glOutFile = 'temp:http-output.txt'

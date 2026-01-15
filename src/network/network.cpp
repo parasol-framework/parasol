@@ -509,7 +509,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    pf::Log log;
 
    CoreBase = argCoreBase;
-   
+
    argModule->get(FID_Root, glNetworkModule);
 
    if (init_netclient() != ERR::Okay) return ERR::AddClass;

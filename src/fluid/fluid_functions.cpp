@@ -297,16 +297,13 @@ int fcmd_include(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Usage: require 'ScriptFile'
-//
-// Loads a Fluid language file from "scripts:" and executes it.  Differs from loadFile() in that registration
-// prevents multiple executions, and the volume restriction improves security.
-//
-// The loaded script can opt to return a table that represents the interface.  This allows the user to avoid namespace
-// conflicts that could occur if the interface would otherwise be accessed as a global.
 
 int fcmd_require(lua_State *Lua)
 {
+   pf::Log log(__FUNCTION__);
+
+   log.warning("DEPRECATED");
+
    auto prv = (prvFluid *)Lua->script->ChildPrivate;
 
    CSTRING error_msg = nullptr;
@@ -495,6 +492,7 @@ int fcmd_loadfile(lua_State *Lua)
             file->setPosition(i);
          }
 
+#ifdef SHORT_FLUID_PATHS
          int i;
          for (i=strlen(path); i > 0; i--) { // Get the file name from the path
             if ((path[i-1] IS '\\') or (path[i-1] IS '/') or (path[i-1] IS ':')) break;
@@ -502,6 +500,17 @@ int fcmd_loadfile(lua_State *Lua)
 
          // Prefix chunk name with '@' (Lua convention for file-based chunks) for better debug output
          std::string chunk_name = std::string("@") + (path + i);
+#else
+         // Resolve the full path for the chunk name (needed for import statement path resolution)
+         std::string resolved_path;
+         if (ResolvePath(path, RSF::NIL, &resolved_path) IS ERR::Okay) {
+            // Use resolved path for chunk name
+         }
+         else resolved_path = path;  // Fall back to original if resolution fails
+
+         // Prefix chunk name with '@' (Lua convention for file-based chunks) for better debug output
+         std::string chunk_name = std::string("@") + resolved_path;
+#endif
 
          if (not lua_load(Lua, *file, chunk_name.c_str())) {
             // TODO Code compilation not currently supported

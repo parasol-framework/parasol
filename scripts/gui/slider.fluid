@@ -2,8 +2,8 @@
 Documentation is available in the Parasol Wiki.
 --]]
 
-   require 'common'
-   require 'gui'
+   import 'common'
+   import 'gui'
 
 FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
 BOX_SIZE = math.floor(FONT_MAX_HEIGHT * 1.35) + 1

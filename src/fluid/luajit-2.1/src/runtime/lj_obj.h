@@ -11,7 +11,11 @@
 #include "lj_def.h"
 #include "lj_arch.h"
 #include <array>
+#include <format>
 #include <vector>
+#include <unordered_set>
+#include <unordered_map>
+#include <ankerl/unordered_dense.h>
 #include "../../../struct_def.h"
 
 #ifndef PLATFORM_CONFIG_H
@@ -48,6 +52,7 @@ class TipEmitter;
 // Debug objects
 
 struct CapturedStackTrace;
+struct FileSource;
 
 // Value types
 
@@ -108,6 +113,7 @@ enum class AstNodeKind : uint16_t {
    TryExceptStmt,  // try...except...end exception handling
    RaiseStmt,      // raise expression [, message]
    CheckStmt,      // check expression
+   ImportStmt,     // import 'module' statement
    ExpressionStmt
 };
 
@@ -260,7 +266,66 @@ constexpr inline void setgcrefr(GCRef& r, GCRef v) noexcept { r.gcptr64 = v.gcpt
 using BCIns = uint32_t;  //  Bytecode instruction.
 using BCPOS = uint32_t;  //  Bytecode position.
 using BCREG = uint32_t;  //  Bytecode register.
-using BCLine = int32_t;  //  Bytecode line number.
+
+// Bytecode line number with file index encoding.
+// Upper 8 bits store file index (0-254, 255 = overflow), lower 24 bits store line number.
+// This allows tracking source locations across imported files.
+
+class BCLine {
+public:
+   static constexpr int32_t FILE_SHIFT = 24;
+   static constexpr int32_t LINE_MASK = 0x00FFFFFF;
+   static constexpr int32_t FILE_MASK = int32_t(0xFF000000);
+
+   // Sentinel values for special cases
+   static constexpr int32_t NO_LINE = -1;       // No line information available
+   static constexpr int32_t BUILTIN = ~0;       // Builtin function (no source)
+
+   // Constructors
+   constexpr BCLine() noexcept : m_value(0) {}
+   constexpr BCLine(int32_t raw) noexcept : m_value(raw) {}
+   constexpr BCLine(uint8_t fileIndex, int32_t line) noexcept
+      : m_value((int32_t(fileIndex) << FILE_SHIFT) | (line & LINE_MASK)) {}
+
+   // Static factory for encoding file index and line
+   [[nodiscard]] static constexpr BCLine encode(uint8_t fileIndex, int32_t line) noexcept {
+      return BCLine(fileIndex, line);
+   }
+
+   // Decoding methods
+   [[nodiscard]] constexpr uint8_t fileIndex() const noexcept {
+      return uint8_t((m_value & FILE_MASK) >> FILE_SHIFT);
+   }
+   [[nodiscard]] constexpr int32_t lineNumber() const noexcept {
+      return m_value & LINE_MASK;
+   }
+
+   // Semantic queries
+   [[nodiscard]] constexpr bool isValid() const noexcept { return m_value >= 0; }
+   [[nodiscard]] constexpr bool isBuiltin() const noexcept { return m_value IS BUILTIN; }
+
+   // Implicit conversion for backward compatibility with existing code that uses BCLine as int32_t.
+   // This allows BCLine to work seamlessly with arithmetic, comparison, and bitwise operations.
+   constexpr operator int32_t() const noexcept { return m_value; }
+
+   // Increment operators (return BCLine to maintain type)
+   constexpr BCLine& operator++() noexcept { ++m_value; return *this; }
+   constexpr BCLine operator++(int) noexcept { BCLine tmp = *this; ++m_value; return tmp; }
+
+   // Raw value access (explicit alternative to implicit conversion)
+   [[nodiscard]] constexpr int32_t raw() const noexcept { return m_value; }
+
+private:
+   int32_t m_value;
+};
+
+// std::format support for BCLine (formats as its integer value)
+template<>
+struct std::formatter<BCLine> : std::formatter<int32_t> {
+   auto format(BCLine line, std::format_context& ctx) const {
+      return std::formatter<int32_t>::format(line.raw(), ctx);
+   }
+};
 
 // Internal assembler functions. Never call these directly from C.
 using ASMFunction = void(*)(void);
@@ -538,6 +603,7 @@ typedef struct GCproto {
    GCRef  chunkname;  //  Name of the chunk this function was defined in.
    BCLine firstline;  //  First line of the function definition.
    BCLine numline;    //  Number of lines for the function definition.
+   uint8_t file_source_idx;  //  Index into lua_State::file_sources for error reporting.
    MRef   lineinfo;   //  Compressed map from bytecode ins. to source line.
    MRef   uvinfo;     //  Upvalue names.
    MRef   varinfo;    //  Names and compressed extents of local variables.
@@ -1036,11 +1102,12 @@ inline void hook_leave(global_State *g) noexcept { g->hookmask &= ~HOOK_ACTIVE; 
 [[nodiscard]] inline uint8_t hook_save(const global_State *g) noexcept { return g->hookmask & ~HOOK_EVENTMASK; }
 inline void hook_restore(global_State *g, uint8_t h) noexcept { g->hookmask = (g->hookmask & HOOK_EVENTMASK) | h; }
 
-// Per-thread state object.  See lj_state_new() for initialisation.
+// Per-thread state object.  See lua_newstate() in lj_state.cpp for initialisation.
+
 struct lua_State {
    GCHeader;            // NB: C++ placement new can trash any preset values here.
    uint8_t dummy_ffid;  //  Fake FF_C for curr_funcisL() on dummy frames.
-   uint8_t status;      //  Thread status.
+   uint8_t status = LUA_OK; //  Thread status.
    MRef    glref;       //  Link to global state.
    GCRef   gclist;      //  GC chain.
    TValue  *base;       //  Base of currently executing function.
@@ -1061,7 +1128,12 @@ struct lua_State {
    TryFrameStack try_stack;      // Exception frame stack (nullptr until first BC_TRYENTER)
    const BCIns   *try_handler_pc; // Handler PC for error re-entry (set during unwind)
    CapturedStackTrace *pending_trace; // Trace captured during exception handling (for try<trace>)
-   ERR      CaughtError;              // Catches ERR results from module functions.
+   ERR      CaughtError = ERR::Okay; // Catches ERR results from module functions.
+   std::unordered_map<uint32_t, std::string> imports;  // Module hash -> declared namespace name
+
+   // FileSource tracking for accurate error reporting in imported files
+   std::vector<FileSource> file_sources;  // Index 0 = main file, 255 = overflow
+   ankerl::unordered_dense::map<uint32_t, uint8_t> file_index_map;  // path_hash -> index
 
    // Constructor/destructor not actually used as yet.
 /*

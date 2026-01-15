@@ -681,7 +681,7 @@ static ERR SET_Results(objScript *Self, CSTRING *Value, int Elements)
    if (Value) {
       int len = 0;
       for (int i=0; i < Elements; i++) {
-         if (!Value[i]) return log.warning(ERR::InvalidData);
+         if (!Value[i]) return log.warning(ERR::SetValueNotString);
          len += strlen(Value[i]) + 1;
       }
       Self->ResultsTotal = Elements;

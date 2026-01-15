@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Paul Manias
+// Copyright (C) 2025-2026 Paul Manias
 // IR emitter implementation: call expression emission
 //
 // #included from ir_emitter.cpp

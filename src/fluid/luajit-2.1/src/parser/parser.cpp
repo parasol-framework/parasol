@@ -8,6 +8,7 @@
 #include "lj_gc.h"
 #include "lj_err.h"
 #include "lj_debug.h"
+#include "filesource.h"
 #include "lj_buf.h"
 #include "lj_str.h"
 #include "lj_tab.h"
@@ -229,6 +230,28 @@ extern GCproto * lj_parse(LexState *State)
    State->chunkname = lj_str_newz(L, State->chunkarg);
 #endif
 
+   log.branch("Chunk: %.*s", State->chunkname->len, strdata(State->chunkname));
+
+   // Initialise FileSource tracking with the main file at index 0.
+   // The chunkarg starts with '@' for file sources, extract the path.
+   {
+      std::string path = State->chunkarg;
+      std::string filename = path;
+      if (not path.empty() and path[0] IS '@') {
+         path = path.substr(1);
+         // Extract just the filename from the path
+         auto pos = path.find_last_of("/\\");
+         filename = (pos != std::string::npos) ? path.substr(pos + 1) : path;
+      }
+      // Estimate source lines from the source view (count newlines + 1)
+      BCLine source_lines = 1;
+      for (char c : State->source) {
+         if (c IS '\n') source_lines++;
+      }
+      init_main_file_source(L, path, filename, source_lines);
+      State->current_file_index = 0;  // Main file is always index 0
+   }
+
    setstrV(L, L->top, State->chunkname);  // Anchor chunkname string.
    incr_top(L);
    State->level = 0;
@@ -259,7 +282,7 @@ extern GCproto * lj_parse(LexState *State)
    if (profiler.enabled()) profiler.log_results(log);
 
    if (State->tok != TK_eof) State->err_token(TK_eof);
-   pt = State->fs_finish(State->linenumber);
+   pt = State->fs_finish(State->effective_line());
    L->top--;  // Drop chunkname.
 
    // Transfer tips to lua_State for debug.validate() access

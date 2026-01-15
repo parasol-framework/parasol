@@ -753,6 +753,17 @@ LJLIB_CF(coroutine_isyieldable)
 }
 
 //********************************************************************************************************************
+// Create new coroutine thread
+
+static lua_State * lua_newthread(lua_State *L)
+{
+   lua_State *L1;
+   lj_gc_check(L);
+   L1 = lj_state_new(L);
+   setthreadV(L, L->top, L1);
+   incr_top(L);
+   return L1;
+}
 
 LJLIB_CF(coroutine_create)
 {

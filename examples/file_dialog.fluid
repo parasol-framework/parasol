@@ -1,5 +1,5 @@
 
-   require 'gui/filedialog'
+   import 'gui/filedialog'
 
    gui.dialog.file({
       filterList = { { name='All Files', ext='' }, { name='MP3 Audio Files', ext='.mp3' }, { name='Text Files', ext='.txt' } },

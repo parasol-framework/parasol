@@ -56,7 +56,7 @@ static const uint8_t * lib_read_lfunc(lua_State *L, const uint8_t* p, GCtab* tab
    LexState ls(L, (const char*)(p + len), name); // Use specialized constructor for bytecode reading
 
    auto pt = lj_bcread_proto(&ls);
-   pt->firstline = ~(BCLine)0;
+   pt->firstline = BCLine::BUILTIN;
    auto fn = lj_func_newL_empty(L, pt, tabref(L->env));
 
    // NOBARRIER: See below for common barrier.

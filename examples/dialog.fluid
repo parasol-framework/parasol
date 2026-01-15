@@ -2,7 +2,7 @@
 Dialog test
 --]]
 
-   require 'gui/dialog'
+   import 'gui/dialog'
 
    show_error = false
 

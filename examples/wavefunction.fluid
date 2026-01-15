@@ -2,9 +2,9 @@
 WaveFunction Demonstration
 --]]
 
-   require 'gui/window'
-   require 'gui/combobox'
-   require 'gui/slider'
+   import 'gui/window'
+   import 'gui/combobox'
+   import 'gui/slider'
    include 'vector'
 
    local win, viewport, waveFunction, waveVP, rect, filter, text

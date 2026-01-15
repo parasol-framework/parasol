@@ -2,8 +2,8 @@
 Demonstrates the functionality provided by the divider interface.
 --]]
 
-   require 'gui/divider'
-   require 'gui/window'
+   import 'gui/divider'
+   import 'gui/window'
 
    win = gui.window({ title='Divider Example', insideWidth=400, insideHeight=200, minWidth=200, minHeight=50 })
    viewport = win:clientViewport({ aspectRatio = ARF_MEET })

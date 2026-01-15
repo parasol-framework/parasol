@@ -2,8 +2,8 @@
 A simple test program for confirming that our fonts and reported metrics values are in-line with what we would expect.
 --]]
 
-   require 'gui/window'
-   require 'gui/combobox'
+   import 'gui/window'
+   import 'gui/combobox'
 
    mFont = mod.load('font')
 

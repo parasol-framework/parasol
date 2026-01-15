@@ -684,6 +684,10 @@ ParserResult<IrEmitUnit> IrEmitter::emit_statement(const StmtNode& stmt)
       const auto &payload = std::get<CheckStmtPayload>(stmt.data);
       return this->emit_check_stmt(payload, stmt.span);
    }
+   case AstNodeKind::ImportStmt: {
+      const auto &payload = std::get<ImportStmtPayload>(stmt.data);
+      return this->emit_import_stmt(payload);
+   }
    default:
       return this->unsupported_stmt(stmt.kind, stmt.span);
    }

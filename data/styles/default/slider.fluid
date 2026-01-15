@@ -1,5 +1,7 @@
 -- Styling for the 'gui/slider' script.
 
+   import 'gui'
+
 return {
    background = function(Slider, Viewport)
       if Slider.orientation is 'V' then

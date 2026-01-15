@@ -19,6 +19,7 @@ enum class TokenKind : uint16_t {
    Number = TK_number,
    String = TK_string,
    Nil = TK_nil,
+   AsToken = TK_as,
    TrueToken = TK_true,
    FalseToken = TK_false,
    Function = TK_function,
@@ -27,6 +28,8 @@ enum class TokenKind : uint16_t {
    EndToken = TK_end,
    ReturnToken = TK_return,
    If = TK_if,
+   ImportToken = TK_import,
+   NamespaceToken = TK_namespace,
    Else = TK_else,
    ElseIf = TK_elseif,
    For = TK_for,
@@ -77,6 +80,8 @@ enum class TokenKind : uint16_t {
    When = TK_when,
    CaseArrow = TK_case_arrow,
    Annotate = TK_annotate,
+   CompileIf = TK_compif,
+   CompileEnd = TK_compend,
    TryToken = TK_try,
    ExceptToken = TK_except,
    SuccessToken = TK_success,
@@ -116,6 +121,7 @@ enum class TokenKind : uint16_t {
       case TokenKind::Number: return "<number>";
       case TokenKind::String: return "<string>";
       case TokenKind::Nil: return "nil";
+      case TokenKind::AsToken: return "as";
       case TokenKind::TrueToken: return "true";
       case TokenKind::FalseToken: return "false";
       case TokenKind::Function: return "function";
@@ -124,6 +130,8 @@ enum class TokenKind : uint16_t {
       case TokenKind::EndToken: return "end";
       case TokenKind::ReturnToken: return "return";
       case TokenKind::If: return "if";
+      case TokenKind::ImportToken: return "import";
+      case TokenKind::NamespaceToken: return "namespace";
       case TokenKind::Else: return "else";
       case TokenKind::ElseIf: return "elseif";
       case TokenKind::For: return "for";
@@ -173,6 +181,8 @@ enum class TokenKind : uint16_t {
       case TokenKind::When: return "when";
       case TokenKind::CaseArrow: return "->";
       case TokenKind::Annotate: return "@";
+      case TokenKind::CompileIf: return "@if";
+      case TokenKind::CompileEnd: return "@end";
       case TokenKind::TryToken: return "try";
       case TokenKind::ExceptToken: return "except";
       case TokenKind::SuccessToken: return "success";

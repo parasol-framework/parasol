@@ -15,7 +15,7 @@
 
 //********************************************************************************************************************
 
-ParserContext & ParserContext::operator=(ParserContext&& other) noexcept
+ParserContext & ParserContext::operator=(ParserContext &&other) noexcept
 {
    if (this != &other) {
       this->detach_from_lex();
@@ -121,7 +121,7 @@ void ParserContext::lex_match(LexToken what, LexToken who, BCLine line)
 {
    if (this->lex_opt(what)) return;
 
-   if (line IS this->lex_state->linenumber) {
+   if (line IS this->lex_state->effective_line()) {
       this->err_token(what);
       return;
    }
@@ -346,6 +346,104 @@ void ParserContext::log_trace(ParserChannel Channel, const Token &Token, std::st
 //********************************************************************************************************************
 // Check if tip at the given priority level would be emitted.
 // This allows callers to skip expensive checks when tip would be filtered out anyway.
+
+//********************************************************************************************************************
+// Check if a file path is already in the import stack (circular dependency detection).
+
+bool ParserContext::is_importing(const std::string& Path) const
+{
+   for (const auto& imported : this->import_stack_) {
+      if (imported == Path) return true;
+   }
+   return false;
+}
+
+//********************************************************************************************************************
+// Push a file path onto the import stack.
+
+void ParserContext::push_import(const std::string& Path)
+{
+   this->import_stack_.push_back(Path);
+}
+
+//********************************************************************************************************************
+// Pop the most recent file path from the import stack.
+
+void ParserContext::pop_import()
+{
+   if (not this->import_stack_.empty()) {
+      this->import_stack_.pop_back();
+   }
+}
+
+//********************************************************************************************************************
+// Resolve an import path relative to the file currently being parsed.
+// The Library parameter will be sanitised on return.
+
+std::string ParserContext::resolve_lib_to_path(std::string_view &Library) const
+{
+   // For security purposes, check the validity of the library name.
+
+   int slash_count = 0;
+
+   bool local = false;
+   if (Library.starts_with("./")) { // Local libraries are permitted if the name starts with "./" and otherwise adheres to path rules
+      local = true;
+      Library.remove_prefix(2);
+   }
+
+   size_t i;
+   for (i=0; i < Library.size(); i++) {
+      if ((Library[i] >= 'a') and (Library[i] <= 'z')) continue;
+      if ((Library[i] >= 'A') and (Library[i] <= 'Z')) continue;
+      if ((Library[i] >= '0') and (Library[i] <= '9')) continue;
+      if ((Library[i] IS '-') or (Library[i] IS '_')) continue;
+      if (Library[i] IS '/') { slash_count++; continue; }
+      break;
+   }
+
+   if ((i < Library.size()) or (i >= 96) or (slash_count > 2)) {
+      lj_lex_error(this->lex_state, 0, ErrMsg::BADLIBRARY);
+      return "";
+   }
+
+   std::string result(Library);
+
+   // Prepend the base path
+
+   if (local) {
+      if (this->lex_state->chunkarg) {
+         // Get the directory of the current file from chunkarg
+         std::string current_file(this->lex_state->chunkarg);
+
+         // Strip leading '@' or '=' from chunkarg (Lua conventions for source naming)
+         if (not current_file.empty() and (current_file[0] == '@' or current_file[0] == '=')) {
+            current_file = current_file.substr(1);
+         }
+
+         // Find the last path separator
+         size_t last_sep = current_file.find_last_of("/\\");
+         if (last_sep != std::string::npos) {
+            std::string dir = current_file.substr(0, last_sep + 1);
+            result = dir + result;
+         }
+         else { // Use script's working path as fallback
+            auto working_path = this->lua_state->script->get<CSTRING>(FID_WorkingPath);
+            if (working_path) result.insert(0, working_path);
+         }
+      }
+      else { // Use script's working path as fallback
+         auto working_path = this->lua_state->script->get<CSTRING>(FID_WorkingPath);
+         if (working_path) result.insert(0, working_path);
+      }
+   }
+   else result.insert(0, "scripts:");
+
+   result.append(".fluid");
+   return result;
+}
+
+//********************************************************************************************************************
 
 #ifdef INCLUDE_TIPS
 bool ParserContext::should_emit_tip(uint8_t Priority) const

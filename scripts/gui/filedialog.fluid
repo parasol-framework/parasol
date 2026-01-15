@@ -2,13 +2,13 @@
 Documentation is available in the Parasol Wiki.
 --]]
 
-   require 'common'
-   require 'gui/fileview'
-   require 'gui/columnview'
-   require 'gui/button'
-   require 'gui/combobox'
-   require 'gui/input'
-   require 'gui/window'
+   import 'common'
+   import 'gui/fileview'
+   import 'gui/columnview'
+   import 'gui/button'
+   import 'gui/combobox'
+   import 'gui/input'
+   import 'gui/window'
 
    global gui ?= { }
    gui.dialog ?= { }
@@ -206,23 +206,20 @@ end
 
    -- This sub-routine is provided for languages other than Fluid to utilise the module.
 
-   do
-      state = getExecutionState()
-      if state.inRequire != true then
-         dlg = gui.dialog.file({
-            popOver      = arg('popOver'),
-            target       = arg('target'),
-            modal        = arg('modal'),
-            okText       = arg('okText'),
-            cancelText   = arg('cancelText'),
-            filterList   = arg('filterList'),
-            icon         = arg('icon'),
-            path         = arg('path'),
-            selectFolder = arg('selectFolder', nil),
-            multiSelect  = arg('multiSelect', nil),
-            userInput    = arg('userInput', nil)
-         })
+@if(imported=false)
+   dlg = gui.dialog.file({
+      popOver      = arg('popOver'),
+      target       = arg('target'),
+      modal        = arg('modal'),
+      okText       = arg('okText'),
+      cancelText   = arg('cancelText'),
+      filterList   = arg('filterList'),
+      icon         = arg('icon'),
+      path         = arg('path'),
+      selectFolder = arg('selectFolder', nil),
+      multiSelect  = arg('multiSelect', nil),
+      userInput    = arg('userInput', nil)
+   })
 
-         return dlg.windowID
-      end
-   end
+   return dlg.windowID
+@end

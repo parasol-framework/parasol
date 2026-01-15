@@ -38,7 +38,7 @@ end
    try
       assert(false)
    except ex
-      assert(ex.message:find('assertion failed'), 'Error should contain default message')
+      assert(ex.message:find('Assertion failed'), 'Error should contain default message, got ' .. ex.message)
    success
       error('Assert should have failed')
    end

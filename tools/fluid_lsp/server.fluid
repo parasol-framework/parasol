@@ -54,7 +54,7 @@ IDE Integration:
   The server supports the standard LSP lifecycle: initialize, initialized, shutdown, exit.
 ]]
 
-   require './lsp_lib'
+   import './lsp_lib'
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Resolve the location of the Parasol SDK and create an 'sdk:' volume.

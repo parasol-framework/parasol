@@ -159,25 +159,33 @@ public:
 
    inline void lex_check(LexToken token) { if (not this->lex_opt(token)) this->err_token(token); }
 
-   int lex_opt(LexToken token);
-   void lex_match(LexToken what, LexToken who, BCLine line);
-   GCstr* lex_str();
+   int lex_opt(LexToken);
+   void lex_match(LexToken, LexToken, BCLine);
+   GCstr * lex_str();
 
    void err_syntax(ErrMsg message);
    void err_token(LexToken token);
-   void report_limit_error(FuncState& func_state, uint32_t limit, const char* what);
+   void report_limit_error(FuncState &, uint32_t limit, const char *);
 
-   void emit_error(ParserErrorCode code, const Token& token, std::string_view message);
-   void emit_warning(ParserErrorCode code, const Token& token, std::string_view message);
+   void emit_error(ParserErrorCode code, const Token &, std::string_view);
+   void emit_warning(ParserErrorCode code, const Token &, std::string_view);
+
+   // Import stack tracking for compile-time import statement
+   [[nodiscard]] bool is_importing(const std::string &) const;
+   void push_import(const std::string &);
+   void pop_import();
+   [[nodiscard]] const std::vector<std::string> & import_stack() const { return import_stack_; }
+   [[nodiscard]] bool is_being_imported() const { return not import_stack_.empty(); }
+   [[nodiscard]] std::string resolve_lib_to_path(std::string_view &) const;
 
 private:
    void attach_to_lex();
    void detach_from_lex();
-   std::string format_lex_error(LexToken token) const;
-   std::string format_expected_message(TokenKind kind) const;
-   ParserError make_error(ParserErrorCode code, const Token& token, std::string_view message);
-   std::string describe_token(const Token& token) const;
-   void log_trace(ParserChannel, const Token& token, std::string_view note) const;
+   std::string format_lex_error(LexToken) const;
+   std::string format_expected_message(TokenKind) const;
+   ParserError make_error(ParserErrorCode, const Token &, std::string_view);
+   std::string describe_token(const Token &) const;
+   void log_trace(ParserChannel, const Token &, std::string_view) const;
 
    LexState *lex_state;
    FuncState *func_state;
@@ -187,6 +195,7 @@ private:
    ParserDiagnostics diag;
    TokenStreamAdapter token_stream;
    ParserContext *previous_context = nullptr;
+   std::vector<std::string> import_stack_;  // Stack of imported file paths for circular dependency detection
 };
 
 //********************************************************************************************************************

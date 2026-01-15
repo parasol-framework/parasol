@@ -2,20 +2,21 @@
 A demonstration of standard widgets
 --]]
 
-   require 'gui/toolbar'
-   require 'gui/menubar'
-   require 'gui/colourdialog'
-   require 'gui/fontdialog'
-   require 'gui/dialog'
-   require 'gui/filedialog'
-   require 'gui/icon'
-   require 'gui/input'
-   require 'gui/button'
-   require 'gui/checkbox'
-   require 'gui/combobox'
-   require 'gui/slider'
-   require 'gui/window'
-   require 'vfx'
+   import 'gui'
+   import 'gui/toolbar'
+   import 'gui/menubar'
+   import 'gui/colourdialog'
+   import 'gui/fontdialog'
+   import 'gui/dialog'
+   import 'gui/filedialog'
+   import 'gui/icon'
+   import 'gui/input'
+   import 'gui/button'
+   import 'gui/checkbox'
+   import 'gui/combobox'
+   import 'gui/slider'
+   import 'gui/window'
+   import 'vfx'
 
    glSelf = <{ obj.find('self') }>
    glPath = <{ glSelf.workingPath }>
@@ -387,4 +388,3 @@ end
 
    win:show(true)
    processing.sleep() -- Will sleep until the window sends MSGID_QUIT
-
