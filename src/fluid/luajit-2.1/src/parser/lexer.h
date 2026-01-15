@@ -351,7 +351,7 @@ public:
    [[nodiscard]] inline BCLine effective_line() const noexcept {
       BCLine line = this->lastline;
       if (line < 1) line = 1;
-      return bcline_encode(this->current_file_index, line);
+      return BCLine::encode(this->current_file_index, line);
    }
 
 #ifdef LUA_USE_ASSERT

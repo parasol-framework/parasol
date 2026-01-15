@@ -638,7 +638,7 @@ static void fs_fixup_line(FuncState *fs, GCproto *pt, void *lineinfo, BCLine num
    if (numline < 256) [[likely]] {
       auto li = (uint8_t*)lineinfo;
       do {
-         BCLine raw_line = bcline_line_number(base[i].line);
+         BCLine raw_line = base[i].line.lineNumber();
          BCLine delta = raw_line - first;
          fs_check_assert(fs, delta >= 0 and delta < 256, "bad line delta %d for line %d (raw=%d, first=%d)", delta, numline, raw_line, first);
          li[i] = uint8_t(delta);
@@ -647,7 +647,7 @@ static void fs_fixup_line(FuncState *fs, GCproto *pt, void *lineinfo, BCLine num
    else if (numline < 65536) [[likely]] {
       auto li = (uint16_t*)lineinfo;
       do {
-         BCLine raw_line = bcline_line_number(base[i].line);
+         BCLine raw_line = base[i].line.lineNumber();
          BCLine delta = raw_line - first;
          fs_check_assert(fs, delta >= 0 and delta < 65536, "bad line delta %d for line %d (raw=%d, first=%d)", delta, numline, raw_line, first);
          li[i] = uint16_t(delta);
@@ -656,7 +656,7 @@ static void fs_fixup_line(FuncState *fs, GCproto *pt, void *lineinfo, BCLine num
    else {
       auto li = (uint32_t*)lineinfo;
       do {
-         BCLine raw_line = bcline_line_number(base[i].line);
+         BCLine raw_line = base[i].line.lineNumber();
          BCLine delta = raw_line - first;
          fs_check_assert(fs, delta >= 0, "bad line delta %d for line %d (raw=%d, first=%d)", delta, numline, raw_line, first);
          li[i] = uint32_t(delta);
@@ -841,7 +841,7 @@ GCproto * LexState::fs_finish(BCLine Line)
    BCLine min_line = fs->linedefined;
    if (fs->bcbase != nullptr and fs->pc > 0) {
       for (BCPOS pc = 0; pc < fs->pc; ++pc) {
-         BCLine raw_line = bcline_line_number(fs->bcbase[pc].line);
+         BCLine raw_line = fs->bcbase[pc].line.lineNumber();
          if (raw_line > 0) {  // Skip zero lines (shouldn't happen, but be safe)
             if (raw_line > line) line = raw_line;
             if (raw_line < min_line) min_line = raw_line;

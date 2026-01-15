@@ -23,35 +23,9 @@ struct FileSource {
    BCLine import_line;             // Line in parent where import occurred (0 for main)
 };
 
-// BCLine encoding/decoding macros
-// Upper 8 bits store file index, lower 24 bits store line number
-// This allows up to 255 tracked files and ~16.7 million lines per file
-
-constexpr BCLine BCLINE_FILE_SHIFT = 24;
-constexpr BCLine BCLINE_LINE_MASK = 0x00FFFFFF;
-constexpr BCLine BCLINE_FILE_MASK = int32_t(0xFF000000);
-
 // Maximum file index (255 is reserved for overflow)
 constexpr uint8_t FILESOURCE_MAX_INDEX = 254;
 constexpr uint8_t FILESOURCE_OVERFLOW_INDEX = 255;
-
-// Encode file index and line number into a single BCLine value
-[[nodiscard]] inline BCLine bcline_encode(uint8_t FileIndex, BCLine Line) noexcept
-{
-   return (BCLine(FileIndex) << BCLINE_FILE_SHIFT) | (Line & BCLINE_LINE_MASK);
-}
-
-// Extract file index from encoded BCLine
-[[nodiscard]] inline uint8_t bcline_file_index(BCLine Encoded) noexcept
-{
-   return uint8_t((Encoded & BCLINE_FILE_MASK) >> BCLINE_FILE_SHIFT);
-}
-
-// Extract line number from encoded BCLine
-[[nodiscard]] inline BCLine bcline_line_number(BCLine Encoded) noexcept
-{
-   return Encoded & BCLINE_LINE_MASK;
-}
 
 // Register a new file source in the lua_State.
 // Returns the file index, or FILESOURCE_OVERFLOW_INDEX (255) if the limit is exceeded.

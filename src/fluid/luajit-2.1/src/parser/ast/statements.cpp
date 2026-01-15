@@ -928,7 +928,7 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(const s
 
    // Get the parent file's index and the line where import occurred
    uint8_t parent_index = this->ctx.lex().current_file_index;
-   BCLine import_line = bcline_line_number(ImportToken.span().line);  // Decode line from parent's encoded BCLine
+   BCLine import_line = ImportToken.span().line.lineNumber();  // Decode line from parent's encoded BCLine
 
    // Register this imported file with FileSource tracking
    uint8_t new_file_index = register_file_source(L, Path, filename, 1, source_lines, parent_index, import_line);
