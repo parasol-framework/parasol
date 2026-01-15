@@ -7,6 +7,7 @@
 #include "lj_obj.h"
 #include "lj_err.h"
 #include "lj_debug.h"
+#include "filesource.h"
 #include "lj_buf.h"
 #include "lj_tab.h"
 #include "lj_state.h"
@@ -359,6 +360,7 @@ void lj_debug_shortname(char* out, GCstr* str, BCLine line)
 
 //********************************************************************************************************************
 // Add current location of a frame to error message.
+// Uses FileSource tracking to display accurate file:line for imported code.
 
 void lj_debug_addloc(lua_State* L, const char* msg, cTValue* frame, cTValue* nextframe)
 {
@@ -368,6 +370,17 @@ void lj_debug_addloc(lua_State* L, const char* msg, cTValue* frame, cTValue* nex
          BCLine line = debug_frameline(L, fn, nextframe);
          if (line >= 0) {
             GCproto* pt = funcproto(fn);
+
+            // Use the prototype's file_source_idx to get the correct filename
+            if (not L->file_sources.empty()) {
+               const FileSource* src = get_file_source(L, pt->file_source_idx);
+               if (src and not src->filename.empty()) {
+                  lj_strfmt_pushf(L, "%s:%d: %s", src->filename.c_str(), line, msg);
+                  return;
+               }
+            }
+
+            // Fallback to prototype chunkname
             char buf[LUA_IDSIZE];
             lj_debug_shortname(buf, proto_chunkname(pt), pt->firstline);
             lj_strfmt_pushf(L, "%s:%d: %s", buf, line, msg);
@@ -380,13 +393,25 @@ void lj_debug_addloc(lua_State* L, const char* msg, cTValue* frame, cTValue* nex
 
 //********************************************************************************************************************
 // Push location string for a bytecode position to Lua stack.
+// Uses FileSource tracking to display accurate file:line for imported code.
 
 void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPOS pc)
 {
+   BCLine line = lj_debug_line(pt, pc);
+
+   // Use the prototype's file_source_idx to get the correct filename
+   if (not L->file_sources.empty()) {
+      const FileSource* src = get_file_source(L, pt->file_source_idx);
+      if (src and not src->filename.empty()) {
+         lj_strfmt_pushf(L, "%s:%d", src->filename.c_str(), line);
+         return;
+      }
+   }
+
+   // Fallback to prototype chunkname for legacy behaviour
    GCstr* name = proto_chunkname(pt);
    const char* s = strdata(name);
    MSize i, len = name->len;
-   BCLine line = lj_debug_line(pt, pc);
 
    if (pt->firstline IS ~(BCLine)0) lj_strfmt_pushf(L, "builtin:%s", s);
    else if (*s IS '@') {

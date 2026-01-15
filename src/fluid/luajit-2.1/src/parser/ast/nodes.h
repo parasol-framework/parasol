@@ -851,6 +851,7 @@ struct ImportStmtPayload {
    std::string lib_path;                      // Resolved path to library file
    std::string default_namespace;             // The declared namespace for _LIB lookup
    std::unique_ptr<BlockStmt> inlined_body;   // Parsed content of imported file
+   uint8_t file_source_idx = 0;               // FileSource index for this imported file
 
    ~ImportStmtPayload();
 };

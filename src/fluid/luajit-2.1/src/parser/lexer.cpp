@@ -462,7 +462,7 @@ LexState::BufferedToken make_name_token(LexState *State, std::string_view name, 
 
 void fstring_flush_literal(LexState *State, size_t Offset, bool &NeedConcat) {
    if (sbuflen(&State->sb) > 0) {
-      BCLine line = State->effective_line();
+      BCLine line = State->linenumber;  // Use raw line for token spans
       if (NeedConcat) {
          State->buffered_tokens.push_back(make_buffered_token(State, TK_concat, line,
                BCLine(State->current_offset - State->line_start_offset), Offset));
@@ -478,7 +478,7 @@ void fstring_flush_literal(LexState *State, size_t Offset, bool &NeedConcat) {
 // Returns true if expression had content, false if empty
 
 bool fstring_scan_expression(LexState *State, size_t Offset, bool &NeedConcat) {
-   BCLine expr_line = State->effective_line();
+   BCLine expr_line = State->linenumber;  // Use raw line for token spans
    BCLine expr_col = BCLine(State->current_offset - State->line_start_offset);
 
    if (NeedConcat) State->buffered_tokens.push_back(make_buffered_token(State, TK_concat, expr_line, expr_col, Offset));
@@ -539,7 +539,7 @@ bool fstring_scan_expression(LexState *State, size_t Offset, bool &NeedConcat) {
    }
 
    // Add )) closing wrapper
-   BCLine line = State->effective_line();
+   BCLine line = State->linenumber;  // Use raw line for token spans
    State->buffered_tokens.push_back(make_buffered_token(State, ')', line, BCLine(State->current_offset - State->line_start_offset), Offset));
    State->buffered_tokens.push_back(make_buffered_token(State, ')', line, BCLine(State->current_offset - State->line_start_offset), Offset));
 
@@ -1068,7 +1068,8 @@ static LexToken lex_scan(LexState *State, TValue *tv)
             // Only enter this if we see a letter/underscore immediately (no whitespace)
             if (isalpha(State->c) or State->c IS '_') {
                // Save token position before scanning the identifier
-               BCLine ident_line = State->effective_line();
+               // Use raw linenumber for token spans (not encoded effective_line)
+               BCLine ident_line = State->linenumber;
                BCLine ident_column = BCLine(State->current_offset - State->line_start_offset + 1);
                size_t ident_offset = State->current_offset;
 
@@ -1535,7 +1536,9 @@ const char* LexState::token2str(LexToken Tok)
 void LexState::mark_token_start()
 {
    size_t token_offset = (this->c IS LEX_EOF) ? this->pos : this->current_offset;
-   this->pending_token_line = this->effective_line();
+   // Store raw line number for token spans (displayed in error messages)
+   // FileSource encoding is applied only in bcemit_INS for bytecode
+   this->pending_token_line = this->linenumber;
 
    if (token_offset >= this->line_start_offset) {
       this->pending_token_column = BCLine((token_offset - this->line_start_offset) + 1);
@@ -1632,7 +1635,7 @@ void LexState::lex_match(LexToken What, LexToken Who, BCLine Line)
 {
    if (this->active_context) this->active_context->lex_match(What, Who, Line);
    else if (not this->lex_opt(What)) {
-      if (Line IS this->effective_line()) this->err_token(What);
+      if (Line IS this->linenumber) this->err_token(What);
       else {
          auto swhat = this->token2str(What);
          auto swho = this->token2str(Who);
@@ -1698,7 +1701,7 @@ static void lj_lex_error_no_skip(LexState *State, LexToken tok, ErrMsg em)
       if (tokstr) diag.message = std::string(err2msg(em)) + " near '" + tokstr + "'";
       else diag.message = err2msg(em);
 
-      SourceSpan error_span = { State->effective_line(), State->current_token_column, State->current_token_offset };
+      SourceSpan error_span = { State->linenumber, State->current_token_column, State->current_token_offset };
       diag.token = Token::from_span(error_span, TokenKind::Unknown);
 
       if (State->active_context) State->active_context->diagnostics().report(diag);
@@ -1710,7 +1713,7 @@ static void lj_lex_error_no_skip(LexState *State, LexToken tok, ErrMsg em)
       return;  // Don't skip, don't set had_lex_error - caller returns synthetic token
    }
 
-   lj_err_lex(State->L, State->chunkname, tokstr, State->effective_line(), em, nullptr);
+   lj_err_lex(State->L, State->chunkname, tokstr, State->linenumber, em, nullptr);
 }
 
 //********************************************************************************************************************
@@ -1747,7 +1750,7 @@ void lj_lex_error(LexState *State, LexToken tok, ErrMsg em, ...)
       if (tokstr) diag.message = std::string(msg_buffer) + " near '" + tokstr + "'";
       else diag.message = msg_buffer;
 
-      SourceSpan error_span = { State->effective_line(), State->current_token_column, State->current_token_offset };
+      SourceSpan error_span = { State->linenumber, State->current_token_column, State->current_token_offset };
       diag.token = Token::from_span(error_span, TokenKind::Unknown);
 
       // Report to parser context if available (will be included in parser's diagnostics copy)
@@ -1792,7 +1795,7 @@ void lj_lex_error(LexState *State, LexToken tok, ErrMsg em, ...)
       return;  // Return without throwing - caller will handle recovery
    }
 
-   lj_err_lex(State->L, State->chunkname, tokstr, State->effective_line(), em, argp);
+   lj_err_lex(State->L, State->chunkname, tokstr, State->linenumber, em, argp);
    va_end(argp);
 }
 

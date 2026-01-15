@@ -94,8 +94,10 @@ static int token_starts_expression(LexToken tok)
 
 bool LexState::should_emit_presence()
 {
+   // Use raw line numbers for comparison (lastline and lookahead_line are raw,
+   // effective_line() is encoded with file index in upper bits)
    BCLine token_line = this->lastline;
-   BCLine operator_line = this->effective_line();
+   BCLine operator_line = bcline_line_number(this->effective_line());
    LexToken lookahead = (this->lookahead != TK_eof) ? this->lookahead : this->lookahead_token();
    BCLine lookahead_line = this->lookahead_line;
    // If the operator is on a different line than the token, it's definitely postfix

@@ -16,6 +16,7 @@
 
 #include "lj_obj.h"
 #include "lj_err.h"
+#include "../debug/filesource.h"
 
 #ifdef INCLUDE_TIPS
 #include <memory>
@@ -243,12 +244,8 @@ public:
    BCLine     linenumber;   // Input line counter.
    BCLine     lastline;     // Line of last token.
    BCLine     line_offset = 0;  // Line offset applied to token spans (used for import inlining).
+   uint8_t    current_file_index = 0;  // File index for FileSource tracking (0 = main file)
 
-   [[nodiscard]] inline BCLine effective_line() const noexcept
-   {
-      BCLine line = this->linenumber + this->line_offset;
-      return (line > 0) ? line : 1;
-   }
    GCstr *    chunkname;    // Current chunk name (interned string).
    const char *chunkarg;    // Chunk name argument.
    const char *mode;        // Allow loading bytecode (b) and/or source text (t).
@@ -346,6 +343,16 @@ public:
    void mark_token_start();
    void apply_buffered_token(const BufferedToken& token);
    BufferedToken scan_buffered_token();
+
+   // Returns an encoded BCLine with file index in upper 8 bits and line number in lower 24 bits.
+   // This allows error reporting to identify both the source file and line number.
+   // Uses lastline (the line of the most recently consumed token) for bytecode emission.
+
+   [[nodiscard]] inline BCLine effective_line() const noexcept {
+      BCLine line = this->lastline;
+      if (line < 1) line = 1;
+      return bcline_encode(this->current_file_index, line);
+   }
 
 #ifdef LUA_USE_ASSERT
    template<typename... Args>

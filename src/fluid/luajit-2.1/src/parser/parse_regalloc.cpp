@@ -262,7 +262,7 @@ BCPOS bcemit_INS(FuncState *fs, BCIns ins)
    }
 
    fs->bcbase[pc].ins = ins;
-   fs->bcbase[pc].line = ls->lastline;
+   fs->bcbase[pc].line = ls->effective_line();
    fs->pc = pc + 1;
    return pc;
 }
