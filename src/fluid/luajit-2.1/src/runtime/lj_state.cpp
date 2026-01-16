@@ -236,6 +236,8 @@ static void close_state(lua_State *L)
       lj_mem_freevec(g, mref<uint32_t>(g->gc.lightudseg), segnum, uint32_t);
    }
 
+   L->~lua_State();  // Destructor required to free C++ containers (file_sources, file_index_map).
+
    lj_assertG(g->gc.total == sizeof(GG_State), "memory leak of %lld bytes", (long long)(g->gc.total - sizeof(GG_State)));
 #ifndef LUAJIT_USE_SYSMALLOC
    if (g->allocf == lj_alloc_f)
