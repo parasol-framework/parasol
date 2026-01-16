@@ -15,10 +15,7 @@
 #include "lj_bc.h"
 #include "lj_strfmt.h"
 #include "lj_gc.h"
-
-#if LJ_HASJIT
 #include "lj_jit.h"
-#endif
 
 // Invalid bytecode position.
 #define NO_BCPOS   (~(BCPOS)0)
@@ -65,18 +62,15 @@ static BCPOS debug_framepc(lua_State *L, GCfunc *fn, cTValue *nextframe)
       ins = cframe_pc(cf);  //  Only happens during error/hook handling.
    }
    else {
-      if (frame_islua(nextframe)) {
-         ins = frame_pc(nextframe);
-      }
-      else if (frame_iscont(nextframe)) {
-         ins = frame_contpc(nextframe);
-      }
+      if (frame_islua(nextframe)) ins = frame_pc(nextframe);
+      else if (frame_iscont(nextframe)) ins = frame_contpc(nextframe);
       else {
          // Lua function below errfunc/gc/hook: find cframe to get the PC.
          void* cf = cframe_raw(L->cframe);
          TValue* f = L->base - 1;
          while (true) {
             if (cf IS nullptr) return NO_BCPOS;
+
             while (cframe_nres(cf) < 0) {
                if (f >= restorestack(L, -cframe_nres(cf))) break;
                cf = cframe_raw(cframe_prev(cf));
@@ -127,11 +121,11 @@ BCLine LJ_FASTCALL lj_debug_line(GCproto* pt, BCPOS pc)
 //********************************************************************************************************************
 // Get line number for function/frame.
 
-static BCLine debug_frameline(lua_State* L, GCfunc* fn, cTValue* nextframe)
+static BCLine debug_frameline(lua_State *L, GCfunc *fn, cTValue *nextframe)
 {
    BCPOS pc = debug_framepc(L, fn, nextframe);
    if (pc != NO_BCPOS) {
-      GCproto* pt = funcproto(fn);
+      GCproto *pt = funcproto(fn);
       lj_assertL(pc <= pt->sizebc, "PC out of range");
       return lj_debug_line(pt, pc);
    }
@@ -141,10 +135,9 @@ static BCLine debug_frameline(lua_State* L, GCfunc* fn, cTValue* nextframe)
 //********************************************************************************************************************
 // Get name of a local variable from slot number and PC.
 
-static const char* debug_varname(const GCproto* pt, BCPOS pc, BCREG slot)
+static const char * debug_varname(const GCproto *pt, BCPOS pc, BCREG slot)
 {
-   const char* p = (const char*)proto_varinfo(pt);
-   if (p) {
+   if (auto p = (const char*)proto_varinfo(pt)) {
       BCPOS lastpc = 0;
       for (;;) {
          const char* name = p;
@@ -225,7 +218,7 @@ static TValue* debug_localname(lua_State* L, const lua_Debug* ar, const char** n
 //********************************************************************************************************************
 // Get name and value of upvalue.
 
-[[nodiscard]] const char* lj_debug_uvnamev(cTValue* o, uint32_t idx, TValue** tvp, GCobj** op)
+[[nodiscard]] const char* lj_debug_uvnamev(cTValue *o, uint32_t idx, TValue **tvp, GCobj** op)
 {
    if (tvisfunc(o)) {
       GCfunc *fn = funcV(o);
@@ -295,7 +288,8 @@ restart:
 }
 
 // Deduce function name from caller of a frame.
-const char * lj_debug_funcname(lua_State* L, cTValue* frame, const char** name)
+
+const char * lj_debug_funcname(lua_State *L, cTValue *frame, const char **name)
 {
    cTValue* pframe;
    GCfunc* fn;
@@ -325,9 +319,10 @@ const char * lj_debug_funcname(lua_State* L, cTValue* frame, const char** name)
 //********************************************************************************************************************
 // Generate shortened source name.
 
-void lj_debug_shortname(char* out, GCstr* str, BCLine line)
+void lj_debug_shortname(char *out, GCstr *str, BCLine line)
 {
-   const char* src = strdata(str);
+   auto src = strdata(str);
+
    if (*src IS '=') {
       strncpy(out, src + 1, LUA_IDSIZE);  //  Remove first char.
       out[LUA_IDSIZE - 1] = '\0';  //  Ensures null termination.
@@ -343,17 +338,23 @@ void lj_debug_shortname(char* out, GCstr* str, BCLine line)
    }
    else {  //  Output [string "string"] or [builtin:name].
       size_t len;  //  Length, up to first control char.
-      for (len = 0; len < LUA_IDSIZE - 12; len++)
+      for (len = 0; len < LUA_IDSIZE - 12; len++) {
          if (((const unsigned char*)src)[len] < ' ') break;
+      }
+
       strcpy(out, line.isBuiltin() ? "[builtin:" : "[string \""); out += 9;
+
       if (src[len] != '\0') {  //  Must truncate?
          if (len > LUA_IDSIZE - 15) len = LUA_IDSIZE - 15;
          strncpy(out, src, len); out += len;
-         strcpy(out, "..."); out += 3;
+         strcpy(out, "...");
+         out += 3;
       }
       else {
-         strcpy(out, src); out += len;
+         strcpy(out, src);
+         out += len;
       }
+
       strcpy(out, line.isBuiltin() ? "]" : "\"]");
    }
 }

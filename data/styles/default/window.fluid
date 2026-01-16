@@ -4,7 +4,7 @@
    lVec = mVec
 
 return {
-   initialise = function(Window)
+   initialise = function(Window:obj)
       parent = Window.surface.parent
       if parent then
          Window.surface.x = parent.leftMargin + 10
@@ -32,7 +32,7 @@ return {
          fill=gui.colours['window']
       })
    end,
-   menubar = function(Window)
+   menubar = function(Window:obj)
       local menubar
       if (Window.surface.parent != nil) then -- Window is in the native desktop
          menubar = Window.surface.new('menubar', { x=5, y=Window.clientTop, xOffset=5, target=Window.surface.parent, path=Window.menu })
@@ -42,7 +42,7 @@ return {
       Window.surface.topMargin = menubar.bottom + 4
       Window.menubar = menubar
    end,
-   titlebar = function(Window)
+   titlebar = function(Window:obj)
       bar = Window.surface.new('surface', { drag=Window.surface, height=21, x=5, y=5, xOffset=5, flags='!StickToFront' })
 
       lGradientA = defineGradient(nil, nil, {r=76,g=62,b=128,a=255}, {r=126,g=123,b=187,a=255}, 0, 0, '100%', 0)

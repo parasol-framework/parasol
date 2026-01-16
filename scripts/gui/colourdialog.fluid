@@ -5,6 +5,10 @@ Documentation is available in the Parasol Wiki.
    import 'common'
    import 'gui'
    import 'json'
+   import 'gui/window'
+   import 'gui/icon'
+   import 'gui/button'
+   import 'gui/input'
 
    mGfx ?= mod.load('display')
 

@@ -25,16 +25,16 @@ struct lj_Debug {
    int isvararg;
 };
 
-LJ_FUNC cTValue* lj_debug_frame(lua_State* L, int level, int* size);
-LJ_FUNC BCLine LJ_FASTCALL lj_debug_line(GCproto* pt, BCPOS pc);
-LJ_FUNC const char* lj_debug_uvname(GCproto* pt, uint32_t idx);
-LJ_FUNC const char* lj_debug_uvnamev(cTValue* o, uint32_t idx, TValue** tvp, GCobj** op);
-LJ_FUNC const char* lj_debug_slotname(GCproto* pt, const BCIns* pc, BCREG slot, const char** name);
-LJ_FUNC const char* lj_debug_funcname(lua_State* L, cTValue* frame, const char** name);
-LJ_FUNC void lj_debug_shortname(char* out, GCstr* str, BCLine line);
-LJ_FUNC void lj_debug_addloc(lua_State* L, const char* msg, cTValue* frame, cTValue* nextframe);
-LJ_FUNC void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPOS pc);
-LJ_FUNC int lj_debug_getinfo(lua_State* L, const char* what, lj_Debug* ar, int ext);
+extern cTValue* lj_debug_frame(lua_State* L, int level, int* size);
+extern BCLine LJ_FASTCALL lj_debug_line(GCproto* pt, BCPOS pc);
+extern const char* lj_debug_uvname(GCproto* pt, uint32_t idx);
+extern const char* lj_debug_uvnamev(cTValue* o, uint32_t idx, TValue** tvp, GCobj** op);
+extern const char* lj_debug_slotname(GCproto* pt, const BCIns* pc, BCREG slot, const char** name);
+extern const char* lj_debug_funcname(lua_State* L, cTValue* frame, const char** name);
+extern void lj_debug_shortname(char* out, GCstr* str, BCLine line);
+extern void lj_debug_addloc(lua_State* L, const char* msg, cTValue* frame, cTValue* nextframe);
+extern void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPOS pc);
+extern int lj_debug_getinfo(lua_State* L, const char* what, lj_Debug* ar, int ext);
 
 // Fixed internal variable names.
 #define VARNAMEDEF(_) \

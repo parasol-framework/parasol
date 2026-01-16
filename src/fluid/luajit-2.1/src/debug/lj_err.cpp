@@ -200,10 +200,8 @@ static TValue* unwind_close_try_block(lua_State *L, TValue* frame, TValue* errob
    // Only process slots >= min_slot_index (created inside the try block)
 
    TValue *base = frame + 1;
-   lj_assertL(frame >= tvref(L->stack) and frame < tvref(L->maxstack),
-      "unwind_close_try_block: frame out of range (%p)", frame);
-   lj_assertL(base >= tvref(L->stack) and base <= tvref(L->maxstack),
-      "unwind_close_try_block: base out of range (%p)", base);
+   lj_assertL(frame >= tvref(L->stack) and frame < tvref(L->maxstack), "unwind_close_try_block: frame out of range (%p)", frame);
+   lj_assertL(base >= tvref(L->stack) and base <= tvref(L->maxstack), "unwind_close_try_block: base out of range (%p)", base);
 
    TValue *current_err = errobj;
    for (int slot = 63; slot >= min_slot_index; slot--) {
@@ -1225,7 +1223,7 @@ LJ_NOINLINE void lj_err_lex(lua_State *L, GCstr* src, CSTRING tok, BCLine line, 
    char buff[LUA_IDSIZE];
    lj_debug_shortname(buff, src, line);
    auto msg = lj_strfmt_pushvf(L, err2msg(em), argp);
-   msg = lj_strfmt_pushf(L, "%s:%d: %s", buff, line, msg);
+   msg = lj_strfmt_pushf(L, "%s:%d: %s", buff, line.lineNumber(), msg);
    if (tok) lj_strfmt_pushf(L, err2msg(ErrMsg::XNEAR), msg, tok);
    lj_err_throw(L, LUA_ERRSYNTAX);
 }
@@ -1233,7 +1231,7 @@ LJ_NOINLINE void lj_err_lex(lua_State *L, GCstr* src, CSTRING tok, BCLine line, 
 //********************************************************************************************************************
 // Typecheck error for operands.
 
-LJ_NOINLINE void lj_err_optype(lua_State *L, cTValue* o, ErrMsg opm)
+LJ_NOINLINE void lj_err_optype(lua_State *L, cTValue *o, ErrMsg opm)
 {
    auto tname = lj_typename(o);
    auto opname = err2msg(opm);

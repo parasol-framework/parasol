@@ -3,6 +3,7 @@ Documentation is available in the Parasol Wiki.
 --]]
 
    import 'common'
+   import 'gui'
    import 'gui/fileview'
    import 'gui/columnview'
    import 'gui/button'
@@ -10,7 +11,6 @@ Documentation is available in the Parasol Wiki.
    import 'gui/input'
    import 'gui/window'
 
-   global gui ?= { }
    gui.dialog ?= { }
 
 GAP = 8

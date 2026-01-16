@@ -219,7 +219,7 @@ extern "C" cTValue * lj_arr_get(lua_State *L, cTValue *O, cTValue *K)
          if (not tvisnil(tv)) return tv;  // Found method in metatable
       }
       // String key not recognised as a method - raise error
-      lj_err_optype(L, O, ErrMsg::BADKEY);
+      lj_err_optype(L, O, ErrMsg::OPCALL);
       return nullptr;
    }
 

@@ -696,7 +696,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_import()
    std::string_view mod_name(strdata(path_str), path_str->len);
    this->ctx.tokens().advance();  // consume string
 
-   log.branch("Library: %.*s", int(mod_name.size()), mod_name.data());
+   log.traceBranch("Library: %.*s", int(mod_name.size()), mod_name.data());
 
    // Check for 'as' alias syntax
 
@@ -726,13 +726,16 @@ ParserResult<StmtNodePtr> AstBuilder::parse_import()
    auto imported_body = this->parse_imported_file(path, mod_name, import_token);
    if (not imported_body.ok()) return ParserResult<StmtNodePtr>::failure(imported_body.error_ref());
 
-   // Look up the namespace from the imports map using the resolved path
+   // Look up the FileSource index and namespace for this import (registered during parse_imported_file)
 
    lua_State *L = &this->ctx.lua();
-   auto libhash = pf::strihash(path);
+   auto file_idx = find_file_source(L, pf::strihash(path));
    std::string default_ns;
-   auto it = L->imports.find(libhash);
-   if (it != L->imports.end()) default_ns = it->second;
+
+   if (file_idx.has_value()) {
+      const FileSource *source = get_file_source(L, file_idx.value());
+      if (source) default_ns = source->declared_namespace;
+   }
 
    // If using 'as' alias, the library must declare a namespace
 
@@ -754,8 +757,6 @@ ParserResult<StmtNodePtr> AstBuilder::parse_import()
    payload.lib_path = path;
    payload.inlined_body = std::move(imported_body.value_ref());
 
-   // Look up the FileSource index for this import (registered during parse_imported_file)
-   auto file_idx = find_file_source(L, pf::strihash(path));
    if (file_idx.has_value()) {
       payload.file_source_idx = file_idx.value();
    }
@@ -782,7 +783,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_import()
 // importing file can reference the library exports via `_LIB['name']`. This statement generates:
 //   local _NS <const> = 'name'
 //
-// The namespace is also recorded in L->imports so import statements can look up the declared namespace.
+// The namespace is stored in the current file's FileSource entry for lookup by the importing statement.
 
 ParserResult<StmtNodePtr> AstBuilder::parse_namespace()
 {
@@ -811,24 +812,18 @@ ParserResult<StmtNodePtr> AstBuilder::parse_namespace()
    log.detail("Namespace: %.*s", int(ns_name.size()), ns_name.data());
 
    lua_State *L = &this->ctx.lua();
+   uint8_t current_file_index = this->ctx.lex().current_file_index;
 
-   // Check for namespace conflict with already-loaded libraries
-   for (const auto& [hash, existing_ns] : L->imports) {
-      if ((not existing_ns.empty()) and (existing_ns IS ns_name)) {
-         return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, name_token,
-            std::string("namespace '") + std::string(ns_name) + "' already defined by another library");
-      }
+   // Check for namespace conflict with already-loaded libraries using FileSource.
+   // Allow re-declaration if the same file is being re-parsed (e.g., via loadFile()).
+   auto existing_file = find_file_source_by_namespace(L, std::string(ns_name));
+   if (existing_file.has_value() and existing_file.value() != current_file_index) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, name_token,
+         std::string("namespace '") + std::string(ns_name) + "' already defined by another library");
    }
 
-   // If we're being imported, record the namespace in the imports map
-
-   if (this->ctx.is_being_imported()) {
-      const auto& import_stack = this->ctx.import_stack();
-      if (not import_stack.empty()) {
-         auto libhash = pf::strihash(import_stack.back());
-         L->imports[libhash] = std::string(ns_name);
-      }
-   }
+   // Record the namespace in the current file's FileSource entry
+   set_file_source_namespace(L, current_file_index, std::string(ns_name));
 
    // Transform to: local _NS <const> = 'name'
    Identifier id;
@@ -855,34 +850,32 @@ ParserResult<StmtNodePtr> AstBuilder::parse_namespace()
 }
 
 //********************************************************************************************************************
-// Reads a file and parses its contents, returning the parsed block.
-// This is used by parse_import() to inline imported libraries at compile time.
+// Reads a file and parses its contents, returning the parsed block.  This is used by parse_import() to inline
+// imported libraries at compile time.
 //
 // Each imported file is registered with a unique FileSource index for accurate error reporting.
 // The file index is encoded in the upper 8 bits of BCLine values.
 
-ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(const std::string &Path, std::string_view Library, const Token& ImportToken)
+ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(std::string &Path, std::string_view Library, const Token &ImportToken)
 {
    pf::Log log(__FUNCTION__);
 
    lua_State *L = &this->ctx.lua();
+
+   std::string resolved_path;
+   if (ResolvePath(Path, RSF::NO_FILE_CHECK, &resolved_path) IS ERR::Okay) {
+      Path = resolved_path;
+   }
+
    auto libhash = pf::strihash(Path);
 
-   // Check if this file is already registered in FileSource (more authoritative than imports map)
+   // Check if this file is already registered in FileSource
    auto existing_index = find_file_source(L, libhash);
    if (existing_index.has_value()) {
-      log.detail("Library %.*s already loaded (file index %d)", int(Library.size()), Library.data(), existing_index.value());
+      log.detail("Library %.*s already imported (file index %d)", int(Library.size()), Library.data(), existing_index.value());
       return ParserResult<std::unique_ptr<BlockStmt>>::success(make_block(ImportToken.span(), {}));
    }
-
-   // Also check legacy imports map for backward compatibility
-   auto it = L->imports.find(libhash);
-   if (it != L->imports.end()) {
-      log.detail("Library %.*s already loaded (legacy check)", int(Library.size()), Library.data());
-      return ParserResult<std::unique_ptr<BlockStmt>>::success(make_block(ImportToken.span(), {}));
-   }
-
-   L->imports[libhash] = "";  // Set as loaded with empty namespace (updated when namespace statement is parsed)
+   else log.branch("Importing '%.*s' from %s", int(Library.size()), Library.data(), Path.c_str());
 
    // Push this file onto the import stack to detect circular imports
    this->ctx.push_import(Path);
@@ -910,8 +903,7 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(const s
 
    if (err != ERR::Okay or bytes_read <= 0) {
       this->ctx.pop_import();
-      return this->fail<std::unique_ptr<BlockStmt>>(ParserErrorCode::UnexpectedToken, ImportToken,
-         "cannot read imported file: " + Path);
+      return this->fail<std::unique_ptr<BlockStmt>>(ParserErrorCode::UnexpectedToken, ImportToken, "Cannot read imported file: " + Path);
    }
    source.resize(size_t(bytes_read));
 
@@ -923,7 +915,7 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(const s
 
    // Extract filename from path for display
    std::string filename = Path;
-   auto pos = Path.find_last_of("/\\");
+   auto pos = Path.find_last_of("/\\:");
    if (pos != std::string::npos) filename = Path.substr(pos + 1);
 
    // Get the parent file's index and the line where import occurred
@@ -934,10 +926,10 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(const s
    uint8_t new_file_index = register_file_source(L, Path, filename, 1, source_lines, parent_index, import_line);
 
    // Create a new LexState for the imported file
-   LexState import_lex(L, source, std::string("@") + Path);
+   std::string chunkarg = std::string("@") + Path;
+   LexState import_lex(L, source, chunkarg);
 
-   // Set the file index for this imported file (no line_offset needed with FileSource)
-   import_lex.current_file_index = new_file_index;
+   import_lex.current_file_index = new_file_index; // Set the file index for this imported file
 
    // Set chunkname for error reporting (normally done in lj_parse for the main file)
    import_lex.chunkname = lj_str_newz(L, import_lex.chunkarg);
@@ -954,20 +946,22 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(const s
    import_lex.next(); // Prime the lexer
 
    // Create a temporary parser context for the imported file
+
    ParserContext import_ctx(import_lex, fs, *L, ParserAllocator::from(L), this->ctx.config());
 
    // Copy the import stack to the child context for circular detection
+
    for (const auto& imported_path : this->ctx.import_stack()) {
       import_ctx.push_import(imported_path);
    }
 
-   // Parse just the block of statements (not a full chunk)
+   // Parse up to EOF
+
    AstBuilder import_builder(import_ctx);
    const TokenKind terms[] = { TokenKind::EndOfFile };
    auto result = import_builder.parse_block(terms);
 
-   // Restore the parent FuncState's lexer reference
-   fs.ls = saved_ls;
+   fs.ls = saved_ls; // Restore the parent FuncState's lexer reference
 
    this->ctx.pop_import();
 
