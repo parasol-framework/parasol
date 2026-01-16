@@ -465,6 +465,7 @@
 <p>To reference a folder in a way that is distinct from a file, use a trailing slash as in <code>volume:folder/</code>.</p>
 <p>Referencing a <code>volume:</code> is optional.  In the event that a volume is not defined, the current working path is used as the point of origin.</p>
 <p>The accepted method for referencing parent folders is <code>../</code>, which can be repeated for as many parent folders as needed to traverse the folder hierarchy.</p>
+<p>Access to <code>std*</code> handles is achieved by using the path strings <code>std:in</code>, <code>std:out</code> and <code>std:err</code>.</p>
       </description>
     </field>
 
