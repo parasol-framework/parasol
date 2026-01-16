@@ -1223,7 +1223,7 @@ LJ_NOINLINE void lj_err_lex(lua_State *L, GCstr* src, CSTRING tok, BCLine line, 
    char buff[LUA_IDSIZE];
    lj_debug_shortname(buff, src, line);
    auto msg = lj_strfmt_pushvf(L, err2msg(em), argp);
-   msg = lj_strfmt_pushf(L, "%s:%d: %s", buff, line, msg);
+   msg = lj_strfmt_pushf(L, "%s:%d: %s", buff, line.lineNumber(), msg);
    if (tok) lj_strfmt_pushf(L, err2msg(ErrMsg::XNEAR), msg, tok);
    lj_err_throw(L, LUA_ERRSYNTAX);
 }

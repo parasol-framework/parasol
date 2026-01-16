@@ -319,9 +319,10 @@ const char * lj_debug_funcname(lua_State *L, cTValue *frame, const char **name)
 //********************************************************************************************************************
 // Generate shortened source name.
 
-void lj_debug_shortname(char* out, GCstr* str, BCLine line)
+void lj_debug_shortname(char *out, GCstr *str, BCLine line)
 {
-   const char* src = strdata(str);
+   auto src = strdata(str);
+
    if (*src IS '=') {
       strncpy(out, src + 1, LUA_IDSIZE);  //  Remove first char.
       out[LUA_IDSIZE - 1] = '\0';  //  Ensures null termination.
@@ -337,15 +338,22 @@ void lj_debug_shortname(char* out, GCstr* str, BCLine line)
    }
    else {  //  Output [string "string"] or [builtin:name].
       size_t len;  //  Length, up to first control char.
-      for (len = 0; len < LUA_IDSIZE - 12; len++)
+      for (len = 0; len < LUA_IDSIZE - 12; len++) {
          if (((const unsigned char*)src)[len] < ' ') break;
+      }
+
       strcpy(out, line.isBuiltin() ? "[builtin:" : "[string \""); out += 9;
+
       if (src[len] != '\0') {  //  Must truncate?
          if (len > LUA_IDSIZE - 15) len = LUA_IDSIZE - 15;
          strncpy(out, src, len); out += len;
-         strcpy(out, "..."); out += 3;
+         strcpy(out, "...");
+         out += 3;
       }
-      else strcpy(out, src); out += len;
+      else {
+         strcpy(out, src);
+         out += len;
+      }
 
       strcpy(out, line.isBuiltin() ? "]" : "\"]");
    }
