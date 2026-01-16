@@ -914,54 +914,56 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(std::st
    }
 
    // Extract filename from path for display
+
    std::string filename = Path;
    auto pos = Path.find_last_of("/\\:");
    if (pos != std::string::npos) filename = Path.substr(pos + 1);
 
    // Get the parent file's index and the line where import occurred
+
    uint8_t parent_index = this->ctx.lex().current_file_index;
    BCLine import_line = ImportToken.span().line.lineNumber();  // Decode line from parent's encoded BCLine
 
    // Register this imported file with FileSource tracking
+
    uint8_t new_file_index = register_file_source(L, Path, filename, 1, source_lines, parent_index, import_line);
 
-   // Create a new LexState for the imported file
-   std::string chunkarg = std::string("@") + Path;
-   LexState import_lex(L, source, chunkarg);
+   // RAII guard handles cleanup on normal path; lua_load handles SEH error path
+   ImportLexerGuard import_guard(L, source, std::string("@") + Path);
+   LexState *import_lex = import_guard.get();
 
-   import_lex.current_file_index = new_file_index; // Set the file index for this imported file
+   import_lex->current_file_index = new_file_index; // Set the file index for this imported file
+   import_lex->diagnose_mode = this->ctx.lex().diagnose_mode;  // Propagate diagnose mode from parent
 
    // Set chunkname for error reporting (normally done in lj_parse for the main file)
-   import_lex.chunkname = lj_str_newz(L, import_lex.chunkarg);
+   import_lex->chunkname = lj_str_newz(L, import_lex->chunkarg);
 
    // Point the FuncState to the new lexer temporarily
    FuncState &fs = this->ctx.func();
    LexState *saved_ls = fs.ls;
-   fs.ls = &import_lex;
+   fs.ls = import_lex;
 
    // Initialize the import lexer
-   import_lex.fs = &fs;
-   import_lex.L = L;
+   import_lex->fs = &fs;
+   import_lex->L = L;
 
-   import_lex.next(); // Prime the lexer
+   import_lex->next(); // Prime the lexer
 
    // Create a temporary parser context for the imported file
-
-   ParserContext import_ctx(import_lex, fs, *L, ParserAllocator::from(L), this->ctx.config());
+   ParserContext import_ctx(*import_lex, fs, *L, ParserAllocator::from(L), this->ctx.config());
 
    // Copy the import stack to the child context for circular detection
-
    for (const auto& imported_path : this->ctx.import_stack()) {
       import_ctx.push_import(imported_path);
    }
 
    // Parse up to EOF
-
    AstBuilder import_builder(import_ctx);
    const TokenKind terms[] = { TokenKind::EndOfFile };
    auto result = import_builder.parse_block(terms);
 
    fs.ls = saved_ls; // Restore the parent FuncState's lexer reference
+   // import_guard destructor handles cleanup
 
    this->ctx.pop_import();
 

@@ -3,67 +3,54 @@
 //
 // LuaJIT can either use internal or external frame unwinding:
 //
-// - Internal frame unwinding (INT) is free-standing and doesn't require
-//   any OS or library support.
+// - Internal frame unwinding (INT) is free-standing and doesn't require any OS or library support.
 //
 // - External frame unwinding (EXT) uses the system-provided unwind handler.
 //
 // Pros and Cons:
 //
-// - EXT requires unwind tables for *all* functions on the C stack between
-//   the pcall/catch and the error/throw. C modules used by Lua code can
-//   throw errors, so these need to have unwind tables, too. Transitively
-//   this applies to all system libraries used by C modules -- at least
-//   when they have callbacks which may throw an error.
+// - EXT requires unwind tables for *all* functions on the C stack between the pcall/catch and the error/throw.  C
+//   modules used by Lua code can throw errors, so these need to have unwind tables, too. Transitively this applies
+//   to all system libraries used by C modules -- at least when they have callbacks which may throw an error.
 //
-// - INT is faster when actually throwing errors, but this happens rarely.
-//   Setting up error handlers is zero-cost in any case.
+// - INT is faster when actually throwing errors, but this happens rarely.  Setting up error handlers is zero-cost
+//   in any case.
 //
-// - INT needs to save *all* callee-saved registers when entering the
-//   interpreter. EXT only needs to save those actually used inside the
-//   interpreter. JIT-compiled code may need to save some more.
+// - INT needs to save *all* callee-saved registers when entering the interpreter. EXT only needs to save those
+//   actually used inside the interpreter. JIT-compiled code may need to save some more.
 //
-// - EXT provides full interoperability with C++ exceptions. You can throw
-//   Lua errors or C++ exceptions through a mix of Lua frames and C++ frames.
-//   C++ destructors are called as needed. C++ exceptions caught by pcall
-//   are converted to the string "C++ exception". Lua errors can be caught
-//   with catch (...) in C++.
+// - EXT provides full interoperability with C++ exceptions. You can throw Lua errors or C++ exceptions through a
+//   mix of Lua frames and C++ frames.  C++ destructors are called as needed. C++ exceptions caught by pcall are
+//   converted to the string "C++ exception". Lua errors can be caught with catch (...) in C++.
 //
-// - INT has only limited support for automatically catching C++ exceptions
-//   on POSIX systems using DWARF2 stack unwinding. Other systems may use
-//   the wrapper function feature. Lua errors thrown through C++ frames
-//   cannot be caught by C++ code and C++ destructors are not run.
+// - INT has only limited support for automatically catching C++ exceptions on POSIX systems using DWARF2 stack
+//   unwinding. Other systems may use the wrapper function feature. Lua errors thrown through C++ frames cannot be
+//   caught by C++ code and C++ destructors are not run.
 //
-// - EXT can handle errors from internal helper functions that are called
-//   from JIT-compiled code (except for Windows/x86 and 32 bit ARM).
-//   INT has no choice but to call the panic handler, if this happens.
-//   Note: this is mainly relevant for out-of-memory errors.
+// - EXT can handle errors from internal helper functions that are called from JIT-compiled code (except for
+//   Windows/x86 and 32 bit ARM).  INT has no choice but to call the panic handler, if this happens.  Note: this is
+//   mainly relevant for out-of-memory errors.
 //
-// EXT is the default on all systems where the toolchain produces unwind
-// tables by default (*). This is hard-coded and/or detected in src/Makefile.
-// You can thwart the detection with: TARGET_XCFLAGS=-DLUAJIT_UNWIND_INTERNAL
+// EXT is the default on all systems where the toolchain produces unwind tables by default (*). This is hard-coded
+// and/or detected in src/Makefile.  You can thwart the detection with: TARGET_XCFLAGS=-DLUAJIT_UNWIND_INTERNAL
 //
 // INT is the default on all other systems.
 //
-// EXT can be manually enabled for toolchains that are able to produce
-// conforming unwind tables:
+// EXT can be manually enabled for toolchains that are able to produce conforming unwind tables:
 //   "TARGET_XCFLAGS=-funwind-tables -DLUAJIT_UNWIND_EXTERNAL"
-// As explained above, *all* C code used directly or indirectly by LuaJIT
-// must be compiled with -funwind-tables (or -fexceptions). C++ code must
-// *not* be compiled with -fno-exceptions.
 //
-// If you're unsure whether error handling inside the VM works correctly,
-// try running this and check whether it prints "OK":
+// As explained above, *all* C code used directly or indirectly by LuaJIT must be compiled with -funwind-tables (or
+// -fexceptions). C++ code must *not* be compiled with -fno-exceptions.
+//
+// If you're unsure whether error handling inside the VM works correctly, try running this and check whether it prints "OK":
 //
 //   luajit -e "print(select(2, load('OK')):match('OK'))"
 //
-// (*) Originally, toolchains only generated unwind tables for C++ code. For
-// interoperability reasons, this can be manually enabled for plain C code,
-// too (with -funwind-tables). With the introduction of the x64 architecture,
-// the corresponding POSIX and Windows ABIs mandated unwind tables for all
-// code. Over the following years most desktop and server platforms have
-// enabled unwind tables by default on all architectures. OTOH mobile and
-// embedded platforms do not consistently mandate unwind tables.
+// (*) Originally, toolchains only generated unwind tables for C++ code. For interoperability reasons, this can be
+// manually enabled for plain C code, too (with -funwind-tables). With the introduction of the x64 architecture,
+// the corresponding POSIX and Windows ABIs mandated unwind tables for all code.  Over the following years most
+// desktop and server platforms have enabled unwind tables by default on all architectures. OTOH mobile and embedded
+// platforms do not consistently mandate unwind tables.
 
 #define lj_err_c
 #define LUA_CORE

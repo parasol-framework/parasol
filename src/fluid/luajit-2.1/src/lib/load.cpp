@@ -47,18 +47,30 @@ static TValue * cpparser(lua_State *L, lua_CFunction dummy, APTR ud)
 }
 
 //********************************************************************************************************************
+// Note: LexState is heap-allocated and manually destroyed because Windows SEH (used by lj_err_throw via
+// RaiseException) does not invoke C++ destructors for foreign exceptions under MSVC's default /EHsc mode.
+// Stack-allocated C++ objects with non-trivial destructors would leak their internal allocations (bcstack,
+// vstack) when a parse error occurs.
 
 extern int lua_load(lua_State *Lua, std::string_view Source, CSTRING SourceName)
 {
-   LexState ls(Lua, Source, SourceName, std::nullopt);
+   auto *ls = new LexState(Lua, Source, SourceName, std::nullopt);
 
    // Set diagnose mode if enabled - this allows lexer to collect errors instead of throwing
 
    auto *prv = (prvFluid *)Lua->script->ChildPrivate;
-   if ((prv->JitOptions & JOF::DIAGNOSE) != JOF::NIL) ls.diagnose_mode = true;
+   if ((prv->JitOptions & JOF::DIAGNOSE) != JOF::NIL) ls->diagnose_mode = true;
    prv->CapturedVariables.clear();  // Clear previous captures before new parse
 
-   auto status = lj_vm_cpcall(Lua, nullptr, &ls, cpparser); // Call the parser
+   auto status = lj_vm_cpcall(Lua, nullptr, ls, cpparser); // Call the parser
+
+   // Cleanup any pending import lexers left behind if parsing was interrupted by SEH
+   for (void *lex : Lua->pending_import_lexers) {
+      delete (LexState *)lex;
+   }
+   Lua->pending_import_lexers.clear();
+
+   delete ls;  // Manual cleanup required - SEH doesn't call C++ destructors
    lj_gc_check(Lua);
    return status;
 }
