@@ -18,7 +18,7 @@
 
 ----------------------------------------------------------------------------------------------------------------------
 
-gui.getFontHeight = function(Font)
+gui.getFontHeight = function(Font:table):<num,num>
    if not Font.height then
       err, handle = lVec.getFontHandle(Font.face, 'Regular', 0, Font.size)
       metrics = struct.new('FontMetrics')
@@ -32,7 +32,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Read a style value and return it in pixel units.  Supports px, in, mm, pt, dp
 
-gui.pixel = function(val:str)
+gui.pixel = function(val:str):num
    val ?? return 0
    num, alpha = val:match('^(%d+)(%a-)$')
    num = tonumber(num)

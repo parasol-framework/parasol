@@ -20,7 +20,7 @@ lStyle = (function()
    end
 end)()
 
-function hosted(self)
+function hosted(self:table):bool
    self.hosted ?= self.surface and self.surface.parent ? false :> true
    return self.hosted
 end

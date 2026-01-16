@@ -173,7 +173,7 @@ static int processing_sleep(lua_State *Lua)
 //********************************************************************************************************************
 // Usage: proc.signal() or processing.signal()
 //
-// Signals the Fluid object.  Note that this is ineffective if the user provided a list of objects to monitor for signalling.
+// Signals the Fluid object.  Note that this is ineffective if the user provided a list of objects to monitor for signaling.
 
 static int processing_signal(lua_State *Lua)
 {

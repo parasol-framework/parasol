@@ -243,7 +243,6 @@ public:
 
    BCLine     linenumber;   // Input line counter.
    BCLine     lastline;     // Line of last token.
-   BCLine     line_offset = 0;  // Line offset applied to token spans (used for import inlining).
    uint8_t    current_file_index = 0;  // File index for FileSource tracking (0 = main file)
 
    GCstr *    chunkname;    // Current chunk name (interned string).

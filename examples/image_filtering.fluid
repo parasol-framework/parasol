@@ -2,6 +2,7 @@
 Image Filter Demonstration
 --]]
 
+   import 'gui'
    import 'gui/window'
    import 'gui/combobox'
    import 'gui/slider'

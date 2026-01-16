@@ -326,8 +326,10 @@ static LJ_AINLINE uint32_t lj_getu32(const void* v)
 #define LJ_FUNCA   LJ_NOAPI
 #if defined(ljamalg_c)
 #define LJ_FUNC      static
+#define LJ_CXXFUNC   static
 #else
 #define LJ_FUNC      LJ_NOAPI
+#define LJ_CXXFUNC   extern  // C++ linkage for functions returning C++ types
 #endif
 #if defined(__GNUC__) || defined(__clang__)
 #define LJ_USED   __attribute__((used))

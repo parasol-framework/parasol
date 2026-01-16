@@ -351,8 +351,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_import_stmt(const ImportStmtPayload &Pa
 
    // If namespace_name is set, emit: local <name> <const> = _LIB['<default_namespace>']
    if (Payload.namespace_name) {
-      const Identifier& ns_id = *Payload.namespace_name;
-      const std::string& default_ns = Payload.default_namespace;
+      const Identifier &ns_id = *Payload.namespace_name;
+      const std::string &default_ns = Payload.default_namespace;
 
       if (default_ns.empty()) {
          return ParserResult<IrEmitUnit>::failure(this->make_error(

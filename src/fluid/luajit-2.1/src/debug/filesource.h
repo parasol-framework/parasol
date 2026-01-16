@@ -30,9 +30,9 @@ constexpr uint8_t FILESOURCE_OVERFLOW_INDEX = 255;
 // Register a new file source in the lua_State.
 // Returns the file index, or FILESOURCE_OVERFLOW_INDEX (255) if the limit is exceeded.
 // The overflow index is initialised with "unknown" on first use.
-uint8_t register_file_source(lua_State *L, const std::string &Path, const std::string &Filename,
-                             BCLine FirstLine, BCLine SourceLines,
-                             uint8_t ParentIndex, BCLine ImportLine);
+// Path will be resolved to an absolute path if possible.
+uint8_t register_file_source(lua_State *L, std::string &Path, const std::string &Filename,
+   BCLine FirstLine, BCLine SourceLines, uint8_t ParentIndex, BCLine ImportLine);
 
 // Find a file source by path hash.
 // Returns the file index if found, or std::nullopt if not found.
@@ -48,6 +48,14 @@ const FileSource* get_file_source(lua_State *L, uint8_t Index);
    return Index IS FILESOURCE_OVERFLOW_INDEX;
 }
 
-// Initialise file_sources with the main file entry (index 0).
-// Called once when the script starts parsing.
-void init_main_file_source(lua_State *L, const std::string &Path, const std::string &Filename, BCLine SourceLines);
+// Register a file being parsed as a "main" file source (from lj_parse or loadFile).
+// Returns the file index (may be > 0 if this file was already registered or other files exist).
+uint8_t register_main_file_source(lua_State *L, std::string &Path, const std::string &Filename, BCLine SourceLines);
+
+// Set the declared namespace for a file source.
+// Returns true if successful, false if the index is out of range.
+bool set_file_source_namespace(lua_State *L, uint8_t Index, const std::string &Namespace);
+
+// Find a file source by its declared namespace.
+// Returns the file index if found, or std::nullopt if not found.
+std::optional<uint8_t> find_file_source_by_namespace(lua_State *L, const std::string &Namespace);

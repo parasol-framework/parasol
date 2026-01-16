@@ -232,8 +232,9 @@ extern GCproto * lj_parse(LexState *State)
 
    log.branch("Chunk: %.*s", State->chunkname->len, strdata(State->chunkname));
 
-   // Initialise FileSource tracking with the main file at index 0.
+   // Register this file with FileSource tracking.
    // The chunkarg starts with '@' for file sources, extract the path.
+   // Note: We don't clear existing file_sources to preserve import deduplication across loadFile() calls.
    {
       std::string path = State->chunkarg;
       std::string filename = path;
@@ -248,8 +249,7 @@ extern GCproto * lj_parse(LexState *State)
       for (char c : State->source) {
          if (c IS '\n') source_lines++;
       }
-      init_main_file_source(L, path, filename, source_lines);
-      State->current_file_index = 0;  // Main file is always index 0
+      State->current_file_index = register_main_file_source(L, path, filename, source_lines);
    }
 
    setstrV(L, L->top, State->chunkname);  // Anchor chunkname string.

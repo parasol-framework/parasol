@@ -2,6 +2,7 @@
 Gamepad demonstration
 --]]
 
+   import 'gui'
    import 'gui/window'
 
    glSelf = obj.find('self')

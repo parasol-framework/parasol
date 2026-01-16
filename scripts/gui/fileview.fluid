@@ -402,8 +402,8 @@ end
 
 -- Paste from a clipboard to a folder using a new thread
 
-function pasteFromClipboard(Folder)
-   if not file.isFolder(Folder) then error('Invalid folder target of ' .. Folder) end
+function pasteFromClipboard(Folder:str)
+   assert(file.isFolder(Folder), 'Invalid folder target of ' .. Folder)
 
    paste_script = obj.new('script', { statement = [[
    import 'io/filemgr'

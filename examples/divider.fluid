@@ -2,6 +2,7 @@
 Demonstrates the functionality provided by the divider interface.
 --]]
 
+   import 'gui'
    import 'gui/divider'
    import 'gui/window'
 

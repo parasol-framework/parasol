@@ -21,7 +21,7 @@ lColours = {
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function columnText(Value, Type)
+function columnText(Value:any, Type:str):any
    if type(Value) is 'table' then
       Value = Value.value
    end
@@ -36,7 +36,7 @@ function columnText(Value, Type)
       elseif Value < 1024 * 1024 then
          return string.format('%.0f KB', Value / 1024)
       elseif Value < 1024 * 1024 * 1024 then
-         Value = Value / (1024 * 1024)
+         Value /= (1024 * 1024)
          if Value >= 10 then
             return string.format('%.0f MB', Value)
          else
@@ -76,13 +76,13 @@ function columnText(Value, Type)
    return Value
 end
 
-function setListTextFill(Item, Fill)
+function setListTextFill(Item:table, Fill)
    if Item._vectors.text then
       Item._vectors.text.fill = Fill
    end
 end
 
-function highlightItem(View, Item:table, Highlighted)
+function highlightItem(View:table, Item:table, Highlighted:bool)
    if not Item._vectors.highlight and (Highlighted or Item._selected) then
       Item._vectors.highlight = Item._vectors.viewport.new('VectorRectangle', {
          name = 'item_highlight',
@@ -150,7 +150,7 @@ function highlightItem(View, Item:table, Highlighted)
    end
 end
 
-function arrangeColumns(View)
+function arrangeColumns(View:table)
    View.banner.lines.acClear()
 
    pc = struct.new('PathCommand')
@@ -313,14 +313,14 @@ end
 
 gui.columnView = function(Options)
 
-   function setColumns(View, Columns)
+   function setColumns(View:table, Columns)
       if #Columns is 0 then return end
 
       c = 0
       set = { }
       View.namedCol = { }
       for col in values(Columns) do
-         if not col['attrib'] then error('No attrib defined for column ' .. c) end
+         assert(col['attrib'], 'No attrib defined for column ' .. c)
 
          new_col = { _index=c, width=8, title='Untitled' }
          for k, v in pairs(col) do new_col[k] = v end
@@ -331,10 +331,10 @@ gui.columnView = function(Options)
 
       if View.columns then -- Clear any existing banner allocations
          for col in values(View.columns) do
-            col?.vecViewport?.free()
-            col?.vecGradient?.free()
-            col?.vecGradientSelect?.free()
-            col?.vecTitle?.free()
+            col.vecViewport?.free()
+            col.vecGradient?.free()
+            col.vecGradientSelect?.free()
+            col.vecTitle?.free()
          end
       end
 
@@ -474,7 +474,7 @@ gui.columnView = function(Options)
             col.vecViewport.width = col.px_width
          end
 
-         col.vecTitle.string = (col['title'] ?? 'Untitled')
+         col.vecTitle.string = col['title'] ?? 'Untitled'
 
          x += col.px_width
          prev = col
@@ -507,7 +507,7 @@ gui.columnView = function(Options)
 
    -- Process new items that have been added to the view
 
-   function newItems(View, Items)
+   function newItems(View:table, Items)
       if not View.columns then return end
 
       if #Items is 0 then return end
@@ -668,7 +668,7 @@ gui.columnView = function(Options)
    -- Sorts the view by column (named or index).
    -- NB: Attrib values that evaluate to nil are not permitted/supported.
 
-   vw.sortColumn = function(View, Column, Ascending)
+   vw.sortColumn = function(View:table, Column:any, Ascending:bool)
       if type(Column) is 'string' then
          for col in values(View.columns) do
             if col['attrib'] is Column then
@@ -708,7 +708,7 @@ gui.columnView = function(Options)
       end
    end
 
-   vw.sort = function(Attrib, Ascending)
+   vw.sort = function(Attrib, Ascending:bool)
       vw.sortItems(Attrib, Ascending)
       rearrangeItems(vw)
    end

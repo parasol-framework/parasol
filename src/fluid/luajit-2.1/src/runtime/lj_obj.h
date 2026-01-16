@@ -1129,7 +1129,6 @@ struct lua_State {
    const BCIns   *try_handler_pc; // Handler PC for error re-entry (set during unwind)
    CapturedStackTrace *pending_trace; // Trace captured during exception handling (for try<trace>)
    ERR      CaughtError = ERR::Okay; // Catches ERR results from module functions.
-   std::unordered_map<uint32_t, std::string> imports;  // Module hash -> declared namespace name
 
    // FileSource tracking for accurate error reporting in imported files
    std::vector<FileSource> file_sources;  // Index 0 = main file, 255 = overflow
