@@ -67,7 +67,7 @@ uint8_t register_file_source(lua_State *L, std::string &Path, const std::string 
    L->file_index_map[path_hash] = new_index;
 
    log.msg("Registered file source: %s $%.8x (index %d, parent %d, import line %d)",
-             Filename.c_str(), path_hash, new_index, ParentIndex, ImportLine);
+             Filename.c_str(), path_hash, new_index, ParentIndex, ImportLine.lineNumber());
 
    return new_index;
 }
