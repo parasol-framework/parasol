@@ -926,7 +926,8 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(std::st
    uint8_t new_file_index = register_file_source(L, Path, filename, 1, source_lines, parent_index, import_line);
 
    // Create a new LexState for the imported file
-   LexState import_lex(L, source, std::string("@") + Path);
+   std::string chunkarg = std::string("@") + Path;
+   LexState import_lex(L, source, chunkarg);
 
    import_lex.current_file_index = new_file_index; // Set the file index for this imported file
 

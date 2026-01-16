@@ -211,6 +211,12 @@ static void close_state(lua_State *L)
    global_State *g = G(L);
    if (L->parser_diagnostics) { delete (ParserDiagnostics*)L->parser_diagnostics; L->parser_diagnostics = nullptr; }
    if (L->parser_tips) { delete L->parser_tips; L->parser_tips = nullptr; }
+   {
+      std::vector<FileSource> empty_sources;
+      empty_sources.swap(L->file_sources);
+      ankerl::unordered_dense::map<uint32_t, uint8_t> empty_map;
+      empty_map.swap(L->file_index_map);
+   }
    funcnames_free(g);
    lj_func_closeuv(L, tvref(L->stack));
 
