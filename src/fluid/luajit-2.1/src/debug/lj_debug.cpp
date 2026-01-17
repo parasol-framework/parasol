@@ -66,8 +66,8 @@ static BCPOS debug_framepc(lua_State *L, GCfunc *fn, cTValue *nextframe)
       else if (frame_iscont(nextframe)) ins = frame_contpc(nextframe);
       else {
          // Lua function below errfunc/gc/hook: find cframe to get the PC.
-         void* cf = cframe_raw(L->cframe);
-         TValue* f = L->base - 1;
+         void *cf = cframe_raw(L->cframe);
+         TValue *f = L->base - 1;
          while (true) {
             if (cf IS nullptr) return NO_BCPOS;
 
@@ -102,7 +102,7 @@ static BCPOS debug_framepc(lua_State *L, GCfunc *fn, cTValue *nextframe)
 }
 
 //********************************************************************************************************************
-// Get line number for a bytecode position.  Returns BCLine with file index encoded in upper 8 bits if available from 
+// Get line number for a bytecode position.  Returns BCLine with file index encoded in upper 8 bits if available from
 // fileinfo, otherwise uses pt->file_source_idx as the file index.
 
 BCLine LJ_FASTCALL lj_debug_line(GCproto* pt, BCPOS pc)
@@ -158,12 +158,12 @@ static BCLine debug_frameline(lua_State *L, GCfunc *fn, cTValue *nextframe)
 //********************************************************************************************************************
 // Get name of a local variable from slot number and PC.
 
-static const char * debug_varname(const GCproto *pt, BCPOS pc, BCREG slot)
+static CSTRING debug_varname(const GCproto *pt, BCPOS pc, BCREG slot)
 {
-   if (auto p = (const char*)proto_varinfo(pt)) {
+   if (auto p = (CSTRING)proto_varinfo(pt)) {
       BCPOS lastpc = 0;
-      for (;;) {
-         const char* name = p;
+      while (true) {
+         CSTRING name = p;
          uint32_t vn = *(const uint8_t*)p;
          BCPOS startpc, endpc;
          if (vn < VARNAME__MAX) {
@@ -194,7 +194,7 @@ static const char * debug_varname(const GCproto *pt, BCPOS pc, BCREG slot)
 
 // Get name of local variable from semantic slot number and function/frame.
 
-static TValue* debug_localname(lua_State* L, const lua_Debug* ar, const char** name, int32_t Slot)
+static TValue * debug_localname(lua_State *L, const lua_Debug *ar, CSTRING *name, int32_t Slot)
 {
    uint32_t offset = (uint32_t)ar->i_ci & 0xffff;
    uint32_t size = (uint32_t)ar->i_ci >> 16;
@@ -229,19 +229,19 @@ static TValue* debug_localname(lua_State* L, const lua_Debug* ar, const char** n
 //********************************************************************************************************************
 // Get name of upvalue.
 
-[[nodiscard]] const char* lj_debug_uvname(GCproto *pt, uint32_t idx)
+[[nodiscard]] CSTRING lj_debug_uvname(GCproto *pt, uint32_t idx)
 {
    const uint8_t* p = proto_uvinfo(pt);
    lj_assertX(idx < pt->sizeuv, "bad upvalue index");
    if (not p) return "";
    if (idx) while (*p++ or --idx);
-   return (const char*)p;
+   return (CSTRING)p;
 }
 
 //********************************************************************************************************************
 // Get name and value of upvalue.
 
-[[nodiscard]] const char* lj_debug_uvnamev(cTValue *o, uint32_t idx, TValue **tvp, GCobj** op)
+[[nodiscard]] CSTRING lj_debug_uvnamev(cTValue *o, uint32_t idx, TValue **tvp, GCobj **op)
 {
    if (tvisfunc(o)) {
       GCfunc *fn = funcV(o);
@@ -268,9 +268,9 @@ static TValue* debug_localname(lua_State* L, const lua_Debug* ar, const char** n
 //********************************************************************************************************************
 // Deduce name of an object from slot number and PC.
 
-const char* lj_debug_slotname(GCproto *pt, const BCIns* ip, BCREG slot, const char **name)
+CSTRING lj_debug_slotname(GCproto *pt, const BCIns* ip, BCREG slot, CSTRING *name)
 {
-   const char* lname;
+   CSTRING lname;
 restart:
    lname = debug_varname(pt, proto_bcpos(pt, ip), slot);
    if (lname != nullptr) { *name = lname; return "local"; }
@@ -312,7 +312,7 @@ restart:
 
 // Deduce function name from caller of a frame.
 
-const char * lj_debug_funcname(lua_State *L, cTValue *frame, const char **name)
+CSTRING lj_debug_funcname(lua_State *L, cTValue *frame, CSTRING *name)
 {
    cTValue* pframe;
    GCfunc* fn;
@@ -387,7 +387,7 @@ void lj_debug_shortname(char *out, GCstr *str, BCLine line)
 // Uses FileSource tracking to display accurate file:line for imported code.
 // The BCLine returned by debug_frameline includes the file index from fileinfo (if available).
 
-void lj_debug_addloc(lua_State* L, const char* msg, cTValue* frame, cTValue* nextframe)
+void lj_debug_addloc(lua_State* L, CSTRING msg, cTValue* frame, cTValue* nextframe)
 {
    if (frame) {
       GCfunc* fn = frame_func(frame);
@@ -436,7 +436,7 @@ void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPOS pc)
 
    // Fallback to prototype chunkname for legacy behaviour
    GCstr* name = proto_chunkname(pt);
-   const char* s = strdata(name);
+   CSTRING s = strdata(name);
    MSize i, len = name->len;
 
    if (pt->firstline.isBuiltin()) lj_strfmt_pushf(L, "builtin:%s", s);
@@ -459,9 +459,9 @@ void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPOS pc)
 // Note: n is the internal slot number (1-based). Call sites should convert from
 // 0-based user indices if needed (e.g., debug_semantic_index_to_internal in lib_debug.cpp).
 
-[[nodiscard]] extern const char* lua_getlocal(lua_State* L, const lua_Debug* ar, int n)
+[[nodiscard]] extern CSTRING lua_getlocal(lua_State* L, const lua_Debug* ar, int n)
 {
-   const char* name = nullptr;
+   CSTRING name = nullptr;
    if (ar) {
       TValue* o = debug_localname(L, ar, &name, n);
       if (name) {
@@ -479,9 +479,9 @@ void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPOS pc)
 
 // Note: n is the internal slot number (1-based). Call sites should convert from
 // 0-based user indices if needed.
-extern const char* lua_setlocal(lua_State* L, const lua_Debug* ar, int n)
+extern CSTRING lua_setlocal(lua_State* L, const lua_Debug* ar, int n)
 {
-   const char* name = nullptr;
+   CSTRING name = nullptr;
    TValue* o = debug_localname(L, ar, &name, n);
    if (name)
       copyTV(L, o, L->top - 1);
@@ -518,12 +518,38 @@ int lj_debug_getinfo(lua_State *L, CSTRING what, lj_Debug *ar, int ext)
          if (isluafunc(fn)) {
             GCproto* pt = funcproto(fn);
             BCLine firstline = pt->firstline;
-            GCstr* name = proto_chunkname(pt);
-            ar->source = strdata(name);
-            lj_debug_shortname(ar->short_src, name, pt->firstline);
-            ar->linedefined = firstline.lineNumber();
-            ar->lastlinedefined = firstline.lineNumber() + pt->numline;
-            ar->what = (firstline or !pt->numline) ? "Lua" : "main";
+
+            // Try to use FileSource for accurate source information
+            if (not L->file_sources.empty()) {
+               const FileSource* src = get_file_source(L, pt->file_source_idx);
+               if (src and not src->filename.empty()) {
+                  ar->source = src->path.c_str();
+                  // Copy filename to short_src (with truncation if needed)
+                  strncpy(ar->short_src, src->filename.c_str(), LUA_IDSIZE - 1);
+                  ar->short_src[LUA_IDSIZE - 1] = '\0';
+                  ar->linedefined = firstline.lineNumber();
+                  ar->lastlinedefined = firstline.lineNumber() + pt->numline;
+                  ar->what = (firstline or !pt->numline) ? "Lua" : "main";
+               }
+               else {
+                  // Fallback to prototype chunkname
+                  GCstr* name = proto_chunkname(pt);
+                  ar->source = strdata(name);
+                  lj_debug_shortname(ar->short_src, name, pt->firstline);
+                  ar->linedefined = firstline.lineNumber();
+                  ar->lastlinedefined = firstline.lineNumber() + pt->numline;
+                  ar->what = (firstline or !pt->numline) ? "Lua" : "main";
+               }
+            }
+            else {
+               // Fallback to prototype chunkname
+               GCstr* name = proto_chunkname(pt);
+               ar->source = strdata(name);
+               lj_debug_shortname(ar->short_src, name, pt->firstline);
+               ar->linedefined = firstline.lineNumber();
+               ar->lastlinedefined = firstline.lineNumber() + pt->numline;
+               ar->what = (firstline or !pt->numline) ? "Lua" : "main";
+            }
          }
          else {
             ar->source = "=[C]";
@@ -537,7 +563,11 @@ int lj_debug_getinfo(lua_State *L, CSTRING what, lj_Debug *ar, int ext)
          }
       }
       else if (*what IS 'l') {
-         ar->currentline = frame ? debug_frameline(L, fn, nextframe).lineNumber() : -1;
+         if (frame) {
+            BCLine line = debug_frameline(L, fn, nextframe);
+            ar->currentline = line.isValid() ? line.lineNumber() : -1;
+         }
+         else ar->currentline = -1;
       }
       else if (*what IS 'u') {
          ar->nups = fn->c.nupvalues;
@@ -560,20 +590,16 @@ int lj_debug_getinfo(lua_State *L, CSTRING what, lj_Debug *ar, int ext)
             ar->name = nullptr;
          }
       }
-      else if (*what IS 'f') {
-         opt_f = 1;
-      }
-      else if (*what IS 'L') {
-         opt_L = 1;
-      }
-      else {
-         return 0;  //  Bad option.
-      }
+      else if (*what IS 'f') opt_f = 1;
+      else if (*what IS 'L') opt_L = 1;
+      else return 0;  //  Bad option.
    }
+
    if (opt_f) {
       setfuncV(L, L->top, fn);
       incr_top(L);
    }
+
    if (opt_L) {
       if (isluafunc(fn)) {
          GCtab* t = lj_tab_new(L, 0, 0);
@@ -594,6 +620,7 @@ int lj_debug_getinfo(lua_State *L, CSTRING what, lj_Debug *ar, int ext)
          settabV(L, L->top, t);
       }
       else setnilV(L->top);
+
       incr_top(L);
    }
    return 1;  //  Ok.
@@ -601,7 +628,7 @@ int lj_debug_getinfo(lua_State *L, CSTRING what, lj_Debug *ar, int ext)
 
 //********************************************************************************************************************
 
-extern int lua_getinfo(lua_State* L, const char* what, lua_Debug* ar)
+extern int lua_getinfo(lua_State* L, CSTRING what, lua_Debug* ar)
 {
    return lj_debug_getinfo(L, what, (lj_Debug*)ar, 0);
 }
@@ -614,6 +641,7 @@ extern int lua_getinfo(lua_State* L, const char* what, lua_Debug* ar)
 extern int lua_getstack(lua_State *L, int level, lua_Debug *ar)
 {
    int size;
+
    if (cTValue *frame = lj_debug_frame(L, level, &size)) {
       ar->i_ci = (size << 16) + (int)(frame - tvref(L->stack));
       return 1;
@@ -630,15 +658,16 @@ extern int lua_getstack(lua_State *L, int level, lua_Debug *ar)
 #define TRACEBACK_LEVELS1   12
 #define TRACEBACK_LEVELS2   10
 
-extern void luaL_traceback(lua_State* L, lua_State* L1, const char* msg, int level)
+extern void luaL_traceback(lua_State* L, lua_State* L1, CSTRING msg, int level)
 {
    int top = (int)(L->top - L->base);
    int lim = TRACEBACK_LEVELS1;
    lua_Debug ar;
    if (msg) lua_pushfstring(L, "%s\n", msg);
    lua_pushliteral(L, "stack traceback:");
+
    while (lua_getstack(L1, level++, &ar)) {
-      GCfunc* fn;
+      GCfunc *fn;
       if (level > lim) {
          if (not lua_getstack(L1, level + TRACEBACK_LEVELS2, &ar)) level--;
          else {
@@ -652,9 +681,12 @@ extern void luaL_traceback(lua_State* L, lua_State* L1, const char* msg, int lev
 
       lua_getinfo(L1, "Snlf", &ar);
       fn = funcV(L1->top - 1); L1->top--;
+
       if (isffunc(fn) and !*ar.namewhat) lua_pushfstring(L, "\n\t[builtin#%d]:", fn->c.ffid);
       else lua_pushfstring(L, "\n\t%s:", ar.short_src);
+
       if (ar.currentline > 0) lua_pushfstring(L, "%d:", ar.currentline);
+
       if (*ar.namewhat) lua_pushfstring(L, " in function " LUA_QS, ar.name);
       else {
          if (*ar.what IS 'm') lua_pushliteral(L, " in main chunk");
@@ -664,6 +696,7 @@ extern void luaL_traceback(lua_State* L, lua_State* L1, const char* msg, int lev
 
       if ((int)(L->top - L->base) - top >= 15) lua_concat(L, (int)(L->top - L->base) - top);
    }
+
    lua_concat(L, (int)(L->top - L->base) - top);
 }
 

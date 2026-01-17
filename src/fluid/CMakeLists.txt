@@ -715,7 +715,7 @@ set (FLUID_TESTS
    defer debuglog io object regex struct threads xml strings math array array_any array_manip array_functional array_typed_syntax compound
    bitshift bitwise if_empty presence blank ternary table stress unit_tests jitoptions fstring const
    unicode ellipsis safe_nav close type_annotations type_fixing type_inference jit pipe pipe_iteration arrow_functions result_filter
-   thunks deferred_expr shadow_assert ranges annotations locality anonymous_for key_values
+   thunks deferred_expr shadow_assert ranges annotations locality anonymous_for key_values debug_filesources
    choose_from flow table_slice try_except import
 )
 
