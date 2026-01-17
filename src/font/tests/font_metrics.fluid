@@ -80,7 +80,7 @@ function setFont(Face, Size)
    glAscent.y2 = glText.y - metrics.ascent
 
    glInitialised = true
-   collectgarbage()
+   processing.collect()
 end
 
    --mFont.refreshFonts()

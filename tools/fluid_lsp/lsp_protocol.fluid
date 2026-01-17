@@ -134,7 +134,7 @@ function dispatchMethod(Self:table, Message:table, State:table)
       return nil
    end
 
-   collectgarbage()
+   processing.collect()
 end
 
 ----------------------------------------------------------------------------------------------------------------------

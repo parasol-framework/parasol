@@ -226,7 +226,7 @@ static int processing_collect(lua_State *Lua)
    int step_size = 0;
 
    // Arg 1: Optional mode string
-   
+
    if (lua_type(Lua, 1) IS LUA_TSTRING) {
       auto mode_str = lua_tostring(Lua, 1);
       if (std::string_view("full") IS mode_str) gc_mode = LUA_GCCOLLECT;

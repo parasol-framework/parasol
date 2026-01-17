@@ -270,7 +270,7 @@ extern lua_State * lua_newstate(lua_Alloc allocf, void* allocd)
    if (GG == nullptr or !checkptrGC(GG)) return nullptr;
    memset(GG, 0, sizeof(GG_State));
    L = &GG->L;
-   
+
    new (L) lua_State;
 
    g = &GG->g;

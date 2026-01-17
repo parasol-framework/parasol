@@ -165,7 +165,7 @@ function displayFile(Path)
 
    glViewArea.scene.surface.mtScheduleRedraw()
 
-   collectgarbage()
+   processing.collect()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -296,7 +296,7 @@ end
       end
    end
 
-   collectgarbage()
+   processing.collect()
 
    glWindow:show(true)
 

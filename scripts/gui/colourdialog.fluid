@@ -408,7 +408,7 @@ function buildLayout(self, Options)
    dy += lOkayButton.viewport.height + WIDGET_GAP
    if dy > bottom then bottom = dy end
 
-   collectgarbage()
+   processing.collect()
 
    return (self._rainbowX + rainbow.width + WIDGET_GAP), bottom
 end

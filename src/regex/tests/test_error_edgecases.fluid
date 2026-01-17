@@ -29,7 +29,7 @@ end
       matcher = regex.new("item" .. index)
       assert(matcher.test("item" .. index), "Compiled regex should operate before GC")
    end
-   collectgarbage()
+   processing.collect()
    matcher = regex.new("final")
    assert(matcher.test("final"), "Regex creation should remain stable after GC cycle")
 end

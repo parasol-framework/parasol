@@ -802,7 +802,7 @@ global function saveOutput()
       end
    end
 
-   collectgarbage()
+   processing.collect()
 
    mSys.MoveFile(tempPath, outPath)
 end

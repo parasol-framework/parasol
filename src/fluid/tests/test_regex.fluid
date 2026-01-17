@@ -192,7 +192,7 @@ end
       regex_list[i] = regex.new("pattern" .. i)
    end
 
-   collectgarbage()
+   processing.collect()
 
    -- Verify objects still work after GC pressure
    assert(regex_list[50].test("pattern50") is true, "Regex should survive garbage collection")

@@ -114,7 +114,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
       refreshGuidelines()
 
-      collectgarbage()
+      processing.collect()
       self.viewport.acDraw()
    end
 
@@ -298,7 +298,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
          elseif self.pointSize > 400 then
             self.pointSize = 400
          end
-         collectgarbage()
+         processing.collect()
          refreshExample()
       end
    })
@@ -318,7 +318,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       textAttrib   = 'name',
       itemSelected = function(View, Reason, Item)
          self.style = Item.name
-         collectgarbage()
+         processing.collect()
          refreshExample()
       end
    })

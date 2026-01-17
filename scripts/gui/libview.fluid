@@ -441,7 +441,7 @@ gui.initView = function(Options, BuildUI, NewItems)
       vw.clear()
       vw.viewport.free()
       for k,v in pairs(vw) do vw[k] = nil end
-      collectgarbage()
+      processing.collect()
    end
 
    -- TODO: Changes the underlying attributes of any item in the view.

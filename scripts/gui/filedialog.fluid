@@ -88,7 +88,7 @@ gui.dialog.file = function(Options)
          close = function(Window)
             Options?.feedback(self, nil)
             table.clear(self)
-            collectgarbage()
+            processing.collect()
          end
       }
    })
@@ -132,7 +132,7 @@ gui.dialog.file = function(Options)
          activate = function(Button)
             Options?.feedback(self, nil)
             table.clear(self)
-            collectgarbage()
+            processing.collect()
          end
       }
    })

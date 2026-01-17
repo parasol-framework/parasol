@@ -23,7 +23,7 @@ end
    assert(tags[1].attribs[0].name is "testRoot", "Root tag should be testRoot; got " .. tostring(tags[0].attribs[0].name))
    assert(tags[1].children[0].children[0].attribs[0].value is "Path content", "Content should be preserved")
 
-   collectgarbage()
+   processing.collect()
    mSys.DeleteFile('temp:test_xml_path.xml')
 end
 
@@ -118,7 +118,7 @@ end
    xml.path = 'temp:test_switch.xml'
    assert(xml.tags[0].attribs[0].name is "pathSwitched", "Path switching should work")
 
-   collectgarbage()
+   processing.collect()
    mSys.DeleteFile('temp:test_switch.xml')
 end
 

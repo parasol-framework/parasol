@@ -9,7 +9,7 @@ Tests for file functions
    out = obj.new('file', { src=glRawPath, flags='!NEW|WRITE' } )
    out.acWrite('ABCD', 4)
    out = nil
-   collectgarbage()
+   processing.collect()
 end
 
 @AfterAll function cleanup()

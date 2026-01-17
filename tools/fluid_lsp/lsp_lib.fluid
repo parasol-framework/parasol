@@ -525,7 +525,7 @@ global function lspStart(Options)
       if self._socket then
          logMessage(self, 'Stopping LSP server')
          self._socket = nil
-         collectgarbage()
+         processing.collect()
       end
    end
 

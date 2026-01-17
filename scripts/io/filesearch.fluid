@@ -171,7 +171,7 @@ file.search = function(Path, Options)
 
       if count is 0 then processing.sleep(0) end  -- Message check required if the directory was empty
 
-      collectgarbage()
+      processing.collect()
    end
 
    function processPath(Path:str)

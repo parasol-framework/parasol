@@ -20,7 +20,7 @@ function SequentialPlayback()
    end
 
    local duration = snd.duration
-   collectgarbage()
+   processing.collect()
 
    assert(snd.acActivate() is ERR_Okay, 'Failed to playback low-tone sound sample.')
    time = mSys.preciseTime()
@@ -163,7 +163,7 @@ function WaveSave()
 
    -- Close the output file to ensure data is flushed
    output_file = nil
-   collectgarbage()
+   processing.collect()
 
    -- Now read both files as binary and compare their content
    local original_file = obj.new('file', { path=glFolder .. 'low-tone.wav', flags='READ' })
@@ -209,7 +209,7 @@ function WaveSave()
 
    original_file = nil
    saved_file = nil
-   collectgarbage()
+   processing.collect()
 end
 
 -----------------------------------------------------------------------------------------------------------------------

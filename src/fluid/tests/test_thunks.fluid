@@ -430,9 +430,9 @@ end
    assert(val is "persistent", "Value should be 'persistent' before GC")
 
    -- Force multiple GC cycles
-   collectgarbage()
-   collectgarbage()
-   collectgarbage()
+   processing.collect()
+   processing.collect()
+   processing.collect()
 
    -- Access again after GC
    val_after = t.value
