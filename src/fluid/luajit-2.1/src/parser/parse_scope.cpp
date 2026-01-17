@@ -625,6 +625,8 @@ static size_t fs_prep_line(FuncState* fs, BCLine numline)
 // Fixup lineinfo for prototype.
 // Note: bcbase[].line values may be encoded with file index in upper 8 bits (from FileSource tracking).
 // We decode them to raw line numbers before computing deltas for the lineinfo array.
+// If bytecode spans multiple source files (e.g., main chunk with imports), allocate pt->fileinfo to
+// track per-instruction file indices for accurate error reporting.
 
 static void fs_fixup_line(FuncState *fs, GCproto *pt, void *lineinfo, BCLine numline)
 {
@@ -634,6 +636,32 @@ static void fs_fixup_line(FuncState *fs, GCproto *pt, void *lineinfo, BCLine num
    pt->firstline = fs->linedefined;
    pt->numline = numline;
    setmref(pt->lineinfo, lineinfo);
+   setmref(pt->fileinfo, nullptr);  // Default: no per-instruction file tracking
+
+   // Check if this prototype has bytecode from multiple source files.
+   // If so, we need to allocate fileinfo to track per-instruction file indices.
+
+   uint8_t first_file_idx = (n > 0) ? base[0].line.fileIndex() : pt->file_source_idx;
+   bool multi_file = false;
+
+   for (MSize j = 1; j < n; j++) {
+      if (base[j].line.fileIndex() != first_file_idx) {
+         multi_file = true;
+         break;
+      }
+   }
+
+   // Allocate and populate fileinfo if this prototype spans multiple files.
+
+   if (multi_file and n > 0) {
+      auto fi = (uint8_t *)lj_mem_new(fs->ls->L, n);
+      for (MSize j = 0; j < n; j++) {
+         fi[j] = base[j].line.fileIndex();
+      }
+      setmref(pt->fileinfo, fi);
+   }
+
+   // Now write the line deltas to lineinfo as before.
 
    if (numline < 256) [[likely]] {
       auto li = (uint8_t*)lineinfo;
@@ -729,7 +757,7 @@ void LexState::fs_fixup_var(GCproto *Prototype, uint8_t *Buffer, size_t OffsetVa
 
 // Initialize with empty debug info, if disabled.
 #define fs_prep_line(fs, numline)		(UNUSED(numline), 0)
-#define fs_fixup_line(fs, pt, li, numline) pt->firstline = pt->numline = 0, setmref((pt)->lineinfo, nullptr)
+#define fs_fixup_line(fs, pt, li, numline) pt->firstline = pt->numline = 0, setmref((pt)->lineinfo, nullptr), setmref((pt)->fileinfo, nullptr)
 
 size_t LexState::fs_prep_var(FuncState* FunctionState, size_t* OffsetVar)
 {

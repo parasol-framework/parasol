@@ -147,6 +147,10 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
       }
    }
 
+   // Save the parent's lastline - function body emission will update it, but we need
+   // to restore it so the BC_FNEW instruction gets the correct line (start of function, not body).
+   BCLine saved_lastline = this->lex_state.lastline;
+
    auto body_result = child_emitter.emit_block(*Payload.body, FuncScopeFlag::None);
    if (not body_result.ok()) return ParserResult<ExpDesc>::failure(body_result.error_ref());
 
@@ -155,6 +159,9 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
    scope_guard.disarm();
    parent_state->bcbase = this->lex_state.bcstack + oldbase;
    parent_state->bclim = BCPos(this->lex_state.sizebcstack - oldbase).raw();
+
+   // Restore lastline so BC_FNEW and subsequent instructions get the function definition's line
+   this->lex_state.lastline = saved_lastline;
 
    ExpDesc expr;
    expr.init(ExpKind::Relocable, bcemit_AD(parent_state, BC_FNEW, 0, const_gc(parent_state, obj2gco(pt), LJ_TPROTO)));

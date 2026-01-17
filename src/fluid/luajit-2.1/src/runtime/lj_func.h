@@ -1,7 +1,5 @@
-/*
-** Function handling (prototypes, functions and upvalues).
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-*/
+// Function handling (prototypes, functions and upvalues).
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 
 #pragma once
 
