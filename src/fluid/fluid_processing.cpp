@@ -193,6 +193,22 @@ static int processing_flush(lua_State *Lua)
 }
 
 //********************************************************************************************************************
+
+static int processing_stop_collector(lua_State *Lua)
+{
+   lua_gc(Lua, LUA_GCSTOP, 0);
+   return 0;
+}
+
+//********************************************************************************************************************
+
+static int processing_start_collector(lua_State *Lua)
+{
+   lua_gc(Lua, LUA_GCRESTART, 0);
+   return 0;
+}
+
+//********************************************************************************************************************
 // Usage: processing.collect([mode], [options])
 //
 // Controls the garbage collector.
@@ -200,8 +216,6 @@ static int processing_flush(lua_State *Lua)
 // Modes:
 //   "full"    - Full collection cycle (default)
 //   "step"    - Incremental collection step
-//   "stop"    - Stop the garbage collector
-//   "restart" - Restart the garbage collector
 //
 // Options table (for "step" mode):
 //   stepSize  - Size of the incremental step
@@ -212,16 +226,16 @@ static int processing_collect(lua_State *Lua)
    int step_size = 0;
 
    // Arg 1: Optional mode string
+   
    if (lua_type(Lua, 1) IS LUA_TSTRING) {
       auto mode_str = lua_tostring(Lua, 1);
       if (std::string_view("full") IS mode_str) gc_mode = LUA_GCCOLLECT;
       else if (std::string_view("step") IS mode_str) gc_mode = LUA_GCSTEP;
-      else if (std::string_view("stop") IS mode_str) gc_mode = LUA_GCSTOP;
-      else if (std::string_view("restart") IS mode_str) gc_mode = LUA_GCRESTART;
-      else luaL_error(Lua, "Invalid mode '%s'. Use 'full', 'step', 'stop', or 'restart'.", mode_str);
+      else luaL_error(Lua, "Invalid mode '%s'. Use 'full', 'step'.", mode_str);
    }
 
    // Arg 2: Optional options table
+
    if (lua_istable(Lua, 2)) {
       lua_getfield(Lua, 2, "stepSize");
       if (lua_type(Lua, -1) IS LUA_TNUMBER) {
@@ -381,14 +395,16 @@ static int processing_destruct(lua_State *Lua)
 // Register the processing interface.
 
 static const luaL_Reg processinglib_functions[] = {
-   { "new",         processing_new },
-   { "collect",     processing_collect },
-   { "gcStats",     processing_gcStats },
-   { "sleep",       processing_sleep },
-   { "signal",      processing_signal },
-   { "task",        processing_task },
-   { "flush",       processing_flush },
-   { "delayedCall", processing_delayed_call },
+   { "new",            processing_new },
+   { "collect",        processing_collect },
+   { "stopCollector",  processing_stop_collector },
+   { "startCollector", processing_start_collector },
+   { "gcStats",        processing_gcStats },
+   { "sleep",          processing_sleep },
+   { "signal",         processing_signal },
+   { "task",           processing_task },
+   { "flush",          processing_flush },
+   { "delayedCall",    processing_delayed_call },
    { nullptr, nullptr }
 };
 
