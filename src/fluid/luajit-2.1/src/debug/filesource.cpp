@@ -66,8 +66,8 @@ uint8_t register_file_source(lua_State *L, std::string &Path, const std::string 
    L->file_sources.push_back(std::move(source));
    L->file_index_map[path_hash] = new_index;
 
-   log.msg("Registered file source: %s $%.8x (index %d, parent %d, import line %d)",
-             Filename.c_str(), path_hash, new_index, ParentIndex, ImportLine.lineNumber());
+   log.msg("Registered file source: %s $%.8x (index %d, parent %d, import line %d)", Filename.c_str(), path_hash,
+      new_index, ParentIndex, ImportLine.lineNumber());
 
    return new_index;
 }
@@ -78,9 +78,7 @@ uint8_t register_file_source(lua_State *L, std::string &Path, const std::string 
 std::optional<uint8_t> find_file_source(lua_State *L, uint32_t PathHash)
 {
    auto it = L->file_index_map.find(PathHash);
-   if (it != L->file_index_map.end()) {
-      return it->second;
-   }
+   if (it != L->file_index_map.end()) return it->second;
    return std::nullopt;
 }
 
@@ -89,9 +87,7 @@ std::optional<uint8_t> find_file_source(lua_State *L, uint32_t PathHash)
 
 const FileSource* get_file_source(lua_State *L, uint8_t Index)
 {
-   if (Index < L->file_sources.size()) {
-      return &L->file_sources[Index];
-   }
+   if (Index < L->file_sources.size()) return &L->file_sources[Index];
    return nullptr;
 }
 
@@ -116,7 +112,7 @@ bool set_file_source_namespace(lua_State *L, uint8_t Index, const std::string &N
       L->file_sources[Index].declared_namespace = Namespace;
       return true;
    }
-   return false;
+   else return false;
 }
 
 //********************************************************************************************************************
@@ -125,9 +121,7 @@ bool set_file_source_namespace(lua_State *L, uint8_t Index, const std::string &N
 std::optional<uint8_t> find_file_source_by_namespace(lua_State *L, const std::string &Namespace)
 {
    for (size_t i = 0; i < L->file_sources.size(); i++) {
-      if (L->file_sources[i].declared_namespace IS Namespace) {
-         return uint8_t(i);
-      }
+      if (L->file_sources[i].declared_namespace IS Namespace) return uint8_t(i);
    }
    return std::nullopt;
 }

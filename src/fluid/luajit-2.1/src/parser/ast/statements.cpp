@@ -818,8 +818,9 @@ ParserResult<StmtNodePtr> AstBuilder::parse_namespace()
    // Allow re-declaration if the same file is being re-parsed (e.g., via loadFile()).
    auto existing_file = find_file_source_by_namespace(L, std::string(ns_name));
    if (existing_file.has_value() and existing_file.value() != current_file_index) {
-      return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, name_token,
-         std::string("namespace '") + std::string(ns_name) + "' already defined by another library");
+      //return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, name_token,
+      //   std::string("namespace '") + std::string(ns_name) + "' already defined by another library");
+      log.msg("Note: namespace '%.*s' already defined by another library", int(ns_name.size()), ns_name.data());
    }
 
    // Record the namespace in the current file's FileSource entry

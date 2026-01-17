@@ -102,18 +102,41 @@ static BCPOS debug_framepc(lua_State *L, GCfunc *fn, cTValue *nextframe)
 }
 
 //********************************************************************************************************************
-// Get line number for a bytecode position.
+// Get line number for a bytecode position.  Returns BCLine with file index encoded in upper 8 bits if available from 
+// fileinfo, otherwise uses pt->file_source_idx as the file index.
 
 BCLine LJ_FASTCALL lj_debug_line(GCproto* pt, BCPOS pc)
 {
    const void* lineinfo = proto_lineinfo(pt);
    if (pc <= pt->sizebc and lineinfo) {
       BCLine first = pt->firstline;
-      if (pc IS pt->sizebc) return first + pt->numline;
-      if (pc-- IS 0) return first;
-      if (pt->numline < 256) return first + (BCLine)((const uint8_t*)lineinfo)[pc];
-      else if (pt->numline < 65536) return first + (BCLine)((const uint16_t*)lineinfo)[pc];
-      else return first + (BCLine)((const uint32_t*)lineinfo)[pc];
+      BCLine line;
+      BCPOS lineinfo_idx = 0;  // Index into lineinfo/fileinfo arrays (0 = invalid)
+      bool valid_idx = false;
+
+      if (pc IS pt->sizebc) { // No valid lineinfo index for this edge case
+         line = first + pt->numline;
+      }
+      else if (pc IS 0) { // pc of 0 means FUNCF instruction, no lineinfo entry
+         line = first;
+      }
+      else {
+         lineinfo_idx = pc - 1;  // lineinfo is 0-indexed, skipping FUNCF
+         valid_idx = true;
+         if (pt->numline < 256) line = first + (BCLine)((const uint8_t*)lineinfo)[lineinfo_idx];
+         else if (pt->numline < 65536) line = first + (BCLine)((const uint16_t*)lineinfo)[lineinfo_idx];
+         else line = first + (BCLine)((const uint32_t*)lineinfo)[lineinfo_idx];
+      }
+
+      // Get file index: use per-instruction fileinfo if available, else prototype's default
+      uint8_t file_idx = pt->file_source_idx;
+      const uint8_t* fileinfo = proto_fileinfo(pt);
+      if (fileinfo and valid_idx and lineinfo_idx < pt->sizebc - 1) {
+         file_idx = fileinfo[lineinfo_idx];
+      }
+
+      // Return BCLine with file index encoded
+      return BCLine::encode(file_idx, line.lineNumber());
    }
    return 0;
 }
@@ -362,6 +385,7 @@ void lj_debug_shortname(char *out, GCstr *str, BCLine line)
 //********************************************************************************************************************
 // Add current location of a frame to error message.
 // Uses FileSource tracking to display accurate file:line for imported code.
+// The BCLine returned by debug_frameline includes the file index from fileinfo (if available).
 
 void lj_debug_addloc(lua_State* L, const char* msg, cTValue* frame, cTValue* nextframe)
 {
@@ -372,9 +396,9 @@ void lj_debug_addloc(lua_State* L, const char* msg, cTValue* frame, cTValue* nex
          if (line.isValid()) {
             GCproto* pt = funcproto(fn);
 
-            // Use the prototype's file_source_idx to get the correct filename
+            // Use the file index from the BCLine (which comes from fileinfo if multi-file prototype)
             if (not L->file_sources.empty()) {
-               const FileSource* src = get_file_source(L, pt->file_source_idx);
+               const FileSource* src = get_file_source(L, line.fileIndex());
                if (src and not src->filename.empty()) {
                   lj_strfmt_pushf(L, "%s:%d: %s", src->filename.c_str(), line.lineNumber(), msg);
                   return;
@@ -395,14 +419,15 @@ void lj_debug_addloc(lua_State* L, const char* msg, cTValue* frame, cTValue* nex
 //********************************************************************************************************************
 // Push location string for a bytecode position to Lua stack.
 // Uses FileSource tracking to display accurate file:line for imported code.
+// The BCLine returned by lj_debug_line includes the file index from fileinfo (if available).
 
 void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPOS pc)
 {
    BCLine line = lj_debug_line(pt, pc);
 
-   // Use the prototype's file_source_idx to get the correct filename
+   // Use the file index from the BCLine (which comes from fileinfo if multi-file prototype)
    if (not L->file_sources.empty()) {
-      const FileSource* src = get_file_source(L, pt->file_source_idx);
+      const FileSource* src = get_file_source(L, line.fileIndex());
       if (src and not src->filename.empty()) {
          lj_strfmt_pushf(L, "%s:%d", src->filename.c_str(), line.lineNumber());
          return;
@@ -496,8 +521,8 @@ int lj_debug_getinfo(lua_State *L, CSTRING what, lj_Debug *ar, int ext)
             GCstr* name = proto_chunkname(pt);
             ar->source = strdata(name);
             lj_debug_shortname(ar->short_src, name, pt->firstline);
-            ar->linedefined = (int)firstline;
-            ar->lastlinedefined = (int)(firstline + pt->numline);
+            ar->linedefined = firstline.lineNumber();
+            ar->lastlinedefined = firstline.lineNumber() + pt->numline;
             ar->what = (firstline or !pt->numline) ? "Lua" : "main";
          }
          else {
@@ -512,7 +537,7 @@ int lj_debug_getinfo(lua_State *L, CSTRING what, lj_Debug *ar, int ext)
          }
       }
       else if (*what IS 'l') {
-         ar->currentline = frame ? debug_frameline(L, fn, nextframe) : BCLine(BCLine::NO_LINE);
+         ar->currentline = frame ? debug_frameline(L, fn, nextframe).lineNumber() : -1;
       }
       else if (*what IS 'u') {
          ar->nups = fn->c.nupvalues;
