@@ -48,8 +48,14 @@
 #include "lj_gc.h"
 #include "lj_err.h"
 #include "lj_debug.h"
+#include "lj_frame.h"
+#include "lj_array.h"
+#include "lj_tab.h"
+#include "lj_str.h"
+#include "lj_state.h"
 #include "lib.h"
 #include "debug/error_guard.h"
+#include "debug/filesource.h"
 #include "parser/parser_diagnostics.h"
 #include "parser/parser_tips.h"
 #include "../../defs.h"
@@ -420,6 +426,91 @@ LJLIB_CF(debug_getRegistry)
 }
 
 //********************************************************************************************************************
+// debug.fileSources(): Returns a table of all registered file sources.
+//
+// Each entry in the returned array contains:
+//   index       - File index (0 = main file, 255 = overflow)
+//   path        - Full resolved path
+//   filename    - Short name for error display
+//   namespace   - Declared namespace (empty string if none)
+//   firstLine   - First line in unified space
+//   sourceLines - Total lines in source file
+//   parentIndex - Which file imported this one (0 for main)
+//   importLine  - Line in parent where import occurred (0 for main)
+//   isOverflow  - True if this is the overflow fallback (index 255)
+//
+// Example:
+//   local sources = debug.fileSources()
+//   for i, src in ipairs(sources) do
+//      print(src.filename, "imported from", sources[src.parentIndex].filename)
+//   end
+
+LJLIB_CF(debug_fileSources)
+{
+   uint32_t count = uint32_t(L->file_sources.size());
+
+   // Create native array of tables
+
+   lj_gc_check(L);
+   GCarray *arr = lj_array_new(L, count, AET::TABLE);
+   GCRef *refs = (GCRef *)arr->arraydata();
+
+   // Iterate over all file sources
+
+   for (uint32_t i = 0; i < count; i++) {
+      const FileSource* source = get_file_source(L, uint8_t(i));
+      if (not source) {
+         setnilV((TValue*)&refs[i]);
+         continue;
+      }
+
+      // Create entry table (9 fields)
+      GCtab *entry = lj_tab_new(L, 0, 9);
+
+      // Store table reference in array first (roots it for GC)
+      setgcref(refs[i], obj2gco(entry));
+
+      // Populate fields
+      TValue *slot;
+
+      slot = lj_tab_setstr(L, entry, lj_str_newlit(L, "index"));
+      setintV(slot, int(i));
+
+      slot = lj_tab_setstr(L, entry, lj_str_newlit(L, "path"));
+      setstrV(L, slot, lj_str_new(L, source->path.c_str(), source->path.size()));
+
+      slot = lj_tab_setstr(L, entry, lj_str_newlit(L, "filename"));
+      setstrV(L, slot, lj_str_new(L, source->filename.c_str(), source->filename.size()));
+
+      slot = lj_tab_setstr(L, entry, lj_str_newlit(L, "namespace"));
+      setstrV(L, slot, lj_str_new(L, source->declared_namespace.c_str(), source->declared_namespace.size()));
+
+      slot = lj_tab_setstr(L, entry, lj_str_newlit(L, "firstLine"));
+      setintV(slot, source->first_line.lineNumber());
+
+      slot = lj_tab_setstr(L, entry, lj_str_newlit(L, "sourceLines"));
+      setintV(slot, source->source_lines.lineNumber());
+
+      slot = lj_tab_setstr(L, entry, lj_str_newlit(L, "parentIndex"));
+      setintV(slot, source->parent_file_index);
+
+      slot = lj_tab_setstr(L, entry, lj_str_newlit(L, "importLine"));
+      setintV(slot, source->import_line.lineNumber());
+
+      slot = lj_tab_setstr(L, entry, lj_str_newlit(L, "isOverflow"));
+      setboolV(slot, is_file_source_overflow(uint8_t(i)));
+
+      lj_gc_anybarriert(L, entry);
+   }
+
+   // Push array onto stack
+   setarrayV(L, L->top, arr);
+   incr_top(L);
+
+   return 1;
+}
+
+//********************************************************************************************************************
 // debug.getMetatable(object:any):table
 //
 // Returns the metatable of the given object, or nil if it has no metatable.  Unlike getmetatable(), this function
@@ -527,6 +618,7 @@ LJLIB_CF(debug_getInfo)
 {
    lj_Debug ar;
    int arg, opt_f = 0, opt_L = 0;
+   bool from_func_arg = false;  // Track if function was passed directly
    lua_State *L1 = getthread(L, &arg);
    CSTRING options = luaL_optstring(L, arg + 2, "flnSu");
    if (lua_isnumber(L, arg + 1)) {
@@ -536,12 +628,29 @@ LJLIB_CF(debug_getInfo)
       }
    }
    else if (L->base + arg < L->top and tvisfunc(L->base + arg)) {
+      from_func_arg = true;
       options = lua_pushfstring(L, ">%s", options);
       setfuncV(L1, L1->top++, funcV(L->base + arg));
    }
    else lj_err_arg(L, arg + 1, ErrMsg::NOFUNCL);
 
    if (not lj_debug_getinfo(L1, options, &ar, 1)) lj_err_arg(L, arg + 2, ErrMsg::INVOPT);
+
+   // Get function for fileIndex using the frame info
+   GCfunc* fn = nullptr;
+   if (from_func_arg) {
+      // Function was passed as argument, get it from where lj_debug_getinfo left it
+      // The '>' case pops it from top, so we need to get it differently
+      fn = funcV(L->base + arg);
+   }
+   else {
+      // Stack level case: extract function from frame info
+      uint32_t offset = uint32_t(ar.i_ci) & 0xffff;
+      if (offset) {
+         TValue* frame = tvref(L1->stack) + offset;
+         fn = frame_func(frame);
+      }
+   }
 
    lua_createtable(L, 0, 16);  //  Create result table.
    for (; *options; options++) {
@@ -552,6 +661,11 @@ LJLIB_CF(debug_getInfo)
             settabsi(L, "lineDefined", ar.linedefined);
             settabsi(L, "lastLineDefined", ar.lastlinedefined);
             settabss(L, "what", ar.what);
+            // Add fileIndex for FileSource lookup
+            if (fn and isluafunc(fn)) {
+               GCproto* pt = funcproto(fn);
+               settabsi(L, "fileIndex", pt->file_source_idx);
+            }
             break;
          case 'l':
             settabsi(L, "currentLine", ar.currentline);

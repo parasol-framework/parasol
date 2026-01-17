@@ -236,7 +236,7 @@ end
    assert(invalid is nil, "Out-of-range ircalladdr should return nil")
 end
 
-@Test function JitAttachTraceEvent()
+@Test(hotpath=2000) function JitAttachTraceEvent()
    cached_trace_no = nil
    cached_trace_info = nil
 
@@ -252,7 +252,7 @@ end
    assert(trace_events > 0, "Trace handler should run at least once")
 end
 
-@Test function ArrayIteratorTraces()
+@Test(hotpath=100) function ArrayIteratorTraces()
    cached_trace_no = nil
    cached_trace_info = nil
 
