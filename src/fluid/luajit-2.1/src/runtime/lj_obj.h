@@ -288,20 +288,14 @@ public:
       : m_value((int32_t(fileIndex) << FILE_SHIFT) | (line & LINE_MASK)) {}
 
    // Static factory for encoding file index and line
-   [[nodiscard]] static constexpr BCLine encode(uint8_t fileIndex, int32_t line) noexcept {
-      return BCLine(fileIndex, line);
-   }
+   [[nodiscard]] static constexpr BCLine encode(uint8_t fileIndex, int32_t line) noexcept { return BCLine(fileIndex, line); }
 
    // Decoding methods
-   [[nodiscard]] constexpr uint8_t fileIndex() const noexcept {
-      return uint8_t((m_value & FILE_MASK) >> FILE_SHIFT);
-   }
-   [[nodiscard]] constexpr int32_t lineNumber() const noexcept {
-      return m_value & LINE_MASK;
-   }
+   [[nodiscard]] constexpr uint8_t fileIndex() const noexcept { return uint8_t((m_value & FILE_MASK) >> FILE_SHIFT); }
+   [[nodiscard]] constexpr int32_t lineNumber() const noexcept { return m_value & LINE_MASK; }
 
    // Semantic queries
-   [[nodiscard]] constexpr bool isValid() const noexcept { return m_value >= 0; }
+   [[nodiscard]] constexpr bool isValid() const noexcept { return m_value != NO_LINE and m_value != BUILTIN; }
    [[nodiscard]] constexpr bool isBuiltin() const noexcept { return m_value IS BUILTIN; }
 
    // Implicit conversion for backward compatibility with existing code that uses BCLine as int32_t.
