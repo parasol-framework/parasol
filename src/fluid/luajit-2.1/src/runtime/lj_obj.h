@@ -1134,6 +1134,11 @@ struct lua_State {
    std::vector<FileSource> file_sources;  // Index 0 = main file, 255 = overflow
    ankerl::unordered_dense::map<uint32_t, uint8_t> file_index_map;  // path_hash -> index
 
+   // Stack of pending import lexers for cleanup if SEH throws during import parsing.
+   // Note: Windows SEH doesn't call C++ destructors, so we track these for manual cleanup.
+   // Uses void* to avoid circular include with LexState.
+   std::vector<void *> pending_import_lexers;
+
    // Constructor/destructor not actually used as yet.
 /*
    lua_State(class objScript* pScript) : Script(pScript) {

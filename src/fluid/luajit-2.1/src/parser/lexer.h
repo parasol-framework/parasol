@@ -151,6 +151,7 @@ inline constexpr size_t generate_reserved_count() noexcept {
 
 // Generate enum values from TOKEN_DEF_LIST
 // SINGLE SOURCE OF TRUTH: All token definitions come from TOKEN_DEF_LIST above
+
 #define TOKEN_DEF(name, symbol, reserved) TK_##name,
 enum {
    TK_OFS = 256,
@@ -367,3 +368,52 @@ public:
 };
 
 void lj_lex_error(LexState *, LexToken, ErrMsg, ...);
+
+//********************************************************************************************************************
+// RAII guard for import LexState instances.
+//
+// Windows SEH (used by lj_err_throw) doesn't call C++ destructors during stack unwinding.  This guard handles the
+// normal path (destructor called on scope exit), while lua_load cleans up any orphaned lexers left in
+// pending_import_lexers after catching SEH exceptions.
+//
+// Usage:
+//    ImportLexerGuard guard(L, source, chunkname);
+//    guard->next();  // Access via operator->
+//    // ... parsing code ...
+//    // Destructor automatically cleans up on normal exit
+
+class ImportLexerGuard {
+public:
+   ImportLexerGuard(lua_State *L, std::string_view Source, std::string ChunkName)
+      : lua(L)
+      , chunk_name(std::move(ChunkName))  // Store chunk name - LexState holds a raw pointer to it
+      , lexer(new LexState(L, Source, chunk_name))
+   {
+      lua->pending_import_lexers.push_back(lexer);
+   }
+
+   ~ImportLexerGuard() {
+      if (lexer) {
+         // Remove from tracking vector (find and erase to handle nested imports correctly)
+         auto &vec = lua->pending_import_lexers;
+         auto it = std::find(vec.begin(), vec.end(), lexer);
+         if (it != vec.end()) vec.erase(it);
+         delete lexer;
+      }
+   }
+
+   // Non-copyable, non-movable (prevents accidental double-delete)
+   ImportLexerGuard(const ImportLexerGuard&) = delete;
+   ImportLexerGuard& operator=(const ImportLexerGuard&) = delete;
+   ImportLexerGuard(ImportLexerGuard&&) = delete;
+   ImportLexerGuard& operator=(ImportLexerGuard&&) = delete;
+
+   [[nodiscard]] LexState* get() const noexcept { return lexer; }
+   [[nodiscard]] LexState* operator->() const noexcept { return lexer; }
+   [[nodiscard]] LexState& operator*() const noexcept { return *lexer; }
+
+private:
+   lua_State *lua;
+   std::string chunk_name;  // Must outlive lexer - LexState::chunkarg points into this
+   LexState *lexer;
+};
