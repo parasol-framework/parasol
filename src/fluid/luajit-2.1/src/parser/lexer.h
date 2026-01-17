@@ -386,7 +386,8 @@ class ImportLexerGuard {
 public:
    ImportLexerGuard(lua_State *L, std::string_view Source, std::string ChunkName)
       : lua(L)
-      , lexer(new LexState(L, Source, std::move(ChunkName)))
+      , chunk_name(std::move(ChunkName))  // Store chunk name - LexState holds a raw pointer to it
+      , lexer(new LexState(L, Source, chunk_name))
    {
       lua->pending_import_lexers.push_back(lexer);
    }
@@ -413,5 +414,6 @@ public:
 
 private:
    lua_State *lua;
+   std::string chunk_name;  // Must outlive lexer - LexState::chunkarg points into this
    LexState *lexer;
 };
