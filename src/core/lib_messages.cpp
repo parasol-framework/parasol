@@ -32,6 +32,8 @@ Name: Messages
 
 #include "defs.h"
 
+#include <deque>
+
 static ERR wake_task(void);
 #ifdef _WIN32
 static ERR sleep_task(int, int8_t);
@@ -43,7 +45,7 @@ ERR write_nonblock(int Handle, APTR Data, int Size, int64_t EndTime);
 static const int MAX_MSEC = 1000;
 
 static std::recursive_mutex glQueueLock;
-static std::vector<TaskMessage> glQueue; // Available to all threads, use glQueueLock
+static std::deque<TaskMessage> glQueue; // Available to all threads, use glQueueLock
 
 template <class T> inline APTR ResolveAddress(T *Pointer, int Offset) {
    return APTR(((int8_t *)Pointer) + Offset);
@@ -570,7 +572,7 @@ ERR SendMessage(MSGID Type, MSF Flags, APTR Data, int Size)
          }
       }
 
-      glQueue.emplace_back(Type, Data, Size); // BROKEN: Causes reallocation of the vector, affects threads.
+      glQueue.emplace_back(Type, Data, Size); // Deque keeps message storage stable for re-entrant handlers.
    }
 
    wake_task(); // Alert the process to indicate that there are messages available.
