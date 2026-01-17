@@ -463,8 +463,8 @@ LJLIB_CF(__filter)      LJLIB_REC(.)
    }
 
    // Adjust L->top to reflect the number of returns
-   // Note: We manually set L->top here because the results start at L->base,
-   // not at the saved_top position.
+   // Note: We manually set L->top here because the results start at L->base, not at the saved_top position.
+
    L->top = L->base + written;
    frame.disarm();  // Disarm the guard since we manually set L->top
 
@@ -485,7 +485,7 @@ LJLIB_ASM(tonumber)      LJLIB_REC(.)
       }
    }
    else {
-      const char* p = strdata(lj_lib_checkstr(L, 1));
+      CSTRING p = strdata(lj_lib_checkstr(L, 1));
       char* ep;
       unsigned int neg = 0;
       unsigned long ul;
@@ -548,7 +548,7 @@ LJLIB_CF(error)
 
    // Handle exception tables (as received by 'except' keyword) by extracting the message field
    // The error code will remain in the lua_State, so does not require management.
-   // There is room for improvement (e.g. retaining stack traces if a stack trace is present) but this will do for
+   // TODO: There is room for improvement (e.g. retaining stack traces if a stack trace is present) but this will do for
    // now - a rewrite of exception management is probably in order later.
 
    if (lua_istable(L, 1)) {
@@ -567,23 +567,11 @@ LJLIB_CF(error)
 }
 
 //********************************************************************************************************************
-// Base library: GC control
 
 LJLIB_CF(collectgarbage)
 {
-   int opt = lj_lib_checkopt(L, 1, LUA_GCCOLLECT,  //  ORDER LUA_GC*
-      "\4stop\7restart\7collect\5count\1\377\4step\10setpause\12setstepmul\1\377\11isrunning");
-   int32_t data = lj_lib_optint(L, 2, 0);
-   if (opt IS LUA_GCCOUNT) {
-      setnumV(L->top, (lua_Number)G(L)->gc.total / 1024.0);
-   }
-   else {
-      int res = lua_gc(L, opt, data);
-      if (opt IS LUA_GCSTEP or opt IS LUA_GCISRUNNING) setboolV(L->top, res);
-      else setintV(L->top, res);
-   }
-   L->top++;
-   return 1;
+   pf::Log("collectgarbage").warning("DEPRECATED - Use processing.collect()");
+   return 0;
 }
 
 //********************************************************************************************************************
@@ -638,11 +626,11 @@ LJLIB_CF(print)
       tv = L->top - 1;
    }
 
-   shortcut = (tvisfunc(tv) and funcV(tv)->c.ffid IS FF_tostring) and
-      !gcrefu(basemt_it(G(L), LJ_TNUMX));
+   shortcut = (tvisfunc(tv) and funcV(tv)->c.ffid IS FF_tostring) and !gcrefu(basemt_it(G(L), LJ_TNUMX));
+
    for (i = 0; i < nargs; i++) {
       cTValue* o = &L->base[i];
-      const char* str;
+      CSTRING str;
       size_t size;
       MSize len;
 
@@ -721,7 +709,7 @@ LJLIB_CF(__create_thunk)
 
 LJLIB_CF(coroutine_status)
 {
-   const char* s;
+   CSTRING s;
    lua_State* co;
    if (!(L->top > L->base and tvisthread(L->base))) lj_err_arg(L, 1, ErrMsg::NOCORO);
    co = threadV(L->base);

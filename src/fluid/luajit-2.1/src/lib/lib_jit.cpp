@@ -39,7 +39,7 @@
 static int setjitmode(lua_State* L, int mode)
 {
    int idx = 0;
-   if (L->base == L->top or tvisnil(L->base)) {  // jit.on/off/flush([nil])
+   if (L->base IS L->top or tvisnil(L->base)) {  // jit.on/off/flush([nil])
       mode |= LUAJIT_MODE_ENGINE;
    }
    else {
@@ -52,7 +52,7 @@ static int setjitmode(lua_State* L, int mode)
    }
 
    if (luaJIT_setmode(L, idx, mode) != 1) {
-      if ((mode & LUAJIT_MODE_MASK) == LUAJIT_MODE_ENGINE) lj_err_caller(L, ErrMsg::NOJIT);
+      if ((mode & LUAJIT_MODE_MASK) IS LUAJIT_MODE_ENGINE) lj_err_caller(L, ErrMsg::NOJIT);
    err:
       lj_err_argt(L, 1, LUA_TFUNCTION);
    }
@@ -91,7 +91,7 @@ LJLIB_CF(jit_flush)
 //********************************************************************************************************************
 // Push a string for every flag bit that is set.
 
-static void flagbits_to_strings(lua_State* L, uint32_t flags, uint32_t base, const char* str)
+static void flagbits_to_strings(lua_State* L, uint32_t flags, uint32_t base, CSTRING str)
 {
    for (; *str; base <<= 1, str += 1 + *str)
       if (flags & base)
@@ -131,7 +131,7 @@ LJLIB_CF(jit_attach)
       setnilV(L->top++);
       while (lua_next(L, -2)) {
          L->top--;
-         if (tvisfunc(L->top) and funcV(L->top) == fn) {
+         if (tvisfunc(L->top) and funcV(L->top) IS fn) {
             setnilV(lj_tab_set(L, tabV(L->top - 2), L->top - 1));
          }
       }
@@ -168,7 +168,7 @@ static GCproto* check_Lproto(lua_State* L, int nolua)
 //********************************************************************************************************************
 // Write an integer field with the given name into the supplied table.
 
-static void setintfield(lua_State* L, GCtab* t, const char* name, int32_t val)
+static void setintfield(lua_State* L, GCtab* t, CSTRING name, int32_t val)
 {
    setintV(lj_tab_setstr(L, t, lj_str_newz(L, name)), val);
 }
@@ -240,7 +240,7 @@ LJLIB_CF(jit_util_funcbc)
 
 LJLIB_CF(jit_util_funck)
 {
-   GCproto* pt = check_Lproto(L, 0);
+   GCproto *pt = check_Lproto(L, 0);
    ptrdiff_t idx = (ptrdiff_t)lj_lib_checkint(L, 2);
    if (idx >= 0) {
       if (idx < (ptrdiff_t)pt->sizekn) {
@@ -248,12 +248,10 @@ LJLIB_CF(jit_util_funck)
          return 1;
       }
    }
-   else {
-      if (~idx < (ptrdiff_t)pt->sizekgc) {
-         GCobj* gc = proto_kgc(pt, idx);
-         setgcV(L, L->top - 1, gc, ~gc->gch.gct);
-         return 1;
-      }
+   else if (~idx < (ptrdiff_t)pt->sizekgc) {
+      GCobj *gc = proto_kgc(pt, idx);
+      setgcV(L, L->top - 1, gc, ~gc->gch.gct);
+      return 1;
    }
    return 0;
 }
@@ -264,13 +262,13 @@ LJLIB_CF(jit_util_funck)
 
 LJLIB_CF(jit_util_funcuvname)
 {
-   GCproto* pt = check_Lproto(L, 0);
-   uint32_t idx = (uint32_t)lj_lib_checkint(L, 2);
+   GCproto *pt = check_Lproto(L, 0);
+   auto idx = (uint32_t)lj_lib_checkint(L, 2);
    if (idx < pt->sizeuv) {
       setstrV(L, L->top - 1, lj_str_newz(L, lj_debug_uvname(pt, idx)));
       return 1;
    }
-   return 0;
+   else return 0;
 }
 
 // Reflection API for traces
@@ -278,19 +276,18 @@ LJLIB_CF(jit_util_funcuvname)
 //********************************************************************************************************************
 // Check the trace argument and return the trace object, without throwing for non-existent trace numbers.
 
-static GCtrace* jit_checktrace(lua_State* L)
+static GCtrace * jit_checktrace(lua_State *L)
 {
    TraceNo tr = (TraceNo)lj_lib_checkint(L, 1);
    jit_State* J = L2J(L);
-   if (tr > 0 and tr < J->sizetrace)
-      return traceref(J, tr);
+   if (tr > 0 and tr < J->sizetrace) return traceref(J, tr);
    return nullptr;
 }
 
 //********************************************************************************************************************
 // Names of link types. ORDER LJ_TRLINK
 
-static const char * const jit_trlinkname[] = {
+static CSTRING const jit_trlinkname[] = {
   "none", "root", "loop", "tail-recursion", "up-recursion", "down-recursion", "interpreter", "return", "stitch"
 };
 
@@ -314,7 +311,7 @@ LJLIB_CF(jit_util_traceinfo)
       // There are many more fields. Add them only when needed.
       return 1;
    }
-   return 0;
+   else return 0;
 }
 
 //********************************************************************************************************************
@@ -330,8 +327,8 @@ LJLIB_CF(jit_util_traceir)
       int32_t m = lj_ir_mode[ir->o];
       setintV(L->top - 2, m);
       setintV(L->top - 1, ir->ot);
-      setintV(L->top++, (int32_t)ir->op1 - (irm_op1(m) == IRMref ? REF_BIAS : 0));
-      setintV(L->top++, (int32_t)ir->op2 - (irm_op2(m) == IRMref ? REF_BIAS : 0));
+      setintV(L->top++, (int32_t)ir->op1 - (irm_op1(m) IS IRMref ? REF_BIAS : 0));
+      setintV(L->top++, (int32_t)ir->op2 - (irm_op2(m) IS IRMref ? REF_BIAS : 0));
       setintV(L->top++, ir->prev);
       return 5;
    }
@@ -346,20 +343,21 @@ LJLIB_CF(jit_util_tracek)
 {
    GCtrace *T = jit_checktrace(L);
    IRRef ref = (IRRef)lj_lib_checkint(L, 2) + REF_BIAS;
-   if (T and ref >= T->nk and ref < REF_BIAS) {
-      IRIns* ir = &T->ir[ref];
+   if (T and (ref >= T->nk) and (ref < REF_BIAS)) {
+      IRIns *ir = &T->ir[ref];
       int32_t slot = -1;
-      if (ir->o == IR_KSLOT) {
+      if (ir->o IS IR_KSLOT) {
          slot = ir->op2;
          ir = &T->ir[ir->op1];
       }
+
       lj_ir_kvalue(L, L->top - 2, ir);
       setintV(L->top - 1, (int32_t)irt_type(ir->t));
-      if (slot == -1) return 2;
+      if (slot IS -1) return 2;
       setintV(L->top++, slot);
       return 3;
    }
-   return 0;
+   else return 0;
 }
 
 //********************************************************************************************************************
@@ -368,7 +366,7 @@ LJLIB_CF(jit_util_tracek)
 
 LJLIB_CF(jit_util_tracesnap)
 {
-   GCtrace* T = jit_checktrace(L);
+   GCtrace *T = jit_checktrace(L);
    SnapNo sn = (SnapNo)lj_lib_checkint(L, 2);
    if (T and sn < T->nsnap) {
       SnapShot *snap = &T->snap[sn];
@@ -393,7 +391,7 @@ LJLIB_CF(jit_util_tracemc)
 {
    GCtrace *T = jit_checktrace(L);
    if (T and T->mcode != nullptr) {
-      setstrV(L, L->top - 1, lj_str_new(L, (const char*)T->mcode, T->szmcode));
+      setstrV(L, L->top - 1, lj_str_new(L, (CSTRING)T->mcode, T->szmcode));
       setintptrV(L->top++, (intptr_t)(void*)T->mcode);
       setintV(L->top++, T->mcloop);
       return 3;
@@ -434,12 +432,12 @@ LJLIB_CF(jit_util_traceexitstub)
 
 LJLIB_CF(jit_util_ircalladdr)
 {
-   uint32_t idx = (uint32_t)lj_lib_checkint(L, 1);
+   auto idx = (uint32_t)lj_lib_checkint(L, 1);
    if (idx < IRCALL__MAX) {
       setintptrV(L->top - 1, (intptr_t)(void*)lj_ir_callinfo[idx].func);
       return 1;
    }
-   return 0;
+   else return 0;
 }
 
 //********************************************************************************************************************
@@ -452,69 +450,69 @@ LJLIB_CF(jit_util_ircalladdr)
 #define LJLIB_MODULE_jit_opt // For lj_libdef.h
 
 // Parse optimization level.
-static int jitopt_level(jit_State* J, const char* str)
+static int jitopt_level(jit_State* J, CSTRING str)
 {
-   if (str[0] >= '0' and str[0] <= '9' and str[1] == '\0') {
+   if (str[0] >= '0' and str[0] <= '9' and str[1] IS '\0') {
       uint32_t flags;
-      if (str[0] == '0') flags = JIT_F_OPT_0;
-      else if (str[0] == '1') flags = JIT_F_OPT_1;
-      else if (str[0] == '2') flags = JIT_F_OPT_2;
+      if (str[0] IS '0') flags = JIT_F_OPT_0;
+      else if (str[0] IS '1') flags = JIT_F_OPT_1;
+      else if (str[0] IS '2') flags = JIT_F_OPT_2;
       else flags = JIT_F_OPT_3;
       J->flags = (J->flags & ~JIT_F_OPT_MASK) | flags;
       return 1;  //  Ok.
    }
-   return 0;  //  No match.
+   else return 0;  //  No match.
 }
 
 //********************************************************************************************************************
 // Parse optimization flag.
 
-static int jitopt_flag(jit_State* J, const char* str)
+static int jitopt_flag(jit_State *J, CSTRING str)
 {
-   const char* lst = JIT_F_OPTSTRING;
+   CSTRING lst = JIT_F_OPTSTRING;
    uint32_t opt;
    int set = 1;
-   if (str[0] == '+') {
-      str++;
-   }
-   else if (str[0] == '-') {
+
+   if (str[0] IS '+') str++;
+   else if (str[0] IS '-') {
       str++;
       set = 0;
    }
-   else if (str[0] == 'n' and str[1] == 'o') {
-      str += str[2] == '-' ? 3 : 2;
+   else if (str[0] IS 'n' and str[1] IS 'o') {
+      str += str[2] IS '-' ? 3 : 2;
       set = 0;
    }
+
    for (opt = JIT_F_OPT; ; opt <<= 1) {
       size_t len = *(const uint8_t*)lst;
-      if (len == 0)
-         break;
-      if (strncmp(str, lst + 1, len) == 0 and str[len] == '\0') {
+      if (len IS 0) break;
+      if (strncmp(str, lst + 1, len) IS 0 and str[len] IS '\0') {
          if (set) J->flags |= opt; else J->flags &= ~opt;
          return 1;  //  Ok.
       }
       lst += 1 + len;
    }
+
    return 0;  //  No match.
 }
 
 //********************************************************************************************************************
 // Parse optimization parameter.
 
-static int jitopt_param(jit_State* J, const char* str)
+static int jitopt_param(jit_State* J, CSTRING str)
 {
-   const char* lst = JIT_P_STRING;
+   CSTRING lst = JIT_P_STRING;
    int i;
    for (i = 0; i < JIT_P__MAX; i++) {
       size_t len = *(const uint8_t*)lst;
       lj_assertJ(len != 0, "bad JIT_P_STRING");
-      if (strncmp(str, lst + 1, len) == 0 and str[len] == '=') {
+      if (strncmp(str, lst + 1, len) IS 0 and str[len] IS '=') {
          int32_t n = 0;
-         const char* p = &str[len + 1];
+         CSTRING p = &str[len + 1];
          while (*p >= '0' and *p <= '9')
             n = n * 10 + (*p++ - '0');
          if (*p or (int32_t)n < 0) return 0;  // Malformed number.
-         if (i == JIT_P_sizemcode) {  // Adjust to required range here.
+         if (i IS JIT_P_sizemcode) {  // Adjust to required range here.
 #if LJ_TARGET_JUMPRANGE
             int32_t maxkb = ((1 << (LJ_TARGET_JUMPRANGE - 10)) - 64);
 #else
@@ -523,9 +521,9 @@ static int jitopt_param(jit_State* J, const char* str)
             n = (n + (LJ_PAGESIZE >> 10) - 1) & ~((LJ_PAGESIZE >> 10) - 1);
             if (n > maxkb) n = maxkb;
          }
+
          J->param[i] = (int32_t)n;
-         if (i == JIT_P_hotloop)
-            lj_dispatch_init_hotcount(J2G(J));
+         if (i IS JIT_P_hotloop) lj_dispatch_init_hotcount(J2G(J));
          return 1;  //  Ok.
       }
       lst += 1 + len;
@@ -538,9 +536,9 @@ static int jitopt_param(jit_State* J, const char* str)
 
 LJLIB_CF(jit_opt_start)
 {
-   jit_State* J = L2J(L);
-   int nargs = (int)(L->top - L->base);
-   if (nargs == 0) {
+   jit_State *J = L2J(L);
+   auto nargs = (int)(L->top - L->base);
+   if (nargs IS 0) {
       J->flags = (J->flags & ~JIT_F_OPT_MASK) | JIT_F_OPT_DEFAULT;
    }
    else {
@@ -602,17 +600,17 @@ static uint32_t jit_cpudetect(void)
    if (ver < 70) {  // Runtime ARM CPU detection.
       struct utsname ut;
       uname(&ut);
-      if (strncmp(ut.machine, "armv", 4) == 0) {
+      if (strncmp(ut.machine, "armv", 4) IS 0) {
          if (ut.machine[4] >= '8') ver = 80;
-         else if (ut.machine[4] == '7') ver = 70;
-         else if (ut.machine[4] == '6') ver = 60;
+         else if (ut.machine[4] IS '7') ver = 70;
+         else if (ut.machine[4] IS '6') ver = 60;
       }
    }
 #endif
    flags |= ver >= 70 ? JIT_F_ARMV7 :
       ver >= 61 ? JIT_F_ARMV6T2_ :
       ver >= 60 ? JIT_F_ARMV6_ : 0;
-   flags |= LJ_ARCH_HASFPU == 0 ? 0 : ver >= 70 ? JIT_F_VFPV3 : JIT_F_VFPV2;
+   flags |= LJ_ARCH_HASFPU IS 0 ? 0 : ver >= 70 ? JIT_F_VFPV3 : JIT_F_VFPV2;
 
 #elif LJ_TARGET_ARM64
 
