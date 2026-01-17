@@ -167,7 +167,7 @@ end
    file = obj.new('file', { path='temp:test-write.cfg', flags='NEW|WRITE' })
    assert(cfg.acSaveToObject(file) is ERR_Okay, 'Failed to save config file.')
    file = nil
-   collectgarbage()
+   processing.collect()
 
    file = obj.new('file', { path='temp:test-write.cfg', flags='READ' })
    buf = string.alloc(file.size)

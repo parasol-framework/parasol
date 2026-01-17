@@ -294,7 +294,7 @@ function buildDocCache(DocPath)
       end
    })
 
-   collectgarbage()
+   processing.collect()
 
    -- Process class XML files
 
@@ -316,7 +316,7 @@ function buildDocCache(DocPath)
 
    msg('Scan completed')
 
-   collectgarbage()
+   processing.collect()
    return cache
 end
 

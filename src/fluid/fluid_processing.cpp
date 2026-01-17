@@ -193,6 +193,110 @@ static int processing_flush(lua_State *Lua)
 }
 
 //********************************************************************************************************************
+
+static int processing_stop_collector(lua_State *Lua)
+{
+   lua_gc(Lua, LUA_GCSTOP, 0);
+   return 0;
+}
+
+//********************************************************************************************************************
+
+static int processing_start_collector(lua_State *Lua)
+{
+   lua_gc(Lua, LUA_GCRESTART, 0);
+   return 0;
+}
+
+//********************************************************************************************************************
+// Usage: processing.collect([mode], [options])
+//
+// Controls the garbage collector.
+//
+// Modes:
+//   "full"    - Full collection cycle (default)
+//   "step"    - Incremental collection step
+//
+// Options table (for "step" mode):
+//   stepSize  - Size of the incremental step
+
+static int processing_collect(lua_State *Lua)
+{
+   int gc_mode = LUA_GCCOLLECT;  // Default: full collection
+   int step_size = 0;
+
+   // Arg 1: Optional mode string
+
+   if (lua_type(Lua, 1) IS LUA_TSTRING) {
+      auto mode_str = lua_tostring(Lua, 1);
+      if (std::string_view("full") IS mode_str) gc_mode = LUA_GCCOLLECT;
+      else if (std::string_view("step") IS mode_str) gc_mode = LUA_GCSTEP;
+      else luaL_error(Lua, "Invalid mode '%s'. Use 'full', 'step'.", mode_str);
+   }
+
+   // Arg 2: Optional options table
+
+   if (lua_istable(Lua, 2)) {
+      lua_getfield(Lua, 2, "stepSize");
+      if (lua_type(Lua, -1) IS LUA_TNUMBER) {
+         step_size = lua_tointeger(Lua, -1);
+      }
+      lua_pop(Lua, 1);
+   }
+
+   int result = lua_gc(Lua, gc_mode, step_size);
+   lua_pushinteger(Lua, result);
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: stats = processing.gcStats()
+//
+// Returns a table containing garbage collector statistics:
+//   memoryKB    - Memory usage in kilobytes
+//   memoryBytes - Remainder bytes (memoryKB * 1024 + memoryBytes = total bytes)
+//   memoryMB    - Total memory usage in megabytes (convenience field)
+//   isRunning   - Boolean indicating if the GC is currently running
+//   pause       - Current pause multiplier (controls GC frequency)
+//   stepMul     - Current step multiplier (controls GC speed)
+
+static int processing_gcStats(lua_State *Lua)
+{
+   lua_createtable(Lua, 0, 6);  // Pre-allocate for 6 fields
+
+   // Memory usage
+   int kb = lua_gc(Lua, LUA_GCCOUNT, 0);
+   int bytes = lua_gc(Lua, LUA_GCCOUNTB, 0);
+   double mb = kb / 1024.0 + bytes / (1024.0 * 1024.0);
+
+   lua_pushinteger(Lua, kb);
+   lua_setfield(Lua, -2, "memoryKB");
+
+   lua_pushinteger(Lua, bytes);
+   lua_setfield(Lua, -2, "memoryBytes");
+
+   lua_pushnumber(Lua, mb);
+   lua_setfield(Lua, -2, "memoryMB");
+
+   // GC state
+   lua_pushboolean(Lua, lua_gc(Lua, LUA_GCISRUNNING, 0));
+   lua_setfield(Lua, -2, "isRunning");
+
+   // Current tuning parameters (query by setting to same value)
+   int pause = lua_gc(Lua, LUA_GCSETPAUSE, 200);
+   lua_gc(Lua, LUA_GCSETPAUSE, pause);  // Restore
+   lua_pushinteger(Lua, pause);
+   lua_setfield(Lua, -2, "pause");
+
+   int step_mul = lua_gc(Lua, LUA_GCSETSTEPMUL, 200);
+   lua_gc(Lua, LUA_GCSETSTEPMUL, step_mul);  // Restore
+   lua_pushinteger(Lua, step_mul);
+   lua_setfield(Lua, -2, "stepMul");
+
+   return 1;
+}
+
+//********************************************************************************************************************
 // Usage: task = processing.task()
 //
 // Returns an object that references the current task.
@@ -291,12 +395,16 @@ static int processing_destruct(lua_State *Lua)
 // Register the processing interface.
 
 static const luaL_Reg processinglib_functions[] = {
-   { "new",     processing_new },
-   { "sleep",   processing_sleep },
-   { "signal",  processing_signal },
-   { "task",    processing_task },
-   { "flush",   processing_flush },
-   { "delayedCall", processing_delayed_call },
+   { "new",            processing_new },
+   { "collect",        processing_collect },
+   { "stopCollector",  processing_stop_collector },
+   { "startCollector", processing_start_collector },
+   { "gcStats",        processing_gcStats },
+   { "sleep",          processing_sleep },
+   { "signal",         processing_signal },
+   { "task",           processing_task },
+   { "flush",          processing_flush },
+   { "delayedCall",    processing_delayed_call },
    { nullptr, nullptr }
 };
 

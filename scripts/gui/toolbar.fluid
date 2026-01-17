@@ -737,6 +737,6 @@ gui.toolbar = function(Options)
 
    arrangeItems()
 
-   collectgarbage()
+   processing.collect()
    return self
 end

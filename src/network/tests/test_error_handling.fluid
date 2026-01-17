@@ -384,7 +384,7 @@ function ResourceCleanup()
       end
    end
 
-   collectgarbage()
+   processing.collect()
 
    print('Resource cleanup test completed')
 end

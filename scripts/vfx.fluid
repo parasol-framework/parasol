@@ -83,7 +83,7 @@ vfx.wipe = function(Viewport, Seconds, Delay, Style, Options)
       State.viewport.mask = nil
       State.clip.free()
       State.clip = nil
-      collectgarbage()
+      processing.collect()
       State.viewport.acDraw()
    end
 

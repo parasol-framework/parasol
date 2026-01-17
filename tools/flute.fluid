@@ -68,7 +68,7 @@ global glSSLAvailable = thunk():bool
    if test_socket then
       supported = test_socket.error is ERR_Okay
       test_socket = nil
-      collectgarbage()
+      processing.collect()
       return supported
    end
 
@@ -313,7 +313,7 @@ function runTests()
             end
          end
 
-         collectgarbage()
+         processing.collect()
 
          if not succeeded then
             not error_msg ?? print(error_msg)

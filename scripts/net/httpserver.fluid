@@ -1824,7 +1824,7 @@ hslib.start = function(Options)
    self.stop = function()
       if self._socket then
          self._socket = nil
-         collectgarbage()
+         processing.collect()
       end
    end
 

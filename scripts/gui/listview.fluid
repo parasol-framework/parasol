@@ -240,7 +240,7 @@ gui.listView = function(Options:table)
       View._last_y = 0
       if #View.items > 0 then newItems(View, View.items) end
 
-      collectgarbage()
+      processing.collect()
    end
 
    vw = gui.initView(Options, constructListView, newItems)

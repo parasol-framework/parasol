@@ -230,7 +230,7 @@ end
       id = temp.id
    end
 
-   collectgarbage()
+   processing.collect()
 
    assert(obj.find(id) is nil, "Expected object to be collected")
 end

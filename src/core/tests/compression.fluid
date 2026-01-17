@@ -61,7 +61,7 @@ end
    assert(err is ERR_Okay, 'CompressFile() failed: ' .. mSys.GetErrorMsg(err))
 
    cmp = null
-   collectgarbage()  -- Flush the compressed file to disk
+   processing.collect()  -- Flush the compressed file to disk
 end
 
 @Test(priority=2) function DecompressWild()
@@ -97,7 +97,7 @@ end
    glCompressedFiles['COUNT'] = file_count
 
    cmp = null
-   collectgarbage() -- Flush the compressed file to disk
+   processing.collect() -- Flush the compressed file to disk
 end
 
 @Test(priority=4) function DecompressFolder()

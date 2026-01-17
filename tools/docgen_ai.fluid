@@ -91,7 +91,7 @@ end
             print('Failed to run xsltproc for ' .. FileName)
          end
 
-         collectgarbage()
+         processing.collect()
       end
    })
 
@@ -118,7 +118,7 @@ end
             print('Failed to run xsltproc for ' .. FileName)
          end
 
-         collectgarbage()
+         processing.collect()
       end
    })
 
