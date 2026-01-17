@@ -63,39 +63,32 @@ end
 end
 
 @Test function CollectStopMode()
-   result = processing.collect('stop')
-   assert(type(result) is 'number', "collect('stop') should return a number")
+   processing.stopCollector()
 
-   -- Verify GC is stopped
    stats = processing.gcStats()
    assert(stats.isRunning is false, 'GC should be stopped after collect("stop")')
 
-   -- Restart for other tests
-   processing.collect('restart')
+   processing.startCollector()
 end
 
 @Test function CollectRestartMode()
-   -- First stop the GC
-   processing.collect('stop')
+   processing.stopCollector()
+
    stats_stopped = processing.gcStats()
    assert(stats_stopped.isRunning is false, 'GC should be stopped')
 
-   -- Then restart it
-   result = processing.collect('restart')
-   assert(type(result) is 'number', "collect('restart') should return a number")
+   processing.startCollector()
 
    stats_restarted = processing.gcStats()
    assert(stats_restarted.isRunning is true, 'GC should be running after restart')
 end
 
 @Test function CollectInvalidModeError()
-   threw_error = false
    try
       processing.collect('invalid_mode')
-   except
-      threw_error = true
+   success
+      error('collect() with invalid mode should throw an error')
    end
-   assert(threw_error is true, 'collect() with invalid mode should throw an error')
 end
 
 @Test function CollectReducesMemory()
