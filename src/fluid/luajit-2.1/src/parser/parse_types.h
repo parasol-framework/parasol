@@ -63,7 +63,8 @@ enum class FuncScopeFlag : uint8_t {
    Break = 0x02u,
    Upvalue = 0x08u,
    NoClose = 0x10u,
-   Continue = 0x20u
+   Continue = 0x20u,
+   KeepRegs = 0x40u   // Don't reset freereg when scope ends (for imports)
 };
 
 enum class VarInfoFlag : uint8_t {
@@ -296,8 +297,6 @@ struct FuncScope {
    FuncScopeFlag flags;    // Scope flags.
 };
 
-// Type-safe special variable names to replace legacy sentinel pointers.
-
 enum class SpecialName : uint8_t { None, Break, Continue, Blank };
 
 struct VarName {
@@ -394,6 +393,10 @@ struct FuncState {
    std::vector<TryHandlerDesc> try_handlers;  // Handler descriptors
    uint8_t try_depth = 0;  // Current try nesting depth for break/continue cleanup
 
+   // Register floor for imports: prevents reset_freereg from going below this value.
+   // Set when a KeepRegs scope ends, ensuring imported values aren't overwritten.
+   BCREG freereg_floor = BCREG(0);
+
    // Return strong types for bytecode positions and registers
 
    [[nodiscard]] constexpr BCPos current_pc() const noexcept { return BCPos(pc); }
@@ -406,8 +409,10 @@ struct FuncState {
    [[nodiscard]] constexpr BCReg frame_size() const noexcept { return BCReg(framesize); }
 
    // Reset free register to the first register after local variables.
-   // Common pattern: fs->freereg = fs->nactvar
-   constexpr void reset_freereg() noexcept { freereg = nactvar; }
+   // Respects freereg_floor set by import scopes to prevent overwriting imported values.
+   constexpr void reset_freereg() noexcept {
+      freereg = (nactvar > freereg_floor) ? nactvar : freereg_floor;
+   }
 
    // Ensure freereg is at least at nactvar level.
    // Common pattern: if (fs->freereg < fs->nactvar) fs->freereg = fs->nactvar;
@@ -512,9 +517,10 @@ struct FuncState {
       lj_assertG_(G(L), freereg >= nactvar, "bad register allocation: freereg < nactvar");
    }
 
-   // Validate that freereg equals nactvar (common check after scope cleanup)
+   // Validate that freereg is at expected level after scope cleanup (respecting floor)
    inline void assert_freereg_at_locals() const {
-      lj_assertG_(G(L), freereg IS nactvar, "bad register state: freereg != nactvar");
+      BCREG expected = (nactvar > freereg_floor) ? nactvar : freereg_floor;
+      lj_assertG_(G(L), freereg IS expected, "bad register state: freereg != expected");
    }
 #else
    constexpr void assert_regalloc() const noexcept { }

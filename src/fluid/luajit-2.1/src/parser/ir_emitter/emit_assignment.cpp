@@ -42,8 +42,23 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
       this->lex_state.assign_adjust(nvars.raw(), nexps.raw(), &tail);
       this->lex_state.var_add(nvars);
 
-      // Update binding table and set fixed_type from initialisers
+      // Emit MOV instructions to place expression results into local slots.
+      // Expression results are in registers starting at value_base, but the local
+      // slots start at (nactvar - nvars). These may differ, especially for function
+      // calls like array<type> where results go to arbitrary registers.
       BCReg base = BCReg(this->func_state.nactvar - nvars.raw());
+      BCReg value_base = (tail.k IS ExpKind::Call) ? BCReg(tail.u.s.aux)
+                                                   : BCReg(this->func_state.freereg - nvars.raw());
+
+      for (BCReg i = BCReg(0); i < nvars; ++i) {
+         BCReg local_slot = base + i;
+         BCReg value_slot = value_base + i;
+         if (value_slot.raw() != local_slot.raw()) {
+            bcemit_AD(&this->func_state, BC_MOV, local_slot, value_slot);
+         }
+      }
+
+      // Update binding table and set fixed_type from initialisers
       for (BCReg i = BCReg(0); i < nvars; ++i) {
          PreparedAssignment& target = targets[i.raw()];
          if (target.pending_symbol) {
