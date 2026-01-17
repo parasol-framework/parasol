@@ -5,7 +5,7 @@ Documentation is available in the Parasol Wiki.
    import 'common'
    include('display', 'vector')
 
-   if not gui then global gui = { } end
+   namespace 'gui'
 
 gui.tooltip = function(Options)
    local self = { } -- Public variables

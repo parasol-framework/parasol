@@ -8,6 +8,8 @@ Documentation is available in the Parasol Wiki.
    import 'gui'
    import 'gui/dropdown'
 
+   namespace 'gui'
+
 FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
 BOX_HEIGHT    = math.floor(FONT_MAX_HEIGHT * 1.35) + 1
 MARGIN        = math.floor(FONT_HEIGHT * 0.5) + 1

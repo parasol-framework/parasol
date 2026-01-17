@@ -16,6 +16,8 @@ Documentation is available in the Parasol Wiki.
    import 'json'
    include 'vector'
 
+   namespace 'gui'
+
 glState = mSys.GetSystemState()
 
 glCopyList = [[

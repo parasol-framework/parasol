@@ -11,6 +11,8 @@ Documentation is available in the Parasol Wiki.
    import 'gui/input'
    import 'gui/window'
 
+   namespace 'gui'
+
    gui.dialog ?= { }
 
 GAP = 8

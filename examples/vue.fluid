@@ -261,7 +261,7 @@ end
                            flags = 'New|FORCE_ALPHA_32'
                         })
                         bmp.acCopyData(pic.bitmap)
-                        file = obj.new('file', { flags='NEW|WRITE', path=target_file })
+                        file = obj.new('file', { flags=FL_NEW|FL_WRITE, path=target_file })
                         pic.acSaveImage(file)
                      end
                   end
@@ -289,7 +289,7 @@ end
       displayFile(arg('file'))
    else
       doc = glViewArea.new('document', { })
-      doc.acDataFeed(0, DATA_XML, glBody .. glIntroduction)
+      doc.acDataFeed(nil, DATA_XML, glBody .. glIntroduction)
       configureScrollbar(doc.view, doc.page)
       glTerminateView = function()
          doc.free()

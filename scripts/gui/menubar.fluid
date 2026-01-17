@@ -8,6 +8,8 @@ Documentation is available in the Parasol Wiki.
    import 'translate'
    include 'vector'
 
+   namespace 'gui'
+
 VMARGIN   = gui.style.widget.margin
 GAP       = 26
 ICON_SIZE = 12

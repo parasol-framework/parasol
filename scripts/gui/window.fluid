@@ -7,6 +7,8 @@ Documentation is available in the Parasol Wiki.
    include 'display'
    include 'vector'
 
+   namespace 'gui'
+
    global mGfx <const> ?= mod.load('display')
 
 DEFAULT_WIDTH  = 600

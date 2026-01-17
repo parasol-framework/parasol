@@ -5,9 +5,12 @@ Documentation is available in the Parasol Wiki.
 --]]
 
    import 'common'
+   import 'gui'
    import 'gui/window'
    include 'document'
    include 'xml'
+
+   namespace 'gui'
 
 LINE_SPACING, FONT_HEIGHT = gui.getFontHeight(gui.fonts.window)
 MIN_WIDTH = 300
@@ -23,7 +26,6 @@ ICONS = {
    info      = 'items/info'
 }
 
-   global gui ?= { }
    gui.dialog ?= { }
 
 function defaultIcon(self)

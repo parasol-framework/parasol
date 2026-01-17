@@ -5,6 +5,8 @@ Documentation is available in the Parasol Wiki.
    import 'common'
    import 'gui'
 
+   namespace 'gui'
+
 FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
 BOX_SIZE = math.floor(FONT_MAX_HEIGHT * 1.35) + 1
 MARGIN = math.floor(FONT_HEIGHT * 0.5) + 1

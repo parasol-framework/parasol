@@ -4,7 +4,10 @@ The ColumnView API is used to display data to the user in the form of tabulated 
 Documentation is available in the Parasol Wiki.
 --]]
 
+   import 'gui'
    import 'gui/libview'
+
+   namespace 'gui'
 
 lDate = nil
 VSPACING  = 2

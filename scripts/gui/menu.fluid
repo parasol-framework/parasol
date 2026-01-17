@@ -7,7 +7,9 @@ To be used in conjunction with the gui.menubar or as an independent pop-up only.
    import 'gui'
    include 'display'
 
-   global mGfx ?= mod.load('display')
+   namespace 'gui'
+
+   global mGfx <const> ?= mod.load('display')
 
 FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.menu)
 ITEM_HEIGHT  = math.floor(FONT_MAX_HEIGHT * 1.5)

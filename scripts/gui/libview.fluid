@@ -4,6 +4,8 @@
    import 'gui'
    import 'gui/scrollbar'
 
+   namespace 'gui'
+
    mGfx ?= mod.load('display')
    mVec ?= mod.load('vector')
 

@@ -3,17 +3,19 @@ Documentation is available in the Parasol Wiki.
 --]]
 
    import 'common'
+   import 'gui'
    import 'gui/listview'
    import 'gui/window'
    import 'gui/button'
    include 'display'
    include 'font'
 
-   global gui ?= { }
+   namespace 'gui'
+
    gui.dialog ?= { }
 
 gui.dialog.font = function(Options)
-   global mFont ?= mod.load('font')
+   global mFont <const> ?= mod.load('font')
 
    self = { -- Public variables
       windowID    = nil,
