@@ -688,11 +688,9 @@ extern void luaL_traceback(lua_State* L, lua_State* L1, CSTRING msg, int level)
       if (ar.currentline > 0) lua_pushfstring(L, "%d:", ar.currentline);
 
       if (*ar.namewhat) lua_pushfstring(L, " in function " LUA_QS, ar.name);
-      else {
-         if (*ar.what IS 'm') lua_pushliteral(L, " in main chunk");
-         else if (*ar.what IS 'C') lua_pushfstring(L, " at %p", fn->c.f);
-         else lua_pushfstring(L, " in function <%s:%d>", ar.short_src, ar.linedefined);
-      }
+      else if (*ar.what IS 'm') lua_pushliteral(L, " in main chunk");
+      else if (*ar.what IS 'C') lua_pushfstring(L, " at %p", fn->c.f);
+      else lua_pushfstring(L, " in function <%s:%d>", ar.short_src, ar.linedefined);
 
       if ((int)(L->top - L->base) - top >= 15) lua_concat(L, (int)(L->top - L->base) - top);
    }

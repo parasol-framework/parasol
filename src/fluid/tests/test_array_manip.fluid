@@ -647,7 +647,7 @@ end
    assert(arr[1] is 'delta', "arr[1] should be 'delta'")
 
    -- Force GC and verify array still works
-   collectgarbage('collect')
+   processing.collect()
    assert(arr[0] is 'alpha', "arr[0] should still be 'alpha' after GC")
    assert(arr[1] is 'delta', "arr[1] should still be 'delta' after GC")
 end
@@ -666,7 +666,7 @@ end
    assert(arr[1].name is 'fourth', "arr[1].name should be 'fourth'")
 
    -- Force GC and verify array still works
-   collectgarbage('collect')
+   processing.collect()
    assert(arr[0].name is 'first', "arr[0].name should still be 'first' after GC")
    assert(arr[1].name is 'fourth', "arr[1].name should still be 'fourth' after GC")
 end
@@ -677,7 +677,7 @@ end
    arr:remove(0, 3)
    assert(#arr is 0, "Array should be empty")
 
-   collectgarbage('collect')
+   processing.collect()
    assert(#arr is 0, "Array should still be empty after GC")
 
    -- Verify we can add new elements
@@ -695,7 +695,7 @@ end
    arr:remove(0, 3)
    assert(#arr is 0, "Array should be empty")
 
-   collectgarbage('collect')
+   processing.collect()
    assert(#arr is 0, "Array should still be empty after GC")
 
    -- Verify we can add new elements

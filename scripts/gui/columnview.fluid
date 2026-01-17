@@ -661,7 +661,7 @@ gui.columnView = function(Options)
       View._last_y = EDGE
       if #View.items > 0 then newItems(View, View.items) end
 
-      collectgarbage('collect')
+      processing.collect()
    end
 
    vw = gui.initView(Options, constructColumnView, newItems)

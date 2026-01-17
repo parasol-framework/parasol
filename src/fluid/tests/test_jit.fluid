@@ -236,6 +236,22 @@ end
    assert(invalid is nil, "Out-of-range ircalladdr should return nil")
 end
 
+--[[
+The JitAttachTraceEvent() test has been observed to intermittently trigger this LuaJIT assertion failure:
+
+LuaJIT ASSERT FAILED: /home/paul/parasol/src/fluid/luajit-2.1/src/lj_trace.cpp:798: lj_trace_ins: trace recorder mutated stack
+
+This means lj_trace_ins saw L->base or L->top change across the trace recorder call, which shouldn't happen unless the recorder aborted. The rarity points to stack growth or re-entrancy triggered only in some runs.  So far this problem has only been noticed in Linux and ignorance of the assert does not cause a crash in release builds.
+
+Areas for investigation:
+
+- src/fluid/luajit-2.1/src/lj_trace.cpp:779 - lj_trace_ins snapshots base/top and asserts if they change while J->state is still recording; check what trace_state does for the failing event.
+- src/fluid/luajit-2.1/src/runtime/lj_vmevent.cpp:19 - lj_vmevent_prepare calls lj_state_checkstack, which can grow the stack and move L->base/L->top; if a vmevent fires during recording (e.g., jit.attach), this can trip the assert without a logical stack leak.
+- src/fluid/luajit-2.1/src/lib/lib_jit.cpp:117 and the JitAttachTraceEvent test code - confirm the event handler is stack-neutral (no extra pushes, no yields/errors) and doesn't indirectly trigger stack growth.
+- src/fluid/luajit-2.1/src/runtime/lj_state.cpp:145 - stack growth routine; if any trace-time path can call lj_state_checkstack, pointer changes are expected and the assert may be too strict for that case.
+- src/fluid/luajit-2.1/src/lj_record.cpp plus generated src/fluid/luajit-2.1/src/lj_bcdef.h - verify any custom bytecodes or modified stack effects are reflected in the recorder; a mismatched stack effect can show up as a base/top change under recording.
+--]]
+
 @Test(hotpath=2000) function JitAttachTraceEvent()
    cached_trace_no = nil
    cached_trace_info = nil
