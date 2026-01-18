@@ -11,9 +11,6 @@
 #include "lj_func.h"
 #include "lj_state.h"
 #include "lj_bc.h"
-#if LJ_HASFFI
-#include "lj_ctype.h"
-#endif
 #include "lj_strfmt.h"
 #include "lexer.h"
 #include "parser.h"
@@ -114,26 +111,22 @@ static std::string describe_primitive(int Value)
 }
 
 //********************************************************************************************************************
-
-template<std::integral T>
-static BCLine get_line_from_info(const void *LineInfo, BCPOS Offset, BCLine FirstLine) {
-   return FirstLine + BCLine(((const T *)LineInfo)[Offset]);
-}
+// Get line number for a bytecode position from direct BCLine storage.
 
 static BCLine get_proto_line(GCproto *Proto, BCPOS Pc)
 {
-   const void *lineinfo = proto_lineinfo(Proto);
+   auto lineinfo = (const BCLine *)proto_lineinfo(Proto);
 
    if ((Pc <= Proto->sizebc) and lineinfo) {
-      const BCLine first_line = Proto->firstline;
-      if (Pc IS Proto->sizebc) return first_line + Proto->numline;
-      if (Pc IS 0) return first_line;
+      MSize n = Proto->sizebc - 1;
+      if (Pc IS 0) return Proto->firstline;
 
-      const BCPOS offset = Pc - 1;
+      if (Pc IS Proto->sizebc) { // Use last instruction's file index for consistency
+         if (n > 0) return BCLine::encode(lineinfo[n - 1].fileIndex(), Proto->firstline.lineNumber() + Proto->numline);
+         else return BCLine::encode(Proto->file_source_idx, Proto->firstline.lineNumber() + Proto->numline);
+      }
 
-      if (Proto->numline < 256) return get_line_from_info<uint8_t>(lineinfo, offset, first_line);
-      if (Proto->numline < 65536) return get_line_from_info<uint16_t>(lineinfo, offset, first_line);
-      return get_line_from_info<uint32_t>(lineinfo, offset, first_line);
+      return lineinfo[Pc - 1]; // Direct read - BCLine already contains file index in upper 8 bits
    }
 
    return 0;
@@ -366,15 +359,13 @@ void trace_proto_bytecode(GCproto *Proto, BytecodeLogger Logger, void *Meta, boo
          Logger("", Meta);
       }
    }
+   else if (Verbose) {
+      Logger(std::format("{}--- Nested function: lines {}-{}, {} bytecodes ---",
+         indent_str, int(Proto->firstline), int(Proto->firstline + Proto->numline), int(Proto->sizebc)), Meta);
+   }
    else {
-      if (Verbose) {
-         Logger(std::format("{}--- Nested function: lines {}-{}, {} bytecodes ---",
-            indent_str, int(Proto->firstline), int(Proto->firstline + Proto->numline), int(Proto->sizebc)), Meta);
-      }
-      else {
-         Logger(std::format("{}--- Nested function: lines {}-{}, {} bytecodes ---",
-            indent_str, int(Proto->firstline), int(Proto->firstline + Proto->numline), int(Proto->sizebc)), Meta);
-      }
+      Logger(std::format("{}--- Nested function: lines {}-{}, {} bytecodes ---",
+         indent_str, int(Proto->firstline), int(Proto->firstline + Proto->numline), int(Proto->sizebc)), Meta);
    }
 
    for (BCPOS pc = 0; pc < Proto->sizebc; ++pc) {
@@ -398,11 +389,10 @@ void trace_proto_bytecode(GCproto *Proto, BytecodeLogger Logger, void *Meta, boo
          Logger(std::format("{}[{:04d}] {} {} {:<9} {}", indent_str, int(pc), targets[pc] ? "=>" : "  ",
             line > 0 ? std::format("{:4}", line) : std::string("   -"), info.op_name, operands), Meta);
       }
-      else {
-         Logger(std::format("{}[{:04d}] {:<10} {}", indent_str, int(pc), info.op_name, operands), Meta);
-      }
+      else Logger(std::format("{}[{:04d}] {:<10} {}", indent_str, int(pc), info.op_name, operands), Meta);
 
       // If this is a FNEW instruction, recursively disassemble the child prototype
+
       if (info.op IS BC_FNEW) {
          const ptrdiff_t index = -(ptrdiff_t)info.value_d - 1;
          const bool valid = ((uintptr_t)(intptr_t)index >= (uintptr_t)-(intptr_t)Proto->sizekgc);
@@ -430,6 +420,7 @@ extern void dump_bytecode(FuncState &fs)
    };
 
    printf("Instruction Count: %u\n", (unsigned)fs.pc);
+
    for (BCPOS pc = 0; pc < fs.pc; ++pc) {
       const BCInsLine& line = fs.bcbase[pc];
       auto info = extract_instruction_info(line.ins);

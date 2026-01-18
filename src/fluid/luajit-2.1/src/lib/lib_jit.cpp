@@ -191,7 +191,7 @@ LJLIB_CF(jit_util_funcinfo)
       setintfield(L, t, "gcConsts", (int32_t)pt->sizekgc);
       setintfield(L, t, "nConsts", (int32_t)pt->sizekn);
       setintfield(L, t, "upvalues", (int32_t)pt->sizeuv);
-      if (pc < pt->sizebc) setintfield(L, t, "currentLine", lj_debug_line(pt, pc));
+      if (pc < pt->sizebc) setintfield(L, t, "currentLine", lj_debug_line(pt, pc).lineNumber());
       lua_pushboolean(L, (pt->flags & PROTO_VARARG));
       lua_setfield(L, -2, "isVarArg");
       lua_pushboolean(L, (pt->flags & PROTO_CHILD));

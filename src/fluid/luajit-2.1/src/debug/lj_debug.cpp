@@ -26,20 +26,26 @@
 cTValue * lj_debug_frame(lua_State *L, int level, int *size)
 {
    cTValue * frame, *nextframe, *bot = tvref(L->stack) + LJ_FR2;
+
    // Traverse frames backwards.
+
    for (nextframe = frame = L->base - 1; frame > bot; ) {
       if (frame_gc(frame) IS obj2gco(L)) level++;  //  Skip dummy frames. See lj_err_optype_call().
+
       if (level-- IS 0) {
          *size = (int)(nextframe - frame);
          return frame;  //  Level found.
       }
+
       nextframe = frame;
+
       if (frame_islua(frame)) frame = frame_prevl(frame);
       else {
          if (frame_isvarg(frame)) level++;  //  Skip vararg pseudo-frame.
          frame = frame_prevd(frame);
       }
    }
+
    *size = level;
    return nullptr;  //  Level not found.
 }
@@ -53,6 +59,7 @@ static BCPOS debug_framepc(lua_State *L, GCfunc *fn, cTValue *nextframe)
    GCproto* pt;
    BCPOS pos;
    lj_assertL(fn->c.gct IS ~LJ_TFUNC or fn->c.gct IS ~LJ_TTHREAD, "function or frame expected");
+
    if (not isluafunc(fn)) {  //  Cannot derive a PC for non-Lua functions.
       return NO_BCPOS;
    }
@@ -64,8 +71,7 @@ static BCPOS debug_framepc(lua_State *L, GCfunc *fn, cTValue *nextframe)
    else {
       if (frame_islua(nextframe)) ins = frame_pc(nextframe);
       else if (frame_iscont(nextframe)) ins = frame_contpc(nextframe);
-      else {
-         // Lua function below errfunc/gc/hook: find cframe to get the PC.
+      else { // Lua function below errfunc/gc/hook: find cframe to get the PC.
          void *cf = cframe_raw(L->cframe);
          TValue *f = L->base - 1;
          while (true) {
@@ -89,56 +95,41 @@ static BCPOS debug_framepc(lua_State *L, GCfunc *fn, cTValue *nextframe)
          if (not ins) return NO_BCPOS;
       }
    }
+
    pt = funcproto(fn);
    pos = proto_bcpos(pt, ins) - 1;
-#if LJ_HASJIT
+
    if (pos > pt->sizebc) {  //  Undo the effects of lj_trace_exit for JLOOP.
       GCtrace* T = (GCtrace*)((char*)(ins - 1) - offsetof(GCtrace, startins));
       lj_assertL(bc_isret(bc_op(ins[-1])), "return bytecode expected");
       pos = proto_bcpos(pt, mref<const BCIns>(T->startpc));
    }
-#endif
+
    return pos;
 }
 
 //********************************************************************************************************************
-// Get line number for a bytecode position.  Returns BCLine with file index encoded in upper 8 bits if available from
-// fileinfo, otherwise uses pt->file_source_idx as the file index.
+// Get line number for a bytecode position.
+// Returns BCLine with file index encoded in upper 8 bits (direct read from lineinfo array).
 
 BCLine LJ_FASTCALL lj_debug_line(GCproto* pt, BCPOS pc)
 {
-   const void* lineinfo = proto_lineinfo(pt);
+   auto lineinfo = (const BCLine*)proto_lineinfo(pt);
+
    if (pc <= pt->sizebc and lineinfo) {
-      BCLine first = pt->firstline;
-      BCLine line;
-      BCPOS lineinfo_idx = 0;  // Index into lineinfo/fileinfo arrays (0 = invalid)
-      bool valid_idx = false;
+      MSize n = pt->sizebc - 1;
 
-      if (pc IS pt->sizebc) { // No valid lineinfo index for this edge case
-         line = first + pt->numline;
-      }
-      else if (pc IS 0) { // pc of 0 means FUNCF instruction, no lineinfo entry
-         line = first;
-      }
-      else {
-         lineinfo_idx = pc - 1;  // lineinfo is 0-indexed, skipping FUNCF
-         valid_idx = true;
-         if (pt->numline < 256) line = first + (BCLine)((const uint8_t*)lineinfo)[lineinfo_idx];
-         else if (pt->numline < 65536) line = first + (BCLine)((const uint16_t*)lineinfo)[lineinfo_idx];
-         else line = first + (BCLine)((const uint32_t*)lineinfo)[lineinfo_idx];
+      if (pc IS 0) return pt->firstline; // FUNCF/FUNCV instruction has no lineinfo entry
+
+      if (pc IS pt->sizebc) {
+         // Edge case: past end of bytecode - use last instruction's file index
+         if (n > 0) return BCLine::encode(lineinfo[n - 1].fileIndex(), pt->firstline.lineNumber() + pt->numline);
+         return BCLine::encode(pt->file_source_idx, pt->firstline.lineNumber() + pt->numline);
       }
 
-      // Get file index: use per-instruction fileinfo if available, else prototype's default
-      uint8_t file_idx = pt->file_source_idx;
-      const uint8_t* fileinfo = proto_fileinfo(pt);
-      if (fileinfo and valid_idx and lineinfo_idx < pt->sizebc - 1) {
-         file_idx = fileinfo[lineinfo_idx];
-      }
-
-      // Return BCLine with file index encoded
-      return BCLine::encode(file_idx, line.lineNumber());
+      return lineinfo[pc - 1]; // Direct read - BCLine already contains file index in upper 8 bits
    }
-   return 0;
+   else return 0;
 }
 
 //********************************************************************************************************************
@@ -172,6 +163,7 @@ static CSTRING debug_varname(const GCproto *pt, BCPOS pc, BCREG slot)
          else {
             do { p++; } while (*(const uint8_t*)p);  //  Skip over variable name.
          }
+
          p++;
          lastpc = startpc = lastpc + lj_buf_ruleb128(&p);
          if (startpc > pc) break;
@@ -187,6 +179,7 @@ static CSTRING debug_varname(const GCproto *pt, BCPOS pc, BCREG slot)
          }
       }
    }
+
    return nullptr;
 }
 
@@ -202,16 +195,19 @@ static TValue * debug_localname(lua_State *L, const lua_Debug *ar, CSTRING *name
    TValue *nextframe = size ? frame + size : nullptr;
    GCfunc *fn = frame_func(frame);
    BCPOS pc = debug_framepc(L, fn, nextframe);
+
    if (not nextframe) nextframe = L->top + LJ_FR2;
+
    if (Slot < 0) {  //  Negative slot number is for varargs.
       if (pc != NO_BCPOS) {
          GCproto* pt = funcproto(fn);
          if ((pt->flags & PROTO_VARARG)) {
-            BCREG slot1 = (BCREG)(pt->numparams + (BCREG)(-Slot));
+            auto slot1 = (BCREG)(pt->numparams + (BCREG)(-Slot));
             if (frame_isvarg(frame)) {  //  Vararg frame has been set up? (pc!=0)
                nextframe = frame;
                frame = frame_prevd(frame);
             }
+
             if (frame + slot1 + LJ_FR2 < nextframe) {
                *name = "(*vararg)";
                return frame + slot1;
@@ -254,12 +250,10 @@ static TValue * debug_localname(lua_State *L, const lua_Debug *ar, CSTRING *name
             return lj_debug_uvname(pt, idx);
          }
       }
-      else {
-         if (idx < fn->c.nupvalues) {
-            *tvp = &fn->c.upvalue[idx];
-            *op = obj2gco(fn);
-            return "";
-         }
+      else if (idx < fn->c.nupvalues) {
+         *tvp = &fn->c.upvalue[idx];
+         *op = obj2gco(fn);
+         return "";
       }
    }
    return nullptr;
@@ -279,8 +273,7 @@ restart:
       BCOp op = bc_op(ins);
       BCREG ra = bc_a(ins);
       if (bcmode_a(op) IS BCMbase) {
-         if (slot >= ra and (op != BC_KNIL or slot <= bc_d(ins)))
-            return nullptr;
+         if (slot >= ra and (op != BC_KNIL or slot <= bc_d(ins))) return nullptr;
       }
       else if (bcmode_a(op) IS BCMdst and ra IS slot) {
          switch (bc_op(ins)) {
@@ -294,9 +287,9 @@ restart:
             *name = strdata(gco_to_string(proto_kgc(pt, ~(ptrdiff_t)bc_c(ins))));
             if (ip > proto_bc(pt)) {
                BCIns insp = ip[-1];
-               if (bc_op(insp) IS BC_MOV and bc_a(insp) IS ra + 1 + LJ_FR2 and
-                  bc_d(insp) IS bc_b(ins))
+               if (bc_op(insp) IS BC_MOV and bc_a(insp) IS ra + 1 + LJ_FR2 and bc_d(insp) IS bc_b(ins)) {
                   return "method";
+               }
             }
             return "field";
          case BC_UGET:
@@ -314,8 +307,8 @@ restart:
 
 CSTRING lj_debug_funcname(lua_State *L, cTValue *frame, CSTRING *name)
 {
-   cTValue* pframe;
-   GCfunc* fn;
+   cTValue *pframe;
+   GCfunc *fn;
    BCPOS pc;
    if (frame <= tvref(L->stack) + LJ_FR2) return nullptr;
    if (frame_isvarg(frame)) frame = frame_prevd(frame);
@@ -387,10 +380,10 @@ void lj_debug_shortname(char *out, GCstr *str, BCLine line)
 // Uses FileSource tracking to display accurate file:line for imported code.
 // The BCLine returned by debug_frameline includes the file index from fileinfo (if available).
 
-void lj_debug_addloc(lua_State* L, CSTRING msg, cTValue* frame, cTValue* nextframe)
+void lj_debug_addloc(lua_State *L, CSTRING msg, cTValue *frame, cTValue *nextframe)
 {
    if (frame) {
-      GCfunc* fn = frame_func(frame);
+      GCfunc *fn = frame_func(frame);
       if (isluafunc(fn)) {
          BCLine line = debug_frameline(L, fn, nextframe);
          if (line.isValid()) {
@@ -421,7 +414,7 @@ void lj_debug_addloc(lua_State* L, CSTRING msg, cTValue* frame, cTValue* nextfra
 // Uses FileSource tracking to display accurate file:line for imported code.
 // The BCLine returned by lj_debug_line includes the file index from fileinfo (if available).
 
-void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPOS pc)
+void lj_debug_pushloc(lua_State *L, GCproto *pt, BCPOS pc)
 {
    BCLine line = lj_debug_line(pt, pc);
 
@@ -435,7 +428,7 @@ void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPOS pc)
    }
 
    // Fallback to prototype chunk_name for legacy behaviour
-   GCstr* name = proto_chunk_name(pt);
+   GCstr *name = proto_chunk_name(pt);
    CSTRING s = strdata(name);
    MSize i, len = name->len;
 
@@ -459,7 +452,7 @@ void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPOS pc)
 // Note: n is the internal slot number (1-based). Call sites should convert from
 // 0-based user indices if needed (e.g., debug_semantic_index_to_internal in lib_debug.cpp).
 
-[[nodiscard]] extern CSTRING lua_getlocal(lua_State* L, const lua_Debug* ar, int n)
+[[nodiscard]] extern CSTRING lua_getlocal(lua_State *L, const lua_Debug *ar, int n)
 {
    CSTRING name = nullptr;
    if (ar) {
@@ -476,15 +469,14 @@ void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPOS pc)
 }
 
 //********************************************************************************************************************
-
 // Note: n is the internal slot number (1-based). Call sites should convert from
 // 0-based user indices if needed.
-extern CSTRING lua_setlocal(lua_State* L, const lua_Debug* ar, int n)
+
+extern CSTRING lua_setlocal(lua_State *L, const lua_Debug *ar, int n)
 {
    CSTRING name = nullptr;
-   TValue* o = debug_localname(L, ar, &name, n);
-   if (name)
-      copyTV(L, o, L->top - 1);
+   TValue *o = debug_localname(L, ar, &name, n);
+   if (name) copyTV(L, o, L->top - 1);
    L->top--;
    return name;
 }
@@ -497,7 +489,7 @@ int lj_debug_getinfo(lua_State *L, CSTRING what, lj_Debug *ar, int ext)
    GCfunc *fn;
 
    if (*what IS '>') {
-      TValue* func = L->top - 1;
+      TValue *func = L->top - 1;
       if (not tvisfunc(func)) return 0;
       fn = funcV(func);
       L->top--;
@@ -604,16 +596,13 @@ int lj_debug_getinfo(lua_State *L, CSTRING what, lj_Debug *ar, int ext)
       if (isluafunc(fn)) {
          GCtab* t = lj_tab_new(L, 0, 0);
          GCproto* pt = funcproto(fn);
-         const void* lineinfo = proto_lineinfo(pt);
+         const BCLine* lineinfo = (const BCLine*)proto_lineinfo(pt);
          if (lineinfo) {
-            BCLine first = pt->firstline;
-            int sz = pt->numline < 256 ? 1 : pt->numline < 65536 ? 2 : 4;
+            // Direct BCLine access - extract line number for table key.
+            // Note: Same line numbers in different files will share a table entry (existing semantic).
             MSize i, szl = pt->sizebc - 1;
             for (i = 0; i < szl; i++) {
-               BCLine line = first +
-                  (sz IS 1 ? (BCLine)((const uint8_t*)lineinfo)[i] :
-                     sz IS 2 ? (BCLine)((const uint16_t*)lineinfo)[i] :
-                     (BCLine)((const uint32_t*)lineinfo)[i]);
+               int32_t line = lineinfo[i].lineNumber();
                setboolV(lj_tab_setint(L, t, line), 1);
             }
          }
@@ -658,7 +647,7 @@ extern int lua_getstack(lua_State *L, int level, lua_Debug *ar)
 #define TRACEBACK_LEVELS1   12
 #define TRACEBACK_LEVELS2   10
 
-extern void luaL_traceback(lua_State* L, lua_State* L1, CSTRING msg, int level)
+extern void luaL_traceback(lua_State *L, lua_State *L1, CSTRING msg, int level)
 {
    int top = (int)(L->top - L->base);
    int lim = TRACEBACK_LEVELS1;

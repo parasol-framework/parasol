@@ -597,9 +597,8 @@ typedef struct GCproto {
    GCRef  chunk_name;  //  Name of the chunk this function was defined in.
    BCLine firstline;  //  First line of the function definition.
    BCLine numline;    //  Number of lines for the function definition.
-   uint8_t file_source_idx;  //  Index into lua_State::file_sources for error reporting.
-   MRef   lineinfo;   //  Compressed map from bytecode ins. to source line.
-   MRef   fileinfo;   //  Per-instruction file source indices (uint8_t[sizebc-1]) for multi-file prototypes.
+   uint8_t file_source_idx;  //  Index into lua_State::file_sources (fallback for edge cases).
+   MRef   lineinfo;   //  BCLine[sizebc-1] array - file index in upper 8 bits, line in lower 24.
    MRef   uvinfo;     //  Upvalue names.
    MRef   varinfo;    //  Names and compressed extents of local variables.
    uint64_t closeslots;  //  Bitmap of locals with <close> attribute (max 64 slots)
@@ -668,11 +667,6 @@ inline const char* proto_chunk_namestr(const GCproto* pt) noexcept;
 [[nodiscard]] inline const uint8_t* proto_varinfo(const GCproto* pt) noexcept
 {
    return mref<const uint8_t>(pt->varinfo);
-}
-
-[[nodiscard]] inline const uint8_t* proto_fileinfo(const GCproto* pt) noexcept
-{
-   return mref<const uint8_t>(pt->fileinfo);
 }
 
 //********************************************************************************************************************

@@ -15,23 +15,18 @@
 
 // Prototypes
 
-void LJ_FASTCALL lj_func_freeproto(global_State* g, GCproto* pt)
+void LJ_FASTCALL lj_func_freeproto(global_State *g, GCproto *pt)
 {
    // Free try-except metadata if present
    if (pt->try_blocks) lj_mem_free(g, pt->try_blocks, pt->try_block_count * sizeof(TryBlockDesc));
    if (pt->try_handlers) lj_mem_free(g, pt->try_handlers, pt->try_handler_count * sizeof(TryHandlerDesc));
-
-   // Free per-instruction file index array if present (for multi-file prototypes)
-
-   const uint8_t *fileinfo = proto_fileinfo(pt);
-   if (fileinfo) lj_mem_free(g, (void*)fileinfo, pt->sizebc - 1);
 
    lj_mem_free(g, pt, pt->sizept);
 }
 
 // Upvalues
 
-static void unlinkuv(global_State* g, GCupval* uv)
+static void unlinkuv(global_State *g, GCupval *uv)
 {
    lj_assertG(uvprev(uvnext(uv)) IS uv and uvnext(uvprev(uv)) IS uv, "broken upvalue chain");
    setgcrefr(uvnext(uv)->prev, uv->prev);
@@ -40,7 +35,7 @@ static void unlinkuv(global_State* g, GCupval* uv)
 
 // Find existing open upvalue for a stack slot or create a new one.
 
-static GCupval* func_finduv(lua_State* L, TValue* slot)
+static GCupval * func_finduv(lua_State *L, TValue *slot)
 {
    global_State* g = G(L);
    GCRef* pp = &L->openupval;
