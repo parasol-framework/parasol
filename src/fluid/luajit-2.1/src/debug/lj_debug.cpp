@@ -378,7 +378,7 @@ void lj_debug_shortname(char *out, GCstr *str, BCLine line)
 //********************************************************************************************************************
 // Add current location of a frame to error message.
 // Uses FileSource tracking to display accurate file:line for imported code.
-// The BCLine returned by debug_frameline includes the file index from fileinfo (if available).
+// The BCLine returned by debug_frameline encodes the file index in its upper 8 bits (no separate fileinfo array).
 
 void lj_debug_addloc(lua_State *L, CSTRING msg, cTValue *frame, cTValue *nextframe)
 {
