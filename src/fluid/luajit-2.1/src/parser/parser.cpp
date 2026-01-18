@@ -64,6 +64,7 @@ static const struct {
 #include "value_categories.cpp"
 #include "type_checker.cpp"
 #include "type_analysis.cpp"
+#include "func_state.cpp"
 
 static constexpr size_t kMaxLoggedStatements = 12;
 
@@ -72,7 +73,7 @@ static void raise_accumulated_diagnostics(ParserContext &Context)
    auto entries = Context.diagnostics().entries();
    if (entries.empty()) return;
 
-   auto summary = std::format("parser reported {} {}:\n", entries.size(), entries.size() == 1 ? "error" : "errors");
+   auto summary = std::format("parser reported {} {}:\n", entries.size(), entries.size() IS 1 ? "error" : "errors");
 
    for (const auto& diagnostic : entries) {
       SourceSpan span = diagnostic.token.span();
@@ -217,7 +218,6 @@ static ParserConfig make_parser_config(lua_State &State)
 extern GCproto * lj_parse(LexState *State)
 {
    pf::Log log("Parser");
-   FuncState fs;
    FuncScope bl;
    GCproto   *pt;
    lua_State *L = State->L;
@@ -255,7 +255,7 @@ extern GCproto * lj_parse(LexState *State)
    setstrV(L, L->top, State->chunkname);  // Anchor chunkname string.
    incr_top(L);
    State->level = 0;
-   State->fs_init(&fs);
+   FuncState &fs = State->fs_init();
    fs.linedefined = 0;
    fs.numparams   = 0;
    fs.bcbase      = nullptr;
@@ -290,7 +290,7 @@ extern GCproto * lj_parse(LexState *State)
       L->parser_tips = State->tip_emitter.release();
    }
 
-   lj_assertL(fs.prev == nullptr and State->fs == nullptr, "mismatched frame nesting");
-   lj_assertL(pt->sizeuv == 0, "toplevel proto has upvalues");
+   lj_assertL(State->func_stack.empty() and State->fs IS nullptr, "mismatched frame nesting");
+   lj_assertL(pt->sizeuv IS 0, "toplevel proto has upvalues");
    return pt;
 }
