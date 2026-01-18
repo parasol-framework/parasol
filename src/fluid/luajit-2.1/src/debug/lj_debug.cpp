@@ -418,7 +418,6 @@ void lj_debug_pushloc(lua_State *L, GCproto *pt, BCPOS pc)
 {
    BCLine line = lj_debug_line(pt, pc);
 
-   // Use the file index from the BCLine (which comes from fileinfo if multi-file prototype)
    if (not L->file_sources.empty()) {
       const FileSource* src = get_file_source(L, line.fileIndex());
       if (src and not src->filename.empty()) {
