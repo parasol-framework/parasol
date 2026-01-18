@@ -750,7 +750,7 @@ void LexState::fs_fixup_var(GCproto *Prototype, uint8_t *Buffer, size_t OffsetVa
 
 // Initialize with empty debug info, if disabled.
 #define fs_prep_line(fs) (0)
-#define fs_fixup_line(fs, pt, li, numline) pt->firstline = pt->numline = 0, setmref((pt)->lineinfo, nullptr), setmref((pt)->fileinfo, nullptr)
+#define fs_fixup_line(fs, pt, li, numline) pt->firstline = pt->numline = 0, setmref((pt)->lineinfo, nullptr)
 
 size_t LexState::fs_prep_var(FuncState* FunctionState, size_t* OffsetVar)
 {
