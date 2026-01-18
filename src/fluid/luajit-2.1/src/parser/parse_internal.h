@@ -16,10 +16,9 @@ enum class TokenKind : uint16_t;
 // Constants (lj_parse_constants.cpp)
 
 // Exported for use by OperatorEmitter facade
-extern BCREG const_num(FuncState *, ExpDesc* e);
-extern BCREG const_str(FuncState *, ExpDesc* e);
-
-static BCREG const_gc(FuncState *, GCobj* gc, uint32_t itype);
+extern BCREG const_num(FuncState *, ExpDesc *);
+extern BCREG const_str(FuncState *, ExpDesc *);
+static BCREG const_gc(FuncState *, GCobj *, uint32_t);
 
 // Jump list handling (lj_parse_constants.cpp)
 
@@ -164,8 +163,8 @@ static void fs_fixup_bc(FuncState *, GCproto* pt, BCIns* bc, MSize n);
 static void fs_fixup_uv2(FuncState *, GCproto* pt);
 static void fs_fixup_k(FuncState *, GCproto* pt, void* kptr);
 static void fs_fixup_uv1(FuncState *, GCproto* pt, uint16_t* uv);
-[[nodiscard]] static size_t fs_prep_line(FuncState *, BCLine numline);
-static void fs_fixup_line(FuncState *, GCproto* pt, void* lineinfo, BCLine numline);
+[[nodiscard]] static size_t fs_prep_line(FuncState *);
+static void fs_fixup_line(FuncState *, GCproto*, void*, BCLine);
 [[nodiscard]] static int bcopisret(BCOp op);
 static void fs_fixup_ret(FuncState *);
 

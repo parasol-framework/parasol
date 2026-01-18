@@ -270,6 +270,8 @@ static void bcwrite_proto(BCWriteCtx* ctx, GCproto* pt)
    bcwrite_knum(ctx, pt);
 
    // Write debug info, if not stripped.
+   // Note: lineinfo is a BCLine[sizebc-1] array (32-bit per instruction) with file index in upper 8 bits.
+   // The sizedbg is calculated from memory layout and includes lineinfo, uvinfo, and varinfo.
    if (sizedbg) {
       p = lj_buf_more(&ctx->sb, sizedbg);
       p = lj_buf_wmem(p, proto_lineinfo(pt), sizedbg);

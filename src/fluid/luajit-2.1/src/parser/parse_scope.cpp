@@ -662,80 +662,27 @@ static void fs_fixup_uv1(FuncState *fs, GCproto *pt, uint16_t *uv)
 
 // Prepare lineinfo for prototype.
 
-static size_t fs_prep_line(FuncState *fs, BCLine numline)
+static size_t fs_prep_line(FuncState *fs)
 {
-   return (fs->pc - 1) << (numline < 256 ? 0 : numline < 65536 ? 1 : 2);
+   return (fs->pc - 1) * sizeof(BCLine);
 }
 
 //********************************************************************************************************************
-// Fixup lineinfo for prototype.
-// Note: bcbase[].line values may be encoded with file index in upper 8 bits (from FileSource tracking).
-// We decode them to raw line numbers before computing deltas for the lineinfo array.
-// If bytecode spans multiple source files (e.g., main chunk with imports), allocate pt->fileinfo to
-// track per-instruction file indices for accurate error reporting.
+// Store lineinfo for prototype.
+// BCLine values are stored directly (32-bit each) with file index in upper 8 bits and line number in lower 24 bits.
+// This eliminates delta encoding and separate fileinfo allocation - file info is embedded in each BCLine.
 
 static void fs_fixup_line(FuncState *fs, GCproto *pt, void *lineinfo, BCLine numline)
 {
-   BCInsLine *base = fs->bcbase + 1;
-   BCLine first = fs->linedefined;
-   MSize i = 0, n = fs->pc - 1;
+   BCInsLine *base = fs->bcbase + 1;  // Skip FUNCF/FUNCV instruction
+   MSize n = fs->pc - 1;
+
    pt->firstline = fs->linedefined;
    pt->numline = numline;
    setmref(pt->lineinfo, lineinfo);
-   setmref(pt->fileinfo, nullptr);  // Default: no per-instruction file tracking
 
-   // Check if this prototype has bytecode from multiple source files.
-   // If so, we need to allocate fileinfo to track per-instruction file indices.
-
-   uint8_t first_file_idx = (n > 0) ? base[0].line.fileIndex() : pt->file_source_idx;
-   bool multi_file = false;
-
-   for (MSize j = 1; j < n; j++) {
-      if (base[j].line.fileIndex() != first_file_idx) {
-         multi_file = true;
-         break;
-      }
-   }
-
-   // Allocate and populate fileinfo if this prototype spans multiple files.
-
-   if (multi_file and n > 0) {
-      auto fi = (uint8_t *)lj_mem_new(fs->ls->L, n);
-      for (MSize j = 0; j < n; j++) {
-         fi[j] = base[j].line.fileIndex();
-      }
-      setmref(pt->fileinfo, fi);
-   }
-
-   // Now write the line deltas to lineinfo as before.
-
-   if (numline < 256) [[likely]] {
-      auto li = (uint8_t*)lineinfo;
-      do {
-         BCLine raw_line = base[i].line.lineNumber();
-         BCLine delta = raw_line - first;
-         fs_check_assert(fs, delta >= 0 and delta < 256, "bad line delta %d for line %d (raw=%d, first=%d)", delta, numline, raw_line, first);
-         li[i] = uint8_t(delta);
-      } while (++i < n);
-   }
-   else if (numline < 65536) [[likely]] {
-      auto li = (uint16_t*)lineinfo;
-      do {
-         BCLine raw_line = base[i].line.lineNumber();
-         BCLine delta = raw_line - first;
-         fs_check_assert(fs, delta >= 0 and delta < 65536, "bad line delta %d for line %d (raw=%d, first=%d)", delta, numline, raw_line, first);
-         li[i] = uint16_t(delta);
-      } while (++i < n);
-   }
-   else {
-      auto li = (uint32_t*)lineinfo;
-      do {
-         BCLine raw_line = base[i].line.lineNumber();
-         BCLine delta = raw_line - first;
-         fs_check_assert(fs, delta >= 0, "bad line delta %d for line %d (raw=%d, first=%d)", delta, numline, raw_line, first);
-         li[i] = uint32_t(delta);
-      } while (++i < n);
-   }
+   auto li = (BCLine *)lineinfo;
+   for (MSize i = 0; i < n; i++) li[i] = base[i].line;
 }
 
 //********************************************************************************************************************
@@ -802,8 +749,8 @@ void LexState::fs_fixup_var(GCproto *Prototype, uint8_t *Buffer, size_t OffsetVa
 #else
 
 // Initialize with empty debug info, if disabled.
-#define fs_prep_line(fs, numline)		(UNUSED(numline), 0)
-#define fs_fixup_line(fs, pt, li, numline) pt->firstline = pt->numline = 0, setmref((pt)->lineinfo, nullptr), setmref((pt)->fileinfo, nullptr)
+#define fs_prep_line(fs) (0)
+#define fs_fixup_line(fs, pt, li, numline) pt->firstline = pt->numline = 0, setmref((pt)->lineinfo, nullptr)
 
 size_t LexState::fs_prep_var(FuncState* FunctionState, size_t* OffsetVar)
 {
@@ -879,7 +826,7 @@ static void fs_fixup_ret(FuncState *fs)
 //********************************************************************************************************************
 // Build a qualified scope name from the function stack (e.g., "outer.inner" for nested functions).
 
-static std::string build_scope_name(LexState* ls, FuncState* FState)
+static std::string build_scope_name(LexState* ls, FuncState *FState)
 {
    auto &stack = ls->func_stack;
 
@@ -940,9 +887,8 @@ GCproto * LexState::fs_finish(BCLine Line)
 
    // Adjust linedefined if bytecode contains instructions from earlier lines.
    // This can happen with AST-constructed functions (e.g., thunks wrapping f-strings).
-   if (min_line < fs->linedefined) {
-      fs->linedefined = min_line;
-   }
+
+   if (min_line < fs->linedefined) fs->linedefined = min_line;
 
    BCLine numline = line - fs->linedefined;
    size_t sizept, ofsk, ofsuv, ofsli, ofsdbg, ofsvar;
@@ -981,11 +927,11 @@ GCproto * LexState::fs_finish(BCLine Line)
       if (func_stack.size() IS 1) {
          for (GCstr *name : fs->declared_globals) {
             VariableInfo info;
-            info.line = 0;  // Line info not available for globals declared elsewhere
+            info.line   = 0;  // Line info not available for globals declared elsewhere
             info.column = 0;
-            info.scope = "";
-            info.name = std::string(strdata(name), name->len);
-            info.type = FluidType::Unknown;  // Type not tracked for globals
+            info.scope  = "";
+            info.name   = std::string(strdata(name), name->len);
+            info.type   = FluidType::Unknown;  // Type not tracked for globals
             info.is_global = true;
             prv->CapturedVariables.push_back(std::move(info));
          }
@@ -996,18 +942,22 @@ GCproto * LexState::fs_finish(BCLine Line)
 
    sizept = sizeof(GCproto) + fs->pc * sizeof(BCIns) + fs->nkgc * sizeof(GCRef);
    sizept = (sizept + sizeof(TValue) - 1) & ~(sizeof(TValue) - 1);
-   ofsk   = sizept; sizept += fs->nkn * sizeof(TValue);
-   ofsuv  = sizept; sizept += ((fs->nuv + 1) & ~1) * 2;
-   ofsli  = sizept; sizept += fs_prep_line(fs, numline);
-   ofsdbg = sizept; sizept += this->fs_prep_var(fs, &ofsvar);
+   ofsk   = sizept; 
+   sizept += fs->nkn * sizeof(TValue);
+   ofsuv  = sizept; 
+   sizept += ((fs->nuv + 1) & ~1) * 2;
+   ofsli  = sizept; 
+   sizept += fs_prep_line(fs);
+   ofsdbg = sizept; 
+   sizept += this->fs_prep_var(fs, &ofsvar);
 
    // Allocate prototype and initialize its fields.
 
    pt = (GCproto *)lj_mem_newgco(L, MSize(sizept));
-   pt->gct = ~LJ_TPROTO;
-   pt->sizept = MSize(sizept);
-   pt->trace = 0;
-   pt->flags = uint8_t(fs->flags & ~(PROTO_HAS_RETURN | PROTO_FIXUP_RETURN));
+   pt->gct       = ~LJ_TPROTO;
+   pt->sizept    = MSize(sizept);
+   pt->trace     = 0;
+   pt->flags     = uint8_t(fs->flags & ~(PROTO_HAS_RETURN | PROTO_FIXUP_RETURN));
    pt->numparams = fs->numparams;
    pt->framesize = fs->framesize;
    pt->file_source_idx = this->current_file_index;  // FileSource tracking for error reporting
@@ -1035,22 +985,22 @@ GCproto * LexState::fs_finish(BCLine Line)
    // Copy try-except metadata to prototype.  These arrays are allocated separately and freed with the proto via the GC.
 
    if (not fs->try_blocks.empty()) {
-      size_t blocks_size = fs->try_blocks.size() * sizeof(TryBlockDesc);
+      size_t blocks_size   = fs->try_blocks.size() * sizeof(TryBlockDesc);
       size_t handlers_size = fs->try_handlers.size() * sizeof(TryHandlerDesc);
 
-      pt->try_blocks = (TryBlockDesc *)lj_mem_new(L, blocks_size);
+      pt->try_blocks   = (TryBlockDesc *)lj_mem_new(L, blocks_size);
       pt->try_handlers = (TryHandlerDesc *)lj_mem_new(L, handlers_size);
 
       memcpy(pt->try_blocks, fs->try_blocks.data(), blocks_size);
       memcpy(pt->try_handlers, fs->try_handlers.data(), handlers_size);
 
-      pt->try_block_count = uint16_t(fs->try_blocks.size());
+      pt->try_block_count   = uint16_t(fs->try_blocks.size());
       pt->try_handler_count = uint16_t(fs->try_handlers.size());
    }
    else {
-      pt->try_blocks = nullptr;
-      pt->try_handlers = nullptr;
-      pt->try_block_count = 0;
+      pt->try_blocks        = nullptr;
+      pt->try_handlers      = nullptr;
+      pt->try_block_count   = 0;
       pt->try_handler_count = 0;
    }
 

@@ -163,22 +163,17 @@ static uint32_t bcread_uleb128_33(LexState *State)
 
 //********************************************************************************************************************
 // Read debug info of a prototype.
+// lineinfo is now a BCLine[sizebc-1] array (32-bit per instruction) with file index in upper 8 bits.
 
 static void bcread_dbg(LexState *State, GCproto *pt, MSize sizedbg)
 {
    void* lineinfo = (void*)proto_lineinfo(pt);
    bcread_block(State, lineinfo, sizedbg);
-   // Swap lineinfo if the endianess differs.
-   if (bcread_swap(State) and pt->numline >= 256) {
+   // Swap BCLine values if the endianness differs (always 32-bit)
+   if (bcread_swap(State)) {
       MSize i, n = pt->sizebc - 1;
-      if (pt->numline < 65536) {
-         uint16_t* p = (uint16_t*)lineinfo;
-         for (i = 0; i < n; i++) p[i] = (uint16_t)((p[i] >> 8) | (p[i] << 8));
-      }
-      else {
-         uint32_t* p = (uint32_t*)lineinfo;
-         for (i = 0; i < n; i++) p[i] = lj_bswap(p[i]);
-      }
+      BCLine* p = (BCLine*)lineinfo;
+      for (i = 0; i < n; i++) p[i] = BCLine(lj_bswap(p[i].raw()));
    }
 }
 
@@ -394,7 +389,8 @@ GCproto *lj_bcread_proto(LexState *State)
    pt->firstline = firstline;
    pt->numline = numline;
    if (sizedbg) {
-      MSize sizeli = (sizebc - 1) << (numline < 256 ? 0 : numline < 65536 ? 1 : 2);
+      // lineinfo is now a fixed-size BCLine[sizebc-1] array (32-bit per instruction)
+      MSize sizeli = (sizebc - 1) * sizeof(BCLine);
       setmref(pt->lineinfo, (char*)pt + ofsdbg);
       setmref(pt->uvinfo, (char*)pt + ofsdbg + sizeli);
       bcread_dbg(State, pt, sizedbg);

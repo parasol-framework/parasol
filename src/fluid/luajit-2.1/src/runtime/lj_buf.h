@@ -63,13 +63,10 @@ constexpr int SBUF_FLAG_EXT = 1;      //  Extended string buffer.
 constexpr int SBUF_FLAG_COW = 2;      //  Copy-on-write buffer.
 constexpr int SBUF_FLAG_BORROW = 4;   //  Borrowed string buffer.
 
-#define sbufL(sb) \
-  ((lua_State *)(void *)(uintptr_t)(mrefu((sb)->L) & SBUF_MASK_L))
+#define sbufL(sb) ((lua_State *)(void *)(uintptr_t)(mrefu((sb)->L) & SBUF_MASK_L))
 #define setsbufL(sb, l)      (setmref((sb)->L, (l)))
-#define setsbufXL(sb, l, flag) \
-  (setmrefu((sb)->L, (GCSize)(uintptr_t)(void *)(l) + (flag)))
-#define setsbufXL_(sb, l) \
-  (setmrefu((sb)->L, (GCSize)(uintptr_t)(void *)(l) | (mrefu((sb)->L) & SBUF_MASK_FLAG)))
+#define setsbufXL(sb, l, flag) (setmrefu((sb)->L, (GCSize)(uintptr_t)(void *)(l) + (flag)))
+#define setsbufXL_(sb, l) (setmrefu((sb)->L, (GCSize)(uintptr_t)(void *)(l) | (mrefu((sb)->L) & SBUF_MASK_FLAG)))
 
 [[nodiscard]] constexpr inline GCSize sbufflag(const SBuf* sb) noexcept
 {
