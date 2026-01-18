@@ -2341,16 +2341,12 @@ void IrEmitter::ensure_register_floor(std::string_view usage)
 void IrEmitter::ensure_register_balance(std::string_view usage)
 {
    this->ensure_register_floor(usage);
-   // Account for freereg_floor when checking for leaks - registers reserved by imports
-   // should not be considered leaked even though they exceed nactvar
-   BCREG expected = (this->func_state.nactvar > this->func_state.freereg_floor)
-                  ? this->func_state.nactvar : this->func_state.freereg_floor;
-   if (this->func_state.freereg > expected) {
+   if (this->func_state.freereg > this->func_state.nactvar) {
       pf::Log log("Parser");
       int line = this->lex_state.lastline;
-      log.warning("Leaked %u registers after %.*s at line %d (free=%u expected=%u)",
-         unsigned(this->func_state.freereg - expected), int(usage.size()), usage.data(),
-         line + 1, unsigned(this->func_state.freereg), unsigned(expected));
+      log.warning("Leaked %u registers after %.*s at line %d (free=%u active=%u)",
+         unsigned(this->func_state.freereg - this->func_state.nactvar), int(usage.size()), usage.data(),
+         line + 1, unsigned(this->func_state.freereg), unsigned(this->func_state.nactvar));
       this->func_state.reset_freereg();
    }
 }

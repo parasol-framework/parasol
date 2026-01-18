@@ -489,26 +489,18 @@ static void fscope_end(FuncState* fs)
    // Run __close and defer handlers when scope ends (LIFO order: closes before defers)
    execute_closes(fs, bl->nactvar);
    execute_defers(fs, bl->nactvar);
-
-   // For import scopes (KeepRegs), hide variable names by setting them to NAME_BLANK
-   // instead of removing them. This keeps the slots occupied (nactvar stays elevated)
-   // while preventing lookups from finding the imported variables.
-
-   if (has_flag(bl->flags, FuncScopeFlag::KeepRegs)) {
-      // Mark import's variables as blank so they're not findable, but keep slots reserved
-      for (BCREG i = bl->nactvar; i < fs->nactvar; ++i) {
-         VarInfo &v = fs->var_get(i);
-         setgcref(v.name, obj2gco((GCstr*)NAME_BLANK));
-         v.endpc = fs->pc;
-      }
-      fs->freereg_floor = fs->freereg;
-   }
-   else ls->var_remove(bl->nactvar);
+   bool import_scope = has_flag(bl->flags, FuncScopeFlag::ImportScope);
+   ls->var_remove(bl->nactvar);
 
    fs->reset_freereg();
    fs->assert_freereg_at_locals();
 
-   if ((bl->flags & (FuncScopeFlag::Upvalue | FuncScopeFlag::NoClose)) IS FuncScopeFlag::Upvalue) bcemit_AJ(fs, BC_UCLO, bl->nactvar, 0);
+   if (import_scope and not has_flag(bl->flags, FuncScopeFlag::NoClose)) {
+      bcemit_AJ(fs, BC_UCLO, bl->nactvar, 0);
+   }
+   else if ((bl->flags & (FuncScopeFlag::Upvalue | FuncScopeFlag::NoClose)) IS FuncScopeFlag::Upvalue) {
+      bcemit_AJ(fs, BC_UCLO, bl->nactvar, 0);
+   }
    if (has_flag(bl->flags, FuncScopeFlag::Break)) {
       if (has_flag(bl->flags, FuncScopeFlag::Loop)) {
          VStackGuard vstack_guard(ls);

@@ -334,17 +334,16 @@ ParserResult<IrEmitUnit> IrEmitter::emit_import_stmt(const ImportStmtPayload &Pa
    FuncState *fs = &this->func_state;
    lua_State *L = this->lex_state.L;
 
-   // If there's a body, emit the inlined content in a scope with KeepRegs flag.
+   // If there's a body, emit the inlined content in an import scope.
    // The scope provides variable name isolation (imported locals not visible in parent),
-   // but KeepRegs prevents register slots from being freed when the scope ends.
-   // This ensures that values in those registers persist for use by closures/upvalues.
+   // and the scope end forces an upvalue close so registers can be freed safely.
    if (Payload.inlined_body) {
       // Temporarily switch to the imported file's FileSource index
       // so that prototypes created for functions in the import get the correct file_source_idx
       uint8_t saved_file_index = this->lex_state.current_file_index;
       this->lex_state.current_file_index = Payload.file_source_idx;
 
-      auto result = this->emit_block(*Payload.inlined_body, FuncScopeFlag::KeepRegs);
+      auto result = this->emit_block(*Payload.inlined_body, FuncScopeFlag::ImportScope);
 
       // Restore the parent file's index
       this->lex_state.current_file_index = saved_file_index;
