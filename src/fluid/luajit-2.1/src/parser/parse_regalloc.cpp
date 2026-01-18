@@ -157,7 +157,7 @@ void RegisterAllocator::release_expression(ExpDesc *Expression)
 void RegisterAllocator::collapse_freereg(BCReg ResultReg)
 {
    BCREG target = ResultReg.raw() + 1;
-   if (target < this->func_state->nactvar) target = this->func_state->nactvar;
+   if (target < this->func_state->varmap.size()) target = this->func_state->varmap.size();
 
    while (this->func_state->freereg > target) {
       BCREG previous = this->func_state->freereg;
@@ -489,7 +489,7 @@ static BCREG expr_toanyreg(FuncState *fs, ExpDesc *e)
    expr_discharge(fs, e);
    if (e->k IS ExpKind::NonReloc) [[likely]] {
       if (!e->has_jump()) [[likely]] return e->u.s.info;  // Already in a register.
-      if (e->u.s.info >= fs->nactvar) {
+      if (e->u.s.info >= fs->varmap.size()) {
          expr_toreg(fs, e, e->u.s.info);  // Discharge to temp. register.
          return e->u.s.info;
       }
@@ -638,7 +638,7 @@ static void bcemit_store(FuncState *fs, ExpDesc *LHS, ExpDesc *RHS)
       else {
 #ifdef LUA_USE_ASSERT
          // Free late alloced key reg to avoid assert on free of value reg.
-         if (RHS->k IS ExpKind::NonReloc and ra >= fs->nactvar and rc >= ra) bcreg_free(fs, rc);
+         if (RHS->k IS ExpKind::NonReloc and ra >= fs->varmap.size() and rc >= ra) bcreg_free(fs, rc);
 #endif
          ins = BCINS_ABC(BC_ASETV, ra, LHS->u.s.info, rc);
       }
@@ -655,7 +655,7 @@ static void bcemit_store(FuncState *fs, ExpDesc *LHS, ExpDesc *RHS)
 #ifdef LUA_USE_ASSERT
          // Free late alloced key reg to avoid assert on free of value reg.
          // This can only happen when called from expr_table().
-         if (RHS->k IS ExpKind::NonReloc and ra >= fs->nactvar and rc >= ra) bcreg_free(fs, rc);
+         if (RHS->k IS ExpKind::NonReloc and ra >= fs->varmap.size() and rc >= ra) bcreg_free(fs, rc);
 #endif
          ins = BCINS_ABC(BC_TSETV, ra, LHS->u.s.info, rc);
       }
@@ -769,12 +769,12 @@ static void bcemit_branch_t(FuncState *fs, ExpDesc *e)
 
 void RegisterAllocator::verify_no_leaks(const char* Context) const
 {
-   BCREG nactvar = this->func_state->nactvar;
+   BCREG total_locals = BCREG(this->func_state->varmap.size());
    BCREG freereg = this->func_state->freereg;
 
-   if (freereg > nactvar) {
-      pf::Log("Parser").warning("Register leak at %s: %d temporary registers not released (nactvar=%d, freereg=%d)",
-         Context, int(freereg - nactvar), int(nactvar), int(freereg));
+   if (freereg > total_locals) {
+      pf::Log("Parser").warning("Register leak at %s: %d temporary registers not released (total locals=%d, free reg=%d)",
+         Context, int(freereg - total_locals), int(total_locals), int(freereg));
    }
 }
 

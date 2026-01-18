@@ -43,7 +43,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
       this->lex_state.var_add(nvars);
 
       // Update binding table and set fixed_type from initialisers
-      BCReg base = BCReg(this->func_state.nactvar - nvars.raw());
+      BCReg base = BCReg(this->func_state.varmap.size() - nvars.raw());
       for (BCReg i = BCReg(0); i < nvars; ++i) {
          PreparedAssignment& target = targets[i.raw()];
          if (target.pending_symbol) {
@@ -119,7 +119,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
             // Create new local for this undeclared variable
             this->lex_state.var_new(BCReg(0), target.pending_symbol, target.pending_line, target.pending_column);
             this->lex_state.var_add(BCReg(1));
-            BCReg local_slot = BCReg(this->func_state.nactvar - 1);
+            BCReg local_slot = BCReg(this->func_state.varmap.size() - 1);
 
             // Infer type from initialiser expression
             if (i < values.size()) {
@@ -300,7 +300,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(PreparedAssignment 
       if (target.needs_var_add and target.pending_symbol) {
          this->lex_state.var_new(BCReg(0), target.pending_symbol, target.pending_line, target.pending_column);
          this->lex_state.var_add(BCReg(1));
-         BCReg slot = BCReg(this->func_state.nactvar - 1);
+         BCReg slot = BCReg(this->func_state.varmap.size() - 1);
          // Update target.storage to point to the new local
          target.storage.init(ExpKind::Local, slot);
          target.storage.u.s.aux = this->func_state.varmap[slot.raw()];
@@ -401,7 +401,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_nil_assignment(PreparedAssignment ta
       if (target.needs_var_add and target.pending_symbol) {
          this->lex_state.var_new(BCReg(0), target.pending_symbol, target.pending_line, target.pending_column);
          this->lex_state.var_add(BCReg(1));
-         BCReg slot = BCReg(this->func_state.nactvar - 1);
+         BCReg slot = BCReg(this->func_state.varmap.size() - 1);
          // Update target.storage to point to the new local
          target.storage.init(ExpKind::Local, slot);
          target.storage.u.s.aux = this->func_state.varmap[slot.raw()];

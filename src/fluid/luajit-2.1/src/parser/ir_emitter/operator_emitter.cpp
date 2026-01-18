@@ -487,11 +487,11 @@ static void bcemit_bit_call(FuncState* fs, std::string_view fname, ExpDesc* lhs,
    // when chaining operations (e.g., 1 | 2 | 4 produces AST: (1 | 2) | 4, so LHS is the previous result)
 
    BCREG base;
-   if (rhs->k IS ExpKind::NonReloc and rhs->u.s.info >= fs->nactvar and rhs->u.s.info + 1 IS fs->freereg) {
+   if (rhs->k IS ExpKind::NonReloc and rhs->u.s.info >= fs->varmap.size() and rhs->u.s.info + 1 IS fs->freereg) {
       // RHS is at the top - reuse its register to avoid orphaning
       base = rhs->u.s.info;
    }
-   else if (lhs->k IS ExpKind::NonReloc and lhs->u.s.info >= fs->nactvar and lhs->u.s.info + 1 IS fs->freereg) {
+   else if (lhs->k IS ExpKind::NonReloc and lhs->u.s.info >= fs->varmap.size() and lhs->u.s.info + 1 IS fs->freereg) {
       // LHS is at the top - reuse its register to avoid orphaning
       base = lhs->u.s.info;
    }

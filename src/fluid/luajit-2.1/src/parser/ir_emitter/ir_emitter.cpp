@@ -140,7 +140,7 @@ private:
 
 static bool has_close_variables(FuncState* fs)
 {
-   for (BCREG i = 0; i < fs->nactvar; ++i) {
+   for (BCREG i = 0; i < fs->varmap.size(); ++i) {
       VarInfo* v = &fs->var_get(i);
       if (has_flag(v->info, VarInfoFlag::Close)) return true;
    }
@@ -166,7 +166,7 @@ static void snapshot_return_regs(FuncState* fs, BCIns* ins)
    // If there are close handlers, they use nactvar to nactvar+CLOSE_HANDLER_TEMP_REGS as temporaries.
    // Return values in this range must be snapshotted to safe slots.
    bool has_closes = has_close_variables(fs);
-   BCReg danger_limit = BCReg(fs->nactvar + (has_closes ? CLOSE_HANDLER_TEMP_REGS : 0));
+   BCReg danger_limit = BCReg(fs->varmap.size() + (has_closes ? CLOSE_HANDLER_TEMP_REGS : 0));
 
    if (op IS BC_RET1) {
       auto src = BCReg(bc_a(*ins));
@@ -456,7 +456,7 @@ static UnsupportedNodeRecorder glUnsupportedNodes;
    GCstr *name = nullptr;
    cTValue *table_entry = nullptr;
    auto read_var_name = [&](int32_t Slot) -> GCstr* {
-      if (Slot < 0 or Slot >= int32_t(func_state.nactvar)) return nullptr;
+      if (Slot < 0 or Slot >= int32_t(func_state.varmap.size())) return nullptr;
       GCRef name_ref = func_state.var_get(Slot).name;
       if (gcrefu(name_ref) < VARNAME__MAX) return nullptr;
       return gco_to_string(gcref(name_ref));
@@ -819,7 +819,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &Pa
             // Variadic return: return ...
             setbc_b(ir_bcptr(&this->func_state, &last), 0);
             // For VARG returns, we can't know count at compile time - skip typefix
-            ins = BCINS_AD(BC_RETM, this->func_state.nactvar, last.u.s.aux - this->func_state.nactvar);
+            ins = BCINS_AD(BC_RETM, this->func_state.varmap.size(), last.u.s.aux - this->func_state.varmap.size());
          }
          else if (needs_typefix and bc_op(*ip) IS BC_CALL) {
             // DISABLE TAIL-CALL: emit BC_CALL + BC_TYPEFIX + BC_RET instead of BC_CALLT
@@ -837,7 +837,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &Pa
                // No close handlers: Safe to use RETM with all results
                setbc_b(ip, 0);  // Request all results (MULTRES)
                bcemit_AD(&this->func_state, BC_TYPEFIX, last.u.s.aux, 1);
-               ins = BCINS_AD(BC_RETM, this->func_state.nactvar, last.u.s.aux - this->func_state.nactvar);
+               ins = BCINS_AD(BC_RETM, this->func_state.varmap.size(), last.u.s.aux - this->func_state.varmap.size());
             }
          }
          else {
@@ -863,15 +863,15 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &Pa
          if (last.k IS ExpKind::Call) {
             setbc_b(ir_bcptr(&this->func_state, &last), 0);
             // Variadic tail - count unknown, skip typefix for safety
-            ins = BCINS_AD(BC_RETM, this->func_state.nactvar, last.u.s.aux - this->func_state.nactvar);
+            ins = BCINS_AD(BC_RETM, this->func_state.varmap.size(), last.u.s.aux - this->func_state.varmap.size());
          }
          else {
             this->materialise_to_next_reg(last, "return tail value");
             if (needs_typefix) {
                auto typefix_count = std::min(count.raw(), BCREG(PROTO_MAX_RETURN_TYPES));
-               bcemit_AD(&this->func_state, BC_TYPEFIX, this->func_state.nactvar, typefix_count);
+               bcemit_AD(&this->func_state, BC_TYPEFIX, this->func_state.varmap.size(), typefix_count);
             }
-            ins = BCINS_AD(BC_RET, this->func_state.nactvar, count + 1);
+            ins = BCINS_AD(BC_RET, this->func_state.varmap.size(), count + 1);
          }
       }
    }
@@ -934,7 +934,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
 
    this->lex_state.assign_adjust(nvars.raw(), nexps.raw(), &tail);
    this->lex_state.var_add(nvars);
-   auto base = BCReg(this->func_state.nactvar - nvars.raw());
+   auto base = BCReg(this->func_state.varmap.size() - nvars.raw());
 
    for (auto i = BCReg(0); i < nvars; ++i) {
       const Identifier& identifier = Payload.names[i.raw()];
@@ -1055,7 +1055,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload &Paylo
    {
       FuncScope loop_scope;
       ScopeGuard guard(fs, &loop_scope, FuncScopeFlag::Loop);
-      loop = this->control_flow.make_unconditional(BCPos(bcemit_AD(fs, BC_LOOP, fs->nactvar, 0)));
+      loop = this->control_flow.make_unconditional(BCPos(bcemit_AD(fs, BC_LOOP, fs->varmap.size(), 0)));
       auto block_result = this->emit_block(*Payload.body, FuncScopeFlag::None);
       if (not block_result.ok()) {
          return block_result;
@@ -1100,7 +1100,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload &Payl
    {
       FuncScope inner_scope;
       ScopeGuard inner_guard(fs, &inner_scope, FuncScopeFlag::None);
-      bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
+      bcemit_AD(fs, BC_LOOP, fs->varmap.size(), 0);
       auto block_result = this->emit_block(*Payload.body, FuncScopeFlag::None);
       if (not block_result.ok()) return block_result;
 
@@ -1314,7 +1314,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_defer_stmt(const DeferStmtPayload &Payl
    RegisterAllocator allocator(fs);
    allocator.reserve(BCReg(1));
    this->lex_state.var_add(1);
-   VarInfo* info = &fs->var_get(fs->nactvar - 1);
+   VarInfo* info = &fs->var_get(fs->varmap.size() - 1);
    info->info |= VarInfoFlag::Defer;
 
    auto function_value = this->emit_function_expr(*Payload.callable);
@@ -1343,7 +1343,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_defer_stmt(const DeferStmtPayload &Payl
       this->lex_state.var_add(nargs);
 
       for (auto i = BCReg(0); i < nargs; ++i) {
-         VarInfo* arg_info = &fs->var_get(fs->nactvar - nargs.raw() + i.raw());
+         VarInfo* arg_info = &fs->var_get(fs->varmap.size() - nargs.raw() + i.raw());
          arg_info->info |= VarInfoFlag::DeferArg;
       }
    }
@@ -1832,7 +1832,7 @@ ParserResult<ExpDesc> IrEmitter::emit_bitwise_expr(BinOpr opr, ExpDesc lhs, cons
    // operations (e.g., 1 | 2 | 4 produces AST: (1 | 2) | 4, so LHS is the previous result).
 
    BCREG call_base;
-   if (lhs.k IS ExpKind::NonReloc and lhs.u.s.info >= fs->nactvar and lhs.u.s.info + 1 IS fs->freereg) {
+   if (lhs.k IS ExpKind::NonReloc and lhs.u.s.info >= fs->varmap.size() and lhs.u.s.info + 1 IS fs->freereg) {
       // LHS is at the top - reuse its register to avoid orphaning
       call_base = lhs.u.s.info;
    }
@@ -2328,10 +2328,10 @@ void IrEmitter::materialise_to_reg(ExpDesc& expression, BCReg slot, std::string_
 
 void IrEmitter::ensure_register_floor(std::string_view usage)
 {
-   if (this->func_state.freereg < this->func_state.nactvar) {
+   if (this->func_state.freereg < this->func_state.varmap.size()) {
       pf::Log log("Parser");
       log.warning("Register underrun during %.*s (free=%u active=%u)",
-         int(usage.size()), usage.data(), unsigned(this->func_state.freereg), unsigned(this->func_state.nactvar));
+         int(usage.size()), usage.data(), unsigned(this->func_state.freereg), unsigned(this->func_state.varmap.size()));
       this->func_state.reset_freereg();
    }
 }
@@ -2341,12 +2341,12 @@ void IrEmitter::ensure_register_floor(std::string_view usage)
 void IrEmitter::ensure_register_balance(std::string_view usage)
 {
    this->ensure_register_floor(usage);
-   if (this->func_state.freereg > this->func_state.nactvar) {
+   if (this->func_state.freereg > this->func_state.varmap.size()) {
       pf::Log log("Parser");
       int line = this->lex_state.lastline;
       log.warning("Leaked %u registers after %.*s at line %d (free=%u active=%u)",
-         unsigned(this->func_state.freereg - this->func_state.nactvar), int(usage.size()), usage.data(),
-         line + 1, unsigned(this->func_state.freereg), unsigned(this->func_state.nactvar));
+         unsigned(this->func_state.freereg - this->func_state.varmap.size()), int(usage.size()), usage.data(),
+         line + 1, unsigned(this->func_state.freereg), unsigned(this->func_state.varmap.size()));
       this->func_state.reset_freereg();
    }
 }

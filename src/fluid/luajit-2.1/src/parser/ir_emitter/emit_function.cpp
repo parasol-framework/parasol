@@ -125,13 +125,13 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
 
    child_state.numparams = uint8_t(param_count.raw());
    this->lex_state.var_add(param_count);
-   if (child_state.nactvar > 0) {
+   if (child_state.varmap.size() > 0) {
       RegisterAllocator child_allocator(&child_state);
-      child_allocator.reserve(BCReg(child_state.nactvar));
+      child_allocator.reserve(BCReg(child_state.varmap.size()));
    }
 
    IrEmitter child_emitter(child_ctx);
-   auto base = BCReg(child_state.nactvar - param_count.raw());
+   auto base = BCReg(child_state.varmap.size() - param_count.raw());
    for (auto i = BCReg(0); i < param_count; ++i) {
       const FunctionParameter &param = Payload.parameters[i.raw()];
       if (param.name.is_blank or param.name.symbol IS nullptr) continue;
@@ -352,12 +352,12 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunction
    GCstr *symbol = Payload.name.symbol ? Payload.name.symbol : NAME_BLANK;
    auto slot = BCReg(this->func_state.freereg);
    this->lex_state.var_new(0, symbol, Payload.name.span.line, Payload.name.span.column);
-   ExpDesc variable;
-   variable.init(ExpKind::Local, slot);
-   variable.u.s.aux = this->func_state.varmap[slot];
    RegisterAllocator allocator(&this->func_state);
    allocator.reserve(BCReg(1));
    this->lex_state.var_add(1);
+   ExpDesc variable;
+   variable.init(ExpKind::Local, slot);
+   variable.u.s.aux = this->func_state.varmap[slot];
 
    // Pass the function name for tostring() support
 
@@ -366,7 +366,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunction
 
    ExpDesc fn = function_value.value_ref();
    this->materialise_to_reg(fn, slot, "local function literal");
-   VarInfo &var_info = this->func_state.var_get(this->func_state.nactvar - 1);
+   VarInfo &var_info = this->func_state.var_get(this->func_state.varmap.size() - 1);
    var_info.startpc = this->func_state.pc;
    var_info.fixed_type = FluidType::Func;  // Function declarations have known type
    if (Payload.name.symbol and not Payload.name.is_blank) this->update_local_binding(Payload.name.symbol, slot);
@@ -432,12 +432,12 @@ ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload
       auto slot = BCReg(this->func_state.freereg);
       auto& first_segment = Payload.name.segments.front();
       this->lex_state.var_new(0, symbol, first_segment.span.line, first_segment.span.column);
-      ExpDesc variable;
-      variable.init(ExpKind::Local, slot);
-      variable.u.s.aux = this->func_state.varmap[slot];
       RegisterAllocator allocator(&this->func_state);
       allocator.reserve(BCReg(1));
       this->lex_state.var_add(1);
+      ExpDesc variable;
+      variable.init(ExpKind::Local, slot);
+      variable.u.s.aux = this->func_state.varmap[slot];
 
       // Pass the function name for tostring() support
       auto function_value = this->emit_function_expr(*Payload.function, funcname);
@@ -445,7 +445,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload
 
       ExpDesc fn = function_value.value_ref();
       this->materialise_to_reg(fn, slot, "function literal");
-      VarInfo &var_info = this->func_state.var_get(this->func_state.nactvar - 1);
+      VarInfo &var_info = this->func_state.var_get(this->func_state.varmap.size() - 1);
       var_info.startpc = this->func_state.pc;
       var_info.fixed_type = FluidType::Func;  // Function declarations have known type
       this->update_local_binding(symbol, slot);

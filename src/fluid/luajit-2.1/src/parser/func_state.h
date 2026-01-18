@@ -6,7 +6,7 @@
 //********************************************************************************************************************
 // FuncState tracks all parser state for a single function being compiled:
 //
-// - Register allocation (freereg, nactvar, framesize)
+// - Register allocation (freereg, varmap, framesize)
 // - Bytecode emission (pc, bcbase, bclim)
 // - Jump management (jpc, lasttarget)
 // - Scoping and upvalues (bl, uvmap)
@@ -24,27 +24,28 @@ struct FuncScope;
 struct BCInsLine;
 
 struct FuncState {
-   GCtab *kt;          // Hash table for constants.
-   LexState *ls;       // Lexer state.
-   lua_State *L;       // Lua state.
-   FuncScope *bl;      // Current scope.
-   BCPOS pc;           // Next bytecode position.
-   BCPOS lasttarget;   // Bytecode position of last jump target.
-   BCPOS jpc;          // Pending jump list to next bytecode.
-   BCREG freereg;      // First free register.
-   BCREG nactvar;      // Number of active local variables.
-   BCREG nkn, nkgc;    // Number of lua_Number/GCobj constants
-   BCLine linedefined; // First line of the function definition.
-   BCInsLine* bcbase;  // Base of bytecode stack.
-   BCPOS bclim;        // Limit of bytecode stack.
-   MSize vbase;        // Base of variable stack for this function.
-   uint8_t flags;      // Prototype flags.
-   uint8_t numparams;  // Number of parameters.
-   uint8_t framesize;  // Fixed frame size.
-   uint8_t nuv;        // Number of upvalues
-   std::array<VarIndex, LJ_MAX_LOCVAR> varmap;  // Map from register to variable idx.
-   std::array<VarIndex, LJ_MAX_UPVAL> uvmap;   // Map from upvalue to variable idx.
-   std::array<VarIndex, LJ_MAX_UPVAL> uvtmp;   // Temporary upvalue map.
+   GCtab *kt = nullptr;      // Hash table for constants.
+   LexState *ls = nullptr;   // Lexer state.
+   lua_State *L = nullptr;   // Lua state.
+   FuncScope *bl = nullptr;  // Current scope.
+   BCPOS pc = 0;             // Next bytecode position.
+   BCPOS lasttarget = 0;     // Bytecode position of last jump target.
+   BCPOS jpc = NO_JMP;       // Pending jump list to next bytecode.
+   BCREG freereg = 0;        // First free register.
+   BCREG nkn = 0, nkgc = 0;  // Number of lua_Number/GCobj constants
+   BCLine linedefined = 0;   // First line of the function definition.
+   BCInsLine *bcbase = nullptr;  // Base of bytecode stack.
+   BCPOS bclim = 0;          // Limit of bytecode stack.
+   MSize vbase = 0;          // Base of variable stack for this function.
+   uint8_t flags = 0;        // Prototype flags.
+   uint8_t numparams = 0;    // Number of parameters.
+   uint8_t framesize = 1;    // Fixed frame size (minimum is 1).
+   uint8_t nuv = 0;          // Number of upvalues
+   std::vector<VarIndex> varmap;  // Map from register to variable idx. Size equals number of active local variables.
+   std::array<VarIndex, LJ_MAX_LOCVAR> pending_varmap{};  // Staging area for var_new() before var_add().
+   BCREG pending_vars = 0;        // Number of pending variables awaiting var_add().
+   std::array<VarIndex, LJ_MAX_UPVAL> uvmap{};   // Map from upvalue to variable idx.
+   std::array<VarIndex, LJ_MAX_UPVAL> uvtmp{};   // Temporary upvalue map.
 
    // Track explicitly declared global names.  This prevents new unscoped variables from being interpreted as locals
    // and thus shadowing global variables.
@@ -68,6 +69,9 @@ struct FuncState {
    uint8_t try_depth = 0;  // Current try nesting depth for break/continue cleanup
    bool is_root = false;   // True if this is the top-level (root) function
 
+   // Default constructor - initialises all fields to safe defaults.
+   FuncState() = default;
+
    // Return strong types for bytecode positions and registers
 
    [[nodiscard]] constexpr BCPos current_pc() const noexcept { return BCPos(pc); }
@@ -76,22 +80,20 @@ struct FuncState {
    [[nodiscard]] constexpr BCPos bytecode_limit() const noexcept { return BCPos(bclim); }
 
    [[nodiscard]] constexpr BCReg free_reg() const noexcept { return BCReg(freereg); }
-   [[nodiscard]] constexpr BCReg active_var_count() const noexcept { return BCReg(nactvar); }
+   [[nodiscard]] inline BCReg active_var_count() const noexcept { return BCReg(varmap.size()); }
    [[nodiscard]] constexpr BCReg frame_size() const noexcept { return BCReg(framesize); }
 
    // Reset free register to the first register after local variables.
-   // Common pattern: fs->freereg = fs->nactvar
-   constexpr void reset_freereg() noexcept { freereg = nactvar; }
+   inline void reset_freereg() noexcept { freereg = BCREG(varmap.size()); }
 
-   // Ensure freereg is at least at nactvar level.
-   // Common pattern: if (fs->freereg < fs->nactvar) fs->freereg = fs->nactvar;
-   constexpr void ensure_freereg_at_locals() noexcept { if (freereg < nactvar) freereg = nactvar; }
+   // Ensure freereg is at least at varmap.size() level.
+   inline void ensure_freereg_at_locals() noexcept { if (freereg < varmap.size()) freereg = BCREG(varmap.size()); }
 
    // Check if a register is a temporary (above local variables).
-   [[nodiscard]] constexpr bool is_temp_register(BCReg Reg) const noexcept { return Reg.raw() >= nactvar; }
+   [[nodiscard]] inline bool is_temp_register(BCReg Reg) const noexcept { return Reg.raw() >= varmap.size(); }
 
    // Check if a register is a local variable slot.
-   [[nodiscard]] constexpr bool is_local_register(BCReg Reg) const noexcept { return Reg.raw() < nactvar; }
+   [[nodiscard]] inline bool is_local_register(BCReg Reg) const noexcept { return Reg.raw() < varmap.size(); }
 
    // Check if a register is at the top of the stack (can be freed).
    [[nodiscard]] constexpr bool is_stack_top(BCReg Reg) const noexcept { return Reg.raw() + 1 IS freereg; }
@@ -105,9 +107,10 @@ struct FuncState {
    // Clear pending jump list.
    constexpr void clear_pending_jumps() noexcept { jpc = NO_JMP; }
 
-   // --- Bytecode Access ---
+   // Bytecode Access
 
    // Get bytecode instruction at a position (bounds-checked in debug).
+
    [[nodiscard]] inline BCInsLine& bytecode_at(BCPos Pos) noexcept {
       lj_assertX(Pos.raw() < pc, "bytecode position out of range");
       return bcbase[Pos.raw()];
@@ -119,6 +122,7 @@ struct FuncState {
    }
 
    // Get the last emitted instruction (common pattern).
+
    [[nodiscard]] inline BCInsLine& last_instruction() noexcept {
       lj_assertX(pc > 0, "no instructions emitted");
       return bcbase[pc - 1];
@@ -141,8 +145,8 @@ struct FuncState {
 
    // Get a span view of active variable mappings.
 
-   [[nodiscard]] inline std::span<VarIndex> varmap_span() noexcept { return std::span<VarIndex>(varmap.data(), nactvar); }
-   [[nodiscard]] inline std::span<const VarIndex> varmap_span() const noexcept { return std::span<const VarIndex>(varmap.data(), nactvar); }
+   [[nodiscard]] inline std::span<VarIndex> varmap_span() noexcept { return std::span<VarIndex>(varmap); }
+   [[nodiscard]] inline std::span<const VarIndex> varmap_span() const noexcept { return std::span<const VarIndex>(varmap); }
 
    // Get variable info for a local variable slot.
 
@@ -151,15 +155,10 @@ struct FuncState {
    [[nodiscard]] const VarInfo& var_get(int32_t Slot) const;
 
    // Get variable info using typed register index.
-   [[nodiscard]] inline VarInfo& var_at(BCReg Reg) {
-      return var_get(int32_t(Reg.raw()));
-   }
+   [[nodiscard]] inline VarInfo& var_at(BCReg Reg) { return var_get(int32_t(Reg.raw())); }
+   [[nodiscard]] inline const VarInfo& var_at(BCReg Reg) const { return var_get(int32_t(Reg.raw())); }
 
-   [[nodiscard]] inline const VarInfo& var_at(BCReg Reg) const {
-      return var_get(int32_t(Reg.raw()));
-   }
-
-   // --- Constant Counts ---
+   // Constant Counts
 
    [[nodiscard]] constexpr BCReg num_constants() const noexcept { return BCReg(nkn); }
    [[nodiscard]] constexpr BCReg gc_constants() const noexcept { return BCReg(nkgc); }
@@ -175,14 +174,14 @@ struct FuncState {
    // The variadic format arguments are forwarded to allow printf-style messages.
 
 #ifdef LUA_USE_ASSERT
-   // Validate register allocation invariant: freereg >= nactvar
+   // Validate register allocation invariant: freereg >= varmap.size()
    inline void assert_regalloc() const {
-      lj_assertG_(G(L), freereg >= nactvar, "bad register allocation: freereg < nactvar");
+      lj_assertG_(G(L), freereg >= varmap.size(), "bad register allocation: freereg < varmap.size()");
    }
 
-   // Validate that freereg equals nactvar (common check after scope cleanup)
+   // Validate that freereg equals varmap.size() (common check after scope cleanup)
    inline void assert_freereg_at_locals() const {
-      lj_assertG_(G(L), freereg IS nactvar, "bad register state: freereg != nactvar");
+      lj_assertG_(G(L), freereg IS varmap.size(), "bad register state: freereg != varmap.size()");
    }
 #else
    constexpr void assert_regalloc() const noexcept { }

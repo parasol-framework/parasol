@@ -3,7 +3,7 @@
 
 When changing emission logic:
 
-- Never reduce `fs->freereg` below `fs->nactvar`; locals are stored there.
+- Never reduce `fs->freereg` below `fs->varmap.size()`; locals are stored there.
 - Ensure every path that creates a `VCALL` either converts it to `VNONRELOC` or signals to assignment helpers how many results the call should return.
 - The helper `expr_discharge()` is frequently used to normalise expressions before storage; inspect current usage before inventing new patterns.
 
@@ -75,7 +75,7 @@ When a function returning multiple values is used as an operand in a binary oper
 For operators implemented via library calls (like bitwise operators calling `bit.band`), the base register selection logic checks if operands are at the top of the stack:
 
 ```cpp
-if (rhs->k IS ExpKind::NonReloc and rhs->u.s.info >= fs->nactvar and rhs->u.s.info + 1 IS fs->freereg) {
+if (rhs->k IS ExpKind::NonReloc and rhs->u.s.info >= fs->varmap.size() and rhs->u.s.info + 1 IS fs->freereg) {
    base = rhs->u.s.info;  // Reuse RHS register
 }
 ```
@@ -158,7 +158,7 @@ When implementing operators that can chain across precedence boundaries (e.g., o
 **The Solution:**
 Before allocating a base register for an operation, check if the LHS operand (which may be the previous operation's result) is already at the top of the stack. The check pattern is:
 ```c
-if (lhs->k IS VNONRELOC and lhs->u.s.info >= fs->nactvar and lhs->u.s.info + 1 IS fs->freereg) {
+if (lhs->k IS VNONRELOC and lhs->u.s.info >= fs->varmap.size() and lhs->u.s.info + 1 IS fs->freereg) {
    // LHS is at the top - reuse its register to avoid orphaning
    base_reg = lhs->u.s.info;
 }
