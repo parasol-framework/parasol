@@ -161,7 +161,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_try_except_stmt(const TryExceptPayload 
       // The runtime will place the exception table in this register
 
       if (clause.exception_var.has_value() and clause.exception_var->symbol) {
-         BCREG saved_nactvar = fs->nactvar;  // Save nactvar before adding the exception variable
+         BCREG saved_nactvar = fs->varmap.size();  // Save nactvar before adding the exception variable
 
          // Reserve register space first, then create the variable var_new takes an offset from nactvar, not an
          // absolute register.
@@ -381,11 +381,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_import_stmt(const ImportStmtPayload &Pa
       this->lex_state.var_add(BCReg(1));
 
       // Mark as const
-      VarInfo* info = &fs->var_get(fs->nactvar - 1);
+      VarInfo* info = &fs->var_get(fs->varmap.size() - 1);
       info->info |= VarInfoFlag::Const;
 
       // Update binding table
-      this->update_local_binding(ns_id.symbol, BCReg(fs->nactvar - 1));
+      this->update_local_binding(ns_id.symbol, BCReg(fs->varmap.size() - 1));
       fs->reset_freereg();
    }
 

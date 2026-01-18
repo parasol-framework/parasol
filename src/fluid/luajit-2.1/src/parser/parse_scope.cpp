@@ -24,9 +24,19 @@ static int is_blank_identifier(GCstr *name)
 
 void LexState::var_new(BCREG n, GCstr* name, BCLine Line, BCLine Column)
 {
-   FuncState* fs = this->fs;
+   (void)n;  // Offset parameter retained for API compatibility but no longer used
+   pf::Log log(__FUNCTION__);
+
+   FuncState *fs = this->fs;
    MSize vtop = this->vtop;
-   checklimit(fs, fs->nactvar + n, LJ_MAX_LOCVAR, "local variables");
+
+   // The pending_vars count tracks how many var_new calls have been made before var_add.
+   // varmap.size() + pending_vars gives the total including pending variables.
+   log.branch("Name: %s, Count: %d+%d", uintptr_t(name) >= VARNAME__MAX ? CSTRING(name+1) : "_",
+              int(fs->varmap.size()), int(fs->pending_vars));
+
+   checklimit(fs, fs->varmap.size() + fs->pending_vars + 1, LJ_MAX_LOCVAR, "local variables");
+
    if (vtop >= this->sizevstack) [[unlikely]] {
       if (this->sizevstack >= LJ_MAX_VSTACK) lj_lex_error(this, 0, ErrMsg::XLIMC, LJ_MAX_VSTACK);
       lj_mem_growvec(this->L, this->vstack, this->sizevstack, LJ_MAX_VSTACK, VarInfo);
@@ -46,7 +56,9 @@ void LexState::var_new(BCREG n, GCstr* name, BCLine Line, BCLine Column)
    // NOBARRIER: name is anchored in fs->kt and ls->vstack is not a GCobj.
 
    setgcref(this->vstack[vtop].name, obj2gco(name));
-   fs->varmap[fs->nactvar + n] = uint16_t(vtop);
+
+   // Store the vstack index in the pending area. var_add() will move these to varmap.
+   fs->pending_varmap[fs->pending_vars++] = uint16_t(vtop);
 
    // Use provided line/column if given (non-zero), otherwise fall back to current token position
 
@@ -61,21 +73,38 @@ void LexState::var_new_lit(BCREG n, std::string_view value) { this->var_new(n, t
 void LexState::var_new_fixed(BCREG n, uintptr_t name) { this->var_new(n, (GCstr*)name); }
 
 //********************************************************************************************************************
-// Add local variables.
+// Add local variables. Moves nvars pending variables from pending_varmap to varmap.
+// Note: pending_vars may be greater than nvars (e.g., for-loops add 4 vars but call var_add(3) then var_add(1)).
 
 void LexState::var_add(BCREG nvars)
 {
    FuncState *fs = this->fs;
-   BCREG nactvar = fs->nactvar;
-   while (nvars--) {
-      VarInfo *v = &fs->var_get(nactvar);
+   lj_assertX(nvars <= fs->pending_vars, "var_add: not enough pending vars (need %d, have %d)", int(nvars), int(fs->pending_vars));
+
+   BCREG base = BCREG(fs->varmap.size());
+
+   // Move the first nvars pending entries to varmap
+   for (BCREG i = 0; i < nvars; ++i) {
+      fs->varmap.push_back(fs->pending_varmap[i]);
+   }
+
+   // Shift remaining pending entries down
+   BCREG remaining = fs->pending_vars - nvars;
+   for (BCREG i = 0; i < remaining; ++i) {
+      fs->pending_varmap[i] = fs->pending_varmap[nvars + i];
+   }
+   fs->pending_vars = remaining;
+
+   // Initialize the VarInfo entries
+   for (BCREG i = 0; i < nvars; ++i) {
+      BCREG slot = base + i;
+      VarInfo *v = &fs->var_get(slot);
       v->startpc = fs->pc;
-      v->slot = nactvar++;
+      v->slot = slot;
       v->info = VarInfoFlag::None;
       v->fixed_type = FluidType::Unknown;  // Initialize to Unknown (no type constraint)
       v->result_types.fill(FluidType::Unknown);  // No return type info for non-functions
    }
-   fs->nactvar = nactvar;
 }
 
 //********************************************************************************************************************
@@ -84,7 +113,10 @@ void LexState::var_add(BCREG nvars)
 void LexState::var_remove(BCREG tolevel)
 {
    FuncState* fs = this->fs;
-   while (fs->nactvar > tolevel) fs->var_get(--fs->nactvar).endpc = fs->pc;
+   while (fs->varmap.size() > tolevel) {
+      fs->var_get(int32_t(fs->varmap.size()) - 1).endpc = fs->pc;
+      fs->varmap.pop_back();
+   }
 }
 
 //********************************************************************************************************************
@@ -92,7 +124,7 @@ void LexState::var_remove(BCREG tolevel)
 
 static std::optional<BCREG> var_lookup_local(FuncState *fs, GCstr *n)
 {
-   for (int i : std::views::iota(0, int(fs->nactvar)) | std::views::reverse) {
+   for (int i : std::views::iota(0, int(fs->varmap.size())) | std::views::reverse) {
       GCstr *varname = strref(fs->var_get(i).name);
       if (varname IS NAME_BLANK) [[unlikely]]
          continue;  // Skip blank identifiers.
@@ -208,7 +240,7 @@ MSize LexState::gola_new(int jump_type, VarInfoFlag info, BCPOS pc)
    // NOBARRIER: name is anchored in fs->kt and ls->vstack is not a GCobj.
    setgcrefp(this->vstack[vtop].name, obj2gco(name));
    this->vstack[vtop].startpc = pc;
-   this->vstack[vtop].slot = uint8_t(fs->nactvar);
+   this->vstack[vtop].slot = uint8_t(fs->varmap.size());
    this->vstack[vtop].info = info;
    this->vtop = vtop + 1;
    return vtop;
@@ -317,7 +349,7 @@ void LexState::gola_fixup(FuncScope* bl)
 
 static void fscope_begin(FuncState *fs, FuncScope *bl, FuncScopeFlag flags)
 {
-   bl->nactvar = uint8_t(fs->nactvar);
+   bl->nactvar = uint8_t(fs->varmap.size());
    bl->flags = flags;
    bl->vstart = fs->ls->vtop;
    bl->prev = fs->bl;
@@ -329,7 +361,7 @@ static void fscope_begin(FuncState *fs, FuncScope *bl, FuncScopeFlag flags)
 
 static void execute_defers(FuncState *fs, BCREG limit)
 {
-   BCREG i = fs->nactvar;
+   BCREG i = fs->varmap.size();
    BCREG oldfreereg;
    BCREG argc = 0;
    BCREG argslots[LJ_MAX_SLOTS];
@@ -476,7 +508,7 @@ static void bcemit_close(FuncState *fs, BCREG slot)
 
 static void execute_closes(FuncState* fs, BCREG limit)
 {
-   BCREG i = fs->nactvar;
+   BCREG i = fs->varmap.size();
    BCREG oldfreereg;
 
    fs->ensure_freereg_at_locals();
@@ -864,7 +896,7 @@ static std::string build_scope_name(LexState* ls, FuncState* FState)
    // Collect names from top-level (index 0) to current function
    std::vector<std::string_view> names;
    for (size_t i = 0; i <= fs_idx; ++i) {
-      FuncState& current = stack[i];
+      FuncState &current = stack[i];
       if (current.funcname) {
          names.push_back(std::string_view(strdata(current.funcname), current.funcname->len));
       }
@@ -873,7 +905,7 @@ static std::string build_scope_name(LexState* ls, FuncState* FState)
    if (names.empty()) return "";
 
    std::string result;
-   for (const auto& name : names) {
+   for (const auto &name : names) {
       if (not result.empty()) result += '.';
       result += name;
    }
@@ -889,10 +921,11 @@ GCproto * LexState::fs_finish(BCLine Line)
    FuncState *fs = this->fs;
 
    // Find the min/max raw line numbers in the bytecode.
-   // Note: bcbase[].line values may be encoded with file index in upper 8 bits,
-   // so we decode them to get raw line numbers for computing numline.
-   // We also need to find the minimum line to handle cases where AST-constructed
-   // functions (like thunks) contain expressions from earlier source lines.
+   // Note: bcbase[].line values may be encoded with file index in upper 8 bits, so we decode them to get raw line
+   // numbers for computing numline.
+   // We also need to find the minimum line to handle cases where AST-constructed functions (like thunks) contain
+   // expressions from earlier source lines.
+
    BCLine line = Line;
    BCLine min_line = fs->linedefined;
    if (fs->bcbase != nullptr and fs->pc > 0) {
@@ -1059,38 +1092,29 @@ GCproto * LexState::fs_finish(BCLine Line)
 }
 
 //********************************************************************************************************************
+// Initialize runtime-dependent fields of FuncState.
+
+void FuncState::init(LexState* LexState, lua_State* LuaState, MSize Vbase, bool IsRoot)
+{
+   this->ls = LexState;
+   this->L = LuaState;
+   this->vbase = Vbase;
+   this->is_root = IsRoot;
+   this->kt = lj_tab_new(LuaState, 0, 0);
+
+   // Anchor table of constants in stack to avoid being collected.
+   settabV(LuaState, LuaState->top, this->kt);
+   incr_top(LuaState);
+}
+
+//********************************************************************************************************************
 // Initialize a new FuncState. Creates a new FuncState in the func_stack container and returns a reference to it.
 
-FuncState& LexState::fs_init()
+FuncState & LexState::fs_init()
 {
-   lua_State *L = this->L;
-
-   // Create new FuncState in container
    func_stack.emplace_back();
-   FuncState& fs = func_stack.back();
-
-   this->fs = &fs;  // Point to new FuncState
-   fs.ls    = this;
-   fs.vbase = this->vtop;
-   fs.L     = L;
-   fs.pc    = 0;
-   fs.lasttarget = 0;
-   fs.clear_pending_jumps();
-   fs.freereg   = 0;
-   fs.nkgc      = 0;
-   fs.nkn       = 0;
-   fs.nactvar   = 0;
-   fs.numparams = 0;  // Initialize parameter count to zero.
-   fs.nuv       = 0;
-   fs.bl        = nullptr;
-   fs.flags     = 0;
-   fs.is_root   = (func_stack.size() IS 1);  // True for top-level function.
-   fs.framesize = 1;  // Minimum frame size.
-   fs.return_types.fill(FluidType::Unknown);  // Initialize return types
-   fs.kt = lj_tab_new(L, 0, 0);
-   // Anchor table of constants in stack to avoid being collected.
-   settabV(L, L->top, fs.kt);
-   incr_top(L);
-
+   FuncState &fs = func_stack.back();
+   fs.init(this, this->L, this->vtop, func_stack.size() IS 1);
+   this->fs = &fs;
    return fs;
 }

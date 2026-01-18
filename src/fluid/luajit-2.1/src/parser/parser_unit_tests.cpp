@@ -124,8 +124,7 @@ static AstHarnessResult build_ast_from_source(std::string_view source)
    ctx.size = source.size();
 
    LexState lex(L, unit_reader, &ctx, "parser-unit", std::nullopt);
-   FuncState fs;
-   lex.fs_init(&fs);
+   FuncState& fs = lex.fs_init();
 
    ParserAllocator allocator = ParserAllocator::from(L);
    ParserContext context = ParserContext::from(lex, fs, allocator);
@@ -147,7 +146,7 @@ struct ExpressionParseHarness {
    std::unique_ptr<LuaStateHolder> holder;
    std::unique_ptr<StringReaderCtx> reader;
    std::unique_ptr<LexState> lex;
-   std::unique_ptr<FuncState> func_state;
+   FuncState* func_state = nullptr;  // Managed by LexState's func_stack
    std::unique_ptr<ParserContext> context;
    std::unique_ptr<ParserSession> session;
 };
@@ -168,8 +167,7 @@ static std::optional<ExpressionParseHarness> make_expression_harness(std::string
    harness.reader->size = source.size();
 
    harness.lex = std::make_unique<LexState>(L, unit_reader, harness.reader.get(), "expr-entry", std::nullopt);
-   harness.func_state = std::make_unique<FuncState>();
-   harness.lex->fs_init(harness.func_state.get());
+   harness.func_state = &harness.lex->fs_init();
 
    ParserAllocator allocator = ParserAllocator::from(L);
    ParserContext context = ParserContext::from(*harness.lex, *harness.func_state, allocator);
