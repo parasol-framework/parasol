@@ -1,6 +1,6 @@
 # Close And Free Import Scope Plan
 
-Status: Implemented steps 1-4; tests pending
+Status: Implemented with register floor retention; tests pending
 
 ## Goal
 Replace the current KeepRegs/NAME_BLANK approach with a "close and free" strategy so import-scope locals are
@@ -9,8 +9,9 @@ properly closed (heap-upvalued) at scope exit and then removed, allowing registe
 ## Proposed Design
 - Treat import scopes as explicit close boundaries.
 - Emit `BC_UCLO` unconditionally for the import-scope register range at scope end.
-- Then call `var_remove()` and reset `freereg` normally (no register pinning).
-- Remove `freereg_floor` and the `NAME_BLANK` masking loop.
+- Then call `var_remove()` and reset `freereg`.
+- Retain a register floor for import scopes to keep captured locals stable until function end.
+- Remove the `NAME_BLANK` masking loop.
 
 ## Steps
 1. Introduce a dedicated scope flag (e.g. `FuncScopeFlag::ForceClose` or `ImportScope`) to mark import scopes. (done)
@@ -18,7 +19,7 @@ properly closed (heap-upvalued) at scope exit and then removed, allowing registe
 3. Update `fscope_end()` to:
    - Always emit `BC_UCLO` for the import scope range.
    - Proceed with `var_remove()` and `reset_freereg()` as normal. (done)
-4. Remove `freereg_floor` from `FuncState` and delete related logic in:
+4. Retain `freereg_floor` for import scopes to keep slots reserved and update related logic in:
    - `reset_freereg()`, `assert_freereg_at_locals()`
    - `IrEmitter::ensure_register_balance()` (done)
    - any other register floor references. (done)

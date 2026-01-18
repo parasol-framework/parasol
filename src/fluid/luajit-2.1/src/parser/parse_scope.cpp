@@ -490,7 +490,11 @@ static void fscope_end(FuncState* fs)
    execute_closes(fs, bl->nactvar);
    execute_defers(fs, bl->nactvar);
    bool import_scope = has_flag(bl->flags, FuncScopeFlag::ImportScope);
+   BCREG import_floor = fs->freereg;
    ls->var_remove(bl->nactvar);
+   if (import_scope and import_floor > fs->freereg_floor) {
+      fs->freereg_floor = import_floor;
+   }
 
    fs->reset_freereg();
    fs->assert_freereg_at_locals();

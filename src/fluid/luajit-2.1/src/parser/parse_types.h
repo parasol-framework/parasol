@@ -64,7 +64,7 @@ enum class FuncScopeFlag : uint8_t {
    Upvalue = 0x08u,
    NoClose = 0x10u,
    Continue = 0x20u,
-   ImportScope = 0x40u   // Import scope: always close and free locals when the scope ends
+   ImportScope = 0x40u   // Import scope: close upvalues and keep slots reserved after scope end
 };
 
 enum class VarInfoFlag : uint8_t {
@@ -393,6 +393,10 @@ struct FuncState {
    std::vector<TryHandlerDesc> try_handlers;  // Handler descriptors
    uint8_t try_depth = 0;  // Current try nesting depth for break/continue cleanup
 
+   // Register floor for import scopes: prevents reuse of slots that may still be referenced by closures
+   // created later via imported function factories.
+   BCREG freereg_floor = BCREG(0);
+
    // Return strong types for bytecode positions and registers
 
    [[nodiscard]] constexpr BCPos current_pc() const noexcept { return BCPos(pc); }
@@ -405,8 +409,10 @@ struct FuncState {
    [[nodiscard]] constexpr BCReg frame_size() const noexcept { return BCReg(framesize); }
 
    // Reset free register to the first register after local variables.
-   // Common pattern: fs->freereg = fs->nactvar
-   constexpr void reset_freereg() noexcept { freereg = nactvar; }
+   // Respects freereg_floor to keep import-scope slots reserved.
+   constexpr void reset_freereg() noexcept {
+      freereg = (nactvar > freereg_floor) ? nactvar : freereg_floor;
+   }
 
    // Ensure freereg is at least at nactvar level.
    // Common pattern: if (fs->freereg < fs->nactvar) fs->freereg = fs->nactvar;
@@ -511,9 +517,10 @@ struct FuncState {
       lj_assertG_(G(L), freereg >= nactvar, "bad register allocation: freereg < nactvar");
    }
 
-   // Validate that freereg equals nactvar (common check after scope cleanup)
+   // Validate that freereg is at expected level after scope cleanup (respecting floor)
    inline void assert_freereg_at_locals() const {
-      lj_assertG_(G(L), freereg IS nactvar, "bad register state: freereg != nactvar");
+      BCREG expected = (nactvar > freereg_floor) ? nactvar : freereg_floor;
+      lj_assertG_(G(L), freereg IS expected, "bad register state: freereg != expected");
    }
 #else
    constexpr void assert_regalloc() const noexcept { }
