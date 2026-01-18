@@ -59,8 +59,12 @@ struct FuncState {
    GCstr* funcname = nullptr;
 
    // Return types for runtime type checking.  Set during function emission if explicit return types are declared.
-   // FluidType::Unknown (default) means no type constraint is applied for that position.
-   std::array<FluidType, MAX_RETURN_TYPES> return_types{};
+   // FluidType::Unknown means no type constraint is applied for that position.
+   std::array<FluidType, MAX_RETURN_TYPES> return_types = []() constexpr {
+      std::array<FluidType, MAX_RETURN_TYPES> arr{};
+      for (auto& t : arr) t = FluidType::Unknown;
+      return arr;
+   }();
 
    // Try-except metadata for bytecode-level exception handling.
    // These are populated during emit_try_except_stmt and copied to GCproto during fs_finish.
@@ -71,6 +75,9 @@ struct FuncState {
 
    // Default constructor - initialises all fields to safe defaults.
    FuncState() = default;
+
+   // Initialize runtime-dependent fields. Called after construction when the owning LexState context is available.
+   void init(LexState* LexState, lua_State* LuaState, MSize Vbase, bool IsRoot);
 
    // Return strong types for bytecode positions and registers
 

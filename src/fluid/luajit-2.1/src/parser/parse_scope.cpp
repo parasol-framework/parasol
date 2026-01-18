@@ -1092,27 +1092,29 @@ GCproto * LexState::fs_finish(BCLine Line)
 }
 
 //********************************************************************************************************************
+// Initialize runtime-dependent fields of FuncState.
+
+void FuncState::init(LexState* LexState, lua_State* LuaState, MSize Vbase, bool IsRoot)
+{
+   this->ls = LexState;
+   this->L = LuaState;
+   this->vbase = Vbase;
+   this->is_root = IsRoot;
+   this->kt = lj_tab_new(LuaState, 0, 0);
+
+   // Anchor table of constants in stack to avoid being collected.
+   settabV(LuaState, LuaState->top, this->kt);
+   incr_top(LuaState);
+}
+
+//********************************************************************************************************************
 // Initialize a new FuncState. Creates a new FuncState in the func_stack container and returns a reference to it.
 
 FuncState & LexState::fs_init()
 {
-   lua_State *L = this->L;
-
-   // Create new FuncState in container (default constructor handles most initialisation)
    func_stack.emplace_back();
-   FuncState& fs = func_stack.back();
-
-   // Set runtime-dependent values
+   FuncState &fs = func_stack.back();
+   fs.init(this, this->L, this->vtop, func_stack.size() IS 1);
    this->fs = &fs;
-   fs.ls = this;
-   fs.L = L;
-   fs.vbase = this->vtop;
-   fs.is_root = (func_stack.size() IS 1);
-   fs.kt = lj_tab_new(L, 0, 0);
-
-   // Anchor table of constants in stack to avoid being collected.
-   settabV(L, L->top, fs.kt);
-   incr_top(L);
-
    return fs;
 }

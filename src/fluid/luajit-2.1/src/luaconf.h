@@ -15,6 +15,34 @@
 
 #define IS ==
 
+// IntelliSense support for unity build files (parser/*.cpp).
+// Requires .vscode/c_cpp_properties.json with forcedInclude set to this file.
+#ifdef __INTELLISENSE__
+#define LUA_CORE
+#include "runtime/lj_obj.h"
+#include "runtime/lj_gc.h"
+#include "runtime/lj_err.h"
+#include "runtime/lj_debug.h"
+#include "runtime/filesource.h"
+#include "runtime/lj_buf.h"
+#include "runtime/lj_str.h"
+#include "runtime/lj_tab.h"
+#include "runtime/lj_func.h"
+#include "runtime/lj_state.h"
+#include "runtime/lj_bc.h"
+#include "runtime/lj_strfmt.h"
+#include "parser/lexer.h"
+#include "parser/parser.h"
+#include "runtime/lj_vm.h"
+#include "runtime/lj_vmevent.h"
+#include "parser/dump_bytecode.h"
+#include "parser/token_types.h"
+#include "parser/parse_types.h"
+#include "parser/parse_internal.h"
+#include "parser/parser_profiler.h"
+#include "parser/value_categories.h"
+#endif
+
 // Default path for loading Lua and C modules with require().
 #if defined(_WIN32)
 /*
