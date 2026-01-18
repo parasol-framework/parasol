@@ -81,17 +81,17 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
    }
 
    // Regular function emission
-   FuncState child_state;
+   FuncState *parent_state = &this->func_state;
+   ptrdiff_t oldbase = parent_state->bcbase - this->lex_state.bcstack;
+
+   // Create FuncState in container first
+   FuncState &child_state = this->lex_state.fs_init();
+   FuncStateGuard fs_guard(&this->lex_state);  // Restore ls->fs on error
+
    ParserAllocator allocator = ParserAllocator::from(this->lex_state.L);
    ParserConfig inherited = this->ctx.config();
    ParserContext child_ctx = ParserContext::from(this->lex_state, child_state, allocator, inherited);
    ParserSession session(child_ctx, inherited);
-
-   FuncState *parent_state = &this->func_state;
-   ptrdiff_t oldbase = parent_state->bcbase - this->lex_state.bcstack;
-
-   this->lex_state.fs_init(&child_state);
-   FuncStateGuard fs_guard(&this->lex_state, &child_state);  // Restore ls->fs on error
 
    // Inherit declared globals from parent so nested functions recognize them
    child_state.declared_globals = parent_state->declared_globals;
@@ -100,11 +100,13 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
    // Note: SourceSpan.line represents the END line of a span (due to combine_spans behavior),
    // so we need to find the first statement's line to get the actual start line.
    // For functions with bodies, the first statement's span gives us the earliest bytecode line.
+
    BCLine body_first_line = this->lex_state.lastline;
    if (Payload.body and not Payload.body->statements.empty()) {
       const StmtNodePtr& first_stmt = Payload.body->statements.front();
       if (first_stmt) body_first_line = first_stmt->span.line;
    }
+
    child_state.linedefined = std::min(this->lex_state.lastline, body_first_line);
    child_state.bcbase = parent_state->bcbase + parent_state->pc;
    child_state.bclim = parent_state->bclim - parent_state->pc;

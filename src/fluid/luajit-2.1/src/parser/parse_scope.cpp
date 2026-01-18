@@ -65,10 +65,10 @@ void LexState::var_new_fixed(BCREG n, uintptr_t name) { this->var_new(n, (GCstr*
 
 void LexState::var_add(BCREG nvars)
 {
-   FuncState* fs = this->fs;
+   FuncState *fs = this->fs;
    BCREG nactvar = fs->nactvar;
    while (nvars--) {
-      VarInfo* v = &fs->var_get(nactvar);
+      VarInfo *v = &fs->var_get(nactvar);
       v->startpc = fs->pc;
       v->slot = nactvar++;
       v->info = VarInfoFlag::None;
@@ -128,42 +128,57 @@ static MSize var_lookup_uv(FuncState *fs, MSize vidx, ExpDesc* e)
 }
 
 //********************************************************************************************************************
-// Recursively lookup variables in enclosing functions.
+// Lookup variables in the function stack, iterating from the current function to the top-level.
 
-static MSize var_lookup_(FuncState* fs, GCstr* name, ExpDesc* e, int first)
+static MSize var_lookup_(LexState* ls, GCstr* name, ExpDesc* e)
 {
-   if (fs) {
-      auto reg = var_lookup_local(fs, name);
-      if (reg.has_value()) {  // Local in this function?
-         e->init(ExpKind::Local, reg.value());
-         if (!first) fscope_uvmark(fs, reg.value());  // Scope now has an upvalue.
-         auto vidx = MSize(e->u.s.aux = uint32_t(fs->varmap[reg.value()]));
-         // Propagate type info from VarInfo to ExpDesc for type checking on re-assignment
-         VarInfo &vinfo = fs->ls->vstack[vidx];
-         e->result_type = vinfo.fixed_type;
-         e->object_class_id = vinfo.object_class_id;
-         return vidx;
-      }
-      else {
-         MSize vidx = var_lookup_(fs->prev, name, e, 0);  // Var in outer func?
-         if (int32_t(vidx) >= 0) {  // Yes, make it an upvalue here.
-            e->u.s.info = uint8_t(var_lookup_uv(fs, vidx, e));
-            e->k = ExpKind::Upval;
-            return vidx;
-         }
-      }
-   }
-   else {  // Not found in any function - scope is undetermined.
+   auto &stack = ls->func_stack;
+   if (stack.empty()) {
       e->init(ExpKind::Unscoped, 0);
       e->u.sval = name;
+      return MSize(-1);
    }
-   return MSize(-1);  // Unscoped (will be resolved to local or global by context).
+
+   // Search from current function (back of stack) to top-level (front of stack)
+   size_t current_idx = stack.size() - 1;
+
+   for (size_t i = current_idx + 1; i > 0; --i) {
+      size_t idx = i - 1;
+      FuncState& search_fs = stack[idx];
+      auto reg = var_lookup_local(&search_fs, name);
+
+      if (reg.has_value()) {
+         e->init(ExpKind::Local, reg.value());
+         bool is_current = (idx IS current_idx);
+         if (not is_current) fscope_uvmark(&search_fs, reg.value());  // Scope now has an upvalue.
+         auto vidx = MSize(e->u.s.aux = uint32_t(search_fs.varmap[reg.value()]));
+
+         // Propagate type info from VarInfo to ExpDesc for type checking on re-assignment
+         VarInfo& vinfo = ls->vstack[vidx];
+         e->result_type = vinfo.fixed_type;
+         e->object_class_id = vinfo.object_class_id;
+
+         // If found in outer function, create upvalues in all intervening functions
+         if (not is_current) {
+            for (size_t j = idx + 1; j <= current_idx; ++j) {
+               e->u.s.info = uint8_t(var_lookup_uv(&stack[j], vidx, e));
+               e->k = ExpKind::Upval;
+            }
+         }
+         return vidx;
+      }
+   }
+
+   // Not found in any function - scope is undetermined
+   e->init(ExpKind::Unscoped, 0);
+   e->u.sval = name;
+   return MSize(-1);
 }
 
 // Lookup variable name.
 MSize LexState::var_lookup(ExpDesc* e)
 {
-   return var_lookup_(this->fs, this->lex_str(), e, 1);
+   return var_lookup_(this, this->lex_str(), e);
 }
 
 MSize LexState::var_lookup_symbol(GCstr* name, ExpDesc* e)
@@ -173,7 +188,7 @@ MSize LexState::var_lookup_symbol(GCstr* name, ExpDesc* e)
       e->u.sval = name ? name : NAME_BLANK;
       return MSize(-1);
    }
-   return var_lookup_(this->fs, name, e, 1);
+   return var_lookup_(this, name, e);
 }
 
 //********************************************************************************************************************
@@ -264,18 +279,17 @@ void LexState::gola_resolve(FuncScope* bl, MSize idx)
 
 void LexState::gola_fixup(FuncScope* bl)
 {
-   VarInfo* v = this->vstack + bl->vstart;
-   VarInfo* ve = this->vstack + this->vtop;
+   VarInfo *v = this->vstack + bl->vstart;
+   VarInfo *ve = this->vstack + this->vtop;
    for (; v < ve; v++) {
-      GCstr* name = strref(v->name);
+      GCstr *name = strref(v->name);
       if (name != nullptr) {  // Only consider remaining valid gotos/targets.
          if (gola_is_jump_target(v)) {
-            VarInfo* vg;
+            VarInfo *vg;
             setgcrefnull(v->name);  // Invalidate target that goes out of scope.
             for (vg = v + 1; vg < ve; vg++)  // Resolve pending backward gotos.
                if (strref(vg->name) IS name and gola_is_jump(vg)) {
-                  if (has_flag(bl->flags, FuncScopeFlag::Upvalue) and vg->slot > v->slot)
-                     this->gola_close(vg);
+                  if (has_flag(bl->flags, FuncScopeFlag::Upvalue) and vg->slot > v->slot) this->gola_close(vg);
                   this->gola_patch(vg, v);
                }
          }
@@ -301,7 +315,7 @@ void LexState::gola_fixup(FuncScope* bl)
 
 // Begin a scope.
 
-static void fscope_begin(FuncState* fs, FuncScope* bl, FuncScopeFlag flags)
+static void fscope_begin(FuncState *fs, FuncScope *bl, FuncScopeFlag flags)
 {
    bl->nactvar = uint8_t(fs->nactvar);
    bl->flags = flags;
@@ -313,7 +327,7 @@ static void fscope_begin(FuncState* fs, FuncScope* bl, FuncScopeFlag flags)
 
 //********************************************************************************************************************
 
-static void execute_defers(FuncState* fs, BCREG limit)
+static void execute_defers(FuncState *fs, BCREG limit)
 {
    BCREG i = fs->nactvar;
    BCREG oldfreereg;
@@ -364,7 +378,7 @@ static void execute_defers(FuncState* fs, BCREG limit)
 //
 // All skip jumps are patched to the end of the sequence. Errors in __close are not currently protected
 
-static void bcemit_close(FuncState* fs, BCREG slot)
+static void bcemit_close(FuncState *fs, BCREG slot)
 {
    RegisterAllocator allocator(fs);
    LexState* ls = fs->ls;
@@ -603,7 +617,7 @@ static void fs_fixup_k(FuncState* fs, GCproto* pt, void* kptr)
 //********************************************************************************************************************
 // Fixup upvalues for prototype, step #1.
 
-static void fs_fixup_uv1(FuncState* fs, GCproto* pt, uint16_t* uv)
+static void fs_fixup_uv1(FuncState *fs, GCproto *pt, uint16_t *uv)
 {
    setmref(pt->uv, uv);
    pt->sizeuv = fs->nuv;
@@ -616,7 +630,7 @@ static void fs_fixup_uv1(FuncState* fs, GCproto* pt, uint16_t* uv)
 
 // Prepare lineinfo for prototype.
 
-static size_t fs_prep_line(FuncState* fs, BCLine numline)
+static size_t fs_prep_line(FuncState *fs, BCLine numline)
 {
    return (fs->pc - 1) << (numline < 256 ? 0 : numline < 65536 ? 1 : 2);
 }
@@ -831,23 +845,37 @@ static void fs_fixup_ret(FuncState *fs)
 }
 
 //********************************************************************************************************************
-// Build a qualified scope name from the function state chain (e.g., "outer.inner" for nested functions).
+// Build a qualified scope name from the function stack (e.g., "outer.inner" for nested functions).
 
-static std::string build_scope_name(FuncState *FState)
+static std::string build_scope_name(LexState* ls, FuncState* FState)
 {
+   auto &stack = ls->func_stack;
+
+   // Find index of FState in func_stack
+   size_t fs_idx = SIZE_MAX;
+   for (size_t i = 0; i < stack.size(); ++i) {
+      if (&stack[i] IS FState) {
+         fs_idx = i;
+         break;
+      }
+   }
+   if (fs_idx IS SIZE_MAX) return "";
+
+   // Collect names from top-level (index 0) to current function
    std::vector<std::string_view> names;
-   for (auto current = FState; current; current = current->prev) {
-      if (current->funcname) {
-         names.push_back(std::string_view(strdata(current->funcname), current->funcname->len));
+   for (size_t i = 0; i <= fs_idx; ++i) {
+      FuncState& current = stack[i];
+      if (current.funcname) {
+         names.push_back(std::string_view(strdata(current.funcname), current.funcname->len));
       }
    }
 
    if (names.empty()) return "";
 
    std::string result;
-   for (auto it = names.rbegin(); it != names.rend(); ++it) {
+   for (const auto& name : names) {
       if (not result.empty()) result += '.';
-      result += *it;
+      result += name;
    }
    return result;
 }
@@ -895,7 +923,7 @@ GCproto * LexState::fs_finish(BCLine Line)
 
    auto prv = (prvFluid *)this->L->script->ChildPrivate;
    if (((prv->JitOptions & JOF::DIAGNOSE) != JOF::NIL)) {
-      std::string scope = build_scope_name(fs);
+      std::string scope = build_scope_name(this, fs);
 
       // Capture local variables.
       for (MSize i = fs->vbase; i < this->vtop; i++) {
@@ -917,7 +945,7 @@ GCproto * LexState::fs_finish(BCLine Line)
       }
 
       // Capture explicitly declared globals (only for main chunk, not nested functions).
-      if (not fs->prev) {
+      if (func_stack.size() IS 1) {
          for (GCstr *name : fs->declared_globals) {
             VariableInfo info;
             info.line = 0;  // Line info not available for globals declared elsewhere
@@ -1022,38 +1050,47 @@ GCproto * LexState::fs_finish(BCLine Line)
 
    L->top--;  // Pop table of constants.
    this->vtop = fs->vbase;  // Reset variable stack.
-   this->fs = fs->prev;
+
+   func_stack.pop_back();
+   this->fs = func_stack.empty() ? nullptr : &func_stack.back();
+
    lj_assertL(this->fs != nullptr or this->tok IS TK_eof, "bad parser state");
    return pt;
 }
 
 //********************************************************************************************************************
-// Initialize a new FuncState.
+// Initialize a new FuncState. Creates a new FuncState in the func_stack container and returns a reference to it.
 
-void LexState::fs_init(FuncState *FunctionState)
+FuncState& LexState::fs_init()
 {
-   FuncState *fs = FunctionState;
    lua_State *L = this->L;
-   fs->prev  = this->fs;
-   this->fs = fs;  // Append to list.
-   fs->ls    = this;
-   fs->vbase = this->vtop;
-   fs->L     = L;
-   fs->pc    = 0;
-   fs->lasttarget = 0;
-   fs->clear_pending_jumps();
-   fs->freereg   = 0;
-   fs->nkgc      = 0;
-   fs->nkn       = 0;
-   fs->nactvar   = 0;
-   fs->numparams = 0;  // Initialize parameter count to zero.
-   fs->nuv       = 0;
-   fs->bl        = nullptr;
-   fs->flags     = 0;
-   fs->framesize = 1;  // Minimum frame size.
-   fs->return_types.fill(FluidType::Unknown);  // Initialize return types
-   fs->kt = lj_tab_new(L, 0, 0);
+
+   // Create new FuncState in container
+   func_stack.emplace_back();
+   FuncState& fs = func_stack.back();
+
+   this->fs = &fs;  // Point to new FuncState
+   fs.ls    = this;
+   fs.vbase = this->vtop;
+   fs.L     = L;
+   fs.pc    = 0;
+   fs.lasttarget = 0;
+   fs.clear_pending_jumps();
+   fs.freereg   = 0;
+   fs.nkgc      = 0;
+   fs.nkn       = 0;
+   fs.nactvar   = 0;
+   fs.numparams = 0;  // Initialize parameter count to zero.
+   fs.nuv       = 0;
+   fs.bl        = nullptr;
+   fs.flags     = 0;
+   fs.is_root   = (func_stack.size() IS 1);  // True for top-level function.
+   fs.framesize = 1;  // Minimum frame size.
+   fs.return_types.fill(FluidType::Unknown);  // Initialize return types
+   fs.kt = lj_tab_new(L, 0, 0);
    // Anchor table of constants in stack to avoid being collected.
-   settabV(L, L->top, fs->kt);
+   settabV(L, L->top, fs.kt);
    incr_top(L);
+
+   return fs;
 }

@@ -164,29 +164,34 @@ public:
 //
 // Saves and restores ls->fs and ls->vtop when parsing child functions.
 // This ensures proper cleanup even when parsing fails with an error,
-// preventing dangling pointers to destroyed FuncState objects.
+// by popping any extra FuncState objects from the func_stack container.
 //
 // Usage:
-//    FuncState child_state;
-//    lex_state.fs_init(&child_state);
-//    FuncStateGuard fs_guard(&lex_state, &child_state);
+//    FuncState& child_state = lex_state.fs_init();
+//    FuncStateGuard fs_guard(&lex_state);
 //    // ... parse function body ...
 //    // On success: call fs_guard.disarm() before fs_finish()
-//    // On error: automatic cleanup restores ls->fs and ls->vtop
+//    // On error: automatic cleanup pops func_stack and restores ls->fs and ls->vtop
 
 class FuncStateGuard {
-   LexState* ls_;
-   FuncState* saved_fs_;
+   LexState *ls_;
+   size_t saved_stack_size_;
    MSize saved_vtop_;
 
 public:
-   explicit FuncStateGuard(LexState* ls, FuncState* child_fs)
-      : ls_(ls), saved_fs_(child_fs->prev), saved_vtop_(child_fs->vbase) {}
+   explicit FuncStateGuard(LexState *ls)
+      : ls_(ls)
+      , saved_stack_size_(ls->func_stack.size() - 1)
+      , saved_vtop_(ls->func_stack.back().vbase) {}
 
    ~FuncStateGuard() {
       if (ls_) {
+         // Pop any extra FuncState objects that were added
+         while (ls_->func_stack.size() > saved_stack_size_) {
+            ls_->func_stack.pop_back();
+         }
          ls_->vtop = saved_vtop_;
-         ls_->fs = saved_fs_;
+         ls_->fs = ls_->func_stack.empty() ? nullptr : &ls_->func_stack.back();
       }
    }
 
@@ -200,18 +205,21 @@ public:
 
    // Allow moving
    FuncStateGuard(FuncStateGuard &&other) noexcept
-      : ls_(other.ls_), saved_fs_(other.saved_fs_), saved_vtop_(other.saved_vtop_) {
+      : ls_(other.ls_), saved_stack_size_(other.saved_stack_size_), saved_vtop_(other.saved_vtop_) {
       other.ls_ = nullptr;
    }
 
    FuncStateGuard & operator=(FuncStateGuard &&other) noexcept {
       if (this != &other) {
          if (ls_) {
+            while (ls_->func_stack.size() > saved_stack_size_) {
+               ls_->func_stack.pop_back();
+            }
             ls_->vtop = saved_vtop_;
-            ls_->fs = saved_fs_;
+            ls_->fs = ls_->func_stack.empty() ? nullptr : &ls_->func_stack.back();
          }
          ls_ = other.ls_;
-         saved_fs_ = other.saved_fs_;
+         saved_stack_size_ = other.saved_stack_size_;
          saved_vtop_ = other.saved_vtop_;
          other.ls_ = nullptr;
       }

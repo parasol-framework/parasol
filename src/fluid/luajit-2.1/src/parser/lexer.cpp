@@ -19,6 +19,8 @@
 #include "lj_state.h"
 #include "lj_err.h"
 #include "lexer.h"
+#include "../bytecode/lj_bc.h"
+#include "parse_types.h"
 #include "parser.h"
 #include "parser_context.h"
 #include "parser_diagnostics.h"
@@ -1258,6 +1260,7 @@ static uint8_t compute_tip_level(JOF Options)
 
 LexState::LexState(lua_State* L, std::string_view Source, std::string_view Chunkarg, std::optional<std::string_view> Mode)
    : fs(nullptr)
+   , func_stack(std::deque<FuncState>())
    , L(L)
    , source(Source)
    , pos(0)
@@ -1347,6 +1350,7 @@ LexState::LexState(lua_State* L, std::string_view Source, std::string_view Chunk
 
 LexState::LexState(lua_State* L, const char* BytecodePtr, GCstr* ChunkName)
    : fs(nullptr)
+   , func_stack(std::deque<FuncState>())
    , L(L)
    , pos(0)
    , c(0)
@@ -1390,6 +1394,7 @@ LexState::LexState(lua_State* L, const char* BytecodePtr, GCstr* ChunkName)
 
 LexState::LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view Chunkarg, std::optional<std::string_view> Mode)
    : fs(nullptr)
+   , func_stack(std::deque<FuncState>())
    , L(L)
    , pos(0)
    , c(0)  // Bytecode reader uses c=0 as valid, c<0 as EOF
