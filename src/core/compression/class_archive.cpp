@@ -475,6 +475,7 @@ static ERR open_folder(DirInfo *Dir)
    Dir->prvTotal = 0;
    Dir->prvHandle = find_archive(Dir->prvResolvedPath, file_path);
    if (!Dir->prvHandle) return ERR::DoesNotExist;
+   new (Dir->Driver) ArchiveDriver;
    return ERR::Okay;
 }
 
@@ -586,6 +587,7 @@ static ERR scan_folder(DirInfo *Dir)
 
 static ERR close_folder(DirInfo *Dir)
 {
+   ((ArchiveDriver *)Dir->Driver)->~ArchiveDriver();
    return ERR::Okay;
 }
 
