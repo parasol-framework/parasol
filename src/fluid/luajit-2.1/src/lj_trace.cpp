@@ -128,7 +128,7 @@ static void perftools_addtrace(GCtrace *T)
    static FILE* fp;
    GCproto* pt = &gcref(T->startpt)->pt;
    const BCIns* startpc = mref<const BCIns>(T->startpc);
-   const char* name = proto_chunknamestr(pt);
+   const char* name = proto_chunk_namestr(pt);
    BCLine lineno;
    if (name[0] IS '@' or name[0] IS '=') name++;
    else name = "(string)";

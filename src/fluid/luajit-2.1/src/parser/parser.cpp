@@ -225,18 +225,18 @@ extern GCproto * lj_parse(LexState *State)
    auto prv = (prvFluid *)L->script->ChildPrivate;
 
 #ifdef LUAJIT_DISABLE_DEBUGINFO
-   State->chunkname = lj_str_newlit(L, "=");
+   State->chunk_name = lj_str_newlit(L, "=");
 #else
-   State->chunkname = lj_str_newz(L, State->chunkarg);
+   State->chunk_name = lj_str_newz(L, State->chunk_arg);
 #endif
 
-   log.branch("Chunk: %.*s", State->chunkname->len, strdata(State->chunkname));
+   log.branch("Chunk: %.*s", State->chunk_name->len, strdata(State->chunk_name));
 
    // Register this file with FileSource tracking.
-   // The chunkarg starts with '@' for file sources, extract the path.
+   // The chunk_arg starts with '@' for file sources, extract the path.
    // Note: We don't clear existing file_sources to preserve import deduplication across loadFile() calls.
    {
-      std::string path = State->chunkarg;
+      std::string path = State->chunk_arg;
       std::string filename = path;
       if (not path.empty() and path[0] IS '@') {
          path = path.substr(1);
@@ -252,7 +252,7 @@ extern GCproto * lj_parse(LexState *State)
       State->current_file_index = register_main_file_source(L, path, filename, source_lines);
    }
 
-   setstrV(L, L->top, State->chunkname);  // Anchor chunkname string.
+   setstrV(L, L->top, State->chunk_name);  // Anchor chunk_name string.
    incr_top(L);
    State->level = 0;
    FuncState &fs = State->fs_init();
@@ -283,7 +283,7 @@ extern GCproto * lj_parse(LexState *State)
 
    if (State->tok != TK_eof) State->err_token(TK_eof);
    pt = State->fs_finish(State->effective_line());
-   L->top--;  // Drop chunkname.
+   L->top--;  // Drop chunk_name.
 
    // Transfer tips to lua_State for debug.validate() access
    if (State->tip_emitter and State->tip_emitter->has_tip()) {

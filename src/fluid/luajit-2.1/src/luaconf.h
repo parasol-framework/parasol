@@ -1,10 +1,7 @@
-/*
-** Configuration header.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-*/
+// Configuration header.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 
-#ifndef luaconf_h
-#define luaconf_h
+#pragma once
 
 #ifndef WINVER
 #define WINVER 0x0501
@@ -43,61 +40,6 @@
 #include "parser/value_categories.h"
 #endif
 
-// Default path for loading Lua and C modules with require().
-#if defined(_WIN32)
-/*
-** In Windows, any exclamation mark ('!') in the path is replaced by the
-** path of the directory of the executable file of the current process.
-*/
-#define LUA_LDIR   "!\\lua\\"
-#define LUA_CDIR   "!\\"
-#define LUA_PATH_DEFAULT \
-  ".\\?.lua;" LUA_LDIR"?.lua;" LUA_LDIR"?\\init.lua;"
-#define LUA_CPATH_DEFAULT \
-  ".\\?.dll;" LUA_CDIR"?.dll;" LUA_CDIR"loadall.dll"
-#else
-/*
-** Note to distribution maintainers: do NOT patch the following lines!
-** Please read ../doc/install.html#distro and pass PREFIX=/usr instead.
-*/
-#ifndef LUA_MULTILIB
-#define LUA_MULTILIB   "lib"
-#endif
-#ifndef LUA_LMULTILIB
-#define LUA_LMULTILIB   "lib"
-#endif
-#define LUA_LROOT   "/usr/local"
-#define LUA_LUADIR   "/lua/5.1/"
-#define LUA_LJDIR   "/luajit-2.1.0-beta3/"
-
-#ifdef LUA_ROOT
-#define LUA_JROOT   LUA_ROOT
-#define LUA_RLDIR   LUA_ROOT "/share" LUA_LUADIR
-#define LUA_RCDIR   LUA_ROOT "/" LUA_MULTILIB LUA_LUADIR
-#define LUA_RLPATH   ";" LUA_RLDIR "?.lua;" LUA_RLDIR "?/init.lua"
-#define LUA_RCPATH   ";" LUA_RCDIR "?.so"
-#else
-#define LUA_JROOT   LUA_LROOT
-#define LUA_RLPATH
-#define LUA_RCPATH
-#endif
-
-#define LUA_JPATH   ";" LUA_JROOT "/share" LUA_LJDIR "?.lua"
-#define LUA_LLDIR   LUA_LROOT "/share" LUA_LUADIR
-#define LUA_LCDIR   LUA_LROOT "/" LUA_LMULTILIB LUA_LUADIR
-#define LUA_LLPATH   ";" LUA_LLDIR "?.lua;" LUA_LLDIR "?/init.lua"
-#define LUA_LCPATH1   ";" LUA_LCDIR "?.so"
-#define LUA_LCPATH2   ";" LUA_LCDIR "loadall.so"
-
-#define LUA_PATH_DEFAULT   "./?.lua" LUA_JPATH LUA_LLPATH LUA_RLPATH
-#define LUA_CPATH_DEFAULT   "./?.so" LUA_LCPATH1 LUA_RCPATH LUA_LCPATH2
-#endif
-
-// Environment variable names for path overrides and initialization code.
-#define LUA_PATH   "LUA_PATH"
-#define LUA_CPATH   "LUA_CPATH"
-#define LUA_INIT   "LUA_INIT"
-
 // Special file system characters.
 #if defined(_WIN32)
 #define LUA_DIRSEP   "\\"
@@ -134,16 +76,16 @@ constexpr int LUA_MAXINPUT = 512;   //  Max. input line length.
 // Note: changing the following defines breaks the Lua 5.1 ABI.
 #define LUA_INTEGER   ptrdiff_t
 constexpr int LUA_IDSIZE = 60;   //  Size of lua_Debug.short_src.
-/*
-** Size of lauxlib and io.* on-stack buffers. Weird workaround to avoid using
-** unreasonable amounts of stack space, but still retain ABI compatibility.
-** Blame Lua for depending on BUFSIZ in the ABI, blame **** for wrecking it.
-*/
+
+// Size of lauxlib and io.* on-stack buffers. Weird workaround to avoid using
+// unreasonable amounts of stack space, but still retain ABI compatibility.
+// Blame Lua for depending on BUFSIZ in the ABI, blame **** for wrecking it.
+
 #define LUAL_BUFFERSIZE   (BUFSIZ > 16384 ? 8192 : BUFSIZ)
 
-/* The following defines are here only for compatibility with luaconf.h
-** from the standard Lua distribution. They must not be changed for LuaJIT.
-*/
+// The following defines are here only for compatibility with luaconf.h
+// from the standard Lua distribution. They must not be changed for LuaJIT.
+
 #define LUA_NUMBER_DOUBLE
 #define LUA_NUMBER      double
 #define LUAI_UACNUMBER      double
@@ -174,6 +116,4 @@ constexpr int LUAI_MAXNUMBER2STR = 32;
 #define luai_apicheck(L, o)   do { (void)(L); assert(o); } while(0)
 #else
 #define luai_apicheck(L, o)   do { (void)(L); (void)(o); } while(0)
-#endif
-
 #endif

@@ -117,7 +117,7 @@ public:
    // RAII invariants or adjust freereg when the span is released. This is used
    // in patterns where callers explicitly manage freereg (e.g. assignment
    // emitters that duplicate table operands and later collapse freereg to
-   // nactvar).
+   // varmap.size()).
    [[nodiscard]] RegisterSpan reserve_span_soft(BCReg Count);
 
    void release(AllocatedRegister& Handle);

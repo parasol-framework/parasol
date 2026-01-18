@@ -196,7 +196,7 @@ LJLIB_CF(jit_util_funcinfo)
       lua_setfield(L, -2, "isVarArg");
       lua_pushboolean(L, (pt->flags & PROTO_CHILD));
       lua_setfield(L, -2, "children");
-      setstrV(L, L->top++, proto_chunkname(pt));
+      setstrV(L, L->top++, proto_chunk_name(pt));
       lua_setfield(L, -2, "source");
       lj_debug_pushloc(L, pt, pc);
       lua_setfield(L, -2, "loc");

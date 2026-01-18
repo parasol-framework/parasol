@@ -294,7 +294,7 @@ struct ExpDesc {
 // traversal without ownership concerns. Lifecycle is managed by ScopeGuard RAII wrapper.
 
 struct FuncScope {
-   FuncScope* prev;        // Link to outer scope (non-owning, stack guarantees validity).
+   FuncScope *prev;        // Link to outer scope (non-owning, stack guarantees validity).
    MSize vstart;           // Start of block-local variables.
    uint8_t nactvar;        // Number of active vars outside the scope.
    FuncScopeFlag flags;    // Scope flags.

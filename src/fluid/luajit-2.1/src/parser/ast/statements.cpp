@@ -933,8 +933,8 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(std::st
    import_lex->current_file_index = new_file_index; // Set the file index for this imported file
    import_lex->diagnose_mode = this->ctx.lex().diagnose_mode;  // Propagate diagnose mode from parent
 
-   // Set chunkname for error reporting (normally done in lj_parse for the main file)
-   import_lex->chunkname = lj_str_newz(L, import_lex->chunkarg);
+   // Set chunk_name for error reporting (normally done in lj_parse for the main file)
+   import_lex->chunk_name = lj_str_newz(L, import_lex->chunk_arg);
 
    // Point the FuncState to the new lexer temporarily
    FuncState &fs = this->ctx.func();
@@ -1105,8 +1105,8 @@ ParserResult<StmtNodePtr> AstBuilder::parse_compile_if()
 
       // Resolve the path relative to the current script
       std::string check_path;
-      if (this->ctx.lex().chunkarg) {
-         std::string current_file(this->ctx.lex().chunkarg);
+      if (this->ctx.lex().chunk_arg) {
+         std::string current_file(this->ctx.lex().chunk_arg);
          if (not current_file.empty() and (current_file[0] IS '@' or current_file[0] IS '=')) {
             current_file = current_file.substr(1);
          }

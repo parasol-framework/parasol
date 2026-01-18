@@ -37,9 +37,9 @@ void LexState::var_new(BCREG n, GCstr* name, BCLine Line, BCLine Column)
 
    checklimit(fs, fs->varmap.size() + fs->pending_vars + 1, LJ_MAX_LOCVAR, "local variables");
 
-   if (vtop >= this->sizevstack) [[unlikely]] {
-      if (this->sizevstack >= LJ_MAX_VSTACK) lj_lex_error(this, 0, ErrMsg::XLIMC, LJ_MAX_VSTACK);
-      lj_mem_growvec(this->L, this->vstack, this->sizevstack, LJ_MAX_VSTACK, VarInfo);
+   if (vtop >= this->size_vstack) [[unlikely]] {
+      if (this->size_vstack >= LJ_MAX_VSTACK) lj_lex_error(this, 0, ErrMsg::XLIMC, LJ_MAX_VSTACK);
+      lj_mem_growvec(this->L, this->vstack, this->size_vstack, LJ_MAX_VSTACK, VarInfo);
    }
 
    // Anchor the variable name in the current function's constant table if it's a real string.
@@ -232,9 +232,9 @@ MSize LexState::gola_new(int jump_type, VarInfoFlag info, BCPOS pc)
 {
    FuncState* fs = this->fs;
    MSize vtop = this->vtop;
-   if (vtop >= this->sizevstack) [[unlikely]] {
-      if (this->sizevstack >= LJ_MAX_VSTACK) lj_lex_error(this, 0, ErrMsg::XLIMC, LJ_MAX_VSTACK);
-      lj_mem_growvec(this->L, this->vstack, this->sizevstack, LJ_MAX_VSTACK, VarInfo);
+   if (vtop >= this->size_vstack) [[unlikely]] {
+      if (this->size_vstack >= LJ_MAX_VSTACK) lj_lex_error(this, 0, ErrMsg::XLIMC, LJ_MAX_VSTACK);
+      lj_mem_growvec(this->L, this->vstack, this->size_vstack, LJ_MAX_VSTACK, VarInfo);
    }
    GCstr* name = (jump_type IS JUMP_BREAK) ? NAME_BREAK : NAME_CONTINUE;
    // NOBARRIER: name is anchored in fs->kt and ls->vstack is not a GCobj.
@@ -1011,7 +1011,7 @@ GCproto * LexState::fs_finish(BCLine Line)
    pt->numparams = fs->numparams;
    pt->framesize = fs->framesize;
    pt->file_source_idx = this->current_file_index;  // FileSource tracking for error reporting
-   setgcref(pt->chunkname, obj2gco(this->chunkname));
+   setgcref(pt->chunk_name, obj2gco(this->chunk_name));
 
    // Register the function name if one was provided (for named function declarations).
 
@@ -1089,22 +1089,6 @@ GCproto * LexState::fs_finish(BCLine Line)
 
    lj_assertL(this->fs != nullptr or this->tok IS TK_eof, "bad parser state");
    return pt;
-}
-
-//********************************************************************************************************************
-// Initialize runtime-dependent fields of FuncState.
-
-void FuncState::init(LexState* LexState, lua_State* LuaState, MSize Vbase, bool IsRoot)
-{
-   this->ls = LexState;
-   this->L = LuaState;
-   this->vbase = Vbase;
-   this->is_root = IsRoot;
-   this->kt = lj_tab_new(LuaState, 0, 0);
-
-   // Anchor table of constants in stack to avoid being collected.
-   settabV(LuaState, LuaState->top, this->kt);
-   incr_top(LuaState);
 }
 
 //********************************************************************************************************************

@@ -81,19 +81,19 @@ public:
    BCLine     lastline;     // Line of last token.
    uint8_t    current_file_index = 0;  // File index for FileSource tracking (0 = main file)
 
-   GCstr *    chunkname;    // Current chunk name (interned string).
-   const char *chunkarg;    // Chunk name argument.
-   const char *mode;        // Allow loading bytecode (b) and/or source text (t).
+   GCstr *    chunk_name;     // Current chunk name (interned string).
+   const char *chunk_arg;     // Chunk name argument.
+   const char *mode;          // Allow loading bytecode (b) and/or source text (t).
    GCstr *    empty_string_constant; // Cached empty string reference.
-   VarInfo *  vstack;        // Stack for names and extents of local variables.
-   MSize      sizevstack;    // Size of variable stack.
-   MSize      vtop;          // Top of variable stack.
-   BCInsLine* bcstack;       // Stack for bytecode instructions/line numbers.
-   MSize      sizebcstack;   // Size of bytecode stack.
-   uint32_t   level;         // Syntactical nesting level.
-   uint32_t   ternary_depth; // Number of pending ternary operators.
+   VarInfo *  vstack;         // Stack for names and extents of local variables.
+   MSize      size_vstack;    // Size of variable stack.
+   MSize      vtop;           // Top of variable stack.
+   BCInsLine* bc_stack;       // Stack for bytecode instructions/line numbers.
+   MSize      size_bc_stack;  // Size of bytecode stack.
+   uint32_t   level;          // Syntactical nesting level.
+   uint32_t   ternary_depth;  // Number of pending ternary operators.
    uint8_t    pending_if_empty_colon; // Tracks ?: misuse after ??.
-   int        is_bytecode;   // Set to 1 if input is bytecode, 0 if source text.
+   int        is_bytecode;    // Set to 1 if input is bytecode, 0 if source text.
    int64_t    array_typed_size = -1;  // Size parameter for array<type, size> (-1 = no size specified)
 
    size_t   current_offset = 0;
@@ -216,7 +216,7 @@ inline void checkcond(LexState *ls, bool c, ErrMsg em) { if (not (c)) { ls->err_
 // pending_import_lexers after catching SEH exceptions.
 //
 // Usage:
-//    ImportLexerGuard guard(L, source, chunkname);
+//    ImportLexerGuard guard(L, source, chunk_name);
 //    guard->next();  // Access via operator->
 //    // ... parsing code ...
 //    // Destructor automatically cleans up on normal exit
@@ -253,6 +253,6 @@ public:
 
 private:
    lua_State *lua;
-   std::string chunk_name;  // Must outlive lexer - LexState::chunkarg points into this
+   std::string chunk_name;  // Must outlive lexer - LexState::chunk_arg points into this
    LexState *lexer;
 };

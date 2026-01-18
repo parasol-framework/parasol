@@ -5776,12 +5776,12 @@ adjustresults(L,nresults);
 return status;
 }
 static int lua_load(lua_State*L,lua_Reader reader,void*data,
-const char*chunkname){
+const char*chunk_name){
 ZIO z;
 int status;
-if(!chunkname)chunkname="?";
+if(!chunk_name)chunk_name="?";
 luaZ_init(L,&z,reader,data);
-status=luaD_protectedparser(L,&z,chunkname);
+status=luaD_protectedparser(L,&z,chunk_name);
 return status;
 }
 static int lua_error(lua_State*L){
@@ -6339,8 +6339,8 @@ return 2;
 static int luaB_loadstring(lua_State*L){
 size_t l;
 const char*s=luaL_checklstring(L,1,&l);
-const char*chunkname=luaL_optstring(L,2,s);
-return load_aux(L,luaL_loadbuffer(L,s,l,chunkname));
+const char*chunk_name=luaL_optstring(L,2,s);
+return load_aux(L,luaL_loadbuffer(L,s,l,chunk_name));
 }
 static int luaB_loadfile(lua_State*L){
 const char*fname=luaL_optstring(L,1,NULL);

@@ -84,10 +84,9 @@ void RegisterAllocator::release_span_internal(BCReg Start, BCReg Count, BCReg Ex
    if (not Count.raw()) return;
 
    if (this->func_state->is_temp_register(Start)) {
-      // Soft spans (ExpectedTop == 0) are used in contexts where the caller
-      // explicitly manages freereg (e.g. assignment emitters that duplicate
-      // table operands and later restore freereg to nactvar). For these spans
-      // we do not enforce RAII invariants or adjust freereg here.
+      // Soft spans (ExpectedTop == 0) are used in contexts where the caller explicitly manages freereg (e.g.
+      // assignment emitters that duplicate table operands and later restore freereg to varmap.size()). For
+      // these spans we do not enforce RAII invariants or adjust freereg here.
       if (ExpectedTop.raw() IS 0) {
          this->trace_release(Start, Count, "release_span_internal_soft");
          return;
@@ -179,14 +178,11 @@ TableOperandCopies RegisterAllocator::duplicate_table_operands(const ExpDesc &Ex
 
       if (has_register_index) duplicate_count++;
 
-      // Use a soft span here because assignment/update emitters that rely on
-      // these duplicates manage freereg explicitly (they collapse freereg back
-      // to nactvar after completing the operation). Enforcing strict RAII
-      // invariants for this span would produce false-positive warnings in
-      // perfectly valid patterns like:
+      // Use a soft span here because assignment/update emitters that rely on these duplicates manage freereg
+      // explicitly (they collapse freereg back to varmap.size() after completing the operation). Enforcing
+      // strict RAII invariants for this span would produce false-positive warnings in perfectly valid patterns like:
       //   t[i] = t[i] | f(i)
-      // where additional temporaries are allocated above the duplicated base
-      // and later dropped by restoring freereg.
+      // where additional temporaries are allocated above the duplicated base and later dropped by restoring freereg.
 
       copies.reserved = this->reserve_span_soft(BCReg(duplicate_count));
 
@@ -254,11 +250,11 @@ BCPOS bcemit_INS(FuncState *fs, BCIns ins)
    fs->clear_pending_jumps();
 
    if (pc >= fs->bclim) [[unlikely]] {
-      ptrdiff_t base = fs->bcbase - ls->bcstack;
-      checklimit(fs, ls->sizebcstack, LJ_MAX_BCINS, "bytecode instructions");
-      lj_mem_growvec(fs->L, ls->bcstack, ls->sizebcstack, LJ_MAX_BCINS, BCInsLine);
-      fs->bclim = BCPOS(ls->sizebcstack - base);
-      fs->bcbase = ls->bcstack + base;
+      ptrdiff_t base = fs->bcbase - ls->bc_stack;
+      checklimit(fs, ls->size_bc_stack, LJ_MAX_BCINS, "bytecode instructions");
+      lj_mem_growvec(fs->L, ls->bc_stack, ls->size_bc_stack, LJ_MAX_BCINS, BCInsLine);
+      fs->bclim = BCPOS(ls->size_bc_stack - base);
+      fs->bcbase = ls->bc_stack + base;
    }
 
    fs->bcbase[pc].ins = ins;
@@ -289,12 +285,8 @@ static void expr_discharge(FuncState *fs, ExpDesc *e)
    }
    else if (e->k IS ExpKind::Indexed) {
       BCREG rc = e->u.s.aux;
-      if (int32_t(rc) < 0) {
-         ins = BCINS_ABC(BC_TGETS, 0, e->u.s.info, ~rc);
-      }
-      else if (rc > BCMAX_C) {
-         ins = BCINS_ABC(BC_TGETB, 0, e->u.s.info, rc - (BCMAX_C + 1));
-      }
+      if (int32_t(rc) < 0) ins = BCINS_ABC(BC_TGETS, 0, e->u.s.info, ~rc);
+      else if (rc > BCMAX_C) ins = BCINS_ABC(BC_TGETB, 0, e->u.s.info, rc - (BCMAX_C + 1));
       else {
          bcreg_free(fs, rc);
          ins = BCINS_ABC(BC_TGETV, 0, e->u.s.info, rc);
@@ -305,9 +297,7 @@ static void expr_discharge(FuncState *fs, ExpDesc *e)
       // Array indexing - emit BC_AGETV or BC_AGETB
       // Note: Arrays don't support string keys, so no BC_AGETS equivalent
       BCREG rc = e->u.s.aux;
-      if (rc > BCMAX_C) {
-         ins = BCINS_ABC(BC_AGETB, 0, e->u.s.info, rc - (BCMAX_C + 1));
-      }
+      if (rc > BCMAX_C) ins = BCINS_ABC(BC_AGETB, 0, e->u.s.info, rc - (BCMAX_C + 1));
       else {
          bcreg_free(fs, rc);
          ins = BCINS_ABC(BC_AGETV, 0, e->u.s.info, rc);
@@ -317,9 +307,7 @@ static void expr_discharge(FuncState *fs, ExpDesc *e)
    else if (e->k IS ExpKind::SafeIndexedArray) {
       // Safe array indexing - emit BC_ASGETV or BC_ASGETB (returns nil for out-of-bounds)
       BCREG rc = e->u.s.aux;
-      if (rc > BCMAX_C) {
-         ins = BCINS_ABC(BC_ASGETB, 0, e->u.s.info, rc - (BCMAX_C + 1));
-      }
+      if (rc > BCMAX_C) ins = BCINS_ABC(BC_ASGETB, 0, e->u.s.info, rc - (BCMAX_C + 1));
       else {
          bcreg_free(fs, rc);
          ins = BCINS_ABC(BC_ASGETV, 0, e->u.s.info, rc);
@@ -799,32 +787,32 @@ void RegisterAllocator::trace_release(BCReg Start, BCReg Count, const char* Cont
 //********************************************************************************************************************
 // Expression management methods - migrated from static functions to RegisterAllocator methods
 
-void RegisterAllocator::discharge(ExpDesc& Expression)
+void RegisterAllocator::discharge(ExpDesc &Expression)
 {
    expr_discharge(this->func_state, &Expression);
 }
 
-void RegisterAllocator::discharge_to_register(ExpDesc& Expression, BCReg Target)
+void RegisterAllocator::discharge_to_register(ExpDesc &Expression, BCReg Target)
 {
    expr_toreg(this->func_state, &Expression, Target.raw());
 }
 
-void RegisterAllocator::discharge_to_register_nobranch(ExpDesc& Expression, BCReg Target)
+void RegisterAllocator::discharge_to_register_nobranch(ExpDesc &Expression, BCReg Target)
 {
    expr_toreg_nobranch(this->func_state, &Expression, Target.raw());
 }
 
-void RegisterAllocator::discharge_to_next_register(ExpDesc& Expression)
+void RegisterAllocator::discharge_to_next_register(ExpDesc &Expression)
 {
    expr_tonextreg(this->func_state, &Expression);
 }
 
-BCReg RegisterAllocator::discharge_to_any_register(ExpDesc& Expression)
+BCReg RegisterAllocator::discharge_to_any_register(ExpDesc &Expression)
 {
    return BCReg(expr_toanyreg(this->func_state, &Expression));
 }
 
-void RegisterAllocator::discharge_to_value(ExpDesc& Expression)
+void RegisterAllocator::discharge_to_value(ExpDesc &Expression)
 {
    expr_toval(this->func_state, &Expression);
 }

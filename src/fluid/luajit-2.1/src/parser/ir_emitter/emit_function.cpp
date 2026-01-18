@@ -82,7 +82,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
 
    // Regular function emission
    FuncState *parent_state = &this->func_state;
-   ptrdiff_t oldbase = parent_state->bcbase - this->lex_state.bcstack;
+   ptrdiff_t oldbase = parent_state->bcbase - this->lex_state.bc_stack;
 
    // Create FuncState in container first
    FuncState &child_state = this->lex_state.fs_init();
@@ -159,8 +159,8 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
    fs_guard.disarm();  // fs_finish will handle cleanup
    GCproto *pt = this->lex_state.fs_finish(Payload.body->span.line);
    scope_guard.disarm();
-   parent_state->bcbase = this->lex_state.bcstack + oldbase;
-   parent_state->bclim = BCPos(this->lex_state.sizebcstack - oldbase).raw();
+   parent_state->bcbase = this->lex_state.bc_stack + oldbase;
+   parent_state->bclim = BCPos(this->lex_state.size_bc_stack - oldbase).raw();
 
    // Restore lastline so BC_FNEW and subsequent instructions get the function definition's line
    this->lex_state.lastline = saved_lastline;
@@ -601,7 +601,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_annotation_registration(BCReg FuncReg, 
    bcemit_AD(fs, BC_KSTR, args_base + 1, str_const(lj_str_new(L, anno_str.c_str(), anno_str.size())));
 
    // Arg 3: source file name
-   GCstr* source = this->lex_state.chunkname;
+   GCstr* source = this->lex_state.chunk_name;
    bcemit_AD(fs, BC_KSTR, args_base + 2, str_const(source ? source : lj_str_newlit(L, "<unknown>")));
 
    // Arg 4: function name

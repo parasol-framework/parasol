@@ -152,7 +152,7 @@ static bool has_close_variables(FuncState* fs)
 // Used by ir_emitter for return statement handling.
 //
 // This function ensures return values are in safe registers before __close and defer handlers run.
-// Close handlers (bcemit_close) use temporary registers starting at freereg (which is set to nactvar).
+// Close handlers (bcemit_close) use temporary registers starting at freereg (which is set to varmap.size()).
 // They reserve 5+LJ_FR2 registers for: getmetatable function, metatable result, __close function, args.
 // If return values overlap with these temporary registers, they must be moved to safe slots.
 
@@ -163,7 +163,7 @@ static void snapshot_return_regs(FuncState* fs, BCIns* ins)
    BCOp op = bc_op(*ins);
 
    // Calculate the "danger zone" for return values.
-   // If there are close handlers, they use nactvar to nactvar+CLOSE_HANDLER_TEMP_REGS as temporaries.
+   // If there are close handlers, they use varmap.size() to varmap.size()+CLOSE_HANDLER_TEMP_REGS as temporaries.
    // Return values in this range must be snapshotted to safe slots.
    bool has_closes = has_close_variables(fs);
    BCReg danger_limit = BCReg(fs->varmap.size() + (has_closes ? CLOSE_HANDLER_TEMP_REGS : 0));
@@ -718,7 +718,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_expression_stmt(const ExpressionStmtPay
 
    // For other expression statements, we need to ensure any bytecode emitted for the expression
    // doesn't clobber local variables. Using to_any_reg ensures Relocable expressions
-   // (like GGET for global reads) get properly relocated to a register above nactvar.
+   // (like GGET for global reads) get properly relocated to a register above varmap.size().
 
    RegisterAllocator allocator(&this->func_state);
    ExpressionValue expr_value(&this->func_state, value);
@@ -1518,7 +1518,7 @@ ParserResult<ControlFlowEdge> IrEmitter::emit_condition_jump(const ExprNode& exp
    if (result.k IS ExpKind::Nil) result.k = ExpKind::False;
    bcemit_branch_t(&this->func_state, &result);
 
-   // After processing the condition expression, reset freereg to nactvar.  The condition has been fully evaluated
+   // After processing the condition expression, reset freereg to varmap.size().  The condition has been fully evaluated
    // and emitted as a conditional jump - any temporary registers used during evaluation are no longer needed.
 
    this->func_state.reset_freereg();

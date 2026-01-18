@@ -1055,7 +1055,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
             if (State->c IS '=') {
                lex_next(State);
                pf::Log("Fluid").warning("%s:%d: Deprecated '==' operator, use 'is' instead",
-                  strdata(State->chunkname), State->effective_line().lineNumber());
+                  strdata(State->chunk_name), State->effective_line().lineNumber());
                return TK_eq;
             }
             return '=';
@@ -1117,7 +1117,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
             if (State->c IS '=') {
                lex_next(State);
                pf::Log("Fluid").warning("%s:%d: Deprecated '~=' operator, use '!=' instead",
-                  strdata(State->chunkname), State->effective_line().lineNumber());
+                  strdata(State->chunk_name), State->effective_line().lineNumber());
                return TK_ne;
             }
             return '~';
@@ -1269,15 +1269,15 @@ LexState::LexState(lua_State* L, std::string_view Source, std::string_view Chunk
    , lookahead(TK_eof)
    , linenumber(1)
    , lastline(1)
-   , chunkname(nullptr)
-   , chunkarg(Chunkarg.data())
+   , chunk_name(nullptr)
+   , chunk_arg(Chunkarg.data())
    , mode(Mode.has_value() ? Mode->data() : nullptr)
    , empty_string_constant(nullptr)
    , vstack(nullptr)
-   , sizevstack(0)
+   , size_vstack(0)
    , vtop(0)
-   , bcstack(nullptr)
-   , sizebcstack(0)
+   , bc_stack(nullptr)
+   , size_bc_stack(0)
    , level(0)
    , ternary_depth(0)
    , pending_if_empty_colon(0)
@@ -1360,15 +1360,15 @@ LexState::LexState(lua_State* L, const char* BytecodePtr, GCstr* ChunkName)
    , pe((const char*)~uintptr_t(0))  // Unlimited - bytecode reader handles its own bounds
    , linenumber(1)
    , lastline(1)
-   , chunkname(ChunkName)
-   , chunkarg(nullptr)
+   , chunk_name(ChunkName)
+   , chunk_arg(nullptr)
    , mode(nullptr)
    , empty_string_constant(nullptr)
    , vstack(nullptr)
-   , sizevstack(0)
+   , size_vstack(0)
    , vtop(0)
-   , bcstack(nullptr)
-   , sizebcstack(0)
+   , bc_stack(nullptr)
+   , size_bc_stack(0)
    , level(BCDUMP_F_STRIP | (LJ_BE * BCDUMP_F_BE))
    , ternary_depth(0)
    , pending_if_empty_colon(0)
@@ -1406,15 +1406,15 @@ LexState::LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view
    , rdata(Rdata)
    , linenumber(1)
    , lastline(1)
-   , chunkname(nullptr)
-   , chunkarg(Chunkarg.data())
+   , chunk_name(nullptr)
+   , chunk_arg(Chunkarg.data())
    , mode(Mode.has_value() ? Mode->data() : nullptr)
    , empty_string_constant(nullptr)
    , vstack(nullptr)
-   , sizevstack(0)
+   , size_vstack(0)
    , vtop(0)
-   , bcstack(nullptr)
-   , sizebcstack(0)
+   , bc_stack(nullptr)
+   , size_bc_stack(0)
    , level(0)
    , ternary_depth(0)
    , pending_if_empty_colon(0)
@@ -1463,8 +1463,8 @@ LexState::~LexState()
    if (not this->L) return;  // Not properly initialised
 
    global_State* g = G(this->L);
-   if (this->bcstack) lj_mem_freevec(g, this->bcstack, this->sizebcstack, BCInsLine);
-   if (this->vstack) lj_mem_freevec(g, this->vstack, this->sizevstack, VarInfo);
+   if (this->bc_stack) lj_mem_freevec(g, this->bc_stack, this->size_bc_stack, BCInsLine);
+   if (this->vstack) lj_mem_freevec(g, this->vstack, this->size_vstack, VarInfo);
    lj_buf_free(g, &this->sb);
 }
 
@@ -1715,7 +1715,7 @@ static void lj_lex_error_no_skip(LexState *State, LexToken tok, ErrMsg em)
       return;  // Don't skip, don't set had_lex_error - caller returns synthetic token
    }
 
-   lj_err_lex(State->L, State->chunkname, tokstr, State->linenumber, em, nullptr);
+   lj_err_lex(State->L, State->chunk_name, tokstr, State->linenumber, em, nullptr);
 }
 
 //********************************************************************************************************************
@@ -1797,7 +1797,7 @@ void lj_lex_error(LexState *State, LexToken tok, ErrMsg em, ...)
       return;  // Return without throwing - caller will handle recovery
    }
 
-   lj_err_lex(State->L, State->chunkname, tokstr, State->linenumber, em, argp);
+   lj_err_lex(State->L, State->chunk_name, tokstr, State->linenumber, em, argp);
    va_end(argp);
 }
 

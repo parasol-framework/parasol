@@ -377,7 +377,7 @@ static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, Exp
    // If base is the same as LHS or RHS register, we must move that operand first before
    // loading callee to base. This prevents clobbering.
    // Note: Only NonReloc needs checking here because:
-   // - Local slots are always < nactvar, but base is always >= nactvar (from bcemit_bit_call)
+   // - Local slots are always < varmap.size(), but base is always >= varmap.size() (from bcemit_bit_call)
    // - Relocable expressions don't have an assigned register yet
    // - Constants don't occupy registers
    bool lhs_was_base = (lhs->k IS ExpKind::NonReloc and lhs->u.s.info IS base);
@@ -391,9 +391,9 @@ static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, Exp
 
    // Defensive assertions: verify our assumptions about register allocation
    fs_check_assert(fs, not (lhs->k IS ExpKind::Local and lhs->u.s.info IS base),
-      "unexpected: Local at base register (base should be >= nactvar)");
+      "unexpected: Local at base register (base should be >= varmap.size())");
    fs_check_assert(fs, not (rhs->k IS ExpKind::Local and rhs->u.s.info IS base),
-      "unexpected: Local at base register (base should be >= nactvar)");
+      "unexpected: Local at base register (base should be >= varmap.size())");
 
    if (lhs_was_base) {
       // LHS is at base, move it to arg1 first (use original value)

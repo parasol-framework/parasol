@@ -161,9 +161,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_try_except_stmt(const TryExceptPayload 
       // The runtime will place the exception table in this register
 
       if (clause.exception_var.has_value() and clause.exception_var->symbol) {
-         BCREG saved_nactvar = fs->varmap.size();  // Save nactvar before adding the exception variable
+         BCREG saved_nactvar = fs->varmap.size();  // Save varmap.size() before adding the exception variable
 
-         // Reserve register space first, then create the variable var_new takes an offset from nactvar, not an
+         // Reserve register space first, then create the variable var_new takes an offset from varmap.size(), not an
          // absolute register.
 
          fs->freereg++;

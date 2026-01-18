@@ -412,11 +412,11 @@ std::string ParserContext::resolve_lib_to_path(std::string_view &Library) const
    // Prepend the base path
 
    if (local) {
-      if (this->lex_state->chunkarg) {
-         // Get the directory of the current file from chunkarg
-         std::string current_file(this->lex_state->chunkarg);
+      if (this->lex_state->chunk_arg) {
+         // Get the directory of the current file from chunk_arg
+         std::string current_file(this->lex_state->chunk_arg);
 
-         // Strip leading '@' or '=' from chunkarg (Lua conventions for source naming)
+         // Strip leading '@' or '=' from chunk_arg (Lua conventions for source naming)
          if (not current_file.empty() and (current_file[0] == '@' or current_file[0] == '=')) {
             current_file = current_file.substr(1);
          }
@@ -462,8 +462,8 @@ void ParserContext::emit_tip(uint8_t Priority, TipCategory Category, std::string
    if (not emitter) return;
 
    std::string_view filename;
-   if (this->lex_state->chunkname) {
-      filename = std::string_view(strdata(this->lex_state->chunkname), this->lex_state->chunkname->len);
+   if (this->lex_state->chunk_name) {
+      filename = std::string_view(strdata(this->lex_state->chunk_name), this->lex_state->chunk_name->len);
    }
 
    emitter->emit(Priority, Category, std::move(Message), Location, filename);

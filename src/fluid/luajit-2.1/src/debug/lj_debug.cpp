@@ -405,9 +405,9 @@ void lj_debug_addloc(lua_State* L, CSTRING msg, cTValue* frame, cTValue* nextfra
                }
             }
 
-            // Fallback to prototype chunkname
+            // Fallback to prototype chunk_name
             char buf[LUA_IDSIZE];
-            lj_debug_shortname(buf, proto_chunkname(pt), pt->firstline);
+            lj_debug_shortname(buf, proto_chunk_name(pt), pt->firstline);
             lj_strfmt_pushf(L, "%s:%d: %s", buf, line.lineNumber(), msg);
             return;
          }
@@ -434,8 +434,8 @@ void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPOS pc)
       }
    }
 
-   // Fallback to prototype chunkname for legacy behaviour
-   GCstr* name = proto_chunkname(pt);
+   // Fallback to prototype chunk_name for legacy behaviour
+   GCstr* name = proto_chunk_name(pt);
    CSTRING s = strdata(name);
    MSize i, len = name->len;
 
@@ -532,8 +532,8 @@ int lj_debug_getinfo(lua_State *L, CSTRING what, lj_Debug *ar, int ext)
                   ar->what = (firstline or !pt->numline) ? "Lua" : "main";
                }
                else {
-                  // Fallback to prototype chunkname
-                  GCstr* name = proto_chunkname(pt);
+                  // Fallback to prototype chunk_name
+                  GCstr* name = proto_chunk_name(pt);
                   ar->source = strdata(name);
                   lj_debug_shortname(ar->short_src, name, pt->firstline);
                   ar->linedefined = firstline.lineNumber();
@@ -542,8 +542,8 @@ int lj_debug_getinfo(lua_State *L, CSTRING what, lj_Debug *ar, int ext)
                }
             }
             else {
-               // Fallback to prototype chunkname
-               GCstr* name = proto_chunkname(pt);
+               // Fallback to prototype chunk_name
+               GCstr* name = proto_chunk_name(pt);
                ar->source = strdata(name);
                lj_debug_shortname(ar->short_src, name, pt->firstline);
                ar->linedefined = firstline.lineNumber();

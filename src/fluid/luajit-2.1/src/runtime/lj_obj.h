@@ -594,7 +594,7 @@ typedef struct GCproto {
    uint8_t  flags;    //  Miscellaneous flags (see below).
    uint16_t trace;    //  Anchor for chain of root traces.
    //  The following fields are for debugging/tracebacks only
-   GCRef  chunkname;  //  Name of the chunk this function was defined in.
+   GCRef  chunk_name;  //  Name of the chunk this function was defined in.
    BCLine firstline;  //  First line of the function definition.
    BCLine numline;    //  Number of lines for the function definition.
    uint8_t file_source_idx;  //  Index into lua_State::file_sources for error reporting.
@@ -652,8 +652,8 @@ inline constexpr uint16_t PROTO_UV_IMMUTABLE = 0x4000;   //  Immutable upvalue.
 }
 
 // Forward declarations - defined after GCobj is complete
-inline GCstr* proto_chunkname(const GCproto* pt) noexcept;
-inline const char* proto_chunknamestr(const GCproto* pt) noexcept;
+inline GCstr* proto_chunk_name(const GCproto* pt) noexcept;
+inline const char* proto_chunk_namestr(const GCproto* pt) noexcept;
 
 [[nodiscard]] inline const void* proto_lineinfo(const GCproto* pt) noexcept
 {
@@ -1234,8 +1234,8 @@ template<typename T> [[nodiscard]] inline GCobj * obj2gco(T *v) noexcept { retur
 
 // Prototype accessors
 
-[[nodiscard]] inline GCstr * proto_chunkname(const GCproto *pt) noexcept { return strref(pt->chunkname); }
-[[nodiscard]] inline const char * proto_chunknamestr(const GCproto *pt) noexcept { return strdata(proto_chunkname(pt)); }
+[[nodiscard]] inline GCstr * proto_chunk_name(const GCproto *pt) noexcept { return strref(pt->chunk_name); }
+[[nodiscard]] inline const char * proto_chunk_namestr(const GCproto *pt) noexcept { return strdata(proto_chunk_name(pt)); }
 
 // Table accessors
 [[nodiscard]] inline GCtab * tabref(GCRef r) noexcept { return &gcref(r)->tab; }

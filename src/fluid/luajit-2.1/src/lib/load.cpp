@@ -49,7 +49,7 @@ static TValue * cpparser(lua_State *L, lua_CFunction dummy, APTR ud)
 //********************************************************************************************************************
 // Note: LexState is heap-allocated and manually destroyed because Windows SEH (used by lj_err_throw via
 // RaiseException) does not invoke C++ destructors for foreign exceptions under MSVC's default /EHsc mode.
-// Stack-allocated C++ objects with non-trivial destructors would leak their internal allocations (bcstack,
+// Stack-allocated C++ objects with non-trivial destructors would leak their internal allocations (bc_stack,
 // vstack) when a parse error occurs.
 
 extern int lua_load(lua_State *Lua, std::string_view Source, CSTRING SourceName)

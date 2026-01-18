@@ -31,7 +31,7 @@
 static LJ_NOINLINE void bcread_error(LexState *State, ErrMsg em)
 {
    lua_State* L = State->L;
-   const char* name = State->chunkarg;
+   const char* name = State->chunk_arg;
    if (*name == BCDUMP_HEAD1) name = "(binary)";
    else if (*name == '@' or *name == '=') name++;
    lj_strfmt_pushf(L, "%s: %s", name, err2msg(em));
@@ -372,7 +372,7 @@ GCproto *lj_bcread_proto(LexState *State)
    pt->sizeuv = (uint8_t)sizeuv;
    pt->flags = (uint8_t)flags;
    pt->trace = 0;
-   setgcref(pt->chunkname, obj2gco(State->chunkname));
+   setgcref(pt->chunk_name, obj2gco(State->chunk_name));
 
    // Close potentially uninitialized gap between bc and kgc.
 
@@ -422,12 +422,12 @@ static int bcread_header(LexState *State)
    if ((flags & BCDUMP_F_FFI)) return 0;
 
    if ((flags & BCDUMP_F_STRIP)) {
-      State->chunkname = lj_str_newz(State->L, State->chunkarg);
+      State->chunk_name = lj_str_newz(State->L, State->chunk_arg);
    }
    else {
       MSize len = bcread_uleb128(State);
       bcread_need(State, len);
-      State->chunkname = lj_str_new(State->L, (const char*)bcread_mem(State, len), len);
+      State->chunk_name = lj_str_new(State->L, (const char*)bcread_mem(State, len), len);
    }
    return 1;  //  Ok.
 }
