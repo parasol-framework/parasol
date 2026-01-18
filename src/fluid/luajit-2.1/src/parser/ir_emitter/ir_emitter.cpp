@@ -815,7 +815,17 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &Pa
       // Handle tail-call case: return f() or return f(...)
       if (count IS 1 and last.k IS ExpKind::Call) {
          BCIns* ip = ir_bcptr(&this->func_state, &last);
-         if (bc_op(*ip) IS BC_VARG) {
+         if (this->func_state.try_depth > 0) {
+            // DISABLE TAIL-CALL inside try blocks: use CALL + RET instead of CALLT.
+            // CALLT doesn't return to the caller, so if the called function throws an exception, it happens after
+            // TRYLEAVE has popped the try frame - the exception escapes.  By using CALL + RET, the exception occurs
+            // while still inside the try block. This must be checked before any tail-call optimisation paths.
+
+            setbc_b(ip, 0);  // Request all results (MULTRES)
+            if (needs_typefix) bcemit_AD(&this->func_state, BC_TYPEFIX, last.u.s.aux, 1);
+            ins = BCINS_AD(BC_RETM, this->func_state.varmap.size(), last.u.s.aux - this->func_state.varmap.size());
+         }
+         else if (bc_op(*ip) IS BC_VARG) {
             // Variadic return: return ...
             setbc_b(ir_bcptr(&this->func_state, &last), 0);
             // For VARG returns, we can't know count at compile time - skip typefix
@@ -844,6 +854,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &Pa
             // Normal tail-call for:
             // - Explicitly typed functions (needs_typefix=false)
             // - Special call types like BC_CALLM (result filters) where we can't safely modify
+            // - Not inside a try block (handled by the try_depth check above)
             this->func_state.pc--;
             ins = BCINS_AD(bc_op(*ip) - BC_CALL + BC_CALLT, bc_a(*ip), bc_c(*ip));
          }
@@ -853,9 +864,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &Pa
          RegisterAllocator allocator(&this->func_state);
          ExpressionValue value(&this->func_state, last);
          auto reg = value.discharge_to_any_reg(allocator);
-         if (needs_typefix) {
-            bcemit_AD(&this->func_state, BC_TYPEFIX, reg, 1);
-         }
+         if (needs_typefix) bcemit_AD(&this->func_state, BC_TYPEFIX, reg, 1);
          ins = BCINS_AD(BC_RET1, reg, 2);
       }
       else {
@@ -885,8 +894,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &Pa
    // Emit BC_TRYLEAVE for each try scope we're exiting with this return.
    // A return from inside a try block must pop all pending try frames to prevent
    // stale frames accumulating on L->try_stack across multiple function calls.
+   // Use varmap.size() (active local variable count) as the base register, not freereg,
+   // because freereg may still point past temporary registers used by the return expression.
+
    if (this->func_state.try_depth > 0) {
-      BCReg base_reg = BCReg(this->func_state.freereg);
+      BCReg base_reg = BCReg(this->func_state.varmap.size());
       for (uint8_t i = 0; i < this->func_state.try_depth; ++i) {
          bcemit_AD(&this->func_state, BC_TRYLEAVE, base_reg, BCReg(0));
       }
