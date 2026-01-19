@@ -292,12 +292,17 @@ void format_bc_line(lua_State *L, BCLine Line, int FileWidth, BytecodeLogger Log
    const std::string &Operands, void *Meta, BytecodeInfo &Info, bool JumpTarget, bool Verbose)
 {
    if (Verbose) {
-      const FileSource *src = get_file_source(L, Line.fileIndex());
+      std::string file_and_line;
 
-      std::string_view sv("<unknown>");
-      if (src) sv = std::string_view(src->filename);
-      if (sv.size() > FileWidth) sv.remove_suffix(sv.size() - FileWidth);
-      auto file_and_line = std::format("{:>}:{}", sv, Line.lineNumber());
+      if (Line.isValid() and Line.lineNumber() > 0) {
+         const FileSource *src = get_file_source(L, Line.fileIndex());
+
+         std::string_view sv("<unknown>");
+         if (src) sv = std::string_view(src->filename);
+         if (sv.size() > FileWidth) sv.remove_suffix(sv.size() - FileWidth);
+         file_and_line = std::format("{:>}:{}", sv, Line.lineNumber());
+      }
+      else file_and_line = "<unknown>:-";
 
       FileWidth += 4; // Accounting for line number
       Logger(std::format("{}[{:04d}] {:{}.{}} {} {:<9} {}", Indent, int(pc), file_and_line, FileWidth, FileWidth, JumpTarget ? "=>" : "  ", Info.op_name, Operands), Meta);
@@ -404,7 +409,7 @@ extern void dump_bytecode(FuncState &fs)
    };
 
    printf("Instruction Count: %u\n", (unsigned)fs.pc);
-   
+
    auto file_width = widest_file_source(fs.L, false);
 
    for (BCPOS pc = 0; pc < fs.pc; ++pc) {
