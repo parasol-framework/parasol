@@ -144,7 +144,6 @@ static void bcemit_branch_t(FuncState *, ExpDesc* e);
 [[nodiscard]] static int is_blank_identifier(GCstr* name);
 [[nodiscard]] static std::optional<BCREG> var_lookup_local(FuncState *, GCstr* n);
 [[nodiscard]] static MSize var_lookup_uv(FuncState *, MSize vidx, ExpDesc* e);
-[[nodiscard]] [[maybe_unused]] static MSize var_lookup_(FuncState *, GCstr* name, ExpDesc* e, int first);
 
 // Function scope (lj_parse_scope.cpp)
 
