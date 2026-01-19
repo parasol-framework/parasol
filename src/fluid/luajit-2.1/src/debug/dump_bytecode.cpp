@@ -19,6 +19,7 @@
 
 #include <parasol/main.h>
 
+#include "filesource.h"
 #include "token_types.h"
 #include "parse_types.h"
 #include "dump_bytecode.h"
@@ -82,20 +83,16 @@ static std::string describe_gc_constant(GCproto *Proto, ptrdiff_t Index)
       pf::Log("ByteCode").warning("describe_gc_constant: null GC object at index %" PRId64, uint64_t(Index));
       return "K<null>";
    }
-
-   if (gc_obj->gch.gct IS (uint8_t)~LJ_TSTR) {
+   else if (gc_obj->gch.gct IS (uint8_t)~LJ_TSTR) {
       GCstr *str_obj = gco_to_string(gc_obj);
       return std::format("K{}", format_string_constant({strdata(str_obj), str_obj->len}));
    }
-
-   if (gc_obj->gch.gct IS (uint8_t)~LJ_TPROTO) {
+   else if (gc_obj->gch.gct IS (uint8_t)~LJ_TPROTO) {
       GCproto *child = gco_to_proto(gc_obj);
       return std::format("K<func {}-{}>", child->firstline, child->firstline + child->numline);
    }
-
-   if (gc_obj->gch.gct IS (uint8_t)~LJ_TTAB) return "K<table>";
-
-   return "K<gc>";
+   else if (gc_obj->gch.gct IS (uint8_t)~LJ_TTAB) return "K<table>";
+   else return "K<gc>";
 }
 
 //********************************************************************************************************************
@@ -152,7 +149,7 @@ static std::string_view get_proto_uvname(GCproto *Proto, uint32_t Index)
 
 //********************************************************************************************************************
 
-static std::string describe_operand_value(GCproto *Proto, BCMode Mode, int Value, BCPOS Pc)
+static std::string describe_operand_value(GCproto *Proto, FuncState *fs, BCMode Mode, int Value, BCPOS Pc)
 {
    switch (Mode) {
       case BCMdst:
@@ -161,10 +158,12 @@ static std::string describe_operand_value(GCproto *Proto, BCMode Mode, int Value
       case BCMrbase:
          return std::format("R{}", Value);
 
-      case BCMuv: {
-         auto name = get_proto_uvname(Proto, (uint32_t)Value);
-         return name.empty() ? std::format("U{}", Value) : std::format("U{}({})", Value, name);
-      }
+      case BCMuv:
+         if (Proto) {
+            auto name = get_proto_uvname(Proto, (uint32_t)Value);
+            return name.empty() ? std::format("U{}", Value) : std::format("U{}({})", Value, name);
+         }
+         return std::format("U{}", Value);
 
       case BCMlit:
          return std::format("#{}", Value);
@@ -176,12 +175,59 @@ static std::string describe_operand_value(GCproto *Proto, BCMode Mode, int Value
          return describe_primitive(Value);
 
       case BCMnum:
-         return std::format("#{}", describe_num_constant(proto_knumtv(Proto, Value)));
+         if (Proto) {
+            return std::format("#{}", describe_num_constant(proto_knumtv(Proto, Value)));
+         }
+         else if (fs) {
+            // Look up number constant in the constant table
+            GCtab *kt = fs->kt;
+            Node *node = noderef(kt->node);
+
+            for (uint32_t i = 0; i <= kt->hmask; ++i) {
+               TValue *val = &node[i].val;
+               if (tvhaskslot(val) and tvkslot(val) IS (uint32_t)Value) {
+                  TValue *key_tv = &node[i].key;
+                  if (tvisnum(key_tv) or tvisint(key_tv)) {
+                     return std::format("#{}", describe_num_constant(key_tv));
+                  }
+                  break;
+               }
+            }
+         }
+         return std::format("#<num{}>", Value);
 
       case BCMstr:
       case BCMfunc:
       case BCMtab:
-         return describe_gc_constant(Proto, -(ptrdiff_t)Value - 1);
+         if (Proto) {
+            return describe_gc_constant(Proto, -(ptrdiff_t)Value - 1);
+         }
+         else if (fs) {
+            // Look up GC constant in the constant table
+            GCtab *kt = fs->kt;
+            Node *node = noderef(kt->node);
+
+            for (uint32_t i = 0; i <= kt->hmask; ++i) {
+               TValue *val = &node[i].val;
+               if (tvhaskslot(val) and tvkslot(val) IS (uint32_t)Value) {
+                  TValue *key_tv = &node[i].key;
+
+                  if (tvisstr(key_tv)) {
+                     GCstr *str_obj = strV(key_tv);
+                     return std::format("K{}", format_string_constant({strdata(str_obj), str_obj->len}));
+                  }
+
+                  if (tvisproto(key_tv)) {
+                     GCproto *child = protoV(key_tv);
+                     return std::format("K<func {}-{}>", child->firstline, child->firstline + child->numline);
+                  }
+
+                  if (tvistab(key_tv)) return "K<table>";
+                  break;
+               }
+            }
+         }
+         return std::format("K<gc{}>", Value);
 
       case BCMjump: {
          if ((BCPOS)Value IS NO_JMP) return "->(no)";
@@ -190,7 +236,13 @@ static std::string describe_operand_value(GCproto *Proto, BCMode Mode, int Value
          const ptrdiff_t dest = (ptrdiff_t)Pc + 1 + offset;
 
          if (dest < 0) return "->(neg)";
-         if (dest >= (ptrdiff_t)Proto->sizebc) return "->(out)";
+
+         if (Proto) {
+            if (dest >= (ptrdiff_t)Proto->sizebc) return "->(out)";
+         }
+         else if (fs) {
+            if (dest >= (ptrdiff_t)fs->pc) return "->(out)";
+         }
 
          return std::format("->{}{}", dest, offset >= 0 ? std::format("(+{})", offset) : std::format("({})", offset));
       }
@@ -206,94 +258,6 @@ static void append_operand(std::string &Operands, std::string_view Label, std::s
 {
    if (not Operands.empty()) Operands += ' ';
    Operands += std::format("{}={}", Label, Value);
-}
-
-//********************************************************************************************************************
-// Describe operand value during parsing (from FuncState context)
-
-static std::string describe_operand_from_fs(FuncState *fs, BCMode Mode, int Value, BCPOS Pc)
-{
-   switch (Mode) {
-      case BCMdst:
-      case BCMbase:
-      case BCMvar:
-      case BCMrbase:
-         return std::format("R{}", Value);
-
-      case BCMuv:
-         return std::format("U{}", Value);
-
-      case BCMlit:
-         return std::format("#{}", Value);
-
-      case BCMlits:
-         return std::format("#{}", (int16_t)Value);
-
-      case BCMpri:
-         return describe_primitive(Value);
-
-      case BCMnum: {
-         // Look up number constant in the constant table
-         GCtab *kt = fs->kt;
-         Node *node = noderef(kt->node);
-
-         for (uint32_t i = 0; i <= kt->hmask; ++i) {
-            TValue *val = &node[i].val;
-            if (tvhaskslot(val) and tvkslot(val) IS (uint32_t)Value) {
-               TValue *key_tv = &node[i].key;
-               if (tvisnum(key_tv) or tvisint(key_tv)) {
-                  return std::format("#{}", describe_num_constant(key_tv));
-               }
-               break;
-            }
-         }
-         return std::format("#<num{}>", Value);
-      }
-
-      case BCMstr:
-      case BCMfunc:
-      case BCMtab: {
-         // Look up GC constant in the constant table
-         GCtab *kt = fs->kt;
-         Node *node = noderef(kt->node);
-
-         for (uint32_t i = 0; i <= kt->hmask; ++i) {
-            TValue *val = &node[i].val;
-            if (tvhaskslot(val) and tvkslot(val) IS (uint32_t)Value) {
-               TValue *key_tv = &node[i].key;
-
-               if (tvisstr(key_tv)) {
-                  GCstr *str_obj = strV(key_tv);
-                  return std::format("K{}", format_string_constant({strdata(str_obj), str_obj->len}));
-               }
-
-               if (tvisproto(key_tv)) {
-                  GCproto *child = protoV(key_tv);
-                  return std::format("K<func {}-{}>", child->firstline, child->firstline + child->numline);
-               }
-
-               if (tvistab(key_tv)) return "K<table>";
-               break;
-            }
-         }
-         return std::format("K<gc{}>", Value);
-      }
-
-      case BCMjump: {
-         if ((BCPOS)Value IS NO_JMP) return "->(no)";
-
-         const ptrdiff_t offset = (ptrdiff_t)Value - BCBIAS_J;
-         const ptrdiff_t dest = (ptrdiff_t)Pc + 1 + offset;
-
-         if (dest < 0) return "->(neg)";
-         if (dest >= (ptrdiff_t)fs->pc) return "->(out)";
-
-         return std::format("->{}{}", dest, offset >= 0 ? std::format("(+{})", offset) : std::format("({})", offset));
-      }
-
-      default:
-         return std::format("?{}", Value);
-   }
 }
 
 //********************************************************************************************************************
@@ -323,9 +287,28 @@ static BytecodeInfo extract_instruction_info(BCIns Ins)
 }
 
 //********************************************************************************************************************
+
+void format_bc_line(lua_State *L, BCLine Line, int FileWidth, BytecodeLogger Logger, std::string_view Indent, BCPOS pc,
+   const std::string &Operands, void *Meta, BytecodeInfo &Info, bool JumpTarget, bool Verbose)
+{
+   if (Verbose) {
+      const FileSource *src = get_file_source(L, Line.fileIndex());
+
+      std::string_view sv("<unknown>");
+      if (src) sv = std::string_view(src->filename);
+      if (sv.size() > FileWidth) sv.remove_suffix(sv.size() - FileWidth);
+      auto file_and_line = std::format("{:>}:{}", sv, Line.lineNumber());
+
+      FileWidth += 4; // Accounting for line number
+      Logger(std::format("{}[{:04d}] {:{}.{}} {} {:<9} {}", Indent, int(pc), file_and_line, FileWidth, FileWidth, JumpTarget ? "=>" : "  ", Info.op_name, Operands), Meta);
+   }
+   else Logger(std::format("{}[{:04d}] {:<10} {}", Indent, int(pc), Info.op_name, Operands), Meta);
+}
+
+//********************************************************************************************************************
 // Recursively print bytecode for a finalized prototype.
 
-void trace_proto_bytecode(GCproto *Proto, BytecodeLogger Logger, void *Meta, bool Verbose, int Indent)
+void trace_proto_bytecode(lua_State *L, GCproto *Proto, BytecodeLogger Logger, void *Meta, bool Verbose, int Indent)
 {
    if (not Proto) return;
 
@@ -333,6 +316,7 @@ void trace_proto_bytecode(GCproto *Proto, BytecodeLogger Logger, void *Meta, boo
    std::string indent_str(Indent * 2, ' ');
 
    // In verbose mode, pre-scan to identify jump targets
+
    std::vector<uint8_t> targets;
    if (Verbose) {
       targets.resize(Proto->sizebc ? Proto->sizebc : 1, 0);
@@ -352,6 +336,7 @@ void trace_proto_bytecode(GCproto *Proto, BytecodeLogger Logger, void *Meta, boo
    }
 
    // Output function header
+
    if (Indent IS 0) {
       if (Verbose) {
          Logger(std::format("Function (lines {}-{})", int(Proto->firstline), int(Proto->firstline + Proto->numline)), Meta);
@@ -368,28 +353,27 @@ void trace_proto_bytecode(GCproto *Proto, BytecodeLogger Logger, void *Meta, boo
          indent_str, int(Proto->firstline), int(Proto->firstline + Proto->numline), int(Proto->sizebc)), Meta);
    }
 
+   auto file_width = widest_file_source(L, false);
+
    for (BCPOS pc = 0; pc < Proto->sizebc; ++pc) {
       BCIns instruction = bc_stream[pc];
       auto info = extract_instruction_info(instruction);
 
       std::string operands;
 
-      if (info.mode_a != BCMnone) append_operand(operands, "A", describe_operand_value(Proto, info.mode_a, info.value_a, pc));
+      if (info.mode_a != BCMnone) append_operand(operands, "A", describe_operand_value(Proto, nullptr, info.mode_a, info.value_a, pc));
 
       if (bcmode_hasd(info.op)) {
-         if (info.mode_d != BCMnone) append_operand(operands, "D", describe_operand_value(Proto, info.mode_d, info.value_d, pc));
+         if (info.mode_d != BCMnone) append_operand(operands, "D", describe_operand_value(Proto, nullptr, info.mode_d, info.value_d, pc));
       }
       else {
-         if (info.mode_b != BCMnone) append_operand(operands, "B", describe_operand_value(Proto, info.mode_b, info.value_b, pc));
-         if (info.mode_c != BCMnone) append_operand(operands, "C", describe_operand_value(Proto, info.mode_c, info.value_c, pc));
+         if (info.mode_b != BCMnone) append_operand(operands, "B", describe_operand_value(Proto, nullptr, info.mode_b, info.value_b, pc));
+         if (info.mode_c != BCMnone) append_operand(operands, "C", describe_operand_value(Proto, nullptr, info.mode_c, info.value_c, pc));
       }
 
-      if (Verbose) {
-         BCLine line = get_proto_line(Proto, pc);
-         Logger(std::format("{}[{:04d}] {} {} {:<9} {}", indent_str, int(pc), targets[pc] ? "=>" : "  ",
-            line > 0 ? std::format("{:4}", line) : std::string("   -"), info.op_name, operands), Meta);
-      }
-      else Logger(std::format("{}[{:04d}] {:<10} {}", indent_str, int(pc), info.op_name, operands), Meta);
+      BCLine line = get_proto_line(Proto, pc);
+
+      format_bc_line(L, line, file_width, Logger, indent_str, pc, operands, Meta, info, targets[pc] ? true : false, Verbose);
 
       // If this is a FNEW instruction, recursively disassemble the child prototype
 
@@ -401,7 +385,7 @@ void trace_proto_bytecode(GCproto *Proto, BytecodeLogger Logger, void *Meta, boo
             GCobj *gc_obj = proto_kgc(Proto, index);
             if (gc_obj->gch.gct IS (uint8_t)~LJ_TPROTO) {
                GCproto *child = gco_to_proto(gc_obj);
-               trace_proto_bytecode(child, Logger, Meta, Verbose, Indent + 1);
+               trace_proto_bytecode(L, child, Logger, Meta, Verbose, Indent + 1);
             }
          }
       }
@@ -420,24 +404,26 @@ extern void dump_bytecode(FuncState &fs)
    };
 
    printf("Instruction Count: %u\n", (unsigned)fs.pc);
+   
+   auto file_width = widest_file_source(fs.L, false);
 
    for (BCPOS pc = 0; pc < fs.pc; ++pc) {
-      const BCInsLine& line = fs.bcbase[pc];
-      auto info = extract_instruction_info(line.ins);
+      const BCInsLine &iline = fs.bcbase[pc];
+      auto info = extract_instruction_info(iline.ins);
 
       std::string operands;
 
-      if (info.mode_a != BCMnone) append_operand(operands, "A", describe_operand_from_fs(&fs, info.mode_a, info.value_a, pc));
+      if (info.mode_a != BCMnone) append_operand(operands, "A", describe_operand_value(nullptr, &fs, info.mode_a, info.value_a, pc));
 
       if (bcmode_hasd(info.op)) {
-         if (info.mode_d != BCMnone) append_operand(operands, "D", describe_operand_from_fs(&fs, info.mode_d, info.value_d, pc));
+         if (info.mode_d != BCMnone) append_operand(operands, "D", describe_operand_value(nullptr, &fs, info.mode_d, info.value_d, pc));
       }
       else {
-         if (info.mode_b != BCMnone) append_operand(operands, "B", describe_operand_from_fs(&fs, info.mode_b, info.value_b, pc));
-         if (info.mode_c != BCMnone) append_operand(operands, "C", describe_operand_from_fs(&fs, info.mode_c, info.value_c, pc));
+         if (info.mode_b != BCMnone) append_operand(operands, "B", describe_operand_value(nullptr, &fs, info.mode_b, info.value_b, pc));
+         if (info.mode_c != BCMnone) append_operand(operands, "C", describe_operand_value(nullptr, &fs, info.mode_c, info.value_c, pc));
       }
 
-      printf("[%04d] %-10s %s\n", (int)pc, info.op_name, operands.c_str());
+      format_bc_line(fs.L, iline.line, file_width, log_callback, "", pc, operands, nullptr, info, false, true);
 
       // If this is a FNEW instruction, look up and print the child prototype
       if (info.op IS BC_FNEW) {
@@ -452,7 +438,7 @@ extern void dump_bytecode(FuncState &fs)
                TValue *key_tv = &node[i].key;
                if (tvisproto(key_tv)) {
                   GCproto *child = protoV(key_tv);
-                  trace_proto_bytecode(child, log_callback, &log, false, 1);
+                  trace_proto_bytecode(fs.L, child, log_callback, &log, true, 1);
                }
                break;
             }

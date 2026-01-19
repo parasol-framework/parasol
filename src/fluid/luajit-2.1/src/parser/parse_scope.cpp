@@ -32,8 +32,8 @@ void LexState::var_new(BCREG n, GCstr* name, BCLine Line, BCLine Column)
 
    // The pending_vars count tracks how many var_new calls have been made before var_add.
    // varmap.size() + pending_vars gives the total including pending variables.
-   log.branch("Name: %s, Count: %d+%d", uintptr_t(name) >= VARNAME__MAX ? CSTRING(name+1) : "_",
-              int(fs->varmap.size()), int(fs->pending_vars));
+   log.trace("Name: %s, Count: %d+%d", uintptr_t(name) >= VARNAME__MAX ? CSTRING(name+1) : "_",
+      int(fs->varmap.size()), int(fs->pending_vars));
 
    checklimit(fs, fs->varmap.size() + fs->pending_vars + 1, LJ_MAX_LOCVAR, "local variables");
 

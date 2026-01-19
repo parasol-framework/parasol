@@ -575,7 +575,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
       if (lua_getstack(prv->Lua, 1, &ar)) {
          if (lua_getinfo(prv->Lua, "f", &ar)) {
             GCfunc *fn = funcV(prv->Lua->top - 1);
-            if (isluafunc(fn)) trace_proto_bytecode(funcproto(fn), buf_logger, &buf, not opts.compact);
+            if (isluafunc(fn)) trace_proto_bytecode(prv->Lua, funcproto(fn), buf_logger, &buf, not opts.compact);
             else buf << "(current frame is a C function; bytecode unavailable)\n";
 
             lua_pop(prv->Lua, 1);
@@ -589,7 +589,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
             if (lua_isfunction(prv->Lua, -1)) {
                GCfunc *fn = funcV(prv->Lua->top - 1);
                if (isluafunc(fn)) {
-                  trace_proto_bytecode(funcproto(fn), buf_logger, &buf, not opts.compact);
+                  trace_proto_bytecode(prv->Lua, funcproto(fn), buf_logger, &buf, not opts.compact);
                }
                else buf << "(main chunk is a C function; bytecode unavailable)\n";
             }

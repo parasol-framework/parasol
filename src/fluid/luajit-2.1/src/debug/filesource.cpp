@@ -125,3 +125,16 @@ std::optional<uint8_t> find_file_source_by_namespace(lua_State *L, const std::st
    }
    return std::nullopt;
 }
+
+//********************************************************************************************************************
+
+int widest_file_source(lua_State *L, bool StripExt)
+{
+   int max_width = 0;
+   for (const auto &fs : L->file_sources) {
+      int len = int(fs.filename.length());
+      if (StripExt and fs.filename.ends_with(".fluid")) len -= 6;
+      if (len > max_width) max_width = len;
+   }
+   return max_width;
+}

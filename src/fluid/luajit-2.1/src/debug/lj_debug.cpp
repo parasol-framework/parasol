@@ -303,6 +303,7 @@ restart:
    return nullptr;
 }
 
+//********************************************************************************************************************
 // Deduce function name from caller of a frame.
 
 CSTRING lj_debug_funcname(lua_State *L, cTValue *frame, CSTRING *name)
@@ -479,6 +480,8 @@ extern CSTRING lua_setlocal(lua_State *L, const lua_Debug *ar, int n)
    L->top--;
    return name;
 }
+
+//********************************************************************************************************************
 
 int lj_debug_getinfo(lua_State *L, CSTRING what, lj_Debug *ar, int ext)
 {

@@ -50,12 +50,14 @@ const FileSource* get_file_source(lua_State *L, uint8_t Index);
 
 // Register a file being parsed as a "main" file source (from lj_parse or loadFile).
 // Returns the file index (may be > 0 if this file was already registered or other files exist).
-uint8_t register_main_file_source(lua_State *L, std::string &Path, const std::string &Filename, BCLine SourceLines);
+uint8_t register_main_file_source(lua_State *, std::string &, const std::string &, BCLine);
 
 // Set the declared namespace for a file source.
 // Returns true if successful, false if the index is out of range.
-bool set_file_source_namespace(lua_State *L, uint8_t Index, const std::string &Namespace);
+bool set_file_source_namespace(lua_State *, uint8_t, const std::string &);
 
 // Find a file source by its declared namespace.
 // Returns the file index if found, or std::nullopt if not found.
-std::optional<uint8_t> find_file_source_by_namespace(lua_State *L, const std::string &Namespace);
+std::optional<uint8_t> find_file_source_by_namespace(lua_State *, const std::string &);
+
+int widest_file_source(lua_State *, bool);
