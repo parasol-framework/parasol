@@ -372,9 +372,23 @@ ParserResult<IrEmitUnit> IrEmitter::emit_import_stmt(const ImportStmtPayload &Pa
       // GGET _LIB -> dest
       bcemit_AD(fs, BC_GGET, dest, str_const(lj_str_newlit(L, "_LIB")));
 
-      // TGETS <default_namespace> -> dest
+      // TGETS <default_namespace> -> dest (or KSTR + TGETV if constant index > 255)
       GCstr* ns_str = lj_str_new(L, default_ns.c_str(), default_ns.size());
-      bcemit_ABC(fs, BC_TGETS, dest.raw(), dest.raw(), str_const(ns_str));
+      BCREG ns_const_idx = str_const(ns_str);
+
+      if (ns_const_idx <= 255) {
+         // Use TGETS for small constant indices (fits in 8-bit C field)
+         bcemit_ABC(fs, BC_TGETS, dest.raw(), dest.raw(), ns_const_idx);
+      }
+      else {
+         // Constant index exceeds 8-bit limit for TGETS C field.
+         // Use KSTR to load the key into a temp register, then TGETV for table access.
+         BCReg key_reg = BCReg(fs->freereg);
+         bcreg_reserve(fs, BCReg(1));
+         bcemit_AD(fs, BC_KSTR, key_reg, ns_const_idx);
+         bcemit_ABC(fs, BC_TGETV, dest.raw(), dest.raw(), key_reg.raw());
+         fs->freereg--;  // Release temp register
+      }
 
       // Create the local variable
       this->lex_state.var_new(BCReg(0), ns_id.symbol, ns_id.span.line, ns_id.span.column);
