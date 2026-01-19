@@ -40,20 +40,6 @@
 #include "parser/value_categories.h"
 #endif
 
-// Special file system characters.
-#if defined(_WIN32)
-#define LUA_DIRSEP   "\\"
-#else
-#define LUA_DIRSEP   "/"
-#endif
-#define LUA_PATHSEP   ";"
-#define LUA_PATH_MARK   "?"
-#define LUA_EXECDIR   "!"
-#define LUA_IGMARK   "-"
-#define LUA_PATH_CONFIG \
-  LUA_DIRSEP "\n" LUA_PATHSEP "\n" LUA_PATH_MARK "\n" \
-  LUA_EXECDIR "\n" LUA_IGMARK "\n"
-
 // Quoting in error messages.
 #define LUA_QL(x)   "'" x "'"
 #define LUA_QS      LUA_QL("%s")
@@ -64,14 +50,6 @@ constexpr int LUAI_MAXCSTACK = 8000;   //  Max. # of stack slots for a C func (<
 constexpr int LUAI_GCPAUSE = 200;      //  Pause GC until memory is at 200%.
 constexpr int LUAI_GCMUL = 200;        //  Run GC at 200% of allocation speed.
 constexpr int LUA_MAXCAPTURES = 32;    //  Max. pattern captures.
-
-// Configuration for the frontend (the luajit executable).
-#if defined(luajit_c)
-#define LUA_PROGNAME   "luajit"  //  Fallback frontend name.
-#define LUA_PROMPT   "> "   //  Interactive prompt.
-#define LUA_PROMPT2   ">> "   //  Continuation prompt.
-constexpr int LUA_MAXINPUT = 512;   //  Max. input line length.
-#endif
 
 // Note: changing the following defines breaks the Lua 5.1 ABI.
 #define LUA_INTEGER   ptrdiff_t

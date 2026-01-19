@@ -1,5 +1,7 @@
 // Bytecode-level try-except runtime functions.
 // These are called by the BC_TRYENTER and BC_TRYLEAVE handlers and by the error unwinding system.
+//
+// Copyright (C) 2025-2026 Paul Manias.
 
 #define PRV_SCRIPT
 #define PRV_FLUID
@@ -17,7 +19,6 @@
 #include "lj_frame.h"
 #include "lj_state.h"
 #include "lj_str.h"
-
 #include "lualib.h"
 #include "lauxlib.h"
 #include "lj_tab.h"

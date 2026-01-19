@@ -1,5 +1,5 @@
 // Register allocation interface and RAII helpers for LuaJIT parser.
-// Copyright (C) 2025 Paul Manias.
+// Copyright (C) 2025-2026 Paul Manias.
 
 #pragma once
 

@@ -22,9 +22,8 @@ static int is_blank_identifier(GCstr *name)
 //********************************************************************************************************************
 // Define a new local variable.
 
-void LexState::var_new(BCREG n, GCstr* name, BCLine Line, BCLine Column)
+void LexState::var_new(BCREG n_unused, GCstr *name, BCLine Line, BCLine Column)
 {
-   (void)n;  // Offset parameter retained for API compatibility but no longer used
    pf::Log log(__FUNCTION__);
 
    FuncState *fs = this->fs;
@@ -947,13 +946,13 @@ GCproto * LexState::fs_finish(BCLine Line)
 
    sizept = sizeof(GCproto) + fs->pc * sizeof(BCIns) + fs->nkgc * sizeof(GCRef);
    sizept = (sizept + sizeof(TValue) - 1) & ~(sizeof(TValue) - 1);
-   ofsk   = sizept; 
+   ofsk   = sizept;
    sizept += fs->nkn * sizeof(TValue);
-   ofsuv  = sizept; 
+   ofsuv  = sizept;
    sizept += ((fs->nuv + 1) & ~1) * 2;
-   ofsli  = sizept; 
+   ofsli  = sizept;
    sizept += fs_prep_line(fs);
-   ofsdbg = sizept; 
+   ofsdbg = sizept;
    sizept += this->fs_prep_var(fs, &ofsvar);
 
    // Allocate prototype and initialize its fields.
