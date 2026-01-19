@@ -183,8 +183,8 @@ LJLIB_CF(jit_util_funcinfo)
       BCPOS pc = (BCPOS)lj_lib_optint(L, 2, 0);
       lua_createtable(L, 0, 16);  //  Increment hash size if fields are added.
       GCtab *t = tabV(L->top - 1);
-      setintfield(L, t, "lineDefined", pt->firstline);
-      setintfield(L, t, "lastLineDefined", pt->firstline + pt->numline);
+      setintfield(L, t, "lineDefined", pt->firstline.lineNumber());
+      setintfield(L, t, "lastLineDefined", pt->firstline.lineNumber() + pt->numline);
       setintfield(L, t, "stackSlots", pt->framesize);
       setintfield(L, t, "params", pt->numparams);
       setintfield(L, t, "byteCodes", (int32_t)pt->sizebc);
