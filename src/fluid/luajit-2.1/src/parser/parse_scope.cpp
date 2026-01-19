@@ -677,7 +677,12 @@ static void fs_fixup_line(FuncState *fs, GCproto *pt, void *lineinfo, BCLine num
    BCInsLine *base = fs->bcbase + 1;  // Skip FUNCF/FUNCV instruction
    MSize n = fs->pc - 1;
 
-   pt->firstline = fs->linedefined;
+   // Encode file index into firstline.  Extract the file index from the first instruction's line
+   // (which was properly encoded by bcemit_INS using effective_line()), or fall back to the current
+   // file index if there are no instructions following FUNCF/FUNCV.
+
+   uint8_t file_idx = (n > 0) ? base[0].line.fileIndex() : fs->ls->current_file_index;
+   pt->firstline = BCLine::encode(file_idx, fs->linedefined.lineNumber());
    pt->numline = numline;
    setmref(pt->lineinfo, lineinfo);
 

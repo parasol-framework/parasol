@@ -1217,7 +1217,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
    }
 
    ControlFlowEdge loopend = this->control_flow.make_unconditional(BCPos(bcemit_AJ(fs, BC_FORL, base, NO_JMP)));
-   fs->bcbase[loopend.head().raw()].line = Payload.body->span.line;
+   fs->bcbase[loopend.head().raw()].line = BCLine::encode(this->lex_state.current_file_index, Payload.body->span.line.lineNumber());
    loopend.patch_head(BCPos(loop.head().raw() + 1));
    loop.patch_head(fs->current_pc());
    this->loop_stack.back().continue_target = loopend.head();
@@ -1304,8 +1304,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
    loop.patch_head(fs->current_pc());
    BCPos iter = BCPos(bcemit_ABC(fs, isnext ? BC_ITERN : isarr ? BC_ITERA : BC_ITERC, base, nvars - BCREG(3) + BCREG(1), 3));
    ControlFlowEdge loopend = this->control_flow.make_unconditional(BCPos(bcemit_AJ(fs, BC_ITERL, base, NO_JMP)));
-   fs->bcbase[loopend.head().raw() - 1].line = Payload.body->span.line;
-   fs->bcbase[loopend.head().raw()].line = Payload.body->span.line;
+   BCLine encoded_body_line = BCLine::encode(this->lex_state.current_file_index, Payload.body->span.line.lineNumber());
+   fs->bcbase[loopend.head().raw() - 1].line = encoded_body_line;
+   fs->bcbase[loopend.head().raw()].line = encoded_body_line;
    loopend.patch_head(BCPos(loop.head().raw() + 1));
    this->loop_stack.back().continue_target = iter;
    this->loop_stack.back().continue_edge.patch_to(iter);

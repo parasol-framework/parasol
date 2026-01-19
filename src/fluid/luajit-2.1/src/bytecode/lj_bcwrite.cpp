@@ -255,7 +255,7 @@ static void bcwrite_proto(BCWriteCtx* ctx, GCproto* pt)
          sizedbg = pt->sizept - (MSize)((char*)proto_lineinfo(pt) - (char*)pt);
       p = lj_strfmt_wuleb128(p, sizedbg);
       if (sizedbg) {
-         p = lj_strfmt_wuleb128(p, pt->firstline);
+         p = lj_strfmt_wuleb128(p, pt->firstline.lineNumber());  // Write decoded line for bytecode portability
          p = lj_strfmt_wuleb128(p, pt->numline);
       }
    }
