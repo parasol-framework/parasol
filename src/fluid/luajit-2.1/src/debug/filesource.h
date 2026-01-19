@@ -17,7 +17,7 @@ struct FileSource {
    std::string filename;           // Short name for error display
    std::string declared_namespace; // From 'namespace' statement
    BCLine first_line;              // First line in unified space (for reconstruction)
-   BCLine source_lines;            // Total lines in source file
+   BCLine total_lines;             // Total lines in source file
    uint32_t path_hash;             // For fast deduplication lookup
    uint8_t parent_file_index;      // Which file imported this one (0 for main)
    BCLine import_line;             // Line in parent where import occurred (0 for main)

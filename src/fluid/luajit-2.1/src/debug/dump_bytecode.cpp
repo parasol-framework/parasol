@@ -293,6 +293,7 @@ void format_bc_line(lua_State *L, BCLine Line, int FileWidth, BytecodeLogger Log
 {
    if (Verbose) {
       std::string file_and_line;
+      int line_no_width = 4;
 
       if (Line.isValid() and Line.lineNumber() > 0) {
          const FileSource *src = get_file_source(L, Line.fileIndex());
@@ -301,10 +302,13 @@ void format_bc_line(lua_State *L, BCLine Line, int FileWidth, BytecodeLogger Log
          if (src) sv = std::string_view(src->filename);
          if (sv.size() > FileWidth) sv.remove_suffix(sv.size() - FileWidth);
          file_and_line = std::format("{}:{}", sv, Line.lineNumber());
+
+         if (src->total_lines > 10000) line_no_width += 2;
+         else if (src->total_lines > 1000) line_no_width++;
       }
       else file_and_line = "<unknown>:-";
 
-      FileWidth += 4; // Accounting for line number
+      FileWidth += line_no_width;
       Logger(std::format("{}[{:04d}] {:{}.{}} {} {:<9} {}", Indent, int(pc), file_and_line, FileWidth, FileWidth, JumpTarget ? "=>" : "  ", Info.op_name, Operands), Meta);
    }
    else Logger(std::format("{}[{:04d}] {:<10} {}", Indent, int(pc), Info.op_name, Operands), Meta);

@@ -23,7 +23,7 @@ uint8_t register_file_source(lua_State *L, std::string &Path, const std::string 
          overflow.filename           = "unknown";
          overflow.declared_namespace = "";
          overflow.first_line         = 0;
-         overflow.source_lines       = 0;
+         overflow.total_lines        = 0;
          overflow.path_hash          = 0;
          overflow.parent_file_index  = 0;
          overflow.import_line        = 0;
@@ -39,26 +39,25 @@ uint8_t register_file_source(lua_State *L, std::string &Path, const std::string 
       Path = resolved_path;
    }
 
-   uint32_t path_hash = pf::strihash(Path);
+   auto path_hash = pf::strihash(Path);
 
    // Check if this file is already registered
 
-   auto it = L->file_index_map.find(path_hash);
-   if (it != L->file_index_map.end()) {
+   if (auto it = L->file_index_map.find(path_hash);it != L->file_index_map.end()) {
       log.msg("File already registered: %s $%.8x (index %d)", Filename.c_str(), path_hash, it->second);
       return it->second;
    }
 
    // Register the new file
 
-   uint8_t new_index = uint8_t(L->file_sources.size());
+   auto new_index = uint8_t(L->file_sources.size());
 
    FileSource source;
    source.path               = Path;
    source.filename           = Filename;
    source.declared_namespace = "";
    source.first_line         = FirstLine;
-   source.source_lines       = SourceLines;
+   source.total_lines        = SourceLines;
    source.path_hash          = path_hash;
    source.parent_file_index  = ParentIndex;
    source.import_line        = ImportLine;
@@ -77,8 +76,7 @@ uint8_t register_file_source(lua_State *L, std::string &Path, const std::string 
 
 std::optional<uint8_t> find_file_source(lua_State *L, uint32_t PathHash)
 {
-   auto it = L->file_index_map.find(PathHash);
-   if (it != L->file_index_map.end()) return it->second;
+   if (auto it = L->file_index_map.find(PathHash); it != L->file_index_map.end()) return it->second;
    return std::nullopt;
 }
 

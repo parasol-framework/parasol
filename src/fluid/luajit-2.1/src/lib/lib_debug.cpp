@@ -488,8 +488,8 @@ LJLIB_CF(debug_fileSources)
       slot = lj_tab_setstr(L, entry, lj_str_newlit(L, "firstLine"));
       setintV(slot, source->first_line.lineNumber());
 
-      slot = lj_tab_setstr(L, entry, lj_str_newlit(L, "sourceLines"));
-      setintV(slot, source->source_lines.lineNumber());
+      slot = lj_tab_setstr(L, entry, lj_str_newlit(L, "totalLines"));
+      setintV(slot, source->total_lines.lineNumber());
 
       slot = lj_tab_setstr(L, entry, lj_str_newlit(L, "parentIndex"));
       setintV(slot, source->parent_file_index);
