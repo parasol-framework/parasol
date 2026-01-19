@@ -43,6 +43,7 @@ Operand suffixes: V=variable slot, S=string const, N=number const, P=primitive (
 | `ISF` | D | Skip next if R(D) is falsey |
 | `ISTYPE` | A D | Assert R(A) is type D (debug) |
 | `ISNUM` | A D | Assert R(A) is number (debug) |
+| `ISEMPTYARR` | A | R(A) is empty array → execute next JMP; else skip JMP |
 
 #### Unary Ops
 | Opcode | Format | Description |
@@ -149,6 +150,11 @@ Operand suffixes: V=variable slot, S=string const, N=number const, P=primitive (
 | `RET0` | A D | return (no values) |
 | `RET1` | A D | return R(A) (single value) |
 
+#### Type Fixing Ops
+| Opcode | Format | Description |
+|--------|--------|-------------|
+| `TYPEFIX` | A D | Fix function return types at runtime (D = count of values) |
+
 #### Loop and Branch Ops
 | Opcode | Format | Description |
 |--------|--------|-------------|
@@ -177,12 +183,22 @@ Operand suffixes: V=variable slot, S=string const, N=number const, P=primitive (
 | `FUNCC` | A | C function entry |
 | `FUNCCW` | A | C function entry (with wrapper) |
 
+#### Exception Handling Ops
+| Opcode | Format | Description |
+|--------|--------|-------------|
+| `TRYENTER` | A D | Push exception frame (A=base, D=try_block_index) |
+| `TRYLEAVE` | A D | Pop exception frame (A=base, D=0) |
+| `CHECK` | A D | Check error code in R(A), raise if >= threshold |
+| `RAISE` | A D | Raise exception with error code R(A) and message R(D) |
+
 ### 3.3 Resources and Cross-References
 - Opcode definitions and metadata (including the `BCDEF` macro): `src/fluid/luajit-2.1/src/bytecode/lj_bc.h`.
-- Parser emission sites: `parse_operators.cpp` (operator lowering), `operator_emitter.cpp` (register-aware helpers), `ir_emitter.cpp` (control-flow builders).
-- Behavioural context and patterns: `src/fluid/luajit-2.1/src/parser/operator_emitter.cpp`, `src/fluid/luajit-2.1/src/parser/ir_emitter.cpp`, and `src/fluid/luajit-2.1/src/parser/parse_control_flow.cpp` (parser wiring and control-flow emission patterns).
+- Parser emission sites: `src/fluid/luajit-2.1/src/parser/ir_emitter/operator_emitter.cpp` (operator lowering and bytecode emission), `src/fluid/luajit-2.1/src/parser/ir_emitter/ir_emitter.cpp` (control-flow and expression emission).
+- Exception handling emission: `src/fluid/luajit-2.1/src/parser/ir_emitter/emit_try.cpp` (try-except-end statement bytecode generation).
+- Behavioural context and patterns: `src/fluid/luajit-2.1/src/parser/ir_emitter/operator_emitter.cpp`, `src/fluid/luajit-2.1/src/parser/ir_emitter/ir_emitter.cpp`, and `src/fluid/luajit-2.1/src/parser/parse_control_flow.cpp` (parser wiring and control-flow emission patterns).
 - Native array implementation: `src/fluid/luajit-2.1/src/runtime/lj_array.cpp`, `lj_array.h` (core array operations), `lj_vmarray.cpp` (bytecode handlers), `lib_array.cpp` (library functions).
 - Array bytecode emission: `src/fluid/luajit-2.1/src/parser/ir_emitter/emit_function.cpp`, `parse_regalloc.cpp` (array index expression discharge).
+- VM implementations: `src/fluid/luajit-2.1/src/jit/vm_x64.dasc` (x64), `vm_arm64.dasc` (ARM64), `vm_ppc.dasc` (PowerPC) - bytecode interpreter and JIT entry points.
 - Tests exercising these paths live under `src/fluid/tests/`.
 
 ## 4. Conditional and Comparison Bytecodes
@@ -334,14 +350,16 @@ end:
   ```
 
 ### 6.3 Presence Operator (`x?`) – Extended Falsey Check
-- Falsey set: `nil`, `false`, numeric zero, empty string. If operand is in this set, result is `false` and RHS (if any) is skipped.
-- Emission: chain `BC_ISEQP`/`BC_ISEQN`/`BC_ISEQS` comparisons, each followed by a `JMP` to the falsey path. A matching equality branches to that path; non-matching comparisons fall through to the next check. If all checks fall through (truthy value), execution continues past the chain.
+- Falsey set: `nil`, `false`, numeric zero, empty string, empty array. If operand is in this set, result is `false` and RHS (if any) is skipped.
+- Emission: chain `BC_ISEQP`/`BC_ISEQN`/`BC_ISEQS`/`BC_ISEMPTYARR` comparisons, each followed by a `JMP` to the falsey path. A matching equality branches to that path; non-matching comparisons fall through to the next check. If all checks fall through (truthy value), execution continues past the chain.
 - Jump lists patch the falsey exit after the chain; truthy fallthrough sets the result and collapses `freereg`.
+- `BC_ISEMPTYARR` is used to check if the value is a native array with length zero. Semantics: if `R(A)` is an array with `len == 0`, execute the following `JMP` (falsey); otherwise skip the `JMP` (truthy - either not an array or non-empty array).
 
 ### 6.4 If-Empty Operator (`lhs ?? rhs`) – Short-Circuiting with Extended Falsey Semantics
-- Evaluate `lhs`; if it is nil/false/0/"", evaluate `rhs` and return it; otherwise return `lhs` without touching `rhs`.
+- Evaluate `lhs`; if it is nil/false/0/""/empty array, evaluate `rhs` and return it; otherwise return `lhs` without touching `rhs`.
 - Implemented in `IrEmitter::emit_if_empty_expr` plus helper routines in `operator_emitter.cpp`. The compare chain mirrors the presence operator: a matching falsey value branches to RHS evaluation; a truthy value falls through all checks and skips RHS entirely.
 - The result register is the original `lhs` slot; RHS evaluation reuses it and collapses `freereg` afterward to avoid leaked arguments or vararg tails.
+- Uses `BC_ISEMPTYARR` to check for empty arrays as part of the extended falsey semantics. If `R(A)` is a native array with `len == 0`, the following `JMP` is executed (falsey path); otherwise the `JMP` is skipped (truthy path).
 
 ## 7. Register Semantics and Multi-Value Behaviour
 ### 7.1 Register Lifetimes, `freereg`, and `nactvar`
@@ -362,7 +380,7 @@ end:
 ## 8. Common Emission Patterns and Anti-Patterns
 ### 8.1 Canonical Patterns (Do This)
 - Compare + `JMP` for "branch on not-equal": `ISEQP A,const; JMP target` with true skipping the jump; see the relevant compare/jump emission logic in `operator_emitter.cpp`.
-- Presence / if-empty chains: sequential `ISEQP/ISEQN/ISEQS` with shared jump list patched to the truthy or RHS path; see `operator_emitter.emit_presence_check` (called from `IrEmitter::emit_presence_expr`) and `IrEmitter::emit_if_empty_expr`.
+- Presence / if-empty chains: sequential `ISEQP/ISEQN/ISEQS/ISEMPTYARR` with shared jump list patched to the truthy or RHS path; see `operator_emitter.emit_presence_check` (called from `IrEmitter::emit_presence_expr`) and `IrEmitter::emit_if_empty_expr`.
 - Logical short-circuit: `a or b` uses compare + `JMP` into RHS only when falsey; `a and b` jumps over RHS when falsey. Implemented via general binary operator emission in `operator_emitter.cpp` and `ir_emitter.cpp`.
 - Ternary layout: condition in place, compare chain, then true/false blocks writing back into the same register, with end jump to merge; see `IrEmitter::emit_ternary_expr`.
 
@@ -372,31 +390,94 @@ end:
 - Allocating a new register for an operand without freeing the previous expression, allowing multi-return values to flow into subsequent operators.
 - Regression tests that catch these issues: `src/fluid/tests/test_if_empty.fluid`, `test_presence.fluid`, logical operator suites, and ternary-focused cases; add new ones when patterns change.
 
-## 9. Testing, Debugging, and Tooling
-### 9.1 Using Flute and Fluid Tests
+## 9. Exception Handling and Type Fixing
+
+### 9.1 Exception Handling Bytecodes (`BC_TRYENTER`, `BC_TRYLEAVE`, `BC_CHECK`, `BC_RAISE`)
+
+Fluid's `try...except...end` statements are implemented using inline bytecode (not closures), allowing `return`, `break`, and `continue` to work correctly within try blocks.
+
+**Bytecode structure:**
+```
+BC_TRYENTER  base, try_block_index    ; Push exception frame
+<try body bytecode>                   ; Inline try body
+BC_TRYLEAVE  base, 0                  ; Pop exception frame (normal exit)
+JMP          exit_label               ; Jump over handlers
+handler_1:                            ; Handler entry point
+<handler1 bytecode>                   ; Inline handler body
+JMP          exit_label
+handler_2:
+<handler2 bytecode>
+JMP          exit_label
+exit_label:
+```
+
+**Opcode semantics:**
+- `BC_TRYENTER A, D`: Pushes an exception frame onto the exception handler stack. `A` is the base register, `D` is the try block index referencing metadata in `GCproto.try_blocks[]`.
+- `BC_TRYLEAVE A, D`: Pops the exception frame (normal exit path). `A` is the base register, `D` is always 0.
+- `BC_CHECK A, D`: Checks if the error code in `R(A)` is >= the error threshold. If so, raises an exception. Used for error code checking without explicit `raise` statements.
+- `BC_RAISE A, D`: Raises an exception with error code in `R(A)` and optional message in `R(D)`. If `D` is 0xFF, no message is provided.
+
+**Handler metadata:**
+Handler metadata is stored in `GCproto.try_blocks[]` and `GCproto.try_handlers[]`. Each `TryBlockDesc` contains:
+- `first_handler`: Index of the first handler in `try_handlers[]`
+- `handler_count`: Number of handlers for this try block
+- `entry_slots`: Register count at try block entry
+- `flags`: `TRY_FLAG_TRACE` for debugging
+
+Each `TryHandlerDesc` contains:
+- `packed_filter`: Up to 4 16-bit error codes packed into 64 bits (0 = catch-all)
+- `handler_pc`: Bytecode position of handler entry point
+- `exception_reg`: Register holding exception table (0xFF = no variable)
+
+**Implementation:** See [emit_try.cpp:30-240](src/fluid/luajit-2.1/src/parser/ir_emitter/emit_try.cpp#L30-L240), [emit_try.cpp:248-291](src/fluid/luajit-2.1/src/parser/ir_emitter/emit_try.cpp#L248-L291), [emit_try.cpp:299-320](src/fluid/luajit-2.1/src/parser/ir_emitter/emit_try.cpp#L299-L320).
+
+### 9.2 Runtime Type Fixing (`BC_TYPEFIX`)
+
+`BC_TYPEFIX` enables runtime type inference for function return types when the function has no explicit return type annotations.
+
+**Opcode semantics:**
+- `BC_TYPEFIX A, D`: Fixes return types at runtime. `A` is the base register, `D` is the count of return values to process.
+- Fast path: checks if `PROTO_TYPEFIX` flag is set in the function prototype. If not set, this is a no-op.
+- Slow path: calls `lj_meta_typefix(L, base, count)` to infer and record types based on actual runtime values.
+
+**When emitted:**
+The parser sets the `PROTO_TYPEFIX` flag (defined in [lj_obj.h:623](src/fluid/luajit-2.1/src/runtime/lj_obj.h#L623)) on function prototypes when:
+1. The function has NO explicit return type annotations, AND
+2. At least one return statement exists
+
+**Purpose:**
+Enables type inference for untyped functions, allowing the VM to optimize subsequent calls based on observed return types. The inferred types are stored in `GCproto.result_types[]` (up to `PROTO_MAX_RETURN_TYPES` positions).
+
+**Implementation:** See [vm_x64.dasc:4901-4922](src/fluid/luajit-2.1/src/jit/vm_x64.dasc#L4901-L4922), [lj_meta.cpp:664-685](src/fluid/luajit-2.1/src/runtime/lj_meta.cpp#L664-L685), [parse_scope.cpp:1012-1024](src/fluid/luajit-2.1/src/parser/parse_scope.cpp#L1012-L1024).
+
+## 10. Testing, Debugging, and Tooling
+### 10.1 Using Flute and Fluid Tests
 - Run the Fluid regression tests under `src/fluid/tests/` (e.g. `test_if_empty.fluid`, `test_presence.fluid`, logical/ternary suites) to validate control-flow changes.
 - When adding coverage, use side effects (counters, print hooks) on RHS expressions to prove short-circuiting, and capture varargs with `{...}` to detect leaked registers.
 
-### 9.2 Disassembly and Bytecode Inspection
+### 10.2 Disassembly and Bytecode Inspection
 - Obtain bytecode via `mtDebugLog('disasm')` on a `fluid` object or run scripts with `--jit-options dump-bytecode,diagnose`.
 - Map disassembly back to source by matching instruction order to expression evaluation order, then locate emission sites in `ir_emitter.cpp` or `operator_emitter.cpp`.
 - Treat disassembly as the source of truth for branch direction when debugging control flow.
 
-## 10. Maintenance Guidelines
+## 11. Maintenance Guidelines
 - When touching conditional emission or short-circuit logic, update the opcode matrix and the relevant sections here.
 - Add or adjust regression tests in `src/fluid/tests/` to cover new control-flow behaviours; rerun tests after installing a fresh build.
 - Re-generate disassembly for representative snippets (logical ops, ternary, `??`, `?`) to verify register collapse and branch wiring.
 - Reviewers should confirm emitted patterns match the documented skip/execute semantics and that test coverage exercises both true and false paths.
 
-## 11. Glossary and Quick Reference
+## 12. Glossary and Quick Reference
 - `BCIns`/`BCOp`: packed bytecode word and opcode enum.
 - `freereg`: first free stack slot above active locals; must be collapsed after temporaries.
 - `nactvar`: count of active local variables.
 - `ExpKind`: parser expression classification (`VNONRELOC`, `VRELOCABLE`, `VCALL`, etc.).
-- Extended falsey: `nil`, `false`, numeric zero, empty string.
+- Extended falsey: `nil`, `false`, numeric zero, empty string, empty array.
 - Short-circuit: using compare+`JMP` so RHS executes only when needed.
 - `GCarray`: native array object with typed element storage.
 - `LJ_TARRAY`: type tag for native arrays (value ~13).
 - `ARRAY_FLAG_READONLY`: flag indicating array elements cannot be modified.
 - `ARRAY_FLAG_EXTERNAL`: flag indicating array data is not owned by the GC.
 - Cheat sheet: `ISEQ*`/`ISNE*`/`IS*` comparisons — true skips next, false executes next; `and` skips RHS on falsey, `or` skips RHS on truthy; `x?` and `lhs ?? rhs` use chained equality tests with shared jump lists; ternary writes result back into the condition register with one branch skipped; `AGETV`/`AGETB`/`ASETV`/`ASETB` provide direct array element access with bounds checking; `ASGETV`/`ASGETB` provide safe array access (returns nil for out-of-bounds) for the `?[]` operator.
+- `PROTO_TYPEFIX`: flag indicating runtime type inference is enabled for function return types.
+- `TryBlockDesc`: metadata for try blocks stored in `GCproto.try_blocks[]`.
+- `TryHandlerDesc`: metadata for exception handlers stored in `GCproto.try_handlers[]`.

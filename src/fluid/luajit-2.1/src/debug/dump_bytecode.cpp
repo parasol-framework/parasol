@@ -89,7 +89,8 @@ static std::string describe_gc_constant(GCproto *Proto, ptrdiff_t Index)
    }
    else if (gc_obj->gch.gct IS (uint8_t)~LJ_TPROTO) {
       GCproto *child = gco_to_proto(gc_obj);
-      return std::format("K<func {}-{}>", child->firstline, child->firstline + child->numline);
+      int first_line = child->firstline.lineNumber();
+      return std::format("K<func {}-{}>", first_line, first_line + int(child->numline));
    }
    else if (gc_obj->gch.gct IS (uint8_t)~LJ_TTAB) return "K<table>";
    else return "K<gc>";
@@ -219,7 +220,8 @@ static std::string describe_operand_value(GCproto *Proto, FuncState *fs, BCMode 
 
                   if (tvisproto(key_tv)) {
                      GCproto *child = protoV(key_tv);
-                     return std::format("K<func {}-{}>", child->firstline, child->firstline + child->numline);
+                     int first_line = child->firstline.lineNumber();
+                     return std::format("K<func {}-{}>", first_line, first_line + int(child->numline));
                   }
 
                   if (tvistab(key_tv)) return "K<table>";
@@ -344,22 +346,25 @@ void trace_proto_bytecode(lua_State *L, GCproto *Proto, BytecodeLogger Logger, v
       }
    }
 
-   // Output function header
+   // Output function header - use lineNumber() to extract decoded line values
+
+   int first_line = Proto->firstline.lineNumber();
+   int last_line = first_line + int(Proto->numline);
 
    if (Indent IS 0) {
       if (Verbose) {
-         Logger(std::format("Function (lines {}-{})", int(Proto->firstline), int(Proto->firstline + Proto->numline)), Meta);
+         Logger(std::format("Function (lines {}-{})", first_line, last_line), Meta);
          Logger(std::format("Bytecodes: {}, Constants: {} numeric, {} objects", int(Proto->sizebc), int(Proto->sizekn), int(Proto->sizekgc)), Meta);
          Logger("", Meta);
       }
    }
    else if (Verbose) {
       Logger(std::format("{}--- Nested function: lines {}-{}, {} bytecodes ---",
-         indent_str, int(Proto->firstline), int(Proto->firstline + Proto->numline), int(Proto->sizebc)), Meta);
+         indent_str, first_line, last_line, int(Proto->sizebc)), Meta);
    }
    else {
       Logger(std::format("{}--- Nested function: lines {}-{}, {} bytecodes ---",
-         indent_str, int(Proto->firstline), int(Proto->firstline + Proto->numline), int(Proto->sizebc)), Meta);
+         indent_str, first_line, last_line, int(Proto->sizebc)), Meta);
    }
 
    auto file_width = widest_file_source(L, false);
@@ -409,10 +414,10 @@ extern void dump_bytecode(FuncState &fs)
    pf::Log log("ByteCode");
 
    auto log_callback = [](std::string_view Msg, void *Meta) {
-      printf("%.*s\n", int(Msg.size()), Msg.data());
+      fprintf(stderr, "%.*s\n", int(Msg.size()), Msg.data());
    };
 
-   printf("Instruction Count: %u\n", (unsigned)fs.pc);
+   fprintf(stderr, "Instruction Count: %u\n", (unsigned)fs.pc);
 
    auto file_width = widest_file_source(fs.L, false);
 
