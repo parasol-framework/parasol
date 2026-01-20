@@ -28,6 +28,16 @@ static bool is_known_c_interface(uint32_t Hash) {
    return false;
 }
 
+// Check if a name in the global table is a C function
+
+static bool is_global_cfunction(lua_State *L, CSTRING Name)
+{
+   lua_getglobal(L, Name);
+   bool is_cfunc = lua_iscfunction(L, -1) != 0;
+   lua_pop(L, 1);
+   return is_cfunc;
+}
+
 //********************************************************************************************************************
 // Pipe expression: lhs |> rhs_call()
 // Prepends the LHS result(s) as argument(s) to the RHS function call.  The RHS must be a CallExpr node.
@@ -204,6 +214,8 @@ ParserResult<ExpDesc> IrEmitter::emit_safe_call_expr(const CallExprPayload &Payl
 
 ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
 {
+   pf::Log log(__FUNCTION__);
+
    // We save lastline here before it gets overwritten by processing sub-expressions.
    BCLine call_line = this->lex_state.lastline;
 
@@ -271,13 +283,15 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
       // Prototype registry lookup for global/interface calls
 
       if (callee_return_type IS FluidType::Unknown) {
-         if (direct->callable and direct->callable->kind IS AstNodeKind::IdentifierExpr
-               and callee.k IS ExpKind::Global) {
+         if (direct->callable and direct->callable->kind IS AstNodeKind::IdentifierExpr) {
             // Global C registered function: func(args)
             const auto *name_ref = std::get_if<NameRef>(&direct->callable->data);
             if (name_ref and name_ref->identifier.symbol) {
                if (auto proto = get_func_prototype_by_hash(name_ref->identifier.symbol->hash)) {
                   callee_return_type = proto->first_result();
+               }
+               else if (is_global_cfunction(lex_state.L, strdata(name_ref->identifier.symbol))) {
+                  log.warning("No prototype registered for function: %s", strdata(name_ref->identifier.symbol));
                }
             }
          }
@@ -293,7 +307,6 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
                         callee_return_type = proto->first_result();
                      }
                      else if (is_known_c_interface(iface->identifier.symbol->hash)) {
-                        pf::Log log(__FUNCTION__);
                         log.warning("No prototype registered for method: %s.%s",
                            strdata(iface->identifier.symbol), strdata(member_payload->member.symbol));
                      }
