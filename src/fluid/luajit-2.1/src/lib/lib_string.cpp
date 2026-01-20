@@ -31,6 +31,7 @@
 #include "lib.h"
 #include "lib_utils.h"
 #include "lib_range.h"
+#include "lj_proto_registry.h"
 #include "debug/error_guard.h"
 
 #define L_ESC      '%'
@@ -1307,5 +1308,21 @@ extern int luaopen_string(lua_State *L)
    // to flip the absence/presence semantics used by the VM.
 
    mt->nomm = (uint8_t)(~(1u << MM_index));
+
+   // Register string interface prototypes for compile-time type inference
+   reg_iface_prototype("string", "len", { FluidType::Num }, { FluidType::Str });
+   reg_iface_prototype("string", "sub", { FluidType::Str }, { FluidType::Str, FluidType::Num, FluidType::Num });
+   reg_iface_prototype("string", "format", { FluidType::Str }, { FluidType::Str }, FProtoFlags::Variadic);
+   reg_iface_prototype("string", "upper", { FluidType::Str }, { FluidType::Str });
+   reg_iface_prototype("string", "lower", { FluidType::Str }, { FluidType::Str });
+   reg_iface_prototype("string", "find", { FluidType::Num, FluidType::Num }, { FluidType::Str, FluidType::Str });
+   reg_iface_prototype("string", "match", { FluidType::Str }, { FluidType::Str, FluidType::Str });
+   reg_iface_prototype("string", "gsub", { FluidType::Str, FluidType::Num }, { FluidType::Str, FluidType::Str, FluidType::Any });
+   reg_iface_prototype("string", "rep", { FluidType::Str }, { FluidType::Str, FluidType::Num });
+   reg_iface_prototype("string", "reverse", { FluidType::Str }, { FluidType::Str });
+   reg_iface_prototype("string", "byte", { FluidType::Num }, { FluidType::Str, FluidType::Num }, FProtoFlags::Variadic);
+   reg_iface_prototype("string", "char", { FluidType::Str }, {}, FProtoFlags::Variadic);
+   reg_iface_prototype("string", "dump", { FluidType::Str }, { FluidType::Func });
+
    return 1;
 }

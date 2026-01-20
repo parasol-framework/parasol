@@ -9,8 +9,7 @@ constexpr auto HASH_INCLUDE = pf::strhash("include");
 
 //********************************************************************************************************************
 // Pipe expression: lhs |> rhs_call()
-// Prepends the LHS result(s) as argument(s) to the RHS function call.
-// The RHS must be a CallExpr node.
+// Prepends the LHS result(s) as argument(s) to the RHS function call.  The RHS must be a CallExpr node.
 //
 // Register layout for calls:
 //   R(base)   = function
@@ -203,7 +202,7 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
                return ParserResult<ExpDesc>::success(ExpDesc(ExpKind::Void));
             }
             else if (func_name->hash IS HASH_INCLUDE) {
-               // Intercept include('module_name') to pre-load constants at parse time
+               // Intercept include('module_name') to pre-load constants at parse time, not run-time.
                if (not Payload.arguments.empty() and
                    Payload.arguments[0]->kind IS AstNodeKind::LiteralExpr) {
                   const auto *lit = std::get_if<LiteralValue>(&Payload.arguments[0]->data);
@@ -246,6 +245,35 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
       if (callee.k IS ExpKind::Local) {
          VarInfo* vinfo = &this->lex_state.vstack[callee.u.s.aux];
          callee_return_type = vinfo->result_types[0];
+      }
+
+      // Prototype registry lookup for global/interface calls
+
+      if (callee_return_type IS FluidType::Unknown) {
+         if (direct->callable and direct->callable->kind IS AstNodeKind::IdentifierExpr) {
+            // Global C registered function: func(args)
+            const auto *name_ref = std::get_if<NameRef>(&direct->callable->data);
+            if (name_ref and name_ref->identifier.symbol) {
+               if (auto proto = get_func_prototype_by_hash(name_ref->identifier.symbol->hash)) {
+                  callee_return_type = proto->first_result();
+               }
+            }
+         }
+         else if (direct->callable and direct->callable->kind IS AstNodeKind::MemberExpr) {
+            // Interface method: iface.method(args)
+            const auto *member_payload = std::get_if<MemberExprPayload>(&direct->callable->data);
+            if (member_payload and member_payload->table and member_payload->member.symbol) {
+               if (member_payload->table->kind IS AstNodeKind::IdentifierExpr) {
+                  const auto *iface = std::get_if<NameRef>(&member_payload->table->data);
+                  if (iface and iface->identifier.symbol) {
+                     if (auto proto = get_prototype_by_hash(iface->identifier.symbol->hash,
+                           member_payload->member.symbol->hash)) {
+                        callee_return_type = proto->first_result();
+                     }
+                  }
+               }
+            }
+         }
       }
 
       this->materialise_to_next_reg(callee, "call callee");

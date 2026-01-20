@@ -13,6 +13,7 @@
 
 #include "lj_debug.h"
 #include "lj_tab.h"
+#include "lj_proto_registry.h"
 #include "../parse_internal.h"
 #include "../parse_value.h"
 #include "../token_types.h"

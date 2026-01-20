@@ -22,6 +22,7 @@
 #include "lj_str.h"
 #include "lj_meta.h"
 #include "lj_object.h"
+#include "lj_proto_registry.h"
 #include "lib.h"
 
 #include <cstdio>
@@ -996,5 +997,23 @@ extern "C" int luaopen_object(lua_State *L)
 
    lua_pushvalue(L, -1);
    lua_setbasemetatable(L, LJ_TOBJECT);
+
+   // Register obj interface prototypes for compile-time type inference
+   reg_iface_prototype("obj", "new", { FluidType::Object }, { FluidType::Str });
+   reg_iface_prototype("obj", "find", { FluidType::Object }, { FluidType::Any });
+   reg_iface_prototype("obj", "init", { FluidType::Object }, { FluidType::Object });
+   reg_iface_prototype("obj", "free", { FluidType::Nil }, { FluidType::Object });
+   reg_iface_prototype("obj", "lock", { FluidType::Object }, { FluidType::Object });
+   reg_iface_prototype("obj", "children", { FluidType::Table }, { FluidType::Object });
+   reg_iface_prototype("obj", "detach", { FluidType::Object }, { FluidType::Object });
+   reg_iface_prototype("obj", "get", { FluidType::Any }, { FluidType::Object, FluidType::Str });
+   reg_iface_prototype("obj", "set", { FluidType::Object }, { FluidType::Object, FluidType::Str, FluidType::Any });
+   reg_iface_prototype("obj", "getKey", { FluidType::Any }, { FluidType::Object, FluidType::Str });
+   reg_iface_prototype("obj", "setKey", { FluidType::Object }, { FluidType::Object, FluidType::Str, FluidType::Any });
+   reg_iface_prototype("obj", "delayCall", { FluidType::Nil }, { FluidType::Object, FluidType::Num, FluidType::Str }, FProtoFlags::Variadic);
+   reg_iface_prototype("obj", "exists", { FluidType::Bool }, { FluidType::Any });
+   reg_iface_prototype("obj", "subscribe", { FluidType::Object }, { FluidType::Object, FluidType::Str, FluidType::Func });
+   reg_iface_prototype("obj", "unsubscribe", { FluidType::Object }, { FluidType::Object, FluidType::Any });
+
    return 1;
 }
