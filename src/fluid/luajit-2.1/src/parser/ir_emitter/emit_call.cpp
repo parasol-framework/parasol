@@ -7,6 +7,27 @@ constexpr auto HASH_ASSERT  = pf::strhash("assert");
 constexpr auto HASH_MSG     = pf::strhash("msg");
 constexpr auto HASH_INCLUDE = pf::strhash("include");
 
+// Known C library interface hashes - warnings for missing prototypes only apply to these
+
+static constexpr uint32_t KNOWN_C_INTERFACES[] = {
+   pf::strhash("obj"),
+   pf::strhash("string"),
+   pf::strhash("math"),
+   pf::strhash("table"),
+   pf::strhash("bit"),
+   pf::strhash("jit"),
+   pf::strhash("debug"),
+   pf::strhash("array"),
+   pf::strhash("range")
+};
+
+static bool is_known_c_interface(uint32_t Hash) {
+   for (auto h : KNOWN_C_INTERFACES) {
+      if (h IS Hash) return true;
+   }
+   return false;
+}
+
 //********************************************************************************************************************
 // Pipe expression: lhs |> rhs_call()
 // Prepends the LHS result(s) as argument(s) to the RHS function call.  The RHS must be a CallExpr node.
@@ -250,7 +271,8 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
       // Prototype registry lookup for global/interface calls
 
       if (callee_return_type IS FluidType::Unknown) {
-         if (direct->callable and direct->callable->kind IS AstNodeKind::IdentifierExpr) {
+         if (direct->callable and direct->callable->kind IS AstNodeKind::IdentifierExpr
+               and callee.k IS ExpKind::Global) {
             // Global C registered function: func(args)
             const auto *name_ref = std::get_if<NameRef>(&direct->callable->data);
             if (name_ref and name_ref->identifier.symbol) {
@@ -269,6 +291,11 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
                      if (auto proto = get_prototype_by_hash(iface->identifier.symbol->hash,
                            member_payload->member.symbol->hash)) {
                         callee_return_type = proto->first_result();
+                     }
+                     else if (is_known_c_interface(iface->identifier.symbol->hash)) {
+                        pf::Log log(__FUNCTION__);
+                        log.warning("No prototype registered for method: %s.%s",
+                           strdata(iface->identifier.symbol), strdata(member_payload->member.symbol));
                      }
                   }
                }
