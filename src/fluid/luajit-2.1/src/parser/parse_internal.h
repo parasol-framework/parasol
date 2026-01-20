@@ -129,8 +129,8 @@ static inline void bcemit_tgets(FuncState *fs, BCREG Dest, BCREG Table, BCREG St
       bcemit_ABC(fs, BC_TGETS, Dest, Table, StrConstIdx);
    }
    else {
-      BCREG key_reg = fs->freereg++;
-      bcreg_bump(fs, 1);
+      BCREG key_reg = fs->freereg;
+      bcreg_reserve(fs, 1);
       bcemit_AD(fs, BC_KSTR, key_reg, StrConstIdx);
       bcemit_ABC(fs, BC_TGETV, Dest, Table, key_reg);
       fs->freereg--;
