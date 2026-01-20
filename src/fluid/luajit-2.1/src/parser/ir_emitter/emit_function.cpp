@@ -586,10 +586,10 @@ ParserResult<IrEmitUnit> IrEmitter::emit_annotation_registration(BCReg FuncReg, 
    bcemit_AD(fs, BC_GGET, base_raw, str_const(lj_str_newlit(L, "debug")));
 
    // TGETS anno -> base (debug.anno)
-   bcemit_ABC(fs, BC_TGETS, base_raw, base_raw, str_const(lj_str_newlit(L, "anno")));
+   bcemit_tgets(fs, base_raw, base_raw, str_const(lj_str_newlit(L, "anno")));
 
    // TGETS set -> base (debug.anno.set)
-   bcemit_ABC(fs, BC_TGETS, base_raw, base_raw, str_const(lj_str_newlit(L, "set")));
+   bcemit_tgets(fs, base_raw, base_raw, str_const(lj_str_newlit(L, "set")));
 
    // Args start at base + 1 + LJ_FR2 (skip function slot and frame slot)
    BCREG args_base = base_raw + 1 + LJ_FR2;

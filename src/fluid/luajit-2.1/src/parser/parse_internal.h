@@ -120,6 +120,23 @@ static inline BCPOS bcemit_AJ(FuncState *fs, Op o, BCREG a, BCPOS j) {
    return bcemit_INS(fs, BCINS_AJ(o, a, j));
 }
 
+// Emit BC_TGETS with overflow protection. When the string constant index exceeds 255 (the 8-bit C field limit),
+// falls back to BC_KSTR + BC_TGETV to avoid bytecode corruption.
+
+static inline void bcemit_tgets(FuncState *fs, BCREG Dest, BCREG Table, BCREG StrConstIdx)
+{
+   if (StrConstIdx <= BCMAX_C) {
+      bcemit_ABC(fs, BC_TGETS, Dest, Table, StrConstIdx);
+   }
+   else {
+      BCREG key_reg = fs->freereg++;
+      bcreg_bump(fs, 1);
+      bcemit_AD(fs, BC_KSTR, key_reg, StrConstIdx);
+      bcemit_ABC(fs, BC_TGETV, Dest, Table, key_reg);
+      fs->freereg--;
+   }
+}
+
 static void expr_discharge(FuncState *, ExpDesc* e);
 static void bcemit_nil(FuncState *, BCREG from, BCREG n);
 static void expr_toreg_nobranch(FuncState *, ExpDesc* e, BCREG reg);

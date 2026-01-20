@@ -471,7 +471,7 @@ static void bcemit_close(FuncState *fs, BCREG slot)
    key.init(ExpKind::Str, 0);
    key.u.sval = close_str;
    BCREG close_fn_reg = base + 1;
-   bcemit_ABC(fs, BC_TGETS, close_fn_reg, base, const_str(fs, &key));
+   bcemit_tgets(fs, close_fn_reg, base, const_str(fs, &key));
 
    // Step 6: Check if __close is nil - skip if so
    bcemit_INS(fs, BCINS_AD(BC_ISEQP, close_fn_reg, const_pri(&nilv)));

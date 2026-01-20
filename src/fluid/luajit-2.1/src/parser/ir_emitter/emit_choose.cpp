@@ -378,7 +378,7 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
 
                BCREG field_reg = fs->freereg;
                allocator.reserve(BCReg(1));
-               bcemit_ABC(fs, BC_TGETS, field_reg, scrutinee_reg, str_const(field.name->symbol));
+               bcemit_tgets(fs, field_reg, scrutinee_reg.raw(), str_const(field.name->symbol).raw());
 
                // Emit expected value expression and compare
 
