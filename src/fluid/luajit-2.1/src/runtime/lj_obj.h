@@ -587,7 +587,8 @@ struct ProtoKey {
 
 struct ProtoKeyHash {
    size_t operator()(const ProtoKey& k) const noexcept {
-      return size_t(k.interface_hash) ^ (size_t(k.function_hash) << 16);
+      static_assert(sizeof(size_t) >= 8, "ProtoKeyHash requires 64-bit size_t");
+      return size_t(k.interface_hash)<<32 | size_t(k.function_hash);
    }
 };
 
