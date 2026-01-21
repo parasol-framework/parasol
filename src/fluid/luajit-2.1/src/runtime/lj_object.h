@@ -14,5 +14,5 @@ extern int lj_object_pairs(lua_State *L);
 extern int lj_object_ipairs(lua_State *L);
 
 // Fast path bytecode handlers for BC_OGETS and BC_OSETS
-extern "C" TValue * lj_object_gets(lua_State *L, GCobject *Obj, GCstr *Key);
+extern "C" int lj_object_gets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Dest);
 extern "C" int lj_object_sets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Val);

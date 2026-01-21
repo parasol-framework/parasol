@@ -170,16 +170,16 @@ int lj_object_ipairs(lua_State *L)
 
 //********************************************************************************************************************
 // Fast object field get - called from BC_OGETS bytecode handler.
-// Returns pointer to TValue on stack if successful, nullptr to request fallback to metamethod dispatch.
+// Returns 1 on success, 0 to request fallback to metamethod dispatch.
 //
 // This function is designed to be called from the VM with minimal overhead:
-// - 3 register arguments only (Windows x64 calling convention compatible)
-// - Returns result location directly, avoiding extra stack operations
-// - Pushes result onto Lua stack, returns pointer to it
+// - 4 register arguments (Windows x64 limit)
+// - Writes result directly into Dest
+// - Restores L->top to avoid clobbering active VM registers
 
-extern "C" TValue * lj_object_gets(lua_State *L, GCobject *Obj, GCstr *Key)
+extern "C" int lj_object_gets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Dest)
 {
-   if (not Obj->uid) return nullptr; // Object has been freed - request fallback which will handle the error
+   if (not Obj->uid) return 0; // Object has been freed - request fallback which will handle the error
 
    // Use cached read_table or lazily populate it
    auto read_table = (READ_TABLE *)Obj->read_table;
@@ -189,17 +189,20 @@ extern "C" TValue * lj_object_gets(lua_State *L, GCobject *Obj, GCstr *Key)
    }
 
    // Look up the field handler using the string's precomputed hash
+
    auto hash_key = obj_read(Key->hash);
    auto func = read_table->find(hash_key);
-   if (func IS read_table->end()) return nullptr; // Field not found - request fallback to metamethod dispatch
+   if (func IS read_table->end()) return 0; // Field not found - request fallback to metamethod dispatch
+
+   TValue *saved_top = L->top;
+   if (L->top <= Dest) L->top = Dest + 1;
 
    // Call the field handler - it pushes result onto the Lua stack
    int result_count = func->Call(L, *func, Obj);
-   if (result_count > 0) return L->top - 1;  // Return pointer to the pushed value
-
-   setnilV(L->top); // No result pushed - return nil
-   L->top++;
-   return L->top - 1;
+   if (result_count > 0) copyTV(L, Dest, L->top - 1);
+   else setnilV(Dest);
+   L->top = saved_top;
+   return 1;
 }
 
 //********************************************************************************************************************
