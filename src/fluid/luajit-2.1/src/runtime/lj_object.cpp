@@ -179,7 +179,7 @@ int lj_object_ipairs(lua_State *L)
 
 extern "C" int lj_object_gets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Dest)
 {
-   if (not Obj->uid) return 0; // Object has been freed - request fallback which will handle the error
+   if (not Obj->uid) return 0; // Object has been freed - request fallback
 
    // Use cached read_table or lazily populate it
    auto read_table = (READ_TABLE *)Obj->read_table;
@@ -195,7 +195,7 @@ extern "C" int lj_object_gets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *D
    if (func IS read_table->end()) return 0; // Field not found - request fallback to metamethod dispatch
 
    TValue *saved_top = L->top;
-   if (L->top <= Dest) L->top = Dest + 1;
+   if (L->top <= Dest) L->top = Dest + 1;  // Ensure handler pushes after destination slot
 
    // Call the field handler - it pushes result onto the Lua stack
    int result_count = func->Call(L, *func, Obj);
@@ -230,16 +230,14 @@ extern "C" int lj_object_sets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *V
    if (func IS write_table->end()) return 0; // Field not found - request fallback to metamethod dispatch
 
    if (auto pobj = access_object(Obj)) {
-      // Push the value onto the stack temporarily for the handler.  The handler expects the value at a specific
-      // stack index
+      // Ensure the value register is visible to the C API without clobbering other registers.
 
       TValue *saved_top = L->top;
-      copyTV(L, L->top, Val);
-      L->top++;
+      if (L->top <= Val) L->top = Val + 1;
 
       // Call the field handler - it reads value from stack position
 
-      int stack_idx = int(L->top - L->base);
+      int stack_idx = int(Val - L->base) + 1;
       ERR error = func->Call(L, pobj, func->Field, stack_idx);
       L->top = saved_top; // Restore stack
       release_object(Obj);
