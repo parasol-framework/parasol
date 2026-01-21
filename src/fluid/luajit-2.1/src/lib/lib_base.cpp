@@ -869,7 +869,7 @@ extern int luaopen_base(lua_State* L)
    reg_func_prototype("print", { FluidType::Nil }, {}, FProtoFlags::Variadic);
    reg_func_prototype("assert", { FluidType::Any }, { FluidType::Any, FluidType::Str });
    reg_func_prototype("type", { FluidType::Str }, { FluidType::Any });
-   reg_func_prototype("tonumber", { FluidType::Num }, { FluidType::Any });
+   reg_func_prototype("tonumber", { FluidType::Num }, { FluidType::Any, FluidType::Num });
    reg_func_prototype("tostring", { FluidType::Str }, { FluidType::Any });
    reg_func_prototype("pairs", { FluidType::Func, FluidType::Table, FluidType::Nil }, { FluidType::Table });
    reg_func_prototype("ipairs", { FluidType::Func, FluidType::Table, FluidType::Num }, { FluidType::Table });

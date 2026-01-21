@@ -15,13 +15,11 @@
 void init_proto_registry();
 
 // Register a global/local function prototype
-// Returns ERR::Okay on success, ERR::AlreadyExists if already registered
 
 ERR reg_func_prototype(std::string_view Name, std::initializer_list<FluidType> ResultTypes,
    std::initializer_list<FluidType> ParamTypes, FProtoFlags Flags = FProtoFlags::None);
 
 // Register an interface method prototype
-// Returns ERR::Okay on success, ERR::AlreadyExists if already registered
 
 ERR reg_iface_prototype(std::string_view Interface, std::string_view Method,
    std::initializer_list<FluidType> ResultTypes, std::initializer_list<FluidType> ParamTypes,

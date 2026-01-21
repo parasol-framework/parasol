@@ -1315,7 +1315,7 @@ extern int luaopen_string(lua_State *L)
    reg_iface_prototype("string", "format", { FluidType::Str }, { FluidType::Str }, FProtoFlags::Variadic);
    reg_iface_prototype("string", "upper", { FluidType::Str }, { FluidType::Str });
    reg_iface_prototype("string", "lower", { FluidType::Str }, { FluidType::Str });
-   reg_iface_prototype("string", "find", { FluidType::Num, FluidType::Num }, { FluidType::Str, FluidType::Str });
+   reg_iface_prototype("string", "find", { FluidType::Num, FluidType::Num }, { FluidType::Str, FluidType::Str }, FProtoFlags::Variadic);
    reg_iface_prototype("string", "match", { FluidType::Str }, { FluidType::Str, FluidType::Str });
    reg_iface_prototype("string", "gsub", { FluidType::Str, FluidType::Num }, { FluidType::Str, FluidType::Str, FluidType::Any });
    reg_iface_prototype("string", "rep", { FluidType::Str }, { FluidType::Str, FluidType::Num });
