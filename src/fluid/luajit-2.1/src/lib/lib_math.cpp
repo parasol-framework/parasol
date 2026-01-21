@@ -203,12 +203,45 @@ LJLIB_CF(math_randomseed)
 // ------------------------------------------------------------------------
 
 #include "lj_libdef.h"
+#include "lj_proto_registry.h"
 
 extern int luaopen_math(lua_State* L)
 {
    PRNGState* rs = (PRNGState*)lua_newuserdata(L, sizeof(PRNGState));
    lj_prng_seed_fixed(rs);
    LJ_LIB_REG(L, LUA_MATHLIBNAME, math);
+
+   // Register math interface prototypes for compile-time type inference
+   reg_iface_prototype("math", "abs", { FluidType::Num }, { FluidType::Num });
+   reg_iface_prototype("math", "floor", { FluidType::Num }, { FluidType::Num });
+   reg_iface_prototype("math", "ceil", { FluidType::Num }, { FluidType::Num });
+   reg_iface_prototype("math", "sqrt", { FluidType::Num }, { FluidType::Num });
+   reg_iface_prototype("math", "log10", { FluidType::Num }, { FluidType::Num });
+   reg_iface_prototype("math", "deg", { FluidType::Num }, { FluidType::Num });
+   reg_iface_prototype("math", "rad", { FluidType::Num }, { FluidType::Num });
+   reg_iface_prototype("math", "exp", { FluidType::Num }, { FluidType::Num });
+   reg_iface_prototype("math", "sin", { FluidType::Num }, { FluidType::Num });
+   reg_iface_prototype("math", "cos", { FluidType::Num }, { FluidType::Num });
+   reg_iface_prototype("math", "tan", { FluidType::Num }, { FluidType::Num });
+   reg_iface_prototype("math", "asin", { FluidType::Num }, { FluidType::Num });
+   reg_iface_prototype("math", "acos", { FluidType::Num }, { FluidType::Num });
+   reg_iface_prototype("math", "atan", { FluidType::Num }, { FluidType::Num });
+   reg_iface_prototype("math", "sinh", { FluidType::Num }, { FluidType::Num });
+   reg_iface_prototype("math", "cosh", { FluidType::Num }, { FluidType::Num });
+   reg_iface_prototype("math", "tanh", { FluidType::Num }, { FluidType::Num });
+   reg_iface_prototype("math", "frexp", { FluidType::Num, FluidType::Num }, { FluidType::Num });
+   reg_iface_prototype("math", "modf", { FluidType::Num, FluidType::Num }, { FluidType::Num });
+   reg_iface_prototype("math", "log", { FluidType::Num }, { FluidType::Num, FluidType::Num });
+   reg_iface_prototype("math", "atan2", { FluidType::Num }, { FluidType::Num, FluidType::Num });
+   reg_iface_prototype("math", "pow", { FluidType::Num }, { FluidType::Num, FluidType::Num });
+   reg_iface_prototype("math", "fmod", { FluidType::Num }, { FluidType::Num, FluidType::Num });
+   reg_iface_prototype("math", "ldexp", { FluidType::Num }, { FluidType::Num, FluidType::Num });
+   reg_iface_prototype("math", "min", { FluidType::Num }, { FluidType::Num }, FProtoFlags::Variadic);
+   reg_iface_prototype("math", "max", { FluidType::Num }, { FluidType::Num }, FProtoFlags::Variadic);
+   reg_iface_prototype("math", "round", { FluidType::Num }, { FluidType::Num, FluidType::Num });
+   reg_iface_prototype("math", "random", { FluidType::Num }, { FluidType::Num, FluidType::Num });
+   reg_iface_prototype("math", "randomseed", {}, { FluidType::Num });
+
    return 1;
 }
 

@@ -328,6 +328,7 @@ static int luaopen_table_new(lua_State* L)
 //********************************************************************************************************************
 
 #include "lj_libdef.h"
+#include "lj_proto_registry.h"
 
 extern int luaopen_table(lua_State* L)
 {
@@ -337,5 +338,21 @@ extern int luaopen_table(lua_State* L)
    //lua_getglobal(L, "unpack");
    //lua_setfield(L, -2, "unpack");
    lj_lib_prereg(L, "table.new", luaopen_table_new, tabV(L->top - 1));
+
+   // Register table interface prototypes for compile-time type inference
+   reg_iface_prototype("table", "getn", { FluidType::Num }, { FluidType::Table });
+   reg_iface_prototype("table", "insert", {}, { FluidType::Table, FluidType::Any });
+   reg_iface_prototype("table", "remove", { FluidType::Any }, { FluidType::Table, FluidType::Num });
+   reg_iface_prototype("table", "move", { FluidType::Table }, { FluidType::Table, FluidType::Num, FluidType::Num, FluidType::Num, FluidType::Table });
+   reg_iface_prototype("table", "concat", { FluidType::Str }, { FluidType::Table, FluidType::Str, FluidType::Num, FluidType::Num });
+   reg_iface_prototype("table", "sort", {}, { FluidType::Table, FluidType::Func });
+   reg_iface_prototype("table", "new", { FluidType::Table }, { FluidType::Num, FluidType::Num });
+   reg_iface_prototype("table", "empty", { FluidType::Bool }, { FluidType::Table });
+   reg_iface_prototype("table", "clear", {}, { FluidType::Table });
+   reg_iface_prototype("table", "slice", { FluidType::Table }, { FluidType::Table, FluidType::Any });
+   // The following are currently defined in common.fluid
+   reg_iface_prototype("table", "toXML", { FluidType::Str }, { FluidType::Table });
+   reg_iface_prototype("table", "sortByKeys", { FluidType::Func }, { FluidType::Table, FluidType::Func });
+
    return 1;
 }
