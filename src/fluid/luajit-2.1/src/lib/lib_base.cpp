@@ -37,6 +37,7 @@
 #include "runtime/stack_utils.h"
 #include "runtime/lj_thunk.h"
 #include "runtime/lj_object.h"
+#include "runtime/lj_proto_registry.h"
 #include "debug/error_guard.h"
 
 #define LJLIB_MODULE_base
@@ -863,5 +864,22 @@ extern int luaopen_base(lua_State* L)
    newproxy_weaktable(L);  //  top-2.
    LJ_LIB_REG(L, "_G", base);
    LJ_LIB_REG(L, LUA_COLIBNAME, coroutine);
+
+   // Register function prototypes for compile-time type inference
+   reg_func_prototype("print", { FluidType::Nil }, {}, FProtoFlags::Variadic);
+   reg_func_prototype("assert", { FluidType::Any }, { FluidType::Any, FluidType::Str });
+   reg_func_prototype("type", { FluidType::Str }, { FluidType::Any });
+   reg_func_prototype("tonumber", { FluidType::Num }, { FluidType::Any, FluidType::Num });
+   reg_func_prototype("tostring", { FluidType::Str }, { FluidType::Any });
+   reg_func_prototype("pairs", { FluidType::Func, FluidType::Table, FluidType::Nil }, { FluidType::Table });
+   reg_func_prototype("ipairs", { FluidType::Func, FluidType::Table, FluidType::Num }, { FluidType::Table });
+   reg_func_prototype("rawget", { FluidType::Any }, { FluidType::Table, FluidType::Any });
+   reg_func_prototype("rawset", { FluidType::Table }, { FluidType::Table, FluidType::Any, FluidType::Any });
+   reg_func_prototype("error", { FluidType::Nil }, { FluidType::Any }, FProtoFlags::NoNil);
+   reg_func_prototype("getmetatable", { FluidType::Any }, { FluidType::Any });
+   reg_func_prototype("setmetatable", { FluidType::Table }, { FluidType::Table, FluidType::Table });
+   reg_func_prototype("select", { FluidType::Any }, { FluidType::Any }, FProtoFlags::Variadic);
+   reg_func_prototype("next", { FluidType::Any, FluidType::Any }, { FluidType::Table, FluidType::Any });
+
    return 2;
 }

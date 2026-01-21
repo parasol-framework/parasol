@@ -28,6 +28,7 @@
 #include "lj_array.h"
 #include "lib.h"
 #include "lib_range.h"
+#include "runtime/lj_proto_registry.h"
 #include <parasol/strings.hpp>
 
 #define LJLIB_MODULE_range
@@ -1363,6 +1364,20 @@ extern "C" int luaopen_range(lua_State *L)
    lua_pushcfunction(L, range_lib_call);
    lua_setfield(L, -2, "__call");
    lua_setmetatable(L, -2);  // Set metatable on the range library table
+
+   // Register prototypes for range methods (used for type inference)
+
+   reg_iface_prototype("range", "new", { FluidType::Range }, { FluidType::Num, FluidType::Num });
+   reg_iface_prototype("range", "each", { FluidType::Range }, { FluidType::Range, FluidType::Func });
+   reg_iface_prototype("range", "filter", { FluidType::Array }, { FluidType::Range, FluidType::Func });
+   reg_iface_prototype("range", "reduce", { FluidType::Any }, { FluidType::Range, FluidType::Any, FluidType::Func });
+   reg_iface_prototype("range", "map", { FluidType::Array }, { FluidType::Range, FluidType::Func });
+   reg_iface_prototype("range", "take", { FluidType::Array }, { FluidType::Range, FluidType::Num });
+   reg_iface_prototype("range", "any", { FluidType::Bool }, { FluidType::Range, FluidType::Func });
+   reg_iface_prototype("range", "all", { FluidType::Bool }, { FluidType::Range, FluidType::Func });
+   reg_iface_prototype("range", "find", { FluidType::Num }, { FluidType::Range, FluidType::Func });
+   reg_iface_prototype("range", "contains", { FluidType::Bool }, { FluidType::Range, FluidType::Num });
+   reg_iface_prototype("range", "toArray", { FluidType::Array }, { FluidType::Range });
 
    return 1;
 }

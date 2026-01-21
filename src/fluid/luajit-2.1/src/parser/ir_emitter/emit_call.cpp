@@ -7,10 +7,40 @@ constexpr auto HASH_ASSERT  = pf::strhash("assert");
 constexpr auto HASH_MSG     = pf::strhash("msg");
 constexpr auto HASH_INCLUDE = pf::strhash("include");
 
+// Known C library interface hashes - warnings for missing prototypes only apply to these
+
+static constexpr uint32_t KNOWN_C_INTERFACES[] = {
+   pf::strhash("obj"),
+   pf::strhash("string"),
+   pf::strhash("math"),
+   pf::strhash("table"),
+   pf::strhash("bit"),
+   pf::strhash("jit"),
+   pf::strhash("debug"),
+   pf::strhash("array"),
+   pf::strhash("range")
+};
+
+static bool is_known_c_interface(uint32_t Hash) {
+   for (auto h : KNOWN_C_INTERFACES) {
+      if (h IS Hash) return true;
+   }
+   return false;
+}
+
+// Check if a name in the global table is a C function
+
+static bool is_global_cfunction(lua_State *L, CSTRING Name)
+{
+   lua_getglobal(L, Name);
+   bool is_cfunc = lua_iscfunction(L, -1) != 0;
+   lua_pop(L, 1);
+   return is_cfunc;
+}
+
 //********************************************************************************************************************
 // Pipe expression: lhs |> rhs_call()
-// Prepends the LHS result(s) as argument(s) to the RHS function call.
-// The RHS must be a CallExpr node.
+// Prepends the LHS result(s) as argument(s) to the RHS function call.  The RHS must be a CallExpr node.
 //
 // Register layout for calls:
 //   R(base)   = function
@@ -184,6 +214,8 @@ ParserResult<ExpDesc> IrEmitter::emit_safe_call_expr(const CallExprPayload &Payl
 
 ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
 {
+   pf::Log log(__FUNCTION__);
+
    // We save lastline here before it gets overwritten by processing sub-expressions.
    BCLine call_line = this->lex_state.lastline;
 
@@ -203,7 +235,7 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
                return ParserResult<ExpDesc>::success(ExpDesc(ExpKind::Void));
             }
             else if (func_name->hash IS HASH_INCLUDE) {
-               // Intercept include('module_name') to pre-load constants at parse time
+               // Intercept include('module_name') to pre-load constants at parse time, not run-time.
                if (not Payload.arguments.empty() and
                    Payload.arguments[0]->kind IS AstNodeKind::LiteralExpr) {
                   const auto *lit = std::get_if<LiteralValue>(&Payload.arguments[0]->data);
@@ -246,6 +278,42 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
       if (callee.k IS ExpKind::Local) {
          VarInfo* vinfo = &this->lex_state.vstack[callee.u.s.aux];
          callee_return_type = vinfo->result_types[0];
+      }
+
+      // Prototype registry lookup for global/interface calls
+
+      if (callee_return_type IS FluidType::Unknown) {
+         if (direct->callable and direct->callable->kind IS AstNodeKind::IdentifierExpr) {
+            // Global C registered function: func(args)
+            const auto *name_ref = std::get_if<NameRef>(&direct->callable->data);
+            if (name_ref and name_ref->identifier.symbol) {
+               if (auto proto = get_func_prototype_by_hash(name_ref->identifier.symbol->hash)) {
+                  callee_return_type = proto->first_result();
+               }
+               else if (is_global_cfunction(lex_state.L, strdata(name_ref->identifier.symbol))) {
+                  log.warning("No prototype registered for function: %s", strdata(name_ref->identifier.symbol));
+               }
+            }
+         }
+         else if (direct->callable and direct->callable->kind IS AstNodeKind::MemberExpr) {
+            // Interface method: iface.method(args)
+            const auto *member_payload = std::get_if<MemberExprPayload>(&direct->callable->data);
+            if (member_payload and member_payload->table and member_payload->member.symbol) {
+               if (member_payload->table->kind IS AstNodeKind::IdentifierExpr) {
+                  const auto *iface = std::get_if<NameRef>(&member_payload->table->data);
+                  if (iface and iface->identifier.symbol) {
+                     if (auto proto = get_prototype_by_hash(iface->identifier.symbol->hash,
+                           member_payload->member.symbol->hash)) {
+                        callee_return_type = proto->first_result();
+                     }
+                     else if (is_known_c_interface(iface->identifier.symbol->hash)) {
+                        log.warning("No prototype registered for method: %s.%s",
+                           strdata(iface->identifier.symbol), strdata(member_payload->member.symbol));
+                     }
+                  }
+               }
+            }
+         }
       }
 
       this->materialise_to_next_reg(callee, "call callee");

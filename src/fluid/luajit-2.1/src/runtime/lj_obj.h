@@ -1,6 +1,6 @@
 // LuaJIT VM tags, values and objects.
 //
-// Copyright (C) 2025 Paul Manias
+// Copyright (C) 2025-2026 Paul Manias
 // Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 // Portions taken verbatim or adapted from the Lua interpreter.
 // Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
@@ -531,6 +531,66 @@ inline constexpr int32_t SCALE_NUM_GCO = int32_t(sizeof(lua_Number) / sizeof(GCR
 
 // Maximum number of explicitly typed return values per function prototype
 inline constexpr size_t PROTO_MAX_RETURN_TYPES = 8;
+
+//********************************************************************************************************************
+// Function prototype registry types for C function type signatures.  These structures enable the parser to look up
+// type signatures for registered C functions and interface methods (e.g., print, tostring, string.find, obj.new) at
+// compile time.
+
+// Prototype flags for function metadata
+
+enum class FProtoFlags : uint8_t {
+   None     = 0x00,
+   Variadic = 0x01,  // Function accepts variable arguments beyond listed params
+   NoNil    = 0x02   // All declared parameters are required (no nil values permitted)
+};
+
+inline constexpr FProtoFlags operator|(FProtoFlags a, FProtoFlags b) {
+   return FProtoFlags(uint8_t(a) | uint8_t(b));
+}
+
+inline constexpr FProtoFlags operator&(FProtoFlags a, FProtoFlags b) {
+   return FProtoFlags(uint8_t(a) & uint8_t(b));
+}
+
+constexpr size_t FPROTO_MAX_PARAMS = 16; // Maximum parameter count for prototypes
+
+// Function prototype storing type signature
+
+struct fprototype {
+   uint8_t result_count;     // Number of return values (0 to PROTO_MAX_RETURN_TYPES)
+   uint8_t param_count;      // Number of parameters (0 to FPROTO_MAX_PARAMS)
+   FProtoFlags flags;        // Optional flags
+   uint8_t _pad;             // Alignment padding
+   std::array<FluidType, PROTO_MAX_RETURN_TYPES> result_types;
+
+   // Parameter types follow (accessed via param_types())
+
+   inline FluidType * param_types() noexcept { return (FluidType *)(this + 1); }
+
+   inline const FluidType * param_types() const noexcept { return (const FluidType *)(this + 1); }
+
+   inline FluidType first_result() const noexcept {
+      return result_count > 0 ? result_types[0] : FluidType::Unknown;
+   }
+};
+
+// Lookup key for prototype registry (interface_hash=0 for globals)
+
+struct ProtoKey {
+   uint32_t interface_hash;
+   uint32_t function_hash;
+   bool operator==(const ProtoKey& o) const {
+      return interface_hash IS o.interface_hash and function_hash IS o.function_hash;
+   }
+};
+
+struct ProtoKeyHash {
+   size_t operator()(const ProtoKey& k) const noexcept {
+      static_assert(sizeof(size_t) >= 8, "ProtoKeyHash requires 64-bit size_t");
+      return size_t(k.interface_hash)<<32 | size_t(k.function_hash);
+   }
+};
 
 //********************************************************************************************************************
 // Try-except exception handling metadata structures.

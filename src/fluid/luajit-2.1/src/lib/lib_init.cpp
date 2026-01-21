@@ -12,6 +12,7 @@
 #include "lualib.h"
 #include "lj_arch.h"
 #include "runtime/lj_thunk.h"
+#include "runtime/lj_proto_registry.h"
 
 extern "C" int luaopen_range(lua_State* L);
 extern "C" int luaopen_array(lua_State* L);
@@ -37,6 +38,9 @@ static const luaL_Reg lj_lib_preload[] = {
 
 extern void luaL_openlibs(lua_State* L)
 {
+   // Initialise prototype registry before loading libraries
+   init_proto_registry();
+
    const luaL_Reg* lib;
    for (lib = lj_lib_load; lib->func; lib++) {
       lua_pushcfunction(L, lib->func);
