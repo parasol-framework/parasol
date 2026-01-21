@@ -1382,6 +1382,7 @@ LJLIB_CF(debug_anno_list)
 //********************************************************************************************************************
 
 #include "lj_libdef.h"  // Includes LJLIB_MODULE_debug table
+#include "lj_proto_registry.h"
 
 extern int luaopen_debug(lua_State *L)
 {
@@ -1392,6 +1393,33 @@ extern int luaopen_debug(lua_State *L)
    LJ_LIB_REG(L, nullptr, debug_anno);  // Create anno table without setting in globals
    lua_setfield(L, -2, "anno");         // debug.anno = anno_table
    lua_pop(L, 1);                       // Pop debug table
+
+   // Register debug interface prototypes for compile-time type inference
+   reg_iface_prototype("debug", "getRegistry", { FluidType::Table }, {});
+   reg_iface_prototype("debug", "fileSources", { FluidType::Array }, {});
+   reg_iface_prototype("debug", "getMetatable", { FluidType::Table }, { FluidType::Any });
+   reg_iface_prototype("debug", "setMetatable", { FluidType::Any }, { FluidType::Any, FluidType::Table });
+   reg_iface_prototype("debug", "getEnv", { FluidType::Table }, { FluidType::Any });
+   reg_iface_prototype("debug", "setEnv", { FluidType::Any }, { FluidType::Any, FluidType::Table });
+   reg_iface_prototype("debug", "getInfo", { FluidType::Table }, { FluidType::Any, FluidType::Str });
+   reg_iface_prototype("debug", "getLocal", { FluidType::Str, FluidType::Any }, { FluidType::Num, FluidType::Num });
+   reg_iface_prototype("debug", "setLocal", { FluidType::Str }, { FluidType::Num, FluidType::Num, FluidType::Any });
+   reg_iface_prototype("debug", "getUpvalue", { FluidType::Str, FluidType::Any }, { FluidType::Func, FluidType::Num });
+   reg_iface_prototype("debug", "setUpvalue", { FluidType::Str }, { FluidType::Func, FluidType::Num, FluidType::Any });
+   reg_iface_prototype("debug", "upvalueID", { FluidType::Any }, { FluidType::Func, FluidType::Num });
+   reg_iface_prototype("debug", "upvalueJoin", {}, { FluidType::Func, FluidType::Num, FluidType::Func, FluidType::Num });
+   reg_iface_prototype("debug", "getUserValue", { FluidType::Table }, { FluidType::Any });
+   reg_iface_prototype("debug", "setUserValue", { FluidType::Any }, { FluidType::Any, FluidType::Table });
+   reg_iface_prototype("debug", "setHook", {}, { FluidType::Func, FluidType::Str, FluidType::Num });
+   reg_iface_prototype("debug", "getHook", { FluidType::Func, FluidType::Str, FluidType::Num }, {});
+   reg_iface_prototype("debug", "traceback", { FluidType::Str }, { FluidType::Str, FluidType::Num });
+   reg_iface_prototype("debug", "validate", { FluidType::Table }, { FluidType::Str, FluidType::Str });
+   reg_iface_prototype("debug", "locality", { FluidType::Str }, { FluidType::Str, FluidType::Num });
+
+   // Register debug.anno interface prototypes
+   reg_iface_prototype("debug.anno", "get", { FluidType::Table }, { FluidType::Func });
+   reg_iface_prototype("debug.anno", "set", { FluidType::Table }, { FluidType::Func, FluidType::Any, FluidType::Str, FluidType::Str });
+   reg_iface_prototype("debug.anno", "list", { FluidType::Table }, {});
 
    return 1;
 }

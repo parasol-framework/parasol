@@ -1312,17 +1312,34 @@ extern int luaopen_string(lua_State *L)
    // Register string interface prototypes for compile-time type inference
    reg_iface_prototype("string", "len", { FluidType::Num }, { FluidType::Str });
    reg_iface_prototype("string", "sub", { FluidType::Str }, { FluidType::Str, FluidType::Num, FluidType::Num });
+   reg_iface_prototype("string", "substr", { FluidType::Str }, { FluidType::Str, FluidType::Num, FluidType::Num });
    reg_iface_prototype("string", "format", { FluidType::Str }, { FluidType::Str }, FProtoFlags::Variadic);
    reg_iface_prototype("string", "upper", { FluidType::Str }, { FluidType::Str });
    reg_iface_prototype("string", "lower", { FluidType::Str }, { FluidType::Str });
    reg_iface_prototype("string", "find", { FluidType::Num, FluidType::Num }, { FluidType::Str, FluidType::Str }, FProtoFlags::Variadic);
    reg_iface_prototype("string", "match", { FluidType::Str }, { FluidType::Str, FluidType::Str });
+   reg_iface_prototype("string", "gmatch", { FluidType::Func }, { FluidType::Str, FluidType::Str });
    reg_iface_prototype("string", "gsub", { FluidType::Str, FluidType::Num }, { FluidType::Str, FluidType::Str, FluidType::Any });
    reg_iface_prototype("string", "rep", { FluidType::Str }, { FluidType::Str, FluidType::Num });
+   reg_iface_prototype("string", "alloc", { FluidType::Str }, { FluidType::Num });
    reg_iface_prototype("string", "reverse", { FluidType::Str }, { FluidType::Str });
    reg_iface_prototype("string", "byte", { FluidType::Num }, { FluidType::Str, FluidType::Num }, FProtoFlags::Variadic);
    reg_iface_prototype("string", "char", { FluidType::Str }, {}, FProtoFlags::Variadic);
    reg_iface_prototype("string", "dump", { FluidType::Str }, { FluidType::Func });
+   reg_iface_prototype("string", "split", { FluidType::Array }, { FluidType::Str, FluidType::Str });
+   reg_iface_prototype("string", "trim", { FluidType::Str }, { FluidType::Str });
+   reg_iface_prototype("string", "rtrim", { FluidType::Str }, { FluidType::Str });
+   reg_iface_prototype("string", "startsWith", { FluidType::Bool }, { FluidType::Str, FluidType::Str });
+   reg_iface_prototype("string", "endsWith", { FluidType::Bool }, { FluidType::Str, FluidType::Str });
+   reg_iface_prototype("string", "join", { FluidType::Str }, { FluidType::Table, FluidType::Str });
+   reg_iface_prototype("string", "cap", { FluidType::Str }, { FluidType::Str });
+   reg_iface_prototype("string", "decap", { FluidType::Str }, { FluidType::Str });
+   reg_iface_prototype("string", "hash", { FluidType::Num }, { FluidType::Str, FluidType::Bool });
+   reg_iface_prototype("string", "escXML", { FluidType::Str }, { FluidType::Str });
+   reg_iface_prototype("string", "unescapeXML", { FluidType::Str }, { FluidType::Str });
+   // These are implemented in translate.fluid
+   reg_iface_prototype("string", "translateRefresh", { }, { });
+   reg_iface_prototype("string", "translate", { FluidType::Str }, { FluidType::Str });
 
    return 1;
 }

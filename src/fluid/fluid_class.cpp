@@ -24,6 +24,7 @@
 #include "lj_bc.h"
 #include "parser/parser_diagnostics.h"
 #include "luajit-2.1/src/debug/dump_bytecode.h"
+#include "lj_proto_registry.h"
 
 #include "hashes.h"
 #include "defs.h"
@@ -1056,6 +1057,19 @@ static ERR register_interfaces(objScript *Self)
    lua_register(prv->Lua, "subscribeEvent", fcmd_subscribe_event);
    lua_register(prv->Lua, "unsubscribeEvent", fcmd_unsubscribe_event);
    lua_register(prv->Lua, "MAKESTRUCT", MAKESTRUCT);
+
+   // Register global function prototypes for compile-time type inference
+   reg_func_prototype("arg", { FluidType::Str }, { FluidType::Str, FluidType::Any });
+   reg_func_prototype("loadFile", {}, { FluidType::Str }, FProtoFlags::Variadic);
+   reg_func_prototype("exec", {}, { FluidType::Str }, FProtoFlags::Variadic);
+   reg_func_prototype("getExecutionState", { FluidType::Table }, {});
+   reg_func_prototype("print", {}, {}, FProtoFlags::Variadic);
+   reg_func_prototype("include", {}, { FluidType::Str }, FProtoFlags::Variadic);
+   reg_func_prototype("require", { FluidType::Table }, { FluidType::Str });
+   reg_func_prototype("msg", {}, { FluidType::Str }, FProtoFlags::Variadic);
+   reg_func_prototype("subscribeEvent", { FluidType::Any, FluidType::Num }, { FluidType::Str, FluidType::Func });
+   reg_func_prototype("unsubscribeEvent", {}, { FluidType::Any });
+   reg_func_prototype("MAKESTRUCT", { FluidType::Any }, { FluidType::Str });
 
    load_include(Self, "core");
 

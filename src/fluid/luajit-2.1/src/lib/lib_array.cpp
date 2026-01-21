@@ -2642,6 +2642,7 @@ LJLIB_CF(array_clone)
 // lookup (arr:concat(), arr:sort(), etc.) via lj_tab_get in the VM array helpers.
 
 #include "lj_libdef.h"
+#include "lj_proto_registry.h"
 
 extern "C" int luaopen_array(lua_State *L)
 {
@@ -2659,6 +2660,39 @@ extern "C" int luaopen_array(lua_State *L)
 
    // NOBARRIER: basemt is a GC root.
    setgcref(basemt_it(g, LJ_TARRAY), obj2gco(lib));
+
+   // Register array interface prototypes for compile-time type inference
+   reg_iface_prototype("array", "new", { FluidType::Array }, { FluidType::Num, FluidType::Str });
+   reg_iface_prototype("array", "of", { FluidType::Array }, { FluidType::Str }, FProtoFlags::Variadic);
+   reg_iface_prototype("array", "table", { FluidType::Table }, { FluidType::Array });
+   reg_iface_prototype("array", "concat", { FluidType::Array }, { FluidType::Array, FluidType::Array });
+   reg_iface_prototype("array", "join", { FluidType::Str }, { FluidType::Array, FluidType::Str });
+   reg_iface_prototype("array", "contains", { FluidType::Bool }, { FluidType::Array, FluidType::Any });
+   reg_iface_prototype("array", "first", { FluidType::Any }, { FluidType::Array, FluidType::Func });
+   reg_iface_prototype("array", "last", { FluidType::Any }, { FluidType::Array, FluidType::Func });
+   reg_iface_prototype("array", "clear", {}, { FluidType::Array });
+   reg_iface_prototype("array", "resize", {}, { FluidType::Array, FluidType::Num });
+   reg_iface_prototype("array", "push", {}, { FluidType::Array, FluidType::Any });
+   reg_iface_prototype("array", "pop", { FluidType::Any }, { FluidType::Array });
+   reg_iface_prototype("array", "copy", {}, { FluidType::Array, FluidType::Num, FluidType::Num, FluidType::Num });
+   reg_iface_prototype("array", "getString", { FluidType::Str }, { FluidType::Array, FluidType::Num, FluidType::Num });
+   reg_iface_prototype("array", "setString", {}, { FluidType::Array, FluidType::Str, FluidType::Num });
+   reg_iface_prototype("array", "type", { FluidType::Str }, { FluidType::Array });
+   reg_iface_prototype("array", "readOnly", { FluidType::Bool }, { FluidType::Array });
+   reg_iface_prototype("array", "fill", {}, { FluidType::Array, FluidType::Any, FluidType::Num, FluidType::Num });
+   reg_iface_prototype("array", "find", { FluidType::Num }, { FluidType::Array, FluidType::Any, FluidType::Num, FluidType::Num });
+   reg_iface_prototype("array", "reverse", { FluidType::Array }, { FluidType::Array });
+   reg_iface_prototype("array", "slice", { FluidType::Array }, { FluidType::Array, FluidType::Any });
+   reg_iface_prototype("array", "sort", { FluidType::Array }, { FluidType::Array, FluidType::Func });
+   reg_iface_prototype("array", "each", {}, { FluidType::Array, FluidType::Func });
+   reg_iface_prototype("array", "map", { FluidType::Array }, { FluidType::Array, FluidType::Func });
+   reg_iface_prototype("array", "filter", { FluidType::Array }, { FluidType::Array, FluidType::Func });
+   reg_iface_prototype("array", "reduce", { FluidType::Any }, { FluidType::Array, FluidType::Func, FluidType::Any });
+   reg_iface_prototype("array", "any", { FluidType::Bool }, { FluidType::Array, FluidType::Func });
+   reg_iface_prototype("array", "all", { FluidType::Bool }, { FluidType::Array, FluidType::Func });
+   reg_iface_prototype("array", "insert", {}, { FluidType::Array, FluidType::Num, FluidType::Any });
+   reg_iface_prototype("array", "remove", { FluidType::Any }, { FluidType::Array, FluidType::Num });
+   reg_iface_prototype("array", "clone", { FluidType::Array }, { FluidType::Array });
 
    return 1;
 }

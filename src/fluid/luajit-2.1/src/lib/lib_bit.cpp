@@ -149,10 +149,25 @@ LJLIB_CF(bit_tohex)      LJLIB_REC(.)
 }
 
 #include "lj_libdef.h"
+#include "lj_proto_registry.h"
 
 extern int luaopen_bit(lua_State* L)
 {
    LJ_LIB_REG(L, LUA_BITLIBNAME, bit);
+
+   // Register bit interface prototypes for compile-time type inference
+   reg_iface_prototype("bit", "tobit", { FluidType::Num }, { FluidType::Num });
+   reg_iface_prototype("bit", "bnot", { FluidType::Num }, { FluidType::Num });
+   reg_iface_prototype("bit", "bswap", { FluidType::Num }, { FluidType::Num });
+   reg_iface_prototype("bit", "lshift", { FluidType::Num }, { FluidType::Num, FluidType::Num });
+   reg_iface_prototype("bit", "rshift", { FluidType::Num }, { FluidType::Num, FluidType::Num });
+   reg_iface_prototype("bit", "arshift", { FluidType::Num }, { FluidType::Num, FluidType::Num });
+   reg_iface_prototype("bit", "rol", { FluidType::Num }, { FluidType::Num, FluidType::Num });
+   reg_iface_prototype("bit", "ror", { FluidType::Num }, { FluidType::Num, FluidType::Num });
+   reg_iface_prototype("bit", "band", { FluidType::Num }, { FluidType::Num }, FProtoFlags::Variadic);
+   reg_iface_prototype("bit", "bor", { FluidType::Num }, { FluidType::Num }, FProtoFlags::Variadic);
+   reg_iface_prototype("bit", "bxor", { FluidType::Num }, { FluidType::Num }, FProtoFlags::Variadic);
+   reg_iface_prototype("bit", "tohex", { FluidType::Str }, { FluidType::Num, FluidType::Num });
+
    return 1;
 }
-

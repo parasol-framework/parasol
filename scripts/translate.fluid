@@ -32,9 +32,7 @@ the translated result is in lower-case. If the first two characters of Text are 
 is all upper-case.
 --]]
 
-string.translate = function(Text)
-   if (type(Text) != 'string') then return Text end
-
+string.translate = function(Text:str):str
    if not string._ttable then
       string.translateRefresh()
       if not string._ttable then return Text end

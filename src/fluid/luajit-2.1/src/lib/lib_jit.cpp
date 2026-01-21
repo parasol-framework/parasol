@@ -635,6 +635,8 @@ static uint32_t jit_cpudetect(void)
 //********************************************************************************************************************
 // Initialise the jit library and register util/opt subtables.
 
+#include "lj_proto_registry.h"
+
 extern int luaopen_jit(lua_State* L)
 {
    jit_State *J = L2J(L);
@@ -656,6 +658,29 @@ extern int luaopen_jit(lua_State* L)
    LJ_LIB_REG(L, nullptr, jit_opt);
    lua_setfield(L, -2, "opt");
    lua_pop(L, 1);
+
+   // Register jit interface prototypes for compile-time type inference
+   reg_iface_prototype("jit", "on", {}, { FluidType::Any, FluidType::Bool });
+   reg_iface_prototype("jit", "off", {}, { FluidType::Any, FluidType::Bool });
+   reg_iface_prototype("jit", "flush", {}, { FluidType::Any });
+   reg_iface_prototype("jit", "status", { FluidType::Bool }, {}, FProtoFlags::Variadic);
+   reg_iface_prototype("jit", "attach", {}, { FluidType::Func, FluidType::Str });
+
+   // Register jit.util interface prototypes
+   reg_iface_prototype("jit.util", "funcinfo", { FluidType::Table }, { FluidType::Func, FluidType::Num });
+   reg_iface_prototype("jit.util", "funcbc", { FluidType::Num, FluidType::Num }, { FluidType::Func, FluidType::Num });
+   reg_iface_prototype("jit.util", "funck", { FluidType::Any }, { FluidType::Func, FluidType::Num });
+   reg_iface_prototype("jit.util", "funcuvname", { FluidType::Str }, { FluidType::Func, FluidType::Num });
+   reg_iface_prototype("jit.util", "traceinfo", { FluidType::Table }, { FluidType::Num });
+   reg_iface_prototype("jit.util", "traceir", { FluidType::Num, FluidType::Num, FluidType::Num, FluidType::Num, FluidType::Num }, { FluidType::Num, FluidType::Num });
+   reg_iface_prototype("jit.util", "tracek", { FluidType::Any, FluidType::Num, FluidType::Num }, { FluidType::Num, FluidType::Num });
+   reg_iface_prototype("jit.util", "tracesnap", { FluidType::Table }, { FluidType::Num, FluidType::Num });
+   reg_iface_prototype("jit.util", "tracemc", { FluidType::Str, FluidType::Num, FluidType::Num }, { FluidType::Num });
+   reg_iface_prototype("jit.util", "traceexitstub", { FluidType::Num }, { FluidType::Num, FluidType::Num });
+   reg_iface_prototype("jit.util", "ircalladdr", { FluidType::Num }, { FluidType::Num });
+
+   // Register jit.opt interface prototypes
+   reg_iface_prototype("jit.opt", "start", {}, { FluidType::Str }, FProtoFlags::Variadic);
 
    return 1;
 }

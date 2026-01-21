@@ -895,7 +895,10 @@ gui.fileview = function(Options)
                   end
                end
             })
-            self.dlgRenameReplace.var = { table.unpack(Dialog.var), dest=dest }
+            self.dlgRenameReplace.var = { dest=dest }
+            for k,v in pairs(Dialog.var) do
+               self.dlgRenameReplace.var[k] = v
+            end
          else
             try
                fl = obj.new('file', { path=Dialog.var.src, flags=FL_READ } )

@@ -866,20 +866,23 @@ extern int luaopen_base(lua_State* L)
    LJ_LIB_REG(L, LUA_COLIBNAME, coroutine);
 
    // Register function prototypes for compile-time type inference
-   reg_func_prototype("print", { FluidType::Nil }, {}, FProtoFlags::Variadic);
+   reg_func_prototype("print", { }, {}, FProtoFlags::Variadic);
    reg_func_prototype("assert", { FluidType::Any }, { FluidType::Any, FluidType::Str });
    reg_func_prototype("type", { FluidType::Str }, { FluidType::Any });
    reg_func_prototype("tonumber", { FluidType::Num }, { FluidType::Any, FluidType::Num });
    reg_func_prototype("tostring", { FluidType::Str }, { FluidType::Any });
-   reg_func_prototype("pairs", { FluidType::Func, FluidType::Table, FluidType::Nil }, { FluidType::Table });
-   reg_func_prototype("ipairs", { FluidType::Func, FluidType::Table, FluidType::Num }, { FluidType::Table });
+   reg_func_prototype("pairs", { FluidType::Func, FluidType::Table, FluidType::Nil }, { FluidType::Any });
+   reg_func_prototype("ipairs", { FluidType::Func, FluidType::Table, FluidType::Num }, { FluidType::Any });
+   reg_func_prototype("values", { FluidType::Func, FluidType::Table, FluidType::Num }, { FluidType::Any });
    reg_func_prototype("rawget", { FluidType::Any }, { FluidType::Table, FluidType::Any });
    reg_func_prototype("rawset", { FluidType::Table }, { FluidType::Table, FluidType::Any, FluidType::Any });
-   reg_func_prototype("error", { FluidType::Nil }, { FluidType::Any }, FProtoFlags::NoNil);
+   reg_func_prototype("error", { }, { FluidType::Any }, FProtoFlags::NoNil);
    reg_func_prototype("getmetatable", { FluidType::Any }, { FluidType::Any });
    reg_func_prototype("setmetatable", { FluidType::Table }, { FluidType::Table, FluidType::Table });
    reg_func_prototype("select", { FluidType::Any }, { FluidType::Any }, FProtoFlags::Variadic);
    reg_func_prototype("next", { FluidType::Any, FluidType::Any }, { FluidType::Table, FluidType::Any });
+   reg_func_prototype("newproxy", { FluidType::Any }, { FluidType::Any });
+   reg_func_prototype("__create_thunk", { FluidType::Any }, { FluidType::Func, FluidType::Num });
 
    return 2;
 }
