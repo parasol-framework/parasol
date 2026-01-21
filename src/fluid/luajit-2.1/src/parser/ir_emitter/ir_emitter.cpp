@@ -2055,6 +2055,7 @@ ParserResult<ExpDesc> IrEmitter::emit_member_expr(const MemberExprPayload &Paylo
    // When base_type is Object and class_id is set, field-level type resolution may be possible.
    if (Payload.base_type IS FluidType::Object or emitted_base_type IS FluidType::Object) {
       table.result_type = FluidType::Object;
+      table.object_class_id = CLASSID::NIL;
    }
 
    return ParserResult<ExpDesc>::success(table);
@@ -2190,6 +2191,7 @@ ParserResult<ExpDesc> IrEmitter::emit_safe_member_expr(const SafeMemberExprPaylo
    // When base_type is Object and class_id is set, field-level type resolution may be possible.
    if (Payload.base_type IS FluidType::Object) {
       table.result_type = FluidType::Object;
+      table.object_class_id = CLASSID::NIL;
    }
 
    // Materialize the indexed result to a new register.
