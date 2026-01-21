@@ -65,10 +65,10 @@ constexpr int LUA_IDSIZE = 60;   //  Size of lua_Debug.short_src.
 // from the standard Lua distribution. They must not be changed for LuaJIT.
 
 #define LUA_NUMBER_DOUBLE
-#define LUA_NUMBER      double
-#define LUAI_UACNUMBER      double
-#define LUA_NUMBER_SCAN      "%lf"
-#define LUA_NUMBER_FMT      "%.14g"
+#define LUA_NUMBER         double
+#define LUAI_UACNUMBER     double
+#define LUA_NUMBER_SCAN    "%lf"
+#define LUA_NUMBER_FMT     "%.14g"
 
 inline int lua_number2str(char *S, double N) {
    return sprintf(S, LUA_NUMBER_FMT, N);
