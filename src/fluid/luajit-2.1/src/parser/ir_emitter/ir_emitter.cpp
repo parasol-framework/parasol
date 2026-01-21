@@ -2039,6 +2039,11 @@ ParserResult<ExpDesc> IrEmitter::emit_member_expr(const MemberExprPayload &Paylo
    if (not table_result.ok()) return table_result;
 
    ExpDesc table = table_result.value_ref();
+
+   // Save the emitted expression's result_type before discharge operations may modify it.
+   // This captures type information propagated from VarInfo during variable lookup.
+   FluidType emitted_base_type = table.result_type;
+
    RegisterAllocator allocator(&this->func_state);
    ExpressionValue table_value(&this->func_state, table);
    table_value.discharge_to_any_reg(allocator);
@@ -2048,7 +2053,7 @@ ParserResult<ExpDesc> IrEmitter::emit_member_expr(const MemberExprPayload &Paylo
 
    // Propagate known base type information for downstream optimizations.
    // When base_type is Object and class_id is set, field-level type resolution may be possible.
-   if (Payload.base_type IS FluidType::Object) {
+   if (Payload.base_type IS FluidType::Object or emitted_base_type IS FluidType::Object) {
       table.result_type = FluidType::Object;
    }
 
@@ -2072,6 +2077,11 @@ ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload &Payload
    auto table_result = this->emit_expression(*Payload.table);
    if (not table_result.ok()) return table_result;
    ExpDesc table = table_result.value_ref();
+
+   // Save the emitted expression's result_type before discharge operations may modify it.
+   // This captures type information propagated from VarInfo during variable lookup.
+   FluidType emitted_base_type = table.result_type;
+
    // Materialize table BEFORE evaluating key, so nested index expressions emit bytecode in
    // the correct order (table first, then key)
    RegisterAllocator allocator(&this->func_state);
@@ -2087,7 +2097,8 @@ ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload &Payload
    expr_index(&this->func_state, &table, &key);
 
    // If base type is known to be an array, use array-specific bytecodes
-   if (Payload.base_type IS FluidType::Array) {
+   // Check both AST-level base_type AND emitted expression's result_type.
+   if (Payload.base_type IS FluidType::Array or emitted_base_type IS FluidType::Array) {
       // Arrays don't support string keys, so only change kind for numeric indexing
       // (aux >= 0 means numeric index, aux < 0 means string const key)
       if (int32_t(table.u.s.aux) >= 0) {

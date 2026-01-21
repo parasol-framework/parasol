@@ -289,6 +289,11 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode &Expr, bool All
          auto table_result = this->emit_expression(*payload.table);
          if (not table_result.ok()) return table_result;
          ExpDesc table = table_result.value_ref();
+
+         // Save the emitted expression's result_type before discharge operations may modify it.
+         // This captures type information propagated from VarInfo during variable lookup.
+         FluidType emitted_base_type = table.result_type;
+
          ExpressionValue table_toval(&this->func_state, table);
          table_toval.to_val();
          table = table_toval.legacy();
@@ -311,6 +316,10 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode &Expr, bool All
 
          ExpDesc table = table_result.value_ref();
 
+         // Save the emitted expression's result_type before discharge operations may modify it.
+         // This captures type information propagated from VarInfo during variable lookup.
+         FluidType emitted_base_type = table.result_type;
+
          // Materialize table BEFORE evaluating key, so nested index expressions emit bytecode in
          // the correct order (table first, then key)
 
@@ -329,6 +338,15 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode &Expr, bool All
          key_toval_idx.to_val();
          key = key_toval_idx.legacy();
          expr_index(&this->func_state, &table, &key);
+
+         // Propagate known base type information for downstream optimizations.
+         // Check both AST-level base_type AND emitted expression's result_type.
+         if (payload.base_type IS FluidType::Array or emitted_base_type IS FluidType::Array) {
+            // Arrays don't support string keys, so only change kind for numeric indexing
+            if (int32_t(table.u.s.aux) >= 0) {
+               table.k = ExpKind::IndexedArray;
+            }
+         }
          return ParserResult<ExpDesc>::success(table);
       }
 

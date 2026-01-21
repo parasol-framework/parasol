@@ -132,6 +132,19 @@ end
    -- Get field with default option
    result = f.get('no_field', 2020)
    assert(result is 2020, "Expected get() to return default value for missing field")
+
+   -- Direct access (optimised route)
+   year = f.year
+   assert(type(year) is 'number', "Expected get('year') to return a number")
+
+   try
+      invalid = f.not_a_field
+   except ex
+      -- Expected failure
+      assert(ex.message:find('Time.not_a_field'), "Error message should mention the accessed field.")
+   success
+      error("Expected error when accessing invalid field")
+   end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
