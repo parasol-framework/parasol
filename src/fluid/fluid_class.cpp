@@ -1059,7 +1059,7 @@ static ERR register_interfaces(objScript *Self)
    lua_register(prv->Lua, "MAKESTRUCT", MAKESTRUCT);
 
    // Register global function prototypes for compile-time type inference
-   reg_func_prototype("arg", { FluidType::Str }, { FluidType::Str, FluidType::Any });
+   reg_func_prototype("arg", { FluidType::Any }, { FluidType::Str, FluidType::Any });
    reg_func_prototype("loadFile", {}, { FluidType::Str }, FProtoFlags::Variadic);
    reg_func_prototype("exec", {}, { FluidType::Str }, FProtoFlags::Variadic);
    reg_func_prototype("getExecutionState", { FluidType::Table }, {});

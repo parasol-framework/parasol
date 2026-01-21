@@ -2664,8 +2664,9 @@ extern "C" int luaopen_array(lua_State *L)
    // Register array interface prototypes for compile-time type inference
    reg_iface_prototype("array", "new", { FluidType::Array }, { FluidType::Num, FluidType::Str });
    reg_iface_prototype("array", "of", { FluidType::Array }, { FluidType::Str }, FProtoFlags::Variadic);
+   // Methods
    reg_iface_prototype("array", "table", { FluidType::Table }, { FluidType::Array });
-   reg_iface_prototype("array", "concat", { FluidType::Array }, { FluidType::Array, FluidType::Array });
+   reg_iface_prototype("array", "concat", { FluidType::Str }, { FluidType::Array, FluidType::Str, FluidType::Str });
    reg_iface_prototype("array", "join", { FluidType::Str }, { FluidType::Array, FluidType::Str });
    reg_iface_prototype("array", "contains", { FluidType::Bool }, { FluidType::Array, FluidType::Any });
    reg_iface_prototype("array", "first", { FluidType::Any }, { FluidType::Array, FluidType::Func });

@@ -1422,9 +1422,7 @@ inline void checklivetv(lua_State* L, TValue* o, const char* msg) noexcept
 {
 #if LUA_USE_ASSERT
    if (tvisgcv(o)) {
-      lj_assertL(~itype(o) IS gcval(o)->gch.gct,
-         "mismatch of TValue type %d vs GC type %d",
-         ~itype(o), gcval(o)->gch.gct);
+      lj_assertL(~itype(o) IS gcval(o)->gch.gct, "mismatch of TValue type %d vs GC type %d", ~itype(o), gcval(o)->gch.gct);
       // Copy of isdead check from lj_gc.h to avoid circular include.
       lj_assertL(!(gcval(o)->gch.marked & (G(L)->gc.currentwhite ^ 3) & 3), msg);
    }
