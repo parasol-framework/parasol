@@ -304,6 +304,18 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode &Expr, bool All
          ExpDesc key(ExpKind::Str);
          key.u.sval = payload.member.symbol;
          expr_index(&this->func_state, &table, &key);
+
+         // Propagate known base type information for downstream optimizations.
+         // When base_type is Object, emit specialised BC_OSETS bytecodes via IndexedObject.
+         // Check both AST-level base_type AND emitted expression's result_type.
+         if (payload.base_type IS FluidType::Object or emitted_base_type IS FluidType::Object) {
+            table.result_type = FluidType::Object;
+            // Only use IndexedObject for string keys (member access always uses string keys)
+            if (table.k IS ExpKind::Indexed and int32_t(table.u.s.aux) < 0) {
+               table.k = ExpKind::IndexedObject;
+            }
+         }
+
          return ParserResult<ExpDesc>::success(table);
       }
 
@@ -347,6 +359,13 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode &Expr, bool All
                table.k = ExpKind::IndexedArray;
             }
          }
+         else if (payload.base_type IS FluidType::Object or emitted_base_type IS FluidType::Object) {
+            // Objects use string field access - only change kind for string const keys
+            if (table.k IS ExpKind::Indexed and int32_t(table.u.s.aux) < 0) {
+               table.k = ExpKind::IndexedObject;
+            }
+         }
+
          return ParserResult<ExpDesc>::success(table);
       }
 

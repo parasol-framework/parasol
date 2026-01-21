@@ -167,3 +167,82 @@ int lj_object_ipairs(lua_State *L)
    else luaL_error(L, ERR::FieldSearch, "Object class defines no fields.");
    return 0;
 }
+
+//********************************************************************************************************************
+// Fast object field get - called from BC_OGETS bytecode handler.
+// Returns pointer to TValue on stack if successful, nullptr to request fallback to metamethod dispatch.
+//
+// This function is designed to be called from the VM with minimal overhead:
+// - 3 register arguments only (Windows x64 calling convention compatible)
+// - Returns result location directly, avoiding extra stack operations
+// - Pushes result onto Lua stack, returns pointer to it
+
+extern "C" TValue * lj_object_gets(lua_State *L, GCobject *Obj, GCstr *Key)
+{
+   if (not Obj->uid) return nullptr; // Object has been freed - request fallback which will handle the error
+
+   // Use cached read_table or lazily populate it
+   auto read_table = (READ_TABLE *)Obj->read_table;
+   if (not read_table) {
+      read_table = get_read_table(L, Obj->classptr);
+      Obj->read_table = (void *)read_table;
+   }
+
+   // Look up the field handler using the string's precomputed hash
+   auto hash_key = obj_read(Key->hash);
+   auto func = read_table->find(hash_key);
+   if (func IS read_table->end()) return nullptr; // Field not found - request fallback to metamethod dispatch
+
+   // Call the field handler - it pushes result onto the Lua stack
+   int result_count = func->Call(L, *func, Obj);
+   if (result_count > 0) return L->top - 1;  // Return pointer to the pushed value
+
+   setnilV(L->top); // No result pushed - return nil
+   L->top++;
+   return L->top - 1;
+}
+
+//********************************************************************************************************************
+// Fast object field set - called from BC_OSETS bytecode handler.
+// Returns 1 on success, 0 to request fallback to metamethod dispatch.
+//
+// This function is designed to be called from the VM with minimal overhead:
+// - 4 register arguments (Windows x64 limit)
+// - Returns success/fallback indicator
+
+extern "C" int lj_object_sets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Val)
+{
+   if (not Obj->uid) return 0; // Object has been freed - request fallback which will handle the error
+
+   // Use cached write_table or lazily populate it
+   auto write_table = (WRITE_TABLE *)Obj->write_table;
+   if (not write_table) {
+      write_table = get_write_table(Obj->classptr);
+      Obj->write_table = (void *)write_table;
+   }
+
+   // Look up the field handler using the string's precomputed hash
+   auto hash_key = obj_write(Key->hash);
+   auto func = write_table->find(hash_key);
+   if (func IS write_table->end()) return 0; // Field not found - request fallback to metamethod dispatch
+
+   if (auto pobj = access_object(Obj)) {
+      // Push the value onto the stack temporarily for the handler.  The handler expects the value at a specific
+      // stack index
+
+      TValue *saved_top = L->top;
+      copyTV(L, L->top, Val);
+      L->top++;
+
+      // Call the field handler - it reads value from stack position
+
+      int stack_idx = int(L->top - L->base);
+      ERR error = func->Call(L, pobj, func->Field, stack_idx);
+      L->top = saved_top; // Restore stack
+      release_object(Obj);
+
+      if (error >= ERR::ExceptionThreshold) return 0; // Serious error - let the VM handle it via fallback
+      else return 1;  // Success
+   }
+   else return 0;  // Request fallback
+}

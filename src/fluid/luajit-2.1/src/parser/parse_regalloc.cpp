@@ -314,6 +314,14 @@ static void expr_discharge(FuncState *fs, ExpDesc *e)
       }
       bcreg_free(fs, e->u.s.info);
    }
+   else if (e->k IS ExpKind::IndexedObject) {
+      // Object field access - emit BC_OGETS for string key (object fields are always strings)
+      // aux holds negated string constant index (same encoding as BC_TGETS)
+      BCREG rc = e->u.s.aux;
+      fs_check_assert(fs, int32_t(rc) < 0, "object field index must be string constant");
+      ins = BCINS_ABC(BC_OGETS, 0, e->u.s.info, ~rc);
+      bcreg_free(fs, e->u.s.info);
+   }
    else if (e->k IS ExpKind::Call) {
       e->u.s.info = e->u.s.aux;
       e->k = ExpKind::NonReloc;
@@ -630,6 +638,14 @@ static void bcemit_store(FuncState *fs, ExpDesc *LHS, ExpDesc *RHS)
 #endif
          ins = BCINS_ABC(BC_ASETV, ra, LHS->u.s.info, rc);
       }
+   }
+   else if (LHS->k IS ExpKind::IndexedObject) {
+      // Object field assignment - emit BC_OSETS for string key (object fields are always strings)
+      BCREG ra, rc;
+      ra = expr_toanyreg(fs, RHS);
+      rc = LHS->u.s.aux;
+      fs_check_assert(fs, int32_t(rc) < 0, "object field index must be string constant");
+      ins = BCINS_ABC(BC_OSETS, ra, LHS->u.s.info, ~rc);
    }
    else {
       // Table index assignment - emit BC_TSETV, BC_TSETB, or BC_TSETS

@@ -98,6 +98,7 @@
 |.type TRACE,     GCtrace
 |.type SBUF,      SBuf
 |.type ARRAY,     GCarray
+|.type OOBJ,      GCobject
 |
 |// Stack layout while in interpreter. Must match with lj_frame.h.
 |//-----------------------------------------------------------------------
@@ -291,6 +292,7 @@
 |.macro checktab, reg, target; checktp reg, LJ_TTAB, target; .endmacro
 |.macro checkfunc, reg, target; checktp reg, LJ_TFUNC, target; .endmacro
 |.macro checkarray, reg, target; checktp reg, LJ_TARRAY, target; .endmacro
+|.macro checkobject, reg, target; checktp reg, LJ_TOBJECT, target; .endmacro
 |
 |.macro checknumx, reg, target, jump
 |  mov ITYPE, reg
@@ -4283,6 +4285,90 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |7:  // Possible table write barrier for any value. Skip valiswhite check.
     |  barrierback TAB:RB, RD
     |  jmp <2
+    break;
+
+  //  -- Object ops (specialised for LJ_TOBJECT) ----------------------------
+
+  case BC_OGETS:
+    |  ins_ABC // RA = dst, RB = object, RC = str const (~)
+    |  mov OOBJ:RB, [BASE+RB*8]
+    |  not RC
+    |  mov STR:RC, [KBASE+RC*8]
+    |  checkobject OOBJ:RB, ->vmeta_tgets
+    |  // Call C helper: lj_object_gets(L, GCobject*, GCstr*) -> TValue*
+    |  mov L:CARG1, SAVE_L
+    |  mov L:CARG1->base, BASE       // Save BASE to L->base
+    |  mov CARG2, OOBJ:RB            // GCobject * (with type tag)
+    |  cleartp CARG2                 // Clear type tag for pointer
+    |  mov CARG3, STR:RC             // GCstr *
+    |  mov L:RB, L:CARG1             // Save L to RB for later
+    |  mov TMPR, L:RB->top           // Save L->top to restore after
+    |  mov TMP1, TMPR                // Store in TMP1 (across C call)
+    |  mov SAVE_PC, PC
+    |  call extern lj_object_gets    // (lua_State *L, GCobject *obj, GCstr *key)
+    |  mov BASE, L:RB->base          // Restore BASE from L->base
+    |  test RC, RC                   // RC == rax holds the result pointer
+    |  jnz >1                        // Success - continue to store result
+    |  // Fallback path: reload RC (clobbered by C call return value in rax)
+    |  mov TMPR, TMP1                // Load saved L->top
+    |  mov L:RB->top, TMPR           // Restore L->top before fallback
+    |  movzx RCd, PC_RC              // Reload string const index from instruction
+    |  not RC                        // Decode (~index)
+    |  mov STR:RC, [KBASE+RC*8]      // Load GCstr* from constants
+    |  jmp ->vmeta_tgets             // Now RC is valid for vmeta_tgets
+    |1:
+    |  movzx RAd, PC_RA              // RA clobbered by C call
+    |  mov ITYPE, [RC]               // Load result value
+    |  mov [BASE+RA*8], ITYPE        // Store to destination
+    |  mov TMPR, TMP1                // Load saved L->top
+    |  mov L:RB->top, TMPR           // Restore L->top
+    |  ins_next
+    break;
+
+  case BC_OSETS:
+    |  ins_ABC // RA = value, RB = object, RC = str const (~)
+    |  mov OOBJ:RB, [BASE+RB*8]
+    |  not RC
+    |  mov STR:RC, [KBASE+RC*8]
+    |  checkobject OOBJ:RB, ->vmeta_tsets
+    |  // Call C helper: lj_object_sets(L, GCobject*, GCstr*, TValue*) -> int
+    |.if X64WIN
+    |  // Windows x64: RCX, RDX, R8, R9. Caveat: CARG2 == BASE.
+    |  lea CARG4, [BASE+RA*8]        // TValue * value (compute before BASE is clobbered)
+    |  mov L:CARG1, SAVE_L
+    |  mov L:CARG1->base, BASE       // Save BASE to L->base
+    |  mov CARG2, OOBJ:RB            // GCobject * (with type tag)
+    |  cleartp CARG2                 // Clear type tag for pointer
+    |  mov CARG3, STR:RC             // GCstr *
+    |  mov L:RB, L:CARG1             // Save L to RB for later
+    |.else
+    |  // SysV x64: RDI, RSI, RDX, RCX. Caveat: CARG3 == BASE.
+    |  mov L:CARG1, SAVE_L
+    |  mov L:CARG1->base, BASE       // Save BASE to L->base
+    |  mov CARG2, OOBJ:RB            // GCobject * (with type tag)
+    |  cleartp CARG2                 // Clear type tag for pointer
+    |  lea CARG4, [BASE+RA*8]        // TValue * value (after BASE used)
+    |  mov CARG3, STR:RC             // GCstr *
+    |  mov L:RB, L:CARG1             // Save L to RB for later
+    |.endif
+    |  mov SAVE_PC, PC
+    |  call extern lj_object_sets    // (lua_State *L, GCobject *obj, GCstr *key, TValue *val)
+    |  mov BASE, L:RB->base          // Restore BASE from L->base
+    |  test eax, eax                 // Check return value (1=success, 0=fallback)
+    |  jnz >1                        // Success - continue to next instruction
+    |  // Fallback path: reload RC (clobbered by C call return value in rax)
+    |  movzx RCd, PC_RC              // Reload string const index from instruction
+    |  not RC                        // Decode (~index)
+    |  mov STR:RC, [KBASE+RC*8]      // Load GCstr* from constants
+    |  jmp ->vmeta_tsets             // Now RC is valid for vmeta_tsets
+    |1:
+    |  ins_next
+    break;
+
+  case BC_OCALL:
+    // Reserved for object action/method call optimisation.
+    // For now, fall through to metamethod dispatch.
+    |  jmp ->vmeta_call
     break;
 
   //  -- Array ops ---------------------------------------------------------
