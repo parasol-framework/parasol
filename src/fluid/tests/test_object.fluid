@@ -39,12 +39,6 @@ end
    assert(f.class.name is 'Time', "Expected 'class' to be present")
 end
 
-@Test function FieldAccess()
-   f = obj.new('file')
-   f.path = 'temp:test.txt'
-   assert(f.path is 'temp:test.txt', "Expected path to be set and retrieved correctly")
-end
-
 @Test function ObjectToString()
    as_string = tostring(glScript)
    assert(type(as_string) is 'string', "Expected tostring to return a string")
@@ -91,8 +85,7 @@ end
    id = f.id
    f.free()
 
-   -- After freeing, we can't call exists() on the freed reference
-   -- but we can verify by trying to find it
+   -- After freeing, we can't call exists() on the freed reference, but we can verify by trying to find it
    found = obj.find(id)
    assert(found is nil, "Expected freed object to not be findable")
 end
@@ -122,7 +115,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test obj.get() explicit field access
 
-@Test function ObjGetField()
+@Test(hotpath=true) function ObjGetField()
    t = obj.new('time', { })
 
    -- Get single field
@@ -137,8 +130,16 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Direct field access (most optimal route)
 
-@Test function ObjGetSetDirect()
+@Test(hotpath=true) function ObjGetSetDirect()
    t = obj.new('time', { })
+   f = obj.new('file')
+
+   -- Set and get string field that has function backing
+
+   f.path = 'temp:test.txt'
+   assert(f.path is 'temp:test.txt', "Expected path to be set and retrieved correctly")
+
+   -- Set and get numeric field with no function backing
 
    t.year = 2025
 
@@ -176,7 +177,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test obj.lock() method with callback
 
-@Test function ObjLock()
+@Test(hotpath=true) function ObjLock()
    f = obj.new('file')
    f.path = 'temp:locktest.txt'
 
@@ -217,7 +218,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test obj._state() for per-object state storage
 
-@Test function ObjState()
+@Test(hotpath=true) function ObjState()
    f = obj.new('file')
 
    state = f._state()
