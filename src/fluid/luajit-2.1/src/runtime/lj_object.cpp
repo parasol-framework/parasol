@@ -252,11 +252,6 @@ extern "C" void lj_object_sets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *
    else luaL_error(L, ERR::AccessObject);
 }
 
-extern "C" void jit_object_set(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Val)
-{
-   lj_object_sets(L, Obj, Key, Val);
-}
-
 //********************************************************************************************************************
 // JIT field type lookup - returns the IR type for a field.  Returns -1 if field not found or unknown type.  This
 // function must have no side effects as it is called during JIT recording.

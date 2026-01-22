@@ -18,6 +18,4 @@ extern int lj_object_ipairs(lua_State *);
 extern "C" void lj_object_gets(lua_State *, GCobject *, GCstr *, TValue *);
 extern "C" void lj_object_sets(lua_State *, GCobject *, GCstr *, TValue *);
 
-extern "C" void jit_object_set(lua_State *, GCobject *, GCstr *, TValue *);
-
 extern "C" int ir_object_field_type(GCobject *Obj, GCstr *Key);

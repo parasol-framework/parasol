@@ -2484,9 +2484,9 @@ static TRef rec_object_set(jit_State *J, RecordOps *ops)
    if (not tref_isobject(obj_ref)) lj_trace_err(J, LJ_TRERR_BADTYPE);
    TRef key_ref = ops->rc;  // Get the string key reference - BC_OGETS/OSETS use ~RC for the constant index
 
-   // jit_object_set(L, obj, key, val)
+   // lj_object_sets(L, obj, key, val)
    TRef tmp_ref = rec_tmpref(J, ops->ra, IRTMPREF_IN1);
-   lj_ir_call(J, IRCALL_jit_object_set, obj_ref, key_ref, tmp_ref);
+   lj_ir_call(J, IRCALL_lj_object_sets, obj_ref, key_ref, tmp_ref);
    return 0;
 }
 
