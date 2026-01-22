@@ -167,3 +167,72 @@ int lj_object_ipairs(lua_State *L)
    else luaL_error(L, ERR::FieldSearch, "Object class defines no fields.");
    return 0;
 }
+
+//********************************************************************************************************************
+// Fast object field get - called from BC_OGETS bytecode handler. Writes result directly to Dest, or throws an error
+// if the field doesn't exist or the object has been freed.
+
+extern "C" void lj_object_gets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Dest)
+{
+   if (not Obj->uid) luaL_error(L, ERR::DoesNotExist, "Object dereferenced, unable to read field.");
+
+   // Use cached read_table or lazily populate it
+   auto read_table = (READ_TABLE *)Obj->read_table;
+   if (not read_table) {
+      read_table = get_read_table(L, Obj->classptr);
+      Obj->read_table = (void *)read_table;
+   }
+
+   // Look up the field handler using the string's precomputed hash
+
+   auto hash_key = obj_read(Key->hash);
+   auto func = read_table->find(hash_key);
+   if (func IS read_table->end()) {
+      luaL_error(L, ERR::NoFieldAccess, "Field does not exist: %s.%s", Obj->classptr ? Obj->classptr->ClassName: "?", strdata(Key));
+   }
+
+   TValue *saved_top = L->top;
+   if (L->top <= Dest) L->top = Dest + 1;  // Ensure handler pushes after destination slot
+
+   // Call the field handler - it pushes result onto the Lua stack
+   if (func->Call(L, *func, Obj) > 0) copyTV(L, Dest, L->top - 1);
+   else setnilV(Dest);
+   L->top = saved_top;
+}
+
+//********************************************************************************************************************
+// Fast object field set - called from BC_OSETS bytecode handler. Writes Val to the object field, or throws an error.
+
+extern "C" void lj_object_sets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Val)
+{
+   // Ensure L->top is past the value register before any error can be thrown.
+   // luaL_error pushes the error string to L->top, which would corrupt active registers if too low.
+   TValue *saved_top = L->top;
+   if (L->top <= Val) L->top = Val + 1;
+
+   if (not Obj->uid) luaL_error(L, ERR::DoesNotExist, "Object dereferenced, unable to write field.");
+
+   // Use cached write_table or lazily populate it
+   auto write_table = (WRITE_TABLE *)Obj->write_table;
+   if (not write_table) {
+      write_table = get_write_table(Obj->classptr);
+      Obj->write_table = (void *)write_table;
+   }
+
+   // Look up the field handler using the string's precomputed hash
+   auto hash_key = obj_write(Key->hash);
+   auto func = write_table->find(hash_key);
+   if (func IS write_table->end()) {
+      luaL_error(L, ERR::UndefinedField, "Field does not exist: %s.%s", Obj->classptr ? Obj->classptr->ClassName: "?", strdata(Key));
+   }
+
+   if (auto pobj = access_object(Obj)) {
+      auto stack_idx = int(Val - L->base) + 1;
+      ERR error = func->Call(L, pobj, func->Field, stack_idx);
+      L->top = saved_top;
+      release_object(Obj);
+
+      if (error >= ERR::ExceptionThreshold) luaL_error(L, error);
+   }
+   else luaL_error(L, ERR::AccessObject);
+}

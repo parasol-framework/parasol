@@ -40,6 +40,7 @@ enum class ExpKind : uint8_t {
    Indexed,    // info = table register, aux = index reg/byte/string const
    IndexedArray, // info = array register, aux = index reg/byte (array indexing)
    SafeIndexedArray, // info = array register, aux = index reg/byte (safe array indexing - nil for out-of-bounds)
+   IndexedObject, // info = object register, aux = string const (object field access)
    Jmp,        // info = instruction PC
    Relocable,  // info = instruction PC
    NonReloc,   // info = result register
@@ -49,9 +50,9 @@ enum class ExpKind : uint8_t {
 
 // Expression kind helper function - returns true for variable-like expressions.
 // Note: Unscoped is between Global and Indexed, so this range check covers it.
-// IndexedArray and SafeIndexedArray are also considered variable-like expressions for assignment purposes.
+// IndexedArray, SafeIndexedArray, and IndexedObject are also considered variable-like expressions for assignment purposes.
 [[nodiscard]] static constexpr bool vkisvar(ExpKind k) {
-   return ExpKind::Local <= k and k <= ExpKind::SafeIndexedArray;
+   return ExpKind::Local <= k and k <= ExpKind::IndexedObject;
 }
 
 enum class ExprFlag : uint8_t {

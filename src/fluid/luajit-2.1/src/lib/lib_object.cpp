@@ -451,14 +451,14 @@ WRITE_TABLE * get_write_table(objMetaClass *Class)
 
    if (!def->uid) {
       luaL_error(Lua, ERR::DoesNotExist, "Object dereferenced, unable to read field.");
-      return 0;
+      return 0; // Not reached
    }
 
    // Get key as GCstr to access precomputed hash
    TValue *tv_key = Lua->base + 1;
    if (!tvisstr(tv_key)) {
       lj_err_argt(Lua, 2, LUA_TSTRING);
-      return 0;
+      return 0; // Not reached
    }
    GCstr *keystr = strV(tv_key);
 
@@ -473,11 +473,11 @@ WRITE_TABLE * get_write_table(objMetaClass *Class)
    if (auto func = read_table->find(hash_key); func != read_table->end()) {
       return func->Call(Lua, *func, def);
    }
-   else {
-      luaL_error(Lua, ERR::NoFieldAccess, "Field does not exist or is unreadable: %s.%s", def->classptr ? def->classptr->ClassName: "?", strdata(keystr));
-   }
+   
+   luaL_error(Lua, ERR::NoFieldAccess, "Field does not exist or is unreadable: %s.%s", 
+      def->classptr ? def->classptr->ClassName: "?", strdata(keystr));
 
-   return 0;
+   return 0; // Not reached
 }
 
 //********************************************************************************************************************
