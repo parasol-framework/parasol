@@ -206,6 +206,26 @@ inline void camelcase(std::string &s) noexcept {
    return hash;
 }
 
+// Hash designed to handle conversion from `UID` -> `uid` and `RGBValue` -> `rgbValue`.  This keeps hashes compatible
+// with Fluid naming conventions for field names.
+
+[[nodiscard]] constexpr inline uint32_t fieldhash(const std::string_view String) noexcept
+{
+   uint32_t hash = 5381;
+   size_t k = 0;
+   while ((k < String.size()) and std::isupper(String[k])) {
+      hash = hash<<5 + hash + std::tolower(String[k]);
+      if (++k >= String.size()) break;
+      if ((k + 1 >= String.size()) or (std::isupper(String[k+1]))) continue;
+      else break;
+   }
+   while (k < String.size()) {
+      hash = hash<<5 + hash + String[k];
+      k++;
+   }
+   return hash;
+}
+
 // Simple string copy
 
 template <class T> inline int strcopy(T &&Source, char *Dest, int Length = 0x7fffffff) noexcept

@@ -1724,7 +1724,7 @@ struct Unit {
    explicit Unit(std::string_view String) { read(String); }
    constexpr operator double() const { return Value; }
    constexpr void set(const double pValue) { Value = pValue; }
-   bool scaled() { return (Type & FD_SCALED) ? true : false; }
+   constexpr bool scaled() { return (Type & FD_SCALED) ? true : false; }
    inline void read(std::string_view String) {
       const auto start = String.find_first_not_of(" \n\r\t");
       if (start != std::string::npos) String.remove_prefix(start);
@@ -1885,16 +1885,12 @@ struct Field {
    APTR     SetValue;                                                        // A virtual function that will set the value for this field.
    ERR (*WriteValue)(OBJECTPTR, struct Field *, int, const void *, int);     // An internal function for writing to this field.
    CSTRING  Name;                                                            // The English name for the field, e.g. Width
-   uint32_t FieldID;                                                         // Provides a fast way of finding fields, e.g. FID_Width
+   uint32_t FieldID;                                                         // 32-bit hash from strihash(). Represented by FID constants, e.g. FID_Width
    uint16_t Offset;                                                          // Field offset within the object
    uint16_t Index;                                                           // Field array index
    uint32_t Flags;                                                           // Special flags that describe the field
-   bool readable() {
-      return (Flags & FD_READ) ? true : false;
-   }
-   bool writeable() {
-      return (Flags & (FD_WRITE|FD_INIT)) ? true : false;
-   }
+   inline bool readable() { return (Flags & FD_READ) ? true : false; }
+   inline bool writeable() { return (Flags & (FD_WRITE|FD_INIT)) ? true : false; }
 };
 
 struct ScriptArg { // For use with sc::Exec

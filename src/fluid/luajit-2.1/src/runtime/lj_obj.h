@@ -1553,27 +1553,3 @@ LJ_FUNC const void* LJ_FASTCALL lj_obj_ptr(global_State *g, cTValue* o);
 [[nodiscard]] inline TValue* niltv(lua_State *L) noexcept {
    return check_exp(tvisnil(&G(L)->nilnode.val), &G(L)->nilnode.val);
 }
-
-//********************************************************************************************************************
-// Hash designed to handle cases like `UID` -> `uid` and `RGBValue` -> `rgbValue`
-
-[[nodiscard]] [[maybe_unused]] static uint32_t field_hash(std::string_view Name) {
-   auto char_hash = [](char Char, uint32_t Hash = 5381) -> uint32_t {
-      Hash = ((Hash<<5) + Hash) + Char;
-      return Hash;
-   };
-
-   uint32_t hash = 5381;
-   size_t k = 0;
-   while ((k < Name.size()) and std::isupper(Name[k])) {
-      hash = char_hash(std::tolower(Name[k]), hash);
-      if (++k >= Name.size()) break;
-      if ((k + 1 >= Name.size()) or (std::isupper(Name[k+1]))) continue;
-      else break;
-   }
-   while (k < Name.size()) {
-      hash = char_hash(Name[k], hash);
-      k++;
-   }
-   return hash;
-}

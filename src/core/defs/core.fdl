@@ -774,7 +774,7 @@ using ModTest    = void (*)(CSTRING, int *, int *);
    explicit Unit(std::string_view String) { read(String); }
    constexpr operator double() const { return Value; }
    constexpr void set(const double pValue) { Value = pValue; }
-   bool scaled() { return (Type & FD_SCALED) ? true : false; }
+   constexpr bool scaled() { return (Type & FD_SCALED) ? true : false; }
    inline void read(std::string_view String) {
       const auto start = String.find_first_not_of(" \n\r\t");
       if (start != std::string::npos) String.remove_prefix(start);
@@ -952,18 +952,14 @@ using ModTest    = void (*)(CSTRING, int *, int *);
     ptr SetValue       # A virtual function that will set the value for this field.
     fptr(error obj struct(*Field) int cptr int) WriteValue # An internal function for writing to this field.
     cstr Name          # The English name for the field, e.g. `Width`
-    uint FieldID       # Provides a fast way of finding fields, e.g. `FID_Width`
+    uint FieldID       # 32-bit hash from strihash(). Represented by FID constants, e.g. `FID_Width`
     ushort Offset      # Field offset within the object
     ushort Index       # Field array index
     uint Flags         # Special flags that describe the field
   ]],
   [[
-   bool readable() {
-      return (Flags & FD_READ) ? true : false;
-   }
-   bool writeable() {
-      return (Flags & (FD_WRITE|FD_INIT)) ? true : false;
-   }
+   inline bool readable() { return (Flags & FD_READ) ? true : false; }
+   inline bool writeable() { return (Flags & (FD_WRITE|FD_INIT)) ? true : false; }
   ]]) -- [32/52]
 
   c_insert([[

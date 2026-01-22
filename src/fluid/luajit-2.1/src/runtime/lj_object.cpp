@@ -177,9 +177,9 @@ extern "C" void lj_object_gets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *
 {
    // Ensure L->top is past the value register before any error can be thrown.
    // luaL_error pushes the error string to L->top, which would corrupt active registers if too low.
-   TValue *saved_top = L->top;
-   TValue *stack_base = tvref(L->stack);
-   TValue *stack_end = stack_base + L->stacksize;
+   const auto saved_top = L->top;
+   const auto stack_base = tvref(L->stack);
+   const auto stack_end = stack_base + L->stacksize;
    if (Dest >= stack_base and Dest < stack_end and L->top <= Dest) {
       L->top = Dest + 1;  // Ensure handler pushes after destination slot
    }
@@ -214,11 +214,12 @@ extern "C" void lj_object_sets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *
 {
    // Ensure L->top is past the value register before any error can be thrown.
    // luaL_error pushes the error string to L->top, which would corrupt active registers if too low.
-   TValue *saved_top = L->top;
-   TValue *stack_base = tvref(L->stack);
-   TValue *stack_end = stack_base + L->stacksize;
-   TValue *val_ptr = Val;
-   if (Val < stack_base or Val >= stack_end) {
+
+   const auto saved_top  = L->top;
+   const auto stack_base = tvref(L->stack);
+   const auto stack_end  = stack_base + L->stacksize;
+   const auto val_ptr    = Val;
+   if ((Val < stack_base) or (Val >= stack_end)) {
       copyTV(L, L->top, Val);
       val_ptr = L->top;
       L->top++;
@@ -267,7 +268,7 @@ extern "C" int ir_object_field_type(GCobject *Obj, GCstr *Key)
 
    auto key_hash = Key->hash;  // GCstr already has precomputed hash
    for (int i = 0; i < total_dict; i++) {
-      if (field_hash(dict[i].Name) IS key_hash) {
+      if (fieldhash(dict[i].Name) IS key_hash) {
          auto flags = dict[i].Flags;
          if (not (flags & FDF_R)) return -1;  // Not readable
 
