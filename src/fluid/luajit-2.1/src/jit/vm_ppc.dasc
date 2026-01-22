@@ -472,6 +472,7 @@
 |.macro checktab, reg; cmpwi reg, LJ_TTAB; .endmacro
 |.macro checkfunc, reg; cmpwi reg, LJ_TFUNC; .endmacro
 |.macro checkarray, reg; cmpwi reg, LJ_TARRAY; .endmacro
+|.macro checkobject, reg; cmpwi reg, LJ_TOBJECT; .endmacro
 |.macro checknil, reg; cmpwi reg, LJ_TNIL; .endmacro
 |
 |.macro branch_RD
@@ -5329,6 +5330,46 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |7:  // Possible table write barrier for any value. Skip valiswhite check.
     |  barrierback TAB:CARG2, TMP3, TMP0
     |  b <4
+    break;
+
+  //  -- Object ops (specialised for LJ_TOBJECT) ----------------------------
+
+  case BC_OGETS:
+    |  // RA = dst*8, RB = object*8, RC = str_const*8 (~)
+    |  lwzux CARG1, RB, BASE
+    |   srwi TMP1, RC, 1
+    |    lwz CARG2, 4(RB)
+    |   subfic TMP1, TMP1, -4
+    |  checkobject CARG1
+    |   lwzx STR:RC, KBASE, TMP1	// KBASE-4-str_const*4
+    |  bne ->vmeta_tgets1
+    |   add CARG4, BASE, RA
+    |  stp BASE, L->base
+    |  mr CARG1, L
+    |  mr CARG3, STR:RC
+    |   stw PC, SAVE_PC
+    |  bl extern lj_object_gets		// (lua_State *L, GCobject *obj, GCstr *key, TValue *dest)
+    |  lp BASE, L->base
+    |  ins_next
+    break;
+
+  case BC_OSETS:
+    |  // RA = src*8, RB = object*8, RC = str_const*8 (~)
+    |  lwzux CARG1, RB, BASE
+    |   srwi TMP1, RC, 1
+    |    lwz CARG2, 4(RB)
+    |   subfic TMP1, TMP1, -4
+    |  checkobject CARG1
+    |   lwzx STR:RC, KBASE, TMP1	// KBASE-4-str_const*4
+    |  bne ->vmeta_tsets1
+    |   add CARG4, BASE, RA
+    |  stp BASE, L->base
+    |  mr CARG1, L
+    |  mr CARG3, STR:RC
+    |   stw PC, SAVE_PC
+    |  bl extern lj_object_sets		// (lua_State *L, GCobject *obj, GCstr *key, TValue *val)
+    |  lp BASE, L->base
+    |  ins_next
     break;
 
   //  -- Array ops ---------------------------------------------------------
