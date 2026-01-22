@@ -72,7 +72,6 @@ static void libdef_endmodule(BuildCtx* ctx)
 
 static void libdef_module(BuildCtx* ctx, char* p, int arg)
 {
-   UNUSED(arg);
    if (ctx->mode == BUILD_libdef) {
       libdef_endmodule(ctx);
       optr = obuf;
@@ -82,8 +81,7 @@ static void libdef_module(BuildCtx* ctx, char* p, int arg)
       modstate = 1;
       fprintf(ctx->fp, "#ifdef %sMODULE_%s\n", LIBDEF_PREFIX, p);
       fprintf(ctx->fp, "#undef %sMODULE_%s\n", LIBDEF_PREFIX, p);
-      fprintf(ctx->fp, "static const lua_CFunction %s%s[] = {\n",
-         LABEL_PREFIX_LIBCF, p);
+      fprintf(ctx->fp, "static const lua_CFunction %s%s[] = {\n", LABEL_PREFIX_LIBCF, p);
    }
    modnamelen = strlen(p);
    if (modnamelen > sizeof(modname) - 1) {
@@ -161,8 +159,6 @@ static void libdef_func(BuildCtx* ctx, char* p, int arg)
 // The buildvm_libbc.h file that contained pre-compiled bytecode is no longer used.
 static void libdef_lua(BuildCtx* ctx, char* p, int arg)
 {
-   UNUSED(arg);
-   UNUSED(ctx);
    fprintf(stderr, "Error: LJLIB_LUA is deprecated. Convert '%s' to LJLIB_CF.\n", p);
    exit(1);
 }
@@ -186,7 +182,6 @@ static uint32_t find_rec(char* name)
 
 static void libdef_rec(BuildCtx* ctx, char* p, int arg)
 {
-   UNUSED(arg);
    if (ctx->mode == BUILD_recdef) {
       char* q;
       uint32_t n;
@@ -220,7 +215,6 @@ static void memcpy_endian(void* dst, void* src, size_t n)
 
 static void libdef_push(BuildCtx* ctx, char* p, int arg)
 {
-   UNUSED(arg);
    if (ctx->mode == BUILD_libdef) {
       int len = (int)strlen(p);
       if (*p == '"') {
@@ -268,7 +262,6 @@ static void libdef_push(BuildCtx* ctx, char* p, int arg)
 
 static void libdef_set(BuildCtx* ctx, char* p, int arg)
 {
-   UNUSED(arg);
    if (ctx->mode == BUILD_libdef) {
       if (p[0] == '!' && p[1] == '\0') p[0] = '\0';  /* Set env. */
       libdef_name(p, LIBINIT_STRING);
@@ -279,7 +272,6 @@ static void libdef_set(BuildCtx* ctx, char* p, int arg)
 
 static void libdef_regfunc(BuildCtx* ctx, char* p, int arg)
 {
-   UNUSED(ctx); UNUSED(p);
    regfunc = arg;
 }
 

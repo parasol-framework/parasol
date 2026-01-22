@@ -22,9 +22,6 @@
 #define LUA_CORE
 
 #include "lj_obj.h"
-
-#if LJ_HASJIT
-
 #include "lj_err.h"
 #include "lj_buf.h"
 #include "lj_str.h"
@@ -328,10 +325,9 @@ static void LJ_FASTCALL recff_rawequal(jit_State* J, RecordFFData* rd)
 static void LJ_FASTCALL recff_rawlen(jit_State* J, RecordFFData* rd)
 {
    TRef tr = J->base[0];
-   if (tref_isstr(tr))
-      J->base[0] = emitir(IRTI(IR_FLOAD), tr, IRFL_STR_LEN);
-   else if (tref_istab(tr))
-      J->base[0] = emitir(IRTI(IR_ALEN), tr, TREF_NIL);
+   if (tref_isstr(tr)) J->base[0] = emitir(IRTI(IR_FLOAD), tr, IRFL_STR_LEN);
+   else if (tref_istab(tr)) J->base[0] = emitir(IRTI(IR_ALEN), tr, TREF_NIL);
+   else if (tref_isarray(tr)) J->base[0] = emitir(IRTI(IR_FLOAD), tr, IRFL_ARRAY_LEN);
    // else: Interpreter will throw.
    UNUSED(rd);
 }
@@ -365,12 +361,9 @@ static void LJ_FASTCALL recff___filter(jit_State* J, RecordFFData* rd)
 
    IRIns* ir_mask = IR(tref_ref(tr_mask));
    uint64_t mask;
-   if (ir_mask->o IS IR_KNUM) {
-      mask = uint64_t(ir_knum(ir_mask)->u64);
-   }
-   else {
-      mask = uint64_t(uint32_t(ir_mask->i));  // IR_KINT stores 32-bit integer
-   }
+   if (ir_mask->o IS IR_KNUM) mask = uint64_t(ir_knum(ir_mask)->u64);
+   else mask = uint64_t(uint32_t(ir_mask->i));  // IR_KINT stores 32-bit integer
+
    int32_t count = IR(tref_ref(tr_count))->i;
    bool trailing_keep = !tref_isfalse(tr_trailing);
 
@@ -599,9 +592,7 @@ static void LJ_FASTCALL recff_xpairs(jit_State* J, RecordFFData* rd)
 static void LJ_FASTCALL recff_next(jit_State* J, RecordFFData* rd)
 {
 #if LJ_BE
-   /* YAGNI: Disabled on big-endian due to issues with lj_vm_next,
-   ** IR_HIOP, RID_RETLO/RID_RETHI and ra_destpair.
-   */
+   // YAGNI: Disabled on big-endian due to issues with lj_vm_next, IR_HIOP, RID_RETLO/RID_RETHI and ra_destpair.
    recff_nyi(J, rd);
 #else
    TRef tab = J->base[0];
@@ -1373,5 +1364,3 @@ void lj_ffrecord_func(jit_State* J)
 
 #undef IR
 #undef emitir
-
-#endif
