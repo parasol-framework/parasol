@@ -37,7 +37,7 @@ GCobject * lj_object_new(lua_State *L, OBJECTID UID, OBJECTPTR Ptr, objMetaClass
 
 void lj_object_finalize(lua_State *L, GCobject *obj)
 {
-   while (obj->accesscount > 0) release_object(obj);
+   while (obj->accesscount > 0) release_object(obj); // Critical for recovering from exceptions
 
    if (not obj->is_detached()) {
       // Only free the Parasol object if it's owned by this script.
@@ -205,7 +205,7 @@ extern void lj_object_gets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Dest
 //********************************************************************************************************************
 // Fast object field set - called from BC_OSETS bytecode handler. Writes Val to the object field, or throws an error.
 
-extern void lj_object_sets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Val)
+extern "C" void lj_object_sets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Val)
 {
    // Ensure L->top is past the value register before any error can be thrown.
    // luaL_error pushes the error string to L->top, which would corrupt active registers if too low.

@@ -2674,7 +2674,7 @@ void lj_record_ins(jit_State *J)
       break;
    }
 
-      // -- Unary ops
+   // Unary ops
 
    case BC_NOT:
       // Type specialisation already forces const result.
@@ -2686,7 +2686,7 @@ void lj_record_ins(jit_State *J)
       else rc = rec_mm_len(J, rc, rcv);
       break;
 
-      // -- Arithmetic ops
+   // Arithmetic ops
 
    case BC_UNM:
    case BC_ADDNV: case BC_SUBNV: case BC_MULNV: case BC_DIVNV: case BC_MODNV:
@@ -2697,13 +2697,13 @@ void lj_record_ins(jit_State *J)
       rc = rec_arith_op(J, &ops);
       break;
 
-      // Miscellaneous ops
+   // Miscellaneous ops
 
    case BC_CAT:
       rc = rec_cat(J, rb, rc);
       break;
 
-      // Constant and move ops
+   // Constant and move ops
 
    case BC_MOV:
       // Clear gap of method call to avoid resurrecting previous refs.
@@ -2729,7 +2729,7 @@ void lj_record_ins(jit_State *J)
       }
       break;
 
-      // Upvalue and function ops
+   // Upvalue and function ops
 
    case BC_UGET:
       rc = rec_upvalue(J, rc, 0);
@@ -2754,7 +2754,7 @@ void lj_record_ins(jit_State *J)
       rec_tsetm(J, ra, (BCREG)(J->L->top - J->L->base), (int32_t)rcv->u32.lo);
       break;
 
-      // Array ops - native array access
+   // Array ops - native array access
    case BC_AGETV: case BC_AGETB:
       rc = rec_array_op(J, &ops);
       break;
@@ -2763,7 +2763,7 @@ void lj_record_ins(jit_State *J)
       rec_array_op(J, &ops);
       break;
 
-      // -- Calls and vararg handling
+   // Calls and vararg handling
 
    case BC_ITERC:
       {

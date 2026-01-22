@@ -306,12 +306,10 @@ LJ_DATA const uint8_t lj_ir_mode[IR__MAX + 1];
 
 // IR instruction types
 
-// Map of itypes to non-negative numbers and their sizes. ORDER LJ_T.
-// LJ_TUPVAL/LJ_TTRACE never appear in a TValue. Use these itypes for
-// IRT_P32 and IRT_P64, which never escape the IR.
-// The various integers are only used in the IR and can only escape to
-// a TValue after implicit or explicit conversion. Their types must be
-// contiguous and next to IRT_NUM (see the typerange macros below).
+// Map of itypes to non-negative numbers and their sizes. ORDER LJ_T.  LJ_TUPVAL/LJ_TTRACE never appear in a TValue.
+// Use these itypes for IRT_P32 and IRT_P64, which never escape the IR.  The various integers are only used in the
+// IR and can only escape to a TValue after implicit or explicit conversion. Their types must be contiguous and
+// next to IRT_NUM (see the typerange macros below).
 
 #define IRTDEF(_) \
   _(NIL, 4) _(FALSE, 4) _(TRUE, 4) _(LIGHTUD, 8) _(STR, 8) _(P32, 4) _(THREAD, 8) _(PROTO, 8) \
