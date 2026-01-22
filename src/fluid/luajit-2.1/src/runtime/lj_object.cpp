@@ -174,6 +174,11 @@ int lj_object_ipairs(lua_State *L)
 
 extern "C" void lj_object_gets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Dest)
 {
+   // Ensure L->top is past the value register before any error can be thrown.
+   // luaL_error pushes the error string to L->top, which would corrupt active registers if too low.
+   TValue *saved_top = L->top;
+   if (L->top <= Dest) L->top = Dest + 1;  // Ensure handler pushes after destination slot
+
    if (not Obj->uid) luaL_error(L, ERR::DoesNotExist, "Object dereferenced, unable to read field.");
 
    // Use cached read_table or lazily populate it
@@ -190,9 +195,6 @@ extern "C" void lj_object_gets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *
    if (func IS read_table->end()) {
       luaL_error(L, ERR::NoFieldAccess, "Field does not exist: %s.%s", Obj->classptr ? Obj->classptr->ClassName: "?", strdata(Key));
    }
-
-   TValue *saved_top = L->top;
-   if (L->top <= Dest) L->top = Dest + 1;  // Ensure handler pushes after destination slot
 
    // Call the field handler - it pushes result onto the Lua stack
    if (func->Call(L, *func, Obj) > 0) copyTV(L, Dest, L->top - 1);
