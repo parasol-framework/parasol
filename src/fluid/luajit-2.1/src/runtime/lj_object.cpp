@@ -6,6 +6,7 @@
 
 #include "lj_obj.h"
 #include "lj_gc.h"
+#include "lj_ir.h"
 #include "lj_object.h"
 #include "../../defs.h"
 
@@ -172,12 +173,16 @@ int lj_object_ipairs(lua_State *L)
 // Fast object field get - called from BC_OGETS bytecode handler. Writes result directly to Dest, or throws an error
 // if the field doesn't exist or the object has been freed.
 
-extern void lj_object_gets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Dest)
+extern "C" void lj_object_gets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Dest)
 {
    // Ensure L->top is past the value register before any error can be thrown.
    // luaL_error pushes the error string to L->top, which would corrupt active registers if too low.
    TValue *saved_top = L->top;
-   if (L->top <= Dest) L->top = Dest + 1;  // Ensure handler pushes after destination slot
+   TValue *stack_base = tvref(L->stack);
+   TValue *stack_end = stack_base + L->stacksize;
+   if (Dest >= stack_base and Dest < stack_end and L->top <= Dest) {
+      L->top = Dest + 1;  // Ensure handler pushes after destination slot
+   }
 
    if (not Obj->uid) luaL_error(L, ERR::DoesNotExist, "Object dereferenced, unable to read field.");
 
@@ -210,7 +215,15 @@ extern "C" void lj_object_sets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *
    // Ensure L->top is past the value register before any error can be thrown.
    // luaL_error pushes the error string to L->top, which would corrupt active registers if too low.
    TValue *saved_top = L->top;
-   if (L->top <= Val) L->top = Val + 1;
+   TValue *stack_base = tvref(L->stack);
+   TValue *stack_end = stack_base + L->stacksize;
+   TValue *val_ptr = Val;
+   if (Val < stack_base or Val >= stack_end) {
+      copyTV(L, L->top, Val);
+      val_ptr = L->top;
+      L->top++;
+   }
+   else if (L->top <= Val) L->top = Val + 1;
 
    if (not Obj->uid) luaL_error(L, ERR::DoesNotExist, "Object dereferenced, unable to write field.");
 
@@ -229,7 +242,7 @@ extern "C" void lj_object_sets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *
    }
 
    if (auto pobj = access_object(Obj)) {
-      auto stack_idx = int(Val - L->base) + 1;
+      auto stack_idx = int(val_ptr - L->base) + 1;
       ERR error = func->Call(L, pobj, func->Field, stack_idx);
       L->top = saved_top;
       release_object(Obj);
@@ -237,4 +250,46 @@ extern "C" void lj_object_sets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *
       if (error >= ERR::ExceptionThreshold) luaL_error(L, error);
    }
    else luaL_error(L, ERR::AccessObject);
+}
+
+//********************************************************************************************************************
+// JIT field type lookup - returns the IR type for a field.  Returns -1 if field not found or unknown type.  This
+// function must have no side effects as it is called during JIT recording.
+
+extern "C" int ir_object_field_type(GCobject *Obj, GCstr *Key)
+{
+   if (not Obj->uid or not Obj->classptr) return -1;
+
+   auto *mc = Obj->classptr;
+   Field *dict;
+   int total_dict;
+   if (mc->get(FID_Dictionary, dict, total_dict) != ERR::Okay) return -1;
+
+   auto key_hash = Key->hash;  // GCstr already has precomputed hash
+   for (int i = 0; i < total_dict; i++) {
+      if (field_hash(dict[i].Name) IS key_hash) {
+         auto flags = dict[i].Flags;
+         if (not (flags & FDF_R)) return -1;  // Not readable
+
+         if (flags & FD_STRING) return IRT_STR;
+         if (flags & (FD_DOUBLE|FD_INT64)) return IRT_NUM;
+         if (flags & FD_INT) {
+            // FD_OBJECT int fields store object IDs and push GCobject references
+            if (flags & FD_OBJECT) return IRT_OBJECT;
+            // FD_UNSIGNED always uses lua_pushnumber, even in DUALNUM builds
+            if (flags & FD_UNSIGNED) return IRT_NUM;
+            return LJ_DUALNUM ? IRT_INT : IRT_NUM;
+         }
+         if (flags & FD_STRUCT) {
+            if (flags & FD_RESOURCE) return IRT_LIGHTUD;
+            else return IRT_TAB;
+         }
+         if (flags & FD_ARRAY) return IRT_ARRAY;
+         if ((flags & FD_POINTER) and (flags & (FD_OBJECT|FD_LOCAL))) return IRT_OBJECT;
+         if (flags & FD_POINTER) return IRT_LIGHTUD;
+         return -1;  // Unknown type
+      }
+   }
+
+   return -1;  // Field not found in dictionary
 }
