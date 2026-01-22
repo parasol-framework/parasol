@@ -169,17 +169,12 @@ int lj_object_ipairs(lua_State *L)
 }
 
 //********************************************************************************************************************
-// Fast object field get - called from BC_OGETS bytecode handler.
-// Returns 1 on success, 0 to request fallback to metamethod dispatch.
-//
-// This function is designed to be called from the VM with minimal overhead:
-// - 4 register arguments (Windows x64 limit)
-// - Writes result directly into Dest
-// - Restores L->top to avoid clobbering active VM registers
+// Fast object field get - called from BC_OGETS bytecode handler. Writes result directly to Dest, or throws an error
+// if the field doesn't exist or the object has been freed.
 
-extern "C" int lj_object_gets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Dest)
+extern "C" void lj_object_gets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Dest)
 {
-   if (not Obj->uid) return 0; // Object has been freed - request fallback
+   if (not Obj->uid) luaL_error(L, ERR::DoesNotExist, "Object dereferenced, unable to read field.");
 
    // Use cached read_table or lazily populate it
    auto read_table = (READ_TABLE *)Obj->read_table;
@@ -192,30 +187,30 @@ extern "C" int lj_object_gets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *D
 
    auto hash_key = obj_read(Key->hash);
    auto func = read_table->find(hash_key);
-   if (func IS read_table->end()) return 0; // Field not found - request fallback to metamethod dispatch
+   if (func IS read_table->end()) {
+      luaL_error(L, ERR::NoFieldAccess, "Field does not exist: %s.%s", Obj->classptr ? Obj->classptr->ClassName: "?", strdata(Key));
+   }
 
    TValue *saved_top = L->top;
    if (L->top <= Dest) L->top = Dest + 1;  // Ensure handler pushes after destination slot
 
    // Call the field handler - it pushes result onto the Lua stack
-   int result_count = func->Call(L, *func, Obj);
-   if (result_count > 0) copyTV(L, Dest, L->top - 1);
+   if (func->Call(L, *func, Obj) > 0) copyTV(L, Dest, L->top - 1);
    else setnilV(Dest);
    L->top = saved_top;
-   return 1;
 }
 
 //********************************************************************************************************************
-// Fast object field set - called from BC_OSETS bytecode handler.
-// Returns 1 on success, 0 to request fallback to metamethod dispatch.
-//
-// This function is designed to be called from the VM with minimal overhead:
-// - 4 register arguments (Windows x64 limit)
-// - Returns success/fallback indicator
+// Fast object field set - called from BC_OSETS bytecode handler. Writes Val to the object field, or throws an error.
 
-extern "C" int lj_object_sets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Val)
+extern "C" void lj_object_sets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Val)
 {
-   if (not Obj->uid) return 0; // Object has been freed - request fallback which will handle the error
+   // Ensure L->top is past the value register before any error can be thrown.
+   // luaL_error pushes the error string to L->top, which would corrupt active registers if too low.
+   TValue *saved_top = L->top;
+   if (L->top <= Val) L->top = Val + 1;
+
+   if (not Obj->uid) luaL_error(L, ERR::DoesNotExist, "Object dereferenced, unable to write field.");
 
    // Use cached write_table or lazily populate it
    auto write_table = (WRITE_TABLE *)Obj->write_table;
@@ -227,23 +222,17 @@ extern "C" int lj_object_sets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *V
    // Look up the field handler using the string's precomputed hash
    auto hash_key = obj_write(Key->hash);
    auto func = write_table->find(hash_key);
-   if (func IS write_table->end()) return 0; // Field not found - request fallback to metamethod dispatch
+   if (func IS write_table->end()) {
+      luaL_error(L, ERR::UndefinedField, "Field does not exist: %s.%s", Obj->classptr ? Obj->classptr->ClassName: "?", strdata(Key));
+   }
 
    if (auto pobj = access_object(Obj)) {
-      // Ensure the value register is visible to the C API without clobbering other registers.
-
-      TValue *saved_top = L->top;
-      if (L->top <= Val) L->top = Val + 1;
-
-      // Call the field handler - it reads value from stack position
-
-      int stack_idx = int(Val - L->base) + 1;
+      auto stack_idx = int(Val - L->base) + 1;
       ERR error = func->Call(L, pobj, func->Field, stack_idx);
-      L->top = saved_top; // Restore stack
+      L->top = saved_top;
       release_object(Obj);
 
-      if (error >= ERR::ExceptionThreshold) return 0; // Serious error - let the VM handle it via fallback
-      else return 1;  // Success
+      if (error >= ERR::ExceptionThreshold) luaL_error(L, error);
    }
-   else return 0;  // Request fallback
+   else luaL_error(L, ERR::AccessObject);
 }
