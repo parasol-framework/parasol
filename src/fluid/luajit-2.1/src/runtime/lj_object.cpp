@@ -178,7 +178,11 @@ extern "C" void lj_object_gets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *
    // Ensure L->top is past the value register before any error can be thrown.
    // luaL_error pushes the error string to L->top, which would corrupt active registers if too low.
    TValue *saved_top = L->top;
-   if (L->top <= Dest) L->top = Dest + 1;  // Ensure handler pushes after destination slot
+   TValue *stack_base = tvref(L->stack);
+   TValue *stack_end = stack_base + L->stacksize;
+   if (Dest >= stack_base and Dest < stack_end and L->top <= Dest) {
+      L->top = Dest + 1;  // Ensure handler pushes after destination slot
+   }
 
    if (not Obj->uid) luaL_error(L, ERR::DoesNotExist, "Object dereferenced, unable to read field.");
 
@@ -211,7 +215,15 @@ extern "C" void lj_object_sets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *
    // Ensure L->top is past the value register before any error can be thrown.
    // luaL_error pushes the error string to L->top, which would corrupt active registers if too low.
    TValue *saved_top = L->top;
-   if (L->top <= Val) L->top = Val + 1;
+   TValue *stack_base = tvref(L->stack);
+   TValue *stack_end = stack_base + L->stacksize;
+   TValue *val_ptr = Val;
+   if (Val < stack_base or Val >= stack_end) {
+      copyTV(L, L->top, Val);
+      val_ptr = L->top;
+      L->top++;
+   }
+   else if (L->top <= Val) L->top = Val + 1;
 
    if (not Obj->uid) luaL_error(L, ERR::DoesNotExist, "Object dereferenced, unable to write field.");
 
@@ -230,7 +242,7 @@ extern "C" void lj_object_sets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *
    }
 
    if (auto pobj = access_object(Obj)) {
-      auto stack_idx = int(Val - L->base) + 1;
+      auto stack_idx = int(val_ptr - L->base) + 1;
       ERR error = func->Call(L, pobj, func->Field, stack_idx);
       L->top = saved_top;
       release_object(Obj);
@@ -240,41 +252,9 @@ extern "C" void lj_object_sets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *
    else luaL_error(L, ERR::AccessObject);
 }
 
-// Version for the JIT recorder.  The Val pointer comes from JIT-managed memory (IR_TMPREF), not the Lua stack.  We
-// must copy the value onto the stack with copyTV() so field setters can use standard stack-based APIs.
-
 extern "C" void jit_object_set(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Val)
 {
-   // Copy the value onto the stack before any error paths.  luaL_error() expects L->top to be past any active values.
-   TValue *saved_top = L->top;
-   copyTV(L, L->top, Val);
-   L->top++;
-   int stack_idx = int(L->top - L->base);  // Index of the value we just pushed
-
-   if (not Obj->uid) luaL_error(L, ERR::DoesNotExist, "Object dereferenced, unable to write field.");
-
-   // Use cached write_table or lazily populate it
-   auto write_table = (WRITE_TABLE *)Obj->write_table;
-   if (not write_table) {
-      write_table = get_write_table(Obj->classptr);
-      Obj->write_table = (void *)write_table;
-   }
-
-   // Look up the field handler using the string's precomputed hash
-   auto hash_key = obj_write(Key->hash);
-   auto func = write_table->find(hash_key);
-   if (func IS write_table->end()) {
-      luaL_error(L, ERR::UndefinedField, "Field does not exist: %s.%s", Obj->classptr ? Obj->classptr->ClassName: "?", strdata(Key));
-   }
-
-   if (auto pobj = access_object(Obj)) {
-      ERR error = func->Call(L, pobj, func->Field, stack_idx);
-      L->top = saved_top;
-      release_object(Obj);
-
-      if (error >= ERR::ExceptionThreshold) luaL_error(L, error);
-   }
-   else luaL_error(L, ERR::AccessObject);
+   lj_object_sets(L, Obj, Key, Val);
 }
 
 //********************************************************************************************************************
