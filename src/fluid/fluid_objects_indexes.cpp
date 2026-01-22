@@ -16,7 +16,7 @@ int object_newindex(lua_State *Lua)
             ERR error;
 
             // Use cached write_table or lazily populate it
-            WRITE_TABLE *jt = (WRITE_TABLE *)def->write_table;
+            auto jt = (WRITE_TABLE *)def->write_table;
             if (!jt) {
                jt = get_write_table(def->classptr);
                def->write_table = (void *)jt;

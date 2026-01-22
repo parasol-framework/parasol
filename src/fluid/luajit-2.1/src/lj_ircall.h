@@ -242,17 +242,6 @@ LJ_DATA const CCallInfo lj_ir_callinfo[IRCALL__MAX+1];
 #endif
 #endif
 
-#if LJ_HASFFI && LJ_NEED_FP64
-extern double fp64_l2d(int64_t a);
-extern double fp64_ul2d(uint64_t a);
-extern float fp64_l2f(int64_t a);
-extern float fp64_ul2f(uint64_t a);
-extern int64_t fp64_d2l(double a);
-extern uint64_t fp64_d2ul(double a);
-extern int64_t fp64_f2l(float a);
-extern uint64_t fp64_f2ul(float a);
-#endif
-
 // Try-except exception handling runtime functions
 extern "C" void lj_try_enter(lua_State *L, GCfunc *Func, TValue *Base, uint16_t TryBlockIndex);
 extern "C" void lj_try_leave(lua_State *L);

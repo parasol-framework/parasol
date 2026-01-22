@@ -282,25 +282,6 @@ static std::array<obj_read::JUMP *, int(AC::END)> glJumpActions = {
 #include "../../fluid_objects_calls.cpp"
 
 //********************************************************************************************************************
-// Hash designed to handle cases like `UID` -> `uid` and `RGBValue` -> `rgbValue`
-
-[[nodiscard]] static uint32_t field_hash(std::string_view Name) {
-   uint32_t hash = 5381;
-   size_t k = 0;
-   while ((k < Name.size()) and std::isupper(Name[k])) {
-      hash = char_hash(std::tolower(Name[k]), hash);
-      if (++k >= Name.size()) break;
-      if ((k + 1 >= Name.size()) or (std::isupper(Name[k+1]))) continue;
-      else break;
-   }
-   while (k < Name.size()) {
-      hash = char_hash(Name[k], hash);
-      k++;
-   }
-   return hash;
-}
-
-//********************************************************************************************************************
 
 [[nodiscard]] static int obj_jump_method(lua_State *Lua, const obj_read &Handle, GCobject *def)
 {
@@ -473,8 +454,8 @@ WRITE_TABLE * get_write_table(objMetaClass *Class)
    if (auto func = read_table->find(hash_key); func != read_table->end()) {
       return func->Call(Lua, *func, def);
    }
-   
-   luaL_error(Lua, ERR::NoFieldAccess, "Field does not exist or is unreadable: %s.%s", 
+
+   luaL_error(Lua, ERR::NoFieldAccess, "Field does not exist or is unreadable: %s.%s",
       def->classptr ? def->classptr->ClassName: "?", strdata(keystr));
 
    return 0; // Not reached

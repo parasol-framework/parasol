@@ -89,6 +89,7 @@ function timer(Subscriber, Elapsed, Current)
    glWinWidth  = glSurface.width ?? 1
    glWinHeight = glSurface.height ?? 1
 
+   calc_start = mSys.PreciseTime()
    for i,p in pairs(glParticles) do
       -- Calculate next position of particle
 
@@ -142,6 +143,7 @@ function timer(Subscriber, Elapsed, Current)
       p.x = nextX
       p.y = nextY
    end
+   calc_time = mSys.PreciseTime() - calc_start
 
    glViewport.acDraw()
    if glScene.renderTime then glFrameStats.times:push(glScene.renderTime) end
@@ -170,7 +172,7 @@ function timer(Subscriber, Elapsed, Current)
             glFrameStats.best = math.round(1 / (bestTime / 1000000))
             if glFPS then glFPS.string = string.format('FPS: %.0f', fps) end
 
-            print('Avg frame rate: ' .. math.round(glFrameStats.avg) .. '; Best rate: ' .. glFrameStats.best)
+            print(f'Avg frame rate: {math.round(glFrameStats.avg)}; Best rate: {glFrameStats.best}; Calc time: {calc_time}ms')
 
             glFrameStats.avg = 0
             glFrameStats.best = 0

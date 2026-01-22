@@ -1,7 +1,5 @@
-/*
-** SSA IR (Intermediate Representation) emitter.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-*/
+// SSA IR (Intermediate Representation) emitter.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 
 #define lj_ir_c
 #define LUA_CORE
@@ -10,10 +8,8 @@
 #include <stdio.h>
 #include <math.h>
 
+#include "lj_object.h"
 #include "lj_obj.h"
-
-#if LJ_HASJIT
-
 #include "lj_gc.h"
 #include "lj_buf.h"
 #include "lj_str.h"
@@ -483,5 +479,3 @@ void lj_ir_rollback(jit_State* J, IRRef ref)
 #undef IR
 #undef fins
 #undef emitir
-
-#endif
