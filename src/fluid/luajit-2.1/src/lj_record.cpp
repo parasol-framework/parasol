@@ -28,6 +28,7 @@
 #include "lj_vmarray.h"
 #include "lj_prng.h"
 #include "jit/frame_manager.h"
+#include "runtime/lj_object.h"
 
 // Some local macros to save typing. Undef'd at the end.
 #define IR(ref)         (&J->cur.ir[(ref)])
@@ -2453,6 +2454,43 @@ static TRef rec_array_op(jit_State *J, RecordOps *ops)
 }
 
 //********************************************************************************************************************
+// Handle native object ops: BC_OGETS, BC_OSETS
+//
+// Native objects (GCobject) use field handler lookup tables.  We emit calls to helper functions that handle the field
+// access.  Type inference uses MetaClass field definitions - no probing/side effects.
+
+static TRef rec_object_get(jit_State *J, RecordOps *ops)
+{
+   TRef obj_ref = ops->rb;
+   if (not tref_isobject(obj_ref)) lj_trace_err(J, LJ_TRERR_BADTYPE);
+
+   TRef key_ref = ops->rc;  // Get the string key reference - BC_OGETS/OSETS use ~RC for the constant index
+
+   // Look up the field type from MetaClass definitions
+   GCobject *obj = objectV(ops->rbv());
+   GCstr *key = strV(ops->rcv());
+
+   int field_type = ir_object_field_type(obj, key); // Returns an IRT or -1
+   if (field_type < 0) lj_trace_err(J, LJ_TRERR_BADTYPE);  // Unknown field type - abort recording
+
+   TRef tmp_ref = rec_tmpref(J, TREF_NIL, IRTMPREF_OUT1);
+   lj_ir_call(J, IRCALL_lj_object_gets, obj_ref, key_ref, tmp_ref);
+   return lj_record_vload(J, tmp_ref, 0, (IRType)field_type);
+}
+
+static TRef rec_object_set(jit_State *J, RecordOps *ops)
+{
+   TRef obj_ref = ops->rb;
+   if (not tref_isobject(obj_ref)) lj_trace_err(J, LJ_TRERR_BADTYPE);
+   TRef key_ref = ops->rc;  // Get the string key reference - BC_OGETS/OSETS use ~RC for the constant index
+
+   // jit_object_set(L, obj, key, val)
+   TRef tmp_ref = rec_tmpref(J, ops->ra, IRTMPREF_IN1);
+   lj_ir_call(J, IRCALL_jit_object_set, obj_ref, key_ref, tmp_ref);
+   return 0;
+}
+
+//********************************************************************************************************************
 // Handle table access ops: BC_GGET, BC_GSET, BC_TGET*, BC_TSET*, BC_TNEW, BC_TDUP
 
 static TRef rec_table_op(jit_State *J, RecordOps *ops, const BCIns *pc)
@@ -2761,6 +2799,16 @@ void lj_record_ins(jit_State *J)
 
    case BC_ASETV: case BC_ASETB:
       rec_array_op(J, &ops);
+      break;
+
+   // Object ops - native object field access
+
+   case BC_OGETS:
+      rc = rec_object_get(J, &ops);
+      break;
+
+   case BC_OSETS:
+      rec_object_set(J, &ops);
       break;
 
    // Calls and vararg handling

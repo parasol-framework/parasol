@@ -6,6 +6,7 @@
 
 #include "lj_obj.h"
 #include "lj_gc.h"
+#include "lj_ir.h"
 #include "lj_object.h"
 #include "../../defs.h"
 
@@ -172,7 +173,7 @@ int lj_object_ipairs(lua_State *L)
 // Fast object field get - called from BC_OGETS bytecode handler. Writes result directly to Dest, or throws an error
 // if the field doesn't exist or the object has been freed.
 
-extern void lj_object_gets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Dest)
+extern "C" void lj_object_gets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Dest)
 {
    // Ensure L->top is past the value register before any error can be thrown.
    // luaL_error pushes the error string to L->top, which would corrupt active registers if too low.
@@ -237,4 +238,83 @@ extern "C" void lj_object_sets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *
       if (error >= ERR::ExceptionThreshold) luaL_error(L, error);
    }
    else luaL_error(L, ERR::AccessObject);
+}
+
+// Version for the JIT recorder.  The Val pointer comes from JIT-managed memory (IR_TMPREF), not the Lua stack.  We
+// must copy the value onto the stack with copyTV() so field setters can use standard stack-based APIs.
+
+extern "C" void jit_object_set(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Val)
+{
+   // Copy the value onto the stack before any error paths.  luaL_error() expects L->top to be past any active values.
+   TValue *saved_top = L->top;
+   copyTV(L, L->top, Val);
+   L->top++;
+   int stack_idx = int(L->top - L->base);  // Index of the value we just pushed
+
+   if (not Obj->uid) luaL_error(L, ERR::DoesNotExist, "Object dereferenced, unable to write field.");
+
+   // Use cached write_table or lazily populate it
+   auto write_table = (WRITE_TABLE *)Obj->write_table;
+   if (not write_table) {
+      write_table = get_write_table(Obj->classptr);
+      Obj->write_table = (void *)write_table;
+   }
+
+   // Look up the field handler using the string's precomputed hash
+   auto hash_key = obj_write(Key->hash);
+   auto func = write_table->find(hash_key);
+   if (func IS write_table->end()) {
+      luaL_error(L, ERR::UndefinedField, "Field does not exist: %s.%s", Obj->classptr ? Obj->classptr->ClassName: "?", strdata(Key));
+   }
+
+   if (auto pobj = access_object(Obj)) {
+      ERR error = func->Call(L, pobj, func->Field, stack_idx);
+      L->top = saved_top;
+      release_object(Obj);
+
+      if (error >= ERR::ExceptionThreshold) luaL_error(L, error);
+   }
+   else luaL_error(L, ERR::AccessObject);
+}
+
+//********************************************************************************************************************
+// JIT field type lookup - returns the IR type for a field.  Returns -1 if field not found or unknown type.  This
+// function must have no side effects as it is called during JIT recording.
+
+extern "C" int ir_object_field_type(GCobject *Obj, GCstr *Key)
+{
+   if (not Obj->uid or not Obj->classptr) return -1;
+
+   auto *mc = Obj->classptr;
+   Field *dict;
+   int total_dict;
+   if (mc->get(FID_Dictionary, dict, total_dict) != ERR::Okay) return -1;
+
+   auto key_hash = Key->hash;  // GCstr already has precomputed hash
+   for (int i = 0; i < total_dict; i++) {
+      if (field_hash(dict[i].Name) IS key_hash) {
+         auto flags = dict[i].Flags;
+         if (not (flags & FDF_R)) return -1;  // Not readable
+
+         if (flags & FD_STRING) return IRT_STR;
+         if (flags & (FD_DOUBLE|FD_INT64)) return IRT_NUM;
+         if (flags & FD_INT) {
+            // FD_OBJECT int fields store object IDs and push GCobject references
+            if (flags & FD_OBJECT) return IRT_OBJECT;
+            // FD_UNSIGNED always uses lua_pushnumber, even in DUALNUM builds
+            if (flags & FD_UNSIGNED) return IRT_NUM;
+            return LJ_DUALNUM ? IRT_INT : IRT_NUM;
+         }
+         if (flags & FD_STRUCT) {
+            if (flags & FD_RESOURCE) return IRT_LIGHTUD;
+            else return IRT_TAB;
+         }
+         if (flags & FD_ARRAY) return IRT_ARRAY;
+         if ((flags & FD_POINTER) and (flags & (FD_OBJECT|FD_LOCAL))) return IRT_OBJECT;
+         if (flags & FD_POINTER) return IRT_LIGHTUD;
+         return -1;  // Unknown type
+      }
+   }
+
+   return -1;  // Field not found in dictionary
 }
