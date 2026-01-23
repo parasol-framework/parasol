@@ -7,7 +7,7 @@
 -- A unit test for the field hash algorithm exists in the Core library.
 
 header({ path="system/fields", copyright="Paul Manias © 1996-2025" }, function()
-  fieldHash("FID", "0x%sLL",
+  hash("FID", "0x%sLL",
     "Category",
     "FileName",
     "BaseClassID",
@@ -231,7 +231,7 @@ header({ path="system/fields", copyright="Paul Manias © 1996-2025" }, function(
     "FrameCallback",
     "IDL")
 
-  fieldHash("FID", "0x%sLL",
+  hash("FID", "0x%sLL",
     "Data",
     "Handle",
     "Length",
@@ -434,7 +434,7 @@ header({ path="system/fields", copyright="Paul Manias © 1996-2025" }, function(
     "WaveY",
     "Offset")
 
-  fieldHash("FID", "0x%sLL",
+  hash("FID", "0x%sLL",
     "Amplitude",
     "LightColour",
     "Spacing",
@@ -612,7 +612,7 @@ header({ path="system/fields", copyright="Paul Manias © 1996-2025" }, function(
     "DragSource",
     "TotalSelected")
 
-  fieldHash("FID", "0x%sLL",
+  hash("FID", "0x%sLL",
     "UnlistedDefault",
     "DateFormat",
     "ActiveTag",
@@ -824,7 +824,7 @@ header({ path="system/fields", copyright="Paul Manias © 1996-2025" }, function(
     "LineCap",
     "Visibility")
 
-  fieldHash("FID", "0x%sLL",
+  hash("FID", "0x%sLL",
     "A",
     "Allow",
     "ArchiveName",
@@ -927,7 +927,7 @@ header({ path="system/fields", copyright="Paul Manias © 1996-2025" }, function(
     "Vertices",
     "Weight")
 
-  fieldHash("FID", "0x%sLL",
+  hash("FID", "0x%sLL",
     "AffinityMask",
     "AppendPath",
     "Bias",

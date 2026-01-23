@@ -983,4 +983,8 @@
 #define FID_TextFlags 0x1bce45f7LL
 #define FID_TotalStops 0xc961c5a2LL
 #define FID_ResultString 0x7212b53bLL
+#define FID_ResizeFeedback 0xc5d0375cLL
+#define FID_DocType 0x1fad1dfdLL
+#define FID_Public 0x159d94a4LL
+#define FID_System 0x1ceee48aLL
 
