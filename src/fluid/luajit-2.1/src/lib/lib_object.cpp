@@ -329,7 +329,7 @@ READ_TABLE * get_read_table(lua_State *L, objMetaClass *Class)
 
       auto dict_span = std::span(dict, total_dict);
       for (auto &field : dict_span | std::views::filter([](const auto& f) { return f.Flags & FDF_R; })) {
-         auto hash = fieldhash(field.Name);
+         auto hash = field.FieldID;
 
          if (field.Flags & FD_ARRAY) {
             if (field.Flags & FD_RGB) jmp.insert(obj_read(hash, object_get_rgb, &field));

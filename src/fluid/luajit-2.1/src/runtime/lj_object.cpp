@@ -266,9 +266,9 @@ extern "C" int ir_object_field_type(GCobject *Obj, GCstr *Key)
    int total_dict;
    if (mc->get(FID_Dictionary, dict, total_dict) != ERR::Okay) return -1;
 
-   auto key_hash = Key->hash;  // GCstr already has precomputed hash
+   auto key_hash = Key->hash;  // GCstr already has precomputed hash equiv. to fieldhash()
    for (int i = 0; i < total_dict; i++) {
-      if (fieldhash(dict[i].Name) IS key_hash) {
+      if (dict[i].FieldID IS key_hash) {
          auto flags = dict[i].Flags;
          if (not (flags & FDF_R)) return -1;  // Not readable
 

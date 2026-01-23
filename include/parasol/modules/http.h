@@ -238,32 +238,32 @@ class objHTTP : public Object {
    }
 
    template <class T> inline ERR setHost(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Host, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setPath(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Path, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[24];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setOutputFile(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_OutputFile, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setInputFile(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_InputFile, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setUserAgent(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_UserAgent, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[32];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -278,8 +278,8 @@ class objHTTP : public Object {
    }
 
    inline ERR setMethod(const HTM Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Method, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
@@ -314,14 +314,14 @@ class objHTTP : public Object {
    }
 
    inline ERR setCurrentState(const HGS Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_CurrentState, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    template <class T> inline ERR setProxyServer(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_ProxyServer, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[27];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -331,62 +331,62 @@ class objHTTP : public Object {
    }
 
    inline ERR setBufferSize(const int Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_BufferSize, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[33];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setAuthCallback(FUNCTION Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_AuthCallback, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERR setContentType(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_ContentType, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[34];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERR setIncoming(FUNCTION Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Incoming, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERR setLocation(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Location, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERR setOutgoing(FUNCTION Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Outgoing, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERR setRealm(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Realm, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERR setStateChanged(FUNCTION Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_StateChanged, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[19];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERR setUsername(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Username, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[38];
       return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setPassword(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Password, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
    }
 

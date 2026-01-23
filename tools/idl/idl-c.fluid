@@ -39,7 +39,7 @@
    global glOutputDefs  = arg('output-defs')
    global glOutputProto = arg('output-proto')
    global glPrototypes  = arg('prototypes')
-   global glEnableDictionaryUse = false -- Allow dictionary use for fast field access
+   global glEnableDictionaryUse = true -- Allow dictionary use for fast field access
 
    import './include/utils'
    import './include/parser'
