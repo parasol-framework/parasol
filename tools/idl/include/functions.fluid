@@ -290,6 +290,37 @@ global function hash(Prefix, Format, ...)
    output()
 end
 
+global function fieldHash(Prefix, Format, ...)
+   function make_hash(String:str)
+      hash = 5381
+      k = 0
+      while (k < #String) and (String[k] >= 'A') and (String[k] <= 'Z') do
+         hash = (hash<<5) + hash + (String[k]:lower():byte())
+         k++
+         if k >= #String then break end
+         if not ((k + 1 >= #String) or ((String[k+1] >= 'A') and (String[k+1] <= 'Z'))) then
+            break
+         end
+      end
+
+      while k < #String do
+         hash = (hash<<5) + hash + String[k]:byte()
+         k++
+      end
+      return hash
+   end
+
+   for _, v in ipairs({...}) do
+      hash_name = v:gsub('[^%w]', '_')
+      v_hash = make_hash(v)
+
+      -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
+      hash_id = string.format('%08x', v_hash):sub(-8)
+      output('#define ' .. Prefix .. '_' .. hash_name .. ' ' .. string.format(Format, hash_id))
+   end
+   output()
+end
+
 global function typedHash(Prefix, Type, ...)
    Type = cType({ type=Type }, Prefix)
    output('enum class ' .. Prefix .. ' : ' .. Type.type .. ' {')

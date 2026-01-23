@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Core", copyright="Paul Manias 1996-2025", timestamp=20241015 }, function()
+module({ name="Core", copyright="Paul Manias 1996-2026", timestamp=20241015 }, function()
   c_include("<stdarg.h>", "<inttypes.h>", "<string.h>", "<stdlib.h>")
   cpp_include("<list>", "<map>", "<string>", "<vector>", "<unordered_map>", "<bit>", "<atomic>", "<array>", "<charconv>", "<sstream>", "<cmath>", "<type_traits>", "ankerl/unordered_dense.h")
 
@@ -1090,8 +1090,10 @@ inline ERR DeregisterFD(HOSTHANDLE Handle) {
 
 inline APTR GetResourcePtr(RES ID) { return (APTR)(MAXINT)GetResource(ID); }
 
-inline CSTRING to_cstring(const std::string &A) { return A.c_str(); }
-constexpr inline CSTRING to_cstring(CSTRING A) { return A; }
+[[nodiscard]] constexpr inline const char* to_cstring(const char* A) { return A; }
+[[nodiscard]] inline const char* to_cstring(const std::string &A) { return A.c_str(); }
+[[nodiscard]] inline const char* to_cstring(const std::string_view &A) { return A.data(); }
+
 #ifndef PRV_CORE_DATA
 // These overloaded functions can't be used in the Core as they will confuse the compiler in key areas.
 

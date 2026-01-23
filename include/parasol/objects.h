@@ -868,8 +868,8 @@ class Create {
                   }
                }
                else {
-                  log.warning("%s.%s field not supported.", T::CLASS_NAME, FieldName(f.FieldID));
-                  error = log.warning(ERR::UnsupportedField);
+                  log.warning("%s.%s field not defined.", T::CLASS_NAME, FieldName(f.FieldID));
+                  error = log.warning(ERR::UndefinedField);
                   return;
                }
             }

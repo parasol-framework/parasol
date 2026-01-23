@@ -213,14 +213,14 @@ inline void camelcase(std::string &s) noexcept {
 {
    uint32_t hash = 5381;
    size_t k = 0;
-   while ((k < String.size()) and std::isupper(String[k])) {
-      hash = hash<<5 + hash + std::tolower(String[k]);
+   while ((k < String.size()) and (String[k] >= 'A') and (String[k] <= 'Z')) {
+      hash = (hash<<5) + hash + (String[k] - 'A' + 'a');
       if (++k >= String.size()) break;
-      if ((k + 1 >= String.size()) or (std::isupper(String[k+1]))) continue;
+      if ((k + 1 >= String.size()) or ((String[k+1] >= 'A') and (String[k+1] <= 'Z'))) continue;
       else break;
    }
    while (k < String.size()) {
-      hash = hash<<5 + hash + String[k];
+      hash = (hash<<5) + hash + String[k];
       k++;
    }
    return hash;
@@ -230,7 +230,10 @@ inline void camelcase(std::string &s) noexcept {
 
 template <class T> inline int strcopy(T &&Source, char *Dest, int Length = 0x7fffffff) noexcept
 {
-   auto src = to_cstring(Source);
+   const char *src;
+   if constexpr (std::is_pointer_v<std::decay_t<T>>) src = Source;
+   else src = Source.data();  // Works for std::string and std::string_view
+
    if ((Length > 0) and (src) and (Dest)) {
       int i = 0;
       while (*src) {
@@ -252,7 +255,10 @@ template <class T> inline int strcopy(T &&Source, char *Dest, int Length = 0x7ff
 template <class T, std::size_t N>
 inline int strcopy(T &&Source, std::span<char, N> Dest) noexcept
 {
-   auto src = to_cstring(Source);
+   const char *src;
+   if constexpr (std::is_pointer_v<std::decay_t<T>>) src = Source;
+   else src = Source.data();  // Works for std::string and std::string_view
+
    if (src and not Dest.empty()) {
       std::size_t i = 0;
       while (*src and i < Dest.size() - 1) Dest[i++] = *src++;

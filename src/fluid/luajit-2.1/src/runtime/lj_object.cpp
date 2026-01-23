@@ -218,7 +218,7 @@ extern "C" void lj_object_sets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *
    const auto saved_top  = L->top;
    const auto stack_base = tvref(L->stack);
    const auto stack_end  = stack_base + L->stacksize;
-   const auto val_ptr    = Val;
+   auto val_ptr    = Val;
    if ((Val < stack_base) or (Val >= stack_end)) {
       copyTV(L, L->top, Val);
       val_ptr = L->top;
