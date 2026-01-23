@@ -987,4 +987,19 @@
 #define FID_DocType 0x1fad1dfdLL
 #define FID_Public 0x159d94a4LL
 #define FID_System 0x1ceee48aLL
+#define FID_ProxyServer 0xc76aa6feLL
+#define FID_BufferSize 0xc070e93aLL
+#define FID_StateChanged 0x08cc6570LL
+#define FID_BitDepth 0x956afcb9LL
+#define FID_OnStop 0x12d335c8LL
+#define FID_SampleMethod 0x9d2ec3c8LL
+#define FID_Matrices 0x556c8bbdLL
+#define FID_FocalRadius 0xea91efd2LL
+#define FID_Next 0x7c9b1ec4LL
+#define FID_Prev 0x7c9c6c62LL
+#define FID_InlineSize 0x31e0acbfLL
+#define FID_ShapeInside 0x53fd2272LL
+#define FID_ShapeSubtract 0x7660855eLL
+#define FID_Buffered 0x10a1d488LL
+#define FID_ClientScript 0xa0787f79LL
 

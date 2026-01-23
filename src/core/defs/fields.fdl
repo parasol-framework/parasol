@@ -995,6 +995,21 @@ header({ path="system/fields", copyright="Paul Manias © 1996-2025" }, function(
     "ResizeFeedback",
     "DocType",
     "Public",
-    "System"
+    "System",
+    "ProxyServer",
+    "BufferSize",
+    "StateChanged",
+    "BitDepth",
+    "OnStop",
+    "SampleMethod",
+    "Matrices",
+    "FocalRadius",
+    "Next",
+    "Prev",
+    "InlineSize",
+    "ShapeInside",
+    "ShapeSubtract",
+    "Buffered",
+    "ClientScript"
     )
 end)
