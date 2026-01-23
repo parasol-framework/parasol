@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      core.h
-// Copyright: Paul Manias 1996-2025
+// Copyright: Paul Manias 1996-2026
 // Generator: idl-c
 
 #include <parasol/main.h>
@@ -2209,8 +2209,9 @@ inline ERR DeregisterFD(HOSTHANDLE Handle) {
 
 inline APTR GetResourcePtr(RES ID) { return (APTR)(MAXINT)GetResource(ID); }
 
-inline CSTRING to_cstring(const std::string &A) { return A.c_str(); }
-constexpr inline CSTRING to_cstring(CSTRING A) { return A; }
+[[nodiscard]] constexpr inline const char* to_cstring(const char* A) { return A; }
+[[nodiscard]] inline const char* to_cstring(const std::string &A) { return A.c_str(); }
+
 #ifndef PRV_CORE_DATA
 // These overloaded functions can't be used in the Core as they will confuse the compiler in key areas.
 

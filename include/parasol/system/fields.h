@@ -919,6 +919,7 @@
 #define FID_Vertices 0xd31fda6aLL
 #define FID_Weight 0x24d3ea4dLL
 
+#define FID_AffinityMask 0x99575dabLL
 #define FID_AppendPath 0x778f85caLL
 #define FID_Bias 0x7c949844LL
 #define FID_BlendMode 0x9c26466fLL

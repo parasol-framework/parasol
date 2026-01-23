@@ -226,13 +226,13 @@ inline void camelcase(std::string &s) noexcept {
    return hash;
 }
 
-// Simple string copy
+// Simple string copy.  Supports std::string and CSTRING only
 
 template <class T> inline int strcopy(T &&Source, char *Dest, int Length = 0x7fffffff) noexcept
 {
    const char *src;
    if constexpr (std::is_pointer_v<std::decay_t<T>>) src = Source;
-   else src = Source.data();  // Works for std::string and std::string_view
+   else src = Source.c_str();  // Works for std::string.
 
    if ((Length > 0) and (src) and (Dest)) {
       int i = 0;
@@ -257,7 +257,7 @@ inline int strcopy(T &&Source, std::span<char, N> Dest) noexcept
 {
    const char *src;
    if constexpr (std::is_pointer_v<std::decay_t<T>>) src = Source;
-   else src = Source.data();  // Works for std::string and std::string_view
+   else src = Source.c_str()();  // Works for std::string
 
    if (src and not Dest.empty()) {
       std::size_t i = 0;

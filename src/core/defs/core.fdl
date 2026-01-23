@@ -1092,7 +1092,6 @@ inline APTR GetResourcePtr(RES ID) { return (APTR)(MAXINT)GetResource(ID); }
 
 [[nodiscard]] constexpr inline const char* to_cstring(const char* A) { return A; }
 [[nodiscard]] inline const char* to_cstring(const std::string &A) { return A.c_str(); }
-[[nodiscard]] inline const char* to_cstring(const std::string_view &A) { return A.data(); }
 
 #ifndef PRV_CORE_DATA
 // These overloaded functions can't be used in the Core as they will confuse the compiler in key areas.
