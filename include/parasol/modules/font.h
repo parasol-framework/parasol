@@ -116,8 +116,9 @@ class objFont : public Object {
    // Customised field setting
 
    inline ERR setPoint(const double Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[11];
+
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Point, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
@@ -132,26 +133,30 @@ class objFont : public Object {
    }
 
    template <class T> inline ERR setString(T && Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[14];
+
+      OBJECTPTR target;
+      auto field = FindField(this, FID_String, &target);
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setPath(T && Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[25];
+
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Path, &target);
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setStyle(T && Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[12];
+
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Style, &target);
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setFace(T && Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[23];
+
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Face, &target);
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
@@ -171,8 +176,9 @@ class objFont : public Object {
    }
 
    inline ERR setFlags(const FTF Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[9];
+
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Flags, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
@@ -250,20 +256,23 @@ class objFont : public Object {
    }
 
    inline ERR setBold(const int Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[20];
+
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Bold, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setItalic(const int Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[5];
+
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Italic, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setOpacity(const double Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[18];
+
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Opacity, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 

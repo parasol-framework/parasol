@@ -229,8 +229,9 @@ class objDocument : public Object {
    // Customised field setting
 
    inline ERR setViewport(objVectorViewport * Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[23];
+
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Viewport, &target);
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
@@ -251,45 +252,52 @@ class objDocument : public Object {
    }
 
    inline ERR setFlags(const DCF Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[3];
+
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Flags, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setClientScript(OBJECTPTR Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[18];
+
+      OBJECTPTR target;
+      auto field = FindField(this, FID_ClientScript, &target);
       return field->WriteValue(target, field, 0x08000401, Value, 1);
    }
 
    inline ERR setEventCallback(FUNCTION Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[25];
+
+      OBJECTPTR target;
+      auto field = FindField(this, FID_EventCallback, &target);
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERR setPath(T && Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[13];
+
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Path, &target);
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setOrigin(T && Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[7];
+
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Origin, &target);
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERR setPageWidth(const int Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[10];
+
+      OBJECTPTR target;
+      auto field = FindField(this, FID_PageWidth, &target);
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    template <class T> inline ERR setPretext(T && Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[20];
+
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Pretext, &target);
       return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
    }
 
