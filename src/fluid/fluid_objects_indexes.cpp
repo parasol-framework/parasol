@@ -277,12 +277,12 @@ static int object_get(lua_State *Lua)
       OBJECTPTR target;
       if (fieldname[0] IS '$') { // Get field as a string, good for CSV arrays, flags and lookups
          std::string buffer;
-         if (obj->get(strihash(fieldname+1), buffer) IS ERR::Okay) lua_pushlstring(Lua, buffer.c_str(), buffer.size());
+         if (obj->get(fieldhash(fieldname+1), buffer) IS ERR::Okay) lua_pushlstring(Lua, buffer.c_str(), buffer.size());
          else lua_pushvalue(Lua, 2); // Push the client's default value
          release_object(def);
          return 1;
       }
-      else if (auto field = FindField(obj, strihash(fieldname), &target)) {
+      else if (auto field = FindField(obj, fieldhash(fieldname), &target)) {
          int result = 0;
          if (field->Flags & FD_ARRAY) {
             if (field->Flags & FD_RGB) result = object_get_rgb(Lua, obj_read(0, nullptr, field), def);
@@ -373,11 +373,11 @@ static int object_set(lua_State *Lua)
 
    if (auto obj = access_object(def)) {
       int type = lua_type(Lua, 2);
-      auto fieldhash = strihash(fieldname);
+      auto fh = fieldhash(fieldname);
 
       ERR error;
-      if (type IS LUA_TNUMBER) error = obj->set(fieldhash, luaL_checknumber(Lua, 2));
-      else error = obj->set(fieldhash, luaL_optstring(Lua, 2, nullptr));
+      if (type IS LUA_TNUMBER) error = obj->set(fh, luaL_checknumber(Lua, 2));
+      else error = obj->set(fh, luaL_optstring(Lua, 2, nullptr));
 
       release_object(def);
       lua_pushinteger(Lua, int(error));
@@ -418,7 +418,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, int Va
    if (FName[0] IS '_') return acSetKey(obj, FName+1, lua_tostring(Lua, ValueIndex));
 
    OBJECTPTR target;
-   if (auto field = FindField(obj, strihash(FName), &target)) {
+   if (auto field = FindField(obj, fieldhash(FName), &target)) {
       if (field->Flags & FD_ARRAY) {
          if (type IS LUA_TSTRING) { // Treat the source as a CSV field
             return target->set(field->FieldID, lua_tostring(Lua, ValueIndex));

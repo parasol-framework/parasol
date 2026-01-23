@@ -338,8 +338,8 @@ function buildLayout(self, Options)
    -- The picker selects colours in the rainbow palette and is only visible if the user activates it.
 
    self.vecPicker = self.viewport.new('VectorEllipse', {
-      cX      = self._rainbowX,
-      cY      = self._rainbowY,
+      cx      = self._rainbowX,
+      cy      = self._rainbowY,
       radiusX = 4,
       radiusY = 4,
       visibility = VIS_HIDDEN

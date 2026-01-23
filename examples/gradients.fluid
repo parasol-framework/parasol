@@ -79,8 +79,8 @@ end
 function buildScene()
    gradient = viewport.scene.new('VectorGradient', {
       name = 'gradient', type = 'radial', colourMap = 'cmap:magma',
-      cX = '50%', cY = '50%',
-      fX = '50%', fY = '50%', focalRadius = 100,
+      cx = '50%', cy = '50%',
+      fx = '50%', fy = '50%', focalRadius = 100,
       units = 'userSpace', radius = 100,
       spreadMethod = 'reflect'
    })

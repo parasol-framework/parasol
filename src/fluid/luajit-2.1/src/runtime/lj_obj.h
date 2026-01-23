@@ -204,61 +204,51 @@ constexpr inline void setgcrefr(GCRef& r, GCRef v) noexcept { r.gcptr64 = v.gcpt
 
 #define gcnext(gc)   (gcref((gc)->gch.nextgc))
 
-/* IMPORTANT NOTE:
-**
-** All uses of the setgcref* macros MUST be accompanied with a write barrier.
-**
-** This is to ensure the integrity of the incremental GC. The invariant
-** to preserve is that a black object never points to a white object.
-** I.e. never store a white object into a field of a black object.
-**
-** It's ok to LEAVE OUT the write barrier ONLY in the following cases:
-** - The source is not a GC object (NULL).
-** - The target is a GC root. I.e. everything in global_State.
-** - The target is a lua_State field (threads are never black).
-** - The target is a stack slot, see setgcV et al.
-** - The target is an open upvalue, i.e. pointing to a stack slot.
-** - The target is a newly created object (i.e. marked white). But make
-**   sure nothing invokes the GC inbetween.
-** - The target and the source are the same object (self-reference).
-** - The target already contains the object (e.g. moving elements around).
-**
-** The most common case is a store to a stack slot. All other cases where
-** a barrier has been omitted are annotated with a NOBARRIER comment.
-**
-** The same logic applies for stores to table slots (array part or hash
-** part). ALL uses of lj_tab_set* require a barrier for the stored value
-** *and* the stored key, based on the above rules. In practice this means
-** a barrier is needed if *either* of the key or value are a GC object.
-**
-** It's ok to LEAVE OUT the write barrier in the following special cases:
-** - The stored value is nil. The key doesn't matter because it's either
-**   not resurrected or lj_tab_newkey() will take care of the key barrier.
-** - The key doesn't matter if the *previously* stored value is guaranteed
-**   to be non-nil (because the key is kept alive in the table).
-** - The key doesn't matter if it's guaranteed not to be part of the table,
-**   since lj_tab_newkey() takes care of the key barrier. This applies
-**   trivially to new tables, but watch out for resurrected keys. Storing
-**   a nil value leaves the key in the table!
-**
-** In case of doubt use lj_gc_anybarriert() as it's rather cheap. It's used
-** by the interpreter for all table stores.
-**
-** Note: In contrast to Lua's GC, LuaJIT's GC does *not* specially mark
-** dead keys in tables. The reference is left in, but it's guaranteed to
-** be never dereferenced as long as the value is nil. It's ok if the key is
-** freed or if any object subsequently gets the same address.
-**
-** Not destroying dead keys helps to keep key hash slots stable. This avoids
-** specialization back-off for HREFK when a value flips between nil and
-** non-nil and the GC gets in the way. It also allows safely hoisting
-** HREF/HREFK across GC steps. Dead keys are only removed if a table is
-** resized (i.e. by NEWREF) and xREF must not be CSEd across a resize.
-**
-** The trade-off is that a write barrier for tables must take the key into
-** account, too. Implicitly resurrecting the key by storing a non-nil value
-** may invalidate the incremental GC invariant.
-*/
+// IMPORTANT NOTE:
+//
+// All uses of the setgcref* macros MUST be accompanied with a write barrier.
+//
+// This is to ensure the integrity of the incremental GC. The invariant to preserve is that a black object never
+// points to a white object.  I.e. never store a white object into a field of a black object.
+//
+// It's ok to LEAVE OUT the write barrier ONLY in the following cases:
+// - The source is not a GC object (NULL).
+// - The target is a GC root. I.e. everything in global_State.
+// - The target is a lua_State field (threads are never black).
+// - The target is a stack slot, see setgcV et al.
+// - The target is an open upvalue, i.e. pointing to a stack slot.
+// - The target is a newly created object (i.e. marked white). But make sure nothing invokes the GC inbetween.
+// - The target and the source are the same object (self-reference).
+// - The target already contains the object (e.g. moving elements around).
+//
+// The most common case is a store to a stack slot. All other cases where a barrier has been omitted are annotated
+// with a NOBARRIER comment.
+//
+// The same logic applies for stores to table slots (array part or hash part). ALL uses of lj_tab_set* require a
+// barrier for the stored value *and* the stored key, based on the above rules. In practice this means a barrier is 
+// needed if *either* of the key or value are a GC object.
+//
+// It's ok to LEAVE OUT the write barrier in the following special cases:
+// - The stored value is nil. The key doesn't matter because it's either not resurrected or lj_tab_newkey() will take
+//   care of the key barrier.
+// - The key doesn't matter if the *previously* stored value is guaranteed to be non-nil (because the key is kept
+//   alive in the table).
+// - The key doesn't matter if it's guaranteed not to be part of the table, since lj_tab_newkey() takes care of the
+//   key barrier. This applies trivially to new tables, but watch out for resurrected keys. Storing a nil value
+//   leaves the key in the table!
+//
+// In case of doubt use lj_gc_anybarriert() as it's rather cheap. It's used by the interpreter for all table stores.
+//
+// Note: In contrast to Lua's GC, LuaJIT's GC does *not* specially mark dead keys in tables. The reference is left in,
+// but it's guaranteed to be never dereferenced as long as the value is nil. It's ok if the key is freed or if any
+// object subsequently gets the same address.
+//
+// Not destroying dead keys helps to keep key hash slots stable. This avoids specialization back-off for HREFK when a
+// value flips between nil and non-nil and the GC gets in the way. It also allows safely hoisting HREF/HREFK across GC
+// steps. Dead keys are only removed if a table is resized (i.e. by NEWREF) and xREF must not be CSEd across a resize.
+//
+// The trade-off is that a write barrier for tables must take the key into account, too. Implicitly resurrecting the
+// key by storing a non-nil value may invalidate the incremental GC invariant.
 
 // Common type definitions
 
@@ -597,6 +587,7 @@ struct ProtoKeyHash {
 // These structures support bytecode-level try-except statements.
 
 // Handler metadata stored per-proto - describes a single except clause
+
 struct TryHandlerDesc {
    uint64_t filter_packed;   // Packed 16-bit error codes (up to 4), 0 = catch-all
    BCPOS    handler_pc;      // Bytecode position for handler entry
@@ -604,6 +595,7 @@ struct TryHandlerDesc {
 };
 
 // Try block descriptor - describes a try block and its handlers
+
 struct TryBlockDesc {
    uint16_t first_handler;   // Index into proto's try_handlers array
    uint8_t  handler_count;   // Number of except clauses for this try block
@@ -612,15 +604,17 @@ struct TryBlockDesc {
 };
 
 // Flags for TryBlockDesc.flags
+
 inline constexpr uint8_t TRY_FLAG_TRACE = 0x01;  // Capture stack trace on exception
 
 // Maximum nesting depth for try blocks
+
 inline constexpr int LJ_MAX_TRY_DEPTH = 32;
 
 // Exception frame for try-except blocks (runtime state)
-// Note: frame_base and saved_top are offsets from L->stack (not absolute pointers)
-// because the Lua stack can be reallocated during execution.
-// Use savestack(L, ptr) to convert to offset, restorestack(L, offset) to convert back.
+// Note: frame_base and saved_top are offsets from L->stack (not absolute pointers) because the Lua stack can be 
+// reallocated during execution.  Use savestack(L, ptr) to convert to offset, restorestack(L, offset) to convert back.
+
 struct TryFrame {
    uint16_t  try_block_index;  // Index into GCproto::try_blocks
    uint16_t  catch_depth;      // Depth of stack at try entry
@@ -633,6 +627,7 @@ struct TryFrame {
 };
 
 // Stack of try frames for exception unwinding
+
 struct TryFrameStack {
    TryFrame frames[LJ_MAX_TRY_DEPTH];
    int depth = 0;

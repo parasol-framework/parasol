@@ -39,7 +39,7 @@
    global glOutputDefs  = arg('output-defs')
    global glOutputProto = arg('output-proto')
    global glPrototypes  = arg('prototypes')
-   global glEnableDictionaryUse = true -- Allow dictionary use for fast field access
+   global glEnableDictionaryUse = false -- Allow dictionary use for fast field access
 
    import './include/utils'
    import './include/parser'
@@ -397,12 +397,12 @@ global function outputClassHeader(class:table, Private, Custom)
 
          if (f.write is 'Set') or f.setField?? or f.virtual then
             if f.struct then
-               if field_type:sub(-1) != '*' then
+               if not field_type:endsWith('*') then
                   field_type = field_type .. ' *'
                end
             end
 
-            if field_type:sub(-2) is '[]' then
+            if field_type:endsWith('[]') then
                field_type = field_type:sub(0,-3) .. '*'
                output(string.format('   inline ERR set%s(%s Value, int Elements) noexcept {', fid_name, field_type))
             elseif (f.flags & FD_ARRAY) != 0 then
@@ -421,18 +421,19 @@ global function outputClassHeader(class:table, Private, Custom)
                output(indent .. 'if (this->initialised()) return ERR::NoFieldAccess;')
             end
 
-            err, fl, target = class.meta.mtFindField(f.name:hash())
+            fh = calcFieldHash(f.name)
+            err, fl, target = class.meta.mtFindField(fh)
 
             if err != ERR_Okay then
-               print('Failed to field ' .. f.name .. ' in class ' .. class.name)
+               print(f'Failed to find field {f.name} {string.format("%.8x",fh)} in class {class.name}')
             end
 
-            if err is ERR_Okay and target.id is class.meta.id and glEnableDictionaryUse then
+            if (err is ERR_Okay) and (target.id is class.meta.id) and glEnableDictionaryUse then
                output(indent .. 'auto target = this;')
                output(indent .. string.format('auto field = &this->Class->Dictionary[%d];', fl.index))
             else
                output(indent .. 'OBJECTPTR target;')
-               output(indent .. string.format('auto field = FindField(this, FID_%s, &target);', fid_name))
+               output(indent .. f'auto field = FindField(this, FID_{fid_name}, &target);')
             end
 
             if (f.flags & FD_UNIT) != 0 then

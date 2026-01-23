@@ -201,7 +201,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Resolve the location of the Parasol SDK and create an 'sdk:' volume.
 
-global function resolveSDKPath(Path)
+global function resolveSDKPath(Path:str)
    local sdk_path
    err = ERR_Failed
    search_list = array<string>

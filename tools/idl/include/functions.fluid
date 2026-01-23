@@ -167,10 +167,10 @@ global function flags(Prefix, Options, ...)
    function outputFlagDef(Options:table, Prefix:str, flag_name:str, val)
       if not Options.weak then
          if Options.bits is 16 then
-            table.insert(sortedFlags, { value = val, define = string.format('   %s = 0x%.4x,', flag_name, val) } )
+            table.insert(sortedFlags, { value = val, define = f'   {flag_name} = 0x{string.format("%.4x",val)},' } )
          else
             hash_id = string.format('%08x', val):sub(-8)
-            table.insert(sortedFlags, { value = val, define = string.format('   %s = 0x%s,', flag_name, hash_id) } )
+            table.insert(sortedFlags, { value = val, define = f'   {flag_name} = 0x{hash_id},' } )
          end
       elseif Options.bits is 16 then
          table.insert(sortedFlags, { value = val, define = string.format('#define %s_%s 0x%.4x', Prefix, flag_name, val) })
@@ -290,29 +290,29 @@ global function hash(Prefix, Format, ...)
    output()
 end
 
-global function fieldHash(Prefix, Format, ...)
-   function make_hash(String:str)
-      hash = 5381
-      k = 0
-      while (k < #String) and (String[k] >= 'A') and (String[k] <= 'Z') do
-         hash = (hash<<5) + hash + (String[k]:lower():byte())
-         k++
-         if k >= #String then break end
-         if not ((k + 1 >= #String) or ((String[k+1] >= 'A') and (String[k+1] <= 'Z'))) then
-            break
-         end
+global function calcFieldHash(String:str):num
+   local hash = 5381
+   k = 0
+   while (k < #String) and (String[k] >= 'A') and (String[k] <= 'Z') do
+      hash = (hash<<5) + hash + (String[k]:lower():byte())
+      k++
+      if k >= #String then break end
+      if not ((k + 1 >= #String) or ((String[k+1] >= 'A') and (String[k+1] <= 'Z'))) then
+         break
       end
-
-      while k < #String do
-         hash = (hash<<5) + hash + String[k]:byte()
-         k++
-      end
-      return hash
    end
 
+   while k < #String do
+      hash = (hash<<5) + hash + String[k]:byte()
+      k++
+   end
+   return hash
+end
+
+global function fieldHash(Prefix:str, Format:str, ...)
    for _, v in ipairs({...}) do
       hash_name = v:gsub('[^%w]', '_')
-      v_hash = make_hash(v)
+      v_hash = calcFieldHash(v)
 
       -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
       hash_id = string.format('%08x', v_hash):sub(-8)
@@ -321,14 +321,14 @@ global function fieldHash(Prefix, Format, ...)
    output()
 end
 
-global function typedHash(Prefix, Type, ...)
+global function typedHash(Prefix:str, Type:str, ...)
    Type = cType({ type=Type }, Prefix)
    output('enum class ' .. Prefix .. ' : ' .. Type.type .. ' {')
    output('   NIL = 0,')
    for _, v in ipairs({...}) do
-      hash_name = v:gsub('[^%w]', '_')
+      local hash_name = v:gsub('[^%w]', '_')
       -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
-      hash_id = string.format('%08x', v:hash()):sub(-8)
+      local hash_id = string.format('%08x', v:hash()):sub(-8)
       output('   ' .. hash_name .. ' = ' .. string.format("0x%sUL", hash_id) .. ',')
    end
    output('};')

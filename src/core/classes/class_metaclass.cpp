@@ -201,11 +201,11 @@ FindField: Search a class definition for a specific field.
 This method checks if a class has defined a given field by scanning its blueprint for a matching `ID`.  If found,
 a direct pointer to the `Field` struct will be returned to the client.
 
-In some clases the field might not be present in the main class spec, but does appear in an integral class.  In that
+In some classes the field might not be present in the main class spec, but does appear in an integral class.  In that
 case, a reference to the class will be returned in the `Source` parameter.
 
 -INPUT-
-int ID: The field ID to search for.  Field names can be converted to ID's by using the `strihash()` function.
+int ID: The field ID to search for.  Field names can be converted to ID's by using the `fieldhash()` function.
 &struct(*Field) Field: Pointer to the !Field if discovered, otherwise `NULL`.
 &obj(MetaClass) Source: Pointer to the class that is associated with the `Field` (which can match the caller), or `NULL` if the field was not found.
 
@@ -838,7 +838,7 @@ static void field_setup(extMetaClass *Class)
          uint16_t offset = 0;
          for (unsigned i=0; Class->SubFields[i].Name; i++) {
             bool found = false;
-            auto hash = strihash(Class->SubFields[i].Name);
+            auto hash = fieldhash(Class->SubFields[i].Name);
             for (unsigned j=0; j < Class->FieldLookup.size(); j++) {
                if (Class->FieldLookup[j].FieldID IS hash) {
                   if (Class->SubFields[i].GetField) {
@@ -1000,7 +1000,7 @@ static void add_field(extMetaClass *Class, std::vector<Field> &Fields, const Fie
       Source.SetField,
       writeval_default,
       Source.Name,
-      strihash(Source.Name),
+      fieldhash(Source.Name),
       Offset,
       0,
       Source.Flags

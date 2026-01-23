@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      system/registry.h
-// Copyright: Paul Manias 1996-2025
+// Copyright: Paul Manias 1996-2026
 // Generator: idl-c
 
 enum class CLASSID : uint32_t {

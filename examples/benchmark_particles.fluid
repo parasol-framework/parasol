@@ -66,8 +66,8 @@ function newParticle()
       colour = glColours[(math.floor(math.random() * #glColours))]
       particle.vector = glViewport.new('VectorEllipse', {
          fill    = string.format('rgb(%f,%f,%f)', colour.r, colour.g, colour.b),
-         centerx = particle.x,
-         centery = particle.y,
+         centerX = particle.x,
+         centerY = particle.y,
          radius  = particle.radius
       })
    elseif glMode is MODE_DIRECTVECTOR then
