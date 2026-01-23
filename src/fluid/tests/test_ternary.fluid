@@ -459,26 +459,26 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function EmbeddedConcat()
-   test = 'thing'
+   test   = 'thing'
    struct = 'struct'
-   type = test ? ('class ' .. struct) :> ('struct ' .. struct)
+   type   = test ? ('class ' .. struct) :> ('struct ' .. struct)
    assert(type is 'class struct', "Failed embedded concat test: expected 'class struct', got " .. tostring(type))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function InvalidTernary()
-   script = obj.new('fluid', {
-      statement = [[
+   try
+      exec([[
          Options = { scale = false }
          self = Options.scale is false ?? nil :> true
          self = Options.missing is false ?? nil :> true
-      ]]
-   })
-
-   script.acActivate()
-   assert(script.error != ERR_Okay, "Script should have thrown an error code")
-   assert(string.find(script.errorString, 'Unexpected Token') != nil, "Expected invalid token error, got: " .. tostring(script.errorString))
+      ]])
+   except ex
+      assert(string.find(ex.message, 'Unexpected Token') != nil, "Expected invalid token error, got: " .. ex.message)
+   success
+      error('Expected failure for invalid ternary usage')
+   end
 end
 
 @Test function ConditionsInTernary()

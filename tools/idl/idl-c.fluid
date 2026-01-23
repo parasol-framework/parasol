@@ -39,6 +39,7 @@
    global glOutputDefs  = arg('output-defs')
    global glOutputProto = arg('output-proto')
    global glPrototypes  = arg('prototypes')
+   global glEnableDictionaryUse = true -- Allow dictionary use for fast field access
 
    import './include/utils'
    import './include/parser'
@@ -426,7 +427,7 @@ global function outputClassHeader(class:table, Private, Custom)
                print('Failed to field ' .. f.name .. ' in class ' .. class.name)
             end
 
-            if err is ERR_Okay and target.id is class.meta.id then
+            if err is ERR_Okay and target.id is class.meta.id and glEnableDictionaryUse then
                output(indent .. 'auto target = this;')
                output(indent .. string.format('auto field = &this->Class->Dictionary[%d];', fl.index))
             else
