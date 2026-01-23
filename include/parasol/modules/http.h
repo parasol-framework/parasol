@@ -238,35 +238,30 @@ class objHTTP : public Object {
    }
 
    template <class T> inline ERR setHost(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Host, &target);
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setPath(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Path, &target);
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setOutputFile(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_OutputFile, &target);
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setInputFile(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_InputFile, &target);
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setUserAgent(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_UserAgent, &target);
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
@@ -283,7 +278,6 @@ class objHTTP : public Object {
    }
 
    inline ERR setMethod(const HTM Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Method, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
@@ -320,14 +314,12 @@ class objHTTP : public Object {
    }
 
    inline ERR setCurrentState(const HGS Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_CurrentState, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    template <class T> inline ERR setProxyServer(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_ProxyServer, &target);
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
@@ -339,70 +331,60 @@ class objHTTP : public Object {
    }
 
    inline ERR setBufferSize(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_BufferSize, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setAuthCallback(FUNCTION Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_AuthCallback, &target);
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERR setContentType(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_ContentType, &target);
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERR setIncoming(FUNCTION Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Incoming, &target);
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERR setLocation(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Location, &target);
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERR setOutgoing(FUNCTION Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Outgoing, &target);
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERR setRealm(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Realm, &target);
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERR setStateChanged(FUNCTION Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_StateChanged, &target);
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERR setUsername(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Username, &target);
       return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setPassword(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Password, &target);
       return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);

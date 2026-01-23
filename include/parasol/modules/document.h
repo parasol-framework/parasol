@@ -229,7 +229,6 @@ class objDocument : public Object {
    // Customised field setting
 
    inline ERR setViewport(objVectorViewport * Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Viewport, &target);
       return field->WriteValue(target, field, 0x08000301, Value, 1);
@@ -252,42 +251,36 @@ class objDocument : public Object {
    }
 
    inline ERR setFlags(const DCF Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Flags, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setClientScript(OBJECTPTR Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_ClientScript, &target);
       return field->WriteValue(target, field, 0x08000401, Value, 1);
    }
 
    inline ERR setEventCallback(FUNCTION Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_EventCallback, &target);
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERR setPath(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Path, &target);
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setOrigin(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Origin, &target);
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERR setPageWidth(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_PageWidth, &target);
       Unit var(Value);
@@ -295,7 +288,6 @@ class objDocument : public Object {
    }
 
    template <class T> inline ERR setPretext(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Pretext, &target);
       return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);

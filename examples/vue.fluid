@@ -55,7 +55,7 @@ function displayInlineDoc(Content, Parameters)
          doc.acSetKey(k, v)
       end
    end
-   doc.acDataFeed(0, DATA_XML, Content)
+   doc.acDataFeed(nil, DATA_XML, Content)
    configureScrollbar(doc.view, doc.page)
    glTerminateView = function()
       doc.free()

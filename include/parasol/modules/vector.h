@@ -646,7 +646,6 @@ class objVectorTransition : public Object {
    // Customised field setting
 
    inline ERR setStops(const APTR Value, int Elements) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Stops, &target);
       return field->WriteValue(target, field, 0x00001218, Value, Elements);
@@ -742,14 +741,12 @@ class objVectorScene : public Object {
    }
 
    inline ERR setBitmap(objBitmap * Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Bitmap, &target);
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
    inline ERR setSurface(OBJECTID Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Surface, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
@@ -761,21 +758,18 @@ class objVectorScene : public Object {
    }
 
    inline ERR setPageWidth(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_PageWidth, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setPageHeight(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_PageHeight, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setSampleMethod(const VSM Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_SampleMethod, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
@@ -810,28 +804,24 @@ class objVectorImage : public Object {
    // Customised field setting
 
    inline ERR setX(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_X, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setY(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Y, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setPicture(objPicture * Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Picture, &target);
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
    inline ERR setBitmap(objBitmap * Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Bitmap, &target);
       return field->WriteValue(target, field, 0x08000301, Value, 1);
@@ -848,14 +838,12 @@ class objVectorImage : public Object {
    }
 
    inline ERR setSpreadMethod(const VSPREAD Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_SpreadMethod, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setAspectRatio(const ARF Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_AspectRatio, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
@@ -894,7 +882,6 @@ class objVectorPattern : public Object {
    // Customised field setting
 
    inline ERR setX(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_X, &target);
       Unit var(Value);
@@ -902,7 +889,6 @@ class objVectorPattern : public Object {
    }
 
    inline ERR setY(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Y, &target);
       Unit var(Value);
@@ -910,7 +896,6 @@ class objVectorPattern : public Object {
    }
 
    inline ERR setWidth(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Width, &target);
       Unit var(Value);
@@ -918,7 +903,6 @@ class objVectorPattern : public Object {
    }
 
    inline ERR setHeight(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Height, &target);
       Unit var(Value);
@@ -926,21 +910,18 @@ class objVectorPattern : public Object {
    }
 
    inline ERR setOpacity(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Opacity, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setInherit(objVectorPattern * Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Inherit, &target);
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
    inline ERR setSpreadMethod(const VSPREAD Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_SpreadMethod, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
@@ -957,14 +938,12 @@ class objVectorPattern : public Object {
    }
 
    inline ERR setMatrices(APTR Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Matrices, &target);
       return field->WriteValue(target, field, 0x08000318, Value, 1);
    }
 
    template <class T> inline ERR setTransform(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Transform, &target);
       return field->WriteValue(target, field, 0x08800208, to_cstring(Value), 1);
@@ -1007,7 +986,6 @@ class objVectorGradient : public Object {
    // Customised field setting
 
    inline ERR setX1(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_X1, &target);
       Unit var(Value);
@@ -1015,7 +993,6 @@ class objVectorGradient : public Object {
    }
 
    inline ERR setY1(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Y1, &target);
       Unit var(Value);
@@ -1023,7 +1000,6 @@ class objVectorGradient : public Object {
    }
 
    inline ERR setX2(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_X2, &target);
       Unit var(Value);
@@ -1031,7 +1007,6 @@ class objVectorGradient : public Object {
    }
 
    inline ERR setY2(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Y2, &target);
       Unit var(Value);
@@ -1039,7 +1014,6 @@ class objVectorGradient : public Object {
    }
 
    inline ERR setCenterX(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_CenterX, &target);
       Unit var(Value);
@@ -1047,7 +1021,6 @@ class objVectorGradient : public Object {
    }
 
    inline ERR setCenterY(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_CenterY, &target);
       Unit var(Value);
@@ -1055,7 +1028,6 @@ class objVectorGradient : public Object {
    }
 
    inline ERR setFocalX(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_FocalX, &target);
       Unit var(Value);
@@ -1063,7 +1035,6 @@ class objVectorGradient : public Object {
    }
 
    inline ERR setFocalY(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_FocalY, &target);
       Unit var(Value);
@@ -1071,7 +1042,6 @@ class objVectorGradient : public Object {
    }
 
    inline ERR setRadius(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Radius, &target);
       Unit var(Value);
@@ -1079,7 +1049,6 @@ class objVectorGradient : public Object {
    }
 
    inline ERR setFocalRadius(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_FocalRadius, &target);
       Unit var(Value);
@@ -1087,14 +1056,12 @@ class objVectorGradient : public Object {
    }
 
    inline ERR setResolution(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Resolution, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setSpreadMethod(const VSPREAD Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_SpreadMethod, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
@@ -1107,7 +1074,6 @@ class objVectorGradient : public Object {
    }
 
    inline ERR setType(const VGT Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Type, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
@@ -1125,49 +1091,42 @@ class objVectorGradient : public Object {
    }
 
    inline ERR setColour(const float * Value, int Elements) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Colour, &target);
       return field->WriteValue(target, field, 0x10001308, Value, Elements);
    }
 
    template <class T> inline ERR setColourMap(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_ColourMap, &target);
       return field->WriteValue(target, field, 0x08800208, to_cstring(Value), 1);
    }
 
    inline ERR setMatrices(APTR Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Matrices, &target);
       return field->WriteValue(target, field, 0x08000318, Value, 1);
    }
 
    inline ERR setNumeric(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Numeric, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    template <class T> inline ERR setID(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_ID, &target);
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    inline ERR setStops(const APTR Value, int Elements) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Stops, &target);
       return field->WriteValue(target, field, 0x00001318, Value, Elements);
    }
 
    template <class T> inline ERR setTransform(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Transform, &target);
       return field->WriteValue(target, field, 0x08800208, to_cstring(Value), 1);
@@ -1223,21 +1182,18 @@ class objFilterEffect : public Object {
    }
 
    inline ERR setInput(objFilterEffect * Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Input, &target);
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
    inline ERR setMix(objFilterEffect * Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Mix, &target);
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
    inline ERR setX(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_X, &target);
       Unit var(Value);
@@ -1245,7 +1201,6 @@ class objFilterEffect : public Object {
    }
 
    inline ERR setY(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Y, &target);
       Unit var(Value);
@@ -1253,7 +1208,6 @@ class objFilterEffect : public Object {
    }
 
    inline ERR setWidth(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Width, &target);
       Unit var(Value);
@@ -1261,7 +1215,6 @@ class objFilterEffect : public Object {
    }
 
    inline ERR setHeight(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Height, &target);
       Unit var(Value);
@@ -1309,21 +1262,18 @@ class objImageFX : public objFilterEffect {
    // Customised field setting
 
    template <class T> inline ERR setPath(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Path, &target);
       return field->WriteValue(target, field, 0x08800508, to_cstring(Value), 1);
    }
 
    inline ERR setAspectRatio(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_AspectRatio, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setResampleMethod(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_ResampleMethod, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
@@ -1354,21 +1304,18 @@ class objSourceFX : public objFilterEffect {
    // Customised field setting
 
    inline ERR setAspectRatio(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_AspectRatio, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    template <class T> inline ERR setSourceName(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_SourceName, &target);
       return field->WriteValue(target, field, 0x08800408, to_cstring(Value), 1);
    }
 
    inline ERR setSource(OBJECTPTR Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Source, &target);
       return field->WriteValue(target, field, 0x08000109, Value, 1);
@@ -1399,14 +1346,12 @@ class objBlurFX : public objFilterEffect {
    // Customised field setting
 
    inline ERR setSX(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_SX, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setSY(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_SY, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
@@ -1437,14 +1382,12 @@ class objColourFX : public objFilterEffect {
    // Customised field setting
 
    inline ERR setMode(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Mode, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setValues(const double * Value, int Elements) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Values, &target);
       return field->WriteValue(target, field, 0x80001508, Value, Elements);
@@ -1475,35 +1418,30 @@ class objCompositeFX : public objFilterEffect {
    // Customised field setting
 
    inline ERR setOperator(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Operator, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setK1(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_K1, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setK2(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_K2, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setK3(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_K3, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setK4(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_K4, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
@@ -1534,77 +1472,66 @@ class objConvolveFX : public objFilterEffect {
    // Customised field setting
 
    inline ERR setBias(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Bias, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setDivisor(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Divisor, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setEdgeMode(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_EdgeMode, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setMatrixRows(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_MatrixRows, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setMatrixColumns(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_MatrixColumns, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setMatrix(const double * Value, int Elements) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Matrix, &target);
       return field->WriteValue(target, field, 0x80001508, Value, Elements);
    }
 
    inline ERR setPreserveAlpha(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_PreserveAlpha, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setTargetX(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_TargetX, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setTargetY(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_TargetY, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setUnitX(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_UnitX, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setUnitY(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_UnitY, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
@@ -1635,21 +1562,18 @@ class objDisplacementFX : public objFilterEffect {
    // Customised field setting
 
    inline ERR setScale(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Scale, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setXChannel(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_XChannel, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setYChannel(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_YChannel, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
@@ -1680,14 +1604,12 @@ class objFloodFX : public objFilterEffect {
    // Customised field setting
 
    inline ERR setColour(const float * Value, int Elements) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Colour, &target);
       return field->WriteValue(target, field, 0x10001308, Value, Elements);
    }
 
    inline ERR setOpacity(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Opacity, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
@@ -1739,49 +1661,42 @@ class objLightingFX : public objFilterEffect {
    // Customised field setting
 
    inline ERR setColour(const float * Value, int Elements) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Colour, &target);
       return field->WriteValue(target, field, 0x10001308, Value, Elements);
    }
 
    inline ERR setConstant(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Constant, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setExponent(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Exponent, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setScale(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Scale, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setType(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Type, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setUnitX(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_UnitX, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setUnitY(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_UnitY, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
@@ -1812,7 +1727,6 @@ class objMergeFX : public objFilterEffect {
    // Customised field setting
 
    inline ERR setSourceList(const APTR Value, int Elements) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_SourceList, &target);
       return field->WriteValue(target, field, 0x00001318, Value, Elements);
@@ -1843,21 +1757,18 @@ class objMorphologyFX : public objFilterEffect {
    // Customised field setting
 
    inline ERR setOperator(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Operator, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setRadiusX(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_RadiusX, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setRadiusY(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_RadiusY, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
@@ -1888,14 +1799,12 @@ class objOffsetFX : public objFilterEffect {
    // Customised field setting
 
    inline ERR setXOffset(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_XOffset, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setYOffset(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_YOffset, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
@@ -1991,42 +1900,36 @@ class objTurbulenceFX : public objFilterEffect {
    // Customised field setting
 
    inline ERR setFX(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_FX, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setFY(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_FY, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setOctaves(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Octaves, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setSeed(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Seed, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setStitch(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Stitch, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setType(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Type, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
@@ -2057,56 +1960,48 @@ class objWaveFunctionFX : public objFilterEffect {
    // Customised field setting
 
    inline ERR setAspectRatio(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_AspectRatio, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    template <class T> inline ERR setColourMap(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_ColourMap, &target);
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    inline ERR setN(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_N, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setL(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_L, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setM(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_M, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setResolution(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Resolution, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setScale(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Scale, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setStops(const APTR Value, int Elements) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Stops, &target);
       return field->WriteValue(target, field, 0x00001318, Value, Elements);
@@ -2136,14 +2031,12 @@ class objVectorClip : public Object {
    // Customised field setting
 
    inline ERR setUnits(const VUNIT Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Units, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setFlags(const VCLF Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Flags, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
@@ -2184,7 +2077,6 @@ class objVectorFilter : public Object {
    // Customised field setting
 
    inline ERR setX(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_X, &target);
       Unit var(Value);
@@ -2192,7 +2084,6 @@ class objVectorFilter : public Object {
    }
 
    inline ERR setY(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Y, &target);
       Unit var(Value);
@@ -2200,7 +2091,6 @@ class objVectorFilter : public Object {
    }
 
    inline ERR setWidth(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Width, &target);
       Unit var(Value);
@@ -2208,7 +2098,6 @@ class objVectorFilter : public Object {
    }
 
    inline ERR setHeight(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Height, &target);
       Unit var(Value);
@@ -2216,14 +2105,12 @@ class objVectorFilter : public Object {
    }
 
    inline ERR setOpacity(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Opacity, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setInherit(objVectorFilter * Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Inherit, &target);
       return field->WriteValue(target, field, 0x08000301, Value, 1);
@@ -2373,42 +2260,36 @@ class objVector : public Object {
    // Customised field setting
 
    inline ERR setNext(objVector * Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Next, &target);
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
    inline ERR setPrev(objVector * Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Prev, &target);
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
    inline ERR setStrokeOpacity(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_StrokeOpacity, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setFillOpacity(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_FillOpacity, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setOpacity(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Opacity, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setMiterLimit(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_MiterLimit, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
@@ -2420,14 +2301,12 @@ class objVector : public Object {
    }
 
    inline ERR setDashOffset(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_DashOffset, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setVisibility(const VIS Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Visibility, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
@@ -2440,7 +2319,6 @@ class objVector : public Object {
    }
 
    inline ERR setCursor(const PTC Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Cursor, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
@@ -2457,84 +2335,72 @@ class objVector : public Object {
    }
 
    inline ERR setClipRule(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_ClipRule, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setDashArray(const double * Value, int Elements) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_DashArray, &target);
       return field->WriteValue(target, field, 0x80001308, Value, Elements);
    }
 
    inline ERR setMask(OBJECTPTR Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Mask, &target);
       return field->WriteValue(target, field, 0x08000309, Value, 1);
    }
 
    inline ERR setMorph(OBJECTPTR Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Morph, &target);
       return field->WriteValue(target, field, 0x08000309, Value, 1);
    }
 
    inline ERR setAppendPath(OBJECTPTR Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_AppendPath, &target);
       return field->WriteValue(target, field, 0x08000309, Value, 1);
    }
 
    inline ERR setMorphFlags(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_MorphFlags, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setNumeric(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Numeric, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    template <class T> inline ERR setID(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_ID, &target);
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    inline ERR setResizeEvent(const FUNCTION Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_ResizeEvent, &target);
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERR setStroke(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Stroke, &target);
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    inline ERR setStrokeColour(const float * Value, int Elements) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_StrokeColour, &target);
       return field->WriteValue(target, field, 0x10001308, Value, Elements);
    }
 
    inline ERR setStrokeWidth(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_StrokeWidth, &target);
       Unit var(Value);
@@ -2542,63 +2408,54 @@ class objVector : public Object {
    }
 
    inline ERR setTransition(OBJECTPTR Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Transition, &target);
       return field->WriteValue(target, field, 0x08000309, Value, 1);
    }
 
    template <class T> inline ERR setFill(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Fill, &target);
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    inline ERR setFillColour(const float * Value, int Elements) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_FillColour, &target);
       return field->WriteValue(target, field, 0x10001308, Value, Elements);
    }
 
    inline ERR setFillRule(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_FillRule, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    template <class T> inline ERR setFilter(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Filter, &target);
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    inline ERR setLineJoin(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_LineJoin, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setLineCap(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_LineCap, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setInnerJoin(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_InnerJoin, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setTabOrder(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_TabOrder, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
@@ -2659,28 +2516,24 @@ class objVectorPath : public objVector {
    // Customised field setting
 
    template <class T> inline ERR setSequence(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Sequence, &target);
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    inline ERR setTotalCommands(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_TotalCommands, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setPathLength(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_PathLength, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setCommands(const APTR Value, int Elements) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Commands, &target);
       return field->WriteValue(target, field, 0x00001318, Value, Elements);
@@ -2717,7 +2570,6 @@ class objVectorText : public objVector {
    // Customised field setting
 
    inline ERR setX(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_X, &target);
       Unit var(Value);
@@ -2725,7 +2577,6 @@ class objVectorText : public objVector {
    }
 
    inline ERR setY(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Y, &target);
       Unit var(Value);
@@ -2733,175 +2584,150 @@ class objVectorText : public objVector {
    }
 
    inline ERR setWeight(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Weight, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    template <class T> inline ERR setString(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_String, &target);
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    inline ERR setAlign(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Align, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    template <class T> inline ERR setFace(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Face, &target);
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setFill(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Fill, &target);
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setFontSize(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_FontSize, &target);
       return field->WriteValue(target, field, 0x08800328, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setFontStyle(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_FontStyle, &target);
       return field->WriteValue(target, field, 0x08800508, to_cstring(Value), 1);
    }
 
    inline ERR setDX(const double * Value, int Elements) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_DX, &target);
       return field->WriteValue(target, field, 0x80001308, Value, Elements);
    }
 
    inline ERR setDY(const double * Value, int Elements) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_DY, &target);
       return field->WriteValue(target, field, 0x80001308, Value, Elements);
    }
 
    inline ERR setInlineSize(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_InlineSize, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setLetterSpacing(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_LetterSpacing, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setRotate(const double * Value, int Elements) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Rotate, &target);
       return field->WriteValue(target, field, 0x80001308, Value, Elements);
    }
 
    inline ERR setShapeInside(OBJECTID Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_ShapeInside, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setShapeSubtract(OBJECTID Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_ShapeSubtract, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setTextLength(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_TextLength, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setTextFlags(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_TextFlags, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setStartOffset(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_StartOffset, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setSpacing(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Spacing, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setFont(OBJECTPTR Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Font, &target);
       return field->WriteValue(target, field, 0x08000409, Value, 1);
    }
 
    inline ERR setOnChange(FUNCTION Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_OnChange, &target);
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    inline ERR setFocus(OBJECTID Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Focus, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setCursorColumn(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_CursorColumn, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setCursorRow(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_CursorRow, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setLineLimit(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_LineLimit, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setCharLimit(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_CharLimit, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
@@ -2946,49 +2772,42 @@ class objVectorWave : public objVector {
    // Customised field setting
 
    inline ERR setAmplitude(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Amplitude, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setClose(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Close, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setDecay(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Decay, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setDegree(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Degree, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setDimensions(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Dimensions, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setFrequency(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Frequency, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setHeight(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Height, &target);
       Unit var(Value);
@@ -2996,21 +2815,18 @@ class objVectorWave : public objVector {
    }
 
    inline ERR setStyle(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Style, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setThickness(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Thickness, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setX(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_X, &target);
       Unit var(Value);
@@ -3018,7 +2834,6 @@ class objVectorWave : public objVector {
    }
 
    inline ERR setY(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Y, &target);
       Unit var(Value);
@@ -3026,7 +2841,6 @@ class objVectorWave : public objVector {
    }
 
    inline ERR setWidth(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Width, &target);
       Unit var(Value);
@@ -3053,14 +2867,12 @@ class objVectorRectangle : public objVector {
    // Customised field setting
 
    inline ERR setRounding(const double * Value, int Elements) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Rounding, &target);
       return field->WriteValue(target, field, 0x80001308, Value, Elements);
    }
 
    inline ERR setRoundX(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_RoundX, &target);
       Unit var(Value);
@@ -3068,7 +2880,6 @@ class objVectorRectangle : public objVector {
    }
 
    inline ERR setRoundY(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_RoundY, &target);
       Unit var(Value);
@@ -3076,7 +2887,6 @@ class objVectorRectangle : public objVector {
    }
 
    inline ERR setX(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_X, &target);
       Unit var(Value);
@@ -3084,7 +2894,6 @@ class objVectorRectangle : public objVector {
    }
 
    inline ERR setY(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Y, &target);
       Unit var(Value);
@@ -3092,7 +2901,6 @@ class objVectorRectangle : public objVector {
    }
 
    inline ERR setXOffset(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_XOffset, &target);
       Unit var(Value);
@@ -3100,7 +2908,6 @@ class objVectorRectangle : public objVector {
    }
 
    inline ERR setYOffset(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_YOffset, &target);
       Unit var(Value);
@@ -3108,7 +2915,6 @@ class objVectorRectangle : public objVector {
    }
 
    inline ERR setWidth(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Width, &target);
       Unit var(Value);
@@ -3116,7 +2922,6 @@ class objVectorRectangle : public objVector {
    }
 
    inline ERR setHeight(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Height, &target);
       Unit var(Value);
@@ -3124,7 +2929,6 @@ class objVectorRectangle : public objVector {
    }
 
    inline ERR setDimensions(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Dimensions, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
@@ -3150,35 +2954,30 @@ class objVectorPolygon : public objVector {
    // Customised field setting
 
    inline ERR setClosed(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Closed, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setPathLength(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_PathLength, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setPointsArray(APTR * Value, int Elements) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_PointsArray, &target);
       return field->WriteValue(target, field, 0x08001308, Value, Elements);
    }
 
    template <class T> inline ERR setPoints(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Points, &target);
       return field->WriteValue(target, field, 0x08800208, to_cstring(Value), 1);
    }
 
    inline ERR setX1(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_X1, &target);
       Unit var(Value);
@@ -3186,7 +2985,6 @@ class objVectorPolygon : public objVector {
    }
 
    inline ERR setY1(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Y1, &target);
       Unit var(Value);
@@ -3194,7 +2992,6 @@ class objVectorPolygon : public objVector {
    }
 
    inline ERR setX2(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_X2, &target);
       Unit var(Value);
@@ -3202,7 +2999,6 @@ class objVectorPolygon : public objVector {
    }
 
    inline ERR setY2(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Y2, &target);
       Unit var(Value);
@@ -3229,7 +3025,6 @@ class objVectorShape : public objVector {
    // Customised field setting
 
    inline ERR setCenterX(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_CenterX, &target);
       Unit var(Value);
@@ -3237,7 +3032,6 @@ class objVectorShape : public objVector {
    }
 
    inline ERR setCenterY(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_CenterY, &target);
       Unit var(Value);
@@ -3245,7 +3039,6 @@ class objVectorShape : public objVector {
    }
 
    inline ERR setRadius(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Radius, &target);
       Unit var(Value);
@@ -3253,91 +3046,78 @@ class objVectorShape : public objVector {
    }
 
    inline ERR setClose(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Close, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setDimensions(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Dimensions, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setPhi(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Phi, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setA(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_A, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setB(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_B, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setM(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_M, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setN1(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_N1, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setN2(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_N2, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setN3(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_N3, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setVertices(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Vertices, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setMod(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Mod, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setSpiral(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Spiral, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setRepeat(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Repeat, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
@@ -3363,14 +3143,12 @@ class objVectorSpiral : public objVector {
    // Customised field setting
 
    inline ERR setPathLength(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_PathLength, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setWidth(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Width, &target);
       Unit var(Value);
@@ -3378,7 +3156,6 @@ class objVectorSpiral : public objVector {
    }
 
    inline ERR setHeight(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Height, &target);
       Unit var(Value);
@@ -3386,7 +3163,6 @@ class objVectorSpiral : public objVector {
    }
 
    inline ERR setCenterX(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_CenterX, &target);
       Unit var(Value);
@@ -3394,7 +3170,6 @@ class objVectorSpiral : public objVector {
    }
 
    inline ERR setCenterY(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_CenterY, &target);
       Unit var(Value);
@@ -3402,7 +3177,6 @@ class objVectorSpiral : public objVector {
    }
 
    inline ERR setRadius(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Radius, &target);
       Unit var(Value);
@@ -3410,28 +3184,24 @@ class objVectorSpiral : public objVector {
    }
 
    inline ERR setOffset(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Offset, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setStep(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Step, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setSpacing(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Spacing, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setLoopLimit(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_LoopLimit, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
@@ -3457,7 +3227,6 @@ class objVectorEllipse : public objVector {
    // Customised field setting
 
    inline ERR setWidth(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Width, &target);
       Unit var(Value);
@@ -3465,7 +3234,6 @@ class objVectorEllipse : public objVector {
    }
 
    inline ERR setHeight(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Height, &target);
       Unit var(Value);
@@ -3473,7 +3241,6 @@ class objVectorEllipse : public objVector {
    }
 
    inline ERR setCenterX(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_CenterX, &target);
       Unit var(Value);
@@ -3481,7 +3248,6 @@ class objVectorEllipse : public objVector {
    }
 
    inline ERR setCenterY(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_CenterY, &target);
       Unit var(Value);
@@ -3489,7 +3255,6 @@ class objVectorEllipse : public objVector {
    }
 
    inline ERR setRadius(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Radius, &target);
       Unit var(Value);
@@ -3497,7 +3262,6 @@ class objVectorEllipse : public objVector {
    }
 
    inline ERR setRadiusX(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_RadiusX, &target);
       Unit var(Value);
@@ -3505,7 +3269,6 @@ class objVectorEllipse : public objVector {
    }
 
    inline ERR setRadiusY(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_RadiusY, &target);
       Unit var(Value);
@@ -3513,14 +3276,12 @@ class objVectorEllipse : public objVector {
    }
 
    inline ERR setDimensions(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Dimensions, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setVertices(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Vertices, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
@@ -3567,56 +3328,48 @@ class objVectorViewport : public objVector {
    // Customised field setting
 
    inline ERR setAspectRatio(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_AspectRatio, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setBuffered(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Buffered, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setDimensions(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Dimensions, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setDragCallback(FUNCTION Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_DragCallback, &target);
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    inline ERR setOverflow(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Overflow, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setOverflowX(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_OverflowX, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setOverflowY(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_OverflowY, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setX(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_X, &target);
       Unit var(Value);
@@ -3624,7 +3377,6 @@ class objVectorViewport : public objVector {
    }
 
    inline ERR setY(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Y, &target);
       Unit var(Value);
@@ -3632,7 +3384,6 @@ class objVectorViewport : public objVector {
    }
 
    inline ERR setXOffset(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_XOffset, &target);
       Unit var(Value);
@@ -3640,7 +3391,6 @@ class objVectorViewport : public objVector {
    }
 
    inline ERR setYOffset(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_YOffset, &target);
       Unit var(Value);
@@ -3648,7 +3398,6 @@ class objVectorViewport : public objVector {
    }
 
    inline ERR setWidth(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Width, &target);
       Unit var(Value);
@@ -3656,7 +3405,6 @@ class objVectorViewport : public objVector {
    }
 
    inline ERR setHeight(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Height, &target);
       Unit var(Value);
@@ -3664,28 +3412,24 @@ class objVectorViewport : public objVector {
    }
 
    inline ERR setViewX(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_ViewX, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setViewY(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_ViewY, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setViewWidth(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_ViewWidth, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setViewHeight(const double Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_ViewHeight, &target);
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);

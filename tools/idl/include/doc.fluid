@@ -594,7 +594,7 @@ global function substituteReferences(String, Class)
    String = String:gsub('[@#]([A-Z]%w+)%.([A-Z]%w+)', function(ClassName, FieldName)
       meta = mSys.FindClass(ClassName:hash(), 0)
       if meta then
-         err, field, src = meta.mtFindField(FieldName:hash())
+         err, field, src = meta.mtFindField(calcFieldHash(FieldName))
          if field then
             return '<class name="' .. ClassName .. '" field="' .. FieldName .. '">' .. ClassName .. '.' .. FieldName .. '</class>'
          else

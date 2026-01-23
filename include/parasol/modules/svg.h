@@ -77,28 +77,24 @@ class objSVG : public Object {
    // Customised field setting
 
    inline ERR setTarget(OBJECTPTR Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Target, &target);
       return field->WriteValue(target, field, 0x08000501, Value, 1);
    }
 
    template <class T> inline ERR setPath(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Path, &target);
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setTitle(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Title, &target);
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setStatement(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Statement, &target);
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
@@ -115,21 +111,18 @@ class objSVG : public Object {
    }
 
    inline ERR setFrameRate(const int Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_FrameRate, &target);
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    template <class T> inline ERR setColour(T && Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_Colour, &target);
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    inline ERR setFrameCallback(const FUNCTION Value) noexcept {
-
       OBJECTPTR target;
       auto field = FindField(this, FID_FrameCallback, &target);
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
