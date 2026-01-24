@@ -51,18 +51,18 @@ constexpr uint8_t  NO_REG = BCMAX_A;
 #define BCINS_AD(o, a, d)     (((BCIns)(o))|((BCIns)(a)<<8)|((BCIns)(d)<<16))
 #define BCINS_AJ(o, a, j)     BCINS_AD(o, a, (BCPOS)((int32_t)(j)+BCBIAS_J))
 
-/* Bytecode instruction definition. Order matters, see below.
-**
-** (name, filler, Amode, Bmode, Cmode or Dmode, metamethod)
-**
-** The opcode name suffixes specify the type for RB/RC or RD:
-** V = variable slot
-** S = string const
-** N = number const
-** P = primitive type (~itype)
-** B = unsigned byte literal
-** M = multiple args/results
-*/
+// Bytecode instruction definition. Order matters, see below.
+//
+// (name, filler, Amode, Bmode, Cmode or Dmode, metamethod)
+//
+// The opcode name suffixes specify the type for RB/RC or RD:
+// V = variable slot
+// S = string const
+// N = number const
+// P = primitive type (~itype)
+// B = unsigned byte literal
+// M = multiple args/results
+
 #define BCDEF(_) \
   /* Comparison ops. ORDER OPR. */ \
   _(ISLT,   var,   ___,   var,   lt) \
@@ -434,7 +434,7 @@ typedef enum {
 #define bcmode_b(op)   ((BCMode)((lj_bc_mode[op]>>3) & 15))
 #define bcmode_c(op)   ((BCMode)((lj_bc_mode[op]>>7) & 15))
 #define bcmode_d(op)   bcmode_c(op)
-#define bcmode_hasd(op)   ((lj_bc_mode[op] & (15<<3)) == (BCMnone<<3))
+#define bcmode_hasd(op) ((lj_bc_mode[op] & (15<<3)) == (BCMnone<<3))
 #define bcmode_mm(op)   ((MMS)(lj_bc_mode[op]>>11))
 
 #define BCMODE(name, ma, mb, mc, mm) \
@@ -443,7 +443,7 @@ typedef enum {
 
 static LJ_AINLINE int bc_isret(BCOp op)
 {
-   return (op == BC_RETM || op == BC_RET || op == BC_RET0 || op == BC_RET1);
+   return (op == BC_RETM or op == BC_RET or op == BC_RET0 or op == BC_RET1);
 }
 
 LJ_DATA const uint16_t lj_bc_mode[];
