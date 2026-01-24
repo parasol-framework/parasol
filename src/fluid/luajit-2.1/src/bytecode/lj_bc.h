@@ -117,21 +117,21 @@ constexpr uint8_t  NO_REG = BCMAX_A;
   _(CAT,   dst,   rbase,   rbase,   concat) \
   \
   /* Constant ops. */ \
-  _(KSTR,   dst,   ___,   str,   ___) \
-  _(KCDATA,   dst,   ___,   cdata,   ___) \
-  _(KSHORT,   dst,   ___,   lits,   ___) \
-  _(KNUM,   dst,   ___,   num,   ___) \
-  _(KPRI,   dst,   ___,   pri,   ___) \
-  _(KNIL,   base,   ___,   base,   ___) \
+  _(KSTR,   dst,  ___, str,   ___) \
+  _(KCDATA, dst,  ___, cdata, ___) \
+  _(KSHORT, dst,  ___, lits,  ___) \
+  _(KNUM,   dst,  ___, num,   ___) \
+  _(KPRI,   dst,  ___, pri,   ___) \
+  _(KNIL,   base, ___, base,  ___) \
   \
   /* Upvalue and function ops. */ \
-  _(UGET,   dst,   ___,   uv,   ___) \
-  _(USETV,   uv,   ___,   var,   ___) \
-  _(USETS,   uv,   ___,   str,   ___) \
-  _(USETN,   uv,   ___,   num,   ___) \
-  _(USETP,   uv,   ___,   pri,   ___) \
-  _(UCLO,   rbase,   ___,   jump,   ___) \
-  _(FNEW,   dst,   ___,   func,   gc) \
+  _(UGET,  dst,   ___, uv,   ___) \
+  _(USETV, uv,    ___, var,  ___) \
+  _(USETS, uv,    ___, str,  ___) \
+  _(USETN, uv,    ___, num,  ___) \
+  _(USETP, uv,    ___, pri,  ___) \
+  _(UCLO,  rbase, ___, jump, ___) \
+  _(FNEW,  dst,   ___, func, gc) \
   \
   /* Table ops. */ \
   _(TNEW,  dst,  ___,  lit, gc) \
