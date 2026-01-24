@@ -5334,7 +5334,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
 
   //  -- Object ops (specialised for LJ_TOBJECT) ----------------------------
 
-  case BC_OGETS:
+  case BC_OBGETF:
     |  // RA = dst*8, RB = object*8, RC = str_const*8 (~)
     |  lwzux CARG1, RB, BASE
     |   srwi TMP1, RC, 1
@@ -5353,7 +5353,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_next
     break;
 
-  case BC_OSETS:
+  case BC_OBSETF:
     |  // RA = src*8, RB = object*8, RC = str_const*8 (~)
     |  lwzux CARG1, RB, BASE
     |   srwi TMP1, RC, 1

@@ -4289,7 +4289,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
 
   //  -- Object ops (specialised for LJ_TOBJECT) ----------------------------
 
-  case BC_OGETS:
+  case BC_OBGETF:
     |  ins_ABC // RA = dst, RB = object, RC = str const (~)
     |  mov OOBJ:RB, [BASE+RB*8]
     |  not RC
@@ -4309,7 +4309,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_next
     break;
 
-  case BC_OSETS:
+  case BC_OBSETF:
     |  ins_ABC // RA = value, RB = object, RC = str const (~)
     |  mov OOBJ:RB, [BASE+RB*8]
     |  not RC

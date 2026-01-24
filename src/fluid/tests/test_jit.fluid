@@ -311,7 +311,7 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test JIT recording of BC_OGETS (object field get)
+-- Test JIT recording of BC_OBGETF (object field get)
 -- Without JIT support, the trace recorder would abort with NYIBC (Not Yet Implemented Bytecode).
 
 @Test(hotpath=50) function JITObjectFieldGet()
@@ -326,8 +326,8 @@ end
    function traced_field_access(Count)
       sum = 0
       for i = 1, Count do
-         p = glCfg.path   -- BC_OGETS
-         f = glCfg.flags  -- BC_OGETS
+         p = glCfg.path   -- BC_OBGETF
+         f = glCfg.flags  -- BC_OBGETF
          sum += 1
       end
       return sum
@@ -347,11 +347,11 @@ end
       end
    end
 
-   assert(trace_found is true, "Expected BC_OGETS to produce a JIT trace instead of aborting")
+   assert(trace_found is true, "Expected BC_OBGETF to produce a JIT trace instead of aborting")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test JIT recording of BC_OSETS (object field set)
+-- Test JIT recording of BC_OBSETF (object field set)
 
 @Test(hotpath=50) function JITObjectFieldSet()
    cached_trace_no = nil
@@ -364,7 +364,7 @@ end
    -- Hot loop writing object fields - should trigger JIT trace recording
    function traced_field_set(Count)
       for i = 1, Count do
-         glCfg.flags = 0 -- BC_OSETS
+         glCfg.flags = 0 -- BC_OBSETF
          glCfg.path = "temp:test.cfg"
       end
    end
@@ -383,6 +383,6 @@ end
       end
    end
 
-   assert(trace_found is true, "Expected BC_OSETS to produce a JIT trace instead of aborting")
+   assert(trace_found is true, "Expected BC_OBSETF to produce a JIT trace instead of aborting")
 end
 

@@ -2052,7 +2052,7 @@ ParserResult<ExpDesc> IrEmitter::emit_member_expr(const MemberExprPayload &Paylo
    expr_index(&this->func_state, &table, &key);
 
    // Propagate known base type information for downstream optimizations.
-   // When base_type is Object, emit specialised BC_OGETS/BC_OSETS bytecodes
+   // When base_type is Object, emit specialised BC_OBGETF/BC_OBSETF bytecodes
    // by changing the expression kind to IndexedObject.
    // Check both AST-level base_type AND emitted expression's result_type
    // (the latter captures type info from variable declarations like `fl = obj.new(...)`).

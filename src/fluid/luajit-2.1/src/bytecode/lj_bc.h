@@ -134,19 +134,19 @@ constexpr uint8_t  NO_REG = BCMAX_A;
   _(FNEW,   dst,   ___,   func,   gc) \
   \
   /* Table ops. */ \
-  _(TNEW,   dst,   ___,   lit,   gc) \
-  _(TDUP,   dst,   ___,   tab,   gc) \
-  _(GGET,   dst,   ___,   str,   index) \
-  _(GSET,   var,   ___,   str,   newindex) \
-  _(TGETV,   dst,   var,   var,   index) \
-  _(TGETS,   dst,   var,   str,   index) \
-  _(TGETB,   dst,   var,   lit,   index) \
-  _(TGETR,   dst,   var,   var,   index) \
-  _(TSETV,   var,   var,   var,   newindex) \
-  _(TSETS,   var,   var,   str,   newindex) \
-  _(TSETB,   var,   var,   lit,   newindex) \
-  _(TSETM,   base,   ___,   num,   newindex) \
-  _(TSETR,   var,   var,   var,   newindex) \
+  _(TNEW,  dst,  ___,  lit, gc) \
+  _(TDUP,  dst,  ___,  tab, gc) \
+  _(GGET,  dst,  ___,  str, index) \
+  _(GSET,  var,  ___,  str, newindex) \
+  _(TGETV, dst,  var,  var, index) \
+  _(TGETS, dst,  var,  str, index) \
+  _(TGETB, dst,  var,  lit, index) \
+  _(TGETR, dst,  var,  var, index) \
+  _(TSETV, var,  var,  var, newindex) \
+  _(TSETS, var,  var,  str, newindex) \
+  _(TSETB, var,  var,  lit, newindex) \
+  _(TSETM, base,  ___, num, newindex) \
+  _(TSETR, var,  var,  var, newindex) \
   \
   /* Array ops. */ \
   _(AGETV,   dst,   var,   var,   index) \
@@ -157,46 +157,46 @@ constexpr uint8_t  NO_REG = BCMAX_A;
   _(ASGETB,  dst,   var,   lit,   index) /* Safe array get with literal index */ \
   \
   /* Object field access ops (specialised for LJ_TOBJECT). */ \
-  _(OGETS,   dst,   var,   str,   index)    /* Object string field get */ \
-  _(OSETS,   var,   var,   str,   newindex) /* Object string field set */ \
-  _(OCALL,   base,  lit,   lit,   call)     /* Object action/method call (reserved) */ \
+  _(OBGETF, dst,  var, str, index)    /* Object string field get */ \
+  _(OBSETF, var,  var, str, newindex) /* Object string field set */ \
+  _(OBCALL, base, lit, lit, call)     /* Object action/method call (reserved) */ \
   \
   /* Calls and vararg handling. T = tail call. */ \
-  _(CALLM,   base,   lit,   lit,   call) \
-  _(CALL,   base,   lit,   lit,   call) \
-  _(CALLMT,   base,   ___,   lit,   call) \
-  _(CALLT,   base,   ___,   lit,   call) \
-  _(ITERC,   base,   lit,   lit,   call) \
-  _(ITERN,   base,   lit,   lit,   call) \
-  _(ITERA,   base,   lit,   lit,   call) \
-  _(VARG,   base,   lit,   lit,   ___) \
-  _(ISNEXT,   base,   ___,   jump,   ___) \
-  _(ISARR,   base,   ___,   jump,   ___) \
+  _(CALLM,  base, lit, lit,  call) \
+  _(CALL,   base, lit, lit,  call) \
+  _(CALLMT, base, ___, lit,  call) \
+  _(CALLT,  base, ___, lit,  call) \
+  _(ITERC,  base, lit, lit,  call) \
+  _(ITERN,  base, lit, lit,  call) \
+  _(ITERA,  base, lit, lit,  call) \
+  _(VARG,   base, lit, lit,  ___) \
+  _(ISNEXT, base, ___, jump, ___) \
+  _(ISARR,  base, ___, jump, ___) \
   \
   /* Returns. */ \
-  _(RETM,   base,   ___,   lit,   ___) \
-  _(RET,   rbase,   ___,   lit,   ___) \
-  _(RET0,   rbase,   ___,   lit,   ___) \
-  _(RET1,   rbase,   ___,   lit,   ___) \
+  _(RETM, base,  ___, lit, ___) \
+  _(RET,  rbase, ___, lit, ___) \
+  _(RET0, rbase, ___, lit, ___) \
+  _(RET1, rbase, ___, lit, ___) \
   \
   /* Type fixing. */ \
   _(TYPEFIX,   rbase,   ___,   lit,   ___) \
   \
   /* Loops and branches. I/J = interp/JIT, I/C/L = init/call/loop. */ \
-  _(FORI,   base,   ___,   jump,   ___) \
-  _(JFORI,   base,   ___,   jump,   ___) \
+  _(FORI,  base,   ___, jump, ___) \
+  _(JFORI, base,   ___, jump, ___) \
   \
-  _(FORL,   base,   ___,   jump,   ___) \
-  _(IFORL,   base,   ___,   jump,   ___) \
-  _(JFORL,   base,   ___,   lit,   ___) \
+  _(FORL,  base,   ___, jump, ___) \
+  _(IFORL, base,   ___, jump, ___) \
+  _(JFORL, base,   ___, lit,  ___) \
   \
-  _(ITERL,   base,   ___,   jump,   ___) \
-  _(IITERL,   base,   ___,   jump,   ___) \
-  _(JITERL,   base,   ___,   lit,   ___) \
+  _(ITERL,  base,  ___, jump, ___) \
+  _(IITERL, base,  ___, jump, ___) \
+  _(JITERL, base,  ___, lit,  ___) \
   \
-  _(LOOP,   rbase,   ___,   jump,   ___) \
-  _(ILOOP,   rbase,   ___,   jump,   ___) \
-  _(JLOOP,   rbase,   ___,   lit,   ___) \
+  _(LOOP,   rbase, ___, jump, ___) \
+  _(ILOOP,  rbase, ___, jump, ___) \
+  _(JLOOP,  rbase, ___, lit,  ___) \
   \
   _(JMP,   rbase,   ___,   jump,   ___) \
   \
@@ -308,8 +308,8 @@ typedef enum {
    BC_ASGETB = 71,  // Safe array get with literal index
 
    // Object field access ops (72-74) - specialised for LJ_TOBJECT
-   BC_OGETS  = 72,  // Object string field get: A=dst, B=object, C=str const (~)
-   BC_OSETS  = 73,  // Object string field set: A=value, B=object, C=str const (~)
+   BC_OBGETF  = 72,  // Object string field get: A=dst, B=object, C=str const (~)
+   BC_OBSETF  = 73,  // Object string field set: A=value, B=object, C=str const (~)
    BC_OCALL  = 74,  // Object action/method call (reserved for Phase 4)
 
    // Calls and vararg handling (75-84)

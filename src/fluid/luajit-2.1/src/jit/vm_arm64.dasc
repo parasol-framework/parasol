@@ -3590,7 +3590,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
 
   //  -- Object ops (specialised for LJ_TOBJECT) ----------------------------
 
-  case BC_OGETS:
+  case BC_OBGETF:
     |  decode_RB RB, INS
     |   and RC, RC, #255
     |  // RA = dst, RB = object, RC = str_const (~)
@@ -3608,7 +3608,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_next
     break;
 
-  case BC_OSETS:
+  case BC_OBSETF:
     |  decode_RB RB, INS
     |   and RC, RC, #255
     |  // RA = value, RB = object, RC = str_const (~)

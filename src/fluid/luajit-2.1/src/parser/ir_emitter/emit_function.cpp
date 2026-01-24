@@ -306,7 +306,7 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode &Expr, bool All
          expr_index(&this->func_state, &table, &key);
 
          // Propagate known base type information for downstream optimizations.
-         // When base_type is Object, emit specialised BC_OSETS bytecodes via IndexedObject.
+         // When base_type is Object, emit specialised BC_OBSETF bytecodes via IndexedObject.
          // Check both AST-level base_type AND emitted expression's result_type.
          if (payload.base_type IS FluidType::Object or emitted_base_type IS FluidType::Object) {
             table.result_type = FluidType::Object;

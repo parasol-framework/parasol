@@ -1,44 +1,6 @@
 // Refer: lib_object.cpp
 
 //********************************************************************************************************************
-// Usage: object.fieldName = newvalue
-//
-// Custom key-values can be referenced by using _ as a prefix.
-// The fieldName is case sensitive and the first character is always lower case.
-// Using all caps abbreviations is discouraged when designing class fields, e.g. JITOptions won't work out, but
-// JitOptions is fine.
-
-int object_newindex(lua_State *Lua)
-{
-   if (auto def = lj_get_object_fast(Lua, 1)) {
-      if (auto hash = luaL_checkstringhash(Lua, 2)) {
-         if (auto obj = access_object(def)) {
-            ERR error;
-
-            // Use cached write_table or lazily populate it
-            auto jt = (WRITE_TABLE *)def->write_table;
-            if (!jt) {
-               jt = get_write_table(def->classptr);
-               def->write_table = (void *)jt;
-            }
-
-            if (auto func = jt->find(obj_write(hash)); func != jt->end()) {
-               error = func->Call(Lua, obj, func->Field, 3);
-            }
-            else error = ERR::NoSupport;
-            release_object(def);
-
-            if (error >= ERR::ExceptionThreshold) {
-               pf::Log(__FUNCTION__).warning("Unable to write %s.%s: %s", def->classptr->ClassName, luaL_checkstring(Lua, 2), GetErrorMsg(error));
-               luaL_error(Lua, error);
-            }
-         }
-      }
-   }
-   return 0;
-}
-
-//********************************************************************************************************************
 
 static ERR set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, int Values, int total)
 {

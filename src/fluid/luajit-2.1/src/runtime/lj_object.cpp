@@ -170,7 +170,7 @@ int lj_object_ipairs(lua_State *L)
 }
 
 //********************************************************************************************************************
-// Fast object field get - called from BC_OGETS bytecode handler. Writes result directly to Dest, or throws an error
+// Fast object field get - called from BC_OBGETF bytecode handler. Writes result directly to Dest, or throws an error
 // if the field doesn't exist or the object has been freed.
 
 extern "C" void lj_object_gets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Dest)
@@ -208,7 +208,7 @@ extern "C" void lj_object_gets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *
 }
 
 //********************************************************************************************************************
-// Fast object field set - called from BC_OSETS bytecode handler. Writes Val to the object field, or throws an error.
+// Fast object field set - called from BC_OBSETF bytecode handler. Writes Val to the object field, or throws an error.
 
 extern "C" void lj_object_sets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Val)
 {

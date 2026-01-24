@@ -424,28 +424,58 @@ WRITE_TABLE * get_write_table(objMetaClass *Class)
 }
 
 //********************************************************************************************************************
-// Any Read accesses to the object will pass through here.
+// Usage: object.fieldName = newvalue
+//
+// Using all caps abbreviations is discouraged when designing class fields, e.g. JITOptions won't work out, but
+// JitOptions is fine.
+
+int object_newindex(lua_State *Lua)
+{
+   if (auto def = lj_get_object_fast(Lua, 1)) {
+      if (auto hash = luaL_checkstringhash(Lua, 2)) {
+         if (auto obj = access_object(def)) {
+            ERR error;
+
+            // Use cached write_table or lazily populate it
+            auto jt = (WRITE_TABLE *)def->write_table;
+            if (!jt) {
+               jt = get_write_table(def->classptr);
+               def->write_table = (void *)jt;
+            }
+
+            if (auto func = jt->find(obj_write(hash)); func != jt->end()) {
+               error = func->Call(Lua, obj, func->Field, 3);
+            }
+            else error = ERR::NoSupport;
+            release_object(def);
+
+            if (error >= ERR::ExceptionThreshold) {
+               pf::Log(__FUNCTION__).warning("Unable to write %s.%s: %s", def->classptr->ClassName, luaL_checkstring(Lua, 2), GetErrorMsg(error));
+               luaL_error(Lua, error);
+            }
+         }
+      }
+   }
+   return 0;
+}
+
+//********************************************************************************************************************
+// This is the default path for reading object fields when optimisation is unavailable.
 
 [[nodiscard]] int object_index(lua_State *Lua)
 {
    auto def = objectV(Lua->base);
 
-   if (!def->uid) {
-      luaL_error(Lua, ERR::DoesNotExist, "Object dereferenced, unable to read field.");
-      return 0; // Not reached
-   }
+   if (not def->uid) luaL_error(Lua, ERR::DoesNotExist, "Object dereferenced, unable to read field.");
 
    // Get key as GCstr to access precomputed hash
    TValue *tv_key = Lua->base + 1;
-   if (!tvisstr(tv_key)) {
-      lj_err_argt(Lua, 2, LUA_TSTRING);
-      return 0; // Not reached
-   }
+   if (not tvisstr(tv_key)) lj_err_argt(Lua, 2, LUA_TSTRING);
    GCstr *keystr = strV(tv_key);
 
    // Use cached read_table or lazily populate it
    auto read_table = (READ_TABLE *)def->read_table;
-   if (!read_table) {
+   if (not read_table) {
       read_table = get_read_table(Lua, def->classptr);
       def->read_table = (void *)read_table;
    }
@@ -642,7 +672,7 @@ LJLIB_CF(object_class)
 
 ERR push_object_id(lua_State *Lua, OBJECTID ObjectID)
 {
-   if (!ObjectID) { lua_pushnil(Lua); return ERR::Okay; }
+   if (not ObjectID) { lua_pushnil(Lua); return ERR::Okay; }
 
    if (auto object = GetObjectPtr(ObjectID)) {
       lua_pushobject(Lua, ObjectID, nullptr, object->Class, GCOBJ_DETACHED);
@@ -799,7 +829,7 @@ static int object_lock(lua_State *Lua)
 {
    auto def = object_context(Lua);
 
-   if (!lua_isfunction(Lua, 1)) {
+   if (not lua_isfunction(Lua, 1)) {
       luaL_argerror(Lua, 1, "Function expected.");
       return 0;
    }
@@ -820,7 +850,7 @@ static int object_detach(lua_State *Lua)
    pf::Log log("obj.detach");
    log.traceBranch("Detached: %d", def->is_detached());
 
-   if (!def->is_detached()) def->set_detached(true);
+   if (not def->is_detached()) def->set_detached(true);
 
    return 0;
 }
@@ -841,12 +871,12 @@ static int object_subscribe(lua_State *Lua)
    auto def = object_context(Lua);
 
    CSTRING action;
-   if (!(action = lua_tostring(Lua, 1))) {
+   if (not (action = lua_tostring(Lua, 1))) {
       luaL_argerror(Lua, 1, "Action name expected.");
       return 0;
    }
 
-   if (!lua_isfunction(Lua, 2)) {
+   if (not lua_isfunction(Lua, 2)) {
       luaL_argerror(Lua, 2, "Function expected.");
       return 0;
    }
@@ -860,7 +890,7 @@ static int object_subscribe(lua_State *Lua)
    }
 
    OBJECTPTR obj;
-   if (!(obj = access_object(def))) {
+   if (not (obj = access_object(def))) {
       luaL_error(Lua, ERR::AccessObject);
       return 0;
    }
@@ -874,7 +904,7 @@ static int object_subscribe(lua_State *Lua)
       auto prv = (prvFluid *)Lua->script->ChildPrivate;
       auto &acsub = prv->ActionList.emplace_back();
 
-      if (!lua_isnil(Lua, 3)) {
+      if (not lua_isnil(Lua, 3)) {
          lua_settop(prv->Lua, 3);
          acsub.Reference = luaL_ref(prv->Lua, LUA_REGISTRYINDEX);
       }
@@ -903,7 +933,7 @@ static int object_unsubscribe(lua_State *Lua)
    auto def = object_context(Lua);
 
    CSTRING action;
-   if (!(action = lua_tostring(Lua, 1))) {
+   if (not (action = lua_tostring(Lua, 1))) {
       luaL_argerror(Lua, 1, "Action name expected.");
       return 0;
    }

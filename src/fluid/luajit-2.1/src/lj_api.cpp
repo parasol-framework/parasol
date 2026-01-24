@@ -618,7 +618,7 @@ extern const char * luaL_checklstring(lua_State *L, int idx, size_t* len)
 }
 
 //********************************************************************************************************************
-// Works as for luaL_checklstring but returns string hash
+// Works as for luaL_checklstring but returns string hash.  Throws if type is not string compatible.
 
 extern uint32_t luaL_checkstringhash(lua_State *L, int idx)
 {

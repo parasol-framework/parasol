@@ -2454,7 +2454,7 @@ static TRef rec_array_op(jit_State *J, RecordOps *ops)
 }
 
 //********************************************************************************************************************
-// Handle native object ops: BC_OGETS, BC_OSETS
+// Handle native object ops: BC_OBGETF, BC_OBSETF
 //
 // Native objects (GCobject) use field handler lookup tables.  We emit calls to helper functions that handle the field
 // access.  Type inference uses MetaClass field definitions - no probing/side effects.
@@ -2464,7 +2464,7 @@ static TRef rec_object_get(jit_State *J, RecordOps *ops)
    TRef obj_ref = ops->rb;
    if (not tref_isobject(obj_ref)) lj_trace_err(J, LJ_TRERR_BADTYPE);
 
-   TRef key_ref = ops->rc;  // Get the string key reference - BC_OGETS/OSETS use ~RC for the constant index
+   TRef key_ref = ops->rc;  // Get the string key reference - BC_OBGETF/OBSETF use ~RC for the constant index
 
    // Look up the field type from MetaClass definitions
    GCobject *obj = objectV(ops->rbv());
@@ -2482,7 +2482,7 @@ static TRef rec_object_set(jit_State *J, RecordOps *ops)
 {
    TRef obj_ref = ops->rb;
    if (not tref_isobject(obj_ref)) lj_trace_err(J, LJ_TRERR_BADTYPE);
-   TRef key_ref = ops->rc;  // Get the string key reference - BC_OGETS/OSETS use ~RC for the constant index
+   TRef key_ref = ops->rc;  // Get the string key reference - BC_OBGETF/OBSETF use ~RC for the constant index
 
    // lj_object_sets(L, obj, key, val)
    TRef tmp_ref = rec_tmpref(J, ops->ra, IRTMPREF_IN1);
@@ -2803,11 +2803,11 @@ void lj_record_ins(jit_State *J)
 
    // Object ops - native object field access
 
-   case BC_OGETS:
+   case BC_OBGETF:
       rc = rec_object_get(J, &ops);
       break;
 
-   case BC_OSETS:
+   case BC_OBSETF:
       rec_object_set(J, &ops);
       break;
 

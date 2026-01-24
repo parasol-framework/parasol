@@ -14,7 +14,7 @@ extern void LJ_FASTCALL lj_object_free(global_State *, GCobject *);
 extern int lj_object_pairs(lua_State *);
 extern int lj_object_ipairs(lua_State *);
 
-// Fast path bytecode handlers for BC_OGETS and BC_OSETS
+// Fast path bytecode handlers for BC_OBGETF and BC_OBSETF
 extern "C" void lj_object_gets(lua_State *, GCobject *, GCstr *, TValue *);
 extern "C" void lj_object_sets(lua_State *, GCobject *, GCstr *, TValue *);
 
