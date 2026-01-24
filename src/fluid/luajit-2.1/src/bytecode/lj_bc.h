@@ -65,19 +65,19 @@ constexpr uint8_t  NO_REG = BCMAX_A;
 
 #define BCDEF(_) \
   /* Comparison ops. ORDER OPR. */ \
-  _(ISLT,   var,   ___,   var,   lt) \
-  _(ISGE,   var,   ___,   var,   lt) \
-  _(ISLE,   var,   ___,   var,   le) \
-  _(ISGT,   var,   ___,   var,   le) \
+  _(ISLT, var, ___, var, lt) \
+  _(ISGE, var, ___, var, lt) \
+  _(ISLE, var, ___, var, le) \
+  _(ISGT, var, ___, var, le) \
   \
-  _(ISEQV,   var,   ___,   var,   eq) \
-  _(ISNEV,   var,   ___,   var,   eq) \
-  _(ISEQS,   var,   ___,   str,   eq) \
-  _(ISNES,   var,   ___,   str,   eq) \
-  _(ISEQN,   var,   ___,   num,   eq) \
-  _(ISNEN,   var,   ___,   num,   eq) \
-  _(ISEQP,   var,   ___,   pri,   eq) \
-  _(ISNEP,   var,   ___,   pri,   eq) \
+  _(ISEQV, var, ___, var, eq) \
+  _(ISNEV, var, ___, var, eq) \
+  _(ISEQS, var, ___, str, eq) \
+  _(ISNES, var, ___, str, eq) \
+  _(ISEQN, var, ___, num, eq) \
+  _(ISNEN, var, ___, num, eq) \
+  _(ISEQP, var, ___, pri, eq) \
+  _(ISNEP, var, ___, pri, eq) \
   \
   /* Unary test and copy ops. */ \
   _(ISTC,   dst,   ___,   var,   ___) \
