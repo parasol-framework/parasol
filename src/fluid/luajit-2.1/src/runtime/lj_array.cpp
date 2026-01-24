@@ -226,14 +226,6 @@ void LJ_FASTCALL lj_array_free(global_State *g, GCarray *Array)
 
 //********************************************************************************************************************
 
-void * lj_array_index_checked(lua_State *L, GCarray *Array, uint32_t Idx)
-{
-   if (Idx >= Array->len) lj_err_callerv(L, ErrMsg::ARROB, int(Idx), int(Array->len));
-   return lj_array_index(Array, Idx);
-}
-
-//********************************************************************************************************************
-
 void lj_array_copy(lua_State *L, GCarray *Dest, uint32_t DstIdx, GCarray *Src, uint32_t SrcIdx, uint32_t Count)
 {
    // Safety checks - unsigned types can't be negative so just check bounds

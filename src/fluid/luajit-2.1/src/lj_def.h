@@ -25,30 +25,30 @@ constexpr int LJ_MAX_ABITS = 28;      //  Max. bits of array key.
 constexpr uint32_t LJ_MAX_ASIZE = ((1u << (LJ_MAX_ABITS - 1)) + 1);  //  Max. array part size.
 constexpr int LJ_MAX_COLOSIZE = 16;      //  Max. elems for colocated array.
 
-#define LJ_MAX_LINE   LJ_MAX_MEM32   //  Max. source code line number.
-constexpr int LJ_MAX_XLEVEL = 200;      //  Max. syntactic nesting level.
-constexpr uint32_t LJ_MAX_BCINS = (1u << 26);      //  Max. # of bytecode instructions.
+#define LJ_MAX_LINE   LJ_MAX_MEM32     //  Max. source code line number.
+constexpr int LJ_MAX_XLEVEL = 200;     //  Max. syntactic nesting level.
+constexpr uint32_t LJ_MAX_BCINS = (1u << 26); //  Max. # of bytecode instructions.
 constexpr int LJ_MAX_SLOTS = 250;      //  Max. # of slots in a Lua func.
-constexpr int LJ_MAX_LOCVAR = 200;      //  Max. # of local variables.
-constexpr int LJ_MAX_UPVAL = 60;      //  Max. # of upvalues.
+constexpr int LJ_MAX_LOCVAR = 200;     //  Max. # of local variables.
+constexpr int LJ_MAX_UPVAL = 60;       //  Max. # of upvalues.
 
-constexpr int LJ_MAX_IDXCHAIN = 100;      //  __index/__newindex chain limit.
-#define LJ_STACK_EXTRA   (5+2)   //  Extra stack space (metamethods).
+constexpr int LJ_MAX_IDXCHAIN = 100; //  __index/__newindex chain limit.
+#define LJ_STACK_EXTRA   (5+2)       //  Extra stack space (metamethods).
 
 constexpr int LJ_NUM_CBPAGE = 1;      //  Number of FFI callback pages.
 
 // Minimum table/buffer sizes.
-constexpr int LJ_MIN_GLOBAL = 6;      //  Min. global table size (hbits).
-constexpr int LJ_MIN_REGISTRY = 2;      //  Min. registry size (hbits).
-constexpr int LJ_MIN_STRTAB = 256;      //  Min. string table size (pow2).
-constexpr int LJ_MIN_SBUF = 32;      //  Min. string buffer length.
-constexpr int LJ_MIN_VECSZ = 8;      //  Min. size for growable vectors.
-constexpr int LJ_MIN_IRSZ = 32;      //  Min. size for growable IR.
+constexpr int LJ_MIN_GLOBAL = 6;     // Min. global table size (hbits).
+constexpr int LJ_MIN_REGISTRY = 2;   // Min. registry size (hbits).
+constexpr int LJ_MIN_STRTAB = 256;   // Min. string table size (pow2).
+constexpr int LJ_MIN_SBUF = 32;      // Min. string buffer length.
+constexpr int LJ_MIN_VECSZ = 8;      // Min. size for growable vectors.
+constexpr int LJ_MIN_IRSZ = 32;      // Min. size for growable IR.
 
 // JIT compiler limits.
-constexpr int LJ_MAX_JSLOTS = 250;      //  Max. # of stack slots for a trace.
-constexpr int LJ_MAX_PHI = 64;      //  Max. # of PHIs for a loop.
-constexpr int LJ_MAX_EXITSTUBGR = 16;   //  Max. # of exit stub groups.
+constexpr int LJ_MAX_JSLOTS = 250;    // Max. # of stack slots for a trace.
+constexpr int LJ_MAX_PHI = 64;        // Max. # of PHIs for a loop.
+constexpr int LJ_MAX_EXITSTUBGR = 16; // Max. # of exit stub groups.
 
 // Mark unused parameters/variables to suppress compiler warnings.
 // Prefer [[maybe_unused]] attribute directly where possible.

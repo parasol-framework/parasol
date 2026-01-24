@@ -531,8 +531,7 @@ static void LJ_FASTCALL recff_ipairs_aux(jit_State* J, RecordFFData* rd)
       rd->nres = tref_isnil(J->base[1]) ? 0 : 2;
    }
    else if (tref_isarray(ix.tab)) {
-      if (not tvisnumber(&rd->argv[1]))  //  No support for string coercion.
-         lj_trace_err(J, LJ_TRERR_BADTYPE);
+      if (not tvisnumber(&rd->argv[1])) lj_trace_err(J, LJ_TRERR_BADTYPE);  //  No support for string coercion.
 
       GCarray *arr = arrayV(&rd->argv[0]);
       int32_t idx_int;

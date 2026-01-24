@@ -277,7 +277,7 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
       // TEMPORARY: If the callee is IndexedObject, downgrade to Indexed.
       // Currently object methods are resolved via metamethods (__index), so we need
       // the standard TGETS path which dispatches through lj_meta_tget.
-      // This will require removal or modification when OCALL is implemented.
+      // This will require removal or modification when OBCALL is implemented.
 
       if (callee.k IS ExpKind::IndexedObject) callee.k = ExpKind::Indexed;
 
