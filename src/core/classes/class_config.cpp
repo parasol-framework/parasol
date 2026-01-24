@@ -885,7 +885,11 @@ static bool check_for_key(std::string_view Data)
    char first = Data.front();
    if ((first IS '\n') or (first IS '\r') or (first IS '[') or (first IS '#')) return false;
 
-   return Data.find('=') != std::string_view::npos;
+   // Only search for '=' within the current line
+   auto line_end = Data.find_first_of("\n\r");
+   auto eq_pos = Data.find('=');
+
+   return (eq_pos != std::string_view::npos) and ((line_end IS std::string_view::npos) or (eq_pos < line_end));
 }
 
 //********************************************************************************************************************
@@ -988,7 +992,7 @@ static ERR parse_config(extConfig *Self, std::string_view Buffer)
 
    if (Buffer.empty()) return ERR::NoData;
 
-   log.traceBranch("%.20s", Buffer.data());
+   log.traceBranch("%.*s", int(std::min(Buffer.size(), size_t(20))), Buffer.data());
 
    std::string group_name;
    auto data = next_group(Buffer, group_name); // Find the first group
