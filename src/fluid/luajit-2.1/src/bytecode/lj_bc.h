@@ -80,13 +80,13 @@ constexpr uint8_t  NO_REG = BCMAX_A;
   _(ISNEP, var, ___, pri, eq) \
   \
   /* Unary test and copy ops. */ \
-  _(ISTC,   dst,   ___,   var,   ___) \
-  _(ISFC,   dst,   ___,   var,   ___) \
-  _(IST,   ___,   ___,   var,   ___) \
-  _(ISF,   ___,   ___,   var,   ___) \
-  _(ISTYPE,   var,   ___,   lit,   ___) \
-  _(ISNUM,   var,   ___,   lit,   ___) \
-  _(ISEMPTYARR,   var,   ___,   ___,   ___) \
+  _(ISTC,   dst, ___, var, ___) \
+  _(ISFC,   dst, ___, var, ___) \
+  _(IST,    ___, ___, var, ___) \
+  _(ISF,    ___, ___, var, ___) \
+  _(ISTYPE, var, ___, lit, ___) \
+  _(ISNUM,  var, ___, lit, ___) \
+  _(ISEMPTYARR, var, ___, ___, ___) \
   \
   /* Unary ops. */ \
   _(MOV, dst, ___, var, ___) \
@@ -113,8 +113,8 @@ constexpr uint8_t  NO_REG = BCMAX_A;
   _(DIVVV, dst, var, var, div) \
   _(MODVV, dst, var, var, mod) \
   \
-  _(POW,   dst,   var,   var,   pow) \
-  _(CAT,   dst,   rbase,   rbase,   concat) \
+  _(POW, dst, var, var, pow) \
+  _(CAT, dst, rbase, rbase, concat) \
   \
   /* Constant ops. */ \
   _(KSTR,   dst,  ___, str,   ___) \
@@ -149,12 +149,12 @@ constexpr uint8_t  NO_REG = BCMAX_A;
   _(TSETR, var,  var,  var, newindex) \
   \
   /* Array ops. */ \
-  _(AGETV,   dst,   var,   var,   index) \
-  _(AGETB,   dst,   var,   lit,   index) \
-  _(ASETV,   var,   var,   var,   newindex) \
-  _(ASETB,   var,   var,   lit,   newindex) \
-  _(ASGETV,  dst,   var,   var,   index) /* Safe array get (returns nil for out-of-bounds) */ \
-  _(ASGETB,  dst,   var,   lit,   index) /* Safe array get with literal index */ \
+  _(AGETV,  dst, var, var, index) \
+  _(AGETB,  dst, var, lit, index) \
+  _(ASETV,  var, var, var, newindex) \
+  _(ASETB,  var, var, lit, newindex) \
+  _(ASGETV, dst, var, var, index) /* Safe array get (returns nil for out-of-bounds) */ \
+  _(ASGETB, dst, var, lit, index) /* Safe array get with literal index */ \
   \
   /* Object field access ops (specialised for LJ_TOBJECT). */ \
   _(OBGETF, dst,  var, str, index)    /* Object string field get */ \
@@ -183,16 +183,16 @@ constexpr uint8_t  NO_REG = BCMAX_A;
   _(TYPEFIX,   rbase,   ___,   lit,   ___) \
   \
   /* Loops and branches. I/J = interp/JIT, I/C/L = init/call/loop. */ \
-  _(FORI,  base,   ___, jump, ___) \
-  _(JFORI, base,   ___, jump, ___) \
+  _(FORI,  base, ___, jump, ___) \
+  _(JFORI, base, ___, jump, ___) \
   \
-  _(FORL,  base,   ___, jump, ___) \
-  _(IFORL, base,   ___, jump, ___) \
-  _(JFORL, base,   ___, lit,  ___) \
+  _(FORL,  base, ___, jump, ___) \
+  _(IFORL, base, ___, jump, ___) \
+  _(JFORL, base, ___, lit,  ___) \
   \
-  _(ITERL,  base,  ___, jump, ___) \
-  _(IITERL, base,  ___, jump, ___) \
-  _(JITERL, base,  ___, lit,  ___) \
+  _(ITERL,  base, ___, jump, ___) \
+  _(IITERL, base, ___, jump, ___) \
+  _(JITERL, base, ___, lit,  ___) \
   \
   _(LOOP,   rbase, ___, jump, ___) \
   _(ILOOP,  rbase, ___, jump, ___) \
@@ -211,10 +211,10 @@ constexpr uint8_t  NO_REG = BCMAX_A;
   _(FUNCCW, rbase, ___, ___, ___) \
   \
   /* Exception handling. */ \
-  _(TRYENTER,   base,   ___,   lit,   ___) \
-  _(TRYLEAVE,   base,   ___,   ___,   ___) \
-  _(CHECK,   var,   ___,   lit,   ___) \
-  _(RAISE,   var,   ___,   var,   ___)
+  _(TRYENTER, base,  ___, lit, ___) \
+  _(TRYLEAVE, base,  ___, ___, ___) \
+  _(CHECK,    var,   ___, lit, ___) \
+  _(RAISE,    var,   ___, var, ___)
 
 // Bytecode opcode numbers.
 // Explicitly enumerated for debugger visibility and easy value lookup.
