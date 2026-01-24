@@ -18,6 +18,7 @@ constexpr int SIZE_READ = 1024;
 
 #include "lj_obj.h"
 #include "lj_frame.h"
+#include "lj_state.h"
 #include "lauxlib.h"
 
 using namespace pf;
@@ -496,8 +497,8 @@ inline GCobject * push_object(lua_State *Lua, OBJECTPTR Object, bool Detached = 
 
 //********************************************************************************************************************
 // Check if we're in the immediate scope of the current try block.  This is true if the calling Lua function (one
-// frame back) is the same function that contains the try block.  This allows us to distinguish direct C function
-// calls from the try block vs nested Lua function calls.
+// frame back) is the same function that contains the try block AND is at the same stack frame position.  The frame
+// base check is essential for recursive functions where the same GCfunc can appear at multiple stack depths.
 
 [[maybe_unused]] inline bool in_try_immediate_scope(lua_State *L)
 {
@@ -511,7 +512,13 @@ inline GCobject * push_object(lua_State *Lua, OBJECTPTR Object, bool Detached = 
    if (not prev_frame) return false;
    GCfunc *caller_func = frame_func(prev_frame); // Get the function from the previous frame
    if (not caller_func) return false;
-   return caller_func IS try_frame->func;  // Check if the caller is the function containing the try block
+
+   // Check both function identity AND frame position to handle recursive calls correctly
+   if (caller_func != try_frame->func) return false;
+
+   // The caller's base is one slot after its frame link (in LJ_FR2 mode)
+   ptrdiff_t caller_base_offset = savestack(L, prev_frame + 1);
+   return caller_base_offset IS try_frame->frame_base;
 }
 
 [[maybe_unused]] inline void report_action_error(lua_State *Lua, GCobject *Object, CSTRING Action, ERR Error)
