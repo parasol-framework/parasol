@@ -34,8 +34,8 @@ responsible for holding groups of key values expressed as strings.  In the above
 The following source code illustrates how to open the classes.cfg file and read a key from it:
 
 <pre>
-local cfg = obj.new('config', { path='config:classes.cfg' })
-local err, str = cfg.mtReadValue('Action', 'Path')
+cfg = obj.new('config', { path='config:classes.cfg' })
+err, str = cfg.mtReadValue('Action', 'Path')
 print('The Action class is located at ' .. str)
 </pre>
 
@@ -54,7 +54,7 @@ class FilterConfig {
    bool reverse = false;
    bool valid = false;
    std::string name;
-   std::list<std::string> values;
+   std::vector<std::string> values;
 };
 
 static ERR GET_KeyFilter(extConfig *, CSTRING *);
@@ -79,8 +79,8 @@ constexpr int CF_KEY_FAIL = -1;
 static bool check_for_key(std::string_view);
 static ERR parse_config(extConfig *, std::string_view);
 static ConfigKeys * find_group_wild(extConfig *Self, CSTRING Group);
-static void apply_key_filter(extConfig *, CSTRING);
-static void apply_group_filter(extConfig *, CSTRING);
+static void apply_key_filter(extConfig *, std::string_view);
+static void apply_group_filter(extConfig *, std::string_view);
 static class FilterConfig parse_filter(std::string_view, bool);
 
 //********************************************************************************************************************
@@ -93,19 +93,14 @@ static std::string_view next_line(std::string_view Data)
    if (auto newline = Data.find('\n'); newline != std::string_view::npos) {
       Data.remove_prefix(newline + 1);
    }
-   else {
-      return {}; // No more lines
-   }
+   else return {};
 
    // Skip empty lines and leading whitespace
    if (auto pos = Data.find_first_not_of(WHITESPACE); pos != std::string_view::npos) {
       Data.remove_prefix(pos);
+      return Data;
    }
-   else {
-      return {}; // Only whitespace remaining
-   }
-
-   return Data;
+   else return {}; // Only whitespace remaining
 }
 
 //********************************************************************************************************************
@@ -115,7 +110,6 @@ static std::string_view next_group(std::string_view Data, std::string &GroupName
 {
    while (!Data.empty()) {
       if (Data.front() IS '[') {
-         // Find the closing bracket
          auto close = Data.find(']');
          auto newline = Data.find('\n');
 
@@ -173,8 +167,16 @@ static uint32_t calc_crc(extConfig *Self)
 static ERR parse_file(extConfig *Self, CSTRING Path)
 {
    ERR error = ERR::Okay;
-   while ((*Path) and (error IS ERR::Okay)) {
-      objFile::create file = { fl::Path(Path), fl::Flags(FL::READ|FL::APPROXIMATE) };
+   std::string_view paths(Path);
+
+   while (!paths.empty() and (error IS ERR::Okay)) {
+      // Find the next separator
+      auto sep = paths.find_first_of(";|");
+      auto current_path = (sep != std::string_view::npos) ? paths.substr(0, sep) : paths;
+
+      // Create a null-terminated copy for fl::Path
+      std::string path_str(current_path);
+      objFile::create file = { fl::Path(path_str), fl::Flags(FL::READ|FL::APPROXIMATE) };
 
       if (file.ok()) {
          auto filesize = file->get<int>(FID_Size);
@@ -188,8 +190,9 @@ static ERR parse_file(extConfig *Self, CSTRING Path)
       }
       else if ((Self->Flags & CNF::OPTIONAL_FILES) != CNF::NIL) error = ERR::Okay;
 
-      while ((*Path) and (*Path != ';') and (*Path != '|')) Path++;
-      if (*Path) Path++; // Skip separator
+      // Move past this path and the separator
+      if (sep != std::string_view::npos) paths.remove_prefix(sep + 1);
+      else paths = {};
    }
 
    return error;
@@ -264,7 +267,7 @@ static ERR CONFIG_DeleteKey(extConfig *Self, struct cfg::DeleteKey *Args)
    log.msg("Group: %s, Key: %s", Args->Group, Args->Key);
 
    for (auto & [group, keys] : Self->Groups[0]) {
-      if (not group.compare(Args->Group)) {
+      if (group IS Args->Group) {
          keys.erase(Args->Key);
          return ERR::Okay;
       }
@@ -295,9 +298,9 @@ static ERR CONFIG_DeleteGroup(extConfig *Self, struct cfg::DeleteGroup *Args)
    if ((not Args) or (not Args->Group)) return ERR::NullArgs;
 
    for (auto it = Self->Groups->begin(); it != Self->Groups->end(); it++) {
-      if (not it->first.compare(Args->Group)) {
+      if (it->first IS Args->Group) {
          Self->Groups->erase(it);
-         return(ERR::Okay);
+         return ERR::Okay;
       }
    }
 
@@ -504,14 +507,14 @@ static ERR CONFIG_ReadValue(extConfig *Self, struct cfg::ReadValue *Args)
    if (not Args) return log.warning(ERR::NullArgs);
 
    for (auto & [group, keys] : Self->Groups[0]) {
-      if ((Args->Group) and (group.compare(Args->Group))) continue;
+      if ((Args->Group) and (group != Args->Group)) continue;
 
       if (not Args->Key) {
          Args->Data = keys.cbegin()->second.c_str();
          return ERR::Okay;
       }
-      else if (keys.contains(Args->Key)) {
-         Args->Data = keys[Args->Key].c_str();
+      else if (auto it = keys.find(Args->Key); it != keys.end()) {
+         Args->Data = it->second.c_str();
          return ERR::Okay;
       }
    }
@@ -564,14 +567,19 @@ static ERR CONFIG_SaveToObject(extConfig *Self, struct acSaveToObject *Args)
 
    log.msg("Saving %d groups to object #%d.", (int)Self->Groups->size(), Args->Dest->UID);
 
+   std::string buffer;
+   buffer.reserve(256);
+
    ConfigGroups &groups = Self->Groups[0];
    for (auto & [group, keys] : groups) {
-      std::string out_group("\n[" + group + "]\n");
-      acWrite(Args->Dest, out_group.c_str(), out_group.size(), nullptr);
+      buffer.clear();
+      buffer += "\n[" + group + "]\n";
+      acWrite(Args->Dest, buffer.c_str(), buffer.size(), nullptr);
 
       for (auto & [k, v] : keys) {
-         std::string kv(k + " = " + v + "\n");
-         acWrite(Args->Dest, kv.c_str(), kv.size(), nullptr);
+         buffer.clear();
+         buffer += k + " = " + v + '\n';
+         acWrite(Args->Dest, buffer.c_str(), buffer.size(), nullptr);
       }
    }
 
@@ -699,7 +707,7 @@ static ERR CONFIG_WriteValue(extConfig *Self, struct cfg::WriteValue *Args)
 
    ConfigGroups &groups = *Self->Groups;
    for (auto & [group, keys] : groups) {
-      if (not group.compare(Args->Group)) {
+      if (group IS Args->Group) {
          keys[Args->Key] = Args->Data;
          return ERR::Okay;
       }
@@ -890,7 +898,7 @@ void merge_groups(ConfigGroups &Dest, ConfigGroups &Source)
       // Check if the group already exists and merge the keys
 
       for (auto & [dest_group, dest_keys] : Dest) {
-         if (not dest_group.compare(src_group)) {
+         if (dest_group IS src_group) {
             processed = true;
             for (auto & [k, v] : src_keys) {
                dest_keys[k] = v;
@@ -1053,13 +1061,13 @@ static ERR parse_config(extConfig *Self, std::string_view Buffer)
 
 //********************************************************************************************************************
 
-static void apply_key_filter(extConfig *Self, CSTRING Filter)
+static void apply_key_filter(extConfig *Self, std::string_view Filter)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((not Filter) or (not Filter[0])) return;
+   if (Filter.empty()) return;
 
-   log.branch("Filter: %s", Filter);
+   log.branch("Filter: %.*s", int(Filter.size()), Filter.data());
 
    FilterConfig f = parse_filter(Filter, true);
    if (not f.valid) return;
@@ -1085,13 +1093,13 @@ static void apply_key_filter(extConfig *Self, CSTRING Filter)
 
 //********************************************************************************************************************
 
-static void apply_group_filter(extConfig *Self, CSTRING Filter)
+static void apply_group_filter(extConfig *Self, std::string_view Filter)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((not Filter) or (not Filter[0])) return;
+   if (Filter.empty()) return;
 
-   log.branch("Filter: %s", Filter);
+   log.branch("Filter: %.*s", int(Filter.size()), Filter.data());
 
    FilterConfig f = parse_filter(Filter, false);
    if (not f.valid) return;
@@ -1099,7 +1107,7 @@ static void apply_group_filter(extConfig *Self, CSTRING Filter)
    for (auto group = Self->Groups->begin(); group != Self->Groups->end(); ) {
       bool matched = f.reverse ? true : false;
       for (auto const &cmp : f.values) {
-         if (not cmp.compare(group->first)) {
+         if (cmp IS group->first) {
             matched = f.reverse ? false : true;
             break;
          }
