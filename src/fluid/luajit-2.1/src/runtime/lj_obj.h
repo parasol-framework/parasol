@@ -616,14 +616,12 @@ inline constexpr int LJ_MAX_TRY_DEPTH = 32;
 // reallocated during execution.  Use savestack(L, ptr) to convert to offset, restorestack(L, offset) to convert back.
 
 struct TryFrame {
-   uint16_t  try_block_index;  // Index into GCproto::try_blocks
-   uint16_t  catch_depth;      // Depth of stack at try entry
+   GCfunc    *func;            // Function containing the try block
    ptrdiff_t frame_base;       // Offset of L->base when BC_TRYENTER executed
    ptrdiff_t saved_top;        // Offset of L->top when BC_TRYENTER executed
-   BCREG     saved_nactvar;    // Active slot count at try entry (first free register)
-   GCfunc   *func;             // Function containing the try block
-   uint8_t   depth;            // Nesting depth for validation
+   uint16_t  try_block_index;  // Index into GCproto::try_blocks
    uint8_t   flags;            // Copy of TryBlockDesc.flags (e.g. TRY_FLAG_TRACE)
+   BCREG     saved_nactvar;    // Active slot count at try entry (first free register)
 };
 
 // Stack of try frames for exception unwinding

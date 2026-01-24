@@ -17,6 +17,8 @@ constexpr int SIZE_READ = 1024;
 #include <concepts>
 
 #include "lj_obj.h"
+#include "lj_frame.h"
+#include "lj_state.h"
 #include "lauxlib.h"
 
 using namespace pf;
@@ -491,4 +493,37 @@ inline GCobject * push_object(lua_State *Lua, OBJECTPTR Object, bool Detached = 
 {
    load_include_for_class(Lua, Object->Class);
    return lua_pushobject(Lua, Object->UID, nullptr, Object->Class, Detached ? GCOBJ_DETACHED : 0);
+}
+
+//********************************************************************************************************************
+// Check if we're in the immediate scope of the current try block.  This is true if the calling Lua function (one
+// frame back) is the same function that contains the try block AND is at the same stack frame position.  The frame
+// base check is essential for recursive functions where the same GCfunc can appear at multiple stack depths.
+
+[[maybe_unused]] inline bool in_try_immediate_scope(lua_State *L)
+{
+   if (L->try_stack.depth IS 0) return false;
+
+   const TryFrame *try_frame = &L->try_stack.frames[L->try_stack.depth - 1];
+   if (not try_frame->func) return false;
+
+   TValue *current_frame = L->base - 1;
+   TValue *prev_frame = frame_prev(current_frame); // Go to previous frame (the Lua caller)
+   if (not prev_frame) return false;
+   GCfunc *caller_func = frame_func(prev_frame); // Get the function from the previous frame
+   if (not caller_func) return false;
+
+   // Check both function identity AND frame position to handle recursive calls correctly
+   if (caller_func != try_frame->func) return false;
+
+   // The caller's base is one slot after its frame link (in LJ_FR2 mode)
+   ptrdiff_t caller_base_offset = savestack(L, prev_frame + 1);
+   return caller_base_offset IS try_frame->frame_base;
+}
+
+[[maybe_unused]] inline void report_action_error(lua_State *Lua, GCobject *Object, CSTRING Action, ERR Error)
+{
+   if ((Error >= ERR::ExceptionThreshold) and in_try_immediate_scope(Lua)) {
+      luaL_error(Lua, Error, "%s.%s() failed: %s", Object->classptr->ClassName, Action, GetErrorMsg(Error));
+   }
 }

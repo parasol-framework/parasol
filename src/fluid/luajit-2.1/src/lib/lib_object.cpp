@@ -129,17 +129,6 @@ inline void SET_CONTEXT(lua_State *Lua, APTR Function) {
 //********************************************************************************************************************
 // Action jump table implementation
 
-inline void report_action_error(lua_State *Lua, GCobject *Object, CSTRING Action, ERR Error)
-{
-   auto prv = (prvFluid *)Lua->script->ChildPrivate;
-   if ((Error >= ERR::ExceptionThreshold) and (Lua->try_stack.depth)) {
-      int16_t depth = Lua->base - tvref(Lua->stack);
-      if (depth IS Lua->try_stack.frames[Lua->try_stack.depth-1].catch_depth) {
-         luaL_error(prv->Lua, Error, "%s.%s() failed: %s", Object->classptr->ClassName, Action, GetErrorMsg(Error));
-      }
-   }
-}
-
 static int action_activate(lua_State *Lua)
 {
    auto obj_ref = object_context(Lua);

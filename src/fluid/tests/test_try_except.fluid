@@ -655,6 +655,13 @@ end
    except e
       error(f"AllocMemory() should not have its ERR code tested.")
    end
+
+   t = obj.new('time', { })
+   try
+      t.acDraw()
+   success
+      error("acDraw() on time object should raise an error")
+   end
 end
 
 -----------------------------------------------------------------------------------------------------------------------

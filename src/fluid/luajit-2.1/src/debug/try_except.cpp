@@ -98,9 +98,7 @@ extern "C" void lj_try_enter(lua_State *L, GCfunc *Func, TValue *Base, uint16_t 
    try_frame->saved_top       = saved_top_offset;
    try_frame->saved_nactvar   = BCREG(block_desc->entry_slots);
    try_frame->func            = Func;
-   try_frame->depth           = (uint8_t)L->try_stack.depth;
    try_frame->flags           = block_desc->flags;
-   try_frame->catch_depth     = Base - tvref(L->stack) + 2;
 }
 
 //********************************************************************************************************************

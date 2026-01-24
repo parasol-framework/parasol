@@ -283,7 +283,7 @@ static int module_test(lua_State *Lua)
 static int module_load(lua_State *Lua)
 {
    auto modname = luaL_checkstring(Lua, 1);
-   if (!modname) {
+   if (not modname) {
       luaL_argerror(Lua, 1, "String expected for module name.");
       return 0;
    }
@@ -407,18 +407,15 @@ static int module_call(lua_State *Lua)
    };
 
    auto prv = (prvFluid *)Self->ChildPrivate;
-   if (!prv) {
+   if (not prv) {
       log.warning(ERR::ObjectCorrupt);
       return 0;
    }
 
    auto mod = (module *)get_meta(Lua, lua_upvalueindex(1), "Fluid.mod");
-   if (!mod) {
-      luaL_error(Lua, ERR::Args, "module_call() expected module in upvalue.");
-      return 0;
-   }
+   if (not mod) luaL_error(Lua, ERR::Args, "module_call() expected module in upvalue.");
 
-   if (!mod->Functions) return 0;
+   if (not mod->Functions) return 0;
 
    auto index = lua_tointeger(Lua, lua_upvalueindex(2));
    int nargs = lua_gettop(Lua);
@@ -432,7 +429,7 @@ static int module_call(lua_State *Lua)
    log.trace("%s() Index: %d, Args: %d", mod->Functions[index].Name, index, nargs);
 
    const FunctionField *args;
-   if (!(args = mod->Functions[index].Args)) {
+   if (not (args = mod->Functions[index].Args)) {
       auto function = (void (*)(void))mod->Functions[index].Address;
       function();
       return 0;
@@ -932,12 +929,9 @@ static int module_call(lua_State *Lua)
          }
          else {
             lua_pushinteger(Lua, (int)rc);
-            if ((Lua->try_stack.depth) and (restype & FD_ERROR) and (rc >= int(ERR::ExceptionThreshold))) {
+            if ((restype & FD_ERROR) and (rc >= int(ERR::ExceptionThreshold)) and in_try_immediate_scope(Lua)) {
                // Scope isolation: Only throw exceptions for direct calls within the try block.
-               int16_t depth = Lua->base - tvref(Lua->stack);
-               if (depth IS Lua->try_stack.frames[Lua->try_stack.depth-1].catch_depth) {
-                  luaL_error(Lua, ERR(rc));
-               }
+               luaL_error(Lua, ERR(rc));
             }
          }
       }
@@ -973,7 +967,7 @@ static int process_results(prvFluid *prv, APTR resultsidx, const FunctionField *
    for (int i=1; args[i].Name; i++) {
       const auto argtype = args[i].Type;
 
-      if ((argtype & FD_ARRAY) and (!(argtype & FD_BUFFER))) {
+      if ((argtype & FD_ARRAY) and (not (argtype & FD_BUFFER))) {
          if (argtype & FD_RESULT) {
             auto var = ((APTR *)scan)[0];
             scan += sizeof(APTR);
