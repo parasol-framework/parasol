@@ -51,87 +51,87 @@ constexpr uint8_t  NO_REG = BCMAX_A;
 #define BCINS_AD(o, a, d)     (((BCIns)(o))|((BCIns)(a)<<8)|((BCIns)(d)<<16))
 #define BCINS_AJ(o, a, j)     BCINS_AD(o, a, (BCPOS)((int32_t)(j)+BCBIAS_J))
 
-/* Bytecode instruction definition. Order matters, see below.
-**
-** (name, filler, Amode, Bmode, Cmode or Dmode, metamethod)
-**
-** The opcode name suffixes specify the type for RB/RC or RD:
-** V = variable slot
-** S = string const
-** N = number const
-** P = primitive type (~itype)
-** B = unsigned byte literal
-** M = multiple args/results
-*/
+// Bytecode instruction definition. Order matters, see below.
+//
+// (name, filler, Amode, Bmode, Cmode or Dmode, metamethod)
+//
+// The opcode name suffixes specify the type for RB/RC or RD:
+// V = variable slot
+// S = string const
+// N = number const
+// P = primitive type (~itype)
+// B = unsigned byte literal
+// M = multiple args/results
+
 #define BCDEF(_) \
   /* Comparison ops. ORDER OPR. */ \
-  _(ISLT,   var,   ___,   var,   lt) \
-  _(ISGE,   var,   ___,   var,   lt) \
-  _(ISLE,   var,   ___,   var,   le) \
-  _(ISGT,   var,   ___,   var,   le) \
+  _(ISLT, var, ___, var, lt) \
+  _(ISGE, var, ___, var, lt) \
+  _(ISLE, var, ___, var, le) \
+  _(ISGT, var, ___, var, le) \
   \
-  _(ISEQV,   var,   ___,   var,   eq) \
-  _(ISNEV,   var,   ___,   var,   eq) \
-  _(ISEQS,   var,   ___,   str,   eq) \
-  _(ISNES,   var,   ___,   str,   eq) \
-  _(ISEQN,   var,   ___,   num,   eq) \
-  _(ISNEN,   var,   ___,   num,   eq) \
-  _(ISEQP,   var,   ___,   pri,   eq) \
-  _(ISNEP,   var,   ___,   pri,   eq) \
+  _(ISEQV, var, ___, var, eq) \
+  _(ISNEV, var, ___, var, eq) \
+  _(ISEQS, var, ___, str, eq) \
+  _(ISNES, var, ___, str, eq) \
+  _(ISEQN, var, ___, num, eq) \
+  _(ISNEN, var, ___, num, eq) \
+  _(ISEQP, var, ___, pri, eq) \
+  _(ISNEP, var, ___, pri, eq) \
   \
   /* Unary test and copy ops. */ \
-  _(ISTC,   dst,   ___,   var,   ___) \
-  _(ISFC,   dst,   ___,   var,   ___) \
-  _(IST,   ___,   ___,   var,   ___) \
-  _(ISF,   ___,   ___,   var,   ___) \
-  _(ISTYPE,   var,   ___,   lit,   ___) \
-  _(ISNUM,   var,   ___,   lit,   ___) \
-  _(ISEMPTYARR,   var,   ___,   ___,   ___) \
+  _(ISTC,   dst, ___, var, ___) \
+  _(ISFC,   dst, ___, var, ___) \
+  _(IST,    ___, ___, var, ___) \
+  _(ISF,    ___, ___, var, ___) \
+  _(ISTYPE, var, ___, lit, ___) \
+  _(ISNUM,  var, ___, lit, ___) \
+  _(ISEMPTYARR, var, ___, ___, ___) \
   \
   /* Unary ops. */ \
-  _(MOV,   dst,   ___,   var,   ___) \
-  _(NOT,   dst,   ___,   var,   ___) \
-  _(UNM,   dst,   ___,   var,   unm) \
-  _(LEN,   dst,   ___,   var,   len) \
+  _(MOV, dst, ___, var, ___) \
+  _(NOT, dst, ___, var, ___) \
+  _(UNM, dst, ___, var, unm) \
+  _(LEN, dst, ___, var, len) \
   \
   /* Binary ops. ORDER OPR. VV last, POW must be next. */ \
-  _(ADDVN,   dst,   var,   num,   add) \
-  _(SUBVN,   dst,   var,   num,   sub) \
-  _(MULVN,   dst,   var,   num,   mul) \
-  _(DIVVN,   dst,   var,   num,   div) \
-  _(MODVN,   dst,   var,   num,   mod) \
+  _(ADDVN, dst, var, num, add) \
+  _(SUBVN, dst, var, num, sub) \
+  _(MULVN, dst, var, num, mul) \
+  _(DIVVN, dst, var, num, div) \
+  _(MODVN, dst, var, num, mod) \
   \
-  _(ADDNV,   dst,   var,   num,   add) \
-  _(SUBNV,   dst,   var,   num,   sub) \
-  _(MULNV,   dst,   var,   num,   mul) \
-  _(DIVNV,   dst,   var,   num,   div) \
-  _(MODNV,   dst,   var,   num,   mod) \
+  _(ADDNV, dst, var, num, add) \
+  _(SUBNV, dst, var, num, sub) \
+  _(MULNV, dst, var, num, mul) \
+  _(DIVNV, dst, var, num, div) \
+  _(MODNV, dst, var, num, mod) \
   \
-  _(ADDVV,   dst,   var,   var,   add) \
-  _(SUBVV,   dst,   var,   var,   sub) \
-  _(MULVV,   dst,   var,   var,   mul) \
-  _(DIVVV,   dst,   var,   var,   div) \
-  _(MODVV,   dst,   var,   var,   mod) \
+  _(ADDVV, dst, var, var, add) \
+  _(SUBVV, dst, var, var, sub) \
+  _(MULVV, dst, var, var, mul) \
+  _(DIVVV, dst, var, var, div) \
+  _(MODVV, dst, var, var, mod) \
   \
-  _(POW,   dst,   var,   var,   pow) \
-  _(CAT,   dst,   rbase,   rbase,   concat) \
+  _(POW, dst, var, var, pow) \
+  _(CAT, dst, rbase, rbase, concat) \
   \
   /* Constant ops. */ \
-  _(KSTR,   dst,   ___,   str,   ___) \
-  _(KCDATA,   dst,   ___,   cdata,   ___) \
-  _(KSHORT,   dst,   ___,   lits,   ___) \
-  _(KNUM,   dst,   ___,   num,   ___) \
-  _(KPRI,   dst,   ___,   pri,   ___) \
-  _(KNIL,   base,   ___,   base,   ___) \
+  _(KSTR,   dst,  ___, str,   ___) \
+  _(KCDATA, dst,  ___, cdata, ___) \
+  _(KSHORT, dst,  ___, lits,  ___) \
+  _(KNUM,   dst,  ___, num,   ___) \
+  _(KPRI,   dst,  ___, pri,   ___) \
+  _(KNIL,   base, ___, base,  ___) \
   \
   /* Upvalue and function ops. */ \
-  _(UGET,   dst,   ___,   uv,   ___) \
-  _(USETV,   uv,   ___,   var,   ___) \
-  _(USETS,   uv,   ___,   str,   ___) \
-  _(USETN,   uv,   ___,   num,   ___) \
-  _(USETP,   uv,   ___,   pri,   ___) \
-  _(UCLO,   rbase,   ___,   jump,   ___) \
-  _(FNEW,   dst,   ___,   func,   gc) \
+  _(UGET,  dst,   ___, uv,   ___) \
+  _(USETV, uv,    ___, var,  ___) \
+  _(USETS, uv,    ___, str,  ___) \
+  _(USETN, uv,    ___, num,  ___) \
+  _(USETP, uv,    ___, pri,  ___) \
+  _(UCLO,  rbase, ___, jump, ___) \
+  _(FNEW,  dst,   ___, func, gc) \
   \
   /* Table ops. */ \
   _(TNEW,  dst,  ___,  lit, gc) \
@@ -149,12 +149,12 @@ constexpr uint8_t  NO_REG = BCMAX_A;
   _(TSETR, var,  var,  var, newindex) \
   \
   /* Array ops. */ \
-  _(AGETV,   dst,   var,   var,   index) \
-  _(AGETB,   dst,   var,   lit,   index) \
-  _(ASETV,   var,   var,   var,   newindex) \
-  _(ASETB,   var,   var,   lit,   newindex) \
-  _(ASGETV,  dst,   var,   var,   index) /* Safe array get (returns nil for out-of-bounds) */ \
-  _(ASGETB,  dst,   var,   lit,   index) /* Safe array get with literal index */ \
+  _(AGETV,  dst, var, var, index) \
+  _(AGETB,  dst, var, lit, index) \
+  _(ASETV,  var, var, var, newindex) \
+  _(ASETB,  var, var, lit, newindex) \
+  _(ASGETV, dst, var, var, index) /* Safe array get (returns nil for out-of-bounds) */ \
+  _(ASGETB, dst, var, lit, index) /* Safe array get with literal index */ \
   \
   /* Object field access ops (specialised for LJ_TOBJECT). */ \
   _(OBGETF, dst,  var, str, index)    /* Object string field get */ \
@@ -183,16 +183,16 @@ constexpr uint8_t  NO_REG = BCMAX_A;
   _(TYPEFIX,   rbase,   ___,   lit,   ___) \
   \
   /* Loops and branches. I/J = interp/JIT, I/C/L = init/call/loop. */ \
-  _(FORI,  base,   ___, jump, ___) \
-  _(JFORI, base,   ___, jump, ___) \
+  _(FORI,  base, ___, jump, ___) \
+  _(JFORI, base, ___, jump, ___) \
   \
-  _(FORL,  base,   ___, jump, ___) \
-  _(IFORL, base,   ___, jump, ___) \
-  _(JFORL, base,   ___, lit,  ___) \
+  _(FORL,  base, ___, jump, ___) \
+  _(IFORL, base, ___, jump, ___) \
+  _(JFORL, base, ___, lit,  ___) \
   \
-  _(ITERL,  base,  ___, jump, ___) \
-  _(IITERL, base,  ___, jump, ___) \
-  _(JITERL, base,  ___, lit,  ___) \
+  _(ITERL,  base, ___, jump, ___) \
+  _(IITERL, base, ___, jump, ___) \
+  _(JITERL, base, ___, lit,  ___) \
   \
   _(LOOP,   rbase, ___, jump, ___) \
   _(ILOOP,  rbase, ___, jump, ___) \
@@ -201,20 +201,20 @@ constexpr uint8_t  NO_REG = BCMAX_A;
   _(JMP,   rbase,   ___,   jump,   ___) \
   \
   /* Function headers. I/J = interp/JIT, F/V/C = fixarg/vararg/C func. */ \
-  _(FUNCF,   rbase,   ___,   ___,   ___) \
-  _(IFUNCF,   rbase,   ___,   ___,   ___) \
-  _(JFUNCF,   rbase,   ___,   lit,   ___) \
-  _(FUNCV,   rbase,   ___,   ___,   ___) \
-  _(IFUNCV,   rbase,   ___,   ___,   ___) \
-  _(JFUNCV,   rbase,   ___,   lit,   ___) \
-  _(FUNCC,   rbase,   ___,   ___,   ___) \
-  _(FUNCCW,   rbase,   ___,   ___,   ___) \
+  _(FUNCF,  rbase, ___, ___, ___) \
+  _(IFUNCF, rbase, ___, ___, ___) \
+  _(JFUNCF, rbase, ___, lit, ___) \
+  _(FUNCV,  rbase, ___, ___, ___) \
+  _(IFUNCV, rbase, ___, ___, ___) \
+  _(JFUNCV, rbase, ___, lit, ___) \
+  _(FUNCC,  rbase, ___, ___, ___) \
+  _(FUNCCW, rbase, ___, ___, ___) \
   \
   /* Exception handling. */ \
-  _(TRYENTER,   base,   ___,   lit,   ___) \
-  _(TRYLEAVE,   base,   ___,   ___,   ___) \
-  _(CHECK,   var,   ___,   lit,   ___) \
-  _(RAISE,   var,   ___,   var,   ___)
+  _(TRYENTER, base,  ___, lit, ___) \
+  _(TRYLEAVE, base,  ___, ___, ___) \
+  _(CHECK,    var,   ___, lit, ___) \
+  _(RAISE,    var,   ___, var, ___)
 
 // Bytecode opcode numbers.
 // Explicitly enumerated for debugger visibility and easy value lookup.
@@ -434,7 +434,7 @@ typedef enum {
 #define bcmode_b(op)   ((BCMode)((lj_bc_mode[op]>>3) & 15))
 #define bcmode_c(op)   ((BCMode)((lj_bc_mode[op]>>7) & 15))
 #define bcmode_d(op)   bcmode_c(op)
-#define bcmode_hasd(op)   ((lj_bc_mode[op] & (15<<3)) == (BCMnone<<3))
+#define bcmode_hasd(op) ((lj_bc_mode[op] & (15<<3)) == (BCMnone<<3))
 #define bcmode_mm(op)   ((MMS)(lj_bc_mode[op]>>11))
 
 #define BCMODE(name, ma, mb, mc, mm) \
@@ -443,7 +443,7 @@ typedef enum {
 
 static LJ_AINLINE int bc_isret(BCOp op)
 {
-   return (op == BC_RETM || op == BC_RET || op == BC_RET0 || op == BC_RET1);
+   return (op == BC_RETM or op == BC_RET or op == BC_RET0 or op == BC_RET1);
 }
 
 LJ_DATA const uint16_t lj_bc_mode[];
