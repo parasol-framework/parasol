@@ -1,5 +1,5 @@
 // Native Parasol object library.
-// Copyright (C) 2025 Paul Manias.
+// Copyright (C) 2025-2026 Paul Manias.
 //
 // The core's technical design means that any object that is not *directly* owned by the Lua Script must be treated as
 // external to that script.  External objects must be locked appropriately whenever they are used.  Locking
@@ -14,7 +14,6 @@
 #include "lua.h"
 #include "lauxlib.h"
 #include "lualib.h"
-
 #include "lj_obj.h"
 #include "lj_gc.h"
 #include "lj_err.h"
@@ -993,21 +992,27 @@ static int object_init(lua_State *Lua)
 
 //********************************************************************************************************************
 
-static const luaL_Reg objectlib_methods[] = {
-   { "__index",    object_index },
-   { "__newindex", object_newindex },
-   { nullptr, nullptr }
-};
-
 #include "lj_libdef.h"
 
 extern "C" int luaopen_object(lua_State *L)
 {
    LJ_LIB_REG(L, "obj", object);
-   luaL_openlib(L, nullptr, objectlib_methods, 0);
+   // Stack: [..., obj_lib_table]
 
-   lua_pushvalue(L, -1);
-   lua_setbasemetatable(L, LJ_TOBJECT);
+   GCtab *lib = tabV(L->top - 1);
+   global_State *g = G(L);
+
+   // Add __index and __newindex metamethods directly to the library table.
+   // These are called via the fallback path when BC_OBGETF/BC_OBSETF aren't used.
+   lua_pushcfunction(L, object_index);
+   lua_setfield(L, -2, "__index");
+
+   lua_pushcfunction(L, object_newindex);
+   lua_setfield(L, -2, "__newindex");
+
+   // Use the library table directly as the base metatable for objects.
+   // NOBARRIER: basemt is a GC root.
+   setgcref(basemt_it(g, LJ_TOBJECT), obj2gco(lib));
 
    // Register obj interface prototypes for compile-time type inference
    reg_iface_prototype("obj", "new", { FluidType::Object }, { FluidType::Str });

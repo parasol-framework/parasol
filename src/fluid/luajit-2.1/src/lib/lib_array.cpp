@@ -13,7 +13,6 @@
 #include "lua.h"
 #include "lauxlib.h"
 #include "lualib.h"
-
 #include "lj_obj.h"
 #include "lj_gc.h"
 #include "lj_err.h"
