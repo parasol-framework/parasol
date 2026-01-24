@@ -89,29 +89,29 @@ constexpr uint8_t  NO_REG = BCMAX_A;
   _(ISEMPTYARR,   var,   ___,   ___,   ___) \
   \
   /* Unary ops. */ \
-  _(MOV,   dst,   ___,   var,   ___) \
-  _(NOT,   dst,   ___,   var,   ___) \
-  _(UNM,   dst,   ___,   var,   unm) \
-  _(LEN,   dst,   ___,   var,   len) \
+  _(MOV, dst, ___, var, ___) \
+  _(NOT, dst, ___, var, ___) \
+  _(UNM, dst, ___, var, unm) \
+  _(LEN, dst, ___, var, len) \
   \
   /* Binary ops. ORDER OPR. VV last, POW must be next. */ \
-  _(ADDVN,   dst,   var,   num,   add) \
-  _(SUBVN,   dst,   var,   num,   sub) \
-  _(MULVN,   dst,   var,   num,   mul) \
-  _(DIVVN,   dst,   var,   num,   div) \
-  _(MODVN,   dst,   var,   num,   mod) \
+  _(ADDVN, dst, var, num, add) \
+  _(SUBVN, dst, var, num, sub) \
+  _(MULVN, dst, var, num, mul) \
+  _(DIVVN, dst, var, num, div) \
+  _(MODVN, dst, var, num, mod) \
   \
-  _(ADDNV,   dst,   var,   num,   add) \
-  _(SUBNV,   dst,   var,   num,   sub) \
-  _(MULNV,   dst,   var,   num,   mul) \
-  _(DIVNV,   dst,   var,   num,   div) \
-  _(MODNV,   dst,   var,   num,   mod) \
+  _(ADDNV, dst, var, num, add) \
+  _(SUBNV, dst, var, num, sub) \
+  _(MULNV, dst, var, num, mul) \
+  _(DIVNV, dst, var, num, div) \
+  _(MODNV, dst, var, num, mod) \
   \
-  _(ADDVV,   dst,   var,   var,   add) \
-  _(SUBVV,   dst,   var,   var,   sub) \
-  _(MULVV,   dst,   var,   var,   mul) \
-  _(DIVVV,   dst,   var,   var,   div) \
-  _(MODVV,   dst,   var,   var,   mod) \
+  _(ADDVV, dst, var, var, add) \
+  _(SUBVV, dst, var, var, sub) \
+  _(MULVV, dst, var, var, mul) \
+  _(DIVVV, dst, var, var, div) \
+  _(MODVV, dst, var, var, mod) \
   \
   _(POW,   dst,   var,   var,   pow) \
   _(CAT,   dst,   rbase,   rbase,   concat) \
@@ -201,14 +201,14 @@ constexpr uint8_t  NO_REG = BCMAX_A;
   _(JMP,   rbase,   ___,   jump,   ___) \
   \
   /* Function headers. I/J = interp/JIT, F/V/C = fixarg/vararg/C func. */ \
-  _(FUNCF,   rbase,   ___,   ___,   ___) \
-  _(IFUNCF,   rbase,   ___,   ___,   ___) \
-  _(JFUNCF,   rbase,   ___,   lit,   ___) \
-  _(FUNCV,   rbase,   ___,   ___,   ___) \
-  _(IFUNCV,   rbase,   ___,   ___,   ___) \
-  _(JFUNCV,   rbase,   ___,   lit,   ___) \
-  _(FUNCC,   rbase,   ___,   ___,   ___) \
-  _(FUNCCW,   rbase,   ___,   ___,   ___) \
+  _(FUNCF,  rbase, ___, ___, ___) \
+  _(IFUNCF, rbase, ___, ___, ___) \
+  _(JFUNCF, rbase, ___, lit, ___) \
+  _(FUNCV,  rbase, ___, ___, ___) \
+  _(IFUNCV, rbase, ___, ___, ___) \
+  _(JFUNCV, rbase, ___, lit, ___) \
+  _(FUNCC,  rbase, ___, ___, ___) \
+  _(FUNCCW, rbase, ___, ___, ___) \
   \
   /* Exception handling. */ \
   _(TRYENTER,   base,   ___,   lit,   ___) \
