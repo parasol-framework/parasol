@@ -510,7 +510,8 @@ static ERR CONFIG_ReadValue(extConfig *Self, struct cfg::ReadValue *Args)
       if ((Args->Group) and (group != Args->Group)) continue;
 
       if (not Args->Key) {
-         Args->Data = keys.cbegin()->second.c_str();
+         if (keys.empty()) Args->Data = "";
+         else Args->Data = keys.cbegin()->second.c_str();
          return ERR::Okay;
       }
       else if (auto it = keys.find(Args->Key); it != keys.end()) {
