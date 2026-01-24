@@ -22,6 +22,7 @@
 #include "lj_strscan.h"
 #include "lj_strfmt.h"
 #include "lj_thunk.h"
+#include "lj_object.h"
 #include "stack_helpers.h"
 #include "lib.h"
 
