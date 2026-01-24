@@ -85,31 +85,53 @@ static class FilterConfig parse_filter(std::string_view, bool);
 
 //********************************************************************************************************************
 
-template <class T>
-T next_line(T Data)
+static std::string_view next_line(std::string_view Data)
 {
-   while ((*Data != '\n') and (*Data)) Data++;
-   while ((*Data) and (*Data <= 0x20)) Data++; // Skip empty lines and any leading whitespace
+   constexpr std::string_view WHITESPACE = " \t\n\r";
+
+   // Find the end of the current line
+   if (auto newline = Data.find('\n'); newline != std::string_view::npos) {
+      Data.remove_prefix(newline + 1);
+   }
+   else {
+      return {}; // No more lines
+   }
+
+   // Skip empty lines and leading whitespace
+   if (auto pos = Data.find_first_not_of(WHITESPACE); pos != std::string_view::npos) {
+      Data.remove_prefix(pos);
+   }
+   else {
+      return {}; // Only whitespace remaining
+   }
+
    return Data;
 }
 
 //********************************************************************************************************************
 // Searches for the next group in a text buffer, returns its name and the start of the first key value.
 
-template <class T>
-T next_group(T Data, std::string &GroupName)
+static std::string_view next_group(std::string_view Data, std::string &GroupName)
 {
-   while (*Data) {
-      if (*Data IS '[') {
-         int len;
-         for (len=1; (Data[len] != '\n') and (Data[len]); len++) {
-            if (Data[len] IS '[') break; // Invalid character check
-            if (Data[len] IS ']') {
-               GroupName.assign(Data, 1, len-1);
-               return next_line(Data+len); // Skip all trailing characters to reach the next line
-            }
+   while (!Data.empty()) {
+      if (Data.front() IS '[') {
+         // Find the closing bracket
+         auto close = Data.find(']');
+         auto newline = Data.find('\n');
+
+         // Check for invalid '[' before ']'
+         auto next_open = Data.find('[', 1);
+         if ((next_open != std::string_view::npos) and (next_open < close)) {
+            // Invalid nested '[', skip past it
+            Data.remove_prefix(next_open);
+            continue;
          }
-         Data += len;
+
+         if ((close != std::string_view::npos) and ((newline IS std::string_view::npos) or (close < newline))) {
+            GroupName = Data.substr(1, close - 1);
+            Data.remove_prefix(close + 1);
+            return next_line(Data);
+         }
       }
       Data = next_line(Data);
    }
@@ -158,15 +180,10 @@ static ERR parse_file(extConfig *Self, CSTRING Path)
          auto filesize = file->get<int>(FID_Size);
 
          if (filesize > 0) {
-            STRING data;
-            if (AllocMemory(filesize + 3, MEM::DATA|MEM::NO_CLEAR, (APTR *)&data, nullptr) IS ERR::Okay) {
-               file->read(data, filesize); // Read the entire file
-               data[filesize++] = '\n';
-               data[filesize] = 0;
-               error = parse_config(Self, (CSTRING)data);
-               FreeResource(data);
-            }
-            else error = ERR::AllocMemory;
+            std::string data(filesize + 1, '\0');
+            file->read(data.data(), filesize); // Read the entire file
+            data[filesize] = '\n';
+            error = parse_config(Self, data);
          }
       }
       else if ((Self->Flags & CNF::OPTIONAL_FILES) != CNF::NIL) error = ERR::Okay;
@@ -208,12 +225,12 @@ static ERR CONFIG_DataFeed(extConfig *Self, struct acDataFeed *Args)
    if (not Args) return log.warning(ERR::NullArgs);
 
    if (Args->Datatype IS DATA::TEXT) {
-      ERR error = parse_config(Self, (CSTRING)Args->Buffer);
-      if (error IS ERR::Okay) {
+      auto buf = (Args->Size > 0) ? std::string_view((CSTRING)Args->Buffer, Args->Size) : std::string_view((CSTRING)Args->Buffer);
+      if (auto error = parse_config(Self, buf); error IS ERR::Okay) {
          if (Self->GroupFilter) apply_group_filter(Self, Self->GroupFilter);
          if (Self->KeyFilter) apply_key_filter(Self, Self->KeyFilter);
       }
-      return error;
+      else return error;
    }
 
    return ERR::Okay;
@@ -966,56 +983,54 @@ static ERR parse_config(extConfig *Self, std::string_view Buffer)
    log.traceBranch("%.20s", Buffer.data());
 
    std::string group_name;
-   auto data = next_group(Buffer.data(), group_name); // Find the first group
+   auto data = next_group(Buffer, group_name); // Find the first group
 
-   while ((data) and (*data)) {
+   while (!data.empty()) {
       // Skip leading whitespace
-      std::string_view line(data);
-      if (auto pos = line.find_first_not_of(WHITESPACE); pos != std::string_view::npos) {
-         data += pos;
+      if (auto pos = data.find_first_not_of(WHITESPACE); pos != std::string_view::npos) {
+         data.remove_prefix(pos);
       }
+      else break;
 
-      if (*data IS '#') { // Commented
+      if (data.front() IS '#') { // Commented
          data = next_line(data);
          continue;
       }
 
       std::pair<std::string, KEYVALUE> *current_group = nullptr;
-      while ((*data) and (*data != '[')) { // Keep processing keys until either a new group or EOF is reached
-         std::string_view current_line(data);
-
-         if (check_for_key(current_line)) {
+      while (!data.empty() and (data.front() != '[')) { // Keep processing keys until either a new group or EOF is reached
+         if (check_for_key(data)) {
             // Find the '=' separator
-            auto eq_pos = current_line.find('=');
+            auto eq_pos = data.find('=');
             if (eq_pos IS std::string_view::npos) break;
 
             // Extract and trim the key
-            auto key_part = current_line.substr(0, eq_pos);
+            auto key_part = data.substr(0, eq_pos);
             if (auto end = key_part.find_last_not_of(WHITESPACE); end != std::string_view::npos) {
                key_part = key_part.substr(0, end + 1);
             }
             std::string key(key_part);
 
             // Move past '=' and skip whitespace (including newlines for multiline support)
-            data += eq_pos + 1;
-            while ((*data) and (*data <= 0x20)) data++;
+            data.remove_prefix(eq_pos + 1);
+            if (auto pos = data.find_first_not_of(WHITESPACE); pos != std::string_view::npos) {
+               data.remove_prefix(pos);
+            }
 
             std::string value;
-            if (((Self->Flags & CNF::STRIP_QUOTES) != CNF::NIL) and (*data IS '"')) {
-               data++;
-               std::string_view value_view(data);
-               auto end_quote = value_view.find('"');
+            if (((Self->Flags & CNF::STRIP_QUOTES) != CNF::NIL) and (!data.empty()) and (data.front() IS '"')) {
+               data.remove_prefix(1);
+               auto end_quote = data.find('"');
                if (end_quote != std::string_view::npos) {
-                  value = value_view.substr(0, end_quote);
-                  data += end_quote;
+                  value = data.substr(0, end_quote);
+                  data.remove_prefix(end_quote);
                }
             }
             else {
-               std::string_view value_view(data);
-               auto line_end = value_view.find_first_of("\n\r");
-               if (line_end IS std::string_view::npos) line_end = value_view.size();
-               value = value_view.substr(0, line_end);
-               data += line_end;
+               auto line_end = data.find_first_of("\n\r");
+               if (line_end IS std::string_view::npos) line_end = data.size();
+               value = data.substr(0, line_end);
+               data.remove_prefix(line_end);
             }
             data = next_line(data);
 
