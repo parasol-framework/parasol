@@ -40,27 +40,20 @@ static std::optional<FieldTypeInfo> lookup_field_type(CLASSID ClassID, uint32_t 
       return std::nullopt;
    }
 
-   // TODO: Use FindField() for faster lookup
-   Field *dict = nullptr;
-   int total_dict = 0;
-   if (meta_class->get(FID_Dictionary, dict, total_dict) IS ERR::Okay) {
-      auto dict_span = std::span(dict, total_dict);
-      for (const auto &field : dict_span) {
-         if (field.FieldID IS FieldID) {
-            FluidType type = map_field_flags_to_fluid_type(field.Flags);
+   objMetaClass *src_class;
+   Field *field;
+   if (meta_class->findField(FieldID, &field, &src_class) IS ERR::Okay) {
+      FluidType type = map_field_flags_to_fluid_type(field->Flags);
+      // For object fields, try to extract the class ID from the Arg field
 
-            // For object fields, try to extract the class ID from the Arg field
-
-            CLASSID object_class_id = CLASSID::NIL;
-            if ((field.Flags & (FD_OBJECT|FD_LOCAL)) and (field.Arg)) {
-               object_class_id = CLASSID(field.Arg);
-            }
-
-            return FieldTypeInfo { type, object_class_id };
-         }
+      CLASSID object_class_id = CLASSID::NIL;
+      if ((field->Flags & (FD_OBJECT|FD_LOCAL)) and (field->Arg)) {
+         object_class_id = CLASSID(field->Arg);
       }
-   }
 
-   // Field not found in dictionary - return Unknown type to signal error
-   return FieldTypeInfo { FluidType::Unknown, CLASSID::NIL };
+      return FieldTypeInfo { type, object_class_id };
+   }
+   else { // Field not in dictionary - return Unknown type to signal error
+      return FieldTypeInfo { FluidType::Unknown, CLASSID::NIL };
+   }
 }
