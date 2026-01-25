@@ -47,7 +47,7 @@ void lj_object_finalize(lua_State *L, GCobject *obj)
          if ((ptr->Class->BaseClassID IS CLASSID::RECORDSET) or
              (ptr->Owner IS L->script) or
              (ptr->ownerID() IS L->script->TargetID)) {
-            pf::Log("obj.destruct")
+            pf::Log log("obj.destruct");
             log.traceBranch("Freeing Fluid-owned object #%d.", obj->uid);
             FreeResource(ptr);
          }
