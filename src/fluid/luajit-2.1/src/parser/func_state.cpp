@@ -17,11 +17,11 @@
 
 void FuncState::init(LexState* LexState, lua_State* LuaState, MSize Vbase, bool IsRoot)
 {
-   this->ls = LexState;
-   this->L = LuaState;
-   this->vbase = Vbase;
+   this->ls      = LexState;
+   this->L       = LuaState;
+   this->vbase   = Vbase;
    this->is_root = IsRoot;
-   this->kt = lj_tab_new(LuaState, 0, 0);
+   this->kt      = lj_tab_new(LuaState, 0, 0);
 
    // Anchor table of constants in stack to avoid being collected.
    settabV(LuaState, LuaState->top, this->kt);

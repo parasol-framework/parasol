@@ -360,7 +360,7 @@ end
    jit.on()
    jit.flush()
    jit.opt.start("hotloop=1", "hotexit=1", "minstitch=0")
-   
+
    -- Hot loop writing object fields - should trigger JIT trace recording
    function traced_field_set(Count)
       for i = 1, Count do

@@ -549,10 +549,18 @@ static void bcemit_store(FuncState *fs, ExpDesc *LHS, ExpDesc *RHS)
             //fs_check_assert(fs, RHS->result_type IS fixed, "expected function return type (RHS) to match variable (LHS)");
 
             static_rhs_type = RHS->result_type;
+
             // If the RHS result type matches the variable's fixed type, skip runtime check
             // Otherwise, fall through to runtime check (we don't emit compile-time errors for
-            // expression results because source location tracking isn't accurate at this point)
+            // expression results unless type_confirmed is set, because source location tracking
+            // isn't accurate at this point)
             needs_check = (RHS->result_type != fixed);
+
+            // For object field accesses with confirmed types from class dictionary lookups,
+            // emit compile-time type mismatch error
+            if (needs_check and RHS->type_confirmed) {
+               err_type_mismatch(fs, RHS->result_type, fixed);
+            }
 
             // For Object types with known class IDs, check for class mismatch at compile time
             if (not needs_check and fixed IS FluidType::Object and vinfo->object_class_id != CLASSID::NIL) {

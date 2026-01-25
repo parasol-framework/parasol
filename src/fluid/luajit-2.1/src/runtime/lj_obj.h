@@ -225,7 +225,7 @@ constexpr inline void setgcrefr(GCRef& r, GCRef v) noexcept { r.gcptr64 = v.gcpt
 // with a NOBARRIER comment.
 //
 // The same logic applies for stores to table slots (array part or hash part). ALL uses of lj_tab_set* require a
-// barrier for the stored value *and* the stored key, based on the above rules. In practice this means a barrier is 
+// barrier for the stored value *and* the stored key, based on the above rules. In practice this means a barrier is
 // needed if *either* of the key or value are a GC object.
 //
 // It's ok to LEAVE OUT the write barrier in the following special cases:
@@ -612,7 +612,7 @@ inline constexpr uint8_t TRY_FLAG_TRACE = 0x01;  // Capture stack trace on excep
 inline constexpr int LJ_MAX_TRY_DEPTH = 32;
 
 // Exception frame for try-except blocks (runtime state)
-// Note: frame_base and saved_top are offsets from L->stack (not absolute pointers) because the Lua stack can be 
+// Note: frame_base and saved_top are offsets from L->stack (not absolute pointers) because the Lua stack can be
 // reallocated during execution.  Use savestack(L, ptr) to convert to offset, restorestack(L, offset) to convert back.
 
 struct TryFrame {

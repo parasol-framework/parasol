@@ -1752,7 +1752,7 @@ void lj_lex_error(LexState *State, LexToken tok, ErrMsg em, ...)
       if (tokstr) diag.message = std::string(msg_buffer) + " near '" + tokstr + "'";
       else diag.message = msg_buffer;
 
-      SourceSpan error_span = { State->linenumber, State->current_token_column, State->current_token_offset };
+      SourceSpan error_span = { State->lastline, State->current_token_column, State->current_token_offset };
       diag.token = Token::from_span(error_span, TokenKind::Unknown);
 
       // Report to parser context if available (will be included in parser's diagnostics copy)
@@ -1797,7 +1797,7 @@ void lj_lex_error(LexState *State, LexToken tok, ErrMsg em, ...)
       return;  // Return without throwing - caller will handle recovery
    }
 
-   lj_err_lex(State->L, State->chunk_name, tokstr, State->linenumber, em, argp);
+   lj_err_lex(State->L, State->chunk_name, tokstr, State->lastline, em, argp);
    va_end(argp);
 }
 

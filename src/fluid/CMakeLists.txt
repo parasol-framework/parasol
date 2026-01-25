@@ -647,7 +647,8 @@ set (FLUID_SOURCES "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_str
    "${LUAJIT_SRC}/debug/filesource.cpp"
    "${LUAJIT_SRC}/parser/parser.cpp"
    "${LUAJIT_SRC}/parser/lexer.cpp"
-   "${LUAJIT_SRC}/parser/parser_unit_tests.cpp")
+   "${LUAJIT_SRC}/parser/parser_unit_tests.cpp"
+   "${LUAJIT_SRC}/parser/field_type_lookup.cpp")
 
 if (INCLUDE_TIPS)
    list (APPEND FLUID_SOURCES "${LUAJIT_SRC}/parser/parser_tips.cpp")
