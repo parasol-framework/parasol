@@ -111,7 +111,7 @@ static const std::vector<Field> glMetaFieldsPreset = {
    { 0, (ERR (*)(APTR, APTR))GET_Objects, 0,      writeval_default,   "Objects",           FID_Objects,         sizeof(Object), 21, FDF_ARRAY|FDF_INT|FDF_ALLOC|FDF_R },
    { MAXINT("FieldArray"), (ERR (*)(APTR, APTR))GET_SubFields, 0, writeval_default, "SubFields", FID_SubFields, sizeof(Object), 22, FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R },
    { MAXINT(CLASSID::ROOTMODULE), (ERR (*)(APTR, APTR))GET_RootModule, 0, writeval_default, "RootModule", FID_RootModule, sizeof(Object), 23, FDF_OBJECT|FDF_R },
-   { 0, (ERR (*)(APTR, APTR))OBJECT_GetID, 0,     writeval_default,   "ID",                FID_ID,              sizeof(Object), 24, FDF_INT|FDF_R },
+   { 0, (ERR (*)(APTR, APTR))OBJECT_GetID, 0,     writeval_default,   "ID",                FID_ID,              sizeof(Object), 24, FDF_INT|FDF_SYSTEM|FDF_R },
    { 0, 0, 0, nullptr, "", 0, 0, 0,  0 }
 };
 

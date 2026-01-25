@@ -456,10 +456,10 @@ global function outputClassHeader(class:table, Private, Custom)
                output(indent .. 'return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);')
             elseif (f.flags & FD_STRING) != 0 then
                flags = string.format('%08x', f.flags):sub(-8)
-               output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', to_cstring(Value), 1);')
+               output(indent .. f'return field->WriteValue(target, field, 0x{flags}, to_cstring(Value), 1);')
             elseif (f.flags & FD_POINTER) != 0 then
                flags = string.format('%08x', f.flags):sub(-8)
-               output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, 1);')
+               output(indent .. f'return field->WriteValue(target, field, 0x{flags}, Value, 1);')
             elseif (f.flags & (FD_DOUBLE | FD_FLOAT)) != 0 then
                output(indent .. 'return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);')
             elseif (f.flags & FD_INT64) != 0 then
@@ -637,7 +637,7 @@ global function idlFunction(Name, Category, Comment, Status, Description, Def)
 
             last_param = param
          elseif content:trim()?? then
-            error("Unable to process line '" .. tostring(content) .. "' for function '" .. Name .. "'")
+            error(f"Unable to process line '{content}' for function '{Name}'")
          end
       end
    end
@@ -660,7 +660,7 @@ global function idlFunction(Name, Category, Comment, Status, Description, Def)
    -- The func.def is used for building the jump table
    func.def = '   ' .. tostring(response.type)
    if Def.attrib then func.def = func.def .. ' ' .. Def.attrib end
-   func.def ..= ' (*_' .. func.name .. ')(' .. (jumpArgs ?? 'void') .. ');'
+   func.def ..= f' (*_{func.name})({jumpArgs ?? "void"});'
 
    func.c_proto      = proto
    func.doc_proto    = doc_proto
@@ -669,29 +669,28 @@ global function idlFunction(Name, Category, Comment, Status, Description, Def)
 
    if variadic then
       func.macro = function()
-         return 'template<class... Args> ' .. tostring(response.type) .. ' ' .. func.name ..
-            '(' .. (argSeq ?? 'void') .. ')' ..
-            ' { return ' .. glModule.name .. 'Base->_' .. func.name .. '(' .. (outValues ?? '') .. '); }'
+         return f'template<class... Args> {response.type} {func.name}({argSeq ?? "void"})' ..
+            f' {{ return {glModule.name}Base->_{func.name}({outValues ?? ""}); }}'
       end
 
       func.staticMacro = function()
          if glFunctionPrefix?? then
-            return 'extern ' .. tostring(response.type) .. ' ' .. func.name .. '(' .. (jumpArgs ?? 'void') .. ');'
+            return f'extern {response.type} {func.name}({jumpArgs ?? "void"});'
          else
-            return 'extern "C" ' .. tostring(response.type) .. ' ' .. func.name .. '(' .. (jumpArgs ?? 'void') .. ');'
+            return f'extern "C" {response.type} {func.name}({jumpArgs ?? "void"});'
          end
       end
    else
       func.macro = function()
-         return 'inline ' .. tostring(response.type) .. ' ' .. func.name .. '(' .. (argSeq ?? 'void') .. ')' ..
-            ' { return ' .. glModule.name .. 'Base->_' .. func.name .. '(' .. (outValues ?? '') .. '); }'
+         return f'inline {response.type} {func.name}({argSeq ?? "void"})' ..
+            f' {{ return {glModule.name}Base->_{func.name}({outValues ?? ""}); }}'
       end
 
       func.staticMacro = function()
          if glFunctionPrefix?? then
-            return 'extern ' .. tostring(response.type) .. ' ' .. func.name .. '(' .. (jumpArgs ?? 'void') .. ');'
+            return f'extern {response.type} {func.name}({jumpArgs ?? "void"});'
          else
-            return 'extern "C" ' .. tostring(response.type) .. ' ' .. func.name .. '(' .. (jumpArgs ?? 'void') .. ');'
+            return f'extern "C" {response.type} {func.name}({jumpArgs ?? "void"});'
          end
       end
    end
@@ -744,7 +743,7 @@ global function saveOutput()
          if glOutput[a] is '__FUNCTION_TABLE__' then
             out = ''
             out ..= '#ifdef PARASOL_STATIC\n'
-            out ..= '#define JUMPTABLE_' .. glModule.name:upper() .. ' [[maybe_unused]] static struct ' .. glModule.name .. 'Base *' .. glModule.name .. 'Base = nullptr;\n'
+            out ..= f'#define JUMPTABLE_{glModule.name:upper()} [[maybe_unused]] static struct {glModule.name}Base *{glModule.name}Base = nullptr;\n'
             out ..= '#else\n'
             out ..= f'#define JUMPTABLE_{glModule.name:upper()} struct {glModule.name}Base *{glModule.name}Base = nullptr;\n'
             out ..= '#endif\n\n'
@@ -760,7 +759,7 @@ global function saveOutput()
             out ..= '};\n\n'
 
             out ..= '#if !defined(PARASOL_STATIC) and !defined(PRV_' .. glModule.name:upper() .. '_MODULE)\n'
-            out ..= 'extern struct ' .. glModule.name .. 'Base *' .. glModule.name .. 'Base;\n'
+            out ..= f'extern struct {glModule.name}Base *{glModule.name}Base;\n'
             if glFunctionPrefix?? then
                out ..= 'namespace ' .. glFunctionPrefix:lower() .. ' {\n'
             end
