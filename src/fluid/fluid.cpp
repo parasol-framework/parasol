@@ -273,11 +273,6 @@ static ERR MODExpunge(void)
    if (clFluid)     { FreeResource(clFluid); clFluid = nullptr; }
    if (modDisplay)  { FreeResource(modDisplay); modDisplay = nullptr; }
    if (modRegex)    { FreeResource(modRegex); modRegex = nullptr; }
-
-   // Clear the per-class field caches to avoid static destruction order issues
-   glClassReadTable.clear();
-   glClassWriteTable.clear();
-
    return ERR::Okay;
 }
 

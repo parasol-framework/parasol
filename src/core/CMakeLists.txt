@@ -91,7 +91,7 @@ endif ()
 
 add_library (core)
 
-target_compile_definitions (core PRIVATE "__system__" "DBG_DIAGNOSTICS")
+target_compile_definitions (core PRIVATE "__system__" "DBG_DIAGNOSTICS" "PRV_METACLASS")
 
 if (MSVC)
    target_compile_definitions (core PRIVATE "_CRT_NONSTDC_NO_DEPRECATE")

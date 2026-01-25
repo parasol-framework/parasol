@@ -15,6 +15,7 @@
 #include <list>
 #include <map>
 #include <string>
+#include <set>
 #include <vector>
 #include <unordered_map>
 #include <bit>
@@ -2292,6 +2293,54 @@ static thread_local int _tlUniqueThreadID = 0;
 inline OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UID; }
 inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(SetResource(Res, (MAXINT)Value)); }
 
+// obj_read is used to build efficient customised jump tables for object calls.
+
+struct obj_read {
+   typedef int JUMP(struct lua_State *, const struct obj_read &, struct GCobject *);
+
+   uint32_t Hash;
+   JUMP *Call;
+   APTR Data;
+
+   auto operator<=>(const obj_read &Other) const {
+       if (Hash < Other.Hash) return -1;
+       if (Hash > Other.Hash) return 1;
+       return 0;
+   }
+
+   obj_read(uint32_t pHash, JUMP pJump, APTR pData) : Hash(pHash), Call(pJump), Data(pData) { }
+   obj_read(uint32_t pHash, JUMP pJump) : Hash(pHash), Call(pJump) { }
+   obj_read(uint32_t pHash) : Hash(pHash) { }
+};
+
+inline auto read_hash = [](const obj_read &a, const obj_read &b) { return a.Hash < b.Hash; };
+
+typedef std::set<obj_read, decltype(read_hash)> READ_TABLE;
+
+// Object field write handler structure for Fluid code
+
+struct obj_write {
+   typedef ERR JUMP(struct lua_State *, OBJECTPTR, struct Field *, int);
+
+   uint32_t Hash;
+   JUMP *Call;
+   struct Field *Field;
+
+   auto operator<=>(const obj_write &Other) const {
+       if (Hash < Other.Hash) return -1;
+       if (Hash > Other.Hash) return 1;
+       return 0;
+   }
+
+   obj_write(uint32_t pHash, JUMP pJump, struct Field *pField) : Hash(pHash), Call(pJump), Field(pField) { }
+   obj_write(uint32_t pHash, JUMP pJump) : Hash(pHash), Call(pJump) { }
+   obj_write(uint32_t pHash) : Hash(pHash) { }
+};
+
+inline auto write_hash = [](const obj_write &a, const obj_write &b) { return a.Hash < b.Hash; };
+
+typedef std::set<obj_write, decltype(write_hash)> WRITE_TABLE;
+
 
 // MetaClass class definition
 
@@ -2326,6 +2375,12 @@ class objMetaClass : public Object {
    CLASSID BaseClassID;                 // Specifies the base class ID of a class object.
    int     OpenCount;                   // The total number of active objects that are linked back to the MetaClass.
    CCF     Category;                    // The system category that a class belongs to.
+
+#ifdef PRV_METACLASS
+    // Field table cache for Fluid - eliminates per-instance hash tables.
+    READ_TABLE  ReadTable;
+    WRITE_TABLE WriteTable;
+#endif
 
    // Action stubs
 

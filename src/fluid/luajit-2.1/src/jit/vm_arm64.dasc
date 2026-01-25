@@ -3603,7 +3603,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  mov CARG1, L
     |  mov CARG3, STR:RC
     |   str PC, SAVE_PC
-    |  bl extern lj_object_gets  // (lua_State *L, GCobject *obj, GCstr *key, TValue *dest)
+    |  bl extern lj_object_getfield  // (lua_State *L, GCobject *obj, GCstr *key, TValue *dest)
     |  ldr BASE, L->base
     |  ins_next
     break;
@@ -3621,7 +3621,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  mov CARG1, L
     |  mov CARG3, STR:RC
     |   str PC, SAVE_PC
-    |  bl extern lj_object_sets  // (lua_State *L, GCobject *obj, GCstr *key, TValue *val)
+    |  bl extern lj_object_setfield  // (lua_State *L, GCobject *obj, GCstr *key, TValue *val)
     |  ldr BASE, L->base
     |  ins_next
     break;

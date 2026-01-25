@@ -214,8 +214,8 @@ typedef struct CCallInfo {
   _(ANY,        lj_try_enter,      4,  FS, NIL, CCI_L|CCI_T) \
   _(ANY,        lj_try_leave,      1,  FS, NIL, CCI_L) \
   /* Native object field access */ \
-  _(ANY,        lj_object_gets,    4,   S, NIL, CCI_L|CCI_T) \
-  _(ANY,        lj_object_sets,    4,   S, NIL, CCI_L|CCI_T) \
+  _(ANY,        lj_object_getfield, 4, S, NIL, CCI_L|CCI_T) \
+  _(ANY,        lj_object_setfield, 4, S, NIL, CCI_L|CCI_T) \
   \
   // End of list.
 

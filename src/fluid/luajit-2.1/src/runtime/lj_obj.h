@@ -948,7 +948,7 @@ inline GCarray* arrayref(GCRef r) noexcept;
 //********************************************************************************************************************
 // Field tables are maintained per-class (cached globally) rather than per-instance.
 
-// Object flags for GCobject.flags field
+// Flags for GCobject.flags
 inline constexpr uint8_t GCOBJ_DETACHED = 0x01;  // Object is external reference, not owned
 inline constexpr uint8_t GCOBJ_LOCKED   = 0x02;  // Lock acquired via AccessObject()
 
@@ -963,8 +963,6 @@ struct GCobject {
    GCRef metatable;             // [32] Optional metatable (must match GCtab.metatable)
    struct Object *ptr;          // [40] Direct pointer to Parasol object (OBJECTPTR, null if detached)
    class objMetaClass *classptr; // [48] Direct pointer to class metadata (objMetaClass*)
-   void *read_table;            // [56] Cached READ_TABLE* for fast __index lookup
-   void *write_table;           // [64] Cached WRITE_TABLE* for fast __newindex lookup
 
    inline bool is_detached() { return (flags & GCOBJ_DETACHED) != 0; }
    inline bool is_locked() { return (flags & GCOBJ_LOCKED) != 0; }

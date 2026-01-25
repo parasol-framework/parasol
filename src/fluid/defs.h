@@ -347,31 +347,6 @@ constexpr uint32_t char_hash(char Char, uint32_t Hash = 5381) {
 }
 
 //********************************************************************************************************************
-// obj_read is used to build efficient customised jump tables for object calls.
-
-struct obj_read {
-   typedef int JUMP(lua_State *, const struct obj_read &, GCobject *);
-
-   uint32_t Hash;
-   JUMP *Call;
-   APTR Data;
-
-   auto operator<=>(const obj_read &Other) const {
-       if (Hash < Other.Hash) return -1;
-       if (Hash > Other.Hash) return 1;
-       return 0;
-   }
-
-   obj_read(uint32_t pHash, JUMP pJump, APTR pData) : Hash(pHash), Call(pJump), Data(pData) { }
-   obj_read(uint32_t pHash, JUMP pJump) : Hash(pHash), Call(pJump) { }
-   obj_read(uint32_t pHash) : Hash(pHash) { }
-};
-
-inline auto read_hash = [](const obj_read &a, const obj_read &b) { return a.Hash < b.Hash; };
-
-typedef std::set<obj_read, decltype(read_hash)> READ_TABLE;
-
-//********************************************************************************************************************
 
 [[maybe_unused]] [[nodiscard]] constexpr CSTRING next_line(CSTRING String) noexcept
 {
@@ -386,40 +361,10 @@ typedef std::set<obj_read, decltype(read_hash)> READ_TABLE;
 }
 
 //********************************************************************************************************************
-
-struct obj_write {
-   typedef ERR JUMP(lua_State *, OBJECTPTR, struct Field *, int);
-
-   uint32_t Hash;
-   JUMP *Call;
-   struct Field *Field;
-
-   auto operator<=>(const obj_write &Other) const {
-       if (Hash < Other.Hash) return -1;
-       if (Hash > Other.Hash) return 1;
-       return 0;
-   }
-
-   obj_write(uint32_t pHash, JUMP pJump, struct Field *pField) : Hash(pHash), Call(pJump), Field(pField) { }
-   obj_write(uint32_t pHash, JUMP pJump) : Hash(pHash), Call(pJump) { }
-   obj_write(uint32_t pHash) : Hash(pHash) { }
-};
-
-inline auto write_hash = [](const obj_write &a, const obj_write &b) { return a.Hash < b.Hash; };
-
-typedef std::set<obj_write, decltype(write_hash)> WRITE_TABLE;
-
-//********************************************************************************************************************
-// Per-class field table cache - eliminates per-instance hash tables.  These are populated lazily when an object of
-// that class is first accessed
-
-extern std::unordered_map<objMetaClass *, READ_TABLE> glClassReadTable;
-extern std::unordered_map<objMetaClass *, WRITE_TABLE> glClassWriteTable;
-
 // Retrieve cached read/write tables for a class (creates if not present)
 
-READ_TABLE * get_read_table(lua_State *L, objMetaClass *Class);
-WRITE_TABLE * get_write_table(objMetaClass *Class);
+READ_TABLE * get_read_table(objMetaClass *);
+WRITE_TABLE * get_write_table(objMetaClass *);
 
 //********************************************************************************************************************
 
