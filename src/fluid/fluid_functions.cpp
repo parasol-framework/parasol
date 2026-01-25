@@ -45,9 +45,11 @@ static int lua_load(lua_State *Lua, class objFile *File, CSTRING SourceName)
       }
       luaL_error(Lua, "%s", msg.c_str());
    }
+   else if (auto error_msg = lua_tostring(Lua, -1)) {
+      // When not in diagnose mode, errors are thrown via lj_err_lex which pushes the message to the stack
+      luaL_error(Lua, "%s", error_msg);
+   }
    else luaL_error(Lua, "Parsing failed but no diagnostics are available.");
-
-   //error_msg = lua_tostring(Lua, -1); <- No longer considered appropriate (legacy)
 }
 
 //********************************************************************************************************************

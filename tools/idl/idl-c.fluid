@@ -299,9 +299,9 @@ global function outputClassHeader(class:table, Private, Custom)
             local left
             field_name = cName(f, true)
             if field_name?? then
-               left = string.format('   %-' .. class.longestType .. 's %s;', f.type, field_name)
+               left = string.format(f'   %-{class.longestType}s %s;', f.type, field_name)
             else
-               left = string.format('   %-' .. class.longestType .. 's;', f.type)
+               left = string.format(f'   %-{class.longestType}s;', f.type)
             end
 
             if f.comment?? then

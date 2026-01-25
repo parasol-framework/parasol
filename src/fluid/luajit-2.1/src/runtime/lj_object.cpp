@@ -48,7 +48,7 @@ void lj_object_finalize(lua_State *L, GCobject *obj)
              (ptr->Owner IS L->script) or
              (ptr->ownerID() IS L->script->TargetID)) {
             pf::Log log("obj.destruct");
-            log.trace("Freeing Fluid-owned object #%d.", obj->uid);
+            log.traceBranch("Freeing Fluid-owned object #%d.", obj->uid);
             FreeResource(ptr);
          }
       }
@@ -262,34 +262,28 @@ extern "C" int ir_object_field_type(GCobject *Obj, GCstr *Key)
    if (not Obj->uid or not Obj->classptr) return -1;
 
    auto *mc = Obj->classptr;
-   Field *dict;
-   int total_dict;
-   if (mc->get(FID_Dictionary, dict, total_dict) != ERR::Okay) return -1;
+   objMetaClass *src_class;
+   Field *field;
+   if (mc->findField(Key->hash, &field, &src_class) IS ERR::Okay) {
+      auto flags = field->Flags;
+      if (not (flags & FDF_R)) return -1;  // Not readable
 
-   auto key_hash = Key->hash;  // GCstr already has precomputed hash equiv. to fieldhash()
-   for (int i = 0; i < total_dict; i++) {
-      if (dict[i].FieldID IS key_hash) {
-         auto flags = dict[i].Flags;
-         if (not (flags & FDF_R)) return -1;  // Not readable
-
-         if (flags & FD_STRING) return IRT_STR;
-         if (flags & (FD_DOUBLE|FD_INT64)) return IRT_NUM;
-         if (flags & FD_INT) {
-            // FD_OBJECT int fields store object IDs and push GCobject references
-            if (flags & FD_OBJECT) return IRT_OBJECT;
-            // FD_UNSIGNED always uses lua_pushnumber, even in DUALNUM builds
-            if (flags & FD_UNSIGNED) return IRT_NUM;
-            return LJ_DUALNUM ? IRT_INT : IRT_NUM;
-         }
-         if (flags & FD_STRUCT) {
-            if (flags & FD_RESOURCE) return IRT_LIGHTUD;
-            else return IRT_TAB;
-         }
-         if (flags & FD_ARRAY) return IRT_ARRAY;
-         if ((flags & FD_POINTER) and (flags & (FD_OBJECT|FD_LOCAL))) return IRT_OBJECT;
-         if (flags & FD_POINTER) return IRT_LIGHTUD;
-         return -1;  // Unknown type
+      // NB: Order is important
+      if (flags & FD_ARRAY) return IRT_ARRAY;
+      if (flags & FD_STRING) return IRT_STR;
+      if (flags & (FD_DOUBLE|FD_INT64)) return IRT_NUM;
+      if (flags & (FD_OBJECT|FD_LOCAL)) return IRT_OBJECT;
+      if (flags & FD_INT) {
+         // FD_UNSIGNED always uses lua_pushnumber, even in DUALNUM builds
+         if (flags & FD_UNSIGNED) return IRT_NUM;
+         return LJ_DUALNUM ? IRT_INT : IRT_NUM;
       }
+      if (flags & FD_STRUCT) {
+         if (flags & FD_RESOURCE) return IRT_LIGHTUD;
+         else return IRT_TAB;
+      }
+      if (flags & FD_POINTER) return IRT_LIGHTUD;
+      return -1;  // Unknown type
    }
 
    return -1;  // Field not found in dictionary

@@ -7,6 +7,9 @@
 //
 // Only objects created through the standard obj.new() interface are directly accessible without a lock.  Those referenced
 // through obj.find(), push_object(), or children created with some_object.new() are marked as detached.
+//
+// Note: If changing type conversion for field flags to Lua types, there are dependencies that need to be updated
+// elsewhere, such as in field_type_lookup.cpp.  Do a file search for "FD_" to find them.
 
 #define lib_object_c
 #define LUA_LIB
@@ -74,14 +77,12 @@ static constexpr uint32_t OJH_unsubscribe = simple_hash("unsubscribe");
 [[nodiscard]] static int object_init(lua_State *);
 [[nodiscard]] static int object_lock(lua_State *);
 [[nodiscard]] static int object_newchild(lua_State *);
-[[nodiscard]] int object_newindex(lua_State *);
 [[nodiscard]] static int object_set(lua_State *);
 [[nodiscard]] static int object_setkey(lua_State *);
 [[nodiscard]] static int object_state(lua_State *);
 [[nodiscard]] static int object_subscribe(lua_State *);
 [[nodiscard]] static int object_unsubscribe(lua_State *);
 
-[[nodiscard]] static int object_get_id(lua_State *, const obj_read &, GCobject *);
 [[nodiscard]] static int object_get_rgb(lua_State *, const obj_read &, GCobject *);
 [[nodiscard]] static int object_get_array(lua_State *, const obj_read &, GCobject *);
 [[nodiscard]] static int object_get_struct(lua_State *, const obj_read &, GCobject *);
@@ -313,8 +314,6 @@ READ_TABLE * get_read_table(lua_State *L, objMetaClass *Class)
    Field *dict;
    int total_dict;
    if (Class->get(FID_Dictionary, dict, total_dict) IS ERR::Okay) {
-      jmp.insert(obj_read(simple_hash("id"), object_get_id));
-
       auto dict_span = std::span(dict, total_dict);
       for (auto &field : dict_span | std::views::filter([](const auto& f) { return f.Flags & FDF_R; })) {
          auto hash = field.FieldID;
@@ -416,8 +415,10 @@ WRITE_TABLE * get_write_table(objMetaClass *Class)
 //
 // Using all caps abbreviations is discouraged when designing class fields, e.g. JITOptions won't work out, but
 // JitOptions is fine.
+//
+// NB: This function is also called directly by the thunk implementation in cases where thunks resolve to objects.
 
-int object_newindex(lua_State *Lua)
+extern int object_newindex(lua_State *Lua)
 {
    if (auto def = lj_get_object_fast(Lua, 1)) {
       if (auto hash = luaL_checkstringhash(Lua, 2)) {
@@ -450,7 +451,7 @@ int object_newindex(lua_State *Lua)
 //********************************************************************************************************************
 // This is the default path for reading object fields when optimisation is unavailable.
 
-[[nodiscard]] int object_index(lua_State *Lua)
+[[nodiscard]] extern int object_index(lua_State *Lua)
 {
    auto def = objectV(Lua->base);
 

@@ -528,12 +528,6 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, int Va
 //********************************************************************************************************************
 // Support for direct field indexing.  These functions are utilised if a field reference is easily resolved to a hash.
 
-static int object_get_id(lua_State *Lua, const obj_read &Handle, GCobject *Def)
-{
-   lua_pushnumber(Lua, Def->uid);
-   return 1;
-}
-
 static int object_get_array(lua_State *Lua, const obj_read &Handle, GCobject *Def)
 {
    ERR error;

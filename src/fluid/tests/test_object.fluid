@@ -147,28 +147,39 @@ end
    assert(type(year) is 'number', "Expected get('year') to return a number")
    assert(year is 2025, "Expected year field to be 2025, got " .. tostring(year))
 
-   try -- Test OBGETF - read non-existant field
-      invalid = t.not_a_field
+   -- Test compile-time detection of non-existent field (read)
+   try
+      exec([[
+         t = obj.new('time')
+         invalid = t.not_a_field
+      ]])
    except ex
-      assert(ex.message:find('Time.not_a_field'), "Error message should mention the accessed field, got: " .. ex.message)
+      -- exec() doesn't preserve full error details, just check parsing failed
+      assert(ex.message:find("Parsing failed") or ex.message:find("not_a_field"),
+         "Expected parsing error for invalid field, got: " .. ex.message)
    success
       error("Expected error when accessing invalid field")
    end
 
-   -- Test OBSETF - write to a read-only field
+   -- Test OBSETF - write to a read-only field (runtime error, timeStamp exists in dictionary)
    try
-      t.timestamp = 1
+      t.timeStamp = 1
    except ex
-      assert(ex.message:find('Time.timestamp'), "Error message should mention the accessed field, got: " .. ex.message)
+      assert(ex.message:find('Time.timeStamp'), "Error message should mention the accessed field, got: " .. ex.message)
    success
       error("Expected error when writing a read-only field")
    end
 
-   -- Test OBSETF - write to a non-existant field
+   -- Test compile-time detection of non-existent field (write)
    try
-      t.does_not_exist = print
+      exec([[
+         t = obj.new('time')
+         t.does_not_exist = print
+      ]])
    except ex
-      assert(ex.message:find('Time.does_not_exist'), "Error message should mention the accessed field, got: " .. ex.message)
+      -- exec() doesn't preserve full error details, just check parsing failed
+      assert(ex.message:find("Parsing failed") or ex.message:find("does_not_exist"),
+         "Expected parsing error for invalid field, got: " .. ex.message)
    success
       error("Expected error when writing a non-existent field")
    end
@@ -300,4 +311,78 @@ end
    success
       error("Expected error when assigning object of different class")
    end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Compile-time field type checking: assigning string field to number variable should fail
+
+@Test function FieldTypeCheckStrToNum()
+   try
+      exec([[
+         c = obj.new('config')
+         count = 0
+         count = c.path
+      ]])
+   except ex
+      assert(ex.message:find('Type mismatch'), "Expected type mismatch error, got: " .. ex.message)
+   success
+      error("Expected compile-time error when assigning str field to num variable")
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Compile-time field type checking: assigning number field to string variable should fail
+
+@Test function FieldTypeCheckNumToStr()
+   try
+      exec([[
+         c = obj.new('config')
+         local name: str = 'hello'
+         name = c.totalKeys
+      ]])
+   except ex
+      assert(ex.message:find('Type mismatch'), "Expected type mismatch error, got: " .. ex.message)
+   success
+      error("Expected compile-time error when assigning num field to str variable")
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Compile-time field type checking: matching types should succeed
+
+@Test function FieldTypeCheckMatchingTypes()
+   -- Number to number should work
+   t = obj.new('time')
+   t.year = 2025
+   local year_copy: num = t.year
+   assert(year_copy is 2025, "Expected year_copy to be 2025")
+
+   -- String to string should work (config.keyFilter is a string field)
+   c = obj.new('config', { keyFilter='a=b' })
+   local filter_copy: str = c.keyFilter
+   assert(type(filter_copy) is 'string', "Expected keyFilter to be a string")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Compile-time field type checking: inferred types from initialisation should be checked
+
+@Test function FieldTypeCheckInferredTypes()
+   -- Both year and day are numbers, so this should work
+   t = obj.new('time')
+   year = 0
+   year = t.day
+   assert(type(year) is 'number', "Expected year to be a number")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Compile-time field type checking: inferred types from field access are tracked
+
+@Test function FieldTypeCheckUntypedVariable()
+   -- Inferred types from field access are tracked correctly
+   c = obj.new('config', { keyFilter='x=y' })
+   num_value = c.totalKeys  -- num_value is inferred as num
+   assert(type(num_value) is 'number', "Expected num_value to be a number")
+
+   str_value = c.keyFilter  -- str_value is inferred as str
+   assert(type(str_value) is 'string', "Expected str_value to be a string")
 end

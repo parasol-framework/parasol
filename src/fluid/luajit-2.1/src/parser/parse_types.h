@@ -1,9 +1,6 @@
 // Lua parser - Type definitions and structures.
 //
-// Copyright (C) 2025 Paul Manias
-// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-// Major portions taken verbatim or adapted from the Lua interpreter.
-// Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
+// Copyright (C) 2025-2026 Paul Manias
 
 #pragma once
 
@@ -220,6 +217,7 @@ struct ExpDesc {
    ExprFlag flags; // Expression flags.
    FluidType result_type = FluidType::Unknown;  // Known result type (for Call: callee's first return type)
    CLASSID object_class_id = CLASSID::NIL; // CLASSID for Object result types
+   bool type_confirmed = false;  // True if result_type is confirmed from class dictionary lookup
    BCPOS t;        // True condition jump list.
    BCPOS f;        // False condition jump list.
 

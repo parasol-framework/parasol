@@ -692,6 +692,16 @@ ExprNodePtr make_call_expr(SourceSpan Span, ExprNodePtr callee, ExprNodeList arg
    // Detect obj.new("classname", ...) pattern before moving callee
    detect_obj_new_call(*callee, arguments, payload.result_type, payload.object_class_id);
 
+   // Mark MemberExpr/SafeMemberExpr callees as call targets so type-checking can be deferred to runtime
+   if (callee->kind IS AstNodeKind::MemberExpr) {
+      auto *member_payload = std::get_if<MemberExprPayload>(&callee->data);
+      if (member_payload) member_payload->is_call_target = true;
+   }
+   else if (callee->kind IS AstNodeKind::SafeMemberExpr) {
+      auto *member_payload = std::get_if<SafeMemberExprPayload>(&callee->data);
+      if (member_payload) member_payload->is_call_target = true;
+   }
+
    DirectCallTarget target;
    target.callable = std::move(callee);
    payload.target = std::move(target);

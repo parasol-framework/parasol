@@ -20,6 +20,7 @@
 #include "parser.h"
 #include "lj_vm.h"
 #include "lj_vmevent.h"
+#include "field_type_lookup.h"
 
 #include <parasol/main.h>
 
@@ -65,6 +66,7 @@ static const struct {
 #include "type_checker.cpp"
 #include "type_analysis.cpp"
 #include "func_state.cpp"
+#include "field_type_lookup.cpp"
 
 static constexpr size_t kMaxLoggedStatements = 12;
 

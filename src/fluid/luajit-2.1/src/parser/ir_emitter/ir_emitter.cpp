@@ -300,7 +300,7 @@ constexpr size_t kAstNodeKindCount = size_t(AstNodeKind::ExpressionStmt) + 1;
 
 class UnsupportedNodeRecorder {
 public:
-   void record(AstNodeKind kind, const SourceSpan& span, const char* stage) {
+   void record(AstNodeKind kind, const SourceSpan &span, CSTRING stage) {
       size_t index = size_t(kind);
       if (index >= this->counts.size()) return;
       uint32_t total = ++this->counts[index];
@@ -992,9 +992,14 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
       else if (i.raw() < Payload.values.size()) {
          // No explicit annotation - infer type from initialiser expression
          // Note: Nil is excluded because it represents absence of value, not a type constraint
-         FluidType inferred = infer_expression_type(*Payload.values[i.raw()]);
-         if (inferred != FluidType::Unknown and inferred != FluidType::Any and inferred != FluidType::Nil) {
-            info->fixed_type = inferred;
+         // Use extended type inference to also get object_class_id for Object types
+         InferredTypeInfo inferred = infer_expression_type_ext(*Payload.values[i.raw()]);
+         if (inferred.type != FluidType::Unknown and inferred.type != FluidType::Any and inferred.type != FluidType::Nil) {
+            info->fixed_type = inferred.type;
+            // Propagate object class ID for Object types
+            if (inferred.type IS FluidType::Object and inferred.object_class_id != CLASSID::NIL) {
+               info->object_class_id = inferred.object_class_id;
+            }
          }
       }
       // If no initialiser and no annotation, fixed_type remains Unknown (set in var_add)
@@ -1769,7 +1774,7 @@ ParserResult<ExpDesc> IrEmitter::emit_if_empty_expr(ExpDesc lhs, const ExprNode&
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQS, lhs_reg, const_str(&this->func_state, &emptyv)));
    ControlFlowEdge check_empty = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
 
-   // Empty array check (array with len == 0)
+   // Empty array check (array with len IS 0)
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEMPTYARR, lhs_reg, 0));
    ControlFlowEdge check_empty_array = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
 
@@ -1970,7 +1975,7 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload &Pay
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQS, cond_reg, const_str(&this->func_state, &emptyv)));
    ControlFlowEdge check_empty = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
 
-   // Empty array check (array with len == 0)
+   // Empty array check (array with len IS 0)
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEMPTYARR, cond_reg, 0));
    ControlFlowEdge check_empty_array = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
 
@@ -2040,9 +2045,11 @@ ParserResult<ExpDesc> IrEmitter::emit_member_expr(const MemberExprPayload &Paylo
 
    ExpDesc table = table_result.value_ref();
 
-   // Save the emitted expression's result_type before discharge operations may modify it.
+   // Save the emitted expression's result_type and object_class_id before discharge operations may modify it.
    // This captures type information propagated from VarInfo during variable lookup.
+
    FluidType emitted_base_type = table.result_type;
+   CLASSID emitted_class_id = table.object_class_id;
 
    RegisterAllocator allocator(&this->func_state);
    ExpressionValue table_value(&this->func_state, table);
@@ -2052,15 +2059,37 @@ ParserResult<ExpDesc> IrEmitter::emit_member_expr(const MemberExprPayload &Paylo
    expr_index(&this->func_state, &table, &key);
 
    // Propagate known base type information for downstream optimizations.
-   // When base_type is Object, emit specialised BC_OBGETF/BC_OBSETF bytecodes
-   // by changing the expression kind to IndexedObject.
-   // Check both AST-level base_type AND emitted expression's result_type
-   // (the latter captures type info from variable declarations like `fl = obj.new(...)`).
+   // When base_type is Object, emit specialised BC_OBGETF/BC_OBSETF bytecodes by changing the expression kind
+   // to IndexedObject.  Check both AST-level base_type AND emitted expression's result_type (the latter captures
+   // type info from variable declarations like `fl = obj.new(...)`).
+
    if (Payload.base_type IS FluidType::Object or emitted_base_type IS FluidType::Object) {
       table.result_type = FluidType::Object;
       // Only use IndexedObject for string keys (member access always uses string keys)
-      if (table.k IS ExpKind::Indexed and int32_t(table.u.s.aux) < 0) {
-         table.k = ExpKind::IndexedObject;
+
+      if (table.k IS ExpKind::Indexed and int32_t(table.u.s.aux) < 0) table.k = ExpKind::IndexedObject;
+
+      // Look up the field type from the class dictionary for compile-time type checking.
+      // Use either the AST-level class_id or the emitted expression's class_id.
+
+      CLASSID class_id = (Payload.class_id != CLASSID::NIL) ? Payload.class_id : emitted_class_id;
+      if (class_id != CLASSID::NIL and Payload.member.symbol) {
+         auto field_info = lookup_field_type(class_id, Payload.member.symbol->hash);
+         bool is_field = field_info.has_value() and (field_info->type != FluidType::Unknown);
+
+         if (is_field) {
+            table.result_type = field_info->type;
+            table.object_class_id = field_info->object_class_id;
+            table.type_confirmed = true;  // Type is confirmed from class dictionary lookup
+         }
+         else if (not Payload.is_call_target) {
+            // Field not found in dictionary and not being called as a function - raise parse error
+            auto *meta_class = FindClass(class_id);
+            CSTRING class_name = meta_class ? meta_class->ClassName : "Unknown";
+            lj_lex_error(this->func_state.ls, 0, ErrMsg::BADFIELD, strdata(Payload.member.symbol), class_name);
+            return this->unsupported_expr(AstNodeKind::MemberExpr, Payload.member.span);
+         }
+         // If is_call_target is true, skip type checking and let runtime handle the method/action call
       }
    }
 
@@ -2207,6 +2236,26 @@ ParserResult<ExpDesc> IrEmitter::emit_safe_member_expr(const SafeMemberExprPaylo
    if (Payload.base_type IS FluidType::Object) {
       table.result_type = FluidType::Object;
       table.object_class_id = CLASSID::NIL;
+
+      // Look up the field type from the class dictionary for compile-time type checking.
+
+      if (Payload.class_id != CLASSID::NIL and Payload.member.symbol) {
+         auto field_info = lookup_field_type(Payload.class_id, Payload.member.symbol->hash);
+         bool is_field = field_info.has_value() and (field_info->type != FluidType::Unknown);
+
+         if (is_field) {
+            table.result_type     = field_info->type;
+            table.object_class_id = field_info->object_class_id;
+            table.type_confirmed  = true;  // Type is confirmed from class dictionary lookup
+         }
+         else if (not Payload.is_call_target) {
+            auto *meta_class = FindClass(Payload.class_id);
+            const char *class_name = meta_class ? meta_class->ClassName : "Unknown";
+            lj_lex_error(this->func_state.ls, 0, ErrMsg::BADFIELD, strdata(Payload.member.symbol), class_name);
+            return this->unsupported_expr(AstNodeKind::SafeMemberExpr, Payload.member.span);
+         }
+         // If is_call_target is true, skip type checking and let runtime handle the method/action call
+      }
    }
 
    // Materialize the indexed result to a new register.

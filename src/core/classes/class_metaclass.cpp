@@ -32,6 +32,7 @@ static ERR OBJECT_GetClass(OBJECTPTR, extMetaClass **);
 static ERR OBJECT_GetClassID(OBJECTPTR, CLASSID *);
 static ERR OBJECT_GetName(OBJECTPTR, STRING *);
 static ERR OBJECT_GetOwner(OBJECTPTR, OBJECTID *);
+static ERR OBJECT_GetID(OBJECTPTR, OBJECTID *);
 static ERR OBJECT_SetOwner(OBJECTPTR, OBJECTID);
 static ERR OBJECT_SetName(OBJECTPTR, CSTRING);
 
@@ -85,31 +86,32 @@ static const FieldDef CategoryTable[] = {
 
 static const std::vector<Field> glMetaFieldsPreset = {
    // If you adjust this table, remember to adjust the index numbers and the byte offsets into the structure.
-   { 0, nullptr, nullptr,                writeval_default, "ClassVersion",    FID_ClassVersion, sizeof(Object), 0, FDF_DOUBLE|FDF_RI },
+   { 0, nullptr, nullptr, writeval_default, "ClassVersion",    FID_ClassVersion, sizeof(Object), 0, FDF_DOUBLE|FDF_RI },
    { MAXINT("FieldArray"), (ERR (*)(APTR, APTR))GET_Fields, (APTR)SET_Fields, writeval_default, "Fields", FID_Fields, sizeof(Object)+8, 1, FDF_ARRAY|FD_STRUCT|FDF_RI },
    { MAXINT("Field"),      (ERR (*)(APTR, APTR))GET_Dictionary, nullptr, writeval_default, "Dictionary", FID_Dictionary, sizeof(Object)+8+(sizeof(APTR)*1), 2, FDF_ARRAY|FD_STRUCT|FDF_R },
-   { 0, nullptr, nullptr,                writeval_default, "ClassName",       FID_ClassName,       sizeof(Object)+8+(sizeof(APTR)*2),  3,  FDF_STRING|FDF_RI },
-   { 0, nullptr, nullptr,                writeval_default, "FileExtension",   FID_FileExtension,   sizeof(Object)+8+(sizeof(APTR)*3),  4,  FDF_STRING|FDF_RI },
-   { 0, nullptr, nullptr,                writeval_default, "FileDescription", FID_FileDescription, sizeof(Object)+8+(sizeof(APTR)*4),  5,  FDF_STRING|FDF_RI },
-   { 0, nullptr, nullptr,                writeval_default, "FileHeader",      FID_FileHeader,      sizeof(Object)+8+(sizeof(APTR)*5),  6,  FDF_STRING|FDF_RI },
-   { 0, nullptr, nullptr,                writeval_default, "Path",            FID_Path,            sizeof(Object)+8+(sizeof(APTR)*6),  7,  FDF_STRING|FDF_RI },
-   { 0, nullptr, nullptr,                writeval_default, "Icon",            FID_Icon,            sizeof(Object)+8+(sizeof(APTR)*7),  8,  FDF_STRING|FDF_RI },
-   { 0, nullptr, nullptr,                writeval_default, "Size",            FID_Size,            sizeof(Object)+8+(sizeof(APTR)*8),  9,  FDF_INT|FDF_RI },
-   { 0, nullptr, nullptr,                writeval_default, "Flags",           FID_Flags,           sizeof(Object)+12+(sizeof(APTR)*8), 10, FDF_INT|FDF_RI },
-   { 0, nullptr, nullptr,                writeval_default, "ClassID",         FID_ClassID,         sizeof(Object)+16+(sizeof(APTR)*8), 11, FDF_INT|FDF_UNSIGNED|FDF_RI },
-   { 0, nullptr, nullptr,                writeval_default, "BaseClassID",     FID_BaseClassID,     sizeof(Object)+20+(sizeof(APTR)*8), 12, FDF_INT|FDF_UNSIGNED|FDF_RI },
-   { 0, nullptr, nullptr,                writeval_default, "OpenCount",       FID_OpenCount,       sizeof(Object)+24+(sizeof(APTR)*8), 13, FDF_INT|FDF_R },
+   { 0, nullptr, nullptr, writeval_default, "ClassName",       FID_ClassName,       sizeof(Object)+8+(sizeof(APTR)*2),  3,  FDF_STRING|FDF_RI },
+   { 0, nullptr, nullptr, writeval_default, "FileExtension",   FID_FileExtension,   sizeof(Object)+8+(sizeof(APTR)*3),  4,  FDF_STRING|FDF_RI },
+   { 0, nullptr, nullptr, writeval_default, "FileDescription", FID_FileDescription, sizeof(Object)+8+(sizeof(APTR)*4),  5,  FDF_STRING|FDF_RI },
+   { 0, nullptr, nullptr, writeval_default, "FileHeader",      FID_FileHeader,      sizeof(Object)+8+(sizeof(APTR)*5),  6,  FDF_STRING|FDF_RI },
+   { 0, nullptr, nullptr, writeval_default, "Path",            FID_Path,            sizeof(Object)+8+(sizeof(APTR)*6),  7,  FDF_STRING|FDF_RI },
+   { 0, nullptr, nullptr, writeval_default, "Icon",            FID_Icon,            sizeof(Object)+8+(sizeof(APTR)*7),  8,  FDF_STRING|FDF_RI },
+   { 0, nullptr, nullptr, writeval_default, "Size",            FID_Size,            sizeof(Object)+8+(sizeof(APTR)*8),  9,  FDF_INT|FDF_RI },
+   { 0, nullptr, nullptr, writeval_default, "Flags",           FID_Flags,           sizeof(Object)+12+(sizeof(APTR)*8), 10, FDF_INT|FDF_RI },
+   { 0, nullptr, nullptr, writeval_default, "ClassID",         FID_ClassID,         sizeof(Object)+16+(sizeof(APTR)*8), 11, FDF_INT|FDF_UNSIGNED|FDF_RI },
+   { 0, nullptr, nullptr, writeval_default, "BaseClassID",     FID_BaseClassID,     sizeof(Object)+20+(sizeof(APTR)*8), 12, FDF_INT|FDF_UNSIGNED|FDF_RI },
+   { 0, nullptr, nullptr, writeval_default, "OpenCount",       FID_OpenCount,       sizeof(Object)+24+(sizeof(APTR)*8), 13, FDF_INT|FDF_R },
    { MAXINT(&CategoryTable), nullptr, nullptr, writeval_default, "Category",  FID_Category,        sizeof(Object)+28+(sizeof(APTR)*8), 14, FDF_INT|FDF_LOOKUP|FDF_RI },
    // Virtual fields
    { MAXINT("MethodEntry"), (ERR (*)(APTR, APTR))GET_Methods, (APTR)SET_Methods, writeval_default, "Methods", FID_Methods, sizeof(Object), 15, FDF_ARRAY|FD_STRUCT|FDF_RI },
-   { 0, nullptr, (APTR)SET_Actions,                  writeval_default,   "Actions",           FID_Actions,         sizeof(Object), 16, FDF_POINTER|FDF_I },
+   { 0, nullptr, (APTR)SET_Actions,               writeval_default,   "Actions",           FID_Actions,         sizeof(Object), 16, FDF_POINTER|FDF_I },
    { 0, (ERR (*)(APTR, APTR))GET_ActionTable, 0,  writeval_default,   "ActionTable",       FID_ActionTable,     sizeof(Object), 17, FDF_ARRAY|FDF_POINTER|FDF_R },
    { 0, (ERR (*)(APTR, APTR))GET_Location, 0,     writeval_default,   "Location",          FID_Location,        sizeof(Object), 18, FDF_STRING|FDF_R },
    { 0, (ERR (*)(APTR, APTR))GET_ClassName, (APTR)SET_ClassName, writeval_default, "Name", FID_Name,            sizeof(Object), 19, FDF_STRING|FDF_SYSTEM|FDF_RI },
    { 0, (ERR (*)(APTR, APTR))GET_Module, 0,       writeval_default,   "Module",            FID_Module,          sizeof(Object), 20, FDF_STRING|FDF_R },
    { 0, (ERR (*)(APTR, APTR))GET_Objects, 0,      writeval_default,   "Objects",           FID_Objects,         sizeof(Object), 21, FDF_ARRAY|FDF_INT|FDF_ALLOC|FDF_R },
    { MAXINT("FieldArray"), (ERR (*)(APTR, APTR))GET_SubFields, 0, writeval_default, "SubFields", FID_SubFields, sizeof(Object), 22, FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R },
-   { MAXINT(CLASSID::ROOTMODULE), (ERR (*)(APTR, APTR))GET_RootModule, 0, writeval_default, "RootModule", FID_RootModule,     sizeof(Object), 23, FDF_OBJECT|FDF_R },
+   { MAXINT(CLASSID::ROOTMODULE), (ERR (*)(APTR, APTR))GET_RootModule, 0, writeval_default, "RootModule", FID_RootModule, sizeof(Object), 23, FDF_OBJECT|FDF_R },
+   { 0, (ERR (*)(APTR, APTR))OBJECT_GetID, 0,     writeval_default,   "ID",                FID_ID,              sizeof(Object), 24, FDF_INT|FDF_R },
    { 0, 0, 0, nullptr, "", 0, 0, 0,  0 }
 };
 
@@ -138,6 +140,7 @@ static const FieldArray glMetaFields[] = {
    { "Objects",         FDF_ARRAY|FDF_INT|FDF_ALLOC|FDF_R, GET_Objects },
    { "SubFields",       FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R, GET_SubFields, nullptr, "FieldArray" },
    { "RootModule",      FDF_OBJECT|FDF_R, GET_RootModule, nullptr, CLASSID::ROOTMODULE },
+   { "ID",              FDF_INT|FDF_SYSTEM|FDF_R, OBJECT_GetID },
    END_FIELD
 };
 
@@ -176,7 +179,7 @@ void init_metaclass(void)
    glMetaClass.Category           = CCF::SYSTEM;
    glMetaClass.FieldLookup        = glMetaFieldsPreset;
    glMetaClass.OriginalFieldTotal = std::ssize(glMetaFields)-1;
-   glMetaClass.Local[0]        = 0xff;
+   glMetaClass.Local[0]           = 0xff;
 
    glMetaClass.Methods.resize(2);
    glMetaClass.Methods[1] = { AC(-1), (APTR)CLASS_FindField, "FindField", argsFindField, sizeof(struct mc::FindField) };
@@ -873,7 +876,7 @@ static void field_setup(extMetaClass *Class)
       bool name_field   = true;
       bool owner_field  = true;
       auto class_fields = Class->Fields;
-      uint16_t offset      = sizeof(Object);
+      uint16_t offset   = sizeof(Object);
       for (unsigned i=0; class_fields[i].Name; i++) {
          add_field(Class, Class->FieldLookup, class_fields[i], offset);
 
@@ -910,6 +913,18 @@ static void field_setup(extMetaClass *Class)
             .Flags      = FDF_OBJECTID|FDF_RW|FDF_SYSTEM
          });
       }
+
+      Class->FieldLookup.push_back({
+         .Arg        = 0,
+         .GetValue   = (ERR (*)(APTR, APTR))&OBJECT_GetID,
+         .SetValue   = nullptr,
+         .WriteValue = &writeval_default,
+         .Name       = "ID",
+         .FieldID    = FID_ID,
+         .Offset     = 0,
+         .Index      = 0,
+         .Flags      = FDF_INT|FDF_R|FDF_SYSTEM
+      });
 
       // Add the Class field.  This is provided primarily to help scripting languages like Fluid.
 
@@ -1058,15 +1073,17 @@ static ERR OBJECT_GetClass(OBJECTPTR Self, extMetaClass **Value)
    return ERR::Okay;
 }
 
-//********************************************************************************************************************
+static ERR OBJECT_GetID(OBJECTPTR Self, OBJECTID *Value)
+{
+   *Value = Self->UID;
+   return ERR::Okay;
+}
 
 static ERR OBJECT_GetClassID(OBJECTPTR Self, CLASSID *Value)
 {
    *Value = Self->classID();
    return ERR::Okay;
 }
-
-//********************************************************************************************************************
 
 static ERR OBJECT_GetOwner(OBJECTPTR Self, OBJECTID *OwnerID)
 {
@@ -1088,8 +1105,6 @@ static ERR OBJECT_SetOwner(OBJECTPTR Self, OBJECTID OwnerID)
    }
    else return log.warning(ERR::NullArgs);
 }
-
-//********************************************************************************************************************
 
 static ERR OBJECT_GetName(OBJECTPTR Self, STRING *Name)
 {

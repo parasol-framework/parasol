@@ -31,8 +31,8 @@ Path = modules:arrow
 </pre>
 <p>Notice the text enclosed in square brackets, such as <code>[Action]</code>. These are referred to as 'groups', which are responsible for holding groups of key values expressed as strings.  In the above example, keys are defined by the <code>ClassID</code> and <code>Path</code> identifiers.</p>
 <p>The following source code illustrates how to open the classes.cfg file and read a key from it:</p>
-<pre>local cfg = obj.new('config', { path='config:classes.cfg' })
-local err, str = cfg.mtReadValue('Action', 'Path')
+<pre>cfg = obj.new('config', { path='config:classes.cfg' })
+err, str = cfg.mtReadValue('Action', 'Path')
 print('The Action class is located at ' .. str)
 </pre>
 <p>Please note that internal string comparisons of group and key names are case sensitive by default.  Use of camel-case is recommended as the default naming format.</p></description>
