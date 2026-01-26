@@ -171,7 +171,7 @@ int lj_object_ipairs(lua_State *L)
 // Fast object field get - called from BC_OBGETF bytecode handler. Writes result directly to Dest, or throws an error
 // if the field doesn't exist or the object has been freed.
 
-extern "C" void lj_object_getfield(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Dest)
+extern "C" void bc_object_getfield(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Dest)
 {
    // Ensure L->top is past the value register before any error can be thrown.
    // luaL_error pushes the error string to L->top, which would corrupt active registers if too low.
@@ -203,7 +203,7 @@ extern "C" void lj_object_getfield(lua_State *L, GCobject *Obj, GCstr *Key, TVal
 //********************************************************************************************************************
 // Fast object field set - called from BC_OBSETF bytecode handler. Writes Val to the object field, or throws an error.
 
-extern "C" void lj_object_setfield(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Val)
+extern "C" void bc_object_setfield(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Val)
 {
    // Ensure L->top is past the value register before any error can be thrown.
    // luaL_error pushes the error string to L->top, which would corrupt active registers if too low.
