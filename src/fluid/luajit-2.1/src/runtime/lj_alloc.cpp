@@ -82,10 +82,6 @@
 
 #define LJ_ALLOC_VIRTUALALLOC   1
 
-#if LJ_64 && !LJ_GC64
-#define LJ_ALLOC_NTAVM      1
-#endif
-
 #else
 
 #include <errno.h>
@@ -98,19 +94,8 @@
 
 #define LJ_ALLOC_MMAP_PROBE   1
 
-#if LJ_GC64
- #define LJ_ALLOC_MBITS      47   //  128 TB in LJ_GC64 mode.
-#elif LJ_TARGET_X64 && LJ_HASJIT
- // Due to limitations in the x64 compiler backend.
- #define LJ_ALLOC_MBITS      31   //  2 GB on x64 with !LJ_GC64.
-#else
- #define LJ_ALLOC_MBITS      32   //  4 GB on other archs with !LJ_GC64.
-#endif
+#define LJ_ALLOC_MBITS      47   //  128 TB in GC64 mode.
 
-#endif
-
-#if LJ_64 && !LJ_GC64 && defined(MAP_32BIT)
-#define LJ_ALLOC_MMAP32      1
 #endif
 
 #if LJ_TARGET_LINUX
@@ -328,20 +313,6 @@ static void* mmap_plain(size_t size)
 #define CALL_MMAP(prng, size)   mmap_plain(size)
 #endif
 
-#if LJ_64 && !LJ_GC64 && ((defined(__FreeBSD__) && __FreeBSD__ < 10) or defined(__FreeBSD_kernel__)) && !LJ_TARGET_PS4
-
-#include <sys/resource.h>
-
-static void init_mmap(void)
-{
-   struct rlimit rlim;
-   rlim.rlim_cur = rlim.rlim_max = 0x10000;
-   setrlimit(RLIMIT_DATA, &rlim);  //  Ignore result. May fail later.
-}
-#define INIT_MMAP()   init_mmap()
-
-#endif
-
 static int CALL_MUNMAP(void* ptr, size_t size)
 {
    int olderr = errno;
@@ -363,7 +334,7 @@ static void* CALL_MREMAP_(void* ptr, size_t osz, size_t nsz, int flags)
 #define CALL_MREMAP(addr, osz, nsz, mv) CALL_MREMAP_((addr), (osz), (nsz), (mv))
 #define CALL_MREMAP_NOMOVE   0
 #define CALL_MREMAP_MAYMOVE   1
-#if LJ_64 && (!LJ_GC64 or LJ_TARGET_ARM64)
+#if LJ_TARGET_ARM64
 #define CALL_MREMAP_MV      CALL_MREMAP_NOMOVE
 #else
 #define CALL_MREMAP_MV      CALL_MREMAP_MAYMOVE

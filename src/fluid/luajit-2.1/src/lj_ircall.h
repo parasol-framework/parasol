@@ -230,7 +230,7 @@ LJ_FUNC TRef lj_ir_call(jit_State *J, IRCallID id, ...);
 
 LJ_DATA const CCallInfo lj_ir_callinfo[IRCALL__MAX+1];
 
-#if LJ_HASFFI && LJ_NEED_FP64 && !(LJ_TARGET_ARM && LJ_SOFTFP)
+#if LJ_HASFFI && LJ_NEED_FP64
 #if defined(__GNUC__) || defined(__clang__)
 #define fp64_l2d __floatdidf
 #define fp64_ul2d __floatundidf

@@ -1536,8 +1536,8 @@ LJ_DATA const char* const lj_obj_itypename[~LJ_TNUMX + 1];
 }
 
 // Compare two objects without calling metamethods.
-LJ_FUNC int LJ_FASTCALL lj_obj_equal(cTValue* o1, cTValue* o2);
-LJ_FUNC const void* LJ_FASTCALL lj_obj_ptr(global_State *g, cTValue* o);
+LJ_FUNC int lj_obj_equal(cTValue* o1, cTValue* o2);
+LJ_FUNC const void* lj_obj_ptr(global_State *g, cTValue* o);
 
 // Late deferred function definitions (need tvisnil, G)
 

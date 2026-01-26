@@ -142,7 +142,7 @@ void lj_state_shrinkstack(lua_State *L, MSize used)
 //********************************************************************************************************************
 // Try to grow stack.
 
-void LJ_FASTCALL lj_state_growstack(lua_State *L, MSize need)
+void lj_state_growstack(lua_State *L, MSize need)
 {
    MSize n;
    lj_assertL(need < 1024, "Stack growth request exceeds reasonable 1K limit");
@@ -161,7 +161,7 @@ void LJ_FASTCALL lj_state_growstack(lua_State *L, MSize need)
 
 //********************************************************************************************************************
 
-void LJ_FASTCALL lj_state_growstack1(lua_State *L)
+void lj_state_growstack1(lua_State *L)
 {
    lj_state_growstack(L, 1);
 }
@@ -403,7 +403,7 @@ lua_State * lj_state_new(lua_State *L)
 
 //********************************************************************************************************************
 
-void LJ_FASTCALL lj_state_free(global_State* g, lua_State *L)
+void lj_state_free(global_State* g, lua_State *L)
 {
    lj_assertG(L != mainthread(g), "free of main thread");
    if (obj2gco(L) == gcref(g->cur_L)) setgcrefnull(g->cur_L);

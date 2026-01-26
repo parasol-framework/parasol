@@ -123,7 +123,7 @@ static LJ_AINLINE char* serialize_ru124(char* r, char* w, uint32_t* pv)
 }
 
 // Prepare string dictionary for use (once). 0-based indexing.
-void LJ_FASTCALL lj_serialize_dict_prep_str(lua_State* L, GCtab* dict)
+void lj_serialize_dict_prep_str(lua_State* L, GCtab* dict)
 {
    if (!dict->hmask) {  // No hash part means not prepared, yet.
       MSize i, len = lj_tab_len(dict);
@@ -144,7 +144,7 @@ void LJ_FASTCALL lj_serialize_dict_prep_str(lua_State* L, GCtab* dict)
 }
 
 // Prepare metatable dictionary for use (once). 0-based indexing.
-void LJ_FASTCALL lj_serialize_dict_prep_mt(lua_State* L, GCtab* dict)
+void lj_serialize_dict_prep_mt(lua_State* L, GCtab* dict)
 {
    if (!dict->hmask) {  // No hash part means not prepared, yet.
       MSize i, len = lj_tab_len(dict);
@@ -288,7 +288,7 @@ static char* serialize_put(char* w, SBufExt* sbx, cTValue* o)
       if (ud == 0) {
          *w++ = SER_TAG_NULL;
       }
-      else if (LJ_32 or checku32(ud)) {
+      else if (checku32(ud)) {
          ud = lj_bswap64(ud);
          * w++ = SER_TAG_LIGHTUD32; memcpy(w, &ud, 4); w += 4;
       }
@@ -412,7 +412,7 @@ eob:
 // -- External serialization API
 
 // Encode to buffer.
-SBufExt* LJ_FASTCALL lj_serialize_put(SBufExt* sbx, cTValue* o)
+SBufExt* lj_serialize_put(SBufExt* sbx, cTValue* o)
 {
    sbx->depth = LJ_SERIALIZE_DEPTH;
    sbx->w = serialize_put(sbx->w, sbx, o);
@@ -420,14 +420,14 @@ SBufExt* LJ_FASTCALL lj_serialize_put(SBufExt* sbx, cTValue* o)
 }
 
 // Decode from buffer.
-char* LJ_FASTCALL lj_serialize_get(SBufExt* sbx, TValue* o)
+char* lj_serialize_get(SBufExt* sbx, TValue* o)
 {
    sbx->depth = LJ_SERIALIZE_DEPTH;
    return serialize_get(sbx->r, sbx, o);
 }
 
 // Stand-alone encoding, borrowing from global temporary buffer.
-GCstr* LJ_FASTCALL lj_serialize_encode(lua_State* L, cTValue* o)
+GCstr* lj_serialize_encode(lua_State* L, cTValue* o)
 {
    SBufExt sbx;
    char* w;
@@ -452,7 +452,7 @@ void lj_serialize_decode(lua_State* L, TValue* o, GCstr* str)
 }
 
 // Peek into buffer to find the result IRType for specialization purposes.
-LJ_FUNC MSize LJ_FASTCALL lj_serialize_peektype(SBufExt* sbx)
+LJ_FUNC MSize lj_serialize_peektype(SBufExt* sbx)
 {
    uint32_t tp;
    if (serialize_ru124(sbx->r, sbx->w, &tp)) {

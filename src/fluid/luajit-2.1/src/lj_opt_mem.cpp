@@ -82,7 +82,7 @@ static int fwd_aa_tab_clear(jit_State* J, IRRef lim, IRRef ta)
 }
 
 // Check whether there's no aliasing NEWREF/table.clear for the left operand.
-int LJ_FASTCALL lj_opt_fwd_tptr(jit_State* J, IRRef lim)
+int lj_opt_fwd_tptr(jit_State* J, IRRef lim)
 {
    IRRef ta = fins->op1;
    IRRef ref = J->chain[IR_NEWREF];
@@ -265,7 +265,7 @@ static TRef fwd_aload_reassoc(jit_State* J)
 }
 
 // ALOAD forwarding.
-TRef LJ_FASTCALL lj_opt_fwd_aload(jit_State* J)
+TRef lj_opt_fwd_aload(jit_State* J)
 {
    IRRef ref;
    if ((ref = fwd_ahload(J, fins->op1)) ||
@@ -275,7 +275,7 @@ TRef LJ_FASTCALL lj_opt_fwd_aload(jit_State* J)
 }
 
 // HLOAD forwarding.
-TRef LJ_FASTCALL lj_opt_fwd_hload(jit_State* J)
+TRef lj_opt_fwd_hload(jit_State* J)
 {
    IRRef ref = fwd_ahload(J, fins->op1);
    if (ref)
@@ -284,7 +284,7 @@ TRef LJ_FASTCALL lj_opt_fwd_hload(jit_State* J)
 }
 
 // HREFK forwarding.
-TRef LJ_FASTCALL lj_opt_fwd_hrefk(jit_State* J)
+TRef lj_opt_fwd_hrefk(jit_State* J)
 {
    IRRef tab = fleft->op1;
    IRRef ref = J->chain[IR_NEWREF];
@@ -309,7 +309,7 @@ docse:
 }
 
 // Check whether HREF of TNEW/TDUP can be folded to niltv.
-int LJ_FASTCALL lj_opt_fwd_href_nokey(jit_State* J)
+int lj_opt_fwd_href_nokey(jit_State* J)
 {
    IRRef lim = fins->op1;  //  Search limit.
    IRRef ref;
@@ -337,7 +337,7 @@ int LJ_FASTCALL lj_opt_fwd_href_nokey(jit_State* J)
 }
 
 // ASTORE/HSTORE elimination.
-TRef LJ_FASTCALL lj_opt_dse_ahstore(jit_State* J)
+TRef lj_opt_dse_ahstore(jit_State* J)
 {
    IRRef xref = fins->op1;  //  xREF reference.
    IRRef val = fins->op2;  //  Stored value reference.
@@ -380,7 +380,7 @@ doemit:
 }
 
 // ALEN forwarding.
-TRef LJ_FASTCALL lj_opt_fwd_alen(jit_State* J)
+TRef lj_opt_fwd_alen(jit_State* J)
 {
    IRRef tab = fins->op1;  //  Table reference.
    IRRef lim = tab;  //  Search limit.
@@ -466,7 +466,7 @@ static AliasRet aa_uref(IRIns* refa, IRIns* refb)
 }
 
 // ULOAD forwarding.
-TRef LJ_FASTCALL lj_opt_fwd_uload(jit_State* J)
+TRef lj_opt_fwd_uload(jit_State* J)
 {
    IRRef uref = fins->op1;
    IRRef lim = REF_BASE;  //  Search limit.
@@ -499,7 +499,7 @@ cselim:
 }
 
 // USTORE elimination.
-TRef LJ_FASTCALL lj_opt_dse_ustore(jit_State* J)
+TRef lj_opt_dse_ustore(jit_State* J)
 {
    IRRef xref = fins->op1;  //  xREF reference.
    IRRef val = fins->op2;  //  Stored value reference.
@@ -567,7 +567,7 @@ static AliasRet aa_fref(jit_State* J, IRIns* refa, IRIns* refb)
 }
 
 // Only the loads for mutable fields end up here (see FOLD).
-TRef LJ_FASTCALL lj_opt_fwd_fload(jit_State* J)
+TRef lj_opt_fwd_fload(jit_State* J)
 {
    IRRef oref = fins->op1;  //  Object reference.
    IRRef fid = fins->op2;  //  Field ID.
@@ -599,7 +599,7 @@ cselim:
 }
 
 // FSTORE elimination.
-TRef LJ_FASTCALL lj_opt_dse_fstore(jit_State* J)
+TRef lj_opt_dse_fstore(jit_State* J)
 {
    IRRef fref = fins->op1;  //  FREF reference.
    IRRef val = fins->op2;  //  Stored value reference.
@@ -640,7 +640,7 @@ doemit:
 }
 
 // Check whether there's no aliasing buffer op between IRFL_SBUF_*.
-int LJ_FASTCALL lj_opt_fwd_sbuf(jit_State* J, IRRef lim)
+int lj_opt_fwd_sbuf(jit_State* J, IRRef lim)
 {
    IRRef ref;
    if (J->chain[IR_BUFPUT] > lim)
@@ -799,7 +799,7 @@ static IRRef reassoc_xref(jit_State* J, IRIns* ir)
 }
 
 // XLOAD forwarding.
-TRef LJ_FASTCALL lj_opt_fwd_xload(jit_State* J)
+TRef lj_opt_fwd_xload(jit_State* J)
 {
    IRRef xref = fins->op1;
    IRIns* xr = IR(xref);
@@ -868,7 +868,7 @@ doemit:
 }
 
 // XSTORE elimination.
-TRef LJ_FASTCALL lj_opt_dse_xstore(jit_State* J)
+TRef lj_opt_dse_xstore(jit_State* J)
 {
    IRRef xref = fins->op1;
    IRIns* xr = IR(xref);

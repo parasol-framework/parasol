@@ -47,7 +47,7 @@
 //   |  call extern lj_meta_equal_thunk  // L->top NOT set!
 //
 // USAGE:
-//    TValue* LJ_FASTCALL lj_meta_equal_thunk(lua_State *L, BCIns ins) {
+//    TValue* lj_meta_equal_thunk(lua_State *L, BCIns ins) {
 //       VMHelperGuard guard(L);  // Fixes L->top, saves state
 //       if (lj_thunk_isthunk(o1)) { // Now safe to call Lua code
 //          resolved_o1 = lj_thunk_resolve(L, ud);  // May call lua_pcall

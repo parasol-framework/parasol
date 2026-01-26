@@ -315,10 +315,6 @@ static int panic(lua_State* L)
 
 #ifdef LUAJIT_USE_SYSMALLOC
 
-#if LJ_64 && !LJ_GC64 && !defined(LUAJIT_USE_VALGRIND)
-#error "Must use builtin allocator for 64 bit target"
-#endif
-
 static void* mem_alloc(void* ud, void* ptr, size_t osize, size_t nsize)
 {
    (void)ud;

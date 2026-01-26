@@ -213,7 +213,7 @@ bool lj_array_grow(lua_State *L, GCarray *Array, MSize MinCapacity)
 
 //********************************************************************************************************************
 
-void LJ_FASTCALL lj_array_free(global_State *g, GCarray *Array)
+void lj_array_free(global_State *g, GCarray *Array)
 {
    // Free owned storage first (external storage is managed by caller)
    size_t storage_size = Array->storage_size();

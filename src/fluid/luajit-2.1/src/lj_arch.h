@@ -280,8 +280,8 @@
 #define LJ_ABI_SOFTFP      0 // Legacy, never enabled
 #endif
 
-#define LJ_SOFTFP      0 // Legacy, never enabled
-#define LJ_SOFTFP32    0 // Legacy, never enabled
+#define LJ_SOFTFP      0 // DEPRECATED
+#define LJ_SOFTFP32    0 // DEPRECATED
 
 #if LJ_ARCH_ENDIAN == LUAJIT_BE
 #define LJ_LE         0
@@ -295,7 +295,6 @@
 #define LJ_ENDIAN_LOHI(lo, hi)      lo hi
 #endif
 
-#define LJ_32         0 // Always 0, builds are 64-bit only
 #define LJ_64         1 // Always 1, builds are 64-bit only
 
 #ifndef LJ_TARGET_UNALIGNED

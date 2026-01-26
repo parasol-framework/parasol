@@ -26,7 +26,7 @@ struct lj_Debug {
 };
 
 extern cTValue* lj_debug_frame(lua_State* L, int level, int* size);
-extern BCLine LJ_FASTCALL lj_debug_line(GCproto* pt, BCPOS pc);
+extern BCLine lj_debug_line(GCproto* pt, BCPOS pc);
 extern const char* lj_debug_uvname(GCproto* pt, uint32_t idx);
 extern const char* lj_debug_uvnamev(cTValue* o, uint32_t idx, TValue** tvp, GCobj** op);
 extern const char* lj_debug_slotname(GCproto* pt, const BCIns* pc, BCREG slot, const char** name);

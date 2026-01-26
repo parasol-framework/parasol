@@ -677,7 +677,6 @@ static void asm_conv(ASMState* as, IRIns* ir)
    int stfp = (st == IRT_NUM or st == IRT_FLOAT);
    IRRef lref = ir->op1;
    lj_assertA(irt_type(ir->t) != st, "inconsistent types for CONV");
-   lj_assertA(!(LJ_32 and (irt_isint64(ir->t) or st64)), "IR %04d has unsplit 64 bit type", (int)(ir - as->ir) - REF_BIAS);
    if (irt_isfp(ir->t)) {
       Reg dest = ra_dest(as, ir, RSET_FPR);
       if (stfp) {  // FP to FP conversion.

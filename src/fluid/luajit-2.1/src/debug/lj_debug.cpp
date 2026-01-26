@@ -112,7 +112,7 @@ static BCPOS debug_framepc(lua_State *L, GCfunc *fn, cTValue *nextframe)
 // Get line number for a bytecode position.
 // Returns BCLine with file index encoded in upper 8 bits (direct read from lineinfo array).
 
-BCLine LJ_FASTCALL lj_debug_line(GCproto* pt, BCPOS pc)
+BCLine lj_debug_line(GCproto* pt, BCPOS pc)
 {
    auto lineinfo = (const BCLine*)proto_lineinfo(pt);
 

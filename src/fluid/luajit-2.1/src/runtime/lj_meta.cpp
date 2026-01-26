@@ -384,7 +384,7 @@ TValue * lj_meta_cat(lua_State *L, TValue *top, int left)
 //********************************************************************************************************************
 // Helper for LEN. __len metamethod.
 
-TValue * LJ_FASTCALL lj_meta_len(lua_State *L, cTValue *o)
+TValue * lj_meta_len(lua_State *L, cTValue *o)
 {
    cTValue *mo = lj_meta_lookup(L, o, MM_len);
    if (tvisnil(mo)) {
@@ -428,7 +428,7 @@ TValue * lj_meta_equal(lua_State *L, GCobj* o1, GCobj* o2, int ne)
 // Helper for thunk equality comparisons. Resolves thunk and compares with any type.
 // Called from VM assembler (vmeta_equal_thunk) which does NOT set L->top.
 
-TValue * LJ_FASTCALL lj_meta_equal_thunk(lua_State *L, BCIns ins)
+TValue * lj_meta_equal_thunk(lua_State *L, BCIns ins)
 {
    // VMHelperGuard fixes L->top (VM assembler doesn't set it) and saves/restores
    // stack state in case thunk resolution triggers nested Lua calls with GC.
@@ -610,7 +610,7 @@ int lj_meta_close(lua_State *L, TValue *o, TValue *err)
 //********************************************************************************************************************
 // Helper for FORI. Coercion.
 
-void LJ_FASTCALL lj_meta_for(lua_State *L, TValue *o)
+void lj_meta_for(lua_State *L, TValue *o)
 {
    if (not lj_strscan_numberobj(o)) lj_err_msg(L, ErrMsg::FORINIT);
    if (not lj_strscan_numberobj(o + 1)) lj_err_msg(L, ErrMsg::FORLIM);
@@ -654,7 +654,7 @@ void LJ_FASTCALL lj_meta_for(lua_State *L, TValue *o)
 //   base  - Base register containing first return value
 //   count - Number of return values to fix (1-8)
 
-void LJ_FASTCALL lj_meta_typefix(lua_State *L, TValue *base, uint32_t count)
+void lj_meta_typefix(lua_State *L, TValue *base, uint32_t count)
 {
    // Get the current function's prototype
    GCfunc *fn = curr_func(L);

@@ -19,7 +19,7 @@
 //********************************************************************************************************************
 // Ordered compare of strings. Assumes string data is 4-byte aligned.
 
-int32_t LJ_FASTCALL lj_str_cmp(GCstr *a, GCstr *b)
+int32_t lj_str_cmp(GCstr *a, GCstr *b)
 {
    MSize i, n = a->len > b->len ? b->len : a->len;
    for (i = 0; i < n; i += 4) {
@@ -192,7 +192,7 @@ GCstr * lj_str_new(lua_State* L, CSTRING str, size_t lenx)
 
 //********************************************************************************************************************
 
-void LJ_FASTCALL lj_str_free(global_State* g, GCstr* s)
+void lj_str_free(global_State* g, GCstr* s)
 {
    g->str.num--;
    lj_mem_free(g, s, lj_str_size(s->len));
@@ -200,7 +200,7 @@ void LJ_FASTCALL lj_str_free(global_State* g, GCstr* s)
 
 //********************************************************************************************************************
 
-void LJ_FASTCALL lj_str_init(lua_State* L)
+void lj_str_init(lua_State* L)
 {
    lj_str_resize(L, LJ_MIN_STRTAB - 1);
 }

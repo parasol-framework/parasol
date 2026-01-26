@@ -23,7 +23,7 @@ LJ_DATADEF CSTRING const lj_obj_itypename[] = {  // ORDER LJ_T
 //********************************************************************************************************************
 // Compare two objects without calling metamethods.
 
-int LJ_FASTCALL lj_obj_equal(cTValue *LHS, cTValue *RHS)
+int lj_obj_equal(cTValue *LHS, cTValue *RHS)
 {
    if (itype(LHS) IS itype(RHS)) {
       if (tvispri(LHS)) return 1;
@@ -36,7 +36,7 @@ int LJ_FASTCALL lj_obj_equal(cTValue *LHS, cTValue *RHS)
 //********************************************************************************************************************
 // Return pointer to object or its object data.
 
-const void * LJ_FASTCALL lj_obj_ptr(global_State *g, cTValue *o)
+const void * lj_obj_ptr(global_State *g, cTValue *o)
 {
    if (tvisudata(o)) return uddata(udataV(o));
    else if (tvislightud(o)) return lightudV(g, o);
