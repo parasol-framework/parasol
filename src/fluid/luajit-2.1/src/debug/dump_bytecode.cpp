@@ -367,6 +367,12 @@ void trace_proto_bytecode(lua_State *L, GCproto *Proto, BytecodeLogger Logger, v
          BCIns instruction = bc_stream[pc];
          BCOp opcode = bc_op(instruction);
 
+         // Skip invalid opcodes and extension words
+         if (opcode >= BC__MAX) continue;
+
+         // Skip extension word for extended instructions
+         if (bcmode_ext(opcode) and (pc + 1 < Proto->sizebc)) ++pc;
+
          if (bcmode_hasd(opcode) and bcmode_d(opcode) IS BCMjump) {
             int value = bc_d(instruction);
             if ((BCPOS)value != NO_JMP) {

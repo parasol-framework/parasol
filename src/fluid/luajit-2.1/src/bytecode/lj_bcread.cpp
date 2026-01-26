@@ -303,6 +303,7 @@ static void bcread_bytecode(LexState *State, GCproto *pt, MSize sizebc)
    // Extended opcodes consume two words, so ensure there's room for both.
    for (MSize i = 1; i < sizebc; i++) {
       BCOp op = bc_op(bc[i]);
+      if (op >= BC__MAX) bcread_error(State, ErrMsg::BCBAD);  // Invalid opcode
       if (bcmode_ext(op)) {
          if (i + 1 >= sizebc) bcread_error(State, ErrMsg::BCBAD);  // Missing extension word
          i++;  // Skip extension word in validation loop
