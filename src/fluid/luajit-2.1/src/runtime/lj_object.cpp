@@ -59,7 +59,7 @@ void lj_object_finalize(lua_State *L, GCobject *obj)
 // during the finalization phase by lj_object_finalize().
 // This function only releases any remaining locks and frees the GCobject wrapper itself.
 
-void LJ_FASTCALL lj_object_free(global_State *g, GCobject *obj)
+void lj_object_free(global_State *g, GCobject *obj)
 {
    // Release any active locks before freeing the wrapper
    while (obj->accesscount > 0) {

@@ -6,8 +6,6 @@
 
 #include "lj_obj.h"
 
-#if LJ_HASJIT
-
 #include "lj_gc.h"
 #include "lj_err.h"
 #include "lj_debug.h"
@@ -453,7 +451,7 @@ static void gdbjit_sleb128(GDBJITctx* ctx, int32_t v)
     *szp_##name = (uint32_t)((p-(uint8_t *)szp_##name)-4); } \
 
 // Initialize ELF section headers.
-static void LJ_FASTCALL gdbjit_secthdr(GDBJITctx* ctx)
+static void gdbjit_secthdr(GDBJITctx* ctx)
 {
    ELFsectheader* sect;
 
@@ -492,7 +490,7 @@ static void LJ_FASTCALL gdbjit_secthdr(GDBJITctx* ctx)
 }
 
 // Initialize symbol table.
-static void LJ_FASTCALL gdbjit_symtab(GDBJITctx* ctx)
+static void gdbjit_symtab(GDBJITctx* ctx)
 {
    ELFsymbol* sym;
 
@@ -513,7 +511,7 @@ static void LJ_FASTCALL gdbjit_symtab(GDBJITctx* ctx)
 }
 
 // Initialize .eh_frame section.
-static void LJ_FASTCALL gdbjit_ehframe(GDBJITctx* ctx)
+static void gdbjit_ehframe(GDBJITctx* ctx)
 {
    uint8_t* p = ctx->p;
    uint8_t* framep = p;
@@ -592,7 +590,7 @@ static void LJ_FASTCALL gdbjit_ehframe(GDBJITctx* ctx)
 }
 
 // Initialize .debug_info section.
-static void LJ_FASTCALL gdbjit_debuginfo(GDBJITctx* ctx)
+static void gdbjit_debuginfo(GDBJITctx* ctx)
 {
    uint8_t* p = ctx->p;
 
@@ -612,7 +610,7 @@ static void LJ_FASTCALL gdbjit_debuginfo(GDBJITctx* ctx)
 }
 
 // Initialize .debug_abbrev section.
-static void LJ_FASTCALL gdbjit_debugabbrev(GDBJITctx* ctx)
+static void gdbjit_debugabbrev(GDBJITctx* ctx)
 {
    uint8_t* p = ctx->p;
 
@@ -631,7 +629,7 @@ static void LJ_FASTCALL gdbjit_debugabbrev(GDBJITctx* ctx)
 #define DLNE(op, s)   (DB(DW_LNS_extended_op), DUV(1+(s)), DB((op)))
 
 // Initialize .debug_line section.
-static void LJ_FASTCALL gdbjit_debugline(GDBJITctx* ctx)
+static void gdbjit_debugline(GDBJITctx* ctx)
 {
    uint8_t* p = ctx->p;
 
@@ -678,7 +676,7 @@ static void LJ_FASTCALL gdbjit_debugline(GDBJITctx* ctx)
 #undef DSECT
 
 // Type of a section initialiser callback.
-typedef void (LJ_FASTCALL* GDBJITinitf)(GDBJITctx* ctx);
+typedef void (* GDBJITinitf)(GDBJITctx* ctx);
 
 // Call section initialiser and set the section offset and size.
 static void gdbjit_initsect(GDBJITctx* ctx, int sect, GDBJITinitf initf)
@@ -744,8 +742,7 @@ static void gdbjit_newentry(lua_State* L, GDBJITctx* ctx)
    eo->entry.prev_entry = nullptr;
    gdbjit_lock_acquire();
    eo->entry.next_entry = __jit_debug_descriptor.first_entry;
-   if (eo->entry.next_entry)
-      eo->entry.next_entry->prev_entry = &eo->entry;
+   if (eo->entry.next_entry) eo->entry.next_entry->prev_entry = &eo->entry;
    eo->entry.symfile_addr = (const char*)&eo->obj;
    eo->entry.symfile_size = ctx->objsize;
    __jit_debug_descriptor.first_entry = &eo->entry;
@@ -772,10 +769,8 @@ extern "C" void lj_gdbjit_addtrace(jit_State* J, GCtrace* T)
       "start PC out of range");
    ctx.lineno = lj_debug_line(pt, proto_bcpos(pt, startpc));
    ctx.filename = proto_chunk_namestr(pt);
-   if (*ctx.filename == '@' or *ctx.filename == '=')
-      ctx.filename++;
-   else
-      ctx.filename = "(string)";
+   if (*ctx.filename == '@' or *ctx.filename == '=') ctx.filename++;
+   else ctx.filename = "(string)";
    gdbjit_buildobj(&ctx);
    gdbjit_newentry(J->L, &ctx);
 }
@@ -786,12 +781,9 @@ extern "C" void lj_gdbjit_deltrace(jit_State* J, GCtrace* T)
    GDBJITentryobj* eo = (GDBJITentryobj*)T->gdbjit_entry;
    if (eo) {
       gdbjit_lock_acquire();
-      if (eo->entry.prev_entry)
-         eo->entry.prev_entry->next_entry = eo->entry.next_entry;
-      else
-         __jit_debug_descriptor.first_entry = eo->entry.next_entry;
-      if (eo->entry.next_entry)
-         eo->entry.next_entry->prev_entry = eo->entry.prev_entry;
+      if (eo->entry.prev_entry) eo->entry.prev_entry->next_entry = eo->entry.next_entry;
+      else __jit_debug_descriptor.first_entry = eo->entry.next_entry;
+      if (eo->entry.next_entry) eo->entry.next_entry->prev_entry = eo->entry.prev_entry;
       __jit_debug_descriptor.relevant_entry = &eo->entry;
       __jit_debug_descriptor.action_flag = GDBJIT_UNREGISTER;
       __jit_debug_register_code();
@@ -801,4 +793,3 @@ extern "C" void lj_gdbjit_deltrace(jit_State* J, GCtrace* T)
 }
 
 #endif // LUAJIT_USE_GDBJIT
-#endif // HASJIT

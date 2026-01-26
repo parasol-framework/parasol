@@ -364,7 +364,7 @@ static BCREG cur_topslot(GCproto* pt, const BCIns* pc, uint32_t nres)
 //********************************************************************************************************************
 // Instruction dispatch. Used by instr/line/return hooks or when recording.
 
-void LJ_FASTCALL lj_dispatch_ins(lua_State* L, const BCIns* pc)
+void lj_dispatch_ins(lua_State* L, const BCIns* pc)
 {
    ERRNO_SAVE
    GCfunc *fn = curr_func(L);
@@ -435,7 +435,7 @@ static int call_init(lua_State* L, GCfunc* fn)
 //********************************************************************************************************************
 // Call dispatch. Used by call hooks, hot calls or when recording.
 
-ASMFunction LJ_FASTCALL lj_dispatch_call(lua_State* L, const BCIns* pc)
+ASMFunction lj_dispatch_call(lua_State* L, const BCIns* pc)
 {
    ERRNO_SAVE
    GCfunc* fn = curr_func(L);
@@ -484,7 +484,7 @@ out :
 //********************************************************************************************************************
 // Stitch a new trace.
 
-void LJ_FASTCALL lj_dispatch_stitch(jit_State* J, const BCIns* pc)
+void lj_dispatch_stitch(jit_State* J, const BCIns* pc)
 {
    ERRNO_SAVE
    lua_State* L = J->L;

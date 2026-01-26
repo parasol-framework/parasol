@@ -149,7 +149,7 @@ GCtab * lj_tab_new_ah(lua_State *L, int32_t a, int32_t h)
 
 //********************************************************************************************************************
 
-GCtab * LJ_FASTCALL lj_tab_new1(lua_State *L, uint32_t ahsize)
+GCtab * lj_tab_new1(lua_State *L, uint32_t ahsize)
 {
    GCtab *t = newtab(L, ahsize & 0xffffff, ahsize >> 24);
    clearapart(t);
@@ -160,7 +160,7 @@ GCtab * LJ_FASTCALL lj_tab_new1(lua_State *L, uint32_t ahsize)
 //********************************************************************************************************************
 // Duplicate a table.
 
-GCtab * LJ_FASTCALL lj_tab_dup(lua_State *L, const GCtab *kt)
+GCtab * lj_tab_dup(lua_State *L, const GCtab *kt)
 {
    GCtab *t;
    uint32_t asize, hmask;
@@ -201,7 +201,7 @@ GCtab * LJ_FASTCALL lj_tab_dup(lua_State *L, const GCtab *kt)
 //********************************************************************************************************************
 // Clear a table.
 
-void LJ_FASTCALL lj_tab_clear(GCtab *t)
+void lj_tab_clear(GCtab *t)
 {
    clearapart(t);
    if (t->hmask > 0) {
@@ -214,7 +214,7 @@ void LJ_FASTCALL lj_tab_clear(GCtab *t)
 //********************************************************************************************************************
 // Free a table.
 
-void LJ_FASTCALL lj_tab_free(global_State *g, GCtab *t)
+void lj_tab_free(global_State *g, GCtab *t)
 {
    if (t->hmask > 0) lj_mem_freevec(g, noderef(t->node), t->hmask + 1, Node);
    if (t->asize > 0 and LJ_MAX_COLOSIZE != 0 and t->colo <= 0) {
@@ -389,7 +389,7 @@ void lj_tab_reasize(lua_State* L, GCtab* t, uint32_t nasize)
 //********************************************************************************************************************
 // Table getters
 
-cTValue* LJ_FASTCALL lj_tab_getinth(GCtab* t, int32_t key)
+cTValue* lj_tab_getinth(GCtab* t, int32_t key)
 {
    TValue k;
    Node* n;
@@ -589,7 +589,7 @@ TValue * lj_tab_set(lua_State *L, GCtab *t, cTValue *key)
 
 // Get the successor traversal index of a key.
 
-uint32_t LJ_FASTCALL lj_tab_keyindex(GCtab* t, cTValue* key)
+uint32_t lj_tab_keyindex(GCtab* t, cTValue* key)
 {
    TValue tmp;
    if (tvisint(key)) {
@@ -696,7 +696,7 @@ LJ_NOINLINE static size_t tab_len_slow(GCtab* t, size_t hi)
 //********************************************************************************************************************
 // Compute table length. Fast path. 0-based indexing.
 
-MSize LJ_FASTCALL lj_tab_len(GCtab* t)
+MSize lj_tab_len(GCtab* t)
 {
    // Initialize last_index to sentinel value representing "before the first element"
    size_t last_index = (size_t)-1;
@@ -724,7 +724,7 @@ MSize LJ_FASTCALL lj_tab_len(GCtab* t)
 //********************************************************************************************************************
 // Verify hinted table length or compute it.
 
-MSize LJ_FASTCALL lj_tab_len_hint(GCtab *t, size_t hint)
+MSize lj_tab_len_hint(GCtab *t, size_t hint)
 {
    size_t asize = (size_t)t->asize;
    cTValue *tv = arrayslot(t, hint);

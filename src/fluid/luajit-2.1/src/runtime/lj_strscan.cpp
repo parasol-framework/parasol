@@ -542,7 +542,7 @@ StrScanFmt lj_strscan_scan(const uint8_t* p, MSize len, TValue* o, uint32_t opt)
    }
 }
 
-int LJ_FASTCALL lj_strscan_num(GCstr* str, TValue* o)
+int lj_strscan_num(GCstr* str, TValue* o)
 {
    StrScanFmt fmt = lj_strscan_scan((const uint8_t*)strdata(str), str->len, o, STRSCAN_OPT_TONUM);
    lj_assertX(fmt IS STRSCAN_ERROR or fmt IS STRSCAN_NUM, "bad scan format");
@@ -550,7 +550,7 @@ int LJ_FASTCALL lj_strscan_num(GCstr* str, TValue* o)
 }
 
 #if LJ_DUALNUM
-int LJ_FASTCALL lj_strscan_number(GCstr* str, TValue* o)
+int lj_strscan_number(GCstr* str, TValue* o)
 {
    StrScanFmt fmt = lj_strscan_scan((const uint8_t*)strdata(str), str->len, o, STRSCAN_OPT_TOINT);
    lj_assertX(fmt IS STRSCAN_ERROR or fmt IS STRSCAN_NUM or fmt IS STRSCAN_INT, "bad scan format");

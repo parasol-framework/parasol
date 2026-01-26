@@ -123,9 +123,9 @@ inline void markfinalized(GCobj* x) noexcept
 extern "C" size_t lj_gc_separateudata(global_State* g, int all);
 extern "C" void lj_gc_finalize_udata(lua_State* L);
 extern "C" void lj_gc_freeall(global_State* g);
-extern "C" int LJ_FASTCALL lj_gc_step(lua_State* L);
-extern "C" void LJ_FASTCALL lj_gc_step_fixtop(lua_State* L);
-extern "C" int LJ_FASTCALL lj_gc_step_jit(global_State* g, MSize steps);
+extern "C" int lj_gc_step(lua_State* L);
+extern "C" void lj_gc_step_fixtop(lua_State* L);
+extern "C" int lj_gc_step_jit(global_State* g, MSize steps);
 extern "C" void lj_gc_fullgc(lua_State* L);
 
 // GC check: drive collector forward if the GC threshold has been reached.
@@ -134,7 +134,7 @@ extern "C" void lj_gc_fullgc(lua_State* L);
 
 // Write barriers.
 extern "C" void lj_gc_barrierf(global_State* g, GCobj* o, GCobj* v);
-extern "C" void LJ_FASTCALL lj_gc_barrieruv(global_State* g, TValue* tv);
+extern "C" void lj_gc_barrieruv(global_State* g, TValue* tv);
 extern "C" void lj_gc_closeuv(global_State* g, GCupval* uv);
 extern "C" void lj_gc_barriertrace(global_State* g, uint32_t traceno);
 
@@ -452,7 +452,7 @@ public:
 // Allocator.
 
 extern "C" void * lj_mem_realloc(lua_State* L, void* p, GCSize osz, GCSize nsz);
-extern "C" void * LJ_FASTCALL lj_mem_newgco(lua_State* L, GCSize size);
+extern "C" void * lj_mem_newgco(lua_State* L, GCSize size);
 extern "C" void * lj_mem_grow(lua_State* L, void* p, MSize* szp, MSize lim, MSize esz);
 
 #define lj_mem_new(L, s)   lj_mem_realloc(L, NULL, 0, (s))

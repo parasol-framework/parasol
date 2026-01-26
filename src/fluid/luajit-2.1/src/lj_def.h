@@ -299,11 +299,6 @@ static LJ_AINLINE uint32_t lj_getu32(const void* v)
 #error "missing defines for your compiler"
 #endif
 
-// LJ_FASTCALL is no longer needed for 64-bit only builds, define as empty for compatibility.
-#ifndef LJ_FASTCALL
-#define LJ_FASTCALL
-#endif
-
 #ifndef LJ_NORET
 #define LJ_NORET   [[noreturn]]
 #endif

@@ -591,7 +591,7 @@ static size_t gc_propagate_gray(global_State *g)
 
 // Type of GC free functions.
 
-using GCFreeFunc = void (LJ_FASTCALL*)(global_State*, GCobj*);
+using GCFreeFunc = void (*)(global_State*, GCobj*);
 
 // GC free functions for LJ_TSTR .. LJ_TARRAY. ORDER LJ_T
 // Using std::array for type-safe bounds checking and modern C++ semantics.
@@ -918,7 +918,7 @@ static size_t gc_onestep(lua_State *L)
 }
 
 // Perform a limited amount of incremental GC steps.
-int LJ_FASTCALL lj_gc_step(lua_State *L)
+int lj_gc_step(lua_State *L)
 {
    global_State *g = G(L);
    VMStateGuard vm_guard(g);  // RAII: saves vmstate, sets to GC, restores on exit.
@@ -949,7 +949,7 @@ int LJ_FASTCALL lj_gc_step(lua_State *L)
 //********************************************************************************************************************
 // Ditto, but fix the stack top first.
 
-void LJ_FASTCALL lj_gc_step_fixtop(lua_State *L)
+void lj_gc_step_fixtop(lua_State *L)
 {
    if (curr_funcisL(L)) L->top = curr_topL(L);
    lj_gc_step(L);
@@ -958,7 +958,7 @@ void LJ_FASTCALL lj_gc_step_fixtop(lua_State *L)
 //********************************************************************************************************************
 // Perform multiple GC steps. Called from JIT-compiled code.
 
-int LJ_FASTCALL lj_gc_step_jit(global_State *g, MSize steps)
+int lj_gc_step_jit(global_State *g, MSize steps)
 {
    lua_State *L = gco_to_thread(gcref(g->cur_L));
    L->base = tvref(G(L)->jit_base);
@@ -1014,7 +1014,7 @@ void lj_gc_barrierf(global_State *g, GCobj* o, GCobj* v)
 
 // Specialized barrier for closed upvalue. Pass &uv->tv.
 
-void LJ_FASTCALL lj_gc_barrieruv(global_State *g, TValue* tv)
+void lj_gc_barrieruv(global_State *g, TValue* tv)
 {
 #define TV2MARKED(x) \
   (*((uint8_t *)(x) - offsetof(GCupval, tv) + offsetof(GCupval, marked)))
@@ -1076,7 +1076,7 @@ void* lj_mem_realloc(lua_State *L, void *p, GCSize osz, GCSize nsz)
 //********************************************************************************************************************
 // Allocate new GC object and link it to the root set.
 
-void * LJ_FASTCALL lj_mem_newgco(lua_State *L, GCSize size)
+void * lj_mem_newgco(lua_State *L, GCSize size)
 {
    global_State *g = G(L);
    GCobj* o = (GCobj*)g->allocf(g->allocd, nullptr, 0, size);

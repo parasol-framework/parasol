@@ -26,20 +26,20 @@ extern "C" [[nodiscard]] cTValue* lj_meta_tget(lua_State* L, cTValue* o, cTValue
 extern "C" [[nodiscard]] TValue* lj_meta_tset(lua_State* L, cTValue* o, cTValue* k);
 extern "C" [[nodiscard]] TValue* lj_meta_arith(lua_State* L, TValue* ra, cTValue* rb, cTValue* rc, BCREG op);
 extern "C" [[nodiscard]] TValue* lj_meta_cat(lua_State* L, TValue* top, int left);
-extern "C" [[nodiscard]] TValue* LJ_FASTCALL lj_meta_len(lua_State* L, cTValue* o);
+extern "C" [[nodiscard]] TValue* lj_meta_len(lua_State* L, cTValue* o);
 extern "C" [[nodiscard]] TValue* lj_meta_equal(lua_State* L, GCobj* o1, GCobj* o2, int ne);
-extern "C" [[nodiscard]] TValue* LJ_FASTCALL lj_meta_equal_cd(lua_State* L, BCIns ins);
-extern "C" [[nodiscard]] TValue* LJ_FASTCALL lj_meta_equal_thunk(lua_State* L, BCIns ins);
+extern "C" [[nodiscard]] TValue* lj_meta_equal_cd(lua_State* L, BCIns ins);
+extern "C" [[nodiscard]] TValue* lj_meta_equal_thunk(lua_State* L, BCIns ins);
 extern "C" [[nodiscard]] TValue* lj_meta_comp(lua_State* L, cTValue* o1, cTValue* o2, int op);
 extern "C" void lj_meta_istype(lua_State* L, BCREG ra, BCREG tp);
 extern "C" void lj_meta_call(lua_State* L, TValue* func, TValue* top);
-extern "C" void LJ_FASTCALL lj_meta_for(lua_State* L, TValue* o);
+extern "C" void lj_meta_for(lua_State* L, TValue* o);
 
 // Helper for __close metamethod during scope exit. Returns error code (0 = success).
 extern "C" int lj_meta_close(lua_State* L, TValue* o, TValue* err);
 
 // Helper for BC_TYPEFIX. Fix function return types based on actual returned values.
-extern "C" void LJ_FASTCALL lj_meta_typefix(lua_State* L, TValue* base, uint32_t count);
+extern "C" void lj_meta_typefix(lua_State* L, TValue* base, uint32_t count);
 
 // Setup call to metamethod to be run by Assembler VM.
 TValue* mmcall(lua_State* L, ASMFunction cont, cTValue* mo, cTValue* a, cTValue* b);

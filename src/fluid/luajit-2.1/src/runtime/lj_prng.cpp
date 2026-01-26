@@ -42,7 +42,7 @@
   TW223_GEN(rs, z, r, 3, 47, 21,  8)
 
 // PRNG step function with uint64_t result.
-LJ_NOINLINE uint64_t LJ_FASTCALL lj_prng_u64(PRNGState* rs)
+LJ_NOINLINE uint64_t lj_prng_u64(PRNGState* rs)
 {
    uint64_t z, r = 0;
    TW223_STEP(rs, z, r)
@@ -50,7 +50,7 @@ LJ_NOINLINE uint64_t LJ_FASTCALL lj_prng_u64(PRNGState* rs)
 }
 
 // PRNG step function with double in uint64_t result.
-LJ_NOINLINE uint64_t LJ_FASTCALL lj_prng_u64d(PRNGState* rs)
+LJ_NOINLINE uint64_t lj_prng_u64d(PRNGState* rs)
 {
    uint64_t z, r = 0;
    TW223_STEP(rs, z, r)
@@ -136,7 +136,7 @@ __attribute__((weak))
 ** BTW: This is NOT the way to get predictable table iteration,
 ** predictable trace generation, predictable bytecode generation, etc.
 */
-int LJ_FASTCALL lj_prng_seed_secure(PRNGState* rs)
+int lj_prng_seed_secure(PRNGState* rs)
 {
    lj_prng_seed_fixed(rs);  //  The fixed seed is already conditioned.
    return 1;
@@ -145,7 +145,7 @@ int LJ_FASTCALL lj_prng_seed_secure(PRNGState* rs)
 #else
 
 // Securely seed PRNG from system entropy. Returns 0 on failure.
-int LJ_FASTCALL lj_prng_seed_secure(PRNGState* rs)
+int lj_prng_seed_secure(PRNGState* rs)
 {
 #if LJ_TARGET_UWP or LJ_TARGET_XBOXONE
 
