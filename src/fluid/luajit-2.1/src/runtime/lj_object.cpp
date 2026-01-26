@@ -26,8 +26,6 @@ GCobject * lj_object_new(lua_State *L, OBJECTID UID, OBJECTPTR Ptr, objMetaClass
    obj->uid         = UID;
    obj->ptr         = Ptr;
    obj->classptr    = ClassPtr;
-   obj->read_table  = nullptr;  // Lazily populated on first __index access
-   obj->write_table = nullptr;  // Lazily populated on first __newindex access
 
    return obj;
 }
@@ -173,7 +171,7 @@ int lj_object_ipairs(lua_State *L)
 // Fast object field get - called from BC_OBGETF bytecode handler. Writes result directly to Dest, or throws an error
 // if the field doesn't exist or the object has been freed.
 
-extern "C" void lj_object_gets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Dest)
+extern "C" void bc_object_getfield(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Dest)
 {
    // Ensure L->top is past the value register before any error can be thrown.
    // luaL_error pushes the error string to L->top, which would corrupt active registers if too low.
@@ -186,12 +184,7 @@ extern "C" void lj_object_gets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *
 
    if (not Obj->uid) luaL_error(L, ERR::DoesNotExist, "Object dereferenced, unable to read field.");
 
-   // Use cached read_table or lazily populate it
-   auto read_table = (READ_TABLE *)Obj->read_table;
-   if (not read_table) {
-      read_table = get_read_table(L, Obj->classptr);
-      Obj->read_table = (void *)read_table;
-   }
+   auto read_table = get_read_table(Obj->classptr);
 
    // Look up the field handler using the string's precomputed hash
 
@@ -210,7 +203,7 @@ extern "C" void lj_object_gets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *
 //********************************************************************************************************************
 // Fast object field set - called from BC_OBSETF bytecode handler. Writes Val to the object field, or throws an error.
 
-extern "C" void lj_object_sets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Val)
+extern "C" void bc_object_setfield(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Val)
 {
    // Ensure L->top is past the value register before any error can be thrown.
    // luaL_error pushes the error string to L->top, which would corrupt active registers if too low.
@@ -228,12 +221,7 @@ extern "C" void lj_object_sets(lua_State *L, GCobject *Obj, GCstr *Key, TValue *
 
    if (not Obj->uid) luaL_error(L, ERR::DoesNotExist, "Object dereferenced, unable to write field.");
 
-   // Use cached write_table or lazily populate it
-   auto write_table = (WRITE_TABLE *)Obj->write_table;
-   if (not write_table) {
-      write_table = get_write_table(Obj->classptr);
-      Obj->write_table = (void *)write_table;
-   }
+   auto write_table = get_write_table(Obj->classptr);
 
    // Look up the field handler using the string's precomputed hash
    auto hash_key = obj_write(Key->hash);

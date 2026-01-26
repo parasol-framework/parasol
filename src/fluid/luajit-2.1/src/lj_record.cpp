@@ -2472,7 +2472,7 @@ static TRef rec_object_get(jit_State *J, RecordOps *ops)
    if (field_type < 0) lj_trace_err(J, LJ_TRERR_BADTYPE);  // Unknown field type - abort recording
 
    TRef tmp_ref = rec_tmpref(J, TREF_NIL, IRTMPREF_OUT1);
-   lj_ir_call(J, IRCALL_lj_object_gets, obj_ref, key_ref, tmp_ref);
+   lj_ir_call(J, IRCALL_bc_object_getfield, obj_ref, key_ref, tmp_ref);
    return lj_record_vload(J, tmp_ref, 0, (IRType)field_type);
 }
 
@@ -2482,9 +2482,9 @@ static TRef rec_object_set(jit_State *J, RecordOps *ops)
    if (not tref_isobject(obj_ref)) lj_trace_err(J, LJ_TRERR_BADTYPE);
    TRef key_ref = ops->rc;  // Get the string key reference - BC_OBGETF/OBSETF use ~RC for the constant index
 
-   // lj_object_sets(L, obj, key, val)
+   // bc_object_setfield(L, obj, key, val)
    TRef tmp_ref = rec_tmpref(J, ops->ra, IRTMPREF_IN1);
-   lj_ir_call(J, IRCALL_lj_object_sets, obj_ref, key_ref, tmp_ref);
+   lj_ir_call(J, IRCALL_bc_object_setfield, obj_ref, key_ref, tmp_ref);
    return 0;
 }
 

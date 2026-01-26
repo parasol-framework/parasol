@@ -96,8 +96,8 @@ set (LUAJIT_GENERATED_HEADERS
 )
 
 set (LUAJIT_VMDEF_LUA "${LUAJIT_BUILD_DIR}/jit/vmdef.lua")
-set (LUAJIT_COMMON_DEFS LUAJIT_DISABLE_FFI)
-set (LUAJIT_NON_MSVC_DEFS -DLUAJIT_DISABLE_FFI -DLUAJIT_DISABLE_BUFFER)
+set (LUAJIT_COMMON_DEFS PRV_METACLASS)
+set (LUAJIT_NON_MSVC_DEFS -DLUAJIT_DISABLE_BUFFER -DPRV_METACLASS)
 
 option(PARASOL_PARSER_TRACE "Emit parser token and expectation traces" OFF)
 option(INCLUDE_TIPS "Include the parser tips system for code analysis" ON)
@@ -242,7 +242,7 @@ if (MSVC)
    add_custom_command(
       OUTPUT ${BUILDVM_TARGET}
       COMMAND ${CMAKE_CXX_COMPILER} /nologo /c /W3 /std:c++20
-         /D_CRT_SECURE_NO_DEPRECATE /DLUAJIT_DISABLE_FFI
+         /D_CRT_SECURE_NO_DEPRECATE
          /I${LUAJIT_SRC} /I${LUAJIT_DYNASM_DIR} /I${LUAJIT_BUILD_DIR} /I${LUAJIT_SRC}/bytecode
          /I${LUAJIT_SRC}/debug /I${LUAJIT_SRC}/lib /I${LUAJIT_SRC}/parser /I${LUAJIT_SRC}/runtime
          /I${PROJECT_SOURCE_DIR}/include /I${CMAKE_BINARY_DIR}
@@ -690,7 +690,7 @@ target_link_libraries (${MOD} PRIVATE
    ${MATH_LINK}) # The link order matters, math must come last
 
 target_compile_definitions(${MOD} PRIVATE
-   LUAJIT_DISABLE_FFI
+   PRV_METACLASS
    LUAJIT_DISABLE_BUFFER
    $<$<CONFIG:Debug>:LUA_USE_ASSERT>)
 

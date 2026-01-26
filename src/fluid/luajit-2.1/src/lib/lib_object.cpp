@@ -103,10 +103,6 @@ static constexpr uint32_t OJH_unsubscribe = simple_hash("unsubscribe");
 [[nodiscard]] static ERR object_set_oid(lua_State *, OBJECTPTR, Field *, int);
 [[nodiscard]] static ERR object_set_number(lua_State *, OBJECTPTR, Field *, int);
 
-// Per-class field table cache - defined here, declared extern in defs.h
-std::unordered_map<objMetaClass *, READ_TABLE> glClassReadTable;
-std::unordered_map<objMetaClass *, WRITE_TABLE> glClassWriteTable;
-
 inline void SET_CONTEXT(lua_State *Lua, APTR Function) {
    lua_pushvalue(Lua, 1); // Duplicate the object reference
    lua_pushcclosure(Lua, (lua_CFunction)Function, 1); // C function to call, +1 value for the object reference
@@ -286,13 +282,13 @@ static std::array<obj_read::JUMP *, int(AC::END)> glJumpActions = {
 //********************************************************************************************************************
 // Get the read table for a class, creating it if not present.
 
-READ_TABLE * get_read_table(lua_State *L, objMetaClass *Class)
+READ_TABLE * get_read_table(objMetaClass *Class)
 {
-   if (auto it = glClassReadTable.find(Class); it != glClassReadTable.end()) {
-      return &it->second;
-   }
+   if (not Class->ReadTable.empty()) return &Class->ReadTable;
 
-   READ_TABLE jmp;
+   pf::ScopedObjectLock lock(Class);
+
+   READ_TABLE &jmp = Class->ReadTable;
 
    for (auto code : std::views::iota(1, int(AC::END))) {
       auto hash = simple_hash(glActions[code].Name, simple_hash("ac"));
@@ -356,8 +352,7 @@ READ_TABLE * get_read_table(lua_State *L, objMetaClass *Class)
    jmp.emplace(OJH_subscribe, stack_object_subscribe);
    jmp.emplace(OJH_unsubscribe, stack_object_unsubscribe);
 
-   glClassReadTable[Class] = std::move(jmp);
-   return &glClassReadTable[Class];
+   return &Class->ReadTable;
 }
 
 //********************************************************************************************************************
@@ -365,16 +360,16 @@ READ_TABLE * get_read_table(lua_State *L, objMetaClass *Class)
 
 WRITE_TABLE * get_write_table(objMetaClass *Class)
 {
-   if (auto it = glClassWriteTable.find(Class); it != glClassWriteTable.end()) {
-      return &it->second;
-   }
+   if (not Class->WriteTable.empty()) return &Class->WriteTable;
 
-   WRITE_TABLE jmp;
+   pf::ScopedObjectLock lock(Class);
+
+   WRITE_TABLE &jmp = Class->WriteTable;
    Field *dict;
    int total_dict;
    if (Class->get(FID_Dictionary, dict, total_dict) IS ERR::Okay) {
       auto dict_span = std::span(dict, total_dict);
-      for (auto& field : dict_span | std::views::filter([](const auto& f) { return f.Flags & (FD_W|FD_I); })) {
+      for (auto &field : dict_span | std::views::filter([](const auto &f) { return f.Flags & (FD_W|FD_I); })) {
          char ch[2] = { field.Name[0], 0 };
          if ((ch[0] >= 'A') and (ch[0] <= 'Z')) ch[0] = ch[0] - 'A' + 'a';
          auto hash = simple_hash(field.Name+1, simple_hash(ch));
@@ -406,8 +401,7 @@ WRITE_TABLE * get_write_table(objMetaClass *Class)
       }
    }
 
-   glClassWriteTable[Class] = std::move(jmp);
-   return &glClassWriteTable[Class];
+   return &Class->WriteTable;
 }
 
 //********************************************************************************************************************
@@ -423,15 +417,9 @@ extern int object_newindex(lua_State *Lua)
    if (auto def = lj_get_object_fast(Lua, 1)) {
       if (auto hash = luaL_checkstringhash(Lua, 2)) {
          if (auto obj = access_object(def)) {
+            auto jt = get_write_table(def->classptr);
+
             ERR error;
-
-            // Use cached write_table or lazily populate it
-            auto jt = (WRITE_TABLE *)def->write_table;
-            if (!jt) {
-               jt = get_write_table(def->classptr);
-               def->write_table = (void *)jt;
-            }
-
             if (auto func = jt->find(obj_write(hash)); func != jt->end()) {
                error = func->Call(Lua, obj, func->Field, 3);
             }
@@ -462,13 +450,7 @@ extern int object_newindex(lua_State *Lua)
    if (not tvisstr(tv_key)) lj_err_argt(Lua, 2, LUA_TSTRING);
    GCstr *keystr = strV(tv_key);
 
-   // Use cached read_table or lazily populate it
-   auto read_table = (READ_TABLE *)def->read_table;
-   if (not read_table) {
-      read_table = get_read_table(Lua, def->classptr);
-      def->read_table = (void *)read_table;
-   }
-
+   auto read_table = get_read_table(def->classptr);
    auto hash_key = obj_read(keystr->hash);
    if (auto func = read_table->find(hash_key); func != read_table->end()) {
       return func->Call(Lua, *func, def);
@@ -489,11 +471,9 @@ extern int object_newindex(lua_State *Lua)
    if ((action[0] IS 'm') and (action[1] IS 't')) {
       action += 2;
    }
-   else {
-      if (auto it = glActionLookup.find(action); it != glActionLookup.end()) {
-         *Args = glActions[int(it->second)].Args;
-         return it->second;
-      }
+   else if (auto it = glActionLookup.find(action); it != glActionLookup.end()) {
+      *Args = glActions[int(it->second)].Args;
+      return it->second;
    }
 
    *Args = nullptr;

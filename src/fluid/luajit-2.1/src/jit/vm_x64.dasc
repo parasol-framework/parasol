@@ -4295,7 +4295,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  not RC
     |  mov STR:RC, [KBASE+RC*8]
     |  checkobject OOBJ:RB, ->vmeta_tgets
-    |  // Call C helper: lj_object_gets(L, GCobject*, GCstr*, TValue*) - throws on error
+    |  // Call C helper: bc_object_getfield(L, GCobject*, GCstr*, TValue*) - throws on error
     |  lea CARG4, [BASE+RA*8]        // TValue * dest (preserve before BASE is clobbered)
     |  mov L:CARG1, SAVE_L
     |  mov L:CARG1->base, BASE       // Save BASE to L->base
@@ -4304,7 +4304,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  mov CARG3, STR:RC             // GCstr *
     |  mov L:RB, L:CARG1             // Save L to RB for restoring BASE
     |  mov SAVE_PC, PC
-    |  call extern lj_object_gets    // (lua_State *L, GCobject *obj, GCstr *key, TValue *dest)
+    |  call extern bc_object_getfield    // (lua_State *L, GCobject *obj, GCstr *key, TValue *dest)
     |  mov BASE, L:RB->base          // Restore BASE from L->base
     |  ins_next
     break;
@@ -4315,7 +4315,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  not RC
     |  mov STR:RC, [KBASE+RC*8]
     |  checkobject OOBJ:RB, ->vmeta_tsets
-    |  // Call C helper: lj_object_sets(L, GCobject*, GCstr*, TValue*) - throws on error
+    |  // Call C helper: bc_object_setfield(L, GCobject*, GCstr*, TValue*) - throws on error
     |.if X64WIN
     |  // Windows x64: RCX, RDX, R8, R9. Caveat: CARG2 == BASE.
     |  lea CARG4, [BASE+RA*8]        // TValue * value (compute before BASE is clobbered)
@@ -4336,7 +4336,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  mov L:RB, L:CARG1             // Save L to RB for restoring BASE
     |.endif
     |  mov SAVE_PC, PC
-    |  call extern lj_object_sets    // (lua_State *L, GCobject *obj, GCstr *key, TValue *val)
+    |  call extern bc_object_setfield    // (lua_State *L, GCobject *obj, GCstr *key, TValue *val)
     |  mov BASE, L:RB->base          // Restore BASE from L->base
     |  ins_next
     break;
