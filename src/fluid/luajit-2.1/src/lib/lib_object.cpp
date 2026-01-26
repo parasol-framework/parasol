@@ -286,6 +286,8 @@ READ_TABLE * get_read_table(objMetaClass *Class)
 {
    if (not Class->ReadTable.empty()) return &Class->ReadTable;
 
+   pf::ScopedObjectLock lock(Class);
+
    READ_TABLE &jmp = Class->ReadTable;
 
    for (auto code : std::views::iota(1, int(AC::END))) {
@@ -359,6 +361,8 @@ READ_TABLE * get_read_table(objMetaClass *Class)
 WRITE_TABLE * get_write_table(objMetaClass *Class)
 {
    if (not Class->WriteTable.empty()) return &Class->WriteTable;
+
+   pf::ScopedObjectLock lock(Class);
 
    WRITE_TABLE &jmp = Class->WriteTable;
    Field *dict;
