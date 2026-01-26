@@ -373,11 +373,7 @@ enum class K64 : unsigned int {
   TOBIT,      //  2^52 + 2^51
   _2P64,      //  2^64
   M2P64,      //  -2^64
-#if LJ_32
-  M2P64_31,   //  -2^64 or -2^31
-#else
   M2P64_31 = unsigned(M2P64),
-#endif
 #endif
   _MAX,
 };
@@ -421,21 +417,11 @@ template<typename JitState>
 }
 
 // Set/reset flag to activate the SPLIT pass for the current trace.
-#if LJ_SOFTFP32 or (LJ_32 and LJ_HASFFI)
-template<typename JitState>
-inline void lj_needsplit(JitState *J) noexcept {
-   J->needsplit = 1;
-}
-template<typename JitState>
-inline void lj_resetsplit(JitState *J) noexcept {
-   J->needsplit = 0;
-}
-#else
+// These are no-ops on 64-bit builds; the SPLIT pass is only needed for 32-bit.
 template<typename JitState>
 inline void lj_needsplit([[maybe_unused]] JitState *J) noexcept {}
 template<typename JitState>
 inline void lj_resetsplit([[maybe_unused]] JitState *J) noexcept {}
-#endif
 
 // Fold state is used to fold instructions on-the-fly.
 struct FoldState {

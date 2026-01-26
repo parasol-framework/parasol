@@ -921,8 +921,6 @@ static void asm_snap_alloc1(ASMState* as, IRRef ref)
 #if LJ_HASFFI
          if (ir->o == IR_CNEWI) {  // Allocate CNEWI value.
             asm_snap_alloc1(as, ir->op2);
-            if (LJ_32 and (ir + 1)->o == IR_HIOP)
-               asm_snap_alloc1(as, (ir + 1)->op2);
          }
          else
 #endif
@@ -937,8 +935,6 @@ static void asm_snap_alloc1(ASMState* as, IRRef ref)
                      "sunk store IR %04d has bad op %d",
                      (int)(irs - as->ir) - REF_BIAS, irs->o);
                   asm_snap_alloc1(as, irs->op2);
-                  if (LJ_32 and (irs + 1)->o == IR_HIOP)
-                     asm_snap_alloc1(as, (irs + 1)->op2);
                }
          }
       }
@@ -2230,14 +2226,6 @@ static void asm_setup_regsp(ASMState* as)
             }
             break;
 #endif
-#if !LJ_SOFTFP and LJ_NEED_FP64 and LJ_32 and LJ_HASFFI
-         case IR_CONV:
-            if (irt_isfp((ir - 1)->t)) {
-               ir->prev = REGSP_HINT(RID_FPRET);
-               continue;
-            }
-#endif
-            // fallthrough
          case IR_CALLN: case IR_CALLL: case IR_CALLS: case IR_CALLXS:
 #if LJ_SOFTFP
          case IR_MIN: case IR_MAX:

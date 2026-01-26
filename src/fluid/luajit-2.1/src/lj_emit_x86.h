@@ -287,10 +287,8 @@ static void emit_movmroi(ASMState* as, Reg base, int32_t ofs, int32_t i)
 // mov r, i / xor r, r
 static void emit_loadi(ASMState* as, Reg r, int32_t i)
 {
-   // XOR r,r is shorter, but modifies the flags. This is bad for HIOP/jcc.
-   if (i == 0 and !(LJ_32 and (IR(as->curins)->o == IR_HIOP ||
-      (as->curins + 1 < as->T->nins &&
-         IR(as->curins + 1)->o == IR_HIOP))) &&
+   // XOR r,r is shorter, but modifies the flags. This is bad for jcc.
+   if (i == 0 and
       !((*as->mcp == 0x0f and (as->mcp[1] & 0xf0) == XI_JCCn) ||
          (*as->mcp & 0xf0) == XI_JCCs)) {
       emit_rr(as, XO_ARITH(XOg_XOR), r, r);

@@ -288,7 +288,7 @@ static char* serialize_put(char* w, SBufExt* sbx, cTValue* o)
       if (ud == 0) {
          *w++ = SER_TAG_NULL;
       }
-      else if (LJ_32 or checku32(ud)) {
+      else if (checku32(ud)) {
          ud = lj_bswap64(ud);
          * w++ = SER_TAG_LIGHTUD32; memcpy(w, &ud, 4); w += 4;
       }
