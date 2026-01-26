@@ -241,7 +241,6 @@ static void asm_fusexrefx(ASMState* as, PPCIns pi, Reg rt, IRRef ref,
    emit_tab(as, pi, rt, left, right);
 }
 
-#if !LJ_SOFTFP
 // Fuse to multiply-add/sub instruction.
 static int asm_fusemadd(ASMState* as, IRIns* ir, PPCIns pi, PPCIns pir)
 {
@@ -261,7 +260,6 @@ static int asm_fusemadd(ASMState* as, IRIns* ir, PPCIns pi, PPCIns pir)
    }
    return 0;
 }
-#endif
 
 // -- Calls ---------------------------------------------------------------
 
@@ -271,16 +269,13 @@ static void asm_gencall(ASMState* as, const CCallInfo* ci, IRRef* args)
    uint32_t n, nargs = CCI_XNARGS(ci);
    int32_t ofs = 8;
    Reg gpr = REGARG_FIRSTGPR;
-#if !LJ_SOFTFP
    Reg fpr = REGARG_FIRSTFPR;
-#endif
    if ((void*)ci->func)
       emit_call(as, (void*)ci->func);
    for (n = 0; n < nargs; n++) {  // Setup args.
       IRRef ref = args[n];
       if (ref) {
          IRIns* ir = IR(ref);
-#if !LJ_SOFTFP
          if (irt_isfp(ir->t)) {
             if (fpr <= REGARG_LASTFPR) {
                lj_assertA(rset_test(as->freeset, fpr),
@@ -295,9 +290,7 @@ static void asm_gencall(ASMState* as, const CCallInfo* ci, IRRef* args)
                ofs += irt_isnum(ir->t) ? 8 : 4;
             }
          }
-         else
-#endif
-         {
+         else {
             if (gpr <= REGARG_LASTGPR) {
                lj_assertA(rset_test(as->freeset, gpr),
                   "reg %d not free", gpr);  //  Already evicted.
@@ -319,10 +312,8 @@ static void asm_gencall(ASMState* as, const CCallInfo* ci, IRRef* args)
       }
       checkmclim(as);
    }
-#if !LJ_SOFTFP
    if ((ci->flags & CCI_VARARG))  //  Vararg calls need to know about FPR use.
       emit_tab(as, fpr == REGARG_FIRSTFPR ? PPCI_CRXOR : PPCI_CREQV, 6, 6, 6);
-#endif
 }
 
 // Setup result reg/sp for call. Evict scratch regs.
@@ -330,10 +321,8 @@ static void asm_setupresult(ASMState* as, IRIns* ir, const CCallInfo* ci)
 {
    RegSet drop = RSET_SCRATCH;
    int hiop = ((ir + 1)->o == IR_HIOP and !irt_isnil((ir + 1)->t));
-#if !LJ_SOFTFP
    if ((ci->flags & CCI_NOFPRCLOBBER))
       drop &= ~RSET_FPR;
-#endif
    if (ra_hasreg(ir->r))
       rset_clear(drop, ir->r);  //  Dest reg handled below.
    if (hiop and ra_hasreg((ir + 1)->r))
@@ -341,7 +330,7 @@ static void asm_setupresult(ASMState* as, IRIns* ir, const CCallInfo* ci)
    ra_evictset(as, drop);  //  Evictions must be performed first.
    if (ra_used(ir)) {
       lj_assertA(!irt_ispri(ir->t), "PRI dest");
-      if (!LJ_SOFTFP and irt_isfp(ir->t)) {
+      if (irt_isfp(ir->t)) {
          if ((ci->flags & CCI_CASTU64)) {
             // Use spill slot or temp slots.
             int32_t ofs = ir->s ? sps_scale(ir->s) : SPOFS_TMP;
@@ -412,7 +401,6 @@ static void asm_retf(ASMState* as, IRIns* ir)
 
 // -- Type conversions ----------------------------------------------------
 
-#if !LJ_SOFTFP
 static void asm_tointg(ASMState* as, IRIns* ir, Reg left)
 {
    RegSet allow = RSET_FPR;
@@ -445,26 +433,16 @@ static void asm_tobit(ASMState* as, IRIns* ir)
    emit_fai(as, PPCI_STFD, tmp, RID_SP, SPOFS_TMP);
    emit_fab(as, PPCI_FADD, tmp, left, right);
 }
-#endif
 
 static void asm_conv(ASMState* as, IRIns* ir)
 {
    IRType st = (IRType)(ir->op2 & IRCONV_SRCMASK);
-#if !LJ_SOFTFP
    int stfp = (st == IRT_NUM or st == IRT_FLOAT);
-#endif
    IRRef lref = ir->op1;
    // 64 bit integer conversions are handled by SPLIT.
    lj_assertA(!(irt_isint64(ir->t) or (st == IRT_I64 or st == IRT_U64)),
       "IR %04d has unsplit 64 bit type",
       (int)(ir - as->ir) - REF_BIAS);
-#if LJ_SOFTFP
-   // FP conversions are handled by SPLIT.
-   lj_assertA(!irt_isfp(ir->t) and !(st == IRT_NUM or st == IRT_FLOAT),
-      "IR %04d has FP type",
-      (int)(ir - as->ir) - REF_BIAS);
-   // Can't check for same types: SPLIT uses CONV int.int + BXOR for sfp NEG.
-#else
    lj_assertA(irt_type(ir->t) != st, "inconsistent types for CONV");
    if (irt_isfp(ir->t)) {
       Reg dest = ra_dest(as, ir, RSET_FPR);
@@ -530,9 +508,7 @@ static void asm_conv(ASMState* as, IRIns* ir)
          }
       }
    }
-   else
-#endif
-   {
+   else {
       Reg dest = ra_dest(as, ir, RSET_GPR);
       if (st >= IRT_I8 and st <= IRT_U16) {  // Extend to 32 bit integer.
          Reg left = ra_alloc1(as, ir->op1, RSET_GPR);
@@ -554,35 +530,10 @@ static void asm_strto(ASMState* as, IRIns* ir)
    const CCallInfo* ci = &lj_ir_callinfo[IRCALL_lj_strscan_num];
    IRRef args[2];
    int32_t ofs = SPOFS_TMP;
-#if LJ_SOFTFP
-   ra_evictset(as, RSET_SCRATCH);
-   if (ra_used(ir)) {
-      if (ra_hasspill(ir->s) and ra_hasspill((ir + 1)->s) and
-         (ir->s & 1) == LJ_BE and (ir->s ^ 1) == (ir + 1)->s) {
-         int i;
-         for (i = 0; i < 2; i++) {
-            Reg r = (ir + i)->r;
-            if (ra_hasreg(r)) {
-               ra_free(as, r);
-               ra_modified(as, r);
-               emit_spload(as, ir + i, r, sps_scale((ir + i)->s));
-            }
-         }
-         ofs = sps_scale(ir->s & ~1);
-      }
-      else {
-         Reg rhi = ra_dest(as, ir + 1, RSET_GPR);
-         Reg rlo = ra_dest(as, ir, rset_exclude(RSET_GPR, rhi));
-         emit_tai(as, PPCI_LWZ, rhi, RID_SP, ofs);
-         emit_tai(as, PPCI_LWZ, rlo, RID_SP, ofs + 4);
-      }
-   }
-#else
    RegSet drop = RSET_SCRATCH;
    if (ra_hasreg(ir->r)) rset_set(drop, ir->r);  //  Spill dest reg (if any).
    ra_evictset(as, drop);
    if (ir->s) ofs = sps_scale(ir->s);
-#endif
    asm_guardcc(as, CC_EQ);
    emit_ai(as, PPCI_CMPWI, RID_RET, 0);  //  Test return status.
    args[0] = ir->op1;      //  GCstr *str
@@ -602,32 +553,17 @@ static void asm_tvptr(ASMState* as, Reg dest, IRRef ref, MSize mode)
       IRIns* ir = IR(ref);
       if (irt_isnum(ir->t)) {
          if ((mode & IRTMPREF_OUT1)) {
-#if LJ_SOFTFP
-            lj_assertA(irref_isk(ref), "unsplit FP op");
-            emit_tai(as, PPCI_ADDI, dest, RID_JGL, tmpofs);
-            emit_setgl(as,
-               ra_allock(as, (int32_t)ir_knum(ir)->u32.lo, RSET_GPR),
-               tmptv.u32.lo);
-            emit_setgl(as,
-               ra_allock(as, (int32_t)ir_knum(ir)->u32.hi, RSET_GPR),
-               tmptv.u32.hi);
-#else
             Reg src = ra_alloc1(as, ref, RSET_FPR);
             emit_tai(as, PPCI_ADDI, dest, RID_JGL, tmpofs);
             emit_fai(as, PPCI_STFD, src, RID_JGL, tmpofs);
-#endif
          }
          else if (irref_isk(ref)) {
             // Use the number constant itself as a TValue.
             ra_allockreg(as, i32ptr(ir_knum(ir)), dest);
          }
          else {
-#if LJ_SOFTFP
-            lj_assertA(0, "unsplit FP op");
-#else
             // Otherwise force a spill and use the spill slot.
             emit_tai(as, PPCI_ADDI, dest, RID_SP, ra_spill(as, ir));
-#endif
          }
       }
       else {
@@ -638,10 +574,7 @@ static void asm_tvptr(ASMState* as, Reg dest, IRRef ref, MSize mode)
             Reg src = ra_alloc1(as, ref, RSET_GPR);
             emit_setgl(as, src, tmptv.gcr);
          }
-         if (LJ_SOFTFP and (ir + 1)->o == IR_HIOP and !irt_isnil((ir + 1)->t))
-            type = ra_alloc1(as, ref + 1, RSET_GPR);
-         else
-            type = ra_allock(as, irt_toitype(ir->t), RSET_GPR);
+         type = ra_allock(as, irt_toitype(ir->t), RSET_GPR);
          emit_setgl(as, type, tmptv.it);
       }
    }
@@ -695,22 +628,6 @@ static void asm_href(ASMState* as, IRIns* ir, IROp merge)
    MCLabel l_end, l_loop, l_next;
 
    rset_clear(allow, tab);
-#if LJ_SOFTFP
-   if (!isk) {
-      key = ra_alloc1(as, refkey, allow);
-      rset_clear(allow, key);
-      if (irkey[1].o == IR_HIOP) {
-         if (ra_hasreg((irkey + 1)->r)) {
-            tmpnum = (irkey + 1)->r;
-            ra_noweak(as, tmpnum);
-         }
-         else {
-            tmpnum = ra_allocref(as, refkey + 1, allow);
-         }
-         rset_clear(allow, tmpnum);
-      }
-   }
-#else
    if (irt_isnum(kt)) {
       key = ra_alloc1(as, refkey, RSET_FPR);
       tmpnum = ra_scratch(as, rset_exclude(RSET_FPR, key));
@@ -721,7 +638,6 @@ static void asm_href(ASMState* as, IRIns* ir, IROp merge)
       key = ra_alloc1(as, refkey, allow);
       rset_clear(allow, key);
    }
-#endif
    tmp2 = ra_scratch(as, allow);
    rset_clear(allow, tmp2);
 
@@ -744,7 +660,7 @@ static void asm_href(ASMState* as, IRIns* ir, IROp merge)
       asm_guardcc(as, CC_EQ);
    else
       emit_condbranch(as, PPCI_BC | PPCF_Y, CC_EQ, l_end);
-   if (!LJ_SOFTFP and irt_isnum(kt)) {
+   if (irt_isnum(kt)) {
       emit_fab(as, PPCI_FCMPU, 0, tmpnum, key);
       emit_condbranch(as, PPCI_BC, CC_GE, l_next);
       emit_ab(as, PPCI_CMPLW, tmp1, tisnum);
@@ -755,10 +671,7 @@ static void asm_href(ASMState* as, IRIns* ir, IROp merge)
          emit_ab(as, PPCI_CMPW, tmp2, key);
          emit_condbranch(as, PPCI_BC, CC_NE, l_next);
       }
-      if (LJ_SOFTFP and ra_hasreg(tmpnum))
-         emit_ab(as, PPCI_CMPW, tmp1, tmpnum);
-      else
-         emit_ai(as, PPCI_CMPWI, tmp1, irt_toitype(irkey->t));
+      emit_ai(as, PPCI_CMPWI, tmp1, irt_toitype(irkey->t));
       if (!irt_ispri(kt))
          emit_tai(as, PPCI_LWZ, tmp2, dest, (int32_t)offsetof(Node, key.gcr));
    }
@@ -792,19 +705,13 @@ static void asm_href(ASMState* as, IRIns* ir, IROp merge)
          emit_asb(as, PPCI_XOR, tmp1, tmp1, tmp2);
          emit_rotlwi(as, tmp1, tmp1, (HASH_ROT2 + HASH_ROT1) & 31);
          emit_tab(as, PPCI_SUBF, tmp2, dest, tmp2);
-         if (LJ_SOFTFP ? (irkey[1].o == IR_HIOP) : irt_isnum(kt)) {
-#if LJ_SOFTFP
-            emit_asb(as, PPCI_XOR, tmp2, key, tmp1);
-            emit_rotlwi(as, dest, tmp1, HASH_ROT1);
-            emit_tab(as, PPCI_ADD, tmp1, tmpnum, tmpnum);
-#else
+         if (irt_isnum(kt)) {
             int32_t ofs = ra_spill(as, irkey);
             emit_asb(as, PPCI_XOR, tmp2, tmp2, tmp1);
             emit_rotlwi(as, dest, tmp1, HASH_ROT1);
             emit_tab(as, PPCI_ADD, tmp1, tmp1, tmp1);
             emit_tai(as, PPCI_LWZ, tmp2, RID_SP, ofs + 4);
             emit_tai(as, PPCI_LWZ, tmp1, RID_SP, ofs);
-#endif
          }
          else {
             emit_asb(as, PPCI_XOR, tmp2, key, tmp1);
@@ -940,8 +847,8 @@ static PPCIns asm_fxloadins(ASMState* as, IRIns* ir)
    case IRT_U8: return PPCI_LBZ;
    case IRT_I16: return PPCI_LHA;
    case IRT_U16: return PPCI_LHZ;
-   case IRT_NUM: lj_assertA(!LJ_SOFTFP, "unsplit FP op"); return PPCI_LFD;
-   case IRT_FLOAT: if (!LJ_SOFTFP) return PPCI_LFS;
+   case IRT_NUM: return PPCI_LFD;
+   case IRT_FLOAT: return PPCI_LFS;
    default: return PPCI_LWZ;
    }
 }
@@ -952,8 +859,8 @@ static PPCIns asm_fxstoreins(ASMState* as, IRIns* ir)
    switch (irt_type(ir->t)) {
    case IRT_I8: case IRT_U8: return PPCI_STB;
    case IRT_I16: case IRT_U16: return PPCI_STH;
-   case IRT_NUM: lj_assertA(!LJ_SOFTFP, "unsplit FP op"); return PPCI_STFD;
-   case IRT_FLOAT: if (!LJ_SOFTFP) return PPCI_STFS;
+   case IRT_NUM: return PPCI_STFD;
+   case IRT_FLOAT: return PPCI_STFS;
    default: return PPCI_STW;
    }
 }
@@ -997,8 +904,7 @@ static void asm_fstore(ASMState* as, IRIns* ir)
 
 static void asm_xload(ASMState* as, IRIns* ir)
 {
-   Reg dest = ra_dest(as, ir,
-      (!LJ_SOFTFP and irt_isfp(ir->t)) ? RSET_FPR : RSET_GPR);
+   Reg dest = ra_dest(as, ir, irt_isfp(ir->t) ? RSET_FPR : RSET_GPR);
    lj_assertA(!(ir->op2 & IRXLOAD_UNALIGNED), "unaligned XLOAD");
    if (irt_isi8(ir->t))
       emit_as(as, PPCI_EXTSB, dest, dest);
@@ -1017,8 +923,7 @@ static void asm_xstore_(ASMState* as, IRIns* ir, int32_t ofs)
       asm_fusexrefx(as, PPCI_STWBRX, src, ir->op1, rset_exclude(RSET_GPR, src));
    }
    else {
-      Reg src = ra_alloc1(as, ir->op2,
-         (!LJ_SOFTFP and irt_isfp(ir->t)) ? RSET_FPR : RSET_GPR);
+      Reg src = ra_alloc1(as, ir->op2, irt_isfp(ir->t) ? RSET_FPR : RSET_GPR);
       asm_fusexref(as, asm_fxstoreins(as, ir), src, ir->op1,
          rset_exclude(RSET_GPR, src), ofs);
    }
@@ -1032,20 +937,11 @@ static void asm_ahuvload(ASMState* as, IRIns* ir)
    Reg dest = RID_NONE, type = RID_TMP, tmp = RID_TMP, idx;
    RegSet allow = RSET_GPR;
    int32_t ofs = AHUREF_LSX;
-   if (LJ_SOFTFP and (ir + 1)->o == IR_HIOP) {
-      t.irt = IRT_NUM;
-      if (ra_used(ir + 1)) {
-         type = ra_dest(as, ir + 1, allow);
-         rset_clear(allow, type);
-      }
-      ofs = 0;
-   }
    if (ra_used(ir)) {
-      lj_assertA((LJ_SOFTFP ? 0 : irt_isnum(ir->t)) or
-         irt_isint(ir->t) or irt_isaddr(ir->t),
+      lj_assertA(irt_isnum(ir->t) or irt_isint(ir->t) or irt_isaddr(ir->t),
          "bad load type %d", irt_type(ir->t));
-      if (LJ_SOFTFP or !irt_isnum(t)) ofs = 0;
-      dest = ra_dest(as, ir, (!LJ_SOFTFP and irt_isnum(t)) ? RSET_FPR : allow);
+      if (!irt_isnum(t)) ofs = 0;
+      dest = ra_dest(as, ir, irt_isnum(t) ? RSET_FPR : allow);
       rset_clear(allow, dest);
    }
    idx = asm_fuseahuref(as, ir->op1, &ofs, allow);
@@ -1058,14 +954,13 @@ static void asm_ahuvload(ASMState* as, IRIns* ir)
       asm_guardcc(as, CC_GE);
       emit_ab(as, PPCI_CMPLW, type, tisnum);
       if (ra_hasreg(dest)) {
-         if (!LJ_SOFTFP and ofs == AHUREF_LSX) {
+         if (ofs == AHUREF_LSX) {
             tmp = ra_scratch(as, rset_exclude(rset_exclude(RSET_GPR,
                (idx & 255)), (idx >> 8)));
             emit_fab(as, PPCI_LFDX, dest, (idx & 255), tmp);
          }
          else {
-            emit_fai(as, LJ_SOFTFP ? PPCI_LWZ : PPCI_LFD, dest, idx,
-               ofs + 4 * LJ_SOFTFP);
+            emit_fai(as, PPCI_LFD, dest, idx, ofs);
          }
       }
    }
@@ -1090,7 +985,7 @@ static void asm_ahustore(ASMState* as, IRIns* ir)
    int32_t ofs = AHUREF_LSX;
    if (ir->r == RID_SINK)
       return;
-   if (!LJ_SOFTFP and irt_isnum(ir->t)) {
+   if (irt_isnum(ir->t)) {
       src = ra_alloc1(as, ir->op2, RSET_FPR);
    }
    else {
@@ -1099,14 +994,11 @@ static void asm_ahustore(ASMState* as, IRIns* ir)
          rset_clear(allow, src);
          ofs = 0;
       }
-      if (LJ_SOFTFP and (ir + 1)->o == IR_HIOP)
-         type = ra_alloc1(as, (ir + 1)->op2, allow);
-      else
-         type = ra_allock(as, (int32_t)irt_toitype(ir->t), allow);
+      type = ra_allock(as, (int32_t)irt_toitype(ir->t), allow);
       rset_clear(allow, type);
    }
    idx = asm_fuseahuref(as, ir->op1, &ofs, allow);
-   if (!LJ_SOFTFP and irt_isnum(ir->t)) {
+   if (irt_isnum(ir->t)) {
       if (ofs == AHUREF_LSX) {
          emit_fab(as, PPCI_STFDX, src, (idx & 255), RID_TMP);
          emit_slwi(as, RID_TMP, (idx >> 8), 3);
@@ -1134,9 +1026,6 @@ static void asm_sload(ASMState* as, IRIns* ir)
    IRType1 t = ir->t;
    Reg dest = RID_NONE, type = RID_NONE, base;
    RegSet allow = RSET_GPR;
-   int hiop = (LJ_SOFTFP and (ir + 1)->o == IR_HIOP);
-   if (hiop)
-      t.irt = IRT_NUM;
    lj_assertA(!(ir->op2 & IRSLOAD_PARENT),
       "bad parent SLOAD");  //  Handled by asm_head_side().
    lj_assertA(irt_isguard(ir->t) or !(ir->op2 & IRSLOAD_TYPECHECK),
@@ -1145,54 +1034,44 @@ static void asm_sload(ASMState* as, IRIns* ir)
       !irt_isint(t) or
       (ir->op2 & (IRSLOAD_CONVERT | IRSLOAD_FRAME | IRSLOAD_KEYINDEX)),
       "bad SLOAD type");
-#if LJ_SOFTFP
-   lj_assertA(!(ir->op2 & IRSLOAD_CONVERT),
-      "unsplit SLOAD convert");  //  Handled by LJ_SOFTFP SPLIT.
-   if (hiop and ra_used(ir + 1)) {
-      type = ra_dest(as, ir + 1, allow);
-      rset_clear(allow, type);
-   }
-#else
    if ((ir->op2 & IRSLOAD_CONVERT) and irt_isguard(t) and irt_isint(t)) {
       dest = ra_scratch(as, RSET_FPR);
       asm_tointg(as, ir, dest);
       t.irt = IRT_NUM;  //  Continue with a regular number type check.
    }
-   else
-#endif
-      if (ra_used(ir)) {
-         lj_assertA(irt_isnum(t) or irt_isint(t) or irt_isaddr(t),
-            "bad SLOAD type %d", irt_type(ir->t));
-         dest = ra_dest(as, ir, (!LJ_SOFTFP and irt_isnum(t)) ? RSET_FPR : allow);
-         rset_clear(allow, dest);
-         base = ra_alloc1(as, REF_BASE, allow);
-         rset_clear(allow, base);
-         if (!LJ_SOFTFP and (ir->op2 & IRSLOAD_CONVERT)) {
-            if (irt_isint(t)) {
-               emit_tai(as, PPCI_LWZ, dest, RID_SP, SPOFS_TMPLO);
-               dest = ra_scratch(as, RSET_FPR);
-               emit_fai(as, PPCI_STFD, dest, RID_SP, SPOFS_TMP);
-               emit_fb(as, PPCI_FCTIWZ, dest, dest);
-               t.irt = IRT_NUM;  //  Check for original type.
-            }
-            else {
-               Reg tmp = ra_scratch(as, allow);
-               Reg hibias = ra_allock(as, 0x43300000, rset_clear(allow, tmp));
-               Reg fbias = ra_scratch(as, rset_exclude(RSET_FPR, dest));
-               emit_fab(as, PPCI_FSUB, dest, dest, fbias);
-               emit_fai(as, PPCI_LFD, dest, RID_SP, SPOFS_TMP);
-               emit_lsptr(as, PPCI_LFS, (fbias & 31),
-                  (void*)&as->J->k32[LJ_K32_2P52_2P31],
-                  rset_clear(allow, hibias));
-               emit_tai(as, PPCI_STW, tmp, RID_SP, SPOFS_TMPLO);
-               emit_tai(as, PPCI_STW, hibias, RID_SP, SPOFS_TMPHI);
-               emit_asi(as, PPCI_XORIS, tmp, tmp, 0x8000);
-               dest = tmp;
-               t.irt = IRT_INT;  //  Check for original type.
-            }
+   else if (ra_used(ir)) {
+      lj_assertA(irt_isnum(t) or irt_isint(t) or irt_isaddr(t),
+         "bad SLOAD type %d", irt_type(ir->t));
+      dest = ra_dest(as, ir, irt_isnum(t) ? RSET_FPR : allow);
+      rset_clear(allow, dest);
+      base = ra_alloc1(as, REF_BASE, allow);
+      rset_clear(allow, base);
+      if ((ir->op2 & IRSLOAD_CONVERT)) {
+         if (irt_isint(t)) {
+            emit_tai(as, PPCI_LWZ, dest, RID_SP, SPOFS_TMPLO);
+            dest = ra_scratch(as, RSET_FPR);
+            emit_fai(as, PPCI_STFD, dest, RID_SP, SPOFS_TMP);
+            emit_fb(as, PPCI_FCTIWZ, dest, dest);
+            t.irt = IRT_NUM;  //  Check for original type.
          }
-         goto dotypecheck;
+         else {
+            Reg tmp = ra_scratch(as, allow);
+            Reg hibias = ra_allock(as, 0x43300000, rset_clear(allow, tmp));
+            Reg fbias = ra_scratch(as, rset_exclude(RSET_FPR, dest));
+            emit_fab(as, PPCI_FSUB, dest, dest, fbias);
+            emit_fai(as, PPCI_LFD, dest, RID_SP, SPOFS_TMP);
+            emit_lsptr(as, PPCI_LFS, (fbias & 31),
+               (void*)&as->J->k32[LJ_K32_2P52_2P31],
+               rset_clear(allow, hibias));
+            emit_tai(as, PPCI_STW, tmp, RID_SP, SPOFS_TMPLO);
+            emit_tai(as, PPCI_STW, hibias, RID_SP, SPOFS_TMPHI);
+            emit_asi(as, PPCI_XORIS, tmp, tmp, 0x8000);
+            dest = tmp;
+            t.irt = IRT_INT;  //  Check for original type.
+         }
       }
+      goto dotypecheck;
+   }
    base = ra_alloc1(as, REF_BASE, allow);
    rset_clear(allow, base);
 dotypecheck:
@@ -1200,13 +1079,10 @@ dotypecheck:
       if ((ir->op2 & IRSLOAD_TYPECHECK)) {
          Reg tisnum = ra_allock(as, (int32_t)LJ_TISNUM, allow);
          asm_guardcc(as, CC_GE);
-#if !LJ_SOFTFP
          type = RID_TMP;
-#endif
          emit_ab(as, PPCI_CMPLW, type, tisnum);
       }
-      if (ra_hasreg(dest)) emit_fai(as, LJ_SOFTFP ? PPCI_LWZ : PPCI_LFD, dest,
-         base, ofs - (LJ_SOFTFP ? 0 : 4));
+      if (ra_hasreg(dest)) emit_fai(as, PPCI_LFD, dest, base, ofs - 4);
    }
    else {
       if ((ir->op2 & IRSLOAD_TYPECHECK)) {
@@ -1266,7 +1142,6 @@ static void asm_obar(ASMState* as, IRIns* ir)
 
 // -- Arithmetic and logic operations -------------------------------------
 
-#if !LJ_SOFTFP
 static void asm_fparith(ASMState* as, IRIns* ir, PPCIns pi)
 {
    Reg dest = ra_dest(as, ir, RSET_FPR);
@@ -1292,18 +1167,14 @@ static void asm_fpmath(ASMState* as, IRIns* ir)
    else
       asm_callid(as, ir, IRCALL_lj_vm_floor + ir->op2);
 }
-#endif
 
 static void asm_add(ASMState* as, IRIns* ir)
 {
-#if !LJ_SOFTFP
    if (irt_isnum(ir->t)) {
       if (!asm_fusemadd(as, ir, PPCI_FMADD, PPCI_FMADD))
          asm_fparith(as, ir, PPCI_FADD);
    }
-   else
-#endif
-   {
+   else {
       Reg dest = ra_dest(as, ir, RSET_GPR);
       Reg right, left = ra_hintalloc(as, ir->op1, dest, RSET_GPR);
       PPCIns pi;
@@ -1344,14 +1215,11 @@ static void asm_add(ASMState* as, IRIns* ir)
 
 static void asm_sub(ASMState* as, IRIns* ir)
 {
-#if !LJ_SOFTFP
    if (irt_isnum(ir->t)) {
       if (!asm_fusemadd(as, ir, PPCI_FMSUB, PPCI_FNMSUB))
          asm_fparith(as, ir, PPCI_FSUB);
    }
-   else
-#endif
-   {
+   else {
       PPCIns pi = PPCI_SUBF;
       Reg dest = ra_dest(as, ir, RSET_GPR);
       Reg left, right;
@@ -1377,13 +1245,10 @@ static void asm_sub(ASMState* as, IRIns* ir)
 
 static void asm_mul(ASMState* as, IRIns* ir)
 {
-#if !LJ_SOFTFP
    if (irt_isnum(ir->t)) {
       asm_fparith(as, ir, PPCI_FMUL);
    }
-   else
-#endif
-   {
+   else {
       PPCIns pi = PPCI_MULLW;
       Reg dest = ra_dest(as, ir, RSET_GPR);
       Reg right, left = ra_hintalloc(as, ir->op1, dest, RSET_GPR);
@@ -1409,13 +1274,10 @@ static void asm_mul(ASMState* as, IRIns* ir)
 
 static void asm_neg(ASMState* as, IRIns* ir)
 {
-#if !LJ_SOFTFP
    if (irt_isnum(ir->t)) {
       asm_fpunary(as, ir, PPCI_FNEG);
    }
-   else
-#endif
-   {
+   else {
       Reg dest, left;
       PPCIns pi = PPCI_NEG;
       if (as->flagmcp == as->mcp) {
@@ -1649,40 +1511,9 @@ static void asm_bitshift(ASMState* as, IRIns* ir, PPCIns pi, PPCIns pik)
              PPCI_RLWINM|PPCF_MB(0)|PPCF_ME(31))
 #define asm_bror(as, ir)   lj_assertA(0, "unexpected BROR")
 
-#if LJ_SOFTFP
-static void asm_sfpmin_max(ASMState* as, IRIns* ir)
-{
-   CCallInfo ci = lj_ir_callinfo[IRCALL_softfp_cmp];
-   IRRef args[4];
-   MCLabel l_right, l_end;
-   Reg desthi = ra_dest(as, ir, RSET_GPR), destlo = ra_dest(as, ir + 1, RSET_GPR);
-   Reg righthi, lefthi = ra_alloc2(as, ir, RSET_GPR);
-   Reg rightlo, leftlo = ra_alloc2(as, ir + 1, RSET_GPR);
-   PPCCC cond = (IROp)ir->o == IR_MIN ? CC_EQ : CC_NE;
-   righthi = (lefthi >> 8); lefthi &= 255;
-   rightlo = (leftlo >> 8); leftlo &= 255;
-   args[0 ^ LJ_BE] = ir->op1; args[1 ^ LJ_BE] = (ir + 1)->op1;
-   args[2 ^ LJ_BE] = ir->op2; args[3 ^ LJ_BE] = (ir + 1)->op2;
-   l_end = emit_label(as);
-   if (desthi != righthi) emit_mr(as, desthi, righthi);
-   if (destlo != rightlo) emit_mr(as, destlo, rightlo);
-   l_right = emit_label(as);
-   if (l_end != l_right) emit_jmp(as, l_end);
-   if (desthi != lefthi) emit_mr(as, desthi, lefthi);
-   if (destlo != leftlo) emit_mr(as, destlo, leftlo);
-   if (l_right == as->mcp + 1) {
-      cond ^= 4; l_right = l_end; ++as->mcp;
-   }
-   emit_condbranch(as, PPCI_BC, cond, l_right);
-   ra_evictset(as, RSET_SCRATCH);
-   emit_cmpi(as, RID_RET, 1);
-   asm_gencall(as, &ci, args);
-}
-#endif
-
 static void asm_min_max(ASMState* as, IRIns* ir, int ismax)
 {
-   if (!LJ_SOFTFP and irt_isnum(ir->t)) {
+   if (irt_isnum(ir->t)) {
       Reg dest = ra_dest(as, ir, RSET_FPR);
       Reg tmp = dest;
       Reg right, left = ra_alloc2(as, ir, RSET_FPR);
@@ -1773,7 +1604,7 @@ static void asm_intcomp_(ASMState* as, IRRef lref, IRRef rref, Reg cr, PPCCC cc)
 static void asm_comp(ASMState* as, IRIns* ir)
 {
    PPCCC cc = asm_compmap[ir->o];
-   if (!LJ_SOFTFP and irt_isnum(ir->t)) {
+   if (irt_isnum(ir->t)) {
       Reg right, left = ra_alloc2(as, ir, RSET_FPR);
       right = (left >> 8); left &= 255;
       asm_guardcc(as, (cc >> 4));
@@ -1794,44 +1625,6 @@ static void asm_comp(ASMState* as, IRIns* ir)
 }
 
 #define asm_equal(as, ir)   asm_comp(as, ir)
-
-#if LJ_SOFTFP
-// SFP comparisons.
-static void asm_sfpcomp(ASMState* as, IRIns* ir)
-{
-   const CCallInfo* ci = &lj_ir_callinfo[IRCALL_softfp_cmp];
-   RegSet drop = RSET_SCRATCH;
-   Reg r;
-   IRRef args[4];
-   args[0 ^ LJ_BE] = ir->op1; args[1 ^ LJ_BE] = (ir + 1)->op1;
-   args[2 ^ LJ_BE] = ir->op2; args[3 ^ LJ_BE] = (ir + 1)->op2;
-
-   for (r = REGARG_FIRSTGPR; r <= REGARG_FIRSTGPR + 3; r++) {
-      if (!rset_test(as->freeset, r) and
-         regcost_ref(as->cost[r]) == args[r - REGARG_FIRSTGPR])
-         rset_clear(drop, r);
-   }
-   ra_evictset(as, drop);
-   asm_setupresult(as, ir, ci);
-   switch ((IROp)ir->o) {
-   case IR_ULT:
-      asm_guardcc(as, CC_EQ);
-      emit_ai(as, PPCI_CMPWI, RID_RET, 0);
-   case IR_ULE:
-      asm_guardcc(as, CC_EQ);
-      emit_ai(as, PPCI_CMPWI, RID_RET, 1);
-      break;
-   case IR_GE: case IR_GT:
-      asm_guardcc(as, CC_EQ);
-      emit_ai(as, PPCI_CMPWI, RID_RET, 2);
-   default:
-      asm_guardcc(as, (asm_compmap[ir->o] & 0xf));
-      emit_ai(as, PPCI_CMPWI, RID_RET, 0);
-      break;
-   }
-   asm_gencall(as, ci, args);
-}
-#endif
 
 // -- Split register ops --------------------------------------------------
 
@@ -1904,20 +1697,8 @@ static void asm_stack_restore(ASMState* as, SnapShot* snap)
       if ((sn & SNAP_NORESTORE))
          continue;
       if (irt_isnum(ir->t)) {
-#if LJ_SOFTFP
-         Reg tmp;
-         RegSet allow = rset_exclude(RSET_GPR, RID_BASE);
-         // LJ_SOFTFP: must be a number constant.
-         lj_assertA(irref_isk(ref), "unsplit FP op");
-         tmp = ra_allock(as, (int32_t)ir_knum(ir)->u32.lo, allow);
-         emit_tai(as, PPCI_STW, tmp, RID_BASE, ofs + (LJ_BE ? 4 : 0));
-         if (rset_test(as->freeset, tmp + 1)) allow = RID2RSET(tmp + 1);
-         tmp = ra_allock(as, (int32_t)ir_knum(ir)->u32.hi, allow);
-         emit_tai(as, PPCI_STW, tmp, RID_BASE, ofs + (LJ_BE ? 0 : 4));
-#else
          Reg src = ra_alloc1(as, ref, RSET_FPR);
          emit_fai(as, PPCI_STFD, src, RID_BASE, ofs);
-#endif
       }
       else {
          Reg type;
@@ -1932,11 +1713,6 @@ static void asm_stack_restore(ASMState* as, SnapShot* snap)
          if ((sn & (SNAP_CONT | SNAP_FRAME))) {
             if (s == 0) continue;  //  Do not overwrite link to previous frame.
             type = ra_allock(as, (int32_t)(*flinks--), allow);
-#if LJ_SOFTFP
-         }
-         else if ((sn & SNAP_SOFTFPNUM)) {
-            type = ra_alloc1(as, ref + 1, rset_exclude(RSET_GPR, RID_BASE));
-#endif
          }
          else if ((sn & SNAP_KEYINDEX)) {
             type = ra_allock(as, (int32_t)LJ_KEYINDEX, allow);
@@ -2092,7 +1868,7 @@ static Reg asm_setup_call_slots(ASMState* as, IRIns* ir, const CCallInfo* ci)
    int nslots = 2, ngpr = REGARG_NUMGPR, nfpr = REGARG_NUMFPR;
    asm_collectargs(as, ir, ci, args);
    for (i = 0; i < nargs; i++)
-      if (!LJ_SOFTFP and args[i] and irt_isfp(IR(args[i])->t)) {
+      if (args[i] and irt_isfp(IR(args[i])->t)) {
          if (nfpr > 0) nfpr--; else nslots = (nslots + 3) & ~1;
       }
       else {
@@ -2100,8 +1876,7 @@ static Reg asm_setup_call_slots(ASMState* as, IRIns* ir, const CCallInfo* ci)
       }
    if (nslots > as->evenspill)  //  Leave room for args in stack slots.
       as->evenspill = nslots;
-   return (!LJ_SOFTFP and irt_isfp(ir->t)) ? REGSP_HINT(RID_FPRET) :
-      REGSP_HINT(RID_RET);
+   return irt_isfp(ir->t) ? REGSP_HINT(RID_FPRET) : REGSP_HINT(RID_RET);
 }
 
 static void asm_setup_target(ASMState* as)

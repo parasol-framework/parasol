@@ -280,8 +280,8 @@
 #define LJ_ABI_SOFTFP      0 // Legacy, never enabled
 #endif
 
-#define LJ_SOFTFP      0 // Legacy, never enabled
-#define LJ_SOFTFP32    0 // Legacy, never enabled
+#define LJ_SOFTFP      0 // DEPRECATED
+#define LJ_SOFTFP32    0 // DEPRECATED
 
 #if LJ_ARCH_ENDIAN == LUAJIT_BE
 #define LJ_LE         0

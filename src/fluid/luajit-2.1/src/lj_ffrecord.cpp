@@ -1203,7 +1203,6 @@ static void recff_format(jit_State* J, RecordFFData* rd, TRef hdr, int sbufx)
       handle_num:
          tra = lj_ir_tonum(J, tra);
          tr = lj_ir_call(J, id, tr, trsf, tra);
-         if (LJ_SOFTFP32) lj_needsplit(J);
          break;
       case STRFMT_STR:
          if (!tref_isstr(tra)) {

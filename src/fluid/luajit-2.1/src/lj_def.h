@@ -95,15 +95,9 @@ template<typename T>
 inline constexpr bool checku32(T x) { return x IS (uint32_t)(x); }
 
 template<typename T>
-inline constexpr bool checkptr31(T x) { return ((uint64_t)(uintptr_t)(x) >> 31) IS 0; }
-
-template<typename T>
-inline constexpr bool checkptr32(T x) { return (uintptr_t)(x) IS (uint32_t)(uintptr_t)(x); }
-
-template<typename T>
 inline constexpr bool checkptr47(T x) { return ((uint64_t)(uintptr_t)(x) >> 47) IS 0; }
 
-// Always use 47-bit pointer check for GC64 mode
+// 47-bit pointer check for GC64 mode (128 TB address space)
 #define checkptrGC(x)   checkptr47((x))
 
 // Rotate inline functions - compilers transform this into rotate instructions.
