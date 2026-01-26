@@ -271,9 +271,14 @@ struct BytecodeInfo {
    CSTRING op_name;
    BCMode mode_a, mode_b, mode_c, mode_d;
    int value_a, value_b, value_c, value_d;
+   // Extended instruction fields
+   bool is_extended;
+   BCIns ext_word;
+   uint8_t ext_ex, ext_dx, ext_e, ext_f;
+   uint16_t ext_d16, ext_e16;
 };
 
-static BytecodeInfo extract_instruction_info(BCIns Ins)
+static BytecodeInfo extract_instruction_info(BCIns Ins, BCIns ExtWord = 0)
 {
    BytecodeInfo info;
    info.op = bc_op(Ins);
@@ -286,6 +291,24 @@ static BytecodeInfo extract_instruction_info(BCIns Ins)
    info.value_b = bc_b(Ins);
    info.value_c = bc_c(Ins);
    info.value_d = bc_d(Ins);
+
+   // Check if this is an extended instruction
+   info.is_extended = bcmode_ext(info.op) ? true : false;
+   if (info.is_extended) {
+      info.ext_word = ExtWord;
+      info.ext_ex = bc_ex(ExtWord);
+      info.ext_dx = bc_dx(ExtWord);
+      info.ext_e = bc_e(ExtWord);
+      info.ext_f = bc_f(ExtWord);
+      info.ext_d16 = bc_d16(ExtWord);
+      info.ext_e16 = bc_e16(ExtWord);
+   }
+   else {
+      info.ext_word = 0;
+      info.ext_ex = info.ext_dx = info.ext_e = info.ext_f = 0;
+      info.ext_d16 = info.ext_e16 = 0;
+   }
+
    return info;
 }
 
@@ -294,6 +317,13 @@ static BytecodeInfo extract_instruction_info(BCIns Ins)
 void format_bc_line(lua_State *L, BCLine Line, int FileWidth, BytecodeLogger Logger, std::string_view Indent, BCPOS pc,
    const std::string &Operands, void *Meta, BytecodeInfo &Info, bool JumpTarget, bool Verbose)
 {
+   // Build extended operands suffix if this is an extended instruction
+   std::string ext_suffix;
+   if (Info.is_extended) {
+      ext_suffix = std::format(" [EXT: ex={} dx={} e={} f={} | d16={} e16={}]",
+         Info.ext_ex, Info.ext_dx, Info.ext_e, Info.ext_f, Info.ext_d16, Info.ext_e16);
+   }
+
    if (Verbose) {
       std::string file_and_line;
       int line_no_width = 4;
@@ -312,9 +342,10 @@ void format_bc_line(lua_State *L, BCLine Line, int FileWidth, BytecodeLogger Log
       else file_and_line = "<unknown>:-";
 
       FileWidth += line_no_width;
-      Logger(std::format("{}[{:04d}] {:{}.{}} {} {:<9} {}", Indent, int(pc), file_and_line, FileWidth, FileWidth, JumpTarget ? "=>" : "  ", Info.op_name, Operands), Meta);
+      Logger(std::format("{}[{:04d}] {:{}.{}} {} {:<9} {}{}", Indent, int(pc), file_and_line, FileWidth, FileWidth,
+         JumpTarget ? "=>" : "  ", Info.op_name, Operands, ext_suffix), Meta);
    }
-   else Logger(std::format("{}[{:04d}] {:<10} {}", Indent, int(pc), Info.op_name, Operands), Meta);
+   else Logger(std::format("{}[{:04d}] {:<10} {}{}", Indent, int(pc), Info.op_name, Operands, ext_suffix), Meta);
 }
 
 //********************************************************************************************************************
@@ -335,6 +366,12 @@ void trace_proto_bytecode(lua_State *L, GCproto *Proto, BytecodeLogger Logger, v
       for (BCPOS pc = 0; pc < Proto->sizebc; ++pc) {
          BCIns instruction = bc_stream[pc];
          BCOp opcode = bc_op(instruction);
+
+         // Skip invalid opcodes and extension words
+         if (opcode >= BC__MAX) continue;
+
+         // Skip extension word for extended instructions
+         if (bcmode_ext(opcode) and (pc + 1 < Proto->sizebc)) ++pc;
 
          if (bcmode_hasd(opcode) and bcmode_d(opcode) IS BCMjump) {
             int value = bc_d(instruction);
@@ -372,7 +409,12 @@ void trace_proto_bytecode(lua_State *L, GCproto *Proto, BytecodeLogger Logger, v
 
    for (BCPOS pc = 0; pc < Proto->sizebc; ++pc) {
       BCIns instruction = bc_stream[pc];
-      auto info = extract_instruction_info(instruction);
+      // Check if this is an extended instruction and get the extension word
+      BCIns ext_word = 0;
+      if (bcmode_ext(bc_op(instruction)) and (pc + 1 < Proto->sizebc)) {
+         ext_word = bc_stream[pc + 1];
+      }
+      auto info = extract_instruction_info(instruction, ext_word);
 
       std::string operands;
 
@@ -389,6 +431,9 @@ void trace_proto_bytecode(lua_State *L, GCproto *Proto, BytecodeLogger Logger, v
       BCLine line = get_proto_line(Proto, pc);
 
       format_bc_line(L, line, file_width, Logger, indent_str, pc, operands, Meta, info, targets[pc] ? true : false, Verbose);
+
+      // Skip extension word for extended instructions
+      if (info.is_extended) ++pc;
 
       // If this is a FNEW instruction, recursively disassemble the child prototype
 
@@ -424,7 +469,12 @@ extern void dump_bytecode(FuncState &fs)
 
    for (BCPOS pc = 0; pc < fs.pc; ++pc) {
       const BCInsLine &iline = fs.bcbase[pc];
-      auto info = extract_instruction_info(iline.ins);
+      // Check if this is an extended instruction and get the extension word
+      BCIns ext_word = 0;
+      if (bcmode_ext(bc_op(iline.ins)) and (pc + 1 < fs.pc)) {
+         ext_word = fs.bcbase[pc + 1].ins;
+      }
+      auto info = extract_instruction_info(iline.ins, ext_word);
 
       std::string operands;
 
@@ -439,6 +489,9 @@ extern void dump_bytecode(FuncState &fs)
       }
 
       format_bc_line(fs.L, iline.line, file_width, log_callback, "", pc, operands, nullptr, info, false, true);
+
+      // Skip extension word for extended instructions
+      if (info.is_extended) ++pc;
 
       // If this is a FNEW instruction, look up and print the child prototype
       if (info.op IS BC_FNEW) {

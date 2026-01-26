@@ -26,6 +26,7 @@ typedef struct BCWriteCtx {
    void* wdata;         //  Writer callback data.
    int strip;         //  Strip debug info.
    int status;         //  Status from writer callback.
+   int has_ext;         //  Has extended 64-bit instructions.
 #ifdef LUA_USE_ASSERT
    global_State* g;
 #endif
@@ -38,6 +39,33 @@ typedef struct BCWriteCtx {
 #endif
 
 // -- Bytecode writer -----------------------------------------------------
+
+// Check if a prototype contains any extended (64-bit) instructions.
+static int bcwrite_has_ext(GCproto* pt)
+{
+   BCIns* bc = proto_bc(pt);
+   MSize i, nbc = pt->sizebc;
+
+   // Check all instructions in this prototype
+   for (i = 1; i < nbc; i++) {
+      BCOp op = bc_op(bc[i]);
+      if (bcmode_ext(op)) return 1;
+   }
+
+   // Recursively check children
+   if ((pt->flags & PROTO_CHILD)) {
+      ptrdiff_t n = pt->sizekgc;
+      GCRef* kr = mref<GCRef>(pt->k) - 1;
+      for (ptrdiff_t j = 0; j < n; j++, kr--) {
+         GCobj* o = gcref(*kr);
+         if (o->gch.gct == ~LJ_TPROTO) {
+            if (bcwrite_has_ext(gco_to_proto(o))) return 1;
+         }
+      }
+   }
+
+   return 0;
+}
 
 // Write a single constant key/value of a template table.
 static void bcwrite_ktabk(BCWriteCtx* ctx, cTValue* o, int narrow)
@@ -303,7 +331,8 @@ static void bcwrite_header(BCWriteCtx* ctx)
    *p++ = (ctx->strip ? BCDUMP_F_STRIP : 0) +
       LJ_BE * BCDUMP_F_BE +
       ((ctx->pt->flags & PROTO_FFI) ? BCDUMP_F_FFI : 0) +
-      LJ_FR2 * BCDUMP_F_FR2;
+      LJ_FR2 * BCDUMP_F_FR2 +
+      (ctx->has_ext ? BCDUMP_F_EXT : 0);
    if (!ctx->strip) {
       p = lj_strfmt_wuleb128(p, len);
       p = lj_buf_wmem(p, name, len);
@@ -327,6 +356,7 @@ static TValue* cpwriter(lua_State* L, lua_CFunction dummy, void* ud)
    BCWriteCtx* ctx = (BCWriteCtx*)ud;
    UNUSED(L); UNUSED(dummy);
    (void)lj_buf_need(&ctx->sb, 1024);  //  Avoids resize for most prototypes.
+   ctx->has_ext = bcwrite_has_ext(ctx->pt);  // Check for extended instructions
    bcwrite_header(ctx);
    bcwrite_proto(ctx, ctx->pt);
    bcwrite_footer(ctx);

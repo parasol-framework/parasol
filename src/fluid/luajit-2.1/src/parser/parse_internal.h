@@ -99,6 +99,7 @@ static void expr_free(FuncState *, ExpDesc* e);
 
 // Exported for use by OperatorEmitter facade
 extern BCPOS bcemit_INS(FuncState *, BCIns ins);
+extern BCPOS bcemit_INS_EXT(FuncState *, BCIns ins, BCIns ext);
 
 // Bytecode emission helper functions.
 // Note: These templates remain on raw types for compatibility with C macros (BCINS_*)
@@ -118,6 +119,23 @@ static inline BCPOS bcemit_AD(FuncState *fs, Op o, BCREG a, BCREG d) {
 template<BytecodeOpcode Op>
 static inline BCPOS bcemit_AJ(FuncState *fs, Op o, BCREG a, BCPOS j) {
    return bcemit_INS(fs, BCINS_AJ(o, a, j));
+}
+
+// Extended instruction emitters (64-bit, two-word instructions)
+// These emit a primary instruction word followed by an extension word.
+
+// Emit extended ABC instruction with 4 additional 8-bit operands (EX, DX, E, F)
+template<BytecodeOpcode Op>
+static inline BCPOS bcemit_ABC_EXT(FuncState *fs, Op o, BCREG a, BCREG b, BCREG c,
+                                   uint8_t ex, uint8_t dx, uint8_t e, uint8_t f) {
+   return bcemit_INS_EXT(fs, BCINS_ABC(o, a, b, c), BCINS_EXT(ex, dx, e, f));
+}
+
+// Emit extended AD instruction with 2 additional 16-bit operands (D16, E16)
+template<BytecodeOpcode Op>
+static inline BCPOS bcemit_AD_EXT16(FuncState *fs, Op o, BCREG a, BCREG d,
+                                    uint16_t d16, uint16_t e16) {
+   return bcemit_INS_EXT(fs, BCINS_AD(o, a, d), BCINS_EXT16(d16, e16));
 }
 
 // Emit BC_TGETS with overflow protection. When the string constant index exceeds 255 (the 8-bit C field limit),

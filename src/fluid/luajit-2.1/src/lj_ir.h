@@ -10,138 +10,138 @@
 #define IRDEF(_) \
   /* Guarded assertions. */ \
   /* Must be properly aligned to flip opposites (^1) and (un)ordered (^4). */ \
-  _(LT,      N , ref, ref) \
-  _(GE,      N , ref, ref) \
-  _(LE,      N , ref, ref) \
-  _(GT,      N , ref, ref) \
+  _(LT,    N , ref, ref) \
+  _(GE,    N , ref, ref) \
+  _(LE,    N , ref, ref) \
+  _(GT,    N , ref, ref) \
   \
   _(ULT,   N , ref, ref) \
   _(UGE,   N , ref, ref) \
   _(ULE,   N , ref, ref) \
   _(UGT,   N , ref, ref) \
   \
-  _(EQ,      C , ref, ref) \
-  _(NE,      C , ref, ref) \
+  _(EQ,    C , ref, ref) \
+  _(NE,    C , ref, ref) \
   \
   _(ABC,   N , ref, ref) \
-  _(RETF,   S , ref, ref) \
+  _(RETF,  S , ref, ref) \
   \
   /* Miscellaneous ops. */ \
-  _(NOP,   N , ___, ___) \
-  _(BASE,   N , lit, lit) \
-  _(PVAL,   N , lit, ___) \
-  _(GCSTEP,   S , ___, ___) \
-  _(HIOP,   S , ref, ref) \
-  _(LOOP,   S , ___, ___) \
-  _(USE,   S , ref, ___) \
-  _(PHI,   S , ref, ref) \
-  _(RENAME,   S , ref, lit) \
-  _(PROF,   S , ___, ___) \
+  _(NOP,    N, ___, ___) \
+  _(BASE,   N, lit, lit) \
+  _(PVAL,   N, lit, ___) \
+  _(GCSTEP, S, ___, ___) \
+  _(HIOP,   S, ref, ref) \
+  _(LOOP,   S, ___, ___) \
+  _(USE,    S, ref, ___) \
+  _(PHI,    S, ref, ref) \
+  _(RENAME, S, ref, lit) \
+  _(PROF,   S, ___, ___) \
   \
   /* Constants. */ \
-  _(KPRI,   N , ___, ___) \
-  _(KINT,   N , cst, ___) \
-  _(KGC,   N , cst, ___) \
-  _(KPTR,   N , cst, ___) \
-  _(KKPTR,   N , cst, ___) \
-  _(KNULL,   N , cst, ___) \
-  _(KNUM,   N , cst, ___) \
-  _(KINT64,   N , cst, ___) \
-  _(KSLOT,   N , ref, lit) \
+  _(KPRI,   N, ___, ___) \
+  _(KINT,   N, cst, ___) \
+  _(KGC,    N, cst, ___) \
+  _(KPTR,   N, cst, ___) \
+  _(KKPTR,  N, cst, ___) \
+  _(KNULL,  N, cst, ___) \
+  _(KNUM,   N, cst, ___) \
+  _(KINT64, N, cst, ___) \
+  _(KSLOT,  N, ref, lit) \
   \
   /* Bit ops. */ \
-  _(BNOT,   N , ref, ___) \
-  _(BSWAP,   N , ref, ___) \
-  _(BAND,   C , ref, ref) \
-  _(BOR,   C , ref, ref) \
-  _(BXOR,   C , ref, ref) \
-  _(BSHL,   N , ref, ref) \
-  _(BSHR,   N , ref, ref) \
-  _(BSAR,   N , ref, ref) \
-  _(BROL,   N , ref, ref) \
-  _(BROR,   N , ref, ref) \
+  _(BNOT,   N, ref, ___) \
+  _(BSWAP,  N, ref, ___) \
+  _(BAND,   C, ref, ref) \
+  _(BOR,    C, ref, ref) \
+  _(BXOR,   C, ref, ref) \
+  _(BSHL,   N, ref, ref) \
+  _(BSHR,   N, ref, ref) \
+  _(BSAR,   N, ref, ref) \
+  _(BROL,   N, ref, ref) \
+  _(BROR,   N, ref, ref) \
   \
   /* Arithmetic ops. ORDER ARITH */ \
-  _(ADD,   C , ref, ref) \
-  _(SUB,   N , ref, ref) \
-  _(MUL,   C , ref, ref) \
-  _(DIV,   N , ref, ref) \
-  _(MOD,   N , ref, ref) \
-  _(POW,   N , ref, ref) \
-  _(NEG,   N , ref, ref) \
+  _(ADD,   C, ref, ref) \
+  _(SUB,   N, ref, ref) \
+  _(MUL,   C, ref, ref) \
+  _(DIV,   N, ref, ref) \
+  _(MOD,   N, ref, ref) \
+  _(POW,   N, ref, ref) \
+  _(NEG,   N, ref, ref) \
   \
-  _(ABS,   N , ref, ref) \
-  _(LDEXP,   N , ref, ref) \
-  _(MIN,   C , ref, ref) \
-  _(MAX,   C , ref, ref) \
-  _(FPMATH,   N , ref, lit) \
+  _(ABS,    N, ref, ref) \
+  _(LDEXP,  N, ref, ref) \
+  _(MIN,    C, ref, ref) \
+  _(MAX,    C, ref, ref) \
+  _(FPMATH, N, ref, lit) \
   \
   /* Overflow-checking arithmetic ops. */ \
-  _(ADDOV,   CW, ref, ref) \
-  _(SUBOV,   NW, ref, ref) \
-  _(MULOV,   CW, ref, ref) \
+  _(ADDOV,  CW, ref, ref) \
+  _(SUBOV,  NW, ref, ref) \
+  _(MULOV,  CW, ref, ref) \
   \
   /* Memory ops. A = array, H = hash, U = upvalue, F = field, S = stack. */ \
   \
   /* Memory references. */ \
   _(AREF,   R , ref, ref) \
-  _(HREFK,   R , ref, ref) \
+  _(HREFK,  R , ref, ref) \
   _(HREF,   L , ref, ref) \
-  _(NEWREF,   S , ref, ref) \
-  _(UREFO,   LW, ref, lit) \
-  _(UREFC,   LW, ref, lit) \
+  _(NEWREF, S , ref, ref) \
+  _(UREFO,  LW, ref, lit) \
+  _(UREFC,  LW, ref, lit) \
   _(FREF,   R , ref, lit) \
-  _(TMPREF,   S , ref, lit) \
-  _(STRREF,   N , ref, ref) \
+  _(TMPREF, S , ref, lit) \
+  _(STRREF, N , ref, ref) \
   _(LREF,   L , ___, ___) \
   \
   /* Loads and Stores. These must be in the same order. */ \
-  _(ALOAD,   L , ref, ___) \
-  _(HLOAD,   L , ref, ___) \
-  _(ULOAD,   L , ref, ___) \
-  _(FLOAD,   L , ref, lit) \
-  _(XLOAD,   L , ref, lit) \
-  _(SLOAD,   L , lit, lit) \
-  _(VLOAD,   L , ref, lit) \
-  _(ALEN,   L , ref, ref) \
+  _(ALOAD,  L, ref, ___) \
+  _(HLOAD,  L, ref, ___) \
+  _(ULOAD,  L, ref, ___) \
+  _(FLOAD,  L, ref, lit) \
+  _(XLOAD,  L, ref, lit) \
+  _(SLOAD,  L, lit, lit) \
+  _(VLOAD,  L, ref, lit) \
+  _(ALEN,   L, ref, ref) \
   \
-  _(ASTORE,   S , ref, ref) \
-  _(HSTORE,   S , ref, ref) \
-  _(USTORE,   S , ref, ref) \
-  _(FSTORE,   S , ref, ref) \
-  _(XSTORE,   S , ref, ref) \
+  _(ASTORE, S, ref, ref) \
+  _(HSTORE, S, ref, ref) \
+  _(USTORE, S, ref, ref) \
+  _(FSTORE, S, ref, ref) \
+  _(XSTORE, S, ref, ref) \
   \
   /* Allocations. */ \
-  _(SNEW,   N , ref, ref)  /* CSE is ok, not marked as A. */ \
-  _(XSNEW,   A , ref, ref) \
+  _(SNEW,   N,  ref, ref)  /* CSE is ok, not marked as A. */ \
+  _(XSNEW,  A,  ref, ref) \
   _(TNEW,   AW, lit, lit) \
   _(TDUP,   AW, ref, ___) \
   _(CNEW,   AW, ref, ref) \
-  _(CNEWI,   NW, ref, ref)  /* CSE is ok, not marked as A. */ \
+  _(CNEWI,  NW, ref, ref)  /* CSE is ok, not marked as A. */ \
   \
   /* Buffer operations. */ \
-  _(BUFHDR,   L , ref, lit) \
-  _(BUFPUT,   LW, ref, ref) \
-  _(BUFSTR,   AW, ref, ref) \
+  _(BUFHDR, L,  ref, lit) \
+  _(BUFPUT, LW, ref, ref) \
+  _(BUFSTR, AW, ref, ref) \
   \
   /* Barriers. */ \
-  _(TBAR,   S , ref, ___) \
-  _(OBAR,   S , ref, ref) \
-  _(XBAR,   S , ___, ___) \
+  _(TBAR,   S, ref, ___) \
+  _(OBAR,   S, ref, ref) \
+  _(XBAR,   S, ___, ___) \
   \
   /* Type conversions. */ \
-  _(CONV,   N , ref, lit) \
-  _(TOBIT,   N , ref, ref) \
-  _(TOSTR,   N , ref, lit) \
-  _(STRTO,   N , ref, ___) \
+  _(CONV,   N, ref, lit) \
+  _(TOBIT,  N, ref, ref) \
+  _(TOSTR,  N, ref, lit) \
+  _(STRTO,  N, ref, ___) \
   \
   /* Calls. */ \
-  _(CALLN,   NW, ref, lit) \
-  _(CALLA,   AW, ref, lit) \
-  _(CALLL,   LW, ref, lit) \
-  _(CALLS,   S , ref, lit) \
-  _(CALLXS,   S , ref, ref) \
-  _(CARG,   N , ref, ref) \
+  _(CALLN,  NW, ref, lit) \
+  _(CALLA,  AW, ref, lit) \
+  _(CALLL,  LW, ref, lit) \
+  _(CALLS,  S,  ref, lit) \
+  _(CALLXS, S,  ref, ref) \
+  _(CARG,   N,  ref, ref) \
   \
   // End of list.
 
@@ -187,32 +187,32 @@ typedef enum {
 
 // FLOAD fields.
 #define IRFLDEF(_) \
-  _(STR_LEN,   offsetof(GCstr, len)) \
+  _(STR_LEN,    offsetof(GCstr, len)) \
   _(FUNC_ENV,   offsetof(GCfunc, l.env)) \
-  _(FUNC_PC,   offsetof(GCfunc, l.pc)) \
-  _(FUNC_FFID,   offsetof(GCfunc, l.ffid)) \
-  _(THREAD_ENV,   offsetof(lua_State, env)) \
+  _(FUNC_PC,    offsetof(GCfunc, l.pc)) \
+  _(FUNC_FFID,  offsetof(GCfunc, l.ffid)) \
+  _(THREAD_ENV, offsetof(lua_State, env)) \
   _(TAB_META,   offsetof(GCtab, metatable)) \
-  _(TAB_ARRAY,   offsetof(GCtab, array)) \
+  _(TAB_ARRAY,  offsetof(GCtab, array)) \
   _(TAB_NODE,   offsetof(GCtab, node)) \
-  _(TAB_ASIZE,   offsetof(GCtab, asize)) \
-  _(TAB_HMASK,   offsetof(GCtab, hmask)) \
+  _(TAB_ASIZE,  offsetof(GCtab, asize)) \
+  _(TAB_HMASK,  offsetof(GCtab, hmask)) \
   _(TAB_NOMM,   offsetof(GCtab, nomm)) \
-  _(UDATA_META,   offsetof(GCudata, metatable)) \
+  _(UDATA_META, offsetof(GCudata, metatable)) \
   _(UDATA_UDTYPE, offsetof(GCudata, udtype)) \
   _(UDATA_FILE,   sizeof(GCudata)) \
-  _(SBUF_W,   sizeof(GCudata) + offsetof(SBufExt, w)) \
-  _(SBUF_E,   sizeof(GCudata) + offsetof(SBufExt, e)) \
-  _(SBUF_B,   sizeof(GCudata) + offsetof(SBufExt, b)) \
-  _(SBUF_L,   sizeof(GCudata) + offsetof(SBufExt, L)) \
-  _(SBUF_REF,   sizeof(GCudata) + offsetof(SBufExt, cowref)) \
-  _(SBUF_R,   sizeof(GCudata) + offsetof(SBufExt, r)) \
-  _(ARRAY_STORAGE, offsetof(GCarray, storage)) \
-  _(ARRAY_LEN,   offsetof(GCarray, len)) \
+  _(SBUF_W,       sizeof(GCudata) + offsetof(SBufExt, w)) \
+  _(SBUF_E,       sizeof(GCudata) + offsetof(SBufExt, e)) \
+  _(SBUF_B,       sizeof(GCudata) + offsetof(SBufExt, b)) \
+  _(SBUF_L,       sizeof(GCudata) + offsetof(SBufExt, L)) \
+  _(SBUF_REF,     sizeof(GCudata) + offsetof(SBufExt, cowref)) \
+  _(SBUF_R,       sizeof(GCudata) + offsetof(SBufExt, r)) \
+  _(ARRAY_STORAGE,  offsetof(GCarray, storage)) \
+  _(ARRAY_LEN,      offsetof(GCarray, len)) \
   _(ARRAY_ELEMTYPE, offsetof(GCarray, elemtype)) \
   _(ARRAY_ELEMSIZE, offsetof(GCarray, elemsize)) \
-  _(ARRAY_FLAGS, offsetof(GCarray, flags)) \
-  _(ARRAY_META,   offsetof(GCarray, metatable))
+  _(ARRAY_FLAGS,    offsetof(GCarray, flags)) \
+  _(ARRAY_META,     offsetof(GCarray, metatable))
 
 typedef enum {
 #define FLENUM(name, ofs)   IRFL_##name,
@@ -247,21 +247,21 @@ constexpr int IRBUFHDR_APPEND = 1;   // Append to buffer.
 constexpr int IRBUFHDR_WRITE = 2;    // Write to string buffer.
 
 // CONV mode, stored in op2.
-constexpr int IRCONV_SRCMASK = 0x001f;   // Source IRType.
-constexpr int IRCONV_DSTMASK = 0x03e0;   // Dest. IRType (also in ir->t).
-constexpr int IRCONV_DSH = 5;
-constexpr int IRCONV_SEXT = 0x0800;      // Sign-extend integer to integer.
+constexpr int IRCONV_SRCMASK  = 0x001f;   // Source IRType.
+constexpr int IRCONV_DSTMASK  = 0x03e0;   // Dest. IRType (also in ir->t).
+constexpr int IRCONV_DSH      = 5;
+constexpr int IRCONV_SEXT     = 0x0800;      // Sign-extend integer to integer.
 constexpr int IRCONV_MODEMASK = 0x0fff;
 constexpr int IRCONV_CONVMASK = 0xf000;
-constexpr int IRCONV_CSH = 12;
+constexpr int IRCONV_CSH      = 12;
 #define IRCONV_NUM_INT      ((IRT_NUM<<IRCONV_DSH)|IRT_INT)
 #define IRCONV_INT_NUM      ((IRT_INT<<IRCONV_DSH)|IRT_NUM)
 // Number to integer conversion mode. Ordered by strength of the checks.
 constexpr int IRCONV_TOBIT = (0 << IRCONV_CSH);   // None. Cache only: TOBIT conv.
-constexpr int IRCONV_ANY = (1 << IRCONV_CSH);     // Any FP number is ok.
+constexpr int IRCONV_ANY   = (1 << IRCONV_CSH);     // Any FP number is ok.
 constexpr int IRCONV_INDEX = (2 << IRCONV_CSH);   // Check + special backprop rules.
 constexpr int IRCONV_CHECK = (3 << IRCONV_CSH);   // Number checked for integerness.
-constexpr int IRCONV_NONE = IRCONV_ANY;   // INT|*64 no conv, but change type.
+constexpr int IRCONV_NONE  = IRCONV_ANY;   // INT|*64 no conv, but change type.
 
 // TOSTR mode, stored in op2.
 constexpr int IRTOSTR_INT = 0;   // Convert integer to string.
@@ -272,24 +272,22 @@ constexpr int IRTOSTR_CHAR = 2;  // Convert char value to string.
 
 // IR operand mode (2 bit).
 typedef enum {
-   IRMref,      //  IR reference.
-   IRMlit,      //  16 bit unsigned literal.
-   IRMcst,      //  Constant literal: i, gcr or ptr.
-   IRMnone      //  Unused operand.
+   IRMref,      // IR reference.
+   IRMlit,      // 16 bit unsigned literal.
+   IRMcst,      // Constant literal: i, gcr or ptr.
+   IRMnone      // Unused operand.
 } IRMode;
 #define IRM___      IRMnone
 
 // Mode bits: Commutative, {Normal/Ref, Alloc, Load, Store}, Non-weak guard.
-constexpr int IRM_C = 0x10;
 
+constexpr int IRM_C = 0x10;
 constexpr int IRM_N = 0x00;
 constexpr int IRM_R = IRM_N;
 constexpr int IRM_A = 0x20;
 constexpr int IRM_L = 0x40;
 constexpr int IRM_S = 0x60;
-
 constexpr int IRM_W = 0x80;
-
 constexpr int IRM_NW = (IRM_N | IRM_W);
 constexpr int IRM_CW = (IRM_C | IRM_W);
 constexpr int IRM_AW = (IRM_A | IRM_W);
@@ -443,23 +441,20 @@ using IRRef = uint32_t;    // Used to pass around references.
 // Fixed references.
 
 enum {
-   REF_BIAS = 0x8000,
-   REF_TRUE = REF_BIAS - 3,
+   REF_BIAS  = 0x8000,
+   REF_TRUE  = REF_BIAS - 3,
    REF_FALSE = REF_BIAS - 2,
-   REF_NIL = REF_BIAS - 1,    //  \--- Constants grow downwards.
-   REF_BASE = REF_BIAS,       //  /--- IR grows upwards.
+   REF_NIL   = REF_BIAS - 1,    //  \--- Constants grow downwards.
+   REF_BASE  = REF_BIAS,       //  /--- IR grows upwards.
    REF_FIRST = REF_BIAS + 1,
-   REF_DROP = 0xffff
+   REF_DROP  = 0xffff
 };
 
 // Note: IRMlit operands must be < REF_BIAS, too!
-// This allows for fast and uniform manipulation of all operands
-// without looking up the operand mode in lj_ir_mode:
-// - CSE calculates the maximum reference of two operands.
-//   This must work with mixed reference/literal operands, too.
+// This allows for fast and uniform manipulation of all operands without looking up the operand mode in lj_ir_mode:
+// - CSE calculates the maximum reference of two operands.  This must work with mixed reference/literal operands, too.
 // - DCE marking only checks for operand >= REF_BIAS.
-// - LOOP needs to substitute reference operands.
-//   Constant references and literals must not be modified.
+// - LOOP needs to substitute reference operands.  Constant references and literals must not be modified.
 
 #define IRREF2(lo, hi)      ((IRRef2)(lo) | ((IRRef2)(hi) << 16))
 
