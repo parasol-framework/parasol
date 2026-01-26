@@ -223,7 +223,6 @@ static void LJ_FASTCALL recff_type(jit_State* J, RecordFFData* rd)
    // Arguments already specialized. Result is a constant string. Neat, huh?
    uint32_t t;
    if (tvisnumber(&rd->argv[0])) t = ~LJ_TNUMX;
-   else if (!LJ_GC64 and tvislightud(&rd->argv[0])) t = ~LJ_TLIGHTUD;
    else t = ~itype(&rd->argv[0]);
 
    // Check for thunk userdata with declared type

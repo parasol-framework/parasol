@@ -307,17 +307,10 @@ TRef lj_ir_kptr_(jit_State* J, IROp op, void* ptr)
 {
    IRIns* ir, * cir = J->cur.ir;
    IRRef ref;
-#if LJ_64 && !LJ_GC64
-   lj_assertJ((void*)(uintptr_t)u32ptr(ptr) == ptr, "out-of-range GC pointer");
-#endif
    for (ref = J->chain[op]; ref; ref = cir[ref].prev)
       if (ir_kptr(&cir[ref]) == ptr)
          goto found;
-#if LJ_GC64
    ref = ir_nextk64(J);
-#else
-   ref = ir_nextk(J);
-#endif
    ir = IR(ref);
    ir->op12 = 0;
    setmref(ir[LJ_GC64].ptr, ptr);
