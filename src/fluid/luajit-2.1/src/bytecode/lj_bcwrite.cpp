@@ -10,10 +10,8 @@
 #include "lj_gc.h"
 #include "lj_buf.h"
 #include "lj_bc.h"
-#if LJ_HASJIT
 #include "lj_dispatch.h"
 #include "lj_jit.h"
-#endif
 #include "lj_strfmt.h"
 #include "lj_bcdump.h"
 #include "lj_vm.h"
@@ -383,4 +381,3 @@ int lj_bcwrite(lua_State* L, GCproto* pt, lua_Writer writer, void* data,
    lj_buf_free(G(sbufL(&ctx.sb)), &ctx.sb);
    return status;
 }
-

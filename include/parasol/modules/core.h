@@ -2315,7 +2315,7 @@ struct obj_read {
 
 inline auto read_hash = [](const obj_read &a, const obj_read &b) { return a.Hash < b.Hash; };
 
-typedef std::set<obj_read, decltype(read_hash)> READ_TABLE;
+typedef std::vector<obj_read> READ_TABLE;
 
 // Object field write handler structure for Fluid code
 
@@ -2339,7 +2339,7 @@ struct obj_write {
 
 inline auto write_hash = [](const obj_write &a, const obj_write &b) { return a.Hash < b.Hash; };
 
-typedef std::set<obj_write, decltype(write_hash)> WRITE_TABLE;
+typedef std::vector<obj_write> WRITE_TABLE;
 
 
 // MetaClass class definition
