@@ -16,7 +16,6 @@ Parameters:
   height       - Height of the render bitmap (default: 768)
   warmup       - Number of warmup renders to exclude from statistics (default: 10)
   preview      - Show preview window (default: true, set to false for headless)
-  cpu-affinity - CPU affinity bitmask (default: 6 = cores 1&2, 1=core 0, 3=cores 0&1, etc.)
 --]]
 
    import 'gui'
@@ -70,12 +69,13 @@ function createPreviewWindow(SvgPath)
    -- Results display area (bottom half) - create listview for results
 
    resultsListView = gui.listView({
-      x = 0, y = '60%', width = '100%',height = '40%',
+      x = 0, y = '60%', width = '100%', height = '40%',
       target = mainArea,
       textAttrib = 'text',
       noIcons = true,
       sensitive = false,  -- Read-only display
-      fontFace = 'Courier'
+      fontFace = 'Courier',
+      fontSize = 10
    })
 
    previewWindow:show()
@@ -93,11 +93,7 @@ end
 
 function logMessage(message)
    if glStatusUpdater then
-      if message is '' then
-         glStatusUpdater('------------------------------')
-      else
-         glStatusUpdater(message)
-      end
+      glStatusUpdater(message)
    else
       print(message)
    end
@@ -141,9 +137,10 @@ function runBenchmark(SvgPath, Width, Height, Duration, WarmupRenders)
    bmp   = obj.new('bitmap', { width=scene.pageWidth, height=scene.pageHeight, bitsPerPixel=32, bkgd='255,255,255,255' })
    scene.bitmap = bmp
 
-   results = bmark.run(Duration, WarmupRenders, 100, logMessage, function()
-      scene.acDraw()
-   end)
+   results = bmark.run({ duration=Duration, warmupCalls=WarmupRenders, feedbackRate=100 }, logMessage,
+      function()
+         scene.acDraw()
+      end)
 
    logMessage('')
 
