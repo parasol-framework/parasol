@@ -407,7 +407,7 @@ class extVector : public objVector {
    agg::path_storage BasePath;
    agg::trans_affine Transform;   // Final transform.  Accumulated from the Matrix list during path generation.
    CSTRING FilterString, StrokeString, FillString;
-   STRING ID;
+   STRING SID;
    void   (*GeneratePath)(extVector *, agg::path_storage &);
    agg::rasterizer_scanline_aa<>     *StrokeRaster;
    agg::rasterizer_scanline_aa<>     *FillRaster;

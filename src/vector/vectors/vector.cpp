@@ -283,7 +283,7 @@ static ERR VECTOR_Free(extVector *Self)
    if (Self->Morph)      UnsubscribeAction(Self->Morph, AC::Free);
    if (Self->AppendPath) UnsubscribeAction(Self->AppendPath, AC::Free);
 
-   if (Self->ID)           { FreeResource(Self->ID); Self->ID = nullptr; }
+   if (Self->SID)           { FreeResource(Self->SID); Self->SID = nullptr; }
    if (Self->FillString)   { FreeResource(Self->FillString); Self->FillString = nullptr; }
    if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = nullptr; }
    if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = nullptr; }
@@ -1572,29 +1572,29 @@ static ERR VECTOR_SET_FillRule(extVector *Self, VFR Value)
 
 /*********************************************************************************************************************
 -FIELD-
-ID: String identifier for a vector.
+SID: String identifier for a vector.
 
 The ID field is provided for the purpose of SVG support.  Where possible we would recommend that you use the
 existing object name and automatically assigned ID's for identifiers.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_ID(extVector *Self, STRING *Value)
+static ERR VECTOR_GET_SID(extVector *Self, STRING *Value)
 {
-   *Value = Self->ID;
+   *Value = Self->SID;
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_ID(extVector *Self, CSTRING Value)
+static ERR VECTOR_SET_SID(extVector *Self, CSTRING Value)
 {
-   if (Self->ID) FreeResource(Self->ID);
+   if (Self->SID) FreeResource(Self->SID);
 
    if (Value) {
-      Self->ID = strclone(Value);
+      Self->SID = strclone(Value);
       Self->NumericID = strhash(Value);
    }
    else {
-      Self->ID = nullptr;
+      Self->SID = nullptr;
       Self->NumericID = 0;
    }
    return ERR::Okay;
@@ -1926,7 +1926,7 @@ static ERR VECTOR_GET_NumericID(extVector *Self, int *Value)
 static ERR VECTOR_SET_NumericID(extVector *Self, int Value)
 {
    Self->NumericID = Value;
-   if (Self->ID) { FreeResource(Self->ID); Self->ID = nullptr; }
+   if (Self->SID) { FreeResource(Self->SID); Self->SID = nullptr; }
    return ERR::Okay;
 }
 
@@ -2535,7 +2535,7 @@ static const FieldArray clVectorFields[] = {
    { "AppendPath",   FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          VECTOR_GET_AppendPath, VECTOR_SET_AppendPath },
    { "MorphFlags",   FDF_VIRTUAL|FDF_INTFLAGS|FDF_RW,        VECTOR_GET_MorphFlags, VECTOR_SET_MorphFlags, &clMorphFlags },
    { "NumericID",    FDF_VIRTUAL|FDF_INT|FDF_RW,             VECTOR_GET_NumericID, VECTOR_SET_NumericID },
-   { "ID",           FDF_VIRTUAL|FDF_STRING|FDF_RW,          VECTOR_GET_ID, VECTOR_SET_ID },
+   { "SID",          FDF_VIRTUAL|FDF_STRING|FDF_RW,          VECTOR_GET_SID, VECTOR_SET_SID },
    { "ResizeEvent",  FDF_VIRTUAL|FDF_FUNCTION|FDF_W,         nullptr, VECTOR_SET_ResizeEvent },
    { "Sequence",     FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, VECTOR_GET_Sequence },
    { "Stroke",       FDF_VIRTUAL|FDF_STRING|FDF_RW,          VECTOR_GET_Stroke, VECTOR_SET_Stroke },

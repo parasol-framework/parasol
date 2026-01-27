@@ -129,7 +129,7 @@ static void key_event(evKey *, int, struct finput *);
 
    OBJECTID object_id;
    GCobject *obj;
-   if ((obj = lj_lib_checkobject(Lua, 1))) object_id = obj->uid;
+   if ((obj = lj_lib_optobject(Lua, 1))) object_id = obj->uid;
    else object_id = lua_tointeger(Lua, 1);
 
    if ((object_id) and (GetClassID(object_id) != CLASSID::SURFACE)) luaL_argerror(Lua, 1, "Surface object required.");
@@ -207,7 +207,7 @@ static void key_event(evKey *, int, struct finput *);
       return 0;
    }
 
-   auto obj = lj_lib_checkobject(Lua, 1);
+   auto obj = lj_lib_optobject(Lua, 1);
    OBJECTID source_id;
 
    if (obj) source_id = obj->uid;
@@ -288,7 +288,7 @@ static void key_event(evKey *, int, struct finput *);
 
    OBJECTID object_id;
    GCobject *object_ref;
-   if ((object_ref = lj_lib_checkobject(Lua, 2))) object_id = object_ref->uid;
+   if ((object_ref = lj_lib_optobject(Lua, 2))) object_id = object_ref->uid;
    else object_id = lua_tointeger(Lua, 2);
 
    int device_id = lua_tointeger(Lua, 3); // Optional

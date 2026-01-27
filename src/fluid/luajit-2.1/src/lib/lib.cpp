@@ -304,7 +304,7 @@ GCtab * lj_lib_checktab(lua_State *L, int Arg)
 }
 
 //********************************************************************************************************************
-// Helper function to check argument is an object
+// Helper function to check argument is an object (nil not accepted)
 
 GCobject * lj_lib_checkobject(lua_State *L, int Arg)
 {
