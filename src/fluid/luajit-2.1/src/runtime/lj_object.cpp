@@ -185,10 +185,9 @@ extern "C" void bc_object_getfield(lua_State *L, GCobject *Obj, GCstr *Key, TVal
    if (not Obj->uid) luaL_error(L, ERR::DoesNotExist, "Object dereferenced, unable to read field.");
 
    auto read_table = get_read_table(Obj->classptr);
-   auto hash_key = obj_read(Key->hash);
-   auto it = std::lower_bound(read_table->begin(), read_table->end(), hash_key, read_hash);
-   if (it IS read_table->end()) {
-      luaL_error(L, ERR::NoFieldAccess, "Field does not exist: %s.%s", Obj->classptr ? Obj->classptr->ClassName: "?", strdata(Key));
+   auto it = std::lower_bound(read_table->begin(), read_table->end(), obj_read(Key->hash), read_hash);
+   if ((it IS read_table->end()) or (it->Hash != Key->hash)) {
+      luaL_error(L, ERR::NoFieldAccess, "Field does not exist or is init-only: %s.%s", Obj->classptr ? Obj->classptr->ClassName: "?", strdata(Key));
    }
 
    // Call the field handler - it pushes result onto the Lua stack
@@ -220,12 +219,9 @@ extern "C" void bc_object_setfield(lua_State *L, GCobject *Obj, GCstr *Key, TVal
    if (not Obj->uid) luaL_error(L, ERR::DoesNotExist, "Object dereferenced, unable to write field.");
 
    auto write_table = get_write_table(Obj->classptr);
-
-   // Look up the field handler using the string's precomputed hash
-   auto hash_key = obj_write(Key->hash);
-   auto it = std::lower_bound(write_table->begin(), write_table->end(), hash_key, write_hash);
-   if (it IS write_table->end()) {
-      luaL_error(L, ERR::UndefinedField, "Field does not exist: %s.%s", Obj->classptr ? Obj->classptr->ClassName: "?", strdata(Key));
+   auto it = std::lower_bound(write_table->begin(), write_table->end(), obj_write(Key->hash), write_hash);
+   if ((it IS write_table->end()) or (it->Hash != Key->hash)) {
+      luaL_error(L, ERR::UndefinedField, "Field does not exist or is read-only: %s.%s", Obj->classptr ? Obj->classptr->ClassName: "?", strdata(Key));
    }
 
    if (auto pobj = access_object(Obj)) {
