@@ -1677,6 +1677,63 @@ is required, as it prevents the OS from moving the process between different CPU
 
 Note: This field affects the current process only and requires appropriate system privileges on some platforms.
 
+*********************************************************************************************************************/
+
+static ERR GET_AffinityMask(extTask *Self, int64_t *Value)
+{
+#ifdef __unix__
+   cpu_set_t cpuset;
+   if (sched_getaffinity(0, sizeof(cpuset), &cpuset) != 0) {
+      return ERR::SystemCall;
+   }
+
+   // Convert cpu_set_t to bitmask
+   int64_t mask = 0;
+   for (int cpu = 0; cpu < CPU_SETSIZE; cpu++) {
+      if (CPU_ISSET(cpu, &cpuset)) {
+         mask |= (1LL << cpu);
+      }
+   }
+   *Value = mask;
+#elif _WIN32
+   auto mask = winGetProcessAffinityMask();
+   if (mask IS 0) return ERR::SystemCall;
+   *Value = mask;
+#endif
+
+   return ERR::Okay;
+}
+
+static ERR SET_AffinityMask(extTask *Self, int64_t Value)
+{
+   if (Value <= 0) return ERR::InvalidValue;
+
+   Self->AffinityMask = Value;
+
+#ifdef __unix__
+   cpu_set_t cpuset;
+   CPU_ZERO(&cpuset);
+
+   // Convert bitmask to cpu_set_t
+   for (int cpu = 0; cpu < CPU_SETSIZE; cpu++) {
+      if (Value & (1LL << cpu)) {
+         CPU_SET(cpu, &cpuset);
+      }
+   }
+
+   // Set affinity for current process
+   if (sched_setaffinity(0, sizeof(cpuset), &cpuset) != 0) {
+      return ERR::SystemCall;
+   }
+#elif _WIN32
+   if (winSetProcessAffinityMask(Value) != 0) return ERR::SystemCall;
+#endif
+
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
 -FIELD-
 Args: Command line arguments (string format).
 
@@ -2124,75 +2181,6 @@ static ERR SET_Priority(extTask *Self, int Value)
 #elif _WIN32
    if (winSetProcessPriority(Value) != 0) return ERR::SystemCall;
 #endif
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
-AffinityMask: Controls which CPU cores the process can run on.
-
-The AffinityMask field sets the CPU affinity for the current process, determining which CPU cores the process
-is allowed to run on. This is expressed as a bitmask where each bit represents a CPU core (bit 0 = core 0,
-bit 1 = core 1, etc.).
-
-Setting CPU affinity is particularly useful for benchmarking applications where consistent performance timing
-is required, as it prevents the OS from moving the process between different CPU cores during execution.
-
-Note: This field affects the current process only and requires appropriate system privileges on some platforms.
-
-*********************************************************************************************************************/
-
-static ERR GET_AffinityMask(extTask *Self, int64_t *Value)
-{
-#ifdef __unix__
-   cpu_set_t cpuset;
-   if (sched_getaffinity(0, sizeof(cpuset), &cpuset) != 0) {
-      return ERR::SystemCall;
-   }
-
-   // Convert cpu_set_t to bitmask
-   int64_t mask = 0;
-   for (int cpu = 0; cpu < CPU_SETSIZE; cpu++) {
-      if (CPU_ISSET(cpu, &cpuset)) {
-         mask |= (1LL << cpu);
-      }
-   }
-   *Value = mask;
-#elif _WIN32
-   auto mask = winGetProcessAffinityMask();
-   if (mask IS 0) return ERR::SystemCall;
-   *Value = mask;
-#endif
-
-   return ERR::Okay;
-}
-
-static ERR SET_AffinityMask(extTask *Self, int64_t Value)
-{
-   if (Value <= 0) return ERR::InvalidValue;
-
-   Self->AffinityMask = Value;
-
-#ifdef __unix__
-   cpu_set_t cpuset;
-   CPU_ZERO(&cpuset);
-
-   // Convert bitmask to cpu_set_t
-   for (int cpu = 0; cpu < CPU_SETSIZE; cpu++) {
-      if (Value & (1LL << cpu)) {
-         CPU_SET(cpu, &cpuset);
-      }
-   }
-
-   // Set affinity for current process
-   if (sched_setaffinity(0, sizeof(cpuset), &cpuset) != 0) {
-      return ERR::SystemCall;
-   }
-#elif _WIN32
-   if (winSetProcessAffinityMask(Value) != 0) return ERR::SystemCall;
-#endif
-
    return ERR::Okay;
 }
 
