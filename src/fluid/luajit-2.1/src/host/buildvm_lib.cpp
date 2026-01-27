@@ -397,7 +397,9 @@ void emit_lib(BuildCtx* ctx)
       int i;
       fprintf(ctx->fp, "\n};\n\n");
       fprintf(ctx->fp, "LJ_DATADEF const uint16_t lj_bc_mode[] = {\n");
-      fprintf(ctx->fp, "BCDEF(BCMODE)\n");
+      fprintf(ctx->fp, "BCDEF_PRE_EXT(BCMODE)\n");
+      fprintf(ctx->fp, "BCDEF_EXT(BCMODE_EXT)\n");
+      fprintf(ctx->fp, "BCDEF_POST_EXT(BCMODE)\n");
       for (i = ffasmfunc - 1; i > 0; i--)
          fprintf(ctx->fp, "BCMODE_FF,\n");
       fprintf(ctx->fp, "BCMODE_FF\n};\n\n");

@@ -4309,7 +4309,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  not RC
     |  mov STR:RC, [KBASE+RC*8]
     |  checkobject OOBJ:RB, ->vmeta_tgets
-    |  // Call C helper: bc_object_getfield(L, GCobject*, GCstr*, TValue*) - throws on error
+    |  // Call C helper: bc_object_getfield(L, GCobject*, GCstr*, TValue*, BCIns*) - throws on error
     |  lea CARG4, [BASE+RA*8]        // TValue * dest (preserve before BASE is clobbered)
     |  mov L:CARG1, SAVE_L
     |  mov L:CARG1->base, BASE       // Save BASE to L->base
@@ -4317,10 +4317,18 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  cleartp CARG2                 // Clear type tag for pointer
     |  mov CARG3, STR:RC             // GCstr *
     |  mov L:RB, L:CARG1             // Save L to RB for restoring BASE
+    |.if X64WIN
+    |  // Windows x64: 5th arg on stack at rsp+32 (shadow space for 4 regs + arg5)
     |  mov SAVE_PC, PC
-    |  call extern bc_object_getfield    // (lua_State *L, GCobject *obj, GCstr *key, TValue *dest)
+    |  mov [rsp+32], PC              // BCIns *ExtWord - pointer to extension word
+    |.else
+    |  // SysV x64: 5th arg in r8
+    |  mov SAVE_PC, PC
+    |  mov CARG5, PC                 // BCIns *ExtWord - pointer to extension word
+    |.endif
+    |  call extern bc_object_getfield    // (lua_State *L, GCobject *obj, GCstr *key, TValue *dest, BCIns *ext)
     |  mov BASE, L:RB->base          // Restore BASE from L->base
-    |  ins_next
+    |  ins_next_ext                  // Extended instruction - advances PC by 2 words
     break;
 
   case BC_OBSETF:
@@ -4329,9 +4337,9 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  not RC
     |  mov STR:RC, [KBASE+RC*8]
     |  checkobject OOBJ:RB, ->vmeta_tsets
-    |  // Call C helper: bc_object_setfield(L, GCobject*, GCstr*, TValue*) - throws on error
+    |  // Call C helper: bc_object_setfield(L, GCobject*, GCstr*, TValue*, BCIns*) - throws on error
     |.if X64WIN
-    |  // Windows x64: RCX, RDX, R8, R9. Caveat: CARG2 == BASE.
+    |  // Windows x64: RCX, RDX, R8, R9, stack. Caveat: CARG2 == BASE.
     |  lea CARG4, [BASE+RA*8]        // TValue * value (compute before BASE is clobbered)
     |  mov L:CARG1, SAVE_L
     |  mov L:CARG1->base, BASE       // Save BASE to L->base
@@ -4339,8 +4347,10 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  cleartp CARG2                 // Clear type tag for pointer
     |  mov CARG3, STR:RC             // GCstr *
     |  mov L:RB, L:CARG1             // Save L to RB for restoring BASE
+    |  mov SAVE_PC, PC
+    |  mov [rsp+32], PC              // BCIns *ExtWord - 5th arg on stack
     |.else
-    |  // SysV x64: RDI, RSI, RDX, RCX. Caveat: CARG3 == BASE.
+    |  // SysV x64: RDI, RSI, RDX, RCX, R8. Caveat: CARG3 == BASE.
     |  mov L:CARG1, SAVE_L
     |  mov L:CARG1->base, BASE       // Save BASE to L->base
     |  mov CARG2, OOBJ:RB            // GCobject * (with type tag)
@@ -4348,11 +4358,12 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  lea CARG4, [BASE+RA*8]        // TValue * value (after BASE used)
     |  mov CARG3, STR:RC             // GCstr *
     |  mov L:RB, L:CARG1             // Save L to RB for restoring BASE
-    |.endif
     |  mov SAVE_PC, PC
-    |  call extern bc_object_setfield    // (lua_State *L, GCobject *obj, GCstr *key, TValue *val)
+    |  mov CARG5, PC                 // BCIns *ExtWord - 5th arg in r8
+    |.endif
+    |  call extern bc_object_setfield    // (lua_State *L, GCobject *obj, GCstr *key, TValue *val, BCIns *ext)
     |  mov BASE, L:RB->base          // Restore BASE from L->base
-    |  ins_next
+    |  ins_next_ext                  // Extended instruction - advances PC by 2 words
     break;
 
   case BC_OCALL:

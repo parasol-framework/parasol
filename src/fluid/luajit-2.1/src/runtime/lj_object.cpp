@@ -7,6 +7,7 @@
 #include "lj_obj.h"
 #include "lj_gc.h"
 #include "lj_ir.h"
+#include "lj_bc.h"
 #include "lj_object.h"
 #include "../../defs.h"
 
@@ -170,8 +171,15 @@ int lj_object_ipairs(lua_State *L)
 //********************************************************************************************************************
 // Fast object field get - called from BC_OBGETF bytecode handler. Writes result directly to Dest, or throws an error
 // if the field doesn't exist or the object has been freed.
+//
+// ExtWord points to the extension word of the 64-bit instruction, containing the inline cache slot index.
+// slot_idx = 0xFFFF means uncached; otherwise it's the index into the ReadTable vector for O(1) access.
+//
+// This function works on the basis that the class associated with Obj is type-fixed once established.
+//
+// Object locking is currently managed by the handlers, and errors stored in Lua->CaughtError.
 
-extern "C" void bc_object_getfield(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Dest)
+extern "C" void bc_object_getfield(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Dest, BCIns *ExtWord)
 {
    // Ensure L->top is past the value register before any error can be thrown.
    // luaL_error pushes the error string to L->top, which would corrupt active registers if too low.
@@ -186,24 +194,40 @@ extern "C" void bc_object_getfield(lua_State *L, GCobject *Obj, GCstr *Key, TVal
 
    auto read_table = get_read_table(Obj->classptr);
 
-   // Look up the field handler using the string's precomputed hash
-
-   auto hash_key = obj_read(Key->hash);
-   auto func = read_table->find(hash_key);
-   if (func IS read_table->end()) {
-      luaL_error(L, ERR::NoFieldAccess, "Field does not exist: %s.%s", Obj->classptr ? Obj->classptr->ClassName: "?", strdata(Key));
+   obj_read *func;
+   uint16_t slot_idx;
+   if ((ExtWord) and ((slot_idx = bc_d16(*ExtWord)) != 0xFFFF)) { // Cache hit
+      lj_assertL(slot_idx < read_table->size(), "Invalid IC slot index");
+      func = &(*read_table)[slot_idx];
+      lj_assertL(func->Hash IS Key->hash, "IC slot mismatch - type fixing violated");
+   }
+   else { // Cache miss
+      auto hash_key = obj_read(Key->hash);
+      auto it = std::lower_bound(read_table->begin(), read_table->end(), hash_key, read_hash);
+      if ((it IS read_table->end()) or (it->Hash != Key->hash)) {
+         luaL_error(L, ERR::NoFieldAccess, "Field does not exist: %s.%s", Obj->classptr ? Obj->classptr->ClassName: "?", strdata(Key));
+      }
+      // Patch cache with slot index
+      if (ExtWord) *ExtWord = BCINS_EXT16(uint16_t(it - read_table->begin()), 0);
+      func = &*it;
    }
 
    // Call the field handler - it pushes result onto the Lua stack
    if (func->Call(L, *func, Obj) > 0) copyTV(L, Dest, L->top - 1);
-   else setnilV(Dest);
+   else { // Error occurred
+      if (L->CaughtError >= ERR::ExceptionThreshold) luaL_error(L, L->CaughtError);
+      setnilV(Dest);
+   }
    L->top = saved_top;
 }
 
 //********************************************************************************************************************
 // Fast object field set - called from BC_OBSETF bytecode handler. Writes Val to the object field, or throws an error.
+//
+// ExtWord points to the extension word of the 64-bit instruction, containing the inline cache slot index.
+// slot_idx = 0xFFFF means uncached; otherwise it's the index into the WriteTable vector for O(1) access.
 
-extern "C" void bc_object_setfield(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Val)
+extern "C" void bc_object_setfield(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Val, BCIns *ExtWord)
 {
    // Ensure L->top is past the value register before any error can be thrown.
    // luaL_error pushes the error string to L->top, which would corrupt active registers if too low.
@@ -222,12 +246,25 @@ extern "C" void bc_object_setfield(lua_State *L, GCobject *Obj, GCstr *Key, TVal
    if (not Obj->uid) luaL_error(L, ERR::DoesNotExist, "Object dereferenced, unable to write field.");
 
    auto write_table = get_write_table(Obj->classptr);
+   WRITE_TABLE::iterator func;
 
-   // Look up the field handler using the string's precomputed hash
-   auto hash_key = obj_write(Key->hash);
-   auto func = write_table->find(hash_key);
-   if (func IS write_table->end()) {
-      luaL_error(L, ERR::UndefinedField, "Field does not exist: %s.%s", Obj->classptr ? Obj->classptr->ClassName: "?", strdata(Key));
+   uint16_t slot_idx;
+   if ((ExtWord) and ((slot_idx = bc_d16(*ExtWord)) != 0xFFFF)) { // Cache hit
+      func = write_table->begin() + slot_idx;
+      lj_assertL(func->Hash IS Key->hash, "IC slot mismatch - type fixing violated");
+   }
+   else { // Cache miss
+      auto hash_key = obj_write(Key->hash);
+      func = std::lower_bound(write_table->begin(), write_table->end(), hash_key, write_hash);
+      if ((func IS write_table->end()) or (func->Hash != Key->hash)) {
+         luaL_error(L, ERR::UndefinedField, "Field does not exist: %s.%s", Obj->classptr ? Obj->classptr->ClassName: "?", strdata(Key));
+      }
+
+      // Patch cache with slot index for future O(1) access (only if ExtWord provided)
+      if (ExtWord) {
+         uint16_t new_slot = uint16_t(func - write_table->begin());
+         *ExtWord = BCINS_EXT16(new_slot, 0);
+      }
    }
 
    if (auto pobj = access_object(Obj)) {

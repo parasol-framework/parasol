@@ -213,9 +213,9 @@ typedef struct CCallInfo {
   /* Try-except exception handling */ \
   _(ANY,        lj_try_enter,      4,  FS, NIL, CCI_L|CCI_T) \
   _(ANY,        lj_try_leave,      1,  FS, NIL, CCI_L) \
-  /* Native object field access */ \
-  _(ANY,        bc_object_getfield, 4, S, NIL, CCI_L|CCI_T) \
-  _(ANY,        bc_object_setfield, 4, S, NIL, CCI_L|CCI_T) \
+  /* Native object field access with inline caching (5 args: L, Obj, Key, Dest/Val, ExtWord) */ \
+  _(ANY,        bc_object_getfield, 5, S, NIL, CCI_L|CCI_T) \
+  _(ANY,        bc_object_setfield, 5, S, NIL, CCI_L|CCI_T) \
   \
   // End of list.
 

@@ -5362,9 +5362,10 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  mr CARG1, L
     |  mr CARG3, STR:RC
     |   stw PC, SAVE_PC
-    |  bl extern bc_object_getfield		// (lua_State *L, GCobject *obj, GCstr *key, TValue *dest)
+    |  mr CARG5, PC                    // BCIns *ExtWord - 5th arg in r7
+    |  bl extern bc_object_getfield    // (lua_State *L, GCobject *obj, GCstr *key, TValue *dest, BCIns *ext)
     |  lp BASE, L->base
-    |  ins_next
+    |  ins_next_ext                    // Extended instruction - advances PC by 2 words
     break;
 
   case BC_OBSETF:
@@ -5381,9 +5382,10 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  mr CARG1, L
     |  mr CARG3, STR:RC
     |   stw PC, SAVE_PC
-    |  bl extern bc_object_setfield		// (lua_State *L, GCobject *obj, GCstr *key, TValue *val)
+    |  mr CARG5, PC                    // BCIns *ExtWord - 5th arg in r7
+    |  bl extern bc_object_setfield    // (lua_State *L, GCobject *obj, GCstr *key, TValue *val, BCIns *ext)
     |  lp BASE, L->base
-    |  ins_next
+    |  ins_next_ext                    // Extended instruction - advances PC by 2 words
     break;
 
   //  -- Array ops ---------------------------------------------------------

@@ -84,7 +84,8 @@ constexpr uint8_t  NO_REG = BCMAX_A;
 // B = unsigned byte literal
 // M = multiple args/results
 
-#define BCDEF(_) \
+// Pre-extended opcodes (standard 32-bit instructions)
+#define BCDEF_PRE_EXT(_) \
   /* Comparison ops. ORDER OPR. */ \
   _(ISLT, var, ___, var, lt) \
   _(ISGE, var, ___, var, lt) \
@@ -175,11 +176,15 @@ constexpr uint8_t  NO_REG = BCMAX_A;
   _(ASETV,  var, var, var, newindex) \
   _(ASETB,  var, var, lit, newindex) \
   _(ASGETV, dst, var, var, index) /* Safe array get (returns nil for out-of-bounds) */ \
-  _(ASGETB, dst, var, lit, index) /* Safe array get with literal index */ \
-  \
-  /* Object field access ops (specialised for LJ_TOBJECT). */ \
-  _(OBGETF, dst,  var, str, index)    /* Object string field get */ \
-  _(OBSETF, var,  var, str, newindex) /* Object string field set */ \
+  _(ASGETB, dst, var, lit, index) /* Safe array get with literal index */
+
+// Extended object field access ops (64-bit instructions with inline cache slot)
+#define BCDEF_EXT(_) \
+  _(OBGETF, dst,  var, str, index)    /* Object string field get (extended: IC slot) */ \
+  _(OBSETF, var,  var, str, newindex) /* Object string field set (extended: IC slot) */
+
+// Post-extended opcodes
+#define BCDEF_POST_EXT(_) \
   _(OBCALL, base, lit, lit, call)     /* Object action/method call (reserved) */ \
   \
   /* Calls and vararg handling. T = tail call. */ \
@@ -236,6 +241,12 @@ constexpr uint8_t  NO_REG = BCMAX_A;
   _(TRYLEAVE, base,  ___, ___, ___) \
   _(CHECK,    var,   ___, lit, ___) \
   _(RAISE,    var,   ___, var, ___)
+
+// Combined BCDEF for backwards compatibility and general use
+#define BCDEF(_) \
+  BCDEF_PRE_EXT(_) \
+  BCDEF_EXT(_) \
+  BCDEF_POST_EXT(_)
 
 // Bytecode opcode numbers.
 // Explicitly enumerated for debugger visibility and easy value lookup.

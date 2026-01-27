@@ -389,7 +389,7 @@ static ERR XML_Search(extXML *Self, struct xml::Search *Args)
          }
          else {
             CSTRING str;
-            if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+            if ((xq->get(FID_ErrorMsg, str) IS ERR::Okay) and (str)) Self->ErrorMsg = str;
             FreeResource(xq);
             if ((Args->Callback) and (error IS ERR::Search)) return ERR::Okay;
             else return error;
@@ -1867,7 +1867,10 @@ recently received error code.  Issues parsing malformed XPath expressions may al
 static ERR GET_ErrorMsg(extXML *Self, CSTRING *Value)
 {
    if (not Self->ErrorMsg.empty()) { *Value = Self->ErrorMsg.c_str(); return ERR::Okay; }
-   else return ERR::NoData;
+   else {
+      *Value = nullptr;
+      return ERR::Okay;
+   }
 }
 
 /*********************************************************************************************************************

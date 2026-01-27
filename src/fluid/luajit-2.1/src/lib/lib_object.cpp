@@ -292,7 +292,7 @@ READ_TABLE * get_read_table(objMetaClass *Class)
 
    for (auto code : std::views::iota(1, int(AC::END))) {
       auto hash = simple_hash(glActions[code].Name, simple_hash("ac"));
-      jmp.insert(obj_read(hash, glJumpActions[code]));
+      jmp.push_back(obj_read(hash, glJumpActions[code]));
    }
 
    MethodEntry *methods;
@@ -302,7 +302,7 @@ READ_TABLE * get_read_table(objMetaClass *Class)
       for (auto &method : methods_span | std::views::drop(1)) {
          if (method.MethodID != AC::NIL) {
             auto hash = simple_hash(method.Name, simple_hash("mt"));
-            jmp.insert(obj_read(hash, obj_jump_method, &method));
+            jmp.push_back(obj_read(hash, obj_jump_method, &method));
          }
       }
    }
@@ -315,42 +315,44 @@ READ_TABLE * get_read_table(objMetaClass *Class)
          auto hash = field.FieldID;
 
          if (field.Flags & FD_ARRAY) {
-            if (field.Flags & FD_RGB) jmp.insert(obj_read(hash, object_get_rgb, &field));
-            else jmp.insert(obj_read(hash, object_get_array, &field));
+            if (field.Flags & FD_RGB) jmp.push_back(obj_read(hash, object_get_rgb, &field));
+            else jmp.push_back(obj_read(hash, object_get_array, &field));
          }
-         else if (field.Flags & FD_STRUCT) jmp.insert(obj_read(hash, object_get_struct, &field));
-         else if (field.Flags & FD_STRING) jmp.insert(obj_read(hash, object_get_string, &field));
+         else if (field.Flags & FD_STRUCT) jmp.push_back(obj_read(hash, object_get_struct, &field));
+         else if (field.Flags & FD_STRING) jmp.push_back(obj_read(hash, object_get_string, &field));
          else if (field.Flags & FD_POINTER) {
             if (field.Flags & (FD_OBJECT|FD_LOCAL)) {
-               jmp.insert(obj_read(hash, object_get_object, &field));
+               jmp.push_back(obj_read(hash, object_get_object, &field));
             }
-            else jmp.insert(obj_read(hash, object_get_ptr, &field));
+            else jmp.push_back(obj_read(hash, object_get_ptr, &field));
          }
-         else if (field.Flags & FD_DOUBLE) jmp.insert(obj_read(hash, object_get_double, &field));
-         else if (field.Flags & FD_INT64) jmp.insert(obj_read(hash, object_get_large, &field));
+         else if (field.Flags & FD_DOUBLE) jmp.push_back(obj_read(hash, object_get_double, &field));
+         else if (field.Flags & FD_INT64) jmp.push_back(obj_read(hash, object_get_large, &field));
          else if (field.Flags & FD_INT) {
-            if (field.Flags & FD_UNSIGNED) jmp.insert(obj_read(hash, object_get_ulong, &field));
-            else jmp.insert(obj_read(hash, object_get_long, &field));
+            if (field.Flags & FD_UNSIGNED) jmp.push_back(obj_read(hash, object_get_ulong, &field));
+            else jmp.push_back(obj_read(hash, object_get_long, &field));
          }
          else if (field.Flags & FD_FUNCTION); // Unsupported
          else pf::Log().warning("Unable to support field %s.%s for reading", Class->Name, field.Name);
       }
    }
 
-   jmp.emplace(OJH_init, stack_object_init);
-   jmp.emplace(OJH_free, stack_object_free);
-   jmp.emplace(OJH_lock, stack_object_lock);
-   jmp.emplace(OJH_children, stack_object_children);
-   jmp.emplace(OJH_detach, stack_object_detach);
-   jmp.emplace(OJH_get, stack_object_get);
-   jmp.emplace(OJH_new, stack_object_newchild);
-   jmp.emplace(OJH_state, stack_object_state);
-   jmp.emplace(OJH_getKey, stack_object_getKey);
-   jmp.emplace(OJH_set, stack_object_set);
-   jmp.emplace(OJH_setKey, stack_object_setKey);
-   jmp.emplace(OJH_exists, stack_object_exists);
-   jmp.emplace(OJH_subscribe, stack_object_subscribe);
-   jmp.emplace(OJH_unsubscribe, stack_object_unsubscribe);
+   jmp.emplace_back(OJH_init, stack_object_init);
+   jmp.emplace_back(OJH_free, stack_object_free);
+   jmp.emplace_back(OJH_lock, stack_object_lock);
+   jmp.emplace_back(OJH_children, stack_object_children);
+   jmp.emplace_back(OJH_detach, stack_object_detach);
+   jmp.emplace_back(OJH_get, stack_object_get);
+   jmp.emplace_back(OJH_new, stack_object_newchild);
+   jmp.emplace_back(OJH_state, stack_object_state);
+   jmp.emplace_back(OJH_getKey, stack_object_getKey);
+   jmp.emplace_back(OJH_set, stack_object_set);
+   jmp.emplace_back(OJH_setKey, stack_object_setKey);
+   jmp.emplace_back(OJH_exists, stack_object_exists);
+   jmp.emplace_back(OJH_subscribe, stack_object_subscribe);
+   jmp.emplace_back(OJH_unsubscribe, stack_object_unsubscribe);
+
+   std::sort(jmp.begin(), jmp.end(), read_hash);
 
    return &Class->ReadTable;
 }
@@ -375,31 +377,33 @@ WRITE_TABLE * get_write_table(objMetaClass *Class)
          auto hash = simple_hash(field.Name+1, simple_hash(ch));
 
          if (field.Flags & FD_ARRAY) {
-            jmp.insert(obj_write(hash, object_set_array, &field));
+            jmp.push_back(obj_write(hash, object_set_array, &field));
          }
          else if (field.Flags & FD_FUNCTION) {
-            jmp.insert(obj_write(hash, object_set_function, &field));
+            jmp.push_back(obj_write(hash, object_set_function, &field));
          }
          else if (field.Flags & FD_POINTER) {
             if (field.Flags & (FD_OBJECT|FD_LOCAL)) {
-               jmp.insert(obj_write(hash, object_set_object, &field));
+               jmp.push_back(obj_write(hash, object_set_object, &field));
             }
-            else jmp.insert(obj_write(hash, object_set_ptr, &field));
+            else jmp.push_back(obj_write(hash, object_set_ptr, &field));
          }
          else if (field.Flags & (FD_DOUBLE|FD_FLOAT)) {
-            jmp.insert(obj_write(hash, object_set_double, &field));
+            jmp.push_back(obj_write(hash, object_set_double, &field));
          }
          else if (field.Flags & (FD_FLAGS|FD_LOOKUP)) {
-            jmp.insert(obj_write(hash, object_set_lookup, &field));
+            jmp.push_back(obj_write(hash, object_set_lookup, &field));
          }
          else if (field.Flags & FD_OBJECT) {
-            jmp.insert(obj_write(hash, object_set_oid, &field));
+            jmp.push_back(obj_write(hash, object_set_oid, &field));
          }
          else if (field.Flags & (FD_INT|FD_INT64)) {
-            jmp.insert(obj_write(hash, object_set_number, &field));
+            jmp.push_back(obj_write(hash, object_set_number, &field));
          }
       }
    }
+
+   std::sort(jmp.begin(), jmp.end(), write_hash);
 
    return &Class->WriteTable;
 }
@@ -420,7 +424,8 @@ extern int object_newindex(lua_State *Lua)
             auto jt = get_write_table(def->classptr);
 
             ERR error;
-            if (auto func = jt->find(obj_write(hash)); func != jt->end()) {
+            auto func = std::lower_bound(jt->begin(), jt->end(), obj_write(hash), write_hash);
+            if ((func != jt->end()) and (func->Hash IS hash)) {
                error = func->Call(Lua, obj, func->Field, 3);
             }
             else error = ERR::NoSupport;
@@ -452,7 +457,8 @@ extern int object_newindex(lua_State *Lua)
 
    auto read_table = get_read_table(def->classptr);
    auto hash_key = obj_read(keystr->hash);
-   if (auto func = read_table->find(hash_key); func != read_table->end()) {
+   auto func = std::lower_bound(read_table->begin(), read_table->end(), hash_key, read_hash);
+   if ((func != read_table->end()) and (func->Hash IS keystr->hash)) {
       return func->Call(Lua, *func, def);
    }
 
