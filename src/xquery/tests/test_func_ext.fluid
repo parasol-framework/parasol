@@ -180,22 +180,3 @@ end
    local _, geAmount = xml.mtGetAttrib(geId, 'amount')
    assert(geAmount is '30', 'ge should return the maximum amount when equal to the comparison value')
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-return {
-   tests = {
-      testStringCaseFunctions,
-      testUriEncodingFunctions,
-      testRegexFunctions,
-      testMathFunctions,
-      testTraceFunction,
-      testErrorFunction,
-      testDateTimeFunctions,
-      testValueComparisonOperators
-   },
-   init = function(ScriptFolder)
-   end,
-   cleanup = function()
-   end
-}
