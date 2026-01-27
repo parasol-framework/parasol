@@ -65,16 +65,3 @@ end
    local errDayTimeNegative, dayTimeNegativeNode = xml.mtSearch('/root/duration[@id = "dt-negative" and days-from-dayTimeDuration(@value) = 0 and hours-from-dayTimeDuration(@value) = -12 and minutes-from-dayTimeDuration(@value) = -30 and seconds-from-dayTimeDuration(@value) = -45]')
    assert(errDayTimeNegative is ERR_Okay and dayTimeNegativeNode != nil, 'dayTimeDuration helpers should respect negative values across all components')
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-return {
-   tests = {
-      testGeneralDurationComponents,
-      testSpecificDurationTypes
-   },
-   init = function(ScriptFolder)
-   end,
-   cleanup = function()
-   end
-}

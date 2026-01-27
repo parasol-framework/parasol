@@ -180,13 +180,3 @@ end
    assert(err is ERR_Okay, 'Nested array/map lookup failed.')
    assert(second_sku is 'B2', 'Array lookup should expose the second nested map value, got ' .. tostring(second_sku))
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-return {
-   tests = {
-      testDirectConstructorEvaluation, testDirectConstructorWhitespace, testComputedConstructors,
-      testNonElementConstructors, testDocumentConstructor,
-      testConstructorAttributeSequences, testMapArrayLookup, testMapArrayConstructorSemantics
-   }
-}

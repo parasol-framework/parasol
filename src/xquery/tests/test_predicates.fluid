@@ -815,26 +815,3 @@ end
    local err, length = xml.mtEvaluate('string-length(/root/item[1])')
    assert(length is "1", "Expected string length of 1, got " .. tostring(length))
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-return {
-   tests = {
-      testComparisonOperators, testMathematicalExpressions,
-      testAttributeNameVariants, testVariables,
-      testComplexNestedPredicates, testMultiStepNodePredicates,
-      testMultiStepAttributePredicates, testPredicateOperationHandlers,
-      testRoundBracketAlternatives,
-      testXPathStringFunctions, testXPathAdditionalStringFunctions,
-      testXPathNumberFunctions, testXPathExtendedNumberFunctions,
-      testEscapeCharacters, testEdgeCases, testPerformanceScenarios,
-      testFunctionLibrary, testXPathOperators,
-      testXPathExpressions, testXPathArithmetic, testXPathMultiplicationOutsidePredicates,
-      testXPathBooleanFunctions, testXPathIdFunction, testXPathNameFunctions,
-      testXPathFullEvaluation
-   },
-   init = function(ScriptFolder)
-   end,
-   cleanup = function()
-   end
-}

@@ -57,16 +57,3 @@ end
    local errScope, scopeNode = xml.mtSearch('/root/ex:item["ex" = in-scope-prefixes(.) and "dup" = in-scope-prefixes(.) and "xml" = in-scope-prefixes(.)]')
    assert(errScope is ERR_Okay and scopeNode != nil, 'in-scope-prefixes() should enumerate declared prefixes and the implicit xml prefix')
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-return {
-   tests = {
-      testQNameConstruction,
-      testNamespaceUtilities
-   },
-   init = function(ScriptFolder)
-   end,
-   cleanup = function()
-   end
-}

@@ -318,14 +318,3 @@ end
    local failure_err = [*_]xml.mtEvaluate('let $order := map { "items": array { map { "sku": "X1" } } } return $order?items?5')
    assert(failure_err != ERR_Okay, 'Out-of-range lookup should raise FOAY0001')
 end
-
-----------------------------------------------------------------------------------------------------------------------
-
-return {
-   tests = {
-      testDeeplyNestedPathTraversal, testSequentialPredicateEvaluation, testRelativeCurrentNodeTraversal,
-      testMissingPathError, testDescendantAxisAttributeAccess, testConditionalIfExpression, testForExpressionNodeAggregation,
-      testQuantifiedExpressions, testForExpressionMultipleBindings, testFlworForLetCombination, testFlworLetForCombination, testSequenceSetOperators,
-      testSetOperatorKeywordNameTests, testLookupOperatorChains, testSimpleDeep
-   }
-}

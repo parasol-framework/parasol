@@ -147,21 +147,3 @@ end
    local message = string.lower(xml.errorMsg ?? '')
    assert(string.find(message, 'xpst0051', 0, true), 'Unknown schema constructors should report XPST0051, got: ' .. message)
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-return {
-   tests = {
-      testNumericConstructors,
-      testBooleanAndTemporalConstructors,
-      testConstructorNodeAtomisation,
-      testQNameConstructors,
-      testConstructorLexicalFailures,
-      testConstructorArityValidation,
-      testConstructorUnsupportedType
-   },
-   init = function(ScriptFolder)
-   end,
-   cleanup = function()
-   end
-}

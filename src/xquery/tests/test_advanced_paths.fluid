@@ -77,12 +77,3 @@ end
    local err, tagId = xml.mtSearch('//branch[@name="west"]/shelf[@code="B"]/book[text()="Advanced"]')
    assert(err is ERR_Okay, 'Complex descendant traversal should locate the advanced book entry: ' .. mSys.GetErrorMsg(err))
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-return {
-   tests = {
-      testDeeplyNestedPathTraversal, testSequentialPredicateEvaluation, testRelativeCurrentNodeTraversal,
-      testMissingPathError, testDescendantAxisAttributeAccess
-   }
-}

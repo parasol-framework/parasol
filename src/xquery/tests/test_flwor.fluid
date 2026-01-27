@@ -355,16 +355,3 @@ end
    local message = tostring(xml.errorMsg)
    assert(string.find(message, 'Group key expression could not be evaluated.', 0, true), 'Error message should describe invalid grouping expression, got ' .. message)
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-return {
-   tests = {
-      testLetSimpleArithmetic, testLetMultipleBindings, testLetDocumentComputation,
-      testLetSyntaxErrors, testFlworNonNodeReturnError, testFlworRepeatedEvaluationConsistency,
-      testWhereFiltersNodes, testOrderByAscendingStrings, testOrderByDescendingNumbers,
-      testGroupByAggregatesSequences, testGroupBySequenceAccess, testCountProvidesPosition,
-      testInvalidOrdering, testInvalidGroupByExpression, testNestedForProduct,
-      testOrderByMultipleKeysEmptyHandling, testLetVariableShadowing
-   }
-}

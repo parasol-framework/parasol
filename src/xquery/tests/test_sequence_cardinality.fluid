@@ -80,21 +80,3 @@ end
    local err, result = xml.mtEvaluate('data(()) treat as xs:string+')
    assert(err != ERR_Okay, "treat as xs:string+ should reject empty data()")
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-return {
-   tests = {
-      testTypeswitchDataString,
-      testTreatAndInstanceOnData,
-      testCastAndCastableOnData,
-      testAttributeDataCardinality,
-      -- Cardinality with empty sequences
-      testTreatOptionalEmptyData,
-      testTreatOneOrMoreEmptyData,
-   },
-   init = function(ScriptFolder)
-   end,
-   cleanup = function()
-   end
-}

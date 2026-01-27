@@ -245,13 +245,3 @@ end
    assert(pow_one_nan_query.resultString is '1',
       'math:pow(1, NaN) should return 1, got ' .. tostring(pow_one_nan_query.resultString))
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-return {
-   tests = {
-      testMathPiConstant, testMathTrigonometricBasics, testMathInverseFunctions,
-      testMathAtan2Quadrants, testMathExponentialsAndLogs, testMathPowAndSqrt,
-      testMathSpecialValues, testMathSignedZeroAndSpecialCases
-   }
-}

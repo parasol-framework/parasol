@@ -451,20 +451,3 @@ end
    local err2, value = xml.mtGetAttrib(secondId, 'id')
    assert(err2 is ERR_Okay and value is 'second', 'Second <a> should have been matched')
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-return {
-   tests = {
-      testParentAxisNavigation, testXPathAxes, testAttributeAxisHandling, testAttributeAxisContinuation,
-      testUnionOperator, testTextNodeAxes,
-      testCommentNodeType, testProcessingInstructionNodeType,
-      testGenericNodeType, testNamespaceAxis,
-      testXPathForwardAxes, testXPathReverseAxes, testAncestorOrSelfAxis,
-      testXPathAxisCombinations, testSiblingFilteringForNumericPredicates
-   },
-   init = function(ScriptFolder)
-   end,
-   cleanup = function()
-   end
-}

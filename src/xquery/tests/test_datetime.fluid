@@ -110,17 +110,3 @@ end
    assert(err is ERR_Okay, 'xs:double should accept NaN token: ' .. mSys.GetErrorMsg(err))
    assert(nanValue is 'NaN', 'xs:double("NaN") should return NaN, got: ' .. tostring(nanValue))
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-return {
-   tests = {
-      testDateTimeExtraction,
-      testDateTimeAdjustment,
-      testConstructorTimezoneNormalisation
-   },
-   init = function(ScriptFolder)
-   end,
-   cleanup = function()
-   end
-}

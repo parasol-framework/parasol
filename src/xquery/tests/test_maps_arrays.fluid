@@ -81,9 +81,3 @@ end
    assert(err != ERR_Okay, 'array:get should reject zero indexes')
    assert(xq.errorMsg and xq.errorMsg != '', 'array:get should report an error message for invalid indexes')
 end
-
-return {
-   tests = {
-      testMapFunctions, testArrayFunctions, testMapArrayFunctionErrors
-   }
-}
