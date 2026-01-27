@@ -732,7 +732,10 @@ This field may provide a textual description of the last parse or execution erro
 static ERR GET_ErrorMsg(extXQuery *Self, CSTRING *Value)
 {
    if (not Self->ErrorMsg.empty()) { *Value = Self->ErrorMsg.c_str(); return ERR::Okay; }
-   else return ERR::NoData;
+   else {
+      *Value = nullptr;
+      return ERR::Okay;
+   }
 }
 
 /*********************************************************************************************************************
@@ -864,7 +867,10 @@ static ERR GET_Result(extXQuery *Self, XPathValue **Value)
       *Value = &Self->Result;
       return ERR::Okay;
    }
-   else return ERR::NoData;
+   else {
+      *Value = nullptr;
+      return ERR::Okay;
+   }
 }
 
 /*********************************************************************************************************************
