@@ -214,23 +214,11 @@
 |  jmp aword [DISPATCH+OP*8]
 |.endmacro
 |
-|// Instruction decode+dispatch for extended 64-bit instructions.
-|// Skips the extension word at [PC] and fetches the next instruction from [PC+4].
-|.macro ins_NEXT_EXT
-|  mov RCd, [PC+4]
-|  movzx RAd, RCH
-|  movzx OP, RCL
-|  add PC, 8
-|  shr RCd, 16
-|  jmp aword [DISPATCH+OP*8]
-|.endmacro
-|
 |// Instruction footer.
 |.if 1
 |  // Replicated dispatch. Less unpredictable branches, but higher I-Cache use.
 |  .define ins_next, ins_NEXT
 |  .define ins_next_, ins_NEXT
-|  .define ins_next_ext, ins_NEXT_EXT
 |.else
 |  // Common dispatch. Lower I-Cache use, only one (very) unpredictable branch.
 |  // Affects only certain kinds of benchmarks (and only with -j off).
@@ -242,8 +230,6 @@
 |  ->ins_next:
 |    ins_NEXT
 |  .endmacro
-|  // Extended instructions always use replicated dispatch (rare, no shared label needed).
-|  .define ins_next_ext, ins_NEXT_EXT
 |.endif
 |
 |// Call decode and dispatch.

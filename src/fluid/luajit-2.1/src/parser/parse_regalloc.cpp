@@ -264,40 +264,6 @@ BCPOS bcemit_INS(FuncState *fs, BCIns ins)
 }
 
 //********************************************************************************************************************
-// Emit extended bytecode instruction (two words: primary + extension).
-// Both words share the same line number for debugging purposes.
-
-BCPOS bcemit_INS_EXT(FuncState *fs, BCIns ins, BCIns ext)
-{
-   BCPOS pc = fs->pc;
-   LexState* ls = fs->ls;
-   ControlFlowGraph cfg(fs);
-   ControlFlowEdge pending = cfg.make_unconditional(fs->pending_jmp());
-   pending.patch_with_value(BCPos(pc), BCReg(NO_REG), BCPos(pc));
-   fs->clear_pending_jumps();
-
-   // Ensure space for two instructions
-   if (pc + 1 >= fs->bclim) [[unlikely]] {
-      ptrdiff_t base = fs->bcbase - ls->bc_stack;
-      checklimit(fs, ls->size_bc_stack, LJ_MAX_BCINS - 1, "bytecode instructions");
-      lj_mem_growvec(fs->L, ls->bc_stack, ls->size_bc_stack, LJ_MAX_BCINS, BCInsLine);
-      fs->bclim = BCPOS(ls->size_bc_stack - base);
-      fs->bcbase = ls->bc_stack + base;
-   }
-
-   // Emit primary instruction word
-   fs->bcbase[pc].ins = ins;
-   fs->bcbase[pc].line = ls->effective_line();
-
-   // Emit extension word with same line info
-   fs->bcbase[pc + 1].ins = ext;
-   fs->bcbase[pc + 1].line = ls->effective_line();
-
-   fs->pc = pc + 2;
-   return pc;
-}
-
-//********************************************************************************************************************
 // Bytecode emitter for expressions
 
 // Discharge non-constant expression to any register.

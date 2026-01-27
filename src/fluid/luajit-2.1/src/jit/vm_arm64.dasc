@@ -184,24 +184,11 @@
 |  br TMP0
 |.endmacro
 |
-|// Instruction decode+dispatch for extended 64-bit instructions.
-|// Skips the extension word at [PC] and fetches the next instruction from [PC+4].
-|.macro ins_NEXT_EXT
-|  ldr INSw, [PC, #4]
-|  add PC, PC, #8
-|  add TMP1, GL, INS, uxtb #3
-|   decode_RA RA, INS
-|  ldr TMP0, [TMP1, #GG_G2DISP]
-|   decode_RD RC, INS
-|  br TMP0
-|.endmacro
-|
 |// Instruction footer.
 |.if 1
 |  // Replicated dispatch. Less unpredictable branches, but higher I-Cache use.
 |  .define ins_next, ins_NEXT
 |  .define ins_next_, ins_NEXT
-|  .define ins_next_ext, ins_NEXT_EXT
 |.else
 |  // Common dispatch. Lower I-Cache use, only one (very) unpredictable branch.
 |  // Affects only certain kinds of benchmarks (and only with -j off).
@@ -212,8 +199,6 @@
 |  ->ins_next:
 |    ins_NEXT
 |  .endmacro
-|  // Extended instructions always use replicated dispatch (rare, no shared label needed).
-|  .define ins_next_ext, ins_NEXT_EXT
 |.endif
 |
 |// Call decode and dispatch.

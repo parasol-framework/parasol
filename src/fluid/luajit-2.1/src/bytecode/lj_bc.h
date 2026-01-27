@@ -51,27 +51,6 @@ constexpr uint8_t  NO_REG = BCMAX_A;
 #define BCINS_AD(o, a, d)     (((BCIns)(o))|((BCIns)(a)<<8)|((BCIns)(d)<<16))
 #define BCINS_AJ(o, a, j)     BCINS_AD(o, a, (BCPOS)((int32_t)(j)+BCBIAS_J))
 
-// Extended 64-bit instruction support.
-// Extended instructions consume two 32-bit words:
-//   Word 0 (standard):  [B:8][C:8][A:8][OP:8]   - Primary operands
-//   Word 1 (extension): [F:8][E:8][DX:8][EX:8]  - Extended operands (or [E16:16][D16:16])
-
-// Extension word field extraction macros
-#define bc_ex(i)    ((uint8_t)((i)&0xff))        // EX field (bits 0-7)
-#define bc_dx(i)    ((uint8_t)(((i)>>8)&0xff))   // DX field (bits 8-15)
-#define bc_e(i)     ((uint8_t)(((i)>>16)&0xff))  // E field (bits 16-23)
-#define bc_f(i)     ((uint8_t)((i)>>24))         // F field (bits 24-31)
-
-// 16-bit operand accessors for mixed format
-#define bc_d16(i)   ((uint16_t)((i)&0xffff))     // Lower 16 bits
-#define bc_e16(i)   ((uint16_t)((i)>>16))        // Upper 16 bits
-
-// Extension word composition macros
-#define BCINS_EXT(ex, dx, e, f) \
-   (((BCIns)(ex))|((BCIns)(dx)<<8)|((BCIns)(e)<<16)|((BCIns)(f)<<24))
-#define BCINS_EXT16(d16, e16) \
-   (((BCIns)(d16))|((BCIns)(e16)<<16))
-
 // Bytecode instruction definition. Order matters, see below.
 //
 // (name, filler, Amode, Bmode, Cmode or Dmode, metamethod)
@@ -457,12 +436,9 @@ typedef enum {
 #define bcmode_d(op)   bcmode_c(op)
 #define bcmode_hasd(op) ((lj_bc_mode[op] & (15<<3)) == (BCMnone<<3))
 #define bcmode_mm(op)   ((MMS)(lj_bc_mode[op]>>11))
-#define bcmode_ext(op)  ((lj_bc_mode[op] >> 15) & 1)  // Extended instruction flag (bit 15)
 
 #define BCMODE(name, ma, mb, mc, mm) \
   (BCM##ma|(BCM##mb<<3)|(BCM##mc<<7)|(MM_##mm<<11)),
-#define BCMODE_EXT(name, ma, mb, mc, mm) \
-  (BCM##ma|(BCM##mb<<3)|(BCM##mc<<7)|(MM_##mm<<11)|(1<<15)),
 #define BCMODE_FF   0
 
 static LJ_AINLINE int bc_isret(BCOp op)

@@ -14,63 +14,6 @@ Parasol integrates a heavily modified LuaJIT 2.1 VM. This note captures the cont
 - Each instruction is a 32-bit `BCIns` packed with opcode and A/B/C/D fields. Prototypes (`GCproto`) hold the instruction stream, constants, and line table.
 - Format ABC: `[B:8][C:8][A:8][OP:8]`, Format AD: `[D:16][A:8][OP:8]`
 
-### 3.1.1 Extended 64-bit Instructions
-
-Extended instructions consume two 32-bit words (64 bits total), providing up to 6 operand slots for complex operations.
-
-**Instruction Layout:**
-```
-Word 0 (standard):  [B:8][C:8][A:8][OP:8]     - Primary operands (same as normal instructions)
-Word 1 (extension): [F:8][E:8][DX:8][EX:8]   - Extended operands
-                    or [E16:16][D16:16]      - Mixed 16-bit format
-```
-
-**Operand Availability:**
-- **6 × 8-bit operands**: A, B, C from word 0; EX, DX, E, F from word 1
-- **Mixed format**: 3 × 8-bit (A, B, C) + 2 × 16-bit (D16, E16) operands
-
-**Identifying Extended Instructions:**
-- Use `bcmode_ext(op)` macro to check if an opcode is extended (bit 15 of `lj_bc_mode[]`)
-- Extended opcodes are defined using `BCMODE_EXT()` instead of `BCMODE()` in the mode table
-
-**Extraction Macros (lj_bc.h):**
-```cpp
-// Extension word field extraction
-bc_ex(i)    // EX field (bits 0-7)
-bc_dx(i)    // DX field (bits 8-15)
-bc_e(i)     // E field (bits 16-23)
-bc_f(i)     // F field (bits 24-31)
-
-// 16-bit operand accessors
-bc_d16(i)   // Lower 16 bits
-bc_e16(i)   // Upper 16 bits
-```
-
-**Composition Macros:**
-```cpp
-BCINS_EXT(ex, dx, e, f)   // Compose extension word with 4 × 8-bit fields
-BCINS_EXT16(d16, e16)     // Compose extension word with 2 × 16-bit fields
-```
-
-**Parser Emission:**
-- `bcemit_ABC_EXT()` - Emit ABC instruction with 4 additional 8-bit operands
-- `bcemit_AD_EXT16()` - Emit AD instruction with 2 additional 16-bit operands
-- Both emit two words atomically with shared line info
-
-**Serialization:**
-- Bytecode dumps containing extended instructions set the `BCDUMP_F_EXT` flag (0x10)
-- The bytecode reader validates that extended opcodes have their extension words present
-
-**JIT Recording:**
-- `RecordOps` structure includes `ext_word`, `ex`, `dx`, `e`, `f` fields
-- `rec_decode_operands()` checks `bcmode_ext()` and reads the extension word from `J->pc[1]`
-
-**Future Use Cases:**
-- Object method calls with action ID + multiple parameters
-- Array operations with type hints
-- Multi-value table operations
-- Complex control flow with embedded metadata
-
 ### 3.2 Complete Bytecode Instruction Matrix
 
 Operand suffixes: V=variable slot, S=string const, N=number const, P=primitive (~itype), B=byte literal, M=multiple args/results.
@@ -250,16 +193,11 @@ Operand suffixes: V=variable slot, S=string const, N=number const, P=primitive (
 
 ### 3.3 Resources and Cross-References
 - Opcode definitions and metadata (including the `BCDEF` macro): `src/fluid/luajit-2.1/src/bytecode/lj_bc.h`.
-- Extended instruction macros: `src/fluid/luajit-2.1/src/bytecode/lj_bc.h` (`bcmode_ext`, `bc_ex`, `bc_dx`, `bc_e`, `bc_f`, `BCINS_EXT`, `BCMODE_EXT`).
-- Extended instruction emission: `src/fluid/luajit-2.1/src/parser/parse_internal.h` (`bcemit_ABC_EXT`, `bcemit_AD_EXT16`), `parse_regalloc.cpp` (`bcemit_INS_EXT`).
-- Bytecode serialisation: `src/fluid/luajit-2.1/src/bytecode/lj_bcdump.h` (`BCDUMP_F_EXT`), `lj_bcread.cpp`, `lj_bcwrite.cpp`.
 - Parser emission sites: `src/fluid/luajit-2.1/src/parser/ir_emitter/operator_emitter.cpp` (operator lowering and bytecode emission), `src/fluid/luajit-2.1/src/parser/ir_emitter/ir_emitter.cpp` (control-flow and expression emission).
 - Exception handling emission: `src/fluid/luajit-2.1/src/parser/ir_emitter/emit_try.cpp` (try-except-end statement bytecode generation).
 - Behavioural context and patterns: `src/fluid/luajit-2.1/src/parser/ir_emitter/operator_emitter.cpp`, `src/fluid/luajit-2.1/src/parser/ir_emitter/ir_emitter.cpp`, and `src/fluid/luajit-2.1/src/parser/parse_control_flow.cpp` (parser wiring and control-flow emission patterns).
 - Native array implementation: `src/fluid/luajit-2.1/src/runtime/lj_array.cpp`, `lj_array.h` (core array operations), `lj_vmarray.cpp` (bytecode handlers), `lib_array.cpp` (library functions).
 - Array bytecode emission: `src/fluid/luajit-2.1/src/parser/ir_emitter/emit_function.cpp`, `parse_regalloc.cpp` (array index expression discharge).
-- JIT recording: `src/fluid/luajit-2.1/src/lj_record.cpp` (`RecordOps` structure, `rec_decode_operands`).
-- Bytecode disassembly: `src/fluid/luajit-2.1/src/debug/dump_bytecode.cpp` (extended instruction display).
 - VM implementations: `src/fluid/luajit-2.1/src/jit/vm_x64.dasc` (x64), `vm_arm64.dasc` (ARM64), `vm_ppc.dasc` (PowerPC) - bytecode interpreter and JIT entry points.
 - Tests exercising these paths live under `src/fluid/tests/`.
 
@@ -530,8 +468,6 @@ Enables type inference for untyped functions, allowing the VM to optimize subseq
 
 ## 12. Glossary and Quick Reference
 - `BCIns`/`BCOp`: packed bytecode word and opcode enum.
-- Extended instruction: 64-bit instruction consuming two 32-bit words; identified by `bcmode_ext(op)`.
-- Extension word: second 32-bit word of an extended instruction containing EX/DX/E/F or D16/E16 operands.
 - `freereg`: first free stack slot above active locals; must be collapsed after temporaries.
 - `nactvar`: count of active local variables.
 - `ExpKind`: parser expression classification (`VNONRELOC`, `VRELOCABLE`, `VCALL`, etc.).

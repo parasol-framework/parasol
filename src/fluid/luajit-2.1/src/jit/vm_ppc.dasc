@@ -403,12 +403,6 @@
 |  lwz INS, 0(PC)
 |   addi PC, PC, 4
 |.endmacro
-|// Instruction fetch for extended 64-bit instructions.
-|// Skips the extension word at [PC] and fetches the next instruction from [PC+4].
-|.macro ins_NEXT1_EXT
-|  lwz INS, 4(PC)
-|   addi PC, PC, 8
-|.endmacro
 |// Instruction decode+dispatch. Note: optimized for e300!
 |.macro ins_NEXT2
 |  decode_OPP TMP1, INS
@@ -424,18 +418,12 @@
 |  ins_NEXT1
 |  ins_NEXT2
 |.endmacro
-|// Instruction decode+dispatch for extended 64-bit instructions.
-|.macro ins_NEXT_EXT
-|  ins_NEXT1_EXT
-|  ins_NEXT2
-|.endmacro
 |
 |// Instruction footer.
 |.if 1
 |  // Replicated dispatch. Less unpredictable branches, but higher I-Cache use.
 |  .define ins_next, ins_NEXT
 |  .define ins_next_, ins_NEXT
-|  .define ins_next_ext, ins_NEXT_EXT
 |  .define ins_next1, ins_NEXT1
 |  .define ins_next2, ins_NEXT2
 |.else
@@ -453,8 +441,6 @@
 |  ->ins_next:
 |    ins_NEXT
 |  .endmacro
-|  // Extended instructions always use replicated dispatch (rare, no shared label needed).
-|  .define ins_next_ext, ins_NEXT_EXT
 |.endif
 |
 |// Call decode and dispatch.
