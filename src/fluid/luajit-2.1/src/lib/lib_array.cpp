@@ -1788,7 +1788,7 @@ LJLIB_CF(array_find)
    }
 
    int ok;
-   lua_Number value = lua_tointegerx(L, 2, &ok);
+   lua_Number value = lua_tonumberx(L, 2, &ok);
    if (not ok) luaL_error(L, "Unsupported value type '%s'", lua_typename(L, lua_type(L, 2)));
 
    // Check if third argument is a range
@@ -2044,6 +2044,23 @@ LJLIB_CF(array_sort)
       case AET::INT64: quicksort(arr->get<int64_t>(), 0, int32_t(arr->len - 1), descending); break;
       case AET::FLOAT: quicksort(arr->get<float>(), 0, int32_t(arr->len - 1), descending); break;
       case AET::DOUBLE: quicksort(arr->get<double>(), 0, int32_t(arr->len - 1), descending); break;
+      case AET::STR_GC: {
+         GCRef *refs = arr->get<GCRef>();
+         std::sort(refs, refs + arr->len, [descending](const GCRef &a, const GCRef &b) {
+            GCstr *sa = gco_to_string(gcref(a));
+            GCstr *sb = gco_to_string(gcref(b));
+            // Handle nil/null references
+            if (not sa and not sb) return false;
+            if (not sa) return not descending;  // nil sorts before non-nil
+            if (not sb) return descending;
+            // Compare by content using strncmp for lexicographic ordering
+            MSize min_len = (sa->len < sb->len) ? sa->len : sb->len;
+            int cmp = memcmp(strdata(sa), strdata(sb), min_len);
+            if (cmp IS 0) cmp = (sa->len < sb->len) ? -1 : (sa->len > sb->len) ? 1 : 0;
+            return descending ? (cmp > 0) : (cmp < 0);
+         });
+         break;
+      }
       case AET::ANY: {
          TValue *data = arr->get<TValue>();
          // Use std::sort with custom comparator for type-grouped sorting
