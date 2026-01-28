@@ -68,6 +68,7 @@ bmark.run = function(Options:table, Feedback:func, Callback:func):table
    Options.feedbackRate ??= 100
    Options.duration ?= 3
    Options.showProgress ?= false
+   Options.maxCalls ?= 1000000
    Options.hotLoop ?= 5 -- Low threshold to trigger JIT sooner
    assert(Options.duration > 0 and Options.duration <= 300, 'Options.duration must be between 0 and 300.')
    assert(Options.warmupCalls >= 0 and Options.warmupCalls <= 1000, 'Options.warmupCalls be between 0 and 1000.')
@@ -136,13 +137,14 @@ bmark.run = function(Options:table, Feedback:func, Callback:func):table
    local start_time   = mSys.PreciseTime()
    local end_time     = start_time + (Options.duration * 1000000)
    local feedback_mem_adjust = 0
+   local call_limit = Options.maxCalls + Options.warmupCalls
 
    -- Preset these values - they will be updated at the right time if warmup is enabled
    benchmarkStartTime    = mSys.PreciseTime()
    results.initialMemory = mSys.GetResource(RES_MEMORY_USAGE)
    results.peakMemory    = results.initialMemory
 
-   while mSys.PreciseTime() < end_time do
+   while mSys.PreciseTime() < end_time and results.totalCalls < call_limit do
       op_start = mSys.PreciseTime()
       Callback()
       op_end = mSys.PreciseTime()
@@ -210,6 +212,10 @@ bmark.run = function(Options:table, Feedback:func, Callback:func):table
             feedback_mem_adjust += mSys.GetResource(RES_MEMORY_USAGE) - currentMem
          end
       end
+   end
+
+   if results.warmupCount < Options.warmupCalls then
+      error('Failed to complete warmup phase within the allotted duration.')
    end
 
    processing.collect()

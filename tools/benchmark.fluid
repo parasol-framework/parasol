@@ -1167,7 +1167,7 @@ end
 -- Goal: Create empty tables
 
 @Test function TableCreateEmpty()
-   for i in {0..10000} do
+   for i in {0..1000} do
       -- Create empty tables
       local t1 = {}
       local t2 = {}
@@ -1513,6 +1513,1564 @@ end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- CONTROL FLOW
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Execute branching logic with if/elseif/else chains
+
+@Test function ControlIfElseChains()
+   for i in {0..1000000} do
+      local result = 0
+      local x = i % 100
+
+      -- Simple if-else
+      if x < 50 then
+         result = 1
+      else
+         result = 2
+      end
+
+      -- Multiple elseif branches
+      if x < 10 then
+         result = 0
+      elseif x < 20 then
+         result = 1
+      elseif x < 30 then
+         result = 2
+      elseif x < 40 then
+         result = 3
+      elseif x < 50 then
+         result = 4
+      elseif x < 60 then
+         result = 5
+      elseif x < 70 then
+         result = 6
+      elseif x < 80 then
+         result = 7
+      elseif x < 90 then
+         result = 8
+      else
+         result = 9
+      end
+
+      -- Nested if statements
+      if x < 50 then
+         if x < 25 then
+            result = x * 2
+         else
+            result = x * 3
+         end
+      else
+         if x < 75 then
+            result = x + 10
+         else
+            result = x + 20
+         end
+      end
+
+      -- Compound conditions
+      if x >= 20 and x < 40 then
+         result = 100
+      elseif x >= 40 and x < 60 then
+         result = 200
+      elseif x >= 60 or x < 10 then
+         result = 300
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Use ternary conditional operator for inline branching
+
+@Test function ControlTernaryOperator()
+   for i in {0..100000} do
+      local x = i % 100
+      local result = 0
+
+      -- Simple ternary
+      result = x < 50 ? 1 :> 0
+
+      -- Ternary with expressions
+      result = x % 2 is 0 ? x * 2 :> x * 3
+
+      -- Chained ternary (nested)
+      result = x < 25 ? 1 :> (x < 50 ? 2 :> (x < 75 ? 3 :> 4))
+
+      -- Ternary in expressions
+      local a = 10 + (x < 50 ? 5 :> 15)
+      local b = (x > 30 ? x :> 30) * 2
+
+      -- Ternary with function-like usage
+      local min_val = x < 50 ? x :> 50
+      local max_val = x > 25 ? x :> 25
+      local clamped = x < 20 ? 20 :> (x > 80 ? 80 :> x)
+
+      -- Ternary with boolean results
+      local is_even = x % 2 is 0 ? true :> false
+      local in_range = (x >= 25 and x <= 75) ? true :> false
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Use nil coalescing operators for default values
+
+@Test function ControlNilCoalescing()
+   for i in {0..100000} do
+      local result = 0
+
+      -- Basic ?? operator (nil coalescing)
+      local maybe_nil = i % 3 is 0 ? nil :> i
+      result = maybe_nil ?? 42
+
+      -- Chain of ?? operators
+      local a = i % 5 is 0 ? nil :> nil
+      local b = i % 3 is 0 ? nil :> i
+      local c = 100
+      result = a ?? b ?? c
+
+      -- ??= compound assignment
+      local value = i % 2 is 0 ? nil :> i
+      value ??= 99
+      result = value
+
+      -- ?? with expressions
+      local x = i % 7 is 0 ? nil :> i * 2
+      result = (x ?? 0) + 10
+
+      -- Nested nil coalescing
+      local outer = i % 4 is 0 ? nil :> { inner = i % 2 is 0 ? nil :> i }
+      local safe_val = outer ?? { inner = 0 }
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Execute numeric for loops with start, end, step
+
+@Test function ControlForNumericLoop()
+   for i in {0..10000} do
+      local sum = 0
+
+      -- Simple ascending loop
+      for j = 0, 99 do
+         sum += j
+      end
+
+      -- Loop with step
+      for j = 0, 99, 2 do
+         sum += j
+      end
+
+      -- Descending loop
+      for j = 99, 0, -1 do
+         sum += j
+      end
+
+      -- Descending with step
+      for j = 100, 0, -5 do
+         sum += j
+      end
+
+      -- Nested numeric loops
+      for x = 0, 9 do
+         for y = 0, 9 do
+            sum += x * y
+         end
+      end
+
+      -- Loop with computed bounds
+      local start = i % 10
+      local finish = start + 50
+      for j = start, finish do
+         sum += 1
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Execute range-based for loops
+
+@Test function ControlForRangeLoop()
+   for i in {0..100} do
+      local sum = 0
+
+      -- Simple range loop (exclusive end)
+      for j in {0..100} do
+         sum += j
+      end
+
+      -- Inclusive range loop
+      for j in {0...99} do
+         sum += j
+      end
+
+      -- Range with step (using range.new)
+      nr = range.new(0, 100, false, 2)
+      for j in nr() do
+         sum += j
+      end
+
+      -- Nested range loops
+      for x in {0..10} do
+         for y in {0..10} do
+            sum += x + y
+         end
+      end
+
+      -- Range with negative indices
+      for j in {-10..10} do
+         sum += j
+      end
+
+      -- Short ranges
+      for j in {0..5} do
+         sum += j
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Execute while loops with varying conditions
+
+@Test function ControlWhileLoop()
+   for i in {0..10000} do
+      local sum = 0
+      local count = 0
+
+      -- Simple counting while
+      count = 0
+      while count < 100 do
+         sum += count
+         count++
+      end
+
+      -- While with compound condition
+      count = 0
+      local limit = 50
+      while count < limit and sum < 10000 do
+         sum += count
+         count++
+      end
+
+      -- While with boolean flag
+      local running = true
+      count = 0
+      while running do
+         count++
+         if count >= 20 then
+            running = false
+         end
+      end
+
+      -- Nested while loops
+      local x = 0
+      while x < 10 do
+         local y = 0
+         while y < 10 do
+            sum += 1
+            y++
+         end
+         x++
+      end
+
+      -- While with modifying condition variable
+      local n = 100
+      while n > 0 do
+         sum += n
+         n = n - 3
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Execute repeat-until loops
+
+@Test function ControlRepeatUntil()
+   for i in {0..10000} do
+      local sum = 0
+      local count = 0
+
+      -- Simple repeat-until
+      count = 0
+      repeat
+         sum += count
+         count++
+      until count >= 100
+
+      -- Repeat with compound condition
+      count = 0
+      repeat
+         sum += count
+         count++
+      until count >= 50 or sum > 5000
+
+      -- Repeat at least once pattern
+      local value = 100
+      repeat
+         value = value - 10
+      until value <= 0
+
+      -- Nested repeat-until
+      local x = 0
+      repeat
+         local y = 0
+         repeat
+            sum += 1
+            y++
+         until y >= 10
+         x++
+      until x >= 10
+
+      -- Repeat with early exit condition
+      count = 0
+      local found = false
+      repeat
+         count++
+         if count is 42 then
+            found = true
+         end
+      until found or count >= 100
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Use break and continue statements in loops
+
+@Test function ControlBreakContinue()
+   for i in {0..1000} do
+      local sum = 0
+      local count = 0
+
+      -- Break from for loop
+      for j = 0, 999 do
+         if j >= 100 then
+            break
+         end
+         sum += j
+      end
+
+      -- Continue in for loop (skip even numbers)
+      for j = 0, 99 do
+         if j % 2 is 0 then
+            continue
+         end
+         sum += j
+      end
+
+      -- Break from while loop
+      count = 0
+      while true do
+         count++
+         if count >= 50 then
+            break
+         end
+      end
+
+      -- Continue in while loop
+      count = 0
+      while count < 100 do
+         count++
+         if count % 3 is 0 then
+            continue
+         end
+         sum += count
+      end
+
+      -- Break from nested loop (inner only)
+      for x = 0, 9 do
+         for y = 0, 99 do
+            if y >= 10 then
+               break
+            end
+            sum += 1
+         end
+      end
+
+      -- Continue in nested loop
+      for x = 0, 9 do
+         for y = 0, 9 do
+            if y % 2 is 0 then
+               continue
+            end
+            sum += x + y
+         end
+      end
+
+      -- Break in range loop
+      for j in {0..1000} do
+         if j >= 50 then
+            break
+         end
+         sum += j
+      end
+
+      -- Continue in range loop
+      for j in {0..100} do
+         if j % 5 is 0 then
+            continue
+         end
+         sum += j
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- FUNCTION CALLS
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Call local functions with various argument counts
+
+@Test function FunctionLocalCalls()
+   -- Define local functions with varying argument counts
+   local function noArgs()
+      return 42
+   end
+
+   local function oneArg(a)
+      return a * 2
+   end
+
+   local function twoArgs(a, b)
+      return a + b
+   end
+
+   local function threeArgs(a, b, c)
+      return a + b + c
+   end
+
+   local function fiveArgs(a, b, c, d, e)
+      return a + b + c + d + e
+   end
+
+   local function returnsMultiple(x)
+      return x, x * 2, x * 3
+   end
+
+   for i in {0..1000000} do
+      -- Call with no arguments
+      local r0 = noArgs()
+
+      -- Call with one argument
+      local r1 = oneArg(i)
+
+      -- Call with two arguments
+      local r2 = twoArgs(i, i + 1)
+
+      -- Call with three arguments
+      local r3 = threeArgs(i, i + 1, i + 2)
+
+      -- Call with five arguments
+      local r5 = fiveArgs(i, i + 1, i + 2, i + 3, i + 4)
+
+      -- Multiple return values
+      local a, b, c = returnsMultiple(i)
+
+      -- Chain function calls
+      local chained = oneArg(oneArg(oneArg(i)))
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Call functions with variadic arguments
+
+@Test function FunctionVariadic()
+   -- Variadic function that sums all arguments
+   local function sumAll(...)
+      local args = {...}
+      local total = 0
+      for _, v in ipairs(args) do
+         total += v
+      end
+      return total
+   end
+
+   -- Variadic function with fixed first argument
+   local function formatArgs(prefix, ...)
+      local args = {...}
+      return prefix .. #args
+   end
+
+   -- Function that forwards variadic arguments
+   local function forwardArgs(...)
+      return sumAll(...)
+   end
+
+   for i in {0..1000} do
+      -- Call with varying argument counts
+      local s1 = sumAll(1)
+      local s2 = sumAll(1, 2)
+      local s3 = sumAll(1, 2, 3)
+      local s5 = sumAll(1, 2, 3, 4, 5)
+      local s10 = sumAll(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+
+      -- Mixed fixed and variadic
+      local f1 = formatArgs("test", 1, 2, 3)
+      local f2 = formatArgs("data", 1, 2, 3, 4, 5)
+
+      -- Forward variadic arguments
+      local fwd = forwardArgs(i, i + 1, i + 2)
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Create and call closures that capture upvalues
+
+@Test function FunctionClosures()
+   for i in {0..1000} do
+      -- Simple closure capturing one variable
+      local x = i
+      local getX = function()
+         return x
+      end
+      local v1 = getX()
+
+      -- Closure capturing multiple variables
+      local a, b, c = i, i + 1, i + 2
+      local getSum = function()
+         return a + b + c
+      end
+      local v2 = getSum()
+
+      -- Closure that modifies captured variable
+      local counter = 0
+      local increment = function()
+         counter++
+         return counter
+      end
+      for j = 0, 9 do
+         increment()
+      end
+
+      -- Nested closures
+      local outer = i
+      local makeInner = function()
+         local inner = outer * 2
+         return function()
+            return inner + outer
+         end
+      end
+      local innerFn = makeInner()
+      local v3 = innerFn()
+
+      -- Closure factory pattern
+      local makeAdder = function(n)
+         return function(x)
+            return x + n
+         end
+      end
+      local add5 = makeAdder(5)
+      local add10 = makeAdder(10)
+      local v4 = add5(i)
+      local v5 = add10(i)
+
+      -- Multiple closures sharing upvalue
+      local shared = 0
+      local inc = function() shared++ end
+      local get = function() return shared end
+      inc()
+      inc()
+      local v6 = get()
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Use anonymous function expressions with arrow syntax
+
+@Test function FunctionAnonymous()
+   for i in {0..1000} do
+      -- Simple arrow function
+      local double = (x => x * 2)
+      local v1 = double(i)
+
+      -- Arrow function with expression body
+      local sum = ((a, b) => a + b)
+      local v2 = sum(i, i + 1)
+
+      -- Arrow function in higher-order context
+      local numbers = { 1, 2, 3, 4, 5 }
+      local mapped = {}
+      for idx, n in ipairs(numbers) do
+         mapped[idx] = (x => x * 2)(n)
+      end
+
+      -- Immediately invoked arrow function
+      local result = (x => x * x)(i)
+
+      -- Arrow functions as callbacks (simulated)
+      local apply = function(fn, val)
+         return fn(val)
+      end
+      local v3 = apply((x => x + 10), i)
+      local v4 = apply((x => x * 3), i)
+
+      -- Nested arrow functions
+      local compose = function(f, g)
+         return (x => f(g(x)))
+      end
+      local addOne = (x => x + 1)
+      local timesTwo = (x => x * 2)
+      local composed = compose(addOne, timesTwo)
+      local v5 = composed(i)
+
+      -- Arrow function capturing upvalue
+      local multiplier = i % 10 + 1
+      local multiply = (x => x * multiplier)
+      local v6 = multiply(5)
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Execute recursive function calls
+
+@Test function FunctionRecursive()
+   -- Recursive factorial (limited depth)
+   local function factorial(n:num):num
+      if n <= 1 then return 1 end
+      return n * factorial(n - 1)
+   end
+
+   -- Recursive fibonacci (limited depth)
+   local function fibonacci(n:num):num
+      if n <= 1 then return n end
+      return fibonacci(n - 1) + fibonacci(n - 2)
+   end
+
+   -- Tail-recursive sum
+   local function sumTo(n:num, acc:num):num
+      acc = acc ?? 0
+      if n <= 0 then return acc end
+      return sumTo(n - 1, acc + n)
+   end
+
+   -- Recursive tree traversal simulation
+   local function countDown(n:num):num
+      if n <= 0 then return 0 end
+      return 1 + countDown(n - 1)
+   end
+
+   -- Mutual recursion
+   local isEven, isOdd
+   isEven = function(n:num):bool
+      if n is 0 then return true end
+      return isOdd(n - 1)
+   end
+
+   isOdd = function(n:num):bool
+      if n is 0 then return false end
+      return isEven(n - 1)
+   end
+
+   for i in {0..500} do
+      -- Call recursive functions with safe depths
+      local f1 = factorial(10)
+      local f2 = factorial(12)
+
+      -- Fibonacci (small values to avoid exponential blowup)
+      local fib1 = fibonacci(10)
+      local fib2 = fibonacci(12)
+
+      -- Tail-recursive
+      local s1 = sumTo(50)
+      local s2 = sumTo(100)
+
+      -- Simple recursion
+      local c1 = countDown(50)
+      local c2 = countDown(100)
+
+      -- Mutual recursion
+      local e1 = isEven(20)
+      local o1 = isOdd(21)
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Call methods on tables using colon syntax
+
+@Test function FunctionMethodCalls()
+   -- Create object-like tables with methods
+   local Counter = {
+      value = 0,
+      increment = function(self)
+         self.value++
+         return self.value
+      end,
+      decrement = function(self)
+         self.value--
+         return self.value
+      end,
+      add = function(self, n)
+         self.value += n
+         return self.value
+      end,
+      getValue = function(self)
+         return self.value
+      end,
+      reset = function(self)
+         self.value = 0
+      end
+   }
+
+   local Point = {
+      x = 0,
+      y = 0,
+      set = function(self, x, y)
+         self.x = x
+         self.y = y
+      end,
+      translate = function(self, dx, dy)
+         self.x += dx
+         self.y += dy
+      end,
+      distance = function(self)
+         return math.sqrt(self.x * self.x + self.y * self.y)
+      end
+   }
+
+   for i in {0..10000} do
+      -- Method calls with colon syntax
+      Counter:reset()
+      Counter:increment()
+      Counter:increment()
+      Counter:add(5)
+      local v1 = Counter:getValue()
+      Counter:decrement()
+
+      -- Multiple method calls in sequence
+      Point:set(i % 100, i % 50)
+      Point:translate(1, 2)
+      Point:translate(-1, 1)
+      local d = Point:distance()
+
+      -- Create new instances
+      local obj = { value = 0 }
+      setmetatable(obj, { __index = Counter })
+      obj:increment()
+      obj:add(10)
+      local v2 = obj:getValue()
+
+      -- Chain-like method usage
+      Counter:reset()
+      for j = 0, 9 do
+         Counter:increment()
+      end
+      local final = Counter:getValue()
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- MEMORY & ALLOCATION
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Measure overhead of creating many small tables
+
+@Test function MemoryTableAllocation()
+   for i in {0..100} do
+      -- Create empty tables
+      local tables = {}
+      for j = 0, 99 do
+         tables[j] = {}
+      end
+
+      -- Create tables with initial values
+      for j = 0, 99 do
+         tables[j] = { a = 1, b = 2, c = 3 }
+      end
+
+      -- Create nested table structures
+      for j = 0, 49 do
+         tables[j] = {
+            inner = {
+               value = j,
+               data = { x = 1, y = 2 }
+            }
+         }
+      end
+
+      -- Create tables with varying sizes
+      for j = 0, 19 do
+         local t = {}
+         for k = 0, j do
+            t[k] = k
+         end
+         tables[j] = t
+      end
+
+      -- Create and immediately discard tables
+      for j = 0, 99 do
+         local temp = { value = j, name = "temp" }
+         local _ = temp.value
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Measure overhead of creating many strings
+
+@Test function MemoryStringAllocation()
+   for i in {0..500} do
+      -- Create short strings
+      local strings = {}
+      for j = 0, 99 do
+         strings[j] = "str"
+      end
+
+      -- Create strings via concatenation
+      for j = 0, 49 do
+         strings[j] = "prefix_" .. tostring(j) .. "_suffix"
+      end
+
+      -- Create strings via string.format
+      for j = 0, 49 do
+         strings[j] = string.format("item_%03d", j)
+      end
+
+      -- Create strings via interpolation
+      for j = 0, 49 do
+         strings[j] = f"value_{j}_data"
+      end
+
+      -- Create strings of varying lengths
+      for j = 0, 19 do
+         strings[j] = string.rep("x", j + 1)
+      end
+
+      -- Create and immediately discard strings
+      for j = 0, 99 do
+         local temp = "temporary_" .. tostring(j)
+         local _ = #temp
+      end
+
+      -- Substring operations creating new strings
+      local source = "The quick brown fox jumps over the lazy dog"
+      for j = 0, 19 do
+         local sub = string.sub(source, j + 1, j + 10)
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Allocate large numbers of arrays
+
+@Test function MemoryTypedArrayAllocation()
+   for i in {0..10} do
+      -- Create typed integer arrays
+      local int_arrays = array<array>
+      for j = 0, 49 do
+         int_arrays:push(array<int, 100>)
+      end
+
+      -- Create typed double arrays
+      local dbl_arrays = array<array>
+      for j = 0, 49 do
+         dbl_arrays:push(array<double, 100>)
+      end
+
+      -- Create typed string arrays
+      local str_arrays = {}
+      for j = 0, 49 do
+         str_arrays[j] = array<string, 50>
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Compare typed and untyped array fills
+
+@Test function MemoryTypedArrayFilled()
+   for i in {0..100} do
+      local int_arrays = array<array>
+      for j = 0, 100 do
+         int_arrays:push(array<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 })
+      end
+   end
+end
+
+@Test function MemoryUntypedArrayFilled()
+   for i in {0..100} do
+      local any_arrays = array<array>
+      for j = 0, 100 do
+         any_arrays:push(array<any> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 })
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Stress test garbage collector with allocation-heavy workload
+
+@Test function MemoryGCPressure()
+   for i in {0..100} do
+      -- Rapid allocation and discard of tables
+      for j = 0, 199 do
+         local t = { a = j, b = j * 2, c = j * 3 }
+         local sum = t.a + t.b + t.c
+      end
+
+      -- Rapid allocation and discard of strings
+      for j = 0, 199 do
+         local s = "item_" .. tostring(j) .. "_value"
+         local len = #s
+      end
+
+      -- Nested allocations
+      for j = 0, 49 do
+         local outer = {
+            inner1 = { value = j },
+            inner2 = { value = j * 2 },
+            inner3 = { value = j * 3 }
+         }
+         local sum = outer.inner1.value + outer.inner2.value
+      end
+
+      -- Mixed type allocations
+      for j = 0, 49 do
+         local mixed = {
+            num = j,
+            str = f"string_{j}",
+            tbl = { x = 1, y = 2 },
+            arr = { 1, 2, 3, 4, 5 }
+         }
+      end
+
+      -- Array allocation pressure
+      for j = 0, 49 do
+         local arr = array<int> { j, j+1, j+2, j+3, j+4 }
+         local sum = arr[0] + arr[4]
+      end
+
+      -- String building pressure
+      for j = 0, 19 do
+         local result = ""
+         for k = 0, 9 do
+            result ..= tostring(k)
+         end
+      end
+
+      -- Closure allocation pressure
+      for j = 0, 49 do
+         local captured = j
+         local fn = function()
+            return captured * 2
+         end
+         local result = fn()
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- EXCEPTION HANDLING
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Measure overhead of try-except exception handling
+
+@Test function ExceptionTryExcept()
+   -- Function that may throw an error
+   local function mayFail(shouldFail)
+      if shouldFail then
+         error("Intentional error")
+      end
+      return 42
+   end
+
+   -- Function that always succeeds
+   local function alwaysSucceeds(x)
+      return x * 2
+   end
+
+   for i in {0..10000} do
+      -- Try-except with no exception thrown
+      try
+         local result = alwaysSucceeds(i)
+      except ex
+         local msg = ex.message
+      end
+
+      -- Try-except with exception thrown occasionally
+      try
+         local result = mayFail(i % 100 is 0)
+      except ex
+         local msg = ex.message
+      end
+
+      -- Nested try-except blocks
+      try
+         try
+            local result = alwaysSucceeds(i)
+         except inner
+            local msg = inner.message
+         end
+      except outer
+         local msg = outer.message
+      end
+
+      -- Try-except with multiple operations
+      try
+         local a = alwaysSucceeds(i)
+         local b = alwaysSucceeds(i + 1)
+         local c = alwaysSucceeds(i + 2)
+         local sum = a + b + c
+      except ex
+         local msg = ex.message
+      end
+
+      -- Try-except with conditional exception
+      try
+         if i % 50 is 0 then
+            error("Periodic error")
+         end
+         local result = i * 2
+      except ex
+         local recovered = 0
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Use try-success pattern for handling successful completion
+
+@Test function ExceptionTrySuccess()
+   local function compute(x)
+      if x < 0 then
+         error("Negative value not allowed")
+      end
+      return x * x
+   end
+
+   local function fetchData(id)
+      if id is 0 then
+         error("Invalid ID")
+      end
+      return { id = id, value = id * 10 }
+   end
+
+   for i in {0..30000} do
+      local result = 0
+
+      -- Basic try-success pattern
+      try
+         result = compute(i)
+      except ex
+         result = -1
+      success
+         result = result + 1
+      end
+
+      -- Try-success with data fetching pattern
+      local data = nil
+      try
+         data = fetchData(i % 100)
+      except ex
+         data = { id = 0, value = 0 }
+      success
+         data.value = data.value * 2
+      end
+
+      -- Chained operations in success block
+      local a, b
+      try
+         a = compute(i)
+         b = compute(i + 1)
+      except ex
+         result = 0
+      success
+         result = a + b
+         result = result * 2
+      end
+
+      -- Success block with cleanup-like operations
+      local resource_acquired = false
+      try
+         resource_acquired = true
+         result = compute(i)
+      except ex
+         result = -1
+      success
+         -- Simulated successful completion handling
+         result = result + 100
+      end
+
+      -- Nested try with success blocks
+      try
+         try
+            result = compute(i)
+         except inner
+            result = 0
+         success
+            result = result + 10
+         end
+      except outer
+         result = -1
+      success
+         result = result + 20
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Measure overhead of defer statement for cleanup
+
+@Test function ExceptionDefer()
+   for i in {0..5000} do
+      local cleanup_count = 0
+
+      -- Simple defer
+      do
+         defer()
+            cleanup_count++
+         end
+         local x = i * 2
+      end
+
+      -- Multiple defers (LIFO order)
+      do
+         defer()
+            cleanup_count++
+         end
+         defer()
+            cleanup_count++
+         end
+         defer()
+            cleanup_count++
+         end
+         local x = i
+      end
+
+      -- Defer with captured variables
+      local value = i
+      do
+         local captured = value
+         defer()
+            local _ = captured
+         end
+         value = value * 2
+      end
+
+      -- Defer in nested scopes
+      do
+         defer()
+            cleanup_count++
+         end
+         do
+            defer()
+               cleanup_count++
+            end
+            local inner = i
+         end
+         local outer = i * 2
+      end
+
+      -- Defer with computation
+      local result = 0
+      do
+         defer()
+            result = result + 1
+         end
+         result = i * 2
+      end
+
+      -- Defer simulating resource cleanup pattern
+      do
+         local resource = { open = true }
+         defer()
+            resource.open = false
+         end
+         local data = resource.open and i or 0
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- VARIABLE SCOPE
+----------------------------------------------------------------------------------------------------------------------
+-- These benchmarks perform identical operations to enable direct performance comparison
+-- between different variable scoping mechanisms.
+
+@Test function ScopeLocal()
+   for i in {0..1000000} do
+      -- Declare local variables
+      local a = 10
+      local b = 20
+      local c = 30
+      local d = 40
+      local e = 50
+
+      -- Read operations
+      local r1 = a
+      local r2 = b
+      local r3 = c
+      local r4 = d
+      local r5 = e
+
+      -- Arithmetic using locals
+      local sum = a + b + c + d + e
+      local product = a * b
+      local diff = e - a
+      local quotient = d / a
+
+      -- Write operations
+      a = i
+      b = i + 1
+      c = i + 2
+      d = i + 3
+      e = i + 4
+
+      -- Mixed read/write
+      a = b + c
+      b = a * 2
+      c = b - d
+      d = c + e
+      e = a + d
+
+      -- Compound operations
+      a += 1
+      b -= 1
+      c *= 2
+      d /= 2
+      e %= 100
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Measure performance of global variable access
+
+-- Declare globals for ScopeGlobal benchmark
+global glScopeA = 10
+global glScopeB = 20
+global glScopeC = 30
+global glScopeD = 40
+global glScopeE = 50
+
+@Test function ScopeGlobal()
+   for i in {0..1000000} do
+      -- Reset global variables
+      glScopeA = 10
+      glScopeB = 20
+      glScopeC = 30
+      glScopeD = 40
+      glScopeE = 50
+
+      -- Read operations
+      local r1 = glScopeA
+      local r2 = glScopeB
+      local r3 = glScopeC
+      local r4 = glScopeD
+      local r5 = glScopeE
+
+      -- Arithmetic using globals
+      local sum = glScopeA + glScopeB + glScopeC + glScopeD + glScopeE
+      local product = glScopeA * glScopeB
+      local diff = glScopeE - glScopeA
+      local quotient = glScopeD / glScopeA
+
+      -- Write operations
+      glScopeA = i
+      glScopeB = i + 1
+      glScopeC = i + 2
+      glScopeD = i + 3
+      glScopeE = i + 4
+
+      -- Mixed read/write
+      glScopeA = glScopeB + glScopeC
+      glScopeB = glScopeA * 2
+      glScopeC = glScopeB - glScopeD
+      glScopeD = glScopeC + glScopeE
+      glScopeE = glScopeA + glScopeD
+
+      -- Compound operations
+      glScopeA += 1
+      glScopeB -= 1
+      glScopeC *= 2
+      glScopeD /= 2
+      glScopeE %= 100
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Measure performance of const-annotated local variable access
+
+@Test function ScopeConstantAccess()
+   for i in {0..1000000} do
+      -- Declare const local variables
+      local a <const> = 10
+      local b <const> = 20
+      local c <const> = 30
+      local d <const> = 40
+      local e <const> = 50
+
+      -- Read operations (const can only be read, not written)
+      local r1 = a
+      local r2 = b
+      local r3 = c
+      local r4 = d
+      local r5 = e
+
+      -- Arithmetic using consts
+      local sum = a + b + c + d + e
+      local product = a * b
+      local diff = e - a
+      local quotient = d / a
+
+      -- Write to mutable locals derived from consts
+      local ma = i
+      local mb = i + 1
+      local mc = i + 2
+      local md = i + 3
+      local me = i + 4
+
+      -- Mixed read (const) / write (mutable)
+      ma = b + c
+      mb = a * 2
+      mc = b - d
+      md = c + e
+      me = a + d
+
+      -- Compound operations on mutable copies
+      ma += 1
+      mb -= 1
+      mc *= 2
+      md /= 2
+      me %= 100
+
+      -- Additional const reads to match operation count
+      local x1 = a + b
+      local x2 = c + d
+      local x3 = e + a
+      local x4 = b + c
+      local x5 = d + e
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Measure performance of upvalue access in closures
+
+@Test function ScopeUpvalueAccess()
+   -- Declare upvalues outside the loop
+   local a = 10
+   local b = 20
+   local c = 30
+   local d = 40
+   local e = 50
+
+   -- Create closure that captures upvalues
+   local function accessUpvalues(iter)
+      -- Read operations
+      local r1 = a
+      local r2 = b
+      local r3 = c
+      local r4 = d
+      local r5 = e
+
+      -- Arithmetic using upvalues
+      local sum = a + b + c + d + e
+      local product = a * b
+      local diff = e - a
+      local quotient = d / a
+
+      -- Write operations
+      a = iter
+      b = iter + 1
+      c = iter + 2
+      d = iter + 3
+      e = iter + 4
+
+      -- Mixed read/write
+      a = b + c
+      b = a * 2
+      c = b - d
+      d = c + e
+      e = a + d
+
+      -- Compound operations
+      a += 1
+      b -= 1
+      c *= 2
+      d /= 2
+      e %= 100
+   end
+
+   for i in {0..1000000} do
+      -- Reset upvalues
+      a = 10
+      b = 20
+      c = 30
+      d = 40
+      e = 50
+
+      -- Call function that accesses upvalues
+      accessUpvalues(i)
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- TYPE OPERATIONS
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Measure overhead of type() function calls
+
+@Test function TypeCheckType()
+   -- Create values of different types
+   local num_int = 42
+   local num_float = 3.14159
+   local str = "hello"
+   local tbl = { a = 1, b = 2 }
+   local arr = array<int> { 1, 2, 3 }
+   local func = function() return 1 end
+   local bool_true = true
+   local bool_false = false
+   local nil_val = nil
+
+   for i in {0..500} do
+      -- Check type of numbers
+      local t1 = type(num_int)
+      local t2 = type(num_float)
+      local t3 = type(i)
+
+      -- Check type of strings
+      local t4 = type(str)
+      local t5 = type("literal")
+
+      -- Check type of tables
+      local t6 = type(tbl)
+      local t7 = type({})
+
+      -- Check type of arrays
+      local t8 = type(arr)
+
+      -- Check type of functions
+      local t9 = type(func)
+      local t10 = type(function() end)
+
+      -- Check type of booleans
+      local t11 = type(bool_true)
+      local t12 = type(bool_false)
+
+      -- Check type of nil
+      local t13 = type(nil_val)
+      local t14 = type(nil)
+
+      -- Type comparisons
+      local is_num = type(num_int) is "number"
+      local is_str = type(str) is "string"
+      local is_tbl = type(tbl) is "table"
+      local is_func = type(func) is "function"
+      local is_bool = type(bool_true) is "boolean"
+
+      -- Conditional based on type
+      local val = i % 3 is 0 and str or (i % 3 is 1 and num_int or tbl)
+      if type(val) is "string" then
+         local _ = #val
+      elseif type(val) is "number" then
+         local _ = val * 2
+      elseif type(val) is "table" then
+         local _ = val.a
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Measure overhead of tostring() conversions
+
+@Test function StringConversion()
+   local int_val = 12345
+   local float_val = 3.14159265358979
+   local neg_int = -9876
+   local neg_float = -2.71828
+   local zero = 0
+   local bool_true = true
+   local bool_false = false
+   local tbl = { a = 1 }
+
+   for i in {0..1000000} do
+      -- Convert integers to string
+      local s1 = tostring(int_val)
+      local s2 = tostring(neg_int)
+      local s3 = tostring(zero)
+      local s4 = tostring(i)
+
+      -- Convert floats to string
+      local s5 = tostring(float_val)
+      local s6 = tostring(neg_float)
+      local s7 = tostring(i * 0.5)
+
+      -- Convert booleans to string
+      local s8 = tostring(bool_true)
+      local s9 = tostring(bool_false)
+
+      -- Convert nil to string
+      local s10 = tostring(nil)
+
+      -- Convert table to string (gets address)
+      local s11 = tostring(tbl)
+
+      -- Convert computed values
+      local s12 = tostring(i + 100)
+      local s13 = tostring(i * 2)
+      local s14 = tostring(i / 3)
+
+      -- Concatenation forcing conversion
+      local s15 = "" .. i
+      local s16 = "value: " .. i
+
+      -- Scientific notation numbers
+      local s17 = tostring(1.23e10)
+      local s18 = tostring(4.56e-5)
+
+      -- Large and small numbers
+      local s19 = tostring(999999999)
+      local s20 = tostring(0.000001)
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Measure overhead of tonumber() conversions
+
+@Test function NumberConversion()
+   local str_int = "12345"
+   local str_neg = "-9876"
+   local str_float = "3.14159"
+   local str_neg_float = "-2.71828"
+   local str_zero = "0"
+   local str_sci = "1.23e5"
+   local str_hex = "0xFF"
+   local str_invalid = "not_a_number"
+   local str_mixed = "123abc"
+
+   for i in {0..1000} do
+      -- Convert integer strings
+      local n1 = tonumber(str_int)
+      local n2 = tonumber(str_neg)
+      local n3 = tonumber(str_zero)
+
+      -- Convert float strings
+      local n4 = tonumber(str_float)
+      local n5 = tonumber(str_neg_float)
+
+      -- Convert scientific notation
+      local n6 = tonumber(str_sci)
+
+      -- Convert hex strings
+      local n7 = tonumber(str_hex)
+      local n8 = tonumber("0x1A2B")
+
+      -- Convert with explicit base
+      local n9 = tonumber("1010", 2)    -- Binary
+      local n10 = tonumber("777", 8)     -- Octal
+      local n11 = tonumber("FF", 16)     -- Hex without prefix
+
+      -- Convert dynamically created strings
+      local n12 = tonumber(tostring(i))
+      local n13 = tonumber(tostring(i * 2))
+
+      -- Invalid conversions (return nil)
+      local n14 = tonumber(str_invalid)
+      local n15 = tonumber(str_mixed)
+      local n16 = tonumber("")
+
+      -- Numbers passed through (already numbers)
+      local n17 = tonumber(42)
+      local n18 = tonumber(3.14)
+      local n19 = tonumber(i)
+
+      -- Conditional conversion with fallback
+      local val = tonumber(str_int) ?? 0
+      local val2 = tonumber(str_invalid) ?? -1
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
 
 function logMessage(message)
    print(message)
@@ -1544,6 +3102,7 @@ end
    local duration = tonumber(arg('duration',2))
    local warmup = tonumber(arg('warmup',10))
    local hotloop = tonumber(arg('hotloop',5))
+   local call_limit =tonumber(arg('calls',1000))
 
    local test_match = arg('test')
    if test_match then
@@ -1564,7 +3123,7 @@ end
       end
 
       try<trace>
-         results = bmark.run({ duration=duration, warmupCalls=warmup, feedbackRate=100, hotLoop=hotloop }, nil, func)
+         results = bmark.run({ duration=duration, warmupCalls=warmup, feedbackRate=100, maxCalls=call_limit, hotLoop=hotloop }, nil, func)
       except ex
          logMessage(f'Error in benchmark {func}: {ex.message}')
          logMessage(ex.stackTrace)
