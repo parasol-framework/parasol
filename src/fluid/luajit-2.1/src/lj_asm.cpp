@@ -2047,7 +2047,9 @@ static void asm_tail_link(ASMState* as)
       case BC_RETM: mres -= (int32_t)(bc_a(*pc) + bc_d(*pc)); break;
       case BC_TSETM: mres -= (int32_t)bc_a(*pc); break;
       default:
-         if (not bc_is_func_header(bc_op(*pc))) mres = 0;
+         // Fast function pseudo-opcodes (>= BC__MAX) need the same treatment as function headers
+         // to ensure MULTRES is set correctly for the argument count after trace stitch exits.
+         if (not bc_is_func_header(bc_op(*pc)) and bc_op(*pc) < BC__MAX) mres = 0;
          break;
       }
       ra_allockreg(as, mres, RID_RET);  //  Return MULTRES or 0.
