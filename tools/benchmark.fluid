@@ -15,9 +15,9 @@ Parameters:
    global glPath = glSelf.workingPath
    global glLogFile = io.open(glPath .. 'benchmark.log', 'a')
 
---=====================================================================================================================
+----------------------------------------------------------------------------------------------------------------------
 -- MATHEMATICAL OPERATIONS
---=====================================================================================================================
+----------------------------------------------------------------------------------------------------------------------
 -- Integer Arithmetic: add, sub, mul, div, mod with integer operands
 
 @Test function MathIntegerArithmetic()
@@ -40,7 +40,7 @@ Parameters:
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Floating-Point Arithmetic: add, sub, mul, div with double precision
 
 @Test function MathFloatingPoint()
@@ -69,7 +69,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Bitwise Operations: and, or, xor, not, left shift, right shift (Fluid C-style operators)
 
 @Test function MathBitwiseOperations()
@@ -99,7 +99,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Math Library Functions: trigonometric, exponential, logarithmic, rounding, random
 
 @Test function MathLibraryFunctions()
@@ -137,7 +137,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Compound Operators: +=, -=, *=, /=, %=, ++, --
 
 @Test function MathCompoundOperators()
@@ -179,7 +179,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Numeric Comparisons: equality, ordering, min/max chains
 
 @Test function MathNumericComparisons()
@@ -221,9 +221,9 @@ end
    end
 end
 
---=====================================================================================================================
+----------------------------------------------------------------------------------------------------------------------
 -- STRING OPERATIONS
---=====================================================================================================================
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Get the length of strings of varying sizes
 
 @Test function StringGetLength()
@@ -231,7 +231,7 @@ end
    local medium_str = "The quick brown fox jumps over the lazy dog."
    local long_str   = string.rep("Lorem ipsum dolor sit amet, consectetur adipiscing elit. ", 20)
 
-   for i in {0..100000} do
+   for i in {0..50000} do
       local len1 = #short_str
       local len2 = #medium_str
       local len3 = #long_str
@@ -243,7 +243,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Build a string by concatenating multiple parts
 
 @Test function StringConcatenateMultiple()
@@ -263,11 +263,11 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Build a string incrementally using append operations
 
 @Test function StringBuildIncrementally()
-   for i in {0..10} do
+   for i in {0..1000} do
       local result = ""
       for j in {0..100} do
          result ..= "x"
@@ -283,7 +283,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Format strings with embedded values (string interpolation)
 
 @Test function StringFormatWithValues()
@@ -304,7 +304,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Extract a substring from a larger text
 
 @Test function StringExtractSubstring()
@@ -329,7 +329,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Find the position of a substring within text
 
 @Test function StringFindSubstring()
@@ -337,7 +337,7 @@ end
    local paragraph = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. " ..
                      "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
 
-   for i in {0..30000} do
+   for i in {0..5000000} do
       -- Find word at beginning
       local pos1 = string.find(text, "The")
 
@@ -356,7 +356,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Replace words or patterns in a paragraph
 
 @Test function StringReplaceWords()
@@ -380,7 +380,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Split text into words or tokens
 
 @Test function StringSplitIntoWords()
@@ -415,7 +415,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Compare two strings for equality and ordering
 
 @Test function StringCompareStrings()
@@ -426,7 +426,7 @@ end
    local long1 = "The quick brown fox jumps over the lazy dog"
    local long2 = "The quick brown fox jumps over the lazy cat"
 
-   for i in {0..20000} do
+   for i in {0..4000000} do
       -- Equality comparison
       local eq1 = str1 is str3      -- true
       local eq2 = str1 is str2      -- false
@@ -447,7 +447,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Convert text to uppercase and lowercase
 
 @Test function StringChangeCase()
@@ -469,7 +469,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Remove whitespace from beginning and end of strings
 
 @Test function StringTrimWhitespace()
@@ -495,7 +495,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Access individual characters in a string
 
 @Test function StringAccessCharacters()
@@ -525,7 +525,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Match patterns in text and extract captures
 
 @Test function StringMatchPatterns()
@@ -557,7 +557,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Repeat a string multiple times
 
 @Test function StringRepeatString()
@@ -586,7 +586,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Reverse a string
 
 @Test function StringReverseString()
@@ -609,7 +609,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Check if a string starts or ends with a given prefix/suffix
 
 @Test function StringStartsEndsWith()
@@ -639,9 +639,9 @@ end
    end
 end
 
---=====================================================================================================================
+----------------------------------------------------------------------------------------------------------------------
 -- ARRAY OPERATIONS
---=====================================================================================================================
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Create arrays of different types with initial values
 
 @Test function ArrayCreateWithValues()
@@ -665,7 +665,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Read and write elements by index
 
 @Test function ArrayAccessByIndex()
@@ -706,7 +706,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Add elements to the end of an array
 
 @Test function ArrayPushElements()
@@ -731,7 +731,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Remove elements from the end of an array
 
 @Test function ArrayPopElements()
@@ -756,7 +756,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Find a value in an array
 
 @Test function ArrayFindValue()
@@ -789,7 +789,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Check if an array contains a specific value
 
 @Test function ArrayContainsValue()
@@ -813,7 +813,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Sort an array in ascending or descending order
 
 @Test function ArraySortElements()
@@ -836,7 +836,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Reverse the order of elements in an array
 
 @Test function ArrayReverseElements()
@@ -855,7 +855,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Extract a portion of an array (slice)
 
 @Test function ArraySliceRange()
@@ -880,7 +880,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Fill an array with a specific value
 
 @Test function ArrayFillWithValue()
@@ -905,7 +905,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Copy data between arrays
 
 @Test function ArrayCopyData()
@@ -927,7 +927,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Iterate over all elements in an array
 
 @Test function ArrayIterateElements()
@@ -962,7 +962,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Join array elements into a single string
 
 @Test function ArrayJoinToString()
@@ -986,7 +986,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Concatenate array elements with formatting
 
 @Test function ArrayConcatFormatted()
@@ -1008,7 +1008,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Get the first and last elements of an array
 
 @Test function ArrayFirstLastAccess()
@@ -1033,7 +1033,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Get the length of an array
 
 @Test function ArrayGetLength()
@@ -1060,7 +1060,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Convert array to a Lua table
 
 @Test function ArrayConvertToTable()
@@ -1081,7 +1081,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Build and process a large array
 
 @Test function ArrayLargeOperations()
@@ -1111,7 +1111,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Perform stack operations (push/pop pattern)
 
 @Test function ArrayStackOperations()
@@ -1141,7 +1141,7 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Use arrays as queues (FIFO pattern simulation)
 
 @Test function ArrayQueuePattern()
@@ -1161,7 +1161,358 @@ end
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
+-- TABLE OPERATIONS
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Create empty tables
+
+@Test function TableCreateEmpty()
+   for i in {0..10000} do
+      -- Create empty tables
+      local t1 = {}
+      local t2 = {}
+      local t3 = {}
+
+      -- Create multiple in sequence
+      local tables = {}
+      for j = 0, 9 do
+         tables[j] = {}
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Create tables with initial key-value pairs
+
+@Test function TableCreateWithValues()
+   for i in {0..100000} do
+      -- Create with string keys
+      local person = { name = "Alice", age = 30, city = "London" }
+
+      -- Create with mixed keys
+      local mixed = { [0] = "zero", [1] = "one", key = "value" }
+
+      -- Create nested tables
+      local nested = {
+         user = { name = "Bob", id = 123 },
+         settings = { theme = "dark", language = "en" }
+      }
+
+      -- Create with computed values
+      local computed = { index = i, doubled = i * 2, squared = i * i }
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Read and write table entries using string keys
+
+@Test function TableAccessByStringKey()
+   local t = { alpha = 1, beta = 2, gamma = 3, delta = 4, epsilon = 5 }
+
+   for i in {0..1000000} do
+      -- Read by string key
+      local v1 = t.alpha
+      local v2 = t["beta"]
+      local v3 = t.gamma
+      local v4 = t["delta"]
+      local v5 = t.epsilon
+
+      -- Write by string key
+      t.alpha = i
+      t["beta"] = i + 1
+      t.gamma = i + 2
+      t["delta"] = i + 3
+      t.epsilon = i + 4
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Read and write table entries using integer keys
+
+@Test function TableAccessByIntegerKey()
+   local t = {}
+   for i = 0, 99 do
+      t[i] = i * 10
+   end
+
+   for i in {0..1000000} do
+      -- Read by integer key
+      local v1 = t[0]
+      local v2 = t[50]
+      local v3 = t[99]
+
+      -- Write by integer key
+      local idx = i % 100
+      t[idx] = i
+      t[idx + 1] = i * 2
+      t[idx + 2] = i * 3
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Access deeply nested table properties
+
+@Test function TableNestedAccess()
+   local data = {
+      level1 = {
+         level2 = {
+            level3 = {
+               value = 42,
+               items = { a = 1, b = 2, c = 3 }
+            }
+         }
+      },
+      users = {
+         { name = "Alice", scores = { math = 95, science = 88 } },
+         { name = "Bob", scores = { math = 82, science = 91 } }
+      }
+   }
+
+   for i in {0..100000} do
+      -- Deep property access
+      local v1 = data.level1.level2.level3.value
+      local v2 = data.level1.level2.level3.items.a
+      local v3 = data.level1.level2.level3.items.b
+
+      -- Access array-like nested data
+      local name1 = data.users[0].name
+      local score1 = data.users[0].scores.math
+      local name2 = data.users[1].name
+      local score2 = data.users[1].scores.science
+
+      -- Write to nested properties
+      data.level1.level2.level3.value = i
+      data.users[0].scores.math = i % 100
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Iterate over all key-value pairs in a table
+
+@Test function TableIteratePairs()
+   local small = { a = 1, b = 2, c = 3, d = 4, e = 5 }
+   local medium = {}
+   for i = 0, 49 do
+      medium["key_" .. i] = i * 10
+   end
+
+   for i in {0..10000} do
+      -- Iterate small table with pairs
+      local sum1 = 0
+      for k, v in pairs(small) do
+         sum1 += v
+      end
+
+      -- Iterate medium table
+      local sum2 = 0
+      local count = 0
+      for k, v in pairs(medium) do
+         sum2 += v
+         count++
+      end
+
+      -- Collect keys
+      local keys = {}
+      local idx = 0
+      for k, _ in pairs(small) do
+         keys[idx] = k
+         idx++
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Iterate over array-like table elements in order
+
+@Test function TableIterateIpairs()
+   local arr = { "apple", "banana", "cherry", "date", "elderberry",
+                 "fig", "grape", "honeydew", "kiwi", "lemon" }
+   local numbers = {}
+   for i = 0, 99 do
+      numbers[i] = i * 2
+   end
+
+   for i in {0..10000} do
+      -- Iterate with ipairs (ordered)
+      local concat = ""
+      for idx, val in ipairs(arr) do
+         concat ..= val
+      end
+
+      -- Sum numbers with ipairs
+      local sum = 0
+      for idx, val in ipairs(numbers) do
+         sum += val
+      end
+
+      -- Count elements
+      local count = 0
+      for _ in ipairs(arr) do
+         count++
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Insert and remove elements from array-like tables
+
+@Test function TableInsertRemove()
+   for i in {0..1000} do
+      local t = { 1, 2, 3, 4, 5 }
+
+      -- Insert at end
+      table.insert(t, 6)
+      table.insert(t, 7)
+      table.insert(t, 8)
+
+      -- Insert at specific position
+      table.insert(t, 0, 0)     -- Insert at beginning
+      table.insert(t, 5, 99)    -- Insert in middle
+
+      -- Remove from end
+      local last = table.remove(t)
+
+      -- Remove from specific position
+      local first = table.remove(t, 0)
+      local middle = table.remove(t, 3)
+
+      -- Build table with inserts
+      local built = {}
+      for j = 0, 19 do
+         table.insert(built, j * 10)
+      end
+
+      -- Empty table with removes
+      while #built > 0 do
+         table.remove(built)
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Sort table elements with custom comparator
+
+@Test function TableSort()
+   for i in {0..1000} do
+      -- Sort numbers ascending (default)
+      local nums = { 50, 30, 80, 10, 60, 40, 90, 20, 70, 100 }
+      table.sort(nums)
+
+      -- Sort numbers descending
+      local nums2 = { 50, 30, 80, 10, 60, 40, 90, 20, 70, 100 }
+      table.sort(nums2, function(a, b) return a > b end)
+
+      -- Sort strings
+      local words = { "cherry", "apple", "banana", "date", "elderberry" }
+      table.sort(words)
+
+      -- Sort by string length
+      local words2 = { "cherry", "apple", "banana", "date", "elderberry" }
+      table.sort(words2, function(a, b) return #a < #b end)
+
+      -- Sort table of tables by field
+      local people = {
+         { name = "Charlie", age = 35 },
+         { name = "Alice", age = 30 },
+         { name = "Bob", age = 25 }
+      }
+      table.sort(people, function(a, b) return a.age < b.age end)
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Concatenate array-like table elements into a string
+
+@Test function TableConcat()
+   local words = { "The", "quick", "brown", "fox", "jumps" }
+   local numbers = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "10" }
+   local single = { "alone" }
+
+   for i in {0..10000} do
+      -- Concat with different separators
+      local joined1 = table.concat(words, " ")
+      local joined2 = table.concat(words, "-")
+      local joined3 = table.concat(words, ", ")
+      local joined4 = table.concat(words, "")
+
+      -- Concat numbers
+      local joined5 = table.concat(numbers, ",")
+      local joined6 = table.concat(numbers, " | ")
+
+      -- Concat single element
+      local joined7 = table.concat(single, ",")
+
+      -- Concat with range
+      local partial = table.concat(words, " ", 1, 3)
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Get the length of array-like tables
+
+@Test function TableLength()
+   local empty = {}
+   local small = { 1, 2, 3 }
+   local medium = {}
+   for i = 0, 99 do medium[i] = i end
+   local large = {}
+   for i = 0, 999 do large[i] = i end
+   local mixed = { a = 1, b = 2, [0] = "zero", [1] = "one", [2] = "two" }
+
+   for i in {0..1000000} do
+      -- Get lengths using # operator
+      local len1 = #empty
+      local len2 = #small
+      local len3 = #medium
+      local len4 = #large
+      local len5 = #mixed  -- Only counts array part
+
+      -- Use length in calculations
+      local total = len1 + len2 + len3 + len4 + len5
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Merge two tables into one
+
+@Test function TableMerge()
+   local t1 = { a = 1, b = 2, c = 3 }
+   local t2 = { d = 4, e = 5, f = 6 }
+   local arr1 = { 1, 2, 3 }
+   local arr2 = { 4, 5, 6 }
+
+   for i in {0..10000} do
+      -- Merge key-value tables (manual)
+      local merged = {}
+      for k, v in pairs(t1) do
+         merged[k] = v
+      end
+      for k, v in pairs(t2) do
+         merged[k] = v
+      end
+
+      -- Merge with overwrite
+      local base = { a = 1, b = 2, c = 3 }
+      local override = { b = 20, d = 40 }
+      for k, v in pairs(override) do
+         base[k] = v
+      end
+
+      -- Concatenate arrays
+      local combined = {}
+      local idx = 0
+      for _, v in ipairs(arr1) do
+         combined[idx] = v
+         idx++
+      end
+      for _, v in ipairs(arr2) do
+         combined[idx] = v
+         idx++
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
 
 function logMessage(message)
    print(message)
@@ -1179,24 +1530,20 @@ function saveMessage(message:any)
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
-
    do
       local tm = obj.new('time')
       tm.acQuery()
 
       local git_info = git.query(glPath)
 
-      saveMessage('================================================================================')
-      saveMessage(string.format('%04d-%02d-%02d %02d:%02d:%02d', tm.year, tm.month, tm.day, tm.hour, tm.minute, tm.second) .. '\n')
+      saveMessage(string.format('%04d-%02d-%02d %02d:%02d:%02d', tm.year, tm.month, tm.day, tm.hour, tm.minute, tm.second))
       saveMessage(f'Git branch: {git_info.branch} / {git_info.commit}')
       saveMessage('')
    end
 
-   local anno = debug.anno.list()
-
    local duration = tonumber(arg('duration',2))
    local warmup = tonumber(arg('warmup',10))
+   local hotloop = tonumber(arg('hotloop',5))
 
    local test_match = arg('test')
    if test_match then
@@ -1204,6 +1551,7 @@ end
       logMessage(f'Filtering benchmarks with pattern: {test_match}')
    end
 
+   local anno = debug.anno.list()
    all_results = array<table>
    for func, entry in pairs(anno) do
       local results
@@ -1215,10 +1563,11 @@ end
          end
       end
 
-      try
-         results = bmark.run({ duration=duration, warmupCalls=warmup, feedbackRate=100 }, nil, func)
+      try<trace>
+         results = bmark.run({ duration=duration, warmupCalls=warmup, feedbackRate=100, hotLoop=hotloop }, nil, func)
       except ex
          logMessage(f'Error in benchmark {func}: {ex.message}')
+         logMessage(ex.stackTrace)
       success
          saveMessage(string.format('%s() Calls Per Second: %d; Total Calls: %d, Fastest: %.3f ms', tostring(func), results.callsPerSecond, results.benchmarkCalls, results.stats.min))
          if results.memoryLeakRate/results.callsPerSecond > 512 then

@@ -68,11 +68,12 @@ bmark.run = function(Options:table, Feedback:func, Callback:func):table
    Options.feedbackRate ??= 100
    Options.duration ?= 3
    Options.showProgress ?= false
+   Options.hotLoop ?= 5 -- Low threshold to trigger JIT sooner
    assert(Options.duration > 0 and Options.duration <= 300, 'Options.duration must be between 0 and 300.')
    assert(Options.warmupCalls >= 0 and Options.warmupCalls <= 1000, 'Options.warmupCalls be between 0 and 1000.')
    assert(Options.feedbackRate > 0, 'Options.feedbackRate must be greater than zero.')
 
-   jit.opt.start("hotloop=5") -- Lower threshold to trigger JIT sooner, simplifies debugging
+   jit.opt.start(f"hotloop={Options.hotLoop}")
 
    local results = {}
    local task = processing.task()
@@ -136,12 +137,10 @@ bmark.run = function(Options:table, Feedback:func, Callback:func):table
    local end_time     = start_time + (Options.duration * 1000000)
    local feedback_mem_adjust = 0
 
-   local benchmarkStartTime
-   if Options.warmupCalls is 0 then -- No warmup, set benchmark start time now
-      benchmarkStartTime    = mSys.PreciseTime()
-      results.initialMemory = mSys.GetResource(RES_MEMORY_USAGE)
-      results.peakMemory    = results.initialMemory
-   end
+   -- Preset these values - they will be updated at the right time if warmup is enabled
+   benchmarkStartTime    = mSys.PreciseTime()
+   results.initialMemory = mSys.GetResource(RES_MEMORY_USAGE)
+   results.peakMemory    = results.initialMemory
 
    while mSys.PreciseTime() < end_time do
       op_start = mSys.PreciseTime()
@@ -271,10 +270,7 @@ bmark.stats = function(Values:any):table
       stddev = math.sqrt(variance)
 
       -- Sort reservoir for percentile calculations
-      sorted_sample = {}
-      for i, value in ipairs(Values.reservoir) do
-         sorted_sample[i] = value
-      end
+      sorted_sample = Values.reservoir:table()
       table.sort(sorted_sample)
    else
       -- Legacy array format (full data)
