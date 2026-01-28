@@ -10,6 +10,55 @@
 
    bmark = _LIB[_NS]
 
+bmark.save = function(Results:table, Path:str)
+   local file = io.open(Path, 'w')
+   file:write(json.encode(Results))
+   file:close()
+end
+
+bmark.load = function(Path:str):table
+   local file = io.open(Path, 'r')
+   local jsonStr = file:read('*a')
+   file:close()
+   return json.decode(jsonStr)
+end
+
+-- Generate a text report from benchmark statistics
+
+bmark.textReport = function(Results:table):array
+   assert(Results, "Results are required")
+   local msg = array<string>
+   msg:push('=== BENCHMARK RESULTS ===')
+   msg:push(string.format('Total calls:    %d (%d warmup + %d benchmark)', Results.totalCalls, Results.warmupCount ?? 0, Results.benchmarkCalls))
+   msg:push(string.format('Total time:     %.2f seconds', Results.totalTime))
+   msg:push(string.format('Overall rate:   %.2f calls per second', Results.totalCalls / Results.totalTime))
+   msg:push(string.format('Benchmark time: %.2f seconds', Results.benchmarkTime))
+   msg:push(string.format('Benchmark rate: %.2f calls per second', Results.callsPerSecond))
+   msg:push('')
+   msg:push('=== CALL STATISTICS (ms) ===')
+   msg:push(string.format('Average:    %.3f ms', Results.stats.mean))
+   msg:push(string.format('Median:     %.3f ms', Results.stats.median))
+   msg:push(string.format('Minimum:    %.3f ms', Results.stats.min))
+   msg:push(string.format('Maximum:    %.3f ms', Results.stats.max ?? 0))
+   msg:push(string.format('95th %%ile:  %.3f ms', Results.stats.p95))
+   msg:push(string.format('99th %%ile:  %.3f ms', Results.stats.p99))
+   msg:push(string.format('Std Dev:    %.3f ms', Results.stats.stddev))
+   if Results.stats.ci95 then
+      msg:push(string.format('95%% CI:     %.3f - %.3f ms (±%.3f)',
+         Results.stats.ci95.lower, Results.stats.ci95.upper, Results.stats.ci95.margin))
+   end
+   msg:push('')
+   msg:push(string.format('Consistency: %.1f%% (lower is more consistent)', (Results.stats.stddev / Results.stats.mean) * 100))
+   msg:push('')
+   -- NB: For the most accurate reporting on memory usage, the caller should disable the Feedback mechanism
+   msg:push('=== MEMORY USAGE STATISTICS ===')
+   msg:push(string.format('Initial:    %.2f MB', Results.initialMemory / (1024*1024)))
+   msg:push(string.format('Peak:       %.2f MB', Results.peakMemory / (1024*1024)))
+   msg:push(string.format('Final:      %.2f MB', Results.finalMemory / (1024*1024)))
+   msg:push(string.format('Growth:     %.2f MB', Results.totalMemoryGrowth / (1024*1024)))
+   return msg
+end
+
 -- Benchmarks a provided Callback function and returns a table of the results
 
 bmark.run = function(Options:table, Feedback:func, Callback:func):table
@@ -17,11 +66,13 @@ bmark.run = function(Options:table, Feedback:func, Callback:func):table
 
    Feedback ?= function() end
    Options.feedbackRate ??= 100
-   Options.duration = 5
+   Options.duration ?= 3
    Options.showProgress ?= false
-   assert(Options.duration > 0, 'Options.duration must be greater than zero.')
-   assert(Options.warmupCalls >= 0, 'Options.warmupCalls must be zero or greater.')
+   assert(Options.duration > 0 and Options.duration <= 300, 'Options.duration must be between 0 and 300.')
+   assert(Options.warmupCalls >= 0 and Options.warmupCalls <= 1000, 'Options.warmupCalls be between 0 and 1000.')
    assert(Options.feedbackRate > 0, 'Options.feedbackRate must be greater than zero.')
+
+   jit.opt.start("hotloop=5") -- Lower threshold to trigger JIT sooner, simplifies debugging
 
    local results = {}
    local task = processing.task()
@@ -59,14 +110,30 @@ bmark.run = function(Options:table, Feedback:func, Callback:func):table
       end
    end
 
+   processing.stopCollector()
+   defer
+      processing.startCollector()
+   end
+
    if Options.showProgress then Feedback('') end
 
    processing.sleep(0.01) -- Consume messages
 
-   local call_times   = array<double>
-   local mem_usage    = array<int64>
+   -- Running statistics for exact mean/stddev/min/max (O(1) memory)
+   local stats_n      = 0
+   local stats_sum    = 0.0
+   local stats_sum_sq = 0.0
+   local stats_min    = math.huge
+   local stats_max    = -math.huge
+
+   local RESERVOIR_SIZE <const>     = Options.reservoirSize ?? 10000
+   local MAX_MEMORY_SAMPLES <const> = 10000
+
+   local reservoir <const> = array<double,RESERVOIR_SIZE>
+   local mem_usage <const> = array<int64,MAX_MEMORY_SAMPLES>
+
    local start_time   = mSys.PreciseTime()
-   local end_time     = start_time + (Options.duration * 1000000) -- Convert to microseconds
+   local end_time     = start_time + (Options.duration * 1000000)
    local feedback_mem_adjust = 0
 
    local benchmarkStartTime
@@ -81,28 +148,47 @@ bmark.run = function(Options:table, Feedback:func, Callback:func):table
       Callback()
       op_end = mSys.PreciseTime()
 
+      processing.collect()
+
       results.totalCalls++
       callTime = (op_end - op_start) / 1000 -- Convert to milliseconds
+      callsPerSecond = 1000000 / callTime
 
       -- Determine if this is a warmup cycle or benchmark cycle
       if results.warmupCount < Options.warmupCalls then
          results.warmupCount++
          if results.warmupCount is Options.warmupCalls then
             -- Warmup complete, reset timing and memory baseline
+            local mem_usage       = mSys.GetResource(RES_MEMORY_USAGE)
             benchmarkStartTime    = mSys.PreciseTime()
-            results.initialMemory = mSys.GetResource(RES_MEMORY_USAGE)
+            results.initialMemory = mem_usage
             results.peakMemory    = results.initialMemory
             if Options.showProgress then
                Feedback(string.format('Warmup completed (%d calls). Starting benchmark measurement...', Options.warmupCalls))
             end
-            feedback_mem_adjust += mSys.GetResource(RES_MEMORY_USAGE) - results.initialMemory
+            feedback_mem_adjust += mem_usage - results.initialMemory
          end
       else -- This is a benchmark call, include in statistics
-         call_times:push(callTime)
+         -- Update running statistics (exact)
+         stats_n++
+         stats_sum += callTime
+         stats_sum_sq += callTime * callTime
+         if callTime < stats_min then stats_min = callTime end
+         if callTime > stats_max then stats_max = callTime end
+
+         -- Reservoir sampling (Algorithm R) for percentile estimation
+         if #reservoir < RESERVOIR_SIZE then
+            reservoir:push(callTime)
+         else
+            local j = math.random(0, stats_n - 1)
+            if j < RESERVOIR_SIZE then
+               reservoir[j] = callTime
+            end
+         end
       end
 
-      -- Track memory usage every 10 calls to avoid performance impact
-      if results.totalCalls % 10 is 0 then
+      -- Track memory usage periodically to avoid performance impact
+      if results.totalCalls % (callsPerSecond/10) is 0 and #mem_usage < MAX_MEMORY_SAMPLES then
          local cmem = mSys.GetResource(RES_MEMORY_USAGE)
          if results.warmupCount >= Options.warmupCalls then
             -- Only track memory during actual benchmark phase
@@ -127,14 +213,23 @@ bmark.run = function(Options:table, Feedback:func, Callback:func):table
       end
    end
 
+   processing.collect()
    results.finalMemory       = mSys.GetResource(RES_MEMORY_USAGE) - feedback_mem_adjust
    results.totalMemoryGrowth = results.finalMemory - results.initialMemory
    results.totalTime         = (mSys.PreciseTime() - start_time) / 1000000
    results.benchmarkTime     = (mSys.PreciseTime() - benchmarkStartTime) / 1000000
-   results.benchmarkCalls    = #call_times
+   results.benchmarkCalls    = stats_n
    results.callsPerSecond    = results.benchmarkCalls / results.benchmarkTime
 
-   results.stats = bmark.stats(call_times)
+   -- Pass streaming statistics to stats function
+   results.stats = bmark.stats({
+      n         = stats_n,
+      sum       = stats_sum,
+      sumSq     = stats_sum_sq,
+      min       = stats_min,
+      max       = stats_max,
+      reservoir = reservoir
+   })
 
    -- Calculate memory growth pattern
    results.memoryLeakRate = 0
@@ -145,59 +240,97 @@ bmark.run = function(Options:table, Feedback:func, Callback:func):table
    return results
 end
 
--- Returns statistical information for an array<double> of values (e.g. timing information)
+-- Returns statistical information from either:
+--   1. An array<double> of values (legacy, full data)
+--   2. A table with streaming stats: { n, sum, sumSq, min, max, reservoir }
+-- The streaming format uses O(1) memory via running statistics for exact mean/stddev
+-- and reservoir sampling for approximate percentiles.
 
-bmark.stats = function(Values:array):table
-   if #Values is 0 then
-      return { min = 0, max = 0, median = 0, p95 = 0, p99 = 0, stddev = 0 }
+bmark.stats = function(Values:any):table
+   -- Detect input format
+   local is_streaming = type(Values) is 'table' and Values.reservoir != nil
+
+   local n, mean, stddev, min_val, max_val
+   local sorted_sample  -- For percentile calculations
+
+   if is_streaming then
+      -- Streaming statistics format
+      n = Values.n
+      if n is 0 then
+         return { min = 0, max = 0, median = 0, p95 = 0, p99 = 0, stddev = 0, mean = 0, n = 0 }
+      end
+
+      -- Exact statistics from running totals
+      mean = Values.sum / n
+      min_val = Values.min
+      max_val = Values.max
+
+      -- Variance using Welford's online algorithm formula: Var = (sumSq - sum²/n) / n
+      local variance = (Values.sumSq - (Values.sum * Values.sum) / n) / n
+      if variance < 0 then variance = 0 end  -- Handle floating-point errors
+      stddev = math.sqrt(variance)
+
+      -- Sort reservoir for percentile calculations
+      sorted_sample = {}
+      for i, value in ipairs(Values.reservoir) do
+         sorted_sample[i] = value
+      end
+      table.sort(sorted_sample)
+   else
+      -- Legacy array format (full data)
+      n = #Values
+      if n is 0 then
+         return { min = 0, max = 0, median = 0, p95 = 0, p99 = 0, stddev = 0, mean = 0, n = 0 }
+      end
+
+      -- Sort values for percentile calculations
+      sorted_sample = {}
+      for i, value in ipairs(Values) do
+         sorted_sample[i] = value
+      end
+      table.sort(sorted_sample)
+
+      -- Min and Max from sorted data
+      min_val = sorted_sample[0]
+      max_val = sorted_sample[#sorted_sample - 1]
+
+      -- Calculate mean
+      local sum = 0
+      for value in values(Values) do
+         sum += value
+      end
+      mean = sum / n
+
+      -- Calculate stddev
+      local variance = 0
+      for value in values(Values) do
+         variance += (value - mean) ^ 2
+      end
+      variance /= n
+      stddev = math.sqrt(variance)
    end
 
-   -- Sort values for percentile calculations
-   local sortedValues = {}
-   for i, value in ipairs(Values) do
-      sortedValues[i] = value
+   -- Percentile calculation from sorted sample
+   local function getPercentile(SortedValues:array, Percentile:num):num
+      local sample_n = #SortedValues
+      if sample_n is 0 then return 0 end
+      local index = math.ceil(Percentile * sample_n / 100) - 1
+      if index < 0 then index = 0 end
+      if index > sample_n - 1 then index = sample_n - 1 end
+      return SortedValues[index]
    end
-   table.sort(sortedValues)
-
-   -- Min and Max
-   local minTime = sortedValues[0]
-   local maxTime = sortedValues[#sortedValues-1]
 
    -- Median
    local median
-   local n = #sortedValues
-   if n % 2 is 0 then
-      median = (sortedValues[n/2 - 1] + sortedValues[n/2]) / 2
+   local sample_n = #sorted_sample
+   if sample_n % 2 is 0 then
+      median = (sorted_sample[sample_n/2 - 1] + sorted_sample[sample_n/2]) / 2
    else
-      median = sortedValues[math.floor(n/2)]
+      median = sorted_sample[math.floor(sample_n/2)]
    end
 
-   -- Percentiles
-   local function getPercentile(Values:array, Percentile:num):num
-      local n = #Values
-      if n is 0 then return 0 end
-      local index = math.ceil(Percentile * n / 100) - 1
-      if index < 0 then index = 0 end
-      if index > n - 1 then index = n - 1 end
-      return Values[index]
-   end
-
-   p95 = getPercentile(sortedValues, 95)
-   p99 = getPercentile(sortedValues, 99)
-
-   -- Standard deviation
-   sum = 0
-   for value in values(Values) do
-      sum += value
-   end
-   mean = sum / #Values
-
-   variance = 0
-   for value in values(Values) do
-      variance += (value - mean) ^ 2
-   end
-   variance /= #Values
-   stddev = math.sqrt(variance)
+   local p95 = getPercentile(sorted_sample, 95)
+   local p99 = getPercentile(sorted_sample, 99)
 
    -- 95% confidence interval for the mean using t-distribution approximation
    -- For large samples (n > 30), z-value of 1.96 is used; for smaller samples, approximate t-value
@@ -212,8 +345,9 @@ bmark.stats = function(Values:array):table
    end
 
    return {
-      min = minTime, max = maxTime, median = median, p95 = p95, p99 = p99,
-      stddev = stddev, mean = mean, ci95 = ci95, n = n
+      min = min_val, max = max_val, median = median, p95 = p95, p99 = p99,
+      stddev = stddev, mean = mean, ci95 = ci95, n = n,
+      sampleSize = sample_n  -- Include sample size for transparency
    }
 end
 
@@ -470,54 +604,6 @@ bmark.histogramText = function(Histogram:table, Width:num):array
    msg:push(string.format('Mode: %.3f - %.3f', Histogram.modeRange.lower, Histogram.modeRange.upper))
 
    return msg
-end
-
--- Generate a text report from benchmark statistics
-
-bmark.textReport = function(Results:table):array
-   local msg = array<string>
-   msg:push('=== BENCHMARK RESULTS ===')
-   msg:push(string.format('Total calls:    %d (%d warmup + %d benchmark)', Results.totalCalls, Results.warmupCount ?? 0, Results.benchmarkCalls))
-   msg:push(string.format('Total time:     %.2f seconds', Results.totalTime))
-   msg:push(string.format('Benchmark time: %.2f seconds', Results.benchmarkTime))
-   msg:push(string.format('Overall rate:   %.2f calls per second', Results.totalCalls / Results.totalTime))
-   msg:push(string.format('Benchmark rate: %.2f calls per second', Results.callsPerSecond))
-   msg:push('')
-   msg:push('=== CALL STATISTICS (ms) ===')
-   msg:push(string.format('Average:    %.3f ms', Results.stats.mean))
-   msg:push(string.format('Median:     %.3f ms', Results.stats.median))
-   msg:push(string.format('Minimum:    %.3f ms', Results.stats.min))
-   msg:push(string.format('Maximum:    %.3f ms', Results.stats.max ?? 0))
-   msg:push(string.format('95th %%ile:  %.3f ms', Results.stats.p95))
-   msg:push(string.format('99th %%ile:  %.3f ms', Results.stats.p99))
-   msg:push(string.format('Std Dev:    %.3f ms', Results.stats.stddev))
-   if Results.stats.ci95 then
-      msg:push(string.format('95%% CI:     %.3f - %.3f ms (±%.3f)',
-         Results.stats.ci95.lower, Results.stats.ci95.upper, Results.stats.ci95.margin))
-   end
-   msg:push('')
-   msg:push(string.format('Consistency: %.1f%% (lower is more consistent)', (Results.stats.stddev / Results.stats.mean) * 100))
-   msg:push('')
-   -- NB: For the most accurate reporting on memory usage, the caller should disable the Feedback mechanism
-   msg:push('=== MEMORY USAGE STATISTICS ===')
-   msg:push(string.format('Initial:    %.2f MB', Results.initialMemory / (1024*1024)))
-   msg:push(string.format('Peak:       %.2f MB', Results.peakMemory / (1024*1024)))
-   msg:push(string.format('Final:      %.2f MB', Results.finalMemory / (1024*1024)))
-   msg:push(string.format('Growth:     %.2f MB', Results.totalMemoryGrowth / (1024*1024)))
-   return msg
-end
-
-bmark.save = function(Results:table, Path:str)
-   local file = io.open(Path, 'w')
-   file:write(json.encode(Results))
-   file:close()
-end
-
-bmark.load = function(Path:str):table
-   local file = io.open(Path, 'r')
-   local jsonStr = file:read('*a')
-   file:close()
-   return json.decode(jsonStr)
 end
 
 -- Compare two benchmark results and return detailed comparison metrics.

@@ -1,0 +1,1229 @@
+--[[
+Fluid Benchmarking Tool
+
+Usage:
+   parasol benchmark.fluid [test=Name]
+
+Parameters:
+  test    - Regex defining the test(s) to run.
+ --]]
+
+   import 'benchmark'
+   import 'git'
+
+   global glSelf = obj.find('self')
+   global glPath = glSelf.workingPath
+   global glLogFile = io.open(glPath .. 'benchmark.log', 'a')
+
+--=====================================================================================================================
+-- MATHEMATICAL OPERATIONS
+--=====================================================================================================================
+-- Integer Arithmetic: add, sub, mul, div, mod with integer operands
+
+@Test function MathIntegerArithmetic()
+   local a, b, c, d, e = 1, 2, 3, 4, 5
+   for i in {0..100000} do
+      a = i + 17
+      b = a - 13
+      c = b * 7
+      d = c / 3
+      e = d % 11
+
+      -- Chain operations
+      a = ((i + 100) * 3 - 50) / 2
+      b = (a % 97) + (c % 53)
+      c = a * b + c * d - e
+
+      -- Nested arithmetic
+      d = (a + b) * (c - d) / (e + 1)
+      e = ((a * 2) + (b * 3) - (c / 4)) % 1000
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Floating-Point Arithmetic: add, sub, mul, div with double precision
+
+@Test function MathFloatingPoint()
+   local a, b, c, d = 1.0, 2.0, 3.0, 4.0
+   local pi <const> = 3.14159265358979
+   local e <const> = 2.71828182845905
+   local phi <const> = 1.61803398874989
+
+   for i in {0..100000} do
+      a = i * pi
+      b = a / e
+      c = b + phi
+      d = c - 0.57721566490153  -- Euler-Mascheroni constant
+
+      -- Mixed precision chain
+      a = (i + 0.5) * 3.14159
+      b = a / 2.71828 + 1.41421  -- sqrt(2)
+      c = (a * b) - (b / a)
+      d = c * 0.001 + d * 1000.0
+
+      -- Scientific notation
+      a = i * 1.23e-5
+      b = a + 9.87e6
+      c = b * 4.56e-3
+      d = c / 7.89e2
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Bitwise Operations: and, or, xor, not, left shift, right shift (Fluid C-style operators)
+
+@Test function MathBitwiseOperations()
+   local a, b, c, d = 0xFF, 0xAA, 0x55, 0x0F
+   for i in {0..100000} do
+      -- Basic bitwise operations
+      a = i & 0xFF          -- AND
+      b = i | 0xF0          -- OR
+      c = i ~ 0xAA          -- XOR (Fluid uses ~ for XOR, not ^)
+      d = ~i                -- NOT (bitwise complement)
+
+      -- Shift operations
+      a = i << 4            -- Left shift
+      b = i >> 2            -- Right shift
+      c = (i << 8) | (i >> 8)  -- Byte swap pattern
+
+      -- Combined bitwise expressions
+      d = (a & 0x0F) | (b & 0xF0)
+      a = ((i & 0xFF) << 8) | ((i >> 8) & 0xFF)
+      b = (c ~ d) & 0xFFFF
+      c = (~a & b) | (a & ~b)  -- XOR via AND/OR/NOT
+
+      -- Mask and flag operations
+      d = i | (1 << (i % 8))   -- Set bit
+      a = i & ~(1 << (i % 8))  -- Clear bit
+      b = i ~ (1 << (i % 8))   -- Toggle bit
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Math Library Functions: trigonometric, exponential, logarithmic, rounding, random
+
+@Test function MathLibraryFunctions()
+   local a, b, c, d = 0.0, 0.0, 0.0, 0.0
+   for i in {0..100000} do
+      local x = i * 0.001  -- Scale to reasonable range
+
+      -- Trigonometric functions
+      a = math.sin(x)
+      b = math.cos(x)
+      c = math.tan(x % 1.5)  -- Avoid asymptotes
+      d = math.asin(a)
+      a = math.acos(b)
+      b = math.atan(c)
+      c = math.atan2(a, b)
+
+      -- Exponential and logarithmic
+      d = math.exp(x % 10)   -- Limit to avoid overflow
+      a = math.log(i + 1)
+      b = math.log10(i + 1)
+      c = math.pow(2, x % 20)
+      d = math.sqrt(i + 1)
+
+      -- Rounding functions
+      a = math.floor(x * 100)
+      b = math.ceil(x * 100)
+      c = math.abs(x - 50)
+      d = math.min(a, b, c)
+      a = math.max(a, b, c)
+
+      -- Random number generation
+      b = math.random()
+      c = math.random(100)
+      d = math.random(1, 1000)
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Compound Operators: +=, -=, *=, /=, %=, ++, --
+
+@Test function MathCompoundOperators()
+   local a, b, c, d, e = 1.0, 100.0, 1000.0, 10000.0, 50000.0
+   for i in {0..100000} do
+      -- Compound assignment operators
+      a += 1.5
+      b -= 0.7
+      c *= 1.001
+      d /= 1.0001
+      e %= 99999
+
+      -- Increment and decrement
+      a++
+      b--
+      c++
+      d--
+
+      -- Reset periodically to avoid overflow/underflow
+      if i % 1000 is 0 then
+         a = 1.0
+         b = 100.0
+         c = 1000.0
+         d = 10000.0
+         e = 50000.0
+      end
+
+      -- Mixed compound operations
+      a += b
+      b -= c * 0.001
+      c *= 1.0 + (d * 0.00001)
+      d /= 1.0 + (a * 0.0001)
+
+      -- String concatenation compound (..=)
+      local s = "test"
+      s ..= "a"
+      s ..= "b"
+      s ..= "c"
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Numeric Comparisons: equality, ordering, min/max chains
+
+@Test function MathNumericComparisons()
+   local a, b, c, d = 0, 0, 0, 0
+   local result = false
+   for i in {0..100000} do
+      local x = i * 1.1
+      local y = i * 1.2
+      local z = i * 0.9
+
+      -- Equality comparisons (using 'is' per Fluid convention)
+      result = (i % 10) is 0
+      result = x is y
+      result = (i & 0xFF) is 0
+
+      -- Inequality comparisons
+      result = x != y
+      result = i != 0
+
+      -- Ordering comparisons
+      result = x < y
+      result = x <= y
+      result = x > z
+      result = x >= z
+
+      -- Chained comparisons (evaluated left-to-right)
+      result = z < x and x < y
+      result = x >= z and x <= y
+
+      -- Conditional assignments based on comparisons
+      a = x < y and 1 or 0
+      b = x > z and x or z
+      c = (i % 2 is 0) and i or -i
+
+      -- Ternary operator
+      d = x < y ? x :> y
+      a = i % 2 is 0 ? i * 2 :> i * 3
+      b = x > 100 ? (x > 1000 ? 2 :> 1) :> 0
+   end
+end
+
+--=====================================================================================================================
+-- STRING OPERATIONS
+--=====================================================================================================================
+-- Goal: Get the length of strings of varying sizes
+
+@Test function StringGetLength()
+   local short_str  = "Hello"
+   local medium_str = "The quick brown fox jumps over the lazy dog."
+   local long_str   = string.rep("Lorem ipsum dolor sit amet, consectetur adipiscing elit. ", 20)
+
+   for i in {0..100000} do
+      local len1 = #short_str
+      local len2 = #medium_str
+      local len3 = #long_str
+
+      -- Also test string.len equivalent
+      local len4 = string.len(short_str)
+      local len5 = string.len(medium_str)
+      local len6 = string.len(long_str)
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Build a string by concatenating multiple parts
+
+@Test function StringConcatenateMultiple()
+   for i in {0..100000} do
+      -- Concatenate literals
+      local result = "Hello" .. " " .. "World" .. "!"
+
+      -- Concatenate with variables
+      local a, b, c = "foo", "bar", "baz"
+      result = a .. b .. c
+
+      -- Build a longer string from parts
+      local parts = "Part1" .. "-" .. "Part2" .. "-" .. "Part3" .. "-" .. "Part4"
+
+      -- Concatenate numbers converted to strings
+      result = "Value: " .. tostring(i) .. ", Next: " .. tostring(i + 1)
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Build a string incrementally using append operations
+
+@Test function StringBuildIncrementally()
+   for i in {0..10} do
+      local result = ""
+      for j in {0..100} do
+         result ..= "x"
+      end
+
+      -- Build with varying content
+      local sentence = ""
+      sentence ..= "The "
+      sentence ..= "quick "
+      sentence ..= "brown "
+      sentence ..= "fox "
+      sentence ..= "jumps."
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Format strings with embedded values (string interpolation)
+
+@Test function StringFormatWithValues()
+   local name = "Alice"
+   local age = 30
+   local score = 95.5
+
+   for i in {0..1000} do
+      -- Using string.format (printf-style)
+      local msg1 = string.format("Name: %s, Age: %d", name, age)
+      local msg2 = string.format("Score: %.2f out of 100", score)
+      local msg3 = string.format("Item %05d costs $%8.2f", i, i * 1.99)
+
+      -- Using Fluid string interpolation
+      local msg4 = f"Name: {name}, Age: {age}"
+      local msg5 = f"Iteration {i} of 100000"
+      local msg6 = f"Result: {i * 2 + 1}"
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Extract a substring from a larger text
+
+@Test function StringExtractSubstring()
+   local text = "The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs."
+
+   for i in {0..10000} do
+      -- Extract from beginning
+      local first_word = string.sub(text, 1, 3)
+
+      -- Extract from middle
+      local middle = string.sub(text, 16, 19)  -- "fox "
+
+      -- Extract from end
+      local last_part = string.sub(text, -10)
+
+      -- Extract with negative indices
+      local from_end = string.sub(text, -20, -11)
+
+      -- Variable position extraction
+      local pos = (i % 40) + 1
+      local chunk = string.sub(text, pos, pos + 10)
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Find the position of a substring within text
+
+@Test function StringFindSubstring()
+   local text = "The quick brown fox jumps over the lazy dog. The fox is quick."
+   local paragraph = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. " ..
+                     "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+
+   for i in {0..30000} do
+      -- Find word at beginning
+      local pos1 = string.find(text, "The")
+
+      -- Find word in middle
+      local pos2 = string.find(text, "fox")
+
+      -- Find word at end
+      local pos3 = string.find(text, "quick", 20)  -- Start search from position 20
+
+      -- Find substring that doesn't exist
+      local pos4 = string.find(text, "xyz")
+
+      -- Find in longer text
+      local pos5 = string.find(paragraph, "dolor")
+      local pos6 = string.find(paragraph, "magna")
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Replace words or patterns in a paragraph
+
+@Test function StringReplaceWords()
+   local text = "The quick brown fox jumps over the lazy dog."
+
+   for i in {0..100} do
+      -- Replace single occurrence
+      local result1 = string.gsub(text, "fox", "cat")
+
+      -- Replace all occurrences
+      local text2 = "the cat sat on the mat with the cat"
+      local result2 = string.gsub(text2, "cat", "dog")
+
+      -- Replace with pattern
+      local result3 = string.gsub(text, "%s+", "_")  -- Replace spaces with underscores
+
+      -- Replace multiple different words
+      local result4 = string.gsub(text, "quick", "slow")
+      result4 = string.gsub(result4, "brown", "white")
+      result4 = string.gsub(result4, "lazy", "energetic")
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Split text into words or tokens
+
+@Test function StringSplitIntoWords()
+   local sentence = "The quick brown fox jumps over the lazy dog"
+   local csv_data = "apple,banana,cherry,date,elderberry,fig,grape"
+
+   for i in {0..100} do
+      -- Split by spaces using gmatch
+      local words = {}
+      local idx = 0
+      for word in string.gmatch(sentence, "%S+") do
+         words[idx] = word
+         idx++
+      end
+
+      -- Split CSV by comma
+      local items = {}
+      idx = 0
+      for item in string.gmatch(csv_data, "[^,]+") do
+         items[idx] = item
+         idx++
+      end
+
+      -- Split by multiple delimiters
+      local mixed = "one;two,three:four"
+      local parts = {}
+      idx = 0
+      for part in string.gmatch(mixed, "[^;,:]+") do
+         parts[idx] = part
+         idx++
+      end
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Compare two strings for equality and ordering
+
+@Test function StringCompareStrings()
+   local str1 = "apple"
+   local str2 = "banana"
+   local str3 = "apple"
+   local str4 = "Apple"
+   local long1 = "The quick brown fox jumps over the lazy dog"
+   local long2 = "The quick brown fox jumps over the lazy cat"
+
+   for i in {0..20000} do
+      -- Equality comparison
+      local eq1 = str1 is str3      -- true
+      local eq2 = str1 is str2      -- false
+      local eq3 = str1 is str4      -- false (case sensitive)
+
+      -- Inequality
+      local neq1 = str1 != str2
+
+      -- Lexicographic ordering
+      local lt1 = str1 < str2       -- "apple" < "banana"
+      local gt1 = str2 > str1
+      local le1 = str1 <= str3
+      local ge1 = str1 >= str3
+
+      -- Compare longer strings
+      local eq_long = long1 is long2
+      local lt_long = long1 < long2
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Convert text to uppercase and lowercase
+
+@Test function StringChangeCase()
+   local mixed = "Hello World! This Is A Test."
+   local lower = "all lowercase text here"
+   local upper = "ALL UPPERCASE TEXT HERE"
+
+   for i in {0..40000} do
+      -- Convert to uppercase
+      local up1 = string.upper(mixed)
+      local up2 = string.upper(lower)
+
+      -- Convert to lowercase
+      local lo1 = string.lower(mixed)
+      local lo2 = string.lower(upper)
+
+      -- Round-trip conversion
+      local round = string.lower(string.upper(mixed))
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Remove whitespace from beginning and end of strings
+
+@Test function StringTrimWhitespace()
+   local padded = "   Hello World   "
+   local left_pad = "   Left padded"
+   local right_pad = "Right padded   "
+   local tabs = "\t\tTabbed content\t\t"
+   local mixed_ws = "  \t Mixed whitespace \n  "
+
+   for i in {0..1000} do
+      -- Trim both ends using pattern matching
+      local trimmed1 = string.match(padded, "^%s*(.-)%s*$")
+      local trimmed2 = string.match(left_pad, "^%s*(.-)%s*$")
+      local trimmed3 = string.match(right_pad, "^%s*(.-)%s*$")
+      local trimmed4 = string.match(tabs, "^%s*(.-)%s*$")
+      local trimmed5 = string.match(mixed_ws, "^%s*(.-)%s*$")
+
+      -- Trim left only
+      local ltrim = string.match(left_pad, "^%s*(.*)")
+
+      -- Trim right only
+      local rtrim = string.match(right_pad, "(.-)%s*$")
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Access individual characters in a string
+
+@Test function StringAccessCharacters()
+   local text = "Hello, World!"
+
+   for i in {0..100} do
+      -- Get character at specific position using string.sub
+      local char1 = string.sub(text, 1, 1)   -- 'H'
+      local char2 = string.sub(text, 7, 7)   -- ' '
+      local char3 = string.sub(text, -1, -1) -- '!'
+
+      -- Get character code (byte value)
+      local code1 = string.byte(text, 1)     -- 72 ('H')
+      local code2 = string.byte(text, 8)     -- 87 ('W')
+
+      -- Get multiple byte values
+      local codes = {string.byte(text, 1, 5)}
+
+      -- Create character from code
+      local chr = string.char(65)            -- 'A'
+      local str = string.char(72, 105, 33)   -- "Hi!"
+
+      -- Variable position access
+      local pos = (i % #text) + 1
+      local var_char = string.sub(text, pos, pos)
+      local var_code = string.byte(text, pos)
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Match patterns in text and extract captures
+
+@Test function StringMatchPatterns()
+   local email = "user@example.com"
+   local date = "2024-01-15"
+   local log_line = "[ERROR] 2024-01-15 10:30:45 - Connection failed"
+   local url = "https://www.example.com:8080/path/to/page?query=value"
+
+   for i in {0..1000} do
+      -- Simple pattern match
+      local matched = string.match(email, "@")
+
+      -- Extract with captures
+      local user, domain = string.match(email, "([^@]+)@(.+)")
+
+      -- Match date components
+      local year, month, day = string.match(date, "(%d+)-(%d+)-(%d+)")
+
+      -- Match log level
+      local level = string.match(log_line, "%[(%u+)%]")
+
+      -- Match timestamp
+      local timestamp = string.match(log_line, "(%d%d:%d%d:%d%d)")
+
+      -- Complex URL parsing
+      local protocol = string.match(url, "^(%w+)://")
+      local host = string.match(url, "://([^:/]+)")
+      local port = string.match(url, ":(%d+)/")
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Repeat a string multiple times
+
+@Test function StringRepeatString()
+   local char = "x"
+   local word = "abc"
+   local line = "-"
+
+   for i in {0..100000} do
+      -- Repeat single character
+      local repeated1 = string.rep(char, 10)
+      local repeated2 = string.rep(char, 100)
+
+      -- Repeat word
+      local repeated3 = string.rep(word, 5)
+      local repeated4 = string.rep(word, 20)
+
+      -- Build separator line
+      local separator = string.rep(line, 80)
+
+      -- Repeat with separator
+      local with_sep = string.rep("item", 5, ", ")
+
+      -- Variable repetition
+      local count = (i % 10) + 1
+      local var_rep = string.rep("*", count)
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Reverse a string
+
+@Test function StringReverseString()
+   local short = "Hello"
+   local medium = "The quick brown fox"
+   local long = "Pack my box with five dozen liquor jugs. The quick brown fox jumps over the lazy dog."
+
+   for i in {0..100000} do
+      -- Reverse strings of different lengths
+      local rev1 = string.reverse(short)
+      local rev2 = string.reverse(medium)
+      local rev3 = string.reverse(long)
+
+      -- Double reverse (should equal original)
+      local double_rev = string.reverse(string.reverse(medium))
+
+      -- Palindrome check pattern
+      local test = "racecar"
+      local is_palindrome = test is string.reverse(test)
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Check if a string starts or ends with a given prefix/suffix
+
+@Test function StringStartsEndsWith()
+   local filename = "document.txt"
+   local path = "/home/user/documents/file.pdf"
+   local url = "https://www.example.com/page"
+
+   for i in {0..1000} do
+      -- Check prefix using string.sub
+      local starts_with_doc = string.sub(filename, 1, 3) is "doc"
+      local starts_with_http = string.sub(url, 1, 5) is "https"
+      local starts_with_slash = string.sub(path, 1, 1) is "/"
+
+      -- Check suffix using string.sub with negative index
+      local ends_with_txt = string.sub(filename, -4) is ".txt"
+      local ends_with_pdf = string.sub(path, -4) is ".pdf"
+      local ends_with_com = string.sub(url, -4) is ".com"
+
+      -- Check using pattern match
+      local has_prefix = string.match(filename, "^doc") != nil
+      local has_suffix = string.match(filename, "%.txt$") != nil
+
+      -- Variable prefix/suffix checks
+      local extensions = {".txt", ".pdf", ".doc", ".csv"}
+      local ext = extensions[i % 4]
+      local chk = string.sub(filename, -#ext) is ext
+   end
+end
+
+--=====================================================================================================================
+-- ARRAY OPERATIONS
+--=====================================================================================================================
+-- Goal: Create arrays of different types with initial values
+
+@Test function ArrayCreateWithValues()
+   for i in {0..1000} do
+      -- Create integer arrays
+      local int_arr1 = array<int> { 1, 2, 3, 4, 5 }
+      local int_arr2 = array<int> { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 }
+
+      -- Create double arrays
+      local dbl_arr1 = array<double> { 1.1, 2.2, 3.3, 4.4, 5.5 }
+      local dbl_arr2 = array<double> { 3.14159, 2.71828, 1.41421, 1.73205 }
+
+      -- Create string arrays
+      local str_arr1 = array<string> { "apple", "banana", "cherry" }
+      local str_arr2 = array<string> { "one", "two", "three", "four", "five" }
+
+      -- Create sized arrays
+      local sized_int = array<int, 100>
+      local sized_dbl = array<double, 50>
+      local sized_str = array<string, 20>
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Read and write elements by index
+
+@Test function ArrayAccessByIndex()
+   local int_arr = array<int, 1000>
+   local dbl_arr = array<double, 1000>
+   local str_arr = array<string, 100>
+
+   -- Initialise arrays
+   for i = 0, 999 do
+      int_arr[i] = i
+      dbl_arr[i] = i * 1.5
+   end
+   for i = 0, 99 do
+      str_arr[i] = f"item_{i}"
+   end
+
+   for i in {0..1000} do
+      -- Read integer elements
+      local v1 = int_arr[0]
+      local v2 = int_arr[500]
+      local v3 = int_arr[999]
+
+      -- Read double elements
+      local d1 = dbl_arr[0]
+      local d2 = dbl_arr[500]
+      local d3 = dbl_arr[999]
+
+      -- Read string elements
+      local s1 = str_arr[0]
+      local s2 = str_arr[50]
+      local s3 = str_arr[99]
+
+      -- Write elements
+      local idx = i % 100
+      int_arr[idx] = i
+      dbl_arr[idx] = i * 2.5
+      str_arr[idx] = f"value_{i}"
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Add elements to the end of an array
+
+@Test function ArrayPushElements()
+   for i in {0..100} do
+      -- Push integers
+      local int_arr = array<int>
+      for j = 0, 99 do
+         int_arr:push(j * 10)
+      end
+
+      -- Push doubles
+      local dbl_arr = array<double>
+      for j = 0, 99 do
+         dbl_arr:push(j * 1.5)
+      end
+
+      -- Push strings
+      local str_arr = array<string>
+      for j = 0, 49 do
+         str_arr:push(f"item_{j}")
+      end
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Remove elements from the end of an array
+
+@Test function ArrayPopElements()
+   for i in {0..100} do
+      -- Pop integers
+      local int_arr = array<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }
+      for j = 0, 9 do
+         local val = int_arr:pop()
+      end
+
+      -- Pop doubles
+      local dbl_arr = array<double> { 1.1, 2.2, 3.3, 4.4, 5.5 }
+      for j = 0, 4 do
+         local val = dbl_arr:pop()
+      end
+
+      -- Pop strings
+      local str_arr = array<string> { "a", "b", "c", "d", "e" }
+      for j = 0, 4 do
+         local val = str_arr:pop()
+      end
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Find a value in an array
+
+@Test function ArrayFindValue()
+   local int_arr = array<int, 1000>
+   local dbl_arr = array<double, 1000>
+   local str_arr = array<string> { "apple", "banana", "cherry", "date", "elderberry",
+      "fig", "grape", "honeydew", "kiwi", "lemon" }
+
+   for i = 0, 999 do
+      int_arr[i] = i * 10
+      dbl_arr[i] = i * 1.5
+   end
+
+   for i in {0..1000} do
+      -- Find in integer array
+      local idx1 = int_arr:find(0)
+      local idx2 = int_arr:find(5000)
+      local idx3 = int_arr:find(9990)
+      local idx4 = int_arr:find(12345)  -- Not found
+
+      -- Find in double array
+      local idx5 = dbl_arr:find(0.0)
+      local idx6 = dbl_arr:find(750.0)
+      local idx7 = dbl_arr:find(999.999)  -- Not found
+
+      -- Find in string array
+      local idx8 = str_arr:find("apple")
+      local idx9 = str_arr:find("grape")
+      local idx10 = str_arr:find("mango")  -- Not found
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Check if an array contains a specific value
+
+@Test function ArrayContainsValue()
+   local int_arr = array<int> { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 }
+   local dbl_arr = array<double> { 1.5, 2.5, 3.5, 4.5, 5.5 }
+   local str_arr = array<string> { "red", "green", "blue", "yellow", "purple" }
+
+   for i in {0..1000} do
+      -- Check integer array
+      local has1 = int_arr:contains(50)
+      local has2 = int_arr:contains(100)
+      local has3 = int_arr:contains(55)  -- false
+
+      -- Check double array
+      local has4 = dbl_arr:contains(3.5)
+      local has5 = dbl_arr:contains(2.0)  -- false
+
+      -- Check string array
+      local has6 = str_arr:contains("blue")
+      local has7 = str_arr:contains("orange")  -- false
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Sort an array in ascending or descending order
+
+@Test function ArraySortElements()
+   for i in {0..100} do
+      -- Sort integers ascending
+      local int_arr = array<int> { 50, 30, 80, 10, 60, 40, 90, 20, 70, 100 }
+      int_arr:sort()
+
+      -- Sort integers descending
+      local int_arr2 = array<int> { 50, 30, 80, 10, 60, 40, 90, 20, 70, 100 }
+      int_arr2:sort(true)
+
+      -- Sort doubles
+      local dbl_arr = array<double> { 3.14, 1.41, 2.71, 1.73, 0.57 }
+      dbl_arr:sort()
+
+      -- Sort strings alphabetically
+      local str_arr = array<string> { "cherry", "apple", "banana", "date", "elderberry" }
+      str_arr:sort()
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Reverse the order of elements in an array
+
+@Test function ArrayReverseElements()
+   for i in {0..1000} do
+      -- Reverse integer array
+      local int_arr = array<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }
+      int_arr:reverse()
+
+      -- Reverse double array
+      local dbl_arr = array<double> { 1.1, 2.2, 3.3, 4.4, 5.5 }
+      dbl_arr:reverse()
+
+      -- Reverse string array
+      local str_arr = array<string> { "first", "second", "third", "fourth", "fifth" }
+      str_arr:reverse()
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Extract a portion of an array (slice)
+
+@Test function ArraySliceRange()
+   local int_arr = array<int> { 0, 10, 20, 30, 40, 50, 60, 70, 80, 90 }
+   local dbl_arr = array<double> { 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0 }
+   local str_arr = array<string> { "a", "b", "c", "d", "e", "f", "g", "h" }
+
+   for i in {0..1000} do
+      -- Slice integer arrays with different ranges
+      local slice1 = int_arr:slice({0..5})      -- First 5 elements
+      local slice2 = int_arr:slice({5..10})     -- Last 5 elements
+      local slice3 = int_arr:slice({2..8})      -- Middle portion
+      local slice4 = int_arr:slice({-3..-1})    -- Last 3 using negative indices
+
+      -- Slice double array
+      local slice5 = dbl_arr:slice({0..4})
+      local slice6 = dbl_arr:slice({2...5})     -- Inclusive range
+
+      -- Slice string array
+      local slice7 = str_arr:slice({1..4})
+      local slice8 = str_arr:slice({0..-1})     -- All elements
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Fill an array with a specific value
+
+@Test function ArrayFillWithValue()
+   for i in {0..1000} do
+      -- Fill entire integer array
+      local int_arr = array<int, 100>
+      int_arr:fill(42)
+
+      -- Fill portion of array with range
+      local int_arr2 = array<int, 100>
+      int_arr2:fill(0)
+      int_arr2:fill(99, {10..50})
+
+      -- Fill double array
+      local dbl_arr = array<double, 50>
+      dbl_arr:fill(3.14159)
+
+      -- Fill with stepped range
+      local int_arr3 = array<int, 100>
+      int_arr3:fill(0)
+      int_arr3:fill(1, range.new(0, 100, false, 2))  -- Every other element
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Copy data between arrays
+
+@Test function ArrayCopyData()
+   for i in {0..1000} do
+      -- Copy from table to integer array
+      local int_arr = array<int, 10>
+      local table_data = {10, 20, 30, 40, 50, 60, 70, 80, 90, 100}
+      int_arr:copy(table_data)
+
+      -- Copy from table to double array
+      local dbl_arr = array<double, 5>
+      local dbl_data = {1.1, 2.2, 3.3, 4.4, 5.5}
+      dbl_arr:copy(dbl_data)
+
+      -- Copy with destination offset
+      local int_arr2 = array<int, 10>
+      int_arr2:fill(0)
+      int_arr2:copy({100, 200, 300}, 3, 0, 3)
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Iterate over all elements in an array
+
+@Test function ArrayIterateElements()
+   local int_arr = array<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }
+   local dbl_arr = array<double> { 1.1, 2.2, 3.3, 4.4, 5.5 }
+   local str_arr = array<string> { "apple", "banana", "cherry", "date", "elderberry" }
+
+   for i in {0..1000} do
+      -- Iterate integers with index and value
+      local sum = 0
+      for idx, val in int_arr do
+         sum += val
+      end
+
+      -- Iterate doubles using values()
+      local dbl_sum = 0.0
+      for val in values(dbl_arr) do
+         dbl_sum += val
+      end
+
+      -- Iterate strings with ipairs
+      local concat = ""
+      for _, s in ipairs(str_arr) do
+         concat ..= s
+      end
+
+      -- Iterate with pairs
+      local count = 0
+      for k, v in pairs(int_arr) do
+         count++
+      end
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Join array elements into a single string
+
+@Test function ArrayJoinToString()
+   local int_arr = array<int> { 1, 2, 3, 4, 5 }
+   local dbl_arr = array<double> { 1.5, 2.5, 3.5 }
+   local str_arr = array<string> { "apple", "banana", "cherry" }
+
+   for i in {0..1000} do
+      -- Join integers with different separators
+      local joined1 = int_arr:join("-")
+      local joined2 = int_arr:join(", ")
+      local joined3 = int_arr:join("")
+
+      -- Join doubles
+      local joined4 = dbl_arr:join(" | ")
+
+      -- Join strings
+      local joined5 = str_arr:join(" ")
+      local joined6 = str_arr:join(", ")
+      local joined7 = str_arr:join("")
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Concatenate array elements with formatting
+
+@Test function ArrayConcatFormatted()
+   local int_arr = array<int> { 1, 2, 3, 4, 5 }
+   local dbl_arr = array<double> { 3.14159, 2.71828, 1.41421 }
+   local str_arr = array<string> { "one", "two", "three" }
+
+   for i in {0..1000} do
+      -- Concat integers with format
+      local result1 = int_arr:concat("%d", ", ")
+      local result2 = int_arr:concat("%03d", "-")
+
+      -- Concat doubles with precision
+      local result3 = dbl_arr:concat("%.2f", ", ")
+      local result4 = dbl_arr:concat("%.4f", " | ")
+
+      -- Concat strings
+      local result5 = str_arr:concat("%s", " ")
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Get the first and last elements of an array
+
+@Test function ArrayFirstLastAccess()
+   local int_arr = array<int> { 10, 20, 30, 40, 50 }
+   local dbl_arr = array<double> { 1.1, 2.2, 3.3, 4.4, 5.5 }
+   local str_arr = array<string> { "alpha", "beta", "gamma", "delta" }
+
+   for i in {0..1000} do
+      -- Get first element
+      local first_int = int_arr:first()
+      local first_dbl = dbl_arr:first()
+      local first_str = str_arr:first()
+
+      -- Get last element
+      local last_int = int_arr:last()
+      local last_dbl = dbl_arr:last()
+      local last_str = str_arr:last()
+
+      -- Compare with direct indexing
+      local first_direct = int_arr[0]
+      local last_direct = int_arr[#int_arr - 1]
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Get the length of an array
+
+@Test function ArrayGetLength()
+   local empty = array<int>
+   local small = array<int> { 1, 2, 3 }
+   local medium = array<int, 100>
+   local large = array<int, 1000>
+   local str_arr = array<string> { "a", "b", "c", "d", "e" }
+
+   -- Fill the sized arrays
+   for i = 0, 99 do medium[i] = i end
+   for i = 0, 999 do large[i] = i end
+
+   for i in {0..1000} do
+      -- Get lengths
+      local len1 = #empty
+      local len2 = #small
+      local len3 = #medium
+      local len4 = #large
+      local len5 = #str_arr
+
+      -- Use length in calculations
+      local total = len1 + len2 + len3 + len4 + len5
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Convert array to a Lua table
+
+@Test function ArrayConvertToTable()
+   local int_arr = array<int> { 10, 20, 30, 40, 50 }
+   local dbl_arr = array<double> { 1.5, 2.5, 3.5, 4.5, 5.5 }
+   local str_arr = array<string> { "one", "two", "three" }
+
+   for i in {0..1000} do
+      -- Convert to tables
+      local tbl1 = int_arr:table()
+      local tbl2 = dbl_arr:table()
+      local tbl3 = str_arr:table()
+
+      -- Access converted table elements
+      local v1 = tbl1[0]
+      local v2 = tbl2[2]
+      local v3 = tbl3[1]
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Build and process a large array
+
+@Test function ArrayLargeOperations()
+   for i in {0..10} do
+      -- Create and fill large array
+      local arr = array<int, 10000>
+      for j = 0, 9999 do
+         arr[j] = j
+      end
+
+      -- Find values
+      local idx1 = arr:find(5000)
+      local idx2 = arr:find(9999)
+
+      -- Check contains
+      local has1 = arr:contains(5000)
+      local has2 = arr:contains(99999)
+
+      -- Slice
+      local slice = arr:slice({1000..2000})
+
+      -- Iterate and sum
+      local sum = 0
+      for _, v in arr do
+         sum += v
+      end
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Perform stack operations (push/pop pattern)
+
+@Test function ArrayStackOperations()
+   for i in {0..100} do
+      local stack = array<int>
+
+      -- Push 100 items
+      for j = 0, 99 do
+         stack:push(j)
+      end
+
+      -- Pop all items
+      local sum = 0
+      while #stack > 0 do
+         sum += stack:pop()
+      end
+
+      -- Mixed push/pop operations
+      local mixed = array<string>
+      mixed:push("first")
+      mixed:push("second")
+      local top = mixed:pop()
+      mixed:push("third")
+      mixed:push("fourth")
+      top = mixed:pop()
+      top = mixed:pop()
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Goal: Use arrays as queues (FIFO pattern simulation)
+
+@Test function ArrayQueuePattern()
+   for i in {0..100} do
+      local queue = array<int>
+
+      -- Enqueue items
+      for j = 0, 49 do
+         queue:push(j)
+      end
+
+      -- De-queue by slicing (simulating queue behaviour)
+      while #queue > 0 do
+         local front = queue:first()
+         queue:remove(0)
+      end
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+function logMessage(message)
+   print(message)
+end
+
+function saveMessage(message:any)
+   if type(message) is 'string' then
+      logMessage(message)
+      glLogFile:write(message .. '\n')
+   elseif type(message) is 'array' then
+      for s in values(message) do
+         logMessage(s)
+         glLogFile:write(s .. '\n')
+      end
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+   do
+      local tm = obj.new('time')
+      tm.acQuery()
+
+      local git_info = git.query(glPath)
+
+      saveMessage('================================================================================')
+      saveMessage(string.format('%04d-%02d-%02d %02d:%02d:%02d', tm.year, tm.month, tm.day, tm.hour, tm.minute, tm.second) .. '\n')
+      saveMessage(f'Git branch: {git_info.branch} / {git_info.commit}')
+      saveMessage('')
+   end
+
+   local anno = debug.anno.list()
+
+   local duration = tonumber(arg('duration',2))
+   local warmup = tonumber(arg('warmup',10))
+
+   local test_match = arg('test')
+   if test_match then
+      global rx_test = regex.new(test_match)
+      logMessage(f'Filtering benchmarks with pattern: {test_match}')
+   end
+
+   all_results = array<table>
+   for func, entry in pairs(anno) do
+      local results
+
+      if rx_test then
+         if not rx_test.match(tostring(func)) then
+            --logMessage(f'Skipping {func}')
+            continue
+         end
+      end
+
+      try
+         results = bmark.run({ duration=duration, warmupCalls=warmup, feedbackRate=100 }, nil, func)
+      except ex
+         logMessage(f'Error in benchmark {func}: {ex.message}')
+      success
+         saveMessage(string.format('%s() Calls Per Second: %d; Total Calls: %d, Fastest: %.3f ms', tostring(func), results.callsPerSecond, results.benchmarkCalls, results.stats.min))
+         if results.memoryLeakRate/results.callsPerSecond > 512 then
+            saveMessage(string.format('Leak Rate:  %d bytes per call', results.memoryLeakRate / results.callsPerSecond))
+         end
+         all_results:push(results)
+      end
+   end
