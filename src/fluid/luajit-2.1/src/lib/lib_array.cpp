@@ -1584,6 +1584,40 @@ static int32_t find_object_in_array(GCarray *Arr, OBJECTID SearchUid, int32_t St
 }
 
 //********************************************************************************************************************
+// String search by value for stepped ranges.
+// Returns index if found, -1 if not found.
+
+static int32_t find_string_in_array(GCarray *Arr, GCstr *SearchStr, int32_t Start, int32_t Stop, int32_t Step)
+{
+   auto refs = Arr->get<GCRef>();
+   if (Step > 0) {
+      for (int32_t i = Start; i <= Stop; i += Step) {
+         GCRef ref = refs[i];
+         if (gcref(ref)) {
+            GCstr *elem = gco_to_string(gcref(ref));
+            if (elem->len IS SearchStr->len and
+                memcmp(strdata(elem), strdata(SearchStr), elem->len) IS 0) {
+               return i;
+            }
+         }
+      }
+   }
+   else {
+      for (int32_t i = Start; i >= Stop; i += Step) {
+         GCRef ref = refs[i];
+         if (gcref(ref)) {
+            GCstr *elem = gco_to_string(gcref(ref));
+            if (elem->len IS SearchStr->len and
+                memcmp(strdata(elem), strdata(SearchStr), elem->len) IS 0) {
+               return i;
+            }
+         }
+      }
+   }
+   return -1;
+}
+
+//********************************************************************************************************************
 // Usage: array.find(arr, value [, start]) or array.find(arr, value, {range})
 //
 // Searches for a value in the array.
@@ -1678,8 +1712,84 @@ LJLIB_CF(array_find)
       lua_pushnil(L);
       return 1;
    }
+   else if (arr->elemtype IS AET::STR_GC) { // Handle string arrays (STR_GC)
+      GCstr *search_str = lj_lib_checkstr(L, 2);
 
-   lua_Number value = lj_lib_checknum(L, 2);
+      // Check if third argument is a range
+      fluid_range *r = check_range(L, 3);
+      if (r) {
+         auto len = int32_t(arr->len);
+         int32_t start = r->start;
+         int32_t stop = r->stop;
+         int32_t step = r->step;
+
+         // Handle negative indices
+         bool use_inclusive = r->inclusive;
+         if (start < 0 or stop < 0) {
+            use_inclusive = true;
+            if (start < 0) start += len;
+            if (stop < 0) stop += len;
+         }
+
+         // Determine iteration direction
+         bool forward = (start <= stop);
+         if (step IS 0) step = forward ? 1 : -1;
+         if (forward and step < 0) step = 1;
+         if (not forward and step > 0) step = -1;
+
+         // Calculate effective stop for exclusive ranges
+         int32_t effective_stop = stop;
+         if (not use_inclusive) {
+            if (forward) effective_stop = stop - 1;
+            else effective_stop = stop + 1;
+         }
+
+         // Bounds clipping
+         if (forward) {
+            if (start < 0) start = 0;
+            if (effective_stop >= len) effective_stop = len - 1;
+         }
+         else {
+            if (start >= len) start = len - 1;
+            if (effective_stop < 0) effective_stop = 0;
+         }
+
+         // Check for empty/invalid ranges
+         if (len IS 0 or (forward and start > effective_stop) or (not forward and start < effective_stop)) {
+            lua_pushnil(L);
+            return 1;
+         }
+
+         int32_t result = find_string_in_array(arr, search_str, start, effective_stop, step);
+         if (result >= 0) {
+            setintV(L->top++, result);
+            return 1;
+         }
+         lua_pushnil(L);
+         return 1;
+      }
+
+      auto start = lj_lib_optint(L, 3, 0);
+
+      if (start < 0) start = 0;
+      if (MSize(start) >= arr->len) {
+         lua_pushnil(L);
+         return 1;
+      }
+
+      int32_t result = find_string_in_array(arr, search_str, start, int32_t(arr->len - 1), 1);
+      if (result >= 0) {
+         setintV(L->top++, result);
+         return 1;
+      }
+
+      lua_pushnil(L);
+      return 1;
+   }
+
+   int ok;
+   lua_Number value = lua_tonumberx(L, 2, &ok);
+   if (not ok) luaL_error(L, "Unsupported value type '%s'", lua_typename(L, lua_type(L, 2)));
 
    // Check if third argument is a range
    fluid_range *r = check_range(L, 3);
@@ -1934,6 +2044,23 @@ LJLIB_CF(array_sort)
       case AET::INT64: quicksort(arr->get<int64_t>(), 0, int32_t(arr->len - 1), descending); break;
       case AET::FLOAT: quicksort(arr->get<float>(), 0, int32_t(arr->len - 1), descending); break;
       case AET::DOUBLE: quicksort(arr->get<double>(), 0, int32_t(arr->len - 1), descending); break;
+      case AET::STR_GC: {
+         GCRef *refs = arr->get<GCRef>();
+         std::sort(refs, refs + arr->len, [descending](const GCRef &a, const GCRef &b) {
+            GCstr *sa = gco_to_string(gcref(a));
+            GCstr *sb = gco_to_string(gcref(b));
+            // Handle nil/null references
+            if (not sa and not sb) return false;
+            if (not sa) return not descending;  // nil sorts before non-nil
+            if (not sb) return descending;
+            // Compare by content using strncmp for lexicographic ordering
+            MSize min_len = (sa->len < sb->len) ? sa->len : sb->len;
+            int cmp = memcmp(strdata(sa), strdata(sb), min_len);
+            if (cmp IS 0) cmp = (sa->len < sb->len) ? -1 : (sa->len > sb->len) ? 1 : 0;
+            return descending ? (cmp > 0) : (cmp < 0);
+         });
+         break;
+      }
       case AET::ANY: {
          TValue *data = arr->get<TValue>();
          // Use std::sort with custom comparator for type-grouped sorting
