@@ -167,7 +167,7 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
             TValue *slots = (TValue*)storage;
             for (MSize i = 0; i < Length; i++) setnilV(&slots[i]);
          }
-         else if (int(Type) >= int(AET::VULNERABLE)) arr->zero();
+         else std::memset(storage, 0, byte_size);
       }
       return arr;
    }

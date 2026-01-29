@@ -1049,10 +1049,8 @@ static ERR register_interfaces(objScript *Self)
    lua_register(prv->Lua, "arg", fcmd_arg);
    lua_register(prv->Lua, "loadFile", fcmd_loadfile);
    lua_register(prv->Lua, "exec", fcmd_exec);
-   lua_register(prv->Lua, "getExecutionState", fcmd_get_execution_state);
    lua_register(prv->Lua, "print", fcmd_print);
    lua_register(prv->Lua, "include", fcmd_include);
-   lua_register(prv->Lua, "require", fcmd_require);
    lua_register(prv->Lua, "msg", fcmd_msg);
    lua_register(prv->Lua, "subscribeEvent", fcmd_subscribe_event);
    lua_register(prv->Lua, "unsubscribeEvent", fcmd_unsubscribe_event);
