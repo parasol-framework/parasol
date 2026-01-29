@@ -68,8 +68,9 @@ bmark.run = function(Options:table, Feedback:func, Callback:func):table
    Options.feedbackRate ??= 100
    Options.duration ?= 3
    Options.showProgress ?= false
-   Options.maxCalls ?= 1000000
+   Options.maxCalls ?= 10000
    Options.hotLoop ?= 5 -- Low threshold to trigger JIT sooner
+
    assert(Options.duration > 0 and Options.duration <= 300, 'Options.duration must be between 0 and 300.')
    assert(Options.warmupCalls >= 0 and Options.warmupCalls <= 1000, 'Options.warmupCalls be between 0 and 1000.')
    assert(Options.feedbackRate > 0, 'Options.feedbackRate must be greater than zero.')
@@ -91,9 +92,11 @@ bmark.run = function(Options:table, Feedback:func, Callback:func):table
       Feedback(f'Warning: Failed to set high process priority: {ex.message}')
    success
       Feedback('Process priority set to HIGH for benchmarking')
-      defer
-         task.priority = restore_priority
-      end
+   end
+
+   defer
+      msg('Restore task priority')
+      task.priority = restore_priority
    end
 
    -- Set CPU affinity to cores 1-2 (avoid core 0 which handles system interrupts)
@@ -107,12 +110,15 @@ bmark.run = function(Options:table, Feedback:func, Callback:func):table
       Feedback(f'Warning: Failed to set CPU affinity: {ex.message}')
    success
       Feedback(f'CPU affinity set to mask {aff_mask} for consistent benchmarking')
-      defer
-         task.affinityMask = restore_affinity
-      end
+   end
+
+   defer
+      msg('Restore affinity mask')
+      task.affinityMask = restore_affinity
    end
 
    processing.stopCollector()
+
    defer
       processing.startCollector()
    end
@@ -121,21 +127,14 @@ bmark.run = function(Options:table, Feedback:func, Callback:func):table
 
    processing.sleep(0.01) -- Consume messages
 
-   -- Running statistics for exact mean/stddev/min/max (O(1) memory)
-   local stats_n      = 0
-   local stats_sum    = 0.0
-   local stats_sum_sq = 0.0
-   local stats_min    = math.huge
-   local stats_max    = -math.huge
-
-   local RESERVOIR_SIZE <const>     = Options.reservoirSize ?? 10000
+   local RESERVOIR_SIZE <const>     = Options.reservoirSize ?? Options.maxCalls
    local MAX_MEMORY_SAMPLES <const> = 10000
 
-   local reservoir <const> = array<double,RESERVOIR_SIZE>
+   local reservoir <const> = array<double>
    local mem_usage <const> = array<int64,MAX_MEMORY_SAMPLES>
 
-   local start_time   = mSys.PreciseTime()
-   local end_time     = start_time + (Options.duration * 1000000)
+   local start_time = mSys.PreciseTime()
+   local end_time   = start_time + (Options.duration * 1000000)
    local feedback_mem_adjust = 0
    local call_limit = Options.maxCalls + Options.warmupCalls
 
@@ -144,6 +143,7 @@ bmark.run = function(Options:table, Feedback:func, Callback:func):table
    results.initialMemory = mSys.GetResource(RES_MEMORY_USAGE)
    results.peakMemory    = results.initialMemory
 
+   msg(f'Starting benchmark loop for {Callback}()')
    while mSys.PreciseTime() < end_time and results.totalCalls < call_limit do
       op_start = mSys.PreciseTime()
       Callback()
@@ -152,8 +152,8 @@ bmark.run = function(Options:table, Feedback:func, Callback:func):table
       processing.collect()
 
       results.totalCalls++
-      callTime = (op_end - op_start) / 1000 -- Convert to milliseconds
-      callsPerSecond = 1000000 / callTime
+      callTime = (op_end - op_start) / 1000.0 -- Convert to milliseconds
+      callsPerSecond = 1000000.0 / callTime
 
       -- Determine if this is a warmup cycle or benchmark cycle
       if results.warmupCount < Options.warmupCalls then
@@ -170,21 +170,10 @@ bmark.run = function(Options:table, Feedback:func, Callback:func):table
             feedback_mem_adjust += mem_usage - results.initialMemory
          end
       else -- This is a benchmark call, include in statistics
-         -- Update running statistics (exact)
-         stats_n++
-         stats_sum += callTime
-         stats_sum_sq += callTime * callTime
-         if callTime < stats_min then stats_min = callTime end
-         if callTime > stats_max then stats_max = callTime end
-
-         -- Reservoir sampling (Algorithm R) for percentile estimation
          if #reservoir < RESERVOIR_SIZE then
             reservoir:push(callTime)
          else
-            local j = math.random(0, stats_n - 1)
-            if j < RESERVOIR_SIZE then
-               reservoir[j] = callTime
-            end
+            break
          end
       end
 
@@ -223,18 +212,11 @@ bmark.run = function(Options:table, Feedback:func, Callback:func):table
    results.totalMemoryGrowth = results.finalMemory - results.initialMemory
    results.totalTime         = (mSys.PreciseTime() - start_time) / 1000000
    results.benchmarkTime     = (mSys.PreciseTime() - benchmarkStartTime) / 1000000
-   results.benchmarkCalls    = stats_n
+   results.benchmarkCalls    = #reservoir
    results.callsPerSecond    = results.benchmarkCalls / results.benchmarkTime
 
    -- Pass streaming statistics to stats function
-   results.stats = bmark.stats({
-      n         = stats_n,
-      sum       = stats_sum,
-      sumSq     = stats_sum_sq,
-      min       = stats_min,
-      max       = stats_max,
-      reservoir = reservoir
-   })
+   results.stats = bmark.stats(reservoir)
 
    -- Calculate memory growth pattern
    results.memoryLeakRate = 0
@@ -245,86 +227,60 @@ bmark.run = function(Options:table, Feedback:func, Callback:func):table
    return results
 end
 
--- Returns statistical information from either:
---   1. An array<double> of values (legacy, full data)
---   2. A table with streaming stats: { n, sum, sumSq, min, max, reservoir }
--- The streaming format uses O(1) memory via running statistics for exact mean/stddev
--- and reservoir sampling for approximate percentiles.
+----------------------------------------------------------------------------------------------------------------------
 
 bmark.stats = function(Values:any):table
-   -- Detect input format
-   local is_streaming = type(Values) is 'table' and Values.reservoir != nil
-
-   local n, mean, stddev, min_val, max_val
+   local n, mean, stddev, min_val, max_val, sample_n
    local sorted_sample  -- For percentile calculations
 
-   if is_streaming then
-      -- Streaming statistics format
-      n = Values.n
-      if n is 0 then
-         return { min = 0, max = 0, median = 0, p95 = 0, p99 = 0, stddev = 0, mean = 0, n = 0 }
-      end
+   msg(f'Received {#Values} values.')
 
-      -- Exact statistics from running totals
-      mean = Values.sum / n
-      min_val = Values.min
-      max_val = Values.max
-
-      -- Variance using Welford's online algorithm formula: Var = (sumSq - sum²/n) / n
-      local variance = (Values.sumSq - (Values.sum * Values.sum) / n) / n
-      if variance < 0 then variance = 0 end  -- Handle floating-point errors
-      stddev = math.sqrt(variance)
-
-      -- Sort reservoir for percentile calculations
-      sorted_sample = Values.reservoir:table()
-      table.sort(sorted_sample)
-   else
-      -- Legacy array format (full data)
-      n = #Values
-      if n is 0 then
-         return { min = 0, max = 0, median = 0, p95 = 0, p99 = 0, stddev = 0, mean = 0, n = 0 }
-      end
-
-      -- Sort values for percentile calculations
-      sorted_sample = {}
-      for i, value in ipairs(Values) do
-         sorted_sample[i] = value
-      end
-      table.sort(sorted_sample)
-
-      -- Min and Max from sorted data
-      min_val = sorted_sample[0]
-      max_val = sorted_sample[#sorted_sample - 1]
-
-      -- Calculate mean
-      local sum = 0
-      for value in values(Values) do
-         sum += value
-      end
-      mean = sum / n
-
-      -- Calculate stddev
-      local variance = 0
-      for value in values(Values) do
-         variance += (value - mean) ^ 2
-      end
-      variance /= n
-      stddev = math.sqrt(variance)
+   n = #Values
+   if n is 0 then
+      return { min = 0, max = 0, median = 0, p95 = 0, p99 = 0, stddev = 0, mean = 0, n = 0 }
    end
 
-   -- Percentile calculation from sorted sample
-   local function getPercentile(SortedValues:array, Percentile:num):num
+   -- Sort values for percentile calculations
+   sorted_sample = {}
+   for value in values(Values) do
+      if value?? then table.insert(sorted_sample, value) end
+   end
+   table.sort(sorted_sample)
+
+   -- Discard top 20% of outliers for min/max calculations
+   sample_n = math.floor(#sorted_sample * 0.8)
+
+   -- Min and Max from sorted data
+   min_val = sorted_sample[0]
+   max_val = sorted_sample[sample_n - 1]
+
+   -- Calculate mean
+   local sum = 0
+   for value in values(Values) do
+      sum += value
+   end
+   mean = sum / n
+
+   -- Calculate stddev
+   local variance = 0
+   for value in values(Values) do
+      variance += (value - mean) ^ 2
+   end
+   variance /= n
+   stddev = math.sqrt(variance)
+
+   -- Percentile calculation from sorted sample (inversed since the lower values are better)
+   function getPercentile(SortedValues:array, Percentile:num):num
       local sample_n = #SortedValues
       if sample_n is 0 then return 0 end
       local index = math.ceil(Percentile * sample_n / 100) - 1
       if index < 0 then index = 0 end
       if index > sample_n - 1 then index = sample_n - 1 end
-      return SortedValues[index]
+      return SortedValues[sample_n-index]
    end
 
    -- Median
    local median
-   local sample_n = #sorted_sample
    if sample_n % 2 is 0 then
       median = (sorted_sample[sample_n/2 - 1] + sorted_sample[sample_n/2]) / 2
    else
@@ -349,7 +305,7 @@ bmark.stats = function(Values:any):table
    return {
       min = min_val, max = max_val, median = median, p95 = p95, p99 = p99,
       stddev = stddev, mean = mean, ci95 = ci95, n = n,
-      sampleSize = sample_n  -- Include sample size for transparency
+      sampleSize = sample_n
    }
 end
 
@@ -417,7 +373,7 @@ bmark.removeOutliers = function(Values:array, Multiplier:num):table
    if n < 4 then
       return {
          values = Values,
-         outliers = {},
+         outliers = array<double>,
          removed = 0,
          q1 = 0,
          q3 = 0,

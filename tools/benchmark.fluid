@@ -10,10 +10,11 @@ Parameters:
 
    import 'benchmark'
    import 'git'
+   import 'json'
 
    global glSelf = obj.find('self')
    global glPath = glSelf.workingPath
-   global glLogFile = io.open(glPath .. 'benchmark.log', 'a')
+   global glLogFile = 'user:benchmark.log'
 
 ----------------------------------------------------------------------------------------------------------------------
 -- MATHEMATICAL OPERATIONS
@@ -102,12 +103,11 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Math Library Functions: trigonometric, exponential, logarithmic, rounding, random
 
-@Test function MathLibraryFunctions()
+@Test function MathTrigFunctions()
    local a, b, c, d = 0.0, 0.0, 0.0, 0.0
    for i in {0..100000} do
       local x = i * 0.001  -- Scale to reasonable range
 
-      -- Trigonometric functions
       a = math.sin(x)
       b = math.cos(x)
       c = math.tan(x % 1.5)  -- Avoid asymptotes
@@ -115,13 +115,26 @@ end
       a = math.acos(b)
       b = math.atan(c)
       c = math.atan2(a, b)
+   end
+end
 
-      -- Exponential and logarithmic
+@Test function MathExpLogFunctions()
+   local a, b, c, d = 0.0, 0.0, 0.0, 0.0
+   for i in {0..100000} do
+      local x = i * 0.001  -- Scale to reasonable range
+
       d = math.exp(x % 10)   -- Limit to avoid overflow
       a = math.log(i + 1)
       b = math.log10(i + 1)
       c = math.pow(2, x % 20)
       d = math.sqrt(i + 1)
+   end
+end
+
+@Test function MathRoundingFunctions()
+   local a, b, c, d = 0.0, 0.0, 0.0, 0.0
+   for i in {0..300000} do
+      local x = (i * 0.1) % 100.0  -- Scale to reasonable range
 
       -- Rounding functions
       a = math.floor(x * 100)
@@ -129,11 +142,6 @@ end
       c = math.abs(x - 50)
       d = math.min(a, b, c)
       a = math.max(a, b, c)
-
-      -- Random number generation
-      b = math.random()
-      c = math.random(100)
-      d = math.random(1, 1000)
    end
 end
 
@@ -231,15 +239,10 @@ end
    local medium_str = "The quick brown fox jumps over the lazy dog."
    local long_str   = string.rep("Lorem ipsum dolor sit amet, consectetur adipiscing elit. ", 20)
 
-   for i in {0..50000} do
+   for i in {0..100000} do
       local len1 = #short_str
       local len2 = #medium_str
       local len3 = #long_str
-
-      -- Also test string.len equivalent
-      local len4 = string.len(short_str)
-      local len5 = string.len(medium_str)
-      local len6 = string.len(long_str)
    end
 end
 
@@ -286,18 +289,23 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Goal: Format strings with embedded values (string interpolation)
 
-@Test function StringFormatWithValues()
+@Test function StringFormatting()
    local name = "Alice"
    local age = 30
    local score = 95.5
 
    for i in {0..1000} do
-      -- Using string.format (printf-style)
       local msg1 = string.format("Name: %s, Age: %d", name, age)
       local msg2 = string.format("Score: %.2f out of 100", score)
       local msg3 = string.format("Item %05d costs $%8.2f", i, i * 1.99)
+   end
+end
 
-      -- Using Fluid string interpolation
+@Test function StringInterp()
+   local name = "Alice"
+   local age = 30
+
+   for i in {0..10000} do
       local msg4 = f"Name: {name}, Age: {age}"
       local msg5 = f"Iteration {i} of 100000"
       local msg6 = f"Result: {i * 2 + 1}"
@@ -645,88 +653,124 @@ end
 -- Goal: Create arrays of different types with initial values
 
 @Test function ArrayCreateWithValues()
-   for i in {0..1000} do
-      -- Create integer arrays
+   for i in {0..10000} do
       local int_arr1 = array<int> { 1, 2, 3, 4, 5 }
       local int_arr2 = array<int> { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 }
 
-      -- Create double arrays
       local dbl_arr1 = array<double> { 1.1, 2.2, 3.3, 4.4, 5.5 }
       local dbl_arr2 = array<double> { 3.14159, 2.71828, 1.41421, 1.73205 }
 
-      -- Create string arrays
       local str_arr1 = array<string> { "apple", "banana", "cherry" }
       local str_arr2 = array<string> { "one", "two", "three", "four", "five" }
+   end
+end
 
-      -- Create sized arrays
-      local sized_int = array<int, 100>
-      local sized_dbl = array<double, 50>
-      local sized_str = array<string, 20>
+-- Compare with table performance
+
+@Test function TableCreateWithValues()
+   for i in {0..10000} do
+      local int_arr1 = { 1, 2, 3, 4, 5 }
+      local int_arr2 = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 }
+
+      local dbl_arr1 = { 1.1, 2.2, 3.3, 4.4, 5.5 }
+      local dbl_arr2 = { 3.14159, 2.71828, 1.41421, 1.73205 }
+
+      local str_arr1 = { "apple", "banana", "cherry" }
+      local str_arr2 = { "one", "two", "three", "four", "five" }
    end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Goal: Read and write elements by index
 
+-- Initialise arrays
+
+local glIntArray = array<int, 1000>
+local glStrArray = array<string, 100>
+local glIntTable = { }
+local glStrTable = { }
+
+for i = 0, 999 do
+   glIntArray[i] = i
+   table.insert(glIntTable, i)
+end
+
+for i = 0, 99 do
+   glStrArray[i] = f"item_{i}"
+   table.insert(glStrTable, f"item_{i}")
+end
+
 @Test function ArrayAccessByIndex()
-   local int_arr = array<int, 1000>
-   local dbl_arr = array<double, 1000>
-   local str_arr = array<string, 100>
+   for i in {0..5000} do
+      local v1 = glIntArray[0]
+      local v2 = glIntArray[500]
+      local v3 = glIntArray[999]
 
-   -- Initialise arrays
-   for i = 0, 999 do
-      int_arr[i] = i
-      dbl_arr[i] = i * 1.5
-   end
-   for i = 0, 99 do
-      str_arr[i] = f"item_{i}"
-   end
-
-   for i in {0..1000} do
-      -- Read integer elements
-      local v1 = int_arr[0]
-      local v2 = int_arr[500]
-      local v3 = int_arr[999]
-
-      -- Read double elements
-      local d1 = dbl_arr[0]
-      local d2 = dbl_arr[500]
-      local d3 = dbl_arr[999]
-
-      -- Read string elements
-      local s1 = str_arr[0]
-      local s2 = str_arr[50]
-      local s3 = str_arr[99]
+      local s1 = glStrArray[0]
+      local s2 = glStrArray[50]
+      local s3 = glStrArray[99]
 
       -- Write elements
       local idx = i % 100
-      int_arr[idx] = i
-      dbl_arr[idx] = i * 2.5
-      str_arr[idx] = f"value_{i}"
+      glIntArray[idx] = i
+      glStrArray[idx] = f"value_{i}"
+   end
+end
+
+@Test function TableAccessByIndex()
+   for i in {0..5000} do
+      local v1 = glIntTable[0]
+      local v2 = glIntTable[500]
+      local v3 = glIntTable[999]
+
+      local s1 = glStrTable[0]
+      local s2 = glStrTable[50]
+      local s3 = glStrTable[99]
+
+      -- Write elements
+      local idx = i % 100
+      glIntTable[idx] = i
+      glStrTable[idx] = f"value_{i}"
    end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Goal: Add elements to the end of an array
+-- Goal: Add elements to the end of an array.  Directly comparable to the table equivalent
 
 @Test function ArrayPushElements()
    for i in {0..100} do
-      -- Push integers
       local int_arr = array<int>
       for j = 0, 99 do
          int_arr:push(j * 10)
       end
 
-      -- Push doubles
       local dbl_arr = array<double>
       for j = 0, 99 do
          dbl_arr:push(j * 1.5)
       end
 
-      -- Push strings
       local str_arr = array<string>
       for j = 0, 49 do
          str_arr:push(f"item_{j}")
+      end
+   end
+end
+
+@Test function TablePushElements()
+   for i in {0..100} do
+      local int_arr = {}
+      for j = 0, 99 do
+         table.insert(int_arr, j * 10)
+      end
+
+      local dbl_arr = {}
+      for j = 0, 99 do
+         table.insert(dbl_arr, j * 1.5)
+      end
+
+      local str_arr = {}
+      for j = 0, 49 do
+         table.insert(str_arr, f"item_{j}")
       end
    end
 end
@@ -735,7 +779,7 @@ end
 -- Goal: Remove elements from the end of an array
 
 @Test function ArrayPopElements()
-   for i in {0..100} do
+   for i in {0..1000} do
       -- Pop integers
       local int_arr = array<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }
       for j = 0, 9 do
@@ -817,7 +861,7 @@ end
 -- Goal: Sort an array in ascending or descending order
 
 @Test function ArraySortElements()
-   for i in {0..100} do
+   for i in {0..1000} do
       -- Sort integers ascending
       local int_arr = array<int> { 50, 30, 80, 10, 60, 40, 90, 20, 70, 100 }
       int_arr:sort()
@@ -928,35 +972,57 @@ end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Goal: Iterate over all elements in an array
+-- Goal: Iterate over all elements in arrays and tables
 
-@Test function ArrayIterateElements()
-   local int_arr = array<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }
-   local dbl_arr = array<double> { 1.1, 2.2, 3.3, 4.4, 5.5 }
-   local str_arr = array<string> { "apple", "banana", "cherry", "date", "elderberry" }
-
-   for i in {0..1000} do
-      -- Iterate integers with index and value
-      local sum = 0
-      for idx, val in int_arr do
+@Test function IterateArrayValues()
+   for i in {0..50} do
+      local sum = 0.0
+      for val in values(glIntArray) do
          sum += val
       end
+   end
+end
 
-      -- Iterate doubles using values()
-      local dbl_sum = 0.0
-      for val in values(dbl_arr) do
-         dbl_sum += val
+@Test function IterateTableValues()
+   for i in {0..50} do
+      local sum = 0.0
+      for val in values(glIntTable) do
+         sum += val
       end
+   end
+end
 
-      -- Iterate strings with ipairs
+@Test function IterateArrayIPairs()
+   for i in {0..50} do
       local concat = ""
-      for _, s in ipairs(str_arr) do
+      for _, s in ipairs(glStrArray) do
          concat ..= s
       end
+   end
+end
 
-      -- Iterate with pairs
+@Test function IterateTableIPairs()
+   for i in {0..50} do
+      local concat = ""
+      for _, s in ipairs(glStrTable) do
+         concat ..= s
+      end
+   end
+end
+
+@Test function IterateArrayPairs()
+   for i in {0..50} do
       local count = 0
-      for k, v in pairs(int_arr) do
+      for k, v in pairs(glIntArray) do
+         count++
+      end
+   end
+end
+
+@Test function IterateTablePairs()
+   for i in {0..50} do
+      local count = 0
+      for k, v in pairs(glIntTable) do
          count++
       end
    end
@@ -966,23 +1032,26 @@ end
 -- Goal: Join array elements into a single string
 
 @Test function ArrayJoinToString()
-   local int_arr = array<int> { 1, 2, 3, 4, 5 }
-   local dbl_arr = array<double> { 1.5, 2.5, 3.5 }
-   local str_arr = array<string> { "apple", "banana", "cherry" }
+   for i in {0..50} do
+      local joined1 = glIntArray:join("-")
+      local joined2 = glIntArray:join(", ")
+      local joined3 = glIntArray:join("")
 
-   for i in {0..1000} do
-      -- Join integers with different separators
-      local joined1 = int_arr:join("-")
-      local joined2 = int_arr:join(", ")
-      local joined3 = int_arr:join("")
+      local joined5 = glStrArray:join(" ")
+      local joined6 = glStrArray:join(", ")
+      local joined7 = glStrArray:join("")
+   end
+end
 
-      -- Join doubles
-      local joined4 = dbl_arr:join(" | ")
+@Test function TableJoinToString()
+   for i in {0..50} do
+      local joined1 = table.concat(glIntTable, "-")
+      local joined2 = table.concat(glIntTable, ", ")
+      local joined3 = table.concat(glIntTable, "")
 
-      -- Join strings
-      local joined5 = str_arr:join(" ")
-      local joined6 = str_arr:join(", ")
-      local joined7 = str_arr:join("")
+      local joined5 = table.concat(glStrTable, " ")
+      local joined6 = table.concat(glStrTable, ", ")
+      local joined7 = table.concat(glStrTable, "")
    end
 end
 
@@ -990,73 +1059,52 @@ end
 -- Goal: Concatenate array elements with formatting
 
 @Test function ArrayConcatFormatted()
-   local int_arr = array<int> { 1, 2, 3, 4, 5 }
-   local dbl_arr = array<double> { 3.14159, 2.71828, 1.41421 }
-   local str_arr = array<string> { "one", "two", "three" }
-
-   for i in {0..1000} do
-      -- Concat integers with format
-      local result1 = int_arr:concat("%d", ", ")
-      local result2 = int_arr:concat("%03d", "-")
-
-      -- Concat doubles with precision
-      local result3 = dbl_arr:concat("%.2f", ", ")
-      local result4 = dbl_arr:concat("%.4f", " | ")
-
-      -- Concat strings
-      local result5 = str_arr:concat("%s", " ")
+   for i in {0..25} do
+      local result1 = glIntArray:concat("%d", ", ")
+      local result2 = glIntArray:concat("%03d", "-")
+      local result5 = glStrArray:concat("%s", " ")
    end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Goal: Get the first and last elements of an array
 
-@Test function ArrayFirstLastAccess()
-   local int_arr = array<int> { 10, 20, 30, 40, 50 }
-   local dbl_arr = array<double> { 1.1, 2.2, 3.3, 4.4, 5.5 }
-   local str_arr = array<string> { "alpha", "beta", "gamma", "delta" }
+@Test function ArrayFirstLastByMethod()
+   for i in {0..10000} do
+      local first_int = glIntArray:first()
+      local first_str = glStrArray:first()
+      local last_int = glIntArray:last()
+      local last_str = glStrArray:last()
+   end
+end
 
-   for i in {0..1000} do
-      -- Get first element
-      local first_int = int_arr:first()
-      local first_dbl = dbl_arr:first()
-      local first_str = str_arr:first()
+-- Compare with direct indexing
 
-      -- Get last element
-      local last_int = int_arr:last()
-      local last_dbl = dbl_arr:last()
-      local last_str = str_arr:last()
-
-      -- Compare with direct indexing
-      local first_direct = int_arr[0]
-      local last_direct = int_arr[#int_arr - 1]
+@Test function ArrayFirstLastByIndex()
+   for i in {0..10000} do
+      local first_direct = glIntArray[0]
+      local first_direct = glStrArray[0]
+      local last_direct = glIntArray[#glIntArray - 1]
+      local last_direct = glStrArray[#glStrArray - 1]
    end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Goal: Get the length of an array
+-- Goal: Get the length of an array/table
 
 @Test function ArrayGetLength()
-   local empty = array<int>
-   local small = array<int> { 1, 2, 3 }
-   local medium = array<int, 100>
-   local large = array<int, 1000>
-   local str_arr = array<string> { "a", "b", "c", "d", "e" }
+   for i in {0..100000} do
+      local len1 = #glIntArray
+      local len2 = #glStrArray
+      local total = len1 + len2
+   end
+end
 
-   -- Fill the sized arrays
-   for i = 0, 99 do medium[i] = i end
-   for i = 0, 999 do large[i] = i end
-
-   for i in {0..1000} do
-      -- Get lengths
-      local len1 = #empty
-      local len2 = #small
-      local len3 = #medium
-      local len4 = #large
-      local len5 = #str_arr
-
-      -- Use length in calculations
-      local total = len1 + len2 + len3 + len4 + len5
+@Test function TableGetLength()
+   for i in {0..100000} do
+      local len1 = #glIntTable
+      local len2 = #glStrTable
+      local total = len1 + len2
    end
 end
 
@@ -1115,7 +1163,7 @@ end
 -- Goal: Perform stack operations (push/pop pattern)
 
 @Test function ArrayStackOperations()
-   for i in {0..100} do
+   for i in {0..1000} do
       local stack = array<int>
 
       -- Push 100 items
@@ -1184,7 +1232,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Goal: Create tables with initial key-value pairs
 
-@Test function TableCreateWithValues()
+@Test function TableCreateWithKeyValues()
    for i in {0..100000} do
       -- Create with string keys
       local person = { name = "Alice", age = 30, city = "London" }
@@ -1227,29 +1275,6 @@ end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Goal: Read and write table entries using integer keys
-
-@Test function TableAccessByIntegerKey()
-   local t = {}
-   for i = 0, 99 do
-      t[i] = i * 10
-   end
-
-   for i in {0..1000000} do
-      -- Read by integer key
-      local v1 = t[0]
-      local v2 = t[50]
-      local v3 = t[99]
-
-      -- Write by integer key
-      local idx = i % 100
-      t[idx] = i
-      t[idx + 1] = i * 2
-      t[idx + 2] = i * 3
-   end
-end
-
-----------------------------------------------------------------------------------------------------------------------
 -- Goal: Access deeply nested table properties
 
 @Test function TableNestedAccess()
@@ -1283,73 +1308,6 @@ end
       -- Write to nested properties
       data.level1.level2.level3.value = i
       data.users[0].scores.math = i % 100
-   end
-end
-
-----------------------------------------------------------------------------------------------------------------------
--- Goal: Iterate over all key-value pairs in a table
-
-@Test function TableIteratePairs()
-   local small = { a = 1, b = 2, c = 3, d = 4, e = 5 }
-   local medium = {}
-   for i = 0, 49 do
-      medium["key_" .. i] = i * 10
-   end
-
-   for i in {0..10000} do
-      -- Iterate small table with pairs
-      local sum1 = 0
-      for k, v in pairs(small) do
-         sum1 += v
-      end
-
-      -- Iterate medium table
-      local sum2 = 0
-      local count = 0
-      for k, v in pairs(medium) do
-         sum2 += v
-         count++
-      end
-
-      -- Collect keys
-      local keys = {}
-      local idx = 0
-      for k, _ in pairs(small) do
-         keys[idx] = k
-         idx++
-      end
-   end
-end
-
-----------------------------------------------------------------------------------------------------------------------
--- Goal: Iterate over array-like table elements in order
-
-@Test function TableIterateIpairs()
-   local arr = { "apple", "banana", "cherry", "date", "elderberry",
-                 "fig", "grape", "honeydew", "kiwi", "lemon" }
-   local numbers = {}
-   for i = 0, 99 do
-      numbers[i] = i * 2
-   end
-
-   for i in {0..10000} do
-      -- Iterate with ipairs (ordered)
-      local concat = ""
-      for idx, val in ipairs(arr) do
-         concat ..= val
-      end
-
-      -- Sum numbers with ipairs
-      local sum = 0
-      for idx, val in ipairs(numbers) do
-         sum += val
-      end
-
-      -- Count elements
-      local count = 0
-      for _ in ipairs(arr) do
-         count++
-      end
    end
 end
 
@@ -1417,58 +1375,6 @@ end
          { name = "Bob", age = 25 }
       }
       table.sort(people, function(a, b) return a.age < b.age end)
-   end
-end
-
-----------------------------------------------------------------------------------------------------------------------
--- Goal: Concatenate array-like table elements into a string
-
-@Test function TableConcat()
-   local words = { "The", "quick", "brown", "fox", "jumps" }
-   local numbers = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "10" }
-   local single = { "alone" }
-
-   for i in {0..10000} do
-      -- Concat with different separators
-      local joined1 = table.concat(words, " ")
-      local joined2 = table.concat(words, "-")
-      local joined3 = table.concat(words, ", ")
-      local joined4 = table.concat(words, "")
-
-      -- Concat numbers
-      local joined5 = table.concat(numbers, ",")
-      local joined6 = table.concat(numbers, " | ")
-
-      -- Concat single element
-      local joined7 = table.concat(single, ",")
-
-      -- Concat with range
-      local partial = table.concat(words, " ", 1, 3)
-   end
-end
-
-----------------------------------------------------------------------------------------------------------------------
--- Goal: Get the length of array-like tables
-
-@Test function TableLength()
-   local empty = {}
-   local small = { 1, 2, 3 }
-   local medium = {}
-   for i = 0, 99 do medium[i] = i end
-   local large = {}
-   for i = 0, 999 do large[i] = i end
-   local mixed = { a = 1, b = 2, [0] = "zero", [1] = "one", [2] = "two" }
-
-   for i in {0..1000000} do
-      -- Get lengths using # operator
-      local len1 = #empty
-      local len2 = #small
-      local len3 = #medium
-      local len4 = #large
-      local len5 = #mixed  -- Only counts array part
-
-      -- Use length in calculations
-      local total = len1 + len2 + len3 + len4 + len5
    end
 end
 
@@ -3076,33 +2982,20 @@ function logMessage(message)
    print(message)
 end
 
-function saveMessage(message:any)
-   if type(message) is 'string' then
-      logMessage(message)
-      glLogFile:write(message .. '\n')
-   elseif type(message) is 'array' then
-      for s in values(message) do
-         logMessage(s)
-         glLogFile:write(s .. '\n')
-      end
-   end
-end
+   local tm = obj.new('time')
+   tm.acQuery()
 
-   do
-      local tm = obj.new('time')
-      tm.acQuery()
+   git_info = git.query(glPath)
 
-      local git_info = git.query(glPath)
+   logMessage(string.format('%04d-%02d-%02d %02d:%02d:%02d', tm.year, tm.month, tm.day, tm.hour, tm.minute, tm.second))
+   logMessage(f'Git branch: {git_info.branch} / {git_info.commit}')
+   logMessage('')
 
-      saveMessage(string.format('%04d-%02d-%02d %02d:%02d:%02d', tm.year, tm.month, tm.day, tm.hour, tm.minute, tm.second))
-      saveMessage(f'Git branch: {git_info.branch} / {git_info.commit}')
-      saveMessage('')
-   end
-
-   local duration = tonumber(arg('duration',2))
-   local warmup = tonumber(arg('warmup',10))
-   local hotloop = tonumber(arg('hotloop',5))
-   local call_limit =tonumber(arg('calls',1000))
+   local duration   = tonumber(arg('duration',2))
+   local warmup     = tonumber(arg('warmup',10))
+   local hotloop    = tonumber(arg('hotloop',5))
+   local call_limit = tonumber(arg('calls',1000))
+   local save_results = arg('save',false)
 
    local test_match = arg('test')
    if test_match then
@@ -3110,28 +3003,123 @@ end
       logMessage(f'Filtering benchmarks with pattern: {test_match}')
    end
 
+   report = {
+      evals = { },
+      config = { },
+      timestamp = tm.timeStamp,
+      git = { branch=git_info.branch, commit=git_info.commit }
+   }
+
    local anno = debug.anno.list()
-   all_results = array<table>
-   for func, entry in pairs(anno) do
-      local results
+
+   name_list = {}
+   longest_name = 0
+   for k,v in pairs(anno) do
+      local func_name = tostring(k)
+      table.insert(name_list, { name = func_name, func = k })
+      if #func_name > longest_name then
+         longest_name = #func_name
+      end
+   end
+
+   table.sort(name_list, function(a:table, b:table):bool
+      return (a.name < b.name)
+   end)
+
+   for entry in values(name_list) do
+      func = entry.func
+      name = entry.name
+      entry = anno[func]
 
       if rx_test then
-         if not rx_test.match(tostring(func)) then
-            --logMessage(f'Skipping {func}')
-            continue
-         end
+         if not rx_test.match(name) then continue end
       end
 
+      local eval
       try<trace>
-         results = bmark.run({ duration=duration, warmupCalls=warmup, feedbackRate=100, maxCalls=call_limit, hotLoop=hotloop }, nil, func)
+         eval = bmark.run({
+            duration     = duration,
+            warmupCalls  = warmup,
+            feedbackRate = 100,
+            maxCalls     = call_limit,
+            hotLoop      = hotloop
+         }, nil, func)
       except ex
-         logMessage(f'Error in benchmark {func}: {ex.message}')
+         logMessage(f'Error in benchmark {name}: {ex.message}')
          logMessage(ex.stackTrace)
       success
-         saveMessage(string.format('%s() Calls Per Second: %d; Total Calls: %d, Fastest: %.3f ms', tostring(func), results.callsPerSecond, results.benchmarkCalls, results.stats.min))
-         if results.memoryLeakRate/results.callsPerSecond > 512 then
-            saveMessage(string.format('Leak Rate:  %d bytes per call', results.memoryLeakRate / results.callsPerSecond))
+         logMessage(string.format('%s() Calls Per Second: %d; Total Calls: %d, Fastest: %.3f ms', name, eval.callsPerSecond, eval.benchmarkCalls, eval.stats.min))
+         if eval.memoryLeakRate / eval.callsPerSecond > 512 then
+            logMessage(string.format('Leak Rate:  %d bytes per call', eval.memoryLeakRate / eval.callsPerSecond))
          end
-         all_results:push(results)
+
+         if save_results is 'all' then
+            report['evals'][name] = eval
+         else
+            report['evals'][name] = {
+               time    = eval.benchmarkTime,
+               cps     = math.floor(eval.callsPerSecond),
+               samples = eval.stats.sampleSize,
+               fastest = eval.stats.min,
+               median  = eval.stats.median,
+               p99     = eval.stats.p99
+            }
+         end
+      end
+   end
+
+   local last_result
+   try
+      log_file = io.open(glLogFile, 'r')
+      local offset = 1024
+      local pos = 1
+      local buffer = ''
+      local rx = regex.new('(.*)\n(?!\n)')
+      while (pos > 0) do
+         pos     = log_file:seek('end', offset)
+         segment = log_file:read(1024)
+         buffer  = segment .. buffer
+         while buffer:endsWith('\n') do
+            buffer = buffer:rtrim()
+         end
+
+         split = buffer:find('\n')
+         if split then
+            last_result = json.decode(buffer:substr(split))
+            break
+         end
+         offset += 1024
+      end
+      log_file:close()
+   end
+
+   -- Save the results
+
+   if save_results?? then
+      report['config'] = {
+         duration  = duration,
+         warmup    = warmup,
+         hotLoop   = hotloop,
+         callLimit = call_limit
+      }
+
+      log_file = io.open(glLogFile, 'a')
+      log_file:write(json.encode(report))
+      log_file:write('\n')
+      log_file:close()
+   end
+
+   if last_result then
+      logMessage('')
+      logMessage('Comparison to last run (+ve % is better):')
+      logMessage('')
+      for name, eval in pairs(last_result.evals) do
+         if report.evals[name] then
+            local cmp = report.evals[name]
+            local pad_name = string.format(f'%{longest_name+2}s', name)
+            local then_and_now = string.format('%5s -> %5s', string.format('%.2f', eval.p99), string.format('%.2f', cmp.p99))
+            local pct = string.format('%8s', string.format("%.2f%%",(eval.p99 - cmp.p99) / cmp.p99 * 100))
+            logMessage(f'{pad_name}: {then_and_now} {pct}')
+         end
       end
    end
