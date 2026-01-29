@@ -193,24 +193,25 @@ static char* bcwrite_bytecode(BCWriteCtx* ctx, char* p, GCproto* pt)
 {
    MSize nbc = pt->sizebc - 1;  //  Omit the [JI]FUNC* header.
 #if LJ_HASJIT
-   uint8_t* q = (uint8_t*)p;
+   BCIns* q = (BCIns*)p;
 #endif
    p = lj_buf_wmem(p, proto_bc(pt) + 1, nbc * (MSize)sizeof(BCIns));
    UNUSED(ctx);
 #if LJ_HASJIT
    // Unpatch modified bytecode containing ILOOP/JLOOP etc.
+   // Uses bc_op/setbc_op macros for endian-independent access to 64-bit BCIns.
    if ((pt->flags & PROTO_ILOOP) or pt->trace) {
       jit_State* J = L2J(sbufL(&ctx->sb));
       MSize i;
-      for (i = 0; i < nbc; i++, q += sizeof(BCIns)) {
-         BCOp op = (BCOp)q[LJ_ENDIAN_SELECT(0, 3)];
-         if (op == BC_IFORL or op == BC_IITERL or op == BC_ILOOP ||
+      for (i = 0; i < nbc; i++, q++) {
+         BCOp op = bc_op(*q);
+         if (op == BC_IFORL or op == BC_IITERL or op == BC_ILOOP or
             op == BC_JFORI) {
-            q[LJ_ENDIAN_SELECT(0, 3)] = (uint8_t)(op - BC_IFORL + BC_FORL);
+            setbc_op(q, (uint8_t)(op - BC_IFORL + BC_FORL));
          }
          else if (op == BC_JFORL or op == BC_JITERL or op == BC_JLOOP) {
-            BCREG rd = q[LJ_ENDIAN_SELECT(2, 1)] + (q[LJ_ENDIAN_SELECT(3, 0)] << 8);
-            memcpy(q, &traceref(J, rd)->startins, 4);
+            BCREG rd = bc_d(*q);
+            *q = traceref(J, rd)->startins;  // Copy full 64-bit instruction
          }
       }
    }
