@@ -17,7 +17,6 @@
 |
 |// DynASM defines used by the PPC port:
 |//
-|// P64     64 bit pointers (only for GPR64 testing).
 |// GPR64   64 bit registers (but possibly 32 bit pointers, e.g. PS3).
 |//         Affects reg saves, stack layout, carry/overflow/dot flags etc.
 |// FRAME32 Use 32 bit frame layout, even with GPR64 (Xbox 360).
@@ -27,36 +26,20 @@
 |// PPE     Power Processor Element of Cell (PS3) or Xenon (Xbox 360).
 |//         Must avoid (slow) micro-coded instructions.
 |
-|.if P64
 |.define TOC, 1
 |.define TOCENV, 1
 |.macro lpx, a, b, c; ldx a, b, c; .endmacro
 |.macro lp, a, b; ld a, b; .endmacro
 |.macro stp, a, b; std a, b; .endmacro
 |.define decode_OPP, decode_OP8
-|.if FFI
-|// Missing: Calling conventions, 64 bit regs, TOC.
-|.error lib_ffi not yet implemented for PPC64
-|.endif
-|.else
-|.macro lpx, a, b, c; lwzx a, b, c; .endmacro
-|.macro lp, a, b; lwz a, b; .endmacro
-|.macro stp, a, b; stw a, b; .endmacro
-|.define decode_OPP, decode_OP4
-|.endif
 |
 |// Convenience macros for TOC handling.
 |.if TOC
 |// Linker needs a TOC patch area for every external call relocation.
 |.macro blex, target; bl extern target@plt; nop; .endmacro
 |.macro .toc, a, b; a, b; .endmacro
-|.if P64
 |.define TOC_OFS,	 8
 |.define ENV_OFS,	16
-|.else
-|.define TOC_OFS,	4
-|.define ENV_OFS,	8
-|.endif
 |.else  // No TOC.
 |.macro blex, target; bl extern target@plt; .endmacro
 |.macro .toc, a, b; .endmacro
