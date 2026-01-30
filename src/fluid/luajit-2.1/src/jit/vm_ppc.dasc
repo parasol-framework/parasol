@@ -5850,18 +5850,18 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_next
     |
     |5:  // Despecialize bytecode if any of the checks fail.
+    |  addis SAVE0, TMP3, -(BCBIAS_J*8 >> 16)  // SAVE0 = target instruction address
     |.if JIT
-    |  addis TMP0, TMP3, -(BCBIAS_J*8 >> 16)
-    |  lbz TMP2, -1(TMP0)
+    |  lbz TMP2, 7(SAVE0)                       // Read target opcode (offset 7 for big-endian 64-bit)
     |.endif
     |  li TMP0, BC_JMP
-     |   li TMP1, BC_ITERC
+    |   li TMP1, BC_ITERC
     |  stb TMP0, -1(PC)
     |.if JIT
     |  cmpwi TMP2, BC_ITERA
     |  bne >6
     |.endif
-    |   stb TMP1, -1(TMP0)
+    |   stb TMP1, 7(SAVE0)                      // Store to target opcode (offset 7 for big-endian 64-bit)
     |  b <1
     |.if JIT
     |6:  // Unpatch JLOOP. NYI on big-endian.
