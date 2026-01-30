@@ -2725,7 +2725,8 @@ static void build_subroutines(BuildCtx *ctx)
   |  test RCd, FRAME_TYPE
   |  jnz <2          // Trace stitching continuation?
   |  // Otherwise set KBASE for Lua function below fast function.
-  |  movzx RCd, byte [RC-3]
+  |  // RC = return PC; call instruction is at RC-8; A field is at byte 1, so at RC-7
+  |  movzx RCd, byte [RC-7]
   |  neg RC
   |  mov LFUNC:KBASE, [BASE+RC*8-32]
   |  cleartp LFUNC:KBASE
