@@ -796,10 +796,12 @@ LJLIB_CF(ltr)
          // Character class - copy through, handling nested escapes
          lj_buf_putchar(sb, '[');
          bool first = true;
+         bool found_close = false;
          while (p < end) {
             c = (uint8_t)*p++;
             if (c IS ']' and not first) {
                lj_buf_putchar(sb, ']');
+               found_close = true;
                break;
             }
             if (c IS '%' and p < end) {
@@ -851,6 +853,7 @@ LJLIB_CF(ltr)
             }
             first = false;
          }
+         if (not found_close) lj_err_caller(L, ErrMsg::STRPATM);
       }
       else if (ltr_is_regex_special(c)) {
          // Escape regex-special chars that aren't Lua-special
