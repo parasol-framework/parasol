@@ -721,8 +721,8 @@ static void ltr_emit_class(SBuf *sb, int cl, bool negated)
       case 'd': lj_buf_putmem(sb, "\\d", 2); break;
       case 'g': lj_buf_putmem(sb, "\\x21-\\x7e", 9); break;
       case 'l': lj_buf_putmem(sb, "a-z", 3); break;
-      case 'p': lj_buf_putmem(sb, "!\"#$%&'()*+,\\-./:;<=>?@\\[\\\\\\]^_`{|}~", 37); break;
-      case 's': lj_buf_putmem(sb, " \\t\\n\\r\\f\\v", 11); break;
+      case 'p': lj_buf_putmem(sb, "!\"#$%&'()*+,\\-./:;<=>?@\\[\\\\\\]^_`{|}~", sizeof("!\"#$%&'()*+,\\-./:;<=>?@\\[\\\\\\]^_`{|}~")-1); break;
+      case 's': lj_buf_putmem(sb, " \\t\\n\\r\\f\\v", sizeof(" \\t\\n\\r\\f\\v")-1); break;
       case 'u': lj_buf_putmem(sb, "A-Z", 3); break;
       case 'w': lj_buf_putmem(sb, "\\w", 2); break;
       case 'x': lj_buf_putmem(sb, "0-9A-Fa-f", 9); break;
@@ -751,8 +751,7 @@ LJLIB_CF(ltr)
    while (p < end) {
       int c = (uint8_t)*p++;
 
-      if (c IS '%') {
-         // Escape sequence
+      if (c IS '%') { // Escape sequence
          if (p >= end) {
             lj_err_caller(L, ErrMsg::STRPATE);  // Pattern ends with '%'
             return 0;
@@ -760,10 +759,12 @@ LJLIB_CF(ltr)
          int cl = (uint8_t)*p++;
 
          // Check for unsupported patterns
+
          if (cl IS 'b') {
             lj_err_callermsg(L, "Unsupported Lua pattern: %b (balanced matching) has no regex equivalent");
             return 0;
          }
+
          if (cl IS 'f') {
             lj_err_callermsg(L, "Unsupported Lua pattern: %f (frontier pattern) has no regex equivalent");
             return 0;
@@ -776,8 +777,7 @@ LJLIB_CF(ltr)
              lower_cl IS 'w' or lower_cl IS 'x' or lower_cl IS 'z') {
             ltr_emit_class(sb, lower_cl, std::isupper(cl));
          }
-         else if (cl IS '%') {
-            // %% -> literal %
+         else if (cl IS '%') { // %% -> literal %
             lj_buf_putchar(sb, '%');
          }
          else {
@@ -804,8 +804,8 @@ LJLIB_CF(ltr)
                found_close = true;
                break;
             }
-            if (c IS '%' and p < end) {
-               // Escaped character inside class
+
+            if (c IS '%' and p < end) { // Escaped character inside class
                int esc = (uint8_t)*p++;
                int lower_esc = std::tolower(esc);
                if (lower_esc IS 'a' or lower_esc IS 'c' or lower_esc IS 'd' or lower_esc IS 'g' or
@@ -813,8 +813,7 @@ LJLIB_CF(ltr)
                    lower_esc IS 'w' or lower_esc IS 'x' or lower_esc IS 'z') {
                   // Expand class inside character class (without brackets)
                   bool neg = std::isupper(esc);
-                  if (neg) {
-                     // Can't easily negate inside a character class, emit as-is with warning
+                  if (neg) { // Can't easily negate inside a character class, emit as-is with warning
                      lj_buf_putchar(sb, '\\');
                      lj_buf_putchar(sb, esc);
                   }
@@ -822,13 +821,13 @@ LJLIB_CF(ltr)
                      switch (lower_esc) {
                         case 'a': lj_buf_putmem(sb, "A-Za-z", 6); break;
                         case 'c': lj_buf_putmem(sb, "\\x00-\\x1f\\x7f", 13); break;
-                        case 'd': lj_buf_putmem(sb, "0-9", 3); break;
+                        case 'd': lj_buf_putmem(sb, "\\d", 2); break;
                         case 'g': lj_buf_putmem(sb, "\\x21-\\x7e", 9); break;
                         case 'l': lj_buf_putmem(sb, "a-z", 3); break;
-                        case 'p': lj_buf_putmem(sb, "!\"#$%&'()*+,\\-./:;<=>?@\\[\\\\\\]^_`{|}~", 37); break;
-                        case 's': lj_buf_putmem(sb, " \\t\\n\\r\\f\\v", 11); break;
+                        case 'p': lj_buf_putmem(sb, "!\"#$%&'()*+,\\-./:;<=>?@\\[\\\\\\]^_`{|}~", sizeof("!\"#$%&'()*+,\\-./:;<=>?@\\[\\\\\\]^_`{|}~")-1); break;
+                        case 's': lj_buf_putmem(sb, " \\t\\n\\r\\f\\v", sizeof(" \\t\\n\\r\\f\\v")-1); break;
                         case 'u': lj_buf_putmem(sb, "A-Z", 3); break;
-                        case 'w': lj_buf_putmem(sb, "A-Za-z0-9_", 10); break;
+                        case 'w': lj_buf_putmem(sb, "\\w", 2); break;
                         case 'x': lj_buf_putmem(sb, "0-9A-Fa-f", 9); break;
                         case 'z': lj_buf_putmem(sb, "\\x00", 4); break;
                         default: lj_buf_putchar(sb, lower_esc); break;
@@ -838,30 +837,24 @@ LJLIB_CF(ltr)
                else if (esc IS '%') {
                   lj_buf_putchar(sb, '%');
                }
-               else {
-                  // Other escaped char
+               else { // Other escaped char
                   lj_buf_putchar(sb, '\\');
                   lj_buf_putchar(sb, esc);
                }
             }
-            else {
-               // Regular character inside class
-               if (ltr_is_regex_special(c)) {
-                  lj_buf_putchar(sb, '\\');
-               }
+            else { // Regular character inside class
+               if (ltr_is_regex_special(c)) lj_buf_putchar(sb, '\\');
                lj_buf_putchar(sb, c);
             }
             first = false;
          }
          if (not found_close) lj_err_caller(L, ErrMsg::STRPATM);
       }
-      else if (ltr_is_regex_special(c)) {
-         // Escape regex-special chars that aren't Lua-special
+      else if (ltr_is_regex_special(c)) { // Escape regex-special chars that aren't Lua-special
          lj_buf_putchar(sb, '\\');
          lj_buf_putchar(sb, c);
       }
-      else {
-         // Regular character - pass through
+      else { // Regular character - pass through
          lj_buf_putchar(sb, c);
       }
    }
