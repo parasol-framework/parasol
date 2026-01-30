@@ -17,7 +17,6 @@
 |
 |// DynASM defines used by the PPC port:
 |//
-|// P64     64 bit pointers (only for GPR64 testing).
 |// GPR64   64 bit registers (but possibly 32 bit pointers, e.g. PS3).
 |//         Affects reg saves, stack layout, carry/overflow/dot flags etc.
 |// FRAME32 Use 32 bit frame layout, even with GPR64 (Xbox 360).
@@ -27,36 +26,20 @@
 |// PPE     Power Processor Element of Cell (PS3) or Xenon (Xbox 360).
 |//         Must avoid (slow) micro-coded instructions.
 |
-|.if P64
 |.define TOC, 1
 |.define TOCENV, 1
 |.macro lpx, a, b, c; ldx a, b, c; .endmacro
 |.macro lp, a, b; ld a, b; .endmacro
 |.macro stp, a, b; std a, b; .endmacro
 |.define decode_OPP, decode_OP8
-|.if FFI
-|// Missing: Calling conventions, 64 bit regs, TOC.
-|.error lib_ffi not yet implemented for PPC64
-|.endif
-|.else
-|.macro lpx, a, b, c; lwzx a, b, c; .endmacro
-|.macro lp, a, b; lwz a, b; .endmacro
-|.macro stp, a, b; stw a, b; .endmacro
-|.define decode_OPP, decode_OP4
-|.endif
 |
 |// Convenience macros for TOC handling.
 |.if TOC
 |// Linker needs a TOC patch area for every external call relocation.
 |.macro blex, target; bl extern target@plt; nop; .endmacro
 |.macro .toc, a, b; a, b; .endmacro
-|.if P64
 |.define TOC_OFS,	 8
 |.define ENV_OFS,	16
-|.else
-|.define TOC_OFS,	4
-|.define ENV_OFS,	8
-|.endif
 |.else  // No TOC.
 |.macro blex, target; bl extern target@plt; .endmacro
 |.macro .toc, a, b; .endmacro
@@ -398,12 +381,14 @@
 |.macro decode_OP1, dst, ins; rlwinm dst, ins, 0, 24, 31; .endmacro
 |.macro decode_RD4, dst, ins; rlwinm dst, ins, 18, 14, 29; .endmacro
 |
-|// Instruction fetch.
+|// Instruction fetch for 64-bit BCIns.
 |.macro ins_NEXT1
-|  lwz INS, 0(PC)
-|   addi PC, PC, 4
+|  ld INS, 0(PC)             // Fetch full 64-bit instruction
+|   addi PC, PC, 8           // Advance to next instruction (64-bit = 8 bytes)
 |.endmacro
-|// Instruction decode+dispatch. Note: optimized for e300!
+|// Instruction decode+dispatch for 64-bit BCIns.
+|// Note: decode_* macros operate on low 32 bits, which is correct for 64-bit BCIns
+|// since opcode/A/B/C/D fields remain in bits 0-31.
 |.macro ins_NEXT2
 |  decode_OPP TMP1, INS
 |  lpx TMP0, DISPATCH, TMP1
@@ -443,12 +428,12 @@
 |  .endmacro
 |.endif
 |
-|// Call decode and dispatch.
+|// Call decode and dispatch for 64-bit BCIns.
 |.macro ins_callt
 |  // BASE = new base, RB = LFUNC/CFUNC, RC = nargs*8, FRAME_PC(BASE) = PC
 |  lwz PC, LFUNC:RB->pc
-|  lwz INS, 0(PC)
-|   addi PC, PC, 4
+|  ld INS, 0(PC)              // Fetch full 64-bit instruction
+|   addi PC, PC, 8            // Advance to next instruction (64-bit = 8 bytes)
 |  decode_OPP TMP1, INS
 |   decode_RA8 RA, INS
 |  lpx TMP0, DISPATCH, TMP1
@@ -475,10 +460,24 @@
 |.macro checkobject, reg; cmpwi reg, LJ_TOBJECT; .endmacro
 |.macro checknil, reg; cmpwi reg, LJ_TNIL; .endmacro
 |
+|// Branch macro for 64-bit BCIns.
+|// RD already contains D*8 from decode_RD8, which is the correct byte offset for 64-bit instructions.
 |.macro branch_RD
-|  srwi TMP0, RD, 1
-|  addis PC, PC, -(BCBIAS_J*4 >> 16)
-|  add PC, PC, TMP0
+|  addis PC, PC, -(BCBIAS_J*8 >> 16)
+|  add PC, PC, RD
+|.endmacro
+|
+|// Extract 32-bit P from ABCP/ADP format (upper 32 bits of 64-bit instruction).
+|// Use after instruction fetch when PC has advanced by 8.
+|.macro ins_getp32, dst
+|  lwz dst, -8(PC)
+|.endmacro
+|
+|// Extract 48-bit pointer from AP format (bits 16-63 of 64-bit instruction).
+|// Use after instruction fetch when PC has advanced by 8.
+|.macro ins_getptr, dst
+|  ld dst, -8(PC)
+|  srdi dst, dst, 16
 |.endmacro
 |
 |// Assumes DISPATCH is relative to GL.
@@ -726,7 +725,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  add RC, BASE, RC
   |   sub RA, RA, BASE
   |  stp BASE, L->base
-  |   addi PC, PC, 4			// Must point after first instruction.
+  |   addi PC, PC, 8			// Must point after first instruction (64-bit).
   |  stp RC, L->top
   |   srwi CARG2, RA, 3
   |2:
@@ -911,7 +910,7 @@ static void build_subroutines(BuildCtx *ctx)
   |.endif
   |
   |->cont_cat:				// RA = resultptr, RB = meta base
-  |  lwz INS, -4(PC)
+  |  ld INS, -8(PC)
   |   subi CARG2, RB, 16
   |  decode_RB8 SAVE0, INS
   |.if FPU
@@ -1209,7 +1208,7 @@ static void build_subroutines(BuildCtx *ctx)
   |
   |->vmeta_comp:
   |  mr CARG1, L
-  |   subi PC, PC, 4
+  |   subi PC, PC, 8                      // Back up to comparison instruction (64-bit)
   |.if DUALNUM
   |  mr CARG2, RA
   |.else
@@ -1230,17 +1229,17 @@ static void build_subroutines(BuildCtx *ctx)
   |  bgt ->vmeta_binop
   |  subfic CRET1, CRET1, 0
   |4:
-  |  lwz INS, 0(PC)
-  |   addi PC, PC, 4
-  |  decode_RD4 TMP2, INS
-  |  addis TMP2, TMP2, -(BCBIAS_J*4 >> 16)
+  |  ld INS, 0(PC)                        // Fetch full 64-bit instruction
+  |   addi PC, PC, 8                      // Advance by 8 bytes (64-bit)
+  |  decode_RD8 TMP2, INS                 // Extract D*8 for 64-bit branch calc
+  |  addis TMP2, TMP2, -(BCBIAS_J*8 >> 16)
   |  and TMP2, TMP2, CRET1
   |  add PC, PC, TMP2
   |->cont_nop:
   |  ins_next
   |
   |->cont_ra:				// RA = resultptr
-  |  lwz INS, -4(PC)
+  |  ld INS, -8(PC)
   |.if FPU
   |   lfd f0, 0(RA)
   |.else
@@ -1273,7 +1272,7 @@ static void build_subroutines(BuildCtx *ctx)
   |
   |->vmeta_equal:
   |  // CARG2, CARG3, CARG4 are already set by BC_ISEQV/BC_ISNEV.
-  |  subi PC, PC, 4
+  |  subi PC, PC, 8                        // Back up past JMP instruction (64-bit)
   |   stp BASE, L->base
   |  mr CARG1, L
   |   stw PC, SAVE_PC
@@ -1284,7 +1283,7 @@ static void build_subroutines(BuildCtx *ctx)
   |->vmeta_equal_cd:
   |.if FFI
   |  mr CARG2, INS
-  |  subi PC, PC, 4
+  |  subi PC, PC, 8                        // Back up past JMP instruction (64-bit)
   |   stp BASE, L->base
   |  mr CARG1, L
   |   stw PC, SAVE_PC
@@ -1294,7 +1293,7 @@ static void build_subroutines(BuildCtx *ctx)
   |.endif
   |
   |->vmeta_equal_thunk:
-  |  subi PC, PC, 4
+  |  subi PC, PC, 8                        // Back up past JMP instruction (64-bit)
   |   stp BASE, L->base
   |  mr CARG1, L
   |  mr CARG2, INS
@@ -1304,7 +1303,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  b <3
   |
   |->vmeta_istype:
-  |  subi PC, PC, 4
+  |  subi PC, PC, 8                        // Back up to instruction (64-bit)
   |   stp BASE, L->base
   |   srwi CARG2, RA, 3
   |   mr CARG1, L
@@ -2184,7 +2183,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  andix. TMP0, PC, FRAME_TYPE
   |   mr MULTRES, RD
   |  bney ->vm_return
-  |  lwz INS, -4(PC)
+  |  ld INS, -8(PC)
   |  decode_RB8 RB, INS
   |5:
   |  cmplw RB, RD			// More results expected?
@@ -3007,7 +3006,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  andix. TMP0, PC, FRAME_TYPE
   |   rlwinm TMP1, PC, 0, 0, 28
   |  bne >3
-  |  lwz INS, -4(PC)
+  |  ld INS, -8(PC)
   |  decode_RA8 TMP1, INS
   |  addi TMP1, TMP1, 8
   |3:
@@ -3090,7 +3089,7 @@ static void build_subroutines(BuildCtx *ctx)
   |3:
   |  lp BASE, L->base
   |4:  // Re-dispatch to static ins.
-  |  lwz INS, -4(PC)
+  |  ld INS, -8(PC)                        // Load 64-bit instruction before PC
   |  decode_OPP TMP1, INS
   |   decode_RB8 RB, INS
   |  addi TMP1, TMP1, GG_DISP2STATIC
@@ -3102,7 +3101,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  bctr
   |
   |->cont_hook:				// Continue from hook yield.
-  |  addi PC, PC, 4
+  |  addi PC, PC, 8                        // Advance by 8 bytes (64-bit)
   |  lwz MULTRES, -20(RB)		// Restore MULTRES for *M ins.
   |  b <4
   |
@@ -3148,14 +3147,14 @@ static void build_subroutines(BuildCtx *ctx)
   |  sub NARGS8:RC, TMP0, BASE
   |  add RA, BASE, RA
   |  lwz LFUNC:RB, FRAME_FUNC(BASE)
-  |  lwz INS, -4(PC)
+  |  ld INS, -8(PC)
   |  mtctr CRET1
   |  bctr
   |
   |->cont_stitch:			// Trace stitching.
   |.if JIT
   |  // RA = resultptr, RB = meta base
-  |  lwz INS, -4(PC)
+  |  ld INS, -8(PC)
   |    lwz TRACE:TMP2, -20(RB)		// Save previous trace.
   |   addic. TMP1, MULTRES, -8
   |  decode_RA8 RC, INS			// Call base.
@@ -3219,7 +3218,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  bl extern lj_dispatch_profile	// (lua_State *L, const BCIns *pc)
   |  // HOOK_PROFILE is off again, so re-dispatch to dynamic instruction.
   |  lp BASE, L->base
-  |  subi PC, PC, 4
+  |  subi PC, PC, 8                        // Back up by 8 bytes (64-bit instruction)
   |  b ->cont_nop
 #endif
   |
@@ -3316,26 +3315,26 @@ static void build_subroutines(BuildCtx *ctx)
   |  .FPU stw TMP0, TONUM_HI
   |  .FPU lfs TONUM, TMPD
   |  // Modified copy of ins_next which handles function header dispatch, too.
-  |  lwz INS, 0(PC)
-  |   addi PC, PC, 4
+  |  ld INS, 0(PC)                         // Fetch full 64-bit instruction
+  |   addi PC, PC, 8                       // Advance by 8 bytes (64-bit)
   |    // Assumes TISNIL == ~LJ_VMST_INTERP == -1.
   |    stw TISNIL, DISPATCH_GL(vmstate)(DISPATCH)
   |  decode_OPP TMP1, INS
   |   decode_RA8 RA, INS
   |  lpx TMP0, DISPATCH, TMP1
   |  mtctr TMP0
-  |  cmplwi TMP1, BC_FUNCF*4		// Function header?
+  |  cmplwi TMP1, BC_FUNCF*8		// Function header? (decode_OPP gives OP*8 on PPC64)
   |  bge >2
   |   decode_RB8 RB, INS
   |   decode_RD8 RD, INS
   |   decode_RC8 RC, INS
   |  bctr
   |2:
-  |  cmplwi TMP1, BC_FUNCC*4		// C function? (BC_FUNCC or BC_FUNCCW = 105 or 106)
+  |  cmplwi TMP1, BC_FUNCC*8		// C function? (BC_FUNCC or BC_FUNCCW = 105 or 106)
   |  blt >3			// < BC_FUNCC: function header handling
-  |  cmplwi TMP1, BC_FUNCCW*4
+  |  cmplwi TMP1, BC_FUNCCW*8
   |  ble >4			// <= BC_FUNCCW: set up KBASE below
-  |  cmplwi TMP1, BC__MAX*4
+  |  cmplwi TMP1, BC__MAX*8
   |  blt >3			// Dispatch normally (BC_TRYENTER, BC_TRYLEAVE, etc.)
   |4:
   |  // Check frame below fast function.
@@ -3606,15 +3605,15 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  // RA = src1*8, RD = src2*8, JMP with RD = target
     |.if DUALNUM
     |  lwzux CARG1, RA, BASE
-    |    addi PC, PC, 4
+    |    addi PC, PC, 8                    // Advance by 8 bytes (64-bit instruction)
     |   lwz CARG2, 4(RA)
     |  lwzux CARG3, RD, BASE
-    |    lwz TMP2, -4(PC)
+    |    ld TMP2, -8(PC)                   // Load full 64-bit instruction
     |  checknum cr0, CARG1
     |   lwz CARG4, 4(RD)
-    |    decode_RD4 TMP2, TMP2
+    |    decode_RD8 TMP2, TMP2             // Extract D*8 for 64-bit branch
     |  checknum cr1, CARG3
-    |    addis SAVE0, TMP2, -(BCBIAS_J*4 >> 16)
+    |    addis SAVE0, TMP2, -(BCBIAS_J*8 >> 16)
     |  bne cr0, >7
     |  bne cr1, >8
     |   cmpw CARG2, CARG4
@@ -3677,16 +3676,16 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  b <1
     |.else
     |  lwzx TMP0, BASE, RA
-    |    addi PC, PC, 4
+    |    addi PC, PC, 8                    // Advance by 8 bytes (64-bit instruction)
     |   lfdx f0, BASE, RA
     |  lwzx TMP1, BASE, RD
     |  checknum cr0, TMP0
-    |    lwz TMP2, -4(PC)
+    |    ld TMP2, -8(PC)                   // Load full 64-bit instruction
     |   lfdx f1, BASE, RD
     |  checknum cr1, TMP1
-    |    decode_RD4 TMP2, TMP2
+    |    decode_RD8 TMP2, TMP2             // Extract D*8 for 64-bit branch
     |  bge cr0, ->vmeta_comp
-    |    addis TMP2, TMP2, -(BCBIAS_J*4 >> 16)
+    |    addis TMP2, TMP2, -(BCBIAS_J*8 >> 16)
     |  bge cr1, ->vmeta_comp
     |  fcmpu cr0, f0, f1
     if (op == BC_ISLT) {
@@ -3711,16 +3710,16 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  // RA = src1*8, RD = src2*8, JMP with RD = target
     |.if DUALNUM
     |  lwzux CARG1, RA, BASE
-    |    addi PC, PC, 4
+    |    addi PC, PC, 8                    // Advance by 8 bytes (64-bit instruction)
     |   lwz CARG2, 4(RA)
     |  lwzux CARG3, RD, BASE
     |  checknum cr0, CARG1
-    |    lwz SAVE0, -4(PC)
+    |    ld SAVE0, -8(PC)                  // Load full 64-bit instruction
     |  checknum cr1, CARG3
-    |    decode_RD4 SAVE0, SAVE0
+    |    decode_RD8 SAVE0, SAVE0           // Extract D*8 for 64-bit branch
     |   lwz CARG4, 4(RD)
     |  cror 4*cr7+gt, 4*cr0+gt, 4*cr1+gt
-    |    addis SAVE0, SAVE0, -(BCBIAS_J*4 >> 16)
+    |    addis SAVE0, SAVE0, -(BCBIAS_J*8 >> 16)
     if (vk) {
       |  ble cr7, ->BC_ISEQN_Z
     } else {
@@ -3728,15 +3727,15 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     }
     |.else
     |  lwzux CARG1, RA, BASE
-    |   lwz SAVE0, 0(PC)
+    |   ld SAVE0, 0(PC)                    // Load full 64-bit instruction (next JMP)
     |    lfd f0, 0(RA)
-    |   addi PC, PC, 4
+    |   addi PC, PC, 8                     // Advance by 8 bytes (64-bit instruction)
     |  lwzux CARG3, RD, BASE
     |  checknum cr0, CARG1
-    |   decode_RD4 SAVE0, SAVE0
+    |   decode_RD8 SAVE0, SAVE0            // Extract D*8 for 64-bit branch
     |    lfd f1, 0(RD)
     |  checknum cr1, CARG3
-    |   addis SAVE0, SAVE0, -(BCBIAS_J*4 >> 16)
+    |   addis SAVE0, SAVE0, -(BCBIAS_J*8 >> 16)
     |  bge cr0, >5
     |  bge cr1, >5
     |  fcmpu cr0, f0, f1
@@ -3829,9 +3828,9 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  lwzux TMP0, RA, BASE
     |   srwi RD, RD, 1
     |  lwz STR:TMP3, 4(RA)
-    |    lwz TMP2, 0(PC)
+    |    ld TMP2, 0(PC)                    // Load full 64-bit instruction (next JMP)
     |   subfic RD, RD, -4
-    |    addi PC, PC, 4
+    |    addi PC, PC, 8                    // Advance by 8 bytes (64-bit instruction)
     |.if FFI
     |  cmpwi TMP0, LJ_TCDATA
     |  beq ->vmeta_equal_cd
@@ -3849,9 +3848,9 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  subfic TMP0, TMP0, LJ_TSTR
     |  sub TMP1, STR:TMP1, STR:TMP3
     |  or TMP0, TMP0, TMP1
-    |    decode_RD4 TMP2, TMP2
+    |    decode_RD8 TMP2, TMP2
     |  subfic TMP0, TMP0, 0
-    |    addis TMP2, TMP2, -(BCBIAS_J*4 >> 16)
+    |    addis TMP2, TMP2, -(BCBIAS_J*8 >> 16)
     |  subfe TMP1, TMP1, TMP1
     if (vk) {
       |  andc TMP2, TMP2, TMP1
@@ -3867,15 +3866,15 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  // RA = src*8, RD = num_const*8, JMP with RD = target
     |.if DUALNUM
     |  lwzux CARG1, RA, BASE
-    |    addi PC, PC, 4
+    |    addi PC, PC, 8                    // Advance by 8 bytes (64-bit instruction)
     |   lwz CARG2, 4(RA)
     |  lwzux CARG3, RD, KBASE
     |  checknum cr0, CARG1
-    |    lwz SAVE0, -4(PC)
+    |    ld SAVE0, -8(PC)                  // Load full 64-bit instruction
     |  checknum cr1, CARG3
-    |    decode_RD4 SAVE0, SAVE0
+    |    decode_RD8 SAVE0, SAVE0
     |   lwz CARG4, 4(RD)
-    |    addis SAVE0, SAVE0, -(BCBIAS_J*4 >> 16)
+    |    addis SAVE0, SAVE0, -(BCBIAS_J*8 >> 16)
     if (vk) {
       |->BC_ISEQN_Z:
     } else {
@@ -3892,13 +3891,13 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
       |->BC_ISNEN_Z:  // Dummy label.
     }
     |  lwzx CARG1, BASE, RA
-    |    addi PC, PC, 4
+    |    addi PC, PC, 8                    // Advance by 8 bytes (64-bit instruction)
     |   lfdx f0, BASE, RA
-    |    lwz SAVE0, -4(PC)
+    |    ld SAVE0, -8(PC)                  // Load full 64-bit instruction
     |  lfdx f1, KBASE, RD
-    |    decode_RD4 SAVE0, SAVE0
+    |    decode_RD8 SAVE0, SAVE0
     |  checknum CARG1
-    |    addis SAVE0, SAVE0, -(BCBIAS_J*4 >> 16)
+    |    addis SAVE0, SAVE0, -(BCBIAS_J*8 >> 16)
     |  bge >3
     |  fcmpu cr0, f0, f1
     |.endif
@@ -3971,9 +3970,9 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  // RA = src*8, RD = primitive_type*8 (~), JMP with RD = target
     |  lwzx TMP0, BASE, RA
     |   srwi TMP1, RD, 3
-    |    lwz TMP2, 0(PC)
+    |    ld TMP2, 0(PC)                    // Load full 64-bit instruction (next JMP)
     |   not TMP1, TMP1
-    |    addi PC, PC, 4
+    |    addi PC, PC, 8                    // Advance by 8 bytes (64-bit instruction)
     |.if FFI
     |  cmpwi TMP0, LJ_TCDATA
     |  beq ->vmeta_equal_cd
@@ -3989,10 +3988,10 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  beq ->vmeta_equal_thunk
     |6:
     |  sub TMP0, TMP0, TMP1
-    |    decode_RD4 TMP2, TMP2
+    |    decode_RD8 TMP2, TMP2
     |  .gpr64 extsw TMP0, TMP0
     |  addic TMP0, TMP0, -1
-    |    addis TMP2, TMP2, -(BCBIAS_J*4 >> 16)
+    |    addis TMP2, TMP2, -(BCBIAS_J*8 >> 16)
     |  subfe TMP1, TMP1, TMP1
     if (vk) {
       |  and TMP2, TMP2, TMP1
@@ -4008,14 +4007,14 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
   case BC_ISTC: case BC_ISFC: case BC_IST: case BC_ISF:
     |  // RA = dst*8 or unused, RD = src*8, JMP with RD = target
     |  lwzx TMP0, BASE, RD
-    |   lwz INS, 0(PC)
-    |   addi PC, PC, 4
+    |   ld INS, 0(PC)                      // Load full 64-bit instruction (next JMP)
+    |   addi PC, PC, 8                     // Advance by 8 bytes (64-bit instruction)
     if (op == BC_IST || op == BC_ISF) {
       |  .gpr64 extsw TMP0, TMP0
       |  subfic TMP0, TMP0, LJ_TTRUE
-      |   decode_RD4 TMP2, INS
+      |   decode_RD8 TMP2, INS
       |  subfe TMP1, TMP1, TMP1
-      |   addis TMP2, TMP2, -(BCBIAS_J*4 >> 16)
+      |   addis TMP2, TMP2, -(BCBIAS_J*8 >> 16)
       if (op == BC_IST) {
 	|  andc TMP2, TMP2, TMP1
       } else {
@@ -4036,8 +4035,8 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
       } else {
 	|  blt >1
       }
-      |  addis PC, PC, -(BCBIAS_J*4 >> 16)
-      |  decode_RD4 TMP2, INS
+      |  addis PC, PC, -(BCBIAS_J*8 >> 16)
+      |  decode_RD8 TMP2, INS
       |.if FPU
       |   stfdx f0, BASE, RA
       |.else
@@ -4079,8 +4078,8 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     // Otherwise, skip the following JMP (value is truthy - not an array or non-empty).
     |  // RA = src*8, followed by JMP with RD = target
     |  lwzx TMP0, BASE, RA		// Load type tag
-    |   lwz INS, 0(PC)
-    |   addi PC, PC, 4			// Advance past following JMP
+    |   ld INS, 0(PC)                      // Load full 64-bit instruction (next JMP)
+    |   addi PC, PC, 8			// Advance past following JMP (64-bit)
     |  checkarray TMP0
     |  bne >1				// Not an array - skip JMP (truthy)
     |.if GPR64
@@ -4094,8 +4093,8 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  cmpwi TMP2, 0
     |  bne >1				// Non-empty array - skip JMP (truthy)
     |  // Empty array - execute JMP (falsey)
-    |  decode_RD4 TMP0, INS
-    |  addis TMP0, TMP0, -(BCBIAS_J*4 >> 16)
+    |  decode_RD8 TMP0, INS
+    |  addis TMP0, TMP0, -(BCBIAS_J*8 >> 16)
     |  add PC, PC, TMP0
     |1:
     |  ins_next
@@ -5587,7 +5586,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_callt
     |
     |5:  // Tailcall to a fast function with a Lua frame below.
-    |  lwz INS, -4(TMP1)
+    |  ld INS, -8(TMP1)                    // Load 64-bit instruction
     |  decode_RA8 RA, INS
     |  sub TMP1, BASE, RA
     |  lwz LFUNC:TMP1, FRAME_FUNC-8(TMP1)
@@ -5647,7 +5646,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  lwz RC, -4(RA)			// Get index from control var.
     |  lwz TMP0, TAB:RB->asize
     |  lwz TMP1, TAB:RB->array
-    |   addi PC, PC, 4
+    |   addi PC, PC, 8                     // Advance by 8 bytes (64-bit instruction)
     |1:  // Traverse array part.
     |  cmplw RC, TMP0
     |   slwi TMP3, RC, 3
@@ -5660,7 +5659,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |   lwz CARG2, 4(TMP3)
     |.endif
     |  checknil TMP2
-    |     lwz INS, -4(PC)
+    |     ld INS, -8(PC)
     |  beq >4
     |   addi TMP2, RC, 0
     |.if DUALNUM
@@ -5670,14 +5669,14 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |   tonum_u f1, TMP2
     |.endif
     |    addi RC, RC, 1
-    |     addis TMP3, PC, -(BCBIAS_J*4 >> 16)
+    |     addis TMP3, PC, -(BCBIAS_J*8 >> 16)
     |.if FPU
     |  stfd f0, 8(RA)
     |.else
     |  stw CARG1, 8(RA)
     |  stw CARG2, 12(RA)
     |.endif
-    |     decode_RD4 TMP1, INS
+    |     decode_RD8 TMP1, INS
     |    stw RC, -4(RA)			// Update control var.
     |     add PC, TMP1, TMP3
     |.if not DUALNUM
@@ -5710,7 +5709,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |.endif
     |   add NODE:TMP3, TMP2, TMP3
     |  checknil RB
-    |     lwz INS, -4(PC)
+    |     ld INS, -8(PC)
     |  beq >7
     |.if FPU
     |   lfd f1, NODE:TMP3->key
@@ -5718,7 +5717,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |   lwz CARG3, NODE:TMP3->key.u32.hi
     |   lwz CARG4, NODE:TMP3->key.u32.lo
     |.endif
-    |     addis TMP2, PC, -(BCBIAS_J*4 >> 16)
+    |     addis TMP2, PC, -(BCBIAS_J*8 >> 16)
     |.if FPU
     |  stfd f0, 8(RA)
     |.else
@@ -5726,7 +5725,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  stw CARG2, 12(RA)
     |.endif
     |    add RC, RC, TMP0
-    |     decode_RD4 TMP1, INS
+    |     decode_RD8 TMP1, INS
     |.if FPU
     |   stfd f1, 0(RA)
     |.else
@@ -5750,7 +5749,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  add RA, BASE, RA
     |  lwz ARRAY:RB, -12(RA)
     |  lwz TMP0, -4(RA)			// Control var.
-    |    addi PC, PC, 4
+    |    addi PC, PC, 8                    // Advance by 8 bytes (64-bit instruction)
     |  cmpwi TMP0, LJ_TNIL
     |  bne >1
     |  li RC, 0
@@ -5786,9 +5785,9 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  stw PC, SAVE_PC
     |  blex lj_arr_getidx
     |
-    |     lwz INS, -4(PC)
-    |    addis TMP3, PC, -(BCBIAS_J*4 >> 16)
-    |     decode_RD4 TMP1, INS
+    |     ld INS, -8(PC)
+    |    addis TMP3, PC, -(BCBIAS_J*8 >> 16)
+    |     decode_RD8 TMP1, INS
     |    add PC, TMP1, TMP3
     |  ins_next
     |
@@ -5814,33 +5813,31 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  lbz TMP1, CFUNC:TMP1->ffid
     |   crand 4*cr0+eq, 4*cr0+eq, 4*cr6+eq
     |  cmpwi cr7, TMP1, FF_next_N
-    |    srwi TMP0, RD, 1
     |  crand 4*cr0+eq, 4*cr0+eq, 4*cr7+eq
-    |    add TMP3, PC, TMP0
+    |    add TMP3, PC, RD                  // RD already D*8 for 64-bit branch calc
     |  bne cr0, >5
     |  lus TMP1, (LJ_KEYINDEX >> 16)
     |  ori TMP1, TMP1, (LJ_KEYINDEX & 0xffff)
     |  stw ZERO, -4(RA)			// Initialize control var.
     |  stw TMP1, -8(RA)
-    |    addis PC, TMP3, -(BCBIAS_J*4 >> 16)
+    |    addis PC, TMP3, -(BCBIAS_J*8 >> 16)
     |1:
     |  ins_next
     |5:  // Despecialize bytecode if any of the checks fail.
     |  li TMP0, BC_JMP
     |   li TMP1, BC_ITERC
     |  stb TMP0, -1(PC)
-    |    addis PC, TMP3, -(BCBIAS_J*4 >> 16)
+    |    addis PC, TMP3, -(BCBIAS_J*8 >> 16)
     |  // NYI on big-endian: unpatch JLOOP.
-    |   stb TMP1, 3(PC)
+    |   stb TMP1, 7(PC)
     |  b <1
     break;
 
   case BC_ISARR:
     |  // RA = base*8, RD = target (points to ITERA)
     |  add RA, BASE, RA
-      |    srwi TMP0, RD, 1
     |  lwz TMP2, -16(RA)
-     |   add TMP3, PC, TMP0
+    |   add TMP3, PC, RD                   // RD already D*8 for 64-bit branch calc
     |  cmpwi TMP2, LJ_TARRAY
      |  bne >5
     |  lwz TMP1, -8(RA)
@@ -5849,22 +5846,22 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  li TMP0, BC_ITERA
     |  stb TMP0, -1(PC)
     |1:
-    |    addis PC, TMP3, -(BCBIAS_J*4 >> 16)
+    |    addis PC, TMP3, -(BCBIAS_J*8 >> 16)
     |  ins_next
     |
     |5:  // Despecialize bytecode if any of the checks fail.
+    |  addis SAVE0, TMP3, -(BCBIAS_J*8 >> 16)  // SAVE0 = target instruction address
     |.if JIT
-    |  addis TMP0, TMP3, -(BCBIAS_J*4 >> 16)
-    |  lbz TMP2, -1(TMP0)
+    |  lbz TMP2, 7(SAVE0)                       // Read target opcode (offset 7 for big-endian 64-bit)
     |.endif
     |  li TMP0, BC_JMP
-     |   li TMP1, BC_ITERC
+    |   li TMP1, BC_ITERC
     |  stb TMP0, -1(PC)
     |.if JIT
     |  cmpwi TMP2, BC_ITERA
     |  bne >6
     |.endif
-    |   stb TMP1, -1(TMP0)
+    |   stb TMP1, 7(SAVE0)                      // Store to target opcode (offset 7 for big-endian 64-bit)
     |  b <1
     |.if JIT
     |6:  // Unpatch JLOOP. NYI on big-endian.
@@ -5983,7 +5980,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |
     |->BC_RET_Z:
     |  // BASE = base, RA = resultptr, RD = (nresults+1)*8, PC = return
-    |   lwz INS, -4(PC)
+    |   ld INS, -8(PC)
     |  cmpwi RD, 8
     |   subi TMP2, BASE, 8
     |   subi RC, RD, 8
@@ -6061,7 +6058,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |   xori TMP1, PC, FRAME_VARG
     |  bney ->BC_RETV_Z
     |
-    |  lwz INS, -4(PC)
+    |  ld INS, -8(PC)
     |   subi TMP2, BASE, 8
     |  decode_RB8 RB, INS
     if (op == BC_RET1) {
@@ -6173,21 +6170,18 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  cmpw CARG1, CARG2
     |1:
     |   stw TISNUM, FORL_EXT*8(RA)
-    if (op != BC_JFORL) {
-      |  srwi RD, RD, 1
-    }
     |   stw CARG1, FORL_EXT*8+4(RA)
     if (op != BC_JFORL) {
-      |  add RD, PC, RD
+      |  add RD, PC, RD                    // RD already D*8 for 64-bit branch calc
     }
     if (op == BC_FORI) {
       |  bgt >3  // See FP loop below.
     } else if (op == BC_JFORI) {
-      |  addis PC, RD, -(BCBIAS_J*4 >> 16)
+      |  addis PC, RD, -(BCBIAS_J*8 >> 16)
       |  bley >7
     } else if (op == BC_IFORL) {
       |  bgt >2
-      |  addis PC, RD, -(BCBIAS_J*4 >> 16)
+      |  addis PC, RD, -(BCBIAS_J*8 >> 16)
     } else {
       |  bley =>BC_JLOOP
     }
@@ -6259,9 +6253,6 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
       |  bge ->vmeta_for
     }
     |  cmpwi cr6, SAVE0, 0
-    if (op != BC_JFORL) {
-      |  srwi RD, RD, 1
-    }
     |.if FPU
     |   stfd f1, FORL_EXT*8(RA)
     |.else
@@ -6269,7 +6260,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |   stw CARG2, FORL_EXT*8+4(RA)
     |.endif
     if (op != BC_JFORL) {
-      |  add RD, PC, RD
+      |  add RD, PC, RD                    // RD already D*8 for 64-bit branch calc
     }
     |.if FPU
     |  fcmpu cr0, f1, f2
@@ -6280,7 +6271,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  mr RD, SAVE1
     |.endif
     if (op == BC_JFORI) {
-      |  addis PC, RD, -(BCBIAS_J*4 >> 16)
+      |  addis PC, RD, -(BCBIAS_J*8 >> 16)
     }
     |  blt cr6, >5
     if (op == BC_FORI) {
@@ -6292,7 +6283,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
       |  bgt >2
       |.endif
       |1:
-      |  addis PC, RD, -(BCBIAS_J*4 >> 16)
+      |  addis PC, RD, -(BCBIAS_J*8 >> 16)
     } else if (op == BC_JFORI) {
       |  bley >7
     } else {
@@ -6308,7 +6299,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     if (op == BC_FORI) {
       |  bge <2
       |3:  // Used by integer loop, too.
-      |  addis PC, RD, -(BCBIAS_J*4 >> 16)
+      |  addis PC, RD, -(BCBIAS_J*8 >> 16)
     } else if (op == BC_IFORL) {
       |  bgey <1
     } else if (op == BC_JFORI) {
@@ -6319,7 +6310,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  b <2
     if (op == BC_JFORI) {
       |7:
-      |  lwz INS, -4(PC)
+      |  ld INS, -8(PC)
       |  decode_RD8 RD, INS
       |  b =>BC_JLOOP
     }
@@ -6410,8 +6401,8 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
   case BC_IFUNCF:
     |  // BASE = new base, RA = BASE+framesize*8, RB = LFUNC, RC = nargs*8
     |  lwz TMP2, L->maxstack
-    |   lbz TMP1, -4+PC2PROTO(numparams)(PC)
-    |    lwz KBASE, -4+PC2PROTO(k)(PC)
+    |   lbz TMP1, -8+PC2PROTO(numparams)(PC)
+    |    lwz KBASE, -8+PC2PROTO(k)(PC)
     |  cmplw RA, TMP2
     |   slwi TMP1, TMP1, 3
     |  bgt ->vm_growstack_l
@@ -6448,11 +6439,11 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  add TMP0, RA, RC
     |   stw LFUNC:RB, 4(TMP1)		// Store copy of LFUNC.
     |   addi TMP3, RC, 8+FRAME_VARG
-    |    lwz KBASE, -4+PC2PROTO(k)(PC)
+    |    lwz KBASE, -8+PC2PROTO(k)(PC)
     |  cmplw TMP0, TMP2
     |   stw TMP3, 0(TMP1)		// Store delta + FRAME_VARG.
     |  bge ->vm_growstack_l
-    |  lbz TMP2, -4+PC2PROTO(numparams)(PC)
+    |  lbz TMP2, -8+PC2PROTO(numparams)(PC)
     |   mr RA, BASE
     |   mr RC, TMP1
     |  ins_next1
