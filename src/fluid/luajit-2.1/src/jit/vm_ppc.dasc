@@ -470,7 +470,7 @@
 |// Extract 32-bit P from ABCP/ADP format (upper 32 bits of 64-bit instruction).
 |// Use after instruction fetch when PC has advanced by 8.
 |.macro ins_getp32, dst
-|  lwz dst, -4(PC)
+|  lwz dst, -8(PC)
 |.endmacro
 |
 |// Extract 48-bit pointer from AP format (bits 16-63 of 64-bit instruction).
@@ -5829,7 +5829,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  stb TMP0, -1(PC)
     |    addis PC, TMP3, -(BCBIAS_J*8 >> 16)
     |  // NYI on big-endian: unpatch JLOOP.
-    |   stb TMP1, 3(PC)
+    |   stb TMP1, 7(PC)
     |  b <1
     break;
 
