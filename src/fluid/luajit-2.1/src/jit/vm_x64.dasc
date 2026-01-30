@@ -1061,7 +1061,7 @@ static void build_subroutines(BuildCtx *ctx)
   |
   |->vmeta_equal:
   |  cleartp TAB:RD
-  |  sub PC, 8
+  |  sub PC, 16                    // Back up past JMP to ISEQ* instruction
   |.if X64WIN
   |  mov CARG3, RD
   |  mov CARG4d, RBd
@@ -1080,11 +1080,11 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov SAVE_PC, PC
   |  call extern lj_meta_equal   // (lua_State *L, GCobj *o1, *o2, int ne)
   |  // 0/1 or TValue * (metamethod) returned in eax (RC).
-  |  jmp <3
+  |  jmp >7
   |
   |->vmeta_equal_cd:
   |.if FFI
-  |  sub PC, 8
+  |  sub PC, 16                    // Back up past JMP to ISEQ* instruction
   |  mov L:RB, SAVE_L
   |  mov L:RB->base, BASE
   |  mov CARG1, L:RB
@@ -1092,11 +1092,11 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov SAVE_PC, PC
   |  call extern lj_meta_equal_cd   // (lua_State *L, BCIns ins)
   |  // 0/1 or TValue * (metamethod) returned in eax (RC).
-  |  jmp <3
+  |  jmp >7
   |.endif
   |
   |->vmeta_equal_thunk:
-  |  sub PC, 8
+  |  sub PC, 16                    // Back up past JMP to ISEQ* instruction
   |  mov L:RB, SAVE_L
   |  mov L:RB->base, BASE
   |  mov CARG1, L:RB
@@ -1104,7 +1104,18 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov SAVE_PC, PC
   |  call extern lj_meta_equal_thunk   // (lua_State *L, BCIns ins)
   |  // 0/1 returned in eax (RC).
-  |  jmp <3
+  |7:  // Return path for equality handlers that backed up PC by 16
+  |  mov BASE, L:RB->base
+  |  cmp RC, 1
+  |  jbe >8                       // RC <= 1: handle equality result
+  |  add PC, 8                    // RC > 1: advance PC to JMP for metamethod continuation
+  |  jmp ->vmeta_binop
+  |8:
+  |  lea PC, [PC+16]              // Skip past both ISEQ* and JMP instructions
+  |  jb <6                        // RC == 0: not equal, don't take branch
+  |  movzx RDd, PC_RD
+  |  branchPC RD
+  |  jmp <6                       // RC == 1: equal, take branch
   |
   |->vmeta_istype:
   |  mov L:RB, SAVE_L
@@ -4787,9 +4798,9 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  mov RA, [DISPATCH+DISPATCH_J(trace)]
     |  movzx RCd, word [PC+2]
     |  mov TRACE:RA, [RA+RC*8]
-    |  mov eax, TRACE:RA->startins
+    |  mov rax, TRACE:RA->startins    // Load full 64-bit instruction
     |  mov al, BC_ITERC
-    |  mov dword [PC], eax
+    |  mov qword [PC], rax            // Write full 64-bit instruction
     |  jmp <1
     |.endif
     break;
@@ -4817,9 +4828,9 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  mov RA, [DISPATCH+DISPATCH_J(trace)]
     |  movzx RCd, word [PC+2]
     |  mov TRACE:RA, [RA+RC*8]
-    |  mov eax, TRACE:RA->startins
+    |  mov rax, TRACE:RA->startins    // Load full 64-bit instruction
     |  mov al, BC_ITERC
-    |  mov dword [PC], eax       // Overwrite the JLOOP header at the branch target with BC_ITERC.
+    |  mov qword [PC], rax            // Write full 64-bit instruction
     |  jmp <1
     |.endif
     break;
