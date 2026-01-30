@@ -1,4 +1,6 @@
-// String library.
+// String library
+//
+// Copyright (C) 2025-2026 Paul Manias
 // Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 //
 // Major portions taken verbatim or adapted from the Lua interpreter.
@@ -14,7 +16,6 @@
 #include "lua.h"
 #include "lauxlib.h"
 #include "lualib.h"
-
 #include "lj_obj.h"
 #include "lj_gc.h"
 #include "lj_err.h"
@@ -33,6 +34,8 @@
 #include "lib_range.h"
 #include "lj_proto_registry.h"
 #include "debug/error_guard.h"
+
+#include <parasol/modules/regex.h>
 
 #define L_ESC      '%'
 
@@ -189,11 +192,11 @@ LJLIB_CF(string_alloc)
 // Helper to find the next separator in a string
 // Returns pointer to separator if found, nullptr otherwise
 
-static const char* find_separator(const char *Pos, const char *End, const char *Sep, MSize SepLen, bool IsWhitespace)
+static CSTRING find_separator(CSTRING Pos, CSTRING End, CSTRING Sep, MSize SepLen, bool IsWhitespace)
 {
    if (IsWhitespace) {
       // Whitespace separators: scan the entire range, independent of SepLen.
-      for (const char *p = Pos; p < End; p++) {
+      for (CSTRING p = Pos; p < End; p++) {
          if (*p IS ' ' or *p IS '\t' or *p IS '\n' or *p IS '\r') return p;
       }
       return nullptr;
@@ -202,7 +205,7 @@ static const char* find_separator(const char *Pos, const char *End, const char *
    if (SepLen IS 1) return (const char*)memchr(Pos, Sep[0], End - Pos);
 
    // Multi-character separator.
-   for (const char *p = Pos; p <= End - SepLen; p++) {
+   for (CSTRING p = Pos; p <= End - SepLen; p++) {
       if (memcmp(p, Sep, SepLen) IS 0) return p;
    }
    return nullptr;
@@ -214,8 +217,8 @@ LJLIB_CF(string_split)
 {
    GCstr *s = lj_lib_checkstr(L, 1);
    GCstr *sep = lj_lib_optstr(L, 2);
-   const char *str = strdata(s);
-   const char *sepstr;
+   CSTRING str = strdata(s);
+   CSTRING sepstr;
    MSize seplen;
    MSize slen = s->len;
    bool is_whitespace = false;
@@ -237,13 +240,13 @@ LJLIB_CF(string_split)
       return 1;
    }
 
-   const char *end = str + slen;
+   CSTRING end = str + slen;
 
    // First pass: count separators to determine array size
    uint32_t count = 1;  // At least one element (final segment)
-   const char *pos = str;
+   CSTRING pos = str;
    while (pos < end) {
-      const char *found = find_separator(pos, end, sepstr, seplen, is_whitespace);
+      CSTRING found = find_separator(pos, end, sepstr, seplen, is_whitespace);
       if (found) {
          count++;
          pos = found + (is_whitespace ? 1 : seplen);
@@ -259,7 +262,7 @@ LJLIB_CF(string_split)
    pos = str;
    uint32_t idx = 0;
    while (pos <= end and idx < count) {
-      const char *found = find_separator(pos, end, sepstr, seplen, is_whitespace);
+      CSTRING found = find_separator(pos, end, sepstr, seplen, is_whitespace);
 
       if (found) {
          GCstr *substr = lj_str_new(L, pos, found - pos);
@@ -293,10 +296,10 @@ LJLIB_CF(string_trim)
       return 1;
    }
 
-   const char* str = strdata(s);
+   CSTRING str = strdata(s);
    MSize len = s->len;
-   const char* start = str;
-   const char* end = str + len;
+   CSTRING start = str;
+   CSTRING end = str + len;
 
    if (len IS 0) {
       setstrV(L, L->top - 1, &G(L)->strempty);
@@ -390,8 +393,8 @@ LJLIB_CF(string_endsWith)
 {
    GCstr *s = lj_lib_checkstr(L, 1);
    GCstr *suffix = lj_lib_checkstr(L, 2);
-   const char* str = strdata(s);
-   const char* suffixstr = strdata(suffix);
+   CSTRING str = strdata(s);
+   CSTRING suffixstr = strdata(suffix);
    MSize slen = s->len;
    MSize suffixlen = suffix->len;
 
@@ -419,7 +422,7 @@ LJLIB_CF(string_join)
 {
    GCtab *t = lj_lib_checktab(L, 1);
    GCstr *sep = lj_lib_optstr(L, 2);
-   const char* sepstr = "";
+   CSTRING sepstr = "";
    MSize seplen = 0;
    SBuf* sb = lj_buf_tmp_(L);
    int32_t len = (int32_t)lj_tab_len(t);
@@ -649,17 +652,17 @@ LJLIB_CF(string_dump)
 
 #define uchar(c)   ((unsigned char)(c))
 
-#define CAP_UNFINISHED   (-1)
+#define CAP_UNFINISHED (-1)
 #define CAP_POSITION   (-2)
 
 typedef struct MatchState {
-   const char *src_init;  //  init of source string
-   const char *src_end;  //  end (`\0') of source string
+   CSTRING src_init;  //  init of source string
+   CSTRING src_end;  //  end (`\0') of source string
    lua_State *L;
    int level;  //  total number of captures (finished or unfinished)
    int depth;
    struct {
-      const char *init;
+      CSTRING init;
       ptrdiff_t len;
    } capture[LUA_MAXCAPTURES];
 } MatchState;
@@ -681,7 +684,7 @@ static int capture_to_close(MatchState* ms)
    return 0;  //  unreachable
 }
 
-static const char* classend(MatchState* ms, const char* p)
+static CSTRING classend(MatchState* ms, CSTRING p)
 {
    switch (*p++) {
    case L_ESC:
@@ -726,7 +729,7 @@ static int match_class(int c, int cl)
 
 //********************************************************************************************************************
 
-static int matchbracketclass(int c, const char* p, const char* ec)
+static int matchbracketclass(int c, CSTRING p, CSTRING ec)
 {
    int sig = 1;
    if (*(p + 1) IS '^') {
@@ -750,21 +753,21 @@ static int matchbracketclass(int c, const char* p, const char* ec)
 
 //********************************************************************************************************************
 
-static int singlematch(int c, const char* p, const char* ep)
+static int singlematch(int c, CSTRING p, CSTRING ep)
 {
    switch (*p) {
-   case '.': return 1;  //  matches any char
-   case L_ESC: return match_class(c, uchar(*(p + 1)));
-   case '[': return matchbracketclass(c, p, ep - 1);
-   default:  return (uchar(*p) IS c);
+      case '.':   return 1;  //  matches any char
+      case L_ESC: return match_class(c, uchar(*(p + 1)));
+      case '[':   return matchbracketclass(c, p, ep - 1);
+      default:    return (uchar(*p) IS c);
    }
 }
 
-static const char* match(MatchState* ms, const char* s, const char* p);
+static CSTRING match(MatchState* ms, CSTRING s, CSTRING p);
 
 //********************************************************************************************************************
 
-static const char* matchbalance(MatchState* ms, const char* s, const char* p)
+static CSTRING matchbalance(MatchState* ms, CSTRING s, CSTRING p)
 {
    if (*p IS 0 or *(p + 1) IS 0) lj_err_caller(ms->L, ErrMsg::STRPATU);
 
@@ -785,13 +788,13 @@ static const char* matchbalance(MatchState* ms, const char* s, const char* p)
 
 //********************************************************************************************************************
 
-static const char* max_expand(MatchState* ms, const char* s, const char* p, const char* ep)
+static CSTRING max_expand(MatchState* ms, CSTRING s, CSTRING p, CSTRING ep)
 {
    ptrdiff_t i = 0;  //  counts maximum expand for item
    while ((s + i) < ms->src_end and singlematch(uchar(*(s + i)), p, ep)) i++;
    // keeps trying to match with the maximum repetitions
    while (i >= 0) {
-      const char* res = match(ms, (s + i), ep + 1);
+      CSTRING res = match(ms, (s + i), ep + 1);
       if (res) return res;
       i--;  //  else didn't match; reduce 1 repetition to try again
    }
@@ -800,10 +803,10 @@ static const char* max_expand(MatchState* ms, const char* s, const char* p, cons
 
 //********************************************************************************************************************
 
-static const char* min_expand(MatchState* ms, const char* s, const char* p, const char* ep)
+static CSTRING min_expand(MatchState* ms, CSTRING s, CSTRING p, CSTRING ep)
 {
    while (true) {
-      const char* res = match(ms, s, ep + 1);
+      CSTRING res = match(ms, s, ep + 1);
       if (res != nullptr) return res;
       else if (s < ms->src_end and singlematch(uchar(*s), p, ep)) s++;  //  try with one more repetition
       else return nullptr;
@@ -812,9 +815,9 @@ static const char* min_expand(MatchState* ms, const char* s, const char* p, cons
 
 //********************************************************************************************************************
 
-static const char* start_capture(MatchState* ms, const char* s, const char* p, int what)
+static CSTRING start_capture(MatchState* ms, CSTRING s, CSTRING p, int what)
 {
-   const char* res;
+   CSTRING res;
    int level = ms->level;
    if (level >= LUA_MAXCAPTURES) lj_err_caller(ms->L, ErrMsg::STRCAPN);
    ms->capture[level].init = s;
@@ -827,10 +830,10 @@ static const char* start_capture(MatchState* ms, const char* s, const char* p, i
 
 //********************************************************************************************************************
 
-static const char* end_capture(MatchState* ms, const char* s, const char* p)
+static CSTRING end_capture(MatchState* ms, CSTRING s, CSTRING p)
 {
    int l = capture_to_close(ms);
-   const char* res;
+   CSTRING res;
    ms->capture[l].len = s - ms->capture[l].init;  //  close capture
    if ((res = match(ms, s, p)) IS nullptr)  //  match failed?
       ms->capture[l].len = CAP_UNFINISHED;  //  undo capture
@@ -839,7 +842,7 @@ static const char* end_capture(MatchState* ms, const char* s, const char* p)
 
 //********************************************************************************************************************
 
-static const char* match_capture(MatchState* ms, const char* s, int l)
+static CSTRING match_capture(MatchState* ms, CSTRING s, int l)
 {
    size_t len;
    l = check_capture(ms, l);
@@ -850,7 +853,7 @@ static const char* match_capture(MatchState* ms, const char* s, int l)
 
 //********************************************************************************************************************
 
-static const char* match(MatchState* ms, const char* s, const char* p)
+static CSTRING match(MatchState* ms, CSTRING s, CSTRING p)
 {
    if (++ms->depth > LJ_MAX_XLEVEL)
       lj_err_caller(ms->L, ErrMsg::STRPATX);
@@ -873,7 +876,7 @@ init: //  using goto's to optimize tail recursion
          p += 4;
          goto init;  //  else s = match(ms, s, p+4);
       case 'f': {  // frontier?
-         const char* ep; char previous;
+         CSTRING ep; char previous;
          p += 2;
          if (*p != '[') lj_err_caller(ms->L, ErrMsg::STRPATB);
          ep = classend(ms, p);  //  points to what is next
@@ -903,11 +906,11 @@ init: //  using goto's to optimize tail recursion
       if (s != ms->src_end) s = nullptr;  //  check end of string
       break;
    default: dflt: {  // it is a pattern item
-      const char* ep = classend(ms, p);  //  points to what is next
+      CSTRING ep = classend(ms, p);  //  points to what is next
       int m = s < ms->src_end and singlematch(uchar(*s), p, ep);
       switch (*ep) {
       case '?': {  // optional
-         const char* res;
+         CSTRING res;
          if (m and ((res = match(ms, s + 1, ep + 1)) != nullptr)) {
             s = res;
             break;
@@ -938,7 +941,7 @@ init: //  using goto's to optimize tail recursion
 
 //********************************************************************************************************************
 
-static void push_onecapture(MatchState* ms, int i, const char* s, const char* e)
+static void push_onecapture(MatchState* ms, int i, CSTRING s, CSTRING e)
 {
    if (i >= ms->level) {
       if (i IS 0)  //  ms->level IS 0, too
@@ -955,7 +958,7 @@ static void push_onecapture(MatchState* ms, int i, const char* s, const char* e)
 
 //********************************************************************************************************************
 
-static int push_captures(MatchState* ms, const char* s, const char* e)
+static int push_captures(MatchState* ms, CSTRING s, CSTRING e)
 {
    int i;
    int nlevels = (ms->level IS 0 and s) ? 1 : ms->level;
@@ -981,7 +984,7 @@ static int str_find_aux(lua_State *L, int find)
    }
 
    if (find and ((L->base + 3 < L->top and tvistruecond(L->base + 3)) || !lj_str_haspattern(p))) {  // Search for fixed string.
-      const char* q = lj_str_find(strdata(s) + st, strdata(p), s->len - st, p->len);
+      CSTRING q = lj_str_find(strdata(s) + st, strdata(p), s->len - st, p->len);
       if (q) {
          setintV(L->top - 2, (int32_t)(q - strdata(s)));  // 0-based start
          setintV(L->top - 1, (int32_t)(q - strdata(s)) + (int32_t)p->len - 1);  // 0-based end (inclusive)
@@ -990,15 +993,15 @@ static int str_find_aux(lua_State *L, int find)
    }
    else {  // Search for pattern.
       MatchState ms;
-      const char* pstr = strdata(p);
-      const char* sstr = strdata(s) + st;
+      CSTRING pstr = strdata(p);
+      CSTRING sstr = strdata(s) + st;
       int anchor = 0;
       if (*pstr IS '^') { pstr++; anchor = 1; }
       ms.L = L;
       ms.src_init = strdata(s);
       ms.src_end = strdata(s) + s->len;
       do {  // Loop through string and try to match the pattern.
-         const char* q;
+         CSTRING q;
          ms.level = ms.depth = 0;
          q = match(&ms, sstr, pstr);
          if (q) {
@@ -1035,17 +1038,17 @@ LJLIB_CF(string_match)
 
 LJLIB_NOREG LJLIB_CF(string_gmatch_aux)
 {
-   const char* p = strVdata(lj_lib_upvalue(L, 2));
+   CSTRING p = strVdata(lj_lib_upvalue(L, 2));
    GCstr *str = strV(lj_lib_upvalue(L, 1));
-   const char* s = strdata(str);
+   CSTRING s = strdata(str);
    TValue *tvpos = lj_lib_upvalue(L, 3);
-   const char *src = s + tvpos->u32.lo;
+   CSTRING src = s + tvpos->u32.lo;
    MatchState ms;
    ms.L = L;
    ms.src_init = s;
    ms.src_end = s + str->len;
    for (; src <= ms.src_end; src++) {
-      const char* e;
+      CSTRING e;
       ms.level = ms.depth = 0;
       if ((e = match(&ms, src, p)) != nullptr) {
          int32_t pos = (int32_t)(e - s);
@@ -1071,10 +1074,10 @@ LJLIB_CF(string_gmatch)
 
 //********************************************************************************************************************
 
-static void add_s(MatchState* ms, luaL_Buffer* b, const char* s, const char* e)
+static void add_s(MatchState* ms, luaL_Buffer* b, CSTRING s, CSTRING e)
 {
    size_t l, i;
-   const char* news = lua_tolstring(ms->L, 3, &l);
+   CSTRING news = lua_tolstring(ms->L, 3, &l);
    for (i = 0; i < l; i++) {
       if (news[i] != L_ESC) luaL_addchar(b, news[i]);
       else {
@@ -1091,7 +1094,7 @@ static void add_s(MatchState* ms, luaL_Buffer* b, const char* s, const char* e)
 
 //********************************************************************************************************************
 
-static void add_value(MatchState* ms, luaL_Buffer* b, const char* s, const char* e)
+static void add_value(MatchState* ms, luaL_Buffer* b, CSTRING s, CSTRING e)
 {
    lua_State *L = ms->L;
    switch (lua_type(L, 3)) {
@@ -1129,8 +1132,8 @@ static void add_value(MatchState* ms, luaL_Buffer* b, const char* s, const char*
 LJLIB_CF(string_gsub)
 {
    size_t srcl;
-   const char* src = luaL_checklstring(L, 1, &srcl);
-   const char* p = luaL_checkstring(L, 2);
+   CSTRING src = luaL_checklstring(L, 1, &srcl);
+   CSTRING p = luaL_checkstring(L, 2);
    int  tr = lua_type(L, 3);
    int max_s = luaL_optint(L, 4, (int)(srcl + 1));
    int anchor = (*p IS '^') ? (p++, 1) : 0;
@@ -1143,7 +1146,7 @@ LJLIB_CF(string_gsub)
    ms.src_init = src;
    ms.src_end = src + srcl;
    while (n < max_s) {
-      const char* e;
+      CSTRING e;
       ms.level = ms.depth = 0;
       e = match(&ms, src, p);
       if (e) {
