@@ -291,10 +291,12 @@ static void expr_discharge(FuncState *fs, ExpDesc *e)
             ins = BCINS_ABC(BC_TGETS, 0, e->u.s.info, idx);
          }
          else {
-            e->u.s.info = bcemit_tgets(fs, 0, e->u.s.info, idx);
-            bcreg_free(fs, e->u.s.info);
-            e->k = ExpKind::Relocable;
-            return;
+            // Overflow: load string constant into temp register, use TGETV
+            BCREG key_reg = fs->freereg;
+            bcreg_reserve(fs, 1);
+            bcemit_AD(fs, BC_KSTR, key_reg, BCREG(idx));
+            bcreg_free(fs, key_reg);
+            ins = BCINS_ABC(BC_TGETV, 0, e->u.s.info, key_reg);
          }
       }
       else if (rc > BCMAX_C) ins = BCINS_ABC(BC_TGETB, 0, e->u.s.info, rc - (BCMAX_C + 1));
@@ -681,8 +683,9 @@ static void bcemit_store(FuncState *fs, ExpDesc *LHS, ExpDesc *RHS)
             ins = BCINS_ABC(BC_TSETS, ra, LHS->u.s.info, BCREG(stridx));
          } else {
             /* Overflow-safe path: load string constant into a register and use TSETV. */
-            BCREG key_reg = bcreg_alloc(fs);
-            bcemit_INS(fs, BCINS_AD(BC_KSTR, key_reg, BCREG(stridx)));
+            BCREG key_reg = fs->freereg;
+            bcreg_reserve(fs, 1);
+            bcemit_AD(fs, BC_KSTR, key_reg, BCREG(stridx));
             ins = BCINS_ABC(BC_TSETV, ra, LHS->u.s.info, key_reg);
 #ifdef LUA_USE_ASSERT
             /* Free late alloced key reg to avoid assert on free of value reg. */
