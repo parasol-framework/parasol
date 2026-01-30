@@ -210,7 +210,7 @@
 |  movzx RAd, RCH         // Extract A (bits 8-15)
 |  movzx OP, RCL          // Extract opcode (bits 0-7)
 |  add PC, 8              // Advance to next instruction (64-bit = 8 bytes)
-|  shr RCd, 16            // Shift lower 32 bits for B:C extraction
+|  shr RC, 16             // Shift for B:C/D extraction (preserves upper 32 bits, shifted)
 |  jmp aword [DISPATCH+OP*8]
 |.endmacro
 |
@@ -1281,7 +1281,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov RC, [PC-8]           // Load full 64-bit instruction
   |  movzx RAd, RCH
   |  movzx OP, RCL
-  |  shr RCd, 16
+  |  shr RC, 16              // Shift for D extraction (preserves upper 32 bits, shifted)
   |  jmp aword [DISPATCH+OP*8+GG_DISP2STATIC]   // Retry FORI or JFORI.
   |
   |//-----------------------------------------------------------------------
@@ -2701,11 +2701,11 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov qword [DISPATCH+DISPATCH_GL(jit_base)], 0
   |  set_vmstate INTERP
   |  // Modified copy of ins_next which handles function header dispatch, too.
-  |  mov RCd, [PC]
+  |  mov RC, [PC]            // Fetch full 64-bit instruction (forward-compatible)
   |  movzx RAd, RCH
   |  movzx OP, RCL
   |  add PC, 8
-  |  shr RCd, 16
+  |  shr RC, 16              // Shift for B:C/D extraction (preserves upper 32 bits, shifted)
   |  cmp OP, BC_FUNCF         // Function header? (BC_FUNCF..BC_FUNCCW = 99..106)
   |  jb >3
   |  cmp OP, BC_FUNCC         // Lua function header? (BC_FUNCF..BC_JFUNCV = 99..104)
