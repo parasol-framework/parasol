@@ -293,10 +293,10 @@ static void bcread_bytecode(LexState *State, GCproto *pt, MSize sizebc)
    bc[0] = BCINS_AD((pt->flags & PROTO_VARARG) ? BC_FUNCV : BC_FUNCF,
       pt->framesize, 0);
    bcread_block(State, bc + 1, (sizebc - 1) * (MSize)sizeof(BCIns));
-   // Swap bytecode instructions if the endianess differs.
+   // Swap bytecode instructions if the endianness differs (64-bit BCIns).
    if (bcread_swap(State)) {
       MSize i;
-      for (i = 1; i < sizebc; i++) bc[i] = lj_bswap(bc[i]);
+      for (i = 1; i < sizebc; i++) bc[i] = lj_bswap64(bc[i]);
    }
 }
 

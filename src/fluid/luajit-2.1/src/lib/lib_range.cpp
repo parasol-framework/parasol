@@ -1367,6 +1367,7 @@ extern "C" int luaopen_range(lua_State *L)
 
    // Register prototypes for range methods (used for type inference)
 
+   reg_iface_prototype("range", "check", { FluidType::Bool }, { FluidType::Any });
    reg_iface_prototype("range", "new", { FluidType::Range }, { FluidType::Num, FluidType::Num });
    reg_iface_prototype("range", "each", { FluidType::Range }, { FluidType::Range, FluidType::Func });
    reg_iface_prototype("range", "filter", { FluidType::Array }, { FluidType::Range, FluidType::Func });
