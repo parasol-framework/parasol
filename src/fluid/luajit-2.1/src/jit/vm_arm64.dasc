@@ -221,7 +221,8 @@
 |
 |// Extract 32-bit P from ABCP/ADP format (upper 32 bits of 64-bit instruction)
 |.macro ins_getp32, dst
-|  ldr dst, [PC, #-4]          // Upper 32 bits of instruction
+|  ldr TMP0w, [PC, #-4]         // Upper 32 bits of instruction (force 32-bit load)
+|  mov dst, TMP0w
 |.endmacro
 |
 |// Extract 48-bit pointer from AP format (full 64-bit register required)
