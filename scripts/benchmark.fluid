@@ -70,6 +70,7 @@ bmark.run = function(Options:table, Feedback:func, Callback:func):table
    Options.showProgress ?= false
    Options.maxCalls ?= 10000
    Options.hotLoop ?= 5 -- Low threshold to trigger JIT sooner
+   Options.warmupCalls ?= 0
 
    assert(Options.duration > 0 and Options.duration <= 300, 'Options.duration must be between 0 and 300.')
    assert(Options.warmupCalls >= 0 and Options.warmupCalls <= 1000, 'Options.warmupCalls be between 0 and 1000.')
@@ -153,7 +154,7 @@ bmark.run = function(Options:table, Feedback:func, Callback:func):table
 
       results.totalCalls++
       callTime = (op_end - op_start) / 1000.0 -- Convert to milliseconds
-      callsPerSecond = 1000000.0 / callTime
+      callsPerSecond = 1000.0 / callTime
 
       -- Determine if this is a warmup cycle or benchmark cycle
       if results.warmupCount < Options.warmupCalls then
@@ -248,7 +249,7 @@ bmark.stats = function(Values:any):table
    table.sort(sorted_sample)
 
    -- Discard top 20% of outliers for min/max calculations
-   sample_n = math.floor(#sorted_sample * 0.8)
+   sample_n = math.max(1, math.floor(#sorted_sample * 0.8))
 
    -- Min and Max from sorted data
    min_val = sorted_sample[0]

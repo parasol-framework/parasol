@@ -299,13 +299,19 @@ LJ_NOINLINE static void unwindstack(lua_State *L, TValue *Top)
 
 static bool check_try_handler(lua_State *L, int errcode)
 {
-   if (L->try_stack.depth IS 0) return false;
+   pf::Log log(__FUNCTION__);
+   log.trace("Starting check: try_stack.depth=%u, L->base=%p, errcode=%d", L->try_stack.depth, L->base, errcode);
+
+   if (L->try_stack.depth IS 0) {
+      log.trace("Returning false: try_stack.depth is 0");
+      return false;
+   }
 
    // Don't intercept errors from JIT-compiled code (jit_base set during trace execution)
    // 2026-01-03: Suspect this check is redundant, hence the warning.  Remove if not being triggered.
 
    if (tvref(G(L)->jit_base)) {
-      pf::Log(__FUNCTION__).warning("Skipping try handler check: error from JIT-compiled code");
+      log.warning("Skipping try handler check: jit_base=%p", tvref(G(L)->jit_base));
       return false;
    }
 
@@ -323,7 +329,10 @@ static bool check_try_handler(lua_State *L, int errcode)
             // This is a C frame without Lua frame (e.g., trace recording cpcall).
             // Check if it's above the try block by comparing saved top position.
             TValue *cf_top = restorestack(L, -nres);
-            if (cf_top >= try_base) return false; // The cpcall is above/at the try block - let it handle the error
+            if (cf_top >= try_base) {
+               log.trace("Returning false: cpcall frame (nres=%d) at cf_top=%p >= try_base=%p", nres, cf_top, try_base);
+               return false; // The cpcall is above/at the try block - let it handle the error
+            }
          }
          cf = cframe_prev(cf);
       }
@@ -335,6 +344,8 @@ static bool check_try_handler(lua_State *L, int errcode)
    TryFrame *try_frame = &L->try_stack.frames[L->try_stack.depth - 1];
 
    lj_assertL(try_frame->func != nullptr, "check_try_handler: try_frame->func is null");
+
+   log.trace("try_frame[%u]: func=%p, frame_base_offset=%td", L->try_stack.depth - 1, try_frame->func, try_frame->frame_base);
 
    // Check if there's a protected call frame (FRAME_CP, FRAME_PCALL, FRAME_PCALLH) between
    // the current error and the try block. If so, let the protected call handle the error first.
@@ -353,7 +364,10 @@ static bool check_try_handler(lua_State *L, int errcode)
          // Check if this is a protected frame (C protected or Lua pcall)
          if (pf_type IS FRAME_CP or pf_type IS FRAME_PCALL or pf_type IS FRAME_PCALLH) {
             // This protected frame is above the try block's base - it should handle the error first
-            if (pf >= try_base) return false;
+            if (pf >= try_base) {
+               log.trace("Returning false: protected frame type=%d at pf=%p >= try_base=%p", pf_type, pf, try_base);
+               return false;
+            }
          }
 
          // If we've reached the try block's function, stop searching
@@ -373,43 +387,45 @@ static bool check_try_handler(lua_State *L, int errcode)
 
    TValue *frame = L->base - 1;
    bool found_try_func = false;
+   int frame_count = 0;
 
    // Validate initial frame pointer is within stack bounds
    lj_assertL(frame >= tvref(L->stack), "check_try_handler: initial frame below stack start");
 
+   log.trace("Walking frame chain from L->base-1=%p, looking for func=%p", frame, try_frame->func);
+
    while (frame > tvref(L->stack) + LJ_FR2) {
       GCfunc *func = frame_func(frame);
+      const BCIns *pc = frame_pc(frame);
+      int ftype = frame_typep(frame);
+      log.trace("  Frame %d: frame=%p, func=%p, pc=%p, type=%d", frame_count++, frame, func, pc, ftype);
+
       if (func IS try_frame->func) {
+         log.trace("  Found try_frame->func at frame %d", frame_count - 1);
          found_try_func = true;
          break;
       }
       frame = frame_prev(frame);
    }
 
-   if (not found_try_func) return false;
-
-   // Extract error code from prvFluid if available
+   if (not found_try_func) {
+      log.trace("Returning false: try_frame->func=%p not found in frame chain after %d frames", try_frame->func, frame_count);
+      return false;
+   }
 
    ERR err_code = ERR::Exception;  // Default for Lua errors
    if (L->CaughtError >= ERR::ExceptionThreshold) err_code = L->CaughtError;
 
    const BCIns *handler_pc = nullptr;
    BCREG exception_reg = 0xFF;
-
    if (lj_try_find_handler(L, try_frame, err_code, &handler_pc, &exception_reg)) {
-      // Validate handler PC was set
-
       lj_assertL(handler_pc != nullptr, "check_try_handler: handler found but handler_pc is null");
 
-      // Capture stack trace if TRY_FLAG_TRACE is enabled (before stack unwinding)
-
-      if (try_frame->flags & TRY_FLAG_TRACE) {
+      if (try_frame->flags & TRY_FLAG_TRACE) { // Capture stack trace
          if (!L->pending_trace) L->pending_trace = lj_debug_capture_trace(L, 0);
       }
 
-      // Just record that a handler exists - don't modify state yet
-
-      L->try_handler_pc = handler_pc;
+      L->try_handler_pc = handler_pc; // Just record that a handler exists - don't modify state yet
       return true;
    }
 

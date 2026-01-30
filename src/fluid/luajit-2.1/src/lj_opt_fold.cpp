@@ -1948,7 +1948,7 @@ static TRef kfold_xload(jit_State* J, IRIns* ir, const void* p)
 
 /* Turn: string.sub(str, a, b) == kstr
 ** into: string.byte(str, a) == string.byte(kstr, 1) etc.
-** Note: this creates unaligned XLOADs on x86/x64.
+** Note: this creates unaligned XLOADs on x86/x64 (not a performance issue).  ARM64 code will be aligned.
 */
 LJFOLD(EQ SNEW KGC)
 LJFOLD(NE SNEW KGC)
@@ -1959,11 +1959,11 @@ LJFOLDF(merge_eqne_snew_kgc)
    lj_assertJ(irt_isstr(fins->t), "bad equality IR type");
 
 #if LJ_TARGET_UNALIGNED
-#define FOLD_SNEW_MAX_LEN   4  //  Handle string lengths 0, 1, 2, 3, 4.
-#define FOLD_SNEW_TYPE8      IRT_I8   //  Creates shorter immediates.
+#define FOLD_SNEW_MAX_LEN  4       // Handle string lengths 0, 1, 2, 3, 4.
+#define FOLD_SNEW_TYPE8    IRT_I8  // Creates shorter immediates.
 #else
-#define FOLD_SNEW_MAX_LEN   1  //  Handle string lengths 0 or 1.
-#define FOLD_SNEW_TYPE8      IRT_U8  //  Prefer unsigned loads.
+#define FOLD_SNEW_MAX_LEN  1       // Handle string lengths 0 or 1.
+#define FOLD_SNEW_TYPE8    IRT_U8  // Prefer unsigned loads.
 #endif
 
    PHIBARRIER(fleft);

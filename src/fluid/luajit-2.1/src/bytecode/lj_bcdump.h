@@ -35,7 +35,7 @@ constexpr uint8_t BCDUMP_HEAD3 = 0x4a;
 // If you perform *any* kind of private modifications to the bytecode itself
 // or to the dump format, you *must* set BCDUMP_VERSION to 0x80 or higher.
 
-constexpr int BCDUMP_VERSION = 0x80;
+constexpr int BCDUMP_VERSION = 2;
 
 // Compatibility flags.
 
@@ -43,8 +43,7 @@ constexpr uint8_t BCDUMP_F_BE = 0x01;
 constexpr uint8_t BCDUMP_F_STRIP = 0x02;
 constexpr uint8_t BCDUMP_F_FFI = 0x04;
 constexpr uint8_t BCDUMP_F_FR2 = 0x08;
-constexpr uint8_t BCDUMP_F_EXT = 0x10;  // Extended 64-bit instructions present
-constexpr uint8_t BCDUMP_F_KNOWN = (BCDUMP_F_EXT*2-1);
+constexpr uint8_t BCDUMP_F_KNOWN = (BCDUMP_F_FR2*2-1);
 
 // Type codes for the GC constants of a prototype. Plus length for strings.
 enum {
