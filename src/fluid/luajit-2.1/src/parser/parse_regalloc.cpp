@@ -285,7 +285,7 @@ static void expr_discharge(FuncState *fs, ExpDesc *e)
    }
    else if (e->k IS ExpKind::Indexed) {
       BCREG rc = e->u.s.aux;
-      if (int32_t(rc) < 0) ins = BCINS_ABC(BC_TGETS, 0, e->u.s.info, ~rc);
+      if (int32_t(rc) < 0) ins = BCINS_ABC(BC_TGETS, 0, e->u.s.info, (~rc) & 0xFFu);
       else if (rc > BCMAX_C) ins = BCINS_ABC(BC_TGETB, 0, e->u.s.info, rc - (BCMAX_C + 1));
       else {
          bcreg_free(fs, rc);
@@ -319,7 +319,7 @@ static void expr_discharge(FuncState *fs, ExpDesc *e)
       // aux holds negated string constant index (same encoding as BC_TGETS)
       BCREG rc = e->u.s.aux;
       fs_check_assert(fs, int32_t(rc) < 0, "object field index must be string constant");
-      ins = BCINS_ABC(BC_OBGETF, 0, e->u.s.info, ~rc);
+      ins = BCINS_ABC(BC_OBGETF, 0, e->u.s.info, (~rc) & 0xFFu);
       bcreg_free(fs, e->u.s.info);
    }
    else if (e->k IS ExpKind::Call) {
@@ -653,7 +653,7 @@ static void bcemit_store(FuncState *fs, ExpDesc *LHS, ExpDesc *RHS)
       ra = expr_toanyreg(fs, RHS);
       rc = LHS->u.s.aux;
       fs_check_assert(fs, int32_t(rc) < 0, "object field index must be string constant");
-      ins = BCINS_ABC(BC_OBSETF, ra, LHS->u.s.info, ~rc);
+      ins = BCINS_ABC(BC_OBSETF, ra, LHS->u.s.info, (~rc) & 0xFFu);
    }
    else {
       // Table index assignment - emit BC_TSETV, BC_TSETB, or BC_TSETS
@@ -661,7 +661,7 @@ static void bcemit_store(FuncState *fs, ExpDesc *LHS, ExpDesc *RHS)
       fs_check_assert(fs, LHS->k IS ExpKind::Indexed, "bad expr type %d", int(LHS->k));
       ra = expr_toanyreg(fs, RHS);
       rc = LHS->u.s.aux;
-      if (int32_t(rc) < 0) ins = BCINS_ABC(BC_TSETS, ra, LHS->u.s.info, ~rc);
+      if (int32_t(rc) < 0) ins = BCINS_ABC(BC_TSETS, ra, LHS->u.s.info, (~rc) & 0xFFu);
       else if (rc > BCMAX_C) ins = BCINS_ABC(BC_TSETB, ra, LHS->u.s.info, rc - (BCMAX_C + 1));
       else {
 #ifdef LUA_USE_ASSERT
