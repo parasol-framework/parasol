@@ -239,6 +239,9 @@ end
    escaped = regex.escape('back\\slash')
    assert(escaped is 'back\\\\slash', 'Should escape backslash')
 
+   escaped = regex.escape('a-b')
+   assert(escaped is 'a\\-b', 'Should escape hyphen')
+
    -- Test that escaped strings work as literal patterns
    pattern = regex.escape('file.txt')
    rx = regex.new(pattern)

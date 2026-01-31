@@ -240,7 +240,7 @@ static int regex_escape(lua_State *Lua)
       switch (c) {
          case '\\': case '^': case '$': case '.': case '|':
          case '?': case '*': case '+': case '(': case ')':
-         case '[': case ']': case '{': case '}':
+         case '[': case ']': case '{': case '}': case '-':
             result += '\\';
             result += c;
             break;
@@ -353,7 +353,7 @@ static int regex_findAll_iter(lua_State *Lua)
 
 static int regex_findAll(lua_State *Lua)
 {
-   auto r = (struct fregex *)get_meta(Lua, lua_upvalueindex(1), "Fluid.regex");
+   //auto r = (struct fregex *)get_meta(Lua, lua_upvalueindex(1), "Fluid.regex");
    luaL_checkstring(Lua, 1); // Validate text argument
 
    auto start_pos = luaL_optint(Lua, 2, 0);
