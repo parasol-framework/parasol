@@ -2376,9 +2376,9 @@ class objVector : public Object {
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
-   template <class T> inline ERR setID(T && Value) noexcept {
+   template <class T> inline ERR setSID(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[1];
+      auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 

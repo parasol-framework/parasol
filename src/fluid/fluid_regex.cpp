@@ -141,19 +141,9 @@ static ERR match_one(int Index, std::vector<std::string_view> &Captures, size_t 
 }
 
 //*********************************************************************************************************************
-// Return the indices of the first match.  Captures are ignored.
-
-static ERR match_first(int Index, std::vector<std::string_view> &Captures, size_t MatchStart, size_t MatchEnd, regex_callback &Meta)
-{
-   Meta.result_index = int(MatchStart);
-   Meta.result_len = int(MatchEnd - MatchStart);
-   return ERR::Terminate; // Don't match more than once
-}
-
-//*********************************************************************************************************************
 // Return the indices of the first match along with capture groups.
 
-static ERR match_first_with_captures(int Index, std::vector<std::string_view> &Captures, size_t MatchStart, size_t MatchEnd, regex_callback &Meta)
+static ERR match_first(int Index, std::vector<std::string_view> &Captures, size_t MatchStart, size_t MatchEnd, regex_callback &Meta)
 {
    Meta.result_index = int(MatchStart);
    Meta.result_len = int(MatchEnd - MatchStart);
@@ -294,7 +284,7 @@ static int regex_findFirst(lua_State *Lua)
    auto flags = RMATCH(luaL_optint(Lua, 3, int(RMATCH::NIL)));
 
    auto meta = regex_callback { Lua };
-   auto cb = C_FUNCTION(match_first_with_captures, &meta);
+   auto cb = C_FUNCTION(match_first, &meta);
    if (rx::Search(r->regex_obj, std::string_view(text + start_pos, text_len - start_pos), flags, &cb) IS ERR::Okay) {
       // Adjust the returned position to account for the starting offset
       lua_pushinteger(Lua, int(start_pos) + meta.result_index);
@@ -324,7 +314,7 @@ static int regex_findAll_iter(lua_State *Lua)
    }
 
    auto meta = regex_callback { Lua };
-   auto cb = C_FUNCTION(match_first_with_captures, &meta);
+   auto cb = C_FUNCTION(match_first, &meta);
    if (rx::Search(r->regex_obj, std::string_view(text + current_pos, text_len - current_pos), flags, &cb) IS ERR::Okay) {
       auto match_pos = current_pos + meta.result_index;
       auto match_len = meta.result_len;

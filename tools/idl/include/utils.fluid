@@ -99,28 +99,31 @@ end
 -- From: <something>content</>
 -- To:   <something>content</something>
 
-global function cleanXMLString(str:str, caller:str):str
-   if str?? then
-      if str:find('[<>]') then
-         str = f'<ROOT>{str}</ROOT>'
+local rx_root_extract = regex.new('^<ROOT>([\\s\\S]*)</ROOT>$')
+local cxml
 
-         local cleanXMLString_xml
-         if not cleanXMLString_xml then
-            cleanXMLString_xml, err = obj.new('xml', { statement=str, flags=XMF_INCLUDE_WHITESPACE })
-         end
+global function cleanXMLString(String:str, Caller:str):str
+   String ?? return ''
 
-         if cleanXMLString_xml then
-            cleanXMLString_xml.statement = str
-            err, clean_str = cleanXMLString_xml.mtSerialise(0, XMF_INCLUDE_SIBLINGS)
-            if clean_str then str = clean_str:match('<ROOT>(.-)</ROOT>'):trim() end
+   if String:find('[<>]') then
+      String = f'<ROOT>{String}</ROOT>'
+
+      try
+         if not cxml then
+            cxml = obj.new('xml', { statement=String, flags=XMF_INCLUDE_WHITESPACE })
          else
-            error(f'Failed to parse XML for {caller ?? "undefined"}.')
+            cxml.statement = String
          end
+
+         _, clean_str = cxml.mtSerialise(0, XMF_INCLUDE_SIBLINGS)
+         _, _, cap = rx_root_extract.findFirst(clean_str)
+         if cap then String = cap[0]:trim() end
+      except ex
+         error(f'Failed to parse XML for {Caller ?? "undefined"}: {ex.message}')
       end
-      return str
-   else
-      return ''
    end
+
+   return String
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -240,14 +243,14 @@ global function parseIDL(ModuleName)
    constants = { }
    m = obj.new('module', { name=ModuleName })
    defs = m.defs
-   if not defs then 
+   if not defs then
       verbose(f'No definitions found for module "{ModuleName}".')
       return { }
    end
 
    matcher = regex.new("c\\.([A-Z]+):(.+)")
    match_list = matcher.search(defs)
-   
+
    for i=0,#match_list-1 do
       prefix = match_list[i][1]
       extract = match_list[i][2]

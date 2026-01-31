@@ -1501,7 +1501,7 @@ using the @VectorFilter class and added to a VectorScene using @VectorScene.AddD
 then be referenced by ID in the Filter field of any vector object.  Please refer to the @VectorFilter class
 for further details on filter configuration.
 
-The Filter value can be in the format `ID` or `url(#ID)` according to client preference.
+The Filter value can be in the format `ID` or `url(#SID)` according to client preference.
 
 *********************************************************************************************************************/
 
@@ -1911,9 +1911,9 @@ static ERR VECTOR_SET_Next(extVector *Self, extVector *Value)
 NumericID: A unique identifier for the vector.
 
 This field assigns a numeric ID to a vector.  Alternatively it can also reflect a case-sensitive hash of the
-#ID field if that has been defined previously.
+#SID field if that has been defined previously.
 
-If NumericID is set by the client, then any value in #ID will be immediately cleared.
+If NumericID is set by the client, then any value in #SID will be immediately cleared.
 
 *********************************************************************************************************************/
 

@@ -433,8 +433,8 @@ global function extractParagraph(Input:str, Caller:str, References)
                   print('Unrecognised struct or constant "' .. Lookup .. '"')
                end
             end)
-         elseif line:match('^<pre>.-') or line:match('^<h%d>.-') or
-            line:match('^<header>.-') or line:match('^<list.->') then
+         elseif line:startsWith('<pre>') or line:match('^<h%d>.-') or
+            line:startsWith('<header>') or line:match('^<list.->') then
             action = 'balance'
          elseif line:match('^<%a+(.-)>.-</%a->.-$') then
             action = 'paragraph'
@@ -460,7 +460,7 @@ global function extractParagraph(Input:str, Caller:str, References)
                end)
                output ..= lines[i] .. '\n'
                i++
-            until (balance is 0) or (not lines[i])
+            until (balance is 0) or (i is #lines)
 
             if balance != 0 then
                print('Unbalanced tags (' .. balance .. ') detected: [[' .. string.format('%s ...', output) .. ']]')
@@ -1018,7 +1018,7 @@ global function docTypes(References)
             if v.synonym then
                -- Don't publish synonyms
             elseif v.comment?? then
-               if (v.comment:find('^Internal')) or (v.comment:find('^Private')) then
+               if (v.comment:startsWith('Internal')) or (v.comment:startsWith('Private')) then
                   -- Ignore internal/private types
                else
                   out ..= "      <const name=\"" .. v.name .. "\">" .. substituteReferences(v.comment:escXML()) .. "</const>\n"
