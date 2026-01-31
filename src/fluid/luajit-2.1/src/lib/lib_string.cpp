@@ -531,15 +531,15 @@ LJLIB_CF(string_pop)
    int32_t count = lj_lib_optint(L, 2, 1);
    MSize len = s->len;
 
-   // Handle edge cases
-   if (len IS 0 or count >= (int32_t)len) {
-      setstrV(L, L->top - 1, &G(L)->strempty);
-      return 1;
-   }
-
    // Handle negative or zero count - return original string
    if (count <= 0) {
       setstrV(L, L->top - 1, s);
+      return 1;
+   }
+
+   // Handle edge cases
+   if (len IS 0 or MSize(count) >= len) {
+      setstrV(L, L->top - 1, &G(L)->strempty);
       return 1;
    }
 
