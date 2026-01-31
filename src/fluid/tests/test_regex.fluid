@@ -47,7 +47,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
 @Test function TestMethod()
-   test_regex = regex.new('\\d+')
+   test_regex = regex.new('[0-9]+')
    assert(test_regex.test('abc123def'), 'Should find digits in string')
    assert(not test_regex.test('hello world'), 'Should not find digits in text')
    assert(test_regex.test('999'), 'Should match all digits')
