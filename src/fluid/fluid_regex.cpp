@@ -24,6 +24,7 @@ Examples:
 #include "lj_array.h"
 #include "lj_str.h"
 #include "lj_gc.h"
+#include "lj_proto_registry.h"
 #include "hashes.h"
 #include "defs.h"
 
@@ -635,4 +636,15 @@ void register_regex_class(lua_State *Lua)
    }
 
    lua_pop(Lua, 1); // Remove regex table from stack
+
+   // Register regex interface prototypes for compile-time type inference
+   reg_iface_prototype("regex", "new", { FluidType::Any }, { FluidType::Str, FluidType::Num });
+   reg_iface_prototype("regex", "escape", { FluidType::Str }, { FluidType::Str });
+   reg_iface_prototype("regex", "test", { FluidType::Bool }, { FluidType::Str, FluidType::Num });
+   reg_iface_prototype("regex", "match", { FluidType::Array }, { FluidType::Str, FluidType::Num });
+   reg_iface_prototype("regex", "search", { FluidType::Array }, { FluidType::Str, FluidType::Num });
+   reg_iface_prototype("regex", "replace", { FluidType::Str }, { FluidType::Str, FluidType::Str, FluidType::Num });
+   reg_iface_prototype("regex", "split", { FluidType::Array }, { FluidType::Str, FluidType::Num });
+   reg_iface_prototype("regex", "findFirst", { FluidType::Num, FluidType::Num, FluidType::Array }, { FluidType::Str, FluidType::Num, FluidType::Num });
+   reg_iface_prototype("regex", "findAll", { FluidType::Func }, { FluidType::Str, FluidType::Num, FluidType::Num });
 }
