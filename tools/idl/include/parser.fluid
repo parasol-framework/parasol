@@ -1,4 +1,14 @@
 
+local rx_doc_name     = regex.new("\\n[Nn]ame:\\s+(.*?)\\n")
+local rx_doc_combo    = regex.new("\\n(\\w+):\\s+(.*)\\n")
+local rx_doc_comment  = regex.new("\\n[Cc]omment:\\s+(.*?)\\n")
+local rx_doc_category = regex.new("\\n[Cc]ategory:\\s+(.*?)\\n")
+local rx_doc_extproto = regex.new("\\n[Ee]xtPrototype:\\s+(.*?)\\n")
+local rx_doc_attrib   = regex.new("\\n[Aa]ttribute:\\s+(.*?)\\n")
+local rx_doc_status   = regex.new("\\n[Ss]tatus:\\s+(.*?)\\n")
+local rx_doc_desc     = regex.new("\\n\\n([\\s\\S]*?)\\n-[A-Z]+-\\n")
+local rx_strip_ws     = regex.new("^(.*\\S)")
+
 ----------------------------------------------------------------------------------------------------------------------
 
 global function parseClassEntry(Class, Type, Extract)
@@ -118,17 +128,29 @@ end
 global function parseMethod(Class:table, Extract:str)
    Extract = '-METHOD-\n' .. Extract:trim() .. '\n-END-\n'
 
-   name    = Extract:match('\n[Nn]ame:%s+(.-)\n')
-   comment = Extract:match('\n[Cc]omment:%s+(.-)\n')
+   local name, comment, status, description
+   local _, _, result = rx_doc_name.findFirst(Extract)
+   if result then name = result[0] end
+
+   _, _, result = rx_doc_comment.findFirst(Extract)
+   if result then comment = result[0] end
+
    if not name then
-      name, comment = Extract:match('\n(%w+):%s+(.-)\n')
+      s, e, cap = rx_doc_combo.findFirst(Extract)
+      if s then
+         name = cap[0]
+         comment = cap[1]
+      end
    end
 
-   status      = Extract:match('\n[Ss]tatus:%s+(.-)\n')
-   description = Extract:match('\n\n(.-)\n%-[A-Z]+%-\n')
+   _, _, result = rx_doc_status.findFirst(Extract)
+   if result then status = result[0] end
 
-   if name:find('%(%)') then
-      name = name:match('(%a+)()')
+   _, _, result = rx_doc_desc.findFirst(Extract)
+   if result then description = result[0] end
+
+   if name and name:endsWith('()') then
+      name = name:pop(2)
    end
 
    assert(name??, 'Failed to extract a name tag from -METHOD- definition.')
@@ -333,7 +355,9 @@ global function parseSourceFiles()
       processing = nil
       for line in string.gmatch(content, '(.-\n)') do
          if line?? then
-            line = line:match('^(.*%S)') ?? ''
+            _, _, line = rx_strip_ws.findFirst(line) -- Capture non-whitespace
+            if line then line = line[0] end
+            line ?= ''
             if (line is '-CATEGORY-') or (line is '-FUNCTION-') then
                if processing is '-CATEGORY-' then parseCategory(currentExtract) end
                if processing is '-FUNCTION-' then parseFunction(currentExtract) end
@@ -368,20 +392,36 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Used by processSourceFiles() to process -FUNCTION- descriptions in self-documenting source code.
 
-global function parseFunction(extract)
-   if not extract?? then return end
+global function parseFunction(Extract:str)
+   if not Extract?? then return end
 
-   extract = '-FUNCTION-\n' .. extract:trim() .. '\n-END-\n'
+   local name, comment, status, description, ext_proto, attrib, category
 
-   local name, comment = extract:match('\n(%w+):%s+(.-)\n')
-   status      = extract:match('\n[Ss]tatus:%s+(.-)\n')
-   category    = extract:match('\n[Cc]ategory:%s+(.-)\n')
-   ext_proto   = extract:match('\n[Ee]xtPrototype:%s+(.-)\n')
-   attrib      = extract:match('\n[Aa]ttribute:%s+(.-)\n') -- This value is appended to the jump table name
-   description = extract:match('\n\n(.-)\n%-[A-Z]+%-\n')
+   Extract = f'-FUNCTION-\n{Extract:trim()}\n-END-\n'
 
-   if name:find('%(%)') then
-      name = name:match('(%a+)()')
+   local s, e, cap = rx_doc_combo.findFirst(Extract)
+   if s then
+      name = cap[0]
+      comment = cap[1]
+   end
+
+   _, _, result = rx_doc_status.findFirst(Extract)
+   if result then status = result[0] end
+
+   _, _, result = rx_doc_category.findFirst(Extract)
+   if result then category = result[0] end
+
+   _, _, result = rx_doc_extproto.findFirst(Extract)
+   if result then ext_proto = result[0] end
+
+   _, _, result = rx_doc_attrib.findFirst(Extract)
+   if result then attrib = result[0] end
+
+   _, _, result = rx_doc_desc.findFirst(Extract)
+   if result then description = result[0] end
+
+   if name and name:endsWith('()') then
+      name = name:pop(2)
    end
 
    assert(name??, 'Failed to extract a name tag from -FUNCTION- definition.')
@@ -393,12 +433,12 @@ global function parseFunction(extract)
    end
 
    def = {
-      input     = extract:match("\n%-INPUT%-\n(.-)\n%-[A-Z]+%-\n"),
+      input     = Extract:match("\n%-INPUT%-\n(.-)\n%-[A-Z]+%-\n"),
       ext_proto = ext_proto,
       attrib    = attrib
    }
 
-   errors = extract:match("\n%-ERRORS%-\n(.-)%-END%-")
+   errors = Extract:match("\n%-ERRORS%-\n(.-)%-END%-")
    if errors?? then
       error_list = glCoreConstants['ERR']
       def.result = cType({ type="error", values={ }, isFunction=true }, "Function " .. name)
@@ -429,7 +469,7 @@ global function parseFunction(extract)
 
       table.sort(def.result.values, function(a,b) return a.code < b.code end)
    else
-      result = extract:match("\n%-RESULT%-\n(.-)\n%-END%-")
+      result = Extract:match("\n%-RESULT%-\n(.-)\n%-END%-")
       if result?? then
          local ext_type, comment = result:match("(.-):%s-(.+)$")
          assert(ext_type, "Incorrectly defined result section in function '" .. name .. "'")

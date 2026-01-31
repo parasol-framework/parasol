@@ -24,6 +24,7 @@ Examples:
 #include "lj_array.h"
 #include "lj_str.h"
 #include "lj_gc.h"
+#include "lj_proto_registry.h"
 #include "hashes.h"
 #include "defs.h"
 
@@ -141,19 +142,9 @@ static ERR match_one(int Index, std::vector<std::string_view> &Captures, size_t 
 }
 
 //*********************************************************************************************************************
-// Return the indices of the first match.  Captures are ignored.
-
-static ERR match_first(int Index, std::vector<std::string_view> &Captures, size_t MatchStart, size_t MatchEnd, regex_callback &Meta)
-{
-   Meta.result_index = int(MatchStart);
-   Meta.result_len = int(MatchEnd - MatchStart);
-   return ERR::Terminate; // Don't match more than once
-}
-
-//*********************************************************************************************************************
 // Return the indices of the first match along with capture groups.
 
-static ERR match_first_with_captures(int Index, std::vector<std::string_view> &Captures, size_t MatchStart, size_t MatchEnd, regex_callback &Meta)
+static ERR match_first(int Index, std::vector<std::string_view> &Captures, size_t MatchStart, size_t MatchEnd, regex_callback &Meta)
 {
    Meta.result_index = int(MatchStart);
    Meta.result_len = int(MatchEnd - MatchStart);
@@ -324,7 +315,7 @@ static int regex_findAll_iter(lua_State *Lua)
    }
 
    auto meta = regex_callback { Lua };
-   auto cb = C_FUNCTION(match_first_with_captures, &meta);
+   auto cb = C_FUNCTION(match_first, &meta);
    if (rx::Search(r->regex_obj, std::string_view(text + current_pos, text_len - current_pos), flags, &cb) IS ERR::Okay) {
       auto match_pos = current_pos + meta.result_index;
       auto match_len = meta.result_len;
@@ -645,4 +636,15 @@ void register_regex_class(lua_State *Lua)
    }
 
    lua_pop(Lua, 1); // Remove regex table from stack
+
+   // Register regex interface prototypes for compile-time type inference
+   reg_iface_prototype("regex", "new", { FluidType::Any }, { FluidType::Str, FluidType::Num });
+   reg_iface_prototype("regex", "escape", { FluidType::Str }, { FluidType::Str });
+   reg_iface_prototype("regex", "test", { FluidType::Bool }, { FluidType::Str, FluidType::Num });
+   reg_iface_prototype("regex", "match", { FluidType::Array }, { FluidType::Str, FluidType::Num });
+   reg_iface_prototype("regex", "search", { FluidType::Array }, { FluidType::Str, FluidType::Num });
+   reg_iface_prototype("regex", "replace", { FluidType::Str }, { FluidType::Str, FluidType::Str, FluidType::Num });
+   reg_iface_prototype("regex", "split", { FluidType::Array }, { FluidType::Str, FluidType::Num });
+   reg_iface_prototype("regex", "findFirst", { FluidType::Num, FluidType::Num, FluidType::Array }, { FluidType::Str, FluidType::Num, FluidType::Num });
+   reg_iface_prototype("regex", "findAll", { FluidType::Func }, { FluidType::Str, FluidType::Num, FluidType::Num });
 }
