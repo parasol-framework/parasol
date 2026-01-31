@@ -158,8 +158,8 @@ static ERR match_first_with_captures(int Index, std::vector<std::string_view> &C
    Meta.result_index = int(MatchStart);
    Meta.result_len = int(MatchEnd - MatchStart);
 
-   // Build capture array
-   if (auto count = uint32_t(Captures.size())) {
+   // Build capture array if the client used at least 1 bracketed capture
+   if (auto count = uint32_t(Captures.size()); count > 1) {
       auto L = Meta.lua_state;
       GCarray *arr = lj_array_new(L, count, AET::STR_GC);
       GCRef *refs = arr->get<GCRef>();
@@ -338,7 +338,8 @@ static int regex_findAll_iter(lua_State *Lua)
 
       lua_pushinteger(Lua, int(match_pos));
       lua_pushinteger(Lua, int(match_len));
-      setarrayV(Lua, Lua->top++, meta.captures);
+      if (meta.captures) setarrayV(Lua, Lua->top++, meta.captures);
+      else lua_pushnil(Lua);
       return 3;
    }
 
