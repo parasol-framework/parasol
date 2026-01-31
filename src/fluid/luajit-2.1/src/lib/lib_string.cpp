@@ -37,6 +37,8 @@
 
 #include <parasol/modules/regex.h>
 
+#include "../../defs.h"
+
 #define L_ESC      '%'
 
 // Helper to check if a TValue is a range userdata and extract it
@@ -87,7 +89,7 @@ LJLIB_ASM(string_byte)      LJLIB_REC(string_range 0)
    int32_t start = lj_lib_optint(L, 2, 0);  // 0-based: default start is 0
    int32_t stop = lj_lib_optint(L, 3, start);
    int32_t n, i;
-   const unsigned char* p;
+   const unsigned char *p;
    if (stop < 0) stop += len;   // 0-based: -1 → len-1 (last char)
    if (start < 0) start += len;
    if (start < 0) start = 0;
@@ -202,7 +204,7 @@ static CSTRING find_separator(CSTRING Pos, CSTRING End, CSTRING Sep, MSize SepLe
       return nullptr;
    }
 
-   if (SepLen IS 1) return (const char*)memchr(Pos, Sep[0], End - Pos);
+   if (SepLen IS 1) return (CSTRING)memchr(Pos, Sep[0], End - Pos);
 
    // Multi-character separator.
    for (CSTRING p = Pos; p <= End - SepLen; p++) {
@@ -845,161 +847,160 @@ static CSTRING min_expand(MatchState* ms, CSTRING s, CSTRING p, CSTRING ep)
 
 //********************************************************************************************************************
 
-static CSTRING start_capture(MatchState* ms, CSTRING s, CSTRING p, int what)
+static CSTRING start_capture(MatchState *State, CSTRING s, CSTRING p, int what)
 {
    CSTRING res;
-   int level = ms->level;
-   if (level >= LUA_MAXCAPTURES) lj_err_caller(ms->L, ErrMsg::STRCAPN);
-   ms->capture[level].init = s;
-   ms->capture[level].len = what;
-   ms->level = level + 1;
-   if ((res = match(ms, s, p)) IS nullptr)  //  match failed?
-      ms->level--;  //  undo capture
+   auto level = State->level;
+   if (level >= LUA_MAXCAPTURES) lj_err_caller(State->L, ErrMsg::STRCAPN);
+   State->capture[level].init = s;
+   State->capture[level].len = what;
+   State->level = level + 1;
+   if ((res = match(State, s, p)) IS nullptr) State->level--;
    return res;
 }
 
 //********************************************************************************************************************
 
-static CSTRING end_capture(MatchState* ms, CSTRING s, CSTRING p)
+static CSTRING end_capture(MatchState* State, CSTRING s, CSTRING p)
 {
-   int l = capture_to_close(ms);
+   int l = capture_to_close(State);
    CSTRING res;
-   ms->capture[l].len = s - ms->capture[l].init;  //  close capture
-   if ((res = match(ms, s, p)) IS nullptr)  //  match failed?
-      ms->capture[l].len = CAP_UNFINISHED;  //  undo capture
+   State->capture[l].len = s - State->capture[l].init;  //  close capture
+   if ((res = match(State, s, p)) IS nullptr)  //  match failed?
+      State->capture[l].len = CAP_UNFINISHED;  //  undo capture
    return res;
 }
 
 //********************************************************************************************************************
 
-static CSTRING match_capture(MatchState* ms, CSTRING s, int l)
+static CSTRING match_capture(MatchState* State, CSTRING s, int l)
 {
    size_t len;
-   l = check_capture(ms, l);
-   len = (size_t)ms->capture[l].len;
-   if ((size_t)(ms->src_end - s) >= len && memcmp(ms->capture[l].init, s, len) IS 0) return s + len;
+   l = check_capture(State, l);
+   len = (size_t)State->capture[l].len;
+   if ((size_t)(State->src_end - s) >= len && memcmp(State->capture[l].init, s, len) IS 0) return s + len;
    else return nullptr;
 }
 
 //********************************************************************************************************************
 
-static CSTRING match(MatchState* ms, CSTRING s, CSTRING p)
+static CSTRING match(MatchState* State, CSTRING s, CSTRING p)
 {
-   if (++ms->depth > LJ_MAX_XLEVEL)
-      lj_err_caller(ms->L, ErrMsg::STRPATX);
+   if (++State->depth > LJ_MAX_XLEVEL) lj_err_caller(State->L, ErrMsg::STRPATX);
+
 init: //  using goto's to optimize tail recursion
+
    switch (*p) {
-   case '(':  //  start capture
-      if (*(p + 1) IS ')')  //  position capture?
-         s = start_capture(ms, s, p + 2, CAP_POSITION);
-      else
-         s = start_capture(ms, s, p + 1, CAP_UNFINISHED);
-      break;
-   case ')':  //  end capture
-      s = end_capture(ms, s, p + 1);
-      break;
-   case L_ESC:
-      switch (*(p + 1)) {
-      case 'b':  //  balanced string?
-         s = matchbalance(ms, s, p + 2);
-         if (s IS nullptr) break;
-         p += 4;
-         goto init;  //  else s = match(ms, s, p+4);
-      case 'f': {  // frontier?
-         CSTRING ep; char previous;
-         p += 2;
-         if (*p != '[') lj_err_caller(ms->L, ErrMsg::STRPATB);
-         ep = classend(ms, p);  //  points to what is next
-         previous = (s IS ms->src_init) ? '\0' : *(s - 1);
-         if (matchbracketclass(uchar(previous), p, ep - 1) ||
-            !matchbracketclass(uchar(*s), p, ep - 1)) {
-            s = nullptr; break;
-         }
-         p = ep;
-         goto init;  //  else s = match(ms, s, ep);
-      }
-      default:
-         if (isdigit(uchar(*(p + 1)))) {  // capture results (%0-%9)?
-            s = match_capture(ms, s, uchar(*(p + 1)));
+      case '(':  //  start capture
+         if (*(p + 1) IS ')') s = start_capture(State, s, p + 2, CAP_POSITION);
+         else s = start_capture(State, s, p + 1, CAP_UNFINISHED);
+         break;
+      case ')':  //  end capture
+         s = end_capture(State, s, p + 1);
+         break;
+      case L_ESC:
+         switch (*(p + 1)) {
+         case 'b':  //  balanced string?
+            s = matchbalance(State, s, p + 2);
             if (s IS nullptr) break;
+            p += 4;
+            goto init;  //  else s = match(State, s, p+4);
+         case 'f': {  // frontier?
+            CSTRING ep; char previous;
             p += 2;
-            goto init;  //  else s = match(ms, s, p+2)
+            if (*p != '[') lj_err_caller(State->L, ErrMsg::STRPATB);
+            ep = classend(State, p);  //  points to what is next
+            previous = (s IS State->src_init) ? '\0' : *(s - 1);
+            if (matchbracketclass(uchar(previous), p, ep - 1) ||
+               !matchbracketclass(uchar(*s), p, ep - 1)) {
+               s = nullptr; break;
+            }
+            p = ep;
+            goto init;  //  else s = match(State, s, ep);
          }
-         goto dflt;  //  case default
-      }
-      break;
-   case '\0':  //  end of pattern
-      break;  //  match succeeded
-   case '$':
-      // is the `$' the last char in pattern?
-      if (*(p + 1) != '\0') goto dflt;
-      if (s != ms->src_end) s = nullptr;  //  check end of string
-      break;
-   default: dflt: {  // it is a pattern item
-      CSTRING ep = classend(ms, p);  //  points to what is next
-      int m = s < ms->src_end and singlematch(uchar(*s), p, ep);
-      switch (*ep) {
-      case '?': {  // optional
-         CSTRING res;
-         if (m and ((res = match(ms, s + 1, ep + 1)) != nullptr)) {
-            s = res;
+         default:
+            if (isdigit(uchar(*(p + 1)))) {  // capture results (%0-%9)?
+               s = match_capture(State, s, uchar(*(p + 1)));
+               if (s IS nullptr) break;
+               p += 2;
+               goto init;  //  else s = match(State, s, p+2)
+            }
+            goto dflt;  //  case default
+         }
+         break;
+      case '\0':  // end of pattern
+         break;  // match succeeded
+      case '$':
+         // is the `$' the last char in pattern?
+         if (*(p + 1) != '\0') goto dflt;
+         if (s != State->src_end) s = nullptr;  //  check end of string
+         break;
+      default: dflt: {  // it is a pattern item
+         CSTRING ep = classend(State, p);  //  points to what is next
+         int m = s < State->src_end and singlematch(uchar(*s), p, ep);
+         switch (*ep) {
+         case '?': {  // optional
+            CSTRING res;
+            if (m and ((res = match(State, s + 1, ep + 1)) != nullptr)) {
+               s = res;
+               break;
+            }
+            p = ep + 1;
+            goto init;  // else s = match(State, s, ep+1);
+         }
+         case '*':  // 0 or more repetitions
+            s = max_expand(State, s, p, ep);
+            break;
+         case '+':  // 1 or more repetitions
+            s = (m ? max_expand(State, s + 1, p, ep) : nullptr);
+            break;
+         case '-':  // 0 or more repetitions (minimum)
+            s = min_expand(State, s, p, ep);
+            break;
+         default:
+            if (m) { s++; p = ep; goto init; }  // else s = match(State, s+1, ep);
+            s = nullptr;
             break;
          }
-         p = ep + 1;
-         goto init;  //  else s = match(ms, s, ep+1);
-      }
-      case '*':  //  0 or more repetitions
-         s = max_expand(ms, s, p, ep);
-         break;
-      case '+':  //  1 or more repetitions
-         s = (m ? max_expand(ms, s + 1, p, ep) : nullptr);
-         break;
-      case '-':  //  0 or more repetitions (minimum)
-         s = min_expand(ms, s, p, ep);
-         break;
-      default:
-         if (m) { s++; p = ep; goto init; }  // else s = match(ms, s+1, ep);
-         s = nullptr;
          break;
       }
-      break;
    }
-   }
-   ms->depth--;
+
+   State->depth--;
    return s;
 }
 
 //********************************************************************************************************************
 
-static void push_onecapture(MatchState* ms, int i, CSTRING s, CSTRING e)
+static void push_onecapture(MatchState* State, int i, CSTRING s, CSTRING e)
 {
-   if (i >= ms->level) {
-      if (i IS 0)  //  ms->level IS 0, too
-         lua_pushlstring(ms->L, s, (size_t)(e - s));  //  add whole match
-      else lj_err_caller(ms->L, ErrMsg::STRCAPI);
+   if (i >= State->level) {
+      if (i IS 0) { //  State->level IS 0, too
+         lua_pushlstring(State->L, s, (size_t)(e - s));  //  add whole match
+      }
+      else lj_err_caller(State->L, ErrMsg::STRCAPI);
    }
    else {
-      ptrdiff_t l = ms->capture[i].len;
-      if (l IS CAP_UNFINISHED) lj_err_caller(ms->L, ErrMsg::STRCAPU);
-      if (l IS CAP_POSITION) lua_pushinteger(ms->L, ms->capture[i].init - ms->src_init);  // 0-based position
-      else lua_pushlstring(ms->L, ms->capture[i].init, (size_t)l);
+      ptrdiff_t l = State->capture[i].len;
+      if (l IS CAP_UNFINISHED) lj_err_caller(State->L, ErrMsg::STRCAPU);
+      if (l IS CAP_POSITION) lua_pushinteger(State->L, State->capture[i].init - State->src_init);  // 0-based position
+      else lua_pushlstring(State->L, State->capture[i].init, (size_t)l);
    }
 }
 
 //********************************************************************************************************************
 
-static int push_captures(MatchState* ms, CSTRING s, CSTRING e)
+static int push_captures(MatchState* State, CSTRING S, CSTRING E)
 {
-   int i;
-   int nlevels = (ms->level IS 0 and s) ? 1 : ms->level;
-   luaL_checkstack(ms->L, nlevels, "too many captures");
-   for (i = 0; i < nlevels; i++) push_onecapture(ms, i, s, e);
+   int nlevels = (State->level IS 0 and S) ? 1 : State->level;
+   luaL_checkstack(State->L, nlevels, "too many captures");
+   for (int i = 0; i < nlevels; i++) push_onecapture(State, i, S, E);
    return nlevels;  //  number of strings pushed
 }
 
 //********************************************************************************************************************
 
-static int str_find_aux(lua_State *L, int find)
+static int str_find_aux(lua_State *L, int Find)
 {
    GCstr *s = lj_lib_checkstr(L, 1);
    GCstr *p = lj_lib_checkstr(L, 2);
@@ -1013,7 +1014,7 @@ static int str_find_aux(lua_State *L, int find)
       return 1;
    }
 
-   if (find and ((L->base + 3 < L->top and tvistruecond(L->base + 3)) || !lj_str_haspattern(p))) {  // Search for fixed string.
+   if (Find and ((L->base + 3 < L->top and tvistruecond(L->base + 3)) || !lj_str_haspattern(p))) {  // Search for fixed string.
       CSTRING q = lj_str_find(strdata(s) + st, strdata(p), s->len - st, p->len);
       if (q) {
          setintV(L->top - 2, (int32_t)(q - strdata(s)));  // 0-based start
@@ -1035,7 +1036,7 @@ static int str_find_aux(lua_State *L, int find)
          ms.level = ms.depth = 0;
          q = match(&ms, sstr, pstr);
          if (q) {
-            if (find) {
+            if (Find) {
                setintV(L->top++, (int32_t)(sstr - strdata(s)));  // 0-based start
                setintV(L->top++, (int32_t)(q - strdata(s)) - 1);  // 0-based end (inclusive)
                return push_captures(&ms, nullptr, nullptr) + 2;

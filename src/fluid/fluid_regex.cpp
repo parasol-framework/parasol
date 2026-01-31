@@ -161,15 +161,15 @@ static ERR match_first_with_captures(int Index, std::vector<std::string_view> &C
    // Build capture array if the client used at least 1 bracketed capture
    if (auto count = uint32_t(Captures.size()); count > 1) {
       auto L = Meta.lua_state;
-      GCarray *arr = lj_array_new(L, count, AET::STR_GC);
+      GCarray *arr = lj_array_new(L, count-1, AET::STR_GC);
       GCRef *refs = arr->get<GCRef>();
 
-      for (uint32_t j = 0; j < count; ++j) {
+      for (uint32_t j = 1; j < count; ++j) { // Skip the first capture (already reflected in the index & length)
          GCstr *s;
          if (Captures[j].data()) s = lj_str_new(L, Captures[j].data(), Captures[j].length());
          else s = lj_str_new(L, "", 0);
 
-         setgcref(refs[j], obj2gco(s));
+         setgcref(refs[j-1], obj2gco(s));
          lj_gc_objbarrier(L, arr, s);
       }
 
@@ -278,9 +278,9 @@ static int regex_test(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Method: regex.findFirst(text, [pos], [flags]) -> pos, len
+// Method: regex.findFirst(text, [pos], [flags]) -> pos, len, [captures]
 // This is the fastest available means for searching for the position of a match.
-// Returns nil on failure, or the position and length of the first match.
+// Returns nil on failure, or the position and length of the first match/capture.
 
 static int regex_findFirst(lua_State *Lua)
 {
@@ -294,18 +294,16 @@ static int regex_findFirst(lua_State *Lua)
    auto flags = RMATCH(luaL_optint(Lua, 3, int(RMATCH::NIL)));
 
    auto meta = regex_callback { Lua };
-   auto cb = C_FUNCTION(match_first, &meta);
+   auto cb = C_FUNCTION(match_first_with_captures, &meta);
    if (rx::Search(r->regex_obj, std::string_view(text + start_pos, text_len - start_pos), flags, &cb) IS ERR::Okay) {
       // Adjust the returned position to account for the starting offset
       lua_pushinteger(Lua, int(start_pos) + meta.result_index);
       lua_pushinteger(Lua, meta.result_len);
-      return 2;
+      if (meta.captures) setarrayV(Lua, Lua->top++, meta.captures);
+      else lua_pushnil(Lua);
+      return 3;
    }
-   else {
-      lua_pushnil(Lua);
-      lua_pushnil(Lua);
-      return 2;
-   }
+   else return 0;
 }
 
 //********************************************************************************************************************

@@ -780,6 +780,9 @@ LJLIB_CF(ltr)
          else if (cl IS '%') { // %% -> literal %
             lj_buf_putchar(sb, '%');
          }
+         else if (cl IS '-') { // %- -> literal hyphen (no escape needed outside char class)
+            lj_buf_putchar(sb, '-');
+         }
          else {
             // Escaped special character - emit as regex escape
             // Lua escapes: ( ) . % + - * ? [ ] ^ $
@@ -843,7 +846,9 @@ LJLIB_CF(ltr)
                }
             }
             else { // Regular character inside class
-               if (ltr_is_regex_special(c)) lj_buf_putchar(sb, '\\');
+               // Escape '-' when it's a literal hyphen (at start or end of class), not a range operator
+               bool escape_hyphen = (c IS '-') and (first or (p < end and *p IS ']'));
+               if (ltr_is_regex_special(c) or escape_hyphen) lj_buf_putchar(sb, '\\');
                lj_buf_putchar(sb, c);
             }
             first = false;
