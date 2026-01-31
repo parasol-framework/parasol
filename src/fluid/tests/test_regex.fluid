@@ -24,6 +24,28 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
+@Test function FindFirst()
+   local rx_whitespace = regex.new('[^ \\t\\n\\r\\f\\v]')
+
+   sample_regex = regex.new("\\d+")
+   pos, len = sample_regex.findFirst("abc123def", 0)
+   assert(pos is 3, "Expected position 3, got " .. tostring(pos))
+   assert(len is 3, "Expected length 3, got " .. tostring(len))
+
+   pos2, len2 = sample_regex.findFirst("no digits here", 0)
+   assert(pos2 is nil and len2 is nil, "Expected no match, got position " .. tostring(pos2))
+
+   pos, len = rx_whitespace.findFirst("   leading space", 0)
+   assert(pos is 3, "Expected position 3, got " .. tostring(pos))
+   assert(len is 1, "Expected length 1, got " .. tostring(len))
+
+   pos, len = rx_whitespace.findFirst("   leading space", 2)
+   assert(pos is 3, "Expected position 3, got " .. tostring(pos))
+   assert(len is 1, "Expected length 1, got " .. tostring(len))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
 @Test function TestMethod()
    test_regex = regex.new("\\d+")
    assert(test_regex.test("abc123def"), "Should find digits in string")
@@ -39,7 +61,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test function MatchMethod()
+@Test function Match()
    -- Simple match
    word_regex = regex.new("(\\w+)")
    matches = word_regex.search("hello world")
@@ -66,7 +88,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test function SearchMethod()
+@Test function Search()
    digit_regex = regex.new("(\\d+)")
    all_matches = digit_regex.search("abc123def456ghi")
    assert(#all_matches is 2, "Should find 2 digit sequences")
@@ -82,7 +104,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test function ReplaceMethod()
+@Test function Replace()
    replace_regex = regex.new("\\d+")
    result1 = replace_regex.replace("abc123def456", "XXX")
    assert(result1 is "abcXXXdefXXX", "Failed to replace both occurrences")
@@ -108,7 +130,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test function SplitMethod()
+@Test function Split()
    comma_regex = regex.new("\\s*,\\s*")
    split_result = comma_regex.split("apple, banana,  cherry")
    assert(#split_result is 3, "Should split into 3 parts")
