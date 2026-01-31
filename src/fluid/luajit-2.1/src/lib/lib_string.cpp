@@ -521,6 +521,36 @@ LJLIB_CF(string_decap)
 }
 
 //********************************************************************************************************************
+// string.pop(s [, count]) - Remove characters from the end of a string.
+// Returns the string with 'count' characters removed from the end (default 1).
+// If count >= string length, returns an empty string.
+
+LJLIB_CF(string_pop)
+{
+   GCstr *s = lj_lib_checkstr(L, 1);
+   int32_t count = lj_lib_optint(L, 2, 1);
+   MSize len = s->len;
+
+   // Handle edge cases
+   if (len IS 0 or count >= (int32_t)len) {
+      setstrV(L, L->top - 1, &G(L)->strempty);
+      return 1;
+   }
+
+   // Handle negative or zero count - return original string
+   if (count <= 0) {
+      setstrV(L, L->top - 1, s);
+      return 1;
+   }
+
+   // Create new string with characters removed from end
+   GCstr *result = lj_str_new(L, strdata(s), len - count);
+   setstrV(L, L->top - 1, result);
+   lj_gc_check(L);
+   return 1;
+}
+
+//********************************************************************************************************************
 
 LJLIB_CF(string_hash)
 {
@@ -1340,6 +1370,7 @@ extern int luaopen_string(lua_State *L)
    reg_iface_prototype("string", "hash", { FluidType::Num }, { FluidType::Str, FluidType::Bool });
    reg_iface_prototype("string", "escXML", { FluidType::Str }, { FluidType::Str });
    reg_iface_prototype("string", "unescapeXML", { FluidType::Str }, { FluidType::Str });
+   reg_iface_prototype("string", "pop", { FluidType::Str }, { FluidType::Str, FluidType::Num });
    // These are implemented in translate.fluid
    reg_iface_prototype("string", "translateRefresh", { }, { });
    reg_iface_prototype("string", "translate", { FluidType::Str }, { FluidType::Str });
