@@ -35,6 +35,10 @@
 
    json = _LIB[_NS]
 
+local num_regex = regex.new([[^-?[0-9]+\.?[0-9]*[eE]?[+\-]?[0-9]*]])
+local rx_num = regex.new('^\\d')
+local rx_whitespace = regex.new("[^ \\t\\n\\r\\f\\v]")
+
 function escape_str(String:str):str
    for i, c in in_char do
       String = String:gsub(c, '\\' .. out_char[i])
@@ -48,7 +52,7 @@ end
 -- This throws an error if ThrowIfMissing is true and the delim is not found.
 
 function skip_delim(String:str, Pos:num, Delimiter:str, ThrowIfMissing:bool):<num, bool>
-   Pos += #String:match('^%s*', Pos)
+   Pos = rx_whitespace.findFirst(String, Pos)  -- Skip whitespace
    if String:sub(Pos, Pos+1) != Delimiter then
       if ThrowIfMissing then
          error('Expected ' .. Delimiter .. ' near position ' .. Pos)
@@ -78,10 +82,18 @@ end
 -- Returns val, pos; the returned pos is after the number's final character.
 
 function decode_num_val(String:str, pos:num):<any, num>
-   num_str = String:match('^-?%d+%.?%d*[eE]?[+-]?%d*', pos)
-   val = tonumber(num_str)
-   assert(val, 'Error parsing number at position ' .. pos .. '.')
-   return val, pos + #num_str
+   -- Search from position pos by using substring
+   local substr = String:sub(pos)
+   local matches = num_regex.search(substr)
+
+   if matches then
+      local num_str = matches[0][0]  -- Full match is at index 0
+      local val = tonumber(num_str)
+      assert(val, f'Error parsing number at position {pos} for "{num_str}".')
+      return val, pos + #num_str
+   end
+
+   error(f'Error parsing number at position {pos} for "{substr}"')
 end
 
 -- Public values and functions.
@@ -135,7 +147,7 @@ end
 json.decode = function(str:str, pos:num, EndToken:str):<any, num>
    pos ?= 0
    if pos >= #str then error('Reached unexpected end of input.') end
-   pos += #str:match('^%s*', pos)  -- Skip whitespace
+   pos = rx_whitespace.findFirst(str, pos)  -- Skip whitespace
    first = str:sub(pos, pos+1)
    if first is '{' then  -- Parse an object.
       local map:table, key:any, delim_found = {}, true, true
@@ -160,7 +172,7 @@ json.decode = function(str:str, pos:num, EndToken:str):<any, num>
       end
    elseif first is '"' then  -- Parse a string.
       return decode_str_val(str, pos + 1)
-   elseif first is '-' or first:match('%d') then  -- Parse a number.
+   elseif first is '-' or rx_num.test(first) then  -- Parse a number.
       return decode_num_val(str, pos)
    elseif first is EndToken then  -- End of an object or array.
       return nil, pos + 1
@@ -170,7 +182,6 @@ json.decode = function(str:str, pos:num, EndToken:str):<any, num>
          lit_end = pos + #lit_str
          if str:sub(pos, lit_end) is lit_str then return lit_val, lit_end end
       end
-      pos_info_str = 'position ' .. pos .. ': ' .. str:sub(pos, pos + 11)
-      error('Invalid json syntax starting at ' .. pos_info_str)
+      error('Invalid json syntax starting at position ' .. pos .. ': ' .. str:sub(pos, pos + 11))
    end
 end
