@@ -284,6 +284,62 @@ end
    assert(mixed is "heLLo", "Expected 'heLLo', got '" .. mixed .. "'")
 end
 
+@Test function Pop()
+   -- Basic pop (default 1 character)
+   popped = string.pop("hello")
+   assert(popped is "hell", "Expected 'hell', got '" .. popped .. "'")
+
+   -- Pop multiple characters
+   pop2 = string.pop("hello", 2)
+   assert(pop2 is "hel", "Expected 'hel', got '" .. pop2 .. "'")
+
+   pop3 = string.pop("hello world", 6)
+   assert(pop3 is "hello", "Expected 'hello', got '" .. pop3 .. "'")
+
+   -- Pop all characters (count equals length)
+   popAll = string.pop("hello", 5)
+   assert(popAll is "", "Expected empty string, got '" .. popAll .. "'")
+
+   -- Pop more than string length
+   popMore = string.pop("hello", 10)
+   assert(popMore is "", "Expected empty string, got '" .. popMore .. "'")
+
+   popMore2 = string.pop("hi", 100)
+   assert(popMore2 is "", "Expected empty string, got '" .. popMore2 .. "'")
+
+   -- Pop zero (returns original)
+   popZero = string.pop("hello", 0)
+   assert(popZero is "hello", "Expected 'hello', got '" .. popZero .. "'")
+
+   -- Pop negative (returns original)
+   popNeg = string.pop("hello", -1)
+   assert(popNeg is "hello", "Expected 'hello', got '" .. popNeg .. "'")
+
+   popNeg2 = string.pop("hello", -10)
+   assert(popNeg2 is "hello", "Expected 'hello', got '" .. popNeg2 .. "'")
+
+   -- Empty string
+   popEmpty = string.pop("")
+   assert(popEmpty is "", "Expected empty string, got '" .. popEmpty .. "'")
+
+   popEmpty2 = string.pop("", 5)
+   assert(popEmpty2 is "", "Expected empty string, got '" .. popEmpty2 .. "'")
+
+   -- Single character string
+   popSingle = string.pop("a")
+   assert(popSingle is "", "Expected empty string, got '" .. popSingle .. "'")
+
+   popSingle2 = string.pop("a", 0)
+   assert(popSingle2 is "a", "Expected 'a', got '" .. popSingle2 .. "'")
+
+   -- Method syntax
+   methodPop = "hello world":pop()
+   assert(methodPop is "hello worl", "Expected 'hello worl', got '" .. methodPop .. "'")
+
+   methodPop2 = "hello world":pop(3)
+   assert(methodPop2 is "hello wo", "Expected 'hello wo', got '" .. methodPop2 .. "'")
+end
+
 @Test function Hash()
    -- Basic hash (case insensitive by default)
    hash1 = string.hash("hello")
