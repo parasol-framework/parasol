@@ -196,6 +196,37 @@ static int regex_new(lua_State *Lua)
 }
 
 //********************************************************************************************************************
+// Static method: regex.escape(string) -> string
+// Escapes all regex metacharacters in the input string so it can be used as a literal pattern.
+
+static int regex_escape(lua_State *Lua)
+{
+   size_t len = 0;
+   const char *input = luaL_checklstring(Lua, 1, &len);
+
+   std::string result;
+   result.reserve(len + 16); // Reserve extra space for escape characters
+
+   for (size_t i = 0; i < len; ++i) {
+      char c = input[i];
+      switch (c) {
+         case '\\': case '^': case '$': case '.': case '|':
+         case '?': case '*': case '+': case '(': case ')':
+         case '[': case ']': case '{': case '}':
+            result += '\\';
+            result += c;
+            break;
+         default:
+            result += c;
+            break;
+      }
+   }
+
+   lua_pushlstring(Lua, result.c_str(), result.length());
+   return 1;
+}
+
+//********************************************************************************************************************
 // Method: regex.test(text) -> boolean
 // Performs a search to see if the regex matches anywhere in the text.
 
@@ -459,6 +490,7 @@ void register_regex_class(lua_State *Lua)
 {
    static const struct luaL_Reg functions[] = {
       { "new", regex_new },
+      { "escape", regex_escape },
       { nullptr, nullptr }
    };
 

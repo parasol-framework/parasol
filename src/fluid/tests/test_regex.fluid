@@ -219,3 +219,35 @@ end
    -- Verify objects still work after GC pressure
    assert(regex_list[50].test("pattern50") is true, "Regex should survive garbage collection")
 end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+@Test function Escape()
+   -- Test escaping of all metacharacters
+   escaped = regex.escape("hello.world")
+   assert(escaped is "hello\\.world", "Should escape dot")
+
+   escaped = regex.escape("a+b*c?d")
+   assert(escaped is "a\\+b\\*c\\?d", "Should escape quantifiers")
+
+   escaped = regex.escape("(group)[class]{count}")
+   assert(escaped is "\\(group\\)\\[class\\]\\{count\\}", "Should escape brackets")
+
+   escaped = regex.escape("^start|end$")
+   assert(escaped is "\\^start\\|end\\$", "Should escape anchors and alternation")
+
+   escaped = regex.escape("back\\slash")
+   assert(escaped is "back\\\\slash", "Should escape backslash")
+
+   -- Test that escaped strings work as literal patterns
+   pattern = regex.escape("file.txt")
+   rx = regex.new(pattern)
+   assert(rx.test("file.txt") is true, "Should match literal string")
+   assert(rx.test("filextxt") is false, "Should not match unescaped pattern")
+
+   -- Test with user input scenario
+   user_input = "[user@example.com]"
+   safe_pattern = regex.new(regex.escape(user_input))
+   assert(safe_pattern.test("[user@example.com]") is true, "Should match user input literally")
+   assert(safe_pattern.test("user@example.com") is false, "Should require brackets")
+end
