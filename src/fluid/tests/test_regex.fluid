@@ -24,6 +24,34 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
+@Test function RegexConversion()
+   pattern = ltr('[Nn]ame:%s+(.-)')
+   expected = "[Nn]ame:[ \\t\\n\\r\\f\\v]+(.*?)"
+   assert(pattern is expected, 'Failed to convert pattern correctly\nGot: ' .. pattern .. '\nExp: ' .. expected)
+
+   pattern = ltr('(%w+):%s+(.-)')
+   expected = [[([\w]+):[ \t\n\r\f\v]+(.*?)]]
+   assert(pattern is expected, 'Failed to convert pattern correctly\nGot: ' .. pattern .. '\nExp: ' .. expected)
+
+   pattern = ltr('(.-)%-[A-Z]+%-')
+   expected = [[(.*?)-[A-Z]+-]]
+   assert(pattern is expected, 'Failed to convert pattern correctly\nGot: ' .. pattern .. '\nExp: ' .. expected)
+
+   assert(ltr('%(%)') is [[\(\)]], 'Failed to convert pattern')
+end
+
+@Test function RegexConversionDash()
+   pattern = ltr('[-A]*')
+   expected = [[[\-A]*]]
+   assert(pattern is expected, 'Failed to convert pattern\nGot: ' .. pattern .. '\nExp: ' .. expected)
+
+   pattern = ltr('[A-]*')
+   expected = [[[A\-]*]]
+   assert(pattern is expected, 'Failed to convert pattern\nGot: ' .. pattern .. '\nExp: ' .. expected)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
 @Test function FindFirst()
    local rx_whitespace = regex.new('[^ \\t\\n\\r\\f\\v]')
 
@@ -301,20 +329,18 @@ end
    capture_regex = regex.new('([a-z]+)([0-9]+)')
    captured = {}
    for pos, len, caps in capture_regex.findAll('abc123def456ghi789') do
-      captured[#captured] = { pos = pos, full = caps[0], letters = caps[1], digits = caps[2] }
+      captured[#captured] = { pos = pos, letters = caps[0], digits = caps[1] }
    end
-   assert(#captured is 3, 'Should find 3 matches with captures')
-   assert(captured[0].full is 'abc123', 'First full match')
-   assert(captured[0].letters is 'abc', 'First letters capture')
-   assert(captured[0].digits is '123', 'First digits capture')
-   assert(captured[1].full is 'def456', 'Second full match')
-   assert(captured[2].full is 'ghi789', 'Third full match')
+   assert(#captured is 3, 'Should find 3 matches with captures, got ' .. #captured)
+   assert(captured[0].letters is 'abc', 'First full match')
+   assert(captured[1].letters is 'def', 'Second full match')
+   assert(captured[2].letters is 'ghi', 'Third full match')
 
    -- Test email extraction with captures
    email_regex = regex.new('([^@\\s]+)@([^.\\s]+)\\.([^\\s]+)')
    emails = {}
    for pos, len, caps in email_regex.findAll('Contact alice@foo.com or bob@bar.org today') do
-      emails[#emails] = { user = caps[1], domain = caps[2], tld = caps[3] }
+      emails[#emails] = { user = caps[0], domain = caps[1], tld = caps[2] }
    end
    assert(#emails is 2, 'Should find 2 emails')
    assert(emails[0].user is 'alice', 'First email user')

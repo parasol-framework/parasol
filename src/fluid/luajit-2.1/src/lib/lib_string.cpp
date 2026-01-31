@@ -12,6 +12,8 @@
 #include <cctype>
 #include <array>
 #include <string_view>
+#include <vector>
+#include <algorithm>
 
 #include "lua.h"
 #include "lauxlib.h"
@@ -37,8 +39,297 @@
 
 #include <parasol/modules/regex.h>
 
+#include "../../defs.h"
+
 #define L_ESC      '%'
 
+//********************************************************************************************************************
+// Regex-based pattern matching support
+
+// Ensure regex module is loaded (for modular builds)
+static ERR load_regex_module(void)
+{
+#ifndef PARASOL_STATIC
+   if (not modRegex) {
+      pf::SwitchContext ctx(glFluidContext);
+      if (objModule::load("regex", &modRegex, &RegexBase) != ERR::Okay) return ERR::InitModule;
+   }
+#endif
+   return ERR::Okay;
+}
+
+// Result of converting a Lua pattern to regex
+struct PatternConversionResult {
+   std::string regex_pattern;
+   std::vector<int> position_capture_indices;  // 1-based indices of position captures
+   bool has_start_anchor = false;
+   bool has_end_anchor = false;
+   std::string error_message;
+};
+
+// Emit regex character class content (without brackets, for use inside [...])
+
+static void emit_regex_class_content(std::string &out, int cl)
+{
+   switch (cl) {
+      case 'a': out += "A-Za-z"; break;
+      case 'c': out += "\\x00-\\x1f\\x7f"; break;
+      case 'd': out += "0-9"; break;
+      case 'g': out += "\\x21-\\x7e"; break;
+      case 'l': out += "a-z"; break;
+      case 'p': out += "!\"#$%&'()*+,\\-./:;<=>?@\\[\\\\\\]^_`{|}~"; break; // Punctuation characters
+      case 's': out += "\\s"; break;
+      case 'u': out += "A-Z"; break;
+      case 'w': out += "\\w"; break;
+      case 'x': out += "0-9A-Fa-f"; break;
+      case 'z': out += "\\x00"; break;
+      default: out += char(cl); break;
+   }
+}
+
+// Emit regex character class for Lua pattern class character
+
+static void emit_regex_class(std::string &out, int cl, bool negated)
+{
+   if (negated) out += "[^";
+   else out += '[';
+
+   emit_regex_class_content(out, cl);
+
+   out += ']';
+}
+
+// Check if character needs escaping in regex
+
+static bool is_regex_special(int c)
+{
+   return c IS '\\' or c IS '|' or c IS '{' or c IS '}' or c IS '/' or
+          c IS '.' or c IS '*' or c IS '+' or c IS '?' or c IS '(' or
+          c IS ')' or c IS '[' or c IS ']' or c IS '^' or c IS '$';
+}
+
+// Check if character needs escaping inside a regex character class (SRELL Unicode mode)
+
+static bool needs_escape_in_charclass(int c)
+{
+   // SRELL requires these to be escaped: ( ) [ ] { } / | backslash
+   // Note: '-' is conditionally escaped if used in classes at the first or last position, i.e. [\-A] or [A\-], not [A-Z]
+   return c IS '(' or c IS ')' or c IS '[' or c IS ']' or c IS '{' or c IS '}' or
+          c IS '/' or c IS '|' or c IS '\\';
+}
+
+// Convert Lua pattern to regex
+
+static ERR convert_lua_pattern_to_regex(CSTRING pattern, size_t len, PatternConversionResult &result)
+{
+   pf::Log log("lua_to_regex");
+   CSTRING p = pattern;
+   CSTRING end = pattern + len;
+   int capture_index = 0;  // Current capture group index (1-based when stored)
+
+   result.regex_pattern.clear();
+   result.position_capture_indices.clear();
+   result.has_start_anchor = false;
+   result.has_end_anchor = false;
+   result.error_message.clear();
+
+   // Handle start anchor
+   if (p < end and *p IS '^') {
+      result.has_start_anchor = true;
+      result.regex_pattern += '^';
+      p++;
+   }
+
+   while (p < end) {
+      int c = uint8_t(*p++);
+
+      if (c IS '%') {  // Escape sequence
+         if (p >= end) {
+            result.error_message = "Pattern ends with '%'";
+            return ERR::Syntax;
+         }
+         int cl = uint8_t(*p++);
+
+         // Check for unsupported patterns
+         if (cl IS 'b') {
+            result.error_message = "Unsupported Lua pattern: %b (balanced matching) has no regex equivalent";
+            return ERR::NoSupport;
+         }
+         if (cl IS 'f') {
+            result.error_message = "Unsupported Lua pattern: %f (frontier pattern) has no regex equivalent";
+            return ERR::NoSupport;
+         }
+
+         // Handle backreferences %1-%9
+
+         if (cl >= '1' and cl <= '9') {
+            result.regex_pattern += '\\';
+            result.regex_pattern += char(cl);
+            continue;
+         }
+
+         // Handle character classes
+
+         int lower_cl = std::tolower(cl);
+         if (lower_cl IS 'a' or lower_cl IS 'c' or lower_cl IS 'd' or lower_cl IS 'g' or
+             lower_cl IS 'l' or lower_cl IS 'p' or lower_cl IS 's' or lower_cl IS 'u' or
+             lower_cl IS 'w' or lower_cl IS 'x' or lower_cl IS 'z') {
+            emit_regex_class(result.regex_pattern, lower_cl, std::isupper(cl));
+         }
+         else if (cl IS '%') { // %% -> literal %
+            result.regex_pattern += '%';
+         }
+         else if (cl IS '-') { // %- -> literal hyphen (no escape needed in regex outside char class)
+            result.regex_pattern += '-';
+         }
+         else { // Escaped special character - emit as regex escape
+            result.regex_pattern += '\\';
+            result.regex_pattern += char(cl);
+         }
+      }
+      else if (c IS '-') {
+         // Lua's non-greedy quantifier - convert to *?
+         result.regex_pattern += "*?";
+      }
+      else if (c IS '(') { // Check for position capture: ()
+         if (p < end and *p IS ')') { // Position capture - record it and emit empty capture group
+            capture_index++;
+            result.position_capture_indices.push_back(capture_index);
+            result.regex_pattern += "()";
+            p++;  // Skip the ')'
+         }
+         else { // Regular capture group
+            capture_index++;
+            result.regex_pattern += '(';
+         }
+      }
+      else if (c IS ')') {
+         result.regex_pattern += ')';
+      }
+      else if (c IS '[') { // Character class - copy through, handling nested escapes
+         result.regex_pattern += '[';
+         bool first = true;
+         bool found_close = false;
+
+         while (p < end) {
+            c = uint8_t(*p++);
+            if (c IS ']' and not first) {
+               result.regex_pattern += ']';
+               found_close = true;
+               break;
+            }
+
+            if (c IS '%' and p < end) { // Escaped character inside class
+               int esc = uint8_t(*p++);
+               int lower_esc = std::tolower(esc);
+
+               if (lower_esc IS 'a' or lower_esc IS 'c' or lower_esc IS 'd' or lower_esc IS 'g' or
+                   lower_esc IS 'l' or lower_esc IS 'p' or lower_esc IS 's' or lower_esc IS 'u' or
+                   lower_esc IS 'w' or lower_esc IS 'x' or lower_esc IS 'z') {
+                  bool neg = std::isupper(esc);
+                  if (neg) { // Can't easily negate inside a character class, emit as escaped
+                     result.regex_pattern += '\\';
+                     result.regex_pattern += char(esc);
+                  }
+                  else emit_regex_class_content(result.regex_pattern, lower_esc);
+               }
+               else if (esc IS '%') result.regex_pattern += '%';
+               else { // Other escaped char
+                  result.regex_pattern += '\\';
+                  result.regex_pattern += char(esc);
+               }
+            }
+            else if (needs_escape_in_charclass(c)) { // Escape characters that SRELL requires escaped in Unicode mode
+               result.regex_pattern += '\\';
+               result.regex_pattern += char(c);
+            }
+            else result.regex_pattern += char(c);
+            first = false;
+         }
+
+         if (not found_close) {
+            result.error_message = "Malformed pattern (missing ']')";
+            return ERR::Syntax;
+         }
+      }
+      else if (c IS '$' and p IS end) { // End anchor (only at end of pattern)
+         result.has_end_anchor = true;
+         result.regex_pattern += '$';
+      }
+      else if (c IS '.') { // Lua's . matches any char except newline, same as regex default
+         result.regex_pattern += '.';
+      }
+      else if (c IS '*' or c IS '+' or c IS '?') { // Quantifiers pass through
+         result.regex_pattern += char(c);
+      }
+      else if (is_regex_special(c)) { // Escape regex-special chars
+         result.regex_pattern += '\\';
+         result.regex_pattern += char(c);
+      }
+      else { // Regular character
+         result.regex_pattern += char(c);
+      }
+   }
+
+   log.function("Pattern: \"%s\" -> \"%s\"", pattern, result.regex_pattern.c_str());
+
+   return ERR::Okay;
+}
+
+// Context for regex search callback
+
+struct FindMatchContext {
+   CSTRING src_init;           // Start of original subject string
+   size_t offset;              // Offset from which search started
+   bool matched = false;
+   size_t match_start = 0;     // Relative to search start
+   size_t match_end = 0;       // Relative to search start
+   std::vector<std::string_view> captures;
+};
+
+// Callback for first match only
+static ERR find_match_callback(int Index, std::vector<std::string_view>& Captures,
+   size_t MatchStart, size_t MatchEnd, FindMatchContext& Meta)
+{
+   Meta.matched = true;
+   Meta.match_start = MatchStart;
+   Meta.match_end = MatchEnd;
+   Meta.captures = Captures;
+   return ERR::Terminate;  // Only need first match
+}
+
+// Push captures to Lua stack, handling position captures
+static int push_regex_captures(lua_State *L, const FindMatchContext &Context,
+   const std::vector<int> &position_caps, int find)
+{
+   // If no explicit captures (only full match), behavior depends on find mode
+   if (Context.captures.size() <= 1) {
+      if (Context.captures.empty()) return 0;
+      if (find IS 0) { // string.match with no captures returns the whole match
+         lua_pushlstring(L, Context.captures[0].data(), Context.captures[0].size());
+         return 1;
+      }
+      return 0; // string.find with no captures just returns positions
+   }
+
+   // Push explicit captures (skip captures[0] which is full match)
+   int count = 0;
+   for (size_t i = 1; i < Context.captures.size(); i++) {
+      bool is_position_cap = std::find(position_caps.begin(), position_caps.end(), int(i)) != position_caps.end();
+
+      if (is_position_cap) {
+         // Position capture: push the offset into the original string (0-based)
+         ptrdiff_t pos = Context.captures[i].data() - Context.src_init;
+         lua_pushinteger(L, int(pos));
+      }
+      else lua_pushlstring(L, Context.captures[i].data(), Context.captures[i].size());
+      count++;
+   }
+
+   return count;
+}
+
+//********************************************************************************************************************
 // Helper to check if a TValue is a range userdata and extract it
 
 static fluid_range * get_range_from_tvalue(lua_State *L, cTValue *tv)
@@ -87,7 +378,7 @@ LJLIB_ASM(string_byte)      LJLIB_REC(string_range 0)
    int32_t start = lj_lib_optint(L, 2, 0);  // 0-based: default start is 0
    int32_t stop = lj_lib_optint(L, 3, start);
    int32_t n, i;
-   const unsigned char* p;
+   const unsigned char *p;
    if (stop < 0) stop += len;   // 0-based: -1 → len-1 (last char)
    if (start < 0) start += len;
    if (start < 0) start = 0;
@@ -202,7 +493,7 @@ static CSTRING find_separator(CSTRING Pos, CSTRING End, CSTRING Sep, MSize SepLe
       return nullptr;
    }
 
-   if (SepLen IS 1) return (const char*)memchr(Pos, Sep[0], End - Pos);
+   if (SepLen IS 1) return (CSTRING)memchr(Pos, Sep[0], End - Pos);
 
    // Multi-character separator.
    for (CSTRING p = Pos; p <= End - SepLen; p++) {
@@ -815,161 +1106,160 @@ static CSTRING min_expand(MatchState* ms, CSTRING s, CSTRING p, CSTRING ep)
 
 //********************************************************************************************************************
 
-static CSTRING start_capture(MatchState* ms, CSTRING s, CSTRING p, int what)
+static CSTRING start_capture(MatchState *State, CSTRING s, CSTRING p, int what)
 {
    CSTRING res;
-   int level = ms->level;
-   if (level >= LUA_MAXCAPTURES) lj_err_caller(ms->L, ErrMsg::STRCAPN);
-   ms->capture[level].init = s;
-   ms->capture[level].len = what;
-   ms->level = level + 1;
-   if ((res = match(ms, s, p)) IS nullptr)  //  match failed?
-      ms->level--;  //  undo capture
+   auto level = State->level;
+   if (level >= LUA_MAXCAPTURES) lj_err_caller(State->L, ErrMsg::STRCAPN);
+   State->capture[level].init = s;
+   State->capture[level].len = what;
+   State->level = level + 1;
+   if ((res = match(State, s, p)) IS nullptr) State->level--;
    return res;
 }
 
 //********************************************************************************************************************
 
-static CSTRING end_capture(MatchState* ms, CSTRING s, CSTRING p)
+static CSTRING end_capture(MatchState* State, CSTRING s, CSTRING p)
 {
-   int l = capture_to_close(ms);
+   int l = capture_to_close(State);
    CSTRING res;
-   ms->capture[l].len = s - ms->capture[l].init;  //  close capture
-   if ((res = match(ms, s, p)) IS nullptr)  //  match failed?
-      ms->capture[l].len = CAP_UNFINISHED;  //  undo capture
+   State->capture[l].len = s - State->capture[l].init;  //  close capture
+   if ((res = match(State, s, p)) IS nullptr)  //  match failed?
+      State->capture[l].len = CAP_UNFINISHED;  //  undo capture
    return res;
 }
 
 //********************************************************************************************************************
 
-static CSTRING match_capture(MatchState* ms, CSTRING s, int l)
+static CSTRING match_capture(MatchState* State, CSTRING s, int l)
 {
    size_t len;
-   l = check_capture(ms, l);
-   len = (size_t)ms->capture[l].len;
-   if ((size_t)(ms->src_end - s) >= len && memcmp(ms->capture[l].init, s, len) IS 0) return s + len;
+   l = check_capture(State, l);
+   len = (size_t)State->capture[l].len;
+   if ((size_t)(State->src_end - s) >= len && memcmp(State->capture[l].init, s, len) IS 0) return s + len;
    else return nullptr;
 }
 
 //********************************************************************************************************************
 
-static CSTRING match(MatchState* ms, CSTRING s, CSTRING p)
+static CSTRING match(MatchState* State, CSTRING s, CSTRING p)
 {
-   if (++ms->depth > LJ_MAX_XLEVEL)
-      lj_err_caller(ms->L, ErrMsg::STRPATX);
+   if (++State->depth > LJ_MAX_XLEVEL) lj_err_caller(State->L, ErrMsg::STRPATX);
+
 init: //  using goto's to optimize tail recursion
+
    switch (*p) {
-   case '(':  //  start capture
-      if (*(p + 1) IS ')')  //  position capture?
-         s = start_capture(ms, s, p + 2, CAP_POSITION);
-      else
-         s = start_capture(ms, s, p + 1, CAP_UNFINISHED);
-      break;
-   case ')':  //  end capture
-      s = end_capture(ms, s, p + 1);
-      break;
-   case L_ESC:
-      switch (*(p + 1)) {
-      case 'b':  //  balanced string?
-         s = matchbalance(ms, s, p + 2);
-         if (s IS nullptr) break;
-         p += 4;
-         goto init;  //  else s = match(ms, s, p+4);
-      case 'f': {  // frontier?
-         CSTRING ep; char previous;
-         p += 2;
-         if (*p != '[') lj_err_caller(ms->L, ErrMsg::STRPATB);
-         ep = classend(ms, p);  //  points to what is next
-         previous = (s IS ms->src_init) ? '\0' : *(s - 1);
-         if (matchbracketclass(uchar(previous), p, ep - 1) ||
-            !matchbracketclass(uchar(*s), p, ep - 1)) {
-            s = nullptr; break;
-         }
-         p = ep;
-         goto init;  //  else s = match(ms, s, ep);
-      }
-      default:
-         if (isdigit(uchar(*(p + 1)))) {  // capture results (%0-%9)?
-            s = match_capture(ms, s, uchar(*(p + 1)));
+      case '(':  //  start capture
+         if (*(p + 1) IS ')') s = start_capture(State, s, p + 2, CAP_POSITION);
+         else s = start_capture(State, s, p + 1, CAP_UNFINISHED);
+         break;
+      case ')':  //  end capture
+         s = end_capture(State, s, p + 1);
+         break;
+      case L_ESC:
+         switch (*(p + 1)) {
+         case 'b':  //  balanced string?
+            s = matchbalance(State, s, p + 2);
             if (s IS nullptr) break;
+            p += 4;
+            goto init;  //  else s = match(State, s, p+4);
+         case 'f': {  // frontier?
+            CSTRING ep; char previous;
             p += 2;
-            goto init;  //  else s = match(ms, s, p+2)
+            if (*p != '[') lj_err_caller(State->L, ErrMsg::STRPATB);
+            ep = classend(State, p);  //  points to what is next
+            previous = (s IS State->src_init) ? '\0' : *(s - 1);
+            if (matchbracketclass(uchar(previous), p, ep - 1) ||
+               !matchbracketclass(uchar(*s), p, ep - 1)) {
+               s = nullptr; break;
+            }
+            p = ep;
+            goto init;  //  else s = match(State, s, ep);
          }
-         goto dflt;  //  case default
-      }
-      break;
-   case '\0':  //  end of pattern
-      break;  //  match succeeded
-   case '$':
-      // is the `$' the last char in pattern?
-      if (*(p + 1) != '\0') goto dflt;
-      if (s != ms->src_end) s = nullptr;  //  check end of string
-      break;
-   default: dflt: {  // it is a pattern item
-      CSTRING ep = classend(ms, p);  //  points to what is next
-      int m = s < ms->src_end and singlematch(uchar(*s), p, ep);
-      switch (*ep) {
-      case '?': {  // optional
-         CSTRING res;
-         if (m and ((res = match(ms, s + 1, ep + 1)) != nullptr)) {
-            s = res;
+         default:
+            if (isdigit(uchar(*(p + 1)))) {  // capture results (%0-%9)?
+               s = match_capture(State, s, uchar(*(p + 1)));
+               if (s IS nullptr) break;
+               p += 2;
+               goto init;  //  else s = match(State, s, p+2)
+            }
+            goto dflt;  //  case default
+         }
+         break;
+      case '\0':  // end of pattern
+         break;  // match succeeded
+      case '$':
+         // is the `$' the last char in pattern?
+         if (*(p + 1) != '\0') goto dflt;
+         if (s != State->src_end) s = nullptr;  //  check end of string
+         break;
+      default: dflt: {  // it is a pattern item
+         CSTRING ep = classend(State, p);  //  points to what is next
+         int m = s < State->src_end and singlematch(uchar(*s), p, ep);
+         switch (*ep) {
+         case '?': {  // optional
+            CSTRING res;
+            if (m and ((res = match(State, s + 1, ep + 1)) != nullptr)) {
+               s = res;
+               break;
+            }
+            p = ep + 1;
+            goto init;  // else s = match(State, s, ep+1);
+         }
+         case '*':  // 0 or more repetitions
+            s = max_expand(State, s, p, ep);
+            break;
+         case '+':  // 1 or more repetitions
+            s = (m ? max_expand(State, s + 1, p, ep) : nullptr);
+            break;
+         case '-':  // 0 or more repetitions (minimum)
+            s = min_expand(State, s, p, ep);
+            break;
+         default:
+            if (m) { s++; p = ep; goto init; }  // else s = match(State, s+1, ep);
+            s = nullptr;
             break;
          }
-         p = ep + 1;
-         goto init;  //  else s = match(ms, s, ep+1);
-      }
-      case '*':  //  0 or more repetitions
-         s = max_expand(ms, s, p, ep);
-         break;
-      case '+':  //  1 or more repetitions
-         s = (m ? max_expand(ms, s + 1, p, ep) : nullptr);
-         break;
-      case '-':  //  0 or more repetitions (minimum)
-         s = min_expand(ms, s, p, ep);
-         break;
-      default:
-         if (m) { s++; p = ep; goto init; }  // else s = match(ms, s+1, ep);
-         s = nullptr;
          break;
       }
-      break;
    }
-   }
-   ms->depth--;
+
+   State->depth--;
    return s;
 }
 
 //********************************************************************************************************************
 
-static void push_onecapture(MatchState* ms, int i, CSTRING s, CSTRING e)
+static void push_onecapture(MatchState* State, int i, CSTRING s, CSTRING e)
 {
-   if (i >= ms->level) {
-      if (i IS 0)  //  ms->level IS 0, too
-         lua_pushlstring(ms->L, s, (size_t)(e - s));  //  add whole match
-      else lj_err_caller(ms->L, ErrMsg::STRCAPI);
+   if (i >= State->level) {
+      if (i IS 0) { //  State->level IS 0, too
+         lua_pushlstring(State->L, s, (size_t)(e - s));  //  add whole match
+      }
+      else lj_err_caller(State->L, ErrMsg::STRCAPI);
    }
    else {
-      ptrdiff_t l = ms->capture[i].len;
-      if (l IS CAP_UNFINISHED) lj_err_caller(ms->L, ErrMsg::STRCAPU);
-      if (l IS CAP_POSITION) lua_pushinteger(ms->L, ms->capture[i].init - ms->src_init);  // 0-based position
-      else lua_pushlstring(ms->L, ms->capture[i].init, (size_t)l);
+      ptrdiff_t l = State->capture[i].len;
+      if (l IS CAP_UNFINISHED) lj_err_caller(State->L, ErrMsg::STRCAPU);
+      if (l IS CAP_POSITION) lua_pushinteger(State->L, State->capture[i].init - State->src_init);  // 0-based position
+      else lua_pushlstring(State->L, State->capture[i].init, (size_t)l);
    }
 }
 
 //********************************************************************************************************************
 
-static int push_captures(MatchState* ms, CSTRING s, CSTRING e)
+static int push_captures(MatchState* State, CSTRING S, CSTRING E)
 {
-   int i;
-   int nlevels = (ms->level IS 0 and s) ? 1 : ms->level;
-   luaL_checkstack(ms->L, nlevels, "too many captures");
-   for (i = 0; i < nlevels; i++) push_onecapture(ms, i, s, e);
+   int nlevels = (State->level IS 0 and S) ? 1 : State->level;
+   luaL_checkstack(State->L, nlevels, "too many captures");
+   for (int i = 0; i < nlevels; i++) push_onecapture(State, i, S, E);
    return nlevels;  //  number of strings pushed
 }
 
 //********************************************************************************************************************
 
-static int str_find_aux(lua_State *L, int find)
+static int str_find_aux(lua_State *L, int Find)
 {
    GCstr *s = lj_lib_checkstr(L, 1);
    GCstr *p = lj_lib_checkstr(L, 2);
@@ -983,7 +1273,7 @@ static int str_find_aux(lua_State *L, int find)
       return 1;
    }
 
-   if (find and ((L->base + 3 < L->top and tvistruecond(L->base + 3)) || !lj_str_haspattern(p))) {  // Search for fixed string.
+   if (Find and ((L->base + 3 < L->top and tvistruecond(L->base + 3)) || !lj_str_haspattern(p))) {  // Search for fixed string.
       CSTRING q = lj_str_find(strdata(s) + st, strdata(p), s->len - st, p->len);
       if (q) {
          setintV(L->top - 2, (int32_t)(q - strdata(s)));  // 0-based start
@@ -991,30 +1281,56 @@ static int str_find_aux(lua_State *L, int find)
          return 2;
       }
    }
-   else {  // Search for pattern.
-      MatchState ms;
-      CSTRING pstr = strdata(p);
-      CSTRING sstr = strdata(s) + st;
-      int anchor = 0;
-      if (*pstr IS '^') { pstr++; anchor = 1; }
-      ms.L = L;
-      ms.src_init = strdata(s);
-      ms.src_end = strdata(s) + s->len;
-      do {  // Loop through string and try to match the pattern.
-         CSTRING q;
-         ms.level = ms.depth = 0;
-         q = match(&ms, sstr, pstr);
-         if (q) {
-            if (find) {
-               setintV(L->top++, (int32_t)(sstr - strdata(s)));  // 0-based start
-               setintV(L->top++, (int32_t)(q - strdata(s)) - 1);  // 0-based end (inclusive)
-               return push_captures(&ms, nullptr, nullptr) + 2;
-            }
-            else {
-               return push_captures(&ms, sstr, q);
-            }
+   else {  // Search for pattern using regex.
+      // Ensure regex module is loaded
+      if (load_regex_module() != ERR::Okay) {
+         lj_err_caller(L, ErrMsg::STRCAPI);  // Use available error code
+         return 0;
+      }
+
+      // Convert Lua pattern to regex
+      PatternConversionResult conv;
+      if (convert_lua_pattern_to_regex(strdata(p), p->len, conv) != ERR::Okay) {
+         lj_err_callermsg(L, conv.error_message.c_str());
+         return 0;
+      }
+
+      // Compile regex
+      std::string error_msg;
+      Regex* regex = nullptr;
+      if (rx::Compile(conv.regex_pattern, REGEX::NIL, &error_msg, &regex) != ERR::Okay) {
+         lj_err_callermsg(L, error_msg.c_str());
+         return 0;
+      }
+
+      // Search from the specified start position
+      std::string_view subject(strdata(s) + st, s->len - st);
+      FindMatchContext ctx;
+      ctx.src_init = strdata(s);
+      ctx.offset = st;
+      auto cb = C_FUNCTION(find_match_callback, &ctx);
+
+      // Set flags based on anchoring
+      RMATCH flags = RMATCH::NIL;
+      if (conv.has_start_anchor) flags = flags | RMATCH::CONTINUOUS;
+
+      rx::Search(regex, subject, flags, &cb);
+      FreeResource(regex);
+
+      if (ctx.matched) {
+         // Adjust match positions to account for start offset (convert to absolute positions)
+         size_t abs_start = st + ctx.match_start;
+         size_t abs_end = st + ctx.match_end - 1;  // Convert to inclusive end
+
+         if (Find) {
+            setintV(L->top++, int32_t(abs_start));
+            setintV(L->top++, int32_t(abs_end));
+            return push_regex_captures(L, ctx, conv.position_capture_indices, Find) + 2;
          }
-      } while (sstr++ < ms.src_end and !anchor);
+         else {
+            return push_regex_captures(L, ctx, conv.position_capture_indices, Find);
+         }
+      }
    }
    setnilV(L->top - 1);  //  Not found.
    return 1;
