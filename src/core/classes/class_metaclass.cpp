@@ -244,7 +244,7 @@ ERR CLASS_Free(extMetaClass *Self)
       // Sanity check - if a base has sub-classes present then there is an issue that requires resolution.
       // Note that for static builds there is no way to control termination order, so these controls are disabled.
       pf::Log log;
-      log.warning("Out-of-order termination: Base-class %s has active sub-classes.", Self->Name);
+      log.warning("Out-of-order termination: Base-class %s has %d active sub-classes.", Self->ClassName, int(Self->SubClasses.size()));
    }
 
    if (Self->Base) {

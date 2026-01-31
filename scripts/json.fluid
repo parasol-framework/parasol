@@ -35,6 +35,10 @@
 
    json = _LIB[_NS]
 
+local num_regex = regex.new([[^-?[0-9]+\.?[0-9]*[eE]?[+\-]?[0-9]*]])
+local rx_num = regex.new('^\\d')
+local rx_whitespace = regex.new("[^ \\t\\n\\r\\f\\v]")
+
 function escape_str(String:str):str
    for i, c in in_char do
       String = String:gsub(c, '\\' .. out_char[i])
@@ -48,7 +52,8 @@ end
 -- This throws an error if ThrowIfMissing is true and the delim is not found.
 
 function skip_delim(String:str, Pos:num, Delimiter:str, ThrowIfMissing:bool):<num, bool>
-   Pos += #String:match('^%s*', Pos)
+   Pos = rx_whitespace.findFirst(String, Pos)  -- Skip whitespace
+   Pos ?= #String
    if String:sub(Pos, Pos+1) != Delimiter then
       if ThrowIfMissing then
          error('Expected ' .. Delimiter .. ' near position ' .. Pos)
@@ -78,10 +83,18 @@ end
 -- Returns val, pos; the returned pos is after the number's final character.
 
 function decode_num_val(String:str, pos:num):<any, num>
-   num_str = String:match('^-?%d+%.?%d*[eE]?[+-]?%d*', pos)
-   val = tonumber(num_str)
-   assert(val, 'Error parsing number at position ' .. pos .. '.')
-   return val, pos + #num_str
+   -- Search from position pos by using substring
+   local substr = String:sub(pos)
+   local matches = num_regex.search(substr)
+
+   if matches then
+      local num_str = matches[0][0]  -- Full match is at index 0
+      local val = tonumber(num_str)
+      assert(val, f'Error parsing number at position {pos} for "{num_str}".')
+      return val, pos + #num_str
+   end
+
+   error(f'Error parsing number at position {pos} for "{substr}"')
 end
 
 -- Public values and functions.
@@ -132,45 +145,45 @@ json.encode = function(Value:any, ErrorCallback:func, AsKey:bool):str
    end
 end
 
-json.decode = function(str:str, pos:num, EndToken:str):<any, num>
-   pos ?= 0
-   if pos >= #str then error('Reached unexpected end of input.') end
-   pos += #str:match('^%s*', pos)  -- Skip whitespace
-   first = str:sub(pos, pos+1)
+json.decode = function(String:str, Pos:num, EndToken:str):<any, num>
+   Pos ?= 0
+   if Pos >= #String then error('Reached unexpected end of input.') end
+   Pos = rx_whitespace.findFirst(String, Pos)  -- Skip whitespace
+   Pos ?= #String
+   first = String:sub(Pos, Pos+1)
    if first is '{' then  -- Parse an object.
       local map:table, key:any, delim_found = {}, true, true
-      pos++
+      Pos++
       while true do
-         key, pos = json.decode(str, pos, '}')
-         if not key then return map, pos end
+         key, Pos = json.decode(String, Pos, '}')
+         if not key then return map, Pos end
          if not delim_found then error('Comma missing between object items.') end
-         pos = skip_delim(str, pos, ':', true)  -- true -> error if missing.
-         map[key], pos = json.decode(str, pos)
-         pos, delim_found = skip_delim(str, pos, ',')
+         Pos = skip_delim(String, Pos, ':', true)  -- true -> error if missing.
+         map[key], Pos = json.decode(String, Pos)
+         Pos, delim_found = skip_delim(String, Pos, ',')
       end
    elseif first is '[' then  -- Parse an array.
       local arr:any, val:any, delim_found = array<any>, true, true
-      pos++
+      Pos++
       while true do
-         val, pos = json.decode(str, pos, ']')
-         if not val then return arr, pos end -- NB: Distinction between false and nil is essential
+         val, Pos = json.decode(String, Pos, ']')
+         if not val then return arr, Pos end -- NB: Distinction between false and nil is essential
          if not delim_found then error('Comma missing between array items.') end
          arr:push(val)
-         pos, delim_found = skip_delim(str, pos, ',')
+         Pos, delim_found = skip_delim(String, Pos, ',')
       end
    elseif first is '"' then  -- Parse a string.
-      return decode_str_val(str, pos + 1)
-   elseif first is '-' or first:match('%d') then  -- Parse a number.
-      return decode_num_val(str, pos)
+      return decode_str_val(String, Pos + 1)
+   elseif first is '-' or rx_num.test(first) then  -- Parse a number.
+      return decode_num_val(String, Pos)
    elseif first is EndToken then  -- End of an object or array.
-      return nil, pos + 1
+      return nil, Pos + 1
    else  -- Parse true, false, or null.
       literals = {['true'] = true, ['false'] = false, ['null'] = json.null}
       for lit_str, lit_val in pairs(literals) do
-         lit_end = pos + #lit_str
-         if str:sub(pos, lit_end) is lit_str then return lit_val, lit_end end
+         lit_end = Pos + #lit_str
+         if String:sub(Pos, lit_end) is lit_str then return lit_val, lit_end end
       end
-      pos_info_str = 'position ' .. pos .. ': ' .. str:sub(pos, pos + 11)
-      error('Invalid json syntax starting at ' .. pos_info_str)
+      error('Invalid json syntax starting at position ' .. Pos .. ': ' .. String:sub(Pos, Pos + 11))
    end
 end
