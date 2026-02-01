@@ -1,11 +1,26 @@
 -- FDL functions such as module(), header(), flags(), c_include(), cpp_include() ...
 
+local rx_angle_bracket     = regex.new([[^<(.+)>$]])
+local rx_parasol_include   = regex.new([[^<parasol/(.+)>$]])
+local rx_block_comment     = regex.new([[^/\*+([\s\S]*?)\*+/]])
+local rx_inner_comment     = regex.new([[./\*+([\s\S]*?)\*+/]])
+local rx_module_section    = regex.new([[-MODULE-([\s\S]*?)-END-]])
+local rx_module_header     = regex.new([[\n(\w+):\s+([\s\S]*?)\n\n([\s\S]+)]])
+local rx_key_comment       = regex.new([[^([^:]*):\s+(.+)$]])
+local rx_hex_number        = regex.new([[^0x[0-9a-fA-F]+$]])
+local rx_signed_int        = regex.new([[^[+\-]?\d+$]])
+local rx_trailing_space    = regex.new([[^([\s\S]*\S)]])
+local rx_type_name         = regex.new([[^(.+)\s(\S+)$]])
+local rx_non_word          = regex.new("[^\\w]")
+local rx_action_obj        = nil  -- Initialized per class
+local rx_action_ext        = nil  -- Initialized per class
+
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
 global function c_include(...)
    for _,v in ipairs({...}) do
-      if v:find('^<(.+)>$') then
+      if v:startsWith('<') and v:endsWith('>') then
          priority('#include ' .. v)
       else
          priority('#include "' .. v .. '"')
@@ -20,10 +35,9 @@ end
 global function cpp_include(...)
    priority('#ifdef __cplusplus')
    for _,v in ipairs({...}) do
-      if v:find('^<(.+)>$') then
-         inc = v:match('^<parasol/(.+)>$')
-
-         if inc then inc = inc:gsub('[/%.]', '_') end
+      if v:startsWith('<') and v:endsWith('>') then
+         local _, _, cap = rx_parasol_include.findFirst(v)
+         local inc = cap ? cap[0]:gsub('[/%.]', '_') :> nil
 
          if inc then
             priority('#ifndef ' .. inc:upper())
@@ -198,8 +212,9 @@ global function flags(Prefix, Options, ...)
    for a=0, #flags - 1 do
       local flag_name
       if type(flags[a]) is 'string' then
-         key, comment = flags[a]:match('^(.-):%s+(.+)$')
-         key ?= flags[a]
+         local _, _, cap = rx_key_comment.findFirst(flags[a])
+         key = cap ? cap[0] :> flags[a]
+         comment = cap ? cap[1] :> nil
 
          for flag_name in values(key:split('|')) do
             val = 1 << f
