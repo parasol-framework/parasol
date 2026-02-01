@@ -750,6 +750,78 @@ end
    assert(count8 is 0, "Expected 0 substitutions, got " .. count8)
 end
 
+@Test function Replace()
+   -- Basic replacement (all occurrences)
+   result, count = string.replace("hello world", "o", "0")
+   assert(result is "hell0 w0rld", "Expected 'hell0 w0rld', got '" .. result .. "'")
+   assert(count is 2, "Expected 2 replacements, got " .. count)
+
+   -- Replace all occurrences of a word
+   result2, count2 = string.replace("hello hello hello", "hello", "hi")
+   assert(result2 is "hi hi hi", "Expected 'hi hi hi', got '" .. result2 .. "'")
+   assert(count2 is 3, "Expected 3 replacements, got " .. count2)
+
+   -- Limited replacements (max_count parameter)
+   result3, count3 = string.replace("hello hello hello", "hello", "hi", 2)
+   assert(result3 is "hi hi hello", "Expected 'hi hi hello', got '" .. result3 .. "'")
+   assert(count3 is 2, "Expected 2 replacements, got " .. count3)
+
+   -- Replace only first occurrence
+   result4, count4 = string.replace("aaa", "a", "b", 1)
+   assert(result4 is "baa", "Expected 'baa', got '" .. result4 .. "'")
+   assert(count4 is 1, "Expected 1 replacement, got " .. count4)
+
+   -- No matches found
+   result5, count5 = string.replace("hello", "xyz", "abc")
+   assert(result5 is "hello", "Expected 'hello', got '" .. result5 .. "'")
+   assert(count5 is 0, "Expected 0 replacements, got " .. count5)
+
+   -- Empty search string (should return original with 0 count)
+   result6, count6 = string.replace("hello", "", "x")
+   assert(result6 is "hello", "Expected 'hello', got '" .. result6 .. "'")
+   assert(count6 is 0, "Expected 0 replacements for empty search, got " .. count6)
+
+   -- Empty source string
+   result7, count7 = string.replace("", "a", "b")
+   assert(result7 is "", "Expected empty string, got '" .. result7 .. "'")
+   assert(count7 is 0, "Expected 0 replacements for empty source, got " .. count7)
+
+   -- Replacement with empty string (deletion)
+   result8, count8 = string.replace("hello world", "o", "")
+   assert(result8 is "hell wrld", "Expected 'hell wrld', got '" .. result8 .. "'")
+   assert(count8 is 2, "Expected 2 deletions, got " .. count8)
+
+   -- Multi-character search and replacement
+   result9, count9 = string.replace("one::two::three", "::", "-")
+   assert(result9 is "one-two-three", "Expected 'one-two-three', got '" .. result9 .. "'")
+   assert(count9 is 2, "Expected 2 replacements, got " .. count9)
+
+   -- Replacement longer than search
+   result10, count10 = string.replace("a-b-c", "-", "---")
+   assert(result10 is "a---b---c", "Expected 'a---b---c', got '" .. result10 .. "'")
+   assert(count10 is 2, "Expected 2 replacements, got " .. count10)
+
+   -- Method syntax
+   methodResult, methodCount = "hello world":replace("world", "Lua")
+   assert(methodResult is "hello Lua", "Expected 'hello Lua', got '" .. methodResult .. "'")
+   assert(methodCount is 1, "Expected 1 replacement, got " .. methodCount)
+
+   -- Consecutive matches
+   result11, count11 = string.replace("aaa", "aa", "b")
+   assert(result11 is "ba", "Expected 'ba', got '" .. result11 .. "'")
+   assert(count11 is 1, "Expected 1 replacement (non-overlapping), got " .. count11)
+
+   -- CRLF to LF conversion (common use case)
+   result12, count12 = string.replace("line1\r\nline2\r\nline3", "\r\n", "\n")
+   assert(result12 is "line1\nline2\nline3", "Expected LF-only string, got '" .. result12 .. "'")
+   assert(count12 is 2, "Expected 2 CRLF replacements, got " .. count12)
+
+   -- Max count of 0 (should not replace anything)
+   result13, count13 = string.replace("hello", "l", "x", 0)
+   assert(result13 is "hello", "Expected 'hello' with max_count=0, got '" .. result13 .. "'")
+   assert(count13 is 0, "Expected 0 replacements with max_count=0, got " .. count13)
+end
+
 @Test function Format()
    for i=0,1000 do
       -- Basic integer
