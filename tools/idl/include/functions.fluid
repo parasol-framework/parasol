@@ -10,7 +10,9 @@ local rx_hex_number        = regex.new([[^0x[0-9a-fA-F]+$]])
 local rx_signed_int        = regex.new([[^[+\-]?\d+$]])
 local rx_trailing_space    = regex.new([[^([\s\S]*\S)]])
 local rx_type_name         = regex.new([[^(.+)\s(\S+)$]])
-local rx_non_word          = regex.new("[^\\w]")
+local rx_non_word          = regex.new('\\W')
+local rx_path_chars        = regex.new('[\\/\\.]')
+local rx_comment_chars     = regex.new('[`!@#]')
 
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
@@ -34,7 +36,7 @@ global function cpp_include(...)
    for _,v in ipairs({...}) do
       if v:startsWith('<') and v:endsWith('>') then
          local _, _, cap = rx_parasol_include.findFirst(v)
-         local inc = cap ? cap[0]:gsub('[/%.]', '_') :> nil
+         local inc = cap ? rx_path_chars.replace(cap[0], '_') :> nil
 
          if inc then
             priority('#ifndef ' .. inc:upper())
@@ -100,7 +102,7 @@ global function module(Options, Function)
 
    if glModule.src then -- Primary source file
       content = file.readAll(glFDLFolder .. glModule.src)
-      content = content:gsub('\r\n', '\n')
+      content = content:replace('\r\n', '\n')
 
       -- Extract possible content from within comments so that we don't get interference from the code while parsing.
 
@@ -249,7 +251,7 @@ global function flags(Prefix, Options, ...)
                   assert(lookup[v], "Failed to lookup flag reference '" .. v .. "' for " .. Prefix .. "_" .. flag_name)
                   val = val | lookup[v].value
                end
-               comment ??= 'Synonym for `' .. key:gsub('|',' | ') .. '`'
+               comment ??= 'Synonym for `' .. key:replace('|', ' | ') .. '`'
             end
             outputFlagDef(Options, Prefix, flag_name, val)
             lookup[flag_name] = { name=flag_name, value=val, comment=comment }
@@ -302,7 +304,7 @@ end
 
 global function hash(Prefix, Format, ...)
    for _, v in ipairs({...}) do
-      hash_name = v:gsub('[^%w]', '_')
+      hash_name = rx_non_word.replace(v, '_')
       -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
       hash_id = string.format('%08x', v:hash()):sub(-8)
       output('#define ' .. Prefix .. '_' .. hash_name .. ' ' .. string.format(Format, hash_id))
@@ -331,7 +333,7 @@ end
 
 global function fieldHash(Prefix:str, Format:str, ...)
    for _, v in ipairs({...}) do
-      hash_name = v:gsub('[^%w]', '_')
+      hash_name = rx_non_word.replace(v, '_')
       v_hash = calcFieldHash(v)
 
       -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
@@ -346,7 +348,7 @@ global function typedHash(Prefix:str, Type:str, ...)
    output('enum class ' .. Prefix .. ' : ' .. Type.type .. ' {')
    output('   NIL = 0,')
    for _, v in ipairs({...}) do
-      local hash_name = v:gsub('[^%w]', '_')
+      local hash_name = rx_non_word.replace(v, '_')
       -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
       local hash_id = string.format('%08x', v:hash()):sub(-8)
       output('   ' .. hash_name .. ' = ' .. string.format("0x%sUL", hash_id) .. ',')
@@ -632,7 +634,7 @@ global function struct(Name, Options, Def, Append)
          end
 
          if f.comment?? then
-            clean_comment = f.comment:gsub('[`!@#]', '')
+            clean_comment = rx_comment_chars.replace(f.comment, '')
             table.insert(out, string.format('%-' .. max_len .. 's // %s', left, clean_comment))
          else
             print('WARN: ' .. full_name .. '.' .. f.name .. ' requires a comment.')
@@ -768,7 +770,7 @@ global function class(Name, Options, Spec, Private, Custom)
          end
 
          content = file.readAll(glFDLFolder .. path)
-         content = content:gsub('\r\n', '\n')
+         content = content:replace('\r\n', '\n')
 
          -- Look for C/C++ action declarations, in the format: ERR CLASS_Action(...).  This will create a series
          -- of dummy action entries that can be overwritten with -ACTION- sections.
@@ -905,34 +907,34 @@ global function class(Name, Options, Spec, Private, Custom)
             end
          end
 
-         action_support = 'static const AC id = AC(-' .. method.id .. '); ERR call(OBJECTPTR Object) { return Action(id, Object, this); }'
+         action_support = f'static const AC id = AC(-{method.id}); ERR call(OBJECTPTR Object) {{ return Action(id, Object, this); }}'
          if method.params and #method.params > 0 then
-            class.methods[k].struct = 'struct ' .. method.name .. ' { ' .. struct_params .. action_support .. ' };'
+            class.methods[k].struct = f'struct {method.name} {{ {struct_params:trim()} {action_support} }};'
          else
-            class.methods[k].struct = 'struct ' .. method.name .. ' { ' .. action_support .. ' };'
+            class.methods[k].struct = f'struct {method.name} {{ {action_support} }};'
          end
 
          name = method.name:decap()
          if name is 'delete' then name = 'del' end -- C++ keyword check
 
-         inline = '   inline ERR ' .. name .. '(' .. params .. ') noexcept {\n'
+         inline = f'   inline ERR {name}({params}) noexcept {{\n'
          local args = 'nullptr'
 
          if method.params and #method.params > 0 then
-            inline ..= '      struct ' .. lpfx .. '::' .. method.name .. ' args = { ' .. v .. ' };\n'
+            inline ..= f'      struct {lpfx}::{method.name} args = {{ {v} }};\n'
             args = '&args'
          end
 
          if (results) then
-            inline ..= '      ERR error = Action(AC(-' .. method.id .. '), this, ' .. args .. ');\n'
+            inline ..= f'      ERR error = Action(AC(-{method.id}), this, {args});\n'
             for p in values(method.params) do
                if p.resultValue then
-                  inline ..= '      if (' .. p.name .. ') *' .. p.name .. ' = args.' .. p.name .. ';\n'
+                  inline ..= f'      if ({p.name}) *{p.name} = args.{p.name};\n'
                end
             end
             inline ..= '      return(error);\n'
          else
-            inline ..= '      return(Action(AC(-' .. method.id .. '), this, ' .. args .. '));\n'
+            inline ..= f'      return(Action(AC(-{method.id}), this, {args}));\n'
          end
 
          inline ..= '   }'
