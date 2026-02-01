@@ -107,16 +107,27 @@ global function module(Options, Function)
 
       -- Extract possible content from within comments so that we don't get interference from the code while parsing.
 
-      extracted_content = (string.match(content, '^/%*+(.-)%*+/') ?? '') -- The first line might start with a comment.
-      for extract in string.gmatch(content, '[^/]/%*+(.-)%*+/') do
-         extracted_content ..= '\n' .. extract
+      local _, cend, cap = rx_block_comment.findFirst(content)
+      extracted_content = cap ? cap[0] :> '' -- The first line might start with a comment.
+      local offset = cend ?? 0
+      while true do
+         local s, e, cap = rx_inner_comment.findFirst(content, offset)
+         if not s then break end
+         extracted_content ..= '\n' .. cap[0]
+         offset = s + e
       end
 
-      mod_desc = string.match(extracted_content, '%-MODULE%-(.-)%-END%-')
+      _, _, cap = rx_module_section.findFirst(extracted_content)
+      mod_desc = cap ? cap[0] :> nil
 
       if mod_desc then
          local name
-         name, glModule.comment, glModule.description = mod_desc:match('\n(%w+):%s+(.-)\n\n(.+)')
+         _, _, cap = rx_module_header.findFirst(mod_desc)
+         if cap then
+            name = cap[0]
+            glModule.comment = cap[1]
+            glModule.description = cap[2]
+         end
          if not name then
             error('The -MODULE- header for ' .. tostring(glModule.name) .. ' is incorrectly defined.')
          elseif (name:lower() != glModule.name:lower()) then
