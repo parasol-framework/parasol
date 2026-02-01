@@ -486,3 +486,21 @@ end
    result = test_val ? (1 < 2) :> (1 > 2)
    assert(result is true, "Expected true, got " .. tostring(result))
 end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Test that local variables used as ternary conditions are not corrupted when also accessed in the true branch.
+-- This regression test covers a bug where the ternary result register was reusing the condition's register,
+-- destroying the local variable binding if it was referenced later in the code.
+
+@Test function LocalVariablePreservation()
+   -- Create a table that will be used as the condition and accessed in the true branch
+   local data = { "first", "second", "third" }
+
+   -- Use data as condition AND access data[0] in true branch
+   local result = data ? data[0] :> "fallback"
+   assert(result is "first", "Failed: expected 'first', got " .. tostring(result))
+
+   -- Critical: verify data is still intact after the ternary
+   assert(data[1] is "second", "Local variable corrupted: expected 'second', got " .. tostring(data[1]))
+   assert(data[2] is "third", "Local variable corrupted: expected 'third', got " .. tostring(data[2]))
+end
