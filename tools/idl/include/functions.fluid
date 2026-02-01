@@ -2,19 +2,15 @@
 
 local rx_angle_bracket     = regex.new([[^<(.+)>$]])
 local rx_parasol_include   = regex.new([[^<parasol/(.+)>$]])
-local rx_extract_comment   = regex.new([=[^\/\*+([\s\S]*?)\*+\/]=], regex.MULTILINE)
-local rx_block_comment     = regex.new([[^\/\*+([\s\S]*?)\*+\/]])
-local rx_inner_comment     = regex.new([[.\/\*+([\s\S]*?)\*+\/]])
-local rx_module_section    = regex.new([[-MODULE-([\s\S]*?)-END-]])
-local rx_module_header     = regex.new([[\n(\w+):\s+([\s\S]*?)\n\n([\s\S]+)]])
+local rx_extract_comment   = regex.new([[^\/\*+([\s\S]*?)\*+\/]], regex.MULTILINE)
+local rx_module_section    = regex.new([[-MODULE-(.*?)-END-]], regex.DOT_ALL)
+local rx_module_header     = regex.new([[^(\w+):\s+(.*?)\n\n(.+)]], regex.MULTILINE|regex.DOT_ALL)
 local rx_key_comment       = regex.new([[^([^:]*):\s+(.+)$]])
 local rx_hex_number        = regex.new([[^0x[0-9a-fA-F]+$]])
 local rx_signed_int        = regex.new([[^[+\-]?\d+$]])
 local rx_trailing_space    = regex.new([[^([\s\S]*\S)]])
 local rx_type_name         = regex.new([[^(.+)\s(\S+)$]])
 local rx_non_word          = regex.new("[^\\w]")
-local rx_action_obj        = nil  -- Initialized per class
-local rx_action_ext        = nil  -- Initialized per class
 
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
@@ -108,17 +104,12 @@ global function module(Options, Function)
 
       -- Extract possible content from within comments so that we don't get interference from the code while parsing.
 
-      local _, cend, cap = rx_block_comment.findFirst(content)
-      extracted_content = cap ? cap[0] :> '' -- The first line might start with a comment.
-      local offset = cend ?? 0
-      while true do
-         local s, e, cap = rx_inner_comment.findFirst(content, offset)
-         if not s then break end
+      local extracted_content = ''
+      for start, len, cap in rx_extract_comment.findAll(content) do
          extracted_content ..= '\n' .. cap[0]
-         offset = s + e
       end
 
-      _, _, cap = rx_module_section.findFirst(extracted_content)
+      _, _, cap = rx_module_section.findFirst(extracted_content) -- -MODULE- ... -END-
       mod_desc = cap ? cap[0] :> nil
 
       if mod_desc then
