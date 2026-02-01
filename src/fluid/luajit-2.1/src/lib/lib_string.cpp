@@ -289,6 +289,69 @@ LJLIB_CF(string_split)
 }
 
 //********************************************************************************************************************
+// string.replace(s, search, replacement [, max_count]) -> string, count
+// Simple literal string replacement (no pattern matching).  Returns the modified string and the replacement count.
+
+LJLIB_CF(string_replace)
+{
+   GCstr *s = lj_lib_checkstr(L, 1);
+   GCstr *search = lj_lib_checkstr(L, 2);
+   GCstr *replacement = lj_lib_checkstr(L, 3);
+   int32_t max_count = lj_lib_optint(L, 4, -1);  // -1 means replace all
+
+   CSTRING str        = strdata(s);
+   CSTRING searchstr  = strdata(search);
+   CSTRING replacestr = strdata(replacement);
+   MSize slen         = s->len;
+   MSize searchlen    = search->len;
+   MSize replacelen   = replacement->len;
+
+   if (searchlen IS 0) { // Handle empty search string - return original string with 0 replacements
+      setstrV(L, L->top++, s);
+      setintV(L->top++, 0);
+      return 2;
+   }
+
+   if (slen IS 0) { // Handle empty source string
+      setstrV(L, L->top++, &G(L)->strempty);
+      setintV(L->top++, 0);
+      return 2;
+   }
+
+   SBuf *sb = lj_buf_tmp_(L);
+   lj_buf_reset(sb);
+
+   CSTRING pos = str;
+   CSTRING end = str + slen;
+   int32_t count = 0;
+
+   while (pos < end) {
+      if (max_count >= 0 and count >= max_count) { // Check if we've reached max replacements
+         lj_buf_putmem(sb, pos, end - pos); // Copy remaining string
+         break;
+      }
+
+      CSTRING found = lj_str_find(pos, searchstr, end - pos, searchlen);
+
+      if (found) {
+         if (found > pos) lj_buf_putmem(sb, pos, found - pos);
+         if (replacelen > 0) lj_buf_putmem(sb, replacestr, replacelen);
+         pos = found + searchlen;
+         count++;
+      }
+      else { // No more matches - copy remaining string
+         lj_buf_putmem(sb, pos, end - pos);
+         break;
+      }
+   }
+
+   setstrV(L, L->top++, lj_buf_str(L, sb));
+   setintV(L->top++, count);
+   lj_gc_check(L);
+   return 2;
+}
+
+//********************************************************************************************************************
 
 LJLIB_CF(string_trim)
 {
@@ -1361,6 +1424,7 @@ extern int luaopen_string(lua_State *L)
    reg_iface_prototype("string", "char", { FluidType::Str }, {}, FProtoFlags::Variadic);
    reg_iface_prototype("string", "dump", { FluidType::Str }, { FluidType::Func });
    reg_iface_prototype("string", "split", { FluidType::Array }, { FluidType::Str, FluidType::Str });
+   reg_iface_prototype("string", "replace", { FluidType::Str, FluidType::Num }, { FluidType::Str, FluidType::Str, FluidType::Str, FluidType::Num });
    reg_iface_prototype("string", "trim", { FluidType::Str }, { FluidType::Str });
    reg_iface_prototype("string", "rtrim", { FluidType::Str }, { FluidType::Str });
    reg_iface_prototype("string", "startsWith", { FluidType::Bool }, { FluidType::Str, FluidType::Str });
