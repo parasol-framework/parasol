@@ -16,8 +16,7 @@ local rx_result_section = regex.new("^-RESULT-\\n(.*?)\\n-END-", regex.DOT_ALL|r
 local rx_ecode_comment  = regex.new("^([A-Za-z]*):\\s+(.+)")
 local rx_ecode_only     = regex.new("^([A-Za-z]+):?")
 local rx_private        = regex.new("^[Pp]rivate")
-local rx_param          = regex.new("^(.+):\\s*(.+)$")
-local rx_param_type     = regex.new("^\\s*(.+)\\s+(\\S+)\\s*$")
+local rx_param          = regex.new("^\\s*(.+)\\s+(\\S+)\\s*:\\s*(.+)$")
 local rx_result_type    = regex.new("^(.*?):\\s*(.+)$")
 local rx_idl_section    = regex.new("--IDL_BEGIN--(.*?)--IDL_END--", regex.DOT_ALL)
 local rx_extract_comment = regex.new([[^\/\*+(.*?)\*+\/]], regex.MULTILINE|regex.DOT_ALL)
@@ -152,17 +151,11 @@ end
 global function parseParameterString(Parameter:str):table
    local _, _, cap = rx_param.findFirst(Parameter)
    if cap then
-      local param = { }
-      param.comment = cap ? cap[1] :> nil
-      Parameter = cap ? cap[0] :> Parameter
-
-      _, _, cap = rx_param_type.findFirst(Parameter)
-      if cap then
-         param.type = cap[0]:trim()
-         param.name = cap[1]:trim()
-         param.comment = param.comment ? param.comment:trim() :> nil
-         return param
-      end
+      return {
+         type = cap[0]:trim(),
+         name = cap[1]:trim(),
+         comment = cap[2]:trim()
+      }
    end
 end
 
