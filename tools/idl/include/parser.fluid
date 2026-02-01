@@ -23,12 +23,22 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 global function parseClassHeader(Class:table, Extract:str)
-   Extract = '-CLASS-\n' .. Extract:trim() .. '\n-END-\n'
+   Extract = f'-CLASS-\n{Extract:trim()}\n-END-\n'
+
    local name
-   name, Class.comment = Extract:match('\n(%w+):%s+(.-)\n')
-   Class.status = Extract:match('\n[Ss]tatus:%s+(.-)\n')
-   assert(name:lower() is Class.name:lower(), "The name specified in the -CLASS- header '" .. name .. "' does not match the name specified in the class() call '" .. Class.name .. "'")
-   Class.description = Extract:match("\n\n(.-)\n%-[A-Z]+%-\n")
+   _, _, cap = rx_doc_combo.findFirst(Extract)
+   if cap then
+      name = cap[0]
+      Class.comment = cap[1]
+   end
+
+   _, _, result = rx_doc_status.findFirst(Extract)
+   if result then Class.status = result[0] end
+
+   assert(name:lower() is Class.name:lower(), f"The name specified in the -CLASS- header '{name}' does not match the name specified in the class() call '{Class.name}'")
+
+   _, _, result = rx_doc_desc.findFirst(Extract)
+   if result then Class.description = result[0] end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -126,9 +136,10 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 global function parseMethod(Class:table, Extract:str)
-   Extract = '-METHOD-\n' .. Extract:trim() .. '\n-END-\n'
+   Extract = f'-METHOD-\n{Extract:trim()}\n-END-\n'
 
    local name, comment, status, description
+
    local _, _, result = rx_doc_name.findFirst(Extract)
    if result then name = result[0] end
 
@@ -136,8 +147,8 @@ global function parseMethod(Class:table, Extract:str)
    if result then comment = result[0] end
 
    if not name then
-      s, e, cap = rx_doc_combo.findFirst(Extract)
-      if s then
+      _, _, cap = rx_doc_combo.findFirst(Extract)
+      if cap then
          name = cap[0]
          comment = cap[1]
       end

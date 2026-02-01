@@ -3,8 +3,8 @@
 Examples:
 
   reg = regex.new("\\d+", REGEX_ICASE)
-  matches = reg:match("Hello 123 World")
-  result = reg:replace("abc123def", "XXX")
+  matches = reg.match("Hello 123 World")
+  result = reg.replace("abc123def", "XXX")
 
 *********************************************************************************************************************/
 

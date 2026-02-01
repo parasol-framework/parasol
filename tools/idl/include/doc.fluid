@@ -1,5 +1,14 @@
 -- Extended documentation parsing functionality; included by idl-c
 
+local rx_all_anchored = regex.new([[^!([\w]*)$]])
+local rx_paragraph    = regex.new([[^<[A-Za-z]+(.*?)>.*?<\/[A-Za-z]*?>.*?$]])
+local rx_insert       = regex.new([[^<[A-Za-z]+(.*?)\/>$]])
+local rx_balance      = regex.new([=[^<[A-Za-z]]=])
+local rx_header       = regex.new([[^<h[0-9]>.*?]])
+local rx_list         = regex.new([[^<list.*?>]])
+local rx_alphanum     = regex.new('^[A-Za-z0-9_]+$')
+local rx_path         = regex.new([[(.*[:\/\\])(.*)]])
+
 ----------------------------------------------------------------------------------------------------------------------
 
 global function ignoreAction(actionID:num)
@@ -420,7 +429,7 @@ global function extractParagraph(Input:str, Caller:str, References)
       line = string.trim(lines[i])
       if line?? then
          local action
-         if line:match('^!(%w*)$') then
+         if rx_all_anchored.test(line) then
             action = 'insert'
             line = line:gsub('!(%w*)', function(Lookup)
                if glStructures[Lookup] then
@@ -433,14 +442,13 @@ global function extractParagraph(Input:str, Caller:str, References)
                   print('Unrecognised struct or constant "' .. Lookup .. '"')
                end
             end)
-         elseif line:startsWith('<pre>') or line:match('^<h%d>.-') or
-            line:startsWith('<header>') or line:match('^<list.->') then
+         elseif line:startsWith('<pre>') or rx_header.test(line) or line:startsWith('<header>') or rx_list.test(line) then
             action = 'balance'
-         elseif line:match('^<%a+(.-)>.-</%a->.-$') then
+         elseif rx_paragraph.test(line) then
             action = 'paragraph'
-         elseif line:match('^<%a+(.-)/>$') then
+         elseif rx_insert.test(line) then
             action = 'insert'
-         elseif line:match('^<%a') then
+         elseif rx_balance.test(line) then
             action = 'balance'
          else
            action = 'paragraph'
@@ -508,7 +516,7 @@ end
 -- Use ! to refer to constants and struct definitions.  Note that if declared as a single-line paragraph, the entire
 --   definition will be pulled in to that section.
 
-global function substituteReferences(String, Class)
+global function substituteReferences(String:str, Class:table):str
    -- Substitute struct insertion requests
 
    String = String:gsub('!([A-Z]%w*)([,\n%s])', function(Lookup, Whitespace)
@@ -517,10 +525,10 @@ global function substituteReferences(String, Class)
 
          if Class and Class.references then Class.references['STRUCT:' .. Lookup] = 1 end
 
-         return '<st>' .. Lookup .. '</st>' .. Whitespace
+         return f'<st>{Lookup}</st>{Whitespace}'
       elseif glCustomTypes[Lookup] then
          if Class then Class.references['TYPE:' .. Lookup] = 1 end
-         return '<lk>' .. Lookup .. '</lk>' .. Whitespace
+         return f'<lk>{Lookup}</lk>{Whitespace}'
       else
          print('Unrecognised struct or constant "!' .. Lookup .. '"')
       end
@@ -530,11 +538,11 @@ global function substituteReferences(String, Class)
 
    String = String:gsub('#([A-Z]%w*)%(%)', function(CallName)
       if not Class then
-         return '<action>' .. CallName .. '</action>'
+         return f'<action>{CallName}</action>'
       elseif Class.lookupMethods and Class.lookupMethods[CallName] then
-         return '<method>' .. CallName .. '</method>'
+         return f'<method>{CallName}</method>'
       elseif glActions[CallName] then
-         return '<action>' .. CallName .. '</action>'
+         return f'<action>{CallName}</action>'
       else
          print('Unrecognised class action or method "' .. CallName .. '"')
       end
@@ -546,7 +554,7 @@ global function substituteReferences(String, Class)
       if not Class then
          -- Don't print errors regarding hexadecimal colours.
          if (Field:len() is 6) or (Field:len() is 8) then
-            if Field:match('[A-Z0-9]+') then return end
+            if rx_alphanum.test(Field) then return end
          end
 
          return f'<fl>{Field}</fl>'
@@ -555,7 +563,7 @@ global function substituteReferences(String, Class)
       else
          -- Don't print errors regarding hexadecimal colours.
          if (Field:len() is 6) or (Field:len() is 8) then
-            if Field:match('[A-Z0-9]+') then return end
+            if rx_alphanum.test(Field) then return end
          end
 
          print(f'Unrecognised {Class.name} field "{Field}"')
@@ -585,7 +593,7 @@ global function substituteReferences(String, Class)
          -- TODO: Check that the method name is valid according to the class spec
          return f'<class name="{ClassName}" method="{MethodName}">{ClassName}.{MethodName}()</class>'
       else
-         print('Unrecognised method/action reference @' .. ClassName .. '.' .. MethodName .. '()')
+         print(f'Unrecognised method/action reference @{ClassName}.{MethodName}()')
       end
    end)
 
@@ -596,13 +604,13 @@ global function substituteReferences(String, Class)
       if meta then
          err, field, src = meta.mtFindField(calcFieldHash(FieldName))
          if field then
-            return '<class name="' .. ClassName .. '" field="' .. FieldName .. '">' .. ClassName .. '.' .. FieldName .. '</class>'
+            return f'<class name="{ClassName}" field="{FieldName}">{ClassName}.{FieldName}</class>'
          else
-            print('Failed to find field ' .. ClassName .. '.' .. FieldName)
-            return '<class name="' .. ClassName .. '" field="' .. FieldName .. '">_' .. ClassName .. '.' .. FieldName .. '_</class>'
+            print(f'Failed to find field {ClassName}.{FieldName}')
+            return f'<class name="{ClassName}" field="{FieldName}">_{ClassName}.{FieldName}_</class>'
          end
       else
-         print('Unrecognised field reference @' .. ClassName .. '.' .. FieldName)
+         print(f'Unrecognised field reference @{ClassName}.{FieldName}')
       end
    end)
 
@@ -610,9 +618,9 @@ global function substituteReferences(String, Class)
 
    String = String:gsub('@([A-Z]%w+)', function(ClassName)
       if mSys.FindClass(ClassName:hash(), 0) then
-         return '<class name="' .. ClassName .. '">' .. ClassName .. '</class>'
+         return f'<class name="{ClassName}">{ClassName}</class>'
       else
-         print('Unrecognised class name reference @' .. ClassName)
+         print(f'Unrecognised class name reference @{ClassName}')
       end
    end)
 
@@ -658,9 +666,16 @@ global function docClass(Class)
 
    if not table.empty(Class.src) then
       out ..= '    <source>\n'
-      for _, path in pairs(Class.src) do
-         filename = path:gsub('.*[:/\\](.-)', '%1', 1)
-         path = path:match('(.*[:/\\])(.-)')
+      for path in values(Class.src) do
+         local filename = ''
+         _, _, result = rx_path.findFirst(path)
+         if result then
+            path = result[0]
+            filename = result[1]
+         else
+            filename = path
+            path = nil
+         end
          xpath = ''
          if path?? then xpath = " path=\"" .. path:escXML() .. '"' end
          out ..= "      <file" .. xpath .. ">" .. filename:escXML() .. "</file>\n"
@@ -728,13 +743,13 @@ global function docClass(Class)
 
       out ..= '\n  <methods>\n'
       for _, method in ipairs(Class.sortedMethods) do
-         if method.comment?? and (method.comment:find('^Private')) then
+         if method.comment?? and (method.comment:startsWith('Private')) then
             -- Ignore method
          else
             out ..= '    <method>\n'
-            out ..= '      <name>' .. method.name .. '</name>\n'
-            out ..= '      <comment>' .. substituteReferences((method.comment ?? ''):escXML(), Class) .. '</comment>\n'
-            if method.prototype?? then out ..= '      <prototype>' .. method.prototype:escXML() .. '</prototype>\n' end
+            out ..=f'      <name>{method.name}</name>\n'
+            out ..=f'      <comment>{substituteReferences((method.comment ?? ''):escXML(), Class)}</comment>\n'
+            if method.prototype?? then out ..= f'      <prototype>{method.prototype:escXML()}</prototype>\n' end
 
             if not table.empty(method.params) then
                out ..= '      <input>\n'
@@ -748,17 +763,17 @@ global function docClass(Class)
             end
 
             if method.description?? then
-               out ..= '      <description>\n' .. extractParagraph(method.description, Class, Class.references) .. '\n      </description>\n'
+               out ..= f'      <description>\n{extractParagraph(method.description, Class, Class.references)}\n      </description>\n'
             end
 
             if not table.empty(method.results) then
                results = ''
                for _, result in ipairs(method.results) do
-                  results ..= "        <error code=\"" .. result.codeName .. "\">" .. substituteReferences(result.msg:escXML(), Class) .. "</error>\n"
+                  results ..= f"        <error code=\"{result.codeName}\">{substituteReferences(result.msg:escXML(), Class)}</error>\n"
                end
 
                if results?? then
-                  out ..= "      <result>\n" .. results .. "      </result>\n"
+                  out ..= f"      <result>\n{results}      </result>\n"
                end
             end
 
@@ -874,9 +889,17 @@ global function docModuleHeader()
    if not table.empty(srcFiles) then
       out ..= '    <source>\n'
       for path in values(srcFiles) do
-         filename = path:gsub('.*[:/\\](.-)', '%1', 1)
-         path = path:match('(.*[:/\\])(.-)')
-         out ..= "      <file path=\"" .. path:escXML() .. "\">" .. filename:escXML() .. "</file>\n"
+         local filename = ''
+         _, _, result = rx_path.findFirst(path)
+         if result then
+            path = result[0]
+            filename = result[1]
+         else
+            filename = path
+            path = nil
+         end
+
+         out ..= "      <file path=\"" .. (path ?? ''):escXML() .. "\">" .. filename:escXML() .. "</file>\n"
       end
       out ..= '    </source>\n'
    end
