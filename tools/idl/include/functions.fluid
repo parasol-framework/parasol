@@ -2,8 +2,9 @@
 
 local rx_angle_bracket     = regex.new([[^<(.+)>$]])
 local rx_parasol_include   = regex.new([[^<parasol/(.+)>$]])
-local rx_block_comment     = regex.new([[^/\*+([\s\S]*?)\*+/]])
-local rx_inner_comment     = regex.new([[./\*+([\s\S]*?)\*+/]])
+local rx_extract_comment   = regex.new([=[^\/\*+([\s\S]*?)\*+\/]=], regex.MULTILINE)
+local rx_block_comment     = regex.new([[^\/\*+([\s\S]*?)\*+\/]])
+local rx_inner_comment     = regex.new([[.\/\*+([\s\S]*?)\*+\/]])
 local rx_module_section    = regex.new([[-MODULE-([\s\S]*?)-END-]])
 local rx_module_header     = regex.new([[\n(\w+):\s+([\s\S]*?)\n\n([\s\S]+)]])
 local rx_key_comment       = regex.new([[^([^:]*):\s+(.+)$]])
@@ -781,27 +782,32 @@ global function class(Name, Options, Spec, Private, Custom)
          -- Look for C/C++ action declarations, in the format: ERR CLASS_Action(...).  This will create a series
          -- of dummy action entries that can be overwritten with -ACTION- sections.
 
-         patterns = {
-            'ERR%s-' .. Name:upper() .. '_(%a-)%(obj.-%)',
-            'ERR%s-' .. Name:upper() .. '_(%a-)%(ext.-%)'
+         local rx_patterns = {
+            regex.new('ERR\\s*' .. Name:upper() .. '_([A-Za-z]+)\\(obj[^\\)]*\\)'),
+            regex.new('ERR\\s*' .. Name:upper() .. '_([A-Za-z]+)\\(ext[^\\)]*\\)')
          }
 
-         for pattern in values(patterns) do
-            for actionName in string.gmatch(content, pattern) do
+         for rx in values(rx_patterns) do
+            local offset = 0
+            while true do
+               local s, e, cap = rx.findFirst(content, offset)
+               if not s then break end
+               local actionName = cap[0]
                if glActions[actionName] then
                   verbose('Discovered action ' .. actionName)
                   class.actions[actionName] = { name=actionName }
                else
                   verbose('Ignoring declaration of ' .. actionName)
                end
+               offset = s + e
             end
          end
 
          -- Extract possible content from within comments so that we don't get interference from the code while parsing.
 
-         extracted_content = (string.match(content, '^/%*+(.-)%*+/') ?? '') -- The first line might start with a comment.
-         for extract in string.gmatch(content, '[^/]/%*+(.-)%*+/') do
-            extracted_content = extracted_content .. '\n' .. extract
+         local extracted_content = ''
+         for start, len, cap in rx_extract_comment.findAll(content) do
+            extracted_content ..= '\n' .. cap[0]
          end
 
          -- Parse each line individually
