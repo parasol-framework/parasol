@@ -78,22 +78,22 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-global function module(Options, Function)
+global function module(Options:table, Function)
    global glModuleName = Options['name']
    Function()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-global function header(Options, Function)
+global function header(Options:table, Function)
    global glHeaderPath = Options['path']
    Function()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-global function flags(Prefix, Options, ...)
-   Options = checkOptions(Options)
+global function flags(Prefix, Options:table, ...)
+   Options ?= {}
 
    if Options.restrict?? or glRestrict then return end -- Restricted definitions are never exported
    if Options.module?? and (Options.module:lower() != glModuleName:lower()) then return end
@@ -154,8 +154,8 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-global function enum(Prefix, Options, ...)
-   Options = checkOptions(Options)
+global function enum(Prefix, Options:table, ...)
+   Options ?= {}
 
    if Options.restrict?? or glRestrict then return end -- Restricted definitions are never exported
    if Options.module?? and (Options.module:lower() != glModuleName:lower()) then return end
@@ -187,8 +187,8 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-global function constants(Prefix, Options, ...)
-   Options = checkOptions(Options)
+global function constants(Prefix, Options:table, ...)
+   Options ?= {}
 
    if Options.restrict?? or glRestrict then return end -- Restricted definitions are never exported
    if Options.module?? and (Options.module:lower() != glModuleName:lower()) then return end
@@ -509,7 +509,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 global function struct(Name:str, Options:table, Def:str)
-   Options = checkOptions(Options)
+   Options ?= {}
    if Options.restrict?? or glRestrict then return end -- Restricted structures are never exported
    if Options.module?? and (Options.module:lower() != glModuleName:lower()) then return end
    verbose('Processing structure ' .. Name)

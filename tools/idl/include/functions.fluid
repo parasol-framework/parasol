@@ -68,7 +68,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
-global function module(Options, Function)
+global function module(Options:table, Function)
    if (Options['timestamp'] ?? 0) > glIDLTimestamp then
       -- Do nothing if the timestamp is > than the timestamp on this idl-c release
       global glAbort = 'Timestamp on IDL file (' .. Options['timestamp'] .. ') exceeds IDL-C timestamp of ' .. glIDLTimestamp
@@ -136,7 +136,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
-global function header(Options, Function)
+global function header(Options:table, Function)
    global glHeaderPath = Options['path']
    if glHeaderPath?? then
       priority('#pragma once')
@@ -170,11 +170,11 @@ end
 --    { SHIFT = 'L_SHIFT|R_SHIFT' }
 --  )
 
-global function flags(Prefix, Options, ...)
+global function flags(Prefix, Options:table, ...)
    verbose(f'Processing {Prefix} flags.')
    if glCustomTypes[Prefix] then print(f'WARN: A "{Prefix}" constant already exists.') end
 
-   Options = checkOptions(Options)
+   Options ?= {}
 
    out = array<string>
    sortedFlags = { }
@@ -360,11 +360,11 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
-global function constants(Prefix, Options, ...)
+global function constants(Prefix, Options:table, ...)
    verbose('Processing ' .. tostring(Prefix) .. ' constants.')
    if glCustomTypes[Prefix] then print('WARN: A "' .. Prefix .. '" constant already exists.') end
 
-   Options = checkOptions(Options)
+   Options ?= {}
 
    out = { }
    if Options.comment?? then
@@ -449,7 +449,7 @@ global function enum(Prefix:str, Options:table, ...)
    verbose('Processing ' .. tostring(Prefix) .. ' enum.')
    if glCustomTypes[Prefix] then print('WARN: A "' .. Prefix .. '" constant already exists.') end
 
-   Options = checkOptions(Options)
+   Options ?= {}
 
    out = { }
    if Options.comment?? then
@@ -579,14 +579,14 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
-global function struct(Name, Options, Def, Append)
+global function struct(Name, Options:table, Def, Append)
    verbose('Processing struct ' .. tostring(Name))
 
    prevStruct = glCurrentStructure
    global glCurrentStructure = Name
 
    try
-      Options = checkOptions(Options)
+      Options ?= {}
 
       out = { }
       full_name = Name
@@ -703,10 +703,10 @@ end
 -- FDL Function
 -- Refer to outputClassHeader() for output of the class structure.
 
-global function class(Name, Options, Spec, Private, Custom)
+global function class(Name, Options:table, Spec, Private, Custom)
    verbose('Processing class ' .. tostring(Name))
 
-   Options = checkOptions(Options)
+   Options ?= {}
 
    output('// ' .. Name .. ' class definition')
    output()
