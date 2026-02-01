@@ -16,8 +16,7 @@ local rx_result_section = regex.new("^-RESULT-\\n(.*?)\\n-END-", regex.DOT_ALL|r
 local rx_ecode_comment  = regex.new("^([A-Za-z]*):\\s+(.+)")
 local rx_ecode_only     = regex.new("^([A-Za-z]+):?")
 local rx_private        = regex.new("^[Pp]rivate")
-local rx_param_comment  = regex.new("^.+:\\s*(.+)$")
-local rx_param_content  = regex.new("^(.+):\\s*.+$")
+local rx_param          = regex.new("^(.+):\\s*(.+)$")
 local rx_param_type     = regex.new("^\\s*(.+)\\s+(\\S+)\\s*$")
 local rx_result_type    = regex.new("^(.*?):\\s*(.+)$")
 local rx_idl_section    = regex.new("--IDL_BEGIN--(.*?)--IDL_END--", regex.DOT_ALL)
@@ -60,36 +59,46 @@ end
 global function parseAction(Class:table, Extract:str)
    Extract = '-ACTION-\n' .. Extract:trim() .. '\n-END-\n'
 
-   name    = Extract:match('\n[Nn]ame:%s+(.-)\n')
-   comment = Extract:match('\n[Cc]omment:%s+(.-)\n')
+   local _, _, cap = rx_doc_name.findFirst(Extract)
+   local name = cap ? cap[0] :> nil
+   _, _, cap = rx_doc_comment.findFirst(Extract)
+   local comment = cap ? cap[0] :> nil
    if not name then
-      name, comment = Extract:match('\n(%w+):%s+(.-)\n')
+      _, _, cap = rx_doc_combo.findFirst(Extract)
+      if cap then
+         name = cap[0]
+         comment = cap[1]
+      end
    end
 
-   action = Class.actions[name] ?? { }
+   local action = Class.actions[name] ?? { }
    action.name = name
    action.comment = comment
-   action.description = Extract:match('\n\n(.-)\n%-[A-Z]+%-\n')
+   _, _, cap = rx_doc_desc.findFirst(Extract)
+   action.description = cap ? cap[0] :> nil
 
-   errors = Extract:match('\n%-ERRORS%-\n(.-)%-END%-')
+   _, _, cap = rx_errors_section.findFirst(Extract)
+   local errors = cap ? cap[0] :> nil
    if errors?? then
-      error_list = glCoreConstants['ERR']
+      local error_list = glCoreConstants['ERR']
       action.results = { }
 
-      for line in string.gmatch(errors, '(.-)\n') do
+      for _,line in ipairs(errors:split('\n')) do
          if not line?? then break end -- A double line-break forces a premature end to error processing.
 
-         ecode, comment = line:match('(%a-):%s+(.+)')
-         if ecode then
-            table.insert(action.results, { code = error_list[ecode], codeName = ecode, msg = comment })
+         local ecode
+         _, _, cap = rx_ecode_comment.findFirst(line)
+         if cap then
+            local ecode = cap[0]
+            table.insert(action.results, { code = error_list[ecode], codeName = ecode, msg = cap[1] })
          else
-            ecode = line:match('(%a+):?')
+            _, _, cap = rx_ecode_only.findFirst(line)
+            local ecode = cap ? cap[0] :> nil
             if ecode?? then
                table.insert(action.results, { code = error_list[ecode], codeName = ecode, msg = mSys.GetErrorMsg(error_list[ecode]) })
             end
         end
       end
-
 
       table.sort(action.results, function(a,b) return a.code < b.code end)
    end
@@ -141,19 +150,19 @@ end
 -- Convert a parameter string such as "int width: The width of the image"
 
 global function parseParameterString(Parameter:str):table
-   local param = { }
-   local _, _, cap = rx_param_comment.findFirst(Parameter)
-   param.comment = cap ? cap[0] :> nil
-   if param.comment?? then
-      _, _, cap = rx_param_content.findFirst(Parameter)
-      Parameter = cap ? cap[0] :> Parameter
-   end
-   _, _, cap = rx_param_type.findFirst(Parameter)
+   local _, _, cap = rx_param.findFirst(Parameter)
    if cap then
-      param.type = cap[0]:trim()
-      param.name = cap[1]:trim()
-      param.comment = param.comment ? param.comment:trim() :> nil
-      return param
+      local param = { }
+      param.comment = cap ? cap[1] :> nil
+      Parameter = cap ? cap[0] :> Parameter
+
+      _, _, cap = rx_param_type.findFirst(Parameter)
+      if cap then
+         param.type = cap[0]:trim()
+         param.name = cap[1]:trim()
+         param.comment = param.comment ? param.comment:trim() :> nil
+         return param
+      end
    end
 end
 
@@ -207,21 +216,26 @@ global function parseMethod(Class:table, Extract:str)
    method.comment = comment
    method.status = status
 
-   input = Extract:match('\n%-INPUT%-\n(.-)\n\n%-[A-Z]+%-\n')
+   local _, _, cap = rx_input_section.findFirst(Extract)
+   local input = cap ? cap[0] :> nil
 
-   errors = Extract:match('\n%-ERRORS%-\n(.-)%-END%-')
+   _, _, cap = rx_errors_section.findFirst(Extract)
+   local errors = cap ? cap[0] :> nil
    if errors?? then
-      error_list = glCoreConstants['ERR']
+      local error_list = glCoreConstants['ERR']
       method.results = { }
 
-      for line in string.gmatch(errors, '(.-)\n') do
+      for _,line in ipairs(errors:split('\n')) do
          line ?? break -- A double line-break forces a premature end to error processing.
 
-         ecode, comment = line:match('(%a-):%s+(.+)')
-         if ecode then
-            table.insert(method.results, { code = error_list[ecode], codeName = ecode, msg = comment })
+         local ecode, comment
+         _, _, cap = rx_ecode_comment.findFirst(line)
+         if cap then
+            local ecode = cap[0]
+            table.insert(method.results, { code = error_list[ecode], codeName = ecode, msg = cap[1] })
          else
-            ecode = line:match('(%a+):?')
+            _, _, cap = rx_ecode_only.findFirst(line)
+            local ecode = cap ? cap[0] :> nil
             if ecode?? then
                table.insert(method.results, { code = error_list[ecode], codeName = ecode, msg = mSys.GetErrorMsg(error_list[ecode]) })
             end
@@ -232,8 +246,8 @@ global function parseMethod(Class:table, Extract:str)
    end
 
    if input?? then
-      for line, content in input:split('\n') do
-         param = parseParameterString(content)
+      for _,content in ipairs(input:split('\n')) do
+         local param = parseParameterString(content)
          if param then
             cType(param, name)
             table.insert(method.params, param)
@@ -358,11 +372,11 @@ global function parseSourceFiles()
    for path in values(srcFiles) do
       -- Process --IDL_BEGIN/END-- sections, which allow the developer to embed FDL functions in the source code.
 
-      local idlExtract, extract
-      content = file.readAll(path)
-      content = '\n' .. content:gsub('\r\n', '\n')
-      for extract in string.gmatch(content, '%-%-IDL_BEGIN%-%-(.-)%-%-IDL_END%-%-') do
-         idlExtract = (idlExtract ?? '') .. extract
+      local idlExtract
+      local content = file.readAll(path)
+      content = '\n' .. content:replace('\r\n', '\n')
+      for start, len, cap in rx_idl_section.findAll(content) do
+         idlExtract = (idlExtract ?? '') .. cap[0]
       end
 
       if idlExtract then
@@ -378,21 +392,20 @@ global function parseSourceFiles()
 
       -- Extract possible content from within comments so that we don't get interference from the code while parsing.
 
-      extracted_content = ''
-      for extract in string.gmatch(content, '[^/]/%*+(.-)%*+/') do
-         extracted_content = extracted_content .. '\n' .. extract
+      local extracted_content = ''
+      for _, _, cap in rx_extract_comment.findAll(content) do
+         extracted_content ..= '\n' .. cap[0]
       end
       content = extracted_content
 
       -- Parse each line individually
 
-      currentExtract = nil
-      processing = nil
-      for line in string.gmatch(content, '(.-\n)') do
+      local currentExtract = nil
+      local processing = nil
+      for _,line in ipairs(content:split('\n')) do
          if line?? then
-            _, _, line = rx_strip_ws.findFirst(line) -- Capture non-whitespace
-            if line then line = line[0] end
-            line ?= ''
+            local _, _, cap = rx_strip_ws.findFirst(line) -- Capture non-whitespace
+            line = cap ? cap[0] :> ''
             if (line is '-CATEGORY-') or (line is '-FUNCTION-') then
                if processing is '-CATEGORY-' then parseCategory(currentExtract) end
                if processing is '-FUNCTION-' then parseFunction(currentExtract) end
@@ -420,7 +433,8 @@ end
 
 global function parseCategory(extract)
    extract = '-CATEGORY-\n' .. extract:trim() .. '\n-END-\n'
-   global glCategory = extract:match('\n[Nn]ame:%s+(.-)\n')
+   local _, _, cap = rx_doc_name.findFirst(extract)
+   global glCategory = cap ? cap[0] :> nil
    glCategories[glCategory] = { name=glCategory }
 end
 
@@ -467,36 +481,40 @@ global function parseFunction(Extract:str)
       print("Processing function " .. name .. "()")
    end
 
-   def = {
-      input     = Extract:match("\n%-INPUT%-\n(.-)\n%-[A-Z]+%-\n"),
+   local _, _, cap = rx_input_section2.findFirst(Extract)
+   local def = {
+      input     = cap ? cap[0] :> nil,
       ext_proto = ext_proto,
       attrib    = attrib
    }
 
-   errors = Extract:match("\n%-ERRORS%-\n(.-)%-END%-")
+   _, _, cap = rx_errors_section.findFirst(Extract)
+   local errors = cap ? cap[0] :> nil
    if errors?? then
-      error_list = glCoreConstants['ERR']
+      local error_list = glCoreConstants['ERR']
       def.result = cType({ type="error", values={ }, isFunction=true }, "Function " .. name)
 
-      for line in string.gmatch(errors, "(.-)\n") do
+      for _,line in ipairs(errors:split('\n')) do
          line ?? break -- A double line-break forces a premature end to error processing.
 
-         local ecode, comment = line:match("(%a-):%s+(.+)")
-         if ecode?? and comment?? then
-            codeValue = error_list[ecode]
-            if not codeValue then
+         _, _, cap = rx_ecode_comment.findFirst(line)
+         if cap then
+            local ecode = cap[0]
+            local code_value = error_list[ecode]
+            if not code_value then
                print('Error code "' .. ecode .. '" referenced in function ' .. name .. '() is invalid.')
             else
-               table.insert(def.result.values, { code = codeValue, codeName = ecode, msg = comment })
+               table.insert(def.result.values, { code = code_value, codeName = ecode, msg = cap[1] })
             end
          else
-            ecode = line:match("(%a+):?")
+            _, _, cap = rx_ecode_only.findFirst(line)
+            local ecode = cap ? cap[0] :> nil
             if ecode?? then
-               codeValue = error_list[ecode]
-               if not codeValue then
+               local code_value = error_list[ecode]
+               if not code_value then
                   print('Error code "' .. ecode .. '" referenced in function ' .. name .. '() is invalid.')
                else
-                  table.insert(def.result.values, { code = codeValue, codeName = ecode, msg = mSys.GetErrorMsg(codeValue) })
+                  table.insert(def.result.values, { code = code_value, codeName = ecode, msg = mSys.GetErrorMsg(code_value) })
                end
             end
          end
