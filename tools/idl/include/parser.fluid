@@ -1,13 +1,27 @@
 
-local rx_doc_name     = regex.new("\\n[Nn]ame:\\s+(.*?)\\n")
-local rx_doc_combo    = regex.new("\\n(\\w+):\\s+(.*)\\n")
-local rx_doc_comment  = regex.new("\\n[Cc]omment:\\s+(.*?)\\n")
-local rx_doc_category = regex.new("\\n[Cc]ategory:\\s+(.*?)\\n")
-local rx_doc_extproto = regex.new("\\n[Ee]xtPrototype:\\s+(.*?)\\n")
-local rx_doc_attrib   = regex.new("\\n[Aa]ttribute:\\s+(.*?)\\n")
-local rx_doc_status   = regex.new("\\n[Ss]tatus:\\s+(.*?)\\n")
-local rx_doc_desc     = regex.new("\\n\\n([\\s\\S]*?)\\n-[A-Z]+-\\n")
-local rx_strip_ws     = regex.new("^(.*\\S)")
+local rx_doc_name       = regex.new("^[Nn]ame:\\s+(.*?)\\n", regex.MULTILINE)
+local rx_doc_combo      = regex.new("^(\\w+):\\s+(.*)\\n", regex.MULTILINE)
+local rx_doc_comment    = regex.new("^[Cc]omment:\\s+(.*?)\\n", regex.MULTILINE)
+local rx_doc_category   = regex.new("^[Cc]ategory:\\s+(.*?)\\n", regex.MULTILINE)
+local rx_doc_extproto   = regex.new("^[Ee]xtPrototype:\\s+(.*?)\\n", regex.MULTILINE)
+local rx_doc_attrib     = regex.new("^[Aa]ttribute:\\s+(.*?)\\n", regex.MULTILINE)
+local rx_doc_status     = regex.new("^[Ss]tatus:\\s+(.*?)\\n", regex.MULTILINE)
+local rx_doc_lookup     = regex.new("^[Ll]ookup:\\s+(.*?)\\n", regex.MULTILINE)
+local rx_doc_desc       = regex.new("\\n\\n(.*?)\\n-[A-Z]+-\\n", regex.DOT_ALL)
+local rx_strip_ws       = regex.new("^(.*\\S)")
+local rx_errors_section = regex.new("\\n-ERRORS-\\n(.*?)-END-", regex.DOT_ALL)
+local rx_input_section  = regex.new("\\n-INPUT-\\n(.*?)\\n\\n-[A-Z]+-\\n", regex.DOT_ALL)
+local rx_input_section2 = regex.new("\\n-INPUT-\\n(.*?)\\n-[A-Z]+-\\n", regex.DOT_ALL)
+local rx_result_section = regex.new("\\n-RESULT-\\n(.*?)\\n-END-", regex.DOT_ALL)
+local rx_ecode_comment  = regex.new("^([A-Za-z]*):\\s+(.+)")
+local rx_ecode_only     = regex.new("^([A-Za-z]+):?")
+local rx_private        = regex.new("^[Pp]rivate")
+local rx_param_comment  = regex.new("^.+:\\s*(.+)$")
+local rx_param_content  = regex.new("^(.+):\\s*.+$")
+local rx_param_type     = regex.new("^\\s*(.+)\\s+(\\S+)\\s*$")
+local rx_result_type    = regex.new("^(.*?):\\s*(.+)$")
+local rx_idl_section    = regex.new("--IDL_BEGIN--(.*?)--IDL_END--", regex.DOT_ALL)
+local rx_extract_comment = regex.new([[^\/\*+(.*?)\*+\/]], regex.MULTILINE|regex.DOT_ALL)
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -85,18 +99,24 @@ end
 
 global function parseField(class:table, Extract:str)
    Extract = '-FIELD-\n' .. Extract:trim() .. '\n-END-\n'
-   lookup  = Extract:match('\n[Ll]ookup:%s+(.-)\n')
-   status  = Extract:match('\n[Ss]tatus:%s+(.-)\n')
-   name, comment = Extract:match('\n(%w+):%s+(.-)\n')
 
-   description = Extract:match('\n\n(.-)\n%-[A-Z]+%-\n')
+   local _, _, cap = rx_doc_lookup.findFirst(Extract)
+   local lookup = cap ? cap[0] :> nil
+   _, _, cap = rx_doc_status.findFirst(Extract)
+   local status = cap ? cap[0] :> nil
+   _, _, cap = rx_doc_combo.findFirst(Extract)
+   local name = cap ? cap[0] :> nil
+   local comment = cap ? cap[1] :> nil
+
+   _, _, cap = rx_doc_desc.findFirst(Extract)
+   local description = cap ? cap[0] :> nil
 
    if not name then
       print('Name not defined for -FIELD- definition.')
       return
    end
 
-   f = findClassField(class, name)
+   local f = findClassField(class, name)
    if f then
       if comment?? then f.comment = comment end
       if lookup?? then
@@ -107,7 +127,7 @@ global function parseField(class:table, Extract:str)
             print('Requested lookup "' .. lookup .. '" is not known.')
          end
       end
-      if string.match((status ?? ''), '^[Pp]rivate') or string.match((comment ?? ''), '^[Pp]rivate') then
+      if rx_private.test(status ?? '') or rx_private.test(comment ?? '') then
          f.private = true
          f.access = 'Private'
       end
@@ -121,14 +141,18 @@ end
 -- Convert a parameter string such as "int width: The width of the image"
 
 global function parseParameterString(Parameter:str):table
-   param = { }
-   param.comment = Parameter:match('^.+:%s-(.+)$')
-   if param.comment?? then Parameter = Parameter:match('^(.+):%s-.+$') end
-   param.type, param.name = Parameter:match('^%s*(.+)%s+([^%s]+)%s-$')
-   if param.type then
-      param.type = param.type:trim()
-      param.name = param.name:trim()
-      param.comment = param.comment:trim()
+   local param = { }
+   local _, _, cap = rx_param_comment.findFirst(Parameter)
+   param.comment = cap ? cap[0] :> nil
+   if param.comment?? then
+      _, _, cap = rx_param_content.findFirst(Parameter)
+      Parameter = cap ? cap[0] :> Parameter
+   end
+   _, _, cap = rx_param_type.findFirst(Parameter)
+   if cap then
+      param.type = cap[0]:trim()
+      param.name = cap[1]:trim()
+      param.comment = param.comment ? param.comment:trim() :> nil
       return param
    end
 end
