@@ -227,9 +227,11 @@ global function flags(Prefix, Options, ...)
 
             local key, comment
             if type(ref) != 'number' then
-               key, comment = ref:match('^(.-):%s+(.+)$')
+               _, _, cap = rx_key_comment.findFirst(ref)
+               key = cap ? cap[0] :> nil
+               comment = cap ? cap[1] :> nil
                if key then
-                  if key:find('^0x%d+$') or key:find('^[+-]?%d+$') then
+                  if rx_hex_number.test(key) or rx_signed_int.test(key) then
                      key = tonumber(key)
                   end
                end
@@ -374,8 +376,8 @@ global function constants(Prefix, Options, ...)
    list = { }
    for k,va in ipairs({...}) do
       if type(va) is 'string' then
-         key, comment = va:match('^(.-):%s+(.+)$')
-         key ?= va
+         local _, _, cap = rx_key_comment.findFirst(va)
+         key = cap ? cap[0] :> va
          for v in values(key:split('|')) do
             table.insert(out, '#define ' .. Prefix .. '_' .. v)
          end
@@ -395,9 +397,11 @@ global function constants(Prefix, Options, ...)
          end)
 
          for v in values(sorted) do
-            local val, comment
+            local val, comment, cap
             if type(v.value) is 'string' then
-               val, comment = v.value:match('^(.-):%s+(.+)$')
+               _, _, cap = rx_key_comment.findFirst(v.value)
+               val = cap ? cap[0] :> nil
+               comment = cap ? cap[1] :> nil
             end
             val ?= v.value
 
@@ -458,8 +462,9 @@ global function enum(Prefix:str, Options:table, ...)
    inc = (Options.start ?? 0)
    for k,va in ipairs({...}) do
       if type(va) is 'string' then
-         key, comment = va:match('^(.-):%s+(.+)$')
-         key ?= va
+         local _, _, cap = rx_key_comment.findFirst(va)
+         key = cap ? cap[0] :> va
+         comment = cap ? cap[1] :> nil
          synonym = false
          for name in values(key:split('|')) do
             if Options.type then
@@ -829,19 +834,19 @@ global function class(Name, Options, Spec, Private, Custom)
 
       for k, method in ipairs(class.methods) do
          if method.input?? then
-            t = { }
-            i = 1
-            for str in string.gmatch(method.input, '([^;]+)') do
-               t[i] = str:trim()
-               i++
-            end
-
             method.params = { }
-            for v in values(t) do
-               param = { }
-               param.type, param.name = v:match('^(.+)%s([^%s]+)$')
-               cType(param, 'Method ' .. method.name)
-               table.insert(method.params, param)
+            for _,v in ipairs(method.input:split(';')) do
+               v = v:trim()
+               if v?? then
+                  local param = { }
+                  local _, _, cap = rx_type_name.findFirst(v)
+                  if cap then
+                     param.type = cap[0]
+                     param.name = cap[1]
+                  end
+                  cType(param, 'Method ' .. method.name)
+                  table.insert(method.params, param)
+               end
             end
          end
 
@@ -1005,7 +1010,7 @@ end
 global function functionNames(Prefix, ...)
    global glFunctionPrefix = Prefix ?? ''
    for fname in values({...}) do
-      if fname:find('[^%w]') then
+      if rx_non_word.test(fname) then
          error(f'Invalid function name "{fname}"')
       end
 
