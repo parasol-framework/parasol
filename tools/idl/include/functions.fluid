@@ -807,9 +807,10 @@ global function class(Name, Options, Spec, Private, Custom)
          -- Parse each line individually
 
          local currentEntry, processing
-         for line in string.gmatch(extracted_content, '(.-\n)') do
+         for _,line in ipairs(extracted_content:split('\n')) do
             if line?? then
-               line = (line:match('^(.*%S)') ?? '')
+               _, _, cap = rx_trailing_space.findFirst(line)
+               line = cap ? cap[0] :> ''
                if (line is '-CLASS-') or (line is '-METHOD-') or (line is '-ACTION-') or (line is '-FIELD-') then
                   if currentEntry then parseClassEntry(class, processing, currentEntry) end
                   currentEntry = ''
