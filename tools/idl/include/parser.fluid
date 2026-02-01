@@ -9,10 +9,10 @@ local rx_doc_status     = regex.new("^[Ss]tatus:\\s+(.*?)\\n", regex.MULTILINE)
 local rx_doc_lookup     = regex.new("^[Ll]ookup:\\s+(.*?)\\n", regex.MULTILINE)
 local rx_doc_desc       = regex.new("\\n\\n(.*?)\\n-[A-Z]+-\\n", regex.DOT_ALL)
 local rx_strip_ws       = regex.new("^(.*\\S)")
-local rx_errors_section = regex.new("\\n-ERRORS-\\n(.*?)-END-", regex.DOT_ALL)
-local rx_input_section  = regex.new("\\n-INPUT-\\n(.*?)\\n\\n-[A-Z]+-\\n", regex.DOT_ALL)
-local rx_input_section2 = regex.new("\\n-INPUT-\\n(.*?)\\n-[A-Z]+-\\n", regex.DOT_ALL)
-local rx_result_section = regex.new("\\n-RESULT-\\n(.*?)\\n-END-", regex.DOT_ALL)
+local rx_errors_section = regex.new("^-ERRORS-\\n(.*?)-END-", regex.DOT_ALL|regex.MULTILINE)
+local rx_input_section  = regex.new("^-INPUT-\\n(.*?)\\n\\n-[A-Z]+-\\n", regex.DOT_ALL|regex.MULTILINE)
+local rx_input_section2 = regex.new("^-INPUT-\\n(.*?)\\n-[A-Z]+-\\n", regex.DOT_ALL|regex.MULTILINE)
+local rx_result_section = regex.new("^-RESULT-\\n(.*?)\\n-END-", regex.DOT_ALL|regex.MULTILINE)
 local rx_ecode_comment  = regex.new("^([A-Za-z]*):\\s+(.+)")
 local rx_ecode_only     = regex.new("^([A-Za-z]+):?")
 local rx_private        = regex.new("^[Pp]rivate")
@@ -504,9 +504,12 @@ global function parseFunction(Extract:str)
 
       table.sort(def.result.values, function(a,b) return a.code < b.code end)
    else
-      result = Extract:match("\n%-RESULT%-\n(.-)\n%-END%-")
+      _, _, cap = rx_result_section.findFirst(Extract)
+      local result = cap ? cap[0] :> nil
       if result?? then
-         local ext_type, comment = result:match("(.-):%s-(.+)$")
+         _, _, cap = rx_result_type.findFirst(result)
+         local ext_type = cap ? cap[0] :> nil
+         local comment = cap ? cap[1] :> nil
          assert(ext_type, "Incorrectly defined result section in function '" .. name .. "'")
          def.result = cType({ type=ext_type, comment=comment:trim(), isFunction=true, isResponse=true }, "Function " .. name)
       end
