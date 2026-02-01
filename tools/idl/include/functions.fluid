@@ -1,18 +1,18 @@
 -- FDL functions such as module(), header(), flags(), c_include(), cpp_include() ...
 
-local rx_angle_bracket     = regex.new([[^<(.+)>$]])
-local rx_parasol_include   = regex.new([[^<parasol/(.+)>$]])
-local rx_extract_comment   = regex.new([[^\/\*+(.*?)\*+\/]], regex.MULTILINE|regex.DOT_ALL)
-local rx_module_section    = regex.new([[-MODULE-(.*?)-END-]], regex.DOT_ALL)
-local rx_module_header     = regex.new([[^(\w+):\s+(.*?)\n\n(.+)]], regex.MULTILINE|regex.DOT_ALL)
-local rx_key_comment       = regex.new([[^([^:]*):\s+(.+)$]])
-local rx_hex_number        = regex.new([[^0x[0-9a-fA-F]+$]])
-local rx_signed_int        = regex.new([[^[+\-]?\d+$]])
-local rx_trailing_space    = regex.new([[^(.*\S)]], regex.DOT_ALL)
-local rx_type_name         = regex.new([[^(.+)\s(\S+)$]])
-local rx_non_word          = regex.new('\\W')
-local rx_path_chars        = regex.new('[\\/\\.]')
-local rx_comment_chars     = regex.new('[`!@#]')
+local rx_angle_bracket     = <{ regex.new([[^<(.+)>$]]) }>
+local rx_parasol_include   = <{ regex.new([[^<parasol/(.+)>$]]) }>
+local rx_extract_comment   = <{ regex.new([[^\/\*+(.*?)\*+\/]], regex.MULTILINE|regex.DOT_ALL) }>
+local rx_module_section    = <{ regex.new([[-MODULE-(.*?)-END-]], regex.DOT_ALL) }>
+local rx_module_header     = <{ regex.new([[^(\w+):\s+(.*?)\n\n(.+)]], regex.MULTILINE|regex.DOT_ALL) }>
+local rx_key_comment       = <{ regex.new([[^([^:]*):\s+(.+)$]]) }>
+local rx_hex_number        = <{ regex.new([[^0x[0-9a-fA-F]+$]]) }>
+local rx_signed_int        = <{ regex.new([[^[+\-]?\d+$]]) }>
+local rx_trailing_space    = <{ regex.new([[^(.*\S)]], regex.DOT_ALL) }>
+local rx_type_name         = <{ regex.new([[^(.+)\s(\S+)$]]) }>
+local rx_non_word          = <{ regex.new('\\W') }>
+local rx_path_chars        = <{ regex.new('[\\/\\.]') }>
+local rx_comment_chars     = <{ regex.new('[`!@#]') }>
 
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
@@ -530,8 +530,8 @@ end
 global function platform(Platform, Function)
    saveHeader = glHeader
    saveOutput = glOutput
-   global glHeader = { }
-   global glOutput = { }
+   global glHeader = array<string>
+   global glOutput = array<string>
 
    local define
    if (Platform:lower() is 'windows') then
@@ -658,7 +658,7 @@ global function struct(Name, Options:table, Def, Append)
       if Options.module?? and (Options.module:lower() != glModule.name:lower()) then
         -- Do nothing, module restriction imposed.
       elseif not glRestrict then
-         for k,v in pairs(out) do table.insert(glOutput, v) end
+         for k,v in pairs(out) do glOutput:push(v) end
       end
 
       glStructures[Name] = {

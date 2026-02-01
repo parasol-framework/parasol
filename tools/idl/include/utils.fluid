@@ -1,9 +1,9 @@
 -- Universal utility functions
 
-local rx_root_extract   = regex.new('^<ROOT>([\\s\\S]*)</ROOT>$')
-local rx_angle_brackets = regex.new('[<>]')
-local rx_first_char     = regex.new('^(.)(.+)$')
-local rx_cmake_path     = regex.new('^(.+)CMakeLists\\.txt')
+local rx_root_extract   = <{ regex.new('^<ROOT>(.*)</ROOT>$', regex.DOT_ALL) }>
+local rx_angle_brackets = <{ regex.new('[<>]') }>
+local rx_first_char     = <{ regex.new('^(.)(.+)$') }>
+local rx_cmake_path     = <{ regex.new('^(.+)CMakeLists\\.txt') }>
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Print a message to stdout if verbose mode is enabled
@@ -20,12 +20,12 @@ end
 global function output(String:str)
    if String?? then
       if String:sub(-1) is '\n' then
-         table.insert(glOutput, String)
+         glOutput:push(String)
       else
-         table.insert(glOutput, String:rtrim())
+         glOutput:push(String:rtrim())
       end
    else
-      table.insert(glOutput,'')
+      glOutput:push('')
    end
 end
 
@@ -36,16 +36,16 @@ end
 global function priority(Input:any)
    if type(Input) is 'function' then
       saveOutput = glOutput
-      glOutput = { }
+      glOutput = array<string>
       Input()
-      for _,v in ipairs(glOutput) do
-         table.insert(glHeader, v)
+      for v in values(glOutput) do
+         glHeader:push(v)
       end
       glOutput = saveOutput
    elseif (type(Input) is 'string') and Input?? then
-      table.insert(glHeader, Input:rtrim())
+      glHeader:push(Input:rtrim())
    else
-      table.insert(glHeader,'')
+      glHeader:push('')
    end
 end
 
@@ -77,7 +77,7 @@ end
 global function findClassField(Class:table, FieldName:str):table
    assert(Class.fields, 'Class.fields is empty')
 
-   for _, f in ipairs(Class.fields) do
+   for f in values(Class.fields) do
       if f.name is FieldName then
          return f
       end
@@ -119,9 +119,9 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Register a class by name and return its table. If the class already exists, return the existing table.
 
-global function registerClass(Name)
+global function registerClass(Name:str):table
    assert(Name??, 'No Name provided to registerClass()')
-   if not glClasses then global glClasses = { } end
+   global glClasses ?= { }
    glClasses[Name:lower()] ?= { name=Name:cap() }
    return glClasses[Name:lower()]
 end

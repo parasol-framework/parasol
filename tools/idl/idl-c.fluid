@@ -8,8 +8,8 @@
 
    import 'common'
 
-   global glHeader = { }
-   global glOutput = { }
+   global glHeader = array<string>
+   global glOutput = array<string>
    global glConstants = { }
 
    global glSelf = obj.find('self')

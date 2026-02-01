@@ -1,13 +1,13 @@
 -- Extended documentation parsing functionality; included by idl-c
 
-local rx_all_anchored = regex.new([[^!([\w]*)$]])
-local rx_paragraph    = regex.new([[^<[A-Za-z]+(.*?)>.*?<\/[A-Za-z]*?>.*?$]])
-local rx_insert       = regex.new([[^<[A-Za-z]+(.*?)\/>$]])
-local rx_balance      = regex.new([=[^<[A-Za-z]]=])
-local rx_header       = regex.new([[^<h[0-9]>.*?]])
-local rx_list         = regex.new([[^<list.*?>]])
-local rx_alphanum     = regex.new('^[A-Za-z0-9_]+$')
-local rx_path         = regex.new([[(.*[:\/\\])(.*)]])
+local rx_all_anchored = <{ regex.new([[^!([\w]*)$]]) }>
+local rx_paragraph    = <{ regex.new([[^<[A-Za-z]+(.*?)>.*?<\/[A-Za-z]*?>.*?$]]) }>
+local rx_insert       = <{ regex.new([[^<[A-Za-z]+(.*?)\/>$]]) }>
+local rx_balance      = <{ regex.new([=[^<[A-Za-z]]=]) }>
+local rx_header       = <{ regex.new([[^<h[0-9]>.*?]]) }>
+local rx_list         = <{ regex.new([[^<list.*?>]]) }>
+local rx_alphanum     = <{ regex.new('^[A-Za-z0-9_]+$') }>
+local rx_path         = <{ regex.new([[(.*[:\/\\])(.*)]]) }>
 
 ----------------------------------------------------------------------------------------------------------------------
 
