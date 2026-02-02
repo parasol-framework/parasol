@@ -89,7 +89,7 @@ DEFINE_ENUM_FLAG_OPERATORS(FSO)
 
 // Document class definition
 
-#define VER_DOCUMENT (1)
+#define VER_DOCUMENT (1.000000)
 
 // Document methods
 

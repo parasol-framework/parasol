@@ -382,7 +382,7 @@ enum class CEF : uint32_t {
 
 DEFINE_ENUM_FLAG_OPERATORS(CEF)
 
-#define VER_SURFACEINFO 2
+#define VER_SURFACEINFO 2.000000
 
 typedef struct SurfaceInfoV2 {
    APTR     Data;           // Bitmap data memory ID
@@ -441,7 +441,7 @@ typedef struct PixelFormat {
    uint8_t AlphaPos;    // Left shift/positional value for alpha
 } PIXELFORMAT;
 
-#define VER_DISPLAYINFO 3
+#define VER_DISPLAYINFO 3.000000
 
 typedef struct DisplayInfoV3 {
    OBJECTID DisplayID;                // Object ID related to the display
@@ -468,7 +468,7 @@ struct CursorInfo {
    int16_t BitsPerPixel;    // Preferred bits-per-pixel setting for custom cursors
 };
 
-#define VER_BITMAPSURFACE 2
+#define VER_BITMAPSURFACE 2.000000
 
 typedef struct BitmapSurfaceV2 {
    APTR    Data;                 // Pointer to the bitmap graphics data.
@@ -488,7 +488,7 @@ typedef struct BitmapSurfaceV2 {
 
 // Bitmap class definition
 
-#define VER_BITMAP (2)
+#define VER_BITMAP (2.000000)
 
 // Bitmap methods
 
@@ -872,7 +872,7 @@ class objBitmap : public Object {
 
 // Display class definition
 
-#define VER_DISPLAY (1)
+#define VER_DISPLAY (1.000000)
 
 // Display methods
 
@@ -1111,7 +1111,7 @@ class objDisplay : public Object {
 
 // Clipboard class definition
 
-#define VER_CLIPBOARD (1)
+#define VER_CLIPBOARD (1.000000)
 
 // Clipboard methods
 
@@ -1188,7 +1188,7 @@ class objClipboard : public Object {
 
 // Controller class definition
 
-#define VER_CONTROLLER (1)
+#define VER_CONTROLLER (1.000000)
 
 class objController : public Object {
    public:
@@ -1223,7 +1223,7 @@ class objController : public Object {
 
 // Pointer class definition
 
-#define VER_POINTER (1)
+#define VER_POINTER (1.000000)
 
 class objPointer : public Object {
    public:
@@ -1343,7 +1343,7 @@ class objPointer : public Object {
 
 // Surface class definition
 
-#define VER_SURFACE (1)
+#define VER_SURFACE (1.000000)
 
 // Surface methods
 

@@ -586,7 +586,7 @@ struct FontMetrics {
 
 // VectorColour class definition
 
-#define VER_VECTORCOLOUR (1)
+#define VER_VECTORCOLOUR (1.000000)
 
 class objVectorColour : public Object {
    public:
@@ -630,7 +630,7 @@ class objVectorColour : public Object {
 
 // VectorTransition class definition
 
-#define VER_VECTORTRANSITION (1)
+#define VER_VECTORTRANSITION (1.000000)
 
 class objVectorTransition : public Object {
    public:
@@ -655,7 +655,7 @@ class objVectorTransition : public Object {
 
 // VectorScene class definition
 
-#define VER_VECTORSCENE (1)
+#define VER_VECTORSCENE (1.000000)
 
 // VectorScene methods
 
@@ -779,7 +779,7 @@ class objVectorScene : public Object {
 
 // VectorImage class definition
 
-#define VER_VECTORIMAGE (1)
+#define VER_VECTORIMAGE (1.000000)
 
 class objVectorImage : public Object {
    public:
@@ -853,7 +853,7 @@ class objVectorImage : public Object {
 
 // VectorPattern class definition
 
-#define VER_VECTORPATTERN (1)
+#define VER_VECTORPATTERN (1.000000)
 
 class objVectorPattern : public Object {
    public:
@@ -953,7 +953,7 @@ class objVectorPattern : public Object {
 
 // VectorGradient class definition
 
-#define VER_VECTORGRADIENT (1)
+#define VER_VECTORGRADIENT (1.000000)
 
 class objVectorGradient : public Object {
    public:
@@ -1136,7 +1136,7 @@ class objVectorGradient : public Object {
 
 // FilterEffect class definition
 
-#define VER_FILTEREFFECT (1)
+#define VER_FILTEREFFECT (1.000000)
 
 class objFilterEffect : public Object {
    public:
@@ -1241,7 +1241,7 @@ struct MergeSource {
 
 // ImageFX class definition
 
-#define VER_IMAGEFX (1)
+#define VER_IMAGEFX (1.000000)
 
 class objImageFX : public objFilterEffect {
    public:
@@ -1283,7 +1283,7 @@ class objImageFX : public objFilterEffect {
 
 // SourceFX class definition
 
-#define VER_SOURCEFX (1)
+#define VER_SOURCEFX (1.000000)
 
 class objSourceFX : public objFilterEffect {
    public:
@@ -1325,7 +1325,7 @@ class objSourceFX : public objFilterEffect {
 
 // BlurFX class definition
 
-#define VER_BLURFX (1)
+#define VER_BLURFX (1.000000)
 
 class objBlurFX : public objFilterEffect {
    public:
@@ -1361,7 +1361,7 @@ class objBlurFX : public objFilterEffect {
 
 // ColourFX class definition
 
-#define VER_COLOURFX (1)
+#define VER_COLOURFX (1.000000)
 
 class objColourFX : public objFilterEffect {
    public:
@@ -1397,7 +1397,7 @@ class objColourFX : public objFilterEffect {
 
 // CompositeFX class definition
 
-#define VER_COMPOSITEFX (1)
+#define VER_COMPOSITEFX (1.000000)
 
 class objCompositeFX : public objFilterEffect {
    public:
@@ -1451,7 +1451,7 @@ class objCompositeFX : public objFilterEffect {
 
 // ConvolveFX class definition
 
-#define VER_CONVOLVEFX (1)
+#define VER_CONVOLVEFX (1.000000)
 
 class objConvolveFX : public objFilterEffect {
    public:
@@ -1541,7 +1541,7 @@ class objConvolveFX : public objFilterEffect {
 
 // DisplacementFX class definition
 
-#define VER_DISPLACEMENTFX (1)
+#define VER_DISPLACEMENTFX (1.000000)
 
 class objDisplacementFX : public objFilterEffect {
    public:
@@ -1583,7 +1583,7 @@ class objDisplacementFX : public objFilterEffect {
 
 // FloodFX class definition
 
-#define VER_FLOODFX (1)
+#define VER_FLOODFX (1.000000)
 
 class objFloodFX : public objFilterEffect {
    public:
@@ -1619,7 +1619,7 @@ class objFloodFX : public objFilterEffect {
 
 // LightingFX class definition
 
-#define VER_LIGHTINGFX (1)
+#define VER_LIGHTINGFX (1.000000)
 
 // LightingFX methods
 
@@ -1706,7 +1706,7 @@ class objLightingFX : public objFilterEffect {
 
 // MergeFX class definition
 
-#define VER_MERGEFX (1)
+#define VER_MERGEFX (1.000000)
 
 class objMergeFX : public objFilterEffect {
    public:
@@ -1736,7 +1736,7 @@ class objMergeFX : public objFilterEffect {
 
 // MorphologyFX class definition
 
-#define VER_MORPHOLOGYFX (1)
+#define VER_MORPHOLOGYFX (1.000000)
 
 class objMorphologyFX : public objFilterEffect {
    public:
@@ -1778,7 +1778,7 @@ class objMorphologyFX : public objFilterEffect {
 
 // OffsetFX class definition
 
-#define VER_OFFSETFX (1)
+#define VER_OFFSETFX (1.000000)
 
 class objOffsetFX : public objFilterEffect {
    public:
@@ -1814,7 +1814,7 @@ class objOffsetFX : public objFilterEffect {
 
 // RemapFX class definition
 
-#define VER_REMAPFX (1)
+#define VER_REMAPFX (1.000000)
 
 // RemapFX methods
 
@@ -1879,7 +1879,7 @@ class objRemapFX : public objFilterEffect {
 
 // TurbulenceFX class definition
 
-#define VER_TURBULENCEFX (1)
+#define VER_TURBULENCEFX (1.000000)
 
 class objTurbulenceFX : public objFilterEffect {
    public:
@@ -1939,7 +1939,7 @@ class objTurbulenceFX : public objFilterEffect {
 
 // WaveFunctionFX class definition
 
-#define VER_WAVEFUNCTIONFX (1)
+#define VER_WAVEFUNCTIONFX (1.000000)
 
 class objWaveFunctionFX : public objFilterEffect {
    public:
@@ -2011,7 +2011,7 @@ class objWaveFunctionFX : public objFilterEffect {
 
 // VectorClip class definition
 
-#define VER_VECTORCLIP (1)
+#define VER_VECTORCLIP (1.000000)
 
 class objVectorClip : public Object {
    public:
@@ -2046,7 +2046,7 @@ class objVectorClip : public Object {
 
 // VectorFilter class definition
 
-#define VER_VECTORFILTER (1)
+#define VER_VECTORFILTER (1.000000)
 
 class objVectorFilter : public Object {
    public:
@@ -2152,7 +2152,7 @@ class objVectorFilter : public Object {
 
 // Vector class definition
 
-#define VER_VECTOR (1)
+#define VER_VECTOR (1.000000)
 
 // Vector methods
 
@@ -2465,7 +2465,7 @@ class objVector : public Object {
 
 // VectorPath class definition
 
-#define VER_VECTORPATH (1)
+#define VER_VECTORPATH (1.000000)
 
 // VectorPath methods
 
@@ -2543,7 +2543,7 @@ class objVectorPath : public objVector {
 
 // VectorText class definition
 
-#define VER_VECTORTEXT (1)
+#define VER_VECTORTEXT (1.000000)
 
 // VectorText methods
 
@@ -2737,7 +2737,7 @@ class objVectorText : public objVector {
 
 // VectorGroup class definition
 
-#define VER_VECTORGROUP (1)
+#define VER_VECTORGROUP (1.000000)
 
 class objVectorGroup : public objVector {
    public:
@@ -2756,7 +2756,7 @@ class objVectorGroup : public objVector {
 
 // VectorWave class definition
 
-#define VER_VECTORWAVE (1)
+#define VER_VECTORWAVE (1.000000)
 
 class objVectorWave : public objVector {
    public:
@@ -2851,7 +2851,7 @@ class objVectorWave : public objVector {
 
 // VectorRectangle class definition
 
-#define VER_VECTORRECTANGLE (1)
+#define VER_VECTORRECTANGLE (1.000000)
 
 class objVectorRectangle : public objVector {
    public:
@@ -2938,7 +2938,7 @@ class objVectorRectangle : public objVector {
 
 // VectorPolygon class definition
 
-#define VER_VECTORPOLYGON (1)
+#define VER_VECTORPOLYGON (1.000000)
 
 class objVectorPolygon : public objVector {
    public:
@@ -3009,7 +3009,7 @@ class objVectorPolygon : public objVector {
 
 // VectorShape class definition
 
-#define VER_VECTORSHAPE (1)
+#define VER_VECTORSHAPE (1.000000)
 
 class objVectorShape : public objVector {
    public:
@@ -3127,7 +3127,7 @@ class objVectorShape : public objVector {
 
 // VectorSpiral class definition
 
-#define VER_VECTORSPIRAL (1)
+#define VER_VECTORSPIRAL (1.000000)
 
 class objVectorSpiral : public objVector {
    public:
@@ -3211,7 +3211,7 @@ class objVectorSpiral : public objVector {
 
 // VectorEllipse class definition
 
-#define VER_VECTORELLIPSE (1)
+#define VER_VECTORELLIPSE (1.000000)
 
 class objVectorEllipse : public objVector {
    public:
@@ -3291,7 +3291,7 @@ class objVectorEllipse : public objVector {
 
 // VectorViewport class definition
 
-#define VER_VECTORVIEWPORT (1)
+#define VER_VECTORVIEWPORT (1.000000)
 
 class objVectorViewport : public objVector {
    public:

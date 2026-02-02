@@ -176,7 +176,7 @@ typedef struct XTag {
 
 // XML class definition
 
-#define VER_XML (1)
+#define VER_XML (1.000000)
 
 // XML methods
 

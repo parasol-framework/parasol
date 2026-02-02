@@ -67,7 +67,7 @@ struct FontList {
 
 // Font class definition
 
-#define VER_FONT (1)
+#define VER_FONT (1.000000)
 
 class objFont : public Object {
    public:

@@ -134,7 +134,7 @@ DEFINE_ENUM_FLAG_OPERATORS(HTF)
 
 // HTTP class definition
 
-#define VER_HTTP (1)
+#define VER_HTTP (1.000000)
 
 class objHTTP : public Object {
    public:

@@ -122,7 +122,7 @@ DEFINE_ENUM_FLAG_OPERATORS(XIF)
 
 // XQuery class definition
 
-#define VER_XQUERY (1)
+#define VER_XQUERY (1.000000)
 
 // XQuery methods
 

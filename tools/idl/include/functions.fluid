@@ -291,7 +291,7 @@ global function flags(Prefix, Options:table, ...)
    end
 
    table.sort(sortedFlags, function(a,b) return a.value < b.value end)
-   for _, flag in ipairs(sortedFlags) do
+   for flag in values(sortedFlags) do
       out:push(flag.define)
    end
 
@@ -321,7 +321,7 @@ end
 -- FDL function
 
 global function privateNames(List)
-   for _,v in pairs(List) do
+   for v in values(List) do
       glPrivateNames[v] = true
    end
 end
@@ -406,7 +406,7 @@ global function constants(Prefix:str, Options:table, ...)
    end
 
    list = { }
-   for k,va in ipairs({...}) do
+   for va in values({...}) do
       if type(va) is 'string' then
          local _, _, cap = rx_key_comment.findFirst(va)
          key = cap ? cap[0] :> va
@@ -493,7 +493,7 @@ global function enum(Prefix:str, Options:table, ...)
 
    list = { }
    inc = (Options.start ?? 0)
-   for k,va in ipairs({...}) do
+   for va in values({...}) do
       if type(va) is 'string' then
          local _, _, cap = rx_key_comment.findFirst(va)
          key = cap ? cap[0] :> va
@@ -619,7 +619,7 @@ global function struct(Name, Options:table, Def, Append)
       out = array<string>
       full_name = Name
       if Options.version then
-         out:push(f'#define VER_{Name:upper()} {Options.version}')
+         out:push(f'#define VER_{Name:upper()} {string.format("%f", Options.version)}')
          out:push('')
          full_name = Name .. 'V' .. Options.version
       end
@@ -738,7 +738,7 @@ global function class(Name, Options:table, Spec, Private, Custom)
 
    output(f'// {Name} class definition')
    output()
-   output(f'#define VER_{Name:upper()} ({Options.version ?? 1.0})')
+   output(f'#define VER_{Name:upper()} ({string.format("%f", Options.version ?? 1.0)})')
    output()
 
    local class = registerClass(Name)
