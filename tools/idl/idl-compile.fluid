@@ -70,7 +70,7 @@ global function privateNames(List:table) end
 -- FDL function
 -- Restricts the output of anything declared within the referenced function.
 
-global function restrict(Function)
+global function restrict(Function:func)
    local status = glRestrict
    global glRestrict = 'ALL'
    Function()
@@ -79,21 +79,21 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-global function module(Options:table, Function)
+global function module(Options:table, Function:func)
    global glModuleName = Options['name']
    Function()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-global function header(Options:table, Function)
+global function header(Options:table, Function:func)
    global glHeaderPath = Options['path']
    Function()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-global function flags(Prefix, Options:table, ...)
+global function flags(Prefix:str, Options:table, ...)
    Options ?= {}
 
    if Options.restrict?? or glRestrict then return end -- Restricted definitions are never exported

@@ -1,18 +1,19 @@
 -- FDL functions such as module(), header(), flags(), c_include(), cpp_include() ...
 
-local rx_angle_bracket     = <{ regex.new([[^<(.+)>$]]) }>
-local rx_parasol_include   = <{ regex.new([[^<parasol/(.+)>$]]) }>
-local rx_extract_comment   = <{ regex.new([[^\/\*+(.*?)\*+\/]], regex.MULTILINE|regex.DOT_ALL) }>
-local rx_module_section    = <{ regex.new([[-MODULE-(.*?)-END-]], regex.DOT_ALL) }>
-local rx_module_header     = <{ regex.new([[^(\w+):\s+(.*?)\n\n(.+)]], regex.MULTILINE|regex.DOT_ALL) }>
-local rx_key_comment       = <{ regex.new([[^([^:]*):\s+(.+)$]]) }>
-local rx_hex_number        = <{ regex.new([[^0x[0-9a-fA-F]+$]]) }>
-local rx_signed_int        = <{ regex.new([[^[+\-]?\d+$]]) }>
-local rx_trailing_space    = <{ regex.new([[^(.*\S)]], regex.DOT_ALL) }>
-local rx_type_name         = <{ regex.new([[^(.+)\s(\S+)$]]) }>
-local rx_non_word          = <{ regex.new('\\W') }>
-local rx_path_chars        = <{ regex.new('[\\/\\.]') }>
-local rx_comment_chars     = <{ regex.new('[`!@#]') }>
+local rx_high_hex        = <{ regex.new([[^0x[8f][0-9abcdef]+]]) }>
+local rx_angle_bracket   = <{ regex.new([[^<(.+)>$]]) }>
+local rx_parasol_include = <{ regex.new([[^<parasol/(.+)>$]]) }>
+local rx_extract_comment = <{ regex.new([[^\/\*+(.*?)\*+\/]], regex.MULTILINE|regex.DOT_ALL) }>
+local rx_module_section  = <{ regex.new([[-MODULE-(.*?)-END-]], regex.DOT_ALL) }>
+local rx_module_header   = <{ regex.new([[^(\w+):\s+(.*?)\n\n(.+)]], regex.MULTILINE|regex.DOT_ALL) }>
+local rx_key_comment     = <{ regex.new([[^([^:]*):\s+(.+)$]]) }>
+local rx_hex_number      = <{ regex.new([[^0x[0-9a-fA-F]+$]]) }>
+local rx_signed_int      = <{ regex.new([[^[+\-]?\d+$]]) }>
+local rx_trailing_space  = <{ regex.new([[^(.*\S)]], regex.DOT_ALL) }>
+local rx_type_name       = <{ regex.new([[^(.+)\s(\S+)$]]) }>
+local rx_non_word        = <{ regex.new('\\W') }>
+local rx_path_chars      = <{ regex.new('[\\/\\.]') }>
+local rx_comment_chars   = <{ regex.new('[`!@#]') }>
 
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
@@ -63,6 +64,31 @@ global function restrict(Function)
    global glRestrict = 'ALL'
    Function()
    glRestrict = status
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+global function outputLookup(Name:str, List):str
+   sorted = { }
+   for v in values(List) do
+      table.insert(sorted, v)
+   end
+
+   table.sort(sorted, function(a,b)
+      return (a.value is b.value) ? a.name < b.name :> a.value < b.value
+   end)
+
+   list = ''
+   for v in values(sorted) do
+      if (v.name:upper() != 'PRIVATE') and (v.name:upper() != 'END') then
+         -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
+         hash_id = '0x' .. string.format('%08x', v.value):sub(-8)
+         if rx_high_hex.test(hash_id) then hash_id = '(int)' .. hash_id end
+         list ..= f"   {{ \"{shortName(v.name)}\", {hash_id} }},\n"
+      end
+   end
+
+   return f'static const struct FieldDef cl{Name}[] = {{\n{list}   {{ nullptr, 0 }}\n}};\n\n'
 end
 
 ----------------------------------------------------------------------------------------------------------------------
