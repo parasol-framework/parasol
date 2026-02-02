@@ -52,24 +52,36 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
+@Test function Extract()
+   sample_regex = regex.new('\\d+')
+   cap = sample_regex.extract('abc123def', 0)
+   assert(cap is nil, 'Expected no results (no captures present)')
+
+   sample_regex = regex.new('(\\d+)')
+   cap = sample_regex.extract('abc123def', 0)
+   assert(cap is '123', f'Expected "123", got {cap}')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
 @Test function FindFirst()
    local rx_whitespace = regex.new('[^ \\t\\n\\r\\f\\v]')
 
    sample_regex = regex.new('\\d+')
    pos, len = sample_regex.findFirst('abc123def', 0)
-   assert(pos is 3, 'Expected position 3, got ' .. tostring(pos))
-   assert(len is 3, 'Expected length 3, got ' .. tostring(len))
+   assert(pos is 3, f'Expected position 3, got {pos}')
+   assert(len is 3, f'Expected length 3, got {len}')
 
    pos2, len2 = sample_regex.findFirst('no digits here', 0)
    assert(pos2 is nil and len2 is nil, 'Expected no match, got position ' .. tostring(pos2))
 
    pos, len = rx_whitespace.findFirst('   leading space', 0)
-   assert(pos is 3, 'Expected position 3, got ' .. tostring(pos))
-   assert(len is 1, 'Expected length 1, got ' .. tostring(len))
+   assert(pos is 3, f'Expected position 3, got {pos}')
+   assert(len is 1, f'Expected length 1, got {len}')
 
    pos, len = rx_whitespace.findFirst('   leading space', 2)
-   assert(pos is 3, 'Expected position 3, got ' .. tostring(pos))
-   assert(len is 1, 'Expected length 1, got ' .. tostring(len))
+   assert(pos is 3, f'Expected position 3, got {pos}')
+   assert(len is 1, f'Expected length 1, got {len}')
 end
 
 -----------------------------------------------------------------------------------------------------------------------

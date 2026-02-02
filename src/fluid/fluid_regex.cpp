@@ -33,6 +33,7 @@ struct regex_callback {
    std::string_view subject;
    int result_index = 0;
    int result_len = 0;
+   int total_captures = 0;
    GCarray *results = nullptr;   // For array-based multi-match results
    GCarray *captures = nullptr;  // For single-match capture results
 
@@ -170,6 +171,24 @@ static ERR match_first(int Index, std::vector<std::string_view> &Captures, size_
 }
 
 //*********************************************************************************************************************
+// Extract captures as result values
+
+static ERR match_extract(int Index, std::vector<std::string_view> &Captures, size_t MatchStart, size_t MatchEnd, regex_callback &Meta)
+{
+   Meta.result_index = int(MatchStart);
+   Meta.result_len = int(MatchEnd - MatchStart);
+
+   if (auto count = uint32_t(Captures.size()); count > 1) {
+      auto L = Meta.lua_state;
+      for (uint32_t j = 1; j < count; ++j) { // Skip the first capture (already reflected in the index & length)
+         lua_pushlstring(L, Captures[j].data(), Captures[j].length());
+      }
+      Meta.total_captures = int(Captures.size()) - 1;
+   }
+   return ERR::Terminate;
+}
+
+//*********************************************************************************************************************
 
 static ERR match_none(int Index, std::vector<std::string_view> &Captures, size_t MatchStart, size_t MatchEnd, regex_callback &Meta)
 {
@@ -246,26 +265,26 @@ static int regex_escape(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Method: regex.test(text) -> boolean
-// Performs a search to see if the regex matches anywhere in the text.
+// Method: regex.extract(text, [pos], [flags]) -> captures, ...
+// Extracts all captures from the first match of the pattern in the text, which are returned in sequence in the
+// results.
 
-static int regex_test(lua_State *Lua)
+static int regex_extract(lua_State *Lua)
 {
    auto r = (struct fregex *)get_meta(Lua, lua_upvalueindex(1), "Fluid.regex");
    size_t text_len = 0;
    CSTRING text = luaL_checklstring(Lua, 1, &text_len);
-   auto flags = RMATCH(luaL_optint(Lua, 2, int(RMATCH::NIL)));
 
-   auto meta = regex_callback { Lua };
-   auto cb = C_FUNCTION(match_none, &meta);
-   if (rx::Search(r->regex_obj, std::string_view(text, text_len), flags, &cb) IS ERR::Okay) {
-      lua_pushboolean(Lua, true);
-      return 1;
+   auto start_pos = size_t(luaL_optint(Lua, 2, 0));
+   if (start_pos >= text_len) start_pos = text_len;
+
+   auto flags = RMATCH(luaL_optint(Lua, 3, int(RMATCH::NIL)));
+   auto meta  = regex_callback { Lua };
+   auto cb    = C_FUNCTION(match_extract, &meta);
+   if (rx::Search(r->regex_obj, std::string_view(text + start_pos, text_len - start_pos), flags, &cb) IS ERR::Okay) {
+      return meta.total_captures;
    }
-   else {
-      lua_pushboolean(Lua, false);
-      return 1;
-   }
+   else return 0;
 }
 
 //********************************************************************************************************************
@@ -465,6 +484,29 @@ static int regex_split(lua_State *Lua)
 }
 
 //********************************************************************************************************************
+// Method: regex.test(text) -> boolean
+// Performs a search to see if the regex matches anywhere in the text.
+
+static int regex_test(lua_State *Lua)
+{
+   auto r = (struct fregex *)get_meta(Lua, lua_upvalueindex(1), "Fluid.regex");
+   size_t text_len = 0;
+   CSTRING text = luaL_checklstring(Lua, 1, &text_len);
+   auto flags = RMATCH(luaL_optint(Lua, 2, int(RMATCH::NIL)));
+
+   auto meta = regex_callback { Lua };
+   auto cb = C_FUNCTION(match_none, &meta);
+   if (rx::Search(r->regex_obj, std::string_view(text, text_len), flags, &cb) IS ERR::Okay) {
+      lua_pushboolean(Lua, true);
+      return 1;
+   }
+   else {
+      lua_pushboolean(Lua, false);
+      return 1;
+   }
+}
+
+//********************************************************************************************************************
 // Property and method access: __index
 
 constexpr auto HASH_pattern   = pf::strhash("pattern");
@@ -475,6 +517,7 @@ constexpr auto HASH_match     = pf::strhash("match");
 constexpr auto HASH_search    = pf::strhash("search");
 constexpr auto HASH_replace   = pf::strhash("replace");
 constexpr auto HASH_split     = pf::strhash("split");
+constexpr auto HASH_extract   = pf::strhash("extract");
 constexpr auto HASH_findFirst = pf::strhash("findFirst");
 constexpr auto HASH_findAll   = pf::strhash("findAll");
 
@@ -510,6 +553,10 @@ static int regex_get(lua_State *Lua)
             case HASH_split:
                lua_pushvalue(Lua, 1);
                lua_pushcclosure(Lua, regex_split, 1);
+               return 1;
+            case HASH_extract:
+               lua_pushvalue(Lua, 1);
+               lua_pushcclosure(Lua, regex_extract, 1);
                return 1;
             case HASH_findFirst:
                lua_pushvalue(Lua, 1);
@@ -647,5 +694,6 @@ void register_regex_class(lua_State *Lua)
    reg_iface_prototype("regex", "replace", { FluidType::Str }, { FluidType::Str, FluidType::Str, FluidType::Num });
    reg_iface_prototype("regex", "split", { FluidType::Array }, { FluidType::Str, FluidType::Num });
    reg_iface_prototype("regex", "findFirst", { FluidType::Num, FluidType::Num, FluidType::Array }, { FluidType::Str, FluidType::Num, FluidType::Num });
+   reg_iface_prototype("regex", "extract", { FluidType::Str }, { FluidType::Str, FluidType::Num, FluidType::Num });
    reg_iface_prototype("regex", "findAll", { FluidType::Func }, { FluidType::Str, FluidType::Num, FluidType::Num });
 }
