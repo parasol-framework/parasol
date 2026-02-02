@@ -21,12 +21,13 @@ local rx_xml_tag       = <{ regex.new([[<(.*?)>]], regex.DOT_ALL) }>
 -- Patterns for substituteReferences()
 local rx_struct_insert   = <{ regex.new([[!([A-Z]\w+)([,\n\s])]]) }> -- !Struct or !CONSTANT
 local rx_action_method   = <{ regex.new([[#([A-Z]\w+)\(\)]]) }> -- #Action()
-local rx_field_ref       = <{ regex.new([[#([A-Z]\w+)]]) }> -- #Field
+local rx_field_ref       = <{ regex.new([[#([A-Z]\w*)]]) }> -- #Field
 local rx_ext_func_ref    = <{ regex.new([[~([A-Z]\w+)\.([A-Z]\w+)\(\)]]) }> -- ~Module.Function()
 local rx_local_func_ref  = <{ regex.new([[~([A-Z]\w+)\(\)]]) }> -- ~Function()
 local rx_ext_method_ref  = <{ regex.new([[@([A-Z]\w+)\.([A-Z]\w+)\(\)]]) }> -- @Class.Method()
-local rx_ext_field_ref   = <{ regex.new([=[[@#]([A-Z]\w+)\.([A-Z]\w+)]=]) }> -- @Class.Field
+local rx_ext_field_ref   = <{ regex.new([=[[@#]([A-Z]\w+)\.([A-Z]\w*)]=]) }> -- @Class.Field
 local rx_class_ref       = <{ regex.new([[@([A-Z]\w+)]]) }> -- @Class
+local rx_rgb             = <{ regex.new('[A-Fa-f0-9RGBA]{6,8}') }>
 
 -- Patterns for docFunction()
 local rx_private_status  = <{ regex.new([[^[Pp]rivate]]) }>
@@ -594,25 +595,30 @@ global function substituteReferences(String:str, Class:table):str
 
    -- Substitute field references, identified as #Field.
 
-   String = String:gsub('#([A-Z]%w*)', function(Field)
-      if not Class then
-         -- Don't print errors regarding hexadecimal colours.
-         if (Field:len() is 6) or (Field:len() is 8) then
-            if rx_alphanum.test(Field) then return end
+   result = ''
+   last_end = 0
+   for start, len, cap in rx_field_ref.findAll(String) do
+      result ..= String:sub(last_end, start)
+      local field = cap[0]
+      if not Class then -- Localised field lookup
+         if rx_rgb.test(field) then -- Ignore RGB values
+            result ..= String:sub(start, start + len)
+         else -- Localised field reference
+            result ..= f'<fl>{field}</fl>'
          end
-
-         return f'<fl>{Field}</fl>'
-      elseif (Class.lookupFields) and (Class.lookupFields[Field]) then
-         return f'<fl>{Field}</fl>'
-      else
-         -- Don't print errors regarding hexadecimal colours.
-         if (Field:len() is 6) or (Field:len() is 8) then
-            if rx_alphanum.test(Field) then return end
+      elseif (Class.lookupFields) and (Class.lookupFields[field]) then
+         result ..= f'<fl>{field}</fl>'
+      else -- Failed to lookup external field reference
+         if rx_rgb.test(field) then -- Ignore RGB values
+            result ..= String:sub(start, start + len)
+         else
+            print(f'Unrecognised {Class.name} field "{field}"')
+            result ..= String:sub(start, start + len)
          end
-
-         print(f'Unrecognised {Class.name} field "{Field}"')
       end
-   end)
+      last_end = start + len
+   end
+   String = result .. String:sub(last_end)
 
    -- Substitute external function references, identified as ~Module.Function()
 
