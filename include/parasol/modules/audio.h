@@ -156,7 +156,7 @@ struct AudioLoop {
 
 // Audio class definition
 
-#define VER_AUDIO (1.000000)
+#define VER_AUDIO (1)
 
 // Audio methods
 
@@ -308,7 +308,7 @@ class objAudio : public Object {
 
 // Sound class definition
 
-#define VER_SOUND (1.000000)
+#define VER_SOUND (1)
 
 class objSound : public Object {
    public:

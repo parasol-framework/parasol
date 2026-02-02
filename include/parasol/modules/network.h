@@ -121,7 +121,7 @@ struct IPAddress {
 
 // NetClient class definition
 
-#define VER_NETCLIENT (1.000000)
+#define VER_NETCLIENT (1)
 
 class objNetClient : public Object {
    public:
@@ -152,7 +152,7 @@ class objNetClient : public Object {
 
 // ClientSocket class definition
 
-#define VER_CLIENTSOCKET (1.000000)
+#define VER_CLIENTSOCKET (1)
 
 class objClientSocket : public Object {
    public:
@@ -229,7 +229,7 @@ class objClientSocket : public Object {
 
 // Proxy class definition
 
-#define VER_PROXY (1.000000)
+#define VER_PROXY (1)
 
 // Proxy methods
 
@@ -342,7 +342,7 @@ class objProxy : public Object {
 
 // NetLookup class definition
 
-#define VER_NETLOOKUP (1.000000)
+#define VER_NETLOOKUP (1)
 
 // NetLookup methods
 
@@ -406,7 +406,7 @@ class objNetLookup : public Object {
 
 // NetSocket class definition
 
-#define VER_NETSOCKET (1.000000)
+#define VER_NETSOCKET (1)
 
 // NetSocket methods
 

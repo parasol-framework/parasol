@@ -29,7 +29,7 @@ DEFINE_ENUM_FLAG_OPERATORS(PCF)
 
 // Picture class definition
 
-#define VER_PICTURE (1.000000)
+#define VER_PICTURE (1)
 
 class objPicture : public Object {
    public:

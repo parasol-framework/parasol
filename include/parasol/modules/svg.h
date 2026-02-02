@@ -23,7 +23,7 @@ DEFINE_ENUM_FLAG_OPERATORS(SVF)
 
 // SVG class definition
 
-#define VER_SVG (1.000000)
+#define VER_SVG (1)
 
 // SVG methods
 

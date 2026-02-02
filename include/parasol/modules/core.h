@@ -2344,7 +2344,7 @@ typedef std::vector<obj_write> WRITE_TABLE;
 
 // MetaClass class definition
 
-#define VER_METACLASS (1.000000)
+#define VER_METACLASS (1)
 
 // MetaClass methods
 
@@ -2494,7 +2494,7 @@ inline CLASSID Object::baseClassID() { return Class->BaseClassID; }
 
 // StorageDevice class definition
 
-#define VER_STORAGEDEVICE (1.000000)
+#define VER_STORAGEDEVICE (1)
 
 class objStorageDevice : public Object {
    public:
@@ -2524,7 +2524,7 @@ class objStorageDevice : public Object {
 
 // File class definition
 
-#define VER_FILE (1.200000)
+#define VER_FILE (1.2)
 
 // File methods
 
@@ -2746,7 +2746,7 @@ class objFile : public Object {
 
 // Config class definition
 
-#define VER_CONFIG (1.000000)
+#define VER_CONFIG (1)
 
 // Config methods
 
@@ -2914,7 +2914,7 @@ class objConfig : public Object {
 
 // Script class definition
 
-#define VER_SCRIPT (1.000000)
+#define VER_SCRIPT (1)
 
 // Script methods
 
@@ -3104,7 +3104,7 @@ struct ActionEntry {
 
 // Task class definition
 
-#define VER_TASK (1.000000)
+#define VER_TASK (1)
 
 // Task methods
 
@@ -3292,7 +3292,7 @@ class objTask : public Object {
 
 // Thread class definition
 
-#define VER_THREAD (1.000000)
+#define VER_THREAD (1)
 
 // Thread methods
 
@@ -3347,7 +3347,7 @@ class objThread : public Object {
 
 // Module class definition
 
-#define VER_MODULE (1.000000)
+#define VER_MODULE (1)
 
 // Module methods
 
@@ -3435,7 +3435,7 @@ class objModule : public Object {
 
 // Time class definition
 
-#define VER_TIME (1.000000)
+#define VER_TIME (1)
 
 // Time methods
 
@@ -3532,7 +3532,7 @@ class objTime : public Object {
 
 // Compression class definition
 
-#define VER_COMPRESSION (1.000000)
+#define VER_COMPRESSION (1)
 
 // Compression methods
 
@@ -3698,7 +3698,7 @@ class objCompression : public Object {
 
 // CompressedStream class definition
 
-#define VER_COMPRESSEDSTREAM (1.000000)
+#define VER_COMPRESSEDSTREAM (1)
 
 class objCompressedStream : public Object {
    public:

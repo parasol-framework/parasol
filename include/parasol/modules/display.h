@@ -488,7 +488,7 @@ typedef struct BitmapSurfaceV2 {
 
 // Bitmap class definition
 
-#define VER_BITMAP (2.000000)
+#define VER_BITMAP (2)
 
 // Bitmap methods
 
@@ -872,7 +872,7 @@ class objBitmap : public Object {
 
 // Display class definition
 
-#define VER_DISPLAY (1.000000)
+#define VER_DISPLAY (1)
 
 // Display methods
 
@@ -1111,7 +1111,7 @@ class objDisplay : public Object {
 
 // Clipboard class definition
 
-#define VER_CLIPBOARD (1.000000)
+#define VER_CLIPBOARD (1)
 
 // Clipboard methods
 
@@ -1188,7 +1188,7 @@ class objClipboard : public Object {
 
 // Controller class definition
 
-#define VER_CONTROLLER (1.000000)
+#define VER_CONTROLLER (1)
 
 class objController : public Object {
    public:
@@ -1223,7 +1223,7 @@ class objController : public Object {
 
 // Pointer class definition
 
-#define VER_POINTER (1.000000)
+#define VER_POINTER (1)
 
 class objPointer : public Object {
    public:
@@ -1343,7 +1343,7 @@ class objPointer : public Object {
 
 // Surface class definition
 
-#define VER_SURFACE (1.000000)
+#define VER_SURFACE (1)
 
 // Surface methods
 

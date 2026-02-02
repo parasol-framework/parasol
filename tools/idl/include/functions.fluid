@@ -19,7 +19,7 @@ local rx_comment_chars   = <{ regex.new('[`!@#]') }>
 -- FDL function
 
 global function c_include(...)
-   for _,v in ipairs({...}) do
+   for v in values({...}) do
       if v:startsWith('<') and v:endsWith('>') then
          priority('#include ' .. v)
       else
@@ -34,7 +34,7 @@ end
 
 global function cpp_include(...)
    priority('#ifdef __cplusplus')
-   for _,v in ipairs({...}) do
+   for v in values({...}) do
       if v:startsWith('<') and v:endsWith('>') then
          local _, _, cap = rx_parasol_include.findFirst(v)
          local inc = cap ? rx_path_chars.replace(cap[0], '_') :> nil
@@ -59,7 +59,7 @@ end
 -- FDL function
 -- Restricts the output of anything declared within the Function.
 
-global function restrict(Function)
+global function restrict(Function:func)
    status = glRestrict
    global glRestrict = 'ALL'
    Function()
@@ -94,10 +94,10 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
-global function module(Options:table, Function)
+global function module(Options:table, Function:func)
    if (Options['timestamp'] ?? 0) > glIDLTimestamp then
       -- Do nothing if the timestamp is > than the timestamp on this idl-c release
-      global glAbort = 'Timestamp on IDL file (' .. Options['timestamp'] .. ') exceeds IDL-C timestamp of ' .. glIDLTimestamp
+      global glAbort = f'Timestamp on IDL file ({Options["timestamp"]}) exceeds IDL-C timestamp of {glIDLTimestamp}'
       return
    end
 
@@ -110,10 +110,10 @@ global function module(Options:table, Function)
       error('No "name" field specified in module() call.')
    end
 
-   priority('// Name:      ' .. glModule.name:lower() .. '.h')
+   priority(f'// Name:      {glModule.name:lower()}.h')
 
    if Options['copyright']?? then
-      priority('// Copyright: ' .. Options['copyright'])
+      priority(f'// Copyright: {Options["copyright"]}')
    end
    priority('// Generator: idl-c')
    priority()
@@ -122,7 +122,7 @@ global function module(Options:table, Function)
    priority()
 
    if glModule.version?? then
-      priority('#define MODVERSION_' .. glModule.name:upper() .. ' (' .. glModule.version .. ')')
+      priority(f'#define MODVERSION_{glModule.name:upper()} ({glModule.version})')
       priority()
    end
 
@@ -148,10 +148,11 @@ global function module(Options:table, Function)
             glModule.comment = cap[1]
             glModule.description = cap[2]
          end
+
          if not name then
-            error('The -MODULE- header for ' .. tostring(glModule.name) .. ' is incorrectly defined.')
+            error(f'The -MODULE- header for {glModule.name} is incorrectly defined.')
          elseif (name:lower() != glModule.name:lower()) then
-            error("The name specified in the -MODULE- header '" .. name .. "' does not match the name specified in the module() call '" .. glModule.name .. "'")
+            error(f"The name specified in the -MODULE- header '{name}' does not match the name specified in the module() call '{glModule.name}'")
          end
       end
    end
@@ -162,12 +163,12 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
-global function header(Options:table, Function)
+global function header(Options:table, Function:func)
    global glHeaderPath = Options['path']
    if glHeaderPath?? then
       priority('#pragma once')
       priority()
-      priority('// Name:      ' .. glHeaderPath:lower() .. '.h')
+      priority(f'// Name:      {glHeaderPath:lower()}.h')
    else
       s = ''
       for i=1,10 do
@@ -179,7 +180,7 @@ global function header(Options:table, Function)
    end
 
    if Options['copyright']?? then
-      priority('// Copyright: ' .. Options['copyright'])
+      priority(f'// Copyright: {Options["copyright"]}')
    end
    priority('// Generator: idl-c')
    priority()
@@ -274,16 +275,16 @@ global function flags(Prefix, Options:table, ...)
                val = key
             else -- Process named reference(s) to other flags
                for v in values(key:split('|')) do
-                  assert(lookup[v], "Failed to lookup flag reference '" .. v .. "' for " .. Prefix .. "_" .. flag_name)
+                  assert(lookup[v], f"Failed to lookup flag reference '{v}' for {Prefix}_{flag_name}")
                   val = val | lookup[v].value
                end
-               comment ??= 'Synonym for `' .. key:replace('|', ' | ') .. '`'
+               comment ??= f'Synonym for `{key:replace("|", " | ")}`'
             end
             outputFlagDef(Options, Prefix, flag_name, val)
             lookup[flag_name] = { name=flag_name, value=val, comment=comment }
          end
       else
-         error("Invalid flag type for '" .. Prefix .. "', expected string, got '" .. type(flags[a]) .. "'")
+         error(f"Invalid flag type for '{Prefix}', expected string, got '{type(flags[a])}'")
       end
 
       f++
@@ -328,12 +329,12 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
-global function hash(Prefix, Format, ...)
-   for _, v in ipairs({...}) do
+global function hash(Prefix:str, Format:str, ...)
+   for v in values({...}) do
       hash_name = rx_non_word.replace(v, '_')
       -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
       hash_id = string.format('%08x', v:hash()):sub(-8)
-      output('#define ' .. Prefix .. '_' .. hash_name .. ' ' .. string.format(Format, hash_id))
+      output(f'#define {Prefix}_{hash_name} {string.format(Format, hash_id)}')
    end
    output()
 end
@@ -358,26 +359,26 @@ global function calcFieldHash(String:str):num
 end
 
 global function fieldHash(Prefix:str, Format:str, ...)
-   for _, v in ipairs({...}) do
+   for v in values({...}) do
       hash_name = rx_non_word.replace(v, '_')
       v_hash = calcFieldHash(v)
 
       -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
       hash_id = string.format('%08x', v_hash):sub(-8)
-      output('#define ' .. Prefix .. '_' .. hash_name .. ' ' .. string.format(Format, hash_id))
+      output(f'#define {Prefix}_{hash_name} {string.format(Format, hash_id)}')
    end
    output()
 end
 
 global function typedHash(Prefix:str, Type:str, ...)
    Type = cType({ type=Type }, Prefix)
-   output('enum class ' .. Prefix .. ' : ' .. Type.type .. ' {')
+   output(f'enum class {Prefix} : {Type.type} {{')
    output('   NIL = 0,')
-   for _, v in ipairs({...}) do
+   for v in values({...}) do
       local hash_name = rx_non_word.replace(v, '_')
       -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
       local hash_id = string.format('%08x', v:hash()):sub(-8)
-      output('   ' .. hash_name .. ' = ' .. string.format("0x%sUL", hash_id) .. ',')
+      output(f'   {hash_name} = {string.format("0x%sUL", hash_id)},')
    end
    output('};')
    output()
@@ -386,22 +387,22 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
-global function constants(Prefix, Options:table, ...)
-   verbose('Processing ' .. tostring(Prefix) .. ' constants.')
-   if glCustomTypes[Prefix] then print('WARN: A "' .. Prefix .. '" constant already exists.') end
+global function constants(Prefix:str, Options:table, ...)
+   verbose(f'Processing {Prefix} constants.')
+   if glCustomTypes[Prefix] then print(f'WARN: A "{Prefix}" constant already exists.') end
 
    Options ?= {}
 
-   out = { }
+   out = array<string>
    if Options.comment?? then
-      table.insert(out, '// ' .. Options.comment)
-      table.insert(out, '')
+      out:push(f'// {Options.comment}')
+      out:push('')
    end
 
    if Options.type then -- Strong typing enabled, convert via cType()
       Options.type = cType({ type=Options.type }, Prefix)
-      table.insert(out, string.format('enum class %s : ' .. Options.type.type .. ' {', Prefix))
-      table.insert(out, '   NIL = 0,')
+      out:push(f'enum class {Prefix} : {Options.type.type} {{')
+      out:push('   NIL = 0,')
    end
 
    list = { }
@@ -410,13 +411,14 @@ global function constants(Prefix, Options:table, ...)
          local _, _, cap = rx_key_comment.findFirst(va)
          key = cap ? cap[0] :> va
          for v in values(key:split('|')) do
-            table.insert(out, '#define ' .. Prefix .. '_' .. v)
+            out:push(f'#define {Prefix}_{v}')
          end
       elseif type(va) is 'table' then
          sorted = { }
          for name, value in pairs(va) do
             table.insert(sorted, { name = name, value = value })
          end
+
          table.sort(sorted, function(a,b)
             if a.value is b.value then
                return a.name < b.name
@@ -437,28 +439,28 @@ global function constants(Prefix, Options:table, ...)
             val ?= v.value
 
             if Options.type then
-               table.insert(out, '   ' .. v.name .. ' = ' .. val .. ',')
+               out:push(f'   {v.name} = {val},')
             else
-               table.insert(out, '#define ' .. Prefix .. '_' .. v.name .. ' ' .. val)
+               out:push(f'#define {Prefix}_{v.name} {val}')
             end
 
             table.insert(list, { name=v.name, value=val, comment=comment })
          end
       else
-         error('Invalid const type for "' .. Prefix .. '", expected string, got "' .. type(va) .. '"')
+         error(f'Invalid const type for "{Prefix}", expected string, got "{type(va)}"')
       end
    end
 
    if Options.type then
-      table.insert(out, '};')
+      out:push('};')
    end
 
-   table.insert(out, '')
+   out:push('')
 
    if Options.module?? and (Options.module:lower() != glModule.name:lower()) then
      -- Do nothing, module restriction imposed.
    elseif not glRestrict then
-      for k,v in pairs(out) do table.insert(glConstants, v) end
+      for v in values(out) do table.insert(glConstants, v) end
    end
 
    glCustomTypes[Prefix] = {
@@ -472,21 +474,21 @@ end
 -- FDL function
 
 global function enum(Prefix:str, Options:table, ...)
-   verbose('Processing ' .. tostring(Prefix) .. ' enum.')
-   if glCustomTypes[Prefix] then print('WARN: A "' .. Prefix .. '" constant already exists.') end
+   verbose(f'Processing {Prefix} enum.')
+   if glCustomTypes[Prefix] then print(f'WARN: A "{Prefix}" constant already exists.') end
 
    Options ?= {}
 
-   out = { }
+   out = array<string>
    if Options.comment?? then
-      table.insert(out, '// ' .. Options.comment)
-      table.insert(out, '')
+      out:push(f'// {Options.comment}')
+      out:push('')
    end
 
    if Options.type then -- Strong typing enabled, convert via cType()
       Options.type = cType({ type=Options.type }, Prefix)
-      table.insert(out, string.format('enum class %s : ' .. Options.type.type .. ' {', Prefix))
-      table.insert(out, '   NIL = 0,')
+      out:push(f'enum class {Prefix} : {Options.type.type} {{')
+      out:push('   NIL = 0,')
    end
 
    list = { }
@@ -499,11 +501,11 @@ global function enum(Prefix:str, Options:table, ...)
          synonym = false
          for name in values(key:split('|')) do
             if Options.type then
-               table.insert(out, '   ' .. name .. ' = ' .. inc .. ',')
+               out:push(f'   {name} = {inc},')
             elseif Options.bits is 64 then
-               table.insert(out, '#define ' .. Prefix .. '_' .. name .. ' ' .. inc .. 'LL')
+               out:push(f'#define {Prefix}_{name} {inc}LL')
             else
-               table.insert(out, '#define ' .. Prefix .. '_' .. name .. ' ' .. inc)
+               out:push(f'#define {Prefix}_{name} {inc}')
             end
 
             table.insert(list, { name=name, value=inc, comment=comment, synonym=synonym })
@@ -513,14 +515,14 @@ global function enum(Prefix:str, Options:table, ...)
          inc++
       elseif type(va) is 'table' then -- The client provided a table of fixed values
          for name, client_val in pairs(va) do
-            assert(type(client_val) is 'number', 'Client-provided enum values must be numeric, got ' .. tostring(client_val))
+            assert(type(client_val) is 'number', f'Client-provided enum values must be numeric, got {client_val}')
 
             if Options.type then
-               table.insert(out, '   ' .. name .. ' = ' .. client_val .. ',')
+               out:push(f'   {name} = {client_val},')
             elseif Options.bits is 64 then
-               table.insert(out, '#define ' .. Prefix .. '_' .. name .. ' ' .. client_val .. 'LL')
+               out:push(f'#define {Prefix}_{name} {client_val}LL')
             else
-               table.insert(out, '#define ' .. Prefix .. '_' .. name .. ' ' .. client_val)
+               out:push(f'#define {Prefix}_{name} {client_val}')
             end
 
             table.insert(list, { name=name, value=client_val })
@@ -531,15 +533,15 @@ global function enum(Prefix:str, Options:table, ...)
    end
 
    if Options.type then
-      table.insert(out, '};')
+      out:push('};')
    end
 
-   table.insert(out, '')
+   out:push('')
 
    if Options.module?? and (Options.module:lower() != glModule.name:lower()) then
      -- Do nothing, module restriction imposed.
    elseif not glRestrict then
-      for k,v in pairs(out) do table.insert(glConstants, v) end
+      for v in values(out) do table.insert(glConstants, v) end
    end
 
    glCustomTypes[Prefix] = {
@@ -614,18 +616,18 @@ global function struct(Name, Options:table, Def, Append)
    try
       Options ?= {}
 
-      out = { }
+      out = array<string>
       full_name = Name
       if Options.version then
-         table.insert(out, '#define VER_' .. Name:upper() .. ' ' .. Options.version)
-         table.insert(out, '')
+         out:push(f'#define VER_{Name:upper()} {Options.version}')
+         out:push('')
          full_name = Name .. 'V' .. Options.version
       end
 
       if not Options.type then
-         table.insert(out, 'struct ' .. full_name ..  ' {')
+         out:push(f'struct {full_name} {{')
       else
-         table.insert(out, 'typedef struct ' .. full_name ..  ' {')
+         out:push(f'typedef struct {full_name} {{')
       end
 
       fields = extractFields(Def, full_name)
@@ -661,30 +663,30 @@ global function struct(Name, Options:table, Def, Append)
 
          if f.comment?? then
             clean_comment = rx_comment_chars.replace(f.comment, '')
-            table.insert(out, string.format('%-' .. max_len .. 's // %s', left, clean_comment))
+            out:push(string.format('%-' .. max_len .. 's // %s', left, clean_comment))
          else
             print('WARN: ' .. full_name .. '.' .. f.name .. ' requires a comment.')
-            table.insert(out, left)
+            out:push(left)
          end
       end
 
       if Append then
-         table.insert(out, Append:rtrim())
+         out:push(Append:rtrim())
       end
 
       if not Options.type then
-         table.insert(out, '};')
-         table.insert(out, '')
+         out:push('};')
+         out:push('')
       else
          Options.type = Options.type:upper()
-         table.insert(out, '} ' .. Options.type .. ';')
-         table.insert(out, '')
+         out:push('} ' .. Options.type .. ';')
+         out:push('')
       end
 
       if Options.module?? and (Options.module:lower() != glModule.name:lower()) then
         -- Do nothing, module restriction imposed.
       elseif not glRestrict then
-         for k,v in pairs(out) do glOutput:push(v) end
+         for v in values(out) do glOutput:push(v) end
       end
 
       glStructures[Name] = {
@@ -734,9 +736,9 @@ global function class(Name, Options:table, Spec, Private, Custom)
 
    Options ?= {}
 
-   output('// ' .. Name .. ' class definition')
+   output(f'// {Name} class definition')
    output()
-   output('#define VER_' .. Name:upper() .. ' (' .. string.format('%f', (Options.version ?? 1.0)) .. ')')
+   output(f'#define VER_{Name:upper()} ({Options.version ?? 1.0})')
    output()
 
    local class = registerClass(Name)
@@ -759,7 +761,7 @@ global function class(Name, Options:table, Spec, Private, Custom)
          class.meta = mSys.FindClass(Name:hash(), 0)
       else
          if glFeedback is 'verbose' then
-            print('Module ' .. glModule.name .. ' not compiled, class documentation will not be produced.')
+            print(f'Module {glModule.name} not compiled, class documentation will not be produced.')
          end
       end
    else
@@ -780,7 +782,7 @@ global function class(Name, Options:table, Spec, Private, Custom)
             -- A manual reference to a structure will forcibly turn off any restriction
             glStructures[v].restrict = nil
          else
-            print('Reference to lookup ' .. v .. ' not found.')
+            print(f'Reference to lookup {v} not found.')
          end
       end
    end
@@ -792,7 +794,7 @@ global function class(Name, Options:table, Spec, Private, Custom)
       for path in values(class.src) do
          if glFeedback is 'verbose' then
             print()
-            print('Class file: ' .. glFDLFolder .. path)
+            print(f'Class file: {glFDLFolder}{path}')
          end
 
          content = file.readAll(glFDLFolder .. path)
@@ -810,13 +812,13 @@ global function class(Name, Options:table, Spec, Private, Custom)
             local offset = 0
             while true do
                local s, e, cap = rx.findFirst(content, offset)
-               if not s then break end
-               local actionName = cap[0]
-               if glActions[actionName] then
-                  verbose('Discovered action ' .. actionName)
-                  class.actions[actionName] = { name=actionName }
+               s ?? break
+               local action_name = cap[0]
+               if glActions[action_name] then
+                  verbose('Discovered action ' .. action_name)
+                  class.actions[action_name] = { name=action_name }
                else
-                  verbose('Ignoring declaration of ' .. actionName)
+                  verbose('Ignoring declaration of ' .. action_name)
                end
                offset = s + e
             end
@@ -831,31 +833,31 @@ global function class(Name, Options:table, Spec, Private, Custom)
 
          -- Parse each line individually
 
-         local currentEntry, processing
-         for _,line in ipairs(extracted_content:split('\n')) do
+         local current_entry, proc
+         for line in values(extracted_content:split('\n')) do
             if line?? then
                _, _, cap = rx_trailing_space.findFirst(line)
                line = cap ? cap[0] :> ''
                if (line is '-CLASS-') or (line is '-METHOD-') or (line is '-ACTION-') or (line is '-FIELD-') then
-                  if currentEntry then parseClassEntry(class, processing, currentEntry) end
-                  currentEntry = ''
-                  processing = line
+                  if current_entry then parseClassEntry(class, proc, current_entry) end
+                  current_entry = ''
+                  proc = line
                elseif line is '-END-' then
-                  if currentEntry then parseClassEntry(class, processing, currentEntry) end
-                  currentEntry = nil
-                  processing = nil
+                  if current_entry then parseClassEntry(class, proc, current_entry) end
+                  current_entry = nil
+                  proc = nil
                elseif line is '-INTERNAL-' then
-                  currentEntry = nil
-                  processing = nil
-               elseif currentEntry then
-                  currentEntry ..= line .. '\n'
+                  current_entry = nil
+                  proc = nil
+               elseif current_entry then
+                  current_entry ..= line .. '\n'
                end
-            elseif currentEntry then
-               currentEntry ..= '\n'
+            elseif current_entry then
+               current_entry ..= '\n'
             end
          end
 
-         if currentEntry then parseClassEntry(class, processing, currentEntry) end
+         if current_entry then parseClassEntry(class, proc, current_entry) end
       end
    end
 
@@ -895,7 +897,7 @@ global function class(Name, Options:table, Spec, Private, Custom)
             method.funcName ..= Name
          end
 
-         function pName(Param)
+         function pName(Param:str):str
             name = Param.name
             if (Param.type is 'OBJECTID') or (Param.type is 'MEMORYID') then
                if name:sub(-2) != 'ID' then
@@ -1073,7 +1075,7 @@ end
 -- FDL Function
 -- Register methods for a class.  This must be declared prior to the corresponding class() function call.
 
-global function methods(ClassName, Prefix, Methods)
+global function methods(ClassName:str, Prefix:str, Methods)
    verbose(<{ 'Processing ' .. #Methods .. ' methods for class ' .. tostring(ClassName) }>)
 
    local class = registerClass(ClassName)
@@ -1082,7 +1084,7 @@ global function methods(ClassName, Prefix, Methods)
 
    -- Generate a lookup table by method name
    class.lookupMethods = { }
-   for _, m in ipairs(class.methods) do
+   for m in values(class.methods) do
       class.lookupMethods[m.name] = m
    end
 end
