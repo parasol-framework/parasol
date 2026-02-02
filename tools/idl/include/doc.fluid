@@ -472,7 +472,7 @@ global function extractParagraph(Input:str, Caller:str, References)
                   result ..= '<types lookup="' .. lookup .. '"/>'
                else
                   print('Unrecognised struct or constant "' .. lookup .. '"')
-                  result ..= line:sub(start, start + len - 1)
+                  result ..= line:sub(start, start + len)
                end
                last_end = start + len
             end
@@ -552,7 +552,7 @@ global function substituteReferences(String:str, Class:table):str
    local result = ''
    local last_end = 0
    for start, len, cap in rx_struct_insert.findAll(String) do
-      result ..= String:sub(last_end, start)
+      if start > last_end then result ..= String:sub(last_end, start) end
       local lookup = cap[0]
       local whitespace = cap[1]
       if glStructures[lookup] then
@@ -578,7 +578,7 @@ global function substituteReferences(String:str, Class:table):str
    result = ''
    last_end = 0
    for start, len, cap in rx_action_method.findAll(String) do
-      result ..= String:sub(last_end, start)
+      if start > last_end then result ..= String:sub(last_end, start) end
       local call_name = cap[0]
       if not Class then
          result ..= f'<action>{call_name}</action>'
@@ -599,7 +599,7 @@ global function substituteReferences(String:str, Class:table):str
    result = ''
    last_end = 0
    for start, len, cap in rx_field_ref.findAll(String) do
-      result ..= String:sub(last_end, start)
+      if start > last_end then result ..= String:sub(last_end, start) end
       local field = cap[0]
       if not Class then -- Localised field lookup
          if rx_rgb.test(field) then -- Ignore RGB values
@@ -659,7 +659,7 @@ global function substituteReferences(String:str, Class:table):str
    result = ''
    last_end = 0
    for start, len, cap in rx_ext_method_ref.findAll(String) do
-      result ..= String:sub(last_end, start)
+      if start > last_end then result ..= String:sub(last_end, start) end
       local class_name = cap[0]
       local method_name = cap[1]
       if mSys.FindClass(class_name:hash(), 0) then
@@ -678,7 +678,7 @@ global function substituteReferences(String:str, Class:table):str
    result = ''
    last_end = 0
    for start, len, cap in rx_ext_field_ref.findAll(String) do
-      result ..= String:sub(last_end, start)
+      if start > last_end then result ..= String:sub(last_end, start) end
       local class_name = cap[0]
       local field_name = cap[1]
       local meta = mSys.FindClass(class_name:hash(), 0)
@@ -703,7 +703,7 @@ global function substituteReferences(String:str, Class:table):str
    result = ''
    last_end = 0
    for start, len, cap in rx_class_ref.findAll(String) do
-      result ..= String:sub(last_end, start)
+      if start > last_end then result ..= String:sub(last_end, start) end
       local class_name = cap[0]
       if mSys.FindClass(class_name:hash(), 0) then
          result ..= f'<class name="{class_name}">{class_name}</class>'

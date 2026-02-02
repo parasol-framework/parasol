@@ -47,17 +47,18 @@
    import './include/functions'
    import './include/doc'
 
-   local rx_high_hex         = regex.new([[^0x[8f][0-9abcdef]+]])
-   local rx_empty_lines      = regex.new([[^\n*$]])
-   local rx_strip_newlines   = regex.new([[^\n*([\s\S]*\S)]])
-   local rx_lowercase_id     = regex.new([[^[a-z]ID$]])
-   local rx_hash_comment     = regex.new([[^.+#\s*(.+)$]])
-   local rx_hash_content     = regex.new([[^(.+)#\s*.+$]])
-   local rx_colon_comment    = regex.new([[^.+:\s*(.+)$]])
-   local rx_colon_comment_ng = regex.new([[^.*?:\s*(.+)$]]) -- non-greedy
-   local rx_colon_content    = regex.new([[^(.+):\s*.+$]])
-   local rx_colon_content_ng = regex.new([[^(.*?):\s*.+$]]) -- non-greedy
-   local rx_type_name        = regex.new([[^\s*(.+)\s+(\S+)\s*$]])
+   local rx_high_hex         = <{ regex.new([[^0x[8f][0-9abcdef]+]]) }>
+   local rx_empty_lines      = <{ regex.new([[^\n*$]]) }>
+   local rx_strip_newlines   = <{ regex.new([[^\n*(.*\S)]], regex.DOT_ALL) }>
+   local rx_lowercase_id     = <{ regex.new([[^[a-z]ID$]]) }>
+   local rx_hash_comment     = <{ regex.new([[^.+#\s*(.+)$]]) }>
+   local rx_hash_content     = <{ regex.new([[^(.+)#\s*.+$]]) }>
+   local rx_colon_comment    = <{ regex.new([[^.+:\s*(.+)$]]) }>
+   local rx_colon_comment_ng = <{ regex.new([[^.*?:\s*(.+)$]]) }> -- non-greedy
+   local rx_colon_content    = <{ regex.new([[^(.+):\s*.+$]]) }>
+   local rx_colon_content_ng = <{ regex.new([[^(.*?):\s*.+$]])  }> -- non-greedy
+   local rx_type_name        = <{ regex.new([[^\s*(.+)\s+(\S+)\s*$]]) }>
+   local rx_comment_chars    = <{ regex.new('[`!@#]') }>
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -317,7 +318,7 @@ global function outputClassHeader(class:table, Private, Custom)
             end
 
             if f.comment?? then
-               clean_comment = f.comment:gsub('[`!@#]', '')
+               clean_comment = rx_comment_chars.replace(f.comment, '')
                output(string.format('%-' .. max_len .. 's // %s', left, clean_comment))
             else
                output(left)
