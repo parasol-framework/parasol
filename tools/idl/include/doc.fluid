@@ -545,22 +545,31 @@ end
 --   definition will be pulled in to that section.
 
 global function substituteReferences(String:str, Class:table):str
-   -- Substitute struct insertion requests
+   -- Substitute !Struct and !LOOKUP references
 
-   String = String:gsub('!([A-Z]%w*)([,\n%s])', function(Lookup, Whitespace)
-      if glStructures[Lookup] then
-         if glStructures[Lookup].restrict is 'c' then return Lookup .. Whitespace end
-
-         if Class and Class.references then Class.references['STRUCT:' .. Lookup] = 1 end
-
-         return f'<st>{Lookup}</st>{Whitespace}'
-      elseif glCustomTypes[Lookup] then
-         if Class then Class.references['TYPE:' .. Lookup] = 1 end
-         return f'<lk>{Lookup}</lk>{Whitespace}'
+   local result = ''
+   local last_end = 0
+   for start, len, cap in rx_struct_insert.findAll(String) do
+      result ..= String:sub(last_end, start)
+      local lookup = cap[0]
+      local whitespace = cap[1]
+      if glStructures[lookup] then
+         if glStructures[lookup].restrict is 'c' then
+            result ..= lookup .. whitespace
+         else
+            if Class?.references then Class.references['STRUCT:' .. lookup] = 1 end
+            result ..= f'<st>{lookup}</st>{whitespace}'
+         end
+      elseif glCustomTypes[lookup] then
+         if Class?.references then Class.references['TYPE:' .. lookup] = 1 end
+         result ..= f'<lk>{lookup}</lk>{whitespace}'
       else
-         print('Unrecognised struct or constant "!' .. Lookup .. '"')
+         print('Unrecognised struct or constant "!' .. lookup .. '"')
+         result ..= String:sub(start, start + len)
       end
-   end)
+      last_end = start + len
+   end
+   String = result .. String:sub(last_end)
 
    -- Substitute action and method references, identified as #MethodName()
 
