@@ -1,11 +1,25 @@
 -- FDL functions such as module(), header(), flags(), c_include(), cpp_include() ...
 
+local rx_angle_bracket     = <{ regex.new([[^<(.+)>$]]) }>
+local rx_parasol_include   = <{ regex.new([[^<parasol/(.+)>$]]) }>
+local rx_extract_comment   = <{ regex.new([[^\/\*+(.*?)\*+\/]], regex.MULTILINE|regex.DOT_ALL) }>
+local rx_module_section    = <{ regex.new([[-MODULE-(.*?)-END-]], regex.DOT_ALL) }>
+local rx_module_header     = <{ regex.new([[^(\w+):\s+(.*?)\n\n(.+)]], regex.MULTILINE|regex.DOT_ALL) }>
+local rx_key_comment       = <{ regex.new([[^([^:]*):\s+(.+)$]]) }>
+local rx_hex_number        = <{ regex.new([[^0x[0-9a-fA-F]+$]]) }>
+local rx_signed_int        = <{ regex.new([[^[+\-]?\d+$]]) }>
+local rx_trailing_space    = <{ regex.new([[^(.*\S)]], regex.DOT_ALL) }>
+local rx_type_name         = <{ regex.new([[^(.+)\s(\S+)$]]) }>
+local rx_non_word          = <{ regex.new('\\W') }>
+local rx_path_chars        = <{ regex.new('[\\/\\.]') }>
+local rx_comment_chars     = <{ regex.new('[`!@#]') }>
+
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
 global function c_include(...)
    for _,v in ipairs({...}) do
-      if v:find('^<(.+)>$') then
+      if v:startsWith('<') and v:endsWith('>') then
          priority('#include ' .. v)
       else
          priority('#include "' .. v .. '"')
@@ -20,10 +34,9 @@ end
 global function cpp_include(...)
    priority('#ifdef __cplusplus')
    for _,v in ipairs({...}) do
-      if v:find('^<(.+)>$') then
-         inc = v:match('^<parasol/(.+)>$')
-
-         if inc then inc = inc:gsub('[/%.]', '_') end
+      if v:startsWith('<') and v:endsWith('>') then
+         local _, _, cap = rx_parasol_include.findFirst(v)
+         local inc = cap ? rx_path_chars.replace(cap[0], '_') :> nil
 
          if inc then
             priority('#ifndef ' .. inc:upper())
@@ -55,7 +68,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
-global function module(Options, Function)
+global function module(Options:table, Function)
    if (Options['timestamp'] ?? 0) > glIDLTimestamp then
       -- Do nothing if the timestamp is > than the timestamp on this idl-c release
       global glAbort = 'Timestamp on IDL file (' .. Options['timestamp'] .. ') exceeds IDL-C timestamp of ' .. glIDLTimestamp
@@ -89,20 +102,26 @@ global function module(Options, Function)
 
    if glModule.src then -- Primary source file
       content = file.readAll(glFDLFolder .. glModule.src)
-      content = content:gsub('\r\n', '\n')
+      content = content:replace('\r\n', '\n')
 
       -- Extract possible content from within comments so that we don't get interference from the code while parsing.
 
-      extracted_content = (string.match(content, '^/%*+(.-)%*+/') ?? '') -- The first line might start with a comment.
-      for extract in string.gmatch(content, '[^/]/%*+(.-)%*+/') do
-         extracted_content ..= '\n' .. extract
+      local extracted_content = ''
+      for start, len, cap in rx_extract_comment.findAll(content) do
+         extracted_content ..= '\n' .. cap[0]
       end
 
-      mod_desc = string.match(extracted_content, '%-MODULE%-(.-)%-END%-')
+      _, _, cap = rx_module_section.findFirst(extracted_content) -- -MODULE- ... -END-
+      mod_desc = cap ? cap[0] :> nil
 
       if mod_desc then
          local name
-         name, glModule.comment, glModule.description = mod_desc:match('\n(%w+):%s+(.-)\n\n(.+)')
+         _, _, cap = rx_module_header.findFirst(mod_desc)
+         if cap then
+            name = cap[0]
+            glModule.comment = cap[1]
+            glModule.description = cap[2]
+         end
          if not name then
             error('The -MODULE- header for ' .. tostring(glModule.name) .. ' is incorrectly defined.')
          elseif (name:lower() != glModule.name:lower()) then
@@ -117,7 +136,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
-global function header(Options, Function)
+global function header(Options:table, Function)
    global glHeaderPath = Options['path']
    if glHeaderPath?? then
       priority('#pragma once')
@@ -151,11 +170,11 @@ end
 --    { SHIFT = 'L_SHIFT|R_SHIFT' }
 --  )
 
-global function flags(Prefix, Options, ...)
+global function flags(Prefix, Options:table, ...)
    verbose(f'Processing {Prefix} flags.')
    if glCustomTypes[Prefix] then print(f'WARN: A "{Prefix}" constant already exists.') end
 
-   Options = checkOptions(Options)
+   Options ?= {}
 
    out = array<string>
    sortedFlags = { }
@@ -198,8 +217,9 @@ global function flags(Prefix, Options, ...)
    for a=0, #flags - 1 do
       local flag_name
       if type(flags[a]) is 'string' then
-         key, comment = flags[a]:match('^(.-):%s+(.+)$')
-         key ?= flags[a]
+         local _, _, cap = rx_key_comment.findFirst(flags[a])
+         key = cap ? cap[0] :> flags[a]
+         comment = cap ? cap[1] :> nil
 
          for flag_name in values(key:split('|')) do
             val = 1 << f
@@ -212,9 +232,11 @@ global function flags(Prefix, Options, ...)
 
             local key, comment
             if type(ref) != 'number' then
-               key, comment = ref:match('^(.-):%s+(.+)$')
+               _, _, cap = rx_key_comment.findFirst(ref)
+               key = cap ? cap[0] :> nil
+               comment = cap ? cap[1] :> nil
                if key then
-                  if key:find('^0x%d+$') or key:find('^[+-]?%d+$') then
+                  if rx_hex_number.test(key) or rx_signed_int.test(key) then
                      key = tonumber(key)
                   end
                end
@@ -229,7 +251,7 @@ global function flags(Prefix, Options, ...)
                   assert(lookup[v], "Failed to lookup flag reference '" .. v .. "' for " .. Prefix .. "_" .. flag_name)
                   val = val | lookup[v].value
                end
-               comment ??= 'Synonym for `' .. key:gsub('|',' | ') .. '`'
+               comment ??= 'Synonym for `' .. key:replace('|', ' | ') .. '`'
             end
             outputFlagDef(Options, Prefix, flag_name, val)
             lookup[flag_name] = { name=flag_name, value=val, comment=comment }
@@ -282,7 +304,7 @@ end
 
 global function hash(Prefix, Format, ...)
    for _, v in ipairs({...}) do
-      hash_name = v:gsub('[^%w]', '_')
+      hash_name = rx_non_word.replace(v, '_')
       -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
       hash_id = string.format('%08x', v:hash()):sub(-8)
       output('#define ' .. Prefix .. '_' .. hash_name .. ' ' .. string.format(Format, hash_id))
@@ -311,7 +333,7 @@ end
 
 global function fieldHash(Prefix:str, Format:str, ...)
    for _, v in ipairs({...}) do
-      hash_name = v:gsub('[^%w]', '_')
+      hash_name = rx_non_word.replace(v, '_')
       v_hash = calcFieldHash(v)
 
       -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
@@ -326,7 +348,7 @@ global function typedHash(Prefix:str, Type:str, ...)
    output('enum class ' .. Prefix .. ' : ' .. Type.type .. ' {')
    output('   NIL = 0,')
    for _, v in ipairs({...}) do
-      local hash_name = v:gsub('[^%w]', '_')
+      local hash_name = rx_non_word.replace(v, '_')
       -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
       local hash_id = string.format('%08x', v:hash()):sub(-8)
       output('   ' .. hash_name .. ' = ' .. string.format("0x%sUL", hash_id) .. ',')
@@ -338,11 +360,11 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
-global function constants(Prefix, Options, ...)
+global function constants(Prefix, Options:table, ...)
    verbose('Processing ' .. tostring(Prefix) .. ' constants.')
    if glCustomTypes[Prefix] then print('WARN: A "' .. Prefix .. '" constant already exists.') end
 
-   Options = checkOptions(Options)
+   Options ?= {}
 
    out = { }
    if Options.comment?? then
@@ -359,8 +381,8 @@ global function constants(Prefix, Options, ...)
    list = { }
    for k,va in ipairs({...}) do
       if type(va) is 'string' then
-         key, comment = va:match('^(.-):%s+(.+)$')
-         key ?= va
+         local _, _, cap = rx_key_comment.findFirst(va)
+         key = cap ? cap[0] :> va
          for v in values(key:split('|')) do
             table.insert(out, '#define ' .. Prefix .. '_' .. v)
          end
@@ -380,9 +402,11 @@ global function constants(Prefix, Options, ...)
          end)
 
          for v in values(sorted) do
-            local val, comment
+            local val, comment, cap
             if type(v.value) is 'string' then
-               val, comment = v.value:match('^(.-):%s+(.+)$')
+               _, _, cap = rx_key_comment.findFirst(v.value)
+               val = cap ? cap[0] :> nil
+               comment = cap ? cap[1] :> nil
             end
             val ?= v.value
 
@@ -425,7 +449,7 @@ global function enum(Prefix:str, Options:table, ...)
    verbose('Processing ' .. tostring(Prefix) .. ' enum.')
    if glCustomTypes[Prefix] then print('WARN: A "' .. Prefix .. '" constant already exists.') end
 
-   Options = checkOptions(Options)
+   Options ?= {}
 
    out = { }
    if Options.comment?? then
@@ -443,8 +467,9 @@ global function enum(Prefix:str, Options:table, ...)
    inc = (Options.start ?? 0)
    for k,va in ipairs({...}) do
       if type(va) is 'string' then
-         key, comment = va:match('^(.-):%s+(.+)$')
-         key ?= va
+         local _, _, cap = rx_key_comment.findFirst(va)
+         key = cap ? cap[0] :> va
+         comment = cap ? cap[1] :> nil
          synonym = false
          for name in values(key:split('|')) do
             if Options.type then
@@ -505,8 +530,8 @@ end
 global function platform(Platform, Function)
    saveHeader = glHeader
    saveOutput = glOutput
-   global glHeader = { }
-   global glOutput = { }
+   global glHeader = array<string>
+   global glOutput = array<string>
 
    local define
    if (Platform:lower() is 'windows') then
@@ -554,14 +579,14 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
-global function struct(Name, Options, Def, Append)
+global function struct(Name, Options:table, Def, Append)
    verbose('Processing struct ' .. tostring(Name))
 
    prevStruct = glCurrentStructure
    global glCurrentStructure = Name
 
    try
-      Options = checkOptions(Options)
+      Options ?= {}
 
       out = { }
       full_name = Name
@@ -609,7 +634,7 @@ global function struct(Name, Options, Def, Append)
          end
 
          if f.comment?? then
-            clean_comment = f.comment:gsub('[`!@#]', '')
+            clean_comment = rx_comment_chars.replace(f.comment, '')
             table.insert(out, string.format('%-' .. max_len .. 's // %s', left, clean_comment))
          else
             print('WARN: ' .. full_name .. '.' .. f.name .. ' requires a comment.')
@@ -633,7 +658,7 @@ global function struct(Name, Options, Def, Append)
       if Options.module?? and (Options.module:lower() != glModule.name:lower()) then
         -- Do nothing, module restriction imposed.
       elseif not glRestrict then
-         for k,v in pairs(out) do table.insert(glOutput, v) end
+         for k,v in pairs(out) do glOutput:push(v) end
       end
 
       glStructures[Name] = {
@@ -678,10 +703,10 @@ end
 -- FDL Function
 -- Refer to outputClassHeader() for output of the class structure.
 
-global function class(Name, Options, Spec, Private, Custom)
+global function class(Name, Options:table, Spec, Private, Custom)
    verbose('Processing class ' .. tostring(Name))
 
-   Options = checkOptions(Options)
+   Options ?= {}
 
    output('// ' .. Name .. ' class definition')
    output()
@@ -745,40 +770,46 @@ global function class(Name, Options, Spec, Private, Custom)
          end
 
          content = file.readAll(glFDLFolder .. path)
-         content = content:gsub('\r\n', '\n')
+         content = content:replace('\r\n', '\n')
 
          -- Look for C/C++ action declarations, in the format: ERR CLASS_Action(...).  This will create a series
          -- of dummy action entries that can be overwritten with -ACTION- sections.
 
-         patterns = {
-            'ERR%s-' .. Name:upper() .. '_(%a-)%(obj.-%)',
-            'ERR%s-' .. Name:upper() .. '_(%a-)%(ext.-%)'
+         local rx_patterns = {
+            regex.new('ERR\\s*' .. Name:upper() .. '_([A-Za-z]+)\\(obj[^\\)]*\\)'),
+            regex.new('ERR\\s*' .. Name:upper() .. '_([A-Za-z]+)\\(ext[^\\)]*\\)')
          }
 
-         for pattern in values(patterns) do
-            for actionName in string.gmatch(content, pattern) do
+         for rx in values(rx_patterns) do
+            local offset = 0
+            while true do
+               local s, e, cap = rx.findFirst(content, offset)
+               if not s then break end
+               local actionName = cap[0]
                if glActions[actionName] then
                   verbose('Discovered action ' .. actionName)
                   class.actions[actionName] = { name=actionName }
                else
                   verbose('Ignoring declaration of ' .. actionName)
                end
+               offset = s + e
             end
          end
 
          -- Extract possible content from within comments so that we don't get interference from the code while parsing.
 
-         extracted_content = (string.match(content, '^/%*+(.-)%*+/') ?? '') -- The first line might start with a comment.
-         for extract in string.gmatch(content, '[^/]/%*+(.-)%*+/') do
-            extracted_content = extracted_content .. '\n' .. extract
+         local extracted_content = ''
+         for start, len, cap in rx_extract_comment.findAll(content) do
+            extracted_content ..= '\n' .. cap[0]
          end
 
          -- Parse each line individually
 
          local currentEntry, processing
-         for line in string.gmatch(extracted_content, '(.-\n)') do
+         for _,line in ipairs(extracted_content:split('\n')) do
             if line?? then
-               line = (line:match('^(.*%S)') ?? '')
+               _, _, cap = rx_trailing_space.findFirst(line)
+               line = cap ? cap[0] :> ''
                if (line is '-CLASS-') or (line is '-METHOD-') or (line is '-ACTION-') or (line is '-FIELD-') then
                   if currentEntry then parseClassEntry(class, processing, currentEntry) end
                   currentEntry = ''
@@ -814,19 +845,19 @@ global function class(Name, Options, Spec, Private, Custom)
 
       for k, method in ipairs(class.methods) do
          if method.input?? then
-            t = { }
-            i = 1
-            for str in string.gmatch(method.input, '([^;]+)') do
-               t[i] = str:trim()
-               i++
-            end
-
             method.params = { }
-            for v in values(t) do
-               param = { }
-               param.type, param.name = v:match('^(.+)%s([^%s]+)$')
-               cType(param, 'Method ' .. method.name)
-               table.insert(method.params, param)
+            for _,v in ipairs(method.input:split(';')) do
+               v = v:trim()
+               if v?? then
+                  local param = { }
+                  local _, _, cap = rx_type_name.findFirst(v)
+                  if cap then
+                     param.type = cap[0]
+                     param.name = cap[1]
+                  end
+                  cType(param, 'Method ' .. method.name)
+                  table.insert(method.params, param)
+               end
             end
          end
 
@@ -876,34 +907,34 @@ global function class(Name, Options, Spec, Private, Custom)
             end
          end
 
-         action_support = 'static const AC id = AC(-' .. method.id .. '); ERR call(OBJECTPTR Object) { return Action(id, Object, this); }'
+         action_support = f'static const AC id = AC(-{method.id}); ERR call(OBJECTPTR Object) {{ return Action(id, Object, this); }}'
          if method.params and #method.params > 0 then
-            class.methods[k].struct = 'struct ' .. method.name .. ' { ' .. struct_params .. action_support .. ' };'
+            class.methods[k].struct = f'struct {method.name} {{ {struct_params:trim()} {action_support} }};'
          else
-            class.methods[k].struct = 'struct ' .. method.name .. ' { ' .. action_support .. ' };'
+            class.methods[k].struct = f'struct {method.name} {{ {action_support} }};'
          end
 
          name = method.name:decap()
          if name is 'delete' then name = 'del' end -- C++ keyword check
 
-         inline = '   inline ERR ' .. name .. '(' .. params .. ') noexcept {\n'
+         inline = f'   inline ERR {name}({params}) noexcept {{\n'
          local args = 'nullptr'
 
          if method.params and #method.params > 0 then
-            inline ..= '      struct ' .. lpfx .. '::' .. method.name .. ' args = { ' .. v .. ' };\n'
+            inline ..= f'      struct {lpfx}::{method.name} args = {{ {v} }};\n'
             args = '&args'
          end
 
          if (results) then
-            inline ..= '      ERR error = Action(AC(-' .. method.id .. '), this, ' .. args .. ');\n'
+            inline ..= f'      ERR error = Action(AC(-{method.id}), this, {args});\n'
             for p in values(method.params) do
                if p.resultValue then
-                  inline ..= '      if (' .. p.name .. ') *' .. p.name .. ' = args.' .. p.name .. ';\n'
+                  inline ..= f'      if ({p.name}) *{p.name} = args.{p.name};\n'
                end
             end
             inline ..= '      return(error);\n'
          else
-            inline ..= '      return(Action(AC(-' .. method.id .. '), this, ' .. args .. '));\n'
+            inline ..= f'      return(Action(AC(-{method.id}), this, {args}));\n'
          end
 
          inline ..= '   }'
@@ -990,7 +1021,7 @@ end
 global function functionNames(Prefix, ...)
    global glFunctionPrefix = Prefix ?? ''
    for fname in values({...}) do
-      if fname:find('[^%w]') then
+      if rx_non_word.test(fname) then
          error(f'Invalid function name "{fname}"')
       end
 

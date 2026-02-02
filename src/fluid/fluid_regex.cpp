@@ -3,8 +3,8 @@
 Examples:
 
   reg = regex.new("\\d+", REGEX_ICASE)
-  matches = reg:match("Hello 123 World")
-  result = reg:replace("abc123def", "XXX")
+  matches = reg.match("Hello 123 World")
+  result = reg.replace("abc123def", "XXX")
 
 *********************************************************************************************************************/
 
@@ -189,7 +189,7 @@ static int regex_new(lua_State *Lua)
       return 0;
    }
 
-   const char *pattern = luaL_checkstring(Lua, 1);
+   CSTRING pattern = luaL_checkstring(Lua, 1);
    auto flags = REGEX(luaL_optint(Lua, 2, 0));
 
    log.trace("Creating regex with pattern: '%s', flags: %d", pattern, int(flags));
@@ -221,7 +221,7 @@ static int regex_new(lua_State *Lua)
 static int regex_escape(lua_State *Lua)
 {
    size_t len = 0;
-   const char *input = luaL_checklstring(Lua, 1, &len);
+   CSTRING input = luaL_checklstring(Lua, 1, &len);
 
    std::string result;
    result.reserve(len + 16); // Reserve extra space for escape characters
@@ -305,7 +305,7 @@ static int regex_findAll_iter(lua_State *Lua)
    auto r = (struct fregex *)get_meta(Lua, lua_upvalueindex(1), "Fluid.regex");
 
    size_t text_len = 0;
-   const char *text = lua_tolstring(Lua, lua_upvalueindex(2), &text_len);
+   CSTRING text = lua_tolstring(Lua, lua_upvalueindex(2), &text_len);
    auto current_pos = size_t(lua_tointeger(Lua, lua_upvalueindex(3)));
    auto flags = RMATCH(lua_tointeger(Lua, lua_upvalueindex(4)));
 
@@ -338,7 +338,8 @@ static int regex_findAll_iter(lua_State *Lua)
 
 //********************************************************************************************************************
 // Method: regex.findAll(text, [pos], [flags]) -> iterator
-// Returns an iterator function for use in for loops: for pos, len in rx.findAll(text) do ... end
+// Returns an iterator function for use in for loops:
+//    for pos, len, cap in rx.findAll(text) do ... end
 
 static int regex_findAll(lua_State *Lua)
 {

@@ -1,13 +1,24 @@
 
-local rx_doc_name     = regex.new("\\n[Nn]ame:\\s+(.*?)\\n")
-local rx_doc_combo    = regex.new("\\n(\\w+):\\s+(.*)\\n")
-local rx_doc_comment  = regex.new("\\n[Cc]omment:\\s+(.*?)\\n")
-local rx_doc_category = regex.new("\\n[Cc]ategory:\\s+(.*?)\\n")
-local rx_doc_extproto = regex.new("\\n[Ee]xtPrototype:\\s+(.*?)\\n")
-local rx_doc_attrib   = regex.new("\\n[Aa]ttribute:\\s+(.*?)\\n")
-local rx_doc_status   = regex.new("\\n[Ss]tatus:\\s+(.*?)\\n")
-local rx_doc_desc     = regex.new("\\n\\n([\\s\\S]*?)\\n-[A-Z]+-\\n")
-local rx_strip_ws     = regex.new("^(.*\\S)")
+local rx_doc_name        = <{ regex.new("^[Nn]ame:\\s+(.+?)\\n", regex.MULTILINE) }>
+local rx_doc_combo       = <{ regex.new("^(\\w+):\\s+(.+)\\n", regex.MULTILINE) }>
+local rx_doc_comment     = <{ regex.new("^[Cc]omment:\\s+(.+?)\\n", regex.MULTILINE) }>
+local rx_doc_category    = <{ regex.new("^[Cc]ategory:\\s+(.+?)\\n", regex.MULTILINE) }>
+local rx_doc_extproto    = <{ regex.new("^[Ee]xtPrototype:\\s+(.+?)\\n", regex.MULTILINE) }>
+local rx_doc_attrib      = <{ regex.new("^[Aa]ttribute:\\s+(.+?)\\n", regex.MULTILINE) }>
+local rx_doc_status      = <{ regex.new("^[Ss]tatus:\\s+(.+?)\\n", regex.MULTILINE) }>
+local rx_doc_lookup      = <{ regex.new("^[Ll]ookup:\\s+(.+?)\\n", regex.MULTILINE) }>
+local rx_doc_desc        = <{ regex.new("\\n\\n(.+?)\\n-[A-Z]+-\\n", regex.DOT_ALL) }>
+local rx_strip_ws        = <{ regex.new("^(.*\\S)") }>
+local rx_errors_section  = <{ regex.new("^-ERRORS-\\n+(.+?)-END-", regex.DOT_ALL|regex.MULTILINE) }>
+local rx_input_section   = <{ regex.new("^-INPUT-\\n+(.+?)\\n+-[A-Z]+-\\n", regex.DOT_ALL|regex.MULTILINE) }>
+local rx_result_section  = <{ regex.new("^-RESULT-\\n+(.+?)\\n+-END-", regex.DOT_ALL|regex.MULTILINE) }>
+local rx_ecode_comment   = <{ regex.new("^([A-Za-z]+):\\s+(.+)") }>
+local rx_ecode_only      = <{ regex.new("^([A-Za-z]+):?") }>
+local rx_private         = <{ regex.new("^[Pp]rivate") }>
+local rx_param           = <{ regex.new("^\\s*(.+)\\s+(\\S+)\\s*:\\s*(.+)$") }>
+local rx_result_type     = <{ regex.new("^(.+?):\\s+(.+)$") }>
+local rx_idl_section     = <{ regex.new("--IDL_BEGIN--(.+?)--IDL_END--", regex.DOT_ALL) }>
+local rx_extract_comment = <{ regex.new([[^\/\*+(.*?)\*+\/]], regex.MULTILINE|regex.DOT_ALL) }>
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -23,12 +34,22 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 global function parseClassHeader(Class:table, Extract:str)
-   Extract = '-CLASS-\n' .. Extract:trim() .. '\n-END-\n'
+   Extract = f'-CLASS-\n{Extract:trim()}\n-END-\n'
+
    local name
-   name, Class.comment = Extract:match('\n(%w+):%s+(.-)\n')
-   Class.status = Extract:match('\n[Ss]tatus:%s+(.-)\n')
-   assert(name:lower() is Class.name:lower(), "The name specified in the -CLASS- header '" .. name .. "' does not match the name specified in the class() call '" .. Class.name .. "'")
-   Class.description = Extract:match("\n\n(.-)\n%-[A-Z]+%-\n")
+   _, _, cap = rx_doc_combo.findFirst(Extract)
+   if cap then
+      name = cap[0]
+      Class.comment = cap[1]
+   end
+
+   _, _, result = rx_doc_status.findFirst(Extract)
+   if result then Class.status = result[0] end
+
+   assert(name:lower() is Class.name:lower(), f"The name specified in the -CLASS- header '{name}' does not match the name specified in the class() call '{Class.name}'")
+
+   _, _, result = rx_doc_desc.findFirst(Extract)
+   if result then Class.description = result[0] end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -36,36 +57,45 @@ end
 global function parseAction(Class:table, Extract:str)
    Extract = '-ACTION-\n' .. Extract:trim() .. '\n-END-\n'
 
-   name    = Extract:match('\n[Nn]ame:%s+(.-)\n')
-   comment = Extract:match('\n[Cc]omment:%s+(.-)\n')
+   local _, _, cap = rx_doc_name.findFirst(Extract)
+   local name = cap ? cap[0] :> nil
+   _, _, cap = rx_doc_comment.findFirst(Extract)
+   local comment = cap ? cap[0] :> nil
    if not name then
-      name, comment = Extract:match('\n(%w+):%s+(.-)\n')
+      _, _, cap = rx_doc_combo.findFirst(Extract)
+      if cap then
+         name = cap[0]
+         comment = cap[1]
+      end
    end
 
-   action = Class.actions[name] ?? { }
+   local action = Class.actions[name] ?? { }
    action.name = name
    action.comment = comment
-   action.description = Extract:match('\n\n(.-)\n%-[A-Z]+%-\n')
+   _, _, cap = rx_doc_desc.findFirst(Extract)
+   action.description = cap ? cap[0] :> nil
 
-   errors = Extract:match('\n%-ERRORS%-\n(.-)%-END%-')
+   _, _, cap = rx_errors_section.findFirst(Extract)
+   local errors = cap ? cap[0] :> nil
    if errors?? then
-      error_list = glCoreConstants['ERR']
+      local error_list = glCoreConstants['ERR']
       action.results = { }
 
-      for line in string.gmatch(errors, '(.-)\n') do
-         if not line?? then break end -- A double line-break forces a premature end to error processing.
+      for line in values(errors:split('\n')) do
+         line ?? break -- A double line-break forces a premature end to error processing.
 
-         ecode, comment = line:match('(%a-):%s+(.+)')
-         if ecode then
-            table.insert(action.results, { code = error_list[ecode], codeName = ecode, msg = comment })
+         _, _, cap = rx_ecode_comment.findFirst(line)
+         if cap then
+            local ecode = cap[0]
+            table.insert(action.results, { code = error_list[ecode], codeName = ecode, msg = cap[1] })
          else
-            ecode = line:match('(%a+):?')
+            _, _, cap = rx_ecode_only.findFirst(line)
+            local ecode = cap ? cap[0] :> nil
             if ecode?? then
                table.insert(action.results, { code = error_list[ecode], codeName = ecode, msg = mSys.GetErrorMsg(error_list[ecode]) })
             end
         end
       end
-
 
       table.sort(action.results, function(a,b) return a.code < b.code end)
    end
@@ -75,18 +105,24 @@ end
 
 global function parseField(class:table, Extract:str)
    Extract = '-FIELD-\n' .. Extract:trim() .. '\n-END-\n'
-   lookup  = Extract:match('\n[Ll]ookup:%s+(.-)\n')
-   status  = Extract:match('\n[Ss]tatus:%s+(.-)\n')
-   name, comment = Extract:match('\n(%w+):%s+(.-)\n')
 
-   description = Extract:match('\n\n(.-)\n%-[A-Z]+%-\n')
+   local _, _, cap = rx_doc_lookup.findFirst(Extract)
+   local lookup = cap ? cap[0] :> nil
+   _, _, cap = rx_doc_status.findFirst(Extract)
+   local status = cap ? cap[0] :> nil
+   _, _, cap = rx_doc_combo.findFirst(Extract)
+   local name = cap ? cap[0] :> nil
+   local comment = cap ? cap[1] :> nil
+
+   _, _, cap = rx_doc_desc.findFirst(Extract)
+   local description = cap ? cap[0] :> nil
 
    if not name then
       print('Name not defined for -FIELD- definition.')
       return
    end
 
-   f = findClassField(class, name)
+   local f = findClassField(class, name)
    if f then
       if comment?? then f.comment = comment end
       if lookup?? then
@@ -97,7 +133,7 @@ global function parseField(class:table, Extract:str)
             print('Requested lookup "' .. lookup .. '" is not known.')
          end
       end
-      if string.match((status ?? ''), '^[Pp]rivate') or string.match((comment ?? ''), '^[Pp]rivate') then
+      if rx_private.test(status ?? '') or rx_private.test(comment ?? '') then
          f.private = true
          f.access = 'Private'
       end
@@ -111,43 +147,40 @@ end
 -- Convert a parameter string such as "int width: The width of the image"
 
 global function parseParameterString(Parameter:str):table
-   param = { }
-   param.comment = Parameter:match('^.+:%s-(.+)$')
-   if param.comment?? then Parameter = Parameter:match('^(.+):%s-.+$') end
-   param.type, param.name = Parameter:match('^%s*(.+)%s+([^%s]+)%s-$')
-   if param.type then
-      param.type = param.type:trim()
-      param.name = param.name:trim()
-      param.comment = param.comment:trim()
-      return param
+   local _, _, cap = rx_param.findFirst(Parameter)
+   if cap then
+      return {
+         type = cap[0]:trim(),
+         name = cap[1]:trim(),
+         comment = cap[2]:trim()
+      }
    end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 global function parseMethod(Class:table, Extract:str)
-   Extract = '-METHOD-\n' .. Extract:trim() .. '\n-END-\n'
+   Extract = f'-METHOD-\n{Extract:trim()}\n-END-\n'
 
-   local name, comment, status, description
    local _, _, result = rx_doc_name.findFirst(Extract)
-   if result then name = result[0] end
+   local name = result ? result[0] :> nil
 
    _, _, result = rx_doc_comment.findFirst(Extract)
-   if result then comment = result[0] end
+   local comment = result ? result[0] :> nil
 
    if not name then
-      s, e, cap = rx_doc_combo.findFirst(Extract)
-      if s then
+      _, _, cap = rx_doc_combo.findFirst(Extract)
+      if cap then
          name = cap[0]
          comment = cap[1]
       end
    end
 
    _, _, result = rx_doc_status.findFirst(Extract)
-   if result then status = result[0] end
+   local status = result ? result[0] :> nil
 
    _, _, result = rx_doc_desc.findFirst(Extract)
-   if result then description = result[0] end
+   local description = result ? result[0] :> nil
 
    if name and name:endsWith('()') then
       name = name:pop(2)
@@ -172,21 +205,26 @@ global function parseMethod(Class:table, Extract:str)
    method.comment = comment
    method.status = status
 
-   input = Extract:match('\n%-INPUT%-\n(.-)\n\n%-[A-Z]+%-\n')
+   local _, _, cap = rx_input_section.findFirst(Extract)
+   local input = cap ? cap[0] :> nil
 
-   errors = Extract:match('\n%-ERRORS%-\n(.-)%-END%-')
+   _, _, cap = rx_errors_section.findFirst(Extract)
+   local errors = cap ? cap[0] :> nil
    if errors?? then
-      error_list = glCoreConstants['ERR']
+      local error_list = glCoreConstants['ERR']
       method.results = { }
 
-      for line in string.gmatch(errors, '(.-)\n') do
+      for line in values(errors:split('\n')) do
          line ?? break -- A double line-break forces a premature end to error processing.
 
-         ecode, comment = line:match('(%a-):%s+(.+)')
-         if ecode then
-            table.insert(method.results, { code = error_list[ecode], codeName = ecode, msg = comment })
+         local ecode, comment
+         _, _, cap = rx_ecode_comment.findFirst(line)
+         if cap then
+            local ecode = cap[0]
+            table.insert(method.results, { code = error_list[ecode], codeName = ecode, msg = cap[1] })
          else
-            ecode = line:match('(%a+):?')
+            _, _, cap = rx_ecode_only.findFirst(line)
+            local ecode = cap ? cap[0] :> nil
             if ecode?? then
                table.insert(method.results, { code = error_list[ecode], codeName = ecode, msg = mSys.GetErrorMsg(error_list[ecode]) })
             end
@@ -197,8 +235,8 @@ global function parseMethod(Class:table, Extract:str)
    end
 
    if input?? then
-      for line, content in input:split('\n') do
-         param = parseParameterString(content)
+      for content in values(input:split('\n')) do
+         local param = parseParameterString(content)
          if param then
             cType(param, name)
             table.insert(method.params, param)
@@ -277,16 +315,16 @@ global function parseClassFields(Class:table, ClientSpec:str)
       if not f.virtual then
          field_name = cName(f)
 
-         if field_name:len() > name_len then name_len = field_name:len() end
+         if #field_name > name_len then name_len = #field_name end
 
-         if f.type:len() > Class.longestType then
-            if f.type:len() < 10 then
-               Class.longestType = f.type:len()
+         if #f.type > Class.longestType then
+            if #f.type < 10 then
+               Class.longestType = #f.type
             end
          end
 
-         if f.type:len() + field_name:len() > Class.longestFieldType then
-            Class.longestFieldType = f.type:len() + 2 + field_name:len()
+         if #f.type + #field_name > Class.longestFieldType then
+            Class.longestFieldType = #f.type + 2 + #field_name
          end
 
          if f.ref then
@@ -323,11 +361,11 @@ global function parseSourceFiles()
    for path in values(srcFiles) do
       -- Process --IDL_BEGIN/END-- sections, which allow the developer to embed FDL functions in the source code.
 
-      local idlExtract, extract
-      content = file.readAll(path)
-      content = '\n' .. content:gsub('\r\n', '\n')
-      for extract in string.gmatch(content, '%-%-IDL_BEGIN%-%-(.-)%-%-IDL_END%-%-') do
-         idlExtract = (idlExtract ?? '') .. extract
+      local idlExtract
+      local content = file.readAll(path)
+      content = '\n' .. content:replace('\r\n', '\n')
+      for start, len, cap in rx_idl_section.findAll(content) do
+         idlExtract = (idlExtract ?? '') .. cap[0]
       end
 
       if idlExtract then
@@ -343,49 +381,48 @@ global function parseSourceFiles()
 
       -- Extract possible content from within comments so that we don't get interference from the code while parsing.
 
-      extracted_content = ''
-      for extract in string.gmatch(content, '[^/]/%*+(.-)%*+/') do
-         extracted_content = extracted_content .. '\n' .. extract
+      local extracted_content = ''
+      for _, _, cap in rx_extract_comment.findAll(content) do
+         extracted_content ..= '\n' .. cap[0]
       end
       content = extracted_content
 
       -- Parse each line individually
 
-      currentExtract = nil
-      processing = nil
-      for line in string.gmatch(content, '(.-\n)') do
+      local currentExtract, proc
+      for line in values(content:split('\n')) do
          if line?? then
-            _, _, line = rx_strip_ws.findFirst(line) -- Capture non-whitespace
-            if line then line = line[0] end
-            line ?= ''
+            local _, _, cap = rx_strip_ws.findFirst(line) -- Capture non-whitespace
+            line = cap ? cap[0] :> ''
             if (line is '-CATEGORY-') or (line is '-FUNCTION-') then
-               if processing is '-CATEGORY-' then parseCategory(currentExtract) end
-               if processing is '-FUNCTION-' then parseFunction(currentExtract) end
+               if proc is '-CATEGORY-' then parseCategory(currentExtract) end
+               if proc is '-FUNCTION-' then parseFunction(currentExtract) end
                currentExtract = ''
-               processing = line
+               proc = line
             elseif (line is '-END-') or (line is '-INTERNAL-') then
-               if processing is '-CATEGORY-' then parseCategory(currentExtract) end
-               if processing is '-FUNCTION-' then parseFunction(currentExtract) end
+               if proc is '-CATEGORY-' then parseCategory(currentExtract) end
+               if proc is '-FUNCTION-' then parseFunction(currentExtract) end
                currentExtract = nil
-               processing = nil
-            elseif processing then
+               proc = nil
+            elseif proc then
                currentExtract ..= line .. '\n'
             end
-         elseif processing then
+         elseif proc then
             currentExtract ..= '\n'
          end
       end
 
-      if processing is '-CATEGORY-' then parseCategory(currentExtract) end
-      if processing is '-FUNCTION-' then parseFunction(currentExtract) end
+      if proc is '-CATEGORY-' then parseCategory(currentExtract) end
+      if proc is '-FUNCTION-' then parseFunction(currentExtract) end
    end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-global function parseCategory(extract)
-   extract = '-CATEGORY-\n' .. extract:trim() .. '\n-END-\n'
-   global glCategory = extract:match('\n[Nn]ame:%s+(.-)\n')
+global function parseCategory(Extract:str)
+   Extract = f'-CATEGORY-\n{Extract:trim()}\n-END-\n'
+   local _, _, cap = rx_doc_name.findFirst(Extract)
+   global glCategory = cap ? cap[0] :> nil
    glCategories[glCategory] = { name=glCategory }
 end
 
@@ -395,30 +432,29 @@ end
 global function parseFunction(Extract:str)
    if not Extract?? then return end
 
-   local name, comment, status, description, ext_proto, attrib, category
-
    Extract = f'-FUNCTION-\n{Extract:trim()}\n-END-\n'
 
-   local s, e, cap = rx_doc_combo.findFirst(Extract)
-   if s then
+   local name, comment
+   local _, _, cap = rx_doc_combo.findFirst(Extract)
+   if cap then
       name = cap[0]
       comment = cap[1]
    end
 
    _, _, result = rx_doc_status.findFirst(Extract)
-   if result then status = result[0] end
+   status = result ? result[0] :> nil
 
    _, _, result = rx_doc_category.findFirst(Extract)
-   if result then category = result[0] end
+   category = result ? result[0] :> nil
 
    _, _, result = rx_doc_extproto.findFirst(Extract)
-   if result then ext_proto = result[0] end
+   ext_proto = result ? result[0] :> nil
 
    _, _, result = rx_doc_attrib.findFirst(Extract)
-   if result then attrib = result[0] end
+   attrib = result ? result[0] :> nil
 
    _, _, result = rx_doc_desc.findFirst(Extract)
-   if result then description = result[0] end
+   description = result ? result[0] :> nil
 
    if name and name:endsWith('()') then
       name = name:pop(2)
@@ -432,36 +468,40 @@ global function parseFunction(Extract:str)
       print("Processing function " .. name .. "()")
    end
 
-   def = {
-      input     = Extract:match("\n%-INPUT%-\n(.-)\n%-[A-Z]+%-\n"),
+   local _, _, cap = rx_input_section.findFirst(Extract)
+   local def = {
+      input     = cap ? cap[0] :> nil,
       ext_proto = ext_proto,
       attrib    = attrib
    }
 
-   errors = Extract:match("\n%-ERRORS%-\n(.-)%-END%-")
+   _, _, cap = rx_errors_section.findFirst(Extract)
+   local errors = cap ? cap[0] :> nil
    if errors?? then
-      error_list = glCoreConstants['ERR']
+      local error_list = glCoreConstants['ERR']
       def.result = cType({ type="error", values={ }, isFunction=true }, "Function " .. name)
 
-      for line in string.gmatch(errors, "(.-)\n") do
+      for line in values(errors:split('\n')) do
          line ?? break -- A double line-break forces a premature end to error processing.
 
-         local ecode, comment = line:match("(%a-):%s+(.+)")
-         if ecode?? and comment?? then
-            codeValue = error_list[ecode]
-            if not codeValue then
+         _, _, cap = rx_ecode_comment.findFirst(line)
+         if cap then
+            local ecode = cap[0]
+            local code_value = error_list[ecode]
+            if not code_value then
                print('Error code "' .. ecode .. '" referenced in function ' .. name .. '() is invalid.')
             else
-               table.insert(def.result.values, { code = codeValue, codeName = ecode, msg = comment })
+               table.insert(def.result.values, { code = code_value, codeName = ecode, msg = cap[1] })
             end
          else
-            ecode = line:match("(%a+):?")
+            _, _, cap = rx_ecode_only.findFirst(line)
+            local ecode = cap ? cap[0] :> nil
             if ecode?? then
-               codeValue = error_list[ecode]
-               if not codeValue then
+               local code_value = error_list[ecode]
+               if not code_value then
                   print('Error code "' .. ecode .. '" referenced in function ' .. name .. '() is invalid.')
                else
-                  table.insert(def.result.values, { code = codeValue, codeName = ecode, msg = mSys.GetErrorMsg(codeValue) })
+                  table.insert(def.result.values, { code = code_value, codeName = ecode, msg = mSys.GetErrorMsg(code_value) })
                end
             end
          end
@@ -469,9 +509,12 @@ global function parseFunction(Extract:str)
 
       table.sort(def.result.values, function(a,b) return a.code < b.code end)
    else
-      result = Extract:match("\n%-RESULT%-\n(.-)\n%-END%-")
+      _, _, cap = rx_result_section.findFirst(Extract)
+      local result = cap ? cap[0] :> nil
       if result?? then
-         local ext_type, comment = result:match("(.-):%s-(.+)$")
+         _, _, cap = rx_result_type.findFirst(result)
+         local ext_type = cap ? cap[0] :> nil
+         local comment = cap ? cap[1] :> nil
          assert(ext_type, "Incorrectly defined result section in function '" .. name .. "'")
          def.result = cType({ type=ext_type, comment=comment:trim(), isFunction=true, isResponse=true }, "Function " .. name)
       end

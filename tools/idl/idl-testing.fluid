@@ -9,8 +9,8 @@
    import './include/types'
    import './include/doc'
 
-   glHeader = { }
-   glOutput = { }
+   glHeader = array<string>
+   glOutput = array<string>
    glConstants = { }
 
    glSelf = obj.find('self')
