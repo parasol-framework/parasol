@@ -5,17 +5,17 @@ local rx_paragraph    = <{ regex.new([[^<[A-Za-z]+(.*?)>.*?<\/[A-Za-z]*?>.*?$]])
 local rx_insert       = <{ regex.new([[^<[A-Za-z]+(.*?)\/>$]]) }>
 local rx_balance      = <{ regex.new([=[^<[A-Za-z]]=]) }>
 local rx_header       = <{ regex.new([[^<h[0-9]>.*?]]) }>
-local rx_list         = <{ regex.new([[^<list.*?>]]) }>
+local rx_list         = <{ regex.new([[^<list.+?>]]) }>
 local rx_alphanum     = <{ regex.new('^\\w+$') }>
 local rx_path         = <{ regex.new([[(.*[:\/\\])(.*)]]) }>
 
 -- Patterns for extractParagraph()
 local rx_lt_sign       = <{ regex.new([[<([\s\-])]]) }>
 local rx_gt_sign       = <{ regex.new([[([\s\-])>]]) }>
-local rx_pre_section   = <{ regex.new([[<pre>.*?(.*?)</pre>]], regex.DOT_ALL) }>
+local rx_pre_section   = <{ regex.new([[<pre>\s*(.*?)</pre>]], regex.DOT_ALL) }>
 local rx_md_codeblock  = <{ regex.new([[```(.*?)```]], regex.DOT_ALL) }>
 local rx_inline_code   = <{ regex.new([[`(.*?)`]], regex.DOT_ALL) }>
-local rx_lookup_ref    = <{ regex.new([[!(\w*)]]) }>
+local rx_lookup_ref    = <{ regex.new([[!(\w+)]]) }> -- !CONSTANT
 local rx_xml_tag       = <{ regex.new([[<(.*?)>]], regex.DOT_ALL) }>
 
 -- Patterns for substituteReferences()
