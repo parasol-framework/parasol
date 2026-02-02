@@ -1,4 +1,10 @@
 -- Extended documentation parsing functionality; included by idl-c
+--
+-- Use # to refer to local class actions, fields, methods.
+-- Use ~ for external function and module references.
+-- Use @ to refer to external classes and items.
+-- Use ! to refer to constants and struct definitions.  Note that if declared on a single line, a
+--   table will be substituted in its place.
 
 local rx_all_anchored = <{ regex.new([[^!([\w]*)$]]) }>
 local rx_paragraph    = <{ regex.new([[^<[A-Za-z]+(.*?)>.*?<\/[A-Za-z]*?>.*?$]]) }>
@@ -539,11 +545,6 @@ global function extractParagraph(Input:str, Caller:str, References)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Use # to refer to class actions, fields, methods.
--- Use ~ for external function and module references.
--- Use @ to refer to external classes and items.
--- Use ! to refer to constants and struct definitions.  Note that if declared as a single-line paragraph, the entire
---   definition will be pulled in to that section.
 
 global function substituteReferences(String:str, Class:table):str
    -- Substitute !Struct and !LOOKUP references, which allow injecting struct and lookup tables into documentation
@@ -655,44 +656,65 @@ global function substituteReferences(String:str, Class:table):str
 
    -- Substitute external method/action references, identified as @File.Init()
 
-   String = String:gsub('@([A-Z]%w+)%.([A-Z]%w+)%(%)', function(ClassName, MethodName)
-      if mSys.FindClass(ClassName:hash(), 0) then
+   result = ''
+   last_end = 0
+   for start, len, cap in rx_ext_method_ref.findAll(String) do
+      result ..= String:sub(last_end, start)
+      local class_name = cap[0]
+      local method_name = cap[1]
+      if mSys.FindClass(class_name:hash(), 0) then
          -- TODO: Check that the method name is valid according to the class spec
-         return f'<class name="{ClassName}" method="{MethodName}">{ClassName}.{MethodName}()</class>'
+         result ..= f'<class name="{class_name}" method="{method_name}">{class_name}.{method_name}()</class>'
       else
-         print(f'Unrecognised method/action reference @{ClassName}.{MethodName}()')
+         print(f'Unrecognised method/action reference @{class_name}.{method_name}()')
+         result ..= String:sub(start, start + len)
       end
-   end)
+      last_end = start + len
+   end
+   String = result .. String:sub(last_end)
 
    -- Substitute external field references, identified as @File.Size or #File.Size
 
-   String = String:gsub('[@#]([A-Z]%w+)%.([A-Z]%w+)', function(ClassName, FieldName)
-      meta = mSys.FindClass(ClassName:hash(), 0)
+   result = ''
+   last_end = 0
+   for start, len, cap in rx_ext_field_ref.findAll(String) do
+      result ..= String:sub(last_end, start)
+      local class_name = cap[0]
+      local field_name = cap[1]
+      local meta = mSys.FindClass(class_name:hash(), 0)
       if meta then
-         err, field, src = meta.mtFindField(calcFieldHash(FieldName))
+         local err, field, src = meta.mtFindField(calcFieldHash(field_name))
          if field then
-            return f'<class name="{ClassName}" field="{FieldName}">{ClassName}.{FieldName}</class>'
+            result ..= f'<class name="{class_name}" field="{field_name}">{class_name}.{field_name}</class>'
          else
-            print(f'Failed to find field {ClassName}.{FieldName}')
-            return f'<class name="{ClassName}" field="{FieldName}">_{ClassName}.{FieldName}_</class>'
+            print(f'Failed to find field {class_name}.{field_name}')
+            result ..= f'<class name="{class_name}" field="{field_name}">_{class_name}.{field_name}_</class>'
          end
       else
-         print(f'Unrecognised field reference @{ClassName}.{FieldName}')
+         print(f'Unrecognised field reference @{class_name}.{field_name}')
+         result ..= String:sub(start, start + len)
       end
-   end)
+      last_end = start + len
+   end
+   String = result .. String:sub(last_end)
 
    -- Substitute class references, identified as @File
 
-   String = String:gsub('@([A-Z]%w+)', function(ClassName)
-      if mSys.FindClass(ClassName:hash(), 0) then
-         return f'<class name="{ClassName}">{ClassName}</class>'
+   result = ''
+   last_end = 0
+   for start, len, cap in rx_class_ref.findAll(String) do
+      result ..= String:sub(last_end, start)
+      local class_name = cap[0]
+      if mSys.FindClass(class_name:hash(), 0) then
+         result ..= f'<class name="{class_name}">{class_name}</class>'
       else
-         print(f'Unrecognised class name reference @{ClassName}')
+         print(f'Unrecognised class name reference @{class_name}')
+         result ..= String:sub(start, start + len)
       end
-   end)
-
-   String = String:gsub('`(.-)`', '<code>%1</code>')
-
+      last_end = start + len
+   end
+   String = result .. String:sub(last_end)
+   String = rx_inline_code.replace(String, '<code>$1</code>')
    return String
 end
 
