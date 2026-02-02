@@ -37,33 +37,34 @@ global function privateNames(List:table) end
    import './include/utils'
 
    -- Regex patterns for parsing
-   local rx_key_comment     = regex.new([[^(.+):\s+(.+)$]])
-   local rx_key_comment_ng  = regex.new([[^(.*?):\s+(.+)$]])
-   local rx_value_only      = regex.new([[^(.*?):\s+.+$]])
-   local rx_hex_num         = regex.new([[^0x[0-9a-fA-F]+$]])
-   local rx_signed_int      = regex.new([[^[+\-]?\d+$]])
-   local rx_cpp_type        = regex.new([[^cpp\((.+)\)$]])
-   local rx_struct_type     = regex.new([[^(c?)struct\((.+)\)$]])
-   local rx_ptr_extract     = regex.new([[\*(.+)]])
-   local rx_obj_type        = regex.new([[^obj\((.+)\)$]])
-   local rx_bit_type        = regex.new([[^bit\((.+)\)$]])
-   local rx_char_flag       = regex.new([[^char\(([A-Za-z]+)\)]])
-   local rx_short_flag      = regex.new([[^short\(([A-Za-z]+)\)]])
-   local rx_int_flag        = regex.new([[^int\(([A-Za-z]+)\)]])
-   local rx_large_flag      = regex.new([[^large\(([A-Za-z]+)\)]])
-   local rx_uchar_array     = regex.new([[^(u?)char\((.+)\)$]])
-   local rx_uint_array      = regex.new([[^(u?)int\((\d+)\)]])
-   local rx_double_count    = regex.new([[^double\((.+)\)]])
-   local rx_float_count     = regex.new([[^float\((.+)\)]])
-   local rx_ptr_type        = regex.new([[^(c?)ptr\((.+)\)]])
-   local rx_array_sized     = regex.new([[^array\((.+),(\d+)\)$]])
-   local rx_array_unsized   = regex.new([[^array\((.+)\)$]])
-   local rx_fptr_type       = regex.new([[^fptr\((.+)\)$]])
-   local rx_hash_comment    = regex.new([[^.+#\s*(.+)$]])
-   local rx_hash_content    = regex.new([[^(.+)#\s*.+$]])
-   local rx_colon_comment   = regex.new([[^.+:\s*(.+)$]])
-   local rx_colon_content   = regex.new([[^(.+):\s*.+$]])
-   local rx_type_name       = regex.new([[^\s*(.+)\s+(\S+)\s*$]])
+   local rx_key_comment     = <{ regex.new([[^(.+):\s+(.+)$]]) }>
+   local rx_key_comment_ng  = <{ regex.new([[^(.*?):\s+(.+)$]]) }>
+   local rx_value_only      = <{ regex.new([[^(.*?):\s+.+$]]) }>
+   local rx_hex_num         = <{ regex.new([[^0x[0-9a-fA-F]+$]]) }>
+   local rx_signed_int      = <{ regex.new([[^[+\-]?\d+$]]) }>
+   local rx_cpp_type        = <{ regex.new([[^cpp\((.+)\)$]]) }>
+   local rx_struct_type     = <{ regex.new([[^(c?)struct\((.+)\)$]]) }>
+   local rx_ptr_extract     = <{ regex.new([[\*(.+)]]) }>
+   local rx_obj_type        = <{ regex.new([[^obj\((.+)\)$]]) }>
+   local rx_bit_type        = <{ regex.new([[^bit\((.+)\)$]]) }>
+   local rx_char_flag       = <{ regex.new([[^char\(([A-Za-z]+)\)]]) }>
+   local rx_non_word        = <{ regex.new([[\W]]) }>
+   local rx_short_flag      = <{ regex.new([[^short\(([A-Za-z]+)\)]]) }>
+   local rx_int_flag        = <{ regex.new([[^int\(([A-Za-z]+)\)]]) }>
+   local rx_large_flag      = <{ regex.new([[^large\(([A-Za-z]+)\)]]) }>
+   local rx_uchar_array     = <{ regex.new([[^(u?)char\((.+)\)$]]) }>
+   local rx_uint_array      = <{ regex.new([[^(u?)int\((\d+)\)]]) }>
+   local rx_double_count    = <{ regex.new([[^double\((.+)\)]]) }>
+   local rx_float_count     = <{ regex.new([[^float\((.+)\)]]) }>
+   local rx_ptr_type        = <{ regex.new([[^(c?)ptr\((.+)\)]]) }>
+   local rx_array_sized     = <{ regex.new([[^array\((.+),(\d+)\)$]]) }>
+   local rx_array_unsized   = <{ regex.new([[^array\((.+)\)$]]) }>
+   local rx_fptr_type       = <{ regex.new([[^fptr\((.+)\)$]]) }>
+   local rx_hash_comment    = <{ regex.new([[^.+#\s*(.+)$]]) }>
+   local rx_hash_content    = <{ regex.new([[^(.+)#\s*.+$]]) }>
+   local rx_colon_comment   = <{ regex.new([[^.+:\s*(.+)$]]) }>
+   local rx_colon_content   = <{ regex.new([[^(.+):\s*.+$]]) }>
+   local rx_type_name       = <{ regex.new([[^\s*(.+)\s+(\S+)\s*$]]) }>
 
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
@@ -219,7 +220,7 @@ end
 
 global function hash(Prefix:str, Format:str, ...)
    for k, hash_def in ipairs({...}) do
-      hash_name = hash_def:gsub('[^%w]', '_')
+      hash_name = rx_non_word.replace(hash_def, '_')
       hash_id = string.format('%08x', hash_name:hash()):sub(-8)
       output('#define ' .. Prefix .. '_' .. hash_name .. ' ' .. string.format(Format, hash_id))
    end
@@ -229,11 +230,11 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 global function platform(Platform:str, Function:func)
-   if (Platform:lower() is 'windows') then
+   if Platform:lower() is 'windows' then
       Function()
-   elseif (Platform:lower() is 'linux') then
+   elseif Platform:lower() is 'linux' then
       Function()
-   elseif (Platform:lower() is 'x11') then
+   elseif Platform:lower() is 'x11' then
       Function()
    else
       error("Unrecognised platform '" .. Platform .. "'")
@@ -244,7 +245,7 @@ end
 
 global function str_to_bytes(String:str):str
    local list
-   String = String:gsub("\\n", string.char(10))
+   String = String:replace("\\n", string.char(10))
    for i = 0, #String - 1 do
       if list then
          list ..= string.format(',%d', String:byte(i))
@@ -289,7 +290,6 @@ global function cType(Field:table, Origin:str):table
    assert(Field.type, "Field definition incorrect, missing 'type' value for '" .. (Origin ?? 'NIL') .. "'")
 
    do
-      local cap
       _, _, cap = rx_cpp_type.findFirst(Field.type)
       if cap then
          Field.cpp  = true
@@ -301,7 +301,6 @@ global function cType(Field:table, Origin:str):table
    end
 
    do
-      local cap
       _, _, cap = rx_struct_type.findFirst(Field.type)
       if cap then
          local struct = cap[1]
@@ -321,7 +320,6 @@ global function cType(Field:table, Origin:str):table
    end
 
    do
-      local cap
       _, _, cap = rx_obj_type.findFirst(Field.type)
       if cap then
          local object = cap[0]
@@ -334,7 +332,6 @@ global function cType(Field:table, Origin:str):table
    end
 
    do
-      local cap
       _, _, cap = rx_bit_type.findFirst(Field.type)
       if cap then
          Field.type = cType({ type=cap[0], name='Bit' }, Origin).type
@@ -372,7 +369,6 @@ global function cType(Field:table, Origin:str):table
    end
 
    do -- Char arrays
-      local cap
       _, _, cap = rx_uchar_array.findFirst(Field.type)
       if cap then
          local unsigned = cap[0]
@@ -385,7 +381,6 @@ global function cType(Field:table, Origin:str):table
    end
 
    do -- Integer arrays
-      local cap
       _, _, cap = rx_uint_array.findFirst(Field.type)
       if cap then
          local unsigned = cap[0]
@@ -401,7 +396,6 @@ global function cType(Field:table, Origin:str):table
    end
 
    do -- Double arrays
-      local cap
       _, _, cap = rx_double_count.findFirst(Field.type)
       if cap then
          Field.type = 'd'
@@ -411,7 +405,6 @@ global function cType(Field:table, Origin:str):table
    end
 
    do -- Float arrays
-      local cap
       _, _, cap = rx_float_count.findFirst(Field.type)
       if cap then
          Field.type = 'f'
@@ -421,7 +414,6 @@ global function cType(Field:table, Origin:str):table
    end
 
    do
-      local cap
       _, _, cap = rx_ptr_type.findFirst(Field.type)
       if cap then
          Field.type = 'p'
@@ -430,7 +422,6 @@ global function cType(Field:table, Origin:str):table
    end
 
    do
-      local cap
       _, _, cap = rx_array_sized.findFirst(Field.type)
       if cap then
          Field.type = cap[0]
@@ -441,7 +432,6 @@ global function cType(Field:table, Origin:str):table
    end
 
    do
-      local cap
       _, _, cap = rx_array_unsized.findFirst(Field.type)
       if cap then
          Field.type = cap[0]
@@ -487,12 +477,10 @@ global function extractFields(Def:str, Origin:str):table
          end
       end
 
-      local type, name
       _, _, cap = rx_type_name.findFirst(content)
-      if cap then
-         type = cap[0]
-         name = cap[1]
-      end
+      local type = cap ? cap[0] :> nil
+      local name = cap ? cap[1] :> nil
+
       if type then
          field = cType({ type=type:trim(), name=name:trim() }, Origin)
          table.insert(fields, field)
