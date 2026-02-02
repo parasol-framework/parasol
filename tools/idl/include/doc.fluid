@@ -46,15 +46,16 @@ global function ignoreAction(actionID:num)
    return glIgnoreList[actionID]
 end
 
-global glIgnoreList = { }
-glIgnoreList[AC_DataFeed]    = true
-glIgnoreList[AC_Free]        = true
-glIgnoreList[AC_FreeWarning] = true
-glIgnoreList[AC_Init]        = true
-glIgnoreList[AC_NewChild]    = true
-glIgnoreList[AC_NewObject]   = true
-glIgnoreList[AC_NewOwner]    = true
-glIgnoreList[AC_NewPlacement ?? 0] = true
+global glIgnoreList = {
+   [AC_DataFeed]    = true,
+   [AC_Free]        = true,
+   [AC_FreeWarning] = true,
+   [AC_Init]        = true,
+   [AC_NewChild]    = true,
+   [AC_NewObject]   = true,
+   [AC_NewOwner]    = true,
+   [AC_NewPlacement] = true
+}
 
 global function setAction(Action, Options)
    for k, v in pairs(Options) do
@@ -423,8 +424,8 @@ end
 -- Used for extracting descriptions, notes etc.  NB: <pre> should be used for multi-line preformatting, while <code>
 -- should be used for in-place code formatting.
 
-global function extractParagraph(Input:str, Caller:str, References)
-   Input ?? error('No Input provided to extractParagraph()')
+global function extractParagraph(Input:str, Caller:str, References:table)
+   assert(Input, 'No Input provided to extractParagraph()')
 
    Input = Input:trim()
 
@@ -448,7 +449,7 @@ global function extractParagraph(Input:str, Caller:str, References)
 
    function closeParagraph()
       if currentParagraph then
-         output ..= '<p>' .. currentParagraph .. '</p>\n'
+         output ..= f'<p>{currentParagraph}</p>\n'
          currentParagraph = nil
       end
    end
@@ -793,7 +794,7 @@ global function docClass(Class)
                for _, param in ipairs(glActions[a.name].params) do
                   ref = ''
                   if param.lookup?? then ref = ' lookup="' .. param.lookup .. '"' end
-                  if not param.comment then error('No comment provided for ' .. Class.name .. '.' .. a.name .. '()\'s parameter "' .. param.name .. '"') end
+                  assert(param.comment, 'No comment provided for ' .. Class.name .. '.' .. a.name .. '()\'s parameter "' .. param.name .. '"')
                   out ..= "        <param type=\"" .. (param.docType ?? param.type):escXML() .. "\" name=\"" .. param.name .. '"' .. ref .. ">" .. substituteReferences(param.comment:escXML(), Class) .. "</param>\n"
                end
                out ..= '      </input>\n'
@@ -888,19 +889,19 @@ global function docClass(Class)
             out ..= '      <name>' .. f.name .. '</name>\n'
 
             if f.comment?? then
-               out ..= '      <comment>' .. substituteReferences(f.comment:escXML(), Class) .. '</comment>\n'
+               out ..= f'      <comment>{substituteReferences(f.comment:escXML(), Class)}</comment>\n'
             else
-               print("No comment for field '" .. Class.name .. "." .. f.name .. "'.")
+               print(f"No comment for field '{Class.name}.{f.name}'.")
             end
 
             out ..= '      <access'
-            if f.read?? then out ..= ' read="' .. f.read:sub(0,1) .. '"' end
-            if f.write?? then out ..= ' write="' .. f.write:sub(0,1) .. '"' end
+            if f.read?? then out ..= f' read="{f.read:sub(0,1)}"' end
+            if f.write?? then out ..= f' write="{f.write:sub(0,1)}"' end
             out ..= '>' .. (f.access ?? '-/-') .. '</access>\n'
 
             lookup = ''
             prototype = ''
-            if f.lookup then lookup = ' lookup="' .. f.lookup .. '"' end
+            if f.lookup then lookup = f' lookup="{f.lookup}"' end
             typeName = f.docType ?? (f.type ?? 'NIL')
             if typeName is 'struct RGB8' then
                typeName = 'RGB8'
@@ -909,11 +910,11 @@ global function docClass(Class)
             elseif typeName is 'int64_t' then
                typeName = 'INT64'
             elseif f.className then
-               typeName = '*' .. f.className
-               lookup = ' class="' .. f.className .. '"'
+               typeName = f'*{f.className}'
+               lookup = f' class="{f.className}"'
             elseif f.isFunctionPtr then
                typeName = 'FUNCTION *'
-               prototype = ' prototype="' .. f.docType .. '"'
+               prototype = f' prototype="{f.docType}"'
             end
 
             out ..= '      <type' .. lookup .. prototype .. '>' .. typeName:escXML() .. '</type>\n'
@@ -924,7 +925,7 @@ global function docClass(Class)
             end
 
             if f.lookup then
-               lookup = '<types lookup="' .. f.lookup .. '"/>'
+               lookup = f'<types lookup="{f.lookup}"/>'
                if description then
                   if not description:find('<types lookup="' .. f.lookup .. '"') then
                      description ..= '\n' .. lookup
@@ -935,9 +936,7 @@ global function docClass(Class)
             end
 
             if description then
-               out ..= '      <description>\n'
-               out ..= description
-               out ..= '\n      </description>\n'
+               out ..= f'      <description>\n{description}\n      </description>\n'
             end
 
             out ..= '    </field>\n\n'
@@ -988,7 +987,7 @@ global function docModuleHeader()
             path = nil
          end
 
-         out ..= "      <file path=\"" .. (path ?? ''):escXML() .. "\">" .. filename:escXML() .. "</file>\n"
+         out ..= f"      <file path=\"{(path ?? ''):escXML()}\">{filename:escXML()}</file>\n"
       end
       out ..= '    </source>\n'
    end
@@ -996,7 +995,7 @@ global function docModuleHeader()
    if not table.empty(glClasses) then
       out ..= '    <classes>\n'
       for className, cl in table.sortByKeys(glClasses) do
-         out ..= '      <class>' .. cl.name .. '</class>\n'
+         out ..= f'      <class>{cl.name}</class>\n'
       end
       out ..= '    </classes>\n'
    end
@@ -1004,7 +1003,7 @@ global function docModuleHeader()
    if not table.empty(glCategories) then
       out ..= '    <categories>\n'
       for className, cl in table.sortByKeys(glCategories) do
-         out ..= '      <category>' .. cl.name .. '</category>\n'
+         out ..= f'      <category>{cl.name}</category>\n'
       end
       out ..= '    </categories>\n'
    end
@@ -1049,20 +1048,18 @@ global function docFunction(Function)
                fa.docType:escXML(), fa.name, substituteReferences(fa.comment:escXML()))
          end
 
-         if fa.comment is 'Undocumented' then
-            error(Function.name .. '() parameter "' .. fa.name .. '" is undocumented.')
-         end
+         assert(fa.comment != 'Undocumented', f'{Function.name}() parameter "{fa.name}" is undocumented.')
       end
 
-      if args?? then out ..= '    <input>\n' .. args .. '    </input>\n' end
+      if args?? then out ..= f'    <input>\n{args}    </input>\n' end
    end
 
    -- Description
 
    if Function.description?? then
-      out ..= '    <description>\n' .. extractParagraph(Function.description, Function) .. '\n    </description>\n'
+      out ..= f'    <description>\n{extractParagraph(Function.description, Function)}\n    </description>\n'
    else
-      error(Function.name .. '() has no description.')
+      error(f'{Function.name}() has no description.')
    end
 
    -- Results
@@ -1072,11 +1069,11 @@ global function docFunction(Function)
          errors = ''
          for result in values(Function.result.values) do
             comment = (result.msg ?? mSys.GetErrorMsg(code))
-            errors ..= "      <error code=\"" .. result.codeName .. "\">" .. substituteReferences(comment:escXML()) .. "</error>\n"
+            errors ..= f"      <error code=\"{result.codeName}\">{substituteReferences(comment:escXML())}</error>\n"
          end
 
          if errors?? then
-            out ..= "    <result type=\"ERR\">\n" .. errors .. "    </result>\n"
+            out ..= f"    <result type=\"ERR\">\n{errors}    </result>\n"
          end
       elseif Function.result.comment?? then
          ref = ''
@@ -1184,7 +1181,7 @@ global function docStructures(References)
             arraySize = ''
             if f.arraySize then arraySize = " size=\"" .. f.arraySize .. '"' end
 
-            type = (f.docType ?? 'NIL')
+            type = f.docType ?? 'NIL'
             prototype = ''
             if f.isFunctionPtr then
                type = 'FUNCTION *'
