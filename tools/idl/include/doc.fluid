@@ -546,7 +546,7 @@ end
 --   definition will be pulled in to that section.
 
 global function substituteReferences(String:str, Class:table):str
-   -- Substitute !Struct and !LOOKUP references
+   -- Substitute !Struct and !LOOKUP references, which allow injecting struct and lookup tables into documentation
 
    local result = ''
    local last_end = 0
@@ -622,19 +622,36 @@ global function substituteReferences(String:str, Class:table):str
 
    -- Substitute external function references, identified as ~Module.Function()
 
-   String = String:gsub('~([A-Z]%w+)%.([A-Z]%w+)%(%)', function(ModuleName, FunctionName)
-      return f'<function module="{ModuleName}">{FunctionName}</function>'
-   end)
-
-   -- Substitue local function references, identified as ~Function()
-
-   String = String:gsub('~([A-Z]%w+)%(%)', function(FunctionName)
-      if glFunctionLookup[FunctionName] then
-         return f'<function>{FunctionName}</function>'
-      else
-         print(f'Unrecognised function reference ~{FunctionName}()')
+   result = ''
+   last_end = 0
+   for start, len, cap in rx_ext_func_ref.findAll(String) do
+      -- TODO: Validate that the module and function actually exist.  Easiest way is with mod.load()
+      if start > last_end then
+         result ..= String:sub(last_end, start)
       end
-   end)
+      result ..= f'<function module="{cap[0]}">{cap[1]}</function>'
+      last_end = start + len
+   end
+   String = result .. String:sub(last_end)
+
+   -- Substitute local function references, identified as ~Function()
+
+   result = ''
+   last_end = 0
+   for start, len, cap in rx_local_func_ref.findAll(String) do
+      local func_name = cap[0]
+      if glFunctionLookup[func_name] then
+         if start > last_end then
+            result ..= String:sub(last_end, start)
+         end
+         result ..= f'<function>{func_name}</function>'
+      else
+         print(f'Unrecognised function reference ~{func_name}()')
+         result ..= String:sub(start, start + len)
+      end
+      last_end = start + len
+   end
+   String = result .. String:sub(last_end)
 
    -- Substitute external method/action references, identified as @File.Init()
 
