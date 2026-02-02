@@ -489,7 +489,7 @@ LJLIB_CF(string_join)
    GCstr *sep = lj_lib_optstr(L, 2);
    CSTRING sepstr = "";
    MSize seplen = 0;
-   SBuf* sb = lj_buf_tmp_(L);
+   SBuf *sb = lj_buf_tmp_(L);
    int32_t len = (int32_t)lj_tab_len(t);
    int32_t last = len - 1;  // 0-based: last index = len-1
    int32_t i;
@@ -507,21 +507,13 @@ LJLIB_CF(string_join)
          int isValidType = 0;
 
          // Check if we have a valid type to process
-         if (tvisstr(tv) or tvisnum(tv)) {
-            isValidType = 1;
-         }
+         if (tvisstr(tv) or tvisnum(tv)) isValidType = 1;
 
          if (isValidType) { // Add separator before non-first elements
-            if (sb->w > sb->b and seplen > 0) {
-               lj_buf_putmem(sb, sepstr, seplen);
-            }
+            if (sb->w > sb->b and seplen > 0) lj_buf_putmem(sb, sepstr, seplen);
 
-            if (tvisstr(tv)) { // Add string content
-               lj_buf_putstr(sb, strV(tv));
-            }
-            else if (tvisnum(tv)) { // Convert number to string directly into buffer
-               sb = lj_strfmt_putnum(sb, tv);
-            }
+            if (tvisstr(tv)) lj_buf_putstr(sb, strV(tv)); // Add string content
+            else if (tvisnum(tv)) sb = lj_strfmt_putnum(sb, tv); // Convert number to string directly into buffer
          }
       }
    }
@@ -1118,6 +1110,7 @@ static int str_find_aux(lua_State *L, int Find)
 
 LJLIB_CF(string_find)      LJLIB_REC(.)
 {
+   pf::Log("string.find()").warning("PATTERN MATCHING DEPRECATED");
    return str_find_aux(L, 1);
 }
 
@@ -1125,6 +1118,7 @@ LJLIB_CF(string_find)      LJLIB_REC(.)
 
 LJLIB_CF(string_match)
 {
+   pf::Log("string.match()").warning("DEPRECATED");
    return str_find_aux(L, 0);
 }
 
@@ -1158,6 +1152,7 @@ LJLIB_NOREG LJLIB_CF(string_gmatch_aux)
 
 LJLIB_CF(string_gmatch)
 {
+   pf::Log("string.gmatch()").warning("DEPRECATED");
    lj_lib_checkstr(L, 1);
    lj_lib_checkstr(L, 2);
    L->top = L->base + 3;
@@ -1225,6 +1220,7 @@ static void add_value(MatchState* ms, luaL_Buffer* b, CSTRING s, CSTRING e)
 
 LJLIB_CF(string_gsub)
 {
+   pf::Log("string.gsub()").warning("DEPRECATED");
    size_t srcl;
    CSTRING src = luaL_checklstring(L, 1, &srcl);
    CSTRING p = luaL_checkstring(L, 2);
