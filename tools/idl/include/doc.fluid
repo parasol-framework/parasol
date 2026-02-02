@@ -453,17 +453,23 @@ global function extractParagraph(Input:str, Caller:str, References)
          local action
          if rx_all_anchored.test(line) then
             action = 'insert'
-            line = line:gsub('!(%w*)', function(Lookup)
-               if glStructures[Lookup] then
-                  if References then References['STRUCT:' .. Lookup] = 1 end
-                  return '<struct lookup="' .. Lookup .. '"/>'
-               elseif glCustomTypes[Lookup] then
-                  if References then References['TYPE:' .. Lookup] = 1 end
-                  return '<types lookup="' .. Lookup .. '"/>'
+            local result = ''
+            local last_end = 0
+            for start, len, cap in rx_lookup_ref.findAll(line) do
+               local lookup = cap[0]
+               if glStructures[lookup] then
+                  if References then References['STRUCT:' .. lookup] = 1 end
+                  result ..= '<struct lookup="' .. lookup .. '"/>'
+               elseif glCustomTypes[lookup] then
+                  if References then References['TYPE:' .. lookup] = 1 end
+                  result ..= '<types lookup="' .. lookup .. '"/>'
                else
-                  print('Unrecognised struct or constant "' .. Lookup .. '"')
+                  print('Unrecognised struct or constant "' .. lookup .. '"')
+                  result ..= line:sub(start, start + len - 1)
                end
-            end)
+               last_end = start + len
+            end
+            line = result .. line:sub(last_end)
          elseif line:startsWith('<pre>') or rx_header.test(line) or line:startsWith('<header>') or rx_list.test(line) then
             action = 'balance'
          elseif rx_paragraph.test(line) then
