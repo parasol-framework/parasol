@@ -6,8 +6,31 @@ local rx_insert       = <{ regex.new([[^<[A-Za-z]+(.*?)\/>$]]) }>
 local rx_balance      = <{ regex.new([=[^<[A-Za-z]]=]) }>
 local rx_header       = <{ regex.new([[^<h[0-9]>.*?]]) }>
 local rx_list         = <{ regex.new([[^<list.*?>]]) }>
-local rx_alphanum     = <{ regex.new('^[A-Za-z0-9_]+$') }>
+local rx_alphanum     = <{ regex.new('^\\w+$') }>
 local rx_path         = <{ regex.new([[(.*[:\/\\])(.*)]]) }>
+
+-- Patterns for extractParagraph()
+local rx_lt_sign       = <{ regex.new([[<([\s\-])]]) }>
+local rx_gt_sign       = <{ regex.new([[([\s\-])>]]) }>
+local rx_pre_section   = <{ regex.new([[<pre>.*?(.*?)</pre>]], regex.DOT_ALL) }>
+local rx_md_codeblock  = <{ regex.new([[```(.*?)```]], regex.DOT_ALL) }>
+local rx_inline_code   = <{ regex.new([[`(.*?)`]], regex.DOT_ALL) }>
+local rx_lookup_ref    = <{ regex.new([[!(\w*)]]) }>
+local rx_xml_tag       = <{ regex.new([[<(.*?)>]], regex.DOT_ALL) }>
+
+-- Patterns for substituteReferences()
+local rx_struct_insert   = <{ regex.new([[!([A-Z]\w+)([,\n\s])]]) }> -- !Struct or !CONSTANT
+local rx_action_method   = <{ regex.new([[#([A-Z]\w+)\(\)]]) }> -- #Action()
+local rx_field_ref       = <{ regex.new([[#([A-Z]\w+)]]) }> -- #Field
+local rx_ext_func_ref    = <{ regex.new([[~([A-Z]\w+)\.([A-Z]\w+)\(\)]]) }> -- ~Module.Function()
+local rx_local_func_ref  = <{ regex.new([[~([A-Z]\w+)\(\)]]) }> -- ~Function()
+local rx_ext_method_ref  = <{ regex.new([[@([A-Z]\w+)\.([A-Z]\w+)\(\)]]) }> -- @Class.Method()
+local rx_ext_field_ref   = <{ regex.new([=[[@#]([A-Z]\w+)\.([A-Z]\w+)]=]) }> -- @Class.Field
+local rx_class_ref       = <{ regex.new([[@([A-Z]\w+)]]) }> -- @Class
+
+-- Patterns for docFunction()
+local rx_private_status  = <{ regex.new([[^[Pp]rivate]]) }>
+local rx_internal_status = <{ regex.new([[^[Ii]nternal]]) }>
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -400,15 +423,14 @@ global function extractParagraph(Input:str, Caller:str, References)
 
    -- Convert dangling XML characters: < > &
 
-   Input = Input:gsub('<([%s\\-])', '&lt;%1') -- Less than signs
-   Input = Input:gsub('([%s\\-])>', '%1&gt;') -- Greater than signs
---   Input = Input:gsub('&(%a-[^;])', '&amp;%1')
+   Input = rx_lt_sign.replace(Input, '&lt;$1') -- Less than signs
+   Input = rx_gt_sign.replace(Input, '$1&gt;') -- Greater than signs
 
    -- Eliminate any initial leading whitespace from preformatted sections.
 
-   Input = Input:gsub('<pre>[%c%s]*(.-)</pre>', '<pre>%1</pre>')
-   Input = Input:gsub('```(.-)```', '<pre>%1</pre>')
-   Input = Input:gsub('`(.-)`', '<code>%1</code>')
+   Input = rx_pre_section.replace(Input, '<pre>$1</pre>')
+   Input = rx_md_codeblock.replace(Input, '<pre>$1</pre>')
+   Input = rx_inline_code.replace(Input, '<code>$1</code>')
 
    -- Wrap each line inside a <p> tag and take into account lines that start with XML tags such as <pre> or otherwise
    -- need special treatment.
@@ -459,13 +481,13 @@ global function extractParagraph(Input:str, Caller:str, References)
             closeParagraph()
             balance = 0
             repeat
-               string.gsub(lines[i], '<(.-)>', function(key,val)
-                  if key:startsWith('/') then
+               for _, _, cap in rx_xml_tag.findAll(lines[i]) do
+                  if cap[0]:startsWith('/') then
                      balance -= 1
                   else
                      balance++
                   end
-               end)
+               end
                output ..= lines[i] .. '\n'
                i++
             until (balance is 0) or (i is #lines)
@@ -926,9 +948,9 @@ global function docModuleHeader()
 end
 
 global function docFunction(Function)
-   if string.find((Function.status ?? ''), '^[Pp]rivate') or
-      string.find((Function.status ?? ''), '^[Ii]nternal') or
-      string.find((Function.comment ?? ''), '^[Pp]rivate') then
+   if rx_private_status.test(Function.status ?? '') or
+      rx_internal_status.test(Function.status ?? '') or
+      rx_private_status.test(Function.comment ?? '') then
       return ''
    end
 
