@@ -573,17 +573,24 @@ global function substituteReferences(String:str, Class:table):str
 
    -- Substitute action and method references, identified as #MethodName()
 
-   String = String:gsub('#([A-Z]%w*)%(%)', function(CallName)
+   result = ''
+   last_end = 0
+   for start, len, cap in rx_action_method.findAll(String) do
+      result ..= String:sub(last_end, start)
+      local call_name = cap[0]
       if not Class then
-         return f'<action>{CallName}</action>'
-      elseif Class.lookupMethods and Class.lookupMethods[CallName] then
-         return f'<method>{CallName}</method>'
-      elseif glActions[CallName] then
-         return f'<action>{CallName}</action>'
+         result ..= f'<action>{call_name}</action>'
+      elseif Class.lookupMethods and Class.lookupMethods[call_name] then
+         result ..= f'<method>{call_name}</method>'
+      elseif glActions[call_name] then
+         result ..= f'<action>{call_name}</action>'
       else
-         print('Unrecognised class action or method "' .. CallName .. '"')
+         print('Unrecognised class action or method "' .. call_name .. '"')
+         result ..= String:sub(start, start + len)
       end
-   end)
+      last_end = start + len
+   end
+   String = result .. String:sub(last_end)
 
    -- Substitute field references, identified as #Field.
 
