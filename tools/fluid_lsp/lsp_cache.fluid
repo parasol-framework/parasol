@@ -131,7 +131,7 @@ function processModuleXML(FilePath:str, DocPath:str):<str,table>
    content = file.readAll(FilePath)
    content ?? return
 
-   relativePath = FilePath:gsub(DocPath, '')
+   relativePath = FilePath:replace(DocPath, '')
 
    -- Extract module info
    infoMatch = extractXMLElement(content, 'info', 0)
@@ -175,7 +175,7 @@ function processClassXML(FilePath, DocPath)
    content = file.readAll(FilePath)
    content ?? return
 
-   relativePath = FilePath:gsub(DocPath, '')
+   relativePath = FilePath:replace(DocPath, '')
 
    -- Extract class info
    infoMatch = extractXMLElement(content, 'info', 0)
@@ -330,7 +330,7 @@ function serializeTable(Tbl:any, Indent):str
    if type(Tbl) != 'table' then
       if type(Tbl) is 'string' then
          -- Escape special characters
-         escaped = Tbl:gsub('\\', '\\\\'):gsub('\n', '\\n'):gsub('\r', '\\r'):gsub("'", "\\'")
+         escaped = Tbl:replace('\\', '\\\\'):replace('\n', '\\n'):replace('\r', '\\r'):replace("'", "\\'")
          return "'" .. escaped .. "'"
       elseif type(Tbl) is 'number' then
          return tostring(Tbl)

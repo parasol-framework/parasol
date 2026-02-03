@@ -406,8 +406,8 @@ end
    assert(ue is "<<>>", "Received string is incorrect: " .. tostring(ue))
 end
 
-@Test function Sub()
-   -- string.substr() and sub() use exclusive end index (like JavaScript substring/Python slicing)
+@Test function SubStr()
+   -- string.substr() uses exclusive end index (like JavaScript substring/Python slicing)
    -- string.substr(s, start, end) extracts chars from start to end-1
    s = "hello world"
 
