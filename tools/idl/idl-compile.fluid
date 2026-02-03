@@ -65,6 +65,7 @@ global function privateNames(List:table) end
    local rx_colon_comment   = <{ regex.new([[^.+:\s*(.+)$]]) }>
    local rx_colon_content   = <{ regex.new([[^(.+):\s*.+$]]) }>
    local rx_type_name       = <{ regex.new([[^\s*(.+)\s+(\S+)\s*$]]) }>
+   local rx_field_extract   = <{ regex.new([[^(.+?)[:#]\s*(.+)$]]) }> -- "type FieldName # Comment", also accepts ":"
 
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
@@ -104,24 +105,18 @@ global function flags(Prefix:str, Options:table, ...)
    f = 0
    for flag_def in values({...}) do
       if type(flag_def) is 'string' then
-         local key, cap
-         _, _, cap = rx_key_comment.findFirst(flag_def)
-         if cap then
-            key = cap[0]
-         else
-            key = flag_def
-         end
+         local key = rx_key_comment.extract(flag_def)
+         key ??= flag_def
 
          for v in values(key:split('|')) do
             list[v] = 1 << f
          end
       elseif type(flag_def) is 'table' then
          for flag, ref in pairs(flag_def) do
-            local key, cap
+            local key
             if type(ref) != 'number' then
-               _, _, cap = rx_key_comment.findFirst(ref)
-               if cap then
-                  key = cap[0]
+               key = rx_key_comment.extract(ref)
+               if key then
                   if rx_hex_num.test(key) or rx_signed_int.test(key) then
                      key = tonumber(key)
                   end
@@ -166,9 +161,8 @@ global function enum(Prefix, Options:table, ...)
    inc = Options.start ?? 0
    for k, enum_def in ipairs({...}) do
       if type(enum_def) is 'string' then
-         local val, cap
-         _, _, cap = rx_value_only.findFirst(enum_def)  -- Scrap any comment for this value
-         val = cap ? cap[0] :> enum_def
+         local val = rx_value_only.extract(enum_def)  -- Scrap any comment for this value
+         val ?= enum_def
 
          for name in values(val:split('|')) do
             list[name] = inc
@@ -199,12 +193,12 @@ global function constants(Prefix, Options:table, ...)
    for k, const_def in ipairs({...}) do
       assert(type(const_def) is 'table', "Invalid const type for '" .. Prefix .. "', expected table, got '" .. type(const_def) .. "'")
       for k, v in pairs(const_def) do
-         local val, cap
+         local val
          if type(v) is 'string' then
-            _, _, cap = rx_key_comment_ng.findFirst(v)
-            if cap then val = cap[0] end
+            val = rx_key_comment_ng.extract(v)
          end
-         if not val then val = v end
+
+         val ??= v
 
          if type(val) is 'string' and (rx_hex_num.test(val) or rx_signed_int.test(val)) then
             val = tonumber(val)
@@ -290,10 +284,10 @@ global function cType(Field:table, Origin:str):table
    assert(Field.type, "Field definition incorrect, missing 'type' value for '" .. (Origin ?? 'NIL') .. "'")
 
    do
-      _, _, cap = rx_cpp_type.findFirst(Field.type)
-      if cap then
+      t = rx_cpp_type.extract(Field.type)
+      if t then
          Field.cpp  = true
-         Field.type = cap[0]
+         Field.type = t
          cType(Field, Origin)
          Field.type = 'z' .. Field.type
          return Field
@@ -301,15 +295,10 @@ global function cType(Field:table, Origin:str):table
    end
 
    do
-      _, _, cap = rx_struct_type.findFirst(Field.type)
-      if cap then
-         local struct = cap[1]
-         local ptr_struct
-         _, _, cap = rx_ptr_extract.findFirst(struct)
-         if cap then
-            ptr_struct = cap[0]
-            struct = ptr_struct
-         end
+      local _, struct = rx_struct_type.extract(Field.type)
+      if struct then
+         local ptr_struct = rx_ptr_extract.extract(struct)
+         if ptr_struct then struct = ptr_struct end
 
          Field.struct = struct
          Field.type = ptr_struct ? 'p' :> 'e'
@@ -320,21 +309,18 @@ global function cType(Field:table, Origin:str):table
    end
 
    do
-      _, _, cap = rx_obj_type.findFirst(Field.type)
-      if cap then
-         local object = cap[0]
-         local ptr_struct
-         _, _, cap = rx_ptr_extract.findFirst(object)
-         if cap then ptr_struct = cap[0] end
+      object = rx_obj_type.extract(Field.type)
+      if object then
+         local ptr_struct = rx_ptr_extract.extract(object)
          Field.type = ptr_struct ? 'p' :> 'o'
          return Field
       end
    end
 
    do
-      _, _, cap = rx_bit_type.findFirst(Field.type)
-      if cap then
-         Field.type = cType({ type=cap[0], name='Bit' }, Origin).type
+      t = rx_bit_type.extract(Field.type)
+      if t then
+         Field.type = cType({ type=t, name='Bit' }, Origin).type
          Field.name = 'Bit'
          return Field
       end
@@ -369,73 +355,64 @@ global function cType(Field:table, Origin:str):table
    end
 
    do -- Char arrays
-      _, _, cap = rx_uchar_array.findFirst(Field.type)
-      if cap then
-         local unsigned = cap[0]
-         local count = cap[1]
-         Field.type = 'c'
-         if unsigned?? then Field.type = 'uc' end
-         Field.name ..= '[' .. count .. ']'
+      local unsigned, count = rx_uchar_array.extract(Field.type)
+      if count then
+         Field.type = unsigned ? 'uc' :> 'c'
+         Field.name ..= f'[{count}]'
          return Field
       end
    end
 
    do -- Integer arrays
-      _, _, cap = rx_uint_array.findFirst(Field.type)
-      if cap then
-         local unsigned = cap[0]
-         local count = cap[1]
-         if unsigned?? then
-            Field.type = 'ul'
-         else
-            Field.type = 'l'
-         end
-         Field.name ..= '[' .. count .. ']'
+      local unsigned, count = rx_uint_array.extract(Field.type)
+      if count then
+         Field.type = unsigned ? 'ul' :> 'l'
+         Field.name ..= f'[{count}]'
          return Field
       end
    end
 
    do -- Double arrays
-      _, _, cap = rx_double_count.findFirst(Field.type)
-      if cap then
+      dc = rx_double_count.extract(Field.type)
+      if dc then
          Field.type = 'd'
-         Field.name ..= '[' .. cap[0] .. ']'
+         Field.name ..= f'[{dc}]'
          return Field
       end
    end
 
    do -- Float arrays
-      _, _, cap = rx_float_count.findFirst(Field.type)
-      if cap then
+      fc = rx_float_count.extract(Field.type)
+      if fc then
          Field.type = 'f'
-         Field.name ..= '[' .. cap[0] .. ']'
+         Field.name ..= f'[{fc}]'
          return Field
       end
    end
 
    do
-      _, _, cap = rx_ptr_type.findFirst(Field.type)
-      if cap then
+      p = rx_ptr_type.extract(Field.type)
+      if p then
          Field.type = 'p'
          return Field
       end
    end
 
    do
-      _, _, cap = rx_array_sized.findFirst(Field.type)
-      if cap then
-         Field.type = cap[0]
-         Field = cType(Field, Origin)
-         Field.name ..= '[' .. cap[1] .. ']'
+      t, n = rx_array_sized.extract(Field.type)
+      if n then
+         Field.type = t
+         Field      = cType(Field, Origin)
+         Field.name ..= f'[{n}]'
          return Field
       end
    end
 
    do
-      _, _, cap = rx_array_unsized.findFirst(Field.type)
-      if cap then
-         Field.type = cap[0]
-         Field = cType(Field, Origin)
+      f = rx_array_unsized.extract(Field.type)
+      if f then
+         Field.type = f
+         Field      = cType(Field, Origin)
          Field.name ..= '[]'
          return Field
       end
@@ -455,39 +432,23 @@ global function cType(Field:table, Origin:str):table
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Returns { type, name, comment }
+-- Returns fields as a list returned by cType, featuring { type, name, docType, fullType, comment }
 
 global function extractFields(Def:str, Origin:str):table
    fields = { }
+   Def ?? return fields
    for line, content in Def:split('\n') do
-      -- Extract comment, if specified
-      local comment, cap
-      _, _, cap = rx_hash_comment.findFirst(content)
-      if cap then
-         comment = cap[0]
-         _, _, cap = rx_hash_content.findFirst(content)
-         if cap then content = cap[0] end
-      else
-         -- Support for alternative comment format where the colon is used.
-         _, _, cap = rx_colon_comment.findFirst(content)
-         if cap then
-            comment = cap[0]
-            _, _, cap = rx_colon_content.findFirst(content)
-            if cap then content = cap[0] end
-         end
-      end
+      local content_b, comment = rx_field_extract.extract(content)
+      if content_b then content = content_b end
+      local type, name = rx_type_name.extract(content)
 
-      _, _, cap = rx_type_name.findFirst(content)
-      local type = cap ? cap[0] :> nil
-      local name = cap ? cap[1] :> nil
-
-      if type then
+      if type?? then
          field = cType({ type=type:trim(), name=name:trim() }, Origin)
          table.insert(fields, field)
       elseif not content:trim()?? then
          -- Ignore empty line
       else
-         error("Unable to process line '" .. tostring(content) .. "' for '" .. tostring(Origin) .. "'")
+         error(f"Unable to process line '{content}' for '{Origin}'")
       end
    end
 
@@ -588,9 +549,8 @@ global function saveOutput()
       for const in values(group.table) do
          if e?? then e ..= ',' end
          if type(const.value) is 'string' then
-            local val, cap
-            _, _, cap = rx_value_only.findFirst(const.value) -- Scrap any defined comment for this value.
-            val = cap ? cap[0] :> const.value
+            local val = rx_value_only.extract(const.value) -- Scrap any defined comment for this value.
+            val ??= const.value
             e ..= f'{const.name}="{const.value}"'
          else
             hexval = string.format('%x', const.value)

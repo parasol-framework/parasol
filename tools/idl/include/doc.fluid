@@ -463,7 +463,7 @@ global function extractParagraph(Input:str, Caller:str, References:table)
             action = 'insert'
             local result = ''
             local last_end = 0
-            for start, len, cap in rx_lookup_ref.findAll(line) do
+            for start, stop, cap in rx_lookup_ref.findAll(line) do
                local lookup = cap[0]
                if glStructures[lookup] then
                   if References then References['STRUCT:' .. lookup] = 1 end
@@ -473,9 +473,9 @@ global function extractParagraph(Input:str, Caller:str, References:table)
                   result ..= '<types lookup="' .. lookup .. '"/>'
                else
                   print('Unrecognised struct or constant "' .. lookup .. '"')
-                  result ..= line:sub(start, start + len)
+                  result ..= line:sub(start, stop)
                end
-               last_end = start + len
+               last_end = stop
             end
             line = result .. line:sub(last_end)
          elseif line:startsWith('<pre>') or rx_header.test(line) or line:startsWith('<header>') or rx_list.test(line) then
@@ -552,7 +552,7 @@ global function substituteReferences(String:str, Class:table):str
 
    local result = ''
    local last_end = 0
-   for start, len, cap in rx_struct_insert.findAll(String) do
+   for start, stop, cap in rx_struct_insert.findAll(String) do
       if start > last_end then result ..= String:sub(last_end, start) end
       local lookup = cap[0]
       local whitespace = cap[1]
@@ -568,9 +568,9 @@ global function substituteReferences(String:str, Class:table):str
          result ..= f'<lk>{lookup}</lk>{whitespace}'
       else
          print('Unrecognised struct or constant "!' .. lookup .. '"')
-         result ..= String:sub(start, start + len)
+         result ..= String:sub(start, stop)
       end
-      last_end = start + len
+      last_end = stop
    end
    String = result .. String:sub(last_end)
 
@@ -578,7 +578,7 @@ global function substituteReferences(String:str, Class:table):str
 
    result = ''
    last_end = 0
-   for start, len, cap in rx_action_method.findAll(String) do
+   for start, stop, cap in rx_action_method.findAll(String) do
       if start > last_end then result ..= String:sub(last_end, start) end
       local call_name = cap[0]
       if not Class then
@@ -589,9 +589,9 @@ global function substituteReferences(String:str, Class:table):str
          result ..= f'<action>{call_name}</action>'
       else
          print('Unrecognised class action or method "' .. call_name .. '"')
-         result ..= String:sub(start, start + len)
+         result ..= String:sub(start, stop)
       end
-      last_end = start + len
+      last_end = stop
    end
    String = result .. String:sub(last_end)
 
@@ -599,12 +599,12 @@ global function substituteReferences(String:str, Class:table):str
 
    result = ''
    last_end = 0
-   for start, len, cap in rx_field_ref.findAll(String) do
+   for start, stop, cap in rx_field_ref.findAll(String) do
       if start > last_end then result ..= String:sub(last_end, start) end
       local field = cap[0]
       if not Class then -- Localised field lookup
          if rx_rgb.test(field) then -- Ignore RGB values
-            result ..= String:sub(start, start + len)
+            result ..= String:sub(start, stop)
          else -- Localised field reference
             result ..= f'<fl>{field}</fl>'
          end
@@ -612,13 +612,13 @@ global function substituteReferences(String:str, Class:table):str
          result ..= f'<fl>{field}</fl>'
       else -- Failed to lookup external field reference
          if rx_rgb.test(field) then -- Ignore RGB values
-            result ..= String:sub(start, start + len)
+            result ..= String:sub(start, stop)
          else
             print(f'Unrecognised {Class.name} field "{field}"')
-            result ..= String:sub(start, start + len)
+            result ..= String:sub(start, stop)
          end
       end
-      last_end = start + len
+      last_end = stop
    end
    String = result .. String:sub(last_end)
 
@@ -626,13 +626,13 @@ global function substituteReferences(String:str, Class:table):str
 
    result = ''
    last_end = 0
-   for start, len, cap in rx_ext_func_ref.findAll(String) do
+   for start, stop, cap in rx_ext_func_ref.findAll(String) do
       -- TODO: Validate that the module and function actually exist.  Easiest way is with mod.load()
       if start > last_end then
          result ..= String:sub(last_end, start)
       end
       result ..= f'<function module="{cap[0]}">{cap[1]}</function>'
-      last_end = start + len
+      last_end = stop
    end
    String = result .. String:sub(last_end)
 
@@ -640,7 +640,7 @@ global function substituteReferences(String:str, Class:table):str
 
    result = ''
    last_end = 0
-   for start, len, cap in rx_local_func_ref.findAll(String) do
+   for start, stop, cap in rx_local_func_ref.findAll(String) do
       local func_name = cap[0]
       if glFunctionLookup[func_name] then
          if start > last_end then
@@ -649,9 +649,9 @@ global function substituteReferences(String:str, Class:table):str
          result ..= f'<function>{func_name}</function>'
       else
          print(f'Unrecognised function reference ~{func_name}()')
-         result ..= String:sub(start, start + len)
+         result ..= String:sub(start, stop)
       end
-      last_end = start + len
+      last_end = stop
    end
    String = result .. String:sub(last_end)
 
@@ -659,7 +659,7 @@ global function substituteReferences(String:str, Class:table):str
 
    result = ''
    last_end = 0
-   for start, len, cap in rx_ext_method_ref.findAll(String) do
+   for start, stop, cap in rx_ext_method_ref.findAll(String) do
       if start > last_end then result ..= String:sub(last_end, start) end
       local class_name = cap[0]
       local method_name = cap[1]
@@ -668,9 +668,9 @@ global function substituteReferences(String:str, Class:table):str
          result ..= f'<class name="{class_name}" method="{method_name}">{class_name}.{method_name}()</class>'
       else
          print(f'Unrecognised method/action reference @{class_name}.{method_name}()')
-         result ..= String:sub(start, start + len)
+         result ..= String:sub(start, stop)
       end
-      last_end = start + len
+      last_end = stop
    end
    String = result .. String:sub(last_end)
 
@@ -678,7 +678,7 @@ global function substituteReferences(String:str, Class:table):str
 
    result = ''
    last_end = 0
-   for start, len, cap in rx_ext_field_ref.findAll(String) do
+   for start, stop, cap in rx_ext_field_ref.findAll(String) do
       if start > last_end then result ..= String:sub(last_end, start) end
       local class_name = cap[0]
       local field_name = cap[1]
@@ -693,9 +693,9 @@ global function substituteReferences(String:str, Class:table):str
          end
       else
          print(f'Unrecognised field reference @{class_name}.{field_name}')
-         result ..= String:sub(start, start + len)
+         result ..= String:sub(start, stop)
       end
-      last_end = start + len
+      last_end = stop
    end
    String = result .. String:sub(last_end)
 
@@ -703,16 +703,16 @@ global function substituteReferences(String:str, Class:table):str
 
    result = ''
    last_end = 0
-   for start, len, cap in rx_class_ref.findAll(String) do
+   for start, stop, cap in rx_class_ref.findAll(String) do
       if start > last_end then result ..= String:sub(last_end, start) end
       local class_name = cap[0]
       if mSys.FindClass(class_name:hash(), 0) then
          result ..= f'<class name="{class_name}">{class_name}</class>'
       else
          print(f'Unrecognised class name reference @{class_name}')
-         result ..= String:sub(start, start + len)
+         result ..= String:sub(start, stop)
       end
-      last_end = start + len
+      last_end = stop
    end
    String = result .. String:sub(last_end)
    String = rx_inline_code.replace(String, '<code>$1</code>')
@@ -757,20 +757,15 @@ global function docClass(Class)
    if not table.empty(Class.src) then
       out ..= '    <source>\n'
       for path in values(Class.src) do
-         local filename = ''
-         _, _, result = rx_path.findFirst(path)
-         if result then
-            path = result[0]
-            filename = result[1]
-         else
+         local dir, filename = rx_path.extract(path)
+         if not filename then
             filename = path
-            path = nil
+            dir = nil
          end
-         xpath = ''
-         if path?? then xpath = " path=\"" .. path:escXML() .. '"' end
-         out ..= "      <file" .. xpath .. ">" .. filename:escXML() .. "</file>\n"
+         local xpath = dir ? (' path="' .. dir:escXML() .. '"') :> ''
+         out ..= '      <file' .. xpath .. '>' .. filename:escXML() .. '</file>\n'
       end
-      out ..= "    </source>\n"
+      out ..= '    </source>\n'
    end
 
    out ..= "  </info>\n"
@@ -977,17 +972,12 @@ global function docModuleHeader()
    if not table.empty(srcFiles) then
       out ..= '    <source>\n'
       for path in values(srcFiles) do
-         local filename = ''
-         _, _, result = rx_path.findFirst(path)
-         if result then
-            path = result[0]
-            filename = result[1]
-         else
+         local dir, filename = rx_path.extract(path)
+         if not filename then
             filename = path
-            path = nil
+            dir = nil
          end
-
-         out ..= f"      <file path=\"{(path ?? ''):escXML()}\">{filename:escXML()}</file>\n"
+         out ..= f"      <file path=\"{(dir ?? ''):escXML()}\">{filename:escXML()}</file>\n"
       end
       out ..= '    </source>\n'
    end

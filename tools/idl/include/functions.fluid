@@ -36,10 +36,10 @@ global function cpp_include(...)
    priority('#ifdef __cplusplus')
    for v in values({...}) do
       if v:startsWith('<') and v:endsWith('>') then
-         local _, _, cap = rx_parasol_include.findFirst(v)
-         local inc = cap ? rx_path_chars.replace(cap[0], '_') :> nil
+         local inc = rx_parasol_include.extract(v)
 
          if inc then
+            inc = rx_path_chars.replace(inc, '_')
             priority('#ifndef ' .. inc:upper())
             priority('#include ' .. v)
             priority('#endif')
@@ -133,21 +133,15 @@ global function module(Options:table, Function:func)
       -- Extract possible content from within comments so that we don't get interference from the code while parsing.
 
       local extracted_content = ''
-      for start, len, cap in rx_extract_comment.findAll(content) do
+      for _, _, cap in rx_extract_comment.findAll(content) do
          extracted_content ..= '\n' .. cap[0]
       end
 
-      _, _, cap = rx_module_section.findFirst(extracted_content) -- -MODULE- ... -END-
-      mod_desc = cap ? cap[0] :> nil
+      mod_desc = rx_module_section.extract(extracted_content) -- -MODULE- ... -END-
 
       if mod_desc then
          local name
-         _, _, cap = rx_module_header.findFirst(mod_desc)
-         if cap then
-            name = cap[0]
-            glModule.comment = cap[1]
-            glModule.description = cap[2]
-         end
+         name, glModule.comment, glModule.description = rx_module_header.extract(mod_desc)
 
          if not name then
             error(f'The -MODULE- header for {glModule.name} is incorrectly defined.')
@@ -244,9 +238,8 @@ global function flags(Prefix, Options:table, ...)
    for a=0, #flags - 1 do
       local flag_name
       if type(flags[a]) is 'string' then
-         local _, _, cap = rx_key_comment.findFirst(flags[a])
-         key = cap ? cap[0] :> flags[a]
-         comment = cap ? cap[1] :> nil
+         local key, comment = rx_key_comment.extract(flags[a])
+         key ??= flags[a]
 
          for flag_name in values(key:split('|')) do
             val = 1 << f
@@ -259,9 +252,7 @@ global function flags(Prefix, Options:table, ...)
 
             local key, comment
             if type(ref) != 'number' then
-               _, _, cap = rx_key_comment.findFirst(ref)
-               key = cap ? cap[0] :> nil
-               comment = cap ? cap[1] :> nil
+               key, comment = rx_key_comment.extract(ref)
                if key then
                   if rx_hex_number.test(key) or rx_signed_int.test(key) then
                      key = tonumber(key)
@@ -408,8 +399,7 @@ global function constants(Prefix:str, Options:table, ...)
    list = { }
    for va in values({...}) do
       if type(va) is 'string' then
-         local _, _, cap = rx_key_comment.findFirst(va)
-         key = cap ? cap[0] :> va
+         local key = rx_key_comment.extract(va) ?? va
          for v in values(key:split('|')) do
             out:push(f'#define {Prefix}_{v}')
          end
@@ -432,9 +422,7 @@ global function constants(Prefix:str, Options:table, ...)
          for v in values(sorted) do
             local val, comment, cap
             if type(v.value) is 'string' then
-               _, _, cap = rx_key_comment.findFirst(v.value)
-               val = cap ? cap[0] :> nil
-               comment = cap ? cap[1] :> nil
+               val, comment = rx_key_comment.extract(v.value)
             end
             val ?= v.value
 
@@ -495,9 +483,8 @@ global function enum(Prefix:str, Options:table, ...)
    inc = (Options.start ?? 0)
    for va in values({...}) do
       if type(va) is 'string' then
-         local _, _, cap = rx_key_comment.findFirst(va)
-         key = cap ? cap[0] :> va
-         comment = cap ? cap[1] :> nil
+         local key, comment = rx_key_comment.extract(va)
+         key ?= va
          synonym = false
          for name in values(key:split('|')) do
             if Options.type then
@@ -809,10 +796,7 @@ global function class(Name, Options:table, Spec, Private, Custom)
          }
 
          for rx in values(rx_patterns) do
-            local offset = 0
-            while true do
-               local s, e, cap = rx.findFirst(content, offset)
-               s ?? break
+            for _, _, cap in rx.findAll(content) do
                local action_name = cap[0]
                if glActions[action_name] then
                   verbose('Discovered action ' .. action_name)
@@ -820,14 +804,13 @@ global function class(Name, Options:table, Spec, Private, Custom)
                else
                   verbose('Ignoring declaration of ' .. action_name)
                end
-               offset = s + e
             end
          end
 
          -- Extract possible content from within comments so that we don't get interference from the code while parsing.
 
          local extracted_content = ''
-         for start, len, cap in rx_extract_comment.findAll(content) do
+         for _, _, cap in rx_extract_comment.findAll(content) do
             extracted_content ..= '\n' .. cap[0]
          end
 
@@ -836,8 +819,7 @@ global function class(Name, Options:table, Spec, Private, Custom)
          local current_entry, proc
          for line in values(extracted_content:split('\n')) do
             if line?? then
-               _, _, cap = rx_trailing_space.findFirst(line)
-               line = cap ? cap[0] :> ''
+               line = rx_trailing_space.extract(line)
                if (line is '-CLASS-') or (line is '-METHOD-') or (line is '-ACTION-') or (line is '-FIELD-') then
                   if current_entry then parseClassEntry(class, proc, current_entry) end
                   current_entry = ''
@@ -878,11 +860,7 @@ global function class(Name, Options:table, Spec, Private, Custom)
                v = v:trim()
                if v?? then
                   local param = { }
-                  local _, _, cap = rx_type_name.findFirst(v)
-                  if cap then
-                     param.type = cap[0]
-                     param.name = cap[1]
-                  end
+                  param.type, param.name = rx_type_name.extract(v)
                   cType(param, 'Method ' .. method.name)
                   table.insert(method.params, param)
                end

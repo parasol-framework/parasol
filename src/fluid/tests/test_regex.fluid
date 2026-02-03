@@ -52,24 +52,51 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
+@Test function Extract()
+   sample_regex = regex.new('\\d+')
+   cap = sample_regex.extract('abc123def', 0)
+   assert(cap is nil, 'Expected no results (no captures present)')
+
+   sample_regex = regex.new('(\\d+)')
+   cap = sample_regex.extract('abc123def', 0)
+   assert(cap is '123', f'Expected "123", got {cap}')
+
+   optional_regex = regex.new('(u?)(\\d+)')
+   prefix, digits = optional_regex.extract('123', 0)
+   assert(prefix is '', 'Expected empty prefix for optional capture')
+   assert(digits is '123', f'Expected digits "123", got {digits}')
+
+   prefix, digits = optional_regex.extract('u123', 0)
+   assert(prefix is 'u', f'Expected prefix "u", got {prefix}')
+   assert(digits is '123', f'Expected digits "123", got {digits}')
+
+   optional_only = regex.new('(u?)')
+   cap = optional_only.extract('abc', 0)
+   assert(cap is '', 'Expected empty capture for optional group')
+   cap = optional_only.extract('u', 0)
+   assert(cap is 'u', 'Expected "u" for optional group')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
 @Test function FindFirst()
    local rx_whitespace = regex.new('[^ \\t\\n\\r\\f\\v]')
 
    sample_regex = regex.new('\\d+')
-   pos, len = sample_regex.findFirst('abc123def', 0)
-   assert(pos is 3, 'Expected position 3, got ' .. tostring(pos))
-   assert(len is 3, 'Expected length 3, got ' .. tostring(len))
+   pos, stop = sample_regex.findFirst('abc123def', 0)
+   assert(pos is 3, f'Expected position 3, got {pos}')
+   assert(stop is 6, f'Expected stop 6, got {stop}')
 
-   pos2, len2 = sample_regex.findFirst('no digits here', 0)
-   assert(pos2 is nil and len2 is nil, 'Expected no match, got position ' .. tostring(pos2))
+   pos2, stop = sample_regex.findFirst('no digits here', 0)
+   assert(pos2 is nil and stop is nil, 'Expected no match, got position ' .. tostring(pos2))
 
-   pos, len = rx_whitespace.findFirst('   leading space', 0)
-   assert(pos is 3, 'Expected position 3, got ' .. tostring(pos))
-   assert(len is 1, 'Expected length 1, got ' .. tostring(len))
+   pos, stop = rx_whitespace.findFirst('   leading space', 0)
+   assert(pos is 3, f'Expected position 3, got {pos}')
+   assert(stop is 4, f'Expected stop 4, got {stop}')
 
-   pos, len = rx_whitespace.findFirst('   leading space', 2)
-   assert(pos is 3, 'Expected position 3, got ' .. tostring(pos))
-   assert(len is 1, 'Expected length 1, got ' .. tostring(len))
+   pos, stop = rx_whitespace.findFirst('   leading space', 2)
+   assert(pos is 3, f'Expected position 3, got {pos}')
+   assert(stop is 4, f'Expected stop 4, got {stop}')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -289,26 +316,26 @@ end
    -- Test iterator pattern with for loop
    digit_regex = regex.new('[0-9]+')
    matches = {}
-   for pos, len, cap in digit_regex.findAll('abc123def456ghi789') do
+   for pos, stop, cap in digit_regex.findAll('abc123def456ghi789') do
       assert(cap is nil, 'No captures should be returned.')
-      matches[#matches] = { pos = pos, len = len }
+      matches[#matches] = { pos = pos, stop = stop }
    end
    assert(#matches is 3, 'Should find 3 digit sequences, found ' .. #matches)
-   assert(matches[0].pos is 3 and matches[0].len is 3, 'First match at pos 3, len 3')
-   assert(matches[1].pos is 9 and matches[1].len is 3, 'Second match at pos 9, len 3')
-   assert(matches[2].pos is 15 and matches[2].len is 3, 'Third match at pos 15, len 3')
+   assert(matches[0].pos is 3 and matches[0].stop is 6, 'First match at pos 3, stop 6')
+   assert(matches[1].pos is 9 and matches[1].stop is 12, 'Second match at pos 9, stop 12')
+   assert(matches[2].pos is 15 and matches[2].stop is 18, 'Third match at pos 15, stop 18')
 
    -- Test with starting position (pos 6 skips past '123' entirely)
    matches2 = {}
-   for pos, len in digit_regex.findAll('abc123def456ghi789', 6) do
-      matches2[#matches2] = { pos = pos, len = len }
+   for pos, stop in digit_regex.findAll('abc123def456ghi789', 6) do
+      matches2[#matches2] = { pos = pos, stop = stop }
    end
    assert(#matches2 is 2, 'Should find 2 digit sequences when starting at pos 6')
    assert(matches2[0].pos is 9, 'First match should be at pos 9')
 
    -- Test no matches
    count = 0
-   for pos, len in digit_regex.findAll('no digits here') do
+   for pos, stop in digit_regex.findAll('no digits here') do
       count++
    end
    assert(count is 0, 'Should find no matches')
@@ -316,7 +343,7 @@ end
    -- Test single character matches
    char_regex = regex.new('[aeiou]')
    vowels = {}
-   for pos, len, cap in char_regex.findAll('hello world') do
+   for pos, stop, cap in char_regex.findAll('hello world') do
       assert(cap is nil, 'No captures should be returned.')
       vowels[#vowels] = pos
    end
@@ -328,7 +355,7 @@ end
    -- Test captures (3rd return value)
    capture_regex = regex.new('([a-z]+)([0-9]+)')
    captured = {}
-   for pos, len, caps in capture_regex.findAll('abc123def456ghi789') do
+   for pos, stop, caps in capture_regex.findAll('abc123def456ghi789') do
       captured[#captured] = { pos = pos, letters = caps[0], digits = caps[1] }
    end
    assert(#captured is 3, 'Should find 3 matches with captures, got ' .. #captured)
@@ -339,7 +366,7 @@ end
    -- Test email extraction with captures
    email_regex = regex.new('([^@\\s]+)@([^.\\s]+)\\.([^\\s]+)')
    emails = {}
-   for pos, len, caps in email_regex.findAll('Contact alice@foo.com or bob@bar.org today') do
+   for pos, stop, caps in email_regex.findAll('Contact alice@foo.com or bob@bar.org today') do
       emails[#emails] = { user = caps[0], domain = caps[1], tld = caps[2] }
    end
    assert(#emails is 2, 'Should find 2 emails')

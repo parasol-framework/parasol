@@ -208,12 +208,11 @@ global function cType(Field:table, Origin:str):table
    -- A & symbol indicates that the field is a pointer to a reserved area that will store a result value, e.g. INT *
 
    local result_value
-   local _, _, cap = rx_special_type.findFirst(Field.type)
-   if cap then
-      local special = cap[0]
+   local special, rest_type = rx_special_type.extract(Field.type)
+   if special then
       if special:find('!') then Field.allocated = true end
       result_value = true
-      Field.type = cap[1]
+      Field.type = rest_type
    end
 
    if Field.type:startsWith('structsize') then
@@ -259,10 +258,10 @@ global function cType(Field:table, Origin:str):table
    -- The use of cpp() converts the encapsulated type to its C++ variant.  E.g. 'str' becomes a std::string
 
    do
-      local _, _, cap = rx_cpp_type.findFirst(Field.type)
-      if cap then
+      local cpp_inner = rx_cpp_type.extract(Field.type)
+      if cpp_inner then
          Field.cpp  = true
-         Field.type = cap[0]
+         Field.type = cpp_inner
          Field = cType(Field, Origin)
          Field.fullType = { fd='FD_CPP|' .. Field.fullType.fd, c_type=Field.fullType.c_type, doc_type=Field.fullType.doc_type }
          return Field
@@ -270,23 +269,15 @@ global function cType(Field:table, Origin:str):table
    end
 
    do
-      local const, struct
-      local _, _, cap = rx_class_type.findFirst(Field.type)
-      if cap then
-         const = cap[0]
-         struct = cap[1]
+      local const, struct = rx_class_type.extract(Field.type)
+      if struct then
          Field.isClass = true
       else
-         _, _, cap = rx_struct_type.findFirst(Field.type)
-         if cap then
-            const = cap[0]
-            struct = cap[1]
-         end
+         const, struct = rx_struct_type.extract(Field.type)
       end
 
       if struct then
-         _, _, cap = rx_ptr_extract.findFirst(struct)
-         local ptr_struct = cap ? cap[0] :> nil
+         local ptr_struct = rx_ptr_extract.extract(struct)
          if ptr_struct then struct = ptr_struct end
 
          Field.struct = struct
@@ -327,12 +318,9 @@ global function cType(Field:table, Origin:str):table
    end
 
    do -- Resources are structs, but with an FD_RESOURCE marker.
-      local _, _, cap = rx_resource_type.findFirst(Field.type)
-      if cap then
-         local const = cap[0]
-         local struct = cap[1]
-         _, _, cap = rx_ptr_extract.findFirst(struct)
-         local ptr_struct = cap ? cap[0] :> nil
+      local const, struct = rx_resource_type.extract(Field.type)
+      if struct then
+         local ptr_struct = rx_ptr_extract.extract(struct)
          if ptr_struct then struct = ptr_struct end
 
          Field.struct = struct
@@ -371,18 +359,15 @@ global function cType(Field:table, Origin:str):table
    do
       local ref_obj
       local extended = false
-      local _, _, cap = rx_ext_type.findFirst(Field.type)
-      if cap then -- 'ext' indicates an object class extended with private fields.
-         ref_obj = cap[0]
+      ref_obj = rx_ext_type.extract(Field.type)
+      if ref_obj then -- 'ext' indicates an object class extended with private fields.
          extended = true
       else
-         _, _, cap = rx_obj_type.findFirst(Field.type)
-         if cap then ref_obj = cap[0] end
+         ref_obj = rx_obj_type.extract(Field.type)
       end
 
       if ref_obj then
-         _, _, cap = rx_ptr_extract.findFirst(ref_obj)
-         local ptr_object = cap ? cap[0] :> nil
+         local ptr_object = rx_ptr_extract.extract(ref_obj)
          if ptr_object then
             Field.type = f'obj{ptr_object} **'
             if extended then Field.extType = f'ext{ptr_object} **' end
@@ -398,9 +383,8 @@ global function cType(Field:table, Origin:str):table
    end
 
    do -- Example: bit(int)
-      local _, _, cap = rx_bit_type.findFirst(Field.type)
-      if cap then
-         local bitType = cap[0]
+      local bitType = rx_bit_type.extract(Field.type)
+      if bitType then
          Field.type     = cType({ type=bitType, name='' }, Origin).type
          Field.name     = Field.name
          Field.fullType = glTypes[bitType]
@@ -410,9 +394,8 @@ global function cType(Field:table, Origin:str):table
    end
 
    do -- Integer flags type reference, can be used for strongly typed enum flags
-      local _, _, cap = rx_flags_type.findFirst(Field.type)
-      if cap then
-         local prefix = cap[0]
+      local prefix = rx_flags_type.extract(Field.type)
+      if prefix then
          Field.type     = prefix
          Field.fullType = glTypes.int
          Field.ref      = glCustomTypes[prefix]
@@ -428,10 +411,8 @@ global function cType(Field:table, Origin:str):table
    end
 
    do -- Integer/Char/Large type reference
-      local _, _, cap = rx_int_prefix.findFirst(Field.type)
-      if cap then
-         local t = cap[0]
-         local prefix = cap[1]
+      local t, prefix = rx_int_prefix.extract(Field.type)
+      if t then
          if t is 'char' then
             Field.type     = 'char'
             Field.fullType = glTypes.char
@@ -467,12 +448,13 @@ global function cType(Field:table, Origin:str):table
    end
 
    do -- Char arrays
-      local _, _, cap = rx_char_array.findFirst(Field.type)
-      if cap then
-         local unsigned = cap[0]
-         local count = cap[1]
-         Field.type = 'char'
-         if unsigned?? then Field.type = 'unsigned ' .. Field.type end
+      local unsigned, count = rx_char_array.extract(Field.type)
+      if count then
+         if unsigned?? then
+            Field.type = 'unsigned char'
+         else
+            Field.type = 'char'
+         end
          Field.arraySize = tonumber(count)
          Field.fullType  = glTypes.char
          return Field
@@ -480,11 +462,13 @@ global function cType(Field:table, Origin:str):table
    end
 
    do -- Integer arrays
-      local _, _, cap = rx_int_array.findFirst(Field.type)
-      if cap then
-         local unsigned = cap[0]
-         local count = cap[1]
-         Field.type      = unsigned?? ? 'uint32_t' :> 'int'
+      local unsigned, count = rx_int_array.extract(Field.type)
+      if count then
+         if unsigned?? then
+            Field.type = 'uint32_t'
+         else
+            Field.type = 'int'
+         end
          Field.arraySize = tonumber(count)
          Field.fullType  = glTypes.int
          return Field
@@ -492,9 +476,8 @@ global function cType(Field:table, Origin:str):table
    end
 
    do -- Double arrays
-      local _, _, cap = rx_double_array.findFirst(Field.type)
-      if cap then
-         local count = cap[0]
+      local count = rx_double_array.extract(Field.type)
+      if count then
          Field.type      = 'double'
          Field.arraySize = tonumber(count)
          Field.fullType  = glTypes.double
@@ -503,9 +486,8 @@ global function cType(Field:table, Origin:str):table
    end
 
    do -- Float arrays
-      local _, _, cap = rx_float_array.findFirst(Field.type)
-      if cap then
-         local count = cap[0]
+      local count = rx_float_array.extract(Field.type)
+      if count then
          Field.type      = 'float'
          Field.arraySize = tonumber(count)
          Field.fullType  = glTypes.float
@@ -514,10 +496,8 @@ global function cType(Field:table, Origin:str):table
    end
 
    do
-      local _, _, cap = rx_ptr_type.findFirst(Field.type)
-      if cap then
-         local const     = cap[0]
-         local ptr_type  = cap[1]
+      local const, ptr_type = rx_ptr_type.extract(Field.type)
+      if ptr_type then
          local ptr_ctype = cType({ type=ptr_type }, Origin)
 
          Field.type = ptr_ctype.type .. ' *'
@@ -540,9 +520,8 @@ global function cType(Field:table, Origin:str):table
    end
 
    do
-      local _, _, cap = rx_buf_type.findFirst(Field.type)
-      if cap then
-         local buf_type = cap[0]
+      local buf_type = rx_buf_type.extract(Field.type)
+      if buf_type then
          Field.type = buf_type
          Field = cType(Field, Origin)
          Field.fullType = { fd='FD_BUFFER|' .. Field.fullType.fd, c_type='APTR' }
@@ -557,10 +536,9 @@ global function cType(Field:table, Origin:str):table
    -- To describe complex embedded types of fixed size, use 'array(type,n)' such as 'array(struct(RGB8),256)'
 
    do
-      local _, _, cap = rx_array_sized.findFirst(Field.type)
-      if cap then
-         local array_type = cap[0]
-         local array_size = tonumber(cap[1])
+      local array_type, array_size = rx_array_sized.extract(Field.type)
+      if array_size then
+         array_size = tonumber(array_size)
          if array_size is 0 then
             Field.isArray = true
             Field.type = array_type
@@ -583,9 +561,8 @@ global function cType(Field:table, Origin:str):table
    end
 
    do
-      local _, _, cap = rx_array_unsized.findFirst(Field.type)
-      if cap then
-         local array_type = cap[0]
+      local array_type = rx_array_unsized.extract(Field.type)
+      if array_type then
          Field.isArray = true
          Field.type    = array_type
          Field = cType(Field, Origin)
@@ -600,9 +577,9 @@ global function cType(Field:table, Origin:str):table
    end
 
    do
-      local _, _, cap = rx_fptr_type.findFirst(Field.type)
-      if cap then
-         local arglist = cap[0]:split(' ')
+      local fptr_args = rx_fptr_type.extract(Field.type)
+      if fptr_args then
+         local arglist = fptr_args:split(' ')
 
          -- Process function result type
 
