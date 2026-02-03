@@ -484,7 +484,7 @@ function createFileItem(self, Info)
       end
 
       if not Info.name:endsWith('/') then
-         display_name = display_name .. '/'
+         display_name ..= '/'
       end
 
       new_item = {
@@ -1070,7 +1070,7 @@ gui.fileview = function(Options)
             inputRequired = true,
             feedback = function(Dialog, Response, State)
                if Response.id > 0 and State.input?? then
-                  path = self.path .. State.input .. '/'
+                  path = f'{self.path}{State.input}/'
                   if mSys.CreateFolder(path, 0) is ERR_Okay then
                      if not self.watch then
                         err, info = mSys.GetFileInfo(path)
@@ -1080,7 +1080,7 @@ gui.fileview = function(Options)
                         end
                      end
                   else
-                     gui.dialog.error('Failed to create dir "' .. path .. '"')
+                     gui.dialog.error(f'Failed to create dir "{path}"')
                   end
                end
             end
@@ -1136,11 +1136,11 @@ gui.fileview = function(Options)
 
       local msg
       if #items > 1 then
-         msg = 'Are you sure that you want to delete the ' .. #items .. ' selected items?'
+         msg = f'Are you sure that you want to delete the {#items} selected items?'
       else
          fl = items[0].filename ?? 'NIL'
          item_type = items[0].type ?? 'NIL'
-         msg = "Are you sure that you want to delete the '" .. fl .. "' " .. item_type .. '?'
+         msg = f"Are you sure that you want to delete the '{fl}' {item_type}?"
       end
 
       self.dlgDelete = gui.dialog.message({
@@ -1170,7 +1170,7 @@ gui.fileview = function(Options)
       })
 
       self.dlgDelete.files = { }
-      for _,item in pairs(items) do
+      for item in values(items) do
          table.insert(self.dlgDelete.files, (self.path ?? '') .. item.name.value)
       end
    end
@@ -1197,7 +1197,7 @@ gui.fileview = function(Options)
          items = self.view.selectedItems()
          if #items > 0 then
             file_list = { }
-            for _, item in pairs(items) do
+            for item in values(items) do
                table.insert(file_list, self.path .. item.name.value)
             end
             copyFromList(Dest, file_list, true)

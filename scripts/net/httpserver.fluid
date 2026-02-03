@@ -7,66 +7,68 @@
    include 'network'
    import 'json'
 
-   glTime = obj.new('time')
+glTime = obj.new('time')
 
-   global hslib = { }
+global hslib = { }
+   
+rxDedupSlash = <{ regex.new('\\/{2,}') }>
 
-   glStatusTexts = {
-       [200] = 'OK', [201] = 'Created', [204] = 'No Content',
-       [301] = 'Moved Permanently', [302] = 'Found', [304] = 'Not Modified',
-       [400] = 'Bad Request', [401] = 'Unauthorized', [403] = 'Forbidden',
-       [404] = 'Not Found', [405] = 'Method Not Allowed', [429] = 'Too Many Requests',
-       [500] = 'Internal Server Error', [501] = 'Not Implemented', [502] = 'Bad Gateway'
-   }
+glStatusTexts = {
+      [200] = 'OK', [201] = 'Created', [204] = 'No Content',
+      [301] = 'Moved Permanently', [302] = 'Found', [304] = 'Not Modified',
+      [400] = 'Bad Request', [401] = 'Unauthorized', [403] = 'Forbidden',
+      [404] = 'Not Found', [405] = 'Method Not Allowed', [429] = 'Too Many Requests',
+      [500] = 'Internal Server Error', [501] = 'Not Implemented', [502] = 'Bad Gateway'
+}
 
-   glMimeTypes = {
-      -- Text
-      html = 'text/html',
-      htm  = 'text/html',
-      css  = 'text/css',
-      js   = 'application/javascript',
-      mjs  = 'application/javascript',
-      json = 'application/json',
-      xml  = 'application/xml',
-      txt  = 'text/plain',
-      md   = 'text/markdown',
-      csv  = 'text/csv',
+glMimeTypes = {
+   -- Text
+   html = 'text/html',
+   htm  = 'text/html',
+   css  = 'text/css',
+   js   = 'application/javascript',
+   mjs  = 'application/javascript',
+   json = 'application/json',
+   xml  = 'application/xml',
+   txt  = 'text/plain',
+   md   = 'text/markdown',
+   csv  = 'text/csv',
 
-      -- Images
-      png  = 'image/png',
-      jpg  = 'image/jpeg',
-      jpeg = 'image/jpeg',
-      gif  = 'image/gif',
-      svg  = 'image/svg+xml',
-      ico  = 'image/x-icon',
-      webp = 'image/webp',
-      bmp  = 'image/bmp',
-      tiff = 'image/tiff',
+   -- Images
+   png  = 'image/png',
+   jpg  = 'image/jpeg',
+   jpeg = 'image/jpeg',
+   gif  = 'image/gif',
+   svg  = 'image/svg+xml',
+   ico  = 'image/x-icon',
+   webp = 'image/webp',
+   bmp  = 'image/bmp',
+   tiff = 'image/tiff',
 
-      -- Documents
-      pdf = 'application/pdf',
-      doc = 'application/msword',
-      docx = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+   -- Documents
+   pdf = 'application/pdf',
+   doc = 'application/msword',
+   docx = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 
-      -- Fonts
-      woff = 'font/woff',
-      woff2 = 'font/woff2',
-      ttf = 'font/ttf',
-      otf = 'font/otf',
+   -- Fonts
+   woff = 'font/woff',
+   woff2 = 'font/woff2',
+   ttf = 'font/ttf',
+   otf = 'font/otf',
 
-      -- Audio/Video
-      mp3 = 'audio/mpeg',
-      wav = 'audio/wav',
-      ogg = 'audio/ogg',
-      mp4 = 'video/mp4',
-      webm = 'video/webm',
-      avi = 'video/x-msvideo',
+   -- Audio/Video
+   mp3 = 'audio/mpeg',
+   wav = 'audio/wav',
+   ogg = 'audio/ogg',
+   mp4 = 'video/mp4',
+   webm = 'video/webm',
+   avi = 'video/x-msvideo',
 
-      -- Archives
-      zip = 'application/zip',
-      tar = 'application/x-tar',
-      gz = 'application/gzip'
-   }
+   -- Archives
+   zip = 'application/zip',
+   tar = 'application/x-tar',
+   gz = 'application/gzip'
+}
 
 ----------------------------------------------------------------------------------------------------------------------
 -- HTML escape function for security
@@ -84,8 +86,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function validatePort(port:num):bool
-   portNum = port
-   if not portNum or portNum < 1 or portNum > 65535 then
+   port_num = port
+   if not port_num or port_num < 1 or port_num > 65535 then
       return false
    end
    return true
@@ -94,14 +96,14 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Decode percent-encoded characters in URLs
 
-function urlDecode(str:str):str
-   if str then
-      str = str:replace('+', ' ') -- Replace + with space
-      str = str:gsub('%%(%x%x)', function(hex)
+function urlDecode(String:str):str
+   if String then
+      String = String:replace('+', ' ') -- Replace + with space
+      String = String:gsub('%%(%x%x)', function(hex)
          return string.char(tonumber(hex, 16))
       end)
    end
-   return str
+   return String
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -115,8 +117,8 @@ function canonicalizePath(self, Path:str):str
    Path = Path:match("([^?#]*)")  -- Remove query parameters and fragments
 
    -- Normalize slashes
-   Path = Path:replace('\\', '/')
-   Path = Path:replace('/+', '/')
+   Path = Path:replace('\\', '/') -- Backslashes -> forward slashes
+   Path = rxDedupSlash.replace(Path, '/') -- Eliminate duplication
 
    -- Split into components
    components = {}
@@ -1195,16 +1197,8 @@ function matchRoute(serverInstance, method, path)
       if not route.compiledRegex then
          -- Convert route pattern to proper regex pattern
          -- :param becomes ([^/]+), * becomes (.*), escape regex special chars
-         regexPattern = pattern
 
-         -- NOTE: SRELL follows the ECMAScript grammar strictly and treats escapes for
-         -- characters that do not require escaping (like '-') as literal backslashes.
-         -- std::regex previously accepted these permissive escapes, so existing route
-         -- patterns with dashes kept working.  Avoid escaping '-' so the resulting
-         -- pattern remains portable across engines.
-
-         -- regexPattern = regexPattern:gsub('([%.%+%-%*%?%[%]%(%)])', '\\%1') -- Escape regex chars for std::regex
-         regexPattern = regexPattern:gsub('([%.%+%*%?%[%]%(%)])', '\\%1') -- Escape regex for SRELL
+         regexPattern = regex.escape(pattern)
          regexPattern = regexPattern:gsub(':([%w_]+)', '([^/]+)') -- :param -> ([^/]+)
          regexPattern = regexPattern:gsub('\\%*', '(.*)') -- \* -> (.*)
 
