@@ -277,7 +277,7 @@ static int regex_extract(lua_State *Lua)
 
    auto start = luaL_optint(Lua, 2, 0);
    if (start < 0) start = 0;
-   if (start >= text_len) start = text_len;
+   if (start >= int(text_len)) start = int(text_len);
 
    auto flags = RMATCH(luaL_optint(Lua, 3, int(RMATCH::NIL)));
    auto meta  = regex_callback { Lua };
@@ -299,11 +299,11 @@ static int regex_findFirst(lua_State *Lua)
    size_t text_len = 0;
    CSTRING text = luaL_checklstring(Lua, 1, &text_len);
 
-   auto start = size_t(luaL_optint(Lua, 2, 0));
-   if (start >= text_len) start = text_len;
+   auto start = luaL_optint(Lua, 2, 0);
+   if (start < 0) start = 0;
+   if (start >= int(text_len)) start = int(text_len);
 
    auto flags = RMATCH(luaL_optint(Lua, 3, int(RMATCH::NIL)));
-
    auto meta = regex_callback { Lua };
    auto cb = C_FUNCTION(match_first, &meta);
    if (rx::Search(r->regex_obj, std::string_view(text + start, text_len - start), flags, &cb) IS ERR::Okay) {

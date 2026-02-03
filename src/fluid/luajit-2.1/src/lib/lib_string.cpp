@@ -222,7 +222,7 @@ LJLIB_CF(string_split)
    CSTRING str = strdata(s);
    CSTRING sepstr;
    MSize seplen;
-   MSize slen = s->len;
+   MSize str_len = s->len;
    bool is_whitespace = false;
 
    if ((not sep) or (sep->len IS 0)) {
@@ -236,13 +236,13 @@ LJLIB_CF(string_split)
    }
 
    // Handle empty string - return empty array
-   if (slen IS 0) {
+   if (str_len IS 0) {
       GCarray *arr = lj_array_new(L, 0, AET::STR_GC);
       setarrayV(L, L->top++, arr);
       return 1;
    }
 
-   CSTRING end = str + slen;
+   CSTRING end = str + str_len;
 
    // First pass: count separators to determine array size
    uint32_t count = 1;  // At least one element (final segment)
@@ -287,6 +287,43 @@ LJLIB_CF(string_split)
    lj_gc_check(L);
    return 1;
 }
+//********************************************************************************************************************
+// string.count(s, keyword) -> count
+
+LJLIB_CF(string_count)
+{
+   GCstr *s = lj_lib_checkstr(L, 1);
+   GCstr *keyword = lj_lib_checkstr(L, 2);
+
+   CSTRING str  = strdata(s);
+   auto str_len = s->len;
+   auto kw_len  = keyword->len;
+
+   if (not kw_len) { // Handle empty search string
+      setintV(L->top++, 0);
+      return 1;
+   }
+   else if (not str_len) { // Handle empty source string
+      setintV(L->top++, 0);
+      return 1;
+   }
+
+   CSTRING pos = str;
+   CSTRING end = str + str_len;
+   CSTRING kw  = strdata(keyword);
+   int32_t count = 0;
+
+   while (pos < end) {
+      if (CSTRING found = lj_str_find(pos, kw, end - pos, kw_len)) {
+         pos = found + kw_len;
+         count++;
+      }
+      else break;
+   }
+
+   setintV(L->top++, count);
+   return 1;
+}
 
 //********************************************************************************************************************
 // string.replace(s, search, replacement [, max_count]) -> string, count
@@ -295,14 +332,14 @@ LJLIB_CF(string_split)
 LJLIB_CF(string_replace)
 {
    GCstr *s = lj_lib_checkstr(L, 1);
-   GCstr *search = lj_lib_checkstr(L, 2);
+   GCstr *search      = lj_lib_checkstr(L, 2);
    GCstr *replacement = lj_lib_checkstr(L, 3);
-   int32_t max_count = lj_lib_optint(L, 4, -1);  // -1 means replace all
+   int32_t max_count  = lj_lib_optint(L, 4, -1);  // -1 means replace all
 
    CSTRING str        = strdata(s);
    CSTRING searchstr  = strdata(search);
    CSTRING replacestr = strdata(replacement);
-   MSize slen         = s->len;
+   MSize str_len         = s->len;
    MSize searchlen    = search->len;
    MSize replacelen   = replacement->len;
 
@@ -312,7 +349,7 @@ LJLIB_CF(string_replace)
       return 2;
    }
 
-   if (slen IS 0) { // Handle empty source string
+   if (str_len IS 0) { // Handle empty source string
       setstrV(L, L->top++, &G(L)->strempty);
       setintV(L->top++, 0);
       return 2;
@@ -322,7 +359,7 @@ LJLIB_CF(string_replace)
    lj_buf_reset(sb);
 
    CSTRING pos = str;
-   CSTRING end = str + slen;
+   CSTRING end = str + str_len;
    int32_t count = 0;
 
    while (pos < end) {
@@ -428,7 +465,7 @@ LJLIB_CF(string_startsWith)
    GCstr *prefix = lj_lib_checkstr(L, 2);
    auto str = strdata(s);
    auto prefixstr = strdata(prefix);
-   MSize slen = s->len;
+   MSize str_len = s->len;
    MSize prefixlen = prefix->len;
 
    // Empty prefix always matches
@@ -440,7 +477,7 @@ LJLIB_CF(string_startsWith)
 
    // Prefix longer than string cannot match
 
-   if (prefixlen > slen) {
+   if (prefixlen > str_len) {
       setboolV(L->top - 1, 0);
       return 1;
    }
@@ -460,7 +497,7 @@ LJLIB_CF(string_endsWith)
    GCstr *suffix = lj_lib_checkstr(L, 2);
    CSTRING str = strdata(s);
    CSTRING suffixstr = strdata(suffix);
-   MSize slen = s->len;
+   MSize str_len = s->len;
    MSize suffixlen = suffix->len;
 
    // Empty suffix always matches
@@ -470,13 +507,13 @@ LJLIB_CF(string_endsWith)
    }
 
    // Suffix longer than string cannot match
-   if (suffixlen > slen) {
+   if (suffixlen > str_len) {
       setboolV(L->top - 1, 0);
       return 1;
    }
 
    // Compare suffix with end of string
-   int matches = (memcmp(str + slen - suffixlen, suffixstr, suffixlen) IS 0);
+   int matches = (memcmp(str + str_len - suffixlen, suffixstr, suffixlen) IS 0);
    setboolV(L->top - 1, matches);
    return 1;
 }
@@ -1403,6 +1440,7 @@ extern int luaopen_string(lua_State *L)
    mt->nomm = (uint8_t)(~(1u << MM_index));
 
    // Register string interface prototypes for compile-time type inference
+   reg_iface_prototype("string", "count", { FluidType::Num }, { FluidType::Str, FluidType::Str });
    reg_iface_prototype("string", "len", { FluidType::Num }, { FluidType::Str });
    reg_iface_prototype("string", "sub", { FluidType::Str }, { FluidType::Str, FluidType::Num, FluidType::Num });
    reg_iface_prototype("string", "substr", { FluidType::Str }, { FluidType::Str, FluidType::Num, FluidType::Num });
