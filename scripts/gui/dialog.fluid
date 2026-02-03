@@ -17,6 +17,7 @@ MIN_WIDTH = 300
 MAX_WIDTH = 600
 
 rx_sanitise_icon = <{ regex.new([[^(%w+)\/(%w+)]]) }>
+rx_word = <{ regex.new([[\S+]]) }>
 
 ICONS = {
    error     = 'items/error',
@@ -227,16 +228,18 @@ gui.dialog.message = function(Options)
    dlg_width = MIN_WIDTH
    if self.message?? then
       longest = 10
-      for word in self.message:gmatch("%S+") do
-         if word:len() > longest then longest = word:len() end
+      for start, stop in rx_word.findAll(self.message) do
+         word_len = stop - start
+         if word_len > longest then longest = word_len end
       end
       dlg_width = 120 + (longest * FONT_HEIGHT)
    elseif self.fmtMessage?? then
       xml = obj.new('xml', { statement='<xml>' .. self.fmtMessage .. '</xml>' })
       err, content = xml.mtSerialise(0, XMF_OMIT_TAGS|XMF_READABLE)
       longest = 10
-      for word in content:gmatch("%S+") do
-         if word:len() > longest then longest = word:len() end
+      for start, stop in rx_word.findAll(content) do
+         word_len = stop - start
+         if word_len > longest then longest = word_len end
       end
       dlg_width = 120 + (longest * FONT_HEIGHT)
    else
