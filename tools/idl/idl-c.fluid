@@ -322,8 +322,8 @@ global function outputClassHeader(class:table, Private:str, Custom:str)
                if rx_empty_lines.test(stub) then
                   stub = ''
                else
-                  _, _, cap = rx_strip_newlines.findFirst(stub)
-                  if cap then stub = cap[0] end
+                  strip = rx_strip_newlines.extract(stub)
+                  if strip then stub = strip end
                end
                output(stub)
             end
@@ -478,26 +478,13 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Returns fields as a list returned by cType, featuring { type, name, docType, fullType, comment }
 
-global function extractFields(Def, Origin)
+global function extractFields(Def:str, Origin:str):table
    fields = { }
-
    Def ?? return fields
-
    for line, content in Def:split('\n') do
-      -- Extract comment, if specified
-      local comment, cap
-      _, _, cap = rx_field_extract.findFirst(content)
-      if cap then
-         content = cap[0]
-         comment = cap[1]
-      end
-
-      local type, name
-      _, _, cap = rx_type_name.findFirst(content)
-      if cap then
-         type = cap[0]
-         name = cap[1]
-      end
+      local content_b, comment = rx_field_extract.extract(content)
+      if content_b then content = content_b end
+      local type, name = rx_type_name.extract(content)
 
       if type?? then
          field = cType({ type=type:trim(), name=name:trim(), comment=string.trim(comment) }, Origin)
@@ -574,20 +561,11 @@ global function idlFunction(Name:str, Category:str, Comment:str, Status:str, Des
    if Def.input?? then
       func.input = { }
       for line, content in Def.input:split('\n') do
-         local comment, cap
-         _, _, cap = rx_colon_comment.findFirst(content)
-         if cap then
-            content = cap[0]
-            comment = cap[1]
-         end
+         local content, comment = rx_colon_comment.extract(content)
          assert(comment and content, 'Invalid input reference in ' .. Name .. '(): ' .. content)
 
-         local type, name
-         _, _, cap = rx_type_name.findFirst(content)
-         if cap then
-            type = cap[0]
-            name = cap[1]
-         end
+         local type, name = rx_type_name.extract(content)
+
          if type then
             param = cType({
                type=type:trim(), name=name:trim(), comment=comment:trim(), isFunction=true

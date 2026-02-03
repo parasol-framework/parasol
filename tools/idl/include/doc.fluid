@@ -757,20 +757,15 @@ global function docClass(Class)
    if not table.empty(Class.src) then
       out ..= '    <source>\n'
       for path in values(Class.src) do
-         local filename = ''
-         _, _, result = rx_path.findFirst(path)
-         if result then
-            path = result[0]
-            filename = result[1]
-         else
+         local dir, filename = rx_path.extract(path)
+         if not filename then
             filename = path
-            path = nil
+            dir = nil
          end
-         xpath = ''
-         if path?? then xpath = " path=\"" .. path:escXML() .. '"' end
-         out ..= "      <file" .. xpath .. ">" .. filename:escXML() .. "</file>\n"
+         local xpath = dir ? (' path="' .. dir:escXML() .. '"') :> ''
+         out ..= '      <file' .. xpath .. '>' .. filename:escXML() .. '</file>\n'
       end
-      out ..= "    </source>\n"
+      out ..= '    </source>\n'
    end
 
    out ..= "  </info>\n"
@@ -977,17 +972,12 @@ global function docModuleHeader()
    if not table.empty(srcFiles) then
       out ..= '    <source>\n'
       for path in values(srcFiles) do
-         local filename = ''
-         _, _, result = rx_path.findFirst(path)
-         if result then
-            path = result[0]
-            filename = result[1]
-         else
+         local dir, filename = rx_path.extract(path)
+         if not filename then
             filename = path
-            path = nil
+            dir = nil
          end
-
-         out ..= f"      <file path=\"{(path ?? ''):escXML()}\">{filename:escXML()}</file>\n"
+         out ..= f"      <file path=\"{(dir ?? ''):escXML()}\">{filename:escXML()}</file>\n"
       end
       out ..= '    </source>\n'
    end

@@ -60,11 +60,11 @@ global function shortName(Name:str):str
          (n is "FX") or (n is "FY") then
          result ..= n
       else
-         local _, _, cap = rx_first_char.findFirst(n)
-         if not cap then
+         local first, rest = rx_first_char.extract(n)
+         if not first then
             result ..= n:upper()
          else
-            result ..= cap[0]:upper() .. cap[1]:lower()
+            result ..= first:upper() .. rest:lower()
          end
       end
    end
@@ -106,8 +106,8 @@ global function cleanXMLString(String:str, Caller:str):str
          end
 
          _, clean_str = cxml.mtSerialise(0, XMF_INCLUDE_SIBLINGS)
-         _, _, cap = rx_root_extract.findFirst(clean_str)
-         if cap then String = cap[0]:trim() end
+         local extracted = rx_root_extract.extract(clean_str)
+         if extracted then String = extracted:trim() end
       except ex
          error(f'Failed to parse XML for {Caller ?? "undefined"}: {ex.message}')
       end
@@ -213,8 +213,7 @@ global function resolveSDKPath(Path:str)
    end
 
    if err is ERR_Okay then
-      local _, _, cap = rx_cmake_path.findFirst(sdk_path)
-      sdk_path = cap ? cap[0] :> sdk_path
+      sdk_path = rx_cmake_path.extract(sdk_path) ?? sdk_path
    else
       msg = ''
       for path in values(search_list) do
