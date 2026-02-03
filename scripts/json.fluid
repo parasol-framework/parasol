@@ -41,7 +41,7 @@ local rx_whitespace = regex.new("[^ \\t\\n\\r\\f\\v]")
 
 function escape_str(String:str):str
    for i, c in in_char do
-      String = String:gsub(c, '\\' .. out_char[i])
+      String = String:replace(c, '\\' .. out_char[i])
    end
    return String
 end

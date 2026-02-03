@@ -12,7 +12,7 @@
 -----------------------------------------------------------------------------------------------------------------------
 -- Resolve the location of the Parasol SDK and create an 'sdk:' volume.
 
-function resolveSDKPath(Path)
+function resolveSDKPath(Path:str)
    local sdk_path
    err = ERR_Failed
    search_list = array<string>
@@ -58,8 +58,8 @@ end
       nameWild   = true,
       matchFeedback = function(Path, FileName, File)
          src_path = Path .. FileName
-         output_path = src_path:gsub('/xml/', '/html/')
-         output_path = output_path:gsub('%.xml', '.html')
+         output_path = src_path:replace('/xml/', '/html/')
+         output_path = output_path:replace('.xml', '.html')
 
          err, res_output_path = mSys.ResolvePath(output_path, RSF_NO_FILE_CHECK)
          assert(err is ERR_Okay, 'Failed to resolve path ' .. output_path)
@@ -86,7 +86,7 @@ end
    state = mSys.GetSystemState()
    if state.platform is 'Windows' then
       output_path ??= 'temp:docgen.bat'
-      cmdlist = cmdlist:gsub('\\','\\\\')
+      cmdlist = cmdlist:replace('\\','\\\\')
    else
       output_path ??= 'temp:docgen.sh'
       cmdlist = '#!/bin/bash\n' .. cmdlist
@@ -105,7 +105,7 @@ end
             print(Buffer:getString())
          end,
          flags   = 'WAIT',
-         timeout = 20
+         timeOut = 20
       })
 
       task.acActivate()

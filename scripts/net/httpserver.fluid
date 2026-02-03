@@ -73,11 +73,11 @@
 
 function escHTML(str:str):str
    str ?? return ''
-   str = str:gsub('&', '&amp;')
-   str = str:gsub('<', '&lt;')
-   str = str:gsub('>', '&gt;')
-   str = str:gsub('"', '&quot;')
-   str = str:gsub("'", '&#39;')
+   str = str:replace('&', '&amp;')
+   str = str:replace('<', '&lt;')
+   str = str:replace('>', '&gt;')
+   str = str:replace('"', '&quot;')
+   str = str:replace("'", '&#39;')
    return str
 end
 
@@ -96,7 +96,7 @@ end
 
 function urlDecode(str:str):str
    if str then
-      str = str:gsub('+', ' ') -- Replace + with space
+      str = str:replace('+', ' ') -- Replace + with space
       str = str:gsub('%%(%x%x)', function(hex)
          return string.char(tonumber(hex, 16))
       end)
@@ -115,8 +115,8 @@ function canonicalizePath(self, Path:str):str
    Path = Path:match("([^?#]*)")  -- Remove query parameters and fragments
 
    -- Normalize slashes
-   Path = Path:gsub('\\', '/')
-   Path = Path:gsub('/+', '/')
+   Path = Path:replace('\\', '/')
+   Path = Path:replace('/+', '/')
 
    -- Split into components
    components = {}
@@ -1207,10 +1207,9 @@ function matchRoute(serverInstance, method, path)
          regexPattern = regexPattern:gsub('([%.%+%*%?%[%]%(%)])', '\\%1') -- Escape regex for SRELL
          regexPattern = regexPattern:gsub(':([%w_]+)', '([^/]+)') -- :param -> ([^/]+)
          regexPattern = regexPattern:gsub('\\%*', '(.*)') -- \* -> (.*)
-         regexPattern = '^' .. regexPattern .. '$'
 
          try
-            route.compiledRegex = regex.new(regexPattern)
+            route.compiledRegex = regex.new(f'^{regexPattern}$')
          except ex
             error('matchRoute: Failed to compile regex: ' .. ex.message)
          end

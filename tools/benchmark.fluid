@@ -365,26 +365,26 @@ end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Goal: Replace words or patterns in a paragraph
+-- Goal: Simple word replacement in a sentence
 
 @Test function StringReplaceWords()
    local text = "The quick brown fox jumps over the lazy dog."
 
    for i in {0..100} do
       -- Replace single occurrence
-      local result1 = string.gsub(text, "fox", "cat")
+      local result1 = string.replace(text, "fox", "cat")
 
       -- Replace all occurrences
       local text2 = "the cat sat on the mat with the cat"
-      local result2 = string.gsub(text2, "cat", "dog")
+      local result2 = string.replace(text2, "cat", "dog")
 
       -- Replace with pattern
-      local result3 = string.gsub(text, "%s+", "_")  -- Replace spaces with underscores
+      local result3 = string.replace(text, " ", "_")  -- Replace spaces with underscores
 
       -- Replace multiple different words
-      local result4 = string.gsub(text, "quick", "slow")
-      result4 = string.gsub(result4, "brown", "white")
-      result4 = string.gsub(result4, "lazy", "energetic")
+      local result4 = string.replace(text, "quick", "slow")
+      result4 = string.replace(result4, "brown", "white")
+      result4 = string.replace(result4, "lazy", "energetic")
    end
 end
 
