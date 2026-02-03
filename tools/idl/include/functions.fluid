@@ -133,7 +133,7 @@ global function module(Options:table, Function:func)
       -- Extract possible content from within comments so that we don't get interference from the code while parsing.
 
       local extracted_content = ''
-      for start, len, cap in rx_extract_comment.findAll(content) do
+      for _, _, cap in rx_extract_comment.findAll(content) do
          extracted_content ..= '\n' .. cap[0]
       end
 
@@ -399,7 +399,7 @@ global function constants(Prefix:str, Options:table, ...)
    list = { }
    for va in values({...}) do
       if type(va) is 'string' then
-         local key = rx_key_comment.extract(va)
+         local key = rx_key_comment.extract(va) ?? va
          for v in values(key:split('|')) do
             out:push(f'#define {Prefix}_{v}')
          end
@@ -810,7 +810,7 @@ global function class(Name, Options:table, Spec, Private, Custom)
          -- Extract possible content from within comments so that we don't get interference from the code while parsing.
 
          local extracted_content = ''
-         for start, len, cap in rx_extract_comment.findAll(content) do
+         for _, _, cap in rx_extract_comment.findAll(content) do
             extracted_content ..= '\n' .. cap[0]
          end
 

@@ -450,7 +450,11 @@ global function cType(Field:table, Origin:str):table
    do -- Char arrays
       local unsigned, count = rx_char_array.extract(Field.type)
       if count then
-         Field.type = unsigned ? 'unsigned char' :> 'char'
+         if unsigned?? then
+            Field.type = 'unsigned char'
+         else
+            Field.type = 'char'
+         end
          Field.arraySize = tonumber(count)
          Field.fullType  = glTypes.char
          return Field
@@ -460,7 +464,11 @@ global function cType(Field:table, Origin:str):table
    do -- Integer arrays
       local unsigned, count = rx_int_array.extract(Field.type)
       if count then
-         Field.type      = unsigned ? 'uint32_t' :> 'int'
+         if unsigned?? then
+            Field.type = 'uint32_t'
+         else
+            Field.type = 'int'
+         end
          Field.arraySize = tonumber(count)
          Field.fullType  = glTypes.int
          return Field
