@@ -13,15 +13,25 @@
 
 glTime = obj.new('time')
 
-rxControlChars   = <{ regex.new([=[[\x00-\x1f\x7f]]=]) }>
-rxQueryFragment  = <{ regex.new([[^([^?#]*)]]) }>
-rxFileExtension  = <{ regex.new([[\.([^.]+)$]]) }>
-rxCookiePair     = <{ regex.new([[\s*([^=]+)=(.+)]]) }>
-rxTrimWhitespace = <{ regex.new([[^\s*(.*?)\s*$]]) }>
-rxRequestLine    = <{ regex.new([[(\S+)\s+(\S+)\s+(\S+)]]) }>
-rxPathQuery      = <{ regex.new([[([^?]*)\??(.*)]]) }>
-rxHeaderLine     = <{ regex.new([[([^:]+):\s*(.+)]]) }>
-rxRouteParam     = <{ regex.new([[:(\w+)]]) }>
+rxControlChars    = <{ regex.new([=[[\x00-\x1f\x7f]]=]) }>
+rxQueryFragment   = <{ regex.new([[^([^?#]*)]]) }>
+rxFileExtension   = <{ regex.new([[\.([^.]+)$]]) }>
+rxCookiePair      = <{ regex.new([[\s*([^=]+)=(.+)]]) }>
+rxTrimWhitespace  = <{ regex.new([[^\s*(.*?)\s*$]]) }>
+rxRequestLine     = <{ regex.new([[(\S+)\s+(\S+)\s+(\S+)]]) }>
+rxPathQuery       = <{ regex.new([[([^?]*)\??(.*)]]) }>
+rxHeaderLine      = <{ regex.new([[([^:]+):\s*(.+)]]) }>
+rxRouteParam      = <{ regex.new([[:(\w+)]]) }>
+rxPercentEncoded  = <{ regex.new([[%([0-9A-Fa-f]{2})]]) }>
+rxRouteParamSub   = <{ regex.new([[:[\w_]+]]) }>
+rxEscapedWildcard = <{ regex.new([[\\\*]]) }>
+rxPathComponent   = <{ regex.new([[([^\/]+)]]) }>
+rxHexChunkSize    = <{ regex.new([[^([0-9a-fA-F]+)]]) }>
+rxQueryPair       = <{ regex.new([[([^&]+)]]) }>
+rxKeyValue        = <{ regex.new([[([^=]+)=(.+)]]) }>
+rxCookieItem      = <{ regex.new([[([^;]+)]]) }>
+rxLineIterator    = <{ regex.new([[([^\r\n]+)]]) }>
+rxParentPath      = <{ regex.new([[(.+)\/.+\/]]) }>
 
 glStatusTexts = {
       [200] = 'OK', [201] = 'Created', [204] = 'No Content',
@@ -109,9 +119,14 @@ end
 function urlDecode(String:str):str
    if String then
       String = String:replace('+', ' ') -- Replace + with space
-      String = String:gsub('%%(%x%x)', function(hex)
-         return string.char(tonumber(hex, 16))
-      end)
+      local result = ''
+      local last_stop = 0
+      for start, stop, cap in rxPercentEncoded.findAll(String) do
+         if start > last_stop then result ..= String:sub(last_stop, start) end
+         result ..= string.char(tonumber(cap[0], 16))
+         last_stop = stop
+      end
+      String = result .. String:sub(last_stop)
    end
    return String
 end
@@ -132,7 +147,8 @@ function canonicalizePath(self, Path:str):str
 
    -- Split into components
    components = {}
-   for component in Path:gmatch('[^/]+') do
+   for start, stop, cap in rxPathComponent.findAll(Path) do
+      local component = cap[0]
       if component is '..' then
          -- Attempt to go up - block this
          logMessage(self, 'Security: Blocked directory traversal attempt with ..')
@@ -189,7 +205,7 @@ function processChunkedBody(state, server)
          state.buffer = state.buffer:substr(line_end + 2) -- Remove \r\n
 
          -- Parse chunk size (ignore extensions after semicolon)
-         hex_size = size_line:match('^([0-9a-fA-F]+)')
+         hex_size = rxHexChunkSize.extract(size_line)
          if not hex_size then
             logMessage(server, 'Invalid chunk size format: ' .. size_line)
             return false -- Invalid format
@@ -326,7 +342,7 @@ function readChunkedRequestBody(client, maxSize, timeoutSeconds)
       -- Read chunk size line (hexadecimal number followed by optional extensions and CRLF)
       chunkSizeLine = ''
       char = ''
-      while not chunkSizeLine:match('\r\n$') do
+      while not chunkSizeLine:endsWith('\r\n') do
          err, bytes_read = client.acRead(buffer, 1)
          if err != ERR_Okay then
             if err is ERR_TimeOut then
@@ -361,7 +377,7 @@ function readChunkedRequestBody(client, maxSize, timeoutSeconds)
       end
 
       -- Parse chunk size (ignore chunk extensions after semicolon if present)
-      chunkSizeHex = chunkSizeLine:match('^([0-9a-fA-F]+)')
+      chunkSizeHex = rxHexChunkSize.extract(chunkSizeLine)
       if not chunkSizeHex then
          return nil, 'invalid_chunk_format', false
       end
@@ -472,8 +488,9 @@ function parseQueryString(QueryString:str):table
    query = {}
    QueryString ?? return query
 
-   for pair in QueryString:gmatch('[^&]+') do
-      key, value = pair:match('([^=]+)=(.+)')
+   for start, stop, cap in rxQueryPair.findAll(QueryString) do
+      local pair = cap[0]
+      key, value = rxKeyValue.extract(pair)
       if key and value then
          key = urlDecode(key)
          value = urlDecode(value)
@@ -486,8 +503,8 @@ function parseQueryString(QueryString:str):table
          else
             query[key] = value
          end
-      elseif key then -- Handle keys without values (e.g., ?debug&verbose)
-         query[urlDecode(key)] = true
+      elseif pair then -- Handle keys without values (e.g., ?debug&verbose)
+         query[urlDecode(pair)] = true
       end
    end
 
@@ -521,7 +538,8 @@ function parseCookies(CookieHeader:str):table
    cookies = {}
    CookieHeader ?? return cookies
 
-   for cookie in CookieHeader:gmatch('[^;]+') do
+   for start, stop, cap in rxCookieItem.findAll(CookieHeader) do
+      local cookie = cap[0]
       name, value = rxCookiePair.extract(cookie)
       if name and value then
          -- Trim whitespace
@@ -539,8 +557,8 @@ end
 
 function parseHttpRequest(Req)
    lines = {}
-   for line in Req:gmatch("[^\r\n]+") do
-      table.insert(lines, line)
+   for start, stop, cap in rxLineIterator.findAll(Req) do
+      table.insert(lines, cap[0])
    end
 
    if #lines is 0 then return nil end
@@ -913,7 +931,7 @@ a:hover { text-decoration: underline; }
 
    -- Add parent directory link if not root
    if URIPath != '/' then
-      parentPath = URIPath:match('(.+)/.+/')
+      parentPath = rxParentPath.extract(URIPath)
       if not parentPath then parentPath = '/' end
       html ..= '<tr><td><a href="' .. parentPath .. '" class="dir">../</a></td><td>-</td><td>-</td></tr>\n'
    end
@@ -1209,8 +1227,8 @@ function matchRoute(serverInstance, method, path)
          -- :param becomes ([^/]+), * becomes (.*), escape regex special chars
 
          regexPattern = regex.escape(pattern)
-         regexPattern = regexPattern:gsub(':([%w_]+)', '([^/]+)') -- :param -> ([^/]+)
-         regexPattern = regexPattern:gsub('\\%*', '(.*)') -- \* -> (.*)
+         regexPattern = rxRouteParamSub.replace(regexPattern, '([^\\/]+)')   -- :param -> ([^/]+)
+         regexPattern = rxEscapedWildcard.replace(regexPattern, '(.*)')    -- \* -> (.*)
 
          try
             route.compiledRegex = regex.new(f'^{regexPattern}$')
@@ -1636,7 +1654,7 @@ function serverIncoming(self, ClientSocket)
 
       if fileType is LOC_FOLDER then
          -- Ensure directory URLs end with /
-         if not URIPath:match('/$') then
+         if not URIPath:endsWith('/') then
             sendHttpResponse(self, ClientSocket, 301, 'Moved Permanently', {
                ['location'] = URIPath .. '/'
             })

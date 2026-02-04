@@ -1,8 +1,11 @@
-
 --[[
 Refresh the internal translation tables that convert international English into foreign languages.  It should only be
 called manually if the user changes the default system language or if the current translation file is updated.
 --]]
+
+-- Deferred regex patterns
+rxTranslateLine    = <{ regex.new([[([^\n]*\n)]]) }>
+rxTranslateKeyVal  = <{ regex.new([[^(.+)=(\S+)$]]) }>
 
 string.translateRefresh = function()
    string._ttable = { }
@@ -15,10 +18,11 @@ string.translateRefresh = function()
 
    content = file.readAll('config:translations/' .. language:lower() .. '.cfg')
 
-   for line in string.gmatch(content, [[([^\n]*\n)]]) do
+   for start, stop, cap in rxTranslateLine.findAll(content) do
+      local line = cap[0]
       if line?? then
-         key, value = line:match([[^(.+)=([^\s]+)$]])
-         if (string.len(key) > 0) and (string.len(value) > 0) then
+         key, value = rxTranslateKeyVal.extract(line)
+         if key and value and (string.len(key) > 0) and (string.len(value) > 0) then
             string._ttable[key] = value
          end
       end

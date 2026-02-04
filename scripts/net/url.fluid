@@ -42,6 +42,10 @@ rxIPv6Port       = <{ regex.new('^\\[([^\\]]+)\\]:?(\\d*)$') }>
 rxIPv6PortOnly   = <{ regex.new('^\\[[^\\]]+\\]:(\\d+)$') }>
 rxAbsoluteUrl    = <{ regex.new('^[\\w+.\\-]+:') }>
 rxSchemeExtract  = <{ regex.new('^([\\w+.\\-]+):') }>
+rxQueryPair      = <{ regex.new('([^&]+)') }>
+rxKeyValueOpt    = <{ regex.new('^([^=]*)=(.*)$') }>
+rxBasePath       = <{ regex.new('(.*\\/)') }>
+rxPathSegment    = <{ regex.new('([^\\/]+)') }>
 
 ----------------------------------------------------------------------------------------------------------------------
 -- URL Encoding Functions
@@ -75,7 +79,7 @@ url.encodePlus = function(str, extraChars)
 
    encoded = url.encode(str, extraChars)
    if encoded then
-      encoded = encoded:gsub('%%20', '+')
+      encoded = encoded:replace('%20', '+')
    end
 
    return encoded
@@ -123,8 +127,9 @@ url.parseQuery = function(queryString)
    if not queryString or queryString is '' then return {} end
 
    params = {}
-   for pair in queryString:gmatch('[^&]+') do
-      key, value = pair:match('^([^=]*)=(.*)$')
+   for start, stop, cap in rxQueryPair.findAll(queryString) do
+      local pair = cap[0]
+      key, value = rxKeyValueOpt.extract(pair)
       if key then
          key = url.decodePlus(key)
          value = url.decodePlus(value)
@@ -153,8 +158,9 @@ url.parseQueryList = function(queryString)
    params = array<table>
    queryString ?? return params
 
-   for pair in queryString:gmatch('[^&]+') do
-      key, value = pair:match('^([^=]*)=(.*)$')
+   for start, stop, cap in rxQueryPair.findAll(queryString) do
+      local pair = cap[0]
+      key, value = rxKeyValueOpt.extract(pair)
       if key then
          key = url.decodePlus(key)
          value = url.decodePlus(value)
@@ -438,7 +444,7 @@ url.join = function(baseUrl, relativeUrl)
    -- Handle relative path
    basePath = base.path or '/'
    if basePath:sub(-1) != '/' then
-      basePath = basePath:match('(.*/)') or '/'
+      basePath = rxBasePath.extract(basePath) or '/'
    end
 
    newPath = basePath .. (rel.path or '')
@@ -455,7 +461,8 @@ url.normalize = function(path)
    segments = {}
    isAbsolute = path:sub(0, 1) is '/'
 
-   for segment in path:gmatch('[^/]+') do
+   for start, stop, cap in rxPathSegment.findAll(path) do
+      local segment = cap[0]
       if segment is '..' then
          if #segments > 0 and segments[#segments] != '..' then
             table.remove(segments)
