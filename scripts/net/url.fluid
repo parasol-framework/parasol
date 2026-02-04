@@ -4,38 +4,51 @@
 --   urllib = import 'net/url' -- Choose a name that avoids namespace conflicts
 --   parts = urllib.parse('https://example.com/path?query=value')
 
-    local url = { }
+   namespace 'url'
 
-    local DEFAULT_PORTS = {
-       http = 80,
-       https = 443,
-       ftp = 21,
-       ssh = 22,
-       telnet = 23,
-       smtp = 25,
-       pop3 = 110,
-       imap = 143,
-       ldap = 389,
-       ldaps = 636
-    }
+   _LIB[_NS] = { }
+   url = _LIB[_NS]
 
-    -- Characters that need percent-encoding in different URL contexts
+local DEFAULT_PORTS = {
+   http = 80,
+   https = 443,
+   ftp = 21,
+   ssh = 22,
+   telnet = 23,
+   smtp = 25,
+   pop3 = 110,
+   imap = 143,
+   ldap = 389,
+   ldaps = 636
+}
 
-    local RESERVED_CHARS = {
-       -- General reserved characters (RFC 3986)
-       general = ':/?#[]@!$&\'()*+,;=%',
-       -- Additional characters that should be encoded in query strings
-       query = ' "<>\\^`{|}',
-       -- Characters that should be encoded in path components
-       path = ' "?<>#'
-    }
+-- Characters that need percent-encoding in different URL contexts
+
+local RESERVED_CHARS = {
+   -- General reserved characters (RFC 3986)
+   general = ':/?#[]@!$&\'()*+,;=%',
+   -- Additional characters that should be encoded in query strings
+   query = ' "<>\\^`{|}',
+   -- Characters that should be encoded in path components
+   path = ' "?<>#'
+}
+
+-- Deferred regex patterns for URL parsing
+
+rxPercentEncoded = <{ regex.new('%([0-9A-Fa-f]{2})') }>
+rxScheme         = <{ regex.new('^([\\w+.\\-]+):(.*)') }>
+rxSchemeOnly     = <{ regex.new('^[\\w+.\\-]+:(.*)') }>
+rxIPv6Port       = <{ regex.new('^\\[([^\\]]+)\\]:?(\\d*)$') }>
+rxIPv6PortOnly   = <{ regex.new('^\\[[^\\]]+\\]:(\\d+)$') }>
+rxAbsoluteUrl    = <{ regex.new('^[\\w+.\\-]+:') }>
+rxSchemeExtract  = <{ regex.new('^([\\w+.\\-]+):') }>
 
 ----------------------------------------------------------------------------------------------------------------------
 -- URL Encoding Functions
 
 -- Percent-encode a string for safe URL use
 
-function url.encode(str, extraChars)
+url.encode = function(str, extraChars)
    str ?? return
 
    chars_to_encode = RESERVED_CHARS.general .. RESERVED_CHARS.query
@@ -57,7 +70,7 @@ end
 
 -- Percent-encode with spaces as plus signs (for form data)
 
-function url.encodePlus(str, extraChars)
+url.encodePlus = function(str, extraChars)
    str ?? return
 
    encoded = url.encode(str, extraChars)
@@ -70,27 +83,33 @@ end
 
 -- Decode percent-encoded string
 
-function url.decode(str)
+url.decode = function(str)
    if not str then return nil end
 
-   decoded = str:gsub('%%([0-9A-Fa-f][0-9A-Fa-f])', function(hex)
-      return string.char(tonumber(hex, 16))
-   end)
+   local result = ''
+   local last_stop = 0
+   for start, stop, cap in rxPercentEncoded.findAll(str) do
+      if start > last_stop then result ..= str:sub(last_stop, start) end
+      local hex = cap[0]
+      result ..= string.char(tonumber(hex, 16))
+      last_stop = stop
+   end
+   result ..= str:sub(last_stop)
 
-   return decoded
+   return result
 end
 
 -- Decode percent-encoded string with plus signs as spaces
 
-function url.decodePlus(str)
-   if not str then return nil end
-   decoded = str:gsub('%+', ' ')
+url.decodePlus = function(String:str)
+   String ?? return nil
+   decoded = String:replace('+', ' ')
    return url.decode(decoded)
 end
 
 -- Encode string for use in path components
 
-function url.encodeComponent(str)
+url.encodeComponent = function(str)
    if not str then return nil end
    return url.encode(str, RESERVED_CHARS.path)
 end
@@ -100,7 +119,7 @@ end
 
 -- Parse query string into table of key-value pairs
 
-function url.parseQuery(queryString)
+url.parseQuery = function(queryString)
    if not queryString or queryString is '' then return {} end
 
    params = {}
@@ -130,7 +149,7 @@ end
 
 -- Parse query string into list of key-value pairs (preserves order and duplicates)
 
-function url.parseQueryList(queryString)
+url.parseQueryList = function(queryString)
    params = array<table>
    queryString ?? return params
 
@@ -152,7 +171,7 @@ end
 
 -- Build query string from table or array of parameters
 
-function url.buildQuery(params)
+url.buildQuery = function(params)
    params ?? return ''
 
    parts = array<string>
@@ -183,7 +202,7 @@ end
 
 -- Encode parameters into query string format
 
-function url.encodeParams(params)
+url.encodeParams = function(params)
    return url.buildQuery(params)
 end
 
@@ -192,7 +211,7 @@ end
 
 -- Parse a URL into its components
 
-function url.parse(urlString)
+url.parse = function(urlString)
    urlString ?? return nil, 'Empty URL string'
 
    components = {
@@ -220,10 +239,10 @@ function url.parse(urlString)
       remaining = remaining:sub(0, queryPos)
    end
 
-   schemeMatch = remaining:match('^([%w+.-]+):(.*)')
+   schemeMatch = rxScheme.extract(remaining)
    if schemeMatch then
       components.scheme = schemeMatch:lower()
-      remaining = remaining:match('^[%w+.-]+:(.*)')
+      remaining = rxSchemeOnly.extract(remaining)
    end
 
    -- Handle authority (//host:port or //user:pass@host:port)
@@ -243,10 +262,10 @@ function url.parse(urlString)
       end
 
       -- Handle IPv6 addresses [host]:port
-      ipv6Match = authority:match('^%[([^%]]+)%]:?(%d*)$')
+      ipv6Match = rxIPv6Port.extract(authority)
       if ipv6Match then
          components.host = ipv6Match
-         portStr = authority:match('^%[[^%]]+%]:(%d+)$')
+         portStr = rxIPv6PortOnly.extract(authority)
          if portStr and portStr != '' then
             components.port = tonumber(portStr)
          end
@@ -284,7 +303,7 @@ end
 
 -- Reconstruct URL from components
 
-function url.unparse(components)
+url.unparse = function(components)
    components ?? return ''
 
    parts = array<string>
@@ -315,7 +334,7 @@ end
 
 -- Split URL into 5 components (no params)
 
-function url.split(urlString)
+url.split = function(urlString)
    components = url.parse(urlString)
    components ?? return
 
@@ -330,7 +349,7 @@ end
 
 -- Reconstruct URL from split components
 
-function url.unsplit(components)
+url.unsplit = function(components)
    components ?? return ''
    parts = array<string>
    if components.scheme then parts:push(components.scheme .. ':') end
@@ -343,7 +362,7 @@ end
 
 -- Helper to build netloc from components
 
-function url._buildNetloc(components)
+url._buildNetloc = function(components)
    components.host ?? return nil
    netloc = {}
    if components.auth then table.insert(netloc, components.auth .. '@') end
@@ -358,7 +377,7 @@ end
 
 -- Remove fragment from URL
 
-function url.defrag(urlString)
+url.defrag = function(urlString)
    urlString ?? return nil, nil
 
    fragPos = urlString:find('#')
@@ -375,7 +394,7 @@ end
 -- URL Manipulation Functions
 
 -- Join base URL with relative URL
-function url.join(baseUrl, relativeUrl)
+url.join = function(baseUrl, relativeUrl)
    if not baseUrl then return relativeUrl end
    if not relativeUrl then return baseUrl end
    if url.isAbsolute(relativeUrl) then return relativeUrl end
@@ -430,7 +449,7 @@ end
 
 -- Normalize URL path (resolve . and .. components)
 
-function url.normalize(path)
+url.normalize = function(path)
    if not path then return '' end
 
    segments = {}
@@ -464,34 +483,34 @@ end
 
 -- Check if URL is absolute
 
-function url.isAbsolute(urlString)
+url.isAbsolute = function(urlString)
    urlString ?? return false
-   return urlString:match('^[%w+.-]+:') != nil
+   return rxAbsoluteUrl.test(urlString)
 end
 
 -- Check if URL is relative
 
-function url.isRelative(urlString)
+url.isRelative = function(urlString)
    return not url.isAbsolute(urlString)
 end
 
 -- Extract scheme from URL
 
-function url.getScheme(urlString)
+url.getScheme = function(urlString)
    urlString ?? return nil
-   return urlString:match('^([%w+.-]+):')
+   return rxSchemeExtract.extract(urlString)
 end
 
 -- Extract host from URL
 
-function url.getHost(urlString)
+url.getHost = function(urlString)
    components = url.parse(urlString)
    return components and components.host
 end
 
 -- Extract port from URL with optional default
 
-function url.getPort(urlString, defaultPort)
+url.getPort = function(urlString, defaultPort)
    components = url.parse(urlString)
    if components then
       if components.port then
@@ -502,7 +521,3 @@ function url.getPort(urlString, defaultPort)
    end
    return nil
 end
-
-----------------------------------------------------------------------------------------------------------------------
-
-   return url

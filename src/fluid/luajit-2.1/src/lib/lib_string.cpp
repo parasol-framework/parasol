@@ -1147,8 +1147,34 @@ static int str_find_aux(lua_State *L, int Find)
 
 LJLIB_CF(string_find)      LJLIB_REC(.)
 {
-   pf::Log("string.find()").warning("PATTERN MATCHING DEPRECATED");
-   return str_find_aux(L, 1);
+   GCstr *s = lj_lib_checkstr(L, 1);
+   GCstr *p = lj_lib_checkstr(L, 2);
+   int32_t start = lj_lib_optint(L, 3, 0);  // 0-based: default start at 0
+
+   if (start < 0) start += (int32_t)s->len;  // 0-based: -1 → len-1
+
+   if (start < 0) start = 0;
+
+   auto st = (MSize)start;
+   if (st > s->len) {
+      setnilV(L->top - 1);
+      return 1;
+   }
+
+   bool plain = (L->base + 3 < L->top) and tvistruecond(L->base + 3);
+
+   if (!plain and lj_str_haspattern(p)) {
+      pf::Log("string.find()").warning("PATTERN MATCHING DEPRECATED: %s", strdata(p));
+   }
+
+   if (CSTRING q = lj_str_find(strdata(s) + st, strdata(p), s->len - st, p->len)) {
+      setintV(L->top - 2, (int32_t)(q - strdata(s)));  // 0-based start
+      setintV(L->top - 1, (int32_t)(q - strdata(s)) + (int32_t)p->len - 1);  // 0-based end (inclusive)
+      return 2;
+   }
+
+   setnilV(L->top - 1);  // Not found.
+   return 1;
 }
 
 //********************************************************************************************************************
