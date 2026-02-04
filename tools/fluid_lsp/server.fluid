@@ -56,6 +56,8 @@ IDE Integration:
 
    import './lsp_lib'
 
+   local rx_sdk_path = <{ regex.new([[(.+)CMakeLists\.txt]]) }>
+
 ----------------------------------------------------------------------------------------------------------------------
 -- Resolve the location of the Parasol SDK and create an 'sdk:' volume.
 
@@ -78,7 +80,7 @@ function resolveSDKPath(Path)
    end
 
    if err is ERR_Okay then
-      sdk_path = sdk_path:match('(.+)CMakeLists%.txt')
+      sdk_path = rx_sdk_path.extract(sdk_path)
    else
       msg = ''
       for path in values(search_list) do

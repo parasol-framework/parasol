@@ -1493,7 +1493,7 @@ function serverIncoming(self, ClientSocket)
          if contentType:find('application/json') then
             logMessage(self, 'Parsing JSON encoded data')
             state.request.parsedBody = parseJsonBody(state.request.body)
-         elseif contentType:find('application/x%-www%-form%-urlencoded') then
+         elseif contentType:find('application/x-www-form-urlencoded') then
             logMessage(self, 'Parsing URL-encoded form data')
             state.request.parsedBody = parseFormBody(state.request.body)
          else

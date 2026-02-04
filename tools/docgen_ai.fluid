@@ -8,6 +8,8 @@
 
    import 'io/filesearch'
 
+   local rx_sdk_path = <{ regex.new([[(.+)\.git]]) }>
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Resolve the location of the Parasol SDK and create an 'sdk:' volume.
 
@@ -30,7 +32,7 @@ function resolveSDKPath(Path)
    end
 
    if (err is ERR_Okay) then
-      sdk_path = sdk_path:match('(.+)%.git')
+      sdk_path = rx_sdk_path.extract(sdk_path)
    else
       local msg = ''
       for _, path in ipairs(search_list) do
@@ -67,8 +69,7 @@ end
    print('Processing modules...')
 
    file.search(xml_folder .. 'modules/', {
-      nameFilter = '^.+%.xml$',
-      nameWild   = true,
+      nameFilter = regex.new([[^.+\.xml$]]),
       maxDepth   = 0,
       ignoreFeedback = function(Path, FileName, File)
          print('Ignoring ' .. Path .. FileName)
@@ -85,7 +86,7 @@ end
 
          local parameters = '-o ' .. res_output .. ' ' .. resolved_xsl .. ' ' .. res_src_path
          msg('xsltproc ' .. parameters)
-         local task = obj.new('task', { src = 'xsltproc', args  = parameters, flags = 'WAIT', timeout = 10 })
+         local task = obj.new('task', { src = 'xsltproc', args  = parameters, flags = TSF_WAIT, timeout = 10 })
 
          if task.acActivate() != ERR_Okay then
             print('Failed to run xsltproc for ' .. FileName)
@@ -98,21 +99,20 @@ end
    print('Processing classes...')
 
    file.search(xml_folder .. 'modules/classes/', {
-      nameFilter = '^.*%.xml$',
-      nameWild   = true,
+      nameFilter = regex.new([[^.*\.xml$]]),
       matchFeedback = function(Path, FileName, File)
          local src_path = Path .. FileName
          local output_file = output_folder .. 'classes/' .. FileName
 
          local err, res_src_path = mSys.ResolvePath(src_path)
-         assert(err is ERR_Okay, 'Failed to resolve: ' .. src_path)
+         assert(err is ERR_Okay, f'Failed to resolve: {src_path}')
 
          local err, res_output = mSys.ResolvePath(output_file, RSF_NO_FILE_CHECK)
-         assert(err is ERR_Okay, 'Failed to resolve output: ' .. output_file)
+         assert(err is ERR_Okay, f'Failed to resolve output: {output_file}')
 
-         local parameters = '-o ' .. res_output .. ' ' .. resolved_xsl .. ' ' .. res_src_path
+         local parameters = f'-o {res_output} {resolved_xsl} {res_src_path}'
          msg('xsltproc ' .. parameters)
-         local task = obj.new('task', { src = 'xsltproc', args  = parameters, flags = 'WAIT', timeout = 10 })
+         local task = obj.new('task', { src = 'xsltproc', args  = parameters, flags = TSF_WAIT, timeout = 10 })
 
          if task.acActivate() != ERR_Okay then
             print('Failed to run xsltproc for ' .. FileName)

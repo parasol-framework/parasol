@@ -12,7 +12,7 @@ FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.icon)
 MARGIN = math.floor(FONT_HEIGHT * 0.5) + 1
 
 rx_whitespace = <{ regex.new([[\s+]]) }>
-rx_volume_prefix = <{ regex.new([[^\w+:]]) }>
+rx_volume_prefix = <{ regex.new([[^[^:\/\\]+:]]) }>
 
 -- NB: If a custom SVG file is desired then the client must specify a volume in the path.
 
@@ -128,7 +128,7 @@ gui.icon = function(Options)
       -- Create a dark rounded box in the background of the text, this will make it easier to distinguish the text
       -- against a busy background or one of a similar colour.
 
-      if #lLines is 0 then return end
+      lLines ?? return
 
       box_height = self.viewport.height - (lIconSize + MARGIN)
       y = lIconSize + MARGIN

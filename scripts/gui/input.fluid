@@ -197,9 +197,9 @@ gui.input = function(Options)
       self.inputViewport.mtSubscribeInput(JTYPE_CROSSING, function(Viewport, Msg)
          repeat
             if Msg.type is JET_CROSSED_IN then
-               if self.events.cursorEntry then self.events.cursorEntry(self) end
+               self.events?.cursorEntry(self)
             elseif Msg.type is JET_CROSSED_OUT then
-               if self.events.cursorExit then self.events.cursorExit(self) end
+               self.events?.cursorExit(self)
             end
             Msg = Msg.next
          until not Msg

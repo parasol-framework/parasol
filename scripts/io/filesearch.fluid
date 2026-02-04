@@ -5,17 +5,17 @@ Refer to the Fluid I/O Wiki page for documentation.
 
    import 'common'
 
-file.search = function(Path, Options)
+file.search = function(Path:str, Options:table)
    lOptions      = Options
    ADJUST_LOG    = 0
    lStop         = false
    isRegexFilter = false
 
-   function contentMatch(Path)
+   function contentMatch(Path:str):bool
       lOptions.contentFilter ?? return true
 
       try
-         fl = obj.new('file', { path=Path, flags='READ' } )
+         fl = obj.new('file', { path=Path, flags=FL_READ } )
 
          -- By default, symbolic links are not scanned for content unless the scanLinks option is set.
 
@@ -40,7 +40,7 @@ file.search = function(Path, Options)
       return false
    end
 
-   function fileMatched(Path, FileName, File)
+   function fileMatched(Path:str, FileName:str, File:obj)
       if lOptions.matchFeedback then
          result = lOptions.matchFeedback(Path, FileName, File)
          if result is ERR_Terminate then lStop = true end
@@ -71,8 +71,8 @@ file.search = function(Path, Options)
    end
 
    function scanPath(Path:str, currentDepth:num)
-      if not currentDepth then currentDepth = 0 end
-      msg('scanPath() ' .. (Path ?? ':') .. ' (depth: ' .. currentDepth .. ')')
+      currentDepth ?= 0
+      msg(f'scanPath() {Path ?? ':'} (depth: {currentDepth})')
 
       if lStop then return end
 
@@ -95,26 +95,22 @@ file.search = function(Path, Options)
          count++
          processing.sleep(0)
 
-         fileFolder, fileName = file.splitPath(fl.path)
+         fileFolder, file_name = file.splitPath(fl.path)
 
          -- Ensure that the filename matches our filter
 
          match = true
          if lOptions.nameFilter then
-            cmpName = fileName
+            cmp_name = file_name
             if not lOptions.caseSensitive then
-               cmpName = cmpName:lower()
+               cmp_name = cmp_name:lower()
             end
 
             if isRegexFilter then
-               if not lOptions.nameFilter.test(cmpName) then
+               if not lOptions.nameFilter.test(cmp_name) then
                   match = false
                end
-            elseif lOptions.namePattern or lOptions.nameWild then -- nameWild is obsolete
-               if string.find(cmpName, lOptions.nameFilter) is nil then
-                  match = false
-               end
-            elseif cmpName != lOptions.nameFilter then -- Exact string match
+            elseif cmp_name != lOptions.nameFilter then -- Exact string match
                match = false
             end
          end
@@ -124,7 +120,7 @@ file.search = function(Path, Options)
          if lOptions.minDateSet and dateLessThan(fl.modified, lOptions.minDate) then match = false end
          if lOptions.maxDateSet and dateLessThan(lOptions.maxDate, fl.modified) then match = false end
 
-         if match and bit.band(fl.flags, FL_FILE) != 0 then
+         if match and (fl.flags & FL_FILE) != 0 then
             match = contentMatch(fl.path)
          end
 
@@ -134,13 +130,13 @@ file.search = function(Path, Options)
             if lOptions.matchFeedback then
                mSys.AdjustLogLevel(-ADJUST_LOG) -- Temporarily revert debug log so that child behaviour can be analysed
 
-                  result = lOptions.matchFeedback(Path, fileName, fl)
+                  result = lOptions.matchFeedback(Path, file_name, fl)
                   if result is ERR_Terminate then lStop = true end
 
                mSys.AdjustLogLevel(ADJUST_LOG) -- Raise log level again
             end
          elseif lOptions.ignoreFeedback then
-            result = lOptions.ignoreFeedback(Path, fileName, fl)
+            result = lOptions.ignoreFeedback(Path, file_name, fl)
             if result is ERR_Terminate then lStop = true end
          end
 
@@ -153,7 +149,7 @@ file.search = function(Path, Options)
 
       if not lOptions.maxDepth or currentDepth < lOptions.maxDepth then
          try
-            folder = obj.new('file', { src=Path, flags='!ExcludeFiles|Folder' } )
+            folder = obj.new('file', { src=Path, flags=FL_EXCLUDE_FILES | FL_FOLDER } )
 
             err, fl = folder.mtNext()
             while (err is ERR_Okay) and (not lStop) do
@@ -184,28 +180,26 @@ file.search = function(Path, Options)
       else
          -- Single file analysis
 
-         path, fileName = file.splitPath(Path)
-         nameMatches = true
+         path, file_name = file.splitPath(Path)
+         name_matches = true
 
          if Options.nameFilter then
-            cmpName = fileName
+            cmp_name = file_name
             if not lOptions.caseSensitive then
-               cmpName = cmpName:lower()
+               cmp_name = cmp_name:lower()
             end
 
             if isRegexFilter then
-               nameMatches = lOptions.nameFilter.test(cmpName)
-            elseif lOptions.namePattern or lOptions.nameWild then -- nameWild is obsolete
-               nameMatches = string.find(cmpName, lOptions.nameFilter) != nil
+               name_matches = lOptions.nameFilter.test(cmp_name)
             else
-               nameMatches = cmpName is lOptions.nameFilter
+               name_matches = cmp_name is lOptions.nameFilter
             end
          end
 
-         if nameMatches then
+         if name_matches then
             if contentMatch(Path) then
                if lOptions.matchFeedback then
-                  lOptions.matchFeedback(path, fileName, obj.new('file', { path=Path }))
+                  lOptions.matchFeedback(path, file_name, obj.new('file', { path=Path }))
                end
             end
          end
@@ -222,15 +216,15 @@ file.search = function(Path, Options)
    end
 
    if lOptions.maxDate then
-      err, maxDate = mSys.StrReadDate(lOptions.maxDate)
+      err, max_date = mSys.StrReadDate(lOptions.maxDate)
       assert(err is ERR_Okay, 'Invalid maxDate value.')
-      lOptions.maxDate = maxDate
+      lOptions.maxDate = max_date
    end
 
    if lOptions.minDate then
-      err, minDate = mSys.StrReadDate(lOptions.minDate)
+      err, min_date = mSys.StrReadDate(lOptions.minDate)
       assert(err is ERR_Okay, 'Invalid minDate value.')
-      lOptions.minDate = minDate
+      lOptions.minDate = min_date
    end
 
    if type(Path) is 'table' or type(Path) is 'array' then

@@ -1,4 +1,9 @@
 
+rx_obj_new = <{ regex.new("([\\w]+)\\s*=\\s*obj\\.new\\s*\\(\\s*['\"]([\\w]+)['\"]", regex.DOT_ALL) }>
+rx_starts_capital = <{ regex.new("^[A-Z]") }>
+rx_action_prefix = <{ regex.new("^ac[A-Z]") }>
+rx_method_prefix = <{ regex.new("^mt[A-Z]") }>
+
 ----------------------------------------------------------------------------------------------------------------------
 -- Hover Support - Token Extraction
 
@@ -76,11 +81,11 @@ global function getTokenAtPosition(Doc:table, Line:num, Character:num):table
    end
 
    return {
-      text = token,
-      object = precedingIdent,
+      text     = token,
+      object   = precedingIdent,
       startCol = startCol,
-      endCol = endCol,
-      context = context
+      endCol   = endCol,
+      context  = context
    }
 end
 
@@ -92,7 +97,8 @@ function buildTypeMap(Doc)
    typeMap = {}
 
    -- Match patterns like: varname = obj.new('classname' or varname = obj.new("classname"
-   for varname, classname in Doc.content:gmatch("([%w_]+)%s*=%s*obj%.new%s*%(%s*['\"]([%w_]+)['\"]") do
+   for start, stop, cap in rx_obj_new.findAll(Doc.content) do
+      local varname, classname = cap[0], cap[1]
       -- Capitalize first letter for class name lookup (e.g., 'netsocket' -> 'NetSocket')
       -- Most class names in the XML are in TitleCase
       normalizedClass = classname:sub(1,1):upper() .. classname:sub(2)
@@ -116,7 +122,7 @@ end
 
 function formatMethodHover(ClassName, MethodName, MethodDoc)
    doc = decodeMethod(MethodDoc)  -- Decode compact string if needed
-   md = '**' .. ClassName .. '.' .. MethodName .. '**\n\n'
+   md = f'**{ClassName}.{MethodName}**\n\n'
    if doc.prototype?? then
       md ..= '```c\n' .. doc.prototype .. '\n```\n\n'
    end
@@ -126,7 +132,7 @@ end
 
 function formatActionHover(ClassName, ActionName, ActionDoc)
    doc = decodeMethod(ActionDoc)  -- Decode compact string if needed
-   md = '**' .. ClassName .. '.ac' .. ActionName .. '** _(Action)_\n\n'
+   md = f'**{ClassName}.ac{ActionName}** _(Action)_\n\n'
    if doc.prototype?? then
       md ..= '```c\n' .. doc.prototype .. '\n```\n\n'
    end
@@ -136,10 +142,10 @@ end
 
 function formatFieldHover(ClassName, FieldName, FieldDoc)
    doc = decodeField(FieldDoc)  -- Decode compact string if needed
-   md = '**' .. ClassName .. '.' .. FieldName .. '**\n\n'
-   md ..= 'Type: `' .. (doc.type or 'unknown') .. '`'
+   md = f'**{ClassName}.{FieldName}**\n\n'
+   md ..= f"Type: `{doc.type or 'unknown'}`"
    if doc.access then
-      md ..= ' | Access: ' .. doc.access
+      md ..= f" | Access: {doc.access}"
    end
    md ..= '\n\n' .. (doc.comment or '')
    return md
@@ -147,17 +153,17 @@ end
 
 function formatModuleFunctionHover(ModuleName, FuncName, FuncDoc)
    doc = decodeMethod(FuncDoc)  -- Decode compact string if needed
-   md = '**' .. ModuleName .. '.' .. FuncName .. '**\n\n'
+   md = f'**{ModuleName}.{FuncName}**\n\n'
    if doc.prototype?? then
       md ..= '```c\n' .. doc.prototype .. '\n```\n\n'
    end
    md ..= doc.comment or ''
-   md ..= '\n\n[Documentation](' .. HTML_URI .. ModuleName:lower() .. '.html?page=' .. FuncName .. ')'
+   md ..= f'\n\n[Documentation]({HTML_URI}{ModuleName:lower()}.html?page={FuncName})'
    return md
 end
 
 function formatBuiltinHover(FuncName, BuiltinDoc)
-   md = '**' .. FuncName .. '** _(Built-in)_\n\n'
+   md = f'**{FuncName}** _(Built-in)_\n\n'
    if BuiltinDoc.prototype?? then
       md ..= '```lua\n' .. BuiltinDoc.prototype .. '\n```\n\n'
    end
@@ -166,7 +172,7 @@ function formatBuiltinHover(FuncName, BuiltinDoc)
 end
 
 function formatKeywordHover(Keyword, KeywordDoc)
-   md = '**' .. Keyword .. '** _(Keyword)_\n\n' .. KeywordDoc.comment
+   md = f'**{Keyword}** _(Keyword)_\n\n' .. KeywordDoc.comment
    return md
 end
 
@@ -197,7 +203,7 @@ global function resolveHoverContent(TokenInfo, Doc)
    end
 
    -- Check for class names (standalone identifier starting with capital)
-   if context is 'identifier' and token:match('^[A-Z]') then
+   if context is 'identifier' and rx_starts_capital.test(token) then
       if glDocCache and glDocCache.classes and glDocCache.classes[token] then
          return formatClassHover(token, glDocCache.classes[token])
       end
@@ -212,7 +218,7 @@ global function resolveHoverContent(TokenInfo, Doc)
       className = typeMap[objName]
 
       -- Also try the object name directly as a class (for cases like NetSocket.Connect)
-      if not className and objName:match('^[A-Z]') then
+      if not className and rx_starts_capital.test(objName) then
          className = objName
       end
 
@@ -221,7 +227,7 @@ global function resolveHoverContent(TokenInfo, Doc)
          if classDoc then
             if context is 'method_call' then
                -- Check for action pattern (acXxx)
-               if token:match('^ac[A-Z]') then
+               if rx_action_prefix.test(token) then
                   actionName = token:sub(3)
                   if classDoc.actions and classDoc.actions[actionName] then
                      return formatActionHover(className, actionName, classDoc.actions[actionName])
@@ -229,7 +235,7 @@ global function resolveHoverContent(TokenInfo, Doc)
                end
 
                -- Check for method pattern (mtXxx)
-               if token:match('^mt[A-Z]') then
+               if rx_method_prefix.test(token) then
                   methodName = token:sub(3)
                   if classDoc.methods and classDoc.methods[methodName] then
                      return formatMethodHover(className, methodName, classDoc.methods[methodName])

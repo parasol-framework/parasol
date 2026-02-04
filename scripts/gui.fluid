@@ -2,19 +2,22 @@
 
    namespace 'gui'
 
-   global mVec ?= mod.load('vector') -- Configure mVec as a global convenience.  For fast access, clients assign to lVec
-   lVec = mVec
+global mVec ?= mod.load('vector') -- Configure mVec as a global convenience.  For fast access, clients assign to lVec
+lVec = mVec
 
-   _LIB[_NS] = {
-     theme = 'light',
-     dpi = 160,
-     _counter = 0,
-     configureScene = function(Window, Scene)
-        -- A custom configure function can be defined that adds definitions to the window scene, e.g. images and patterns for fills.
-     end
-   }
+_LIB[_NS] = {
+   theme = 'light',
+   dpi = 160,
+   _counter = 0,
+   configureScene = function(Window, Scene)
+      -- A custom configure function can be defined that adds definitions to the window scene, e.g. images and patterns for fills.
+   end
+}
 
-   gui = _LIB[_NS]
+gui = _LIB[_NS]
+   
+rxPixel    = <{ regex.new([[^(\d+)([a-zA-Z]*)$]]) }>
+rxFontSize = <{ regex.new([[^(-?\d+)%$]]) }>
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -34,7 +37,7 @@ end
 
 gui.pixel = function(val:str):num
    val ?? return 0
-   num, alpha = val:match('^(%d+)(%a-)$')
+   num, alpha = rxPixel.extract(val)
    num = tonumber(num)
    assert(num, 'Invalid graphics unit \'' .. val .. '\'')
    return choose alpha from
@@ -502,8 +505,8 @@ end
 
    for k,v in pairs(gui.fonts) do
       if gui.fonts[k].size then
-         if string.match(gui.fonts[k].size, '^%-?%d+%%$') then
-            pct = tonumber(string.match(gui.fonts[k].size, '^(%-?%d+)%%$'))
+         if rxFontSize.test(gui.fonts[k].size) then
+            pct = tonumber(rxFontSize.extract(gui.fonts[k].size))
             gui.fonts[k].size = math.floor(gui.interface.fontSize * (pct / 100))
          end
       end

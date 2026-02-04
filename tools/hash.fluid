@@ -2,6 +2,8 @@
 
    import "common"
 
+   local rx_non_ws = <{ regex.new([[(\S+)]]) }>
+
    srcPath    = arg("input")
    outputPath = arg("output")
    pattern    = arg("pattern")
@@ -42,7 +44,7 @@
          if hash_name:len() < 1 then break end
       end
 
-      hash_name = [__*]hash_name:find("([^%s]+)")
+      hash_name = rx_non_ws.extract(hash_name)
 
       if hash_name?? then
          hash = string.format("%.8x", hash_name:hash())
