@@ -23,13 +23,14 @@ glState = mSys.GetSystemState()
 glCopyList = [[
    import 'gui/file'
    source_size = arg('source:size')
+   glList = array<string>
    if source_size?? then
-      glList = { }
+      source_size = tonumber(source_size)
       for i=0, source_size-1 do
-         table.insert(glList, arg('source(' .. i .. ')'))
+         glList:push(arg('source(' .. i .. ')'))
       end
    else
-      glList = { arg('source') }
+      glList:push(arg('source')
    end
    if arg('move') then Move = true end
    file.ui.copy(glList, arg('dest'), { move=Move })
@@ -110,7 +111,7 @@ function getFileIcon(Path:str):str
    try
       icon = obj.new('file', { path=Path }).icon
       if icon is 'icons:filetypes/empty' then
-         ext = rxExtractIcon.extract(Path)
+         _, ext = rxExtractIcon.extract(Path)
          icon = extToIcon(ext)
       elseif not icon then
          icon = 'folders/folder'

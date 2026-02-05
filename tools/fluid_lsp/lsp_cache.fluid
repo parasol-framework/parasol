@@ -75,9 +75,9 @@ end
 function parseAccessString(ReadAttr:str, WriteAttr:str):str
    -- Convert access attributes to simplified form: R, W, R/W, R/I, R/S, etc.
    r = ReadAttr and (ReadAttr is 'R' or ReadAttr is 'G') and 'R' or nil
-   w = noFiles
+   w = nil
    if WriteAttr is 'W' or WriteAttr is 'S' or WriteAttr is 'I' then
-      w = W
+      w = WriteAttr
    end
 
    if r and w then return r .. '/' .. w

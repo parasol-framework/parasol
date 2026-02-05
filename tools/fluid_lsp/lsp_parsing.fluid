@@ -1,23 +1,23 @@
 
 -- Deferred regex patterns for folding range detection
-local rx_quote_char  = <{ regex.new([["']]) }>
-local rx_trim_start  = <{ regex.new([[^\s*(.*)]], regex.DOT_ALL) }>
-local rx_func_sig    = <{ regex.new("\\bfunction\\s+[\\w]") }>
-local rx_func_paren  = <{ regex.new([[\bfunction\s*\(]]) }>
-local rx_kw_if       = <{ regex.new([[\bif\b]]) }>
-local rx_kw_then     = <{ regex.new([[\bthen\b]]) }>
-local rx_kw_for      = <{ regex.new([[\bfor\b]]) }>
-local rx_kw_do       = <{ regex.new([[\bdo\b]]) }>
-local rx_kw_while    = <{ regex.new([[\bwhile\b]]) }>
-local rx_kw_repeat   = <{ regex.new([[\brepeat\b]]) }>
-local rx_kw_defer    = <{ regex.new([[\bdefer\b]]) }>
-local rx_kw_end      = <{ regex.new([[\bend\b]]) }>
-local rx_kw_until    = <{ regex.new([[\buntil\b]]) }>
+rx_quote_char  = <{ regex.new([["']]) }>
+rx_trim_start  = <{ regex.new([[^\s*(.*)]], regex.DOT_ALL) }>
+rx_func_sig    = <{ regex.new("\\bfunction\\s+[\\w]") }>
+rx_func_paren  = <{ regex.new([[\bfunction\s*\(]]) }>
+rx_kw_if       = <{ regex.new([[\bif\b]]) }>
+rx_kw_then     = <{ regex.new([[\bthen\b]]) }>
+rx_kw_for      = <{ regex.new([[\bfor\b]]) }>
+rx_kw_do       = <{ regex.new([[\bdo\b]]) }>
+rx_kw_while    = <{ regex.new([[\bwhile\b]]) }>
+rx_kw_repeat   = <{ regex.new([[\brepeat\b]]) }>
+rx_kw_defer    = <{ regex.new([[\bdefer\b]]) }>
+rx_kw_end      = <{ regex.new([[\bend\b]]) }>
+rx_kw_until    = <{ regex.new([[\buntil\b]]) }>
 
 -- Deferred regex patterns for token parsing
-local rx_global_var   = <{ regex.new("^gl[A-Z]") }>
-local rx_starts_upper = <{ regex.new("^[A-Z]") }>
-local rx_all_upper    = <{ regex.new([[^[A-Z_]+$]]) }>
+rx_global_var   = <{ regex.new("^gl[A-Z]") }>
+rx_starts_upper = <{ regex.new("^[A-Z]") }>
+rx_all_upper    = <{ regex.new([[^[A-Z_]+$]]) }>
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Semantic Token Encoder
@@ -235,9 +235,7 @@ global function tokenizeFluid(Source:str):array
             end
          end
          addToken(line, num_start, col - num_start, 5, 0)  -- number
-
-      -- Identifiers and keywords
-      elseif isIdentStart(c) then
+      elseif isIdentStart(c) then -- Identifiers and keywords
          ident_start = col
          while pos < len and isIdentChar(Source:sub(pos, pos + 1)) do
             pos++
@@ -277,9 +275,7 @@ global function tokenizeFluid(Source:str):array
             col = save_col
             line = save_line
          end
-
-      -- Symbolic operators (multi-character first, then single-character)
-      elseif c is '?' then
+      elseif c is '?' then -- Symbolic operators (multi-character first, then single-character)
          op_start = col
          if pos + 2 < len and Source:sub(pos + 1, pos + 3) is '?=' then
             -- ??= if-empty assignment
@@ -312,7 +308,6 @@ global function tokenizeFluid(Source:str):array
             pos++
             col++
          end
-
       elseif c is '|' then
          op_start = col
          if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '>' then
@@ -326,7 +321,6 @@ global function tokenizeFluid(Source:str):array
             pos++
             col++
          end
-
       elseif c is '=' then
          op_start = col
          if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '>' then
@@ -339,7 +333,6 @@ global function tokenizeFluid(Source:str):array
             pos++
             col++
          end
-
       elseif c is ':' then
          op_start = col
          if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '>' then
@@ -352,7 +345,6 @@ global function tokenizeFluid(Source:str):array
             pos++
             col++
          end
-
       elseif c is '.' then
          op_start = col
          if pos + 2 < len and Source:sub(pos + 1, pos + 3) is '.=' then
@@ -375,7 +367,6 @@ global function tokenizeFluid(Source:str):array
             pos++
             col++
          end
-
       elseif c is '+' then
          op_start = col
          if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '+' then
@@ -394,7 +385,6 @@ global function tokenizeFluid(Source:str):array
             pos++
             col++
          end
-
       elseif c is '-' then
          op_start = col
          if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '=' then
@@ -408,7 +398,6 @@ global function tokenizeFluid(Source:str):array
             pos++
             col++
          end
-
       elseif c is '*' then
          op_start = col
          if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '=' then
@@ -422,7 +411,6 @@ global function tokenizeFluid(Source:str):array
             pos++
             col++
          end
-
       elseif c is '/' then
          op_start = col
          if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '=' then
@@ -436,7 +424,6 @@ global function tokenizeFluid(Source:str):array
             pos++
             col++
          end
-
       elseif c is '%' then
          op_start = col
          if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '=' then
@@ -450,7 +437,6 @@ global function tokenizeFluid(Source:str):array
             pos++
             col++
          end
-
       elseif c is '<' then
          op_start = col
          if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '<' then
@@ -469,7 +455,6 @@ global function tokenizeFluid(Source:str):array
             pos++
             col++
          end
-
       elseif c is '>' then
          op_start = col
          if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '>' then
@@ -488,7 +473,6 @@ global function tokenizeFluid(Source:str):array
             pos++
             col++
          end
-
       elseif c is '!' then
          op_start = col
          if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '=' then
@@ -496,38 +480,27 @@ global function tokenizeFluid(Source:str):array
             addToken(line, op_start, 2, 1, 0)
             pos += 2
             col += 2
-         else
-            -- ! (used in flags like '!READ')
+         else -- ! (used in flags like '!READ')
             pos++
             col++
          end
-
-      elseif c is '&' then
-         -- & bitwise AND
+      elseif c is '&' then -- & bitwise AND
          addToken(line, col, 1, 1, 0)
          pos++
          col++
-
-      elseif c is '~' then
-         -- ~ bitwise NOT
+      elseif c is '~' then -- ~ bitwise NOT
          addToken(line, col, 1, 1, 0)
          pos++
          col++
-
-      elseif c is '^' then
-         -- ^ exponentiation
+      elseif c is '^' then -- ^ exponentiation
          addToken(line, col, 1, 1, 0)
          pos++
          col++
-
-      elseif c is '#' then
-         -- # length operator
+      elseif c is '#' then -- # length operator
          addToken(line, col, 1, 1, 0)
          pos++
          col++
-
-      else
-         -- Skip other characters (punctuation, brackets, etc.)
+      else -- Skip other characters (punctuation, brackets, etc.)
          pos++
          col++
       end
@@ -570,7 +543,7 @@ global function extractFoldingRanges(Doc:table):array
       block_comment_pos = line_text:find('--[[')
       if block_comment_pos then
          -- Check it's not inside a string (simplified check)
-         before = line_text:sub(0, block_comment_start_pos)
+         before = line_text:sub(0, block_comment_pos)
          if not rx_quote_char.test(before) then
             in_block_comment = true
             block_comment_start = line_num
