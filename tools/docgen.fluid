@@ -9,6 +9,8 @@
 
    import 'io/filesearch'
 
+   local rx_sdk_path = <{ regex.new([[(.+)CMakeLists\.txt]]) }>
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Resolve the location of the Parasol SDK and create an 'sdk:' volume.
 
@@ -31,7 +33,7 @@ function resolveSDKPath(Path:str)
    end
 
    if err is ERR_Okay then
-      sdk_path = sdk_path:match('(.+)CMakeLists%.txt')
+      sdk_path = rx_sdk_path.extract(sdk_path)
    else
       msg = ''
       for path in values(search_list) do
@@ -54,9 +56,8 @@ end
    cmdlist = ''
 
    file.search('sdk:docs/xml/modules/', {
-      nameFilter = '^.*%.xml$',
-      nameWild   = true,
-      matchFeedback = function(Path, FileName, File)
+      nameFilter = regex.new([[^.*\.xml$]]),
+      matchFeedback = function(Path:str, FileName:str, File)
          src_path = Path .. FileName
          output_path = src_path:replace('/xml/', '/html/')
          output_path = output_path:replace('.xml', '.html')
@@ -92,7 +93,7 @@ end
       cmdlist = '#!/bin/bash\n' .. cmdlist
    end
 
-   fl = obj.new('file', { src=output_path, flags='NEW|WRITE', permissions='READ|WRITE|EXEC' })
+   fl = obj.new('file', { src=output_path, flags=FL_NEW|FL_WRITE, permissions=PERMIT_READ|PERMIT_WRITE|PERMIT_EXEC })
    fl.acWrite(cmdlist)
    fl.free()
 
@@ -104,7 +105,7 @@ end
          outputCallback = function(Task, Buffer)
             print(Buffer:getString())
          end,
-         flags   = 'WAIT',
+         flags   = TSF_WAIT,
          timeOut = 20
       })
 

@@ -8,6 +8,8 @@
    import 'io/filesearch'
 
    glSelf = <{ obj.find('self') }>
+   local rx_sdk_path = <{ regex.new([[(.+)CMakeLists\.txt]]) }>
+   local rx_wiki_path = <{ regex.new("[\\/\\\\]wiki[\\/\\\\]") }>
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Resolve the location of the Parasol SDK and create an 'sdk:' volume.
@@ -31,7 +33,7 @@ function resolveSDKPath(Path)
    end
 
    if err is ERR_Okay then
-      sdk_path = regex.new('(.+)CMakeLists\\.txt').extract(sdk_path)
+      sdk_path = rx_sdk_path.extract(sdk_path)
    else
       msg = ''
       for path in values(search_list) do
@@ -77,14 +79,13 @@ end
    cmdlist = ''
 
    file.search(md_folder, {
-      nameFilter = '^.*%.md$',
-      nameWild   = true,
+      nameFilter = regex.new([[^.*\.md$]]),
       matchFeedback = function(Path, FileName, File)
          title = FileName:replace('-', ' ')
          title = title:replace('.md', '')
 
          src_path = Path .. FileName
-         output_path = src_path:gsub('[/\\]wiki[/\\]', '/html/wiki/')
+         output_path = rx_wiki_path.replace(src_path, '/html/wiki/')
          output_path = output_path:replace('.md', '.html')
 
          err, res_src_path = mSys.ResolvePath(src_path)

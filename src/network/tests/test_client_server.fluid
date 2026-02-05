@@ -13,13 +13,13 @@ Client-Server Network Communications test.  Creates a server socket and then sta
    glTestCompleted = false
 
 function printableState(State)
-   if (State is NTC_CONNECTED) then return 'CONNECTED'
-   elseif (State is NTC_RESOLVING) then return 'RESOLVING'
-   elseif (State is NTC_CONNECTING) then return 'CONNECTING'
-   elseif (State is NTC_DISCONNECTED) then return 'DISCONNECTED'
-   elseif (State is NTC_HANDSHAKING) then return 'HANDSHAKING'
-   elseif (State is NTC_MULTISTATE) then return 'MULTISTATE'
-   else return tostring(State) end
+   return choose State from
+      NTC_CONNECTED -> 'CONNECTED'
+      NTC_CONNECTING -> 'CONNECTING'
+      NTC_DISCONNECTED -> 'DISCONNECTED'
+      NTC_HANDSHAKING -> 'HANDSHAKING'
+      else -> tostring(State)
+   end
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -121,7 +121,7 @@ end
 @Test function BasicCommunication()
    proc = processing.new({ timeout = 10.0 })
 
-   glPort = glPort + 1
+   glPort++
 
    -- Create server socket with comprehensive message handling
    sockServer = obj.new('netsocket', {
@@ -247,7 +247,7 @@ end
    proc = processing.new({ timeout = 5.0 })
    stateChanges = {}
 
-   glPort = glPort + 1
+   glPort++
 
    print('Testing connection state transitions...')
 

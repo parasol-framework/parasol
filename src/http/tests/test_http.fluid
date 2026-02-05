@@ -333,7 +333,7 @@ function MultiPart()
    str = ''
    CRLF = string.char(13,10)
    filepath = 'system:icons.zip'
-   filename = string.gsub(filepath, '.*[:/\\](.-)', '%1', 1)
+   filename = 'icons.zip'
 
    -- Parameters
 
@@ -410,6 +410,6 @@ end
        print(content)
    else
        print('Response preview (first 500 chars):')
-       print(string.sub(content, 0, 499) .. '...')
+       print(string.substr(content, 0, 499) .. '...')
    end
 end

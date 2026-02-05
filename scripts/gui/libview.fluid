@@ -34,7 +34,7 @@ end
 
 function clearItems(View)
    if View.items then
-      for _, item in pairs(View.items) do
+      for item in values(View.items) do
          item?:_free()
       end
    end

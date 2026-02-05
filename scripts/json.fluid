@@ -30,13 +30,12 @@
       ['null'] = {}
    }
 
+   json = _LIB[_NS]
+
    in_char  = array<string> { '\\', '"', '/', '\b', '\f', '\n', '\r', '\t' }
    out_char = array<string> { '\\', '"', '/',  'b',  'f',  'n',  'r',  't' }
 
-   json = _LIB[_NS]
-
 local num_regex = regex.new([[^-?[0-9]+\.?[0-9]*[eE]?[+\-]?[0-9]*]])
-local rx_num = regex.new('^\\d')
 local rx_whitespace = regex.new("[^ \\t\\n\\r\\f\\v]")
 
 function escape_str(String:str):str
@@ -174,7 +173,7 @@ json.decode = function(String:str, Pos:num, EndToken:str):<any, num>
       end
    elseif first is '"' then  -- Parse a string.
       return decode_str_val(String, Pos + 1)
-   elseif first is '-' or rx_num.test(first) then  -- Parse a number.
+   elseif first is '-' or (first >= '0' and first <= '9') then  -- Parse a number.
       return decode_num_val(String, Pos)
    elseif first is EndToken then  -- End of an object or array.
       return nil, Pos + 1

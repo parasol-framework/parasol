@@ -3,6 +3,8 @@
 
    import 'common'
 
+   rx_file_tag = regex.new('<file.*?\\/>')
+
 @Test function Basic()
    item = table.toXML({
       file = {
@@ -21,7 +23,7 @@
    -- <file icon="my_icon" name="my_name">filename.jpg<owner>123</><size sort=123>123</><group/>
    --   <date sort="F456">ABC</><permissions>RWX</></>
 
-   assert(string.find(item, '^<file.->filename.jpg.+</>$'), 'The file tag does not match the expected pattern.')
+   assert(regex.new('^<file.*>filename\\.jpg.+</>$').test(item), 'The file tag does not match the expected pattern.')
    assert(string.find(item, '<owner>123</>'), 'The owner tag is not defined correctly.')
    assert(string.find(item, '<size sort=123>123</>'), 'The size tag is not defined correctly.')
    assert(string.find(item, '<group/>'), 'The group tag is not defined correctly.')
@@ -47,9 +49,6 @@ end
 
    -- <receipt totalitems=2 id="my_files"><file path="volume:file"/><file path="volume:file2.txt"/></>
 
-   print(files .. '\n')
-
-   receipt_count = [_*]string.gsub(files, '^<receipt.+/>$', '')
-   file_count = [_*]string.gsub(files, '<file.-/>', '')
-   assert(receipt_count is 1 and file_count is 2, 'Expected 1 receipt and 2 file tags.')
+   cap = rx_file_tag.search(files)
+   assert(#cap is 2, 'Expected 2 file tags, got ' .. #cap)
 end

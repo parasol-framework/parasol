@@ -21,11 +21,11 @@ Parameters:
 Index files (checked in order): index.html, index.htm, default.html, default.htm
 ]]
 
-   httplib = import 'net/httpserver'
+   import 'net/httpserver'
 
    glConfigFile = arg('config', 'user:config/http_server_cfg.fluid')
 
-   glOptions = { }
+   global glOptions = { }
 
    if mSys.AnalysePath(glConfigFile) is ERR_Okay then
       loadFile(glConfigFile, glOptions)
@@ -74,6 +74,6 @@ Index files (checked in order): index.html, index.htm, default.html, default.htm
       print(Message)
    end
 
-   glServer = httplib.start(glOptions)
+   glServer = hslib.start(glOptions)
 
    processing.sleep()

@@ -4,12 +4,14 @@
    import 'common'
    import 'gui/dialog'
 
+rxCopy = <{ regex.new('^[A-Z].+') }>
+
 local progress_status, progress_dialog, progress_time
 
 -- copyFeedback() is called for every file that is copied, or multiple times for large files.
 
-local function copyFeedback(Size, Position, Path, Dest, User, FeedbackID)
-   msg('Copy feedback: ' .. Path .. ' TO ' .. Dest)
+function copyFeedback(Size:num, Position:num, Path:str, Dest:str, User, FeedbackID)
+   msg(f'Copy feedback: {Path} TO {Dest}')
 
    if progress_status is 'cancel' then
       return FFR_ABORT
@@ -39,7 +41,7 @@ local function copyFeedback(Size, Position, Path, Dest, User, FeedbackID)
    if progress_dialog and (Position is 0 or Size > 32768) then
       local folder, file = file.splitPath(Path)
 
-      if string.len(file) >= 80 then file = '...' .. string.sub(file, -80) end
+      if string.len(file) >= 80 then file = '...' .. string.substr(file, -80) end
 
       local msg
       if Position is 0 then
@@ -66,7 +68,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-file.ui.paste = function(Dest)
+file.ui.paste = function(Dest:str)
    local clipboard = obj.new('clipboard')
    local err, datatype, files, flags = clipboard.mtGetFiles(CLIPTYPE_FILE, 0)
    if (err != ERR_Okay) or (#files is 0) then
@@ -80,14 +82,14 @@ file.ui.paste = function(Dest)
    end
 
    local move
-   if bit.band(flags, CEF_DELETE) != 0 then move = true end
+   if (flags & CEF_DELETE) != 0 then move = true end
    local err = file.ui.copy(files, Dest, move)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- NB: This call can block if it needs a response from the user.  It does not return until the copy is complete.
 
-file.ui.copy = function(Source, Dest, Move)
+file.ui.copy = function(Source:any, Dest:str, Move:bool)
    if type(Source) is 'string' then Source = { Source } end
    if type(Source) != 'table' then error('Provided Source is not a table') end
 
@@ -96,12 +98,11 @@ file.ui.copy = function(Source, Dest, Move)
    progress_time = mSys.PreciseTime()
    local response = 'yes'
    local err = ERR_Okay
-   for _, src_path in pairs(Source) do
+   for src_path in values(Source) do
       if response != 'yes-all' and response != 'no-all' then response = 'yes' end -- Reset to the default
 
       msg('Processing file source ' .. src_path)
       local src_folder, src_file = file.splitPath(src_path)
-
       local dest_path = Dest .. src_file
 
       -- Check if the destination already exists
@@ -110,7 +111,7 @@ file.ui.copy = function(Source, Dest, Move)
          if src_path is dest_path then
             if Move then
                continue -- Do nothing for move operations when the source and destination are identical
-            elseif dest_path:find('^[A-Z].+') then
+            elseif rxCopy.test(dest_path) then
                dest_path = Dest .. 'Copy of ' .. src_file
             else
                dest_path = Dest .. 'copy of ' .. src_file
@@ -143,18 +144,12 @@ file.ui.copy = function(Source, Dest, Move)
                title   = 'Confirmation Required',
                message = 'You are about to overwrite this file.  Should it be replaced?\n\n' .. src_file,
                feedback = function(Dialog, Response, State)
-                  if Response then
-                     if Response.id is -1 then
-                        response = 'no'
-                     elseif Response.id is -2 then
-                        response = 'no-all'
-                     elseif Response.id is 1 then
-                        response = 'yes'
-                     elseif Response.id is 2 then
-                        response = 'yes-all'
-                     end
-                  else
-                     response = 'cancel'
+                  response = choose Response?.id from
+                     -1 -> 'no'
+                     -2 -> 'no-all'
+                     1  -> 'yes'
+                     2  -> 'yes-all'
+                     else -> 'cancel'
                   end
                end
             })
@@ -188,13 +183,12 @@ file.ui.copy = function(Source, Dest, Move)
 
             local message
             if err is ERR_OutOfSpace then
-               message = 'There is not enough space in the destination drive to copy this file:\n\n' .. src_file
+               message = f'There is not enough space in the destination drive to copy this file:\n\n{src_file}'
             elseif err is ERR_Permissions then
-               message = 'You do not have the necessary permissions to copy this file:\n\n' .. src_file
+               message = f'You do not have the necessary permissions to copy this file:\n\n{src_file}'
             else
                local emsg = mSys.GetErrorMsg(err)
-               message = 'An error occurred while copying this file:\n\n'
-                  .. src_file .. '\n\n' .. emsg .. '  Process cancelled.'
+               message = f'An error occurred while copying this file:\n\n{src_file}\n\n{emsg} Process cancelled.'
             end
 
             local dlg = gui.dialog.error('File Paste Failure', message)
@@ -213,7 +207,7 @@ file.ui.delete = function(Paths)
    if type(Paths) is 'string' then Paths = { Paths } end
    if type(Paths) != 'table' then error('Path must be a string or string list.') end
 
-   for _, path in pairs(Paths) do
+   for path in values(Paths) do
       mSys.DeleteFile(path, function(Feedback)
          if progress_status is 'cancel' then
             return FFR_ABORT

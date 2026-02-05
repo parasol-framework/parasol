@@ -2,6 +2,8 @@
 
    glSelf = obj.find('self')
 
+rx_debuglog = regex.new('test_debuglog\\.fluid:\\d+')
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Test default behaviour (stack trace only)
 
@@ -20,7 +22,7 @@
    assert(string.find(result, 'CALL STACK'), 'Should contain stack trace header')
    -- innerFunc does not appear in the stack because mtDebugLog starts inspection at level 1, skipping its own frame and showing the Lua caller
    -- Function names are only shown for global/method/field calls, not local variables
-   assert(string.find(result, 'test_debuglog%.fluid:%d+'), 'Should contain source location')
+   assert(rx_debuglog.test(result), 'Should contain source location')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -157,7 +159,7 @@ end
    result = compactTest()
 
    assert(result, 'DebugLog should return a result')
-   assert(string.find(result, 'test_debuglog%.fluid:%d+'), 'Should contain source location')
+   assert(rx_debuglog.test(result), 'Should contain source location')
    assert(string.find(result, 'x'), 'Should contain variable x')
 end
 
@@ -175,7 +177,7 @@ end
 
    assert(result, 'DebugLog should return a result')
    assert(string.find(result, 'longStr'), 'Should contain variable longStr')
-   assert(string.find(result, '%.%.%.'), 'Should contain ellipsis for truncation')
+   assert(string.find(result, '...'), 'Should contain ellipsis for truncation')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -198,7 +200,7 @@ end
 print(result)
    assert(result, 'DebugLog should return a result')
    assert(string.find(result, 'numVar'), 'Should contain numVar')
-   assert(string.find(result, '3%.14'), 'Should contain number value')
+   assert(string.find(result, '3.14'), 'Should contain number value')
    assert(string.find(result, 'strVar'), 'Should contain strVar')
    assert(string.find(result, 'hello'), 'Should contain string value')
    assert(string.find(result, 'boolVar'), 'Should contain boolVar')
@@ -232,7 +234,7 @@ end
    assert(result, 'DebugLog should return a result')
    -- The stack should contain source locations for the nested calls
    -- Function names for local functions are not shown since they're unreliable
-   assert(string.find(result, 'test_debuglog%.fluid:%d+'), 'Should contain source location')
+   assert(rx_debuglog.test(result), 'Should contain source location')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -249,7 +251,7 @@ end
 
    assert(result??, 'DebugLog should return a result')
    assert(string.find(result, 'FUNCTIONS'), 'Should contain function info header')
-   assert(string.find(result, 'Function %[%d+%]:'), 'Should contain function label with level number')
+   assert(regex.new('Function \\[\\d+\\]:').test(result), 'Should contain function label with level number')
    assert(string.find(result, 'calculateTotal'), 'Should contain function name')
    assert(string.find(result, 'Parameters:'), 'Should contain parameters count')
    assert(string.find(result, 'Vararg:'), 'Should contain vararg flag')
@@ -259,10 +261,10 @@ end
    assert(string.find(result, 'Upvalues:'), 'Should contain upvalues count')
 
    -- Verify parameter count is correct (3 parameters: a, b, c)
-   assert(string.find(result, 'Parameters:%s*3'), 'Should show 3 parameters')
+   assert(regex.new('Parameters:\\s*3').test(result), 'Should show 3 parameters')
 
    -- Verify vararg is false for this function
-   assert(string.find(result, 'Vararg:%s*false'), 'Should show vararg as false')
+   assert(regex.new('Vararg:\\s*false').test(result), 'Should show vararg as false')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -328,6 +330,6 @@ end
 
    assert(result??, 'DebugLog should return a result')
    assert(string.find(result, 'BINARY'), 'Should contain dump header')
-   assert(string.find(result, 'Bytes:%s*%d+'), 'Should report byte count')
-   assert(string.find(result, '%d+:%s*%x%x'), 'Should contain hexadecimal byte output')
+   assert(regex.new('Bytes:\\s*\\d+').test(result), 'Should report byte count')
+   assert(regex.new('\\d+:\\s*[a-fA-F0-9]{2}').test(result), 'Should contain hexadecimal byte output, got ' .. result)
 end

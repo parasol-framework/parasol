@@ -7,66 +7,88 @@
    include 'network'
    import 'json'
 
-   glTime = obj.new('time')
+   namespace 'hslib'
+   _LIB[_NS] = { }
+   hslib = _LIB[_NS]
 
-   global hslib = { }
+glTime = obj.new('time')
 
-   glStatusTexts = {
-       [200] = 'OK', [201] = 'Created', [204] = 'No Content',
-       [301] = 'Moved Permanently', [302] = 'Found', [304] = 'Not Modified',
-       [400] = 'Bad Request', [401] = 'Unauthorized', [403] = 'Forbidden',
-       [404] = 'Not Found', [405] = 'Method Not Allowed', [429] = 'Too Many Requests',
-       [500] = 'Internal Server Error', [501] = 'Not Implemented', [502] = 'Bad Gateway'
-   }
+rxControlChars    = <{ regex.new([=[[\x00-\x1f\x7f]]=]) }>
+rxQueryFragment   = <{ regex.new([[^([^?#]*)]]) }>
+rxFileExtension   = <{ regex.new([[\.([^.]+)$]]) }>
+rxCookiePair      = <{ regex.new([[\s*([^=]+)=(.+)]]) }>
+rxTrimWhitespace  = <{ regex.new([[^\s*(.*?)\s*$]]) }>
+rxRequestLine     = <{ regex.new([[(\S+)\s+(\S+)\s+(\S+)]]) }>
+rxPathQuery       = <{ regex.new([[([^?]*)\??(.*)]]) }>
+rxHeaderLine      = <{ regex.new([[([^:]+):\s*(.+)]]) }>
+rxRouteParam      = <{ regex.new([[:(\w+)]]) }>
+rxPercentEncoded  = <{ regex.new([[%([0-9A-Fa-f]{2})]]) }>
+rxRouteParamSub   = <{ regex.new([[:[\w_]+]]) }>
+rxEscapedWildcard = <{ regex.new([[\\\*]]) }>
+rxPathComponent   = <{ regex.new([[([^\/]+)]]) }>
+rxHexChunkSize    = <{ regex.new([[^([0-9a-fA-F]+)]]) }>
+rxQueryPair       = <{ regex.new([[([^&]+)]]) }>
+rxKeyValue        = <{ regex.new([[([^=]+)=(.+)]]) }>
+rxCookieItem      = <{ regex.new([[([^;]+)]]) }>
+rxLineIterator    = <{ regex.new([[([^\r\n]+)]]) }>
+rxParentPath      = <{ regex.new([[(.+)\/.+\/]]) }>
 
-   glMimeTypes = {
-      -- Text
-      html = 'text/html',
-      htm  = 'text/html',
-      css  = 'text/css',
-      js   = 'application/javascript',
-      mjs  = 'application/javascript',
-      json = 'application/json',
-      xml  = 'application/xml',
-      txt  = 'text/plain',
-      md   = 'text/markdown',
-      csv  = 'text/csv',
+glStatusTexts = {
+      [200] = 'OK', [201] = 'Created', [204] = 'No Content',
+      [301] = 'Moved Permanently', [302] = 'Found', [304] = 'Not Modified',
+      [400] = 'Bad Request', [401] = 'Unauthorized', [403] = 'Forbidden',
+      [404] = 'Not Found', [405] = 'Method Not Allowed', [429] = 'Too Many Requests',
+      [500] = 'Internal Server Error', [501] = 'Not Implemented', [502] = 'Bad Gateway'
+}
 
-      -- Images
-      png  = 'image/png',
-      jpg  = 'image/jpeg',
-      jpeg = 'image/jpeg',
-      gif  = 'image/gif',
-      svg  = 'image/svg+xml',
-      ico  = 'image/x-icon',
-      webp = 'image/webp',
-      bmp  = 'image/bmp',
-      tiff = 'image/tiff',
+glMimeTypes = {
+   -- Text
+   html = 'text/html',
+   htm  = 'text/html',
+   css  = 'text/css',
+   js   = 'application/javascript',
+   mjs  = 'application/javascript',
+   json = 'application/json',
+   xml  = 'application/xml',
+   txt  = 'text/plain',
+   md   = 'text/markdown',
+   csv  = 'text/csv',
 
-      -- Documents
-      pdf = 'application/pdf',
-      doc = 'application/msword',
-      docx = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+   -- Images
+   png  = 'image/png',
+   jpg  = 'image/jpeg',
+   jpeg = 'image/jpeg',
+   gif  = 'image/gif',
+   svg  = 'image/svg+xml',
+   ico  = 'image/x-icon',
+   webp = 'image/webp',
+   bmp  = 'image/bmp',
+   tiff = 'image/tiff',
 
-      -- Fonts
-      woff = 'font/woff',
-      woff2 = 'font/woff2',
-      ttf = 'font/ttf',
-      otf = 'font/otf',
+   -- Documents
+   pdf = 'application/pdf',
+   doc = 'application/msword',
+   docx = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 
-      -- Audio/Video
-      mp3 = 'audio/mpeg',
-      wav = 'audio/wav',
-      ogg = 'audio/ogg',
-      mp4 = 'video/mp4',
-      webm = 'video/webm',
-      avi = 'video/x-msvideo',
+   -- Fonts
+   woff = 'font/woff',
+   woff2 = 'font/woff2',
+   ttf = 'font/ttf',
+   otf = 'font/otf',
 
-      -- Archives
-      zip = 'application/zip',
-      tar = 'application/x-tar',
-      gz = 'application/gzip'
-   }
+   -- Audio/Video
+   mp3 = 'audio/mpeg',
+   wav = 'audio/wav',
+   ogg = 'audio/ogg',
+   mp4 = 'video/mp4',
+   webm = 'video/webm',
+   avi = 'video/x-msvideo',
+
+   -- Archives
+   zip = 'application/zip',
+   tar = 'application/x-tar',
+   gz = 'application/gzip'
+}
 
 ----------------------------------------------------------------------------------------------------------------------
 -- HTML escape function for security
@@ -84,8 +106,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function validatePort(port:num):bool
-   portNum = port
-   if not portNum or portNum < 1 or portNum > 65535 then
+   port_num = port
+   if not port_num or port_num < 1 or port_num > 65535 then
       return false
    end
    return true
@@ -94,14 +116,19 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Decode percent-encoded characters in URLs
 
-function urlDecode(str:str):str
-   if str then
-      str = str:replace('+', ' ') -- Replace + with space
-      str = str:gsub('%%(%x%x)', function(hex)
-         return string.char(tonumber(hex, 16))
-      end)
+function urlDecode(String:str):str
+   if String then
+      String = String:replace('+', ' ') -- Replace + with space
+      local result = ''
+      local last_stop = 0
+      for start, stop, cap in rxPercentEncoded.findAll(String) do
+         if start > last_stop then result ..= String:sub(last_stop, start) end
+         result ..= string.char(tonumber(cap[0], 16))
+         last_stop = stop
+      end
+      String = result .. String:sub(last_stop)
    end
-   return str
+   return String
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -110,17 +137,18 @@ end
 function canonicalizePath(self, Path:str):str
    Path ?? return
 
-   Path = Path:gsub('[%c]', '')   -- Remove any null bytes
+   Path = rxControlChars.replace(Path, '')   -- Remove any control characters
    Path = urlDecode(Path)         -- Decode URL encoding first
-   Path = Path:match("([^?#]*)")  -- Remove query parameters and fragments
+   Path = rxQueryFragment.extract(Path)  -- Remove query parameters and fragments
 
    -- Normalize slashes
-   Path = Path:replace('\\', '/')
-   Path = Path:replace('/+', '/')
+   Path = Path:replace('\\', '/') -- Backslashes -> forward slashes
+   Path = Path:replace('//', '/') -- Eliminate duplication
 
    -- Split into components
    components = {}
-   for component in Path:gmatch('[^/]+') do
+   for start, stop, cap in rxPathComponent.findAll(Path) do
+      local component = cap[0]
       if component is '..' then
          -- Attempt to go up - block this
          logMessage(self, 'Security: Blocked directory traversal attempt with ..')
@@ -142,7 +170,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function getMimeType(Filename)
-   extension = Filename:match("%.([^%.]+)$")
+   extension = rxFileExtension.extract(Filename)
    if not extension then return 'application/octet-stream' end
    return glMimeTypes[extension:lower()] or 'application/octet-stream'
 end
@@ -154,7 +182,7 @@ function timestamp()
    return string.format('%04d-%02d-%02d %02d:%02d:%02d', glTime.year, glTime.month, glTime.day, glTime.hour, glTime.minute, glTime.second)
 end
 
-function logMessage(self, message)
+function logMessage(self:table, message:str)
    if self.logMessage then
       self.logMessage('[' .. timestamp() .. '] ' .. message)
    end
@@ -173,11 +201,11 @@ function processChunkedBody(state, server)
             return false -- Need more data for chunk size line
          end
 
-         size_line = state.buffer:sub(0, line_end)
-         state.buffer = state.buffer:sub(line_end + 2) -- Remove \r\n
+         size_line = state.buffer:substr(0, line_end)
+         state.buffer = state.buffer:substr(line_end + 2) -- Remove \r\n
 
          -- Parse chunk size (ignore extensions after semicolon)
-         hex_size = size_line:match('^([0-9a-fA-F]+)')
+         hex_size = rxHexChunkSize.extract(size_line)
          if not hex_size then
             logMessage(server, 'Invalid chunk size format: ' .. size_line)
             return false -- Invalid format
@@ -208,8 +236,8 @@ function processChunkedBody(state, server)
          end
 
          to_take = math.min(available, needed)
-         state.request.body   = state.request.body .. state.buffer:sub(0, to_take)
-         state.buffer         = state.buffer:sub(to_take)
+         state.request.body   = state.request.body .. state.buffer:substr(0, to_take)
+         state.buffer         = state.buffer:substr(to_take)
          state.chunk_received = state.chunk_received + to_take
          state.body_received  = state.body_received + to_take
 
@@ -223,7 +251,7 @@ function processChunkedBody(state, server)
          if #state.buffer < 2 then return false end -- Need more data
 
          if state.buffer:startsWith('\r\n') then
-            state.buffer = state.buffer:sub(2)
+            state.buffer = state.buffer:substr(2)
             state.chunk_state = 'SIZE' -- Ready for next chunk
          else
             -- Be lenient - some clients might not send proper CRLF
@@ -235,7 +263,7 @@ function processChunkedBody(state, server)
          -- Look for final \r\n (trailer headers are ignored for now)
          trailer_end = state.buffer:find('\r\n')
          if trailer_end then
-            state.buffer = state.buffer:sub(trailer_end + 1)
+            state.buffer = state.buffer:substr(trailer_end + 1)
             return true -- Chunked reading complete
          else
             return false -- Need more data for trailer
@@ -271,7 +299,7 @@ function readRequestWithTimeout(client:table, maxSize:num, timeoutSeconds:num):<
          break -- No more data
       end
 
-      requestData ..= buffer:sub(0, bytes_read)
+      requestData ..= buffer:substr(0, bytes_read)
       totalRead += bytes_read
 
       -- Check for end of HTTP headers (\r\n\r\n)
@@ -314,7 +342,7 @@ function readChunkedRequestBody(client, maxSize, timeoutSeconds)
       -- Read chunk size line (hexadecimal number followed by optional extensions and CRLF)
       chunkSizeLine = ''
       char = ''
-      while not chunkSizeLine:match('\r\n$') do
+      while not chunkSizeLine:endsWith('\r\n') do
          err, bytes_read = client.acRead(buffer, 1)
          if err != ERR_Okay then
             if err is ERR_TimeOut then
@@ -340,7 +368,7 @@ function readChunkedRequestBody(client, maxSize, timeoutSeconds)
             end
          end
 
-         chunkSizeLine ..= buffer:sub(0, 1)
+         chunkSizeLine ..= buffer:substr(0, 1)
 
          -- Prevent infinite line reading
          if #chunkSizeLine > 100 then
@@ -349,7 +377,7 @@ function readChunkedRequestBody(client, maxSize, timeoutSeconds)
       end
 
       -- Parse chunk size (ignore chunk extensions after semicolon if present)
-      chunkSizeHex = chunkSizeLine:match('^([0-9a-fA-F]+)')
+      chunkSizeHex = rxHexChunkSize.extract(chunkSizeLine)
       if not chunkSizeHex then
          return nil, 'invalid_chunk_format', false
       end
@@ -386,7 +414,7 @@ function readChunkedRequestBody(client, maxSize, timeoutSeconds)
                -- Connection closed while reading chunk data
                -- Return what we have so far if it's valid
                if chunkRead > 0 then
-                  body ..= chunkData:sub(0, chunkRead)
+                  body ..= chunkData:substr(0, chunkRead)
                end
                if #body > 0 then
                   return body, nil, true  -- Mark as early termination
@@ -400,7 +428,7 @@ function readChunkedRequestBody(client, maxSize, timeoutSeconds)
          if bytes_read is 0 then
             -- No more data - return what we have
             if chunkRead > 0 then
-               body ..= chunkData:sub(0, chunkRead)
+               body ..= chunkData:substr(0, chunkRead)
             end
 
             if #body > 0 then
@@ -409,7 +437,7 @@ function readChunkedRequestBody(client, maxSize, timeoutSeconds)
                return nil, 'unexpected_end', false
             end
          end
-         chunkData ..= buffer:sub(0, bytes_read)
+         chunkData ..= buffer:substr(0, bytes_read)
          chunkRead += bytes_read
       end
 
@@ -440,7 +468,7 @@ function readChunkedRequestBody(client, maxSize, timeoutSeconds)
             earlyTermination = true
             break
          end
-         crlf ..= buffer:sub(0, 1)
+         crlf ..= buffer:substr(0, 1)
       end
 
       -- Be lenient about CRLF validation - some clients may not send it properly
@@ -460,8 +488,9 @@ function parseQueryString(QueryString:str):table
    query = {}
    QueryString ?? return query
 
-   for pair in QueryString:gmatch('[^&]+') do
-      key, value = pair:match('([^=]+)=(.+)')
+   for start, stop, cap in rxQueryPair.findAll(QueryString) do
+      local pair = cap[0]
+      key, value = rxKeyValue.extract(pair)
       if key and value then
          key = urlDecode(key)
          value = urlDecode(value)
@@ -474,8 +503,8 @@ function parseQueryString(QueryString:str):table
          else
             query[key] = value
          end
-      elseif key then -- Handle keys without values (e.g., ?debug&verbose)
-         query[urlDecode(key)] = true
+      elseif pair then -- Handle keys without values (e.g., ?debug&verbose)
+         query[urlDecode(pair)] = true
       end
    end
 
@@ -509,12 +538,13 @@ function parseCookies(CookieHeader:str):table
    cookies = {}
    CookieHeader ?? return cookies
 
-   for cookie in CookieHeader:gmatch('[^;]+') do
-      name, value = cookie:match('%s*([^=]+)=(.+)')
+   for start, stop, cap in rxCookieItem.findAll(CookieHeader) do
+      local cookie = cap[0]
+      name, value = rxCookiePair.extract(cookie)
       if name and value then
-         -- Trim whitespace manually
-         name = name:match('^%s*(.-)%s*$')
-         value = value:match('^%s*(.-)%s*$')
+         -- Trim whitespace
+         name = rxTrimWhitespace.extract(name)
+         value = rxTrimWhitespace.extract(value)
          cookies[name] = value
       end
    end
@@ -527,19 +557,19 @@ end
 
 function parseHttpRequest(Req)
    lines = {}
-   for line in Req:gmatch("[^\r\n]+") do
-      table.insert(lines, line)
+   for start, stop, cap in rxLineIterator.findAll(Req) do
+      table.insert(lines, cap[0])
    end
 
    if #lines is 0 then return nil end
 
    req_line = lines[0]
-   method, full_path, version = req_line:match("(%S+)%s+(%S+)%s+(%S+)")
+   method, full_path, version = rxRequestLine.extract(req_line)
 
    if (not method) or (not full_path) then return nil end
 
    -- Separate path from query string
-   path, queryString = full_path:match("([^?]*)%??(.*)")
+   path, queryString = rxPathQuery.extract(full_path)
    if not path then
       path = full_path
       queryString = ''
@@ -548,7 +578,7 @@ function parseHttpRequest(Req)
    headers = {}
    for i = 1, #lines-1 do -- Skip the METHOD
       line = lines[i]
-      name, value = line:match("([^:]+):%s*(.+)")
+      name, value = rxHeaderLine.extract(line)
       if name and value then
          headers[name:lower()] = value
       end
@@ -815,7 +845,7 @@ function serveFile(self, ClientSocket, FilePath:str, Request)
          end
 
          if bytes_read > 0 then
-            err = ClientSocket.acWrite(buffer:sub(0, bytes_read))
+            err = ClientSocket.acWrite(buffer:substr(0, bytes_read))
             if err != ERR_Okay then
                logMessage(self, 'Error writing to ClientSocket: ' .. mSys.GetErrorMsg(err))
                return
@@ -844,7 +874,7 @@ function serveFile(self, ClientSocket, FilePath:str, Request)
 
       sendHttpResponse(self, ClientSocket, 200, "OK", {
          ['content-type'] = mimeType
-      }, buffer:sub(0, bytes_read))
+      }, buffer:substr(0, bytes_read))
    end
 end
 
@@ -901,7 +931,7 @@ a:hover { text-decoration: underline; }
 
    -- Add parent directory link if not root
    if URIPath != '/' then
-      parentPath = URIPath:match('(.+)/.+/')
+      parentPath = rxParentPath.extract(URIPath)
       if not parentPath then parentPath = '/' end
       html ..= '<tr><td><a href="' .. parentPath .. '" class="dir">../</a></td><td>-</td><td>-</td></tr>\n'
    end
@@ -956,7 +986,7 @@ end
 
 function serveDirectory(self, Client, DirPath, URIPath, Request)
    -- Check for configured index files in order
-   for _, indexFile in ipairs(self.indexFiles) do
+   for indexFile in values(self.indexFiles) do
       indexPath = DirPath .. indexFile
       file_type = [_*]mSys.AnalysePath(indexPath)
       if file_type is LOC_FILE then
@@ -1046,7 +1076,7 @@ end
 
 -- Built-in request logging middleware
 
-function loggingMiddleware(request, response, next)
+function loggingMiddleware(request:table, response:table, next:func)
    startTime = mSys.PreciseTime()
 
    logMessage(response._self, request.method .. ' ' .. request.path .. ' from ' .. (request.ip or 'unknown'))
@@ -1084,12 +1114,12 @@ end
 
 -- Built-in authentication middleware template
 
-function authMiddleware(options)
-   options = options or {}
+function authMiddleware(options:table)
+   options ?= {}
    tokenHeader = options.header or 'authorization'
    tokenPrefix = options.prefix or 'Bearer '
 
-   return function(request, response, next)
+   return function(request:table, response:table, next:func)
       authHeader = request.headers[tokenHeader:lower()]
 
       if not authHeader then
@@ -1098,8 +1128,8 @@ function authMiddleware(options)
       end
 
       token = authHeader
-      if tokenPrefix and authHeader:find('^' .. tokenPrefix) then
-         token = authHeader:sub(#tokenPrefix)
+      if tokenPrefix and authHeader:startsWith(tokenPrefix) then
+         token = authHeader:substr(#tokenPrefix)
       end
 
       if not token or token is '' then
@@ -1124,7 +1154,7 @@ end
 
 -- Add a route with method, pattern, callback, and optional middleware to a server instance
 
-function addRoute(self, route)
+function addRoute(self:table, route:table)
    if not self._routes then self._routes = {} end
 
    if route.pattern and route.method and route.handler then
@@ -1162,13 +1192,13 @@ end
 
 -- Extract parameters from a matched path using route pattern and regex match results
 
-function extractParams(pattern, matchResults)
+function extractParams(pattern:str, matchResults):table
    params = {}
 
    -- Extract parameter names from the original pattern
    paramNames = {}
-   for paramName in pattern:gmatch(':([%w_]+)') do
-      table.insert(paramNames, paramName)
+   for start, stop, cap in rxRouteParam.findAll(pattern) do
+      table.insert(paramNames, cap[0])
    end
 
    -- Map parameter names to captured group values (skip index 1 which is full match)
@@ -1184,29 +1214,21 @@ end
 -- Find matching route for a request from a server instance
 
 function matchRoute(serverInstance, method, path)
-   if not serverInstance._routes then return nil end
+   serverInstance._routes ?? return
 
    methodRoutes = serverInstance._routes[method]
-   if not methodRoutes then return nil end
+   methodRoutes ?? return
 
-   for i, route in ipairs(methodRoutes) do
+   for route in values(methodRoutes) do
       pattern = route.pattern
 
       if not route.compiledRegex then
          -- Convert route pattern to proper regex pattern
          -- :param becomes ([^/]+), * becomes (.*), escape regex special chars
-         regexPattern = pattern
 
-         -- NOTE: SRELL follows the ECMAScript grammar strictly and treats escapes for
-         -- characters that do not require escaping (like '-') as literal backslashes.
-         -- std::regex previously accepted these permissive escapes, so existing route
-         -- patterns with dashes kept working.  Avoid escaping '-' so the resulting
-         -- pattern remains portable across engines.
-
-         -- regexPattern = regexPattern:gsub('([%.%+%-%*%?%[%]%(%)])', '\\%1') -- Escape regex chars for std::regex
-         regexPattern = regexPattern:gsub('([%.%+%*%?%[%]%(%)])', '\\%1') -- Escape regex for SRELL
-         regexPattern = regexPattern:gsub(':([%w_]+)', '([^/]+)') -- :param -> ([^/]+)
-         regexPattern = regexPattern:gsub('\\%*', '(.*)') -- \* -> (.*)
+         regexPattern = regex.escape(pattern)
+         regexPattern = rxRouteParamSub.replace(regexPattern, '([^\\/]+)')   -- :param -> ([^/]+)
+         regexPattern = rxEscapedWildcard.replace(regexPattern, '(.*)')    -- \* -> (.*)
 
          try
             route.compiledRegex = regex.new(f'^{regexPattern}$')
@@ -1234,7 +1256,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Check rate limiting for client IP
 
-function checkRateLimit(self, IP)
+function checkRateLimit(self:table, IP:str):bool
    if not self.rateLimit or self.rateLimit <= 0 then
       return true -- Rate limiting disabled
    end
@@ -1246,7 +1268,7 @@ function checkRateLimit(self, IP)
       cutoff = currentTime - self.rateLimitWindow
       for ip, data in pairs(self._rateLimits) do
          newRequests = {}
-         for _, timestamp in ipairs(data.requests) do
+         for timestamp in values(data.requests) do
             if timestamp > cutoff then
                table.insert(newRequests, timestamp)
             end
@@ -1350,7 +1372,7 @@ function serverIncoming(self, ClientSocket)
 
    -- Accumulate data
 
-   state.buffer ..= buffer:sub(0, bytes_read)
+   state.buffer ..= buffer:substr(0, bytes_read)
    if #state.buffer > self.maxRequestSize then
       errorBody = createErrorPage(413, 'Payload Too Large', 'Request exceeds maximum allowed size.', 'Maximum size: ' .. self.maxRequestSize .. ' bytes')
       sendHttpResponse(self, ClientSocket, 413, "Payload Too Large", {
@@ -1366,7 +1388,7 @@ function serverIncoming(self, ClientSocket)
       header_end ?? return -- Wait for more data
 
       -- Extract header section
-      header_section = state.buffer:sub(0, header_end + 3) -- Include the \r\n\r\n
+      header_section = state.buffer:substr(0, header_end + 3) -- Include the \r\n\r\n
       state.request = parseHttpRequest(header_section)
 
       if not state.request then
@@ -1405,7 +1427,7 @@ function serverIncoming(self, ClientSocket)
       end
 
       -- Remove processed headers from buffer
-      state.buffer = state.buffer:sub(header_end + 4) -- Remove \r\n\r\n as well
+      state.buffer = state.buffer:substr(header_end + 4) -- Remove \r\n\r\n as well
       state.headers_complete = true
 
       -- Call validateHeader callback if route has one
@@ -1431,8 +1453,8 @@ function serverIncoming(self, ClientSocket)
                -- Custom error response from validateHeader
                statusCode = vres.status or 400
                statusText = vres.statusText or 'Bad Request'
-               message = vres.message or 'Request headers failed validation.'
-               details = vres.details or 'The request headers do not meet server requirements.'
+               message    = vres.message or 'Request headers failed validation.'
+               details    = vres.details or 'The request headers do not meet server requirements.'
 
                errorBody = createErrorPage(statusCode, statusText, message, details)
                sendHttpResponse(self, ClientSocket, statusCode, statusText, { ['content-type'] = 'text/html' }, errorBody)
@@ -1481,8 +1503,8 @@ function serverIncoming(self, ClientSocket)
 
          if available > 0 then
             to_take = math.min(available, needed)
-            state.request.body = state.request.body .. state.buffer:sub(0, to_take)
-            state.buffer = state.buffer:sub(to_take)
+            state.request.body = state.request.body .. state.buffer:substr(0, to_take)
+            state.buffer = state.buffer:substr(to_take)
             state.body_received = state.body_received + to_take
 
             logMessage(self, 'Body progress: ' .. state.body_received .. '/' .. state.content_length .. ' bytes')
@@ -1499,7 +1521,7 @@ function serverIncoming(self, ClientSocket)
          if contentType:find('application/json') then
             logMessage(self, 'Parsing JSON encoded data')
             state.request.parsedBody = parseJsonBody(state.request.body)
-         elseif contentType:find('application/x%-www%-form%-urlencoded') then
+         elseif contentType:find('application/x-www-form-urlencoded') then
             logMessage(self, 'Parsing URL-encoded form data')
             state.request.parsedBody = parseFormBody(state.request.body)
          else
@@ -1591,21 +1613,18 @@ function serverIncoming(self, ClientSocket)
       end
 
       -- Validate path doesn't contain dangerous patterns
-      dangerous = {
-         '%.%./', '%.%.\\', -- Directory traversal
-         '^%.', '/%.', -- Hidden files
-         '%.exe$', '%.bat$', '%.cmd$', '%.ps1$', -- Executables
-         '%.dll$', '%.so$', -- Libraries
-         '%.ini$', '%.conf$', '%.config$', -- Config files
+
+      dangerous = array<any> {
+         regex.new("\\.\\.[\\/\\\\]"), -- Directory traversal
+         regex.new("^[\\/\\\\]*\\."), -- Hidden files
+         regex.new([[\.(?:exe|bat|cmd|ps1|dll|so|ini|conf|config)$]], regex.ICASE)
       }
 
-      for _, pattern in ipairs(dangerous) do
-         if URIPath:find(pattern) then
+      for pattern in values(dangerous) do
+         if pattern.test(URIPath) then
             errorBody = createErrorPage(403, 'Forbidden', 'Access to this file type is forbidden.', 'Path: ' .. URIPath)
             logMessage(self, 'Security: Blocked access to dangerous path: ' .. URIPath)
-            sendHttpResponse(self, ClientSocket, 403, "Forbidden", {
-               ['content-type'] = 'text/html'
-            }, errorBody)
+            sendHttpResponse(self, ClientSocket, 403, "Forbidden", { ['content-type'] = 'text/html' }, errorBody)
             return
          end
       end
@@ -1635,7 +1654,7 @@ function serverIncoming(self, ClientSocket)
 
       if fileType is LOC_FOLDER then
          -- Ensure directory URLs end with /
-         if not URIPath:match('/$') then
+         if not URIPath:endsWith('/') then
             sendHttpResponse(self, ClientSocket, 301, 'Moved Permanently', {
                ['location'] = URIPath .. '/'
             })
@@ -1674,15 +1693,15 @@ hslib.start = function(Options)
       if validatePort(Options.port) then
          self.port = tonumber(Options.port)
       else
-         error('Invalid port number: ' .. Options.port .. '. Port must be between 1 and 65535.')
+         error(f'Invalid port number: {Options.port}. Port must be between 1 and 65535.')
       end
    end
 
    if Options.folder then
       -- Validate folder input
       folder = Options.folder
-      if folder:find('%.%.') or folder:find('^~') then
-         error('Invalid folder path: security violation')
+      if folder:find('..') or folder:startsWith('~') then
+         error(f'Invalid folder path: security violation for: {folder}')
       end
 
       err, resolvedPath = mSys.ResolvePath(folder)
@@ -1691,7 +1710,7 @@ hslib.start = function(Options)
       end
 
       file_type = [_*]mSys.AnalysePath(self.folder)
-      assert(file_type is LOC_FOLDER, 'Folder "' .. self.folder .. '" does not exist')
+      assert(file_type is LOC_FOLDER, f'Folder "{self.folder}" does not exist')
    end
 
    assert(self.folder, 'The folder option is required')
@@ -1737,6 +1756,8 @@ hslib.start = function(Options)
    if Options.logMessage then
       if type(Options.logMessage) is 'function' then
          self.logMessage = Options.logMessage
+      elseif Options.logMessage is true then
+         self.logMessage = msg
       else
          error('logMessage option must be a function')
       end
@@ -1751,9 +1772,9 @@ hslib.start = function(Options)
             if type(middleware) is 'function' then
                table.insert(self._middleware, middleware)
                middlewareCount++
-               logMessage(self, 'Global middleware configured at index ' .. i)
+               logMessage(self, f'Global middleware configured at index {i}')
             else
-               error('Invalid middleware at index ' .. i .. ' - must be a function')
+               error(f'Invalid middleware at index {i} - must be a function')
             end
          end
       else
@@ -1765,7 +1786,7 @@ hslib.start = function(Options)
    routeCount = 0
    if Options.routes then
       if type(Options.routes) is 'table' then
-         for i, route in ipairs(Options.routes) do
+         for route in values(Options.routes) do
             if type(route) is 'table' then
                addRoute(self, route)
                routeCount++
@@ -1781,26 +1802,26 @@ hslib.start = function(Options)
       bindMsg = ' bound to ' .. self.bind
    end
 
-   msg('\nStarting HTTP server on port ' .. self.port .. bindMsg)
-   msg('Serving files from: ' .. self.folder)
+   msg(f'\nStarting HTTP server on port {self.port}{bindMsg}')
+   msg(f'Serving files from: {self.folder}')
    msg('Configuration:')
-   msg('  Port: ' .. self.port)
-   msg('  Bind address: ' .. (self.bind or 'all interfaces'))
-   msg('  Folder: ' .. self.folder)
-   msg('  Max request size: ' .. self.maxRequestSize .. ' bytes')
-   msg('  File chunk size: ' .. self.fileChunkSize .. ' bytes')
-   msg('  Timeout: ' .. self.timeout .. ' seconds')
-   msg('  Verbose logging: ' .. (self.verbose and 'enabled' or 'disabled'))
+   msg(f'  Port: {self.port}')
+   msg(f'  Bind address: {self.bind or "all interfaces"}')
+   msg(f'  Folder: {self.folder}')
+   msg(f'  Max request size: {self.maxRequestSize} bytes')
+   msg(f'  File chunk size: {self.fileChunkSize} bytes')
+   msg(f'  Timeout: {self.timeout} seconds')
+   msg(f'  Verbose logging: {self.verbose}')
    msg('  Index files: ' .. table.concat(self.indexFiles, ', '))
-   msg('  Auto-indexing: ' .. (self.autoIndex and 'enabled' or 'disabled'))
-   msg('  Rate limit: ' .. (self.rateLimit > 0 and (self.rateLimit .. ' requests per ' .. self.rateLimitWindow .. ' seconds') or 'disabled'))
+   msg(f'  Auto-indexing: {self.autoIndex}')
+   msg('  Rate limit: ' .. (self.rateLimit > 0 and (f'{self.rateLimit} requests per {self.rateLimitWindow} seconds') or 'disabled'))
    msg('  Security headers: ' .. (self.enableCSP and 'enabled' or 'disabled'))
    msg('  Global middleware: ' .. middlewareCount)
    msg('  Routes configured: ' .. routeCount)
 
    cfg = {
-      port = self.port,
-      flags = 'SERVER|MULTI_CONNECT',
+      port     = self.port,
+      flags    = 'SERVER|MULTI_CONNECT',
       feedback = function(Server, ClientSocket, State)
          if State is NTC_CONNECTED then
             -- New client connection
@@ -1835,9 +1856,8 @@ hslib.start = function(Options)
 
    -- Add global middleware
    self.newMiddleware = function(middleware)
-      if not self._middleware then
-         self._middleware = {}
-      end
+      self._middleware ?= {}
+
       if type(middleware) is 'function' then
          table.insert(self._middleware, middleware)
          logMessage(self, 'Global middleware added')
@@ -1849,7 +1869,7 @@ hslib.start = function(Options)
    -- Built-in middleware factory functions
    self.middleware = {
       cors = function(options)
-         options = options or {}
+         options ?= {}
          return function(request, response, next)
             -- Set CORS headers with custom options
             response.header('Access-Control-Allow-Origin', options.origin or '*')
@@ -1872,7 +1892,7 @@ hslib.start = function(Options)
       end,
 
       logging = function(options)
-         options = options or {}
+         options ?= {}
          return loggingMiddleware
       end,
 

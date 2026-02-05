@@ -13,6 +13,8 @@
    include "xml"
    import "common"
 
+   rx_folder_name = <{ regex.new([[([^:\/]+)\/*$]]) }>
+
    SIGLEN = 8
 
 ------------------------------------------------------------------------------
@@ -117,7 +119,7 @@ function zipPackage()
    local err, file = folder.mtNext()
    while (err is ERR_Okay) do
       if (file.flags & FL_FOLDER)?? then
-         local name = file.path:match("([^:/]+)/-$")
+         local name = rx_folder_name.extract(file.path)
          print("Compressing " .. name)
          zip.mtCompressFile(file.path, "/")
       end
@@ -322,5 +324,3 @@ end
    else
       print("No RSA private key supplied - the package will not be signed.")
    end
-
-

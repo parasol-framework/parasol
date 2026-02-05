@@ -18,7 +18,7 @@ function enforce_hotpath() end
 end
 
 @Test function Index()
---   getmetatable('').__index = function(str,i) return string.sub(str,i,i) end
+--   getmetatable('').__index = function(str,i) return string.substr(str,i,i) end
 --   hw = "Hello World"
 --   assert(string[1] is "H", "Expected 'H' at index 0, got '" .. tostring(string[1]) .. "'")
 end

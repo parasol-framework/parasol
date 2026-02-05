@@ -97,7 +97,7 @@ end
 ------------------------------------------------------------------------------
 
 file.isFolder = function(Path:str):bool
-   e = string.sub(Path, -1)
+   e = string.substr(Path, -1)
    if (e is '/') or (e is '\\') or (e is ':') then return true end
    return false
 end

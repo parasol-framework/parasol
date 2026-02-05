@@ -1,4 +1,24 @@
 
+-- Deferred regex patterns for folding range detection
+rx_quote_char  = <{ regex.new([["']]) }>
+rx_trim_start  = <{ regex.new([[^\s*(.*)]], regex.DOT_ALL) }>
+rx_func_sig    = <{ regex.new("\\bfunction\\s+[\\w]") }>
+rx_func_paren  = <{ regex.new([[\bfunction\s*\(]]) }>
+rx_kw_if       = <{ regex.new([[\bif\b]]) }>
+rx_kw_then     = <{ regex.new([[\bthen\b]]) }>
+rx_kw_for      = <{ regex.new([[\bfor\b]]) }>
+rx_kw_do       = <{ regex.new([[\bdo\b]]) }>
+rx_kw_while    = <{ regex.new([[\bwhile\b]]) }>
+rx_kw_repeat   = <{ regex.new([[\brepeat\b]]) }>
+rx_kw_defer    = <{ regex.new([[\bdefer\b]]) }>
+rx_kw_end      = <{ regex.new([[\bend\b]]) }>
+rx_kw_until    = <{ regex.new([[\buntil\b]]) }>
+
+-- Deferred regex patterns for token parsing
+rx_global_var   = <{ regex.new("^gl[A-Z]") }>
+rx_starts_upper = <{ regex.new("^[A-Z]") }>
+rx_all_upper    = <{ regex.new([[^[A-Z_]+$]]) }>
+
 ----------------------------------------------------------------------------------------------------------------------
 -- Semantic Token Encoder
 
@@ -215,9 +235,7 @@ global function tokenizeFluid(Source:str):array
             end
          end
          addToken(line, num_start, col - num_start, 5, 0)  -- number
-
-      -- Identifiers and keywords
-      elseif isIdentStart(c) then
+      elseif isIdentStart(c) then -- Identifiers and keywords
          ident_start = col
          while pos < len and isIdentChar(Source:sub(pos, pos + 1)) do
             pos++
@@ -236,11 +254,11 @@ global function tokenizeFluid(Source:str):array
             addToken(line, ident_start, ident_len, 3, 128)  -- function + defaultLibrary
          elseif FLUID_MODULES[ident] then
             addToken(line, ident_start, ident_len, 10, 0)  -- namespace
-         elseif ident:match('^ERR_') then
+         elseif ident:startsWith('ERR_') then
             addToken(line, ident_start, ident_len, 12, 4)  -- macro + readonly (error constants)
-         elseif ident:match('^gl[A-Z]') then
+         elseif rx_global_var.test(ident) then
             addToken(line, ident_start, ident_len, 2, 8)  -- variable + static (global)
-         elseif ident:match('^[A-Z]') and ident:match('^[A-Z_]+$') then
+         elseif rx_starts_upper.test(ident) and rx_all_upper.test(ident) then
             addToken(line, ident_start, ident_len, 12, 4)  -- macro + readonly (CONSTANTS)
          else
             -- Check if it's a function call (followed by parenthesis)
@@ -257,9 +275,7 @@ global function tokenizeFluid(Source:str):array
             col = save_col
             line = save_line
          end
-
-      -- Symbolic operators (multi-character first, then single-character)
-      elseif c is '?' then
+      elseif c is '?' then -- Symbolic operators (multi-character first, then single-character)
          op_start = col
          if pos + 2 < len and Source:sub(pos + 1, pos + 3) is '?=' then
             -- ??= if-empty assignment
@@ -292,7 +308,6 @@ global function tokenizeFluid(Source:str):array
             pos++
             col++
          end
-
       elseif c is '|' then
          op_start = col
          if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '>' then
@@ -306,7 +321,6 @@ global function tokenizeFluid(Source:str):array
             pos++
             col++
          end
-
       elseif c is '=' then
          op_start = col
          if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '>' then
@@ -319,7 +333,6 @@ global function tokenizeFluid(Source:str):array
             pos++
             col++
          end
-
       elseif c is ':' then
          op_start = col
          if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '>' then
@@ -332,7 +345,6 @@ global function tokenizeFluid(Source:str):array
             pos++
             col++
          end
-
       elseif c is '.' then
          op_start = col
          if pos + 2 < len and Source:sub(pos + 1, pos + 3) is '.=' then
@@ -355,7 +367,6 @@ global function tokenizeFluid(Source:str):array
             pos++
             col++
          end
-
       elseif c is '+' then
          op_start = col
          if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '+' then
@@ -374,7 +385,6 @@ global function tokenizeFluid(Source:str):array
             pos++
             col++
          end
-
       elseif c is '-' then
          op_start = col
          if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '=' then
@@ -388,7 +398,6 @@ global function tokenizeFluid(Source:str):array
             pos++
             col++
          end
-
       elseif c is '*' then
          op_start = col
          if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '=' then
@@ -402,7 +411,6 @@ global function tokenizeFluid(Source:str):array
             pos++
             col++
          end
-
       elseif c is '/' then
          op_start = col
          if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '=' then
@@ -416,7 +424,6 @@ global function tokenizeFluid(Source:str):array
             pos++
             col++
          end
-
       elseif c is '%' then
          op_start = col
          if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '=' then
@@ -430,7 +437,6 @@ global function tokenizeFluid(Source:str):array
             pos++
             col++
          end
-
       elseif c is '<' then
          op_start = col
          if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '<' then
@@ -449,7 +455,6 @@ global function tokenizeFluid(Source:str):array
             pos++
             col++
          end
-
       elseif c is '>' then
          op_start = col
          if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '>' then
@@ -468,7 +473,6 @@ global function tokenizeFluid(Source:str):array
             pos++
             col++
          end
-
       elseif c is '!' then
          op_start = col
          if pos + 1 < len and Source:sub(pos + 1, pos + 2) is '=' then
@@ -476,38 +480,27 @@ global function tokenizeFluid(Source:str):array
             addToken(line, op_start, 2, 1, 0)
             pos += 2
             col += 2
-         else
-            -- ! (used in flags like '!READ')
+         else -- ! (used in flags like '!READ')
             pos++
             col++
          end
-
-      elseif c is '&' then
-         -- & bitwise AND
+      elseif c is '&' then -- & bitwise AND
          addToken(line, col, 1, 1, 0)
          pos++
          col++
-
-      elseif c is '~' then
-         -- ~ bitwise NOT
+      elseif c is '~' then -- ~ bitwise NOT
          addToken(line, col, 1, 1, 0)
          pos++
          col++
-
-      elseif c is '^' then
-         -- ^ exponentiation
+      elseif c is '^' then -- ^ exponentiation
          addToken(line, col, 1, 1, 0)
          pos++
          col++
-
-      elseif c is '#' then
-         -- # length operator
+      elseif c is '#' then -- # length operator
          addToken(line, col, 1, 1, 0)
          pos++
          col++
-
-      else
-         -- Skip other characters (punctuation, brackets, etc.)
+      else -- Skip other characters (punctuation, brackets, etc.)
          pos++
          col++
       end
@@ -532,7 +525,7 @@ global function extractFoldingRanges(Doc:table):array
 
       -- Handle block comments --[[ ... ]]
       if in_block_comment then
-         if line_text:find('%]%]') then
+         if line_text:find(']]') then
             -- End of block comment
             if line_num > block_comment_start then
                ranges:push({
@@ -547,11 +540,11 @@ global function extractFoldingRanges(Doc:table):array
       end
 
       -- Check for block comment start
-      block_comment_pos = line_text:find('%-%-%[%[')
+      block_comment_pos = line_text:find('--[[')
       if block_comment_pos then
          -- Check it's not inside a string (simplified check)
          before = line_text:sub(0, block_comment_pos)
-         if not before:find('["\']') then
+         if not rx_quote_char.test(before) then
             in_block_comment = true
             block_comment_start = line_num
             continue
@@ -562,56 +555,56 @@ global function extractFoldingRanges(Doc:table):array
       -- We need to be careful not to match keywords in comments or strings
 
       -- Skip if line is a comment
-      trimmed = line_text:match('^%s*(.*)')
+      trimmed = rx_trim_start.extract(line_text)
       if trimmed:sub(0, 2) is '--' then
          continue
       end
 
       -- Find comment position to avoid matching keywords in comments
-      comment_pos = line_text:find('%-%-')
+      comment_pos = line_text:find('--')
 
       -- Check for block openers (only if not in a comment)
-      function checkKeyword(Pattern)
-         pos = line_text:find(Pattern)
-         if pos and (not comment_pos or pos < comment_pos) then
-            return pos
+      function checkKeyword(RxPattern)
+         start_pos, stop_pos = RxPattern.findFirst(line_text)
+         if start_pos and (not comment_pos or start_pos < comment_pos) then
+            return start_pos
          end
          return nil
       end
 
       -- function ... (opens a block)
-      if checkKeyword('%f[%w]function%s+[%w_]') or checkKeyword('%f[%w]function%s*%(') then
+      if checkKeyword(rx_func_sig) or checkKeyword(rx_func_paren) then
          block_stack:push({ line = line_num, kind = 'function' })
       end
 
       -- if ... then (opens a block)
-      if checkKeyword('%f[%w]if%f[^%w]') and checkKeyword('%f[%w]then%f[^%w]') then
+      if checkKeyword(rx_kw_if) and checkKeyword(rx_kw_then) then
          block_stack:push({ line = line_num, kind = 'if' })
       end
 
       -- for ... do (opens a block)
-      if checkKeyword('%f[%w]for%f[^%w]') and checkKeyword('%f[%w]do%f[^%w]') then
+      if checkKeyword(rx_kw_for) and checkKeyword(rx_kw_do) then
          block_stack:push({ line = line_num, kind = 'for' })
       end
 
       -- while ... do (opens a block)
-      if checkKeyword('%f[%w]while%f[^%w]') and checkKeyword('%f[%w]do%f[^%w]') then
+      if checkKeyword(rx_kw_while) and checkKeyword(rx_kw_do) then
          block_stack:push({ line = line_num, kind = 'while' })
       end
 
       -- repeat (opens a block, closed by until)
-      if checkKeyword('%f[%w]repeat%f[^%w]') then
+      if checkKeyword(rx_kw_repeat) then
          block_stack:push({ line = line_num, kind = 'repeat' })
       end
 
       -- defer (opens a block)
-      if checkKeyword('%f[%w]defer%f[^%w]') then
+      if checkKeyword(rx_kw_defer) then
          block_stack:push({ line = line_num, kind = 'defer' })
       end
 
       -- Check for block closers
       -- 'end' closes function, if, for, while, defer
-      if checkKeyword('%f[%w]end%f[^%w]') then
+      if checkKeyword(rx_kw_end) then
          if #block_stack > 0 then
             block_start = block_stack:pop()
             if block_start and line_num > block_start.line then
@@ -624,7 +617,7 @@ global function extractFoldingRanges(Doc:table):array
       end
 
       -- 'until' closes repeat
-      if checkKeyword('%f[%w]until%f[^%w]') then
+      if checkKeyword(rx_kw_until) then
          if #block_stack > 0 then
             block_start = block_stack:pop()
             if block_start and block_start.kind is 'repeat' and line_num > block_start.line then
