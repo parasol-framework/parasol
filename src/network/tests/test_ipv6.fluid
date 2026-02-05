@@ -80,7 +80,7 @@ end
             local buffer = string.alloc(256)
             local err, bytes = Client.acRead(buffer, string.len(buffer))
             if err is ERR_Okay and bytes > 0 then
-               message = string.sub(buffer, 0, bytes)
+               message = string.substr(buffer, 0, bytes)
                print('[Server] Received from client: ' .. message)
 
                -- Echo back
@@ -109,7 +109,7 @@ end
          local buffer = string.alloc(256)
          local err, bytes = Socket.acRead(buffer, string.len(buffer))
          if err is ERR_Okay and bytes > 0 then
-            local response = string.sub(buffer, 0, bytes)
+            local response = string.substr(buffer, 0, bytes)
             print('[Client] Received response: ' .. response)
             proc.signal()
          end
