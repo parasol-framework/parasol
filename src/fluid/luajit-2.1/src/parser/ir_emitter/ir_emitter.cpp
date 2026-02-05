@@ -765,6 +765,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_conditional_shorthand_stmt(const Condit
    ControlFlowEdge check_zero = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQS, cond_reg, const_str(&this->func_state, &emptyv)));
    ControlFlowEdge check_empty = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEMPTYARR, cond_reg, 0));
+   ControlFlowEdge check_empty_array = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
 
    ControlFlowEdge skip_body = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
 
@@ -773,6 +775,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_conditional_shorthand_stmt(const Condit
    check_false.patch_to(body_start);
    check_zero.patch_to(body_start);
    check_empty.patch_to(body_start);
+   check_empty_array.patch_to(body_start);
 
    auto body_result = this->emit_statement(*Payload.body);
    if (not body_result.ok()) return body_result;
