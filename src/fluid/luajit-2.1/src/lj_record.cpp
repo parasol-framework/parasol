@@ -867,7 +867,6 @@ static TRef rec_call_specialise(jit_State *J, GCfunc* fn, TRef tr)
       // Don't specialise to non-monomorphic builtins.
       switch (fn->c.ffid) {
       case FF_coroutine_wrap_aux:
-      case FF_string_gmatch_aux:
          // NYI: io_file_iter doesn't have an ffid, yet.
       {  // Specialise to the ffid.
          TRef trid = ir.fload(tr, IRFL_FUNC_FFID, IRT_U8);
