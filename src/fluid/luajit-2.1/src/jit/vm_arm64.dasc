@@ -3611,12 +3611,14 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |   mvn RC, RC
     |   ldr STR:RC, [KBASE, RC, lsl #3]
     |  checkobject CARG2, ->vmeta_tgets1
+    |  // Call C helper: bc_object_getfield(L, GCobject*, GCstr*, TValue*, BCIns*)
     |  add CARG4, BASE, RA, lsl #3
     |   str BASE, L->base
     |  mov CARG1, L
     |  mov CARG3, STR:RC
+    |  sub CARG5, PC, #8             // 5th arg: BCIns * (current instruction for IC)
     |   str PC, SAVE_PC
-    |  bl extern bc_object_getfield  // (lua_State *L, GCobject *obj, GCstr *key, TValue *dest)
+    |  bl extern bc_object_getfield
     |  ldr BASE, L->base
     |  ins_next
     break;
@@ -3629,12 +3631,14 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |   mvn RC, RC
     |   ldr STR:RC, [KBASE, RC, lsl #3]
     |  checkobject CARG2, ->vmeta_tsets1
+    |  // Call C helper: bc_object_setfield(L, GCobject*, GCstr*, TValue*, BCIns*)
     |  add CARG4, BASE, RA, lsl #3
     |   str BASE, L->base
     |  mov CARG1, L
     |  mov CARG3, STR:RC
+    |  sub CARG5, PC, #8             // 5th arg: BCIns * (current instruction for IC)
     |   str PC, SAVE_PC
-    |  bl extern bc_object_setfield  // (lua_State *L, GCobject *obj, GCstr *key, TValue *val)
+    |  bl extern bc_object_setfield
     |  ldr BASE, L->base
     |  ins_next
     break;
