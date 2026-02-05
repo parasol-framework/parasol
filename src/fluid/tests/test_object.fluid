@@ -54,9 +54,8 @@ end
 
 @Test function ThunkResolution()
    -- Resolve the thunk inside a string to see complex sequencing works
-   script = tostring(glThunk) .. " hello"
-   num = string.match(script, "#(%d+) hello")
-   assert(tonumber(num) > 0, "Expected thunk to resolve to an object, got " .. tostring(script))
+   script = f"{glThunk} hello"
+   assert(regex.new('#\\d+ hello').test(script), f"Expected thunk to resolve to an object, got {script}")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
