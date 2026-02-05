@@ -619,7 +619,7 @@ end
       mul = function(A: num, B: num):num return A * B end
    }
    assert(ops.add(3, 4) is 7, "typed function in table should work")
-   assert(ops.sub(10, 3) is 7, "second typed function should work")
+   assert(ops.substr(10, 3) is 7, "second typed function should work")
    assert(ops.mul(3, 4) is 12, "third typed function should work")
 end
 

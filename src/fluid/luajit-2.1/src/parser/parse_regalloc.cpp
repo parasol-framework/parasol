@@ -264,40 +264,6 @@ BCPOS bcemit_INS(FuncState *fs, BCIns ins)
 }
 
 //********************************************************************************************************************
-// Emit extended bytecode instruction (two words: primary + extension).
-// Both words share the same line number for debugging purposes.
-
-BCPOS bcemit_INS_EXT(FuncState *fs, BCIns ins, BCIns ext)
-{
-   BCPOS pc = fs->pc;
-   LexState* ls = fs->ls;
-   ControlFlowGraph cfg(fs);
-   ControlFlowEdge pending = cfg.make_unconditional(fs->pending_jmp());
-   pending.patch_with_value(BCPos(pc), BCReg(NO_REG), BCPos(pc));
-   fs->clear_pending_jumps();
-
-   // Ensure space for two instructions
-   if (pc + 1 >= fs->bclim) [[unlikely]] {
-      ptrdiff_t base = fs->bcbase - ls->bc_stack;
-      checklimit(fs, ls->size_bc_stack, LJ_MAX_BCINS - 1, "bytecode instructions");
-      lj_mem_growvec(fs->L, ls->bc_stack, ls->size_bc_stack, LJ_MAX_BCINS, BCInsLine);
-      fs->bclim = BCPOS(ls->size_bc_stack - base);
-      fs->bcbase = ls->bc_stack + base;
-   }
-
-   // Emit primary instruction word
-   fs->bcbase[pc].ins = ins;
-   fs->bcbase[pc].line = ls->effective_line();
-
-   // Emit extension word with same line info
-   fs->bcbase[pc + 1].ins = ext;
-   fs->bcbase[pc + 1].line = ls->effective_line();
-
-   fs->pc = pc + 2;
-   return pc;
-}
-
-//********************************************************************************************************************
 // Bytecode emitter for expressions
 
 // Discharge non-constant expression to any register.
@@ -319,7 +285,20 @@ static void expr_discharge(FuncState *fs, ExpDesc *e)
    }
    else if (e->k IS ExpKind::Indexed) {
       BCREG rc = e->u.s.aux;
-      if (int32_t(rc) < 0) ins = BCINS_ABC(BC_TGETS, 0, e->u.s.info, ~rc);
+      if (int32_t(rc) < 0) {
+         int32_t idx = ~rc;
+         if (idx <= BCMAX_C) {
+            ins = BCINS_ABC(BC_TGETS, 0, e->u.s.info, idx);
+         }
+         else {
+            // Overflow: load string constant into temp register, use TGETV
+            BCREG key_reg = fs->freereg;
+            bcreg_reserve(fs, 1);
+            bcemit_AD(fs, BC_KSTR, key_reg, BCREG(idx));
+            bcreg_free(fs, key_reg);
+            ins = BCINS_ABC(BC_TGETV, 0, e->u.s.info, key_reg);
+         }
+      }
       else if (rc > BCMAX_C) ins = BCINS_ABC(BC_TGETB, 0, e->u.s.info, rc - (BCMAX_C + 1));
       else {
          bcreg_free(fs, rc);
@@ -353,7 +332,9 @@ static void expr_discharge(FuncState *fs, ExpDesc *e)
       // aux holds negated string constant index (same encoding as BC_TGETS)
       BCREG rc = e->u.s.aux;
       fs_check_assert(fs, int32_t(rc) < 0, "object field index must be string constant");
-      ins = BCINS_ABC(BC_OBGETF, 0, e->u.s.info, ~rc);
+      BCREG idx = (BCREG)~rc;
+      fs_check_assert(fs, idx <= BCMAX_C, "object field string constant index out of range");
+      ins = BCINS_ABC(BC_OBGETF, 0, e->u.s.info, idx);
       bcreg_free(fs, e->u.s.info);
    }
    else if (e->k IS ExpKind::Call) {
@@ -687,7 +668,7 @@ static void bcemit_store(FuncState *fs, ExpDesc *LHS, ExpDesc *RHS)
       ra = expr_toanyreg(fs, RHS);
       rc = LHS->u.s.aux;
       fs_check_assert(fs, int32_t(rc) < 0, "object field index must be string constant");
-      ins = BCINS_ABC(BC_OBSETF, ra, LHS->u.s.info, ~rc);
+      ins = BCINS_ABC(BC_OBSETF, ra, LHS->u.s.info, (~rc) & 0xFFu);
    }
    else {
       // Table index assignment - emit BC_TSETV, BC_TSETB, or BC_TSETS
@@ -695,9 +676,30 @@ static void bcemit_store(FuncState *fs, ExpDesc *LHS, ExpDesc *RHS)
       fs_check_assert(fs, LHS->k IS ExpKind::Indexed, "bad expr type %d", int(LHS->k));
       ra = expr_toanyreg(fs, RHS);
       rc = LHS->u.s.aux;
-      if (int32_t(rc) < 0) ins = BCINS_ABC(BC_TSETS, ra, LHS->u.s.info, ~rc);
-      else if (rc > BCMAX_C) ins = BCINS_ABC(BC_TSETB, ra, LHS->u.s.info, rc - (BCMAX_C + 1));
-      else {
+      if (int32_t(rc) < 0) {
+         /* String constant key: rc encodes the index as ~index. */
+         int32_t stridx = ~int32_t(rc);
+         if (stridx <= BCMAX_C) {
+            ins = BCINS_ABC(BC_TSETS, ra, LHS->u.s.info, BCREG(stridx));
+         } else {
+            /* Overflow-safe path: load string constant into a register and use TSETV. */
+            BCREG key_reg = fs->freereg;
+            bcreg_reserve(fs, 1);
+            bcemit_AD(fs, BC_KSTR, key_reg, BCREG(stridx));
+            ins = BCINS_ABC(BC_TSETV, ra, LHS->u.s.info, key_reg);
+#ifdef LUA_USE_ASSERT
+            /* Free late alloced key reg to avoid assert on free of value reg. */
+            /* This can only happen when called from expr_table(). */
+            if (RHS->k IS ExpKind::NonReloc and ra >= fs->varmap.size() and rc >= ra) bcreg_free(fs, rc);
+#endif
+            bcemit_INS(fs, ins);
+            bcreg_free(fs, key_reg);
+            expr_free(fs, RHS);
+            return;
+         }
+      } else if (rc > BCMAX_C) {
+         ins = BCINS_ABC(BC_TSETB, ra, LHS->u.s.info, rc - (BCMAX_C + 1));
+      } else {
 #ifdef LUA_USE_ASSERT
          // Free late alloced key reg to avoid assert on free of value reg.
          // This can only happen when called from expr_table().

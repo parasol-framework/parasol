@@ -4,6 +4,8 @@
    include 'xml'
    import 'io/filesearch'
 
+rx_spaces = regex.new('\\s+')
+
 @BeforeAll function init(State)
    math_folder = State.folder .. 'QT3_1_0/math/'
 
@@ -104,18 +106,18 @@ function runTest(TestPath)
       if assert_eq then -- assert-eq: exact equality
          -- Get the tag and extract content
          local err, assertTag = xml.mtGetTag(assertEqId)
-         expectedValue = ''
+         expected_val = ''
          if assertTag and assertTag.children then
             for _, child in ipairs(assertTag.children) do
                if child.attribs and child.attribs[1] and child.attribs[1].name is '' then
-                  expectedValue ..= child.attribs[1].value or ''
+                  expected_val ..= child.attribs[1].value or ''
                end
             end
          end
 
          -- Compare values (handle scientific notation)
-         actual   = tostring(actual_result):gsub('%s+', '')
-         expected = tostring(expectedValue):gsub('%s+', '')
+         actual   = rx_spaces.replace(actual_result, '')
+         expected = rx_spaces.replace(expected_val, '')
 
          -- For numeric comparison, convert to numbers if possible
          actualNum   = tonumber(actual)
@@ -150,17 +152,17 @@ function runTest(TestPath)
          -- assert-string-value: compare as strings
          -- Get the tag and extract content
          local err, assertTag = xml.mtGetTag(assertStringId)
-         expectedValue = ''
+         expected_val = ''
          if assertTag and assertTag.children then
             for _, child in ipairs(assertTag.children) do
                if child.attribs and child.attribs[1] and child.attribs[1].name is '' then
-                  expectedValue ..= child.attribs[1].value or ''
+                  expected_val ..= child.attribs[1].value or ''
                end
             end
          end
 
          actual = tostring(actual_result)
-         expected = tostring(expectedValue)
+         expected = tostring(expected_val)
          if actual is expected then
             print('  PASS: ' .. test_name)
             passed++

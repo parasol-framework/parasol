@@ -253,7 +253,7 @@ constexpr inline void setgcrefr(GCRef& r, GCRef v) noexcept { r.gcptr64 = v.gcpt
 // Common type definitions
 
 // Types for handling bytecodes. Need this here, details in lj_bc.h.
-using BCIns = uint32_t;  //  Bytecode instruction.
+using BCIns = uint64_t;  //  Bytecode instruction (64-bit for native pointer storage).
 using BCPOS = uint32_t;  //  Bytecode position.
 using BCREG = uint32_t;  //  Bytecode register.
 

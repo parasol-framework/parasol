@@ -174,21 +174,9 @@
 |.macro decode_RD, dst, ins; ubfx dst, ins, #16, #16; .endmacro
 |.macro decode_RC8RD, dst, src; ubfiz dst, src, #3, #8; .endmacro
 |
-|// Instruction decode+dispatch.
+|// Instruction decode+dispatch for 64-bit BCIns.
 |.macro ins_NEXT
-|  ldr INSw, [PC], #4
-|  add TMP1, GL, INS, uxtb #3
-|   decode_RA RA, INS
-|  ldr TMP0, [TMP1, #GG_G2DISP]
-|   decode_RD RC, INS
-|  br TMP0
-|.endmacro
-|
-|// Instruction decode+dispatch for extended 64-bit instructions.
-|// Skips the extension word at [PC] and fetches the next instruction from [PC+4].
-|.macro ins_NEXT_EXT
-|  ldr INSw, [PC, #4]
-|  add PC, PC, #8
+|  ldr INS, [PC], #8           // Fetch full 64-bit instruction, advance PC by 8
 |  add TMP1, GL, INS, uxtb #3
 |   decode_RA RA, INS
 |  ldr TMP0, [TMP1, #GG_G2DISP]
@@ -201,7 +189,6 @@
 |  // Replicated dispatch. Less unpredictable branches, but higher I-Cache use.
 |  .define ins_next, ins_NEXT
 |  .define ins_next_, ins_NEXT
-|  .define ins_next_ext, ins_NEXT_EXT
 |.else
 |  // Common dispatch. Lower I-Cache use, only one (very) unpredictable branch.
 |  // Affects only certain kinds of benchmarks (and only with -j off).
@@ -212,15 +199,13 @@
 |  ->ins_next:
 |    ins_NEXT
 |  .endmacro
-|  // Extended instructions always use replicated dispatch (rare, no shared label needed).
-|  .define ins_next_ext, ins_NEXT_EXT
 |.endif
 |
-|// Call decode and dispatch.
+|// Call decode and dispatch for 64-bit BCIns.
 |.macro ins_callt
 |  // BASE = new base, CARG3 = LFUNC/CFUNC, RC = nargs*8, FRAME_PC(BASE) = PC
 |  ldr PC, LFUNC:CARG3->pc
-|  ldr INSw, [PC], #4
+|  ldr INS, [PC], #8           // Fetch full 64-bit instruction, advance PC by 8
 |  add TMP1, GL, INS, uxtb #3
 |   decode_RA RA, INS
 |  ldr TMP0, [TMP1, #GG_G2DISP]
@@ -232,6 +217,18 @@
 |  // BASE = new base, CARG3 = LFUNC/CFUNC, RC = nargs*8, PC = caller PC
 |  str PC, [BASE, FRAME_PC]
 |  ins_callt
+|.endmacro
+|
+|// Extract 32-bit P from ABCP/ADP format (upper 32 bits of 64-bit instruction)
+|.macro ins_getp32, dst
+|  ldr TMP0w, [PC, #-4]         // Upper 32 bits of instruction (force 32-bit load)
+|  mov dst, TMP0w
+|.endmacro
+|
+|// Extract 48-bit pointer from AP format (full 64-bit register required)
+|.macro ins_getptr, dst
+|  ldr dst, [PC, #-8]          // Load full 64-bit instruction
+|  lsr dst, dst, #16           // Extract 48-bit pointer
 |.endmacro
 |
 |//-----------------------------------------------------------------------
@@ -477,7 +474,7 @@ static void build_subroutines(BuildCtx *ctx)
   |   sub RA, RA, BASE
   |    mov CARG1, L
   |  stp BASE, RC, L->base
-  |   add PC, PC, #4			// Must point after first instruction.
+  |   add PC, PC, #8			// Must point after first instruction (64-bit BCIns).
   |   lsr CARG2, RA, #3
   |2:
   |  // L->base = new base, L->top = top
@@ -632,7 +629,7 @@ static void build_subroutines(BuildCtx *ctx)
   |.endif
   |
   |->cont_cat:				// RA = resultptr, CARG4 = meta base
-  |  ldr INSw, [PC, #-4]
+  |  ldr INS, [PC, #-8]		// Load full 64-bit BCIns
   |   sub CARG2, CARG4, #32
   |   ldr TMP0, [RA]
   |     str BASE, L->base
@@ -831,7 +828,7 @@ static void build_subroutines(BuildCtx *ctx)
   |
   |->vmeta_comp:
   |  add CARG2, BASE, RA, lsl #3
-  |   sub PC, PC, #4
+  |   sub PC, PC, #8			// Back to comparison instruction (64-bit BCIns)
   |  add CARG3, BASE, RC, lsl #3
   |   str BASE, L->base
   |  mov CARG1, L
@@ -844,15 +841,15 @@ static void build_subroutines(BuildCtx *ctx)
   |  bhi ->vmeta_binop
   |4:
   |   ldrh RBw, [PC, # OFS_RD]
-  |    add PC, PC, #4
-  |   add RB, PC, RB, lsl #2
-  |   sub RB, RB, #0x20000
+  |    add PC, PC, #8			// Skip past JMP instruction (64-bit BCIns)
+  |   add RB, PC, RB, lsl #3		// Branch target: PC + RD*8
+  |   sub RB, RB, #0x40000		// Subtract BCBIAS_J*8
   |  csel PC, PC, RB, lo
   |->cont_nop:
   |  ins_next
   |
   |->cont_ra:				// RA = resultptr
-  |  ldr INSw, [PC, #-4]
+  |  ldr INS, [PC, #-8]		// Load full 64-bit BCIns
   |   ldr TMP0, [RA]
   |  decode_RA TMP1, INS
   |   str TMP0, [BASE, TMP1, lsl #3]
@@ -873,7 +870,7 @@ static void build_subroutines(BuildCtx *ctx)
   |->vmeta_equal:
   |  // CARG2, CARG3, CARG4 are already set by BC_ISEQV/BC_ISNEV.
   |  and TAB:CARG3, CARG3, #LJ_GCVMASK
-  |  sub PC, PC, #4
+  |  sub PC, PC, #8			// Back to equality instruction (64-bit BCIns)
   |   str BASE, L->base
   |   mov CARG1, L
   |  str PC, SAVE_PC
@@ -883,10 +880,10 @@ static void build_subroutines(BuildCtx *ctx)
   |
   |->vmeta_equal_cd:
   |.if FFI
-  |  sub PC, PC, #4
+  |  sub PC, PC, #8			// Back to equality instruction (64-bit BCIns)
   |   str BASE, L->base
   |   mov CARG1, L
-  |   mov CARG2, INS
+  |   mov CARG2, INS			// Pass full 64-bit BCIns
   |  str PC, SAVE_PC
   |  bl extern lj_meta_equal_cd		// (lua_State *L, BCIns op)
   |  // Returns 0/1 or TValue * (metamethod).
@@ -894,17 +891,17 @@ static void build_subroutines(BuildCtx *ctx)
   |.endif
   |
   |->vmeta_equal_thunk:
-  |  sub PC, PC, #4
+  |  sub PC, PC, #8			// Back to equality instruction (64-bit BCIns)
   |   str BASE, L->base
   |   mov CARG1, L
-  |   mov CARG2w, INSw
+  |   mov CARG2, INS			// Pass full 64-bit BCIns
   |  str PC, SAVE_PC
   |  bl extern lj_meta_equal_thunk	// (lua_State *L, BCIns ins)
   |  // Returns 0/1 in CRET1.
   |  b <3
   |
   |->vmeta_istype:
-  |  sub PC, PC, #4
+  |  sub PC, PC, #8			// Back to ISTYPE instruction (64-bit BCIns)
   |   str BASE, L->base
   |   mov CARG1, L
   |   mov CARG2, RA
@@ -1013,7 +1010,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov CARG2, RA
   |   str PC, SAVE_PC
   |  bl extern lj_meta_for	// (lua_State *L, TValue *base)
-  |  ldr INSw, [PC, #-4]
+  |  ldr INS, [PC, #-8]		// Load full 64-bit BCIns
   |.if JIT
   |   uxtb TMP0w, INSw
   |.endif
@@ -1545,7 +1542,7 @@ static void build_subroutines(BuildCtx *ctx)
   |   str RCw, SAVE_MULTRES
   |   sub RA, BASE, #16
   |  bne ->vm_return
-  |  ldr INSw, [PC, #-4]
+  |  ldr INS, [PC, #-8]		// Load full 64-bit BCIns
   |  decode_RB RB, INS
   |5:
   |  cmp RC, RB, lsl #3			// More results expected?
@@ -1970,7 +1967,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  ands TMP0, PC, #FRAME_TYPE
   |   and TMP1, PC, #~FRAME_TYPEP
   |  bne >3
-  |  ldrb RAw, [PC, #-4+OFS_RA]
+  |  ldrb RAw, [PC, #-8+OFS_RA]
   |  lsl RA, RA, #3
   |  add TMP1, RA, #16
   |3:
@@ -2045,7 +2042,7 @@ static void build_subroutines(BuildCtx *ctx)
   |3:
   |  ldr BASE, L->base
   |4:  // Re-dispatch to static ins.
-  |  ldr INSw, [PC, #-4]
+  |  ldr INS, [PC, #-8]		// Load full 64-bit BCIns
   |  add TMP1, GL, INS, uxtb #3
   |   decode_RA RA, INS
   |  ldr TMP0, [TMP1, #GG_G2DISP+GG_DISP2STATIC]
@@ -2054,7 +2051,7 @@ static void build_subroutines(BuildCtx *ctx)
   |
   |->cont_hook:				// Continue from hook yield.
   |  ldr CARG1, [CARG4, #-40]
-  |   add PC, PC, #4
+  |   add PC, PC, #8			// Advance past current instruction (64-bit BCIns)
   |  str CARG1w, SAVE_MULTRES		// Restore MULTRES for *M ins.
   |  b <4
   |
@@ -2098,7 +2095,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  ldr LFUNC:CARG3, [BASE, FRAME_FUNC]
   |  add RA, BASE, RA
   |  sub NARGS8:RC, TMP1, BASE
-  |   ldr INSw, [PC, #-4]
+  |   ldr INS, [PC, #-8]		// Load full 64-bit BCIns
   |  and LFUNC:CARG3, CARG3, #LJ_GCVMASK
   |  br CRET1
   |
@@ -2106,7 +2103,7 @@ static void build_subroutines(BuildCtx *ctx)
   |.if JIT
   |  // RA = resultptr, CARG4 = meta base
   |   ldr RBw, SAVE_MULTRES
-  |  ldr INSw, [PC, #-4]
+  |  ldr INS, [PC, #-8]		// Load full 64-bit BCIns
   |    ldr TRACE:CARG3, [CARG4, #-40]	// Save previous trace.
   |   subs RB, RB, #8
   |  decode_RA RC, INS			// Call base.
@@ -2160,7 +2157,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  bl extern lj_dispatch_profile	// (lua_State *L, const BCIns *pc)
   |  // HOOK_PROFILE is off again, so re-dispatch to dynamic instruction.
   |  ldr BASE, L->base
-  |  sub PC, PC, #4
+  |  sub PC, PC, #8			// Back to current instruction (64-bit BCIns)
   |  b ->cont_nop
 #endif
   |
@@ -2245,7 +2242,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  ldr KBASE, [CARG2, #PC2PROTO(k)]
   |  // Modified copy of ins_next which handles function header dispatch, too.
   |  ldrb RBw, [PC, # OFS_OP]
-  |   ldr INSw, [PC], #4
+  |   ldr INS, [PC], #8		// Fetch full 64-bit BCIns, advance PC by 8
   |    st_vmstate CARG4w
   |  cmp RBw, #BC_FUNCC		// C function? (BC_FUNCC or BC_FUNCCW = 105 or 106)
   |   add TMP1, GL, INS, uxtb #3
@@ -2275,7 +2272,8 @@ static void build_subroutines(BuildCtx *ctx)
   |  ands CARG2, CARG1, #FRAME_TYPE
   |  bne <2			// Trace stitching continuation?
   |  // Otherwise set KBASE for Lua function below fast function.
-  |  ldr CARG3w, [CARG1, #-4]
+  |  // CARG1 = return PC; call instruction is at CARG1-8 (64-bit BCIns)
+  |  ldr CARG3, [CARG1, #-8]		// Load full 64-bit call instruction
   |  decode_RA CARG1, CARG3
   |  sub CARG2, BASE, CARG1, lsl #3
   |  ldr LFUNC:CARG3, [CARG2, #-32]
@@ -2487,9 +2485,9 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ldr CARG1, [BASE, RA, lsl #3]
     |    ldrh RBw, [PC, # OFS_RD]
     |   ldr CARG2, [BASE, RC, lsl #3]
-    |    add PC, PC, #4
-    |    add RB, PC, RB, lsl #2
-    |    sub RB, RB, #0x20000
+    |    add PC, PC, #8			// Skip past JMP instruction (64-bit BCIns)
+    |    add RB, PC, RB, lsl #3		// Branch target: PC + RD*8
+    |    sub RB, RB, #0x40000		// Subtract BCBIAS_J*8
     |  checkint CARG1, >3
     |   checkint CARG2, >4
     |  cmp CARG1w, CARG2w
@@ -2544,9 +2542,9 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |   add RC, BASE, RC, lsl #3
     |    ldrh RBw, [PC, # OFS_RD]
     |   ldr CARG3, [RC]
-    |    add PC, PC, #4
-    |    add RB, PC, RB, lsl #2
-    |    sub RB, RB, #0x20000
+    |    add PC, PC, #8			// Skip past JMP instruction (64-bit BCIns)
+    |    add RB, PC, RB, lsl #3		// Branch target: PC + RD*8
+    |    sub RB, RB, #0x40000		// Subtract BCBIAS_J*8
     |  asr ITYPE, CARG3, #47
     |  cmn ITYPE, #-LJ_TISNUM
     if (vk) {
@@ -2621,12 +2619,12 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |   mvn RC, RC
     |    ldrh RBw, [PC, # OFS_RD]
     |   ldr CARG2, [KBASE, RC, lsl #3]
-    |    add PC, PC, #4
+    |    add PC, PC, #8			// Skip past JMP instruction (64-bit BCIns)
     |   movn TMP0, #~LJ_TSTR
     |  asr ITYPE, CARG1, #47
-    |    add RB, PC, RB, lsl #2
+    |    add RB, PC, RB, lsl #3		// Branch target: PC + RD*8
     |   add CARG2, CARG2, TMP0, lsl #47
-    |    sub RB, RB, #0x20000
+    |    sub RB, RB, #0x40000		// Subtract BCBIAS_J*8
     |.if FFI
     |  cmn ITYPE, #-LJ_TCDATA
     |  beq ->vmeta_equal_cd
@@ -2670,9 +2668,9 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |   add RC, KBASE, RC, lsl #3
     |    ldrh RBw, [PC, # OFS_RD]
     |   ldr CARG3, [RC]
-    |    add PC, PC, #4
-    |    add RB, PC, RB, lsl #2
-    |    sub RB, RB, #0x20000
+    |    add PC, PC, #8			// Skip past JMP instruction (64-bit BCIns)
+    |    add RB, PC, RB, lsl #3		// Branch target: PC + RD*8
+    |    sub RB, RB, #0x40000		// Subtract BCBIAS_J*8
     if (vk) {
       |->BC_ISEQN_Z:
     } else {
@@ -2743,9 +2741,9 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  // RA = src, RC = primitive_type (~), JMP with RC = target
     |  ldr TMP0, [BASE, RA, lsl #3]
     |   ldrh RBw, [PC, # OFS_RD]
-    |   add PC, PC, #4
+    |   add PC, PC, #8			// Skip past JMP instruction (64-bit BCIns)
     |  add RC, RC, #1
-    |   add RB, PC, RB, lsl #2
+    |   add RB, PC, RB, lsl #3		// Branch target: PC + RD*8
     |  asr ITYPE, TMP0, #47
     |.if FFI
     |  cmn ITYPE, #-LJ_TCDATA
@@ -2760,7 +2758,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  beq ->vmeta_equal_thunk
     |6:
     |  cmn RC, ITYPE
-    |   sub RB, RB, #0x20000
+    |   sub RB, RB, #0x40000		// Subtract BCBIAS_J*8
     if (vk) {
       |  csel PC, RB, PC, eq
     } else {
@@ -2775,11 +2773,11 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  // RA = dst or unused, RC = src, JMP with RC = target
     |   ldrh RBw, [PC, # OFS_RD]
     |  ldr TMP0, [BASE, RC, lsl #3]
-    |   add PC, PC, #4
+    |   add PC, PC, #8			// Skip past JMP instruction (64-bit BCIns)
     |  mov_false TMP1
-    |   add RB, PC, RB, lsl #2
+    |   add RB, PC, RB, lsl #3		// Branch target: PC + RD*8
     |  cmp TMP0, TMP1
-    |   sub RB, RB, #0x20000
+    |   sub RB, RB, #0x40000		// Subtract BCBIAS_J*8
     if (op == BC_ISTC || op == BC_IST) {
       if (op == BC_ISTC) {
 	|  csel RA, RA, RC, lo
@@ -2817,7 +2815,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     // Otherwise, skip the following JMP (value is truthy - not an array or non-empty).
     |  // RA = src, followed by JMP with RC = target
     |  ldr CARG1, [BASE, RA, lsl #3]
-    |  add PC, PC, #4			// Advance past following JMP
+    |  add PC, PC, #8			// Advance past following JMP (64-bit BCIns)
     |  asr ITYPE, CARG1, #47
     |  cmn ITYPE, #-LJ_TARRAY
     |  bne >1				// Not an array - skip JMP (truthy)
@@ -2825,9 +2823,9 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ldr TMP0w, ARRAY:CARG1->len
     |  cbnz TMP0w, >1			// Non-empty array - skip JMP (truthy)
     |  // Empty array - execute JMP (falsey)
-    |  ldrh RCw, [PC, #-2]
-    |  add PC, PC, RC, lsl #2
-    |  sub PC, PC, #0x20000
+    |  ldrh RCw, [PC, #-6]		// Load RD from JMP at [PC-8+OFS_RD]
+    |  add PC, PC, RC, lsl #3		// Branch target: PC + RD*8
+    |  sub PC, PC, #0x40000		// Subtract BCBIAS_J*8
     |1:
     |  ins_next
     break;
@@ -3043,7 +3041,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |   str PC, SAVE_PC
     |  bl extern lj_meta_cat		// (lua_State *L, TValue *top, int left)
     |  // Returns NULL (finished) or TValue * (metamethod).
-    |  ldrb RBw, [PC, #-4+OFS_RB]
+    |  ldrb RBw, [PC, #-8+OFS_RB]
     |   ldr BASE, L->base
     |   cbnz CRET1, ->vmeta_binop
     |  ldr TMP0, [BASE, RB, lsl #3]
@@ -3190,9 +3188,9 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
   case BC_UCLO:
     |  // RA = level, RC = target
     |  ldr CARG3, L->openupval
-    |   add RC, PC, RC, lsl #2
+    |   add RC, PC, RC, lsl #3		// Branch target: PC + RC*8
     |    str BASE, L->base
-    |   sub PC, RC, #0x20000
+    |   sub PC, RC, #0x40000		// Subtract BCBIAS_J*8
     |  cbz CARG3, >1
     |  mov CARG1, L
     |  add CARG2, BASE, RA, lsl #3
@@ -3823,7 +3821,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_callt
     |
     |5:  // Tailcall to a fast function with a Lua frame below.
-    |  ldrb RAw, [PC, #-4+OFS_RA]
+    |  ldrb RAw, [PC, #-8+OFS_RA]
     |  sub CARG1, BASE, RA, lsl #3
     |  ldr LFUNC:CARG1, [CARG1, #-32]
     |  and LFUNC:CARG1, CARG1, #LJ_GCVMASK
@@ -3867,10 +3865,10 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ldr TAB:RB, [RA, #-16]
     |    ldrh TMP3w, [PC, # OFS_RD]
     |  ldr CARG1w, [RA, #-8+LO]		// Get index from control var.
-    |    add PC, PC, #4
-    |    add TMP3, PC, TMP3, lsl #2
+    |    add PC, PC, #8			// Advance past ITERL (64-bit BCIns)
+    |    add TMP3, PC, TMP3, lsl #3	// Branch target: PC + RD*8
     |  and TAB:RB, RB, #LJ_GCVMASK
-    |    sub TMP3, TMP3, #0x20000
+    |    sub TMP3, TMP3, #0x40000	// Subtract BCBIAS_J*8
     |  ldr TMP1w, TAB:RB->asize
     |   ldr CARG2, TAB:RB->array
     |1:  // Traverse array part.
@@ -3919,7 +3917,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  add RA, BASE, RA, lsl #3
     |  ldr ARRAY:RB, [RA, #-16]
     |  ldr TMP0, [RA, #-8]		// Control var.
-    |    add PC, PC, #4
+    |    add PC, PC, #8			// Advance past IITERL (64-bit BCIns)
     |  cmp TMP0, TISNIL
     |  bne >1
     |  mov RCw, #0
@@ -3947,8 +3945,8 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  bl extern lj_arr_getidx
     |
     |    ldrh TMP3w, [PC, # OFS_RD]	// Get target from following ITERL.
-    |    add TMP3, PC, TMP3, lsl #2
-    |    sub TMP3, TMP3, #0x20000
+    |    add TMP3, PC, TMP3, lsl #3	// Branch target: PC + RD*8
+    |    sub TMP3, TMP3, #0x40000	// Subtract BCBIAS_J*8
     |  mov PC, TMP3
     |  ins_next
     |
@@ -3961,9 +3959,9 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  // RA = base, RC = target (points to ITERN)
     |  add RA, BASE, RA, lsl #3
     |  ldr CFUNC:CARG1, [RA, #-24]
-    |     add RC, PC, RC, lsl #2
+    |     add RC, PC, RC, lsl #3		// Branch target: PC + RC*8
     |   ldp TAB:CARG3, CARG4, [RA, #-16]
-    |     sub RC, RC, #0x20000
+    |     sub RC, RC, #0x40000		// Subtract BCBIAS_J*8
     |  checkfunc CFUNC:CARG1, >5
     |   asr TMP0, TAB:CARG3, #47
     |  ldrb TMP1w, CFUNC:CARG1->ffid
@@ -3984,7 +3982,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |.endif
     |  mov TMP0, #BC_JMP
     |   mov TMP1, #BC_ITERC
-    |  strb TMP0w, [PC, #-4+OFS_OP]
+    |  strb TMP0w, [PC, #-8+OFS_OP]
     |.if JIT
     |  cmp TMP2w, #BC_ITERN
     |  bne >6
@@ -3996,9 +3994,9 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ldr RA, [GL, #GL_J(trace)]
     |  ldrh TMP2w, [RC, # OFS_RD]
     |  ldr TRACE:RA, [RA, TMP2, lsl #3]
-    |  ldr TMP2w, TRACE:RA->startins
-    |  bfxil TMP2w, TMP1w, #0, #8
-    |  str TMP2w, [RC]
+    |  ldr TMP2, TRACE:RA->startins	// Load full 64-bit startins
+    |  bfxil TMP2, TMP1, #0, #8		// Insert opcode into low 8 bits
+    |  str TMP2, [RC]			// Write full 64-bit instruction
     |  b <1
     |.endif
     break;
@@ -4006,15 +4004,15 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
   case BC_ISARR:
     |  // RA = base, RD = target (points to ITERA)
     |  add RA, BASE, RA, lsl #3
-    |     add RC, PC, RC, lsl #2
+    |     add RC, PC, RC, lsl #3		// Branch target: PC + RC*8
     |  ldr TMP2, [RA, #-16]
-    |     sub RC, RC, #0x20000
+    |     sub RC, RC, #0x40000		// Subtract BCBIAS_J*8
     |  checkarray TMP2, >5
     |  ldr TMP3, [RA, #-8]
     |  cmp TMP3, TISNIL
     |  bne >5
     |  mov TMP0, #BC_ITERA
-    |  strb TMP0w, [PC, #-4+OFS_OP]
+    |  strb TMP0w, [PC, #-8+OFS_OP]
     |1:
     |     mov PC, RC
     |  ins_next
@@ -4025,7 +4023,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |.endif
     |  mov TMP0, #BC_JMP
     |   mov TMP1, #BC_ITERC
-    |  strb TMP0w, [PC, #-4+OFS_OP]
+    |  strb TMP0w, [PC, #-8+OFS_OP]
     |.if JIT
     |  cmp TMP2w, #BC_ITERA
     |  bne >6
@@ -4037,9 +4035,9 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ldr RA, [GL, #GL_J(trace)]
     |  ldrh TMP2w, [RC, # OFS_RD]
     |  ldr TRACE:RA, [RA, TMP2, lsl #3]
-    |  ldr TMP2w, TRACE:RA->startins
-    |  bfxil TMP2w, TMP1w, #0, #8
-    |  str TMP2w, [RC]
+    |  ldr TMP2, TRACE:RA->startins	// Load full 64-bit startins
+    |  bfxil TMP2, TMP1, #0, #8		// Insert opcode into low 8 bits
+    |  str TMP2, [RC]			// Write full 64-bit instruction
     |  b <1
     |.endif
     break;
@@ -4123,7 +4121,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |
     |->BC_RET_Z:
     |  // BASE = base, RA = resultptr, RC = (nresults+1)*8, PC = return
-    |  ldr INSw, [PC, #-4]
+    |  ldr INS, [PC, #-8]		// Load full 64-bit BCIns
     |  subs TMP1, RC, #8
     |   sub CARG3, BASE, #16
     |  beq >3
@@ -4172,7 +4170,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ands CARG1, PC, #FRAME_TYPE
     |   eor CARG2, PC, #FRAME_VARG
     |  bne ->BC_RETV1_Z
-    |   ldr INSw, [PC, #-4]
+    |   ldr INS, [PC, #-8]		// Load full 64-bit BCIns
     if (op == BC_RET1) {
       |  ldr TMP0, [BASE, RA, lsl #3]
     }
@@ -4250,8 +4248,8 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ldp CARG1, CARG2, FOR_IDX		// CARG1 = IDX, CARG2 = STOP
     |   ldr CARG3, FOR_STEP			// CARG3 = STEP
     if (op != BC_JFORL) {
-      |   add RC, PC, RC, lsl #2
-      |   sub RC, RC, #0x20000
+      |   add RC, PC, RC, lsl #3		// Branch target: PC + RC*8
+      |   sub RC, RC, #0x40000		// Subtract BCBIAS_J*8
     }
     |  checkint CARG1, >5
     if (!vk) {
@@ -4271,7 +4269,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
       |  csel PC, RC, PC, gt
     } else if (op == BC_JFORI) {
       |  mov PC, RC
-      |  ldrh RCw, [RC, #-4+OFS_RD]
+      |  ldrh RCw, [RC, #-8+OFS_RD]
     } else if (op == BC_IFORL) {
       |  csel PC, RC, PC, le
     }
@@ -4312,7 +4310,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     if (op == BC_FORI) {
       |  csel PC, RC, PC, hi
     } else if (op == BC_JFORI) {
-      |  ldrh RCw, [RC, #-4+OFS_RD]
+      |  ldrh RCw, [RC, #-8+OFS_RD]
       |  bls =>BC_JLOOP
     } else if (op == BC_IFORL) {
       |  csel PC, RC, PC, ls
@@ -4347,8 +4345,8 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
       |  str CARG1, [TMP1, #-8]
       |  b =>BC_JLOOP
     } else {
-      |  add TMP0, PC, RC, lsl #2	// Otherwise save control var + branch.
-      |  sub PC, TMP0, #0x20000
+      |  add TMP0, PC, RC, lsl #3	// Branch target: PC + RC*8
+      |  sub PC, TMP0, #0x40000		// Subtract BCBIAS_J*8
       |  str CARG1, [TMP1, #-8]
     }
     |1:
@@ -4387,8 +4385,8 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
 
   case BC_JMP:
     |  // RA = base (only used by trace recorder), RC = target
-    |  add RC, PC, RC, lsl #2
-    |  sub PC, RC, #0x20000
+    |  add RC, PC, RC, lsl #3		// Branch target: PC + RC*8
+    |  sub PC, RC, #0x40000		// Subtract BCBIAS_J*8
     |  ins_next
     break;
 
@@ -4409,8 +4407,8 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
   case BC_IFUNCF:
     |  // BASE = new base, RA = BASE+framesize*8, CARG3 = LFUNC, RC = nargs*8
     |  ldr CARG1, L->maxstack
-    |   ldrb TMP1w, [PC, #-4+PC2PROTO(numparams)]
-    |    ldr KBASE, [PC, #-4+PC2PROTO(k)]
+    |   ldrb TMP1w, [PC, #-8+PC2PROTO(numparams)]
+    |    ldr KBASE, [PC, #-8+PC2PROTO(k)]
     |  cmp RA, CARG1
     |  bhi ->vm_growstack_l
     |2:
@@ -4445,12 +4443,12 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  add RA, RA, RC
     |   add TMP0, RC, #16+FRAME_VARG
     |   str LFUNC:CARG3, [TMP2], #8	// Store (tagged) copy of LFUNC.
-    |    ldr KBASE, [PC, #-4+PC2PROTO(k)]
+    |    ldr KBASE, [PC, #-8+PC2PROTO(k)]
     |  cmp RA, CARG1
     |   str TMP0, [TMP2], #8		// Store delta + FRAME_VARG.
     |  bhs ->vm_growstack_l
     |   sub RC, TMP2, #16
-    |  ldrb TMP1w, [PC, #-4+PC2PROTO(numparams)]
+    |  ldrb TMP1w, [PC, #-8+PC2PROTO(numparams)]
     |   mov RA, BASE
     |   mov BASE, TMP2
     |  cbz TMP1, >2

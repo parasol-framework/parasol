@@ -9,10 +9,12 @@
 
    import 'io/filesearch'
 
+   local rx_sdk_path = <{ regex.new([[(.+)CMakeLists\.txt]]) }>
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Resolve the location of the Parasol SDK and create an 'sdk:' volume.
 
-function resolveSDKPath(Path)
+function resolveSDKPath(Path:str)
    local sdk_path
    err = ERR_Failed
    search_list = array<string>
@@ -31,7 +33,7 @@ function resolveSDKPath(Path)
    end
 
    if err is ERR_Okay then
-      sdk_path = sdk_path:match('(.+)CMakeLists%.txt')
+      sdk_path = rx_sdk_path.extract(sdk_path)
    else
       msg = ''
       for path in values(search_list) do
@@ -54,12 +56,11 @@ end
    cmdlist = ''
 
    file.search('sdk:docs/xml/modules/', {
-      nameFilter = '^.*%.xml$',
-      nameWild   = true,
-      matchFeedback = function(Path, FileName, File)
+      nameFilter = regex.new([[^.*\.xml$]]),
+      matchFeedback = function(Path:str, FileName:str, File)
          src_path = Path .. FileName
-         output_path = src_path:gsub('/xml/', '/html/')
-         output_path = output_path:gsub('%.xml', '.html')
+         output_path = src_path:replace('/xml/', '/html/')
+         output_path = output_path:replace('.xml', '.html')
 
          err, res_output_path = mSys.ResolvePath(output_path, RSF_NO_FILE_CHECK)
          assert(err is ERR_Okay, 'Failed to resolve path ' .. output_path)
@@ -86,13 +87,13 @@ end
    state = mSys.GetSystemState()
    if state.platform is 'Windows' then
       output_path ??= 'temp:docgen.bat'
-      cmdlist = cmdlist:gsub('\\','\\\\')
+      cmdlist = cmdlist:replace('\\','\\\\')
    else
       output_path ??= 'temp:docgen.sh'
       cmdlist = '#!/bin/bash\n' .. cmdlist
    end
 
-   fl = obj.new('file', { src=output_path, flags='NEW|WRITE', permissions='READ|WRITE|EXEC' })
+   fl = obj.new('file', { src=output_path, flags=FL_NEW|FL_WRITE, permissions=PERMIT_READ|PERMIT_WRITE|PERMIT_EXEC })
    fl.acWrite(cmdlist)
    fl.free()
 
@@ -104,8 +105,8 @@ end
          outputCallback = function(Task, Buffer)
             print(Buffer:getString())
          end,
-         flags   = 'WAIT',
-         timeout = 20
+         flags   = TSF_WAIT,
+         timeOut = 20
       })
 
       task.acActivate()

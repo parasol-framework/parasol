@@ -1,4 +1,7 @@
 
+local rx_split_header_lines = <{ regex.new([[([^\r\n]+)]]) }>
+local rx_header_value = <{ regex.new([[([^:]+):\s*(.+)]]) }>
+
 function makeErrorResponse(Id:num, Code:num, Message:str):table
    return {
       jsonrpc = '2.0',
@@ -25,8 +28,9 @@ function parseHeader(Buffer:str):<str,num,str>
    header_section = Buffer:sub(0, header_end)
    content_length = nil
 
-   for line in header_section:gmatch('[^\r\n]+') do
-      name, value = line:match('([^:]+):%s*(.+)')
+   for start, stop, cap in rx_split_header_lines.findAll(header_section) do
+      local line = cap[0]
+      name, value = rx_header_value.extract(line)
       if name and name:lower() is 'content-length' then
          content_length = tonumber(value)
          break

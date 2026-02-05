@@ -114,7 +114,7 @@
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Filter</th><td class="col-md-1"><span class="text-nowrap">STRING</span></td><td>Assign a post-effects filter to a vector.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Filter" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>This field assigns a graphics filter to the rendering pipeline of the vector.  The filter must initially be created using the <a href="vectorfilter.html">VectorFilter</a> class and added to a VectorScene using <a href="vectorscene.html#tm-AddDef">VectorScene⇒AddDef()</a>.  The filter can then be referenced by ID in the Filter field of any vector object.  Please refer to the <a href="vectorfilter.html">VectorFilter</a> class for further details on filter configuration.</p>
-<p>The Filter value can be in the format <code>ID</code> or <code>url(<a data-bs-toggle="tooltip" title="String identifier for a vector." href="#tf-ID">ID</a>)</code> according to client preference.</p>
+<p>The Filter value can be in the format <code>ID</code> or <code>url(<a data-bs-toggle="tooltip" title="String identifier for a vector." href="#tf-SID">SID</a>)</code> according to client preference.</p>
       
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Flags" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Flags"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
@@ -125,12 +125,6 @@
 <tr><th class="col-md-1">VF::ISOLATED</th><td>Enables isolation mode, which results in a bitmap buffer being allocated for the vector and its children while drawing.</td></tr>
 <tr><th class="col-md-1">VF::JOIN_PATHS</th><td>When appending a new path, use a join operation to connect the tail end to the head.</td></tr>
 </tbody></table>
-      
-</div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#fl-ID" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-ID"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
-                           
-                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">ID</th><td class="col-md-1"><span class="text-nowrap">STRING</span></td><td>String identifier for a vector.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-ID" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>The ID field is provided for the purpose of SVG support.  Where possible we would recommend that you use the existing object name and automatically assigned ID's for identifiers.</p>
       
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-InnerJoin" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-InnerJoin"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
@@ -220,8 +214,8 @@
 <tr data-bs-toggle="collapse" data-bs-target="#fl-NumericID" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-NumericID"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">NumericID</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>A unique identifier for the vector.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-NumericID" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>This field assigns a numeric ID to a vector.  Alternatively it can also reflect a case-sensitive hash of the <a data-bs-toggle="tooltip" title="String identifier for a vector." href="#tf-ID">ID</a> field if that has been defined previously.</p>
-<p>If NumericID is set by the client, then any value in <a data-bs-toggle="tooltip" title="String identifier for a vector." href="#tf-ID">ID</a> will be immediately cleared.</p>
+<p>This field assigns a numeric ID to a vector.  Alternatively it can also reflect a case-sensitive hash of the <a data-bs-toggle="tooltip" title="String identifier for a vector." href="#tf-SID">SID</a> field if that has been defined previously.</p>
+<p>If NumericID is set by the client, then any value in <a data-bs-toggle="tooltip" title="String identifier for a vector." href="#tf-SID">SID</a> will be immediately cleared.</p>
       
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Opacity" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Opacity"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
@@ -268,6 +262,12 @@
 <p>Use ResizeEvent to receive feedback when the viewport that hosts the vector is resized.  The function prototype is <code>void callback(*VectorViewport, *Vector, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR Meta)</code></p>
 <p>The dimension values refer to the current location and size of the viewport.</p>
 <p>Note that this callback feature is provided for convenience.  Only one subscription to the viewport is possible at any time.  The conventional means for monitoring the size and position of any vector is to subscribe to the <code>PATH_CHANGED</code> event.</p>
+      
+</div></div></td></tr>
+<tr data-bs-toggle="collapse" data-bs-target="#fl-SID" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-SID"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
+                           
+                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">SID</th><td class="col-md-1"><span class="text-nowrap">STRING</span></td><td>String identifier for a vector.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-SID" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+<p>The ID field is provided for the purpose of SVG support.  Where possible we would recommend that you use the existing object name and automatically assigned ID's for identifiers.</p>
       
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Scene" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Scene"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>

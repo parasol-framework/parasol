@@ -66,13 +66,6 @@ struct RecordOps {
    BCIns ins;             // Current bytecode instruction
    BCOp op;               // Current opcode
 
-   // Extended instruction fields (for 64-bit opcodes)
-   BCIns ext_word;        // Extension word (second 32-bit word)
-   uint8_t ex;            // EX field from extension word (bits 0-7)
-   uint8_t dx;            // DX field from extension word (bits 8-15)
-   uint8_t e;             // E field from extension word (bits 16-23)
-   uint8_t f;             // F field from extension word (bits 24-31)
-
    // Convenient accessors for value copies (aliases into ix)
    TValue *rav() { return &ix.valv; }
    TValue *rbv() { return &ix.tabv; }
@@ -874,7 +867,6 @@ static TRef rec_call_specialise(jit_State *J, GCfunc* fn, TRef tr)
       // Don't specialise to non-monomorphic builtins.
       switch (fn->c.ffid) {
       case FF_coroutine_wrap_aux:
-      case FF_string_gmatch_aux:
          // NYI: io_file_iter doesn't have an ffid, yet.
       {  // Specialise to the ffid.
          TRef trid = ir.fload(tr, IRFL_FUNC_FFID, IRT_U8);
@@ -2210,20 +2202,6 @@ static void rec_decode_operands(jit_State *J, cTValue *lbase, RecordOps *ops)
 {
    BCIns ins = ops->ins;
    BCOp op = ops->op;
-
-   // Decode extension word for 64-bit extended instructions
-   if (bcmode_ext(op)) {
-      BCIns ext = J->pc[1];
-      ops->ext_word = ext;
-      ops->ex = bc_ex(ext);
-      ops->dx = bc_dx(ext);
-      ops->e = bc_e(ext);
-      ops->f = bc_f(ext);
-   }
-   else {
-      ops->ext_word = 0;
-      ops->ex = ops->dx = ops->e = ops->f = 0;
-   }
 
    // Decode 'A' operand
    ops->ra = bc_a(ins);

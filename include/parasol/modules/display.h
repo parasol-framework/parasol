@@ -382,7 +382,7 @@ enum class CEF : uint32_t {
 
 DEFINE_ENUM_FLAG_OPERATORS(CEF)
 
-#define VER_SURFACEINFO 2
+#define VER_SURFACEINFO 2.000000
 
 typedef struct SurfaceInfoV2 {
    APTR     Data;           // Bitmap data memory ID
@@ -441,7 +441,7 @@ typedef struct PixelFormat {
    uint8_t AlphaPos;    // Left shift/positional value for alpha
 } PIXELFORMAT;
 
-#define VER_DISPLAYINFO 3
+#define VER_DISPLAYINFO 3.000000
 
 typedef struct DisplayInfoV3 {
    OBJECTID DisplayID;                // Object ID related to the display
@@ -468,7 +468,7 @@ struct CursorInfo {
    int16_t BitsPerPixel;    // Preferred bits-per-pixel setting for custom cursors
 };
 
-#define VER_BITMAPSURFACE 2
+#define VER_BITMAPSURFACE 2.000000
 
 typedef struct BitmapSurfaceV2 {
    APTR    Data;                 // Pointer to the bitmap graphics data.

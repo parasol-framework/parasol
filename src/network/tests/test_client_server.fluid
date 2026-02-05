@@ -13,14 +13,16 @@ Client-Server Network Communications test.  Creates a server socket and then sta
    glTestCompleted = false
 
 function printableState(State)
-   if (State is NTC_CONNECTED) then return 'CONNECTED'
-   elseif (State is NTC_RESOLVING) then return 'RESOLVING'
-   elseif (State is NTC_CONNECTING) then return 'CONNECTING'
-   elseif (State is NTC_DISCONNECTED) then return 'DISCONNECTED'
-   elseif (State is NTC_HANDSHAKING) then return 'HANDSHAKING'
-   elseif (State is NTC_MULTISTATE) then return 'MULTISTATE'
-   else return tostring(State) end
+   return choose State from
+      NTC_CONNECTED -> 'CONNECTED'
+      NTC_CONNECTING -> 'CONNECTING'
+      NTC_DISCONNECTED -> 'DISCONNECTED'
+      NTC_HANDSHAKING -> 'HANDSHAKING'
+      else -> tostring(State)
+   end
 end
+
+rxMessage = regex.new('\\w+:(.+)')
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Test address validation and error handling
@@ -56,11 +58,15 @@ end
 
 @Test function ClientServer()
    proc = processing.new({ timeout = 5.0 })
+   
+   server_buffer = string.alloc(1024)
 
    sockServer = obj.new('netsocket', {
       name = 'Server',
       address = '127.0.0.1',
       feedback = function(Socket, Client, State)
+         assert(Socket and Client, '[Server] Socket or Client parameter not defined.')
+
          if (State is NTC_CONNECTED) then
             print('[Server] Connection established to new client.')
             err, len = Client.acWrite('Hello from the server')
@@ -70,14 +76,14 @@ end
          end
       end,
       incoming = function(Socket, Client)
-         assert(Socket, '[Server] Socket parameter not defined.')
-         assert(Client, '[Server] Client parameter not defined.')
-         buffer = string.alloc(1024)
-         err, read_len = Client.acRead(buffer)
+         assert(Socket and Client, '[Server] Socket or Client parameter not defined.')
+
+         err, read_len = Client.acRead(server_buffer)
          assert(err is ERR_Okay, 'Failed to read data from client, error: ' .. mSys.GetErrorMsg(err))
-         msg = buffer:sub(0, read_len)
-         print('[Server] Received: ' .. msg)
-         if (string.match(msg, 'Reply.*')) then
+
+         msg = server_buffer:sub(0, read_len)
+         print(f'[Server] Received "{msg}"')
+         if (msg:find('Reply')) then
             glTestCompleted = true
             proc.signal()
          end
@@ -109,7 +115,7 @@ end
 
    print('Connecting client to the server...')
 
-   if (clientSocket.mtConnect('127.0.0.1', glPort) != ERR_Okay) then error('Failed to connect to server.') end
+   assert(clientSocket.mtConnect('127.0.0.1', glPort) is ERR_Okay, 'Failed to connect to server.')
    err = proc.sleep()
    assert(err is ERR_Okay, 'Failed to complete the test: ' .. mSys.GetErrorMsg(err))
    assert(glTestCompleted, 'The test did not complete the steps as expected.')
@@ -121,7 +127,7 @@ end
 @Test function BasicCommunication()
    proc = processing.new({ timeout = 10.0 })
 
-   glPort = glPort + 1
+   glPort++
 
    -- Create server socket with comprehensive message handling
    sockServer = obj.new('netsocket', {
@@ -157,23 +163,21 @@ end
          msg = buffer:sub(0, read_len)
          print('[Server] Received: ' .. msg)
 
-         if (string.match(msg, 'ACK:WELCOME')) then
+         if (msg:startsWith('ACK:WELCOME')) then
             print('[Server] Client acknowledged welcome, requesting data...')
             err, len = Client.acWrite('REQUEST:Send your test data')
             assert(err is ERR_Okay, '[Server] Failed to send data request: ' .. mSys.GetErrorMsg(err))
-            glTestSteps = glTestSteps + 1
-
-         elseif (string.match(msg, 'DATA:')) then
-            data = string.match(msg, 'DATA:(.*)')
+            glTestSteps++
+         elseif (msg:startsWith('DATA:')) then
+            data = rxMessage.extract(msg)
             glServerData = data
             print('[Server] Received data: ' .. data)
             err, len = Client.acWrite('CONFIRM:Data received successfully')
             assert(err is ERR_Okay, '[Server] Failed to send confirmation: ' .. mSys.GetErrorMsg(err))
-            glTestSteps = glTestSteps + 1
-
-         elseif (string.match(msg, 'COMPLETE:')) then
+            glTestSteps++
+         elseif (msg:startsWith('COMPLETE:')) then
             print('[Server] Client signalled completion')
-            glTestSteps = glTestSteps + 1
+            glTestSteps++
          end
       end,
       port = glPort,
@@ -199,19 +203,17 @@ end
          msg = buffer:sub(0, read_len)
          print('[Client] Received: ' .. msg)
 
-         if (string.match(msg, 'WELCOME:')) then
+         if (msg:startsWith('WELCOME:')) then
             print('[Client] Received welcome, sending acknowledgment...')
             err, len = Socket.acWrite('ACK:WELCOME received, client ready')
             assert(err is ERR_Okay, '[Client] Failed to send acknowledgment: ' .. mSys.GetErrorMsg(err))
             glTestSteps = glTestSteps + 1
-
-         elseif (string.match(msg, 'REQUEST:')) then
+         elseif (msg:startsWith('REQUEST:')) then
             print('[Client] Received data request, sending test data...')
             glClientData = 'TestPayload123'
             err, len = Socket.acWrite('DATA:' .. glClientData)
             assert(err is ERR_Okay, '[Client] Failed to send data: ' .. mSys.GetErrorMsg(err))
-
-         elseif (string.match(msg, 'CONFIRM:')) then
+         elseif (msg:startsWith('CONFIRM:')) then
             print('[Client] Server confirmed data receipt, completing test...')
             err, len = Socket.acWrite('COMPLETE:Test finished')
             assert(err is ERR_Okay, '[Client] Failed to send completion: ' .. mSys.GetErrorMsg(err))
@@ -247,7 +249,7 @@ end
    proc = processing.new({ timeout = 5.0 })
    stateChanges = {}
 
-   glPort = glPort + 1
+   glPort++
 
    print('Testing connection state transitions...')
 
@@ -282,8 +284,8 @@ end
    foundServerConnected = false
    for i, state in ipairs(stateChanges) do
       print('State change ' .. i .. ': ' .. state)
-      if (string.match(state, 'CLIENT_CONNECTED')) then foundClientConnected = true end
-      if (string.match(state, 'SERVER_CLIENT_CONNECTED')) then foundServerConnected = true end
+      if (state is 'CLIENT_CONNECTED') then foundClientConnected = true end
+      if (state is 'SERVER_CLIENT_CONNECTED') then foundServerConnected = true end
    end
 
    assert(foundClientConnected, 'Client connection state change not detected')

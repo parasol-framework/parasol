@@ -15,6 +15,10 @@ ICON_SIZE = 16
 lCounter  = 1
 EDGE      = 4 -- Whitespace around the page
 
+rx_datetime = <{ regex.new([[^(\d{4}-\d{1,2}-\d{1,2})[\sT]?(.*)$]]) }>
+rx_date = <{ regex.new([[^(\d+)-(\d+)-(\d+)$]]) }>
+rx_time = <{ regex.new([[^(\d{2}):(\d{2}):?(\d{0,2})$]]) }>
+
 local LINE_HEIGHT, FONT_HEIGHT, LINE_HEIGHT, FONT_HEIGHT, MARGIN
 local ICON_OFFSET, LINE_OFFSET, BANNER_HEIGHT, lEnableTextGradients
 
@@ -54,10 +58,10 @@ function columnText(Value:any, Type:str):any
       -- The date type can be expressed as 'YYYY-MM-DD HH:NN', 'YYYY-MM-DD', 'YYYY-MM-DDTHH:NN'.
 
       if not lDate then lDate = struct.new('DateTime') end
-      day, time = string.match(Value, '^(%d%d%d%d%-%d%d?%-%d%d?)[%sT]?(.*)$')
-      lDate.year, lDate.month, lDate.day = string.match(day, '^(%d+)-(%d+)-(%d+)$')
+      day, time = rx_datetime.extract(Value)
+      lDate.year, lDate.month, lDate.day = rx_date.extract(day)
 
-      h, min, sec = string.match(time, '^(%d%d):(%d%d):?(%d?%d?)$')
+      h, min, sec = rx_time.extract(time)
       if h then
          lDate.hour   = h
          lDate.minute = min

@@ -701,6 +701,174 @@ LJLIB_CF(__create_thunk)
    return 1;
 }
 
+//********************************************************************************************************************
+// ltr() - Lua pattern To Regex conversion
+// Converts a Lua string pattern to an equivalent regex expression.
+// Usage: regex_str = ltr("%d+%s*%w+")  -- Returns "[0-9]+[ \t\n\r\f\v]*[A-Za-z0-9_]+"
+
+static void ltr_emit_class(SBuf *sb, int cl, bool negated)
+{
+   // Emit regex character class for Lua pattern class character
+   // cl is the lowercase class character (a, c, d, g, l, p, s, u, w, x, z)
+   // negated is true for uppercase versions (A, C, D, etc.)
+
+   if (negated) lj_buf_putmem(sb, "[^", 2);
+   else lj_buf_putchar(sb, '[');
+
+   switch (cl) {
+      case 'a': lj_buf_putmem(sb, "A-Za-z", 6); break;
+      case 'c': lj_buf_putmem(sb, "\\x00-\\x1f\\x7f", 13); break;
+      case 'd': lj_buf_putmem(sb, "\\d", 2); break;
+      case 'g': lj_buf_putmem(sb, "\\x21-\\x7e", 9); break;
+      case 'l': lj_buf_putmem(sb, "a-z", 3); break;
+      case 'p': lj_buf_putmem(sb, "!\"#$%&'()*+,\\-./:;<=>?@\\[\\\\\\]^_`{|}~", sizeof("!\"#$%&'()*+,\\-./:;<=>?@\\[\\\\\\]^_`{|}~")-1); break;
+      case 's': lj_buf_putmem(sb, " \\t\\n\\r\\f\\v", sizeof(" \\t\\n\\r\\f\\v")-1); break;
+      case 'u': lj_buf_putmem(sb, "A-Z", 3); break;
+      case 'w': lj_buf_putmem(sb, "\\w", 2); break;
+      case 'x': lj_buf_putmem(sb, "0-9A-Fa-f", 9); break;
+      case 'z': lj_buf_putmem(sb, "\\x00", 4); break;
+      default: lj_buf_putchar(sb, cl); break;  // Unknown class, output as literal
+   }
+
+   lj_buf_putchar(sb, ']');
+}
+
+static bool ltr_is_regex_special(int c)
+{
+   // Characters that need escaping in regex (but not necessarily in Lua patterns)
+   return c IS '\\' or c IS '|' or c IS '{' or c IS '}';
+}
+
+LJLIB_CF(ltr)
+{
+   GCstr *input = lj_lib_checkstr(L, 1);
+   const char *p = strdata(input);
+   const char *end = p + input->len;
+
+   SBuf *sb = lj_buf_tmp_(L);
+   lj_buf_reset(sb);
+
+   while (p < end) {
+      int c = (uint8_t)*p++;
+
+      if (c IS '%') { // Escape sequence
+         if (p >= end) {
+            lj_err_caller(L, ErrMsg::STRPATE);  // Pattern ends with '%'
+            return 0;
+         }
+         int cl = (uint8_t)*p++;
+
+         // Check for unsupported patterns
+
+         if (cl IS 'b') {
+            lj_err_callermsg(L, "Unsupported Lua pattern: %b (balanced matching) has no regex equivalent");
+            return 0;
+         }
+
+         if (cl IS 'f') {
+            lj_err_callermsg(L, "Unsupported Lua pattern: %f (frontier pattern) has no regex equivalent");
+            return 0;
+         }
+
+         // Handle character classes
+         int lower_cl = std::tolower(cl);
+         if (lower_cl IS 'a' or lower_cl IS 'c' or lower_cl IS 'd' or lower_cl IS 'g' or
+             lower_cl IS 'l' or lower_cl IS 'p' or lower_cl IS 's' or lower_cl IS 'u' or
+             lower_cl IS 'w' or lower_cl IS 'x' or lower_cl IS 'z') {
+            ltr_emit_class(sb, lower_cl, std::isupper(cl));
+         }
+         else if (cl IS '%') { // %% -> literal %
+            lj_buf_putchar(sb, '%');
+         }
+         else if (cl IS '-') { // %- -> literal hyphen (no escape needed outside char class)
+            lj_buf_putchar(sb, '-');
+         }
+         else {
+            // Escaped special character - emit as regex escape
+            // Lua escapes: ( ) . % + - * ? [ ] ^ $
+            // In regex, we need to escape these with backslash
+            lj_buf_putchar(sb, '\\');
+            lj_buf_putchar(sb, cl);
+         }
+      }
+      else if (c IS '-') {
+         // Lua's non-greedy quantifier - convert to *?
+         lj_buf_putmem(sb, "*?", 2);
+      }
+      else if (c IS '[') {
+         // Character class - copy through, handling nested escapes
+         lj_buf_putchar(sb, '[');
+         bool first = true;
+         bool found_close = false;
+         while (p < end) {
+            c = (uint8_t)*p++;
+            if (c IS ']' and not first) {
+               lj_buf_putchar(sb, ']');
+               found_close = true;
+               break;
+            }
+
+            if (c IS '%' and p < end) { // Escaped character inside class
+               int esc = (uint8_t)*p++;
+               int lower_esc = std::tolower(esc);
+               if (lower_esc IS 'a' or lower_esc IS 'c' or lower_esc IS 'd' or lower_esc IS 'g' or
+                   lower_esc IS 'l' or lower_esc IS 'p' or lower_esc IS 's' or lower_esc IS 'u' or
+                   lower_esc IS 'w' or lower_esc IS 'x' or lower_esc IS 'z') {
+                  // Expand class inside character class (without brackets)
+                  bool neg = std::isupper(esc);
+                  if (neg) { // Can't easily negate inside a character class, emit as-is with warning
+                     lj_buf_putchar(sb, '\\');
+                     lj_buf_putchar(sb, esc);
+                  }
+                  else {
+                     switch (lower_esc) {
+                        case 'a': lj_buf_putmem(sb, "A-Za-z", 6); break;
+                        case 'c': lj_buf_putmem(sb, "\\x00-\\x1f\\x7f", 13); break;
+                        case 'd': lj_buf_putmem(sb, "\\d", 2); break;
+                        case 'g': lj_buf_putmem(sb, "\\x21-\\x7e", 9); break;
+                        case 'l': lj_buf_putmem(sb, "a-z", 3); break;
+                        case 'p': lj_buf_putmem(sb, "!\"#$%&'()*+,\\-./:;<=>?@\\[\\\\\\]^_`{|}~", sizeof("!\"#$%&'()*+,\\-./:;<=>?@\\[\\\\\\]^_`{|}~")-1); break;
+                        case 's': lj_buf_putmem(sb, " \\t\\n\\r\\f\\v", sizeof(" \\t\\n\\r\\f\\v")-1); break;
+                        case 'u': lj_buf_putmem(sb, "A-Z", 3); break;
+                        case 'w': lj_buf_putmem(sb, "\\w", 2); break;
+                        case 'x': lj_buf_putmem(sb, "0-9A-Fa-f", 9); break;
+                        case 'z': lj_buf_putmem(sb, "\\x00", 4); break;
+                        default: lj_buf_putchar(sb, lower_esc); break;
+                     }
+                  }
+               }
+               else if (esc IS '%') {
+                  lj_buf_putchar(sb, '%');
+               }
+               else { // Other escaped char
+                  lj_buf_putchar(sb, '\\');
+                  lj_buf_putchar(sb, esc);
+               }
+            }
+            else { // Regular character inside class
+               // Escape '-' when it's a literal hyphen (at start or end of class), not a range operator
+               bool escape_hyphen = (c IS '-') and (first or (p < end and *p IS ']'));
+               if (ltr_is_regex_special(c) or escape_hyphen) lj_buf_putchar(sb, '\\');
+               lj_buf_putchar(sb, c);
+            }
+            first = false;
+         }
+         if (not found_close) lj_err_caller(L, ErrMsg::STRPATM);
+      }
+      else if (ltr_is_regex_special(c)) { // Escape regex-special chars that aren't Lua-special
+         lj_buf_putchar(sb, '\\');
+         lj_buf_putchar(sb, c);
+      }
+      else { // Regular character - pass through
+         lj_buf_putchar(sb, c);
+      }
+   }
+
+   setstrV(L, L->top - 1, lj_buf_str(L, sb));
+   lj_gc_check(L);
+   return 1;
+}
+
 #include "lj_libdef.h"
 
 //********************************************************************************************************************
@@ -883,6 +1051,7 @@ extern int luaopen_base(lua_State* L)
    reg_func_prototype("next", { FluidType::Any, FluidType::Any }, { FluidType::Table, FluidType::Any });
    reg_func_prototype("newproxy", { FluidType::Any }, { FluidType::Any });
    reg_func_prototype("__create_thunk", { FluidType::Any }, { FluidType::Func, FluidType::Num });
+   reg_func_prototype("ltr", { FluidType::Str }, { FluidType::Str });
 
    return 2;
 }

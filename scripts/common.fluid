@@ -97,22 +97,36 @@ end
 ------------------------------------------------------------------------------
 
 file.isFolder = function(Path:str):bool
-   e = string.sub(Path, -1)
+   e = string.substr(Path, -1)
    if (e is '/') or (e is '\\') or (e is ':') then return true end
    return false
 end
 
 ------------------------------------------------------------------------------
 
+rx_split_path = <{ regex.new([[^(.+[\/:\\])(.*)$]]) }>
+
 file.splitPath = function(Path:str):<str,str>
    Path ?? return nil, nil
-   path, fl = string.match(Path, '^(.+[/:\\])(.+)$')
+   path, fl = rx_split_path.extract(Path)
    path ?? return nil, Path
    return path, fl
 end
 
 ------------------------------------------------------------------------------
+-- Sanitise a path by dropping repeated folder characters
+
+rx_sanitise = <{ regex.new([[^(.*?[:\/\\])[:\/\\]+(.*)$]]) }>
 
 file.sanitisePath = function(Path:str):str
-   return string.gsub(Path, '[:/\\][:/\\]+', function(n) return n:sub(0,1) end)
+   while true do
+      rep = rx_sanitise.replace(Path, '$1$2')
+      if #rep != #Path then
+         Path = rep
+      else
+         break
+      end
+   end
+
+   return Path
 end

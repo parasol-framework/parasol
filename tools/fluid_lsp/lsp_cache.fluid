@@ -10,16 +10,16 @@
 --   Actions: 'L:start,end\0P:prototype\0C:comment'
 --   Functions: 'L:start,end\0P:prototype\0C:comment'
 
+local rx_pos_pair = <{ regex.new([[(\d+),(\d+)]]) }>
+
 -- Encode a field entry to compact string format
 function encodeField(Access, Type, ByteStart, ByteEnd, Comment)
-   return 'A:' .. (Access or 'R') .. '\0L:' .. ByteStart .. ',' .. ByteEnd ..
-          '\0T:' .. (Type or '') .. '\0C:' .. (Comment or '')
+   return f'A:{Access or "R"}\0L:{ByteStart},{ByteEnd}\0T:{Type or ""}\0C:{Comment or ""}'
 end
 
 -- Encode a method/action/function entry to compact string format
 function encodeMethod(Prototype, ByteStart, ByteEnd, Comment)
-   return 'L:' .. ByteStart .. ',' .. ByteEnd ..
-          '\0P:' .. (Prototype or '') .. '\0C:' .. (Comment or '')
+   return f'L:{ByteStart},{ByteEnd}\0P:{Prototype or ""}\0C:{Comment or ""}'
 end
 
 -- Decode a field from compact string format
@@ -33,7 +33,7 @@ global function decodeField(Str:any):table
       if key is 'A' then
          result.access = value
       elseif key is 'L' then
-         start_pos, end_pos = value:match('(%d+),(%d+)')
+         start_pos, end_pos = rx_pos_pair.extract(value)
          result.byteStart = tonumber(start_pos)
          result.byteEnd = tonumber(end_pos)
       elseif key is 'T' then
@@ -41,7 +41,7 @@ global function decodeField(Str:any):table
       elseif key is 'C' then
          result.comment = value
       else
-         print('Unrecognised key: ' .. tostring(key))
+         print(f'Unrecognised key: {key}')
       end
    end
    return result
@@ -57,7 +57,7 @@ global function decodeMethod(Str:any):table
       key = field:sub(0, 1)
       value = field:sub(2)
       if key is 'L' then
-         start_pos, end_pos = value:match('(%d+),(%d+)')
+         start_pos, end_pos = rx_pos_pair.extract(value)
          result.byteStart = tonumber(start_pos)
          result.byteEnd = tonumber(end_pos)
       elseif key is 'P' then
@@ -65,7 +65,7 @@ global function decodeMethod(Str:any):table
       elseif key is 'C' then
          result.comment = value
       else
-         print('Unrecognised key: ' .. tostring(key))
+         print(f'Unrecognised key: {key}')
       end
    end
 
@@ -76,11 +76,8 @@ function parseAccessString(ReadAttr:str, WriteAttr:str):str
    -- Convert access attributes to simplified form: R, W, R/W, R/I, R/S, etc.
    r = ReadAttr and (ReadAttr is 'R' or ReadAttr is 'G') and 'R' or nil
    w = nil
-   if WriteAttr then
-      if WriteAttr is 'W' then w = 'W'
-      elseif WriteAttr is 'S' then w = 'S'
-      elseif WriteAttr is 'I' then w = 'I'
-      end
+   if WriteAttr is 'W' or WriteAttr is 'S' or WriteAttr is 'I' then
+      w = WriteAttr
    end
 
    if r and w then return r .. '/' .. w
@@ -91,8 +88,8 @@ end
 
 function extractXMLElement(Content:str, TagName:str, StartPos):table
    -- Find an XML element and return its content plus byte positions
-   openTag = '<' .. TagName .. '>'
-   closeTag = '</' .. TagName .. '>'
+   openTag = f'<{TagName}>'
+   closeTag = f'</{TagName}>'
 
    tagStart = Content:find(openTag, StartPos)
    tagStart ?? return
@@ -112,16 +109,16 @@ end
 
 function extractChildText(Content:str, TagName:str):str
    -- Extract text content of a child element
-   pattern = '<' .. TagName .. '>([^<]*)</' .. TagName .. '>'
-   content = Content:match(pattern)
+   rx = regex.new(f'<{TagName}>([^<]*)<\\/{TagName}>')
+   content = rx.extract(Content)
    content?:unescapeXML()
    return content
 end
 
 function extractChildAttr(Content:str, TagName:str, AttrName:str):str
    -- Extract attribute value from a child element
-   pattern = '<' .. TagName .. '[^>]*' .. AttrName .. '="([^"]*)"'
-   content = Content:match(pattern)
+   rx = regex.new(f'<{TagName}[^>]*{AttrName}="([^"]*)"')
+   content = rx.extract(Content)
    content?:unescapeXML()
    return content
 end
@@ -131,7 +128,7 @@ function processModuleXML(FilePath:str, DocPath:str):<str,table>
    content = file.readAll(FilePath)
    content ?? return
 
-   relativePath = FilePath:gsub(DocPath, '')
+   relativePath = FilePath:replace(DocPath, '')
 
    -- Extract module info
    infoMatch = extractXMLElement(content, 'info', 0)
@@ -175,7 +172,7 @@ function processClassXML(FilePath, DocPath)
    content = file.readAll(FilePath)
    content ?? return
 
-   relativePath = FilePath:gsub(DocPath, '')
+   relativePath = FilePath:replace(DocPath, '')
 
    -- Extract class info
    infoMatch = extractXMLElement(content, 'info', 0)
@@ -278,7 +275,7 @@ function buildDocCache(DocPath)
    print('Scanning modules for documentation cache; ', modulesPath)
 
    err = file.search(modulesPath, {
-      nameFilter = '%.xml$',
+      nameFilter = [[\.xml$]],
       nameWild = true,
       maxDepth = 0,
       matchFeedback = function(Path, FileName, File)
@@ -301,7 +298,7 @@ function buildDocCache(DocPath)
    print('Scanning classes for documentation cache; ', classesPath)
 
    err = file.search(classesPath, {
-      nameFilter = '%.xml$',
+      nameFilter = [[\.xml$]],
       nameWild = true,
       maxDepth = 1,
       matchFeedback = function(Path, FileName, File)
@@ -330,7 +327,7 @@ function serializeTable(Tbl:any, Indent):str
    if type(Tbl) != 'table' then
       if type(Tbl) is 'string' then
          -- Escape special characters
-         escaped = Tbl:gsub('\\', '\\\\'):gsub('\n', '\\n'):gsub('\r', '\\r'):gsub("'", "\\'")
+         escaped = Tbl:replace('\\', '\\\\'):replace('\n', '\\n'):replace('\r', '\\r'):replace("'", "\\'")
          return "'" .. escaped .. "'"
       elseif type(Tbl) is 'number' then
          return tostring(Tbl)

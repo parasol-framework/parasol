@@ -1,4 +1,27 @@
 
+   -- Deferred regex patterns for keyword matching
+
+   rx_kw_function = <{ regex.new([[\bfunction\b]]) }>
+   rx_kw_if       = <{ regex.new([[\bif\b]]) }>
+   rx_kw_then     = <{ regex.new([[\bthen\b]]) }>
+   rx_kw_for      = <{ regex.new([[\bfor\b]]) }>
+   rx_kw_do       = <{ regex.new([[\bdo\b]]) }>
+   rx_kw_while    = <{ regex.new([[\bwhile\b]]) }>
+   rx_kw_repeat   = <{ regex.new([[\brepeat\b]]) }>
+   rx_kw_defer    = <{ regex.new([[\bdefer\b]]) }>
+   rx_kw_end      = <{ regex.new([[\bend\b]]) }>
+   rx_kw_until    = <{ regex.new([[\buntil\b]]) }>
+   rx_block_close = <{ regex.new("\\]\\]") }>
+   rx_block_open  = <{ regex.new("--\\[\\[") }>
+   rx_trim_start  = <{ regex.new([[^\s*(.*)]], regex.DOT_ALL) }>
+   rx_func_sig    = <{ regex.new([=[function\s+[\w]]=]) }>
+   rx_func_name   = <{ regex.new([[^function\s+([\w:.]+)]]) }>
+   rx_local_end   = <{ regex.new([[local\s*$]]) }>
+   rx_global_end  = <{ regex.new([[global\s*$]]) }>
+   rx_if_then     = <{ regex.new([[\bif\b.*\bthen\b]]) }>
+   rx_for_do      = <{ regex.new([[\bfor\b.*\bdo\b]]) }>
+   rx_while_do    = <{ regex.new([[\bwhile\b.*\bdo\b]]) }>
+
    glNextResultId = 1
 
    -- Token cache for delta semantic tokens.  URI indexed
@@ -52,28 +75,28 @@ function findMatchingEnd(Doc:table, StartLine:num):num
       line_text = getLine(Doc, line_num)
 
       -- Count block openers (simplified - doesn't handle strings/comments perfectly)
-      for opener in line_text:gmatch('%f[%w]function%f[^%w]') do depth++ end
-      for opener in line_text:gmatch('%f[%w]if%f[^%w]') do
-         if line_text:match('%f[%w]if%f[^%w].*%f[%w]then%f[^%w]') then
+      for start, stop, cap in rx_kw_function.findAll(line_text) do depth++ end
+      for start, stop, cap in rx_kw_if.findAll(line_text) do
+         if rx_if_then.test(line_text) then
             depth++
          end
       end
-      for opener in line_text:gmatch('%f[%w]for%f[^%w]') do
-         if line_text:match('%f[%w]for%f[^%w].*%f[%w]do%f[^%w]') then
+      for start, stop, cap in rx_kw_for.findAll(line_text) do
+         if rx_for_do.test(line_text) then
             depth++
          end
       end
-      for opener in line_text:gmatch('%f[%w]while%f[^%w]') do
-         if line_text:match('%f[%w]while%f[^%w].*%f[%w]do%f[^%w]') then
+      for start, stop, cap in rx_kw_while.findAll(line_text) do
+         if rx_while_do.test(line_text) then
             depth++
          end
       end
-      for opener in line_text:gmatch('%f[%w]repeat%f[^%w]') do depth++ end
-      for opener in line_text:gmatch('%f[%w]defer%f[^%w]') do depth++ end
+      for start, stop, cap in rx_kw_repeat.findAll(line_text) do depth++ end
+      for start, stop, cap in rx_kw_defer.findAll(line_text) do depth++ end
 
       -- Count block closers
-      for closer in line_text:gmatch('%f[%w]end%f[^%w]') do depth -= 1 end
-      for closer in line_text:gmatch('%f[%w]until%f[^%w]') do depth -= 1 end
+      for start, stop, cap in rx_kw_end.findAll(line_text) do depth -= 1 end
+      for start, stop, cap in rx_kw_until.findAll(line_text) do depth -= 1 end
 
       if depth <= 0 then
          return line_num
@@ -100,45 +123,45 @@ function extractDocumentSymbols(Doc:table):array
 
       -- Track block comments --[[ ... ]]
       if in_block_comment then
-         if line_text:find('%]%]') then
+         if rx_block_close.test(line_text) then
             in_block_comment = false
          end
          continue
       end
 
       -- Check for block comment start
-      if line_text:find('%-%-%[%[') then
+      if rx_block_open.test(line_text) then
          in_block_comment = true
          continue
       end
 
       -- Skip line comments (lines starting with --)
-      trimmed = line_text:match('^%s*(.*)')
+      trimmed = rx_trim_start.extract(line_text)
       if trimmed:sub(0, 2) is '--' then
          continue
       end
 
       -- Check if 'function' appears before any line comment
-      comment_pos = line_text:find('%-%-')
-      func_pos = line_text:find('function%s+[%w_]')
+      comment_pos = line_text:find('--')
+      func_start, func_stop = rx_func_sig.findFirst(line_text)
 
       -- Skip if function keyword is inside a line comment
-      if func_pos and comment_pos and comment_pos < func_pos then
+      if func_start and comment_pos and comment_pos < func_start then
          continue
       end
 
-      if func_pos then
+      if func_start then
          -- Extract everything after 'function '
-         after_func = line_text:sub(func_pos)
-         name = after_func:match('^function%s+([%w_:%.]+)')
+         after_func = line_text:sub(func_start)
+         name = rx_func_name.extract(after_func)
 
          if name then
             -- Determine scope by looking before 'function'
-            before_func = line_text:sub(0, func_pos)
+            before_func = line_text:sub(0, func_start)
             scope = nil
-            if before_func:match('local%s*$') then
+            if rx_local_end.test(before_func) then
                scope = 'local'
-            elseif before_func:match('global%s*$') then
+            elseif rx_global_end.test(before_func) then
                scope = 'global'
             end
 
@@ -261,7 +284,7 @@ global function registerCoreHandlers(Self)
       return nil  -- Notification, no response
    end
 
-   --------------------------------------------------------------------------
+   -------------------------------------------------------------------------------------------------------------------
    -- Document Synchronization
 
    -- textDocument/didOpen: Client opened a document
@@ -338,7 +361,7 @@ global function registerCoreHandlers(Self)
       return nil  -- Notification, no response
    end
 
-   --------------------------------------------------------------------------
+   -------------------------------------------------------------------------------------------------------------------
    -- Semantic Tokens
 
    -- textDocument/semanticTokens/full: Return all semantic tokens for a document
@@ -460,7 +483,7 @@ global function registerCoreHandlers(Self)
       }
    end
 
-   --------------------------------------------------------------------------
+   -------------------------------------------------------------------------------------------------------------------
    -- Document Symbols (Outline View)
 
    -- textDocument/documentSymbol: Return symbols for outline view
@@ -490,7 +513,7 @@ global function registerCoreHandlers(Self)
       }
    end
 
-   --------------------------------------------------------------------------
+   -------------------------------------------------------------------------------------------------------------------
    -- Folding Ranges (Code Folding)
 
    -- textDocument/foldingRange: Return folding ranges for code folding
@@ -520,7 +543,7 @@ global function registerCoreHandlers(Self)
       }
    end
 
-   --------------------------------------------------------------------------
+   -------------------------------------------------------------------------------------------------------------------
    -- Hover Information
 
    -- textDocument/hover: Return documentation for symbol at cursor

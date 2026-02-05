@@ -113,13 +113,11 @@ TValue* lj_thunk_resolve(lua_State *L, GCudata *thunk_udata)
    // Restore base in case stack was reallocated
    L->base = restorestack(L, base_offset);
 
-   if (status != 0) {
-      // Error occurred - restore stack and propagate
+   if (status != 0) { // Error occurred - restore stack and propagate
       L->top = restorestack(L, top_offset);
-      return nullptr;
+      lj_err_msg(L, ErrMsg::THUNKEX);
    }
 
-   // Result is at L->top - 1
    TValue *result = L->top - 1;
 
    // Cache the result

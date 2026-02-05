@@ -16,6 +16,9 @@ LINE_SPACING, FONT_HEIGHT = gui.getFontHeight(gui.fonts.window)
 MIN_WIDTH = 300
 MAX_WIDTH = 600
 
+rx_sanitise_icon = <{ regex.new([[^(%w+)\/(%w+)]]) }>
+rx_word = <{ regex.new([[\S+]]) }>
+
 ICONS = {
    error     = 'items/error',
    critical  = 'items/error',
@@ -146,11 +149,11 @@ gui.dialog.message = function(Options)
       end
 
       icon = Options.image ?? defaultIcon(self)
-      icon = icon:gsub('^(%w+)/(%w+)', '%1/%2')
+      icon = rx_sanitise_icon.replace(icon, '$1/$2')
       msg = self.fmtMessage
       if not msg?? then
          msg = string.escXML(self.message ?? '')
-         msg = string.gsub(msg, '\n', '<br/>')
+         msg = string.replace(msg, '\n', '<br/>')
       end
 
       doc ..= [[
@@ -168,13 +171,13 @@ gui.dialog.message = function(Options)
 
          msg = type(Options.userInput) is 'string' ? Options.userInput :> ''
 
-         doc ..= '<p><input name="input" ' .. inputOptions .. ' width="16em" value="' .. msg .. '"/></p>\n'
+         doc ..= f'<p><input name="input" {inputOptions} width="16em" value="{msg}"/></p>\n'
       end
 
       if Options.checkboxLabel then
          checkbox_value = 'false'
          if Options.checkboxState then checkbox_value = 'true' end
-         doc ..= '<p><checkbox name="checkbox" label="' .. Options.checkboxLabel .. '" value="' .. checkbox_value .. '"/></p>\n'
+         doc ..= f'<p><checkbox name="checkbox" label="{Options.checkboxLabel}" value="{checkbox_value}"/></p>\n'
       end
 
       if Options.inject then
@@ -225,16 +228,18 @@ gui.dialog.message = function(Options)
    dlg_width = MIN_WIDTH
    if self.message?? then
       longest = 10
-      for word in self.message:gmatch("%S+") do
-         if word:len() > longest then longest = word:len() end
+      for start, stop in rx_word.findAll(self.message) do
+         word_len = stop - start
+         if word_len > longest then longest = word_len end
       end
       dlg_width = 120 + (longest * FONT_HEIGHT)
    elseif self.fmtMessage?? then
       xml = obj.new('xml', { statement='<xml>' .. self.fmtMessage .. '</xml>' })
       err, content = xml.mtSerialise(0, XMF_OMIT_TAGS|XMF_READABLE)
       longest = 10
-      for word in content:gmatch("%S+") do
-         if word:len() > longest then longest = word:len() end
+      for start, stop in rx_word.findAll(content) do
+         word_len = stop - start
+         if word_len > longest then longest = word_len end
       end
       dlg_width = 120 + (longest * FONT_HEIGHT)
    else

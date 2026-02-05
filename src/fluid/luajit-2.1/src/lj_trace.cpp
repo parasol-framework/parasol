@@ -1025,7 +1025,10 @@ int lj_trace_exit(jit_State *J, void *exptr)
       case BC_TSETM:
          return (int)((BCREG)(L->top - L->base) + 1 - bc_a(*pc));
       default:
-         if (bc_is_func_header(bc_op(*pc))) return (int)((BCREG)(L->top - L->base) + 1);
+         // Fast function pseudo-opcodes (>= BC__MAX) need the same treatment as function headers
+         // to ensure MULTRES is set correctly for the argument count after trace stitch exits.
+         if (bc_is_func_header(bc_op(*pc)) or bc_op(*pc) >= BC__MAX)
+            return (int)((BCREG)(L->top - L->base) + 1);
          return 0;
       }
 }

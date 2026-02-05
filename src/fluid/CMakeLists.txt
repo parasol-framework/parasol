@@ -210,7 +210,7 @@ if (MSVC)
    endif()
 
    set (LUAJIT_DASC "${LUAJIT_SRC}/jit/vm_x64.dasc")
-   set (LUAJIT_DASMFLAGS -D WIN -D JIT -D P64)
+   set (LUAJIT_DASMFLAGS -D WIN -D JIT)
    set (LUAJIT_ARCH "x64")
 
    # Build minilua host tool
@@ -408,12 +408,7 @@ else ()
          "else()\n"
          "   list(APPEND DASM_AFLAGS \"-D\" \"ENDIAN_BE\")\n"
          "endif()\n"
-         "if(ARCH_DEFS MATCHES \"LJ_ARCH_BITS 64\")\n"
-         "   list(APPEND DASM_AFLAGS \"-D\" \"P64\")\n"
-         "endif()\n"
-         "if(ARCH_DEFS MATCHES \"LJ_HASJIT 1\")\n"
-         "   list(APPEND DASM_AFLAGS \"-D\" \"JIT\")\n"
-         "endif()\n"
+         "list(APPEND DASM_AFLAGS \"-D\" \"JIT\")\n"
          "if(ARCH_DEFS MATCHES \"LJ_DUALNUM 1\")\n"
          "   list(APPEND DASM_AFLAGS \"-D\" \"DUALNUM\")\n"
          "endif()\n"

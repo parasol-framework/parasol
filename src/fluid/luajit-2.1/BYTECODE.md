@@ -7,69 +7,44 @@ Parasol integrates a heavily modified LuaJIT 2.1 VM. This note captures the cont
 - Registers are shown as `R0`, `R1`, etc. Fields A/B/C/D follow LuaJIT encoding: `A` is usually a destination or base, `B`/`C` are sources, `D` is a constant or split field. `base` is the current stack frame start.
 - Conditions are expressed as "condition true → skip next instruction; condition false → execute next instruction (normally a `JMP`)." "Next instruction" means the sequential `BCIns`; a taken `JMP` applies its offset from the following instruction.
 - Version: LuaJIT 2.1 with extensive changes, assuming the `LJ_FR2` two-slot frame layout used by all supported platforms.
+- **64-bit bytecode**: `BCIns` is now `uint64_t` (was `uint32_t`). Instructions occupy 8 bytes each. New extended formats (ABCP, ADP, AP) enable native 64-bit pointer storage for inline caching. See section 3.1 for format details.
 - Keep this file aligned with changes in `src/fluid/luajit-2.1/src/parser/*`, whenever bytecode emission patterns change.
 
 ## 3. Bytecode Overview
 ### 3.1 High-Level Structure
-- Each instruction is a 32-bit `BCIns` packed with opcode and A/B/C/D fields. Prototypes (`GCproto`) hold the instruction stream, constants, and line table.
-- Format ABC: `[B:8][C:8][A:8][OP:8]`, Format AD: `[D:16][A:8][OP:8]`
+- Each instruction is a 64-bit `BCIns` packed with opcode and operand fields. Prototypes (`GCproto`) hold the instruction stream, constants, and line table.
+- The opcode always occupies bits 0-7, ensuring dispatch logic remains consistent across all formats.
+- PC increments by 8 bytes per instruction (was 4 bytes in the legacy 32-bit format).
 
-### 3.1.1 Extended 64-bit Instructions
+**Standard Formats (lower 32 bits):**
+- Format ABC: `[B:8][C:8][A:8][OP:8]` (bits 0-31)
+- Format AD: `[D:16][A:8][OP:8]` (bits 0-31)
 
-Extended instructions consume two 32-bit words (64 bits total), providing up to 6 operand slots for complex operations.
-
-**Instruction Layout:**
+**Extended Formats (64-bit with upper half):**
 ```
-Word 0 (standard):  [B:8][C:8][A:8][OP:8]     - Primary operands (same as normal instructions)
-Word 1 (extension): [F:8][E:8][DX:8][EX:8]   - Extended operands
-                    or [E16:16][D16:16]      - Mixed 16-bit format
-```
+Format ABCP (extended operand):
++----+----+----+----+----+----+----+----+
+|        P (32-bit) | B  | C  | A  | OP |
++----+----+----+----+----+----+----+----+
+bits 63          32  31              0
 
-**Operand Availability:**
-- **6 × 8-bit operands**: A, B, C from word 0; EX, DX, E, F from word 1
-- **Mixed format**: 3 × 8-bit (A, B, C) + 2 × 16-bit (D16, E16) operands
+Format ADP (extended with D operand):
++----+----+----+----+----+----+----+----+
+|        P (32-bit) |    D    | A  | OP |
++----+----+----+----+----+----+----+----+
 
-**Identifying Extended Instructions:**
-- Use `bcmode_ext(op)` macro to check if an opcode is extended (bit 15 of `lj_bc_mode[]`)
-- Extended opcodes are defined using `BCMODE_EXT()` instead of `BCMODE()` in the mode table
-
-**Extraction Macros (lj_bc.h):**
-```cpp
-// Extension word field extraction
-bc_ex(i)    // EX field (bits 0-7)
-bc_dx(i)    // DX field (bits 8-15)
-bc_e(i)     // E field (bits 16-23)
-bc_f(i)     // F field (bits 24-31)
-
-// 16-bit operand accessors
-bc_d16(i)   // Lower 16 bits
-bc_e16(i)   // Upper 16 bits
+Format AP (pointer with register):
++----+----+----+----+----+----+----+----+
+|           PTR (48-bit)      | A  | OP |
++----+----+----+----+----+----+----+----+
+bits 63                 16 15  8  7  0
 ```
 
-**Composition Macros:**
-```cpp
-BCINS_EXT(ex, dx, e, f)   // Compose extension word with 4 × 8-bit fields
-BCINS_EXT16(d16, e16)     // Compose extension word with 2 × 16-bit fields
-```
-
-**Parser Emission:**
-- `bcemit_ABC_EXT()` - Emit ABC instruction with 4 additional 8-bit operands
-- `bcemit_AD_EXT16()` - Emit AD instruction with 2 additional 16-bit operands
-- Both emit two words atomically with shared line info
-
-**Serialization:**
-- Bytecode dumps containing extended instructions set the `BCDUMP_F_EXT` flag (0x10)
-- The bytecode reader validates that extended opcodes have their extension words present
-
-**JIT Recording:**
-- `RecordOps` structure includes `ext_word`, `ex`, `dx`, `e`, `f` fields
-- `rec_decode_operands()` checks `bcmode_ext()` and reads the extension word from `J->pc[1]`
-
-**Future Use Cases:**
-- Object method calls with action ID + multiple parameters
-- Array operations with type hints
-- Multi-value table operations
-- Complex control flow with embedded metadata
+**Design rationale:**
+- Standard opcodes use the lower 32 bits; upper 32 bits are available for extended data (P field) or inline pointers.
+- **AP format**: Stores a 48-bit pointer plus 8-bit A operand, enabling inline caching with a register reference.
+- User-space pointers on x64 fit in 47 bits (low-half canonical range). Runtime asserts verify `ptr <= BC_PTR_USERSPACE_MAX` (0x00007FFFFFFFFFFF).
+- Endian-independent: All field extraction uses bitmask/shift operations, not byte offsets.
 
 ### 3.2 Complete Bytecode Instruction Matrix
 
@@ -250,18 +225,50 @@ Operand suffixes: V=variable slot, S=string const, N=number const, P=primitive (
 
 ### 3.3 Resources and Cross-References
 - Opcode definitions and metadata (including the `BCDEF` macro): `src/fluid/luajit-2.1/src/bytecode/lj_bc.h`.
-- Extended instruction macros: `src/fluid/luajit-2.1/src/bytecode/lj_bc.h` (`bcmode_ext`, `bc_ex`, `bc_dx`, `bc_e`, `bc_f`, `BCINS_EXT`, `BCMODE_EXT`).
-- Extended instruction emission: `src/fluid/luajit-2.1/src/parser/parse_internal.h` (`bcemit_ABC_EXT`, `bcemit_AD_EXT16`), `parse_regalloc.cpp` (`bcemit_INS_EXT`).
-- Bytecode serialisation: `src/fluid/luajit-2.1/src/bytecode/lj_bcdump.h` (`BCDUMP_F_EXT`), `lj_bcread.cpp`, `lj_bcwrite.cpp`.
 - Parser emission sites: `src/fluid/luajit-2.1/src/parser/ir_emitter/operator_emitter.cpp` (operator lowering and bytecode emission), `src/fluid/luajit-2.1/src/parser/ir_emitter/ir_emitter.cpp` (control-flow and expression emission).
 - Exception handling emission: `src/fluid/luajit-2.1/src/parser/ir_emitter/emit_try.cpp` (try-except-end statement bytecode generation).
 - Behavioural context and patterns: `src/fluid/luajit-2.1/src/parser/ir_emitter/operator_emitter.cpp`, `src/fluid/luajit-2.1/src/parser/ir_emitter/ir_emitter.cpp`, and `src/fluid/luajit-2.1/src/parser/parse_control_flow.cpp` (parser wiring and control-flow emission patterns).
 - Native array implementation: `src/fluid/luajit-2.1/src/runtime/lj_array.cpp`, `lj_array.h` (core array operations), `lj_vmarray.cpp` (bytecode handlers), `lib_array.cpp` (library functions).
 - Array bytecode emission: `src/fluid/luajit-2.1/src/parser/ir_emitter/emit_function.cpp`, `parse_regalloc.cpp` (array index expression discharge).
-- JIT recording: `src/fluid/luajit-2.1/src/lj_record.cpp` (`RecordOps` structure, `rec_decode_operands`).
-- Bytecode disassembly: `src/fluid/luajit-2.1/src/debug/dump_bytecode.cpp` (extended instruction display).
 - VM implementations: `src/fluid/luajit-2.1/src/jit/vm_x64.dasc` (x64), `vm_arm64.dasc` (ARM64), `vm_ppc.dasc` (PowerPC) - bytecode interpreter and JIT entry points.
+- 64-bit bytecode implementation plan: `docs/plans/bcins-64bit.md` (detailed phase documentation).
 - Tests exercising these paths live under `src/fluid/tests/`.
+
+### 3.4 VM Assembly Considerations (64-bit Bytecode)
+
+The VM assembly files (`vm_x64.dasc`, etc.) implement the bytecode interpreter and must correctly handle the 64-bit instruction format:
+
+**Instruction Fetch and Dispatch:**
+- `ins_NEXT` macro fetches a full 64-bit instruction and advances PC by 8 bytes.
+- Opcode extraction: `movzx OP, RCL` (bits 0-7).
+- A field extraction: `movzx RAd, RCH` (bits 8-15).
+- D field extraction: `shr RC, 16` (bits 16-31, with upper bits preserved).
+
+**PC-Relative Field Access:**
+After PC advances past an instruction, field offsets from PC are:
+```
+PC_OP  = byte [PC-8]   ; Opcode (was PC-4)
+PC_RA  = byte [PC-7]   ; A field (was PC-3)
+PC_RC  = byte [PC-6]   ; C field (was PC-2)
+PC_RB  = byte [PC-5]   ; B field (was PC-1)
+PC_RD  = word [PC-6]   ; D field (was PC-2)
+```
+
+**Pointer Extraction:**
+```asm
+.macro ins_getp32, dst
+  mov dst, dword [PC-4]  ; Upper 32 bits of instruction
+.endmacro
+
+.macro ins_getptr, dst
+  mov dst, qword [PC-8]  ; Full 64-bit load
+  shr dst, 16            ; Extract 48-bit pointer
+.endmacro
+```
+
+**Forward Compatibility:**
+- Use `shr RC, 16` (not `shr RCd, 16`) to preserve upper 32 bits for future opcodes that use the P field.
+- The `ins_NEXT` macro already preserves upper bits in shifted form for P-field opcodes.
 
 ## 4. Conditional and Comparison Bytecodes
 ### 4.1 Conditional Bytecode Semantics
@@ -529,19 +536,62 @@ Enables type inference for untyped functions, allowing the VM to optimize subseq
 - Reviewers should confirm emitted patterns match the documented skip/execute semantics and that test coverage exercises both true and false paths.
 
 ## 12. Glossary and Quick Reference
-- `BCIns`/`BCOp`: packed bytecode word and opcode enum.
-- Extended instruction: 64-bit instruction consuming two 32-bit words; identified by `bcmode_ext(op)`.
-- Extension word: second 32-bit word of an extended instruction containing EX/DX/E/F or D16/E16 operands.
+
+### Bytecode Types and Structures
+- `BCIns`: 64-bit packed bytecode instruction (was 32-bit in legacy LuaJIT).
+- `BCOp`: Opcode enum, always in bits 0-7 of the instruction.
+- `BCPOS`: Bytecode position index within a prototype's instruction array.
+- `BCREG`: Register number (8-bit, field A/B/C).
+
+### Field Extraction Macros (defined in `lj_bc.h`)
+- `bc_op(i)`: Extract opcode (bits 0-7).
+- `bc_a(i)`: Extract A field (bits 8-15).
+- `bc_b(i)`: Extract B field (bits 24-31 of lower word).
+- `bc_c(i)`: Extract C field (bits 16-23 of lower word).
+- `bc_d(i)`: Extract D field (bits 16-31 of lower word, unsigned).
+- `bc_j(i)`: Extract D field as signed jump offset (`bc_d(i) - BCBIAS_J`).
+- `bc_p32(i)`: Extract P field (upper 32 bits, for ABCP/ADP formats).
+- `bc_ptr(i)`: Extract 48-bit pointer (bits 16-63, for AP format).
+
+### Field Setter Macros
+- `setbc_op(p, x)`: Set opcode in instruction at `p`.
+- `setbc_a(p, x)`: Set A field.
+- `setbc_b(p, x)`: Set B field.
+- `setbc_c(p, x)`: Set C field.
+- `setbc_d(p, x)`: Set D field.
+- `setbc_p32(p, v)`: Set upper 32-bit P field.
+- `setbc_ptr(p, ptr)`: Set 48-bit pointer in AP format.
+
+### Instruction Construction Macros
+- `BCINS_ABC(o, a, b, c)`: Build ABC-format instruction.
+- `BCINS_AD(o, a, d)`: Build AD-format instruction.
+- `BCINS_AJ(o, a, j)`: Build AD-format with jump bias.
+- `BCINS_ABCP(o, a, b, c, p32)`: Build ABCP-format with 32-bit P field.
+- `BCINS_ADP(o, a, d, p32)`: Build ADP-format with 32-bit P field.
+- `BCINS_AP(o, a, ptr)`: Build AP-format with 48-bit pointer.
+
+### Pointer Storage Constants
+- `BC_PTR_USERSPACE_MAX`: Maximum valid user-space pointer (0x00007FFFFFFFFFFF on x64).
+
+### Parser and Register Allocation
 - `freereg`: first free stack slot above active locals; must be collapsed after temporaries.
 - `nactvar`: count of active local variables.
 - `ExpKind`: parser expression classification (`VNONRELOC`, `VRELOCABLE`, `VCALL`, etc.).
+
+### Control Flow
 - Extended falsey: `nil`, `false`, numeric zero, empty string, empty array.
 - Short-circuit: using compare+`JMP` so RHS executes only when needed.
+- Cheat sheet: `ISEQ*`/`ISNE*`/`IS*` comparisons — true skips next, false executes next; `and` skips RHS on falsey, `or` skips RHS on truthy; `x?` and `lhs ?? rhs` use chained equality tests with shared jump lists; ternary writes result back into the condition register with one branch skipped.
+
+### Native Arrays
 - `GCarray`: native array object with typed element storage.
 - `LJ_TARRAY`: type tag for native arrays (value ~13).
 - `ARRAY_FLAG_READONLY`: flag indicating array elements cannot be modified.
 - `ARRAY_FLAG_EXTERNAL`: flag indicating array data is not owned by the GC.
-- Cheat sheet: `ISEQ*`/`ISNE*`/`IS*` comparisons — true skips next, false executes next; `and` skips RHS on falsey, `or` skips RHS on truthy; `x?` and `lhs ?? rhs` use chained equality tests with shared jump lists; ternary writes result back into the condition register with one branch skipped; `AGETV`/`AGETB`/`ASETV`/`ASETB` provide direct array element access with bounds checking; `ASGETV`/`ASGETB` provide safe array access (returns nil for out-of-bounds) for the `?[]` operator.
+- `AGETV`/`AGETB`/`ASETV`/`ASETB` provide direct array element access with bounds checking.
+- `ASGETV`/`ASGETB` provide safe array access (returns nil for out-of-bounds) for the `?[]` operator.
+
+### Exception Handling
 - `PROTO_TYPEFIX`: flag indicating runtime type inference is enabled for function return types.
 - `TryBlockDesc`: metadata for try blocks stored in `GCproto.try_blocks[]`.
 - `TryHandlerDesc`: metadata for exception handlers stored in `GCproto.try_handlers[]`.

@@ -8,8 +8,8 @@
 
    import 'common'
 
-   global glHeader = { }
-   global glOutput = { }
+   global glHeader = array<string>
+   global glOutput = array<string>
    global glConstants = { }
 
    global glSelf = obj.find('self')
@@ -46,6 +46,14 @@
    import './include/types'
    import './include/functions'
    import './include/doc'
+
+   local rx_empty_lines    = <{ regex.new([[^\n*$]]) }>
+   local rx_strip_newlines = <{ regex.new([[^\n*(.*\S)]], regex.DOT_ALL) }>
+   local rx_lowercase_id   = <{ regex.new([[^[a-z]ID$]]) }>
+   local rx_field_extract  = <{ regex.new([[^(.+?)[:#]\s*(.+)$]]) }> -- "type FieldName # Comment", also accepts ":"
+   local rx_colon_comment  = <{ regex.new([[^(.+?):\s+(.+)$]]) }> -- type FieldName: Comment
+   local rx_type_name      = <{ regex.new([[^\s*(.+)\s+(\S+)\s*$]]) }>
+   local rx_comment_chars  = <{ regex.new('[`!@#]') }>
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -248,36 +256,11 @@ global glActionStubs = {
 }
 
 ----------------------------------------------------------------------------------------------------------------------
-
-global function outputLookup(Name:str, List):str
-   sorted = { }
-   for v in values(List) do
-      table.insert(sorted, v)
-   end
-
-   table.sort(sorted, function(a,b)
-      return (a.value is b.value) ? a.name < b.name :> a.value < b.value
-   end)
-
-   list = ''
-   for _, v in ipairs(sorted) do
-      if (v.name:upper() != 'PRIVATE') and (v.name:upper() != 'END') then
-         -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
-         hash_id = '0x' .. string.format('%08x', v.value):sub(-8)
-         if hash_id:match('^0x[8f][%dabcdef]+') then hash_id = '(int)' .. hash_id end
-         list ..= string.format("   { \"%s\", %s },\n", shortName(v.name), hash_id)
-      end
-   end
-
-   return 'static const struct FieldDef cl' .. Name .. '[] = {\n' .. list .. '   { nullptr, 0 }\n};\n\n'
-end
-
-----------------------------------------------------------------------------------------------------------------------
 -- Output the CPP compatible class definition
 
-global function outputClassHeader(class:table, Private, Custom)
+global function outputClassHeader(class:table, Private:str, Custom:str)
    physicalFields = false
-   for _, f in ipairs(class.fields) do
+   for f in values(class.fields) do
       if not f.virtual then physicalFields = true end
    end
 
@@ -294,7 +277,7 @@ global function outputClassHeader(class:table, Private, Custom)
 
       max_len = 3 + class.longestFieldType + 1 + 2
 
-      for _, f in ipairs(class.fields) do
+      for f in values(class.fields) do
          if not f.virtual then
             local left
             field_name = cName(f, true)
@@ -305,7 +288,7 @@ global function outputClassHeader(class:table, Private, Custom)
             end
 
             if f.comment?? then
-               clean_comment = f.comment:gsub('[`!@#]', '')
+               clean_comment = rx_comment_chars.replace(f.comment, '')
                output(string.format('%-' .. max_len .. 's // %s', left, clean_comment))
             else
                output(left)
@@ -332,11 +315,16 @@ global function outputClassHeader(class:table, Private, Custom)
    output('   // Action stubs\n')
 
    if not table.empty(class.sortedActions) then
-      for _, action in ipairs(class.sortedActions) do
+      for action in values(class.sortedActions) do
          if glActionStubs[action.name] then
             if glActionStubs[action.name]:len() != 0 then
                stub = glActionStubs[action.name]
-               stub = string.match(stub,'^()\n*$') and '' or string.match(stub,'^\n*(.*%S)')
+               if rx_empty_lines.test(stub) then
+                  stub = ''
+               else
+                  strip = rx_strip_newlines.extract(stub)
+                  if strip then stub = strip end
+               end
                output(stub)
             end
          else
@@ -354,7 +342,7 @@ global function outputClassHeader(class:table, Private, Custom)
    -- Insert registered methods
 
    if not table.empty(class.methods) then
-      for _, m in ipairs(class.methods) do
+      for m in values(class.methods) do
          if m.nestedInline then output(m.nestedInline) end
       end
    end
@@ -371,19 +359,19 @@ global function outputClassHeader(class:table, Private, Custom)
       if field_name?? and f.write then
          fid_name = field_name
          id = fid_name:sub(-3)
-         if id:find('^%lID$') then
+         if rx_lowercase_id.test(id) then
             fid_name = fid_name:sub(0, -3)
          end
 
          field_type = f.type
 
-         if field_type:find('^STRUCT *') then -- Unnamed structs must be converted to PTR
+         if field_type:startsWith('STRUCT') then -- Unnamed structs must be converted to PTR
             field_type = 'APTR'
          end
 
-         if not field_type:find('^const ') then
+         if not field_type:startsWith('const ') then
             if ((f.flags & FD_STRING) != 0) and ((f.flags & FD_ARRAY) is 0) then
-               if field_type:find('^STRING') or field_type:find('^CSTRING') then
+               if field_type:startsWith('STRING') or field_type:startsWith('CSTRING') then
                   field_type = 'T &&'
                else
                   field_type = 'const ' .. field_type
@@ -404,17 +392,17 @@ global function outputClassHeader(class:table, Private, Custom)
 
             if field_type:endsWith('[]') then
                field_type = field_type:sub(0,-3) .. '*'
-               output(string.format('   inline ERR set%s(%s Value, int Elements) noexcept {', fid_name, field_type))
+               output(f'   inline ERR set{fid_name}({field_type} Value, int Elements) noexcept {{')
             elseif (f.flags & FD_ARRAY) != 0 then
                if (f.flags & FD_CPP) != 0 then
-                  output(string.format('   inline ERR set%s(%s *Value) noexcept {', fid_name, field_type))
+                  output(f'   inline ERR set{fid_name}({field_type} *Value) noexcept {{')
                else
-                  output(string.format('   inline ERR set%s(%s Value, int Elements) noexcept {', fid_name, field_type))
+                  output(f'   inline ERR set{fid_name}({field_type} Value, int Elements) noexcept {{')
                end
             elseif field_type is 'T &&' then
-               output(string.format('   template <class T> inline ERR set%s(%s Value) noexcept {', fid_name, field_type))
+               output(f'   template <class T> inline ERR set{fid_name}({field_type} Value) noexcept {{')
             else
-               output(string.format('   inline ERR set%s(%s Value) noexcept {', fid_name, field_type))
+               output(f'   inline ERR set{fid_name}({field_type} Value) noexcept {{')
             end
 
             if f.write is 'Init' then
@@ -430,7 +418,7 @@ global function outputClassHeader(class:table, Private, Custom)
 
             if (err is ERR_Okay) and (target.id is class.meta.id) and glEnableDictionaryUse then
                output(indent .. 'auto target = this;')
-               output(indent .. string.format('auto field = &this->Class->Dictionary[%d];', fl.index))
+               output(indent .. f'auto field = &this->Class->Dictionary[{fl.index}];')
             else
                output(indent .. 'OBJECTPTR target;')
                output(indent .. f'auto field = FindField(this, FID_{fid_name}, &target);')
@@ -469,14 +457,14 @@ global function outputClassHeader(class:table, Private, Custom)
             end
          else
             if field_type is 'T &&' then
-               output(string.format('   template <class T> inline ERR set%s(%s Value) noexcept {', fid_name, field_type))
+               output(f'   template <class T> inline ERR set{fid_name}({field_type} Value) noexcept {{')
             else
-               output(string.format('   inline ERR set%s(%s Value) noexcept {', fid_name, field_type))
+               output(f'   inline ERR set{fid_name}({field_type} Value) noexcept {{')
             end
             if f.write is 'Init' then
                output(indent .. 'if (this->initialised()) return ERR::NoFieldAccess;')
             end
-            output(indent .. string.format('this->%s = Value;', field_name))
+            output(indent .. f'this->{field_name} = Value;')
             output(indent .. 'return ERR::Okay;')
          end
 
@@ -490,32 +478,21 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Returns fields as a list returned by cType, featuring { type, name, docType, fullType, comment }
 
-global function extractFields(Def, Origin)
+global function extractFields(Def:str, Origin:str):table
    fields = { }
-
    Def ?? return fields
-
    for line, content in Def:split('\n') do
-      -- Extract comment, if specified
-      comment = content:match('^.+#%s-(.+)$')
-      if comment?? then
-         content = content:match('^(.+)#%s-.+$')
-      else
-         -- Support for alternative comment format where the colon is used.
-         comment = content:match('^.+:%s-(.+)$')
-         if comment?? then
-            content = content:match('^(.+):%s-.+$')
-         end
-      end
+      local content_b, comment = rx_field_extract.extract(content)
+      if content_b then content = content_b end
+      local type, name = rx_type_name.extract(content)
 
-      type, name = content:match('^%s*(.+)%s+([^%s]+)%s-$')
       if type?? then
          field = cType({ type=type:trim(), name=name:trim(), comment=string.trim(comment) }, Origin)
          table.insert(fields, field)
       elseif not content:trim()?? then
          -- Ignore empty line
       else
-         error("Unable to process line '" .. tostring(content) .. "' for '" .. tostring(Origin) .. "'")
+         error(f"Unable to process line '{content}' for '{Origin}'")
       end
    end
 
@@ -524,7 +501,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-global function parseFDLFile(Source)
+global function parseFDLFile(Source:str)
    err, full_path = mSys.ResolvePath(Source)
 
    global glFDLFolder = file.splitPath(full_path)
@@ -541,7 +518,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Function definitions can be embedded into source code with the idlFunction() routine.
 
-global function idlFunction(Name, Category, Comment, Status, Description, Def)
+global function idlFunction(Name:str, Category:str, Comment:str, Status:str, Description:str, Def:table)
    -- Find the registered function definition that must have been pre-declared in the FDL.
 
    local func
@@ -584,14 +561,11 @@ global function idlFunction(Name, Category, Comment, Status, Description, Def)
    if Def.input?? then
       func.input = { }
       for line, content in Def.input:split('\n') do
-         comment = content:match('^.-:%s-(.+)$')
-         if comment?? then
-            content = content:match('^(.-):%s-.+$')
-         elseif content?? then
-            error('No comment found for function parameter in ' .. Name .. '()')
-         end
+         local content, comment = rx_colon_comment.extract(content)
+         assert(comment and content, 'Invalid input reference in ' .. Name .. '(): ' .. content)
 
-         type, name = content:match('^%s*(.+)%s+([^%s]+)%s-$')
+         local type, name = rx_type_name.extract(content)
+
          if type then
             param = cType({
                type=type:trim(), name=name:trim(), comment=comment:trim(), isFunction=true
@@ -609,7 +583,7 @@ global function idlFunction(Name, Category, Comment, Status, Description, Def)
                jumpArgs = argSeq .. '...'
                argSeq ..= 'Args... Tags'
             else
-               if param.type:find('*$') then
+               if param.type:endsWith('*') then
                   argSeq ..= param.type .. cName(param)
                else
                   argSeq ..= param.type .. ' ' .. cName(param)
@@ -650,8 +624,8 @@ global function idlFunction(Name, Category, Comment, Status, Description, Def)
    if Def.ext_proto then
       jumpArgs = Def.ext_proto
       argSeq   = Def.ext_proto
-      if string.sub(argSeq, -3) is '...' then
-         argSeq = string.sub(argSeq, 0, -4) .. 'Args... Tags'
+      if string.substr(argSeq, -3) is '...' then
+         argSeq = string.substr(argSeq, 0, -4) .. 'Args... Tags'
       end
    elseif not jumpArgs then
       jumpArgs = argSeq
@@ -815,14 +789,14 @@ global function buildPrototypes()
    if glClasses then
       for className, cl in pairs(glClasses) do
          if not table.empty(cl.methods) then
-            for _, method in ipairs(cl.methods) do
+            for method in values(cl.methods) do
                proto = 'OBJECTPTR Object'
                if method.params?? then
-                  for _, param in ipairs(method.params) do
+                  for param in values(method.params) do
                      proto ..= ', ' .. (param.extType ?? param.docType) .. ' ' .. param.name
                   end
                end
-               method.prototype = 'ERR ' .. cl.methodPrefix:lower() .. '::' .. method.name .. '(' .. proto .. ')'
+               method.prototype = f'ERR {cl.methodPrefix:lower()}::{method.name}({proto})'
             end
          end
       end
@@ -868,13 +842,13 @@ end
 -- Generate private C definitions that describe the public functions of a module.
 
 global function buildDefs()
-   if table.empty(glFunctions) then return '' end
+   glFunctions ?? return ''
 
    prefix = ''
    if glFunctionPrefix?? then prefix = glFunctionPrefix .. '::' end
 
    flist = '\nconst struct Function glFunctions[] = {\n'
-   for _, func in ipairs(glFunctions) do
+   for func in values(glFunctions) do
       flist ..= "   { (APTR)" .. prefix .. func.name .. ", \"" .. func.name .. "\", args" .. func.name .. " },\n"
    end
    flist ..= "   { nullptr, nullptr, nullptr }\n"
@@ -883,7 +857,7 @@ global function buildDefs()
    table.sort(glFunctions, function(a,b) return a.name < b.name end)
 
    plist = ''
-   for _, func in ipairs(glFunctions) do
+   for func in values(glFunctions) do
       plist ..= 'FDEF args' .. func.name .. '[] = {'
 
       -- Process the result type first
@@ -922,7 +896,7 @@ end
 global function buildInputParameters(List)
    plist = ''
    if List then
-      for _, param in ipairs(List) do
+      for param in values(List) do
          fd = param.fullType.fd
          if param.allocated then fd ..= '|FD_ALLOC' end
          if param.resultValue then fd ..= '|FD_RESULT' end

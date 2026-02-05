@@ -293,21 +293,10 @@ static void bcread_bytecode(LexState *State, GCproto *pt, MSize sizebc)
    bc[0] = BCINS_AD((pt->flags & PROTO_VARARG) ? BC_FUNCV : BC_FUNCF,
       pt->framesize, 0);
    bcread_block(State, bc + 1, (sizebc - 1) * (MSize)sizeof(BCIns));
-   // Swap bytecode instructions if the endianess differs.
+   // Swap bytecode instructions if the endianness differs (64-bit BCIns).
    if (bcread_swap(State)) {
       MSize i;
-      for (i = 1; i < sizebc; i++) bc[i] = lj_bswap(bc[i]);
-   }
-
-   // Validate extended instructions have their extension words.
-   // Extended opcodes consume two words, so ensure there's room for both.
-   for (MSize i = 1; i < sizebc; i++) {
-      BCOp op = bc_op(bc[i]);
-      if (op >= BC__MAX) bcread_error(State, ErrMsg::BCBAD);  // Invalid opcode
-      if (bcmode_ext(op)) {
-         if (i + 1 >= sizebc) bcread_error(State, ErrMsg::BCBAD);  // Missing extension word
-         i++;  // Skip extension word in validation loop
-      }
+      for (i = 1; i < sizebc; i++) bc[i] = lj_bswap64(bc[i]);
    }
 }
 

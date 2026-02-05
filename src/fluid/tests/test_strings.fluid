@@ -18,7 +18,7 @@ function enforce_hotpath() end
 end
 
 @Test function Index()
---   getmetatable('').__index = function(str,i) return string.sub(str,i,i) end
+--   getmetatable('').__index = function(str,i) return string.substr(str,i,i) end
 --   hw = "Hello World"
 --   assert(string[1] is "H", "Expected 'H' at index 0, got '" .. tostring(string[1]) .. "'")
 end
@@ -284,6 +284,62 @@ end
    assert(mixed is "heLLo", "Expected 'heLLo', got '" .. mixed .. "'")
 end
 
+@Test function Pop()
+   -- Basic pop (default 1 character)
+   popped = string.pop("hello")
+   assert(popped is "hell", "Expected 'hell', got '" .. popped .. "'")
+
+   -- Pop multiple characters
+   pop2 = string.pop("hello", 2)
+   assert(pop2 is "hel", "Expected 'hel', got '" .. pop2 .. "'")
+
+   pop3 = string.pop("hello world", 6)
+   assert(pop3 is "hello", "Expected 'hello', got '" .. pop3 .. "'")
+
+   -- Pop all characters (count equals length)
+   popAll = string.pop("hello", 5)
+   assert(popAll is "", "Expected empty string, got '" .. popAll .. "'")
+
+   -- Pop more than string length
+   popMore = string.pop("hello", 10)
+   assert(popMore is "", "Expected empty string, got '" .. popMore .. "'")
+
+   popMore2 = string.pop("hi", 100)
+   assert(popMore2 is "", "Expected empty string, got '" .. popMore2 .. "'")
+
+   -- Pop zero (returns original)
+   popZero = string.pop("hello", 0)
+   assert(popZero is "hello", "Expected 'hello', got '" .. popZero .. "'")
+
+   -- Pop negative (returns original)
+   popNeg = string.pop("hello", -1)
+   assert(popNeg is "hello", "Expected 'hello', got '" .. popNeg .. "'")
+
+   popNeg2 = string.pop("hello", -10)
+   assert(popNeg2 is "hello", "Expected 'hello', got '" .. popNeg2 .. "'")
+
+   -- Empty string
+   popEmpty = string.pop("")
+   assert(popEmpty is "", "Expected empty string, got '" .. popEmpty .. "'")
+
+   popEmpty2 = string.pop("", 5)
+   assert(popEmpty2 is "", "Expected empty string, got '" .. popEmpty2 .. "'")
+
+   -- Single character string
+   popSingle = string.pop("a")
+   assert(popSingle is "", "Expected empty string, got '" .. popSingle .. "'")
+
+   popSingle2 = string.pop("a", 0)
+   assert(popSingle2 is "a", "Expected 'a', got '" .. popSingle2 .. "'")
+
+   -- Method syntax
+   methodPop = "hello world":pop()
+   assert(methodPop is "hello worl", "Expected 'hello worl', got '" .. methodPop .. "'")
+
+   methodPop2 = "hello world":pop(3)
+   assert(methodPop2 is "hello wo", "Expected 'hello wo', got '" .. methodPop2 .. "'")
+end
+
 @Test function Hash()
    -- Basic hash (case insensitive by default)
    hash1 = string.hash("hello")
@@ -350,8 +406,8 @@ end
    assert(ue is "<<>>", "Received string is incorrect: " .. tostring(ue))
 end
 
-@Test function Sub()
-   -- string.substr() and sub() use exclusive end index (like JavaScript substring/Python slicing)
+@Test function SubStr()
+   -- string.substr() uses exclusive end index (like JavaScript substring/Python slicing)
    -- string.substr(s, start, end) extracts chars from start to end-1
    s = "hello world"
 
@@ -567,131 +623,131 @@ end
    start3, finish3 = string.find(s, "o", 5)
    assert(start3 is 7, "Expected start at 7, got " .. tostring(start3))
    assert(finish3 is 7, "Expected finish at 7, got " .. tostring(finish3))
-
-   -- Pattern matching (single character class)
-   start4, finish4 = string.find("abc123def", "%d+")
-   assert(start4 is 3, "Expected start at 3, got " .. tostring(start4))
-   assert(finish4 is 5, "Expected finish at 5, got " .. tostring(finish4))
-
-   -- Plain text search (fourth parameter = true)
-   start5, finish5 = string.find("test%dpattern", "%d", 0, true)
-   assert(start5 is 4, "Expected start at 4 for plain search, got " .. tostring(start5))
-   assert(finish5 is 5, "Expected finish at 5 for plain search, got " .. tostring(finish5))
-
-   -- Find with capture
-   start6, finish6, capture = string.find("value=123", "=(%d+)")
-   assert(start6 is 5, "Expected start at 5, got " .. tostring(start6))
-   assert(finish6 is 8, "Expected finish at 8, got " .. tostring(finish6))
-   assert(capture is "123", "Expected capture '123', got '" .. tostring(capture) .. "'")
 end
 
-@Test function Match()
-   -- Basic match
-   m = string.match("hello world", "world")
-   assert(m is "world", "Expected 'world', got '" .. tostring(m) .. "'")
+@Test function Count()
+   -- Basic count
+   count = string.count("hello world", "o")
+   assert(count is 2, "Expected 2 occurrences of 'o', got " .. count)
 
-   -- Pattern with capture
-   num = string.match("value=123", "=(%d+)")
-   assert(num is "123", "Expected '123', got '" .. tostring(num) .. "'")
+   -- Multiple occurrences of a word
+   count2 = string.count("hello hello hello", "hello")
+   assert(count2 is 3, "Expected 3 occurrences of 'hello', got " .. count2)
 
-   -- Multiple captures
-   a, b = string.match("x=10,y=20", "x=(%d+),y=(%d+)")
-   assert(a is "10", "Expected '10', got '" .. tostring(a) .. "'")
-   assert(b is "20", "Expected '20', got '" .. tostring(b) .. "'")
+   -- No matches
+   count3 = string.count("hello", "xyz")
+   assert(count3 is 0, "Expected 0 occurrences of 'xyz', got " .. count3)
 
-   -- No match
-   noMatch = string.match("hello", "xyz")
-   assert(noMatch is nil, "Expected nil for no match, got " .. tostring(noMatch))
+   -- Empty search string (should return 0)
+   count4 = string.count("hello", "")
+   assert(count4 is 0, "Expected 0 for empty search string, got " .. count4)
 
-   -- Match at specific position (zero-indexed)
-   m2 = string.match("hello world", "world", 6)
-   assert(m2 is "world", "Expected 'world' at position 6, got '" .. tostring(m2) .. "'")
+   -- Empty source string
+   count5 = string.count("", "a")
+   assert(count5 is 0, "Expected 0 for empty source string, got " .. count5)
 
-   -- Pattern classes
-   letters = string.match("abc123def", "%a+")
-   assert(letters is "abc", "Expected 'abc', got '" .. tostring(letters) .. "'")
+   -- Both empty (should return 0)
+   count6 = string.count("", "")
+   assert(count6 is 0, "Expected 0 for both empty strings, got " .. count6)
 
-   digits = string.match("abc123def", "%d+")
-   assert(digits is "123", "Expected '123', got '" .. tostring(digits) .. "'")
+   -- Single character in string
+   count7 = string.count("a", "a")
+   assert(count7 is 1, "Expected 1 occurrence, got " .. count7)
+
+   -- Non-overlapping behaviour (counting "aa" in "aaa" should find 1, not 2)
+   count8 = string.count("aaa", "aa")
+   assert(count8 is 1, "Expected 1 non-overlapping match of 'aa' in 'aaa', got " .. count8)
+
+   count9 = string.count("aaaa", "aa")
+   assert(count9 is 2, "Expected 2 non-overlapping matches of 'aa' in 'aaaa', got " .. count9)
+
+   -- Multi-character search
+   count10 = string.count("one::two::three::four", "::")
+   assert(count10 is 3, "Expected 3 occurrences of '::', got " .. count10)
+
+   -- Case sensitivity
+   count11 = string.count("Hello HELLO hello", "hello")
+   assert(count11 is 1, "Expected 1 case-sensitive match, got " .. count11)
+
+   -- Method syntax
+   methodCount = "hello world":count("l")
+   assert(methodCount is 3, "Expected 3 'l' characters, got " .. methodCount)
+
+   -- Line endings
+   count12 = string.count("line1\r\nline2\r\nline3\r\n", "\r\n")
+   assert(count12 is 3, "Expected 3 CRLF occurrences, got " .. count12)
 end
 
-@Test function Gmatch()
-   -- Iterate over words
-   s = "hello world test"
-   words = {}
-   for word in string.gmatch(s, "%S+") do
-      words[#words] = word
-   end
-   assert(#words is 3, "Expected 3 words, got " .. #words)
-   assert(words[0] is "hello", "Expected 'hello', got '" .. words[0] .. "'")
-   assert(words[1] is "world", "Expected 'world', got '" .. words[1] .. "'")
-   assert(words[2] is "test", "Expected 'test', got '" .. words[2] .. "'")
+@Test function Replace()
+   -- Basic replacement (all occurrences)
+   result, count = string.replace("hello world", "o", "0")
+   assert(result is "hell0 w0rld", "Expected 'hell0 w0rld', got '" .. result .. "'")
+   assert(count is 2, "Expected 2 replacements, got " .. count)
 
-   -- Iterate over numbers
-   nums = {}
-   for num in string.gmatch("a1b2c3", "%d") do
-      nums[#nums] = num
-   end
-   assert(#nums is 3, "Expected 3 numbers, got " .. #nums)
-   assert(nums[0] is "1", "Expected '1', got '" .. nums[0] .. "'")
-   assert(nums[1] is "2", "Expected '2', got '" .. nums[1] .. "'")
-   assert(nums[2] is "3", "Expected '3', got '" .. nums[2] .. "'")
-
-   -- Iterate with captures
-   pairs = {}
-   for key, val in string.gmatch("x=1,y=2,z=3", "(%w+)=(%d+)") do
-      pairs[#pairs] = {key, val}
-   end
-   assert(#pairs is 3, "Expected 3 pairs, got " .. #pairs)
-   assert(pairs[0][0] is "x" and pairs[0][1] is "1", "Expected x=1")
-   assert(pairs[1][0] is "y" and pairs[1][1] is "2", "Expected y=2")
-   assert(pairs[2][0] is "z" and pairs[2][1] is "3", "Expected z=3")
-
-   -- Empty matches
-   count = 0
-   for _ in string.gmatch("", "%S+") do
-      count = count + 1
-   end
-   assert(count is 0, "Expected 0 matches for empty string, got " .. count)
-end
-
-@Test function Gsub()
-   -- Basic substitution
-   result, count = string.gsub("hello world", "world", "Lua")
-   assert(result is "hello Lua", "Expected 'hello Lua', got '" .. result .. "'")
-   assert(count is 1, "Expected 1 substitution, got " .. count)
-
-   -- Multiple substitutions
-   result2, count2 = string.gsub("hello hello hello", "hello", "hi")
+   -- Replace all occurrences of a word
+   result2, count2 = string.replace("hello hello hello", "hello", "hi")
    assert(result2 is "hi hi hi", "Expected 'hi hi hi', got '" .. result2 .. "'")
-   assert(count2 is 3, "Expected 3 substitutions, got " .. count2)
+   assert(count2 is 3, "Expected 3 replacements, got " .. count2)
 
-   -- Limited substitutions
-   result3, count3 = string.gsub("hello hello hello", "hello", "hi", 2)
+   -- Limited replacements (max_count parameter)
+   result3, count3 = string.replace("hello hello hello", "hello", "hi", 2)
    assert(result3 is "hi hi hello", "Expected 'hi hi hello', got '" .. result3 .. "'")
-   assert(count3 is 2, "Expected 2 substitutions, got " .. count3)
+   assert(count3 is 2, "Expected 2 replacements, got " .. count3)
 
-   -- Pattern substitution
-   result4 = string.gsub("abc123def456", "%d+", "X")
-   assert(result4 is "abcXdefX", "Expected 'abcXdefX', got '" .. result4 .. "'")
+   -- Replace only first occurrence
+   result4, count4 = string.replace("aaa", "a", "b", 1)
+   assert(result4 is "baa", "Expected 'baa', got '" .. result4 .. "'")
+   assert(count4 is 1, "Expected 1 replacement, got " .. count4)
 
-   -- Substitution with captures
-   result5 = string.gsub("x=1,y=2", "(%w+)=(%d+)", "%1:%2")
-   assert(result5 is "x:1,y:2", "Expected 'x:1,y:2', got '" .. result5 .. "'")
+   -- No matches found
+   result5, count5 = string.replace("hello", "xyz", "abc")
+   assert(result5 is "hello", "Expected 'hello', got '" .. result5 .. "'")
+   assert(count5 is 0, "Expected 0 replacements, got " .. count5)
 
-   -- Function substitution
-   result6 = string.gsub("hello world", "%w+", function(w) return #w end)
-   assert(result6 is "5 5", "Expected '5 5', got '" .. result6 .. "'")
+   -- Empty search string (should return original with 0 count)
+   result6, count6 = string.replace("hello", "", "x")
+   assert(result6 is "hello", "Expected 'hello', got '" .. result6 .. "'")
+   assert(count6 is 0, "Expected 0 replacements for empty search, got " .. count6)
 
-   -- Table substitution
-   replacements = {hello = "hi", world = "Lua"}
-   result7 = string.gsub("hello world", "%w+", replacements)
-   assert(result7 is "hi Lua", "Expected 'hi Lua', got '" .. result7 .. "'")
+   -- Empty source string
+   result7, count7 = string.replace("", "a", "b")
+   assert(result7 is "", "Expected empty string, got '" .. result7 .. "'")
+   assert(count7 is 0, "Expected 0 replacements for empty source, got " .. count7)
 
-   -- No match
-   result8, count8 = string.gsub("hello", "xyz", "abc")
-   assert(result8 is "hello", "Expected 'hello', got '" .. result8 .. "'")
-   assert(count8 is 0, "Expected 0 substitutions, got " .. count8)
+   -- Replacement with empty string (deletion)
+   result8, count8 = string.replace("hello world", "o", "")
+   assert(result8 is "hell wrld", "Expected 'hell wrld', got '" .. result8 .. "'")
+   assert(count8 is 2, "Expected 2 deletions, got " .. count8)
+
+   -- Multi-character search and replacement
+   result9, count9 = string.replace("one::two::three", "::", "-")
+   assert(result9 is "one-two-three", "Expected 'one-two-three', got '" .. result9 .. "'")
+   assert(count9 is 2, "Expected 2 replacements, got " .. count9)
+
+   -- Replacement longer than search
+   result10, count10 = string.replace("a-b-c", "-", "---")
+   assert(result10 is "a---b---c", "Expected 'a---b---c', got '" .. result10 .. "'")
+   assert(count10 is 2, "Expected 2 replacements, got " .. count10)
+
+   -- Method syntax
+   methodResult, methodCount = "hello world":replace("world", "Lua")
+   assert(methodResult is "hello Lua", "Expected 'hello Lua', got '" .. methodResult .. "'")
+   assert(methodCount is 1, "Expected 1 replacement, got " .. methodCount)
+
+   -- Consecutive matches
+   result11, count11 = string.replace("aaa", "aa", "b")
+   assert(result11 is "ba", "Expected 'ba', got '" .. result11 .. "'")
+   assert(count11 is 1, "Expected 1 replacement (non-overlapping), got " .. count11)
+
+   -- CRLF to LF conversion (common use case)
+   result12, count12 = string.replace("line1\r\nline2\r\nline3", "\r\n", "\n")
+   assert(result12 is "line1\nline2\nline3", "Expected LF-only string, got '" .. result12 .. "'")
+   assert(count12 is 2, "Expected 2 CRLF replacements, got " .. count12)
+
+   -- Max count of 0 (should not replace anything)
+   result13, count13 = string.replace("hello", "l", "x", 0)
+   assert(result13 is "hello", "Expected 'hello' with max_count=0, got '" .. result13 .. "'")
+   assert(count13 is 0, "Expected 0 replacements with max_count=0, got " .. count13)
 end
 
 @Test function Format()

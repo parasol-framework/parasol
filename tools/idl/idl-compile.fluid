@@ -10,8 +10,8 @@
 
    global glSelf = obj.find('self')
    global glPath = glSelf.workingPath
-   global glOutput = { }
-   global glHeader = { }
+   global glOutput = array<string>
+   global glHeader = array<string>
 
    global glProgram    = 'idl-compile'
    global glSource     = arg('src')
@@ -36,11 +36,42 @@ global function privateNames(List:table) end
 
    import './include/utils'
 
+   -- Regex patterns for parsing
+   local rx_key_comment     = <{ regex.new([[^(.+):\s+(.+)$]]) }>
+   local rx_key_comment_ng  = <{ regex.new([[^(.*?):\s+(.+)$]]) }>
+   local rx_value_only      = <{ regex.new([[^(.*?):\s+.+$]]) }>
+   local rx_hex_num         = <{ regex.new([[^0x[0-9a-fA-F]+$]]) }>
+   local rx_signed_int      = <{ regex.new([[^[+\-]?\d+$]]) }>
+   local rx_cpp_type        = <{ regex.new([[^cpp\((.+)\)$]]) }>
+   local rx_struct_type     = <{ regex.new([[^(c?)struct\((.+)\)$]]) }>
+   local rx_ptr_extract     = <{ regex.new([[\*(.+)]]) }>
+   local rx_obj_type        = <{ regex.new([[^obj\((.+)\)$]]) }>
+   local rx_bit_type        = <{ regex.new([[^bit\((.+)\)$]]) }>
+   local rx_char_flag       = <{ regex.new([[^char\(([A-Za-z]+)\)]]) }>
+   local rx_non_word        = <{ regex.new([[\W]]) }>
+   local rx_short_flag      = <{ regex.new([[^short\(([A-Za-z]+)\)]]) }>
+   local rx_int_flag        = <{ regex.new([[^int\(([A-Za-z]+)\)]]) }>
+   local rx_large_flag      = <{ regex.new([[^large\(([A-Za-z]+)\)]]) }>
+   local rx_uchar_array     = <{ regex.new([[^(u?)char\((.+)\)$]]) }>
+   local rx_uint_array      = <{ regex.new([[^(u?)int\((\d+)\)]]) }>
+   local rx_double_count    = <{ regex.new([[^double\((.+)\)]]) }>
+   local rx_float_count     = <{ regex.new([[^float\((.+)\)]]) }>
+   local rx_ptr_type        = <{ regex.new([[^(c?)ptr\((.+)\)]]) }>
+   local rx_array_sized     = <{ regex.new([[^array\((.+),(\d+)\)$]]) }>
+   local rx_array_unsized   = <{ regex.new([[^array\((.+)\)$]]) }>
+   local rx_fptr_type       = <{ regex.new([[^fptr\((.+)\)$]]) }>
+   local rx_hash_comment    = <{ regex.new([[^.+#\s*(.+)$]]) }>
+   local rx_hash_content    = <{ regex.new([[^(.+)#\s*.+$]]) }>
+   local rx_colon_comment   = <{ regex.new([[^.+:\s*(.+)$]]) }>
+   local rx_colon_content   = <{ regex.new([[^(.+):\s*.+$]]) }>
+   local rx_type_name       = <{ regex.new([[^\s*(.+)\s+(\S+)\s*$]]) }>
+   local rx_field_extract   = <{ regex.new([[^(.+?)[:#]\s*(.+)$]]) }> -- "type FieldName # Comment", also accepts ":"
+
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 -- Restricts the output of anything declared within the referenced function.
 
-global function restrict(Function)
+global function restrict(Function:func)
    local status = glRestrict
    global glRestrict = 'ALL'
    Function()
@@ -49,22 +80,22 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-global function module(Options, Function)
+global function module(Options:table, Function:func)
    global glModuleName = Options['name']
    Function()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-global function header(Options, Function)
+global function header(Options:table, Function:func)
    global glHeaderPath = Options['path']
    Function()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-global function flags(Prefix, Options, ...)
-   Options = checkOptions(Options)
+global function flags(Prefix:str, Options:table, ...)
+   Options ?= {}
 
    if Options.restrict?? or glRestrict then return end -- Restricted definitions are never exported
    if Options.module?? and (Options.module:lower() != glModuleName:lower()) then return end
@@ -74,19 +105,19 @@ global function flags(Prefix, Options, ...)
    f = 0
    for flag_def in values({...}) do
       if type(flag_def) is 'string' then
-         key, comment = flag_def:match('^(.+):%s+(.+)$')
-         key ?= flag_def
+         local key = rx_key_comment.extract(flag_def)
+         key ??= flag_def
 
          for v in values(key:split('|')) do
             list[v] = 1 << f
          end
       elseif type(flag_def) is 'table' then
          for flag, ref in pairs(flag_def) do
-            local key, comment
+            local key
             if type(ref) != 'number' then
-               key, comment = ref:match('^(.+):%s+(.+)$')
+               key = rx_key_comment.extract(ref)
                if key then
-                  if key:find('^0x%d+$') or key:find('^[+-]?%d+$') then
+                  if rx_hex_num.test(key) or rx_signed_int.test(key) then
                      key = tonumber(key)
                   end
                end
@@ -119,8 +150,8 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-global function enum(Prefix, Options, ...)
-   Options = checkOptions(Options)
+global function enum(Prefix, Options:table, ...)
+   Options ?= {}
 
    if Options.restrict?? or glRestrict then return end -- Restricted definitions are never exported
    if Options.module?? and (Options.module:lower() != glModuleName:lower()) then return end
@@ -130,8 +161,8 @@ global function enum(Prefix, Options, ...)
    inc = Options.start ?? 0
    for k, enum_def in ipairs({...}) do
       if type(enum_def) is 'string' then
-         val = enum_def:match('^(.-):%s+.+$')  -- Scrap any comment for this value
-         val ??= enum_def
+         local val = rx_value_only.extract(enum_def)  -- Scrap any comment for this value
+         val ?= enum_def
 
          for name in values(val:split('|')) do
             list[name] = inc
@@ -151,8 +182,8 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-global function constants(Prefix, Options, ...)
-   Options = checkOptions(Options)
+global function constants(Prefix, Options:table, ...)
+   Options ?= {}
 
    if Options.restrict?? or glRestrict then return end -- Restricted definitions are never exported
    if Options.module?? and (Options.module:lower() != glModuleName:lower()) then return end
@@ -162,13 +193,14 @@ global function constants(Prefix, Options, ...)
    for k, const_def in ipairs({...}) do
       assert(type(const_def) is 'table', "Invalid const type for '" .. Prefix .. "', expected table, got '" .. type(const_def) .. "'")
       for k, v in pairs(const_def) do
-         local val, comment
+         local val
          if type(v) is 'string' then
-            val, comment = v:match('^(.-):%s+(.+)$')
+            val = rx_key_comment_ng.extract(v)
          end
-         if not val then val = v end
 
-         if string.find(val, '^0x%d+$') or string.find(val, '^[+-]?%d+$') then
+         val ??= v
+
+         if type(val) is 'string' and (rx_hex_num.test(val) or rx_signed_int.test(val)) then
             val = tonumber(val)
          end
 
@@ -182,7 +214,7 @@ end
 
 global function hash(Prefix:str, Format:str, ...)
    for k, hash_def in ipairs({...}) do
-      hash_name = hash_def:gsub('[^%w]', '_')
+      hash_name = rx_non_word.replace(hash_def, '_')
       hash_id = string.format('%08x', hash_name:hash()):sub(-8)
       output('#define ' .. Prefix .. '_' .. hash_name .. ' ' .. string.format(Format, hash_id))
    end
@@ -192,11 +224,11 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 global function platform(Platform:str, Function:func)
-   if (Platform:lower() is 'windows') then
+   if Platform:lower() is 'windows' then
       Function()
-   elseif (Platform:lower() is 'linux') then
+   elseif Platform:lower() is 'linux' then
       Function()
-   elseif (Platform:lower() is 'x11') then
+   elseif Platform:lower() is 'x11' then
       Function()
    else
       error("Unrecognised platform '" .. Platform .. "'")
@@ -207,7 +239,7 @@ end
 
 global function str_to_bytes(String:str):str
    local list
-   String = String:gsub("\\n", string.char(10))
+   String = String:replace("\\n", string.char(10))
    for i = 0, #String - 1 do
       if list then
          list ..= string.format(',%d', String:byte(i))
@@ -252,10 +284,10 @@ global function cType(Field:table, Origin:str):table
    assert(Field.type, "Field definition incorrect, missing 'type' value for '" .. (Origin ?? 'NIL') .. "'")
 
    do
-      cpp_type = Field.type:match("^cpp%((.+)%)$")
-      if cpp_type then
+      t = rx_cpp_type.extract(Field.type)
+      if t then
          Field.cpp  = true
-         Field.type = cpp_type
+         Field.type = t
          cType(Field, Origin)
          Field.type = 'z' .. Field.type
          return Field
@@ -263,9 +295,9 @@ global function cType(Field:table, Origin:str):table
    end
 
    do
-      local const, struct = Field.type:match('^(c-)struct%((.+)%)$')
+      local _, struct = rx_struct_type.extract(Field.type)
       if struct then
-         ptr_struct = struct:match('%*(.+)')
+         local ptr_struct = rx_ptr_extract.extract(struct)
          if ptr_struct then struct = ptr_struct end
 
          Field.struct = struct
@@ -277,122 +309,117 @@ global function cType(Field:table, Origin:str):table
    end
 
    do
-      object = Field.type:match('^obj%((.+)%)$')
+      object = rx_obj_type.extract(Field.type)
       if object then
-         ptr_struct = object:match('%*(.+)')
+         local ptr_struct = rx_ptr_extract.extract(object)
          Field.type = ptr_struct ? 'p' :> 'o'
          return Field
       end
    end
 
    do
-      local bit = Field.type:match('^bit%((.+)%)$')
-      if bit then
-         Field.type = cType({ type=bit, name='Bit' }, Origin).type
+      t = rx_bit_type.extract(Field.type)
+      if t then
+         Field.type = cType({ type=t, name='Bit' }, Origin).type
          Field.name = 'Bit'
          return Field
       end
    end
 
    do -- Char flags / Strong typing
-      if Field.type:match('^char%((%a+)%)') then
+      if rx_char_flag.test(Field.type) then
          Field.type = 'c'
          return Field
       end
    end
 
    do -- Short flags / Strong typing
-      if Field.type:match('^short%((%a+)%)') then
+      if rx_short_flag.test(Field.type) then
          Field.type = 'w'
          return Field
       end
    end
 
    do -- Integer flags / Strong typing
-      if Field.type:match('^int%((%a+)%)') then
+      if rx_int_flag.test(Field.type) then
          Field.type = 'l'
          return Field
       end
    end
 
    do -- Large flags / Strong typing
-      if Field.type:match('^large%((%a+)%)') then
+      if rx_large_flag.test(Field.type) then
          Field.type = 'x'
          return Field
       end
    end
 
    do -- Char arrays
-      unsigned, count = Field.type:match('^(u-)char%((.+)%)$')
+      local unsigned, count = rx_uchar_array.extract(Field.type)
       if count then
-         Field.type = 'c'
-         if unsigned?? then Field.type = 'uc' end
-         Field.name ..= '[' .. count .. ']'
+         Field.type = unsigned ? 'uc' :> 'c'
+         Field.name ..= f'[{count}]'
          return Field
       end
    end
 
    do -- Integer arrays
-      unsigned, count = Field.type:match('^(u-)int%((%d+)%)')
+      local unsigned, count = rx_uint_array.extract(Field.type)
       if count then
-         if unsigned?? then
-            Field.type = 'ul'
-         else
-            Field.type = 'l'
-         end
-         Field.name ..= '[' .. count .. ']'
+         Field.type = unsigned ? 'ul' :> 'l'
+         Field.name ..= f'[{count}]'
          return Field
       end
    end
 
    do -- Double arrays
-      count = Field.type:match('^double%((.+)%)')
-      if count then
+      dc = rx_double_count.extract(Field.type)
+      if dc then
          Field.type = 'd'
-         Field.name ..= '[' .. count .. ']'
+         Field.name ..= f'[{dc}]'
          return Field
       end
    end
 
    do -- Float arrays
-      count = Field.type:match('^float%((.+)%)')
-      if count then
+      fc = rx_float_count.extract(Field.type)
+      if fc then
          Field.type = 'f'
-         Field.name ..= '[' .. count .. ']'
+         Field.name ..= f'[{fc}]'
          return Field
       end
    end
 
    do
-      const, ptr_type = Field.type:match('^(c-)ptr%((.+)%)')
-      if ptr_type then
+      p = rx_ptr_type.extract(Field.type)
+      if p then
          Field.type = 'p'
          return Field
       end
    end
 
    do
-      array_type, array_size = Field.type:match('^array%((.+),(%d+)%)$')
-      if array_type then
-         Field.type = array_type
-         Field = cType(Field, Origin)
-         Field.name ..= '[' .. array_size .. ']'
+      t, n = rx_array_sized.extract(Field.type)
+      if n then
+         Field.type = t
+         Field      = cType(Field, Origin)
+         Field.name ..= f'[{n}]'
          return Field
       end
    end
 
    do
-      array_type = Field.type:match('^array%((.+)%)$')
-      if array_type then
-         Field.type = array_type
-         Field = cType(Field, Origin)
+      f = rx_array_unsized.extract(Field.type)
+      if f then
+         Field.type = f
+         Field      = cType(Field, Origin)
          Field.name ..= '[]'
          return Field
       end
    end
 
    do
-      if Field.type:match('^fptr%((.+)%)$') then
+      if rx_fptr_type.test(Field.type) then
          Field.type = 'p'
          return Field
       end
@@ -405,31 +432,23 @@ global function cType(Field:table, Origin:str):table
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Returns { type, name, comment }
+-- Returns fields as a list returned by cType, featuring { type, name, docType, fullType, comment }
 
 global function extractFields(Def:str, Origin:str):table
    fields = { }
+   Def ?? return fields
    for line, content in Def:split('\n') do
-      -- Extract comment, if specified
-      comment = content:match('^.+#%s-(.+)$')
-      if comment?? then
-         content = content:match('^(.+)#%s-.+$')
-      else
-         -- Support for alternative comment format where the colon is used.
-         comment = content:match('^.+:%s-(.+)$')
-         if comment?? then
-            content = content:match('^(.+):%s-.+$')
-         end
-      end
+      local content_b, comment = rx_field_extract.extract(content)
+      if content_b then content = content_b end
+      local type, name = rx_type_name.extract(content)
 
-      local type, name = content:match('^%s*(.+)%s+([^%s]+)%s-$')
-      if type then
+      if type?? then
          field = cType({ type=type:trim(), name=name:trim() }, Origin)
          table.insert(fields, field)
       elseif not content:trim()?? then
          -- Ignore empty line
       else
-         error("Unable to process line '" .. tostring(content) .. "' for '" .. tostring(Origin) .. "'")
+         error(f"Unable to process line '{content}' for '{Origin}'")
       end
    end
 
@@ -439,7 +458,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 global function struct(Name:str, Options:table, Def:str)
-   Options = checkOptions(Options)
+   Options ?= {}
    if Options.restrict?? or glRestrict then return end -- Restricted structures are never exported
    if Options.module?? and (Options.module:lower() != glModuleName:lower()) then return end
    verbose('Processing structure ' .. Name)
@@ -530,7 +549,7 @@ global function saveOutput()
       for const in values(group.table) do
          if e?? then e ..= ',' end
          if type(const.value) is 'string' then
-            val = const.value:match('^(.-):%s+.+$') -- Scrap any defined comment for this value.
+            local val = rx_value_only.extract(const.value) -- Scrap any defined comment for this value.
             val ??= const.value
             e ..= f'{const.name}="{const.value}"'
          else

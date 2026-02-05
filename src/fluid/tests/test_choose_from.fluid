@@ -118,6 +118,7 @@ end
    result = choose a + b from
       15 -> 'fifteen'
       10 -> 'ten'
+      -20 -> 'negative twenty'
       else -> 'other'
    end
    assert(result is 'fifteen', "Expected 'fifteen', got " .. tostring(result))

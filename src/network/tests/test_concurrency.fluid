@@ -22,14 +22,18 @@ unique messages to verify proper isolation and delivery.
    glMaxSockets = 5
    glMessagesPerClient = 3
    glClientResponses = array<string>
-   glServerReceived = {}
+   glServerReceived = array<string>
+
+@AfterAll function cleanup()
+   glActiveClients = 0
+   glClientResponses = nil
+   glServerReceived = nil
+end
 
 -----------------------------------------------------------------------------------------------------------------------
 
 @Test function MultipleConnections()
    proc = processing.new({ timeout = 3.0 })
-
-   print('Testing multiple concurrent connections with NSF::MULTI_CONNECT and ' .. glMaxSockets .. ' clients')
 
    glPort++
    glClientsCreated = 0
@@ -66,7 +70,7 @@ unique messages to verify proper isolation and delivery.
          print('[Server] Received: ' .. msg)
 
          -- Track messages per client
-         table.insert(glServerReceived, msg)
+         glServerReceived:push(msg)
 
          -- Echo back with server prefix
          response = 'SERVER_ECHO:' .. msg
@@ -105,14 +109,14 @@ unique messages to verify proper isolation and delivery.
             -- Store response for verification
             glClientResponses:push(msg)
 
-            if (string.match(msg, 'WELCOME:')) then
+            if (msg:startsWith('WELCOME:')) then
                -- Send first test message
                test_msg = 'CLIENT_' .. data.id .. '_MSG_1'
                err, len = Socket.acWrite(test_msg)
                assert(err is ERR_Okay, '[Client ' .. data.id .. '] Failed to send: ' .. mSys.GetErrorMsg(err))
                data.messagesSent++
 
-            elseif (string.match(msg, 'SERVER_ECHO:')) then
+            elseif (msg:startsWith('SERVER_ECHO:')) then
                -- Send next message or disconnect
                if (data.messagesSent < glMessagesPerClient) then
                   data.messagesSent++
@@ -134,7 +138,6 @@ unique messages to verify proper isolation and delivery.
 
    -- Connect all clients as fast as possible
 
-   print('[Test] Connecting all ' .. glMaxSockets .. ' clients...')
    for i = 0, glMaxSockets-1 do
       err = clients[i].mtConnect('127.0.0.1', glPort)
       assert(err is ERR_Okay, '[Client ' .. i .. '] Failed to connect: ' .. mSys.GetErrorMsg(err))
@@ -145,11 +148,6 @@ unique messages to verify proper isolation and delivery.
    err = proc.sleep()
    assert(err is ERR_Okay, 'Concurrent connections test failed: ' .. mSys.GetErrorMsg(err))
 
-   -- Verify results
-   print('Test Results:')
-   print('  Total server messages received: ' .. #glServerReceived)
-   print('  Total client responses received: ' .. #glClientResponses)
-
    expected_server_messages = glMaxSockets * glMessagesPerClient
    assert(#glServerReceived is expected_server_messages,
       'Server message count mismatch. Expected: ' .. expected_server_messages .. ', Got: ' .. #glServerReceived)
@@ -157,8 +155,6 @@ unique messages to verify proper isolation and delivery.
    expected_client_responses = glMaxSockets * (glMessagesPerClient + 1) -- +1 for welcome
    assert(#glClientResponses >= expected_client_responses,
       'Client response count too low. Expected: >= ' .. expected_client_responses .. ', Got: ' .. #glClientResponses)
-
-   print('Concurrent connections test completed successfully!')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -170,8 +166,6 @@ end
    successfulConnections = 0
    rejectedConnections = 0
    glPort++
-
-   print('Testing client limit enforcement (limit: ' .. limit .. ', attempts: ' .. connectAttempts .. ')...')
 
    server = obj.new('netsocket', {
       name = 'LimitTestServer',
@@ -211,22 +205,12 @@ end
       processing.sleep(0.05, false) -- Small delay
    end
 
-   -- Allow time for connections to be processed
    processing.sleep(0.5)
 
-   print('Connection Results:')
-   print('  Successful connections: ' .. successfulConnections)
-   print('  Rejected connections: ' .. rejectedConnections)
-   print('  Server limit: ' .. limit)
-
-   -- Verify limit enforcement
    assert(successfulConnections <= limit,
       'Too many connections accepted. Limit: ' .. limit .. ', Accepted: ' .. successfulConnections)
 
-   assert(successfulConnections > 0,
-      'No connections were successful - test setup issue')
-
-   print('Client limit enforcement test completed successfully!')
+   assert(successfulConnections > 0, 'No connections were successful - test setup issue')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -234,17 +218,15 @@ end
 @Test function ConnectionIsolation()
    proc = processing.new({ timeout = 3.0 })
    clientCount = 3
-   clientMessages = {}
+   clientMessages = array<array<string>>
    messagesPerClient = 2
    glPort++
 
-   print('Testing message isolation between concurrent clients...')
-
    -- Initialize expected messages
    for i = 0, clientCount-1 do
-      clientMessages[i] = {}
+      clientMessages:push(array<string>)
       for j = 0, messagesPerClient-1 do
-         table.insert(clientMessages[i], 'ISOLATED_CLIENT_' .. i .. '_MESSAGE_' .. j)
+         clientMessages[i]:push(f'ISOLATED_CLIENT_{i}_MESSAGE_{j}')
       end
    end
 
@@ -266,7 +248,7 @@ end
          print('[Server] Received isolated message: ' .. msg)
 
          -- Verify message belongs to expected client
-         client_id = string.match(msg, 'ISOLATED_CLIENT_(%d+)_')
+         client_id = regex.new('ISOLATED_CLIENT_(\\d+)_').extract(msg)
          assert(client_id, 'Invalid message format: ' .. msg)
 
          -- Echo back to originating client only
@@ -290,26 +272,25 @@ end
             msg = buffer:sub(0, read_len)
             clientId = i
 
-            print('[Client ' .. clientId .. '] Received: ' .. msg)
+            print(f'[Client {clientId}] Received: {msg}')
 
-            if (string.match(msg, 'START:')) then
+            if (msg:startsWith('START:')) then
                -- Send first message
                test_msg = clientMessages[clientId][clients[i].messageIndex]
-               print('[Client ' .. clientId .. '] Sending: ' .. test_msg)
+               print(f'[Client {clientId}] Sending: {test_msg}')
                Socket.acWrite(test_msg)
 
-            elseif (string.match(msg, 'ECHO_TO_CLIENT_' .. clientId)) then
+            elseif (msg:find('ECHO_TO_CLIENT_' .. clientId)) then
                -- Verify echo is for this client
-               assert(string.match(msg, 'CLIENT_' .. clientId),
-                  'Client ' .. clientId .. ' received message for wrong client: ' .. msg)
+               assert(msg:find('CLIENT_' .. clientId), f'Client {clientId} received message for wrong client: {msg}')
 
                clients[i].messageIndex++
                if (clients[i].messageIndex < messagesPerClient) then
                   test_msg = clientMessages[clientId][clients[i].messageIndex]
-                  print('[Client ' .. clientId .. '] Sending: ' .. test_msg)
+                  print(f'[Client {clientId}] Sending: {test_msg}')
                   Socket.acWrite(test_msg)
                else
-                  print('[Client ' .. clientId .. '] All messages completed')
+                  print(f'[Client {clientId}] All messages completed')
                   completedClients++
                   if (completedClients is clientCount) then
                      proc.signal()
@@ -328,19 +309,8 @@ end
    end
 
    err = proc.sleep()
-   print('Completed Clients: ' .. completedClients .. ', Client Count: ' .. clientCount)
    assert(err is ERR_Okay, 'Connection isolation test failed: ' .. mSys.GetErrorMsg(err))
 
    assert(completedClients is clientCount,
-      'Not all clients completed. Expected: ' .. clientCount .. ', Completed: ' .. completedClients)
-
-   print('Connection isolation test completed successfully!')
-end
-
------------------------------------------------------------------------------------------------------------------------
-
-@AfterAll function cleanup()
-   glActiveClients = 0
-   glClientResponses = nil
-   glServerReceived = nil
+      f'Not all clients completed. Expected: {clientCount}, Completed: {completedClients}')
 end

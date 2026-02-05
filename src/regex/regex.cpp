@@ -224,7 +224,7 @@ ERR Compile(const std::string_view &Pattern, REGEX Flags, std::string *ErrorMsg,
       }
       else if (auto err = regex->srell->ecode(); err != 0) {
          auto error_msg = map_error_code(err);
-         log.warning("Regex compilation failed: %s", error_msg.c_str());
+         log.warning("Regex compilation failed: %s; Pattern: %.*s", error_msg.c_str(), int(Pattern.size()), Pattern.data());
          if (ErrorMsg) *ErrorMsg = error_msg;
          FreeResource(regex);
          return ERR::Syntax;

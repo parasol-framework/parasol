@@ -865,6 +865,24 @@ static LexToken lex_array_typed(LexState *State, TValue *tv)
 
    lex_skip_inline_ws(State);
 
+   // Handle nested array type: array< array<inner_type> >
+   // When the inner type is itself array<...>, skip the inner type specification.
+   // The type name "array" maps to AET::ARRAY at runtime; inner element types are
+   // determined when individual inner arrays are created.
+
+   if (type_str == "array" and State->c IS '<') {
+      int depth = 1;
+      lex_next(State);  // Consume inner '<'
+      while (depth > 0) {
+         if (State->c IS '<') depth++;
+         else if (State->c IS '>') depth--;
+         if (State->c IS LEX_EOF) lj_lex_error(State, '>', ErrMsg::XTOKEN);
+         if (depth > 0) lex_next(State);
+      }
+      lex_next(State);  // Move past the inner closing '>'
+      lex_skip_inline_ws(State);
+   }
+
    // Check for optional size: array<type, size> or array<type, expr>
    State->array_typed_size = -1;  // Reset to "no size specified"
    if (State->c IS ',') {

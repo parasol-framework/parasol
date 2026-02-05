@@ -765,6 +765,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_conditional_shorthand_stmt(const Condit
    ControlFlowEdge check_zero = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQS, cond_reg, const_str(&this->func_state, &emptyv)));
    ControlFlowEdge check_empty = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEMPTYARR, cond_reg, 0));
+   ControlFlowEdge check_empty_array = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
 
    ControlFlowEdge skip_body = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
 
@@ -773,6 +775,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_conditional_shorthand_stmt(const Condit
    check_false.patch_to(body_start);
    check_zero.patch_to(body_start);
    check_empty.patch_to(body_start);
+   check_empty_array.patch_to(body_start);
 
    auto body_result = this->emit_statement(*Payload.body);
    if (not body_result.ok()) return body_result;
@@ -1979,13 +1982,23 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload &Pay
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEMPTYARR, cond_reg, 0));
    ControlFlowEdge check_empty_array = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
 
+   // Determine the result register. If cond_reg is a local variable, we must allocate a fresh register
+   // to avoid corrupting it. Otherwise, we can reuse cond_reg (which is a temporary).
+   BCReg result_reg;
+   if (this->func_state.is_local_register(cond_reg)) {
+      // cond_reg holds a local variable that may be referenced later - allocate fresh register
+      result_reg = BCReg(this->func_state.freereg);
+      bcreg_reserve(&this->func_state, 1);
+   }
+   else result_reg = cond_reg; // cond_reg is a temporary - safe to reuse
+
    auto true_result = this->emit_expression(*Payload.if_true);
    if (not true_result.ok()) return true_result;
 
    ExpressionValue true_value(&this->func_state, true_result.value_ref());
    true_value.discharge();
-   this->materialise_to_reg(true_value.legacy(), cond_reg, "ternary true branch");
-   allocator.collapse_freereg(BCReg(cond_reg));
+   this->materialise_to_reg(true_value.legacy(), result_reg, "ternary true branch");
+   allocator.collapse_freereg(result_reg);
 
    ControlFlowEdge skip_false = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
 
@@ -2000,19 +2013,19 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload &Pay
    if (not false_result.ok()) return false_result;
    ExpressionValue false_value(&this->func_state, false_result.value_ref());
    false_value.discharge();
-   this->materialise_to_reg(false_value.legacy(), cond_reg, "ternary false branch");
-   allocator.collapse_freereg(BCReg(cond_reg));
+   this->materialise_to_reg(false_value.legacy(), result_reg, "ternary false branch");
+   allocator.collapse_freereg(result_reg);
 
    skip_false.patch_to(BCPos(this->func_state.pc));
 
    // Preserve result register by adjusting what RegisterGuard will restore to
    // Only restore to saved_freereg if it's beyond the result register
 
-   if (register_guard.saved() > BCReg(cond_reg + 1)) register_guard.adopt_saved(register_guard.saved());
-   else register_guard.disarm();  // Keep current freereg (cond_reg + 1)
+   if (register_guard.saved() > BCReg(result_reg + 1)) register_guard.adopt_saved(register_guard.saved());
+   else register_guard.disarm();  // Keep current freereg (result_reg + 1)
 
    ExpDesc result;
-   result.init(ExpKind::NonReloc, cond_reg);
+   result.init(ExpKind::NonReloc, result_reg);
    return ParserResult<ExpDesc>::success(result);
 }
 

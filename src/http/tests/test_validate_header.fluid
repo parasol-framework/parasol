@@ -253,7 +253,7 @@ end
                                details = 'Missing Authorization header' }
                     end
 
-                    local token = auth:match('Bearer%s+(.+)')
+                    local token = regex.new('Bearer\\s+(.+)').extract(auth)
                     if token != 'valid-token-123' then
                        return false -- Simple 400 Bad Request
                     end
@@ -276,7 +276,7 @@ end
                                details = 'Missing Authorization header' }
                     end
 
-                    local token = auth:match('Bearer%s+(.+)')
+                    local token = regex.new('Bearer\\s+(.+)').extract(auth)
                     if not token or not token:find('admin') then
                        return { status = 403, statusText = 'Forbidden',
                                message = 'Admin access required',

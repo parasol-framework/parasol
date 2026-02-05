@@ -952,6 +952,12 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
          info.right = 6;
          return info;
       case TokenKind::Minus:
+         // Check if this is actually the start of a choose case negative literal pattern
+         // (-number -> result). If so, don't treat it as a binary operator.
+         // Only check when inside a choose expression, and skip when parsing guard expressions.
+         if (this->in_choose_expression and not this->in_guard_expression) {
+            if (this->is_choose_relational_pattern(1)) return std::nullopt;
+         }
          info.op = AstBinaryOperator::Subtract;
          info.left = 6;
          info.right = 6;

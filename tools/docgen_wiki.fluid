@@ -8,6 +8,8 @@
    import 'io/filesearch'
 
    glSelf = <{ obj.find('self') }>
+   local rx_sdk_path = <{ regex.new([[(.+)CMakeLists\.txt]]) }>
+   local rx_wiki_path = <{ regex.new("[\\/\\\\]wiki[\\/\\\\]") }>
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Resolve the location of the Parasol SDK and create an 'sdk:' volume.
@@ -22,22 +24,22 @@ function resolveSDKPath(Path)
       while (err != ERR_Okay) and (limit > 0) do
          table.insert(search_list, search_path)
          err, sdk_path = mSys.ResolvePath(search_path)
-         search_path = '../' .. search_path
+         search_path = f'../{search_path}'
          limit -= 1
       end
    else
-      table.insert(search_list, Path .. '/CMakeLists.txt')
-      err, sdk_path = mSys.ResolvePath(Path .. '/CMakeLists.txt')
+      table.insert(search_list, f'{Path}/CMakeLists.txt')
+      err, sdk_path = mSys.ResolvePath(f'{Path}/CMakeLists.txt')
    end
 
    if err is ERR_Okay then
-      sdk_path = sdk_path:match('(.+)CMakeLists%.txt')
+      sdk_path = rx_sdk_path.extract(sdk_path)
    else
       msg = ''
       for path in values(search_list) do
-         msg ..= path .. '\n'
+         msg ..= f'{path}\n'
       end
-      print('Unable to find CMakeLists.txt after searching the following paths:\n' .. msg)
+      print(f'Unable to find CMakeLists.txt after searching the following paths:\n{msg}')
       error('A path to the Parasol SDK could not be determined.')
    end
 
@@ -64,7 +66,7 @@ end
    if not pandoc_path?? then
       if state.platform is 'Windows' then
          pandoc_path = 'C:\\Program Files\\Pandoc\\pandoc.exe'
-         if (mSys.AnalysePath(pandoc_path) != ERR_Okay) then
+         if mSys.AnalysePath(pandoc_path) != ERR_Okay then
             pandoc_path = nil
          end
       else
@@ -77,29 +79,28 @@ end
    cmdlist = ''
 
    file.search(md_folder, {
-      nameFilter = '^.*%.md$',
-      nameWild   = true,
+      nameFilter = regex.new([[^.*\.md$]]),
       matchFeedback = function(Path, FileName, File)
-         title = FileName:gsub('-', ' ')
-         title = title:gsub('.md', '')
+         title = FileName:replace('-', ' ')
+         title = title:replace('.md', '')
 
          src_path = Path .. FileName
-         output_path = src_path:gsub('[/\\]wiki[/\\]', '/html/wiki/')
-         output_path = output_path:gsub('%.md', '.html')
+         output_path = rx_wiki_path.replace(src_path, '/html/wiki/')
+         output_path = output_path:replace('.md', '.html')
 
          err, res_src_path = mSys.ResolvePath(src_path)
-         assert(err is ERR_Okay, 'Failed to resolve path ' .. src_path)
+         assert(err is ERR_Okay, f'Failed to resolve path {src_path}')
 
          err, res_output_path = mSys.ResolvePath(output_path, RSF_NO_FILE_CHECK)
-         assert(err is ERR_Okay, 'Failed to resolve path ' .. output_path)
+         assert(err is ERR_Okay, f'Failed to resolve path {output_path}')
 
          err, res_header_path = mSys.ResolvePath(glSelf.workingPath .. 'wiki-header.inc', RSF_NO_FILE_CHECK)
          assert(err is ERR_Okay, 'Failed to resolve path to wiki-header.inc')
 
-         pandoc_output = temp_output .. '-' .. math.random(1000000) .. '.html'
-         parameters = res_src_path .. ' -o ' .. pandoc_output .. ' -f gfm -t html5 -c github-markdown.css --wrap=preserve --embed-resource'
+         pandoc_output = f'{temp_output}-{math.random(1000000)}.html'
+         parameters = f'{res_src_path} -o {pandoc_output} -f gfm -t html5 -c github-markdown.css --wrap=preserve --embed-resource'
 
-         cmdlist ..= '"' .. pandoc_path .. '"' .. ' ' .. parameters .. '\n'
+         cmdlist ..= f'"{pandoc_path}" {parameters}\n'
 
          output_files:push({ title=title, pandoc_output=pandoc_output, target_path=res_output_path })
       end
@@ -109,13 +110,13 @@ end
 
    if state.platform is 'Windows' then
       output_path ??= 'temp:docgen.bat'
-      cmdlist = cmdlist:gsub('\\','\\\\')
+      cmdlist = cmdlist:replace('\\','\\\\')
    else
       output_path ??= 'temp:docgen.sh'
-      cmdlist = '#!/bin/bash\n' .. cmdlist
+      cmdlist = f'#!/bin/bash\n{cmdlist}'
    end
 
-   fl = obj.new('file', { src=output_path, flags='NEW|WRITE', permissions='READ|WRITE|EXEC' })
+   fl = obj.new('file', { src=output_path, flags=FL_NEW|FL_WRITE, permissions=PERMIT_READ|PERMIT_WRITE|PERMIT_EXEC })
    fl.acWrite(cmdlist)
    fl.free()
 
@@ -124,11 +125,11 @@ end
 
       task = obj.new('task', {
          src   = output_path,
-         flags = 'WAIT',
+         flags = TSF_WAIT,
          outputCallback = function(Task, Data)
             -- Critical: Pandoc needs stdout to be consumed in Windows or it doesn't work
          end,
-         timeout = 20
+         timeOut = 20
       })
 
       task.acActivate()
@@ -137,11 +138,11 @@ end
 
       for v in values(output_files) do
          md_output = file.readAll(v.pandoc_output)
-         fl = obj.new('file', { path=v.target_path, flags='WRITE|NEW' })
+         fl = obj.new('file', { path=v.target_path, flags=FL_WRITE|FL_NEW })
 
-         mod_header = header:gsub('<title>Parasol Wiki</title>', '<title>Parasol Wiki - ' .. v.title .. '</title>')
-         md_output = md_output:gsub('<hr />', '<hr>') -- HTML5 compliance
-         md_output = md_output:gsub("\r\n?", "\n") -- CRLF conversion
+         mod_header = header:replace('<title>Parasol Wiki</title>', '<title>Parasol Wiki - ' .. v.title .. '</title>')
+         md_output = md_output:replace('<hr />', '<hr>') -- HTML5 compliance
+         md_output = md_output:replace("\r\n", "\n") -- CRLF conversion
 
          fl.acWrite(mod_header)
          fl.acWrite('\n<h1>' .. v.title .. '</h1>\n')

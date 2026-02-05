@@ -36,14 +36,19 @@ constexpr uint8_t  NO_REG = BCMAX_A;
 #define bc_d(i)    ((BCREG)((i)>>16))
 #define bc_j(i)    ((ptrdiff_t)bc_d(i)-BCBIAS_J)
 
-// Macros to set instruction fields.
+// Macros to set instruction fields (endian-independent using bitmask/shift).
+// These work correctly with 64-bit BCIns.
 
-#define setbc_byte(p, x, ofs) ((uint8_t *)(p))[LJ_ENDIAN_SELECT(ofs, 3-ofs)] = (uint8_t)(x)
-#define setbc_op(p, x)  setbc_byte(p, (x), 0)
-#define setbc_a(p, x)   setbc_byte(p, (x), 1)
-#define setbc_b(p, x)   setbc_byte(p, (x), 3)
-#define setbc_c(p, x)   setbc_byte(p, (x), 2)
-#define setbc_d(p, x)   ((uint16_t *)(p))[LJ_ENDIAN_SELECT(1, 0)] = (uint16_t)(x)
+#define setbc_op(p, x)  do { BCIns *_p = (BCIns*)(p); \
+   *_p = (*_p & ~0xFFULL) | ((BCIns)(uint8_t)(x)); } while(0)
+#define setbc_a(p, x)   do { BCIns *_p = (BCIns*)(p); \
+   *_p = (*_p & ~0xFF00ULL) | ((BCIns)(uint8_t)(x) << 8); } while(0)
+#define setbc_c(p, x)   do { BCIns *_p = (BCIns*)(p); \
+   *_p = (*_p & ~0xFF0000ULL) | ((BCIns)(uint8_t)(x) << 16); } while(0)
+#define setbc_b(p, x)   do { BCIns *_p = (BCIns*)(p); \
+   *_p = (*_p & ~0xFF000000ULL) | ((BCIns)(uint8_t)(x) << 24); } while(0)
+#define setbc_d(p, x)   do { BCIns *_p = (BCIns*)(p); \
+   *_p = (*_p & ~0xFFFF0000ULL) | ((BCIns)(uint16_t)(x) << 16); } while(0)
 #define setbc_j(p, x)   setbc_d(p, (BCPOS)((int32_t)(x)+BCBIAS_J))
 
 // Macros to compose instructions.
@@ -51,26 +56,41 @@ constexpr uint8_t  NO_REG = BCMAX_A;
 #define BCINS_AD(o, a, d)     (((BCIns)(o))|((BCIns)(a)<<8)|((BCIns)(d)<<16))
 #define BCINS_AJ(o, a, j)     BCINS_AD(o, a, (BCPOS)((int32_t)(j)+BCBIAS_J))
 
-// Extended 64-bit instruction support.
-// Extended instructions consume two 32-bit words:
-//   Word 0 (standard):  [B:8][C:8][A:8][OP:8]   - Primary operands
-//   Word 1 (extension): [F:8][E:8][DX:8][EX:8]  - Extended operands (or [E16:16][D16:16])
+// === Extended 64-bit instruction formats ===
 
-// Extension word field extraction macros
-#define bc_ex(i)    ((uint8_t)((i)&0xff))        // EX field (bits 0-7)
-#define bc_dx(i)    ((uint8_t)(((i)>>8)&0xff))   // DX field (bits 8-15)
-#define bc_e(i)     ((uint8_t)(((i)>>16)&0xff))  // E field (bits 16-23)
-#define bc_f(i)     ((uint8_t)((i)>>24))         // F field (bits 24-31)
+// User-space pointer limit (bit 47 must be 0 for low-half canonical on x64)
+#define BC_PTR_USERSPACE_MAX  0x00007FFFFFFFFFFFULL
 
-// 16-bit operand accessors for mixed format
-#define bc_d16(i)   ((uint16_t)((i)&0xffff))     // Lower 16 bits
-#define bc_e16(i)   ((uint16_t)((i)>>16))        // Upper 16 bits
+// === Format ABCP/ADP: 32-bit value in upper bits ===
+// Extract 32-bit P field from upper half of instruction
+#define bc_p32(i)    ((uint32_t)((i) >> 32))
 
-// Extension word composition macros
-#define BCINS_EXT(ex, dx, e, f) \
-   (((BCIns)(ex))|((BCIns)(dx)<<8)|((BCIns)(e)<<16)|((BCIns)(f)<<24))
-#define BCINS_EXT16(d16, e16) \
-   (((BCIns)(d16))|((BCIns)(e16)<<16))
+// Set 32-bit P field in upper half of instruction
+#define setbc_p32(p, v)  do { BCIns *_p = (BCIns*)(p); \
+   *_p = (*_p & 0xFFFFFFFFULL) | ((BCIns)(uint32_t)(v) << 32); } while(0)
+
+// Compose ABCP format instruction: ABC in lower 32 bits, P in upper 32 bits
+#define BCINS_ABCP(o,a,b,c,p32) (BCINS_ABC(o,a,b,c) | ((BCIns)(uint32_t)(p32) << 32))
+
+// Compose ADP format instruction: AD in lower 32 bits, P in upper 32 bits
+#define BCINS_ADP(o,a,d,p32) (BCINS_AD(o,a,d) | ((BCIns)(uint32_t)(p32) << 32))
+
+// === Format AP: 48-bit pointer + A register ===
+// Layout: [PTR(48-bit) | A(8-bit) | OP(8-bit)]
+// 48 bits holds any user-space pointer (bit 47 always 0)
+
+// Extract 48-bit pointer from AP format (shifts away OP and A)
+#define bc_ptr(i)  ((void*)((i) >> 16))
+
+// Set 48-bit pointer in AP format instruction
+#define setbc_ptr(p, ptr)  do { \
+   BCIns *_p = (BCIns*)(p); \
+   lj_assertX((uintptr_t)(ptr) <= BC_PTR_USERSPACE_MAX, "pointer exceeds user-space range"); \
+   *_p = (*_p & 0xFFFFULL) | ((BCIns)(uintptr_t)(ptr) << 16); \
+} while(0)
+
+// Compose AP format instruction: OP in bits 0-7, A in bits 8-15, pointer in bits 16-63
+#define BCINS_AP(o, a, ptr) (((BCIns)(o)) | ((BCIns)(a) << 8) | ((BCIns)(uintptr_t)(ptr) << 16))
 
 // Bytecode instruction definition. Order matters, see below.
 //
@@ -457,12 +477,9 @@ typedef enum {
 #define bcmode_d(op)   bcmode_c(op)
 #define bcmode_hasd(op) ((lj_bc_mode[op] & (15<<3)) == (BCMnone<<3))
 #define bcmode_mm(op)   ((MMS)(lj_bc_mode[op]>>11))
-#define bcmode_ext(op)  ((lj_bc_mode[op] >> 15) & 1)  // Extended instruction flag (bit 15)
 
 #define BCMODE(name, ma, mb, mc, mm) \
   (BCM##ma|(BCM##mb<<3)|(BCM##mc<<7)|(MM_##mm<<11)),
-#define BCMODE_EXT(name, ma, mb, mc, mm) \
-  (BCM##ma|(BCM##mb<<3)|(BCM##mc<<7)|(MM_##mm<<11)|(1<<15)),
 #define BCMODE_FF   0
 
 static LJ_AINLINE int bc_isret(BCOp op)
