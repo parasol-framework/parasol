@@ -14,8 +14,9 @@ extern void lj_object_free(global_State *, GCobject *);
 extern int lj_object_pairs(lua_State *);
 extern int lj_object_ipairs(lua_State *);
 
-// Fast path bytecode handlers for BC_OBGETF and BC_OBSETF
-extern "C" void bc_object_getfield(lua_State *, GCobject *, GCstr *, TValue *);
-extern "C" void bc_object_setfield(lua_State *, GCobject *, GCstr *, TValue *);
+// Fast path bytecode handlers for BC_OBGETF and BC_OBSETF.
+// Ins points to the current instruction for inline caching (nullptr disables caching in JIT traces).
+extern "C" void bc_object_getfield(lua_State *, GCobject *, GCstr *, TValue *, BCIns *);
+extern "C" void bc_object_setfield(lua_State *, GCobject *, GCstr *, TValue *, BCIns *);
 
 extern "C" int ir_object_field_type(GCobject *Obj, GCstr *Key);

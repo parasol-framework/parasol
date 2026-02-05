@@ -7,6 +7,7 @@
 #include "lj_obj.h"
 #include "lj_gc.h"
 #include "lj_ir.h"
+#include "lj_bc.h"
 #include "lj_object.h"
 #include "../../defs.h"
 
@@ -170,8 +171,11 @@ int lj_object_ipairs(lua_State *L)
 //********************************************************************************************************************
 // Fast object field get - called from BC_OBGETF bytecode handler. Writes result directly to Dest, or throws an error
 // if the field doesn't exist or the object has been freed.
+//
+// Ins points to the current 64-bit instruction.  The P32 field caches the read table index for O(1) repeat access.
+// P32 = 0xFFFFFFFF means uncached.  Ins is nullptr when called from JIT traces (no caching).
 
-extern "C" void bc_object_getfield(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Dest)
+extern "C" void bc_object_getfield(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Dest, BCIns *Ins)
 {
    // Ensure L->top is past the value register before any error can be thrown.
    // luaL_error pushes the error string to L->top, which would corrupt active registers if too low.
@@ -184,14 +188,41 @@ extern "C" void bc_object_getfield(lua_State *L, GCobject *Obj, GCstr *Key, TVal
 
    if (not Obj->uid) luaL_error(L, ERR::DoesNotExist, "Object dereferenced, unable to read field.");
 
+   // Use raw pointers for std::lower_bound to avoid MSVC debug iterator tracking.
+   // luaL_error() uses longjmp which skips C++ destructors, leaking debug iterator
+   // registrations and corrupting the vector's proxy list on destruction.
+
    auto read_table = get_read_table(Obj->classptr);
-   auto it = std::lower_bound(read_table->begin(), read_table->end(), obj_read(Key->hash), read_hash);
-   if ((it IS read_table->end()) or (it->Hash != Key->hash)) {
-      luaL_error(L, ERR::NoFieldAccess, "Field does not exist or is init-only: %s.%s", Obj->classptr ? Obj->classptr->ClassName: "?", strdata(Key));
+   auto rt_data = read_table->data();
+   auto rt_size = read_table->size();
+   const obj_read *func;
+
+   if (Ins) {
+      uint32_t cached = bc_p32(*Ins);
+      if ((cached != 0xFFFFFFFFu) and (cached < rt_size)
+          and (rt_data[cached].Hash IS Key->hash)) {
+         func = &rt_data[cached]; // Cache hit - O(1)
+      }
+      else { // Cache miss - binary search and cache
+         auto found = std::lower_bound(rt_data, rt_data + rt_size, obj_read(Key->hash), read_hash);
+         if ((found IS rt_data + rt_size) or (found->Hash != Key->hash)) {
+            luaL_error(L, ERR::NoFieldAccess, "Field does not exist or is init-only: %s.%s",
+               Obj->classptr ? Obj->classptr->ClassName : "?", strdata(Key));
+         }
+         setbc_p32(Ins, uint32_t(found - rt_data));
+         func = found;
+      }
+   }
+   else { // JIT path - no caching
+      auto found = std::lower_bound(rt_data, rt_data + rt_size, obj_read(Key->hash), read_hash);
+      if ((found IS rt_data + rt_size) or (found->Hash != Key->hash)) {
+         luaL_error(L, ERR::NoFieldAccess, "Field does not exist or is init-only: %s.%s",
+            Obj->classptr ? Obj->classptr->ClassName : "?", strdata(Key));
+      }
+      func = found;
    }
 
    // Call the field handler - it pushes result onto the Lua stack
-   auto func = &*it;
    if (func->Call(L, *func, Obj) > 0) copyTV(L, Dest, L->top - 1);
    else setnilV(Dest);
    L->top = saved_top;
@@ -199,8 +230,11 @@ extern "C" void bc_object_getfield(lua_State *L, GCobject *Obj, GCstr *Key, TVal
 
 //********************************************************************************************************************
 // Fast object field set - called from BC_OBSETF bytecode handler. Writes Val to the object field, or throws an error.
+//
+// Ins points to the current 64-bit instruction.  The P32 field caches the write table index for O(1) repeat access.
+// P32 = 0xFFFFFFFF means uncached.  Ins is nullptr when called from JIT traces (no caching).
 
-extern "C" void bc_object_setfield(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Val)
+extern "C" void bc_object_setfield(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Val, BCIns *Ins)
 {
    // Ensure L->top is past the value register before any error can be thrown.
    // luaL_error pushes the error string to L->top, which would corrupt active registers if too low.
@@ -219,14 +253,37 @@ extern "C" void bc_object_setfield(lua_State *L, GCobject *Obj, GCstr *Key, TVal
    if (not Obj->uid) luaL_error(L, ERR::DoesNotExist, "Object dereferenced, unable to write field.");
 
    auto write_table = get_write_table(Obj->classptr);
-   auto it = std::lower_bound(write_table->begin(), write_table->end(), obj_write(Key->hash), write_hash);
-   if ((it IS write_table->end()) or (it->Hash != Key->hash)) {
-      luaL_error(L, ERR::UndefinedField, "Field does not exist or is read-only: %s.%s", Obj->classptr ? Obj->classptr->ClassName: "?", strdata(Key));
+   auto wt_data = write_table->data();
+   auto wt_size = write_table->size();
+   const obj_write *func;
+
+   if (Ins) {
+      uint32_t cached = bc_p32(*Ins);
+      if ((cached != 0xFFFFFFFFu) and (cached < wt_size)
+          and (wt_data[cached].Hash IS Key->hash)) {
+         func = &wt_data[cached]; // Cache hit - O(1)
+      }
+      else { // Cache miss - binary search and cache
+         auto found = std::lower_bound(wt_data, wt_data + wt_size, obj_write(Key->hash), write_hash);
+         if ((found IS wt_data + wt_size) or (found->Hash != Key->hash)) {
+            luaL_error(L, ERR::UndefinedField, "Field does not exist or is read-only: %s.%s",
+               Obj->classptr ? Obj->classptr->ClassName : "?", strdata(Key));
+         }
+         setbc_p32(Ins, uint32_t(found - wt_data));
+         func = found;
+      }
+   }
+   else { // JIT path - no caching
+      auto found = std::lower_bound(wt_data, wt_data + wt_size, obj_write(Key->hash), write_hash);
+      if ((found IS wt_data + wt_size) or (found->Hash != Key->hash)) {
+         luaL_error(L, ERR::UndefinedField, "Field does not exist or is read-only: %s.%s",
+            Obj->classptr ? Obj->classptr->ClassName : "?", strdata(Key));
+      }
+      func = found;
    }
 
    if (auto pobj = access_object(Obj)) {
       auto stack_idx = int(val_ptr - L->base) + 1;
-      auto func = &*it;
       ERR error = func->Call(L, pobj, func->Field, stack_idx);
       L->top = saved_top;
       release_object(Obj);
