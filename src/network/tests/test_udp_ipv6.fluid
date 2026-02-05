@@ -31,7 +31,7 @@ function UDPIPv6Basic()
          if (bytesRead > 0) then
             local msg = buffer:sub(0, bytesRead)
             print('[IPv6 UDP Server] Received: "' .. msg .. '" from ' .. mNet.AddressToStr(sv_source) .. ':' .. sv_source.port)
-            assert(string.match(msg, 'Hello IPv6'), 'Unexpected message received')
+            assert(msg:startsWith('Hello IPv6'), 'Unexpected message received')
             messageReceived = true
             proc.signal()
          end
@@ -81,9 +81,9 @@ function UDPDualStack()
             local msg = buffer:sub(0, bytesRead)
             print('[Dual-Stack UDP Server] Received: "' .. msg .. '" from ' .. mNet.AddressToStr(source) .. ':' .. source.port)
 
-            if (string.match(msg, 'IPv4')) then
+            if (msg:startsWith('IPv4')) then
                ipv4Received = true
-            elseif (string.match(msg, 'IPv6')) then
+            elseif (msg:startsWith('IPv6')) then
                ipv6Received = true
             end
 

@@ -1128,7 +1128,7 @@ function authMiddleware(options:table)
       end
 
       token = authHeader
-      if tokenPrefix and authHeader:find('^' .. tokenPrefix) then
+      if tokenPrefix and authHeader:startsWith(tokenPrefix) then
          token = authHeader:substr(#tokenPrefix)
       end
 

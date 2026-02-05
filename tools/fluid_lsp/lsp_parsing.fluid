@@ -552,7 +552,7 @@ global function extractFoldingRanges(Doc:table):array
 
       -- Handle block comments --[[ ... ]]
       if in_block_comment then
-         if line_text:find('%]%]') then
+         if line_text:find(']]') then
             -- End of block comment
             if line_num > block_comment_start then
                ranges:push({
@@ -567,7 +567,7 @@ global function extractFoldingRanges(Doc:table):array
       end
 
       -- Check for block comment start
-      block_comment_pos = line_text:find('%-%-%[%[')
+      block_comment_pos = line_text:find('--[[')
       if block_comment_pos then
          -- Check it's not inside a string (simplified check)
          before = line_text:sub(0, block_comment_start_pos)

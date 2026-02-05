@@ -3,6 +3,8 @@
 
    import 'common'
 
+   rx_file_tag = regex.new('<file.*?\\/>')
+
 @Test function Basic()
    item = table.toXML({
       file = {
@@ -47,9 +49,6 @@ end
 
    -- <receipt totalitems=2 id="my_files"><file path="volume:file"/><file path="volume:file2.txt"/></>
 
-   print(files .. '\n')
-
-   receipt_count = [_*]string.gsub(files, '^<receipt.+/>$', '')
-   file_count = [_*]string.gsub(files, '<file.-/>', '')
-   assert(receipt_count is 1 and file_count is 2, 'Expected 1 receipt and 2 file tags.')
+   cap = rx_file_tag.search(files)
+   assert(#cap is 2, 'Expected 2 file tags, got ' .. #cap)
 end

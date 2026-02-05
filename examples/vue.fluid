@@ -151,13 +151,13 @@ function displayFile(Path)
    glStats = { }
 
    lpath = Path:lower()
-   if lpath:find('^.+%.png$') then
+   if lpath:endsWith('.png') then
       displayImage(Path)
-   elseif lpath:find('^.+%.jpeg$') or lpath:find('^.+%.jpg$') then
+   elseif lpath:endsWith('.jpeg') or lpath:endsWith('.jpg') then
       displayImage(Path)
-   elseif lpath:find('^.+%.svg$') then
+   elseif lpath:endsWith('.svg') then
       displaySVG(Path)
-   elseif lpath:find('^.+%.ripl$') or lpath:find('^.+%.rpl$') then
+   elseif lpath:endsWith('.ripl') or lpath:endsWith('.rpl') then
       displayDoc(Path)
    else -- File is unsupported
       displayError([[<p>Unrecognised file "]] .. Path .. [["</p>]])

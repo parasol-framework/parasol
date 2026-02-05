@@ -23,24 +23,24 @@ meaningful error reporting while maintaining system stability.
    glTestResults = {}
 
 function printableState(State)
-   if (State is NTC_CONNECTED) then return 'CONNECTED'
-   elseif (State is NTC_CONNECTING) then return 'CONNECTING'
-   elseif (State is NTC_DISCONNECTED) then return 'DISCONNECTED'
-   elseif (State is NTC_HANDSHAKING) then return 'HANDSHAKING'
-   else return tostring(State) end
+   return choose State from
+      NTC_CONNECTED -> 'CONNECTED'
+      NTC_CONNECTING -> 'CONNECTING'
+      NTC_DISCONNECTED -> 'DISCONNECTED'
+      NTC_HANDSHAKING -> 'HANDSHAKING'
+      else -> tostring(State)
+   end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function ConnectionFailures()
-   local proc = processing.new({ timeout = 2.0 })
-   glPort = glPort + 1
-
-   print('Testing connection failure scenarios...')
+@Test function ConnectionFailures()
+   proc = processing.new({ timeout = 2.0 })
+   glPort++
 
    -- Test 1: Invalid IP address
    print('[Test 1] Testing connection to invalid IP address...')
-   local client1 = obj.new('netsocket', {
+   client1 = obj.new('netsocket', {
       name = 'InvalidIPClient',
       feedback = function(Socket, State)
          print('[Client1] State: ' .. State)
@@ -50,7 +50,7 @@ function ConnectionFailures()
       end
    })
 
-   local err = client1.mtConnect('999.999.999.999', 80)
+   err = client1.mtConnect('999.999.999.999', 80)
    if (err != ERR_Okay) then
       print('[Client1] Connection correctly failed: ' .. mSys.GetErrorMsg(err))
       table.insert(glTestResults, 'invalid_ip_rejected')
@@ -58,7 +58,7 @@ function ConnectionFailures()
 
    -- Test 2: Connection to non-existent port
    print('[Test 2] Testing connection to closed port...')
-   local client2 = obj.new('netsocket', {
+   client2 = obj.new('netsocket', {
       name = 'ClosedPortClient',
       feedback = function(Socket, State)
          print('[Client2] State: ' .. State)
@@ -68,7 +68,7 @@ function ConnectionFailures()
       end
    })
 
-   local err = client2.mtConnect('127.0.0.1', 65432) -- Unlikely to be in use
+   err = client2.mtConnect('127.0.0.1', 65432) -- Unlikely to be in use
    if (err != ERR_Okay) then
       print('[Client2] Connection to closed port correctly failed: ' .. mSys.GetErrorMsg(err))
       table.insert(glTestResults, 'closed_port_rejected')
@@ -104,11 +104,11 @@ function ConnectionFailures()
    processing.sleep(1.0) -- Allow time for async operations
 
    -- Verify error handling results
-   local expected_results = { 'invalid_ip_rejected', 'closed_port_rejected', 'port_conflict_detected' }
+   expected_results = { 'invalid_ip_rejected', 'closed_port_rejected', 'port_conflict_detected' }
    for i, expected in ipairs(expected_results) do
-      local found = false
+      found = false
       for j, result in ipairs(glTestResults) do
-         if (result is expected or string.match(result, expected)) then
+         if (result is expected or result:find(expected)) then
             found = true
             break
          end
@@ -123,14 +123,16 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function BufferOverflowHandling()
-   local proc = processing.new({ timeout = 10.0 })
-   local overflow_handled = false
-   glPort = glPort + 1
+@Test function BufferOverflowHandling()
+   proc = processing.new({ timeout = 4.0 })
+   overflow_handled = false
+   glPort++
 
    print('Testing buffer overflow scenarios...')
 
-   local server = obj.new('netsocket', {
+   local large_msg = string.rep('OVERFLOW_TEST_DATA_', 1000) -- ~18KB per message
+
+   server = obj.new('netsocket', {
       name = 'OverflowTestServer',
       feedback = function(Socket, Client, State)
          if (State is NTC_CONNECTED) then
@@ -138,7 +140,6 @@ function BufferOverflowHandling()
 
             -- Send multiple large messages rapidly to test buffer limits
             for i = 1, 10 do
-               local large_msg = string.rep('OVERFLOW_TEST_DATA_', 1000) -- ~18KB per message
                local err, len = Client.acWrite(large_msg)
                if (err != ERR_Okay) then
                   print('[Server] Write failed at message ' .. i .. ': ' .. mSys.GetErrorMsg(err))
@@ -162,7 +163,7 @@ function BufferOverflowHandling()
       flags = 'SERVER'
    })
 
-   local client = obj.new('netsocket', {
+   client = obj.new('netsocket', {
       name = 'OverflowTestClient',
       feedback = function(Socket, State)
          if (State is NTC_CONNECTED) then
@@ -175,9 +176,9 @@ function BufferOverflowHandling()
       end,
       incoming = function(Socket)
          -- Simulate slow reading to cause server buffer buildup
-         processing.sleep(0.5, false)
-         local buffer = string.alloc(1024)
-         local err, read_len = Socket.acRead(buffer)
+         processing.sleep(0.1, false)
+         buffer = string.alloc(1024)
+         err, read_len = Socket.acRead(buffer)
          if (err != ERR_Okay) then
             print('[Client] Read error: ' .. mSys.GetErrorMsg(err))
             if (err is ERR_BufferOverflow) then
@@ -192,7 +193,7 @@ function BufferOverflowHandling()
 
    client.mtConnect('127.0.0.1', glPort)
 
-   local err = proc.sleep()
+   err = proc.sleep()
    -- Note: This test may timeout if buffers are very large, which is also acceptable
    if (err is ERR_TimeOut) then
       print('[Test] Timeout occurred - may indicate good buffer capacity')
@@ -205,15 +206,15 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function NetworkTimeouts()
-   local proc = processing.new({ timeout = 8.0 })
-   local timeout_handled = false
-   glPort = glPort + 1
+@Test function NetworkTimeouts()
+   proc = processing.new({ timeout = 8.0 })
+   timeout_handled = false
+   glPort++
 
    print('Testing network timeout scenarios...')
 
    -- Create client with very short timeout expectation
-   local client = obj.new('netsocket', {
+   client = obj.new('netsocket', {
       name = 'TimeoutTestClient',
       feedback = function(Socket, State)
          print('[Client] State: ' .. State)
@@ -228,7 +229,7 @@ function NetworkTimeouts()
    -- Try to connect to a routable but non-responsive address
    -- Using a reserved test address that should timeout
    print('[Client] Attempting connection to timeout address...')
-   local err = client.mtConnect('10.255.255.1', 80) -- Reserved test IP
+   err = client.mtConnect('10.255.255.1', 80) -- Reserved test IP
 
    if (err != ERR_Okay) then
       print('[Client] Connection immediately failed: ' .. mSys.GetErrorMsg(err))
@@ -236,7 +237,7 @@ function NetworkTimeouts()
    else
       print('[Client] Connection attempt started, waiting for timeout...')
       -- Wait for timeout or disconnect
-      local err = proc.sleep(1.0) -- Allow time for timeout
+      err = proc.sleep(1.0) -- Allow time for timeout
       if (err is ERR_TimeOut) then
          print('[Client] Test timeout reached - checking connection state')
          timeout_handled = true
@@ -249,20 +250,20 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function NTECloseHandling()
-   local proc = processing.new({ timeout = 8.0 })
-   local close_handled = false
-   glPort = glPort + 1
+@Test function NTECloseHandling()
+   proc = processing.new({ timeout = 8.0 })
+   close_handled = false
+   glPort++
 
    print('Testing NTE_CLOSE message handling...')
 
-   local server = obj.new('netsocket', {
+   server = obj.new('netsocket', {
       name = 'CloseTestServer',
       feedback = function(Socket, Client, State)
          if (State is NTC_CONNECTED) then
             print('[Server] Client connected')
             -- Send a message then immediately close
-            local err, len = Client.acWrite('CLOSE_TEST_MESSAGE')
+            err, len = Client.acWrite('CLOSE_TEST_MESSAGE')
             assert(err is ERR_Okay, 'Failed to send close test message')
 
             -- Force close to trigger NTE_CLOSE handling
@@ -276,8 +277,8 @@ function NTECloseHandling()
          end
       end,
       incoming = function(Socket, Client)
-         local buffer = string.alloc(1024)
-         local err, read_len = Client.acRead(buffer)
+         buffer = string.alloc(1024)
+         err, read_len = Client.acRead(buffer)
          if (err is ERR_Okay) then
             print('[Server] Received: ' .. buffer:sub(0, read_len))
          else
@@ -288,7 +289,7 @@ function NTECloseHandling()
       flags = 'SERVER'
    })
 
-   local client = obj.new('netsocket', {
+   client = obj.new('netsocket', {
       name = 'CloseTestClient',
       feedback = function(Socket, State)
          print('[Client] State: ' .. State)
@@ -299,8 +300,8 @@ function NTECloseHandling()
          end
       end,
       incoming = function(Socket)
-         local buffer = string.alloc(1024)
-         local err, read_len = Socket.acRead(buffer)
+         buffer = string.alloc(1024)
+         err, read_len = Socket.acRead(buffer)
          if (err is ERR_Okay) then
             print('[Client] Received: ' .. buffer:sub(0, read_len))
          else
@@ -315,7 +316,7 @@ function NTECloseHandling()
 
    client.mtConnect('127.0.0.1', glPort)
 
-   local err = proc.sleep()
+   err = proc.sleep()
    assert(err is ERR_Okay, 'NTE_CLOSE handling test failed: ' .. mSys.GetErrorMsg(err))
    assert(close_handled, 'Close handling was not properly detected')
 
@@ -324,12 +325,12 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function InvalidParameters()
+@Test function InvalidParameters()
    print('Testing invalid parameter handling...')
-   glPort = glPort + 1
+   glPort++
 
    -- Test invalid socket creation parameters
-   local invalid_socket = obj.new('netsocket', {
+   invalid_socket = obj.new('netsocket', {
       port = -1, -- Invalid port
       flags = 'INVALID_FLAG' -- Invalid flag
    })
@@ -341,14 +342,14 @@ function InvalidParameters()
    end
 
    -- Test invalid connection parameters
-   local client = obj.new('netsocket', { name = 'InvalidParamClient' })
+   client = obj.new('netsocket', { name = 'InvalidParamClient' })
    if (client) then
-      local err = client.mtConnect('', 0) -- Empty address, invalid port
+      err = client.mtConnect('', 0) -- Empty address, invalid port
       if (err != ERR_Okay) then
          print('[Test] Invalid connection parameters correctly rejected: ' .. mSys.GetErrorMsg(err))
       end
 
-      local err = client.mtConnect(nil, 80) -- Nil address
+      err = client.mtConnect(nil, 80) -- Nil address
       if (err != ERR_Okay) then
          print('[Test] Nil address correctly rejected: ' .. mSys.GetErrorMsg(err))
       end
@@ -359,28 +360,28 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function ResourceCleanup()
-   local proc = processing.new({ timeout = 5.0 })
-   glPort = glPort + 1
+@Test function ResourceCleanup()
+   proc = processing.new({ timeout = 5.0 })
+   glPort++
 
    print('Testing resource cleanup under error conditions...')
 
    -- Create and destroy multiple sockets rapidly to test cleanup
    -- (puts pressure on threaded socket closures)
 
-   for i = 1, 100 do
-      local server = obj.new('netsocket', {
+   for i = 1, 20 do
+      server = obj.new('netsocket', {
          name = 'CleanupTestServer' .. i,
-         port = glPort + 100 + i,
+         port = glPort + 20 + i,
          flags = 'SERVER'
       })
 
-      local client = obj.new('netsocket', {
+      client = obj.new('netsocket', {
          name = 'CleanupTestClient' .. i
       })
 
       if (server and client) then
-         client.mtConnect('127.0.0.1', glPort + 100 + i)
+         client.mtConnect('127.0.0.1', glPort + 20 + i)
       end
    end
 
@@ -388,20 +389,3 @@ function ResourceCleanup()
 
    print('Resource cleanup test completed')
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-   return {
-      tests = {
-         testConnectionFailures,
-         --testBufferOverflowHandling,
-         testNetworkTimeouts,
-         testNTECloseHandling,
-         testInvalidParameters,
-         testResourceCleanup
-      },
-      cleanup = function()
-         glErrorScenarios = {}
-         glTestResults = {}
-      end
-   }

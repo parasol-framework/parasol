@@ -15,9 +15,10 @@ _LIB[_NS] = {
 }
 
 gui = _LIB[_NS]
-   
+
 rxPixel    = <{ regex.new([[^(\d+)([a-zA-Z]*)$]]) }>
 rxFontSize = <{ regex.new([[^(-?\d+)%$]]) }>
+rxNum      = <{ regex.new([[\d+]]) }>
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -59,16 +60,16 @@ gui.strToRGB = function(Value:str):table
    local result, fail
    try
       if string.byte(Value) is 35 then
-         colour = tonumber(string.sub(Value,1), 16) -- Convert hex string to number
+         colour = tonumber(Value:substr(1), 16) -- Convert hex string to number
 
-         if colour and Value:len() is 7 then
+         if colour and #Value is 7 then
             result = {
                r = ((colour>>16) & 0xff),
                g = ((colour>>8) & 0xff),
                b = (colour & 0xff),
                a = 255
             }
-         elseif colour and Value:len() is 9 then
+         elseif colour and #Value is 9 then
             result = {
                r = ((colour>>24) & 0xff),
                g = ((colour>>16) & 0xff),
@@ -81,15 +82,13 @@ gui.strToRGB = function(Value:str):table
       else
          -- Value can be rgb(r,g,b,a) or 'r,g,b,a'
          if Value:startsWith('rgb(') then
-            Value = Value:sub(4)
+            Value = Value:substr(4)
          end
 
          colours = array<int> { 0, 0, 0, 255 }
          c = 0
-         for str in string.gmatch(Value, '([^,]+)') do
-            if str then
-               colours[c++] = tonumber(str)
-            end
+         for start, stop in rxNum.findAll(Value) do
+            colours[c++] = tonumber(Value:substr(start, stop))
          end
 
          assert(c >= 3, "Invalid value: " .. tostring(Value))

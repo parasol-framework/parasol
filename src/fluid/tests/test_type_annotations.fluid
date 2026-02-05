@@ -4,10 +4,11 @@
 function enforce_hotpath() end
 
 -- Compile a function with the provided signature and return the callable
+
 function parameter_names(Signature)
    names = {}
-   for entry in string.gmatch(Signature, "[^,]+") do
-      trimmed = string.match(entry, "^%s*(.-)%s*$")
+   for entry in values(Signature:split(',')) do
+      trimmed = entry:trim()
       if trimmed?? then
          colon = string.find(trimmed, ":", 0, true)
          if colon?? then trimmed = string.sub(trimmed, 0, colon) end

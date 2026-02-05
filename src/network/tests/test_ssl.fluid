@@ -21,8 +21,11 @@ If SSL is not available, tests will be skipped with appropriate messages.
 
    mNet ?= mod.load('network')
 
-   global glPort = 21605
-   global glSSLTestData = 'SECRET_SSL_MESSAGE_123'
+glPort = 21605
+glSSLTestData = 'SECRET_SSL_MESSAGE_123'
+
+rxHTTP = <{ regex.new([[^HTTP\/\d+\.\d+]]) }> -- HTTP/1.1
+rxContentLength = <{ regex.new([[Content-Length:\s*(\d+)]]) }>
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -62,12 +65,7 @@ function BasicSSLCommunication()
             -- Send encrypted test message
             logOutput('[Server] Sending encrypted message to client...')
             err, len = Client.acWrite(glSSLTestData)
-            if err is ERR_Okay then
-               logOutput('[Server] Encrypted message sent successfully')
-            else
-               error('[Server] Failed to send encrypted message: ' .. mSys.GetErrorMsg(err))
-            end
-
+            assert(err is ERR_Okay, '[Server] Failed to send encrypted message: ' .. mSys.GetErrorMsg(err))
          elseif State is NTC_DISCONNECTED then
             logOutput('[Server] SSL client disconnected')
             if ssl_handshake_complete and ssl_data_received then
@@ -80,15 +78,13 @@ function BasicSSLCommunication()
          err, read_len = Client.acRead(buffer)
 
          if err is ERR_Okay then
-            if read_len is 0 then
-               error('Received incoming data notification with no data to read.')
-            end
+            assert(read_len > 0, 'Received incoming data notification with no data to read.')
 
-            emsg = buffer:sub(0, read_len)
+            emsg = buffer:substr(0, read_len)
             logOutput('[Server] Received encrypted message of ' .. read_len .. ' bytes: "' .. tostring(emsg) .. '"')
 
             -- Verify message integrity over SSL
-            if string.match(emsg, 'SSL_ECHO:' .. glSSLTestData) then
+            if emsg:startsWith('SSL_ECHO:' .. glSSLTestData) then
                logOutput('[Server] SSL message integrity verified!')
                ssl_data_received = true
                Socket.mtDisconnectSocket(Client)
@@ -133,18 +129,14 @@ function BasicSSLCommunication()
          if err is ERR_Okay then
             assert(read_len > 0, 'Received incoming data notification with no data to read.')
 
-            emsg = buffer:sub(0, read_len)
+            emsg = buffer:substr(0, read_len)
             logOutput('[Client] Received encrypted message of ' .. read_len .. ' bytes: "' .. tostring(emsg) .. '"')
 
             -- Echo back the message to verify bidirectional SSL
             echo_msg = 'SSL_ECHO:' .. emsg
             logOutput('[Client] Sending encrypted echo...')
             err, len = Socket.acWrite(echo_msg)
-            if (err is ERR_Okay) then
-               logOutput('[Client] Encrypted echo sent successfully')
-            else
-               error('[Client] Failed to send encrypted echo: ' .. mSys.GetErrorMsg(err))
-            end
+            assert(err is ERR_Okay, '[Client] Failed to send encrypted echo: ' .. mSys.GetErrorMsg(err))
          elseif err is ERR_Disconnected then
             raise ERR_Terminate
          else
@@ -211,7 +203,7 @@ function SSLStateTransitions()
          buffer = string.alloc(1024)
          err, read_len = Client.acRead(buffer)
          if (err is ERR_Okay) then
-            emsg = buffer:sub(0, read_len)
+            emsg = buffer:substr(0, read_len)
             logOutput('[Server] Received: ' .. emsg)
             data_exchange_complete = true
             Socket.mtDisconnectSocket(Client)
@@ -237,7 +229,7 @@ function SSLStateTransitions()
          buffer = string.alloc(1024)
          err, read_len = Socket.acRead(buffer)
          if err is ERR_Okay then
-            emsg = buffer:sub(0, read_len)
+            emsg = buffer:substr(0, read_len)
             logOutput('[Client] Received: ' .. emsg)
             logOutput('[Client] Sending acknowledgment...')
             err, len = Socket.acWrite('SSL_STATES_VERIFIED')
@@ -269,10 +261,9 @@ function SSLStateTransitions()
    local server_connected, client_connected
 
    for state in values(state_sequence) do
-      if string.match(state, 'SERVER:CONNECTED') then
+      if state:startsWith('SERVER:CONNECTED') then
          server_connected = true
-      end
-      if string.match(state, 'CLIENT:CONNECTED') then
+      elseif state:startsWith('CLIENT:CONNECTED') then
          client_connected = true
       end
    end
@@ -312,8 +303,8 @@ function SSLDataIntegrity()
          buffer = string.alloc(10240) -- Large buffer for big messages
          err, read_len = Client.acRead(buffer)
 
-         if (err is ERR_Okay) then
-            received = buffer:sub(0, read_len)
+         if err is ERR_Okay then
+            received = buffer:substr(0, read_len)
             expected = test_messages[msgIndex]
 
             logOutput('[Server] Received echo ' .. msgIndex .. ' (' .. read_len .. ' bytes)')
@@ -348,7 +339,7 @@ function SSLDataIntegrity()
          err, read_len = Socket.acRead(buffer)
 
          if err is ERR_Okay then
-            emsg = buffer:sub(0, read_len)
+            emsg = buffer:substr(0, read_len)
             logOutput('[Client] Received message (' .. read_len .. ' bytes), echoing back...')
 
             -- Echo back exactly what was received
@@ -404,13 +395,8 @@ function HTTPSConnection()
             http_request = "GET / HTTP/1.1\r\nHost: " .. SITE .. "\r\nConnection: close\r\nUser-Agent: Parasol-SSL-Test\r\n\r\n"
             logOutput('Sending HTTP GET request...')
             err, len = Socket.acWrite(http_request)
-            if err != ERR_Okay then
-               error('Failed to send HTTP request: ' .. mSys.GetErrorMsg(err))
-            else
-               logOutput('HTTP request sent successfully (' .. len .. ' bytes)')
-            end
-
-         elseif (State is NTC_DISCONNECTED) then
+            assert(err is ERR_Okay, 'Failed to send HTTP request: ' .. mSys.GetErrorMsg(err))
+         elseif State is NTC_DISCONNECTED then
             logOutput('HTTPS connection closed')
             response_complete = true
 
@@ -420,7 +406,7 @@ function HTTPSConnection()
                buffer = string.alloc(8192)
                err, read_len = Socket.acRead(buffer)
                if err is ERR_Okay and read_len > 0 then
-                  chunk = buffer:sub(0, read_len)
+                  chunk = buffer:substr(0, read_len)
                   page_content = page_content .. chunk
                   logOutput('Read ' .. read_len .. ' bytes during disconnect (total: ' .. #page_content .. ')')
                   data_received = true
@@ -442,13 +428,11 @@ function HTTPSConnection()
             err, read_len = Socket.acRead(buffer)
 
             if err is ERR_Okay then
-               if read_len is 0 then -- No more data available right now
-                  error('Received incoming data notification with no data to read.')
-               end
+               assert(read_len > 0, 'Received incoming data notification with no data to read.')
 
                chunks_received++
                callback_total += read_len
-               chunk = buffer:sub(0, read_len)
+               chunk = buffer:substr(0, read_len)
                page_content = page_content .. chunk
 
                logOutput('Chunk ' .. chunks_received .. ' received: ' .. read_len .. ' bytes from ' ..
@@ -456,23 +440,26 @@ function HTTPSConnection()
                data_received = true
 
                -- Parse headers if not done yet
-               if not headers_complete and string.match(page_content, '\r\n\r\n') then
-                  headers_complete = true
-                  headers = string.match(page_content, '(.-)\r\n\r\n')
-                  logOutput('HTTP headers received (' .. #headers .. ' bytes)')
+               if not headers_complete then
+                  stop = page_content:find('\r\n\r\n')
+                  if stop then
+                     headers_complete = true
+                     headers = page_content:substr(0, stop)
+                     logOutput('HTTP headers received (' .. #headers .. ' bytes)')
 
-                  -- Extract Content-Length if present
-                  content_length = string.match(headers, 'Content%-Length:%s*(%d+)')
-                  if content_length then
-                     expected_content_length = tonumber(content_length)
-                     logOutput('Content-Length: ' .. expected_content_length .. ' bytes')
-                  else
-                     logOutput('No Content-Length header found (chunked encoding?)')
+                     -- Extract Content-Length if present
+                     content_length = rxContentLength.extract(headers)
+                     if content_length then
+                        expected_content_length = tonumber(content_length)
+                        logOutput('Content-Length: ' .. expected_content_length .. ' bytes')
+                     else
+                        logOutput('No Content-Length header found (chunked encoding?)')
+                     end
                   end
                end
 
                -- Check if we got the full response header
-               if (not response_complete and string.match(page_content, 'HTTP/%d%.%d')) then
+               if not response_complete and rxHTTP.test(page_content) then
                   logOutput('HTTP response status line received')
                end
             elseif err is ERR_Disconnected then
@@ -523,7 +510,7 @@ function HTTPSConnection()
    logOutput('Received ' .. chunks_received .. ' chunks, ' .. #page_content .. ' total bytes')
 
    if expected_content_length > 0 then
-      content_start = string.find(page_content, '\r\n\r\n')
+      content_start = page_content:find('\r\n\r\n')
       if content_start then
          actual_content_length = #page_content - content_start - 3
          logOutput('Body length: ' .. actual_content_length .. ' bytes (expected: ' .. expected_content_length .. ')')
@@ -533,20 +520,19 @@ function HTTPSConnection()
       end
    end
 
-   if (string.match(page_content, 'HTTP/%d%.%d') and
-       (string.match(page_content, '200 OK') or string.match(page_content, '301') or
-        string.match(page_content, '302') or string.match(page_content, '404'))) then
-      logOutput('Received valid HTTP response (' .. #page_content .. ' bytes total)')
+   if rxHTTP.test(page_content) and (page_content:find('200 OK') or page_content:find('301') or
+      page_content:find('302') or page_content:find('404')) then
+      logOutput(f'Received valid HTTP response ({#page_content} bytes total)')
 
       if #page_content < 2048 then
          logOutput('Response content:')
          logOutput(page_content)
       else
          logOutput('Response preview (first 500 chars):')
-         logOutput(string.sub(page_content, 0, 500) .. '...')
+         logOutput(page_content:substr(0, 500) .. '...')
       end
    else
-      logOutput('Response content preview: ' .. string.sub(page_content, 0, 200))
+      logOutput('Response content preview: ' .. page_content:substr(0, 200))
       error('Invalid HTTP response received from ' .. SITE)
    end
 end
@@ -555,8 +541,6 @@ end
 
 @Test; @Requires(ssl=true)
 function CustomCertificate()
-   if (not glSSLSupported) then return end
-
    proc = processing.new({ timeout = 10.0 })
    custom_cert_test_complete = false
    handshake_successful = false
@@ -599,7 +583,7 @@ function CustomCertificate()
          buffer = string.alloc(1024)
          err, read_len = Client.acRead(buffer)
          if err is ERR_Okay then
-            message = buffer:sub(0, read_len)
+            message = buffer:substr(0, read_len)
             logOutput('[Server] Received: ' .. message)
             custom_cert_test_complete = true
             Socket.mtDisconnectSocket(Client)
@@ -609,24 +593,18 @@ function CustomCertificate()
       flags = 'SERVER|SSL'
    })
 
-   if not ssl_server then
-      error('Failed to create custom certificate SSL server')
-   end
+   assert(ssl_server, 'Failed to create custom certificate SSL server')
 
    ssl_client = obj.new('netsocket', {
       name = 'CustomCertClient',
       feedback = function(Socket, State)
          logOutput('[Client] State: ' .. printableState(State))
 
-         if (State is NTC_CONNECTED) then
+         if State is NTC_CONNECTED then
             logOutput('Connected to custom certificate server')
 
             err, len = Socket.acWrite('CLIENT_RESPONSE')
-            if err is ERR_Okay then
-               logOutput('Response sent to custom cert server')
-            else
-               error('Failed to send response: ' .. mSys.GetErrorMsg(err))
-            end
+            assert(err is ERR_Okay, 'Failed to send response: ' .. mSys.GetErrorMsg(err))
          end
       end,
       flags = 'SSL|DISABLE_SERVER_VERIFY'  -- Use no-verify for test certificate
@@ -643,5 +621,3 @@ function CustomCertificate()
    assert(err is ERR_Okay, 'Custom certificate test failed: ' .. mSys.GetErrorMsg(err))
    assert(handshake_successful, 'Custom certificate SSL handshake failed')
 end
-
-----------------------------------------------------------------------------------------------------------------------

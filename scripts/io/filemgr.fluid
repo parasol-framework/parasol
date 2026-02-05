@@ -4,11 +4,13 @@
    import 'common'
    import 'gui/dialog'
 
+rxCopy = <{ regex.new('^[A-Z].+') }>
+
 local progress_status, progress_dialog, progress_time
 
 -- copyFeedback() is called for every file that is copied, or multiple times for large files.
 
-local function copyFeedback(Size:num, Position:num, Path:str, Dest:str, User, FeedbackID)
+function copyFeedback(Size:num, Position:num, Path:str, Dest:str, User, FeedbackID)
    msg(f'Copy feedback: {Path} TO {Dest}')
 
    if progress_status is 'cancel' then
@@ -96,12 +98,11 @@ file.ui.copy = function(Source:any, Dest:str, Move:bool)
    progress_time = mSys.PreciseTime()
    local response = 'yes'
    local err = ERR_Okay
-   for _, src_path in pairs(Source) do
+   for src_path in values(Source) do
       if response != 'yes-all' and response != 'no-all' then response = 'yes' end -- Reset to the default
 
       msg('Processing file source ' .. src_path)
       local src_folder, src_file = file.splitPath(src_path)
-
       local dest_path = Dest .. src_file
 
       -- Check if the destination already exists
@@ -110,7 +111,7 @@ file.ui.copy = function(Source:any, Dest:str, Move:bool)
          if src_path is dest_path then
             if Move then
                continue -- Do nothing for move operations when the source and destination are identical
-            elseif dest_path:find('^[A-Z].+') then
+            elseif rxCopy.test(dest_path) then
                dest_path = Dest .. 'Copy of ' .. src_file
             else
                dest_path = Dest .. 'copy of ' .. src_file
