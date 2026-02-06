@@ -324,7 +324,7 @@
 #define FID_BorderSize 0x7e96381eLL
 #define FID_Button 0xf4ff5d81LL
 #define FID_Density 0x091fc565LL
-#define FID_ErrorString 0xb7263046LL
+#define FID_ErrorMessage 0xab28c874LL
 #define FID_Msg 0x0b8891ccLL
 #define FID_Result 0x192fd704LL
 #define FID_CacheFile 0x41d7c1b9LL

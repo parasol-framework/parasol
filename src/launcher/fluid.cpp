@@ -110,7 +110,7 @@ static int run_script(objScript *Script)
          }
 
          STRING msg;
-         if ((!Script->get(FID_ErrorString, &msg)) and (msg)) {
+         if ((!Script->get(FID_ErrorMessage, &msg)) and (msg)) {
             log.msg("Script returned error message: %s", msg);
             return -1;
          }

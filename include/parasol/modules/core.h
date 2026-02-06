@@ -2949,7 +2949,7 @@ class objScript : public Object {
    STRING   Path;                 // File location of the script
    STRING   String;
    STRING   WorkingPath;
-   STRING   ErrorString;
+   STRING   ErrorMessage;
    CSTRING  Procedure;
    STRING   CacheFile;
    int     ActivationCount;      // Incremented every time the script is activated.
@@ -3029,7 +3029,7 @@ class objScript : public Object {
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERR setErrorString(T && Value) noexcept {
+   template <class T> inline ERR setErrorMessage(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);

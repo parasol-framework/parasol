@@ -16,7 +16,7 @@ function enforce_hotpath() end
    }]] })
 
    err = script.acActivate()
-   assert(err is ERR_Okay, "Script parsing failed, error: " .. script.errorString)
+   assert(err is ERR_Okay, "Script parsing failed, error: " .. script.errorMessage)
 end
 
 @Test function RangeConstructorBasic()
