@@ -1141,6 +1141,11 @@ static LexToken lex_scan(LexState *State, TValue *tv)
             }
             return '~';
 
+         case '^':
+            State->mark_token_start();
+            lex_next(State);
+            return '^';
+
          case ':':
             State->mark_token_start();
             lex_next(State);
