@@ -91,8 +91,9 @@ static int io_open(lua_State *Lua)
 {
    auto path = luaL_checkstring(Lua, 1);
    auto mode = luaL_optstring(Lua, 2, "r");
-
+   auto seek_end = false;
    auto flags = FL::NIL;
+
    for (int i = 0; mode[i]; i++) {
       switch (mode[i]) {
          case 'r': flags |= FL::READ; break;
@@ -100,15 +101,14 @@ static int io_open(lua_State *Lua)
          case 'a':
             if (AnalysePath(path, nullptr) IS ERR::Okay) flags |= FL::WRITE;
             else flags |= FL::WRITE | FL::NEW;
-
+            seek_end = true;
             break;  // Append mode - will seek to end after open
          case '+': flags |= FL::READ | FL::WRITE; break;
-         case 'b': break; // Binary mode - ignored as all files are binary in Parasol
       }
    }
 
    if (auto file = objFile::create::local({ fl::Path(path), fl::Flags(flags) })) {
-      if (strchr(mode, 'a')) file->seekEnd(0);
+      if (seek_end) file->seekEnd(0);
 
       push_file_handle(Lua, file);
       return 1;

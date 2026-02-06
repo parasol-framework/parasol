@@ -8,23 +8,23 @@
 
    import 'io/filesearch'
 
-   local rx_sdk_path = <{ regex.new([[(.+)\.git]]) }>
+   rx_sdk_path = <{ regex.new([[(.+)\.git]]) }>
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Resolve the location of the Parasol SDK and create an 'sdk:' volume.
 
 function resolveSDKPath(Path)
    local sdk_path
-   local err = ERR_Failed
-   local search_list = { }
+   err = ERR_Failed
+   search_list = { }
    if not Path then
-      local search_path = '.git'
-      local limit = 5
+      search_path = '.git'
+      limit = 5
       while (err != ERR_Okay) and (limit > 0) do
          table.insert(search_list, search_path)
          err, sdk_path = mSys.ResolvePath(search_path)
          search_path = '../' .. search_path
-         limit = limit - 1
+         limit -= 1
       end
    else
       table.insert(search_list, Path .. '/.git')
@@ -35,8 +35,8 @@ function resolveSDKPath(Path)
       sdk_path = rx_sdk_path.extract(sdk_path)
    else
       local msg = ''
-      for _, path in ipairs(search_list) do
-         msg = msg .. path .. '\n'
+      for path in values(search_list) do
+         msg ..= path .. '\n'
       end
       print('Unable to find .git folder after searching the following paths:\n' .. msg)
       error('A path to the Parasol SDK could not be determined.')
