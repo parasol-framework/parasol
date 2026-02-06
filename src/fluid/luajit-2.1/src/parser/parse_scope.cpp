@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 
 static void bcreg_reserve(FuncState* fs, BCREG n);
 static void fscope_uvmark(FuncState* fs, BCREG level);

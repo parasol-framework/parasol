@@ -34,21 +34,21 @@
 <p>Note: The integrity of the array is not guaranteed if the original XML document is modified or freed.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
-</tbody></table><div class="footer copyright text-right">XML module documentation © Paul Manias © 2001-2025</div></div>
+</tbody></table><div class="footer copyright text-right">XML module documentation © Paul Manias © 2001-2026</div></div>
 <div class="docs-content" style="display:none;" id="XValueToNumber"><h2>XValueToNumber()</h2><p class="lead">Converts an XPathValue to a 64-bit floating point value.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR xml::XValueToNumber(struct XPathValue * Value, DOUBLE * Result)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Value</td><td>The XPathValue to convert.</td></tr>
 <tr><td>Result</td><td>The numeric representation of the value is returned here.</td></tr>
 </tbody></table></div></div>
 <p>Call XValueToNumber() to convert an XPathValue object to a 64-bit floating point number.  This function also includes cover support for boolean types, converting true to 1.0 and false to 0.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
-</tbody></table><div class="footer copyright text-right">XML module documentation © Paul Manias © 2001-2025</div></div>
+</tbody></table><div class="footer copyright text-right">XML module documentation © Paul Manias © 2001-2026</div></div>
 <div class="docs-content" style="display:none;" id="XValueToString"><h2>XValueToString()</h2><p class="lead">Converts an XPathValue to its string representation.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR xml::XValueToString(const struct XPathValue * Value, std::string * Result)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Value</td><td>The XPathValue to convert.</td></tr>
 <tr><td>Result</td><td>Receives the string representation of the value.</td></tr>
 </tbody></table></div></div>
 <p>Call XValueToString() to convert an XPathValue object into its string representation.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
-</tbody></table><div class="footer copyright text-right">XML module documentation © Paul Manias © 2001-2025</div></div>
+</tbody></table><div class="footer copyright text-right">XML module documentation © Paul Manias © 2001-2026</div></div>
 <div class="docs-content" style="display:none;" id="XMF"><h1>XMF Type</h1><p class="lead">Standard flags for the XML class.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>XMF::HAS_SCHEMA</th><td>Automatically defined when a schema has been loaded into the XML object.</td></tr>
 <tr><th>XMF::INCLUDE_COMMENTS</th><td>By default, comments are stripped when parsing XML input unless this flag is specified.</td></tr>
 <tr><th>XMF::INCLUDE_SIBLINGS</th><td>Include siblings when building an XML string (GetXMLString only)</td></tr>
@@ -68,16 +68,16 @@
 <tr><th>XMF::STRIP_CONTENT</th><td>Strip all content from incoming XML data.</td></tr>
 <tr><th>XMF::STRIP_HEADERS</th><td>XML headers found in the source data will not be included in the parsed results.</td></tr>
 <tr><th>XMF::WELL_FORMED</th><td>By default, the XML class will accept badly structured XML data.  This flag requires that XML statements must be well-formed (tags must balance) or an <code>ERR::BadData</code> error will be returned during processing.</td></tr>
-</tbody></table><div class="footer copyright text-right">XML module documentation © Paul Manias © 2001-2025</div></div>
+</tbody></table><div class="footer copyright text-right">XML module documentation © Paul Manias © 2001-2026</div></div>
 <div class="docs-content" style="display:none;" id="XMI"><h1>XMI Type</h1><p class="lead">Tag insertion options.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>XMI::CHILD</th><td>Insert as the first child of the target.</td></tr>
 <tr><th>XMI::CHILD_END</th><td>Insert as the last child of the target.</td></tr>
 <tr><th>XMI::NEXT</th><td>Insert as the next tag of the target.</td></tr>
 <tr><th>XMI::PREV</th><td>Insert as the previous tag of the target.</td></tr>
-</tbody></table><div class="footer copyright text-right">XML module documentation © Paul Manias © 2001-2025</div></div>
+</tbody></table><div class="footer copyright text-right">XML module documentation © Paul Manias © 2001-2026</div></div>
 <div class="docs-content" style="display:none;" id="XMS"><h1>XMS Type</h1><p class="lead">For SetAttrib()</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>XMS::NEW</th><td>Adds a new attribute.  Note that if the attribute already exists, this will result in at least two attributes of the same name in the tag.</td></tr>
 <tr><th>XMS::UPDATE</th><td>As for <code>UPDATE_ONLY</code>, but if the attribute does not exist, it will be created.</td></tr>
 <tr><th>XMS::UPDATE_ONLY</th><td>SetAttrib will find the target attribute and update it.  It is not possible to rename the attribute when using this technique.  <code>ERR::Search</code> is returned if the attribute cannot be found.</td></tr>
-</tbody></table><div class="footer copyright text-right">XML module documentation © Paul Manias © 2001-2025</div></div>
+</tbody></table><div class="footer copyright text-right">XML module documentation © Paul Manias © 2001-2026</div></div>
 <div class="docs-content" style="display:none;" id="XPVT"><h1>XPVT Type</h1><p class="lead">Type descriptors for XPathValue</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>XPVT::Array</th><td></td></tr>
 <tr><th>XPVT::Boolean</th><td></td></tr>
 <tr><th>XPVT::Date</th><td></td></tr>
@@ -87,22 +87,22 @@
 <tr><th>XPVT::Number</th><td></td></tr>
 <tr><th>XPVT::String</th><td></td></tr>
 <tr><th>XPVT::Time</th><td></td></tr>
-</tbody></table><div class="footer copyright text-right">XML module documentation © Paul Manias © 2001-2025</div></div>
+</tbody></table><div class="footer copyright text-right">XML module documentation © Paul Manias © 2001-2026</div></div>
 <div class="docs-content" style="display:none;" id="XSF"><h1>XSF Type</h1><p class="lead">Options for the Sort method.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>XSF::CHECK_SORT</th><td>Tells the algorithm to check for a 'sort' attribute in each analysed tag and if found, the algorithm will use that as the sort value instead of that indicated in the <code>Attrib</code> field.</td></tr>
 <tr><th>XSF::DESC</th><td>Sort in descending order.</td></tr>
-</tbody></table><div class="footer copyright text-right">XML module documentation © Paul Manias © 2001-2025</div></div>
+</tbody></table><div class="footer copyright text-right">XML module documentation © Paul Manias © 2001-2026</div></div>
 <div class="docs-content" style="display:none;" id="XTF"><h1>XTF Type</h1><p class="lead">Standard flags for XTag.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>XTF::CDATA</th><td>Tag represents <code>CDATA</code>.</td></tr>
 <tr><th>XTF::COMMENT</th><td>Tag represents a comment of the format <code>&lt;!-- Comment --&gt;</code>.</td></tr>
 <tr><th>XTF::INSTRUCTION</th><td>Tag represents an instruction of the format <code>&lt;?xml?&gt;</code>.</td></tr>
 <tr><th>XTF::NOTATION</th><td>Tag represents a notation of the format <code>&lt;!XML&gt;</code>.</td></tr>
-</tbody></table><div class="footer copyright text-right">XML module documentation © Paul Manias © 2001-2025</div></div>
+</tbody></table><div class="footer copyright text-right">XML module documentation © Paul Manias © 2001-2026</div></div>
 <div class="docs-content" style="display:none;" id="struct-XMLAttrib"><h1>XMLAttrib Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Name</th><td><span class="text-nowrap">std::string</span></td><td>Name of the attribute</td></tr>
 <tr><th>Value</th><td><span class="text-nowrap">std::string</span></td><td>Value of the attribute</td></tr>
-</tbody></table><div class="footer copyright text-right">XML module documentation © Paul Manias © 2001-2025</div></div>
+</tbody></table><div class="footer copyright text-right">XML module documentation © Paul Manias © 2001-2026</div></div>
 <div class="docs-content" style="display:none;" id="struct-XPathValue"><h1>XPathValue Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Type</th><td><span class="text-nowrap">XPVT</span></td><td>Identifies the type of value stored</td></tr>
 <tr><th>NumberValue</th><td><span class="text-nowrap">DOUBLE</span></td><td>Defined if the type is Number or Boolean</td></tr>
 <tr><th>StringValue</th><td><span class="text-nowrap">std::string</span></td><td>Defined if the type is String</td></tr>
-</tbody></table><div class="footer copyright text-right">XML module documentation © Paul Manias © 2001-2025</div></div>
+</tbody></table><div class="footer copyright text-right">XML module documentation © Paul Manias © 2001-2026</div></div>
 <div class="docs-content" style="display:none;" id="struct-XTag"><h1>XTag Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>ID</th><td><span class="text-nowrap">INT</span></td><td>Globally unique ID assigned to the tag on creation.</td></tr>
 <tr><th>ParentID</th><td><span class="text-nowrap">INT</span></td><td>UID of the parent tag</td></tr>
 <tr><th>LineNo</th><td><span class="text-nowrap">INT</span></td><td>Line number on which this tag was encountered</td></tr>
@@ -111,7 +111,7 @@
 <tr><th>Reserved</th><td><span class="text-nowrap">INT</span></td><td>Private</td></tr>
 <tr><th>Attribs</th><td><span class="text-nowrap">pf::vector&lt;XMLAttrib&gt;</span></td><td>Array of attributes for this tag</td></tr>
 <tr><th>Children</th><td><span class="text-nowrap">pf::vector&lt;XTag&gt;</span></td><td>Array of child tags</td></tr>
-</tbody></table><div class="footer copyright text-right">XML module documentation © Paul Manias © 2001-2025</div></div>
+</tbody></table><div class="footer copyright text-right">XML module documentation © Paul Manias © 2001-2026</div></div>
 </div></div></div><script type="text/javascript" src="../js/bootstrap.bundle.min.js"></script><script type="text/javascript" src="../js/base.js"></script><script type="text/javascript">
 var glCurrentMethod;
 

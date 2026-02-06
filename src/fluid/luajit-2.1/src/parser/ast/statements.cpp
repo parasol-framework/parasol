@@ -1,5 +1,5 @@
 // AST Builder - Statement Parsers
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 //
 // This file contains parsers for statement constructs:
 // - Local/global variable declarations

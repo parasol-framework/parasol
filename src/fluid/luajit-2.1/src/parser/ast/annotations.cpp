@@ -1,5 +1,5 @@
 // AST Builder - Annotation Parsers
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 //
 // This file contains parsers for annotations:
 // - Annotation values (strings, numbers, booleans, arrays)

@@ -1,5 +1,5 @@
 // Type Analysis for Fluid Parser
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 //
 // This module performs semantic type analysis on the Fluid AST after parsing.  It implements:
 //

@@ -1,5 +1,5 @@
 // AST Builder - Main Entry Point and Core Infrastructure
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 //
 // This file contains the core infrastructure for the AST builder:
 // - Constructor and main entry point (parse_chunk)

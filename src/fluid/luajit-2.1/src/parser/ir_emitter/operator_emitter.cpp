@@ -1,5 +1,5 @@
 // Operator emission facade and bytecode generators.
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 //
 // Major portions of arithmetic/comparison emission taken verbatim or adapted from LuaJIT.
 // Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h

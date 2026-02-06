@@ -1,5 +1,5 @@
 // TValue builder utilities for LuaJIT.
-// Copyright (C) 2025 Paul Manias.
+// Copyright © 2025-2026 Paul Manias.
 //
 // Type-safe RAII wrapper for constructing and modifying TValue objects with fluent chaining interface.
 

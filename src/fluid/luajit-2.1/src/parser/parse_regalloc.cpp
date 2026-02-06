@@ -1,6 +1,6 @@
 // Lua parser - Register allocation and bytecode emission.
 //
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 // Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 // Major portions taken verbatim or adapted from the Lua interpreter.
 // Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h

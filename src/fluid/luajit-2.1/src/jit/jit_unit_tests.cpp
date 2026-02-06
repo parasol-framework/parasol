@@ -1,5 +1,5 @@
 // Unit tests for JIT frame management abstractions.
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 //
 // These tests verify the correctness of the FrameManager class and FRC constants used in the JIT trace recorder. They
 // complement the existing Fluid integration tests by providing low-level verification of frame arithmetic operations.

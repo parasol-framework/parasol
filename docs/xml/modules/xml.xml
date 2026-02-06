@@ -7,7 +7,7 @@
     <type>module</type>
     <comment>Provides an interface for the management of structured data.</comment>
     <version>1</version>
-    <copyright>Paul Manias © 2001-2025</copyright>
+    <copyright>Paul Manias © 2001-2026</copyright>
     <description>
 <p>The XML module provides comprehensive support for XML 1.0 document parsing, manipulation, and querying.  It integrates with the XPath module to deliver a standards-compliant XML processing environment with extensive querying capabilities.</p>
 <header>XML Processing</header>

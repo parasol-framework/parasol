@@ -321,7 +321,7 @@ LJLIB_CF(string_count)
    int32_t count = 0;
 
    while (pos < end) {
-      if (CSTRING found = lj_str_find(pos, kw, end - pos, kw_len)) {
+      if (auto found = lj_str_findsv({pos, size_t(end - pos)}, {kw, kw_len})) {
          pos = found + kw_len;
          count++;
       }
@@ -375,7 +375,7 @@ LJLIB_CF(string_replace)
          break;
       }
 
-      if (CSTRING found = lj_str_find(pos, searchstr, end - pos, searchlen)) {
+      if (auto found = lj_str_findsv({pos, size_t(end - pos)}, {searchstr, searchlen})) {
          if (found > pos) lj_buf_putmem(sb, pos, found - pos);
          if (replacelen > 0) lj_buf_putmem(sb, replacestr, replacelen);
          pos = found + searchlen;
@@ -784,7 +784,7 @@ LJLIB_CF(string_find)      LJLIB_REC(.)
       return 1;
    }
 
-   if (CSTRING q = lj_str_find(strdata(s) + st, strdata(p), s->len - st, p->len)) {
+   if (auto q = lj_str_findsv({strdata(s) + st, s->len - st}, {strdata(p), p->len})) {
       setintV(L->top - 2, (int32_t)(q - strdata(s)));  // 0-based start
       setintV(L->top - 1, (int32_t)(q - strdata(s)) + (int32_t)p->len - 1);  // 0-based end (inclusive)
       return 2;

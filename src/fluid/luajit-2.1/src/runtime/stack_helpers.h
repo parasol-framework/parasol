@@ -1,5 +1,5 @@
 // Type-safe stack management helpers for LuaJIT.
-// Copyright (C) 2025 Paul Manias.
+// Copyright © 2025-2026 Paul Manias.
 //
 // These helpers replace error-prone manual stack arithmetic with type-safe
 // abstractions that encapsulate LJ_FR2 frame layout details.

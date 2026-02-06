@@ -1,5 +1,5 @@
 // AST Builder - Loop Parsers
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 //
 // This file contains parsers for loop constructs:
 // - Numeric for loops (for i = start, stop, step)

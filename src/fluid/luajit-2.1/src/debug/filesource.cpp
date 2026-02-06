@@ -1,5 +1,5 @@
 // FileSource tracking for accurate error reporting in imported files.
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 
 #include "filesource.h"
 #include <parasol/main.h>

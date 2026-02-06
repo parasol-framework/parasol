@@ -190,7 +190,7 @@ extern int lua_checkstack(lua_State *L, int size)
 //********************************************************************************************************************
 // Check stack availability with error message
 
-extern void luaL_checkstack(lua_State *L, int size, const char* msg)
+extern void luaL_checkstack(lua_State *L, int size, CSTRING msg)
 {
    if (!lua_checkstack(L, size)) lj_err_callerv(L, ErrMsg::STKOVM, msg);
 }
@@ -346,7 +346,7 @@ extern void luaL_checkany(lua_State *L, int idx)
 //********************************************************************************************************************
 // Get string representation of type
 
-extern const char* lua_typename(lua_State *L, int t)
+extern CSTRING lua_typename(lua_State *L, int t)
 {
    return lj_obj_typename[t + 1];
 }
@@ -576,7 +576,7 @@ extern GCobject * lua_optobject(lua_State *L, int Arg)
 //********************************************************************************************************************
 // Convert value to string with length
 
-extern const char* lua_tolstring(lua_State *L, int idx, size_t* len)
+extern CSTRING lua_tolstring(lua_State *L, int idx, size_t* len)
 {
    TValue *o = (idx > LUA_REGISTRYINDEX) ? resolve_index(L, idx) : index2adr(L, idx);
    GCstr *s;
@@ -641,7 +641,7 @@ extern uint32_t luaL_checkstringhash(lua_State *L, int idx)
 //********************************************************************************************************************
 // Convert value to string with default
 
-extern const char* luaL_optlstring(lua_State *L, int idx, const char* def, size_t* len)
+extern CSTRING luaL_optlstring(lua_State *L, int idx, CSTRING def, size_t* len)
 {
    TValue *o = (idx > LUA_REGISTRYINDEX) ? resolve_index(L, idx) : index2adr(L, idx);
    GCstr *s;
@@ -668,7 +668,7 @@ extern const char* luaL_optlstring(lua_State *L, int idx, const char* def, size_
 //********************************************************************************************************************
 // Check value matches one of the option strings
 
-extern int luaL_checkoption(lua_State *L, int idx, const char* def, const char* const lst[])
+extern int luaL_checkoption(lua_State *L, int idx, CSTRING def, CSTRING const lst[])
 {
    ptrdiff_t i;
    auto s = lua_tolstring(L, idx, nullptr);
@@ -769,7 +769,7 @@ extern void lua_pushinteger(lua_State *L, lua_Integer n)
 //********************************************************************************************************************
 // Push string of specified length onto stack
 
-extern void lua_pushlstring(lua_State *L, const char* str, size_t len)
+extern void lua_pushlstring(lua_State *L, CSTRING str, size_t len)
 {
    lj_gc_check(L);
    auto s = lj_str_new(L, str, len);
@@ -780,7 +780,7 @@ extern void lua_pushlstring(lua_State *L, const char* str, size_t len)
 //********************************************************************************************************************
 // Push null-terminated string onto stack
 
-extern void lua_pushstring(lua_State *L, const char* str)
+extern void lua_pushstring(lua_State *L, CSTRING str)
 {
    if (str IS nullptr) setnilV(L->top);
    else {
@@ -794,7 +794,7 @@ extern void lua_pushstring(lua_State *L, const char* str)
 //********************************************************************************************************************
 // Push formatted string onto stack with varargs
 
-extern const char* lua_pushvfstring(lua_State *L, const char* fmt, va_list argp)
+extern CSTRING lua_pushvfstring(lua_State *L, CSTRING fmt, va_list argp)
 {
    lj_gc_check(L);
    return lj_strfmt_pushvf(L, fmt, argp);
@@ -803,7 +803,7 @@ extern const char* lua_pushvfstring(lua_State *L, const char* fmt, va_list argp)
 //********************************************************************************************************************
 // Push formatted string onto stack
 
-extern const char* lua_pushfstring(lua_State *L, const char* fmt, ...)
+extern CSTRING lua_pushfstring(lua_State *L, CSTRING fmt, ...)
 {
    va_list argp;
    lj_gc_check(L);
@@ -883,7 +883,7 @@ extern GCobject * lua_pushobject(lua_State *L, OBJECTID UID, OBJECTPTR Ptr, objM
 //********************************************************************************************************************
 // Create new metatable in registry
 
-extern int luaL_newmetatable(lua_State *L, const char* tname)
+extern int luaL_newmetatable(lua_State *L, CSTRING tname)
 {
    GCtab *regt = tabV(registry(L));
    TValue *tv = lj_tab_setstr(L, regt, lj_str_newz(L, tname));
@@ -962,7 +962,7 @@ extern void lua_gettable(lua_State *L, int idx)
 //********************************************************************************************************************
 // Get table field by string key
 
-extern void lua_getfield(lua_State *L, int idx, const char* k)
+extern void lua_getfield(lua_State *L, int idx, CSTRING k)
 {
    cTValue *t = index2adr_check(L, idx);
    TValue key;
@@ -1015,7 +1015,7 @@ extern int lua_getmetatable(lua_State *L, int idx)
 //********************************************************************************************************************
 // Get metatable field by string key
 
-extern int luaL_getmetafield(lua_State *L, int idx, const char* field)
+extern int luaL_getmetafield(lua_State *L, int idx, CSTRING field)
 {
    if (lua_getmetatable(L, idx)) {
       cTValue *tv = lj_tab_getstr(tabV(L->top - 1), lj_str_newz(L, field));
@@ -1061,7 +1061,7 @@ extern int lua_next(lua_State *L, int idx)
 //********************************************************************************************************************
 // Get function upvalue by index
 
-extern const char* lua_getupvalue(lua_State *L, int idx, int n)
+extern CSTRING lua_getupvalue(lua_State *L, int idx, int n)
 {
    TValue *val;
    GCobj *o;
@@ -1145,7 +1145,7 @@ extern void lua_settable(lua_State *L, int idx)
 //********************************************************************************************************************
 // Set table field by string key
 
-extern void lua_setfield(lua_State *L, int idx, const char* k)
+extern void lua_setfield(lua_State *L, int idx, CSTRING k)
 {
    TValue key;
    cTValue *t = index2adr_check(L, idx);
@@ -1241,7 +1241,7 @@ extern int lua_setmetatable(lua_State *L, int idx)
 //********************************************************************************************************************
 // Set metatable from registry
 
-extern void luaL_setmetatable(lua_State *L, const char* tname)
+extern void luaL_setmetatable(lua_State *L, CSTRING tname)
 {
    lua_getfield(L, LUA_REGISTRYINDEX, tname);
    lua_setmetatable(L, -2);
@@ -1292,7 +1292,7 @@ extern int lua_setfenv(lua_State *L, int idx)
 //********************************************************************************************************************
 // Set function upvalue by index
 
-extern const char* lua_setupvalue(lua_State *L, int idx, int n)
+extern CSTRING lua_setupvalue(lua_State *L, int idx, int n)
 {
    cTValue *f = index2adr(L, idx);
    TValue *val;

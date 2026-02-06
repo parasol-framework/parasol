@@ -174,6 +174,9 @@ int lj_object_ipairs(lua_State *L)
 //
 // Ins points to the current 64-bit instruction.  The P32 field caches the read table index for O(1) repeat access.
 // P32 = 0xFFFFFFFF means uncached.  Ins is nullptr when called from JIT traces (no caching).
+//
+// NOTE: Type-fixing rules insist that the referenced object is always the same class.  Polymorphic objects (whereby
+// a class ID is not linked to the object type during parsing) cannot be JIT optimised.
 
 extern "C" void bc_object_getfield(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Dest, BCIns *Ins)
 {
@@ -233,6 +236,9 @@ extern "C" void bc_object_getfield(lua_State *L, GCobject *Obj, GCstr *Key, TVal
 //
 // Ins points to the current 64-bit instruction.  The P32 field caches the write table index for O(1) repeat access.
 // P32 = 0xFFFFFFFF means uncached.  Ins is nullptr when called from JIT traces (no caching).
+//
+// NOTE: Type-fixing rules insist that the referenced object is always the same class.  Polymorphic objects (whereby
+// a class ID is not linked to the object type during parsing) cannot be JIT optimised.
 
 extern "C" void bc_object_setfield(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Val, BCIns *Ins)
 {
@@ -259,8 +265,7 @@ extern "C" void bc_object_setfield(lua_State *L, GCobject *Obj, GCstr *Key, TVal
 
    if (Ins) {
       uint32_t cached = bc_p32(*Ins);
-      if ((cached != 0xFFFFFFFFu) and (cached < wt_size)
-          and (wt_data[cached].Hash IS Key->hash)) {
+      if ((cached != 0xFFFFFFFFu) and (cached < wt_size) and (wt_data[cached].Hash IS Key->hash)) {
          func = &wt_data[cached]; // Cache hit - O(1)
       }
       else { // Cache miss - binary search and cache

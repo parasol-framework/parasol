@@ -1,7 +1,5 @@
-/*
-** Buffer handling.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-*/
+// Buffer handling.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 
 #define lj_buf_c
 #define LUA_CORE
@@ -14,16 +12,16 @@
 #include "lj_tab.h"
 #include "lj_strfmt.h"
 
-// -- Buffer management ---------------------------------------------------
-
 static void buf_grow(SBuf* sb, MSize sz)
 {
    MSize osz = sbufsz(sb), len = sbuflen(sb), nsz = osz;
    char* b;
    GCSize flag;
+
    if (nsz < LJ_MIN_SBUF) nsz = LJ_MIN_SBUF;
    while (nsz < sz) nsz += nsz;
    flag = sbufflag(sb);
+
    if ((flag & SBUF_FLAG_COW)) {  // Copy-on-write semantics.
       lj_assertG_(G(sbufL(sb)), sb->w == sb->e, "bad SBuf COW");
       b = (char*)lj_mem_new(sbufL(sb), nsz);
@@ -34,10 +32,13 @@ static void buf_grow(SBuf* sb, MSize sz)
    else {
       b = (char*)lj_mem_realloc(sbufL(sb), sb->b, osz, nsz);
    }
+
    if ((flag & SBUF_FLAG_EXT)) {
       sbufX(sb)->r = sbufX(sb)->r - sb->b + b;  //  Adjust read pointer, too.
    }
+
    // Adjust buffer pointers.
+
    sb->b = b;
    sb->w = b + len;
    sb->e = b + nsz;
@@ -149,7 +150,7 @@ SBuf* lj_buf_putstr(SBuf* sb, GCstr* s)
    return sb;
 }
 
-// -- High-level buffer put operations ------------------------------------
+// High-level buffer put operations
 
 SBuf* lj_buf_putstr_reverse(SBuf* sb, GCstr* s)
 {
@@ -227,10 +228,10 @@ SBuf* lj_buf_puttab(SBuf* sb, GCtab* t, GCstr* sep, int32_t i, int32_t e)
 {
    MSize seplen = sep ? sep->len : 0;
    // 0-based: clamp start index to 0
-   if (i < 0)
-      i = 0;
+   if (i < 0) i = 0;
+
    if (i <= e) {
-      for (;;) {
+      while (true) {
          cTValue* o = lj_tab_getint(t, i);
          char* w;
          if (!o) {
@@ -262,7 +263,7 @@ SBuf* lj_buf_puttab(SBuf* sb, GCtab* t, GCstr* sep, int32_t i, int32_t e)
    return sb;
 }
 
-// -- Miscellaneous buffer operations -------------------------------------
+// Miscellaneous buffer operations
 
 GCstr* lj_buf_tostr(SBuf* sb)
 {
@@ -270,6 +271,7 @@ GCstr* lj_buf_tostr(SBuf* sb)
 }
 
 // Concatenate two strings.
+
 GCstr* lj_buf_cat2str(lua_State* L, GCstr* s1, GCstr* s2)
 {
    MSize len1 = s1->len, len2 = s2->len;
@@ -280,6 +282,7 @@ GCstr* lj_buf_cat2str(lua_State* L, GCstr* s1, GCstr* s2)
 }
 
 // Read ULEB128 from buffer.
+
 uint32_t lj_buf_ruleb128(const char** pp)
 {
    const uint8_t* w = (const uint8_t*)*pp;
@@ -292,4 +295,3 @@ uint32_t lj_buf_ruleb128(const char** pp)
    *pp = (const char*)w;
    return v;
 }
-

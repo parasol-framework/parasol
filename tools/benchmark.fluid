@@ -2,10 +2,17 @@
 Fluid Benchmarking Tool
 
 Usage:
-   parasol benchmark.fluid [test=Name]
+
+  parasol benchmark.fluid [test=Name]
 
 Parameters:
-  test    - Regex defining the test(s) to run.
+
+  test=[s]     - Regex defining the test(s) to run.
+  duration=[n] - Duration limit for each test, in seconds.
+  warmup=[n]   - Warmup cycles per test.
+  hotloop=[n]  - Cycles required before performing JIT optimisation.
+  calls=[n]    - Limit each test to this many calls.
+  save         - Saves the results to the log if specified.  Used for comparison on the next run.
  --]]
 
    import 'benchmark'
@@ -14,10 +21,10 @@ Parameters:
 
 rxEmailParts   = <{ regex.new([[([^@]+)@(.+)]]) }>
 rxDateParts    = <{ regex.new([[(\d+)-(\d+)-(\d+)]]) }>
-rxLogLevel     = <{ regex.new([[\[([A-Z]+)\]]]) }>
+rxLogLevel     = <{ regex.new("\\[([A-Z]+)\\]") }>
 rxTimestamp    = <{ regex.new([[(\d\d:\d\d:\d\d)]]) }>
 rxProtocol     = <{ regex.new([[^(\w+)://]]) }>
-rxUrlHost      = <{ regex.new([[://([^:/]+)]]) }>
+rxUrlHost      = <{ regex.new([[:\/\/([^:\/]+)]]) }>
 rxUrlPort      = <{ regex.new([[:(\d+)/]]) }>
 
 global glSelf = obj.find('self')
@@ -485,7 +492,7 @@ end
 
    for i in {0..1000} do
       local trimmed1 = padded:trim()
-      local trimmed2 = left_pad:ltrim()
+      local trimmed2 = left_pad:trim() -- should use ltrim() if available
       local trimmed3 = right_pad:rtrim()
       local trimmed4 = tabs:trim()
       local trimmed5 = mixed_ws:trim()
@@ -587,6 +594,7 @@ end
    local short = "Hello"
    local medium = "The quick brown fox"
    local long = "Pack my box with five dozen liquor jugs. The quick brown fox jumps over the lazy dog."
+   local test = "racecar"
 
    for i in {0..100000} do
       -- Reverse strings of different lengths
@@ -598,7 +606,6 @@ end
       local double_rev = string.reverse(string.reverse(medium))
 
       -- Palindrome check pattern
-      local test = "racecar"
       local is_palindrome = test is string.reverse(test)
    end
 end
@@ -610,6 +617,7 @@ end
    local filename = "document.txt"
    local path = "/home/user/documents/file.pdf"
    local url = "https://www.example.com/page"
+   local extensions = array<string> {".txt", ".pdf", ".doc", ".csv"}
 
    for i in {0..1000} do
       local starts_with_doc = filename:startsWith("doc")
@@ -621,7 +629,6 @@ end
       local ends_with_com = url:endsWith(".com")
 
       -- Variable prefix/suffix checks
-      local extensions = {".txt", ".pdf", ".doc", ".csv"}
       local chk = filename:endsWith(extensions[i % 4])
    end
 end

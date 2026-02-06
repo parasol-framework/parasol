@@ -1,5 +1,5 @@
 // Debug library.
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 // Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 //
 // Major portions taken verbatim or adapted from the Lua interpreter.

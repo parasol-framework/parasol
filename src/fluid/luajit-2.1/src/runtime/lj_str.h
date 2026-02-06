@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include <stdarg.h>
 #include <cstring>
 #include <string_view>
 
@@ -12,11 +11,16 @@
 // Ordered compare of strings. Returns <0, 0, or >0.
 LJ_FUNC int32_t lj_str_cmp(GCstr* a, GCstr* b);
 
-// Find substring f inside string s. Returns pointer to match or nullptr.
-LJ_FUNC const char* lj_str_find(const char* s, const char* f, MSize slen, MSize flen);
+// Find fixed string p inside string s. Returns pointer to match or nullptr.
+LJ_FUNC const char* lj_str_find(const char* s, const char* p, MSize slen, MSize plen);
+
+// Find substring within a string using std::string_view.
+[[nodiscard]] inline const char* lj_str_findsv(std::string_view s, std::string_view p) noexcept {
+   return lj_str_find(s.data(), p.data(), MSize(s.size()), MSize(p.size()));
+}
 
 // Check whether a string contains pattern matching characters.
-LJ_FUNC int lj_str_haspattern(GCstr* s);
+LJ_FUNC bool lj_str_haspattern(GCstr* s);
 
 // Resize the string interning hash table.
 LJ_FUNC void lj_str_resize(lua_State* L, MSize newmask);
@@ -45,8 +49,8 @@ LJ_FUNC void lj_str_init(lua_State* L);
    return sizeof(GCstr) + ((len + 4) & ~MSize(3));
 }
 
-// Free the string interning hash table (requires lj_gc.h for lj_mem_freevec).
-#define lj_str_freetab(g) (lj_mem_freevec(g, (g)->str.tab, (g)->str.mask+1, GCRef))
+// Free the string interning hash table (requires lj_gc.h for lj_mem_free).
+#define lj_str_freetab(g) (lj_mem_free(g, (g)->str.tab, ((g)->str.mask+1)*sizeof(GCRef)))
 
 // Intern a string literal (compile-time length calculation).
 #define lj_str_newlit(L, s) (lj_str_new(L, "" s, sizeof(s)-1))

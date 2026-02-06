@@ -467,56 +467,56 @@ Z: Close Path
 <tr><th class="col-md-1">NoData</th><td>The vector does not define a path.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
-</tbody></table><div class="footer copyright text-right">Vector class documentation © Paul Manias © 2010-2025</div></div><div class="docs-content" style="display:none;" id="FM"><h1>FM Type</h1><p class="lead">Mask for controlling feedback events that are received.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>FM::CHILD_HAS_FOCUS</th><td>A child of the vector has gained the user focus.</td></tr>
+</tbody></table><div class="footer copyright text-right">Vector class documentation © Paul Manias © 2010-2026</div></div><div class="docs-content" style="display:none;" id="FM"><h1>FM Type</h1><p class="lead">Mask for controlling feedback events that are received.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>FM::CHILD_HAS_FOCUS</th><td>A child of the vector has gained the user focus.</td></tr>
 <tr><th>FM::HAS_FOCUS</th><td>The vector has gained the user focus.</td></tr>
 <tr><th>FM::LOST_FOCUS</th><td>The vector has lost the user focus.</td></tr>
 <tr><th>FM::PATH_CHANGED</th><td>The vector path has been modified or affected by a transform.</td></tr>
-</tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2026</div></div>
 <div class="docs-content" style="display:none;" id="RQ"><h1>RQ Type</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>RQ::AUTO</th><td>The default option is chosen by the system.</td></tr>
 <tr><th>RQ::BEST</th><td>Use the best quality renderer available and without concerns for computational time taken.</td></tr>
 <tr><th>RQ::CRISP</th><td>Use a good quality renderer that produces crisp outlines (no anti-aliasing).</td></tr>
 <tr><th>RQ::FAST</th><td>Use the fastest renderer available and allow accuracy to be compromised in favour of speed.  Recommended for normalised paths that are known to be rectangular.</td></tr>
 <tr><th>RQ::PRECISE</th><td>Use a high quality renderer to produce accurate results.  Anti-aliasing will be enabled.</td></tr>
-</tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2026</div></div>
 <div class="docs-content" style="display:none;" id="VBF"><h1>VBF Type</h1><p class="lead">Options for vecGetBoundary().</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>VBF::INCLUSIVE</th><td>The result will be inclusive of all paths that belong to children of the queried vector.</td></tr>
 <tr><th>VBF::NO_TRANSFORM</th><td>The transformation step will not be applied to the vector's path.</td></tr>
-</tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2026</div></div>
 <div class="docs-content" style="display:none;" id="VCS"><h1>VCS Type</h1><p class="lead">Colour space options.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>VCS::INHERIT</th><td>Inherit the colour space option from the parent vector.</td></tr>
 <tr><th>VCS::LINEAR_RGB</th><td>Linear RGB is the default colour space for SVG and produces the best results.</td></tr>
 <tr><th>VCS::SRGB</th><td>The default colour-space is sRGB, recommended for its speed.</td></tr>
-</tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2026</div></div>
 <div class="docs-content" style="display:none;" id="VF"><h1>VF Type</h1><p class="lead">Optional flags and indicators for the Vector class.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>VF::DISABLED</th><td>The vector is disabled and user input should be ignored.</td></tr>
 <tr><th>VF::HAS_FOCUS</th><td>The vector holds the user's input focus.</td></tr>
 <tr><th>VF::ISOLATED</th><td>Enables isolation mode, which results in a bitmap buffer being allocated for the vector and its children while drawing.</td></tr>
 <tr><th>VF::JOIN_PATHS</th><td>When appending a new path, use a join operation to connect the tail end to the head.</td></tr>
-</tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2026</div></div>
 <div class="docs-content" style="display:none;" id="VFR"><h1>VFR Type</h1><p class="lead">Vector fill rules for the FillRule field in the Vector class.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>VFR::EVEN_ODD</th><td>This rule determines the 'insideness' of a point on the canvas by drawing a ray from that point to infinity in any direction and counting the number of path segments from the given shape that the ray crosses. If this number is odd, the point is inside; if even, the point is outside.</td></tr>
 <tr><th>VFR::INHERIT</th><td>The rule is inherited from the parent vector(s).</td></tr>
 <tr><th>VFR::NON_ZERO</th><td>This is the default.  This rule determines the 'insideness' of a point on the canvas by drawing a ray from that point to infinity in any direction and then examining the places where a segment of the shape crosses the ray. Starting with a count of zero, add one each time a path segment crosses the ray from left to right and subtract one each time a path segment crosses the ray from right to left. After counting the crossings, if the result is zero then the point is outside the path. Otherwise, it is inside.</td></tr>
-</tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2026</div></div>
 <div class="docs-content" style="display:none;" id="VIJ"><h1>VIJ Type</h1><p class="lead">Inner join options for angled lines.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>VIJ::BEVEL</th><td>Blunts the edge of the join.</td></tr>
 <tr><th>VIJ::INHERIT</th><td>Inherit the parent's join value.</td></tr>
 <tr><th>VIJ::JAG</th><td>A special non-SVG option.</td></tr>
 <tr><th>VIJ::MITER</th><td>Forms a sharp point at the join.  Typically not the best looking option.</td></tr>
 <tr><th>VIJ::ROUND</th><td>Rounds the edge of the join to produce the best looking results.</td></tr>
-</tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2026</div></div>
 <div class="docs-content" style="display:none;" id="VIS"><h1>VIS Type</h1><p class="lead">Options for the Vector class' Visibility field.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>VIS::COLLAPSE</th><td>Hide the vector and its children.  Do not use - provided for SVG compatibility only.</td></tr>
 <tr><th>VIS::HIDDEN</th><td>Hide the vector and its children.</td></tr>
 <tr><th>VIS::INHERIT</th><td>Inherit the visibility state from the parent.</td></tr>
 <tr><th>VIS::VISIBLE</th><td>The default.  Ensures that the vector is visible.</td></tr>
-</tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2026</div></div>
 <div class="docs-content" style="display:none;" id="VLC"><h1>VLC Type</h1><p class="lead">Line-cap options.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>VLC::BUTT</th><td>The default.  The line is sharply squared off at its exact end point.</td></tr>
 <tr><th>VLC::INHERIT</th><td>The cap type is inherited from the parent (defaults to butt if unspecified).</td></tr>
 <tr><th>VLC::ROUND</th><td>The line cap is a half-circle and the line's end-point forms the center point.</td></tr>
 <tr><th>VLC::SQUARE</th><td>Similar to butt, the line is sharply squared off but will extend past the end point by <code>StrokeWidth / 2</code>.</td></tr>
-</tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2026</div></div>
 <div class="docs-content" style="display:none;" id="VLJ"><h1>VLJ Type</h1><p class="lead">Options for the look of line joins.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>VLJ::BEVEL</th><td>The join is blunted, eliminating overly sharp edges.</td></tr>
 <tr><th>VLJ::INHERIT</th><td>Inherit the join option from the parent.</td></tr>
 <tr><th>VLJ::MITER</th><td>The default.  A sharp corner is used to join path segments.  The corner is formed by extending the outer edges of the stroke at the tangents of the path segments until they intersect. If the ‘stroke-miterlimit’ is exceeded, the line join falls back to BEVEL.</td></tr>
 <tr><th>VLJ::MITER_ROUND</th><td>Default to <code>MITER</code>, but switch to <code>ROUND</code> if the miter limit is exceeded.</td></tr>
 <tr><th>VLJ::MITER_SMART</th><td>An alternative form of MITER that extends beyond the intersection point, similarly to the miter-clip SVG rules.</td></tr>
 <tr><th>VLJ::ROUND</th><td>The join is rounded.</td></tr>
-</tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2026</div></div>
 <div class="docs-content" style="display:none;" id="struct-VectorMatrix"><h1>VectorMatrix Structure</h1><p class="lead">Vector transformation matrix.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Next</th><td><span class="text-nowrap">struct VectorMatrix *</span></td><td>The next transform in the list.</td></tr>
 <tr><th>Vector</th><td><span class="text-nowrap">objVector *</span></td><td>The vector associated with the transform.</td></tr>
 <tr><th>ScaleX</th><td><span class="text-nowrap">DOUBLE</span></td><td>Matrix value A</td></tr>
@@ -526,7 +526,7 @@ Z: Close Path
 <tr><th>TranslateX</th><td><span class="text-nowrap">DOUBLE</span></td><td>Matrix value E</td></tr>
 <tr><th>TranslateY</th><td><span class="text-nowrap">DOUBLE</span></td><td>Matrix value F</td></tr>
 <tr><th>Tag</th><td><span class="text-nowrap">INT</span></td><td>An optional tag value defined by the client for matrix identification.</td></tr>
-</tbody></table><div class="footer copyright text-right">Vector class documentation © Paul Manias © 2010-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Vector class documentation © Paul Manias © 2010-2026</div></div>
 </div></div></div><script type="text/javascript" src="../../js/bootstrap.bundle.min.js"></script><script type="text/javascript" src="../../js/base.js"></script><script type="text/javascript">
 const ready = fn => document.readyState !== 'loading' ? fn() : document.addEventListener('DOMContentLoaded', fn);
 

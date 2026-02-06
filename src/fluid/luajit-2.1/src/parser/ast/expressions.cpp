@@ -1,5 +1,5 @@
 // AST Builder - Expression Parsers
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 //
 // This file contains parsers for expression constructs:
 // - Expression statements (assignments, compound assignments, conditional shorthands)

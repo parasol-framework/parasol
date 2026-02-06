@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      http.h
-// Copyright: Paul Manias © 2005-2025
+// Copyright: Paul Manias © 2005-2026
 // Generator: idl-c
 
 #include <parasol/main.h>

@@ -1,5 +1,5 @@
 // Lua parser - AST/IR node schema
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 //
 // The schema mirrors every construct currently handled by the LuaJIT parser and describes how child nodes, source
 // locations and semantic attributes are stored.

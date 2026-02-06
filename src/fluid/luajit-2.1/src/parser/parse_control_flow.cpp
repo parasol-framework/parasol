@@ -1,5 +1,5 @@
 // Control flow helpers for parser expression management.
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 
 #include "parser/parse_control_flow.h"
 #include <parasol/main.h>

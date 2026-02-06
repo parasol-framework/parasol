@@ -1,5 +1,5 @@
 // AST Builder - Choose Expression Parser
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 //
 // This file contains the parser for choose expressions (pattern matching):
 // - Single value scrutinee: choose expr from pattern -> result ... end

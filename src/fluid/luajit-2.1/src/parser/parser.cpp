@@ -1,6 +1,6 @@
 // Lua parser
 //
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 
 #define LUA_CORE
 

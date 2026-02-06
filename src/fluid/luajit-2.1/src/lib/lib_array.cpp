@@ -1,5 +1,5 @@
 // Native array library.
-// Copyright (C) 2025 Paul Manias.
+// Copyright © 2025-2026 Paul Manias.
 //
 // TODO: Allow array lifetimes to be linked to Parasol objects.  This would allow external array data to be managed
 // safely without having to be cached.  In the event that the object is destroyed, the array should be marked as invalid
