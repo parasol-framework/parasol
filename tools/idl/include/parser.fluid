@@ -324,7 +324,7 @@ global function parseSourceFiles()
       -- Process --IDL_BEGIN/END-- sections, which allow the developer to embed FDL functions in the source code.
 
       local idlExtract
-      local content = file.readAll(path)
+      local content = io.readAll(path)
       content = '\n' .. content:replace('\r\n', '\n')
       for start, len, cap in rx_idl_section.findAll(content) do
          idlExtract = (idlExtract ?? '') .. cap[0]

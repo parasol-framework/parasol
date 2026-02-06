@@ -95,7 +95,7 @@ file.search = function(Path:str, Options:table)
          count++
          processing.sleep(0)
 
-         fileFolder, file_name = file.splitPath(fl.path)
+         fileFolder, file_name = io.splitPath(fl.path)
 
          -- Ensure that the filename matches our filter
 
@@ -173,14 +173,14 @@ file.search = function(Path:str, Options:table)
    function processPath(Path:str)
       msg(f'Path: {Path}, Filter: {Options.nameFilter}, Regex: {isRegexFilter}, Content: {Options.contentFilter}')
 
-      if file.isFolder(Path) then
+      if io.isFolder(Path) then
          mSys.AdjustLogLevel(ADJUST_LOG)
             scanPath(Path, 0)
          mSys.AdjustLogLevel(-ADJUST_LOG)
       else
          -- Single file analysis
 
-         path, file_name = file.splitPath(Path)
+         path, file_name = io.splitPath(Path)
          name_matches = true
 
          if Options.nameFilter then

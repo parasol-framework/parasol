@@ -16,7 +16,7 @@ string.translateRefresh = function()
    --end
    if (not language) or (language is 'eng') then return end
 
-   content = file.readAll('config:translations/' .. language:lower() .. '.cfg')
+   content = io.readAll('config:translations/' .. language:lower() .. '.cfg')
 
    for start, stop, cap in rxTranslateLine.findAll(content) do
       local line = cap[0]

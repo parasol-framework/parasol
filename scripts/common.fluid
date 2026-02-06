@@ -68,65 +68,27 @@ end
 
 global file <const> ?= { ui = { } }
 
--- Read an entire file as a string.
--- Will throw an exception if the file is not found or the complete data cannot be read.
-
 file.readAll = function(Path:str):str
-   local fl
-   try
-      fl = obj.new('file', { flags='READ', path=Path } )
-   except ex
-      error(f'Failed to open {Path}: {ex.message}')
-   end
-
-   file_buffer = string.alloc(fl.size)
-   err, bytes_read = fl.acRead(file_buffer)
-   fl.free()
-   assert(err is ERR_Okay and bytes_read is #file_buffer, 'Failed to read ' .. #file_buffer .. ' bytes from "' .. Path .. '"')
-   return file_buffer
+   print('file.readAll() deprecated - use io.readAll()')
+   return io.readAll(Path)
 end
-
-------------------------------------------------------------------------------
 
 file.writeAll = function(Path:str, Content:str)
-   fl = obj.new('file', { path = Path, flags = FL_WRITE|FL_NEW })
-   fl.acWrite(Content)
-   fl.free()
+   print('file.writeAll() deprecated - use io.writeAll()')
+   io.writeAll(Path, Content)
 end
-
-------------------------------------------------------------------------------
 
 file.isFolder = function(Path:str):bool
-   e = string.substr(Path, -1)
-   if (e is '/') or (e is '\\') or (e is ':') then return true end
-   return false
+   print('file.isFolder() deprecated - use io.isFolder()')
+   return io.isFolder(Path)
 end
-
-------------------------------------------------------------------------------
-
-rx_split_path = <{ regex.new([[^(.+[\/:\\])(.*)$]]) }>
 
 file.splitPath = function(Path:str):<str,str>
-   Path ?? return nil, nil
-   path, fl = rx_split_path.extract(Path)
-   path ?? return nil, Path
-   return path, fl
+   print('file.splitPath() deprecated - use io.splitPath()')
+   return io.splitPath(Path)
 end
 
-------------------------------------------------------------------------------
--- Sanitise a path by dropping repeated folder characters
-
-rx_sanitise = <{ regex.new([[^(.*?[:\/\\])[:\/\\]+(.*)$]]) }>
-
 file.sanitisePath = function(Path:str):str
-   while true do
-      rep = rx_sanitise.replace(Path, '$1$2')
-      if #rep != #Path then
-         Path = rep
-      else
-         break
-      end
-   end
-
-   return Path
+   print('file.sanitisePath() deprecated - use io.sanitisePath()')
+   return io.sanitisePath(Path)
 end

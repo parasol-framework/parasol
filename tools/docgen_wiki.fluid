@@ -55,8 +55,8 @@ end
    pandoc = arg('pandoc', 'c:Program Files/Pandoc/pandoc')
    md_folder = arg('wiki', 'sdk:docs/wiki/')
 
-   header = file.readAll('sdk:docs/wiki-header.html')
-   footer = file.readAll('sdk:docs/wiki-footer.html')
+   header = io.readAll('sdk:docs/wiki-header.html')
+   footer = io.readAll('sdk:docs/wiki-footer.html')
 
    err, temp_output = mSys.ResolvePath('temp:markdown', RSF_NO_FILE_CHECK)
    output_files = array<table>
@@ -137,7 +137,7 @@ end
       mSys.DeleteFile(output_path)
 
       for v in values(output_files) do
-         md_output = file.readAll(v.pandoc_output)
+         md_output = io.readAll(v.pandoc_output)
          fl = obj.new('file', { path=v.target_path, flags=FL_WRITE|FL_NEW })
 
          mod_header = header:replace('<title>Parasol Wiki</title>', '<title>Parasol Wiki - ' .. v.title .. '</title>')
