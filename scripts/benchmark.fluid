@@ -265,7 +265,7 @@ bmark.stats = function(Values:any):table
    -- Calculate stddev
    local variance = 0
    for value in values(Values) do
-      variance += (value - mean) ^ 2
+      variance += (value - mean) ** 2
    end
    variance /= n
    stddev = math.sqrt(variance)
@@ -330,7 +330,7 @@ bmark.confidenceInterval = function(Values:array, Confidence:num):table
 
    local variance = 0
    for value in values(Values) do
-      variance += (value - mean) ^ 2
+      variance += (value - mean) ** 2
    end
    variance /= (n - 1) -- Sample variance (Bessel's correction)
    local stddev = math.sqrt(variance)

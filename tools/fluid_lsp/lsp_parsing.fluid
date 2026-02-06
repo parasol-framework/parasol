@@ -405,6 +405,11 @@ global function tokenizeFluid(Source:str):array
             addToken(line, op_start, 2, 1, 0)
             pos += 2
             col += 2
+         elseif pos + 1 < len and Source:sub(pos + 1, pos + 2) is '*' then
+            -- ** exponentiation
+            addToken(line, op_start, 2, 1, 0)
+            pos += 2
+            col += 2
          else
             -- * multiplication
             addToken(line, op_start, 1, 1, 0)
@@ -489,10 +494,6 @@ global function tokenizeFluid(Source:str):array
          pos++
          col++
       elseif c is '~' then -- ~ bitwise NOT
-         addToken(line, col, 1, 1, 0)
-         pos++
-         col++
-      elseif c is '^' then -- ^ exponentiation
          addToken(line, col, 1, 1, 0)
          pos++
          col++

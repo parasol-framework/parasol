@@ -83,6 +83,7 @@ struct TokenDefinition {
    TOKEN_DEF(cif_empty,    "?\?=",     false) \
    TOKEN_DEF(cif_nil,      "?=",       false) \
    TOKEN_DEF(plusplus,     "++",       false) \
+   TOKEN_DEF(pow,          "**",       false) \
    TOKEN_DEF(pipe,         "|>",       false) \
    TOKEN_DEF(defer_open,   "<{",       false) \
    TOKEN_DEF(defer_typed,  "<type{",   false) \

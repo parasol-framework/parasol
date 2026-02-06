@@ -41,8 +41,8 @@ end
 @Test function BitwisePrecedenceAndGrouping()
    -- Parentheses control
    assert((1 | (2 & 4)) is (1 | bit.band(2, 4)), 'AND groups inside OR with parens')
-   -- Power stays as exponentiation, not XOR
-   assert(2 ^ 3 is 8, '^ remains power operator')
+   -- Power uses ** for exponentiation
+   assert(2 ** 3 is 8, '** is power operator')
    -- Not-equals unaffected
    assert(3 != 4, '!= remains not-equal')
 end

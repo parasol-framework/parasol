@@ -39,7 +39,7 @@ static CSTRING get_binop_name(BinOpr opr)
       case BinOpr::Mul: return "*";
       case BinOpr::Div: return "/";
       case BinOpr::Mod: return "%";
-      case BinOpr::Pow: return "^";
+      case BinOpr::Pow: return "**";
       case BinOpr::Concat: return "..";
       case BinOpr::Equal: return "is";
       case BinOpr::NotEqual: return "!=";
