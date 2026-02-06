@@ -1044,15 +1044,13 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
          info.left = 5;   // C precedence: shifts bind looser than +/- (6)
          info.right = 5;  // Left-associative
          return info;
+      case TokenKind::Power:
+         info.op = AstBinaryOperator::Power;
+         info.left = 10;
+         info.right = 9;  // Right-associative
+         return info;
       default:
          break;
-   }
-
-   if (token.raw() IS '^') {
-      info.op = AstBinaryOperator::Power;
-      info.left = 10;
-      info.right = 9;
-      return info;
    }
 
    if (token.raw() IS '<') {

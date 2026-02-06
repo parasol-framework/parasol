@@ -1,4 +1,4 @@
--- Basic demonstration of the file.search interface.  The following command-line parameters are accepted:
+-- Basic demonstration of the io.search interface.  The following command-line parameters are accepted:
 --
 -- path:   The folder to be searched.
 -- filter: A wildcard string to filter for desired filenames.
@@ -7,10 +7,10 @@
 
    time        = mSys.preciseTime()
    glPath      = obj.find('self').workingPath
-   search_path = arg('path', glPath .. '../src/core/')
+   search_path = arg('path', f'{glPath}../src/core/')
    filter      = arg('filter', '*')
 
-   print('Initiating search of path ' .. search_path .. ' with filter ' .. filter)
+   print(f'Initiating search of path {search_path} with filter {filter}')
 
    io.search(search_path, {
       nameFilter = filter,

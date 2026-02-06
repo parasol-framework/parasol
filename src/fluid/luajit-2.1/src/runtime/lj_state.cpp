@@ -100,20 +100,25 @@ static void resizestack(lua_State *L, MSize n)
    MSize oldsize = L->stacksize;
    MSize realsize = n + 1 + LJ_STACK_EXTRA;
    GCobj* up;
+
    lj_assertL((MSize)(tvref(L->maxstack) - oldst) IS L->stacksize - LJ_STACK_EXTRA - 1, "inconsistent stack size");
+
    st = (TValue*)lj_mem_realloc(L, tvref(L->stack), (MSize)(oldsize * sizeof(TValue)), (MSize)(realsize * sizeof(TValue)));
    setmref(L->stack, st);
    delta = (char*)st - (char*)oldst;
    setmref(L->maxstack, st + n);
-   while (oldsize < realsize)  //  Clear new slots.
-      setnilV(st + oldsize++);
+   while (oldsize < realsize) setnilV(st + oldsize++); // Clear new slots.
+
    L->stacksize = realsize;
-   if ((size_t)(mref<char>(G(L)->jit_base) - (char*)oldst) < oldsize)
+   if ((size_t)(mref<char>(G(L)->jit_base) - (char*)oldst) < oldsize) {
       setmref(G(L)->jit_base, mref<char>(G(L)->jit_base) + delta);
+   }
+
    L->base = (TValue*)((char*)L->base + delta);
    L->top = (TValue*)((char*)L->top + delta);
-   for (up = gcref(L->openupval); up != nullptr; up = gcnext(up))
+   for (up = gcref(L->openupval); up != nullptr; up = gcnext(up)) {
       setmref(gco_to_upval(up)->v, (TValue*)((char*)uvval(gco_to_upval(up)) + delta));
+   }
 }
 
 //********************************************************************************************************************
@@ -121,8 +126,9 @@ static void resizestack(lua_State *L, MSize n)
 
 void lj_state_relimitstack(lua_State *L)
 {
-   if (L->stacksize > LJ_STACK_MAXEX and L->top - tvref(L->stack) < LJ_STACK_MAX - 1)
+   if (L->stacksize > LJ_STACK_MAXEX and L->top - tvref(L->stack) < LJ_STACK_MAX - 1) {
       resizestack(L, LJ_STACK_MAX);
+   }
 }
 
 //********************************************************************************************************************
@@ -147,8 +153,8 @@ void lj_state_growstack(lua_State *L, MSize need)
    MSize n;
    lj_assertL(need < 1024, "Stack growth request exceeds reasonable 1K limit");
 
-   if (L->stacksize > LJ_STACK_MAXEX)  //  Overflow while handling overflow?
-      lj_err_throw(L, LUA_ERRERR);
+   if (L->stacksize > LJ_STACK_MAXEX) lj_err_throw(L, LUA_ERRERR);  //  Overflow while handling overflow?
+
    n = L->stacksize + need;
    if (n > LJ_STACK_MAX) n += 2 * LUA_MINSTACK;
    else if (n < 2 * L->stacksize) {

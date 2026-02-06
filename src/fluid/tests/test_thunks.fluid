@@ -311,7 +311,7 @@ end
    assert(a % b is 1, "10 % 3 should be 1")
 
    -- Power
-   assert(b ^ 2 is 9, "3 ^ 2 should be 9")
+   assert(b ** 2 is 9, "3 ** 2 should be 9")
 
    -- Unary minus
    assert(-a is -10, "-10 should be -10")

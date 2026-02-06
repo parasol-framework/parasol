@@ -495,6 +495,17 @@ ParserResult<AstBuilder::ResultFilterInfo> AstBuilder::parse_result_filter_patte
          info.trailing_keep = true;
          position++;
       }
+      else if (current.kind() IS TokenKind::Power) {  // ** treated as two keep positions
+         info.keep_mask |= (1ULL << position);
+         info.trailing_keep = true;
+         position++;
+         if (position >= 64) {
+            return this->fail<ResultFilterInfo>(ParserErrorCode::UnexpectedToken, current,
+               "result filter pattern too long (max 64 positions)");
+         }
+         info.keep_mask |= (1ULL << position);
+         position++;
+      }
       else if (current.kind() IS TokenKind::Identifier) {
          // Check for underscore identifier - may contain multiple underscores (e.g. "__")
          GCstr *id = current.identifier();

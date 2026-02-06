@@ -24,7 +24,7 @@ end
    end
 
    result = 3 |> double() |> square()
-   assert(result is 36, "Failed chained pipes: expected 36, got " .. tostring(result))  -- (3*2)^2 = 36
+   assert(result is 36, "Failed chained pipes: expected 36, got " .. tostring(result))  -- (3*2)**2 = 36
 end
 
 @Test function PipeWithAdditionalArgs()

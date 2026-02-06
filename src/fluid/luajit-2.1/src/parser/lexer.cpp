@@ -1041,7 +1041,8 @@ static LexToken lex_scan(LexState *State, TValue *tv)
          case '*':
             State->mark_token_start();
             lex_next(State);
-            if (auto tok = check_compound(State, TK_cmul)) return tok;
+            if (auto tok = check_compound(State, TK_cmul)) return tok;  // *=
+            if (State->c IS '*') { lex_next(State); return TK_pow; }    // **
             return '*';
 
          case '/':
