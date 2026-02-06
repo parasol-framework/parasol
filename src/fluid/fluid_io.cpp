@@ -13,6 +13,7 @@
 #include "lj_obj.h"
 #include "hashes.h"
 #include "defs.h"
+#include "lj_proto_registry.h"
 
 enum {
    CONST_STDIN = -1,
@@ -853,4 +854,22 @@ void register_io_class(lua_State *Lua)
 
    lua_pushnumber(Lua, CONST_STDERR);
    lua_setfield(Lua, -2, "stderr");
+
+   // Register io interface prototypes for compile-time type inference
+   reg_iface_prototype("io", "open", { FluidType::Any }, { FluidType::Str, FluidType::Str });
+   reg_iface_prototype("io", "close", { FluidType::Bool }, { FluidType::Any });
+   reg_iface_prototype("io", "read", { FluidType::Any }, { FluidType::Any });
+   reg_iface_prototype("io", "write", {}, { FluidType::Any });
+   reg_iface_prototype("io", "flush", { FluidType::Bool }, {});
+   reg_iface_prototype("io", "input", { FluidType::Any }, { FluidType::Any });
+   reg_iface_prototype("io", "output", { FluidType::Any }, { FluidType::Any });
+   reg_iface_prototype("io", "lines", { FluidType::Func }, { FluidType::Any });
+   reg_iface_prototype("io", "popen", {}, { FluidType::Str });
+   reg_iface_prototype("io", "tmpfile", { FluidType::Any }, {});
+   reg_iface_prototype("io", "type", { FluidType::Str }, { FluidType::Any });
+   reg_iface_prototype("io", "readAll", { FluidType::Str }, { FluidType::Str });
+   reg_iface_prototype("io", "writeAll", {}, { FluidType::Str, FluidType::Str });
+   reg_iface_prototype("io", "isFolder", { FluidType::Bool }, { FluidType::Str });
+   reg_iface_prototype("io", "splitPath", { FluidType::Str, FluidType::Str }, { FluidType::Str });
+   reg_iface_prototype("io", "sanitisePath", { FluidType::Str }, { FluidType::Str });
 }
