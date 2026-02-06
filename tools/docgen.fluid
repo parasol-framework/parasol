@@ -55,7 +55,7 @@ end
 
    cmdlist = ''
 
-   file.search('sdk:docs/xml/modules/', {
+   io.search('sdk:docs/xml/modules/', {
       nameFilter = regex.new([[^.*\.xml$]]),
       matchFeedback = function(Path:str, FileName:str, File)
          src_path = Path .. FileName

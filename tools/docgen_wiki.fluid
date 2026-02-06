@@ -78,7 +78,7 @@ end
 
    cmdlist = ''
 
-   file.search(md_folder, {
+   io.search(md_folder, {
       nameFilter = regex.new([[^.*\.md$]]),
       matchFeedback = function(Path, FileName, File)
          title = FileName:replace('-', ' ')

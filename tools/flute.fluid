@@ -15,7 +15,6 @@ Example usage:
    parasol flute.fluid file=[file]
 ]]
 
-   import 'common'
 
    glFile    = arg('file')
    glTest    = arg('test')?:split(',') ?? { }

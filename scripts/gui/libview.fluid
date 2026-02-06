@@ -1,6 +1,5 @@
 -- Internal support functions for listview, columnview etc
 
-   import 'common'
    import 'gui'
    import 'gui/scrollbar'
 

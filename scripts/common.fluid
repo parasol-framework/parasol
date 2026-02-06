@@ -1,5 +1,0 @@
--- Common utility functions are kept in this module.
-
-------------------------------------------------------------------------------
-
-global file <const> ?= { ui = { } }

@@ -2,7 +2,6 @@
 Documentation is available in the Parasol Wiki.
 --]]
 
-   import 'common'
    import 'gui'
    import 'gui/tooltip'
    import 'translate'

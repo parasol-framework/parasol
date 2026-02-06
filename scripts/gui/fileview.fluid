@@ -4,7 +4,6 @@ Enhances any view object, such as listview or columnview to create a file system
 Documentation is available in the Parasol Wiki.
 --]]
 
-   import 'common'
    import 'gui'
    import 'gui/menu'
    import 'gui/dialog'

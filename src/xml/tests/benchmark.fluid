@@ -7,7 +7,6 @@
 -- * Progressive output showing test progress and individual results
 
    include 'xml'
-   import 'common'
 
    glXML = nil
    glXQuery = obj.new('xquery', { })

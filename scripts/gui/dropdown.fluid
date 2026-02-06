@@ -2,7 +2,6 @@
 Internal script for combobox drop-down menus.
 --]]
 
-   import 'common'
    import 'gui'
    include 'display'
 
