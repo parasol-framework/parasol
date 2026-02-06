@@ -125,7 +125,7 @@ end
 
 function processModuleXML(FilePath:str, DocPath:str):<str,table>
    -- Process a module XML file and extract function information
-   content = file.readAll(FilePath)
+   content = io.readAll(FilePath)
    content ?? return
 
    relativePath = FilePath:replace(DocPath, '')
@@ -169,7 +169,7 @@ end
 -- Process a class XML file and extract method/action/field information
 
 function processClassXML(FilePath, DocPath)
-   content = file.readAll(FilePath)
+   content = io.readAll(FilePath)
    content ?? return
 
    relativePath = FilePath:replace(DocPath, '')
@@ -362,7 +362,7 @@ global function saveDocCache(CachePath, Cache)
 
 return ]] .. serializeTable(Cache) .. '\n'
 
-   file.writeAll(CachePath, content)
+   io.writeAll(CachePath, content)
 end
 
 ----------------------------------------------------------------------------------------------------------------------

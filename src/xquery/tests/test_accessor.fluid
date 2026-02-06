@@ -18,7 +18,7 @@ function init(State)
    mSys.DeleteFile(glBaseFolder)
    ensureFolder(glBaseFolder)
 
-   file.writeAll(glXMLPath, [[
+   io.writeAll(glXMLPath, [[
 <?xml version="1.0"?>
 <root xml:base="nested/">
    <ns:child xmlns:ns="urn:test" xml:base="entries/">

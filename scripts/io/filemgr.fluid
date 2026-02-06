@@ -39,7 +39,7 @@ function copyFeedback(Size:num, Position:num, Path:str, Dest:str, User, Feedback
    end
 
    if progress_dialog and (Position is 0 or Size > 32768) then
-      local folder, file = file.splitPath(Path)
+      local folder, file = io.splitPath(Path)
 
       if string.len(file) >= 80 then file = '...' .. string.substr(file, -80) end
 
@@ -102,7 +102,7 @@ file.ui.copy = function(Source:any, Dest:str, Move:bool)
       if response != 'yes-all' and response != 'no-all' then response = 'yes' end -- Reset to the default
 
       msg('Processing file source ' .. src_path)
-      local src_folder, src_file = file.splitPath(src_path)
+      local src_folder, src_file = io.splitPath(src_path)
       local dest_path = Dest .. src_file
 
       -- Check if the destination already exists
@@ -235,7 +235,7 @@ file.ui.delete = function(Paths)
          end
 
          if progress_dialog then
-            local folder, file = file.splitPath(Feedback.path)
+            local folder, file = io.splitPath(Feedback.path)
             progress_dialog.setMessage('Deleting: ' .. file, false)
             progress_time = mSys.PreciseTime()
             processing.sleep(0)

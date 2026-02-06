@@ -28,7 +28,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function saveBitmap(Bitmap, Path)
-   folder, filename = file.splitPath(Path)
+   folder, filename = io.splitPath(Path)
    split = string.split(filename, '\\.')
    if split?? then
       filename = split[#split-1] .. '.png'

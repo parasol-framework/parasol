@@ -352,6 +352,125 @@ end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- readAll / writeAll tests
+
+@Test(labels=['io', 'readAll']) function IOReadAll()
+   -- Test reading a file with known content
+   test_content = 'Hello, readAll!\nSecond line.\n'
+   test_path = createTestFile('test_readall.txt', test_content)
+
+   result = io.readAll(test_path)
+   assert(result is test_content, 'readAll should return exact file content, got "' .. tostring(result) .. '"')
+
+   -- Test reading an empty file
+   empty_path = createTestFile('test_readall_empty.txt', nil)
+   result = io.readAll(empty_path)
+   assert(result is '', 'readAll on empty file should return empty string')
+
+   -- Test reading non-existent file raises error
+   try
+      io.readAll(glTestFolder .. 'nonexistent_readall.txt')
+   except ex
+      assert(ex.code is ERR_OpenFile, 'readAll should raise OpenFile error for missing file')
+   success
+      error('readAll should fail for non-existent file')
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test(labels=['io', 'writeAll']) function IOWriteAll()
+   -- Test writing content to a new file
+   write_path = glTestFolder .. 'test_writeall.txt'
+   glTestFiles:push(write_path)
+
+   io.writeAll(write_path, 'writeAll test data')
+   content = readFileContent(write_path)
+   assert(content is 'writeAll test data', 'writeAll content should match, got "' .. tostring(content) .. '"')
+
+   -- Test overwriting an existing file
+   io.writeAll(write_path, 'overwritten')
+   content = readFileContent(write_path)
+   assert(content is 'overwritten', 'writeAll should overwrite existing file')
+
+   -- Test round-trip with readAll
+   round_trip = io.readAll(write_path)
+   assert(round_trip is 'overwritten', 'readAll should match what writeAll wrote')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- isFolder tests
+
+@Test(labels=['io', 'isFolder']) function IOIsFolder()
+   assert(io.isFolder('temp:') is true, 'Path ending with : should be a folder')
+   assert(io.isFolder('/some/path/') is true, 'Path ending with / should be a folder')
+   assert(io.isFolder('C:\\Users\\') is true, 'Path ending with \\ should be a folder')
+   assert(io.isFolder('file.txt') is false, 'Filename should not be a folder')
+   assert(io.isFolder('/some/path/file.txt') is false, 'Path to file should not be a folder')
+   assert(io.isFolder('') is false, 'Empty string should not be a folder')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- splitPath tests
+
+@Test(labels=['io', 'splitPath']) function IOSplitPath()
+   -- Standard path splitting
+   dir, file = io.splitPath('temp:test.txt')
+   assert(dir is 'temp:', 'Directory should be "temp:", got "' .. tostring(dir) .. '"')
+   assert(file is 'test.txt', 'Filename should be "test.txt", got "' .. tostring(file) .. '"')
+
+   -- Forward slash path
+   dir, file = io.splitPath('/some/path/file.txt')
+   assert(dir is '/some/path/', 'Directory should include trailing /')
+   assert(file is 'file.txt', 'Filename should be "file.txt"')
+
+   -- Backslash path
+   dir, file = io.splitPath('C:\\Users\\test.txt')
+   assert(dir is 'C:\\Users\\', 'Directory should include trailing backslash')
+   assert(file is 'test.txt', 'Filename should be "test.txt"')
+
+   -- No directory component
+   dir, file = io.splitPath('justfile.txt')
+   assert(dir is nil, 'Directory should be nil for bare filename')
+   assert(file is 'justfile.txt', 'Filename should be the full input')
+
+   -- Nil input
+   dir, file = io.splitPath(nil)
+   assert(dir is nil, 'Directory should be nil for nil input')
+   assert(file is nil, 'Filename should be nil for nil input')
+
+   -- Directory-only path
+   dir, file = io.splitPath('temp:folder/')
+   assert(dir is 'temp:folder/', 'Directory should be the full path')
+   assert(file is '', 'Filename should be empty for directory path')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- sanitisePath tests
+
+@Test(labels=['io', 'sanitisePath']) function IOSanitisePath()
+   -- Collapse double forward slashes
+   result = io.sanitisePath('/some//path///file.txt')
+   assert(result is '/some/path/file.txt', 'Should collapse // and ///, got "' .. result .. '"')
+
+   -- Collapse double backslashes
+   result = io.sanitisePath('dir\\\\subdir\\\\file.txt')
+   assert(result is 'dir\\subdir\\file.txt', 'Should collapse \\\\, got "' .. result .. '"')
+
+   -- Path with no duplicates should be unchanged
+   result = io.sanitisePath('/clean/path/file.txt')
+   assert(result is '/clean/path/file.txt', 'Clean path should be unchanged')
+
+   -- Empty string
+   result = io.sanitisePath('')
+   assert(result is '', 'Empty string should return empty string')
+
+   -- Volume path with duplicates
+   result = io.sanitisePath('temp::file.txt')
+   assert(result is 'temp:file.txt', 'Should collapse ::, got "' .. result .. '"')
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Integration tests
 
 @Test(labels=['io', "read"]) function IORead()

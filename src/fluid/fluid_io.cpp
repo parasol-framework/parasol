@@ -78,6 +78,12 @@ static int file_read(lua_State *);
 static int file_write(lua_State *);
 static int file_flush(lua_State *);
 
+static int io_readAll(lua_State *);
+static int io_writeAll(lua_State *);
+static int io_isFolder(lua_State *);
+static int io_splitPath(lua_State *);
+static int io_sanitisePath(lua_State *);
+
 //********************************************************************************************************************
 // Usage: file = io.open(path, [mode])
 
@@ -657,21 +663,155 @@ static int file_lines(lua_State *Lua)
 }
 
 //********************************************************************************************************************
+// Usage: content = io.readAll(path)
+// Reads an entire file and returns its content as a string.  Raises an error if the file cannot be opened or read.
+
+static int io_readAll(lua_State *Lua)
+{
+   auto path = luaL_checkstring(Lua, 1);
+
+   auto file = objFile::create::local({ fl::Path(path), fl::Flags(FL::READ) });
+   if (not file) luaL_error(Lua, ERR::OpenFile, "Failed to open file: %s", path);
+
+   file->seekEnd(0);
+   auto file_size = file->Position;
+   file->seekStart(0);
+
+   if (file_size > 0) {
+      std::string buffer(file_size, '\0');
+      int bytes_read;
+      if (acRead(file, buffer.data(), file_size, &bytes_read) IS ERR::Okay and bytes_read IS file_size) {
+         lua_pushlstring(Lua, buffer.data(), bytes_read);
+         return 1;
+      }
+      luaL_error(Lua, ERR::Read, "Failed to read %" PRId64 " bytes from \"%s\"", file_size, path);
+   }
+
+   lua_pushstring(Lua, "");
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: io.writeAll(path, content)
+// Writes content to a file, creating or overwriting it.
+
+static int io_writeAll(lua_State *Lua)
+{
+   auto path = luaL_checkstring(Lua, 1);
+   size_t len;
+   auto content = luaL_checklstring(Lua, 2, &len);
+
+   auto file = objFile::create::local({ fl::Path(path), fl::Flags(FL::WRITE|FL::NEW) });
+   if (not file) luaL_error(Lua, ERR::CreateFile, "Failed to create file: %s", path);
+
+   int result;
+   if (acWrite(file, content, len, &result) != ERR::Okay) {
+      luaL_error(Lua, ERR::Write, "Failed to write to file: %s", path);
+   }
+
+   return 0;
+}
+
+//********************************************************************************************************************
+// Usage: bool = io.isFolder(path)
+// Returns true if the path string ends with a folder separator ('/', '\\' or ':').
+
+static int io_isFolder(lua_State *Lua)
+{
+   auto path = luaL_checkstring(Lua, 1);
+   auto len = strlen(path);
+
+   if (len > 0) {
+      auto last = path[len - 1];
+      lua_pushboolean(Lua, (last IS '/') or (last IS '\\') or (last IS ':'));
+   }
+   else lua_pushboolean(Lua, 0);
+
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: dir, file = io.splitPath(path)
+// Splits a path into directory and filename components.  The directory includes the trailing separator.
+// Returns nil, nil if path is nil/empty.  Returns nil, path if no separator is found.
+
+static int io_splitPath(lua_State *Lua)
+{
+   if (lua_gettop(Lua) IS 0 or lua_isnil(Lua, 1)) {
+      lua_pushnil(Lua);
+      lua_pushnil(Lua);
+      return 2;
+   }
+
+   auto path = luaL_checkstring(Lua, 1);
+   auto len = strlen(path);
+
+   // Find the last path separator
+   int sep_pos = -1;
+   for (int i = int(len) - 1; i >= 0; i--) {
+      if (path[i] IS '/' or path[i] IS '\\' or path[i] IS ':') {
+         sep_pos = i;
+         break;
+      }
+   }
+
+   if (sep_pos < 0) {
+      lua_pushnil(Lua);
+      lua_pushstring(Lua, path);
+   }
+   else {
+      lua_pushlstring(Lua, path, sep_pos + 1); // Directory including separator
+      lua_pushstring(Lua, path + sep_pos + 1); // Filename after separator
+   }
+
+   return 2;
+}
+
+//********************************************************************************************************************
+// Usage: cleaned = io.sanitisePath(path)
+// Removes repeated consecutive path separator characters ('/', '\\', ':') from a path.
+
+static int io_sanitisePath(lua_State *Lua)
+{
+   auto path = luaL_checkstring(Lua, 1);
+   auto len = strlen(path);
+
+   std::string result;
+   result.reserve(len);
+
+   bool prev_was_sep = false;
+   for (size_t i = 0; i < len; i++) {
+      bool is_sep = (path[i] IS '/' or path[i] IS '\\' or path[i] IS ':');
+      if (is_sep and prev_was_sep) continue;
+      result += path[i];
+      prev_was_sep = is_sep;
+   }
+
+   lua_pushlstring(Lua, result.data(), result.size());
+   return 1;
+}
+
+//********************************************************************************************************************
 
 void register_io_class(lua_State *Lua)
 {
    static const struct luaL_Reg iolib_functions[] = {
-      { "close",       io_close },
-      { "flush",       io_flush },
-      { "input",       io_input },
-      { "lines",       io_lines },
-      { "open",        io_open },
-      { "output",      io_output },
-      { "popen",       io_popen },
-      { "read",        io_read },
-      { "tmpfile",     io_tmpfile },
-      { "type",        io_type },
-      { "write",       io_write },
+      { "close",        io_close },
+      { "flush",        io_flush },
+      { "input",        io_input },
+      { "isFolder",     io_isFolder },
+      { "lines",        io_lines },
+      { "open",         io_open },
+      { "output",       io_output },
+      { "popen",        io_popen },
+      { "read",         io_read },
+      { "readAll",      io_readAll },
+      { "sanitisePath", io_sanitisePath },
+      { "splitPath",    io_splitPath },
+      { "tmpfile",      io_tmpfile },
+      { "type",         io_type },
+      { "write",        io_write },
+      { "writeAll",     io_writeAll },
       { nullptr, nullptr }
    };
 

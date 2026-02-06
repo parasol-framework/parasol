@@ -389,7 +389,7 @@ local glContent
 
 function benchmarkParsing()
    if not glContent then
-      glContent = file.readAll(glPath .. 'benchmark_data.xml')
+      glContent = io.readAll(glPath .. 'benchmark_data.xml')
    end
    glXML.statement = glContent
 end
