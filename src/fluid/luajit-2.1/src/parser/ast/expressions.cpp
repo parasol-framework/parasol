@@ -1111,10 +1111,10 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
       return info;
    }
 
-   if (token.raw() IS '~') {
+   if (token.raw() IS '^') {
       info.op = AstBinaryOperator::BitXor;
       info.left = 3;  // Lower than AND (4) per C precedence: AND > XOR > OR
-      info.right = 3;  // Left-associative: a ~ b ~ c = (a ~ b) ~ c
+      info.right = 3;  // Left-associative: a ^ b ^ c = (a ^ b) ^ c
       return info;
    }
    return std::nullopt;

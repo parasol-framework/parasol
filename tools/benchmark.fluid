@@ -94,7 +94,7 @@ end
       -- Basic bitwise operations
       a = i & 0xFF          -- AND
       b = i | 0xF0          -- OR
-      c = i ~ 0xAA          -- XOR (Fluid uses ~ for XOR, not ^)
+      c = i ^ 0xAA          -- XOR
       d = ~i                -- NOT (bitwise complement)
 
       -- Shift operations
@@ -105,13 +105,13 @@ end
       -- Combined bitwise expressions
       d = (a & 0x0F) | (b & 0xF0)
       a = ((i & 0xFF) << 8) | ((i >> 8) & 0xFF)
-      b = (c ~ d) & 0xFFFF
+      b = (c ^ d) & 0xFFFF
       c = (~a & b) | (a & ~b)  -- XOR via AND/OR/NOT
 
       -- Mask and flag operations
       d = i | (1 << (i % 8))   -- Set bit
       a = i & ~(1 << (i % 8))  -- Clear bit
-      b = i ~ (1 << (i % 8))   -- Toggle bit
+      b = i ^ (1 << (i % 8))   -- Toggle bit
    end
 end
 

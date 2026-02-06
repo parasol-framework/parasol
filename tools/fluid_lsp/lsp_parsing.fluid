@@ -497,6 +497,10 @@ global function tokenizeFluid(Source:str):array
          addToken(line, col, 1, 1, 0)
          pos++
          col++
+      elseif c is '^' then -- ^ bitwise XOR
+         addToken(line, col, 1, 1, 0)
+         pos++
+         col++
       elseif c is '#' then -- # length operator
          addToken(line, col, 1, 1, 0)
          pos++
