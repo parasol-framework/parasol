@@ -37,7 +37,7 @@ function build_trace()
    end
 
    for trace_no = 1, 20 do
-      info = jit.util.traceinfo(trace_no)
+      info = jit.util.traceInfo(trace_no)
       if info then
          cached_trace_no = trace_no
          cached_trace_info = info
@@ -93,7 +93,7 @@ end
 end
 
 @Test function FuncInfoForLuaFunction()
-   info = jit.util.funcinfo(sample_vararg, 0)
+   info = jit.util.funcInfo(sample_vararg, 0)
    assert(info.params is 2, "Expected sample_vararg to report two parameters")
    assert(info.isVarArg is true, "Vararg flag should be set for sample_vararg")
    assert(info.lastLineDefined >= info.lineDefined, "Line range should be ordered")
@@ -103,7 +103,7 @@ end
 end
 
 @Test function FuncInfoForCFunction()
-   info = jit.util.funcinfo(print)
+   info = jit.util.funcInfo(print)
    if info.ffid != nil then
       assert(type(info.ffid) is "number", "FFI id should be numeric when present")
    end
@@ -112,18 +112,18 @@ end
 end
 
 @Test function FuncBCAndFunck()
-   info = jit.util.funcinfo(constant_target, 0)
-   first_ins, mode = jit.util.funcbc(constant_target, 0)
-   assert(type(first_ins) is "number", "funcbc should return an instruction")
-   assert(type(mode) is "number", "funcbc should return an instruction mode")
+   info = jit.util.funcInfo(constant_target, 0)
+   first_ins, mode = jit.util.funcBC(constant_target, 0)
+   assert(type(first_ins) is "number", "funcBC should return an instruction")
+   assert(type(mode) is "number", "funcBC should return an instruction mode")
 
-   invalid_ins, invalid_mode = jit.util.funcbc(constant_target, info.byteCodes)
-   assert(invalid_ins is nil and invalid_mode is nil, "Out-of-range funcbc should return nothing")
+   invalid_ins, invalid_mode = jit.util.funcBC(constant_target, info.byteCodes)
+   assert(invalid_ins is nil and invalid_mode is nil, "Out-of-range funcBC should return nothing")
 
    constants = { }
    numeric_count = 0
    for idx = 0, info.nConsts - 1 do
-      value = jit.util.funck(constant_target, idx)
+      value = jit.util.funcK(constant_target, idx)
       if value != nil then
          constants[numeric_count] = value
          numeric_count++
@@ -134,12 +134,12 @@ end
    for i = 0, numeric_count - 1 do
       if type(constants[i]) is "number" then found_number = true end
    end
-   assert(found_number is true, "jit.util.funck should expose numeric constants")
+   assert(found_number is true, "jit.util.funcK should expose numeric constants")
 
    gc_values = { }
    gc_count = 0
    for idx = -1, -info.gcConsts, -1 do
-      value = jit.util.funck(constant_target, idx)
+      value = jit.util.funcK(constant_target, idx)
       if value != nil then
          gc_values[gc_count] = value
          gc_count++
@@ -150,20 +150,20 @@ end
    for i = 0, gc_count - 1 do
       if type(gc_values[i]) is "string" then found_label = true end
    end
-   assert(found_label is true, "jit.util.funck should expose GC constants")
+   assert(found_label is true, "jit.util.funcK should expose GC constants")
 end
 
 @Test function FuncUpvalueName()
-   name = jit.util.funcuvname(upvalue_consumer, 0)
+   name = jit.util.funcUName(upvalue_consumer, 0)
    assert(name is "outer_upvalue", "First upvalue name should match outer_upvalue")
 end
 
 @Test function TraceInfoAndIR()
    trace_no, info = get_trace()
 
-   assert(type(info.nins) is "number" and info.nins > 0, "traceinfo should report instruction count")
-   assert(type(info.link) is "number", "traceinfo link should be numeric")
-   assert(type(info.linktype) is "string", "traceinfo linktype should be a string")
+   assert(type(info.nins) is "number" and info.nins > 0, "traceInfo should report instruction count")
+   assert(type(info.link) is "number", "traceInfo link should be numeric")
+   assert(type(info.linktype) is "string", "traceInfo linktype should be a string")
 
    allowed_links = {
       root = true,
@@ -178,12 +178,12 @@ end
    }
    assert(allowed_links[info.linktype] is true, "Unexpected linktype: " .. tostring(info.linktype))
 
-   ir_mode, ir_ot, ir_op1, ir_op2, ir_prev = jit.util.traceir(trace_no, info.nins)
-   assert(type(ir_mode) is "number", "traceir should return mode information")
-   assert(type(ir_ot) is "number", "traceir should return type information")
-   assert(type(ir_op1) is "number", "traceir should return first operand")
-   assert(type(ir_op2) is "number", "traceir should return second operand")
-   assert(type(ir_prev) is "number", "traceir should return previous reference")
+   ir_mode, ir_ot, ir_op1, ir_op2, ir_prev = jit.util.traceIR(trace_no, info.nins)
+   assert(type(ir_mode) is "number", "traceIR should return mode information")
+   assert(type(ir_ot) is "number", "traceIR should return type information")
+   assert(type(ir_op1) is "number", "traceIR should return first operand")
+   assert(type(ir_op2) is "number", "traceIR should return second operand")
+   assert(type(ir_prev) is "number", "traceIR should return previous reference")
 end
 
 @Test function TraceConstantsAndSnapshot()
@@ -194,20 +194,20 @@ end
 
    k_value, k_type, k_slot = nil, nil, nil
    for idx = -info.nk, -1 do
-      value, kind, slot = jit.util.tracek(trace_no, idx)
+      value, kind, slot = jit.util.traceK(trace_no, idx)
       if value != nil then
          k_value, k_type, k_slot = value, kind, slot
          break
       end
    end
-   assert(k_value != nil, "tracek should return at least one constant for available trace constants")
-   assert(type(k_type) is "number", "tracek should return a type tag")
+   assert(k_value != nil, "traceK should return at least one constant for available trace constants")
+   assert(type(k_type) is "number", "traceK should return a type tag")
    if k_slot != nil then
-      assert(type(k_slot) is "number", "tracek slot should be numeric when present")
+      assert(type(k_slot) is "number", "traceK slot should be numeric when present")
    end
 
-   snapshot = jit.util.tracesnap(trace_no, 0)
-   assert(snapshot != nil, "tracesnap should provide a snapshot table")
+   snapshot = jit.util.traceSnap(trace_no, 0)
+   assert(snapshot != nil, "traceSnap should provide a snapshot table")
    assert(type(snapshot[0]) is "number", "Snapshot should store reference at index 0")
    assert(type(snapshot[1]) is "number", "Snapshot should store slot count at index 1")
    assert(#snapshot >= 3, "Snapshot should include map entries and sentinel")
@@ -215,29 +215,29 @@ end
 
 @Test function TraceMachineCodeAndExitStub()
    trace_no = get_trace()
-   mcode, addr, loop_flag = jit.util.tracemc(trace_no)
-   assert(mcode != nil, "tracemc should return machine code for hot traces")
-   assert(type(addr) is "number", "tracemc should return a code address")
-   assert(type(loop_flag) is "number", "tracemc should return loop flag information")
+   mcode, addr, loop_flag = jit.util.traceMC(trace_no)
+   assert(mcode != nil, "traceMC should return machine code for hot traces")
+   assert(type(addr) is "number", "traceMC should return a code address")
+   assert(type(loop_flag) is "number", "traceMC should return loop flag information")
    if #mcode <= 0 then
-      error("tracemc returned an empty machine code buffer")
+      error("traceMC returned an empty machine code buffer")
    end
 
-   exit_addr = jit.util.traceexitstub(trace_no, 0)
+   exit_addr = jit.util.traceExitStub(trace_no, 0)
    if exit_addr is nil then
-      exit_addr = jit.util.traceexitstub(0)
+      exit_addr = jit.util.traceExitStub(0)
    end
-   assert(exit_addr != nil, "traceexitstub should return a stub address")
-   assert(type(exit_addr) is "number", "traceexitstub should return a numeric address")
+   assert(exit_addr != nil, "traceExitStub should return a stub address")
+   assert(type(exit_addr) is "number", "traceExitStub should return a numeric address")
 end
 
 @Test function IrCallAddrLookup()
-   addr = jit.util.ircalladdr(0)
-   assert(addr != nil, "ircalladdr(0) should return a function pointer")
-   assert(type(addr) is "number", "ircalladdr(0) should be numeric")
+   addr = jit.util.irCallAddr(0)
+   assert(addr != nil, "irCallAddr(0) should return a function pointer")
+   assert(type(addr) is "number", "irCallAddr(0) should be numeric")
 
-   invalid = jit.util.ircalladdr(99999)
-   assert(invalid is nil, "Out-of-range ircalladdr should return nil")
+   invalid = jit.util.irCallAddr(99999)
+   assert(invalid is nil, "Out-of-range irCallAddr should return nil")
 end
 
 --[[
@@ -297,7 +297,7 @@ end
       end
 
       for trace_no = 1, 20 do
-         info = jit.util.traceinfo(trace_no)
+         info = jit.util.traceInfo(trace_no)
          if info != nil then
             return true
          end
@@ -340,7 +340,7 @@ end
    -- Check if a trace was created
    trace_found = false
    for trace_no = 1, 30 do
-      info = jit.util.traceinfo(trace_no)
+      info = jit.util.traceInfo(trace_no)
       if info != nil then
          trace_found = true
          break
@@ -376,7 +376,7 @@ end
    -- Check if a trace was created
    trace_found = false
    for trace_no = 1, 30 do
-      info = jit.util.traceinfo(trace_no)
+      info = jit.util.traceInfo(trace_no)
       if info != nil then
          trace_found = true
          break
@@ -385,4 +385,3 @@ end
 
    assert(trace_found is true, "Expected BC_OBSETF to produce a JIT trace instead of aborting")
 end
-

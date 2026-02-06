@@ -168,14 +168,6 @@ static cTValue * resolve_index_const(lua_State *L, int idx)
 }
 
 //********************************************************************************************************************
-// Miscellaneous API functions
-
-extern int lua_status(lua_State *L)
-{
-   return L->status;
-}
-
-//********************************************************************************************************************
 // Check if stack can accommodate additional space
 
 extern int lua_checkstack(lua_State *L, int size)
