@@ -27,6 +27,7 @@ variables with its creator, except via existing conventional means such as a Key
 #include "lj_object.h"
 #include "hashes.h"
 #include "defs.h"
+#include "lj_proto_registry.h"
 
 //********************************************************************************************************************
 // Usage: thread.script(Statement, Callback)
@@ -322,4 +323,9 @@ void register_thread_class(lua_State *Lua)
 
    luaL_openlib(Lua, nullptr, threadlib_methods, 0);
    luaL_openlib(Lua, "thread", threadlib_functions, 0);
+
+   // Register thread interface prototypes for compile-time type inference
+   reg_iface_prototype("thread", "action", {}, { FluidType::Any, FluidType::Any, FluidType::Func, FluidType::Num });
+   reg_iface_prototype("thread", "method", {}, { FluidType::Any, FluidType::Str, FluidType::Func, FluidType::Num });
+   reg_iface_prototype("thread", "script", {}, { FluidType::Str, FluidType::Func });
 }

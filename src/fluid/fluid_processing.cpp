@@ -18,6 +18,7 @@
 #include "lj_object.h"
 #include "hashes.h"
 #include "defs.h"
+#include "lj_proto_registry.h"
 
 /*********************************************************************************************************************
 ** Usage: proc = processing.new({ timeout=5.0, signals={ obj1, obj2, ... } })
@@ -428,4 +429,16 @@ void register_processing_class(lua_State *Lua)
    luaL_openlib(Lua, nullptr, processinglib_methods, 0);
 
    luaL_openlib(Lua, "processing", processinglib_functions, 0);
+
+   // Register processing interface prototypes for compile-time type inference
+   reg_iface_prototype("processing", "new", { FluidType::Any }, { FluidType::Table });
+   reg_iface_prototype("processing", "collect", { FluidType::Num }, { FluidType::Str, FluidType::Table });
+   reg_iface_prototype("processing", "stopCollector", {}, {});
+   reg_iface_prototype("processing", "startCollector", {}, {});
+   reg_iface_prototype("processing", "gcStats", { FluidType::Table }, {});
+   reg_iface_prototype("processing", "sleep", { FluidType::Num }, { FluidType::Num, FluidType::Bool, FluidType::Bool });
+   reg_iface_prototype("processing", "signal", {}, {});
+   reg_iface_prototype("processing", "task", { FluidType::Any }, {});
+   reg_iface_prototype("processing", "flush", {}, {});
+   reg_iface_prototype("processing", "delayedCall", {}, { FluidType::Func });
 }

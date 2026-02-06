@@ -16,6 +16,7 @@
 
 #include "hashes.h"
 #include "defs.h"
+#include "lj_proto_registry.h"
 
 #include <ffi.h>
 #include <unordered_map>
@@ -1138,4 +1139,9 @@ void register_module_class(lua_State *Lua)
 
    luaL_openlib(Lua, nullptr, modlib_methods, 0);
    luaL_openlib(Lua, "mod", modlib_functions, 0);
+
+   // Register mod interface prototypes for compile-time type inference
+   reg_iface_prototype("mod", "new", { FluidType::Any }, { FluidType::Str });
+   reg_iface_prototype("mod", "load", { FluidType::Any }, { FluidType::Str });
+   reg_iface_prototype("mod", "test", { FluidType::Num, FluidType::Num }, { FluidType::Any, FluidType::Str });
 }
