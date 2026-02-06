@@ -363,45 +363,6 @@ extern void lua_close(lua_State *L)
 }
 
 //********************************************************************************************************************
-// NB: This is used by the coroutine API.  See lua_newstate() for full state initialization.
-
-lua_State * lj_state_new(lua_State *L)
-{
-   lua_State *L1 = lj_mem_newobj(L, lua_State);
-
-   auto copy_a = L1->nextgc; // Copy any pre-configured values prior to placement-new.
-   auto copy_b = L1->marked;
-   auto copy_c = L1->gct;
-
-   new (L1) lua_State;
-
-   L1->nextgc = copy_a; // Restore copied values.
-   L1->marked = copy_b;
-   L1->gct    = copy_c;
-
-   L1->gct        = ~LJ_TTHREAD;
-   L1->dummy_ffid = FF_C;
-   L1->status     = LUA_OK;
-   L1->stacksize  = 0;
-   setmref(L1->stack, nullptr);
-   setnilV(&L1->close_err);  // Initialize __close error to nil
-   L1->cframe             = nullptr;
-   L1->parser_diagnostics = nullptr;
-   L1->parser_tips        = nullptr;
-   L1->try_stack.depth    = 0;
-   L1->try_handler_pc     = nullptr;
-
-   // NOBARRIER: The lua_State is new (marked white).
-
-   setgcrefnull(L1->openupval);
-   setmrefr(L1->glref, L->glref);
-   setgcrefr(L1->env, L->env);
-   stack_init(L1, L);
-   lj_assertL(iswhite(obj2gco(L1)), "new thread object is not white");
-   return L1;
-}
-
-//********************************************************************************************************************
 
 void lj_state_free(global_State* g, lua_State *L)
 {

@@ -182,12 +182,6 @@ extern int  lua_cpcall(lua_State *L, lua_CFunction func, void *ud);
 extern int  lua_load(lua_State *L, std::string_view, const char *chunk_name);
 extern int  lua_dump(lua_State *L, lua_Writer writer, void *data);
 
-// coroutine functions
-
-extern int  (lua_yield) (lua_State *L, int nresults);
-extern int  (lua_resume) (lua_State *L, int narg);
-extern int  (lua_status) (lua_State *L);
-
 // Garbage collection function and options
 
 constexpr int LUA_GCSTOP = 0;
@@ -296,7 +290,6 @@ extern void lua_upvaluejoin (lua_State *L, int idx1, int n1, int idx2, int n2);
 extern void lua_copy (lua_State *L, int fromidx, int toidx);
 extern lua_Number lua_tonumberx (lua_State *L, int idx, int *isnum);
 extern lua_Integer lua_tointegerx (lua_State *L, int idx, int *isnum);
-extern int lua_isyieldable (lua_State *L);
 
 struct lua_Debug {
   int event;

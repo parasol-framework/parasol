@@ -1,9 +1,7 @@
-/*
-** x86/x64 IR assembler (SSA IR -> machine code).
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-*/
+// x86/x64 IR assembler (SSA IR -> machine code).
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 
-// -- Guard handling ------------------------------------------------------
+// Guard handling
 
 // Generate an exit stub group at the bottom of the reserved MCode memory.
 static MCode* asm_exitstub_gen(ASMState* as, ExitNo group)
@@ -42,10 +40,9 @@ static void asm_exitstub_setup(ASMState* as, ExitNo nexits)
          as->J->exitstubgroup[i] = asm_exitstub_gen(as, i);
 }
 
-/* Emit conditional branch to exit for guard.
-** It's important to emit this *after* all registers have been allocated,
-** because rematerializations may invalidate the flags.
-*/
+// Emit conditional branch to exit for guard.  It's important to emit this *after* all registers have been allocated,
+// because rematerializations may invalidate the flags.
+
 static void asm_guardcc(ASMState* as, int cc)
 {
    MCode* target = exitstub_addr(as->J, as->snapno);
@@ -2431,4 +2428,3 @@ void lj_asm_patchexit(jit_State* J, GCtrace* T, ExitNo exitno, MCode* target)
    lj_mcode_sync(T->mcode, T->mcode + T->szmcode);
    lj_mcode_patch(J, mcarea, 1);
 }
-

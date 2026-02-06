@@ -1,4 +1,4 @@
-// Base and coroutine library.
+// Base library.
 // Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 //
 // Major portions taken verbatim or adapted from the Lua interpreter.
@@ -872,144 +872,6 @@ LJLIB_CF(ltr)
 #include "lj_libdef.h"
 
 //********************************************************************************************************************
-// Coroutine library
-
-#define LJLIB_MODULE_coroutine
-
-LJLIB_CF(coroutine_status)
-{
-   CSTRING s;
-   lua_State* co;
-   if (!(L->top > L->base and tvisthread(L->base))) lj_err_arg(L, 1, ErrMsg::NOCORO);
-   co = threadV(L->base);
-   if (co IS L) s = "running";
-   else if (co->status IS LUA_YIELD) s = "suspended";
-   else if (co->status != LUA_OK) s = "dead";
-   else if (co->base > tvref(co->stack) + 1 + 1) s = "normal";
-   else if (co->top IS co->base) s = "dead";
-   else s = "suspended";
-   lua_pushstring(L, s);
-   return 1;
-}
-
-//********************************************************************************************************************
-
-LJLIB_CF(coroutine_running)
-{
-   int ismain = lua_pushthread(L);
-   setboolV(L->top++, ismain);
-   return 2;
-}
-
-//********************************************************************************************************************
-
-LJLIB_CF(coroutine_isyieldable)
-{
-   setboolV(L->top++, cframe_canyield(L->cframe));
-   return 1;
-}
-
-//********************************************************************************************************************
-// Create new coroutine thread
-
-static lua_State * lua_newthread(lua_State *L)
-{
-   lua_State *L1;
-   lj_gc_check(L);
-   L1 = lj_state_new(L);
-   setthreadV(L, L->top, L1);
-   incr_top(L);
-   return L1;
-}
-
-LJLIB_CF(coroutine_create)
-{
-   lua_State* L1;
-   if (!(L->base < L->top and tvisfunc(L->base))) lj_err_argt(L, 1, LUA_TFUNCTION);
-   L1 = lua_newthread(L);
-   setfuncV(L, L1->top++, funcV(L->base));
-   return 1;
-}
-
-//********************************************************************************************************************
-
-LJLIB_ASM(coroutine_yield)
-{
-   lj_err_caller(L, ErrMsg::CYIELD);
-   return FFH_UNREACHABLE;
-}
-
-//********************************************************************************************************************
-
-static int ffh_resume(lua_State* L, lua_State* co, int wrap)
-{
-   if (co->cframe != nullptr or co->status > LUA_YIELD ||
-      (co->status IS LUA_OK and co->top IS co->base)) {
-      ErrMsg em = co->cframe ? ErrMsg::CORUN : ErrMsg::CODEAD;
-      if (wrap) lj_err_caller(L, em);
-      setboolV(L->base - 2, 0);
-      setstrV(L, L->base - 1, lj_err_str(L, em));
-      return FFH_RES(2);
-   }
-   lj_state_growstack(co, (MSize)(L->top - L->base));
-   return FFH_RETRY;
-}
-
-//********************************************************************************************************************
-
-LJLIB_ASM(coroutine_resume)
-{
-   if (!(L->top > L->base and tvisthread(L->base)))
-      lj_err_arg(L, 1, ErrMsg::NOCORO);
-   return ffh_resume(L, threadV(L->base), 0);
-}
-
-//********************************************************************************************************************
-
-LJLIB_NOREG LJLIB_ASM(coroutine_wrap_aux)
-{
-   return ffh_resume(L, threadV(lj_lib_upvalue(L, 1)), 1);
-}
-
-// Inline declarations.
-LJ_ASMF void lj_ff_coroutine_wrap_aux(void);
-LJ_FUNCA_NORET void lj_ffh_coroutine_wrap_err(lua_State* L, lua_State* co);
-
-//********************************************************************************************************************
-// Error handler, called from assembler VM.
-
-void lj_ffh_coroutine_wrap_err(lua_State* L, lua_State* co)
-{
-   co->top--; copyTV(L, L->top, co->top); L->top++;
-   if (tvisstr(L->top - 1)) lj_err_callermsg(L, strVdata(L->top - 1));
-   else lj_err_run(L);
-}
-
-//********************************************************************************************************************
-// Forward declaration.
-
-static void setpc_wrap_aux(lua_State* L, GCfunc* fn);
-
-LJLIB_CF(coroutine_wrap)
-{
-   GCfunc* fn;
-   lj_cf_coroutine_create(L);
-   fn = lj_lib_pushcc(L, lj_ffh_coroutine_wrap_aux, FF_coroutine_wrap_aux, 1);
-   setpc_wrap_aux(L, fn);
-   return 1;
-}
-
-#include "lj_libdef.h"
-
-//********************************************************************************************************************
-// Fix the PC of wrap_aux. Really ugly workaround.
-
-static void setpc_wrap_aux(lua_State* L, GCfunc* fn)
-{
-   setmref(fn->c.pc, &L2GG(L)->bcff[lj_lib_init_coroutine[1] + 2]);
-}
-
-//********************************************************************************************************************
 
 static void newproxy_weaktable(lua_State* L)
 {
@@ -1031,7 +893,6 @@ extern int luaopen_base(lua_State* L)
    lua_pushliteral(L, "5.4");  //  top-3. // Lua version number, set as _VERSION
    newproxy_weaktable(L);  //  top-2.
    LJ_LIB_REG(L, "_G", base);
-   LJ_LIB_REG(L, LUA_COLIBNAME, coroutine);
 
    // Register function prototypes for compile-time type inference
    reg_func_prototype("print", { }, {}, FProtoFlags::Variadic);
