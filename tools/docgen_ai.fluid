@@ -68,7 +68,7 @@ end
 
    print('Processing modules...')
 
-   file.search(xml_folder .. 'modules/', {
+   io.search(xml_folder .. 'modules/', {
       nameFilter = regex.new([[^.+\.xml$]]),
       maxDepth   = 0,
       ignoreFeedback = function(Path, FileName, File)
@@ -98,7 +98,7 @@ end
 
    print('Processing classes...')
 
-   file.search(xml_folder .. 'modules/classes/', {
+   io.search(xml_folder .. 'modules/classes/', {
       nameFilter = regex.new([[^.*\.xml$]]),
       matchFeedback = function(Path, FileName, File)
          local src_path = Path .. FileName

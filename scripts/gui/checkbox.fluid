@@ -4,7 +4,6 @@ The gui.checkbox API creates and manages checkboxes in the user interface.
 Documentation is available in the Parasol Wiki.
 --]]
 
-   import 'common'
    import 'gui'
 
    namespace 'gui'

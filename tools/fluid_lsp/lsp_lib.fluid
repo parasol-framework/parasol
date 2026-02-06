@@ -7,8 +7,7 @@
 --    server.registerHandler('textDocument/hover', function(msg, state) ... end)
 
    include 'network'
-   global json = import 'json'
-   import 'common'
+   import 'json'
    import 'io/filesearch'
 
    global CACHE_PATH = 'user:config/lsp_doc_cache.fluid'

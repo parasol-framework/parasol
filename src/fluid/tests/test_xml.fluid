@@ -1,7 +1,6 @@
 -- $FLUID
 -- Flute tests for the table.toXML() method
 
-   import 'common'
 
    rx_file_tag = regex.new('<file.*?\\/>')
 

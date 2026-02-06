@@ -5,7 +5,6 @@ Tests the new validateHeader callback feature for routes, which allows
 early header validation before the full request body is processed.
 --]]
 
-   import 'common'
    import 'net/httpserver'
    import 'json'
    include 'http'

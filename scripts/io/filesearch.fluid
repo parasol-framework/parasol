@@ -3,9 +3,8 @@ The FileSearch interface simplifies the process of searching for files and folde
 Refer to the Fluid I/O Wiki page for documentation.
 --]]
 
-   import 'common'
 
-file.search = function(Path:str, Options:table)
+io.search = function(Path:str, Options:table)
    lOptions      = Options
    ADJUST_LOG    = 0
    lStop         = false

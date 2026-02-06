@@ -7,7 +7,6 @@ this by maintaining at least one reference to the object at all times and this w
 collected too early.
 --]]
 
-   import 'common'
    import 'net/httpserver'
    import 'json'
    include 'http'

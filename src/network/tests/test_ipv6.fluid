@@ -6,7 +6,6 @@
 -- - IPv6 server binding and dual-stack support
 -- - DNS resolution for IPv6 addresses
 
-   import 'common'
    include 'network'
 
    mNet ?= mod.load('network')

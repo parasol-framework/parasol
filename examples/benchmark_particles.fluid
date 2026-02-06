@@ -6,7 +6,6 @@ Parameters:
 --]]
 
    import 'gui'
-   import 'common'
    import 'gui/window'
    include 'display'
    include 'vector'
