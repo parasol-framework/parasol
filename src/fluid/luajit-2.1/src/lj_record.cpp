@@ -863,21 +863,6 @@ static TRef rec_call_specialise(jit_State *J, GCfunc* fn, TRef tr)
          return tr;
       }
    }
-   else {
-      // Don't specialise to non-monomorphic builtins.
-      switch (fn->c.ffid) {
-      case FF_coroutine_wrap_aux:
-         // NYI: io_file_iter doesn't have an ffid, yet.
-      {  // Specialise to the ffid.
-         TRef trid = ir.fload(tr, IRFL_FUNC_FFID, IRT_U8);
-         ir.guard_eq_int(trid, ir.kint(fn->c.ffid));
-      }
-      return tr;
-      default:
-         // NYI: don't specialise to non-monomorphic C functions.
-         break;
-      }
-   }
    // Otherwise specialise to the function (closure) value itself.
    kfunc = ir.kfunc(fn);
    ir.guard_eq(tr, kfunc, IRT_FUNC);

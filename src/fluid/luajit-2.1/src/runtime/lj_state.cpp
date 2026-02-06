@@ -100,7 +100,7 @@ static void resizestack(lua_State *L, MSize n)
    MSize oldsize = L->stacksize;
    MSize realsize = n + 1 + LJ_STACK_EXTRA;
    GCobj* up;
-   lj_assertL((MSize)(tvref(L->maxstack) - oldst) == L->stacksize - LJ_STACK_EXTRA - 1, "inconsistent stack size");
+   lj_assertL((MSize)(tvref(L->maxstack) - oldst) IS L->stacksize - LJ_STACK_EXTRA - 1, "inconsistent stack size");
    st = (TValue*)lj_mem_realloc(L, tvref(L->stack), (MSize)(oldsize * sizeof(TValue)), (MSize)(realsize * sizeof(TValue)));
    setmref(L->stack, st);
    delta = (char*)st - (char*)oldst;
@@ -135,7 +135,7 @@ void lj_state_shrinkstack(lua_State *L, MSize used)
    if (4 * used < L->stacksize and
       2 * (LJ_STACK_START + LJ_STACK_EXTRA) < L->stacksize and
       // Don't shrink stack of live trace.
-      (tvref(G(L)->jit_base) == nullptr or obj2gco(L) != gcref(G(L)->cur_L)))
+      (tvref(G(L)->jit_base) IS nullptr or obj2gco(L) != gcref(G(L)->cur_L)))
       resizestack(L, L->stacksize >> 1);
 }
 
@@ -218,8 +218,8 @@ static void close_state(lua_State *L)
    GarbageCollector collector = gc(g);
    collector.freeAll();
 
-   lj_assertG(gcref(g->gc.root) == obj2gco(L), "main thread is not first GC object");
-   lj_assertG(g->str.num == 0, "leaked %d strings", g->str.num);
+   lj_assertG(gcref(g->gc.root) IS obj2gco(L), "main thread is not first GC object");
+   lj_assertG(g->str.num IS 0, "leaked %d strings", g->str.num);
    lj_trace_freestate(g);
    lj_str_freetab(g);
    lj_buf_free(g, &g->tmpbuf);
@@ -232,9 +232,9 @@ static void close_state(lua_State *L)
 
    L->~lua_State();  // Destructor required to free C++ containers (file_sources, file_index_map).
 
-   lj_assertG(g->gc.total == sizeof(GG_State), "memory leak of %lld bytes", (long long)(g->gc.total - sizeof(GG_State)));
+   lj_assertG(g->gc.total IS sizeof(GG_State), "memory leak of %lld bytes", (long long)(g->gc.total - sizeof(GG_State)));
 #ifndef LUAJIT_USE_SYSMALLOC
-   if (g->allocf == lj_alloc_f)
+   if (g->allocf IS lj_alloc_f)
       lj_alloc_destroy(g->allocd);
    else
 #endif
@@ -259,7 +259,7 @@ extern lua_State * lua_newstate(lua_Alloc allocf, void* allocd)
    }
 
 #ifndef LUAJIT_USE_SYSMALLOC
-   if (allocf == LJ_ALLOCF_INTERNAL) {
+   if (allocf IS LJ_ALLOCF_INTERNAL) {
       allocd = lj_alloc_create(&prng);
       if (!allocd) return nullptr;
       allocf = lj_alloc_f;
@@ -267,8 +267,8 @@ extern lua_State * lua_newstate(lua_Alloc allocf, void* allocd)
 #endif
 
    GG = (GG_State*)allocf(allocd, nullptr, 0, sizeof(GG_State));
-   if (GG == nullptr or !checkptrGC(GG)) return nullptr;
-   memset(GG, 0, sizeof(GG_State));
+   if (GG IS nullptr or !checkptrGC(GG)) return nullptr;
+   memset((void *)GG, 0, sizeof(GG_State));
    L = &GG->L;
 
    new (L) lua_State;
@@ -288,7 +288,7 @@ extern lua_State * lua_newstate(lua_Alloc allocf, void* allocd)
    g->prng = prng;
 
 #ifndef LUAJIT_USE_SYSMALLOC
-   if (allocf == lj_alloc_f) {
+   if (allocf IS lj_alloc_f) {
       lj_alloc_setprng(allocd, &g->prng);
    }
 #endif
@@ -350,55 +350,16 @@ extern void lua_close(lua_State *L)
       L->status = LUA_OK;
       L->base = L->top = tvref(L->stack) + 1 + LJ_FR2;
       L->cframe = nullptr;
-      if (lj_vm_cpcall(L, nullptr, nullptr, cpfinalize) == LUA_OK) {
+      if (lj_vm_cpcall(L, nullptr, nullptr, cpfinalize) IS LUA_OK) {
          if (++i >= 10) break;
 
          // Separate userdata again
          collector.separateUdata(1);
 
-         if (gcref(g->gc.mmudata) == nullptr) break;  //  Until nothing is left to do.
+         if (gcref(g->gc.mmudata) IS nullptr) break;  //  Until nothing is left to do.
       }
    }
    close_state(L);
-}
-
-//********************************************************************************************************************
-// NB: This is used by the coroutine API.  See lua_newstate() for full state initialization.
-
-lua_State * lj_state_new(lua_State *L)
-{
-   lua_State *L1 = lj_mem_newobj(L, lua_State);
-
-   auto copy_a = L1->nextgc; // Copy any pre-configured values prior to placement-new.
-   auto copy_b = L1->marked;
-   auto copy_c = L1->gct;
-
-   new (L1) lua_State;
-
-   L1->nextgc = copy_a; // Restore copied values.
-   L1->marked = copy_b;
-   L1->gct    = copy_c;
-
-   L1->gct        = ~LJ_TTHREAD;
-   L1->dummy_ffid = FF_C;
-   L1->status     = LUA_OK;
-   L1->stacksize  = 0;
-   setmref(L1->stack, nullptr);
-   setnilV(&L1->close_err);  // Initialize __close error to nil
-   L1->cframe             = nullptr;
-   L1->parser_diagnostics = nullptr;
-   L1->parser_tips        = nullptr;
-   L1->try_stack.depth    = 0;
-   L1->try_handler_pc     = nullptr;
-
-   // NOBARRIER: The lua_State is new (marked white).
-
-   setgcrefnull(L1->openupval);
-   setmrefr(L1->glref, L->glref);
-   setgcrefr(L1->env, L->env);
-   stack_init(L1, L);
-   lj_assertL(iswhite(obj2gco(L1)), "new thread object is not white");
-   return L1;
 }
 
 //********************************************************************************************************************
@@ -406,13 +367,13 @@ lua_State * lj_state_new(lua_State *L)
 void lj_state_free(global_State* g, lua_State *L)
 {
    lj_assertG(L != mainthread(g), "free of main thread");
-   if (obj2gco(L) == gcref(g->cur_L)) setgcrefnull(g->cur_L);
+   if (obj2gco(L) IS gcref(g->cur_L)) setgcrefnull(g->cur_L);
 
    if (L->parser_diagnostics) { delete (ParserDiagnostics*)L->parser_diagnostics; L->parser_diagnostics = nullptr; }
    if (L->parser_tips) { delete L->parser_tips; L->parser_tips = nullptr; }
 
    lj_func_closeuv(L, tvref(L->stack));
-   lj_assertG(gcref(L->openupval) == nullptr, "stale open upvalues");
+   lj_assertG(gcref(L->openupval) IS nullptr, "stale open upvalues");
    lj_mem_freevec(g, tvref(L->stack), L->stacksize, TValue);
    L->~lua_State();
    lj_mem_freet(g, L);

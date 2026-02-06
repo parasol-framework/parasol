@@ -168,14 +168,6 @@ static cTValue * resolve_index_const(lua_State *L, int idx)
 }
 
 //********************************************************************************************************************
-// Miscellaneous API functions
-
-extern int lua_status(lua_State *L)
-{
-   return L->status;
-}
-
-//********************************************************************************************************************
 // Check if stack can accommodate additional space
 
 extern int lua_checkstack(lua_State *L, int size)
@@ -1412,71 +1404,6 @@ extern int luaL_callmeta(lua_State *L, int idx, const char *field)
       return 1;
    }
    return 0;
-}
-
-//********************************************************************************************************************
-// Test if coroutine can yield
-
-extern int lua_isyieldable(lua_State *L)
-{
-   return cframe_canyield(L->cframe);
-}
-
-//********************************************************************************************************************
-// Suspend current coroutine
-
-extern int lua_yield(lua_State *L, int nresults)
-{
-   void *cf = L->cframe;
-   global_State* g = G(L);
-   if (cframe_canyield(cf)) {
-      cf = cframe_raw(cf);
-      if (!hook_active(g)) {  // Regular yield: move results down if needed.
-         cTValue* f = L->top - nresults;
-         if (f > L->base) {
-            copy_range(L, L->base, f, nresults);
-            L->top = L->base + nresults;
-         }
-         L->cframe = nullptr;
-         L->status = LUA_YIELD;
-         return -1;
-      }
-      else {  // Yield from hook: add a pseudo-frame.
-         TValue* top = L->top;
-         hook_leave(g);
-         (top++)->u64 = cframe_multres(cf);
-         setcont(top, lj_cont_hook);
-         top++;
-         setframe_pc(top, cframe_pc(cf) - 1);
-         top++;
-         setframe_gc(top, obj2gco(L), LJ_TTHREAD);
-         top++;
-         setframe_ftsz(top, ((char*)(top + 1) - (char*)L->base) + FRAME_CONT);
-         L->top = L->base = top + 1;
-#if ((defined(__GNUC__) or defined(__clang__)) && (LJ_TARGET_X64 or defined(LUAJIT_UNWIND_EXTERNAL)) && !LJ_NO_UNWIND) or LJ_TARGET_WINDOWS
-         lj_err_throw(L, LUA_YIELD);
-#else
-         L->cframe = nullptr;
-         L->status = LUA_YIELD;
-         lj_vm_unwind_c(cf, LUA_YIELD);
-#endif
-      }
-   }
-   lj_err_msg(L, ErrMsg::CYIELD);
-   return 0;  //  unreachable
-}
-
-//********************************************************************************************************************
-// Resume suspended coroutine
-
-extern int lua_resume(lua_State *L, int nargs)
-{
-   if (L->cframe IS nullptr and L->status <= LUA_YIELD)
-      return lj_vm_resume(L, L->status IS LUA_OK ? api_call_base(L, nargs) : L->top - nargs, 0, 0);
-   L->top = L->base;
-   setstrV(L, L->top, lj_err_str(L, ErrMsg::COSUSP));
-   incr_top(L);
-   return LUA_ERRRUN;
 }
 
 //********************************************************************************************************************

@@ -9,7 +9,6 @@
 
 #define LUA_FILEHANDLE   "FILE*"
 
-constexpr const char * LUA_COLIBNAME   = "coroutine";
 constexpr const char * LUA_MATHLIBNAME = "math";
 constexpr const char * LUA_STRLIBNAME  = "string";
 constexpr const char * LUA_TABLIBNAME  = "table";
