@@ -383,7 +383,7 @@ LJLIB_CF(table_sortByKeys)
 
       auxsort(L, 0, n - 1);
 
-      // Build closure: upvalue 1=t, upvalue 2=sorted keys, upvalue 3=index(0)
+      // Build closure: upvalue 0=t, upvalue 1=sorted keys, upvalue 2=index(0)
       lua_pushvalue(L, 4);         // Original table
       lua_pushvalue(L, 1);         // Sorted keys (same table object)
       lua_pushinteger(L, 0);
