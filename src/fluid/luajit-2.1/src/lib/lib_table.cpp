@@ -17,6 +17,7 @@
 #include "lj_buf.h"
 #include "lj_tab.h"
 #include "lj_ff.h"
+#include "lj_strfmt.h"
 #include "lib.h"
 #include "lib_utils.h"
 #include "lib_range.h"
@@ -159,7 +160,7 @@ LJLIB_CF(table_concat) LJLIB_REC(.)
 
 //********************************************************************************************************************
 
-static void set2(lua_State* L, int i, int j)
+static void set2(lua_State *L, int i, int j)
 {
    lua_rawseti(L, 1, i);
    lua_rawseti(L, 1, j);
@@ -167,7 +168,7 @@ static void set2(lua_State* L, int i, int j)
 
 //********************************************************************************************************************
 
-static int sort_comp(lua_State* L, int a, int b)
+static int sort_comp(lua_State *L, int a, int b)
 {
    if (!lua_isnil(L, 2)) {  // function?
       int res;
@@ -186,7 +187,7 @@ static int sort_comp(lua_State* L, int a, int b)
 
 //********************************************************************************************************************
 
-static void auxsort(lua_State* L, int l, int u)
+static void auxsort(lua_State *L, int l, int u)
 {
    while (l < u) {  // for tail recursion
       int i, j;
@@ -276,7 +277,7 @@ LJLIB_NOREG LJLIB_CF(table_new) LJLIB_REC(.)
 // Returns true if the given table is empty. If the argument is nil, it is treated as empty and returns true. This
 // mirrors the emptiness check used in Parasol's user-facing helpers, but implemented natively.
 
-[[maybe_unused]] static int lj_cf_table_empty(lua_State* L);
+[[maybe_unused]] static int lj_cf_table_empty(lua_State *L);
 
 LJLIB_CF(table_empty)
 {
@@ -319,8 +320,257 @@ LJLIB_CF(table_slice)
 }
 
 //********************************************************************************************************************
+// Iterator closure for table.sortByKeys(). Upvalues:
+//   [0] = original table
+//   [1] = sorted keys array
+//   [2] = current index (integer)
 
-static int luaopen_table_new(lua_State* L)
+static int table_sortbykeys_iter(lua_State *L)
+{
+   GCfunc *fn   = curr_func(L);
+   GCtab *t     = tabV(&fn->c.upvalue[0]);
+   GCtab *keys  = tabV(&fn->c.upvalue[1]);
+   TValue *idx_tv = &fn->c.upvalue[2];
+
+   int32_t idx = numberVint(idx_tv);
+   if (idx >= (int32_t)lj_tab_len(keys)) return 0;
+
+   cTValue *key = lj_tab_getint(keys, idx);
+   if (!key or tvisnil(key)) return 0;
+
+   copyTV(L, L->top++, key);                    // Return key
+   cTValue *val = lj_tab_get(L, t, key);
+   copyTV(L, L->top++, val);                    // Return value
+   setintV(idx_tv, idx + 1);                    // Advance index
+   return 2;
+}
+
+//********************************************************************************************************************
+// table.sortByKeys(t [, f])
+// Returns an iterator that yields key-value pairs from table t in sorted key order.
+// The optional comparison function f controls sort order (default: ascending).
+// Usage: for k, v in table.sortByKeys(t) do ... end
+
+[[maybe_unused]] static int lj_cf_table_sortByKeys(lua_State *L);
+
+LJLIB_CF(table_sortByKeys)
+{
+   lj_lib_checktab(L, 1);
+   lua_settop(L, 2);
+   if (!tvisnil(L->base + 1)) lj_lib_checkfunc(L, 2);
+
+   // Stack: [1]=t, [2]=f_or_nil
+
+   lua_newtable(L);  // [3] = keys array
+
+   int32_t n = 0;
+   lua_pushnil(L);
+   while (lua_next(L, 1)) {
+      lua_pop(L, 1);               // Remove value, keep key
+      lua_pushvalue(L, -1);        // Duplicate key
+      lua_rawseti(L, 3, n);        // keys[n] = key
+      n++;
+   }
+
+   // Stack: [1]=t, [2]=f_or_nil, [3]=keys
+
+   if (n > 1) {
+      // Sort the keys using auxsort, which expects [1]=table, [2]=comparator.
+      // Temporarily swap keys into position 1, saving the original table.
+      lua_pushvalue(L, 1);         // [4] = t (saved)
+      lua_pushvalue(L, 3);         // [5] = keys ref
+      lua_replace(L, 1);           // [1]=keys, [2]=f, [3]=keys, [4]=t
+
+      auxsort(L, 0, n - 1);
+
+      // Build closure: upvalue 1=t, upvalue 2=sorted keys, upvalue 3=index(0)
+      lua_pushvalue(L, 4);         // Original table
+      lua_pushvalue(L, 1);         // Sorted keys (same table object)
+      lua_pushinteger(L, 0);
+      lua_pushcclosure(L, table_sortbykeys_iter, 3);
+   }
+   else {
+      // 0 or 1 keys - no sorting needed
+      lua_pushvalue(L, 1);         // Original table
+      lua_pushvalue(L, 3);         // Keys array
+      lua_pushinteger(L, 0);
+      lua_pushcclosure(L, table_sortbykeys_iter, 3);
+   }
+
+   return 1;
+}
+
+//********************************************************************************************************************
+// Helpers for table.toXML()
+
+// Append XML-escaped content (escapes &, <, >) to the buffer.
+
+static void buf_xml_escape(SBuf* Sb, const char* Str, MSize Len)
+{
+   for (MSize i = 0; i < Len; i++) {
+      switch (Str[i]) {
+         case '&': lj_buf_putmem(Sb, "&amp;", 5); break;
+         case '<': lj_buf_putmem(Sb, "&lt;", 4); break;
+         case '>': lj_buf_putmem(Sb, "&gt;", 4); break;
+         default:  lj_buf_putb(Sb, Str[i]); break;
+      }
+   }
+}
+
+// Append a numeric TValue as text to the buffer.
+
+static void buf_put_numtv(SBuf* Sb, cTValue* Val)
+{
+   if (tvisint(Val)) lj_strfmt_putint(Sb, intV(Val));
+   else lj_strfmt_putfnum(Sb, STRFMT_G14, numV(Val));
+}
+
+// Append XML-escaped text representation of a TValue to the buffer.
+
+static void buf_xml_escape_tv(SBuf* Sb, cTValue* Val)
+{
+   if (tvisstr(Val)) {
+      GCstr* s = strV(Val);
+      buf_xml_escape(Sb, strdata(s), s->len);
+   }
+   else if (tvisint(Val) or tvisnum(Val)) buf_put_numtv(Sb, Val);
+   else if (tvistrue(Val))  lj_buf_putmem(Sb, "true", 4);
+   else if (tvisfalse(Val)) lj_buf_putmem(Sb, "false", 5);
+}
+
+//********************************************************************************************************************
+// Recursive element processing for table.toXML(). Emits <tag attrs>children</> or <tag attrs/>.
+// The element definition table (Def) is iterated in two passes:
+//   Pass 1: string-keyed entries with scalar values become attributes.
+//   Pass 2: numeric-keyed entries become child content; string-keyed entries with non-scalar values are fallback content.
+
+static void toxml_element(lua_State* L, SBuf* Sb, cTValue* Tag, GCtab* Def)
+{
+   lj_buf_putb(Sb, '<');
+   if (tvisstr(Tag)) {
+      GCstr* s = strV(Tag);
+      lj_buf_putmem(Sb, strdata(s), s->len);
+   }
+   else if (tvisint(Tag) or tvisnum(Tag)) buf_put_numtv(Sb, Tag);
+
+   // Pass 1: attributes (string-keyed entries with string/number/boolean values)
+   TValue ak_key;
+   setnilV(&ak_key);
+   TValue akv[2];
+
+   while (lj_tab_next(Def, &ak_key, akv)) {
+      copyTV(L, &ak_key, &akv[0]);
+      if (!tvisstr(&akv[0])) continue;
+      GCstr* ak = strV(&akv[0]);
+
+      if (tvisstr(&akv[1])) {
+         lj_buf_putb(Sb, ' ');
+         lj_buf_putmem(Sb, strdata(ak), ak->len);
+         lj_buf_putmem(Sb, "=\"", 2);
+         GCstr* av = strV(&akv[1]);
+         buf_xml_escape(Sb, strdata(av), av->len);
+         lj_buf_putb(Sb, '"');
+      }
+      else if (tvisint(&akv[1]) or tvisnum(&akv[1])) {
+         lj_buf_putb(Sb, ' ');
+         lj_buf_putmem(Sb, strdata(ak), ak->len);
+         lj_buf_putb(Sb, '=');
+         buf_put_numtv(Sb, &akv[1]);
+      }
+      else if (tvistrue(&akv[1])) {
+         lj_buf_putb(Sb, ' ');
+         lj_buf_putmem(Sb, strdata(ak), ak->len);
+      }
+   }
+
+   // Save position after attributes, then optimistically write '>'
+   MSize pos_after_attrs = sbuflen(Sb);
+   lj_buf_putb(Sb, '>');
+   MSize pos_after_gt = sbuflen(Sb);
+
+   // Pass 2: child content
+   setnilV(&ak_key);
+   while (lj_tab_next(Def, &ak_key, akv)) {
+      copyTV(L, &ak_key, &akv[0]);
+
+      if (tvisint(&akv[0]) or tvisnum(&akv[0])) {
+         // Numeric key: child tag or content
+         if (tvistab(&akv[1])) {
+            // Iterate child table for nested elements/content
+            GCtab* child_tab = tabV(&akv[1]);
+            TValue ck_key;
+            setnilV(&ck_key);
+            TValue ckv[2];
+            while (lj_tab_next(child_tab, &ck_key, ckv)) {
+               copyTV(L, &ck_key, &ckv[0]);
+               if (tvistab(&ckv[1])) toxml_element(L, Sb, &ckv[0], tabV(&ckv[1]));
+               else buf_xml_escape_tv(Sb, &ckv[1]);
+            }
+         }
+         else buf_xml_escape_tv(Sb, &akv[1]);
+      }
+      else if (tvisstr(&akv[0])) {
+         // String key with non-attribute value type becomes fallback child content
+         if (!tvisstr(&akv[1]) and !(tvisint(&akv[1]) or tvisnum(&akv[1])) and !tvisbool(&akv[1])) {
+            buf_xml_escape_tv(Sb, &akv[1]);
+         }
+      }
+   }
+
+   // Finalise: if no children were written, replace '>' with '/>'
+   if (sbuflen(Sb) IS pos_after_gt) {
+      Sb->w = Sb->b + pos_after_attrs;
+      lj_buf_putmem(Sb, "/>", 2);
+   }
+   else lj_buf_putmem(Sb, "</>", 3);
+}
+
+//********************************************************************************************************************
+// Top-level table processing for table.toXML(). Iterates the table and emits each entry as an element.
+
+static void toxml_table(lua_State* L, SBuf* Sb, GCtab* Table)
+{
+   TValue key;
+   setnilV(&key);
+   TValue kv[2];
+
+   while (lj_tab_next(Table, &key, kv)) {
+      copyTV(L, &key, &kv[0]);
+      if (tvistab(&kv[1])) {
+         toxml_element(L, Sb, &kv[0], tabV(&kv[1]));
+      }
+      else {
+         lj_buf_putb(Sb, '<');
+         if (tvisstr(&kv[0])) {
+            GCstr* s = strV(&kv[0]);
+            lj_buf_putmem(Sb, strdata(s), s->len);
+         }
+         else if (tvisint(&kv[0]) or tvisnum(&kv[0])) buf_put_numtv(Sb, &kv[0]);
+         lj_buf_putmem(Sb, "/>", 2);
+      }
+   }
+}
+
+//********************************************************************************************************************
+// table.toXML(t)
+// Converts a table to an XML string. Table keys become element tag names, string-keyed entries in the element
+// definition table become attributes, and numeric-keyed entries become child content.
+
+[[maybe_unused]] static int lj_cf_table_toXML(lua_State* L);
+
+LJLIB_CF(table_toXML)
+{
+   GCtab* t = lj_lib_checktab(L, 1);
+   SBuf* sb = lj_buf_tmp_(L);
+   toxml_table(L, sb, t);
+   setstrV(L, L->top - 1, lj_buf_str(L, sb));
+   lj_gc_check(L);
+   return 1;
+}
+
+//********************************************************************************************************************
+
+static int luaopen_table_new(lua_State *L)
 {
    return lj_lib_postreg(L, lj_cf_table_new, FF_table_new, "new");
 }
@@ -330,7 +580,7 @@ static int luaopen_table_new(lua_State* L)
 #include "lj_libdef.h"
 #include "lj_proto_registry.h"
 
-extern int luaopen_table(lua_State* L)
+extern int luaopen_table(lua_State *L)
 {
    LJ_LIB_REG(L, "table", table);
    // unpack() has been deprecated, retaining this only as an example of routing to global functions
@@ -350,9 +600,8 @@ extern int luaopen_table(lua_State* L)
    reg_iface_prototype("table", "empty", { FluidType::Bool }, { FluidType::Table });
    reg_iface_prototype("table", "clear", {}, { FluidType::Table });
    reg_iface_prototype("table", "slice", { FluidType::Table }, { FluidType::Table, FluidType::Any });
-   // The following are currently defined in common.fluid
-   reg_iface_prototype("table", "toXML", { FluidType::Str }, { FluidType::Table });
    reg_iface_prototype("table", "sortByKeys", { FluidType::Func }, { FluidType::Table, FluidType::Func });
+   reg_iface_prototype("table", "toXML", { FluidType::Str }, { FluidType::Table });
 
    return 1;
 }
