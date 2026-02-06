@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      xquery.h
-// Copyright: Paul Manias © 2025
+// Copyright: Paul Manias © 2025-2026
 // Generator: idl-c
 
 #include <parasol/main.h>

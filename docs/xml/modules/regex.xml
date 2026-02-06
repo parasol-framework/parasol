@@ -7,7 +7,7 @@
     <type>module</type>
     <comment>Provides support for regular expression pattern matching and text processing.</comment>
     <version>1</version>
-    <copyright>Paul Manias © 2025</copyright>
+    <copyright>Paul Manias © 2025-2026</copyright>
     <description>
 <p>The Regex module provides ECMAScript-compatible regex functionality with Unicode support. It offers efficient pattern compilation, flexible matching modes, and text manipulation capabilities including search, replace, and split operations.</p>
 <p>Key features include:</p>
