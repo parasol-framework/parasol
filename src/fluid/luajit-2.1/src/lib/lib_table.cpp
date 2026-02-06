@@ -28,15 +28,6 @@
 
 //********************************************************************************************************************
 
-LJLIB_CF(table_getn)
-{
-   GCtab *t = lj_lib_checktab(L, 1);
-   lua_pushinteger(L, (lua_Integer)lj_tab_len(t));
-   return 1;
-}
-
-//********************************************************************************************************************
-
 LJLIB_CF(table_insert)      LJLIB_REC(.)
 {
    GCtab* t = lj_lib_checktab(L, 1);
@@ -264,7 +255,7 @@ LJLIB_CF(table_sort)
 
 //********************************************************************************************************************
 
-LJLIB_NOREG LJLIB_CF(table_new) LJLIB_REC(.)
+LJLIB_CF(table_new) LJLIB_REC(.)
 {
    int32_t a = lj_lib_checkint(L, 1);
    int32_t h = lj_lib_checkint(L, 2);
@@ -570,13 +561,6 @@ LJLIB_CF(table_toXML)
 
 //********************************************************************************************************************
 
-static int luaopen_table_new(lua_State *L)
-{
-   return lj_lib_postreg(L, lj_cf_table_new, FF_table_new, "new");
-}
-
-//********************************************************************************************************************
-
 #include "lj_libdef.h"
 #include "lj_proto_registry.h"
 
@@ -587,10 +571,8 @@ extern int luaopen_table(lua_State *L)
    // result1, result2, ... = table.unpack(someTable)
    //lua_getglobal(L, "unpack");
    //lua_setfield(L, -2, "unpack");
-   lj_lib_prereg(L, "table.new", luaopen_table_new, tabV(L->top - 1));
 
    // Register table interface prototypes for compile-time type inference
-   reg_iface_prototype("table", "getn", { FluidType::Num }, { FluidType::Table });
    reg_iface_prototype("table", "insert", {}, { FluidType::Table, FluidType::Any });
    reg_iface_prototype("table", "remove", { FluidType::Any }, { FluidType::Table, FluidType::Num });
    reg_iface_prototype("table", "move", { FluidType::Table }, { FluidType::Table, FluidType::Num, FluidType::Num, FluidType::Num, FluidType::Table });
