@@ -2458,7 +2458,7 @@ static TRef rec_object_get(jit_State *J, RecordOps *ops)
    if (field_type < 0) lj_trace_err(J, LJ_TRERR_BADTYPE);  // Unknown field type (could be a action/method) - abort recording
 
    if (field_offset) {
-      constexpr uint32_t unsupported = FD_ARRAY|FD_STRUCT|FD_POINTER|FD_OBJECT|FD_LOCAL|FD_UNSIGNED|FD_CPP;
+      constexpr uint32_t unsupported = FD_ARRAY|FD_STRUCT|FD_UNSIGNED|FD_CPP;
       if (not (field_flags & unsupported)) {
          // Guard: object is alive (uid != 0)
          TRef uid_ref = emitir(IRTI(IR_FLOAD), obj_ref, IRFL_OBJ_UID);
@@ -2482,30 +2482,42 @@ static TRef rec_object_get(jit_State *J, RecordOps *ops)
             return lj_record_vload(J, tmp_ref, 0, (IRType)field_type);
          }
 
+         if ((field_flags & (FD_OBJECT|FD_LOCAL)) and (field_flags & FD_POINTER)) {
+            // Object pointer fields (FDF_OBJECT): lock parent, read OBJECTPTR, unlock, create
+            // detached GCobject wrapper via jit_object_getobj.  load_include_for_class() is not
+            // needed because the interpreter will have loaded class definitions in prior cycles.
+            TRef tmp_ref = rec_tmpref(J, TREF_NIL, IRTMPREF_OUT1);
+            TRef offset_ref = lj_ir_kint(J, field_offset);
+            lj_ir_call(J, IRCALL_jit_object_getobj, obj_ref, offset_ref, tmp_ref);
+            return lj_record_vload(J, tmp_ref, 0, (IRType)field_type);
+         }
+
          // Numeric scalar fields: lock, XLOAD at offset, unlock.
          constexpr uint32_t supported_numeric = FD_DOUBLE|FD_INT64|FD_INT;
-         if (field_flags & supported_numeric) {
-            TRef objptr = lj_ir_call(J, IRCALL_jit_object_lock, obj_ref);
+         if (not (field_flags & FD_POINTER)) {
+            if (field_flags & supported_numeric) {
+               TRef objptr = lj_ir_call(J, IRCALL_jit_object_lock, obj_ref);
 
-            TRef addr = emitir(IRT(IR_ADD, IRT_PTR), objptr, lj_ir_kintp(J, field_offset));
-            TRef val;
+               TRef addr = emitir(IRT(IR_ADD, IRT_PTR), objptr, lj_ir_kintp(J, field_offset));
+               TRef val;
 
-            if (field_flags & FD_DOUBLE) {
-               val = emitir(IRT(IR_XLOAD, IRT_NUM), addr, 0);
-            }
-            else if (field_flags & FD_INT64) {
-               val = emitir(IRT(IR_XLOAD, IRT_I64), addr, 0);
-               val = emitir(IRTN(IR_CONV), val, (IRT_NUM << IRCONV_DSH) | IRT_I64);
-            }
-            else { // FD_INT (signed int32) - guaranteed by supported_numeric check above
-               val = emitir(IRT(IR_XLOAD, IRT_INT), addr, 0);
-               if (not LJ_DUALNUM) {
-                  val = emitir(IRTN(IR_CONV), val, IRCONV_NUM_INT);
+               if (field_flags & FD_DOUBLE) {
+                  val = emitir(IRT(IR_XLOAD, IRT_NUM), addr, 0);
                }
-            }
+               else if (field_flags & FD_INT64) {
+                  val = emitir(IRT(IR_XLOAD, IRT_I64), addr, 0);
+                  val = emitir(IRTN(IR_CONV), val, (IRT_NUM << IRCONV_DSH) | IRT_I64);
+               }
+               else { // FD_INT (signed int32) - guaranteed by supported_numeric check above
+                  val = emitir(IRT(IR_XLOAD, IRT_INT), addr, 0);
+                  if (not LJ_DUALNUM) {
+                     val = emitir(IRTN(IR_CONV), val, IRCONV_NUM_INT);
+                  }
+               }
 
-            lj_ir_call(J, IRCALL_jit_object_unlock, obj_ref);
-            return val;
+               lj_ir_call(J, IRCALL_jit_object_unlock, obj_ref);
+               return val;
+            }
          }
       }
    }

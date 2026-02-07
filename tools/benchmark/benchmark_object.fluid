@@ -6,6 +6,8 @@
 
    local glConfig = obj.new('config', { flags=CNF_NEW, keyFilter='None', path='temp:config.cfg' })
 
+   local glXML = obj.new('xml')
+
 @Test function ObjectReadDirectFields()
    for i = 0,100000 do
       local h = glTime.hour
@@ -21,6 +23,14 @@ end
    glConfig.path = 'temp:config.cfg'
    for i = 0,100000 do
       val = glConfig.path
+   end
+end
+
+@Test function ObjectReadDirectObject()
+   local val
+   glXML.source = glConfig
+   for i = 0,100000 do
+      val = glXML.source
    end
 end
 

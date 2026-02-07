@@ -220,6 +220,7 @@ typedef struct CCallInfo {
   _(ANY,        jit_object_lock,   1, S, PTR, 0) \
   _(ANY,        jit_object_unlock, 1, S, NIL, 0) \
   _(ANY,        jit_object_getstr, 4, S, NIL, CCI_L|CCI_T) \
+  _(ANY,        jit_object_getobj, 4, S, NIL, CCI_L|CCI_T) \
   \
   // End of list.
 
