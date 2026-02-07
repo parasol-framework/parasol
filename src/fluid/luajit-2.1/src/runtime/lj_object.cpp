@@ -403,10 +403,10 @@ extern "C" void jit_object_getobj(lua_State *L, GCobject *Obj, uint32_t Offset, 
    if (not Obj->accesscount) Obj->ptr->lock();
    Obj->accesscount++;
    OBJECTPTR child = *(OBJECTPTR *)(((int8_t *)Obj->ptr) + Offset);
-   if (--Obj->accesscount IS 0) Obj->ptr->unlock();
    if (child) {
       auto gcobj = lj_object_new(L, child->UID, nullptr, child->Class, GCOBJ_DETACHED);
       setobjectV(L, Out, gcobj);
    }
    else setnilV(Out);
+   if (--Obj->accesscount IS 0) Obj->ptr->unlock();
 }
