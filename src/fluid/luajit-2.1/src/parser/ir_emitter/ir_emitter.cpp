@@ -1411,7 +1411,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_with_stmt(const WithStmtPayload &Payloa
       return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
    }
 
-   // Phase 1: Evaluate each object expression and store in <close> locals
+   // Evaluate each object expression and store in <close> locals
 
    for (auto i = BCReg(0); i < obj_count; ++i) {
       const ExprNodePtr &obj_expr = Payload.objects[i.raw()];
@@ -1444,7 +1444,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_with_stmt(const WithStmtPayload &Payloa
       VarInfo *info = &fs->var_get(fs->varmap.size() - 1);
       info->info |= VarInfoFlag::Close;
 
-      // Phase 2: Emit bytecode to call __lock(obj) to acquire the lock
+      // Emit bytecode to call __lock(obj) to acquire the lock
       // Pattern: getmetatable(obj) -> get __lock field -> call __lock(obj)
 
       BCREG base = fs->freereg;
@@ -1476,11 +1476,10 @@ ParserResult<IrEmitUnit> IrEmitter::emit_with_stmt(const WithStmtPayload &Payloa
       bcemit_AD(fs, BC_MOV, call_base + 1 + LJ_FR2, obj_reg);
       bcemit_ABC(fs, BC_CALL, call_base, 1, 2);  // 0 results, 1 arg
 
-      // Release the temporary registers
-      fs->freereg = BCReg(fs->varmap.size());
+      fs->reset_freereg(); // Release the temporary registers
    }
 
-   // Phase 3: Emit the body block
+   // Emit the body block
 
    if (Payload.block) {
       for (const StmtNode &stmt : Payload.block->view()) {
