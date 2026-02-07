@@ -38,6 +38,7 @@ global glLogFile = 'user:benchmark.log'
    import './benchmark_math'
    import './benchmark_table'
    import './benchmark_control'
+   import './benchmark_object'
 
 ----------------------------------------------------------------------------------------------------------------------
 -- EXCEPTION HANDLING
@@ -740,7 +741,8 @@ end
       logMessage('')
       logMessage('Comparison to last run (+ve % is better):')
       logMessage('')
-      for name, eval in pairs(last_result.evals) do
+
+      for name, eval in table.sortByKeys(last_result.evals) do
          if report.evals[name] then
             local cmp = report.evals[name]
             local pad_name = string.format(f'%{longest_name+2}s', name)

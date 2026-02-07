@@ -168,15 +168,12 @@ void register_number_class(lua_State *Lua)
 {
    static const luaL_Reg numlib_functions[] = {
       { "int",    number_i32 },
-      { "long",   number_i32 }, // Deprecated
       { "int64",  number_i64 },
-      { "large",  number_i64 }, // Deprecated
       { "double", number_f64 },
       { "float",  number_f32 },
       { "byte",   number_i8 },
       { "char",   number_i8 },
       { "int16",  number_i16 },
-      { "short",  number_i16 }, // Deprecated
       { nullptr, nullptr }
    };
 

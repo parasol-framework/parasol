@@ -19,4 +19,10 @@ extern int lj_object_ipairs(lua_State *);
 extern "C" void bc_object_getfield(lua_State *, GCobject *, GCstr *, TValue *, BCIns *);
 extern "C" void bc_object_setfield(lua_State *, GCobject *, GCstr *, TValue *, BCIns *);
 
-extern "C" int ir_object_field_type(GCobject *Obj, GCstr *Key);
+extern "C" int ir_object_field_type(GCobject *, GCstr *, int &, uint32_t &);
+
+// JIT fast-path lock/unlock for non-detached objects with valid ptr.
+// Guards in the trace ensure preconditions (alive, non-detached) are met.
+extern "C" OBJECTPTR jit_object_lock(GCobject *);
+extern "C" void jit_object_unlock(GCobject *);
+extern "C" void jit_object_getstr(lua_State *, GCobject *, uint32_t, TValue *);

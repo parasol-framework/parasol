@@ -864,7 +864,7 @@ static const FieldArray clScriptFields[] = {
    { "Src",          FDF_SYNONYM|FDF_STRING|FDF_RI,  GET_Path, SET_Path },
    { "Statement",    FDF_STRING|FDF_RW,              GET_String, SET_String },
    { "String",       FDF_SYNONYM|FDF_STRING|FDF_RW,  GET_String, SET_String },
-   { "TotalArgs",    FDF_INT|FDF_R,                 GET_TotalArgs, nullptr },
+   { "TotalArgs",    FDF_INT|FDF_R,                  GET_TotalArgs, nullptr },
    { "Variables",    FDF_POINTER|FDF_SYSTEM|FDF_R,   GET_Variables, nullptr },
    END_FIELD
 };
