@@ -385,3 +385,90 @@ end
 
    assert(trace_found is true, "Expected BC_OBSETF to produce a JIT trace instead of aborting")
 end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test JIT optimised writes to numeric object fields (FD_INT, FD_INT64).
+-- Uses the Time class which has simple numeric fields without virtual setters.
+
+@Test(hotpath=50) function JITObjectFieldSetNumeric()
+   jit.on()
+   jit.flush()
+   jit.opt.start("hotloop=1", "hotexit=1", "minstitch=0")
+
+   local t = obj.new('time')
+
+   -- Hot loop writing integer fields - exercises the FD_INT XSTORE path
+   function traced_int_write(Count)
+      for i = 1, Count do
+         t.year = i
+         t.month = 6
+         t.day = i + 10
+      end
+   end
+
+   for i = 1, 20 do
+      traced_int_write(10)
+   end
+
+   -- Verify the final values are correct (last iteration: i=10)
+   assert(t.year is 10, f"Expected year=10, got {t.year}")
+   assert(t.month is 6, f"Expected month=6, got {t.month}")
+   assert(t.day is 20, f"Expected day=20, got {t.day}")
+
+   -- Check if a trace was created
+   trace_found = false
+   for trace_no = 1, 30 do
+      info = jit.util.traceInfo(trace_no)
+      if info != nil then
+         trace_found = true
+         break
+      end
+   end
+
+   assert(trace_found is true, "Expected numeric field writes to produce a JIT trace")
+
+   t.free()
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test JIT optimised writes to FD_INT64 fields and double-to-integer coercion.
+
+@Test(hotpath=50) function JITObjectFieldSetInt64()
+   jit.on()
+   jit.flush()
+   jit.opt.start("hotloop=1", "hotexit=1", "minstitch=0")
+
+   local t = obj.new('time')
+
+   -- Hot loop writing int64 fields - exercises the FD_INT64 XSTORE path
+   function traced_int64_write(Count)
+      for i = 1, Count do
+         t.systemTime = i * 1000000
+      end
+   end
+
+   for i = 1, 20 do
+      traced_int64_write(10)
+   end
+
+   -- Verify the final value (last iteration: i=10)
+   assert(t.systemTime is 10000000, f"Expected systemTime=10000000, got {t.systemTime}")
+
+   -- Test double-to-integer truncation (3.7 should become 3 for int fields)
+   function traced_double_to_int(Count)
+      for i = 1, Count do
+         t.year = 2025.7
+         t.month = 11.9
+      end
+   end
+
+   jit.flush()
+   for i = 1, 20 do
+      traced_double_to_int(10)
+   end
+
+   assert(t.year is 2025, f"Expected year=2025 (truncated from 2025.7), got {t.year}")
+   assert(t.month is 11, f"Expected month=11 (truncated from 11.9), got {t.month}")
+
+   t.free()
+end
