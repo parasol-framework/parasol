@@ -34,6 +34,16 @@ end
    end
 end
 
+@Test function ObjectReadDirectObjectLocked()
+   local val
+   glXML.source = glConfig
+   with glXML do
+      for i = 0,100000 do
+         val = glXML.source
+      end
+   end
+end
+
 @Test function ObjectWriteDirectFields()
    for i=0,100000 do
       glTime.hour   = 1
