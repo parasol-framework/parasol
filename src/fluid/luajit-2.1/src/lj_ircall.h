@@ -219,6 +219,7 @@ typedef struct CCallInfo {
   /* JIT direct field access lock/unlock */ \
   _(ANY,        jit_object_lock,   1, S, PTR, 0) \
   _(ANY,        jit_object_unlock, 1, S, NIL, 0) \
+  _(ANY,        jit_object_getstr, 4, S, NIL, CCI_L|CCI_T) \
   \
   // End of list.
 

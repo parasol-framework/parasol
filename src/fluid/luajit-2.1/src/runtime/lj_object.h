@@ -25,3 +25,4 @@ extern "C" int ir_object_field_type(GCobject *, GCstr *, int &, uint32_t &);
 // Guards in the trace ensure preconditions (alive, non-detached) are met.
 extern "C" OBJECTPTR jit_object_lock(GCobject *);
 extern "C" void jit_object_unlock(GCobject *);
+extern "C" void jit_object_getstr(lua_State *, GCobject *, uint32_t, TValue *);

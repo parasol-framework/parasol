@@ -4,6 +4,8 @@
    local glTime = obj.new('time', { })
    glTime.acQuery()
 
+   local glConfig = obj.new('config', { flags=CNF_NEW, keyFilter='None', path='temp:config.cfg' })
+
 @Test function ObjectReadDirectFields()
    for i=0,100000 do
       local h = glTime.hour
@@ -28,11 +30,27 @@ end
    end
 end
 
+-- The Config path field can be read directly.
+
+@Test function ObjectReadIndirectStrings()
+   local val
+   glConfig.path = 'temp:config.cfg'
+   for i=0,100000 do
+      val = glConfig.path
+   end
+end
+
 -- The Bitmap TransIndex field is an integer backed by a function.
 
 @Test function ObjectWriteIndirectFields()
    local bmp = obj.new('bitmap')
    for i=0,100000 do
       bmp.transIndex = 1
+   end
+end
+
+@Test function ObjectWriteIndirectStrings()
+   for i=0,10000 do
+      glConfig.keyFilter = 'None'
    end
 end

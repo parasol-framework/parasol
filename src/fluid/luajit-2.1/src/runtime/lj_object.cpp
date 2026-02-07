@@ -9,6 +9,7 @@
 #include "lj_ir.h"
 #include "lj_bc.h"
 #include "lj_object.h"
+#include "lj_str.h"
 #include "../../defs.h"
 
 //********************************************************************************************************************
@@ -320,7 +321,7 @@ extern "C" int ir_object_field_type(GCobject *Obj, GCstr *Key, int &Offset, uint
 
       // NB: Order is important
       if (flags & FD_ARRAY) return IRT_ARRAY;
-      if (flags & FD_STRING) return IRT_STR;
+      if (flags & FD_STRING) { FieldFlags &= ~FD_POINTER; return IRT_STR; }
       if (flags & (FD_DOUBLE|FD_INT64)) return IRT_NUM;
       if (flags & (FD_OBJECT|FD_LOCAL)) return IRT_OBJECT;
       if (flags & FD_INT) {
@@ -340,23 +341,36 @@ extern "C" int ir_object_field_type(GCobject *Obj, GCstr *Key, int &Offset, uint
 }
 
 //********************************************************************************************************************
-// JIT fast-path lock: assumes non-detached object with valid ptr.
-// Guards in the trace ensure these preconditions are met.
+// JIT fast-path lock: guards in the trace ensure the object is alive, non-detached, and has a valid ptr.
+// Mirrors access_object() semantics: skips ptr->lock() if already held (accesscount > 0).
 // Returns the Object* pointer for use by XLOAD.
 
 extern "C" OBJECTPTR jit_object_lock(GCobject *Obj)
 {
-   Obj->ptr->lock();
+   if (not Obj->accesscount) Obj->ptr->lock();
    Obj->accesscount++;
    return Obj->ptr;
 }
 
 //********************************************************************************************************************
-// JIT fast-path unlock: assumes non-detached object locked via jit_object_lock.
+// JIT fast-path unlock: mirrors release_object() semantics for non-detached objects.
 
 extern "C" void jit_object_unlock(GCobject *Obj)
 {
-   if (--Obj->accesscount IS 0) {
-      Obj->ptr->unlock();
-   }
+   if (--Obj->accesscount IS 0) Obj->ptr->unlock();
+}
+
+//********************************************************************************************************************
+// JIT fast-path string field read: locks the object, reads the CSTRING pointer at the given offset,
+// unlocks, and writes the result to Out.  Null CSTRING values produce nil (matching lua_pushstring).
+// Guards in the trace ensure the object is alive, non-detached, and has a valid ptr.
+
+extern "C" void jit_object_getstr(lua_State *L, GCobject *Obj, uint32_t Offset, TValue *Out)
+{
+   if (not Obj->accesscount) Obj->ptr->lock();
+   Obj->accesscount++;
+   CSTRING str = *(CSTRING *)(((int8_t *)Obj->ptr) + Offset);
+   if (--Obj->accesscount IS 0) Obj->ptr->unlock();
+   if (str) setstrV(L, Out, lj_str_newz(L, str));
+   else setnilV(Out); // Alternatively for an empty string: setstrV(L, Out, &G(L)->strempty);
 }
