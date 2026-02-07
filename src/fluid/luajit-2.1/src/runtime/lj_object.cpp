@@ -302,7 +302,7 @@ extern "C" void bc_object_setfield(lua_State *L, GCobject *Obj, GCstr *Key, TVal
 // JIT field type lookup - returns the IR type for a field.  Returns -1 if field not found or unknown type.  This
 // function must have no side effects as it is called during JIT recording.
 
-extern "C" int ir_object_field_type(GCobject *Obj, GCstr *Key)
+extern "C" int ir_object_field_type(GCobject *Obj, GCstr *Key, int &Offset, uint32_t &FieldFlags)
 {
    if (not Obj->uid or not Obj->classptr) return -1;
 
@@ -312,6 +312,11 @@ extern "C" int ir_object_field_type(GCobject *Obj, GCstr *Key)
    if (mc->findField(Key->hash, &field, &src_class) IS ERR::Okay) {
       auto flags = field->Flags;
       if (not (flags & FDF_R)) return -1;  // Not readable
+
+      if (field->GetValue) Offset = 0; // Default offset for fields that aren't directly accessible.
+      else Offset = field->Offset; // Direct access is permitted.
+
+      FieldFlags = flags;
 
       // NB: Order is important
       if (flags & FD_ARRAY) return IRT_ARRAY;
@@ -332,4 +337,26 @@ extern "C" int ir_object_field_type(GCobject *Obj, GCstr *Key)
    }
 
    return -1;  // Field not found in dictionary
+}
+
+//********************************************************************************************************************
+// JIT fast-path lock: assumes non-detached object with valid ptr.
+// Guards in the trace ensure these preconditions are met.
+// Returns the Object* pointer for use by XLOAD.
+
+extern "C" OBJECTPTR jit_object_lock(GCobject *Obj)
+{
+   Obj->ptr->lock();
+   Obj->accesscount++;
+   return Obj->ptr;
+}
+
+//********************************************************************************************************************
+// JIT fast-path unlock: assumes non-detached object locked via jit_object_lock.
+
+extern "C" void jit_object_unlock(GCobject *Obj)
+{
+   if (--Obj->accesscount IS 0) {
+      Obj->ptr->unlock();
+   }
 }

@@ -280,7 +280,9 @@ static std::array<obj_read::JUMP *, int(AC::END)> glJumpActions = {
 }
 
 //********************************************************************************************************************
-// Get the read table for a class, creating it if not present.
+// Returns the read-access jump table for a class, creating it if not present.  The jump table speeds up access to fields,
+// methods, and actions by hashing all accessible string names up-front and matching them with customised function
+// calls.  At run-time, the main penalty is reduced to a binary search on the jump table.
 
 READ_TABLE * get_read_table(objMetaClass *Class)
 {
@@ -311,7 +313,7 @@ READ_TABLE * get_read_table(objMetaClass *Class)
    int total_dict;
    if (Class->get(FID_Dictionary, dict, total_dict) IS ERR::Okay) {
       auto dict_span = std::span(dict, total_dict);
-      for (auto &field : dict_span | std::views::filter([](const auto& f) { return f.Flags & FDF_R; })) {
+      for (auto &field : dict_span | std::views::filter([](const auto &f) { return f.Flags & FDF_R; })) {
          auto hash = field.FieldID;
 
          if (field.Flags & FD_ARRAY) {
@@ -681,6 +683,8 @@ static int object_state(lua_State *Lua)
    }
 }
 
+// Create a new object as the child of another object.
+
 static int object_newchild(lua_State *Lua)
 {
    pf::Log log("obj.child");
@@ -767,6 +771,8 @@ static int object_newchild(lua_State *Lua)
    }
 }
 
+// Return an array of child object IDs.  Optionally filter by class name or ID, e.g. obj.children("Display")
+
 static int object_children(lua_State *Lua)
 {
    pf::Log log("obj.children");
@@ -800,6 +806,8 @@ static int object_children(lua_State *Lua)
    return 1;
 }
 
+// Attain a lock on an object and then call the referenced function.
+
 static int object_lock(lua_State *Lua)
 {
    auto def = object_context(Lua);
@@ -818,6 +826,8 @@ static int object_lock(lua_State *Lua)
    return 0;
 }
 
+// Detach an object, stopping the possibility of it being collected.
+
 static int object_detach(lua_State *Lua)
 {
    auto def = object_context(Lua);
@@ -829,6 +839,8 @@ static int object_detach(lua_State *Lua)
 
    return 0;
 }
+
+// Returns true if the object still exists.
 
 static int object_exists(lua_State *Lua)
 {

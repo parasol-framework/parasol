@@ -2450,11 +2450,57 @@ static TRef rec_object_get(jit_State *J, RecordOps *ops)
 
    // Look up the field type from MetaClass definitions
    GCobject *obj = objectV(ops->rbv());
-   GCstr *key = strV(ops->rcv());
+   GCstr *key = strV(ops->rcv()); // Field name
 
-   int field_type = ir_object_field_type(obj, key); // Returns an IRT or -1
-   if (field_type < 0) lj_trace_err(J, LJ_TRERR_BADTYPE);  // Unknown field type - abort recording
+   int field_offset;
+   uint32_t field_flags = 0;
+   int field_type = ir_object_field_type(obj, key, field_offset, field_flags); // Returns an IRT or -1
+   if (field_type < 0) lj_trace_err(J, LJ_TRERR_BADTYPE);  // Unknown field type (could be a action/method) - abort recording
 
+   if (field_offset) {
+      // Direct field access for signed int32, int64 and double types only.
+      // Other types (strings, arrays, structs, pointers, unsigned) fall through to bc_object_getfield.
+      constexpr uint32_t unsupported = FD_ARRAY|FD_STRING|FD_STRUCT|FD_POINTER|FD_OBJECT|FD_LOCAL|FD_UNSIGNED;
+      constexpr uint32_t supported_direct = FD_DOUBLE|FD_INT64|FD_INT;
+      if (not (field_flags & unsupported) and (field_flags & supported_direct)) {
+         // Guard: object is alive (uid != 0)
+         TRef uid_ref = emitir(IRTI(IR_FLOAD), obj_ref, IRFL_OBJ_UID);
+         emitir(IRTGI(IR_NE), uid_ref, lj_ir_kint(J, 0));
+
+         // Guard: object is not detached (flags & GCOBJ_DETACHED == 0)
+         TRef flags_ref = emitir(IRT(IR_FLOAD, IRT_U8), obj_ref, IRFL_OBJ_FLAGS);
+         TRef detached = emitir(IRTI(IR_BAND), flags_ref, lj_ir_kint(J, GCOBJ_DETACHED));
+         emitir(IRTGI(IR_EQ), detached, lj_ir_kint(J, 0));
+
+         // Lock: call jit_object_lock(obj) -> returns OBJECTPTR
+         TRef objptr = lj_ir_call(J, IRCALL_jit_object_lock, obj_ref);
+
+         // Load field value at (objptr + field_offset)
+         TRef addr = emitir(IRT(IR_ADD, IRT_PTR), objptr, lj_ir_kintp(J, field_offset));
+         TRef val;
+
+         if (field_flags & FD_DOUBLE) {
+            val = emitir(IRT(IR_XLOAD, IRT_NUM), addr, 0);
+         }
+         else if (field_flags & FD_INT64) {
+            val = emitir(IRT(IR_XLOAD, IRT_I64), addr, 0);
+            val = emitir(IRTN(IR_CONV), val, (IRT_NUM << IRCONV_DSH) | IRT_I64);
+         }
+         else { // FD_INT (signed int32) - guaranteed by supported_direct check above
+            val = emitir(IRT(IR_XLOAD, IRT_INT), addr, 0);
+            if (not LJ_DUALNUM) {
+               val = emitir(IRTN(IR_CONV), val, IRCONV_NUM_INT);
+            }
+         }
+
+         // Unlock: call jit_object_unlock(obj)
+         lj_ir_call(J, IRCALL_jit_object_unlock, obj_ref);
+
+         return val;
+      }
+   }
+
+   // Fallback: call bc_object_getfield for complex types (strings, arrays, structs, etc.)
    TRef tmp_ref = rec_tmpref(J, TREF_NIL, IRTMPREF_OUT1);
    TRef null_ref = lj_ir_kkptr(J, nullptr);  // No inline caching for JIT traces
    lj_ir_call(J, IRCALL_bc_object_getfield, obj_ref, key_ref, tmp_ref, null_ref);
