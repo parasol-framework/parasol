@@ -181,14 +181,20 @@ int lj_object_ipairs(lua_State *L)
 
 extern "C" void bc_object_getfield(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Dest, BCIns *Ins)
 {
-   // Ensure L->top is past the value register before any error can be thrown.
-   // luaL_error pushes the error string to L->top, which would corrupt active registers if too low.
+   // L->top is not maintained by the VM assembly between bytecodes.  It must be synchronised
+   // before calling handlers that trigger lj_gc_check (e.g. push_object -> lua_pushobject),
+   // because GC's atomic phase clears everything above L->top to nil — which would destroy
+   // active stack slots like for-loop control variables.
+   //
+   // For JIT traces (Ins == nullptr), L->base is also stale; sync from jit_base first.
+
+   const auto saved_base = L->base;
    const auto saved_top = L->top;
-   const auto stack_base = tvref(L->stack);
-   const auto stack_end = stack_base + L->stacksize;
-   if (Dest >= stack_base and Dest < stack_end and L->top <= Dest) {
-      L->top = Dest + 1;  // Ensure handler pushes after destination slot
+   if (not Ins) {
+      auto jb = tvref(G(L)->jit_base);
+      if (jb) L->base = jb;
    }
+   if (curr_funcisL(L)) L->top = curr_topL(L);
 
    if (not Obj->uid) luaL_error(L, ERR::DoesNotExist, "Object dereferenced, unable to read field.");
 
@@ -229,6 +235,7 @@ extern "C" void bc_object_getfield(lua_State *L, GCobject *Obj, GCstr *Key, TVal
    // Call the field handler - it pushes result onto the Lua stack
    if (func->Call(L, *func, Obj) > 0) copyTV(L, Dest, L->top - 1);
    else setnilV(Dest);
+   L->base = saved_base;
    L->top = saved_top;
 }
 
@@ -243,10 +250,19 @@ extern "C" void bc_object_getfield(lua_State *L, GCobject *Obj, GCstr *Key, TVal
 
 extern "C" void bc_object_setfield(lua_State *L, GCobject *Obj, GCstr *Key, TValue *Val, BCIns *Ins)
 {
+   // L->top is not maintained by the VM assembly between bytecodes (see bc_object_getfield).
+   // For JIT traces (Ins == nullptr), L->base is also stale; sync from jit_base first.
+
+   const auto saved_base = L->base;
+   const auto saved_top  = L->top;
+   if (not Ins) {
+      auto jb = tvref(G(L)->jit_base);
+      if (jb) L->base = jb;
+   }
+   if (curr_funcisL(L)) L->top = curr_topL(L);
+
    // Ensure L->top is past the value register before any error can be thrown.
    // luaL_error pushes the error string to L->top, which would corrupt active registers if too low.
-
-   const auto saved_top  = L->top;
    const auto stack_base = tvref(L->stack);
    const auto stack_end  = stack_base + L->stacksize;
    auto val_ptr    = Val;
@@ -291,6 +307,7 @@ extern "C" void bc_object_setfield(lua_State *L, GCobject *Obj, GCstr *Key, TVal
    if (auto pobj = access_object(Obj)) {
       auto stack_idx = int(val_ptr - L->base) + 1;
       ERR error = func->Call(L, pobj, func->Field, stack_idx);
+      L->base = saved_base;
       L->top = saved_top;
       release_object(Obj);
 
@@ -373,4 +390,23 @@ extern "C" void jit_object_getstr(lua_State *L, GCobject *Obj, uint32_t Offset, 
    if (--Obj->accesscount IS 0) Obj->ptr->unlock();
    if (str) setstrV(L, Out, lj_str_newz(L, str));
    else setnilV(Out); // Alternatively for an empty string: setstrV(L, Out, &G(L)->strempty);
+}
+
+//********************************************************************************************************************
+// JIT fast-path object field read: locks the parent, reads the OBJECTPTR at the given offset, unlocks, and creates
+// a detached GCobject wrapper written to Out.  Null pointers produce nil.  load_include_for_class() is not called
+// because the interpreter will have already loaded the class definitions during prior execution cycles.
+// Guards in the trace ensure the parent object is alive, non-detached, and has a valid ptr.
+
+extern "C" void jit_object_getobj(lua_State *L, GCobject *Obj, uint32_t Offset, TValue *Out)
+{
+   if (not Obj->accesscount) Obj->ptr->lock();
+   Obj->accesscount++;
+   OBJECTPTR child = *(OBJECTPTR *)(((int8_t *)Obj->ptr) + Offset);
+   if (child) {
+      auto gcobj = lj_object_new(L, child->UID, nullptr, child->Class, GCOBJ_DETACHED);
+      setobjectV(L, Out, gcobj);
+   }
+   else setnilV(Out);
+   if (--Obj->accesscount IS 0) Obj->ptr->unlock();
 }
