@@ -431,6 +431,7 @@ static UnsupportedNodeRecorder glUnsupportedNodes;
       case AstNodeKind::TryExceptStmt: return "TryExceptStmt";
       case AstNodeKind::RaiseStmt:     return "RaiseStmt";
       case AstNodeKind::CheckStmt:     return "CheckStmt";
+      case AstNodeKind::WithStmt:      return "WithStmt";
       case AstNodeKind::ExpressionStmt: return "ExpressionStmt";
       default: return "Unknown";
    }
@@ -688,6 +689,10 @@ ParserResult<IrEmitUnit> IrEmitter::emit_statement(const StmtNode& stmt)
    case AstNodeKind::ImportStmt: {
       const auto &payload = std::get<ImportStmtPayload>(stmt.data);
       return this->emit_import_stmt(payload);
+   }
+   case AstNodeKind::WithStmt: {
+      const auto &payload = std::get<WithStmtPayload>(stmt.data);
+      return this->emit_with_stmt(payload);
    }
    default:
       return this->unsupported_stmt(stmt.kind, stmt.span);
@@ -1371,6 +1376,121 @@ ParserResult<IrEmitUnit> IrEmitter::emit_defer_stmt(const DeferStmtPayload &Payl
    }
 
    fs->reset_freereg();
+   return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+}
+
+//********************************************************************************************************************
+// Emit bytecode for a `with` statement: with obj1, obj2 do ... end
+//
+// For each object expression:
+//   1. Evaluate to a register
+//   2. Store in a hidden local slot flagged with VarInfoFlag::Close
+//   3. Emit bytecode to call obj.__lock(obj) to acquire the lock
+// The scope exit then automatically calls __close (= release_object) via the <close> machinery.
+
+ParserResult<IrEmitUnit> IrEmitter::emit_with_stmt(const WithStmtPayload &Payload)
+{
+   FuncState *fs = &this->func_state;
+   LexState *ls = &this->lex_state;
+
+   // Open a new scope for the with block
+   FuncScope scope;
+   ScopeGuard guard(fs, &scope, FuncScopeFlag::None);
+   LocalBindingScope binding_scope(this->binding_table);
+
+   auto obj_count = BCReg(BCREG(Payload.objects.size()));
+   if (obj_count IS 0) {
+      // Empty with - just emit the body
+      if (Payload.block) {
+         for (const StmtNode &stmt : Payload.block->view()) {
+            auto status = this->emit_statement(stmt);
+            if (not status.ok()) return status;
+            this->ensure_register_balance(describe_node_kind(stmt.kind));
+         }
+      }
+      return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+   }
+
+   // Phase 1: Evaluate each object expression and store in <close> locals
+
+   for (auto i = BCReg(0); i < obj_count; ++i) {
+      const ExprNodePtr &obj_expr = Payload.objects[i.raw()];
+      if (not obj_expr) continue;
+
+      // Declare a hidden local variable for this object
+      ls->var_new(0, NAME_BLANK);
+
+      // Evaluate the expression
+      auto expr_result = this->emit_expression(*obj_expr);
+      if (not expr_result.ok()) return ParserResult<IrEmitUnit>::failure(expr_result.error_ref());
+
+      ExpDesc obj_value = expr_result.value_ref();
+      auto obj_reg = fs->free_reg();
+
+      // Materialise to the next register (the local variable slot)
+      this->materialise_to_reg(obj_value, obj_reg, "with object");
+
+      RegisterAllocator allocator(fs);
+      allocator.reserve(BCReg(1));  // Reserve the local slot
+      ls->var_add(1);
+
+      // Mark the local as <close> so scope exit calls __close
+      uint8_t slot = uint8_t(obj_reg.raw());
+      if (slot >= 64) {
+         return ParserResult<IrEmitUnit>::failure(this->make_error(ParserErrorCode::InternalInvariant,
+            "too many local variables with <close> attribute (max 64 slots)"));
+      }
+
+      VarInfo *info = &fs->var_get(fs->varmap.size() - 1);
+      info->info |= VarInfoFlag::Close;
+
+      // Phase 2: Emit bytecode to call __lock(obj) to acquire the lock
+      // Pattern: getmetatable(obj) -> get __lock field -> call __lock(obj)
+
+      BCREG base = fs->freereg;
+      allocator.reserve(BCReg(4 + LJ_FR2));
+
+      // Load getmetatable global
+      ExpDesc getmt;
+      getmt.init(ExpKind::Global, 0);
+      getmt.u.sval = ls->keepstr("getmetatable");
+      expr_toreg(fs, &getmt, base);
+
+      // Copy object to argument position
+      bcemit_AD(fs, BC_MOV, base + 1 + LJ_FR2, obj_reg);
+
+      // Call getmetatable(obj) -> metatable in base
+      bcemit_ABC(fs, BC_CALL, base, 2, 2);  // 1 result, 1 arg
+
+      // Get __lock from metatable
+      GCstr *lock_str = ls->keepstr("__lock");
+      ExpDesc key;
+      key.init(ExpKind::Str, 0);
+      key.u.sval = lock_str;
+      BCREG lock_fn_reg = base + 1;
+      bcemit_tgets(fs, lock_fn_reg, base, const_str(fs, &key));
+
+      // Call __lock(obj)
+      BCREG call_base = base;
+      bcemit_AD(fs, BC_MOV, call_base, lock_fn_reg);
+      bcemit_AD(fs, BC_MOV, call_base + 1 + LJ_FR2, obj_reg);
+      bcemit_ABC(fs, BC_CALL, call_base, 1, 2);  // 0 results, 1 arg
+
+      // Release the temporary registers
+      fs->freereg = BCReg(fs->varmap.size());
+   }
+
+   // Phase 3: Emit the body block
+
+   if (Payload.block) {
+      for (const StmtNode &stmt : Payload.block->view()) {
+         auto status = this->emit_statement(stmt);
+         if (not status.ok()) return status;
+         this->ensure_register_balance(describe_node_kind(stmt.kind));
+      }
+   }
+
+   // ScopeGuard destructor calls fscope_end -> execute_closes -> bcemit_close for each <close> local
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 

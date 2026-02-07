@@ -185,18 +185,18 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test obj.lock() method with callback
+-- Test 'with' statement
 
 @Test(hotpath=true) function ObjLock()
    f = obj.new('file')
    f.path = 'temp:locktest.txt'
 
    lock_executed = false
-   f.lock(function()
+   with f do
       lock_executed = true
-   end)
+   end
 
-   assert(lock_executed, "Expected lock callback to be executed")
+   assert(lock_executed, "Expected lock block to execute")
 end
 
 -----------------------------------------------------------------------------------------------------------------------

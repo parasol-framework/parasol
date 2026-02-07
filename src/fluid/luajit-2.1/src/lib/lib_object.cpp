@@ -46,7 +46,6 @@ template<class... Args> void RMSG(Args...) {
 
 static constexpr uint32_t OJH_init      = simple_hash("init");
 static constexpr uint32_t OJH_free      = simple_hash("free");
-static constexpr uint32_t OJH_lock      = simple_hash("lock");
 static constexpr uint32_t OJH_children  = simple_hash("children");
 static constexpr uint32_t OJH_detach    = simple_hash("detach");
 static constexpr uint32_t OJH_get       = simple_hash("get");
@@ -75,13 +74,15 @@ static constexpr uint32_t OJH_unsubscribe = simple_hash("unsubscribe");
 [[nodiscard]] static int object_get(lua_State *);
 [[nodiscard]] static int object_getkey(lua_State *);
 [[nodiscard]] static int object_init(lua_State *);
-[[nodiscard]] static int object_lock(lua_State *);
 [[nodiscard]] static int object_newchild(lua_State *);
 [[nodiscard]] static int object_set(lua_State *);
 [[nodiscard]] static int object_setkey(lua_State *);
 [[nodiscard]] static int object_state(lua_State *);
 [[nodiscard]] static int object_subscribe(lua_State *);
 [[nodiscard]] static int object_unsubscribe(lua_State *);
+
+[[nodiscard]] static int object_close_handler(lua_State *);
+[[nodiscard]] static int object_with_lock(lua_State *);
 
 [[nodiscard]] static int object_get_rgb(lua_State *, const obj_read &, GCobject *);
 [[nodiscard]] static int object_get_array(lua_State *, const obj_read &, GCobject *);
@@ -115,7 +116,6 @@ inline void SET_CONTEXT(lua_State *Lua, APTR Function) {
 [[nodiscard]] static int stack_object_get(lua_State *Lua, const obj_read &Handle, GCobject *def) { SET_CONTEXT(Lua, (APTR)object_get); return 1; }
 [[nodiscard]] static int stack_object_getKey(lua_State *Lua, const obj_read &Handle, GCobject *def) { SET_CONTEXT(Lua, (APTR)object_getkey); return 1; }
 [[nodiscard]] static int stack_object_init(lua_State *Lua, const obj_read &Handle, GCobject *def) { SET_CONTEXT(Lua, (APTR)object_init); return 1; }
-[[nodiscard]] static int stack_object_lock(lua_State *Lua, const obj_read &Handle, GCobject *def) { SET_CONTEXT(Lua, (APTR)object_lock); return 1; }
 [[nodiscard]] static int stack_object_newchild(lua_State *Lua, const obj_read &Handle, GCobject *def) { SET_CONTEXT(Lua, (APTR)object_newchild); return 1; }
 [[nodiscard]] static int stack_object_set(lua_State *Lua, const obj_read &Handle, GCobject *def) { SET_CONTEXT(Lua, (APTR)object_set); return 1; }
 [[nodiscard]] static int stack_object_setKey(lua_State *Lua, const obj_read &Handle, GCobject *def) { SET_CONTEXT(Lua, (APTR)object_setkey); return 1; }
@@ -341,7 +341,6 @@ READ_TABLE * get_read_table(objMetaClass *Class)
 
    jmp.emplace_back(OJH_init, stack_object_init);
    jmp.emplace_back(OJH_free, stack_object_free);
-   jmp.emplace_back(OJH_lock, stack_object_lock);
    jmp.emplace_back(OJH_children, stack_object_children);
    jmp.emplace_back(OJH_detach, stack_object_detach);
    jmp.emplace_back(OJH_get, stack_object_get);
@@ -806,26 +805,6 @@ static int object_children(lua_State *Lua)
    return 1;
 }
 
-// Attain a lock on an object and then call the referenced function.
-
-static int object_lock(lua_State *Lua)
-{
-   auto def = object_context(Lua);
-
-   if (not lua_isfunction(Lua, 1)) {
-      luaL_argerror(Lua, 1, "Function expected.");
-      return 0;
-   }
-
-   if (access_object(def)) {
-      pf::Log log("obj.lock");
-      log.branch("Object: %d", def->uid);
-      lua_pcall(Lua, 0, 0, 0);
-      release_object(def);
-   }
-   return 0;
-}
-
 // Detach an object, stopping the possibility of it being collected.
 
 static int object_detach(lua_State *Lua)
@@ -979,6 +958,38 @@ static int object_init(lua_State *Lua)
 }
 
 //********************************************************************************************************************
+// __close metamethod handler for object auto-unlock.  Called automatically by scope exit for <close> variables.
+// Safe no-op if accesscount is 0 (object was never locked or already unlocked).
+
+static int object_close_handler(lua_State *Lua)
+{
+   auto *def = lj_get_object_fast(Lua, 1);
+   if (def and def->accesscount > 0) release_object(def);
+   return 0;
+}
+
+//********************************************************************************************************************
+// __lock helper for `with` statement.  Validates the argument is an object, acquires the lock, and raises an error
+// if the object is dead.
+
+static int object_with_lock(lua_State *Lua)
+{
+   auto *def = lj_get_object_fast(Lua, 1);
+   if (not def) {
+      luaL_argerror(Lua, 1, "Object expected for 'with' statement.");
+      return 0;
+   }
+
+   if (not access_object(def)) {
+      luaL_error(Lua, ERR::AccessObject, "Failed to lock object for 'with' statement.");
+      return 0;
+   }
+
+   lua_pushvalue(Lua, 1); // Return the object
+   return 1;
+}
+
+//********************************************************************************************************************
 
 #include "lj_libdef.h"
 
@@ -998,6 +1009,12 @@ extern "C" int luaopen_object(lua_State *L)
    lua_pushcfunction(L, object_newindex);
    lua_setfield(L, -2, "__newindex");
 
+   lua_pushcfunction(L, object_close_handler);
+   lua_setfield(L, -2, "__close");
+
+   lua_pushcfunction(L, object_with_lock);
+   lua_setfield(L, -2, "__lock");
+
    // Use the library table directly as the base metatable for objects.
    // NOBARRIER: basemt is a GC root.
    setgcref(basemt_it(g, LJ_TOBJECT), obj2gco(lib));
@@ -1007,7 +1024,6 @@ extern "C" int luaopen_object(lua_State *L)
    reg_iface_prototype("obj", "find", { FluidType::Object }, { FluidType::Any });
    reg_iface_prototype("obj", "init", { FluidType::Object }, { FluidType::Object });
    reg_iface_prototype("obj", "free", { FluidType::Nil }, { FluidType::Object });
-   reg_iface_prototype("obj", "lock", { FluidType::Object }, { FluidType::Object });
    reg_iface_prototype("obj", "children", { FluidType::Table }, { FluidType::Object });
    reg_iface_prototype("obj", "detach", { FluidType::Object }, { FluidType::Object });
    reg_iface_prototype("obj", "get", { FluidType::Any }, { FluidType::Object, FluidType::Str });
