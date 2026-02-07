@@ -51,6 +51,7 @@ private:
    ParserResult<StmtNodePtr> parse_for();
    ParserResult<StmtNodePtr> parse_anonymous_for(const Token &);
    ParserResult<StmtNodePtr> parse_do();
+   ParserResult<StmtNodePtr> parse_with();
    ParserResult<StmtNodePtr> parse_defer();
    ParserResult<StmtNodePtr> parse_return();
    ParserResult<StmtNodePtr> parse_try();

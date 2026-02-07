@@ -355,6 +355,32 @@ ParserResult<StmtNodePtr> AstBuilder::parse_do()
 }
 
 //********************************************************************************************************************
+// Parses with statements: with expr1, expr2 do ... end
+// Auto-locks Parasol objects for the duration of the block, unlocking when scope exits.
+
+ParserResult<StmtNodePtr> AstBuilder::parse_with()
+{
+   Token token = this->ctx.tokens().current();
+   this->ctx.tokens().advance();  // consume 'with'
+
+   auto exprs = this->parse_expression_list();
+   if (not exprs.ok()) return ParserResult<StmtNodePtr>::failure(exprs.error_ref());
+
+   this->ctx.consume(TokenKind::DoToken, ParserErrorCode::ExpectedToken);
+
+   const TokenKind terms[] = { TokenKind::EndToken };
+   auto body = this->parse_block(terms);
+   if (not body.ok()) return ParserResult<StmtNodePtr>::failure(body.error_ref());
+
+   this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
+
+   auto stmt = std::make_unique<StmtNode>(AstNodeKind::WithStmt, token.span());
+   WithStmtPayload payload(std::move(exprs.value_ref()), std::move(body.value_ref()));
+   stmt->data = std::move(payload);
+   return ParserResult<StmtNodePtr>::success(std::move(stmt));
+}
+
+//********************************************************************************************************************
 // Parses defer statements that execute code when the current scope exits.
 
 ParserResult<StmtNodePtr> AstBuilder::parse_defer()

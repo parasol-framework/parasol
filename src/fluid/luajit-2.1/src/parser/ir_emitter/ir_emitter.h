@@ -165,6 +165,7 @@ private:
    ParserResult<IrEmitUnit> emit_raise_stmt(const RaiseStmtPayload& payload, const SourceSpan& span);
    ParserResult<IrEmitUnit> emit_check_stmt(const CheckStmtPayload& payload, const SourceSpan& span);
    ParserResult<IrEmitUnit> emit_import_stmt(const ImportStmtPayload& payload);
+   ParserResult<IrEmitUnit> emit_with_stmt(const WithStmtPayload& payload);
    ParserResult<IrEmitUnit> emit_assignment_stmt(const AssignmentStmtPayload& payload);
    ParserResult<IrEmitUnit> emit_plain_assignment(std::vector<PreparedAssignment> targets, const ExprNodeList& values);
    ParserResult<IrEmitUnit> emit_compound_assignment(AssignmentOperator op, PreparedAssignment target, const ExprNodeList& values);

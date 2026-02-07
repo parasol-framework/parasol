@@ -56,6 +56,7 @@ struct TokenDefinition {
    TOKEN_DEF(raise,        "raise",    true) \
    TOKEN_DEF(check,        "check",    true) \
    TOKEN_DEF(while,        "while",    true) \
+   TOKEN_DEF(with,         "with",     true) \
    TOKEN_DEF(case_arrow,   "->",       false) \
    TOKEN_DEF(if_empty,     "??",       false) \
    TOKEN_DEF(safe_field,   "?.",       false) \
@@ -134,7 +135,7 @@ inline constexpr size_t generate_reserved_count() noexcept {
 enum {
    TK_OFS = 256,
    TOKEN_DEF_LIST
-   TK_RESERVED = TK_while - TK_OFS
+   TK_RESERVED = TK_with - TK_OFS
 };
 #undef TOKEN_DEF
 

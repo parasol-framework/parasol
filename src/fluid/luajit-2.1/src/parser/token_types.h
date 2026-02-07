@@ -34,6 +34,7 @@ enum class TokenKind : uint16_t {
    ElseIf = TK_elseif,
    For = TK_for,
    WhileToken = TK_while,
+   WithToken = TK_with,
    Repeat = TK_repeat,
    Until = TK_until,
    DoToken = TK_do,
@@ -137,6 +138,7 @@ enum class TokenKind : uint16_t {
       case TokenKind::ElseIf: return "elseif";
       case TokenKind::For: return "for";
       case TokenKind::WhileToken: return "while";
+      case TokenKind::WithToken: return "with";
       case TokenKind::Repeat: return "repeat";
       case TokenKind::Until: return "until";
       case TokenKind::DoToken: return "do";

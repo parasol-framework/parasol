@@ -315,6 +315,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_statement()
       case TokenKind::Repeat:        return this->parse_repeat();
       case TokenKind::For:           return this->parse_for();
       case TokenKind::DoToken:       return this->parse_do();
+      case TokenKind::WithToken:     return this->parse_with();
       case TokenKind::DeferToken:    return this->parse_defer();
       case TokenKind::ReturnToken:   return this->parse_return();
       case TokenKind::TryToken:      return this->parse_try();
@@ -384,6 +385,7 @@ bool AstBuilder::is_statement_start(TokenKind kind) const
       case TokenKind::Repeat:
       case TokenKind::For:
       case TokenKind::DoToken:
+      case TokenKind::WithToken:
       case TokenKind::DeferToken:
       case TokenKind::ReturnToken:
       case TokenKind::BreakToken:
