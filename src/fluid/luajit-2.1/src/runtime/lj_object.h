@@ -20,6 +20,7 @@ extern "C" void bc_object_getfield(lua_State *, GCobject *, GCstr *, TValue *, B
 extern "C" void bc_object_setfield(lua_State *, GCobject *, GCstr *, TValue *, BCIns *);
 
 extern "C" int ir_object_field_type(GCobject *, GCstr *, int &, uint32_t &);
+extern "C" int ir_object_field_type_write(GCobject *, GCstr *, int &, uint32_t &);
 
 // JIT fast-path lock/unlock for non-detached objects with valid ptr.
 // Guards in the trace ensure preconditions (alive, non-detached) are met.

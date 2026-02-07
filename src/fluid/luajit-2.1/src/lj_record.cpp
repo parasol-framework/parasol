@@ -2534,8 +2534,71 @@ static TRef rec_object_set(jit_State *J, RecordOps *ops)
    TRef obj_ref = ops->rb;
    if (not tref_isobject(obj_ref)) lj_trace_err(J, LJ_TRERR_BADTYPE);
    TRef key_ref = ops->rc;  // Get the string key reference - BC_OBGETF/OBSETF use ~RC for the constant index
+   TRef val_ref = ops->ra;  // The value being written
 
-   // bc_object_setfield(L, obj, key, val, nullptr)
+   // Look up the field type from MetaClass definitions (write-side)
+   GCobject *obj = objectV(ops->rbv());
+   GCstr *key = strV(ops->rcv());
+
+   int field_offset;
+   uint32_t field_flags = 0;
+   int field_type = ir_object_field_type_write(obj, key, field_offset, field_flags);
+
+   if (field_type >= 0 and field_offset) {
+      constexpr uint32_t unsupported = FD_ARRAY|FD_STRUCT|FD_UNSIGNED|FD_CPP;
+      if (not (field_flags & unsupported)) {
+         constexpr uint32_t supported_numeric = FD_DOUBLE|FD_INT64|FD_INT;
+         if ((field_flags & supported_numeric) and not (field_flags & FD_POINTER) and tref_isnumber(val_ref)) {
+            // Guard: object is alive (uid != 0)
+            TRef uid_ref = emitir(IRTI(IR_FLOAD), obj_ref, IRFL_OBJ_UID);
+            emitir(IRTGI(IR_NE), uid_ref, lj_ir_kint(J, 0));
+
+            // Guard: object is not detached (flags & GCOBJ_DETACHED == 0)
+            TRef flags_ref = emitir(IRT(IR_FLOAD, IRT_U8), obj_ref, IRFL_OBJ_FLAGS);
+            TRef detached = emitir(IRTI(IR_BAND), flags_ref, lj_ir_kint(J, GCOBJ_DETACHED));
+            emitir(IRTGI(IR_EQ), detached, lj_ir_kint(J, 0));
+
+            // Guard: object has a valid ptr (ptr != nullptr)
+            TRef ptr_ref = emitir(IRT(IR_FLOAD, IRT_PTR), obj_ref, IRFL_OBJ_PTR);
+            emitir(IRTG(IR_NE, IRT_PTR), ptr_ref, lj_ir_knull(J, IRT_PTR));
+
+            // Lock the object and get C++ pointer
+            TRef objptr = lj_ir_call(J, IRCALL_jit_object_lock, obj_ref);
+
+            // Compute the field address: object base + field offset
+            TRef addr = emitir(IRT(IR_ADD, IRT_PTR), objptr, lj_ir_kintp(J, field_offset));
+
+            // Convert the value to the target type and emit the store
+            if (field_flags & FD_DOUBLE) {
+               TRef store_val = val_ref;
+               if (tref_isint(val_ref))
+                  store_val = emitir(IRTN(IR_CONV), val_ref, IRCONV_NUM_INT);
+               emitir(IRT(IR_XSTORE, IRT_NUM), addr, store_val);
+            }
+            else if (field_flags & FD_INT64) {
+               TRef store_val;
+               if (tref_isint(val_ref))
+                  store_val = emitir(IRT(IR_CONV, IRT_I64), val_ref,
+                     (IRT_I64 << IRCONV_DSH) | IRT_INT | IRCONV_SEXT);
+               else
+                  store_val = emitir(IRT(IR_CONV, IRT_I64), val_ref,
+                     (IRT_I64 << IRCONV_DSH) | IRT_NUM | IRCONV_ANY);
+               emitir(IRT(IR_XSTORE, IRT_I64), addr, store_val);
+            }
+            else { // FD_INT (signed int32) - guaranteed by supported_numeric check above
+               TRef store_val = val_ref;
+               if (tref_isnum(val_ref))
+                  store_val = emitir(IRTI(IR_CONV), val_ref, IRCONV_INT_NUM | IRCONV_ANY);
+               emitir(IRT(IR_XSTORE, IRT_INT), addr, store_val);
+            }
+
+            lj_ir_call(J, IRCALL_jit_object_unlock, obj_ref);
+            return 0;
+         }
+      }
+   }
+
+   // Fallback: call bc_object_setfield for non-numeric types, virtual setters, etc.
    TRef tmp_ref = rec_tmpref(J, ops->ra, IRTMPREF_IN1);
    TRef null_ref = lj_ir_kkptr(J, nullptr);  // No inline caching for JIT traces
    lj_ir_call(J, IRCALL_bc_object_setfield, obj_ref, key_ref, tmp_ref, null_ref);

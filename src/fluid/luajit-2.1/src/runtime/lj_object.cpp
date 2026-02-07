@@ -324,10 +324,9 @@ extern "C" int ir_object_field_type(GCobject *Obj, GCstr *Key, int &Offset, uint
 {
    if (not Obj->uid or not Obj->classptr) return -1;
 
-   auto *mc = Obj->classptr;
    objMetaClass *src_class;
    Field *field;
-   if (mc->findField(Key->hash, &field, &src_class) IS ERR::Okay) {
+   if (Obj->classptr->findField(Key->hash, &field, &src_class) IS ERR::Okay) {
       auto flags = field->Flags;
       if (not (flags & FDF_R)) return -1;  // Not readable
 
@@ -338,23 +337,50 @@ extern "C" int ir_object_field_type(GCobject *Obj, GCstr *Key, int &Offset, uint
 
       // NB: Order is important
       if (flags & FD_ARRAY) return IRT_ARRAY;
-      if (flags & FD_STRING) { FieldFlags &= ~FD_POINTER; return IRT_STR; }
-      if (flags & (FD_DOUBLE|FD_INT64)) return IRT_NUM;
-      if (flags & (FD_OBJECT|FD_LOCAL)) return IRT_OBJECT;
-      if (flags & FD_INT) {
+      else if (flags & FD_STRING) { FieldFlags &= ~FD_POINTER; return IRT_STR; }
+      else if (flags & (FD_DOUBLE|FD_INT64)) return IRT_NUM;
+      else if (flags & (FD_OBJECT|FD_LOCAL)) return IRT_OBJECT;
+      else if (flags & FD_INT) {
          // FD_UNSIGNED always uses lua_pushnumber, even in DUALNUM builds
          if (flags & FD_UNSIGNED) return IRT_NUM;
-         return LJ_DUALNUM ? IRT_INT : IRT_NUM;
+         else return LJ_DUALNUM ? IRT_INT : IRT_NUM;
       }
-      if (flags & FD_STRUCT) {
+      else if (flags & FD_STRUCT) {
          if (flags & FD_RESOURCE) return IRT_LIGHTUD;
          else return IRT_TAB;
       }
-      if (flags & FD_POINTER) return IRT_LIGHTUD;
-      return -1;  // Unknown type
+      else if (flags & FD_POINTER) return IRT_LIGHTUD;
+      else return -1;  // Unknown type
    }
+   else return -1;  // Field not found in dictionary
+}
 
-   return -1;  // Field not found in dictionary
+//********************************************************************************************************************
+// JIT write-side field type lookup.  Returns the IR type for a writable numeric field, or -1 if the field is not
+// found, not writable, or not a simple numeric type.  Sets Offset to the field's byte offset when direct memory
+// writes are safe (SetValue == nullptr), or 0 when a virtual setter must be called.
+// This function must have no side effects as it is called during JIT recording.
+
+extern "C" int ir_object_field_type_write(GCobject *Obj, GCstr *Key, int &Offset, uint32_t &FieldFlags)
+{
+   if (not Obj->uid or not Obj->classptr) return -1;
+
+   objMetaClass *src_class;
+   Field *field;
+   if (Obj->classptr->findField(Key->hash, &field, &src_class) IS ERR::Okay) {
+      auto flags = field->Flags;
+      if (not (flags & FD_WRITE)) return -1;           // Not writable (FD_INIT excluded)
+      if (flags & (FD_FLAGS|FD_LOOKUP)) return -1;     // Special write handlers, not simple stores
+      Offset = field->SetValue ? 0 : field->Offset;
+      FieldFlags = flags;
+      if (flags & (FD_DOUBLE|FD_INT64)) return IRT_NUM;
+      else if (flags & FD_INT) {
+         if (flags & FD_UNSIGNED) return IRT_NUM;
+         else return LJ_DUALNUM ? IRT_INT : IRT_NUM;
+      }
+      else return -1;  // Non-numeric — not supported for write optimisation
+   }
+   else return -1;
 }
 
 //********************************************************************************************************************
