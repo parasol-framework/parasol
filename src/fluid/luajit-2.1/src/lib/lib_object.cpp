@@ -682,6 +682,7 @@ static int object_state(lua_State *Lua)
    }
 }
 
+//********************************************************************************************************************
 // Create a new object as the child of another object.
 
 static int object_newchild(lua_State *Lua)
@@ -770,6 +771,7 @@ static int object_newchild(lua_State *Lua)
    }
 }
 
+//********************************************************************************************************************
 // Return an array of child object IDs.  Optionally filter by class name or ID, e.g. obj.children("Display")
 
 static int object_children(lua_State *Lua)
@@ -805,6 +807,7 @@ static int object_children(lua_State *Lua)
    return 1;
 }
 
+//********************************************************************************************************************
 // Detach an object, stopping the possibility of it being collected.
 
 static int object_detach(lua_State *Lua)
@@ -819,6 +822,7 @@ static int object_detach(lua_State *Lua)
    return 0;
 }
 
+//********************************************************************************************************************
 // Returns true if the object still exists.
 
 static int object_exists(lua_State *Lua)
@@ -831,6 +835,8 @@ static int object_exists(lua_State *Lua)
    }
    return 0;
 }
+
+//********************************************************************************************************************
 
 static int object_subscribe(lua_State *Lua)
 {
@@ -892,6 +898,8 @@ static int object_subscribe(lua_State *Lua)
    return 0;
 }
 
+//********************************************************************************************************************
+
 static int object_unsubscribe(lua_State *Lua)
 {
    pf::Log log("unsubscribe");
@@ -927,6 +935,8 @@ static int object_unsubscribe(lua_State *Lua)
    return 0;
 }
 
+//********************************************************************************************************************
+
 static int object_free(lua_State *Lua)
 {
    auto def = object_context(Lua);
@@ -941,6 +951,8 @@ static int object_free(lua_State *Lua)
 
    return 0;
 }
+
+//********************************************************************************************************************
 
 static int object_init(lua_State *Lua)
 {
@@ -974,19 +986,18 @@ static int object_close_handler(lua_State *Lua)
 
 static int object_with_lock(lua_State *Lua)
 {
-   auto *def = lj_get_object_fast(Lua, 1);
-   if (not def) {
+   if (auto *def = lj_get_object_fast(Lua, 1)) {
+      if (not access_object(def)) {
+         luaL_error(Lua, ERR::AccessObject, "Failed to lock object for 'with' statement.");
+         return 0;
+      }
+      lua_pushvalue(Lua, 1); // Return the object
+      return 1;
+   }
+   else {
       luaL_argerror(Lua, 1, "Object expected for 'with' statement.");
       return 0;
    }
-
-   if (not access_object(def)) {
-      luaL_error(Lua, ERR::AccessObject, "Failed to lock object for 'with' statement.");
-      return 0;
-   }
-
-   lua_pushvalue(Lua, 1); // Return the object
-   return 1;
 }
 
 //********************************************************************************************************************

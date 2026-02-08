@@ -38,11 +38,16 @@ typedef enum {
 static AliasRet aa_escape(jit_State* J, IRIns* ir, IRIns* stop)
 {
    IRRef ref = (IRRef)(ir - J->cur.ir);  //  The ref that might be stored.
-   for (ir++; ir < stop; ir++)
+   for (ir++; ir < stop; ir++) {
       if (ir->op2 == ref and
-         (ir->o == IR_ASTORE or ir->o == IR_HSTORE ||
+         (ir->o == IR_ASTORE or ir->o == IR_HSTORE or
             ir->o == IR_USTORE or ir->o == IR_FSTORE))
          return ALIAS_MAY;  //  Reference was stored and might alias.
+      // A TMPREF with the ref as its value (op1) passes it to a C function via IR_CALLS,
+      // which can store the reference in an opaque data structure (e.g. native arrays).
+      if (ir->op1 == ref and ir->o == IR_TMPREF)
+         return ALIAS_MAY;  //  Reference passed to C call and might alias.
+   }
    return ALIAS_NO;  //  Reference was not stored.
 }
 

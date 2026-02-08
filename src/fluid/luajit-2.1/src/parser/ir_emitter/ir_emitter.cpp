@@ -2224,6 +2224,11 @@ ParserResult<ExpDesc> IrEmitter::emit_member_expr(const MemberExprPayload &Paylo
          // If is_call_target is true, skip type checking and let runtime handle the method/action call
       }
    }
+   else {
+      // Reset result_type so the base type does not leak into downstream chained expressions.
+      // E.g. arr[1].list should not propagate Array type from arr — .list returns whatever it holds.
+      table.result_type = FluidType::Unknown;
+   }
 
    return ParserResult<ExpDesc>::success(table);
 }
@@ -2282,6 +2287,10 @@ ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload &Payload
          table.k = ExpKind::IndexedObject;
       }
    }
+
+   // Reset result_type so the base type does not leak into downstream chained expressions.
+   // The result of arr[i] is the element (which could be table, object, etc.), not another array.
+   table.result_type = FluidType::Unknown;
 
    return ParserResult<ExpDesc>::success(table);
 }

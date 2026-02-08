@@ -642,6 +642,12 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
 
             node = make_call_expr(span, std::move(array_new), std::move(args), false);
          }
+
+         // Mark the result as FluidType::Array so downstream index expressions emit AGET/ASET opcodes
+         if (node->kind IS AstNodeKind::CallExpr) {
+            auto *call_payload = std::get_if<CallExprPayload>(&node->data);
+            if (call_payload) call_payload->result_type = FluidType::Array;
+         }
          break;
       }
 

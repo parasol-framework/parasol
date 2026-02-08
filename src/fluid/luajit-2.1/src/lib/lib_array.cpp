@@ -1049,7 +1049,7 @@ LJLIB_CF(array_copy)
    size_t strlen;
    auto src_type = lua_type(L, 2);
    if (src_type IS LUA_TARRAY) {
-      GCarray *src = lj_lib_checkarray(L, 2);
+      GCarray *src  = lj_lib_checkarray(L, 2);
       auto dest_idx = lj_lib_optint(L, 3, 0);
       auto src_idx  = lj_lib_optint(L, 4, 0);
       auto count    = lj_lib_optint(L, 5, int32_t(src->len - src_idx));
@@ -1060,10 +1060,7 @@ LJLIB_CF(array_copy)
    else if (src_type IS LUA_TSTRING) {
       // Treat string sequences as a byte array
       auto str = lua_tolstring(L, 2, &strlen);
-      if (!str or strlen < 1) {
-         luaL_argerror(L, 2, "String is empty.");
-         return 0;
-      }
+      if (!str or strlen < 1) return 0; // Do nothing - no error necessary
 
       auto dest_idx   = lj_lib_optint(L, 3, 0);
       auto src_idx    = lj_lib_optint(L, 4, 0);
