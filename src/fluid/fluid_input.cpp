@@ -41,6 +41,7 @@ For drag and drop operations, data can be requested from a source as follows:
 
 #include "hashes.h"
 #include "defs.h"
+#include "lj_proto_registry.h"
 
 JUMPTABLE_DISPLAY
 
@@ -527,4 +528,9 @@ void register_input_class(lua_State *Lua)
 
    luaL_openlib(Lua, nullptr, inputlib_methods, 0);
    luaL_openlib(Lua, "input", inputlib_functions, 0);
+
+   // Register input interface prototypes for compile-time type inference
+   reg_iface_prototype("input", "subscribe", { FluidType::Any }, { FluidType::Num, FluidType::Any, FluidType::Num, FluidType::Func });
+   reg_iface_prototype("input", "keyboard", { FluidType::Any }, { FluidType::Any, FluidType::Func });
+   reg_iface_prototype("input", "requestItem", {}, { FluidType::Any, FluidType::Num, FluidType::Any, FluidType::Func });
 }

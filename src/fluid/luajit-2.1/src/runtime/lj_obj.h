@@ -114,6 +114,7 @@ enum class AstNodeKind : uint16_t {
    RaiseStmt,      // raise expression [, message]
    CheckStmt,      // check expression
    ImportStmt,     // import 'module' statement
+   WithStmt,       // with obj1, obj2 do ... end
    ExpressionStmt
 };
 

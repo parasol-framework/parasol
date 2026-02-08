@@ -1392,12 +1392,12 @@ inline CLASSID Object::baseClassID() { return Class->BaseClassID; }
    STRING   Path;                 // File location of the script
    STRING   String;
    STRING   WorkingPath;
-   STRING   ErrorString;
+   STRING   ErrorMessage;
    CSTRING  Procedure;
    STRING   CacheFile;
-   int     ActivationCount;      // Incremented every time the script is activated.
-   int     ResultsTotal;
-   int     TotalArgs;            // Total number of ProcArgs
+   int      ActivationCount;      // Incremented every time the script is activated.
+   int      ResultsTotal;
+   int      TotalArgs;            // Total number of ProcArgs
    char     LanguageDir[32];      // Directory to use for language files
    OBJECTID ScriptOwnerID;
   ]])

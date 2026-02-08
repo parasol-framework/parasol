@@ -1,6 +1,6 @@
 // Parser Diagnostics - Error collection and reporting for the Fluid parser.
 //
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 //
 // This module provides infrastructure for collecting and reporting parser diagnostics during
 // compilation. It supports multiple severity levels (Info, Warning, Error) and implements a

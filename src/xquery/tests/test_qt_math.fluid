@@ -18,7 +18,7 @@ rx_spaces = regex.new('\\s+')
 
    counter = 1
 
-   file.search(math_folder, {
+   io.search(math_folder, {
       nameFilter  = '%.xml$',
       nameWild = true,
       matchFeedback = function(Path, FileName)

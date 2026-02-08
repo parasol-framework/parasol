@@ -15,7 +15,7 @@
    folder = 'icons:programs/'
    list = ''
    print(f'Scanning "{folder}" for SVGs')
-   file.search(folder, {
+   io.search(folder, {
       nameFilter = regex.new('.+\\.svg'),
       matchFeedback = function(Path:str, FileName:str, File)
          list ..= FileName .. ' '

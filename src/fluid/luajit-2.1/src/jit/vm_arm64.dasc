@@ -1376,130 +1376,6 @@ static void build_subroutines(BuildCtx *ctx)
   |   cbz NARGS8:RC, ->vm_call_dispatch
   |  b <1
   |
-  |//-- Coroutine library --------------------------------------------------
-  |
-  |.macro coroutine_resume_wrap, resume
-  |.if resume
-  |.ffunc_1 coroutine_resume
-  |  checktp CARG1, LJ_TTHREAD, ->fff_fallback
-  |.else
-  |.ffunc coroutine_wrap_aux
-  |  ldr L:CARG1, CFUNC:CARG3->upvalue[0].gcr
-  |  and L:CARG1, CARG1, #LJ_GCVMASK
-  |.endif
-  |   ldr PC, [BASE, FRAME_PC]
-  |     str BASE, L->base
-  |  ldp RB, CARG2, L:CARG1->base
-  |   ldrb TMP1w, L:CARG1->status
-  |  add TMP0, CARG2, TMP1
-  |   str PC, SAVE_PC
-  |  cmp TMP0, RB
-  |  beq ->fff_fallback
-  |   cmp TMP1, #LUA_YIELD
-  |    add TMP0, CARG2, #8
-  |   csel CARG2, CARG2, TMP0, hs
-  |   ldr CARG4, L:CARG1->maxstack
-  |   add CARG3, CARG2, NARGS8:RC
-  |    ldr RB, L:CARG1->cframe
-  |   ccmp CARG3, CARG4, #2, ls
-  |    ccmp RB, #0, #2, ls
-  |    bhi ->fff_fallback
-  |.if resume
-  |  sub CARG3, CARG3, #8		// Keep resumed thread in stack for GC.
-  |  add BASE, BASE, #8
-  |  sub NARGS8:RC, NARGS8:RC, #8
-  |.endif
-  |  str CARG3, L:CARG1->top
-  |  str BASE, L->top
-  |  cbz NARGS8:RC, >3
-  |2:  // Move args to coroutine.
-  |   ldr TMP0, [BASE, RB]
-  |  cmp RB, NARGS8:RC
-  |   str TMP0, [CARG2, RB]
-  |   add RB, RB, #8
-  |  bne <2
-  |3:
-  |  mov CARG3, #0
-  |   mov L:RA, L:CARG1
-  |  mov CARG4, #0
-  |  bl ->vm_resume			// (lua_State *L, TValue *base, 0, 0)
-  |  // Returns thread status.
-  |4:
-  |  ldp CARG3, CARG4, L:RA->base
-  |   cmp CRET1, #LUA_YIELD
-  |  ldr BASE, L->base
-  |    str L, GL->cur_L
-  |    st_vmstate ST_INTERP
-  |   bhi >8
-  |  sub RC, CARG4, CARG3
-  |   ldr CARG1, L->maxstack
-  |   add CARG2, BASE, RC
-  |  cbz RC, >6				// No results?
-  |  cmp CARG2, CARG1
-  |   mov RB, #0
-  |  bhi >9				// Need to grow stack?
-  |
-  |  sub CARG4, RC, #8
-  |   str CARG3, L:RA->top		// Clear coroutine stack.
-  |5:  // Move results from coroutine.
-  |   ldr TMP0, [CARG3, RB]
-  |  cmp RB, CARG4
-  |   str TMP0, [BASE, RB]
-  |   add RB, RB, #8
-  |  bne <5
-  |6:
-  |.if resume
-  |  mov_true TMP1
-  |   add RC, RC, #16
-  |7:
-  |  str TMP1, [BASE, #-8]		// Prepend true/false to results.
-  |   sub RA, BASE, #8
-  |.else
-  |   mov RA, BASE
-  |   add RC, RC, #8
-  |.endif
-  |  ands CARG1, PC, #FRAME_TYPE
-  |   str PC, SAVE_PC
-  |   str RCw, SAVE_MULTRES
-  |  beq ->BC_RET_Z
-  |  b ->vm_return
-  |
-  |8:  // Coroutine returned with error (at co->top-1).
-  |.if resume
-  |  ldr TMP0, [CARG4, #-8]!
-  |   mov_false TMP1
-  |    mov RC, #(2+1)*8
-  |  str CARG4, L:RA->top		// Remove error from coroutine stack.
-  |  str TMP0, [BASE]			// Copy error message.
-  |  b <7
-  |.else
-  |  mov CARG1, L
-  |  mov CARG2, L:RA
-  |  bl extern lj_ffh_coroutine_wrap_err  // (lua_State *L, lua_State *co)
-  |  // Never returns.
-  |.endif
-  |
-  |9:  // Handle stack expansion on return from yield.
-  |  mov CARG1, L
-  |  lsr CARG2, RC, #3
-  |  bl extern lj_state_growstack	// (lua_State *L, int n)
-  |  mov CRET1, #0
-  |  b <4
-  |.endmacro
-  |
-  |  coroutine_resume_wrap 1		// coroutine.resume
-  |  coroutine_resume_wrap 0		// coroutine.wrap
-  |
-  |.ffunc coroutine_yield
-  |  ldr TMP0, L->cframe
-  |   add TMP1, BASE, NARGS8:RC
-  |    mov CRET1, #LUA_YIELD
-  |   stp BASE, TMP1, L->base
-  |  tbz TMP0, #0, ->fff_fallback
-  |   str xzr, L->cframe
-  |    strb CRET1w, L->status
-  |  b ->vm_leave_unw
-  |
   |//-- Math library -------------------------------------------------------
   |
   |.macro math_round, func, round
@@ -3611,12 +3487,14 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |   mvn RC, RC
     |   ldr STR:RC, [KBASE, RC, lsl #3]
     |  checkobject CARG2, ->vmeta_tgets1
+    |  // Call C helper: bc_object_getfield(L, GCobject*, GCstr*, TValue*, BCIns*)
     |  add CARG4, BASE, RA, lsl #3
     |   str BASE, L->base
     |  mov CARG1, L
     |  mov CARG3, STR:RC
+    |  sub CARG5, PC, #8             // 5th arg: BCIns * (current instruction for IC)
     |   str PC, SAVE_PC
-    |  bl extern bc_object_getfield  // (lua_State *L, GCobject *obj, GCstr *key, TValue *dest)
+    |  bl extern bc_object_getfield
     |  ldr BASE, L->base
     |  ins_next
     break;
@@ -3629,12 +3507,14 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |   mvn RC, RC
     |   ldr STR:RC, [KBASE, RC, lsl #3]
     |  checkobject CARG2, ->vmeta_tsets1
+    |  // Call C helper: bc_object_setfield(L, GCobject*, GCstr*, TValue*, BCIns*)
     |  add CARG4, BASE, RA, lsl #3
     |   str BASE, L->base
     |  mov CARG1, L
     |  mov CARG3, STR:RC
+    |  sub CARG5, PC, #8             // 5th arg: BCIns * (current instruction for IC)
     |   str PC, SAVE_PC
-    |  bl extern bc_object_setfield  // (lua_State *L, GCobject *obj, GCstr *key, TValue *val)
+    |  bl extern bc_object_setfield
     |  ldr BASE, L->base
     |  ins_next
     break;

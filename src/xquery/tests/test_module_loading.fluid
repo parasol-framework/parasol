@@ -13,7 +13,7 @@ end
 @Test function BasicModuleImport()
    -- Initial verification of module file existence and that it is compilable
 
-   mod_content = file.readAll(glScriptFolder .. '/modules/math_utils.xq')
+   mod_content = io.readAll(glScriptFolder .. '/modules/math_utils.xq')
    assert(mod_content, 'Module file not found: modules/math_utils.xq')
    compiled_mod = obj.new('xquery', { statement = mod_content })
 

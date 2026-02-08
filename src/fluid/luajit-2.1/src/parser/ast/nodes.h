@@ -1,5 +1,5 @@
 // Lua parser - AST/IR node schema
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 //
 // The schema mirrors every construct currently handled by the LuaJIT parser and describes how child nodes, source
 // locations and semantic attributes are stored.
@@ -858,6 +858,19 @@ struct ImportStmtPayload {
    ~ImportStmtPayload();
 };
 
+// With statement payload: with obj1, obj2 do ... end - auto-lock/unlock objects
+struct WithStmtPayload {
+   WithStmtPayload(ExprNodeList objects, std::unique_ptr<BlockStmt> block)
+      : objects(std::move(objects)), block(std::move(block)) {}
+   WithStmtPayload(const WithStmtPayload&) = delete;
+   WithStmtPayload& operator=(const WithStmtPayload&) = delete;
+   WithStmtPayload(WithStmtPayload&&) noexcept = default;
+   WithStmtPayload& operator=(WithStmtPayload&&) noexcept = default;
+   ExprNodeList objects;
+   std::unique_ptr<BlockStmt> block;
+   ~WithStmtPayload();
+};
+
 struct ExpressionStmtPayload {
    ExpressionStmtPayload(ExprNodePtr expression)
       : expression(std::move(expression)) {}
@@ -879,7 +892,8 @@ struct StmtNode {
       LoopStmtPayload, NumericForStmtPayload, GenericForStmtPayload,
       ReturnStmtPayload, BreakStmtPayload, ContinueStmtPayload, DeferStmtPayload,
       DoStmtPayload, ConditionalShorthandStmtPayload, TryExceptPayload,
-      RaiseStmtPayload, CheckStmtPayload, ImportStmtPayload, ExpressionStmtPayload>
+      RaiseStmtPayload, CheckStmtPayload, ImportStmtPayload, WithStmtPayload,
+      ExpressionStmtPayload>
       data;
 
    StmtNode() = default;

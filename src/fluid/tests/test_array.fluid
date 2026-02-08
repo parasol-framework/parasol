@@ -1986,3 +1986,171 @@ end
    end
    assert(concat is 'abc', "ipairs should concatenate to 'abc'")
 end
+
+-- GC barrier tests for JIT-compiled GC-reference array stores.
+-- These exercise the IR_TBAR write barrier and propagatemark() handling of GCarray
+-- on the gray list.  The inner loops must exceed the JIT hot-count threshold (56)
+-- so that stores execute from JIT-compiled traces rather than the interpreter.
+
+@Test function JITStringArrayGCBarrier()
+   -- Store freshly-allocated strings into an array in a hot loop, interleaving
+   -- GC collection to trigger the write barrier while traces are active.
+   arr = array<string, 200>
+   for i = 0, 199 do
+      arr[i] = f"item-{i}"
+   end
+   processing.collect('full')
+
+   -- Verify all strings survived collection
+   for i = 0, 199 do
+      assert(arr[i] is f"item-{i}", f"String at [{i}] corrupted after GC: got '{arr[i]}'")
+   end
+
+   -- Overwrite with new strings (JIT trace should be compiled by now) and collect again
+   for i = 0, 199 do
+      arr[i] = f"replaced-{i}"
+   end
+   processing.collect('full')
+
+   for i = 0, 199 do
+      assert(arr[i] is f"replaced-{i}", f"Replaced string at [{i}] corrupted after GC: got '{arr[i]}'")
+   end
+end
+
+@Test function JITTableArrayGCBarrier()
+   -- Same pattern for table arrays: hot-loop stores + GC + verification
+   arr = array<table, 200>
+   for i = 0, 199 do
+      arr[i] = { id = i, label = f"t-{i}" }
+   end
+   processing.collect('full')
+
+   for i = 0, 199 do
+      assert(arr[i].id is i, f"Table at [{i}].id corrupted after GC: got {arr[i].id}")
+      assert(arr[i].label is f"t-{i}", f"Table at [{i}].label corrupted after GC")
+   end
+
+   -- Overwrite and collect again
+   for i = 0, 199 do
+      arr[i] = { id = i + 1000 }
+   end
+   processing.collect('full')
+
+   for i = 0, 199 do
+      assert(arr[i].id is i + 1000, f"Replaced table at [{i}].id corrupted after GC")
+   end
+end
+
+@Test function JITStringArrayGCInterleaved()
+   -- Interleave GC steps with stores in a hot loop to maximise the chance of
+   -- the write barrier firing during incremental marking.
+   arr = array<string, 300>
+   for i = 0, 299 do
+      arr[i] = f"val-{i}"
+      if i % 50 is 0 then
+         processing.collect('step')
+      end
+   end
+   processing.collect('full')
+
+   for i = 0, 299 do
+      assert(arr[i] is f"val-{i}", f"Interleaved string at [{i}] corrupted: got '{arr[i]}'")
+   end
+end
+
+@Test function JITTableArrayGCInterleaved()
+   -- Interleave GC steps with table stores
+   arr = array<table, 300>
+   for i = 0, 299 do
+      arr[i] = { n = i }
+      if i % 50 is 0 then
+         processing.collect('step')
+      end
+   end
+   processing.collect('full')
+
+   for i = 0, 299 do
+      assert(arr[i].n is i, f"Interleaved table at [{i}].n corrupted: got {arr[i].n}")
+   end
+end
+
+@Test function JITStringArrayNilStoreGC()
+   -- Verify nil stores (clearing slots) work correctly under GC pressure
+   arr = array<string, 100>
+   for i = 0, 99 do
+      arr[i] = f"temp-{i}"
+   end
+
+   -- Nil out every other element in a hot loop
+   for i = 0, 99, 2 do
+      arr[i] = nil
+   end
+   processing.collect('full')
+
+   for i = 0, 99 do
+      if i % 2 is 0 then
+         assert(arr[i] is nil, f"Nil'd string at [{i}] should be nil, got '{arr[i]}'")
+      else
+         assert(arr[i] is f"temp-{i}", f"Kept string at [{i}] corrupted: got '{arr[i]}'")
+      end
+   end
+end
+
+@Test function JITTableArrayNilStoreGC()
+   -- Verify nil stores work correctly for table arrays under GC pressure
+   arr = array<table, 100>
+   for i = 0, 99 do
+      arr[i] = { v = i }
+   end
+
+   for i = 0, 99, 2 do
+      arr[i] = nil
+   end
+   processing.collect('full')
+
+   for i = 0, 99 do
+      if i % 2 is 0 then
+         assert(arr[i] is nil, f"Nil'd table at [{i}] should be nil")
+      else
+         assert(arr[i].v is i, f"Kept table at [{i}].v corrupted: got {arr[i].v}")
+      end
+   end
+end
+
+@Test function JITStringArrayReadGCStress()
+   -- Verify JIT-compiled reads of string arrays survive GC cycles.
+   -- The read loop should compile to inline XLOAD with null-guard.
+   arr = array<string> { 'alpha', 'bravo', 'charlie', 'delta', 'echo' }
+   for round = 0, 99 do
+      for i = 0, 4 do
+         s = arr[i]
+      end
+      if round % 20 is 0 then
+         processing.collect('step')
+      end
+   end
+   processing.collect('full')
+
+   assert(arr[0] is 'alpha', "Read stress: arr[0] corrupted")
+   assert(arr[4] is 'echo', "Read stress: arr[4] corrupted")
+end
+
+@Test function JITTableArrayReadGCStress()
+   -- Verify JIT-compiled reads of table arrays survive GC cycles.
+   arr = array<table, 5>
+   for i = 0, 4 do
+      arr[i] = { k = i * 7 }
+   end
+   for round = 0, 99 do
+      for i = 0, 4 do
+         t = arr[i]
+         assert(t.k is i * 7, f"Read stress round {round}: arr[{i}].k wrong")
+      end
+      if round % 20 is 0 then
+         processing.collect('step')
+      end
+   end
+   processing.collect('full')
+
+   assert(arr[3].k is 21, "Read stress final: arr[3].k corrupted")
+end

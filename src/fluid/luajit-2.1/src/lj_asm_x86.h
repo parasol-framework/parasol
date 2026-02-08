@@ -1,29 +1,32 @@
-/*
-** x86/x64 IR assembler (SSA IR -> machine code).
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-*/
+// x86/x64 IR assembler (SSA IR -> machine code).
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 
-// -- Guard handling ------------------------------------------------------
+// Guard handling
 
 // Generate an exit stub group at the bottom of the reserved MCode memory.
+
 static MCode* asm_exitstub_gen(ASMState* as, ExitNo group)
 {
    ExitNo i, groupofs = (group * EXITSTUBS_PER_GROUP) & 0xff;
    MCode* mxp = as->mcbot;
    MCode* mxpstart = mxp;
-   if (mxp + (2 + 2) * EXITSTUBS_PER_GROUP + 8 + 5 >= as->mctop)
-      asm_mclimit(as);
+   if (mxp + (2 + 2) * EXITSTUBS_PER_GROUP + 8 + 5 >= as->mctop) asm_mclimit(as);
    // Push low byte of exitno for each exit stub.
    *mxp++ = XI_PUSHi8; *mxp++ = (MCode)groupofs;
    for (i = 1; i < EXITSTUBS_PER_GROUP; i++) {
       *mxp++ = XI_JMPs; *mxp++ = (MCode)((2 + 2) * (EXITSTUBS_PER_GROUP - i) - 2);
       *mxp++ = XI_PUSHi8; *mxp++ = (MCode)(groupofs + i);
    }
+
    // Push the high byte of the exitno for each exit stub group.
-   *mxp++ = XI_PUSHi8; *mxp++ = (MCode)((group * EXITSTUBS_PER_GROUP) >> 8);
+   *mxp++ = XI_PUSHi8;
+   *mxp++ = (MCode)((group * EXITSTUBS_PER_GROUP) >> 8);
+
    // Jump to exit handler which fills in the ExitState (no DISPATCH storage needed in GC64).
-   * mxp++ = XI_JMP; mxp += 4;
+   * mxp++ = XI_JMP;
+   mxp += 4;
    *((int32_t*)(mxp - 4)) = jmprel(as->J, mxp, (MCode*)(void*)lj_vm_exit_handler);
+
    // Commit the code for this group (even if assembly fails later on).
    lj_mcode_commitbot(as->J, mxp);
    as->mcbot = mxp;
@@ -31,21 +34,22 @@ static MCode* asm_exitstub_gen(ASMState* as, ExitNo group)
    return mxpstart;
 }
 
+//********************************************************************************************************************
 // Setup all needed exit stubs.
+
 static void asm_exitstub_setup(ASMState* as, ExitNo nexits)
 {
    ExitNo i;
-   if (nexits >= EXITSTUBS_PER_GROUP * LJ_MAX_EXITSTUBGR)
-      lj_trace_err(as->J, LJ_TRERR_SNAPOV);
-   for (i = 0; i < (nexits + EXITSTUBS_PER_GROUP - 1) / EXITSTUBS_PER_GROUP; i++)
-      if (as->J->exitstubgroup[i] == NULL)
-         as->J->exitstubgroup[i] = asm_exitstub_gen(as, i);
+   if (nexits >= EXITSTUBS_PER_GROUP * LJ_MAX_EXITSTUBGR) lj_trace_err(as->J, LJ_TRERR_SNAPOV);
+   for (i = 0; i < (nexits + EXITSTUBS_PER_GROUP - 1) / EXITSTUBS_PER_GROUP; i++) {
+      if (as->J->exitstubgroup[i] == NULL) as->J->exitstubgroup[i] = asm_exitstub_gen(as, i);
+   }
 }
 
-/* Emit conditional branch to exit for guard.
-** It's important to emit this *after* all registers have been allocated,
-** because rematerializations may invalidate the flags.
-*/
+//********************************************************************************************************************
+// Emit conditional branch to exit for guard.  It's important to emit this *after* all registers have been allocated,
+// because rematerializations may invalidate the flags.
+
 static void asm_guardcc(ASMState* as, int cc)
 {
    MCode* target = exitstub_addr(as->J, as->snapno);
@@ -56,18 +60,21 @@ static void asm_guardcc(ASMState* as, int cc)
       target = p;
       cc ^= 1;
       if (as->realign) {
-         if (LJ_GC64 and LJ_UNLIKELY(as->mrm.base == RID_RIP))
-            as->mrm.ofs += 2;  /* Fixup RIP offset for pending fused load. */
+         if (LJ_GC64 and LJ_UNLIKELY(as->mrm.base == RID_RIP)) as->mrm.ofs += 2;  // Fixup RIP offset for pending fused load.
          emit_sjcc(as, cc, target);
          return;
       }
    }
-   if (LJ_GC64 and LJ_UNLIKELY(as->mrm.base == RID_RIP))
+
+   if (LJ_GC64 and LJ_UNLIKELY(as->mrm.base == RID_RIP)) {
       as->mrm.ofs += 6;  /* Fixup RIP offset for pending fused load. */
+   }
+
    emit_jcc(as, cc, target);
 }
 
-// -- Memory operand fusion -----------------------------------------------
+//********************************************************************************************************************
+// Memory operand fusion
 
 // Limit linear search to this distance. Avoids O(n^2) behavior.
 #define CONFLICT_SEARCH_LIM   31
@@ -98,18 +105,17 @@ static int noconflict(ASMState* as, IRRef ref, IROp conflict, int noload)
 {
    IRIns* ir = as->ir;
    IRRef i = as->curins;
-   if (i > ref + CONFLICT_SEARCH_LIM)
-      return 0;  /* Give up, ref is too far away. */
+   if (i > ref + CONFLICT_SEARCH_LIM) return 0;  /* Give up, ref is too far away. */
    while (--i > ref) {
-      if (ir[i].o == conflict)
-         return 0;  /* Conflict found. */
-      else if (!noload and (ir[i].op1 == ref or ir[i].op2 == ref))
-         return 0;
+      if (ir[i].o == conflict) return 0;  /* Conflict found. */
+      else if (!noload and (ir[i].op1 == ref or ir[i].op2 == ref)) return 0;
    }
    return 1;  /* Ok, no conflict. */
 }
 
+//********************************************************************************************************************
 // Fuse array base into memory operand.
+
 static IRRef asm_fuseabase(ASMState* as, IRRef ref)
 {
    IRIns* irb = IR(ref);
@@ -132,7 +138,9 @@ static IRRef asm_fuseabase(ASMState* as, IRRef ref)
    return ref;  /* Otherwise use the given array base. */
 }
 
+//********************************************************************************************************************
 // Fuse array reference into memory operand.
+
 static void asm_fusearef(ASMState* as, IRIns* ir, RegSet allow)
 {
    IRIns* irx;
@@ -202,7 +210,9 @@ static void asm_fuseahuref(ASMState* as, IRRef ref, RegSet allow)
    as->mrm.idx = RID_NONE;
 }
 
+//********************************************************************************************************************
 // Fuse FLOAD/FREF reference into memory operand.
+
 static void asm_fusefref(ASMState* as, IRIns* ir, RegSet allow)
 {
    lj_assertA(ir->o == IR_FLOAD or ir->o == IR_FREF,
@@ -233,7 +243,9 @@ static void asm_fusefref(ASMState* as, IRIns* ir, RegSet allow)
    as->mrm.base = (uint8_t)ra_alloc1(as, ir->op1, allow);
 }
 
+//********************************************************************************************************************
 // Fuse string reference into memory operand.
+
 static void asm_fusestrref(ASMState* as, IRIns* ir, RegSet allow)
 {
    IRIns* irr;
@@ -257,6 +269,8 @@ static void asm_fusestrref(ASMState* as, IRIns* ir, RegSet allow)
          as->mrm.idx = (uint8_t)r;
    }
 }
+
+//********************************************************************************************************************
 
 static void asm_fusexref(ASMState* as, IRRef ref, RegSet allow)
 {
@@ -1403,7 +1417,7 @@ static void asm_obar(ASMState* as, IRIns* ir)
    emit_rmro(as, XO_GROUP3b, XOg_TEST, obj, (int32_t)offsetof(GCupval, marked) - (int32_t)offsetof(GCupval, tv));
 }
 
-// -- FP/int arithmetic and logic operations ------------------------------
+// -- FP/int arithmetic and logic operations
 
 // Load reference onto x87 stack. Force a spill to memory if needed.
 static void asm_x87load(ASMState* as, IRRef ref)
@@ -1436,10 +1450,10 @@ static void asm_fpmath(ASMState* as, IRIns* ir)
       if (as->flags & JIT_F_SSE4_1) {  // SSE4.1 has a rounding instruction.
          Reg dest = ra_dest(as, ir, RSET_FPR);
          Reg left = asm_fuseload(as, ir->op1, RSET_FPR);
-         /* ROUNDSD has a 4-byte opcode which doesn't fit in x86Op.
-         ** Let's pretend it's a 3-byte opcode, and compensate afterwards.
-         ** This is atrocious, but the alternatives are much worse.
-         */
+         // ROUNDSD has a 4-byte opcode which doesn't fit in x86Op.
+         // Let's pretend it's a 3-byte opcode, and compensate afterwards.
+         // This is atrocious, but the alternatives are much worse.
+
          // Round down/up/trunc == 1001/1010/1011.
          emit_i8(as, 0x09 + fpm);
          emit_mrm(as, XO_ROUNDSD, dest, left);
@@ -1463,6 +1477,8 @@ static void asm_fpmath(ASMState* as, IRIns* ir)
    else asm_callid(as, ir, IRCallID(uint32_t(IRCALL_lj_vm_floor) + fpm));
 }
 
+//********************************************************************************************************************
+
 static void asm_ldexp(ASMState* as, IRIns* ir)
 {
    int32_t ofs = sps_scale(ir->s);  //  Use spill slot or temp slots.
@@ -1479,29 +1495,26 @@ static void asm_ldexp(ASMState* as, IRIns* ir)
    asm_x87load(as, ir->op2);
 }
 
+//********************************************************************************************************************
+
 static int asm_swapops(ASMState* as, IRIns* ir)
 {
    IRIns* irl = IR(ir->op1);
    IRIns* irr = IR(ir->op2);
    lj_assertA(ra_noreg(irr->r), "bad usage");
-   if (!irm_iscomm(lj_ir_mode[ir->o]))
-      return 0;  //  Can't swap non-commutative operations.
-   if (irref_isk(ir->op2))
-      return 0;  //  Don't swap constants to the left.
-   if (ra_hasreg(irl->r))
-      return 1;  //  Swap if left already has a register.
-   if (ra_samehint(ir->r, irr->r))
-      return 1;  //  Swap if dest and right have matching hints.
-   if (as->curins > as->loopref) {  // In variant part?
-      if (ir->op2 < as->loopref and !irt_isphi(irr->t))
-         return 0;  //  Keep invariants on the right.
-      if (ir->op1 < as->loopref and !irt_isphi(irl->t))
-         return 1;  //  Swap invariants to the right.
+   if (!irm_iscomm(lj_ir_mode[ir->o])) return 0;  // Can't swap non-commutative operations.
+   if (irref_isk(ir->op2)) return 0;  // Don't swap constants to the left.
+   if (ra_hasreg(irl->r)) return 1;   // Swap if left already has a register.
+   if (ra_samehint(ir->r, irr->r)) return 1; // Swap if dest and right have matching hints.
+   if (as->curins > as->loopref) {    // In variant part?
+      if (ir->op2 < as->loopref and !irt_isphi(irr->t)) return 0;  //  Keep invariants on the right.
+      if (ir->op1 < as->loopref and !irt_isphi(irl->t)) return 1;  //  Swap invariants to the right.
    }
-   if (opisfusableload(irl->o))
-      return 1;  //  Swap fusable loads to the right.
+   if (opisfusableload(irl->o)) return 1;  //  Swap fusable loads to the right.
    return 0;  //  Otherwise don't swap.
 }
+
+//********************************************************************************************************************
 
 static void asm_fparith(ASMState* as, IRIns* ir, x86Op xo)
 {
@@ -1530,7 +1543,9 @@ static void asm_fparith(ASMState* as, IRIns* ir, x86Op xo)
    ra_left(as, dest, lref);
 }
 
-static void asm_intarith(ASMState* as, IRIns* ir, x86Arith xa)
+//********************************************************************************************************************
+
+static void asm_intarith(ASMState *as, IRIns *ir, x86Arith xa)
 {
    IRRef lref = ir->op1;
    IRRef rref = ir->op2;
@@ -1538,31 +1553,35 @@ static void asm_intarith(ASMState* as, IRIns* ir, x86Arith xa)
    Reg dest, right;
    int32_t k = 0;
    if (as->flagmcp == as->mcp) {  // Drop test r,r instruction.
-      MCode* p = as->mcp + ((*as->mcp < XI_TESTb) ? 3 : 2);
-      MCode* q = p[0] == 0x0f ? p + 1 : p;
+      MCode *p = as->mcp + ((*as->mcp < XI_TESTb) ? 3 : 2);
+      MCode *q = p[0] == 0x0f ? p + 1 : p;
       if ((*q & 15) < 14) {
          if ((*q & 15) >= 12) *q -= 4;  //  L <->S, NL <-> NS
          as->flagmcp = NULL;
          as->mcp = p;
       }  // else: cannot transform LE/NLE to cc without use of OF.
    }
+
    right = IR(rref)->r;
    if (ra_hasreg(right)) {
       rset_clear(allow, right);
       ra_noweak(as, right);
    }
+
    dest = ra_dest(as, ir, allow);
-   if (lref == rref) {
-      right = dest;
-   }
+
+   if (lref == rref) right = dest;
    else if (ra_noreg(right) and !asm_isk32(as, rref, &k)) {
       if (asm_swapops(as, ir)) {
-         IRRef tmp = lref; lref = rref; rref = tmp;
+         IRRef tmp = lref;
+         lref = rref;
+         rref = tmp;
       }
       right = asm_fuseloadm(as, rref, rset_clear(allow, dest), irt_is64(ir->t));
    }
-   if (irt_isguard(ir->t))  /* For IR_ADDOV etc. */
-      asm_guardcc(as, CC_O);
+
+   if (irt_isguard(ir->t)) asm_guardcc(as, CC_O); /* For IR_ADDOV etc. */
+
    if (xa != XOg_X_IMUL) {
       if (ra_hasreg(right)) emit_mrm(as, XO_ARITH(xa), REX_64IR(ir, dest), right);
       else emit_gri(as, XG_ARITHi(xa), REX_64IR(ir, dest), k);
@@ -1575,31 +1594,36 @@ static void asm_intarith(ASMState* as, IRIns* ir, x86Arith xa)
       Reg left = asm_fuseloadm(as, lref, RSET_GPR, irt_is64(ir->t));
       x86Op xo;
       if (checki8(k)) {
-         emit_i8(as, k); xo = XO_IMULi8;
+         emit_i8(as, k);
+         xo = XO_IMULi8;
       }
-      else { emit_i32(as, k); xo = XO_IMULi; }
+      else {
+         emit_i32(as, k);
+         xo = XO_IMULi;
+      }
       emit_mrm(as, xo, REX_64IR(ir, dest), left);
       return;
    }
    ra_left(as, dest, lref);
 }
 
-/* LEA is really a 4-operand ADD with an independent destination register,
-** up to two source registers and an immediate. One register can be scaled
-** by 1, 2, 4 or 8. This can be used to avoid moves or to fuse several
-** instructions.
-**
-** Currently only a few common cases are supported:
-** - 3-operand ADD:    y = a+b; y = a+k   with a and b already allocated
-** - Left ADD fusion:  y = (a+b)+k; y = (a+k)+b
-** - Right ADD fusion: y = a+(b+k)
-** The ommited variants have already been reduced by FOLD.
-**
-** There are more fusion opportunities, like gathering shifts or joining
-** common references. But these are probably not worth the trouble, since
-** array indexing is not decomposed and already makes use of all fields
-** of the ModRM operand.
-*/
+//********************************************************************************************************************
+// LEA is really a 4-operand ADD with an independent destination register,
+// up to two source registers and an immediate. One register can be scaled
+// by 1, 2, 4 or 8. This can be used to avoid moves or to fuse several
+// instructions.
+//
+// Currently only a few common cases are supported:
+// - 3-operand ADD:    y = a+b; y = a+k   with a and b already allocated
+// - Left ADD fusion:  y = (a+b)+k; y = (a+k)+b
+// - Right ADD fusion: y = a+(b+k)
+// The ommited variants have already been reduced by FOLD.
+//
+// There are more fusion opportunities, like gathering shifts or joining
+// common references. But these are probably not worth the trouble, since
+// array indexing is not decomposed and already makes use of all fields
+// of the ModRM operand.
+
 static int asm_lea(ASMState* as, IRIns* ir)
 {
    IRIns* irl = IR(ir->op1);
@@ -1800,9 +1824,11 @@ static void asm_bitshift(ASMState* as, IRIns* ir, x86Shift xs, x86Op xv)
 #define asm_brol(as, ir)   asm_bitshift(as, ir, XOg_ROL, (x86Op)0)
 #define asm_bror(as, ir)   asm_bitshift(as, ir, XOg_ROR, (x86Op)0)
 
-// -- Comparisons ---------------------------------------------------------
+//********************************************************************************************************************
+// Comparisons
 
 // Virtual flags for unordered FP comparisons.
+
 #define VCC_U   0x1000      /* Unordered. */
 #define VCC_P   0x2000      /* Needs extra CC_P branch. */
 #define VCC_S   0x4000      /* Swap avoids CC_P branch. */
@@ -1834,20 +1860,21 @@ static void asm_comp(ASMState* as, IRIns* ir)
       IRRef rref = ir->op2;
       Reg left, right;
       MCLabel l_around;
-      /*
-      ** An extra CC_P branch is required to preserve ordered/unordered
-      ** semantics for FP comparisons. This can be avoided by swapping
-      ** the operands and inverting the condition (except for EQ and UNE).
-      ** So always try to swap if possible.
-      **
-      ** Another option would be to swap operands to achieve better memory
-      ** operand fusion. But it's unlikely that this outweighs the cost
-      ** of the extra branches.
-      */
+
+      // An extra CC_P branch is required to preserve ordered/unordered
+      // semantics for FP comparisons. This can be avoided by swapping
+      // the operands and inverting the condition (except for EQ and UNE).
+      // So always try to swap if possible.
+      //
+      // Another option would be to swap operands to achieve better memory
+      // operand fusion. But it's unlikely that this outweighs the cost
+      // of the extra branches.
+
       if (cc & VCC_S) {  // Swap?
          IRRef tmp = lref; lref = rref; rref = tmp;
          cc ^= (VCC_PS | (5 << 4));  /* A <-> B, AE <-> BE, PS <-> none */
       }
+
       left = ra_alloc1(as, lref, RSET_FPR);
       l_around = emit_label(as);
       asm_guardcc(as, cc >> 4);
@@ -1921,9 +1948,7 @@ static void asm_comp(ASMState* as, IRIns* ir)
                emit_i32(as, imm);
                emit_mrm(as, XO_GROUP3, r64 + XOg_TEST, right);
             }
-            else {
-               emit_mrm(as, XO_TEST, r64 + left, right);
-            }
+            else emit_mrm(as, XO_TEST, r64 + left, right);
          }
          else {
             Reg left;
@@ -1955,7 +1980,9 @@ static void asm_comp(ASMState* as, IRIns* ir)
             else {
                left = asm_fuseloadm(as, lref, irt_isu8(ir->t) ? RSET_GPR8 : RSET_GPR, r64);
             }
+
             asm_guardcc(as, cc);
+
             if (usetest and left != RID_MRM) {
                // Use test r,r instead of cmp r,0.
                x86Op xo = XO_TEST;
@@ -1966,6 +1993,7 @@ static void asm_comp(ASMState* as, IRIns* ir)
                      left |= FORCE_REX;
                   }
                }
+
                emit_rr(as, xo, r64 + left, left);
                if (irl + 1 == ir)  /* Referencing previous ins? */
                   as->flagmcp = as->mcp;  /* Set flag to drop test r,r if possible. */
@@ -1984,40 +2012,41 @@ static void asm_comp(ASMState* as, IRIns* ir)
 
 #define asm_equal(as, ir)   asm_comp(as, ir)
 
-
-// -- Split register ops --------------------------------------------------
+//********************************************************************************************************************
+// Split register ops
 
 // Hiword op of a split 32/32 or 64/64 bit op. Previous op is the loword op.
-static void asm_hiop(ASMState* as, IRIns* ir)
+
+static void asm_hiop(ASMState *as, IRIns *ir)
 {
    // HIOP is marked as a store because it needs its own DCE logic.
    int uselo = ra_used(ir - 1), usehi = ra_used(ir);  /* Loword/hiword used? */
    if (LJ_UNLIKELY(!(as->flags & JIT_F_OPT_DCE))) uselo = usehi = 1;
    if (!usehi) return;  /* Skip unused hiword op for all remaining ops. */
    switch ((ir - 1)->o) {
-   case IR_CALLN: case IR_CALLL: case IR_CALLS: case IR_CALLXS:
-      if (!uselo)
-         ra_allocref(as, ir->op1, RID2RSET(RID_RETLO));  /* Mark lo op as used. */
-      break;
-   default: lj_assertA(0, "bad HIOP for op %d", (ir - 1)->o); break;
+      case IR_CALLN: case IR_CALLL: case IR_CALLS: case IR_CALLXS:
+         if (!uselo) ra_allocref(as, ir->op1, RID2RSET(RID_RETLO));  /* Mark lo op as used. */
+         break;
+      default: lj_assertA(0, "bad HIOP for op %d", (ir - 1)->o); break;
    }
 }
 
-// -- Profiling -----------------------------------------------------------
+//********************************************************************************************************************
+// Profiling
 
 static void asm_prof(ASMState* as, IRIns* ir)
 {
-   UNUSED(ir);
    asm_guardcc(as, CC_NE);
    emit_i8(as, HOOK_PROFILE);
    emit_rma(as, XO_GROUP3b, XOg_TEST, &J2G(as->J)->hookmask);
 }
 
-// -- Stack handling ------------------------------------------------------
+//********************************************************************************************************************
+// Stack handling
 
 // Check Lua stack size for overflow. Use exit handler as fallback.
-static void asm_stack_check(ASMState* as, BCREG topslot,
-   IRIns* irp, RegSet allow, ExitNo exitno)
+
+static void asm_stack_check(ASMState* as, BCREG topslot, IRIns* irp, RegSet allow, ExitNo exitno)
 {
    // Try to get an unused temp. register, otherwise spill/restore eax.
    Reg pbase = irp ? irp->r : RID_BASE;
@@ -2036,15 +2065,20 @@ static void asm_stack_check(ASMState* as, BCREG topslot,
       emit_rmro(as, XO_MOVto, r | REX_64, RID_ESP, 0);
 }
 
+//********************************************************************************************************************
 // Restore Lua stack from on-trace state.
+
 static void asm_stack_restore(ASMState* as, SnapShot* snap)
 {
    SnapEntry* map = &as->T->snapmap[snap->mapofs];
 #if !LJ_FR2 or defined(LUA_USE_ASSERT)
    SnapEntry* flinks = &as->T->snapmap[snap_nextofs(as->T, snap) - 1 - LJ_FR2];
 #endif
+
    MSize n, nent = snap->nent;
+
    // Store the value of all modified slots to the Lua stack.
+
    for (n = 0; n < nent; n++) {
       SnapEntry sn = map[n];
       BCREG s = snap_slot(sn);
@@ -2104,9 +2138,11 @@ static void asm_stack_restore(ASMState* as, SnapShot* snap)
    lj_assertA(map + nent == flinks, "inconsistent frames in snapshot");
 }
 
-// -- GC handling ---------------------------------------------------------
+//********************************************************************************************************************
+// GC handling
 
 // Check GC threshold and do one or more GC steps.
+
 static void asm_gc_check(ASMState* as)
 {
    const CCallInfo* ci = &lj_ir_callinfo[IRCALL_lj_gc_step_jit];
@@ -2132,9 +2168,11 @@ static void asm_gc_check(ASMState* as)
    checkmclim(as);
 }
 
-// -- Loop handling -------------------------------------------------------
+//********************************************************************************************************************
+// Loop handling
 
 // Fixup the loop branch.
+
 static void asm_loop_fixup(ASMState* as)
 {
    MCode* p = as->mctop;
@@ -2189,9 +2227,11 @@ static void asm_loop_tail_fixup(ASMState* as)
    /* Nothing to do. */
 }
 
-// -- Head of trace -------------------------------------------------------
+//********************************************************************************************************************
+// Head of trace
 
 // Coalesce BASE register for a root trace.
+
 static void asm_head_root_base(ASMState* as)
 {
    IRIns* ir = IR(REF_BASE);
@@ -2204,7 +2244,9 @@ static void asm_head_root_base(ASMState* as)
    }
 }
 
+//********************************************************************************************************************
 // Coalesce or reload BASE register for a side trace.
+
 static RegSet asm_head_side_base(ASMState* as, IRIns* irp, RegSet allow)
 {
    IRIns* ir = IR(REF_BASE);
@@ -2228,9 +2270,11 @@ static RegSet asm_head_side_base(ASMState* as, IRIns* irp, RegSet allow)
    return allow;
 }
 
-// -- Tail of trace -------------------------------------------------------
+//********************************************************************************************************************
+// Tail of trace
 
 // Fixup the tail code.
+
 static void asm_tail_fixup(ASMState* as, TraceNo lnk)
 {
    // Note: don't use as->mcp swap + emit_*: emit_op overwrites more bytes.
@@ -2266,7 +2310,9 @@ static void asm_tail_fixup(ASMState* as, TraceNo lnk)
    as->mctop = p;
 }
 
+//********************************************************************************************************************
 // Prepare tail of code.
+
 static void asm_tail_prep(ASMState* as)
 {
    MCode* p = as->mctop;
@@ -2288,9 +2334,11 @@ static void asm_tail_prep(ASMState* as)
    }
 }
 
-// -- Trace setup ---------------------------------------------------------
+//********************************************************************************************************************
+// Trace setup
 
 // Ensure there are enough stack slots for call arguments.
+
 static Reg asm_setup_call_slots(ASMState* as, IRIns* ir, const CCallInfo* ci)
 {
    IRRef args[CCI_NARGS_MAX * 2];
@@ -2303,13 +2351,15 @@ static Reg asm_setup_call_slots(ASMState* as, IRIns* ir, const CCallInfo* ci)
 }
 
 // Target-specific setup.
+
 static void asm_setup_target(ASMState* as)
 {
    asm_exitstub_setup(as, as->T->nsnap);
    as->mrm.base = 0;
 }
 
-// -- Trace patching ------------------------------------------------------
+//********************************************************************************************************************
+// Trace patching
 
 static const uint8_t map_op1[256] = {
 0x92,0x92,0x92,0x92,0x52,0x45,0x51,0x51,0x92,0x92,0x92,0x92,0x52,0x45,0x51,0x20,
@@ -2354,7 +2404,7 @@ static uint32_t asm_x86_inslen(const uint8_t* p)
    uint32_t result = 0;
    uint32_t prefixes = 0;
    uint32_t x = map_op1[*p];
-   for (;;) {
+   while (true) {
       switch (x >> 4) {
       case 0: return result + x + (prefixes & 4);
       case 1: prefixes |= x; x = map_op1[*++p]; result++; break;
@@ -2431,4 +2481,3 @@ void lj_asm_patchexit(jit_State* J, GCtrace* T, ExitNo exitno, MCode* target)
    lj_mcode_sync(T->mcode, T->mcode + T->szmcode);
    lj_mcode_patch(J, mcarea, 1);
 }
-

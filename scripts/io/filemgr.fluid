@@ -1,8 +1,9 @@
 -- Support for the mass copying of files to a folder
 -- Designed for calling from a script in a dedicated thread.
 
-   import 'common'
    import 'gui/dialog'
+
+io.ui ?= { }
 
 rxCopy = <{ regex.new('^[A-Z].+') }>
 
@@ -39,7 +40,7 @@ function copyFeedback(Size:num, Position:num, Path:str, Dest:str, User, Feedback
    end
 
    if progress_dialog and (Position is 0 or Size > 32768) then
-      local folder, file = file.splitPath(Path)
+      local folder, file = io.splitPath(Path)
 
       if string.len(file) >= 80 then file = '...' .. string.substr(file, -80) end
 
@@ -68,7 +69,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-file.ui.paste = function(Dest:str)
+io.ui.paste = function(Dest:str)
    local clipboard = obj.new('clipboard')
    local err, datatype, files, flags = clipboard.mtGetFiles(CLIPTYPE_FILE, 0)
    if (err != ERR_Okay) or (#files is 0) then
@@ -83,13 +84,13 @@ file.ui.paste = function(Dest:str)
 
    local move
    if (flags & CEF_DELETE) != 0 then move = true end
-   local err = file.ui.copy(files, Dest, move)
+   local err = io.ui.copy(files, Dest, move)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- NB: This call can block if it needs a response from the user.  It does not return until the copy is complete.
 
-file.ui.copy = function(Source:any, Dest:str, Move:bool)
+io.ui.copy = function(Source:any, Dest:str, Move:bool)
    if type(Source) is 'string' then Source = { Source } end
    if type(Source) != 'table' then error('Provided Source is not a table') end
 
@@ -102,7 +103,7 @@ file.ui.copy = function(Source:any, Dest:str, Move:bool)
       if response != 'yes-all' and response != 'no-all' then response = 'yes' end -- Reset to the default
 
       msg('Processing file source ' .. src_path)
-      local src_folder, src_file = file.splitPath(src_path)
+      local src_folder, src_file = io.splitPath(src_path)
       local dest_path = Dest .. src_file
 
       -- Check if the destination already exists
@@ -203,7 +204,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-file.ui.delete = function(Paths)
+io.ui.delete = function(Paths)
    if type(Paths) is 'string' then Paths = { Paths } end
    if type(Paths) != 'table' then error('Path must be a string or string list.') end
 
@@ -235,7 +236,7 @@ file.ui.delete = function(Paths)
          end
 
          if progress_dialog then
-            local folder, file = file.splitPath(Feedback.path)
+            local folder, file = io.splitPath(Feedback.path)
             progress_dialog.setMessage('Deleting: ' .. file, false)
             progress_time = mSys.PreciseTime()
             processing.sleep(0)

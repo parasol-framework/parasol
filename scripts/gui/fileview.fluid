@@ -4,7 +4,6 @@ Enhances any view object, such as listview or columnview to create a file system
 Documentation is available in the Parasol Wiki.
 --]]
 
-   import 'common'
    import 'gui'
    import 'gui/menu'
    import 'gui/dialog'
@@ -376,7 +375,7 @@ lBkgdTasks = { }
 -- Paste from a list of files to a destination folder.
 
 function copyFromList(Folder:str, List, Move:bool)
-   assert(file.isFolder(Folder), 'Invalid folder target of ' .. Folder)
+   assert(io.isFolder(Folder), 'Invalid folder target of ' .. Folder)
 
    try
       msg(f'copyFromList({Folder})')
@@ -412,7 +411,7 @@ end
 -- Paste from a clipboard to a folder using a new thread
 
 function pasteFromClipboard(Folder:str)
-   assert(file.isFolder(Folder), 'Invalid folder target of ' .. Folder)
+   assert(io.isFolder(Folder), 'Invalid folder target of ' .. Folder)
 
    paste_script = obj.new('script', { statement = [[
    import 'io/filemgr'
@@ -574,7 +573,7 @@ gui.fileview = function(Options)
 
    function loadPrefs()
       try
-         js = file.readAll('user:config/filesystem.json')
+         js = io.readAll('user:config/filesystem.json')
          if js?? then
             js = json.decode(js)
             if js['showHidden'] then self.showHidden = true end
@@ -951,7 +950,7 @@ gui.fileview = function(Options)
       msg('fileview.browse("' .. tostring(Path) .. '")')
 
       if Path then
-         self.path = file.sanitisePath(Path)
+         self.path = io.sanitisePath(Path)
          local c = self.path:sub(-1)
          if c != '/' and c != ':' and c != '\\' then
             self.path ..= '/'

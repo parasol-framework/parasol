@@ -212,7 +212,10 @@ typedef enum {
   _(ARRAY_ELEMTYPE, offsetof(GCarray, elemtype)) \
   _(ARRAY_ELEMSIZE, offsetof(GCarray, elemsize)) \
   _(ARRAY_FLAGS, offsetof(GCarray, flags)) \
-  _(ARRAY_META,   offsetof(GCarray, metatable))
+  _(ARRAY_META,   offsetof(GCarray, metatable)) \
+  _(OBJ_UID,   offsetof(GCobject, uid)) \
+  _(OBJ_FLAGS, offsetof(GCobject, flags)) \
+  _(OBJ_PTR,   offsetof(GCobject, ptr))
 
 typedef enum {
 #define FLENUM(name, ofs)   IRFL_##name,

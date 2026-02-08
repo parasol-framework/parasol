@@ -1,5 +1,4 @@
 -- Tests for 'any' type arrays
--- Copyright (C) 2025 Paul Manias
 
 @BeforeEach(hotpath=true)
 function enforce_hotpath() end

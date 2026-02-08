@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 
 #pragma once
 
@@ -34,6 +34,7 @@ enum class TokenKind : uint16_t {
    ElseIf = TK_elseif,
    For = TK_for,
    WhileToken = TK_while,
+   WithToken = TK_with,
    Repeat = TK_repeat,
    Until = TK_until,
    DoToken = TK_do,
@@ -68,6 +69,7 @@ enum class TokenKind : uint16_t {
    SafeMethod = TK_safe_method,
    Presence = TK_if_empty, // NOTE: This single token covers use of both `if present?? then` (postfix) and `(variable ?? default_value)` (if empty).
    PlusPlus = TK_plusplus,
+   Power = TK_pow,
    Pipe = TK_pipe,
    Arrow = TK_arrow,
    DeferredOpen = TK_defer_open,
@@ -136,6 +138,7 @@ enum class TokenKind : uint16_t {
       case TokenKind::ElseIf: return "elseif";
       case TokenKind::For: return "for";
       case TokenKind::WhileToken: return "while";
+      case TokenKind::WithToken: return "with";
       case TokenKind::Repeat: return "repeat";
       case TokenKind::Until: return "until";
       case TokenKind::DoToken: return "do";
@@ -170,6 +173,7 @@ enum class TokenKind : uint16_t {
       case TokenKind::SafeMethod: return "?:";
       case TokenKind::Presence: return "??";
       case TokenKind::PlusPlus: return "++";
+      case TokenKind::Power: return "**";
       case TokenKind::Pipe: return "|>";
       case TokenKind::Arrow: return "=>";
       case TokenKind::DeferredOpen: return "<{";

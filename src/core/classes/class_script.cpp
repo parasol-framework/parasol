@@ -109,8 +109,8 @@ static ERR SCRIPT_Callback(objScript *Self, struct sc::Callback *Args)
    auto save_total  = Self->TotalArgs;
    Self->TotalArgs  = Args->TotalArgs;
    auto saved_error = Self->Error;
-   auto saved_error_msg = Self->ErrorString;
-   Self->ErrorString = nullptr;
+   auto saved_error_msg = Self->ErrorMessage;
+   Self->ErrorMessage = nullptr;
    Self->Error       = ERR::Okay;
 
    ERR error = acActivate(Self);
@@ -121,8 +121,8 @@ static ERR SCRIPT_Callback(objScript *Self, struct sc::Callback *Args)
    Self->Procedure   = save_name;
    Self->ProcArgs    = save_args;
    Self->TotalArgs   = save_total;
-   if (Self->ErrorString) FreeResource(Self->ErrorString);
-   Self->ErrorString = saved_error_msg;
+   if (Self->ErrorMessage) FreeResource(Self->ErrorMessage);
+   Self->ErrorMessage = saved_error_msg;
 
    return error;
 }
@@ -273,7 +273,7 @@ static ERR SCRIPT_Free(objScript *Self)
    if (Self->String)      { FreeResource(Self->String);      Self->String = nullptr; }
    if (Self->WorkingPath) { FreeResource(Self->WorkingPath); Self->WorkingPath = nullptr; }
    if (Self->Procedure)   { FreeResource(Self->Procedure);   Self->Procedure = nullptr; }
-   if (Self->ErrorString) { FreeResource(Self->ErrorString); Self->ErrorString = nullptr; }
+   if (Self->ErrorMessage) { FreeResource(Self->ErrorMessage); Self->ErrorMessage = nullptr; }
    if (Self->Results)     { FreeResource(Self->Results);     Self->Results = nullptr; }
    Self->~objScript();
    return ERR::Okay;
@@ -448,20 +448,20 @@ that if a script is likely to be executed recursively then the first thrown erro
 propagated through the call stack.
 
 -FIELD-
-ErrorString: A human readable error string may be declared here following a script execution failure.
+ErrorMessage: A human readable error string may be declared here following a script execution failure.
 
 *********************************************************************************************************************/
 
-static ERR GET_ErrorString(objScript *Self, STRING *Value)
+static ERR GET_ErrorMessage(objScript *Self, STRING *Value)
 {
-   *Value = Self->ErrorString;
+   *Value = Self->ErrorMessage;
    return ERR::Okay;
 }
 
-static ERR SET_ErrorString(objScript *Self, CSTRING Value)
+static ERR SET_ErrorMessage(objScript *Self, CSTRING Value)
 {
-   if (Self->ErrorString) { FreeResource(Self->ErrorString); Self->ErrorString = nullptr; }
-   if (Value) Self->ErrorString = strclone(Value);
+   if (Self->ErrorMessage) { FreeResource(Self->ErrorMessage); Self->ErrorMessage = nullptr; }
+   if (Value) Self->ErrorMessage = strclone(Value);
    return ERR::Okay;
 }
 
@@ -852,20 +852,20 @@ static const FieldArray clScriptFields[] = {
    { "CurrentLine", FDF_INT|FDF_R },
    { "LineOffset",  FDF_INT|FDF_RW },
    // Virtual Fields
-   { "CacheFile",   FDF_STRING|FDF_RW,              GET_CacheFile, SET_CacheFile },
-   { "ErrorString", FDF_STRING|FDF_RW,              GET_ErrorString, SET_ErrorString },
-   { "WorkingPath", FDF_STRING|FDF_RW,              GET_WorkingPath, SET_WorkingPath },
-   { "Language",    FDF_STRING|FDF_R,               GET_Language, nullptr },
-   { "Location",    FDF_SYNONYM|FDF_STRING|FDF_RI,  GET_Path, SET_Path },
-   { "Procedure",   FDF_STRING|FDF_RW,              GET_Procedure, SET_Procedure },
-   { "Name",        FDF_STRING|FDF_SYSTEM|FDF_RW,   nullptr, SET_Name },
-   { "Path",        FDF_STRING|FDF_RI,              GET_Path, SET_Path },
-   { "Results",     FDF_ARRAY|FDF_POINTER|FDF_STRING|FDF_RW, GET_Results, SET_Results },
-   { "Src",         FDF_SYNONYM|FDF_STRING|FDF_RI,  GET_Path, SET_Path },
-   { "Statement",   FDF_STRING|FDF_RW,              GET_String, SET_String },
-   { "String",      FDF_SYNONYM|FDF_STRING|FDF_RW,  GET_String, SET_String },
-   { "TotalArgs",   FDF_INT|FDF_R,                 GET_TotalArgs, nullptr },
-   { "Variables",   FDF_POINTER|FDF_SYSTEM|FDF_R,   GET_Variables, nullptr },
+   { "CacheFile",    FDF_STRING|FDF_RW,              GET_CacheFile, SET_CacheFile },
+   { "ErrorMessage", FDF_STRING|FDF_RW,              GET_ErrorMessage, SET_ErrorMessage },
+   { "WorkingPath",  FDF_STRING|FDF_RW,              GET_WorkingPath, SET_WorkingPath },
+   { "Language",     FDF_STRING|FDF_R,               GET_Language, nullptr },
+   { "Location",     FDF_SYNONYM|FDF_STRING|FDF_RI,  GET_Path, SET_Path },
+   { "Procedure",    FDF_STRING|FDF_RW,              GET_Procedure, SET_Procedure },
+   { "Name",         FDF_STRING|FDF_SYSTEM|FDF_RW,   nullptr, SET_Name },
+   { "Path",         FDF_STRING|FDF_RI,              GET_Path, SET_Path },
+   { "Results",      FDF_ARRAY|FDF_POINTER|FDF_STRING|FDF_RW, GET_Results, SET_Results },
+   { "Src",          FDF_SYNONYM|FDF_STRING|FDF_RI,  GET_Path, SET_Path },
+   { "Statement",    FDF_STRING|FDF_RW,              GET_String, SET_String },
+   { "String",       FDF_SYNONYM|FDF_STRING|FDF_RW,  GET_String, SET_String },
+   { "TotalArgs",    FDF_INT|FDF_R,                  GET_TotalArgs, nullptr },
+   { "Variables",    FDF_POINTER|FDF_SYSTEM|FDF_R,   GET_Variables, nullptr },
    END_FIELD
 };
 

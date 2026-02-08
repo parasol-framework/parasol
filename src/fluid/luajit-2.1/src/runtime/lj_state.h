@@ -31,7 +31,6 @@ static LJ_AINLINE void lj_state_checkstack(lua_State* L, MSize need)
       lj_state_growstack(L, need);
 }
 
-LJ_FUNC [[nodiscard]] lua_State* lj_state_new(lua_State* L);
 LJ_FUNC void lj_state_free(global_State* g, lua_State* L);
 
 // Function name registry for tostring() support on named functions.

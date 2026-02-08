@@ -295,7 +295,7 @@ end
    end
 
    if glPrivateKeyFile?? then
-      glPrivateKey = file.readAll(glPrivateKeyFile)
+      glPrivateKey = io.readAll(glPrivateKeyFile)
       if not glPrivateKey then
          print("Failed to load RSA key file: " .. glPrivateKeyFile)
          return

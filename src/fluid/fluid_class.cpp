@@ -139,7 +139,7 @@ static void free_all(objScript *Self)
 
 //********************************************************************************************************************
 // Only to be used immediately after a failed lua_pcall().  Lua stores a description of the error that occurred on the
-// stack, this will be popped and copied to the ErrorString field.
+// stack, this will be popped and copied to the ErrorMessage field.
 
 void process_error(objScript *Self, CSTRING Procedure)
 {
@@ -155,7 +155,7 @@ void process_error(objScript *Self, CSTRING Procedure)
    pf::Log log;
    auto str = lua_tostring(prv->Lua, -1);
    lua_pop(prv->Lua, 1);  // pop returned value
-   Self->setErrorString(str);
+   Self->setErrorMessage(str);
 
    if (auto file = Self->Path) {
       int i;
@@ -686,11 +686,11 @@ static ERR FLUID_Query(objScript *Self)
                   if (not error_msg.empty()) error_msg += "\n";
                   error_msg += entry.to_string(Self->LineOffset);
                }
-               Self->setErrorString(error_msg);
+               Self->setErrorMessage(error_msg);
             }
-            else Self->setErrorString(errorstr);
+            else Self->setErrorMessage(errorstr);
 
-            log.warning("%s", Self->ErrorString);
+            log.warning("%s", Self->ErrorMessage);
          }
 
          lua_pop(prv->Lua, 1);  // Pop error string
@@ -967,7 +967,7 @@ static ERR run_script(objScript *Self)
       else {
          auto str = std::format("Procedure '{}' / #{} does not exist in the script.",
             Self->Procedure ? Self->Procedure : "NULL", Self->ProcedureID);
-         Self->setErrorString(str.c_str());
+         Self->setErrorMessage(str.c_str());
          log.warning("%s", str.c_str());
 
          #ifdef _DEBUG

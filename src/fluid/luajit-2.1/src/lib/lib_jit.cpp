@@ -174,10 +174,10 @@ static void setintfield(lua_State* L, GCtab* t, CSTRING name, int32_t val)
 }
 
 //********************************************************************************************************************
-// local info = jit.util.funcinfo(func [,pc])
+// local info = jit.util.funcInfo(func [,pc])
 // Return reflective information about a Lua or C function in a table, optionally at a specific bytecode position.
 
-LJLIB_CF(jit_util_funcinfo)
+LJLIB_CF(jit_util_funcInfo)
 {
    if (auto pt = check_Lproto(L, 1)) {
       BCPOS pc = (BCPOS)lj_lib_optint(L, 2, 0);
@@ -215,10 +215,10 @@ LJLIB_CF(jit_util_funcinfo)
 }
 
 //********************************************************************************************************************
-// local ins, m = jit.util.funcbc(func, pc)
+// local ins, m = jit.util.funcBC(func, pc)
 // Return the raw bytecode word and mode for the given function and bytecode position.
 
-LJLIB_CF(jit_util_funcbc)
+LJLIB_CF(jit_util_funcBC)
 {
    GCproto *pt = check_Lproto(L, 0);
    BCPOS pc = (BCPOS)lj_lib_checkint(L, 2);
@@ -235,10 +235,10 @@ LJLIB_CF(jit_util_funcbc)
 }
 
 //********************************************************************************************************************
-// local k = jit.util.funck(func, idx)
+// local k = jit.util.funcK(func, idx)
 // Return the numeric or GC constant stored at the given index in a function prototype.
 
-LJLIB_CF(jit_util_funck)
+LJLIB_CF(jit_util_funcK)
 {
    GCproto *pt = check_Lproto(L, 0);
    ptrdiff_t idx = (ptrdiff_t)lj_lib_checkint(L, 2);
@@ -257,10 +257,10 @@ LJLIB_CF(jit_util_funck)
 }
 
 //********************************************************************************************************************
-// local name = jit.util.funcuvname(func, idx)
+// local name = jit.util.funcUName(func, idx)
 // Return the name of the upvalue at the given index for a function prototype.
 
-LJLIB_CF(jit_util_funcuvname)
+LJLIB_CF(jit_util_funcUName)
 {
    GCproto *pt = check_Lproto(L, 0);
    auto idx = (uint32_t)lj_lib_checkint(L, 2);
@@ -292,10 +292,10 @@ static CSTRING const jit_trlinkname[] = {
 };
 
 //********************************************************************************************************************
-// local info = jit.util.traceinfo(tr)
+// local info = jit.util.traceInfo(tr)
 // Return high-level information about a recorded trace such as size, exits and link type.
 
-LJLIB_CF(jit_util_traceinfo)
+LJLIB_CF(jit_util_traceInfo)
 {
    GCtrace *T = jit_checktrace(L);
    if (T) {
@@ -315,10 +315,10 @@ LJLIB_CF(jit_util_traceinfo)
 }
 
 //********************************************************************************************************************
-// local m, ot, op1, op2, prev = jit.util.traceir(tr, idx)
+// local m, ot, op1, op2, prev = jit.util.traceIR(tr, idx)
 // Return IR opcode metadata and operands for the specified instruction in a recorded trace.
 
-LJLIB_CF(jit_util_traceir)
+LJLIB_CF(jit_util_traceIR)
 {
    GCtrace* T = jit_checktrace(L);
    IRRef ref = (IRRef)lj_lib_checkint(L, 2) + REF_BIAS;
@@ -336,10 +336,10 @@ LJLIB_CF(jit_util_traceir)
 }
 
 //********************************************************************************************************************
-// local k, t [, slot] = jit.util.tracek(tr, idx)
+// local k, t [, slot] = jit.util.traceK(tr, idx)
 // Return the IR constant value, its type and optional slot for a trace constant.
 
-LJLIB_CF(jit_util_tracek)
+LJLIB_CF(jit_util_traceK)
 {
    GCtrace *T = jit_checktrace(L);
    IRRef ref = (IRRef)lj_lib_checkint(L, 2) + REF_BIAS;
@@ -361,10 +361,10 @@ LJLIB_CF(jit_util_tracek)
 }
 
 //********************************************************************************************************************
-// local snap = jit.util.tracesnap(tr, sn)
+// local snap = jit.util.traceSnap(tr, sn)
 // Return a snapshot description including reference, slot count and packed slot map entries.
 
-LJLIB_CF(jit_util_tracesnap)
+LJLIB_CF(jit_util_traceSnap)
 {
    GCtrace *T = jit_checktrace(L);
    SnapNo sn = (SnapNo)lj_lib_checkint(L, 2);
@@ -384,10 +384,10 @@ LJLIB_CF(jit_util_tracesnap)
 }
 
 //********************************************************************************************************************
-// local mcode, addr, loop = jit.util.tracemc(tr)
+// local mcode, addr, loop = jit.util.traceMC(tr)
 // Return the machine code for a trace together with its address and loop entry offset.
 
-LJLIB_CF(jit_util_tracemc)
+LJLIB_CF(jit_util_traceMC)
 {
    GCtrace *T = jit_checktrace(L);
    if (T and T->mcode != nullptr) {
@@ -400,10 +400,10 @@ LJLIB_CF(jit_util_tracemc)
 }
 
 //********************************************************************************************************************
-// local addr = jit.util.traceexitstub([tr,] exitno)
+// local addr = jit.util.traceExitStub([tr,] exitno)
 // Return the address of the exit stub for a global or trace-local exit number.
 
-LJLIB_CF(jit_util_traceexitstub)
+LJLIB_CF(jit_util_traceExitStub)
 {
 #ifdef EXITSTUBS_PER_GROUP
    auto exitno = (ExitNo)lj_lib_checkint(L, 1);
@@ -427,10 +427,10 @@ LJLIB_CF(jit_util_traceexitstub)
 }
 
 //********************************************************************************************************************
-// local addr = jit.util.ircalladdr(idx)
+// local addr = jit.util.irCallAddr(idx)
 // Return the C function address associated with the given IR call index.
 
-LJLIB_CF(jit_util_ircalladdr)
+LJLIB_CF(jit_util_irCallAddr)
 {
    auto idx = (uint32_t)lj_lib_checkint(L, 1);
    if (idx < IRCALL__MAX) {
@@ -667,17 +667,17 @@ extern int luaopen_jit(lua_State* L)
    reg_iface_prototype("jit", "attach", {}, { FluidType::Func, FluidType::Str });
 
    // Register jit.util interface prototypes
-   reg_iface_prototype("jit.util", "funcinfo", { FluidType::Table }, { FluidType::Func, FluidType::Num });
-   reg_iface_prototype("jit.util", "funcbc", { FluidType::Num, FluidType::Num }, { FluidType::Func, FluidType::Num });
-   reg_iface_prototype("jit.util", "funck", { FluidType::Any }, { FluidType::Func, FluidType::Num });
-   reg_iface_prototype("jit.util", "funcuvname", { FluidType::Str }, { FluidType::Func, FluidType::Num });
-   reg_iface_prototype("jit.util", "traceinfo", { FluidType::Table }, { FluidType::Num });
-   reg_iface_prototype("jit.util", "traceir", { FluidType::Num, FluidType::Num, FluidType::Num, FluidType::Num, FluidType::Num }, { FluidType::Num, FluidType::Num });
-   reg_iface_prototype("jit.util", "tracek", { FluidType::Any, FluidType::Num, FluidType::Num }, { FluidType::Num, FluidType::Num });
-   reg_iface_prototype("jit.util", "tracesnap", { FluidType::Table }, { FluidType::Num, FluidType::Num });
-   reg_iface_prototype("jit.util", "tracemc", { FluidType::Str, FluidType::Num, FluidType::Num }, { FluidType::Num });
-   reg_iface_prototype("jit.util", "traceexitstub", { FluidType::Num }, { FluidType::Num, FluidType::Num });
-   reg_iface_prototype("jit.util", "ircalladdr", { FluidType::Num }, { FluidType::Num });
+   reg_iface_prototype("jit.util", "funcInfo", { FluidType::Table }, { FluidType::Func, FluidType::Num });
+   reg_iface_prototype("jit.util", "funcBC", { FluidType::Num, FluidType::Num }, { FluidType::Func, FluidType::Num });
+   reg_iface_prototype("jit.util", "funcK", { FluidType::Any }, { FluidType::Func, FluidType::Num });
+   reg_iface_prototype("jit.util", "funcUName", { FluidType::Str }, { FluidType::Func, FluidType::Num });
+   reg_iface_prototype("jit.util", "traceInfo", { FluidType::Table }, { FluidType::Num });
+   reg_iface_prototype("jit.util", "traceIR", { FluidType::Num, FluidType::Num, FluidType::Num, FluidType::Num, FluidType::Num }, { FluidType::Num, FluidType::Num });
+   reg_iface_prototype("jit.util", "traceK", { FluidType::Any, FluidType::Num, FluidType::Num }, { FluidType::Num, FluidType::Num });
+   reg_iface_prototype("jit.util", "traceSnap", { FluidType::Table }, { FluidType::Num, FluidType::Num });
+   reg_iface_prototype("jit.util", "traceMC", { FluidType::Str, FluidType::Num, FluidType::Num }, { FluidType::Num });
+   reg_iface_prototype("jit.util", "traceExitStub", { FluidType::Num }, { FluidType::Num, FluidType::Num });
+   reg_iface_prototype("jit.util", "irCallAddr", { FluidType::Num }, { FluidType::Num });
 
    // Register jit.opt interface prototypes
    reg_iface_prototype("jit.opt", "start", {}, { FluidType::Str }, FProtoFlags::Variadic);

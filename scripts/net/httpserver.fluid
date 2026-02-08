@@ -1,7 +1,7 @@
 -- Refer to the Wiki for usage.
 --
 -- import 'net/httpserver'
--- local httpServer = hslib.start({ Options... })
+-- httpServer = hslib.start({ Options... })
 -- httpServer.stop()
 
    include 'network'

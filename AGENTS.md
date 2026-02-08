@@ -94,7 +94,7 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension to 
 - Compound operators: `+=`, `-=`, `*=`, `/=`, `%=` on numeric values
 - `..=` for string concatenation
 - Postfix operators: `++`
-- C-style bitwise operators: `&`, `|`, `~`, `<<`, `>>`
+- C-style bitwise operators: `&`, `|`, `^`, `~`, `<<`, `>>`
 - C-style ternary operator: `condition ? true_val :> false_val`
 - Falsey value checks with `??`, e.g. `if value?? then ...`
 - `??=` and `??` conditional operators as a convenience for redefining falsey values, e.g. `result = value1 ?? value2`

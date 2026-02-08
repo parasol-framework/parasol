@@ -214,8 +214,13 @@ typedef struct CCallInfo {
   _(ANY,        lj_try_enter,      4,  FS, NIL, CCI_L|CCI_T) \
   _(ANY,        lj_try_leave,      1,  FS, NIL, CCI_L) \
   /* Native object field access */ \
-  _(ANY,        bc_object_getfield, 4, S, NIL, CCI_L|CCI_T) \
-  _(ANY,        bc_object_setfield, 4, S, NIL, CCI_L|CCI_T) \
+  _(ANY,        bc_object_getfield, 5, S, NIL, CCI_L|CCI_T) \
+  _(ANY,        bc_object_setfield, 5, S, NIL, CCI_L|CCI_T) \
+  /* JIT direct field access lock/unlock */ \
+  _(ANY,        jit_object_lock,   1, S, PTR, 0) \
+  _(ANY,        jit_object_unlock, 1, S, NIL, 0) \
+  _(ANY,        jit_object_getstr, 4, S, NIL, CCI_L|CCI_T) \
+  _(ANY,        jit_object_getobj, 4, S, NIL, CCI_L|CCI_T) \
   \
   // End of list.
 

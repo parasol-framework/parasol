@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      vector.h
-// Copyright: Paul Manias © 2010-2025
+// Copyright: Paul Manias © 2010-2026
 // Generator: idl-c
 
 #include <parasol/main.h>

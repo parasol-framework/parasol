@@ -1,5 +1,5 @@
 // Range library for Fluid.
-// Copyright (C) 2025 Paul Manias.
+// Copyright © 2025-2026 Paul Manias.
 //
 // Implements a Range type as userdata with support for:
 // - Exclusive (default) and inclusive ranges

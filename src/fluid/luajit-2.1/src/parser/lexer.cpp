@@ -1,6 +1,6 @@
 // Lexical analyser.
 //
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 
 #define LUA_CORE
 
@@ -144,6 +144,10 @@ namespace {
    }
 } // anonymous namespace
 
+// Forward declarations for Unicode operator detection (defined later in this file)
+static LexToken match_unicode_operator(LexState *State, int &ByteLength) noexcept;
+inline bool is_unicode_operator_start(LexState *State) noexcept;
+
 //********************************************************************************************************************
 // Parse numeric literal for lex_scan()
 
@@ -158,9 +162,11 @@ static void lex_number(LexState *State, TValue* tv)
 
    // Scan all number characters.
    // Special case: Stop before '..' to allow range literals like {1..5}
+   // Special case: Stop before Unicode operators (e.g. ↑ for exponentiation)
    while (is_number_char(State->c, c)) {
       // If we see '.', check if next character is also '.' (range operator)
       if (State->c IS '.' and State->peek_next() IS '.') break;  // Don't consume '.', let parser handle '..'
+      if (is_unicode_operator_start(State)) break;  // Don't consume Unicode operators like ↑
       c = State->c;
       lex_savenext(State);
    }
@@ -785,6 +791,11 @@ static LexToken match_unicode_operator(LexState *State, int &ByteLength) noexcep
          }
       }
 
+      if (second IS 0x86 and third IS 0x91) {
+         ByteLength = 3;
+         return TK_pow;          // ↑
+      }
+
       if (second IS 0x96 and third IS 0xB7) {
          ByteLength = 3;
          return TK_ternary_sep;  // ▷
@@ -1041,7 +1052,8 @@ static LexToken lex_scan(LexState *State, TValue *tv)
          case '*':
             State->mark_token_start();
             lex_next(State);
-            if (auto tok = check_compound(State, TK_cmul)) return tok;
+            if (auto tok = check_compound(State, TK_cmul)) return tok;  // *=
+            if (State->c IS '*') { lex_next(State); return TK_pow; }    // **
             return '*';
 
          case '/':

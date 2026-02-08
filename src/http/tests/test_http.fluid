@@ -7,7 +7,6 @@ this by maintaining at least one reference to the object at all times and this w
 collected too early.
 --]]
 
-   import 'common'
    import 'net/httpserver'
    import 'json'
    include 'http'
@@ -273,7 +272,7 @@ end
 
    err = proc.sleep(5.0)
 
-   content = file.readAll(glOutFile)
+   content = io.readAll(glOutFile)
    print(string.format('%.80s [%d bytes]', content, content:len()))
    assert(content, 'No content received.')
    assert(err is ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
@@ -293,7 +292,7 @@ end
       outputFile = glOutFile,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) then
-            content = file.readAll(glOutFile)
+            content = io.readAll(glOutFile)
             print(string.format('%.80s [%d bytes]', content, content:len()))
          end
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then

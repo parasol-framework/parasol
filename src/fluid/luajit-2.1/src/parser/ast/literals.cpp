@@ -1,5 +1,5 @@
 // AST Builder - Literal and Composite Parsers
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 //
 // This file contains parsers for literals and composite constructs:
 // - Function literals
@@ -493,6 +493,17 @@ ParserResult<AstBuilder::ResultFilterInfo> AstBuilder::parse_result_filter_patte
       if (current.kind() IS TokenKind::Multiply) {  // *
          info.keep_mask |= (1ULL << position);
          info.trailing_keep = true;
+         position++;
+      }
+      else if (current.kind() IS TokenKind::Power) {  // ** treated as two keep positions
+         info.keep_mask |= (1ULL << position);
+         info.trailing_keep = true;
+         position++;
+         if (position >= 64) {
+            return this->fail<ResultFilterInfo>(ParserErrorCode::UnexpectedToken, current,
+               "result filter pattern too long (max 64 positions)");
+         }
+         info.keep_mask |= (1ULL << position);
          position++;
       }
       else if (current.kind() IS TokenKind::Identifier) {

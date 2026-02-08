@@ -11,7 +11,7 @@
     <id>51b8d205</id>
     <idstring>VECTORPATH</idstring>
     <category>Graphics</category>
-    <copyright>Paul Manias © 2010-2025</copyright>
+    <copyright>Paul Manias © 2010-2026</copyright>
     <description>
 <p>VectorPath provides support for parsing SVG styled path strings.</p></description>
     <source>

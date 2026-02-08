@@ -168,14 +168,6 @@ static cTValue * resolve_index_const(lua_State *L, int idx)
 }
 
 //********************************************************************************************************************
-// Miscellaneous API functions
-
-extern int lua_status(lua_State *L)
-{
-   return L->status;
-}
-
-//********************************************************************************************************************
 // Check if stack can accommodate additional space
 
 extern int lua_checkstack(lua_State *L, int size)
@@ -190,7 +182,7 @@ extern int lua_checkstack(lua_State *L, int size)
 //********************************************************************************************************************
 // Check stack availability with error message
 
-extern void luaL_checkstack(lua_State *L, int size, const char* msg)
+extern void luaL_checkstack(lua_State *L, int size, CSTRING msg)
 {
    if (!lua_checkstack(L, size)) lj_err_callerv(L, ErrMsg::STKOVM, msg);
 }
@@ -346,7 +338,7 @@ extern void luaL_checkany(lua_State *L, int idx)
 //********************************************************************************************************************
 // Get string representation of type
 
-extern const char* lua_typename(lua_State *L, int t)
+extern CSTRING lua_typename(lua_State *L, int t)
 {
    return lj_obj_typename[t + 1];
 }
@@ -576,7 +568,7 @@ extern GCobject * lua_optobject(lua_State *L, int Arg)
 //********************************************************************************************************************
 // Convert value to string with length
 
-extern const char* lua_tolstring(lua_State *L, int idx, size_t* len)
+extern CSTRING lua_tolstring(lua_State *L, int idx, size_t* len)
 {
    TValue *o = (idx > LUA_REGISTRYINDEX) ? resolve_index(L, idx) : index2adr(L, idx);
    GCstr *s;
@@ -641,7 +633,7 @@ extern uint32_t luaL_checkstringhash(lua_State *L, int idx)
 //********************************************************************************************************************
 // Convert value to string with default
 
-extern const char* luaL_optlstring(lua_State *L, int idx, const char* def, size_t* len)
+extern CSTRING luaL_optlstring(lua_State *L, int idx, CSTRING def, size_t* len)
 {
    TValue *o = (idx > LUA_REGISTRYINDEX) ? resolve_index(L, idx) : index2adr(L, idx);
    GCstr *s;
@@ -668,7 +660,7 @@ extern const char* luaL_optlstring(lua_State *L, int idx, const char* def, size_
 //********************************************************************************************************************
 // Check value matches one of the option strings
 
-extern int luaL_checkoption(lua_State *L, int idx, const char* def, const char* const lst[])
+extern int luaL_checkoption(lua_State *L, int idx, CSTRING def, CSTRING const lst[])
 {
    ptrdiff_t i;
    auto s = lua_tolstring(L, idx, nullptr);
@@ -769,7 +761,7 @@ extern void lua_pushinteger(lua_State *L, lua_Integer n)
 //********************************************************************************************************************
 // Push string of specified length onto stack
 
-extern void lua_pushlstring(lua_State *L, const char* str, size_t len)
+extern void lua_pushlstring(lua_State *L, CSTRING str, size_t len)
 {
    lj_gc_check(L);
    auto s = lj_str_new(L, str, len);
@@ -780,7 +772,7 @@ extern void lua_pushlstring(lua_State *L, const char* str, size_t len)
 //********************************************************************************************************************
 // Push null-terminated string onto stack
 
-extern void lua_pushstring(lua_State *L, const char* str)
+extern void lua_pushstring(lua_State *L, CSTRING str)
 {
    if (str IS nullptr) setnilV(L->top);
    else {
@@ -794,7 +786,7 @@ extern void lua_pushstring(lua_State *L, const char* str)
 //********************************************************************************************************************
 // Push formatted string onto stack with varargs
 
-extern const char* lua_pushvfstring(lua_State *L, const char* fmt, va_list argp)
+extern CSTRING lua_pushvfstring(lua_State *L, CSTRING fmt, va_list argp)
 {
    lj_gc_check(L);
    return lj_strfmt_pushvf(L, fmt, argp);
@@ -803,7 +795,7 @@ extern const char* lua_pushvfstring(lua_State *L, const char* fmt, va_list argp)
 //********************************************************************************************************************
 // Push formatted string onto stack
 
-extern const char* lua_pushfstring(lua_State *L, const char* fmt, ...)
+extern CSTRING lua_pushfstring(lua_State *L, CSTRING fmt, ...)
 {
    va_list argp;
    lj_gc_check(L);
@@ -883,7 +875,7 @@ extern GCobject * lua_pushobject(lua_State *L, OBJECTID UID, OBJECTPTR Ptr, objM
 //********************************************************************************************************************
 // Create new metatable in registry
 
-extern int luaL_newmetatable(lua_State *L, const char* tname)
+extern int luaL_newmetatable(lua_State *L, CSTRING tname)
 {
    GCtab *regt = tabV(registry(L));
    TValue *tv = lj_tab_setstr(L, regt, lj_str_newz(L, tname));
@@ -962,7 +954,7 @@ extern void lua_gettable(lua_State *L, int idx)
 //********************************************************************************************************************
 // Get table field by string key
 
-extern void lua_getfield(lua_State *L, int idx, const char* k)
+extern void lua_getfield(lua_State *L, int idx, CSTRING k)
 {
    cTValue *t = index2adr_check(L, idx);
    TValue key;
@@ -1015,7 +1007,7 @@ extern int lua_getmetatable(lua_State *L, int idx)
 //********************************************************************************************************************
 // Get metatable field by string key
 
-extern int luaL_getmetafield(lua_State *L, int idx, const char* field)
+extern int luaL_getmetafield(lua_State *L, int idx, CSTRING field)
 {
    if (lua_getmetatable(L, idx)) {
       cTValue *tv = lj_tab_getstr(tabV(L->top - 1), lj_str_newz(L, field));
@@ -1061,7 +1053,7 @@ extern int lua_next(lua_State *L, int idx)
 //********************************************************************************************************************
 // Get function upvalue by index
 
-extern const char* lua_getupvalue(lua_State *L, int idx, int n)
+extern CSTRING lua_getupvalue(lua_State *L, int idx, int n)
 {
    TValue *val;
    GCobj *o;
@@ -1145,7 +1137,7 @@ extern void lua_settable(lua_State *L, int idx)
 //********************************************************************************************************************
 // Set table field by string key
 
-extern void lua_setfield(lua_State *L, int idx, const char* k)
+extern void lua_setfield(lua_State *L, int idx, CSTRING k)
 {
    TValue key;
    cTValue *t = index2adr_check(L, idx);
@@ -1241,7 +1233,7 @@ extern int lua_setmetatable(lua_State *L, int idx)
 //********************************************************************************************************************
 // Set metatable from registry
 
-extern void luaL_setmetatable(lua_State *L, const char* tname)
+extern void luaL_setmetatable(lua_State *L, CSTRING tname)
 {
    lua_getfield(L, LUA_REGISTRYINDEX, tname);
    lua_setmetatable(L, -2);
@@ -1292,7 +1284,7 @@ extern int lua_setfenv(lua_State *L, int idx)
 //********************************************************************************************************************
 // Set function upvalue by index
 
-extern const char* lua_setupvalue(lua_State *L, int idx, int n)
+extern CSTRING lua_setupvalue(lua_State *L, int idx, int n)
 {
    cTValue *f = index2adr(L, idx);
    TValue *val;
@@ -1412,71 +1404,6 @@ extern int luaL_callmeta(lua_State *L, int idx, const char *field)
       return 1;
    }
    return 0;
-}
-
-//********************************************************************************************************************
-// Test if coroutine can yield
-
-extern int lua_isyieldable(lua_State *L)
-{
-   return cframe_canyield(L->cframe);
-}
-
-//********************************************************************************************************************
-// Suspend current coroutine
-
-extern int lua_yield(lua_State *L, int nresults)
-{
-   void *cf = L->cframe;
-   global_State* g = G(L);
-   if (cframe_canyield(cf)) {
-      cf = cframe_raw(cf);
-      if (!hook_active(g)) {  // Regular yield: move results down if needed.
-         cTValue* f = L->top - nresults;
-         if (f > L->base) {
-            copy_range(L, L->base, f, nresults);
-            L->top = L->base + nresults;
-         }
-         L->cframe = nullptr;
-         L->status = LUA_YIELD;
-         return -1;
-      }
-      else {  // Yield from hook: add a pseudo-frame.
-         TValue* top = L->top;
-         hook_leave(g);
-         (top++)->u64 = cframe_multres(cf);
-         setcont(top, lj_cont_hook);
-         top++;
-         setframe_pc(top, cframe_pc(cf) - 1);
-         top++;
-         setframe_gc(top, obj2gco(L), LJ_TTHREAD);
-         top++;
-         setframe_ftsz(top, ((char*)(top + 1) - (char*)L->base) + FRAME_CONT);
-         L->top = L->base = top + 1;
-#if ((defined(__GNUC__) or defined(__clang__)) && (LJ_TARGET_X64 or defined(LUAJIT_UNWIND_EXTERNAL)) && !LJ_NO_UNWIND) or LJ_TARGET_WINDOWS
-         lj_err_throw(L, LUA_YIELD);
-#else
-         L->cframe = nullptr;
-         L->status = LUA_YIELD;
-         lj_vm_unwind_c(cf, LUA_YIELD);
-#endif
-      }
-   }
-   lj_err_msg(L, ErrMsg::CYIELD);
-   return 0;  //  unreachable
-}
-
-//********************************************************************************************************************
-// Resume suspended coroutine
-
-extern int lua_resume(lua_State *L, int nargs)
-{
-   if (L->cframe IS nullptr and L->status <= LUA_YIELD)
-      return lj_vm_resume(L, L->status IS LUA_OK ? api_call_base(L, nargs) : L->top - nargs, 0, 0);
-   L->top = L->base;
-   setstrV(L, L->top, lj_err_str(L, ErrMsg::COSUSP));
-   incr_top(L);
-   return LUA_ERRRUN;
 }
 
 //********************************************************************************************************************

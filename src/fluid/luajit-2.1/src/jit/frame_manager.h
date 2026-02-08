@@ -1,5 +1,5 @@
 // Frame management abstractions for JIT trace recorder.
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 
 #pragma once
 

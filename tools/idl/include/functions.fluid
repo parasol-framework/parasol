@@ -127,7 +127,7 @@ global function module(Options:table, Function:func)
    end
 
    if glModule.src then -- Primary source file
-      content = file.readAll(glFDLFolder .. glModule.src)
+      content = io.readAll(glFDLFolder .. glModule.src)
       content = content:replace('\r\n', '\n')
 
       -- Extract possible content from within comments so that we don't get interference from the code while parsing.
@@ -784,7 +784,7 @@ global function class(Name, Options:table, Spec, Private, Custom)
             print(f'Class file: {glFDLFolder}{path}')
          end
 
-         content = file.readAll(glFDLFolder .. path)
+         content = io.readAll(glFDLFolder .. path)
          content = content:replace('\r\n', '\n')
 
          -- Look for C/C++ action declarations, in the format: ERR CLASS_Action(...).  This will create a series

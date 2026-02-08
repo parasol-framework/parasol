@@ -1,5 +1,5 @@
 // Value category abstractions - implementation.
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 
 #include "parser/value_categories.h"
 #include "parser/parse_regalloc.h"

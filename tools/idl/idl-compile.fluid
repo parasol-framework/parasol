@@ -6,8 +6,6 @@
 -- Usage: parasol sdk:scripts/idl-fluid.fluid src=source.fdl
 -- Example: parasol sdk:scripts/idl-fluid.fluid src=sdk:core/modules/core/core.fdl
 
-   import 'common'
-
    global glSelf = obj.find('self')
    global glPath = glSelf.workingPath
    global glOutput = array<string>

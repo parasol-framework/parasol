@@ -2,7 +2,6 @@
 Documentation is available in the Parasol Wiki.
 --]]
 
-   import 'common'
    import 'gui'
    import 'gui/fileview'
    import 'gui/columnview'
@@ -20,7 +19,7 @@ GAP = 8
 gui.dialog.file = function(Options)
    self = { -- Public variables
       windowID    = nil,
-      currentPath = file.splitPath(Options.path),
+      currentPath = io.splitPath(Options.path),
       multiSelect = Options.multiSelect ?? false,
       warnExists  = Options.warnExists ?? false,
       feedback    = Options.feedback,

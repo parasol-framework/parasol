@@ -2,7 +2,6 @@
 Documentation is available in the Parasol Wiki.
 --]]
 
-   import 'common'
    import 'gui'
    import 'json'
    import 'gui/window'
@@ -492,7 +491,7 @@ end
 
 function loadColours(self)
    try
-      js = file.readAll('user:config/colours.json')
+      js = io.readAll('user:config/colours.json')
       if js?? then
          self._userColours = json.decode(js)
          if type(self._userColours) != 'array' then

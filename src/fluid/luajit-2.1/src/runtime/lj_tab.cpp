@@ -579,8 +579,6 @@ TValue * lj_tab_set(lua_State *L, GCtab *t, cTValue *key)
 }
 
 //********************************************************************************************************************
-// Table traversal
-//
 // Table traversal indexes (0-based):
 //
 // Array key index: [0 .. t->asize-1]

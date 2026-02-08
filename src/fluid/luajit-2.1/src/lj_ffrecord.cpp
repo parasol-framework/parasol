@@ -1137,8 +1137,8 @@ static void recff_string_find(jit_State* J, RecordFFData* rd)
       TRef trplen = emitir(IRTI(IR_FLOAD), trpat, IRFL_STR_LEN);
       TRef tr = lj_ir_call(J, IRCALL_lj_str_find, trsptr, trpptr, trslen, trplen);
       TRef trp0 = lj_ir_kkptr(J, nullptr);
-      if (lj_str_find(strdata(str) + (MSize)start, strdata(pat),
-         str->len - (MSize)start, pat->len)) {
+      if (lj_str_findsv({strdata(str) + MSize(start), str->len - MSize(start)},
+         {strdata(pat), pat->len})) {
          TRef pos;
          emitir(IRTG(IR_NE, IRT_PGC), tr, trp0);
          // Recompute offset. trsptr may not point into trstr after folding.

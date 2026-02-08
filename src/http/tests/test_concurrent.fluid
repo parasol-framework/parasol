@@ -1,6 +1,5 @@
 --[[ Concurrent Requests Testing --]]
 
-   import 'common'
    local hslib = import 'net/httpserver'
    import 'json'
    include 'http'

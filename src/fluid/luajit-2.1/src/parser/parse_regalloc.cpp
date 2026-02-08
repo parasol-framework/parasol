@@ -1,6 +1,6 @@
 // Lua parser - Register allocation and bytecode emission.
 //
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 // Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 // Major portions taken verbatim or adapted from the Lua interpreter.
 // Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
@@ -334,7 +334,7 @@ static void expr_discharge(FuncState *fs, ExpDesc *e)
       fs_check_assert(fs, int32_t(rc) < 0, "object field index must be string constant");
       BCREG idx = (BCREG)~rc;
       fs_check_assert(fs, idx <= BCMAX_C, "object field string constant index out of range");
-      ins = BCINS_ABC(BC_OBGETF, 0, e->u.s.info, idx);
+      ins = BCINS_ABCP(BC_OBGETF, 0, e->u.s.info, idx, 0xFFFFFFFFu);
       bcreg_free(fs, e->u.s.info);
    }
    else if (e->k IS ExpKind::Call) {
@@ -668,7 +668,7 @@ static void bcemit_store(FuncState *fs, ExpDesc *LHS, ExpDesc *RHS)
       ra = expr_toanyreg(fs, RHS);
       rc = LHS->u.s.aux;
       fs_check_assert(fs, int32_t(rc) < 0, "object field index must be string constant");
-      ins = BCINS_ABC(BC_OBSETF, ra, LHS->u.s.info, (~rc) & 0xFFu);
+      ins = BCINS_ABCP(BC_OBSETF, ra, LHS->u.s.info, (~rc) & 0xFFu, 0xFFFFFFFFu);
    }
    else {
       // Table index assignment - emit BC_TSETV, BC_TSETB, or BC_TSETS

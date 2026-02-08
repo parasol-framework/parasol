@@ -11,53 +11,51 @@
 #include "lj_char.h"
 #include "lj_prng.h"
 #include <parasol/strings.hpp>
-
-#ifndef PLATFORM_CONFIG_H
-#include <parasol/config.h>
-#endif
+#include <algorithm>
 
 //********************************************************************************************************************
 // Ordered compare of strings. Assumes string data is 4-byte aligned.
 
 int32_t lj_str_cmp(GCstr *a, GCstr *b)
 {
-   MSize i, n = a->len > b->len ? b->len : a->len;
-   for (i = 0; i < n; i += 4) {
+   auto n = std::min(a->len, b->len);
+   for (MSize i = 0; i < n; i += 4) {
       // Note: innocuous access up to end of string + 3.
-      uint32_t va = *(const uint32_t*)(strdata(a) + i);
-      uint32_t vb = *(const uint32_t*)(strdata(b) + i);
+      auto va = *(const uint32_t *)(strdata(a) + i);
+      auto vb = *(const uint32_t *)(strdata(b) + i);
       if (va != vb) {
 #if LJ_LE
          va = lj_bswap(va); vb = lj_bswap(vb);
 #endif
-         i -= n;
-         if ((int32_t)i >= -3) {
-            va >>= 32 + (i << 3); vb >>= 32 + (i << 3);
+         // Check if the mismatch is within the valid string region.
+         auto overshoot = int32_t(i) - int32_t(n);
+         if (overshoot >= -3) {
+            va >>= 32 + (overshoot << 3); vb >>= 32 + (overshoot << 3);
             if (va IS vb) break;
          }
          return va < vb ? -1 : 1;
       }
    }
-   return (int32_t)(a->len - b->len);
+   return int32_t(a->len - b->len);
 }
 
 //********************************************************************************************************************
 // Find fixed string p inside string s.
 
-const char * lj_str_find(CSTRING s, CSTRING p, MSize slen, MSize plen)
+const char * lj_str_find(const char *s, const char *p, MSize slen, MSize plen)
 {
    if (plen <= slen) {
       if (plen IS 0) {
          return s;
       }
       else {
-         int c = *(const uint8_t*)p++;
+         int c = *(const uint8_t *)p++;
          plen--; slen -= plen;
          while (slen) {
-            CSTRING q = (CSTRING)memchr(s, c, slen);
+            auto q = (const char *)memchr(s, c, slen);
             if (!q) break;
             if (memcmp(q + 1, p, plen) IS 0) return q;
-            q++; slen -= (MSize)(q - s); s = q;
+            q++; slen -= MSize(q - s); s = q;
          }
       }
    }
@@ -65,49 +63,43 @@ const char * lj_str_find(CSTRING s, CSTRING p, MSize slen, MSize plen)
 }
 
 //********************************************************************************************************************
-// Check whether a string has a pattern matching character.
+// Check whether a string contains a pattern matching character.
 
-int lj_str_haspattern(GCstr* s)
+bool lj_str_haspattern(GCstr *s)
 {
-   const char* p = strdata(s), * q = p + s->len;
-   while (p < q) {
-      int c = *(const uint8_t*)p++;
-      if (lj_char_ispunct(c) and strchr("^$*+?.([%-", c)) return 1;  //  Found a pattern matching char.
+   constexpr std::string_view pattern_chars("^$*+?.([%-");
+   std::string_view str(strdata(s), s->len);
+   for (auto c : str) {
+      if (lj_char_ispunct((uint8_t)c) and pattern_chars.find(c) != std::string_view::npos)
+         return true;
    }
-   return 0;  //  No pattern matching chars found.
+   return false;
 }
 
 //********************************************************************************************************************
 // String interning
 
-#define LJ_STR_MAXCOLL      32
-
 // Resize the string interning hash table (grow and shrink).
 
-void lj_str_resize(lua_State* L, MSize newmask)
+void lj_str_resize(lua_State *L, MSize newmask)
 {
-   global_State* g = G(L);
-   GCRef *newtab, *oldtab = g->str.tab;
-   MSize i;
+   auto g = G(L);
 
    // No resizing during GC traversal or if already too big.
-
-   GarbageCollector collector = gc(g);
-   if (collector.phase() IS GCPhase::SweepString or newmask >= LJ_MAX_STRTAB - 1)
+   if (gc(g).phase() IS GCPhase::SweepString or newmask >= LJ_MAX_STRTAB - 1)
       return;
 
-   newtab = lj_mem_newvec(L, newmask + 1, GCRef);
+   auto *oldtab = g->str.tab;
+   auto *newtab = lj_mem_newvec(L, newmask + 1, GCRef);
    memset(newtab, 0, (newmask + 1) * sizeof(GCRef));
 
    // Reinsert all strings from the old table into the new table.
-
-   for (i = g->str.mask; i != ~(MSize)0; i--) {
-      GCobj* o = (GCobj*)(gcrefu(oldtab[i]) & ~(uintptr_t)1);
+   for (MSize i = g->str.mask; i != ~MSize(0); i--) {
+      auto *o = (GCobj *)(gcrefu(oldtab[i]) & ~uintptr_t(1));
       while (o) {
-         GCobj *next = gcnext(o);
-         GCstr *s = gco_to_string(o);
-         MSize hash = s->hash;
-         hash &= newmask;
+         auto *next = gcnext(o);
+         auto *s = gco_to_string(o);
+         MSize hash = s->hash & newmask;
          // NOBARRIER: The string table is a GC root.
          setgcrefr(o->gch.nextgc, newtab[hash]);
          setgcref(newtab[hash], o);
@@ -124,11 +116,10 @@ void lj_str_resize(lua_State* L, MSize newmask)
 //********************************************************************************************************************
 // Allocate a new string and add to string interning table.  Throws on failure.
 
-static GCstr * lj_str_alloc(lua_State* L, CSTRING str, MSize len, uint32_t hash)
+static GCstr * lj_str_alloc(lua_State *L, const char *str, MSize len, uint32_t hash)
 {
-   GCstr *s = lj_mem_newt(L, lj_str_size(len), GCstr);
-   global_State *g = G(L);
-   uintptr_t u;
+   auto *s = lj_mem_newt(L, lj_str_size(len), GCstr);
+   auto *g = G(L);
 
    newwhite(g, s);
 
@@ -137,43 +128,44 @@ static GCstr * lj_str_alloc(lua_State* L, CSTRING str, MSize len, uint32_t hash)
    s->hash     = hash;
    s->sid      = g->str.id++;
    s->reserved = 0;
+   s->flags    = 0;
 
    // Clear last 4 bytes of allocated memory. Implies zero-termination, too.
-   *(uint32_t*)(strdatawr(s) + (len & ~(MSize)3)) = 0;
+   *(uint32_t *)(strdatawr(s) + (len & ~MSize(3))) = 0;
    memcpy(strdatawr(s), str, len);
 
    // Add to string hash table.
-   hash &= g->str.mask;
-   u = gcrefu(g->str.tab[hash]);
-   setgcrefp(s->nextgc, (u & ~(uintptr_t)1));
+   MSize slot = hash & g->str.mask;
+   auto u = gcrefu(g->str.tab[slot]);
+   setgcrefp(s->nextgc, (u & ~uintptr_t(1)));
 
    // NOBARRIER: The string table is a GC root.
-   setgcrefp(g->str.tab[hash], ((uintptr_t)s | (u & 1)));
-   if (g->str.num++ > g->str.mask) { //  Allow a 100% load factor.
-      lj_str_resize(L, (g->str.mask << 1) + 1);  //  Grow string table.
+   setgcrefp(g->str.tab[slot], (uintptr_t(s) | (u & 1)));
+   if (g->str.num++ > g->str.mask) { // Allow a 100% load factor.
+      lj_str_resize(L, (g->str.mask << 1) + 1); // Grow string table.
    }
-   return s;  //  Return newly interned string.
+   return s;
 }
 
 //********************************************************************************************************************
 // Intern a string and return string object.  Throws on failure.
 
-GCstr * lj_str_new(lua_State* L, CSTRING str, size_t lenx)
+GCstr * lj_str_new(lua_State *L, const char *str, size_t lenx)
 {
-   global_State *g = G(L);
+   auto *g = G(L);
    if (lenx - 1 < LJ_MAX_STR - 1) {
-      auto len = (MSize)lenx;
+      auto len = MSize(lenx);
       auto hash = pf::strhash(std::string_view(str, lenx));
       MSize coll = 0;
       // Check if the string has already been interned.
-      GCobj *o = gcref(g->str.tab[hash & g->str.mask]);
+      auto *o = gcref(g->str.tab[hash & g->str.mask]);
 
       while (o != nullptr) {
-         GCstr *sx = gco_to_string(o);
+         auto *sx = gco_to_string(o);
          if (sx->hash IS hash and sx->len IS len) {
             if (memcmp(str, strdata(sx), len) IS 0) {
-               if (isdead(g, o)) flipwhite(o);  //  Resurrect if dead.
-               return sx;  //  Return existing string.
+               if (isdead(g, o)) flipwhite(o); // Resurrect if dead.
+               return sx;
             }
             coll++;
          }
@@ -192,7 +184,7 @@ GCstr * lj_str_new(lua_State* L, CSTRING str, size_t lenx)
 
 //********************************************************************************************************************
 
-void lj_str_free(global_State* g, GCstr* s)
+void lj_str_free(global_State *g, GCstr *s)
 {
    g->str.num--;
    lj_mem_free(g, s, lj_str_size(s->len));
@@ -200,7 +192,7 @@ void lj_str_free(global_State* g, GCstr* s)
 
 //********************************************************************************************************************
 
-void lj_str_init(lua_State* L)
+void lj_str_init(lua_State *L)
 {
    lj_str_resize(L, LJ_MIN_STRTAB - 1);
 }

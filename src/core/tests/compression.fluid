@@ -158,6 +158,7 @@ end
    err = mSys.ReadFileToBuffer('scripts:gui/button.fluid', cmpsrc)
    assert(err is ERR_Okay, 'Failed to read original source file for comparison: ' .. mSys.GetErrorMsg(err))
    cmpstr = cmpsrc:getString()
+   assert(#cmpstr is file_size, f"Array length of {#cmpstr} does not match expected file length of {file_size}.")
 
    -- Big buffer test
 
@@ -170,18 +171,21 @@ end
 
    cmpfile.acSeek(0, SEEK_START)
    smallbuffer = array<byte, 256>
-   cmpbuffer = ''
+   cmpbuffer = array<byte, file_size>
+   di = 0
    repeat
       err, len = cmpfile.acRead(smallbuffer)
       assert(err is ERR_Okay, 'Failed to read decompressed data from file archive: ' .. mSys.GetErrorMsg(err))
       if len < #smallbuffer then
-         cmpbuffer ..= smallbuffer:getString(0, len)
+         cmpbuffer:copy(smallbuffer:getString(0, len), di)
       else
-         cmpbuffer ..= smallbuffer:getString()
+         cmpbuffer:copy(smallbuffer:getString(), di)
       end
+      di += len
    until (len is 0)
 
-   assert(cmpbuffer is cmpstr, "The decompressed data does not match the original file.")
+   assert(di is file_size, f"Decompressed data length of {di} does not match original file length of {#cmpstr}.")
+   assert(cmpbuffer:getString() is cmpstr, "The decompressed data does not match the original file.")
 end
 
 ----------------------------------------------------------------------------------------------------------------------

@@ -211,7 +211,7 @@ SET_FUNCTION_SCRIPT(callback, script, procedure_id);
     </field>
 
     <field>
-      <name>ErrorString</name>
+      <name>ErrorMessage</name>
       <comment>A human readable error string may be declared here following a script execution failure.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>

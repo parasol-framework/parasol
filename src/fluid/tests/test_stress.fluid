@@ -130,7 +130,7 @@ end
    bits = 0xFF
    bits = bits & 0xF0
    bits = bits | 0x0F
-   bits = bits ~ 0xAA
+   bits = bits ^ 0xAA
    assert(bits is 0x55, "Bitwise operators failed")
 
    -- Test falsey value checks

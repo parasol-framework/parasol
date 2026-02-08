@@ -13,7 +13,7 @@
     <id>0b88bfd6</id>
     <idstring>XML</idstring>
     <category>Data</category>
-    <copyright>Paul Manias © 2001-2025</copyright>
+    <copyright>Paul Manias © 2001-2026</copyright>
     <description>
 <p>The XML class is designed to provide robust functionality for creating, parsing and maintaining XML data structures. It supports both well-formed and loosely structured XML documents, offering flexible parsing behaviours to accommodate various XML formats.  The class includes comprehensive support for XPath 2.0 and XQuery 1.0 queries, content manipulation and document validation.</p>
 <p>The class has been designed in such a way as to accommodate other structured data formats such as JSON and YAML.  In this way, the class not only provides XML support but also serves as Parasol's general-purpose structured data handler.  It also makes it trivial to convert between different structured data formats, and benefit from the cross-application use of features, such as applying XPath 2.0 queries on data originating from YAML.</p>

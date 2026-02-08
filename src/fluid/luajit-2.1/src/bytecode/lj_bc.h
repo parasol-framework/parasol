@@ -31,9 +31,9 @@ constexpr uint8_t  NO_REG = BCMAX_A;
 
 #define bc_op(i)   ((BCOp)((i)&0xff))
 #define bc_a(i)    ((BCREG)(((i)>>8)&0xff))
-#define bc_b(i)    ((BCREG)((i)>>24))
+#define bc_b(i)    ((BCREG)(((i)>>24)&0xff))
 #define bc_c(i)    ((BCREG)(((i)>>16)&0xff))
-#define bc_d(i)    ((BCREG)((i)>>16))
+#define bc_d(i)    ((BCREG)(((i)>>16)&0xffff))
 #define bc_j(i)    ((ptrdiff_t)bc_d(i)-BCBIAS_J)
 
 // Macros to set instruction fields (endian-independent using bitmask/shift).

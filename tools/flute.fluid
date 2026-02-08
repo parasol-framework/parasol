@@ -15,7 +15,6 @@ Example usage:
    parasol flute.fluid file=[file]
 ]]
 
-   import 'common'
 
    glFile    = arg('file')
    glTest    = arg('test')?:split(',') ?? { }
@@ -225,7 +224,7 @@ function runTests()
    if not body.tests then
       -- Exporting no tests is considered legitimate - a test file may choose to have no tests.
       print("The Flute test file did not return any tests to execute.")
-      glSelf.errorString = nil
+      glSelf.errorMessage = nil
       return
    end
 
@@ -233,7 +232,7 @@ function runTests()
 
    if #before_all > 0 then
       state = {
-         folder = [*_]file.splitPath(glFile)
+         folder = [*_]io.splitPath(glFile)
       }
 
       for func in values(before_all) do
@@ -337,10 +336,10 @@ function runTests()
    body?.cleanup()
 
    if glTestsPassed < glTestTotal then
-      -- Setting the errorString will ensure that an error code is returned to the shell.
-      glSelf.errorString = f'Ran {glTestTotal} tests, passed {glTestsPassed}'
+      -- Setting the errorMessage will ensure that an error code is returned to the shell.
+      glSelf.errorMessage = f'Ran {glTestTotal} tests, passed {glTestsPassed}'
    else
-      glSelf.errorString = nil
+      glSelf.errorMessage = nil
    end
 
    print(f'--\nRan {glTestTotal} tests, passed {glTestsPassed}')
@@ -361,6 +360,6 @@ end
    end
 
    -- Setting an error string ensures that ctest will register a failure if the tests do not complete as planned.
-   glSelf.errorString = 'Unexpected execution failure - tests not executed as planned.'
+   glSelf.errorMessage = 'Unexpected execution failure - tests not executed as planned.'
 
    runTests()

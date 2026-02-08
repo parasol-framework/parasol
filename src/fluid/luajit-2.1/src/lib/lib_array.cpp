@@ -1,5 +1,5 @@
 // Native array library.
-// Copyright (C) 2025 Paul Manias.
+// Copyright © 2025-2026 Paul Manias.
 //
 // TODO: Allow array lifetimes to be linked to Parasol objects.  This would allow external array data to be managed
 // safely without having to be cached.  In the event that the object is destroyed, the array should be marked as invalid
@@ -51,21 +51,21 @@ static int32_t find_in_array(GCarray *Arr, lua_Number Value, int32_t Start, int3
 static int32_t find_object_in_array(GCarray *Arr, OBJECTID SearchUid, int32_t Start, int32_t Stop, int32_t Step);
 
 const array_meta glArrayConversion[size_t(AET::MAX)] = {
-   { uint8_t(LJ_TNUMX),   LUA_TNUMBER, true },         // AET::BYTE
-   { uint8_t(LJ_TNUMX),   LUA_TNUMBER, true },         // AET::INT16
-   { uint8_t(LJ_TNUMX),   LUA_TNUMBER, true },         // AET::INT32
-   { uint8_t(LJ_TNUMX),   LUA_TNUMBER, true },         // AET::INT64
-   { uint8_t(LJ_TNUMX),   LUA_TNUMBER, true },         // AET::FLOAT
-   { uint8_t(LJ_TNUMX),   LUA_TNUMBER, true },         // AET::DOUBLE
-   { uint8_t(LJ_TLIGHTUD), LUA_TLIGHTUSERDATA, false },  // AET::PTR
-   { uint8_t(LJ_TSTR),    LUA_TSTRING, false },         // AET::CSTR
-   { uint8_t(LJ_TSTR),    LUA_TSTRING, false },         // AET::STR_CPP
-   { uint8_t(LJ_TSTR),    LUA_TSTRING, false },         // AET::STR_GC
-   { uint8_t(LJ_TTAB),    LUA_TTABLE, false },          // AET::TABLE
-   { uint8_t(LJ_TARRAY),  LUA_TARRAY, false },          // AET::ARRAY
-   { uint8_t(LJ_TNIL),    0, false },                   // AET::ANY
-   { uint8_t(LJ_TUDATA),  LUA_TUSERDATA, false },       // AET::STRUCT
-   { uint8_t(LJ_TOBJECT), LUA_TOBJECT, false }          // AET::OBJECT
+   { uint8_t(LJ_TNUMX),    LUA_TNUMBER, true },         // AET::BYTE
+   { uint8_t(LJ_TNUMX),    LUA_TNUMBER, true },         // AET::INT16
+   { uint8_t(LJ_TNUMX),    LUA_TNUMBER, true },         // AET::INT32
+   { uint8_t(LJ_TNUMX),    LUA_TNUMBER, true },         // AET::INT64
+   { uint8_t(LJ_TNUMX),    LUA_TNUMBER, true },         // AET::FLOAT
+   { uint8_t(LJ_TNUMX),    LUA_TNUMBER, true },         // AET::DOUBLE
+   { uint8_t(LJ_TLIGHTUD), LUA_TLIGHTUSERDATA, false }, // AET::PTR
+   { uint8_t(LJ_TSTR),     LUA_TSTRING, false },        // AET::CSTR
+   { uint8_t(LJ_TSTR),     LUA_TSTRING, false },        // AET::STR_CPP
+   { uint8_t(LJ_TSTR),     LUA_TSTRING, false },        // AET::STR_GC
+   { uint8_t(LJ_TTAB),     LUA_TTABLE, false },         // AET::TABLE
+   { uint8_t(LJ_TARRAY),   LUA_TARRAY, false },         // AET::ARRAY
+   { uint8_t(LJ_TNIL),     0, false },                  // AET::ANY
+   { uint8_t(LJ_TUDATA),   LUA_TUSERDATA, false },      // AET::STRUCT
+   { uint8_t(LJ_TOBJECT),  LUA_TOBJECT, false }         // AET::OBJECT
 };
 
 //********************************************************************************************************************
@@ -1049,7 +1049,7 @@ LJLIB_CF(array_copy)
    size_t strlen;
    auto src_type = lua_type(L, 2);
    if (src_type IS LUA_TARRAY) {
-      GCarray *src = lj_lib_checkarray(L, 2);
+      GCarray *src  = lj_lib_checkarray(L, 2);
       auto dest_idx = lj_lib_optint(L, 3, 0);
       auto src_idx  = lj_lib_optint(L, 4, 0);
       auto count    = lj_lib_optint(L, 5, int32_t(src->len - src_idx));
@@ -1060,10 +1060,7 @@ LJLIB_CF(array_copy)
    else if (src_type IS LUA_TSTRING) {
       // Treat string sequences as a byte array
       auto str = lua_tolstring(L, 2, &strlen);
-      if (!str or strlen < 1) {
-         luaL_argerror(L, 2, "String is empty.");
-         return 0;
-      }
+      if (!str or strlen < 1) return 0; // Do nothing - no error necessary
 
       auto dest_idx   = lj_lib_optint(L, 3, 0);
       auto src_idx    = lj_lib_optint(L, 4, 0);

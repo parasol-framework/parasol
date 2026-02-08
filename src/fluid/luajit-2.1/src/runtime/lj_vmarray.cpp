@@ -1,5 +1,5 @@
 // Array helper functions for assembler VM.
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 
 #define lj_vmarray_c
 #define LUA_CORE

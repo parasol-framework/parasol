@@ -13,7 +13,7 @@
     <id>2808c653</id>
     <idstring>XQUERY</idstring>
     <category>Data</category>
-    <copyright>Paul Manias © 2025</copyright>
+    <copyright>Paul Manias © 2025-2026</copyright>
     <description>
 <p>The XQuery class provides comprehensive support for executing XPath 2.0 and XQuery expressions, enabling navigation of XML documents.  It operates in conjunction with the <class name="XML">XML</class> class to provide a standards-compliant query engine with extensive functionality.</p>
 <header>XPath 2.0 Path Expressions</header>

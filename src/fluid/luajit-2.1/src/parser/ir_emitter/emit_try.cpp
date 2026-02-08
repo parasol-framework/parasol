@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 // IR emitter implementation: try...except...end statement emission (bytecode-level)
 // This file is #included from ir_emitter.cpp
 //

@@ -321,7 +321,7 @@ LJLIB_CF(string_count)
    int32_t count = 0;
 
    while (pos < end) {
-      if (CSTRING found = lj_str_find(pos, kw, end - pos, kw_len)) {
+      if (auto found = lj_str_findsv({pos, size_t(end - pos)}, {kw, kw_len})) {
          pos = found + kw_len;
          count++;
       }
@@ -375,7 +375,7 @@ LJLIB_CF(string_replace)
          break;
       }
 
-      if (CSTRING found = lj_str_find(pos, searchstr, end - pos, searchlen)) {
+      if (auto found = lj_str_findsv({pos, size_t(end - pos)}, {searchstr, searchlen})) {
          if (found > pos) lj_buf_putmem(sb, pos, found - pos);
          if (replacelen > 0) lj_buf_putmem(sb, replacestr, replacelen);
          pos = found + searchlen;
@@ -784,7 +784,7 @@ LJLIB_CF(string_find)      LJLIB_REC(.)
       return 1;
    }
 
-   if (CSTRING q = lj_str_find(strdata(s) + st, strdata(p), s->len - st, p->len)) {
+   if (auto q = lj_str_findsv({strdata(s) + st, s->len - st}, {strdata(p), p->len})) {
       setintV(L->top - 2, (int32_t)(q - strdata(s)));  // 0-based start
       setintV(L->top - 1, (int32_t)(q - strdata(s)) + (int32_t)p->len - 1);  // 0-based end (inclusive)
       return 2;
@@ -960,32 +960,32 @@ extern int luaopen_string(lua_State *L)
    mt->nomm = (uint8_t)(~(1u << MM_index));
 
    // Register string interface prototypes for compile-time type inference
-   reg_iface_prototype("string", "count", { FluidType::Num }, { FluidType::Str, FluidType::Str });
-   reg_iface_prototype("string", "len", { FluidType::Num }, { FluidType::Str });
-   reg_iface_prototype("string", "substr", { FluidType::Str }, { FluidType::Str, FluidType::Num, FluidType::Num });
-   reg_iface_prototype("string", "format", { FluidType::Str }, { FluidType::Str }, FProtoFlags::Variadic);
-   reg_iface_prototype("string", "upper", { FluidType::Str }, { FluidType::Str });
-   reg_iface_prototype("string", "lower", { FluidType::Str }, { FluidType::Str });
-   reg_iface_prototype("string", "find", { FluidType::Num, FluidType::Num }, { FluidType::Str, FluidType::Str }, FProtoFlags::Variadic);
-   reg_iface_prototype("string", "rep", { FluidType::Str }, { FluidType::Str, FluidType::Num });
    reg_iface_prototype("string", "alloc", { FluidType::Str }, { FluidType::Num });
-   reg_iface_prototype("string", "reverse", { FluidType::Str }, { FluidType::Str });
    reg_iface_prototype("string", "byte", { FluidType::Num }, { FluidType::Str, FluidType::Num }, FProtoFlags::Variadic);
-   reg_iface_prototype("string", "char", { FluidType::Str }, {}, FProtoFlags::Variadic);
-   reg_iface_prototype("string", "dump", { FluidType::Str }, { FluidType::Func });
-   reg_iface_prototype("string", "split", { FluidType::Array }, { FluidType::Str, FluidType::Str });
-   reg_iface_prototype("string", "replace", { FluidType::Str, FluidType::Num }, { FluidType::Str, FluidType::Str, FluidType::Str, FluidType::Num });
-   reg_iface_prototype("string", "trim", { FluidType::Str }, { FluidType::Str });
-   reg_iface_prototype("string", "rtrim", { FluidType::Str }, { FluidType::Str });
-   reg_iface_prototype("string", "startsWith", { FluidType::Bool }, { FluidType::Str, FluidType::Str });
-   reg_iface_prototype("string", "endsWith", { FluidType::Bool }, { FluidType::Str, FluidType::Str });
-   reg_iface_prototype("string", "join", { FluidType::Str }, { FluidType::Table, FluidType::Str });
    reg_iface_prototype("string", "cap", { FluidType::Str }, { FluidType::Str });
+   reg_iface_prototype("string", "char", { FluidType::Str }, {}, FProtoFlags::Variadic);
+   reg_iface_prototype("string", "count", { FluidType::Num }, { FluidType::Str, FluidType::Str });
    reg_iface_prototype("string", "decap", { FluidType::Str }, { FluidType::Str });
-   reg_iface_prototype("string", "hash", { FluidType::Num }, { FluidType::Str, FluidType::Bool });
+   reg_iface_prototype("string", "dump", { FluidType::Str }, { FluidType::Func });
+   reg_iface_prototype("string", "endsWith", { FluidType::Bool }, { FluidType::Str, FluidType::Str });
    reg_iface_prototype("string", "escXML", { FluidType::Str }, { FluidType::Str });
-   reg_iface_prototype("string", "unescapeXML", { FluidType::Str }, { FluidType::Str });
+   reg_iface_prototype("string", "find", { FluidType::Num, FluidType::Num }, { FluidType::Str, FluidType::Str }, FProtoFlags::Variadic);
+   reg_iface_prototype("string", "format", { FluidType::Str }, { FluidType::Str }, FProtoFlags::Variadic);
+   reg_iface_prototype("string", "hash", { FluidType::Num }, { FluidType::Str, FluidType::Bool });
+   reg_iface_prototype("string", "join", { FluidType::Str }, { FluidType::Table, FluidType::Str });
+   reg_iface_prototype("string", "len", { FluidType::Num }, { FluidType::Str });
+   reg_iface_prototype("string", "lower", { FluidType::Str }, { FluidType::Str });
    reg_iface_prototype("string", "pop", { FluidType::Str }, { FluidType::Str, FluidType::Num });
+   reg_iface_prototype("string", "rep", { FluidType::Str }, { FluidType::Str, FluidType::Num });
+   reg_iface_prototype("string", "replace", { FluidType::Str, FluidType::Num }, { FluidType::Str, FluidType::Str, FluidType::Str, FluidType::Num });
+   reg_iface_prototype("string", "reverse", { FluidType::Str }, { FluidType::Str });
+   reg_iface_prototype("string", "rtrim", { FluidType::Str }, { FluidType::Str });
+   reg_iface_prototype("string", "split", { FluidType::Array }, { FluidType::Str, FluidType::Str });
+   reg_iface_prototype("string", "startsWith", { FluidType::Bool }, { FluidType::Str, FluidType::Str });
+   reg_iface_prototype("string", "substr", { FluidType::Str }, { FluidType::Str, FluidType::Num, FluidType::Num });
+   reg_iface_prototype("string", "trim", { FluidType::Str }, { FluidType::Str });
+   reg_iface_prototype("string", "unescapeXML", { FluidType::Str }, { FluidType::Str });
+   reg_iface_prototype("string", "upper", { FluidType::Str }, { FluidType::Str });
    // These are implemented in translate.fluid
    reg_iface_prototype("string", "translateRefresh", { }, { });
    reg_iface_prototype("string", "translate", { FluidType::Str }, { FluidType::Str });

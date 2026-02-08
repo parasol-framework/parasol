@@ -1,5 +1,5 @@
 // AST Builder - Expression Parsers
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 //
 // This file contains parsers for expression constructs:
 // - Expression statements (assignments, compound assignments, conditional shorthands)
@@ -642,6 +642,12 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
 
             node = make_call_expr(span, std::move(array_new), std::move(args), false);
          }
+
+         // Mark the result as FluidType::Array so downstream index expressions emit AGET/ASET opcodes
+         if (node->kind IS AstNodeKind::CallExpr) {
+            auto *call_payload = std::get_if<CallExprPayload>(&node->data);
+            if (call_payload) call_payload->result_type = FluidType::Array;
+         }
          break;
       }
 
@@ -1044,15 +1050,13 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
          info.left = 5;   // C precedence: shifts bind looser than +/- (6)
          info.right = 5;  // Left-associative
          return info;
+      case TokenKind::Power:
+         info.op = AstBinaryOperator::Power;
+         info.left = 10;
+         info.right = 9;  // Right-associative
+         return info;
       default:
          break;
-   }
-
-   if (token.raw() IS '^') {
-      info.op = AstBinaryOperator::Power;
-      info.left = 10;
-      info.right = 9;
-      return info;
    }
 
    if (token.raw() IS '<') {
@@ -1113,10 +1117,10 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
       return info;
    }
 
-   if (token.raw() IS '~') {
+   if (token.raw() IS '^') {
       info.op = AstBinaryOperator::BitXor;
       info.left = 3;  // Lower than AND (4) per C precedence: AND > XOR > OR
-      info.right = 3;  // Left-associative: a ~ b ~ c = (a ~ b) ~ c
+      info.right = 3;  // Left-associative: a ^ b ^ c = (a ^ b) ^ c
       return info;
    }
    return std::nullopt;

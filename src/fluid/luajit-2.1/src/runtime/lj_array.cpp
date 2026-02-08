@@ -1,5 +1,5 @@
 // Native array handling.
-// Copyright (C) 2025 Paul Manias
+// Copyright © 2025-2026 Paul Manias
 
 #define lj_array_c
 #define LUA_CORE

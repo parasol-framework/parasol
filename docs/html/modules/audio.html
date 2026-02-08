@@ -69,14 +69,14 @@
 <p>This function will continue playback on a channel that has previously been stopped.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
-</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2026</div></div>
 <div class="docs-content" style="display:none;" id="MixEndSequence"><h2>MixEndSequence()</h2><p class="lead">Ends the buffering of mix commands.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR snd::MixEndSequence(objAudio * Audio, INT Handle)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Audio</td><td>The target Audio object.</td></tr>
 <tr><td>Handle</td><td>The target channel.</td></tr>
 </tbody></table></div></div>
 <p>Use this function to end a buffered command sequence that was started by <a href="?page=MixStartSequence">MixStartSequence()</a>.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
-</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2026</div></div>
 <div class="docs-content" style="display:none;" id="MixFrequency"><h2>MixFrequency()</h2><p class="lead">Sets a channel's playback rate.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR snd::MixFrequency(objAudio * Audio, INT Handle, INT Frequency)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Audio</td><td>The target Audio object.</td></tr>
 <tr><td>Handle</td><td>The target channel.</td></tr>
 <tr><td>Frequency</td><td>The desired frequency.</td></tr>
@@ -84,7 +84,7 @@
 <p>Use this function to set the playback rate of a mixer channel.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
-</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2026</div></div>
 <div class="docs-content" style="display:none;" id="MixMute"><h2>MixMute()</h2><p class="lead">Mutes the audio of a channel.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR snd::MixMute(objAudio * Audio, INT Handle, INT Mute)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Audio</td><td>The target Audio object.</td></tr>
 <tr><td>Handle</td><td>The target channel.</td></tr>
 <tr><td>Mute</td><td>Set to true to mute the channel.  A value of 0 will undo the mute setting.</td></tr>
@@ -92,7 +92,7 @@
 <p>Use this function to mute the audio of a mixer channel.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
-</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2026</div></div>
 <div class="docs-content" style="display:none;" id="MixPan"><h2>MixPan()</h2><p class="lead">Sets a channel's panning value.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR snd::MixPan(objAudio * Audio, INT Handle, DOUBLE Pan)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Audio</td><td>The target Audio object.</td></tr>
 <tr><td>Handle</td><td>The target channel.</td></tr>
 <tr><td>Pan</td><td>The desired pan value between -1.0 and 1.0.</td></tr>
@@ -100,7 +100,7 @@
 <p>Use this function to set a mixer channel's panning value.  Accepted values are between -1.0 (left) and 1.0 (right).</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
-</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2026</div></div>
 <div class="docs-content" style="display:none;" id="MixPlay"><h2>MixPlay()</h2><p class="lead">Commences channel playback at a set frequency.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR snd::MixPlay(objAudio * Audio, INT Handle, INT Position)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Audio</td><td>The target Audio object.</td></tr>
 <tr><td>Handle</td><td>The target channel.</td></tr>
 <tr><td>Position</td><td>The new playing position, measured in bytes.</td></tr>
@@ -110,7 +110,7 @@
 <tr><th class="col-md-1">Failed</th><td>Channel not associated with a valid sample.</td></tr>
 <tr><th class="col-md-1">OutOfRange</th><td>Position exceeds sample boundaries.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Required parameters are null or missing.</td></tr>
-</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2026</div></div>
 <div class="docs-content" style="display:none;" id="MixRate"><h2>MixRate()</h2><p class="lead">Sets a new update rate for a channel.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR snd::MixRate(objAudio * Audio, INT Handle, INT Rate)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Audio</td><td>The target Audio object.</td></tr>
 <tr><td>Handle</td><td>The channel set allocated from OpenChannels().</td></tr>
 <tr><td>Rate</td><td>The new update rate in milliseconds.</td></tr>
@@ -118,7 +118,7 @@
 <p>This function will set a new update rate for all channels, measured in milliseconds.  The default update rate is 125, which is equivalent to 5000Hz.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
-</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2026</div></div>
 <div class="docs-content" style="display:none;" id="MixSample"><h2>MixSample()</h2><p class="lead">Associate a sound sample with a mixer channel.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR snd::MixSample(objAudio * Audio, INT Handle, INT Sample)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Audio</td><td>The target Audio object.</td></tr>
 <tr><td>Handle</td><td>The target channel.</td></tr>
 <tr><td>Sample</td><td>A sample handle allocated from <a href="classes/audio.html#tm-AddSample">Audio⇒AddSample()</a> or <a href="classes/audio.html#tm-AddStream">Audio⇒AddStream()</a>.</td></tr>
@@ -127,7 +127,7 @@
 <p>The referenced Sample must have been added to the audio server via the <a href="classes/audio.html#tm-AddSample">Audio⇒AddSample()</a> or <a href="classes/audio.html#tm-AddStream">Audio⇒AddStream()</a> methods.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
-</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2026</div></div>
 <div class="docs-content" style="display:none;" id="MixStartSequence"><h2>MixStartSequence()</h2><p class="lead">Initiates buffering of mix commands.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR snd::MixStartSequence(objAudio * Audio, INT Handle)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Audio</td><td>The target Audio object.</td></tr>
 <tr><td>Handle</td><td>The target channel.</td></tr>
 </tbody></table></div></div>
@@ -158,21 +158,21 @@
 </ol>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Command buffering successfully initiated.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Required parameters are null or missing.</td></tr>
-</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2026</div></div>
 <div class="docs-content" style="display:none;" id="MixStop"><h2>MixStop()</h2><p class="lead">Stops all playback on a channel.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR snd::MixStop(objAudio * Audio, INT Handle)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Audio</td><td>The target Audio object.</td></tr>
 <tr><td>Handle</td><td>The target channel.</td></tr>
 </tbody></table></div></div>
 <p>This function will stop a channel that is currently playing.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
-</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2026</div></div>
 <div class="docs-content" style="display:none;" id="MixStopLoop"><h2>MixStopLoop()</h2><p class="lead">Cancels any playback loop configured for a channel.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR snd::MixStopLoop(objAudio * Audio, INT Handle)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Audio</td><td>The target Audio object.</td></tr>
 <tr><td>Handle</td><td>The target channel.</td></tr>
 </tbody></table></div></div>
 <p>This function will cancel the loop that is associated with the channel identified by Handle if in playback mode. The existing loop configuration will remain intact if playback is restarted.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
-</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2026</div></div>
 <div class="docs-content" style="display:none;" id="MixVolume"><h2>MixVolume()</h2><p class="lead">Changes the volume of a channel.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR snd::MixVolume(objAudio * Audio, INT Handle, DOUBLE Volume)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Audio</td><td>The target Audio object.</td></tr>
 <tr><td>Handle</td><td>The target channel.</td></tr>
 <tr><td>Volume</td><td>The new volume for the channel.</td></tr>
@@ -180,7 +180,7 @@
 <p>This function will change the volume of the mixer channel identified by Handle.  Valid values are from 0 (silent) to 1.0 (maximum).</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
-</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2026</div></div>
 <div class="docs-content" style="display:none;" id="ADF"><h1>ADF Type</h1><p class="lead">Optional flags for the Audio object.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>ADF::AUTO_SAVE</th><td>Save configuration information on exit.</td></tr>
 <tr><th>ADF::FILTER_HIGH</th><td>Enable a high level of output filtering to minimise distortion.</td></tr>
 <tr><th>ADF::FILTER_LOW</th><td>Enable a low level of output filtering to minimise distortion.</td></tr>
@@ -188,27 +188,27 @@
 <tr><th>ADF::STEREO</th><td>Enable stereo output (set by default if the platform supports stereo).  If not set, output is in mono.</td></tr>
 <tr><th>ADF::SYSTEM_WIDE</th><td>Mixer changes should be applied system-wide.</td></tr>
 <tr><th>ADF::VOL_RAMPING</th><td>Enable volume ramping for softer playback when a sample is played multiple times (enabled by default).</td></tr>
-</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2026</div></div>
 <div class="docs-content" style="display:none;" id="CHF"><h1>CHF Type</h1><p class="lead">Optional flags for the AudioChannel structure.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>CHF::BACKWARD</th><td>Play channel backwards.</td></tr>
 <tr><th>CHF::CHANGED</th><td>Sample change</td></tr>
 <tr><th>CHF::MUTE</th><td>Channel is muted.</td></tr>
 <tr><th>CHF::VOL_RAMP</th><td>Volume ramping is enabled.</td></tr>
-</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2026</div></div>
 <div class="docs-content" style="display:none;" id="CHS"><h1>CHS Type</h1><p class="lead">Channel status types for the AudioChannel structure.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>CHS::FADE_OUT</th><td>Playback is fading out.</td></tr>
 <tr><th>CHS::FINISHED</th><td>Playback concluded by reaching the sample end.</td></tr>
 <tr><th>CHS::PLAYING</th><td>Sample playing and not released.</td></tr>
 <tr><th>CHS::RELEASED</th><td>Sample playing and note has been released.</td></tr>
 <tr><th>CHS::STOPPED</th><td>Playing was stopped by the client.</td></tr>
-</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2026</div></div>
 <div class="docs-content" style="display:none;" id="LOOP"><h1>LOOP Type</h1><p class="lead">Loop modes for the AudioLoop structure.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>LOOP::AMIGA</th><td>Single loop: Amiga style.</td></tr>
 <tr><th>LOOP::AMIGA_NONE</th><td>Amiga loop: Do nothing.</td></tr>
 <tr><th>LOOP::DOUBLE</th><td>Double loop: When the note is released, playing shifts to the second loop.</td></tr>
 <tr><th>LOOP::SINGLE</th><td>Single loop: Releasing will end the note.</td></tr>
 <tr><th>LOOP::SINGLE_RELEASE</th><td>Single loop: Sample data after the loop will be played when the note is released.</td></tr>
-</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2026</div></div>
 <div class="docs-content" style="display:none;" id="LTYPE"><h1>LTYPE Type</h1><p class="lead">Loop types for the AudioLoop structure.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>LTYPE::BIDIRECTIONAL</th><td>The sample will play in reverse whenever it hits the end marker, then forwards when it hits the start marker.</td></tr>
 <tr><th>LTYPE::UNIDIRECTIONAL</th><td>The sample playback position returns to the byte position specified in the Loop1Start field.</td></tr>
-</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2026</div></div>
 <div class="docs-content" style="display:none;" id="NOTE"><h1>NOTE Type</h1><p class="lead">Definitions for the Note field.  An 'S' indicates a sharp note.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>NOTE::A</th><td></td></tr>
 <tr><th>NOTE::AS</th><td></td></tr>
 <tr><th>NOTE::B</th><td></td></tr>
@@ -222,34 +222,34 @@
 <tr><th>NOTE::G</th><td></td></tr>
 <tr><th>NOTE::GS</th><td></td></tr>
 <tr><th>NOTE::OCTAVE</th><td></td></tr>
-</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2026</div></div>
 <div class="docs-content" style="display:none;" id="SDF"><h1>SDF Type</h1><p class="lead">Sound flags</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>SDF::LOOP</th><td>Enables sample looping. The LoopStart and LoopEnd fields determine where the looping area lies within the sample data.</td></tr>
 <tr><th>SDF::NEW</th><td>Create the sample from scratch (e.g. for audio recording purposes).</td></tr>
 <tr><th>SDF::RESTRICT_PLAY</th><td>Restricts playback so that the sound can never play on more than one channel at any given time.</td></tr>
 <tr><th>SDF::STEREO</th><td>Indicates that the sound has multiple audio channels.</td></tr>
 <tr><th>SDF::STREAM</th><td>Read-Only. Indicates that streaming is enabled.</td></tr>
-</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2026</div></div>
 <div class="docs-content" style="display:none;" id="SFM"><h1>SFM Type</h1><p class="lead">These audio bit formats are supported by AddSample and AddStream.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>SFM::F_BIG_ENDIAN</th><td>Combine this flag with any audio format to declare it as big endian.</td></tr>
 <tr><th>SFM::S16_BIT_MONO</th><td>16-bit mono signed sample.</td></tr>
 <tr><th>SFM::S16_BIT_STEREO</th><td>16-bit stereo signed sample.</td></tr>
 <tr><th>SFM::U8_BIT_MONO</th><td>8-bit mono unsigned sample.</td></tr>
 <tr><th>SFM::U8_BIT_STEREO</th><td>8-bit stereo unsigned sample.</td></tr>
-</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2026</div></div>
 <div class="docs-content" style="display:none;" id="STREAM"><h1>STREAM Type</h1><p class="lead">Streaming options</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>STREAM::ALWAYS</th><td>Stream if the sample length exceeds 64k.</td></tr>
 <tr><th>STREAM::NEVER</th><td>No streaming - load all data into memory.</td></tr>
 <tr><th>STREAM::SMART</th><td>Smart streaming is the default.  If the sample appears to be relatively small with respect to available system RAM, it will be loaded into memory.  Otherwise it will be streamed.</td></tr>
-</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2026</div></div>
 <div class="docs-content" style="display:none;" id="SVF"><h1>SVF Type</h1><p class="lead">Flags for the SetVolume() method.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>SVF::CAPTURE</th><td>Set input, not output.</td></tr>
 <tr><th>SVF::MUTE</th><td>Mute the audio for this channel.</td></tr>
 <tr><th>SVF::UNMUTE</th><td>Unmute the audio for this channel.</td></tr>
-</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2026</div></div>
 <div class="docs-content" style="display:none;" id="VCF"><h1>VCF Type</h1><p class="lead">Volume control flags</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>VCF::CAPTURE</th><td>The mixer supports audio input.</td></tr>
 <tr><th>VCF::JOINED</th><td>The mixer channels are joined (e.g. left and right speakers cannot be adjusted separately).</td></tr>
 <tr><th>VCF::MONO</th><td>The mixer is restricted to mono input/output.</td></tr>
 <tr><th>VCF::MUTE</th><td>The mixer is muted.</td></tr>
 <tr><th>VCF::PLAYBACK</th><td>The mixer supports audio output.</td></tr>
 <tr><th>VCF::SYNC</th><td>The mixer is synchronised.</td></tr>
-</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2026</div></div>
 <div class="docs-content" style="display:none;" id="struct-AudioLoop"><h1>AudioLoop Structure</h1><p class="lead">Loop settings for the AddSample() method.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>LoopMode</th><td><span class="text-nowrap">LOOP</span></td><td>Loop mode (single, double)</td></tr>
 <tr><th>Loop1Type</th><td><span class="text-nowrap">LTYPE</span></td><td>First loop type (unidirectional, bidirectional)</td></tr>
 <tr><th>Loop2Type</th><td><span class="text-nowrap">LTYPE</span></td><td>Second loop type (unidirectional, bidirectional)</td></tr>
@@ -257,7 +257,7 @@
 <tr><th>Loop1End</th><td><span class="text-nowrap">INT</span></td><td>End of the first loop</td></tr>
 <tr><th>Loop2Start</th><td><span class="text-nowrap">INT</span></td><td>Start of the second loop</td></tr>
 <tr><th>Loop2End</th><td><span class="text-nowrap">INT</span></td><td>End of the second loop</td></tr>
-</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2025</div></div>
+</tbody></table><div class="footer copyright text-right">Audio module documentation © Paul Manias © 2002-2026</div></div>
 </div></div></div><script type="text/javascript" src="../js/bootstrap.bundle.min.js"></script><script type="text/javascript" src="../js/base.js"></script><script type="text/javascript">
 var glCurrentMethod;
 
