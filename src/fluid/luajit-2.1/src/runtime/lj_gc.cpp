@@ -60,6 +60,7 @@ static constexpr uint32_t GCSWEEPCOST    = 10;     // Cost estimate per sweep op
 static constexpr uint32_t GCFINALIZECOST = 100;    // Cost estimate per finaliser call
 
 static void gc_mark(global_State *, GCobj *);
+static void gc_traverse_array(global_State *, GCarray *);
 static GCRef* gc_sweep(global_State *, GCRef *, uint32_t);
 
 // The current trace is a GC root while not anchored in the prototype (yet).
@@ -200,24 +201,7 @@ static void gc_mark(global_State *g, GCobj* o)
    else if (gct IS ~LJ_TARRAY) {
       GCarray *arr = gco_to_array(o);
       gray2black(o);  //  Arrays are never gray.
-      GCtab *mt = tabref(arr->metatable);
-      if (mt) gc_markobj(g, mt);
-
-      // If array contains GC references (strings or tables), mark them
-
-      if (arr->elemtype IS AET::STR_GC or arr->elemtype IS AET::TABLE or arr->elemtype IS AET::ARRAY) {
-         GCRef* refs = arr->get<GCRef>();
-         for (MSize i = 0; i < arr->len; i++) {
-            if (gcref(refs[i])) gc_markobj(g, gcref(refs[i]));
-         }
-      }
-      else if (arr->elemtype IS AET::ANY) {
-         // Mark all GC values in TValue slots
-         TValue* slots = arr->get<TValue>();
-         for (MSize i = 0; i < arr->len; i++) {
-            gc_marktv(g, &slots[i]);
-         }
-      }
+      gc_traverse_array(g, arr);
    }
    else if (gct IS ~LJ_TOBJECT) { // Native Parasol object type - has no child GC references except optional metatable
       GCobject *obj = gco_to_object(o);
@@ -357,6 +341,28 @@ static size_t gc_separateobjects(global_State *g, int all)
       else p = &o->gch.nextgc;
    }
    return m;
+}
+
+//********************************************************************************************************************
+// Traverse a typed array.  Marks the metatable and all GC-reference elements.
+
+static void gc_traverse_array(global_State *g, GCarray *Arr)
+{
+   GCtab *mt = tabref(Arr->metatable);
+   if (mt) gc_markobj(g, mt);
+
+   if (Arr->elemtype IS AET::STR_GC or Arr->elemtype IS AET::TABLE or Arr->elemtype IS AET::ARRAY) {
+      GCRef *refs = Arr->get<GCRef>();
+      for (MSize i = 0; i < Arr->len; i++) {
+         if (gcref(refs[i])) gc_markobj(g, gcref(refs[i]));
+      }
+   }
+   else if (Arr->elemtype IS AET::ANY) {
+      TValue *slots = Arr->get<TValue>();
+      for (MSize i = 0; i < Arr->len; i++) {
+         gc_marktv(g, &slots[i]);
+      }
+   }
 }
 
 //********************************************************************************************************************
@@ -570,22 +576,8 @@ static size_t propagatemark(global_State *g)
    }
    else if (gct IS ~LJ_TARRAY) {
       // Arrays can reach the gray list via IR_TBAR (back barrier emitted by JIT for GC-reference stores).
-      // Traverse all GC references in the array to ensure the tri-colour invariant is maintained.
       GCarray *arr = gco_to_array(o);
-      GCtab *mt = tabref(arr->metatable);
-      if (mt) gc_markobj(g, mt);
-      if (arr->elemtype IS AET::STR_GC or arr->elemtype IS AET::TABLE or arr->elemtype IS AET::ARRAY) {
-         GCRef *refs = arr->get<GCRef>();
-         for (MSize i = 0; i < arr->len; i++) {
-            if (gcref(refs[i])) gc_markobj(g, gcref(refs[i]));
-         }
-      }
-      else if (arr->elemtype IS AET::ANY) {
-         TValue *slots = arr->get<TValue>();
-         for (MSize i = 0; i < arr->len; i++) {
-            gc_marktv(g, &slots[i]);
-         }
-      }
+      gc_traverse_array(g, arr);
       return sizeof(GCarray) + arr->len * arr->elemsize;
    }
    else {
