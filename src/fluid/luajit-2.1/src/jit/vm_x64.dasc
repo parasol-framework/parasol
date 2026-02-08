@@ -4245,18 +4245,29 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  cmp RCd, ARRAY:RB->len    // Bounds check (0-based).
     |  jae ->vmeta_agetv      // Out of bounds? Use fallback.
     |
-    |  // Calculate element address: data + idx * elemsize
-    |  mov L:CARG1, SAVE_L
+    |  // Sync L->base and SAVE_PC before C call (lj_arr_getidx may throw via longjmp on error).
+    |  mov TMPR, SAVE_L
+    |  mov L:TMPR->base, BASE
+    |  mov SAVE_PC, PC
+    |  // Register dance: C call clobbers caller-saved regs including BASE(rdx).
+    |  // RA==CARG1(rcx) on X64WIN, BASE==CARG3(rdx) on POSIX.
+    |  // Save BASE through callee-saved RB, compute CARG4 before clobbering.
     |.if X64WIN
-    |  lea CARG4, [BASE+RA*8]      // Caveat: CARG2 == BASE.
-    |  mov CARG2, ARRAY:RB
-    |  mov CARG3d, RCd
+    |  lea CARG4, [BASE+RA*8]      // CARG4 = result addr (before RA/BASE clobbered)
+    |  mov TMPR, ARRAY:RB          // Save array to TMPR
+    |  mov RB, BASE                // Save BASE to RB (callee-saved)
+    |  mov CARG2, TMPR             // CARG2 = array
+    |  mov CARG3d, RCd             // CARG3 = index
+    |  mov L:CARG1, SAVE_L         // CARG1 = L (clobbers RA/rcx, last)
     |.else
-    |  mov CARG2, ARRAY:RB
-    |  lea CARG4, [BASE+RA*8]      // Caveat: CARG3 == BASE.
-    |  mov CARG3d, RCd
+    |  mov L:CARG1, SAVE_L         // CARG1 = L (rdi, no conflicts)
+    |  mov CARG2, ARRAY:RB         // CARG2 = array (rsi, no conflicts)
+    |  lea CARG4, [BASE+RA*8]      // CARG4 = result addr (before BASE clobbered)
+    |  mov RB, BASE                // Save BASE to RB (callee-saved)
+    |  mov CARG3d, RCd             // CARG3 = index (clobbers BASE/rdx)
     |.endif
     |  call extern lj_arr_getidx // (lua_State *L, GCarray *arr, int32_t idx, TValue *result)
+    |  mov BASE, RB                // Restore BASE from RB
     |  ins_next
     break;
 
@@ -4267,18 +4278,28 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  cmp RCd, ARRAY:RB->len    // Bounds check.
     |  jae ->vmeta_agetv      // Out of bounds? Use fallback.
     |
-    |  // Calculate element address: data + idx * elemsize
-    |  mov L:CARG1, SAVE_L
+    |  // Sync L->base and SAVE_PC before C call (lj_arr_getidx may throw via longjmp on error).
+    |  mov TMPR, SAVE_L
+    |  mov L:TMPR->base, BASE
+    |  mov SAVE_PC, PC
+    |  // Register dance: C call clobbers caller-saved regs including BASE(rdx).
+    |  // Save BASE through callee-saved RB, compute CARG4 before clobbering.
     |.if X64WIN
-    |  lea CARG4, [BASE+RA*8]      // Caveat: CARG2 == BASE.
-    |  mov CARG2, ARRAY:RB
-    |  mov CARG3d, RCd
+    |  lea CARG4, [BASE+RA*8]      // CARG4 = result addr (before RA/BASE clobbered)
+    |  mov TMPR, ARRAY:RB          // Save array to TMPR
+    |  mov RB, BASE                // Save BASE to RB (callee-saved)
+    |  mov CARG2, TMPR             // CARG2 = array
+    |  mov CARG3d, RCd             // CARG3 = index
+    |  mov L:CARG1, SAVE_L         // CARG1 = L (clobbers RA/rcx, last)
     |.else
-    |  mov CARG2, ARRAY:RB
-    |  lea CARG4, [BASE+RA*8]      // Caveat: CARG3 == BASE.
-    |  mov CARG3d, RCd
+    |  mov L:CARG1, SAVE_L         // CARG1 = L (rdi, no conflicts)
+    |  mov CARG2, ARRAY:RB         // CARG2 = array (rsi, no conflicts)
+    |  lea CARG4, [BASE+RA*8]      // CARG4 = result addr (before BASE clobbered)
+    |  mov RB, BASE                // Save BASE to RB (callee-saved)
+    |  mov CARG3d, RCd             // CARG3 = index (clobbers BASE/rdx)
     |.endif
     |  call extern lj_arr_getidx // (lua_State *L, GCarray *arr, int32_t idx, TValue *result)
+    |  mov BASE, RB                // Restore BASE from RB
     |  ins_next
     break;
 
@@ -4307,12 +4328,28 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  cmp RCd, ARRAY:RB->len    // Bounds check (0-based).
     |  jae ->vmeta_asetv      // Out of bounds? Use fallback.
     |
-    |  // Store element
-    |  mov L:CARG1, SAVE_L
-    |  mov CARG2, ARRAY:RB
-    |  mov CARG3d, RCd
-    |  lea CARG4, [BASE+RA*8]
+    |  // Sync L->base and SAVE_PC before C call (lj_arr_setidx may throw via longjmp on type mismatch).
+    |  mov TMPR, SAVE_L
+    |  mov L:TMPR->base, BASE
+    |  mov SAVE_PC, PC
+    |  // Register dance: C call clobbers caller-saved regs including BASE(rdx).
+    |  // Save BASE through callee-saved RB, compute CARG4 before clobbering.
+    |.if X64WIN
+    |  lea CARG4, [BASE+RA*8]      // CARG4 = value addr (before RA/BASE clobbered)
+    |  mov TMPR, ARRAY:RB          // Save array to TMPR
+    |  mov RB, BASE                // Save BASE to RB (callee-saved)
+    |  mov CARG2, TMPR             // CARG2 = array
+    |  mov CARG3d, RCd             // CARG3 = index
+    |  mov L:CARG1, SAVE_L         // CARG1 = L (clobbers RA/rcx, last)
+    |.else
+    |  mov L:CARG1, SAVE_L         // CARG1 = L (rdi, no conflicts)
+    |  mov CARG2, ARRAY:RB         // CARG2 = array (rsi, no conflicts)
+    |  lea CARG4, [BASE+RA*8]      // CARG4 = value addr (before BASE clobbered)
+    |  mov RB, BASE                // Save BASE to RB (callee-saved)
+    |  mov CARG3d, RCd             // CARG3 = index (clobbers BASE/rdx)
+    |.endif
     |  call extern lj_arr_setidx // (lua_State *L, GCarray *arr, int32_t idx, cTValue *val)
+    |  mov BASE, RB                // Restore BASE from RB
     |  ins_next
     break;
 
@@ -4328,12 +4365,28 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  cmp RCd, ARRAY:RB->len    // Bounds check.
     |  jae ->vmeta_asetv      // Out of bounds? Use fallback.
     |
-    |  // Store element
-    |  mov L:CARG1, SAVE_L
-    |  mov CARG2, ARRAY:RB
-    |  mov CARG3d, RCd
-    |  lea CARG4, [BASE+RA*8]
+    |  // Sync L->base and SAVE_PC before C call (lj_arr_setidx may throw via longjmp on type mismatch).
+    |  mov TMPR, SAVE_L
+    |  mov L:TMPR->base, BASE
+    |  mov SAVE_PC, PC
+    |  // Register dance: C call clobbers caller-saved regs including BASE(rdx).
+    |  // Save BASE through callee-saved RB, compute CARG4 before clobbering.
+    |.if X64WIN
+    |  lea CARG4, [BASE+RA*8]      // CARG4 = value addr (before RA/BASE clobbered)
+    |  mov TMPR, ARRAY:RB          // Save array to TMPR
+    |  mov RB, BASE                // Save BASE to RB (callee-saved)
+    |  mov CARG2, TMPR             // CARG2 = array
+    |  mov CARG3d, RCd             // CARG3 = index
+    |  mov L:CARG1, SAVE_L         // CARG1 = L (clobbers RA/rcx, last)
+    |.else
+    |  mov L:CARG1, SAVE_L         // CARG1 = L (rdi, no conflicts)
+    |  mov CARG2, ARRAY:RB         // CARG2 = array (rsi, no conflicts)
+    |  lea CARG4, [BASE+RA*8]      // CARG4 = value addr (before BASE clobbered)
+    |  mov RB, BASE                // Save BASE to RB (callee-saved)
+    |  mov CARG3d, RCd             // CARG3 = index (clobbers BASE/rdx)
+    |.endif
     |  call extern lj_arr_setidx // (lua_State *L, GCarray *arr, int32_t idx, cTValue *val)
+    |  mov BASE, RB                // Restore BASE from RB
     |  ins_next
     break;
 

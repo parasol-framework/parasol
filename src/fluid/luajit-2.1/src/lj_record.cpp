@@ -736,6 +736,8 @@ static LoopEvent rec_itern(jit_State *J, BCREG ra, BCREG rb)
 #endif
 }
 
+static TRef rec_array_xload(jit_State *J, TRef ArrayRef, TRef IdxRef, GCarray *Arr);
+
 //********************************************************************************************************************
 // Record ITERA.
 
@@ -786,13 +788,18 @@ static LoopEvent rec_itera(jit_State *J, BCREG ra, BCREG rb)
 
    ir.guard_int(IR_ULT, idx_ref, len_ref);
    if (nres IS 2) {
-      TValue result_tv;
-      lj_arr_getidx(J->L, arr, idx_int, &result_tv);
-      IRType result_type = itype2irt(&result_tv);
-      if (!LJ_DUALNUM and result_type IS IRT_INT) result_type = IRT_NUM;
-      TRef tmp_ref = rec_tmpref(J, TREF_NIL, IRTMPREF_OUT1);
-      lj_ir_call(J, IRCALL_lj_arr_getidx, arr_ref, idx_ref, tmp_ref);
-      value_ref = lj_record_vload(J, tmp_ref, 0, result_type);
+      // Try inline path for numeric types
+      value_ref = rec_array_xload(J, arr_ref, idx_ref, arr);
+      if (not value_ref) {
+         // Fallback: C call for non-numeric types
+         TValue result_tv;
+         lj_arr_getidx(J->L, arr, idx_int, &result_tv);
+         IRType result_type = itype2irt(&result_tv);
+         if (!LJ_DUALNUM and result_type IS IRT_INT) result_type = IRT_NUM;
+         TRef tmp_ref = rec_tmpref(J, TREF_NIL, IRTMPREF_OUT1);
+         lj_ir_call(J, IRCALL_lj_arr_getidx, arr_ref, idx_ref, tmp_ref);
+         value_ref = lj_record_vload(J, tmp_ref, 0, result_type);
+      }
    }
 
    J->base[ra - 1] = idx_ref;
@@ -2379,6 +2386,163 @@ static TRef rec_arith_op(jit_State *J, RecordOps *ops)
 }
 
 //********************************************************************************************************************
+// Inline XLOAD for primitive numeric array element access.
+//
+// Emits IR_XLOAD directly for BYTE, INT16, INT32, INT64, FLOAT, DOUBLE element types, bypassing
+// the opaque lj_arr_getidx C call.  This exposes the load to CSE, load forwarding, and alias
+// analysis.  Returns 0 for non-numeric types (caller falls back to the C call).
+
+static TRef rec_array_xload(jit_State *J, TRef ArrayRef, TRef IdxRef, GCarray *Arr)
+{
+   IRBuilder ir(J);
+   AET et = Arr->elemtype;
+   int shift;
+
+   switch (et) {
+      case AET::BYTE:   shift = 0; break;
+      case AET::INT16:  shift = 1; break;
+      case AET::INT32:  shift = 2; break;
+      case AET::FLOAT:  shift = 2; break;
+      case AET::INT64:  shift = 3; break;
+      case AET::DOUBLE: shift = 3; break;
+      default: return 0; // Non-numeric type, fall back to C call
+   }
+
+   // Guard: elemtype matches recorded value (CSE'd across accesses to the same array)
+   TRef et_ref = ir.fload(ArrayRef, IRFL_ARRAY_ELEMTYPE, IRT_U8);
+   ir.guard_eq_int(et_ref, ir.kint(int32_t(et)));
+
+   // Load storage pointer
+   TRef storage_ref = ir.fload_ptr(ArrayRef, IRFL_ARRAY_STORAGE);
+
+   // Compute element address: storage + (idx << shift)
+   TRef offset_ref = (shift > 0) ? ir.emit_int(IR_BSHL, IdxRef, ir.kint(shift)) : IdxRef;
+   // Extend offset to pointer width for 64-bit platforms
+   TRef offset_ptr = emitir(IRT(IR_CONV, IRT_INTP), offset_ref,
+      (IRT_INTP << IRCONV_DSH) | IRT_INT | IRCONV_SEXT);
+   TRef addr = emitir(IRT(IR_ADD, IRT_PTR), storage_ref, offset_ptr);
+
+   // Emit XLOAD with the appropriate type and convert to Lua-visible type
+   TRef val;
+   switch (et) {
+      case AET::BYTE:
+         val = emitir(IRT(IR_XLOAD, IRT_U8), addr, 0);
+         if (not LJ_DUALNUM)
+            val = emitir(IRTN(IR_CONV), val, IRCONV_NUM_INT);
+         break;
+      case AET::INT16:
+         val = emitir(IRT(IR_XLOAD, IRT_I16), addr, 0);
+         if (not LJ_DUALNUM)
+            val = emitir(IRTN(IR_CONV), val, IRCONV_NUM_INT);
+         break;
+      case AET::INT32:
+         val = emitir(IRT(IR_XLOAD, IRT_INT), addr, 0);
+         if (not LJ_DUALNUM)
+            val = emitir(IRTN(IR_CONV), val, IRCONV_NUM_INT);
+         break;
+      case AET::INT64:
+         val = emitir(IRT(IR_XLOAD, IRT_I64), addr, 0);
+         val = emitir(IRTN(IR_CONV), val, (IRT_NUM << IRCONV_DSH) | IRT_I64);
+         break;
+      case AET::FLOAT:
+         val = emitir(IRT(IR_XLOAD, IRT_FLOAT), addr, 0);
+         val = emitir(IRTN(IR_CONV), val, (IRT_NUM << IRCONV_DSH) | IRT_FLOAT);
+         break;
+      case AET::DOUBLE:
+         val = emitir(IRT(IR_XLOAD, IRT_NUM), addr, 0);
+         break;
+      default:
+         return 0;
+   }
+   return val;
+}
+
+//********************************************************************************************************************
+// Inline XSTORE for primitive numeric array element access.
+//
+// Emits IR_XSTORE directly for BYTE, INT16, INT32, INT64, FLOAT, DOUBLE element types.
+// Returns true if the store was handled inline, false to fall back to the C call.
+
+static bool rec_array_xstore(jit_State *J, TRef ArrayRef, TRef IdxRef, TRef ValRef, GCarray *Arr)
+{
+   IRBuilder ir(J);
+   AET et = Arr->elemtype;
+   int shift;
+
+   if (not tref_isnumber(ValRef)) return false;
+
+   switch (et) {
+      case AET::BYTE:   shift = 0; break;
+      case AET::INT16:  shift = 1; break;
+      case AET::INT32:  shift = 2; break;
+      case AET::FLOAT:  shift = 2; break;
+      case AET::INT64:  shift = 3; break;
+      case AET::DOUBLE: shift = 3; break;
+      default: return false; // Non-numeric type, fall back to C call
+   }
+
+   // Guard: elemtype matches recorded value (CSE'd across accesses to the same array)
+   TRef et_ref = ir.fload(ArrayRef, IRFL_ARRAY_ELEMTYPE, IRT_U8);
+   ir.guard_eq_int(et_ref, ir.kint(int32_t(et)));
+
+   // Load storage pointer
+   TRef storage_ref = ir.fload_ptr(ArrayRef, IRFL_ARRAY_STORAGE);
+
+   // Compute element address: storage + (idx << shift)
+   TRef offset_ref = (shift > 0) ? ir.emit_int(IR_BSHL, IdxRef, ir.kint(shift)) : IdxRef;
+   TRef offset_ptr = emitir(IRT(IR_CONV, IRT_INTP), offset_ref,
+      (IRT_INTP << IRCONV_DSH) | IRT_INT | IRCONV_SEXT);
+   TRef addr = emitir(IRT(IR_ADD, IRT_PTR), storage_ref, offset_ptr);
+
+   // Convert and emit XSTORE
+   TRef store_val;
+   switch (et) {
+      case AET::BYTE:
+         store_val = tref_isnum(ValRef)
+            ? emitir(IRTI(IR_CONV), ValRef, IRCONV_INT_NUM | IRCONV_ANY)
+            : ValRef;
+         emitir(IRT(IR_XSTORE, IRT_U8), addr, store_val);
+         break;
+      case AET::INT16:
+         store_val = tref_isnum(ValRef)
+            ? emitir(IRTI(IR_CONV), ValRef, IRCONV_INT_NUM | IRCONV_ANY)
+            : ValRef;
+         emitir(IRT(IR_XSTORE, IRT_I16), addr, store_val);
+         break;
+      case AET::INT32:
+         store_val = tref_isnum(ValRef)
+            ? emitir(IRTI(IR_CONV), ValRef, IRCONV_INT_NUM | IRCONV_ANY)
+            : ValRef;
+         emitir(IRT(IR_XSTORE, IRT_INT), addr, store_val);
+         break;
+      case AET::INT64:
+         if (tref_isint(ValRef))
+            store_val = emitir(IRT(IR_CONV, IRT_I64), ValRef,
+               (IRT_I64 << IRCONV_DSH) | IRT_INT | IRCONV_SEXT);
+         else
+            store_val = emitir(IRT(IR_CONV, IRT_I64), ValRef,
+               (IRT_I64 << IRCONV_DSH) | IRT_NUM | IRCONV_ANY);
+         emitir(IRT(IR_XSTORE, IRT_I64), addr, store_val);
+         break;
+      case AET::FLOAT:
+         store_val = tref_isint(ValRef)
+            ? emitir(IRTN(IR_CONV), ValRef, IRCONV_NUM_INT) : ValRef;
+         store_val = emitir(IRT(IR_CONV, IRT_FLOAT), store_val,
+            (IRT_FLOAT << IRCONV_DSH) | IRT_NUM);
+         emitir(IRT(IR_XSTORE, IRT_FLOAT), addr, store_val);
+         break;
+      case AET::DOUBLE:
+         store_val = tref_isint(ValRef)
+            ? emitir(IRTN(IR_CONV), ValRef, IRCONV_NUM_INT) : ValRef;
+         emitir(IRT(IR_XSTORE, IRT_NUM), addr, store_val);
+         break;
+      default:
+         return false;
+   }
+   return true;
+}
+
+//********************************************************************************************************************
 // Handle native array ops: BC_AGETV, BC_AGETB, BC_ASETV, BC_ASETB
 //
 // Native arrays (GCarray) are different from tables - they have typed elements and 0-based indexing internally.
@@ -2407,9 +2571,7 @@ static TRef rec_array_op(jit_State *J, RecordOps *ops)
          idx_int = int32_t(lj_num2int(num));
          if (not ((lua_Number)idx_int IS num)) lj_trace_err(J, LJ_TRERR_BADTYPE);
       }
-      else {
-         lj_trace_err(J, LJ_TRERR_BADTYPE);
-      }
+      else lj_trace_err(J, LJ_TRERR_BADTYPE);
 
       if (not tref_isnumber(ops->rc)) lj_trace_err(J, LJ_TRERR_BADTYPE);
       idx_ref = lj_opt_narrow_index(J, ops->rc);
@@ -2421,6 +2583,12 @@ static TRef rec_array_op(jit_State *J, RecordOps *ops)
    if (is_get) {
       GCarray *arr = arrayV(ops->rbv());
       if (idx_int < 0 or MSize(idx_int) >= arr->len) lj_trace_err(J, LJ_TRERR_BADTYPE);
+
+      // Try inline path for numeric types
+      TRef result = rec_array_xload(J, array_ref, idx_ref, arr);
+      if (result) return result;
+
+      // Fallback: C call for non-numeric types
       TValue result_tv;
       lj_arr_getidx(J->L, arr, idx_int, &result_tv);
       IRType result_type = itype2irt(&result_tv);
@@ -2430,6 +2598,11 @@ static TRef rec_array_op(jit_State *J, RecordOps *ops)
       return lj_record_vload(J, tmp_ref, 0, result_type);
    }
 
+   // Try inline path for numeric types
+   if (rec_array_xstore(J, array_ref, idx_ref, ops->ra, arrayV(ops->rbv())))
+      return 0;
+
+   // Fallback: C call for non-numeric types
    TRef tmp_ref = rec_tmpref(J, ops->ra, IRTMPREF_IN1);
    lj_ir_call(J, IRCALL_lj_arr_setidx, array_ref, idx_ref, tmp_ref);
    return 0;
