@@ -1,4 +1,4 @@
---$FLUID:Include
+--$TIRI:Include
 
 module({ name="Audio", copyright="Paul Manias © 2002-2026", version=1.0, timestamp=20240611, src="audio.cpp" }, function()
   flags("ADF", { comment="Optional flags for the Audio object." },

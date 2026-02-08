@@ -12,7 +12,7 @@ The Compression class provides an interface to compress and decompress data.  It
 based compression as well as memory based compression routines.  The base class uses zip algorithms to support pkzip
 files, while other forms of compressed data can be supported by installing additional compression sub-classes.
 
-The following examples demonstrate basic usage of compression objects in Fluid:
+The following examples demonstrate basic usage of compression objects in Tiri:
 
 <pre>
 // Create a new zip archive and compress two files.

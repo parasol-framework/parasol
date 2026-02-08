@@ -63,18 +63,18 @@
            </ul>
          </div></li>
 
-         <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#fg-collapse" aria-expanded="false">Fluid</button>
+         <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#fg-collapse" aria-expanded="false">Tiri</button>
          <div class="collapse" id="fg-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
-            <li class="api-ref"><a class="rounded" href="Fluid-Reference-Manual.html">Fluid Reference Manual</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-Common-API.html">Common API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-GUI-API.html">GUI API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-HTTPServer-API.html">HTTPServer API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-IO-API.html">I/O API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-JSON-API.html">JSON API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-URL-API.html">URL API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-VFX-API.html">VFX API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-Widgets.html">Widgets</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-Reference-Manual.html">Tiri Reference Manual</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-Common-API.html">Common API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-GUI-API.html">GUI API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-HTTPServer-API.html">HTTPServer API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-IO-API.html">I/O API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-JSON-API.html">JSON API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-URL-API.html">URL API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-VFX-API.html">VFX API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-Widgets.html">Widgets</a></li>
            </ul>
          </div></li>
 
@@ -123,10 +123,10 @@
       <li class="api-ref"><a href="../modules/audio.html" class="rounded">Audio</a></li>
       <li class="api-ref"><a href="../modules/core.html" class="rounded">Core</a></li>
       <li class="api-ref"><a href="../modules/display.html" class="rounded">Display</a></li>
-      <li class="api-ref"><a href="../modules/fluid.html" class="rounded">Fluid</a></li>
       <li class="api-ref"><a href="../modules/font.html" class="rounded">Font</a></li>
       <li class="api-ref"><a href="../modules/network.html" class="rounded">Network</a></li>
       <li class="api-ref"><a href="../modules/regex.html" class="rounded">Regex</a></li>
+      <li class="api-ref"><a href="../modules/tiri.html" class="rounded">Tiri</a></li>
       <li class="api-ref"><a href="../modules/vector.html" class="rounded">Vector</a></li>
       <li class="api-ref"><a href="../modules/xml.html" class="rounded">XML</a></li>
       <li class="api-ref"><a href="../modules/xpath.html" class="rounded">XPath</a></li>
@@ -263,7 +263,7 @@
 <h1 id="action-interfaces">Action Interfaces</h1>
 <p>The Core API provides multiple functions for action related tasks. <code>Action()</code> is used to make immediate calls, and requires an object pointer. <code>AsyncAction()</code> launches the action in a separate thread and returns immediately. <code>QueueAction()</code> is a pure messaging function, requiring only the object UID and delaying the call until the next message processing cycle. The aforementioned functions are documented completely in the Core API.</p>
 <p>For C++ users, additional macros are also provided. All actions listed in this document will have an associated stub function prefixed with <code>ac</code>. For example, <code>acShow(Object)</code> and <code>acSetKey(Object, Key, Value)</code>. Automated header generation also ensures that relevant methods are created at class level, meaning <code>Object-&gt;show()</code> and <code>Object-&gt;setKey(Key, Value)</code> are similarly valid.</p>
-<p>Fluid users can call actions with the <code>acName</code> template, in this case <code>object.acShow()</code> and <code>object.acSetKey(Key, Value)</code> would be equivalent to the C++ counterpart.</p>
+<p>Tiri users can call actions with the <code>acName</code> template, in this case <code>object.acShow()</code> and <code>object.acSetKey(Key, Value)</code> would be equivalent to the C++ counterpart.</p>
 <p>Run-time inspection is supported with the Core API&#39;s <code>CheckAction()</code> function, which confirms if an object&#39;s class supports a given action. The <code>ActionList()</code> function provides insight into all known actions and their parameters.</p>
 <p>Finally, the <code>SubscribeAction()</code> function provides a monitoring feature that will call a custom function whenever a given action has been executed for a target object.</p>
 <h1 id="action-index">Action Index</h1>
@@ -613,7 +613,7 @@ ERR acDraw(Object)</code></pre>
 <div class="title">
 <p>Note</p>
 </div>
-<p>The means of terminating an object can vary between languages. C++ uses <code>FreeResource()</code>, while in Fluid, objects are manually terminated with the <code>obj:free()</code> interface, or automatically via garbage collection. The specifics of this should be documented in your language of choice.</p>
+<p>The means of terminating an object can vary between languages. C++ uses <code>FreeResource()</code>, while in Tiri, objects are manually terminated with the <code>obj:free()</code> interface, or automatically via garbage collection. The specifics of this should be documented in your language of choice.</p>
 </div>
 <h3 id="implementation-details-10">Implementation Details</h3>
 <p><code>Free</code> support is essential for all classes that allocate resources. It is correctly implemented by removing all resources that were created during an object&#39;s life-cycle.</p>

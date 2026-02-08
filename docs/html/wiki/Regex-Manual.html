@@ -63,18 +63,18 @@
            </ul>
          </div></li>
 
-         <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#fg-collapse" aria-expanded="false">Fluid</button>
+         <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#fg-collapse" aria-expanded="false">Tiri</button>
          <div class="collapse" id="fg-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
-            <li class="api-ref"><a class="rounded" href="Fluid-Reference-Manual.html">Fluid Reference Manual</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-Common-API.html">Common API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-GUI-API.html">GUI API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-HTTPServer-API.html">HTTPServer API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-IO-API.html">I/O API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-JSON-API.html">JSON API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-URL-API.html">URL API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-VFX-API.html">VFX API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-Widgets.html">Widgets</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-Reference-Manual.html">Tiri Reference Manual</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-Common-API.html">Common API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-GUI-API.html">GUI API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-HTTPServer-API.html">HTTPServer API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-IO-API.html">I/O API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-JSON-API.html">JSON API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-URL-API.html">URL API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-VFX-API.html">VFX API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-Widgets.html">Widgets</a></li>
            </ul>
          </div></li>
 
@@ -123,10 +123,10 @@
       <li class="api-ref"><a href="../modules/audio.html" class="rounded">Audio</a></li>
       <li class="api-ref"><a href="../modules/core.html" class="rounded">Core</a></li>
       <li class="api-ref"><a href="../modules/display.html" class="rounded">Display</a></li>
-      <li class="api-ref"><a href="../modules/fluid.html" class="rounded">Fluid</a></li>
       <li class="api-ref"><a href="../modules/font.html" class="rounded">Font</a></li>
       <li class="api-ref"><a href="../modules/network.html" class="rounded">Network</a></li>
       <li class="api-ref"><a href="../modules/regex.html" class="rounded">Regex</a></li>
+      <li class="api-ref"><a href="../modules/tiri.html" class="rounded">Tiri</a></li>
       <li class="api-ref"><a href="../modules/vector.html" class="rounded">Vector</a></li>
       <li class="api-ref"><a href="../modules/xml.html" class="rounded">XML</a></li>
       <li class="api-ref"><a href="../modules/xpath.html" class="rounded">XPath</a></li>
@@ -257,7 +257,7 @@
 <div class="docs-content" id="default-page">
 <h1>Regex Manual</h1>
 <h1 id="regex-manual">Regex Manual</h1>
-<p>This manual provides comprehensive technical documentation for regular expression support in the Parasol Framework. It covers pattern syntax, behaviour, and all supported features for both Fluid and C++ developers.</p>
+<p>This manual provides comprehensive technical documentation for regular expression support in the Parasol Framework. It covers pattern syntax, behaviour, and all supported features for both Tiri and C++ developers.</p>
 <p>For information on how to use the Regex class and its methods in your code, please refer to the Regex module API documentation.</p>
 <h2 id="table-of-contents">Table of Contents</h2>
 <ul>
@@ -1164,7 +1164,7 @@
 </table>
 <h3 id="flag-usage">Flag Usage</h3>
 <p>The exact syntax for specifying flags depends on the language binding:</p>
-<p><strong>Fluid</strong>:</p>
+<p><strong>Tiri</strong>:</p>
 <div class="sourceCode" id="cb52"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a><span class="va">pattern</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;hello&#39;</span><span class="op">,</span> <span class="va">regex</span><span class="op">.</span><span class="cn">ICASE</span><span class="op">)</span></span>
 <span id="cb52-2"><a href="#cb52-2" aria-hidden="true" tabindex="-1"></a><span class="va">pattern</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;.*&#39;</span><span class="op">,</span> <span class="va">regex</span><span class="op">.</span><span class="cn">DOT_ALL</span><span class="op">)</span></span>
 <span id="cb52-3"><a href="#cb52-3" aria-hidden="true" tabindex="-1"></a><span class="va">pattern</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;^line&#39;</span><span class="op">,</span> <span class="va">regex</span><span class="op">.</span><span class="cn">MULTILINE</span> <span class="op">|</span> <span class="va">regex</span><span class="op">.</span><span class="cn">ICASE</span><span class="op">)</span></span></code></pre></div>
@@ -1250,7 +1250,7 @@
 </tbody>
 </table>
 <h3 id="match-flag-usage">Match Flag Usage</h3>
-<p><strong>Fluid</strong>:</p>
+<p><strong>Tiri</strong>:</p>
 <div class="sourceCode" id="cb57"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a><span class="va">pattern</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;</span><span class="sc">\\</span><span class="st">w+&#39;</span><span class="op">)</span></span>
 <span id="cb57-2"><a href="#cb57-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb57-3"><a href="#cb57-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- Replace only first occurrence</span></span>
@@ -1862,7 +1862,7 @@
 <span id="cb128-8"><a href="#cb128-8" aria-hidden="true" tabindex="-1"></a><span class="va">pattern</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;</span><span class="sc">\\</span><span class="st">x30&#39;</span><span class="op">)</span>             <span class="co">-- Shortest form</span></span>
 <span id="cb128-9"><a href="#cb128-9" aria-hidden="true" tabindex="-1"></a><span class="va">pattern</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;</span><span class="sc">\\</span><span class="st">u0030&#39;</span><span class="op">)</span>           <span class="co">-- Unicode escape</span></span></code></pre></div>
 <h3 id="handling-errors-in-code">Handling Errors in Code</h3>
-<p><strong>Fluid</strong>:</p>
+<p><strong>Tiri</strong>:</p>
 <div class="sourceCode" id="cb129"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb129-1"><a href="#cb129-1" aria-hidden="true" tabindex="-1"></a><span class="va">try</span></span>
 <span id="cb129-2"><a href="#cb129-2" aria-hidden="true" tabindex="-1"></a>   <span class="va">pattern</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;[invalid&#39;</span><span class="op">)</span></span>
 <span id="cb129-3"><a href="#cb129-3" aria-hidden="true" tabindex="-1"></a><span class="va">except</span> <span class="va">ex</span></span>

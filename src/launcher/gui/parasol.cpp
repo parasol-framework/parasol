@@ -21,7 +21,7 @@ extern struct CoreBase *CoreBase;
 struct FileSystemBase *FileSystemBase;
 
 static CSTRING STR_UNPACK = "temp:scripts/";
-static CSTRING STR_MAIN   = "main.fluid";
+static CSTRING STR_MAIN   = "main.tiri";
 
 static OBJECTID glTargetID = 0;
 static STRING glDirectory = nullptr, *glArgs = nullptr;
@@ -37,7 +37,7 @@ static ERROR PROGRAM_ActionNotify(OBJECTPTR, struct acActionNotify *);
 
 static const char Help[] = {
 "This command-line program will execute scripts written for the Parasol framework.  The core distribution\n\
-supports Fluid (.fluid) scripts.  Quick start:\n\
+supports Tiri (.tiri) scripts.  Quick start:\n\
 \n\
    parasol [args] [script.ext] arg1 arg2 ...\n\
 \n\
@@ -225,7 +225,7 @@ ERROR prep_environment(int WindowHandle, int Width, int Height)
    if (target.ok()) {
       objPointer::create pointer = { fl::Owner(target->UID), fl::Name("SystemPointer") }
       if (pointer.ok()) {
-         objScript::create script = { fl::Path("templates:defaultvariables.fluid"), fl::Target(target->UID) };
+         objScript::create script = { fl::Path("templates:defaultvariables.tiri"), fl::Target(target->UID) };
          if (script.ok()) return acActivate(script);
          else return ERR_CreateObject;
       }
@@ -248,7 +248,7 @@ ERROR exec_script(CSTRING ScriptFile, OBJECTID *CoreObjectID, int ShowTime, STRI
    CLASSID class_id, subclass;
    if (!(error = IdentifyFile(ScriptFile, &class_id, &subclass))) {
       if (class_id IS ID_COMPRESSION) {
-         // The Fluid source may be a compressed file that contains multiple script files.  This part of the routine will decompress the contents to "temp:scripts/".
+         // The Tiri source may be a compressed file that contains multiple script files.  This part of the routine will decompress the contents to "temp:scripts/".
 
          if (decompress_archive(ScriptFile) != ERR_Okay) {
             printf("Failed to decompress the script archive.\n");

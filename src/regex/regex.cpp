@@ -22,7 +22,7 @@ Key features include:
 <li>Callback-based result processing for custom handling.</li>
 </list>
 
-Note: Fluid scripts are expected to use the built-in regex functions for better integration as opposed to this
+Note: Tiri scripts are expected to use the built-in regex functions for better integration as opposed to this
 module.
 
 -END-

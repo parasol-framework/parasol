@@ -1178,7 +1178,7 @@ cases, the system's environment variables are queried):
 
 Here is a valid example for reading the 'Parasol' key value `\HKEY_CURRENT_USER\Software\Parasol`
 
-Caution: If your programming language uses backslash as an escape character (true for Fluid developers), remember to
+Caution: If your programming language uses backslash as an escape character (true for Tiri developers), remember to
 use double-backslashes as the key value separator in your Name string.
 
 -INPUT-
@@ -1854,7 +1854,7 @@ InputCallback: This callback returns incoming data from STDIN.
 
 The InputCallback field is available to the active task object only (i.e. the current process).
 The referenced function will be called when process receives data from STDIN.  The callback must match the
-prototype `void Function(*Task, APTR Data, int Size, ERR Status)`.  In Fluid the prototype is
+prototype `void Function(*Task, APTR Data, int Size, ERR Status)`.  In Tiri the prototype is
 'function callback(Task, Array, Status)` where `Array` is an array interface.
 
 The information read from STDOUT will be returned in the `Data` pointer and the byte-length of the data will be indicated
@@ -1906,7 +1906,7 @@ static ERR SET_InputCallback(extTask *Self, FUNCTION *Value)
 OutputCallback: This callback returns incoming data from STDOUT.
 
 The OutputCallback field can be set with a function reference that will be called when an active process sends data via
-STDOUT.  For C++ the callback must match the prototype `void Function(*Task, APTR Data, int Size)`.  In Fluid the
+STDOUT.  For C++ the callback must match the prototype `void Function(*Task, APTR Data, int Size)`.  In Tiri the
 prototype is 'function callback(Task, Array)` where `Array` is an array interface.
 
 The information read from STDOUT will be returned in the `Data` pointer and the byte-length of the data will be indicated

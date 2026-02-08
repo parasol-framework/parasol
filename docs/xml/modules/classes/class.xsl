@@ -236,10 +236,10 @@
                         <li class="api-ref"><a class="rounded" href="../audio.html">Audio</a></li>
                         <li class="api-ref"><a class="rounded" href="../core.html">Core</a></li>
                         <li class="api-ref"><a class="rounded" href="../display.html">Display</a></li>
-                        <li class="api-ref"><a class="rounded" href="../fluid.html">Fluid</a></li>
                         <li class="api-ref"><a class="rounded" href="../font.html">Font</a></li>
                         <li class="api-ref"><a class="rounded" href="../network.html">Network</a></li>
                         <li class="api-ref"><a class="rounded" href="../regex.html">Regex</a></li>
+                        <li class="api-ref"><a class="rounded" href="../tiri.html">Tiri</a></li>
                         <li class="api-ref"><a class="rounded" href="../vector.html">Vector</a></li>
                         <li class="api-ref"><a class="rounded" href="../xml.html">XML</a></li>
                         <li class="api-ref"><a class="rounded" href="../xquery.html">XQuery</a></li>

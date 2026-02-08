@@ -53,8 +53,8 @@
 debug-install/
 local/
 src/android/
-src/fluid/libffi-3.3/
-src/fluid/luajit-2.1/doc/
+src/tiri/libffi-3.3/
+src/tiri/luajit-2.1/doc/
 release-git/
 src/display/simd/
 data/fonts/truetype/NotoColorEmoji.ttf
@@ -71,4 +71,4 @@ data/ssl/localhost.p12
 data/ssl/localhost.pem
 src/xquery/tests/QT3_1_0/
 docs/kotuku*/
-tools/fluid_lsp/vscode_plugin/node_modules/
+tools/tiri_lsp/vscode_plugin/node_modules/

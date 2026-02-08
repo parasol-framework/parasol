@@ -63,18 +63,18 @@
            </ul>
          </div></li>
 
-         <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#fg-collapse" aria-expanded="false">Fluid</button>
+         <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#fg-collapse" aria-expanded="false">Tiri</button>
          <div class="collapse" id="fg-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
-            <li class="api-ref"><a class="rounded" href="Fluid-Reference-Manual.html">Fluid Reference Manual</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-Common-API.html">Common API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-GUI-API.html">GUI API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-HTTPServer-API.html">HTTPServer API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-IO-API.html">I/O API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-JSON-API.html">JSON API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-URL-API.html">URL API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-VFX-API.html">VFX API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-Widgets.html">Widgets</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-Reference-Manual.html">Tiri Reference Manual</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-Common-API.html">Common API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-GUI-API.html">GUI API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-HTTPServer-API.html">HTTPServer API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-IO-API.html">I/O API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-JSON-API.html">JSON API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-URL-API.html">URL API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-VFX-API.html">VFX API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-Widgets.html">Widgets</a></li>
            </ul>
          </div></li>
 
@@ -123,10 +123,10 @@
       <li class="api-ref"><a href="../modules/audio.html" class="rounded">Audio</a></li>
       <li class="api-ref"><a href="../modules/core.html" class="rounded">Core</a></li>
       <li class="api-ref"><a href="../modules/display.html" class="rounded">Display</a></li>
-      <li class="api-ref"><a href="../modules/fluid.html" class="rounded">Fluid</a></li>
       <li class="api-ref"><a href="../modules/font.html" class="rounded">Font</a></li>
       <li class="api-ref"><a href="../modules/network.html" class="rounded">Network</a></li>
       <li class="api-ref"><a href="../modules/regex.html" class="rounded">Regex</a></li>
+      <li class="api-ref"><a href="../modules/tiri.html" class="rounded">Tiri</a></li>
       <li class="api-ref"><a href="../modules/vector.html" class="rounded">Vector</a></li>
       <li class="api-ref"><a href="../modules/xml.html" class="rounded">XML</a></li>
       <li class="api-ref"><a href="../modules/xpath.html" class="rounded">XPath</a></li>
@@ -256,9 +256,9 @@
 <div class="col-sm-9" style="max-width: 1200px;">
 <div class="docs-content" id="default-page">
 <h1>Parasol Cmd Tool</h1>
-<p>Parasol&#39;s main executable is located in the root folder of our distribution as <code>parasol</code>. This tool allows you to run Fluid scripts with the <code>.fluid</code> extension.</p>
+<p>Parasol&#39;s main executable is located in the root folder of our distribution as <code>parasol</code>. This tool allows you to run Tiri scripts with the <code>.tiri</code> extension.</p>
 <p>Run the tool with <code>--help</code> to see the available options and confirm that the install worked correctly. At the time of writing, this looks as follows:</p>
-<pre><code>This command-line program can execute Fluid scripts and PARC files developed for the Parasol framework.
+<pre><code>This command-line program can execute Tiri scripts and PARC files developed for the Parasol framework.
 
    parasol [args] [script.ext] arg1 arg2=value arg3 ...
 
@@ -275,9 +275,9 @@ The following parameters can be used when executing script files:
  --jit-options   Development options that control the behaviour of the compiler.
  --version       Prints the version number on line 1 and git commit on line 2.</code></pre>
 <h2 id="jit-options">JIT Options</h2>
-<p>The <code>--jit-options</code> parameter accepts a comma-separated list of development options that control the Fluid compiler&#39;s behaviour. These options are primarily useful for debugging scripts, diagnosing parser issues, and profiling performance.</p>
+<p>The <code>--jit-options</code> parameter accepts a comma-separated list of development options that control the Tiri compiler&#39;s behaviour. These options are primarily useful for debugging scripts, diagnosing parser issues, and profiling performance.</p>
 <p><strong>Usage:</strong></p>
-<pre><code>parasol --jit-options trace-tokens,dump-bytecode script.fluid</code></pre>
+<pre><code>parasol --jit-options trace-tokens,dump-bytecode script.tiri</code></pre>
 <h3 id="available-options">Available Options</h3>
 <table>
 <thead>
@@ -319,7 +319,7 @@ The following parameters can be used when executing script files:
 </table>
 <h3 id="examples">Examples</h3>
 <p>Example scripts are provided in the <code>examples</code> folder of this distribution. We recommend starting with the widget example as follows, where <code>install-path</code> and <code>source-path</code> are replaced appropriately:</p>
-<pre><code>[install-path]/parasol --log-error [source-path]/examples/widgets.fluid</code></pre>
+<pre><code>[install-path]/parasol --log-error [source-path]/examples/widgets.tiri</code></pre>
 <div class="tip">
 <div class="title">
 <p>Tip</p>
@@ -327,7 +327,7 @@ The following parameters can be used when executing script files:
 <p>Try running a second time with <code>--log-api</code> to observe run-time log output while toying with the example. Try a few of the other examples to get a feel for what you can achieve, and load them into a text editor to see how they were created.</p>
 </div>
 <h2 id="auto-execution">Auto Execution</h2>
-<p>If <code>parasol</code> is run without command-line arguments, it will check for the presence of a <code>package.zip</code> file in its folder, mount it as a filesystem named <code>package:</code> and then attempt to execute <code>package:main.fluid</code>. This behaviour makes it possible for you to distribute your scripts as portable projects with minimal effort. The <code>parasol</code> executable should be renamed to the name of your project so that your end users will associate the executable with your application.</p>
+<p>If <code>parasol</code> is run without command-line arguments, it will check for the presence of a <code>package.zip</code> file in its folder, mount it as a filesystem named <code>package:</code> and then attempt to execute <code>package:main.tiri</code>. This behaviour makes it possible for you to distribute your scripts as portable projects with minimal effort. The <code>parasol</code> executable should be renamed to the name of your project so that your end users will associate the executable with your application.</p>
 </div></div></div></div>
 
 <script src="../js/bootstrap.bundle.min.js"></script>

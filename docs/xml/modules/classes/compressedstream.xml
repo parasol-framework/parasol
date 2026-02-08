@@ -203,11 +203,11 @@
       <const name="CORE_END"/>
       <const name="DEBUG"/>
       <const name="EVENT"/>
-      <const name="FLUID_THREAD_CALLBACK"/>
       <const name="FREE"/>
       <const name="QUIT"/>
       <const name="THREAD_ACTION"/>
       <const name="THREAD_CALLBACK"/>
+      <const name="TIRI_THREAD_CALLBACK"/>
       <const name="VALIDATE_PROCESS"/>
       <const name="WAIT_FOR_OBJECTS"/>
     </constants>

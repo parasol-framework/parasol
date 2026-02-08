@@ -1,4 +1,4 @@
---$FLUID:Include
+--$TIRI:Include
 -- This file is included by core.fdl
 -- Refer to data_errors.c for the official description strings for each error code.
 

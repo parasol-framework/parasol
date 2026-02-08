@@ -823,7 +823,7 @@
     <ai:k n="PTR_INTRESULT" c="Use for pointer-based value results only."/>
     <ai:k n="R" c="Synonym for READ"/>
     <ai:k n="READ" c="CLASSDEF"/>
-    <ai:k n="RESOURCE" c="The referenced struct or pointer is a special resource. Changes some behaviours, e.g. a resourced struct will use direct value references rather than being copied in Fluid."/>
+    <ai:k n="RESOURCE" c="The referenced struct or pointer is a special resource. Changes some behaviours, e.g. a resourced struct will use direct value references rather than being copied in Tiri."/>
     <ai:k n="RESULT" c="FUNCDEF Overrides READ"/>
     <ai:k n="RGB" c="Supplementary, if an int type then format is 0xAARRGGBB, if pointer then refers to an RGB structure."/>
     <ai:k n="RI" c="Synonym for READ | INIT"/>

@@ -1,4 +1,4 @@
---$FLUID:Include
+--$TIRI:Include
 
 module({ name="Vector", copyright="Paul Manias © 2010-2026", version=1.0, timestamp=20240611 }, function()
   c_include("<parasol/modules/display.h>", "<parasol/modules/picture.h>")

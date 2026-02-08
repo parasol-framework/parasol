@@ -219,7 +219,7 @@ if (query.ok()) {
 <p>Use the Search method to scan an XML document for tags or attributes that match a compiled XQuery expression. For every matching node, a user-defined callback function is invoked, allowing custom processing of each result.</p>
 <p>If no callback is provided, the search stops after the first match and the <class name="XML">XML</class> object's cursor markers will reflect the position of the node.</p>
 <p>Note that valid function execution can return <code>ERR:Search</code> if zero matches are found.</p>
-<p>The C++ prototype for Callback is <code>ERR Function(*XML, int TagID, CSTRING Attrib, APTR Meta)</code>.  For Fluid, use <code>function(XML, TagID, Attrib)</code></p>
+<p>The C++ prototype for Callback is <code>ERR Function(*XML, int TagID, CSTRING Attrib, APTR Meta)</code>.  For Tiri, use <code>function(XML, TagID, Attrib)</code></p>
       </description>
       <result>
         <error code="Okay">At least one matching node was found and processed.</error>

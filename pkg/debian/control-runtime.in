@@ -13,8 +13,8 @@ Description: Vector graphics engine and application framework
  .
  Key features include:
   * Vector graphics rendering with scene graphs
-  * SVG support with W3C compliance and SMIL animation  
+  * SVG support with W3C compliance and SMIL animation
   * Cross-platform display management
-  * Lua-based scripting environment (Fluid)
+  * Lua-based scripting environment (Tiri)
   * Document engine for rich text layout
   * Modular architecture with dynamic loading
