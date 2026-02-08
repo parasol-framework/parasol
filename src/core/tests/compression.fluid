@@ -184,9 +184,8 @@ end
       di += len
    until (len is 0)
 
-   smallstr = cmpbuffer:getString()
-   assert(#smallstr is file_size, f"Decompressed data length of {#smallstr} does not match original file length of {#cmpstr}.")
-   assert(smallstr is cmpstr, "The decompressed data does not match the original file.")
+   assert(di is file_size, f"Decompressed data length of {di} does not match original file length of {#cmpstr}.")
+   assert(cmpbuffer:getString() is cmpstr, "The decompressed data does not match the original file.")
 end
 
 ----------------------------------------------------------------------------------------------------------------------

@@ -432,7 +432,7 @@ end
 -- Compare with direct indexing
 
 @Test function ArrayFirstLastByIndex()
-   for i in {0..10000} do
+   for i in {0..1000000} do
       local first_direct = glIntArray[0]
       local first_direct = glStrArray[0]
       local last_direct = glIntArray[#glIntArray - 1]

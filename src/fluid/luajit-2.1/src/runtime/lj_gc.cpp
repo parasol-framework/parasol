@@ -568,6 +568,26 @@ static size_t propagatemark(global_State *g)
       gc_traverse_thread(g, th);
       return sizeof(lua_State) + sizeof(TValue) * th->stacksize;
    }
+   else if (gct IS ~LJ_TARRAY) {
+      // Arrays can reach the gray list via IR_TBAR (back barrier emitted by JIT for GC-reference stores).
+      // Traverse all GC references in the array to ensure the tri-colour invariant is maintained.
+      GCarray *arr = gco_to_array(o);
+      GCtab *mt = tabref(arr->metatable);
+      if (mt) gc_markobj(g, mt);
+      if (arr->elemtype IS AET::STR_GC or arr->elemtype IS AET::TABLE or arr->elemtype IS AET::ARRAY) {
+         GCRef *refs = arr->get<GCRef>();
+         for (MSize i = 0; i < arr->len; i++) {
+            if (gcref(refs[i])) gc_markobj(g, gcref(refs[i]));
+         }
+      }
+      else if (arr->elemtype IS AET::ANY) {
+         TValue *slots = arr->get<TValue>();
+         for (MSize i = 0; i < arr->len; i++) {
+            gc_marktv(g, &slots[i]);
+         }
+      }
+      return sizeof(GCarray) + arr->len * arr->elemsize;
+   }
    else {
       GCtrace *T = gco2trace(o);
       gc_traverse_trace(g, T);

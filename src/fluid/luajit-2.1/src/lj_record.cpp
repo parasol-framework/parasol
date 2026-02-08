@@ -26,6 +26,7 @@
 #include "lj_dispatch.h"
 #include "lj_vm.h"
 #include "lj_vmarray.h"
+#include "runtime/lj_array.h"
 #include "lj_prng.h"
 #include "jit/frame_manager.h"
 #include "runtime/lj_object.h"
@@ -736,7 +737,7 @@ static LoopEvent rec_itern(jit_State *J, BCREG ra, BCREG rb)
 #endif
 }
 
-static TRef rec_array_xload(jit_State *J, TRef ArrayRef, TRef IdxRef, GCarray *Arr);
+static TRef rec_array_xload(jit_State *J, TRef ArrayRef, TRef IdxRef, GCarray *Arr, int32_t IdxInt);
 
 //********************************************************************************************************************
 // Record ITERA.
@@ -789,9 +790,9 @@ static LoopEvent rec_itera(jit_State *J, BCREG ra, BCREG rb)
    ir.guard_int(IR_ULT, idx_ref, len_ref);
    if (nres IS 2) {
       // Try inline path for numeric types
-      value_ref = rec_array_xload(J, arr_ref, idx_ref, arr);
+      value_ref = rec_array_xload(J, arr_ref, idx_ref, arr, idx_int);
       if (not value_ref) {
-         // Fallback: C call for non-numeric types
+         // Fallback: C call for non-inline types
          TValue result_tv;
          lj_arr_getidx(J->L, arr, idx_int, &result_tv);
          IRType result_type = itype2irt(&result_tv);
@@ -2388,11 +2389,18 @@ static TRef rec_arith_op(jit_State *J, RecordOps *ops)
 //********************************************************************************************************************
 // Inline XLOAD for primitive numeric array element access.
 //
-// Emits IR_XLOAD directly for BYTE, INT16, INT32, INT64, FLOAT, DOUBLE element types, bypassing
-// the opaque lj_arr_getidx C call.  This exposes the load to CSE, load forwarding, and alias
-// analysis.  Returns 0 for non-numeric types (caller falls back to the C call).
+// Emits IR_XLOAD directly for numeric and GC-type array elements, bypassing the opaque lj_arr_getidx
+// C call.  This exposes the load to CSE, load forwarding, and alias analysis.
+//
+// Supported element types: BYTE, INT16, INT32, INT64, FLOAT, DOUBLE, STR_GC, TABLE.
+// Returns 0 for unsupported types or nil GC elements (caller falls back to the C call).
+//
+// For GC types (STR_GC, TABLE), the element is a GCRef (8 bytes).  At recording time, if the element
+// is nil (null GCRef), we return 0 to fall back to the C call — nil elements in hot loops are uncommon.
+// For non-nil elements, we emit an XLOAD with a non-null guard; if the element becomes nil at runtime,
+// the guard exits to the interpreter.
 
-static TRef rec_array_xload(jit_State *J, TRef ArrayRef, TRef IdxRef, GCarray *Arr)
+static TRef rec_array_xload(jit_State *J, TRef ArrayRef, TRef IdxRef, GCarray *Arr, int32_t IdxInt)
 {
    IRBuilder ir(J);
    AET et = Arr->elemtype;
@@ -2405,7 +2413,16 @@ static TRef rec_array_xload(jit_State *J, TRef ArrayRef, TRef IdxRef, GCarray *A
       case AET::FLOAT:  shift = 2; break;
       case AET::INT64:  shift = 3; break;
       case AET::DOUBLE: shift = 3; break;
-      default: return 0; // Non-numeric type, fall back to C call
+      case AET::STR_GC: shift = 3; break;  // GCRef is 8 bytes
+      case AET::TABLE:  shift = 3; break;  // GCRef is 8 bytes
+      default: return 0; // Unsupported type, fall back to C call
+   }
+
+   // For GC types, check at recording time whether the element is nil.  If nil, fall back to the
+   // C call — nil elements in hot paths are uncommon and a separate trace will form if needed.
+   if (et IS AET::STR_GC or et IS AET::TABLE) {
+      auto *elem = (GCRef *)lj_array_index(Arr, (uint32_t)IdxInt);
+      if (not gcref(*elem)) return 0;  // Nil at recording time → fall back
    }
 
    // Guard: elemtype matches recorded value (CSE'd across accesses to the same array)
@@ -2451,6 +2468,16 @@ static TRef rec_array_xload(jit_State *J, TRef ArrayRef, TRef IdxRef, GCarray *A
       case AET::DOUBLE:
          val = emitir(IRT(IR_XLOAD, IRT_NUM), addr, 0);
          break;
+      case AET::STR_GC:
+         val = emitir(IRT(IR_XLOAD, IRT_STR), addr, 0);
+         // Guard: loaded GCRef is non-null (exit to interpreter if element becomes nil at runtime)
+         emitir(IRTG(IR_NE, IRT_STR), val, ir.knull(IRT_STR));
+         break;
+      case AET::TABLE:
+         val = emitir(IRT(IR_XLOAD, IRT_TAB), addr, 0);
+         // Guard: loaded GCRef is non-null (exit to interpreter if element becomes nil at runtime)
+         emitir(IRTG(IR_NE, IRT_TAB), val, ir.knull(IRT_TAB));
+         break;
       default:
          return 0;
    }
@@ -2458,18 +2485,24 @@ static TRef rec_array_xload(jit_State *J, TRef ArrayRef, TRef IdxRef, GCarray *A
 }
 
 //********************************************************************************************************************
-// Inline XSTORE for primitive numeric array element access.
+// Inline XSTORE for array element access.
 //
-// Emits IR_XSTORE directly for BYTE, INT16, INT32, INT64, FLOAT, DOUBLE element types.
-// Returns true if the store was handled inline, false to fall back to the C call.
+// Emits IR_XSTORE directly for numeric types (BYTE, INT16, INT32, INT64, FLOAT, DOUBLE) and GC-reference
+// types (STR_GC, TABLE).  Returns true if the store was handled inline, false to fall back to the C call.
+//
+// For GC types, the store value must type-match (tref_isstr for STR_GC, tref_istab for TABLE) or be nil.
+// Nil stores emit a null GCRef (clearing the slot) without a write barrier.  Non-nil stores emit XSTORE
+// followed by IR_TBAR on the array container for the GC write barrier.
+//
+// Note: The read-only flag is never checked by intention; invalid attempts to write to read-only arrays are thrown
+// before the JIT optimisation stage.
 
 static bool rec_array_xstore(jit_State *J, TRef ArrayRef, TRef IdxRef, TRef ValRef, GCarray *Arr)
 {
    IRBuilder ir(J);
    AET et = Arr->elemtype;
    int shift;
-
-   if (not tref_isnumber(ValRef)) return false;
+   bool is_gc_type = false;
 
    switch (et) {
       case AET::BYTE:   shift = 0; break;
@@ -2478,7 +2511,18 @@ static bool rec_array_xstore(jit_State *J, TRef ArrayRef, TRef IdxRef, TRef ValR
       case AET::FLOAT:  shift = 2; break;
       case AET::INT64:  shift = 3; break;
       case AET::DOUBLE: shift = 3; break;
-      default: return false; // Non-numeric type, fall back to C call
+      case AET::STR_GC: shift = 3; is_gc_type = true; break;
+      case AET::TABLE:  shift = 3; is_gc_type = true; break;
+      default: return false; // Unsupported type, fall back to C call
+   }
+
+   // For numeric types, the value must be a number
+   if (not is_gc_type and not tref_isnumber(ValRef)) return false;
+
+   // For GC types, validate the value type at recording time
+   if (is_gc_type and not tref_isnil(ValRef)) {
+      if (et IS AET::STR_GC and not tref_isstr(ValRef)) return false;
+      if (et IS AET::TABLE and not tref_istab(ValRef)) return false;
    }
 
    // Guard: elemtype matches recorded value (CSE'd across accesses to the same array)
@@ -2536,6 +2580,19 @@ static bool rec_array_xstore(jit_State *J, TRef ArrayRef, TRef IdxRef, TRef ValR
             ? emitir(IRTN(IR_CONV), ValRef, IRCONV_NUM_INT) : ValRef;
          emitir(IRT(IR_XSTORE, IRT_NUM), addr, store_val);
          break;
+      case AET::STR_GC:
+      case AET::TABLE:
+         if (tref_isnil(ValRef)) {
+            // Nil store: write a null GCRef to clear the slot.  No write barrier needed.
+            emitir(IRT(IR_XSTORE, IRT_P64), addr, ir.knull(IRT_P64));
+         }
+         else {
+            // Non-nil store: write the GC reference and emit a write barrier on the container
+            IRType gc_irt = (et IS AET::STR_GC) ? IRT_STR : IRT_TAB;
+            emitir(IRT(IR_XSTORE, gc_irt), addr, ValRef);
+            ir.emit(IRT(IR_TBAR, IRT_NIL), ArrayRef, 0);
+         }
+         break;
       default:
          return false;
    }
@@ -2584,11 +2641,11 @@ static TRef rec_array_op(jit_State *J, RecordOps *ops)
       GCarray *arr = arrayV(ops->rbv());
       if (idx_int < 0 or MSize(idx_int) >= arr->len) lj_trace_err(J, LJ_TRERR_BADTYPE);
 
-      // Try inline path for numeric types
-      TRef result = rec_array_xload(J, array_ref, idx_ref, arr);
+      // Try inline path for numeric and GC types
+      TRef result = rec_array_xload(J, array_ref, idx_ref, arr, idx_int);
       if (result) return result;
 
-      // Fallback: C call for non-numeric types
+      // Fallback: C call for non-inline types
       TValue result_tv;
       lj_arr_getidx(J->L, arr, idx_int, &result_tv);
       IRType result_type = itype2irt(&result_tv);
@@ -2598,11 +2655,11 @@ static TRef rec_array_op(jit_State *J, RecordOps *ops)
       return lj_record_vload(J, tmp_ref, 0, result_type);
    }
 
-   // Try inline path for numeric types
+   // Try inline path for numeric and GC types
    if (rec_array_xstore(J, array_ref, idx_ref, ops->ra, arrayV(ops->rbv())))
       return 0;
 
-   // Fallback: C call for non-numeric types
+   // Fallback: C call for non-inline types
    TRef tmp_ref = rec_tmpref(J, ops->ra, IRTMPREF_IN1);
    lj_ir_call(J, IRCALL_lj_arr_setidx, array_ref, idx_ref, tmp_ref);
    return 0;
