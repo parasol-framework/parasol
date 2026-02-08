@@ -74,7 +74,7 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension to 
 
 ### Scripting Integration
 
-**Tiri** is the integrated Lua-based scripting language:
+**Tiri** (formerly known as Fluid) is the integrated Lua-based scripting language:
 - Unique engine built on LuaJIT 2.1 for performance and extensively modified for C++, utilising C++20 capabilities.
 - Provides high-level access to all framework APIs
 - GUI toolkit available through `scripts/gui/` modules (modular widget system)

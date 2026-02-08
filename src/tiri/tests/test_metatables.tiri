@@ -1,6 +1,6 @@
 -- Flute tests for metatable support: setmetatable/getmetatable, metamethods for arithmetic,
 -- comparison, string/length, indexing, callable tables, and protected metatables.
--- Note: __close and __gc are covered in test_close.fluid; this suite covers all other metamethods.
+-- Note: __close and __gc are covered in test_close.tiri; this suite covers all other metamethods.
 
 @BeforeEach(hotpath=true)
 function enforce_hotpath() end

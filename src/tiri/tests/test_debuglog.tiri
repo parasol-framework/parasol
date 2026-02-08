@@ -2,7 +2,7 @@
 
    glSelf = obj.find('self')
 
-rx_debuglog = regex.new('test_debuglog\\.fluid:\\d+')
+rx_debuglog = regex.new('test_debuglog\\.tiri:\\d+')
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Test default behaviour (stack trace only)
@@ -30,7 +30,7 @@ end
 
 @Test function Locals()
    -- Test compile-time variable capture with diagnose mode
-   script = obj.new('fluid', {
+   script = obj.new('tiri', {
       statement = [[
          local x = 42
          local name = 'test'
@@ -288,7 +288,7 @@ end
 
    -- Test disassembly of a compiled script
 
-   script = obj.new('fluid', { statement = [[
+   script = obj.new('tiri', { statement = [[
 local function sampleFunction(a, b) -- Local function
    scale = b * 2
    total = a + scale

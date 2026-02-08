@@ -2,7 +2,7 @@
 -- This test verifies that the tip system correctly warns about string concatenation inside loops.
 -- The tip is emitted when --jit-options tips or all-tips is enabled.
 
-   include 'fluid' -- Required for JOF flags.
+   include 'tiri' -- Required for JOF flags.
 
    glSelf = obj.find('self')
 
@@ -139,7 +139,7 @@ glGlobalScript = [[
 
 @Test function ConcatInLoopTips()
    msg('--- Testing string concatenation in loops with JOF_TIPS ---')
-   script = obj.new('fluid', { statement = glConcatScript, jitOptions = JOF_TIPS })
+   script = obj.new('tiri', { statement = glConcatScript, jitOptions = JOF_TIPS })
    err = script.acActivate()
    assert(err is ERR_Okay, 'Script should execute successfully')
 end
@@ -149,7 +149,7 @@ end
 
 @Test function NoTipsWithoutFlag()
    msg('--- Testing string concatenation without tip flags ---')
-   script = obj.new('fluid', { statement = glConcatScript })
+   script = obj.new('tiri', { statement = glConcatScript })
    err = script.acActivate()
    assert(err is ERR_Okay, 'Script should execute successfully')
 end
@@ -171,7 +171,7 @@ end
 ]]
 
    msg('--- Testing nested loops with string concatenation ---')
-   script = obj.new('fluid', { statement = glNestedLoopScript, jitOptions = JOF_TIPS })
+   script = obj.new('tiri', { statement = glNestedLoopScript, jitOptions = JOF_TIPS })
    err = script.acActivate()
    assert(err is ERR_Okay, 'Script should execute successfully')
 end
@@ -189,7 +189,7 @@ glChainedConcatScript = [[
 
 @Test function ChainedConcat()
    msg('--- Testing chained concatenation in loop ---')
-   script = obj.new('fluid', { statement = glChainedConcatScript, jitOptions = JOF_TIPS })
+   script = obj.new('tiri', { statement = glChainedConcatScript, jitOptions = JOF_TIPS })
    err = script.acActivate()
    assert(err is ERR_Okay, 'Script should execute successfully')
 end
@@ -203,7 +203,7 @@ end
    -- Review the log output to verify the warnings are present.
 
    msg('--- Testing global access in loops with JOF_TIPS ---')
-   script = obj.new('fluid', { statement = glGlobalScript, jitOptions = JOF_TIPS })
+   script = obj.new('tiri', { statement = glGlobalScript, jitOptions = JOF_TIPS })
    err = script.acActivate()
    assert(err is ERR_Okay, 'Script should execute successfully')
 end
@@ -213,7 +213,7 @@ end
 
 @Test function NoTipsWithoutFlag()
    msg('--- Testing global access without tip flags - should produce no tip output ---')
-   script = obj.new('fluid', { statement = glGlobalScript })
+   script = obj.new('tiri', { statement = glGlobalScript })
    err = script.acActivate()
    assert(err is ERR_Okay, 'Script should execute successfully')
 end
@@ -236,7 +236,7 @@ end
 ]]
 
    msg('--- Testing nested loops with global access ---')
-   script = obj.new('fluid', { statement = statement, jitOptions = JOF_TIPS })
+   script = obj.new('tiri', { statement = statement, jitOptions = JOF_TIPS })
    err = script.acActivate()
    assert(err is ERR_Okay, 'Script should execute successfully')
 end
@@ -246,7 +246,7 @@ end
 
 @Test function FunctionInLoopTips()
    msg('--- Testing function definition in loops with JOF_TIPS ---')
-   script = obj.new('fluid', { statement = glFunctionLoopScript, jitOptions = JOF_TIPS })
+   script = obj.new('tiri', { statement = glFunctionLoopScript, jitOptions = JOF_TIPS })
    err = script.acActivate()
    assert(err is ERR_Okay, 'Script should execute successfully')
 end
@@ -256,7 +256,7 @@ end
 
 @Test function NoTipsWithoutFlag()
    msg('--- Testing function in loop without tips flags ---')
-   script = obj.new('fluid', { statement = glFunctionLoopScript })
+   script = obj.new('tiri', { statement = glFunctionLoopScript })
    err = script.acActivate()
    assert(err is ERR_Okay, 'Script should execute successfully')
 end
@@ -275,7 +275,7 @@ end
 ]]
 
    msg('--- Testing nested loops with function definitions ---')
-   script = obj.new('fluid', { statement = statement, jitOptions = JOF_TIPS })
+   script = obj.new('tiri', { statement = statement, jitOptions = JOF_TIPS })
    err = script.acActivate()
    assert(err is ERR_Okay, 'Script should execute successfully')
 end
@@ -293,7 +293,7 @@ end
 ]]
 
    msg('--- Testing callback function in loop ---')
-   script = obj.new('fluid', { statement = statement, jitOptions = JOF_TIPS })
+   script = obj.new('tiri', { statement = statement, jitOptions = JOF_TIPS })
    err = script.acActivate()
    assert(err is ERR_Okay, 'Script should execute successfully')
 end

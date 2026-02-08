@@ -30,7 +30,7 @@ rx_spaces = regex.new('\\s+')
 
          debug.anno.set(test_func, {
             { name = "Test", args = { name = func_name, labels = { "xquery", "math" } } }
-         }, "test_qt_match.fluid", func_name)
+         }, "test_qt_match.tiri", func_name)
 
          counter++
       end

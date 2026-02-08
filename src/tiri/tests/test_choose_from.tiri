@@ -1013,7 +1013,7 @@ end
 -- These tests verify that invalid syntax is properly rejected
 
 @Test function SyntaxErrorMissingFrom()
-   script = obj.new('fluid', {
+   script = obj.new('tiri', {
       statement = [[
          result = choose value
             1 -> 'one'
@@ -1025,7 +1025,7 @@ end
 end
 
 @Test(hotpath=false) function SyntaxErrorMissingEnd()
-   script = obj.new('fluid', {
+   script = obj.new('tiri', {
       statement = [[
          result = choose value from
             1 -> 'one'
@@ -1036,7 +1036,7 @@ end
 end
 
 @Test function SyntaxErrorMissingArrow()
-   script = obj.new('fluid', {
+   script = obj.new('tiri', {
       statement = [[
          result = choose value from
             1 'one'
@@ -1048,7 +1048,7 @@ end
 end
 
 @Test function SyntaxErrorElseNotLast()
-   script = obj.new('fluid', {
+   script = obj.new('tiri', {
       statement = [[
          result = choose value from
             else -> 'default'
@@ -1062,7 +1062,7 @@ end
 
 @Test function SyntaxErrorTupleArityMismatch()
    -- This should be a compile-time error
-   script = obj.new('fluid', {
+   script = obj.new('tiri', {
       statement = [[
          result = choose (1, 2) from
             (1, 2, 3) -> 'three'
@@ -1076,7 +1076,7 @@ end
 
 @Test function SyntaxErrorTuplePatternOnSingleValue()
    -- Tuple patterns require a function call returning multiple values, not a single expression
-   script = obj.new('fluid', {
+   script = obj.new('tiri', {
       statement = [[
          result = choose 1 from
             (1, 2) -> 'matched'

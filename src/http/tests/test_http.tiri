@@ -67,7 +67,7 @@ end
    content = ''
 
    http = obj.new('http', {
-      src        = 'http://127.0.0.1:' .. SERVER_PORT .. '/test_http.fluid',
+      src        = 'http://127.0.0.1:' .. SERVER_PORT .. '/test_http.tiri',
       method     = 'GET',
       connectTimeout = 10,
       incoming = function(HTTP, Buffer)

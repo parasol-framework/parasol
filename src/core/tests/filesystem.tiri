@@ -119,7 +119,7 @@ end
    icon_pairs = {
       { path='fonts:fonts.cfg',            icon='icons:filetypes/text' },
       { path='fonts:truetype/Micro-6.ttf', icon='icons:filetypes/font' },
-      { path='scripts:common.fluid',       icon='icons:filetypes/source' }
+      { path='scripts:common.tiri',       icon='icons:filetypes/source' }
    }
 
    for v in values(icon_pairs) do
@@ -141,7 +141,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function AnalyseFile()
-   err, type = mSys.AnalysePath('scripts:gui.fluid')
+   err, type = mSys.AnalysePath('scripts:gui.tiri')
    assert(err is ERR_Okay, 'AnalysePath() failed with error: ' .. mSys.GetErrorMsg(err))
    assert(type is LOC_FILE, 'AnalysePath() returned type ' .. type .. ' and not LOC_FILE')
 end

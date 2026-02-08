@@ -7,8 +7,8 @@
    mSys.DeleteFile('temp:cmp_test_json.zip')
    mSys.DeleteFile('temp:cmp_test_scripts.zip')
    mSys.DeleteFile('temp:scripts.gz')
-   mSys.DeleteFile('temp:gui.fluid')
-   mSys.DeleteFile('temp:window.fluid')
+   mSys.DeleteFile('temp:gui.tiri')
+   mSys.DeleteFile('temp:window.tiri')
 end
 
 global function streamedOutput(CompressedID, Data)
@@ -54,10 +54,10 @@ end
 @Test(priority=1) function CreateCompress()
    cmp = obj.new('compression', { path='temp:cmp_test_json.zip', flags='!NEW' } )
 
-   err = cmp.mtCompressFile('scripts:gui.fluid', '')
+   err = cmp.mtCompressFile('scripts:gui.tiri', '')
    assert(err is ERR_Okay, 'CompressFile() failed: ' .. mSys.GetErrorMsg(err))
 
-   err = cmp.mtCompressFile('config:styles/default/window.fluid', '')
+   err = cmp.mtCompressFile('config:styles/default/window.tiri', '')
    assert(err is ERR_Okay, 'CompressFile() failed: ' .. mSys.GetErrorMsg(err))
 
    cmp = null
@@ -67,7 +67,7 @@ end
 @Test(priority=2) function DecompressWild()
    cmp = obj.new('compression', { path='temp:cmp_test_json.zip' } )
 
-   err = cmp.mtDecompressFile('*.fluid', 'temp:')
+   err = cmp.mtDecompressFile('*.tiri', 'temp:')
    assert(err is ERR_Okay, 'DecompressFile() failed: ' .. mSys.GetErrorMsg(err))
 end
 
@@ -126,7 +126,7 @@ end
 
 @Test(priority=5) function StreamedCompression()
    cmp = obj.new('compression' , { } )
-   file = obj.new('file', { src='scripts:gui.fluid', flags='!READ' } )
+   file = obj.new('file', { src='scripts:gui.tiri', flags='!READ' } )
 
    global glOutFile = obj.new('file', { src='temp:scripts.gz', flags='!WRITE|NEW' } )
    if cmp.mtCompressStreamStart() is ERR_Okay then
@@ -149,20 +149,20 @@ end
 
 @Test(priority=6) function ArchiveVolume()
    cmp = obj.new('compression', { path='temp:cmp_test_scripts.zip', archiveName='test' } )
-   file = obj.new('file', { path='scripts:gui/button.fluid' } )
+   file = obj.new('file', { path='scripts:gui/button.tiri' } )
    file_size = file.size
 
    cmpbuffer = array<byte, file_size>
    cmpsrc = array<byte, file_size>
 
-   err = mSys.ReadFileToBuffer('scripts:gui/button.fluid', cmpsrc)
+   err = mSys.ReadFileToBuffer('scripts:gui/button.tiri', cmpsrc)
    assert(err is ERR_Okay, 'Failed to read original source file for comparison: ' .. mSys.GetErrorMsg(err))
    cmpstr = cmpsrc:getString()
    assert(#cmpstr is file_size, f"Array length of {#cmpstr} does not match expected file length of {file_size}.")
 
    -- Big buffer test
 
-   cmpfile = obj.new('file', { src='archive:test/scripts/button.fluid', flags='!READ' })
+   cmpfile = obj.new('file', { src='archive:test/scripts/button.tiri', flags='!READ' })
    err, len = cmpfile.acRead(cmpbuffer)
    assert(err is ERR_Okay, 'Failed to read decompressed data from file archive: ' .. mSys.GetErrorMsg(err))
    assert(cmpbuffer:getString() is cmpstr, "The decompressed data does not match the original file.")
@@ -195,7 +195,7 @@ end
    cmp = obj.new('compression' , { } )
    file = obj.new('file', { src='temp:scripts.gz', flags='!READ' } )
 
-   global glOutFile = obj.new('file', { src='temp:gui.fluid', flags='!WRITE|NEW' } )
+   global glOutFile = obj.new('file', { src='temp:gui.tiri', flags='!WRITE|NEW' } )
    assert(cmp.mtDecompressStreamStart() is ERR_Okay, 'Failed to initialise decompression.')
    input = string.alloc(16384)
    err = ERR_Okay

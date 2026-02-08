@@ -1,5 +1,5 @@
 -- Helper file for @if/@end import testing
--- This file will be imported by test_compile_if_import.fluid
+-- This file will be imported by test_compile_if_import.tiri
 
 global helper_always_visible = true
 global helper_message = "Hello from imported module!"

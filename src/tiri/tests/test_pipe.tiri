@@ -143,7 +143,7 @@ end
 
 @Test function InvalidFloatLimit()
    -- Floating-point limits like |2.5> should cause a parse error
-   script = obj.new('fluid', {
+   script = obj.new('tiri', {
       statement = [[
          function identity(x) return x end
          result = 1 |2.5> identity()
@@ -156,7 +156,7 @@ end
 
 @Test function InvalidZeroLimit()
    -- Zero limit |0> should cause a parse error (limit must be >= 1)
-   script = obj.new('fluid', {
+   script = obj.new('tiri', {
       statement = [[
          function identity(x) return x end
          result = 1 |0> identity()

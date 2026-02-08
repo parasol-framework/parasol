@@ -230,7 +230,7 @@ end
 -- Test with existing namespace test
 
 @Test function ExistingNamespaceHandling()
-   -- This extends the existing test in test_error_handling.fluid
+   -- This extends the existing test in test_error_handling.tiri
    xml = obj.new("xml", {
       flags=XMF_NAMESPACE_AWARE,
       statement = '<root xmlns:ns="http://example.com"><ns:child ns:attr="value"/></root>'
