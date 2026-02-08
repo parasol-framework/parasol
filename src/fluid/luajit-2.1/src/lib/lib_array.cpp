@@ -51,21 +51,21 @@ static int32_t find_in_array(GCarray *Arr, lua_Number Value, int32_t Start, int3
 static int32_t find_object_in_array(GCarray *Arr, OBJECTID SearchUid, int32_t Start, int32_t Stop, int32_t Step);
 
 const array_meta glArrayConversion[size_t(AET::MAX)] = {
-   { uint8_t(LJ_TNUMX),   LUA_TNUMBER, true },         // AET::BYTE
-   { uint8_t(LJ_TNUMX),   LUA_TNUMBER, true },         // AET::INT16
-   { uint8_t(LJ_TNUMX),   LUA_TNUMBER, true },         // AET::INT32
-   { uint8_t(LJ_TNUMX),   LUA_TNUMBER, true },         // AET::INT64
-   { uint8_t(LJ_TNUMX),   LUA_TNUMBER, true },         // AET::FLOAT
-   { uint8_t(LJ_TNUMX),   LUA_TNUMBER, true },         // AET::DOUBLE
-   { uint8_t(LJ_TLIGHTUD), LUA_TLIGHTUSERDATA, false },  // AET::PTR
-   { uint8_t(LJ_TSTR),    LUA_TSTRING, false },         // AET::CSTR
-   { uint8_t(LJ_TSTR),    LUA_TSTRING, false },         // AET::STR_CPP
-   { uint8_t(LJ_TSTR),    LUA_TSTRING, false },         // AET::STR_GC
-   { uint8_t(LJ_TTAB),    LUA_TTABLE, false },          // AET::TABLE
-   { uint8_t(LJ_TARRAY),  LUA_TARRAY, false },          // AET::ARRAY
-   { uint8_t(LJ_TNIL),    0, false },                   // AET::ANY
-   { uint8_t(LJ_TUDATA),  LUA_TUSERDATA, false },       // AET::STRUCT
-   { uint8_t(LJ_TOBJECT), LUA_TOBJECT, false }          // AET::OBJECT
+   { uint8_t(LJ_TNUMX),    LUA_TNUMBER, true },         // AET::BYTE
+   { uint8_t(LJ_TNUMX),    LUA_TNUMBER, true },         // AET::INT16
+   { uint8_t(LJ_TNUMX),    LUA_TNUMBER, true },         // AET::INT32
+   { uint8_t(LJ_TNUMX),    LUA_TNUMBER, true },         // AET::INT64
+   { uint8_t(LJ_TNUMX),    LUA_TNUMBER, true },         // AET::FLOAT
+   { uint8_t(LJ_TNUMX),    LUA_TNUMBER, true },         // AET::DOUBLE
+   { uint8_t(LJ_TLIGHTUD), LUA_TLIGHTUSERDATA, false }, // AET::PTR
+   { uint8_t(LJ_TSTR),     LUA_TSTRING, false },        // AET::CSTR
+   { uint8_t(LJ_TSTR),     LUA_TSTRING, false },        // AET::STR_CPP
+   { uint8_t(LJ_TSTR),     LUA_TSTRING, false },        // AET::STR_GC
+   { uint8_t(LJ_TTAB),     LUA_TTABLE, false },         // AET::TABLE
+   { uint8_t(LJ_TARRAY),   LUA_TARRAY, false },         // AET::ARRAY
+   { uint8_t(LJ_TNIL),     0, false },                  // AET::ANY
+   { uint8_t(LJ_TUDATA),   LUA_TUSERDATA, false },      // AET::STRUCT
+   { uint8_t(LJ_TOBJECT),  LUA_TOBJECT, false }         // AET::OBJECT
 };
 
 //********************************************************************************************************************
