@@ -390,7 +390,7 @@ function copyFromList(Folder:str, List, Move:bool)
       params:push('}')
 
       task = obj.new('task', {
-         location   = 'parasol:fluid',
+         location   = 'parasol:tiri',
          parameters = params,
          flags      = '!Pipe',
          exitCallback = function(Task)
@@ -1183,7 +1183,7 @@ gui.fileview = function(Options)
       openFiles(self.view.selectedItems(), 'Edit')
    end
 
-   -- Apply a private file filter using regex patterns.  E.g. '.*\.fluid$'
+   -- Apply a private file filter using regex patterns.  E.g. '.*\.tiri$'
 
    self.filter = function(Filter)
       lFilter = Filter ? regex.new(Filter) :> nil

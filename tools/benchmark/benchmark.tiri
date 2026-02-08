@@ -3,7 +3,7 @@ Tiri Benchmarking Tool
 
 Usage:
 
-  parasol benchmark.fluid [test=Name]
+  parasol benchmark.tiri [test=Name]
 
 Parameters:
 

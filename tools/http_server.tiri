@@ -2,9 +2,9 @@
 glHelp = [[
 This straight-forward implementation of an HTTP server supports the serving of static files from a folder.
 
-Usage: parasol.exe http_server.fluid folder=path/to/files port=8080 [options...]
+Usage: parasol.exe http_server.tiri folder=path/to/files port=8080 [options...]
 
-If a config file is stored at user:config/http_server_cfg.fluid then it will be loaded automatically.  Options
+If a config file is stored at user:config/http_server_cfg.tiri then it will be loaded automatically.  Options
 can be overridden via the command-line, or you can refer to a different file via the config parameter.
 
 Parameters:
@@ -23,7 +23,7 @@ Index files (checked in order): index.html, index.htm, default.html, default.htm
 
    import 'net/httpserver'
 
-   glConfigFile = arg('config', 'user:config/http_server_cfg.fluid')
+   glConfigFile = arg('config', 'user:config/http_server_cfg.tiri')
 
    global glOptions = { }
 
@@ -57,7 +57,7 @@ Index files (checked in order): index.html, index.htm, default.html, default.htm
 
    if not glOptions.folder then
       print('Error: folder parameter is required')
-      print('Usage: parasol.exe http_server.fluid folder=path/to/files port=8080 [verbose=true] [timeout=30]')
+      print('Usage: parasol.exe http_server.tiri folder=path/to/files port=8080 [verbose=true] [timeout=30]')
       return
    end
 

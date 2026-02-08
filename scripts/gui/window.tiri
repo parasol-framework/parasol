@@ -14,10 +14,10 @@ DEFAULT_WIDTH  = 600
 DEFAULT_HEIGHT = 400
 
 lStyle = (function()
-   if mSys.AnalysePath('style:window.fluid') is ERR_Okay then
-      return loadFile('style:window.fluid')
+   if mSys.AnalysePath('style:window.tiri') is ERR_Okay then
+      return loadFile('style:window.tiri')
    else
-      return loadFile('styles:default/window.fluid')
+      return loadFile('styles:default/window.tiri')
    end
 end)()
 

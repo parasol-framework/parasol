@@ -7,10 +7,10 @@ Documentation is available in the Parasol Wiki.
    namespace 'gui'
 
    local lStyle
-   if mSys.AnalysePath('style:scrollbar.fluid') is ERR_Okay then
-      lStyle = loadFile('style:scrollbar.fluid')
+   if mSys.AnalysePath('style:scrollbar.tiri') is ERR_Okay then
+      lStyle = loadFile('style:scrollbar.tiri')
    else
-      lStyle = loadFile('styles:default/scrollbar.fluid')
+      lStyle = loadFile('styles:default/scrollbar.tiri')
    end
 
 gui.scrollbar = function(Options)

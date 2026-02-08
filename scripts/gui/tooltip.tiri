@@ -56,7 +56,7 @@ gui.tooltip = function(Options)
    -- This code segment attaches to the surface so that it works independently of the client.  It
    -- terminates the tooltip when the pointer is moved by the user.
 
-   self.surface.new('fluid', { name='flTip', _surface=self.surface.id, statement=[[
+   self.surface.new('tiri', { name='flTip', _surface=self.surface.id, statement=[[
       include 'display'
       local surface = obj.find(arg('surface'))
       if surface then

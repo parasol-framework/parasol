@@ -11,10 +11,10 @@ BOX_SIZE = math.floor(FONT_MAX_HEIGHT * 1.35) + 1
 MARGIN = math.floor(FONT_HEIGHT * 0.5) + 1
 
 local lStyle = thunk():str
-   if mSys.AnalysePath('style:slider.fluid') is ERR_Okay then
-      return loadFile('style:slider.fluid')
+   if mSys.AnalysePath('style:slider.tiri') is ERR_Okay then
+      return loadFile('style:slider.tiri')
    else
-      return loadFile('styles:default/slider.fluid')
+      return loadFile('styles:default/slider.tiri')
    end
 end
 

@@ -10,7 +10,7 @@
    import 'json'
    import 'io/filesearch'
 
-   global CACHE_PATH = 'user:config/lsp_doc_cache.fluid'
+   global CACHE_PATH = 'user:config/lsp_doc_cache.tiri'
    global HTML_URI = 'https://parasol.ws/modules/'
 
    self = { }
@@ -401,7 +401,7 @@ global function computeDiagnostics(Doc:table)
                ['end'] = { line = diag.line, character = end_col }
             },
             severity = lsp_severity,
-            source = 'fluid',
+            source = 'tiri',
             code = diag.code,
             message = diag.message
          })
@@ -423,7 +423,7 @@ global function computeDiagnostics(Doc:table)
                ['end'] = { line = tip.line, character = end_col }
             },
             severity = 4,  -- LSP Hint
-            source = 'fluid',
+            source = 'tiri',
             code = tip.category,
             message = tip.message
          })
@@ -453,7 +453,7 @@ global function lspInitDocs(DocPath)
    end
 
    -- Load static definitions (builtins, keywords)
-   defsPath = glSelf.workingPath .. 'lsp_defs.fluid'
+   defsPath = glSelf.workingPath .. 'lsp_defs.tiri'
    local result
    try
       result = loadFile(defsPath)

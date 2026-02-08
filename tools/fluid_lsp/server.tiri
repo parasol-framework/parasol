@@ -2,7 +2,7 @@
 --
 -- A TCP-based LSP server for IDE integration with Tiri scripts.
 --
--- Usage: parasol lsp_server.fluid port=5007 [options...]
+-- Usage: parasol lsp_server.tiri port=5007 [options...]
 --
 -- See --help for full usage information.
 
@@ -13,22 +13,22 @@ This server implements the Language Server Protocol over TCP, allowing IDEs
 and editors to provide features like autocompletion, hover information, and
 diagnostics for Tiri scripts.
 
-Usage: parasol lsp_server.fluid [options...]
+Usage: parasol lsp_server.tiri [options...]
 
 Parameters:
 
   port        - TCP port to listen on (default: 5007)
   verbose     - Enable verbose/debug logging (true/false, default: false)
-  config      - Path to config file (default: user:config/lsp_server_cfg.fluid)
+  config      - Path to config file (default: user:config/lsp_server_cfg.tiri)
   request-log - Path to log file for request/response debugging
   help        - Display this help message
 
 Examples:
 
-  parasol lsp_server.fluid port=5007
-  parasol lsp_server.fluid port=5007 verbose=true
-  parasol lsp_server.fluid port=5007 request-log=lsp_debug.log
-  parasol lsp_server.fluid config=my_lsp_config.fluid
+  parasol lsp_server.tiri port=5007
+  parasol lsp_server.tiri port=5007 verbose=true
+  parasol lsp_server.tiri port=5007 request-log=lsp_debug.log
+  parasol lsp_server.tiri config=my_lsp_config.tiri
 
 Config File Format:
 
@@ -41,7 +41,7 @@ Config File Format:
 
 Testing with netcat/telnet:
 
-  1. Start the server: parasol lsp_server.fluid port=5007
+  1. Start the server: parasol lsp_server.tiri port=5007
   2. Connect: nc localhost 5007
   3. Send initialize request:
      Content-Length: 110
@@ -96,7 +96,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
    -- Load config file if available
-   glConfigFile = arg('config', 'user:config/lsp_server_cfg.fluid')
+   glConfigFile = arg('config', 'user:config/lsp_server_cfg.tiri')
    glDocPath = 'sdk:docs/xml/'
    glOptions = { }
 

@@ -4,7 +4,7 @@
 -- processing. The output removes verbose descriptions, formatting, and examples while preserving essential API
 -- information.
 --
--- Usage: parasol docgen-ai.fluid [output=folder]
+-- Usage: parasol docgen-ai.tiri [output=folder]
 
    import 'io/filesearch'
 

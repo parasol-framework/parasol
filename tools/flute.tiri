@@ -12,7 +12,7 @@ Flute provides a standard framework for the execution of unit tests in Tiri.
 
 Example usage:
 
-   parasol flute.fluid file=[file]
+   parasol flute.tiri file=[file]
 ]]
 
 
@@ -107,7 +107,7 @@ end
 _ANNO = {
    [functionRef] = {
       name = 'functionName',
-      source = 'path/to/file.fluid',
+      source = 'path/to/file.tiri',
       annotations = {
          { name = 'Test', args = { key = value, ... } },
          { name = 'Requires', args = { ... } }
