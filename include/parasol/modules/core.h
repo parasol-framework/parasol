@@ -2952,9 +2952,9 @@ class objScript : public Object {
    STRING   ErrorMessage;
    CSTRING  Procedure;
    STRING   CacheFile;
-   int     ActivationCount;      // Incremented every time the script is activated.
-   int     ResultsTotal;
-   int     TotalArgs;            // Total number of ProcArgs
+   int      ActivationCount;      // Incremented every time the script is activated.
+   int      ResultsTotal;
+   int      TotalArgs;            // Total number of ProcArgs
    char     LanguageDir[32];      // Directory to use for language files
    OBJECTID ScriptOwnerID;
 #endif

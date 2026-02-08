@@ -11,7 +11,7 @@
 <meta name="description" content="Parasol Framework documentation, machine generated from source">
 <meta name="author" content="Paul Manias">
 <link rel="icon" href="/favicon.ico">
-<title>Parasol Wiki - Fluid HTTPServer API</title>
+<title>Parasol Wiki - Tiri HTTPServer API</title>
 <link href="../css/bootstrap.min.css" rel="stylesheet">
 <link href="../css/module-template.css" rel="stylesheet">
 <link href="../css/github-markdown.css" rel="stylesheet">
@@ -63,18 +63,18 @@
            </ul>
          </div></li>
 
-         <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#fg-collapse" aria-expanded="false">Fluid</button>
+         <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#fg-collapse" aria-expanded="false">Tiri</button>
          <div class="collapse" id="fg-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
-            <li class="api-ref"><a class="rounded" href="Fluid-Reference-Manual.html">Fluid Reference Manual</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-Common-API.html">Common API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-GUI-API.html">GUI API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-HTTPServer-API.html">HTTPServer API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-IO-API.html">I/O API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-JSON-API.html">JSON API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-URL-API.html">URL API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-VFX-API.html">VFX API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-Widgets.html">Widgets</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-Reference-Manual.html">Tiri Reference Manual</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-Common-API.html">Common API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-GUI-API.html">GUI API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-HTTPServer-API.html">HTTPServer API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-IO-API.html">I/O API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-JSON-API.html">JSON API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-URL-API.html">URL API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-VFX-API.html">VFX API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-Widgets.html">Widgets</a></li>
            </ul>
          </div></li>
 
@@ -123,10 +123,10 @@
       <li class="api-ref"><a href="../modules/audio.html" class="rounded">Audio</a></li>
       <li class="api-ref"><a href="../modules/core.html" class="rounded">Core</a></li>
       <li class="api-ref"><a href="../modules/display.html" class="rounded">Display</a></li>
-      <li class="api-ref"><a href="../modules/fluid.html" class="rounded">Fluid</a></li>
       <li class="api-ref"><a href="../modules/font.html" class="rounded">Font</a></li>
       <li class="api-ref"><a href="../modules/network.html" class="rounded">Network</a></li>
       <li class="api-ref"><a href="../modules/regex.html" class="rounded">Regex</a></li>
+      <li class="api-ref"><a href="../modules/tiri.html" class="rounded">Tiri</a></li>
       <li class="api-ref"><a href="../modules/vector.html" class="rounded">Vector</a></li>
       <li class="api-ref"><a href="../modules/xml.html" class="rounded">XML</a></li>
       <li class="api-ref"><a href="../modules/xpath.html" class="rounded">XPath</a></li>
@@ -255,20 +255,20 @@
 
 <div class="col-sm-9" style="max-width: 1200px;">
 <div class="docs-content" id="default-page">
-<h1>Fluid HTTPServer API</h1>
+<h1>Tiri HTTPServer API</h1>
 <h2 id="http-server">HTTP Server</h2>
 <p>The HTTPServer interface provides a comprehensive HTTP service that runs in the background of the calling application. It supports static file serving, directory indexing, security headers, rate limiting, and comprehensive request handling.</p>
 <p>The server is designed for security and reliability, implementing features such as path validation, directory traversal protection, rate limiting, and proper error handling.</p>
 <p>It can be loaded with the line:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="va">httpServer</span> <span class="op">=</span> <span class="fu">require</span> <span class="st">&#39;net/httpserver&#39;</span></span></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>import <span class="st">&#39;net/httpserver&#39;</span></span></code></pre></div>
 <h2 id="functions">Functions</h2>
 <h3 id="httpserverstart">httpServer.start()</h3>
-<p><code>server = httpServer.start(Options)</code></p>
+<p><code>server = hslib.start(Options)</code></p>
 <p>Creates a new HTTP server instance with the specified configuration options. The server will start immediately before returning unless an error is raised.</p>
 <p>This example creates a basic HTTP server serving files from the <code>parasol:docs/html/</code> folder on port 7070:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="va">httpServer</span> <span class="op">=</span> <span class="fu">require</span> <span class="st">&#39;net/httpserver&#39;</span></span>
+<div class="sourceCode" id="cb2"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>import <span class="st">&#39;net/httpserver&#39;</span></span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="va">server</span> <span class="op">=</span> <span class="va">httpServer</span><span class="op">.</span>start<span class="op">({</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="va">server</span> <span class="op">=</span> <span class="va">hslib</span><span class="op">.</span>start<span class="op">({</span></span>
 <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>   <span class="va">port</span> <span class="op">=</span> <span class="dv">7070</span><span class="op">,</span></span>
 <span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>   <span class="va">folder</span> <span class="op">=</span> <span class="st">&#39;parasol:docs/html/&#39;</span></span>
 <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="op">})</span></span></code></pre></div>
@@ -406,7 +406,7 @@
 <h3 id="global-middleware-configuration">Global Middleware Configuration</h3>
 <p>Global middleware can be configured during server creation or added dynamically:</p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- Configure during server creation</span></span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="va">server</span> <span class="op">=</span> <span class="va">httpServer</span><span class="op">.</span>start<span class="op">({</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="va">server</span> <span class="op">=</span> <span class="va">hslib</span><span class="op">.</span>start<span class="op">({</span></span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>   <span class="va">port</span> <span class="op">=</span> <span class="dv">8080</span><span class="op">,</span></span>
 <span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>   <span class="va">folder</span> <span class="op">=</span> <span class="st">&#39;./public/&#39;</span><span class="op">,</span></span>
 <span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>   <span class="va">middleware</span> <span class="op">=</span> <span class="op">{</span></span>
@@ -431,7 +431,7 @@
 <span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span><span class="op">)</span></span></code></pre></div>
 <h3 id="route-specific-middleware">Route-Specific Middleware</h3>
 <p>Middleware can be applied to specific routes via the <code>middleware</code> property in route configurations:</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="va">server</span> <span class="op">=</span> <span class="va">httpServer</span><span class="op">.</span>start<span class="op">({</span></span>
+<div class="sourceCode" id="cb9"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="va">server</span> <span class="op">=</span> <span class="va">hslib</span><span class="op">.</span>start<span class="op">({</span></span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>   <span class="va">port</span> <span class="op">=</span> <span class="dv">8080</span><span class="op">,</span></span>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>   <span class="va">folder</span> <span class="op">=</span> <span class="st">&#39;./public/&#39;</span><span class="op">,</span></span>
 <span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>   <span class="va">routes</span> <span class="op">=</span> <span class="op">{</span></span>
@@ -530,7 +530,7 @@
 <p>There are two ways to register routes: declaratively via server configuration or programmatically using the <code>newRoute()</code> method.</p>
 <h4 id="declarative-route-configuration">Declarative Route Configuration</h4>
 <p>Routes can be configured during server creation using the <code>routes</code> option. This is the most concise approach for setting up multiple routes:</p>
-<div class="sourceCode" id="cb15"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="va">server</span> <span class="op">=</span> <span class="va">httpServer</span><span class="op">.</span>start<span class="op">({</span></span>
+<div class="sourceCode" id="cb15"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="va">server</span> <span class="op">=</span> <span class="va">hslib</span><span class="op">.</span>start<span class="op">({</span></span>
 <span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>   <span class="va">port</span> <span class="op">=</span> <span class="dv">8080</span><span class="op">,</span></span>
 <span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>   <span class="va">folder</span> <span class="op">=</span> <span class="st">&#39;./public/&#39;</span><span class="op">,</span></span>
 <span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>   <span class="va">routes</span> <span class="op">=</span> <span class="op">{</span></span>
@@ -781,34 +781,32 @@ Each route in the <code>routes</code> array must contain:</p>
 </ul>
 <h2 id="configuration-examples">Configuration Examples</h2>
 <h3 id="basic-file-server">Basic File Server</h3>
-<div class="sourceCode" id="cb28"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="va">server</span> <span class="op">=</span> <span class="va">httpServer</span><span class="op">.</span>start<span class="op">({</span></span>
+<div class="sourceCode" id="cb28"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="va">server</span> <span class="op">=</span> <span class="va">hslib</span><span class="op">.</span>start<span class="op">({</span></span>
 <span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>   <span class="va">port</span> <span class="op">=</span> <span class="dv">8080</span><span class="op">,</span></span>
 <span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>   <span class="va">folder</span> <span class="op">=</span> <span class="st">&#39;parasol:docs/html/&#39;</span><span class="op">,</span></span>
 <span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>   <span class="va">verbose</span> <span class="op">=</span> <span class="kw">true</span></span>
 <span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a><span class="op">})</span></span></code></pre></div>
 <h3 id="basic-api-server-with-routing">Basic API Server with Routing</h3>
-<div class="sourceCode" id="cb29"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="va">httpServer</span> <span class="op">=</span> <span class="fu">require</span> <span class="st">&#39;net/httpserver&#39;</span></span>
-<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a><span class="va">server</span> <span class="op">=</span> <span class="va">httpServer</span><span class="op">.</span>start<span class="op">({</span></span>
-<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>   <span class="va">port</span> <span class="op">=</span> <span class="dv">3000</span><span class="op">,</span></span>
-<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>   <span class="va">folder</span> <span class="op">=</span> <span class="st">&#39;./public/&#39;</span><span class="op">,</span></span>
-<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>   <span class="va">verbose</span> <span class="op">=</span> <span class="kw">true</span><span class="op">,</span></span>
-<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>   <span class="va">routes</span> <span class="op">=</span> <span class="op">{</span></span>
-<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a>      <span class="op">{</span> <span class="va">pattern</span> <span class="op">=</span> <span class="st">&#39;/api/status&#39;</span><span class="op">,</span> <span class="va">method</span> <span class="op">=</span> <span class="st">&#39;GET&#39;</span><span class="op">,</span> <span class="va">handler</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">req</span><span class="op">,</span> <span class="va">res</span><span class="op">)</span></span>
-<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a>         <span class="va">res</span><span class="op">.</span>json<span class="op">({</span> <span class="va">status</span> <span class="op">=</span> <span class="st">&#39;OK&#39;</span><span class="op">,</span> <span class="va">timestamp</span> <span class="op">=</span> <span class="va">mSys</span><span class="op">.</span>PreciseTime<span class="op">()</span> <span class="op">})</span></span>
-<span id="cb29-10"><a href="#cb29-10" aria-hidden="true" tabindex="-1"></a>      <span class="kw">end</span> <span class="op">},</span></span>
-<span id="cb29-11"><a href="#cb29-11" aria-hidden="true" tabindex="-1"></a>      <span class="op">{</span> <span class="va">pattern</span> <span class="op">=</span> <span class="st">&#39;/api/users/:id&#39;</span><span class="op">,</span> <span class="va">method</span> <span class="op">=</span> <span class="st">&#39;GET&#39;</span><span class="op">,</span> <span class="va">handler</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">req</span><span class="op">,</span> <span class="va">res</span><span class="op">)</span></span>
-<span id="cb29-12"><a href="#cb29-12" aria-hidden="true" tabindex="-1"></a>         <span class="va">userId</span> <span class="op">=</span> <span class="va">req</span><span class="op">.</span><span class="va">params</span><span class="op">.</span><span class="va">id</span></span>
-<span id="cb29-13"><a href="#cb29-13" aria-hidden="true" tabindex="-1"></a>         <span class="va">res</span><span class="op">.</span>json<span class="op">({</span> <span class="va">userId</span> <span class="op">=</span> <span class="va">userId</span><span class="op">,</span> <span class="va">message</span> <span class="op">=</span> <span class="st">&#39;User retrieved&#39;</span> <span class="op">})</span></span>
-<span id="cb29-14"><a href="#cb29-14" aria-hidden="true" tabindex="-1"></a>      <span class="kw">end</span> <span class="op">},</span></span>
-<span id="cb29-15"><a href="#cb29-15" aria-hidden="true" tabindex="-1"></a>      <span class="op">{</span> <span class="va">pattern</span> <span class="op">=</span> <span class="st">&#39;/api/users&#39;</span><span class="op">,</span> <span class="va">method</span> <span class="op">=</span> <span class="st">&#39;POST&#39;</span><span class="op">,</span> <span class="va">handler</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">req</span><span class="op">,</span> <span class="va">res</span><span class="op">)</span></span>
-<span id="cb29-16"><a href="#cb29-16" aria-hidden="true" tabindex="-1"></a>         <span class="va">userData</span> <span class="op">=</span> <span class="va">req</span><span class="op">.</span><span class="va">parsedBody</span></span>
-<span id="cb29-17"><a href="#cb29-17" aria-hidden="true" tabindex="-1"></a>         <span class="va">res</span><span class="op">.</span>json<span class="op">({</span> <span class="va">message</span> <span class="op">=</span> <span class="st">&#39;User created&#39;</span><span class="op">,</span> <span class="va">data</span> <span class="op">=</span> <span class="va">userData</span> <span class="op">})</span></span>
-<span id="cb29-18"><a href="#cb29-18" aria-hidden="true" tabindex="-1"></a>      <span class="kw">end</span> <span class="op">}</span></span>
-<span id="cb29-19"><a href="#cb29-19" aria-hidden="true" tabindex="-1"></a>   <span class="op">}</span></span>
-<span id="cb29-20"><a href="#cb29-20" aria-hidden="true" tabindex="-1"></a><span class="op">})</span></span></code></pre></div>
+<div class="sourceCode" id="cb29"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="va">server</span> <span class="op">=</span> <span class="va">hslib</span><span class="op">.</span>start<span class="op">({</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>   <span class="va">port</span> <span class="op">=</span> <span class="dv">3000</span><span class="op">,</span></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>   <span class="va">folder</span> <span class="op">=</span> <span class="st">&#39;./public/&#39;</span><span class="op">,</span></span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>   <span class="va">verbose</span> <span class="op">=</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>   <span class="va">routes</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>      <span class="op">{</span> <span class="va">pattern</span> <span class="op">=</span> <span class="st">&#39;/api/status&#39;</span><span class="op">,</span> <span class="va">method</span> <span class="op">=</span> <span class="st">&#39;GET&#39;</span><span class="op">,</span> <span class="va">handler</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">req</span><span class="op">,</span> <span class="va">res</span><span class="op">)</span></span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>         <span class="va">res</span><span class="op">.</span>json<span class="op">({</span> <span class="va">status</span> <span class="op">=</span> <span class="st">&#39;OK&#39;</span><span class="op">,</span> <span class="va">timestamp</span> <span class="op">=</span> <span class="va">mSys</span><span class="op">.</span>PreciseTime<span class="op">()</span> <span class="op">})</span></span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a>      <span class="kw">end</span> <span class="op">},</span></span>
+<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a>      <span class="op">{</span> <span class="va">pattern</span> <span class="op">=</span> <span class="st">&#39;/api/users/:id&#39;</span><span class="op">,</span> <span class="va">method</span> <span class="op">=</span> <span class="st">&#39;GET&#39;</span><span class="op">,</span> <span class="va">handler</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">req</span><span class="op">,</span> <span class="va">res</span><span class="op">)</span></span>
+<span id="cb29-10"><a href="#cb29-10" aria-hidden="true" tabindex="-1"></a>         <span class="va">userId</span> <span class="op">=</span> <span class="va">req</span><span class="op">.</span><span class="va">params</span><span class="op">.</span><span class="va">id</span></span>
+<span id="cb29-11"><a href="#cb29-11" aria-hidden="true" tabindex="-1"></a>         <span class="va">res</span><span class="op">.</span>json<span class="op">({</span> <span class="va">userId</span> <span class="op">=</span> <span class="va">userId</span><span class="op">,</span> <span class="va">message</span> <span class="op">=</span> <span class="st">&#39;User retrieved&#39;</span> <span class="op">})</span></span>
+<span id="cb29-12"><a href="#cb29-12" aria-hidden="true" tabindex="-1"></a>      <span class="kw">end</span> <span class="op">},</span></span>
+<span id="cb29-13"><a href="#cb29-13" aria-hidden="true" tabindex="-1"></a>      <span class="op">{</span> <span class="va">pattern</span> <span class="op">=</span> <span class="st">&#39;/api/users&#39;</span><span class="op">,</span> <span class="va">method</span> <span class="op">=</span> <span class="st">&#39;POST&#39;</span><span class="op">,</span> <span class="va">handler</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">req</span><span class="op">,</span> <span class="va">res</span><span class="op">)</span></span>
+<span id="cb29-14"><a href="#cb29-14" aria-hidden="true" tabindex="-1"></a>         <span class="va">userData</span> <span class="op">=</span> <span class="va">req</span><span class="op">.</span><span class="va">parsedBody</span></span>
+<span id="cb29-15"><a href="#cb29-15" aria-hidden="true" tabindex="-1"></a>         <span class="va">res</span><span class="op">.</span>json<span class="op">({</span> <span class="va">message</span> <span class="op">=</span> <span class="st">&#39;User created&#39;</span><span class="op">,</span> <span class="va">data</span> <span class="op">=</span> <span class="va">userData</span> <span class="op">})</span></span>
+<span id="cb29-16"><a href="#cb29-16" aria-hidden="true" tabindex="-1"></a>      <span class="kw">end</span> <span class="op">}</span></span>
+<span id="cb29-17"><a href="#cb29-17" aria-hidden="true" tabindex="-1"></a>   <span class="op">}</span></span>
+<span id="cb29-18"><a href="#cb29-18" aria-hidden="true" tabindex="-1"></a><span class="op">})</span></span></code></pre></div>
 <h3 id="secure-localhost-server">Secure Localhost Server</h3>
-<div class="sourceCode" id="cb30"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="va">server</span> <span class="op">=</span> <span class="va">httpServer</span><span class="op">.</span>start<span class="op">({</span></span>
+<div class="sourceCode" id="cb30"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="va">server</span> <span class="op">=</span> <span class="va">hslib</span><span class="op">.</span>start<span class="op">({</span></span>
 <span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>   <span class="va">port</span> <span class="op">=</span> <span class="dv">3000</span><span class="op">,</span></span>
 <span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>   <span class="va">folder</span> <span class="op">=</span> <span class="st">&#39;/path/to/secure/files/&#39;</span><span class="op">,</span></span>
 <span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>   <span class="va">bind</span> <span class="op">=</span> <span class="st">&#39;127.0.0.1&#39;</span><span class="op">,</span></span>
@@ -817,7 +815,7 @@ Each route in the <code>routes</code> array must contain:</p>
 <span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a>   <span class="va">timeout</span> <span class="op">=</span> <span class="dv">15</span></span>
 <span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a><span class="op">})</span></span></code></pre></div>
 <h3 id="high-performance-server">High-Performance Server</h3>
-<div class="sourceCode" id="cb31"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="va">server</span> <span class="op">=</span> <span class="va">httpServer</span><span class="op">.</span>start<span class="op">({</span></span>
+<div class="sourceCode" id="cb31"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="va">server</span> <span class="op">=</span> <span class="va">hslib</span><span class="op">.</span>start<span class="op">({</span></span>
 <span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>   <span class="va">port</span> <span class="op">=</span> <span class="dv">80</span><span class="op">,</span></span>
 <span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>   <span class="va">folder</span> <span class="op">=</span> <span class="st">&#39;/var/www/html/&#39;</span><span class="op">,</span></span>
 <span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>   <span class="va">maxRequestSize</span> <span class="op">=</span> <span class="dv">131072</span><span class="op">,</span>  <span class="co">-- 128KB</span></span>
@@ -827,44 +825,42 @@ Each route in the <code>routes</code> array must contain:</p>
 <span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a>   <span class="va">enableCSP</span> <span class="op">=</span> <span class="kw">false</span>         <span class="co">-- Disable if custom headers needed</span></span>
 <span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a><span class="op">})</span></span></code></pre></div>
 <h3 id="restful-api-server">RESTful API Server</h3>
-<div class="sourceCode" id="cb32"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="va">httpServer</span> <span class="op">=</span> <span class="fu">require</span> <span class="st">&#39;net/httpserver&#39;</span></span>
-<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a><span class="va">server</span> <span class="op">=</span> <span class="va">httpServer</span><span class="op">.</span>start<span class="op">({</span></span>
-<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>   <span class="va">port</span> <span class="op">=</span> <span class="dv">8080</span><span class="op">,</span></span>
-<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>   <span class="va">folder</span> <span class="op">=</span> <span class="st">&#39;./static/&#39;</span><span class="op">,</span></span>
-<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a>   <span class="va">verbose</span> <span class="op">=</span> <span class="kw">true</span><span class="op">,</span></span>
-<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a>   <span class="va">routes</span> <span class="op">=</span> <span class="op">{</span></span>
-<span id="cb32-8"><a href="#cb32-8" aria-hidden="true" tabindex="-1"></a>      <span class="co">-- RESTful user management API</span></span>
-<span id="cb32-9"><a href="#cb32-9" aria-hidden="true" tabindex="-1"></a>      <span class="op">{</span> <span class="va">pattern</span> <span class="op">=</span> <span class="st">&#39;/api/users&#39;</span><span class="op">,</span> <span class="va">method</span> <span class="op">=</span> <span class="st">&#39;GET&#39;</span><span class="op">,</span> <span class="va">handler</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">req</span><span class="op">,</span> <span class="va">res</span><span class="op">)</span></span>
-<span id="cb32-10"><a href="#cb32-10" aria-hidden="true" tabindex="-1"></a>         <span class="va">res</span><span class="op">.</span>json<span class="op">({</span> <span class="va">users</span> <span class="op">=</span> getUserList<span class="op">()</span> <span class="op">})</span></span>
-<span id="cb32-11"><a href="#cb32-11" aria-hidden="true" tabindex="-1"></a>      <span class="kw">end</span> <span class="op">},</span></span>
-<span id="cb32-12"><a href="#cb32-12" aria-hidden="true" tabindex="-1"></a>      <span class="op">{</span> <span class="va">pattern</span> <span class="op">=</span> <span class="st">&#39;/api/users/:id&#39;</span><span class="op">,</span> <span class="va">method</span> <span class="op">=</span> <span class="st">&#39;GET&#39;</span><span class="op">,</span> <span class="va">handler</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">req</span><span class="op">,</span> <span class="va">res</span><span class="op">)</span></span>
-<span id="cb32-13"><a href="#cb32-13" aria-hidden="true" tabindex="-1"></a>         <span class="va">user</span> <span class="op">=</span> getUser<span class="op">(</span><span class="va">req</span><span class="op">.</span><span class="va">params</span><span class="op">.</span><span class="va">id</span><span class="op">)</span></span>
-<span id="cb32-14"><a href="#cb32-14" aria-hidden="true" tabindex="-1"></a>         <span class="cf">if</span> <span class="va">user</span> <span class="cf">then</span></span>
-<span id="cb32-15"><a href="#cb32-15" aria-hidden="true" tabindex="-1"></a>            <span class="va">res</span><span class="op">.</span>json<span class="op">(</span><span class="va">user</span><span class="op">)</span></span>
-<span id="cb32-16"><a href="#cb32-16" aria-hidden="true" tabindex="-1"></a>         <span class="cf">else</span></span>
-<span id="cb32-17"><a href="#cb32-17" aria-hidden="true" tabindex="-1"></a>            <span class="va">res</span><span class="op">.</span>status<span class="op">(</span><span class="dv">404</span><span class="op">).</span>json<span class="op">({</span> <span class="fu">error</span> <span class="op">=</span> <span class="st">&#39;User not found&#39;</span> <span class="op">})</span></span>
-<span id="cb32-18"><a href="#cb32-18" aria-hidden="true" tabindex="-1"></a>         <span class="cf">end</span></span>
-<span id="cb32-19"><a href="#cb32-19" aria-hidden="true" tabindex="-1"></a>      <span class="kw">end</span> <span class="op">},</span></span>
-<span id="cb32-20"><a href="#cb32-20" aria-hidden="true" tabindex="-1"></a>      <span class="op">{</span> <span class="va">pattern</span> <span class="op">=</span> <span class="st">&#39;/api/users&#39;</span><span class="op">,</span> <span class="va">method</span> <span class="op">=</span> <span class="st">&#39;POST&#39;</span><span class="op">,</span> <span class="va">handler</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">req</span><span class="op">,</span> <span class="va">res</span><span class="op">)</span></span>
-<span id="cb32-21"><a href="#cb32-21" aria-hidden="true" tabindex="-1"></a>         <span class="va">newUser</span> <span class="op">=</span> createUser<span class="op">(</span><span class="va">req</span><span class="op">.</span><span class="va">parsedBody</span><span class="op">)</span></span>
-<span id="cb32-22"><a href="#cb32-22" aria-hidden="true" tabindex="-1"></a>         <span class="va">res</span><span class="op">.</span>status<span class="op">(</span><span class="dv">201</span><span class="op">).</span>json<span class="op">(</span><span class="va">newUser</span><span class="op">)</span></span>
-<span id="cb32-23"><a href="#cb32-23" aria-hidden="true" tabindex="-1"></a>      <span class="kw">end</span> <span class="op">},</span></span>
-<span id="cb32-24"><a href="#cb32-24" aria-hidden="true" tabindex="-1"></a>      <span class="op">{</span> <span class="va">pattern</span> <span class="op">=</span> <span class="st">&#39;/api/users/:id&#39;</span><span class="op">,</span> <span class="va">method</span> <span class="op">=</span> <span class="st">&#39;PUT&#39;</span><span class="op">,</span> <span class="va">handler</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">req</span><span class="op">,</span> <span class="va">res</span><span class="op">)</span></span>
-<span id="cb32-25"><a href="#cb32-25" aria-hidden="true" tabindex="-1"></a>         <span class="va">updatedUser</span> <span class="op">=</span> updateUser<span class="op">(</span><span class="va">req</span><span class="op">.</span><span class="va">params</span><span class="op">.</span><span class="va">id</span><span class="op">,</span> <span class="va">req</span><span class="op">.</span><span class="va">parsedBody</span><span class="op">)</span></span>
-<span id="cb32-26"><a href="#cb32-26" aria-hidden="true" tabindex="-1"></a>         <span class="va">res</span><span class="op">.</span>json<span class="op">(</span><span class="va">updatedUser</span><span class="op">)</span></span>
-<span id="cb32-27"><a href="#cb32-27" aria-hidden="true" tabindex="-1"></a>      <span class="kw">end</span> <span class="op">},</span></span>
-<span id="cb32-28"><a href="#cb32-28" aria-hidden="true" tabindex="-1"></a>      <span class="op">{</span> <span class="va">pattern</span> <span class="op">=</span> <span class="st">&#39;/api/users/:id&#39;</span><span class="op">,</span> <span class="va">method</span> <span class="op">=</span> <span class="st">&#39;DELETE&#39;</span><span class="op">,</span> <span class="va">handler</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">req</span><span class="op">,</span> <span class="va">res</span><span class="op">)</span></span>
-<span id="cb32-29"><a href="#cb32-29" aria-hidden="true" tabindex="-1"></a>         deleteUser<span class="op">(</span><span class="va">req</span><span class="op">.</span><span class="va">params</span><span class="op">.</span><span class="va">id</span><span class="op">)</span></span>
-<span id="cb32-30"><a href="#cb32-30" aria-hidden="true" tabindex="-1"></a>         <span class="va">res</span><span class="op">.</span>status<span class="op">(</span><span class="dv">204</span><span class="op">).</span>send<span class="op">(</span><span class="st">&#39;&#39;</span><span class="op">)</span></span>
-<span id="cb32-31"><a href="#cb32-31" aria-hidden="true" tabindex="-1"></a>      <span class="kw">end</span> <span class="op">},</span></span>
-<span id="cb32-32"><a href="#cb32-32" aria-hidden="true" tabindex="-1"></a>      <span class="co">-- File serving with wildcard routes</span></span>
-<span id="cb32-33"><a href="#cb32-33" aria-hidden="true" tabindex="-1"></a>      <span class="op">{</span> <span class="va">pattern</span> <span class="op">=</span> <span class="st">&#39;/files/*&#39;</span><span class="op">,</span> <span class="va">method</span> <span class="op">=</span> <span class="st">&#39;GET&#39;</span><span class="op">,</span> <span class="va">handler</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">req</span><span class="op">,</span> <span class="va">res</span><span class="op">)</span></span>
-<span id="cb32-34"><a href="#cb32-34" aria-hidden="true" tabindex="-1"></a>         <span class="va">filePath</span> <span class="op">=</span> <span class="va">req</span><span class="op">.</span><span class="va">path</span><span class="op">:</span><span class="fu">sub</span><span class="op">(</span><span class="dv">8</span><span class="op">)</span>  <span class="co">-- Remove &#39;/files/&#39; prefix</span></span>
-<span id="cb32-35"><a href="#cb32-35" aria-hidden="true" tabindex="-1"></a>         <span class="va">res</span><span class="op">.</span>send<span class="op">(</span><span class="st">&#39;Serving file: &#39;</span> <span class="op">..</span> <span class="va">filePath</span><span class="op">)</span></span>
-<span id="cb32-36"><a href="#cb32-36" aria-hidden="true" tabindex="-1"></a>      <span class="kw">end</span> <span class="op">}</span></span>
-<span id="cb32-37"><a href="#cb32-37" aria-hidden="true" tabindex="-1"></a>   <span class="op">}</span></span>
-<span id="cb32-38"><a href="#cb32-38" aria-hidden="true" tabindex="-1"></a><span class="op">})</span></span></code></pre></div>
+<div class="sourceCode" id="cb32"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="va">server</span> <span class="op">=</span> <span class="va">hslib</span><span class="op">.</span>start<span class="op">({</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>   <span class="va">port</span> <span class="op">=</span> <span class="dv">8080</span><span class="op">,</span></span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>   <span class="va">folder</span> <span class="op">=</span> <span class="st">&#39;./static/&#39;</span><span class="op">,</span></span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>   <span class="va">verbose</span> <span class="op">=</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>   <span class="va">routes</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a>      <span class="co">-- RESTful user management API</span></span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a>      <span class="op">{</span> <span class="va">pattern</span> <span class="op">=</span> <span class="st">&#39;/api/users&#39;</span><span class="op">,</span> <span class="va">method</span> <span class="op">=</span> <span class="st">&#39;GET&#39;</span><span class="op">,</span> <span class="va">handler</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">req</span><span class="op">,</span> <span class="va">res</span><span class="op">)</span></span>
+<span id="cb32-8"><a href="#cb32-8" aria-hidden="true" tabindex="-1"></a>         <span class="va">res</span><span class="op">.</span>json<span class="op">({</span> <span class="va">users</span> <span class="op">=</span> getUserList<span class="op">()</span> <span class="op">})</span></span>
+<span id="cb32-9"><a href="#cb32-9" aria-hidden="true" tabindex="-1"></a>      <span class="kw">end</span> <span class="op">},</span></span>
+<span id="cb32-10"><a href="#cb32-10" aria-hidden="true" tabindex="-1"></a>      <span class="op">{</span> <span class="va">pattern</span> <span class="op">=</span> <span class="st">&#39;/api/users/:id&#39;</span><span class="op">,</span> <span class="va">method</span> <span class="op">=</span> <span class="st">&#39;GET&#39;</span><span class="op">,</span> <span class="va">handler</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">req</span><span class="op">,</span> <span class="va">res</span><span class="op">)</span></span>
+<span id="cb32-11"><a href="#cb32-11" aria-hidden="true" tabindex="-1"></a>         <span class="va">user</span> <span class="op">=</span> getUser<span class="op">(</span><span class="va">req</span><span class="op">.</span><span class="va">params</span><span class="op">.</span><span class="va">id</span><span class="op">)</span></span>
+<span id="cb32-12"><a href="#cb32-12" aria-hidden="true" tabindex="-1"></a>         <span class="cf">if</span> <span class="va">user</span> <span class="cf">then</span></span>
+<span id="cb32-13"><a href="#cb32-13" aria-hidden="true" tabindex="-1"></a>            <span class="va">res</span><span class="op">.</span>json<span class="op">(</span><span class="va">user</span><span class="op">)</span></span>
+<span id="cb32-14"><a href="#cb32-14" aria-hidden="true" tabindex="-1"></a>         <span class="cf">else</span></span>
+<span id="cb32-15"><a href="#cb32-15" aria-hidden="true" tabindex="-1"></a>            <span class="va">res</span><span class="op">.</span>status<span class="op">(</span><span class="dv">404</span><span class="op">).</span>json<span class="op">({</span> <span class="fu">error</span> <span class="op">=</span> <span class="st">&#39;User not found&#39;</span> <span class="op">})</span></span>
+<span id="cb32-16"><a href="#cb32-16" aria-hidden="true" tabindex="-1"></a>         <span class="cf">end</span></span>
+<span id="cb32-17"><a href="#cb32-17" aria-hidden="true" tabindex="-1"></a>      <span class="kw">end</span> <span class="op">},</span></span>
+<span id="cb32-18"><a href="#cb32-18" aria-hidden="true" tabindex="-1"></a>      <span class="op">{</span> <span class="va">pattern</span> <span class="op">=</span> <span class="st">&#39;/api/users&#39;</span><span class="op">,</span> <span class="va">method</span> <span class="op">=</span> <span class="st">&#39;POST&#39;</span><span class="op">,</span> <span class="va">handler</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">req</span><span class="op">,</span> <span class="va">res</span><span class="op">)</span></span>
+<span id="cb32-19"><a href="#cb32-19" aria-hidden="true" tabindex="-1"></a>         <span class="va">newUser</span> <span class="op">=</span> createUser<span class="op">(</span><span class="va">req</span><span class="op">.</span><span class="va">parsedBody</span><span class="op">)</span></span>
+<span id="cb32-20"><a href="#cb32-20" aria-hidden="true" tabindex="-1"></a>         <span class="va">res</span><span class="op">.</span>status<span class="op">(</span><span class="dv">201</span><span class="op">).</span>json<span class="op">(</span><span class="va">newUser</span><span class="op">)</span></span>
+<span id="cb32-21"><a href="#cb32-21" aria-hidden="true" tabindex="-1"></a>      <span class="kw">end</span> <span class="op">},</span></span>
+<span id="cb32-22"><a href="#cb32-22" aria-hidden="true" tabindex="-1"></a>      <span class="op">{</span> <span class="va">pattern</span> <span class="op">=</span> <span class="st">&#39;/api/users/:id&#39;</span><span class="op">,</span> <span class="va">method</span> <span class="op">=</span> <span class="st">&#39;PUT&#39;</span><span class="op">,</span> <span class="va">handler</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">req</span><span class="op">,</span> <span class="va">res</span><span class="op">)</span></span>
+<span id="cb32-23"><a href="#cb32-23" aria-hidden="true" tabindex="-1"></a>         <span class="va">updatedUser</span> <span class="op">=</span> updateUser<span class="op">(</span><span class="va">req</span><span class="op">.</span><span class="va">params</span><span class="op">.</span><span class="va">id</span><span class="op">,</span> <span class="va">req</span><span class="op">.</span><span class="va">parsedBody</span><span class="op">)</span></span>
+<span id="cb32-24"><a href="#cb32-24" aria-hidden="true" tabindex="-1"></a>         <span class="va">res</span><span class="op">.</span>json<span class="op">(</span><span class="va">updatedUser</span><span class="op">)</span></span>
+<span id="cb32-25"><a href="#cb32-25" aria-hidden="true" tabindex="-1"></a>      <span class="kw">end</span> <span class="op">},</span></span>
+<span id="cb32-26"><a href="#cb32-26" aria-hidden="true" tabindex="-1"></a>      <span class="op">{</span> <span class="va">pattern</span> <span class="op">=</span> <span class="st">&#39;/api/users/:id&#39;</span><span class="op">,</span> <span class="va">method</span> <span class="op">=</span> <span class="st">&#39;DELETE&#39;</span><span class="op">,</span> <span class="va">handler</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">req</span><span class="op">,</span> <span class="va">res</span><span class="op">)</span></span>
+<span id="cb32-27"><a href="#cb32-27" aria-hidden="true" tabindex="-1"></a>         deleteUser<span class="op">(</span><span class="va">req</span><span class="op">.</span><span class="va">params</span><span class="op">.</span><span class="va">id</span><span class="op">)</span></span>
+<span id="cb32-28"><a href="#cb32-28" aria-hidden="true" tabindex="-1"></a>         <span class="va">res</span><span class="op">.</span>status<span class="op">(</span><span class="dv">204</span><span class="op">).</span>send<span class="op">(</span><span class="st">&#39;&#39;</span><span class="op">)</span></span>
+<span id="cb32-29"><a href="#cb32-29" aria-hidden="true" tabindex="-1"></a>      <span class="kw">end</span> <span class="op">},</span></span>
+<span id="cb32-30"><a href="#cb32-30" aria-hidden="true" tabindex="-1"></a>      <span class="co">-- File serving with wildcard routes</span></span>
+<span id="cb32-31"><a href="#cb32-31" aria-hidden="true" tabindex="-1"></a>      <span class="op">{</span> <span class="va">pattern</span> <span class="op">=</span> <span class="st">&#39;/files/*&#39;</span><span class="op">,</span> <span class="va">method</span> <span class="op">=</span> <span class="st">&#39;GET&#39;</span><span class="op">,</span> <span class="va">handler</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">req</span><span class="op">,</span> <span class="va">res</span><span class="op">)</span></span>
+<span id="cb32-32"><a href="#cb32-32" aria-hidden="true" tabindex="-1"></a>         <span class="va">filePath</span> <span class="op">=</span> <span class="va">req</span><span class="op">.</span><span class="va">path</span><span class="op">:</span><span class="fu">sub</span><span class="op">(</span><span class="dv">8</span><span class="op">)</span>  <span class="co">-- Remove &#39;/files/&#39; prefix</span></span>
+<span id="cb32-33"><a href="#cb32-33" aria-hidden="true" tabindex="-1"></a>         <span class="va">res</span><span class="op">.</span>send<span class="op">(</span><span class="st">&#39;Serving file: &#39;</span> <span class="op">..</span> <span class="va">filePath</span><span class="op">)</span></span>
+<span id="cb32-34"><a href="#cb32-34" aria-hidden="true" tabindex="-1"></a>      <span class="kw">end</span> <span class="op">}</span></span>
+<span id="cb32-35"><a href="#cb32-35" aria-hidden="true" tabindex="-1"></a>   <span class="op">}</span></span>
+<span id="cb32-36"><a href="#cb32-36" aria-hidden="true" tabindex="-1"></a><span class="op">})</span></span></code></pre></div>
 </div></div></div></div>
 
 <script src="../js/bootstrap.bundle.min.js"></script>

@@ -5,6 +5,7 @@ Basic demo of the View widget
    import 'gui/fileview'
    import 'gui/columnview'
    import 'gui/window'
+
    lWindow = gui.window({ title='View Widget Example', insideWidth=400, insideHeight=200 })
    lViewport = lWindow:clientViewport()
 

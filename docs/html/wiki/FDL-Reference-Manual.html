@@ -63,18 +63,18 @@
            </ul>
          </div></li>
 
-         <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#fg-collapse" aria-expanded="false">Fluid</button>
+         <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#fg-collapse" aria-expanded="false">Tiri</button>
          <div class="collapse" id="fg-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
-            <li class="api-ref"><a class="rounded" href="Fluid-Reference-Manual.html">Fluid Reference Manual</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-Common-API.html">Common API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-GUI-API.html">GUI API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-HTTPServer-API.html">HTTPServer API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-IO-API.html">I/O API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-JSON-API.html">JSON API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-URL-API.html">URL API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-VFX-API.html">VFX API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-Widgets.html">Widgets</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-Reference-Manual.html">Tiri Reference Manual</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-Common-API.html">Common API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-GUI-API.html">GUI API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-HTTPServer-API.html">HTTPServer API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-IO-API.html">I/O API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-JSON-API.html">JSON API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-URL-API.html">URL API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-VFX-API.html">VFX API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-Widgets.html">Widgets</a></li>
            </ul>
          </div></li>
 
@@ -123,10 +123,10 @@
       <li class="api-ref"><a href="../modules/audio.html" class="rounded">Audio</a></li>
       <li class="api-ref"><a href="../modules/core.html" class="rounded">Core</a></li>
       <li class="api-ref"><a href="../modules/display.html" class="rounded">Display</a></li>
-      <li class="api-ref"><a href="../modules/fluid.html" class="rounded">Fluid</a></li>
       <li class="api-ref"><a href="../modules/font.html" class="rounded">Font</a></li>
       <li class="api-ref"><a href="../modules/network.html" class="rounded">Network</a></li>
       <li class="api-ref"><a href="../modules/regex.html" class="rounded">Regex</a></li>
+      <li class="api-ref"><a href="../modules/tiri.html" class="rounded">Tiri</a></li>
       <li class="api-ref"><a href="../modules/vector.html" class="rounded">Vector</a></li>
       <li class="api-ref"><a href="../modules/xml.html" class="rounded">XML</a></li>
       <li class="api-ref"><a href="../modules/xpath.html" class="rounded">XPath</a></li>
@@ -256,11 +256,11 @@
 <div class="col-sm-9" style="max-width: 1200px;">
 <div class="docs-content" id="default-page">
 <h1>FDL Reference Manual</h1>
-<p>FDL - the Fluid Definition Language - is an Interface Definition Language designed specifically for Parasol. It is accompanied with a series of tools - <code>idl-c</code>, <code>idl-compile</code> and <code>idl-doc</code>, which parse <code>.fdl</code> files to produce language headers and user documentation.</p>
+<p>FDL - the Tiri Definition Language - is an Interface Definition Language designed specifically for Parasol. It is accompanied with a series of tools - <code>idl-c</code>, <code>idl-compile</code> and <code>idl-doc</code>, which parse <code>.fdl</code> files to produce language headers and user documentation.</p>
 <p>This document describes the definition language itself. Instruction on how to use the tools is provided in the FDL Tools manual.</p>
 <hr>
 <h2 id="file-structure">File Structure</h2>
-<p>FDL files must be given a <code>.fdl</code> extension and are expected to start with <code>--$FLUID:Include</code> on their first line. FDL is a function-oriented document format, meaning the document itself makes calls to the parser so that it has control over the entire process. The first function that is called from the FDL file must be one of the following:</p>
+<p>FDL files must be given a <code>.fdl</code> extension and are expected to start with <code>--$TIRI:Include</code> on their first line. FDL is a function-oriented document format, meaning the document itself makes calls to the parser so that it has control over the entire process. The first function that is called from the FDL file must be one of the following:</p>
 <h3 id="module">module()</h3>
 <p><code>module({ Options... }, Function)</code></p>
 <p>Use <code>module()</code> to declare the interface of a named module. The following key-values can be provided as <code>Options</code>:</p>

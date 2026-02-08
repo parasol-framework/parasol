@@ -63,18 +63,18 @@
            </ul>
          </div></li>
 
-         <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#fg-collapse" aria-expanded="false">Fluid</button>
+         <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#fg-collapse" aria-expanded="false">Tiri</button>
          <div class="collapse" id="fg-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
-            <li class="api-ref"><a class="rounded" href="Fluid-Reference-Manual.html">Fluid Reference Manual</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-Common-API.html">Common API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-GUI-API.html">GUI API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-HTTPServer-API.html">HTTPServer API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-IO-API.html">I/O API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-JSON-API.html">JSON API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-URL-API.html">URL API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-VFX-API.html">VFX API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-Widgets.html">Widgets</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-Reference-Manual.html">Tiri Reference Manual</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-Common-API.html">Common API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-GUI-API.html">GUI API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-HTTPServer-API.html">HTTPServer API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-IO-API.html">I/O API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-JSON-API.html">JSON API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-URL-API.html">URL API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-VFX-API.html">VFX API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-Widgets.html">Widgets</a></li>
            </ul>
          </div></li>
 
@@ -123,10 +123,10 @@
       <li class="api-ref"><a href="../modules/audio.html" class="rounded">Audio</a></li>
       <li class="api-ref"><a href="../modules/core.html" class="rounded">Core</a></li>
       <li class="api-ref"><a href="../modules/display.html" class="rounded">Display</a></li>
-      <li class="api-ref"><a href="../modules/fluid.html" class="rounded">Fluid</a></li>
       <li class="api-ref"><a href="../modules/font.html" class="rounded">Font</a></li>
       <li class="api-ref"><a href="../modules/network.html" class="rounded">Network</a></li>
       <li class="api-ref"><a href="../modules/regex.html" class="rounded">Regex</a></li>
+      <li class="api-ref"><a href="../modules/tiri.html" class="rounded">Tiri</a></li>
       <li class="api-ref"><a href="../modules/vector.html" class="rounded">Vector</a></li>
       <li class="api-ref"><a href="../modules/xml.html" class="rounded">XML</a></li>
       <li class="api-ref"><a href="../modules/xpath.html" class="rounded">XPath</a></li>
@@ -315,11 +315,11 @@
 <hr>
 <h1 id="idl-doc">idl-doc</h1>
 <p>The idl-doc script is an extension of idl-c and cannot be run independently. XML documentation is automatically generated as part of idl-c&#39;s process, and document files are saved to the <code>sdk:docs/xml/</code> path.</p>
-<p>We use XML style-sheets to process the XML documents into HTML. An automated script that will process every manual is located at <code>sdk:docs/generate.fluid</code> and requires <code>xsltproc</code> to be installed.</p>
+<p>We use XML style-sheets to process the XML documents into HTML. An automated script that will process every manual is located at <code>sdk:docs/generate.tiri</code> and requires <code>xsltproc</code> to be installed.</p>
 <hr>
 <h1 id="idl-compile">idl-compile</h1>
 <p>idl-compile will parse an FDL file and produce compiled IDL data that is in a universal format. The IDL describes all classes, structs and constants defined in the FDL source.</p>
-<p>The compiled IDL is expected to be compiled into the module binary and referenced from its <code>PARASOL_MOD()</code> definition, which will make it available in the module header. Run-time languages like Fluid will be able to read the IDL at run-time and bind to it, guaranteeing that the language header and the compiled binary are correctly matched.</p>
+<p>The compiled IDL is expected to be compiled into the module binary and referenced from its <code>PARASOL_MOD()</code> definition, which will make it available in the module header. Run-time languages like Tiri will be able to read the IDL at run-time and bind to it, guaranteeing that the language header and the compiled binary are correctly matched.</p>
 <p>The idl-compile script is located in Parasol&#39;s <code>scripts/dev/</code> folder. The following command-line parameters are accepted:</p>
 <table>
 <thead>

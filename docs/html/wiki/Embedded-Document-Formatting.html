@@ -63,18 +63,18 @@
            </ul>
          </div></li>
 
-         <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#fg-collapse" aria-expanded="false">Fluid</button>
+         <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#fg-collapse" aria-expanded="false">Tiri</button>
          <div class="collapse" id="fg-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
-            <li class="api-ref"><a class="rounded" href="Fluid-Reference-Manual.html">Fluid Reference Manual</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-Common-API.html">Common API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-GUI-API.html">GUI API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-HTTPServer-API.html">HTTPServer API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-IO-API.html">I/O API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-JSON-API.html">JSON API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-URL-API.html">URL API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-VFX-API.html">VFX API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-Widgets.html">Widgets</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-Reference-Manual.html">Tiri Reference Manual</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-Common-API.html">Common API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-GUI-API.html">GUI API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-HTTPServer-API.html">HTTPServer API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-IO-API.html">I/O API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-JSON-API.html">JSON API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-URL-API.html">URL API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-VFX-API.html">VFX API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-Widgets.html">Widgets</a></li>
            </ul>
          </div></li>
 
@@ -123,10 +123,10 @@
       <li class="api-ref"><a href="../modules/audio.html" class="rounded">Audio</a></li>
       <li class="api-ref"><a href="../modules/core.html" class="rounded">Core</a></li>
       <li class="api-ref"><a href="../modules/display.html" class="rounded">Display</a></li>
-      <li class="api-ref"><a href="../modules/fluid.html" class="rounded">Fluid</a></li>
       <li class="api-ref"><a href="../modules/font.html" class="rounded">Font</a></li>
       <li class="api-ref"><a href="../modules/network.html" class="rounded">Network</a></li>
       <li class="api-ref"><a href="../modules/regex.html" class="rounded">Regex</a></li>
+      <li class="api-ref"><a href="../modules/tiri.html" class="rounded">Tiri</a></li>
       <li class="api-ref"><a href="../modules/vector.html" class="rounded">Vector</a></li>
       <li class="api-ref"><a href="../modules/xml.html" class="rounded">XML</a></li>
       <li class="api-ref"><a href="../modules/xpath.html" class="rounded">XPath</a></li>
@@ -480,7 +480,7 @@ double YCoord: Defines vertical placement.</code></pre>
 </tr>
 </tbody>
 </table>
-<p>Further to the above, if a typed parameter is a pointer that receives a result, prefix the type with <code>&amp;</code>. For instance, the C type <code>LONG *</code> can be represented as <code>&amp;int</code>. If the result is an allocated resource pointer that can be terminated with <code>FreeResource()</code>, use <code>!</code> instead of <code>&amp;</code>. This will allow the resource to be terminated by Fluid so that it cannot be leaked.</p>
+<p>Further to the above, if a typed parameter is a pointer that receives a result, prefix the type with <code>&amp;</code>. For instance, the C type <code>LONG *</code> can be represented as <code>&amp;int</code>. If the result is an allocated resource pointer that can be terminated with <code>FreeResource()</code>, use <code>!</code> instead of <code>&amp;</code>. This will allow the resource to be terminated by Tiri so that it cannot be leaked.</p>
 <h4></h4>
 <h3 id="results">Results</h3>
 <p>If the function returns an <code>ERR</code> code, you are expected to list the returnable codes in a <code>-RESULT-</code> section as in the following example:</p>
@@ -547,8 +547,8 @@ e.g. <code>~Core.AllocMemory()</code>.</p>
 <p>Bullet points can be invoked if the list <code>type</code> is set to <code>bullet</code>.</p>
 <hr>
 <h1 id="document-processing-tools">Document Processing Tools</h1>
-<p>The primary tool that we use to produce user documentation is bundled with Parasol as <code>idl-doc.fluid</code> and can be found in the <code>scripts\dev\idl\</code> folder.</p>
-<p>Despite it being written as a script, idl-doc is not a stand-alone tool and is instead implemented as an extension of <code>idl-c.fluid</code>. This is because the generation of fully accurate documentation requires inspection of the module&#39;s FDL file, as well as the compiled code.</p>
+<p>The primary tool that we use to produce user documentation is bundled with Parasol as <code>idl-doc.tiri</code> and can be found in the <code>scripts\dev\idl\</code> folder.</p>
+<p>Despite it being written as a script, idl-doc is not a stand-alone tool and is instead implemented as an extension of <code>idl-c.tiri</code>. This is because the generation of fully accurate documentation requires inspection of the module&#39;s FDL file, as well as the compiled code.</p>
 <p>For generating your documentation, please refer to both idl-c and the FDL Reference Manual.</p>
 </div></div></div></div>
 

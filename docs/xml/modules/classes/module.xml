@@ -21,7 +21,7 @@
 auto modDisplay = objModule::create::global(fl::Name(&quot;display&quot;));
 if (modDisplay) modDisplay-&gt;get(FID_ModBase, DisplayBase);
 </pre>
-<p>To do the same in Fluid:</p>
+<p>To do the same in Tiri:</p>
 <pre>mGfx = mod.load('display')
 </pre>
 <p>It is critical that the module object is permanently retained until the program no longer needs its functionality.</p></description>

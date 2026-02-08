@@ -250,10 +250,10 @@
         <li class="api-ref"><a href="audio.html" class="rounded">Audio</a></li>
         <li class="api-ref"><a href="core.html" class="rounded">Core</a></li>
         <li class="api-ref"><a href="display.html" class="rounded">Display</a></li>
-        <li class="api-ref"><a href="fluid.html" class="rounded">Tiri</a></li>
         <li class="api-ref"><a href="font.html" class="rounded">Font</a></li>
         <li class="api-ref"><a href="network.html" class="rounded">Network</a></li>
         <li class="api-ref"><a href="regex.html" class="rounded">Regex</a></li>
+        <li class="api-ref"><a href="tiri.html" class="rounded">Tiri</a></li>
         <li class="api-ref"><a href="vector.html" class="rounded">Vector</a></li>
         <li class="api-ref"><a href="xml.html" class="rounded">XML</a></li>
         <li class="api-ref"><a href="xpath.html" class="rounded">XPath</a></li>
