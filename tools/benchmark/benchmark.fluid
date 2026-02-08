@@ -745,10 +745,12 @@ end
       for name, eval in table.sortByKeys(last_result.evals) do
          if report.evals[name] then
             local cmp = report.evals[name]
-            local pad_name = string.format(f'%{longest_name+2}s', name)
-            local then_and_now = string.format('%5s -> %5s', string.format('%.2f', eval.p99), string.format('%.2f', cmp.p99))
-            local pct = string.format('%8s', string.format("%.2f%%",(eval.p99 - cmp.p99) / cmp.p99 * 100))
-            logMessage(f'{pad_name}: {then_and_now} {pct}')
+            if eval.p99 and cmp.p99 then
+               local pad_name = string.format(f'%{longest_name+2}s', name)
+               local then_and_now = string.format('%5s -> %5s', string.format('%.2f', eval.p99), string.format('%.2f', cmp.p99))
+               local pct = string.format('%8s', string.format("%.2f%%",(eval.p99 - cmp.p99) / cmp.p99 * 100))
+               logMessage(f'{pad_name}: {then_and_now} {pct}')
+            end
          end
       end
    end

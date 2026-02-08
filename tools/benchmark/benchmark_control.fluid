@@ -2,6 +2,32 @@
 ----------------------------------------------------------------------------------------------------------------------
 -- CONTROL FLOW
 ----------------------------------------------------------------------------------------------------------------------
+
+-- Compare the performance of different ways to nullify unused return values from a function call
+
+function result_series()
+   return "One", 2, { three = 3 }
+end
+
+@Test function NullificationRetain()
+   for i in {0..10000000} do
+      local a, b, c = result_series()
+   end
+end
+
+@Test function NullificationBlank()
+   for i in {0..10000000} do
+      local _, _, c = result_series()
+   end
+end
+
+@Test function NullificationMask()
+   for i in {0..10000000} do
+      local c = [__*]result_series()
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Goal: Execute branching logic with if/elseif/else chains
 
 @Test function ControlIfElseChains()
@@ -396,5 +422,36 @@ end
          end
          sum += j
       end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Goal: Measure overhead of the safe navigation operator (?.) vs direct access
+
+@Test function ControlSafeNavigationFastCmp()
+   local obj = { name = "Alice", addr = { city = "London", geo = { lat = 51.5 } } }
+   local arr = { 10, 20, 30, 40, 50 }
+
+   for i in {0..1000000} do
+      local v1 = obj.name
+      local v2 = obj.addr.city
+      local v3 = obj.addr.geo.lat
+      local v4 = arr[0]
+      local v5 = arr[2]
+   end
+end
+
+@Test function ControlSafeNavigation()
+   local obj = { name = "Alice", addr = { city = "London", geo = { lat = 51.5 } } }
+   local arr = { 10, 20, 30, 40, 50 }
+   local missing = nil
+
+   for i in {0..1000000} do
+      -- Safe access on valid paths (should behave like direct access)
+      local v1 = obj?.name
+      local v2 = obj?.addr?.city
+      local v3 = obj?.addr?.geo?.lat
+      local v4 = arr?[0]
+      local v5 = arr?[2]
    end
 end
