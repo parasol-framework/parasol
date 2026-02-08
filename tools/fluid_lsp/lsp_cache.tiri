@@ -355,8 +355,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 global function saveDocCache(CachePath, Cache)
-   -- Save the cache as a Fluid script
-   content = [[-- Fluid LSP Documentation Cache
+   -- Save the cache as a Tiri script
+   content = [[-- Tiri LSP Documentation Cache
 -- Auto-generated, do not edit manually
 -- Built: ]] .. timestamp() .. [[
 

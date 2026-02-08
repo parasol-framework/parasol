@@ -207,7 +207,7 @@ inline void camelcase(std::string &s) noexcept {
 }
 
 // Hash designed to handle conversion from `UID` -> `uid` and `RGBValue` -> `rgbValue`.  This keeps hashes compatible
-// with Fluid naming conventions for field names.
+// with Tiri naming conventions for field names.
 
 [[nodiscard]] constexpr inline uint32_t fieldhash(const std::string_view String) noexcept
 {

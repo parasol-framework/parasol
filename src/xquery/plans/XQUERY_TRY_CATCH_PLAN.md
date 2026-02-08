@@ -21,7 +21,7 @@
 ### Phase 1 – Specification review and gap audit
 1. **Document current error behaviour**
    - Survey `XPathEvaluator::evaluate_expression()` and related helpers to understand how dynamic errors are emitted (return codes, `XPathValue` flags, `XQueryContext::error_state`).
-   - Verify how errors are surfaced to Fluid callers so the try/catch implementation can reuse the same plumbing when a catch clause rethrows or returns alternate values.
+   - Verify how errors are surfaced to Tiri callers so the try/catch implementation can reuse the same plumbing when a catch clause rethrows or returns alternate values.
 
 2. **Extract requirements from W3C spec**
    - Summarise try/catch syntax, binding of `$err:code` / `$err:description` / `$err:value` / `$err:module`, wildcard catches, and the optional `catch *:code` patterns.
@@ -102,7 +102,7 @@
     - Verify that `try`/`catch` keywords remain usable as NCNames when not followed by braces (per spec requirements).
 
 17. **Evaluator tests**
-    - Create Fluid tests (e.g., `src/xquery/tests/test_try_catch.fluid`) that:
+    - Create Tiri tests (e.g., `src/xquery/tests/test_try_catch.tiri`) that:
       - Force dynamic errors (`fn:error()`, division by zero, missing function) and demonstrate handler recovery.
       - Confirm clause ordering (first matching clause wins).
       - Validate variable bindings by inspecting returned sequences.
@@ -120,5 +120,5 @@
 21. **Future enhancements**
     - Track follow-up work for:
       - Integration with higher-order functions if `catch` blocks need to accept inline functions.
-      - Serialisation of error objects for Fluid callers.
+      - Serialisation of error objects for Tiri callers.
       - Performance optimisation (e.g., caching resolved catch clause QNames).

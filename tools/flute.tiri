@@ -1,6 +1,6 @@
 -- $FLUID
 --
--- Flute (FLUid TEst) provides a standard framework for the execution of unit tests in Fluid.
+-- Flute (FLUid TEst) provides a standard framework for the execution of unit tests in Tiri.
 --
 -- TODO: Support for JSON output of test results.
 --       Support for parameterized tests from the command line.
@@ -8,7 +8,7 @@
 --       Support for test timeouts (mark as a fail after N seconds is exceeded).
 
 glHelp = [[
-Flute provides a standard framework for the execution of unit tests in Fluid.
+Flute provides a standard framework for the execution of unit tests in Tiri.
 
 Example usage:
 

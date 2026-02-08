@@ -9,7 +9,7 @@ can be overridden via the command-line, or you can refer to a different file via
 
 Parameters:
 
-  config    - Refers to a Fluid config file with the options assigned to a glOptions table.
+  config    - Refers to a Tiri config file with the options assigned to a glOptions table.
   folder    - The folder containing HTML pages and static files to serve
   port      - The port number to listen on (default: 8080)
   bind      - Bind to specific IP address (default: all interfaces, e.g., '127.0.0.1' for localhost only)

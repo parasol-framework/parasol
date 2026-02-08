@@ -47,7 +47,7 @@ enum class CLASSID : uint32_t {
    SCINTILLA = 0x3f218968UL,
    DATABASE = 0x05e491daUL,
    RECORDSET = 0xd779ac50UL,
-   FLUID = 0x0f71fc19UL,
+   TIRI = 0x0f71fc19UL,
    THREAD = 0x1e0f9fddUL,
    PROXY = 0x102a23e7UL,
    USBDEVICE = 0xb9041d5fUL,

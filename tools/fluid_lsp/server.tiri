@@ -1,17 +1,17 @@
--- Fluid Language Server Protocol (LSP) Server
+-- Tiri Language Server Protocol (LSP) Server
 --
--- A TCP-based LSP server for IDE integration with Fluid scripts.
+-- A TCP-based LSP server for IDE integration with Tiri scripts.
 --
 -- Usage: parasol lsp_server.fluid port=5007 [options...]
 --
 -- See --help for full usage information.
 
 glHelp = [[
-Fluid Language Server Protocol (LSP) server for IDE integration.
+Tiri Language Server Protocol (LSP) server for IDE integration.
 
 This server implements the Language Server Protocol over TCP, allowing IDEs
 and editors to provide features like autocompletion, hover information, and
-diagnostics for Fluid scripts.
+diagnostics for Tiri scripts.
 
 Usage: parasol lsp_server.fluid [options...]
 

@@ -10,7 +10,7 @@ MetaClass: The MetaClass is used to manage all classes supported by the system c
 
 The MetaClass is responsible for managing the construction of new classes.  Each MetaClass object remains active for
 the lifetime of the running program, and provides the benefit of run-time introspection so that detailed class
-information can be retrieved at any time.  This enables scripting languages such as Fluid to interact with all
+information can be retrieved at any time.  This enables scripting languages such as Tiri to interact with all
 class types without needing active knowledge of their capabilities.
 
 A number of additional functions are available in the Core for the purpose of class management and introspection.
@@ -926,7 +926,7 @@ static void field_setup(extMetaClass *Class)
          .Flags      = FDF_INT|FDF_R|FDF_SYSTEM
       });
 
-      // Add the Class field.  This is provided primarily to help scripting languages like Fluid.
+      // Add the Class field.  This is provided primarily to help scripting languages like Tiri.
 
       Class->FieldLookup.push_back({
          .Arg        = 0,

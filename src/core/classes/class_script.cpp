@@ -8,7 +8,7 @@ that is distributed with this package.  Please refer to it for further informati
 -CLASS-
 Script: The Script class defines a common interface for script execution.
 
-The Script class defines a common interface for the purpose of executing scripts, such as Fluid.  The base class does
+The Script class defines a common interface for the purpose of executing scripts, such as Tiri.  The base class does
 not include a default parser or execution process of any kind.
 
 To execute a script file, choose a sub-class that matches the language and create the script object.  Set the #Path
@@ -161,7 +161,7 @@ static ERR SCRIPT_DebugLog(objScript *Self, struct sc::DebugLog *Args)
 DerefProcedure: Dereferences an acquired procedure.
 
 This method will release a procedure reference that has been acquired through #GetProcedureID().  It is only necessary
-to make this call if the scripting language is managing function references as a keyed resource.  Fluid is one such
+to make this call if the scripting language is managing function references as a keyed resource.  Tiri is one such
 language.  Languages that do not manage functions as a resource will ignore calls to this method.
 
 Note that acquiring a procedure reference and then failing to release it can result in the reference remaining in

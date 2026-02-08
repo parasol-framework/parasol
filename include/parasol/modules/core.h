@@ -1057,7 +1057,7 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 enum class MSGID : int {
    NIL = 0,
    WAIT_FOR_OBJECTS = 91,
-   FLUID_THREAD_CALLBACK = 92,
+   TIRI_THREAD_CALLBACK = 92,
    THREAD_ACTION = 93,
    THREAD_CALLBACK = 94,
    VALIDATE_PROCESS = 95,
@@ -1667,7 +1667,7 @@ using ModExpunge = ERR (*)(void);
 using ModTest    = void (*)(CSTRING, int *, int *);
 struct ModHeader {
    MHF     Flags;                                 // Special flags, type of function table wanted from the Core
-   CSTRING Definitions;                           // Module definition string, usable by run-time languages such as Fluid
+   CSTRING Definitions;                           // Module definition string, usable by run-time languages such as Tiri
    ERR (*Init)(OBJECTPTR, struct CoreBase *);     // A one-off initialisation routine for when the module is first opened.
    void (*Close)(OBJECTPTR);                      // A function that will be called each time the module is closed.
    ERR (*Open)(OBJECTPTR);                        // A function that will be called each time the module is opened.
@@ -2317,7 +2317,7 @@ inline auto read_hash = [](const obj_read &a, const obj_read &b) { return a.Hash
 
 typedef std::vector<obj_read> READ_TABLE;
 
-// Object field write handler structure for Fluid code
+// Object field write handler structure for Tiri code
 
 struct obj_write {
    typedef ERR JUMP(struct lua_State *, OBJECTPTR, struct Field *, int);
@@ -2377,7 +2377,7 @@ class objMetaClass : public Object {
    CCF     Category;                    // The system category that a class belongs to.
 
 #ifdef PRV_METACLASS
-    // Field table cache for Fluid - eliminates per-instance hash tables.
+    // Field table cache for Tiri - eliminates per-instance hash tables.
     READ_TABLE  ReadTable;
     WRITE_TABLE WriteTable;
 #endif

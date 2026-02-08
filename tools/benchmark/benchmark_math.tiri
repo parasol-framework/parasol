@@ -54,7 +54,7 @@ end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Bitwise Operations: and, or, xor, not, left shift, right shift (Fluid C-style operators)
+-- Bitwise Operations: and, or, xor, not, left shift, right shift (Tiri C-style operators)
 
 @Test function MathBitwiseOperations()
    local a, b, c, d = 0xFF, 0xAA, 0x55, 0x0F
@@ -181,7 +181,7 @@ end
       local y = i * 1.2
       local z = i * 0.9
 
-      -- Equality comparisons (using 'is' per Fluid convention)
+      -- Equality comparisons (using 'is' per Tiri convention)
       result = (i % 10) is 0
       result = x is y
       result = (i & 0xFF) is 0

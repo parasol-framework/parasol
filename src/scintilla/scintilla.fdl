@@ -1,4 +1,4 @@
---$FLUID:Include
+--$TIRI:Include
 
 module({ name="Scintilla", copyright="Paul Manias © 2005-2026", version=1.0, timestamp=20240611 }, function()
   c_include("<parasol/modules/display.h>",
@@ -20,7 +20,7 @@ module({ name="Scintilla", copyright="Paul Manias © 2005-2026", version=1.0, ti
     ERRORLIST  = "10: ErrorList",
     MAKEFILE   = "11: Makefile",
     BATCH      = "12: Batch",
-    FLUID      = "15: Fluid",
+    TIRI      = "15: Tiri",
     DIFF       = "16: Diff",
     PASCAL     = "18: Pascal",
     RUBY       = "22: Ruby",

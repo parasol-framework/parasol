@@ -1,6 +1,6 @@
-# Fluid LSP
+# Tiri LSP
 
-A Language Server Protocol (LSP) implementation for Fluid scripting, providing IDE integration features for the Parasol Framework.
+A Language Server Protocol (LSP) implementation for Tiri scripting, providing IDE integration features for the Parasol Framework.
 
 ## Table of Contents
 
@@ -30,7 +30,7 @@ A Language Server Protocol (LSP) implementation for Fluid scripting, providing I
 
 ## Overview
 
-The Fluid LSP server provides language intelligence for Fluid files in any LSP-compatible editor. It communicates over TCP and offers real-time feedback as you write Fluid code.
+The Tiri LSP server provides language intelligence for Tiri files in any LSP-compatible editor. It communicates over TCP and offers real-time feedback as you write Tiri code.
 
 ## Features
 
@@ -52,7 +52,7 @@ Full semantic token support for accurate syntax highlighting:
 ### Hover Information
 
 Context-aware documentation on hover:
-- Fluid keywords with descriptions
+- Tiri keywords with descriptions
 - Built-in functions with prototypes
 - Parasol API classes, methods, fields, and actions
 - Module functions (e.g., `mSys.Sleep`, `mNet.AddressToStr`)
@@ -92,7 +92,7 @@ Parser-generated tips for code improvement (LSP severity 4), including:
 ### Starting the Server
 
 ```bash
-parasol tools/fluid_lsp/server.fluid port=5007
+parasol tools/tiri_lsp/server.tiri port=5007
 ```
 
 ### Configuration Options
@@ -101,12 +101,12 @@ parasol tools/fluid_lsp/server.fluid port=5007
 |---------------|------------------------------------|------------------------------------- |
 | `port`        | 5007                               | TCP port to listen on                |
 | `verbose`     | false                              | Enable debug logging                 |
-| `config`      | `user:config/lsp_server_cfg.fluid` | Path to configuration file           |
+| `config`      | `user:config/lsp_server_cfg.tiri` | Path to configuration file           |
 | `request-log` | (none)                             | Path for request/response logging    |
 
 Example with options:
 ```bash
-parasol server.fluid port=5007 verbose=true request-log=debug.log
+parasol server.tiri port=5007 verbose=true request-log=debug.log
 ```
 
 ## VSCode Extension
@@ -116,11 +116,11 @@ parasol server.fluid port=5007 verbose=true request-log=debug.log
 1. Open VSCode
 2. Go to Extensions (Ctrl+Shift+X)
 3. Click "..." menu → "Install from VSIX..."
-4. Select `tools/fluid_lsp/vscode_plugin/fluid-language-0.1.0.vsix`
+4. Select `tools/tiri_lsp/vscode_plugin/tiri-language-0.1.0.vsix`
 
 Or build from source:
 ```bash
-cd tools/fluid_lsp/vscode_plugin
+cd tools/tiri_lsp/vscode_plugin
 npm install
 npx vsce package
 ```
@@ -131,19 +131,19 @@ Configure in VSCode settings:
 
 |Setting|Default|Description|
 |-|-|-|
-|`fluid.lsp.enable`|true|Enable LSP server connection|
-|`fluid.lsp.host`|"127.0.0.1"|LSP server host address|
-|`fluid.lsp.port`|5007|LSP server TCP port|
+|`tiri.lsp.enable`|true|Enable LSP server connection|
+|`tiri.lsp.host`|"127.0.0.1"|LSP server host address|
+|`tiri.lsp.port`|5007|LSP server TCP port|
 
 ## Architecture
 
 ### File Structure
 
 ```
-tools/fluid_lsp/
-├── server.fluid      # Main server entry point
-├── lsp_lib.fluid         # Core LSP implementation
-├── lsp_defs.fluid        # Keyword/builtin definitions
+tools/tiri_lsp/
+├── server.tiri      # Main server entry point
+├── lsp_lib.tiri         # Core LSP implementation
+├── lsp_defs.tiri        # Keyword/builtin definitions
 ├── README.md             # This file
 └── vscode_plugin/        # VSCode extension
     ├── extension.js      # Extension entry point
@@ -163,7 +163,7 @@ tools/fluid_lsp/
 
 ### Documentation Cache
 
-API documentation is parsed from `docs/xml/` and cached at `user:config/lsp_doc_cache.fluid` for faster startup.
+API documentation is parsed from `docs/xml/` and cached at `user:config/lsp_doc_cache.tiri` for faster startup.
 The cache is automatically rebuilt when source XML files change.
 
 ## Supported LSP Methods
@@ -209,7 +209,7 @@ Test with netcat or telnet:
 
 ```bash
 # Start server
-parasol server.fluid port=5007
+parasol server.tiri port=5007
 
 # In another terminal
 nc localhost 5007
@@ -229,11 +229,11 @@ Content-Length: 110
 
 **No diagnostics appearing**
 - Check that the LSP client is connected (look for server logs)
-- Verify `fluid.lsp.enable` is true in VSCode settings
+- Verify `tiri.lsp.enable` is true in VSCode settings
 - Ensure the server and client are using the same port
 
 **Documentation not showing on hover**
-- The doc cache may need rebuilding; delete `user:config/lsp_doc_cache.fluid`
+- The doc cache may need rebuilding; delete `user:config/lsp_doc_cache.tiri`
 - Ensure `docs/xml/` contains the API documentation files
 
 **Verbose debugging**

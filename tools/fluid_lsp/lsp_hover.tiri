@@ -258,7 +258,7 @@ global function resolveHoverContent(TokenInfo, Doc)
                   if classDoc.fields[token] then
                      return formatFieldHover(className, token, classDoc.fields[token])
                   end
-                  -- Try capitalized (Fluid uses lowercase, XML uses TitleCase)
+                  -- Try capitalized (Tiri uses lowercase, XML uses TitleCase)
                   capitalizedToken = token:sub(1,1):upper() .. token:sub(2)
                   if classDoc.fields[capitalizedToken] then
                      return formatFieldHover(className, capitalizedToken, classDoc.fields[capitalizedToken])

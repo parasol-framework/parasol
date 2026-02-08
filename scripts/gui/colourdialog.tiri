@@ -610,7 +610,7 @@ gui.dialog.colour = function(Options)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- This sub-routine is provided for languages other than Fluid to use the interface.
+-- This sub-routine is provided for languages other than Tiri to use the interface.
 
 @if(imported=false)
    dlg = colour.dialog({

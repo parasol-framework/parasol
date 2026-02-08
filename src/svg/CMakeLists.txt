@@ -35,4 +35,4 @@ target_link_libraries (${MOD} PUBLIC base64)
 
 target_link_libraries (${MOD} PRIVATE ${MATH_LINK})
 
-flute_test (svg_output "tests/test-svg.fluid")
+flute_test (svg_output "tests/test-svg.tiri")

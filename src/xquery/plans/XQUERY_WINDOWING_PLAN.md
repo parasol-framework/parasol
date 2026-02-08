@@ -12,7 +12,7 @@
   - Parser: `src/xquery/parse/xquery_parser.cpp`
   - AST definitions: `src/xquery/xquery.h`
   - Evaluator: `src/xquery/eval/eval_expression.cpp`, `eval_flwor.cpp`, `eval_iterators.cpp`
-  - Tests: `src/xquery/tests/test_flwor.fluid` (and related files)
+  - Tests: `src/xquery/tests/test_flwor.tiri` (and related files)
 - Follow repository guidelines in `AGENTS.md` (British English, tab width, no `static_cast`, etc.).
 
 ## Step-by-step Implementation Plan
@@ -91,7 +91,7 @@
 
 ### Phase 5 – Testing
 13. **Unit tests**
-    - Extend `src/xquery/tests/test_flwor.fluid` (or create `test_windowing.fluid`) with coverage for:
+    - Extend `src/xquery/tests/test_flwor.tiri` (or create `test_windowing.tiri`) with coverage for:
       - Basic tumbling windows with `start`/`end` and `allowing empty` variations.
       - Sliding windows with overlapping boundaries.
       - `start only`, `end only`, and `start ... end` combos using `previous`/`next` variables.

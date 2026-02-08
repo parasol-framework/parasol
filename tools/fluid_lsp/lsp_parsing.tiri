@@ -22,10 +22,10 @@ rx_all_upper    = <{ regex.new([[^[A-Z_]+$]]) }>
 ----------------------------------------------------------------------------------------------------------------------
 -- Semantic Token Encoder
 
--- Tokenize a Fluid source file and return semantic tokens
+-- Tokenize a Tiri source file and return semantic tokens
 -- Returns array of tokens: { line, startChar, length, tokenType, tokenModifiers }
 
-global function tokenizeFluid(Source:str):array
+global function tokenizeTiri(Source:str):array
    tokens = array<table>
    line = 0
    col = 0
@@ -515,7 +515,7 @@ global function tokenizeFluid(Source:str):array
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Extract folding ranges from Fluid source
+-- Extract folding ranges from Tiri source
 -- Returns array of FoldingRange objects for code folding
 
 global function extractFoldingRanges(Doc:table):array

@@ -2,7 +2,7 @@
 Various HTTP examples that demonstrate how to GET, POST, etc.
 
 Note: Network communications take place in the background once started.  In order to ensure that an HTTP operation
-fully completes, it is crucial that the HTTP object remains in memory for the entire procedure.  In Fluid we can do
+fully completes, it is crucial that the HTTP object remains in memory for the entire procedure.  In Tiri we can do
 this by maintaining at least one reference to the object at all times and this will prevent it from being garbage
 collected too early.
 --]]

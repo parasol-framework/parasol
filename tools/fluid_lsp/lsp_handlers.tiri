@@ -110,7 +110,7 @@ function findMatchingEnd(Doc:table, StartLine:num):num
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Extract document symbols (functions, globals) from Fluid source
+-- Extract document symbols (functions, globals) from Tiri source
 -- Returns array of DocumentSymbol objects for the outline view
 
 function extractDocumentSymbols(Doc:table):array
@@ -241,7 +241,7 @@ global function registerCoreHandlers(Self)
                hoverProvider = true
             },
             serverInfo = {
-               name = 'Fluid LSP Server',
+               name = 'Tiri LSP Server',
                version = '0.1.0'
             }
          }
@@ -381,7 +381,7 @@ global function registerCoreHandlers(Self)
 
       logVerbose(Self, 'Computing semantic tokens for: ' .. uri)
 
-      tokens = tokenizeFluid(doc.content)
+      tokens = tokenizeTiri(doc.content)
       encoded = encodeSemanticTokens(tokens)
 
       -- Generate resultId and cache for delta requests
@@ -426,7 +426,7 @@ global function registerCoreHandlers(Self)
          -- Can't compute delta, return full tokens
          logWarning(Self, 'Cannot compute delta (no cache or resultId mismatch), returning full tokens')
 
-         tokens = tokenizeFluid(doc.content)
+         tokens = tokenizeTiri(doc.content)
          encoded = encodeSemanticTokens(tokens)
 
          result_id = tostring(glNextResultId)
@@ -450,7 +450,7 @@ global function registerCoreHandlers(Self)
       logVerbose(Self, 'Computing semantic tokens delta for: ' .. uri)
 
       -- Compute new tokens
-      tokens = tokenizeFluid(doc.content)
+      tokens = tokenizeTiri(doc.content)
       new_encoded = encodeSemanticTokens(tokens)
 
       -- Compute delta between old and new

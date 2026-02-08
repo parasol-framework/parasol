@@ -149,7 +149,7 @@ flags("MEM", { comment="Memory types used by AllocMemory().  The lower 16 bits a
     { CALLER        = "0x00800000: This flag is usable only in routines that are supporting a class method.  It forces the memory allocation to be tracked to the object that made the method call.  This is particularly important in methods that return memory blocks that do not form a part of the object itself." },
     { READ_WRITE    = "READ|WRITE" })
 
-enum("EVG", { type="int", start=1, comment="Event categories.", module="Core" }, -- 5 bit limit (max 32 entries).  These constants are also managed in core.fluid and fluid_functions.c, line 493
+enum("EVG", { type="int", start=1, comment="Event categories.", module="Core" }, -- 5 bit limit (max 32 entries).  These constants are also managed in core.tiri and tiri_functions.c, line 493
     "FILESYSTEM: File system events.",
     "NETWORK: Network events.",
     "SYSTEM: System-wide events",
@@ -256,7 +256,7 @@ flags("FD", { weak=true, comment="Field descriptors.", module="Core" },
   { SYSTEM     = "0x00010000: CLASSDEF System, internal and private fields." },
   { CUSTOM     =  0x00008000 },
   { CPP        = "0x00004000: Use the C++ variant of the indicated type, e.g. `ARRAY` is a `std::vector`." },
-  { RESOURCE   = "0x00002000: The referenced struct or pointer is a special resource.  Changes some behaviours, e.g. a resourced struct will use direct value references rather than being copied in Fluid." },
+  { RESOURCE   = "0x00002000: The referenced struct or pointer is a special resource.  Changes some behaviours, e.g. a resourced struct will use direct value references rather than being copied in Tiri." },
   { ARRAY      = "0x00001000: Indicates an array of values.  Follow with `ARRAYSIZE` if used in a function." },
   { INIT       = "0x00000400: CLASSDEF" },
   { WRITE      = "0x00000200: CLASSDEF" },

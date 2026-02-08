@@ -1,7 +1,7 @@
 {
-   "name": "fluid-language",
-   "displayName": "Fluid Language Support",
-   "description": "Language support for Fluid scripting (Parasol Framework)",
+   "name": "tiri-language",
+   "displayName": "Tiri Language Support",
+   "description": "Language support for Tiri scripting (Parasol Framework)",
    "version": "0.1.0",
    "publisher": "parasol",
    "engines": {
@@ -11,40 +11,40 @@
       "Programming Languages"
    ],
    "activationEvents": [
-      "workspaceContains:**/*.fluid"
+      "workspaceContains:**/*.tiri"
    ],
    "main": "./extension.js",
    "contributes": {
       "languages": [
          {
-            "id": "fluid",
-            "aliases": ["Fluid", "fluid"],
-            "extensions": [".fluid"],
+            "id": "tiri",
+            "aliases": ["Tiri", "tiri"],
+            "extensions": [".tiri"],
             "configuration": "./language-configuration.json"
          }
       ],
       "grammars": [
          {
-            "language": "fluid",
-            "scopeName": "source.fluid",
-            "path": "./syntaxes/fluid.tmLanguage.json"
+            "language": "tiri",
+            "scopeName": "source.tiri",
+            "path": "./syntaxes/tiri.tmLanguage.json"
          }
       ],
       "configuration": {
          "type": "object",
-         "title": "Fluid",
+         "title": "Tiri",
          "properties": {
-            "fluid.lsp.enable": {
+            "tiri.lsp.enable": {
                "type": "boolean",
                "default": true,
-               "description": "Enable Fluid LSP server connection"
+               "description": "Enable Tiri LSP server connection"
             },
-            "fluid.lsp.host": {
+            "tiri.lsp.host": {
                "type": "string",
                "default": "127.0.0.1",
                "description": "LSP server host address"
             },
-            "fluid.lsp.port": {
+            "tiri.lsp.port": {
                "type": "number",
                "default": 5007,
                "description": "LSP server TCP port"
@@ -53,26 +53,26 @@
       },
       "semanticTokenScopes": [
          {
-            "language": "fluid",
+            "language": "tiri",
             "scopes": {
-               "keyword": ["keyword.control.fluid"],
-               "operator": ["keyword.operator.fluid"],
-               "variable": ["variable.other.fluid"],
-               "function": ["entity.name.function.fluid"],
-               "string": ["string.quoted.fluid"],
-               "number": ["constant.numeric.fluid"],
-               "comment": ["comment.fluid"],
-               "type": ["entity.name.type.fluid"],
-               "parameter": ["variable.parameter.fluid"],
-               "property": ["variable.other.property.fluid"],
-               "namespace": ["entity.name.namespace.fluid"],
-               "class": ["entity.name.class.fluid"],
-               "macro": ["constant.other.fluid"]
+               "keyword": ["keyword.control.tiri"],
+               "operator": ["keyword.operator.tiri"],
+               "variable": ["variable.other.tiri"],
+               "function": ["entity.name.function.tiri"],
+               "string": ["string.quoted.tiri"],
+               "number": ["constant.numeric.tiri"],
+               "comment": ["comment.tiri"],
+               "type": ["entity.name.type.tiri"],
+               "parameter": ["variable.parameter.tiri"],
+               "property": ["variable.other.property.tiri"],
+               "namespace": ["entity.name.namespace.tiri"],
+               "class": ["entity.name.class.tiri"],
+               "macro": ["constant.other.tiri"]
             }
          }
       ],
       "configurationDefaults": {
-         "[fluid]": {
+         "[tiri]": {
             "editor.semanticHighlighting.enabled": true
          }
       }

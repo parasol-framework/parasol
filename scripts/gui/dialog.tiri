@@ -301,7 +301,7 @@ gui.dialog.error = function(Title:str, Message:str, Options:table)
    return gui.dialog.message(Options)
 end
 
-   -- This sub-routine is provided for languages other than Fluid to utilise the module.
+   -- This sub-routine is provided for languages other than Tiri to utilise the module.
 
 @if(imported=false)
    dlg = gui.dialog.message({

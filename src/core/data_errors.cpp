@@ -196,7 +196,7 @@ const CSTRING glMessages[int(ERR::END)+1] = {
  "A sanity check has failed.",
  "Client is not authorised to perform this operation.",
  "The specified property is not recognised.",
- nullptr // Needs to be null-terminated for Fluid support
+ nullptr // Needs to be null-terminated for Tiri support
 };
 
 const int glTotalMessages = std::ssize(glMessages);

@@ -21,7 +21,7 @@ Parasol uses CMake for building. It can be built as either modular (shared libra
 - **ALWAYS** install your latest build before running `ctest`.
 - Run all integration tests: `ctest --build-config [BuildType] --test-dir build/agents --output-on-failure`
 - Run single integration test: `ctest --build-config [BuildType] --test-dir build/agents --output-on-failure -L TEST_LABEL`
-- **ALWAYS** write Fluid tests using Flute unless instructed otherwise (see Flute Testing section below)
+- **ALWAYS** write Tiri tests using Flute unless instructed otherwise (see Flute Testing section below)
 - When running the Parasol executable for individual tests, **ALWAYS** append `--log-warning` at a minimum for log messages, or `--log-api` if more detail is required.  Log output is directed to stderr.
 - Statements can be tested on the commandline with `--statement`, e.g. `parasol --statement "print('Hello')"`
 - If modifying files in the `scripts` folder, **ALWAYS** append `--set-volume scripts=/absolute/path/to/parasol/scripts` to ensure your modified files are being loaded over the installed versions.
@@ -46,7 +46,7 @@ When working in ephemeral cloud environments:
 - Prefer the pre-created build tree at `build/agents` and install tree at `build/agents-install` to avoid the expense of repeated configuration.  If the directory exists you can immediately run `cmake --build build/agents --config [BuildType] --parallel`.
 - If no `build/agents` folder exists, prefer to use the Debug configuration `-DCMAKE_BUILD_TYPE=Debug` for fast compiling speed.
 - If you must reconfigure, clean only the affected cache entries with `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=[BuildType] ...` rather than deleting the entire build tree.
-- If `parasol` is not already installed at `build/agents-install` then performing the build and install process is essential if intending to run `parasol` for Fluid scripts and Flute tests.
+- If `parasol` is not already installed at `build/agents-install` then performing the build and install process is essential if intending to run `parasol` for Tiri scripts and Flute tests.
 - If configuring a build, disabling unnecessary modules like Audio and Graphics features (if they are not relevant) will speed up compilation.  If *certain* that the environment is cloud-based, you can consider including the following with your CMake build configuration: `-DDISABLE_AUDIO=ON -DDISABLE_X11=ON -DDISABLE_DISPLAY=ON -DDISABLE_FONT=ON`
 
 ## Architecture Overview
@@ -59,7 +59,7 @@ When working in ephemeral cloud environments:
 2. **Vector Graphics Engine** (`src/vector/`) - Main graphics rendering system with scene graphs, filters, and painters
 3. **SVG Support** (`src/svg/`) - W3C-compliant SVG parsing and rendering with SMIL animation
 4. **Display Management** (`src/display/`) - Cross-platform window management, surfaces, and input handling
-5. **Fluid Scripting** (`src/fluid/`) - An extensively modified Lua-based scripting environment built on LuaJIT
+5. **Tiri Scripting** (`src/tiri/`) - An extensively modified Lua-based scripting environment built on LuaJIT
 6. **Document Engine** (`src/document/`) - RIPL text layout engine for rich document rendering
 
 ### Module System
@@ -80,20 +80,20 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension to 
 
 ### Scripting Integration
 
-**Fluid** is the integrated Lua-based scripting language:
+**Tiri** is the integrated Lua-based scripting language:
 - Unique engine built on LuaJIT 2.1 for performance and extensively modified for C++, utilising C++20 capabilities.
 - Provides high-level access to all framework APIs
 - GUI toolkit available through `scripts/gui/` modules (modular widget system)
-- All Fluid scripts use `.fluid` extension
+- All Tiri scripts use `.tiri` extension
 - Declarative UI creation with automatic scaling and layout management
 - Callback-driven architecture for event handling
-- The Fluid object interface is case sensitive.  Object fields are accessed as lower snake-case names, e.g. `netlookup.hostName`
-- Fluid scripts are executed with the `parasol` executable, which has a dependency on the project being built and installed.
-- Fluid scripts execute top-to-bottom with NO entry point function
-- Fluid APIs and reference manuals are available in multiple files at `docs/wiki/Fluid-*.md`.
+- The Tiri object interface is case sensitive.  Object fields are accessed as lower snake-case names, e.g. `netlookup.hostName`
+- Tiri scripts are executed with the `parasol` executable, which has a dependency on the project being built and installed.
+- Tiri scripts execute top-to-bottom with NO entry point function
+- Tiri APIs and reference manuals are available in multiple files at `docs/wiki/Tiri-*.md`.
 - General API framework documentation in `docs/xml/modules` and `docs/xml/modules/classes` can be utilised to understand class and module interfaces in detail.
 
-#### Fluid Features and Breaking Changes to Lua
+#### Tiri Features and Breaking Changes to Lua
 
 - `is` instead of `==`
 - `continue` statement in loops
@@ -112,26 +112,26 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension to 
 - Anonymous function expressions with `=>`: `(i => print(i))`
 - Support for ranges: `for i in {0..10} do`
 
-A complete breakdown of these features is located in `docs/wiki/Fluid-Reference-Manual.md`
+A complete breakdown of these features is located in `docs/wiki/Tiri-Reference-Manual.md`
 
-#### Fluid Coding Patterns
+#### Tiri Coding Patterns
 
 **Always study existing examples first:**
 ```bash
 # Key example files to examine:
-examples/*.fluid          # Application examples
-tools/docgen.fluid        # Process execution example
-tools/*.fluid             # Build and utility scripts
-scripts/gui/*.fluid       # GUI component examples
-scripts/*.fluid           # APIs
+examples/*.tiri          # Application examples
+tools/docgen.tiri        # Process execution example
+tools/*.tiri             # Build and utility scripts
+scripts/gui/*.tiri       # GUI component examples
+scripts/*.tiri           # APIs
 ```
 
 ## Key Development Patterns
 
 ### Flute Testing
 
-Tests are written in Fluid and executed with the Flute test runner:
-- Test files are typically named `test_*.fluid` in module directories.
+Tests are written in Tiri and executed with the Flute test runner:
+- Test files are typically named `test_*.tiri` in module directories.
 - Read at least 3 Flute test files to learn the patterns before writing your first test file.
 - Use `flute_test()` CMake function to register tests
 - Tests run post-install against the installed framework
@@ -143,7 +143,7 @@ Tests are written in Fluid and executed with the Flute test runner:
 Working example when working from the root folder (recommended):
 
 ```bash
-build/agents-install/parasol tools/flute.fluid file=src/network/tests/test_bind_address.fluid --log-warning
+build/agents-install/parasol tools/flute.tiri file=src/network/tests/test_bind_address.tiri --log-warning
 ```
 
 **Key Requirements for Flute Tests:**
@@ -152,8 +152,8 @@ build/agents-install/parasol tools/flute.fluid file=src/network/tests/test_bind_
 ### Code Generation
 
 The build system heavily uses code generation:
-- FDL files are processed by `tools/idl/idl-c.fluid` to generate C headers
-- `tools/idl/idl-compile.fluid` generates IDL definition strings
+- FDL files are processed by `tools/idl/idl-c.tiri` to generate C headers
+- `tools/idl/idl-compile.tiri` generates IDL definition strings
 - Generated files are created in build directories and copied to `include/`
 - Use `BUILD_DEFS=OFF` to skip generation if no Parasol executable is available
 
@@ -207,7 +207,7 @@ Before considering ANY C++ code changes complete, verify:
 - [ ] Code compiles successfully
 - [ ] Follows formatting standards below
 
-For Fluid code, verify:
+For Tiri code, verify:
 
 - [ ] All `~=` replaced with `!=`
 - [ ] All `==` replaced with `is`
@@ -215,9 +215,9 @@ For Fluid code, verify:
 
 ### Additional Code Style Standards
 
-- Always use upper camel-case for the names of function arguments in C++ and Fluid code.
-- Always use lower snake_case for the names of variables inside C++ and Fluid functions.
-- Use three spaces for tabulation in C++ and Fluid code.
+- Always use upper camel-case for the names of function arguments in C++ and Tiri code.
+- Always use lower snake_case for the names of variables inside C++ and Tiri functions.
+- Use three spaces for tabulation in C++ and Tiri code.
 - C++ functions that use global variables must be written with thread safety in mind.
 - New and refactored code must target modern C++20 conventions and functionality.
 - C++ global variable names are prefixed with `gl` and written in upper camel-case, e.g. `glSomeVariable`
@@ -265,9 +265,9 @@ cmake --build build/agents --config [BuildType] --target network --parallel    #
 
 - `src/` - All source code organized by module
 - `include/parasol/` - Public API headers (many auto-generated)
-- `scripts/` - Fluid standard library and GUI toolkit
+- `scripts/` - Tiri standard library and GUI toolkit
 - `tools/` - Build tools and utilities (IDL processors, test runner)
-- `examples/` - Example applications and demonstrations (examine git-tracked .fluid files for current examples)
+- `examples/` - Example applications and demonstrations (examine git-tracked .tiri files for current examples)
 - `data/` - Icons, fonts, styles, and configuration files
 - `docs/wiki/` - Markdown files for the GitHub Wiki, includes practical tutorials and guides on how to use Parasol.
 - `docs/html/` - Contains the entire Parasol website for offline viewing.
@@ -278,11 +278,11 @@ Lower snake-case is the preferred string format for new file names.
 
 ### Key Examples for Learning
 
-- **`examples/widgets.fluid`** - Primary showcase of Parasol's GUI capabilities, demonstrates standard widgets and UI patterns
-- **`examples/vue.fluid`** - File viewer supporting SVG, RIPL, JPEG, PNG - shows document and graphics integration
-- **`examples/gradients.fluid`** - Interactive gradient editor demonstrating real-time vector graphics manipulation
-- **`tools/http_server.fluid`** - HTTP server implementation with NetSocket usage patterns
-- **`tools/idl/idl-c.fluid`** - Extensive file I/O and general API usage
+- **`examples/widgets.tiri`** - Primary showcase of Parasol's GUI capabilities, demonstrates standard widgets and UI patterns
+- **`examples/vue.tiri`** - File viewer supporting SVG, RIPL, JPEG, PNG - shows document and graphics integration
+- **`examples/gradients.tiri`** - Interactive gradient editor demonstrating real-time vector graphics manipulation
+- **`tools/http_server.tiri`** - HTTP server implementation with NetSocket usage patterns
+- **`tools/idl/idl-c.tiri`** - Extensive file I/O and general API usage
 
 ## Agentic Behaviour
 

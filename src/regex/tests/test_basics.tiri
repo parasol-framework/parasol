@@ -1,4 +1,4 @@
--- Core construction and metadata behaviour for Fluid regex bindings
+-- Core construction and metadata behaviour for Tiri regex bindings
 
 @Test function ConstructionMetadata()
    matcher = regex.new("abc")

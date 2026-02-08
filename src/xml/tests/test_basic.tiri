@@ -9,7 +9,7 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Check that the Tags array works as expected when used in Fluid
+-- Check that the Tags array works as expected when used in Tiri
 
 @Test function TagsArray()
    tags = glXML.tags

@@ -403,7 +403,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
    return self
 end
 
-   -- This sub-routine is provided for languages other than Fluid to utilise the module.
+   -- This sub-routine is provided for languages other than Tiri to utilise the module.
 
 @if(imported=false)
    dlg = font.dialog({

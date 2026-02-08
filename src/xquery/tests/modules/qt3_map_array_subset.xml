@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <test-set name="qt3-map-array-subset">
-   <description>Subset of QT3 map/array/lookup tests exercised by the Fluid harness.</description>
+   <description>Subset of QT3 map/array/lookup tests exercised by the Tiri harness.</description>
    <test-case name="map-constructor-001">
       <test>string(map { "alpha": "beta" }?alpha)</test>
       <result>

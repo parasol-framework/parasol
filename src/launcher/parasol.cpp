@@ -41,7 +41,7 @@ static ERR exec_source(std::string, int, const std::string);
 static const std::string glHelp =
    "Parasol Framework " PARASOL_VERSION R"(
 
-This command-line program can execute Fluid scripts and PARC files developed for the Parasol framework.
+This command-line program can execute Tiri scripts and PARC files developed for the Parasol framework.
 
    parasol [options] [script.ext] arg1 arg2=value ...
 
@@ -63,7 +63,7 @@ The following options can be used when executing script files:
 static std::string glDialogScript =
 R"(STRING:import 'gui/filedialog'
 gui.dialog.file({
- filterList = { { name='Script Files', ext='.fluid' } },
+ filterList = { { name='Script Files', ext='.tiri' } },
  title      = 'Run a Script',
  okText     = 'Run Script',
  cancelText = 'Exit',
@@ -136,7 +136,7 @@ static ERR process_args(void)
             }
          }
          else if (pf::iequals(args[i], "--jit-options")) {
-            // Handled by the Fluid module, we just need to skip the next argument.
+            // Handled by the Tiri module, we just need to skip the next argument.
             if (i + 1 < args.size()) i++;
          }
          else if (pf::startswith("--", args[i])) {
@@ -210,7 +210,7 @@ extern "C" int main(int argc, char **argv)
          else result = int(exec_source(glTargetFile.c_str(), glTime, glProcedure));
       }
       else {
-         // Check for the presence of package.zip or main.fluid files in the working directory
+         // Check for the presence of package.zip or main.tiri files in the working directory
 
          auto path = glTask->get<CSTRING>(FID_ProcessPath);
          if ((not path) or (not path[0])) path = ".";
@@ -224,17 +224,17 @@ extern "C" int main(int argc, char **argv)
          LOC type;
          static objCompression *glPackageArchive;
          if ((AnalysePath(pkg_path.c_str(), &type) IS ERR::Okay) and (type IS LOC::FILE)) {
-            // Create a "package:" volume and attempt to run "package:main.fluid"
+            // Create a "package:" volume and attempt to run "package:main.tiri"
             if ((glPackageArchive = objCompression::create::local(fl::Path(pkg_path), fl::ArchiveName("package"), fl::Flags(CMF::READ_ONLY)))) {
                if (SetVolume("package", "archive:package/", "filetypes/archive", nullptr, nullptr, VOLUME::REPLACE|VOLUME::HIDDEN) != ERR::Okay) return -1;
 
-               result = (int)exec_source("package:main.fluid", glTime, glProcedure);
+               result = (int)exec_source("package:main.tiri", glTime, glProcedure);
             }
             else return -1;
          }
-         else { // Check for main.fluid
-            if ((AnalysePath("main.fluid", &type) IS ERR::Okay) and (type IS LOC::FILE)) {
-               result = (int)exec_source("main.fluid", glTime, glProcedure);
+         else { // Check for main.tiri
+            if ((AnalysePath("main.tiri", &type) IS ERR::Okay) and (type IS LOC::FILE)) {
+               result = (int)exec_source("main.tiri", glTime, glProcedure);
             }
             else printf("%s", glHelp.c_str());
          }

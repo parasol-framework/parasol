@@ -140,7 +140,7 @@ static const struct {
    { "*.css",         SCLEX::CSS },
    { "*.diff",        SCLEX::DIFF },
    { "*.errorlist",   SCLEX::ERRORLIST },
-   { "*.lua|*.fluid", SCLEX::FLUID },
+   { "*.lua|*.tiri", SCLEX::TIRI },
    { "*.dmd",         SCLEX::HTML },
    { "*.html",        SCLEX::HTML },
    { "makefile|*.make", SCLEX::MAKEFILE },
@@ -2163,7 +2163,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERR Error)
 
    OBJECTPTR dialog;
    if (NewObject(CLASSID::SCRIPT, &dialog) IS ERR::Okay) {
-      dialog->setFields(fl::Name("scDialog"), fl::Owner(CurrentTaskID()), fl::Path("system:scripts/gui/dialog.fluid"));
+      dialog->setFields(fl::Name("scDialog"), fl::Owner(CurrentTaskID()), fl::Path("system:scripts/gui/dialog.tiri"));
 
       acSetKey(dialog, "modal", "1");
       acSetKey(dialog, "title", Title);

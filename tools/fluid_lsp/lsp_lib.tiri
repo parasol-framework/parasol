@@ -1,6 +1,6 @@
--- Fluid Language Server Protocol (LSP) Server Library
+-- Tiri Language Server Protocol (LSP) Server Library
 --
--- Provides a TCP-based LSP server for IDE integration with Fluid scripts.
+-- Provides a TCP-based LSP server for IDE integration with Tiri scripts.
 -- Implements the JSON-RPC 2.0 protocol with LSP wire format (Content-Length framing).
 --
 -- The server supports handler registration for extending LSP functionality:
@@ -100,7 +100,7 @@ global function markLineIndex(Doc:table, LineNo:num)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- LSP Symbol Kinds (subset used for Fluid)
+-- LSP Symbol Kinds (subset used for Tiri)
 
 global SYMBOL_KIND = {
    FILE = 1,
@@ -182,7 +182,7 @@ global TOKEN_MODIFIERS = array<string> {
    'defaultLibrary'  -- 7: built-in functions
 }
 
--- Fluid reserved keywords
+-- Tiri reserved keywords
 global FLUID_KEYWORDS = {
    -- Control flow
    ['if'] = true, ['then'] = true, ['else'] = true, ['elseif'] = true,
@@ -265,7 +265,7 @@ global FLUID_MODULES = {
    ['string'] = true, ['table'] = true, ['math'] = true, ['bit'] = true,
    ['io'] = true, ['debug'] = true,
 
-   -- Fluid script libraries
+   -- Tiri script libraries
    ['json'] = true, ['gui'] = true, ['file'] = true
 }
 
@@ -495,7 +495,7 @@ global function lspStart(Options)
 
    registerCoreHandlers(self)
 
-   logMessage(self, 'Starting Fluid LSP Server on port ' .. self.port)
+   logMessage(self, 'Starting Tiri LSP Server on port ' .. self.port)
 
    -- Create TCP server socket
    self._socket = obj.new('netsocket', {
@@ -513,7 +513,7 @@ global function lspStart(Options)
       end
    })
 
-   logMessage(self, 'Fluid LSP Server listening on port ' .. self.port)
+   logMessage(self, 'Tiri LSP Server listening on port ' .. self.port)
    if self.verbose then
       logMessage(self, 'Verbose logging enabled')
    end

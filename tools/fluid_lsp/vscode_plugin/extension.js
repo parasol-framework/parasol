@@ -1,5 +1,5 @@
-// Fluid Language Support for VS Code
-// Connects to the Fluid LSP server over TCP
+// Tiri Language Support for VS Code
+// Connects to the Tiri LSP server over TCP
 
 const vscode = require('vscode');
 const { LanguageClient } = require('vscode-languageclient/node');
@@ -9,10 +9,10 @@ let client;
 let outputChannel;
 
 function activate(context) {
-   outputChannel = vscode.window.createOutputChannel('Fluid LSP');
-   outputChannel.appendLine('Fluid extension activated');
+   outputChannel = vscode.window.createOutputChannel('Tiri LSP');
+   outputChannel.appendLine('Tiri extension activated');
 
-   const config = vscode.workspace.getConfiguration('fluid.lsp');
+   const config = vscode.workspace.getConfiguration('tiri.lsp');
    const enabled = config.get('enable', true);
 
    if (!enabled) {
@@ -41,8 +41,8 @@ function activate(context) {
          socket.on('error', (err) => {
             outputChannel.appendLine(`Connection error: ${err.message}`);
             vscode.window.showWarningMessage(
-               `Fluid LSP: Could not connect to server at ${host}:${port}. ` +
-               `Start the server with: parasol tools/lsp_server.fluid port=${port}`
+               `Tiri LSP: Could not connect to server at ${host}:${port}. ` +
+               `Start the server with: parasol tools/lsp_server.tiri port=${port}`
             );
             reject(err);
          });
@@ -52,18 +52,18 @@ function activate(context) {
    // Client options
    const clientOptions = {
       documentSelector: [
-         { scheme: 'file', language: 'fluid' }
+         { scheme: 'file', language: 'tiri' }
       ],
       outputChannel: outputChannel,
       synchronize: {
-         fileEvents: vscode.workspace.createFileSystemWatcher('**/*.fluid')
+         fileEvents: vscode.workspace.createFileSystemWatcher('**/*.tiri')
       }
    };
 
    // Create and start the language client
    client = new LanguageClient(
-      'fluid-lsp',
-      'Fluid Language Server',
+      'tiri-lsp',
+      'Tiri Language Server',
       serverOptions,
       clientOptions
    );
@@ -76,7 +76,7 @@ function activate(context) {
    });
 
    // Register command to restart LSP connection
-   const restartCommand = vscode.commands.registerCommand('fluid.restartLsp', async () => {
+   const restartCommand = vscode.commands.registerCommand('tiri.restartLsp', async () => {
       outputChannel.appendLine('Restarting LSP connection...');
       if (client) {
          await client.stop();
@@ -90,7 +90,7 @@ function activate(context) {
 
 function deactivate() {
    if (outputChannel) {
-      outputChannel.appendLine('Fluid extension deactivating');
+      outputChannel.appendLine('Tiri extension deactivating');
    }
    if (client) {
       return client.stop();

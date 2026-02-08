@@ -73,30 +73,30 @@ src/xquery/
 │   ├── func_sequences.cpp         # Sequence functions (distinct-values, etc.)
 │   └── func_strings.cpp           # String functions (concat, substring, etc.)
 └── tests/                     # Test infrastructure
-    ├── test_accessor.fluid            # Accessor function tests
-    ├── test_advanced.fluid            # Advanced XQuery queries
-    ├── test_advanced_paths.fluid      # Advanced path expression tests
-    ├── test_axes.fluid                # XQuery axes tests
-    ├── test_constructors.fluid        # Node constructor tests
-    ├── test_core.fluid                # Core XQuery functionality tests
-    ├── test_datetime.fluid            # Date/time function tests
-    ├── test_documents.fluid           # Document function tests
-    ├── test_duration.fluid            # Schema duration parsing and validation tests
-    ├── test_edge_cases.fluid          # Edge case and regression tests
-    ├── test_flwor.fluid               # FLWOR expression tests
-    ├── test_func_ext.fluid            # Extended function library tests
-    ├── test_module_loading.fluid      # XQuery module import/loading tests
-    ├── test_predicates.fluid          # Predicate evaluation tests
-    ├── test_prolog.fluid              # XQuery prolog tests
-    ├── test_qname.fluid               # QName operation tests
-    ├── test_qt_math.fluid             # W3C QT3 math function compliance tests
-    ├── test_reserved_words.fluid      # Reserved word handling tests
-    ├── test_sequence_cardinality.fluid # Sequence cardinality regression tests
-    ├── test_sequences.fluid           # Sequence operation tests
-    ├── test_string_uri.fluid          # String and URI function tests
-    ├── test_type_constructors.fluid   # Schema type constructor regression tests
-    ├── test_type_expr.fluid           # Type expression tests (cast, castable, etc.)
-    ├── test_unit_tests.fluid          # Runs the module's internal unit tests (requires ENABLE_UNIT_TESTS)
+    ├── test_accessor.tiri            # Accessor function tests
+    ├── test_advanced.tiri            # Advanced XQuery queries
+    ├── test_advanced_paths.tiri      # Advanced path expression tests
+    ├── test_axes.tiri                # XQuery axes tests
+    ├── test_constructors.tiri        # Node constructor tests
+    ├── test_core.tiri                # Core XQuery functionality tests
+    ├── test_datetime.tiri            # Date/time function tests
+    ├── test_documents.tiri           # Document function tests
+    ├── test_duration.tiri            # Schema duration parsing and validation tests
+    ├── test_edge_cases.tiri          # Edge case and regression tests
+    ├── test_flwor.tiri               # FLWOR expression tests
+    ├── test_func_ext.tiri            # Extended function library tests
+    ├── test_module_loading.tiri      # XQuery module import/loading tests
+    ├── test_predicates.tiri          # Predicate evaluation tests
+    ├── test_prolog.tiri              # XQuery prolog tests
+    ├── test_qname.tiri               # QName operation tests
+    ├── test_qt_math.tiri             # W3C QT3 math function compliance tests
+    ├── test_reserved_words.tiri      # Reserved word handling tests
+    ├── test_sequence_cardinality.tiri # Sequence cardinality regression tests
+    ├── test_sequences.tiri           # Sequence operation tests
+    ├── test_string_uri.tiri          # String and URI function tests
+    ├── test_type_constructors.tiri   # Schema type constructor regression tests
+    ├── test_type_expr.tiri           # Type expression tests (cast, castable, etc.)
+    ├── test_unit_tests.tiri          # Runs the module's internal unit tests (requires ENABLE_UNIT_TESTS)
     └── modules/                       # XQuery module files for testing
         ├── bad_namespace.xq               # Error case: bad namespace declaration
         ├── circular_a.xq                  # Error case: circular module dependencies
@@ -608,8 +608,8 @@ xml->setVariable("threshold", 10.0);
 xml->setVariable("category", "fiction");
 ```
 
-```fluid
--- Fluid example
+```tiri
+-- Tiri example
 xml.mtSetVariable('threshold', 10.0)
 xml.mtSetVariable('category', 'fiction')
 ```
@@ -659,7 +659,7 @@ precise static errors:
 
 Helper routines in `eval_values.cpp` and `date_time_utils.cpp` share IEEE 754 parsing, timezone canonicalisation, duration
 normalisation, and QName namespace binding logic with the public XPath API, guaranteeing consistent results between constructors
-and subsequent `cast as`/`treat as` expressions. Regression coverage lives in `src/xquery/tests/test_type_constructors.fluid`.
+and subsequent `cast as`/`treat as` expressions. Regression coverage lives in `src/xquery/tests/test_type_constructors.tiri`.
 
 ## Namespace Support
 
@@ -723,30 +723,30 @@ xp::Compile(xml, "//bk:book/bk:title", &query);
 XQuery tests are located in the XQuery module's test directory and exercise XQuery functionality through the XML class interface:
 
 **XQuery Integration Tests (`src/xquery/tests/`):**
-- `test_accessor.fluid` - Accessor functions
-- `test_advanced.fluid` - Complex XQuery queries
-- `test_advanced_paths.fluid` - Advanced path expressions
-- `test_axes.fluid` - All 13 XQuery axes
-- `test_constructors.fluid` - Node constructors
-- `test_core.fluid` - Core XQuery expressions and operators
-- `test_datetime.fluid` - Date/time functions
-- `test_documents.fluid` - Document functions
-- `test_duration.fluid` - Schema duration parsing and validation
-- `test_edge_cases.fluid` - Edge case handling and regressions
-- `test_flwor.fluid` - FLWOR expressions (for, let, where, order, group, count clauses)
-- `test_func_ext.fluid` - Extended function library
-- `test_module_loading.fluid` - Module import regression tests
-- `test_predicates.fluid` - Predicate evaluation (comprehensive)
-- `test_prolog.fluid` - XQuery prolog functionality
-- `test_qname.fluid` - QName operations
-- `test_qt_math.fluid` - W3C QT3 math function compliance tests
-- `test_reserved_words.fluid` - Reserved word handling
-- `test_sequence_cardinality.fluid` - Sequence cardinality regression tests
-- `test_sequences.fluid` - Sequence operations
-- `test_string_uri.fluid` - String and URI functions
-- `test_type_constructors.fluid` - Schema type constructors (xs:double, xs:dateTime, xs:duration, xs:QName, etc.)
-- `test_type_expr.fluid` - Type expressions (cast, castable, treat-as, instance-of, typeswitch, to-range)
-- *(Optional)* `test_unit_tests.fluid` - Runs compiled-in internal unit tests when `-DENABLE_UNIT_TESTS=ON`
+- `test_accessor.tiri` - Accessor functions
+- `test_advanced.tiri` - Complex XQuery queries
+- `test_advanced_paths.tiri` - Advanced path expressions
+- `test_axes.tiri` - All 13 XQuery axes
+- `test_constructors.tiri` - Node constructors
+- `test_core.tiri` - Core XQuery expressions and operators
+- `test_datetime.tiri` - Date/time functions
+- `test_documents.tiri` - Document functions
+- `test_duration.tiri` - Schema duration parsing and validation
+- `test_edge_cases.tiri` - Edge case handling and regressions
+- `test_flwor.tiri` - FLWOR expressions (for, let, where, order, group, count clauses)
+- `test_func_ext.tiri` - Extended function library
+- `test_module_loading.tiri` - Module import regression tests
+- `test_predicates.tiri` - Predicate evaluation (comprehensive)
+- `test_prolog.tiri` - XQuery prolog functionality
+- `test_qname.tiri` - QName operations
+- `test_qt_math.tiri` - W3C QT3 math function compliance tests
+- `test_reserved_words.tiri` - Reserved word handling
+- `test_sequence_cardinality.tiri` - Sequence cardinality regression tests
+- `test_sequences.tiri` - Sequence operations
+- `test_string_uri.tiri` - String and URI functions
+- `test_type_constructors.tiri` - Schema type constructors (xs:double, xs:dateTime, xs:duration, xs:QName, etc.)
+- `test_type_expr.tiri` - Type expressions (cast, castable, treat-as, instance-of, typeswitch, to-range)
+- *(Optional)* `test_unit_tests.tiri` - Runs compiled-in internal unit tests when `-DENABLE_UNIT_TESTS=ON`
 
 **Test Modules (`src/xquery/tests/modules/`):**
 The `modules/` subdirectory contains XQuery library modules used for testing module loading functionality:
@@ -762,7 +762,7 @@ The `modules/` subdirectory contains XQuery library modules used for testing mod
 
 **Individual Test:**
 ```bash
-cd src/xquery/tests && ../../../build/agents-install/parasol.exe ../../../tools/flute.fluid file=E:/parasol-claude/src/xquery/tests/test_core.fluid --gfx-driver=headless --log-warning
+cd src/xquery/tests && ../../../build/agents-install/parasol.exe ../../../tools/flute.tiri file=E:/parasol-claude/src/xquery/tests/test_core.tiri --gfx-driver=headless --log-warning
 ```
 
 **All XQuery Tests via CMake:**
@@ -772,7 +772,7 @@ ctest --build-config [BuildType] --test-dir build/agents -L xquery --output-on-f
 
 ### C++ Unit Testing for Internal Components
 
-The XQuery module includes a compiled-in unit testing framework for testing internal components that are not easily accessible through the Fluid interface. This is particularly useful for debugging low-level functionality like XQuery prolog integration, parser internals, and data structure integrity.
+The XQuery module includes a compiled-in unit testing framework for testing internal components that are not easily accessible through the Tiri interface. This is particularly useful for debugging low-level functionality like XQuery prolog integration, parser internals, and data structure integrity.
 
 Unit tests will only be compiled in the module if ENABLE_UNIT_TESTS is enabled in the module's CMakeLists.txt file.
 
@@ -780,7 +780,7 @@ Unit tests will only be compiled in the module if ENABLE_UNIT_TESTS is enabled i
 
 The module exposes a `xq::UnitTest()` function that can be called to run compiled-in unit tests. This function is defined in:
 - **Implementation**: `src/xquery/unit_tests.cpp` - Contains all unit test suites
-- **Test Runner**: `src/xquery/tests/test_unit_tests.fluid` - Calls the unit test function
+- **Test Runner**: `src/xquery/tests/test_unit_tests.tiri` - Calls the unit test function
 
 **Creating Unit Tests:**
 
@@ -812,7 +812,7 @@ static void test_prolog_api() {
 
 **Best Practices for C++ Unit Tests:**
 
-- Test internal data structures and APIs not exposed to Fluid
+- Test internal data structures and APIs not exposed to Tiri
 - Use unit tests for debugging complex integration issues
 - Keep tests focused on specific functionality
 - Use descriptive test names for easy identification
@@ -820,10 +820,10 @@ static void test_prolog_api() {
 - Verify edge cases and boundary conditions
 - Test error handling and invalid inputs
 
-**When to Use C++ Unit Tests vs Fluid Tests:**
+**When to Use C++ Unit Tests vs Tiri Tests:**
 
 - **C++ Unit Tests**: Internal APIs, data structures, parser internals, performance-critical code, debugging integration issues
-- **Fluid Tests**: End-to-end functionality, user-facing features, XQuery expression evaluation, integration with XML module
+- **Tiri Tests**: End-to-end functionality, user-facing features, XQuery expression evaluation, integration with XML module
 
 This dual testing approach ensures comprehensive coverage at both the internal implementation level and the user-facing API level.
 
@@ -874,8 +874,8 @@ if (xp::Compile(xml, "//book[@category='fiction']", &query) IS ERR::Okay) {
 
 ### FLWOR Query
 
-```fluid
--- Fluid example
+```tiri
+-- Tiri example
 local xml = obj.new('xml', { path = 'books.xml' })
 
 -- Compile FLWOR expression
@@ -937,8 +937,8 @@ if (auto xquery = objXQuery::create()) {
 }
 ```
 
-```fluid
--- Fluid example - Register and use custom function
+```tiri
+-- Tiri example - Register and use custom function
 local xquery = obj.new('xquery')
 
 xquery.mtRegisterFunction('custom-sum', function(query, name, input, result)
@@ -1006,7 +1006,7 @@ The XQuery module has a tight integration with the XML module:
 
 ### Custom Function Registration
 
-The XQuery function library is extensible through the `RegisterFunction()` method, allowing custom function registration for specialised processing needs. Custom functions can be implemented in C++ or Fluid and are callable from XQuery expressions just like built-in functions.
+The XQuery function library is extensible through the `RegisterFunction()` method, allowing custom function registration for specialised processing needs. Custom functions can be implemented in C++ or Tiri and are callable from XQuery expressions just like built-in functions.
 
 ### Expression Caching
 

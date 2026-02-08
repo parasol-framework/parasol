@@ -1,4 +1,4 @@
---$FLUID:Include
+--$TIRI:Include
 
 module({ name="SVG", copyright="Paul Manias © 2010-2026", version=1.0, timestamp=20240611 }, function()
   flags("SVF", { comment="SVG flags." },

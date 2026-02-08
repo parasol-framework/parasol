@@ -1,6 +1,6 @@
--- Fluid LSP Static Definitions
+-- Tiri LSP Static Definitions
 --
--- Contains hover documentation for Fluid built-in functions and keywords.
+-- Contains hover documentation for Tiri built-in functions and keywords.
 -- These are static definitions that don't need to be rebuilt from XML docs.
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -101,15 +101,15 @@ glBuiltins = {
 
    -- Script/module loading
    ['require'] = {
-      comment = 'Loads and returns a Fluid module.',
+      comment = 'Loads and returns a Tiri module.',
       prototype = 'require(modname)'
    },
    ['include'] = {
-      comment = 'Includes a Fluid module into the current environment.',
+      comment = 'Includes a Tiri module into the current environment.',
       prototype = 'include(modname)'
    },
    ['loadFile'] = {
-      comment = 'Loads and executes a Fluid script file.',
+      comment = 'Loads and executes a Tiri script file.',
       prototype = 'loadFile(path, [env])'
    },
    ['load'] = {

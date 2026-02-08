@@ -2,6 +2,8 @@
   "files.associations":{
     "*.fdl": "lua",
     "*.fluid": "lua",
+    "*.tiri": "lua",
+    "*.tdl": "lua",
     "bitset": "cpp",
     "algorithm": "cpp",
     "format": "cpp",

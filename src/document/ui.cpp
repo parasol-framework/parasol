@@ -403,7 +403,7 @@ static void error_dialog(const std::string Title, const std::string Message)
 
    OBJECTPTR dialog;
    if (NewObject(CLASSID::SCRIPT, &dialog) IS ERR::Okay) {
-      dialog->setFields(fl::Name("scDialog"), fl::Owner(CurrentTaskID()), fl::Path("scripts:gui/dialog.fluid"));
+      dialog->setFields(fl::Name("scDialog"), fl::Owner(CurrentTaskID()), fl::Path("scripts:gui/dialog.tiri"));
 
       acSetKey(dialog, "modal", "1");
       acSetKey(dialog, "title", Title.c_str());

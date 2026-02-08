@@ -7,7 +7,7 @@
 --    spec.
 --  * They are not recursive. Such a structure cannot be specified in json.
 --
--- Native Fluid arrays are encoded as JSON arrays.
+-- Native Tiri arrays are encoded as JSON arrays.
 --
 -- Because the nil value cannot be a key, and as a table value is considered equivalent to a missing key, there is no
 -- way to express the json "null" value in a table. The only way this will output "null" is if your entire input obj
