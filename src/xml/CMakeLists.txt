@@ -48,11 +48,11 @@ target_sources (${MOD} PRIVATE
 
 # Tests
 
-flute_test (${MOD}_basic "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_basic.fluid")
-flute_test (${MOD}_advanced "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_advanced_features.fluid")
-flute_test (${MOD}_data_sources "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_data_sources.fluid")
-flute_test (${MOD}_manipulation "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xml_manipulation.fluid")
-flute_test (${MOD}_parsing "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xml_parsing.fluid")
-flute_test (${MOD}_namespaces "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_namespaces.fluid")
-flute_test (${MOD}_variables "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_setvariable.fluid")
-flute_test (${MOD}_schema_validation "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_schema_validation.fluid")
+flute_test (${MOD}_basic "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_basic.tiri")
+flute_test (${MOD}_advanced "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_advanced_features.tiri")
+flute_test (${MOD}_data_sources "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_data_sources.tiri")
+flute_test (${MOD}_manipulation "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xml_manipulation.tiri")
+flute_test (${MOD}_parsing "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xml_parsing.tiri")
+flute_test (${MOD}_namespaces "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_namespaces.tiri")
+flute_test (${MOD}_variables "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_setvariable.tiri")
+flute_test (${MOD}_schema_validation "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_schema_validation.tiri")

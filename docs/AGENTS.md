@@ -26,12 +26,12 @@ The wiki contains practical, community-oriented documentation covering:
 - **`Parasol-Objects.md`** - Object system fundamentals
 - **`Parasol-In-Depth.md`** - Advanced framework concepts
 
-### Fluid Scripting Documentation
-- **`Fluid-Reference-Manual.md`** - Core Fluid language reference
-- **`Fluid-Common-API.md`** - Standard library functions
-- **`Fluid-GUI-API.md`** - GUI toolkit APIs and constants
-- **`Fluid-JSON-API.md`** - JSON processing utilities
-- **`Fluid-VFX-API.md`** - Visual effects and animation APIs
+### Tiri Scripting Documentation
+- **`Tiri-Reference-Manual.md`** - Core Tiri language reference
+- **`Tiri-Common-API.md`** - Standard library functions
+- **`Tiri-GUI-API.md`** - GUI toolkit APIs and constants
+- **`Tiri-JSON-API.md`** - JSON processing utilities
+- **`Tiri-VFX-API.md`** - Visual effects and animation APIs
 - **`Widgets.md`** - Widget system documentation
 
 ### RIPL Document Engine
@@ -124,14 +124,14 @@ Each XML file contains:
 
 ## 🤖 AI-Optimized Documentation System
 
-**Location:** `docs/xml/ai/` files and `tools/docgen-ai.fluid`
+**Location:** `docs/xml/ai/` files and `tools/docgen-ai.tiri`
 
 For Claude Code sessions, a specialized condensed documentation format is available:
 
 ### AI Documentation Files
 - **`ai-condensed.xsd`** - XML Schema for the condensed format
 - **`ai-condense.xsl`** - XSLT transformation from full XML to condensed format
-- **`../tools/docgen-ai.fluid`** - Build script for AI documentation
+- **`../tools/docgen-ai.tiri`** - Build script for AI documentation
 
 ### Condensed Format Features
 The AI documentation system creates ultra-compact XML files optimized for AI processing:
@@ -146,10 +146,10 @@ The AI documentation system creates ultra-compact XML files optimized for AI pro
 ### Generation and Usage
 ```bash
 # Generate AI-optimized documentation
-parasol tools/docgen-ai.fluid
+parasol tools/docgen-ai.tiri
 
 # Custom output location
-parasol tools/docgen-ai.fluid output=my-docs.xml
+parasol tools/docgen-ai.tiri output=my-docs.xml
 ```
 
 The generated files in `docs/xml/ai/modules/` and `docs/xml/ai/classes/` provide comprehensive API reference for AI assistants while consuming minimal context window space.
@@ -161,9 +161,9 @@ The generated files in `docs/xml/ai/modules/` and `docs/xml/ai/classes/` provide
 4. **Load AI documentation** for comprehensive API coverage in AI context
 3. **Check XML files** for extended commentary and examples
 
-### For Fluid Scripting
-1. **`Fluid-Reference-Manual.md`** for language fundamentals
-2. **`Fluid-GUI-API.md`** for user interface development
+### For Tiri Scripting
+1. **`Tiri-Reference-Manual.md`** for language fundamentals
+2. **`Tiri-GUI-API.md`** for user interface development
 3. **XML class pages** for specific object APIs
 4. **Examples in `examples/`** for practical patterns
 
@@ -189,9 +189,9 @@ The documentation follows this generation pipeline:
 
 Key scripts:
 
-- **`tools/docgen.fluid`** - Main documentation generator
-- **`tools/docgen-wiki.fluid`** - Wiki-specific processing
-- **`tools/docgen-ai.fluid`** - AI documentation generator
+- **`tools/docgen.tiri`** - Main documentation generator
+- **`tools/docgen-wiki.tiri`** - Wiki-specific processing
+- **`tools/docgen-ai.tiri`** - AI documentation generator
 
 ## 💡 Best Practices for Claude Sessions
 
@@ -213,8 +213,8 @@ Key scripts:
 - Review action documentation for correct usage patterns
 - Check class field documentation for property requirements
 
-### When Working with Fluid Scripts
-- Always study existing `.fluid` files for patterns
+### When Working with Tiri Scripts
+- Always study existing `.tiri` files for patterns
 - Use GUI API documentation for interface constants
 - Reference class XML pages for object method signatures
 - Use AI documentation for complete method/field reference

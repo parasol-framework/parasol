@@ -17,7 +17,7 @@
 #cmakedefine INC_MOD_BACKSTAGE
 #cmakedefine INC_MOD_DISPLAY
 #cmakedefine INC_MOD_DOCUMENT
-#cmakedefine INC_MOD_FLUID
+#cmakedefine INC_MOD_TIRI
 #cmakedefine INC_MOD_FONT
 #cmakedefine INC_MOD_HTTP
 #cmakedefine INC_MOD_JPEG

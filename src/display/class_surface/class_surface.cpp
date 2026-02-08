@@ -582,7 +582,7 @@ object performs a redraw event, all functions inserted by this method will be ca
 order with a direct reference to the Surface's target bitmap.  The C/C++ prototype is
 `Function(APTR Context, *Surface, *Bitmap, APTR Meta)`.
 
-The Fluid prototype is `function draw(Surface, Bitmap)`
+The Tiri prototype is `function draw(Surface, Bitmap)`
 
 The subscriber can draw to the bitmap surface as it would with any freshly allocated bitmap object (refer to the
 @Bitmap class).  To get the width and height of the available drawing space, please read the Width and

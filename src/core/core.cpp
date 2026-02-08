@@ -1105,7 +1105,7 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
    #else
       SetVolume("templates", "scripts:templates/", "misc/openbook", nullptr, nullptr, VOLUME::HIDDEN|VOLUME::SYSTEM);
       SetVolume("config", "system:config/", "tools/cog", nullptr, nullptr, VOLUME::HIDDEN|VOLUME::SYSTEM);
-      if (AnalysePath("parasol:bin/", nullptr) IS ERR::Okay) { // Bin is the location of the fluid and parasol binaries
+      if (AnalysePath("parasol:bin/", nullptr) IS ERR::Okay) { // Bin is the location of the tiri and parasol binaries
          SetVolume("bin", "parasol:bin/", nullptr, nullptr, nullptr, VOLUME::HIDDEN|VOLUME::SYSTEM);
       }
       else SetVolume("bin", "parasol:", nullptr, nullptr, nullptr, VOLUME::HIDDEN|VOLUME::SYSTEM);

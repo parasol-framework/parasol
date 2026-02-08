@@ -22,7 +22,7 @@ objCompression::create::untracked(
 </pre>
 
 With the Compression object in place, opening files within the archive only requires the correct path
-reference.  The format is `archive:ArchiveName/path/to/file.ext` and the Fluid example below illustrates:
+reference.  The format is `archive:ArchiveName/path/to/file.ext` and the Tiri example below illustrates:
 
 `obj.new('file', { path='archive:myfiles/readme.txt', flags='!READ' })`
 

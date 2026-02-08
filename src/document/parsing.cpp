@@ -3246,7 +3246,7 @@ void parser::tag_script(XTag &Tag)
    objScript *script;
    ERR error;
 
-   std::string type = "fluid";
+   std::string type = "tiri";
    std::string src, cachefile, name;
    bool defaultscript = false;
    bool persistent = false;
@@ -3335,8 +3335,8 @@ void parser::tag_script(XTag &Tag)
       }
    }
 
-   if (iequals("fluid", type)) {
-      error = NewLocalObject(CLASSID::FLUID, &script);
+   if (iequals("tiri", type)) {
+      error = NewLocalObject(CLASSID::TIRI, &script);
    }
    else {
       error = ERR::NoSupport;

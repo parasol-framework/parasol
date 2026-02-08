@@ -9,7 +9,7 @@ ERR exec_source(std::string TargetFile, int ShowTime, const std::string Procedur
 
    log.msg("Identifying file '%s'", TargetFile.c_str());
 
-   FindClass(CLASSID::FLUID);
+   FindClass(CLASSID::TIRI);
 
    CLASSID class_id, subclass;
    if (pf::startswith("STRING:", TargetFile)) {

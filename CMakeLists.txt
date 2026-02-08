@@ -100,7 +100,7 @@ set (BUILD_RPATH_USE_ORIGIN TRUE)
 set (INCLUDE_OUTPUT "${PROJECT_SOURCE_DIR}/include/parasol")
 set (DOCS "${PROJECT_SOURCE_DIR}/docs/xml")
 
-set(REQUIRED_MODS core fluid xml xquery regex json)
+set(REQUIRED_MODS core tiri xml xquery regex json)
 
 if (PARASOL_STATIC)
    set (BUILD_SHARED_LIBS OFF)
@@ -198,9 +198,9 @@ int main() {
 find_program (XXD_CMD "xxd")
 find_program (OD_CMD "od")
 find_program (PARASOL_CMD "parasol" NO_DEFAULT_PATH PATHS "${PARASOL_CMD_PATH}")
-find_file (IDL_C_SCRIPT "idl-c.fluid" PATHS "${PROJECT_SOURCE_DIR}/tools/idl")
-find_file (IDL_COMPILE_SCRIPT "idl-compile.fluid" PATHS "${PROJECT_SOURCE_DIR}/tools/idl")
-find_file (FLUTE_SCRIPT "flute.fluid" PATHS "${PROJECT_SOURCE_DIR}/tools")
+find_file (IDL_C_SCRIPT "idl-c.tiri" PATHS "${PROJECT_SOURCE_DIR}/tools/idl")
+find_file (IDL_COMPILE_SCRIPT "idl-compile.tiri" PATHS "${PROJECT_SOURCE_DIR}/tools/idl")
+find_file (FLUTE_SCRIPT "flute.tiri" PATHS "${PROJECT_SOURCE_DIR}/tools")
 
 if (PARASOL_CMD STREQUAL "PARASOL_CMD-NOTFOUND")
    message (STATUS "Definitions will not be built and tests are disabled.")
@@ -217,15 +217,15 @@ if (BUILD_TESTS)
 endif ()
 
 if (IDL_C_SCRIPT STREQUAL "IDL_C_SCRIPT-NOTFOUND")
-   message (FATAL_ERROR "The idl-c.fluid script was not found in ${PROJECT_SOURCE_DIR}/tools/idl")
+   message (FATAL_ERROR "The idl-c.tiri script was not found in ${PROJECT_SOURCE_DIR}/tools/idl")
 endif ()
 
 if (IDL_COMPILE_SCRIPT STREQUAL "IDL_COMPILE_SCRIPT-NOTFOUND")
-   message (FATAL_ERROR "The idl-compile.fluid script was not found in ${PROJECT_SOURCE_DIR}/tools/idl")
+   message (FATAL_ERROR "The idl-compile.tiri script was not found in ${PROJECT_SOURCE_DIR}/tools/idl")
 endif ()
 
 if (FLUTE_SCRIPT STREQUAL "FLUTE_SCRIPT-NOTFOUND")
-   message (FATAL_ERROR "The flute.fluid script was not found in ${PROJECT_SOURCE_DIR}/tools")
+   message (FATAL_ERROR "The flute.tiri script was not found in ${PROJECT_SOURCE_DIR}/tools")
 endif ()
 
 if (NOT MSVC)
@@ -692,7 +692,7 @@ list (APPEND LIB_LIST ${REQUIRED_MODS})
 
 add_subdirectory (src/link)
 add_subdirectory (src/core)
-add_subdirectory (src/fluid)
+add_subdirectory (src/tiri)
 add_subdirectory (src/xml)
 add_subdirectory (src/xquery)
 add_subdirectory (src/json)
@@ -1004,7 +1004,7 @@ if(WIN32 AND NOT DISABLE_CPACK)
    set(CPACK_COMPONENT_CONFIG_DESCRIPTION "Fonts, styles, and configuration data")
    set(CPACK_COMPONENT_CONFIG_REQUIRED TRUE)
 
-   set(CPACK_COMPONENT_SCRIPTS_DISPLAY_NAME "Fluid Scripts")
+   set(CPACK_COMPONENT_SCRIPTS_DISPLAY_NAME "Tiri Scripts")
    set(CPACK_COMPONENT_SCRIPTS_DESCRIPTION "Standard library and GUI toolkit")
    set(CPACK_COMPONENT_SCRIPTS_REQUIRED TRUE)
 

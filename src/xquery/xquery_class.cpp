@@ -618,7 +618,7 @@ the position of the node.
 
 Note that valid function execution can return `ERR:Search` if zero matches are found.
 
-The C++ prototype for Callback is `ERR Function(*XML, int TagID, CSTRING Attrib, APTR Meta)`.  For Fluid, use
+The C++ prototype for Callback is `ERR Function(*XML, int TagID, CSTRING Attrib, APTR Meta)`.  For Tiri, use
 `function(XML, TagID, Attrib)`
 
 -INPUT-

@@ -1,4 +1,4 @@
---$FLUID:Include
+--$TIRI:Include
 
 module({ name="Core", copyright="Paul Manias 1996-2026", timestamp=20241015 }, function()
   c_include("<stdarg.h>", "<inttypes.h>", "<string.h>", "<stdlib.h>")
@@ -312,7 +312,7 @@ constexpr bool defined(T flags, T test_flag) noexcept {
      VALIDATE_PROCESS = 95,
      THREAD_CALLBACK  = 94,
      THREAD_ACTION    = 93,
-     FLUID_THREAD_CALLBACK = 92,
+     TIRI_THREAD_CALLBACK = 92,
      WAIT_FOR_OBJECTS = 91
   })
 
@@ -708,7 +708,7 @@ using ModTest    = void (*)(CSTRING, int *, int *);
 
   struct("ModHeader", { comment="Module file header", restrict="c" }, [[
     int(MHF) Flags                 # Special flags, type of function table wanted from the Core
-    cstr Definitions               # Module definition string, usable by run-time languages such as Fluid
+    cstr Definitions               # Module definition string, usable by run-time languages such as Tiri
     fptr(error obj struct(*CoreBase)) Init # A one-off initialisation routine for when the module is first opened.
     fptr(void obj) Close           # A function that will be called each time the module is closed.
     fptr(error obj) Open           # A function that will be called each time the module is opened.
@@ -1197,7 +1197,7 @@ inline auto read_hash = [](const obj_read &a, const obj_read &b) { return a.Hash
 
 typedef std::vector<obj_read> READ_TABLE;
 
-// Object field write handler structure for Fluid code
+// Object field write handler structure for Tiri code
 
 struct obj_write {
    typedef ERR JUMP(struct lua_State *, OBJECTPTR, struct Field *, int);
@@ -1245,7 +1245,7 @@ typedef std::vector<obj_write> WRITE_TABLE;
     int(CCF) Category      # Assigned category
   ]],
   [[
-    // Field table cache for Fluid - eliminates per-instance hash tables.
+    // Field table cache for Tiri - eliminates per-instance hash tables.
     READ_TABLE  ReadTable;
     WRITE_TABLE WriteTable;
   ]])
