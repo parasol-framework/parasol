@@ -43,7 +43,7 @@ static const std::string glHelp =
 
 This command-line program can execute Tiri scripts and PARC files developed for the Parasol framework.
 
-   parasol [options] [script.ext] arg1 arg2=value ...
+   origo [options] [script.ext] arg1 arg2=value ...
 
 The following options can be used when executing script files:
 
@@ -86,7 +86,7 @@ if glRunFile then obj.new('script', { src = glRunFile }).acActivate() end
 
 static ERR process_args(void)
 {
-   pf::Log log("Parasol");
+   pf::Log log("Origo");
 
    if ((glTask->get(FID_Parameters, glArgs) IS ERR::Okay) and (glArgs)) {
       pf::vector<std::string> &args = *glArgs;
@@ -158,11 +158,11 @@ static ERR process_args(void)
 
 //********************************************************************************************************************
 // Note: In Windows, if the program is failing to load and no output is printed, pipe to Out-Host to see error messages.
-// E.g. .\parasol.exe --version | Out-Host
+// E.g. .\origo.exe --version | Out-Host
 
 extern "C" int main(int argc, char **argv)
 {
-   pf::Log log("Parasol");
+   pf::Log log("Origo");
 
    if (auto msg = init_parasol(argc, (CSTRING *)argv)) {
       for (int i=1; i < argc; i++) { // If in --verify mode, return with no error code and print nothing.
