@@ -1,6 +1,6 @@
 # LuaJIT 2.1 Integration Notes
 
-This file captures practices and gotchas observed while maintaining the LuaJIT 2.1 sources that ship inside Parasol. Use it as a quick orientation before diving into changes.
+This file captures practices and gotchas observed while maintaining the LuaJIT 2.1 sources that ship inside Kōtuku. Use it as a quick orientation before diving into changes.
 
 ## Related Documentation
 

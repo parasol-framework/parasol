@@ -1,4 +1,4 @@
--- URL parsing and handling module for Parasol
+-- URL parsing and handling module for Kōtuku
 --
 -- Usage:
 --   urllib = import 'net/url' -- Choose a name that avoids namespace conflicts

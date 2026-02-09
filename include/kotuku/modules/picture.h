@@ -4,11 +4,11 @@
 // Copyright: Paul Manias © 2001-2026
 // Generator: idl-c
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #define MODVERSION_PICTURE (1)
 
-#include <parasol/modules/display.h>
+#include <kotuku/modules/display.h>
 
 class objPicture;
 

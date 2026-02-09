@@ -12,7 +12,7 @@ conjunction with the @Vector module.  This means that the output is compatible w
 detail with our existing vector API.  Consequently, document formatting is closely integrated with SVG concepts
 and seamlessly inherits SVG functionality such as filling and stroking commands.
 
-The native document format in Parasol is RIPL.  Documentation for RIPL is available in the Parasol Wiki.  Other
+The native document format for Kōtuku is RIPL.  Documentation for RIPL is available in the Kotuku Wiki.  Other
 document formats may be supported as sub-classes, but bear in mind that document parsing is a one-way trip and
 stateful information such as the HTML DOM is not supported.
 

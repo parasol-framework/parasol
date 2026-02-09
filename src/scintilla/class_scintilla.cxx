@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -95,15 +95,15 @@ capabilities.
 #include "ScintillaBase.h"
 #include "UniConversion.h"
 
-#include <parasol/main.h>
-#include <parasol/modules/xml.h>
-#include <parasol/modules/font.h>
-#include <parasol/modules/display.h>
-#include <parasol/modules/font.h>
-#include <parasol/modules/vector.h>
-#include <parasol/strings.hpp>
+#include <kotuku/main.h>
+#include <kotuku/modules/xml.h>
+#include <kotuku/modules/font.h>
+#include <kotuku/modules/display.h>
+#include <kotuku/modules/font.h>
+#include <kotuku/modules/vector.h>
+#include <kotuku/strings.hpp>
 
-#include "scintillaparasol.h"
+#include "scintillakotuku.h"
 
 #include "module_def.c"
 
@@ -827,7 +827,7 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
    // Create a Scintilla class object, passing it the target surface and a pointer to our own structure to link us
    // together.
 
-   if (!(Self->API = new ScintillaParasol(Self->SurfaceID, Self))) {
+   if (!(Self->API = new ScintillaKTK(Self->SurfaceID, Self))) {
       return ERR::Failed;
    }
 
@@ -893,7 +893,7 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
    if (Self->ShowWhitespace) SCICALL(SCI_SETVIEWWS, (long unsigned int)SCWS_VISIBLEALWAYS);
    else SCICALL(SCI_SETVIEWWS, (long unsigned int)SCWS_INVISIBLE);
 
-   // Turn off buffered drawing because Parasol surfaces already include buffer support
+   // Turn off buffered drawing because Kotuku surfaces already include buffer support
 
    SCICALL(SCI_SETBUFFEREDDRAW, 0UL);
 
@@ -2509,5 +2509,5 @@ static ERR create_scintilla(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, nullptr, nullptr, MODExpunge, nullptr, MOD_IDL, nullptr)
+KOTUKU_MOD(MODInit, nullptr, nullptr, MODExpunge, nullptr, MOD_IDL, nullptr)
 extern "C" struct ModHeader * register_scintilla_module() { return &ModHeader; }

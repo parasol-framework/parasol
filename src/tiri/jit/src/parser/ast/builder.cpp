@@ -20,8 +20,8 @@
 #include "runtime/lj_tab.h"
 #include "runtime/lj_gc.h"
 
-#include <parasol/main.h>    // For objFile, ERR
-#include <parasol/modules/core.h>  // For File access
+#include <kotuku/main.h>    // For objFile, ERR
+#include <kotuku/modules/core.h>  // For File access
 
 #ifdef INCLUDE_TIPS
 #include "../parser_tips.h"

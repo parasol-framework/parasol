@@ -4,7 +4,7 @@
 // Copyright: Paul Manias © 2025-2026
 // Generator: idl-c
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #define MODVERSION_REGEX (1)
 
@@ -40,23 +40,23 @@ struct Regex {
    REGEX Flags;            // Compilation flags
 };
 
-#ifdef PARASOL_STATIC
+#ifdef KOTUKU_STATIC
 #define JUMPTABLE_REGEX [[maybe_unused]] static struct RegexBase *RegexBase = nullptr;
 #else
 #define JUMPTABLE_REGEX struct RegexBase *RegexBase = nullptr;
 #endif
 
 struct RegexBase {
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
    ERR (*_Compile)(const std::string_view & Pattern, REGEX Flags, std::string *ErrorMsg, struct Regex **Result);
    ERR (*_Search)(struct Regex *Regex, const std::string_view & Text, RMATCH Flags, FUNCTION *Callback);
    ERR (*_Replace)(struct Regex *Regex, const std::string_view & Text, const std::string_view & Replacement, std::string *Output, RMATCH Flags);
    ERR (*_Split)(struct Regex *Regex, const std::string_view & Text, pf::vector<std::string> *Output, RMATCH Flags);
    ERR (*_GetCaptureIndex)(struct Regex *Regex, const std::string_view & Name, pf::vector<int> *Indices);
-#endif // PARASOL_STATIC
+#endif // KOTUKU_STATIC
 };
 
-#if !defined(PARASOL_STATIC) and !defined(PRV_REGEX_MODULE)
+#if !defined(KOTUKU_STATIC) and !defined(PRV_REGEX_MODULE)
 extern struct RegexBase *RegexBase;
 namespace rx {
 inline ERR Compile(const std::string_view & Pattern, REGEX Flags, std::string *ErrorMsg, struct Regex **Result) { return RegexBase->_Compile(Pattern,Flags,ErrorMsg,Result); }
@@ -73,7 +73,7 @@ extern ERR Replace(struct Regex *Regex, const std::string_view & Text, const std
 extern ERR Split(struct Regex *Regex, const std::string_view & Text, pf::vector<std::string> *Output, RMATCH Flags);
 extern ERR GetCaptureIndex(struct Regex *Regex, const std::string_view & Name, pf::vector<int> *Indices);
 } // namespace
-#endif // PARASOL_STATIC
+#endif // KOTUKU_STATIC
 
 
 #ifndef PRV_REGEX_MODULE

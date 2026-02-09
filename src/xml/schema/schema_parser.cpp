@@ -7,7 +7,7 @@
 #include "schema_parser.h"
 #include <cstdlib>
 #include <format>
-#include <parasol/strings.hpp>
+#include <kotuku/strings.hpp>
 
 namespace xml::schema
 {

@@ -3,13 +3,13 @@
 // Copyright (C) 2026 Paul Manias
 
 #include "field_type_lookup.h"
-#include <parasol/main.h>
-#include <parasol/strings.hpp>
+#include <kotuku/main.h>
+#include <kotuku/strings.hpp>
 #include <span>
 #include <cctype>
 #include <algorithm>
 
-// Map Parasol FD_* field flags to TiriType.
+// Map Kōtuku FD_* field flags to TiriType.
 // Reference: lib_object.cpp shows the FD_* flag checking pattern.
 
 static TiriType map_field_flags_to_tiri_type(uint32_t Flags)

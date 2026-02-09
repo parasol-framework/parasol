@@ -1,4 +1,4 @@
-// Native Parasol object handling for LuaJIT.
+// Native Kotuku object handling for LuaJIT.
 // Copyright (C) 2026 Paul Manias
 
 #pragma once
@@ -6,7 +6,7 @@
 #include "lj_obj.h"
 #include "lj_gc.h"
 #include "lj_ir.h"
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 extern GCobject * lj_object_new(lua_State *, OBJECTID, OBJECTPTR, class objMetaClass *, uint8_t);
 extern void lj_object_finalize(lua_State *, GCobject *);

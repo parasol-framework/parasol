@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -44,9 +44,9 @@ document access.  XQuery support excludes the following:
 
 *********************************************************************************************************************/
 
-#include <parasol/modules/xml.h>
-#include <parasol/modules/xquery.h>
-#include <parasol/strings.hpp>
+#include <kotuku/modules/xml.h>
+#include <kotuku/modules/xquery.h>
+#include <kotuku/strings.hpp>
 #include <array>
 #include <format>
 #include <functional>
@@ -331,5 +331,5 @@ static STRUCTS glStructures = {
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, nullptr, MOD_IDL, &glStructures);
+KOTUKU_MOD(MODInit, nullptr, MODOpen, MODExpunge, nullptr, MOD_IDL, &glStructures);
 extern "C" struct ModHeader * register_xml_module() { return &ModHeader; }

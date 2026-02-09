@@ -489,7 +489,7 @@ static int thunk_index(lua_State *L)
       return 0;
    }
 
-   // Handle native GCobject (Parasol objects) - call object_index directly
+   // Handle native GCobject (Kotuku objects) - call object_index directly
    // object_index expects the object at L->base[0], so copy the resolved value there
 
    if (tvisobject(o)) {
@@ -551,7 +551,7 @@ static int thunk_newindex(lua_State *L)
       return 0;
    }
 
-   // Handle userdata (e.g., Parasol objects) - delegate to their metatable's __newindex
+   // Handle userdata (e.g., Kotuku objects) - delegate to their metatable's __newindex
    if (tvisudata(o)) {
       GCudata *ud = udataV(o);
       GCtab *mt = tabref(ud->metatable);
@@ -583,7 +583,7 @@ static int thunk_newindex(lua_State *L)
       return 0;
    }
 
-   // Handle native GCobject (Parasol objects) - call object_newindex directly
+   // Handle native GCobject (Kotuku objects) - call object_newindex directly
    // object_newindex expects the object at L->base[0], so copy the resolved value there
 
    if (tvisobject(o)) {

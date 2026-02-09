@@ -22,7 +22,7 @@
 #include "lj_vmevent.h"
 #include "field_type_lookup.h"
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 // Priorities for each binary operator. ORDER OPR.
 

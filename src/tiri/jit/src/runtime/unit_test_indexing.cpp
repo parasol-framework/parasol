@@ -1,6 +1,6 @@
 // Unit tests for array indexing configuration.
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #ifdef ENABLE_UNIT_TESTS
 

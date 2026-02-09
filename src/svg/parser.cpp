@@ -309,7 +309,7 @@ void svgState::process_shape_children(XTag &Tag, OBJECTPTR Vector) noexcept
          case SVF_ANIMATETRANSFORM: proc_animate_transform(child, Vector); break;
          case SVF_ANIMATEMOTION:    proc_animate_motion(child, Vector); break;
          case SVF_SET:              proc_set(child, Tag, Vector); break;
-         case SVF_PARASOL_MORPH:    proc_morph(child, Vector); break;
+         case SVF_KOTUKU_MORPH:    proc_morph(child, Vector); break;
 
          case SVF_TEXTPATH:
             if (Vector->classID() IS CLASSID::VECTORTEXT) {
@@ -1135,7 +1135,7 @@ ERR svgState::parse_fe_component_xfer(objVectorFilter *Filter, XTag &Tag) noexce
             case SVF_GAMMA:    fx->selectGamma(cmp, amp, offset, exp);  break;
             case SVF_DISCRETE: fx->selectDiscrete(cmp, values.data(), values.size());  break;
             case SVF_IDENTITY: fx->selectIdentity(cmp); break;
-            // The following additions are specific to Parasol and not SVG compatible.
+            // The following additions are specific to Kotuku and not SVG compatible.
             case SVF_INVERT:   fx->selectInvert(cmp); break;
             case SVF_MASK:     fx->selectMask(cmp, mask); break;
             default:
@@ -1188,7 +1188,7 @@ ERR svgState::parse_fe_composite(objVectorFilter *Filter, XTag &Tag) noexcept
                case SVF_MULTIPLY: fx->set(FID_Operator, int(OP::MULTIPLY)); break;
                case SVF_LIGHTEN:  fx->set(FID_Operator, int(OP::LIGHTEN)); break;
                case SVF_DARKEN:   fx->set(FID_Operator, int(OP::DARKEN)); break;
-               // Parasol modes
+               // Kotuku modes
                case SVF_INVERTRGB:  fx->set(FID_Operator, int(OP::INVERT_RGB)); break;
                case SVF_INVERT:     fx->set(FID_Operator, int(OP::INVERT)); break;
                case SVF_CONTRAST:   fx->set(FID_Operator, int(OP::CONTRAST)); break;
@@ -1869,9 +1869,9 @@ ERR svgState::process_tag(XTag &Tag, XTag &ParentTag, OBJECTPTR Parent, objVecto
       case SVF_CIRCLE:           proc_shape(CLASSID::VECTORELLIPSE, Tag, Parent, Vector); break;
       case SVF_PATH:             proc_shape(CLASSID::VECTORPATH, Tag, Parent, Vector); break;
       case SVF_POLYGON:          proc_shape(CLASSID::VECTORPOLYGON, Tag, Parent, Vector); break;
-      case SVF_PARASOL_SPIRAL:   proc_shape(CLASSID::VECTORSPIRAL, Tag, Parent, Vector); break;
-      case SVF_PARASOL_WAVE:     proc_shape(CLASSID::VECTORWAVE, Tag, Parent, Vector); break;
-      case SVF_PARASOL_SHAPE:    proc_shape(CLASSID::VECTORSHAPE, Tag, Parent, Vector); break;
+      case SVF_KOTUKU_SPIRAL:    proc_shape(CLASSID::VECTORSPIRAL, Tag, Parent, Vector); break;
+      case SVF_KOTUKU_WAVE:      proc_shape(CLASSID::VECTORWAVE, Tag, Parent, Vector); break;
+      case SVF_KOTUKU_SHAPE:     proc_shape(CLASSID::VECTORSHAPE, Tag, Parent, Vector); break;
       case SVF_IMAGE:            proc_image(Tag, Parent, Vector); break;
       // Paint servers are deferred and will only be processed if they are referenced via url()
       case SVF_CONTOURGRADIENT:  process_inherit_refs(Tag); break;
@@ -1950,7 +1950,7 @@ static ERR load_pic(extSVG *Self, std::string Path, objPicture **Picture, double
 
    ERR error = ERR::Okay;
    if (startswith("icons:", val)) {
-      // Parasol feature: Load an SVG image from the icon database.  Nothing needs to be done here
+      // Kotuku feature: Load an SVG image from the icon database.  Nothing needs to be done here
       // because the fielsystem volume is built-in.
    }
    else if (startswith("data:", val)) { // Check for embedded content
@@ -2208,7 +2208,7 @@ ERR svgState::proc_defs(XTag &Tag, OBJECTPTR Parent) noexcept
          case SVF_FILTER:          state.proc_filter(child); break;
          case SVF_CLIPPATH:        state.proc_clippath(child); break;
          case SVF_MASK:            state.proc_mask(child); break;
-         case SVF_PARASOL_TRANSITION: state.proc_pathtransition(child); break;
+         case SVF_KOTUKU_TRANSITION: state.proc_pathtransition(child); break;
       }
    }
 
@@ -2356,14 +2356,14 @@ void svgState::proc_morph(XTag &Tag, OBJECTPTR Parent) noexcept
 
    auto class_id = CLASSID::NIL;
    switch (strihash(tagref->name())) {
-      case SVF_PATH:           class_id = CLASSID::VECTORPATH; break;
-      case SVF_RECT:           class_id = CLASSID::VECTORRECTANGLE; break;
-      case SVF_ELLIPSE:        class_id = CLASSID::VECTORELLIPSE; break;
-      case SVF_CIRCLE:         class_id = CLASSID::VECTORELLIPSE; break;
-      case SVF_POLYGON:        class_id = CLASSID::VECTORPOLYGON; break;
-      case SVF_PARASOL_SPIRAL: class_id = CLASSID::VECTORSPIRAL; break;
-      case SVF_PARASOL_WAVE:   class_id = CLASSID::VECTORWAVE; break;
-      case SVF_PARASOL_SHAPE:  class_id = CLASSID::VECTORSHAPE; break;
+      case SVF_PATH:          class_id = CLASSID::VECTORPATH; break;
+      case SVF_RECT:          class_id = CLASSID::VECTORRECTANGLE; break;
+      case SVF_ELLIPSE:       class_id = CLASSID::VECTORELLIPSE; break;
+      case SVF_CIRCLE:        class_id = CLASSID::VECTORELLIPSE; break;
+      case SVF_POLYGON:       class_id = CLASSID::VECTORPOLYGON; break;
+      case SVF_KOTUKU_SPIRAL: class_id = CLASSID::VECTORSPIRAL; break;
+      case SVF_KOTUKU_WAVE:   class_id = CLASSID::VECTORWAVE; break;
+      case SVF_KOTUKU_SHAPE:  class_id = CLASSID::VECTORSHAPE; break;
       default:
          log.warning("Invalid reference '%s', '%s' is not recognised by <morph>.", ref.c_str(), tagref->name());
    }
@@ -2684,7 +2684,7 @@ void svgState::proc_switch(XTag &Tag, OBJECTPTR Parent, objVector * &Vector) noe
                break;
 
             case SVF_REQUIREDEXTENSIONS: // Allows the client to check if a given customised extension is supported.
-               if (val IS "http://www.parasol.ws/TR/Parasol/1.0");
+               if (val IS "http://www.kotuku.dev/TR/Kotuku/1.0");
                else render = false;
                break;
 
@@ -3367,8 +3367,8 @@ ERR svgState::set_property(objVector *Vector, uint32_t Hash, XTag &Tag, const st
             case SVF_RX:     UNIT(FID_RoundX, StrValue).set(Vector); return ERR::Okay;
             case SVF_RY:     UNIT(FID_RoundY, StrValue).set(Vector); return ERR::Okay;
 
-            case SVF_XOFFSET: UNIT(FID_XOffset, StrValue).set(Vector); return ERR::Okay; // Parasol only
-            case SVF_YOFFSET: UNIT(FID_YOffset, StrValue).set(Vector); return ERR::Okay; // Parasol only
+            case SVF_XOFFSET: UNIT(FID_XOffset, StrValue).set(Vector); return ERR::Okay; // Kotuku only
+            case SVF_YOFFSET: UNIT(FID_YOffset, StrValue).set(Vector); return ERR::Okay; // Kotuku only
 
             case SVF_X2: {
                // Note: For the time being, VectorRectangle doesn't support X2/Y2 as a concept.  This would
@@ -3566,7 +3566,7 @@ ERR svgState::set_property(objVector *Vector, uint32_t Hash, XTag &Tag, const st
 
    switch (Hash) {
       case SVF_APPEND_PATH: {
-         // The append-path option is a Parasol attribute that requires a reference to an instantiated vector with a path.
+         // The append-path option is a Kotuku attribute that requires a reference to an instantiated vector with a path.
          OBJECTPTR other = nullptr;
          if (Self->Scene->findDef(StrValue.c_str(), &other) IS ERR::Okay) Vector->setAppendPath(other);
          else log.warning("Unable to find element '%s' referenced at line %d", StrValue.c_str(), Tag.LineNo);
@@ -3574,7 +3574,7 @@ ERR svgState::set_property(objVector *Vector, uint32_t Hash, XTag &Tag, const st
       }
 
       case SVF_JOIN_PATH: {
-         // The join-path option is a Parasol attribute that requires a reference to an instantiated vector with a path.
+         // The join-path option is a Kotuku attribute that requires a reference to an instantiated vector with a path.
          OBJECTPTR other = nullptr;
          if (Self->Scene->findDef(StrValue.c_str(), &other) IS ERR::Okay) {
             Vector->set(FID_AppendPath, other);

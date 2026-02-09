@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -14,7 +14,7 @@ accommodate various XML formats.  The class includes comprehensive support for X
 queries, content manipulation and document validation.
 
 The class has been designed in such a way as to accommodate other structured data formats such as JSON and YAML.  In
-this way, the class not only provides XML support but also serves as Parasol's general-purpose structured
+this way, the class not only provides XML support but also serves as Kotuku's general-purpose structured
 data handler.  It also makes it trivial to convert between different structured data formats, and benefit from
 the cross-application use of features, such as applying XPath 2.0 queries on data originating from YAML.
 

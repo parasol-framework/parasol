@@ -18,7 +18,7 @@
 #include "lj_vm.h"
 #include "lj_vmevent.h"
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #include "filesource.h"
 #include "token_types.h"

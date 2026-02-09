@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol Framework is made publicly available under the terms described in the LICENSE.TXT file
+The source code for Kōtuku is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 -CATEGORY-
@@ -308,7 +308,7 @@ int64_t GetResource(RES Resource)
       }
 
       case RES::STATIC_BUILD:
-         #ifdef PARASOL_STATIC
+         #ifdef KOTUKU_STATIC
             return 1;
          #else
             return 0;

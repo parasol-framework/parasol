@@ -2,7 +2,7 @@
 Tests for file functions
 --]]
 
-glPath = 'parasol:'
+glPath = 'kotuku:'
 
 rx_path = regex.new([[([^:\/]+)\/-$]])
 
@@ -87,7 +87,7 @@ end
 
       logOutput(names)
 
-      assert(volumes['parasol'], "The expected 'parasol' volume is not present.")
+      assert(volumes['kotuku'], "The expected 'kotuku' volume is not present.")
       assert(volumes['user'], "The expected 'user' volume is not present.")
       assert(volumes['system'], "The expected 'system' volume is not present.")
    else

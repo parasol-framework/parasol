@@ -3,7 +3,7 @@
   xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
   xmlns="http://www.w3.org/1999/xhtml">
 
-  <!-- python3 -m http.server -d /parasol/docs/xml -->
+  <!-- python3 -m http.server -d /kotuku/docs/xml -->
 
   <xsl:output
     doctype-public="-//W3C//DTD XHTML 1.1//EN"
@@ -173,10 +173,10 @@
         <xsl:call-template name="addGoogleTracking"/>
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
         <!-- The above 2 meta tags *must* come first in the head; any other head content must come *after* these tags -->
-        <meta name="description" content="Parasol Framework documentation, machine generated from source"/>
+        <meta name="description" content="Kotuku documentation, machine generated from source"/>
         <meta name="author" content="Paul Manias"/>
         <link rel="icon" href="/favicon.ico"/>
-        <title>Parasol Framework Manual</title>
+        <title>Kotuku Manual</title>
         <link href="../css/bootstrap.min.css" rel="stylesheet"/>
         <link href="../css/module-template.css" rel="stylesheet"/>
       </head>
@@ -184,7 +184,7 @@
       <body>
         <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
           <div class="container-fluid">
-            <div class="navbar-header"><a class="navbar-brand" href="../index.html">Parasol Framework</a></div>
+            <div class="navbar-header"><a class="navbar-brand" href="../index.html">Kotuku</a></div>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
               <span class="navbar-toggler-icon"></span>
             </button><xsl:text>&#xa;</xsl:text>
@@ -193,7 +193,7 @@
                 <li class="nav-item"><a class="nav-link" href="../gallery.html">Gallery</a></li>
                 <li class="nav-item"><a class="nav-link" href="api.html">API</a></li>
                 <li class="nav-item"><a class="nav-link" href="../wiki/Home.html">Wiki</a></li>
-                <li class="nav-item"><a class="nav-link" href="https://github.com/parasol-framework/parasol">GitHub</a></li>
+                <li class="nav-item"><a class="nav-link" href="https://github.com/parasol-framework/kotuku">GitHub</a></li>
               </ul><xsl:text>&#xa;</xsl:text>
             </div> <!-- nav-collapse -->
           </div>
@@ -424,8 +424,8 @@
          <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#tm-collapse" aria-expanded="false">Technical Manuals</button>
          <div class="collapse" id="tm-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
-             <li class="api-ref"><a class="rounded" href="../wiki/Parasol-Objects.html">Parasol Objects</a></li>
-             <li class="api-ref"><a class="rounded" href="../wiki/Parasol-In-Depth.html">Parasol In Depth</a></li>
+             <li class="api-ref"><a class="rounded" href="../wiki/Kotuku-Objects.html">Kōtuku Objects</a></li>
+             <li class="api-ref"><a class="rounded" href="../wiki/Kotuku-In-Depth.html">Kōtuku In Depth</a></li>
            </ul>
          </div></li>
 

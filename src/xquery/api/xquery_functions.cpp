@@ -13,7 +13,7 @@
 // namespace-aware functions or performance-focused helpers) without polluting the evaluator with
 // coercion details.
 
-#include <parasol/modules/regex.h>
+#include <kotuku/modules/regex.h>
 
 #include "xquery_functions.h"
 #include "../../xml/schema/type_checker.h"

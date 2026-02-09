@@ -861,7 +861,7 @@ extern void lua_createarray(lua_State *L, uint32_t Length, AET Type, void *Data,
 }
 
 //********************************************************************************************************************
-// Create native Parasol object and push onto stack. Returns pointer for additional configuration.
+// Create native Kotuku object and push onto stack. Returns pointer for additional configuration.
 
 extern GCobject * lua_pushobject(lua_State *L, OBJECTID UID, OBJECTPTR Ptr, objMetaClass *ClassPtr, uint8_t Flags)
 {

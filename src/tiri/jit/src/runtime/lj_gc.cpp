@@ -46,7 +46,7 @@
 #include "lj_vm.h"
 #include "lj_array.h"
 #include "lj_object.h"
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #include <array>
 #include <span>
@@ -203,7 +203,7 @@ static void gc_mark(global_State *g, GCobj* o)
       gray2black(o);  //  Arrays are never gray.
       gc_traverse_array(g, arr);
    }
-   else if (gct IS ~LJ_TOBJECT) { // Native Parasol object type - has no child GC references except optional metatable
+   else if (gct IS ~LJ_TOBJECT) { // Native Kotuku object type - has no child GC references except optional metatable
       GCobject *obj = gco_to_object(o);
       gray2black(o);  // Objects are never gray (like userdata)
 
@@ -317,8 +317,8 @@ size_t lj_gc_separateudata(global_State *g, int all)
 }
 
 //********************************************************************************************************************
-// Separate GCobject (native Parasol objects) to be finalized to mmudata list.
-// All GCobject instances require finalization via lj_object_finalize() to free the Parasol object.
+// Separate GCobject (native Kotuku objects) to be finalized to mmudata list.
+// All GCobject instances require finalization via lj_object_finalize() to free the Kotuku object.
 
 static size_t gc_separateobjects(global_State *g, int all)
 {
@@ -615,7 +615,7 @@ static const std::array<GCFreeFunc, 10> gc_freefunc = {{
    (GCFreeFunc)lj_func_freeproto, // LJ_TPROTO
    (GCFreeFunc)lj_func_free,      // LJ_TFUNC
    (GCFreeFunc)lj_trace_free,     // LJ_TTRACE
-   (GCFreeFunc)lj_object_free,    // LJ_TOBJECT (native Parasol object)
+   (GCFreeFunc)lj_object_free,    // LJ_TOBJECT (native Kotuku object)
    (GCFreeFunc)lj_tab_free,       // LJ_TTAB
    (GCFreeFunc)lj_udata_free,     // LJ_TUDATA
    (GCFreeFunc)lj_array_free      // LJ_TARRAY

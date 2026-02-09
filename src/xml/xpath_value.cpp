@@ -17,7 +17,7 @@
 
 #include "xpath_value.h"
 
-#include <parasol/modules/xml.h>
+#include <kotuku/modules/xml.h>
 
 #include "../xml/schema/schema_types.h"
 #include "../xml/schema/type_checker.h"

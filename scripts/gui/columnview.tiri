@@ -1,7 +1,7 @@
 --[[
 The ColumnView API is used to display data to the user in the form of tabulated items.
 
-Documentation is available in the Parasol Wiki.
+Documentation is available in the Kotuku Wiki.
 --]]
 
    import 'gui'

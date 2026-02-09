@@ -11,7 +11,7 @@
    import 'io/filesearch'
 
    global CACHE_PATH = 'user:config/lsp_doc_cache.tiri'
-   global HTML_URI = 'https://parasol.ws/modules/'
+   global HTML_URI = 'https://kotuku.dev/modules/'
 
    self = { }
 
@@ -251,13 +251,13 @@ global FLUID_BUILTINS = {
    ['MAKESTRUCT'] = true
 }
 
--- Parasol modules/namespaces
+-- Kotuku modules/namespaces
 global FLUID_MODULES = {
    -- Core interfaces
    ['obj'] = true, ['struct'] = true, ['array'] = true, ['regex'] = true,
    ['mod'] = true, ['thread'] = true, ['processing'] = true,
 
-   -- Parasol API modules (loaded via mod.load())
+   -- Kotuku API modules (loaded via mod.load())
    ['mSys'] = true, ['mVec'] = true, ['mGfx'] = true,
    ['mAudio'] = true, ['mFont'] = true, ['mNet'] = true, ['mXML'] = true,
 

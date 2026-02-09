@@ -16,7 +16,7 @@
 <p>The MetaClass is responsible for managing the construction of new classes.  Each MetaClass object remains active for the lifetime of the running program, and provides the benefit of run-time introspection so that detailed class information can be retrieved at any time.  This enables scripting languages such as Tiri to interact with all class types without needing active knowledge of their capabilities.</p>
 <p>A number of additional functions are available in the Core for the purpose of class management and introspection. <function>FindClass</function> allows all registered classes to be scanned.  <function>CheckAction</function> verifies if a specific action is supported by a class.  <function>FindField</function> confirms if a specific field is declared in the class specification.</p>
 <p>Classes are typically declared in modules, but if a class is intended to be private for an executable then declaring it within the application code is feasible also.</p>
-<p>Further discussion on classes and their technical aspects can be found in the Parasol Wiki.</p></description>
+<p>Further discussion on classes and their technical aspects can be found in the Kotuku Wiki.</p></description>
     <source>
       <file path="../classes/">class_metaclass.cpp</file>
     </source>
@@ -147,7 +147,7 @@
       <type>const struct FieldArray *</type>
       <description>
 <p>This field points to an array that describes the structure of objects that will be generated for this class.  It is compulsory that base classes define this array.  Sub-classes will inherit the structure of their base, but they may set Fields with additional virtual fields if desired.</p>
-<p>Refer to the Parasol Wiki on class development for more information.</p>
+<p>Refer to the Kotuku Wiki on class development for more information.</p>
       </description>
     </field>
 

@@ -1,7 +1,7 @@
 // Copyright © 2025-2026 Paul Manias
 
-#include <parasol/main.h>
-#include <parasol/modules/tiri.h>
+#include <kotuku/main.h>
+#include <kotuku/modules/tiri.h>
 #include "../../../defs.h"
 #include "parser/parser_context.h"
 

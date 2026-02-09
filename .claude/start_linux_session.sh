@@ -11,7 +11,7 @@ if [ "$CLAUDE_CODE_REMOTE" != "true" ]; then
 fi
 
 git fetch origin
-# Install gh and download the latest Parasol artifact from GitHub
+# Install gh and download the latest Kotuku artifact from GitHub
 tools/codex_setup.sh
 
 exit 0

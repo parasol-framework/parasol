@@ -1,5 +1,5 @@
 # Network module
-# If you need to do a deep debug of the network log, enable PARASOL_VLOG at project level (it won't work
+# If you need to do a deep debug of the network log, enable KOTUKU_VLOG at project level (it won't work
 # at module level).
 
 set (MOD network)

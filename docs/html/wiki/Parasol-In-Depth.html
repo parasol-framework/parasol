@@ -8,10 +8,10 @@
 	   gtag('js', new Date());
       gtag('config', 'G-8254DG7MT6');</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Parasol Framework documentation, machine generated from source">
+<meta name="description" content="Kotuku Framework documentation, machine generated from source">
 <meta name="author" content="Paul Manias">
 <link rel="icon" href="/favicon.ico">
-<title>Parasol Wiki - Parasol In Depth</title>
+<title>Kotuku Wiki - Kotuku In Depth</title>
 <link href="../css/bootstrap.min.css" rel="stylesheet">
 <link href="../css/module-template.css" rel="stylesheet">
 <link href="../css/github-markdown.css" rel="stylesheet">
@@ -20,7 +20,7 @@
 <body>
 <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
   <div class="container-fluid">
-    <div class="navbar-header"><a class="navbar-brand" href="../index.html">Parasol Framework</a></div>
+    <div class="navbar-header"><a class="navbar-brand" href="../index.html">Kotuku Framework</a></div>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
@@ -29,7 +29,7 @@
         <li class="nav-item"><a class="nav-link" href="../gallery.html">Gallery</a></li>
         <li class="nav-item"><a class="nav-link" href="../modules/api.html">API</a></li>
         <li class="nav-item"><a class="nav-link" href="Home.html">Wiki</a></li>
-        <li class="nav-item"><a class="nav-link" href="https://github.com/parasol-framework/parasol">GitHub</a></li>
+        <li class="nav-item"><a class="nav-link" href="https://github.com/kotuku-framework/kotuku">GitHub</a></li>
       </ul>
     </div>
   </div>
@@ -57,8 +57,8 @@
          <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#tm-collapse" aria-expanded="false">Technical Manuals</button>
          <div class="collapse" id="tm-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
-             <li class="api-ref"><a class="rounded" href="Parasol-Objects.html">Parasol Objects</a></li>
-             <li class="api-ref"><a class="rounded" href="Parasol-In-Depth.html">Parasol In Depth</a></li>
+             <li class="api-ref"><a class="rounded" href="Kotuku-Objects.html">Kotuku Objects</a></li>
+             <li class="api-ref"><a class="rounded" href="Kotuku-In-Depth.html">Kotuku In Depth</a></li>
              <li class="api-ref"><a class="rounded" href="Coding-With-AI.html">Coding With AI</a></li>
            </ul>
          </div></li>
@@ -88,7 +88,7 @@
          <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#tools-collapse" aria-expanded="false">Tools</button>
          <div class="collapse" id="tools-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
-              <li class="api-ref"><a class="rounded" href="Parasol-Cmd-Tool.html">Parasol Cmd Tool</a></li>
+              <li class="api-ref"><a class="rounded" href="Kotuku-Cmd-Tool.html">Kotuku Cmd Tool</a></li>
               <li class="api-ref"><a class="rounded" href="Unit-Testing.html">Flute / Unit Testing</a></li>
            </ul>
          </div></li>
@@ -255,8 +255,8 @@
 
 <div class="col-sm-9" style="max-width: 1200px;">
 <div class="docs-content" id="default-page">
-<h1>Parasol In Depth</h1>
-<p>In this document we get to grips with Parasol&#39;s object oriented design and how it differs to other systems and frameworks that exist today. We&#39;ll start with the basics, but the latter parts of this document may assume that you have installed the Parasol Framework, have successfully run some examples and perhaps experimented with some of the code.</p>
+<h1>Kotuku In Depth</h1>
+<p>In this document we get to grips with Kotuku&#39;s object oriented design and how it differs to other systems and frameworks that exist today. We&#39;ll start with the basics, but the latter parts of this document may assume that you have installed the Kotuku Framework, have successfully run some examples and perhaps experimented with some of the code.</p>
 <hr>
 <h1 id="table-of-contents">Table of Contents</h1>
 <ol type="1">
@@ -284,23 +284,23 @@
 </ol></li>
 </ol>
 <h2 id="design-overview">Design Overview</h2>
-<p>Parasol follows a modular design. It has a Core API that must be initialised when a program starts, and provides essential API calls that are needed for a functional development environment. Non-essential features are broken out into API modules (libraries) that manage a specific feature-set, such as audio, graphics and data management. Access to the core and modules is achieved via language header files that are auto-generated during the build process.</p>
-<p>The exact manner in which the system is boot-strapped is a choice for client, as the Parasol build process is highly configurable. Generally a build will either function as an all-purpose distribution (such as the official release) or a static, custom build that is compiled for a specific program.</p>
-<p>Parasol&#39;s base-level design objectives are:</p>
+<p>Kotuku follows a modular design. It has a Core API that must be initialised when a program starts, and provides essential API calls that are needed for a functional development environment. Non-essential features are broken out into API modules (libraries) that manage a specific feature-set, such as audio, graphics and data management. Access to the core and modules is achieved via language header files that are auto-generated during the build process.</p>
+<p>The exact manner in which the system is boot-strapped is a choice for client, as the Kotuku build process is highly configurable. Generally a build will either function as an all-purpose distribution (such as the official release) or a static, custom build that is compiled for a specific program.</p>
+<p>Kotuku&#39;s base-level design objectives are:</p>
 <ul>
 <li>Provide a modern object oriented API that does not alienate programming languages that need to interoperate with our services.</li>
 <li>Provide multimedia support and a first-class UI that uses vector graphics exclusively.</li>
 <li>Describe our APIs with an IDL (Interface Definition Language) so that headers can be generated for any programming language.</li>
 <li>The build process must be fully configurable, with the option to leave out features that are not required by the client.</li>
-<li>The Parasol environment must be fully self-contained so that programs are portable and easily compiled for new targets. Calls to the host system, such as Windows or Linux should not be necessary for the majority of client programs.</li>
+<li>The Kotuku environment must be fully self-contained so that programs are portable and easily compiled for new targets. Calls to the host system, such as Windows or Linux should not be necessary for the majority of client programs.</li>
 </ul>
 <h3 id="framework-initialisation">Framework Initialisation</h3>
-<p>The <code>src/link</code> folder contains platform-specific code for initialising and shutting down the Parasol Framework. The <code>init-unix.cpp</code> and <code>init-win.cpp</code> are such examples for Linux and Windows, both of which export <code>init_parasol()</code> and <code>close_parasol()</code> functions. Calling these from any executable is sufficient for opening and closing the framework. To see a working project example, please refer to the <code>src/launcher</code> folder and read the <code>CMakeLists.txt</code> and <code>parasol.cpp</code> files.</p>
-<p>If a build isn&#39;t static, the initialisation process will start by finding the Parasol <code>core.so</code> or <code>core.dll</code> binary first. Priority is given to the local folder from which the executable is running. If no installation is found then a check will be made for a global installation, such as in <code>/usr/local/</code> before reporting a failure.</p>
-<p>Closing the framework is a clean process, which is to say that all resources will be terminated so that the process is returned to its original state. This means that opening and closing the Parasol Framework on an ad-hoc basis is viable if desired.</p>
+<p>The <code>src/link</code> folder contains platform-specific code for initialising and shutting down the Kotuku Framework. The <code>init-unix.cpp</code> and <code>init-win.cpp</code> are such examples for Linux and Windows, both of which export <code>init_kotuku()</code> and <code>close_kotuku()</code> functions. Calling these from any executable is sufficient for opening and closing the framework. To see a working project example, please refer to the <code>src/launcher</code> folder and read the <code>CMakeLists.txt</code> and <code>kotuku.cpp</code> files.</p>
+<p>If a build isn&#39;t static, the initialisation process will start by finding the Kotuku <code>core.so</code> or <code>core.dll</code> binary first. Priority is given to the local folder from which the executable is running. If no installation is found then a check will be made for a global installation, such as in <code>/usr/local/</code> before reporting a failure.</p>
+<p>Closing the framework is a clean process, which is to say that all resources will be terminated so that the process is returned to its original state. This means that opening and closing the Kotuku Framework on an ad-hoc basis is viable if desired.</p>
 <h2 id="modules">Modules</h2>
-<p>Parasol libraries are referred to as <em>modules</em> and depending on the desired target, can either be built as dynamic shared libraries or statically compiled into an executable. There is no restriction on the choice of programming language when creating a module, but native modules in the framework are written in C++ for consistency.</p>
-<p>Modules can export a library of API functions, one or more classes, or a mixture of both. Exports are managed in the initialisation of the module. There is also a provision for a destructor function that is called during Parasol&#39;s &#39;expunge sequence&#39;, which allows modules to unload their resources safely. This is a useful way of detecting resource leaks that might otherwise go unnoticed.</p>
+<p>Kotuku libraries are referred to as <em>modules</em> and depending on the desired target, can either be built as dynamic shared libraries or statically compiled into an executable. There is no restriction on the choice of programming language when creating a module, but native modules in the framework are written in C++ for consistency.</p>
+<p>Modules can export a library of API functions, one or more classes, or a mixture of both. Exports are managed in the initialisation of the module. There is also a provision for a destructor function that is called during Kotuku&#39;s &#39;expunge sequence&#39;, which allows modules to unload their resources safely. This is a useful way of detecting resource leaks that might otherwise go unnoticed.</p>
 <p>Before we discuss the code, here&#39;s a look at the CMake file for the XML module:</p>
 <pre><code>set (MOD xml)
 set (INC_MOD_XML TRUE PARENT_SCOPE)
@@ -318,7 +318,7 @@ flute_test (${MOD}_tests &quot;${CMAKE_CURRENT_SOURCE_DIR}/tests/test.tiri&quot;
 <p>The <code>add_library()</code> call registers the module with the build process and <code>set_module_defaults()</code> pre-configures the build for the named module. The <code>target_sources()</code> call associates the <code>cpp</code> source files with the module.</p>
 <p>The <code>flute_test()</code> references a Tiri script that will test the module&#39;s functionality; this is further discussed in the <a href="./Unit-Testing.md">Unit Testing</a> manual in this Wiki.</p>
 <h3 id="module-initialisation">Module Initialisation</h3>
-<p>When the Core API loads a module for the first time, it needs an accessible way to initialise the module. In C++ this is achieved with the <code>PARASOL_MOD()</code> macro, which creates a publicly accessible table that the Core can interact with. The parameters that can be passed to the macro are:</p>
+<p>When the Core API loads a module for the first time, it needs an accessible way to initialise the module. In C++ this is achieved with the <code>KOTUKU_MOD()</code> macro, which creates a publicly accessible table that the Core can interact with. The parameters that can be passed to the macro are:</p>
 <table>
 <thead>
 <tr>
@@ -354,8 +354,8 @@ flute_test (${MOD}_tests &quot;${CMAKE_CURRENT_SOURCE_DIR}/tests/test.tiri&quot;
 </tbody>
 </table>
 <p>Note that it is compulsory that referenced globals use the <code>static</code> keyword, as it prevents naming conflicts in a static build.</p>
-<p>Here&#39;s the XML module&#39;s declaration of <code>PARASOL_MOD()</code>:</p>
-<pre><code>PARASOL_MOD(MODInit, NULL, NULL, MODExpunge, MOD_IDL, &amp;glStructures)</code></pre>
+<p>Here&#39;s the XML module&#39;s declaration of <code>KOTUKU_MOD()</code>:</p>
+<pre><code>KOTUKU_MOD(MODInit, NULL, NULL, MODExpunge, MOD_IDL, &amp;glStructures)</code></pre>
 <p>The <code>Init</code> and <code>Expunge</code> functionality deserves a closer look. The XML module takes a copy of the <code>CoreBase</code> reference, which it needs in order to make function calls to the Core API. It then creates the <code>XML</code> class by declaring its specifications, which is detailed elsewhere in this manual.</p>
 <p>The <code>Expunge</code> process must undo all allocations made by the <code>Init</code> process. In this case the XML module will only need to remove the <code>XML</code> class using <code>FreeResource()</code>.</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="at">static</span> ERR MODInit<span class="op">(</span>OBJECTPTR pModule<span class="op">,</span> <span class="kw">struct</span> CoreBase <span class="op">*</span>pCore<span class="op">)</span></span>
@@ -435,10 +435,10 @@ flute_test (${MOD}_tests &quot;${CMAKE_CURRENT_SOURCE_DIR}/tests/test.tiri&quot;
 <p><em>You might have noticed that a call to <code>HostToLong()</code> from a C++ program would be <code>netHostToLong()</code>. We leave out the <code>net</code> prefix in our module declaration as this is an implementation concern that is specific to the client&#39;s chosen language.</em></p>
 <p>The last requirement is to ensure that the function is named in the <a href="./TDL-Reference-Manual.md"><code>functionNames()</code></a> declaration in the module&#39;s TDL file. If this is not done then the function will not be exported by our automated tools.</p>
 <h2 id="classes">Classes</h2>
-<p>Parasol classes are defined at run-time, not during the build process as is the case for many OO languages. This is a key design feature that maximises the potential for class introspection and allows dissimilar languages to talk over common OO protocols. Advanced features also include support for design-by-contract, virtual fields, permission based field access and resource tracking.</p>
+<p>Kotuku classes are defined at run-time, not during the build process as is the case for many OO languages. This is a key design feature that maximises the potential for class introspection and allows dissimilar languages to talk over common OO protocols. Advanced features also include support for design-by-contract, virtual fields, permission based field access and resource tracking.</p>
 <h3 id="the-metaclass">The MetaClass</h3>
-<p>New classes are created by initialising MetaClass interfaces that declare new class specifications. While reading this section we advise keeping the <a href="https://parasol.ws/modules/classes/metaclass.html]">MetaClass Manual</a> close by, in case you would like further detail on the fields that are referenced.</p>
-<p>The code snippet below from the XML module initialises the <a href="https://parasol.ws/modules/classes/xml.html">XML class</a>:</p>
+<p>New classes are created by initialising MetaClass interfaces that declare new class specifications. While reading this section we advise keeping the <a href="https://kotuku.dev/modules/classes/metaclass.html]">MetaClass Manual</a> close by, in case you would like further detail on the fields that are referenced.</p>
+<p>The code snippet below from the XML module initialises the <a href="https://kotuku.dev/modules/classes/xml.html">XML class</a>:</p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>clXML <span class="op">=</span> objMetaClass<span class="op">::</span>create<span class="op">::</span>global<span class="op">(</span></span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    fl<span class="op">::</span>BaseClassID<span class="op">(</span>ID_XML<span class="op">),</span></span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    fl<span class="op">::</span>ClassVersion<span class="op">(</span>VER_XML<span class="op">),</span></span>
@@ -722,7 +722,7 @@ class(&quot;XML&quot;, { src=&quot;xml.cpp&quot;, output=&quot;xml_def.c&quot; }
 <p>Sometimes a class may need to allocate an object within its own scope, meaning that the object is not included in the object tree managed by the client. Such objects are designated as <em>local</em>.</p>
 <p>If a local object is accessible through a class field, it must be defined with the <code>FDF_LOCAL</code> option. A working example can be seen in the Picture class, which will always allocate a Bitmap object to contain and represent the rendered image. The Bitmap must be defined as <em>local</em> because the client did not explicitly request its creation.</p>
 <p>Local objects bring us to the topic of inheritance. Inheriting the attributes of a local object can be highly beneficial, saving us from having to otherwise duplicate the features already proffered by another class. The Picture class for instance, is essentially a higher order interface for the Bitmap class. It needs to provide all the features of a Bitmap, but with the addition of some extra metadata and the ability to decode and encode an image file like a PNG.</p>
-<p>A Parasol class can inherit the features of its <em>local</em> objects by using the <code>CLF::INHERIT_LOCAL</code> flag during the MetaClass creation process. In the Picture class this looks as follows:</p>
+<p>A Kotuku class can inherit the features of its <em>local</em> objects by using the <code>CLF::INHERIT_LOCAL</code> flag during the MetaClass creation process. In the Picture class this looks as follows:</p>
 <div class="sourceCode" id="cb14"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="at">static</span> <span class="at">const</span> FieldArray clFields<span class="op">[]</span> <span class="op">=</span> <span class="op">{</span></span>
 <span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>   <span class="op">{</span> <span class="st">&quot;Bitmap&quot;</span><span class="op">,</span> FDF_LOCAL<span class="op">|</span>FDF_R<span class="op">,</span> NULL<span class="op">,</span> NULL<span class="op">,</span> ID_BITMAP <span class="op">},</span></span>
 <span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>   <span class="op">{</span> <span class="st">&quot;Mask&quot;</span><span class="op">,</span>   FDF_LOCAL<span class="op">|</span>FDF_R<span class="op">,</span> NULL<span class="op">,</span> NULL<span class="op">,</span> ID_BITMAP <span class="op">},</span></span>
@@ -733,7 +733,7 @@ class(&quot;XML&quot;, { src=&quot;xml.cpp&quot;, output=&quot;xml_def.c&quot; }
 <span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>   fl<span class="op">::</span>Fields<span class="op">(</span>clFields<span class="op">),</span></span>
 <span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>   fl<span class="op">::</span>Flags<span class="op">(</span>CLF<span class="op">::</span>INHERIT_LOCAL<span class="op">),</span></span>
 <span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>   <span class="op">...);</span></span></code></pre></div>
-<p>Parasol&#39;s inheritance is applied on a <em>run-time</em> basis and uses a <em>top-down</em> approach in terms of priority. For instance, reading the <code>width</code> of a Picture object would normally fail because no <code>width</code> is declared in the Picture class spec. Use of local inheritance means that the <code>Bitmap</code> object will be checked for the <code>width</code> field, and the corresponding value will be returned to client just as if the Picture class had defined <code>width</code> for itself. This all happens seamlessly for the client. If the Picture did declare its own <code>width</code>, that would take precedence and the <code>Bitmap</code> <code>width</code> would be ignored.</p>
+<p>Kotuku&#39;s inheritance is applied on a <em>run-time</em> basis and uses a <em>top-down</em> approach in terms of priority. For instance, reading the <code>width</code> of a Picture object would normally fail because no <code>width</code> is declared in the Picture class spec. Use of local inheritance means that the <code>Bitmap</code> object will be checked for the <code>width</code> field, and the corresponding value will be returned to client just as if the Picture class had defined <code>width</code> for itself. This all happens seamlessly for the client. If the Picture did declare its own <code>width</code>, that would take precedence and the <code>Bitmap</code> <code>width</code> would be ignored.</p>
 <p><em>Inheritance applies to fields only. Actions and methods are not propagated from local objects.</em></p>
 <h4 id="actions-contract-interfaces">Actions (Contract Interfaces)</h4>
 <p>Actions are a type of method that utilise a design-by-contract approach to object orientation. Supporting actions in a class is a great way of building a functional interface, as the developer will already know about the constraints and behaviours defined by the named contracts. The class interface will be seen as consistent and predictable, just like the other classes that support action interfaces.</p>
@@ -776,7 +776,7 @@ class(&quot;XML&quot;, { src=&quot;xml.cpp&quot;, output=&quot;xml_def.c&quot; }
 <span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>   <span class="cf">return</span> ERR<span class="op">::</span>Okay<span class="op">;</span></span>
 <span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <h4 id="methods">Methods</h4>
-<p>Parasol supports methods in the traditional OO sense, with the caveat that the return type is always an <code>ERR</code> code and the output(s) are declared in the parameters. This ensures that there is a consistent design approach that works across programming languages, and also allows for multiple return values to be supported.</p>
+<p>Kotuku supports methods in the traditional OO sense, with the caveat that the return type is always an <code>ERR</code> code and the output(s) are declared in the parameters. This ensures that there is a consistent design approach that works across programming languages, and also allows for multiple return values to be supported.</p>
 <p>Declaring methods is largely similar to that of actions. A key difference is that more documentation is required, and the method will need to declare its parameters. Here&#39;s a shortened excerpt from the XML class that declares its methods:</p>
 <div class="sourceCode" id="cb18"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>FDEF maSetAttrib<span class="op">[]</span> <span class="op">=</span> <span class="op">{</span> <span class="op">{</span> <span class="st">&quot;Index&quot;</span><span class="op">,</span> FD_LONG <span class="op">},</span> <span class="op">{</span> <span class="st">&quot;Attrib&quot;</span><span class="op">,</span> FD_LONG <span class="op">},</span> <span class="op">{</span> <span class="st">&quot;Name&quot;</span><span class="op">,</span> FD_STR <span class="op">},</span> <span class="op">{</span> <span class="st">&quot;Value&quot;</span><span class="op">,</span> FD_STR <span class="op">},</span> <span class="op">{</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">0</span> <span class="op">}</span> <span class="op">};</span></span>
 <span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>FDEF maSerialise<span class="op">[]</span> <span class="op">=</span> <span class="op">{</span> <span class="op">{</span> <span class="st">&quot;Index&quot;</span><span class="op">,</span> FD_LONG <span class="op">},</span> <span class="op">{</span> <span class="st">&quot;Flags&quot;</span><span class="op">,</span> FD_LONG <span class="op">},</span> <span class="op">{</span> <span class="st">&quot;Result&quot;</span><span class="op">,</span> FD_STR<span class="op">|</span>FD_ALLOC<span class="op">|</span>FD_RESULT <span class="op">},</span> <span class="op">{</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">0</span> <span class="op">}</span> <span class="op">};</span></span>
@@ -820,7 +820,7 @@ ReadOnly: The XML object is read-only.
 <p>Method prototypes follow the template <code>ERR CLASS_MethodName(*Object, struct abvMethodName *Args)</code>. The <code>abv</code> code is defined in the appropriate <code>methods()</code> call in the module&#39;s TDL file. Here&#39;s the prototype for <code>SetAttrib()</code>:</p>
 <div class="sourceCode" id="cb20"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="at">static</span> ERR XML_SetAttrib<span class="op">(</span>extXML <span class="op">*</span>Self<span class="op">,</span> <span class="kw">struct</span> xmlSetAttrib <span class="op">*</span>Args<span class="op">);</span></span></code></pre></div>
 <h3 id="sub-classes">Sub-Classes</h3>
-<p>Parasol supports a unique inheritance concept whereby a class can inherit all aspects of another class and extend it with additional features. From the perspective of the client, the objects will look no different to that of the original class. This feature is known as <em>sub-classing</em>, whereby the dominant class is referred to as the <em>base-class</em> and the additional features are provided by a <em>sub-class</em>.</p>
+<p>Kotuku supports a unique inheritance concept whereby a class can inherit all aspects of another class and extend it with additional features. From the perspective of the client, the objects will look no different to that of the original class. This feature is known as <em>sub-classing</em>, whereby the dominant class is referred to as the <em>base-class</em> and the additional features are provided by a <em>sub-class</em>.</p>
 <p>In this model, the following points are note-worthy:</p>
 <ul>
 <li>The base-class is dominant, and therefore defines the interface contract for the client. A sub-class cannot change the contract.</li>
@@ -829,7 +829,7 @@ ReadOnly: The XML object is read-only.
 <li>Client code that targets the base-class will be compatible with all its sub-classes. From the client&#39;s perspective, there is no difference between the two types because the interface contract remains consistent.</li>
 <li>Sub-classes can declare new fields, methods and actions in their spec if necessary. This can be done without impacting on compatibility with the base-class or the client code that solely targets the base-class.</li>
 </ul>
-<p>There are a number of existing classes in the default Parasol build that have active sub-classes, such as:</p>
+<p>There are a number of existing classes in the default Kotuku build that have active sub-classes, such as:</p>
 <ul>
 <li>Picture: Supports PNG by default, extended by the JPEG sub-class.</li>
 <li>Sound: Supports WAV by default, extended by the MP3 sub-class.</li>
@@ -887,8 +887,8 @@ ReadOnly: The XML object is read-only.
 <span id="cb22-23"><a href="#cb22-23" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>Notice how the file header is checked for the byte sequence that would identify the data as JPEG. If this is not matched, <code>ERR::NoSupport</code> is returned so that the initialisation sequence can query the next available sub-class. Also of note is the <code>Header</code> field; this feature is particular to the Picture class design and is intended to save each sub-class from reading the file header independently.</p>
 <h3 id="spec-design">Spec Design</h3>
-<p>Before we leave this chapter on classes, it is worth considering Parasol&#39;s contractural approach to OO and how that should impact on your class designs. It is extremely common for classes to use concepts that are generic by nature, for instance a UI widget will typically express an <em>X</em>, <em>Y</em>, <em>Width</em> and <em>Height</em>. A class that loads data may specify a <em>Path</em>. Bit-options may be expressed as <em>Flags</em>. As you spend more time using Parasol classes, you will discover that not only does the naming schedule for fields tend to be consistent and predictable, the code rarely differs in these generic areas too.</p>
-<p>We do not enforce generic constraints at a field level as this is seen as impractical and can cause issues when deviations are warranted. We do however strongly encourage observing the terminology and methodologies that are already in place across Parasol&#39;s interfaces. Leveraging existing concepts if you do any work at an API level can save time, with less documentation needing to be written, and also for the client in being able to predict behaviour patterns. If in doubt, check the source code of something that shares some commonality with what you are trying to achieve.</p>
+<p>Before we leave this chapter on classes, it is worth considering Kotuku&#39;s contractural approach to OO and how that should impact on your class designs. It is extremely common for classes to use concepts that are generic by nature, for instance a UI widget will typically express an <em>X</em>, <em>Y</em>, <em>Width</em> and <em>Height</em>. A class that loads data may specify a <em>Path</em>. Bit-options may be expressed as <em>Flags</em>. As you spend more time using Kotuku classes, you will discover that not only does the naming schedule for fields tend to be consistent and predictable, the code rarely differs in these generic areas too.</p>
+<p>We do not enforce generic constraints at a field level as this is seen as impractical and can cause issues when deviations are warranted. We do however strongly encourage observing the terminology and methodologies that are already in place across Kotuku&#39;s interfaces. Leveraging existing concepts if you do any work at an API level can save time, with less documentation needing to be written, and also for the client in being able to predict behaviour patterns. If in doubt, check the source code of something that shares some commonality with what you are trying to achieve.</p>
 </div></div></div></div>
 
 <script src="../js/bootstrap.bundle.min.js"></script>

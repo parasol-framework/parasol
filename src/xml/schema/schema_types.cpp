@@ -218,7 +218,7 @@ namespace xml::schema
       descriptors_by_expanded_name.clear();
    }
 
-   // Populates the registry with the built-in schema types recognised by Parasol.
+   // Populates the registry with the built-in schema types recognised by Kotuku.
 
    void SchemaTypeRegistry::register_builtin_types()
    {

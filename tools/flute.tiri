@@ -15,7 +15,6 @@ Example usage:
    origo flute.tiri file=[file]
 ]]
 
-
    glFile    = arg('file')
    glTest    = arg('test')?:split(',') ?? { }
    glHotPath = arg('hotPath') -- Force hot-path execution for all tests.

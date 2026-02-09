@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef PLATFORM_CONFIG_H
-#include <parasol/config.h>
+#include <kotuku/config.h>
 #endif
 
 #include <set>
@@ -76,9 +76,9 @@ constexpr int DRIVETYPE_USB       = 5;
 
 #define BREAKPOINT { uint8_t *nz = 0; nz[0] = 0; }
 
-#include <parasol/system/errors.h>
-#include <parasol/system/types.h>
-#include <parasol/system/registry.h>
+#include <kotuku/system/errors.h>
+#include <kotuku/system/types.h>
+#include <kotuku/system/registry.h>
 
 #include <stdarg.h>
 
@@ -150,11 +150,11 @@ struct rkWatchPath {
 #endif
 };
 
-#include <parasol/vector.hpp>
+#include <kotuku/vector.hpp>
 #include "prototypes.h"
 
-#include <parasol/main.h>
-#include <parasol/strings.hpp>
+#include <kotuku/main.h>
+#include <kotuku/strings.hpp>
 
 using namespace pf;
 
@@ -306,14 +306,14 @@ extern ankerl::unordered_dense::map<uint32_t, virtual_drive> glVirtual;
   #define SHMKEY 0x0009f830 // Keep the key value low as we will be incrementing it
 
   #ifdef USE_SHM
-    #define MEMORYFILE           "/tmp/parasol.mem"
+    #define MEMORYFILE           "/tmp/kotuku.mem"
   #else
     // To mount a 32MB RAMFS filesystem for this method:
     //
     //    mkdir -p /RAM1
     //    mount -t ramfs none /tmp/ramfs -o maxsize=32000
 
-    #define MEMORYFILE           "/tmp/ramfs/parasol.mem"
+    #define MEMORYFILE           "/tmp/ramfs/kotuku.mem"
 
     extern int glMemoryFD;
   #endif
@@ -720,7 +720,7 @@ extern TIMER glProcessJanitor;
 extern int glEventMask;
 extern struct ModHeader glCoreHeader;
 
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
 extern CSTRING glClassBinPath;
 #endif
 
@@ -954,8 +954,8 @@ class extObjectContext : public ObjectContext {
 //********************************************************************************************************************
 
 #ifdef __ANDROID__
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "Parasol:Core", __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "Parasol:Core", __VA_ARGS__)
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "Kotuku:Core", __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "Kotuku:Core", __VA_ARGS__)
 #endif
 
 //********************************************************************************************************************
@@ -1054,7 +1054,7 @@ extern void remove_archive(class extCompression *);
 
 void   print_diagnosis(int);
 CSTRING action_name(OBJECTPTR Object, int ActionID);
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
 APTR   build_jump_table(const Function *);
 #endif
 void   stop_async_actions(void);
@@ -1079,7 +1079,7 @@ ERR    process_janitor(OBJECTID, int, int);
 void   remove_process_waitlocks(void);
 CLASSID lookup_class_by_ext(CLASSID, std::string_view);
 
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
 void   scan_classes(void);
 #endif
 

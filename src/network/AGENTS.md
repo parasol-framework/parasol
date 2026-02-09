@@ -7,4 +7,4 @@ Points to remember:
 * For Linux, system network messsages are managed by listening to file descriptors, which is achieved with RegisterFD()
 * Windows uses the native SSL library, other platforms use OpenSSL
 * System calls to Win32 functions are always wrapped and managed in @win32/winsockwrappers.cpp
-* Most debug messages in the Network module are trace only.  To see them in the log output, use a debug build with `PARASOL_VLOG` enabled.
+* Most debug messages in the Network module are trace only.  To see them in the log output, use a debug build with `KOTUKU_VLOG` enabled.

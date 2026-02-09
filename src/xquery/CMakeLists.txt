@@ -59,11 +59,11 @@ target_precompile_headers(${MOD}_lib PRIVATE
    <unordered_map>
    <unordered_set>
    <algorithm>
-   # Parasol framework headers
-   <parasol/main.h>
-   <parasol/modules/xml.h>
-   <parasol/modules/xquery.h>
-   <parasol/strings.hpp>
+   # Kotuku headers
+   <kotuku/main.h>
+   <kotuku/modules/xml.h>
+   <kotuku/modules/xquery.h>
+   <kotuku/strings.hpp>
    # Third-party dependency
    <ankerl/unordered_dense.h>
    # Core internal headers

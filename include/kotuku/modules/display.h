@@ -4,7 +4,7 @@
 // Copyright: Paul Manias © 2003-2026
 // Generator: idl-c
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #define MODVERSION_DISPLAY (1)
 
@@ -1703,14 +1703,14 @@ class objSurface : public Object {
 
 };
 
-#ifdef PARASOL_STATIC
+#ifdef KOTUKU_STATIC
 #define JUMPTABLE_DISPLAY [[maybe_unused]] static struct DisplayBase *DisplayBase = nullptr;
 #else
 #define JUMPTABLE_DISPLAY struct DisplayBase *DisplayBase = nullptr;
 #endif
 
 struct DisplayBase {
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
    objPointer * (*_AccessPointer)(void);
    ERR (*_CheckIfChild)(OBJECTID Parent, OBJECTID Child);
    ERR (*_CopyArea)(objBitmap *Bitmap, objBitmap *Dest, BAF Flags, int X, int Y, int Width, int Height, int XDest, int YDest);
@@ -1752,10 +1752,10 @@ struct DisplayBase {
    ERR (*_UnlockCursor)(OBJECTID Surface);
    ERR (*_UnsubscribeInput)(int Handle);
    ERR (*_WindowHook)(OBJECTID SurfaceID, WH Event, FUNCTION *Callback);
-#endif // PARASOL_STATIC
+#endif // KOTUKU_STATIC
 };
 
-#if !defined(PARASOL_STATIC) and !defined(PRV_DISPLAY_MODULE)
+#if !defined(KOTUKU_STATIC) and !defined(PRV_DISPLAY_MODULE)
 extern struct DisplayBase *DisplayBase;
 namespace gfx {
 inline objPointer * AccessPointer(void) { return DisplayBase->_AccessPointer(); }
@@ -1844,7 +1844,7 @@ extern ERR UnlockCursor(OBJECTID Surface);
 extern ERR UnsubscribeInput(int Handle);
 extern ERR WindowHook(OBJECTID SurfaceID, WH Event, FUNCTION *Callback);
 } // namespace
-#endif // PARASOL_STATIC
+#endif // KOTUKU_STATIC
 
 // Direct ColourFormat versions
 

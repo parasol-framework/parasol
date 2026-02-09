@@ -1,19 +1,19 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 *********************************************************************************************************************/
 
-#include <parasol/main.h>
-#include <parasol/startup.h>
-#include <parasol/system/task.h>
-#include <parasol/data/script.h>
-#include <parasol/data/compression.h>
-#include <parasol/files/file.h>
-#include <parasol/functions/strtoint.c>
+#include <kotuku/main.h>
+#include <kotuku/startup.h>
+#include <kotuku/system/task.h>
+#include <kotuku/data/script.h>
+#include <kotuku/data/compression.h>
+#include <kotuku/files/file.h>
+#include <kotuku/functions/strtoint.c>
 
-#include <parasol/modules/filesystem.h>
+#include <kotuku/modules/filesystem.h>
 
 CSTRING ProgName = "Origo";
 
@@ -36,8 +36,8 @@ static ERROR exec_script(CSTRING, OBJECTID *, int, STRING);
 static ERROR PROGRAM_ActionNotify(OBJECTPTR, struct acActionNotify *);
 
 static const char Help[] = {
-"This command-line program will execute scripts written for the Parasol framework.  The core distribution\n\
-supports Tiri (.tiri) scripts.  Quick start:\n\
+"This command-line program will execute scripts written for Kotuku.  The core distribution supports Tiri (.tiri)\n\
+scripts.  Quick start:\n\
 \n\
    origo [args] [script.ext] arg1 arg2 ...\n\
 \n\

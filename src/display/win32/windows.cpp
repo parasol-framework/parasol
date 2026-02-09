@@ -22,7 +22,7 @@
 #include <xinput.h>
 #include <map>
 
-#include <parasol/system/errors.h>
+#include <kotuku/system/errors.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -580,7 +580,7 @@ static void HandleButtonPress(HWND window, int button)
 
    SetCapture(window);
 
-   // Send a Parasol message
+   // Send a Kotuku message
 
    MsgButtonPress(button, 1);
 }
@@ -1222,7 +1222,7 @@ int winCreateScreenClass(void)
 HWND winCreateScreen(HWND PopOver, int *X, int *Y, int *Width, int *Height, char Maximise, char Borderless, const char *Name,
    char Composite, unsigned char Opacity, char Desktop)
 {
-   if (!Name) Name = "Parasol";
+   if (!Name) Name = "Kotuku";
 
    bool interactive;
    if ((Borderless) and (!glTrayIcon) and (!glTaskBar)) interactive = FALSE;
@@ -1312,7 +1312,7 @@ HWND winCreateChild(HWND Parent, int X, int Y, int Width, int Height)
 {
    if (auto Window = CreateWindowEx(
          0, // WS_EX_NOPARENTNOTIFY
-         "ScreenClass", "Parasol Child Window",
+         "ScreenClass", "Kotuku Child Window",
          WS_CHILD|WS_CLIPCHILDREN|WS_CLIPSIBLINGS,
          0, 0, Width, Height,
          Parent,
@@ -1740,7 +1740,7 @@ int winShowWindow(HANDLE window, int Maximise)
 
    if (GetWindowLong(HWND(window), WE_BORDERLESS) == TRUE) {
       // Raw surfaces (composites, borderless windows etc) do not get the focus automatically.
-      // This mirrors the functionality within the Parasol desktop.
+      // This mirrors the functionality within the Kotuku desktop.
 
       result = ShowWindow(HWND(window), Maximise ? SW_SHOWMAXIMIZED : SW_SHOWNOACTIVATE);
    }

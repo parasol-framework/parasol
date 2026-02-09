@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol Framework is made publicly available under the terms described in the LICENSE.TXT file
+The source code for Kōtuku is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 -CATEGORY-
@@ -342,7 +342,7 @@ Action: This function is responsible for executing action routines.
 
 This function is the key entry point for executing actions and method routines.  An action is a predefined function
 call that can be called on any object, while a method is a function call that is specific to a class implementation.
-You can find a complete list of available actions and their associated details in the Parasol Wiki.
+You can find a complete list of available actions and their associated details in the Kotuku Wiki.
 The actions and methods supported by any class will be referenced in their auto-generated documentation.
 
 Here are two examples that demonstrate how to make an action call.  The first performs an activation, which
@@ -1274,7 +1274,7 @@ a new object, the client can proceed to set the object's field values and initia
 can be used as intended.
 
 The new object will be modeled according to the class blueprint indicated by `ClassID`.  Pre-defined class ID's are
-defined in their documentation and the `parasol/system/register.h` include file.  ID's for unregistered classes can
+defined in their documentation and the `kotuku/system/register.h` include file.  ID's for unregistered classes can
 be computed using the ~ResolveClassName() function.
 
 A pointer to the new object will be returned in the `Object` parameter.  By default, object allocations are context

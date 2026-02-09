@@ -461,7 +461,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>This field is required for initialisation and must either be in the format of a universal path string, or a path that is compatible with the host system.  The standard format for a universal path is <code>volume:folder/file</code>, for instance <code>parasol:system/classes.bin</code>.</p>
+<p>This field is required for initialisation and must either be in the format of a universal path string, or a path that is compatible with the host system.  The standard format for a universal path is <code>volume:folder/file</code>, for instance <code>kotuku:system/classes.bin</code>.</p>
 <p>To reference a folder in a way that is distinct from a file, use a trailing slash as in <code>volume:folder/</code>.</p>
 <p>Referencing a <code>volume:</code> is optional.  In the event that a volume is not defined, the current working path is used as the point of origin.</p>
 <p>The accepted method for referencing parent folders is <code>../</code>, which can be repeated for as many parent folders as needed to traverse the folder hierarchy.</p>

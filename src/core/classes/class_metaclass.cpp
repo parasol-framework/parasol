@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -20,7 +20,7 @@ supported by a class.  ~FindField() confirms if a specific field is declared in 
 Classes are typically declared in modules, but if a class is intended to be private for an executable then declaring
 it within the application code is feasible also.
 
-Further discussion on classes and their technical aspects can be found in the Parasol Wiki.
+Further discussion on classes and their technical aspects can be found in the Kotuku Wiki.
 
 -END-
 
@@ -239,7 +239,7 @@ ERR CLASS_Free(extMetaClass *Self)
    if (Self->ClassID != CLASSID::NIL) glClassMap.erase(Self->ClassID);
    if (Self->Location) { FreeResource(Self->Location); Self->Location = nullptr; }
 
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
    if (!Self->SubClasses.empty()) {
       // Sanity check - if a base has sub-classes present then there is an issue that requires resolution.
       // Note that for static builds there is no way to control termination order, so these controls are disabled.
@@ -361,7 +361,7 @@ ERR CLASS_Init(extMetaClass *Self)
       }();
    }
 
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
    if (save) {
       // Saving is only necessary if this is a new dictionary entry.
       if (auto lock = std::unique_lock{glmClassDB, 3s}) {
@@ -538,7 +538,7 @@ This field points to an array that describes the structure of objects that will 
 compulsory that base classes define this array.  Sub-classes will inherit the structure of their base, but they may
 set Fields with additional virtual fields if desired.
 
-Refer to the Parasol Wiki on class development for more information.
+Refer to the Kotuku Wiki on class development for more information.
 
 *********************************************************************************************************************/
 
@@ -1124,7 +1124,7 @@ static ERR OBJECT_SetName(OBJECTPTR Self, CSTRING Name)
 // If the classes.bin file is missing or incomplete, this code will scan for every module installed in the system and
 // initialise it so that all classes can be registered in the class database.
 
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
 void scan_classes(void)
 {
    pf::Log log("Core");

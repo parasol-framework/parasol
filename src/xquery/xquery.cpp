@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -16,7 +16,7 @@ with the @XML class to provide a standards-compliant query engine with extensive
 
 *********************************************************************************************************************/
 
-#include <parasol/modules/regex.h>
+#include <kotuku/modules/regex.h>
 #include "../link/unicode.h"
 #include "../xml/uri_utils.h"
 #include "functions/accessor_support.h"
@@ -37,7 +37,7 @@ static ERR add_xquery_class(void);
 
 extern "C" ERR load_regex(void)
 {
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
    if (not modRegex) {
       pf::SwitchContext ctx(glContext);
       if (objModule::load("regex", &modRegex, &RegexBase) != ERR::Okay) return ERR::InitModule;
@@ -90,5 +90,5 @@ static void MODTest(CSTRING Options, int *Passed, int *Total)
 static STRUCTS glStructures = {
 };
 
-PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MODTest, MOD_IDL, &glStructures)
+KOTUKU_MOD(MODInit, nullptr, MODOpen, MODExpunge, MODTest, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_xquery_module() { return &ModHeader; }

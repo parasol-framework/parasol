@@ -1,6 +1,6 @@
 // XPath Evaluation Engine
 //
-// The evaluator coordinates the complete XPath execution pipeline for Parasol's XML subsystem.  It
+// The evaluator coordinates the complete XPath execution pipeline for Kotuku's XML subsystem.  It
 // receives token sequences from the tokeniser, constructs an AST via the parser, and then walks that
 // AST to resolve node-sets, scalar values, and boolean predicates against the in-memory document
 // model.  Beyond expression evaluation, the class maintains the implicit evaluation context defined by

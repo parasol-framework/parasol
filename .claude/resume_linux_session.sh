@@ -10,7 +10,7 @@ tools/codex_setup.sh
 
 # Pre-build saves Codex from having to do that step.
 cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=build/agents-install -DRUN_ANYWHERE=TRUE \
-  -DPARASOL_STATIC=ON -DDISABLE_SCINTILLA=ON -DDISABLE_AUDIO=ON -DDISABLE_X11=ON -DDISABLE_DISPLAY=ON \
+  -DKOTUKU_STATIC=ON -DDISABLE_SCINTILLA=ON -DDISABLE_AUDIO=ON -DDISABLE_X11=ON -DDISABLE_DISPLAY=ON \
   -DDISABLE_PICTURE=ON -DDISABLE_JPEG=ON -DBUILD_DEFS=OFF -DINSTALL_TESTS=OFF
 cmake --build build/agents --config Debug --parallel
 cmake --install build/agents

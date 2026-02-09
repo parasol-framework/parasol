@@ -12,7 +12,7 @@
 #include <vector>
 #include <utility>
 #include <ankerl/unordered_dense.h>
-#include <parasol/modules/xml.h>
+#include <kotuku/modules/xml.h>
 #include "../xpath_value.h"
 
 namespace xml::schema

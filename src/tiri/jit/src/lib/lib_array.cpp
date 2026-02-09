@@ -1,7 +1,7 @@
 // Native array library.
 // Copyright © 2025-2026 Paul Manias.
 //
-// TODO: Allow array lifetimes to be linked to Parasol objects.  This would allow external array data to be managed
+// TODO: Allow array lifetimes to be linked to Kotuku objects.  This would allow external array data to be managed
 // safely without having to be cached.  In the event that the object is destroyed, the array should be marked as invalid
 // and the length reduced to 0 to prevent usage.
 //
@@ -26,8 +26,8 @@
 #include <cstdio>
 #include <cstring>
 #include <algorithm>
-#include <parasol/strings.hpp>
-#include <parasol/main.h>
+#include <kotuku/strings.hpp>
+#include <kotuku/main.h>
 
 #define LJLIB_MODULE_array
 
@@ -161,8 +161,8 @@ LJLIB_CF(array_new)
       if (size < 0) lj_err_argv(L, 1, ErrMsg::NUMRNG, "non-negative", "negative");
       auto elem_type = parse_elemtype(L, 2);
 
-      if (elem_type IS AET::PTR) lj_err_argv(L, 2, ErrMsg::ARRTYPE); // For Parasol functions only
-      else if (elem_type IS AET::STRUCT) lj_err_argv(L, 2, ErrMsg::ARRTYPE); // For Parasol functions only (for now)
+      if (elem_type IS AET::PTR) lj_err_argv(L, 2, ErrMsg::ARRTYPE); // For Kotuku functions only
+      else if (elem_type IS AET::STRUCT) lj_err_argv(L, 2, ErrMsg::ARRTYPE); // For Kotuku functions only (for now)
 
       arr = lj_array_new(L, uint32_t(size), elem_type);
    }
@@ -181,7 +181,7 @@ LJLIB_CF(array_new)
 //   type: element type string ("char", "int16", "int", "int64", "float", "double", "string")
 //   value1, value2, ...: values to populate the array with
 //
-// Example: array.of('string', 'google.com', 'parasol.ws', 'amazon.co.uk')
+// Example: array.of('string', 'google.com', 'kotuku.dev', 'amazon.co.uk')
 // Example: array.of('int', 1, 2, 3, 4, 5)
 
 LJLIB_CF(array_of)

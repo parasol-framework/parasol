@@ -7,7 +7,7 @@
 
 #include "parse_regalloc.h"
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 #include <format>
 
 #include "ast/nodes.h"  // For TiriType, tiri_type_to_lj_tag(), type_name()

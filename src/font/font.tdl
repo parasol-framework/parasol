@@ -5,7 +5,7 @@ module({ name="Font", copyright="Paul Manias © 1998-2026", version=1.0, timesta
     loadFile(glPath .. 'common-graphics.tdl')
   end)
 
-  c_include("<parasol/modules/display.h>")
+  c_include("<kotuku/modules/display.h>")
 
   flags("FTF", { comment="Font flags" },
     "HEAVY_LINE: Underline the font with a double-sized line, using the colour defined in #Underline.",

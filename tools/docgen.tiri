@@ -3,7 +3,7 @@
 --
 -- Support parameters:
 --
---   sdk:     Path to the parasol SDK (required if not discoverable)
+--   sdk:     Path to the Kotuku SDK (required if not discoverable)
 --   output:  Optional output path for the generated script. If not specified, a temp: file will be used.
 --   dry-run: If set, the generated script will not be executed, but left in the temp: folder for inspection.
 
@@ -12,7 +12,7 @@
    local rx_sdk_path = <{ regex.new([[(.+)CMakeLists\.txt]]) }>
 
 -----------------------------------------------------------------------------------------------------------------------
--- Resolve the location of the Parasol SDK and create an 'sdk:' volume.
+-- Resolve the location of the Kotuku SDK and create an 'sdk:' volume.
 
 function resolveSDKPath(Path:str)
    local sdk_path
@@ -40,7 +40,7 @@ function resolveSDKPath(Path:str)
          msg ..= path .. '\n'
       end
       print('Unable to find CMakeLists.txt after searching the following paths:\n' .. msg)
-      error('A path to the Parasol SDK could not be determined.')
+      error('A path to Kotuku could not be determined.')
    end
 
    mSys.SetVolume('sdk', sdk_path)

@@ -27,7 +27,7 @@ Name: Memory
 #endif
 
 #include "defs.h"
-#include <parasol/modules/core.h>
+#include <kotuku/modules/core.h>
 
 #define freemem(a)  free(a)
 
@@ -642,7 +642,7 @@ SetResourceMgr: Define a resource manager for a memory block originating from ~A
 SetResourceMgr() associates a !ResourceManager with a memory block that was allocated with the `MEM::MANAGED` flag.
 This allows customised memory management logic to be used when an event is triggered on a memory block, such as
 the block being destroyed.  Most commonly, resource managers are used to allow C++ destructors to be integrated with
-Parasol's memory management system.
+Kōtuku's memory management system.
 
 This working example from the XPath module ensures that `XPathNode` objects are properly destructed when passed to
 ~FreeResource():

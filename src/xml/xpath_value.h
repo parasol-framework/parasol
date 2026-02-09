@@ -21,9 +21,9 @@
 #include <string_view>
 #include <vector>
 
-#include <parasol/main.h>
-#include <parasol/modules/xml.h>
-#include <parasol/modules/xquery.h>
+#include <kotuku/main.h>
+#include <kotuku/modules/xml.h>
+#include <kotuku/modules/xquery.h>
 
 using NODES = pf::vector<XTag *>;
 

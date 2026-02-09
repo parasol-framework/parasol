@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -31,9 +31,9 @@ module.
 
 #define PRV_REGEX_MODULE
 
-#include <parasol/main.h>
-#include <parasol/modules/regex.h>
-#include <parasol/strings.hpp>
+#include <kotuku/main.h>
+#include <kotuku/modules/regex.h>
+#include <kotuku/strings.hpp>
 #include "srell/srell.hpp"
 
 #include <cstddef>
@@ -653,5 +653,5 @@ static STRUCTS glStructures = {
    { "Regex", sizeof(struct Regex) }
 };
 
-PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, nullptr, MOD_IDL, &glStructures)
+KOTUKU_MOD(MODInit, nullptr, MODOpen, MODExpunge, nullptr, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_regex_module() { return &ModHeader; }

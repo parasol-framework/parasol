@@ -4,7 +4,7 @@
 // Copyright: Paul Manias © 2010-2026
 // Generator: idl-c
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #define MODVERSION_SVG (1)
 

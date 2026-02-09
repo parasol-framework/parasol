@@ -19,10 +19,10 @@
 #include "../../../struct_def.h"
 
 #ifndef PLATFORM_CONFIG_H
-#include <parasol/config.h>
+#include <kotuku/config.h>
 #endif
 
-#include <parasol/system/errors.h>
+#include <kotuku/system/errors.h>
 
 // GC object types
 
@@ -129,7 +129,7 @@ enum class TiriType : uint8_t {
    Array,
    Func,
    Thread,
-   Object,       // Parasol object (LT_TOBJECT)
+   Object,       // Kotuku object (LT_TOBJECT)
    Range,        // Range expression (runtime: LJ_TUDATA)
    Unknown
 };
@@ -398,7 +398,7 @@ inline constexpr uint32_t LJ_TTHREAD   = ~6u;  // Unused?
 inline constexpr uint32_t LJ_TPROTO    = ~7u;  // Function prototype
 inline constexpr uint32_t LJ_TFUNC     = ~8u;  // Function
 inline constexpr uint32_t LJ_TTRACE    = ~9u;  // Unused in TValue(?) could be shared?
-inline constexpr uint32_t LJ_TOBJECT   = ~10u; // Object (Parasol)
+inline constexpr uint32_t LJ_TOBJECT   = ~10u; // Object (Kotuku)
 inline constexpr uint32_t LJ_TTAB      = ~11u; // Table
 inline constexpr uint32_t LJ_TUDATA    = ~12u; // Userdata
 inline constexpr uint32_t LJ_TARRAY    = ~13u; // Native array type
@@ -845,7 +845,7 @@ enum class AET : uint8_t {
    ARRAY,      // GCarray * (array reference)
    ANY,        // TValue (mixed type storage)
    STRUCT,     // Structured data (uses structdef)
-   OBJECT,     // OBJECTPTR for external object references originating from the Parasol API; otherwise GCobject
+   OBJECT,     // OBJECTPTR for external object references originating from the Kotuku API; otherwise GCobject
    MAX,
    VULNERABLE = PTR
 };
@@ -957,12 +957,12 @@ struct GCobject {
    GCHeader;                    // [0]  nextgc, marked, gct (10 bytes)
    uint8_t udtype;              // [10] Reserved for sub-types (future use)
    uint8_t flags;               // [11] Object flags (GCOBJ_DETACHED, GCOBJ_LOCKED)
-   int32_t uid;                 // [12] Parasol object unique ID (OBJECTID)
+   int32_t uid;                 // [12] Kotuku object unique ID (OBJECTID)
    uint32_t accesscount;        // [16] Access count for lock management
    uint32_t reserved;           // [20] Reserved for alignment
    GCRef gclist;                // [24] GC list for marking (must match GCtab.gclist)
    GCRef metatable;             // [32] Optional metatable (must match GCtab.metatable)
-   struct Object *ptr;          // [40] Direct pointer to Parasol object (OBJECTPTR, null if detached)
+   struct Object *ptr;          // [40] Direct pointer to Kotuku object (OBJECTPTR, null if detached)
    class objMetaClass *classptr; // [48] Direct pointer to class metadata (objMetaClass*)
 
    inline bool is_detached() { return (flags & GCOBJ_DETACHED) != 0; }
@@ -1249,7 +1249,7 @@ typedef union GCobj {
    GCtab     tab;
    GCarray   arr;
    GCudata   ud;
-   GCobject  obj;  // Native Parasol object
+   GCobject  obj;  // Native Kotuku object
    ~GCobj() = delete;
 } GCobj;
 
@@ -1289,7 +1289,7 @@ template<typename T> [[nodiscard]] inline GCobj * obj2gco(T *v) noexcept { retur
 // Array accessors
 [[nodiscard]] inline GCarray * arrayref(GCRef r) noexcept { return &gcref(r)->arr; }
 
-// Parasol object accessors
+// Kotuku object accessors
 [[nodiscard]] inline GCobject * objectref(GCRef r) noexcept { return &gcref(r)->obj; }
 
 // Thread/state accessors

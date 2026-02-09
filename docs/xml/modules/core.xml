@@ -98,7 +98,7 @@
       <param type="APTR" name="Parameters">Optional parameter structure associated with <code>Action</code>.</param>
     </input>
     <description>
-<p>This function is the key entry point for executing actions and method routines.  An action is a predefined function call that can be called on any object, while a method is a function call that is specific to a class implementation. You can find a complete list of available actions and their associated details in the Parasol Wiki. The actions and methods supported by any class will be referenced in their auto-generated documentation.</p>
+<p>This function is the key entry point for executing actions and method routines.  An action is a predefined function call that can be called on any object, while a method is a function call that is specific to a class implementation. You can find a complete list of available actions and their associated details in the Kotuku Wiki. The actions and methods supported by any class will be referenced in their auto-generated documentation.</p>
 <p>Here are two examples that demonstrate how to make an action call.  The first performs an activation, which does not require any additional arguments.  The second performs a move operation, which requires three additional arguments to be passed to the Action() function:</p>
 <pre>1. Action(AC::Activate, Picture, nullptr);
 
@@ -437,10 +437,10 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
     <description>
 <p>This function is used to copy files and folders to new locations.  When copying folders it will do so recursively, so as to copy all sub-folders and files within the location.</p>
 <p>It is important that you are aware that different types of string formatting can give different results.  The following examples illustrate:</p>
-<p>Copying <code>parasol:makefile</code> to <code>parasol:documents</code> results in a file called <code>parasol:documents</code>.</p>
-<p>Copying <code>parasol:makefile</code> to <code>parasol:documents/</code> results in a file called <code>parasol:documents/makefile</code>.</p>
-<p>Copying <code>parasol:pictures/</code> to <code>parasol:documents/</code> results in a folder at <code>parasol:documents/pictures</code> and includes a copy of all folders and files found within the pictures folder.</p>
-<p>Copying <code>parasol:pictures/</code> to <code>parasol:documents</code> results in a folder at <code>parasol:documents</code> (if the documents folder already exists, it receives additional content from the pictures folder).</p>
+<p>Copying <code>kotuku:makefile</code> to <code>kotuku:documents</code> results in a file called <code>kotuku:documents</code>.</p>
+<p>Copying <code>kotuku:makefile</code> to <code>kotuku:documents/</code> results in a file called <code>kotuku:documents/makefile</code>.</p>
+<p>Copying <code>kotuku:pictures/</code> to <code>kotuku:documents/</code> results in a folder at <code>kotuku:documents/pictures</code> and includes a copy of all folders and files found within the pictures folder.</p>
+<p>Copying <code>kotuku:pictures/</code> to <code>kotuku:documents</code> results in a folder at <code>kotuku:documents</code> (if the documents folder already exists, it receives additional content from the pictures folder).</p>
 <p>This function will overwrite any destination file(s) that already exist.</p>
 <p>The Source parameter should always clarify the type of location that is being copied.  For example if copying a folder, a forward slash must terminate the string or it will be assumed that a file is the source.</p>
 <p>The Callback parameter can be set with a function that matches this prototype:</p>
@@ -990,10 +990,10 @@ if (!MemoryPtrInfo(ptr, &amp;info)) {
 <p>It is important that you are aware that different types of string formatting can give different results.  The following examples illustrate:</p>
 <pre>
 <b>Source               Destination          Result</b>
-parasol:makefile     parasol:documents    parasol:documents
-parasol:makefile     parasol:documents/   parasol:documents/makefile
-parasol:pictures/    parasol:documents/   parasol:documents/pictures
-parasol:pictures/    parasol:documents    parasol:documents (Existing documents folder destroyed)
+kotuku:makefile     kotuku:documents    kotuku:documents
+kotuku:makefile     kotuku:documents/   kotuku:documents/makefile
+kotuku:pictures/    kotuku:documents/   kotuku:documents/pictures
+kotuku:pictures/    kotuku:documents    kotuku:documents (Existing documents folder destroyed)
 </pre>
 <p>This function will overwrite the destination location if it already exists.</p>
 <p>The <code>Source</code> argument should always clarify the type of location that is being copied - e.g. if you are copying a folder, you must specify a forward slash at the end of the string or the function will assume that you are moving a file.</p>
@@ -1021,7 +1021,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     </input>
     <description>
 <p>The NewObject() function is used to create new objects and register them for use within the Core.  After creating a new object, the client can proceed to set the object's field values and initialise it with <action>Init</action> so that it can be used as intended.</p>
-<p>The new object will be modeled according to the class blueprint indicated by <code>ClassID</code>.  Pre-defined class ID's are defined in their documentation and the <code>parasol/system/register.h</code> include file.  ID's for unregistered classes can be computed using the <function>ResolveClassName</function> function.</p>
+<p>The new object will be modeled according to the class blueprint indicated by <code>ClassID</code>.  Pre-defined class ID's are defined in their documentation and the <code>kotuku/system/register.h</code> include file.  ID's for unregistered classes can be computed using the <function>ResolveClassName</function> function.</p>
 <p>A pointer to the new object will be returned in the <code>Object</code> parameter.  By default, object allocations are context sensitive and will be collected when their owner is terminated.  It is possible to track an object to a different owner by using the <function>SetOwner</function> function.</p>
 <p>To destroy an object, call <function>FreeResource</function>.</p>
     </description>

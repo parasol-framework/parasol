@@ -1,7 +1,7 @@
 // type_checker.cpp - Contains the runtime validation engine that applies schema-derived type and
 // element descriptors to concrete XML instance data.  The implementation cross-references the
 // registry, performs value coercion checks, and surfaces detailed diagnostic messages so that
-// callers can enforce XSD constraints when loading or manipulating documents through Parasol's XML
+// callers can enforce XSD constraints when loading or manipulating documents through Kōtuku's XML
 // facilities.
 
 #include "type_checker.h"

@@ -1,10 +1,10 @@
 # XML Module - AI Agent Guide
 
-This file provides comprehensive information about the Parasol XML module for AI agents working with the codebase.
+This file provides comprehensive information about the Kōtuku XML module for AI agents working with the codebase.
 
 ## Overview
 
-The XML module provides robust functionality for creating, parsing, and maintaining XML data structures. It serves as Parasol's general-purpose structured data handler, supporting XML, JSON, YAML, and other structured formats with cross-format conversion capabilities.
+The XML module provides robust functionality for creating, parsing, and maintaining XML data structures. It serves as Kōtuku's general-purpose structured data handler, supporting XML, JSON, YAML, and other structured formats with cross-format conversion capabilities.
 
 **Key Features:**
 - Full XML parsing and serialisation with flexible parsing modes
@@ -62,7 +62,7 @@ src/xml/
 
 Primary class for XML document handling with comprehensive parsing and manipulation capabilities.
 
-**Include:** `<parasol/modules/xml.h>`
+**Include:** `<kotuku/modules/xml.h>`
 
 **Key Fields:**
 - `Path` (str) - File system location of XML data
@@ -81,7 +81,7 @@ Primary class for XML document handling with comprehensive parsing and manipulat
 
 Represents complete XML elements with attributes, content, and hierarchy.
 
-**Include:** `<parasol/modules/xml.h>`
+**Include:** `<kotuku/modules/xml.h>`
 
 ```cpp
 struct XTag {
@@ -106,7 +106,7 @@ struct XTag {
 
 Simple name-value pair for XML attributes and content.
 
-**Include:** `<parasol/modules/xml.h>`
+**Include:** `<kotuku/modules/xml.h>`
 
 ```cpp
 struct XMLAttrib {
@@ -118,7 +118,7 @@ struct XMLAttrib {
 ### Key Enumerations and Flags
 
 **XMF Flags** - XML parsing and behavior options
-**Include:** `<parasol/modules/xml.h>`
+**Include:** `<kotuku/modules/xml.h>`
 - `WELL_FORMED` - Require well-formed XML structure
 - `INCLUDE_COMMENTS` - Preserve XML comments in parsing
 - `STRIP_CONTENT` - Remove all text content during parsing
@@ -128,14 +128,14 @@ struct XMLAttrib {
 - `INCLUDE_WHITESPACE` - Retain whitespace between tags
 
 **XTF Flags** - XTag type indicators
-**Include:** `<parasol/modules/xml.h>`
+**Include:** `<kotuku/modules/xml.h>`
 - `CDATA` - Tag represents CDATA section
 - `INSTRUCTION` - Processing instruction (<?xml?>)
 - `NOTATION` - Notation declaration (<!XML>)
 - `COMMENT` - Comment section (<!-- -->)
 
 **XMI Enum** - Tag insertion positions
-**Include:** `<parasol/modules/xml.h>`
+**Include:** `<kotuku/modules/xml.h>`
 - `PREV/PREVIOUS` - Insert before target tag
 - `CHILD` - Insert as first child
 - `NEXT` - Insert after target tag
@@ -221,7 +221,7 @@ For detailed XPath functionality, see the XPath module documentation at `src/xpa
 ### Utility Functions
 
 **XML Namespace Functions**
-**Include:** `<parasol/modules/xml.h>` (xml namespace)
+**Include:** `<kotuku/modules/xml.h>` (xml namespace)
 
 ```cpp
 // Direct tag attribute manipulation
@@ -431,4 +431,4 @@ While primarily XML-focused, the module architecture supports extension to other
 - **Schema Validation**: Detailed schema validation information in this document
 - **API Reference**: See `docs/xml/modules/classes/xml.xml` for complete API documentation
 
-This guide provides the essential information needed for AI agents to work effectively with the Parasol XML module, covering architecture, functionality, testing, and integration patterns.
+This guide provides the essential information needed for AI agents to work effectively with the Kōtuku XML module, covering architecture, functionality, testing, and integration patterns.

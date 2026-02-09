@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -9,11 +9,11 @@ This version of the launcher is intended for use from the command-line only.
 
 *********************************************************************************************************************/
 
-#include <parasol/main.h>
-#include <parasol/modules/core.h>
-#include <parasol/modules/display.h>
-#include <parasol/startup.h>
-#include <parasol/strings.hpp>
+#include <kotuku/main.h>
+#include <kotuku/modules/core.h>
+#include <kotuku/modules/display.h>
+#include <kotuku/startup.h>
+#include <kotuku/strings.hpp>
 #include <string.h>
 
 #include "common.h"
@@ -39,9 +39,9 @@ static bool glBackstage = false;
 static ERR exec_source(std::string, int, const std::string);
 
 static const std::string glHelp =
-   "Parasol Framework " PARASOL_VERSION R"(
+   "Kotuku " KOTUKU_VERSION R"(
 
-This command-line program can execute Tiri scripts and PARC files developed for the Parasol framework.
+This command-line program can execute Tiri scripts and PARC files developed for Kotuku.
 
    origo [options] [script.ext] arg1 arg2=value ...
 
@@ -96,9 +96,9 @@ static ERR process_args(void)
             return ERR::Terminate;
          }
          else if (pf::iequals(args[i], "--version")) { // Print version information
-            printf("%s\n", PARASOL_VERSION);
-            printf("%s:%s\n", PARASOL_GIT_BRANCH, PARASOL_GIT_COMMIT);
-            printf("Build Type: %s\n", PARASOL_BUILD_TYPE);
+            printf("%s\n", KOTUKU_VERSION);
+            printf("%s:%s\n", KOTUKU_GIT_BRANCH, KOTUKU_GIT_COMMIT);
+            printf("Build Type: %s\n", KOTUKU_BUILD_TYPE);
             return ERR::Terminate;
          }
          else if (pf::iequals(args[i], "--verify")) { // Dummy option for verifying installs
@@ -164,7 +164,7 @@ extern "C" int main(int argc, char **argv)
 {
    pf::Log log("Origo");
 
-   if (auto msg = init_parasol(argc, (CSTRING *)argv)) {
+   if (auto msg = init_kotuku(argc, (CSTRING *)argv)) {
       for (int i=1; i < argc; i++) { // If in --verify mode, return with no error code and print nothing.
          if (not strcmp(argv[i], "--verify")) return 0;
       }
@@ -191,7 +191,7 @@ extern "C" int main(int argc, char **argv)
 
             glDialogScript.replace(start, 8, glTargetFile);
          }
-         else glDialogScript.replace(start, 8, "parasol:");
+         else glDialogScript.replace(start, 8, "kotuku:");
 
          result = int(exec_source(glDialogScript.c_str(), glTime, glProcedure));
       }
@@ -243,7 +243,7 @@ extern "C" int main(int argc, char **argv)
 
    if (glScript) { FreeResource(glScript); glScript = nullptr; }
 
-   close_parasol();
+   close_kotuku();
 
    return result;
 }

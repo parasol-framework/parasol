@@ -29,7 +29,7 @@
 #include "lib.h"
 #include "lib_range.h"
 #include "runtime/lj_proto_registry.h"
-#include <parasol/strings.hpp>
+#include <kotuku/strings.hpp>
 
 #define LJLIB_MODULE_range
 

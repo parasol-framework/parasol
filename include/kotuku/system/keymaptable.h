@@ -3,7 +3,7 @@
 // keymaptable.h
 // (C) Copyright 2001-2022 Paul Manias
 
-#include <parasol/system/keys.h>
+#include <kotuku/system/keys.h>
 
 // Key mapping translation table.  This is used to get the numeric value of keys referred to in the keymap
 // configuration files.  Because this is a lookup table, it must be arranged in the same order as that specified in

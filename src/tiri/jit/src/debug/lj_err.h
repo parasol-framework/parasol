@@ -58,7 +58,7 @@ inline void lj_err_verify() noexcept {}
 // Try-except exception handling runtime functions (defined in tiri_functions.cpp)
 // Note: lj_try_enter and lj_try_leave are called from VM bytecode handlers and JIT code.
 // Other functions (lj_try_find_handler, lj_try_build_exception_table) are internal
-// to lj_err.cpp and use Parasol's ERR type, so they're declared there.
+// to lj_err.cpp and use Kotuku's ERR type, so they're declared there.
 extern "C" void lj_try_enter(lua_State *L, GCfunc *Func, TValue *Base, uint16_t TryBlockIndex);
 extern "C" void lj_try_leave(lua_State *L);
 extern "C" void lj_try_cleanup_to_base(lua_State *L, TValue *TargetBase);

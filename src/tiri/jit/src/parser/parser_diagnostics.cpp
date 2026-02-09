@@ -14,7 +14,7 @@
 // - Provides formatted output for user-facing error messages
 
 #include "parser/parser_diagnostics.h"
-#include <parasol/main.h>
+#include <kotuku/main.h>
 #include <format>
 
 //********************************************************************************************************************

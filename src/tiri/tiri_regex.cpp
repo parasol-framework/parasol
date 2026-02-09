@@ -11,10 +11,10 @@ Examples:
 #define PRV_SCRIPT
 #define PRV_TIRI
 #define PRV_TIRI_MODULE
-#include <parasol/main.h>
-#include <parasol/modules/tiri.h>
-#include <parasol/modules/regex.h>
-#include <parasol/strings.hpp>
+#include <kotuku/main.h>
+#include <kotuku/modules/tiri.h>
+#include <kotuku/modules/regex.h>
+#include <kotuku/strings.hpp>
 #include <string>
 #include <string_view>
 #include <cctype>
@@ -46,7 +46,7 @@ struct regex_callback {
 
 static ERR load_regex(void)
 {
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
    if (not modRegex) {
       pf::SwitchContext ctx(glTiriContext);
       if (objModule::load("regex", &modRegex, &RegexBase) != ERR::Okay) return ERR::InitModule;

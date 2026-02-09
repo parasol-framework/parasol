@@ -2,7 +2,7 @@
 
 local rx_high_hex        = <{ regex.new([[^0x[8f][0-9abcdef]+]]) }>
 local rx_angle_bracket   = <{ regex.new([[^<(.+)>$]]) }>
-local rx_parasol_include = <{ regex.new([[^<parasol/(.+)>$]]) }>
+local rx_kotuku_include  = <{ regex.new([[^<kotuku/(.+)>$]]) }>
 local rx_extract_comment = <{ regex.new([[^\/\*+(.*?)\*+\/]], regex.MULTILINE|regex.DOT_ALL) }>
 local rx_module_section  = <{ regex.new([[-MODULE-(.*?)-END-]], regex.DOT_ALL) }>
 local rx_module_header   = <{ regex.new([[^(\w+):\s+(.*?)\n\n(.+)]], regex.MULTILINE|regex.DOT_ALL) }>
@@ -36,7 +36,7 @@ global function cpp_include(...)
    priority('#ifdef __cplusplus')
    for v in values({...}) do
       if v:startsWith('<') and v:endsWith('>') then
-         local inc = rx_parasol_include.extract(v)
+         local inc = rx_kotuku_include.extract(v)
 
          if inc then
             inc = rx_path_chars.replace(inc, '_')
@@ -118,7 +118,7 @@ global function module(Options:table, Function:func)
    priority('// Generator: idl-c')
    priority()
 
-   priority('#include <parasol/main.h>')
+   priority('#include <kotuku/main.h>')
    priority()
 
    if glModule.version?? then

@@ -14,7 +14,7 @@
 #include <ankerl/unordered_dense.h>
 
 #include "schema/schema_parser.h"
-#include <parasol/modules/xquery.h>
+#include <kotuku/modules/xquery.h>
 
 #include <concepts>
 #include <ranges>

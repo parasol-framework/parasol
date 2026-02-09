@@ -192,7 +192,7 @@ global function loadActions()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Resolve the location of the Parasol SDK and create an 'sdk:' volume.
+-- Resolve the location of the Kotuku SDK and create an 'sdk:' volume.
 
 global function resolveSDKPath(Path:str)
    local sdk_path
@@ -220,7 +220,7 @@ global function resolveSDKPath(Path:str)
          msg ..= path .. '\n'
       end
       print('Unable to find CMakeLists.txt after searching the following paths:\n' .. msg)
-      error('A path to the Parasol SDK could not be determined.')
+      error('A path to the Kotuku SDK could not be determined.')
    end
 
    mSys.SetVolume('sdk', sdk_path)

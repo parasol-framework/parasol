@@ -1,6 +1,6 @@
 #pragma once
 
-#include <parasol/system/errors.h>
+#include <kotuku/system/errors.h>
 #include <string>
 #include <vector>
 #include <memory>
@@ -8,7 +8,7 @@
 #include <utility>
 #include <string_view>
 #include <cstring>
-#include <parasol/modules/xquery.h>
+#include <kotuku/modules/xquery.h>
 #include <array>
 #include <unordered_set>
 #include <unordered_map>

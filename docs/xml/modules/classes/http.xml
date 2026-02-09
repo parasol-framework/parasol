@@ -29,7 +29,7 @@
 <header>Receiving Content</header>
 <p>There are three possible methods for content download.  This first example downloads content to a temporary file for further processing:</p>
 <pre>http = obj.new('http', {
-   src        = 'http://www.parasol.ws/index.html',
+   src        = 'http://www.kotuku.dev/index.html',
    method     = 'get',
    outputFile = 'temp:index.html',
    stateChanged = function(HTTP, State)
@@ -42,7 +42,7 @@ http.acActivate()
 <p>This example uses data feeds to push the downloaded data to another object in text format:</p>
 <pre>doc = obj.new('scintilla')
 http = obj.new('http', {
-   src        = 'http://www.parasol.ws/index.html',
+   src        = 'http://www.kotuku.dev/index.html',
    method     = 'get',
    datatype   = 'text',
    objectMode = 'DATA_FEED',

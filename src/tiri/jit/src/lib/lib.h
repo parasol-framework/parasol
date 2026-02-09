@@ -4,7 +4,7 @@
 #pragma once
 
 #include "lj_obj.h"
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 // A fallback handler is called by the assembler VM if the fast path fails:
 //

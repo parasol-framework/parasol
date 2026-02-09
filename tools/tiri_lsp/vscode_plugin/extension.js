@@ -42,7 +42,7 @@ function activate(context) {
             outputChannel.appendLine(`Connection error: ${err.message}`);
             vscode.window.showWarningMessage(
                `Tiri LSP: Could not connect to server at ${host}:${port}. ` +
-               `Start the server with: parasol tools/lsp_server.tiri port=${port}`
+               `Start the server with: origo tools/lsp_server.tiri port=${port}`
             );
             reject(err);
          });

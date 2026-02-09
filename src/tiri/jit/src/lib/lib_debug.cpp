@@ -6,7 +6,7 @@
 // Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 //
 // The debug library provides introspection functions for examining and manipulating the Lua runtime
-// environment.  It includes standard Lua debug functions as well as Parasol-specific extensions for
+// environment.  It includes standard Lua debug functions as well as Kotuku-specific extensions for
 // code validation and annotation management.
 //
 //   debug.getRegistry()         - Returns the Lua registry table
@@ -38,7 +38,7 @@
 #define lib_debug_c
 #define LUA_LIB
 
-#include <parasol/strings.hpp>
+#include <kotuku/strings.hpp>
 
 #include "lua.h"
 #include "lauxlib.h"

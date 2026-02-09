@@ -1,5 +1,5 @@
 -- Tests for the `with` statement: with obj1, obj2 do ... end
--- The `with` statement auto-locks Parasol objects for the duration of a block,
+-- The `with` statement auto-locks Kotuku objects for the duration of a block,
 -- automatically unlocking when the scope exits.
 
 @BeforeEach(hotpath=false)

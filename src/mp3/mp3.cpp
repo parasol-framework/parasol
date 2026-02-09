@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -9,9 +9,9 @@ MP3: Sound class extension
 
 *********************************************************************************************************************/
 
-#include <parasol/main.h>
-#include <parasol/modules/audio.h>
-#include <parasol/strings.hpp>
+#include <kotuku/main.h>
+#include <kotuku/modules/audio.h>
+#include <kotuku/strings.hpp>
 
 extern "C" {
 //#define MINIMP3_FLOAT_OUTPUT
@@ -895,5 +895,5 @@ static ERR MODExpunge(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, nullptr, nullptr, MODExpunge, nullptr, nullptr, nullptr)
+KOTUKU_MOD(MODInit, nullptr, nullptr, MODExpunge, nullptr, nullptr, nullptr)
 extern "C" struct ModHeader * register_mp3_module() { return &ModHeader; }

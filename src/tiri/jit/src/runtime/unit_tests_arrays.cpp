@@ -1,7 +1,7 @@
 // Unit tests for native array type.
-// Copyright (C) 2024 Parasol Framework. See Copyright Notice in parasol.h
+// Copyright (C) 2025-2026 Paul Manias
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #ifdef ENABLE_UNIT_TESTS
 
@@ -81,7 +81,7 @@ static bool test_array_creation_byte(pf::Log &Log)
       return false;
    }
    if (arr->elemtype != AET::BYTE) {
-      Log.error("char array has incorrect elemtype: %d", arr->elemtype);
+      Log.error("char array has incorrect elemtype: %d", int(arr->elemtype));
       return false;
    }
    if (arr->elemsize != sizeof(uint8_t)) {

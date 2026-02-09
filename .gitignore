@@ -38,7 +38,7 @@
 .*/
 /debug/*
 /release/*
-/parasol-*/
+/kotuku-*/
 /visual-studio/
 /projects/*
 /*.sh
@@ -65,7 +65,7 @@ local-claude/
 CLAUDE.local.md
 msys-debug/
 msys-release/
-src/link/parasol.manifest
+src/link/kotuku.manifest
 src/link/resource.rc
 data/ssl/localhost.p12
 data/ssl/localhost.pem

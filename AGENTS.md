@@ -5,8 +5,8 @@ This file provides guidance to Agentic programs when working with code in this r
 ### Essential Build Commands
 
 **Configure build:**
-- `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=build/agents-install -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=OFF -DENABLE_UNIT_TESTS=ON`
-- Modular/Static builds: Use `-DPARASOL_STATIC=OFF` for modular builds and `-DPARASOL_STATIC=ON` for static.
+- `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=build/agents-install -DRUN_ANYWHERE=TRUE -DKOTUKU_STATIC=OFF -DENABLE_UNIT_TESTS=ON`
+- Modular/Static builds: Use `-DKOTUKU_STATIC=OFF` for modular builds and `-DKOTUKU_STATIC=ON` for static.
 - Always use Debug builds.  The user may provide a separate Release build if needed.
 
 **Build and install:**
@@ -28,11 +28,11 @@ This file provides guidance to Agentic programs when working with code in this r
 ### CMake Configuration Options
 
 Key build options (use with `-D` flag):
-- `PARASOL_STATIC=ON/OFF` - Build as static libraries instead of modules
+- `KOTUKU_STATIC=ON/OFF` - Build as static libraries instead of modules
 - `BUILD_TESTS=ON/OFF` - Enable/disable test building
 - `BUILD_DEFS=ON/OFF` - Auto-generate C/C++ headers from TDL files
 - `RUN_ANYWHERE=ON/OFF` - Build for local folder execution
-- `PARASOL_VLOG=ON/OFF` - Enables trace level log messages via log.trace() in Debug builds (has no effect on Release builds).
+- `KOTUKU_VLOG=ON/OFF` - Enables trace level log messages via log.trace() in Debug builds (has no effect on Release builds).
 
 ### Development in the Cloud
 
@@ -47,7 +47,7 @@ When working in ephemeral cloud environments:
 
 ### Core Framework Structure
 
-**Parasol Framework** is a vector graphics engine and application framework designed for creating scalable user interfaces. The framework automatically handles display resolution and scaling concerns, allowing developers to focus on application logic rather than display technicalities. Key architectural components include:
+**Kōtuku** is an application framework with a core focus on building scalable user interfaces and highly efficient JIT compiled applications. The framework automatically handles display resolution and scaling concerns, allowing developers to focus on application logic rather than display technicalities. Key architectural components include:
 
 1. **Core System** (`src/core/`) - Base object system, memory management, filesystem, and module loading
 2. **Vector Graphics Engine** (`src/vector/`) - Main graphics rendering system with scene graphs, filters, and painters
@@ -58,25 +58,28 @@ When working in ephemeral cloud environments:
 
 ### Module System
 
-The framework uses a modular architecture where each major feature is implemented as a separate module:
+Kōtuku uses a modular architecture where each major feature is implemented as a separate module:
+
 - Each module is in `src/[module_name]/` with its own `CMakeLists.txt`
 - Static builds link all modules into the core, while modular builds load them dynamically
 - Module definitions are stored in `.tdl` files which generate C++ headers and module `MOD_IDL` strings
 
 ### Object System and TDL Files
 
-Parasol uses Interface Definition Language (IDL) files with `.tdl` extension to generate documentation, include files and C++ stubs:
+Kōtuku uses Interface Definition Language (IDL) files with `.tdl` extension to generate documentation, include files and C++ stubs:
+
 - TDL files define classes, methods, fields, and constants
 - Build system generates C/C++ headers from TDL using tools in `tools/idl/`
 - Class implementations are in `class_*.cpp` files
-- Generated headers go to `include/parasol/` directory
+- Generated headers go to `include/kotuku/` directory
 - Headers are built by triggering a cmake build.
 
 ### Scripting Integration
 
 **Tiri** (formerly known as Fluid) is the integrated Lua-based scripting language:
+
 - Unique engine built on LuaJIT 2.1 for performance and extensively modified for C++, utilising C++20 capabilities.
-- Provides high-level access to all framework APIs
+- Provides high-level access to all Kōtuku APIs
 - GUI toolkit available through `scripts/gui/` modules (modular widget system)
 - All Tiri scripts use `.tiri` extension
 - Declarative UI creation with automatic scaling and layout management
@@ -130,6 +133,7 @@ scripts/*.tiri           # APIs
 ### Flute Testing
 
 Tests are written in Tiri and executed with the Flute test runner:
+
 - Test files are typically named `test_*.tiri` in module directories.
 - Read at least 3 Flute test files to learn the patterns before writing your first test file.
 - Use `flute_test()` CMake function to register tests
@@ -169,7 +173,7 @@ The build system heavily uses code generation:
 
 ## Working with Vector Graphics
 
-The vector graphics system is the core of Parasol and provides unique capabilities:
+The vector graphics system is the core of Kōtuku and provides unique capabilities:
 - **API-accessible scene graphs** - Hierarchical scene graphs specifically for vector graphics with full programmatic access
 - **SVG-to-scene graph integration** - SVG files are parsed directly into manipulable scene graphs for real-time modification
 - **Resolution independence** - All graphics scale automatically across display resolutions and DPI settings
@@ -179,7 +183,7 @@ The vector graphics system is the core of Parasol and provides unique capabiliti
 - Real-time manipulation of individual scene graph nodes for dynamic graphics
 
 **Distinctive Features:**
-Parasol maintains retained scene graphs that can be modified at runtime. This enables dynamic, scalable graphics where individual elements can be manipulated programmatically.
+Kōtuku maintains retained scene graphs that can be modified at runtime. This enables dynamic, scalable graphics where individual elements can be manipulated programmatically.
 
 ## Development Guidelines
 
@@ -212,6 +216,7 @@ Before considering ANY C++ code changes complete, verify:
 - The default column width is 120 characters for all languages and markdown files.
 - Always default to British English spelling in code and comments.
 - For C++ `if`, `while`, `else`, `for`, `switch` and `struct` keywords, the opening curly brace must be on the same line if no word-wrapping has occurred.
+- Whilst the spelling of Kōtuku applies to all documentation for branding purposes, when writing code the simplified `Kotuku` spelling is used throughout.
 
 ### Testing
 
@@ -252,21 +257,21 @@ cmake --build build/agents --config Debug --target network --parallel    # For n
 ## File Organization
 
 - `src/` - All source code organized by module
-- `include/parasol/` - Public API headers (many auto-generated)
+- `include/kotuku/` - Public API headers (many auto-generated)
 - `scripts/` - Tiri standard library and GUI toolkit
 - `tools/` - Build tools and utilities (IDL processors, test runner)
 - `examples/` - Example applications and demonstrations (examine git-tracked .tiri files for current examples)
 - `data/` - Icons, fonts, styles, and configuration files
-- `docs/wiki/` - Markdown files for the GitHub Wiki, includes practical tutorials and guides on how to use Parasol.
-- `docs/html/` - Contains the entire Parasol website for offline viewing.
-- `docs/xml/` - Auto-generated API documentation in XML format.  This content is sourced from the Parasol C++ files.
+- `docs/wiki/` - Markdown files for the GitHub Wiki, includes practical tutorials and guides on how to use Kōtuku.
+- `docs/html/` - Contains the entire Kōtuku website for offline viewing.
+- `docs/xml/` - Auto-generated API documentation in XML format.  This content is sourced from the Kōtuku C++ files.
 - `docs/plans/` - For storing and retrieving your plan files.
 
 Lower snake-case is the preferred string format for new file names.
 
 ### Key Examples for Learning
 
-- **`examples/widgets.tiri`** - Primary showcase of Parasol's GUI capabilities, demonstrates standard widgets and UI patterns
+- **`examples/widgets.tiri`** - Primary showcase of Kōtuku's GUI capabilities, demonstrates standard widgets and UI patterns
 - **`examples/vue.tiri`** - File viewer supporting SVG, RIPL, JPEG, PNG - shows document and graphics integration
 - **`examples/gradients.tiri`** - Interactive gradient editor demonstrating real-time vector graphics manipulation
 - **`tools/http_server.tiri`** - HTTP server implementation with NetSocket usage patterns

@@ -4,18 +4,18 @@
 // Copyright: Paul Manias © 2025-2026
 // Generator: idl-c
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #define MODVERSION_XQUERY (1)
 
-#include <parasol/modules/xml.h>
+#include <kotuku/modules/xml.h>
 
 #ifdef __cplusplus
 #include <functional>
 #include <optional>
 #include <sstream>
 #ifndef STRINGS_HPP
-#include <parasol/strings.hpp>
+#include <kotuku/strings.hpp>
 #endif
 
 #include <string_view>

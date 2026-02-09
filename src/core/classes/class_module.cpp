@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -37,7 +37,7 @@ It is critical that the module object is permanently retained until the program 
 #endif
 
 #include "../defs.h"
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 static STRUCTS glStructures = {
    { "ActionArray",         sizeof(ActionArray) },
@@ -130,7 +130,7 @@ static const ActionArray glModuleActions[] = {
 
 //********************************************************************************************************************
 
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
 static ERR load_mod(extModule *Self, RootModule *Root, struct ModHeader **Table)
 {
    pf::Log log(__FUNCTION__);
@@ -156,7 +156,7 @@ static ERR load_mod(extModule *Self, RootModule *Root, struct ModHeader **Table)
             path.assign(glModulePath);
             if (path.back() != '/') path.push_back('/');
          }
-         else path = glRootPath + "lib/parasol/";
+         else path = glRootPath + "lib/kotuku/";
 
          if ((Self->Flags & MOF::LINK_LIBRARY) != MOF::NIL) path += "lib/";
 
@@ -367,7 +367,7 @@ static ERR MODULE_Init(extModule *Self)
          table = Self->Header;
       }
       else {
-         #ifdef PARASOL_STATIC
+         #ifdef KOTUKU_STATIC
          auto it = glStaticModules.find(Self->Name);
          if (it != glStaticModules.end()) table = it->second;
          else {
@@ -401,7 +401,7 @@ static ERR MODULE_Init(extModule *Self)
       // INIT
 
       if (master->Init) {
-         #ifdef PARASOL_STATIC
+         #ifdef KOTUKU_STATIC
             error = master->Init(Self, nullptr);
          #else
             // Build a Core base for the module to use
@@ -449,7 +449,7 @@ static ERR MODULE_Init(extModule *Self)
 
    // Build the jump table for the program
 
-   #ifndef PARASOL_STATIC
+   #ifndef KOTUKU_STATIC
    if (Self->FunctionList) {
       if (!(Self->ModBase = build_jump_table(Self->FunctionList))) {
          goto exit;
@@ -520,7 +520,7 @@ static ERR MODULE_ResolveSymbol(extModule *Self, struct mod::ResolveSymbol *Args
    if ((!Args) or (!Args->Name)) return log.warning(ERR::NullArgs);
 
 #ifdef _WIN32
-   #ifdef PARASOL_STATIC
+   #ifdef KOTUKU_STATIC
    if ((Args->Address = winGetProcAddress(nullptr, Args->Name))) {
    #else
    if ((!Self->Root) or (!Self->Root->LibraryBase)) return ERR::FieldNotSet;
@@ -533,7 +533,7 @@ static ERR MODULE_ResolveSymbol(extModule *Self, struct mod::ResolveSymbol *Args
       return ERR::NotFound;
    }
 #elif __unix__
-   #ifdef PARASOL_STATIC
+   #ifdef KOTUKU_STATIC
    if ((Args->Address = dlsym(RTLD_DEFAULT, Args->Name))) {
    #else
    if ((!Self->Root) or (!Self->Root->LibraryBase)) return ERR::FieldNotSet;
@@ -676,7 +676,7 @@ static ERR SET_Name(extModule *Self, CSTRING Name)
 //********************************************************************************************************************
 // Builds jump tables that link programs to modules.
 
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
 APTR build_jump_table(const Function *FList)
 {
    if (!FList) return nullptr;

@@ -10,7 +10,7 @@
 #include "lj_str.h"
 #include "lj_char.h"
 #include "lj_prng.h"
-#include <parasol/strings.hpp>
+#include <kotuku/strings.hpp>
 #include <algorithm>
 
 //********************************************************************************************************************

@@ -252,7 +252,7 @@ static ERR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, int T
       switch (line_join) {
          default:
          case VLJ::MITER:        break; // Default
-         case VLJ::MITER_SMART:  xml::NewAttrib(tag, "stroke-linejoin", "miter-clip"); break; // Parasol
+         case VLJ::MITER_SMART:  xml::NewAttrib(tag, "stroke-linejoin", "miter-clip"); break; // Kōtuku
          case VLJ::ROUND:        xml::NewAttrib(tag, "stroke-linejoin", "round"); break;
          case VLJ::BEVEL:        xml::NewAttrib(tag, "stroke-linejoin", "bevel"); break;
          case VLJ::MITER_ROUND:  xml::NewAttrib(tag, "stroke-linejoin", "arcs"); break; // (SVG2) Not sure if compliant
@@ -261,7 +261,7 @@ static ERR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, int T
    }
 
    VIJ inner_join;
-   if ((error IS ERR::Okay) and (Vector->get(FID_InnerJoin, (int &)inner_join) IS ERR::Okay)) { // Parasol only
+   if ((error IS ERR::Okay) and (Vector->get(FID_InnerJoin, (int &)inner_join) IS ERR::Okay)) { // Kōtuku only
       switch (inner_join) {
          default:
          case VIJ::MITER:   break; // Default
@@ -341,7 +341,7 @@ static ERR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, int T
    if ((error IS ERR::Okay) and (Vector->get(FID_Morph, shape) IS ERR::Okay) and (shape)) {
       VMF morph_flags;
       XTag *morph_tag;
-      error = XML->insertStatement(TagID, XMI::CHILD_END, "<parasol:morph/>", &morph_tag);
+      error = XML->insertStatement(TagID, XMI::CHILD_END, "<kotuku:morph/>", &morph_tag);
 
       CSTRING shape_id;
       if ((error IS ERR::Okay) and (shape->get(FID_ID, shape_id) IS ERR::Okay) and (shape_id)) {
@@ -574,7 +574,7 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, int Paren
       XTag *tag;
       double dbl;
 
-      error = XML->insertStatement(Parent, XMI::CHILD_END, "<parasol:wave/>", &tag);
+      error = XML->insertStatement(Parent, XMI::CHILD_END, "<kotuku:wave/>", &tag);
 
       if (error IS ERR::Okay) {
          auto dim = Vector->get<DMF>(FID_Dimensions);
@@ -599,7 +599,7 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, int Paren
       double dbl;
       int length;
 
-      error = XML->insertStatement(Parent, XMI::CHILD_END, "<parasol:spiral/>", &tag);
+      error = XML->insertStatement(Parent, XMI::CHILD_END, "<kotuku:spiral/>", &tag);
       if (error != ERR::Okay) return error;
 
       if (error IS ERR::Okay) {
@@ -622,7 +622,7 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, int Paren
       double dbl;
       int num;
 
-      error = XML->insertStatement(Parent, XMI::CHILD_END, "<parasol:shape/>", &tag);
+      error = XML->insertStatement(Parent, XMI::CHILD_END, "<kotuku:shape/>", &tag);
 
       if (error IS ERR::Okay) {
          auto dim = Vector->get<DMF>(FID_Dimensions);

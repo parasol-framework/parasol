@@ -392,7 +392,7 @@ function HTTPSConnection()
             connection_established = true
 
             -- Send HTTP GET request for the index page
-            http_request = "GET / HTTP/1.1\r\nHost: " .. SITE .. "\r\nConnection: close\r\nUser-Agent: Parasol-SSL-Test\r\n\r\n"
+            http_request = "GET / HTTP/1.1\r\nHost: " .. SITE .. "\r\nConnection: close\r\nUser-Agent: Kotuku-SSL-Test\r\n\r\n"
             logOutput('Sending HTTP GET request...')
             err, len = Socket.acWrite(http_request)
             assert(err is ERR_Okay, 'Failed to send HTTP request: ' .. mSys.GetErrorMsg(err))

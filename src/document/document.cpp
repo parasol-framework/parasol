@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 *********************************************************************************************************************/
@@ -32,14 +32,14 @@ that is distributed with this package.  Please refer to it for further informati
 #define PRV_DOCUMENT_MODULE
 #define PRV_SURFACE
 
-#include <parasol/main.h>
-#include <parasol/modules/xml.h>
-#include <parasol/modules/document.h>
-#include <parasol/modules/font.h>
-#include <parasol/modules/display.h>
-#include <parasol/modules/svg.h>
-#include <parasol/modules/vector.h>
-#include <parasol/strings.hpp>
+#include <kotuku/main.h>
+#include <kotuku/modules/xml.h>
+#include <kotuku/modules/document.h>
+#include <kotuku/modules/font.h>
+#include <kotuku/modules/display.h>
+#include <kotuku/modules/svg.h>
+#include <kotuku/modules/vector.h>
+#include <kotuku/strings.hpp>
 
 #include <float.h>
 #include <iomanip>
@@ -323,5 +323,5 @@ static ERR add_document_class(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, nullptr, nullptr, MODExpunge, nullptr, MOD_IDL, nullptr)
+KOTUKU_MOD(MODInit, nullptr, nullptr, MODExpunge, nullptr, MOD_IDL, nullptr)
 extern "C" struct ModHeader * register_document_module() { return &ModHeader; }

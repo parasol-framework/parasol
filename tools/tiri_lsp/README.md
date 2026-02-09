@@ -1,6 +1,6 @@
 # Tiri LSP
 
-A Language Server Protocol (LSP) implementation for Tiri scripting, providing IDE integration features for the Parasol Framework.
+A Language Server Protocol (LSP) implementation for Tiri scripting, providing IDE integration features for Kōtuku.
 
 ## Table of Contents
 
@@ -54,7 +54,7 @@ Full semantic token support for accurate syntax highlighting:
 Context-aware documentation on hover:
 - Tiri keywords with descriptions
 - Built-in functions with prototypes
-- Parasol API classes, methods, fields, and actions
+- Kōtuku API classes, methods, fields, and actions
 - Module functions (e.g., `mSys.Sleep`, `mNet.AddressToStr`)
 - Links to online documentation
 
@@ -86,7 +86,7 @@ Parser-generated tips for code improvement (LSP severity 4), including:
 
 ### Prerequisites
 
-- Parasol Framework installed and built
+- Kōtuku installed and built
 - `origo` executable available in PATH
 
 ### Starting the Server
@@ -225,7 +225,7 @@ Content-Length: 110
 **Server won't start**
 - Ensure port is not already in use
 - Check that `origo` is accessible
-- Verify the Parasol SDK path can be resolved
+- Verify the Kōtuku SDK path can be resolved
 
 **No diagnostics appearing**
 - Check that the LSP client is connected (look for server logs)

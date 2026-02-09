@@ -35,7 +35,7 @@
 #include "lj_proto_registry.h"
 #include "debug/error_guard.h"
 
-#include <parasol/modules/regex.h>
+#include <kotuku/modules/regex.h>
 
 #include "../../defs.h"
 

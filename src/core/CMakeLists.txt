@@ -100,11 +100,11 @@ endif ()
 # These definitions tell the Core where the system files are installed.
 
 if (RUN_ANYWHERE)
-   target_compile_definitions (core PRIVATE "_ROOT_PATH=" "_SYSTEM_PATH=" "_MODULE_PATH=\"parasol:lib/\"")
+   target_compile_definitions (core PRIVATE "_ROOT_PATH=" "_SYSTEM_PATH=" "_MODULE_PATH=\"kotuku:lib/\"")
 else ()
    target_compile_definitions (core PRIVATE "_ROOT_PATH=\"${CMAKE_INSTALL_PREFIX}/\""
-      "_SYSTEM_PATH=\"${CMAKE_INSTALL_PREFIX}/share/parasol/\""
-      "_MODULE_PATH=\"${CMAKE_INSTALL_PREFIX}/lib/parasol/\"")
+      "_SYSTEM_PATH=\"${CMAKE_INSTALL_PREFIX}/share/kotuku/\""
+      "_MODULE_PATH=\"${CMAKE_INSTALL_PREFIX}/lib/kotuku/\"")
 endif ()
 
 set_module_defaults (core "Sys")
@@ -144,7 +144,7 @@ target_link_libraries (core PRIVATE zlib)
 if (WIN32)
    target_sources (core PRIVATE microsoft/windows.cpp)
    target_link_libraries (core PRIVATE wsock32 psapi)
-   if (PARASOL_VLOG OR MSVC)
+   if (KOTUKU_VLOG OR MSVC)
       # Header generation for libdbghelp: dlltool -k -d dbghelp.def -l libdbghelp.a
       # Copy libdbghelp.a to your MinGW libs folder.
       target_link_libraries (core PRIVATE dbghelp)

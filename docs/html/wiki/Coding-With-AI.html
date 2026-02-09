@@ -8,10 +8,10 @@
 	   gtag('js', new Date());
       gtag('config', 'G-8254DG7MT6');</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Parasol Framework documentation, machine generated from source">
+<meta name="description" content="Kōtuku documentation, machine generated from source">
 <meta name="author" content="Paul Manias">
 <link rel="icon" href="/favicon.ico">
-<title>Parasol Wiki - Coding With AI</title>
+<title>Kōtuku Wiki</title>
 <link href="../css/bootstrap.min.css" rel="stylesheet">
 <link href="../css/module-template.css" rel="stylesheet">
 <link href="../css/github-markdown.css" rel="stylesheet">
@@ -20,7 +20,7 @@
 <body>
 <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
   <div class="container-fluid">
-    <div class="navbar-header"><a class="navbar-brand" href="../index.html">Parasol Framework</a></div>
+    <div class="navbar-header"><a class="navbar-brand" href="../index.html">Kōtuku Framework</a></div>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
@@ -29,7 +29,7 @@
         <li class="nav-item"><a class="nav-link" href="../gallery.html">Gallery</a></li>
         <li class="nav-item"><a class="nav-link" href="../modules/api.html">API</a></li>
         <li class="nav-item"><a class="nav-link" href="Home.html">Wiki</a></li>
-        <li class="nav-item"><a class="nav-link" href="https://github.com/parasol-framework/parasol">GitHub</a></li>
+        <li class="nav-item"><a class="nav-link" href="https://github.com/parasol-framework/kotuku">GitHub</a></li>
       </ul>
     </div>
   </div>
@@ -57,8 +57,8 @@
          <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#tm-collapse" aria-expanded="false">Technical Manuals</button>
          <div class="collapse" id="tm-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
-             <li class="api-ref"><a class="rounded" href="Parasol-Objects.html">Parasol Objects</a></li>
-             <li class="api-ref"><a class="rounded" href="Parasol-In-Depth.html">Parasol In Depth</a></li>
+             <li class="api-ref"><a class="rounded" href="Kotuku-Objects.html">Kōtuku Objects</a></li>
+             <li class="api-ref"><a class="rounded" href="Kotuku-In-Depth.html">Kōtuku In Depth</a></li>
              <li class="api-ref"><a class="rounded" href="Coding-With-AI.html">Coding With AI</a></li>
            </ul>
          </div></li>
@@ -88,7 +88,7 @@
          <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#tools-collapse" aria-expanded="false">Tools</button>
          <div class="collapse" id="tools-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
-              <li class="api-ref"><a class="rounded" href="Parasol-Cmd-Tool.html">Parasol Cmd Tool</a></li>
+              <li class="api-ref"><a class="rounded" href="Origo.html">Origo</a></li>
               <li class="api-ref"><a class="rounded" href="Unit-Testing.html">Flute / Unit Testing</a></li>
            </ul>
          </div></li>
@@ -255,9 +255,10 @@
 
 <div class="col-sm-9" style="max-width: 1200px;">
 <div class="docs-content" id="default-page">
+
 <h1>Coding With AI</h1>
-<p>The Parasol repository is setup for agentic coding, and is readily configured for Claude Code and Codex by default. You&#39;ll find that an <code>AGENTS.md</code> file and a <code>.claude</code> settings folder are preconfigured for you. If you&#39;re using another agent, check if it supports <code>AGENTS.md</code> files, otherwise find a way to use it as the basis for your chat sessions.</p>
-<p>If you&#39;re coding with the <code>origo</code> executable to write Tiri scripts exclusively, note that you&#39;ll need to install Parasol&#39;s GitHub repository in order to get the agent to write Tiri code. This is because the release archives are intended for running code only, and are missing the documentation and configuration information that the agent will need to be effective.</p>
+<p>The Kōtuku repository is setup for agentic coding, and is readily configured for Claude Code and Codex by default. You&#39;ll find that an <code>AGENTS.md</code> file and a <code>.claude</code> settings folder are preconfigured for you. If you&#39;re using another agent, check if it supports <code>AGENTS.md</code> files, otherwise find a way to use it as the basis for your chat sessions.</p>
+<p>If you&#39;re coding with the <code>origo</code> executable to write Tiri scripts exclusively, note that you&#39;ll need to install Kōtuku&#39;s GitHub repository in order to get the agent to write Tiri code. This is because the release archives are intended for running code only, and are missing the documentation and configuration information that the agent will need to be effective.</p>
 <h2 id="general-coding-tips">General Coding Tips</h2>
 <ul>
 <li>Read the <code>AGENTS.md</code> file before you start. It defines the guard rails that the agent will operate under, and how it will go about building and testing its work.</li>
@@ -266,8 +267,8 @@
 <li>Agents will make mistakes. Enforce testing and code reviews as an essential part of the process. This will create a feedback loop between what the agent has written and what it expects as a result. You are also the last arbiter of correctness, and stepping in to make adjustments is a normal part of the process.</li>
 <li>As of October 2025 our best results have been observed when using Codex, however we use both Claude Code and Codex interchangeably. Avoid relying on only one agent; learning the strengths and weaknesses of multiple agents is key to unlocking higher productivity.</li>
 </ul>
-<h2 id="effective-prompting-for-parasol">Effective Prompting for Parasol</h2>
-<p>When starting a new task, you may need to explicitly remind the agent about Parasol-specific requirements:</p>
+<h2 id="effective-prompting-for-kōtuku">Effective Prompting for Kōtuku</h2>
+<p>When starting a new task, you may need to explicitly remind the agent about Kōtuku-specific requirements:</p>
 <p><strong>For any coding task:</strong></p>
 <ul>
 <li>&quot;Build and test after making C++ changes&quot; - Use if the agent is skipping compilation verification.</li>

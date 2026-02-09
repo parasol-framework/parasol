@@ -72,7 +72,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
    target_compile_options (scintilla PRIVATE "-Wno-char-subscripts")
 endif ()
 
-target_compile_definitions (scintilla PRIVATE "SCI_NAMESPACE" "__PARASOL__" "SCI_LEXER")
+target_compile_definitions (scintilla PRIVATE "SCI_NAMESPACE" "__KOTUKU__" "SCI_LEXER")
 target_link_libraries (${MOD} PUBLIC unicode)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")

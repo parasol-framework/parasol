@@ -1,8 +1,8 @@
 // Load and dump code.
 // Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 
-#include <parasol/main.h>
-#include <parasol/modules/tiri.h>
+#include <kotuku/main.h>
+#include <kotuku/modules/tiri.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string>

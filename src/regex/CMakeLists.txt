@@ -39,7 +39,7 @@ flute_test (regex_split_tokenisation "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_spl
 flute_test (regex_search_iteration "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_search_iteration.tiri")
 flute_test (regex_error_edgecases "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_error_edgecases.tiri")
 
-if (PARASOL_STATIC)
+if (KOTUKU_STATIC)
    # Test can run from build directory in static mode.  Otherwise needs to be installed.
    add_test (NAME test_regex_match COMMAND test_regex_match)
    set_tests_properties (test_regex_match PROPERTIES LABELS regex)

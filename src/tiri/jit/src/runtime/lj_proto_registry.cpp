@@ -5,7 +5,7 @@
 // Arena-style allocation for efficient memory management.
 
 #include "lj_proto_registry.h"
-#include <parasol/main.h>
+#include <kotuku/main.h>
 #include <ankerl/unordered_dense.h>
 #include <vector>
 #include <cstring>

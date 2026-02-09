@@ -1,4 +1,4 @@
-// Parasol SVG extensions:
+// Kōtuku SVG extensions:
 //   It is possible to reference in-built colourmaps via 'href'
 //   The fx,fy values can be placed outside of the radial gradient if 'focal="unbound"' is used
 //   The resolution value can be defined to lower the rate of colour sampling.
@@ -477,7 +477,7 @@ ERR svgState::proc_radialgradient(const XTag &Tag) noexcept
       gradient->setFields(fl::Name("SVGRadialGrad"), fl::Type(VGT::RADIAL), fl::Units(VUNIT::BOUNDING_BOX),
          fl::CenterX(SCALE(0.5)), fl::CenterY(SCALE(0.5)), fl::Radius(SCALE(0.5)));
 
-      // Enforce SVG limits on focal point positioning.  Can be overridden with focal="unbound", which is a Parasol
+      // Enforce SVG limits on focal point positioning.  Can be overridden with focal="unbound", which is a Kotuku
       // specific feature.
 
       gradient->Flags |= VGF::CONTAIN_FOCAL;

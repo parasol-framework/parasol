@@ -8,10 +8,10 @@
 	   gtag('js', new Date());
       gtag('config', 'G-8254DG7MT6');</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Parasol Framework documentation, machine generated from source">
+<meta name="description" content="Kotuku Framework documentation, machine generated from source">
 <meta name="author" content="Paul Manias">
 <link rel="icon" href="/favicon.ico">
-<title>Parasol Wiki - Parasol Cmd Tool</title>
+<title>Kotuku Wiki - Kotuku Cmd Tool</title>
 <link href="../css/bootstrap.min.css" rel="stylesheet">
 <link href="../css/module-template.css" rel="stylesheet">
 <link href="../css/github-markdown.css" rel="stylesheet">
@@ -20,7 +20,7 @@
 <body>
 <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
   <div class="container-fluid">
-    <div class="navbar-header"><a class="navbar-brand" href="../index.html">Parasol Framework</a></div>
+    <div class="navbar-header"><a class="navbar-brand" href="../index.html">Kotuku Framework</a></div>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
@@ -29,7 +29,7 @@
         <li class="nav-item"><a class="nav-link" href="../gallery.html">Gallery</a></li>
         <li class="nav-item"><a class="nav-link" href="../modules/api.html">API</a></li>
         <li class="nav-item"><a class="nav-link" href="Home.html">Wiki</a></li>
-        <li class="nav-item"><a class="nav-link" href="https://github.com/parasol-framework/parasol">GitHub</a></li>
+        <li class="nav-item"><a class="nav-link" href="https://github.com/kotuku-framework/kotuku">GitHub</a></li>
       </ul>
     </div>
   </div>
@@ -57,8 +57,8 @@
          <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#tm-collapse" aria-expanded="false">Technical Manuals</button>
          <div class="collapse" id="tm-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
-             <li class="api-ref"><a class="rounded" href="Parasol-Objects.html">Parasol Objects</a></li>
-             <li class="api-ref"><a class="rounded" href="Parasol-In-Depth.html">Parasol In Depth</a></li>
+             <li class="api-ref"><a class="rounded" href="Kotuku-Objects.html">Kotuku Objects</a></li>
+             <li class="api-ref"><a class="rounded" href="Kotuku-In-Depth.html">Kotuku In Depth</a></li>
              <li class="api-ref"><a class="rounded" href="Coding-With-AI.html">Coding With AI</a></li>
            </ul>
          </div></li>
@@ -88,7 +88,7 @@
          <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#tools-collapse" aria-expanded="false">Tools</button>
          <div class="collapse" id="tools-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
-              <li class="api-ref"><a class="rounded" href="Parasol-Cmd-Tool.html">Parasol Cmd Tool</a></li>
+              <li class="api-ref"><a class="rounded" href="Kotuku-Cmd-Tool.html">Kotuku Cmd Tool</a></li>
               <li class="api-ref"><a class="rounded" href="Unit-Testing.html">Flute / Unit Testing</a></li>
            </ul>
          </div></li>
@@ -255,12 +255,12 @@
 
 <div class="col-sm-9" style="max-width: 1200px;">
 <div class="docs-content" id="default-page">
-<h1>Parasol Cmd Tool</h1>
-<p>Parasol&#39;s main executable is located in the root folder of our distribution as <code>parasol</code>. This tool allows you to run Tiri scripts with the <code>.tiri</code> extension.</p>
+<h1>Kotuku Cmd Tool</h1>
+<p>Kotuku&#39;s main executable is located in the root folder of our distribution as <code>kotuku</code>. This tool allows you to run Tiri scripts with the <code>.tiri</code> extension.</p>
 <p>Run the tool with <code>--help</code> to see the available options and confirm that the install worked correctly. At the time of writing, this looks as follows:</p>
-<pre><code>This command-line program can execute Tiri scripts and PARC files developed for the Parasol framework.
+<pre><code>This command-line program can execute Tiri scripts and PARC files developed for the Kotuku framework.
 
-   parasol [args] [script.ext] arg1 arg2=value arg3 ...
+   kotuku [args] [script.ext] arg1 arg2=value arg3 ...
 
 The following parameters can be used when executing script files:
 
@@ -277,7 +277,7 @@ The following parameters can be used when executing script files:
 <h2 id="jit-options">JIT Options</h2>
 <p>The <code>--jit-options</code> parameter accepts a comma-separated list of development options that control the Tiri compiler&#39;s behaviour. These options are primarily useful for debugging scripts, diagnosing parser issues, and profiling performance.</p>
 <p><strong>Usage:</strong></p>
-<pre><code>parasol --jit-options trace-tokens,dump-bytecode script.tiri</code></pre>
+<pre><code>kotuku --jit-options trace-tokens,dump-bytecode script.tiri</code></pre>
 <h3 id="available-options">Available Options</h3>
 <table>
 <thead>
@@ -319,7 +319,7 @@ The following parameters can be used when executing script files:
 </table>
 <h3 id="examples">Examples</h3>
 <p>Example scripts are provided in the <code>examples</code> folder of this distribution. We recommend starting with the widget example as follows, where <code>install-path</code> and <code>source-path</code> are replaced appropriately:</p>
-<pre><code>[install-path]/parasol --log-error [source-path]/examples/widgets.tiri</code></pre>
+<pre><code>[install-path]/kotuku --log-error [source-path]/examples/widgets.tiri</code></pre>
 <div class="tip">
 <div class="title">
 <p>Tip</p>
@@ -327,7 +327,7 @@ The following parameters can be used when executing script files:
 <p>Try running a second time with <code>--log-api</code> to observe run-time log output while toying with the example. Try a few of the other examples to get a feel for what you can achieve, and load them into a text editor to see how they were created.</p>
 </div>
 <h2 id="auto-execution">Auto Execution</h2>
-<p>If <code>parasol</code> is run without command-line arguments, it will check for the presence of a <code>package.zip</code> file in its folder, mount it as a filesystem named <code>package:</code> and then attempt to execute <code>package:main.tiri</code>. This behaviour makes it possible for you to distribute your scripts as portable projects with minimal effort. The <code>parasol</code> executable should be renamed to the name of your project so that your end users will associate the executable with your application.</p>
+<p>If <code>kotuku</code> is run without command-line arguments, it will check for the presence of a <code>package.zip</code> file in its folder, mount it as a filesystem named <code>package:</code> and then attempt to execute <code>package:main.tiri</code>. This behaviour makes it possible for you to distribute your scripts as portable projects with minimal effort. The <code>kotuku</code> executable should be renamed to the name of your project so that your end users will associate the executable with your application.</p>
 </div></div></div></div>
 
 <script src="../js/bootstrap.bundle.min.js"></script>

@@ -2,7 +2,7 @@
 // and fast string functions (string.byte, string.char, string.sub).
 // Tests verify both correctness of results and register preservation according to calling conventions.
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #ifdef ENABLE_UNIT_TESTS
 

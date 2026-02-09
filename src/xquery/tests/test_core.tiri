@@ -163,7 +163,7 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test content matching (Parasol extension)
+-- Test content matching (Kotuku extension)
 
 @Test function ContentMatching()
    local xml = obj.new("xml", {

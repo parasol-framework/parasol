@@ -6,7 +6,7 @@
 #define LUA_CORE
 
 #include "lj_obj.h"
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #include "lj_err.h"
 #include "lj_str.h"

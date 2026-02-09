@@ -18,7 +18,7 @@ enum class TipCategory : uint8_t {
    CodeQuality,
    BestPractice,
    Style,
-   ParasolSpecific
+   KotukuSpecific
 };
 
 // Get the display name for a tip category.

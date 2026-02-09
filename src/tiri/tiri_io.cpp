@@ -1,12 +1,12 @@
-// A Parasol friendly version of the Lua's 'io' library.  Provided mostly for compatibility purposes, but also makes
+// A Kotuku friendly version of the Lua's 'io' library.  Provided mostly for compatibility purposes, but also makes
 // it easier to access the std* file handles.
 
 #define PRV_SCRIPT
 #define PRV_TIRI
 #define PRV_TIRI_MODULE
-#include <parasol/main.h>
-#include <parasol/modules/tiri.h>
-#include <parasol/strings.hpp>
+#include <kotuku/main.h>
+#include <kotuku/modules/tiri.h>
+#include <kotuku/strings.hpp>
 #include <inttypes.h>
 
 #include "lauxlib.h"

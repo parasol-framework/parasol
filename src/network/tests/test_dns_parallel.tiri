@@ -4,7 +4,7 @@ Tests for resolving server names in parallel.
 
    include 'network'
 
-glDomains = array<string> { 'google.com', 'parasol.ws', 'amazon.co.uk', 'stackoverflow.com', 'theguardian.com', 'www.bbc.co.uk' }
+glDomains = array<string> { 'google.com', 'kotuku.dev', 'amazon.co.uk', 'stackoverflow.com', 'theguardian.com', 'www.bbc.co.uk' }
 glTotalResolved = 0
 
 @BeforeAll function init()
