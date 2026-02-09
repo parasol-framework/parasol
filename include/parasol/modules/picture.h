@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      picture.h
-// Copyright: Paul Manias © 2001-2025
+// Copyright: Paul Manias © 2001-2026
 // Generator: idl-c
 
 #include <parasol/main.h>
@@ -136,7 +136,7 @@ class objPicture : public Object {
 
    template <class T> inline ERR setAuthor(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[18];
+      auto field = &this->Class->Dictionary[19];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -161,7 +161,7 @@ class objPicture : public Object {
    inline ERR setHeader(APTR Value) noexcept {
       if (this->initialised()) return ERR::NoFieldAccess;
       auto target = this;
-      auto field = &this->Class->Dictionary[0];
+      auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, 0x08000500, Value, 1);
    }
 
@@ -173,13 +173,13 @@ class objPicture : public Object {
 
    template <class T> inline ERR setSoftware(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[20];
+      auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setTitle(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[5];
+      auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 

@@ -21,7 +21,7 @@ enum class SCLEX : int {
    ERRORLIST = 10,
    MAKEFILE = 11,
    BATCH = 12,
-   FLUID = 15,
+   TIRI = 15,
    DIFF = 16,
    PASCAL = 18,
    RUBY = 22,

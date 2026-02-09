@@ -74,42 +74,42 @@ endif ()
 
 if (WIN32)
    # Specifying the WIN32 option will generate a Windows GUI application
-   add_executable (parasol_cmd WIN32 "parasol.cpp" "sandbox-win.cpp" "${PROJECT_SOURCE_DIR}/src/link/resource.rc")
+   add_executable (origo_cmd WIN32 "origo.cpp" "sandbox-win.cpp" "${PROJECT_SOURCE_DIR}/src/link/resource.rc")
 
    # Disable automatic manifest generation since we provide our own
    if (MSVC)
-      set_target_properties(parasol_cmd PROPERTIES LINK_FLAGS "/MANIFEST:NO")
+      set_target_properties(origo_cmd PROPERTIES LINK_FLAGS "/MANIFEST:NO")
    endif()
 else ()
-   add_executable (parasol_cmd "parasol.cpp")
+   add_executable (origo_cmd "origo.cpp")
 endif ()
 
-target_link_libraries (parasol_cmd PRIVATE ${INIT_LINK})
+target_link_libraries (origo_cmd PRIVATE ${INIT_LINK})
 
-target_include_directories (parasol_cmd PRIVATE "${PROJECT_SOURCE_DIR}/src/link" "${CMAKE_CURRENT_BINARY_DIR}")
+target_include_directories (origo_cmd PRIVATE "${PROJECT_SOURCE_DIR}/src/link" "${CMAKE_CURRENT_BINARY_DIR}")
 
 if (CMAKE_BUILD_TYPE MATCHES "Release")
    message (STATUS "Symbols will be stripped from this build (no debugging).")
    if (NOT MSVC)
-      set_target_properties (parasol_cmd PROPERTIES CXX_STANDARD 20 LINK_FLAGS_RELEASE "-s" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
+      set_target_properties (origo_cmd PROPERTIES CXX_STANDARD 20 LINK_FLAGS_RELEASE "-s" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
    else ()
-      set_target_properties (parasol_cmd PROPERTIES CXX_STANDARD 20 RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
+      set_target_properties (origo_cmd PROPERTIES CXX_STANDARD 20 RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
    endif ()
 else ()
    message (STATUS "Symbols will be left intact in this build (debug enabled).")
-   set_target_properties (parasol_cmd PROPERTIES CXX_STANDARD 20 RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
+   set_target_properties (origo_cmd PROPERTIES CXX_STANDARD 20 RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
 endif ()
 
-set_target_properties (parasol_cmd PROPERTIES OUTPUT_NAME "parasol")
+set_target_properties (origo_cmd PROPERTIES OUTPUT_NAME "origo")
 
 # Attach headers to the Parasol binary so that we can ensure that all headers are built
 
-add_dependencies (parasol_cmd build_headers icon_package)
+add_dependencies (origo_cmd build_headers icon_package)
 
 if (PARASOL_STATIC)
-   add_dependencies (parasol_cmd parasol_static)
+   add_dependencies (origo_cmd parasol_static)
 else ()
-   add_dependencies (parasol_cmd ${REQUIRED_MODS})
+   add_dependencies (origo_cmd ${REQUIRED_MODS})
 endif ()
 
 if (PARASOL_INSTALL)
@@ -132,8 +132,14 @@ if (PARASOL_INSTALL)
    endif ()
 
    if (RUN_ANYWHERE)
-      install (TARGETS parasol_cmd DESTINATION .)
+      install (TARGETS origo_cmd DESTINATION .)
+      set (TIRI_SYMLINK_DIR "${CMAKE_INSTALL_PREFIX}")
    else ()
-      install (TARGETS parasol_cmd DESTINATION "bin")
+      install (TARGETS origo_cmd DESTINATION "bin")
+      set (TIRI_SYMLINK_DIR "${CMAKE_INSTALL_PREFIX}/bin")
+   endif ()
+
+   if (NOT WIN32)
+      install (CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink origo \"${TIRI_SYMLINK_DIR}/tiri\")")
    endif ()
 endif ()

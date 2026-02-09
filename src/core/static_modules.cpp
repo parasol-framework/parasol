@@ -5,7 +5,7 @@ extern "C" ModHeader * register_audio_module();
 extern "C" ModHeader * register_backstage_module();
 extern "C" ModHeader * register_display_module();
 extern "C" ModHeader * register_document_module();
-extern "C" ModHeader * register_fluid_module();
+extern "C" ModHeader * register_tiri_module();
 extern "C" ModHeader * register_font_module();
 extern "C" ModHeader * register_http_module();
 extern "C" ModHeader * register_jpeg_module();
@@ -41,8 +41,8 @@ static void register_static_modules(void)
    glStaticModules["document"] = register_document_module();
    #endif
 
-   #ifdef INC_MOD_FLUID
-   glStaticModules["fluid"] = register_fluid_module();
+   #ifdef INC_MOD_TIRI
+   glStaticModules["tiri"] = register_tiri_module();
    #endif
 
    #ifdef INC_MOD_FONT

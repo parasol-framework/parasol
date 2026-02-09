@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      system/errors.h
-// Copyright: Paul Manias © 1996-2025
+// Copyright: Paul Manias © 1996-2026
 // Generator: idl-c
 
 #ifdef __cplusplus
@@ -223,7 +223,8 @@ enum class ERR : int32_t {
    InvalidCompression = 192,
    SanityCheckFailed = 193,
    NotAuthorised = 194,
-   END = 195,
+   UnknownProperty = 195,
+   END = 196,
    Notified = 1073741824,
 };
 

@@ -26,12 +26,12 @@ The wiki contains practical, community-oriented documentation covering:
 - **`Parasol-Objects.md`** - Object system fundamentals
 - **`Parasol-In-Depth.md`** - Advanced framework concepts
 
-### Fluid Scripting Documentation
-- **`Fluid-Reference-Manual.md`** - Core Fluid language reference
-- **`Fluid-Common-API.md`** - Standard library functions
-- **`Fluid-GUI-API.md`** - GUI toolkit APIs and constants
-- **`Fluid-JSON-API.md`** - JSON processing utilities
-- **`Fluid-VFX-API.md`** - Visual effects and animation APIs
+### Tiri Scripting Documentation
+- **`Tiri-Reference-Manual.md`** - Core Tiri language reference
+- **`Tiri-Common-API.md`** - Standard library functions
+- **`Tiri-GUI-API.md`** - GUI toolkit APIs and constants
+- **`Tiri-JSON-API.md`** - JSON processing utilities
+- **`Tiri-VFX-API.md`** - Visual effects and animation APIs
 - **`Widgets.md`** - Widget system documentation
 
 ### RIPL Document Engine
@@ -124,14 +124,14 @@ Each XML file contains:
 
 ## 🤖 AI-Optimized Documentation System
 
-**Location:** `docs/xml/ai/` files and `tools/docgen-ai.fluid`
+**Location:** `docs/xml/ai/` files and `tools/docgen-ai.tiri`
 
 For Claude Code sessions, a specialized condensed documentation format is available:
 
 ### AI Documentation Files
 - **`ai-condensed.xsd`** - XML Schema for the condensed format
 - **`ai-condense.xsl`** - XSLT transformation from full XML to condensed format
-- **`../tools/docgen-ai.fluid`** - Build script for AI documentation
+- **`../tools/docgen-ai.tiri`** - Build script for AI documentation
 
 ### Condensed Format Features
 The AI documentation system creates ultra-compact XML files optimized for AI processing:
@@ -146,10 +146,10 @@ The AI documentation system creates ultra-compact XML files optimized for AI pro
 ### Generation and Usage
 ```bash
 # Generate AI-optimized documentation
-parasol tools/docgen-ai.fluid
+origo tools/docgen-ai.tiri
 
 # Custom output location
-parasol tools/docgen-ai.fluid output=my-docs.xml
+origo tools/docgen-ai.tiri output=my-docs.xml
 ```
 
 The generated files in `docs/xml/ai/modules/` and `docs/xml/ai/classes/` provide comprehensive API reference for AI assistants while consuming minimal context window space.
@@ -161,9 +161,9 @@ The generated files in `docs/xml/ai/modules/` and `docs/xml/ai/classes/` provide
 4. **Load AI documentation** for comprehensive API coverage in AI context
 3. **Check XML files** for extended commentary and examples
 
-### For Fluid Scripting
-1. **`Fluid-Reference-Manual.md`** for language fundamentals
-2. **`Fluid-GUI-API.md`** for user interface development
+### For Tiri Scripting
+1. **`Tiri-Reference-Manual.md`** for language fundamentals
+2. **`Tiri-GUI-API.md`** for user interface development
 3. **XML class pages** for specific object APIs
 4. **Examples in `examples/`** for practical patterns
 
@@ -189,9 +189,80 @@ The documentation follows this generation pipeline:
 
 Key scripts:
 
-- **`tools/docgen.fluid`** - Main documentation generator
-- **`tools/docgen-wiki.fluid`** - Wiki-specific processing
-- **`tools/docgen-ai.fluid`** - AI documentation generator
+- **`tools/docgen.tiri`** - Main documentation generator
+- **`tools/docgen-wiki.tiri`** - Wiki-specific processing
+- **`tools/docgen-ai.tiri`** - AI documentation generator
+
+## ✍️ Writing Style Guide
+
+When writing or editing documentation in `docs/wiki/`, follow these conventions to maintain consistency with the established style.
+
+### Voice and Tone
+
+- **Use first-person plural ("we/our")** to create a collaborative, project-insider feel.  Write as an experienced developer
+  explaining concepts to a peer.  Avoid second-person instructional voice ("you should...") except where directly
+  addressing the reader's actions.
+- **Be direct and declarative.**  State facts without hedging or unnecessary qualifiers.  Prefer *"Parasol supports
+  threads"* over *"It should be noted that Parasol has support for threads"*.
+- **Maintain a professional register.**  No jokes, exclamation marks, casual asides, or emojis.  The closest to
+  conversational should be phrases like *"Note that..."* or *"It is worth considering..."*.
+
+### Language and Spelling
+
+- **British English** throughout: *initialised*, *behaviour*, *colour*, *customised*, *utilise*, *recognised*,
+  *centre*, *modelling*.
+- **Two spaces** after full stops (sentence-ending periods), consistent with the existing convention.
+- **Active voice** is strongly preferred.  Write *"The Core API loads a module"* rather than *"A module is loaded by
+  the Core API"*.
+
+### Sentence Structure
+
+- Keep sentences moderate in length, typically 15-30 words.
+- Break complex technical concepts across multiple shorter sentences rather than packing them into long compound
+  constructions.
+- Use parenthetical asides sparingly and keep them brief.
+
+### Document Structure
+
+- **Opening paragraph:** One to three sentences summarising what the page covers, optionally setting expectations for
+  assumed knowledge.
+- **Table of Contents:** Include for longer documents, using numbered or bulleted lists with anchor links.
+- **Horizontal rules (`---`):** Use to separate major sections.
+- **Heading hierarchy:** H2 (`##`) for major sections, H3 (`###`) for subsections, H4 (`####`) for sub-subsections.
+  Reserve H1 (`#`) for the page title or top-level concept only.
+- **Maximum line width:** 120 characters, consistent with the project's code formatting standard.
+
+### Formatting Conventions
+
+- **Italics** for introducing new terminology on first use, e.g. *"local"*, *"sub-classing"*, *"base-class"*.
+- **Bold** sparingly for emphasis on key points.  Do not overuse.
+- **Inline code** (backticks) for function names, field names, type names, file names, and code fragments within prose.
+- **Code blocks** should immediately follow a brief prose introduction.  Show, then explain.
+- **Tables** for structured reference data such as parameters, options, flags, and field definitions.  Prefer tables
+  over prose lists for this type of content.
+
+### API Reference Sections
+
+When documenting functions or methods, follow this consistent pattern:
+
+1. **Heading:** `### functionName()` or `### module.functionName()`
+2. **Signature:** As inline code on its own line, e.g. `` `result = module.functionName(Param1, Param2)` ``
+3. **Prose description:** One or more paragraphs explaining behaviour.
+4. **Code example:** A practical demonstration in a fenced code block.
+5. **Parameter table:** If the function accepts options or has multiple parameters, present them in a markdown table.
+
+### Cross-Referencing
+
+- Link to other wiki pages using relative markdown links: `[Page Title](./Page-Name.md)`.
+- Introduce links naturally in prose, e.g. *"further discussed in the [FDL Tools](./FDL-Tools.md) manual"*.
+- Avoid bare URLs in body text.
+
+### Code Examples
+
+- Introduce concepts briefly in prose, then show the code, then add follow-up notes on specifics.
+- Use fenced code blocks with appropriate language hints (e.g. ` ```cpp `, ` ```lua `).
+- Examples should be realistic and functional, not abstract pseudocode.
+- Keep examples concise; include only what is necessary to demonstrate the concept.
 
 ## 💡 Best Practices for Claude Sessions
 
@@ -213,8 +284,8 @@ Key scripts:
 - Review action documentation for correct usage patterns
 - Check class field documentation for property requirements
 
-### When Working with Fluid Scripts
-- Always study existing `.fluid` files for patterns
+### When Working with Tiri Scripts
+- Always study existing `.tiri` files for patterns
 - Use GUI API documentation for interface constants
 - Reference class XML pages for object method signatures
 - Use AI documentation for complete method/field reference

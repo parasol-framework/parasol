@@ -48,11 +48,11 @@ if (BUILD_DEFS)
          "${INCLUDE_OUTPUT}/system/registry.h"
          "${INCLUDE_OUTPUT}/system/fields.h"
          "${CMAKE_CURRENT_SOURCE_DIR}/idl.h"
-      COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=defs/errors.fdl" "output=${INCLUDE_OUTPUT}/system/errors.h" "sdk=${PROJECT_SOURCE_DIR}"
-      COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=defs/registry.fdl" "output=${INCLUDE_OUTPUT}/system/registry.h" "sdk=${PROJECT_SOURCE_DIR}"
-      COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=defs/fields.fdl" "output=${INCLUDE_OUTPUT}/system/fields.h" "sdk=${PROJECT_SOURCE_DIR}"
-      COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=defs/core.fdl" "sdk=${PROJECT_SOURCE_DIR}" "output-proto=prototypes.h" "output-defs=data_functions.c" "files={" ${FUNCTIONS} "}"
-      COMMAND ${PARASOL_CMD} ${IDL_COMPILE_SCRIPT} "--log-warning" "src=defs/core.fdl" "output=${CMAKE_CURRENT_SOURCE_DIR}/idl.h" "sdk=${PROJECT_SOURCE_DIR}" "format=c"
+      COMMAND ${ORIGO_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=defs/errors.fdl" "output=${INCLUDE_OUTPUT}/system/errors.h" "sdk=${PROJECT_SOURCE_DIR}"
+      COMMAND ${ORIGO_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=defs/registry.fdl" "output=${INCLUDE_OUTPUT}/system/registry.h" "sdk=${PROJECT_SOURCE_DIR}"
+      COMMAND ${ORIGO_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=defs/fields.fdl" "output=${INCLUDE_OUTPUT}/system/fields.h" "sdk=${PROJECT_SOURCE_DIR}"
+      COMMAND ${ORIGO_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=defs/core.fdl" "sdk=${PROJECT_SOURCE_DIR}" "output-proto=prototypes.h" "output-defs=data_functions.c" "files={" ${FUNCTIONS} "}"
+      COMMAND ${ORIGO_CMD} ${IDL_COMPILE_SCRIPT} "--log-warning" "src=defs/core.fdl" "output=${CMAKE_CURRENT_SOURCE_DIR}/idl.h" "sdk=${PROJECT_SOURCE_DIR}" "format=c"
       DEPENDS
          "${CMAKE_CURRENT_SOURCE_DIR}/defs/core.fdl"
          "${CMAKE_CURRENT_SOURCE_DIR}/defs/errors.fdl"
@@ -91,7 +91,7 @@ endif ()
 
 add_library (core)
 
-target_compile_definitions (core PRIVATE "__system__" "DBG_DIAGNOSTICS")
+target_compile_definitions (core PRIVATE "__system__" "DBG_DIAGNOSTICS" "PRV_METACLASS")
 
 if (MSVC)
    target_compile_definitions (core PRIVATE "_CRT_NONSTDC_NO_DEPRECATE")
@@ -153,11 +153,11 @@ else ()
    target_link_libraries (core PRIVATE pthread dl)
 endif ()
 
-flute_test (core_filesystem "tests/filesystem.fluid")
-flute_test (core_misc "tests/misc.fluid")
-flute_test (core_compression "tests/compression.fluid")
-flute_test (core_config "tests/config.fluid")
-flute_test (core_time "tests/test_time.fluid")
+flute_test (core_filesystem "tests/filesystem.tiri")
+flute_test (core_misc "tests/misc.tiri")
+flute_test (core_compression "tests/compression.tiri")
+flute_test (core_config "tests/config.tiri")
+flute_test (core_time "tests/test_time.tiri")
 
 if (INSTALL_TESTS)
    # Windows-compatible tests

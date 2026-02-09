@@ -114,7 +114,9 @@ ERR writeval_default(OBJECTPTR Object, Field *Field, int flags, CPTR Data, int E
       else if (Field->Flags & (FD_POINTER|FD_STRING)) error = writeval_ptr(Object, Field, flags, Data, 0);
       else log.warning("Unrecognised field flags $%.8x.", Field->Flags);
 
-      if (error != ERR::Okay) log.warning("An error occurred writing to field %s (field type $%.8x, source type $%.8x).", Field->Name, Field->Flags, flags);
+      if (error != ERR::Okay) {
+         log.warning("Error %d on writing to field %s (field type $%.8x, source type $%.8x).", int(error), Field->Name, Field->Flags, flags);
+      }
       return error;
    }
    else {

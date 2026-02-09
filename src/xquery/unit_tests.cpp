@@ -1,6 +1,6 @@
 // XPath Module Unit Tests
 // This file contains compiled-in unit tests for the XPath module, primarily for debugging prolog integration.
-// Unit tests need to be enabled in the CMakeLists.txt file and then launched from test_unit_tests.fluid
+// Unit tests need to be enabled in the CMakeLists.txt file and then launched from test_unit_tests.tiri
 
 #include <parasol/modules/xquery.h>
 #include "xquery.h"

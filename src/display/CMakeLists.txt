@@ -35,9 +35,9 @@ if (BUILD_DEFS) # Customised idl_c() equivalent, this is for defining the output
       "${DOCS}/modules/classes/display.xml"
       "${DOCS}/modules/classes/pointer.xml"
       "${DOCS}/modules/classes/surface.xml"
-      COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=${MOD}.fdl" "sdk=${PROJECT_SOURCE_DIR}"
+      COMMAND ${ORIGO_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=${MOD}.fdl" "sdk=${PROJECT_SOURCE_DIR}"
               "output-proto=prototypes.h" "output-defs=module_def.c" "files={" ${FUNCTIONS} "lib_surfaces.cpp" "}"
-      COMMAND ${PARASOL_CMD} ${IDL_COMPILE_SCRIPT} "--log-warning" "src=${MOD}.fdl" "output=${CMAKE_CURRENT_SOURCE_DIR}/idl.h"
+      COMMAND ${ORIGO_CMD} ${IDL_COMPILE_SCRIPT} "--log-warning" "src=${MOD}.fdl" "output=${CMAKE_CURRENT_SOURCE_DIR}/idl.h"
               "sdk=${PROJECT_SOURCE_DIR}" "format=c"
       DEPENDS
          "${MOD}.fdl"

@@ -56,7 +56,7 @@ void XPathEvaluator::initialise_query_context(const XPathNode *Root)
 
    if (parse_context) {
       prolog = parse_context->prolog;
-      module_cache = parse_context->module_cache;
+      module_cache = parse_context->module_cache.lock();
    }
 
    context.prolog = std::move(prolog);

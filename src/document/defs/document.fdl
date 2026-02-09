@@ -1,6 +1,6 @@
---$FLUID:Include
+--$TIRI:Include
 
-module({ name="Document", copyright="Paul Manias © 2005-2025", version=1.0, timestamp=20240611 }, function()
+module({ name="Document", copyright="Paul Manias © 2005-2026", version=1.0, timestamp=20240611 }, function()
   restrict(function()
     loadFile(glPath .. 'common-graphics.fdl')
   end)
@@ -9,7 +9,7 @@ module({ name="Document", copyright="Paul Manias © 2005-2025", version=1.0, tim
 
   loadFile(glPath .. 'common.fdl')
 
-  const("RIPL", { comment="Official version number (date format).  Any changes to the handling of document content require that this number be updated." }, {
+  constants("RIPL", { comment="Official version number (date format).  Any changes to the handling of document content require that this number be updated." }, {
     VERSION = "\"20240126\""
   })
 

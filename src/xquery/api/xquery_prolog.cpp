@@ -304,12 +304,13 @@ CompiledXQuery * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQ
    }
 
    // Cache the module (only after resolving imports to allow circular detection via loading_in_progress)
+   // Store in local variable first to avoid dangling references if map reallocates during subsequent insertions
+   auto cached = std::make_shared<CompiledXQuery>(std::move(compiled));
+   modules[uri_key] = cached;
+   if (original_uri != uri_key) modules[original_uri] = cached;
+   if (not loaded_location.empty()) modules[loaded_location] = cached;
 
-   modules[uri_key] = std::make_shared<CompiledXQuery>(std::move(compiled)); // XQueryModuleCache.modules
-   if (original_uri != uri_key) modules[original_uri] = modules[uri_key];
-   if (not loaded_location.empty()) modules[loaded_location] = modules[uri_key];
-
-   return modules[uri_key].get();
+   return cached.get();
 }
 
 //********************************************************************************************************************

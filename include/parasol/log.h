@@ -28,6 +28,10 @@ class Log { // C++ wrapper for Parasol's log functionality
          branches++;
       }
 
+      // Cancels de-branching on close
+
+      void resetBranch() { branches = 0; }
+
       #ifdef _DEBUG
       void traceBranch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;

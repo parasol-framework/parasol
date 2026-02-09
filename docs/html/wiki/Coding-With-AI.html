@@ -63,18 +63,18 @@
            </ul>
          </div></li>
 
-         <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#fg-collapse" aria-expanded="false">Fluid</button>
+         <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#fg-collapse" aria-expanded="false">Tiri</button>
          <div class="collapse" id="fg-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
-            <li class="api-ref"><a class="rounded" href="Fluid-Reference-Manual.html">Fluid Reference Manual</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-Common-API.html">Common API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-GUI-API.html">GUI API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-HTTPServer-API.html">HTTPServer API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-IO-API.html">I/O API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-JSON-API.html">JSON API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-URL-API.html">URL API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-VFX-API.html">VFX API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-Widgets.html">Widgets</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-Reference-Manual.html">Tiri Reference Manual</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-Common-API.html">Common API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-GUI-API.html">GUI API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-HTTPServer-API.html">HTTPServer API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-IO-API.html">I/O API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-JSON-API.html">JSON API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-URL-API.html">URL API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-VFX-API.html">VFX API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-Widgets.html">Widgets</a></li>
            </ul>
          </div></li>
 
@@ -123,10 +123,10 @@
       <li class="api-ref"><a href="../modules/audio.html" class="rounded">Audio</a></li>
       <li class="api-ref"><a href="../modules/core.html" class="rounded">Core</a></li>
       <li class="api-ref"><a href="../modules/display.html" class="rounded">Display</a></li>
-      <li class="api-ref"><a href="../modules/fluid.html" class="rounded">Fluid</a></li>
       <li class="api-ref"><a href="../modules/font.html" class="rounded">Font</a></li>
       <li class="api-ref"><a href="../modules/network.html" class="rounded">Network</a></li>
       <li class="api-ref"><a href="../modules/regex.html" class="rounded">Regex</a></li>
+      <li class="api-ref"><a href="../modules/tiri.html" class="rounded">Tiri</a></li>
       <li class="api-ref"><a href="../modules/vector.html" class="rounded">Vector</a></li>
       <li class="api-ref"><a href="../modules/xml.html" class="rounded">XML</a></li>
       <li class="api-ref"><a href="../modules/xpath.html" class="rounded">XPath</a></li>
@@ -257,12 +257,12 @@
 <div class="docs-content" id="default-page">
 <h1>Coding With AI</h1>
 <p>The Parasol repository is setup for agentic coding, and is readily configured for Claude Code and Codex by default. You&#39;ll find that an <code>AGENTS.md</code> file and a <code>.claude</code> settings folder are preconfigured for you. If you&#39;re using another agent, check if it supports <code>AGENTS.md</code> files, otherwise find a way to use it as the basis for your chat sessions.</p>
-<p>If you&#39;re coding with the <code>parasol</code> executable to write Fluid scripts exclusively, note that you&#39;ll need to install Parasol&#39;s GitHub repository in order to get the agent to write Fluid code. This is because the release archives are intended for running code only, and are missing the documentation and configuration information that the agent will need to be effective.</p>
+<p>If you&#39;re coding with the <code>origo</code> executable to write Tiri scripts exclusively, note that you&#39;ll need to install Parasol&#39;s GitHub repository in order to get the agent to write Tiri code. This is because the release archives are intended for running code only, and are missing the documentation and configuration information that the agent will need to be effective.</p>
 <h2 id="general-coding-tips">General Coding Tips</h2>
 <ul>
 <li>Read the <code>AGENTS.md</code> file before you start. It defines the guard rails that the agent will operate under, and how it will go about building and testing its work.</li>
 <li>Always clear the context after completing the work on one feature and before working on another. If the context window gets to the point where it has to compact, performance of the agent can deteriorate noticeably.</li>
-<li>For Fluid coding, agents will write their best code after reading the existing example scripts and documentation in the repo. Although already stated in the <code>AGENTS.md</code> file, these directives can be ignored and you may have to give it a reminder.</li>
+<li>For Tiri coding, agents will write their best code after reading the existing example scripts and documentation in the repo. Although already stated in the <code>AGENTS.md</code> file, these directives can be ignored and you may have to give it a reminder.</li>
 <li>Agents will make mistakes. Enforce testing and code reviews as an essential part of the process. This will create a feedback loop between what the agent has written and what it expects as a result. You are also the last arbiter of correctness, and stepping in to make adjustments is a normal part of the process.</li>
 <li>As of October 2025 our best results have been observed when using Codex, however we use both Claude Code and Codex interchangeably. Avoid relying on only one agent; learning the strengths and weaknesses of multiple agents is key to unlocking higher productivity.</li>
 </ul>
@@ -272,10 +272,10 @@
 <ul>
 <li>&quot;Build and test after making C++ changes&quot; - Use if the agent is skipping compilation verification.</li>
 </ul>
-<p><strong>When asking for Fluid code:</strong></p>
+<p><strong>When asking for Tiri code:</strong></p>
 <ul>
 <li>&quot;Read at least 3 examples from <code>examples/</code> or <code>src/[module]/tests/</code> before writing code&quot; - This will improve code quality.</li>
-<li>Point the agent to specific example files most relevant to your task (e.g., <code>examples/widgets.fluid</code> for GUI work).</li>
+<li>Point the agent to specific example files most relevant to your task (e.g., <code>examples/widgets.tiri</code> for GUI work).</li>
 </ul>
 <p><strong>When asking for tests:</strong></p>
 <ul>

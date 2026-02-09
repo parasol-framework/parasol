@@ -46,7 +46,7 @@ efficient iteration and element access with standard STL semantics.  Altering ta
 to do so are provided in the C++ header for `objXML` and `XTag`, with additional functions in the `xml` namespace.
 Check the header for details.
 
-Fluid developers need to be aware that reading the #Tags field generates a copy of the entire tag structure - it
+Tiri developers need to be aware that reading the #Tags field generates a copy of the entire tag structure - it
 should therefore be read only as needed and cached until the XML object is modified.
 
 <header>Not Supported</header>
@@ -389,7 +389,7 @@ static ERR XML_Search(extXML *Self, struct xml::Search *Args)
          }
          else {
             CSTRING str;
-            if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+            if ((xq->get(FID_ErrorMsg, str) IS ERR::Okay) and (str)) Self->ErrorMsg = str;
             FreeResource(xq);
             if ((Args->Callback) and (error IS ERR::Search)) return ERR::Okay;
             else return error;
@@ -1867,7 +1867,10 @@ recently received error code.  Issues parsing malformed XPath expressions may al
 static ERR GET_ErrorMsg(extXML *Self, CSTRING *Value)
 {
    if (not Self->ErrorMsg.empty()) { *Value = Self->ErrorMsg.c_str(); return ERR::Okay; }
-   else return ERR::NoData;
+   else {
+      *Value = nullptr;
+      return ERR::Okay;
+   }
 }
 
 /*********************************************************************************************************************
@@ -2104,7 +2107,7 @@ Direct read access to the Tags hierarchy is safe and efficient for traversing th
 modifications should be performed using the XML object's methods (#InsertXML(), #SetAttrib(), #RemoveTag(), etc.) to
 maintain internal consistency and trigger appropriate cache invalidation.
 
-NOTE: Fluid will copy this field on read, caching the value is therefore recommended.
+NOTE: Tiri will copy this field on read, caching the value is therefore recommended.
 
 *********************************************************************************************************************/
 

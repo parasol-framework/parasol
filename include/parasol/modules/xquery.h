@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      xquery.h
-// Copyright: Paul Manias © 2025
+// Copyright: Paul Manias © 2025-2026
 // Generator: idl-c
 
 #include <parasol/main.h>
@@ -180,13 +180,13 @@ class objXQuery : public Object {
 
    template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[9];
+      auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setStatement(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[10];
+      auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 

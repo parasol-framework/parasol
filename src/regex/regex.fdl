@@ -1,6 +1,6 @@
---$FLUID:Include
+--$TIRI:Include
 
-module({ name="Regex", copyright="Paul Manias © 2025", version=1.0, timestamp=20240611, src="regex.cpp" }, function()
+module({ name="Regex", copyright="Paul Manias © 2025-2026", version=1.0, timestamp=20240611, src="regex.cpp" }, function()
   flags("REGEX", { comment="Optional flags for the Regex functions." },
     "ICASE:     Ignore case.",
     "MULTILINE: `^` and `$` match line boundaries.",

@@ -289,7 +289,9 @@ static void free_children(OBJECTPTR Object)
             if (((mem.Flags & MEM::COLLECT) != MEM::NIL) or (!mem.Object)) continue;
 
             if ((mem.Object->Owner) and (mem.Object->Owner != Object)) {
-               log.warning("Failed sanity test: Child object #%d has owner ID of #%d that does not match #%d.", mem.Object->UID, mem.Object->ownerID(), Object->UID);
+               // Indicates that glObjectChildren[Object->UID] doesn't coincide with the owner declared by the child.
+               // Preference is given to the child object, which means glObjectChildren hasn't been kept up to date.
+               log.warning("Object #%d has stale association with child #%d (owned by #%d)", Object->UID, mem.Object->UID, mem.Object->ownerID());
                continue;
             }
 
@@ -1698,16 +1700,21 @@ ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 
    //if (Object->Owner) log.trace("SetOwner:","Changing the owner for object %d from %d to %d.", Object->UID, Object->ownerID(), Owner->UID);
 
-   // Track the object's memory header to the new owner
+   // Track the object's memory header to the new owner.
+   // NB: SetOwner() is not the only modifier of glObjectChildren - AllocMemory() will have preset glObjectChildren
+   // on the initial allocation of the child's Object structure.  Additionally, the memory record is considered to be
+   // the definitive source of ownership information.
 
    if (auto lock = std::unique_lock{glmMemory}) {
       auto mem = glPrivateMemory.find(Object->UID);
       if (mem IS glPrivateMemory.end()) return log.warning(ERR::SystemCorrupt);
-      mem->second.OwnerID = Owner->UID;
 
       // Remove reference from the now previous owner
-      if (Object->Owner) glObjectChildren[Object->Owner->UID].erase(Object->UID);
+      if (auto it = glObjectChildren.find(mem->second.OwnerID); it != glObjectChildren.end()) {
+         it->second.erase(Object->UID);
+      }
 
+      mem->second.OwnerID = Owner->UID;
       Object->Owner = Owner;
 
       glObjectChildren[Owner->UID].insert(Object->UID);

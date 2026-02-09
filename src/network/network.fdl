@@ -1,6 +1,6 @@
---$FLUID:Include
+--$TIRI:Include
 
-module({ name="Network", copyright="Paul Manias © 2005-2025", version=1.0, prefix="net", status="stable", timestamp=20240611 }, function()
+module({ name="Network", copyright="Paul Manias © 2005-2026", version=1.0, prefix="net", status="stable", timestamp=20240611 }, function()
   restrict(function()
     loadFile(glPath .. 'common.fdl')
   end)
@@ -140,7 +140,7 @@ typedef int SOCKET_HANDLE;
     int MulticastTTL      # Time-to-live for multicast packets (UDP only)
   ]])
 
-  const("SCV", { comment="These error codes for certificate validation match the OpenSSL error codes (X509 definitions)" }, {
+  constants("SCV", { comment="These error codes for certificate validation match the OpenSSL error codes (X509 definitions)" }, {
     OK                                  = 0,
     UNABLE_TO_GET_ISSUER_CERT           = 2,
     UNABLE_TO_GET_CRL                   = 3,

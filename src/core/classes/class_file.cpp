@@ -613,7 +613,7 @@ static ERR FILE_Init(extFile *Self)
 
       Self->Flags &= ~(FL::NEW|FL::READ|FL::WRITE);
 
-      if (iequals("std:stdin", Self->Path)) {
+      if (iequals("std:in", Self->Path)) {
          Self->Flags |= FL::READ;
          #ifdef _WIN32
             Self->Handle = _fileno(stdin);
@@ -621,7 +621,7 @@ static ERR FILE_Init(extFile *Self)
             Self->Handle = STDIN_FILENO;
          #endif
       }
-      else if (iequals("std:stdout", Self->Path)) {
+      else if (iequals("std:out", Self->Path)) {
          Self->Flags |= FL::WRITE;
          #ifdef _WIN32
             Self->Handle = _fileno(stdout);
@@ -629,7 +629,7 @@ static ERR FILE_Init(extFile *Self)
             Self->Handle = STDOUT_FILENO;
          #endif
       }
-      else if (iequals("std:stderr", Self->Path)) {
+      else if (iequals("std:err", Self->Path)) {
          Self->Flags |= FL::WRITE;
          #ifdef _WIN32
             Self->Handle = _fileno(stderr);
@@ -2120,6 +2120,8 @@ as the point of origin.
 
 The accepted method for referencing parent folders is `../`, which can be repeated for as many parent folders as needed
 to traverse the folder hierarchy.
+
+Access to `std*` handles is achieved by using the path strings `std:in`, `std:out` and `std:err`.
 
 *********************************************************************************************************************/
 

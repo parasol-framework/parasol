@@ -13,7 +13,7 @@
     <id>0b88bfd6</id>
     <idstring>XML</idstring>
     <category>Data</category>
-    <copyright>Paul Manias © 2001-2025</copyright>
+    <copyright>Paul Manias © 2001-2026</copyright>
     <description>
 <p>The XML class is designed to provide robust functionality for creating, parsing and maintaining XML data structures. It supports both well-formed and loosely structured XML documents, offering flexible parsing behaviours to accommodate various XML formats.  The class includes comprehensive support for XPath 2.0 and XQuery 1.0 queries, content manipulation and document validation.</p>
 <p>The class has been designed in such a way as to accommodate other structured data formats such as JSON and YAML.  In this way, the class not only provides XML support but also serves as Parasol's general-purpose structured data handler.  It also makes it trivial to convert between different structured data formats, and benefit from the cross-application use of features, such as applying XPath 2.0 queries on data originating from YAML.</p>
@@ -26,7 +26,7 @@
 <header>Document Structure and Access</header>
 <p>Successfully parsed XML data is accessible through the <fl>Tags</fl> field, which contains a hierarchical array of <st>XTag</st> structures.  Each XTag represents a complete XML element including its attributes, content and child elements. The structure maintains the original document hierarchy, enabling both tree traversal and direct element access.</p>
 <p>C++ developers benefit from direct access to the Tags field, represented as <code>pf::vector&lt;XTag&gt;</code>.  This provides efficient iteration and element access with standard STL semantics.  Altering tag attributes is permitted and methods to do so are provided in the C++ header for <code>objXML</code> and <code>XTag</code>, with additional functions in the <code>xml</code> namespace. Check the header for details.</p>
-<p>Fluid developers need to be aware that reading the <fl>Tags</fl> field generates a copy of the entire tag structure - it should therefore be read only as needed and cached until the XML object is modified.</p>
+<p>Tiri developers need to be aware that reading the <fl>Tags</fl> field generates a copy of the entire tag structure - it should therefore be read only as needed and cached until the XML object is modified.</p>
 <header>Not Supported</header>
 <p>DTD processing and validation is intentionally not supported.  While the class can parse DOCTYPE declarations, it does not load or  validate against external DTDs as this is now a legacy technology.  Use XML Schema (XSD) for validation instead.</p></description>
     <source>
@@ -719,7 +719,7 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
 <p>The Tags field exposes the complete XML document structure as a hierarchical array of <st>XTag</st> structures.  This field becomes available after successful XML parsing and provides the primary interface for reading XML content programmatically.</p>
 <p>Each <st>XTag</st> will have at least one attribute set in the <code>Attribs</code> array.  The first attribute will either reflect the tag name or a content string if the <code>Name</code> is undefined.  The <code>Children</code> array provides access to all child elements.</p>
 <p>Direct read access to the Tags hierarchy is safe and efficient for traversing the document structure.  However, modifications should be performed using the XML object's methods (<method>InsertXML</method>, <method>SetAttrib</method>, <method>RemoveTag</method>, etc.) to maintain internal consistency and trigger appropriate cache invalidation.</p>
-<p>NOTE: Fluid will copy this field on read, caching the value is therefore recommended.</p>
+<p>NOTE: Tiri will copy this field on read, caching the value is therefore recommended.</p>
       </description>
     </field>
 

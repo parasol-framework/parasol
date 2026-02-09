@@ -467,6 +467,7 @@ static OBJECTPTR clProxy = nullptr;
 static OBJECTPTR clNetSocket = nullptr;
 static OBJECTPTR clClientSocket = nullptr;
 static OBJECTPTR clNetClient = nullptr;
+static OBJECTPTR glNetworkModule = nullptr;
 static HOSTMAP glHosts; // Protected by glHostsMutex
 static HOSTMAP glAddresses; // Protected by glAddressesMutex
 static std::shared_mutex glHostsMutex;
@@ -508,6 +509,8 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    pf::Log log;
 
    CoreBase = argCoreBase;
+
+   argModule->get(FID_Root, glNetworkModule);
 
    if (init_netclient() != ERR::Okay) return ERR::AddClass;
    if (init_netsocket() != ERR::Okay) return ERR::AddClass;

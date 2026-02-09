@@ -9,7 +9,7 @@
 
 Parasol is an open source vector graphics engine and application framework for Windows and Linux.  It features integrated support for SVG with a focus on correctness, and we test against W3C's official SVG compliance tests.
 
-Parasol is written in C++ and can be built as an external or embedded set of libraries to suit your situation.  Our integrated scripting language, Fluid, is based on Lua and helps to simplify application development without compromising on speed or modern features.  Extensive API documentation is hosted at our website.
+Parasol is written in C++ and can be built as an external or embedded set of libraries to suit your situation.  Our integrated scripting language, Tiri, is based on Lua and helps to simplify application development without compromising on speed or modern features.  Extensive API documentation is hosted at our website.
 
 ### Motivation
 
@@ -17,7 +17,7 @@ Parasol's ongoing development is focused on enhancing vector graphics programmin
 
 ### Features
 
-* **Versatility:** Integrate your C++ code with our API, or write programs in Fluid, our integrated Lua-based scripting language.  Custom C++ builds are supported if you only need a particular feature such as the vector graphics engine for your project.
+* **Versatility:** Integrate your C++ code with our API, or write programs in Tiri, our integrated Lua-based scripting language.  Custom C++ builds are supported if you only need a particular feature such as the vector graphics engine for your project.
 * **Scalable User Interfaces:** Create fully scalable UI's using our vector-based widgets, including windows, checkboxes, buttons, dialogs and text.  The script-driven architecture makes customization simple and flexible.
 * **Live Vector Management:** Load SVG files into vector scene graphs and interact with the graph's properties in real-time via our API.
 * **Animation:** Support for SVG animation (SMIL) is included, or use pre-canned visual effects from our VFX API.
@@ -35,7 +35,7 @@ Parasol's ongoing development is focused on enhancing vector graphics programmin
 
 ### Application Example
 
-This is an example of a simple client application written in Fluid.  It loads an SVG file and displays the content in a window for the user.  Notice that the SVG is parsed in one line of code and all resource cleanup is handled in the background by the garbage collector.  You can find more example programs [here](examples/).
+This is an example of a simple client application written in Tiri.  It loads an SVG file and displays the content in a window for the user.  Notice that the SVG is parsed in one line of code and all resource cleanup is handled in the background by the garbage collector.  You can find more example programs [here](examples/).
 
 ```Lua
    require 'gui'
@@ -92,7 +92,7 @@ Please refer to the following Wiki pages for information on how to build Parasol
 * [Linux Builds](https://github.com/parasol-framework/parasol/wiki/Linux-Builds)
 * [Windows Builds](https://github.com/parasol-framework/parasol/wiki/Windows-Builds)
 
-A successful build and installation will create a `parasol` command tool, which is [documented here](https://github.com/parasol-framework/parasol/wiki/Parasol-Cmd-Tool).
+A successful build and installation will create a `origo` command tool, which is [documented here](https://github.com/parasol-framework/parasol/wiki/Origo).
 
 > [!TIP]
 > Please refer to our [customisation wiki page](https://github.com/parasol-framework/parasol/wiki/Customising-Your-Build) for information on customising your build.

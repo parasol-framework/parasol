@@ -1,6 +1,6 @@
---$FLUID:Include
+--$TIRI:Include
 
-module({ name="Font", copyright="Paul Manias © 1998-2025", version=1.0, timestamp=20240611 }, function()
+module({ name="Font", copyright="Paul Manias © 1998-2026", version=1.0, timestamp=20240611 }, function()
   restrict(function()
     loadFile(glPath .. 'common-graphics.fdl')
   end)
@@ -41,7 +41,7 @@ module({ name="Font", copyright="Paul Manias © 1998-2025", version=1.0, timesta
     char  Hidden            # `TRUE` if the font should be hidden from user font lists.
   ]])
 
-  const("FSS", { comment="Options for the StringSize() function." }, {
+  constants("FSS", { comment="Options for the StringSize() function." }, {
     ALL  = "-1: Process all characters.",
     LINE = "-2: Terminate operation at the first line feed or word-wrap."
   })

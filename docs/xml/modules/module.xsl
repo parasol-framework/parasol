@@ -250,10 +250,10 @@
         <li class="api-ref"><a href="audio.html" class="rounded">Audio</a></li>
         <li class="api-ref"><a href="core.html" class="rounded">Core</a></li>
         <li class="api-ref"><a href="display.html" class="rounded">Display</a></li>
-        <li class="api-ref"><a href="fluid.html" class="rounded">Fluid</a></li>
         <li class="api-ref"><a href="font.html" class="rounded">Font</a></li>
         <li class="api-ref"><a href="network.html" class="rounded">Network</a></li>
         <li class="api-ref"><a href="regex.html" class="rounded">Regex</a></li>
+        <li class="api-ref"><a href="tiri.html" class="rounded">Tiri</a></li>
         <li class="api-ref"><a href="vector.html" class="rounded">Vector</a></li>
         <li class="api-ref"><a href="xml.html" class="rounded">XML</a></li>
         <li class="api-ref"><a href="xpath.html" class="rounded">XPath</a></li>
@@ -429,15 +429,15 @@
            </ul>
          </div></li>
 
-         <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#fg-collapse" aria-expanded="false">Fluid</button>
+         <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#fg-collapse" aria-expanded="false">Tiri</button>
          <div class="collapse" id="fg-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
-            <li class="api-ref"><a class="rounded" href="../wiki/Fluid-Reference-Manual.html">Fluid Reference Manual</a></li>
-            <li class="api-ref"><a class="rounded" href="../wiki/Fluid-Common-API.html">Common API</a></li>
-            <li class="api-ref"><a class="rounded" href="../wiki/Fluid-FileSearch-API.html">FileSearch API</a></li>
-            <li class="api-ref"><a class="rounded" href="../wiki/Fluid-GUI-API.html">GUI API</a></li>
-            <li class="api-ref"><a class="rounded" href="../wiki/Fluid-JSON-API.html">JSON API</a></li>
-            <li class="api-ref"><a class="rounded" href="../wiki/Fluid-VFX-API.html">VFX API</a></li>
+            <li class="api-ref"><a class="rounded" href="../wiki/Tiri-Reference-Manual.html">Tiri Reference Manual</a></li>
+            <li class="api-ref"><a class="rounded" href="../wiki/Tiri-Common-API.html">Common API</a></li>
+            <li class="api-ref"><a class="rounded" href="../wiki/Tiri-FileSearch-API.html">FileSearch API</a></li>
+            <li class="api-ref"><a class="rounded" href="../wiki/Tiri-GUI-API.html">GUI API</a></li>
+            <li class="api-ref"><a class="rounded" href="../wiki/Tiri-JSON-API.html">JSON API</a></li>
+            <li class="api-ref"><a class="rounded" href="../wiki/Tiri-VFX-API.html">VFX API</a></li>
             <li class="api-ref"><a class="rounded" href="../wiki/Widgets.html">Widgets</a></li>
            </ul>
          </div></li>
@@ -452,7 +452,7 @@
          <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#tools-collapse" aria-expanded="false">Tools</button>
          <div class="collapse" id="tools-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
-              <li class="api-ref"><a class="rounded" href="../wiki/Parasol-Cmd-Tool.html">Parasol Cmd Tool</a></li>
+              <li class="api-ref"><a class="rounded" href="../wiki/Origo.html">Origo</a></li>
               <li class="api-ref"><a class="rounded" href="../wiki/Unit-Testing.html">Flute / Unit Testing</a></li>
            </ul>
          </div></li>

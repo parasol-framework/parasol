@@ -195,7 +195,8 @@ const CSTRING glMessages[int(ERR::END)+1] = {
  "The compression data is invalid or corrupted.",
  "A sanity check has failed.",
  "Client is not authorised to perform this operation.",
- nullptr // Needs to be null-terminated for Fluid support
+ "The specified property is not recognised.",
+ nullptr // Needs to be null-terminated for Tiri support
 };
 
 const int glTotalMessages = std::ssize(glMessages);

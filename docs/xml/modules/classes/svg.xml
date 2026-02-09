@@ -13,7 +13,7 @@
     <id>0b88abb5</id>
     <idstring>SVG</idstring>
     <category>GUI</category>
-    <copyright>Paul Manias © 2010-2025</copyright>
+    <copyright>Paul Manias © 2010-2026</copyright>
     <description>
 <p>The SVG class serves as a complete solution for integrating Scalable Vector Graphics documents into applications.  It parses SVG statements into a scene graph consisting of <class name="Vector">Vector</class> objects and related constructs, providing direct programmatic access to all graphical elements.  The generated scene graph is accessible via the <fl>Scene</fl> and <fl>Viewport</fl> fields, enabling real-time manipulation of individual elements.</p>
 <p>Key capabilities include:</p>

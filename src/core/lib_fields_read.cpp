@@ -43,7 +43,7 @@ Field * lookup_id(OBJECTPTR Object, uint32_t FieldID, OBJECTPTR *Target)
       }
    }
 
-   // Local object support.  NOTE: This is fallback mechanism.  The client can optimise their code by
+   // Local object support.  NOTE: This is a fallback mechanism.  The client can optimise their code by
    // directly retrieving a pointer to the local object and then reading the field value from that.
 
    for (unsigned i=0; mc->Local[i] != 0xff; i++) {

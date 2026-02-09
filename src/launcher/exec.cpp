@@ -9,7 +9,7 @@ ERR exec_source(std::string TargetFile, int ShowTime, const std::string Procedur
 
    log.msg("Identifying file '%s'", TargetFile.c_str());
 
-   FindClass(CLASSID::FLUID);
+   FindClass(CLASSID::TIRI);
 
    CLASSID class_id, subclass;
    if (pf::startswith("STRING:", TargetFile)) {
@@ -173,7 +173,7 @@ ERR exec_source(std::string TargetFile, int ShowTime, const std::string Procedur
             }
 
             CSTRING msg;
-            if ((glScript->get(FID_ErrorString, msg) IS ERR::Okay) and (msg)) {
+            if ((glScript->get(FID_ErrorMessage, msg) IS ERR::Okay) and (msg)) {
                log.msg("Script returned error message: %s", msg);
                return ERR::Failed;
             }

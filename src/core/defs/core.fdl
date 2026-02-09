@@ -1,8 +1,8 @@
---$FLUID:Include
+--$TIRI:Include
 
-module({ name="Core", copyright="Paul Manias 1996-2025", timestamp=20241015 }, function()
+module({ name="Core", copyright="Paul Manias 1996-2026", timestamp=20241015 }, function()
   c_include("<stdarg.h>", "<inttypes.h>", "<string.h>", "<stdlib.h>")
-  cpp_include("<list>", "<map>", "<string>", "<vector>", "<unordered_map>", "<bit>", "<atomic>", "<array>", "<charconv>", "<sstream>", "<cmath>", "<type_traits>", "ankerl/unordered_dense.h")
+  cpp_include("<list>", "<map>", "<string>", "<set>", "<vector>", "<unordered_map>", "<bit>", "<atomic>", "<array>", "<charconv>", "<sstream>", "<cmath>", "<type_traits>", "ankerl/unordered_dense.h")
 
   platform("Windows", function()
      enum("NETMSG", {}, "START", "END")
@@ -295,12 +295,12 @@ constexpr bool defined(T flags, T test_flag) noexcept {
     }
   )
 
-  const("MAX", { }, {
+  constants("MAX", { }, {
      FILENAME = 256, -- Maximum length for file names (not necessarily including path)
      NAME_LEN = 31   -- Refer to the 'Object' struct for more info on the NAME_LEN value
   })
 
-  const("MSGID", { type="int", comment="Reserved message ID's that are handled internally." }, {
+  constants("MSGID", { type="int", comment="Reserved message ID's that are handled internally." }, {
      QUIT             = 1000,   -- Note that IDs >= 100 may be handled by non-Core code (external modules and applications)
      COMMAND          = 101,
      BREAK            = 100,
@@ -312,7 +312,7 @@ constexpr bool defined(T flags, T test_flag) noexcept {
      VALIDATE_PROCESS = 95,
      THREAD_CALLBACK  = 94,
      THREAD_ACTION    = 93,
-     FLUID_THREAD_CALLBACK = 92,
+     TIRI_THREAD_CALLBACK = 92,
      WAIT_FOR_OBJECTS = 91
   })
 
@@ -372,7 +372,7 @@ constexpr bool defined(T flags, T test_flag) noexcept {
 -- Please note that when the user is using an international keyboard, the name of the key will not
 -- actually match what the symbol represents for some key types.
 
-  const("KEY", { type="int", comment="Raw key codes" }, {
+  constants("KEY", { type="int", comment="Raw key codes" }, {
     A = 1,
     B = 2,
     C = 3,
@@ -708,7 +708,7 @@ using ModTest    = void (*)(CSTRING, int *, int *);
 
   struct("ModHeader", { comment="Module file header", restrict="c" }, [[
     int(MHF) Flags                 # Special flags, type of function table wanted from the Core
-    cstr Definitions               # Module definition string, usable by run-time languages such as Fluid
+    cstr Definitions               # Module definition string, usable by run-time languages such as Tiri
     fptr(error obj struct(*CoreBase)) Init # A one-off initialisation routine for when the module is first opened.
     fptr(void obj) Close           # A function that will be called each time the module is closed.
     fptr(error obj) Open           # A function that will be called each time the module is opened.
@@ -774,7 +774,7 @@ using ModTest    = void (*)(CSTRING, int *, int *);
    explicit Unit(std::string_view String) { read(String); }
    constexpr operator double() const { return Value; }
    constexpr void set(const double pValue) { Value = pValue; }
-   bool scaled() { return (Type & FD_SCALED) ? true : false; }
+   constexpr bool scaled() { return (Type & FD_SCALED) ? true : false; }
    inline void read(std::string_view String) {
       const auto start = String.find_first_not_of(" \n\r\t");
       if (start != std::string::npos) String.remove_prefix(start);
@@ -952,18 +952,14 @@ using ModTest    = void (*)(CSTRING, int *, int *);
     ptr SetValue       # A virtual function that will set the value for this field.
     fptr(error obj struct(*Field) int cptr int) WriteValue # An internal function for writing to this field.
     cstr Name          # The English name for the field, e.g. `Width`
-    uint FieldID       # Provides a fast way of finding fields, e.g. `FID_Width`
+    uint FieldID       # 32-bit hash from fieldhash(). Represented by FID constants, e.g. `FID_Width`
     ushort Offset      # Field offset within the object
     ushort Index       # Field array index
     uint Flags         # Special flags that describe the field
   ]],
   [[
-   bool readable() {
-      return (Flags & FD_READ) ? true : false;
-   }
-   bool writeable() {
-      return (Flags & (FD_WRITE|FD_INIT)) ? true : false;
-   }
+   inline bool readable() { return (Flags & FD_READ) ? true : false; }
+   inline bool writeable() { return (Flags & (FD_WRITE|FD_INIT)) ? true : false; }
   ]]) -- [32/52]
 
   c_insert([[
@@ -1094,8 +1090,9 @@ inline ERR DeregisterFD(HOSTHANDLE Handle) {
 
 inline APTR GetResourcePtr(RES ID) { return (APTR)(MAXINT)GetResource(ID); }
 
-inline CSTRING to_cstring(const std::string &A) { return A.c_str(); }
-constexpr inline CSTRING to_cstring(CSTRING A) { return A; }
+[[nodiscard]] constexpr inline const char* to_cstring(const char* A) { return A; }
+[[nodiscard]] inline const char* to_cstring(const std::string &A) { return A.c_str(); }
+
 #ifndef PRV_CORE_DATA
 // These overloaded functions can't be used in the Core as they will confuse the compiler in key areas.
 
@@ -1176,6 +1173,54 @@ static thread_local int _tlUniqueThreadID = 0;
 inline OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UID; }
 inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(SetResource(Res, (MAXINT)Value)); }
 
+// obj_read is used to build efficient customised jump tables for object calls.
+
+struct obj_read {
+   typedef int JUMP(struct lua_State *, const struct obj_read &, struct GCobject *);
+
+   uint32_t Hash;
+   JUMP *Call;
+   APTR Data;
+
+   auto operator<=>(const obj_read &Other) const {
+       if (Hash < Other.Hash) return -1;
+       if (Hash > Other.Hash) return 1;
+       return 0;
+   }
+
+   obj_read(uint32_t pHash, JUMP pJump, APTR pData) : Hash(pHash), Call(pJump), Data(pData) { }
+   obj_read(uint32_t pHash, JUMP pJump) : Hash(pHash), Call(pJump) { }
+   obj_read(uint32_t pHash) : Hash(pHash) { }
+};
+
+inline auto read_hash = [](const obj_read &a, const obj_read &b) { return a.Hash < b.Hash; };
+
+typedef std::vector<obj_read> READ_TABLE;
+
+// Object field write handler structure for Tiri code
+
+struct obj_write {
+   typedef ERR JUMP(struct lua_State *, OBJECTPTR, struct Field *, int);
+
+   uint32_t Hash;
+   JUMP *Call;
+   struct Field *Field;
+
+   auto operator<=>(const obj_write &Other) const {
+       if (Hash < Other.Hash) return -1;
+       if (Hash > Other.Hash) return 1;
+       return 0;
+   }
+
+   obj_write(uint32_t pHash, JUMP pJump, struct Field *pField) : Hash(pHash), Call(pJump), Field(pField) { }
+   obj_write(uint32_t pHash, JUMP pJump) : Hash(pHash), Call(pJump) { }
+   obj_write(uint32_t pHash) : Hash(pHash) { }
+};
+
+inline auto write_hash = [](const obj_write &a, const obj_write &b) { return a.Hash < b.Hash; };
+
+typedef std::vector<obj_write> WRITE_TABLE;
+
 ]==])
 
   methods("MetaClass", "mc", {
@@ -1198,6 +1243,11 @@ inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(SetResou
     cid BaseClassID        # Base-class ID
     int OpenCount          # Number of objects allocated to this class
     int(CCF) Category      # Assigned category
+  ]],
+  [[
+    // Field table cache for Tiri - eliminates per-instance hash tables.
+    READ_TABLE  ReadTable;
+    WRITE_TABLE WriteTable;
   ]])
 
 c_insert([[
@@ -1342,12 +1392,12 @@ inline CLASSID Object::baseClassID() { return Class->BaseClassID; }
    STRING   Path;                 // File location of the script
    STRING   String;
    STRING   WorkingPath;
-   STRING   ErrorString;
+   STRING   ErrorMessage;
    CSTRING  Procedure;
    STRING   CacheFile;
-   int     ActivationCount;      // Incremented every time the script is activated.
-   int     ResultsTotal;
-   int     TotalArgs;            // Total number of ProcArgs
+   int      ActivationCount;      // Incremented every time the script is activated.
+   int      ResultsTotal;
+   int      TotalArgs;            // Total number of ProcArgs
    char     LanguageDir[32];      // Directory to use for language files
    OBJECTID ScriptOwnerID;
   ]])

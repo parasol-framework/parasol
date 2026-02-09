@@ -32,6 +32,8 @@ Name: Messages
 
 #include "defs.h"
 
+#include <deque>
+
 static ERR wake_task(void);
 #ifdef _WIN32
 static ERR sleep_task(int, int8_t);
@@ -43,7 +45,7 @@ ERR write_nonblock(int Handle, APTR Data, int Size, int64_t EndTime);
 static const int MAX_MSEC = 1000;
 
 static std::recursive_mutex glQueueLock;
-static std::vector<TaskMessage> glQueue; // Available to all threads, use glQueueLock
+static std::deque<TaskMessage> glQueue; // Available to all threads, use glQueueLock
 
 template <class T> inline APTR ResolveAddress(T *Pointer, int Offset) {
    return APTR(((int8_t *)Pointer) + Offset);
@@ -114,7 +116,7 @@ be passed to the handler.  The `Routine` parameter must point to the function ha
 The handler must return `ERR::Okay` if the message was handled.  This means that the message will not be passed to message
 handlers that are yet to receive the message.  Throw `ERR::NothingDone` if the message has been ignored or `ERR::Continue`
 if the message was processed but may be analysed by other handlers.  Throw `ERR::Terminate` to break the current
-~ProcessMessages() loop.  When using Fluid, this is best achieved by writing `check(errorcode)` in the handler.
+~ProcessMessages() loop.  When using Tiri, this is best achieved by writing `check(errorcode)` in the handler.
 
 The handler will be identified by a unique pointer returned in the Handle parameter.  This handle will be garbage
 collected or can be passed to ~FreeResource() once it is no longer required.
@@ -570,7 +572,7 @@ ERR SendMessage(MSGID Type, MSF Flags, APTR Data, int Size)
          }
       }
 
-      glQueue.emplace_back(Type, Data, Size); // BROKEN: Causes reallocation of the vector, affects threads.
+      glQueue.emplace_back(Type, Data, Size); // Deque keeps message storage stable for re-entrant handlers.
    }
 
    wake_task(); // Alert the process to indicate that there are messages available.

@@ -84,13 +84,13 @@
 
 ### Phase 5 – Testing
 12. **Parser tests**
-    - Add lexical/parser regression cases (maybe in `src/xquery/tests/test_parser.fluid`):
+    - Add lexical/parser regression cases (maybe in `src/xquery/tests/test_parser.tiri`):
       - Basic switch with string literal cases.
       - Multiple case expressions and whitespace variations.
       - Error cases: missing parenthesis, missing default, duplicate `case` keywords without `return`.
 
 13. **Evaluator tests**
-    - Extend runtime tests (Fluid or QT3 harness) with scenarios:
+    - Extend runtime tests (Tiri or QT3 harness) with scenarios:
       - Numeric comparisons with implicit casting (e.g., `switch (3) case 3 return "match"`).
       - Empty sequence operand hitting `default`.
       - Sequence of nodes requiring atomisation (e.g., `switch ($node/@type)` case `'foo'` ...).
@@ -112,7 +112,7 @@
     - Build target: `cmake --build build/agents --config Release --target xquery --parallel`.
     - Install: `cmake --install build/agents`.
     - Run targeted tests: `ctest --build-config Release --test-dir build/agents -L xquery`.
-    - Execute Fluid-based parser tests if they live outside `ctest` harness (e.g., `parasol src/xquery/tests/test_switch.fluid --log-warning`).
+    - Execute Tiri-based parser tests if they live outside `ctest` harness (e.g., `parasol src/xquery/tests/test_switch.tiri --log-warning`).
 
 ## Expected follow-ups
 - After switch expression support, revisit the evaluator to share logic with `typeswitch` to avoid duplicate comparison utilities.

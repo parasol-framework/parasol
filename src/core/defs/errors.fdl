@@ -1,4 +1,4 @@
---$FLUID:Include
+--$TIRI:Include
 -- This file is included by core.fdl
 -- Refer to data_errors.c for the official description strings for each error code.
 
@@ -202,17 +202,18 @@ function declareErrors()
     "InvalidCompression",      -- The compression data is invalid or corrupted.
     "SanityCheckFailed",       -- A sanity check has failed.
     "NotAuthorised",           -- Client is not authorised to perform this operation.
+    "UnknownProperty",         -- The specified property is not recognised.
     "END",
     { Notified = 0x40000000 }
   ) -- NB: Any new error messages need to be added to data_errors.c manually.
 
-  const("ERF", { comment="Special error flags" }, {
+  constants("ERF", { comment="Special error flags" }, {
     Notified=0x40000000
   })
 end
 
    if (glProgram is "idl-c") then
-      header({ path="system/errors", copyright="Paul Manias © 1996-2025" }, declareErrors)
+      header({ path="system/errors", copyright="Paul Manias © 1996-2026" }, declareErrors)
    elseif (glProgram is "idl-compile") then
       declareErrors()
    end

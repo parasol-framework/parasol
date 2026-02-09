@@ -22,7 +22,7 @@ Key features include:
 <li>Callback-based result processing for custom handling.</li>
 </list>
 
-Note: Fluid scripts are expected to use the built-in regex functions for better integration as opposed to this
+Note: Tiri scripts are expected to use the built-in regex functions for better integration as opposed to this
 module.
 
 -END-
@@ -224,7 +224,7 @@ ERR Compile(const std::string_view &Pattern, REGEX Flags, std::string *ErrorMsg,
       }
       else if (auto err = regex->srell->ecode(); err != 0) {
          auto error_msg = map_error_code(err);
-         log.warning("Regex compilation failed: %s", error_msg.c_str());
+         log.warning("Regex compilation failed: %s; Pattern: %.*s", error_msg.c_str(), int(Pattern.size()), Pattern.data());
          if (ErrorMsg) *ErrorMsg = error_msg;
          FreeResource(regex);
          return ERR::Syntax;
