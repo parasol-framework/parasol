@@ -2,8 +2,8 @@
 # process generates multiple header files through a multi-stage compilation process.
 #
 # SPECIAL FEATURES:
-#  Enable JIT_USE_SYSMALLOC temporarily if you need to figure out memory management and overflow issues.
-#  Enable JIT_USE_GDBJIT temporarily if debugging with GDB.
+#  Enable LUAJIT_USE_SYSMALLOC temporarily if you need to figure out memory management and overflow issues.
+#  Enable LUAJIT_USE_GDBJIT temporarily if debugging with GDB.
 #  Enable ENABLE_UNIT_TESTS to include unit tests for non-release builds.  You will need to run test_unit_tests.tiri with
 #    the --log-api option to view any output.
 #
