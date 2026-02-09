@@ -97,8 +97,8 @@
          <div class="collapse" id="doc-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
               <li class="api-ref"><a class="rounded" href="Embedded-Document-Formatting.html">Embedded Document Format</a></li>
-              <li class="api-ref"><a class="rounded" href="FDL-Reference-Manual.html">FDL Reference Manual</a></li>
-              <li class="api-ref"><a class="rounded" href="FDL-Tools.html">FDL Tools</a></li>
+              <li class="api-ref"><a class="rounded" href="TDL-Reference-Manual.html">TDL Reference Manual</a></li>
+              <li class="api-ref"><a class="rounded" href="TDL-Tools.html">TDL Tools</a></li>
            </ul>
          </div></li>
 
@@ -496,7 +496,7 @@ int: Description of what the int value represents.</code></pre>
 <p>When documenting a class, all fields declared in the class blueprint must be documented. The template for each field is as follows:</p>
 <pre><code>-FIELD-
 [name]: A short description of the field&#39;s purpose.
-Lookup: Can refer to a named const type declared in the API&#39;s FDL.
+Lookup: Can refer to a named const type declared in the API&#39;s TDL.
 Private: If true, the field will not appear in generated documentation.
 
 ...Long description follows...</code></pre>
@@ -527,7 +527,7 @@ References to fields can be achieved with <code>#FieldName</code>, e.g. <code>#S
 When documenting a class, or when a module needs to reference the function of another, use the format <code>~ModuleName.Function()</code> ,
 e.g. <code>~Core.AllocMemory()</code>.</p>
 <h3 id="constant-references">Constant References</h3>
-<p>Use <code>&amp;Name</code> to link to constants and struct definitions declared in the module&#39;s FDL file.</p>
+<p>Use <code>&amp;Name</code> to link to constants and struct definitions declared in the module&#39;s TDL file.</p>
 <p>There is a special usage in which <code>&amp;Name</code> can be declared on a single line with no other content. This results in the entire definition being pulled into the document and represented in a table.</p>
 <h3 id="backticks">Backticks</h3>
 <p>Embedded backticks are supported for writing text with a monotype font. This is suitable for declaring code, constants, numeric values and so forth.</p>
@@ -548,8 +548,8 @@ e.g. <code>~Core.AllocMemory()</code>.</p>
 <hr>
 <h1 id="document-processing-tools">Document Processing Tools</h1>
 <p>The primary tool that we use to produce user documentation is bundled with Parasol as <code>idl-doc.tiri</code> and can be found in the <code>scripts\dev\idl\</code> folder.</p>
-<p>Despite it being written as a script, idl-doc is not a stand-alone tool and is instead implemented as an extension of <code>idl-c.tiri</code>. This is because the generation of fully accurate documentation requires inspection of the module&#39;s FDL file, as well as the compiled code.</p>
-<p>For generating your documentation, please refer to both idl-c and the FDL Reference Manual.</p>
+<p>Despite it being written as a script, idl-doc is not a stand-alone tool and is instead implemented as an extension of <code>idl-c.tiri</code>. This is because the generation of fully accurate documentation requires inspection of the module&#39;s TDL file, as well as the compiled code.</p>
+<p>For generating your documentation, please refer to both idl-c and the TDL Reference Manual.</p>
 </div></div></div></div>
 
 <script src="../js/bootstrap.bundle.min.js"></script>
