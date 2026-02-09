@@ -24,8 +24,8 @@ src/
 ├── debug/               # Error guard documentation
 ├── host/                # Build tools (buildvm, minilua)
 
-build/agents/src/tiri/luajit-generated/  # Generated headers, VM object, host helpers
-build/agents/luajit-2.1/lib/              # Final static library
+build/agents/src/tiri/jitlib-generated/  # Generated headers, VM object, host helpers
+build/agents/jit/lib/              # Final static library
 ```
 
 
@@ -132,12 +132,12 @@ When adding entries to `MMDEF` in `lj_obj.h`:
 2. **Force rebuild**: After modifying `MMDEF`, delete the generated VM files:
    ```bash
    # Windows
-   del build\agents\src\tiri\luajit-generated\buildvm.exe
-   del build\agents\src\tiri\luajit-generated\lj_vm.obj
+   del build\agents\src\tiri\jitlib-generated\buildvm.exe
+   del build\agents\src\tiri\jitlib-generated\lj_vm.obj
 
    # Unix
-   rm build/agents/src/tiri/luajit-generated/buildvm
-   rm build/agents/src/tiri/luajit-generated/lj_vm.o
+   rm build/agents/src/tiri/jitlib-generated/buildvm
+   rm build/agents/src/tiri/jitlib-generated/lj_vm.o
    ```
 
 3. **Full rebuild**: Run `cmake --build build/agents --config <BuildType> --parallel`
@@ -150,9 +150,9 @@ When adding entries to `MMDEF` in `lj_obj.h`:
 
 |Resource|Location|
 |-|-|
-|Parser source|`src/tiri/luajit-2.1/src/parser/`|
-|AST definitions|`src/tiri/luajit-2.1/src/parser/ast/`|
-|IR emission|`src/tiri/luajit-2.1/src/parser/ir_emitter/`|
-|Bytecode reference|`src/tiri/luajit-2.1/BYTECODE.md`|
-|JIT assembly notes|`src/tiri/luajit-2.1/src/jit/AGENTS.md`|
+|Parser source|`src/tiri/jit/src/parser/`|
+|AST definitions|`src/tiri/jit/src/parser/ast/`|
+|IR emission|`src/tiri/jit/src/parser/ir_emitter/`|
+|Bytecode reference|`src/tiri/jit/BYTECODE.md`|
+|JIT assembly notes|`src/tiri/jit/src/jit/AGENTS.md`|
 |Tiri tests|`src/tiri/tests/`|

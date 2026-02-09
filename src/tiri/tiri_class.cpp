@@ -23,7 +23,7 @@
 #include "lj_obj.h"
 #include "lj_bc.h"
 #include "parser/parser_diagnostics.h"
-#include "luajit-2.1/src/debug/dump_bytecode.h"
+#include "jit/src/debug/dump_bytecode.h"
 #include "lj_proto_registry.h"
 
 #include "hashes.h"
