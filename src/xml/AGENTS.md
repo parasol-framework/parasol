@@ -22,7 +22,7 @@ The XML module provides robust functionality for creating, parsing, and maintain
 
 ```
 src/xml/
-├── xml.fdl              # Interface definition (classes, enums, structs)
+├── xml.tdl              # Interface definition (classes, enums, structs)
 ├── xml.cpp              # Main XML module implementation
 ├── xml.h                # Internal header definitions
 ├── xml_def.c            # Generated C module definitions

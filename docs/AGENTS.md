@@ -40,8 +40,8 @@ The wiki contains practical, community-oriented documentation covering:
 ### Development Tools
 - **`Unit-Testing.md`** - Flute test framework documentation
 - **`Parasol-Cmd-Tool.md`** - Command-line tool usage
-- **`FDL-Tools.md`** - Interface Definition Language tools
-- **`FDL-Reference-Manual.md`** - FDL syntax and usage
+- **`TDL-Tools.md`** - Interface Definition Language tools
+- **`TDL-Reference-Manual.md`** - TDL syntax and usage
 
 ### Reference Materials
 - **`Action-Reference-Manual.md`** - Object action documentation
@@ -170,7 +170,7 @@ The generated files in `docs/xml/ai/modules/` and `docs/xml/ai/classes/` provide
 ### For C++ Development
 1. **`Parasol-Objects.md`** for object system concepts
 2. **XML class documentation** for precise API specifications
-3. **`FDL-Reference-Manual.md`** for how to write FDL interface definitions
+3. **`TDL-Reference-Manual.md`** for how to write TDL interface definitions
 4. **Source code in `src/`** for implementation details
 
 ### For Testing and Build
@@ -182,7 +182,7 @@ The generated files in `docs/xml/ai/modules/` and `docs/xml/ai/classes/` provide
 
 The documentation follows this generation pipeline:
 
-1. **C++ Source** → **XML** (via FDL parsing)
+1. **C++ Source** → **XML** (via TDL parsing)
 2. **XML** → **HTML** (via XSLT transformation)
 3. **XML** → **AI-optimized XML** (via condensed transformation)
 4. **Markdown** → **HTML** (via documentation generator)
@@ -254,7 +254,7 @@ When documenting functions or methods, follow this consistent pattern:
 ### Cross-Referencing
 
 - Link to other wiki pages using relative markdown links: `[Page Title](./Page-Name.md)`.
-- Introduce links naturally in prose, e.g. *"further discussed in the [FDL Tools](./FDL-Tools.md) manual"*.
+- Introduce links naturally in prose, e.g. *"further discussed in the [TDL Tools](./TDL-Tools.md) manual"*.
 - Avoid bare URLs in body text.
 
 ### Code Examples

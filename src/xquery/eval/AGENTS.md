@@ -14,7 +14,7 @@ Expression evaluation uses a hybrid dispatch strategy in `eval_expression.cpp`:
 
 When adding new node types, follow this sequence:
 
-1. Declare the enum in `src/xquery/xquery.fdl` and regenerate headers if necessary.
+1. Declare the enum in `src/xquery/xquery.tdl` and regenerate headers if necessary.
 2. Add a handler declaration to `XPathEvaluator` in `src/xquery/xquery.h`.
 3. Implement the handler in `src/xquery/eval/eval_expression.cpp` (or a related evaluation file when appropriate).
 4. Register the handler in the `NODE_HANDLERS` table.

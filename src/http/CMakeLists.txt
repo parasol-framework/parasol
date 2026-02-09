@@ -43,7 +43,7 @@ else ()
    add_dependencies (build_headers http_auth)
 endif ()
 
-idl_gen ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h" APPEND_IDL "${MOD}_def.c")
+idl_gen ("${MOD}.tdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h" APPEND_IDL "${MOD}_def.c")
 
 add_library (${MOD})
 target_link_libraries (${MOD} PUBLIC base64)

@@ -461,8 +461,8 @@
          <div class="collapse" id="doc-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
               <li class="api-ref"><a class="rounded" href="../wiki/Embedded-Document-Formatting.html">Embedded Document Format</a></li>
-              <li class="api-ref"><a class="rounded" href="../wiki/FDL-Reference-Manual.html">FDL Reference Manual</a></li>
-              <li class="api-ref"><a class="rounded" href="../wiki/FDL-Tools.html">FDL Tools</a></li>
+              <li class="api-ref"><a class="rounded" href="../wiki/TDL-Reference-Manual.html">TDL Reference Manual</a></li>
+              <li class="api-ref"><a class="rounded" href="../wiki/TDL-Tools.html">TDL Tools</a></li>
            </ul>
          </div></li>
 

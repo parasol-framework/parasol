@@ -586,7 +586,7 @@ static ERR MODULE_Test(extModule *Self, struct mod::Test *Args)
 -FIELD-
 Defs: Returns the compiled IDL definition for the module.
 
-Returns the IDL definition string that was compiled from the module's FDL file.  Useful for introspection purposes.
+Returns the IDL definition string that was compiled from the module's TDL file.  Useful for introspection purposes.
 
 **********************************************************************************************************************/
 

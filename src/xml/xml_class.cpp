@@ -204,7 +204,7 @@ NullArgs
 AllocMemory
 -END-
 
-A pointer to a std::string as a result would be better, but not supported by FDL yet (does work for functions).
+A pointer to a std::string as a result would be better, but not supported by TDL yet (does work for functions).
 
 &cpp(str) Result: An allocated string from the evaluation is returned here.
 

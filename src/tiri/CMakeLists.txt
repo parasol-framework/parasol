@@ -9,7 +9,7 @@
 #
 # GENERATED HEADERS OVERVIEW:
 #
-# From FDL files (Parasol Interface Definition Language):
+# From TDL files (Parasol Interface Definition Language):
 #   hashes.h                  - Hash definitions for Tiri internal use
 #   include/parasol/modules/tiri.h - Public API header for Tiri module
 #
@@ -48,9 +48,9 @@ set (INC_MOD_TIRI TRUE PARENT_SCOPE)
 
 # IDL processing for headers and documentation
 
-idl_gen ("hashes.fdl" NAME ${MOD}_hashes OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/hashes.h")
+idl_gen ("hashes.tdl" NAME ${MOD}_hashes OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/hashes.h")
 
-idl_gen ("${MOD}.fdl" NAME ${MOD}_defs
+idl_gen ("${MOD}.tdl" NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
    APPEND_IDL "module_def.cpp"
    ARGS "output-defs=module_def.cpp"

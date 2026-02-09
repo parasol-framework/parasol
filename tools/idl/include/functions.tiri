@@ -1,4 +1,4 @@
--- FDL functions such as module(), header(), flags(), c_include(), cpp_include() ...
+-- TDL functions such as module(), header(), flags(), c_include(), cpp_include() ...
 
 local rx_high_hex        = <{ regex.new([[^0x[8f][0-9abcdef]+]]) }>
 local rx_angle_bracket   = <{ regex.new([[^<(.+)>$]]) }>
@@ -16,7 +16,7 @@ local rx_path_chars      = <{ regex.new('[\\/\\.]') }>
 local rx_comment_chars   = <{ regex.new('[`!@#]') }>
 
 ----------------------------------------------------------------------------------------------------------------------
--- FDL function
+-- TDL function
 
 global function c_include(...)
    for v in values({...}) do
@@ -30,7 +30,7 @@ global function c_include(...)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- FDL function
+-- TDL function
 
 global function cpp_include(...)
    priority('#ifdef __cplusplus')
@@ -56,7 +56,7 @@ global function cpp_include(...)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- FDL function
+-- TDL function
 -- Restricts the output of anything declared within the Function.
 
 global function restrict(Function:func)
@@ -92,7 +92,7 @@ global function outputLookup(Name:str, List):str
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- FDL function
+-- TDL function
 
 global function module(Options:table, Function:func)
    if (Options['timestamp'] ?? 0) > glIDLTimestamp then
@@ -127,7 +127,7 @@ global function module(Options:table, Function:func)
    end
 
    if glModule.src then -- Primary source file
-      content = io.readAll(glFDLFolder .. glModule.src)
+      content = io.readAll(glTDLFolder .. glModule.src)
       content = content:replace('\r\n', '\n')
 
       -- Extract possible content from within comments so that we don't get interference from the code while parsing.
@@ -155,7 +155,7 @@ global function module(Options:table, Function:func)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- FDL function
+-- TDL function
 
 global function header(Options:table, Function:func)
    global glHeaderPath = Options['path']
@@ -183,7 +183,7 @@ global function header(Options:table, Function:func)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- FDL function
+-- TDL function
 --
 --  flags('KQ', { comment='Special qualifier flags' },
 --    'L_SHIFT: Left Shift is held',
@@ -309,7 +309,7 @@ global function flags(Prefix, Options:table, ...)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- FDL function
+-- TDL function
 
 global function privateNames(List)
    for v in values(List) do
@@ -318,7 +318,7 @@ global function privateNames(List)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- FDL function
+-- TDL function
 
 global function hash(Prefix:str, Format:str, ...)
    for v in values({...}) do
@@ -376,7 +376,7 @@ global function typedHash(Prefix:str, Type:str, ...)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- FDL function
+-- TDL function
 
 global function constants(Prefix:str, Options:table, ...)
    verbose(f'Processing {Prefix} constants.')
@@ -459,7 +459,7 @@ global function constants(Prefix:str, Options:table, ...)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- FDL function
+-- TDL function
 
 global function enum(Prefix:str, Options:table, ...)
    verbose(f'Processing {Prefix} enum.')
@@ -540,7 +540,7 @@ global function enum(Prefix:str, Options:table, ...)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- FDL function
+-- TDL function
 
 global function platform(Platform, Function)
    saveHeader = glHeader
@@ -592,7 +592,7 @@ global function platform(Platform, Function)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- FDL function
+-- TDL function
 
 global function struct(Name, Options:table, Def, Append)
    verbose('Processing struct ' .. tostring(Name))
@@ -715,7 +715,7 @@ global function cName(Field, CStruct)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- FDL Function
+-- TDL Function
 -- Refer to outputClassHeader() for output of the class structure.
 
 global function class(Name, Options:table, Spec, Private, Custom)
@@ -781,10 +781,10 @@ global function class(Name, Options:table, Spec, Private, Custom)
       for path in values(class.src) do
          if glFeedback is 'verbose' then
             print()
-            print(f'Class file: {glFDLFolder}{path}')
+            print(f'Class file: {glTDLFolder}{path}')
          end
 
-         content = io.readAll(glFDLFolder .. path)
+         content = io.readAll(glTDLFolder .. path)
          content = content:replace('\r\n', '\n')
 
          -- Look for C/C++ action declarations, in the format: ERR CLASS_Action(...).  This will create a series
@@ -1012,7 +1012,7 @@ global function class(Name, Options:table, Spec, Private, Custom)
          mdef ..= "   { AC::NIL, nullptr }\n};\n\n"
       end
 
-      fl = obj.new("file", { flags=FL_WRITE|FL_NEW, location=glFDLFolder .. Options.output } )
+      fl = obj.new("file", { flags=FL_WRITE|FL_NEW, location=glTDLFolder .. Options.output } )
       fl.acWrite("// Auto-generated by idl-c.tiri\n\n")
       if cdef?? then fl.acWrite(cdef) end
       if mdef?? then fl.acWrite(mdef) end
@@ -1020,7 +1020,7 @@ global function class(Name, Options:table, Spec, Private, Custom)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- FDL Function
+-- TDL Function
 -- This is a shortened version of functions(), where only the names of the functions need to be specified as a list.
 -- Further elaboration on the functions is normally done by embedding -FUNCTION- sections in the module code.
 
@@ -1050,7 +1050,7 @@ global function functionNames(Prefix, ...)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- FDL Function
+-- TDL Function
 -- Register methods for a class.  This must be declared prior to the corresponding class() function call.
 
 global function methods(ClassName:str, Prefix:str, Methods)
@@ -1068,7 +1068,7 @@ global function methods(ClassName:str, Prefix:str, Methods)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- FDL Function
+-- TDL Function
 
 global function c_insert(Raw)
    output(Raw)

@@ -1,7 +1,7 @@
--- This program produces C++ headers, auto-generated values and documentation from Parasol FDL files.
+-- This program produces C++ headers, auto-generated values and documentation from Parasol TDL files.
 --
--- Usage: origo sdk:tools/idl/idl-c.tiri src=source.fdl
--- Example: origo sdk:tools/idl/idl-c.tiri src=sdk:core/modules/core/core.fdl
+-- Usage: origo sdk:tools/idl/idl-c.tiri src=source.tdl
+-- Example: origo sdk:tools/idl/idl-c.tiri src=sdk:core/modules/core/core.tdl
 
    include 'core'
    include 'xml'
@@ -30,7 +30,7 @@
    global glCategories     = { }
    global glPrivateNames   = { }
 
-   global glProgram     = 'idl-c' -- FDL's can read this
+   global glProgram     = 'idl-c' -- TDL's can read this
    global glSource      = arg('src')
    global glOutputPath  = arg('output')
    global glFeedback    = arg('feedback')
@@ -499,13 +499,13 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-global function parseFDLFile(Source:str)
+global function parseTDLFile(Source:str)
    err, full_path = mSys.ResolvePath(Source)
 
-   global glFDLFolder = io.splitPath(full_path)
+   global glTDLFolder = io.splitPath(full_path)
 
    if err is ERR_Okay then
-      verbose('Process FDL file ' .. full_path)
+      verbose('Process TDL file ' .. full_path)
       loadFile(full_path)
       return ERR_Okay
    else
@@ -517,7 +517,7 @@ end
 -- Function definitions can be embedded into source code with the idlFunction() routine.
 
 global function idlFunction(Name:str, Category:str, Comment:str, Status:str, Description:str, Def:table)
-   -- Find the registered function definition that must have been pre-declared in the FDL.
+   -- Find the registered function definition that must have been pre-declared in the TDL.
 
    local func
    for k, f in ipairs(glFunctions) do
@@ -532,7 +532,7 @@ global function idlFunction(Name:str, Category:str, Comment:str, Status:str, Des
       for k, f in ipairs(glFunctions) do
          list ..= f.name .. '\n'
       end
-      error("Function '" .. Name .. "' is not declared in the FDL.  Known functions are:\n" .. list)
+      error("Function '" .. Name .. "' is not declared in the TDL.  Known functions are:\n" .. list)
    end
 
    if Status then func.status = Status:lower() end
@@ -912,10 +912,10 @@ end
 
    if not glSource then
       print("This command is used to compile self-documenting source files.  Provide a reference to a")
-      print("source '.fdl' file in the src parameter.  The resulting data will be saved to the file")
+      print("source '.tdl' file in the src parameter.  The resulting data will be saved to the file")
       print("referenced in the output parameter.")
       print("")
-      print("  src          Source FDL file.")
+      print("  src          Source TDL file.")
       print("  output       Target file for generated C++ headers.")
       print("  feedback     Set to 'verbose' to print debug messages.")
       print("  output-defs  Target file for generated C++ value definitions.")
@@ -928,9 +928,9 @@ end
 
    loadActions()
 
-   if parseFDLFile(glSource) is ERR_Okay then
+   if parseTDLFile(glSource) is ERR_Okay then
       if glAbort then
-         print('FDL processing cancelled, reason: ' .. glAbort)
+         print('TDL processing cancelled, reason: ' .. glAbort)
          return
       end
 

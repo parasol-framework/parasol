@@ -30,7 +30,7 @@ This file provides guidance to Agentic programs when working with code in this r
 Key build options (use with `-D` flag):
 - `PARASOL_STATIC=ON/OFF` - Build as static libraries instead of modules
 - `BUILD_TESTS=ON/OFF` - Enable/disable test building
-- `BUILD_DEFS=ON/OFF` - Auto-generate C/C++ headers from FDL files
+- `BUILD_DEFS=ON/OFF` - Auto-generate C/C++ headers from TDL files
 - `RUN_ANYWHERE=ON/OFF` - Build for local folder execution
 - `PARASOL_VLOG=ON/OFF` - Enables trace level log messages via log.trace() in Debug builds (has no effect on Release builds).
 
@@ -61,13 +61,13 @@ When working in ephemeral cloud environments:
 The framework uses a modular architecture where each major feature is implemented as a separate module:
 - Each module is in `src/[module_name]/` with its own `CMakeLists.txt`
 - Static builds link all modules into the core, while modular builds load them dynamically
-- Module definitions are stored in `.fdl` files which generate C++ headers and module `MOD_IDL` strings
+- Module definitions are stored in `.tdl` files which generate C++ headers and module `MOD_IDL` strings
 
-### Object System and FDL Files
+### Object System and TDL Files
 
-Parasol uses Interface Definition Language (IDL) files with `.fdl` extension to generate documentation, include files and C++ stubs:
-- FDL files define classes, methods, fields, and constants
-- Build system generates C/C++ headers from FDL using tools in `tools/idl/`
+Parasol uses Interface Definition Language (IDL) files with `.tdl` extension to generate documentation, include files and C++ stubs:
+- TDL files define classes, methods, fields, and constants
+- Build system generates C/C++ headers from TDL using tools in `tools/idl/`
 - Class implementations are in `class_*.cpp` files
 - Generated headers go to `include/parasol/` directory
 - Headers are built by triggering a cmake build.
@@ -151,7 +151,7 @@ build/agents-install/origo tools/flute.tiri file=src/network/tests/test_bind_add
 ### Code Generation
 
 The build system heavily uses code generation:
-- FDL files are processed by `tools/idl/idl-c.tiri` to generate C headers
+- TDL files are processed by `tools/idl/idl-c.tiri` to generate C headers
 - `tools/idl/idl-compile.tiri` generates IDL definition strings
 - Generated files are created in build directories and copied to `include/`
 - Use `BUILD_DEFS=OFF` to skip generation if no `origo` executable is available
