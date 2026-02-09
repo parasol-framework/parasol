@@ -97,7 +97,7 @@ set (JIT_GENERATED_HEADERS
 
 set (JIT_VMDEF_LUA "${JIT_BUILD_DIR}/jit/vmdef.lua")
 set (JIT_COMMON_DEFS PRV_METACLASS)
-set (JIT_NON_MSVC_DEFS -DJIT_DISABLE_BUFFER -DPRV_METACLASS)
+set (JIT_NON_MSVC_DEFS -DLUAJIT_DISABLE_BUFFER -DPRV_METACLASS)
 
 option(PARASOL_PARSER_TRACE "Emit parser token and expectation traces" OFF)
 option(INCLUDE_TIPS "Include the parser tips system for code analysis" ON)
@@ -547,7 +547,7 @@ else ()
       add_custom_command(
          OUTPUT ${OBJECT_FILE}
          COMMAND ${CMAKE_CXX_COMPILER} ${JIT_COMMON_CXXFLAGS}
-            -funwind-tables -DJIT_UNWIND_EXTERNAL
+            -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
             ${JIT_NON_MSVC_DEFS}
             ${JIT_LIBRARY_DEFS}
             -DLUA_ROOT=\"${CMAKE_INSTALL_PREFIX}\"
@@ -572,7 +572,7 @@ else ()
       add_custom_command(
          OUTPUT ${JIT_VM_O}
          COMMAND ${CMAKE_CXX_COMPILER} ${JIT_COMMON_CXXFLAGS}
-            -funwind-tables -DJIT_UNWIND_EXTERNAL
+            -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
             ${JIT_NON_MSVC_DEFS}
             ${JIT_LIBRARY_DEFS}
             ${JIT_INCLUDE_DIRS}
