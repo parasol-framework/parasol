@@ -48,8 +48,8 @@ constexpr bool defined(T flags, T test_flag) noexcept {
 
   ]==])
 
-  loadFile(glPath .. 'common.fdl')
-  loadFile(glPath .. 'common-graphics.fdl')
+  loadFile(glPath .. 'common.tdl')
+  loadFile(glPath .. 'common-graphics.tdl')
 
   flags("SCF", { comment="Script flags" },
      "EXIT_ON_ERROR: The script will automatically terminate its execution process if an error is detected.",
@@ -1756,6 +1756,6 @@ inline CSTRING Object::className() { return Class->ClassName; }
   ]==])
 
   if (glProgram is "idl-compile") then
-     loadFile("defs/errors.fdl")
+     loadFile("defs/errors.tdl")
   end
 end)

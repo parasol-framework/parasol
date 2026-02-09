@@ -116,7 +116,7 @@ global function parseField(class:table, Extract:str)
       end
       f.description = description
    elseif class.meta then
-      print("Field '" .. class.name .. "." .. tostring(name) .. "' is not defined in the FDL or compiled class spec.")
+      print("Field '" .. class.name .. "." .. tostring(name) .. "' is not defined in the TDL or compiled class spec.")
    end
 end
 
@@ -162,7 +162,7 @@ global function parseMethod(Class:table, Extract:str)
    local method -- Retrieve the definition for this method
    if Class.methods then
       method = Class.lookupMethods[name]
-      assert(method, "Method '" .. name .. "' is not registered in the FDL.")
+      assert(method, "Method '" .. name .. "' is not registered in the TDL.")
    else
       error("Methods need to be pre-defined for class '" .. tostring(Class.name) .. "' with methods()")
    end
@@ -215,7 +215,7 @@ end
 global function parseClassFields(Class:table, ClientSpec:str)
    cdef = ''
 
-   -- Parse fields defined in the FDL
+   -- Parse fields defined in the TDL
 
    Class.fields = extractFields(ClientSpec, Class.name)
 
@@ -237,7 +237,7 @@ global function parseClassFields(Class:table, ClientSpec:str)
             f = metaFields[i]
             def = getMetaFieldDefinition(f)
             if def and def.synonym != true then
-               f = findClassField(Class, def.name) -- Retrieve field parsed from FDL, if defined
+               f = findClassField(Class, def.name) -- Retrieve field parsed from TDL, if defined
                if f then
                   f.write   = def.write
                   f.read    = def.read
@@ -304,7 +304,7 @@ global function parseClassFields(Class:table, ClientSpec:str)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Load and process an FDL file source, then process raw source files containing -FUNCTION- definitions.
+-- Load and process an TDL file source, then process raw source files containing -FUNCTION- definitions.
 
 global function parseSourceFiles()
    if glFeedback is 'verbose' then print('Processing source files...') end
@@ -321,7 +321,7 @@ global function parseSourceFiles()
    end
 
    for path in values(srcFiles) do
-      -- Process --IDL_BEGIN/END-- sections, which allow the developer to embed FDL functions in the source code.
+      -- Process --IDL_BEGIN/END-- sections, which allow the developer to embed TDL functions in the source code.
 
       local idlExtract
       local content = io.readAll(path)

@@ -169,12 +169,12 @@ static GCstr * keepstr(std::string_view str);
 ## Quick Reference
 
 ### File Locations
-- Parser source: `src/tiri/luajit-2.1/src/parser/`
-- AST definitions: `src/tiri/luajit-2.1/src/parser/ast/`
-- IR emission: `src/tiri/luajit-2.1/src/parser/ir_emitter/`
-- Bytecode reference: `src/tiri/luajit-2.1/BYTECODE.md`
+- Parser source: `src/tiri/jit/src/parser/`
+- AST definitions: `src/tiri/jit/src/parser/ast/`
+- IR emission: `src/tiri/jit/src/parser/ir_emitter/`
+- Bytecode reference: `src/tiri/jit/BYTECODE.md`
 - Tiri tests: `src/tiri/tests/`
-- Troubleshooting Guide: `src/tiri/luajit-2.1/src/parser/TROUBLESHOOTING.md`
+- Troubleshooting Guide: `src/tiri/jit/src/parser/TROUBLESHOOTING.md`
 
 ### Common Tasks
 - **Adding an AST node**: Define struct in `nodes.h`, add `AstNodeKind` enum entry, implement parsing in

@@ -5,7 +5,7 @@
   <info>
     <name>Tiri</name>
     <type>module</type>
-    <comment>Tiri is a customised scripting language for the Script class.</comment>
+    <comment>Tiri is a JIT optimised language that extends the Script class.</comment>
     <version>1</version>
     <status>beta</status>
     <prefix>fl</prefix>

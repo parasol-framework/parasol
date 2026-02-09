@@ -1,5 +1,5 @@
 --$TIRI:Include
--- This file is included by core.fdl
+-- This file is included by core.tdl
 -- Refer to data_errors.c for the official description strings for each error code.
 
 function declareErrors()

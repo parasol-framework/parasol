@@ -6,11 +6,11 @@ module({
   version=1.0,
   prefix="fl",
   status="beta",
-  comment="Tiri is a customised scripting language for the Script class."
+  comment="Tiri is a JIT optimised language that extends the Script class."
 },
 function()
   restrict(function()
-    loadFile(glPath .. 'common.fdl')
+    loadFile(glPath .. 'common.tdl')
   end)
 
   flags("JOF", { comment="JIT behaviour options" },

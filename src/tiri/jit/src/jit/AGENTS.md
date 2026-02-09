@@ -1,4 +1,4 @@
-The functions in the *.dasc files are typically backed by fallback functions in C++, e.g. assert in vm_x64.dasc has associated code in `src/tiri/luajit-2.1/src/lib/lib_base.cpp` and `src/tiri/luajit-2.1/src/lj_ffrecord.cpp`
+The functions in the *.dasc files are typically backed by fallback functions in C++, e.g. assert in vm_x64.dasc has associated code in `src/tiri/jit/src/lib/lib_base.cpp` and `src/tiri/jit/src/lj_ffrecord.cpp`
 
 ## Windows x64 Register Aliasing
 

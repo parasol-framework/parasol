@@ -26,11 +26,11 @@ The XQuery module provides comprehensive XPath 2.0 and XQuery language support f
 
 ```
 src/xquery/
-├── xquery.fdl                  # Interface definition (XQuery class, method registration)
-├── constants.fdl               # XQuery-specific enumerations and flags (XQueryNodeType, XQF, XIF)
-├── xquery.cpp                  # Module initialisation and core functions
-├── xquery.h                    # Module header with AST, parser, and prolog structures
-├── xquery_def.c                # Generated C definitions
+├── xquery.tdl                 # Interface definition (XQuery class, method registration)
+├── constants.tdl              # XQuery-specific enumerations and flags (XQueryNodeType, XQF, XIF)
+├── xquery.cpp                 # Module initialisation and core functions
+├── xquery.h                   # Module header with AST, parser, and prolog structures
+├── xquery_def.c               # Generated C definitions
 ├── xquery_class.cpp           # XQuery class implementation
 ├── xquery_class_def.cpp       # Auto-generated XQuery class definitions
 ├── unit_tests.cpp             # C++ unit tests for internal components
@@ -39,14 +39,14 @@ src/xquery/
 ├── W3C Error Codes.md         # W3C XPath/XQuery error code documentation
 ├── QT3_1_0/                   # W3C XQuery Test Suite (optional, extracted from zip)
 ├── api/                       # Public API implementations
-│   ├── xquery_axis.cpp             # XQuery axis evaluation (13 standard axes)
-│   ├── xquery_errors.h             # Error code definitions
-│   ├── xquery_functions.cpp/h      # Function registry and dispatch
+│   ├── xquery_axis.cpp            # XQuery axis evaluation (13 standard axes)
+│   ├── xquery_errors.h            # Error code definitions
+│   ├── xquery_functions.cpp/h     # Function registry and dispatch
 │   └── xquery_prolog.cpp          # XQuery prolog management and module loading
-├── parse/                     # Expression parsing and tokenisation
-│   ├── xquery_parser.cpp           # XPath/XQuery expression parser
-│   └── xquery_tokeniser.cpp        # Lexical analysis and tokenisation
-├── eval/                      # Expression evaluation engine
+├── parse/                         # Expression parsing and tokenisation
+│   ├── xquery_parser.cpp          # XPath/XQuery expression parser
+│   └── xquery_tokeniser.cpp       # Lexical analysis and tokenisation
+├── eval/                          # Expression evaluation engine
 │   ├── AGENTS.md                  # Evaluator architecture guide for developers
 │   ├── eval.cpp                   # Main evaluation entry points
 │   ├── eval_common.cpp            # Common evaluation utilities
@@ -59,7 +59,7 @@ src/xquery/
 │   ├── eval_values.cpp            # Value operations
 │   ├── date_time_utils.cpp/h      # Shared date/time canonicalisation helpers
 │   └── checked_arith.h            # Arithmetic overflow checking utilities
-├── functions/                 # Function implementations by category
+├── functions/                     # Function implementations by category
 │   ├── function_library.cpp       # Function library initialization
 │   ├── accessor_support.cpp/h     # Accessor function utilities
 │   ├── func_accessors.cpp         # Accessor functions (base-uri, data, etc.)
@@ -72,7 +72,7 @@ src/xquery/
 │   ├── func_qnames.cpp            # QName functions
 │   ├── func_sequences.cpp         # Sequence functions (distinct-values, etc.)
 │   └── func_strings.cpp           # String functions (concat, substring, etc.)
-└── tests/                     # Test infrastructure
+└── tests/                         # Test infrastructure
     ├── test_accessor.tiri            # Accessor function tests
     ├── test_advanced.tiri            # Advanced XQuery queries
     ├── test_advanced_paths.tiri      # Advanced path expression tests
@@ -762,7 +762,7 @@ The `modules/` subdirectory contains XQuery library modules used for testing mod
 
 **Individual Test:**
 ```bash
-cd src/xquery/tests && ../../../build/agents-install/parasol.exe ../../../tools/flute.tiri file=E:/parasol-claude/src/xquery/tests/test_core.tiri --gfx-driver=headless --log-warning
+cd src/xquery/tests && ../../../build/agents-install/origo.exe ../../../tools/flute.tiri file=E:/parasol-claude/src/xquery/tests/test_core.tiri --gfx-driver=headless --log-warning
 ```
 
 **All XQuery Tests via CMake:**

@@ -97,8 +97,8 @@
          <div class="collapse" id="doc-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
               <li class="api-ref"><a class="rounded" href="Embedded-Document-Formatting.html">Embedded Document Format</a></li>
-              <li class="api-ref"><a class="rounded" href="FDL-Reference-Manual.html">FDL Reference Manual</a></li>
-              <li class="api-ref"><a class="rounded" href="FDL-Tools.html">FDL Tools</a></li>
+              <li class="api-ref"><a class="rounded" href="TDL-Reference-Manual.html">TDL Reference Manual</a></li>
+              <li class="api-ref"><a class="rounded" href="TDL-Tools.html">TDL Tools</a></li>
            </ul>
          </div></li>
 
@@ -305,7 +305,7 @@
 <pre><code>set (MOD xml)
 set (INC_MOD_XML TRUE PARENT_SCOPE)
 
-idl_gen (&quot;${MOD}.fdl&quot; NAME ${MOD}_defs
+idl_gen (&quot;${MOD}.tdl&quot; NAME ${MOD}_defs
    OUTPUT &quot;${INCLUDE_OUTPUT}/modules/${MOD}.h&quot;
    APPEND_IDL &quot;${MOD}_def.c&quot;)
 
@@ -314,7 +314,7 @@ set_module_defaults (${MOD})
 target_sources (${MOD} PRIVATE &quot;${CMAKE_CURRENT_SOURCE_DIR}/${MOD}.cpp&quot;)
 
 flute_test (${MOD}_tests &quot;${CMAKE_CURRENT_SOURCE_DIR}/tests/test.tiri&quot;)</code></pre>
-<p>The <code>idl_gen()</code> call will generate automated headers and documents from the <code>xml.fdl</code> file, which contains the public specifications of the module. This process is further discussed in the <a href="./FDL-Tools.md">FDL</a> manuals in this Wiki.</p>
+<p>The <code>idl_gen()</code> call will generate automated headers and documents from the <code>xml.tdl</code> file, which contains the public specifications of the module. This process is further discussed in the <a href="./TDL-Tools.md">TDL</a> manuals in this Wiki.</p>
 <p>The <code>add_library()</code> call registers the module with the build process and <code>set_module_defaults()</code> pre-configures the build for the named module. The <code>target_sources()</code> call associates the <code>cpp</code> source files with the module.</p>
 <p>The <code>flute_test()</code> references a Tiri script that will test the module&#39;s functionality; this is further discussed in the <a href="./Unit-Testing.md">Unit Testing</a> manual in this Wiki.</p>
 <h3 id="module-initialisation">Module Initialisation</h3>
@@ -345,7 +345,7 @@ flute_test (${MOD}_tests &quot;${CMAKE_CURRENT_SOURCE_DIR}/tests/test.tiri&quot;
 </tr>
 <tr>
 <td style="text-align: left;">IDL</td>
-<td style="text-align: left;">Reference to a compiled IDL, as generated from the module&#39;s <code>.fdl</code> file</td>
+<td style="text-align: left;">Reference to a compiled IDL, as generated from the module&#39;s <code>.tdl</code> file</td>
 </tr>
 <tr>
 <td style="text-align: left;">Structures</td>
@@ -391,7 +391,7 @@ flute_test (${MOD}_tests &quot;${CMAKE_CURRENT_SOURCE_DIR}/tests/test.tiri&quot;
 <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>   <span class="cf">return</span> ERR<span class="op">::</span>Okay<span class="op">;</span></span>
 <span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>The <code>FunctionList</code> declares the list of functions that will be returned to the client. In theory a module can have more than one function table for different clients. Multiple function lists are rarely used, but can help in offering backwards compatibility by checking the requested module version number.</p>
-<p>The <code>glFunctions</code> array, excerpt below, is auto-generated from the Network module&#39;s <code>network.fdl</code> file and names the available functions, with links to function code. Parameter names and type information is also included. Taking advantage of the available FDL tools to generate this information eliminates the potential for mistakes as well as reducing development time. Critically it also ensures that run-time introspection is available and this enables usage from scripting languages like Tiri.</p>
+<p>The <code>glFunctions</code> array, excerpt below, is auto-generated from the Network module&#39;s <code>network.tdl</code> file and names the available functions, with links to function code. Parameter names and type information is also included. Taking advantage of the available TDL tools to generate this information eliminates the potential for mistakes as well as reducing development time. Critically it also ensures that run-time introspection is available and this enables usage from scripting languages like Tiri.</p>
 <div class="sourceCode" id="cb5"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>FDEF argsAddressToStr<span class="op">[]</span> <span class="op">=</span> <span class="op">{</span> <span class="op">{</span> <span class="st">&quot;Result&quot;</span><span class="op">,</span> FD_STR<span class="op">|</span>FD_ALLOC <span class="op">},</span> <span class="op">{</span> <span class="st">&quot;IPAddress:IPAddress&quot;</span><span class="op">,</span> FD_PTR<span class="op">|</span>FD_STRUCT <span class="op">},</span> <span class="op">{</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">0</span> <span class="op">}</span> <span class="op">};</span></span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>FDEF argsHostToLong<span class="op">[]</span> <span class="op">=</span> <span class="op">{</span> <span class="op">{</span> <span class="st">&quot;Result&quot;</span><span class="op">,</span> FD_LONG<span class="op">|</span>FD_UNSIGNED <span class="op">},</span> <span class="op">{</span> <span class="st">&quot;Value&quot;</span><span class="op">,</span> FD_LONG<span class="op">|</span>FD_UNSIGNED <span class="op">},</span> <span class="op">{</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">0</span> <span class="op">}</span> <span class="op">};</span></span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>FDEF argsHostToShort<span class="op">[]</span> <span class="op">=</span> <span class="op">{</span> <span class="op">{</span> <span class="st">&quot;Result&quot;</span><span class="op">,</span> FD_LONG<span class="op">|</span>FD_UNSIGNED <span class="op">},</span> <span class="op">{</span> <span class="st">&quot;Value&quot;</span><span class="op">,</span> FD_LONG<span class="op">|</span>FD_UNSIGNED <span class="op">},</span> <span class="op">{</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">0</span> <span class="op">}</span> <span class="op">};</span></span>
@@ -433,7 +433,7 @@ flute_test (${MOD}_tests &quot;${CMAKE_CURRENT_SOURCE_DIR}/tests/test.tiri&quot;
 <span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>   <span class="cf">return</span> htonl<span class="op">(</span>Value<span class="op">);</span></span>
 <span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p><em>You might have noticed that a call to <code>HostToLong()</code> from a C++ program would be <code>netHostToLong()</code>. We leave out the <code>net</code> prefix in our module declaration as this is an implementation concern that is specific to the client&#39;s chosen language.</em></p>
-<p>The last requirement is to ensure that the function is named in the <a href="./FDL-Reference-Manual.md"><code>functionNames()</code></a> declaration in the module&#39;s FDL file. If this is not done then the function will not be exported by our automated tools.</p>
+<p>The last requirement is to ensure that the function is named in the <a href="./TDL-Reference-Manual.md"><code>functionNames()</code></a> declaration in the module&#39;s TDL file. If this is not done then the function will not be exported by our automated tools.</p>
 <h2 id="classes">Classes</h2>
 <p>Parasol classes are defined at run-time, not during the build process as is the case for many OO languages. This is a key design feature that maximises the potential for class introspection and allows dissimilar languages to talk over common OO protocols. Advanced features also include support for design-by-contract, virtual fields, permission based field access and resource tracking.</p>
 <h3 id="the-metaclass">The MetaClass</h3>
@@ -465,7 +465,7 @@ flute_test (${MOD}_tests &quot;${CMAKE_CURRENT_SOURCE_DIR}/tests/test.tiri&quot;
 <span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <p>Consequently, all XML object references in the XML module use the <code>extXML</code> type only.</p>
 <h3 id="class-specifications">Class Specifications</h3>
-<p>Building a class specification that will be accepted by the <code>MetaClass</code> starts with the creation of an <a href="./FDL-Reference-Manual.md">FDL</a> file before writing any code. The XML FDL file is too large to insert here, but we can look at the specification for the class itself:</p>
+<p>Building a class specification that will be accepted by the <code>MetaClass</code> starts with the creation of an <a href="./TDL-Reference-Manual.md">TDL</a> file before writing any code. The XML TDL file is too large to insert here, but we can look at the specification for the class itself:</p>
 <pre><code>methods(&quot;xml&quot;, &quot;XML&quot;, {
   { id=1,  name=&quot;SetAttrib&quot; },
   { id=2,  name=&quot;Serialise&quot; },
@@ -520,7 +520,7 @@ class(&quot;XML&quot;, { src=&quot;xml.cpp&quot;, output=&quot;xml_def.c&quot; }
 <span id="cb10-33"><a href="#cb10-33" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb10-34"><a href="#cb10-34" aria-hidden="true" tabindex="-1"></a><span class="pp">#undef MOD_IDL</span></span>
 <span id="cb10-35"><a href="#cb10-35" aria-hidden="true" tabindex="-1"></a><span class="pp">#define MOD_IDL </span><span class="st">&quot;s.XMLAttrib:zsName,zsValue</span><span class="sc">\n</span><span class="st">s.XMLTag:lID,lParentID,lLineNo,lFlags,zeAttribs...&quot;</span></span></code></pre></div>
-<p>The generator covers many of our needs and in this case has output relevant constants, methods, actions and the IDL for hooking into languages. The list of field specifications for the MetaClass however is not generated. These need to be defined manually because the level of customisation exceeds the capabilities of FDL. We&#39;ll look at how this is done in the next section.</p>
+<p>The generator covers many of our needs and in this case has output relevant constants, methods, actions and the IDL for hooking into languages. The list of field specifications for the MetaClass however is not generated. These need to be defined manually because the level of customisation exceeds the capabilities of TDL. We&#39;ll look at how this is done in the next section.</p>
 <h4 id="fields">Fields</h4>
 <p>The structure of a new class is declared by with an array of <code>FieldArray</code> values. Here&#39;s the relevant clip from the XML module:</p>
 <div class="sourceCode" id="cb11"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="at">static</span> <span class="at">const</span> FieldArray clFields<span class="op">[]</span> <span class="op">=</span> <span class="op">{</span></span>
@@ -538,7 +538,7 @@ class(&quot;XML&quot;, { src=&quot;xml.cpp&quot;, output=&quot;xml_def.c&quot; }
 <span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>   <span class="op">{</span> <span class="st">&quot;Tags&quot;</span><span class="op">,</span>       FDF_ARRAY<span class="op">|</span>FDF_STRUCT<span class="op">|</span>FDF_R<span class="op">,</span> GET_Tags<span class="op">,</span> NULL<span class="op">,</span> <span class="st">&quot;XMLTag&quot;</span> <span class="op">},</span></span>
 <span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>   END_FIELD</span>
 <span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
-<p>Note that the order of the fields and the declared types must match to that of the <code>class()</code> call in the FDL file we referenced earlier. Each entry starts with the field name, type flags and optional get and set functions. A type arg can also be specified as the final value - this only applies for certain type specifiers, such as the <code>FLAGS</code> option.</p>
+<p>Note that the order of the fields and the declared types must match to that of the <code>class()</code> call in the TDL file we referenced earlier. Each entry starts with the field name, type flags and optional get and set functions. A type arg can also be specified as the final value - this only applies for certain type specifiers, such as the <code>FLAGS</code> option.</p>
 <h4 id="field-types">Field Types</h4>
 <p>A field must always be associated with a type so that its size can be determined, and ensures that the Core can read and write the value correctly. Primitive types are defined using the <code>FDF</code> bit flags as seen in the following table:</p>
 <table>
@@ -607,7 +607,7 @@ class(&quot;XML&quot;, { src=&quot;xml.cpp&quot;, output=&quot;xml_def.c&quot; }
 </tr>
 <tr>
 <td style="text-align: left;">STRUCT</td>
-<td style="text-align: left;">The field refers to a C <code>struct</code> as declared in the module&#39;s FDL, and the type arg must refer to the name of that struct. Use in conjunction with <code>POINTER</code>.</td>
+<td style="text-align: left;">The field refers to a C <code>struct</code> as declared in the module&#39;s TDL, and the type arg must refer to the name of that struct. Use in conjunction with <code>POINTER</code>.</td>
 </tr>
 <tr>
 <td style="text-align: left;">ARRAY</td>
@@ -817,7 +817,7 @@ Search: The attribute, identified by `Name`, could not be found.
 ReadOnly: The XML object is read-only.
 -END-</code></pre>
 <p>For further information on formatting guidelines, see <a href="./Embedded-Document-Formatting.md">Embedded Document Formatting</a>.</p>
-<p>Method prototypes follow the template <code>ERR CLASS_MethodName(*Object, struct abvMethodName *Args)</code>. The <code>abv</code> code is defined in the appropriate <code>methods()</code> call in the module&#39;s FDL file. Here&#39;s the prototype for <code>SetAttrib()</code>:</p>
+<p>Method prototypes follow the template <code>ERR CLASS_MethodName(*Object, struct abvMethodName *Args)</code>. The <code>abv</code> code is defined in the appropriate <code>methods()</code> call in the module&#39;s TDL file. Here&#39;s the prototype for <code>SetAttrib()</code>:</p>
 <div class="sourceCode" id="cb20"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="at">static</span> ERR XML_SetAttrib<span class="op">(</span>extXML <span class="op">*</span>Self<span class="op">,</span> <span class="kw">struct</span> xmlSetAttrib <span class="op">*</span>Args<span class="op">);</span></span></code></pre></div>
 <h3 id="sub-classes">Sub-Classes</h3>
 <p>Parasol supports a unique inheritance concept whereby a class can inherit all aspects of another class and extend it with additional features. From the perspective of the client, the objects will look no different to that of the original class. This feature is known as <em>sub-classing</em>, whereby the dominant class is referred to as the <em>base-class</em> and the additional features are provided by a <em>sub-class</em>.</p>

@@ -97,8 +97,8 @@
          <div class="collapse" id="doc-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
               <li class="api-ref"><a class="rounded" href="Embedded-Document-Formatting.html">Embedded Document Format</a></li>
-              <li class="api-ref"><a class="rounded" href="FDL-Reference-Manual.html">FDL Reference Manual</a></li>
-              <li class="api-ref"><a class="rounded" href="FDL-Tools.html">FDL Tools</a></li>
+              <li class="api-ref"><a class="rounded" href="TDL-Reference-Manual.html">TDL Reference Manual</a></li>
+              <li class="api-ref"><a class="rounded" href="TDL-Tools.html">TDL Tools</a></li>
            </ul>
          </div></li>
 
@@ -262,7 +262,7 @@ unexpected consequences for existing code.</p>
 the terminal, but is primarily intended for use in CMake build scripts to ensure that tests are being run as part of
 the build and release process.</p>
 <p>A typical run of Flute from the terminal can look like this:</p>
-<pre><code>parasol tools/flute.tiri file=src/tiri/tests/test_array.tiri --log-warning</code></pre>
+<pre><code>origo tools/flute.tiri file=src/tiri/tests/test_array.tiri --log-warning</code></pre>
 <p>Usage in CMake is straight-forward using the following template:</p>
 <pre><code>flute_test (target_name &quot;flute_file.tiri&quot;)</code></pre>
 <p>The <code>target_name</code> is a unique name for the test and <code>flute_file.tiri</code> is a reference to the test script.</p>

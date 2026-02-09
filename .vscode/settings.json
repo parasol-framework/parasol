@@ -1,6 +1,6 @@
 {
   "files.associations":{
-    "*.fdl": "lua",
+    "*.tdl": "lua",
     "*.fluid": "lua",
     "*.tiri": "lua",
     "*.tdl": "lua",

@@ -16,7 +16,7 @@
 #include "lj_proto_registry.h"
 
 enum {
-   CONST_STDIN = -1,
+   CONST_STDIN  = -1,
    CONST_STDOUT = -2,
    CONST_STDERR = -3
 };
@@ -433,11 +433,12 @@ static int io_lines(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// TODO: Open pipe to process - requires Task integration and using callbacks to receive data from stdout.
+// TODO: Open pipe to running process - requires Task integration and using callbacks to receive data from stdout.
+// This is equivalent to Lua's io.popen()
 
-static int io_popen(lua_State *Lua)
+static int io_openPipe(lua_State *Lua)
 {
-   luaL_error(Lua, ERR::NoSupport, "io.popen not yet implemented");
+   luaL_error(Lua, ERR::NoSupport, "io.openPipe not yet implemented");
    return 0;
 }
 
@@ -445,7 +446,7 @@ static int io_popen(lua_State *Lua)
 // Create a temporary buffer file in memory.  In theory this is the best and most performant option if you
 // also consider that the OS can use swap space for large memory files.
 
-static int io_tmpfile(lua_State *Lua)
+static int io_tempFile(lua_State *Lua)
 {
    if (auto file = objFile::create::local({ fl::Size(4096), fl::Flags(FL::BUFFER|FL::READ|FL::WRITE) })) {
       push_file_handle(Lua, file);
@@ -804,12 +805,12 @@ void register_io_class(lua_State *Lua)
       { "lines",        io_lines },
       { "open",         io_open },
       { "output",       io_output },
-      { "popen",        io_popen },
+      { "openPipe",     io_openPipe }, //
       { "read",         io_read },
       { "readAll",      io_readAll },
       { "sanitisePath", io_sanitisePath },
       { "splitPath",    io_splitPath },
-      { "tmpfile",      io_tmpfile },
+      { "tempFile",     io_tempFile },
       { "type",         io_type },
       { "write",        io_write },
       { "writeAll",     io_writeAll },
@@ -864,8 +865,8 @@ void register_io_class(lua_State *Lua)
    reg_iface_prototype("io", "input", { TiriType::Any }, { TiriType::Any });
    reg_iface_prototype("io", "output", { TiriType::Any }, { TiriType::Any });
    reg_iface_prototype("io", "lines", { TiriType::Func }, { TiriType::Any });
-   reg_iface_prototype("io", "popen", {}, { TiriType::Str });
-   reg_iface_prototype("io", "tmpfile", { TiriType::Any }, {});
+   reg_iface_prototype("io", "openPipe", {}, { TiriType::Str });
+   reg_iface_prototype("io", "tempFile", { TiriType::Any }, {});
    reg_iface_prototype("io", "type", { TiriType::Str }, { TiriType::Any });
    reg_iface_prototype("io", "readAll", { TiriType::Str }, { TiriType::Str });
    reg_iface_prototype("io", "writeAll", {}, { TiriType::Str, TiriType::Str });

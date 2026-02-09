@@ -21,11 +21,11 @@ BEGIN
         BLOCK "040904b0" // US English, Unicode
         BEGIN
             VALUE "CompanyName",      "Parasol Framework"
-            VALUE "FileDescription",  "Parasol Launcher"
+            VALUE "FileDescription",  "Origo Launcher"
             VALUE "FileVersion",      "@PARASOL_VERSION_MAJOR@.@PARASOL_VERSION_MINOR@.@PARASOL_VERSION_PATCH@.0"
-            VALUE "InternalName",     "parasol"
+            VALUE "InternalName",     "origo"
             VALUE "LegalCopyright",   "Copyright (C) @PARASOL_COPYRIGHT_YEAR@ Parasol Framework"
-            VALUE "OriginalFilename", "parasol.exe"
+            VALUE "OriginalFilename", "origo.exe"
             VALUE "ProductName",      "Parasol Framework"
             VALUE "ProductVersion",   "@PARASOL_VERSION_MAJOR@.@PARASOL_VERSION_MINOR@.@PARASOL_VERSION_PATCH@.0"
         END

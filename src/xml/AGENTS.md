@@ -22,7 +22,7 @@ The XML module provides robust functionality for creating, parsing, and maintain
 
 ```
 src/xml/
-├── xml.fdl              # Interface definition (classes, enums, structs)
+├── xml.tdl              # Interface definition (classes, enums, structs)
 ├── xml.cpp              # Main XML module implementation
 ├── xml.h                # Internal header definitions
 ├── xml_def.c            # Generated C module definitions
@@ -265,7 +265,7 @@ XPath tests have been moved to the separate XPath module. See `src/xpath/AGENTS.
 
 **Individual Test:**
 ```bash
-cd src/xml/tests && ../../../install/agents/parasol.exe ../../../tools/flute.tiri file=E:/parasol/src/xml/tests/test_basic.tiri --gfx-driver=headless --log-warning
+cd src/xml/tests && ../../../install/agents/origo.exe ../../../tools/flute.tiri file=E:/parasol/src/xml/tests/test_basic.tiri --gfx-driver=headless --log-warning
 ```
 
 **All XML Tests via CMake:**
