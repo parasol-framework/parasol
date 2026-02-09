@@ -34,7 +34,7 @@ build/agents/luajit-2.1/lib/              # Final static library
 - CMake drives three build strategies, matching the logic in `src/tiri/CMakeLists.txt`:
   - **MSVC**: `msvcbuild_codegen.bat` produces generated headers and `lj_vm.obj`, and CMake links `lua51.lib` next to the upstream sources.
   - **Unix-like toolchains**: CMake builds the host tools (`minilua` and `buildvm`), generates assembly with DynASM, then archives `lj_vm.o` + `ljamalg.o` into `libluajit-5.1.a`.
-- Install (`cmake --install build/agents --config <BuildType>`) before running tests so the freshly built `parasol` binary (or `parasol.exe` on Windows) and scripts land in `build/agents-install/`.
+- Install (`cmake --install build/agents --config <BuildType>`) before running tests so the freshly built `origo` binary (or `origo.exe` on Windows) and scripts land in `build/agents-install/`.
 
 ## Error Handling Configuration
 - **Windows (MSVC)**: Must NOT define `LUAJIT_NO_UNWIND`. MSVC always uses Structured Exception Handling (SEH) via `RaiseException()` and `lj_err_unwind_win()`.  There is no "internal unwinding" implementation for MSVC - SEH is the only viable mechanism. Setting `LJ_NO_UNWIND` for MSVC breaks exception handling and causes catch() tests to fail with "attempt to call a nil value" errors.
@@ -54,7 +54,7 @@ ctest --build-config <BuildType> --test-dir build/agents -R <label>
 ### Manual Testing
 ```bash
 # Quick checks with log output
-parasol --no-crash-handler --log-warning your_script.tiri
+origo --no-crash-handler --log-warning your_script.tiri
 ```
 
 ### After Modifying LuaJIT Sources
@@ -67,7 +67,7 @@ cmake --install build/agents --config <BuildType>
 
 ### JIT Debugging Options
 
-Run `parasol` with `--jit-options` to pass JIT engine flags as a CSV list:
+Run `origo` with `--jit-options` to pass JIT engine flags as a CSV list:
 
 |Option|Purpose|
 |-|-|

@@ -23,12 +23,12 @@ Parasol uses CMake for building. It can be built as either modular (shared libra
 - Run single integration test: `ctest --build-config [BuildType] --test-dir build/agents --output-on-failure -L TEST_LABEL`
 - **ALWAYS** write Tiri tests using Flute unless instructed otherwise (see Flute Testing section below)
 - When running the Parasol executable for individual tests, **ALWAYS** append `--log-warning` at a minimum for log messages, or `--log-api` if more detail is required.  Log output is directed to stderr.
-- Statements can be tested on the commandline with `--statement`, e.g. `parasol --statement "print('Hello')"`
-- If modifying files in the `scripts` folder, **ALWAYS** append `--set-volume scripts=/absolute/path/to/parasol/scripts` to ensure your modified files are being loaded over the installed versions.
+- Statements can be tested on the commandline with `--statement`, e.g. `origo --statement "print('Hello')"`
+- If modifying files in the `scripts` folder, **ALWAYS** append `--set-volume scripts=/absolute/path/to/project/scripts` to ensure your modified files are being loaded over the installed versions.
 
 **Verify:**
 - If a `build/agents` folder already exists, check if the configuration is `Release` or `Debug` before using it for the first time.  Prefer `Debug` if both are in use.
-- You can inspect the version, git commit hash and build type of the build by running `parasol` with `--version`.
+- You can inspect the version, git commit hash and build type of the build by running `origo` with `--version`.
 
 ### CMake Configuration Options
 
@@ -46,7 +46,7 @@ When working in ephemeral cloud environments:
 - Prefer the pre-created build tree at `build/agents` and install tree at `build/agents-install` to avoid the expense of repeated configuration.  If the directory exists you can immediately run `cmake --build build/agents --config [BuildType] --parallel`.
 - If no `build/agents` folder exists, prefer to use the Debug configuration `-DCMAKE_BUILD_TYPE=Debug` for fast compiling speed.
 - If you must reconfigure, clean only the affected cache entries with `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=[BuildType] ...` rather than deleting the entire build tree.
-- If `parasol` is not already installed at `build/agents-install` then performing the build and install process is essential if intending to run `parasol` for Tiri scripts and Flute tests.
+- If `origo` is not already installed at `build/agents-install` then performing the build and install process is essential if intending to run `origo` for Tiri scripts and Flute tests.
 - If configuring a build, disabling unnecessary modules like Audio and Graphics features (if they are not relevant) will speed up compilation.  If *certain* that the environment is cloud-based, you can consider including the following with your CMake build configuration: `-DDISABLE_AUDIO=ON -DDISABLE_X11=ON -DDISABLE_DISPLAY=ON -DDISABLE_FONT=ON`
 
 ## Architecture Overview
@@ -88,7 +88,7 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension to 
 - Declarative UI creation with automatic scaling and layout management
 - Callback-driven architecture for event handling
 - The Tiri object interface is case sensitive.  Object fields are accessed as lower snake-case names, e.g. `netlookup.hostName`
-- Tiri scripts are executed with the `parasol` executable, which has a dependency on the project being built and installed.
+- Tiri scripts are executed with the `origo` executable, which has a dependency on the project being built and installed.
 - Tiri scripts execute top-to-bottom with NO entry point function
 - Tiri APIs and reference manuals are available in multiple files at `docs/wiki/Tiri-*.md`.
 - General API framework documentation in `docs/xml/modules` and `docs/xml/modules/classes` can be utilised to understand class and module interfaces in detail.
@@ -143,7 +143,7 @@ Tests are written in Tiri and executed with the Flute test runner:
 Working example when working from the root folder (recommended):
 
 ```bash
-build/agents-install/parasol tools/flute.tiri file=src/network/tests/test_bind_address.tiri --log-warning
+build/agents-install/origo tools/flute.tiri file=src/network/tests/test_bind_address.tiri --log-warning
 ```
 
 **Key Requirements for Flute Tests:**
@@ -155,7 +155,7 @@ The build system heavily uses code generation:
 - FDL files are processed by `tools/idl/idl-c.tiri` to generate C headers
 - `tools/idl/idl-compile.tiri` generates IDL definition strings
 - Generated files are created in build directories and copied to `include/`
-- Use `BUILD_DEFS=OFF` to skip generation if no Parasol executable is available
+- Use `BUILD_DEFS=OFF` to skip generation if no `origo` executable is available
 
 ### Multi-Platform Considerations
 
@@ -230,7 +230,7 @@ For Tiri code, verify:
 **MANDATORY: Always compile after making C++ changes**
 - After making changes to C++ source files, you MUST verify compilation by building the affected module(s)
 - This is required before considering any code changes complete
-- There is a dependency on `parasol_cmd` being built by cmake in order to make the `parasol` executable available to run tests.
+- There is a dependency on `origo_cmd` being built by cmake in order to make the `origo` executable available to run tests.
 
 **Full Build Commands:**
 ```bash

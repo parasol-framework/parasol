@@ -146,10 +146,10 @@ The AI documentation system creates ultra-compact XML files optimized for AI pro
 ### Generation and Usage
 ```bash
 # Generate AI-optimized documentation
-parasol tools/docgen-ai.tiri
+origo tools/docgen-ai.tiri
 
 # Custom output location
-parasol tools/docgen-ai.tiri output=my-docs.xml
+origo tools/docgen-ai.tiri output=my-docs.xml
 ```
 
 The generated files in `docs/xml/ai/modules/` and `docs/xml/ai/classes/` provide comprehensive API reference for AI assistants while consuming minimal context window space.

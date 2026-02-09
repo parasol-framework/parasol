@@ -958,7 +958,7 @@ if(WIN32 AND NOT DISABLE_CPACK)
    if(NOT PARASOL_STATIC)
       set(CPACK_NSIS_DISPLAY_NAME "Parasol Framework ${PROJECT_VERSION}")
       set(CPACK_NSIS_PACKAGE_NAME "Parasol")
-      set(CPACK_NSIS_INSTALLED_ICON_NAME "parasol.exe")
+      set(CPACK_NSIS_INSTALLED_ICON_NAME "origo.exe")
       set(CPACK_NSIS_MUI_ICON "${PROJECT_SOURCE_DIR}/src/link/parasol_sphere.ico")
       set(CPACK_NSIS_MUI_UNIICON "${PROJECT_SOURCE_DIR}/src/link/parasol_sphere.ico")
       set(CPACK_NSIS_HELP_LINK "https://github.com/parasol-framework/parasol")
@@ -967,8 +967,8 @@ if(WIN32 AND NOT DISABLE_CPACK)
 
       # Create shortcuts for installer
       set(CPACK_NSIS_CREATE_ICONS_EXTRA
-         "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Parasol.lnk' '$INSTDIR\\\\parasol.exe'"
-         "CreateShortCut '$DESKTOP\\\\Parasol.lnk' '$INSTDIR\\\\parasol.exe'"
+         "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Parasol.lnk' '$INSTDIR\\\\origo.exe'"
+         "CreateShortCut '$DESKTOP\\\\Parasol.lnk' '$INSTDIR\\\\origo.exe'"
       )
 
       set(CPACK_NSIS_DELETE_ICONS_EXTRA
@@ -1027,7 +1027,7 @@ ExtractTitle=\"Extracting Parasol Framework...\"
 ExtractDialogText=\"Please wait while Parasol Framework is extracted.\"
 InstallPath=\"%ProgramFiles%\\\\Parasol\"
 OverwriteMode=2
-ExecuteFile=\"parasol.exe\"
+ExecuteFile=\"origo.exe\"
 ExecuteParameters=\"\"
 ;!@InstallEnd@!
 ")
