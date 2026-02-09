@@ -193,6 +193,77 @@ Key scripts:
 - **`tools/docgen-wiki.tiri`** - Wiki-specific processing
 - **`tools/docgen-ai.tiri`** - AI documentation generator
 
+## ✍️ Writing Style Guide
+
+When writing or editing documentation in `docs/wiki/`, follow these conventions to maintain consistency with the established style.
+
+### Voice and Tone
+
+- **Use first-person plural ("we/our")** to create a collaborative, project-insider feel.  Write as an experienced developer
+  explaining concepts to a peer.  Avoid second-person instructional voice ("you should...") except where directly
+  addressing the reader's actions.
+- **Be direct and declarative.**  State facts without hedging or unnecessary qualifiers.  Prefer *"Parasol supports
+  threads"* over *"It should be noted that Parasol has support for threads"*.
+- **Maintain a professional register.**  No jokes, exclamation marks, casual asides, or emojis.  The closest to
+  conversational should be phrases like *"Note that..."* or *"It is worth considering..."*.
+
+### Language and Spelling
+
+- **British English** throughout: *initialised*, *behaviour*, *colour*, *customised*, *utilise*, *recognised*,
+  *centre*, *modelling*.
+- **Two spaces** after full stops (sentence-ending periods), consistent with the existing convention.
+- **Active voice** is strongly preferred.  Write *"The Core API loads a module"* rather than *"A module is loaded by
+  the Core API"*.
+
+### Sentence Structure
+
+- Keep sentences moderate in length, typically 15-30 words.
+- Break complex technical concepts across multiple shorter sentences rather than packing them into long compound
+  constructions.
+- Use parenthetical asides sparingly and keep them brief.
+
+### Document Structure
+
+- **Opening paragraph:** One to three sentences summarising what the page covers, optionally setting expectations for
+  assumed knowledge.
+- **Table of Contents:** Include for longer documents, using numbered or bulleted lists with anchor links.
+- **Horizontal rules (`---`):** Use to separate major sections.
+- **Heading hierarchy:** H2 (`##`) for major sections, H3 (`###`) for subsections, H4 (`####`) for sub-subsections.
+  Reserve H1 (`#`) for the page title or top-level concept only.
+- **Maximum line width:** 120 characters, consistent with the project's code formatting standard.
+
+### Formatting Conventions
+
+- **Italics** for introducing new terminology on first use, e.g. *"local"*, *"sub-classing"*, *"base-class"*.
+- **Bold** sparingly for emphasis on key points.  Do not overuse.
+- **Inline code** (backticks) for function names, field names, type names, file names, and code fragments within prose.
+- **Code blocks** should immediately follow a brief prose introduction.  Show, then explain.
+- **Tables** for structured reference data such as parameters, options, flags, and field definitions.  Prefer tables
+  over prose lists for this type of content.
+
+### API Reference Sections
+
+When documenting functions or methods, follow this consistent pattern:
+
+1. **Heading:** `### functionName()` or `### module.functionName()`
+2. **Signature:** As inline code on its own line, e.g. `` `result = module.functionName(Param1, Param2)` ``
+3. **Prose description:** One or more paragraphs explaining behaviour.
+4. **Code example:** A practical demonstration in a fenced code block.
+5. **Parameter table:** If the function accepts options or has multiple parameters, present them in a markdown table.
+
+### Cross-Referencing
+
+- Link to other wiki pages using relative markdown links: `[Page Title](./Page-Name.md)`.
+- Introduce links naturally in prose, e.g. *"further discussed in the [FDL Tools](./FDL-Tools.md) manual"*.
+- Avoid bare URLs in body text.
+
+### Code Examples
+
+- Introduce concepts briefly in prose, then show the code, then add follow-up notes on specifics.
+- Use fenced code blocks with appropriate language hints (e.g. ` ```cpp `, ` ```lua `).
+- Examples should be realistic and functional, not abstract pseudocode.
+- Keep examples concise; include only what is necessary to demonstrate the concept.
+
 ## 💡 Best Practices for Claude Sessions
 
 ### When Researching Framework Concepts
