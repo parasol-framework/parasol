@@ -347,18 +347,16 @@ it is a closed file handle, or <code>nil</code> if it is not a file handle.</p>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="va">file</span><span class="op">:</span><span class="fu">close</span><span class="op">()</span></span>
 <span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span><span class="op">(</span><span class="fu">io.type</span><span class="op">(</span><span class="va">file</span><span class="op">))</span>    <span class="co">-- &quot;closed file&quot;</span></span>
 <span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span><span class="op">(</span><span class="fu">io.type</span><span class="op">(</span><span class="st">&#39;hello&#39;</span><span class="op">))</span> <span class="co">-- nil</span></span></code></pre></div>
-<h3 id="iotmpfile">io.tmpfile()</h3>
-<p><code>file = io.tmpfile()</code></p>
+<h3 id="iotempfile">io.tempFile()</h3>
+<p><code>file = io.tempFile()</code></p>
 <p>Creates a temporary in-memory buffer file opened for both reading and writing. The buffer is backed by system memory,
 allowing the OS to use swap space for large files. The file is automatically freed when the handle is garbage collected
 or explicitly closed.</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="va">tmp</span> <span class="op">=</span> <span class="fu">io.tmpfile</span><span class="op">()</span></span>
+<div class="sourceCode" id="cb9"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="va">tmp</span> <span class="op">=</span> <span class="va">io</span><span class="op">.</span>tempFile<span class="op">()</span></span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="va">tmp</span><span class="op">:</span><span class="fu">write</span><span class="op">(</span><span class="st">&#39;temporary data&#39;</span><span class="op">)</span></span>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="va">tmp</span><span class="op">:</span><span class="fu">seek</span><span class="op">(</span><span class="st">&#39;set&#39;</span><span class="op">,</span> <span class="dv">0</span><span class="op">)</span></span>
 <span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span><span class="op">(</span><span class="va">tmp</span><span class="op">:</span><span class="fu">read</span><span class="op">(</span><span class="st">&#39;*a&#39;</span><span class="op">))</span>   <span class="co">-- &quot;temporary data&quot;</span></span>
 <span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="va">tmp</span><span class="op">:</span><span class="fu">close</span><span class="op">()</span></span></code></pre></div>
-<h3 id="iopopen">io.popen()</h3>
-<p><code>io.popen()</code> is not currently supported. Calling this function will throw an exception.</p>
 <h3 id="ioreadall">io.readAll()</h3>
 <p><code>content = io.readAll(Path)</code></p>
 <p>Reads the entire contents of the file at <code>Path</code> and returns it as a string. This is a convenience function that

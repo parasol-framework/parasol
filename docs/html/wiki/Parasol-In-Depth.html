@@ -305,7 +305,7 @@
 <pre><code>set (MOD xml)
 set (INC_MOD_XML TRUE PARENT_SCOPE)
 
-idl_gen (&quot;${MOD}.fdl&quot; NAME ${MOD}_defs
+idl_gen (&quot;${MOD}.tdl&quot; NAME ${MOD}_defs
    OUTPUT &quot;${INCLUDE_OUTPUT}/modules/${MOD}.h&quot;
    APPEND_IDL &quot;${MOD}_def.c&quot;)
 
@@ -314,7 +314,7 @@ set_module_defaults (${MOD})
 target_sources (${MOD} PRIVATE &quot;${CMAKE_CURRENT_SOURCE_DIR}/${MOD}.cpp&quot;)
 
 flute_test (${MOD}_tests &quot;${CMAKE_CURRENT_SOURCE_DIR}/tests/test.tiri&quot;)</code></pre>
-<p>The <code>idl_gen()</code> call will generate automated headers and documents from the <code>xml.fdl</code> file, which contains the public specifications of the module. This process is further discussed in the <a href="./TDL-Tools.md">TDL</a> manuals in this Wiki.</p>
+<p>The <code>idl_gen()</code> call will generate automated headers and documents from the <code>xml.tdl</code> file, which contains the public specifications of the module. This process is further discussed in the <a href="./TDL-Tools.md">TDL</a> manuals in this Wiki.</p>
 <p>The <code>add_library()</code> call registers the module with the build process and <code>set_module_defaults()</code> pre-configures the build for the named module. The <code>target_sources()</code> call associates the <code>cpp</code> source files with the module.</p>
 <p>The <code>flute_test()</code> references a Tiri script that will test the module&#39;s functionality; this is further discussed in the <a href="./Unit-Testing.md">Unit Testing</a> manual in this Wiki.</p>
 <h3 id="module-initialisation">Module Initialisation</h3>
@@ -345,7 +345,7 @@ flute_test (${MOD}_tests &quot;${CMAKE_CURRENT_SOURCE_DIR}/tests/test.tiri&quot;
 </tr>
 <tr>
 <td style="text-align: left;">IDL</td>
-<td style="text-align: left;">Reference to a compiled IDL, as generated from the module&#39;s <code>.fdl</code> file</td>
+<td style="text-align: left;">Reference to a compiled IDL, as generated from the module&#39;s <code>.tdl</code> file</td>
 </tr>
 <tr>
 <td style="text-align: left;">Structures</td>
@@ -391,7 +391,7 @@ flute_test (${MOD}_tests &quot;${CMAKE_CURRENT_SOURCE_DIR}/tests/test.tiri&quot;
 <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>   <span class="cf">return</span> ERR<span class="op">::</span>Okay<span class="op">;</span></span>
 <span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>The <code>FunctionList</code> declares the list of functions that will be returned to the client. In theory a module can have more than one function table for different clients. Multiple function lists are rarely used, but can help in offering backwards compatibility by checking the requested module version number.</p>
-<p>The <code>glFunctions</code> array, excerpt below, is auto-generated from the Network module&#39;s <code>network.fdl</code> file and names the available functions, with links to function code. Parameter names and type information is also included. Taking advantage of the available TDL tools to generate this information eliminates the potential for mistakes as well as reducing development time. Critically it also ensures that run-time introspection is available and this enables usage from scripting languages like Tiri.</p>
+<p>The <code>glFunctions</code> array, excerpt below, is auto-generated from the Network module&#39;s <code>network.tdl</code> file and names the available functions, with links to function code. Parameter names and type information is also included. Taking advantage of the available TDL tools to generate this information eliminates the potential for mistakes as well as reducing development time. Critically it also ensures that run-time introspection is available and this enables usage from scripting languages like Tiri.</p>
 <div class="sourceCode" id="cb5"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>FDEF argsAddressToStr<span class="op">[]</span> <span class="op">=</span> <span class="op">{</span> <span class="op">{</span> <span class="st">&quot;Result&quot;</span><span class="op">,</span> FD_STR<span class="op">|</span>FD_ALLOC <span class="op">},</span> <span class="op">{</span> <span class="st">&quot;IPAddress:IPAddress&quot;</span><span class="op">,</span> FD_PTR<span class="op">|</span>FD_STRUCT <span class="op">},</span> <span class="op">{</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">0</span> <span class="op">}</span> <span class="op">};</span></span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>FDEF argsHostToLong<span class="op">[]</span> <span class="op">=</span> <span class="op">{</span> <span class="op">{</span> <span class="st">&quot;Result&quot;</span><span class="op">,</span> FD_LONG<span class="op">|</span>FD_UNSIGNED <span class="op">},</span> <span class="op">{</span> <span class="st">&quot;Value&quot;</span><span class="op">,</span> FD_LONG<span class="op">|</span>FD_UNSIGNED <span class="op">},</span> <span class="op">{</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">0</span> <span class="op">}</span> <span class="op">};</span></span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>FDEF argsHostToShort<span class="op">[]</span> <span class="op">=</span> <span class="op">{</span> <span class="op">{</span> <span class="st">&quot;Result&quot;</span><span class="op">,</span> FD_LONG<span class="op">|</span>FD_UNSIGNED <span class="op">},</span> <span class="op">{</span> <span class="st">&quot;Value&quot;</span><span class="op">,</span> FD_LONG<span class="op">|</span>FD_UNSIGNED <span class="op">},</span> <span class="op">{</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">0</span> <span class="op">}</span> <span class="op">};</span></span>

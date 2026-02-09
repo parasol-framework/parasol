@@ -481,7 +481,6 @@ double YCoord: Defines vertical placement.</code></pre>
 </tbody>
 </table>
 <p>Further to the above, if a typed parameter is a pointer that receives a result, prefix the type with <code>&amp;</code>. For instance, the C type <code>LONG *</code> can be represented as <code>&amp;int</code>. If the result is an allocated resource pointer that can be terminated with <code>FreeResource()</code>, use <code>!</code> instead of <code>&amp;</code>. This will allow the resource to be terminated by Tiri so that it cannot be leaked.</p>
-<h4></h4>
 <h3 id="results">Results</h3>
 <p>If the function returns an <code>ERR</code> code, you are expected to list the returnable codes in a <code>-RESULT-</code> section as in the following example:</p>
 <pre><code>-RESULT-

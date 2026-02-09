@@ -11,7 +11,7 @@
 <meta name="description" content="Parasol Framework documentation, machine generated from source">
 <meta name="author" content="Paul Manias">
 <link rel="icon" href="/favicon.ico">
-<title>Parasol Wiki - Tiri JSON API</title>
+<title>Parasol Wiki - Origo</title>
 <link href="../css/bootstrap.min.css" rel="stylesheet">
 <link href="../css/module-template.css" rel="stylesheet">
 <link href="../css/github-markdown.css" rel="stylesheet">
@@ -255,73 +255,79 @@
 
 <div class="col-sm-9" style="max-width: 1200px;">
 <div class="docs-content" id="default-page">
-<h1>Tiri JSON API</h1>
-<p>The JSON API provides encoding and decoding functionality for moving data between JSON strings and Tiri
-tables/arrays.</p>
-<p>The API can be loaded with the line:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>import <span class="st">&#39;json&#39;</span></span></code></pre></div>
-<h2 id="jsonencode">json.encode()</h2>
-<p><code>result = json.encode(Value, [ErrorCallback], AsKey)</code></p>
-<p>Encodes a <code>Value</code> into a JSON string and returns it. The following types are supported:</p>
+<h1>Origo</h1>
+<p>Origo is Parasol&#39;s primary tool for executing Tiri scripts, and is located in the root folder of our distribution as <code>origo</code>.</p>
+<p>Run <code>origo</code> with <code>--help</code> to see the available options and confirm that the install worked correctly. At the time of writing, this looks as follows:</p>
+<pre><code>This command-line program can execute Tiri scripts and PARC files developed for the Parasol framework.
+
+   origo [args] [script.ext] arg1 arg2=value arg3 ...
+
+The following parameters can be used when executing script files:
+
+ --procedure [n] The name of a procedure to execute.
+ --time          Print the amount of time that it took to execute the program.
+ --dialog        Display a file dialog for choosing a script manually.
+ --statement     Instead of running a script file, executes a single statement or expression.
+
+ --log-api       Activates run-time log messages at API level.
+ --log-info      Activates run-time log messages at INFO level.
+ --log-error     Activates run-time log messages at ERROR level.
+ --jit-options   Development options that control the behaviour of the compiler.
+ --version       Prints the version number on line 1 and git commit on line 2.</code></pre>
+<h2 id="jit-options">JIT Options</h2>
+<p>The <code>--jit-options</code> parameter accepts a comma-separated list of development options that control the Tiri compiler&#39;s behaviour. These options are primarily useful for debugging scripts, diagnosing parser issues, and profiling performance.</p>
+<p><strong>Usage:</strong></p>
+<pre><code>origo --jit-options trace-tokens,dump-bytecode script.tiri</code></pre>
+<h3 id="available-options">Available Options</h3>
 <table>
 <thead>
 <tr>
-<th style="text-align: left;">Type</th>
-<th style="text-align: left;">JSON Output</th>
+<th>Option</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td style="text-align: left;"><code>array</code></td>
-<td style="text-align: left;">JSON array, e.g. <code>[2, 3, false, &quot;hi&quot;]</code></td>
+<td><code>diagnose</code></td>
+<td>Continues parsing after the first error to report all syntax issues.</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>table</code></td>
-<td style="text-align: left;">JSON object, e.g. <code>{&quot;key1&quot;: 2, &quot;key2&quot;: false}</code></td>
+<td><code>dump-bytecode</code></td>
+<td>Prints a disassembly of bytecode instructions after parsing.</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>string</code></td>
-<td style="text-align: left;">Quoted string with special characters escaped</td>
+<td><code>profile</code></td>
+<td>Enables timers to profile JIT parsing and configures run-time profiling.</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>number</code></td>
-<td style="text-align: left;">Number literal (quoted if used as an object key)</td>
+<td><code>tips</code></td>
+<td>Print tips that address performance and code quality issues.</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>boolean</code></td>
-<td style="text-align: left;"><code>true</code> or <code>false</code></td>
+<td><code>top-tips</code></td>
+<td>Print important tips that relate to type safety and correctness issues only.</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>nil</code></td>
-<td style="text-align: left;"><code>null</code></td>
+<td><code>all-tips</code></td>
+<td>Print all tips and style suggestions (noisy).</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>function</code></td>
-<td style="text-align: left;">The literal string <code>function</code></td>
+<td><code>trace</code></td>
+<td>Enables parser tracing; intended for AI agents only.</td>
 </tr>
 </tbody>
 </table>
-<p>This expects the following to be true of any tables being encoded:</p>
-<ul>
-<li>They only have string or number keys. Number keys must be represented as strings in JSON; this is part of the JSON spec.</li>
-<li>They are not recursive. Such a structure cannot be specified in JSON.</li>
-</ul>
-<p>Native Tiri arrays are encoded as JSON arrays. Tables are encoded as JSON objects.</p>
-<p>Because the <code>nil</code> value cannot be a key, and as a table value is considered equivalent to a missing key, there is no way to express the JSON &quot;null&quot; value in a table. The only way this will output &quot;null&quot; is if your entire input value is nil itself.</p>
-<p>The optional <code>ErrorCallback</code> parameter accepts a function that will be called on encoding errors (e.g. unsupported types, or attempting to encode an array or table as an object key). If not provided, errors are raised with <code>error()</code>.</p>
-<h2 id="jsondecode">json.decode()</h2>
-<p><code>result = json.decode(String, Pos)</code></p>
-<p>Decodes a JSON string into Tiri values. Returns two values: the decoded result and the position after the last parsed character.</p>
-<p>JSON objects are decoded as Tiri tables, and JSON arrays are decoded as Tiri arrays. The optional <code>Pos</code> parameter specifies the starting position within the string (defaults to <code>0</code>).</p>
-<p>This function does not interpret <code>\u</code>-escaped unicode code points in strings.</p>
-<p>It is difficult for Tiri to return null as a value. In order to prevent the loss of keys with a null value in a JSON string, this function uses the one-off table value <code>json.null</code> (which is just an empty table) to indicate null values. This way you can check if a value is null with the conditional <code>val is json.null</code>. If you have control over the data, avoid null values to begin with.</p>
-<h2 id="jsonnull">json.null</h2>
-<p>An empty table used as a sentinel value to represent JSON <code>null</code> in decoded output. Test for it with:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="va">val</span> <span class="va">is</span> <span class="va">json</span><span class="op">.</span><span class="va">null</span> <span class="cf">then</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- handle null</span></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div>
-<hr>
-<p>API originally written by @tylerneylon for the public domain.</p>
+<h3 id="examples">Examples</h3>
+<p>Example scripts are provided in the <code>examples</code> folder of this distribution. We recommend starting with the widget example as follows, where <code>install-path</code> and <code>source-path</code> are replaced appropriately:</p>
+<pre><code>[install-path]/origo --log-error [source-path]/examples/widgets.tiri</code></pre>
+<div class="tip">
+<div class="title">
+<p>Tip</p>
+</div>
+<p>Try running a second time with <code>--log-api</code> to observe run-time log output while toying with the example. Try a few of the other examples to get a feel for what you can achieve, and load them into a text editor to see how they were created.</p>
+</div>
+<h2 id="auto-execution">Auto Execution</h2>
+<p>If <code>origo</code> is run without command-line arguments, it will check for the presence of a <code>package.zip</code> file in its folder, mount it as a filesystem named <code>package:</code> and then attempt to execute <code>package:main.tiri</code>. This behaviour makes it possible for you to distribute your scripts as portable projects with minimal effort. The <code>origo</code> executable should be renamed to the name of your project so that your end users will associate the executable with your application.</p>
 </div></div></div></div>
 
 <script src="../js/bootstrap.bundle.min.js"></script>

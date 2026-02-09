@@ -256,11 +256,11 @@
 <div class="col-sm-9" style="max-width: 1200px;">
 <div class="docs-content" id="default-page">
 <h1>TDL Reference Manual</h1>
-<p>TDL - the Tiri Definition Language - is an Interface Definition Language designed specifically for Parasol. It is accompanied with a series of tools - <code>idl-c</code>, <code>idl-compile</code> and <code>idl-doc</code>, which parse <code>.fdl</code> files to produce language headers and user documentation.</p>
+<p>TDL - the Tiri Definition Language - is an Interface Definition Language designed specifically for Parasol. It is accompanied with a series of tools - <code>idl-c</code>, <code>idl-compile</code> and <code>idl-doc</code>, which parse <code>.tdl</code> files to produce language headers and user documentation.</p>
 <p>This document describes the definition language itself. Instruction on how to use the tools is provided in the TDL Tools manual.</p>
 <hr>
 <h2 id="file-structure">File Structure</h2>
-<p>TDL files must be given a <code>.fdl</code> extension and are expected to start with <code>--$TIRI:Include</code> on their first line. TDL is a function-oriented document format, meaning the document itself makes calls to the parser so that it has control over the entire process. The first function that is called from the TDL file must be one of the following:</p>
+<p>TDL files must be given a <code>.tdl</code> extension and are expected to start with <code>--$TIRI:Include</code> on their first line. TDL is a function-oriented document format, meaning the document itself makes calls to the parser so that it has control over the entire process. The first function that is called from the TDL file must be one of the following:</p>
 <h3 id="module">module()</h3>
 <p><code>module({ Options... }, Function)</code></p>
 <p>Use <code>module()</code> to declare the interface of a named module. The following key-values can be provided as <code>Options</code>:</p>
@@ -332,8 +332,8 @@ end)</code></pre>
 <p>Use <code>restrict()</code> to prevent the TDL parser from outputting anything contained within <code>Function</code>.</p>
 <p>Consider a situation where an TDL file has a dependency on other TDL files. Using <code>restrict()</code> as a wrapper will prevent the included definitions from appearing in the generated output, as in this example:</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>restrict<span class="op">(</span><span class="kw">function</span><span class="op">()</span></span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>   loadFile<span class="op">(</span><span class="va">glPath</span> <span class="op">..</span> <span class="st">&#39;common.fdl&#39;</span><span class="op">)</span></span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>   loadFile<span class="op">(</span><span class="va">glPath</span> <span class="op">..</span> <span class="st">&#39;common-graphics.fdl&#39;</span><span class="op">)</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>   loadFile<span class="op">(</span><span class="va">glPath</span> <span class="op">..</span> <span class="st">&#39;common.tdl&#39;</span><span class="op">)</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>   loadFile<span class="op">(</span><span class="va">glPath</span> <span class="op">..</span> <span class="st">&#39;common-graphics.tdl&#39;</span><span class="op">)</span></span>
 <span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span><span class="op">)</span></span></code></pre></div>
 <h3 id="priority">priority()</h3>
 <p><code>priority(Function)</code></p>
