@@ -3,8 +3,8 @@
 -- dynamically consumed by any language for the purpose of achieving full integration with the Parasol runtime
 -- environment, which is written in C.
 --
--- Usage: parasol sdk:scripts/idl-tiri.tiri src=source.fdl
--- Example: parasol sdk:scripts/idl-tiri.tiri src=sdk:core/modules/core/core.fdl
+-- Usage: origo sdk:scripts/idl-tiri.tiri src=source.fdl
+-- Example: origo sdk:scripts/idl-tiri.tiri src=sdk:core/modules/core/core.fdl
 
    global glSelf = obj.find('self')
    global glPath = glSelf.workingPath
