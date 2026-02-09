@@ -112,15 +112,15 @@ if (RUN_ANYWHERE)
    set (PARASOL_ROOT "${CMAKE_INSTALL_PREFIX}")
    set (SHARE_TARGET .)
    set (LIB_TARGET "lib")
-   set (PARASOL_CMD_PATH "${CMAKE_INSTALL_PREFIX}")
+   set (ORIGO_CMD_PATH "${CMAKE_INSTALL_PREFIX}")
 else ()
    set (PARASOL_ROOT "${CMAKE_INSTALL_PREFIX}/share/parasol")
    set (SHARE_TARGET "share/parasol")
    set (LIB_TARGET "lib/parasol")
-   set (PARASOL_CMD_PATH "${CMAKE_INSTALL_PREFIX}/bin")
+   set (ORIGO_CMD_PATH "${CMAKE_INSTALL_PREFIX}/bin")
 endif ()
 
-set (PARASOL_CMD_TARGET "${PARASOL_CMD_PATH}/parasol")
+set (ORIGO_CMD_TARGET "${ORIGO_CMD_PATH}/origo")
 
 test_big_endian (SYSTEM_ENDIAN_STYLE)
 if (SYSTEM_ENDIAN_STYLE EQUAL 0) # Little endian (Intel)
@@ -197,17 +197,17 @@ int main() {
 
 find_program (XXD_CMD "xxd")
 find_program (OD_CMD "od")
-find_program (PARASOL_CMD "parasol" NO_DEFAULT_PATH PATHS "${PARASOL_CMD_PATH}")
+find_program (ORIGO_CMD "origo" NO_DEFAULT_PATH PATHS "${ORIGO_CMD_PATH}")
 find_file (IDL_C_SCRIPT "idl-c.tiri" PATHS "${PROJECT_SOURCE_DIR}/tools/idl")
 find_file (IDL_COMPILE_SCRIPT "idl-compile.tiri" PATHS "${PROJECT_SOURCE_DIR}/tools/idl")
 find_file (FLUTE_SCRIPT "flute.tiri" PATHS "${PROJECT_SOURCE_DIR}/tools")
 
-if (PARASOL_CMD STREQUAL "PARASOL_CMD-NOTFOUND")
+if (ORIGO_CMD STREQUAL "ORIGO_CMD-NOTFOUND")
    message (STATUS "Definitions will not be built and tests are disabled.")
    set (BUILD_DEFS OFF)
 else ()
    if (BUILD_DEFS)
-      message (STATUS "Definitions will be built with the Parasol exe installed @ ${PARASOL_CMD}.")
+      message (STATUS "Definitions will be built with the Parasol exe installed @ ${ORIGO_CMD}.")
    endif ()
 endif ()
 
@@ -263,9 +263,9 @@ add_custom_target(build_headers ALL COMMENT "Generate headers and definition fil
 function (flute_test name path)
    if (BUILD_TESTS)
       if (RUN_ANYWHERE)
-         set (FLUTE_EXE "${CMAKE_INSTALL_PREFIX}/parasol")
+         set (FLUTE_EXE "${CMAKE_INSTALL_PREFIX}/origo")
       else ()
-         set (FLUTE_EXE "${CMAKE_INSTALL_PREFIX}/bin/parasol")
+         set (FLUTE_EXE "${CMAKE_INSTALL_PREFIX}/bin/origo")
       endif ()
       get_filename_component(FLUTE_FULL_PATH "${path}" ABSOLUTE)
       add_test (NAME ${name}
@@ -292,11 +292,11 @@ function (idl_gen)
          list (APPEND IDLC_ARGS "files={" ${IDLC_FILES} "}")
       endif ()
 
-      list (APPEND COMMAND_LIST COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=${ARGV0}"
+      list (APPEND COMMAND_LIST COMMAND ${ORIGO_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=${ARGV0}"
          "output=${IDLC_OUTPUT}" "sdk=${PROJECT_SOURCE_DIR}" ${IDLC_ARGS})
 
       if (DEFINED IDLC_APPEND_IDL)
-         list (APPEND COMMAND_LIST COMMAND ${PARASOL_CMD} ${IDL_COMPILE_SCRIPT} "--log-warning" "src=${ARGV0}"
+         list (APPEND COMMAND_LIST COMMAND ${ORIGO_CMD} ${IDL_COMPILE_SCRIPT} "--log-warning" "src=${ARGV0}"
             "output=${IDLC_APPEND_IDL}" "sdk=${PROJECT_SOURCE_DIR}" "format=c" "append")
       endif ()
 
@@ -330,7 +330,7 @@ function (idl_compile)
       endif ()
 
       add_custom_command (OUTPUT ${IDLC_OUTPUT}
-         COMMAND "${PARASOL_CMD}" "${IDL_COMPILE_SCRIPT}" "--log-warning" "src=${ARGV0}" "output=${IDLC_OUTPUT}" "sdk=${PROJECT_SOURCE_DIR}" "format=c" ${IDLC_ARGS}
+         COMMAND "${ORIGO_CMD}" "${IDL_COMPILE_SCRIPT}" "--log-warning" "src=${ARGV0}" "output=${IDLC_OUTPUT}" "sdk=${PROJECT_SOURCE_DIR}" "format=c" ${IDLC_ARGS}
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
          DEPENDS ${ARGV0}
          COMMENT "Producing definition file ${IDLC_OUTPUT} from ${ARGV0}"
@@ -792,12 +792,12 @@ if (PARASOL_INSTALL)
 
    if (NOT PARASOL_STATIC)
       install (CODE "file(REMOVE \"${PARASOL_ROOT}/config/classes.bin\")")
-      install (CODE "MESSAGE(STATUS \"${PARASOL_CMD_TARGET} --log-warning --gfx-driver=headless --verify\")")
-      install (CODE "execute_process(COMMAND \"${PARASOL_CMD_TARGET}\" --log-warning --gfx-driver=headless --verify WORKING_DIRECTORY \"${CMAKE_INSTALL_PREFIX}\")")
+      install (CODE "MESSAGE(STATUS \"${ORIGO_CMD_TARGET} --log-warning --gfx-driver=headless --verify\")")
+      install (CODE "execute_process(COMMAND \"${ORIGO_CMD_TARGET}\" --log-warning --gfx-driver=headless --verify WORKING_DIRECTORY \"${CMAKE_INSTALL_PREFIX}\")")
    endif ()
 
    if (RUN_ANYWHERE)
-      install (CODE "MESSAGE(STATUS \"\nParasol has been installed to '${CMAKE_INSTALL_PREFIX}'.  You may need to add this folder to your PATH variable in order to run parasol.exe from the command-line.\")")
+      install (CODE "MESSAGE(STATUS \"\nParasol has been installed to '${CMAKE_INSTALL_PREFIX}'.  You may need to add this folder to your PATH variable in order to run origo from the command-line.\")")
    else ()
       install (CODE "MESSAGE(STATUS \"\nParasol has been installed to '${CMAKE_INSTALL_PREFIX}' and shared files are in '${PARASOL_ROOT}'.\")")
    endif ()
@@ -958,7 +958,7 @@ if(WIN32 AND NOT DISABLE_CPACK)
    if(NOT PARASOL_STATIC)
       set(CPACK_NSIS_DISPLAY_NAME "Parasol Framework ${PROJECT_VERSION}")
       set(CPACK_NSIS_PACKAGE_NAME "Parasol")
-      set(CPACK_NSIS_INSTALLED_ICON_NAME "parasol.exe")
+      set(CPACK_NSIS_INSTALLED_ICON_NAME "origo.exe")
       set(CPACK_NSIS_MUI_ICON "${PROJECT_SOURCE_DIR}/src/link/parasol_sphere.ico")
       set(CPACK_NSIS_MUI_UNIICON "${PROJECT_SOURCE_DIR}/src/link/parasol_sphere.ico")
       set(CPACK_NSIS_HELP_LINK "https://github.com/parasol-framework/parasol")
@@ -967,8 +967,8 @@ if(WIN32 AND NOT DISABLE_CPACK)
 
       # Create shortcuts for installer
       set(CPACK_NSIS_CREATE_ICONS_EXTRA
-         "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Parasol.lnk' '$INSTDIR\\\\parasol.exe'"
-         "CreateShortCut '$DESKTOP\\\\Parasol.lnk' '$INSTDIR\\\\parasol.exe'"
+         "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Parasol.lnk' '$INSTDIR\\\\origo.exe'"
+         "CreateShortCut '$DESKTOP\\\\Parasol.lnk' '$INSTDIR\\\\origo.exe'"
       )
 
       set(CPACK_NSIS_DELETE_ICONS_EXTRA
@@ -1027,7 +1027,7 @@ ExtractTitle=\"Extracting Parasol Framework...\"
 ExtractDialogText=\"Please wait while Parasol Framework is extracted.\"
 InstallPath=\"%ProgramFiles%\\\\Parasol\"
 OverwriteMode=2
-ExecuteFile=\"parasol.exe\"
+ExecuteFile=\"origo.exe\"
 ExecuteParameters=\"\"
 ;!@InstallEnd@!
 ")

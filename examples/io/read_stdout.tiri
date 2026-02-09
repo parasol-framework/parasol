@@ -7,7 +7,7 @@ Demonstrates how to launch a sub-process and intercept the data that it prints t
 
    try
       task = obj.new("task", {
-         location = "parasol:tiri",
+         location = "parasol:origo",
          args   = "--help",
          outputCallback = function(Task, Data)
             file_out.acWrite(Data)

@@ -762,7 +762,7 @@ The `modules/` subdirectory contains XQuery library modules used for testing mod
 
 **Individual Test:**
 ```bash
-cd src/xquery/tests && ../../../build/agents-install/parasol.exe ../../../tools/flute.tiri file=E:/parasol-claude/src/xquery/tests/test_core.tiri --gfx-driver=headless --log-warning
+cd src/xquery/tests && ../../../build/agents-install/origo.exe ../../../tools/flute.tiri file=E:/parasol-claude/src/xquery/tests/test_core.tiri --gfx-driver=headless --log-warning
 ```
 
 **All XQuery Tests via CMake:**

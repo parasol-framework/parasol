@@ -74,7 +74,7 @@ static GCstr* keepstr(std::string_view str);
 - CMake drives three build strategies, matching the logic in `src/tiri/CMakeLists.txt`:
   - **MSVC**: `msvcbuild_codegen.bat` produces generated headers and `lj_vm.obj`, and CMake links `lua51.lib` next to the upstream sources.
   - **Unix-like toolchains**: CMake builds the host tools (`minilua` and `buildvm`), generates assembly with DynASM, then archives `lj_vm.o` + `ljamalg.o` into `libluajit-5.1.a`.
-- Install (`cmake --install build/agents --config <BuildType>`) before running tests so the freshly built `parasol` binary (or `parasol.exe` on Windows) and scripts land in `build/agents-install/`.
+- Install (`cmake --install build/agents --config <BuildType>`) before running tests so the freshly built `origo` binary (or `origo.exe` on Windows) and scripts land in `build/agents-install/`.
 
 ## Error Handling Configuration
 - **Windows (MSVC)**: Must NOT define `LUAJIT_NO_UNWIND`. MSVC always uses Structured Exception Handling (SEH) via `RaiseException()` and `lj_err_unwind_win()`.  There is no "internal unwinding" implementation for MSVC - SEH is the only viable mechanism. Setting `LJ_NO_UNWIND` for MSVC breaks exception handling and causes catch() tests to fail with "attempt to call a nil value" errors.
@@ -82,8 +82,8 @@ static GCstr* keepstr(std::string_view str);
 
 ## Testing
 - Use `ctest --build-config <BuildType> --test-dir build/agents -R <label>` to run subsets, or omit `-R` for the full suite. Tiri regression tests are under `src/tiri/tests/` and catch most parser/VM regressions.
-- For quick manual checks, launch `parasol` (or `parasol.exe` on Windows) from `build/agents-install/bin/` with `--no-crash-handler --log-warning` so failures bubble out as exit codes.
-- **Critical**: After touching LuaJIT C sources, rebuild both the Tiri module and `parasol_cmd`, then reinstall:
+- For quick manual checks, launch `origo` (or `origo.exe` on Windows) from `build/agents-install/bin/` with `--no-crash-handler --log-warning` so failures bubble out as exit codes.
+- **Critical**: After touching LuaJIT C sources, rebuild both the Tiri module and `origo_cmd`, then reinstall:
   ```bash
   cmake --build build/agents --config <BuildType> --parallel
   cmake --install build/agents --config <BuildType>
@@ -91,7 +91,7 @@ static GCstr* keepstr(std::string_view str);
 - When debugging parser issues, create minimal Tiri scripts to isolate the behaviour before running the full test suite.
 - Unit tests are managed by `MODTests()` in `src/tiri/tiri.cpp`.
 - To run the compiled-in unit tests, run `src/tiri/tests/test_unit_tests.tiri` with the `--log-api` option to view the output from stderr.
-- Run `parasol` with `--jit-options` to pass JIT engine flags as a CSV list, e.g. `--jit-options dump-bytecode,trace-boundary`.  Available options are:
+- Run `origo` with `--jit-options` to pass JIT engine flags as a CSV list, e.g. `--jit-options dump-bytecode,trace-boundary`.  Available options are:
   - `trace-tokens` Trace tokenisation
   - `trace-expect` Trace expectations
   - `trace-boundary` Trace boundary crossings between interpreted and JIT code

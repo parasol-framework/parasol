@@ -8,7 +8,7 @@ performance statistics.  This tool is intended to check on the impact that vecto
 speed.
 
 Usage:
-  parasol svg_mark.tiri file=path/to/file.svg [width=1024] [height=768]
+  origo svg_mark.tiri file=path/to/file.svg [width=1024] [height=768]
 
 Parameters:
   file         - Path to the SVG file to benchmark (optional - file dialog shown if not provided)

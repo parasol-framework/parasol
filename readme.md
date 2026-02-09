@@ -92,7 +92,7 @@ Please refer to the following Wiki pages for information on how to build Parasol
 * [Linux Builds](https://github.com/parasol-framework/parasol/wiki/Linux-Builds)
 * [Windows Builds](https://github.com/parasol-framework/parasol/wiki/Windows-Builds)
 
-A successful build and installation will create a `parasol` command tool, which is [documented here](https://github.com/parasol-framework/parasol/wiki/Parasol-Cmd-Tool).
+A successful build and installation will create a `origo` command tool, which is [documented here](https://github.com/parasol-framework/parasol/wiki/Origo).
 
 > [!TIP]
 > Please refer to our [customisation wiki page](https://github.com/parasol-framework/parasol/wiki/Customising-Your-Build) for information on customising your build.

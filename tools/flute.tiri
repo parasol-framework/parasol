@@ -12,7 +12,7 @@ Flute provides a standard framework for the execution of unit tests in Tiri.
 
 Example usage:
 
-   parasol flute.tiri file=[file]
+   origo flute.tiri file=[file]
 ]]
 
 
