@@ -97,8 +97,8 @@
          <div class="collapse" id="doc-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
               <li class="api-ref"><a class="rounded" href="Embedded-Document-Formatting.html">Embedded Document Format</a></li>
-              <li class="api-ref"><a class="rounded" href="FDL-Reference-Manual.html">FDL Reference Manual</a></li>
-              <li class="api-ref"><a class="rounded" href="FDL-Tools.html">FDL Tools</a></li>
+              <li class="api-ref"><a class="rounded" href="TDL-Reference-Manual.html">TDL Reference Manual</a></li>
+              <li class="api-ref"><a class="rounded" href="TDL-Tools.html">TDL Tools</a></li>
            </ul>
          </div></li>
 
@@ -256,22 +256,70 @@
 <div class="col-sm-9" style="max-width: 1200px;">
 <div class="docs-content" id="default-page">
 <h1>Tiri JSON API</h1>
-<p>The JSON API provides encoding and decoding functionality for moving data between JSON strings and Lua tables.</p>
+<p>The JSON API provides encoding and decoding functionality for moving data between JSON strings and Tiri
+tables/arrays.</p>
 <p>The API can be loaded with the line:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>import <span class="st">&#39;json&#39;</span></span></code></pre></div>
 <h2 id="jsonencode">json.encode()</h2>
+<p><code>result = json.encode(Value, [ErrorCallback], AsKey)</code></p>
+<p>Encodes a <code>Value</code> into a JSON string and returns it. The following types are supported:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">JSON Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>array</code></td>
+<td style="text-align: left;">JSON array, e.g. <code>[2, 3, false, &quot;hi&quot;]</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>table</code></td>
+<td style="text-align: left;">JSON object, e.g. <code>{&quot;key1&quot;: 2, &quot;key2&quot;: false}</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>string</code></td>
+<td style="text-align: left;">Quoted string with special characters escaped</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>number</code></td>
+<td style="text-align: left;">Number literal (quoted if used as an object key)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>boolean</code></td>
+<td style="text-align: left;"><code>true</code> or <code>false</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>nil</code></td>
+<td style="text-align: left;"><code>null</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>function</code></td>
+<td style="text-align: left;">The literal string <code>function</code></td>
+</tr>
+</tbody>
+</table>
 <p>This expects the following to be true of any tables being encoded:</p>
 <ul>
-<li>They only have string or number keys. Number keys must be represented as strings in json; this is part of the json spec.</li>
-<li>They are not recursive. Such a structure cannot be specified in json.</li>
+<li>They only have string or number keys. Number keys must be represented as strings in JSON; this is part of the JSON spec.</li>
+<li>They are not recursive. Such a structure cannot be specified in JSON.</li>
 </ul>
-<p>A Lua table is considered to be an array if and only if its set of keys is a consecutive sequence of positive integers starting at 1. Arrays are encoded like so: <code>[2, 3, false, &quot;hi&quot;]</code>. Any other type of Lua table is encoded as a json object, encoded like so: <code>{&quot;key1&quot;: 2, &quot;key2&quot;: false}</code>.</p>
-<p>Because the Lua nil value cannot be a key, and as a table value is considerd equivalent to a missing key, there is no way to express the json &quot;null&quot; value in a Lua table. The only way this will output &quot;null&quot; is if your entire input obj is nil itself.</p>
-<p>An empty Lua table, {}, could be considered either a json object or array - it&#39;s an ambiguous edge case. We choose to treat this as an object as it is the more general type.</p>
-<p>None of the above considerations is a limitation of this code. Rather, it is what we get when we completely observe the json specification for as arbitrary a Lua object as json is capable of expressing.</p>
+<p>Native Tiri arrays are encoded as JSON arrays. Tables are encoded as JSON objects.</p>
+<p>Because the <code>nil</code> value cannot be a key, and as a table value is considered equivalent to a missing key, there is no way to express the JSON &quot;null&quot; value in a table. The only way this will output &quot;null&quot; is if your entire input value is nil itself.</p>
+<p>The optional <code>ErrorCallback</code> parameter accepts a function that will be called on encoding errors (e.g. unsupported types, or attempting to encode an array or table as an object key). If not provided, errors are raised with <code>error()</code>.</p>
 <h2 id="jsondecode">json.decode()</h2>
-<p>This function decodes json, with the exception that it does not pay attention to \u-escaped unicode code points in strings.</p>
-<p>It is difficult for Lua to return null as a value. In order to prevent the loss of keys with a null value in a json string, this function uses the one-off table value json.null (which is just an empty table) to indicate null values. This way you can check if a value is null with the conditional <code>val is json.null</code>.</p>
+<p><code>result = json.decode(String, Pos)</code></p>
+<p>Decodes a JSON string into Tiri values. Returns two values: the decoded result and the position after the last parsed character.</p>
+<p>JSON objects are decoded as Tiri tables, and JSON arrays are decoded as Tiri arrays. The optional <code>Pos</code> parameter specifies the starting position within the string (defaults to <code>0</code>).</p>
+<p>This function does not interpret <code>\u</code>-escaped unicode code points in strings.</p>
+<p>It is difficult for Tiri to return null as a value. In order to prevent the loss of keys with a null value in a JSON string, this function uses the one-off table value <code>json.null</code> (which is just an empty table) to indicate null values. This way you can check if a value is null with the conditional <code>val is json.null</code>. If you have control over the data, avoid null values to begin with.</p>
+<h2 id="jsonnull">json.null</h2>
+<p>An empty table used as a sentinel value to represent JSON <code>null</code> in decoded output. Test for it with:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="va">val</span> <span class="va">is</span> <span class="va">json</span><span class="op">.</span><span class="va">null</span> <span class="cf">then</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- handle null</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div>
 <hr>
 <p>API originally written by @tylerneylon for the public domain.</p>
 </div></div></div></div>

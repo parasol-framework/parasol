@@ -25,7 +25,7 @@ local rx_array_unsized   = <{ regex.new([[^array\((.+)\)$]]) }>
 local rx_fptr_type       = <{ regex.new([[^fptr\((.+)\)$]]) }>
 
 -----------------------------------------------------------------------------------------------------------------------
--- Conversion table for FDL types to their C/C++ and Field Definition equivalents.
+-- Conversion table for TDL types to their C/C++ and Field Definition equivalents.
 -- Use cType() to perform conversion and don't access glTypes directly.
 
 global glTypes = {

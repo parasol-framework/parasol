@@ -2791,7 +2791,7 @@ void alloc_display_buffer(extDisplay *Self)
 #include "class_display_def.c"
 
 static const FieldArray DisplayFields[] = {
-   // Re-compile the FDL if making changes
+   // Re-compile the TDL if making changes
    { "RefreshRate",    FDF_DOUBLE|FDF_RW, nullptr, SET_RefreshRate },
    { "Bitmap",         FDF_LOCAL|FDF_R, nullptr, nullptr, CLASSID::BITMAP },
    { "Flags",          FDF_INTFLAGS|FDF_RW, nullptr, SET_Flags, &clDisplayFlags },

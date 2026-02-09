@@ -2,7 +2,7 @@
 
 module({ name="Font", copyright="Paul Manias © 1998-2026", version=1.0, timestamp=20240611 }, function()
   restrict(function()
-    loadFile(glPath .. 'common-graphics.fdl')
+    loadFile(glPath .. 'common-graphics.tdl')
   end)
 
   c_include("<parasol/modules/display.h>")

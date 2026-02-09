@@ -276,7 +276,7 @@ function (flute_test name path)
 endfunction ()
 
 # --------------------------------------------------------------------------------------------------------------------
-# idl_gen() is used to generate both C/C++ headers and IDL strings from FDL files.
+# idl_gen() is used to generate both C/C++ headers and IDL strings from TDL files.
 
 function (idl_gen)
    cmake_parse_arguments (PARSE_ARGV 0 IDLC "" "OUTPUT;APPEND_IDL;NAME" "ARGS;FILES")
@@ -389,7 +389,7 @@ function (set_module_defaults ARG_TARGET ARG_NAMESPACE)
    endif ()
 
    # Ensure all modules depend on build_headers to prevent race conditions
-   # where C++ compilation starts before FDL processing completes
+   # where C++ compilation starts before TDL processing completes
    add_dependencies (${ARG_TARGET} build_headers)
 
    # Ensure all modules have a minimum level of dependencies, this ensures a minimally

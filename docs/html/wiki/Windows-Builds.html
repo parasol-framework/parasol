@@ -97,8 +97,8 @@
          <div class="collapse" id="doc-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
               <li class="api-ref"><a class="rounded" href="Embedded-Document-Formatting.html">Embedded Document Format</a></li>
-              <li class="api-ref"><a class="rounded" href="FDL-Reference-Manual.html">FDL Reference Manual</a></li>
-              <li class="api-ref"><a class="rounded" href="FDL-Tools.html">FDL Tools</a></li>
+              <li class="api-ref"><a class="rounded" href="TDL-Reference-Manual.html">TDL Reference Manual</a></li>
+              <li class="api-ref"><a class="rounded" href="TDL-Tools.html">TDL Tools</a></li>
            </ul>
          </div></li>
 
@@ -256,7 +256,7 @@
 <div class="col-sm-9" style="max-width: 1200px;">
 <div class="docs-content" id="default-page">
 <h1>Windows Builds</h1>
-<p>On Windows you can choose between a Visual Studio (MSVC) build or a GCC build environment. Between the two, we recommend using Visual Studio as it produces optimised builds approximately 25 to 33 percent smaller and 10% faster than the GCC equivalent.</p>
+<p>On Windows you can choose between a Visual Studio (MSVC) build or a GCC build environment. Between the two, we recommend using Visual Studio as it produces optimised builds approximately 25 to 33 percent smaller and 10% faster than the GCC equivalent. VS Code also works, but CMake will be more awkward to configure and runtime debugging in the UI is less capable.</p>
 <h2 id="visual-studio">Visual Studio</h2>
 <p>If you opt to install the full <a href="https://visualstudio.microsoft.com/vs/features/cplusplus/">Visual Studio C++</a> suite from Microsoft, it will do most of the heavy lifting for you. Open the parasol folder from VS and it will auto-detect Parasol&#39;s CMake files. We recommend adding <code>--parallel</code> to the cmake &quot;Build command arguments&quot; input box for faster builds.</p>
 <p>Once built, VS can run Tiri scripts using the <code>origo.exe</code> program. The <code>.vs/launch.vs.json</code> file manages launch configuration, and a working example is included below.</p>

@@ -5,11 +5,11 @@ module({ name='XQuery', src='xquery.cpp', copyright='Paul Manias © 2025-2026', 
   cpp_include('<functional>', '<optional>', '<sstream>', '<parasol/strings.hpp>', '<string_view>', '<vector>')
 
   restrict(function()
-    loadFile('sdk:src/xml/constants.fdl')
+    loadFile('sdk:src/xml/constants.tdl')
   end)
 
   -- Shared enumerations for parser and evaluator state, including map/array node kinds.
-  loadFile('sdk:src/xquery/constants.fdl')
+  loadFile('sdk:src/xquery/constants.tdl')
 
   methods('xquery', 'XQ', {
     { id=1, name='Evaluate' },

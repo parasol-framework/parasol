@@ -8,7 +8,7 @@ endif ()
 set (MOD xquery)
 set (INC_MOD_XQUERY TRUE PARENT_SCOPE)
 
-idl_gen ("${MOD}.fdl"
+idl_gen ("${MOD}.tdl"
    NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
    FILES "xquery.cpp"

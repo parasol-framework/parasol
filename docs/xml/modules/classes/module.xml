@@ -82,7 +82,7 @@ if (modDisplay) modDisplay-&gt;get(FID_ModBase, DisplayBase);
       <access read="G">Get</access>
       <type>STRING</type>
       <description>
-<p>Returns the IDL definition string that was compiled from the module's FDL file.  Useful for introspection purposes.</p>
+<p>Returns the IDL definition string that was compiled from the module's TDL file.  Useful for introspection purposes.</p>
       </description>
     </field>
 

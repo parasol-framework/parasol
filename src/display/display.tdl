@@ -3,8 +3,8 @@
 module({ name="Display", copyright="Paul Manias © 2003-2026", version=1.0, status="stable", prefix="gfx", timestamp=20240611 }, function()
 
   restrict(function()
-    loadFile(glPath .. 'common.fdl')
-    loadFile(glPath .. 'common-graphics.fdl')
+    loadFile(glPath .. 'common.tdl')
+    loadFile(glPath .. 'common-graphics.tdl')
   end)
 
   platform("X11", function()

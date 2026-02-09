@@ -4,8 +4,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2026", version=1.0, times
   c_include("<parasol/modules/display.h>", "<parasol/modules/picture.h>")
 
   restrict(function()
-    loadFile(glPath .. 'common.fdl')
-    loadFile(glPath .. 'common-graphics.fdl')
+    loadFile(glPath .. 'common.tdl')
+    loadFile(glPath .. 'common-graphics.tdl')
   end)
 
   flags("ARC", { comment="Options for drawing arcs." },

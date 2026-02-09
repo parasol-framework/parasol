@@ -10,7 +10,7 @@ module({
 },
 function()
   restrict(function()
-    loadFile(glPath .. 'common.fdl')
+    loadFile(glPath .. 'common.tdl')
   end)
 
   flags("JOF", { comment="JIT behaviour options" },

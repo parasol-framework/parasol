@@ -3,7 +3,7 @@
 set (MOD xml)
 set (INC_MOD_XML TRUE PARENT_SCOPE)
 
-idl_gen ("${MOD}.fdl"
+idl_gen ("${MOD}.tdl"
    NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
    FILES "xml.cpp"

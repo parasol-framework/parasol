@@ -5,7 +5,7 @@ module({ name="Scintilla", copyright="Paul Manias © 2005-2026", version=1.0, ti
   "<parasol/modules/font.h>")
 
   restrict(function()
-    loadFile(glPath .. 'common-graphics.fdl')
+    loadFile(glPath .. 'common-graphics.tdl')
   end)
 
   constants("SCLEX", { type="int", comment="Scintilla Lexers.  These codes originate from the Scintilla library." }, {
