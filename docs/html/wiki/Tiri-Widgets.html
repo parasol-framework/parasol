@@ -8,10 +8,10 @@
 	   gtag('js', new Date());
       gtag('config', 'G-8254DG7MT6');</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Parasol Framework documentation, machine generated from source">
+<meta name="description" content="Kōtuku documentation, machine generated from source">
 <meta name="author" content="Paul Manias">
 <link rel="icon" href="/favicon.ico">
-<title>Parasol Wiki - Tiri Widgets</title>
+<title>Kōtuku Wiki</title>
 <link href="../css/bootstrap.min.css" rel="stylesheet">
 <link href="../css/module-template.css" rel="stylesheet">
 <link href="../css/github-markdown.css" rel="stylesheet">
@@ -20,7 +20,7 @@
 <body>
 <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
   <div class="container-fluid">
-    <div class="navbar-header"><a class="navbar-brand" href="../index.html">Parasol Framework</a></div>
+    <div class="navbar-header"><a class="navbar-brand" href="../index.html">Kōtuku Framework</a></div>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
@@ -29,7 +29,7 @@
         <li class="nav-item"><a class="nav-link" href="../gallery.html">Gallery</a></li>
         <li class="nav-item"><a class="nav-link" href="../modules/api.html">API</a></li>
         <li class="nav-item"><a class="nav-link" href="Home.html">Wiki</a></li>
-        <li class="nav-item"><a class="nav-link" href="https://github.com/parasol-framework/parasol">GitHub</a></li>
+        <li class="nav-item"><a class="nav-link" href="https://github.com/parasol-framework/kotuku">GitHub</a></li>
       </ul>
     </div>
   </div>
@@ -57,8 +57,8 @@
          <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#tm-collapse" aria-expanded="false">Technical Manuals</button>
          <div class="collapse" id="tm-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
-             <li class="api-ref"><a class="rounded" href="Parasol-Objects.html">Parasol Objects</a></li>
-             <li class="api-ref"><a class="rounded" href="Parasol-In-Depth.html">Parasol In Depth</a></li>
+             <li class="api-ref"><a class="rounded" href="Kotuku-Objects.html">Kōtuku Objects</a></li>
+             <li class="api-ref"><a class="rounded" href="Kotuku-In-Depth.html">Kōtuku In Depth</a></li>
              <li class="api-ref"><a class="rounded" href="Coding-With-AI.html">Coding With AI</a></li>
            </ul>
          </div></li>
@@ -88,7 +88,7 @@
          <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#tools-collapse" aria-expanded="false">Tools</button>
          <div class="collapse" id="tools-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
-              <li class="api-ref"><a class="rounded" href="Parasol-Cmd-Tool.html">Parasol Cmd Tool</a></li>
+              <li class="api-ref"><a class="rounded" href="Origo.html">Origo</a></li>
               <li class="api-ref"><a class="rounded" href="Unit-Testing.html">Flute / Unit Testing</a></li>
            </ul>
          </div></li>
@@ -255,8 +255,9 @@
 
 <div class="col-sm-9" style="max-width: 1200px;">
 <div class="docs-content" id="default-page">
+
 <h1>Tiri Widgets</h1>
-<p>Tiri&#39;s widget APIs are stored in the <code>scripts/gui</code> folder and installed as a standard feature of the Parasol Framework.</p>
+<p>Tiri&#39;s widget APIs are stored in the <code>scripts/gui</code> folder and installed as a standard feature of Kōtuku.</p>
 <p>To use an API listed in this guide, the script must make an appropriate <code>import</code> call for the interface. For example:</p>
 <p><code>import &#39;gui/toolbar&#39;</code></p>
 <p>Loading a widget API makes it available under the <code>gui</code> interface, using the same name as the API. For instance, <code>gui.toolbar()</code>. Unless specified otherwise, the standard method of instantiating a widget is to call the interface with the following template:</p>
@@ -1925,8 +1926,8 @@
 <h1 id="views">Views</h1>
 <p>There are currently two available interfaces for configuring views; <code>columnview</code> and <code>listview</code>. These are supported by a common library that ensures consistency in their interface design. This section declares the common functionality available for all views, and subsequent sections declare specific features for each type.</p>
 <p>Items in the view are stored as a list of tables. They can be set by declaring <code>items</code> on initialisation, or at any other time with the <code>addItems()</code> method. Here&#39;s a working example of an item list that could be used to identify entries in a filesystem folder:</p>
-<pre><code>{ { id=1, group=&#39;file&#39;, path=&#39;parasol:system/&#39;, name=&#39;document.txt&#39;, size=1232, dateCreated=&#39;2018-08-02T17:14&#39; },
-  { id=2, group=&#39;folder&#39;, path=&#39;parasol:system/&#39;, name=&#39;config&#39;, icon=&#39;category/name&#39; }
+<pre><code>{ { id=1, group=&#39;file&#39;, path=&#39;kotuku:system/&#39;, name=&#39;document.txt&#39;, size=1232, dateCreated=&#39;2018-08-02T17:14&#39; },
+  { id=2, group=&#39;folder&#39;, path=&#39;kotuku:system/&#39;, name=&#39;config&#39;, icon=&#39;category/name&#39; }
 }</code></pre>
 <p>The <code>id</code>, <code>group</code>, <code>name</code> and <code>icon</code> keys are standard. The rest are considered to be custom attributes defined by the client. This table describes the standard item attributes:</p>
 <table>

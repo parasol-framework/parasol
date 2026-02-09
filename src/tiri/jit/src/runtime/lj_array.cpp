@@ -11,9 +11,9 @@
 #include "lj_tab.h"
 
 #include <cstring>
-#include <parasol/main.h>
-#include <parasol/modules/tiri.h>
-#include <parasol/strings.hpp>
+#include <kotuku/main.h>
+#include <kotuku/modules/tiri.h>
+#include <kotuku/strings.hpp>
 #include "../../defs.h"
 #include "../../struct_def.h"
 
@@ -138,7 +138,7 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
             return arr;
          }
          else if ((Type IS AET::TABLE) or (Type IS AET::ARRAY)) {
-            // Table arrays not supported for caching (not used by the Parasol API)
+            // Table arrays not supported for caching (not used by the Kōtuku API)
             lj_err_callerv(L, ErrMsg::BADVAL);
             return nullptr;
          }

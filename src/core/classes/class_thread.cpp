@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -38,7 +38,7 @@ thread routine.
 #endif
 
 #include "../defs.h"
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 thread_local int8_t tlThreadCrashed;
 thread_local extThread *tlThreadRef;

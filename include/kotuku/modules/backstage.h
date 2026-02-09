@@ -4,9 +4,9 @@
 // Copyright: Paul Manias © 2025
 // Generator: idl-c
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #define MODVERSION_BACKSTAGE (1)
 
-#include <parasol/modules/network.h>
+#include <kotuku/modules/network.h>
 

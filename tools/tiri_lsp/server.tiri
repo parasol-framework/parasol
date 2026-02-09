@@ -59,7 +59,7 @@ IDE Integration:
    local rx_sdk_path = <{ regex.new([[(.+)CMakeLists\.txt]]) }>
 
 ----------------------------------------------------------------------------------------------------------------------
--- Resolve the location of the Parasol SDK and create an 'sdk:' volume.
+-- Resolve the location of the Kotuku SDK and create an 'sdk:' volume.
 
 function resolveSDKPath(Path)
    local sdk_path
@@ -87,7 +87,7 @@ function resolveSDKPath(Path)
          msg ..= path .. '\n'
       end
       print('Unable to find CMakeLists.txt after searching the following paths:\n' .. msg)
-      error('A path to the Parasol SDK could not be determined.')
+      error('A path to the Kotuku SDK could not be determined.')
    end
 
    mSys.SetVolume('sdk', sdk_path)

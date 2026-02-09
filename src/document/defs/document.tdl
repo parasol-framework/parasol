@@ -5,7 +5,7 @@ module({ name="Document", copyright="Paul Manias © 2005-2026", version=1.0, tim
     loadFile(glPath .. 'common-graphics.tdl')
   end)
 
-  c_include("<parasol/modules/display.h>", "<parasol/modules/xml.h>", "<parasol/modules/font.h>", "<parasol/modules/vector.h>")
+  c_include("<kotuku/modules/display.h>", "<kotuku/modules/xml.h>", "<kotuku/modules/font.h>", "<kotuku/modules/vector.h>")
 
   loadFile(glPath .. 'common.tdl')
 

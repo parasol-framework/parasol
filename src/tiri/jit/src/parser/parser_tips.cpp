@@ -11,12 +11,12 @@
 const char* category_name(TipCategory Cat)
 {
    switch (Cat) {
-      case TipCategory::TypeSafety:      return "type-safety";
-      case TipCategory::Performance:     return "performance";
-      case TipCategory::CodeQuality:     return "code-quality";
-      case TipCategory::BestPractice:    return "best-practice";
-      case TipCategory::Style:           return "style";
-      case TipCategory::ParasolSpecific: return "parasol";
+      case TipCategory::TypeSafety:     return "type-safety";
+      case TipCategory::Performance:    return "performance";
+      case TipCategory::CodeQuality:    return "code-quality";
+      case TipCategory::BestPractice:   return "best-practice";
+      case TipCategory::Style:          return "style";
+      case TipCategory::KotukuSpecific: return "kotuku";
    }
    return "unknown";
 }

@@ -1,5 +1,5 @@
 // Native array handling.
-// Copyright (C) 2024 Parasol Framework. See Copyright Notice in parasol.h
+// Copyright (C) 2025-2026 Paul Manias
 
 #pragma once
 

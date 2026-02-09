@@ -161,19 +161,19 @@ glBuiltins = {
       prototype = 'MAKESTRUCT(name, fields)'
    },
 
-   -- Parasol object creation
+   -- Kotuku object creation
    ['obj.new'] = {
-      comment = 'Creates a new Parasol object.',
+      comment = 'Creates a new Kotuku object.',
       prototype = 'obj.new(classname, [options])'
    },
    ['obj.find'] = {
-      comment = 'Finds an existing Parasol object by name.',
+      comment = 'Finds an existing Kotuku object by name.',
       prototype = 'obj.find(name)'
    },
 
    -- Module loading
    ['mod.load'] = {
-      comment = 'Loads a Parasol module.',
+      comment = 'Loads a Kotuku module.',
       prototype = 'mod.load(modname)'
    }
 }

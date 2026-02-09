@@ -41,11 +41,11 @@
 #include <imagehlp.h>
 
 #ifndef PLATFORM_CONFIG_H
-#include <parasol/config.h>
+#include <kotuku/config.h>
 #endif
 
 #include "windefs.h"
-#include <parasol/system/errors.h>
+#include <kotuku/system/errors.h>
 
 #define STD_TIMEOUT 1000
 
@@ -456,7 +456,7 @@ extern "C" ERR winInitialise(unsigned int *PathHash, BREAK_HANDLER BreakHandler)
 
    SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOOPENFILEERRORBOX); // SEM_NOGPFAULTERRORBOX
 
-   // Calculate a unique hash from the Core's DLL path.  This hash can then be used for telling which Parasol
+   // Calculate a unique hash from the Core's DLL path.  This hash can then be used for telling which Kōtuku
    // programs are using the same set of binaries.
 
    if (PathHash) {
@@ -506,7 +506,7 @@ extern "C" ERR winInitialise(unsigned int *PathHash, BREAK_HANDLER BreakHandler)
    wx.hInstance     = glInstance;
    wx.lpszClassName = glMsgClass;
    if (RegisterClassEx(&wx)) {
-      glMsgWindow = CreateWindowEx(0, glMsgClass, "Parasol",
+      glMsgWindow = CreateWindowEx(0, glMsgClass, "Kotuku",
          0, // WS flags
          0, 0, // Coordinates
          CW_USEDEFAULT, CW_USEDEFAULT,
@@ -833,8 +833,8 @@ extern "C" void winLowerPriority(void) noexcept
 
 extern "C" int winSetProcessPriority(int Priority) noexcept
 {
-   // Map Parasol priority values to Windows priority classes
-   // Parasol uses: negative = lower priority, positive = higher priority, 0 = normal
+   // Map Kōtuku priority values to Windows priority classes
+   // Kōtuku uses: negative = lower priority, positive = higher priority, 0 = normal
    DWORD priorityClass;
 
    if (Priority <= -20) priorityClass = IDLE_PRIORITY_CLASS;              // Lowest priority
@@ -852,11 +852,11 @@ extern "C" int winSetProcessPriority(int Priority) noexcept
 
 extern "C" int winGetProcessPriority(void) noexcept
 {
-   // Get current process priority class and map to Parasol priority values
+   // Get current process priority class and map to Kōtuku priority values
    const DWORD priorityClass = GetPriorityClass(GetCurrentProcess());
    if (priorityClass IS 0) return -1; // Error occurred
 
-   // Map Windows priority classes to Parasol values
+   // Map Windows priority classes to Kōtuku values
    switch (priorityClass) {
       case IDLE_PRIORITY_CLASS:         return -20;  // Lowest priority
       case BELOW_NORMAL_PRIORITY_CLASS: return -10;  // Below normal

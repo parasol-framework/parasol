@@ -8,10 +8,10 @@
 	   gtag('js', new Date());
       gtag('config', 'G-8254DG7MT6');</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Parasol Framework documentation, machine generated from source">
+<meta name="description" content="Kōtuku documentation, machine generated from source">
 <meta name="author" content="Paul Manias">
 <link rel="icon" href="/favicon.ico">
-<title>Parasol Wiki - Tiri Reference Manual</title>
+<title>Kōtuku Wiki</title>
 <link href="../css/bootstrap.min.css" rel="stylesheet">
 <link href="../css/module-template.css" rel="stylesheet">
 <link href="../css/github-markdown.css" rel="stylesheet">
@@ -20,7 +20,7 @@
 <body>
 <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
   <div class="container-fluid">
-    <div class="navbar-header"><a class="navbar-brand" href="../index.html">Parasol Framework</a></div>
+    <div class="navbar-header"><a class="navbar-brand" href="../index.html">Kōtuku Framework</a></div>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
@@ -29,7 +29,7 @@
         <li class="nav-item"><a class="nav-link" href="../gallery.html">Gallery</a></li>
         <li class="nav-item"><a class="nav-link" href="../modules/api.html">API</a></li>
         <li class="nav-item"><a class="nav-link" href="Home.html">Wiki</a></li>
-        <li class="nav-item"><a class="nav-link" href="https://github.com/parasol-framework/parasol">GitHub</a></li>
+        <li class="nav-item"><a class="nav-link" href="https://github.com/parasol-framework/kotuku">GitHub</a></li>
       </ul>
     </div>
   </div>
@@ -57,8 +57,8 @@
          <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#tm-collapse" aria-expanded="false">Technical Manuals</button>
          <div class="collapse" id="tm-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
-             <li class="api-ref"><a class="rounded" href="Parasol-Objects.html">Parasol Objects</a></li>
-             <li class="api-ref"><a class="rounded" href="Parasol-In-Depth.html">Parasol In Depth</a></li>
+             <li class="api-ref"><a class="rounded" href="Kotuku-Objects.html">Kōtuku Objects</a></li>
+             <li class="api-ref"><a class="rounded" href="Kotuku-In-Depth.html">Kōtuku In Depth</a></li>
              <li class="api-ref"><a class="rounded" href="Coding-With-AI.html">Coding With AI</a></li>
            </ul>
          </div></li>
@@ -88,7 +88,7 @@
          <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#tools-collapse" aria-expanded="false">Tools</button>
          <div class="collapse" id="tools-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
-              <li class="api-ref"><a class="rounded" href="Parasol-Cmd-Tool.html">Parasol Cmd Tool</a></li>
+              <li class="api-ref"><a class="rounded" href="Origo.html">Origo</a></li>
               <li class="api-ref"><a class="rounded" href="Unit-Testing.html">Flute / Unit Testing</a></li>
            </ul>
          </div></li>
@@ -255,10 +255,11 @@
 
 <div class="col-sm-9" style="max-width: 1200px;">
 <div class="docs-content" id="default-page">
+
 <h1>Tiri Reference Manual</h1>
 <h2 id="introduction">Introduction</h2>
-<p>Tiri is a <a href="https://lua.org">Lua-based</a> scripting language built on top of <a href="https://luajit.org">LuaJIT</a>. Lua was chosen as our preferred programming language due to its extensive popularity amongst game developers, a testament to its low overhead, speed and lightweight processing when compared to common scripting languages. We have heavily customised our Lua implementation for full integration with the Parasol Framework, as well as extending it with many new language features that are often requested by Lua developers. This approach is known as a &#39;hard fork&#39;, meaning we do not maintain compatibility with Lua as a language.</p>
-<p>Tiri is fully interoperable with Parasol&#39;s C++ APIs due to a requirement that all interfaces are fully described. You can therefore read our online API documentation with confidence that the interfaces are universal, irrespective of language.</p>
+<p>Tiri is a <a href="https://lua.org">Lua-based</a> scripting language built on top of <a href="https://luajit.org">LuaJIT</a>. Lua was chosen as our preferred programming language due to its extensive popularity amongst game developers, a testament to its low overhead, speed and lightweight processing when compared to common scripting languages. We have heavily customised our Lua implementation for full integration with Kōtuku, as well as extending it with many new language features that are often requested by Lua developers. This approach is known as a &#39;hard fork&#39;, meaning we do not maintain compatibility with Lua as a language.</p>
+<p>Tiri is fully interoperable with Kōtuku&#39;s C++ APIs due to a requirement that all interfaces are fully described. You can therefore read our online API documentation with confidence that the interfaces are universal, irrespective of language.</p>
 <p>This manual expands on the information in the existing <a href="http://www.lua.org">Lua Reference Manual</a>, and covers features that are exclusive to Tiri. The official Lua 5.1 Reference Manual is required reading if you are unfamiliar with the language, and a working knowledge of Lua is assumed from this point onward.</p>
 <h3 id="goals">Goals</h3>
 <p>Tiri was designed with the following goals in mind:</p>
@@ -266,7 +267,7 @@
 <li><strong>Laziness</strong>: We want developers to be able to write code quickly and with minimal boilerplate. For instance, our type-inference-by-default approach allows variables to type-cast without explicit declarations. Features like safe navigation and short-hand operators are available to reduce verbosity.</li>
 <li><strong>Simplicity</strong>: The language should be easy to learn and understand, with a minimal set of core concepts. Operator tokens and keywords have been carefully chosen to maximise readability and keep the parsing process simplified.</li>
 <li><strong>Intuitiveness</strong>: The syntax and semantics should be logical and consistent. Lua features that weren&#39;t aligned with our changes have been removed.</li>
-<li><strong>Interoperability</strong>: It must work seamlessly with existing C++ APIs and libraries to leverage the power of the Parasol Framework.</li>
+<li><strong>Interoperability</strong>: It must work seamlessly with existing C++ APIs and libraries to leverage the power of Kōtuku.</li>
 <li><strong>Performance</strong>: Many of our changes to the LuaJIT base code have been made to maximise the efficiency of code produced by the compiler and JIT recorder. Some language features like the introduction of arrays allow for faster processing of sequential data. The new type system enables more optimised code paths to be generated in conjunction with the added type safety guarantees. Some of Tiri&#39;s best features are under the hood and out of sight - but they can be felt in day to day usage and are clear in performance comparisons to other scripting languages.</li>
 </ul>
 <h2 id="table-of-contents">Table of Contents</h2>
@@ -411,7 +412,7 @@
 <li><a href="#credits">Credits</a></li>
 </ul>
 <h2 id="resources">Resources</h2>
-<p>For more information on the usage of available classes and modules, please refer to the Parasol API at <a href="https://www.parasol.ws"><span>www.parasol.ws</span></a>.</p>
+<p>For more information on the usage of available classes and modules, please refer to the Kōtuku API at <a href="https://www.kotuku.dev"><span>www.kotuku.dev</span></a>.</p>
 <p>For general information on the syntax provided by Lua, please read the following online manuals:</p>
 <ul>
 <li><a href="http://www.lua.org/manual/"><span>www.lua.org/manual/</span></a></li>
@@ -432,7 +433,7 @@
 <h2 id="lua-extensions">Lua Extensions</h2>
 <p>A number of extensions have been added (and some features removed) to Lua 5.2 in order to add value to the Tiri language. This section examines the major changes in regards to the published Lua Reference Manual.</p>
 <h3 id="breaking-changes">Breaking Changes</h3>
-<p>The Package and OS libraries normally found in Lua are removed as they duplicate features already found in Parasol&#39;s Script, File and Time classes. The introspective debug library is also removed for the purpose of reducing size.</p>
+<p>The Package and OS libraries normally found in Lua are removed as they duplicate features already found in Kōtuku&#39;s Script, File and Time classes. The introspective debug library is also removed for the purpose of reducing size.</p>
 <p>The following Lua/LuaJIT features are unsupported or modified:</p>
 <ul>
 <li><code>~=</code> not equal operator; replaced with <code>!=</code></li>
@@ -855,7 +856,7 @@ Annotations follow the parameter name after a colon and constrain the expected a
 </tr>
 <tr>
 <td><code>obj</code></td>
-<td>Parasol objects (userdata)</td>
+<td>Kōtuku objects (userdata)</td>
 </tr>
 </tbody>
 </table>
@@ -1319,7 +1320,7 @@ type inference cannot determine the return type before analysing the function bo
 <p>Exceptions come in two flavours: Error codes (16-bit integer constants) and string messages.</p>
 <ul>
 <li>Error messages originate from <code>error()</code> or Tiri runtime errors. They have a default error code of <code>ERR_Exception</code>.</li>
-<li>Error codes are returned by API calls and can be triggered by calling <code>raise</code> and <code>check</code>. Preset error codes are integer constants following the <code>ERR_</code> naming convention, e.g. <code>ERR_Okay</code>, <code>ERR_Failed</code> and <code>ERR_Args</code>. The full list of error codes are listed in the Parasol Appendix.</li>
+<li>Error codes are returned by API calls and can be triggered by calling <code>raise</code> and <code>check</code>. Preset error codes are integer constants following the <code>ERR_</code> naming convention, e.g. <code>ERR_Okay</code>, <code>ERR_Failed</code> and <code>ERR_Args</code>. The full list of error codes are listed in the Kōtuku Appendix.</li>
 </ul>
 <p>A key benefit to the use of error codes is that they can be filtered in exception handlers, allowing for specific handling of known error conditions. For example:</p>
 <div class="sourceCode" id="cb59"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a><span class="va">try</span></span>
@@ -1467,7 +1468,7 @@ type inference cannot determine the return type before analysing the function bo
 <p>The following <code>ERR</code> codes will not raise an exception: <code>Okay</code>, <code>False</code>, <code>LimitedSuccess</code>, <code>Cancelled</code>, <code>NothingDone</code>, <code>Continue</code>, <code>Skip</code>, <code>Retry</code>, <code>DirEmpty</code></p>
 <p><code>raise</code> will raise an exception immediately from an <code>ERR</code> code; for example <code>raise ERR_Failed</code>. Unlike <code>check</code>, all codes have coverage, including minor codes. The error code will also be propagated to the Script object&#39;s <code>Error</code> field for reporting back to the C/C++ client program.</p>
 <p>Raise also accepts an optional second parameter for a custom error message, e.g. <code>raise ERR_Failed, &#39;Operation failed due to X&#39;</code>.</p>
-<p>The raise and check keywords will work for custom error codes defined by the client, the only requirement is that they are integer constants. Use codes in the range 8000 to 10000 to avoid conflicts with Parasol system codes.</p>
+<p>The raise and check keywords will work for custom error codes defined by the client, the only requirement is that they are integer constants. Use codes in the range 8000 to 10000 to avoid conflicts with Kōtuku system codes.</p>
 <h4 id="error">error()</h4>
 <p><code>error()</code> is the standard function for raising customised exceptions with the generic error code <code>ERR_Exception</code>. It should be used when raising an exception with a custom error message, e.g. <code>error(&#39;I have failed.&#39;)</code>.</p>
 <p>Passing an exception table to <code>error()</code> causes it to rethrow the exception to the next capture block.</p>
@@ -2214,7 +2215,7 @@ end</code></pre>
 ]])</code></pre>
 <hr>
 <h2 id="module-interface">Module Interface</h2>
-<p>The module interface provides a means for Tiri programs to communicate with Parasol&#39;s APIs. They are loaded using the <code>mod.load()</code> function, for instance:</p>
+<p>The module interface provides a means for Tiri programs to communicate with Kōtuku&#39;s APIs. They are loaded using the <code>mod.load()</code> function, for instance:</p>
 <p><code>mGfx = mod.load(&#39;display&#39;)</code></p>
 <p>Calling <code>mod.load()</code> returns the function table for the requested module, allowing calls to be made to its functions. For instance:</p>
 <p><code>err, x, y = mGfx.getCursorPos()</code></p>
@@ -2295,7 +2296,7 @@ end</code></pre>
 <h4 id="objectinit">object.init()</h4>
 <p>Initialises the object if not already done so with <code>obj.new()</code>. Useful if you need to set field values after creation but before initialisation. Does not throw in normal operation, instead an <code>ERR</code> code is returned to indicate success or failure.</p>
 <h3 id="object-relationships">Object Relationships</h3>
-<p>Parasol enforces OO relationships so that an object will always have a parent, and consequently it may have siblings and its own children. By default, all objects created by <code>obj.new()</code> are owned by the Tiri script (which exists as a runtime object).</p>
+<p>Kōtuku enforces OO relationships so that an object will always have a parent, and consequently it may have siblings and its own children. By default, all objects created by <code>obj.new()</code> are owned by the Tiri script (which exists as a runtime object).</p>
 <p>Sometimes a new object will need to be declared as the child of an existing object. Imagine for instance, that we have a window open and we want to draw a rectangle to it. This can be achieved with something like:</p>
 <div class="sourceCode" id="cb135"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb135-1"><a href="#cb135-1" aria-hidden="true" tabindex="-1"></a><span class="va">viewport</span> <span class="op">=</span> <span class="va">glWindow</span><span class="op">:</span>clientViewport<span class="op">({</span> <span class="va">aspectRatio</span> <span class="op">=</span> <span class="cn">ARF_MEET</span> <span class="op">})</span></span>
 <span id="cb135-2"><a href="#cb135-2" aria-hidden="true" tabindex="-1"></a><span class="va">viewport</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;VectorRectangle&#39;</span><span class="op">,</span> <span class="op">{</span> <span class="va">x</span><span class="op">=</span><span class="dv">0</span><span class="op">,</span> <span class="va">y</span><span class="op">=</span><span class="dv">0</span><span class="op">,</span> <span class="va">width</span><span class="op">=</span><span class="st">&#39;100%&#39;</span><span class="op">,</span> <span class="va">height</span><span class="op">=</span><span class="st">&#39;100%&#39;</span><span class="op">,</span> <span class="va">fill</span><span class="op">=</span><span class="st">&#39;rgb(255,0,0)&#39;</span> <span class="op">})</span></span></code></pre></div>
@@ -2310,13 +2311,13 @@ end</code></pre>
 <span id="cb136-2"><a href="#cb136-2" aria-hidden="true" tabindex="-1"></a><span class="va">winsurface</span> <span class="op">=</span> <span class="va">obj</span><span class="op">.</span>find<span class="op">(</span><span class="va">window</span><span class="op">.</span><span class="va">surface</span><span class="op">)</span></span></code></pre></div>
 <p>If the object is not found, <code>nil</code> is returned. If multiple objects exist with the same name, the most recently created object is returned first.</p>
 <h4 id="with-statement">With Statement</h4>
-<p>The <code>with</code> statement locks one or more Parasol objects for the duration of a block, automatically unlocking them when the scope exits through any path (normal exit, <code>break</code>, <code>continue</code>, <code>return</code>, or exception unwinding).</p>
+<p>The <code>with</code> statement locks one or more Kōtuku objects for the duration of a block, automatically unlocking them when the scope exits through any path (normal exit, <code>break</code>, <code>continue</code>, <code>return</code>, or exception unwinding).</p>
 <div class="sourceCode" id="cb137"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb137-1"><a href="#cb137-1" aria-hidden="true" tabindex="-1"></a><span class="va">with</span> <span class="va">object</span> <span class="cf">do</span></span>
 <span id="cb137-2"><a href="#cb137-2" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- object is locked here</span></span>
 <span id="cb137-3"><a href="#cb137-3" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span>
 <span id="cb137-4"><a href="#cb137-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- object is automatically unlocked</span></span></code></pre></div>
 <p>Variables declared inside the <code>with</code> block are not visible outside it, following the same rules as <code>do ... end</code> blocks.</p>
-<p>Passing a non-object value (such as a table, string, or number) to <code>with</code> will raise a runtime error. Use <code>with</code> exclusively with Parasol objects.</p>
+<p>Passing a non-object value (such as a table, string, or number) to <code>with</code> will raise a runtime error. Use <code>with</code> exclusively with Kōtuku objects.</p>
 <p><strong>Multiple objects:</strong></p>
 <div class="sourceCode" id="cb138"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb138-1"><a href="#cb138-1" aria-hidden="true" tabindex="-1"></a><span class="va">with</span> <span class="va">obj1</span><span class="op">,</span> <span class="va">obj2</span><span class="op">,</span> <span class="va">obj3</span> <span class="cf">do</span></span>
 <span id="cb138-2"><a href="#cb138-2" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- all three objects are locked</span></span>
@@ -2373,7 +2374,7 @@ end</code></pre>
 <p><code>name = object.get(&#39;$flags&#39;)</code></p>
 <hr>
 <h2 id="action--method-subscriptions">Action &amp; Method Subscriptions</h2>
-<p>Parasol allows clients to monitor the calls made to an object by subscribing to its actions and methods. One commonly used strategy involves subscribing to the <code>free()</code> action of an object so that the client is notified of object termination.</p>
+<p>Kōtuku allows clients to monitor the calls made to an object by subscribing to its actions and methods. One commonly used strategy involves subscribing to the <code>free()</code> action of an object so that the client is notified of object termination.</p>
 <p>Subscription is enabled via the <code>subscribe()</code> method. The following example illustrates the creation of an HTTP object that performs a download and calls <code>my_function()</code> on completion of the download process. Note that <code>Args</code> is a table that contains named arguments for the action that was subscribed to. The <code>CustomRef</code> is an optional value that will be passed to the subscriber.</p>
 <div class="sourceCode" id="cb143"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb143-1"><a href="#cb143-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> my_function<span class="op">(</span><span class="cn">UID</span><span class="op">,</span> <span class="va">Args</span><span class="op">,</span> <span class="va">CustomRef</span><span class="op">)</span></span>
 <span id="cb143-2"><a href="#cb143-2" aria-hidden="true" tabindex="-1"></a>   <span class="fu">print</span><span class="op">(</span><span class="st">&#39;Download complete.&#39;</span><span class="op">)</span></span>
@@ -2558,7 +2559,7 @@ end</code></pre>
 <p>The Lua-based strings interface is extended with a number of useful functions that are commonly required in programming. The following functions are included:</p>
 <h3 id="stringalloc">string.alloc()</h3>
 <p><code>str = string.alloc(Size)</code></p>
-<p>Create a string of a given size in bytes. This feature is intended for creating sized data buffers that can be passed to Parasol interfaces.</p>
+<p>Create a string of a given size in bytes. This feature is intended for creating sized data buffers that can be passed to Kōtuku interfaces.</p>
 <h3 id="stringcap">string.cap()</h3>
 <p><code>str:cap()</code></p>
 <p>Recreate a string with the first character in upper case.</p>
@@ -2650,11 +2651,11 @@ processing.sleep()</code></pre>
 <p>The <code>Error</code> parameter in the callback reflects the <code>ERR</code> code returned by the action - but bear in mind the possibility that if thread preparation fails, the callback will never be executed and an exception will be thrown instead.</p>
 <hr>
 <h2 id="structure-interface">Structure Interface</h2>
-<p>The structure interface is provided so that Tiri can use C/C++ structures declared in the Parasol API. You will find that many class and module API&#39;s use structures for returning condensed information.</p>
+<p>The structure interface is provided so that Tiri can use C/C++ structures declared in the Kōtuku API. You will find that many class and module API&#39;s use structures for returning condensed information.</p>
 <h3 id="creating-a-structure">Creating a Structure</h3>
 <p>Structures are created using the struct interface&#39;s <code>new()</code> method. The prototype is as follows:</p>
 <p><code>newstruct = struct.new(struct_def, [address])</code></p>
-<p>The struct_def is a reference to a named structure definition declared in the Parasol API, or one returned from <code>MAKESTRUCT()</code>. The address is an optional setting for linking a struct to an existing pointer rather than allocating an empty memory block for the structure. Example:</p>
+<p>The struct_def is a reference to a named structure definition declared in the Kōtuku API, or one returned from <code>MAKESTRUCT()</code>. The address is an optional setting for linking a struct to an existing pointer rather than allocating an empty memory block for the structure. Example:</p>
 <p><code>xmltag = struct.new(&#39;XMLTag&#39;, address)</code></p>
 <p>It is possible to manually change the address pointer that is assigned to a struct - this saves on having to create a struct object for every address to be processed. Example:</p>
 <p><code>oldaddress = xmltag.ptr(NewAddress)</code></p>
@@ -3868,7 +3869,7 @@ converted to their string representation automatically.</p>
 <h2 id="event-subsystem">Event Subsystem</h2>
 <p>Tiri programs can receive system-wide events whenever they are broadcast. Two functions are provided for the purpose of event management. The first is subscribeEvent(), which will connect a Tiri function to a specific event:</p>
 <p><code>error, handle = subscribeEvent(eventname, function)</code></p>
-<p>The <code>eventname</code> is a string that must follow the format <code>group.subgroup.name</code>, for example <code>system.task.created</code>. Valid event strings are described in full detail in the Events Manual of the Parasol SDK. A single asterisk wildcard is allowed in the subgroup and/or name if listening to multiple events is desirable, for example <code>system.*.*</code> would listen for all system events. The referenced function will receive two arguments if the event is signalled - <code>EventID</code> and <code>Args</code>. The <code>Args</code> parameter is a table containing named parameters - if the event does not include any parameters then the table will be empty.</p>
+<p>The <code>eventname</code> is a string that must follow the format <code>group.subgroup.name</code>, for example <code>system.task.created</code>. Valid event strings are described in full detail in the Events Manual of the Kōtuku SDK. A single asterisk wildcard is allowed in the subgroup and/or name if listening to multiple events is desirable, for example <code>system.*.*</code> would listen for all system events. The referenced function will receive two arguments if the event is signalled - <code>EventID</code> and <code>Args</code>. The <code>Args</code> parameter is a table containing named parameters - if the event does not include any parameters then the table will be empty.</p>
 <p>To unsubscribe from an event, call unsubscribeEvent() with the event handle that was returned by the initial subscribeEvent() call:</p>
 <p><code>unsubscribeEvent(handle)</code></p>
 <hr>

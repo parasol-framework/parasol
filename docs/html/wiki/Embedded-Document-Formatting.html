@@ -8,10 +8,10 @@
 	   gtag('js', new Date());
       gtag('config', 'G-8254DG7MT6');</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Parasol Framework documentation, machine generated from source">
+<meta name="description" content="Kōtuku documentation, machine generated from source">
 <meta name="author" content="Paul Manias">
 <link rel="icon" href="/favicon.ico">
-<title>Parasol Wiki - Embedded Document Formatting</title>
+<title>Kōtuku Wiki</title>
 <link href="../css/bootstrap.min.css" rel="stylesheet">
 <link href="../css/module-template.css" rel="stylesheet">
 <link href="../css/github-markdown.css" rel="stylesheet">
@@ -20,7 +20,7 @@
 <body>
 <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
   <div class="container-fluid">
-    <div class="navbar-header"><a class="navbar-brand" href="../index.html">Parasol Framework</a></div>
+    <div class="navbar-header"><a class="navbar-brand" href="../index.html">Kōtuku Framework</a></div>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
@@ -29,7 +29,7 @@
         <li class="nav-item"><a class="nav-link" href="../gallery.html">Gallery</a></li>
         <li class="nav-item"><a class="nav-link" href="../modules/api.html">API</a></li>
         <li class="nav-item"><a class="nav-link" href="Home.html">Wiki</a></li>
-        <li class="nav-item"><a class="nav-link" href="https://github.com/parasol-framework/parasol">GitHub</a></li>
+        <li class="nav-item"><a class="nav-link" href="https://github.com/parasol-framework/kotuku">GitHub</a></li>
       </ul>
     </div>
   </div>
@@ -57,8 +57,8 @@
          <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#tm-collapse" aria-expanded="false">Technical Manuals</button>
          <div class="collapse" id="tm-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
-             <li class="api-ref"><a class="rounded" href="Parasol-Objects.html">Parasol Objects</a></li>
-             <li class="api-ref"><a class="rounded" href="Parasol-In-Depth.html">Parasol In Depth</a></li>
+             <li class="api-ref"><a class="rounded" href="Kotuku-Objects.html">Kōtuku Objects</a></li>
+             <li class="api-ref"><a class="rounded" href="Kotuku-In-Depth.html">Kōtuku In Depth</a></li>
              <li class="api-ref"><a class="rounded" href="Coding-With-AI.html">Coding With AI</a></li>
            </ul>
          </div></li>
@@ -88,7 +88,7 @@
          <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#tools-collapse" aria-expanded="false">Tools</button>
          <div class="collapse" id="tools-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
-              <li class="api-ref"><a class="rounded" href="Parasol-Cmd-Tool.html">Parasol Cmd Tool</a></li>
+              <li class="api-ref"><a class="rounded" href="Origo.html">Origo</a></li>
               <li class="api-ref"><a class="rounded" href="Unit-Testing.html">Flute / Unit Testing</a></li>
            </ul>
          </div></li>
@@ -255,8 +255,9 @@
 
 <div class="col-sm-9" style="max-width: 1200px;">
 <div class="docs-content" id="default-page">
+
 <h1>Embedded Document Formatting</h1>
-<p>This guide describes the formatting that we use to document Parasol&#39;s class and module functionality. By following the standard, it is possible to use our tools to not only produce documentation, but the header files that will allow languages to utilise your work.</p>
+<p>This guide describes the formatting that we use to document Kōtuku&#39;s class and module functionality. By following the standard, it is possible to use our tools to not only produce documentation, but the header files that will allow languages to utilise your work.</p>
 <p>A benefit of our approach is that you will be able to intersperse documentation throughout your code, targeting the areas where it is needed. It is not an issue if your code and documentation is split across multiple source files. The parsing tools can read everything from one folder if necessary.</p>
 <p>Documentation can be written for a class-based API or a module-based API. The tools will not accept a mixture of both in one file, nor can two or more of either type be processed in one session.</p>
 <p>The type of documentation that you are writing is determined by the first &#39;mark&#39;, which must be either a <code>-MODULE-</code> or <code>-CLASS-</code> mark. This is followed by the API&#39;s name and a short description. The full introduction to the API can then follow as a series of paragraphs.</p>
@@ -546,7 +547,7 @@ e.g. <code>~Core.AllocMemory()</code>.</p>
 <p>Bullet points can be invoked if the list <code>type</code> is set to <code>bullet</code>.</p>
 <hr>
 <h1 id="document-processing-tools">Document Processing Tools</h1>
-<p>The primary tool that we use to produce user documentation is bundled with Parasol as <code>idl-doc.tiri</code> and can be found in the <code>scripts\dev\idl\</code> folder.</p>
+<p>The primary tool that we use to produce user documentation is bundled with Kōtuku as <code>idl-doc.tiri</code> and can be found in the <code>scripts\dev\idl\</code> folder.</p>
 <p>Despite it being written as a script, idl-doc is not a stand-alone tool and is instead implemented as an extension of <code>idl-c.tiri</code>. This is because the generation of fully accurate documentation requires inspection of the module&#39;s TDL file, as well as the compiled code.</p>
 <p>For generating your documentation, please refer to both idl-c and the TDL Reference Manual.</p>
 </div></div></div></div>

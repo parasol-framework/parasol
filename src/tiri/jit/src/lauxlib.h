@@ -6,7 +6,7 @@
 
 #include <cstddef>
 #include <cstdio>
-#include <parasol/system/errors.h>
+#include <kotuku/system/errors.h>
 #include "lua.h"
 #include "lj_obj.h"
 

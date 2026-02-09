@@ -1,7 +1,7 @@
 ----------------------------------------------------------------------------------------------------------------------
 -- Documentation Cache Builder
 --
--- Builds an index of Parasol API documentation from XML files.
+-- Builds an index of Kotuku API documentation from XML files.
 -- Stores top-level info (names, comments, prototypes) plus byte offsets for on-demand detail retrieval.
 --
 -- Compact string format uses \0 as field separator:

@@ -1,6 +1,6 @@
 # XQuery Module - AI Agent Guide
 
-This file provides comprehensive information about the Parasol XQuery module for AI agents working with the codebase.
+This file provides comprehensive information about the Kōtuku XQuery module for AI agents working with the codebase.
 
 ## Overview
 
@@ -124,7 +124,7 @@ The module uses precompiled headers and unity builds for optimised compilation p
 
 The module provides an `XQuery` class for direct XQuery evaluation without requiring an XML document:
 
-**Include:** `<parasol/modules/xquery.h>`
+**Include:** `<kotuku/modules/xquery.h>`
 
 **Key Methods:**
 - `Evaluate(Expression, Result)` - Compile and evaluate XQuery expression, returning typed result
@@ -146,7 +146,7 @@ This class is particularly useful for:
 
 Represents the result of XQuery expression evaluation, supporting multiple value types.
 
-**Include:** `<parasol/modules/xml.h>` (shared type)
+**Include:** `<kotuku/modules/xml.h>` (shared type)
 
 ```cpp
 struct XPathValue {
@@ -170,7 +170,7 @@ struct XPathValue {
 
 Describes the type of nodes in the XQuery Abstract Syntax Tree.
 
-**Include:** `<parasol/modules/xquery.h>`
+**Include:** `<kotuku/modules/xquery.h>`
 
 Key node types include:
 - `LOCATION_PATH`, `STEP`, `NODE_TEST`, `PREDICATE`, `ROOT`
@@ -185,7 +185,7 @@ Key node types include:
 
 Flags indicating the features of a compiled XQuery expression.
 
-**Include:** `<parasol/modules/xquery.h>`
+**Include:** `<kotuku/modules/xquery.h>`
 
 - `XQF::XPATH` - The expression is an XPath location string
 - `XQF::HAS_PROLOG` - The XQuery declares a prolog
@@ -204,7 +204,7 @@ Flags indicating the features of a compiled XQuery expression.
 
 Result flags for the `InspectFunctions()` method controlling which metadata is returned.
 
-**Include:** `<parasol/modules/xquery.h>`
+**Include:** `<kotuku/modules/xquery.h>`
 
 - `XIF::AST` - Include the compiled function body in the inspection result
 - `XIF::NAME` - Include function name in the inspection result
@@ -258,7 +258,7 @@ Complex predicate expressions with full boolean logic:
 **Comparison Predicates:**
 - `[@price < 10]` - Numeric comparison
 - `[@category='fiction']` - String equality
-- `[@*='value']` - Any attribute matching (Parasol extension)
+- `[@*='value']` - Any attribute matching (Kōtuku extension)
 
 **Boolean Predicates:**
 - `[not(@deprecated)]` - Negation
@@ -266,7 +266,7 @@ Complex predicate expressions with full boolean logic:
 - `[@a or @b]` - Logical OR
 
 **Content Matching:**
-- `[=pattern]` - Match on text content (Parasol extension)
+- `[=pattern]` - Match on text content (Kōtuku extension)
 
 ## XQuery Language Support
 
@@ -762,7 +762,7 @@ The `modules/` subdirectory contains XQuery library modules used for testing mod
 
 **Individual Test:**
 ```bash
-cd src/xquery/tests && ../../../build/agents-install/origo.exe ../../../tools/flute.tiri file=E:/parasol-claude/src/xquery/tests/test_core.tiri --gfx-driver=headless --log-warning
+cd src/xquery/tests && ../../../build/agents-install/origo.exe ../../../tools/flute.tiri file=/[path]/src/xquery/tests/test_core.tiri --log-warning
 ```
 
 **All XQuery Tests via CMake:**
@@ -833,8 +833,8 @@ This dual testing approach ensures comprehensive coverage at both the internal i
 
 ```cpp
 // C++ example
-#include <parasol/modules/xml.h>
-#include <parasol/modules/xquery.h>
+#include <kotuku/modules/xml.h>
+#include <kotuku/modules/xquery.h>
 
 if (auto xml = objXML::create { fl::Path("document.xml") }; xml.ok()) {
    XPathParseResult *query;
@@ -1031,6 +1031,6 @@ For developers modifying or extending the XQuery evaluator, see `src/xquery/eval
 - **XQuery Specification**: W3C XQuery 1.0 Recommendation
 - **API Reference**: See `docs/xml/modules/xquery.xml` for complete API documentation
 
-This guide provides the essential information needed for AI agents to work effectively with the Parasol XQuery module, covering architecture, language support, function library, and integration patterns.
+This guide provides the essential information needed for AI agents to work effectively with the Kōtuku XQuery module, covering architecture, language support, function library, and integration patterns.
 
 Last Updated: 2025-11-16

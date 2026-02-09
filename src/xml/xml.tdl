@@ -1,7 +1,7 @@
 --$TIRI:Include
 
 module({ name="XML", src="xml.cpp", copyright="Paul Manias © 2001-2026", version=1.0, timestamp=20240611 }, function()
-  cpp_include("<functional>", "<memory>", "<sstream>", "<parasol/strings.hpp>")
+  cpp_include("<functional>", "<memory>", "<sstream>", "<kotuku/strings.hpp>")
 
   loadFile('constants.tdl')
 

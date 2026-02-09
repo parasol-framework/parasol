@@ -2,8 +2,8 @@
 #define PRV_CORE_DATA TRUE
 
 #include "defs.h"
-#include <parasol/main.h>
-#include <parasol/modules/core.h>
+#include <kotuku/main.h>
+#include <kotuku/modules/core.h>
 
 #ifdef __unix__
 // In Unix/Linux builds it is assumed that the install location is static.  Dynamic loading is enabled
@@ -12,10 +12,10 @@
       #define _ROOT_PATH /usr/local/
    #endif
    #ifndef _SYSTEM_PATH
-      #define _SYSTEM_PATH /usr/local/share/parasol/
+      #define _SYSTEM_PATH /usr/local/share/kotuku/
    #endif
    #ifndef _MODULE_PATH
-      #define _MODULE_PATH /usr/local/lib/parasol/
+      #define _MODULE_PATH /usr/local/lib/kotuku/
    #endif
 #else
 // In Windows, path information is read from the registry.  If there are no registry entries, the system
@@ -37,7 +37,7 @@ std::string glModulePath = "" _MODULE_PATH ""; // NB: This path will be updated 
 
 std::string glDisplayDriver;
 
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
 CSTRING glClassBinPath = "system:config/classes.bin";
 #endif
 objMetaClass *glRootModuleClass  = 0;

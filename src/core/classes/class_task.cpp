@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -54,7 +54,7 @@ The task object that represents the active process can be acquired from ~Current
 #endif
 
 #include "../defs.h"
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 // Buffer size constants
 static constexpr size_t TASK_STDIN_BUFFER_SIZE = 4096;
@@ -1176,7 +1176,7 @@ cases, the system's environment variables are queried):
 \HKEY_USERS\
 </pre>
 
-Here is a valid example for reading the 'Parasol' key value `\HKEY_CURRENT_USER\Software\Parasol`
+Here is a valid example for reading the 'Kotuku' key value `\HKEY_CURRENT_USER\Software\Kotuku`
 
 Caution: If your programming language uses backslash as an escape character (true for Tiri developers), remember to
 use double-backslashes as the key value separator in your Name string.
@@ -1529,7 +1529,7 @@ static ERR TASK_SetEnv(extTask *Self, struct task::SetEnv *Args)
 
       for (ki=0; ki < std::ssize(keys); ki++) {
          if (startswith(keys[ki].HKey, Args->Name)) {
-            CSTRING str = Args->Name + strlen(keys[ki].HKey); // str = Parasol\Something
+            CSTRING str = Args->Name + strlen(keys[ki].HKey); // str = Kotuku\Something
 
             for (len=strlen(str); (len > 0) and (str[len] != '\\'); len--);
 
@@ -1642,7 +1642,7 @@ Actions: Used to gain direct access to a task's actions.
 
 This field provides direct access to the actions of a task, and is intended for use with the active task object
 returned from ~CurrentTask().  Hooking into the action table allows the running executable to 'blend-in' with
-Parasol's object oriented design.
+Kotuku's object oriented design.
 
 The Actions field points to a lookup table of !ActionEntry items.  Hooking into an action involves writing its `AC`
 index in the table with a pointer to the action routine.  For example:

@@ -16,11 +16,11 @@ target_sources (${MOD} PRIVATE "${MOD}.cpp")
 
 # Enable precompiled headers for the document module to speed up compilation
 target_precompile_headers(${MOD} PRIVATE
-   <parasol/main.h>
-   <parasol/modules/xml.h>
-   <parasol/modules/document.h>
-   <parasol/modules/font.h>
-   <parasol/modules/display.h>
-   <parasol/modules/svg.h>)
+   <kotuku/main.h>
+   <kotuku/modules/xml.h>
+   <kotuku/modules/document.h>
+   <kotuku/modules/font.h>
+   <kotuku/modules/display.h>
+   <kotuku/modules/svg.h>)
 
 flute_test (doc_output "tests/test_doc.tiri")

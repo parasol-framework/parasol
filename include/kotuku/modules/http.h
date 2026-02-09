@@ -4,11 +4,11 @@
 // Copyright: Paul Manias © 2005-2026
 // Generator: idl-c
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #define MODVERSION_HTTP (1)
 
-#include <parasol/modules/network.h>
+#include <kotuku/modules/network.h>
 
 class objHTTP;
 

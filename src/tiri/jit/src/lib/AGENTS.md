@@ -1,6 +1,6 @@
 # LuaJIT Library System - Agent Guide
 
-This document explains how the LuaJIT library system works in Parasol's Tiri scripting engine, including the LIB
+This document explains how the LuaJIT library system works in Kōtuku's Tiri scripting engine, including the LIB
 macros, buildvm code generation, and the relationship between library functions, trace recording, and assembly
 implementations.
 

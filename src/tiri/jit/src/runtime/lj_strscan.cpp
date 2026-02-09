@@ -1,7 +1,7 @@
 // String scanning.
 // Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 #include <cctype>
 #include <cmath>
 #include <charconv>

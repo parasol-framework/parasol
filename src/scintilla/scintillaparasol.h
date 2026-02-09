@@ -1,8 +1,8 @@
 
 class objScintilla;
-class ScintillaParasol;
+class ScintillaKTK;
 
-#include <parasol/modules/scintilla.h>
+#include <kotuku/modules/scintilla.h>
 #include "../link/unicode.h"
 
 using namespace pf;
@@ -16,7 +16,7 @@ class extScintilla : public objScintilla {
    objFont *BoldFont;        // Bold version of the current font
    objFont *ItalicFont;      // Italic version of the current font
    objFont *BIFont;          // Bold-Italic version of the current font
-   ScintillaParasol *API;
+   ScintillaKTK *API;
    APTR   prvKeyEvent;
    STRING StringBuffer;
    int    LongestLine;         // Longest line in the document
@@ -41,10 +41,10 @@ class extScintilla : public objScintilla {
 
 // This class inherits from ScintillaBase which inherits from Editor.  Responsible for a lot of the editing code.
 
-class ScintillaParasol : public Scintilla::ScintillaBase {
+class ScintillaKTK : public Scintilla::ScintillaBase {
 public:
-   ScintillaParasol(int SurfaceID, extScintilla *Scintilla);
-   virtual ~ScintillaParasol();
+   ScintillaKTK(int SurfaceID, extScintilla *Scintilla);
+   virtual ~ScintillaKTK();
    virtual void Initialise() {};
    virtual void Finalise();
 //    virtual void RefreshColourPalette(Palette &pal, bool want);
@@ -72,7 +72,7 @@ public:
    virtual void SetMouseCapture(bool on);
    virtual bool HaveMouseCapture();
    virtual sptr_t DefWndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam);
-   static sptr_t DirectFunction(ScintillaParasol *sci, unsigned int iMessage, uptr_t wParam, sptr_t lParam);
+   static sptr_t DirectFunction(ScintillaKTK *sci, unsigned int iMessage, uptr_t wParam, sptr_t lParam);
    // Non-abstract virtual methods from Editor
    virtual int KeyDefault(int key, int modifiers);
 

@@ -4,7 +4,7 @@
 // Copyright: Paul Manias © 2002-2026
 // Generator: idl-c
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #define MODVERSION_AUDIO (1)
 
@@ -494,14 +494,14 @@ class objSound : public Object {
 
 };
 
-#ifdef PARASOL_STATIC
+#ifdef KOTUKU_STATIC
 #define JUMPTABLE_AUDIO [[maybe_unused]] static struct AudioBase *AudioBase = nullptr;
 #else
 #define JUMPTABLE_AUDIO struct AudioBase *AudioBase = nullptr;
 #endif
 
 struct AudioBase {
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
    ERR (*_MixContinue)(objAudio *Audio, int Handle);
    ERR (*_MixFrequency)(objAudio *Audio, int Handle, int Frequency);
    ERR (*_MixMute)(objAudio *Audio, int Handle, int Mute);
@@ -514,10 +514,10 @@ struct AudioBase {
    ERR (*_MixVolume)(objAudio *Audio, int Handle, double Volume);
    ERR (*_MixStartSequence)(objAudio *Audio, int Handle);
    ERR (*_MixEndSequence)(objAudio *Audio, int Handle);
-#endif // PARASOL_STATIC
+#endif // KOTUKU_STATIC
 };
 
-#if !defined(PARASOL_STATIC) and !defined(PRV_AUDIO_MODULE)
+#if !defined(KOTUKU_STATIC) and !defined(PRV_AUDIO_MODULE)
 extern struct AudioBase *AudioBase;
 namespace snd {
 inline ERR MixContinue(objAudio *Audio, int Handle) { return AudioBase->_MixContinue(Audio,Handle); }
@@ -548,5 +548,5 @@ extern ERR MixVolume(objAudio *Audio, int Handle, double Volume);
 extern ERR MixStartSequence(objAudio *Audio, int Handle);
 extern ERR MixEndSequence(objAudio *Audio, int Handle);
 } // namespace
-#endif // PARASOL_STATIC
+#endif // KOTUKU_STATIC
 

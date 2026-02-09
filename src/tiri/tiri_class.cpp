@@ -2,11 +2,11 @@
 #define PRV_SCRIPT
 #define PRV_TIRI
 #define PRV_TIRI_MODULE
-#include <parasol/main.h>
-#include <parasol/modules/xml.h>
-#include <parasol/modules/display.h>
-#include <parasol/modules/tiri.h>
-#include <parasol/strings.hpp>
+#include <kotuku/main.h>
+#include <kotuku/modules/xml.h>
+#include <kotuku/modules/display.h>
+#include <kotuku/modules/tiri.h>
+#include <kotuku/strings.hpp>
 #include <algorithm>
 #include <array>
 #include <cctype>
@@ -1031,7 +1031,7 @@ static ERR register_interfaces(objScript *Self)
 {
    pf::Log log;
 
-   log.traceBranch("Registering Parasol and Tiri interfaces with Lua.");
+   log.traceBranch("Registering Kotuku and Tiri interfaces with Lua.");
 
    auto prv = (prvTiri *)Self->ChildPrivate;
 

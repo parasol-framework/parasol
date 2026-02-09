@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -96,7 +96,7 @@ in a file.
  #define fstat64 fstat
 #endif
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 extern "C" void path_monitor(HOSTHANDLE, extFile *);
 
@@ -136,7 +136,7 @@ static ERR FILE_Activate(extFile *Self)
 #ifdef __unix__
    int secureflags = S_IRUSR|S_IWUSR|convert_permissions(Self->Permissions);
 
-   // Opening /dev/ files from Parasol is disallowed because it can cause problems
+   // Opening /dev/ files from Kōtuku is disallowed because it can cause problems
 
    if ((Self->Flags & FL::DEVICE) != FL::NIL) {
       openflags |= O_NOCTTY; // Prevent device from becoming the controlling terminal
@@ -2111,7 +2111,7 @@ Path: Specifies the location of a file or folder.
 
 This field is required for initialisation and must either be in the format of a universal path string, or a path
 that is compatible with the host system.  The standard format for a universal path is `volume:folder/file`, for
-instance `parasol:system/classes.bin`.
+instance `kotuku:system/classes.bin`.
 
 To reference a folder in a way that is distinct from a file, use a trailing slash as in `volume:folder/`.
 

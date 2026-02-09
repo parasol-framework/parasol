@@ -32,7 +32,7 @@
 #define lj_snap_c
 #define LUA_CORE
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 #include "lj_obj.h"
 
 #include "lj_gc.h"

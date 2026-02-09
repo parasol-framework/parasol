@@ -8,9 +8,9 @@ constexpr int SIZE_READ = 1024;
 #include <set>
 #include <array>
 #include <shared_mutex>
-#include <parasol/strings.hpp>
-#include <parasol/modules/regex.h>
-#include <parasol/modules/tiri.h>
+#include <kotuku/strings.hpp>
+#include <kotuku/modules/regex.h>
+#include <kotuku/modules/tiri.h>
 #include <thread>
 #include <string_view>
 #include <span>

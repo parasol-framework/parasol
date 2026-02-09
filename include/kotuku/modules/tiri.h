@@ -4,7 +4,7 @@
 // Copyright: Paul Manias © 2006-2026
 // Generator: idl-c
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #define MODVERSION_TIRI (1)
 
@@ -33,19 +33,19 @@ enum class JOF : uint32_t {
 
 DEFINE_ENUM_FLAG_OPERATORS(JOF)
 
-#ifdef PARASOL_STATIC
+#ifdef KOTUKU_STATIC
 #define JUMPTABLE_TIRI [[maybe_unused]] static struct TiriBase *TiriBase = nullptr;
 #else
 #define JUMPTABLE_TIRI struct TiriBase *TiriBase = nullptr;
 #endif
 
 struct TiriBase {
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
    ERR (*_SetVariable)(objScript *Script, CSTRING Name, int Type, ...);
-#endif // PARASOL_STATIC
+#endif // KOTUKU_STATIC
 };
 
-#if !defined(PARASOL_STATIC) and !defined(PRV_TIRI_MODULE)
+#if !defined(KOTUKU_STATIC) and !defined(PRV_TIRI_MODULE)
 extern struct TiriBase *TiriBase;
 namespace fl {
 template<class... Args> ERR SetVariable(objScript *Script, CSTRING Name, int Type, Args... Tags) { return TiriBase->_SetVariable(Script,Name,Type,Tags...); }
@@ -54,5 +54,5 @@ template<class... Args> ERR SetVariable(objScript *Script, CSTRING Name, int Typ
 namespace fl {
 extern ERR SetVariable(objScript *Script, CSTRING Name, int Type, ...);
 } // namespace
-#endif // PARASOL_STATIC
+#endif // KOTUKU_STATIC
 

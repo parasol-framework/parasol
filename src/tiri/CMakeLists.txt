@@ -1,4 +1,4 @@
-# This module integrates LuaJIT 2.1 with the Parasol framework to provide the Tiri scripting language. The build
+# This module integrates LuaJIT 2.1 with Kōtuku to provide the Tiri scripting language. The build
 # process generates multiple header files through a multi-stage compilation process.
 #
 # SPECIAL FEATURES:
@@ -9,9 +9,9 @@
 #
 # GENERATED HEADERS OVERVIEW:
 #
-# From TDL files (Parasol Interface Definition Language):
-#   hashes.h                  - Hash definitions for Tiri internal use
-#   include/parasol/modules/tiri.h - Public API header for Tiri module
+# From TDL files (Kōtuku Interface Definition Language):
+#   hashes.h                      - Hash definitions for Tiri internal use
+#   include/kotuku/modules/tiri.h - Public API header for Tiri module
 #
 # From LuaJIT build process:
 #   lj_bcdef.h     - Bytecode definitions (opcode metadata)
@@ -99,12 +99,12 @@ set (JIT_VMDEF_LUA "${JIT_BUILD_DIR}/jit/vmdef.lua")
 set (JIT_COMMON_DEFS PRV_METACLASS)
 set (JIT_NON_MSVC_DEFS -DLUAJIT_DISABLE_BUFFER -DPRV_METACLASS)
 
-option(PARASOL_PARSER_TRACE "Emit parser token and expectation traces" OFF)
+option(KOTUKU_PARSER_TRACE "Emit parser token and expectation traces" OFF)
 option(INCLUDE_TIPS "Include the parser tips system for code analysis" ON)
 
-if (PARASOL_PARSER_TRACE)
-   list(APPEND JIT_COMMON_DEFS PARASOL_PARSER_TRACE)
-   list(APPEND JIT_NON_MSVC_DEFS -DPARASOL_PARSER_TRACE)
+if (KOTUKU_PARSER_TRACE)
+   list(APPEND JIT_COMMON_DEFS KOTUKU_PARSER_TRACE)
+   list(APPEND JIT_NON_MSVC_DEFS -DKOTUKU_PARSER_TRACE)
 endif ()
 
 if (INCLUDE_TIPS)

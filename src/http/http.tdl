@@ -5,7 +5,7 @@ module({ name="HTTP", copyright="Paul Manias © 2005-2026", version=1.0, timesta
     loadFile(glPath .. 'common.tdl')
   end)
 
-  c_include("<parasol/modules/network.h>")
+  c_include("<kotuku/modules/network.h>")
 
   enum("HOM", { type="int", start=0, comment="Output mode." },
     "DATA_FEED: Use the DataFeed() action to send data to the targeted object.",

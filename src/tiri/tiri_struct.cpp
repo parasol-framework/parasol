@@ -36,8 +36,8 @@ terminated arrays, use [0].
 #define PRV_SCRIPT
 #define PRV_TIRI
 #define PRV_TIRI_MODULE
-#include <parasol/main.h>
-#include <parasol/modules/tiri.h>
+#include <kotuku/main.h>
+#include <kotuku/modules/tiri.h>
 #include <inttypes.h>
 #include <format>
 #include <optional>

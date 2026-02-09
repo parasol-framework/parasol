@@ -1,4 +1,4 @@
--- This program produces C++ headers, auto-generated values and documentation from Parasol TDL files.
+-- This program produces C++ headers, auto-generated values and documentation from Kotuku TDL files.
 --
 -- Usage: origo sdk:tools/idl/idl-c.tiri src=source.tdl
 -- Example: origo sdk:tools/idl/idl-c.tiri src=sdk:core/modules/core/core.tdl
@@ -675,7 +675,7 @@ global function saveOutput()
    outPath = glOutputPath
    if not outPath then
       if glModule.name?? then
-         outPath = 'sdk:include/parasol/modules/' .. glModule.name:lower() .. '.h'
+         outPath = 'sdk:include/kotuku/modules/' .. glModule.name:lower() .. '.h'
       else
          error('No output path specified in command-line.')
       end
@@ -714,23 +714,23 @@ global function saveOutput()
       for a=0, #glOutput-1 do
          if glOutput[a] is '__FUNCTION_TABLE__' then
             out = ''
-            out ..= '#ifdef PARASOL_STATIC\n'
+            out ..= '#ifdef KOTUKU_STATIC\n'
             out ..= f'#define JUMPTABLE_{glModule.name:upper()} [[maybe_unused]] static struct {glModule.name}Base *{glModule.name}Base = nullptr;\n'
             out ..= '#else\n'
             out ..= f'#define JUMPTABLE_{glModule.name:upper()} struct {glModule.name}Base *{glModule.name}Base = nullptr;\n'
             out ..= '#endif\n\n'
 
             out ..= f'struct {glModule.name}Base {{\n'
-            out ..= '#ifndef PARASOL_STATIC\n'
+            out ..= '#ifndef KOTUKU_STATIC\n'
             for k, func in ipairs(glFunctions) do
                if func.def?? then
                   out ..= func.def .. '\n'
                end
             end
-            out ..= '#endif // PARASOL_STATIC\n'
+            out ..= '#endif // KOTUKU_STATIC\n'
             out ..= '};\n\n'
 
-            out ..= '#if !defined(PARASOL_STATIC) and !defined(PRV_' .. glModule.name:upper() .. '_MODULE)\n'
+            out ..= '#if !defined(KOTUKU_STATIC) and !defined(PRV_' .. glModule.name:upper() .. '_MODULE)\n'
             out ..= f'extern struct {glModule.name}Base *{glModule.name}Base;\n'
             if glFunctionPrefix?? then
                out ..= 'namespace ' .. glFunctionPrefix:lower() .. ' {\n'
@@ -760,7 +760,7 @@ global function saveOutput()
                out ..= '} // namespace\n'
             end
 
-            out ..= '#endif // PARASOL_STATIC\n\n'
+            out ..= '#endif // KOTUKU_STATIC\n\n'
             fl.acWrite(out, out:len())
          else
             str = glOutput[a] .. '\n'

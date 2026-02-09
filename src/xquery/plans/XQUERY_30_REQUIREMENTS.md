@@ -1,6 +1,6 @@
 # XQuery 3.0 Compliance Requirements
 
-This document records missing W3C XQuery 3.0 features discovered during the audit of Parasol's XQuery module.
+This document records missing W3C XQuery 3.0 features discovered during the audit of Kōtuku's XQuery module.
 
 ## Summary of unsupported 3.0 features
 

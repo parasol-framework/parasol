@@ -4,7 +4,7 @@
 // Copyright: Paul Manias 1996-2026
 // Generator: idl-c
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #include <stdarg.h>
 #include <inttypes.h>
@@ -1513,7 +1513,7 @@ typedef std::map<std::string, std::string, std::less<>> KEYVALUE;
 
 #define MOD_IDL nullptr
 
-#ifdef PARASOL_STATIC
+#ifdef KOTUKU_STATIC
 __export void CloseCore(void);
 __export ERR OpenCore(struct OpenInfo *, struct CoreBase **);
 #else
@@ -1521,10 +1521,10 @@ __export struct ModHeader ModHeader;
 #endif
 
 #ifdef MOD_NAME
-#ifdef PARASOL_STATIC
-#define PARASOL_MOD(init,close,open,expunge,test,IDL,Structures) static struct ModHeader ModHeader(init, close, open, expunge, test, IDL, Structures, TOSTRING(MOD_NAME), TOSTRING(MOD_NAMESPACE));
+#ifdef KOTUKU_STATIC
+#define KOTUKU_MOD(init,close,open,expunge,test,IDL,Structures) static struct ModHeader ModHeader(init, close, open, expunge, test, IDL, Structures, TOSTRING(MOD_NAME), TOSTRING(MOD_NAMESPACE));
 #else
-#define PARASOL_MOD(init,close,open,expunge,test,IDL,Structures) struct ModHeader ModHeader(init, close, open, expunge, test, IDL, Structures, TOSTRING(MOD_NAME), TOSTRING(MOD_NAMESPACE));
+#define KOTUKU_MOD(init,close,open,expunge,test,IDL,Structures) struct ModHeader ModHeader(init, close, open, expunge, test, IDL, Structures, TOSTRING(MOD_NAME), TOSTRING(MOD_NAMESPACE));
 #endif
 #define MOD_PATH ("modules:" TOSTRING(MOD_NAME))
 #else
@@ -1915,14 +1915,14 @@ struct ScriptArg { // For use with sc::Exec
    ScriptArg(CSTRING pName, double pValue, uint32_t pType = FD_DOUBLE) : Name(pName), Type(pType), Double(pValue) { }
 };
 
-#ifdef PARASOL_STATIC
+#ifdef KOTUKU_STATIC
 #define JUMPTABLE_CORE [[maybe_unused]] static struct CoreBase *CoreBase = nullptr;
 #else
 #define JUMPTABLE_CORE struct CoreBase *CoreBase = nullptr;
 #endif
 
 struct CoreBase {
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
    ERR (*_AccessMemory)(MEMORYID Memory, MEM Flags, int MilliSeconds, APTR *Result);
    ERR (*_Action)(AC Action, OBJECTPTR Object, APTR Parameters);
    void (*_ActionList)(struct ActionTable **Actions, int *Size);
@@ -2012,10 +2012,10 @@ struct CoreBase {
    ERR (*_CreateLink)(CSTRING From, CSTRING To);
    OBJECTPTR (*_ParentContext)(void);
    void (*_SetResourceMgr)(APTR Address, struct ResourceManager *Manager);
-#endif // PARASOL_STATIC
+#endif // KOTUKU_STATIC
 };
 
-#if !defined(PARASOL_STATIC) and !defined(PRV_CORE_MODULE)
+#if !defined(KOTUKU_STATIC) and !defined(PRV_CORE_MODULE)
 extern struct CoreBase *CoreBase;
 inline ERR AccessMemory(MEMORYID Memory, MEM Flags, int MilliSeconds, APTR *Result) { return CoreBase->_AccessMemory(Memory,Flags,MilliSeconds,Result); }
 inline ERR Action(AC Action, OBJECTPTR Object, APTR Parameters) { return CoreBase->_Action(Action,Object,Parameters); }
@@ -2195,7 +2195,7 @@ extern "C" CSTRING ResolveUserID(int User);
 extern "C" ERR CreateLink(CSTRING From, CSTRING To);
 extern "C" OBJECTPTR ParentContext(void);
 extern "C" void SetResourceMgr(APTR Address, struct ResourceManager *Manager);
-#endif // PARASOL_STATIC
+#endif // KOTUKU_STATIC
 
 
 //********************************************************************************************************************
@@ -2287,8 +2287,8 @@ static thread_local int _tlUniqueThreadID = 0;
 
 } // namespace
 
-#include <parasol/log.h>
-#include <parasol/objects.h>
+#include <kotuku/log.h>
+#include <kotuku/objects.h>
 
 inline OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UID; }
 inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(SetResource(Res, (MAXINT)Value)); }
@@ -3372,7 +3372,7 @@ class objModule : public Object {
    public:
    static ERR load(std::string Name, OBJECTPTR *Module = nullptr, APTR Functions = nullptr) {
       if (auto module = objModule::create::global(pf::FieldValue(FID_Name, Name.c_str()))) {
-         #ifdef PARASOL_STATIC
+         #ifdef KOTUKU_STATIC
             if (Module) *Module = module;
             if (Functions) ((APTR *)Functions)[0] = nullptr;
             return ERR::Okay;

@@ -112,7 +112,7 @@
     - Build target: `cmake --build build/agents --config Release --target xquery --parallel`.
     - Install: `cmake --install build/agents`.
     - Run targeted tests: `ctest --build-config Release --test-dir build/agents -L xquery`.
-    - Execute Tiri-based parser tests if they live outside `ctest` harness (e.g., `parasol src/xquery/tests/test_switch.tiri --log-warning`).
+    - Execute Tiri-based parser tests if they live outside `ctest` harness (e.g., `origo src/xquery/tests/test_switch.tiri --log-warning`).
 
 ## Expected follow-ups
 - After switch expression support, revisit the evaluator to share logic with `typeswitch` to avoid duplicate comparison utilities.

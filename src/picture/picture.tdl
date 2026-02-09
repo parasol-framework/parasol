@@ -1,7 +1,7 @@
 --$TIRI:Include
 
 module({ name="Picture", copyright="Paul Manias © 2001-2026", version=1.0, timestamp=20240611 }, function()
-  c_include("<parasol/modules/display.h>")
+  c_include("<kotuku/modules/display.h>")
 
   flags("PCF", { comment="Flags for the Picture class." },
     "NO_PALETTE: Automatically upgrade palette based images to 32 bit colour.",

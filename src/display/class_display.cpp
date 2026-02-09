@@ -714,7 +714,7 @@ static ERR DISPLAY_Init(extDisplay *Self)
          if ((CurrentTask()->get(FID_Name, name) IS ERR::Okay) and (name)) {
             XStoreName(XDisplay, Self->XWindowHandle, name);
          }
-         else XStoreName(XDisplay, Self->XWindowHandle, "Parasol");
+         else XStoreName(XDisplay, Self->XWindowHandle, "Kotuku");
 
          Atom protocols[1] = { XWADeleteWindow };
          XSetWMProtocols(XDisplay, Self->XWindowHandle, protocols, std::ssize(protocols));
@@ -1758,7 +1758,7 @@ Show: Presents a display object to the user.
 This method presents a display object to the user.  On a hosted platform, this will result in a window appearing on
 screen.  By default the window will be hosted within a window border which may contain regular window gadgets such as a
 titlebar and buttons for close, maximise and minimise operations.  The position of the window is determined by the
-#X and #Y fields.  In Parasol's native environment, the user's screen display will be altered to match the required
+#X and #Y fields.  In Kōtuku's native environment, the user's screen display will be altered to match the required
 resolution and the graphics of the display's #Bitmap object will take up the entirety of the screen.
 
 If the `BORDERLESS` flag has been set in the #Flags field, the window will appear without the surrounding border
@@ -2252,7 +2252,7 @@ static ERR SET_Flags(extDisplay *Self, SCR Value)
          if ((CurrentTask()->get(FID_Name, name) IS ERR::Okay) and (name)) {
             XStoreName(XDisplay, Self->XWindowHandle, name);
          }
-         else XStoreName(XDisplay, Self->XWindowHandle, "Parasol");
+         else XStoreName(XDisplay, Self->XWindowHandle, "Kotuku");
 
          Atom protocols[1] = { XWADeleteWindow };
          XSetWMProtocols(XDisplay, Self->XWindowHandle, protocols, 1);

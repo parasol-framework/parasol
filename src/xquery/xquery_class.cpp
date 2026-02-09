@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -87,7 +87,7 @@ if (query.ok()) {
 
 <header>Extensions</>
 
-The module includes several Parasol-specific extensions beyond the standard specification.  Content matching with the
+The module includes several Kotuku-specific extensions beyond the standard specification.  Content matching with the
 `[=...]` syntax allows matching on encapsulated content, e.g., `/menu[=contentmatch]`.  Backslash (`\`) can be used as
 an escape character in attribute strings.
 
@@ -105,7 +105,7 @@ TODO:
 *********************************************************************************************************************/
 
 #ifdef ANALYSE_MEMORY_USAGE
-#include <parasol/memtracker.h>
+#include <kotuku/memtracker.h>
 #endif
 
 //********************************************************************************************************************

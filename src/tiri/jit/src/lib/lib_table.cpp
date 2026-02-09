@@ -266,7 +266,7 @@ LJLIB_CF(table_new) LJLIB_REC(.)
 //********************************************************************************************************************
 // table.empty(t)
 // Returns true if the given table is empty. If the argument is nil, it is treated as empty and returns true. This
-// mirrors the emptiness check used in Parasol's user-facing helpers, but implemented natively.
+// mirrors the emptiness check used in Kotuku's user-facing helpers, but implemented natively.
 
 [[maybe_unused]] static int lj_cf_table_empty(lua_State *L);
 

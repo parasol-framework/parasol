@@ -4,12 +4,12 @@
 // Copyright: Paul Manias © 2010-2026
 // Generator: idl-c
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #define MODVERSION_VECTOR (1)
 
-#include <parasol/modules/display.h>
-#include <parasol/modules/picture.h>
+#include <kotuku/modules/display.h>
+#include <kotuku/modules/picture.h>
 
 class objVectorColour;
 class objVectorTransition;
@@ -3437,14 +3437,14 @@ class objVectorViewport : public objVector {
 
 };
 
-#ifdef PARASOL_STATIC
+#ifdef KOTUKU_STATIC
 #define JUMPTABLE_VECTOR [[maybe_unused]] static struct VectorBase *VectorBase = nullptr;
 #else
 #define JUMPTABLE_VECTOR struct VectorBase *VectorBase = nullptr;
 #endif
 
 struct VectorBase {
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
    ERR (*_DrawPath)(objBitmap *Bitmap, APTR Path, double StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
    ERR (*_GenerateEllipse)(double CX, double CY, double RX, double RY, int Vertices, APTR *Path);
    ERR (*_GeneratePath)(CSTRING Sequence, APTR *Path);
@@ -3476,10 +3476,10 @@ struct VectorBase {
    double (*_StringWidth)(APTR FontHandle, CSTRING String, int Chars);
    ERR (*_FlushMatrix)(struct VectorMatrix *Matrix);
    ERR (*_TracePath)(APTR Path, FUNCTION *Callback, double Scale);
-#endif // PARASOL_STATIC
+#endif // KOTUKU_STATIC
 };
 
-#if !defined(PARASOL_STATIC) and !defined(PRV_VECTOR_MODULE)
+#if !defined(KOTUKU_STATIC) and !defined(PRV_VECTOR_MODULE)
 extern struct VectorBase *VectorBase;
 namespace vec {
 inline ERR DrawPath(objBitmap *Bitmap, APTR Path, double StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle) { return VectorBase->_DrawPath(Bitmap,Path,StrokeWidth,StrokeStyle,FillStyle); }
@@ -3548,7 +3548,7 @@ extern double StringWidth(APTR FontHandle, CSTRING String, int Chars);
 extern ERR FlushMatrix(struct VectorMatrix *Matrix);
 extern ERR TracePath(APTR Path, FUNCTION *Callback, double Scale);
 } // namespace
-#endif // PARASOL_STATIC
+#endif // KOTUKU_STATIC
 
 
 //********************************************************************************************************************
@@ -4047,12 +4047,12 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, double Red, double Green,
 #define SVF_LOOP_LIMIT 0xfaf3e6cb
 #define SVF_MASKCONTENTUNITS 0x3fe629df
 #define SVF_MASKUNITS 0xa68eea04
-#define SVF_PARASOL_MORPH 0x6b51bb77
-#define SVF_PARASOL_PATHTRANSITION 0x9d3c64a9
-#define SVF_PARASOL_SHAPE 0x6bba2f82
-#define SVF_PARASOL_SPIRAL 0xe3954f3c
-#define SVF_PARASOL_TRANSITION 0xc0f6617c
-#define SVF_PARASOL_WAVE 0xbd7455e4
+#define SVF_KOTUKU_MORPH 0x6b51bb77
+#define SVF_KOTUKU_PATHTRANSITION 0x9d3c64a9
+#define SVF_KOTUKU_SHAPE 0x6bba2f82
+#define SVF_KOTUKU_SPIRAL 0xe3954f3c
+#define SVF_KOTUKU_TRANSITION 0xc0f6617c
+#define SVF_KOTUKU_WAVE 0xbd7455e4
 #define SVF_POINTSATX 0xf4c77f0f
 #define SVF_POINTSATY 0xf4c77f10
 #define SVF_POINTSATZ 0xf4c77f11

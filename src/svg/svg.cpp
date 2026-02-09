@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -23,12 +23,12 @@ https://www.w3.org/Graphics/SVG/Test/Overview.html
 #include <variant>
 #include <algorithm>
 #include <cfloat>
-#include <parasol/main.h>
-#include <parasol/modules/picture.h>
-#include <parasol/modules/xml.h>
-#include <parasol/modules/vector.h>
-#include <parasol/modules/display.h>
-#include <parasol/strings.hpp>
+#include <kotuku/main.h>
+#include <kotuku/modules/picture.h>
+#include <kotuku/modules/xml.h>
+#include <kotuku/modules/vector.h>
+#include <kotuku/modules/display.h>
+#include <kotuku/strings.hpp>
 #include "svg_def.c"
 #include <katana.h>
 #include <math.h>
@@ -71,7 +71,7 @@ struct svgAnimState {
    std::vector<class anim_transform *> transforms;
 };
 
-#include <parasol/modules/svg.h>
+#include <kotuku/modules/svg.h>
 
 class extSVG;
 struct svgState;
@@ -325,5 +325,5 @@ static ERR MODExpunge(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, nullptr, nullptr, MODExpunge, nullptr, MOD_IDL, nullptr)
+KOTUKU_MOD(MODInit, nullptr, nullptr, MODExpunge, nullptr, MOD_IDL, nullptr)
 extern "C" struct ModHeader * register_svg_module() { return &ModHeader; }

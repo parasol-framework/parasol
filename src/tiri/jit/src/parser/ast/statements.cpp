@@ -356,7 +356,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_do()
 
 //********************************************************************************************************************
 // Parses with statements: with expr1, expr2 do ... end
-// Auto-locks Parasol objects for the duration of the block, unlocking when scope exits.
+// Auto-locks Kotuku objects for the duration of the block, unlocking when scope exits.
 
 ParserResult<StmtNodePtr> AstBuilder::parse_with()
 {
@@ -904,7 +904,7 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(std::st
    // Push this file onto the import stack to detect circular imports
    this->ctx.push_import(Path);
 
-   // Read the file contents using Parasol File API
+   // Read the file contents using Kotuku File API
    objFile::create file = { fl::Path(Path.c_str()), fl::Flags(FL::READ) };
    if (not file.ok()) {
       this->ctx.pop_import();

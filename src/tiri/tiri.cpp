@@ -7,7 +7,7 @@ This source code is placed in the public domain under no warranty from its autho
 -MODULE-
 Tiri: Tiri is a customised scripting language for the Script class.
 
-Tiri is a custom scripting language for Parasol developers.  It is implemented on the backbone of LuaJIT, a
+Tiri is a custom scripting language for Kotuku developers.  It is implemented on the backbone of LuaJIT, a
 high performance version of the Lua scripting language.  It supports garbage collection, dynamic typing and a byte-code
 interpreter for compiled code.  We chose to support Lua due to its extensive popularity amongst game developers, a
 testament to its low overhead, speed and lightweight processing when compared to common scripting languages.
@@ -28,12 +28,12 @@ For more information on the Tiri syntax, please refer to the official Tiri Refer
 #define PRV_SCRIPT
 #define PRV_TIRI
 #define PRV_TIRI_MODULE
-#include <parasol/main.h>
-#include <parasol/modules/xml.h>
-#include <parasol/modules/display.h>
-#include <parasol/modules/tiri.h>
-#include <parasol/modules/regex.h>
-#include <parasol/strings.hpp>
+#include <kotuku/main.h>
+#include <kotuku/modules/xml.h>
+#include <kotuku/modules/display.h>
+#include <kotuku/modules/tiri.h>
+#include <kotuku/modules/regex.h>
+#include <kotuku/strings.hpp>
 
 #include <inttypes.h>
 #include <vector>
@@ -680,5 +680,5 @@ static void stack_dump(lua_State *L)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MODTest, MOD_IDL, nullptr)
+KOTUKU_MOD(MODInit, nullptr, MODOpen, MODExpunge, MODTest, MOD_IDL, nullptr)
 extern "C" struct ModHeader * register_tiri_module() { return &ModHeader; }

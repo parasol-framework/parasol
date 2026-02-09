@@ -357,7 +357,7 @@ constexpr bool defined(T flags, T test_flag) noexcept {
   enum("RP", { type="int", start=1, comment="Path types for SetResourcePath()" },
     "MODULE_PATH: An alternative path leading to the system modules (normally `system:modules/`).  Introduced for platforms such as Android, where modules are stored in asset folders.",
     "SYSTEM_PATH: The path of the `system:` volume, which otherwise defaults to `[root]:system/`.",
-    "ROOT_PATH: Overrides the root path, which defaults to the location at which Parasol is installed.")
+    "ROOT_PATH: Overrides the root path, which defaults to the location at which Kōtuku is installed.")
 
   flags("CLF", { comment="Flags for the MetaClass." },
     "INHERIT_LOCAL: Inherit the functionality of local objects defined in the class spec.",
@@ -549,7 +549,7 @@ typedef std::map<std::string, std::string, std::less<>> KEYVALUE;
 
 #define MOD_IDL nullptr
 
-#ifdef PARASOL_STATIC
+#ifdef KOTUKU_STATIC
 __export void CloseCore(void);
 __export ERR OpenCore(struct OpenInfo *, struct CoreBase **);
 #else
@@ -557,10 +557,10 @@ __export struct ModHeader ModHeader;
 #endif
 
 #ifdef MOD_NAME
-#ifdef PARASOL_STATIC
-#define PARASOL_MOD(init,close,open,expunge,test,IDL,Structures) static struct ModHeader ModHeader(init, close, open, expunge, test, IDL, Structures, TOSTRING(MOD_NAME), TOSTRING(MOD_NAMESPACE));
+#ifdef KOTUKU_STATIC
+#define KOTUKU_MOD(init,close,open,expunge,test,IDL,Structures) static struct ModHeader ModHeader(init, close, open, expunge, test, IDL, Structures, TOSTRING(MOD_NAME), TOSTRING(MOD_NAMESPACE));
 #else
-#define PARASOL_MOD(init,close,open,expunge,test,IDL,Structures) struct ModHeader ModHeader(init, close, open, expunge, test, IDL, Structures, TOSTRING(MOD_NAME), TOSTRING(MOD_NAMESPACE));
+#define KOTUKU_MOD(init,close,open,expunge,test,IDL,Structures) struct ModHeader ModHeader(init, close, open, expunge, test, IDL, Structures, TOSTRING(MOD_NAME), TOSTRING(MOD_NAMESPACE));
 #endif
 #define MOD_PATH ("modules:" TOSTRING(MOD_NAME))
 #else
@@ -1167,8 +1167,8 @@ static thread_local int _tlUniqueThreadID = 0;
 
 } // namespace
 
-#include <parasol/log.h>
-#include <parasol/objects.h>
+#include <kotuku/log.h>
+#include <kotuku/objects.h>
 
 inline OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UID; }
 inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(SetResource(Res, (MAXINT)Value)); }
@@ -1476,7 +1476,7 @@ inline ERR Call(const FUNCTION &Function, ERR &Result) noexcept {
   [[
    static ERR load(std::string Name, OBJECTPTR *Module = nullptr, APTR Functions = nullptr) {
       if (auto module = objModule::create::global(pf::FieldValue(FID_Name, Name.c_str()))) {
-         #ifdef PARASOL_STATIC
+         #ifdef KOTUKU_STATIC
             if (Module) *Module = module;
             if (Functions) ((APTR *)Functions)[0] = nullptr;
             return ERR::Okay;

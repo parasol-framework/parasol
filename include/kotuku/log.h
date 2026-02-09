@@ -1,13 +1,13 @@
 #pragma once
 
-// For extremely verbose debug logs, run cmake with -DPARASOL_VLOG=ON
+// For extremely verbose debug logs, run cmake with -DKOTUKU_VLOG=ON
 
 namespace pf {
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-zero-length"
 
-class Log { // C++ wrapper for Parasol's log functionality
+class Log { // C++ wrapper for Kotuku's log functionality
    private:
       int branches;
       CSTRING header;

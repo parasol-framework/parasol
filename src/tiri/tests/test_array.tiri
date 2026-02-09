@@ -1218,12 +1218,12 @@ end
 -- Test array.of() functionality
 
 @Test function ArrayOfString()
-   arr = array<string> { 'google.com', 'parasol.ws', 'amazon.co.uk' }
+   arr = array<string> { 'google.com', 'kotuku.dev', 'amazon.co.uk' }
 
    assert(#arr is 3, "array.of string should have length 3")
    assert(arr:type() is 'string', "array.of string type should be 'string'")
    assert(arr[0] is 'google.com', "arr[0] should be 'google.com'")
-   assert(arr[1] is 'parasol.ws', "arr[1] should be 'parasol.ws'")
+   assert(arr[1] is 'kotuku.dev', "arr[1] should be 'kotuku.dev'")
    assert(arr[2] is 'amazon.co.uk', "arr[2] should be 'amazon.co.uk'")
 end
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Download and install the Parasol CI artifact for local use.
+# Download and install the Kotuku CI artifact for local use.
 #
 # The script mirrors the behaviour of CI by fetching the latest successful
 # workflow run artefact and extracting it into install/agents (by default).
@@ -10,10 +10,10 @@ set -euo pipefail
 
 WORKFLOW_FILE="${WORKFLOW_FILE:-ci.yml}"
 BRANCH_NAME="${BRANCH_NAME:-master}"
-ARTIFACT_NAME="${ARTIFACT_NAME:-parasol-install-ubuntu-latest-FastBuild}"
+ARTIFACT_NAME="${ARTIFACT_NAME:-kotuku-install-ubuntu-latest-FastBuild}"
 DEST_DIR="${DEST_DIR:-install/agents}"
 GITHUB_HOST="${GITHUB_HOST:-github.com}"
-DEFAULT_REPOSITORY="parasol-framework/parasol"
+DEFAULT_REPOSITORY="parasol-framework/kotuku"
 
 # Older versions of gh (including the one available in this environment)
 # do not support the --hostname flag.  Setting GH_HOST ensures the CLI

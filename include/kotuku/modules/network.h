@@ -4,7 +4,7 @@
 // Copyright: Paul Manias © 2005-2026
 // Generator: idl-c
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #define MODVERSION_NETWORK (1)
 
@@ -648,14 +648,14 @@ inline ERR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR Cl
    if ((*NewNetSocketOut = objNetSocket::create::global(fl::Listener(ListenerID), fl::ClientData(ClientData)))) return ERR::Okay;
    else return ERR::CreateObject;
 }
-#ifdef PARASOL_STATIC
+#ifdef KOTUKU_STATIC
 #define JUMPTABLE_NETWORK [[maybe_unused]] static struct NetworkBase *NetworkBase = nullptr;
 #else
 #define JUMPTABLE_NETWORK struct NetworkBase *NetworkBase = nullptr;
 #endif
 
 struct NetworkBase {
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
    ERR (*_StrToAddress)(CSTRING String, struct IPAddress *Address);
    CSTRING (*_AddressToStr)(struct IPAddress *IPAddress);
    uint32_t (*_HostToShort)(uint32_t Value);
@@ -663,10 +663,10 @@ struct NetworkBase {
    uint32_t (*_ShortToHost)(uint32_t Value);
    uint32_t (*_LongToHost)(uint32_t Value);
    ERR (*_SetSSL)(objNetSocket *NetSocket, CSTRING Command, CSTRING Value);
-#endif // PARASOL_STATIC
+#endif // KOTUKU_STATIC
 };
 
-#if !defined(PARASOL_STATIC) and !defined(PRV_NETWORK_MODULE)
+#if !defined(KOTUKU_STATIC) and !defined(PRV_NETWORK_MODULE)
 extern struct NetworkBase *NetworkBase;
 namespace net {
 inline ERR StrToAddress(CSTRING String, struct IPAddress *Address) { return NetworkBase->_StrToAddress(String,Address); }
@@ -687,5 +687,5 @@ extern uint32_t ShortToHost(uint32_t Value);
 extern uint32_t LongToHost(uint32_t Value);
 extern ERR SetSSL(objNetSocket *NetSocket, CSTRING Command, CSTRING Value);
 } // namespace
-#endif // PARASOL_STATIC
+#endif // KOTUKU_STATIC
 

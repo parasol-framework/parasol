@@ -28,10 +28,10 @@ For drag and drop operations, data can be requested from a source as follows:
 #define PRV_SCRIPT
 #define PRV_TIRI
 #define PRV_TIRI_MODULE
-#include <parasol/main.h>
-#include <parasol/modules/display.h>
-#include <parasol/modules/tiri.h>
-#include <parasol/strings.hpp>
+#include <kotuku/main.h>
+#include <kotuku/modules/display.h>
+#include <kotuku/modules/tiri.h>
+#include <kotuku/strings.hpp>
 #include <inttypes.h>
 #include <string_view>
 

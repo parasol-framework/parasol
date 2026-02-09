@@ -1,4 +1,4 @@
-// Native Parasol object handling for LuaJIT.
+// Native Kotuku object handling for LuaJIT.
 // Copyright (C) 2026 Paul Manias
 
 #define lj_object_c
@@ -13,7 +13,7 @@
 #include "../../defs.h"
 
 //********************************************************************************************************************
-// Create a new GCobject for a Parasol object reference.  The object is allocated via the GC.
+// Create a new GCobject for a Kotuku object reference.  The object is allocated via the GC.
 
 GCobject * lj_object_new(lua_State *L, OBJECTID UID, OBJECTPTR Ptr, objMetaClass *ClassPtr, uint8_t Flags)
 {
@@ -34,14 +34,14 @@ GCobject * lj_object_new(lua_State *L, OBJECTID UID, OBJECTPTR Ptr, objMetaClass
 
 //********************************************************************************************************************
 // Finalize a GCobject during GC finalization phase. This is called directly by the GC without metamethod lookup.
-// Releases any locks and frees the underlying Parasol object if owned by this script.
+// Releases any locks and frees the underlying Kotuku object if owned by this script.
 
 void lj_object_finalize(lua_State *L, GCobject *obj)
 {
    while (obj->accesscount > 0) release_object(obj); // Critical for recovering from exceptions
 
    if (not obj->is_detached()) {
-      // Only free the Parasol object if it's owned by this script.
+      // Only free the Kotuku object if it's owned by this script.
       // Exception: Recordset objects are always freed as they must be owned by a Database object.
       if (auto ptr = GetObjectPtr(obj->uid)) {
          if ((ptr->Class->BaseClassID IS CLASSID::RECORDSET) or
@@ -57,7 +57,7 @@ void lj_object_finalize(lua_State *L, GCobject *obj)
 
 //********************************************************************************************************************
 // Free a GCobject during garbage collection sweep phase.
-// NOTE: The underlying Parasol object is NOT freed here. It should have been freed earlier
+// NOTE: The underlying Kotuku object is NOT freed here. It should have been freed earlier
 // during the finalization phase by lj_object_finalize().
 // This function only releases any remaining locks and frees the GCobject wrapper itself.
 
@@ -73,7 +73,7 @@ void lj_object_free(global_State *g, GCobject *obj)
       obj->accesscount--;
    }
 
-   // Free the GCobject structure (Parasol object should have been freed by __gc finalizer)
+   // Free the GCobject structure (Kotuku object should have been freed by __gc finalizer)
    lj_mem_free(g, obj, sizeof(GCobject));
 }
 

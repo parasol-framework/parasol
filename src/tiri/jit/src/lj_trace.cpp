@@ -4,7 +4,7 @@
 #define lj_trace_c
 #define LUA_CORE
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #include "lj_obj.h"
 

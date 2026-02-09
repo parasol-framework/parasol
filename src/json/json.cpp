@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol Framework is made publicly available under the terms described in the LICENSE.TXT file
+The source code for Kōtuku is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -51,9 +51,9 @@ It will be translated to the following when loaded into an XML object:
 //#define DEBUG
 
 #define PRV_XML
-#include <parasol/main.h>
-#include <parasol/modules/xml.h>
-#include <parasol/strings.hpp>
+#include <kotuku/main.h>
+#include <kotuku/modules/xml.h>
+#include <kotuku/strings.hpp>
 #include <algorithm>
 #include <sstream>
 
@@ -640,5 +640,5 @@ static ERR extract_item(int &Line, CSTRING *Input, objXML::TAGS &Tags, int &TagI
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, nullptr, nullptr, MODExpunge, nullptr, nullptr, nullptr)
+KOTUKU_MOD(MODInit, nullptr, nullptr, MODExpunge, nullptr, nullptr, nullptr)
 extern "C" struct ModHeader * register_json_module() { return &ModHeader; }

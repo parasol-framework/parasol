@@ -923,7 +923,7 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, std::string_view Text)
       }
 
       // Skip content/whitespace to get to the next tag.  NB: We are working on the basis that
-      // we are at the root level of the document and Parasol permits multiple root tags.
+      // we are at the root level of the document and Kotuku permits multiple root tags.
 
       state.skipTo('<', Self->LineNo);
    }

@@ -1,4 +1,4 @@
-// Native Parasol object library.
+// Native Kōtuku object library.
 // Copyright (C) 2025-2026 Paul Manias.
 //
 // The core's technical design means that any object that is not *directly* owned by the Lua Script must be treated as
@@ -32,8 +32,8 @@
 #include <algorithm>
 #include <string_view>
 #include <ranges>
-#include <parasol/main.h>
-#include <parasol/strings.hpp>
+#include <kotuku/main.h>
+#include <kotuku/strings.hpp>
 
 #include "../../defs.h"
 #include "../../hashes.h"

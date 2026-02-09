@@ -15,12 +15,12 @@ template<class... Args> void DBG_TRANSFORM(Args...) {
 #include <stack>
 #include <algorithm>
 
-#include <parasol/main.h>
-#include <parasol/modules/xml.h>
-#include <parasol/modules/picture.h>
-#include <parasol/modules/display.h>
-#include <parasol/modules/font.h>
-#include <parasol/strings.hpp>
+#include <kotuku/main.h>
+#include <kotuku/modules/xml.h>
+#include <kotuku/modules/picture.h>
+#include <kotuku/modules/display.h>
+#include <kotuku/modules/font.h>
+#include <kotuku/strings.hpp>
 
 using namespace pf;
 
@@ -292,7 +292,7 @@ public:
 
 constexpr int TB_NOISE = 1;
 
-#include <parasol/modules/vector.h>
+#include <kotuku/modules/vector.h>
 
 class FeedbackSubscription {
 public:

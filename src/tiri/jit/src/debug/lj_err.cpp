@@ -55,7 +55,7 @@
 #define lj_err_c
 #define LUA_CORE
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #include "lj_obj.h"
 #include "lj_err.h"
@@ -75,7 +75,7 @@
 // For prvTiri access in try-except handling
 #include "../../defs.h"
 
-// Forward declarations for internal try-except functions that use Parasol's ERR type.
+// Forward declarations for internal try-except functions that use Kotuku's ERR type.
 // These are defined in tiri_functions.cpp.
 
 extern "C" bool lj_try_find_handler(lua_State *, const TryFrame *, ERR, const BCIns **, BCREG *);

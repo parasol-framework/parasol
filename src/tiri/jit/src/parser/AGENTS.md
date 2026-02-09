@@ -1,6 +1,6 @@
 # Parser Implementation Notes
 
-This file captures parser-specific practices and gotchas for the Tiri JIT parser that ships inside Parasol. The parser
+This file captures parser-specific practices and gotchas for the Tiri JIT parser that ships inside Kōtuku. The parser
 has been modernised to C++20 and implements a two-phase architecture: AST construction followed by IR emission.
 
 The parser is built as an amalgamated build, with all source files included in a single compilation unit at

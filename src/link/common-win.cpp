@@ -1,4 +1,4 @@
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
 
 #include <string>
 #include <cstdio>
@@ -183,7 +183,7 @@ static APTR find_core()
 
    if (core_lib.empty()) { // If local core library not found, check the Windows registry
       APTR keyhandle;
-      if (not RegOpenKeyExA(HKEY_LOCAL_MACHINE, "Software\\Parasol", 0, KEY_READ, &keyhandle)) {
+      if (not RegOpenKeyExA(HKEY_LOCAL_MACHINE, "Software\\Kotuku", 0, KEY_READ, &keyhandle)) {
          char buffer[MAX_PATH] = {};
          int j = sizeof(buffer);
          if (not RegQueryValueExA(keyhandle, "Location", 0, 0, buffer, &j)) {
@@ -207,4 +207,4 @@ static APTR find_core()
    return handle;
 }
 
-#endif // PARASOL_STATIC
+#endif // KOTUKU_STATIC

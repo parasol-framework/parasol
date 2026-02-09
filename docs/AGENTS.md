@@ -1,10 +1,10 @@
 # Documentation Guide for Claude Sessions
 
-This guide describes the comprehensive documentation available in the `docs/` directories to help Claude sessions navigate and utilize Parasol framework documentation effectively.
+This guide describes the comprehensive documentation available in the `docs/` directories to help Claude sessions navigate and utilise Kōtuku documentation effectively.
 
 ## Documentation Structure Overview
 
-The Parasol framework maintains three parallel documentation systems in the `docs/` directory:
+Kōtuku maintains three parallel documentation systems in the `docs/` directory:
 
 - **`docs/wiki/`** - Community-oriented guides and tutorials (Markdown source)
 - **`docs/html/`** - Complete website with API references and galleries (HTML output)
@@ -23,8 +23,8 @@ The wiki contains practical, community-oriented documentation covering:
 
 ### Core Concepts
 - **`Home.md`** - Main wiki landing page with navigation
-- **`Parasol-Objects.md`** - Object system fundamentals
-- **`Parasol-In-Depth.md`** - Advanced framework concepts
+- **`Kotuku-Objects.md`** - Object system fundamentals
+- **`Kotuku-In-Depth.md`** - Advanced framework concepts
 
 ### Tiri Scripting Documentation
 - **`Tiri-Reference-Manual.md`** - Core Tiri language reference
@@ -38,8 +38,8 @@ The wiki contains practical, community-oriented documentation covering:
 - **`RIPL-Reference-Manual.md`** - Rich text document formatting system
 
 ### Development Tools
-- **`Unit-Testing.md`** - Flute test framework documentation
-- **`Parasol-Cmd-Tool.md`** - Command-line tool usage
+- **`Unit-Testing.md`** - Flute test documentation
+- **`Kotuku-Cmd-Tool.md`** - Command-line tool usage
 - **`TDL-Tools.md`** - Interface Definition Language tools
 - **`TDL-Reference-Manual.md`** - TDL syntax and usage
 
@@ -61,8 +61,8 @@ The wiki contains practical, community-oriented documentation covering:
 The HTML documentation provides a fully browsable website experience:
 
 ### Main Sections
-- **`index.html`** - Framework homepage and overview
-- **`gallery.html`** - Visual showcase of framework capabilities
+- **`index.html`** - Kōtuku homepage and overview
+- **`gallery.html`** - Visual showcase of Kōtuku capabilities
 - **`modules/api.html`** - API documentation landing page
 
 ### API Documentation Structure
@@ -78,7 +78,7 @@ The HTML documentation provides a fully browsable website experience:
 ### Web Infrastructure
 - **`css/`** - Bootstrap-based styling
 - **`js/`** - Interactive functionality
-- **`images/`** - Framework logos and icons
+- **`images/`** - Logos and icons
 
 **Key Usage Notes:**
 - Complete offline browsable documentation
@@ -97,7 +97,7 @@ Raw structured documentation extracted directly from C++ source code:
 - **`modules/vector.xml`** - Vector graphics module
 - **`modules/display.xml`** - Display management module
 - **`modules/network.xml`** - Network communications module
-- And others for each framework module
+- And others for each Kōtuku module
 
 ### Class Documentation
 - **`modules/classes/`** - Individual class XML files
@@ -105,7 +105,7 @@ Raw structured documentation extracted directly from C++ source code:
   - **`surface.xml`** - Display surface management
   - **`file.xml`** - File system operations
   - **`bitmap.xml`** - Image processing
-  - 70+ additional class files covering all framework functionality
+  - 70+ additional class files covering all Kōtuku functionality
 
 ### Structure and Content
 Each XML file contains:
@@ -168,7 +168,7 @@ The generated files in `docs/xml/ai/modules/` and `docs/xml/ai/classes/` provide
 4. **Examples in `examples/`** for practical patterns
 
 ### For C++ Development
-1. **`Parasol-Objects.md`** for object system concepts
+1. **`Kotuku-Objects.md`** for object system concepts
 2. **XML class documentation** for precise API specifications
 3. **`TDL-Reference-Manual.md`** for how to write TDL interface definitions
 4. **Source code in `src/`** for implementation details
@@ -202,8 +202,8 @@ When writing or editing documentation in `docs/wiki/`, follow these conventions 
 - **Use first-person plural ("we/our")** to create a collaborative, project-insider feel.  Write as an experienced developer
   explaining concepts to a peer.  Avoid second-person instructional voice ("you should...") except where directly
   addressing the reader's actions.
-- **Be direct and declarative.**  State facts without hedging or unnecessary qualifiers.  Prefer *"Parasol supports
-  threads"* over *"It should be noted that Parasol has support for threads"*.
+- **Be direct and declarative.**  State facts without hedging or unnecessary qualifiers.  Prefer *"Kōtuku supports
+  threads"* over *"It should be noted that Kōtuku has support for threads"*.
 - **Maintain a professional register.**  No jokes, exclamation marks, casual asides, or emojis.  The closest to
   conversational should be phrases like *"Note that..."* or *"It is worth considering..."*.
 
@@ -266,7 +266,7 @@ When documenting functions or methods, follow this consistent pattern:
 
 ## 💡 Best Practices for Claude Sessions
 
-### When Researching Framework Concepts
+### When Researching Kōtuku Concepts
 - Start with relevant wiki pages for conceptual understanding
 - Load AI documentation for complete API coverage
 - Reference XML for detailed technical specifications
@@ -292,9 +292,9 @@ When documenting functions or methods, follow this consistent pattern:
 
 ### For AI Documentation Maintenance
 The AI documentation should be regenerated when:
-- New classes or modules are added to the framework
+- New classes or modules are added
 - API signatures change in existing code
 - Field definitions or access patterns are modified
 - Constants or enumerations are updated
 
-This documentation ecosystem provides comprehensive coverage from high-level concepts to low-level implementation details, with specialized AI-optimized formats for efficient context usage, enabling effective development with the Parasol framework.
+This documentation ecosystem provides comprehensive coverage from high-level concepts to low-level implementation details, with specialized AI-optimized formats for efficient context usage, enabling effective development with the Kōtuku framework.

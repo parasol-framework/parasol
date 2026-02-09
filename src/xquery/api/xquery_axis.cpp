@@ -1,7 +1,7 @@
 //********************************************************************************************************************
 // XPath Axis Evaluation System Implementation
 //
-// The axis evaluator encapsulates the traversal rules needed to support XPath's location steps in Parasol's XML
+// The axis evaluator encapsulates the traversal rules needed to support XPath's location steps in Kotuku's XML
 // engine.  XPath exposes a wide variety of axes—child, ancestor, following, namespace, and so forth—that each
 // describe a different relationship between nodes.  Translating those abstract relationships into concrete
 // navigation across the engine's tree representation requires a fair amount of bookkeeping: we need to preserve

@@ -1,6 +1,6 @@
 // Unit tests for the parser pipeline.
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #ifdef ENABLE_UNIT_TESTS
 

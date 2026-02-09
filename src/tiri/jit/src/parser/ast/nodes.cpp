@@ -1,7 +1,7 @@
 #include "ast/nodes.h"
 
 #include "lj_def.h"
-#include "parasol/strings.hpp"
+#include <kotuku/strings.hpp>
 
 #include <unordered_map>
 

@@ -1,6 +1,6 @@
 // Compile-time field type lookup for object field accesses.
 //
-// This module provides field type resolution for Parasol object fields during parsing,
+// This module provides field type resolution for Kōtuku object fields during parsing,
 // enabling type mismatch detection at compile time rather than runtime.
 //
 // Copyright (C) 2025-2026 Paul Manias
@@ -8,7 +8,7 @@
 #pragma once
 
 #include "../runtime/lj_obj.h"
-#include <parasol/main.h>
+#include <kotuku/main.h>
 #include <optional>
 #include <string_view>
 

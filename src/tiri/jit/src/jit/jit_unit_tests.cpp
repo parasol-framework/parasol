@@ -4,7 +4,7 @@
 // These tests verify the correctness of the FrameManager class and FRC constants used in the JIT trace recorder. They
 // complement the existing Tiri integration tests by providing low-level verification of frame arithmetic operations.
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #ifdef ENABLE_UNIT_TESTS
 

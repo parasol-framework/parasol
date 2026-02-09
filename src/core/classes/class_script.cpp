@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -23,7 +23,7 @@ Terminating the script will not remove objects that are outside its resource hie
 
 #define PRV_SCRIPT 1
 #include "../defs.h"
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 static ERR GET_Results(objScript *, STRING **, int *);
 
@@ -221,7 +221,7 @@ struct ScriptArg {
 The Field Descriptor `FD` specified in the `Type` must be a match to whatever value is defined in the union.  For instance
 if the `Int` field is defined then an `FD_INT` `Type` must be used.  Supplementary field definition information, e.g.
 `FD_OBJECT`, may be used to assist in clarifying the type of the value that is being passed.  Field Descriptors are
-documented in detail in the Parasol Wiki.
+documented in detail in the Kotuku Wiki.
 
 -INPUT-
 cstr Procedure: The name of the procedure to execute, or NULL for the default entry point.

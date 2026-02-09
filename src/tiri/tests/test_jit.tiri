@@ -243,7 +243,7 @@ end
 --[[
 The JitAttachTraceEvent() test has been observed to intermittently trigger this LuaJIT assertion failure:
 
-LuaJIT ASSERT FAILED: /home/paul/parasol/src/tiri/jit/src/lj_trace.cpp:798: lj_trace_ins: trace recorder mutated stack
+LuaJIT ASSERT FAILED: /home/paul/kotuku/src/tiri/jit/src/lj_trace.cpp:798: lj_trace_ins: trace recorder mutated stack
 
 This means lj_trace_ins saw L->base or L->top change across the trace recorder call, which shouldn't happen unless the recorder aborted. The rarity points to stack growth or re-entrancy triggered only in some runs.  So far this problem has only been noticed in Linux and ignorance of the assert does not cause a crash in release builds.
 

@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -47,7 +47,7 @@ is recommended as the default naming format.
 *********************************************************************************************************************/
 
 #include "../defs.h"
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 class FilterConfig {
    public:
@@ -753,7 +753,7 @@ Key filters are created in the format `[Key] = [Data1], [Data2], ...`.  For exam
 <pre>
 Group = Sun, Light
 Path = documents:
-Name = Parasol
+Name = Kōtuku
 </pre>
 
 Filters can be inversed by prefixing the key with the `!` character.

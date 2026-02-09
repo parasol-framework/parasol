@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol Framework is made publicly available under the terms described in the LICENSE.TXT file
+The source code for Kōtuku is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 -CATEGORY-
@@ -10,7 +10,7 @@ Name: Fields
 *********************************************************************************************************************/
 
 #include "defs.h"
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #include <stdarg.h>
 #include <stdlib.h>

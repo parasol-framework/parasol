@@ -1,9 +1,9 @@
 {
    "name": "tiri-language",
    "displayName": "Tiri Language Support",
-   "description": "Language support for Tiri scripting (Parasol Framework)",
+   "description": "Language support for Tiri programs",
    "version": "0.1.0",
-   "publisher": "parasol",
+   "publisher": "kotuku",
    "engines": {
       "vscode": "^1.75.0"
    },

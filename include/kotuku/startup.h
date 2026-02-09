@@ -1,14 +1,14 @@
 #pragma once
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 void print(CSTRING, ...);
-const char * init_parasol(int argc, CSTRING *argv);
-void close_parasol(void);
+const char * init_kotuku(int argc, CSTRING *argv);
+void close_kotuku(void);
 
 #ifdef __cplusplus
 }

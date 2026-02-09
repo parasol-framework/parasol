@@ -1,6 +1,6 @@
 # Tiri Language Support for VS Code
 
-Language support for Tiri scripting (Parasol Framework), including syntax highlighting and LSP integration.
+Language support for Tiri scripting (Kōtuku), including syntax highlighting and LSP integration.
 
 ## Setup
 

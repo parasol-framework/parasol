@@ -1,5 +1,5 @@
 
-#ifdef PARASOL_STATIC
+#ifdef KOTUKU_STATIC
 
 extern "C" ModHeader * register_audio_module();
 extern "C" ModHeader * register_backstage_module();

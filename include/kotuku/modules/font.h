@@ -4,11 +4,11 @@
 // Copyright: Paul Manias © 1998-2026
 // Generator: idl-c
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #define MODVERSION_FONT (1)
 
-#include <parasol/modules/display.h>
+#include <kotuku/modules/display.h>
 
 class objFont;
 
@@ -269,24 +269,24 @@ class objFont : public Object {
 
 };
 
-#ifdef PARASOL_STATIC
+#ifdef KOTUKU_STATIC
 #define JUMPTABLE_FONT [[maybe_unused]] static struct FontBase *FontBase = nullptr;
 #else
 #define JUMPTABLE_FONT struct FontBase *FontBase = nullptr;
 #endif
 
 struct FontBase {
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
    ERR (*_GetList)(struct FontList **Result);
    int (*_StringWidth)(objFont *Font, CSTRING String, int Chars);
    int (*_CharWidth)(objFont *Font, uint32_t Char);
    ERR (*_RefreshFonts)(void);
    ERR (*_SelectFont)(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta);
    ERR (*_ResolveFamilyName)(CSTRING String, CSTRING *Result);
-#endif // PARASOL_STATIC
+#endif // KOTUKU_STATIC
 };
 
-#if !defined(PARASOL_STATIC) and !defined(PRV_FONT_MODULE)
+#if !defined(KOTUKU_STATIC) and !defined(PRV_FONT_MODULE)
 extern struct FontBase *FontBase;
 namespace fnt {
 inline ERR GetList(struct FontList **Result) { return FontBase->_GetList(Result); }
@@ -305,5 +305,5 @@ extern ERR RefreshFonts(void);
 extern ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta);
 extern ERR ResolveFamilyName(CSTRING String, CSTRING *Result);
 } // namespace
-#endif // PARASOL_STATIC
+#endif // KOTUKU_STATIC
 

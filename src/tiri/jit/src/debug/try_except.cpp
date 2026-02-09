@@ -7,7 +7,7 @@
 #define PRV_TIRI
 #define PRV_TIRI_MODULE
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #include "lua.h"
 #include "lj_gc.h"

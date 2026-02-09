@@ -1,8 +1,8 @@
 --$TIRI:Include
 
 module({ name='XQuery', src='xquery.cpp', copyright='Paul Manias © 2025-2026', version=1.0, timestamp=20240611 }, function()
-  c_include('<parasol/modules/xml.h>')
-  cpp_include('<functional>', '<optional>', '<sstream>', '<parasol/strings.hpp>', '<string_view>', '<vector>')
+  c_include('<kotuku/modules/xml.h>')
+  cpp_include('<functional>', '<optional>', '<sstream>', '<kotuku/strings.hpp>', '<string_view>', '<vector>')
 
   restrict(function()
     loadFile('sdk:src/xml/constants.tdl')

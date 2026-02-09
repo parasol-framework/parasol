@@ -23,7 +23,7 @@ end
             print('Connecting...')
          elseif state is 'CONNECTED' then
             print('Connected to server.')
-            Socket.acWrite('GET /index.html HTTP/1.1\r\nHost: parasol.ws\r\nConnection: close\r\nUser-Agent: Parasol Client\r\n\r\n')
+            Socket.acWrite('GET /index.html HTTP/1.1\r\nHost: kotuku.dev\r\nConnection: close\r\nUser-Agent: Kotuku Client\r\n\r\n')
          elseif state is 'DISCONNECTED' then
             print('Disconnected from server.')
             proc.signal()
@@ -45,7 +45,7 @@ end
       end
    } )
 
-   netsocket.mtConnect('parasol.ws', 80)
+   netsocket.mtConnect('kotuku.dev', 80)
 
    err = proc.sleep()
    assert(err is ERR_Okay, 'Failed to complete the test: ' .. mSys.GetErrorMsg(err))

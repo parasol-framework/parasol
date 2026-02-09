@@ -9,7 +9,7 @@
 #include <string>
 #include <utility>
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #include "lj_debug.h"
 #include "lj_tab.h"

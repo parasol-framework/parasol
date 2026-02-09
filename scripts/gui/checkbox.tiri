@@ -1,7 +1,7 @@
 --[[
 The gui.checkbox API creates and manages checkboxes in the user interface.
 
-Documentation is available in the Parasol Wiki.
+Documentation is available in the Kotuku Wiki.
 --]]
 
    import 'gui'

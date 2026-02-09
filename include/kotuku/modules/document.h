@@ -4,14 +4,14 @@
 // Copyright: Paul Manias © 2005-2026
 // Generator: idl-c
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #define MODVERSION_DOCUMENT (1)
 
-#include <parasol/modules/display.h>
-#include <parasol/modules/xml.h>
-#include <parasol/modules/font.h>
-#include <parasol/modules/vector.h>
+#include <kotuku/modules/display.h>
+#include <kotuku/modules/xml.h>
+#include <kotuku/modules/font.h>
+#include <kotuku/modules/vector.h>
 
 class objDocument;
 

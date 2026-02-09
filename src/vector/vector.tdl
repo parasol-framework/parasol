@@ -1,7 +1,7 @@
 --$TIRI:Include
 
 module({ name="Vector", copyright="Paul Manias © 2010-2026", version=1.0, timestamp=20240611 }, function()
-  c_include("<parasol/modules/display.h>", "<parasol/modules/picture.h>")
+  c_include("<kotuku/modules/display.h>", "<kotuku/modules/picture.h>")
 
   restrict(function()
     loadFile(glPath .. 'common.tdl')
@@ -1156,12 +1156,12 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, double Red, double Green,
     "LOOP-LIMIT",
     "MASKCONTENTUNITS",
     "MASKUNITS",
-    "PARASOL:MORPH",
-    "PARASOL:PATHTRANSITION",
-    "PARASOL:SHAPE",
-    "PARASOL:SPIRAL",
-    "PARASOL:TRANSITION",
-    "PARASOL:WAVE",
+    "KOTUKU:MORPH",
+    "KOTUKU:PATHTRANSITION",
+    "KOTUKU:SHAPE",
+    "KOTUKU:SPIRAL",
+    "KOTUKU:TRANSITION",
+    "KOTUKU:WAVE",
     "POINTSATX",
     "POINTSATY",
     "POINTSATZ",

@@ -4,7 +4,7 @@
 Audio: Supports a machine's audio hardware and provides a client-server audio management service.
 
 The Audio class provides a comprehensive audio service that works across multiple platforms and follows a client-server
-design model. It serves as the foundation for all audio operations in the Parasol framework, managing hardware resources,
+design model. It serves as the foundation for all audio operations in Kōtuku framework, managing hardware resources,
 sample mixing, and output buffering.
 
 The Audio class supports 8/16/32 bit output in stereo or mono configurations, with advanced features including oversampling

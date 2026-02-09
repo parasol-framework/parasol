@@ -4,12 +4,12 @@
 // Copyright: Paul Manias © 2005-2025
 // Generator: idl-c
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #define MODVERSION_SCINTILLA (1)
 
-#include <parasol/modules/display.h>
-#include <parasol/modules/font.h>
+#include <kotuku/modules/display.h>
+#include <kotuku/modules/font.h>
 
 class objScintilla;
 class objScintillaSearch;

@@ -13,7 +13,7 @@
 #include "bytecode/lj_bc.h"
 #include "../lexer.h"
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #include "operator_emitter.h"
 #include "../parse_internal.h"

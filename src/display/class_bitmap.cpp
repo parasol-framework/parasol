@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -10,7 +10,7 @@ Bitmap: Manages bitmap graphics and provides drawing functionality.
 
 The Bitmap class provides a way of describing an area of memory that an application can draw to, and/or display if the
 data is held in video memory.  Bitmaps are used in the handling of @Display and @Picture objects, and form the backbone
-of Parasol's graphics functionality.  The Bitmap class supports everything from basic graphics primitives to masking and
+of Kōtuku's graphics functionality.  The Bitmap class supports everything from basic graphics primitives to masking and
 alpha blending features.
 
 To create a new bitmap object, you need to specify its #Width and #Height at a minimum.  Preferably, you should also
@@ -1597,7 +1597,7 @@ static ERR BITMAP_Query(extBitmap *Self)
       Self->BytesPerPixel = 1;
    }
 
-   // If no type has been set, use the type that is native to the system that Parasol is running on.
+   // If no type has been set, use the type that is native to the system that Kōtuku is running on.
 
    if (Self->Type IS BMP::NIL) Self->Type = BMP::CHUNKY;
 

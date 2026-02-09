@@ -5,7 +5,7 @@
 #define LUA_CORE
 
 #include "lj_obj.h"
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 //********************************************************************************************************************
 // Object type names.

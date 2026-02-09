@@ -4,7 +4,7 @@
 // Copyright: Paul Manias © 2001-2026
 // Generator: idl-c
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #define MODVERSION_XML (1)
 
@@ -13,7 +13,7 @@
 #include <memory>
 #include <sstream>
 #ifndef STRINGS_HPP
-#include <parasol/strings.hpp>
+#include <kotuku/strings.hpp>
 #endif
 
 #endif
@@ -586,21 +586,21 @@ inline void ForEachAttrib(objXML::TAGS &Tags, std::function<void(XMLAttrib &)> &
 }
 
 } // namespace
-#ifdef PARASOL_STATIC
+#ifdef KOTUKU_STATIC
 #define JUMPTABLE_XML [[maybe_unused]] static struct XMLBase *XMLBase = nullptr;
 #else
 #define JUMPTABLE_XML struct XMLBase *XMLBase = nullptr;
 #endif
 
 struct XMLBase {
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
    ERR (*_XValueToNumber)(struct XPathValue *Value, double *Result);
    ERR (*_XValueToString)(const struct XPathValue *Value, std::string *Result);
    ERR (*_XValueNodes)(struct XPathValue *Value, pf::vector<struct XTag *> *Result);
-#endif // PARASOL_STATIC
+#endif // KOTUKU_STATIC
 };
 
-#if !defined(PARASOL_STATIC) and !defined(PRV_XML_MODULE)
+#if !defined(KOTUKU_STATIC) and !defined(PRV_XML_MODULE)
 extern struct XMLBase *XMLBase;
 namespace xml {
 inline ERR XValueToNumber(struct XPathValue *Value, double *Result) { return XMLBase->_XValueToNumber(Value,Result); }
@@ -613,5 +613,5 @@ extern ERR XValueToNumber(struct XPathValue *Value, double *Result);
 extern ERR XValueToString(const struct XPathValue *Value, std::string *Result);
 extern ERR XValueNodes(struct XPathValue *Value, pf::vector<struct XTag *> *Result);
 } // namespace
-#endif // PARASOL_STATIC
+#endif // KOTUKU_STATIC
 
