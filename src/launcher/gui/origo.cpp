@@ -15,7 +15,7 @@ that is distributed with this package.  Please refer to it for further informati
 
 #include <parasol/modules/filesystem.h>
 
-CSTRING ProgName = "Parasol";
+CSTRING ProgName = "Origo";
 
 extern struct CoreBase *CoreBase;
 struct FileSystemBase *FileSystemBase;
@@ -39,7 +39,7 @@ static const char Help[] = {
 "This command-line program will execute scripts written for the Parasol framework.  The core distribution\n\
 supports Tiri (.tiri) scripts.  Quick start:\n\
 \n\
-   parasol [args] [script.ext] arg1 arg2 ...\n\
+   origo [args] [script.ext] arg1 arg2 ...\n\
 \n\
 Available commands:\n\
 \n\
@@ -180,7 +180,7 @@ extern "C" void program(void)
    ProcessMessages(0, 0);
 
 exit:
-   log.msg("parasol now exiting...");
+   log.msg("Origo now exiting...");
 
    if (CoreObjectID) {
       OBJECTPTR object;

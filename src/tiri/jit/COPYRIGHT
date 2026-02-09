@@ -1,3 +1,11 @@
+TiriJIT
+
+Copyright (C) 2025-2026 Paul Manias
+
+The source code of the Parasol project is made publicly available under the
+terms described in the LICENSE.TXT file that is distributed with this package.
+Please refer to it for further information on licensing.
+
 ===============================================================================
 LuaJIT -- a Just-In-Time Compiler for Lua. https://luajit.org/
 

@@ -1,121 +1,9 @@
-# LuaJIT 2.1 Integration Notes
-
-This file captures practices and gotchas observed while maintaining the LuaJIT 2.1 sources that ship inside Parasol. Use it as a quick orientation before diving into changes.
-
-## Parser File Structure (src/parser/)
-
-The parser has been modernised to C++20 and refactored into focused modules:
-
-**Core Infrastructure:**
-- `parse_types.h` - Type definitions, enums, and constexpr helper functions for expressions and scopes
-- `parse_concepts.h` - C++20 concepts for compile-time type validation (15+ concepts)
-- `parse_raii.h` - RAII guards (ScopeGuard, RegisterGuard, VStackGuard) with move semantics
-- `parse_internal.h` - Internal function declarations and template helpers for bytecode emission
-
-**Lexer:**
-- `lexer.h` / `lexer.cpp` - Tokenisation and lexical analysis
-
-**Parser Core:**
-- `parser.h` / `parser.cpp` - Main parser entry point and binary operator precedence handling
-- `parse_core.cpp` - Core utilities, error handling, and token checking functions
-
-**Parser Components:**
-- `parse_constants.cpp` - Constant table management and jump list handling with iterator support
-- `parse_regalloc.cpp` - Register allocation, bytecode emission, and expression discharge logic
-- `parse_scope.cpp` - Scope management, variable resolution, and upvalue tracking
-- `parse_expr.cpp` - Expression parsing (primary, suffix, constructor, function calls)
-- `parse_operators.cpp` - Operator implementation (arithmetic folding, bitwise, unary, logical)
-- `parse_stmt.cpp` - Statement parsing (assignments, control flow, declarations)
-
-## Repository Layout Highlights
-- `src/`: Upstream LuaJIT sources (parser, VM, JIT engine) with Parasol-specific modernisations
-- `src/parser/`: C++20 refactored parser (see structure above)
-- `src/tiri/tests/`: Tiri regression tests exercise the embedded LuaJIT runtime
-- `BYTECODE.md`: Complete bytecode instruction reference with control-flow semantics for parser/emitter work
-- CMake drops generated headers, the VM object/assembly, and host helpers under `build/agents/src/tiri/luajit-generated/`. The final static library ends up in `build/agents/luajit-2.1/lib/`.
-
-## Key Implementation Patterns
-
-**Type Safety with Concepts:**
-```cpp
-// Use concepts for compile-time validation
-template<BytecodeOpcode Op>
-static inline BCPOS bcemit_ABC(FuncState* fs, Op o, BCREG a, BCREG b, BCREG c);
-```
-
-**RAII for Resource Management:**
-```cpp
-// Automatic scope cleanup
-FuncScope bl;
-ScopeGuard scope_guard(fs, &bl, FuncScopeFlag::None);
-// ... parse statements ...
-// Automatic cleanup on scope exit
-```
-
-**Constexpr Expression Builders:**
-```cpp
-// Compile-time expression construction
-auto expr = make_nil_expr();
-auto bool_expr = make_bool_expr(true);
-```
-
-**Modern Container Usage:**
-```cpp
-// Prefer std::span for array access
-auto uvmap_range = std::span(fs->uvmap.data(), fs->nuv);
-for (auto uv_idx : uvmap_range) { ... }
-
-// Use std::string_view for string parameters
-static GCstr* keepstr(std::string_view str);
-```
-
-## Integration & Build Tips
-- Always rebuild via CMake (e.g. `cmake --build build/agents --config <BuildType>`) after touching LuaJIT or Tiri sources so the static library target is regenerated and relinked into the Tiri module.
-- CMake drives three build strategies, matching the logic in `src/tiri/CMakeLists.txt`:
-  - **MSVC**: `msvcbuild_codegen.bat` produces generated headers and `lj_vm.obj`, and CMake links `lua51.lib` next to the upstream sources.
-  - **Unix-like toolchains**: CMake builds the host tools (`minilua` and `buildvm`), generates assembly with DynASM, then archives `lj_vm.o` + `ljamalg.o` into `libluajit-5.1.a`.
-- Install (`cmake --install build/agents --config <BuildType>`) before running tests so the freshly built `parasol` binary (or `parasol.exe` on Windows) and scripts land in `build/agents-install/`.
-
-## Error Handling Configuration
-- **Windows (MSVC)**: Must NOT define `LUAJIT_NO_UNWIND`. MSVC always uses Structured Exception Handling (SEH) via `RaiseException()` and `lj_err_unwind_win()`.  There is no "internal unwinding" implementation for MSVC - SEH is the only viable mechanism. Setting `LJ_NO_UNWIND` for MSVC breaks exception handling and causes catch() tests to fail with "attempt to call a nil value" errors.
-- The `LJ_NO_UNWIND` flag results in broken code that corrupts memory if used in GCC builds.
-
-## Testing
-- Use `ctest --build-config <BuildType> --test-dir build/agents -R <label>` to run subsets, or omit `-R` for the full suite. Tiri regression tests are under `src/tiri/tests/` and catch most parser/VM regressions.
-- For quick manual checks, launch `parasol` (or `parasol.exe` on Windows) from `build/agents-install/bin/` with `--no-crash-handler --log-warning` so failures bubble out as exit codes.
-- **Critical**: After touching LuaJIT C sources, rebuild both the Tiri module and `parasol_cmd`, then reinstall:
-  ```bash
-  cmake --build build/agents --config <BuildType> --parallel
-  cmake --install build/agents --config <BuildType>
-  ```
-- When debugging parser issues, create minimal Tiri scripts to isolate the behaviour before running the full test suite.
-- Unit tests are managed by `MODTests()` in `src/tiri/tiri.cpp`.
-- To run the compiled-in unit tests, run `src/tiri/tests/test_unit_tests.tiri` with the `--log-api` option to view the output from stderr.
-- Run `parasol` with `--jit-options` to pass JIT engine flags as a CSV list, e.g. `--jit-options dump-bytecode,trace-boundary`.  Available options are:
-  - `trace-tokens` Trace tokenisation
-  - `trace-expect` Trace expectations
-  - `trace-boundary` Trace boundary crossings between interpreted and JIT code
-  - `dump-bytecode` Dump disassembled bytecode at the end of parsing
-  - `diagnose` Disables abort-on-error so that the full script is parsed.  Use in conjunction with other options for deeper log messages
-  - `profile` Use timers to profile JIT parsing, also required for run-time profiling.
-- More precise debugging with the JIT engine is possible by setting the `jitOptions` field on `tiri` objects.  Example:
-
-```lua
-  local script = obj.new('tiri', { statement = [[
-  function test()
-     return 42
-  end
-  ]],
-  jitOptions = 'dump-bytecode,diagnose'
-  })
-  script.acActivate()
-```
 
 ## Troubleshooting Register Allocation
 
 When changing emission logic:
 
-- Never reduce `fs->freereg` below `fs->nactvar`; locals are stored there.
+- Never reduce `fs->freereg` below `fs->varmap.size()`; locals are stored there.
 - Ensure every path that creates a `VCALL` either converts it to `VNONRELOC` or signals to assignment helpers how many results the call should return.
 - The helper `expr_discharge()` is frequently used to normalise expressions before storage; inspect current usage before inventing new patterns.
 
@@ -187,7 +75,7 @@ When a function returning multiple values is used as an operand in a binary oper
 For operators implemented via library calls (like bitwise operators calling `bit.band`), the base register selection logic checks if operands are at the top of the stack:
 
 ```cpp
-if (rhs->k IS ExpKind::NonReloc and rhs->u.s.info >= fs->nactvar and rhs->u.s.info + 1 IS fs->freereg) {
+if (rhs->k IS ExpKind::NonReloc and rhs->u.s.info >= fs->varmap.size() and rhs->u.s.info + 1 IS fs->freereg) {
    base = rhs->u.s.info;  // Reuse RHS register
 }
 ```
@@ -223,27 +111,27 @@ ISEQV      A=R2 D=R0         -- Compares R2 (still 6!) with expected
 Discharge `Call` expressions to `NonReloc` **before** base register calculation:
 
 ```cpp
-static void bcemit_bit_call(FuncState* fs, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs)
+static void bcemit_bit_call(FuncState *fs, std::string_view FName, ExpDesc *LHS, ExpDesc *RHS)
 {
    RegisterAllocator allocator(fs);
 
    // Discharge Call expressions to NonReloc first. This ensures that function calls
    // returning multiple values are properly truncated to single values before being
    // used as operands, matching Lua's standard semantics for binary operators.
-   if (lhs->k IS ExpKind::Call) {
-      ExpressionValue lhs_discharge(fs, *lhs);
+   if (LHS->k IS ExpKind::Call) {
+      ExpressionValue lhs_discharge(fs, *LHS);
       lhs_discharge.discharge();
-      *lhs = lhs_discharge.legacy();
+      *LHS = lhs_discharge.legacy();
    }
-   if (rhs->k IS ExpKind::Call) {
-      ExpressionValue rhs_discharge(fs, *rhs);
+   if (RHS->k IS ExpKind::Call) {
+      ExpressionValue rhs_discharge(fs, *RHS);
       rhs_discharge.discharge();
-      *rhs = rhs_discharge.legacy();
+      *RHS = rhs_discharge.legacy();
    }
 
    // Now the base register check will correctly identify NonReloc operands
    BCREG base;
-   if (rhs->k IS ExpKind::NonReloc and ...) { ... }
+   if (RHS->k IS ExpKind::NonReloc and ...) { ... }
 }
 ```
 
@@ -270,8 +158,7 @@ When implementing operators that can chain across precedence boundaries (e.g., o
 **The Solution:**
 Before allocating a base register for an operation, check if the LHS operand (which may be the previous operation's result) is already at the top of the stack. The check pattern is:
 ```c
-if (lhs->k == VNONRELOC && lhs->u.s.info >= fs->nactvar &&
-    lhs->u.s.info + 1 == fs->freereg) {
+if (lhs->k IS VNONRELOC and lhs->u.s.info >= fs->varmap.size() and lhs->u.s.info + 1 IS fs->freereg) {
    // LHS is at the top - reuse its register to avoid orphaning
    base_reg = lhs->u.s.info;
 }
@@ -324,7 +211,7 @@ if-empty operator), follow a two-phase pattern: setup in `bcemit_binop_left()` a
    `NO_JMP` for falsey LHS (to evaluate RHS). For truthy constants, you must allocate a
    register before loading them:
    ```c
-   if (e->k == VKSTR || e->k == VKNUM || e->k == VKTRUE) {
+   if (e->k IS VKSTR or e->k IS VKNUM or e->k IS VKTRUE) {
      bcreg_reserve(fs, 1);  // CRITICAL: Allocate register first
      expr_toreg_nobranch(fs, e, fs->freereg-1);
      pc = bcemit_jmp(fs);  // Jump to skip RHS
@@ -346,7 +233,7 @@ if-empty operator), follow a two-phase pattern: setup in `bcemit_binop_left()` a
 
 **Critical Gotcha:**
 - After `expr_toreg_nobranch()` with a proper register, the expression becomes `VNONRELOC`
-- Check `e1->k == VNONRELOC` before trying to load it again in `bcemit_binop()`
+- Check `e1->k IS VNONRELOC` before trying to load it again in `bcemit_binop()`
 - If the constant was already loaded in `bcemit_binop_left()`, it's already in a register
 
 **Pattern for Extended Falsey Checks** (as used in `?` if-empty operator and `??` presence check):
@@ -356,16 +243,16 @@ The pattern chains multiple equality checks, where each check's JMP is patched t
 ```c
 // Check for nil
 bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
-check_nil = bcemit_jmp(fs);  // Skipped when reg == nil
+check_nil = bcemit_jmp(fs);  // Skipped when reg IS nil
 // Check for false
 bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
-check_false = bcemit_jmp(fs);  // Skipped when reg == false
+check_false = bcemit_jmp(fs);  // Skipped when reg IS false
 // Check for zero
 bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov)));
-check_zero = bcemit_jmp(fs);  // Skipped when reg == 0
+check_zero = bcemit_jmp(fs);  // Skipped when reg IS 0
 // Check for empty string
 bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
-check_empty = bcemit_jmp(fs);  // Skipped when reg == ""
+check_empty = bcemit_jmp(fs);  // Skipped when reg IS ""
 
 // Patch all JMPs to the falsey branch (e.g., RHS evaluation)
 jmp_patch(fs, check_nil, falsey_branch_pc);
@@ -375,8 +262,8 @@ jmp_patch(fs, check_empty, falsey_branch_pc);
 ```
 
 **How This Works**:
-- **When value is falsey** (e.g., `reg == nil`): The matching `BC_ISEQP` (e.g., `BC_ISEQP reg, VKNIL`) finds equality → skips its JMP → execution continues past all checks → eventually reaches code that handles the falsey case (e.g., load false, evaluate RHS)
-- **When value is truthy** (e.g., `reg == "hello"`): ALL `BC_ISEQP` checks find inequality (reg != nil, reg != false, reg != 0, reg != "") → NONE skip their JMPs → the first JMP executes and jumps to the falsey branch → result is correct (e.g., load true, skip RHS)
+- **When value is falsey** (e.g., `reg IS nil`): The matching `BC_ISEQP` (e.g., `BC_ISEQP reg, VKNIL`) finds equality → skips its JMP → execution continues past all checks → eventually reaches code that handles the falsey case (e.g., load false, evaluate RHS)
+- **When value is truthy** (e.g., `reg IS "hello"`): ALL `BC_ISEQP` checks find inequality (reg != nil, reg != false, reg != 0, reg != "") → NONE skip their JMPs → the first JMP executes and jumps to the falsey branch → result is correct (e.g., load true, skip RHS)
 
 **Note**: This pattern works because we chain multiple checks and patch all JMPs to the same location. If the value matches any falsey check, that check's JMP is skipped and execution continues. If the value matches none of the checks (is truthy), all JMPs execute and the first one jumps to the falsey branch. The exact behavior depends on how the falsey branch is structured.
 
@@ -387,11 +274,11 @@ in addition to `nil` and `false`):
 
 1. **Handle compile-time constants separately** in `bcemit_binop()`:
    ```c
-   if (e1->k == VKNIL || e1->k == VKFALSE) {
+   if (e1->k IS VKNIL or e1->k IS VKFALSE) {
      // Definitely falsey - evaluate RHS
-   } else if (e1->k == VKNUM && expr_numiszero(e1)) {
+   } else if (e1->k IS VKNUM and expr_numiszero(e1)) {
      // Zero is falsey - evaluate RHS
-   } else if (e1->k == VKSTR && e1->u.sval && e1->u.sval->len == 0) {
+   } else if (e1->k IS VKSTR and e1->u.sval and e1->u.sval->len IS 0) {
      // Empty string is falsey - evaluate RHS
    }
    ```
@@ -418,7 +305,7 @@ in addition to `nil` and `false`):
    ```
 
    **How This Works**:
-   - When `reg == nil`: `BC_ISEQP` skips the `JMP` → execution continues past all checks
+   - When `reg IS nil`: `BC_ISEQP` skips the `JMP` → execution continues past all checks
    - When `reg != nil`: `BC_ISEQP` doesn't skip → `JMP` executes → jumps to RHS evaluation
    - Since we want to evaluate RHS when ANY falsey value is found, we patch all jumps to the RHS evaluation point
    - If the value is truthy, ALL checks skip their jumps, and execution continues (returning the truthy value)
@@ -461,58 +348,19 @@ When adding new operators or modifying expression parsing, use these strategies:
 Add temporary printf statements to trace token values through parsing:
 ```cpp
 // In expr_primary() suffix loop or similar:
-printf("[DEBUG] tok=%d ('%c' if printable)\n", ls->tok,
-       (ls->tok >= 32 && ls->tok < 127) ? ls->tok : '?');
+printf("[DEBUG] tok=%d ('%c' if printable)\n", ls->tok, (ls->tok >= 32 and ls->tok < 127) ? ls->tok : '?');
 ```
 Remember to remove these before committing. Token values < 256 are ASCII characters;
 values >= 256 are token type constants from `lj_lex.h`.
 
 ### Disassembling Generated Bytecode
 
-The `DebugLog()` method can be used to dump bytecode instructions during script execution, or after
-the script has been compiled with the Activate() action.  For example:
-
-```lua
-function runtime_disassembly()
-   local self = obj.find('self')
-   local scale = b * 2
-   local total = a + scale
-   local err, result = self.mtDebugLog('disasm')
-   print(result)
-end
-
-function compiled_disassembly()
-   -- Create an independent script object with sample code
-   local script = obj.new('tiri', { statement = [[
-function sampleFunction(a, b)
-   local scale = b * 2
-   local total = a + scale
-   return result
-end
-]]
-   })
-
-   script.acActivate()
-   local err, result = script.mtDebugLog('disasm')
-   print(result)
-end
-```
-
-Example output:
-
-```
-0000       0 FUNCV     A=R4
-0001       5 FNEW      A=R0 D=K<func 1-5>
-  --- lines 1-5, 5 bytecodes ---
-  0000       1 FUNCF     A=R5
-  0001       2 MULVN     A=R2 B=R1 C=#2
-  0002       3 ADDVV     A=R3 B=R0 C=R2
-  0003       4 GGET      A=R4 D=K"result"
-  0004       4 RET1      A=R4 D=#2
-```
+The simplest way to debug generated bytecode is to create an isolated `.tiri` testing file and then run `origo` with the `--jit-options dump-bytecode` option.
 
 ### Diagnosing Multi-Value Return Issues
+
 If an operator returns multiple values instead of one:
+
 - **Symptom**: Expressions like `(x + y)?` produce two values in varargs contexts
 - **Common cause**: Allocating a new register without calling `expr_free()` first
 - **Fix pattern**:
@@ -533,58 +381,4 @@ When implementing new operators:
 5. Test function calls that return a single result and those that return multiple results
    (`f(x)`) - test VCALL handling
 6. Test in various contexts (assignments, function arguments, conditionals)
-7. If issues arise, use DebugLog('disasm') as a source of truth rather than guessing the
-   logic of emitted bytecode.
-
-## Miscellaneous Gotchas
-- Check that any new compile-time constants or flags (e.g. `#define`s) do
-  not collide with upstream naming; we will eventually rebase to newer
-  LuaJIT drops.
-- Generated build outputs under `build/agents/` can be removed safely; do not
-  store investigation artefacts there long-term.
-- Keep an eye on Tiri tests after modifying LuaJIT semantics—failures often
-  surface as subtle script regressions rather than outright crashes.
-
-## VM Assembly and buildvm Dependencies
-
-**Critical Build Dependency**: The `lj_obj.h` file contains the `MMDEF` macro which defines the metamethod table. When modifying `MMDEF` (e.g., adding new metamethods like `__close`), both `buildvm.exe` and `lj_vm.obj` must be regenerated.
-
-**Why This Matters:**
-- `buildvm` generates `lj_vm.obj` with hardcoded metamethod offsets derived from `MMDEF`
-- If `lj_obj.h` changes but `lj_vm.obj` is not regenerated, the VM assembly will have stale offsets
-- This causes cryptic runtime failures like `PANIC: unprotected error in call to Lua API ()` affecting *all* Tiri scripts
-
-**Adding New Metamethods:**
-
-When adding entries to `MMDEF` in `lj_obj.h`:
-1. **Position matters**: The `MMDEF` macro generates an enum (`MM_*`) with sequential values. The first 6-8 metamethods are "fast" (negative cached). New metamethods should typically be added at the end, after `_(tostring)`, to avoid shifting existing metamethod indices.
-2. **Force rebuild**: After modifying `MMDEF`, delete the generated VM files to force regeneration:
-   ```bash
-   rm build/agents/src/tiri/luajit-generated/buildvm.exe
-   rm build/agents/src/tiri/luajit-generated/lj_vm.obj
-   ```
-3. **Full rebuild**: Run `cmake --build build/agents --config <BuildType> --parallel` to regenerate and rebuild.
-
-**CMake Dependency**: The CMakeLists.txt includes `lj_obj.h` in the `DEPENDS` clause for both buildvm compilation and VM generation commands. This ensures automatic regeneration when `lj_obj.h` changes.
-
----
-
-## Quick Reference
-
-**File Locations:**
-- Parser source: `src/tiri/luajit-2.1/src/parser/`
-- Bytecode reference: `src/tiri/luajit-2.1/BYTECODE.md` (instruction matrix, control-flow semantics)
-- Tiri tests: `src/tiri/tests/`
-
-**Common Tasks:**
-- Adding an operator: See "Implementing Binary Logical Operators" and "Single-Character Token Recognition" sections
-- Register allocation: See "Troubleshooting Register Allocation" and "Register Management" sections
-- Debugging bytecode: Use `script.mtDebugLog('disasm')` (see "Disassembling Generated Bytecode" section)
-- Understanding concepts: See `parse_concepts.h` for type constraints
-- Expression builders: See `parse_types.h` for constexpr factories
-
-**Key Headers:**
-- `parse_types.h` - Core types and expression builders
-- `parse_concepts.h` - C++20 type constraints
-- `parse_raii.h` - RAII guards
-- `parse_internal.h` - Function declarations and templates
+7. If issues arise, use `--jit-options dump-bytecode` as a source of truth rather than guessing the logic of emitted bytecode.

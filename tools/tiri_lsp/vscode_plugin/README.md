@@ -16,7 +16,7 @@ npm install
 Before using LSP features, start the Tiri LSP server:
 
 ```bash
-parasol tools/lsp_server.tiri port=5007
+origo tools/lsp_server.tiri port=5007
 ```
 
 ### 3. Install the Extension

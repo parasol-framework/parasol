@@ -107,7 +107,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test(labels=['io', 'file']) function IOTmpfile()
-   tmpfile = io.tmpfile()
+   tmpfile = io.tempFile()
    assert(tmpfile, 'Failed to create temporary file')
    assert(io.type(tmpfile) is 'file', 'Temporary file should be a valid file object')
 

@@ -8,7 +8,7 @@ Parasol integrates a heavily modified LuaJIT 2.1 VM. This note captures the cont
 - Conditions are expressed as "condition true → skip next instruction; condition false → execute next instruction (normally a `JMP`)." "Next instruction" means the sequential `BCIns`; a taken `JMP` applies its offset from the following instruction.
 - Version: LuaJIT 2.1 with extensive changes, assuming the `LJ_FR2` two-slot frame layout used by all supported platforms.
 - **64-bit bytecode**: `BCIns` is now `uint64_t` (was `uint32_t`). Instructions occupy 8 bytes each. New extended formats (ABCP, ADP, AP) enable native 64-bit pointer storage for inline caching. See section 3.1 for format details.
-- Keep this file aligned with changes in `src/tiri/luajit-2.1/src/parser/*`, whenever bytecode emission patterns change.
+- Keep this file aligned with changes in `src/tiri/jit/src/parser/*`, whenever bytecode emission patterns change.
 
 ## 3. Bytecode Overview
 ### 3.1 High-Level Structure
@@ -224,13 +224,13 @@ Operand suffixes: V=variable slot, S=string const, N=number const, P=primitive (
 | `RAISE` | A D | Raise exception with error code R(A) and message R(D) |
 
 ### 3.3 Resources and Cross-References
-- Opcode definitions and metadata (including the `BCDEF` macro): `src/tiri/luajit-2.1/src/bytecode/lj_bc.h`.
-- Parser emission sites: `src/tiri/luajit-2.1/src/parser/ir_emitter/operator_emitter.cpp` (operator lowering and bytecode emission), `src/tiri/luajit-2.1/src/parser/ir_emitter/ir_emitter.cpp` (control-flow and expression emission).
-- Exception handling emission: `src/tiri/luajit-2.1/src/parser/ir_emitter/emit_try.cpp` (try-except-end statement bytecode generation).
-- Behavioural context and patterns: `src/tiri/luajit-2.1/src/parser/ir_emitter/operator_emitter.cpp`, `src/tiri/luajit-2.1/src/parser/ir_emitter/ir_emitter.cpp`, and `src/tiri/luajit-2.1/src/parser/parse_control_flow.cpp` (parser wiring and control-flow emission patterns).
-- Native array implementation: `src/tiri/luajit-2.1/src/runtime/lj_array.cpp`, `lj_array.h` (core array operations), `lj_vmarray.cpp` (bytecode handlers), `lib_array.cpp` (library functions).
-- Array bytecode emission: `src/tiri/luajit-2.1/src/parser/ir_emitter/emit_function.cpp`, `parse_regalloc.cpp` (array index expression discharge).
-- VM implementations: `src/tiri/luajit-2.1/src/jit/vm_x64.dasc` (x64), `vm_arm64.dasc` (ARM64), `vm_ppc.dasc` (PowerPC) - bytecode interpreter and JIT entry points.
+- Opcode definitions and metadata (including the `BCDEF` macro): `src/tiri/jit/src/bytecode/lj_bc.h`.
+- Parser emission sites: `src/tiri/jit/src/parser/ir_emitter/operator_emitter.cpp` (operator lowering and bytecode emission), `src/tiri/jit/src/parser/ir_emitter/ir_emitter.cpp` (control-flow and expression emission).
+- Exception handling emission: `src/tiri/jit/src/parser/ir_emitter/emit_try.cpp` (try-except-end statement bytecode generation).
+- Behavioural context and patterns: `src/tiri/jit/src/parser/ir_emitter/operator_emitter.cpp`, `src/tiri/jit/src/parser/ir_emitter/ir_emitter.cpp`, and `src/tiri/jit/src/parser/parse_control_flow.cpp` (parser wiring and control-flow emission patterns).
+- Native array implementation: `src/tiri/jit/src/runtime/lj_array.cpp`, `lj_array.h` (core array operations), `lj_vmarray.cpp` (bytecode handlers), `lib_array.cpp` (library functions).
+- Array bytecode emission: `src/tiri/jit/src/parser/ir_emitter/emit_function.cpp`, `parse_regalloc.cpp` (array index expression discharge).
+- VM implementations: `src/tiri/jit/src/jit/vm_x64.dasc` (x64), `vm_arm64.dasc` (ARM64), `vm_ppc.dasc` (PowerPC) - bytecode interpreter and JIT entry points.
 - 64-bit bytecode implementation plan: `docs/plans/bcins-64bit.md` (detailed phase documentation).
 - Tests exercising these paths live under `src/tiri/tests/`.
 
@@ -498,7 +498,7 @@ Each `TryHandlerDesc` contains:
 - `handler_pc`: Bytecode position of handler entry point
 - `exception_reg`: Register holding exception table (0xFF = no variable)
 
-**Implementation:** See [emit_try.cpp:30-240](src/tiri/luajit-2.1/src/parser/ir_emitter/emit_try.cpp#L30-L240), [emit_try.cpp:248-291](src/tiri/luajit-2.1/src/parser/ir_emitter/emit_try.cpp#L248-L291), [emit_try.cpp:299-320](src/tiri/luajit-2.1/src/parser/ir_emitter/emit_try.cpp#L299-L320).
+**Implementation:** See [emit_try.cpp:30-240](src/tiri/jit/src/parser/ir_emitter/emit_try.cpp#L30-L240), [emit_try.cpp:248-291](src/tiri/jit/src/parser/ir_emitter/emit_try.cpp#L248-L291), [emit_try.cpp:299-320](src/tiri/jit/src/parser/ir_emitter/emit_try.cpp#L299-L320).
 
 ### 9.2 Runtime Type Fixing (`BC_TYPEFIX`)
 
@@ -510,14 +510,14 @@ Each `TryHandlerDesc` contains:
 - Slow path: calls `lj_meta_typefix(L, base, count)` to infer and record types based on actual runtime values.
 
 **When emitted:**
-The parser sets the `PROTO_TYPEFIX` flag (defined in [lj_obj.h:623](src/tiri/luajit-2.1/src/runtime/lj_obj.h#L623)) on function prototypes when:
+The parser sets the `PROTO_TYPEFIX` flag (defined in [lj_obj.h:623](src/tiri/jit/src/runtime/lj_obj.h#L623)) on function prototypes when:
 1. The function has NO explicit return type annotations, AND
 2. At least one return statement exists
 
 **Purpose:**
 Enables type inference for untyped functions, allowing the VM to optimize subsequent calls based on observed return types. The inferred types are stored in `GCproto.result_types[]` (up to `PROTO_MAX_RETURN_TYPES` positions).
 
-**Implementation:** See [vm_x64.dasc:4901-4922](src/tiri/luajit-2.1/src/jit/vm_x64.dasc#L4901-L4922), [lj_meta.cpp:664-685](src/tiri/luajit-2.1/src/runtime/lj_meta.cpp#L664-L685), [parse_scope.cpp:1012-1024](src/tiri/luajit-2.1/src/parser/parse_scope.cpp#L1012-L1024).
+**Implementation:** See [vm_x64.dasc:4901-4922](src/tiri/jit/src/jit/vm_x64.dasc#L4901-L4922), [lj_meta.cpp:664-685](src/tiri/jit/src/runtime/lj_meta.cpp#L664-L685), [parse_scope.cpp:1012-1024](src/tiri/jit/src/parser/parse_scope.cpp#L1012-L1024).
 
 ## 10. Testing, Debugging, and Tooling
 ### 10.1 Using Flute and Tiri Tests

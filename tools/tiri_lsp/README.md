@@ -87,12 +87,12 @@ Parser-generated tips for code improvement (LSP severity 4), including:
 ### Prerequisites
 
 - Parasol Framework installed and built
-- `parasol` executable available in PATH
+- `origo` executable available in PATH
 
 ### Starting the Server
 
 ```bash
-parasol tools/tiri_lsp/server.tiri port=5007
+origo tools/tiri_lsp/server.tiri port=5007
 ```
 
 ### Configuration Options
@@ -106,7 +106,7 @@ parasol tools/tiri_lsp/server.tiri port=5007
 
 Example with options:
 ```bash
-parasol server.tiri port=5007 verbose=true request-log=debug.log
+origo server.tiri port=5007 verbose=true request-log=debug.log
 ```
 
 ## VSCode Extension
@@ -209,7 +209,7 @@ Test with netcat or telnet:
 
 ```bash
 # Start server
-parasol server.tiri port=5007
+origo server.tiri port=5007
 
 # In another terminal
 nc localhost 5007
@@ -224,7 +224,7 @@ Content-Length: 110
 
 **Server won't start**
 - Ensure port is not already in use
-- Check that `parasol` is accessible
+- Check that `origo` is accessible
 - Verify the Parasol SDK path can be resolved
 
 **No diagnostics appearing**
