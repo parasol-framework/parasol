@@ -1,4 +1,4 @@
--- $FLUID
+-- $TIRI
 -- Comprehensive test suite for the URL module
 
    import 'net/url'

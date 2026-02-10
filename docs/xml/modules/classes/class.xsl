@@ -190,10 +190,10 @@
         <xsl:call-template name="addGoogleTracking"/>
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
         <!-- The above 2 meta tags *must* come first in the head; any other head content must come *after* these tags -->
-        <meta name="description" content="Kotuku documentation, machine generated from source"/>
+        <meta name="description" content="Kōtuku documentation, machine generated from source"/>
         <meta name="author" content="Paul Manias"/>
         <link rel="icon" href="/favicon.ico"/>
-        <title>Kotuku Manual</title>
+        <title>Kōtuku Manual</title>
         <link href="../../css/bootstrap.min.css" rel="stylesheet"/>
         <link href="../../css/module-template.css" rel="stylesheet"/>
         <script type="text/javascript">
@@ -206,7 +206,7 @@
       <body>
         <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
           <div class="container-fluid">
-            <div class="navbar-header"><a class="navbar-brand" href="../../index.html">Kotuku</a></div>
+            <div class="navbar-header"><a class="navbar-brand" href="../../index.html">Kōtuku</a></div>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
               <span class="navbar-toggler-icon"></span>
             </button>

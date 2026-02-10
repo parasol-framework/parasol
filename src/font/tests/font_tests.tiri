@@ -1,4 +1,4 @@
--- $FLUID
+-- $TIRI
 -- Flute tests for Font functionality
 
    mFont ?= mod.load("font")

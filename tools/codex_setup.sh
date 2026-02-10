@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Download and install the Kotuku CI artifact for local use.
+# Download and install the Kōtuku CI artifact for local use.
 #
 # The script mirrors the behaviour of CI by fetching the latest successful
 # workflow run artefact and extracting it into install/agents (by default).

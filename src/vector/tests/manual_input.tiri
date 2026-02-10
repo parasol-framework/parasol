@@ -1,4 +1,4 @@
--- $FLUID:persistent
+-- $TIRI:persistent
 --
 -- This test creates a variety of shapes and viewports that accept input.  When the mouse cursor enters an input area,
 -- its opacity will increase to indicate that movement has been detected.  You can also drag viewports around the

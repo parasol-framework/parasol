@@ -1,4 +1,4 @@
--- $FLUID
+-- $TIRI
 -- Flute tests for the Document class.
 --
 -- This technique uses pre-computed checksums from the Document's bitmap output, captured from a 'good' state.  If a

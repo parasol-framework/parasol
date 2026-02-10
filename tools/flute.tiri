@@ -1,6 +1,6 @@
--- $FLUID
+-- $TIRI
 --
--- Flute (FLUid TEst) provides a standard framework for the execution of unit tests in Tiri.
+-- Flute provides a standard framework for the execution of unit tests in Tiri.
 --
 -- TODO: Support for JSON output of test results.
 --       Support for parameterized tests from the command line.

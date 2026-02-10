@@ -228,7 +228,7 @@ end
    buildScene()
 
    button_held = false
-   check(gradientVP.mtSubscribeInput(JTYPE_MOVEMENT | JTYPE_BUTTON, function(Viewport, Events)
+   check gradientVP.mtSubscribeInput(JTYPE_MOVEMENT | JTYPE_BUTTON, function(Viewport, Events)
       ev = Events
       while ev do
          if ev.type is JET_ABS_XY then
@@ -245,7 +245,7 @@ end
          end
          ev = ev.next
       end
-   end))
+   end)
 
    win:show(true)
    processing.sleep()

@@ -1,4 +1,4 @@
--- $FLUID
+-- $TIRI
 -- Flute tests for MP3 playback.
 -- These are audible tests that require human verification to confirm a full pass.
 

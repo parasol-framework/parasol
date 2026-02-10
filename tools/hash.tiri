@@ -1,8 +1,8 @@
---$FLUID:Batch
+--$TIRI:Batch
 
    import "common"
 
-   local rx_non_ws = <{ regex.new([[(\S+)]]) }>
+   rx_non_ws = <{ regex.new([[(\S+)]]) }>
 
    srcPath    = arg("input")
    outputPath = arg("output")

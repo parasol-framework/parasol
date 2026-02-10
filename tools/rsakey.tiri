@@ -1,4 +1,4 @@
--- $FLUID:Batch
+-- $TIRI:Batch
 -- Example: input=secrets.txt out-private=key.prv out-public=key.pub out-sig=secrets.txt.sig
 
    glInput       = arg("input")

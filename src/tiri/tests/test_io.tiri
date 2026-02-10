@@ -1,4 +1,4 @@
--- $FLUID
+-- $TIRI
 -- Flute tests for the Lua IO library
 
 glTestFolder = 'temp:'
