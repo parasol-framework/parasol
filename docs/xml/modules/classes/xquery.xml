@@ -59,7 +59,7 @@ if (query.ok()) {
 }
 </pre>
 <header>Extensions</header>
-<p>The module includes several Parasol-specific extensions beyond the standard specification.  Content matching with the <code>[=...]</code> syntax allows matching on encapsulated content, e.g., <code>/menu[=contentmatch]</code>.  Backslash (<code>\</code>) can be used as an escape character in attribute strings.</p></description>
+<p>The module includes several Kotuku-specific extensions beyond the standard specification.  Content matching with the <code>[=...]</code> syntax allows matching on encapsulated content, e.g., <code>/menu[=contentmatch]</code>.  Backslash (<code>\</code>) can be used as an escape character in attribute strings.</p></description>
     <source>
       <file>xquery_class.cpp</file>
     </source>

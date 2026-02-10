@@ -559,7 +559,7 @@ FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &amp;id);
 <tr><td>Class</td><td>Must refer to a <code>CLASSID</code> variable that will store the resulting class ID.</td></tr>
 <tr><td>SubClass</td><td>Optional argument that can refer to a variable that will store the resulting sub-class ID (if the result is a base-class, this variable will receive a value of zero).</td></tr>
 </tbody></table></div></div>
-<p>This function examines the relationship between file data and Parasol classes.  For instance, a JPEG file would be identified as a datatype of the <a href="classes/picture.html">Picture</a> class.  An MP3 file would be identified as a datatype of the <a href="classes/sound.html">Sound</a> class.</p>
+<p>This function examines the relationship between file data and Kōtuku classes.  For instance, a JPEG file would be identified as a datatype of the <a href="classes/picture.html">Picture</a> class.  An MP3 file would be identified as a datatype of the <a href="classes/sound.html">Sound</a> class.</p>
 <p>The method involves analysing the <code>Path</code>'s file extension and comparing it to the supported extensions of all available classes.  If a class supports the file extension, the ID of that class will be returned. If the file extension is not listed in the class dictionary or if it is listed more than once, the first 80 bytes of the file's data will be loaded and checked against classes that can match against file header information.  If a match is found, the ID of the matching class will be returned.</p>
 <p>The <code>ERR::Search</code> code is returned if a suitable class does not match the targeted file.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
@@ -951,7 +951,7 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
 <div class="docs-content" style="display:none;" id="SetResourceMgr"><h2>SetResourceMgr()</h2><p class="lead">Define a resource manager for a memory block originating from AllocMemory.</p><div class="card card-info mb-3"><div class="card-header"><samp>void SetResourceMgr(APTR Address, struct ResourceManager * Manager)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Address</td><td>The address of a <code>MEM::MANAGED</code> memory block allocated by <a href="?page=AllocMemory">AllocMemory()</a>.</td></tr>
 <tr><td>Manager</td><td>Must refer to an initialised ResourceManager structure.</td></tr>
 </tbody></table></div></div>
-<p>SetResourceMgr() associates a ResourceManager with a memory block that was allocated with the <code>MEM::MANAGED</code> flag. This allows customised memory management logic to be used when an event is triggered on a memory block, such as the block being destroyed.  Most commonly, resource managers are used to allow C++ destructors to be integrated with Parasol's memory management system.</p>
+<p>SetResourceMgr() associates a ResourceManager with a memory block that was allocated with the <code>MEM::MANAGED</code> flag. This allows customised memory management logic to be used when an event is triggered on a memory block, such as the block being destroyed.  Most commonly, resource managers are used to allow C++ destructors to be integrated with Kōtuku's memory management system.</p>
 <p>This working example from the XPath module ensures that <code>XPathNode</code> objects are properly destructed when passed to <a href="?page=FreeResource">FreeResource()</a>:</p>
 <pre>static ERR xpnode_free(APTR Address)
 {
@@ -1869,7 +1869,7 @@ static ResourceManager glNodeManager = {
 <tr><th>RFD::WRITE</th><td>Activate the callback if there is room to write to the FD's buffer.</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2026</div></div>
 <div class="docs-content" style="display:none;" id="RP"><h1>RP Type</h1><p class="lead">Path types for SetResourcePath()</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>RP::MODULE_PATH</th><td>An alternative path leading to the system modules (normally <code>system:modules/</code>).  Introduced for platforms such as Android, where modules are stored in asset folders.</td></tr>
-<tr><th>RP::ROOT_PATH</th><td>Overrides the root path, which defaults to the location at which Parasol is installed.</td></tr>
+<tr><th>RP::ROOT_PATH</th><td>Overrides the root path, which defaults to the location at which Kōtuku is installed.</td></tr>
 <tr><th>RP::SYSTEM_PATH</th><td>The path of the <code>system:</code> volume, which otherwise defaults to <code>[root]:system/</code>.</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2026</div></div>
 <div class="docs-content" style="display:none;" id="RSF"><h1>RSF Type</h1><p class="lead">Flags for ResolvePath()</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>RSF::APPROXIMATE</th><td>Ignores file extensions for the purpose of file name matching.</td></tr>

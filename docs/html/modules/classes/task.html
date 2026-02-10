@@ -26,7 +26,7 @@
 <h3>Structure</h3><p>The Task class consists of the following fields:</p><table class="table"><thead><th class="col-md-1"><div data-bs-toggle="tooltip" title="Read/Write access indicators are listed below">Access</div></th><th class="col-md-1">Name</th><th class="col-md-1">Type</th><th>Comment</th></thead><tbody><tr data-bs-toggle="collapse" data-bs-target="#fl-Actions" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Actions"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
                            
                           <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">Actions</th><td class="col-md-1"><span class="text-nowrap">APTR</span></td><td>Used to gain direct access to a task's actions.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Actions" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>This field provides direct access to the actions of a task, and is intended for use with the active task object returned from <a href="?page=CurrentTask">CurrentTask()</a>.  Hooking into the action table allows the running executable to 'blend-in' with Parasol's object oriented design.</p>
+<p>This field provides direct access to the actions of a task, and is intended for use with the active task object returned from <a href="?page=CurrentTask">CurrentTask()</a>.  Hooking into the action table allows the running executable to 'blend-in' with Kotuku's object oriented design.</p>
 <p>The Actions field points to a lookup table of ActionEntry items.  Hooking into an action involves writing its <code>AC</code> index in the table with a pointer to the action routine.  For example:</p>
 <pre>if (not AccessObject(CurrentTask(), 5000, &amp;task)) {
    task-&gt;get(FID_Actions, actions);
@@ -225,7 +225,7 @@
 \HKEY_CLASSES_ROOT\
 \HKEY_USERS\
 </pre>
-<p>Here is a valid example for reading the 'Parasol' key value <code>\HKEY_CURRENT_USER\Software\Parasol</code></p>
+<p>Here is a valid example for reading the 'Kotuku' key value <code>\HKEY_CURRENT_USER\Software\Kotuku</code></p>
 <p>Caution: If your programming language uses backslash as an escape character (true for Tiri developers), remember to use double-backslashes as the key value separator in your Name string.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
