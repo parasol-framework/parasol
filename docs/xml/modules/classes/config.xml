@@ -301,7 +301,7 @@ print('The Action class is located at ' .. str)
 <p>Key filters are created in the format <code>[Key] = [Data1], [Data2], ...</code>.  For example:</p>
 <pre>Group = Sun, Light
 Path = documents:
-Name = Kotuku
+Name = Kōtuku
 </pre>
 <p>Filters can be inversed by prefixing the key with the <code>!</code> character.</p>
 <p>To create a filter based on group names, refer to the <fl>GroupFilter</fl> field.</p>

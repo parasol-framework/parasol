@@ -818,7 +818,7 @@ FindObject(&quot;SystemPointer&quot;, CLASSID::POINTER, FOF::NIL, &amp;id);
       <param type="CLASSID *" name="SubClass">Optional argument that can refer to a variable that will store the resulting sub-class ID (if the result is a base-class, this variable will receive a value of zero).</param>
     </input>
     <description>
-<p>This function examines the relationship between file data and Parasol classes.  For instance, a JPEG file would be identified as a datatype of the <class name="Picture">Picture</class> class.  An MP3 file would be identified as a datatype of the <class name="Sound">Sound</class> class.</p>
+<p>This function examines the relationship between file data and Kōtuku classes.  For instance, a JPEG file would be identified as a datatype of the <class name="Picture">Picture</class> class.  An MP3 file would be identified as a datatype of the <class name="Sound">Sound</class> class.</p>
 <p>The method involves analysing the <code>Path</code>'s file extension and comparing it to the supported extensions of all available classes.  If a class supports the file extension, the ID of that class will be returned. If the file extension is not listed in the class dictionary or if it is listed more than once, the first 80 bytes of the file's data will be loaded and checked against classes that can match against file header information.  If a match is found, the ID of the matching class will be returned.</p>
 <p>The <code>ERR::Search</code> code is returned if a suitable class does not match the targeted file.</p>
     </description>
@@ -1562,7 +1562,7 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
       <param type="struct ResourceManager *" name="Manager">Must refer to an initialised ResourceManager structure.</param>
     </input>
     <description>
-<p>SetResourceMgr() associates a ResourceManager with a memory block that was allocated with the <code>MEM::MANAGED</code> flag. This allows customised memory management logic to be used when an event is triggered on a memory block, such as the block being destroyed.  Most commonly, resource managers are used to allow C++ destructors to be integrated with Parasol's memory management system.</p>
+<p>SetResourceMgr() associates a ResourceManager with a memory block that was allocated with the <code>MEM::MANAGED</code> flag. This allows customised memory management logic to be used when an event is triggered on a memory block, such as the block being destroyed.  Most commonly, resource managers are used to allow C++ destructors to be integrated with Kōtuku's memory management system.</p>
 <p>This working example from the XPath module ensures that <code>XPathNode</code> objects are properly destructed when passed to <function>FreeResource</function>:</p>
 <pre>static ERR xpnode_free(APTR Address)
 {
@@ -2704,7 +2704,7 @@ static ResourceManager glNodeManager = {
 
     <constants lookup="RP" comment="Path types for SetResourcePath()">
       <const name="MODULE_PATH">An alternative path leading to the system modules (normally <code>system:modules/</code>).  Introduced for platforms such as Android, where modules are stored in asset folders.</const>
-      <const name="ROOT_PATH">Overrides the root path, which defaults to the location at which Parasol is installed.</const>
+      <const name="ROOT_PATH">Overrides the root path, which defaults to the location at which Kōtuku is installed.</const>
       <const name="SYSTEM_PATH">The path of the <code>system:</code> volume, which otherwise defaults to <code>[root]:system/</code>.</const>
     </constants>
 

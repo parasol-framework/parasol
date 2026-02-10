@@ -325,7 +325,7 @@
 
     <constants lookup="RP" comment="Path types for SetResourcePath()">
       <const name="MODULE_PATH">An alternative path leading to the system modules (normally <code>system:modules/</code>).  Introduced for platforms such as Android, where modules are stored in asset folders.</const>
-      <const name="ROOT_PATH">Overrides the root path, which defaults to the location at which Kotuku is installed.</const>
+      <const name="ROOT_PATH">Overrides the root path, which defaults to the location at which Kōtuku is installed.</const>
       <const name="SYSTEM_PATH">The path of the <code>system:</code> volume, which otherwise defaults to <code>[root]:system/</code>.</const>
     </constants>
 
