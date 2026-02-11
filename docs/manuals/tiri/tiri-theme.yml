@@ -26,8 +26,27 @@ title-page:
     margin-top: 6
 
 heading:
+  min-height-after: 0.5in
   part:
     break-before: always
     break-after: always
   h1-text-align: center
   h1-margin-page-top: 280
+
+header:
+  height: 0.5in
+  font-size: 9
+  font-color: '#999999'
+  border-bottom-width: 0.5
+  border-bottom-color: '#DDDDDD'
+  recto:
+    right:
+      content: '{chapter-title}'
+  verso:
+    left:
+      content: '{chapter-title}'
+
+code:
+  breakable: true
+  orphans: 5
+  page-break-inside: avoid

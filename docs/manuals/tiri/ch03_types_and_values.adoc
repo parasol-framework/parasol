@@ -32,7 +32,7 @@ Integers are stored as signed 32-bit values (range: −2,147,483,648 to 2,147,48
 
 Numeric literal syntax is defined in <<sec-lexical-conventions>>.
 
-[source,lua]
+[source,tiri]
 ----
 x = 42        -- stored as integer
 y = 3.14      -- stored as double
@@ -52,7 +52,7 @@ Strings have no inherent encoding.  They can hold arbitrary binary data, includi
 
 The `#` operator returns the length in bytes.
 
-[source,lua]
+[source,tiri]
 ----
 s = 'hello'
 print(#s)       -- 5
@@ -68,7 +68,7 @@ Tables are mutable associative key-value stores.  Any non-`nil` value can serve 
 
 Tables are reference types.  Assigning a table to another variable creates a second reference to the same table, not a copy.  Two distinct tables are never equal under `is`, even if they contain identical entries; `is` compares table identity.
 
-[source,lua]
+[source,tiri]
 ----
 t = { name = 'Alice', age = 30 }
 print(t.name)     -- 'Alice'
@@ -92,7 +92,7 @@ Arrays are mutable, typed, contiguous sequences of elements.  Each array holds e
 
 Arrays are reference types.  Two distinct arrays are never equal under `is`; `is` compares array identity.  Elements are stored in sequential order from index 0; iteration order matches storage order.
 
-[source,lua]
+[source,tiri]
 ----
 nums = array<int> { 10, 20, 30 }
 print(nums[0])      -- 10
@@ -109,7 +109,7 @@ See <<ch-arrays>> for the complete array library, including supported element ty
 
 Functions are first-class values.  They can be stored in variables, passed as arguments, and returned from other functions.
 
-[source,lua]
+[source,tiri]
 ----
 function add(A, B)
    return A + B
@@ -123,7 +123,7 @@ print(op(2, 3))   -- 5
 
 Tiri also supports concise arrow function syntax for anonymous functions:
 
-[source,lua]
+[source,tiri]
 ----
 double = n => n * 2
 print(double(5))  -- 10
@@ -143,7 +143,7 @@ The `type()` function returns `"userdata"` for userdata values.  Ranges are impl
 
 Kōtuku framework objects are a specialised form of userdata.  They represent C++ objects exposed through the Kōtuku API and support field access, method calls, and action invocations.  The `type()` function returns `"object"` for Kōtuku objects.
 
-[source,lua]
+[source,tiri]
 ----
 file = obj.new('file', { src = 'temp:data.txt' })
 print(type(file))  -- 'object'
@@ -171,7 +171,7 @@ The `??` operator and its postfix form `??` use a broader definition.  The value
 
 Returns a string naming the type of `Value`.  The returned string is one of: `"nil"`, `"boolean"`, `"number"`, `"string"`, `"table"`, `"array"`, `"function"`, `"userdata"`, `"object"`.
 
-[source,lua]
+[source,tiri]
 ----
 type(nil)           -- 'nil'
 type(true)          -- 'boolean'
@@ -192,7 +192,7 @@ When called on a thunk (deferred expression), `type()` returns the declared type
 
 Converts `Value` to a string.  If `Value` has a `__tostring` metamethod, calls it and returns the result.  Otherwise produces a default representation: numbers yield their decimal form, booleans yield `"true"` or `"false"`, `nil` yields `"nil"`, and reference types (tables, arrays, functions, userdata, objects) yield the type name followed by a memory address.
 
-[source,lua]
+[source,tiri]
 ----
 tostring(42)      -- '42'
 tostring(3.14)    -- '3.14'
@@ -208,7 +208,7 @@ Converts `Value` to a number.  Returns `nil` if the conversion fails.
 
 With the default base (10), accepts strings and numbers.  With an explicit `Base` (2-36), `Value` must be a string and is interpreted in the given base.  Raises an error if `Base` is outside the range 2-36.
 
-[source,lua]
+[source,tiri]
 ----
 tonumber('42')        -- 42
 tonumber('3.14')      -- 3.14

@@ -8,13 +8,22 @@ The produced manual will target AsciiDoc as the official formatting standard.
 
 The manual is a **specification and contract**, not a tutorial.
 
-When writing new sections in the manual, refer to the @docs/wiki/Fluid-Reference-Manual.md first to check if pre-existing information is available.
+When writing new sections in the manual, refer to the @docs/wiki/Tiri-Reference-Manual.md first to check if pre-existing information is available.
 
 Refer to the actual implementation of the Tiri module and the LuaJIT compiler as necessary at `src/tiri/`.
 
 ## Version Maintenance
 
 It is the responsibility of the project maintainer to add a `VERIFIED` comment with a date to the top of each `*.adoc` file once reviewed and considered fit to publish.  If updating an adoc file that has been previously verified, add a comment to the top of file to indicate your changes.  This will help the maintainer review your changes for resubmission, and they can then update the verification date.
+
+## Document Generation Process
+
+From the root folder, generating the PDF manual is achieved as follows:
+
+```
+asciidoctor-pdf -a source-highlighter=rouge -o docs/html/manuals/tiri-manual.pdf \
+-r .\docs\manuals\tiri\tiri_lexer.rb docs/manuals/tiri/book.adoc
+```
 
 ------------------------------------------------------------------------
 

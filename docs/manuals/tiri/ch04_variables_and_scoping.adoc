@@ -10,7 +10,7 @@ This chapter defines how variables are declared, assigned, and scoped in Tiri.  
 
 Any assignment to an undeclared name creates a new local variable in the current scope.  Functions follow the same rule: a `function` declaration without the `global` keyword creates a local binding.
 
-[source,lua]
+[source,tiri]
 ----
 counter = 0              -- creates local 'counter'
 name = 'Alice'           -- creates local 'name'
@@ -23,7 +23,7 @@ end
 
 A bare identifier without an assignment is a parse error:
 
-[source,lua]
+[source,tiri]
 ----
 bare_var                 -- error: expected assignment
 a, b, c                  -- error: use 'local a, b, c' or assign values
@@ -34,7 +34,7 @@ a, b, c                  -- error: use 'local a, b, c' or assign values
 
 The `local` keyword explicitly declares one or more local variables in the current scope.  It is required when declaring multiple variables on a single line and when declaring a variable without an initial value.
 
-[source,lua]
+[source,tiri]
 ----
 local config                    -- nil, no type commitment
 local a, b, c = 1, 2, 3         -- multiple locals
@@ -44,7 +44,7 @@ local max <const> = 100         -- constant (see <<sec-constant-variables>>)
 
 A `local` declaration without an initialiser sets the variable to `nil`.  Multiple variables on the left receive values from the right in left-to-right order; excess variables receive `nil` and excess values are discarded.
 
-[source,lua]
+[source,tiri]
 ----
 local x, y = 10                 -- x is 10, y is nil
 local a, b = 1, 2, 3            -- a is 1, b is 2, 3 is discarded
@@ -54,7 +54,7 @@ local a, b = 1, 2, 3            -- a is 1, b is 2, 3 is discarded
 
 The single underscore `_` is the blank identifier.  It discards a value without allocating a variable or consuming a register.  It can appear multiple times in the same statement and cannot be read.
 
-[source,lua]
+[source,tiri]
 ----
 _, result = getValues()         -- discard first return value
 local x, _, y = 1, 2, 3         -- x is 1, y is 3
@@ -69,7 +69,7 @@ end
 
 The `global` keyword declares a variable or function in the global scope.  Global declarations must precede any use of the variable name.
 
-[source,lua]
+[source,tiri]
 ----
 global DEBUG_MODE = true
 global APP_VERSION
@@ -81,7 +81,7 @@ end
 
 A local variable can shadow a global with the same name if explicitly declared with `local`:
 
-[source,lua]
+[source,tiri]
 ----
 global VERBOSE = true
 
@@ -98,7 +98,7 @@ Global variables are accessible from nested functions without re-declaration.  T
 
 Declaring a function with `global` exposes it to the parent scope.  This allows library scripts to make functions available to the caller:
 
-[source,lua]
+[source,tiri]
 ----
 global function loadConfig(Path)
    return io.open(Path, 'r')
@@ -109,7 +109,7 @@ end
 
 It is common practice to declare global mutable variables with the `glCamelCase` naming convention.  Global constants use `UPPER_CASE`.
 
-[source,lua]
+[source,tiri]
 ----
 global glWindowTitle = 'My App'
 global MAX_RETRIES <const> = 5
@@ -122,7 +122,7 @@ global MAX_RETRIES <const> = 5
 
 Assignment stores a value in a variable.  If the target is undeclared, a new local is created (see <<sec-local-by-default>>).  If the target is an existing local, upvalue, or global, the stored value is updated.
 
-[source,lua]
+[source,tiri]
 ----
 x = 10
 t.name = 'Alice'
@@ -133,7 +133,7 @@ arr[0] = 42
 
 Multiple targets and values are matched left-to-right.  Excess targets receive `nil`; excess values are discarded.  Multiple assignment to undeclared names requires the `local` keyword.
 
-[source,lua]
+[source,tiri]
 ----
 a, b = b, a                     -- swap two existing variables
 local x, y, z = f()             -- f() may return multiple values
@@ -157,7 +157,7 @@ Compound assignment operators evaluate the right-hand side exactly once and appl
 |`?=`     |If-nil assignment (assigns only if current value is `nil`)
 |===
 
-[source,lua]
+[source,tiri]
 ----
 count += 1
 name ..= ' Jr.'
@@ -175,7 +175,7 @@ Compound assignment (`+=`, `-=`, etc.) on an undeclared variable is an error.  T
 
 Variables can carry an optional type annotation using the `:type` syntax after the variable name.  This pre-declares the type constraint for the variable.
 
-[source,lua]
+[source,tiri]
 ----
 local limit:num              -- constrained to number
 local message:str = ''       -- constrained to string
@@ -186,7 +186,7 @@ Supported type names: `any`, `nil`, `bool` (or `boolean`), `num` (or `number`), 
 
 The type annotation can appear before or after a `<const>` or `<close>` attribute:
 
-[source,lua]
+[source,tiri]
 ----
 local x <const>:num = 42       -- attribute before type
 local y:num <const> = 42       -- type before attribute
@@ -199,7 +199,7 @@ Type annotations interact with the type inference system.  See <<ch-type-system>
 
 The `<const>` attribute prevents reassignment after initialisation.  It applies to both `local` and `global` declarations.  The compiler enforces this constraint at parse time.
 
-[source,lua]
+[source,tiri]
 ----
 local max_size <const> = 100
 global DEBUG <const> = false
@@ -209,7 +209,7 @@ global DEBUG <const> = false
 
 A `<const>` variable must have an initialiser.  Declaring a constant without a value is a compile-time error:
 
-[source,lua]
+[source,tiri]
 ----
 local x <const>                 -- error: const 'x' requires an initialiser
 ----
@@ -218,7 +218,7 @@ local x <const>                 -- error: const 'x' requires an initialiser
 
 Assigning to a `<const>` variable is a compile-time error:
 
-[source,lua]
+[source,tiri]
 ----
 local x <const> = 1
 x = 2                           -- error: cannot assign to const local 'x'
@@ -228,7 +228,7 @@ x = 2                           -- error: cannot assign to const local 'x'
 
 The `<const>` attribute protects the variable binding, not the contents of the value.  Table and object contents remain mutable:
 
-[source,lua]
+[source,tiri]
 ----
 local data <const> = { x = 1 }
 data.x = 999                    -- valid: modifying table contents
@@ -239,7 +239,7 @@ data = {}                       -- error: cannot reassign the binding
 
 Each variable in a multiple declaration independently carries the attribute:
 
-[source,lua]
+[source,tiri]
 ----
 local a <const>, b, c <const> = 1, 2, 3
 b = 20                          -- valid
@@ -250,7 +250,7 @@ a = 10                          -- error: cannot assign to const local 'a'
 
 A `<const>` variable follows normal scoping rules.  An inner scope can shadow a constant with a new variable:
 
-[source,lua]
+[source,tiri]
 ----
 local x <const> = 1
 do
@@ -265,7 +265,7 @@ end
 
 The `<close>` attribute marks a local variable for automatic cleanup when its scope exits.  The runtime invokes the value's `__close` metamethod on scope exit, whether normal or due to an error.
 
-[source,lua]
+[source,tiri]
 ----
 resource <close> = acquire_resource()
 -- resource.__close(resource, nil) called when scope ends
@@ -285,7 +285,7 @@ The runtime ignores values without metatables (`nil`, `false`, strings, numbers)
 
 ==== Error-Aware Cleanup
 
-[source,lua]
+[source,tiri]
 ----
 try
    file <close> = open_file()
@@ -302,7 +302,7 @@ See <<ch-resource-management>> for further patterns using `<close>` and `defer`.
 
 When a function references a variable from an enclosing scope, that variable is captured as an upvalue.  The function and its captured upvalues together form a closure.
 
-[source,lua]
+[source,tiri]
 ----
 function make_counter()
    count = 0
@@ -319,7 +319,7 @@ print(tick())   -- 2
 
 Upvalues reference the original variable, not a copy.  Multiple closures that capture the same variable share it:
 
-[source,lua]
+[source,tiri]
 ----
 function make_pair()
    value = 0

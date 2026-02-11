@@ -36,11 +36,11 @@ jobs:
 
       - name: Build Fluid Manual (HTML)
         run: >
-          asciidoctor -b html5 -a source-highlighter=rouge -o docs/html/manuals/tiri-manual.html docs/manuals/tiri/book.adoc
+          asciidoctor -b html5 -a source-highlighter=rouge -r docs/manuals/tiri/tiri_lexer.rb -o docs/html/manuals/tiri-manual.html docs/manuals/tiri/book.adoc
 
       - name: Build Fluid Manual (PDF)
         run: >
-          asciidoctor-pdf -a source-highlighter=rouge -o docs/html/manuals/tiri-manual.pdf docs/manuals/tiri/book.adoc
+          asciidoctor-pdf -a source-highlighter=rouge -r docs/manuals/tiri/tiri_lexer.rb -o docs/html/manuals/tiri-manual.pdf docs/manuals/tiri/book.adoc
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

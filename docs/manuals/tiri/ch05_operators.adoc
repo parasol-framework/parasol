@@ -1,3 +1,5 @@
+// VERIFIED: 2026-02-10
+
 [[ch-operators]]
 == Operators
 
@@ -6,27 +8,27 @@ This chapter defines all operators in Tiri: their syntax, operand types, return 
 [[sec-arithmetic-operators]]
 === Arithmetic Operators
 
-Arithmetic operators accept numeric operands.  The runtime coerces strings that represent valid numbers to numbers automatically.  If an operand is neither numeric nor string-coercible and no metamethod is defined, the runtime raises `"attempt to perform arithmetic on a <type> value"`.
+Arithmetic operators accept numeric operands.  The runtime coerces strings that represent valid numbers to numbers automatically.  If an operand is neither numeric nor string-coercible and no metamethod is defined, the runtime raises an error.
 
 [cols="2,3,3,3"]
 |===
 |Operator |Syntax |Effect |Metamethod
-|Addition      |`a + b`   |Sum of `a` and `b`           |`__add`
-|Subtraction   |`a - b`   |Difference of `a` and `b`    |`__sub`
-|Multiplication|`a * b`   |Product of `a` and `b`       |`__mul`
-|Division      |`a / b`   |Quotient of `a` and `b`      |`__div`
-|Modulo        |`a % b`   |Remainder of `a / b`         |`__mod`
-|Exponentiation|`a ** b`  |`a` raised to the power `b`  |`__pow`
-|Unary negation|`-a`      |Negation of `a`              |`__unm`
+|Addition      |`a + b`  |Sum of `a` and `b`           |`__add`
+|Subtraction   |`a - b`  |Difference of `a` and `b`    |`__sub`
+|Multiplication|`a * b`  |Product of `a` and `b`       |`__mul`
+|Division      |`a / b`  |Quotient of `a` and `b`      |`__div`
+|Modulo        |`a % b`  |Remainder of `a / b`         |`__mod`
+|Exponentiation|`a pass:[**] b` |`a` raised to the power `b`  |`__pow`
+|Unary negation|`-a`     |Negation of `a`              |`__unm`
 |===
 
 Division always produces a floating-point result.  Dividing by zero yields `inf` or `-inf`; dividing zero by zero yields `nan`.
 
-Exponentiation is right-associative: `2 ** 3 ** 2` evaluates as `2 ** (3 ** 2)` = `512`.  All other arithmetic operators are left-associative.
+Exponentiation is right-associative: `2 pass:[**] 3 pass:[**] 2` evaluates as `2 pass:[**] (3 pass:[**] 2)` = `512`.  All other arithmetic operators are left-associative.
 
 Integer arithmetic does not overflow.  Results that exceed the integer range are promoted to floating-point.
 
-[source,lua]
+[source,tiri]
 ----
 x = 10 + 3     -- 13
 y = 10 / 3     -- 3.3333333333333
@@ -43,7 +45,6 @@ Comparison operators return a boolean value.  The equality operators (`is`, `!=`
 [cols="2,3,3,3"]
 |===
 |Operator |Syntax |Effect |Metamethod
-
 |Equal             |`a is b`  |`true` if `a` equals `b`              |`__eq`
 |Not equal         |`a != b`  |`true` if `a` does not equal `b`      |`__eq` (negated)
 |Less than         |`a < b`   |`true` if `a` is less than `b`        |`__lt`
@@ -54,7 +55,7 @@ Comparison operators return a boolean value.  The equality operators (`is`, `!=`
 
 ==== Equality Semantics
 
-The `is` operator compares by value for numbers, strings, and booleans.  For tables, arrays, functions, and userdata, `is` compares by identity -- two distinct objects are never equal unless a `__eq` metamethod overrides this.  The runtime invokes the `__eq` metamethod only when both operands share the same metatable.
+The `is` operator compares by value for numbers, strings, and booleans.  For tables, arrays, functions, and userdata, `is` compares by identity -- two distinct objects are never equal unless a `pass:[__]eq` metamethod overrides this.  The runtime invokes the `pass:[__]eq` metamethod only when both operands share the same metatable.
 
 `nil is nil` evaluates to `true`.  Values of different types are never equal.
 
@@ -62,7 +63,7 @@ The `is` operator compares by value for numbers, strings, and booleans.  For tab
 
 String comparison is lexicographic and byte-by-byte.  The comparison applies no locale-aware collation.
 
-[source,lua]
+[source,tiri]
 ----
 print(1 is 1)          -- true
 print('abc' is 'abc')  -- true
@@ -88,7 +89,7 @@ Both `and` and `or` short-circuit: the operator does not evaluate the right oper
 
 No metamethods apply to logical operators.
 
-[source,lua]
+[source,tiri]
 ----
 x = nil and 'hello'    -- nil (short-circuit)
 y = 'ok' or 'fallback' -- 'ok' (short-circuit)
@@ -113,9 +114,7 @@ Bitwise operators operate on 32-bit integers using two's-complement representati
 
 Bitwise operators have no metamethods.
 
-Compound bitwise assignment (`&=`, `|=`, `^=`) does not exist.  Use `x = x & y` instead.
-
-[source,lua]
+[source,tiri]
 ----
 flags  = 0xFF & 0x0F    -- 0x0F (15)
 mask   = 1 << 4         -- 16
@@ -127,7 +126,7 @@ toggle = flags ^ mask   -- XOR toggle
 [[sec-string-concatenation]]
 === String Concatenation
 
-The `..` operator concatenates two values into a string.  The operator accepts both strings and numbers; it converts numbers to their string representation automatically.  Other types require a `__concat` metamethod.
+The `..` operator concatenates two values into a string.  The operator accepts both strings and numbers; it converts numbers to their string representation automatically.  Other types require a `pass:[__]concat` metamethod.
 
 [source,ebnf]
 ----
@@ -136,9 +135,9 @@ concat_expr = expression ".." expression ;
 
 Concatenation is right-associative: `a .. b .. c` evaluates as `a .. (b .. c)`.
 
-If an operand is not a string or number and has no `__concat` metamethod, the runtime raises `"attempt to concatenate a <type> value"`.
+If an operand is not a string or number and has no `pass:[__]concat` metamethod, the runtime raises `"attempt to concatenate a <type> value"`.
 
-[source,lua]
+[source,tiri]
 ----
 greeting = 'Hello, ' .. 'world!'    -- 'Hello, world!'
 label = 'Item #' .. 42              -- 'Item #42'
@@ -157,9 +156,9 @@ The unary `#` operator returns the length of a value.
 |Array  |Element count
 |===
 
-The `__len` metamethod overrides the default behaviour.  If a non-string, non-table, non-array value lacks a `__len` metamethod, the runtime raises an error.
+The `pass:[__]len` metamethod overrides the default behaviour.  If a non-string, non-table, non-array value lacks a `pass:[__]len` metamethod, the runtime raises an error.
 
-[source,lua]
+[source,tiri]
 ----
 print(#'hello')              -- 5
 print(#{ 'a', 'b', 'c' })   -- 3
@@ -179,15 +178,15 @@ Compound assignment operators evaluate the right-hand side exactly once and appl
 |`/=`  |`x /= expr`  |Division assignment
 |`%=`  |`x %= expr`  |Modulo assignment
 |`..=` |`s ..= expr` |Concatenation assignment
-|`??=` |`x ??= expr` |If-empty assignment: assigns only if the current value of `x` is falsey under extended semantics (see <<sec-truthiness>>)
 |`?=`  |`x ?= expr`  |If-nil assignment: assigns only if the current value of `x` is `nil`
+|`??=` |`x ??= expr` |If-empty assignment: assigns only if the current value of `x` is falsey under extended semantics (see <<sec-truthiness>>).  Incurs a performance penalty compared to `?=` due to the broader falsiness check.
 |===
 
 Compound assignment on an undeclared variable is an error.  The variable must exist before a compound operator can modify it.
 
 Bitwise compound assignment (`&=`, `|=`, `^=`) does not exist.  Use `x = x & y` instead.
 
-[source,lua]
+[source,tiri]
 ----
 count += 1
 name ..= ' Jr.'
@@ -207,7 +206,7 @@ postfix_increment = assignable "++" ;
 
 The target must be an assignable numeric location: a local, upvalue, global, field access, or indexed element.  Applying `++` to a constant or non-numeric value is an error.
 
-[source,lua]
+[source,tiri]
 ----
 count = 0
 count++             -- count is now 1
@@ -232,7 +231,7 @@ Returns `a` if `a` is truthy under extended falsiness; otherwise returns `b`.  T
 
 The `??` operator differs from `or` in that `or` uses standard falsiness (only `nil` and `false` are falsey), while `??` also treats `0` and `""` as falsey.
 
-[source,lua]
+[source,tiri]
 ----
 a = 0 or 'default'     -- 0 (zero is truthy under standard rules)
 b = 0 ?? 'default'     -- 'default' (zero is falsey under extended rules)
@@ -242,7 +241,7 @@ d = '' ?? 0 ?? 'final' -- 'final' (both '' and 0 are falsey)
 
 The `??` operator also serves as a guard for control flow.  The RHS can be a `return`, `break`, `continue`, `raise`, or `check` statement:
 
-[source,lua]
+[source,tiri]
 ----
 value ?? raise('Value is empty')
 user_input ?? return ERR_InvalidInput
@@ -258,7 +257,7 @@ When `??` appears with no right-hand operand, it acts as a postfix presence-chec
 
 The postfix form binds tightly and evaluates before logical operators.
 
-[source,lua]
+[source,tiri]
 ----
 if comment?? then
    print('Comment exists')
@@ -272,7 +271,10 @@ end
 [[sec-ternary-operator]]
 === Ternary Operator
 
-`result = condition ? true_expr :> false_expr`
+[source,ebnf]
+----
+ternary_expression = expression "?" expression ":>" expression ;
+----
 
 Evaluates `condition` using extended falsiness.  If truthy, evaluates and returns `true_expr`; if falsey, evaluates and returns `false_expr`.  Only the selected branch is evaluated (short-circuit).
 
@@ -280,12 +282,12 @@ The ternary is right-associative: `a ? b :> c ? d :> e` parses as `a ? b :> (c ?
 
 In expression lists, parentheses are required to avoid ambiguity:
 
-[source,lua]
+[source,tiri]
 ----
 local a, b = (cond ? x :> y), z
 ----
 
-[source,lua]
+[source,tiri]
 ----
 status = user ? 'logged in' :> 'guest'
 max = a > b ? a :> b
@@ -300,17 +302,17 @@ The safe navigation operators provide nil-safe access to fields, methods, and in
 [cols="2,3,5"]
 |===
 |Operator |Syntax |Effect
-
-|Safe field access |`obj?.field`      |Returns `nil` if `obj` is `nil`; otherwise returns `obj.field`
-|Safe method call  |`obj?:method()`   |Returns `nil` if `obj` is `nil`; otherwise calls `obj:method()`
-|Safe index access |`obj?[key]`       |Returns `nil` if `obj` is `nil`; otherwise returns `obj[key]`
+|Safe field access |`obj?.field`    |Returns `nil` if `obj` is `nil`; otherwise returns `obj.field`
+|Safe field call   |`obj?.field()`  |Returns `nil` if `obj` or `field` is `nil`; otherwise calls `obj.field()`
+|Safe method call  |`obj?:method()` |Returns `nil` if `obj` is `nil`; otherwise calls `obj:method()`
+|Safe index access |`obj?[key]`     |Returns `nil` if `obj` is `nil`; otherwise returns `obj[key]`
 |===
 
 Safe navigation checks for `nil` only.  Other falsey values (`false`, `0`, `""`) are treated as valid receivers and access proceeds.
 
 The operators support chaining.  Each operator in the chain independently checks for `nil`:
 
-[source,lua]
+[source,tiri]
 ----
 city = user?.profile?.address?.city
 ----
@@ -319,7 +321,7 @@ If `user`, `profile`, or `address` is `nil` at any point, the entire expression 
 
 Safe navigation combines naturally with the `??` operator for default values:
 
-[source,lua]
+[source,tiri]
 ----
 name = user?.name ?? 'Guest'
 ----
@@ -327,16 +329,24 @@ name = user?.name ?? 'Guest'
 [[sec-membership-operator]]
 === Membership Operator
 
-`result = value in container`
+[source,ebnf]
+----
+result = value in container
+----
 
 Returns `true` if `container` contains `value`; `false` otherwise.  The expression `a in b` is equivalent to `b:contains(a)`.
 
-The `in` operator requires the right-hand operand to provide a `:contains()` method.  Ranges and other iterable types define this method.  If the right-hand operand lacks a `:contains()` method, the runtime raises an error.
+The `in` operator requires the right-hand operand to provide a `:contains()` method.  The built-in types that define this method are ranges and arrays.  Any user-defined type with a `:contains()` method also supports `in`.  If the right-hand operand lacks a `:contains()` method, the runtime raises an error.
 
-[source,lua]
+[source,tiri]
 ----
 if x in {0..10} then
    print('x is in range')
+end
+
+arr = { 'red', 'green', 'blue' }
+if 'green' in arr then
+   print('found')
 end
 ----
 
@@ -354,7 +364,7 @@ pipe_expr = expression "|>" function_call ;
 
 The right-hand side must be a function call; `x |> 5` is a syntax error.  When the LHS is a range literal, the RHS accepts a bare function reference without parentheses (see <<sec-pipe-iteration,Pipe Iteration with Ranges>>).
 
-[source,lua]
+[source,tiri]
 ----
 result = 'hello' |> string.upper()
 safe = tonumber(input) |> clamp(0, 100)
@@ -364,7 +374,7 @@ safe = tonumber(input) |> clamp(0, 100)
 
 When the LHS returns multiple values, the pipe forwards all values as arguments to the RHS:
 
-[source,lua]
+[source,tiri]
 ----
 function get_bounds()
    return 10, 20
@@ -377,7 +387,7 @@ result = get_bounds() |> math.max()  -- math.max(10, 20) = 20
 
 The syntax `|N>` limits the number of values forwarded from the LHS:
 
-[source,lua]
+[source,tiri]
 ----
 function get_many()
    return 1, 2, 3, 4, 5
@@ -390,7 +400,7 @@ result = get_many() |2> math.max()  -- math.max(1, 2) = 2
 
 Pipes chain for multi-step transformations:
 
-[source,lua]
+[source,tiri]
 ----
 result = 3 |> double() |> square()  -- square(double(3))
 ----
@@ -400,7 +410,7 @@ result = 3 |> double() |> square()  -- square(double(3))
 
 When the LHS is a range literal, the pipe iterates and calls the RHS function for each value in the range:
 
-[source,lua]
+[source,tiri]
 ----
 {1..5} |> print         -- prints 1, 2, 3, 4
 {1...5} |> print        -- prints 1, 2, 3, 4, 5
@@ -408,7 +418,7 @@ When the LHS is a range literal, the pipe iterates and calls the RHS function fo
 
 Return `false` from the callback to terminate iteration early:
 
-[source,lua]
+[source,tiri]
 ----
 {1..1000} |> i => do
    if found_target(i) then
@@ -428,7 +438,7 @@ The following table lists all operators from highest to lowest precedence.  Oper
 [cols="1,4,2"]
 |===
 |Level |Operators |Associativity
-|10 |`**`                                                |Right
+|10 |`pass:[**]`                                                |Right
 |8  |`-` (unary), `not`, `#`, `~` (unary)               |Unary (right)
 |7  |`*`, `/`, `%`                                       |Left
 |6  |`+`, `-`                                            |Left
@@ -447,7 +457,7 @@ See <<appendix-operator-precedence>> for a quick-reference card.
 
 ==== Precedence Examples
 
-[source,lua]
+[source,tiri]
 ----
 2 + 3 * 4           -- 14 (multiplication before addition)
 2 ** 3 ** 2         -- 512 (right-associative: 2 ** (3 ** 2))

@@ -79,7 +79,7 @@ Log output is directed to standard error.  Run `origo --help` for the full list 
 
 The following script prints a message to standard output:
 
-[source,lua]
+[source,tiri]
 ----
 print('Hello, world!')
 ----
@@ -97,7 +97,7 @@ Notice that no entry-point function was declared in the script.  Tiri scripts ex
 
 Tiri source files use the `.tiri` file extension.  To completely avoid ambiguity, script files can also start with the official identification comment:
 
-[source,lua]
+[source,tiri]
 ----
 -- $TIRI
 ----
