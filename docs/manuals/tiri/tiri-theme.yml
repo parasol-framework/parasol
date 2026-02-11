@@ -1,0 +1,33 @@
+extends: default
+
+page:
+  margin: [0.75in, 0.75in, 0.75in, 0.75in]
+
+title-page:
+  logo:
+    top: 5%
+    align: right
+  title:
+    top: 45%
+    font-size: 30
+    font-style: bold
+    line-height: 1.2
+  subtitle:
+    font-size: 13
+    font-style: normal
+    font-color: '#666666'
+    line-height: 1.2
+    margin-top: 8
+  authors:
+    font-size: 16
+    margin-top: 12
+  revision:
+    font-size: 12
+    margin-top: 6
+
+heading:
+  part:
+    break-before: always
+    break-after: always
+  h1-text-align: center
+  h1-margin-page-top: 280

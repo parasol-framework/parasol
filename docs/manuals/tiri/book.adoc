@@ -1,0 +1,158 @@
+// This manual is governed by the style guide rules specified in AGENTS.md in this folder.  Please refer to that document before making edits.
+
+= Tiri Programming Language: {copyright}
+Paul Manias
+:doctype: book
+:copyright: © 2026 Paul Manias.  All rights reserved.
+:pdf-themesdir: {docdir}
+:pdf-theme: tiri-theme.yml
+:imagesdir: ../../../data/logos
+:title-logo-image: image:tiri.svg[Tiri,200]
+:source-highlighter: rouge
+:source-language: lua
+:icons: font
+:revnumber: 0.1
+:revdate: February 2026
+:revremark: Draft
+:toc: macro
+:toclevels: 3
+:sectnums:
+:sectnumlevels: 3
+
+toc::[]
+
+[preface]
+== Foreword
+
+// TODO: Add foreword content here.
+
+[preface]
+== Acknowledgements
+
+// TODO: Add acknowledgements content here.
+
+// Part I: Language Fundamentals
+
+= Language Fundamentals
+
+include::ch01_introduction.adoc[]
+
+include::ch02_basic_syntax.adoc[]
+
+include::ch03_types_and_values.adoc[]
+
+include::ch04_variables_and_scoping.adoc[]
+
+include::ch05_operators.adoc[]
+
+include::ch06_control_flow.adoc[]
+
+include::ch07_functions.adoc[]
+
+// Part II: Data Structures
+
+= Data Structures
+
+include::ch08_strings.adoc[]
+
+include::ch09_tables.adoc[]
+
+include::ch10_arrays.adoc[]
+
+include::ch11_ranges.adoc[]
+
+include::ch12_mathematics.adoc[]
+
+// Part III: Intermediate Language Features
+
+= Intermediate Language Features
+
+include::ch13_error_handling.adoc[]
+
+include::ch14_resource_management.adoc[]
+
+include::ch15_pattern_matching.adoc[]
+
+include::ch16_type_system.adoc[]
+
+include::ch17_regular_expressions.adoc[]
+
+include::ch18_result_management.adoc[]
+
+include::ch19_script_organisation.adoc[]
+
+// Part IV: Kōtuku Integration
+
+= Kōtuku Integration
+
+include::ch21_the_object_system.adoc[]
+
+include::ch22_modules_and_structures.adoc[]
+
+include::ch23_processing_and_events.adoc[]
+
+include::ch24_file_io.adoc[]
+
+include::ch25_input_handling.adoc[]
+
+include::ch26_threading.adoc[]
+
+// Part V: Application Development
+
+= Application Development
+
+include::ch27_gui_programming.adoc[]
+
+include::ch28_widget_reference.adoc[]
+
+include::ch29_vector_graphics.adoc[]
+
+include::ch30_svg_integration.adoc[]
+
+include::ch31_animation_and_vfx.adoc[]
+
+include::ch32_networking.adoc[]
+
+include::ch33_document_engine.adoc[]
+
+// Part VI: Advanced Topics
+
+= Advanced Topics
+
+include::ch34_metatables_and_metamethods.adoc[]
+
+include::ch35_annotations_and_preprocessing.adoc[]
+
+include::ch36_the_debug_library.adoc[]
+
+include::ch37_performance_and_the_jit.adoc[]
+
+include::ch38_logging_and_diagnostics.adoc[]
+
+include::ch39_embedding_tiri_in_cpp.adoc[]
+
+// Part VII: Tools
+
+= Tools
+
+include::ch40_flute.adoc[]
+
+include::ch41_tiri_lsp.adoc[]
+
+include::ch42_kotuku.adoc[]
+
+// Appendices
+
+= Appendices
+
+include::appendix_a_migration_from_lua.adoc[]
+
+include::appendix_b_operator_precedence.adoc[]
+
+include::appendix_c_error_code_reference.adoc[]
+
+include::appendix_d_reserved_words.adoc[]
+
+include::appendix_e_standard_library_quick_reference.adoc[]
+
+include::appendix_f_glossary.adoc[]
