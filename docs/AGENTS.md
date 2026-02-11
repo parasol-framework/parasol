@@ -28,7 +28,6 @@ The wiki contains practical, community-oriented documentation covering:
 
 ### Tiri Scripting Documentation
 - **`Tiri-Reference-Manual.md`** - Core Tiri language reference
-- **`Tiri-Common-API.md`** - Standard library functions
 - **`Tiri-GUI-API.md`** - GUI toolkit APIs and constants
 - **`Tiri-JSON-API.md`** - JSON processing utilities
 - **`Tiri-VFX-API.md`** - Visual effects and animation APIs
@@ -39,7 +38,7 @@ The wiki contains practical, community-oriented documentation covering:
 
 ### Development Tools
 - **`Unit-Testing.md`** - Flute test documentation
-- **`Kotuku-Cmd-Tool.md`** - Command-line tool usage
+- **`Origo.md`** - Command-line tool usage
 - **`TDL-Tools.md`** - Interface Definition Language tools
 - **`TDL-Reference-Manual.md`** - TDL syntax and usage
 

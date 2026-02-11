@@ -433,7 +433,6 @@
          <div class="collapse" id="fg-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
             <li class="api-ref"><a class="rounded" href="../wiki/Tiri-Reference-Manual.html">Tiri Reference Manual</a></li>
-            <li class="api-ref"><a class="rounded" href="../wiki/Tiri-Common-API.html">Common API</a></li>
             <li class="api-ref"><a class="rounded" href="../wiki/Tiri-FileSearch-API.html">FileSearch API</a></li>
             <li class="api-ref"><a class="rounded" href="../wiki/Tiri-GUI-API.html">GUI API</a></li>
             <li class="api-ref"><a class="rounded" href="../wiki/Tiri-JSON-API.html">JSON API</a></li>
