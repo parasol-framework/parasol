@@ -137,13 +137,16 @@ LJLIB_CF(table_concat) LJLIB_REC(.)
    GCstr* sep = lj_lib_optstr(L, 2);
    int32_t i = lj_lib_optint(L, 3, 0);  // 0-based: default start
    int32_t e = (L->base + 3 < L->top and !tvisnil(L->base + 3)) ? lj_lib_checkint(L, 4) : (int32_t)lj_tab_len(t) - 1;  // 0-based: last index = len-1
+
    SBuf* sb = lj_buf_tmp_(L);
    SBuf* sbx = lj_buf_puttab(sb, t, sep, i, e);
-   if (LJ_UNLIKELY(!sbx)) {  // Error: bad element type.
+
+   if (not sbx) [[unlikely]] {  // Error: bad element type.
       int32_t idx = (int32_t)(intptr_t)sb->w;
       cTValue* o = lj_tab_getint(t, idx);
       lj_err_callerv(L, ErrMsg::TABCAT, lj_obj_itypename[o ? itypemap(o) : ~LJ_TNIL], idx);
    }
+
    setstrV(L, L->top - 1, lj_buf_str(L, sbx));
    lj_gc_check(L);
    return 1;
