@@ -515,6 +515,30 @@ LJLIB_CF(string_endsWith)
 }
 
 //********************************************************************************************************************
+// string.contains(s, substr) -> bool
+// Returns true if substr is found within s.  Enables the `in` operator for strings, e.g. `"ell" in "hello"`.
+
+LJLIB_CF(string_contains)
+{
+   GCstr *s      = lj_lib_checkstr(L, 1);
+   GCstr *substr = lj_lib_checkstr(L, 2);
+
+   if (substr->len IS 0) {
+      setboolV(L->top - 1, 1);
+      return 1;
+   }
+   else if (substr->len > s->len) {
+      setboolV(L->top - 1, 0);
+      return 1;
+   }
+   else {
+      int found = lj_str_findsv({strdata(s), s->len}, {strdata(substr), substr->len}) ? 1 : 0;
+      setboolV(L->top - 1, found);
+      return 1;
+   }
+}
+
+//********************************************************************************************************************
 
 LJLIB_CF(string_join)
 {
@@ -964,6 +988,7 @@ extern int luaopen_string(lua_State *L)
    reg_iface_prototype("string", "byte", { TiriType::Num }, { TiriType::Str, TiriType::Num }, FProtoFlags::Variadic);
    reg_iface_prototype("string", "cap", { TiriType::Str }, { TiriType::Str });
    reg_iface_prototype("string", "char", { TiriType::Str }, {}, FProtoFlags::Variadic);
+   reg_iface_prototype("string", "contains", { TiriType::Bool }, { TiriType::Str, TiriType::Str });
    reg_iface_prototype("string", "count", { TiriType::Num }, { TiriType::Str, TiriType::Str });
    reg_iface_prototype("string", "decap", { TiriType::Str }, { TiriType::Str });
    reg_iface_prototype("string", "dump", { TiriType::Str }, { TiriType::Func });

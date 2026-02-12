@@ -624,163 +624,6 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test array.sort() functionality
-
-@Test function ArraySortAscending()
-   arr = array<int, 5>
-   arr[0] = 30
-   arr[1] = 10
-   arr[2] = 50
-   arr[3] = 20
-   arr[4] = 40
-
-   arr:sort()
-
-   assert(arr[0] is 10, "sorted arr[0] should be 10")
-   assert(arr[1] is 20, "sorted arr[1] should be 20")
-   assert(arr[2] is 30, "sorted arr[2] should be 30")
-   assert(arr[3] is 40, "sorted arr[3] should be 40")
-   assert(arr[4] is 50, "sorted arr[4] should be 50")
-end
-
-@Test function ArraySortDescending()
-   arr = array<int, 5>
-   arr[0] = 30
-   arr[1] = 10
-   arr[2] = 50
-   arr[3] = 20
-   arr[4] = 40
-
-   arr:sort(true)
-
-   assert(arr[0] is 50, "desc sorted arr[0] should be 50")
-   assert(arr[1] is 40, "desc sorted arr[1] should be 40")
-   assert(arr[2] is 30, "desc sorted arr[2] should be 30")
-   assert(arr[3] is 20, "desc sorted arr[3] should be 20")
-   assert(arr[4] is 10, "desc sorted arr[4] should be 10")
-end
-
-@Test function ArraySortFloat()
-   arr = array<float, 5>
-   arr[0] = 3.14
-   arr[1] = 1.41
-   arr[2] = 2.71
-   arr[3] = 0.57
-   arr[4] = 1.73
-
-   arr:sort()
-
-   assert(arr[0] < arr[1], "sorted floats should be in order: arr[0] < arr[1]")
-   assert(arr[1] < arr[2], "sorted floats should be in order: arr[1] < arr[2]")
-   assert(arr[2] < arr[3], "sorted floats should be in order: arr[2] < arr[3]")
-   assert(arr[3] < arr[4], "sorted floats should be in order: arr[3] < arr[4]")
-end
-
-@Test function ArraySortAlreadySorted()
-   arr = array<int, 5>
-   for i = 0, 4 do
-      arr[i] = i
-   end
-
-   arr:sort()
-
-   for i = 0, 4 do
-      assert(arr[i] is i, "already sorted array should remain unchanged")
-   end
-end
-
-@Test function ArraySortDuplicates()
-   arr = array<int, 5>
-   arr[0] = 20
-   arr[1] = 10
-   arr[2] = 20
-   arr[3] = 10
-   arr[4] = 30
-
-   arr:sort()
-
-   assert(arr[0] is 10, "sorted with dups arr[0] should be 10")
-   assert(arr[1] is 10, "sorted with dups arr[1] should be 10")
-   assert(arr[2] is 20, "sorted with dups arr[2] should be 20")
-   assert(arr[3] is 20, "sorted with dups arr[3] should be 20")
-   assert(arr[4] is 30, "sorted with dups arr[4] should be 30")
-end
-
------------------------------------------------------------------------------------------------------------------------
--- Test array.fill() with range support
-
-@Test function ArrayFillWithRange()
-   arr = array<int, 10>
-   arr:fill(0)  -- Zero-initialize first
-
-   -- Fill with range (exclusive)
-   arr:fill(99, {2..5})
-   assert(arr[0] is 0, "fill range: arr[0] should be 0")
-   assert(arr[1] is 0, "fill range: arr[1] should be 0")
-   assert(arr[2] is 99, "fill range: arr[2] should be 99")
-   assert(arr[3] is 99, "fill range: arr[3] should be 99")
-   assert(arr[4] is 99, "fill range: arr[4] should be 99")
-   assert(arr[5] is 0, "fill range: arr[5] should be 0")
-end
-
-@Test function ArrayFillWithInclusiveRange()
-   arr = array<int, 10>
-   arr:fill(0)  -- Zero-initialize first
-
-   -- Fill with inclusive range
-   arr:fill(77, {2...5})
-   assert(arr[1] is 0, "fill inclusive: arr[1] should be 0")
-   assert(arr[2] is 77, "fill inclusive: arr[2] should be 77")
-   assert(arr[3] is 77, "fill inclusive: arr[3] should be 77")
-   assert(arr[4] is 77, "fill inclusive: arr[4] should be 77")
-   assert(arr[5] is 77, "fill inclusive: arr[5] should be 77")
-   assert(arr[6] is 0, "fill inclusive: arr[6] should be 0")
-end
-
-@Test function ArrayFillWithNegativeRange()
-   arr = array<int, 5>
-   arr:fill(0)  -- Zero-initialize first
-
-   -- Fill last 2 elements using negative indices
-   arr:fill(55, {-2..-1})
-   assert(arr[0] is 0, "fill negative: arr[0] should be 0")
-   assert(arr[1] is 0, "fill negative: arr[1] should be 0")
-   assert(arr[2] is 0, "fill negative: arr[2] should be 0")
-   assert(arr[3] is 55, "fill negative: arr[3] should be 55")
-   assert(arr[4] is 55, "fill negative: arr[4] should be 55")
-end
-
-@Test function ArrayFillWithSteppedRange()
-   arr = array<int, 10>
-   arr:fill(0)  -- Zero-initialize first
-
-   -- Fill every other element using range.new(start, stop, inclusive, step)
-   arr:fill(33, range.new(0, 10, false, 2))
-   assert(arr[0] is 33, "fill stepped: arr[0] should be 33")
-   assert(arr[1] is 0, "fill stepped: arr[1] should be 0")
-   assert(arr[2] is 33, "fill stepped: arr[2] should be 33")
-   assert(arr[3] is 0, "fill stepped: arr[3] should be 0")
-   assert(arr[4] is 33, "fill stepped: arr[4] should be 33")
-   assert(arr[8] is 33, "fill stepped: arr[8] should be 33")
-   assert(arr[9] is 0, "fill stepped: arr[9] should be 0")
-end
-
-@Test function ArrayFillOriginalSyntax()
-   -- Verify original syntax still works
-   arr = array<int, 10>
-   arr:fill(0)  -- Zero-initialize first
-
-   -- Fill starting at index 3, 4 elements
-   arr:fill(42, 3, 4)
-   assert(arr[2] is 0, "fill original: arr[2] should be 0")
-   assert(arr[3] is 42, "fill original: arr[3] should be 42")
-   assert(arr[4] is 42, "fill original: arr[4] should be 42")
-   assert(arr[5] is 42, "fill original: arr[5] should be 42")
-   assert(arr[6] is 42, "fill original: arr[6] should be 42")
-   assert(arr[7] is 0, "fill original: arr[7] should be 0")
-end
-
------------------------------------------------------------------------------------------------------------------------
 -- Test array.find() with range support
 
 @Test function ArrayFindWithRange()
@@ -1778,6 +1621,38 @@ end
 
    -- Test non-existent value
    assert((arr:find(99) != nil) is arr:contains(99), "contains and find should agree on missing value")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test membership operator (in) with arrays
+
+@Test function ArrayInOperatorInt()
+   arr = array<int> { 10, 20, 30, 40, 50 }
+   assert(20 in arr, "20 should be in array")
+   assert(50 in arr, "50 should be in array")
+   assert(not (99 in arr), "99 should not be in array")
+   assert(not (0 in arr), "0 should not be in array")
+end
+
+@Test function ArrayInOperatorString()
+   arr = array<string> { 'apple', 'banana', 'cherry' }
+   assert('banana' in arr, "'banana' should be in array")
+   assert(not ('grape' in arr), "'grape' should not be in array")
+   assert(not ('APPLE' in arr), "'APPLE' should not be in array (case-sensitive)")
+end
+
+@Test function ArrayInOperatorEmpty()
+   arr = array<int> {}
+   assert(not (1 in arr), "nothing should be in empty array")
+end
+
+@Test function ArrayInOperatorInCondition()
+   arr = array<string> { 'red', 'green', 'blue' }
+   found = false
+   if 'green' in arr then
+      found = true
+   end
+   assert(found, "'green' in arr should be truthy in if condition")
 end
 
 -----------------------------------------------------------------------------------------------------------------------

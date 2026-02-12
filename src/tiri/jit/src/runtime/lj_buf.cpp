@@ -232,10 +232,11 @@ SBuf* lj_buf_puttab(SBuf* sb, GCtab* t, GCstr* sep, int32_t i, int32_t e)
 
    if (i <= e) {
       while (true) {
-         cTValue* o = lj_tab_getint(t, i);
-         char* w;
+         cTValue *o = lj_tab_getint(t, i);
+         char *w;
+
          if (!o) {
-         badtype:  //  Error: bad element type.
+badtype:  //  Error: bad element type.
             sb->w = (char*)(intptr_t)i;  //  Store failing index.
             return nullptr;
          }
@@ -252,10 +253,12 @@ SBuf* lj_buf_puttab(SBuf* sb, GCtab* t, GCstr* sep, int32_t i, int32_t e)
          else {
             goto badtype;
          }
+
          if (i++ == e) {
             sb->w = w;
             break;
          }
+
          if (seplen) w = lj_buf_wmem(w, strdata(sep), seplen);
          sb->w = w;
       }
