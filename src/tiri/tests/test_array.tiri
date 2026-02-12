@@ -707,6 +707,169 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Test array.sort() with user-provided comparator function
+
+@Test function ArraySortComparatorAscending()
+   arr = array<int> { 30, 10, 50, 20, 40 }
+   arr:sort((a, b) => a < b)
+
+   assert(arr[0] is 10, "comparator asc arr[0] should be 10")
+   assert(arr[1] is 20, "comparator asc arr[1] should be 20")
+   assert(arr[2] is 30, "comparator asc arr[2] should be 30")
+   assert(arr[3] is 40, "comparator asc arr[3] should be 40")
+   assert(arr[4] is 50, "comparator asc arr[4] should be 50")
+end
+
+@Test function ArraySortComparatorDescending()
+   arr = array<int> { 30, 10, 50, 20, 40 }
+   arr:sort((a, b) => a > b)
+
+   assert(arr[0] is 50, "comparator desc arr[0] should be 50")
+   assert(arr[1] is 40, "comparator desc arr[1] should be 40")
+   assert(arr[2] is 30, "comparator desc arr[2] should be 30")
+   assert(arr[3] is 20, "comparator desc arr[3] should be 20")
+   assert(arr[4] is 10, "comparator desc arr[4] should be 10")
+end
+
+@Test function ArraySortComparatorFloat()
+   arr = array<float> { 3.14, 1.41, 2.71, 0.57, 1.73 }
+   arr:sort((a, b) => a < b)
+
+   assert(arr[0] < arr[1], "comparator float: arr[0] < arr[1]")
+   assert(arr[1] < arr[2], "comparator float: arr[1] < arr[2]")
+   assert(arr[2] < arr[3], "comparator float: arr[2] < arr[3]")
+   assert(arr[3] < arr[4], "comparator float: arr[3] < arr[4]")
+end
+
+@Test function ArraySortComparatorString()
+   arr = array<string> { 'cherry', 'apple', 'banana' }
+   arr:sort((a, b) => a < b)
+
+   assert(arr[0] is 'apple', "comparator string arr[0] should be 'apple'")
+   assert(arr[1] is 'banana', "comparator string arr[1] should be 'banana'")
+   assert(arr[2] is 'cherry', "comparator string arr[2] should be 'cherry'")
+end
+
+@Test function ArraySortComparatorStringDescending()
+   arr = array<string> { 'cherry', 'apple', 'banana' }
+   arr:sort((a, b) => a > b)
+
+   assert(arr[0] is 'cherry', "comparator string desc arr[0] should be 'cherry'")
+   assert(arr[1] is 'banana', "comparator string desc arr[1] should be 'banana'")
+   assert(arr[2] is 'apple', "comparator string desc arr[2] should be 'apple'")
+end
+
+@Test function ArraySortComparatorDuplicates()
+   arr = array<int> { 20, 10, 20, 10, 30 }
+   arr:sort((a, b) => a < b)
+
+   assert(arr[0] is 10, "comparator dups arr[0] should be 10")
+   assert(arr[1] is 10, "comparator dups arr[1] should be 10")
+   assert(arr[2] is 20, "comparator dups arr[2] should be 20")
+   assert(arr[3] is 20, "comparator dups arr[3] should be 20")
+   assert(arr[4] is 30, "comparator dups arr[4] should be 30")
+end
+
+@Test function ArraySortComparatorAlreadySorted()
+   arr = array<int> { 1, 2, 3, 4, 5 }
+   arr:sort((a, b) => a < b)
+
+   for i = 0, 4 do
+      assert(arr[i] is i + 1, "comparator already sorted: arr[" .. i .. "] should be " .. (i + 1))
+   end
+end
+
+@Test function ArraySortComparatorSingleElement()
+   arr = array<int> { 42 }
+   arr:sort((a, b) => a < b)
+   assert(arr[0] is 42, "comparator single element should remain 42")
+end
+
+@Test function ArraySortComparatorTwoElements()
+   arr = array<int> { 20, 10 }
+   arr:sort((a, b) => a < b)
+   assert(arr[0] is 10, "comparator two elements arr[0] should be 10")
+   assert(arr[1] is 20, "comparator two elements arr[1] should be 20")
+end
+
+@Test function ArraySortComparatorAbsoluteValue()
+   -- Sort by absolute value to demonstrate custom ordering logic
+   arr = array<int> { -5, 3, -1, 4, -2 }
+   arr:sort((a, b) => math.abs(a) < math.abs(b))
+
+   assert(math.abs(arr[0]) is 1, "abs sort arr[0] should have abs value 1")
+   assert(math.abs(arr[1]) is 2, "abs sort arr[1] should have abs value 2")
+   assert(math.abs(arr[2]) is 3, "abs sort arr[2] should have abs value 3")
+   assert(math.abs(arr[3]) is 4, "abs sort arr[3] should have abs value 4")
+   assert(math.abs(arr[4]) is 5, "abs sort arr[4] should have abs value 5")
+end
+
+@Test function ArraySortComparatorNamedFunction()
+   -- Test with a named function rather than an anonymous lambda
+   function compare(A, B)
+      return A > B
+   end
+
+   arr = array<int> { 3, 1, 4, 1, 5, 9, 2, 6 }
+   arr:sort(compare)
+
+   assert(arr[0] is 9, "named fn sort arr[0] should be 9")
+   assert(arr[1] is 6, "named fn sort arr[1] should be 6")
+   assert(arr[2] is 5, "named fn sort arr[2] should be 5")
+   assert(arr[#arr - 1] is 1, "named fn sort last should be 1")
+end
+
+@Test function ArraySortComparatorLarge()
+   arr = array<int, 100>
+   for i = 0, 99 do
+      arr[i] = 99 - i
+   end
+
+   arr:sort((a, b) => a < b)
+
+   for i = 0, 99 do
+      assert(arr[i] is i, "comparator large sort: arr[" .. i .. "] should be " .. i)
+   end
+end
+
+@Test function ArraySortComparatorByte()
+   arr = array<byte> { 67, 65, 68, 66 }  -- C, A, D, B
+   arr:sort((a, b) => a < b)
+
+   assert(arr[0] is 65, "comparator byte arr[0] should be 65 (A)")
+   assert(arr[1] is 66, "comparator byte arr[1] should be 66 (B)")
+   assert(arr[2] is 67, "comparator byte arr[2] should be 67 (C)")
+   assert(arr[3] is 68, "comparator byte arr[3] should be 68 (D)")
+end
+
+@Test function ArraySortComparatorInt64()
+   arr = array<int64> { 3000000000000, 1000000000000, 5000000000000, 2000000000000 }
+   arr:sort((a, b) => a < b)
+
+   assert(arr[0] is 1000000000000, "comparator int64 arr[0] should be smallest")
+   assert(arr[3] is 5000000000000, "comparator int64 arr[3] should be largest")
+end
+
+@Test function ArraySortComparatorDouble()
+   arr = array<double> { 2.718281828, 3.141592653, 1.414213562 }
+   arr:sort((a, b) => a < b)
+
+   assert(arr[0] < arr[1], "comparator double: arr[0] < arr[1]")
+   assert(arr[1] < arr[2], "comparator double: arr[1] < arr[2]")
+end
+
+@Test function ArraySortComparatorStringLength()
+   -- Sort strings by length rather than lexicographic order
+   arr = array<string> { 'hi', 'hello', 'hey', 'h' }
+   arr:sort((a, b) => #a < #b)
+
+   assert(arr[0] is 'h', "length sort arr[0] should be 'h'")
+   assert(arr[1] is 'hi', "length sort arr[1] should be 'hi'")
+   assert(arr[2] is 'hey', "length sort arr[2] should be 'hey'")
+   assert(arr[3] is 'hello', "length sort arr[3] should be 'hello'")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- Test array.fill() with range support
 
 @Test function ArrayFillWithRange()
@@ -1778,6 +1941,38 @@ end
 
    -- Test non-existent value
    assert((arr:find(99) != nil) is arr:contains(99), "contains and find should agree on missing value")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test membership operator (in) with arrays
+
+@Test function ArrayInOperatorInt()
+   arr = array<int> { 10, 20, 30, 40, 50 }
+   assert(20 in arr, "20 should be in array")
+   assert(50 in arr, "50 should be in array")
+   assert(not (99 in arr), "99 should not be in array")
+   assert(not (0 in arr), "0 should not be in array")
+end
+
+@Test function ArrayInOperatorString()
+   arr = array<string> { 'apple', 'banana', 'cherry' }
+   assert('banana' in arr, "'banana' should be in array")
+   assert(not ('grape' in arr), "'grape' should not be in array")
+   assert(not ('APPLE' in arr), "'APPLE' should not be in array (case-sensitive)")
+end
+
+@Test function ArrayInOperatorEmpty()
+   arr = array<int> {}
+   assert(not (1 in arr), "nothing should be in empty array")
+end
+
+@Test function ArrayInOperatorInCondition()
+   arr = array<string> { 'red', 'green', 'blue' }
+   found = false
+   if 'green' in arr then
+      found = true
+   end
+   assert(found, "'green' in arr should be truthy in if condition")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
