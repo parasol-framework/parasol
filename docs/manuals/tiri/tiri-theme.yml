@@ -1,5 +1,58 @@
 extends: default
 
+font:
+  catalog:
+    Noto Serif:
+      normal: fonts/NotoSerif-Regular.ttf
+      bold: fonts/NotoSerif-Bold.ttf
+      italic: fonts/NotoSerif-Italic.ttf
+      bold_italic: fonts/NotoSerif-BoldItalic.ttf
+    Noto Sans:
+      normal: ../../../data/fonts/truetype/NotoSans-VariableFont.ttf
+      bold: ../../../data/fonts/truetype/NotoSans-VariableFont.ttf
+      italic: ../../../data/fonts/truetype/NotoSans-Italic-VariableFont.ttf
+      bold_italic: ../../../data/fonts/truetype/NotoSans-Italic-VariableFont.ttf
+    Courier Prime:
+      normal: ../../../data/fonts/truetype/Courier Prime.ttf
+      bold: ../../../data/fonts/truetype/Courier Prime Bold.ttf
+      italic: ../../../data/fonts/truetype/Courier Prime Italic.ttf
+      bold_italic: ../../../data/fonts/truetype/Courier Prime Bold Italic.ttf
+    Source Code Pro:
+      normal: ../../../data/fonts/truetype/SourceCodePro-VariableFont.ttf
+      bold: ../../../data/fonts/truetype/SourceCodePro-VariableFont.ttf
+      italic: ../../../data/fonts/truetype/SourceCodePro-Italic-VariableFont.ttf
+      bold_italic: ../../../data/fonts/truetype/SourceCodePro-Italic-VariableFont.ttf
+    Inconsolata:
+      normal: ../../../data/fonts/truetype/Inconsolata-VariableFont.ttf
+      bold: ../../../data/fonts/truetype/Inconsolata-VariableFont.ttf
+      italic: ../../../data/fonts/truetype/Inconsolata-VariableFont.ttf
+      bold_italic: ../../../data/fonts/truetype/Inconsolata-VariableFont.ttf
+    Crimson Pro:
+      normal: ../../../data/fonts/truetype/CrimsonPro-VariableFont.ttf
+      bold: ../../../data/fonts/truetype/CrimsonPro-VariableFont.ttf
+      italic: ../../../data/fonts/truetype/CrimsonPro-Italic-VariableFont.ttf
+      bold_italic: ../../../data/fonts/truetype/CrimsonPro-Italic-VariableFont.ttf
+
+base:
+  font-family: Noto Serif
+
+codespan:
+  font-family: Inconsolata
+  font-size: 1.1em
+
+role:
+  api:
+    font-family: Courier Prime
+    font-weight: bold
+    font-size: 1.1em
+
+code:
+  font-family: Courier Prime
+  breakable: true
+  orphans: 5
+  page-break-inside: avoid
+  font-size: 0.95em
+
 page:
   margin: [0.75in, 0.75in, 0.75in, 0.75in]
 
@@ -45,8 +98,3 @@ header:
   verso:
     left:
       content: '{chapter-title}'
-
-code:
-  breakable: true
-  orphans: 5
-  page-break-inside: avoid

@@ -169,7 +169,7 @@ The `??` operator and its postfix form `??` use a broader definition.  The value
 
 `result = type(Value)`
 
-Returns a string naming the type of `Value`.  The returned string is one of: `"nil"`, `"boolean"`, `"number"`, `"string"`, `"table"`, `"array"`, `"function"`, `"userdata"`, `"object"`.
+Returns a string naming the type of `Value`.  The returned string is one of: "nil", "boolean", "number", "string", "table", "array", "function", "userdata", "object".
 
 [source,tiri]
 ----
@@ -202,7 +202,7 @@ tostring(nil)     -- 'nil'
 
 ==== tonumber()
 
-`result = tonumber(Value [, Base])`
+`result = tonumber(Value, [Base])`
 
 Converts `Value` to a number.  Returns `nil` if the conversion fails.
 

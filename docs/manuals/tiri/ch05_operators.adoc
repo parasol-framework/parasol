@@ -374,6 +374,7 @@ safe = tonumber(input) |> clamp(0, 100)
 
 When the LHS returns multiple values, the pipe forwards all values as arguments to the RHS:
 
+[%unbreakable]
 [source,tiri]
 ----
 function get_bounds()

@@ -58,6 +58,24 @@ The opening paragraph can be followed by a basic example if warranted.  The beha
 
 If necessary, the example can be followed with more detail on function behaviour and parameter effects.  In this case, a table is provided to make the available Mode options clear to the reader.
 
+## AsciiDoc Formatting
+
+Precede function prototype declarations with `[.api]`, e.g.
+
+```
+[.api]`str = string.substr(String, Start, [End])`
+```
+
+Format Tiri source code examples with the Tiri lexer, e.g.
+
+```
+[source,tiri]
+----
+'hello world':substr(0, 5)    -- 'hello'
+'hello world':substr(6)       -- 'world'
+----
+```
+
 ------------------------------------------------------------------------
 
 # Writing Rules

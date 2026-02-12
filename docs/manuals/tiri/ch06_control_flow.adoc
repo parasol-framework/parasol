@@ -297,6 +297,7 @@ return_statement = "return" [ expression_list ] [ ";" ] ;
 
 `return` exits the current function and returns zero or more values to the caller.  `return` with no values returns `nil`.
 
+[%unbreakable]
 [source,tiri]
 ----
 function add(A, B)

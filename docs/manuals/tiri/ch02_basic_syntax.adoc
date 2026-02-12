@@ -97,6 +97,7 @@ A statement forms the basic unit of execution.  Tiri supports assignment stateme
 
 Statements are separated by line breaks or semicolons.  Semicolons are optional and carry no semantic weight; the parser consumes them without effect.
 
+[%unbreakable]
 [source,tiri]
 ----
 x = 1
