@@ -30,7 +30,7 @@ a, b, c                  -- error: use 'local a, b, c' or assign values
 ----
 
 [[sec-the-local-keyword]]
-=== The `local` Keyword
+=== The local Keyword
 
 The `local` keyword explicitly declares one or more local variables in the current scope.  It is required when declaring multiple variables on a single line and when declaring a variable without an initial value.
 
@@ -65,7 +65,7 @@ end
 ----
 
 [[sec-the-global-keyword]]
-=== The `global` Keyword
+=== The global Keyword
 
 The `global` keyword declares a variable or function in the global scope.  Global declarations must precede any use of the variable name.
 
@@ -235,7 +235,7 @@ data.x = 999                    -- valid: modifying table contents
 data = {}                       -- error: cannot reassign the binding
 ----
 
-==== Multiple Declarations with `<const>`
+==== Multiple Declarations with <const>
 
 Each variable in a multiple declaration independently carries the attribute:
 

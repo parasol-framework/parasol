@@ -29,31 +29,31 @@ toc::[]
 [preface]
 == Acknowledgements
 
-The following people and projects have my deepest gratitude for their contributions to the open source eco-sphere that helps make Tiri possible:
+The following projects and the people that work on them have my deepest gratitude for their contributions to the open source eco-sphere that has helped make Tiri possible:
 
-LuaJIT
-  Mike Pall
-  https://luajit.org/
+LuaJIT::
+Mike Pall +
+https://luajit.org/
 
-Lua / The PUC-Rio Lua team
-  Roberto Ierusalimschy, Luiz Henrique de Figueiredo, Waldemar Celes
-  https://www.lua.org/
+Lua::
+Roberto Ierusalimschy, Luiz Henrique de Figueiredo, Waldemar Celes +
+https://www.lua.org/
 
-Antigrain Geometry Library
-  Maxim Shemanarev
-  https://en.wikipedia.org/wiki/Anti-Grain_Geometry
+Antigrain Geometry Library::
+Maxim Shemanarev +
+https://en.wikipedia.org/wiki/Anti-Grain_Geometry
 
-SRELL Std::Regex-Like Library
-  Nozomu Katoo
-  https://www.akenotsuki.com/misc/srell/en/
+SRELL Std::Regex-Like Library::
+Nozomu Katoo +
+https://www.akenotsuki.com/misc/srell/en/
 
-ZLib Compression Library
-  Jean-loup Gailly and Mark Adler
-  https://zlib.net/
+ZLib Compression Library::
+Jean-loup Gailly and Mark Adler +
+https://zlib.net/
 
-The FreeType project
-   David Turner, Robert Wilhelm, and Werner Lemberg
-   https://www.freetype.org/
+The FreeType project::
+David Turner, Robert Wilhelm, and Werner Lemberg +
+https://www.freetype.org/
 
 // Part I: Language Fundamentals
 

@@ -279,8 +279,7 @@ Inserts one or more values at `Index`, shifting subsequent elements to the right
 ----
 arr = array<int> { 1, 2, 5 }
 arr:insert(2, 3, 4)   -- arr = {1, 2, 3, 4, 5}
-
-arr:insert(0, 0)       -- arr = {0, 1, 2, 3, 4, 5}
+arr:insert(0, 0)      -- arr = {0, 1, 2, 3, 4, 5}
 ----
 
 ==== remove()
@@ -298,8 +297,7 @@ arr:remove(1, 2)    -- arr = {1, 5}
 
 ==== fill()
 
-[.api]`arr:fill(Value, [Start, Count])`
-
+[.api]`arr:fill(Value, [Start, Count])` +
 [.api]`arr:fill(Value, Range)`
 
 Sets elements to `Value`.  With no additional arguments, fills the entire array.  With `Start` and `Count`, fills `Count` elements beginning at `Start`.  With a range, fills the elements selected by the range (supports exclusive, inclusive, negative, and stepped ranges).
@@ -315,15 +313,30 @@ arr:fill(33, range.new(0, 10, false, 2))   -- every 2nd element
 
 ==== sort()
 
-[.api]`arr:sort([Descending])`
+[.api]`arr:sort([Descending])` +
+[.api]`arr:sort(ComparatorFn)`
 
 Sorts the array in place.  The default order is ascending.  If `Descending` is `true`, sorts in descending order.  Supported for all numeric types, string arrays, and `any` arrays.
+
+Alternatively, a comparator function can be provided.  The function receives two elements `(a, b)` and must return `true` if `a` should come before `b` in the sorted result.  This works for all pushable array types, including `table` and `object` arrays.
 
 [source,tiri]
 ----
 arr = array<int> { 5, 3, 1, 4, 2 }
 arr:sort()        -- {1, 2, 3, 4, 5}
 arr:sort(true)    -- {5, 4, 3, 2, 1}
+
+-- Custom comparator: sort by absolute value
+nums = array<int> { -5, 3, -1, 4, -2 }
+nums:sort((a, b) => math.abs(a) < math.abs(b))
+
+-- Sort tables by a field
+people = array<table> {
+   { name = 'Charlie', age = 35 },
+   { name = 'Alice',   age = 28 },
+   { name = 'Bob',     age = 31 }
+}
+people:sort((a, b) => a.age < b.age)  -- sorted by age ascending
 ----
 
 ==== reverse()
@@ -342,14 +355,14 @@ arr:reverse()   -- {5, 4, 3, 2, 1}
 
 [.api]`arr:clear()`
 
-Resets the array length to zero.  Storage capacity is preserved for reuse.  After clearing, `push()` reuses the existing allocation.
+Resets the array length to zero.  Storage capacity is preserved for reuse.
 
 [source,tiri]
 ----
 arr = array<int> { 1, 2, 3 }
 arr:clear()
 #arr             -- 0
-arr:push(100)    -- reuses existing capacity
+arr:push(67)    -- reuses existing capacity
 ----
 
 ==== resize()
@@ -363,8 +376,7 @@ Changes the array length to `NewSize`.  When growing, new elements are zero-init
 
 ==== find()
 
-[.api]`index = arr:find(Value, [Start])`
-
+[.api]`index = arr:find(Value, [Start])` +
 [.api]`index = arr:find(Value, Range)`
 
 Searches for `Value` and returns its zero-based index, or `nil` if not found.  With a numeric `Start`, the search begins at that index.  With a range, the search is restricted to the indices selected by the range (supports exclusive, inclusive, negative, stepped, and reverse ranges).
@@ -509,13 +521,13 @@ arr:join('-')     -- '1-2-3'
 [[sec-functional-methods]]
 === Functional Methods
 
-All functional methods accept a callback function that receives `(Value, Index)` as arguments.  The `Index` parameter is optional; callbacks that only need the value can omit it.
+All functional methods in this section accept a callback function that receives `(Value, Index)` as parameters.  The `Index` parameter is optional; callbacks that only need the value can omit it.
 
 ==== each()
 
 [.api]`arr:each(Callback)`
 
-Calls `Callback(value, index)` for every element.  Returns the array for chaining.
+Calls `Callback(Value, Index)` for every element.  Returns the array for chaining.
 
 [source,tiri]
 ----
@@ -529,7 +541,7 @@ end)
 
 [.api]`result = arr:map(Callback)`
 
-Returns a new array where each element is the result of `Callback(value, index)`.  The original array is not modified.  The result array preserves the source element type.
+Returns a new array where each element is the result of `Callback(Value, Index)`.  The original array is not modified.  The result array preserves the source element type.
 
 [source,tiri]
 ----
@@ -542,7 +554,7 @@ doubled = arr:map(v => v * 2)
 
 [.api]`result = arr:filter(Predicate)`
 
-Returns a new array containing only the elements for which `Predicate(value, index)` returns a truthy value.  The original array is not modified.  The result preserves the source element type.
+Returns a new array containing only the elements for which `Predicate(Value, Index)` returns a truthy value.  The original array is not modified.  The result preserves the source element type.
 
 [source,tiri]
 ----
@@ -555,7 +567,7 @@ evens = arr:filter(v => v % 2 is 0)
 
 [.api]`result = arr:reduce(Initial, Reducer)`
 
-Applies `Reducer(accumulator, value, index)` to each element, threading the accumulator from left to right.  Returns the final accumulator.  If the array is empty, returns `Initial` unchanged.
+Applies `Reducer(Accumulator, Value, Index)` to each element, threading the accumulator from left to right.  Returns the final accumulator.  If the array is empty, returns `Initial` unchanged.
 
 [source,tiri]
 ----
@@ -571,7 +583,7 @@ product = arr:reduce(1, (acc, v) => acc * v)
 
 [.api]`result = arr:any(Predicate)`
 
-Returns `true` if `Predicate(value, index)` returns a truthy value for at least one element.  Returns `false` on an empty array.
+Returns `true` if `Predicate(Value, Index)` returns a truthy value for at least one element.  Returns `false` on an empty array.
 
 [source,tiri]
 ----
@@ -583,7 +595,7 @@ arr:any(v => v % 2 is 0)   -- true
 
 [.api]`result = arr:all(Predicate)`
 
-Returns `true` if `Predicate(value, index)` returns a truthy value for every element.  Returns `true` on an empty array (vacuous truth).
+Returns `true` if `Predicate(Value, Index)` returns a truthy value for every element.  Returns `true` on an empty array (vacuous truth).
 
 [source,tiri]
 ----

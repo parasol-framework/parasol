@@ -223,7 +223,7 @@ NOTE: There is no `--` decrement operator.  The `--` character sequence begins a
 
 Conditional operators use extended falsiness: `nil`, `false`, `0` (integer and floating-point zero), `""` (the empty string), and empty arrays (length 0) are all falsey.  All other values are truthy.  See <<sec-truthiness>> for the full definition.
 
-==== If-Empty Binary Operator (`??`)
+==== If-Empty Binary Operator (??)
 
 `result = a ?? b`
 
@@ -249,7 +249,7 @@ user_input ?? return ERR_InvalidInput
 
 Line breaks immediately following `??` are forbidden.  The RHS must appear on the same line as the operator.
 
-==== If-Empty Postfix Operator (`??`)
+==== If-Empty Postfix Operator (??)
 
 `x??`
 
@@ -336,7 +336,7 @@ result = value in container
 
 Returns `true` if `container` contains `value`; `false` otherwise.  The expression `a in b` is equivalent to `b:contains(a)`.
 
-The `in` operator requires the right-hand operand to provide a `:contains()` method.  The built-in types that define this method are ranges and arrays.  Any user-defined type with a `:contains()` method also supports `in`.  If the right-hand operand lacks a `:contains()` method, the runtime raises an error.
+The `in` operator requires the right-hand operand to provide a `:contains()` method.  The built-in types that define this method are ranges, strings and arrays.  Any user-defined type with a compliant `:contains()` method will also support `in`.  If the right-hand operand lacks a `:contains()` method, the runtime raises an error.
 
 [source,tiri]
 ----
@@ -350,7 +350,7 @@ if 'green' in arr then
 end
 ----
 
-NOTE: The `in` keyword also appears in `for` loops (`for k, v in pairs(t) do`).  The membership operator is distinguished by appearing outside of a `for` header.
+NOTE: The `in` keyword also appears in `for` loops (`for k, v in pairs(t) do`).  The membership operator is distinguished by its appearance outside of `for` statements.
 
 [[sec-pipe-operator]]
 === Pipe Operator

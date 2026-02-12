@@ -352,22 +352,8 @@ Removes leading and trailing whitespace from `String`.  Whitespace characters ar
 
 Removes trailing whitespace from `String`.  Leading whitespace is preserved.  Whitespace characters are: space, tab, newline, and carriage return.
 
-[[sec-joining-and-splitting]]
-=== Joining & Splitting
-
-[[sec-string-join]]
-==== string.join()
-
-[.api]`str = string.join(Table, [Separator])`
-
-Joins the contents of `Table` into a single string.  The first argument must be a table; arrays are not accepted.  If `Separator` is provided, it is inserted between each element.  String and number values in the table are included; `nil` values are skipped.
-
-[source,tiri]
-----
-string.join({ 'a', 'b', 'c' }, ', ')   -- 'a, b, c'
-string.join({ 1, 2, 3 }, '-')          -- '1-2-3'
-string.join({ 'hello', 'world' })      -- 'helloworld'
-----
+[[sec-splitting]]
+=== Splitting
 
 [[sec-string-split]]
 ==== string.split()
@@ -384,10 +370,10 @@ Splitting an empty string returns an empty array.
 
 [source,tiri]
 ----
-'a,b,c':split(',')         -- array: {'a', 'b', 'c'}
-'hello world':split()       -- array: {'hello', 'world'}
-'a::b::c':split('::')      -- array: {'a', 'b', 'c'}
-'':split(',')               -- array: {}
+'a,b,c':split(',')      -- array: {'a', 'b', 'c'}
+'hello world':split()   -- array: {'hello', 'world'}
+'a::b::c':split('::')   -- array: {'a', 'b', 'c'}
+'':split(',')           -- array: {}
 ----
 
 [[sec-predicate-methods]]

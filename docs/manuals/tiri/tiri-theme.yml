@@ -79,7 +79,7 @@ title-page:
     margin-top: 6
 
 heading:
-  min-height-after: 0.5in
+  min-height-after: 1in
   part:
     break-before: always
     break-after: always
