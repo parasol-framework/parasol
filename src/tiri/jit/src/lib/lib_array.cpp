@@ -2019,6 +2019,7 @@ static void quicksort_func(lua_State *L, GCarray *Arr, int32_t Left, int32_t Rig
    luaL_checkstack(L, 5, "array sort");
 
    auto elem_swap = [&](int32_t I, int32_t J) {
+      if (I IS J) return;
       void *a = lj_array_index(Arr, I);
       void *b = lj_array_index(Arr, J);
       MSize sz = Arr->elemsize;
