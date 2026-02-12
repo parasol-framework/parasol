@@ -46,9 +46,10 @@ constexpr auto HASH_TABLE   = pf::strhash("table");
 constexpr auto HASH_ARRAY   = pf::strhash("array");
 constexpr auto HASH_ANY     = pf::strhash("any");
 
-// Forward declarations for find helpers
+// Forward declarations
 static int32_t find_in_array(GCarray *Arr, lua_Number Value, int32_t Start, int32_t Stop, int32_t Step);
 static int32_t find_object_in_array(GCarray *Arr, OBJECTID SearchUid, int32_t Start, int32_t Stop, int32_t Step);
+static void array_push_element(lua_State *L, GCarray *Arr, MSize Idx);
 
 const array_meta glArrayConversion[size_t(AET::MAX)] = {
    { uint8_t(LJ_TNUMX),    LUA_TNUMBER, true },         // AET::BYTE
@@ -503,6 +504,8 @@ LJLIB_CF(array_join)
 
 //********************************************************************************************************************
 // Usage: array.contains(arr, value)
+//
+// Not for client use; provided to support the 'in' keyword.
 //
 // Returns true if the value exists in the array, false otherwise.
 // This is a convenience wrapper around find() that returns a boolean.
@@ -1943,7 +1946,7 @@ LJLIB_CF(array_slice)
 //   arr: the array to sort (must not be read-only, must be numeric type)
 //   descending: if true, sort in descending order (default: false/ascending)
 //
-// Note: Does not support string, pointer, or struct arrays.
+// Note: Does not support pointer or struct arrays.
 
 //********************************************************************************************************************
 // Type priority for sorting _ANY arrays: nil=0, false=1, true=2, number=3, string=4, other=5
@@ -1993,6 +1996,77 @@ static int tvalue_compare(cTValue *a, cTValue *b, bool descending)
 }
 
 //********************************************************************************************************************
+// Call the user comparator function at stack position FnIdx with two array elements.
+// Pushes the function, the element at index A, and the element at index B, then calls and returns the boolean result.
+
+static bool array_sort_comp(lua_State *L, GCarray *Arr, int32_t A, int32_t B, int FnIdx)
+{
+   lua_pushvalue(L, FnIdx);
+   array_push_element(L, Arr, A);
+   array_push_element(L, Arr, B);
+   lua_call(L, 2, 1);
+   bool result = lua_toboolean(L, -1);
+   lua_pop(L, 1);
+   return result;
+}
+
+//********************************************************************************************************************
+// Quicksort using a user-provided comparator function. Operates on raw array data with byte-level swaps, calling back
+// into Tiri for each comparison.
+
+static void quicksort_func(lua_State *L, GCarray *Arr, int32_t Left, int32_t Right, int FnIdx)
+{
+   luaL_checkstack(L, 5, "array sort");
+
+   auto elem_swap = [&](int32_t I, int32_t J) {
+      void *a = lj_array_index(Arr, I);
+      void *b = lj_array_index(Arr, J);
+      MSize sz = Arr->elemsize;
+      uint8_t tmp[64];
+      std::memcpy(tmp, a, sz);
+      std::memcpy(a, b, sz);
+      std::memcpy(b, tmp, sz);
+   };
+
+   while (Left < Right) {
+      // Partition using median-of-three pivot selection
+      int32_t mid = (Left + Right) / 2;
+      if (array_sort_comp(L, Arr, mid, Left, FnIdx)) elem_swap(Left, mid);
+      if (array_sort_comp(L, Arr, Right, Left, FnIdx)) elem_swap(Left, Right);
+      if (array_sort_comp(L, Arr, Right, mid, FnIdx)) elem_swap(mid, Right);
+
+      if (Right - Left < 2) break;
+
+      elem_swap(mid, Right - 1);  // Place pivot at Right-1
+      int32_t pivot_idx = Right - 1;
+
+      int32_t i = Left;
+      int32_t j = Right - 1;
+      for (;;) {
+         while (array_sort_comp(L, Arr, ++i, pivot_idx, FnIdx)) {
+            if (i >= Right) lj_err_caller(L, ErrMsg::TABSORT);
+         }
+         while (array_sort_comp(L, Arr, pivot_idx, --j, FnIdx)) {
+            if (j <= Left) lj_err_caller(L, ErrMsg::TABSORT);
+         }
+         if (i >= j) break;
+         elem_swap(i, j);
+      }
+      elem_swap(i, Right - 1);  // Restore pivot
+
+      // Recurse on the smaller partition, loop on the larger
+      if (i - Left < Right - i) {
+         quicksort_func(L, Arr, Left, i - 1, FnIdx);
+         Left = i + 1;
+      }
+      else {
+         quicksort_func(L, Arr, i + 1, Right, FnIdx);
+         Right = i - 1;
+      }
+   }
+}
+
+//********************************************************************************************************************
 
 template<typename T>
 static void quicksort(T *Data, int32_t Left, int32_t Right, bool Descending)
@@ -2029,10 +2103,22 @@ static void quicksort(T *Data, int32_t Left, int32_t Right, bool Descending)
 LJLIB_CF(array_sort)
 {
    GCarray *arr = lj_lib_checkarray(L, 1);
-   bool descending = lua_toboolean(L, 2);
 
    if (arr->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
    if (arr->len < 2) return 0;
+
+   // If the second argument is a function, use it as a custom comparator.
+   // Reject element types that cannot be pushed to the stack for comparison.
+   if (lua_isfunction(L, 2)) {
+      if (arr->elemtype IS AET::STRUCT or arr->elemtype IS AET::PTR or arr->elemtype IS AET::STR_CPP) {
+         luaL_error(L, ERR::WrongType, "sort() with comparator does not support this array type.");
+         return 0;
+      }
+      quicksort_func(L, arr, 0, int32_t(arr->len - 1), 2);
+      return 0;
+   }
+
+   bool descending = lua_toboolean(L, 2);
 
    switch (arr->elemtype) {
       case AET::BYTE: quicksort(arr->get<uint8_t>(), 0, int32_t(arr->len - 1), descending); break;
