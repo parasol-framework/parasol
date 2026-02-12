@@ -1,3 +1,5 @@
+// VERIFIED: 2026-02-12
+
 [[ch-arrays]]
 == Arrays
 
@@ -238,6 +240,7 @@ end
 [[sec-mutation-methods]]
 === Mutation Methods
 
+[discrete]
 ==== push()
 
 [.api]`length = arr:push(Value, pass:[...])`
@@ -251,6 +254,7 @@ arr:push(10)         -- returns 1
 arr:push(20, 30)     -- returns 3
 ----
 
+[discrete]
 ==== pop()
 
 [.api]`value = arr:pop([Count])`
@@ -269,6 +273,7 @@ a, b = arr:pop(2)   -- a=5, b=4; #arr is 3
 
 Returns `nil` on an empty array.
 
+[discrete]
 ==== insert()
 
 [.api]`length = arr:insert(Index, Value, pass:[...])`
@@ -282,6 +287,7 @@ arr:insert(2, 3, 4)   -- arr = {1, 2, 3, 4, 5}
 arr:insert(0, 0)      -- arr = {0, 1, 2, 3, 4, 5}
 ----
 
+[discrete]
 ==== remove()
 
 [.api]`length = arr:remove(Index, [Count])`
@@ -295,6 +301,7 @@ arr:remove(2)       -- arr = {1, 2, 4, 5}
 arr:remove(1, 2)    -- arr = {1, 5}
 ----
 
+[discrete]
 ==== fill()
 
 [.api]`arr:fill(Value, [Start, Count])` +
@@ -311,6 +318,7 @@ arr:fill(77, {2...5})   -- arr[2..5] = 77 (inclusive)
 arr:fill(33, range.new(0, 10, false, 2))   -- every 2nd element
 ----
 
+[discrete]
 ==== sort()
 
 [.api]`arr:sort([Descending])` +
@@ -339,6 +347,7 @@ people = array<table> {
 people:sort((a, b) => a.age < b.age)  -- sorted by age ascending
 ----
 
+[discrete]
 ==== reverse()
 
 [.api]`arr:reverse()`
@@ -351,6 +360,7 @@ arr = array<int> { 1, 2, 3, 4, 5 }
 arr:reverse()   -- {5, 4, 3, 2, 1}
 ----
 
+[discrete]
 ==== clear()
 
 [.api]`arr:clear()`
@@ -365,6 +375,7 @@ arr:clear()
 arr:push(67)    -- reuses existing capacity
 ----
 
+[discrete]
 ==== resize()
 
 [.api]`arr:resize(NewSize)`
@@ -374,6 +385,7 @@ Changes the array length to `NewSize`.  When growing, new elements are zero-init
 [[sec-search-and-query]]
 === Search & Query
 
+[discrete]
 ==== find()
 
 [.api]`index = arr:find(Value, [Start])` +
@@ -403,12 +415,14 @@ arr:find(20, {4...0})   -- 3 (found searching backwards)
 [[sec-copying-and-slicing]]
 === Copying & Slicing
 
+[discrete]
 ==== clone()
 
 [.api]`copy = arr:clone()`
 
 Creates a new array with the same element type and a copy of all elements.  For reference types (tables, objects, arrays), the clone is shallow: the new array holds references to the same underlying objects.
 
+[discrete]
 ==== slice()
 
 [.api]`result = arr:slice(Range)`
@@ -425,6 +439,7 @@ arr:slice({4...2})      -- array<int> {40, 30, 20} (reverse)
 arr:slice(range.new(0, 6, false, 2))   -- array<int> {0, 20, 40}
 ----
 
+[discrete]
 ==== copy()
 
 [.api]`arr:copy(Source, [DestIndex, SrcIndex, Count])`
@@ -447,6 +462,7 @@ buf:copy('Hello')
 buf:getString(0, 5)   -- 'Hello'
 ----
 
+[discrete]
 ==== table()
 
 [.api]`t = arr:table()`
@@ -483,6 +499,7 @@ arr:setString('Greet', 0)
 arr:getString(0, 5)   -- 'Greet'
 ----
 
+[discrete]
 ==== concat()
 
 [.api]`str = arr:concat(Format, [Separator])`
@@ -500,6 +517,7 @@ arr = array<float> { 1.5, 2.7 }
 arr:concat('%.1f', ' | ')   -- '1.5 | 2.7'
 ----
 
+[discrete]
 ==== join()
 
 [.api]`str = arr:join([Separator])`
@@ -523,6 +541,7 @@ arr:join('-')     -- '1-2-3'
 
 All functional methods in this section accept a callback function that receives `(Value, Index)` as parameters.  The `Index` parameter is optional; callbacks that only need the value can omit it.
 
+[discrete]
 ==== each()
 
 [.api]`arr:each(Callback)`
@@ -537,6 +556,7 @@ arr:each(function(v, i)
 end)
 ----
 
+[discrete]
 ==== map()
 
 [.api]`result = arr:map(Callback)`
@@ -550,6 +570,7 @@ doubled = arr:map(v => v * 2)
 -- doubled = {2, 4, 6, 8, 10}
 ----
 
+[discrete]
 ==== filter()
 
 [.api]`result = arr:filter(Predicate)`
@@ -563,6 +584,7 @@ evens = arr:filter(v => v % 2 is 0)
 -- evens = {2, 4, 6}
 ----
 
+[discrete]
 ==== reduce()
 
 [.api]`result = arr:reduce(Initial, Reducer)`
@@ -579,6 +601,7 @@ product = arr:reduce(1, (acc, v) => acc * v)
 -- product = 120
 ----
 
+[discrete]
 ==== any()
 
 [.api]`result = arr:any(Predicate)`
@@ -591,6 +614,7 @@ arr = array<int> { 1, 3, 5, 6, 7 }
 arr:any(v => v % 2 is 0)   -- true
 ----
 
+[discrete]
 ==== all()
 
 [.api]`result = arr:all(Predicate)`
