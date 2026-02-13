@@ -572,6 +572,7 @@ print(available) -- resolves and caches on first access
 
 The following patterns demonstrate common resource management techniques.
 
+[discrete]
 ==== Resource Acquisition and Cleanup
 
 Place `defer` immediately after acquiring a resource to guarantee cleanup:
@@ -588,6 +589,7 @@ function process_file(Path:str)
 end
 ----
 
+[discrete]
 ==== Ordered Resource Release
 
 When multiple resources have dependencies, use multiple `defer` blocks.  LIFO ordering ensures dependent resources are released in the correct order:
@@ -607,6 +609,7 @@ function transfer(SourcePath:str, DestPath:str)
 end
 ----
 
+[discrete]
 ==== Transaction Rollback
 
 Use an upvalue flag to conditionally execute cleanup:
@@ -629,6 +632,7 @@ function perform_transaction(Operations:table)
 end
 ----
 
+[discrete]
 ==== State Restoration
 
 Use argument snapshots to capture and restore original state:
@@ -644,6 +648,7 @@ function with_temp_state(Obj:table, NewState:str)
 end
 ----
 
+[discrete]
 ==== Error-Safe Cleanup with <close>
 
 For cleanup that must survive error unwinding, use `<close>` variables:
@@ -664,6 +669,7 @@ function with_resource()
 end
 ----
 
+[discrete]
 ==== Lazy Initialisation with Deferred Expressions
 
 Use deferred expressions to delay expensive initialisation until first use:

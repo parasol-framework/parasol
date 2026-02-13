@@ -85,6 +85,7 @@ An exception with no enclosing `try` block terminates the script with an error m
 [[sec-try-except-statements]]
 === Try-Except Statements
 
+[discrete]
 ==== Syntax
 
 A `try` statement begins with the `try` keyword (optionally followed by `<trace>`), contains a body block, zero or more `except` clauses, an optional `success` block, and terminates with `end`.
@@ -104,6 +105,7 @@ end
 
 Each element after the body is optional.  The `try` keyword and `end` are required.  If an exception occurs, execution transfers to the first matching `except` handler.  If no exception occurs, the optional `success` block executes.
 
+[discrete]
 ==== Basic Form
 
 [source,tiri]
@@ -126,6 +128,7 @@ except
 end
 ----
 
+[discrete]
 ==== Silent Form
 
 A `try` block with no `except` clauses silently discards all exceptions:
@@ -137,6 +140,7 @@ try
 end
 ----
 
+[discrete]
 ==== Multiple Handlers
 
 Multiple `except` clauses provide specialised handling for different error conditions.  Handlers are evaluated in declaration order; the first match handles the exception.
@@ -154,6 +158,7 @@ except e
 end
 ----
 
+[discrete]
 ==== Ordering Rules
 
 Filtered handlers (those with `when` clauses) must appear before the catch-all handler.  Only one catch-all handler (an `except` without `when`) is permitted, and it must be the last clause.  Violating either rule produces a parse error.
@@ -173,6 +178,7 @@ end
 -- try ... except e ... except e when ERR_Failed ... end
 ----
 
+[discrete]
 ==== Re-throwing Exceptions
 
 Call `error()` within an `except` block, passing the exception table, to propagate the exception to an outer handler:
@@ -191,6 +197,7 @@ except e
 end
 ----
 
+[discrete]
 ==== API Call Interception
 
 Inside a `try` block's immediate scope, Kōtuku API calls that return error codes at or above the exception threshold will automatically raise exceptions.  This interception applies only to direct calls; calls made inside nested functions are not intercepted.
@@ -213,6 +220,7 @@ except e
 end
 ----
 
+[discrete]
 ==== Control Flow
 
 `return`, `break`, and `continue` work correctly within `try` blocks, `except` blocks, and `success` blocks.  The exception frame is properly unwound before the control transfer occurs.
@@ -239,6 +247,7 @@ for i in {0..10} do
 end
 ----
 
+[discrete]
 ==== Stack Traces
 
 By default, stack trace information is not captured.  The `<trace>` attribute enables stack trace capture when an exception occurs in the associated `try` block:
@@ -349,6 +358,7 @@ success
 end
 ----
 
+[discrete]
 ==== Execution Rules
 
 The `success` block does not execute when:
@@ -360,6 +370,7 @@ The `success` block does execute when:
 
 * The `try` body completes without exception and without early control transfer.
 
+[discrete]
 ==== Use without Except Clauses
 
 A `success` block can be used with a silent `try` (no `except` clauses):
@@ -375,6 +386,7 @@ end
 
 If an exception occurs, it is silently discarded and the `success` block does not execute.
 
+[discrete]
 ==== Control Flow in Success
 
 `return`, `break`, and `continue` work correctly within a `success` block:
@@ -392,6 +404,7 @@ for i in {0..10} do
 end
 ----
 
+[discrete]
 ==== As an Inverted Assertion
 
 A `success` block combined with `error()` asserts that the `try` body must raise an exception:
@@ -472,10 +485,12 @@ check ERR_Okay               -- no effect (safe code)
 err, bytes = check file.acRead(file, buffer)
 ----
 
+[discrete]
 ==== Safe Codes
 
 The following `ERR` codes do not raise an exception when passed to `check`: `Okay`, `False`, `LimitedSuccess`, `Cancelled`, `NothingDone`, `Continue`, `Skip`, `Retry`, `DirEmpty`.
 
+[discrete]
 ==== Comparison with raise
 
 `check` is a conditional assertion on error codes.  `raise` is an unconditional exception.
@@ -500,6 +515,7 @@ The following `ERR` codes do not raise an exception when passed to `check`: `Oka
 [[sec-nesting-and-best-practices]]
 === Nesting and Best Practices
 
+[discrete]
 ==== Nesting
 
 `try` blocks nest to arbitrary depth.  Each level catches its own exceptions independently.  An exception not matched by any handler in the current `try` block propagates to the next enclosing `try` block.
@@ -521,6 +537,7 @@ except e
 end
 ----
 
+[discrete]
 ==== Conditional Raising
 
 The `??` operator can be used as a guard to conditionally raise exceptions.  The right-hand side executes only when the left-hand side is falsey (`nil`, `false`, `0`, or `""`):
@@ -530,6 +547,7 @@ The `??` operator can be used as a guard to conditionally raise exceptions.  The
 result ?? raise ERR_Failed
 ----
 
+[discrete]
 ==== Interaction with defer and <close>
 
 When an exception is caught, `<close>` handlers for variables declared in the `try` scope are called in LIFO order (last declared, first closed).  Each `<close>` handler receives the error as its second argument.  `defer` blocks in the `try` scope execute after the exception frame is unwound but before the `success` block (see <<ch-resource-management>>).
@@ -555,6 +573,7 @@ end
 -- Caught: Something failed
 ----
 
+[discrete]
 ==== Best Practices
 
 Use `check` for API calls:: Wrap Kōtuku API calls with `check` to convert error codes into exceptions.  This avoids manual error code inspection.
@@ -572,18 +591,21 @@ Avoid silent try for critical code:: The silent form (`try ... end`) discards ex
 [[sec-performance]]
 === Performance
 
+[discrete]
 ==== Entry and Exit Costs
 
 Entering a `try` block is relatively cheap, with a frame being pushed onto the exception stack via a function call.  Exiting a `try` block on the normal (no-exception) path is almost free.  Both operations are constant-time and do not allocate memory.
 
 Tiri's exception model is considerably more performant than the original Lua `pcall`-based approach, which requires creating a closure and a protected call frame.  It is for this reason that `pcall()` and `xpcall()` are unavailable.
 
+[discrete]
 ==== Exception Path
 
 When an exception occurs, the runtime searches the handler list, unwinds the stack, calls any `<close>` handlers, optionally builds the exception table, and transfers control.  This path is inherently more expensive than the normal path, but exceptions are expected to be infrequent.  Omitting the exception variable from an `except` clause avoids the cost of constructing the exception table.
 
 TIP: Prefer manual error handling techniques in areas that handle non-catastrophic errors (e.g. network communications).
 
+[discrete]
 ==== Stack Trace Capture
 
 The `<trace>` attribute adds overhead only when an exception occurs.  On the normal path, `try<trace>` and `try` have identical cost.  When an exception is raised, `try<trace>` captures the call stack by walking stack frames and allocating a trace array, which scales with call depth.  Reserve `<trace>` for diagnostic and debugging contexts where the additional cost is acceptable.
