@@ -291,6 +291,7 @@ function variadic(…)
 end
 ----
 
+[discrete]
 ==== Named Parameters with Varargs
 
 Named parameters precede the `pass:[...]` token.  Extra arguments beyond the named parameters are captured by `pass:[...]`:
@@ -303,6 +304,7 @@ function log(Level, ...)
 end
 ----
 
+[discrete]
 ==== Forwarding Varargs
 
 Varargs can be forwarded to another function call:
@@ -328,6 +330,7 @@ parameter_expr    = identifier | "(" [ identifier_list ] ")" ;
 
 The `\=>` operator provides concise anonymous function syntax.
 
+[discrete]
 ==== Expression Body
 
 A single-expression body is implicitly returned:
@@ -341,6 +344,7 @@ constant = () => 42
 
 A single parameter does not require parentheses.  Multiple parameters or zero parameters must be parenthesised.
 
+[discrete]
 ==== Block Body
 
 For multi-statement bodies, use `do pass:[...] end` with an explicit `return`:
@@ -353,6 +357,7 @@ process = i => do
 end
 ----
 
+[discrete]
 ==== Return Type Annotation
 
 Arrow functions accept an optional return type annotation between `\=>` and the expression, using `type:` syntax:
@@ -363,6 +368,7 @@ double = (x => num: x * 2)
 greet = (name => str: 'Hello, ' .. name)
 ----
 
+[discrete]
 ==== Restrictions
 
 Arrow functions do not support varargs.  Use `function(pass:[...])` when variadic arguments are required.
@@ -420,6 +426,7 @@ function chase(N)
 end
 ----
 
+[discrete]
 ==== Requirements
 
 Tail call optimisation applies when all of the following conditions hold:
@@ -466,6 +473,7 @@ end
 
 A recursive function without a return type annotation raises a compile-time error.
 
+[discrete]
 ==== Mutual Recursion
 
 Mutually recursive functions require forward declaration of at least one function so that both names are visible at the point of call:

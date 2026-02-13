@@ -12,6 +12,7 @@ All three mechanisms share a common execution guarantee: cleanup code runs when 
 
 The `defer` statement schedules a block of code to execute when the enclosing scope exits.  The deferred block runs after the scope body completes but before control transfers to the caller or the next enclosing scope.
 
+[discrete]
 ==== Syntax
 
 The basic form takes no parameters:
@@ -25,6 +26,7 @@ end
 
 The parameterised form is documented in <<sec-defer-with-arguments>>.
 
+[discrete]
 ==== Semantics
 
 The `defer` keyword creates an anonymous closure from the enclosed block and registers it with the current scope.  When the scope exits, registered closures execute in LIFO order (last registered, first executed).
@@ -60,6 +62,7 @@ end
 -- Output: final
 ----
 
+[discrete]
 ==== Scope Boundaries
 
 Each lexical scope (`do...end`, `if...end`, loop bodies, function bodies) maintains its own defer list.  Deferred blocks execute when their enclosing scope exits, not when the function returns.
@@ -85,6 +88,7 @@ end -- outer defer executes here
 -- outer
 ----
 
+[discrete]
 ==== Control Flow Interactions
 
 Deferred blocks execute before control leaves the scope via any path:
@@ -115,6 +119,7 @@ end
 -- iter 2
 ----
 
+[discrete]
 ==== Return Value Preservation
 
 Modifications to upvalues in the deferred block do not affect return values.  The runtime evaluates return expressions before executing deferred blocks:
@@ -131,6 +136,7 @@ end
 print(preserved()) -- Output: original
 ----
 
+[discrete]
 ==== Recursion
 
 In recursive functions, each invocation has its own scope and defer list.  Deferred blocks execute per-invocation in the reverse order of scope exit:
@@ -150,6 +156,7 @@ recurse(3)
 -- defer 3
 ----
 
+[discrete]
 ==== Errors
 
 Deferred blocks do not execute during error unwinding caused by `error()` or runtime exceptions.  For error-safe cleanup, use to-be-closed variables (<<sec-to-be-closed-variables>>) or place the `defer` inside a `try` block.
@@ -170,6 +177,7 @@ end
 
 The parameterised form of `defer` captures argument values at registration time rather than at execution time.  This provides value snapshotting for cases where a variable changes between registration and scope exit.
 
+[discrete]
 ==== Syntax
 
 [source,tiri]
@@ -181,6 +189,7 @@ end(Expr1, Expr2, ...)
 
 Parameters are declared in the parentheses after `defer`.  Arguments are provided in the parentheses after `end`.  The number of arguments must match the number of parameters.  Each argument expression is evaluated at the point where `defer` is encountered, and the resulting values are bound to the corresponding parameters.
 
+[discrete]
 ==== Semantics
 
 [source,tiri]
@@ -197,6 +206,7 @@ end
 
 The argument `s` receives the value of `status` at the time the `defer` statement is reached.  Subsequent modifications to `status` do not affect the captured value.
 
+[discrete]
 ==== Multiple Arguments
 
 Multiple arguments are captured independently:
@@ -214,6 +224,7 @@ function multi_args()
 end
 ----
 
+[discrete]
 ==== Mixing Capture Modes
 
 A parameterised `defer` can access both its snapshotted parameters and upvalues from the enclosing scope.  Parameters are frozen at registration time; upvalues reflect their value at execution time:
@@ -240,6 +251,7 @@ TIP: Use argument snapshots when a variable is reassigned between registration a
 
 The `<close>` attribute marks a local variable for automatic cleanup via the `pass:[__]close` metamethod when the variable's scope exits.  This provides deterministic resource cleanup that is more reliable than garbage collection.  Most crucially, correct use of `pass:[__]close` can ensure that acquired resources and locks are immediately released in the event of an exception.
 
+[discrete]
 ==== Syntax
 
 [source,tiri]
@@ -283,6 +295,7 @@ end
 -- Output: Closing: resource
 ----
 
+[discrete]
 ==== Execution Order
 
 Multiple `<close>` variables in the same scope execute their handlers in LIFO order (last declared, first closed):
@@ -302,6 +315,7 @@ end
 -- close a
 ----
 
+[discrete]
 ==== Interaction with Defer
 
 When both `<close>` handlers and `defer` blocks exist in the same scope, `<close>` handlers execute first, followed by `defer` blocks.  Both sets execute in LIFO order independently:
@@ -321,6 +335,7 @@ end
 -- defer
 ----
 
+[discrete]
 ==== Safe Values
 
 Values without metatables are safely ignored.  Assigning `nil`, `false`, a string, a number, or a table without a `pass:[__]close` metamethod to a `<close>` variable does not produce an error:
@@ -337,6 +352,7 @@ end
 
 A value with a metatable that does not define `pass:[__]close` is also safely ignored.
 
+[discrete]
 ==== Control Flow
 
 `<close>` handlers execute on all scope exit paths:
@@ -369,6 +385,7 @@ for i = 1, 3 do
 end -- closed three times, once per iteration
 ----
 
+[discrete]
 ==== Error Path Behaviour
 
 Unlike `defer`, `<close>` handlers participate in error unwinding.  When an exception is caught by a `try` block, all `<close>` handlers in the unwound scopes are called with the error as the second argument:
@@ -418,7 +435,8 @@ end
 
 Deferred expressions provide lazy evaluation: an expression is not computed until its value is accessed.  This avoids unnecessary work for values that may never be used.
 
-==== Deferred Expression Syntax
+[discrete]
+==== Syntax
 
 [source,tiri]
 ----
@@ -444,6 +462,7 @@ y = <num{ compute() }>
 
 Supported type names: `str`, `num`, `bool`, `table`, `obj`, `string`, `number`, `boolean`.
 
+[discrete]
 ==== Semantics
 
 The expression inside `<{ }>` is wrapped in a closure but not evaluated.  The closure captures upvalues from the enclosing scope.  Evaluation occurs on first access through one of the following:
@@ -462,6 +481,7 @@ print(resolve(x))  -- 1 (evaluates, caches)
 print(resolve(x))  -- 1 (returns cached value)
 ----
 
+[discrete]
 ==== Type Inference
 
 For literal values and simple expressions, the type is inferred automatically:
@@ -532,7 +552,7 @@ assert(condition, <string{ 'Failure details: ' .. expensive_debug_info() }>)
 
 NOTE: Due to this pattern being extremely common, the Tiri parser automatically encapsulates the assert message in a deferred expression so that you don't have to.
 
-==== Thunk Functions
+==== Thunk Keyword
 
 The `thunk` keyword declares a function that returns a deferred value.  When called, the function captures its arguments but does not execute the body.  The body executes on first access to the returned value.
 

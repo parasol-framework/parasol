@@ -27,11 +27,13 @@ font:
       bold: ../../../data/fonts/truetype/Inconsolata-VariableFont.ttf
       italic: ../../../data/fonts/truetype/Inconsolata-VariableFont.ttf
       bold_italic: ../../../data/fonts/truetype/Inconsolata-VariableFont.ttf
-    Crimson Pro:
-      normal: ../../../data/fonts/truetype/CrimsonPro-VariableFont.ttf
-      bold: ../../../data/fonts/truetype/CrimsonPro-VariableFont.ttf
-      italic: ../../../data/fonts/truetype/CrimsonPro-Italic-VariableFont.ttf
-      bold_italic: ../../../data/fonts/truetype/CrimsonPro-Italic-VariableFont.ttf
+    Noto Emoji:
+      normal: ../../../data/fonts/truetype/NotoEmoji-VariableFont.ttf
+      bold: ../../../data/fonts/truetype/NotoEmoji-VariableFont.ttf
+      italic: ../../../data/fonts/truetype/NotoEmoji-VariableFont.ttf
+      bold_italic: ../../../data/fonts/truetype/NotoEmoji-VariableFont.ttf
+  fallbacks:
+    - Noto Emoji
 
 base:
   font-family: Noto Serif

@@ -75,14 +75,14 @@ print('abc' < 'abd')   -- true
 [[sec-logical-operators]]
 === Logical Operators
 
-Logical operators use standard falsiness: only `nil` and `false` are falsey.  All other values -- including `0`, `""`, and empty tables -- are truthy.
+Logical operators use standard falsiness: only `nil` and `false` are false.  All other values -- including `0`, `""`, and empty tables -- are true.
 
 [cols="2,3,5"]
 |===
 |Operator |Syntax |Effect
-|`and` |`a and b` |Returns `a` if `a` is falsey; otherwise returns `b`
-|`or`  |`a or b`  |Returns `a` if `a` is truthy; otherwise returns `b`
-|`not` |`not a`   |Returns `true` if `a` is falsey; `false` otherwise
+|`and` |`a and b` |Returns `a` if `a` is false; otherwise returns `b`
+|`or`  |`a or b`  |Returns `a` if `a` is true; otherwise returns `b`
+|`not` |`not a`   |Returns `true` if `a` is false; `false` otherwise
 |===
 
 Both `and` and `or` short-circuit: the operator does not evaluate the right operand if the left operand determines the result.  Both return the determining operand, not a boolean coercion.
@@ -93,7 +93,7 @@ No metamethods apply to logical operators.
 ----
 x = nil and 'hello'    -- nil (short-circuit)
 y = 'ok' or 'fallback' -- 'ok' (short-circuit)
-z = not false           -- true
+z = not false          -- true
 ----
 
 [[sec-bitwise-operators]]

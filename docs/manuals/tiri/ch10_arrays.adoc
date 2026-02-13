@@ -20,6 +20,7 @@ All indexing is zero-based.  The `#` operator returns the element count.  Elemen
 [[sec-array-fundamentals]]
 === Array Fundamentals
 
+[discrete]
 ==== Element Types
 
 Each array declares a fixed element type at creation.  Storing a value of an incompatible type raises an error.
@@ -73,6 +74,7 @@ Each array declares a fixed element type at creation.  Storing a value of an inc
 |Any Tiri value (mixed types permitted)
 |===
 
+[discrete]
 ==== Type Inspection
 
 [.api]`name = arr:type()`
@@ -87,12 +89,14 @@ array<byte>:type()           -- 'char'
 array<array<string>>:type()  -- 'array'
 ----
 
+[discrete]
 ==== Read-Only Arrays
 
 [.api]`result = arr:readOnly()`
 
 Returns `true` if the array is read-only.  Read-only arrays are produced by Kōtuku API calls that expose internal buffers.  Mutation methods will raise an error when called on a read-only array.
 
+[discrete]
 ==== Length and Identity
 
 The `#` operator returns the current element count.  The `is` operator compares identity, not content.
@@ -111,6 +115,7 @@ a is b   -- false (distinct objects)
 [[sec-creating-arrays]]
 === Creating Arrays
 
+[discrete]
 ==== Typed Syntax
 
 The `array<type>` syntax creates arrays with concise, declarative notation:
@@ -174,6 +179,7 @@ NOTE: The typed syntax `array<int> { 1, 2, 3 }` is preferred over `array.of()` f
 [%breakable]
 === Element Access
 
+[discrete]
 ==== Indexing
 
 Elements are accessed by zero-based integer index.  Out-of-bounds reads and writes raise an error.  Negative indices are not supported.
@@ -187,6 +193,7 @@ arr[3]    -- error: index out of bounds
 arr[-1]   -- error: negative index
 ----
 
+[discrete]
 ==== first() and last()
 
 [.api]`value = arr:first()`
@@ -197,6 +204,7 @@ Returns the first element, or `nil` if the array is empty.
 
 Returns the last element, or `nil` if the array is empty.
 
+[discrete]
 ==== Iteration
 
 Arrays support three iteration styles for use in `for` loops.
@@ -222,6 +230,7 @@ for v in values(arr) do pass:[...] end
 
 TIP: Direction iteration is preferred over the use of `ipairs()` and `pairs()`, which are supported to maintain seamless compatibility with tables.
 
+[discrete]
 ==== Membership Testing
 
 The `in` operator tests whether a value exists in an array:
@@ -477,6 +486,7 @@ t[0]   -- 10
 t[1]   -- 20
 ----
 
+[discrete]
 ==== Byte Array String Methods
 
 These methods are available only on byte (`char`) arrays.
@@ -627,6 +637,7 @@ arr = array<int> { 2, 4, 6, 8 }
 arr:all(v => v % 2 is 0)   -- true
 ----
 
+[discrete]
 ==== Chaining
 
 Functional methods that return arrays can be chained:

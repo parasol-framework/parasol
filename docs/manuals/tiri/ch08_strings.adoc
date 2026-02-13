@@ -55,6 +55,7 @@ result = f'{a} + {b} = {a + b}'   -- '10 + 20 = 30'
 
 Both single-quote and double-quote delimiters are supported.
 
+[discrete]
 ==== Expression Support
 
 Any valid Tiri expression is permitted inside the braces:
@@ -72,6 +73,7 @@ f'Your name is {user.name ?? "unknown"}'
 
 The `??` operator is recommended for nil-safe interpolation when the data originates from outside the script.
 
+[discrete]
 ==== Automatic Type Conversion
 
 All interpolated expressions are wrapped in `tostring()` automatically:
@@ -84,6 +86,7 @@ f'{42}'     -- '42'
 f'{3.14}'   -- '3.14'
 ----
 
+[discrete]
 ==== Escaping Braces
 
 Literal braces are produced by doubling them:
@@ -94,6 +97,7 @@ f'Use {{braces}} for interpolation'
 -- 'Use {braces} for interpolation'
 ----
 
+[discrete]
 ==== Restrictions
 
 - Long-string syntax is not supported: `f[[...]]` is invalid.
@@ -509,6 +513,7 @@ s[{-6..-1}]   -- 'World!'  (negative: always inclusive)
 
 The range operator `..` creates an exclusive range where the stop index is not included.  The `pass:[...]` operator creates an inclusive range where the stop index is included.
 
+[discrete]
 ==== Negative Indices
 
 When either index is negative, the range is treated as inclusive regardless of which operator was used.  Negative indices count backwards from the end of the string: `-1` is the last character, `-2` the second-to-last.
@@ -520,6 +525,7 @@ s[{-6..-1}]    -- 'World!'
 s[{0..-1}]     -- 'Hello, World!'
 ----
 
+[discrete]
 ==== Edge Cases
 
 - Ranges entirely beyond the string length return an empty string.

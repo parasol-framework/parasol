@@ -145,6 +145,7 @@ Runtime type checks raise an exception if the value's type does not match the va
 
 The `:type` syntax after a variable name pre-declares the type constraint.  The variable is immediately fixed to the declared type, even if its initial value is `nil`.
 
+[discrete]
 ==== Syntax
 
 [source,ebnf]
@@ -156,6 +157,7 @@ type_name         = "any" | "nil" | "bool" | "boolean"
                   | "obj" | "object" | "range" ;
 ----
 
+[discrete]
 ==== Semantics
 
 An explicit annotation fixes the variable's type at the point of declaration.  If an initialiser is present, its type must match the annotation:
@@ -178,6 +180,7 @@ A mismatched initialiser produces a compile-time error:
 local count: num = 'text'  -- error: cannot assign 'string' to 'number'
 ----
 
+[discrete]
 ==== Supported Type Names
 
 [cols="1,1"]
@@ -198,6 +201,7 @@ local count: num = 'text'  -- error: cannot assign 'string' to 'number'
 
 Short and long forms are interchangeable.  An unrecognised type name raises a parse-time diagnostic.
 
+[discrete]
 ==== Interaction with Attributes
 
 The type annotation can appear before or after a `<const>` or `<close>` attribute:
@@ -210,6 +214,7 @@ local y:num <const> = 42      -- type before attribute
 
 Both forms are equivalent.
 
+[discrete]
 ==== Multiple Declarations
 
 Each variable in a multiple declaration carries its own independent annotation:
@@ -228,6 +233,7 @@ local typed: num, untyped = 10, 'hello'
 -- untyped is fixed to 'string' by implicit inference
 ----
 
+[discrete]
 ==== Function Parameters
 
 Type annotations on function parameters serve as guards that validate incoming arguments at call time.  Unlike local variable type fixing (which is deferred until the first non-nil assignment), parameter annotations are checked immediately when the function is called:
@@ -255,6 +261,7 @@ function process(Data, Count: num, Validate: bool)
 end
 ----
 
+[discrete]
 ==== Function Return Types
 
 Return type declarations appear after the parameter list.  A single return type uses `:type`; multiple return types use `:<type1, type2, ...>`:
@@ -307,6 +314,7 @@ function factorial(N: num): num
 end
 ----
 
+[discrete]
 ==== Call-Site Type Propagation
 
 When a function has declared or inferred return types, the compiler uses this information at call sites.  If the return type matches the target variable's type, no runtime check is emitted.  If the return type is `any` or unknown, a runtime check is generated:

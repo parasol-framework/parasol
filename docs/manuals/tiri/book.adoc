@@ -55,6 +55,10 @@ The FreeType project::
 David Turner, Robert Wilhelm, and Werner Lemberg +
 https://www.freetype.org/
 
+Katana CSS Parser::
+https://github.com/hackers-painters/katana-parser
+
+
 // Part I: Language Fundamentals
 
 = Language Fundamentals
@@ -159,11 +163,11 @@ include::ch39_embedding_tiri_in_cpp.adoc[]
 
 = Tools
 
-include::ch40_flute.adoc[]
+include::ch40_origo.adoc[]
 
-include::ch41_tiri_lsp.adoc[]
+include::ch41_flute.adoc[]
 
-include::ch42_kotuku.adoc[]
+include::ch42_tiri_lsp.adoc[]
 
 // Appendices
 
