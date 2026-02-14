@@ -206,18 +206,21 @@ A common pattern uses signals to synchronise a worker thread with the main scrip
 
 [source,tiri]
 ----
-signal_a = obj.new('xml', { flags = 'NEW' })
-signal_b = obj.new('xml', { flags = 'NEW' })
+input_a = obj.new('file', { ... })
+input_b = obj.new('file', { ... })
 
-thread.script([[
+thread.script([[ <1>
    msg('Worker thread running.')
 ]],
-function()
-   signal_a.acSignal()
-   signal_b.acSignal()
+function() <2>
+   input_a.acSignal()
+   input_b.acSignal()
 end)
 
-proc = processing.new({ timeout = 10.0, signals = { signal_a, signal_b } })
+proc = processing.new({
+   timeout = 10.0,
+   signals = array<object> { input_a, input_b }
+})
 err = proc.sleep()
 
 if err is ERR_Okay then
