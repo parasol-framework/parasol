@@ -17,7 +17,7 @@
    print(f'Scanning "{folder}" for SVGs')
    io.search(folder, {
       nameFilter = regex.new('.+\\.svg'),
-      matchFeedback = function(Path:str, FileName:str, File)
+      matchFeedback = function(Path:str, FileName:str, File:obj)
          list ..= FileName .. ' '
          table.insert(glPictures, { path=Path .. FileName })
       end
@@ -95,10 +95,11 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Create two dummy objects and use them to confirm that the signalling of multiple objects works.
+-- This is not a genuine threading test (only one thread and the main program is active at any time).
 
 @Test(priority=3) function MultipleSignals()
-   signal_a = obj.new('xml', { flags=XMF_NEW })
-   signal_b = obj.new('xml', { flags=XMF_NEW })
+   signal_a = obj.new('time', { }) -- This would normally be something more practical, like a file
+   signal_b = obj.new('time', { })
 
    for i=1,2 do -- Run enough times to sufficiently test thread locking
       msg('Iteration ' .. i)
