@@ -65,7 +65,7 @@ static constexpr uint32_t OJH_unsubscribe = simple_hash("unsubscribe");
 [[nodiscard]] static int object_action_call(lua_State *);
 [[nodiscard]] static int object_method_call(lua_State *);
 [[nodiscard]] static int get_results(lua_State *, const FunctionField *, const int8_t *);
-[[nodiscard]] static ERR set_object_field(lua_State *, OBJECTPTR, CSTRING, int);
+[[nodiscard]] static ERR set_object_field(lua_State *, OBJECTPTR, uint32_t, int);
 
 [[nodiscard]] static int object_children(lua_State *);
 [[nodiscard]] static int object_detach(lua_State *);
@@ -433,8 +433,7 @@ extern int object_newindex(lua_State *Lua)
             release_object(def);
 
             if (error >= ERR::ExceptionThreshold) {
-               pf::Log(__FUNCTION__).warning("Unable to write %s.%s: %s", def->classptr->ClassName, luaL_checkstring(Lua, 2), GetErrorMsg(error));
-               luaL_error(Lua, error);
+               luaL_error(Lua, error, "Write failure: %s.%s: %s", def->classptr->ClassName, luaL_checkstring(Lua, 2), GetErrorMsg(error));
             }
          }
       }
@@ -460,7 +459,9 @@ extern int object_newindex(lua_State *Lua)
    auto hash_key = obj_read(keystr->hash);
    auto func = std::lower_bound(read_table->begin(), read_table->end(), hash_key, read_hash);
    if ((func != read_table->end()) and (func->Hash IS keystr->hash)) {
-      return func->Call(Lua, *func, def);
+      auto result = func->Call(Lua, *func, def); // On error, result is 0 and CaughtError is defined.
+      if ((not result) and (Lua->CaughtError > ERR::ExceptionThreshold)) luaL_error(Lua, Lua->CaughtError, "Read failure: %s.%s: %s", def->classptr->ClassName, luaL_checkstring(Lua, 2), GetErrorMsg(Lua->CaughtError));
+      return result;
    }
 
    luaL_error(Lua, ERR::NoFieldAccess, "Field does not exist or is unreadable: %s.%s",
@@ -547,8 +548,10 @@ LJLIB_CF(object_new)
          lua_pushnil(L);
          while (lua_next(L, 2) != 0) {
             if ((field_name = luaL_checkstring(L, -2))) {
+               //if (field_name[0] IS '_') return acSetKey(obj, field_name+1, lua_tostring(Lua, ValueIndex));
+
                if (iequals("owner", field_name)) field_error = ERR::UnsupportedOwner;
-               else field_error = set_object_field(L, obj, field_name, -1);
+               else field_error = set_object_field(L, obj, fieldhash(field_name), -1);
             }
             else field_error = ERR::UnsupportedField;
 
@@ -723,7 +726,7 @@ static int object_newchild(lua_State *Lua)
 
       lua_pushinteger(Lua, parent->uid);
 
-      if (set_object_field(Lua, obj, "owner", lua_gettop(Lua)) != ERR::Okay) {
+      if (set_object_field(Lua, obj, fieldhash("owner"), lua_gettop(Lua)) != ERR::Okay) {
          FreeResource(obj);
          luaL_error(Lua, ERR::SetField);
          return 0;
@@ -737,8 +740,10 @@ static int object_newchild(lua_State *Lua)
          lua_pushnil(Lua);
          while (lua_next(Lua, 2) != 0) {
             if ((field_name = luaL_checkstring(Lua, -2))) {
+               //if (field_name[0] IS '_') return acSetKey(obj, field_name+1, lua_tostring(Lua, ValueIndex));
+
                if (iequals("owner", field_name)) field_error = ERR::UnsupportedOwner;
-               else field_error = set_object_field(Lua, obj, field_name, -1);
+               else field_error = set_object_field(Lua, obj, fieldhash(field_name), -1);
             }
             else field_error = ERR::UnsupportedField;
 
@@ -959,7 +964,9 @@ static int object_init(lua_State *Lua)
    auto def = object_context(Lua);
 
    if (auto obj = access_object(def)) {
-      lua_pushinteger(Lua, int(InitObject(obj)));
+      auto error = InitObject(obj);
+      report_action_error(Lua, def, "Init", error);
+      lua_pushinteger(Lua, int(error));
       release_object(def);
       return 1;
    }

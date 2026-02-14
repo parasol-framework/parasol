@@ -983,6 +983,12 @@ static ERR run_script(objScript *Self)
       }
    }
    else {
+      if (Self->ActivationCount > 1) {
+         // Re-execution: restore the compiled main chunk from the registry reference since the previous
+         // lua_pcall() consumed the function from the stack.
+         lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, prv->MainChunkRef);
+      }
+
       int depth = GetResource(RES::LOG_DEPTH);
 
          top = lua_gettop(prv->Lua);
