@@ -52,19 +52,22 @@ static int processing_new(lua_State *Lua)
                      break;
 
                   case HASH_SIGNALS: {
-                     if (lua_istable(Lua, -1)) { // { obj1, obj2, ... }
-                        lua_pushnil(Lua);
-                        while (lua_next(Lua, -2)) {
-                           if (auto obj = lua_optobject(Lua, -1)) {
-                              ObjectSignal sig = { .Object = obj->ptr };
-                              fp->Signals->push_back(sig);
+                     if (lua_type(Lua, -1) IS LUA_TARRAY) { // { obj1, obj2, ... }
+                        GCarray *arr = lua_toarray(Lua, -1);
+                        if (arr->elemtype IS AET::OBJECT) {
+                           auto refs = arr->get<GCRef>();
+                           for (MSize i = 0; i < arr->len; i++) {
+                              if (gcref(refs[i])) {
+                                 auto obj = gco_to_object(gcref(refs[i]));
+                                 ObjectSignal sig = { .Object = obj->ptr };
+                                 fp->Signals->push_back(sig);
+                              }
+                              else luaL_error(Lua, ERR::InvalidType, "Nil entry at index %d in signal array.", i);
                            }
-                           else luaL_error(Lua, ERR::InvalidType, "Expected object in signal list, got %s.", lua_typename(Lua, lua_type(Lua, -1)));
-
-                           lua_pop(Lua, 1); // Remove value, keep the key
                         }
+                        else luaL_error(Lua, ERR::InvalidType, "The signals option requires an array of objects.");
                      }
-                     else luaL_error(Lua, "The signals option requires a table of object references.");
+                     else luaL_error(Lua, "The signals option requires an array<object> reference.");
                      break;
                   }
 
