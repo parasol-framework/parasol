@@ -92,6 +92,7 @@ config = 'not a table'                                   -- error
 
 Implicit type fixing occurs when a variable is assigned a non-nil value without an explicit type annotation.  The compiler determines the type from the value expression and locks the variable to that type.
 
+[discrete]
 ==== Rules
 
 1. The first non-nil assignment to a variable fixes its type.
@@ -110,6 +111,7 @@ glItems = { a = 1 }  -- valid
 glItems = 'list'     -- error: cannot assign 'string' to variable of type 'table'
 ----
 
+[discrete]
 ==== Deferred Fixing
 
 Variables declared without an initial value start as `nil` with no type commitment.  The type remains unfixed until the first non-nil assignment:
@@ -125,6 +127,7 @@ result = 'text'   -- error: cannot assign 'string' to variable of type 'number'
 
 Repeated `nil` assignments before the first non-nil value do not commit the type.
 
+[discrete]
 ==== Static and Runtime Checking
 
 When the compiler can determine the type of the assigned value at parse time (literals, variables with known types, annotated function returns), the check is static and produces a compile-time diagnostic.  When the type is unknown at compile time (untyped function calls, table lookups, array indexing), the compiler emits a runtime type check instruction:

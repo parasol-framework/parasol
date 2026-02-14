@@ -176,10 +176,10 @@ The structure interface allows Tiri scripts to create and manipulate C/C++ struc
 
 ==== struct.new()
 
-[.api]`instance = struct.new(Name, [Fields])` +
-[.api]`instance = struct.new(Name, Address)`
+[.api]`instance = struct.new(StructName, [Fields])` +
+[.api]`instance = struct.new(StructName, Address)`
 
-Creates a new structure instance from a registered definition identified by `Name`.  The definition must have been registered through an `include` directive, a `mod.load()` call, or a prior call to `MAKESTRUCT()`.  Raises an exception if the definition is not found.
+Creates a new structure instance from a registered definition identified by `StructName`.  The definition must have been registered through an `include` directive, a `mod.load()` call, or a prior call to `MAKESTRUCT()`.  Raises an exception if the definition is not found.
 
 If `Fields` is a table, the key-value pairs are applied to the corresponding structure fields during creation.  String fields are not supported for initial assignment.
 
@@ -206,40 +206,17 @@ tag = struct.new('XMLTag', address)
 
 ==== struct.size()
 
-[.api]`bytes = struct.size(Name)`
+[.api]`bytes = struct.size(StructName)`
 
-Returns the byte size of the structure definition identified by `Name`.  Does not create a structure instance.  Raises an exception if the definition is not found.
+Returns the byte size of the structure definition identified by `StructName`.  Does not create a structure instance.  Raises an exception if the definition is not found.
 
-[source,tiri]
-----
-size = struct.size('GradientStop')
-----
-
-==== Field Access
-
-Fields are read and written with dot notation.  Field lookup is case-insensitive.  Reading an unrecognised field name raises an exception.
-
-[source,tiri]
-----
-tag = struct.new('XMLTag')
-tag.index = 5
-print(tag.index)   -- 5
-----
-
-Embedded structures are accessed by chaining dot notation:
-
-[source,tiri]
-----
-stop.rgb.red = 1.0
-----
-
-==== inst.structSize()
+==== structSize() Method
 
 [.api]`bytes = inst.structSize()`
 
 Returns the byte size of the structure instance.  Be wary of confusing this method with `size()`, which does not exist in this context (`size` is a common field name).
 
-==== inst.ptr()
+==== ptr() Method
 
 [.api]`address = inst.ptr()` +
 [.api]`old_address = inst.ptr(NewAddress)`
@@ -260,12 +237,7 @@ WARNING: Modifying the pointer referenced by the struct is dangerous.  Alternati
 
 ==== Length Operator
 
-The `#` operator returns the total number of fields in the structure:
-
-[source,tiri]
-----
-count = #tag
-----
+The `#` operator returns the total number of fields in the structure.
 
 ==== Custom Structures
 

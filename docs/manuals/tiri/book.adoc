@@ -1,12 +1,12 @@
-// This manual is governed by the style guide rules specified in AGENTS.md in this folder.  Please refer to that document before making edits.
+// This manual is governed by the style guide rules specified in AGENTS.md in this folder.  Please refer to that document before making modifications.
 
-= Tiri Programming Language: {copyright}
+= Tiri Reference Manual: {copyright}
 Paul Manias
 :doctype: book
 :copyright: © 2026 Paul Manias.  All rights reserved.
 :pdf-themesdir: {docdir}
 :pdf-theme: tiri-theme.yml
-:imagesdir: ../../../data/logos
+:imagesdir: images/
 :title-logo-image: image:tiri.svg[Tiri,200]
 :source-highlighter: rouge
 :source-language: lua

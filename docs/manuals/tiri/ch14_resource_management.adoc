@@ -7,6 +7,11 @@ Tiri provides three complementary mechanisms for managing resource lifetimes and
 
 All three mechanisms share a common execution guarantee: cleanup code runs when the enclosing scope exits via normal completion, `return`, `break`, or `continue`.  When both `<close>` handlers and `defer` blocks exist in the same scope, `<close>` handlers execute first, followed by `defer` blocks, both in LIFO order.
 
+.Cleanup execution order on scope exit
+image::defer_close_order.svg[]
+
+NOTE: `<close>` handlers run during error unwinding.  `defer` blocks do NOT run during error unwinding (unless enclosed in a try block).
+
 [[sec-defer-statement]]
 === Defer Statement
 
