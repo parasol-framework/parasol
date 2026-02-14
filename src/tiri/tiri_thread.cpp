@@ -30,39 +30,40 @@ variables with its creator, except via existing conventional means such as a Key
 #include "lj_proto_registry.h"
 
 //********************************************************************************************************************
-// Usage: thread.script(Statement, Callback)
+// Usage: thread.script(Script, Callback)
+//
+// TODO: Consider dropping this in favour of thread.action()?
 
 static int thread_script(lua_State *Lua)
 {
-   CSTRING statement;
-
-   if (!(statement = luaL_checkstring(Lua, 1))) {
-      luaL_argerror(Lua, 1, "Script statement required.");
-      return 0;
-   }
-
-   if (auto script = objScript::create::global(fl::Statement(statement))) {
-      FUNCTION callback;
-
-      if (lua_isfunction(Lua, 2)) {
-         lua_pushvalue(Lua, 2);
-         callback = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
-         callback.MetaValue = Lua->script->UID;
+   if (lua_type(Lua, 1) IS LUA_TOBJECT) {
+      auto obj = lua_toobject(Lua, 1);
+      if (obj->classptr->ClassID != CLASSID::SCRIPT) {
+         luaL_error(Lua, ERR::WrongClass);
       }
 
-      auto prv = (prvTiri *)Lua->script->ChildPrivate;
-
-      prv->Threads.emplace_back(std::make_unique<std::jthread>(std::jthread([](objScript *Script, FUNCTION Callback) {
-         acActivate(Script);
-         FreeResource(Script);
-
-         // Client callback must be executed in the main thread; send a message to do that.
-         if (Callback.isScript()) {
-            SendMessage(MSGID::TIRI_THREAD_CALLBACK, MSF::NIL, &Callback, sizeof(callback));
+      if (auto script = (objScript *)access_object(obj)) {
+         FUNCTION callback;
+         if (lua_isfunction(Lua, 2)) {
+            lua_pushvalue(Lua, 2);
+            callback = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+            callback.MetaValue = Lua->script->UID;
          }
-      }, script, std::move(callback))));
+
+         auto prv = (prvTiri *)Lua->script->ChildPrivate;
+         prv->Threads.emplace_back(std::make_unique<std::jthread>(std::jthread([](objScript *Script, FUNCTION Callback) {
+            acActivate(Script);
+
+            // Client callback must be executed in the main thread; send a message to do that.
+            if (Callback.isScript()) {
+               SendMessage(MSGID::TIRI_THREAD_CALLBACK, MSF::NIL, &Callback, sizeof(callback));
+            }
+         }, script, std::move(callback))));
+
+         release_object(obj);
+      }
    }
-   else luaL_error(Lua, ERR::CreateObject);
+   else luaL_argerror(Lua, 1, "Script object required.");
 
    return 0;
 }
@@ -327,5 +328,5 @@ void register_thread_class(lua_State *Lua)
    // Register thread interface prototypes for compile-time type inference
    reg_iface_prototype("thread", "action", {}, { TiriType::Any, TiriType::Any, TiriType::Func, TiriType::Num });
    reg_iface_prototype("thread", "method", {}, { TiriType::Any, TiriType::Str, TiriType::Func, TiriType::Num });
-   reg_iface_prototype("thread", "script", {}, { TiriType::Str, TiriType::Func });
+   reg_iface_prototype("thread", "script", {}, { TiriType::Object, TiriType::Func });
 }

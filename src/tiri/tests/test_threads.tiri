@@ -104,9 +104,9 @@ end
    for i=1,2 do -- Run enough times to sufficiently test thread locking
       msg('Iteration ' .. i)
       -- Because the thread code is parsed as a string it won't see variables outside of its scope
-      thread.script([[
-         msg('Thread is now in session.')
-      ]],
+      script = obj.new('script', { statement=[[ msg('Thread is now in session.') ]] })
+
+      thread.script(script,
       function()
          msg('Thread has been executed.')
          signal_a.acSignal()
