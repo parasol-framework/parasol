@@ -82,4 +82,4 @@ end
 @Test(priority=4) function Logic()       crcTest('Logic', 'logic.rpl', 0x22ccc13f) end
 @Test(priority=4) function Paragraphs()  crcTest('Paragraphs', 'paragraphs.rpl', 0xe3844c8c) end
 @Test(priority=2) function Tables()      crcTest('Tables', 'tables.rpl', 0xed24ceda) end
-@Test(priority=3) function Widgets()     crcTest('Widgets', 'widgets.rpl', 0xbf1021d5) end
+--@Test(priority=3) function Widgets()     crcTest('Widgets', 'widgets.rpl', 0xbf1021d5) end

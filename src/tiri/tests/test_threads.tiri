@@ -114,7 +114,7 @@ end
       end)
 
       try
-         proc = processing.new({ timeout=1.0, signals = { signal_a, signal_b } })
+         proc = processing.new({ timeout=1.0, signals = array<object> { signal_a, signal_b } })
          msg('Sleeping....')
          err = proc.sleep()
          assert(err is ERR_Okay, "Unexpected error: " .. mSys.GetErrorMsg(err))
