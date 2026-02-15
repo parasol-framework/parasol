@@ -29,38 +29,61 @@ variables with its creator, except via existing conventional means such as a Key
 #include "defs.h"
 #include "lj_proto_registry.h"
 
+// Message payload for thread.script() callbacks, carrying both the FUNCTION and the GCobject registry reference.
+
+struct ThreadScriptMsg {
+   FUNCTION Callback;
+   int ObjRef; // Registry reference that pins the GCobject from GC collection
+};
+
 //********************************************************************************************************************
 // Usage: thread.script(Script, Callback)
 //
-// TODO: Consider dropping this in favour of thread.action()?
+// This threading implementation acquires a lock on a Script object and then executes it in its own thread.  The lock
+// is retained until the thread is complete.
 
 static int thread_script(lua_State *Lua)
 {
    if (lua_type(Lua, 1) IS LUA_TOBJECT) {
-      auto obj = lua_toobject(Lua, 1);
+      GCobject *obj = lua_toobject(Lua, 1);
       if (obj->classptr->ClassID != CLASSID::SCRIPT) {
          luaL_error(Lua, ERR::WrongClass);
       }
 
-      if (auto script = (objScript *)access_object(obj)) {
+      if (access_object(obj)) { // This lock will be retained until the thread stops
          FUNCTION callback;
          if (lua_isfunction(Lua, 2)) {
             lua_pushvalue(Lua, 2);
             callback = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
-            callback.MetaValue = Lua->script->UID;
+            callback.MetaValue = int64_t(obj);
          }
 
+         // Pin the GCobject in the registry so the GC cannot collect it while the thread is running.
+         lua_pushvalue(Lua, 1);
+         int obj_ref = luaL_ref(Lua, LUA_REGISTRYINDEX);
+
          auto prv = (prvTiri *)Lua->script->ChildPrivate;
-         prv->Threads.emplace_back(std::make_unique<std::jthread>(std::jthread([](objScript *Script, FUNCTION Callback) {
-            acActivate(Script);
+         auto owner = Lua->script;
+         prv->Threads.emplace_back(std::make_unique<std::jthread>(std::jthread(
+            [](GCobject *Script, FUNCTION Callback, objScript *Owner, int ObjRef) {
+            Script->ptr->transferLock(); // Transfer the lock to this thread so that Activate() works.
+            acActivate(Script->ptr);
 
-            // Client callback must be executed in the main thread; send a message to do that.
+            // Client callback (if specified) must be executed in the main thread; send a message
+            // to msg_thread_script_callback()
+
+            pf::Log("thread_script").trace("Client thread has completed.  Callback: %c", Callback.isScript() ? 'Y' : 'N');
+
             if (Callback.isScript()) {
-               SendMessage(MSGID::TIRI_THREAD_CALLBACK, MSF::NIL, &Callback, sizeof(callback));
+               ThreadScriptMsg msg { Callback, ObjRef };
+               SendMessage(MSGID::TIRI_THREAD_CALLBACK, MSF::NIL, &msg, sizeof(msg));
             }
-         }, script, std::move(callback))));
-
-         release_object(obj);
+            else { // No callback, release the originally obtained lock and unpin the GCobject
+               release_object(Script);
+               auto prv = (prvTiri *)Owner->ChildPrivate;
+               luaL_unref(prv->Lua, LUA_REGISTRYINDEX, ObjRef);
+            }
+         }, obj, std::move(callback), owner, obj_ref)));
       }
    }
    else luaL_argerror(Lua, 1, "Script object required.");
@@ -73,15 +96,25 @@ static int thread_script(lua_State *Lua)
 
 ERR msg_thread_script_callback(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize)
 {
-   auto cb = (FUNCTION *)Message;
-   if (cb->isScript()) {
-      if (ScopedObjectLock<objScript> script(cb->MetaValue, 4000); script.granted()) {
-         script->callback(cb->ProcedureID, nullptr, 0, nullptr);
-         auto prv = (prvTiri *)script->ChildPrivate;
-         luaL_unref(prv->Lua, LUA_REGISTRYINDEX, cb->ProcedureID);
-      }
-   }
+   auto msg = (ThreadScriptMsg *)Message;
+   auto cb  = &msg->Callback;
+   auto obj           = (GCobject *)cb->MetaValue; // Original script reference, still under lock conditions
+   auto thread_script = (objScript *)obj->ptr;
+   auto this_script   = (objScript *)cb->Context;
 
+   pf::Log("thread_callback").trace("Callback received for script #%d, procedure %" PRId64, thread_script->UID, cb->ProcedureID);
+
+   thread_script->transferLock(); // Return the lock on the script object back to this thread
+
+   this_script->callback(cb->ProcedureID, nullptr, 0, nullptr);
+
+   // Drop the procedure reference and unpin the GCobject from the registry
+
+   auto prv = (prvTiri *)this_script->ChildPrivate;
+   luaL_unref(prv->Lua, LUA_REGISTRYINDEX, cb->ProcedureID);
+   luaL_unref(prv->Lua, LUA_REGISTRYINDEX, msg->ObjRef);
+
+   release_object(obj); // Release the originally obtained lock
    return ERR::Okay;
 }
 

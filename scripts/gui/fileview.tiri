@@ -1163,7 +1163,8 @@ gui.fileview = function(Options)
                   statement = statement .. 'mSys.DeleteFile("' .. fl .. '")\n'
                end
 
-               thread.script(statement,
+
+               thread.script(obj.new('script', { statement=statement }),
                   function()
                      if not self.watch then self.refresh() end
                   end)

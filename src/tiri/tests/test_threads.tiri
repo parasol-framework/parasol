@@ -95,29 +95,49 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Create two dummy objects and use them to confirm that the signalling of multiple objects works.
+-- Also ensures that the garbage collector doesn't collect the script while it's running.
 -- This is not a genuine threading test (only one thread and the main program is active at any time).
 
 @Test(priority=3) function MultipleSignals()
    signal_a = obj.new('time', { }) -- This would normally be something more practical, like a file
    signal_b = obj.new('time', { })
 
-   for i=1,2 do -- Run enough times to sufficiently test thread locking
-      msg('Iteration ' .. i)
-      -- Because the thread code is parsed as a string it won't see variables outside of its scope
-      script = obj.new('script', { statement=[[ msg('Thread is now in session.') ]] })
+   callback = function()
+      msg('Thread has been executed.')
+      signal_a.acSignal()
+      signal_b.acSignal()
+   end
 
-      thread.script(script,
-      function()
-         msg('Thread has been executed.')
-         signal_a.acSignal()
-         signal_b.acSignal()
-      end)
+   -- Verify that garbage collection doesn't invalidate the thread while it's running
+
+   for i=1,10 do
+      do
+         script = obj.new('script', { statement=[[ msg('Thread is now in session.') ]] })
+         thread.script(script, callback)
+         processing.collect()
+      end
 
       try
          proc = processing.new({ timeout=1.0, signals = array<object> { signal_a, signal_b } })
          msg('Sleeping....')
-         err = proc.sleep()
-         assert(err is ERR_Okay, "Unexpected error: " .. mSys.GetErrorMsg(err))
+         proc.sleep()
+      except e
+         error('Error during MultipleSignals test: ' .. e.message)
+      end
+   end
+
+   -- Allocate the threaded script once, then run it multiple times.  Note that you can't run the
+   -- same object in parallel (you'd have to allocate more and reference the same string).
+
+   script = obj.new('script', { statement=[[ msg('Thread is now in session.') ]] })
+
+   for i=1,80 do -- Run enough times to sufficiently test thread locking and the JIT
+      thread.script(script, callback)
+
+      try
+         proc = processing.new({ timeout=1.0, signals = array<object> { signal_a, signal_b } })
+         msg('Sleeping....')
+         proc.sleep()
       except e
          error('Error during MultipleSignals test: ' .. e.message)
       end
