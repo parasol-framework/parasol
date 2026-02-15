@@ -1,7 +1,7 @@
 [[ch-processing-and-events]]
 == Processing & Events
 
-Kōtuku is an event-driven framework.  Programs interact with the system by entering a processing loop that dispatches messages, fires timers, and monitors signals.  This chapter defines the `processing` interface, the event subsystem, and the garbage collector controls available to Tiri scripts.
+Kōtuku is an event-driven framework.  Programs interact with the system by entering a processing loop that dispatches messages, fires timers, and monitors signals.  This chapter defines the `processing` interface, the event subsystem, and the available garbage collector controls.
 
 All processing functions are accessed through the `processing` namespace.
 
@@ -18,7 +18,7 @@ Enters the processing loop.  While sleeping, the runtime dispatches queued messa
 
 `Seconds` specifies the maximum time to sleep in seconds.  If omitted or negative, the call blocks indefinitely until a quit message is received or all monitored signals fire.  A value of `0` processes all outstanding messages and returns immediately.
 
-`WakeOnSignal` controls whether a signal (<<sec-signals>>) can break the sleep early.  Defaults to `true` when `Seconds` is non-zero and `false` when `Seconds` is `0`.
+`WakeOnSignal` controls whether a signal (see <<sec-signals>>) can break the sleep early.  Defaults to `true` but is ignored if `Seconds` is `0`.
 
 `ResetState` controls whether the script's internal signal flag is cleared on entry.  Defaults to `true`.  Set to `false` to preserve a signal that was raised before the call.
 
@@ -37,7 +37,9 @@ processing.sleep(5.0)
 processing.sleep(2.0, false)
 ----
 
-The garbage collector runs a full collection cycle on entry to `processing.sleep()` before the runtime begins waiting for events.
+The garbage collector runs a full collection cycle on entry to `processing.sleep()` before the runtime begins waiting for events.  If processing is called in an inner loop, disabling the garbage collector may be desirable if allocated resources remain static.
+
+🔥Encapsulating processing.sleep() in a `try` statement will promote errors to exceptions.
 
 .Processing loop architecture
 image::processing_loop.svg[]
@@ -117,7 +119,7 @@ task.priority = 15
 [[sec-signals]]
 === Signals
 
-Signals provide a lightweight synchronisation mechanism for waking a sleeping script.  A signal is a boolean flag on a Kōtuku object that transitions from _cleared_ to _raised_ when the object's `Signal` action is invoked.
+Signals provide a lightweight synchronisation mechanism for waking a sleeping script.  A signal is a boolean flag on a Kōtuku object that transitions from _cleared_ to _raised_ when the object's `Signal` action is invoked.  There are no limitations on the class of object that can be used for signalling.
 
 [discrete]
 ==== Default Signal Behaviour
@@ -152,7 +154,7 @@ Creates a processing object.  `Options` is an optional table with the following 
 |Maximum sleep duration in seconds.  Defaults to indefinite (`-1`).
 
 |`signals`
-|array
+|array<object>
 |An array of Kōtuku objects to monitor for signals.  If omitted or empty, the script object itself is monitored.
 |===
 
@@ -160,12 +162,11 @@ Raises an exception if an entry in the `signals` table is not a valid object ref
 
 [source,tiri]
 ----
-signal_a = obj.new('time', { })
-signal_b = obj.new('time', { })
+objects = array<object> { obj.new('time', { }), obj.new('time', { }) }
 
 proc = processing.new({
    timeout = 5.0,
-   signals = array<object> { signal_a, signal_b }
+   signals = objects
 })
 
 err = proc.sleep()
@@ -206,31 +207,33 @@ A common pattern uses signals to synchronise a worker thread with the main scrip
 
 [source,tiri]
 ----
-input_a = obj.new('file', { ... })
-input_b = obj.new('file', { ... })
+files = array<object> { <1>
+   obj.new('file', { ... })
+}
 
-thread.script([[ <1>
-   msg('Worker thread running.')
-]],
-function() <2>
-   input_a.acSignal()
-   input_b.acSignal()
-end)
-
-proc = processing.new({
-   timeout = 10.0,
-   signals = array<object> { input_a, input_b }
+script = obj.new('script', {
+   statement=[[ msg('Thread is now in session.') ]] <2>
 })
-err = proc.sleep()
 
-if err is ERR_Okay then
-   print('Both signals received.')
-elseif err is ERR_TimeOut then
-   print('Timed out waiting for signals.')
+script.setKey('Files', files:join(',')) <2>
+
+thread.script(script,
+   function() <3>
+      files:each(function(Object:obj)
+         Object.acSignal()
+      end)
+   end)
+
+proc = processing.new({ timeout = 10.0, signals = files })
+choose proc.sleep() from
+   ERR_Okay -> print('All signals received.')
+   ERR_TimeOut -> print('Timed out waiting for signals.')
+   else -> print('Unexpected error.')
 end
 ----
-<1> Tiri threads are parsed separately to their parent block, preventing use of shared variables, but we can use `obj.find()` to create safe references to the worker objects.
-<2> The termination handler (the second argument to `thread.script()`) executes in the parent scope and can signal objects directly.
+<1> Storing all objects that need to be processed in an array is a simple and effective processing pattern.
+<2> Tiri threads are parsed separately to their parent block in order to maintain a safety barrier.  This prevents use of shared variables, but we can use `setKey()` and `obj.find()` to create safe references to the worker objects.
+<3> The termination handler (the second argument to `thread.script()`) executes in the parent scope and can signal objects directly.
 
 [[sec-the-event-subsystem]]
 === The Event Subsystem
@@ -331,11 +334,117 @@ All event subscriptions are automatically cleaned up when the script terminates.
 [[sec-timers-and-scheduling]]
 === Timers & Scheduling
 
-Tiri does not expose a direct timer subscription interface.  Timed behaviour is achieved through the timeout parameter of `processing.sleep()` and through `processing.delayedCall()`.
+Reliable timer subscriptions are available through the system core, `mSys`.  Timers fire callbacks at regular intervals during the processing loop.
 
-==== Periodic Work
+==== mSys.SubscribeTimer()
 
-To perform periodic work, use a loop around `processing.sleep()` with a timeout:
+[.api]`err, handle = mSys.SubscribeTimer(Interval, Callback)`
+
+Creates a timer subscription that calls `Callback` at the specified `Interval` (in seconds).  Returns an error code and a handle for later modification or removal.
+
+The `Callback` function receives three arguments:
+
+[cols="1,1,3"]
+|===
+|Parameter |Type |Description
+
+|`Subscriber`
+|object
+|The subscribing object (your script).
+
+|`Elapsed`
+|integer
+|Microseconds elapsed since the last call.
+
+|`CurrentTime`
+|integer
+|The current `PreciseTime()` value at the moment the callback fires.
+|===
+
+To cancel the subscription from within the callback, call `check(ERR_Terminate)`.
+
+[source,tiri]
+----
+-- Fire a callback roughly every 10 milliseconds
+err, timerHandle = mSys.SubscribeTimer(0.01,
+   function(Subscriber, Elapsed, CurrentTime)
+      -- Perform periodic work
+      print(f'Elapsed: {Elapsed} µs')
+   end)
+----
+
+Timer callbacks are dispatched by the event processing loop in `processing.sleep()`.  Small intervals require frequent message processing to maintain reliable timing.
+
+TIP: Timing calculations take into account the amount of time spent in the callback.  If the interval is 1 second and the callback takes 400ms to execute, the next execution cycle will be in 600ms.
+
+==== mSys.UpdateTimer()
+
+[.api]`err = mSys.UpdateTimer(Handle, Interval)`
+
+Modifies an existing timer subscription.  `Handle` is the value returned by `mSys.SubscribeTimer()`.  Setting `Interval` to `0` removes the subscription entirely.
+
+[source,tiri]
+----
+-- Change the timer interval to 0.5 seconds
+mSys.UpdateTimer(timerHandle, 0.5)
+
+-- Remove the timer subscription
+mSys.UpdateTimer(timerHandle, 0)
+----
+
+==== Timer Patterns
+
+===== Animation and Rendering
+
+Timers are commonly used for animation loops.  The following pattern drives a particle simulation at high frequency:
+
+[source,tiri]
+----
+function animate(Subscriber, Elapsed, CurrentTime)
+   -- Update positions and redraw
+   viewport.acDraw()
+end
+
+err, animTimer = mSys.SubscribeTimer(0.001, animate)
+
+window:show()
+processing.sleep()
+----
+
+===== Self-Cancelling Timers
+
+A timer can cancel itself by calling `raise ERR_Terminate` from the callback (the exception will be handled without impacting the script):
+
+[source,tiri]
+----
+err, handle = mSys.SubscribeTimer(1.0,
+   function(Subscriber, Elapsed, CurrentTime)
+      print('This fires once, then cancels.')
+      raise ERR_Terminate
+   end)
+----
+
+===== Adjusting Timer Intervals
+
+Call `mSys.UpdateTimer()` to dynamically adjust the interval, for example to reset the elapsed counter after a delay phase:
+
+[source,tiri]
+----
+err, handle = mSys.SubscribeTimer(1*fps,
+   function(Subscriber, Elapsed, CurrentTime)
+      if delayComplete then
+         mSys.UpdateTimer(handle, 1*fps)  -- Reset the elapsed counter
+      end
+   end)
+----
+
+==== One-Shot Deferred Execution
+
+Use `processing.delayedCall()` (<<sec-processing-callbacks>>) to schedule a function for execution on the next processing cycle.  This is the equivalent of a zero-delay timer.
+
+==== Timeout-Based Coordination
+
+For simple periodic work that does not require a dedicated callback, use a loop around `processing.sleep()` with a timeout:
 
 [source,tiri]
 ----
@@ -347,12 +456,6 @@ end
 ----
 
 Setting `WakeOnSignal` to `false` ensures the loop is driven purely by the timeout and ignores all signals.
-
-==== One-Shot Deferred Execution
-
-Use `processing.delayedCall()` (<<sec-processing-callbacks>>) to schedule a function for execution on the next processing cycle.  This is the equivalent of a zero-delay timer.
-
-==== Timeout-Based Coordination
 
 Combine `processing.new()` with a timeout to implement deadline-based waiting:
 
