@@ -1,3 +1,5 @@
+// VERIFIED: 2026-02-15
+
 [[ch-file-io]]
 == File I/O
 
@@ -8,7 +10,7 @@ All file paths in Tiri use the virtual volume system (<<sec-virtual-volumes>>). 
 Filesystem failures in the `io` library throw exceptions.  This differs from standard Lua, which returns `nil` plus an error string.  Use `try-except` blocks (<<ch-error-handling>>) to handle errors.
 
 [[sec-the-io-standard-library]]
-=== The `io` Standard Library
+=== The io Standard Library
 
 The `io` namespace provides built-in functions for file operations and standard I/O management.  No `import` statement is required to use these functions.
 
@@ -50,15 +52,9 @@ Available options for `Mode` are as follows:
 
 Closes the given file handle.  If no `File` is provided, the default output file is closed.  Returns `true` on success.
 
-[source,tiri]
-----
-file = io.open('temp:myfile.txt', 'r')
-io.close(file)
-----
-
 ==== io.read()
 
-[.api]`data1, data2, ... = io.read([Format, ...])`
+[.api]`data1, data2, pass:[...] = io.read([Format, pass:[...]])`
 
 Reads from the default input file according to the given format strings.  If no format is provided, a single line is read.  The default input file is initially `stdin` but can be changed with `io.input()`.
 
@@ -73,15 +69,9 @@ all  = io.read('*a')   -- Read entire file
 
 ==== io.write()
 
-[.api]`io.write(Data, ...)`
+[.api]`io.write(Data, pass:[...])`
 
 Writes each argument to the default output file.  The default output file is initially `stdout` but can be changed with `io.output()`.  Arguments must be strings or numbers.  Throws an exception if a write error occurs.
-
-[source,tiri]
-----
-io.write('Hello, ')
-io.write('world!\n')
-----
 
 ==== io.flush()
 
@@ -165,23 +155,13 @@ tmp:close()
 
 [.api]`content = io.readAll(Path)`
 
-Reads the entire contents of the file at `Path` and returns it as a string.  Opens the file, reads all data, and closes it in a single operation.  Throws an exception if the file cannot be opened or read.  Returns an empty string if the file is empty.
-
-[source,tiri]
-----
-content = io.readAll('config:settings.tiri')
-----
+Reads the entire contents of the file at `Path` and returns it as a string.  Throws an exception if the file cannot be opened or read.  Returns an empty string if the file is empty.
 
 ==== io.writeAll()
 
 [.api]`io.writeAll(Path, Content)`
 
 Writes `Content` to the file at `Path`, creating the file if it does not exist or overwriting it if it does.  Throws an exception if the file cannot be created or written to.
-
-[source,tiri]
-----
-io.writeAll('temp:output.txt', 'Hello, world!\n')
-----
 
 ==== io.isFolder()
 
@@ -232,7 +212,7 @@ File handles returned by `io.open()` and related functions support the following
 [[sec-file-read]]
 ==== file:read()
 
-[.api]`data1, data2, ... = file:read([Format, ...])`
+[.api]`data1, data2, pass:[...] = file:read([Format, pass:[...]])`
 
 Reads from the file according to the given format strings.  Multiple formats can be provided and each returns a separate value.  If no format is provided, a single line is read.
 
@@ -266,16 +246,9 @@ file:close()
 
 ==== file:write()
 
-[.api]`file = file:write(Data, ...)`
+[.api]`file = file:write(Data, pass:[...])`
 
 Writes each argument to the file.  Arguments must be strings or numbers.  Returns the file handle to allow chained calls.  Throws an exception if a write error occurs.
-
-[source,tiri]
-----
-file = io.open('temp:output.txt', 'w')
-file:write('Line 1\n'):write('Line 2\n')
-file:close()
-----
 
 ==== file:close()
 
@@ -369,47 +342,47 @@ The File object exposes the following fields:
 |Field |Access |Description
 
 |`path`
-|read/set
-|The full virtual path of the file (e.g. `temp:output.txt`).
+|R/W
+|The full path of the file (e.g. `temp:output.txt`).
 
 |`resolvedPath`
-|read
+|R
 |The resolved platform-native path.
 
 |`size`
-|read/set
+|R/W
 |File size in bytes.  Setting this value truncates or extends the file.  Returns `0` for folders.
 
 |`position`
-|read/set
+|R/W
 |Current read/write byte position.  Setting this value performs a seek from the start of the file.
 
 |`flags`
-|read/set
+|R/W
 |File flags (see below).
 
 |`permissions`
-|read/set
+|R/W
 |File permission bits.
 
 |`date`
-|read/set
+|R/W
 |Last modification date as a `DateTime` structure.
 
 |`created`
-|read
+|R
 |Creation date as a `DateTime` structure.
 
 |`timeStamp`
-|read
+|R
 |Last modification time as a 64-bit integer, for comparison purposes.
 
 |`icon`
-|read
+|R
 |A UI icon reference string suitable for representing this file type (e.g. `'icons:filetypes/text'`).
 
 |`link`
-|read/set
+|R/W
 |The target path for symbolic links.
 |===
 
@@ -544,14 +517,14 @@ To filter the enumeration, pass `FL_EXCLUDE_FILES` or `FL_EXCLUDE_FOLDERS` in th
 ----
 -- List only subdirectories
 folder = obj.new('file', {
-   src='system:scripts/',
-   flags=FL_EXCLUDE_FILES
+   src   = 'system:scripts/',
+   flags = FL_EXCLUDE_FILES
 })
 ----
 
 ==== File Watching
 
-The `mtWatch()` method monitors a file or folder for filesystem events.  Callbacks are dispatched during `processing.sleep()`.
+The `mtWatch()` method monitors a file or folder for filesystem events.  Callbacks are dispatched in the event loop.
 
 [source,tiri]
 ----
@@ -563,7 +536,7 @@ end, 0, MFF_CREATE | MFF_DELETE | MFF_MODIFY)
 processing.sleep()
 ----
 
-Return `ERR_Terminate` from the callback to cancel the watch.
+Calling `raise ERR_Terminate` in the callback function will cancel the watch.
 
 [[sec-file-search]]
 === File Search
@@ -605,7 +578,7 @@ io.search('documents:', {
 
 |`contentFilter`
 |string
-|Include files that contain this content.  Searches up to 4096 bytes at a time, sliding through the file.
+|Include files that contain this content.
 
 |`caseSensitive`
 |boolean
@@ -742,6 +715,15 @@ The following volumes are available on all platforms:
 
 |`home:`
 |User's home directory (Linux/macOS).
+
+|`drive1:`
+|Root filesystem (`/` or `C:\`).
+
+|`driveN:`
+|Additional mounted filesystems (`drive2:`, `drive3:`, pass:[...]).
+
+|`cdN:`
+|CD-ROM drives (`cd1:`, `cd2:`, pass:[...]).
 |===
 
 [discrete]
@@ -753,25 +735,16 @@ The following volumes are available on all platforms:
 |===
 |Volume |Description
 
-|`drive1:`
-|Root filesystem (`/`).
-
 |`etc:`
 |System configuration (`/etc`).
 
 |`usr:`
 |Unix system resources (`/usr`).
-
-|`driveN:`
-|Additional mounted filesystems (`drive2:`, `drive3:`, ...).
-
-|`cdN:`
-|CD-ROM drives (`cd1:`, `cd2:`, ...).
 |===
 
 **Windows:**
 
-Drive letters (`C:`, `D:`, etc.) are accessible as volumes.  Additional device volumes are enumerated at startup: `usbN:` for USB drives, `cdN:` for optical drives, `portN:` for removable media, and `netN:` for network drives.
+Additional device volumes are enumerated at startup: `usbN:` for USB drives, `portN:` for removable media, and `netN:` for network drives.
 
 [discrete]
 ==== Standard I/O Volumes
@@ -797,7 +770,7 @@ These paths are used internally by `io.input()` and `io.output()` to initialise 
 [discrete]
 ==== Volume Chaining
 
-Volumes can reference other volumes.  The system recursively resolves volume references up to a maximum depth of 10 levels:
+Volumes can reference other volumes.  The system recursively resolves volume references until the root filesystem is reached:
 
 [source,tiri]
 ----
@@ -815,8 +788,8 @@ A volume definition can include multiple paths separated by `|`.  When reading, 
 ----
 -- The user: volume is defined with a fallback:
 --   ~/.kotuku/ | config:users/default/
--- Reading user:settings.tiri checks ~/.kotuku/ first,
--- then falls back to config:users/default/
+-- Opening "user:settings.tiri" checks "~/.kotuku/settings.tiri" first,
+-- then falls back to "config:users/default/settings.tiri"
 ----
 
 [discrete]
@@ -858,3 +831,57 @@ if err is ERR_Okay then
    end
 end
 ----
+
+[discrete]
+==== File Path Testing
+
+The `mSys.AnalysePath()` function checks whether a path exists and identifies what it refers to — a file, folder, or volume.  It returns an error code and a location type:
+
+[source,tiri]
+----
+err, type = mSys.AnalysePath('user:')
+if err is ERR_Okay then
+   if type is LOC_VOLUME then
+      print('Path is a registered volume')
+   elseif type is LOC_FOLDER then
+      print('Path is a folder')
+   elseif type is LOC_FILE then
+      print('Path is a file')
+   end
+else
+   print('Path does not exist')
+end
+----
+
+The `type` result is one of the following constants:
+
+[cols="1,3"]
+|===
+|Constant |Description
+
+|`LOC_FILE`
+|The path refers to a file.
+
+|`LOC_FOLDER`
+|The path refers to a folder (directory).
+
+|`LOC_VOLUME`
+|The path refers to a registered volume name.
+|===
+
+If the path does not exist, `AnalysePath()` returns `ERR_DoesNotExist`.  This makes it straightforward to test for the presence of a resource before attempting an operation:
+
+[source,tiri]
+----
+if mSys.AnalysePath('temp:output.txt') is ERR_Okay then
+   print('File already exists')
+end
+----
+
+When only the existence of the path matters and the type is not needed, the second return value can be ignored as shown above.
+
+=== Further Information
+
+Core Module API (FileSystem functions):: https://kotuku.dev/modules/core.html
+
+File Class:: https://kotuku.dev/modules/classes/file.html

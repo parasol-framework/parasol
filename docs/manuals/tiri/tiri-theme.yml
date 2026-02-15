@@ -52,6 +52,7 @@ role:
     font-family: Courier Prime
     font-weight: bold
     font-size: 1.1em
+    align: left
 
 code:
   font-family: Courier Prime
