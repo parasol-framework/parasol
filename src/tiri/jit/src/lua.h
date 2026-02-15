@@ -194,7 +194,7 @@ constexpr int LUA_GCSETPAUSE = 6;
 constexpr int LUA_GCSETSTEPMUL = 7;
 constexpr int LUA_GCISRUNNING = 9;
 
-extern int (lua_gc) (lua_State *L, int what, int data);
+extern int (lua_gc) (lua_State *L, int what, int data = 0);
 
 extern int   (lua_error) (lua_State *L);
 extern int   (lua_next) (lua_State *L, int idx);
