@@ -143,3 +143,36 @@ end
       end
    end
 end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- In this test the signals are sent from the threaded script rather than being managed by the main thread's callback.
+
+@Test(priority=4); @Disabled function MultipleClientSignals()
+   signal_a = obj.new('time', { }) -- This would normally be something more practical, like a file
+
+   thread_statement = [[
+      msg('Thread is now in session.')
+      sig_a = obj.find(arg('A'))
+      sig_a.acSignal()
+      print('Finished')
+   ]]
+
+   for i=1,10 do
+      do
+         script = obj.new('script', { statement=[[ msg('Thread is now in session.') ]] })
+         script.setKey('A', signal_a.id) -- Make the signal object available via arg()
+
+         thread.script(script)
+         processing.collect()
+      end
+
+      try
+         proc = processing.new({ timeout=1.0, signals = array<object> { signal_a } })
+         msg('Sleeping....')
+         proc.sleep()
+      except e
+         error('Error during MultipleClientSignals test: ' .. e.message)
+      end
+   end
+
+end
