@@ -8,11 +8,10 @@ This source code is placed in the public domain under no warranty from its autho
 Tiri: Tiri is a customised scripting language for the Script class.
 
 Tiri is a custom scripting language for Kotuku developers.  It is implemented on the backbone of LuaJIT, a
-high performance version of the Lua scripting language.  It supports garbage collection, dynamic typing and a byte-code
-interpreter for compiled code.  We chose to support Lua due to its extensive popularity amongst game developers, a
-testament to its low overhead, speed and lightweight processing when compared to common scripting languages.
+high performance version of the Lua scripting language.  It supports garbage collection, dynamic typing and a 64-bit
+byte-code interpreter for compiled code.
 
-Tiri files use the file extensions `.lua` and `.tiri`.  Ideally, scripts should start with the comment '-- $TIRI' near
+Tiri files use the `.tiri` file extension.  Ideally, scripts should start with the comment '-- $TIRI' near
 the start of the document so that it can be correctly identified by the Tiri class.
 
 For more information on the Tiri syntax, please refer to the official Tiri Reference Manual.
@@ -122,7 +121,7 @@ OBJECTPTR access_object(GCobject *Object)
       return Object->ptr;
    }
    else if (not Object->uid) return nullptr; // Object reference is dead
-   else if ((!Object->ptr) or Object->is_detached()) {
+   else if ((not Object->ptr) or Object->is_detached()) {
       // Detached objects are always accessed via UID, even if we have a pointer reference.
       OBJECTPTR obj_ptr;
       if (auto error = AccessObject(Object->uid, 5000, &obj_ptr); error IS ERR::Okay) {
@@ -365,11 +364,12 @@ ERR SetVariable(objScript *Script, CSTRING Name, int Type, ...)
    prvTiri *prv;
    va_list list;
 
-   if ((!Script) or (Script->classID() != CLASSID::TIRI) or (!Name) or (!*Name)) return log.warning(ERR::Args);
+   if ((not Script) or (Script->classID() != CLASSID::TIRI) or (not Name) or (not *Name)) return log.warning(ERR::Args);
 
    log.branch("Script: %d, Name: %s, Type: $%.8x", Script->UID, Name, Type);
 
    if (not (prv = (prvTiri *)Script->ChildPrivate)) return log.warning(ERR::ObjectCorrupt);
+   if (not prv->Lua) return log.warning(ERR::InvalidState);
 
    va_start(list, Type);
 
@@ -594,7 +594,7 @@ void get_line(objScript *Self, int Line, STRING Buffer, int Size)
       while ((*str IS ' ') or (*str IS '\t')) str++;
 
       for (i=0; i < Size-1; i++) {
-         if ((*str IS '\n') or (*str IS '\r') or (!*str)) break;
+         if ((*str IS '\n') or (*str IS '\r') or (not *str)) break;
          Buffer[i] = *str++;
       }
       Buffer[i] = 0;

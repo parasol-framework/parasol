@@ -156,8 +156,8 @@ static int processing_sleep(lua_State *Lua)
          }
          else {
             ObjectSignal signal_list_c[2];
-            signal_list_c[0].Object   = Lua->script;
-            signal_list_c[1].Object   = nullptr;
+            signal_list_c[0].Object = Lua->script;
+            signal_list_c[1].Object = nullptr;
 
             std::scoped_lock lock(recursion);
             error = WaitForObjects(PMF::NIL, timeout, signal_list_c);

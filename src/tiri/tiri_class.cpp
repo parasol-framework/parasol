@@ -287,7 +287,7 @@ static ERR TIRI_Activate(objScript *Self)
 
    if ((not Self->String) or (not Self->String[0])) return log.warning(ERR::FieldNotSet);
 
-   log.trace("Target: %d, Procedure: %s / ID #%" PF64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", (long long)Self->ProcedureID);
+   log.trace("Target: %d, Procedure: %s / ID #%" PRId64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", (long long)Self->ProcedureID);
 
    auto prv = (prvTiri *)Self->ChildPrivate;
    if (not prv) return log.warning(ERR::ObjectCorrupt);
@@ -502,7 +502,7 @@ static ERR TIRI_Init(objScript *Self)
                if (Self->CacheFile) compile = true; // Saving a compilation of the source is desired
             }
             else {
-               log.trace("Failed to read %" PF64 " bytes from '%s'", (long long)src_size, Self->Path);
+               log.trace("Failed to read %" PRId64 " bytes from '%s'", (long long)src_size, Self->Path);
                FreeResource(Self->String);
                Self->String = nullptr;
                error = ERR::ReadFileToBuffer;
@@ -618,7 +618,7 @@ static ERR TIRI_Query(objScript *Self)
 
    if (not Self->ActivationCount) {
       // Announce once only to limit log noise
-      log.branch("Target: %d, Procedure: %s / ID #%" PF64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", (long long)Self->ProcedureID);
+      log.branch("Target: %d, Procedure: %s / ID #%" PRId64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", (long long)Self->ProcedureID);
    }
 
    Self->CurrentLine = -1;
@@ -947,7 +947,7 @@ static ERR run_script(objScript *Self)
                   }
                   else lua_pushinteger(prv->Lua, args->Int);
                }
-               else if (type & FD_INT64)  { log.trace("Setting arg '%s', Value: %" PF64, args->Name, (long long)args->Int64); lua_pushnumber(prv->Lua, args->Int64); }
+               else if (type & FD_INT64)  { log.trace("Setting arg '%s', Value: %" PRId64, args->Name, (long long)args->Int64); lua_pushnumber(prv->Lua, args->Int64); }
                else if (type & FD_DOUBLE) { log.trace("Setting arg '%s', Value: %.2f", args->Name, args->Double); lua_pushnumber(prv->Lua, args->Double); }
                else { lua_pushnil(prv->Lua); log.warning("Arg '%s' uses unrecognised type $%.8x", args->Name, type); }
                count++;
