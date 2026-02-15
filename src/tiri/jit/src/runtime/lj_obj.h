@@ -1164,7 +1164,7 @@ struct lua_State {
    GCRef   env;         //  Thread environment (table of globals).
    void    *cframe;     //  End of C stack frame chain.
    MSize   stacksize;   //  True stack size (incl. LJ_STACK_EXTRA).
-   class objScript *script;
+   class objScript *script;   // Back-reference to the script that owns this lua_State
    bool    sent_traceback;    // True if traceback has been sent for the current error
    uint8_t resolving_thunk;  // Flag to prevent recursive thunk resolution
    ParserDiagnostics *parser_diagnostics; // Stores ParserDiagnostics* during parsing errors
