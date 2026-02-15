@@ -109,12 +109,6 @@ static int processing_new(lua_State *Lua)
 
 static int processing_sleep(lua_State *Lua)
 {
-   { // Always collect your garbage before going to sleep
-      pf::Log log;
-      log.traceBranch("Collecting garbage.");
-      lua_gc(Lua, LUA_GCCOLLECT, 0);
-   }
-
    pf::Log log;
    static std::recursive_mutex recursion; // Intentionally accessible to all threads
 
@@ -137,6 +131,16 @@ static int processing_sleep(lua_State *Lua)
    if (lua_type(Lua, 3) IS LUA_TBOOLEAN) reset_state = lua_toboolean(Lua, 3);
 
    log.branch("Timeout: %d, WakeOnSignal: %c", timeout, wake_on_signal ? 'Y' : 'N');
+
+   if (!timeout) {
+      // Always collect your garbage before going to sleep.  Can be prevented with processing.stopCollector() if
+      // absolutely necessary.
+      if (lua_gc(Lua, LUA_GCISRUNNING, 0)) {
+         pf::Log log;
+         log.traceBranch("Collecting garbage.");
+         lua_gc(Lua, LUA_GCCOLLECT, 0);
+      }
+   }
 
    if (wake_on_signal) {
       if ((fp) and (fp->Signals) and (not fp->Signals->empty())) {

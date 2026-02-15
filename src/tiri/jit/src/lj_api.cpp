@@ -1407,7 +1407,20 @@ extern int luaL_callmeta(lua_State *L, int idx, const char *field)
 }
 
 //********************************************************************************************************************
-// Control garbage collection
+// Control garbage collection.  The `what` parameter selects the operation:
+//
+//   LUA_GCSTOP        Stop the garbage collector.
+//   LUA_GCRESTART     Restart the collector; `data` is currently unused.
+//   LUA_GCCOLLECT     Perform a full collection cycle.
+//   LUA_GCCOUNT       Return total managed memory in kibibytes (value >> 10).
+//   LUA_GCCOUNTB      Return the remainder bytes of total memory (value & 0x3ff).
+//   LUA_GCSTEP        Perform an incremental step.  `data` is the step size in kibibytes.
+//                     Returns 1 if a full cycle was completed during the step.
+//   LUA_GCSETPAUSE    Set the pause parameter (controls interval between cycles).  Returns the previous value.
+//   LUA_GCSETSTEPMUL  Set the step multiplier (controls collector aggressiveness).  Returns the previous value.
+//   LUA_GCISRUNNING   Returns 1 if the collector is running, otherwise 0.
+//
+// Returns -1 if `what` is not a recognised option.
 
 extern int lua_gc(lua_State *L, int what, int data)
 {
