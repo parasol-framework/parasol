@@ -166,7 +166,7 @@ state.clickCount = 0
 [[sec-actions-and-methods]]
 === Actions & Methods
 
-Actions and methods are the primary means of interacting with an initialised object.  Actions are contractural operations defined by the framework (common across many classes), while methods are class-specific operations.
+Actions and methods are the primary means of interacting with an initialised object.  Actions are contractual operations defined by the framework (common across many classes), while methods are class-specific operations.
 
 [discrete]
 ==== Naming Convention
@@ -190,7 +190,7 @@ err = rect.acRedimension(20, 20, 0, 100, 100, 0)
 err, tag = xml.mtFindTag('/document/body')
 ----
 
-The `ERR` code indicates whether the operation succeeded.  Even when an error is returned, result parameters are populated (with nil or default values) as some implementations will return information on error.
+The `ERR` code indicates whether the operation succeeded.  Even when an error is returned, result parameters are populated (with nil or default values), as some implementations return information on error.
 
 Error codes are automatically promoted to exceptions if the call is encapsulated in a `try` statement.  Otherwise use the `check` keyword or compare the error code to verify success.
 

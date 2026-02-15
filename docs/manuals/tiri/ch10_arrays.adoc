@@ -228,7 +228,7 @@ for i, v in pairs(arr) do pass:[...] end
 for v in values(arr) do pass:[...] end
 ----
 
-TIP: Direction iteration is preferred over the use of `ipairs()` and `pairs()`, which are supported to maintain seamless compatibility with tables.
+TIP: Direct iteration is preferred over the use of `ipairs()` and `pairs()`, which are supported to maintain seamless compatibility with tables.
 
 [discrete]
 ==== Membership Testing

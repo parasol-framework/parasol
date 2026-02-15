@@ -3,7 +3,7 @@ VERIFIED: 2026-02-13
 [[ch-script-management]]
 == Script Management
 
-Tiri programs are organised through a combination of compile-time directives and runtime loading functions.  The `import` directive inlines library scripts at parse time, and the runtime functions `loadFile()` and `exec()` provide dynamic loading and evaluation.  User interactivity is possible via the `arg()` function, which allows commandline parameters to be passed through to the script.
+Tiri programs are organised through a combination of compile-time directives and runtime loading functions.  The `import` directive inlines library scripts at parse time, and the runtime functions `loadFile()` and `exec()` provide dynamic loading and evaluation.  User interactivity is possible via the `arg()` function, which allows command-line parameters to be passed through to the script.
 
 [[sec-the-import-directive]]
 === The import Directive
@@ -142,7 +142,7 @@ mylib.extraFeature()
 [discrete]
 ===== Avoid Using `global` for Exports
 
-The `namespace` feature is provided to avoid conflict between scripts.  Declaring `global` functions and variables in a library makes them accessible to the importing script, risking silent shadowing and unexpected read/write operations.  Limit the use of `global` exports to local scripts under which you have full control.
+The `namespace` feature is provided to avoid conflict between scripts.  Declaring `global` functions and variables in a library makes them accessible to the importing script, risking silent shadowing and unexpected read/write operations.  Limit the use of `global` exports to local scripts over which you have full control.
 
 ==== Conditional Pre-Processing
 

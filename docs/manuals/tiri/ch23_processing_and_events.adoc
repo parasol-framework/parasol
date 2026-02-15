@@ -37,7 +37,7 @@ processing.sleep(5.0)
 processing.sleep(2.0, false)
 ----
 
-The garbage collector runs a full collection cycle on entry to `processing.sleep()` before the runtime begins waiting for events.  If processing is called in an inner loop, disabling the garbage collector may be desirable if allocated resources remain static.
+The garbage collector runs a full collection cycle on entry to `processing.sleep()` before the runtime begins waiting for events.  Exceptions apply if `Seconds` is `0` or the garbage collector is disabled by the script.
 
 🔥Encapsulating processing.sleep() in a `try` statement will promote errors to exceptions.
 
@@ -392,8 +392,10 @@ mSys.UpdateTimer(timerHandle, 0.5)
 mSys.UpdateTimer(timerHandle, 0)
 ----
 
+[discrete]
 ==== Timer Patterns
 
+[discrete]
 ===== Animation and Rendering
 
 Timers are commonly used for animation loops.  The following pattern drives a particle simulation at high frequency:
@@ -411,6 +413,7 @@ window:show()
 processing.sleep()
 ----
 
+[discrete]
 ===== Self-Cancelling Timers
 
 A timer can cancel itself by calling `raise ERR_Terminate` from the callback (the exception will be handled without impacting the script):
@@ -424,6 +427,7 @@ err, handle = mSys.SubscribeTimer(1.0,
    end)
 ----
 
+[discrete]
 ===== Adjusting Timer Intervals
 
 Call `mSys.UpdateTimer()` to dynamically adjust the interval, for example to reset the elapsed counter after a delay phase:
@@ -438,10 +442,12 @@ err, handle = mSys.SubscribeTimer(1*fps,
    end)
 ----
 
+[discrete]
 ==== One-Shot Deferred Execution
 
 Use `processing.delayedCall()` (<<sec-processing-callbacks>>) to schedule a function for execution on the next processing cycle.  This is the equivalent of a zero-delay timer.
 
+[discrete]
 ==== Timeout-Based Coordination
 
 For simple periodic work that does not require a dedicated callback, use a loop around `processing.sleep()` with a timeout:

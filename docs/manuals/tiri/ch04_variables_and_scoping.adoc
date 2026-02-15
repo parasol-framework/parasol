@@ -335,4 +335,4 @@ print(get())    -- 42
 
 When the scope that owns a local variable exits, any upvalue referencing it is closed over -- the value is moved from the stack to a heap-allocated cell.  The closure continues to read and write through that cell.
 
-TIP: Upvalues are a powerful tool but also carry a performance penalty when referencing local variables.  A local that is referenced as an upvalue achieves performance equivalent to a globally scoped variable.
+TIP: Upvalues are a powerful tool but also carry a performance penalty when referencing local variables.  A local that is referenced as an upvalue has performance equivalent to a globally scoped variable.

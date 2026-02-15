@@ -3,7 +3,7 @@
 [[ch-tables]]
 == Tables
 
-Tables are the primary compound data structure in Tiri.  A table is a mutable, unordered map of key-values.  No type restrictions are imposed on table values.  Setting a key's value to `nil` removes that entry from the table.  Tables are used to represent records, dictionaries, configuration maps, and ad-hoc objects.
+Tables are the primary compound data structure in Tiri.  A table is a mutable, unordered map of key-value pairs.  No type restrictions are imposed on table values.  Setting a key's value to `nil` removes that entry from the table.  Tables are used to represent records, dictionaries, configuration maps, and ad-hoc objects.
 
 Tables are reference types.  Assigning a table to another variable creates a second reference to the same underlying data, not a copy.  Two distinct tables are never equal, even if they contain identical entries; `is` compares identity, not content.
 

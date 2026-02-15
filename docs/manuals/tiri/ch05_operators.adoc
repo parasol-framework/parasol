@@ -99,7 +99,7 @@ z = not false          -- true
 [[sec-bitwise-operators]]
 === Bitwise Operators
 
-Bitwise operators operate on 32-bit integers using two's-complement representation.  The operator truncates non-integer operands to 32-bit integers before the operation.  The operator masks the shift count to the range 0-31.
+Bitwise operators operate on 32-bit integers using two's-complement representation.  Non-integer operands are truncated to 32-bit integers before the operation.  Shift operators mask the shift count to the range 0-31.
 
 [cols="2,3,5"]
 |===
@@ -355,7 +355,7 @@ NOTE: The `in` keyword also appears in `for` loops (`for k, v in pairs(t) do`). 
 [[sec-pipe-operator]]
 === Pipe Operator
 
-The pipe operator (`|>`) passes the result of the left-hand expression as the first argument(s) to the right-hand function call.
+The pipe operator (`|>`) passes the result of the left-hand expression as arguments to the right-hand function call.
 
 [source,ebnf]
 ----
@@ -440,14 +440,14 @@ The following table lists all operators from highest to lowest precedence.  Oper
 |===
 |Level |Operators |Associativity
 |10 |`pass:[**]`                                                |Right
-|8  |`-` (unary), `not`, `#`, `~` (unary)               |Unary (right)
-|7  |`*`, `/`, `%`                                       |Left
-|6  |`+`, `-`                                            |Left
-|5  |`..`, `<<`, `>>`                                    |`..` right; shifts left
-|4  |`&`                                                 |Left
-|3  |`^`, `is`, `!=`, `<`, `>`, `\<=`, `>=`, `in` |Left
-|2  |`\|`, `and`, `\|>`                                  |Left
-|1  |`or`, `??`, `? :>`                                  |Left (`? :>` right)
+|9  |`-` (unary), `not`, `#`, `~` (unary)               |Unary (right)
+|8  |`*`, `/`, `%`                                       |Left
+|7  |`+`, `-`                                            |Left
+|6  |`..`, `<<`, `>>`                                    |`..` right; shifts left
+|5  |`&`                                                 |Left
+|4  |`^`, `is`, `!=`, `<`, `>`, `\<=`, `>=`, `in` |Left
+|3  |`\|`, `and`, `\|>`                                  |Left
+|2  |`or`, `??`, `? :>`                                  |Left (`? :>` right)
 |===
 
 Postfix operators (`++`, `??` postfix) bind tighter than all binary operators and evaluate immediately after suffix chains (field access, indexing, calls).

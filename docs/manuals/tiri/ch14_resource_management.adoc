@@ -547,7 +547,7 @@ same = resolve(plain) -- returns 42 unchanged
 
 ==== Deferred Parameters
 
-Passing deferred expression as parameter values can be a clever way of avoiding unnecessary computation if the parameter will only be used when certain conditions are met in a function. A classic example can be seen in this call to `assert()`, which will only evaluate the message string when the assertion fails:
+Passing a deferred expression as a parameter value is an effective way of avoiding unnecessary computation if the parameter is only used when certain conditions are met in a function. A classic example can be seen in this call to `assert()`, which will only evaluate the message string when the assertion fails:
 
 [source,tiri]
 ----
@@ -555,7 +555,7 @@ assert(condition, <string{ 'Failure details: ' .. expensive_debug_info() }>)
 -- expensive_debug_info() runs only if condition is false
 ----
 
-NOTE: Due to this pattern being extremely common, the Tiri parser automatically encapsulates the assert message in a deferred expression so that you don't have to.
+NOTE: Due to this pattern being extremely common, the Tiri parser automatically encapsulates the assert message in a deferred expression, making explicit wrapping unnecessary.
 
 ==== Thunk Keyword
 
