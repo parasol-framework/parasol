@@ -266,6 +266,11 @@ struct Object { // Must be 64-bit aligned
       }
    }
 
+   // Transfer ownership of the lock to the current thread.
+   inline void transferLock() {
+      ThreadID = pf::_get_thread_id();
+   }
+
    inline void unlock() {
       // Prefer to use ReleaseObject() if there are threads that need to be woken
       if ((SleepQueue > 0) or defined(NF::FREE_ON_UNLOCK)) ReleaseObject(this);

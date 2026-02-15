@@ -443,7 +443,7 @@ inline GCobject * push_object(lua_State *Lua, OBJECTPTR Object, bool Detached = 
 // frame back) is the same function that contains the try block AND is at the same stack frame position.  The frame
 // base check is essential for recursive functions where the same GCfunc can appear at multiple stack depths.
 
-[[maybe_unused]] inline bool in_try_immediate_scope(lua_State *L)
+[[maybe_unused]] static bool in_try_immediate_scope(lua_State *L)
 {
    if (L->try_stack.depth IS 0) return false;
 

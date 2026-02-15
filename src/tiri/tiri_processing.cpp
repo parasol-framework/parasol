@@ -105,6 +105,7 @@ static int processing_new(lua_State *Lua)
 // Setting seconds to zero will process outstanding messages and return immediately.
 //
 // NOTE: Can be called directly as an interface function or as a member of a processing object.
+//       Errors are promoted to exceptions if used in a try statement.
 
 static int processing_sleep(lua_State *Lua)
 {
@@ -156,8 +157,8 @@ static int processing_sleep(lua_State *Lua)
          }
          else {
             ObjectSignal signal_list_c[2];
-            signal_list_c[0].Object   = Lua->script;
-            signal_list_c[1].Object   = nullptr;
+            signal_list_c[0].Object = Lua->script;
+            signal_list_c[1].Object = nullptr;
 
             std::scoped_lock lock(recursion);
             error = WaitForObjects(PMF::NIL, timeout, signal_list_c);
@@ -169,6 +170,9 @@ static int processing_sleep(lua_State *Lua)
       WaitTime(timeout / 1000.0); // Convert milliseconds to seconds
       error = ERR::Okay;
    }
+
+   // Promote errors to exceptions
+   if ((error != ERR::Okay) and (in_try_immediate_scope(Lua))) luaL_error(Lua, error);
 
    lua_pushinteger(Lua, int(error));
    return 1;
