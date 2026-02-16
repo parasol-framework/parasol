@@ -33,7 +33,7 @@ variables with its creator, except via existing conventional means such as a Key
 
 struct ThreadScriptMsg {
    FUNCTION Callback;
-   GCobject *Script;   // The GCobject for the thread's script, still under lock
+   GCobject *GCScript;   // The GCobject for the thread's script, still under lock
    objScript *Owner;   // The parent script that owns the registry references
    int ObjRef;         // Registry reference that pins the GCobject from GC collection
 };
@@ -46,13 +46,15 @@ struct ThreadScriptMsg {
 
 static int thread_script(lua_State *Lua)
 {
+   pf::Log log(__FUNCTION__);
+
    if (lua_type(Lua, 1) IS LUA_TOBJECT) {
-      GCobject *obj = lua_toobject(Lua, 1);
-      if (obj->classptr->ClassID != CLASSID::SCRIPT) {
+      GCobject *gc_script = lua_toobject(Lua, 1);
+      if (gc_script->classptr->ClassID != CLASSID::SCRIPT) {
          luaL_error(Lua, ERR::WrongClass);
       }
 
-      if (access_object(obj)) { // This lock will be retained until the thread stops
+      if (access_object(gc_script)) { // This lock will be retained until the thread stops
          FUNCTION callback;
          if (lua_isfunction(Lua, 2)) {
             lua_pushvalue(Lua, 2);
@@ -76,7 +78,7 @@ static int thread_script(lua_State *Lua)
 
             ThreadScriptMsg msg { Callback, Script, Owner, ObjRef };
             SendMessage(MSGID::TIRI_THREAD_CALLBACK, MSF::NIL, &msg, sizeof(msg));
-         }, obj, std::move(callback), Lua->script, obj_ref)));
+         }, gc_script, std::move(callback), Lua->script, obj_ref)));
       }
       else luaL_error(Lua, ERR::AccessObject);
    }
@@ -90,16 +92,18 @@ static int thread_script(lua_State *Lua)
 
 ERR msg_thread_script_callback(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize)
 {
-   auto msg = (ThreadScriptMsg *)Message;
-   auto obj = msg->Script;
+   pf::Log log("thread_callback");
 
-   ((objScript *)obj->ptr)->transferLock(); // Return the lock on the script object back to this thread
+   auto msg = (ThreadScriptMsg *)Message;
+   auto gc_script = msg->GCScript;
+
+   ((objScript *)gc_script->ptr)->transferLock(); // Return the lock on the script object back to this thread
 
    if (msg->Callback.isScript()) {
       auto this_script = (objScript *)msg->Callback.Context;
 
       pf::Log("thread_callback").trace("Callback received for script #%d, procedure %" PRId64,
-         ((objScript *)obj->ptr)->UID, msg->Callback.ProcedureID);
+         ((objScript *)gc_script->ptr)->UID, msg->Callback.ProcedureID);
 
       this_script->callback(msg->Callback.ProcedureID, nullptr, 0, nullptr);
 
@@ -113,7 +117,8 @@ ERR msg_thread_script_callback(APTR Custom, int MsgID, int MsgType, APTR Message
 
    auto prv = (prvTiri *)msg->Owner->ChildPrivate;
    luaL_unref(prv->Lua, LUA_REGISTRYINDEX, msg->ObjRef);
-   release_object(obj);
+
+   release_object(gc_script);
    return ERR::Okay;
 }
 
