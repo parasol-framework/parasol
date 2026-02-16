@@ -226,7 +226,7 @@ end
       end, i)
    end
 
-   err = processing.sleep(15)
+   err = processing.sleep(3)
    assert(err is ERR_Okay, f'Processing sleep returned error: {err}')
    assert(completed is expected, f'Expected {expected} completions, got {completed}')
 
@@ -253,7 +253,7 @@ end
       processing.signal()
    end, 0)
 
-   err = processing.sleep(15)
+   err = processing.sleep(3)
    assert(err is ERR_Okay, f'Processing sleep returned error: {err}')
    assert(completed is 1, 'Final callback was not invoked after callback-less queued actions.')
 end

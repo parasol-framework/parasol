@@ -165,9 +165,8 @@ struct ThreadMessage {
 };
 
 struct ThreadActionMessage {
-   OBJECTPTR Object;    // Direct pointer to a target object (may be null if freed).
    AC        ActionID;  // The action to execute.
-   OBJECTID  ObjectUID; // UID of the target object (for queue dispatch).
+   OBJECTID  ObjectID;  // ID of the target object (for queue dispatch).
    int       Key;       // Internal
    ERR       Error;     // The error code resulting from the action's execution.
    FUNCTION  Callback;  // Callback function to execute on action completion.
@@ -176,8 +175,7 @@ struct ThreadActionMessage {
 // Queued async action, waiting for the same-object action to complete.
 
 struct QueuedAction {
-   OBJECTPTR Object;
-   OBJECTID  ObjectUID;
+   OBJECTID  ObjectID;
    AC        ActionID;
    int       ArgsSize;
    std::vector<int8_t> Parameters;
@@ -1078,7 +1076,7 @@ void   stop_async_actions(void);
 ERR    copy_args(const FunctionField *, int, int8_t *, std::vector<int8_t> &);
 ERR    create_archive_volume(void);
 void   dispatch_queued_action(OBJECTID);
-void   drain_action_queue(OBJECTID);
+void   drain_action_queue(OBJECTID, bool = false);
 ERR    delete_tree(std::string &, FUNCTION *, FileFeedback *);
 struct ClassItem * find_class(CLASSID);
 ERR    find_private_object_entry(OBJECTID, int *);

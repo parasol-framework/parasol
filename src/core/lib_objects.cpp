@@ -199,7 +199,7 @@ static ERR object_free(Object *Object)
 
    // Object destruction is guaranteed; queued async actions can be cancelled safely.
 
-   drain_action_queue(Object->UID);
+   drain_action_queue(Object->UID, true);
 
    // Mark the object as being in the free process.  The mark prevents any further access to the object via
    // AccessObject().  Classes may also use the flag to check if an object is in the process of being freed.
@@ -574,6 +574,8 @@ static void launch_async_thread(OBJECTPTR, AC, int, std::vector<int8_t>, FUNCTIO
 
 void dispatch_queued_action(OBJECTID ObjectID)
 {
+   pf::Log log(__FUNCTION__);
+
    QueuedAction next;
    {
       std::lock_guard<std::mutex> lock(glmActionQueue);
@@ -586,40 +588,59 @@ void dispatch_queued_action(OBJECTID ObjectID)
       next = std::move(it->second.front());
       it->second.pop_front();
    }
+
    // Queue mutex released before thread launch to avoid holding two locks simultaneously.
 
    // Validate the object pointer via its UID before dereferencing.  The object may have been freed
    // between queueing and dispatch.
 
-   auto obj = GetObjectPtr(next.ObjectUID);
-   if (not obj or obj->terminating() or obj->collecting()) {
-      if (obj) --obj->ThreadPending;
+   ScopedObjectLock obj(ObjectID);
+   if (obj.granted()) {
+      if (obj->terminating() or obj->collecting()) {
+         if (next.Callback.defined()) {
+            ThreadActionMessage msg = {
+               .ActionID = next.ActionID,
+               .ObjectID = ObjectID,
+               .Error    = ERR::DoesNotExist,
+               .Callback = next.Callback
+            };
+            SendMessage(MSGID::THREAD_ACTION, MSF::NIL, &msg, sizeof(msg));
+         }
+
+         drain_action_queue(ObjectID);
+         return;
+      }
+
+      launch_async_thread(*obj, next.ActionID, next.ArgsSize, std::move(next.Parameters), next.Callback);
+   }
+   else {
+      // The object is no longer accessible (freed or otherwise invalid).  Treat this identically
+      // to the terminating case: send an error callback and drain the remaining queue.
+
+      log.warning(obj.error);
 
       if (next.Callback.defined()) {
          ThreadActionMessage msg = {
-            .Object    = nullptr,
-            .ActionID  = next.ActionID,
-            .ObjectUID = ObjectID,
-            .Error     = ERR::DoesNotExist,
-            .Callback  = next.Callback
+            .ActionID = next.ActionID,
+            .ObjectID = ObjectID,
+            .Error    = obj.error,
+            .Callback = next.Callback
          };
          SendMessage(MSGID::THREAD_ACTION, MSF::NIL, &msg, sizeof(msg));
       }
 
-      drain_action_queue(ObjectID);
-      return;
+      drain_action_queue(ObjectID, true);
    }
-
-   launch_async_thread(obj, next.ActionID, next.ArgsSize,
-      std::move(next.Parameters), next.Callback);
 }
 
 //********************************************************************************************************************
 // Drain all queued actions for an object, sending error callbacks for each.  Called when the object
 // is being freed or is otherwise no longer valid.
 
-void drain_action_queue(OBJECTID ObjectID)
+void drain_action_queue(OBJECTID ObjectID, bool Terminating)
 {
+   pf::Log log(__FUNCTION__);
+
    std::deque<QueuedAction> drained;
    {
       std::lock_guard<std::mutex> lock(glmActionQueue);
@@ -632,20 +653,16 @@ void drain_action_queue(OBJECTID ObjectID)
    }
 
    if (not drained.empty()) {
-      pf::Log log("drain_action_queue");
       log.trace("Draining %d queued actions for object #%d", int(drained.size()), ObjectID);
    }
 
    for (auto &action : drained) {
-      if (auto obj = GetObjectPtr(action.ObjectUID)) --obj->ThreadPending;
-
       if (action.Callback.defined()) {
          ThreadActionMessage msg = {
-            .Object    = nullptr,
-            .ActionID  = action.ActionID,
-            .ObjectUID = ObjectID,
-            .Error     = ERR::DoesNotExist,
-            .Callback  = action.Callback
+            .ActionID = action.ActionID,
+            .ObjectID = ObjectID,
+            .Error    = ERR::DoesNotExist,
+            .Callback = action.Callback
          };
          SendMessage(MSGID::THREAD_ACTION, MSF::NIL, &msg, sizeof(msg));
       }
@@ -653,12 +670,18 @@ void drain_action_queue(OBJECTID ObjectID)
 }
 
 //********************************************************************************************************************
-// Helper to launch an async action thread for an object.  The caller must have already incremented
-// Object->ThreadPending before calling this.
+// Helper to launch an async action thread for an object.
 
 static void launch_async_thread(OBJECTPTR Object, AC ActionID, int ArgsSize, std::vector<int8_t> Parameters,
    FUNCTION Callback)
 {
+   pf::Log log(__FUNCTION__);
+
+   if (not Object->locked()) { // Sanity check
+      log.warning(ERR::LockRequired);
+      return;
+   }
+
    auto object_uid = Object->UID;
 
    // Lock global async now so that we don't incur the unlikely event of the thread executing
@@ -668,9 +691,9 @@ static void launch_async_thread(OBJECTPTR Object, AC ActionID, int ArgsSize, std
 
    auto thread_ptr = std::make_shared<std::jthread>();
 
-   *thread_ptr = std::jthread([Object, ActionID, ArgsSize, Parameters = std::move(Parameters), Callback, object_uid, thread_ptr](std::stop_token stop_token) {
-      OBJECTPTR obj = Object;
-      ERR error;
+   *thread_ptr = std::jthread([Object, ActionID, ArgsSize, Parameters = std::move(Parameters), Callback,
+      object_uid, thread_ptr](std::stop_token stop_token) {
+      auto obj = Object;
 
       // Cleanup function to remove thread from tracking
       auto cleanup = [thread_ptr]() {
@@ -679,15 +702,22 @@ static void launch_async_thread(OBJECTPTR Object, AC ActionID, int ArgsSize, std
       };
 
       // Check for stop request before proceeding
+
       if (stop_token.stop_requested()) {
-         --obj->ThreadPending;
+         ThreadActionMessage msg = {
+            .ActionID = ActionID,
+            .ObjectID = object_uid,
+            .Key      = Callback.defined() ? int((intptr_t)Callback.Meta) : 0,
+            .Error    = ERR::Cancelled,
+            .Callback = Callback
+         };
+         SendMessage(MSGID::THREAD_ACTION, MSF::NIL, &msg, sizeof(msg));
          cleanup();
          return;
       }
 
+      ERR error;
       if (error = LockObject(obj, 5000); error IS ERR::Okay) { // Access the object and process the action.
-         --obj->ThreadPending;
-
          // Check for stop request before executing action
          if (not stop_token.stop_requested()) {
             error = Action(ActionID, obj, ArgsSize ? (APTR)Parameters.data() : nullptr);
@@ -699,27 +729,24 @@ static void launch_async_thread(OBJECTPTR Object, AC ActionID, int ArgsSize, std
          }
          else ReleaseObject(obj);
       }
-      else --obj->ThreadPending;
 
       // Always send a completion message so that msg_threadaction() can dispatch the next queued action.
 
       if (not stop_token.stop_requested()) {
          ThreadActionMessage msg = {
-            .Object    = obj,
-            .ActionID  = ActionID,
-            .ObjectUID = object_uid,
-            .Key       = Callback.defined() ? int((intptr_t)Callback.Meta) : 0,
-            .Error     = error,
-            .Callback  = Callback
+            .ActionID = ActionID,
+            .ObjectID = object_uid,
+            .Key      = Callback.defined() ? int((intptr_t)Callback.Meta) : 0,
+            .Error    = error,
+            .Callback = Callback
          };
          SendMessage(MSGID::THREAD_ACTION, MSF::NIL, &msg, sizeof(msg));
       }
       else {
          // Thread was stopped; send a minimal message so the main thread handles queue dispatch.
          ThreadActionMessage msg = {
-            .Object    = nullptr,
-            .ActionID  = ActionID,
-            .ObjectUID = object_uid,
+            .ActionID = ActionID,
+            .ObjectID = object_uid,
          };
          SendMessage(MSGID::THREAD_ACTION, MSF::NIL, &msg, sizeof(msg));
       }
@@ -740,12 +767,11 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
 
    if ((ActionID IS AC::NIL) or (not Object)) return ERR::NullArgs;
 
+   ScopedObjectAccess lock(Object);
+
    log.traceBranch("Action: %d, Object: %d, Parameters: %p, Callback: %p", int(ActionID), Object->UID, Parameters, Callback);
 
    auto error = ERR::Okay;
-
-   ++Object->ThreadPending;
-   auto defer = Defer([Object, error] { if (error != ERR::Okay) --Object->ThreadPending; });
 
    // Prepare the parameter buffer for passing to the thread routine.
 
@@ -780,8 +806,7 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
          std::lock_guard<std::mutex> lock(glmActionQueue);
          if (glActiveAsyncObjects.contains(Object->UID)) {
             glActionQueues[Object->UID].push_back(QueuedAction {
-               .Object     = Object,
-               .ObjectUID  = Object->UID,
+               .ObjectID   = Object->UID,
                .ActionID   = ActionID,
                .ArgsSize   = argssize,
                .Parameters = std::move(param_buffer),
@@ -791,7 +816,7 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
             log.trace("Queued action %d for object #%d (queue depth: %d)",
                int(ActionID), Object->UID, int(glActionQueues[Object->UID].size()));
 
-            return ERR::Okay; // ThreadPending already incremented; it stays until the action runs.
+            return ERR::Okay;
          }
 
          glActiveAsyncObjects.insert(Object->UID);
@@ -815,14 +840,20 @@ ERR msg_threadaction(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgS
 
    if (msg->Callback.isC()) {
       auto routine = (void (*)(ACTIONID, OBJECTPTR, ERR, int, APTR))msg->Callback.Routine;
-      routine(msg->ActionID, msg->Object, msg->Error, msg->Key, msg->Callback.Meta);
+      ScopedObjectLock obj(msg->ObjectID);
+      if (obj.granted()) {
+         routine(msg->ActionID, *obj, msg->Error, msg->Key, msg->Callback.Meta);
+      }
+      else {
+         routine(msg->ActionID, nullptr, ERR::DoesNotExist, msg->Key, msg->Callback.Meta);
+      }
    }
    else if (msg->Callback.isScript()) {
       auto script = msg->Callback.Context;
       if (LockObject(script, 5000) IS ERR::Okay) {
          sc::Call(msg->Callback, std::to_array<ScriptArg>({
             { "ActionID", int(msg->ActionID) },
-            { "Object",   msg->Object, FD_OBJECTPTR },
+            { "Object",   msg->ObjectID, FD_OBJECTID },
             { "Error",    int(msg->Error) },
             { "Key",      msg->Key }
          }));
@@ -836,7 +867,7 @@ ERR msg_threadaction(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgS
    }
 
    // Dispatch the next queued action for this object (if any).
-   dispatch_queued_action(msg->ObjectUID);
+   dispatch_queued_action(msg->ObjectID);
 
    return ERR::Okay;
 }
