@@ -663,9 +663,9 @@ void ReleaseObject(OBJECTPTR Object)
             }
          }
 
-         // Destroy the object if marked for deletion.
+         // Destroy the object if marked for deletion and not pinned by reference counting.
 
-         if (Object->defined(NF::FREE_ON_UNLOCK) and (!Object->defined(NF::FREE))) {
+         if (Object->defined(NF::FREE_ON_UNLOCK) and (!Object->defined(NF::FREE)) and (!Object->isPinned())) {
             Object->Flags &= ~NF::FREE_ON_UNLOCK;
             FreeResource(Object);
          }
@@ -673,7 +673,7 @@ void ReleaseObject(OBJECTPTR Object)
          cvObjects.notify_all(); // Multiple threads may be waiting on this object
       }
    }
-   else if (Object->defined(NF::FREE_ON_UNLOCK) and (!Object->defined(NF::FREE))) {
+   else if (Object->defined(NF::FREE_ON_UNLOCK) and (!Object->defined(NF::FREE)) and (!Object->isPinned())) {
       Object->Flags &= ~NF::FREE_ON_UNLOCK;
       FreeResource(Object);
    }

@@ -214,7 +214,7 @@ struct Object { // Must be 64-bit aligned
    int8_t   ActionDepth;         // Incremented each time an action or method is called on the object
    std::atomic_char Queue;       // Counter of locks attained by LockObject(); decremented by ReleaseObject()
    std::atomic_char SleepQueue;  // For the use of LockObject() only
-   int8_t _unused01;             //
+   std::atomic_uint8_t RefCount; // Reference counting - object cannot be freed until this reaches 0.  NB: This is not a locking mechanism!
    OBJECTID UID;                 // Unique object identifier
    NF       Flags;               // Object flags
    std::atomic_int ThreadID;     // Managed by locking functions.  Atomic due to volatility.
@@ -223,7 +223,7 @@ struct Object { // Must be 64-bit aligned
    // NB: This constructor is called by NewObject(), no need to call it manually from client code.
 
    Object() : Class(nullptr), ChildPrivate(nullptr), CreatorMeta(nullptr), Owner(nullptr), NotifyFlags(0),
-      ActionDepth(0), Queue(0), SleepQueue(0), UID(0), Flags(NF::NIL), ThreadID(0), Name("") { }
+      ActionDepth(0), Queue(0), SleepQueue(0), RefCount(0), UID(0), Flags(NF::NIL), ThreadID(0), Name("") { }
 
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
@@ -232,6 +232,16 @@ struct Object { // Must be 64-bit aligned
    inline CLASSID classID();
    inline CLASSID baseClassID();
    inline NF flags() { return Flags; }
+
+   inline void pin() { RefCount++; }
+   inline void unpin() { if (RefCount > 0) RefCount--; }
+   inline bool isPinned() { return RefCount > 0; }
+
+   inline void freeIfReady() {
+      if ((RefCount IS 0) and (Queue IS 0) and ((Flags & NF::FREE_ON_UNLOCK) != NF::NIL)) {
+         FreeResource(this);
+      }
+   }
 
    CSTRING className();
 

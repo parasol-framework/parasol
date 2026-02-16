@@ -33,7 +33,7 @@ variables with its creator, except via existing conventional means such as a Key
 
 struct ThreadScriptMsg {
    FUNCTION Callback;
-   GCobject *GCScript;   // The GCobject for the thread's script, still under lock
+   GCobject *GCScript; // The GCobject for the thread's script, still under lock
    objScript *Owner;   // The parent script that owns the registry references
    int ObjRef;         // Registry reference that pins the GCobject from GC collection
 };
