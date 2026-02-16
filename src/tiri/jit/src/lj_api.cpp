@@ -235,7 +235,7 @@ extern void lua_settop(lua_State *L, int idx)
 
 extern void lua_remove(lua_State *L, int idx)
 {
-   TValue * p = index2adr_stack(L, idx);
+   TValue *p = index2adr_stack(L, idx);
    while (++p < L->top) copyTV(L, p - 1, p);
    L->top--;
 }
@@ -245,9 +245,42 @@ extern void lua_remove(lua_State *L, int idx)
 
 extern void lua_insert(lua_State *L, int idx)
 {
-   TValue * q, * p = index2adr_stack(L, idx);
+   TValue *q, *p = index2adr_stack(L, idx);
    for (q = L->top; q > p; q--) copyTV(L, q, q - 1);
    copyTV(L, p, L->top);
+}
+
+//********************************************************************************************************************
+// Rotate stack elements between idx and the top by n positions.
+// A positive n rotates towards the top (rightward); a negative n rotates towards the bottom (leftward).
+// For example, lua_rotate(L, 1, -4) moves elements at indices 1..4 to the top and shifts the rest down.
+
+extern void lua_rotate(lua_State *L, int idx, int n)
+{
+   TValue *p = index2adr_stack(L, idx);
+   TValue *t = L->top - 1;
+   int count = int(t - p) + 1;
+   lj_checkapi(count > 0, "empty stack segment for rotate");
+
+   // Normalise n into 0..count-1
+
+   n = ((n % count) + count) % count;
+   if (n IS 0) return;
+
+   // Three-reverse algorithm: reverse [p..t], reverse [p..p+n-1], reverse [p+n..t]
+
+   TValue tmp;
+   auto reverse = [&](TValue *lo, TValue *hi) {
+      for (; lo < hi; lo++, hi--) {
+         copyTV(L, &tmp, lo);
+         copyTV(L, lo, hi);
+         copyTV(L, hi, &tmp);
+      }
+   };
+
+   reverse(p, t);
+   reverse(p, p + n - 1);
+   reverse(p + n, t);
 }
 
 //********************************************************************************************************************

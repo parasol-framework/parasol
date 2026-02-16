@@ -272,10 +272,9 @@ static int thread_method(lua_State *Lua)
                   auto argbuffer = std::make_unique<int8_t[]>(argsize+8); // +8 for overflow protection in build_args()
                   int resultcount;
 
-                  lua_remove(Lua, 1); // Remove all 4 required arguments so that the user's custom parameters are then left on the stack
-                  lua_remove(Lua, 1);
-                  lua_remove(Lua, 1);
-                  lua_remove(Lua, 1);
+                  // Remove the first 4 required arguments so that the user's custom parameters are left on the stack.
+                  lua_rotate(Lua, 1, -4);
+                  lua_pop(Lua, 4);
                   if ((error = build_args(Lua, args, argsize, argbuffer.get(), &resultcount)) IS ERR::Okay) {
                      if (obj_ref->ptr) {
                         error = AsyncAction(action_id, obj_ref->ptr, argbuffer.get(), &callback);
