@@ -269,8 +269,10 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
                process_error(Self, "Action Subscription");
             }
 
-            log.traceBranch("Collecting garbage.");
-            lua_gc(prv->Lua, LUA_GCCOLLECT, 0);
+            if (lua_gc(prv->Lua, LUA_GCISRUNNING, 0)) {
+               log.traceBranch("Collecting garbage.");
+               lua_gc(prv->Lua, LUA_GCCOLLECT, 0);
+            }
          }
 
          SetResource(RES::LOG_DEPTH, depth);
@@ -328,9 +330,11 @@ static ERR TIRI_Activate(objScript *Self)
    }
 
    if (prv->Lua) {
-      pf::Log log;
-      log.traceBranch("Collecting garbage.");
-      lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
+      if (lua_gc(prv->Lua, LUA_GCISRUNNING, 0)) {
+         pf::Log log;
+         log.traceBranch("Collecting garbage.");
+         lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
+      }
    }
 
    return error;
@@ -405,7 +409,7 @@ static ERR TIRI_DataFeed(objScript *Self, struct acDataFeed *Args)
          it++;
       }
 
-      {
+      if (lua_gc(prv->Lua, LUA_GCISRUNNING, 0)) {
          pf::Log log;
          log.traceBranch("Collecting garbage.");
          lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector

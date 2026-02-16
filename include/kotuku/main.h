@@ -450,7 +450,9 @@ class GuardedResource {
 };
 
 //********************************************************************************************************************
-// Resource guard for temporarily switching context and back when out of scope.
+// Resource guard for temporarily switching context and back when out of scope.  NOTE: It also acquires a lock on the
+// target object, on the basis that we need to retain R/W access and prevent early termination while operating in the
+// object's space.  In cases where this is undesirable, use direct calls to SetObjectContext().
 //
 // Usage: pf::SwitchContext context(YourObject)
 

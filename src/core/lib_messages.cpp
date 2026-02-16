@@ -210,7 +210,9 @@ ERR ProcessMessages(PMF Flags, int TimeOut)
    if (!tlMainThread) return log.warning(ERR::OutsideMainThread);
 
    // Ensure that all resources allocated by sub-routines are assigned to the Task object by default.
-   pf::SwitchContext ctx(glCurrentTask);
+   // Note: Don't use SwitchContext here as it retains a lock on the task when we definitely don't actually want to.
+
+   SetObjectContext(glCurrentTask, nullptr, AC::NIL);
 
    // This recursion blocker prevents ProcessMessages() from being called to breaking point.  Excessive nesting can
    // occur on occasions where ProcessMessages() sends an action to an object that performs some activity before it
@@ -224,6 +226,7 @@ ERR ProcessMessages(PMF Flags, int TimeOut)
       //log.msg("Do not call this function when inside a notification routine.");
    }
    else if (tlMsgRecursion > 8) {
+      tlContext.pop_back();
       return ERR::Recursion;
    }
 
@@ -240,7 +243,10 @@ ERR ProcessMessages(PMF Flags, int TimeOut)
    ERR error;
 
    auto granted = std::unique_lock{glmMsgHandler}; // A persistent lock on message handlers is optimal
-   if (!granted) return log.warning(ERR::SystemLocked);
+   if (!granted) {
+      tlContext.pop_back();
+      return log.warning(ERR::SystemLocked);
+   }
 
    do { // Standard message handler for the core process.
       // Call all objects on the timer list (managed by SubscribeTimer()).  To manage timer locking cleanly, the loop
@@ -441,6 +447,7 @@ timer_cycle:
    if ((glTaskState IS TSTATE::STOPPING) and ((Flags & PMF::SYSTEM_NO_BREAK) IS PMF::NIL)) returncode = ERR::Terminate;
 
    tlMsgRecursion--;
+   tlContext.pop_back();
    return returncode;
 }
 
@@ -623,7 +630,10 @@ ERR WaitForObjects(PMF Flags, int TimeOut, ObjectSignal *ObjectSignals)
 
    log.branch("Flags: $%.8x, Timeout: %d, Signals: %p", int(Flags), TimeOut, ObjectSignals);
 
-   pf::SwitchContext ctx(glCurrentTask);
+   // Set the current task as the context to ensure predictable behaviour.  Note: Don't use SwitchContext here as
+   // it retains a lock on the task when we definitely don't actually want to.
+
+   SetObjectContext(glCurrentTask, nullptr, AC::NIL);
 
    auto error = ERR::Okay;
 
@@ -690,6 +700,8 @@ ERR WaitForObjects(PMF Flags, int TimeOut, ObjectSignal *ObjectSignals)
    if (!saved_list.empty()) std::swap(glWFOList, saved_list);
 
    if ((error > ERR::ExceptionThreshold) and (error != ERR::TimeOut)) log.warning(error);
+
+   tlContext.pop_back();
    return error;
 }
 
