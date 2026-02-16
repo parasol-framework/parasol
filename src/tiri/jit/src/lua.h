@@ -97,6 +97,7 @@ extern void  (lua_settop) (lua_State *L, int idx);
 extern void  (lua_pushvalue) (lua_State *L, int idx);
 extern void  (lua_remove) (lua_State *L, int idx);
 extern void  (lua_insert) (lua_State *L, int idx);
+extern void  (lua_rotate) (lua_State *L, int idx, int n);
 extern void  (lua_replace) (lua_State *L, int idx);
 extern int   (lua_checkstack) (lua_State *L, int sz);
 extern void  (lua_xmove) (lua_State *from, lua_State *to, int n);
