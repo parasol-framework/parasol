@@ -39,6 +39,8 @@ Executes a Script object in a separate thread.  `Script` must be a Kōtuku Scrip
 
 If `Callback` is provided, it executes on the main thread after the threaded script completes.  The callback receives no arguments.
 
+To check if the script failed during execution, check the `error` property on the Script object for `ERR_Okay` and read `errorMessage` to report details.
+
 [source,tiri]
 ----
 script = obj.new('script', {
@@ -46,7 +48,11 @@ script = obj.new('script', {
 })
 
 thread.script(script, function()
-   print('Thread has completed.')
+   if script.error != ERR_Okay then
+      print('Script failed: ' .. script.errorMessage)
+   else
+      print('Thread has completed.')
+   end
 end)
 ----
 
