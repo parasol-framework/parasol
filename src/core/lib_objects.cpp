@@ -448,6 +448,13 @@ ERR Action(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters)
       if (auto it = glSubscriptions.find(Object->UID); it != glSubscriptions.end()) {
          if (it->second.contains(int(ActionID))) {
             for (auto &list : it->second[int(ActionID)]) {
+               #ifdef _DEBUG
+               // Locked subscribers can sometimes warrant investigation
+               if ((int(ActionID) > 0) and list.Subscriber->locked()) {
+                  pf::Log(__FUNCTION__).msg("Notifying %s subscriber #%d (lock-status: %d) with action %s",
+                     list.Subscriber->className(), list.Subscriber->UID, list.Subscriber->locked(), ActionTable[int(ActionID)].Name);
+               }
+               #endif
                pf::SwitchContext ctx(list.Subscriber);
                list.Callback(Object, ActionID, (error IS ERR::NoAction) ? ERR::Okay : error, Parameters, list.Meta);
             }
