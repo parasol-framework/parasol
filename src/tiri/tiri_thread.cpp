@@ -266,6 +266,7 @@ static int thread_method(lua_State *Lua)
                   callback = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
                }
                else callback.Type = CALL::NIL;
+
                callback.Meta = APTR(lua_tointeger(Lua, 4));
 
                if (argsize > 0) {
