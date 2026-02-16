@@ -142,6 +142,9 @@ inline bool hasAnyYOffset(DMF Value) { return (Value & (DMF::SCALED_Y_OFFSET|DMF
 #define END_FIELD FieldArray(nullptr, 0)
 #define FDEF static const struct FunctionField
 
+// Locking system for when you have a) the object pointer and b) high confidence that it's alive.
+// Otherwise use ScopedObjectLock.
+
 class ScopedObjectAccess {
    private:
       OBJECTPTR obj;
@@ -208,10 +211,10 @@ struct Object { // Must be 64-bit aligned
    APTR     CreatorMeta;         // The creator of the object is permitted to store a custom data pointer here.
    struct Object *Owner;         // The owner of this object
    std::atomic_uint64_t NotifyFlags; // Action subscription flags - space for 64 actions max
-   std::atomic_uchar ThreadPending; // AsyncAction() increments this.
+   int8_t   ActionDepth;         // Incremented each time an action or method is called on the object
    std::atomic_char Queue;       // Counter of locks attained by LockObject(); decremented by ReleaseObject()
    std::atomic_char SleepQueue;  // For the use of LockObject() only
-   int8_t   ActionDepth;         // Incremented each time an action or method is called on the object
+   int8_t _unused01;             //
    OBJECTID UID;                 // Unique object identifier
    NF       Flags;               // Object flags
    std::atomic_int ThreadID;     // Managed by locking functions.  Atomic due to volatility.
@@ -219,20 +222,8 @@ struct Object { // Must be 64-bit aligned
 
    // NB: This constructor is called by NewObject(), no need to call it manually from client code.
 
-   Object() : NotifyFlags(0), ThreadPending(0), Queue(0), SleepQueue(0), ThreadID(0) {
-      Class = nullptr;
-      ChildPrivate = nullptr;
-      CreatorMeta = nullptr;
-      Owner = nullptr;
-      NotifyFlags = 0;
-      ThreadPending = 0;
-      Queue = 0;
-      SleepQueue = 0;
-      ActionDepth = 0;
-      UID = 0;
-      Flags = NF::NIL;
-      Name[0] = '\0';
-   }
+   Object() : Class(nullptr), ChildPrivate(nullptr), CreatorMeta(nullptr), Owner(nullptr), NotifyFlags(0),
+      ActionDepth(0), Queue(0), SleepQueue(0), UID(0), Flags(NF::NIL), ThreadID(0), Name("") { }
 
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
