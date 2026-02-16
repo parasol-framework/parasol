@@ -126,9 +126,6 @@ static ERR object_free(Object *Object)
 
    extObjectContext new_context(Object, AC::Free);
 
-   // Drain any pending queued actions before freeing the object.
-   drain_action_queue(Object->UID);
-
    auto mc = Object->ExtClass;
    if (not mc) {
       log.trace("Object %p #%d is missing its class pointer.", Object, Object->UID);
@@ -199,6 +196,10 @@ static ERR object_free(Object *Object)
          }
       }
    }
+
+   // Object destruction is guaranteed; queued async actions can be cancelled safely.
+
+   drain_action_queue(Object->UID);
 
    // Mark the object as being in the free process.  The mark prevents any further access to the object via
    // AccessObject().  Classes may also use the flag to check if an object is in the process of being freed.
@@ -593,6 +594,18 @@ void dispatch_queued_action(OBJECTID ObjectID)
    auto obj = GetObjectPtr(next.ObjectUID);
    if (not obj or obj->terminating() or obj->collecting()) {
       if (obj) --obj->ThreadPending;
+
+      if (next.Callback.defined()) {
+         ThreadActionMessage msg = {
+            .Object    = nullptr,
+            .ActionID  = next.ActionID,
+            .ObjectUID = ObjectID,
+            .Error     = ERR::DoesNotExist,
+            .Callback  = next.Callback
+         };
+         SendMessage(MSGID::THREAD_ACTION, MSF::NIL, &msg, sizeof(msg));
+      }
+
       drain_action_queue(ObjectID);
       return;
    }
@@ -643,8 +656,8 @@ void drain_action_queue(OBJECTID ObjectID)
 // Helper to launch an async action thread for an object.  The caller must have already incremented
 // Object->ThreadPending before calling this.
 
-static void launch_async_thread(OBJECTPTR Object, AC ActionID, int ArgsSize,
-   std::vector<int8_t> Parameters, FUNCTION Callback)
+static void launch_async_thread(OBJECTPTR Object, AC ActionID, int ArgsSize, std::vector<int8_t> Parameters,
+   FUNCTION Callback)
 {
    auto object_uid = Object->UID;
 
@@ -695,7 +708,7 @@ static void launch_async_thread(OBJECTPTR Object, AC ActionID, int ArgsSize,
             .Object    = obj,
             .ActionID  = ActionID,
             .ObjectUID = object_uid,
-            .Key       = int((intptr_t)Callback.Meta),
+            .Key       = Callback.defined() ? int((intptr_t)Callback.Meta) : 0,
             .Error     = error,
             .Callback  = Callback
          };
