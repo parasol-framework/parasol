@@ -291,6 +291,7 @@ int64_t GetResource(RES Resource)
       case RES::THREAD_ID:       return int(get_thread_id());
       case RES::CORE_IDL:        return (MAXINT)glIDL;
       case RES::DISPLAY_DRIVER:  if (!glDisplayDriver.empty()) return (MAXINT)glDisplayDriver.c_str(); else return 0;
+      case RES::MAIN_THREAD:     return tlMainThread ? true : false;
 
       case RES::MEMORY_USAGE: {
          #ifdef __linux__

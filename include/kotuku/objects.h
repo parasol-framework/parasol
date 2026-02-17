@@ -233,24 +233,29 @@ struct Object { // Must be 64-bit aligned
    inline CLASSID baseClassID();
    inline NF flags() { return Flags; }
 
+   // Pinning an object provides a strong hint that the object is referenced by a variable, stored in a container, or needed by a thread.
+   // Pinned objects will short-circuit ReleaseObject's automatic free-on-unlock feature, making it necessary to manually call freeIfReady()
+   // after calls to unpin().
+   // Pinning does not guarantee anything; objects can still be immediately terminated if their parent is removed.
+
    inline void pin() { RefCount++; }
    inline void unpin() { if (RefCount > 0) RefCount--; }
    inline bool isPinned() { return RefCount > 0; }
 
    inline void freeIfReady() {
-      if ((RefCount IS 0) and (Queue IS 0) and ((Flags & NF::FREE_ON_UNLOCK) != NF::NIL)) {
-         FreeResource(this);
+      if ((RefCount IS 0) and (Queue IS 0) and defined(NF::FREE_ON_UNLOCK)) {
+         FreeResource(this->UID);
       }
    }
 
    CSTRING className();
 
    inline bool collecting() { // Is object being freed or marked for collection?
-      return (Flags & (NF::FREE|NF::COLLECT|NF::FREE_ON_UNLOCK)) != NF::NIL;
+      return defined(NF::FREE|NF::COLLECT|NF::FREE_ON_UNLOCK);
    }
 
    inline bool terminating() { // Is object currently being freed?
-      return (Flags & NF::FREE) != NF::NIL;
+      return defined(NF::FREE);
    }
 
    // Use lock() to quickly obtain an object lock without a call to LockObject().  Can fail if the object is being collected.

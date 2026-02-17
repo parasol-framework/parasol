@@ -286,6 +286,7 @@ NullArgs: Invalid memory identifier provided.
 InvalidData: Memory corruption detected - header or trailer markers are damaged.
 MemoryDoesNotExist: The specified memory block identifier is not valid or already freed.
 SystemLocked: Memory management system is currently locked by another thread.
+InUse: The memory block is a busy managed resource.  The removal behaviour rules are dependent on the manager (automatic termination may be employed).
 -END-
 
 *********************************************************************************************************************/
@@ -313,10 +314,13 @@ ERR FreeResource(MEMORYID MemoryID)
                start_mem -= sizeof(ResourceManager *);
                if (!glCrashStatus) { // Resource managers are not considered safe in an uncontrolled shutdown
                   auto rm = ((ResourceManager **)start_mem)[0];
+                  lock.unlock(); // Resource managers can wait on other locks, so drop the memory lock to prevent deadlocking
                   if (rm->Free((APTR)mem.Address) IS ERR::InUse) {
-                     // Memory block is in use - the manager will be entrusted to handle this situation appropriately.
-                     return ERR::Okay;
+                     // Memory block is in use. Given that the AccessCount is 0, it is assumed that the resource
+                     // manager has complex needs and will be able to handle this situation appropriately.
+                     return ERR::InUse;
                   }
+                  lock.lock();
                }
             }
 

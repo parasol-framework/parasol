@@ -29,11 +29,10 @@ variables with its creator, except via existing conventional means such as a Key
 #include "defs.h"
 #include "lj_proto_registry.h"
 
-// Message payload for thread.script() callbacks, carrying both the FUNCTION and the GCobject registry reference.
+// Message payload for thread.script() callbacks
 
 struct ThreadScriptMsg {
    FUNCTION Callback;
-   GCobject *GCScript; // The GCobject for the thread's script, still under lock
    objScript *Owner;   // The parent script that owns the registry references
    int ObjRef;         // Registry reference that pins the GCobject from GC collection
 };
@@ -41,8 +40,9 @@ struct ThreadScriptMsg {
 //********************************************************************************************************************
 // Usage: thread.script(Script, Callback)
 //
-// This threading implementation acquires a lock on a Script object and then executes it in its own thread.  The lock
-// is retained until the thread is complete.
+// Pins the Script object to prevent premature destruction, then executes it in its own thread.  The pin is
+// released when the thread completes and the callback message is processed on the main thread.  No object lock
+// is held across the thread boundary — acActivate() acquires its own lock internally via ScopedObjectAccess.
 
 static int thread_script(lua_State *Lua)
 {
@@ -54,33 +54,39 @@ static int thread_script(lua_State *Lua)
          luaL_error(Lua, ERR::WrongClass);
       }
 
-      if (access_object(gc_script)) { // This lock will be retained until the thread stops
-         FUNCTION callback;
-         if (lua_isfunction(Lua, 2)) {
-            lua_pushvalue(Lua, 2);
-            callback = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
-         }
-
-         // Pin the GCobject in the registry so the GC cannot collect it while the thread is running.
-         lua_pushvalue(Lua, 1);
-         int obj_ref = luaL_ref(Lua, LUA_REGISTRYINDEX);
-
-         auto prv = (prvTiri *)Lua->script->ChildPrivate;
-         prv->Threads.emplace_back(std::make_unique<std::jthread>(std::jthread(
-            [](GCobject *Script, FUNCTION Callback, objScript *Owner, int ObjRef) {
-            Script->ptr->transferLock(); // Transfer the lock to this thread so that Activate() works.
-            acActivate(Script->ptr);
-
-            pf::Log("thread_script").trace("Client thread has completed.  Callback: %c", Callback.isScript() ? 'Y' : 'N');
-
-            // All cleanup (release_object, luaL_unref) must happen on the main thread to
-            // avoid racing with the Lua GC.  Send a message regardless of whether a callback exists.
-
-            ThreadScriptMsg msg { Callback, Script, Owner, ObjRef };
-            SendMessage(MSGID::TIRI_THREAD_CALLBACK, MSF::NIL, &msg, sizeof(msg));
-         }, gc_script, std::move(callback), Lua->script, obj_ref)));
+      if (not gc_script->ptr) {
+         luaL_error(Lua, ERR::ObjectCorrupt);
+         return 0;
       }
-      else luaL_error(Lua, ERR::AccessObject);
+
+      log.msg("Entering thread for script #%d.", gc_script->uid);
+
+      gc_script->ptr->pin(); // Prevent the object from being freed while the thread is running.
+
+      FUNCTION callback;
+      if (lua_isfunction(Lua, 2)) {
+         lua_pushvalue(Lua, 2);
+         callback = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+      }
+
+      // Pin the GCobject in the registry so the GC cannot collect it while the thread is running.
+      lua_pushvalue(Lua, 1);
+      int obj_ref = luaL_ref(Lua, LUA_REGISTRYINDEX);
+
+      auto prv = (prvTiri *)Lua->script->ChildPrivate;
+      Lua->flush_count++;
+
+      prv->Threads.emplace_back(std::make_unique<std::jthread>(std::jthread(
+         [](OBJECTPTR Script, FUNCTION Callback, objScript *Owner, int ObjRef) {
+
+         acActivate(Script);
+
+         // All cleanup (unpin, luaL_unref) must happen on the main thread to
+         // avoid racing with the Lua GC.  Send a message regardless of whether a callback exists.
+
+         ThreadScriptMsg msg { Callback, Owner, ObjRef };
+         SendMessage(MSGID::TIRI_THREAD_CALLBACK, MSF::NIL, &msg, sizeof(msg));
+      }, gc_script->ptr, std::move(callback), Lua->script, obj_ref)));
    }
    else luaL_argerror(Lua, 1, "Script object required.");
 
@@ -95,30 +101,28 @@ ERR msg_thread_script_callback(APTR Custom, int MsgID, int MsgType, APTR Message
    pf::Log log("thread_callback");
 
    auto msg = (ThreadScriptMsg *)Message;
-   auto gc_script = msg->GCScript;
+   auto this_script = (objScript *)msg->Owner;
+   auto prv = (prvTiri *)this_script->ChildPrivate;
+   prv->Lua->flush_count--;
 
-   ((objScript *)gc_script->ptr)->transferLock(); // Return the lock on the script object back to this thread
-
-   if (msg->Callback.isScript()) {
-      auto this_script = (objScript *)msg->Callback.Context;
-
-      pf::Log("thread_callback").trace("Callback received for script #%d, procedure %" PRId64,
-         ((objScript *)gc_script->ptr)->UID, msg->Callback.ProcedureID);
-
+   if (msg->Callback.defined()) {
       this_script->callback(msg->Callback.ProcedureID, nullptr, 0, nullptr);
-
-      // Drop the procedure reference
-
-      auto prv = (prvTiri *)this_script->ChildPrivate;
-      luaL_unref(prv->Lua, LUA_REGISTRYINDEX, msg->Callback.ProcedureID);
+      luaL_unref(prv->Lua, LUA_REGISTRYINDEX, msg->Callback.ProcedureID); // Drop the procedure reference
    }
 
-   // Unpin the GCobject from the registry and release the object lock
+   // Unpin the GCobject from the registry and release the pin on the underlying object.
 
-   auto prv = (prvTiri *)msg->Owner->ChildPrivate;
-   luaL_unref(prv->Lua, LUA_REGISTRYINDEX, msg->ObjRef);
+   int obj_ref = msg->ObjRef;
+   lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, obj_ref);
+   auto gc_script = lua_toobject(prv->Lua, -1);
+   lua_pop(prv->Lua, 1);
+   luaL_unref(prv->Lua, LUA_REGISTRYINDEX, obj_ref);
 
-   release_object(gc_script);
+   if (gc_script and gc_script->ptr) {
+      gc_script->ptr->unpin();
+      gc_script->ptr->freeIfReady();
+   }
+
    return ERR::Okay;
 }
 

@@ -946,7 +946,9 @@ static int object_free(lua_State *Lua)
 {
    auto def = object_context(Lua);
 
-   FreeResource(def->uid);
+   if (FreeResource(def->uid) IS ERR::InUse) {
+      return 0;
+   }
 
    def->uid = 0;
    def->ptr = nullptr;
