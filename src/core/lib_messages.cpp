@@ -210,7 +210,7 @@ ERR ProcessMessages(PMF Flags, int TimeOut)
    if (!tlMainThread) return log.warning(ERR::OutsideMainThread);
 
    // Ensure that all resources allocated by sub-routines are assigned to the Task object by default.
-   // Note: Don't use SwitchContext here as it retains a lock on the task when we definitely don't actually want to.
+   // Note: Don't use SwitchContext here as it retains a permanent lock on the task (client threads need access to it).
 
    SetObjectContext(glCurrentTask, nullptr, AC::NIL);
 

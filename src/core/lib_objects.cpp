@@ -409,7 +409,7 @@ ERR Action(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters)
    Object->ActionDepth++;
    auto cl = Object->ExtClass;
    
-   #ifdef NDEBUG
+   #ifndef NDEBUG
    auto queue_on_entry = Object->Queue.load();
    #endif
 
@@ -442,7 +442,7 @@ ERR Action(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters)
       }
    }
    
-   #ifdef NDEBUG
+   #ifndef NDEBUG
    assert(Object->Queue.load() IS queue_on_entry);
    #endif
 

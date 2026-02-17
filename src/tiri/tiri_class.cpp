@@ -1024,7 +1024,7 @@ static ERR run_script(objScript *Self)
       // Flush pending thread callback messages before returning.  Loop until all child threads have
       // reported back, as some may not have sent their message yet.
 
-      if ((prv->Lua->flush_count > 0) and GetResource(RES::MAIN_THREAD)) {
+      if ((prv->Recurse IS 1) and (prv->Lua->flush_count > 0) and GetResource(RES::MAIN_THREAD)) {
          while (prv->Lua->flush_count > 0) ProcessMessages(PMF::NIL, 100);
       }
 
@@ -1037,7 +1037,7 @@ static ERR run_script(objScript *Self)
 
       if (CurrentContext() != Self) abort(); // A C++ exception was caught by Lua - the software stack is unstable so we must abort.
 
-      if ((prv->Lua->flush_count > 0) and GetResource(RES::MAIN_THREAD)) {
+      if ((prv->Recurse IS 1) and (prv->Lua->flush_count > 0) and GetResource(RES::MAIN_THREAD)) {
          while (prv->Lua->flush_count > 0) ProcessMessages(PMF::NIL, 100);
       }
 

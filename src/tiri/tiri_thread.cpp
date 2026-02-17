@@ -69,7 +69,7 @@ static int thread_script(lua_State *Lua)
          callback = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
       }
 
-      // Pin the GCobject in the registry so the GC cannot collect it while the thread is running.
+      // Pin the script in the registry so the GC cannot collect it while the thread is running.
       lua_pushvalue(Lua, 1);
       int obj_ref = luaL_ref(Lua, LUA_REGISTRYINDEX);
 

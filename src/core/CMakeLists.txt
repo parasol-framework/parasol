@@ -91,10 +91,6 @@ endif ()
 
 add_library (core)
 
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-   target_compile_definitions(core PRIVATE "NDEBUG")
-endif ()
-
 target_compile_definitions (core PRIVATE "__system__" "DBG_DIAGNOSTICS" "PRV_METACLASS")
 
 if (MSVC)
