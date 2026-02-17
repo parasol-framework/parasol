@@ -20,6 +20,7 @@ variables with its creator, except via existing conventional means such as a Key
 #include <kotuku/modules/tiri.h>
 #include <kotuku/strings.hpp>
 #include <thread>
+#include <cassert>
 
 #include "lib.h"
 #include "lauxlib.h"
@@ -61,6 +62,11 @@ static int thread_script(lua_State *Lua)
 
       log.msg("Entering thread for script #%d.", gc_script->uid);
 
+      #ifndef NDEBUG
+      auto stack_top = lua_gettop(Lua);
+      auto ref_count_on_entry = gc_script->ptr->RefCount.load();
+      #endif
+
       gc_script->ptr->pin(); // Prevent the object from being freed while the thread is running.
 
       FUNCTION callback;
@@ -72,6 +78,11 @@ static int thread_script(lua_State *Lua)
       // Pin the script in the registry so the GC cannot collect it while the thread is running.
       lua_pushvalue(Lua, 1);
       int obj_ref = luaL_ref(Lua, LUA_REGISTRYINDEX);
+
+      #ifndef NDEBUG
+      assert(lua_gettop(Lua) IS stack_top); // Registry refs should not alter the stack
+      assert(gc_script->ptr->RefCount.load() IS ref_count_on_entry + 1);
+      #endif
 
       auto prv = (prvTiri *)Lua->script->ChildPrivate;
       Lua->flush_count++;
@@ -103,6 +114,12 @@ ERR msg_thread_script_callback(APTR Custom, int MsgID, int MsgType, APTR Message
    auto msg = (ThreadScriptMsg *)Message;
    auto this_script = (objScript *)msg->Owner;
    auto prv = (prvTiri *)this_script->ChildPrivate;
+
+   #ifndef NDEBUG
+   auto stack_top = lua_gettop(prv->Lua);
+   auto flush_count_on_entry = prv->Lua->flush_count;
+   #endif
+
    prv->Lua->flush_count--;
 
    if (msg->Callback.defined()) {
@@ -119,9 +136,19 @@ ERR msg_thread_script_callback(APTR Custom, int MsgID, int MsgType, APTR Message
    luaL_unref(prv->Lua, LUA_REGISTRYINDEX, obj_ref);
 
    if (gc_script and gc_script->ptr) {
+      #ifndef NDEBUG
+      auto ref_count_before_unpin = gc_script->ptr->RefCount.load();
+      assert(ref_count_before_unpin > 0); // Must still be pinned from thread_script()
+      #endif
+
       gc_script->ptr->unpin();
       gc_script->ptr->freeIfReady();
    }
+
+   #ifndef NDEBUG
+   assert(lua_gettop(prv->Lua) IS stack_top); // Stack must be balanced after callback and unref operations
+   assert(prv->Lua->flush_count IS flush_count_on_entry - 1);
+   #endif
 
    return ERR::Okay;
 }
@@ -132,6 +159,10 @@ ERR msg_thread_script_callback(APTR Custom, int MsgID, int MsgType, APTR Message
 static int thread_action(lua_State *Lua)
 {
    pf::Log log(__FUNCTION__);
+
+   #ifndef NDEBUG
+   auto stack_top = lua_gettop(Lua);
+   #endif
 
    // Args: Object (1), Action (2), Callback (3), Key (4), Parameters...
 
@@ -229,6 +260,10 @@ static int thread_action(lua_State *Lua)
       luaL_error(Lua, error);
    }
 
+   #ifndef NDEBUG
+   assert(lua_gettop(Lua) IS stack_top); // Stack must be balanced after async dispatch
+   #endif
+
    return 0;
 }
 
@@ -238,6 +273,10 @@ static int thread_action(lua_State *Lua)
 static int thread_method(lua_State *Lua)
 {
    pf::Log log(__FUNCTION__);
+
+   #ifndef NDEBUG
+   auto stack_top = lua_gettop(Lua);
+   #endif
 
    // Args: Object (1), Action (2), Callback (3), Key (4), Parameters...
 
@@ -319,6 +358,13 @@ static int thread_method(lua_State *Lua)
                   if (callback.defined()) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
                   luaL_error(Lua, error);
                }
+
+               #ifndef NDEBUG
+               // After the lua_rotate/lua_pop of 4 args, the stack should have shrunk accordingly.
+               // For the no-args path the stack is unchanged; for the args path it lost 4 entries.
+               if (argsize > 0) assert(lua_gettop(Lua) IS stack_top - 4);
+               else assert(lua_gettop(Lua) IS stack_top);
+               #endif
 
                return 0;
             }

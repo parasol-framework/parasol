@@ -109,34 +109,34 @@ struct FieldValue {
 namespace dmf { // Helper functions for DMF flags
 inline bool has(DMF Value, DMF Flags) { return (Value & Flags) != DMF::NIL; }
 
-inline bool hasX(DMF Value) { return (Value & DMF::FIXED_X) != DMF::NIL; }
-inline bool hasY(DMF Value) { return (Value & DMF::FIXED_Y) != DMF::NIL; }
-inline bool hasWidth(DMF Value) { return (Value & DMF::FIXED_WIDTH) != DMF::NIL; }
-inline bool hasHeight(DMF Value) { return (Value & DMF::FIXED_HEIGHT) != DMF::NIL; }
-inline bool hasXOffset(DMF Value) { return (Value & DMF::FIXED_X_OFFSET) != DMF::NIL; }
-inline bool hasYOffset(DMF Value) { return (Value & DMF::FIXED_Y_OFFSET) != DMF::NIL; }
-inline bool hasRadiusX(DMF Value) { return (Value & DMF::FIXED_RADIUS_X) != DMF::NIL; }
-inline bool hasRadiusY(DMF Value) { return (Value & DMF::FIXED_RADIUS_Y) != DMF::NIL; }
-inline bool hasScaledX(DMF Value) { return (Value & DMF::SCALED_X) != DMF::NIL; }
-inline bool hasScaledY(DMF Value) { return (Value & DMF::SCALED_Y) != DMF::NIL; }
-inline bool hasScaledWidth(DMF Value) { return (Value & DMF::SCALED_WIDTH) != DMF::NIL; }
-inline bool hasScaledHeight(DMF Value) { return (Value & DMF::SCALED_HEIGHT) != DMF::NIL; }
-inline bool hasScaledXOffset(DMF Value) { return (Value & DMF::SCALED_X_OFFSET) != DMF::NIL; }
-inline bool hasScaledYOffset(DMF Value) { return (Value & DMF::SCALED_Y_OFFSET) != DMF::NIL; }
-inline bool hasScaledCenterX(DMF Value) { return (Value & DMF::SCALED_CENTER_X) != DMF::NIL; }
-inline bool hasScaledCenterY(DMF Value) { return (Value & DMF::SCALED_CENTER_Y) != DMF::NIL; }
-inline bool hasScaledRadiusX(DMF Value) { return (Value & DMF::SCALED_RADIUS_X) != DMF::NIL; }
-inline bool hasScaledRadiusY(DMF Value) { return (Value & DMF::SCALED_RADIUS_Y) != DMF::NIL; }
+[[nodiscard]] inline bool hasX(DMF Value) { return (Value & DMF::FIXED_X) != DMF::NIL; }
+[[nodiscard]] inline bool hasY(DMF Value) { return (Value & DMF::FIXED_Y) != DMF::NIL; }
+[[nodiscard]] inline bool hasWidth(DMF Value) { return (Value & DMF::FIXED_WIDTH) != DMF::NIL; }
+[[nodiscard]] inline bool hasHeight(DMF Value) { return (Value & DMF::FIXED_HEIGHT) != DMF::NIL; }
+[[nodiscard]] inline bool hasXOffset(DMF Value) { return (Value & DMF::FIXED_X_OFFSET) != DMF::NIL; }
+[[nodiscard]] inline bool hasYOffset(DMF Value) { return (Value & DMF::FIXED_Y_OFFSET) != DMF::NIL; }
+[[nodiscard]] inline bool hasRadiusX(DMF Value) { return (Value & DMF::FIXED_RADIUS_X) != DMF::NIL; }
+[[nodiscard]] inline bool hasRadiusY(DMF Value) { return (Value & DMF::FIXED_RADIUS_Y) != DMF::NIL; }
+[[nodiscard]] inline bool hasScaledX(DMF Value) { return (Value & DMF::SCALED_X) != DMF::NIL; }
+[[nodiscard]] inline bool hasScaledY(DMF Value) { return (Value & DMF::SCALED_Y) != DMF::NIL; }
+[[nodiscard]] inline bool hasScaledWidth(DMF Value) { return (Value & DMF::SCALED_WIDTH) != DMF::NIL; }
+[[nodiscard]] inline bool hasScaledHeight(DMF Value) { return (Value & DMF::SCALED_HEIGHT) != DMF::NIL; }
+[[nodiscard]] inline bool hasScaledXOffset(DMF Value) { return (Value & DMF::SCALED_X_OFFSET) != DMF::NIL; }
+[[nodiscard]] inline bool hasScaledYOffset(DMF Value) { return (Value & DMF::SCALED_Y_OFFSET) != DMF::NIL; }
+[[nodiscard]] inline bool hasScaledCenterX(DMF Value) { return (Value & DMF::SCALED_CENTER_X) != DMF::NIL; }
+[[nodiscard]] inline bool hasScaledCenterY(DMF Value) { return (Value & DMF::SCALED_CENTER_Y) != DMF::NIL; }
+[[nodiscard]] inline bool hasScaledRadiusX(DMF Value) { return (Value & DMF::SCALED_RADIUS_X) != DMF::NIL; }
+[[nodiscard]] inline bool hasScaledRadiusY(DMF Value) { return (Value & DMF::SCALED_RADIUS_Y) != DMF::NIL; }
 
-inline bool hasAnyHorizontalPosition(DMF Value) { return (Value & (DMF::FIXED_X|DMF::SCALED_X|DMF::FIXED_X_OFFSET|DMF::SCALED_X_OFFSET)) != DMF::NIL; }
-inline bool hasAnyVerticalPosition(DMF Value) { return (Value & (DMF::FIXED_Y|DMF::SCALED_Y|DMF::FIXED_Y_OFFSET|DMF::SCALED_Y_OFFSET)) != DMF::NIL; }
-inline bool hasAnyScaledRadius(DMF Value) { return (Value & (DMF::SCALED_RADIUS_X|DMF::SCALED_RADIUS_Y)) != DMF::NIL; }
-inline bool hasAnyX(DMF Value) { return (Value & (DMF::SCALED_X|DMF::FIXED_X)) != DMF::NIL; }
-inline bool hasAnyY(DMF Value) { return (Value & (DMF::SCALED_Y|DMF::FIXED_Y)) != DMF::NIL; }
-inline bool hasAnyWidth(DMF Value) { return (Value & (DMF::SCALED_WIDTH|DMF::FIXED_WIDTH)) != DMF::NIL; }
-inline bool hasAnyHeight(DMF Value) { return (Value & (DMF::SCALED_HEIGHT|DMF::FIXED_HEIGHT)) != DMF::NIL; }
-inline bool hasAnyXOffset(DMF Value) { return (Value & (DMF::SCALED_X_OFFSET|DMF::FIXED_X_OFFSET)) != DMF::NIL; }
-inline bool hasAnyYOffset(DMF Value) { return (Value & (DMF::SCALED_Y_OFFSET|DMF::FIXED_Y_OFFSET)) != DMF::NIL; }
+[[nodiscard]] inline bool hasAnyHorizontalPosition(DMF Value) { return (Value & (DMF::FIXED_X|DMF::SCALED_X|DMF::FIXED_X_OFFSET|DMF::SCALED_X_OFFSET)) != DMF::NIL; }
+[[nodiscard]] inline bool hasAnyVerticalPosition(DMF Value) { return (Value & (DMF::FIXED_Y|DMF::SCALED_Y|DMF::FIXED_Y_OFFSET|DMF::SCALED_Y_OFFSET)) != DMF::NIL; }
+[[nodiscard]] inline bool hasAnyScaledRadius(DMF Value) { return (Value & (DMF::SCALED_RADIUS_X|DMF::SCALED_RADIUS_Y)) != DMF::NIL; }
+[[nodiscard]] inline bool hasAnyX(DMF Value) { return (Value & (DMF::SCALED_X|DMF::FIXED_X)) != DMF::NIL; }
+[[nodiscard]] inline bool hasAnyY(DMF Value) { return (Value & (DMF::SCALED_Y|DMF::FIXED_Y)) != DMF::NIL; }
+[[nodiscard]] inline bool hasAnyWidth(DMF Value) { return (Value & (DMF::SCALED_WIDTH|DMF::FIXED_WIDTH)) != DMF::NIL; }
+[[nodiscard]] inline bool hasAnyHeight(DMF Value) { return (Value & (DMF::SCALED_HEIGHT|DMF::FIXED_HEIGHT)) != DMF::NIL; }
+[[nodiscard]] inline bool hasAnyXOffset(DMF Value) { return (Value & (DMF::SCALED_X_OFFSET|DMF::FIXED_X_OFFSET)) != DMF::NIL; }
+[[nodiscard]] inline bool hasAnyYOffset(DMF Value) { return (Value & (DMF::SCALED_Y_OFFSET|DMF::FIXED_Y_OFFSET)) != DMF::NIL; }
 }
 
 #define END_FIELD FieldArray(nullptr, 0)
@@ -225,36 +225,58 @@ struct Object { // Must be 64-bit aligned
    Object() : Class(nullptr), ChildPrivate(nullptr), CreatorMeta(nullptr), Owner(nullptr), NotifyFlags(0),
       ActionDepth(0), Queue(0), SleepQueue(0), RefCount(0), UID(0), Flags(NF::NIL), ThreadID(0), Name("") { }
 
-   inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
-   inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
-   inline bool isSubClass();
-   inline OBJECTID ownerID() { return Owner ? Owner->UID : 0; }
-   inline CLASSID classID();
-   inline CLASSID baseClassID();
-   inline NF flags() { return Flags; }
+   [[nodiscard]] inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
+   [[nodiscard]] inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
+   [[nodiscard]] inline bool isSubClass();
+   [[nodiscard]] inline OBJECTID ownerID() { return Owner ? Owner->UID : 0; }
+   [[nodiscard]] inline CLASSID classID();
+   [[nodiscard]] inline CLASSID baseClassID();
+   [[nodiscard]] inline NF flags() { return Flags; }
 
    // Pinning an object provides a strong hint that the object is referenced by a variable, stored in a container, or needed by a thread.
    // Pinned objects will short-circuit ReleaseObject's automatic free-on-unlock feature, making it necessary to manually call freeIfReady()
    // after calls to unpin().
    // Pinning does not guarantee anything; objects can still be immediately terminated if their parent is removed.
 
-   inline void pin() { RefCount++; }
-   inline void unpin() { if (RefCount > 0) RefCount--; }
-   inline bool isPinned() { return RefCount > 0; }
-
-   inline void freeIfReady() {
-      if ((RefCount IS 0) and (Queue IS 0) and defined(NF::FREE_ON_UNLOCK)) {
-         FreeResource(this->UID);
+   inline void pin() {
+      #ifdef _DEBUG
+      if (RefCount.load() >= 254) {
+         pf::Log log("pin");
+         log.warning("RefCount overflow risk for object #%d (%s), count: %d", UID, className(), RefCount.load());
+         DEBUG_BREAK
       }
+      #endif
+      RefCount++;
    }
 
-   CSTRING className();
+   inline void unpin() {
+      #ifdef _DEBUG
+      if (RefCount.load() IS 0) {
+         pf::Log log("unpin");
+         log.warning("Unbalanced unpin() on object #%d (%s) - RefCount is already 0.", UID, className());
+         DEBUG_BREAK
+      }
+      #endif
+      if (RefCount > 0) RefCount--;
+   }
 
-   inline bool collecting() { // Is object being freed or marked for collection?
+   [[nodiscard]] inline bool isPinned() { return RefCount > 0; }
+
+   inline bool freeIfReady() {
+      if ((RefCount IS 0) and (Queue IS 0) and defined(NF::FREE_ON_UNLOCK)) {
+         FreeResource(this->UID);
+         return true;
+      }
+      else return false;
+   }
+
+   [[nodiscard]] CSTRING className();
+
+   [[nodiscard]] inline bool collecting() { // Is object being freed or marked for collection?
       return defined(NF::FREE|NF::COLLECT|NF::FREE_ON_UNLOCK);
    }
 
-   inline bool terminating() { // Is object currently being freed?
+   [[nodiscard]] inline bool terminating() { // Is object currently being freed?
       return defined(NF::FREE);
    }
 
@@ -283,11 +305,11 @@ struct Object { // Must be 64-bit aligned
       else --Queue;
    }
 
-   inline bool locked() {
+   [[nodiscard]] inline bool locked() {
       return Queue > 0;
    }
 
-   inline bool hasOwner(OBJECTID ID) { // Return true if ID has ownership.
+   [[nodiscard]] inline bool hasOwner(OBJECTID ID) { // Return true if ID has ownership.
       auto obj = this->Owner;
       while ((obj) and (obj->UID != ID)) obj = obj->Owner;
       return obj ? true : false;

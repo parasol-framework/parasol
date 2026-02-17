@@ -622,7 +622,7 @@ static ERR TIRI_Query(objScript *Self)
 
    if (not Self->ActivationCount) {
       // Announce once only to limit log noise
-      log.branch("Target: %d, Procedure: %s / ID #%" PRId64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", (long long)Self->ProcedureID);
+      log.branch("Target: %d, Procedure: %s / ID #%" PRId64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", Self->ProcedureID);
    }
 
    Self->CurrentLine = -1;
