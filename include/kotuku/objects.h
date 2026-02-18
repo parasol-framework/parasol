@@ -391,6 +391,11 @@ struct Object { // Must be 64-bit aligned
 
    // set() support for numeric types
 
+   // Bool overload: promote to int to avoid reading 4 bytes from a 1-byte bool in setval_long
+   inline ERR set(FIELD FieldID, const bool Value) {
+      return set(FieldID, int(Value));
+   }
+
    template <class T> ERR set(FIELD FieldID, const T Value) requires std::integral<T> || std::floating_point<T> {
       Object *target;
       if (auto field = FindField(this, FieldID, &target)) {
