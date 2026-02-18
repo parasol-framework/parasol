@@ -422,7 +422,7 @@ gui.toolbar = function(Options)
 
       sticker_size = math.floor(self._iconSize * 0.5)
 
-      if not item.sticker then item.sticker = { } end
+      item.sticker ?= { }
 
       if not item.sticker.viewport then
          item.sticker.viewport = self.viewport.new('VectorViewport', {
@@ -647,7 +647,7 @@ gui.toolbar = function(Options)
       self._groupMargin = 0
    end
 
-   if self.viewport.init() != ERR_Okay then error('Failed to initialise viewport.') end
+   check self.viewport.init()
 
    self.viewport.subscribe('free', function(Viewport, Args)
       if self._tipTimer then mSys.UpdateTimer(self._tipTimer, 0) end
@@ -678,7 +678,7 @@ gui.toolbar = function(Options)
                while scan and (scan.type != TI_ICON) do
                   scan = scan.prev
                end
-               if not scan then scan = lastIcon() end
+               scan ?= lastIcon()
                highlightItem(scan)
             else
                highlightItem(firstIcon())
@@ -689,7 +689,7 @@ gui.toolbar = function(Options)
                while scan and (scan.type != TI_ICON) do
                   scan = scan.next
                end
-               if not scan then scan = firstIcon() end
+               scan ?= firstIcon()
                highlightItem(scan)
             else
                highlightItem(firstIcon())
