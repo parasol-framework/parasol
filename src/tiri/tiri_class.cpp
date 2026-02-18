@@ -121,23 +121,6 @@ static const ActionArray clActions[] = {
 };
 
 //********************************************************************************************************************
-// NOTE: Be aware that this function can be called by Activate() to perform a complete state reset.
-
-static void free_all(objScript *Self)
-{
-   auto prv = (prvTiri *)Self->ChildPrivate;
-   if (not prv) return; // Not a problem - indicates the object did not pass initialisation
-
-   if (prv->FocusEventHandle) { UnsubscribeEvent(prv->FocusEventHandle); prv->FocusEventHandle = nullptr; }
-
-   auto lua = prv->Lua;
-   prv->~prvTiri();
-
-   lua_close(lua);
-   prv->Lua = nullptr;
-}
-
-//********************************************************************************************************************
 // Only to be used immediately after a failed lua_pcall().  Lua stores a description of the error that occurred on the
 // stack, this will be popped and copied to the ErrorMessage field.
 
@@ -298,9 +281,9 @@ static ERR TIRI_Activate(objScript *Self)
       return ERR::Okay; // Do nothing, script is running.
    }
 
-   ERR error = ERR::Failed;
-
-   if ((error = acQuery(Self)) IS ERR::Okay) {
+   Self->CurrentLine = -1;
+   Self->Error       = ERR::Okay;
+   if (auto error = acQuery(Self); error <= ERR::ExceptionThreshold) {
       prv->Recurse++;
 
       if ((prv->JitOptions & JOF::DISABLE_JIT) != JOF::NIL) {
@@ -325,19 +308,22 @@ static ERR TIRI_Activate(objScript *Self)
 
       if (Self->Error IS ERR::Okay) run_script(Self); // Will set Self->Error if there's an issue
 
-      error = ERR::Okay; // The error reflects on the initial processing of the script only - the developer must check the Error field for information on script execution
       prv->Recurse--;
-   }
 
-   if (prv->Lua) {
-      if (lua_gc(prv->Lua, LUA_GCISRUNNING, 0)) {
-         pf::Log log;
-         log.traceBranch("Collecting garbage.");
-         lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
+      if (prv->Lua) {
+         if (lua_gc(prv->Lua, LUA_GCISRUNNING, 0)) {
+            pf::Log log;
+            log.traceBranch("Collecting garbage.");
+            lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
+         }
       }
-   }
 
-   return error;
+      return ERR::Okay; // The error reflects on the initial processing of the script only - the developer must check the Error field for information on script execution
+   }
+   else { // Failure during parsing
+      Self->Error = error;
+      return error;
+   }
 }
 
 //********************************************************************************************************************
@@ -423,7 +409,15 @@ static ERR TIRI_DataFeed(objScript *Self, struct acDataFeed *Args)
 
 static ERR TIRI_Free(objScript *Self)
 {
-   free_all(Self);
+   if (auto prv = (prvTiri *)Self->ChildPrivate) {
+      if (prv->FocusEventHandle) { UnsubscribeEvent(prv->FocusEventHandle); prv->FocusEventHandle = nullptr; }
+
+      auto lua = prv->Lua;
+      prv->~prvTiri();
+
+      if (lua) lua_close(lua);
+   }
+
    return ERR::Okay;
 }
 
@@ -434,7 +428,7 @@ static ERR TIRI_Init(objScript *Self)
    pf::Log log;
 
    if (Self->Path) {
-      if (not wildcmp("*.tiri|*.fb|*.lua", Self->Path)) {
+      if (not wildcmp("*.tiri|*.tbc", Self->Path)) {
          log.warning("No support for path '%s'", Self->Path);
          return ERR::NoSupport;
       }
@@ -542,31 +536,12 @@ static ERR TIRI_Init(objScript *Self)
 
    prv->JitOptions |= glJitOptions;
 
-   log.trace("Opening a Lua instance.");
-
    if (not (prv->Lua = luaL_newstate(Self))) {
       log.warning("Failed to open a Lua instance.");
       FreeResource(Self->ChildPrivate);
       Self->ChildPrivate = nullptr;
       if (src_file) FreeResource(src_file);
       return ERR::Failed;
-   }
-
-   STRING str;
-   if (not (str = Self->String)) {
-      log.trace("No statement specified at this stage.");
-      if (src_file) FreeResource(src_file);
-      return ERR::Okay; // Assume that the script's text will be incoming later
-   }
-
-   // Search for a $TIRI comment - this can contain extra details and options for the script.  Valid identifiers are
-   //
-   //    -- $TIRI
-   //    \* $TIRI
-   //    // $TIRI
-
-   if (wildcmp("?? $TIRI", str)) {
-
    }
 
    if (src_file) FreeResource(src_file);
@@ -603,9 +578,18 @@ static ERR TIRI_NewObject(objScript *Self)
    else return ERR::AllocMemory;
 }
 
-//********************************************************************************************************************
-// Parse the script but don't run it.  Note that not running the code means that functions won't be registered, so
-// introspection of available procedures will be limited.
+/*********************************************************************************************************************
+
+-ACTION-
+Query: Compiles the script and prepares it for execution.
+
+Query() performs the process of compiling the Tiri script.  A Tiri script can be queried only once, at which point
+the object enters a configured state.   Further queries will do nothing, and return `ERR::NothingDone`.
+
+Note that due to the code not being run, declared functions and variables won't be formally registered.
+Introspection of available procedures will be limited until the script is activated.
+
+*********************************************************************************************************************/
 
 static ERR TIRI_Query(objScript *Self)
 {
@@ -613,23 +597,19 @@ static ERR TIRI_Query(objScript *Self)
 
    if ((not Self->String) or (not Self->String[0])) return log.warning(ERR::FieldNotSet);
 
-   ERR error = ERR::Failed;
-
    auto prv = (prvTiri *)Self->ChildPrivate;
    if (not prv) return log.warning(ERR::ObjectCorrupt);
+   if (prv->Recurse) return ERR::NothingDone; // Do nothing, script is running.
 
-   if (prv->Recurse) return ERR::Okay; // Do nothing, script is running.
-
-   if (not Self->ActivationCount) {
-      // Announce once only to limit log noise
+   if (not prv->MainChunkRef) {
       log.branch("Target: %d, Procedure: %s / ID #%" PRId64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", Self->ProcedureID);
-   }
 
-   Self->CurrentLine = -1;
-   Self->Error       = ERR::Okay;
-
-   if (Self->ActivationCount IS 0) {
-      prv->Lua->script = Self;
+      auto cleanup = pf::Defer([&]() {
+         if (prv->Lua) {
+            pf::Log().traceBranch("Collecting garbage.");
+            lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
+         }
+      });
 
       lua_gc(prv->Lua, LUA_GCSTOP, 0);  // Stop collector during initialization
          luaL_openlibs(prv->Lua);  // Open Lua libraries
@@ -637,7 +617,7 @@ static ERR TIRI_Query(objScript *Self)
 
       // Register private variables in the registry, which is tamper proof from the user's Lua code
 
-      if (register_interfaces(Self) != ERR::Okay) goto failure;
+      if (register_interfaces(Self) != ERR::Okay) return ERR::Failed;
 
       // Line hook, executes on the execution of a new line (doesn't execute during Query() compilation)
 
@@ -659,7 +639,7 @@ static ERR TIRI_Query(objScript *Self)
       }
       else {
          log.warning("Failed to create module object.");
-         goto failure;
+         return ERR::LoadModule;
       }
 
       // Determine chunk name for better debug output.
@@ -682,7 +662,6 @@ static ERR TIRI_Query(objScript *Self)
       }
 
       if (result) { // Error reported from parser
-         Self->Error = ERR::Syntax;
          if (auto errorstr = lua_tostring(prv->Lua, -1)) {
             if (prv->Lua->parser_diagnostics and prv->Lua->parser_diagnostics->has_errors()) {
                std::string error_msg;
@@ -698,7 +677,7 @@ static ERR TIRI_Query(objScript *Self)
          }
 
          lua_pop(prv->Lua, 1);  // Pop error string
-         goto failure;
+         return ERR::Syntax;
       }
       else {
          log.trace("Script successfully compiled.");
@@ -723,19 +702,10 @@ static ERR TIRI_Query(objScript *Self)
             cachefile->setDate(&prv->CacheDate);
          }
       }
+
+      return ERR::Okay;
    }
-
-   error = ERR::Okay; // The error reflects on the initial processing of the script only - the developer must check the Error field for information on script execution
-
-failure:
-
-   if (prv->Lua) {
-      pf::Log log;
-      log.traceBranch("Collecting garbage.");
-      lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
-   }
-
-   return error;
+   else return ERR::NothingDone; // Script already compiled
 }
 
 /*********************************************************************************************************************
@@ -1107,7 +1077,7 @@ ERR create_tiri(void)
       fl::ClassVersion(1.0),
       fl::Name("Tiri"),
       fl::Category(CCF::DATA),
-      fl::FileExtension("*.tiri|*.fb|*.lua"),
+      fl::FileExtension("*.tiri|*.tbc"),
       fl::FileDescription("Tiri"),
       fl::Actions(clActions),
       fl::Methods(clMethods),
