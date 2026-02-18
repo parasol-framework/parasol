@@ -1115,6 +1115,7 @@ enum class RES : int {
    CPU_SPEED = 21,
    FREE_MEMORY = 22,
    MEMORY_USAGE = 23,
+   MAIN_THREAD = 24,
 };
 
 // Path types for SetResourcePath()

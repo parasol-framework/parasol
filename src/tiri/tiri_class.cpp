@@ -622,7 +622,7 @@ static ERR TIRI_Query(objScript *Self)
 
    if (not Self->ActivationCount) {
       // Announce once only to limit log noise
-      log.branch("Target: %d, Procedure: %s / ID #%" PRId64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", (long long)Self->ProcedureID);
+      log.branch("Target: %d, Procedure: %s / ID #%" PRId64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", Self->ProcedureID);
    }
 
    Self->CurrentLine = -1;
@@ -1021,6 +1021,13 @@ static ERR run_script(objScript *Self)
          lua_pop(prv->Lua, results);  // pop returned values
       }
 
+      // Flush pending thread callback messages before returning.  Loop until all child threads have
+      // reported back, as some may not have sent their message yet.
+
+      if ((prv->Recurse IS 1) and (prv->Lua->flush_count > 0) and GetResource(RES::MAIN_THREAD)) {
+         while (prv->Lua->flush_count > 0) ProcessMessages(PMF::NIL, 100);
+      }
+
       return ERR::Okay;
    }
    else {
@@ -1029,6 +1036,10 @@ static ERR run_script(objScript *Self)
       // to prevent unwanted behaviour.
 
       if (CurrentContext() != Self) abort(); // A C++ exception was caught by Lua - the software stack is unstable so we must abort.
+
+      if ((prv->Recurse IS 1) and (prv->Lua->flush_count > 0) and GetResource(RES::MAIN_THREAD)) {
+         while (prv->Lua->flush_count > 0) ProcessMessages(PMF::NIL, 100);
+      }
 
       process_error(Self, Self->Procedure ? Self->Procedure : "run_script");
       return Self->Error;
