@@ -220,7 +220,7 @@ class ScopedObjectLock {
       }
 
       inline ScopedObjectLock() = default;
-      [[nodiscard]] inline bool granted() { return error == ERR::Okay; }
+      [[nodiscard]] inline bool granted() { return error IS ERR::Okay; }
 
       inline T * operator->() { return obj; }; // Promotes underlying methods and fields
       inline T * & operator*() { return obj; }; // To allow object pointer referencing when calling functions
