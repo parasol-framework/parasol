@@ -408,15 +408,10 @@ ERR Action(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters)
    extObjectContext new_context(Object, ActionID);
    Object->ActionDepth++;
    auto cl = Object->ExtClass;
-   
-   #ifndef NDEBUG
-   auto queue_on_entry = Object->Queue.load();
-   #endif
 
    ERR error;
    if (ActionID >= AC::NIL) {
       if (cl->ActionTable[int(ActionID)].PerformAction) { // Can be a base-class or sub-class call
-
          error = cl->ActionTable[int(ActionID)].PerformAction(Object, Parameters);
 
          if (error IS ERR::NoAction) {
@@ -441,10 +436,6 @@ ERR Action(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters)
          if (routine) error = routine(Object, Parameters);
       }
    }
-   
-   #ifndef NDEBUG
-   assert(Object->Queue.load() IS queue_on_entry);
-   #endif
 
    // If the object has action subscribers, check if any of them are listening to this particular action, and if so, notify them.
 

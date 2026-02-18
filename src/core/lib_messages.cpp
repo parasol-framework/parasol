@@ -869,6 +869,8 @@ ERR sleep_task(int Timeout)
       if (pos > 0) log.warning("WARNING - Sleeping with %d private locks held (%s)", tlPrivateLockCount, buffer);
    }
 
+   register_sleep();
+
    struct timeval tv;
    struct timespec time;
    fd_set fread, fwrite;
@@ -1005,6 +1007,7 @@ ERR sleep_task(int Timeout)
       else log.warning("select() error %d: %s", errno, strerror(errno));
    }
 
+   deregister_sleep();
    return ERR::Okay;
 }
 #endif
@@ -1039,6 +1042,8 @@ ERR sleep_task(int Timeout, int8_t SystemOnly)
    }
 
    //log.traceBranch("Time-out: %d, TotalFDs: %d", Timeout, glTotalFDs);
+
+   register_sleep();
 
    int64_t time_end;
    if (Timeout < 0) {
@@ -1138,6 +1143,7 @@ ERR sleep_task(int Timeout, int8_t SystemOnly)
       else break;
    }
 
+   deregister_sleep();
    return ERR::Okay;
 }
 
