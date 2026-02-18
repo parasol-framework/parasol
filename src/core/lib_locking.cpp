@@ -116,8 +116,8 @@ struct WaitLock {
 
    #define WLF_REMOVED 0x01  // Set if the resource was removed by the thread that was holding it.
 
-   WaitLock() : ThreadID(0) { }
-   WaitLock(THREADID pThread) : ThreadID(pThread) { }
+   WaitLock() : ThreadID(0), Flags(0) { }
+   WaitLock(THREADID pThread) : ThreadID(pThread), Flags(0) { }
 
    void setThread(const THREADID pThread) { ThreadID = pThread; }
 
@@ -150,6 +150,7 @@ inline void register_waitlock(THREADID OurThread, THREADID OtherThread, int Reso
 
    // Record the wait *before* checking for cycles, so that would_deadlock() sees the complete graph.
 
+   glWaitLocks[glWLIndex].Flags                  = 0;
    glWaitLocks[glWLIndex].WaitingForThreadID     = OtherThread;
    glWaitLocks[glWLIndex].WaitingForResourceID   = ResourceID;
    glWaitLocks[glWLIndex].WaitingForResourceType = ResourceType;
@@ -545,10 +546,14 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
                return ERR::Okay;
             }
 
-            auto timeout_remaining = end_time - steady_clock::now();
-            if (timeout_remaining <= milliseconds(0)) break;
-
-            if (cvObjects.wait_for(glmObjectLocking, timeout_remaining) IS std::cv_status::timeout) break;
+            if (Timeout < 0) {
+               cvObjects.wait(glmObjectLocking); // Indefinite wait; avoids time_point overflow with wait_for()
+            }
+            else {
+               auto timeout_remaining = end_time - steady_clock::now();
+               if (timeout_remaining <= milliseconds(0)) break;
+               if (cvObjects.wait_for(glmObjectLocking, timeout_remaining) IS std::cv_status::timeout) break;
+            }
          }
 
          // Failure: Either a timeout occurred or the object no longer exists.

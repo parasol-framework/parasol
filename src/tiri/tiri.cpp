@@ -136,12 +136,10 @@ OBJECTPTR access_object(GCobject *Object)
       }
    }
    else {
-      auto error = Object->ptr->lock(); // 'soft' lock in case of threading involving private objects
-      #ifndef NDEBUG
-      if (error != ERR::Okay) {
+      if (auto error = Object->ptr->lock(); error != ERR::Okay) {
          pf::Log("access_object").warning("#%d lock() failed: %s, Queue: %d", Object->uid, GetErrorMsg(error), Object->ptr->Queue.load());
+         return nullptr;
       }
-      #endif
    }
 
    if (Object->ptr) Object->accesscount++;
