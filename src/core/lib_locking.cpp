@@ -86,7 +86,7 @@ public:
    }
 
    void free_thread_lock(WINHANDLE Lock) {
-      if (!Lock) return;
+      if (not Lock) return;
 
       for (auto& lock_atomic : thread_locks) {
          WINHANDLE expected = Lock;
@@ -134,6 +134,28 @@ static std::vector<WaitLock> glWaitLocks;
 static std::mutex glWaitLockMutex;
 
 //********************************************************************************************************************
+
+inline void register_waitlock(THREADID OurThread, THREADID OtherThread, int ResourceID, int ResourceType)
+{
+   if (glWLIndex IS -1) { // New thread that isn't registered yet
+      unsigned i = 0;
+      for (; i < glWaitLocks.size(); i++) {
+         if (not glWaitLocks[i].ThreadID.defined()) break;
+      }
+
+      glWLIndex = i;
+      if (i IS glWaitLocks.size()) glWaitLocks.push_back(OurThread);
+      else glWaitLocks[glWLIndex].setThread(OurThread);
+   }
+
+   // Record the wait *before* checking for cycles, so that would_deadlock() sees the complete graph.
+
+   glWaitLocks[glWLIndex].WaitingForThreadID     = OtherThread;
+   glWaitLocks[glWLIndex].WaitingForResourceID   = ResourceID;
+   glWaitLocks[glWLIndex].WaitingForResourceType = ResourceType;
+}
+
+//********************************************************************************************************************
 // Deadlock detection via resource-based cycle detection.
 //
 // Walks the glWaitLocks table to detect circular wait chains.  Each entry records which thread is waiting and
@@ -166,7 +188,7 @@ static bool would_deadlock(THREADID Requester, THREADID Holder)
          }
       }
 
-      if (!found) return false; // The holder isn't waiting on anything — no cycle
+      if (not found) return false; // The holder isn't waiting on anything — no cycle
    }
 
    return false; // Exceeded maximum traversal depth without finding a cycle
@@ -181,19 +203,7 @@ void register_sleep(void)
 {
    const std::lock_guard<std::mutex> lock(glWaitLockMutex);
 
-   if (glWLIndex IS -1) {
-      unsigned i = 0;
-      for (; i < glWaitLocks.size(); i++) {
-         if (!glWaitLocks[i].ThreadID.defined()) break;
-      }
-      glWLIndex = i;
-      if (i IS glWaitLocks.size()) glWaitLocks.push_back(get_thread_id());
-      else glWaitLocks[glWLIndex].setThread(get_thread_id());
-   }
-
-   glWaitLocks[glWLIndex].WaitingForThreadID     = THREADID(0);
-   glWaitLocks[glWLIndex].WaitingForResourceID   = 0;
-   glWaitLocks[glWLIndex].WaitingForResourceType = RT_SLEEP;
+   register_waitlock(get_thread_id(), THREADID(0), 0, RT_SLEEP);
 }
 
 void deregister_sleep(void)
@@ -220,22 +230,8 @@ ERR init_sleep(THREADID OtherThreadID, int ResourceID, int ResourceType)
 
    const std::lock_guard<std::mutex> lock(glWaitLockMutex);
 
-   if (glWLIndex IS -1) { // New thread that isn't registered yet
-      unsigned i = 0;
-      for (; i < glWaitLocks.size(); i++) {
-         if (!glWaitLocks[i].ThreadID.defined()) break;
-      }
+   register_waitlock(our_thread, OtherThreadID, ResourceID, ResourceType);
 
-      glWLIndex = i;
-      if (i IS glWaitLocks.size()) glWaitLocks.push_back(our_thread);
-      else glWaitLocks[glWLIndex].setThread(our_thread);
-   }
-
-   // Record the wait *before* checking for cycles, so that would_deadlock() sees the complete graph.
-
-   glWaitLocks[glWLIndex].WaitingForResourceID   = ResourceID;
-   glWaitLocks[glWLIndex].WaitingForResourceType = ResourceType;
-   glWaitLocks[glWLIndex].WaitingForThreadID     = OtherThreadID;
    #ifdef _WIN32
    glWaitLocks[glWLIndex].Lock = get_threadlock();
    #endif
@@ -334,7 +330,7 @@ ERR AccessMemory(MEMORYID MemoryID, MEM Flags, int MilliSeconds, APTR *Result)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!MemoryID) or (!Result)) return log.warning(ERR::NullArgs);
+   if ((not MemoryID) or (not Result)) return log.warning(ERR::NullArgs);
    if (MilliSeconds <= 0) return log.warning(ERR::Args);
 
    // NB: Logging AccessMemory() calls is usually a waste of time unless the process is going to sleep.
@@ -425,7 +421,7 @@ ERR AccessObject(OBJECTID ObjectID, int MilliSeconds, OBJECTPTR *Result)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Result) or (!ObjectID)) return log.warning(ERR::NullArgs);
+   if ((not Result) or (not ObjectID)) return log.warning(ERR::NullArgs);
    if (MilliSeconds <= 0) log.warning(ERR::Args); // Warn but do not fail
 
    if (auto lock = std::unique_lock{glmMemory}) {
@@ -480,7 +476,7 @@ TimeOut:
 
 ERR LockObject(OBJECTPTR Object, int Timeout)
 {
-   if (!Object) {
+   if (not Object) {
       DEBUG_BREAK
       return ERR::NullArgs;
    }
@@ -518,7 +514,15 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
 
    Object->SleepQueue.fetch_add(1, std::memory_order_relaxed); // Increment the sleep queue first so that ReleaseObject() will know that another thread is expecting a wake-up.
 
-   if (auto lock = std::unique_lock{glmObjectLocking, std::chrono::milliseconds(Timeout)}) {
+   // When Timeout is negative (indefinite wait), use a blocking lock.  A negative chrono duration
+   // passed to try_lock_for() is treated as a non-blocking attempt per the C++ standard, which
+   // would cause the acquisition to fail spuriously under contention.
+
+   auto lock = std::unique_lock<std::timed_mutex>(glmObjectLocking, std::defer_lock);
+   if (Timeout < 0) lock.lock();
+   else lock.try_lock_for(std::chrono::milliseconds(Timeout));
+
+   if (lock.owns_lock()) {
       pf::Log log(__FUNCTION__);
 
       //log.function("TID: %d, Sleeping on #%d, Timeout: %d, Queue: %d, Locked By: %d", our_thread, Object->UID, Timeout, Object->Queue, Object->ThreadID);
@@ -597,12 +601,12 @@ ERR ReleaseMemory(MEMORYID MemoryID)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!MemoryID) return log.warning(ERR::NullArgs);
+   if (not MemoryID) return log.warning(ERR::NullArgs);
 
    std::lock_guard lock(glmMemory);
    auto mem = glPrivateMemory.find(MemoryID);
 
-   if ((mem IS glPrivateMemory.end()) or (!mem->second.Address)) { // Sanity check; this should never happen
+   if ((mem IS glPrivateMemory.end()) or (not mem->second.Address)) { // Sanity check; this should never happen
       if (tlContext.back().obj->Class) log.warning("Unable to find a record for memory address #%d [Context %d, Class %s].", MemoryID, tlContext.back().obj->UID, tlContext.back().obj->className());
       else log.warning("Unable to find a record for memory #%d.", MemoryID);
       return ERR::Search;
@@ -615,7 +619,7 @@ ERR ReleaseMemory(MEMORYID MemoryID)
    }
    else access = -1;
 
-   if (!access) {
+   if (not access) {
       mem->second.ThreadLockID = THREADID(0);
 
       if ((mem->second.Flags & MEM::COLLECT) != MEM::NIL) {
@@ -648,7 +652,7 @@ obj Object: Pointer to the object to be released.
 
 void ReleaseObject(OBJECTPTR Object)
 {
-   if (!Object) return;
+   if (not Object) return;
 
    if (Object->Queue.fetch_sub(1, std::memory_order_release) > 1) return;
 
@@ -670,7 +674,7 @@ void ReleaseObject(OBJECTPTR Object)
 
          // Destroy the object if marked for deletion and not pinned by reference counting.
 
-         if (Object->defined(NF::FREE_ON_UNLOCK) and (!Object->defined(NF::FREE)) and (!Object->isPinned())) {
+         if (Object->defined(NF::FREE_ON_UNLOCK) and (not Object->defined(NF::FREE)) and (not Object->isPinned())) {
             Object->Flags &= ~NF::FREE_ON_UNLOCK;
             FreeResource(Object);
          }
@@ -678,7 +682,7 @@ void ReleaseObject(OBJECTPTR Object)
          cvObjects.notify_all(); // Multiple threads may be waiting on this object
       }
    }
-   else if (Object->defined(NF::FREE_ON_UNLOCK) and (!Object->defined(NF::FREE)) and (!Object->isPinned())) {
+   else if (Object->defined(NF::FREE_ON_UNLOCK) and (not Object->defined(NF::FREE)) and (not Object->isPinned())) {
       Object->Flags &= ~NF::FREE_ON_UNLOCK;
       FreeResource(Object);
    }
