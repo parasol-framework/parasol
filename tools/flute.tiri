@@ -1,5 +1,5 @@
--- $TIRI
---
+#!/usr/bin/env origo
+
 -- Flute provides a standard framework for the execution of unit tests in Tiri.
 --
 -- TODO: Support for JSON output of test results.

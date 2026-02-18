@@ -1,3 +1,4 @@
+#!/usr/bin/env origo
 -- Colour Dialog test
 
    import 'gui'

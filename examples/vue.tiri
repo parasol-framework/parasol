@@ -1,3 +1,4 @@
+#!/usr/bin/env origo
 --[[
 A file viewer for recognised documents like SVG and RIPL
 --]]
