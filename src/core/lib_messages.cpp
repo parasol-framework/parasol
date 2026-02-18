@@ -1067,7 +1067,10 @@ ERR sleep_task(int Timeout, int8_t SystemOnly)
       //   The thread-lock is released by another task (see wake_task).
       //   A window message is received (if tlMessageBreak is true)
 
-      auto handles = std::make_unique<WINHANDLE[]>(glFDTable.size()+1); // +1 for thread-lock
+      WINHANDLE stack_handles[32];
+      auto heap_storage = (glFDTable.size() + 1 > 32)
+         ? std::make_unique<WINHANDLE[]>(glFDTable.size() + 1) : nullptr;
+      auto handles = heap_storage ? heap_storage.get() : stack_handles;
       handles[0] = get_threadlock();
       int total = 1;
 
@@ -1098,7 +1101,7 @@ ERR sleep_task(int Timeout, int8_t SystemOnly)
       int sleeptime = time_end - (PreciseTime() / 1000LL);
       if (sleeptime < 0) sleeptime = 0;
 
-      int i = winWaitForObjects(total, handles.get(), sleeptime, tlMessageBreak);
+      int i = winWaitForObjects(total, handles, sleeptime, tlMessageBreak);
 
       // Return Codes/Reasons for breaking:
       //
