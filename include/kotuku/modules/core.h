@@ -28,7 +28,7 @@
 #include "ankerl/unordered_dense.h"
 #endif
 
-#if defined(_DEBUG)
+#ifndef NDEBUG
  #ifndef _MSC_VER
   #include <signal.h>
  #endif
@@ -1547,9 +1547,9 @@ template <class T> T roundup(T Num, int Alignment) {
 #endif
 
 // Use DEBUG_BREAK in critical areas where you would want to break in gdb.  This feature will only be compiled
-// in to debug builds.
+// into non-release builds.
 
-#ifdef _DEBUG
+#ifndef NDEBUG
  #ifdef _MSC_VER
   #define DEBUG_BREAK __debugbreak();
  #elif __linux__

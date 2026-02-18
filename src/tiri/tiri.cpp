@@ -135,7 +135,12 @@ OBJECTPTR access_object(GCobject *Object)
          Object->uid = 0;
       }
    }
-   else Object->ptr->lock(); // 'soft' lock in case of threading involving private objects
+   else {
+      if (auto error = Object->ptr->lock(); error != ERR::Okay) {
+         pf::Log("access_object").warning("#%d lock() failed: %s, Queue: %d", Object->uid, GetErrorMsg(error), Object->ptr->Queue.load());
+         return nullptr;
+      }
+   }
 
    if (Object->ptr) Object->accesscount++;
    return Object->ptr;
@@ -150,7 +155,16 @@ void release_object(GCobject *Object)
             Object->set_locked(false);
             Object->ptr = nullptr;
          }
-         else Object->ptr->unlock();
+         else {
+            #ifndef NDEBUG
+            if (Object->ptr->Queue.load() <= 0) {
+               pf::Log("release_object").warning("#%d Queue underflow before unlock: Queue: %d, ThreadID: %d, OurThread: %d",
+                  Object->uid, Object->ptr->Queue.load(), Object->ptr->ThreadID.load(), pf::_get_thread_id());
+               DEBUG_BREAK
+            }
+            #endif
+            Object->ptr->unlock();
+         }
       }
    }
 }

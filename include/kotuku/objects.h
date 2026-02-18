@@ -212,7 +212,7 @@ struct Object { // Must be 64-bit aligned
    struct Object *Owner;         // The owner of this object
    std::atomic_uint64_t NotifyFlags; // Action subscription flags - space for 64 actions max
    int8_t   ActionDepth;         // Incremented each time an action or method is called on the object
-   std::atomic_char Queue;       // Counter of locks attained by LockObject(); decremented by ReleaseObject()
+   std::atomic_char Queue;       // Counter of locks attained by LockObject(); decremented by ReleaseObject(); not stable by design (see lock())
    std::atomic_char SleepQueue;  // For the use of LockObject() only
    std::atomic_uint8_t RefCount; // Reference counting - object cannot be freed until this reaches 0.  NB: This is not a locking mechanism!
    OBJECTID UID;                 // Unique object identifier
@@ -239,10 +239,9 @@ struct Object { // Must be 64-bit aligned
    // Pinning does not guarantee anything; objects can still be immediately terminated if their parent is removed.
 
    inline void pin() {
-      #ifdef _DEBUG
+      #ifndef NDEBUG
       if (RefCount.load() >= 254) {
-         pf::Log log("pin");
-         log.warning("RefCount overflow risk for object #%d (%s), count: %d", UID, className(), RefCount.load());
+         pf::Log("pin").warning("RefCount overflow risk for object #%d (%s), count: %d", UID, className(), RefCount.load());
          DEBUG_BREAK
       }
       #endif
@@ -250,10 +249,9 @@ struct Object { // Must be 64-bit aligned
    }
 
    inline void unpin() {
-      #ifdef _DEBUG
+      #ifndef NDEBUG
       if (RefCount.load() IS 0) {
-         pf::Log log("unpin");
-         log.warning("Unbalanced unpin() on object #%d (%s) - RefCount is already 0.", UID, className());
+         pf::Log("unpin").warning("Unbalanced unpin() on object #%d (%s) - RefCount is already 0.", UID, className());
          DEBUG_BREAK
       }
       #endif
@@ -283,6 +281,14 @@ struct Object { // Must be 64-bit aligned
    // Use lock() to quickly obtain an object lock without a call to LockObject().  Can fail if the object is being collected.
 
    inline ERR lock(int Timeout = -1) {
+      #ifndef NDEBUG
+      auto prev_queue = Queue.load(std::memory_order_relaxed);
+      if (prev_queue < 0) {
+         pf::Log("lock").warning("Queue already negative on #%d (%s), Queue: %d, ThreadID: %d, OurThread: %d",
+            UID, className(), prev_queue, ThreadID.load(), pf::_get_thread_id());
+         DEBUG_BREAK
+      }
+      #endif
       if (++Queue IS 1) {
          ThreadID = pf::_get_thread_id();
          return ERR::Okay;
@@ -300,6 +306,13 @@ struct Object { // Must be 64-bit aligned
    }
 
    inline void unlock() {
+      #ifndef NDEBUG
+      if (Queue.load() <= 0) {
+         pf::Log("unlock").warning("Queue underflow on #%d (%s), Queue: %d, ThreadID: %d, OurThread: %d",
+            UID, className(), Queue.load(), ThreadID.load(), pf::_get_thread_id());
+         DEBUG_BREAK
+      }
+      #endif
       // Prefer to use ReleaseObject() if there are threads that need to be woken
       if ((SleepQueue > 0) or defined(NF::FREE_ON_UNLOCK)) ReleaseObject(this);
       else --Queue;

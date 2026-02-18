@@ -51,16 +51,8 @@ static int thread_script(lua_State *Lua)
 
    if (lua_type(Lua, 1) IS LUA_TOBJECT) {
       GCobject *gc_script = lua_toobject(Lua, 1);
-      if (gc_script->classptr->ClassID != CLASSID::SCRIPT) {
-         luaL_error(Lua, ERR::WrongClass);
-      }
-
-      if (not gc_script->ptr) {
-         luaL_error(Lua, ERR::ObjectCorrupt);
-         return 0;
-      }
-
-      log.msg("Entering thread for script #%d.", gc_script->uid);
+      if (gc_script->classptr->ClassID != CLASSID::SCRIPT) luaL_error(Lua, ERR::WrongClass);
+      if (not gc_script->ptr) luaL_error(Lua, ERR::ObjectCorrupt);
 
       #ifndef NDEBUG
       auto stack_top = lua_gettop(Lua);
@@ -90,13 +82,17 @@ static int thread_script(lua_State *Lua)
       prv->Threads.emplace_back(std::make_unique<std::jthread>(std::jthread(
          [](OBJECTPTR Script, FUNCTION Callback, objScript *Owner, int ObjRef) {
 
-         acActivate(Script);
+         if (auto error = acActivate(Script); error != ERR::Okay) {
+            pf::Log("thread_script").warning("Failed to execute threaded script #%d: %s", Script->UID, GetErrorMsg(error));
+         }
 
          // All cleanup (unpin, luaL_unref) must happen on the main thread to
          // avoid racing with the Lua GC.  Send a message regardless of whether a callback exists.
 
          ThreadScriptMsg msg { Callback, Owner, ObjRef };
-         SendMessage(MSGID::TIRI_THREAD_CALLBACK, MSF::NIL, &msg, sizeof(msg));
+         if (SendMessage(MSGID::TIRI_THREAD_CALLBACK, MSF::NIL, &msg, sizeof(msg)) != ERR::Okay) {
+            pf::Log("thread_script").warning("Failed to send callback message.");
+         }
       }, gc_script->ptr, std::move(callback), Lua->script, obj_ref)));
    }
    else luaL_argerror(Lua, 1, "Script object required.");
