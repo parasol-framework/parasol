@@ -83,6 +83,7 @@ end
    ]]
 
    local script = obj.new('script', { statement = thread_statement })
+   script.acQuery()
    script.setKey('A', signal_a.id) -- Make the signal object available via arg()
 
    proc = processing.new({ timeout=1.0, signals = work_list })
