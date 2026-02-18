@@ -121,23 +121,6 @@ static const ActionArray clActions[] = {
 };
 
 //********************************************************************************************************************
-// NOTE: Be aware that this function can be called by Activate() to perform a complete state reset.
-
-static void free_all(objScript *Self)
-{
-   auto prv = (prvTiri *)Self->ChildPrivate;
-   if (not prv) return; // Not a problem - indicates the object did not pass initialisation
-
-   if (prv->FocusEventHandle) { UnsubscribeEvent(prv->FocusEventHandle); prv->FocusEventHandle = nullptr; }
-
-   if (auto lua = prv->Lua) {
-      prv->~prvTiri();
-      lua_close(lua);
-      prv->Lua = nullptr;
-   }
-}
-
-//********************************************************************************************************************
 // Only to be used immediately after a failed lua_pcall().  Lua stores a description of the error that occurred on the
 // stack, this will be popped and copied to the ErrorMessage field.
 
@@ -426,7 +409,15 @@ static ERR TIRI_DataFeed(objScript *Self, struct acDataFeed *Args)
 
 static ERR TIRI_Free(objScript *Self)
 {
-   free_all(Self);
+   if (auto prv = (prvTiri *)Self->ChildPrivate) {
+      if (prv->FocusEventHandle) { UnsubscribeEvent(prv->FocusEventHandle); prv->FocusEventHandle = nullptr; }
+
+      auto lua = prv->Lua;
+      prv->~prvTiri();
+
+      if (lua) lua_close(lua);
+   }
+
    return ERR::Okay;
 }
 
