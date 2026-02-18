@@ -20,7 +20,7 @@ For more information on the Tiri syntax, please refer to the official Tiri Refer
 
 *********************************************************************************************************************/
 
-#ifdef _DEBUG
+#ifndef NDEBUG
 #undef DEBUG
 #endif
 
@@ -669,7 +669,7 @@ CSTRING code_reader(lua_State *Lua, void *Handle, size_t *Size)
 
 //********************************************************************************************************************
 
-#ifdef _DEBUG
+#ifndef NDEBUG
 
 static void stack_dump(lua_State *L) __attribute__ ((unused));
 

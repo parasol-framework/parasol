@@ -450,7 +450,7 @@ ERR Action(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters)
       if (auto it = glSubscriptions.find(Object->UID); it != glSubscriptions.end()) {
          if (it->second.contains(int(ActionID))) {
             for (auto &list : it->second[int(ActionID)]) {
-               #ifdef _DEBUG
+               #ifndef NDEBUG
                // Locked subscribers can sometimes warrant investigation
                if ((int(ActionID) > 0) and list.Subscriber->locked()) {
                   pf::Log(__FUNCTION__).msg("Notifying %s subscriber #%d (lock-status: %d) with action %s",
