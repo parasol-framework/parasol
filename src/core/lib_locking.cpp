@@ -180,9 +180,9 @@ static bool would_deadlock(THREADID Requester, THREADID Holder)
                current = wl.WaitingForThreadID;
                found = true;
             }
-            else if (wl.WaitingForResourceType IS RT_SLEEP) {
-               // The holder is sleeping (e.g. in ProcessMessages).  It holds an object lock that it cannot
-               // release until it wakes, so waiting on it will deadlock.
+            else if ((wl.WaitingForResourceType IS RT_SLEEP) and (wl.WaitingTime < 0)) {
+               // The holder is sleeping indefinitely (e.g. in ProcessMessages with no timeout).  It holds
+               // an object lock that it cannot release until woken, so waiting on it will deadlock.
                return true;
             }
             break;
@@ -200,11 +200,12 @@ static bool would_deadlock(THREADID Requester, THREADID Holder)
 // detector to recognise that the thread is blocked and cannot release any object locks it holds.
 // Call wake_waitlock_entry() when the sleep completes.
 
-void register_sleep(void)
+void register_sleep(int Timeout)
 {
    const std::lock_guard<std::mutex> lock(glWaitLockMutex);
 
    register_waitlock(get_thread_id(), THREADID(0), 0, RT_SLEEP);
+   glWaitLocks[glWLIndex].WaitingTime = Timeout;
 }
 
 void deregister_sleep(void)
@@ -521,7 +522,7 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
 
    auto lock = std::unique_lock<std::timed_mutex>(glmObjectLocking, std::defer_lock);
    if (Timeout < 0) lock.lock();
-   else lock.try_lock_for(std::chrono::milliseconds(Timeout));
+   else (void)lock.try_lock_for(std::chrono::milliseconds(Timeout));
 
    if (lock.owns_lock()) {
       pf::Log log(__FUNCTION__);

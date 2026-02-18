@@ -51,16 +51,8 @@ static int thread_script(lua_State *Lua)
 
    if (lua_type(Lua, 1) IS LUA_TOBJECT) {
       GCobject *gc_script = lua_toobject(Lua, 1);
-      if (gc_script->classptr->ClassID != CLASSID::SCRIPT) {
-         luaL_error(Lua, ERR::WrongClass);
-      }
-
-      if (not gc_script->ptr) {
-         luaL_error(Lua, ERR::ObjectCorrupt);
-         return 0;
-      }
-
-      log.msg("Entering thread for script #%d.", gc_script->uid);
+      if (gc_script->classptr->ClassID != CLASSID::SCRIPT) luaL_error(Lua, ERR::WrongClass);
+      if (not gc_script->ptr) luaL_error(Lua, ERR::ObjectCorrupt);
 
       #ifndef NDEBUG
       auto stack_top = lua_gettop(Lua);
@@ -91,7 +83,7 @@ static int thread_script(lua_State *Lua)
          [](OBJECTPTR Script, FUNCTION Callback, objScript *Owner, int ObjRef) {
 
          if (auto error = acActivate(Script); error != ERR::Okay) {
-            pf::Log("thread_script").warning("Failed to execute threaded script: %s", GetErrorMsg(error));
+            pf::Log("thread_script").warning("Failed to execute threaded script #%d: %s", Script->UID, GetErrorMsg(error));
          }
 
          // All cleanup (unpin, luaL_unref) must happen on the main thread to

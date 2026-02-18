@@ -1094,7 +1094,7 @@ ERR    msg_free(APTR, int, int, APTR, int);
 void   optimise_write_field(Field &);
 void   PrepareSleep(void);
 ERR    process_janitor(OBJECTID, int, int);
-void   register_sleep(void);
+void   register_sleep(int);
 void   deregister_sleep(void);
 void   remove_process_waitlocks(void);
 CLASSID lookup_class_by_ext(CLASSID, std::string_view);

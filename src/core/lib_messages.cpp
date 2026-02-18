@@ -686,7 +686,7 @@ ERR WaitForObjects(PMF Flags, int TimeOut, ObjectSignal *ObjectSignals)
    else {
       // At least one call to ProcessMessages() is needed (the caller's message loop may
       // be designed on this basis).
-      ProcessMessages(Flags, 0);
+      error = ProcessMessages(Flags, 0);
    }
 
    if (not glWFOList.empty()) { // Clean up if there are dangling subscriptions
@@ -872,7 +872,7 @@ ERR sleep_task(int Timeout)
       if (pos > 0) log.warning("WARNING - Sleeping with %d private locks held (%s)", tlPrivateLockCount, buffer);
    }
 
-   register_sleep();
+   register_sleep(Timeout);
 
    struct timeval tv;
    struct timespec time;
@@ -1046,7 +1046,7 @@ ERR sleep_task(int Timeout, int8_t SystemOnly)
 
    //log.traceBranch("Time-out: %d, TotalFDs: %d", Timeout, glTotalFDs);
 
-   register_sleep();
+   register_sleep(Timeout);
 
    int64_t time_end;
    if (Timeout < 0) {
