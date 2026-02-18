@@ -28,7 +28,7 @@
 #include "ankerl/unordered_dense.h"
 #endif
 
-#if defined(_DEBUG)
+#ifndef NDEBUG
  #ifndef _MSC_VER
   #include <signal.h>
  #endif
