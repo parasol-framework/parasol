@@ -67,7 +67,7 @@ gui.tooltip = function(Options)
       end
    ]] })
 
-   script.setKey('_surface', self.surface.id)
+   script.setKey('surface', self.surface.id)
    script.acActivate()
 
    -- Reduce the width of the tooltip if the text is short.
