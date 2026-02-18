@@ -212,7 +212,7 @@ struct Object { // Must be 64-bit aligned
    struct Object *Owner;         // The owner of this object
    std::atomic_uint64_t NotifyFlags; // Action subscription flags - space for 64 actions max
    int8_t   ActionDepth;         // Incremented each time an action or method is called on the object
-   std::atomic_char Queue;       // Counter of locks attained by LockObject(); decremented by ReleaseObject()
+   std::atomic_char Queue;       // Counter of locks attained by LockObject(); decremented by ReleaseObject(); not stable by design (see lock())
    std::atomic_char SleepQueue;  // For the use of LockObject() only
    std::atomic_uint8_t RefCount; // Reference counting - object cannot be freed until this reaches 0.  NB: This is not a locking mechanism!
    OBJECTID UID;                 // Unique object identifier
@@ -241,8 +241,7 @@ struct Object { // Must be 64-bit aligned
    inline void pin() {
       #ifdef _DEBUG
       if (RefCount.load() >= 254) {
-         pf::Log log("pin");
-         log.warning("RefCount overflow risk for object #%d (%s), count: %d", UID, className(), RefCount.load());
+         pf::Log("pin").warning("RefCount overflow risk for object #%d (%s), count: %d", UID, className(), RefCount.load());
          DEBUG_BREAK
       }
       #endif
@@ -252,8 +251,7 @@ struct Object { // Must be 64-bit aligned
    inline void unpin() {
       #ifdef _DEBUG
       if (RefCount.load() IS 0) {
-         pf::Log log("unpin");
-         log.warning("Unbalanced unpin() on object #%d (%s) - RefCount is already 0.", UID, className());
+         pf::Log("unpin").warning("Unbalanced unpin() on object #%d (%s) - RefCount is already 0.", UID, className());
          DEBUG_BREAK
       }
       #endif

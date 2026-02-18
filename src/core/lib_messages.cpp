@@ -594,7 +594,8 @@ WaitForObjects: Process incoming messages while waiting on objects to complete t
 
 WaitForObjects() acts as a front-end to ~ProcessMessages(), with an ability to wait for a list of objects that are
 expected to signal an end to their activities.  An object can be signalled via the Signal() action, or via termination.
-This function will only return once ALL of the objects are signalled or a time-out occurs.
+This function will only return once ALL of the objects are signalled or a time-out occurs.  It is guaranteed that
+the message queue will be processed at least once before returning.
 
 Note that if an object has been signalled prior to entry to this function, its signal flag will be cleared and the
 object will not be monitored.
@@ -664,13 +665,10 @@ ERR WaitForObjects(PMF Flags, int TimeOut, ObjectSignal *ObjectSignals)
       }
    }
 
-   if (error IS ERR::Okay) {
+   if ((error IS ERR::Okay) and (not glWFOList.empty())) {
       if (TimeOut < 0) { // No time-out will apply
-         if (glWFOList.empty()) error = ProcessMessages(Flags, 0);
-         else {
-            while ((not glWFOList.empty()) and (error IS ERR::Okay)) {
-               error = ProcessMessages(Flags, -1);
-            }
+         while ((not glWFOList.empty()) and (error IS ERR::Okay)) {
+            error = ProcessMessages(Flags, -1);
          }
       }
       else {
@@ -684,6 +682,11 @@ ERR WaitForObjects(PMF Flags, int TimeOut, ObjectSignal *ObjectSignals)
       }
 
       if ((error IS ERR::Okay) and (not glWFOList.empty())) error = ERR::TimeOut;
+   }
+   else {
+      // At least one call to ProcessMessages() is needed (the caller's message loop may
+      // be designed on this basis).
+      ProcessMessages(Flags, 0);
    }
 
    if (not glWFOList.empty()) { // Clean up if there are dangling subscriptions

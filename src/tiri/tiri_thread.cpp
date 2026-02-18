@@ -90,13 +90,17 @@ static int thread_script(lua_State *Lua)
       prv->Threads.emplace_back(std::make_unique<std::jthread>(std::jthread(
          [](OBJECTPTR Script, FUNCTION Callback, objScript *Owner, int ObjRef) {
 
-         acActivate(Script);
+         if (auto error = acActivate(Script); error != ERR::Okay) {
+            pf::Log("thread_script").warning("Failed to execute threaded script: %s", GetErrorMsg(error));
+         }
 
          // All cleanup (unpin, luaL_unref) must happen on the main thread to
          // avoid racing with the Lua GC.  Send a message regardless of whether a callback exists.
 
          ThreadScriptMsg msg { Callback, Owner, ObjRef };
-         SendMessage(MSGID::TIRI_THREAD_CALLBACK, MSF::NIL, &msg, sizeof(msg));
+         if (SendMessage(MSGID::TIRI_THREAD_CALLBACK, MSF::NIL, &msg, sizeof(msg)) != ERR::Okay) {
+            pf::Log("thread_script").warning("Failed to send callback message.");
+         }
       }, gc_script->ptr, std::move(callback), Lua->script, obj_ref)));
    }
    else luaL_argerror(Lua, 1, "Script object required.");
