@@ -654,6 +654,14 @@ void ReleaseObject(OBJECTPTR Object)
 {
    if (not Object) return;
 
+   #ifndef NDEBUG
+   if (Object->Queue.load(std::memory_order_relaxed) <= 0) {
+      pf::Log("ReleaseObject").warning("Queue underflow on #%d (%s), Queue: %d, ThreadID: %d, OurThread: %d",
+         Object->UID, Object->className(), Object->Queue.load(), Object->ThreadID.load(), int(get_thread_id()));
+      DEBUG_BREAK
+   }
+   #endif
+
    if (Object->Queue.fetch_sub(1, std::memory_order_release) > 1) return;
 
    if (Object->SleepQueue > 0) { // Other threads are waiting on this object

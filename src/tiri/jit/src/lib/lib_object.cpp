@@ -32,6 +32,7 @@
 #include <algorithm>
 #include <string_view>
 #include <ranges>
+#include <cassert>
 #include <kotuku/main.h>
 #include <kotuku/strings.hpp>
 
