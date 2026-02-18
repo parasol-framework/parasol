@@ -147,7 +147,7 @@ int16_t glCrashStatus   = 0;
 int16_t glCodeIndex     = CP_FINISHED;
 int16_t glLastCodeIndex = 0;
 int16_t glSystemState   = -1; // Initialisation state is -1
-#ifdef _DEBUG
+#ifndef NDEBUG
    int16_t glLogLevel = 8; // Thread global
 #else
    int16_t glLogLevel  = 0;

@@ -37,7 +37,7 @@ enum {
 #define AND &&
 #define IS  ==
 
-#ifdef _DEBUG
+#ifndef NDEBUG
 #define MSG(...) fprintf(stderr, __VA_ARGS__)
 #else
 #define MSG(...)

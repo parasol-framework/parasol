@@ -5,7 +5,6 @@ that is distributed with this package.  Please refer to it for further informati
 
 *********************************************************************************************************************/
 
-//#define _DEBUG
 //#define DBG_LAYOUT
 //#define DBG_STREAM
 //#define DBG_SEGMENTS // Print list of segments
@@ -13,7 +12,7 @@ that is distributed with this package.  Please refer to it for further informati
 //#define GUIDELINES // Clipping guidelines
 //#define GUIDELINES_CONTENT // Segment guidelines
 
-#if (defined(_DEBUG) || defined(DBG_LAYOUT) || defined(DBG_STREAM) || defined(DBG_SEGMENTS))
+#if (!defined(NDEBUG) || defined(DBG_LAYOUT) || defined(DBG_STREAM) || defined(DBG_SEGMENTS))
  #define RETAIN_LOG_LEVEL TRUE
 #endif
 

@@ -974,7 +974,7 @@ static ERR run_script(objScript *Self)
          Self->setErrorMessage(str.c_str());
          log.warning("%s", str.c_str());
 
-         #ifdef _DEBUG
+         #ifndef NDEBUG
             pf::vector<std::string> *list;
             int total_procedures;
             if (GET_Procedures(Self, &list, &total_procedures) IS ERR::Okay) {

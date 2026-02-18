@@ -67,7 +67,7 @@ typedef long long int64_t;
 #define WM_ICONNOTIFY (WM_USER + 101)
 #define ID_TRAY 100
 
-#ifdef _DEBUG
+#ifndef NDEBUG
 #define MSG(...) fprintf(stderr, __VA_ARGS__)
 #else
 #define MSG(...)
