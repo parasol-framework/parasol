@@ -50,7 +50,7 @@ static void msg_thread_complete(ACTIONID ActionID, OBJECTPTR Object, ERR Error, 
    auto prv = (prvTiri *)Msg->Owner->ChildPrivate;
 
    if (Msg->Callback != LUA_NOREF) {
-      if (Object->baseClassID() IS CLASSID::SCRIPT) {
+      if ((Object) and (Object->baseClassID() IS CLASSID::SCRIPT)) {
          auto args = std::to_array<ScriptArg>({
             { "Object", Object, FD_OBJECTPTR }
          });
