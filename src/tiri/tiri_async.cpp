@@ -237,18 +237,30 @@ static int async_method(lua_State *Lua)
 
    auto gc_obj = lj_lib_checkobject(Lua, 1);
    if (not gc_obj->ptr) luaL_error(Lua, ERR::ObjectCorrupt);
-   auto method = luaL_checkstring(Lua, 2);
 
    MethodEntry *table;
    int total_methods, i;
 
-   // TODO: We should be using a hashmap here.
+   auto type = lua_type(Lua, 2);
+   CSTRING method = nullptr;
+   AC method_id = AC::NIL;
 
    if ((gc_obj->classptr->get(FID_Methods, table, total_methods) IS ERR::Okay) and (table)) {
       bool found = false;
-      for (i=1; i < total_methods; i++) {
-         if ((table[i].Name) and (iequals(table[i].Name, method))) { found = true; break; }
+
+      if (type IS LUA_TSTRING) {
+         method = lua_tostring(Lua, 2);
+         for (i=1; i < total_methods; i++) {
+            if ((table[i].Name) and (iequals(table[i].Name, method))) { found = true; break; }
+         }
       }
+      else if (type IS LUA_TNUMBER) {
+         method_id = AC(lua_tointeger(Lua, 2));
+         for (i=1; i < total_methods; i++) {
+            if (table[i].MethodID IS method_id) { found = true; break; }
+         }
+      }
+      else luaL_argerror(Lua, 2, "Method name or ID required.");
 
       if (found) {
          auto args      = table[i].Args;
@@ -320,7 +332,8 @@ static int async_method(lua_State *Lua)
       }
    }
 
-   luaL_error(Lua, "No '%s' method for class %s.", method, gc_obj->classptr->ClassName);
+   if (method) luaL_error(Lua, "No '%s' method for class %s.", method, gc_obj->classptr->ClassName);
+   else luaL_error(Lua, "No method %d for class %s.", int(method_id), gc_obj->classptr->ClassName);
    return 0;
 }
 
@@ -476,6 +489,6 @@ void register_async_class(lua_State *Lua)
 
    // Register async interface prototypes for compile-time type inference
    reg_iface_prototype("async", "action", {}, { TiriType::Any, TiriType::Any, TiriType::Func, TiriType::Num });
-   reg_iface_prototype("async", "method", {}, { TiriType::Any, TiriType::Str, TiriType::Func, TiriType::Num });
+   reg_iface_prototype("async", "method", {}, { TiriType::Any, TiriType::Any, TiriType::Func, TiriType::Num });
    reg_iface_prototype("async", "script", {}, { TiriType::Object, TiriType::Func });
 }
