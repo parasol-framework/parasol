@@ -490,7 +490,7 @@ static ERR GET_WindowHandle(extSurface *Self, APTR *Value)
 
 static ERR SET_WindowHandle(extSurface *Self, APTR Value)
 {
-   if (Self->initialised()) return ERR::Failed;
+   if (Self->initialised()) return ERR::Immutable;
    if (Value) Self->DisplayWindow = Value;
    return ERR::Okay;
 }

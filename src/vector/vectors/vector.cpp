@@ -504,7 +504,7 @@ static ERR VECTOR_Init(extVector *Self)
 
    if (Self->classID() IS CLASSID::VECTOR) {
       log.warning("Vector cannot be instantiated directly (use a sub-class).");
-      return ERR::Failed;
+      return ERR::UseSubClass;
    }
 
    if (!Self->Parent) {
@@ -1077,7 +1077,7 @@ static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
                args[2].Int = cmd;
                args[3].Double = x;
                args[4].Double = y;
-               if (sc::Call(*Args->Callback, args, result) != ERR::Okay) return ERR::Failed;
+               if (sc::Call(*Args->Callback, args, result) != ERR::Okay) return ERR::Function;
                if (result IS ERR::Terminate) return ERR::Okay;
             }
          } while (cmd != agg::path_cmd_stop);
@@ -1091,7 +1091,7 @@ static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
                args[2].Int = cmd;
                args[3].Double = x;
                args[4].Double = y;
-               if (sc::Call(*Args->Callback, args, result) != ERR::Okay) return ERR::Failed;
+               if (sc::Call(*Args->Callback, args, result) != ERR::Okay) return ERR::Function;
                if (result IS ERR::Terminate) return ERR::Okay;
             }
          } while (cmd != agg::path_cmd_stop);
@@ -1637,7 +1637,7 @@ static ERR VECTOR_SET_InnerJoin(extVector *Self, VIJ Value)
       case VIJ::BEVEL: Self->InnerJoin = agg::inner_bevel; break;
       case VIJ::JAG:   Self->InnerJoin = agg::inner_jag; break;
       case VIJ::INHERIT: Self->InnerJoin = agg::inner_inherit; break;
-      default: return ERR::Failed;
+      default: return ERR::InvalidValue;
    }
    mark_buffers_for_refresh(Self);
    return ERR::Okay;
@@ -1674,7 +1674,7 @@ static ERR VECTOR_SET_LineCap(extVector *Self, VLC Value)
       case VLC::SQUARE:  Self->LineCap = agg::square_cap; break;
       case VLC::ROUND:   Self->LineCap = agg::round_cap; break;
       case VLC::INHERIT: Self->LineCap = agg::inherit_cap; break;
-      default: return ERR::Failed;
+      default: return ERR::InvalidValue;
    }
    mark_buffers_for_refresh(Self);
    return ERR::Okay;
@@ -1712,7 +1712,7 @@ static ERR VECTOR_SET_LineJoin(extVector *Self, VLJ Value)
       case VLJ::MITER_SMART:  Self->LineJoin = agg::miter_join; break;
       case VLJ::MITER_ROUND:  Self->LineJoin = agg::miter_join_round; break;
       case VLJ::INHERIT:      Self->LineJoin = agg::inherit_join; break;
-      default: return ERR::Failed;
+      default: return ERR::InvalidValue;
    }
    mark_buffers_for_refresh(Self);
    return ERR::Okay;

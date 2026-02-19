@@ -30,7 +30,7 @@ static ERR OFFSETFX_Draw(extOffsetFX *Self, struct acDraw *Args)
       gfx::CopyArea(inBmp, Self->Target, BAF::NIL, 0, 0, inBmp->Width, inBmp->Height, dx, dy);
       return ERR::Okay;
    }
-   else return ERR::Failed;
+   else return ERR::NoData;
 }
 
 /*********************************************************************************************************************

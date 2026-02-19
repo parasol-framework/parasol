@@ -551,7 +551,7 @@ static ERR DISPLAY_Init(extDisplay *Self)
    auto bmp = (extBitmap *)Self->Bitmap;
 
    DISPLAYINFO info;
-   if (get_display_info(0, &info, sizeof(info)) != ERR::Okay) return log.warning(ERR::Failed);
+   if (get_display_info(0, &info, sizeof(info)) != ERR::Okay) return log.warning(ERR::SystemCall);
 
    if (!Self->Width) {
       Self->Width = info.Width;
@@ -943,7 +943,7 @@ static ERR DISPLAY_Move(extDisplay *Self, struct acMove *Args)
 
    if (!winMoveWindow(Self->WindowHandle,
       Self->X + Self->LeftMargin + Args->DeltaX,
-      Self->Y + Self->TopMargin + Args->DeltaY)) return ERR::Failed;
+      Self->Y + Self->TopMargin + Args->DeltaY)) return ERR::SystemCall;
 
    return ERR::Okay;
 
@@ -1040,7 +1040,7 @@ static ERR DISPLAY_MoveToPoint(extDisplay *Self, struct acMoveToPoint *Args)
 
    if (!winMoveWindow(Self->WindowHandle,
          ((Args->Flags & MTF::X) != MTF::NIL) ? Args->X : F2T(Self->X) + Self->LeftMargin,
-         ((Args->Flags & MTF::Y) != MTF::NIL) ? Args->Y : F2T(Self->Y) + Self->TopMargin)) return ERR::Failed;
+         ((Args->Flags & MTF::Y) != MTF::NIL) ? Args->Y : F2T(Self->Y) + Self->TopMargin)) return ERR::SystemCall;
 
    if ((Args->Flags & MTF::X) != MTF::NIL) Self->X = F2T(Args->X) + Self->LeftMargin;
    if ((Args->Flags & MTF::Y) != MTF::NIL) Self->Y = F2T(Args->Y) + Self->TopMargin;
@@ -1174,7 +1174,7 @@ static ERR DISPLAY_Resize(extDisplay *Self, struct acResize *Args)
    if (!Args) return log.warning(ERR::NullArgs);
 
    if (!winResizeWindow(Self->WindowHandle, 0x7fffffff, 0x7fffffff, Args->Width, Args->Height)) {
-      return ERR::Failed;
+      return ERR::Resize;
    }
 
    Action(AC::Resize, Self->Bitmap, Args);
@@ -1437,7 +1437,7 @@ static ERR DISPLAY_SetDisplay(extDisplay *Self, gfx::SetDisplay *Args)
    log.msg(VLF::BRANCH|VLF::DETAIL, "%dx%d, %dx%d", Args->X, Args->Y, Args->Width, Args->Height);
 
    if (!winResizeWindow(Self->WindowHandle, Args->X, Args->Y, Args->Width, Args->Height)) {
-      return log.warning(ERR::Failed);
+      return log.warning(ERR::Resize);
    }
 
    log.trace("Resizing the video bitmap.");
@@ -1678,7 +1678,7 @@ static ERR DISPLAY_SetMonitor(extDisplay *Self, gfx::SetMonitor *Args)
 
    if (CurrentTaskID() != Self->ownerTask()) {
       log.warning("Only the owner of the display may call this method.");
-      return ERR::Failed;
+      return ERR::NoPermission;
    }
 
    log.branch("%s", Args->Name);
@@ -2245,7 +2245,7 @@ static ERR SET_Flags(extDisplay *Self, SCR Value)
                Self->X, Self->Y, Self->Width, Self->Height, 0, CopyFromParent, InputOutput,
                CopyFromParent, cwflags, &swa))) {
             log.warning("Failed in call to XCreateWindow().");
-            return ERR::Failed;
+            return ERR::CreateResource;
          }
 
          STRING name;
@@ -2650,7 +2650,7 @@ static ERR GET_WindowHandle(extDisplay *Self, APTR *Value)
 
 static ERR SET_WindowHandle(extDisplay *Self, APTR Value)
 {
-   if (Self->initialised()) return ERR::Failed;
+   if (Self->initialised()) return ERR::Immutable;
 
    if (Value) {
       Self->WindowHandle = Value;

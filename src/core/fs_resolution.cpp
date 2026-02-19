@@ -367,7 +367,7 @@ static ERR resolve(const std::string &Source, std::string &Dest, RSF Flags)
       if (get_virtual(Source)) return ERR::VirtualVolume;
 
       if (tlClassLoaded) { // Already attempted to load the module on a previous occasion - we must fail
-         return ERR::Failed;
+         return ERR::LoadModule;
       }
 
       // An external reference can refer to a module for auto-loading (preferred) or a class name.

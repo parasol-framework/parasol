@@ -513,7 +513,7 @@ static ERR BITMAP_Compress(extBitmap *Self, struct bmp::Compress *Args)
 
    if ((Self->DataFlags & (MEM::VIDEO|MEM::TEXTURE)) != MEM::NIL) {
       log.warning("Cannot compress video bitmaps.");
-      return ERR::Failed;
+      return ERR::NoSupport;
    }
 
    if (Self->Size < 8192) return ERR::Okay;
@@ -549,7 +549,7 @@ static ERR BITMAP_Compress(extBitmap *Self, struct bmp::Compress *Args)
          }
          else error = ERR::ReallocMemory;
       }
-      else error = ERR::Failed;
+      else error = ERR::Compression;
    }
    else error = ERR::AllocMemory;
 
@@ -1381,7 +1381,7 @@ static ERR BITMAP_Lock(extBitmap *Self)
             Self->Clip.Bottom - Self->Clip.Top, 0xffffffff, ZPixmap, Self->x11.readable,
             Self->Clip.Left, Self->Clip.Top);
       }
-      else return ERR::Failed;
+      else return ERR::CreateResource;
    }
 
    return ERR::Okay;
@@ -2699,7 +2699,7 @@ static ERR CalculatePixelRoutines(extBitmap *Self)
 
    if (Self->Type != BMP::CHUNKY) {
       log.warning("Unsupported Bitmap->Type %d.", int(Self->Type));
-      return ERR::Failed;
+      return ERR::NoSupport;
    }
 
 #ifdef _WIN32
@@ -2756,7 +2756,7 @@ static ERR CalculatePixelRoutines(extBitmap *Self)
 
          default:
             log.warning("Unsupported Bitmap->BytesPerPixel %d.", Self->BytesPerPixel);
-            return ERR::Failed;
+            return ERR::NoSupport;
       }
       return ERR::Okay;
    }
@@ -2811,7 +2811,7 @@ static ERR CalculatePixelRoutines(extBitmap *Self)
 
       default:
         log.warning("Unsupported Bitmap->BytesPerPixel %d.", Self->BytesPerPixel);
-        return ERR::Failed;
+        return ERR::NoSupport;
    }
 
    return ERR::Okay;
