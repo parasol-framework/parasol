@@ -69,6 +69,39 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Queue multiple thread.script() calls against separate script objects without waiting between each dispatch.
+-- AsyncAction serialises requests per-object, so distinct objects can run concurrently.  The test verifies that all
+-- callbacks fire and that no registry references are corrupted when multiple ThreadScriptMsg allocations are in flight.
+
+@Test(priority=3) function QueuedScriptExecution()
+   total = 50
+   completed = 0
+
+   signal = obj.new('time', { })
+   proc = processing.new({ timeout=5.0, signals = array<object> { signal } })
+
+   scripts = array<object>
+   for i=0, total-1 do
+      scripts:push(obj.new('script', { statement = [[ msg('Queued script ]] .. i .. [[ running.') ]] }))
+   end
+
+   for script in values(scripts) do
+      thread.script(script, function()
+         completed++
+         msg(f'Callback {completed}/{total} fired.')
+         if completed >= total then
+            signal.acSignal()
+         end
+      end)
+   end
+
+   check proc.sleep()
+
+   assert(completed >= total, f'Expected {total} callbacks but only {completed} fired.')
+   print(f'All {completed} queued script callbacks completed successfully.')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- In this test the signals are sent from the threaded script rather than being managed by the main thread's callback.
 
 @Test(priority=4) function MultipleClientSignals()
