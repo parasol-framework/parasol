@@ -50,13 +50,21 @@ static void msg_thread_complete(ACTIONID ActionID, OBJECTPTR Object, ERR Error, 
    auto prv = (prvTiri *)Msg->Owner->ChildPrivate;
 
    if (Msg->Callback != LUA_NOREF) {
-      auto args = std::to_array<ScriptArg>({
-         { "ActionID", int(ActionID) },
-         { "Object",   Object ? Object->UID : 0, FD_OBJECTID },
-         { "Error",    int(Error) },
-         { "Key",      Msg->Key }
-      });
-      Msg->Owner->callback(Msg->Callback, args.data(), int(args.size()), nullptr);
+      if ((Object) and (Object->baseClassID() IS CLASSID::SCRIPT)) {
+         auto args = std::to_array<ScriptArg>({
+            { "Object", Object, FD_OBJECTPTR }
+         });
+         Msg->Owner->callback(Msg->Callback, args.data(), int(args.size()), nullptr);
+      }
+      else {
+         auto args = std::to_array<ScriptArg>({
+            { "ActionID", int(ActionID) },
+            { "Object",   Object, FD_OBJECTPTR },
+            { "Error",    int(Error) },
+            { "Key",      Msg->Key }
+         });
+         Msg->Owner->callback(Msg->Callback, args.data(), int(args.size()), nullptr);
+      }
       luaL_unref(prv->Lua, LUA_REGISTRYINDEX, Msg->Callback); // Drop the procedure reference
    }
 

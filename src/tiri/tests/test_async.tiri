@@ -102,9 +102,40 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Demonstrate the use of array<object> |> pipe iteration to fan out async work across multiple objects.
+-- Each script object runs in its own thread; the pipe dispatches all of them without an explicit loop.
+
+@Test(priority=4) function ArrayPipeFanOut()
+   -- Create a bunch of worker scripts that return a result
+
+   scripts = array<object> { }
+   for i in {1...10} do
+      scripts:push(obj.new('script', { statement = [[ print('Pipe worker ]] .. i .. [[ running.'); return ]] .. i }))
+   end
+
+   proc = processing.new({ timeout=5.0, signals = scripts })
+
+   -- Run all the workers in one go
+
+   completed = 0
+   scripts |> function(script)
+      async.script(script, function(Object)
+         Object.acSignal()
+         print('Received result: ', Object.results?[0])
+         check Object.error
+         completed++
+      end)
+   end
+
+   check proc.sleep()
+
+   assert(completed >= #scripts, f'Expected {total} callbacks but only {completed} fired.')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- In this test the signals are sent from the threaded script rather than being managed by the main thread's callback.
 
-@Test(priority=4) function MultipleClientSignals()
+@Test(priority=5) function MultipleClientSignals()
    signal_a = obj.new('time', { }) -- This would normally be something more practical, like a file
    work_list = array<object> { signal_a } -- List all the objects that will be worked on
 
@@ -112,7 +143,6 @@ end
       print(f'Thread {arg('Iteration')} is now in session.')
       sig_a = obj.find(arg('A'))
       sig_a.acSignal()
-      print('Finished')
    ]]
 
    local script = obj.new('script', { statement = async_statement })
@@ -122,7 +152,6 @@ end
    proc = processing.new({ timeout=1.0, signals = work_list })
 
    for i=1,100 do
-      print('Iteration ' .. i)
       script.setKey('Iteration', i)
       async.script(script)
       check proc.sleep()
