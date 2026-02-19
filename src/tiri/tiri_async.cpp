@@ -21,6 +21,7 @@ additional functionality in the future.
 #include <kotuku/strings.hpp>
 #include <thread>
 #include <cassert>
+#include <mutex>
 
 #include "lib.h"
 #include "lauxlib.h"
