@@ -167,7 +167,6 @@ struct ThreadMessage {
 struct ThreadActionMessage {
    AC        ActionID;  // The action to execute.
    OBJECTID  ObjectID;  // ID of the target object (for queue dispatch).
-   int       Key;       // Internal
    ERR       Error;     // The error code resulting from the action's execution.
    FUNCTION  Callback;  // Callback function to execute on action completion.
 };

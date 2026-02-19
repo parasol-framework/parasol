@@ -40,26 +40,25 @@ struct ThreadScriptMsg {
 
 //********************************************************************************************************************
 // Callback following execution (executed by the main thread, not the child)
+// Must follow the signature declared in AsyncAction() documentation.
 
-static void msg_thread_script_complete(ACTIONID ActionID, objScript *Script, ERR Error, int MsgKey, ThreadScriptMsg *Msg)
+static void msg_thread_script_complete(ACTIONID ActionID, objScript *SubScript, ERR Error, ThreadScriptMsg *Msg)
 {
    pf::Log log("thread_callback");
 
-   auto owner = Msg->Owner; // The parent script that owns the registry references
-   auto prv = (prvTiri *)owner->ChildPrivate;
+   auto prv = (prvTiri *)Msg->Owner->ChildPrivate;
 
    if (Msg->Callback) {
-      owner->callback(Msg->Callback, nullptr, 0, nullptr);
+      Msg->Owner->callback(Msg->Callback, nullptr, 0, nullptr);
       luaL_unref(prv->Lua, LUA_REGISTRYINDEX, Msg->Callback); // Drop the procedure reference
    }
 
    // Unpin the GCobject from the registry and release the pin on the underlying object.
 
-   int obj_ref = Msg->ObjRef;
-   lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, obj_ref);
+   lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, Msg->ObjRef);
    auto gc_script = lua_toobject(prv->Lua, -1);
    lua_pop(prv->Lua, 1);
-   luaL_unref(prv->Lua, LUA_REGISTRYINDEX, obj_ref);
+   luaL_unref(prv->Lua, LUA_REGISTRYINDEX, Msg->ObjRef);
 
    if (gc_script and gc_script->ptr) gc_script->ptr->unpin(true);
    delete Msg;
@@ -132,8 +131,6 @@ static int thread_action(lua_State *Lua)
    else luaL_argerror(Lua, 2, "Action name required.");
 
    FUNCTION callback;
-   auto key = lua_tointeger(Lua, 4);
-
    type = lua_type(Lua, 3); // Optional callback.
    if (type IS LUA_TSTRING) {
       lua_getglobal(Lua, lua_tostring(Lua, 3));
@@ -146,7 +143,6 @@ static int thread_action(lua_State *Lua)
 
    int arg_size = 0;
    const FunctionField *args = nullptr;
-   ERR error = ERR::Okay;
 
    if ((glActions[int(action_id)].Args) and (glActions[int(action_id)].Size)) {
       arg_size = glActions[int(action_id)].Size;
@@ -155,31 +151,29 @@ static int thread_action(lua_State *Lua)
 
    log.trace("#%d/%p, Action: %s/%d, Args: %d", obj_ref->uid, obj_ref->ptr, action, int(action_id), arg_size);
 
+   ERR error = ERR::Okay;
    if (arg_size > 0) {
       auto arg_buffer = std::make_unique<int8_t[]>(arg_size+8); // +8 for overflow protection in build_args()
       int result_count;
 
       if ((error = build_args(Lua, args, arg_size, arg_buffer.get(), &result_count)) IS ERR::Okay) {
-         callback.Meta = (APTR)key;
-         if (obj_ref->ptr) {
-            error = AsyncAction(action_id, obj_ref->ptr, arg_buffer.get(), &callback);
-         }
-         else if (!result_count) {
+         callback.MetaValue = lua_tonumber(Lua, 4);
+         if (!result_count) {
             if (auto obj = access_object(obj_ref)) {
                error = AsyncAction(action_id, obj, arg_buffer.get(), &callback);
                release_object(obj_ref);
             }
+            else error = log.warning(ERR::AccessObject);
          }
-         else log.warning("Actions that return results have not been tested/supported for release of resources.");
+         else luaL_error(Lua, "Actions that return results are not yet supported.");
       }
       else {
          luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
          luaL_error(Lua, "Argument build failure for %s.", glActions[int(action_id)].Name);
-         return 0;
       }
    }
    else { // No parameters.
-      callback.Meta = (APTR)key;
+      callback.MetaValue = lua_tonumber(Lua, 4);
       if (auto obj = access_object(obj_ref)) {
          error = AsyncAction(action_id, obj, nullptr, &callback);
          release_object(obj_ref);
@@ -202,108 +196,82 @@ static int thread_method(lua_State *Lua)
 {
    pf::Log log(__FUNCTION__);
 
-   #ifndef NDEBUG
-   auto stack_top = lua_gettop(Lua);
-   #endif
+   auto obj_ref = lj_lib_checkobject(Lua, 1);
+   auto method = luaL_checkstring(Lua, 2);
 
-   // Args: Object (1), Action (2), Callback (3), Key (4), Parameters...
+   MethodEntry *table;
+   int total_methods, i;
 
-   if (auto obj_ref = lj_lib_checkobject(Lua, 1)) {
-      if (auto method = luaL_checkstring(Lua, 2)) {
-         MethodEntry *table;
-         int total_methods, i;
+   // TODO: We should be using a hashmap here.
 
-         // TODO: We should be using a hashmap here.
+   if ((obj_ref->classptr->get(FID_Methods, table, total_methods) IS ERR::Okay) and (table)) {
+      bool found = false;
+      for (i=1; i < total_methods; i++) {
+         if ((table[i].Name) and (iequals(table[i].Name, method))) { found = true; break; }
+      }
 
-         if ((obj_ref->classptr->get(FID_Methods, table, total_methods) IS ERR::Okay) and (table)) {
-            bool found = false;
-            for (i=1; i < total_methods; i++) {
-               if ((table[i].Name) and (iequals(table[i].Name, method))) { found = true; break; }
-            }
+      if (found) {
+         // If an obj.new() lock is still present, detach it first because AsyncAction() is going to attempt to
+         // lock the object with LockObject() and a timeout error will occur otherwise.
 
-            if (found) {
-               // If an obj.new() lock is still present, detach it first because AsyncAction() is going to attempt to
-               // lock the object with LockObject() and a timeout error will occur otherwise.
+         auto args      = table[i].Args;
+         auto argsize   = table[i].Size;
+         auto action_id = table[i].MethodID;
+         ERR error;
+         OBJECTPTR obj;
+         FUNCTION callback;
 
-               auto args = table[i].Args;
-               int argsize = table[i].Size;
-               AC action_id = table[i].MethodID;
-               ERR error;
-               OBJECTPTR obj;
-               FUNCTION callback;
+         int type = lua_type(Lua, 3); // Optional callback.
+         if (type IS LUA_TSTRING) {
+            lua_getglobal(Lua, (STRING)lua_tostring(Lua, 3));
+            callback = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+         }
+         else if (type IS LUA_TFUNCTION) {
+            lua_pushvalue(Lua, 3);
+            callback = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+         }
+         else callback.Type = CALL::NIL;
+         callback.Meta = APTR(lua_tointeger(Lua, 4));
 
-               int type = lua_type(Lua, 3); // Optional callback.
-               if (type IS LUA_TSTRING) {
-                  lua_getglobal(Lua, (STRING)lua_tostring(Lua, 3));
-                  callback = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
-               }
-               else if (type IS LUA_TFUNCTION) {
-                  lua_pushvalue(Lua, 3);
-                  callback = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
-               }
-               else callback.Type = CALL::NIL;
-               callback.Meta = APTR(lua_tointeger(Lua, 4));
+         if (argsize > 0) {
+            auto argbuffer = std::make_unique<int8_t[]>(argsize+8); // +8 for overflow protection in build_args()
+            int resultcount;
 
-               if (argsize > 0) {
-                  auto argbuffer = std::make_unique<int8_t[]>(argsize+8); // +8 for overflow protection in build_args()
-                  int resultcount;
-
-                  // Remove the first 4 required arguments so that the user's custom parameters are left on the stack.
-                  lua_rotate(Lua, 1, -4);
-                  lua_pop(Lua, 4);
-                  if ((error = build_args(Lua, args, argsize, argbuffer.get(), &resultcount)) IS ERR::Okay) {
-                     if (obj_ref->ptr) {
-                        error = AsyncAction(action_id, obj_ref->ptr, argbuffer.get(), &callback);
-                     }
-                     else {
-                        if (!resultcount) {
-                           if ((obj = access_object(obj_ref))) {
-                              error = AsyncAction(action_id, obj, argbuffer.get(), &callback);
-                              release_object(obj_ref);
-                           }
-                        }
-                        else log.warning("Actions that return results have not been tested/supported for release of resources.");
-                     }
-                  }
-                  else {
-                     luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
-                     luaL_error(Lua, "Argument build failure for %s.", glActions[int(action_id)].Name);
-                     return 0;
-                  }
-               }
-               else { // No parameters.
-                  if (obj_ref->ptr) {
-                     error = AsyncAction(action_id, obj_ref->ptr, nullptr, &callback);
-                  }
-                  else if ((obj = access_object(obj_ref))) {
-                     error = AsyncAction(action_id, obj, nullptr, &callback);
+            // Remove the first 4 required arguments so that the user's custom parameters are left on the stack.
+            lua_rotate(Lua, 1, -4);
+            lua_pop(Lua, 4);
+            if ((error = build_args(Lua, args, argsize, argbuffer.get(), &resultcount)) IS ERR::Okay) {
+               if (!resultcount) {
+                  if ((obj = access_object(obj_ref))) {
+                     error = AsyncAction(action_id, obj, argbuffer.get(), &callback);
                      release_object(obj_ref);
                   }
-                  else error = log.warning(ERR::AccessObject);
                }
-
-               if (error != ERR::Okay) {
-                  if (callback.defined()) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
-                  luaL_error(Lua, error);
-               }
-
-               #ifndef NDEBUG
-               // After the lua_rotate/lua_pop of 4 args, the stack should have shrunk accordingly.
-               // For the no-args path the stack is unchanged; for the args path it lost 4 entries.
-               if (argsize > 0) assert(lua_gettop(Lua) IS stack_top - 4);
-               else assert(lua_gettop(Lua) IS stack_top);
-               #endif
-
-               return 0;
+               else luaL_error(Lua, "Methods that return results are not yet supported.");
+            }
+            else {
+               luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
+               luaL_error(Lua, "Argument build failure for %s.", glActions[int(action_id)].Name);
             }
          }
+         else { // No parameters.
+            if (auto obj = access_object(obj_ref)) {
+               error = AsyncAction(action_id, obj, nullptr, &callback);
+               release_object(obj_ref);
+            }
+            else error = log.warning(ERR::AccessObject);
+         }
 
-         luaL_error(Lua, "No '%s' method for class %s.", method, obj_ref->classptr->ClassName);
+         if (error != ERR::Okay) {
+            if (callback.defined()) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
+            luaL_error(Lua, error);
+         }
+
+         return 0;
       }
-      else luaL_argerror(Lua, 2, "Method name required.");
    }
-   else luaL_argerror(Lua, 1, "Object required.");
 
+   luaL_error(Lua, "No '%s' method for class %s.", method, obj_ref->classptr->ClassName);
    return 0;
 }
 

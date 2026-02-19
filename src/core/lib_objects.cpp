@@ -532,7 +532,7 @@ thread to execute the action; the caller does not manage threads directly.  Plea
 general information on action execution.
 
 To receive feedback of the action's completion, use the `Callback` parameter and supply a function.  The
-prototype for the callback routine is `callback(AC ActionID, OBJECTPTR Object, ERR Error, APTR Meta)`
+prototype for the callback routine is `callback(ACTIONID ActionID, OBJECTPTR Object, ERR Error, APTR Meta)`
 
 Actions targeting the same object are serialised through a per-object FIFO queue.  If an async action is already
 in-flight for the given object, subsequent calls to AsyncAction() will queue the request rather than spawning a
@@ -556,6 +556,8 @@ The 'Error' parameter in the callback reflects the error code returned by the ac
 that if AsyncAction() fails, the callback will never be executed because the attempt will have been aborted.
 
 This function is at its most effective when used to perform lengthy processes such as the loading and parsing of data.
+
+NOTE: Tiri scripts must use the `thread.action|method()` interfaces for asynchronous activity instead of this function.
 
 -INPUT-
 int(AC) Action: An action or method ID must be specified here.
@@ -716,7 +718,6 @@ static void launch_async_thread(OBJECTPTR Object, ACTIONID ActionID, int ArgsSiz
          ThreadActionMessage msg = {
             .ActionID = ActionID,
             .ObjectID = object_uid,
-            .Key      = Callback.defined() ? int((intptr_t)Callback.Meta) : 0,
             .Error    = ERR::Cancelled,
             .Callback = Callback
          };
@@ -745,7 +746,6 @@ static void launch_async_thread(OBJECTPTR Object, ACTIONID ActionID, int ArgsSiz
          ThreadActionMessage msg = {
             .ActionID = ActionID,
             .ObjectID = object_uid,
-            .Key      = Callback.defined() ? int((intptr_t)Callback.Meta) : 0,
             .Error    = error,
             .Callback = Callback
          };
@@ -848,14 +848,12 @@ ERR msg_threadaction(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgS
    if (not msg) return ERR::Okay;
 
    if (msg->Callback.isC()) {
-      auto routine = (void (*)(ACTIONID, OBJECTPTR, ERR, int, APTR))msg->Callback.Routine;
+      auto routine = (void (*)(ACTIONID, OBJECTPTR, ERR, APTR))msg->Callback.Routine;
       ScopedObjectLock obj(msg->ObjectID);
       if (obj.granted()) {
-         routine(msg->ActionID, *obj, msg->Error, msg->Key, msg->Callback.Meta);
+         routine(msg->ActionID, *obj, msg->Error, msg->Callback.Meta);
       }
-      else {
-         routine(msg->ActionID, nullptr, ERR::DoesNotExist, msg->Key, msg->Callback.Meta);
-      }
+      else routine(msg->ActionID, nullptr, ERR::DoesNotExist, msg->Callback.Meta);
    }
    else if (msg->Callback.isScript()) {
       auto script = msg->Callback.Context;
@@ -864,7 +862,7 @@ ERR msg_threadaction(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgS
             { "ActionID", int(msg->ActionID) },
             { "Object",   msg->ObjectID, FD_OBJECTID },
             { "Error",    int(msg->Error) },
-            { "Key",      msg->Key }
+            { "Meta",     msg->Callback.MetaValue }
          }));
 
          // Dereference the callback procedure to release the script registry reference.
