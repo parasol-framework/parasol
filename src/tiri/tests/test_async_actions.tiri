@@ -66,7 +66,7 @@ end
 
    for k, v in glPictures do
       if v.pic then
-         thread.action(v.pic, 'Activate', picProcessed, k)
+         async.action(v.pic, 'Activate', picProcessed, k)
          count++
       end
    end
@@ -94,7 +94,7 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Verify that multiple thread.action() calls on the same object execute in FIFO order.
+-- Verify that multiple async.action() calls on the same object execute in FIFO order.
 -- Each callback records its Key parameter; the final order should match submission order.
 
 @Test(priority=3); @Requires(display=true) function FifoOrdering()
@@ -105,7 +105,7 @@ end
    expected = 8
 
    for i = 0, expected - 1 do
-      thread.action(pic, 'Activate', function(ActionID, Object, Error, Key)
+      async.action(pic, 'Activate', function(ActionID, Object, Error, Key)
          table.insert(order_log, Key)
          completed++
          if completed >= expected then
@@ -114,8 +114,7 @@ end
       end, i)
    end
 
-   err = processing.sleep(3)
-   assert(err is ERR_Okay, f'Processing sleep returned error: {err}')
+   check processing.sleep(3)
    assert(completed is expected, f'Expected {expected} completions, got {completed}')
 
    -- Verify FIFO ordering: keys should arrive in submission order (0, 1, 2, ..., 7)
@@ -132,16 +131,19 @@ end
 
    completed = 0
 
-   -- Queue 3 actions on the same object without callbacks, followed by 1 with a callback
-   thread.action(pic, 'Activate')
-   thread.action(pic, 'Activate')
-   thread.action(pic, 'Activate')
-   thread.action(pic, 'Activate', function(ActionID, Object, Error, Key)
+   -- Queue some actions on the same object without callbacks, followed by 1 with a callback
+
+   async.action(pic, 'Activate')
+
+   async.action(pic, 'Activate')
+
+   async.action(pic, 'Activate')
+
+   async.action(pic, 'Activate', function(ActionID, Object, Error, Key)
       completed++
       processing.signal()
    end, 0)
 
-   err = processing.sleep(3)
-   assert(err is ERR_Okay, f'Processing sleep returned error: {err}')
+   check processing.sleep(3)
    assert(completed is 1, 'Final callback was not invoked after callback-less queued actions.')
 end

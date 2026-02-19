@@ -406,7 +406,7 @@ extern void register_number_class(lua_State *);
 extern void register_processing_class(lua_State *);
 extern void register_regex_class(lua_State *);
 extern void register_struct_class(lua_State *);
-extern void register_thread_class(lua_State *);
+extern void register_async_class(lua_State *);
 //static void register_widget_class(lua_State *);
 void release_object(GCobject *);
 void new_module(lua_State *, objModule *);

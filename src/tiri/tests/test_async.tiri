@@ -21,7 +21,7 @@
    for i=1,100 do
       do
          script = obj.new('script', { statement=[[ msg('Thread is now in session.') ]] })
-         thread.script(script, callback)
+         async.script(script, callback)
       end
 
       processing.collect()
@@ -36,7 +36,7 @@
    script = obj.new('script', { statement=[[ msg('Thread is now in session.') ]] })
 
    for i=1,100 do -- Run enough times to sufficiently test thread locking and the JIT
-      thread.script(script, callback)
+      async.script(script, callback)
 
       msg('Sleeping....')
       check proc.sleep()
@@ -44,7 +44,7 @@
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Verify that the thread.script() callback receives an error code and message when the script fails.
+-- Verify that the async.script() callback receives an error code and message when the script fails.
 
 @Test(priority=2) function ScriptCallbackError()
    script = obj.new('script', { statement=[[ error('Deliberate test failure') ]] })
@@ -53,7 +53,7 @@ end
    glCallbackMsg = nil
    glCallbackFired = false
 
-   thread.script(script, function()
+   async.script(script, function()
       glCallbackError = script.error
       glCallbackMsg   = script.errorMessage
       glCallbackFired = true
@@ -69,7 +69,7 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Queue multiple thread.script() calls against separate script objects without waiting between each dispatch.
+-- Queue multiple async.script() calls against separate script objects without waiting between each dispatch.
 -- AsyncAction serialises requests per-object, so distinct objects can run concurrently.  The test verifies that all
 -- callbacks fire and that no registry references are corrupted when multiple ThreadScriptMsg allocations are in flight.
 
@@ -86,7 +86,7 @@ end
    end
 
    for script in values(scripts) do
-      thread.script(script, function()
+      async.script(script, function()
          completed++
          msg(f'Callback {completed}/{total} fired.')
          if completed >= total then
@@ -108,14 +108,14 @@ end
    signal_a = obj.new('time', { }) -- This would normally be something more practical, like a file
    work_list = array<object> { signal_a } -- List all the objects that will be worked on
 
-   thread_statement = [[
+   async_statement = [[
       print(f'Thread {arg('Iteration')} is now in session.')
       sig_a = obj.find(arg('A'))
       sig_a.acSignal()
       print('Finished')
    ]]
 
-   local script = obj.new('script', { statement = thread_statement })
+   local script = obj.new('script', { statement = async_statement })
    script.acQuery()
    script.setKey('A', signal_a.id) -- Make the signal object available via arg()
 
@@ -124,7 +124,7 @@ end
    for i=1,100 do
       print('Iteration ' .. i)
       script.setKey('Iteration', i)
-      thread.script(script)
+      async.script(script)
       check proc.sleep()
    end
 end
