@@ -618,7 +618,7 @@ if (BUILD_DEFS)
    add_dependencies (${MOD} ${MOD}_hashes)
 endif ()
 
-set (TIRI_SOURCES "${MOD}.cpp" "tiri_module.cpp" "tiri_thread.cpp" "tiri_struct.cpp" "tiri_processing.cpp"
+set (TIRI_SOURCES "${MOD}.cpp" "tiri_module.cpp" "tiri_async.cpp" "tiri_struct.cpp" "tiri_processing.cpp"
    "tiri_number.cpp" "tiri_functions.cpp" "tiri_regex.cpp"
    "tiri_io.cpp" "tiri_class.cpp"
    "${JIT_SRC}/lib/lib.cpp"
@@ -708,7 +708,7 @@ endif ()
 # Register Flute tests
 
 set (TIRI_TESTS
-   defer debuglog io object regex struct threads thread_actions xml strings math array array_any array_manip
+   defer debuglog io object regex struct async async_actions xml strings math array array_any array_manip
    array_functional array_typed_syntax bitshift bitwise if_empty presence blank ternary table stress unit_tests
    jitoptions fstring const import_scope unicode ellipsis safe_nav close type_annotations type_fixing
    type_inference jit pipe pipe_iteration arrow_functions result_filter thunks deferred_expr shadow_assert ranges

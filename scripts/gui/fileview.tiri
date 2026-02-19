@@ -423,7 +423,7 @@ function pasteFromClipboard(Folder:str)
       self.threads ?= { }
       self.threads[paste_script.id] = paste_script
 
-      thread.action(paste_script, 'Activate', function(ActionID, Script, Error, ScriptID)
+      async.action(paste_script, 'Activate', function(ActionID, Script, Error, ScriptID)
          if Error?? then
             print('Failed to paste files: ' .. mSys.GetErrorMsg(Error))
          else
@@ -1164,7 +1164,7 @@ gui.fileview = function(Options)
                end
 
 
-               thread.script(obj.new('script', { statement=statement }),
+               async.script(obj.new('script', { statement=statement }),
                   function()
                      if not self.watch then self.refresh() end
                   end)

@@ -557,7 +557,7 @@ that if AsyncAction() fails, the callback will never be executed because the att
 
 This function is at its most effective when used to perform lengthy processes such as the loading and parsing of data.
 
-NOTE: Tiri scripts must use the `thread.action|method()` interfaces for asynchronous activity instead of this function.
+NOTE: Tiri scripts must use the `async.action|method()` interfaces for asynchronous activity instead of this function.
 
 -INPUT-
 int(AC) Action: An action or method ID must be specified here.

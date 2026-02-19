@@ -1030,7 +1030,7 @@ static ERR register_interfaces(objScript *Self)
    register_module_class(prv->Lua);
    register_regex_class(prv->Lua);
    register_struct_class(prv->Lua);
-   register_thread_class(prv->Lua);
+   register_async_class(prv->Lua);
    #ifndef DISABLE_DISPLAY
       register_input_class(prv->Lua);
    #endif

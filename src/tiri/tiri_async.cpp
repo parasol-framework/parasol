@@ -1,15 +1,15 @@
 /*********************************************************************************************************************
 
-The thread interface provides support for the parallel execution of actions and methods against objects:
+The async interface provides support for the parallel execution of actions and methods against objects:
 
-  thread.action(Object, Action, Callback, Key, Args...)
+  async.action(Object, Action, Callback, Key, Args...)
 
-  thread.method(Object, Action, Callback, Key, Args...)
+  async.method(Object, Action, Callback, Key, Args...)
 
-The script() method is a simplified variant of thread.action() for scripts, but there's some potential to add
+The script() method is a simplified variant of async.action() for scripts, but there's some potential to add
 additional functionality in the future.
 
-  thread.script(Script, Callback)
+  async.script(Script, Callback)
 
 *********************************************************************************************************************/
 
@@ -72,13 +72,13 @@ static void msg_thread_complete(ACTIONID ActionID, OBJECTPTR Object, ERR Error, 
 }
 
 //********************************************************************************************************************
-// Usage: thread.script(Script, Callback)
+// Usage: async.script(Script, Callback)
 //
 // Pins the Script object to prevent premature destruction, then executes it in its own thread.  The pin is
 // released when the thread completes and the callback message is processed on the main thread.  No object lock
 // is held across the thread boundary — acActivate() acquires its own lock internally via ScopedObjectAccess.
 
-static int thread_script(lua_State *Lua)
+static int async_script(lua_State *Lua)
 {
    pf::Log log(__FUNCTION__);
 
@@ -113,9 +113,9 @@ static int thread_script(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Usage: thread.action(Object, Action, Callback, Key, Args...)
+// Usage: async.action(Object, Action, Callback, Key, Args...)
 
-static int thread_action(lua_State *Lua)
+static int async_action(lua_State *Lua)
 {
    pf::Log log(__FUNCTION__);
 
@@ -210,9 +210,9 @@ static int thread_action(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Usage: error = thread.method(Object, Method, Callback, Key, Args...)
+// Usage: error = async.method(Object, Method, Callback, Key, Args...)
 
-static int thread_method(lua_State *Lua)
+static int async_method(lua_State *Lua)
 {
    pf::Log log(__FUNCTION__);
 
@@ -306,39 +306,39 @@ static int thread_method(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Register the thread interface.
+// Register the async interface.
 
-static const luaL_Reg threadlib_functions[] = {
-   { "action", thread_action },
-   { "method", thread_method },
-   { "script", thread_script },
+static const luaL_Reg asynclib_functions[] = {
+   { "action", async_action },
+   { "method", async_method },
+   { "script", async_script },
    { nullptr, nullptr }
 };
 
-static const luaL_Reg threadlib_methods[] = {
-   //{ "__index",    thread_get },
-   //{ "__newindex", thread_set },
+static const luaL_Reg asynclib_methods[] = {
+   //{ "__index",    async_get },
+   //{ "__newindex", async_set },
    { nullptr, nullptr }
 };
 
-void register_thread_class(lua_State *Lua)
+void register_async_class(lua_State *Lua)
 {
    pf::Log log;
 
-   log.trace("Registering thread interface.");
+   log.trace("Registering async interface.");
 
-   luaL_newmetatable(Lua, "Tiri.thread");
-   lua_pushstring(Lua, "Tiri.thread");
+   luaL_newmetatable(Lua, "Tiri.async");
+   lua_pushstring(Lua, "Tiri.async");
    lua_setfield(Lua, -2, "__name");
    lua_pushstring(Lua, "__index");
    lua_pushvalue(Lua, -2);  // pushes the metatable created earlier
    lua_settable(Lua, -3);   // metatable.__index = metatable
 
-   luaL_openlib(Lua, nullptr, threadlib_methods, 0);
-   luaL_openlib(Lua, "thread", threadlib_functions, 0);
+   luaL_openlib(Lua, nullptr, asynclib_methods, 0);
+   luaL_openlib(Lua, "async", asynclib_functions, 0);
 
-   // Register thread interface prototypes for compile-time type inference
-   reg_iface_prototype("thread", "action", {}, { TiriType::Any, TiriType::Any, TiriType::Func, TiriType::Num });
-   reg_iface_prototype("thread", "method", {}, { TiriType::Any, TiriType::Str, TiriType::Func, TiriType::Num });
-   reg_iface_prototype("thread", "script", {}, { TiriType::Object, TiriType::Func });
+   // Register async interface prototypes for compile-time type inference
+   reg_iface_prototype("async", "action", {}, { TiriType::Any, TiriType::Any, TiriType::Func, TiriType::Num });
+   reg_iface_prototype("async", "method", {}, { TiriType::Any, TiriType::Str, TiriType::Func, TiriType::Num });
+   reg_iface_prototype("async", "script", {}, { TiriType::Object, TiriType::Func });
 }
