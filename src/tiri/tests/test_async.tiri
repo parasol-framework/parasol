@@ -1,0 +1,130 @@
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Create two dummy objects and use them to confirm that the signalling of multiple objects works.
+-- Also ensures that the garbage collector doesn't collect the script while it's running.
+-- This is not a genuine threading test (only one thread and the main program is active at any time).
+
+@Test(priority=1) function MultipleSignals()
+   signal_a = obj.new('time', { }) -- This would normally be something more practical, like a file
+   signal_b = obj.new('time', { })
+   work_list = array<object> { signal_a, signal_b }
+
+   callback = function()
+      msg('Thread has finished execution.')
+      work_list:each(o => o.acSignal())
+   end
+
+   proc = processing.new({ timeout=1.0, signals = work_list })
+
+   -- Verify that garbage collection doesn't invalidate the thread while it's running
+
+   for i=1,100 do
+      do
+         script = obj.new('script', { statement=[[ msg('Thread is now in session.') ]] })
+         async.script(script, callback)
+      end
+
+      processing.collect()
+
+      msg('Sleeping....')
+      check proc.sleep()
+   end
+
+   -- Allocate the threaded script once, then run it multiple times.  Note that you can't run the
+   -- same object in parallel (you'd have to allocate more and reference the same string).
+
+   script = obj.new('script', { statement=[[ msg('Thread is now in session.') ]] })
+
+   for i=1,100 do -- Run enough times to sufficiently test thread locking and the JIT
+      async.script(script, callback)
+
+      msg('Sleeping....')
+      check proc.sleep()
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Verify that the async.script() callback receives an error code and message when the script fails.
+
+@Test(priority=2) function ScriptCallbackError()
+   script = obj.new('script', { statement=[[ error('Deliberate test failure') ]] })
+
+   glCallbackError = nil
+   glCallbackMsg = nil
+   glCallbackFired = false
+
+   async.script(script, function()
+      glCallbackError = script.error
+      glCallbackMsg   = script.errorMessage
+      glCallbackFired = true
+      processing.signal()
+   end)
+
+   check processing.sleep(3.0)
+
+   assert(glCallbackFired, 'Callback was not invoked.')
+   assert(glCallbackError != ERR_Okay, f'Expected a non-zero error code, got ERR_Okay')
+   assert(glCallbackMsg and #glCallbackMsg > 0, 'Expected a non-empty error message')
+   print(f'Script error reported: {glCallbackError}, message: {glCallbackMsg}')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Queue multiple async.script() calls against separate script objects without waiting between each dispatch.
+-- AsyncAction serialises requests per-object, so distinct objects can run concurrently.  The test verifies that all
+-- callbacks fire and that no registry references are corrupted when multiple ThreadScriptMsg allocations are in flight.
+
+@Test(priority=3) function QueuedScriptExecution()
+   total = 50
+   completed = 0
+
+   signal = obj.new('time', { })
+   proc = processing.new({ timeout=5.0, signals = array<object> { signal } })
+
+   scripts = array<object>
+   for i=0, total-1 do
+      scripts:push(obj.new('script', { statement = [[ msg('Queued script ]] .. i .. [[ running.') ]] }))
+   end
+
+   for script in values(scripts) do
+      async.script(script, function()
+         completed++
+         msg(f'Callback {completed}/{total} fired.')
+         if completed >= total then
+            signal.acSignal()
+         end
+      end)
+   end
+
+   check proc.sleep()
+
+   assert(completed >= total, f'Expected {total} callbacks but only {completed} fired.')
+   print(f'All {completed} queued script callbacks completed successfully.')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- In this test the signals are sent from the threaded script rather than being managed by the main thread's callback.
+
+@Test(priority=4) function MultipleClientSignals()
+   signal_a = obj.new('time', { }) -- This would normally be something more practical, like a file
+   work_list = array<object> { signal_a } -- List all the objects that will be worked on
+
+   async_statement = [[
+      print(f'Thread {arg('Iteration')} is now in session.')
+      sig_a = obj.find(arg('A'))
+      sig_a.acSignal()
+      print('Finished')
+   ]]
+
+   local script = obj.new('script', { statement = async_statement })
+   script.acQuery()
+   script.setKey('A', signal_a.id) -- Make the signal object available via arg()
+
+   proc = processing.new({ timeout=1.0, signals = work_list })
+
+   for i=1,100 do
+      print('Iteration ' .. i)
+      script.setKey('Iteration', i)
+      async.script(script)
+      check proc.sleep()
+   end
+end

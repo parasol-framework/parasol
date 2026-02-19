@@ -28,7 +28,7 @@
 #include "ankerl/unordered_dense.h"
 #endif
 
-#if defined(_DEBUG)
+#ifndef NDEBUG
  #ifndef _MSC_VER
   #include <signal.h>
  #endif
@@ -1115,6 +1115,7 @@ enum class RES : int {
    CPU_SPEED = 21,
    FREE_MEMORY = 22,
    MEMORY_USAGE = 23,
+   MAIN_THREAD = 24,
 };
 
 // Path types for SetResourcePath()
@@ -1548,7 +1549,7 @@ template <class T> T roundup(T Num, int Alignment) {
 // Use DEBUG_BREAK in critical areas where you would want to break in gdb.  This feature will only be compiled
 // in to debug builds.
 
-#ifdef _DEBUG
+#ifndef NDEBUG
  #ifdef _MSC_VER
   #define DEBUG_BREAK __debugbreak();
  #elif __linux__

@@ -167,7 +167,6 @@ struct ThreadMessage {
 struct ThreadActionMessage {
    AC        ActionID;  // The action to execute.
    OBJECTID  ObjectID;  // ID of the target object (for queue dispatch).
-   int       Key;       // Internal
    ERR       Error;     // The error code resulting from the action's execution.
    FUNCTION  Callback;  // Callback function to execute on action completion.
 };
@@ -335,7 +334,8 @@ extern ankerl::unordered_dense::map<uint32_t, virtual_drive> glVirtual;
 #endif
 
 enum {
-   RT_OBJECT
+   RT_OBJECT,
+   RT_SLEEP // Thread is sleeping in ProcessMessages / sleep_task
 };
 
 //********************************************************************************************************************
@@ -1093,6 +1093,8 @@ ERR    msg_free(APTR, int, int, APTR, int);
 void   optimise_write_field(Field &);
 void   PrepareSleep(void);
 ERR    process_janitor(OBJECTID, int, int);
+void   register_sleep(int);
+void   deregister_sleep(void);
 void   remove_process_waitlocks(void);
 CLASSID lookup_class_by_ext(CLASSID, std::string_view);
 

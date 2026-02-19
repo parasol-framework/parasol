@@ -11,7 +11,7 @@ module({ name="Core", copyright="Paul Manias 1996-2026", timestamp=20241015 }, f
   privateNames({ "ScriptArg", "CoreBase", "RootModule" })
 
   priority([==[
-#if defined(_DEBUG)
+#ifndef NDEBUG
  #ifndef _MSC_VER
   #include <signal.h>
  #endif
@@ -351,7 +351,8 @@ constexpr bool defined(T flags, T test_flag) noexcept {
     "TOTAL_SWAP: The total amount of available swap space.",
     "CPU_SPEED: The average top-speed of all CPU cores in Mhz.",
     "FREE_MEMORY: The total amount of free memory.",
-    "MEMORY_USAGE: The total amount of memory used by the current process, in bytes."
+    "MEMORY_USAGE: The total amount of memory used by the current process, in bytes.",
+    "MAIN_THREAD: Read-only, returns `true` if called from the main thread."
   )
 
   enum("RP", { type="int", start=1, comment="Path types for SetResourcePath()" },
@@ -584,7 +585,7 @@ template <class T> T roundup(T Num, int Alignment) {
 // Use DEBUG_BREAK in critical areas where you would want to break in gdb.  This feature will only be compiled
 // in to debug builds.
 
-#ifdef _DEBUG
+#ifndef NDEBUG
  #ifdef _MSC_VER
   #define DEBUG_BREAK __debugbreak();
  #elif __linux__

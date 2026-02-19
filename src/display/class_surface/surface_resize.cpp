@@ -137,7 +137,7 @@ int Flags: Optional flags.
 -ERRORS-
 Okay
 Args
-Failed
+InvalidState: The surface is not a top-level surface object.
 -END-
 
 *********************************************************************************************************************/
@@ -147,7 +147,7 @@ static ERR SURFACE_SetDisplay(extSurface *Self, struct gfx::SetDisplay *Args)
    pf::Log log;
 
    if ((!Args) or (Args->Width < 0) or (Args->Height < 0)) return log.warning(ERR::Args);
-   if (Self->ParentID) return log.warning(ERR::Failed);
+   if (Self->ParentID) return log.warning(ERR::InvalidState);
 
    int newx = Args->X;
    int newy = Args->Y;

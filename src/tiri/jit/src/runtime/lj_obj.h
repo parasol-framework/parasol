@@ -1164,8 +1164,8 @@ struct lua_State {
    GCRef   env;         //  Thread environment (table of globals).
    void    *cframe;     //  End of C stack frame chain.
    MSize   stacksize;   //  True stack size (incl. LJ_STACK_EXTRA).
-   class objScript *script;   // Back-reference to the script that owns this lua_State
-   bool    sent_traceback;    // True if traceback has been sent for the current error
+   class objScript *script;  // Back-reference to the script that owns this lua_State
+   bool    sent_traceback;   // True if traceback has been sent for the current error
    uint8_t resolving_thunk;  // Flag to prevent recursive thunk resolution
    ParserDiagnostics *parser_diagnostics; // Stores ParserDiagnostics* during parsing errors
    TipEmitter *parser_tips;               // Stores TipEmitter* during parsing for code hints
@@ -1174,7 +1174,7 @@ struct lua_State {
    TryFrameStack try_stack;      // Exception frame stack (nullptr until first BC_TRYENTER)
    const BCIns   *try_handler_pc; // Handler PC for error re-entry (set during unwind)
    CapturedStackTrace *pending_trace; // Trace captured during exception handling (for try<trace>)
-   ERR      CaughtError = ERR::Okay; // Catches ERR results from module functions.
+   ERR    CaughtError = ERR::Okay; // Catches ERR results from module functions.
 
    // FileSource tracking for accurate error reporting in imported files
    std::vector<FileSource> file_sources;  // Index 0 = main file, 255 = overflow

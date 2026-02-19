@@ -111,8 +111,6 @@ static GCtab * getcurrenv(lua_State *L)
 //
 // For use in resolve stack indexes that may contain a thunk. This ensures that when C code calls lua_tostring,
 // lua_tonumber, etc., it receives the resolved value rather than the thunk userdata.
-//
-// The resolving_thunk flag is stored in lua_State to prevent recursive resolution within the same thread/coroutine.
 
 extern TValue * resolve_index(lua_State *L, int idx)
 {
