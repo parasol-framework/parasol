@@ -557,6 +557,8 @@ that if AsyncAction() fails, the callback will never be executed because the att
 
 This function is at its most effective when used to perform lengthy processes such as the loading and parsing of data.
 
+NOTE: Tiri scripts must use the `thread.action|method()` interfaces for asynchronous activity instead of this function.
+
 -INPUT-
 int(AC) Action: An action or method ID must be specified here.
 obj Object: The target object to execute the action against.
@@ -681,7 +683,7 @@ void drain_action_queue(OBJECTID ObjectID, bool Terminating)
 //********************************************************************************************************************
 // Helper to launch an async action thread for an object.
 
-static void launch_async_thread(OBJECTPTR Object, AC ActionID, int ArgsSize, std::vector<int8_t> Parameters,
+static void launch_async_thread(OBJECTPTR Object, ACTIONID ActionID, int ArgsSize, std::vector<int8_t> Parameters,
    FUNCTION Callback)
 {
    pf::Log log(__FUNCTION__);
@@ -716,7 +718,6 @@ static void launch_async_thread(OBJECTPTR Object, AC ActionID, int ArgsSize, std
          ThreadActionMessage msg = {
             .ActionID = ActionID,
             .ObjectID = object_uid,
-            .Key      = Callback.defined() ? int((intptr_t)Callback.Meta) : 0,
             .Error    = ERR::Cancelled,
             .Callback = Callback
          };
@@ -745,7 +746,6 @@ static void launch_async_thread(OBJECTPTR Object, AC ActionID, int ArgsSize, std
          ThreadActionMessage msg = {
             .ActionID = ActionID,
             .ObjectID = object_uid,
-            .Key      = Callback.defined() ? int((intptr_t)Callback.Meta) : 0,
             .Error    = error,
             .Callback = Callback
          };
@@ -848,14 +848,12 @@ ERR msg_threadaction(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgS
    if (not msg) return ERR::Okay;
 
    if (msg->Callback.isC()) {
-      auto routine = (void (*)(ACTIONID, OBJECTPTR, ERR, int, APTR))msg->Callback.Routine;
+      auto routine = (void (*)(ACTIONID, OBJECTPTR, ERR, APTR))msg->Callback.Routine;
       ScopedObjectLock obj(msg->ObjectID);
       if (obj.granted()) {
-         routine(msg->ActionID, *obj, msg->Error, msg->Key, msg->Callback.Meta);
+         routine(msg->ActionID, *obj, msg->Error, msg->Callback.Meta);
       }
-      else {
-         routine(msg->ActionID, nullptr, ERR::DoesNotExist, msg->Key, msg->Callback.Meta);
-      }
+      else routine(msg->ActionID, nullptr, ERR::DoesNotExist, msg->Callback.Meta);
    }
    else if (msg->Callback.isScript()) {
       auto script = msg->Callback.Context;
@@ -864,7 +862,7 @@ ERR msg_threadaction(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgS
             { "ActionID", int(msg->ActionID) },
             { "Object",   msg->ObjectID, FD_OBJECTID },
             { "Error",    int(msg->Error) },
-            { "Key",      msg->Key }
+            { "Meta",     msg->Callback.MetaValue }
          }));
 
          // Dereference the callback procedure to release the script registry reference.
@@ -886,7 +884,7 @@ ERR msg_threadaction(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgS
 -FUNCTION-
 CheckAction: Checks objects to see whether or not they support certain actions.
 
-This function returns `ERR::True` if an object's class supports a given action or method ID.  For example:
+This function returns `ERR::True` if an object's class supports a given action ID.  For example:
 
 <pre>
 if (CheckAction(pic, AC::Query) IS ERR::True) {
@@ -909,6 +907,8 @@ LostClass:
 ERR CheckAction(OBJECTPTR Object, ACTIONID ActionID)
 {
    pf::Log log(__FUNCTION__);
+
+   if ((ActionID <= AC::NIL) or (ActionID >= AC::END)) return log.warning(ERR::OutOfRange);
 
    if (Object) {
       if (not Object->Class) return ERR::False;
@@ -1664,7 +1664,7 @@ error Error: The error code that is associated with the action result.
 
 *********************************************************************************************************************/
 
-void NotifySubscribers(OBJECTPTR Object, AC ActionID, APTR Parameters, ERR ErrorCode)
+void NotifySubscribers(OBJECTPTR Object, ACTIONID ActionID, APTR Parameters, ERR ErrorCode)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1697,7 +1697,7 @@ void NotifySubscribers(OBJECTPTR Object, AC ActionID, APTR Parameters, ERR Error
 
          if (not glDelayedUnsubscribe.empty()) {
             for (auto &entry : glDelayedUnsubscribe) {
-               if (Object->UID IS entry.ObjectID) UnsubscribeAction(Object, ActionID);
+               if (Object->UID IS entry.ObjectID) UnsubscribeAction(Object, entry.ActionID);
                else {
                   OBJECTPTR obj;
                   if (AccessObject(entry.ObjectID, 3000, &obj) IS ERR::Okay) {
@@ -1743,11 +1743,11 @@ IllegalMethodID:
 
 *********************************************************************************************************************/
 
-ERR QueueAction(AC ActionID, OBJECTID ObjectID, APTR Args)
+ERR QueueAction(ACTIONID ActionID, OBJECTID ObjectID, APTR Args)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((ActionID IS AC::NIL) or (not ObjectID)) log.warning(ERR::NullArgs);
+   if ((ActionID IS AC::NIL) or (not ObjectID)) return log.warning(ERR::NullArgs);
    if (ActionID >= AC::END) return log.warning(ERR::OutOfRange);
 
    std::vector<int8_t> buffer;
@@ -1950,7 +1950,7 @@ int(AC) ActionID: Active action, if any.
 
 *********************************************************************************************************************/
 
-void SetObjectContext(OBJECTPTR Object, Field *Field, AC ActionID)
+void SetObjectContext(OBJECTPTR Object, Field *Field, ACTIONID ActionID)
 {
    if (not Object) tlContext.pop_back();
    else tlContext.emplace_back(Object, Field, ActionID);

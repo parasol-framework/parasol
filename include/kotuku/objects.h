@@ -248,7 +248,7 @@ struct Object { // Must be 64-bit aligned
       RefCount++;
    }
 
-   inline void unpin() {
+   inline void unpin(bool FreeIfReady = false) {
       #ifndef NDEBUG
       if (RefCount.load() IS 0) {
          pf::Log("unpin").warning("Unbalanced unpin() on object #%d (%s) - RefCount is already 0.", UID, className());
@@ -256,6 +256,7 @@ struct Object { // Must be 64-bit aligned
       }
       #endif
       if (RefCount > 0) RefCount--;
+      if (FreeIfReady) freeIfReady();
    }
 
    [[nodiscard]] inline bool isPinned() { return RefCount > 0; }

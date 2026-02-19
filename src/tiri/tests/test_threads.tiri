@@ -13,7 +13,7 @@
       msg('Thread has finished execution.')
       work_list:each(o => o.acSignal())
    end
-   
+
    proc = processing.new({ timeout=1.0, signals = work_list })
 
    -- Verify that garbage collection doesn't invalidate the thread while it's running
@@ -66,6 +66,39 @@ end
    assert(glCallbackError != ERR_Okay, f'Expected a non-zero error code, got ERR_Okay')
    assert(glCallbackMsg and #glCallbackMsg > 0, 'Expected a non-empty error message')
    print(f'Script error reported: {glCallbackError}, message: {glCallbackMsg}')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Queue multiple thread.script() calls against separate script objects without waiting between each dispatch.
+-- AsyncAction serialises requests per-object, so distinct objects can run concurrently.  The test verifies that all
+-- callbacks fire and that no registry references are corrupted when multiple ThreadScriptMsg allocations are in flight.
+
+@Test(priority=3) function QueuedScriptExecution()
+   total = 50
+   completed = 0
+
+   signal = obj.new('time', { })
+   proc = processing.new({ timeout=5.0, signals = array<object> { signal } })
+
+   scripts = array<object>
+   for i=0, total-1 do
+      scripts:push(obj.new('script', { statement = [[ msg('Queued script ]] .. i .. [[ running.') ]] }))
+   end
+
+   for script in values(scripts) do
+      thread.script(script, function()
+         completed++
+         msg(f'Callback {completed}/{total} fired.')
+         if completed >= total then
+            signal.acSignal()
+         end
+      end)
+   end
+
+   check proc.sleep()
+
+   assert(completed >= total, f'Expected {total} callbacks but only {completed} fired.')
+   print(f'All {completed} queued script callbacks completed successfully.')
 end
 
 -----------------------------------------------------------------------------------------------------------------------

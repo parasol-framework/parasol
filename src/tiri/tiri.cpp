@@ -135,11 +135,9 @@ OBJECTPTR access_object(GCobject *Object)
          Object->uid = 0;
       }
    }
-   else {
-      if (auto error = Object->ptr->lock(); error != ERR::Okay) {
-         pf::Log("access_object").warning("#%d lock() failed: %s, Queue: %d", Object->uid, GetErrorMsg(error), Object->ptr->Queue.load());
-         return nullptr;
-      }
+   else if (auto error = Object->ptr->lock(); error != ERR::Okay) {
+      pf::Log("access_object").warning("#%d lock() failed: %s, Queue: %d", Object->uid, GetErrorMsg(error), Object->ptr->Queue.load());
+      return nullptr;
    }
 
    if (Object->ptr) Object->accesscount++;
@@ -210,10 +208,6 @@ void load_include_for_class(lua_State *Lua, objMetaClass *MetaClass)
    for (int action_id=1; glActions[action_id].Name; action_id++) {
       glActionLookup[glActions[action_id].Name] = AC(action_id);
    }
-
-   FUNCTION call(CALL::STD_C);
-   call.Routine = (APTR)msg_thread_script_callback;
-   AddMsgHandler(MSGID::TIRI_THREAD_CALLBACK, &call, &glMsgThread);
 
    pf::vector<std::string> *pargs;
    auto task = CurrentTask();
