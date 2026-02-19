@@ -96,6 +96,16 @@ static int async_script(lua_State *Lua)
 
    gc_script->ptr->pin(); // Prevent the object from being freed while the thread is running.
 
+   // Share the parent's pool with the child script so that async.pool accesses the same data.
+   {
+      auto parent_prv = (prvTiri *)Lua->script->ChildPrivate;
+      auto child_prv  = (prvTiri *)gc_script->ptr->ChildPrivate;
+      if (parent_prv and child_prv) {
+         if (not parent_prv->Pool) parent_prv->Pool = std::make_shared<SharedPool>();
+         child_prv->Pool = parent_prv->Pool;
+      }
+   }
+
    int client_callback = LUA_NOREF;
    if (lua_isfunction(Lua, 2)) {
       lua_pushvalue(Lua, 2);
@@ -329,6 +339,91 @@ static const luaL_Reg asynclib_methods[] = {
    { nullptr, nullptr }
 };
 
+//********************************************************************************************************************
+// Retrieve the shared pool from the script's private data.  Creates it on first use (lazy initialisation).
+
+static SharedPool * get_pool(lua_State *Lua)
+{
+   auto prv = (prvTiri *)Lua->script->ChildPrivate;
+   if (not prv->Pool) prv->Pool = std::make_shared<SharedPool>();
+   return prv->Pool.get();
+}
+
+//********************************************************************************************************************
+// async.pool.__index — Thread-safe read from the shared pool.
+// Stack: [1] = pool table, [2] = key string
+
+static int pool_get(lua_State *Lua)
+{
+   auto key = luaL_checkstring(Lua, 2);
+   auto pool = get_pool(Lua);
+   std::shared_lock lock(pool->mutex);
+
+   if (auto it = pool->data.find(key); it != pool->data.end()) {
+      auto &pv = it->second;
+      switch (pv.tag) {
+         case PoolTag::Number:   lua_pushnumber(Lua, pv.num); break;
+         case PoolTag::String:   lua_pushlstring(Lua, pv.str.data(), pv.str.size()); break;
+         case PoolTag::Boolean:  lua_pushboolean(Lua, pv.flag); break;
+         case PoolTag::ObjectID: push_object_id(Lua, pv.oid); break;
+      }
+   }
+   else lua_pushnil(Lua);
+
+   return 1;
+}
+
+//********************************************************************************************************************
+// async.pool.__newindex — Thread-safe write to the shared pool.
+// Stack: [1] = pool table, [2] = key string, [3] = value
+
+static int pool_set(lua_State *Lua)
+{
+   auto key = luaL_checkstring(Lua, 2);
+   auto pool = get_pool(Lua);
+   std::unique_lock lock(pool->mutex);
+
+   if (lua_isnil(Lua, 3)) {
+      pool->data.erase(key);
+   }
+   else {
+      switch (lua_type(Lua, 3)) {
+         case LUA_TNUMBER:
+            pool->data.insert_or_assign(std::string(key), PoolValue(lua_tonumber(Lua, 3)));
+            break;
+         case LUA_TSTRING:
+            pool->data.insert_or_assign(std::string(key), PoolValue(std::string(lua_tostring(Lua, 3))));
+            break;
+         case LUA_TBOOLEAN:
+            pool->data.insert_or_assign(std::string(key), PoolValue(bool(lua_toboolean(Lua, 3))));
+            break;
+         case LUA_TOBJECT: {
+            auto gc_obj = lua_toobject(Lua, 3);
+            if (not gc_obj) luaL_argerror(Lua, 3, "Invalid object.");
+            pool->data.insert_or_assign(std::string(key), PoolValue::object(gc_obj->uid));
+            break;
+         }
+         default:
+            luaL_argerror(Lua, 3, "async.pool supports number, string, boolean, and object values.");
+      }
+   }
+
+   return 0;
+}
+
+//********************************************************************************************************************
+// async.pool.clear() — Remove all entries from the shared pool.
+
+static int pool_clear(lua_State *Lua)
+{
+   auto pool = get_pool(Lua);
+   std::unique_lock lock(pool->mutex);
+   pool->data.clear();
+   return 0;
+}
+
+//********************************************************************************************************************
+
 void register_async_class(lua_State *Lua)
 {
    pf::Log log;
@@ -344,6 +439,29 @@ void register_async_class(lua_State *Lua)
 
    luaL_openlib(Lua, nullptr, asynclib_methods, 0);
    luaL_openlib(Lua, "async", asynclib_functions, 0);
+
+   // Create the async.pool sub-table with __index/__newindex metamethods for thread-safe access.
+
+   luaL_newmetatable(Lua, "Tiri.async.pool");
+   lua_pushcfunction(Lua, pool_get);
+   lua_setfield(Lua, -2, "__index");
+   lua_pushcfunction(Lua, pool_set);
+   lua_setfield(Lua, -2, "__newindex");
+   lua_pop(Lua, 1);
+
+   lua_newtable(Lua);                          // Create the pool table
+   luaL_getmetatable(Lua, "Tiri.async.pool");
+   lua_setmetatable(Lua, -2);                  // Assign the metatable
+
+   // Store pool.clear() as a raw key so it takes precedence over __index.
+   lua_pushstring(Lua, "clear");
+   lua_pushcfunction(Lua, pool_clear);
+   lua_rawset(Lua, -3);
+
+   lua_getglobal(Lua, "async");                // Push the async table
+   lua_pushvalue(Lua, -2);                     // Push the pool table
+   lua_setfield(Lua, -2, "pool");              // async.pool = pool_table
+   lua_pop(Lua, 2);                            // Pop async table and pool table
 
    // Register async interface prototypes for compile-time type inference
    reg_iface_prototype("async", "action", {}, { TiriType::Any, TiriType::Any, TiriType::Func, TiriType::Num });
