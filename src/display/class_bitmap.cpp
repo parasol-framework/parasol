@@ -245,7 +245,7 @@ ERR lock_surface(extBitmap *Bitmap, int16_t Access)
          }
          return ERR::Okay;
       }
-      else return ERR::Failed;
+      else return ERR::CreateResource;
    }
    return ERR::Okay;
 }

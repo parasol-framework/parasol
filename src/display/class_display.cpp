@@ -507,7 +507,7 @@ static ERR DISPLAY_Init(extDisplay *Self)
       if (xbpp <= 8) {
          log.msg(VLF::CRITICAL, "Please change your X11 setup so that it runs in 15 bit mode or better.");
          log.msg(VLF::CRITICAL, "Currently X11 is configured to use %d bit graphics.", xbpp);
-         return ERR::Failed;
+         return ERR::NoSupport;
       }
 
       if (xbpp IS 24) {
@@ -951,7 +951,7 @@ static ERR DISPLAY_Move(extDisplay *Self, struct acMove *Args)
 
    // Handling margins isn't necessary as the window manager will take that into account when it receives the move request.
 
-   if (!XDisplay) return ERR::Failed;
+   if (!XDisplay) return ERR::NoSupport;
 
    XMoveWindow(XDisplay, Self->XWindowHandle, Self->X + Args->DeltaX, Self->Y + Args->DeltaY);
    return ERR::Okay;
@@ -1469,7 +1469,7 @@ static ERR DISPLAY_SetDisplay(extDisplay *Self, gfx::SetDisplay *Args)
 
          return ERR::Okay;
       }
-      else return ERR::Failed;
+      else return ERR::NoSupport;
 #endif
    }
    else {
@@ -1784,7 +1784,7 @@ ERR DISPLAY_Show(extDisplay *Self)
    #ifdef __xwindows__
       if (!XDisplay) {
          log.error("No X11 display has been found for this machine.");
-         return ERR::Failed;
+         return ERR::NoSupport;
       }
 
       // Some window managers fool with our position when mapping, so we use XMoveWindow() before and after to be
