@@ -140,17 +140,21 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
          rhs = this->parse_suffixed(std::move(rhs.value_ref()));
          if (not rhs.ok()) return rhs;
 
-         // Check for pipe iteration pattern: range |> function
-         // When LHS is a range and RHS is a function (not a call), rewrite to range:each(func)
+         // Check for pipe iteration pattern: range/array |> function
+         // When LHS is a range or array literal and RHS is a function (not a call), rewrite to LHS:each(func)
          // Also support chaining: range:each(f1) |> f2 → range:each(f1):each(f2)
 
          bool lhs_is_range = left.value_ref()->kind IS AstNodeKind::RangeExpr;
 
-         // Check if LHS is a method call to :each() (for chaining support)
+         // Check if LHS is an array literal or a method call to :each() (for chaining support)
+         bool lhs_is_array = false;
          bool lhs_is_each_call = false;
          if (left.value_ref()->kind IS AstNodeKind::CallExpr) {
             const CallExprPayload& call_data = std::get<CallExprPayload>(left.value_ref()->data);
-            if (const auto* method = std::get_if<MethodCallTarget>(&call_data.target)) {
+            if (call_data.result_type IS TiriType::Array) {
+               lhs_is_array = true;
+            }
+            else if (const auto* method = std::get_if<MethodCallTarget>(&call_data.target)) {
                if (method->method.symbol and strcmp(strdata(method->method.symbol), "each") IS 0) {
                   lhs_is_each_call = true;
                }
@@ -164,9 +168,9 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
          bool rhs_is_call = rhs.value_ref()->kind IS AstNodeKind::CallExpr or
                             rhs.value_ref()->kind IS AstNodeKind::SafeCallExpr;
 
-         if ((lhs_is_range or lhs_is_each_call) and rhs_is_function) {
-            // Pipe iteration: transform range |> func into range:each(func)
-            // For chaining: range:each(f1) |> f2 → range:each(f1):each(f2)
+         if ((lhs_is_range or lhs_is_each_call or lhs_is_array) and rhs_is_function) {
+            // Pipe iteration: transform range/array |> func into LHS:each(func)
+            // For chaining: LHS:each(f1) |> f2 → LHS:each(f1):each(f2)
             SourceSpan span = combine_spans(left.value_ref()->span, rhs.value_ref()->span);
 
             Identifier method(&this->ctx.lua(), "each", next.span());
@@ -176,6 +180,18 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
 
             ExprNodePtr call = make_method_call_expr(span, std::move(left.value_ref()), method, std::move(args), false);
             left = ParserResult<ExprNodePtr>::success(std::move(call));
+            continue;
+         }
+
+         // When RHS is a function reference (not a call) and LHS type is unknown at parse time,
+         // create a deferred pipe iteration node.  The IR emitter will resolve the LHS type and
+         // either emit :each() for arrays or raise an error.
+
+         if (rhs_is_function) {
+            SourceSpan span = combine_spans(left.value_ref()->span, rhs.value_ref()->span);
+            auto pipe = make_pipe_expr(span, std::move(left.value_ref()), std::move(rhs.value_ref()), limit);
+            std::get<PipeExprPayload>(pipe->data).deferred_iteration = true;
+            left = ParserResult<ExprNodePtr>::success(std::move(pipe));
             continue;
          }
 
