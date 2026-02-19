@@ -167,7 +167,7 @@ ERR ResolvePath(const std::string_view &pPath, RSF Flags, std::string *Result)
    // Keep looping until the volume is resolved
 
    int loop;
-   auto error = ERR::Failed;
+   auto error = ERR::ResolvePath;
    for (loop=10; loop > 0; loop--) {
       error = resolve(src, dest, Flags);
 

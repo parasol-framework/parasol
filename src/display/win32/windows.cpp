@@ -177,7 +177,7 @@ ERR winGetCoords(HWND Window, int &WinX, int &WinY, int &WinWidth, int &WinHeigh
       ClientHeight = info.rcClient.bottom - info.rcClient.top;
       return ERR::Okay;
    }
-   else return ERR::Failed;
+   else return ERR::SystemCall;
 }
 
 //********************************************************************************************************************
@@ -1116,7 +1116,7 @@ ERR winReadController(int Port, double *Values, CON &Buttons)
       else Buttons = CON::NIL; //state.Gamepad.wButtons;
       return ERR::Okay;
    }
-   else return ERR::Failed;
+   else return ERR::SystemCall;
 }
 
 //********************************************************************************************************************

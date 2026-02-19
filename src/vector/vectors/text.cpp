@@ -1008,7 +1008,7 @@ static ERR TEXT_GET_LineSpacing(extVectorText *Self, int *Value)
    }
    else {
       *Value = 1;
-      return ERR::Failed;
+      return ERR::InvalidState;
    }
 }
 

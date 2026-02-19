@@ -485,7 +485,7 @@ ERR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, int Weight, int Size, 
                FT_Open_Args openargs = { .flags = FT_OPEN_PATHNAME, .pathname = resolved.data() };
                if (FT_Open_Face(glFTLibrary, &openargs, 0, &ftface)) {
                   Log.warning("Fatal error in attempting to load font \"%s\".", resolved.c_str());
-                  return ERR::Failed;
+                  return ERR::File;
                }
 
                freetype_font::METRIC_TABLE metrics;
