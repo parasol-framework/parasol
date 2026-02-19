@@ -283,9 +283,164 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- async.script() must reject a non-script object (e.g. a time object).
+
+@Test(priority=12) function ScriptRejectsNonScript()
+   timer = obj.new('time', { })
+   rejected = false
+   try
+      async.script(timer, function() end)
+   except
+      rejected = true
+   end
+   assert(rejected, 'Expected an error when passing a non-script object to async.script()')
+   print('Correctly rejected non-script object.')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- async.script() must reject non-object arguments (string, number, nil, table).
+
+@Test(priority=13) function ScriptRejectsBadArgs()
+   bad_args = { 'hello', 42, nil, { } }
+
+   for arg in values(bad_args) do
+      rejected = false
+      try
+         async.script(arg, function() end)
+      except
+         rejected = true
+      end
+      assert(rejected, f'Expected error for arg type {type(arg)}, got none')
+   end
+   print('All bad argument types correctly rejected by async.script().')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- async.action() must reject a bogus action name.
+
+@Test(priority=14) function ActionRejectsBogusName()
+   timer = obj.new('time', { })
+   rejected = false
+   try
+      async.action(timer, 'TotallyFakeAction', function() end, 0)
+   except
+      rejected = true
+   end
+   assert(rejected, 'Expected error for unrecognised action name')
+   print('Correctly rejected bogus action name.')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- async.action() must reject a wrong type for the action argument (e.g. a table or boolean).
+
+@Test(priority=15) function ActionRejectsBadActionType()
+   timer = obj.new('time', { })
+
+   for arg in values({ true, { } }) do
+      rejected = false
+      try
+         async.action(timer, arg, function() end, 0)
+      except
+         rejected = true
+      end
+      assert(rejected, f'Expected error for action arg type {type(arg)}')
+   end
+   print('Bad action argument types correctly rejected.')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- async.method() must reject a non-existent method name.
+
+@Test(priority=16) function MethodRejectsBogusName()
+   timer = obj.new('time', { })
+   rejected = false
+   try
+      async.method(timer, 'CompletelyBogusMethod', function() end, 0)
+   except
+      rejected = true
+   end
+   assert(rejected, 'Expected error for unrecognised method name')
+   print('Correctly rejected bogus method name.')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- async.method() must reject wrong types for the method argument (boolean, table).
+
+@Test(priority=17) function MethodRejectsBadMethodType()
+   timer = obj.new('time', { })
+
+   for arg in values({ true, { } }) do
+      rejected = false
+      try
+         async.method(timer, arg, function() end, 0)
+      except
+         rejected = true
+      end
+      assert(rejected, f'Expected error for method arg type {type(arg)}')
+   end
+   print('Bad method argument types correctly rejected.')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- async.pool must reject unsupported value types (table, function) from the same thread.
+
+@Test(priority=18) function PoolRejectsUnsupportedTypes()
+   async.pool.clear()
+
+   for val in values({ { 1, 2, 3 }, function() end }) do
+      rejected = false
+      try
+         async.pool.badkey = val
+      except
+         rejected = true
+      end
+      assert(rejected, f'Expected error for pool value type {type(val)}')
+   end
+
+   -- Confirm the pool is still operational after the rejected writes
+   async.pool.ok = 'yes'
+   assert(async.pool.ok is 'yes', 'Pool should still work after rejected writes')
+
+   async.pool.clear()
+   print('Unsupported pool value types correctly rejected.')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Rapid overwrite of the same pool key from multiple threads to stress the locking.
+
+@Test(priority=19) function PoolConcurrentOverwrite()
+   async.pool.clear()
+
+   total = 20
+   completed = 0
+   signal = obj.new('time', { })
+   proc = processing.new({ timeout=5.0, signals = array<object> { signal } })
+
+   for i=0, total-1 do
+      script = obj.new('script', { statement = f"for j=0,99 do async.pool.counter = {i} * 100 + j end" })
+      async.script(script, function(Object)
+         check Object.error
+         completed++
+         if completed >= total then signal.acSignal() end
+      end)
+   end
+
+   check proc.sleep()
+
+   assert(completed >= total, f'Expected {total} completions, got {completed}')
+
+   -- The final value must be a number (we don't care which thread won the race)
+   result = async.pool.counter
+   assert(type(result) is 'number', f'Expected number, got {type(result)}')
+   print(f'Concurrent overwrite completed. Final counter value: {result}')
+
+   async.pool.clear()
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- In this test the signals are sent from the threaded script rather than being managed by the main thread's callback.
 
-@Test(priority=12) function MultipleClientSignals()
+@Test(priority=20) function MultipleClientSignals()
    signal_a = obj.new('time', { }) -- This would normally be something more practical, like a file
    work_list = array<object> { signal_a } -- List all the objects that will be worked on
 
