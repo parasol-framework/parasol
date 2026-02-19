@@ -49,7 +49,7 @@ static void msg_thread_complete(ACTIONID ActionID, OBJECTPTR Object, ERR Error, 
 
    auto prv = (prvTiri *)Msg->Owner->ChildPrivate;
 
-   if (Msg->Callback) {
+   if (Msg->Callback != LUA_NOREF) {
       auto args = std::to_array<ScriptArg>({
          { "ActionID", int(ActionID) },
          { "Object",   Object ? Object->UID : 0, FD_OBJECTID },
@@ -88,7 +88,7 @@ static int thread_script(lua_State *Lua)
 
    gc_script->ptr->pin(); // Prevent the object from being freed while the thread is running.
 
-   int client_callback = 0;
+   int client_callback = LUA_NOREF;
    if (lua_isfunction(Lua, 2)) {
       lua_pushvalue(Lua, 2);
       client_callback = luaL_ref(Lua, LUA_REGISTRYINDEX);
@@ -138,7 +138,7 @@ static int thread_action(lua_State *Lua)
    else if (type IS LUA_TNUMBER) action_id = AC(lua_tointeger(Lua, 2));
    else luaL_argerror(Lua, 2, "Action name required.");
 
-   int client_callback = 0;
+   int client_callback = LUA_NOREF;
    type = lua_type(Lua, 3); // Optional callback.
    if (type IS LUA_TSTRING) {
       lua_getglobal(Lua, lua_tostring(Lua, 3));
@@ -179,7 +179,10 @@ static int thread_action(lua_State *Lua)
             error = AsyncAction(action_id, gc_obj->ptr, arg_buffer.get(), &callback);
          }
          else {
-            error = ERR::Failed;
+            gc_obj->ptr->unpin(true);
+            luaL_unref(Lua, LUA_REGISTRYINDEX, obj_ref);
+            luaL_unref(Lua, LUA_REGISTRYINDEX, client_callback);
+            delete msg;
             luaL_error(Lua, "Actions that return results are not yet supported.");
          }
       }
@@ -233,7 +236,7 @@ static int thread_method(lua_State *Lua)
          auto argsize   = table[i].Size;
          auto action_id = table[i].MethodID;
 
-         int client_callback = 0;
+         int client_callback = LUA_NOREF;
          int type = lua_type(Lua, 3); // Optional callback.
          if (type IS LUA_TSTRING) {
             lua_getglobal(Lua, (STRING)lua_tostring(Lua, 3));
@@ -267,7 +270,10 @@ static int thread_method(lua_State *Lua)
                   error = AsyncAction(action_id, gc_obj->ptr, argbuffer.get(), &callback);
                }
                else {
-                  error = ERR::Failed;
+                  gc_obj->ptr->unpin(true);
+                  luaL_unref(Lua, LUA_REGISTRYINDEX, obj_ref);
+                  luaL_unref(Lua, LUA_REGISTRYINDEX, client_callback);
+                  delete msg;
                   luaL_error(Lua, "Methods that return results are not yet supported.");
                }
             }
