@@ -381,33 +381,43 @@ static int pool_get(lua_State *Lua)
 static int pool_set(lua_State *Lua)
 {
    auto key = luaL_checkstring(Lua, 2);
+
+   // Validate the value type and extract it before acquiring the mutex lock.  This prevents
+   // luaL_argerror's longjmp from leaving the mutex permanently locked.
+
+   auto value_type = lua_type(Lua, 3);
+
+   PoolValue pv;
+   switch (value_type) {
+      case LUA_TNIL:
+         break; // Deletion — no value needed
+      case LUA_TNUMBER:
+         pv = PoolValue(lua_tonumber(Lua, 3));
+         break;
+      case LUA_TSTRING: {
+         size_t len;
+         auto s = lua_tolstring(Lua, 3, &len);
+         pv = PoolValue(std::string(s, len));
+         break;
+      }
+      case LUA_TBOOLEAN:
+         pv = PoolValue(bool(lua_toboolean(Lua, 3)));
+         break;
+      case LUA_TOBJECT: {
+         auto gc_obj = lua_toobject(Lua, 3);
+         if (not gc_obj) luaL_argerror(Lua, 3, "Invalid object.");
+         pv = PoolValue::object(gc_obj->uid);
+         break;
+      }
+      default:
+         luaL_argerror(Lua, 3, "async.pool supports number, string, boolean, and object values.");
+   }
+
    auto pool = get_pool(Lua);
    std::unique_lock lock(pool->mutex);
 
-   if (lua_isnil(Lua, 3)) {
-      pool->data.erase(key);
-   }
-   else {
-      switch (lua_type(Lua, 3)) {
-         case LUA_TNUMBER:
-            pool->data.insert_or_assign(std::string(key), PoolValue(lua_tonumber(Lua, 3)));
-            break;
-         case LUA_TSTRING:
-            pool->data.insert_or_assign(std::string(key), PoolValue(std::string(lua_tostring(Lua, 3))));
-            break;
-         case LUA_TBOOLEAN:
-            pool->data.insert_or_assign(std::string(key), PoolValue(bool(lua_toboolean(Lua, 3))));
-            break;
-         case LUA_TOBJECT: {
-            auto gc_obj = lua_toobject(Lua, 3);
-            if (not gc_obj) luaL_argerror(Lua, 3, "Invalid object.");
-            pool->data.insert_or_assign(std::string(key), PoolValue::object(gc_obj->uid));
-            break;
-         }
-         default:
-            luaL_argerror(Lua, 3, "async.pool supports number, string, boolean, and object values.");
-      }
-   }
+   if (value_type IS LUA_TNIL) pool->data.erase(key);
+   else pool->data.insert_or_assign(std::string(key), std::move(pv));
 
    return 0;
 }
