@@ -1175,7 +1175,6 @@ struct lua_State {
    const BCIns   *try_handler_pc; // Handler PC for error re-entry (set during unwind)
    CapturedStackTrace *pending_trace; // Trace captured during exception handling (for try<trace>)
    ERR    CaughtError = ERR::Okay; // Catches ERR results from module functions.
-   int    flush_count;       // Count of pending thread callbacks; flush the message queue on script completion until zero.
 
    // FileSource tracking for accurate error reporting in imported files
    std::vector<FileSource> file_sources;  // Index 0 = main file, 255 = overflow

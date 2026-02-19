@@ -13,7 +13,7 @@
       msg('Thread has finished execution.')
       work_list:each(o => o.acSignal())
    end
-   
+
    proc = processing.new({ timeout=1.0, signals = work_list })
 
    -- Verify that garbage collection doesn't invalidate the thread while it's running

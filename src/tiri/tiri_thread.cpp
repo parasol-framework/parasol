@@ -33,10 +33,37 @@ variables with its creator, except via existing conventional means such as a Key
 // Message payload for thread.script() callbacks
 
 struct ThreadScriptMsg {
-   FUNCTION Callback;
-   objScript *Owner;   // The parent script that owns the registry references
-   int ObjRef;         // Registry reference that pins the GCobject from GC collection
+   int       Callback;  // Client callback reference
+   int       ObjRef;    // Registry reference that pins the GCobject from GC collection
+   objScript *Owner;    // The parent script that owns the registry references
 };
+
+//********************************************************************************************************************
+// Callback following execution (executed by the main thread, not the child)
+
+static void msg_thread_script_complete(ACTIONID ActionID, objScript *Script, ERR Error, int MsgKey, ThreadScriptMsg *Msg)
+{
+   pf::Log log("thread_callback");
+
+   auto owner = Msg->Owner; // The parent script that owns the registry references
+   auto prv = (prvTiri *)owner->ChildPrivate;
+
+   if (Msg->Callback) {
+      owner->callback(Msg->Callback, nullptr, 0, nullptr);
+      luaL_unref(prv->Lua, LUA_REGISTRYINDEX, Msg->Callback); // Drop the procedure reference
+   }
+
+   // Unpin the GCobject from the registry and release the pin on the underlying object.
+
+   int obj_ref = Msg->ObjRef;
+   lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, obj_ref);
+   auto gc_script = lua_toobject(prv->Lua, -1);
+   lua_pop(prv->Lua, 1);
+   luaL_unref(prv->Lua, LUA_REGISTRYINDEX, obj_ref);
+
+   if (gc_script and gc_script->ptr) gc_script->ptr->unpin(true);
+   delete Msg;
+}
 
 //********************************************************************************************************************
 // Usage: thread.script(Script, Callback)
@@ -49,104 +76,34 @@ static int thread_script(lua_State *Lua)
 {
    pf::Log log(__FUNCTION__);
 
-   if (lua_type(Lua, 1) IS LUA_TOBJECT) {
-      GCobject *gc_script = lua_toobject(Lua, 1);
-      if (gc_script->classptr->ClassID != CLASSID::SCRIPT) luaL_error(Lua, ERR::WrongClass);
-      if (not gc_script->ptr) luaL_error(Lua, ERR::ObjectCorrupt);
+   GCobject *gc_script = lua_toobject(Lua, 1);
+   if (gc_script->classptr->ClassID != CLASSID::SCRIPT) luaL_error(Lua, ERR::WrongClass);
+   if (not gc_script->ptr) luaL_error(Lua, ERR::ObjectCorrupt);
 
-      #ifndef NDEBUG
-      auto stack_top = lua_gettop(Lua);
-      auto ref_count_on_entry = gc_script->ptr->RefCount.load();
-      #endif
+   gc_script->ptr->pin(); // Prevent the object from being freed while the thread is running.
 
-      gc_script->ptr->pin(); // Prevent the object from being freed while the thread is running.
-
-      FUNCTION callback;
-      if (lua_isfunction(Lua, 2)) {
-         lua_pushvalue(Lua, 2);
-         callback = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
-      }
-
-      // Pin the script in the registry so the GC cannot collect it while the thread is running.
-      lua_pushvalue(Lua, 1);
-      int obj_ref = luaL_ref(Lua, LUA_REGISTRYINDEX);
-
-      #ifndef NDEBUG
-      assert(lua_gettop(Lua) IS stack_top); // Registry refs should not alter the stack
-      assert(gc_script->ptr->RefCount.load() IS ref_count_on_entry + 1);
-      #endif
-
-      auto prv = (prvTiri *)Lua->script->ChildPrivate;
-      Lua->flush_count++;
-
-      prv->Threads.emplace_back(std::make_unique<std::jthread>(std::jthread(
-         [](OBJECTPTR Script, FUNCTION Callback, objScript *Owner, int ObjRef) {
-
-         if (auto error = acActivate(Script); error != ERR::Okay) {
-            pf::Log("thread_script").warning("Failed to execute threaded script #%d: %s", Script->UID, GetErrorMsg(error));
-         }
-
-         // All cleanup (unpin, luaL_unref) must happen on the main thread to
-         // avoid racing with the Lua GC.  Send a message regardless of whether a callback exists.
-
-         ThreadScriptMsg msg { Callback, Owner, ObjRef };
-         if (SendMessage(MSGID::TIRI_THREAD_CALLBACK, MSF::NIL, &msg, sizeof(msg)) != ERR::Okay) {
-            pf::Log("thread_script").warning("Failed to send callback message.");
-         }
-      }, gc_script->ptr, std::move(callback), Lua->script, obj_ref)));
+   int client_callback = 0;
+   if (lua_isfunction(Lua, 2)) {
+      lua_pushvalue(Lua, 2);
+      client_callback = luaL_ref(Lua, LUA_REGISTRYINDEX);
    }
-   else luaL_argerror(Lua, 1, "Script object required.");
+
+   // Pin the script in the registry so the GC cannot collect it while the thread is running.
+   lua_pushvalue(Lua, 1);
+   int obj_ref = luaL_ref(Lua, LUA_REGISTRYINDEX);
+
+   auto msg = new ThreadScriptMsg { client_callback, obj_ref, Lua->script };
+   auto callback = C_FUNCTION(msg_thread_script_complete, msg);
+
+   if (AsyncAction(AC::Activate, gc_script->ptr, nullptr, &callback) != ERR::Okay) {
+      gc_script->ptr->unpin(true);
+      luaL_unref(Lua, LUA_REGISTRYINDEX, obj_ref);
+      luaL_unref(Lua, LUA_REGISTRYINDEX, client_callback);
+      delete msg;
+      luaL_error(Lua, "Failed to run script in new thread.");
+   }
 
    return 0;
-}
-
-//********************************************************************************************************************
-// Callback following execution (executed by the main thread, not the child)
-
-ERR msg_thread_script_callback(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize)
-{
-   pf::Log log("thread_callback");
-
-   auto msg = (ThreadScriptMsg *)Message;
-   auto this_script = (objScript *)msg->Owner;
-   auto prv = (prvTiri *)this_script->ChildPrivate;
-
-   #ifndef NDEBUG
-   auto stack_top = lua_gettop(prv->Lua);
-   auto flush_count_on_entry = prv->Lua->flush_count;
-   #endif
-
-   prv->Lua->flush_count--;
-
-   if (msg->Callback.defined()) {
-      this_script->callback(msg->Callback.ProcedureID, nullptr, 0, nullptr);
-      luaL_unref(prv->Lua, LUA_REGISTRYINDEX, msg->Callback.ProcedureID); // Drop the procedure reference
-   }
-
-   // Unpin the GCobject from the registry and release the pin on the underlying object.
-
-   int obj_ref = msg->ObjRef;
-   lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, obj_ref);
-   auto gc_script = lua_toobject(prv->Lua, -1);
-   lua_pop(prv->Lua, 1);
-   luaL_unref(prv->Lua, LUA_REGISTRYINDEX, obj_ref);
-
-   if (gc_script and gc_script->ptr) {
-      #ifndef NDEBUG
-      auto ref_count_before_unpin = gc_script->ptr->RefCount.load();
-      assert(ref_count_before_unpin > 0); // Must still be pinned from thread_script()
-      #endif
-
-      gc_script->ptr->unpin();
-      gc_script->ptr->freeIfReady();
-   }
-
-   #ifndef NDEBUG
-   assert(lua_gettop(prv->Lua) IS stack_top); // Stack must be balanced after callback and unref operations
-   assert(prv->Lua->flush_count IS flush_count_on_entry - 1);
-   #endif
-
-   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -156,17 +113,10 @@ static int thread_action(lua_State *Lua)
 {
    pf::Log log(__FUNCTION__);
 
-   #ifndef NDEBUG
-   auto stack_top = lua_gettop(Lua);
-   #endif
-
    // Args: Object (1), Action (2), Callback (3), Key (4), Parameters...
 
    GCobject *obj_ref;
-   if (not (obj_ref = lj_lib_checkobject(Lua, 1))) {
-      luaL_argerror(Lua, 1, "Object required.");
-      return 0;
-   }
+   if (not (obj_ref = lj_lib_checkobject(Lua, 1))) luaL_argerror(Lua, 1, "Object required.");
 
    auto type = lua_type(Lua, 2);
    AC action_id;
@@ -176,18 +126,10 @@ static int thread_action(lua_State *Lua)
       if (auto it = glActionLookup.find(action); it != glActionLookup.end()) {
          action_id = it->second;
       }
-      else {
-         luaL_argerror(Lua, 2, "Action name is not recognised (is it a method?)");
-         return 0;
-      }
+      else luaL_argerror(Lua, 2, "Action name is not recognised (is it a method?)");
    }
-   else if (type IS LUA_TNUMBER) {
-      action_id = AC(lua_tointeger(Lua, 2));
-   }
-   else {
-      luaL_argerror(Lua, 2, "Action name required.");
-      return 0;
-   }
+   else if (type IS LUA_TNUMBER) action_id = AC(lua_tointeger(Lua, 2));
+   else luaL_argerror(Lua, 2, "Action name required.");
 
    FUNCTION callback;
    auto key = lua_tointeger(Lua, 4);
@@ -222,15 +164,13 @@ static int thread_action(lua_State *Lua)
          if (obj_ref->ptr) {
             error = AsyncAction(action_id, obj_ref->ptr, arg_buffer.get(), &callback);
          }
-         else {
-            if (!result_count) {
-               if (auto obj = access_object(obj_ref)) {
-                  error = AsyncAction(action_id, obj, arg_buffer.get(), &callback);
-                  release_object(obj_ref);
-               }
+         else if (!result_count) {
+            if (auto obj = access_object(obj_ref)) {
+               error = AsyncAction(action_id, obj, arg_buffer.get(), &callback);
+               release_object(obj_ref);
             }
-            else log.warning("Actions that return results have not been tested/supported for release of resources.");
          }
+         else log.warning("Actions that return results have not been tested/supported for release of resources.");
       }
       else {
          luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
@@ -238,13 +178,9 @@ static int thread_action(lua_State *Lua)
          return 0;
       }
    }
-   else {
-      // No parameters.
+   else { // No parameters.
       callback.Meta = (APTR)key;
-      if (obj_ref->ptr) {
-         error = AsyncAction(action_id, obj_ref->ptr, nullptr, &callback);
-      }
-      else if (auto obj = access_object(obj_ref)) {
+      if (auto obj = access_object(obj_ref)) {
          error = AsyncAction(action_id, obj, nullptr, &callback);
          release_object(obj_ref);
       }
@@ -255,10 +191,6 @@ static int thread_action(lua_State *Lua)
       if (callback.defined()) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
       luaL_error(Lua, error);
    }
-
-   #ifndef NDEBUG
-   assert(lua_gettop(Lua) IS stack_top); // Stack must be balanced after async dispatch
-   #endif
 
    return 0;
 }
