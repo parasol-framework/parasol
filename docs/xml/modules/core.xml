@@ -671,6 +671,7 @@ FindObject(&quot;SystemPointer&quot;, CLASSID::POINTER, FOF::NIL, &amp;id);
     </description>
     <result type="ERR">
       <error code="Okay">The memory block was successfully freed or marked for delayed collection.</error>
+      <error code="InUse">The memory block is a busy managed resource.  The removal behaviour rules are dependent on the manager (automatic termination may be employed).</error>
       <error code="InvalidData">Memory corruption detected - header or trailer markers are damaged.</error>
       <error code="MemoryDoesNotExist">The specified memory block identifier is not valid or already freed.</error>
       <error code="SystemLocked">Memory management system is currently locked by another thread.</error>
@@ -1816,7 +1817,7 @@ static ResourceManager glNodeManager = {
       <param type="struct ObjectSignal *" name="ObjectSignals">A null-terminated array of objects to monitor for signals.</param>
     </input>
     <description>
-<p>WaitForObjects() acts as a front-end to <function>ProcessMessages</function>, with an ability to wait for a list of objects that are expected to signal an end to their activities.  An object can be signalled via the Signal() action, or via termination. This function will only return once ALL of the objects are signalled or a time-out occurs.</p>
+<p>WaitForObjects() acts as a front-end to <function>ProcessMessages</function>, with an ability to wait for a list of objects that are expected to signal an end to their activities.  An object can be signalled via the Signal() action, or via termination. This function will only return once ALL of the objects are signalled or a time-out occurs.  It is guaranteed that the message queue will be processed at least once before returning.</p>
 <p>Note that if an object has been signalled prior to entry to this function, its signal flag will be cleared and the object will not be monitored.</p>
 <p>If this function is called recursively, the state of the earlier call will be preserved so that it will not be affected by subsequent calls.</p>
     </description>

@@ -1547,7 +1547,7 @@ template <class T> T roundup(T Num, int Alignment) {
 #endif
 
 // Use DEBUG_BREAK in critical areas where you would want to break in gdb.  This feature will only be compiled
-// into non-release builds.
+// in to debug builds.
 
 #ifndef NDEBUG
  #ifdef _MSC_VER

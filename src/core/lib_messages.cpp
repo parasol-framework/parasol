@@ -325,56 +325,62 @@ timer_cycle:
       }
       else log.detail("glmTimer lock failed.");
 
-      // Consume queued messages
+      // Consume queued messages.  Drain a batch from the shared queue under the lock, then process
+      // outside the lock to reduce contention with threads calling SendMessage().
+
+      std::vector<TaskMessage> local_batch;
 
       {
          const std::lock_guard<std::recursive_mutex> lock(glQueueLock);
-
-         unsigned i;
-         for (i=0; (i < glQueue.size()) and (i < 30); i++) {
-            if (glQueue[i].Type IS MSGID::BREAK) {
-               // MSGID::BREAK will break out of recursive calls to ProcessMessages(), but not the top-level
-               // call made by the client application.
-               if ((tlMsgRecursion > 1) or (TimeOut != -1)) breaking = true;
-               else log.trace("Unable to break from recursive position %d layers deep.", tlMsgRecursion);
+         auto count = std::min(glQueue.size(), size_t(30));
+         if (count > 0) {
+            local_batch.reserve(count);
+            for (size_t n = 0; n < count; n++) {
+               local_batch.emplace_back(std::move(glQueue[n]));
             }
+            glQueue.erase(glQueue.begin(), glQueue.begin() + count);
+         }
+      }
 
-            tlCurrentMsg = &glQueue[i];
-
-            // NOTE: This loop relies on the assumption that glQueue messages cannot be erased by clients.
-
-            for (auto hdl=glMsgHandlers; hdl; hdl=hdl->Next) {
-               if ((hdl->MsgType IS MSGID::NIL) or (hdl->MsgType IS glQueue[i].Type)) {
-                  auto result = ERR::NoSupport;
-                  if (hdl->Function.isC()) {
-                     auto msghandler = (ERR (*)(APTR, int, MSGID, APTR, int))hdl->Function.Routine;
-                     if (glQueue[i].Size) result = msghandler(hdl->Function.Meta, glQueue[i].UID, glQueue[i].Type, glQueue[i].getBuffer(), glQueue[i].Size);
-                     else result = msghandler(hdl->Function.Meta, glQueue[i].UID, glQueue[i].Type, nullptr, 0);
-                  }
-                  else if (hdl->Function.isScript()) {
-                     if (sc::Call(hdl->Function, std::to_array<ScriptArg>({
-                        { "UID",  glQueue[i].UID },
-                        { "Type", int(glQueue[i].Type) },
-                        { "Data", glQueue[i].getBuffer(), FD_PTR|FD_BUFFER },
-                        { "Size", glQueue[i].Size, FD_INT|FD_BUFSIZE }
-                     }), result) != ERR::Okay) result = ERR::Terminate;
-                  }
-
-                  if (result IS ERR::Okay) { // If the message was handled, do not pass it to anyone else
-                     break;
-                  }
-                  else if (result IS ERR::Terminate) { // Terminate the ProcessMessages() loop, but don't quit the program
-                     log.trace("Terminate request received from message handler.");
-                     timeout_end = 0; // Set to zero to indicate loop terminated
-                     break;
-                  }
-               }
-            }
-
-            tlCurrentMsg = nullptr;
+      for (auto &msg : local_batch) {
+         if (msg.Type IS MSGID::BREAK) {
+            // MSGID::BREAK will break out of recursive calls to ProcessMessages(), but not the top-level
+            // call made by the client application.
+            if ((tlMsgRecursion > 1) or (TimeOut != -1)) breaking = true;
+            else log.trace("Unable to break from recursive position %d layers deep.", tlMsgRecursion);
          }
 
-         if (i > 0) glQueue.erase(glQueue.begin(), glQueue.begin() + i);
+         tlCurrentMsg = &msg;
+
+         for (auto hdl=glMsgHandlers; hdl; hdl=hdl->Next) {
+            if ((hdl->MsgType IS MSGID::NIL) or (hdl->MsgType IS msg.Type)) {
+               auto result = ERR::NoSupport;
+               if (hdl->Function.isC()) {
+                  auto msghandler = (ERR (*)(APTR, int, MSGID, APTR, int))hdl->Function.Routine;
+                  if (msg.Size) result = msghandler(hdl->Function.Meta, msg.UID, msg.Type, msg.getBuffer(), msg.Size);
+                  else result = msghandler(hdl->Function.Meta, msg.UID, msg.Type, nullptr, 0);
+               }
+               else if (hdl->Function.isScript()) {
+                  if (sc::Call(hdl->Function, std::to_array<ScriptArg>({
+                     { "UID",  msg.UID },
+                     { "Type", int(msg.Type) },
+                     { "Data", msg.getBuffer(), FD_PTR|FD_BUFFER },
+                     { "Size", msg.Size, FD_INT|FD_BUFSIZE }
+                  }), result) != ERR::Okay) result = ERR::Terminate;
+               }
+
+               if (result IS ERR::Okay) { // If the message was handled, do not pass it to anyone else
+                  break;
+               }
+               else if (result IS ERR::Terminate) { // Terminate the ProcessMessages() loop, but don't quit the program
+                  log.trace("Terminate request received from message handler.");
+                  timeout_end = 0; // Set to zero to indicate loop terminated
+                  break;
+               }
+            }
+         }
+
+         tlCurrentMsg = nullptr;
       }
 
       // Check for possibly broken child processes
@@ -765,9 +771,9 @@ ERR write_nonblock(int Handle, APTR Data, int Size, int64_t EndTime)
    ERR error = ERR::Okay;
 
    while ((offset < Size) and (error IS ERR::Okay)) {
-      int write_size = Size;
+      int write_size = Size - offset;
       if (write_size > 1024) write_size = 1024;  // Limiting the size will make the chance of an EWOULDBLOCK error less likely.
-      int len = write(Handle, (char *)Data+offset, write_size - offset);
+      int len = write(Handle, (char *)Data+offset, write_size);
       if (len >= 0) offset += len;
       if (offset IS Size) break;
 
@@ -1061,7 +1067,10 @@ ERR sleep_task(int Timeout, int8_t SystemOnly)
       //   The thread-lock is released by another task (see wake_task).
       //   A window message is received (if tlMessageBreak is true)
 
-      auto handles = std::make_unique<WINHANDLE[]>(glFDTable.size()+1); // +1 for thread-lock
+      WINHANDLE stack_handles[32];
+      auto heap_storage = (glFDTable.size() + 1 > 32)
+         ? std::make_unique<WINHANDLE[]>(glFDTable.size() + 1) : nullptr;
+      auto handles = heap_storage ? heap_storage.get() : stack_handles;
       handles[0] = get_threadlock();
       int total = 1;
 
@@ -1092,7 +1101,7 @@ ERR sleep_task(int Timeout, int8_t SystemOnly)
       int sleeptime = time_end - (PreciseTime() / 1000LL);
       if (sleeptime < 0) sleeptime = 0;
 
-      int i = winWaitForObjects(total, handles.get(), sleeptime, tlMessageBreak);
+      int i = winWaitForObjects(total, handles, sleeptime, tlMessageBreak);
 
       // Return Codes/Reasons for breaking:
       //
