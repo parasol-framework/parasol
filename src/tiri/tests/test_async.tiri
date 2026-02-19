@@ -133,9 +133,108 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Verify that async.pool supports reading and writing scalar values (number, string, boolean).
+
+@Test(priority=5) function PoolScalarReadWrite()
+   async.pool.clear()
+
+   async.pool.count = 42
+   async.pool.name  = 'hello'
+   async.pool.flag  = true
+
+   assert(async.pool.count is 42, f'Expected 42, got {async.pool.count}')
+   assert(async.pool.name is 'hello', f'Expected hello, got {async.pool.name}')
+   assert(async.pool.flag is true, f'Expected true, got {async.pool.flag}')
+
+   -- Overwrite with different types
+   async.pool.count = 'now a string'
+   assert(async.pool.count is 'now a string', f'Expected "now a string", got {async.pool.count}')
+
+   -- Non-existent key returns nil
+   assert(async.pool.nonexistent is nil, 'Expected nil for missing key')
+
+   async.pool.clear()
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Verify that storing an object in the pool stores its ID and reads back as a live object.
+
+@Test(priority=6) function PoolObjectStorage()
+   async.pool.clear()
+
+   signal = obj.new('time', { })
+   expected_id = signal.id
+
+   async.pool.target = signal
+
+   result = async.pool.target
+   assert(result != nil, 'Expected object, got nil')
+   assert(result.id is expected_id, f'Expected object ID {expected_id}, got {result.id}')
+
+   async.pool.clear()
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Verify that assigning nil to a pool key deletes it.
+
+@Test(priority=7) function PoolNilDeletion()
+   async.pool.clear()
+
+   async.pool.temp = 99
+   assert(async.pool.temp is 99, 'Expected 99')
+
+   async.pool.temp = nil
+   assert(async.pool.temp is nil, 'Expected nil after deletion')
+
+   async.pool.clear()
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Verify that async.pool.clear() removes all entries.
+
+@Test(priority=8) function PoolClear()
+   async.pool.clear()
+
+   async.pool.a = 1
+   async.pool.b = 2
+   async.pool.c = 3
+
+   async.pool.clear()
+
+   assert(async.pool.a is nil, 'Expected nil after clear')
+   assert(async.pool.b is nil, 'Expected nil after clear')
+   assert(async.pool.c is nil, 'Expected nil after clear')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Verify that a worker thread can read and write the pool, and the main thread sees the results.
+
+@Test(priority=9) function PoolCrossThread()
+   async.pool.clear()
+   async.pool.input = 'from main'
+
+   script = obj.new('script', { statement=[[
+      val = async.pool.input
+      async.pool.output = 'from thread: ' .. val
+   ]] })
+
+   async.script(script, function(Object)
+      check Object.error
+      processing.signal()
+   end)
+
+   check processing.sleep(3.0)
+
+   assert(async.pool.output is 'from thread: from main',
+      f'Expected "from thread: from main", got "{async.pool.output}"')
+
+   async.pool.clear()
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- In this test the signals are sent from the threaded script rather than being managed by the main thread's callback.
 
-@Test(priority=5) function MultipleClientSignals()
+@Test(priority=10) function MultipleClientSignals()
    signal_a = obj.new('time', { }) -- This would normally be something more practical, like a file
    work_list = array<object> { signal_a } -- List all the objects that will be worked on
 

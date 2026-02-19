@@ -121,6 +121,32 @@ struct TiriConstant {
 extern ankerl::unordered_dense::map<uint32_t, TiriConstant> glConstantRegistry;
 extern std::shared_mutex glConstantMutex;
 
+// Thread-safe shared pool for async.pool — see tiri_async.cpp
+// Owned by the main script's prvTiri and shared with child scripts via std::shared_ptr.
+
+enum class PoolTag : uint8_t { Number, String, Boolean, ObjectID };
+
+struct PoolValue {
+   PoolTag tag;
+   union {
+      double   num;
+      bool     flag;
+      OBJECTID oid;
+   };
+   std::string str; // Only valid when tag == PoolTag::String
+
+   PoolValue() : tag(PoolTag::Number) { num = 0; }
+   PoolValue(double V)       : tag(PoolTag::Number)   { num = V; }
+   PoolValue(std::string V)  : tag(PoolTag::String), str(std::move(V)) { num = 0; }
+   PoolValue(bool V)         : tag(PoolTag::Boolean)   { flag = V; }
+   static PoolValue object(OBJECTID V) { PoolValue pv; pv.tag = PoolTag::ObjectID; pv.oid = V; return pv; }
+};
+
+struct SharedPool {
+   std::shared_mutex mutex;
+   ankerl::unordered_dense::map<std::string, PoolValue> data;
+};
+
 //********************************************************************************************************************
 // Helper: build a std::string_view from a Lua string argument.
 // Raises a Lua error if the argument at 'idx' is not a string (delegates to luaL_checklstring).
@@ -254,6 +280,7 @@ struct prvTiri {
    ankerl::unordered_dense::map<OBJECTID, int> StateMap;
    pf::vector<std::string> Procedures;
    std::vector<std::unique_ptr<std::jthread>> Threads; // Simple mechanism for auto-joining all the threads on object destruction
+   std::shared_ptr<SharedPool> Pool;     // Thread-safe shared pool for async.pool (created on first use, shared with child scripts)
    APTR     FocusEventHandle;
    struct finput *InputList;           // Managed by the input interface
    DateTime CacheDate;
