@@ -140,8 +140,7 @@ static int async_action(lua_State *Lua)
 
    // Args: Object (1), Action (2), Callback (3), Key (4), Parameters...
 
-   GCobject *gc_obj;
-   if (not (gc_obj = lj_lib_checkobject(Lua, 1))) luaL_argerror(Lua, 1, "Object required.");
+   GCobject *gc_obj = lj_lib_checkobject(Lua, 1);
    if (not gc_obj->ptr) luaL_error(Lua, ERR::ObjectCorrupt);
 
    auto type = lua_type(Lua, 2);
@@ -154,7 +153,10 @@ static int async_action(lua_State *Lua)
       }
       else luaL_argerror(Lua, 2, "Action name is not recognised (is it a method?)");
    }
-   else if (type IS LUA_TNUMBER) action_id = AC(lua_tointeger(Lua, 2));
+   else if (type IS LUA_TNUMBER) {
+      action_id = AC(lua_tointeger(Lua, 2));
+      if ((action_id <= AC::NIL) or (action_id >= AC::END)) luaL_argerror(Lua, 2, "Action ID out of range");
+   }
    else luaL_argerror(Lua, 2, "Action name required.");
 
    int client_callback = LUA_NOREF;
@@ -188,6 +190,13 @@ static int async_action(lua_State *Lua)
    auto msg = new ThreadMsg { client_callback, obj_ref, Lua->script, lua_tonumber(Lua, 4) };
    auto callback = C_FUNCTION(msg_thread_complete, msg);
 
+   auto abort = [&]() {
+      gc_obj->ptr->unpin(true);
+      luaL_unref(Lua, LUA_REGISTRYINDEX, obj_ref);
+      luaL_unref(Lua, LUA_REGISTRYINDEX, client_callback);
+      delete msg;
+   };
+
    ERR error = ERR::Okay;
    if (arg_size > 0) {
       auto arg_buffer = std::make_unique<int8_t[]>(arg_size+8); // +8 for overflow protection in build_args()
@@ -198,18 +207,12 @@ static int async_action(lua_State *Lua)
             error = AsyncAction(action_id, gc_obj->ptr, arg_buffer.get(), &callback);
          }
          else {
-            gc_obj->ptr->unpin(true);
-            luaL_unref(Lua, LUA_REGISTRYINDEX, obj_ref);
-            luaL_unref(Lua, LUA_REGISTRYINDEX, client_callback);
-            delete msg;
+            abort();
             luaL_error(Lua, "Actions that return results are not yet supported.");
          }
       }
       else {
-         gc_obj->ptr->unpin(true);
-         luaL_unref(Lua, LUA_REGISTRYINDEX, obj_ref);
-         luaL_unref(Lua, LUA_REGISTRYINDEX, client_callback);
-         delete msg;
+         abort();
          luaL_error(Lua, "Argument build failure for %s.", glActions[int(action_id)].Name);
       }
    }
@@ -218,10 +221,7 @@ static int async_action(lua_State *Lua)
    }
 
    if (error != ERR::Okay) {
-      gc_obj->ptr->unpin(true);
-      luaL_unref(Lua, LUA_REGISTRYINDEX, obj_ref);
-      luaL_unref(Lua, LUA_REGISTRYINDEX, client_callback);
-      delete msg;
+      abort();
       luaL_error(Lua, error);
    }
 
@@ -288,6 +288,13 @@ static int async_method(lua_State *Lua)
          auto msg = new ThreadMsg { client_callback, obj_ref, Lua->script, lua_tonumber(Lua, 4) };
          auto callback = C_FUNCTION(msg_thread_complete, msg);
 
+         auto abort = [&]() {
+            gc_obj->ptr->unpin(true);
+            luaL_unref(Lua, LUA_REGISTRYINDEX, obj_ref);
+            luaL_unref(Lua, LUA_REGISTRYINDEX, client_callback);
+            delete msg;
+         };
+
          ERR error = ERR::Okay;
          if (argsize > 0) {
             auto argbuffer = std::make_unique<int8_t[]>(argsize+8); // +8 for overflow protection in build_args()
@@ -301,18 +308,12 @@ static int async_method(lua_State *Lua)
                   error = AsyncAction(action_id, gc_obj->ptr, argbuffer.get(), &callback);
                }
                else {
-                  gc_obj->ptr->unpin(true);
-                  luaL_unref(Lua, LUA_REGISTRYINDEX, obj_ref);
-                  luaL_unref(Lua, LUA_REGISTRYINDEX, client_callback);
-                  delete msg;
+                  abort();
                   luaL_error(Lua, "Methods that return results are not yet supported.");
                }
             }
             else {
-               gc_obj->ptr->unpin(true);
-               luaL_unref(Lua, LUA_REGISTRYINDEX, obj_ref);
-               luaL_unref(Lua, LUA_REGISTRYINDEX, client_callback);
-               delete msg;
+               abort();
                luaL_error(Lua, "Argument build failure for %s.", glActions[int(action_id)].Name);
             }
          }
@@ -321,10 +322,7 @@ static int async_method(lua_State *Lua)
          }
 
          if (error != ERR::Okay) {
-            gc_obj->ptr->unpin(true);
-            luaL_unref(Lua, LUA_REGISTRYINDEX, obj_ref);
-            luaL_unref(Lua, LUA_REGISTRYINDEX, client_callback);
-            delete msg;
+            abort();
             luaL_error(Lua, error);
          }
 
@@ -369,17 +367,30 @@ static SharedPool * get_pool(lua_State *Lua)
 
 static int pool_get(lua_State *Lua)
 {
-   auto key = luaL_checkstring(Lua, 2);
+   size_t key_len;
+   auto key = luaL_checklstring(Lua, 2, &key_len);
    auto pool = get_pool(Lua);
-   std::shared_lock lock(pool->mutex);
 
-   if (auto it = pool->data.find(key); it != pool->data.end()) {
-      auto &pv = it->second;
-      switch (pv.tag) {
-         case PoolTag::Number:   lua_pushnumber(Lua, pv.num); break;
-         case PoolTag::String:   lua_pushlstring(Lua, pv.str.data(), pv.str.size()); break;
-         case PoolTag::Boolean:  lua_pushboolean(Lua, pv.flag); break;
-         case PoolTag::ObjectID: push_object_id(Lua, pv.oid); break;
+   // Copy the value under lock, then release before touching the Lua stack.
+   // Lua push APIs can longjmp on allocation failure, which would skip C++ destructors
+   // and leave the shared mutex permanently locked.
+
+   PoolValue local_val;
+   bool found = false;
+   {
+      std::shared_lock lock(pool->mutex);
+      if (auto it = pool->data.find(std::string(key, key_len)); it != pool->data.end()) {
+         local_val = it->second;
+         found = true;
+      }
+   }
+
+   if (found) {
+      switch (local_val.tag) {
+         case PoolTag::Number:   lua_pushnumber(Lua, local_val.num); break;
+         case PoolTag::String:   lua_pushlstring(Lua, local_val.str.data(), local_val.str.size()); break;
+         case PoolTag::Boolean:  lua_pushboolean(Lua, local_val.flag); break;
+         case PoolTag::ObjectID: push_object_id(Lua, local_val.oid); break;
       }
    }
    else lua_pushnil(Lua);
@@ -393,7 +404,8 @@ static int pool_get(lua_State *Lua)
 
 static int pool_set(lua_State *Lua)
 {
-   auto key = luaL_checkstring(Lua, 2);
+   size_t key_len;
+   auto key = luaL_checklstring(Lua, 2, &key_len);
 
    // Validate the value type and extract it before acquiring the mutex lock.  This prevents
    // luaL_argerror's longjmp from leaving the mutex permanently locked.
@@ -429,8 +441,9 @@ static int pool_set(lua_State *Lua)
    auto pool = get_pool(Lua);
    std::unique_lock lock(pool->mutex);
 
-   if (value_type IS LUA_TNIL) pool->data.erase(key);
-   else pool->data.insert_or_assign(std::string(key), std::move(pv));
+   auto key_str = std::string(key, key_len);
+   if (value_type IS LUA_TNIL) pool->data.erase(key_str);
+   else pool->data.insert_or_assign(std::move(key_str), std::move(pv));
 
    return 0;
 }
