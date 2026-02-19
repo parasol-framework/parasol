@@ -985,6 +985,9 @@ static int object_init(lua_State *Lua)
 //********************************************************************************************************************
 // __close metamethod handler for object auto-unlock.  Called automatically by scope exit for <close> variables.
 // Safe no-op if accesscount is 0 (object was never locked or already unlocked).
+//
+// This feature ensure that locks acquired via `with` statements are always released, even if an exception occurs
+// within the block.
 
 static int object_close_handler(lua_State *Lua)
 {
