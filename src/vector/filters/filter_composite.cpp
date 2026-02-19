@@ -557,7 +557,7 @@ static ERR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
 {
    pf::Log log;
 
-   if (Self->Target->BytesPerPixel != 4) return ERR::Failed;
+   if (Self->Target->BytesPerPixel != 4) return ERR::InvalidState;
 
    objBitmap *inBmp;
 
