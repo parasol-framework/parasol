@@ -734,6 +734,7 @@ extern Object glDummyObject;
 extern TIMER glProcessJanitor;
 extern int glEventMask;
 extern struct ModHeader glCoreHeader;
+extern void (*glAsyncCallback)(OBJECTPTR);
 
 #ifndef KOTUKU_STATIC
 extern CSTRING glClassBinPath;

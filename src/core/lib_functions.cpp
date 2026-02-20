@@ -662,6 +662,8 @@ int64_t SetResource(RES Resource, int64_t Value)
 
       case RES::LOG_DEPTH: tlDepth = Value; break;
 
+      case RES::ASYNC_CALLBACK: glAsyncCallback = (void (*)(OBJECTPTR))L64PTR(Value); break;
+
 #ifdef _WIN32
       case RES::NET_PROCESSING: glNetProcessMessages = (void (*)(int, APTR))L64PTR(Value); break;
 #else
@@ -708,7 +710,7 @@ int64_t SetResource(RES Resource, int64_t Value)
          break;
 
       default:
-         log.warning("Unrecognised resource ID: %d, Value: %" PF64, int(Resource), (long long)Value);
+         log.warning("Unrecognised resource ID: %d, Value: %" PF64, int(Resource), (int64_t)Value);
    }
 
    return oldvalue;

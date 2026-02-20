@@ -344,10 +344,10 @@ timer_cycle:
 
       for (auto &msg : local_batch) {
          if (msg.Type IS MSGID::BREAK) {
-            // MSGID::BREAK will break out of recursive calls to ProcessMessages(), but not the top-level
-            // call made by the client application.
-            if ((tlMsgRecursion > 1) or (TimeOut != -1)) breaking = true;
-            else log.trace("Unable to break from recursive position %d layers deep.", tlMsgRecursion);
+            // MSGID::BREAK is intended for breaking out of recursive calls to ProcessMessages(), but
+            // not the top-level UI event loop which is broken by MSGID::QUIT.
+            if ((Flags & PMF::EVENT_LOOP) IS PMF::NIL) breaking = true;
+            else log.trace("Unable to break from core event loop.");
          }
 
          tlCurrentMsg = &msg;

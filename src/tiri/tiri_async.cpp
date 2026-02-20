@@ -81,6 +81,27 @@ static void msg_thread_complete(ACTIONID ActionID, OBJECTPTR Object, ERR Error, 
 }
 
 //********************************************************************************************************************
+// State for the async_wait() callback.  All fields are only accessed from the main thread (glAsyncCallback is
+// invoked from msg_threadaction/dispatch_queued_action via ProcessMessages, and from AsyncAction which is called
+// from the Tiri VM — both main-thread-only contexts).
+
+static int async_counter;
+static bool async_waiting;
+static ankerl::unordered_dense::set<OBJECTID> async_targets;
+
+static void async_callback(OBJECTPTR Object)
+{
+   if (not async_targets.contains(Object->UID)) return; // Ignore unrelated objects
+
+   if (Object->defined(NF::ASYNC_ACTIVE)) async_counter++;
+   else async_counter--;
+
+   pf::Log(__FUNCTION__).trace("Counter: %d", async_counter);
+
+   if (not async_counter) SendMessage(MSGID::BREAK, MSF::NIL, nullptr, 0);
+}
+
+//********************************************************************************************************************
 // Usage: async.script(Script, Callback)
 //
 // Pins the Script object to prevent premature destruction, then executes it in its own thread.  The pin is
@@ -336,12 +357,96 @@ static int async_method(lua_State *Lua)
 }
 
 //********************************************************************************************************************
+// Usage: error = async.wait(Object|array<object>, [Timeout])
+//
+// Blocks the calling script until all queued async actions for the given object(s) have completed.
+// Messages continue to be processed while waiting, so async completion callbacks fire normally.
+// Returns ERR::Okay on success or ERR::TimeOut if the timeout expires first.  If no timeout is
+// given, the wait is indefinite.
+
+static int async_wait(lua_State *Lua)
+{
+   pf::Log log(__FUNCTION__);
+
+   if (async_waiting) luaL_error(Lua, "async.wait() cannot be called recursively.");
+
+   async_counter = 0;
+   async_targets.clear();
+   SetResourcePtr(RES::ASYNC_CALLBACK, (APTR)async_callback);
+
+   // Collect the target object UIDs from argument 1.
+
+   auto type = lua_type(Lua, 1);
+   if (type IS LUA_TOBJECT) {
+      auto gc_obj = lua_toobject(Lua, 1);
+      if (auto obj = access_object(gc_obj)) {
+         async_targets.insert(obj->UID);
+         if (obj->defined(NF::ASYNC_ACTIVE)) async_counter++;
+         release_object(gc_obj);
+      }
+      else luaL_error(Lua, ERR::AccessObject);
+   }
+   else if (type IS LUA_TARRAY) {
+      GCarray *arr = lua_toarray(Lua, 1);
+      if (arr->elemtype IS AET::OBJECT) {
+         auto refs = arr->get<GCRef>();
+         for (MSize i = 0; i < arr->len; i++) {
+            if (gcref(refs[i])) {
+               auto gc_obj = gco_to_object(gcref(refs[i]));
+               if (auto obj = access_object(gc_obj)) {
+                  async_targets.insert(obj->UID);
+                  if (obj->defined(NF::ASYNC_ACTIVE)) async_counter++;
+                  release_object(gc_obj);
+               }
+               else luaL_error(Lua, ERR::AccessObject);
+            }
+         }
+      }
+      else luaL_argerror(Lua, 1, "Expected an array<object>.");
+   }
+   else luaL_argerror(Lua, 1, "Expected an object or array<object>.");
+
+   if (async_targets.empty()) {
+      SetResourcePtr(RES::ASYNC_CALLBACK, nullptr);
+      lua_pushinteger(Lua, int(ERR::Okay));
+      return 1;
+   }
+
+   // Timeout (seconds → milliseconds).  Default: indefinite (-1).
+
+   int timeout_ms = -1;
+   if (lua_type(Lua, 2) IS LUA_TNUMBER) {
+      timeout_ms = int(lua_tonumber(Lua, 2) * 1000.0);
+      if (timeout_ms < 0) timeout_ms = -1;
+   }
+
+   log.branch("Objects: %d, Timeout: %d ms", int(async_targets.size()), timeout_ms);
+
+   ERR error;
+   if (async_counter) {
+      async_waiting = true;
+      error = ProcessMessages(PMF::NIL, timeout_ms);
+      async_waiting = false;
+   }
+   else error = ERR::Okay;
+
+   SetResourcePtr(RES::ASYNC_CALLBACK, nullptr);
+   async_targets.clear();
+
+   if ((error != ERR::Okay) and (in_try_immediate_scope(Lua))) luaL_error(Lua, error);
+
+   lua_pushinteger(Lua, int(error));
+   return 1;
+}
+
+//********************************************************************************************************************
 // Register the async interface.
 
 static const luaL_Reg asynclib_functions[] = {
    { "action", async_action },
    { "method", async_method },
    { "script", async_script },
+   { "wait",   async_wait },
    { nullptr, nullptr }
 };
 
@@ -504,4 +609,5 @@ void register_async_class(lua_State *Lua)
    reg_iface_prototype("async", "action", {}, { TiriType::Any, TiriType::Any, TiriType::Func, TiriType::Num });
    reg_iface_prototype("async", "method", {}, { TiriType::Any, TiriType::Any, TiriType::Func, TiriType::Num });
    reg_iface_prototype("async", "script", {}, { TiriType::Object, TiriType::Func });
+   reg_iface_prototype("async", "wait", { TiriType::Num }, { TiriType::Any, TiriType::Num });
 }

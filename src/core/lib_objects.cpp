@@ -588,16 +588,31 @@ void dispatch_queued_action(OBJECTID ObjectID)
    pf::Log log(__FUNCTION__);
 
    QueuedAction next;
+   bool queue_empty = false;
    {
       std::lock_guard<std::mutex> lock(glmActionQueue);
       auto it = glActionQueues.find(ObjectID);
       if ((it IS glActionQueues.end()) or it->second.empty()) {
          glActiveAsyncObjects.erase(ObjectID);
          if (it != glActionQueues.end()) glActionQueues.erase(it);
-         return;
+         queue_empty = true;
       }
-      next = std::move(it->second.front());
-      it->second.pop_front();
+      else {
+         next = std::move(it->second.front());
+         it->second.pop_front();
+      }
+   }
+
+   if (queue_empty) {
+      // Clear the async flag now that no more actions are pending.
+      ScopedObjectLock obj(ObjectID);
+      if (obj.granted()) {
+         if (obj->defined(NF::ASYNC_ACTIVE)) {
+            obj->Flags &= ~NF::ASYNC_ACTIVE;
+            if (glAsyncCallback) glAsyncCallback(*obj);
+         }
+      }
+      return;
    }
 
    // Queue mutex released before thread launch to avoid holding two locks simultaneously.
@@ -661,6 +676,18 @@ void drain_action_queue(OBJECTID ObjectID, bool Terminating)
          glActionQueues.erase(it);
       }
       glActiveAsyncObjects.erase(ObjectID);
+   }
+
+   // Clear the async flag.  The object may already be freed in the Terminating case, so tolerate lock failure.
+
+   if (not Terminating) {
+      ScopedObjectLock obj(ObjectID);
+      if (obj.granted()) {
+         if (obj->defined(NF::ASYNC_ACTIVE)) {
+            obj->Flags &= ~NF::ASYNC_ACTIVE;
+            if (glAsyncCallback) glAsyncCallback(*obj);
+         }
+      }
    }
 
    if (not drained.empty()) {
@@ -829,6 +856,11 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
          }
 
          glActiveAsyncObjects.insert(Object->UID);
+
+         if (not Object->defined(NF::ASYNC_ACTIVE)) {
+            Object->Flags |= NF::ASYNC_ACTIVE;
+            if (glAsyncCallback) glAsyncCallback(Object);
+         }
       }
 
       launch_async_thread(Object, ActionID, argssize, std::move(param_buffer), cb);

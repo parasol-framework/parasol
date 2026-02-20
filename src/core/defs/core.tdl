@@ -64,6 +64,7 @@ constexpr bool defined(T flags, T test_flag) noexcept {
      "NO_DUPLICATE: If the `Type` parameter matches a message already inside the queue, the new message will not be added and the function will immediately return with `ERR::Okay`.")
 
   flags("PMF", { comment="Flags for ProcessMessages" },
+     "EVENT_LOOP: Set if this is the program's main event loop.  Should be accompanied with an infinite timeout.",
      "SYSTEM_NO_BREAK: Private.  For system calls that need to avoid early termination.")
 
   flags("RFD", { bits=32, comment="Flags for RegisterFD()" },
@@ -289,6 +290,7 @@ constexpr bool defined(T flags, T test_flag) noexcept {
     "MESSAGE: Action has been called against the object through the message system (managed by ~Core.ProcessMessages()).",
     "SIGNALLED: The object has been signalled and is awaiting processing.",
     "PERMIT_TERMINATE: Private.  Permits termination when a lock is held on the object.",
+    "ASYNC_ACTIVE: Read-only indicator that asynchronous actions are queued or executing against this object.",
     { UNIQUE = "0x40000000: Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating shared objects.  If it is discovered that an identically named object exists, ~Core.NewObject() will return `ERR::ObjectExists`.  This flag works in conjunction with the `Name` parameter.",
       NAME   = "0x80000000: Use the Name parameter to name the created object.  This flag is not required if using `UNIQUE`.",
       PRIVATE = 0
@@ -352,7 +354,8 @@ constexpr bool defined(T flags, T test_flag) noexcept {
     "CPU_SPEED: The average top-speed of all CPU cores in Mhz.",
     "FREE_MEMORY: The total amount of free memory.",
     "MEMORY_USAGE: The total amount of memory used by the current process, in bytes.",
-    "MAIN_THREAD: Read-only, returns `true` if called from the main thread."
+    "MAIN_THREAD: Read-only, returns `true` if called from the main thread.",
+    "ASYNC_CALLBACK: Internal"
   )
 
   enum("RP", { type="int", start=1, comment="Path types for SetResourcePath()" },
