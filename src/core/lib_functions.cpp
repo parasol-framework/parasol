@@ -46,10 +46,15 @@ Name: System
 using namespace pf;
 
 //********************************************************************************************************************
+
+thread_local std::shared_ptr<ThreadRecord> tlThreadRecord;
+
+//********************************************************************************************************************
 // Remove the calling thread from the global thread registry.  Safe to call even if the thread was never registered.
 
 void deregister_thread(void)
 {
+   tlThreadRecord.reset();
    auto tid = get_thread_id();
    std::lock_guard lock(glmThreadRegistry);
    glThreadRegistry.erase(int(tid));
@@ -60,10 +65,12 @@ void deregister_thread(void)
 
 std::shared_ptr<ThreadRecord> get_thread_record(void)
 {
-   auto tid = get_thread_id();
-   std::lock_guard lock(glmThreadRegistry);
-   if (auto it = glThreadRegistry.find(int(tid)); it != glThreadRegistry.end()) return it->second;
-   else return nullptr;
+   if (!tlThreadRecord) {
+      auto tid = get_thread_id();
+      std::lock_guard lock(glmThreadRegistry);
+      if (auto it = glThreadRegistry.find(int(tid)); it != glThreadRegistry.end()) tlThreadRecord = it->second;
+   }
+   return tlThreadRecord;
 }
 
 /*********************************************************************************************************************
@@ -1016,7 +1023,8 @@ ERR WakeThread(int Thread, int Stop)
 
    if (paused) {
       record->cv.notify_one();
-      cvObjects.notify_all(); // Wake threads blocked in LockObject()
+      cvObjects.notify_all();   // Wake threads blocked in LockObject()
+      cvResources.notify_all(); // Wake threads blocked in AccessMemory()
    }
    return ERR::Okay;
 }

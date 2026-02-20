@@ -356,6 +356,16 @@ ERR AccessMemory(MEMORYID MemoryID, MEM Flags, int MilliSeconds, APTR *Result)
             }
 
             while ((mem->second.AccessCount > 0) and (mem->second.ThreadLockID != our_thread)) {
+               // Check if woken or stopped by WakeThread() before blocking
+               if (record) {
+                  std::lock_guard rlock(record->mutex);
+                  if (record->interrupted or record->state IS TSTATE::STOPPING) {
+                     record->interrupted = false;
+                     if (record->state != TSTATE::STOPPING) record->state = TSTATE::RUNNING;
+                     return ERR::Cancelled;
+                  }
+               }
+
                auto now = steady_clock::now();
                if (now >= end_time) {
                   if (record) {
@@ -579,6 +589,12 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
          }
 
          while (steady_clock::now() < end_time) {
+            // Check if woken or stopped by WakeThread() before blocking
+            if (record) {
+               std::lock_guard rlock(record->mutex);
+               if (record->interrupted or record->state IS TSTATE::STOPPING) break;
+            }
+
             if (glWaitLocks[glWLIndex].Flags & WLF_REMOVED) {
                glWaitLocks[glWLIndex].notWaiting();
                Object->SleepQueue.fetch_sub(1, std::memory_order_release);
@@ -609,12 +625,6 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
                auto timeout_remaining = end_time - steady_clock::now();
                if (timeout_remaining <= milliseconds(0)) break;
                if (cvObjects.wait_for(glmObjectLocking, timeout_remaining) IS std::cv_status::timeout) break;
-            }
-
-            // Check if woken by WakeThread()
-            if (record) {
-               std::lock_guard rlock(record->mutex);
-               if (record->interrupted or record->state IS TSTATE::STOPPING) break;
             }
          }
 
