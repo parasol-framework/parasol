@@ -1,11 +1,14 @@
+// VERIFIED: 2026-02-20
+
 [[ch-threading]]
 == Threading
 
 Tiri provides a threading model designed for safety over flexibility, without compromising performance.  Rather than launching raw threads, the programmer submits asynchronous work against a Kōtuku object.  The runtime manages thread creation, queueing, and exclusive locking automatically.  This _barrier model_ eliminates data races by ensuring that no two workers can access the same object concurrently — while the worker has exclusive access, it can safely operate on the object's data without additional synchronisation.
 
-The threading system consists of two interfaces:
+The threading system consists of three interfaces:
 
 * The `async` interface submits async work to objects and manages worker threads.
+* The `async.pool` interface (<<sec-shared-pool>>) provides a thread-safe key-value store for exchanging data between threads.
 * The `processing` interface (<<ch-processing-and-events>>) provides synchronisation through signals and the processing loop.
 
 [[sec-threading-model]]
@@ -23,7 +26,7 @@ Each object has an associated FIFO queue of pending work, created on demand when
 Consequences of this design:
 
 * An object cannot serve as the target for two concurrent threads.  If an asynchronous workload is already in-flight for a given object, subsequent requests are placed in a per-object FIFO queue and dispatched sequentially after each callback completes.  Activities targeting _different_ objects execute in parallel.
-* The threaded code cannot share Tiri variables with the calling scope.  Communication between the thread and the caller must use Kōtuku objects (e.g. via `obj.find()`).
+* The threaded code cannot share Tiri variables with the calling scope.  Communication between the thread and the caller must use `async.pool` (<<sec-shared-pool>>), `setKey()` / `arg()`, or Kōtuku objects (e.g. via `obj.find()`).
 * Callbacks execute after the thread finishes and the object lock returns to the main thread.  The callback runs in the caller's scope with full access to local variables.  The next queued action for the same object is dispatched only after the callback returns.
 
 NOTE: Thread callbacks always execute during the event processing loop, which requires a call to `processing.sleep()`.
@@ -277,6 +280,88 @@ The pipe iteration operator can be combined with `async.script()` to fan out wor
 <3> All workers are rapidly dispatched in one go.
 <4> The processing object is configured to wait for all scripts to send a signal.
 
+[[sec-shared-pool]]
+=== Shared Data Pool
+
+==== async.pool
+
+The `async.pool` table provides a thread-safe key-value store for exchanging data between the main thread and worker scripts launched with `async.script()`.  All reads and writes are protected by an internal shared mutex — reads execute concurrently with other reads, and writes acquire exclusive access.
+
+The pool is created lazily on first access and is shared automatically with all child scripts launched via `async.script()`.  No explicit setup is required.
+
+[source,tiri]
+----
+async.pool.status = 'ready'
+async.pool.count  = 0
+
+script = obj.new('script', { statement=[[
+   val = async.pool.status
+   async.pool.result = 'processed: ' .. val
+   async.pool.count  = async.pool.count + 1
+]] })
+
+async.script(script, function(Object)
+   check Object.error
+   processing.signal()
+end)
+
+check processing.sleep(3.0)
+print(async.pool.result) -- 'processed: ready'
+----
+
+[discrete]
+===== Supported Value Types
+
+The pool accepts values of the following types:
+
+[cols="1,3"]
+|===
+|Type |Behaviour
+
+|number
+|Stored and retrieved as a double-precision floating-point value.
+
+|string
+|The standard string type is viable for both string and binary data storage.
+
+|boolean
+|Stored and retrieved as `true` or `false`.
+
+|object
+|The object ID is stored.  On retrieval, the runtime resolves the ID back to a live object reference.
+
+|nil
+|Assigning `nil` to a key deletes it from the pool.
+|===
+
+An exception is raised if the value is a table, function, or any other unsupported type.  The pool remains operational after a rejected write.
+
+[discrete]
+===== Reading Keys
+
+Reading a key that does not exist returns `nil`.  Reading a key that was previously deleted also returns `nil`.
+
+[discrete]
+===== async.pool.clear()
+
+[.api]`async.pool.clear()`
+
+Removes all entries from the pool.  Acquires an exclusive lock for the duration of the operation.
+
+[discrete]
+===== Thread Safety
+
+All pool operations are safe to call from any thread.  The internal mutex ensures that concurrent reads do not block each other, and writes are serialised.  If a write raises an error (e.g. due to an unsupported value type), the mutex is not held — subsequent pool operations from any thread proceed normally.
+
+Keys are strings and are binary-safe (embedded NUL bytes are preserved).
+
+[discrete]
+===== Limitations
+
+* The pool is a flat key-value store.  It is the client's responsibility to ensure that structured data is serialised to a string buffer before storage.
+* The pool does not support change notifications or event callbacks.  Worker threads must use signals (<<sec-signals>>) to notify the main thread that new data is available.
+* Object values store only the object ID and the object will not be pinned.  If the object is freed before the ID is read back, the retrieval will fail.
+
 [[sec-thread-safety]]
 === Thread Safety
 
@@ -292,7 +377,7 @@ The pipe iteration operator can be combined with `async.script()` to fan out wor
 [discrete]
 ==== Restrictions
 
-* A threaded script (`async.script()`) cannot access local variables from the calling scope.  Use `setKey()` / `arg()` or `obj.find()` to exchange data.
+* A threaded script (`async.script()`) cannot access local variables from the calling scope.  Use `setKey()` / `arg()`, `obj.find()`, or `async.pool` (<<sec-shared-pool>>) to exchange data.
 * An object targeted by `async.action()` or `async.method()` must not be freed while actions are queued.  If an object is freed while actions remain in the queue, the remaining callbacks will receive an error code of `ERR_DoesNotExist` and a `nil` object reference.  The object reference must remain valid until all callbacks have fired.
 * `processing.sleep()` must be called on the main thread.  Calling it from within a threaded script is not supported.
 

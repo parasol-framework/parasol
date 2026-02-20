@@ -86,6 +86,7 @@ print('Hello, world!')
 
 Save this as `hello.tiri` and run it with `origo hello.tiri` to see the output:
 
+[source]
 ----
 Hello, world!
 ----
@@ -95,10 +96,11 @@ Notice that no entry-point function was declared in the script.  Tiri scripts ex
 [[sec-file-recognition]]
 === File Recognition
 
-Tiri source files use the `.tiri` file extension.  To completely avoid ambiguity, script files can also start with the official identification comment:
+Tiri source files use the `.tiri` file extension.  To completely avoid ambiguity, script files can also start with an optional shebang line and the official identification comment:
 
 [source,tiri]
 ----
+#!/usr/bin/env origo
 -- $TIRI
 ----
 
