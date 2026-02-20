@@ -29,14 +29,13 @@ end
 -- Timeout fires when tasks take too long.
 
 @Test; @Disabled function WaitTimeout()
-   script = obj.new('script', { statement=[[ mSys.WaitTime(10) ]] })
+   script = obj.new('script', { statement=[[ mSys.WaitTime(0.5) ]] })
    async.script(script)
-   err = async.wait(script, 0.2)
+   err = async.wait(script, 0.1)
    assert(err is ERR_TimeOut, f'Expected TimeOut, got {err}')
-   print('Timeout correctly detected.')
 
    -- Clean up: wait for the actual completion so it doesn't bleed into later tests
-   async.wait(script, 1.0)
+   check async.wait(script, 1.0)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -67,18 +66,19 @@ end
 
 @Test; @Disabled function WaitExceptionOnTimeout()
    script = obj.new('script', { statement=[[ mSys.WaitTime(10) ]] })
+   script = obj.new('script', { statement=[[ mSys.WaitTime(1) ]] })
    async.script(script)
 
-   caught = false
-   try
-      async.wait(script, 0.2)
-   except
-      caught = true
-   end
-   assert(caught, 'Expected exception on timeout inside try block')
-   print('Exception correctly raised on timeout.')
+   mSys.WaitTime(0.3)
 
-   async.wait(script, 1.0)
+   try
+      msg('--- Going to sleep ---')
+      async.wait(script, 0.1)
+   success
+      error('Expected exception on timeout inside try block')
+   end
+
+   async.wait(script, 2.0)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
