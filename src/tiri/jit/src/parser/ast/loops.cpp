@@ -20,46 +20,78 @@
 
 ParserResult<ExprNodePtr> AstBuilder::parse_range_in_braces()
 {
-   // Lookahead scan: starting from the token after '{', search for '..' or '...' at depth 0.
+   // Lookahead scan: starting from the token after '{', verify a strict
+   // {start_expr .. stop_expr} or {start_expr ... stop_expr} shape at depth 0.
+   // This avoids misclassifying table literals that merely contain '..'/'...'.
 
-   bool found_range = false;
+   bool found_range_operator = false;
    bool is_inclusive = false;
+   bool has_start_expr_tokens = false;
+   bool has_stop_expr_tokens = false;
+   bool ended_on_right_brace = false;
+   bool invalid_top_level_shape = false;
    int depth = 0;
 
    for (size_t i = 1; ; i++) {
       Token tok = this->ctx.tokens().peek(i);
       auto kind = tok.kind();
 
+      if (kind IS TokenKind::EndOfFile) {
+         break;
+      }
+
+      if (depth IS 0 and kind IS TokenKind::RightBrace) {
+         ended_on_right_brace = true;
+         break;
+      }
+
       if (kind IS TokenKind::LeftParen or kind IS TokenKind::LeftBracket or kind IS TokenKind::LeftBrace) {
+         if (depth IS 0) {
+            if (found_range_operator) has_stop_expr_tokens = true;
+            else has_start_expr_tokens = true;
+         }
          depth++;
       }
       else if (kind IS TokenKind::RightParen or kind IS TokenKind::RightBracket) {
          depth--;
-         if (depth < 0) break;  // Malformed nesting
+         if (depth < 0) {
+            invalid_top_level_shape = true;
+            break;
+         }
       }
       else if (kind IS TokenKind::RightBrace) {
-         if (depth IS 0) break;  // Reached closing brace without finding range operator
          depth--;
-         if (depth < 0) break;
+         if (depth < 0) {
+            invalid_top_level_shape = true;
+            break;
+         }
       }
       else if (depth IS 0) {
-         if (kind IS TokenKind::Cat) {
-            found_range = true;
-            is_inclusive = false;
+         if (kind IS TokenKind::Comma) {
+            invalid_top_level_shape = true;
             break;
          }
-         else if (kind IS TokenKind::Dots) {
-            found_range = true;
-            is_inclusive = true;
-            break;
+
+         if (kind IS TokenKind::Cat or kind IS TokenKind::Dots) {
+            // Exactly one top-level range operator is allowed, and it must
+            // appear after at least one token belonging to the start expression.
+            if (found_range_operator or not has_start_expr_tokens) {
+               invalid_top_level_shape = true;
+               break;
+            }
+
+            found_range_operator = true;
+            is_inclusive = (kind IS TokenKind::Dots);
+         }
+         else {
+            if (found_range_operator) has_stop_expr_tokens = true;
+            else has_start_expr_tokens = true;
          }
       }
-
-      // Safety: stop scanning at EOF
-      if (kind IS TokenKind::EndOfFile) break;
    }
 
-   if (not found_range) {
+   if (invalid_top_level_shape or not ended_on_right_brace or not found_range_operator
+      or not has_start_expr_tokens or not has_stop_expr_tokens) {
       return ParserResult<ExprNodePtr>::failure(
          ParserError(ParserErrorCode::UnexpectedToken, this->ctx.tokens().current(), "not a range expression"));
    }
