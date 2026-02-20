@@ -81,24 +81,34 @@ static void msg_thread_complete(ACTIONID ActionID, OBJECTPTR Object, ERR Error, 
 }
 
 //********************************************************************************************************************
-// State for the async_wait() callback.  All fields are only accessed from the main thread (glAsyncCallback is
-// invoked from msg_threadaction/dispatch_queued_action via ProcessMessages, and from AsyncAction which is called
-// from the Tiri VM — both main-thread-only contexts).
+// State for async_wait().  AsyncAction() can invoke glAsyncCallback from worker threads, so access is
+// synchronised with async_wait_mutex.
 
 static int async_counter;
 static bool async_waiting;
 static ankerl::unordered_dense::set<OBJECTID> async_targets;
+static std::mutex async_wait_mutex;
 
 static void async_callback(OBJECTPTR Object)
 {
-   if (not async_targets.contains(Object->UID)) return; // Ignore unrelated objects
+   bool break_wait = false;
+   int counter = 0;
 
-   if (Object->defined(NF::ASYNC_ACTIVE)) async_counter++;
-   else async_counter--;
+   {
+      std::lock_guard<std::mutex> lock(async_wait_mutex);
+      if (not async_waiting) return;
+      if (not async_targets.contains(Object->UID)) return; // Ignore unrelated objects
 
-   pf::Log(__FUNCTION__).trace("Counter: %d", async_counter);
+      if (Object->defined(NF::ASYNC_ACTIVE)) async_counter++;
+      else async_counter--;
 
-   if (not async_counter) SendMessage(MSGID::BREAK, MSF::NIL, nullptr, 0);
+      counter = async_counter;
+      break_wait = (async_counter IS 0);
+   }
+
+   pf::Log(__FUNCTION__).trace("Counter: %d", counter);
+
+   if (break_wait) SendMessage(MSGID::BREAK, MSF::NIL, nullptr, 0);
 }
 
 //********************************************************************************************************************
@@ -370,9 +380,11 @@ static int async_wait(lua_State *Lua)
 
    if (async_waiting) luaL_error(Lua, "async.wait() cannot be called recursively.");
 
-   async_counter = 0;
-   async_targets.clear();
-   SetResourcePtr(RES::ASYNC_CALLBACK, (APTR)async_callback);
+   {
+      std::lock_guard<std::mutex> lock(async_wait_mutex);
+      async_counter = 0;
+      async_targets.clear();
+   }
 
    // Collect the target object UIDs from argument 1.
 
@@ -380,8 +392,8 @@ static int async_wait(lua_State *Lua)
    if (type IS LUA_TOBJECT) {
       auto gc_obj = lua_toobject(Lua, 1);
       if (auto obj = access_object(gc_obj)) {
-         async_targets.insert(obj->UID);
-         if (obj->defined(NF::ASYNC_ACTIVE)) async_counter++;
+         std::lock_guard<std::mutex> lock(async_wait_mutex);
+         if (async_targets.insert(obj->UID).second and obj->defined(NF::ASYNC_ACTIVE)) async_counter++;
          release_object(gc_obj);
       }
       else luaL_error(Lua, ERR::AccessObject);
@@ -394,8 +406,8 @@ static int async_wait(lua_State *Lua)
             if (gcref(refs[i])) {
                auto gc_obj = gco_to_object(gcref(refs[i]));
                if (auto obj = access_object(gc_obj)) {
-                  async_targets.insert(obj->UID);
-                  if (obj->defined(NF::ASYNC_ACTIVE)) async_counter++;
+                  std::lock_guard<std::mutex> lock(async_wait_mutex);
+                  if (async_targets.insert(obj->UID).second and obj->defined(NF::ASYNC_ACTIVE)) async_counter++;
                   release_object(gc_obj);
                }
                else luaL_error(Lua, ERR::AccessObject);
@@ -406,10 +418,12 @@ static int async_wait(lua_State *Lua)
    }
    else luaL_argerror(Lua, 1, "Expected an object or array<object>.");
 
-   if (async_targets.empty()) {
-      SetResourcePtr(RES::ASYNC_CALLBACK, nullptr);
-      lua_pushinteger(Lua, int(ERR::Okay));
-      return 1;
+   {
+      std::lock_guard<std::mutex> lock(async_wait_mutex);
+      if (async_targets.empty()) {
+         lua_pushinteger(Lua, int(ERR::Okay));
+         return 1;
+      }
    }
 
    // Timeout (seconds → milliseconds).  Default: indefinite (-1).
@@ -420,18 +434,32 @@ static int async_wait(lua_State *Lua)
       if (timeout_ms < 0) timeout_ms = -1;
    }
 
-   log.branch("Objects: %d, Timeout: %d ms", int(async_targets.size()), timeout_ms);
+   SetResourcePtr(RES::ASYNC_CALLBACK, (APTR)async_callback);
+   async_waiting = true;
+
+   int target_count;
+   int pending_count;
+   {
+      std::lock_guard<std::mutex> lock(async_wait_mutex);
+      target_count = int(async_targets.size());
+      pending_count = async_counter;
+   }
+
+   log.branch("Objects: %d, Timeout: %d ms", target_count, timeout_ms);
 
    ERR error;
-   if (async_counter) {
-      async_waiting = true;
+   if (pending_count) {
       error = ProcessMessages(PMF::NIL, timeout_ms);
-      async_waiting = false;
    }
    else error = ERR::Okay;
 
+   async_waiting = false;
    SetResourcePtr(RES::ASYNC_CALLBACK, nullptr);
-   async_targets.clear();
+   {
+      std::lock_guard<std::mutex> lock(async_wait_mutex);
+      async_targets.clear();
+      async_counter = 0;
+   }
 
    if ((error != ERR::Okay) and (in_try_immediate_scope(Lua))) luaL_error(Lua, error);
 
@@ -611,3 +639,4 @@ void register_async_class(lua_State *Lua)
    reg_iface_prototype("async", "script", {}, { TiriType::Object, TiriType::Func });
    reg_iface_prototype("async", "wait", { TiriType::Num }, { TiriType::Any, TiriType::Num });
 }
+
