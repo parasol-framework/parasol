@@ -917,9 +917,12 @@ FindObject(&quot;SystemPointer&quot;, CLASSID::POINTER, FOF::NIL, &amp;id);
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
+      <error code="Cancelled">The thread has been requested to stop and cannot pause.</error>
+      <error code="LockFailed">Failed to initialise the sleep record for the waiting thread.</error>
       <error code="TimeOut">Function timed-out before successful completion.</error>
       <error code="MarkedForDeletion">A resource cannot be accessed as it is marked for deletion.</error>
       <error code="SystemLocked">Part of the system is unreachable due to a persistent lock.</error>
+      <error code="DoesNotExist">The object was removed while waiting for the lock.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -1835,14 +1838,39 @@ static ResourceManager glNodeManager = {
     <name>WaitTime</name>
     <category>System</category>
     <comment>Waits for a specified amount of seconds.</comment>
-    <prototype>void WaitTime(DOUBLE Seconds)</prototype>
+    <prototype>ERR WaitTime(DOUBLE Seconds)</prototype>
     <input>
       <param type="DOUBLE" name="Seconds">The number of seconds to wait for.  Fractional values are supported for sub-second precision.</param>
     </input>
     <description>
 <p>This function waits for a period of time as specified by the <code>Seconds</code> parameter.  While waiting, your process will continue to process incoming messages in order to prevent the process' message queue from developing a back-log.</p>
 <p>WaitTime() can return earlier than the indicated timeout if a message handler returns <code>ERR::Terminate</code>, or if a <code>MSGID::QUIT</code> message is sent to the task's message queue.</p>
+<p>For non-main threads, the sleep can be interrupted by another thread calling <function>WakeThread</function>.</p>
+<p>NOTE: If the thread is in a stopping state, e.g. from <function>WakeThread</function>, this function will return immediately.</p>
     </description>
+    <result type="ERR">
+      <error code="Okay">Operation successful.</error>
+      <error code="Cancelled">The thread has been requested to stop and cannot pause.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>WakeThread</name>
+    <category>System</category>
+    <comment>Interrupt a sleeping thread.</comment>
+    <prototype>ERR WakeThread(INT Thread, INT Stop)</prototype>
+    <input>
+      <param type="INT" name="Thread">The target thread's unique ID, as returned by <code>GetResource(RES::THREAD_ID)</code>.</param>
+      <param type="INT" name="Stop">If <code>true</code>, the target thread will be put into a stopping state.</param>
+    </input>
+    <description>
+<p>Call WakeThread() to interrupt a thread that is blocked in <function>WaitTime</function> or similar, where supported.  The target thread will return from as soon as it is able to acquire its internal lock.  If the target thread is not currently sleeping, a pending interrupt is recorded so that its next sleep cycle will return immediately.</p>
+<p>If <code>Stop</code> is set to true then the target thread will be put into a stopping state.  This will cause all future sleep attempts in the target thread to be cancelled.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">The thread was successfully interrupted.</error>
+      <error code="Search">No thread with the given ID was found in the registry.</error>
+    </result>
   </function>
 
   <types>

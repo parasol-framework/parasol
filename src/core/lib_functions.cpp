@@ -45,6 +45,27 @@ Name: System
 
 using namespace pf;
 
+//********************************************************************************************************************
+// Remove the calling thread from the global thread registry.  Safe to call even if the thread was never registered.
+
+void deregister_thread(void)
+{
+   auto tid = get_thread_id();
+   std::lock_guard lock(glmThreadRegistry);
+   glThreadRegistry.erase(int(tid));
+}
+
+//********************************************************************************************************************
+// Return the ThreadRecord for the calling thread, or nullptr if unregistered.
+
+std::shared_ptr<ThreadRecord> get_thread_record(void)
+{
+   auto tid = get_thread_id();
+   std::lock_guard lock(glmThreadRegistry);
+   if (auto it = glThreadRegistry.find(int(tid)); it != glThreadRegistry.end()) return it->second;
+   else return nullptr;
+}
+
 /*********************************************************************************************************************
 
 -FUNCTION-
@@ -880,14 +901,23 @@ developing a back-log.
 WaitTime() can return earlier than the indicated timeout if a message handler returns `ERR::Terminate`, or if a
 `MSGID::QUIT` message is sent to the task's message queue.
 
+For non-main threads, the sleep can be interrupted by another thread calling ~WakeThread().
+
+NOTE: If the thread is in a stopping state, e.g. from ~WakeThread(), this function will return
+immediately.
+
 -INPUT-
 double Seconds: The number of seconds to wait for.  Fractional values are supported for sub-second precision.
+
+-ERRORS-
+Okay:
+Cancelled: The thread has been requested to stop and cannot pause.
 
 -END-
 
 *********************************************************************************************************************/
 
-void WaitTime(double Seconds)
+ERR WaitTime(double Seconds)
 {
    // Determine message processing mode (negative seconds disable message processing)
    bool process_msg = tlMainThread and (Seconds >= 0.0);
@@ -897,7 +927,15 @@ void WaitTime(double Seconds)
    // Convert to microseconds with high precision
    auto total_microseconds = int64_t(Seconds * 1000000.0);
 
-   if (total_microseconds <= 0) return; // Nothing to wait for
+   if (total_microseconds <= 0) return ERR::Okay; // Nothing to wait for
+
+   auto record = get_thread_record();
+
+   if (record) {
+      std::lock_guard lock(record->mutex);
+      if (record->state IS TSTATE::STOPPING) return ERR::Cancelled;
+      record->state = TSTATE::PAUSED;
+   }
 
    if (process_msg) {
       auto end_time = PreciseTime() + total_microseconds;
@@ -912,7 +950,73 @@ void WaitTime(double Seconds)
          if (ProcessMessages(PMF::NIL, remaining_ms) IS ERR::Terminate) break;
       } while (true);
    }
+   else if (record) {
+      std::unique_lock lock(record->mutex);
+      record->cv.wait_for(lock, std::chrono::microseconds(total_microseconds),
+         [&] { return record->interrupted; });
+      record->interrupted = false;
+   }
    else {
       std::this_thread::sleep_for(std::chrono::microseconds(total_microseconds));
    }
+
+   auto error = ERR::Okay;
+
+   if (record) {
+      std::lock_guard lock(record->mutex);
+      if (record->state != TSTATE::STOPPING) record->state = TSTATE::RUNNING;
+      else error = ERR::Cancelled;
+   }
+
+   return error;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+WakeThread: Interrupt a sleeping thread.
+
+Call WakeThread() to interrupt a thread that is blocked in ~WaitTime() or similar, where supported.  The target
+thread will return from as soon as it is able to acquire its internal lock.  If the target thread is not currently
+sleeping, a pending interrupt is recorded so that its next sleep cycle will return immediately.
+
+If `Stop` is set to true then the target thread will be put into a stopping state.  This will cause all future
+sleep attempts in the target thread to be cancelled.
+
+-INPUT-
+int Thread: The target thread's unique ID, as returned by `GetResource(RES::THREAD_ID)`.
+int Stop: If `true`, the target thread will be put into a stopping state.
+
+-ERRORS-
+Okay: The thread was successfully interrupted.
+Search: No thread with the given ID was found in the registry.
+
+-END-
+
+*********************************************************************************************************************/
+
+ERR WakeThread(int Thread, int Stop)
+{
+   std::shared_ptr<ThreadRecord> record;
+
+   {
+      std::lock_guard lock(glmThreadRegistry);
+      auto it = glThreadRegistry.find(Thread);
+      if (it IS glThreadRegistry.end()) return ERR::Search;
+      record = it->second;
+   }
+
+   bool paused;
+   {
+      std::lock_guard lock(record->mutex);
+      paused = (record->state IS TSTATE::PAUSED);
+      record->interrupted = true;
+      if (Stop) record->state = TSTATE::STOPPING;
+   }
+
+   if (paused) {
+      record->cv.notify_one();
+      cvObjects.notify_all(); // Wake threads blocked in LockObject()
+   }
+   return ERR::Okay;
 }

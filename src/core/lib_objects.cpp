@@ -735,6 +735,7 @@ static void launch_async_thread(OBJECTPTR Object, ACTIONID ActionID, int ArgsSiz
 
       // Cleanup function to remove thread from tracking
       auto cleanup = [thread_ptr]() {
+         deregister_thread();
          std::lock_guard<std::recursive_mutex> lock(glmAsyncActions);
          glAsyncThreads.erase(thread_ptr);
       };

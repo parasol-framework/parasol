@@ -348,14 +348,43 @@ ERR AccessMemory(MEMORYID MemoryID, MEM Flags, int MilliSeconds, APTR *Result)
          // wait_for() is awoken with a global wake-up, not necessarily on the desired block, hence the need for while().
 
          auto end_time = steady_clock::now() + milliseconds(MilliSeconds);
-         while ((mem->second.AccessCount > 0) and (mem->second.ThreadLockID != our_thread)) {
-            auto now = steady_clock::now();
-            if (now >= end_time) return log.warning(ERR::TimeOut);
+         if ((mem->second.AccessCount > 0) and (mem->second.ThreadLockID != our_thread)) {
+            auto record = get_thread_record();
+            if (record) {
+               std::lock_guard rlock(record->mutex);
+               record->state = TSTATE::PAUSED;
+            }
 
-            auto timeout_remaining = end_time - now;
-            //log.msg("Sleep on memory #%d, Access %d, Threads %d/%d", MemoryID, mem->second.AccessCount, (int)mem->second.ThreadLockID, our_thread);
-            if (cvResources.wait_for(glmMemory, timeout_remaining) IS std::cv_status::timeout) {
-               return log.warning(ERR::TimeOut);
+            while ((mem->second.AccessCount > 0) and (mem->second.ThreadLockID != our_thread)) {
+               auto now = steady_clock::now();
+               if (now >= end_time) {
+                  if (record) {
+                     std::lock_guard rlock(record->mutex);
+                     if (record->state IS TSTATE::STOPPING) {
+                        return ERR::Cancelled;
+                     }
+                     record->state = TSTATE::RUNNING;
+                  }
+                  return log.warning(ERR::TimeOut);
+               }
+
+               auto timeout_remaining = end_time - now;
+               //log.msg("Sleep on memory #%d, Access %d, Threads %d/%d", MemoryID, mem->second.AccessCount, (int)mem->second.ThreadLockID, our_thread);
+               if (cvResources.wait_for(glmMemory, timeout_remaining) IS std::cv_status::timeout) {
+                  if (record) {
+                     std::lock_guard rlock(record->mutex);
+                     if (record->state IS TSTATE::STOPPING) {
+                        return ERR::Cancelled;
+                     }
+                     record->state = TSTATE::RUNNING;
+                  }
+                  return log.warning(ERR::TimeOut);
+               }
+            }
+
+            if (record) {
+               std::lock_guard rlock(record->mutex);
+               if (record->state != TSTATE::STOPPING) record->state = TSTATE::RUNNING;
             }
          }
 
@@ -472,6 +501,9 @@ NullArgs:
 MarkedForDeletion:
 SystemLocked:
 TimeOut:
+Cancelled: The thread has been requested to stop and cannot pause.
+DoesNotExist: The object was removed while waiting for the lock.
+LockFailed: Failed to initialise the sleep record for the waiting thread.
 -END-
 
 *********************************************************************************************************************/
@@ -510,6 +542,15 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
    // Solution: Prior to wait_until(), increment the object queue to attempt a lock.  This is *slightly* less efficient than doing it after the cond_wait(), but
    //           it will prevent us from sleeping on a signal that we would never receive.
 
+   // Indefinite waiting is not permitted if the thread is in a stopping state.
+
+   if (Timeout < 0) {
+      if (auto record = get_thread_record(); record) {
+         std::lock_guard rlock(record->mutex);
+         if (record->state IS TSTATE::STOPPING) Timeout = 1000;
+      }
+   }
+
    steady_clock::time_point end_time;
    if (Timeout < 0) end_time = steady_clock::time_point::max();
    else end_time = steady_clock::now() + milliseconds(Timeout);
@@ -531,10 +572,20 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
 
       ERR error = ERR::TimeOut;
       if (init_sleep(THREADID(Object->ThreadID), Object->UID, RT_OBJECT) IS ERR::Okay) { // Indicate that our thread is sleeping.
+         auto record = get_thread_record();
+         if (record) {
+            std::lock_guard rlock(record->mutex);
+            record->state = TSTATE::PAUSED;
+         }
+
          while (steady_clock::now() < end_time) {
             if (glWaitLocks[glWLIndex].Flags & WLF_REMOVED) {
                glWaitLocks[glWLIndex].notWaiting();
                Object->SleepQueue.fetch_sub(1, std::memory_order_release);
+               if (record) {
+                  std::lock_guard rlock(record->mutex);
+                  if (record->state != TSTATE::STOPPING) record->state = TSTATE::RUNNING;
+               }
                return ERR::DoesNotExist;
             }
 
@@ -544,6 +595,10 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
                glWaitLocks[glWLIndex].notWaiting();
                Object->ThreadID = int(our_thread);
                Object->SleepQueue.fetch_sub(1, std::memory_order_release);
+               if (record) {
+                  std::lock_guard rlock(record->mutex);
+                  if (record->state != TSTATE::STOPPING) record->state = TSTATE::RUNNING;
+               }
                return ERR::Okay;
             }
 
@@ -555,13 +610,25 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
                if (timeout_remaining <= milliseconds(0)) break;
                if (cvObjects.wait_for(glmObjectLocking, timeout_remaining) IS std::cv_status::timeout) break;
             }
+
+            // Check if woken by WakeThread()
+            if (record) {
+               std::lock_guard rlock(record->mutex);
+               if (record->interrupted or record->state IS TSTATE::STOPPING) break;
+            }
          }
 
-         // Failure: Either a timeout occurred or the object no longer exists.
+         // Failure: Either a timeout occurred, the object no longer exists, or the thread is stopping.
 
          if (glWaitLocks[glWLIndex].Flags & WLF_REMOVED) {
             log.warning("TID %d: The resource no longer exists.", int(get_thread_id()));
             error = ERR::DoesNotExist;
+         }
+         else if (record) {
+            std::lock_guard rlock(record->mutex);
+            if (record->interrupted or record->state IS TSTATE::STOPPING) error = ERR::Cancelled;
+            else error = ERR::TimeOut;
+            record->interrupted = false;
          }
          else {
             log.traceWarning("TID: %d, #%d, Timeout occurred.", our_thread, Object->UID);
@@ -569,6 +636,11 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
          }
 
          glWaitLocks[glWLIndex].notWaiting();
+
+         if (record) {
+            std::lock_guard rlock(record->mutex);
+            if (record->state != TSTATE::STOPPING) record->state = TSTATE::RUNNING;
+         }
       }
       else error = log.error(ERR::LockFailed);
 
