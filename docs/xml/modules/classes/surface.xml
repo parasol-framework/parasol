@@ -321,8 +321,8 @@ the surface area first).</li>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
-        <error code="Failed">General failure.</error>
         <error code="Args">Invalid arguments passed to function.</error>
+        <error code="InvalidState">The surface is not a top-level surface object.</error>
       </result>
     </method>
 

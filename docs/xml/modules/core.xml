@@ -314,6 +314,7 @@ if (AllocMemory(1000, MEM::DATA, &amp;address, nullptr) == ERR::Okay) {
 <p>Callbacks are processed when the main thread makes a call to <function>ProcessMessages</function>, so as to maintain an orderly execution process within the application.  It is crucial that the target object is not destroyed while actions are executing or queued.  Use the <code>Callback</code> routine to receive notification of each action's completion.  If an object is freed while actions are still queued, the remaining callbacks will be invoked with an <code>ERR::DoesNotExist</code> error and a <code>NULL</code> object pointer.</p>
 <p>The 'Error' parameter in the callback reflects the error code returned by the action after it has been called.  Note that if AsyncAction() fails, the callback will never be executed because the attempt will have been aborted.</p>
 <p>This function is at its most effective when used to perform lengthy processes such as the loading and parsing of data.</p>
+<p>NOTE: Tiri scripts must use the <code>async.action|method()</code> interfaces for asynchronous activity instead of this function.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -357,7 +358,7 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
       <param type="AC" name="Action" lookup="AC">A registered action or method ID.</param>
     </input>
     <description>
-<p>This function returns <code>ERR::True</code> if an object's class supports a given action or method ID.  For example:</p>
+<p>This function returns <code>ERR::True</code> if an object's class supports a given action ID.  For example:</p>
 <pre>if (CheckAction(pic, AC::Query) IS ERR::True) {
    // The Query action is supported.
 }
@@ -850,7 +851,7 @@ FindObject(&quot;SystemPointer&quot;, CLASSID::POINTER, FOF::NIL, &amp;id);
     <result type="ERR">
       <error code="Okay">The object was initialised.</error>
       <error code="LostClass">The object has lost its class reference.</error>
-      <error code="DoubleInit">Warning - Attempt to initialise an object twice.</error>
+      <error code="DoubleInit">Warning - Attempt to initialise a resource twice.</error>
       <error code="ObjectCorrupt">The object structure is corrupt or has not been initialised.</error>
     </result>
   </function>
@@ -2550,6 +2551,7 @@ static ResourceManager glNodeManager = {
     </constants>
 
     <constants lookup="NF" comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word.">
+      <const name="ASYNC_ACTIVE">Read-only indicator that asynchronous actions are queued or executing against this object.</const>
       <const name="COLLECT">Marked for garbage collection.</const>
       <const name="FREE">Read-only indicator for when the object is being freed.</const>
       <const name="FREE_ON_UNLOCK">Read-only indicator for when the object is marked for deletion.</const>
@@ -2621,6 +2623,7 @@ static ResourceManager glNodeManager = {
     </constants>
 
     <constants lookup="PMF" comment="Flags for ProcessMessages">
+      <const name="EVENT_LOOP">Set if this is the program's main event loop.  Should be accompanied with an infinite timeout.</const>
     </constants>
 
     <constants lookup="PTC" comment="Predefined cursor styles">
