@@ -210,10 +210,10 @@ extern std::condition_variable_any cvObjects;
 // via WakeThread().
 
 struct ThreadRecord {
-   std::mutex mutex;
+   std::mutex mutex;                            // Guards cv.wait() and compound updates from WakeThread()
    std::condition_variable cv;
-   TSTATE state = TSTATE::RUNNING;
-   bool interrupted = false;
+   std::atomic<TSTATE> state = TSTATE::RUNNING; // Readable without locking; writes from other threads require mutex
+   std::atomic<bool> interrupted = false;        // Readable without locking; set by WakeThread() under mutex
 };
 
 extern std::mutex glmThreadRegistry;
@@ -1044,7 +1044,7 @@ class RootModule : public Object {
 
 THREADID get_thread_id(void);
 void deregister_thread(void);
-std::shared_ptr<ThreadRecord> get_thread_record(void);
+[[nodiscard]] std::shared_ptr<ThreadRecord> get_thread_record(void);
 ERR WakeThread(int Thread, int Stop = false);
 
 //********************************************************************************************************************

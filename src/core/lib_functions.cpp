@@ -61,11 +61,11 @@ void deregister_thread(void)
 }
 
 //********************************************************************************************************************
-// Return the ThreadRecord for the calling thread, or nullptr if unregistered.
+// Return the ThreadRecord for the calling thread (pointer guaranteed).
 
 std::shared_ptr<ThreadRecord> get_thread_record(void)
 {
-   if (!tlThreadRecord) {
+   if (not tlThreadRecord) {
       auto tid = get_thread_id();
       std::lock_guard lock(glmThreadRegistry);
       if (auto it = glThreadRegistry.find(int(tid)); it != glThreadRegistry.end()) tlThreadRecord = it->second;
@@ -239,7 +239,7 @@ static std::once_flag glCRCInit;
 
 uint32_t GenCRC32(uint32_t CRC, APTR Data, uint32_t Length)
 {
-   if (!Data) return 0;
+   if (not Data) return 0;
 
    std::call_once(glCRCInit, []() {
       // Copy table 0
@@ -318,13 +318,13 @@ int64_t GetResource(RES Resource)
       case RES::JNI_ENV:         return (MAXINT)glJNIEnv;
       case RES::THREAD_ID:       return int(get_thread_id());
       case RES::CORE_IDL:        return (MAXINT)glIDL;
-      case RES::DISPLAY_DRIVER:  if (!glDisplayDriver.empty()) return (MAXINT)glDisplayDriver.c_str(); else return 0;
+      case RES::DISPLAY_DRIVER:  if (not glDisplayDriver.empty()) return (MAXINT)glDisplayDriver.c_str(); else return 0;
       case RES::MAIN_THREAD:     return tlMainThread ? true : false;
 
       case RES::MEMORY_USAGE: {
          #ifdef __linux__
             struct rusage usage;
-            if (!getrusage(RUSAGE_SELF, &usage)) {
+            if (not getrusage(RUSAGE_SELF, &usage)) {
                // Return the maximum resident set size in bytes.
                return (int64_t)usage.ru_maxrss * 1024LL; // Convert to bytes
             }
@@ -348,14 +348,14 @@ int64_t GetResource(RES Resource)
       // change during runtime.
 
       case RES::TOTAL_MEMORY: {
-         if (!sysinfo(&sys)) return (int64_t)sys.totalram * (int64_t)sys.mem_unit;
+         if (not sysinfo(&sys)) return (int64_t)sys.totalram * (int64_t)sys.mem_unit;
          else return -1;
       }
 
       case RES::FREE_MEMORY: {
    #if 0
          // Unfortunately sysinfo() does not report on cached ram, which can be significant
-         if (!sysinfo(&sys)) return (int64_t)(sys.freeram + sys.bufferram) * (int64_t)sys.mem_unit; // Buffer RAM is considered as 'free'
+         if (not sysinfo(&sys)) return (int64_t)(sys.freeram + sys.bufferram) * (int64_t)sys.mem_unit; // Buffer RAM is considered as 'free'
    #else
          char str[2048];
          int result;
@@ -377,15 +377,15 @@ int64_t GetResource(RES Resource)
       }
 
       case RES::TOTAL_SHARED_MEMORY:
-         if (!sysinfo(&sys)) return (int64_t)sys.sharedram * (int64_t)sys.mem_unit;
+         if (not sysinfo(&sys)) return (int64_t)sys.sharedram * (int64_t)sys.mem_unit;
          else return -1;
 
       case RES::TOTAL_SWAP:
-         if (!sysinfo(&sys)) return (int64_t)sys.totalswap * (int64_t)sys.mem_unit;
+         if (not sysinfo(&sys)) return (int64_t)sys.totalswap * (int64_t)sys.mem_unit;
          else return -1;
 
       case RES::FREE_SWAP:
-         if (!sysinfo(&sys)) return (int64_t)sys.freeswap * (int64_t)sys.mem_unit;
+         if (not sysinfo(&sys)) return (int64_t)sys.freeswap * (int64_t)sys.mem_unit;
          else return -1;
 
       case RES::CPU_SPEED: {
@@ -432,7 +432,7 @@ const SystemState * GetSystemState(void)
    static bool initialised = false;
    static SystemState state;
 
-   if (!initialised) {
+   if (not initialised) {
       initialised = true;
 
       state.ConsoleFD = glConsoleFD;
@@ -562,7 +562,7 @@ ERR RegisterFD(int FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
 #ifdef _WIN32
    // Nothing to do for Win32
 #else
-   if ((!Routine) and (FD > 0)) fcntl(FD, F_SETFL, fcntl(FD, F_GETFL) | O_NONBLOCK); // Ensure that the FD is non-blocking
+   if ((not Routine) and (FD > 0)) fcntl(FD, F_SETFL, fcntl(FD, F_GETFL) | O_NONBLOCK); // Ensure that the FD is non-blocking
 #endif
 
    glFDTable.emplace_back(FD, Routine, Data, Flags);
@@ -708,7 +708,7 @@ int64_t SetResource(RES Resource, int64_t Value)
 
          if (Value) { // Enable admin privileges
             oldvalue = int64_t(ERR::Okay);
-            if (!privileged) {
+            if (not privileged) {
                if (glUID) {
                   if (glUID != glEUID) {
                      seteuid(glEUID);
@@ -727,7 +727,7 @@ int64_t SetResource(RES Resource, int64_t Value)
             // Disable admin privileges
             if (privileged > 0) {
                privileged--;
-               if (!privileged) {
+               if (not privileged) {
                   if (glUID != glEUID) seteuid(glUID);
                }
             }
@@ -785,7 +785,7 @@ ERR SubscribeTimer(double Interval, FUNCTION *Callback, APTR *Subscription)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Interval) or (!Callback)) return log.warning(ERR::NullArgs);
+   if ((not Interval) or (not Callback)) return log.warning(ERR::NullArgs);
    if (Interval < 0) return log.warning(ERR::Args);
 
    auto subscriber = tlContext.back().obj;
@@ -848,7 +848,7 @@ ERR UpdateTimer(APTR Subscription, double Interval)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Subscription) return log.warning(ERR::NullArgs);
+   if (not Subscription) return log.warning(ERR::NullArgs);
 
    log.msg(VLF::DETAIL|VLF::BRANCH|VLF::FUNCTION, "Subscription: %p, Interval: %.4f", Subscription, Interval);
 
@@ -938,10 +938,9 @@ ERR WaitTime(double Seconds)
 
    auto record = get_thread_record();
 
-   if (record) {
-      std::lock_guard lock(record->mutex);
-      if (record->state IS TSTATE::STOPPING) return ERR::Cancelled;
-      record->state = TSTATE::PAUSED;
+   {
+      if (record->state.load(std::memory_order_acquire) IS TSTATE::STOPPING) return ERR::Cancelled;
+      record->state.store(TSTATE::PAUSED, std::memory_order_release);
    }
 
    if (process_msg) {
@@ -957,22 +956,17 @@ ERR WaitTime(double Seconds)
          if (ProcessMessages(PMF::NIL, remaining_ms) IS ERR::Terminate) break;
       } while (true);
    }
-   else if (record) {
+   else {
       std::unique_lock lock(record->mutex);
       record->cv.wait_for(lock, std::chrono::microseconds(total_microseconds),
-         [&] { return record->interrupted; });
-      record->interrupted = false;
-   }
-   else {
-      std::this_thread::sleep_for(std::chrono::microseconds(total_microseconds));
+         [&] { return record->interrupted.load(std::memory_order_acquire); });
+      record->interrupted.store(false, std::memory_order_release);
    }
 
    auto error = ERR::Okay;
-
-   if (record) {
-      std::lock_guard lock(record->mutex);
-      if (record->state != TSTATE::STOPPING) record->state = TSTATE::RUNNING;
-      else error = ERR::Cancelled;
+   auto expected = TSTATE::PAUSED;
+   if (not record->state.compare_exchange_strong(expected, TSTATE::RUNNING, std::memory_order_acq_rel)) {
+      error = ERR::Cancelled; // State was changed to STOPPING by WakeThread()
    }
 
    return error;
@@ -1015,10 +1009,12 @@ ERR WakeThread(int Thread, int Stop)
 
    bool paused;
    {
+      // Lock required to prevent missed wake-ups: the target thread could transition to PAUSED
+      // and enter cv.wait() between our flag write and notify call.
       std::lock_guard lock(record->mutex);
-      paused = (record->state IS TSTATE::PAUSED);
-      record->interrupted = true;
-      if (Stop) record->state = TSTATE::STOPPING;
+      paused = (record->state.load(std::memory_order_acquire) IS TSTATE::PAUSED);
+      record->interrupted.store(true, std::memory_order_release);
+      if (Stop) record->state.store(TSTATE::STOPPING, std::memory_order_release);
    }
 
    if (paused) {

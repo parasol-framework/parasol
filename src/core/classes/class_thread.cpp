@@ -59,7 +59,15 @@ static std::atomic_int glThreadIDCount = 1;
 
 THREADID get_thread_id(void)
 {
-   if (tlUniqueThreadID.defined()) return tlUniqueThreadID;
+   if (tlUniqueThreadID.defined()) {
+      // Preserve the invariant that a defined thread ID always has a registry record.
+      std::lock_guard lock(glmThreadRegistry);
+      if (auto it = glThreadRegistry.find(int(tlUniqueThreadID)); it IS glThreadRegistry.end()) {
+         glThreadRegistry[int(tlUniqueThreadID)] = std::make_shared<ThreadRecord>();
+      }
+      return tlUniqueThreadID;
+   }
+
    tlUniqueThreadID = THREADID(glThreadIDCount++);
 
    // Register the new thread in the global thread registry
