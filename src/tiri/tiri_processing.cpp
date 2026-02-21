@@ -151,7 +151,7 @@ static int processing_sleep(lua_State *Lua)
          signal_list_c[i].Object = nullptr;
 
          std::scoped_lock lock(recursion);
-         error = WaitForObjects(PMF::NIL, timeout, signal_list_c.get());
+         error = WaitForObjects(timeout IS -1 ? PMF::EVENT_LOOP : PMF::NIL, timeout, signal_list_c.get());
       }
       else { // Default behaviour: Sleeping can be broken with a signal to the Tiri object.
          if ((Lua->script->Object::Flags & NF::SIGNALLED) != NF::NIL) {
@@ -160,12 +160,9 @@ static int processing_sleep(lua_State *Lua)
             error = ERR::Okay;
          }
          else {
-            ObjectSignal signal_list_c[2];
-            signal_list_c[0].Object = Lua->script;
-            signal_list_c[1].Object = nullptr;
-
+            ObjectSignal signal_list_c[2] = { { .Object = Lua->script }, { .Object = nullptr } };
             std::scoped_lock lock(recursion);
-            error = WaitForObjects(PMF::NIL, timeout, signal_list_c);
+            error = WaitForObjects(timeout IS -1 ? PMF::EVENT_LOOP : PMF::NIL, timeout, signal_list_c);
          }
       }
    }

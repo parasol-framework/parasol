@@ -172,6 +172,7 @@ void CloseCore(void)
    }
 
    stop_async_actions();
+   deregister_thread(); // Remove main thread from the thread registry
 
    if ((glCurrentTask) or (glProcessID)) remove_process_waitlocks();
 

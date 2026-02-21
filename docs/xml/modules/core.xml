@@ -47,6 +47,7 @@
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
+      <error code="Cancelled">The thread has been requested to stop whilst sleeping.</error>
       <error code="Args">The <code>MilliSeconds</code> value is less or equal to zero.</error>
       <error code="TimeOut">Function timed-out before successful completion.</error>
       <error code="MemoryDoesNotExist">The supplied <code>Memory</code> ID does not refer to an existing memory block.</error>
@@ -314,6 +315,7 @@ if (AllocMemory(1000, MEM::DATA, &amp;address, nullptr) == ERR::Okay) {
 <p>Callbacks are processed when the main thread makes a call to <function>ProcessMessages</function>, so as to maintain an orderly execution process within the application.  It is crucial that the target object is not destroyed while actions are executing or queued.  Use the <code>Callback</code> routine to receive notification of each action's completion.  If an object is freed while actions are still queued, the remaining callbacks will be invoked with an <code>ERR::DoesNotExist</code> error and a <code>NULL</code> object pointer.</p>
 <p>The 'Error' parameter in the callback reflects the error code returned by the action after it has been called.  Note that if AsyncAction() fails, the callback will never be executed because the attempt will have been aborted.</p>
 <p>This function is at its most effective when used to perform lengthy processes such as the loading and parsing of data.</p>
+<p>NOTE: Tiri scripts must use the <code>async.action|method()</code> interfaces for asynchronous activity instead of this function.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -321,6 +323,62 @@ if (AllocMemory(1000, MEM::DATA, &amp;address, nullptr) == ERR::Okay) {
       <error code="IllegalMethodID">Illegal method ID (outside of valid range).</error>
       <error code="MissingClass">The class could not be found in the system.</error>
       <error code="NewObject">NewObject() failed to produce a new object.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>AsyncCancel</name>
+    <category>Objects</category>
+    <comment>Drain the pending queue for listed objects without executing the remaining actions.</comment>
+    <prototype>ERR AsyncCancel(OBJECTID * Objects, INT Size)</prototype>
+    <input>
+      <param type="OBJECTID *" name="Objects">A list of object IDs to cancel.</param>
+      <param type="INT" name="Size">Total number of elements in the <code>Objects</code> list.</param>
+    </input>
+    <description>
+<p>Call AsyncCancel() to cancel all pending asynchronous actions for the listed objects.  Each object's currently active async thread (if any) is interrupted via <function>WakeThread</function> with Stop set to true, and the remaining action queue is drained without execution.</p>
+<p>Callbacks for queued actions will receive <code>ERR::DoesNotExist</code> to indicate cancellation.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>AsyncPending</name>
+    <category>Objects</category>
+    <comment>Return the number of queued and in-flight async actions for an object.</comment>
+    <prototype>INT AsyncPending(OBJECTID Object)</prototype>
+    <input>
+      <param type="OBJECTID" name="Object">The object to query.</param>
+    </input>
+    <description>
+<p>Call AsyncPending() to query the total number of asynchronous actions that are either currently executing or waiting in the queue for a given object.  The returned count includes the in-flight action (if any) plus all queued actions that have not yet been dispatched.</p>
+<p>A return value of zero indicates that no async activity is associated with the object.</p>
+    </description>
+    <result type="INT">The number of pending async actions (in-flight + queued), or zero if none.</result>
+  </function>
+
+  <function>
+    <name>AsyncWait</name>
+    <category>Objects</category>
+    <comment>Block until all queued async actions for the listed objects have completed.</comment>
+    <prototype>ERR AsyncWait(OBJECTID * Objects, INT Size, INT TimeOut)</prototype>
+    <input>
+      <param type="OBJECTID *" name="Objects">A list of object IDs to wait on.</param>
+      <param type="INT" name="Size">Total number of elements in the <code>Objects</code> list.</param>
+      <param type="INT" name="TimeOut">Maximum time to wait in milliseconds, or <code>-1</code> for an indefinite wait.</param>
+    </input>
+    <description>
+<p>Call AsyncWait() to suspend the current thread until every asynchronous action that is executing or queued against the listed objects has finished.  Messages continue to be processed while waiting, so async completion callbacks fire normally.</p>
+<p>Only one AsyncWait() call may be active at any time.  If a second call is made while the first is still blocking, <code>ERR::InUse</code> is returned.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">All async actions completed.</error>
+      <error code="InUse">Another AsyncWait() call is already active.</error>
+      <error code="TimeOut">The timeout expired before all actions completed.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -357,7 +415,7 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
       <param type="AC" name="Action" lookup="AC">A registered action or method ID.</param>
     </input>
     <description>
-<p>This function returns <code>ERR::True</code> if an object's class supports a given action or method ID.  For example:</p>
+<p>This function returns <code>ERR::True</code> if an object's class supports a given action ID.  For example:</p>
 <pre>if (CheckAction(pic, AC::Query) IS ERR::True) {
    // The Query action is supported.
 }
@@ -850,7 +908,7 @@ FindObject(&quot;SystemPointer&quot;, CLASSID::POINTER, FOF::NIL, &amp;id);
     <result type="ERR">
       <error code="Okay">The object was initialised.</error>
       <error code="LostClass">The object has lost its class reference.</error>
-      <error code="DoubleInit">Warning - Attempt to initialise an object twice.</error>
+      <error code="DoubleInit">Warning - Attempt to initialise a resource twice.</error>
       <error code="ObjectCorrupt">The object structure is corrupt or has not been initialised.</error>
     </result>
   </function>
@@ -916,9 +974,12 @@ FindObject(&quot;SystemPointer&quot;, CLASSID::POINTER, FOF::NIL, &amp;id);
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
+      <error code="Cancelled">The thread has been requested to stop and cannot pause.</error>
+      <error code="LockFailed">Failed to initialise the sleep record for the waiting thread.</error>
       <error code="TimeOut">Function timed-out before successful completion.</error>
       <error code="MarkedForDeletion">A resource cannot be accessed as it is marked for deletion.</error>
       <error code="SystemLocked">Part of the system is unreachable due to a persistent lock.</error>
+      <error code="DoesNotExist">The object was removed while waiting for the lock.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -1834,14 +1895,39 @@ static ResourceManager glNodeManager = {
     <name>WaitTime</name>
     <category>System</category>
     <comment>Waits for a specified amount of seconds.</comment>
-    <prototype>void WaitTime(DOUBLE Seconds)</prototype>
+    <prototype>ERR WaitTime(DOUBLE Seconds)</prototype>
     <input>
       <param type="DOUBLE" name="Seconds">The number of seconds to wait for.  Fractional values are supported for sub-second precision.</param>
     </input>
     <description>
 <p>This function waits for a period of time as specified by the <code>Seconds</code> parameter.  While waiting, your process will continue to process incoming messages in order to prevent the process' message queue from developing a back-log.</p>
 <p>WaitTime() can return earlier than the indicated timeout if a message handler returns <code>ERR::Terminate</code>, or if a <code>MSGID::QUIT</code> message is sent to the task's message queue.</p>
+<p>For non-main threads, the sleep can be interrupted by another thread calling <function>WakeThread</function>.</p>
+<p>NOTE: If the thread is in a stopping state, e.g. from <function>WakeThread</function>, this function will return immediately.</p>
     </description>
+    <result type="ERR">
+      <error code="Okay">Operation successful.</error>
+      <error code="Cancelled">The thread has been requested to stop and cannot pause.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>WakeThread</name>
+    <category>System</category>
+    <comment>Interrupt a sleeping thread.</comment>
+    <prototype>ERR WakeThread(INT Thread, INT Stop)</prototype>
+    <input>
+      <param type="INT" name="Thread">The target thread's unique ID, as returned by <code>GetResource(RES::THREAD_ID)</code>.</param>
+      <param type="INT" name="Stop">If <code>true</code>, the target thread will be put into a stopping state.</param>
+    </input>
+    <description>
+<p>Call WakeThread() to interrupt a thread that is blocked in <function>WaitTime</function> or similar, where supported.  The target thread will return from as soon as it is able to acquire its internal lock.  If the target thread is not currently sleeping, a pending interrupt is recorded so that its next sleep cycle will return immediately.</p>
+<p>If <code>Stop</code> is set to true then the target thread will be put into a stopping state.  This will cause all future sleep attempts in the target thread to be cancelled.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">The thread was successfully interrupted.</error>
+      <error code="Search">No thread with the given ID was found in the registry.</error>
+    </result>
   </function>
 
   <types>
@@ -2550,6 +2636,7 @@ static ResourceManager glNodeManager = {
     </constants>
 
     <constants lookup="NF" comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word.">
+      <const name="ASYNC_ACTIVE">Read-only indicator that asynchronous actions are queued or executing against this object.</const>
       <const name="COLLECT">Marked for garbage collection.</const>
       <const name="FREE">Read-only indicator for when the object is being freed.</const>
       <const name="FREE_ON_UNLOCK">Read-only indicator for when the object is marked for deletion.</const>
@@ -2621,6 +2708,7 @@ static ResourceManager glNodeManager = {
     </constants>
 
     <constants lookup="PMF" comment="Flags for ProcessMessages">
+      <const name="EVENT_LOOP">Set if this is the program's main event loop.  Should be accompanied with an infinite timeout.</const>
     </constants>
 
     <constants lookup="PTC" comment="Predefined cursor styles">

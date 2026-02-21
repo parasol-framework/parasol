@@ -16,6 +16,7 @@
 #include <thread>
 #include <algorithm>
 #include <ankerl/unordered_dense.h>
+#include <unordered_set>
 
 using namespace std::chrono_literals;
 
@@ -199,11 +200,26 @@ extern std::recursive_mutex glmMsgHandler;
 extern std::recursive_mutex glmAsyncActions;
 
 extern std::mutex glmActionQueue;
-extern ankerl::unordered_dense::map<OBJECTID, std::deque<QueuedAction>> glActionQueues;
-extern ankerl::unordered_dense::set<OBJECTID> glActiveAsyncObjects;
+extern std::unordered_map<OBJECTID, std::deque<QueuedAction>> glActionQueues;
+extern std::unordered_set<OBJECTID> glActiveAsyncObjects;
+extern std::unordered_map<OBJECTID, int> glAsyncObjectThreads;
 
 extern std::condition_variable_any cvResources;
 extern std::condition_variable_any cvObjects;
+
+// Per-thread record for the global thread registry.  Threads are registered on first use of get_thread_id() and
+// deregistered on thread destruction.  The condition variable allows other threads to interrupt a sleeping thread
+// via WakeThread().
+
+struct ThreadRecord {
+   std::mutex mutex;                            // Guards cv.wait() and compound updates from WakeThread()
+   std::condition_variable cv;
+   std::atomic<TSTATE> state = TSTATE::RUNNING; // Readable without locking; writes from other threads require mutex
+   std::atomic<bool> interrupted = false;        // Readable without locking; set by WakeThread() under mutex
+};
+
+extern std::mutex glmThreadRegistry;
+extern std::unordered_map<int, std::shared_ptr<ThreadRecord>> glThreadRegistry;
 
 //********************************************************************************************************************
 
@@ -734,7 +750,6 @@ extern Object glDummyObject;
 extern TIMER glProcessJanitor;
 extern int glEventMask;
 extern struct ModHeader glCoreHeader;
-
 #ifndef KOTUKU_STATIC
 extern CSTRING glClassBinPath;
 #endif
@@ -1028,6 +1043,9 @@ class RootModule : public Object {
 };
 
 THREADID get_thread_id(void);
+void deregister_thread(void);
+[[nodiscard]] std::shared_ptr<ThreadRecord> get_thread_record(void);
+ERR WakeThread(int Thread, int Stop = false);
 
 //********************************************************************************************************************
 
@@ -1076,7 +1094,6 @@ void   stop_async_actions(void);
 ERR    copy_args(const FunctionField *, int, int8_t *, std::vector<int8_t> &);
 ERR    create_archive_volume(void);
 void   dispatch_queued_action(OBJECTID);
-void   drain_action_queue(OBJECTID, bool = false);
 ERR    delete_tree(std::string &, FUNCTION *, FileFeedback *);
 struct ClassItem * find_class(CLASSID);
 ERR    find_private_object_entry(OBJECTID, int *);

@@ -26,6 +26,16 @@ Name: Objects
 
 using namespace pf;
 
+static void drain_action_queue(OBJECTID, bool = false);
+static void async_wait_callback(OBJECTID, bool);
+
+// AsyncWait() state — guarded by glmAsyncWait.
+
+static std::atomic<int> glAsyncWaitCounter;
+static std::atomic<bool> glAsyncWaiting;
+static ankerl::unordered_dense::set<OBJECTID> glAsyncWaitTargets;
+static std::mutex glmAsyncWait;
+
 //********************************************************************************************************************
 
 void stop_async_actions(void)
@@ -69,6 +79,7 @@ void stop_async_actions(void)
       std::lock_guard<std::mutex> lock(glmActionQueue);
       glActionQueues.clear();
       glActiveAsyncObjects.clear();
+      glAsyncObjectThreads.clear();
    }
 }
 
@@ -99,6 +110,26 @@ static std::vector<subscription> glDelayedSubscribe;
 static int glSubReadOnly = 0; // To prevent modification of glSubscriptions
 
 static void free_children(OBJECTPTR Object);
+
+//********************************************************************************************************************
+
+static void async_wait_callback(OBJECTID ObjectID, bool Active)
+{
+   bool break_wait = false;
+
+   {
+      std::lock_guard<std::mutex> lock(glmAsyncWait);
+      if (not glAsyncWaiting.load(std::memory_order_relaxed)) return;
+      if (not glAsyncWaitTargets.contains(ObjectID)) return;
+
+      if (Active) glAsyncWaitCounter.fetch_add(1, std::memory_order_relaxed);
+      else glAsyncWaitCounter.fetch_sub(1, std::memory_order_relaxed);
+
+      break_wait = (glAsyncWaitCounter.load(std::memory_order_relaxed) IS 0);
+   }
+
+   if (break_wait) SendMessage(MSGID::BREAK, MSF::NIL, nullptr, 0);
+}
 
 //********************************************************************************************************************
 // Hook for MSGID::FREE, used for delaying collection until the next message processing cycle.
@@ -587,17 +618,38 @@ void dispatch_queued_action(OBJECTID ObjectID)
 {
    pf::Log log(__FUNCTION__);
 
+   // Do not consume queued actions if the process is shutting down.
+   if (glTaskState IS TSTATE::STOPPING) {
+      drain_action_queue(ObjectID);
+      return;
+   }
+
    QueuedAction next;
+   bool queue_empty = false;
    {
       std::lock_guard<std::mutex> lock(glmActionQueue);
       auto it = glActionQueues.find(ObjectID);
       if ((it IS glActionQueues.end()) or it->second.empty()) {
          glActiveAsyncObjects.erase(ObjectID);
          if (it != glActionQueues.end()) glActionQueues.erase(it);
-         return;
+         queue_empty = true;
       }
-      next = std::move(it->second.front());
-      it->second.pop_front();
+      else {
+         next = std::move(it->second.front());
+         it->second.pop_front();
+      }
+   }
+
+   if (queue_empty) {
+      // Clear the async flag now that no more actions are pending.
+      ScopedObjectLock obj(ObjectID);
+      if (obj.granted()) {
+         if (obj->defined(NF::ASYNC_ACTIVE)) {
+            obj->Flags &= ~NF::ASYNC_ACTIVE;
+            async_wait_callback(obj->UID, false);
+         }
+      }
+      return;
    }
 
    // Queue mutex released before thread launch to avoid holding two locks simultaneously.
@@ -648,7 +700,7 @@ void dispatch_queued_action(OBJECTID ObjectID)
 // Drain all queued actions for an object, sending error callbacks for each.  Called when the object
 // is being freed or is otherwise no longer valid.
 
-void drain_action_queue(OBJECTID ObjectID, bool Terminating)
+static void drain_action_queue(OBJECTID ObjectID, bool Terminating)
 {
    pf::Log log(__FUNCTION__);
 
@@ -661,6 +713,18 @@ void drain_action_queue(OBJECTID ObjectID, bool Terminating)
          glActionQueues.erase(it);
       }
       glActiveAsyncObjects.erase(ObjectID);
+   }
+
+   // Clear the async flag.  The object may already be freed in the Terminating case, so tolerate lock failure.
+
+   if (not Terminating) {
+      ScopedObjectLock obj(ObjectID);
+      if (obj.granted()) {
+         if (obj->defined(NF::ASYNC_ACTIVE)) {
+            obj->Flags &= ~NF::ASYNC_ACTIVE;
+            async_wait_callback(obj->UID, false);
+         }
+      }
    }
 
    if (not drained.empty()) {
@@ -707,14 +771,31 @@ static void launch_async_thread(OBJECTPTR Object, ACTIONID ActionID, int ArgsSiz
       auto obj = Object;
 
       // Cleanup function to remove thread from tracking
-      auto cleanup = [thread_ptr]() {
+      auto cleanup = [thread_ptr, object_uid]() {
+         {
+            std::lock_guard<std::mutex> lock(glmActionQueue);
+            glAsyncObjectThreads.erase(object_uid);
+         }
+         deregister_thread();
          std::lock_guard<std::recursive_mutex> lock(glmAsyncActions);
          glAsyncThreads.erase(thread_ptr);
       };
 
       // Check for stop request before proceeding
 
-      if (stop_token.stop_requested()) {
+      auto thread_rec = get_thread_record();
+
+      // Register the mapping from object ID to thread ID so that AsyncCancel() can target this thread.
+      {
+         std::lock_guard<std::mutex> lock(glmActionQueue);
+         glAsyncObjectThreads[object_uid] = int(get_thread_id());
+      }
+      auto is_stopping = [&stop_token, &thread_rec]() {
+         return stop_token.stop_requested()
+            or (thread_rec and thread_rec->state.load(std::memory_order_acquire) IS TSTATE::STOPPING);
+      };
+
+      if (is_stopping()) {
          ThreadActionMessage msg = {
             .ActionID = ActionID,
             .ObjectID = object_uid,
@@ -729,7 +810,7 @@ static void launch_async_thread(OBJECTPTR Object, ACTIONID ActionID, int ArgsSiz
       ERR error;
       if (error = LockObject(obj, 5000); error IS ERR::Okay) { // Access the object and process the action.
          // Check for stop request before executing action
-         if (not stop_token.stop_requested()) {
+         if (not is_stopping()) {
             error = Action(ActionID, obj, ArgsSize ? (APTR)Parameters.data() : nullptr);
          }
 
@@ -741,24 +822,18 @@ static void launch_async_thread(OBJECTPTR Object, ACTIONID ActionID, int ArgsSiz
       }
 
       // Always send a completion message so that msg_threadaction() can dispatch the next queued action.
+      // Preserve the callback on cancellation so script-side cleanup still runs.
 
-      if (not stop_token.stop_requested()) {
-         ThreadActionMessage msg = {
-            .ActionID = ActionID,
-            .ObjectID = object_uid,
-            .Error    = error,
-            .Callback = Callback
-         };
-         SendMessage(MSGID::THREAD_ACTION, MSF::NIL, &msg, sizeof(msg));
-      }
-      else {
-         // Thread was stopped; send a minimal message so the main thread handles queue dispatch.
-         ThreadActionMessage msg = {
-            .ActionID = ActionID,
-            .ObjectID = object_uid,
-         };
-         SendMessage(MSGID::THREAD_ACTION, MSF::NIL, &msg, sizeof(msg));
-      }
+      auto completion_error = error;
+      if (is_stopping()) completion_error = ERR::Cancelled;
+
+      ThreadActionMessage msg = {
+         .ActionID = ActionID,
+         .ObjectID = object_uid,
+         .Error    = completion_error,
+         .Callback = Callback
+      };
+      SendMessage(MSGID::THREAD_ACTION, MSF::NIL, &msg, sizeof(msg));
 
       cleanup();
    });
@@ -829,9 +904,176 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
          }
 
          glActiveAsyncObjects.insert(Object->UID);
+
+         if (not Object->defined(NF::ASYNC_ACTIVE)) {
+            Object->Flags |= NF::ASYNC_ACTIVE;
+            async_wait_callback(Object->UID, true);
+         }
       }
 
       launch_async_thread(Object, ActionID, argssize, std::move(param_buffer), cb);
+   }
+
+   return error;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+AsyncCancel: Drain the pending queue for listed objects without executing the remaining actions.
+
+Call AsyncCancel() to cancel all pending asynchronous actions for the listed objects.  Each object's currently active
+async thread (if any) is interrupted via ~WakeThread() with Stop set to true, and the remaining action queue is
+drained without execution.
+
+Callbacks for queued actions will receive `ERR::DoesNotExist` to indicate cancellation.
+
+-INPUT-
+array(oid) Objects: A list of object IDs to cancel.
+arraysize Size: Total number of elements in the `Objects` list.
+
+-ERRORS-
+Okay
+NullArgs
+
+*********************************************************************************************************************/
+
+ERR AsyncCancel(OBJECTID *Objects, int Size)
+{
+   pf::Log log(__FUNCTION__);
+
+   if (not Objects) return ERR::NullArgs;
+
+   for (auto i = 0; i < Size; i++) {
+      auto object_id = Objects[i];
+
+      log.traceBranch("Cancelling async actions for object #%d", object_id);
+
+      // Wake the thread with Stop=true to interrupt any active async operation.
+
+      int thread_id;
+      {
+         std::lock_guard<std::mutex> lock(glmActionQueue);
+         auto it = glAsyncObjectThreads.find(object_id);
+         if (it != glAsyncObjectThreads.end()) thread_id = it->second;
+         else thread_id = 0;
+      }
+
+      if (thread_id) WakeThread(thread_id, true);
+
+      drain_action_queue(object_id);
+   }
+
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+AsyncPending: Return the number of queued and in-flight async actions for an object.
+
+Call AsyncPending() to query the total number of asynchronous actions that are either currently executing or waiting
+in the queue for a given object.  The returned count includes the in-flight action (if any) plus all queued actions
+that have not yet been dispatched.
+
+A return value of zero indicates that no async activity is associated with the object.
+
+-INPUT-
+oid Object: The object to query.
+
+-RESULT-
+int: The number of pending async actions (in-flight + queued), or zero if none.
+-END-
+
+*********************************************************************************************************************/
+
+int AsyncPending(OBJECTID ObjectID)
+{
+   std::lock_guard<std::mutex> lock(glmActionQueue);
+   int count = 0;
+   if (glActiveAsyncObjects.contains(ObjectID) or glAsyncObjectThreads.contains(ObjectID)) count++;
+   if (auto it = glActionQueues.find(ObjectID); it != glActionQueues.end()) {
+      count += int(it->second.size());
+   }
+   return count;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+AsyncWait: Block until all queued async actions for the listed objects have completed.
+
+Call AsyncWait() to suspend the current thread until every asynchronous action that is executing or queued against
+the listed objects has finished.  Messages continue to be processed while waiting, so async completion callbacks
+fire normally.
+
+Only one AsyncWait() call may be active at any time.  If a second call is made while the first is still blocking,
+`ERR::InUse` is returned.
+
+-INPUT-
+array(oid) Objects: A list of object IDs to wait on.
+arraysize Size: Total number of elements in the `Objects` list.
+int TimeOut: Maximum time to wait in milliseconds, or `-1` for an indefinite wait.
+
+-ERRORS-
+Okay: All async actions completed.
+TimeOut: The timeout expired before all actions completed.
+NullArgs
+InUse: Another AsyncWait() call is already active.
+-END-
+
+*********************************************************************************************************************/
+
+ERR AsyncWait(OBJECTID *Objects, int Size, int TimeOut)
+{
+   pf::Log log(__FUNCTION__);
+
+   if (not Objects) return log.warning(ERR::NullArgs);
+
+   // Message processing is only possible from the main thread (for system design and synchronisation reasons)
+   if (!tlMainThread) return log.warning(ERR::OutsideMainThread);
+
+   // Prevent recursive/concurrent use — only one wait can be active at a time.
+   bool expected = false;
+   if (not glAsyncWaiting.compare_exchange_strong(expected, true)) return log.warning(ERR::InUse);
+
+   {
+      std::lock_guard<std::mutex> lock(glmAsyncWait);
+      glAsyncWaitCounter.store(0, std::memory_order_relaxed);
+      glAsyncWaitTargets.clear();
+   }
+
+   // Collect target object UIDs and count those already running async actions.
+   // Check glActiveAsyncObjects under the queue mutex rather than locking each object individually.
+
+   {
+      std::lock_guard<std::mutex> ql(glmActionQueue);
+      std::lock_guard<std::mutex> wl(glmAsyncWait);
+      for (int i=0; i < Size; i++) {
+         auto id = Objects[i];
+         if (glAsyncWaitTargets.insert(id).second and glActiveAsyncObjects.contains(id)) {
+            glAsyncWaitCounter.fetch_add(1, std::memory_order_relaxed);
+         }
+      }
+      if (glAsyncWaitTargets.empty()) {
+         glAsyncWaiting.store(false, std::memory_order_relaxed);
+         return ERR::Okay;
+      }
+   }
+
+   int pending = glAsyncWaitCounter.load(std::memory_order_relaxed);
+   log.branch("Objects: %d, Pending: %d, Timeout: %d ms", int(glAsyncWaitTargets.size()), pending, TimeOut);
+
+   ERR error;
+   if (pending) error = ProcessMessages(PMF::NIL, TimeOut);
+   else error = ERR::Okay;
+
+   glAsyncWaiting.store(false, std::memory_order_relaxed);
+
+   {
+      std::lock_guard<std::mutex> lock(glmAsyncWait);
+      glAsyncWaitTargets.clear();
+      glAsyncWaitCounter.store(0, std::memory_order_relaxed);
    }
 
    return error;
