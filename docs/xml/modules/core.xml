@@ -47,6 +47,7 @@
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
+      <error code="Cancelled">The thread has been requested to stop whilst sleeping.</error>
       <error code="Args">The <code>MilliSeconds</code> value is less or equal to zero.</error>
       <error code="TimeOut">Function timed-out before successful completion.</error>
       <error code="MemoryDoesNotExist">The supplied <code>Memory</code> ID does not refer to an existing memory block.</error>
@@ -324,6 +325,39 @@ if (AllocMemory(1000, MEM::DATA, &amp;address, nullptr) == ERR::Okay) {
       <error code="NewObject">NewObject() failed to produce a new object.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
+  </function>
+
+  <function>
+    <name>AsyncCancel</name>
+    <category>Objects</category>
+    <comment>Drain the pending queue for listed objects without executing the remaining actions.</comment>
+    <prototype>ERR AsyncCancel(OBJECTID * Objects)</prototype>
+    <input>
+      <param type="OBJECTID *" name="Objects">A zero-terminated array of object IDs to cancel.</param>
+    </input>
+    <description>
+<p>Call AsyncCancel() to cancel all pending asynchronous actions for the listed objects.  Each object's currently active async thread (if any) is interrupted via <function>WakeThread</function> with Stop set to true, and the remaining action queue is drained without execution.</p>
+<p>Callbacks for queued actions will receive <code>ERR::DoesNotExist</code> to indicate cancellation.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>AsyncPending</name>
+    <category>Objects</category>
+    <comment>Return the number of queued and in-flight async actions for an object.</comment>
+    <prototype>INT AsyncPending(OBJECTID Object)</prototype>
+    <input>
+      <param type="OBJECTID" name="Object">The object to query.</param>
+    </input>
+    <description>
+<p>Call AsyncPending() to query the total number of asynchronous actions that are either currently executing or waiting in the queue for a given object.  The returned count includes the in-flight action (if any) plus all queued actions that have not yet been dispatched.</p>
+<p>A return value of zero indicates that no async activity is associated with the object.</p>
+    </description>
+    <result type="INT">The number of pending async actions (in-flight + queued), or zero if none.</result>
   </function>
 
   <function>

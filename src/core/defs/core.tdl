@@ -354,8 +354,7 @@ constexpr bool defined(T flags, T test_flag) noexcept {
     "CPU_SPEED: The average top-speed of all CPU cores in Mhz.",
     "FREE_MEMORY: The total amount of free memory.",
     "MEMORY_USAGE: The total amount of memory used by the current process, in bytes.",
-    "MAIN_THREAD: Read-only, returns `true` if called from the main thread.",
-    "ASYNC_CALLBACK: Internal"
+    "MAIN_THREAD: Read-only, returns `true` if called from the main thread."
   )
 
   enum("RP", { type="int", start=1, comment="Path types for SetResourcePath()" },
@@ -1079,7 +1078,10 @@ struct ScriptArg { // For use with sc::Exec
     "CreateLink",
     "ParentContext",
     "SetResourceMgr",
-    "WakeThread")
+    "WakeThread",
+    "AsyncCancel",
+    "AsyncPending",
+    "AsyncWait")
 
   c_insert([==[
 
