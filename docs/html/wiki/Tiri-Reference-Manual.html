@@ -2398,7 +2398,7 @@ end</code></pre>
 <span id="cb144-5"><a href="#cb144-5" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- Note that the thread code is parsed as a string and can&#39;t see any variables without a call to obj.find().</span></span>
 <span id="cb144-6"><a href="#cb144-6" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- The termination handler on the other hand has access to signal the objects directly.</span></span>
 <span id="cb144-7"><a href="#cb144-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb144-8"><a href="#cb144-8" aria-hidden="true" tabindex="-1"></a>   <span class="va">thread</span><span class="op">.</span>script<span class="op">(</span><span class="vs">[[</span></span>
+<span id="cb144-8"><a href="#cb144-8" aria-hidden="true" tabindex="-1"></a>   <span class="va">async</span><span class="op">.</span>script<span class="op">(</span><span class="vs">[[</span></span>
 <span id="cb144-9"><a href="#cb144-9" aria-hidden="true" tabindex="-1"></a><span class="vs">      msg(&#39;Thread is now in session.&#39;)</span></span>
 <span id="cb144-10"><a href="#cb144-10" aria-hidden="true" tabindex="-1"></a><span class="vs">   ]]</span><span class="op">,</span></span>
 <span id="cb144-11"><a href="#cb144-11" aria-hidden="true" tabindex="-1"></a>   <span class="kw">function</span><span class="op">()</span></span>
@@ -2622,19 +2622,19 @@ end</code></pre>
 <div class="sourceCode" id="cb153"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb153-1"><a href="#cb153-1" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;&amp;lt;div&amp;gt;Hello &amp;amp; World&amp;lt;/div&amp;gt;&quot;</span><span class="op">:</span>unescapeXML<span class="op">()</span></span>
 <span id="cb153-2"><a href="#cb153-2" aria-hidden="true" tabindex="-1"></a><span class="co">-- Returns: &quot;&lt;div&gt;Hello &amp; World&lt;/div&gt;&quot;</span></span></code></pre></div>
 <hr>
-<h2 id="thread-interface">Thread Interface</h2>
+<h2 id="async-interface">Async Interface</h2>
 <p>Tiri supports a simplified threading model so as to minimise the potential problems occurring from their use. The functionality is as follows:</p>
-<h3 id="threadscriptstatement-callback">thread.script(Statement, Callback)</h3>
+<h3 id="asyncscriptstatement-callback">async.script(Statement, Callback)</h3>
 <p>The <code>script()</code> method compiles a statement string and executes it in a separate script state. The code may not directly share variables with its creator, but it can find existing objects and interact with them by calling <code>obj.find()</code>.</p>
 <p>The <code>Callback</code> parameter is a function that will be executed once the threaded script has returned. It executes in the space of the caller and not the thread itself, which means it can access local variables safely.</p>
-<pre><code>thread.script([[
+<pre><code>async.script([[
    print(&#39;Thread is now in session.&#39;)
 ]],
 function()
    print(&#39;Thread has finished executing.&#39;)
 end)</code></pre>
-<h3 id="threadactionmethodobject-action-callback-key-args">thread.action|method(Object, Action, Callback, Key, Args...)</h3>
-<p>The <code>thread.action()</code> and <code>thread.method()</code> interfaces provide a convenient means of executing an object function in a separate thread. There is some overhead in executing a new thread, but this strategy becomes highly effective when used to perform lengthy processes such as the loading and parsing of data.</p>
+<h3 id="asyncactionmethodobject-action-callback-key-args">async.action|method(Object, Action, Callback, Key, Args...)</h3>
+<p>The <code>async.action()</code> and <code>async.method()</code> interfaces provide a convenient means of executing an object function in a separate thread. There is some overhead in executing a new thread, but this strategy becomes highly effective when used to perform lengthy processes such as the loading and parsing of data.</p>
 <p>Here&#39;s an example that reads the first 1Kb of data from a file and prints the content:</p>
 <pre><code>function on_complete(Action, File, Error, Buffer)
    print(&#39;Read string: &#39; .. Buffer)
@@ -2642,7 +2642,7 @@ end)</code></pre>
 end
 
 str_buffer = string.rep(1024)
-thread.action(file, AC_Read, on_complete, str_buffer, str_buffer)
+async.action(file, AC_Read, on_complete, str_buffer, str_buffer)
 processing.sleep()</code></pre>
 <p>The <code>Action</code> parameter is accepted as an action ID (fast) or a string (slower). The <code>Key</code> makes it possible to pass a custom parameter to the callback, and can be used to pass multiple parameters if a table is used.</p>
 <p>The <code>Callback</code> routine receives notification of the thread&#39;s completion, and in this example uses this as an opportunity to free the file object. This is a recommended pattern, and ensures that the target object is not destroyed while the thread is executing. Never declare the object value as <code>local</code>.</p>
