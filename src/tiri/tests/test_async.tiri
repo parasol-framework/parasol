@@ -527,11 +527,14 @@ end
 -- async.cancel() accepts an array<object> argument.
 
 @Test(priority=25) function CancelArrayOfObjects()
-   script_a = obj.new('script', { statement=[[ processing.sleep(0.5) ]] })
-   script_b = obj.new('script', { statement=[[ processing.sleep(0.5) ]] })
+   script_a = obj.new('script', { statement=[[ processing.sleep(2.0) ]] })
+   script_b = obj.new('script', { statement=[[ processing.sleep(2.0) ]] })
 
    async.script(script_a)
    async.script(script_b)
+
+   -- Allow threads to register before cancelling.
+   processing.sleep(0.1)
 
    err = async.cancel(array<object> { script_a, script_b })
    assert(err is ERR_Okay, f'async.cancel(array) failed: {err}')
