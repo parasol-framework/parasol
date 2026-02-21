@@ -482,7 +482,6 @@ end
    -- After completion the count should be zero.
    count = async.pending(script)
    assert(count is 0, f'Expected 0 after completion, got {count}')
-   msg('Pending count returned to 0 after completion.')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -512,8 +511,7 @@ end
    processing.sleep(0.1)
 
    -- Cancel remaining queued actions.
-   err = async.cancel(script)
-   assert(err is ERR_Okay, f'async.cancel() failed: {err}')
+   check async.cancel(script)
 
    -- Wait for completion of the in-flight action and callback processing.
    check async.wait(script, 5.0)
@@ -536,9 +534,7 @@ end
    -- Allow threads to register before cancelling.
    processing.sleep(0.25)
 
-   err = async.cancel(array<object> { script_a, script_b })
-   assert(err is ERR_Okay, f'async.cancel(array) failed: {err}')
-
+   check async.cancel(array<object> { script_a, script_b })
    check async.wait(script_a, 3.0)
    check async.wait(script_b, 3.0)
 
