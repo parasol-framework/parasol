@@ -112,6 +112,26 @@ static int glSubReadOnly = 0; // To prevent modification of glSubscriptions
 static void free_children(OBJECTPTR Object);
 
 //********************************************************************************************************************
+
+static void async_wait_callback(OBJECTID ObjectID, bool Active)
+{
+   bool break_wait = false;
+
+   {
+      std::lock_guard<std::mutex> lock(glmAsyncWait);
+      if (not glAsyncWaiting.load(std::memory_order_relaxed)) return;
+      if (not glAsyncWaitTargets.contains(ObjectID)) return;
+
+      if (Active) glAsyncWaitCounter.fetch_add(1, std::memory_order_relaxed);
+      else glAsyncWaitCounter.fetch_sub(1, std::memory_order_relaxed);
+
+      break_wait = (glAsyncWaitCounter.load(std::memory_order_relaxed) IS 0);
+   }
+
+   if (break_wait) SendMessage(MSGID::BREAK, MSF::NIL, nullptr, 0);
+}
+
+//********************************************************************************************************************
 // Hook for MSGID::FREE, used for delaying collection until the next message processing cycle.
 
 ERR msg_free(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize)
@@ -909,7 +929,8 @@ drained without execution.
 Callbacks for queued actions will receive `ERR::DoesNotExist` to indicate cancellation.
 
 -INPUT-
-ptr(oid) Objects: A zero-terminated array of object IDs to cancel.
+array(oid) Objects: A list of object IDs to cancel.
+arraysize Size: Total number of elements in the `Objects` list.
 
 -ERRORS-
 Okay
@@ -917,13 +938,13 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR AsyncCancel(OBJECTID *Objects)
+ERR AsyncCancel(OBJECTID *Objects, int Size)
 {
    pf::Log log(__FUNCTION__);
 
    if (not Objects) return ERR::NullArgs;
 
-   for (auto i = 0; Objects[i]; i++) {
+   for (auto i = 0; i < Size; i++) {
       auto object_id = Objects[i];
 
       log.traceBranch("Cancelling async actions for object #%d", object_id);
@@ -934,9 +955,7 @@ ERR AsyncCancel(OBJECTID *Objects)
       {
          std::lock_guard<std::mutex> lock(glmActionQueue);
          auto it = glAsyncObjectThreads.find(object_id);
-         if (it != glAsyncObjectThreads.end()) {
-            thread_id = it->second;
-         }
+         if (it != glAsyncObjectThreads.end()) thread_id = it->second;
          else thread_id = 0;
       }
 
@@ -992,7 +1011,8 @@ Only one AsyncWait() call may be active at any time.  If a second call is made w
 `ERR::InUse` is returned.
 
 -INPUT-
-ptr(oid) Objects: A zero-terminated array of object IDs to wait on.
+array(oid) Objects: A list of object IDs to wait on.
+arraysize Size: Total number of elements in the `Objects` list.
 int TimeOut: Maximum time to wait in milliseconds, or `-1` for an indefinite wait.
 
 -ERRORS-
@@ -1004,25 +1024,7 @@ InUse: Another AsyncWait() call is already active.
 
 *********************************************************************************************************************/
 
-static void async_wait_callback(OBJECTID ObjectID, bool Active)
-{
-   bool break_wait = false;
-
-   {
-      std::lock_guard<std::mutex> lock(glmAsyncWait);
-      if (not glAsyncWaiting.load(std::memory_order_relaxed)) return;
-      if (not glAsyncWaitTargets.contains(ObjectID)) return;
-
-      if (Active) glAsyncWaitCounter.fetch_add(1, std::memory_order_relaxed);
-      else glAsyncWaitCounter.fetch_sub(1, std::memory_order_relaxed);
-
-      break_wait = (glAsyncWaitCounter.load(std::memory_order_relaxed) IS 0);
-   }
-
-   if (break_wait) SendMessage(MSGID::BREAK, MSF::NIL, nullptr, 0);
-}
-
-ERR AsyncWait(OBJECTID *Objects, int TimeOut)
+ERR AsyncWait(OBJECTID *Objects, int Size, int TimeOut)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1047,8 +1049,9 @@ ERR AsyncWait(OBJECTID *Objects, int TimeOut)
    {
       std::lock_guard<std::mutex> ql(glmActionQueue);
       std::lock_guard<std::mutex> wl(glmAsyncWait);
-      for (auto *id = Objects; *id; id++) {
-         if (glAsyncWaitTargets.insert(*id).second and glActiveAsyncObjects.contains(*id)) {
+      for (int i=0; i < Size; i++) {
+         auto id = Objects[i];
+         if (glAsyncWaitTargets.insert(id).second and glActiveAsyncObjects.contains(id)) {
             glAsyncWaitCounter.fetch_add(1, std::memory_order_relaxed);
          }
       }

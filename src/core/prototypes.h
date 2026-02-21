@@ -90,6 +90,6 @@ extern "C" ERR CreateLink(CSTRING From, CSTRING To);
 extern "C" OBJECTPTR ParentContext();
 extern "C" void SetResourceMgr(APTR Address, struct ResourceManager * Manager);
 extern "C" ERR WakeThread(int Thread, int Stop);
-extern "C" ERR AsyncCancel(OBJECTID * Objects);
+extern "C" ERR AsyncCancel(OBJECTID * Objects, int Size);
 extern "C" int AsyncPending(OBJECTID Object);
-extern "C" ERR AsyncWait(OBJECTID * Objects, int TimeOut);
+extern "C" ERR AsyncWait(OBJECTID * Objects, int Size, int TimeOut);

@@ -370,19 +370,20 @@ static int async_wait(lua_State *Lua)
    }
    else luaL_argerror(Lua, 1, "Expected an object or array<object>.");
 
-   ids.push_back(0); // Zero-terminate
+   ERR error = ERR::Okay;
+   if (not ids.empty()) {
+      // Timeout (seconds → milliseconds).  Default: indefinite (-1).
 
-   // Timeout (seconds → milliseconds).  Default: indefinite (-1).
+      int timeout_ms = -1;
+      if (lua_type(Lua, 2) IS LUA_TNUMBER) {
+         timeout_ms = int(lua_tonumber(Lua, 2) * 1000.0);
+         if (timeout_ms < 0) timeout_ms = -1;
+      }
 
-   int timeout_ms = -1;
-   if (lua_type(Lua, 2) IS LUA_TNUMBER) {
-      timeout_ms = int(lua_tonumber(Lua, 2) * 1000.0);
-      if (timeout_ms < 0) timeout_ms = -1;
+      error = AsyncWait(ids.data(), ids.size(), timeout_ms);
+
+      if ((error != ERR::Okay) and (in_try_immediate_scope(Lua))) luaL_error(Lua, error);
    }
-
-   auto error = AsyncWait(ids.data(), timeout_ms);
-
-   if ((error != ERR::Okay) and (in_try_immediate_scope(Lua))) luaL_error(Lua, error);
 
    lua_pushinteger(Lua, int(error));
    return 1;
