@@ -91,3 +91,4 @@ extern "C" OBJECTPTR ParentContext();
 extern "C" void SetResourceMgr(APTR Address, struct ResourceManager * Manager);
 extern "C" ERR WakeThread(int Thread, int Stop);
 extern "C" ERR AsyncCancel(OBJECTID * Objects);
+extern "C" int AsyncPending(OBJECTID Object);

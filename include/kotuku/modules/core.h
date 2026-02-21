@@ -2018,6 +2018,7 @@ struct CoreBase {
    void (*_SetResourceMgr)(APTR Address, struct ResourceManager *Manager);
    ERR (*_WakeThread)(int Thread, int Stop);
    ERR (*_AsyncCancel)(OBJECTID *Objects);
+   int (*_AsyncPending)(OBJECTID Object);
 #endif // KOTUKU_STATIC
 };
 
@@ -2114,6 +2115,7 @@ inline OBJECTPTR ParentContext(void) { return CoreBase->_ParentContext(); }
 inline void SetResourceMgr(APTR Address, struct ResourceManager *Manager) { return CoreBase->_SetResourceMgr(Address,Manager); }
 inline ERR WakeThread(int Thread, int Stop) { return CoreBase->_WakeThread(Thread,Stop); }
 inline ERR AsyncCancel(OBJECTID *Objects) { return CoreBase->_AsyncCancel(Objects); }
+inline int AsyncPending(OBJECTID Object) { return CoreBase->_AsyncPending(Object); }
 #else
 extern "C" ERR AccessMemory(MEMORYID Memory, MEM Flags, int MilliSeconds, APTR *Result);
 extern "C" ERR Action(AC Action, OBJECTPTR Object, APTR Parameters);
@@ -2205,6 +2207,7 @@ extern "C" OBJECTPTR ParentContext(void);
 extern "C" void SetResourceMgr(APTR Address, struct ResourceManager *Manager);
 extern "C" ERR WakeThread(int Thread, int Stop);
 extern "C" ERR AsyncCancel(OBJECTID *Objects);
+extern "C" int AsyncPending(OBJECTID Object);
 #endif // KOTUKU_STATIC
 
 

@@ -940,6 +940,37 @@ ERR AsyncCancel(OBJECTID *Objects)
    return ERR::Okay;
 }
 
+/*********************************************************************************************************************
+
+-FUNCTION-
+AsyncPending: Return the number of queued and in-flight async actions for an object.
+
+Call AsyncPending() to query the total number of asynchronous actions that are either currently executing or waiting
+in the queue for a given object.  The returned count includes the in-flight action (if any) plus all queued actions
+that have not yet been dispatched.
+
+A return value of zero indicates that no async activity is associated with the object.
+
+-INPUT-
+oid Object: The object to query.
+
+-RESULT-
+int: The number of pending async actions (in-flight + queued), or zero if none.
+-END-
+
+*********************************************************************************************************************/
+
+int AsyncPending(OBJECTID ObjectID)
+{
+   std::lock_guard<std::mutex> lock(glmActionQueue);
+   int count = 0;
+   if (glActiveAsyncObjects.contains(ObjectID) or glAsyncObjectThreads.contains(ObjectID)) count++;
+   if (auto it = glActionQueues.find(ObjectID); it != glActionQueues.end()) {
+      count += int(it->second.size());
+   }
+   return count;
+}
+
 //********************************************************************************************************************
 // Called whenever a MSGID::THREAD_ACTION message is caught by ProcessMessages().  Messages are sent by the
 // async action thread on completion.  After processing the callback, the next queued action for the same

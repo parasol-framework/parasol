@@ -346,6 +346,21 @@ if (AllocMemory(1000, MEM::DATA, &amp;address, nullptr) == ERR::Okay) {
   </function>
 
   <function>
+    <name>AsyncPending</name>
+    <category>Objects</category>
+    <comment>Return the number of queued and in-flight async actions for an object.</comment>
+    <prototype>INT AsyncPending(OBJECTID Object)</prototype>
+    <input>
+      <param type="OBJECTID" name="Object">The object to query.</param>
+    </input>
+    <description>
+<p>Call AsyncPending() to query the total number of asynchronous actions that are either currently executing or waiting in the queue for a given object.  The returned count includes the in-flight action (if any) plus all queued actions that have not yet been dispatched.</p>
+<p>A return value of zero indicates that no async activity is associated with the object.</p>
+    </description>
+    <result type="INT">The number of pending async actions (in-flight + queued), or zero if none.</result>
+  </function>
+
+  <function>
     <name>BroadcastEvent</name>
     <category>Events</category>
     <comment>Broadcast an event to all event listeners in the system.</comment>
