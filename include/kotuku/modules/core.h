@@ -1118,7 +1118,6 @@ enum class RES : int {
    FREE_MEMORY = 22,
    MEMORY_USAGE = 23,
    MAIN_THREAD = 24,
-   ASYNC_CALLBACK = 25,
 };
 
 // Path types for SetResourcePath()
@@ -2019,6 +2018,7 @@ struct CoreBase {
    ERR (*_WakeThread)(int Thread, int Stop);
    ERR (*_AsyncCancel)(OBJECTID *Objects);
    int (*_AsyncPending)(OBJECTID Object);
+   ERR (*_AsyncWait)(OBJECTID *Objects, int TimeOut);
 #endif // KOTUKU_STATIC
 };
 
@@ -2116,6 +2116,7 @@ inline void SetResourceMgr(APTR Address, struct ResourceManager *Manager) { retu
 inline ERR WakeThread(int Thread, int Stop) { return CoreBase->_WakeThread(Thread,Stop); }
 inline ERR AsyncCancel(OBJECTID *Objects) { return CoreBase->_AsyncCancel(Objects); }
 inline int AsyncPending(OBJECTID Object) { return CoreBase->_AsyncPending(Object); }
+inline ERR AsyncWait(OBJECTID *Objects, int TimeOut) { return CoreBase->_AsyncWait(Objects,TimeOut); }
 #else
 extern "C" ERR AccessMemory(MEMORYID Memory, MEM Flags, int MilliSeconds, APTR *Result);
 extern "C" ERR Action(AC Action, OBJECTPTR Object, APTR Parameters);
@@ -2208,6 +2209,7 @@ extern "C" void SetResourceMgr(APTR Address, struct ResourceManager *Manager);
 extern "C" ERR WakeThread(int Thread, int Stop);
 extern "C" ERR AsyncCancel(OBJECTID *Objects);
 extern "C" int AsyncPending(OBJECTID Object);
+extern "C" ERR AsyncWait(OBJECTID *Objects, int TimeOut);
 #endif // KOTUKU_STATIC
 
 

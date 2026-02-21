@@ -62,8 +62,6 @@ bool glJanitorActive = false;
 bool glDebugMemory   = false;
 bool glEnableCrashHandler = true;
 struct CoreBase *LocalCoreBase = nullptr;
-void (*glAsyncCallback)(OBJECTPTR);
-
 // NB: During shutdown, elements in glPrivateMemory are not erased but will have their fields cleared.
 // Can't use ankerl here because removal of elements is too slow.
 std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;

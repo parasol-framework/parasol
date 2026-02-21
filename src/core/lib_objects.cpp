@@ -27,6 +27,14 @@ Name: Objects
 using namespace pf;
 
 static void drain_action_queue(OBJECTID, bool = false);
+static void async_wait_callback(OBJECTID, bool);
+
+// AsyncWait() state — guarded by glmAsyncWait.
+
+static std::atomic<int> glAsyncWaitCounter;
+static std::atomic<bool> glAsyncWaiting;
+static ankerl::unordered_dense::set<OBJECTID> glAsyncWaitTargets;
+static std::mutex glmAsyncWait;
 
 //********************************************************************************************************************
 
@@ -618,7 +626,7 @@ void dispatch_queued_action(OBJECTID ObjectID)
       if (obj.granted()) {
          if (obj->defined(NF::ASYNC_ACTIVE)) {
             obj->Flags &= ~NF::ASYNC_ACTIVE;
-            if (glAsyncCallback) glAsyncCallback(*obj);
+            async_wait_callback(obj->UID, false);
          }
       }
       return;
@@ -694,7 +702,7 @@ static void drain_action_queue(OBJECTID ObjectID, bool Terminating)
       if (obj.granted()) {
          if (obj->defined(NF::ASYNC_ACTIVE)) {
             obj->Flags &= ~NF::ASYNC_ACTIVE;
-            if (glAsyncCallback) glAsyncCallback(*obj);
+            async_wait_callback(obj->UID, false);
          }
       }
    }
@@ -879,7 +887,7 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
 
          if (not Object->defined(NF::ASYNC_ACTIVE)) {
             Object->Flags |= NF::ASYNC_ACTIVE;
-            if (glAsyncCallback) glAsyncCallback(Object);
+            async_wait_callback(Object->UID, true);
          }
       }
 
@@ -969,6 +977,103 @@ int AsyncPending(OBJECTID ObjectID)
       count += int(it->second.size());
    }
    return count;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+AsyncWait: Block until all queued async actions for the listed objects have completed.
+
+Call AsyncWait() to suspend the current thread until every asynchronous action that is executing or queued against
+the listed objects has finished.  Messages continue to be processed while waiting, so async completion callbacks
+fire normally.
+
+Only one AsyncWait() call may be active at any time.  If a second call is made while the first is still blocking,
+`ERR::InUse` is returned.
+
+-INPUT-
+ptr(oid) Objects: A zero-terminated array of object IDs to wait on.
+int TimeOut: Maximum time to wait in milliseconds, or `-1` for an indefinite wait.
+
+-ERRORS-
+Okay: All async actions completed.
+TimeOut: The timeout expired before all actions completed.
+NullArgs
+InUse: Another AsyncWait() call is already active.
+-END-
+
+*********************************************************************************************************************/
+
+static void async_wait_callback(OBJECTID ObjectID, bool Active)
+{
+   bool break_wait = false;
+
+   {
+      std::lock_guard<std::mutex> lock(glmAsyncWait);
+      if (not glAsyncWaiting.load(std::memory_order_relaxed)) return;
+      if (not glAsyncWaitTargets.contains(ObjectID)) return;
+
+      if (Active) glAsyncWaitCounter.fetch_add(1, std::memory_order_relaxed);
+      else glAsyncWaitCounter.fetch_sub(1, std::memory_order_relaxed);
+
+      break_wait = (glAsyncWaitCounter.load(std::memory_order_relaxed) IS 0);
+   }
+
+   if (break_wait) SendMessage(MSGID::BREAK, MSF::NIL, nullptr, 0);
+}
+
+ERR AsyncWait(OBJECTID *Objects, int TimeOut)
+{
+   pf::Log log(__FUNCTION__);
+
+   if (not Objects) return log.warning(ERR::NullArgs);
+
+   // Message processing is only possible from the main thread (for system design and synchronisation reasons)
+   if (!tlMainThread) return log.warning(ERR::OutsideMainThread);
+
+   // Prevent recursive/concurrent use — only one wait can be active at a time.
+   bool expected = false;
+   if (not glAsyncWaiting.compare_exchange_strong(expected, true)) return log.warning(ERR::InUse);
+
+   {
+      std::lock_guard<std::mutex> lock(glmAsyncWait);
+      glAsyncWaitCounter.store(0, std::memory_order_relaxed);
+      glAsyncWaitTargets.clear();
+   }
+
+   // Collect target object UIDs and count those already running async actions.
+   // Check glActiveAsyncObjects under the queue mutex rather than locking each object individually.
+
+   {
+      std::lock_guard<std::mutex> ql(glmActionQueue);
+      std::lock_guard<std::mutex> wl(glmAsyncWait);
+      for (auto *id = Objects; *id; id++) {
+         if (glAsyncWaitTargets.insert(*id).second and glActiveAsyncObjects.contains(*id)) {
+            glAsyncWaitCounter.fetch_add(1, std::memory_order_relaxed);
+         }
+      }
+      if (glAsyncWaitTargets.empty()) {
+         glAsyncWaiting.store(false, std::memory_order_relaxed);
+         return ERR::Okay;
+      }
+   }
+
+   int pending = glAsyncWaitCounter.load(std::memory_order_relaxed);
+   log.branch("Objects: %d, Pending: %d, Timeout: %d ms", int(glAsyncWaitTargets.size()), pending, TimeOut);
+
+   ERR error;
+   if (pending) error = ProcessMessages(PMF::NIL, TimeOut);
+   else error = ERR::Okay;
+
+   glAsyncWaiting.store(false, std::memory_order_relaxed);
+
+   {
+      std::lock_guard<std::mutex> lock(glmAsyncWait);
+      glAsyncWaitTargets.clear();
+      glAsyncWaitCounter.store(0, std::memory_order_relaxed);
+   }
+
+   return error;
 }
 
 //********************************************************************************************************************
