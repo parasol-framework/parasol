@@ -77,6 +77,9 @@ ankerl::unordered_dense::set<OBJECTID> glActiveAsyncObjects;
 std::condition_variable_any cvObjects;
 std::condition_variable_any cvResources;
 
+std::mutex glmThreadRegistry;
+std::unordered_map<int, std::shared_ptr<ThreadRecord>> glThreadRegistry;
+
 std::list<CoreTimer> glTimers; // Locked with glmTimer.  std::list maintains stable pointers to elements.
 std::list<FDRecord> glFDTable;
 

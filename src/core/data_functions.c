@@ -92,7 +92,8 @@ FDEF argsUpdateTimer[] = { { "Error", FD_INT|FD_ERROR }, { "Subscription", FD_PT
 FDEF argsVLogF[] = { { "Void", FD_VOID }, { "Flags", FD_INT }, { "Header", FD_STR }, { "Message", FD_STR }, { "Args", FD_PTR }, { 0, 0 } };
 FDEF argsVirtualVolume[] = { { "Error", FD_INT|FD_ERROR }, { "Name", FD_STR }, { "Tags", FD_TAGS }, { 0, 0 } };
 FDEF argsWaitForObjects[] = { { "Error", FD_INT|FD_ERROR }, { "Flags", FD_INT }, { "TimeOut", FD_INT }, { "ObjectSignal:ObjectSignals", FD_PTR|FD_STRUCT }, { 0, 0 } };
-FDEF argsWaitTime[] = { { "Void", FD_VOID }, { "Seconds", FD_DOUBLE }, { 0, 0 } };
+FDEF argsWaitTime[] = { { "Error", FD_INT|FD_ERROR }, { "Seconds", FD_DOUBLE }, { 0, 0 } };
+FDEF argsWakeThread[] = { { "Error", FD_INT|FD_ERROR }, { "Thread", FD_INT }, { "Stop", FD_INT }, { 0, 0 } };
 
 const struct Function glFunctions[] = {
    { (APTR)AccessMemory, "AccessMemory", argsAccessMemory },
@@ -184,6 +185,7 @@ const struct Function glFunctions[] = {
    { (APTR)CreateLink, "CreateLink", argsCreateLink },
    { (APTR)ParentContext, "ParentContext", argsParentContext },
    { (APTR)SetResourceMgr, "SetResourceMgr", argsSetResourceMgr },
+   { (APTR)WakeThread, "WakeThread", argsWakeThread },
    { nullptr, nullptr, nullptr }
 };
 

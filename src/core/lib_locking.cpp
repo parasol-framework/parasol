@@ -323,6 +323,7 @@ Args: The `MilliSeconds` value is less or equal to zero.
 NullArgs
 SystemLocked
 TimeOut
+Cancelled: The thread has been requested to stop whilst sleeping.
 MemoryDoesNotExist: The supplied `Memory` ID does not refer to an existing memory block.
 -END-
 
@@ -348,15 +349,38 @@ ERR AccessMemory(MEMORYID MemoryID, MEM Flags, int MilliSeconds, APTR *Result)
          // wait_for() is awoken with a global wake-up, not necessarily on the desired block, hence the need for while().
 
          auto end_time = steady_clock::now() + milliseconds(MilliSeconds);
-         while ((mem->second.AccessCount > 0) and (mem->second.ThreadLockID != our_thread)) {
-            auto now = steady_clock::now();
-            if (now >= end_time) return log.warning(ERR::TimeOut);
+         if ((mem->second.AccessCount > 0) and (mem->second.ThreadLockID != our_thread)) {
+            auto record = get_thread_record();
+            record->state.store(TSTATE::PAUSED, std::memory_order_release);
 
-            auto timeout_remaining = end_time - now;
-            //log.msg("Sleep on memory #%d, Access %d, Threads %d/%d", MemoryID, mem->second.AccessCount, (int)mem->second.ThreadLockID, our_thread);
-            if (cvResources.wait_for(glmMemory, timeout_remaining) IS std::cv_status::timeout) {
-               return log.warning(ERR::TimeOut);
+            while ((mem->second.AccessCount > 0) and (mem->second.ThreadLockID != our_thread)) {
+               // Check if woken or stopped by WakeThread() before blocking
+               {
+                  if (record->interrupted.load(std::memory_order_acquire) or
+                      record->state.load(std::memory_order_acquire) IS TSTATE::STOPPING) {
+                     record->interrupted.store(false, std::memory_order_release);
+                     auto expected = TSTATE::PAUSED;
+                     record->state.compare_exchange_strong(expected, TSTATE::RUNNING, std::memory_order_acq_rel);
+                     return ERR::Cancelled;
+                  }
+               }
+
+               auto now = steady_clock::now();
+               if (now >= end_time) {
+                  {
+                     if (record->state.load(std::memory_order_acquire) IS TSTATE::STOPPING) return ERR::Cancelled;
+                     record->state.store(TSTATE::RUNNING, std::memory_order_release);
+                  }
+                  return log.warning(ERR::TimeOut);
+               }
+
+               auto timeout_remaining = end_time - now;
+               //log.msg("Sleep on memory #%d, Access %d, Threads %d/%d", MemoryID, mem->second.AccessCount, (int)mem->second.ThreadLockID, our_thread);
+               cvResources.wait_for(glmMemory, timeout_remaining);
             }
+
+            auto expected = TSTATE::PAUSED;
+            record->state.compare_exchange_strong(expected, TSTATE::RUNNING, std::memory_order_acq_rel);
          }
 
          mem->second.ThreadLockID = our_thread;
@@ -472,6 +496,9 @@ NullArgs:
 MarkedForDeletion:
 SystemLocked:
 TimeOut:
+Cancelled: The thread has been requested to stop and cannot pause.
+DoesNotExist: The object was removed while waiting for the lock.
+LockFailed: Failed to initialise the sleep record for the waiting thread.
 -END-
 
 *********************************************************************************************************************/
@@ -510,6 +537,14 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
    // Solution: Prior to wait_until(), increment the object queue to attempt a lock.  This is *slightly* less efficient than doing it after the cond_wait(), but
    //           it will prevent us from sleeping on a signal that we would never receive.
 
+   // Indefinite waiting is not permitted if the thread is in a stopping state.
+
+   if (Timeout < 0) {
+      if (auto record = get_thread_record(); record) {
+         if (record->state.load(std::memory_order_acquire) IS TSTATE::STOPPING) Timeout = 1000;
+      }
+   }
+
    steady_clock::time_point end_time;
    if (Timeout < 0) end_time = steady_clock::time_point::max();
    else end_time = steady_clock::now() + milliseconds(Timeout);
@@ -531,10 +566,21 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
 
       ERR error = ERR::TimeOut;
       if (init_sleep(THREADID(Object->ThreadID), Object->UID, RT_OBJECT) IS ERR::Okay) { // Indicate that our thread is sleeping.
+         auto record = get_thread_record();
+         record->state.store(TSTATE::PAUSED, std::memory_order_release);
+
          while (steady_clock::now() < end_time) {
+            // Check if woken or stopped by WakeThread() before blocking
+            {
+               if (record->interrupted.load(std::memory_order_acquire) or
+                   record->state.load(std::memory_order_acquire) IS TSTATE::STOPPING) break;
+            }
+
             if (glWaitLocks[glWLIndex].Flags & WLF_REMOVED) {
                glWaitLocks[glWLIndex].notWaiting();
                Object->SleepQueue.fetch_sub(1, std::memory_order_release);
+               auto expected = TSTATE::PAUSED;
+               record->state.compare_exchange_strong(expected, TSTATE::RUNNING, std::memory_order_acq_rel);
                return ERR::DoesNotExist;
             }
 
@@ -544,6 +590,8 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
                glWaitLocks[glWLIndex].notWaiting();
                Object->ThreadID = int(our_thread);
                Object->SleepQueue.fetch_sub(1, std::memory_order_release);
+               auto exp = TSTATE::PAUSED;
+               record->state.compare_exchange_strong(exp, TSTATE::RUNNING, std::memory_order_acq_rel);
                return ERR::Okay;
             }
 
@@ -557,11 +605,16 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
             }
          }
 
-         // Failure: Either a timeout occurred or the object no longer exists.
+         // Failure: Either a timeout occurred, the object no longer exists, or the thread is stopping.
 
          if (glWaitLocks[glWLIndex].Flags & WLF_REMOVED) {
             log.warning("TID %d: The resource no longer exists.", int(get_thread_id()));
             error = ERR::DoesNotExist;
+         }
+         else if ((record->interrupted.load(std::memory_order_acquire) or
+                  record->state.load(std::memory_order_acquire) IS TSTATE::STOPPING)) {
+            error = ERR::Cancelled;
+            record->interrupted.store(false, std::memory_order_release);
          }
          else {
             log.traceWarning("TID: %d, #%d, Timeout occurred.", our_thread, Object->UID);
@@ -569,6 +622,9 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
          }
 
          glWaitLocks[glWLIndex].notWaiting();
+
+         auto exp = TSTATE::PAUSED;
+         record->state.compare_exchange_strong(exp, TSTATE::RUNNING, std::memory_order_acq_rel);
       }
       else error = log.error(ERR::LockFailed);
 

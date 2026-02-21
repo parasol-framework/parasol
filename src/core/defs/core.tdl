@@ -1078,7 +1078,8 @@ struct ScriptArg { // For use with sc::Exec
     "ResolveUserID",
     "CreateLink",
     "ParentContext",
-    "SetResourceMgr")
+    "SetResourceMgr",
+    "WakeThread")
 
   c_insert([==[
 

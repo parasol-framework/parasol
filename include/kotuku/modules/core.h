@@ -1979,7 +1979,7 @@ struct CoreBase {
    ERR (*_UnsubscribeAction)(OBJECTPTR Object, AC Action);
    void (*_UnsubscribeEvent)(APTR Handle);
    ERR (*_BroadcastEvent)(APTR Event, int EventSize);
-   void (*_WaitTime)(double Seconds);
+   ERR (*_WaitTime)(double Seconds);
    int64_t (*_GetEventID)(EVG Group, CSTRING SubGroup, CSTRING Event);
    uint32_t (*_GenCRC32)(uint32_t CRC, APTR Data, uint32_t Length);
    int64_t (*_GetResource)(RES Resource);
@@ -2016,6 +2016,7 @@ struct CoreBase {
    ERR (*_CreateLink)(CSTRING From, CSTRING To);
    OBJECTPTR (*_ParentContext)(void);
    void (*_SetResourceMgr)(APTR Address, struct ResourceManager *Manager);
+   ERR (*_WakeThread)(int Thread, int Stop);
 #endif // KOTUKU_STATIC
 };
 
@@ -2073,7 +2074,7 @@ inline ERR UpdateTimer(APTR Subscription, double Interval) { return CoreBase->_U
 inline ERR UnsubscribeAction(OBJECTPTR Object, AC Action) { return CoreBase->_UnsubscribeAction(Object,Action); }
 inline void UnsubscribeEvent(APTR Handle) { return CoreBase->_UnsubscribeEvent(Handle); }
 inline ERR BroadcastEvent(APTR Event, int EventSize) { return CoreBase->_BroadcastEvent(Event,EventSize); }
-inline void WaitTime(double Seconds) { return CoreBase->_WaitTime(Seconds); }
+inline ERR WaitTime(double Seconds) { return CoreBase->_WaitTime(Seconds); }
 inline int64_t GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event) { return CoreBase->_GetEventID(Group,SubGroup,Event); }
 inline uint32_t GenCRC32(uint32_t CRC, APTR Data, uint32_t Length) { return CoreBase->_GenCRC32(CRC,Data,Length); }
 inline int64_t GetResource(RES Resource) { return CoreBase->_GetResource(Resource); }
@@ -2110,6 +2111,7 @@ inline CSTRING ResolveUserID(int User) { return CoreBase->_ResolveUserID(User); 
 inline ERR CreateLink(CSTRING From, CSTRING To) { return CoreBase->_CreateLink(From,To); }
 inline OBJECTPTR ParentContext(void) { return CoreBase->_ParentContext(); }
 inline void SetResourceMgr(APTR Address, struct ResourceManager *Manager) { return CoreBase->_SetResourceMgr(Address,Manager); }
+inline ERR WakeThread(int Thread, int Stop) { return CoreBase->_WakeThread(Thread,Stop); }
 #else
 extern "C" ERR AccessMemory(MEMORYID Memory, MEM Flags, int MilliSeconds, APTR *Result);
 extern "C" ERR Action(AC Action, OBJECTPTR Object, APTR Parameters);
@@ -2162,7 +2164,7 @@ extern "C" ERR UpdateTimer(APTR Subscription, double Interval);
 extern "C" ERR UnsubscribeAction(OBJECTPTR Object, AC Action);
 extern "C" void UnsubscribeEvent(APTR Handle);
 extern "C" ERR BroadcastEvent(APTR Event, int EventSize);
-extern "C" void WaitTime(double Seconds);
+extern "C" ERR WaitTime(double Seconds);
 extern "C" int64_t GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event);
 extern "C" uint32_t GenCRC32(uint32_t CRC, APTR Data, uint32_t Length);
 extern "C" int64_t GetResource(RES Resource);
@@ -2199,6 +2201,7 @@ extern "C" CSTRING ResolveUserID(int User);
 extern "C" ERR CreateLink(CSTRING From, CSTRING To);
 extern "C" OBJECTPTR ParentContext(void);
 extern "C" void SetResourceMgr(APTR Address, struct ResourceManager *Manager);
+extern "C" ERR WakeThread(int Thread, int Stop);
 #endif // KOTUKU_STATIC
 
 

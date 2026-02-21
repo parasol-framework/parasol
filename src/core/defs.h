@@ -205,6 +205,20 @@ extern ankerl::unordered_dense::set<OBJECTID> glActiveAsyncObjects;
 extern std::condition_variable_any cvResources;
 extern std::condition_variable_any cvObjects;
 
+// Per-thread record for the global thread registry.  Threads are registered on first use of get_thread_id() and
+// deregistered on thread destruction.  The condition variable allows other threads to interrupt a sleeping thread
+// via WakeThread().
+
+struct ThreadRecord {
+   std::mutex mutex;                            // Guards cv.wait() and compound updates from WakeThread()
+   std::condition_variable cv;
+   std::atomic<TSTATE> state = TSTATE::RUNNING; // Readable without locking; writes from other threads require mutex
+   std::atomic<bool> interrupted = false;        // Readable without locking; set by WakeThread() under mutex
+};
+
+extern std::mutex glmThreadRegistry;
+extern std::unordered_map<int, std::shared_ptr<ThreadRecord>> glThreadRegistry;
+
 //********************************************************************************************************************
 
 struct CaseInsensitiveMap {
@@ -1029,6 +1043,9 @@ class RootModule : public Object {
 };
 
 THREADID get_thread_id(void);
+void deregister_thread(void);
+[[nodiscard]] std::shared_ptr<ThreadRecord> get_thread_record(void);
+ERR WakeThread(int Thread, int Stop = false);
 
 //********************************************************************************************************************
 
