@@ -468,7 +468,7 @@ end
 -- async.pending() returns a positive count while an async action is in-flight or queued.
 
 @Test(priority=22) function PendingCountDuringAsync()
-   script = obj.new('script', { statement=[[ processing.sleep(0.5) ]] })
+   script = obj.new('script', { statement=[[ mSys.WaitTime(0.5) ]] })
 
    async.script(script)
 
@@ -498,7 +498,7 @@ end
 -- async.cancel() drains queued actions and the callback receives an error.
 
 @Test(priority=24) function CancelDrainsQueue()
-   script = obj.new('script', { statement=[[ processing.sleep(2.0) ]] })
+   script = obj.new('script', { statement=[[ mSys.WaitTime(2.0) ]] })
 
    glCancelCallbackCount = 0
 
@@ -527,20 +527,20 @@ end
 -- async.cancel() accepts an array<object> argument.
 
 @Test(priority=25) function CancelArrayOfObjects()
-   script_a = obj.new('script', { statement=[[ processing.sleep(2.0) ]] })
-   script_b = obj.new('script', { statement=[[ processing.sleep(2.0) ]] })
+   script_a = obj.new('script', { statement=[[ mSys.WaitTime(2.0) ]] })
+   script_b = obj.new('script', { statement=[[ mSys.WaitTime(2.0) ]] })
 
    async.script(script_a)
    async.script(script_b)
 
    -- Allow threads to register before cancelling.
-   processing.sleep(0.1)
+   processing.sleep(0.25)
 
    err = async.cancel(array<object> { script_a, script_b })
    assert(err is ERR_Okay, f'async.cancel(array) failed: {err}')
 
-   check async.wait(script_a, 5.0)
-   check async.wait(script_b, 5.0)
+   check async.wait(script_a, 3.0)
+   check async.wait(script_b, 3.0)
 
    assert(async.pending(script_a) is 0, 'script_a should have no pending actions')
    assert(async.pending(script_b) is 0, 'script_b should have no pending actions')
