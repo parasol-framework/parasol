@@ -390,13 +390,69 @@ static int async_wait(lua_State *Lua)
 }
 
 //********************************************************************************************************************
+// Usage: count = async.pending(Object)
+//
+// Returns the number of queued and in-flight async actions for an object.
+
+static int async_pending(lua_State *Lua)
+{
+   GCobject *gc_obj = lj_lib_checkobject(Lua, 1);
+   if (not gc_obj->ptr) luaL_error(Lua, ERR::ObjectCorrupt);
+   lua_pushinteger(Lua, AsyncPending(gc_obj->uid));
+   return 1;
+}
+
+//********************************************************************************************************************
+// Usage: error = async.cancel(Object|array<object>)
+//
+// Cancel all pending asynchronous actions for the listed objects.  The in-flight thread (if any) is interrupted
+// and the remaining action queue is drained without execution.
+
+static int async_cancel(lua_State *Lua)
+{
+   std::vector<OBJECTID> ids;
+
+   auto type = lua_type(Lua, 1);
+   if (type IS LUA_TOBJECT) {
+      auto gc_obj = lua_toobject(Lua, 1);
+      if (not gc_obj or not gc_obj->ptr) luaL_error(Lua, ERR::ObjectCorrupt);
+      ids.push_back(gc_obj->uid);
+   }
+   else if (type IS LUA_TARRAY) {
+      GCarray *arr = lua_toarray(Lua, 1);
+      if (arr->elemtype IS AET::OBJECT) {
+         auto refs = arr->get<GCRef>();
+         for (MSize i = 0; i < arr->len; i++) {
+            if (gcref(refs[i])) {
+               auto gc_obj = gco_to_object(gcref(refs[i]));
+               if (gc_obj and gc_obj->uid) ids.push_back(gc_obj->uid);
+            }
+         }
+      }
+      else luaL_argerror(Lua, 1, "Expected an array<object>.");
+   }
+   else luaL_argerror(Lua, 1, "Expected an object or array<object>.");
+
+   ERR error = ERR::Okay;
+   if (not ids.empty()) {
+      error = AsyncCancel(ids.data(), int(ids.size()));
+      if ((error != ERR::Okay) and (in_try_immediate_scope(Lua))) luaL_error(Lua, error);
+   }
+
+   lua_pushinteger(Lua, int(error));
+   return 1;
+}
+
+//********************************************************************************************************************
 // Register the async interface.
 
 static const luaL_Reg asynclib_functions[] = {
-   { "action", async_action },
-   { "method", async_method },
-   { "script", async_script },
-   { "wait",   async_wait },
+   { "action",  async_action },
+   { "cancel",  async_cancel },
+   { "method",  async_method },
+   { "pending", async_pending },
+   { "script",  async_script },
+   { "wait",    async_wait },
    { nullptr, nullptr }
 };
 
@@ -556,8 +612,10 @@ void register_async_class(lua_State *Lua)
    lua_pop(Lua, 2);                            // Pop async table and pool table
 
    // Register async interface prototypes for compile-time type inference
-   reg_iface_prototype("async", "action", {}, { TiriType::Any, TiriType::Any, TiriType::Func, TiriType::Num });
-   reg_iface_prototype("async", "method", {}, { TiriType::Any, TiriType::Any, TiriType::Func, TiriType::Num });
-   reg_iface_prototype("async", "script", {}, { TiriType::Object, TiriType::Func });
-   reg_iface_prototype("async", "wait", { TiriType::Num }, { TiriType::Any, TiriType::Num });
+   reg_iface_prototype("async", "action",  {}, { TiriType::Any, TiriType::Any, TiriType::Func, TiriType::Num });
+   reg_iface_prototype("async", "cancel",  { TiriType::Num }, { TiriType::Any });
+   reg_iface_prototype("async", "method",  {}, { TiriType::Any, TiriType::Any, TiriType::Func, TiriType::Num });
+   reg_iface_prototype("async", "pending", { TiriType::Num }, { TiriType::Object });
+   reg_iface_prototype("async", "script",  {}, { TiriType::Object, TiriType::Func });
+   reg_iface_prototype("async", "wait",    { TiriType::Num }, { TiriType::Any, TiriType::Num });
 }
