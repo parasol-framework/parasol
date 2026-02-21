@@ -16,6 +16,7 @@
 #include <thread>
 #include <algorithm>
 #include <ankerl/unordered_dense.h>
+#include <unordered_set>
 
 using namespace std::chrono_literals;
 
@@ -199,8 +200,9 @@ extern std::recursive_mutex glmMsgHandler;
 extern std::recursive_mutex glmAsyncActions;
 
 extern std::mutex glmActionQueue;
-extern ankerl::unordered_dense::map<OBJECTID, std::deque<QueuedAction>> glActionQueues;
-extern ankerl::unordered_dense::set<OBJECTID> glActiveAsyncObjects;
+extern std::unordered_map<OBJECTID, std::deque<QueuedAction>> glActionQueues;
+extern std::unordered_set<OBJECTID> glActiveAsyncObjects;
+extern std::unordered_map<OBJECTID, int> glAsyncObjectThreads;
 
 extern std::condition_variable_any cvResources;
 extern std::condition_variable_any cvObjects;
@@ -1094,7 +1096,6 @@ void   stop_async_actions(void);
 ERR    copy_args(const FunctionField *, int, int8_t *, std::vector<int8_t> &);
 ERR    create_archive_volume(void);
 void   dispatch_queued_action(OBJECTID);
-void   drain_action_queue(OBJECTID, bool = false);
 ERR    delete_tree(std::string &, FUNCTION *, FileFeedback *);
 struct ClassItem * find_class(CLASSID);
 ERR    find_private_object_entry(OBJECTID, int *);

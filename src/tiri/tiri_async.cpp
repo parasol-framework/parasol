@@ -639,4 +639,3 @@ void register_async_class(lua_State *Lua)
    reg_iface_prototype("async", "script", {}, { TiriType::Object, TiriType::Func });
    reg_iface_prototype("async", "wait", { TiriType::Num }, { TiriType::Any, TiriType::Num });
 }
-

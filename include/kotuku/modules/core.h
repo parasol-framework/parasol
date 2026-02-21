@@ -2017,6 +2017,7 @@ struct CoreBase {
    OBJECTPTR (*_ParentContext)(void);
    void (*_SetResourceMgr)(APTR Address, struct ResourceManager *Manager);
    ERR (*_WakeThread)(int Thread, int Stop);
+   ERR (*_AsyncCancel)(OBJECTID *Objects);
 #endif // KOTUKU_STATIC
 };
 
@@ -2112,6 +2113,7 @@ inline ERR CreateLink(CSTRING From, CSTRING To) { return CoreBase->_CreateLink(F
 inline OBJECTPTR ParentContext(void) { return CoreBase->_ParentContext(); }
 inline void SetResourceMgr(APTR Address, struct ResourceManager *Manager) { return CoreBase->_SetResourceMgr(Address,Manager); }
 inline ERR WakeThread(int Thread, int Stop) { return CoreBase->_WakeThread(Thread,Stop); }
+inline ERR AsyncCancel(OBJECTID *Objects) { return CoreBase->_AsyncCancel(Objects); }
 #else
 extern "C" ERR AccessMemory(MEMORYID Memory, MEM Flags, int MilliSeconds, APTR *Result);
 extern "C" ERR Action(AC Action, OBJECTPTR Object, APTR Parameters);
@@ -2202,6 +2204,7 @@ extern "C" ERR CreateLink(CSTRING From, CSTRING To);
 extern "C" OBJECTPTR ParentContext(void);
 extern "C" void SetResourceMgr(APTR Address, struct ResourceManager *Manager);
 extern "C" ERR WakeThread(int Thread, int Stop);
+extern "C" ERR AsyncCancel(OBJECTID *Objects);
 #endif // KOTUKU_STATIC
 
 

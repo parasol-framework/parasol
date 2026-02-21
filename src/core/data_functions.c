@@ -15,6 +15,7 @@ FDEF argsAllocMemory[] = { { "Error", FD_INT|FD_ERROR }, { "Size", FD_INT }, { "
 FDEF argsAllocateID[] = { { "Result", FD_INT }, { "Type", FD_INT }, { 0, 0 } };
 FDEF argsAnalysePath[] = { { "Error", FD_INT|FD_ERROR }, { "Path", FD_STR }, { "Type", FD_INT|FD_RESULT }, { 0, 0 } };
 FDEF argsAsyncAction[] = { { "Error", FD_INT|FD_ERROR }, { "Action", FD_INT }, { "Object", FD_OBJECTPTR }, { "Args", FD_PTR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
+FDEF argsAsyncCancel[] = { { "Error", FD_INT|FD_ERROR }, { "Objects", FD_PTR }, { 0, 0 } };
 FDEF argsBroadcastEvent[] = { { "Error", FD_INT|FD_ERROR }, { "Event", FD_PTR }, { "EventSize", FD_INT }, { 0, 0 } };
 FDEF argsCheckAction[] = { { "Error", FD_INT|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_INT }, { 0, 0 } };
 FDEF argsCheckMemoryExists[] = { { "Error", FD_INT|FD_ERROR }, { "ID", FD_INT }, { 0, 0 } };
@@ -186,6 +187,7 @@ const struct Function glFunctions[] = {
    { (APTR)ParentContext, "ParentContext", argsParentContext },
    { (APTR)SetResourceMgr, "SetResourceMgr", argsSetResourceMgr },
    { (APTR)WakeThread, "WakeThread", argsWakeThread },
+   { (APTR)AsyncCancel, "AsyncCancel", argsAsyncCancel },
    { nullptr, nullptr, nullptr }
 };
 

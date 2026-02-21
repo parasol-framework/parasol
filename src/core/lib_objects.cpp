@@ -26,6 +26,8 @@ Name: Objects
 
 using namespace pf;
 
+static void drain_action_queue(OBJECTID, bool = false);
+
 //********************************************************************************************************************
 
 void stop_async_actions(void)
@@ -69,6 +71,7 @@ void stop_async_actions(void)
       std::lock_guard<std::mutex> lock(glmActionQueue);
       glActionQueues.clear();
       glActiveAsyncObjects.clear();
+      glAsyncObjectThreads.clear();
    }
 }
 
@@ -587,6 +590,12 @@ void dispatch_queued_action(OBJECTID ObjectID)
 {
    pf::Log log(__FUNCTION__);
 
+   // Do not consume queued actions if the process is shutting down.
+   if (glTaskState IS TSTATE::STOPPING) {
+      drain_action_queue(ObjectID);
+      return;
+   }
+
    QueuedAction next;
    bool queue_empty = false;
    {
@@ -663,7 +672,7 @@ void dispatch_queued_action(OBJECTID ObjectID)
 // Drain all queued actions for an object, sending error callbacks for each.  Called when the object
 // is being freed or is otherwise no longer valid.
 
-void drain_action_queue(OBJECTID ObjectID, bool Terminating)
+static void drain_action_queue(OBJECTID ObjectID, bool Terminating)
 {
    pf::Log log(__FUNCTION__);
 
@@ -734,7 +743,11 @@ static void launch_async_thread(OBJECTPTR Object, ACTIONID ActionID, int ArgsSiz
       auto obj = Object;
 
       // Cleanup function to remove thread from tracking
-      auto cleanup = [thread_ptr]() {
+      auto cleanup = [thread_ptr, object_uid]() {
+         {
+            std::lock_guard<std::mutex> lock(glmActionQueue);
+            glAsyncObjectThreads.erase(object_uid);
+         }
          deregister_thread();
          std::lock_guard<std::recursive_mutex> lock(glmAsyncActions);
          glAsyncThreads.erase(thread_ptr);
@@ -742,7 +755,19 @@ static void launch_async_thread(OBJECTPTR Object, ACTIONID ActionID, int ArgsSiz
 
       // Check for stop request before proceeding
 
-      if (stop_token.stop_requested()) {
+      auto thread_rec = get_thread_record();
+
+      // Register the mapping from object ID to thread ID so that AsyncCancel() can target this thread.
+      {
+         std::lock_guard<std::mutex> lock(glmActionQueue);
+         glAsyncObjectThreads[object_uid] = int(get_thread_id());
+      }
+      auto is_stopping = [&stop_token, &thread_rec]() {
+         return stop_token.stop_requested()
+            or (thread_rec and thread_rec->state.load(std::memory_order_acquire) IS TSTATE::STOPPING);
+      };
+
+      if (is_stopping()) {
          ThreadActionMessage msg = {
             .ActionID = ActionID,
             .ObjectID = object_uid,
@@ -757,7 +782,7 @@ static void launch_async_thread(OBJECTPTR Object, ACTIONID ActionID, int ArgsSiz
       ERR error;
       if (error = LockObject(obj, 5000); error IS ERR::Okay) { // Access the object and process the action.
          // Check for stop request before executing action
-         if (not stop_token.stop_requested()) {
+         if (not is_stopping()) {
             error = Action(ActionID, obj, ArgsSize ? (APTR)Parameters.data() : nullptr);
          }
 
@@ -769,24 +794,18 @@ static void launch_async_thread(OBJECTPTR Object, ACTIONID ActionID, int ArgsSiz
       }
 
       // Always send a completion message so that msg_threadaction() can dispatch the next queued action.
+      // Preserve the callback on cancellation so script-side cleanup still runs.
 
-      if (not stop_token.stop_requested()) {
-         ThreadActionMessage msg = {
-            .ActionID = ActionID,
-            .ObjectID = object_uid,
-            .Error    = error,
-            .Callback = Callback
-         };
-         SendMessage(MSGID::THREAD_ACTION, MSF::NIL, &msg, sizeof(msg));
-      }
-      else {
-         // Thread was stopped; send a minimal message so the main thread handles queue dispatch.
-         ThreadActionMessage msg = {
-            .ActionID = ActionID,
-            .ObjectID = object_uid,
-         };
-         SendMessage(MSGID::THREAD_ACTION, MSF::NIL, &msg, sizeof(msg));
-      }
+      auto completion_error = error;
+      if (is_stopping()) completion_error = ERR::Cancelled;
+
+      ThreadActionMessage msg = {
+         .ActionID = ActionID,
+         .ObjectID = object_uid,
+         .Error    = completion_error,
+         .Callback = Callback
+      };
+      SendMessage(MSGID::THREAD_ACTION, MSF::NIL, &msg, sizeof(msg));
 
       cleanup();
    });
@@ -868,6 +887,57 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
    }
 
    return error;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+AsyncCancel: Drain the pending queue for listed objects without executing the remaining actions.
+
+Call AsyncCancel() to cancel all pending asynchronous actions for the listed objects.  Each object's currently active
+async thread (if any) is interrupted via ~WakeThread() with Stop set to true, and the remaining action queue is
+drained without execution.
+
+Callbacks for queued actions will receive `ERR::DoesNotExist` to indicate cancellation.
+
+-INPUT-
+ptr(oid) Objects: A zero-terminated array of object IDs to cancel.
+
+-ERRORS-
+Okay
+NullArgs
+
+*********************************************************************************************************************/
+
+ERR AsyncCancel(OBJECTID *Objects)
+{
+   pf::Log log(__FUNCTION__);
+
+   if (not Objects) return ERR::NullArgs;
+
+   for (auto i = 0; Objects[i]; i++) {
+      auto object_id = Objects[i];
+
+      log.traceBranch("Cancelling async actions for object #%d", object_id);
+
+      // Wake the thread with Stop=true to interrupt any active async operation.
+
+      int thread_id;
+      {
+         std::lock_guard<std::mutex> lock(glmActionQueue);
+         auto it = glAsyncObjectThreads.find(object_id);
+         if (it != glAsyncObjectThreads.end()) {
+            thread_id = it->second;
+         }
+         else thread_id = 0;
+      }
+
+      if (thread_id) WakeThread(thread_id, true);
+
+      drain_action_queue(object_id);
+   }
+
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************

@@ -1079,7 +1079,8 @@ struct ScriptArg { // For use with sc::Exec
     "CreateLink",
     "ParentContext",
     "SetResourceMgr",
-    "WakeThread")
+    "WakeThread",
+    "AsyncCancel")
 
   c_insert([==[
 
