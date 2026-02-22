@@ -33,6 +33,11 @@
 
 cmake_minimum_required(VERSION 3.15)
 
+if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+   message (STATUS "CMAKE_BUILD_TYPE not set, defaulting to Release")
+   set (CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+endif ()
+
 include (CheckIncludeFiles)
 include (CheckTypeSize)
 include (CheckFunctionExists)
