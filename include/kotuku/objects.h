@@ -142,8 +142,11 @@ inline bool has(DMF Value, DMF Flags) { return (Value & Flags) != DMF::NIL; }
 #define END_FIELD FieldArray(nullptr, 0)
 #define FDEF static const struct FunctionField
 
+//********************************************************************************************************************
 // Locking system for when you have a) the object pointer and b) high confidence that it's alive.
 // Otherwise use ScopedObjectLock.
+//
+// NOTE: Can terminate the object on release if it is marked for termination.
 
 class ScopedObjectAccess {
    private:
@@ -155,6 +158,26 @@ class ScopedObjectAccess {
       inline ScopedObjectAccess(OBJECTPTR Object);
       inline ~ScopedObjectAccess();
       inline bool granted() { return error == ERR::Okay; }
+      inline void release();
+};
+
+//********************************************************************************************************************
+// Lightweight shared access for when you only need to read stable/immutable object fields and prevent
+// the object from being freed.  Does not acquire an exclusive lock, so it never blocks.  Suitable
+// when the caller does not modify object state (or protects mutations with a separate mutex).
+//
+// NOTE: Can terminate the object on release if it is marked for termination.
+
+class SharedObjectAccess {
+   private:
+      OBJECTPTR obj;
+
+   public:
+      ERR error;
+
+      inline SharedObjectAccess(OBJECTPTR Object);
+      inline ~SharedObjectAccess();
+      inline bool granted() { return error IS ERR::Okay; }
       inline void release();
 };
 
@@ -974,6 +997,29 @@ inline ScopedObjectAccess::~ScopedObjectAccess() {
 inline void ScopedObjectAccess::release() {
    if (error IS ERR::Okay) {
       obj->unlock();
+      error = ERR::ResourceNotLocked;
+   }
+}
+
+//********************************************************************************************************************
+
+inline SharedObjectAccess::SharedObjectAccess(OBJECTPTR Object) {
+   obj = Object;
+   obj->pin();
+   if (obj->collecting()) {
+      obj->unpin();
+      error = ERR::MarkedForDeletion;
+   }
+   else error = ERR::Okay;
+}
+
+inline SharedObjectAccess::~SharedObjectAccess() {
+   if (error IS ERR::Okay) obj->unpin(true);
+}
+
+inline void SharedObjectAccess::release() {
+   if (error IS ERR::Okay) {
+      obj->unpin(true);
       error = ERR::ResourceNotLocked;
    }
 }
