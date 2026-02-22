@@ -86,7 +86,7 @@ static void notify_signal_wfo(OBJECTPTR Object, ACTIONID ActionID, ERR Result, A
 
       UnsubscribeAction(ref.Object, AC::Free);
       UnsubscribeAction(ref.Object, AC::Signal);
-      ref.Object->Flags = ref.Object->Flags & (~NF::SIGNALLED);
+      ref.Object->clearFlag(NF::SIGNALLED);
 
       glWFOList.erase(lref);
 
@@ -655,7 +655,7 @@ ERR WaitForObjects(PMF Flags, int TimeOut, ObjectSignal *ObjectSignals)
             if (ObjectSignals[i].Object->defined(NF::SIGNALLED)) {
                // Objects that have already been signalled do not require monitoring and we switch off the
                // signal flag.
-               ObjectSignals[i].Object->Flags = ObjectSignals[i].Object->Flags & (~NF::SIGNALLED);
+               ObjectSignals[i].Object->clearFlag(NF::SIGNALLED);
             }
             else {
                // NB: An object being freed is treated as equivalent to it receiving a signal.

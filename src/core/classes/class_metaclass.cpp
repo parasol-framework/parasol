@@ -158,7 +158,7 @@ extMetaClass glMetaClass;
 
 static ERR DEFAULT_Signal(OBJECTPTR Object, APTR Void)
 {
-   Object->Flags |= NF::SIGNALLED;
+   Object->setFlag(NF::SIGNALLED);
    return ERR::Okay;
 }
 
@@ -168,7 +168,7 @@ void init_metaclass(void)
 {
    glMetaClass.Object::Class   = &glMetaClass;
    glMetaClass.Object::UID     = 123;
-   glMetaClass.Object::Flags   = NF::INITIALISED;
+   glMetaClass.setFlag(NF::INITIALISED);
 
    glMetaClass.ClassVersion       = 1;
    glMetaClass.Fields             = glMetaFields;

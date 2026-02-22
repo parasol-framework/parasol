@@ -815,7 +815,7 @@ ERR SubscribeTimer(double Interval, FUNCTION *Callback, APTR *Subscription)
       // For resource tracking purposes it is important for us to keep a record of the subscription so that
       // we don't treat the object address as valid when it's been removed from the system.
 
-      subscriber->Flags |= NF::TIMER_SUB;
+      subscriber->setFlag(NF::TIMER_SUB);
       if (Subscription) *Subscription = &*it;
       return ERR::Okay;
    }
