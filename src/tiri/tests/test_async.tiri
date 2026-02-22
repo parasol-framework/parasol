@@ -525,21 +525,35 @@ end
 -- async.cancel() accepts an array<object> argument.
 
 @Test(priority=25) function CancelArrayOfObjects()
-   script_a = obj.new('script', { statement=[[ mSys.WaitTime(2.0) ]] })
-   script_b = obj.new('script', { statement=[[ mSys.WaitTime(2.0) ]] })
+   script_a = obj.new('script', { statement=[[ mSys.WaitTime(1.0) ]] })
+   script_b = obj.new('script', { statement=[[ mSys.WaitTime(1.0) ]] })
+
+   start = mSys.PreciseTime()
+   elapsed = (a) => (mSys.PreciseTime() - start)/1000000
 
    async.script(script_a)
+   print('Started script_a at ', elapsed(), ' seconds')
    async.script(script_b)
+   print('Started script_b at ', elapsed(), ' seconds')
 
    -- Allow threads to register before cancelling.
    processing.sleep(0.25)
 
+   print('Cancelling both scripts at ', elapsed(), ' seconds')
    check async.cancel(array<object> { script_a, script_b })
-   check async.wait(script_a, 3.0)
-   check async.wait(script_b, 3.0)
 
-   assert(async.pending(script_a) is 0, 'script_a should have no pending actions')
-   assert(async.pending(script_b) is 0, 'script_b should have no pending actions')
+   print('Waiting for cancellation to complete at ', elapsed(), ' seconds')
+
+   check async.wait(script_a, 3.0)
+   print('script_a cancellation complete at ', elapsed(), ' seconds')
+
+   check async.wait(script_b, 3.0)
+   print('script_b cancellation complete at ', elapsed(), ' seconds')
+
+   a_pending = async.pending(script_a)
+   b_pending = async.pending(script_b)
+   assert(a_pending is 0, f'script_a should have no pending actions, got {a_pending}')
+   assert(b_pending is 0, f'script_b should have no pending actions, got {b_pending}')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
