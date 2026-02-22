@@ -140,7 +140,7 @@ ERR msg_free(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize)
    OBJECTPTR obj;
    if (AccessObject(((OBJECTID *)Message)[0], 10000, &obj) IS ERR::Okay) {
       // Use PermitTerminate to inform object_free() that the object can be terminated safely while the lock is held.
-      obj->Flags |= NF::PERMIT_TERMINATE;
+      obj->setFlag(NF::PERMIT_TERMINATE);
       FreeResource(obj);
    }
    return ERR::Okay;
@@ -170,7 +170,7 @@ static ERR object_free(Object *Object)
    if (((Object->Queue > 1) or (Object->isPinned())) and (not Object->defined(NF::PERMIT_TERMINATE))) {
       log.detail("Object #%d locked/pinned; marking for deletion.", Object->UID);
       if ((Object->Owner) and (Object->Owner->collecting())) Object->Owner = nullptr; // The Owner pointer is no longer safe to use
-      Object->Flags |= NF::FREE_ON_UNLOCK;
+      Object->setFlag(NF::FREE_ON_UNLOCK);
       return ERR::InUse;
    }
 
@@ -184,7 +184,7 @@ static ERR object_free(Object *Object)
       log.trace("Object in use; marking for collection.");
       if ((Object->Owner) and (Object->Owner->collecting())) Object->Owner = nullptr;
       if (not Object->defined(NF::COLLECT)) {
-         Object->Flags |= NF::COLLECT;
+         Object->setFlag(NF::COLLECT);
          SendMessage(MSGID::FREE, MSF::NIL, &Object->UID, sizeof(OBJECTID));
       }
       return ERR::InUse;
@@ -236,7 +236,8 @@ static ERR object_free(Object *Object)
    // Mark the object as being in the free process.  The mark prevents any further access to the object via
    // AccessObject().  Classes may also use the flag to check if an object is in the process of being freed.
 
-   Object->Flags = (Object->Flags|NF::FREE) & (~NF::FREE_ON_UNLOCK);
+   Object->setFlag(NF::FREE);
+   Object->clearFlag(NF::FREE_ON_UNLOCK);
 
    NotifySubscribers(Object, AC::Free, nullptr, ERR::Okay);
 
@@ -418,7 +419,7 @@ void dispatch_queued_action(OBJECTID ObjectID)
       ScopedObjectLock obj(ObjectID);
       if (obj.granted()) {
          if (obj->defined(NF::ASYNC_ACTIVE)) {
-            obj->Flags &= ~NF::ASYNC_ACTIVE;
+            obj->clearFlag(NF::ASYNC_ACTIVE);
             async_wait_callback(obj->UID, false);
          }
       }
@@ -453,7 +454,7 @@ void dispatch_queued_action(OBJECTID ObjectID)
       // The object is no longer accessible (freed or otherwise invalid).  Treat this identically
       // to the terminating case: send an error callback and drain the remaining queue.
 
-      log.warning(obj.error);
+      log.traceWarning(obj.error);
 
       if (next.Callback.defined()) {
          ThreadActionMessage msg = {
@@ -494,7 +495,7 @@ static void drain_action_queue(OBJECTID ObjectID, bool Terminating)
       ScopedObjectLock obj(ObjectID);
       if (obj.granted()) {
          if (obj->defined(NF::ASYNC_ACTIVE)) {
-            obj->Flags &= ~NF::ASYNC_ACTIVE;
+            obj->clearFlag(NF::ASYNC_ACTIVE);
             async_wait_callback(obj->UID, false);
          }
       }
@@ -896,7 +897,7 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
          }
          else {
             glActiveAsyncObjects.insert(object_id);
-            Object->Flags |= NF::ASYNC_ACTIVE;
+            Object->setFlag(NF::ASYNC_ACTIVE);
             async_wait_callback(object_id, true);
          }
       }
@@ -1564,7 +1565,7 @@ ERR InitObject(OBJECTPTR Object)
             error = cl->ActionTable[int(AC::Init)].PerformAction(Object, nullptr);
          }
 
-         if (error IS ERR::Okay) Object->Flags |= NF::INITIALISED;
+         if (error IS ERR::Okay) Object->setFlag(NF::INITIALISED);
       }
 
       return error;
@@ -1590,7 +1591,7 @@ ERR InitObject(OBJECTPTR Object)
          else error = ERR::Okay; // If no initialiser defined, auto-OK
 
          if (error IS ERR::Okay) {
-            Object->Flags |= NF::INITIALISED;
+            Object->setFlag(NF::INITIALISED);
 
             if (Object->isSubClass()) {
                // Increase the open count of the sub-class (see NewObject() for details on object
@@ -1599,7 +1600,7 @@ ERR InitObject(OBJECTPTR Object)
                log.msg("Object class switched to sub-class \"%s\".", Object->className());
 
                Object->ExtClass->OpenCount++;
-               Object->Flags |= NF::RECLASSED; // This flag indicates that the object originally belonged to the base-class
+               Object->setFlag(NF::RECLASSED); // This flag indicates that the object originally belonged to the base-class
             }
 
             return ERR::Okay;
@@ -1641,7 +1642,7 @@ ERR InitObject(OBJECTPTR Object)
                if (Object->ExtClass->ActionTable[int(AC::Init)].PerformAction) {
                   if ((error = Object->ExtClass->ActionTable[int(AC::Init)].PerformAction(Object, nullptr)) IS ERR::Okay) {
                      log.msg("Object class switched to sub-class \"%s\".", Object->className());
-                     Object->Flags |= NF::INITIALISED;
+                     Object->setFlag(NF::INITIALISED);
                      Object->ExtClass->OpenCount++;
                      return ERR::Okay;
                   }
@@ -1756,7 +1757,7 @@ ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object)
    // If the object is local then turn off use of the UNTRACKED flag (otherwise the child will
    // end up being tracked to its task rather than its parent object).
 
-   if ((Flags & NF::LOCAL) != NF::NIL) Flags = Flags & (~NF::UNTRACKED);
+   if ((Flags & NF::LOCAL) != NF::NIL) Flags &= ~NF::UNTRACKED;
 
    // Force certain flags on the class' behalf
 
@@ -1788,7 +1789,7 @@ ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object)
 
       head->UID     = head_id;
       head->Class   = (extMetaClass *)mc;
-      head->Flags   = Flags;
+      head->setFlag(Flags);
 
       // Tracking for our new object is configured here.
 

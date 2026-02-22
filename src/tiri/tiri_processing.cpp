@@ -154,9 +154,9 @@ static int processing_sleep(lua_State *Lua)
          error = WaitForObjects(timeout IS -1 ? PMF::EVENT_LOOP : PMF::NIL, timeout, signal_list_c.get());
       }
       else { // Default behaviour: Sleeping can be broken with a signal to the Tiri object.
-         if ((Lua->script->Object::Flags & NF::SIGNALLED) != NF::NIL) {
+         if (Lua->script->defined(NF::SIGNALLED)) {
             log.detail("Lua script already in signalled state.");
-            Lua->script->Object::Flags = Lua->script->Object::Flags & (~NF::SIGNALLED);
+            Lua->script->clearFlag(NF::SIGNALLED);
             error = ERR::Okay;
          }
          else {
@@ -197,7 +197,7 @@ static int processing_signal(lua_State *Lua)
 
 static int processing_flush(lua_State *Lua)
 {
-   Lua->script->Object::Flags = Lua->script->Object::Flags & (~NF::SIGNALLED);
+   Lua->script->clearFlag(NF::SIGNALLED);
    return 0;
 }
 
@@ -335,10 +335,10 @@ static int processing_get(lua_State *Lua)
          return 1;
       }
       else if (std::string_view("flush") IS fieldname) {
-         Lua->script->Object::Flags = Lua->script->Object::Flags & (~NF::SIGNALLED);
+         Lua->script->clearFlag(NF::SIGNALLED);
          if (auto fp = (fprocessing *)get_meta(Lua, lua_upvalueindex(1), "Tiri.processing")) {
             for (auto &entry : *fp->Signals) {
-               entry.Object->Flags &= (~NF::SIGNALLED);
+               entry.Object->clearFlag(NF::SIGNALLED);
             }
          }
          return 0;

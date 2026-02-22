@@ -224,6 +224,9 @@ inline void RestoreObjectContext() { SetObjectContext(nullptr, nullptr, AC::NIL)
 
 //********************************************************************************************************************
 // Header used for all objects.
+// Note on object locking: If a routine's intent is to operate on the Object structure only, without mutating the
+// state of the object's superset, it is not strictly necessary to acquire a lock.  Writeable values are managed with
+// atomics and the rest are considered read-only, making many operating patterns safe.
 
 struct Object { // Must be 64-bit aligned
    union {
@@ -239,22 +242,30 @@ struct Object { // Must be 64-bit aligned
    std::atomic_char SleepQueue;  // For the use of LockObject() only
    std::atomic_uint8_t RefCount; // Reference counting - object cannot be freed until this reaches 0.  NB: This is not a locking mechanism!
    OBJECTID UID;                 // Unique object identifier
-   NF       Flags;               // Object flags
+   std::atomic<uint32_t> Flags;  // Object flags
    std::atomic_int ThreadID;     // Managed by locking functions.  Atomic due to volatility.
    char Name[MAX_NAME_LEN];      // The name of the object.  NOTE: This value can be adjusted to ensure that the struct is always 8-bit aligned.
 
    // NB: This constructor is called by NewObject(), no need to call it manually from client code.
 
    Object() : Class(nullptr), ChildPrivate(nullptr), CreatorMeta(nullptr), Owner(nullptr), NotifyFlags(0),
-      ActionDepth(0), Queue(0), SleepQueue(0), RefCount(0), UID(0), Flags(NF::NIL), ThreadID(0), Name("") { }
+      ActionDepth(0), Queue(0), SleepQueue(0), RefCount(0), UID(0), Flags(0), ThreadID(0), Name("") { }
 
-   [[nodiscard]] inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
-   [[nodiscard]] inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
+   [[nodiscard]] inline bool initialised() { return Flags.load() & uint32_t(NF::INITIALISED); }
+   [[nodiscard]] inline bool defined(NF pFlags) { return Flags.load() & uint32_t(pFlags); }
    [[nodiscard]] inline bool isSubClass();
    [[nodiscard]] inline OBJECTID ownerID() { return Owner ? Owner->UID : 0; }
    [[nodiscard]] inline CLASSID classID();
    [[nodiscard]] inline CLASSID baseClassID();
-   [[nodiscard]] inline NF flags() { return Flags; }
+   [[nodiscard]] inline NF flags() { return NF(Flags.load()); }
+
+   inline void setFlag(NF pFlag) {
+      Flags.fetch_or(uint32_t(pFlag), std::memory_order_relaxed);
+   }
+
+   inline void clearFlag(NF pFlag) {
+      Flags.fetch_and(~uint32_t(pFlag), std::memory_order_relaxed);
+   }
 
    // Pinning an object provides a strong hint that the object is referenced by a variable, stored in a container, or needed by a thread.
    // Pinned objects will short-circuit ReleaseObject's automatic free-on-unlock feature, making it necessary to manually call freeIfReady()
@@ -960,7 +971,7 @@ class Create {
       ~Create() {
          if (obj) {
             if (obj->initialised()) {
-               if ((obj->Object::Flags & (NF::UNTRACKED|NF::LOCAL)) != NF::NIL)  {
+               if (obj->defined(NF::UNTRACKED|NF::LOCAL))  {
                   return; // Detected a successfully created unscoped object
                }
             }

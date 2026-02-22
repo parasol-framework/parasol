@@ -745,7 +745,7 @@ void ReleaseObject(OBJECTPTR Object)
          // Destroy the object if marked for deletion and not pinned by reference counting.
 
          if (Object->defined(NF::FREE_ON_UNLOCK) and (not Object->defined(NF::FREE)) and (not Object->isPinned())) {
-            Object->Flags &= ~NF::FREE_ON_UNLOCK;
+            Object->clearFlag(NF::FREE_ON_UNLOCK);
             FreeResource(Object);
          }
 
@@ -753,7 +753,7 @@ void ReleaseObject(OBJECTPTR Object)
       }
    }
    else if (Object->defined(NF::FREE_ON_UNLOCK) and (not Object->defined(NF::FREE)) and (not Object->isPinned())) {
-      Object->Flags &= ~NF::FREE_ON_UNLOCK;
+      Object->clearFlag(NF::FREE_ON_UNLOCK);
       FreeResource(Object);
    }
 }
