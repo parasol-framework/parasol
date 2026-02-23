@@ -1,0 +1,28 @@
+<!--
+Test the impact of transforms on lighting effects.  The test passes if the lit area in the scaled image is an exact match
+to the original's position and dimensions.
+-->
+
+<svg version="1.1" baseProfile="full" id="svg-root" width="480" height="360" viewBox="0 0 480 360"
+  xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+
+  <defs>
+    <filter id="spotLightA" filterUnits="objectBoundingBox" x="0" y="0" width="1" height="1">
+      <feDiffuseLighting in="SourceGraphic" diffuseConstant="1" surfaceScale="10" lighting-color="white">
+        <feSpotLight x="25" y="0" z="35" pointsAtX="25" pointsAtY="30" pointsAtZ="0" specularExponent="0" limitingConeAngle="30"/>
+      </feDiffuseLighting>
+    </filter>
+
+    <filter id="spotLightH" filterUnits="objectBoundingBox" x="0" y="0" width="1" height="1">
+      <feDiffuseLighting in="SourceGraphic" diffuseConstant="1" surfaceScale="10" lighting-color="white">
+        <feSpotLight x="25" y="0" z="35" pointsAtX="25" pointsAtY="30" pointsAtZ="0" specularExponent="0" limitingConeAngle="-5"/>
+      </feDiffuseLighting>
+    </filter>
+  </defs>
+
+  <rect transform="translate(0, 0)" width="50" height="30" filter="url(#spotLightA)"/>
+  <rect transform="translate(100, 0) scale(3)" width="50" height="30" filter="url(#spotLightA)"/>
+
+  <rect transform="translate(0, 180)" width="50" height="30" filter="url(#spotLightH)"/>
+  <rect transform="translate(100, 180) scale(3)" width="50" height="30" filter="url(#spotLightH)"/>
+</svg>

@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -26,7 +26,7 @@ unless otherwise documented.
 
 *********************************************************************************************************************/
 
-static std::unordered_map<extVector *, FUNCTION> glResizeSubscriptions; // Temporary cache for holding subscriptions.
+static ankerl::unordered_dense::map<extVector *, FUNCTION> glResizeSubscriptions; // Temporary cache for holding subscriptions.
 static std::mutex glResizeLock;
 
 static ERR VECTOR_Push(extVector *, struct vec::Push *);
@@ -34,11 +34,10 @@ static ERR VECTOR_Push(extVector *, struct vec::Push *);
 //********************************************************************************************************************
 // For the use of the VectorScene's Debug() method.
 
-void debug_tree(extVector *Vector, LONG &Level)
+void debug_tree(extVector *Vector, int &Level)
 {
    pf::Log log(__FUNCTION__);
-   char buffer[80];
-   LONG i;
+   int i;
 
    auto indent = std::make_unique<char[]>(Level + 1);
    for (i=0; i < Level; i++) indent[i] = ' '; // Indenting
@@ -47,17 +46,15 @@ void debug_tree(extVector *Vector, LONG &Level)
    Level++;
 
    for (auto v=Vector; v; v=(extVector *)v->Next) {
-      buffer[0] = 0;
-      if (FindField(v, FID_Dimensions, NULL)) {
-         GetFieldVariable(v, "$Dimensions", buffer, sizeof(buffer));
-      }
+      std::string dim;
+      if (FindField(v, FID_Dimensions, nullptr)) v->get(strihash("Dimensions"), dim);
 
       if ((v->Class->BaseClassID IS CLASSID::VECTOR) and (v->Child)) {
          pf::Log blog(__FUNCTION__);
-         blog.branch(" #%d%s %s %s %s", v->UID, indent.get(), v->Class->ClassName, v->Name, buffer);
+         blog.branch(" #%d%s %s %s %s", v->UID, indent.get(), v->Class->ClassName, v->Name, dim.c_str());
          debug_tree((extVector *)v->Child, Level);
       }
-      else log.msg(" #%d%s %s %s %s", v->UID, indent.get(), v->Class->ClassName, v->Name, buffer);
+      else log.msg(" #%d%s %s %s %s", v->UID, indent.get(), v->Class->ClassName, v->Name, dim.c_str());
    }
 
    Level--;
@@ -65,7 +62,7 @@ void debug_tree(extVector *Vector, LONG &Level)
 
 //********************************************************************************************************************
 
-static void validate_tree(extVector *Vector) __attribute__((unused));
+[[maybe_unused]] static void validate_tree(extVector *Vector);
 static void validate_tree(extVector *Vector)
 {
    pf::Log log(__FUNCTION__);
@@ -98,8 +95,8 @@ static ERR set_parent(extVector *Self, OBJECTPTR Owner)
 
    // Ensure that the sibling fields are valid, if not then clear them.
 
-   if ((Self->Prev) and (Self->Prev->Parent != Self->Parent)) Self->Prev = NULL;
-   if ((Self->Next) and (Self->Next->Parent != Self->Parent)) Self->Next = NULL;
+   if ((Self->Prev) and (Self->Prev->Parent != Self->Parent)) Self->Prev = nullptr;
+   if ((Self->Next) and (Self->Next->Parent != Self->Parent)) Self->Next = nullptr;
 
    if (Self->Parent->Class->BaseClassID IS CLASSID::VECTOR) {
       if ((!Self->Prev) and (!Self->Next)) {
@@ -153,25 +150,25 @@ static void notify_free(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Ar
 static void notify_free_appendpath(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extVector *)CurrentContext();
-   if ((Self->AppendPath) and (Object->UID IS Self->AppendPath->UID)) Self->AppendPath = NULL;
+   if ((Self->AppendPath) and (Object->UID IS Self->AppendPath->UID)) Self->AppendPath = nullptr;
 }
 
 static void notify_free_transition(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extVector *)CurrentContext();
-   if ((Self->Transition) and (Object->UID IS Self->Transition->UID)) Self->Transition = NULL;
+   if ((Self->Transition) and (Object->UID IS Self->Transition->UID)) Self->Transition = nullptr;
 }
 
 static void notify_free_morph(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extVector *)CurrentContext();
-   if ((Self->Morph) and (Object->UID IS Self->Morph->UID)) Self->Morph = NULL;
+   if ((Self->Morph) and (Object->UID IS Self->Morph->UID)) Self->Morph = nullptr;
 }
 
 static void notify_free_clipmask(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extVector *)CurrentContext();
-   if ((Self->ClipMask) and (Object->UID IS Self->ClipMask->UID)) Self->ClipMask = NULL;
+   if ((Self->ClipMask) and (Object->UID IS Self->ClipMask->UID)) Self->ClipMask = nullptr;
 }
 
 //********************************************************************************************************************
@@ -201,7 +198,7 @@ Okay:
 
 static ERR VECTOR_Debug(extVector *Self)
 {
-   LONG level = 0;
+   int level = 0;
    debug_tree(Self, level);
    return ERR::Okay;
 }
@@ -241,11 +238,11 @@ static ERR VECTOR_Draw(extVector *Self, struct acDraw *Args)
       // Retrieve bounding box, post-transformations.
       // TODO: Would need to account for client defined brush stroke widths and stroke scaling.
 
-      const LONG STROKE_WIDTH = 2;
-      const LONG bx1 = F2T(Self->BX1 - STROKE_WIDTH);
-      const LONG by1 = F2T(Self->BY1 - STROKE_WIDTH);
-      const LONG bx2 = F2T(Self->BX2 + STROKE_WIDTH);
-      const LONG by2 = F2T(Self->BY2 + STROKE_WIDTH);
+      const auto stroke_width = Self->fixed_stroke_width() + 1;
+      const int bx1 = F2T(Self->BX1 - stroke_width);
+      const int by1 = F2T(Self->BY1 - stroke_width);
+      const int bx2 = F2T(Self->BX2 + stroke_width);
+      const int by2 = F2T(Self->BY2 + stroke_width);
 
       struct drwScheduleRedraw area = { .X = bx1, .Y = by1, .Width = bx2 - bx1, .Height = by2 - by1 };
 #endif
@@ -286,15 +283,15 @@ static ERR VECTOR_Free(extVector *Self)
    if (Self->Morph)      UnsubscribeAction(Self->Morph, AC::Free);
    if (Self->AppendPath) UnsubscribeAction(Self->AppendPath, AC::Free);
 
-   if (Self->ID)           { FreeResource(Self->ID); Self->ID = NULL; }
-   if (Self->FillString)   { FreeResource(Self->FillString); Self->FillString = NULL; }
-   if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = NULL; }
-   if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
+   if (Self->SID)           { FreeResource(Self->SID); Self->SID = nullptr; }
+   if (Self->FillString)   { FreeResource(Self->FillString); Self->FillString = nullptr; }
+   if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = nullptr; }
+   if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = nullptr; }
 
-   if (Self->Fill[0].GradientTable) { delete Self->Fill[0].GradientTable; Self->Fill[0].GradientTable = NULL; }
-   if (Self->Fill[1].GradientTable) { delete Self->Fill[1].GradientTable; Self->Fill[1].GradientTable = NULL; }
-   if (Self->Stroke.GradientTable)  { delete Self->Stroke.GradientTable; Self->Stroke.GradientTable = NULL; }
-   if (Self->DashArray)             { delete Self->DashArray; Self->DashArray = NULL; }
+   if (Self->Fill[0].GradientTable) { delete Self->Fill[0].GradientTable; Self->Fill[0].GradientTable = nullptr; }
+   if (Self->Fill[1].GradientTable) { delete Self->Fill[1].GradientTable; Self->Fill[1].GradientTable = nullptr; }
+   if (Self->Stroke.GradientTable)  { delete Self->Stroke.GradientTable; Self->Stroke.GradientTable = nullptr; }
+   if (Self->DashArray)             { delete Self->DashArray; Self->DashArray = nullptr; }
 
    // Patch the nearest vectors that are linked to this one.
    if (Self->Next) Self->Next->Prev = Self->Prev;
@@ -308,7 +305,7 @@ static ERR VECTOR_Free(extVector *Self)
       // Clear the parent reference for all children of the vector (essential for maintaining pointer integrity).
       auto &scan = Self->Child;
       while (scan) {
-         scan->Parent = NULL;
+         scan->Parent = nullptr;
          scan = scan->Next;
       }
    }
@@ -354,11 +351,11 @@ static ERR VECTOR_Free(extVector *Self)
       }
    }
 
-   delete Self->StrokeRaster; Self->StrokeRaster = NULL;
-   delete Self->FillRaster;   Self->FillRaster   = NULL;
-   delete Self->InputSubscriptions;    Self->InputSubscriptions    = NULL;
-   delete Self->KeyboardSubscriptions; Self->KeyboardSubscriptions = NULL;
-   delete Self->FeedbackSubscriptions; Self->FeedbackSubscriptions = NULL;
+   delete Self->StrokeRaster; Self->StrokeRaster = nullptr;
+   delete Self->FillRaster;   Self->FillRaster   = nullptr;
+   delete Self->InputSubscriptions;    Self->InputSubscriptions    = nullptr;
+   delete Self->KeyboardSubscriptions; Self->KeyboardSubscriptions = nullptr;
+   delete Self->FeedbackSubscriptions; Self->FeedbackSubscriptions = nullptr;
 
    return ERR::Okay;
 }
@@ -492,7 +489,10 @@ Hide: Changes the vector's visibility setting to hidden.
 
 static ERR VECTOR_Hide(extVector *Self)
 {
-   Self->Visibility = VIS::HIDDEN;
+   if (Self->Visibility != VIS::HIDDEN) {
+      Self->Visibility = VIS::HIDDEN;
+      mark_buffers_for_refresh(Self);
+   }
    return ERR::Okay;
 }
 
@@ -504,7 +504,7 @@ static ERR VECTOR_Init(extVector *Self)
 
    if (Self->classID() IS CLASSID::VECTOR) {
       log.warning("Vector cannot be instantiated directly (use a sub-class).");
-      return ERR::Failed;
+      return ERR::UseSubClass;
    }
 
    if (!Self->Parent) {
@@ -534,6 +534,8 @@ static ERR VECTOR_Init(extVector *Self)
          glResizeSubscriptions.erase(Self);
       }
    }
+
+   mark_buffers_for_refresh(Self);
 
    return ERR::Okay;
 }
@@ -579,7 +581,7 @@ static ERR VECTOR_NewPlacement(extVector *Self)
    Self->Visibility    = VIS::VISIBLE;
    Self->FillRule      = VFR::NON_ZERO;
    Self->ClipRule      = VFR::NON_ZERO;
-   Self->Dirty         = RC::ALL;
+   Self->Dirty         = RC::DIRTY;
    Self->TabOrder      = 255;
    Self->ColourSpace   = VCS::INHERIT;
    Self->ValidState    = true;
@@ -645,7 +647,7 @@ static ERR VECTOR_NewMatrix(extVector *Self, struct vec::NewMatrix *Args)
       transform->TranslateY = 0;
 
       if ((Args->End) and (Self->Matrices)) {
-         transform->Next   = NULL;
+         transform->Next   = nullptr;
          VectorMatrix *last = Self->Matrices;
          while (last->Next) last = last->Next;
          last->Next = transform;
@@ -768,7 +770,7 @@ static ERR VECTOR_Push(extVector *Self, struct vec::Push *Args)
 
    auto scan = Self;
    if (Args->Position < 0) { // Move backward through the stack.
-      for (LONG i=-Args->Position; (scan->Prev) and (i); i--) scan = (extVector *)scan->Prev;
+      for (int i=-Args->Position; (scan->Prev) and (i); i--) scan = (extVector *)scan->Prev;
       if (scan IS Self) return ERR::Okay;
 
       // Patch up either side of the current position.
@@ -787,7 +789,7 @@ static ERR VECTOR_Push(extVector *Self, struct vec::Push *Args)
       else Self->Prev->Next = Self;
    }
    else { // Move forward through the stack.
-      for (LONG i=Args->Position; (scan->Next) and (i); i--) scan = (extVector *)scan->Next;
+      for (int i=Args->Position; (scan->Next) and (i); i--) scan = (extVector *)scan->Next;
       if (scan IS Self) return ERR::Okay;
 
       if (Self->Prev) Self->Prev->Next = Self->Next;
@@ -815,7 +817,10 @@ Show: Changes the vector's visibility setting to visible.
 
 static ERR VECTOR_Show(extVector *Self)
 {
-   Self->Visibility = VIS::VISIBLE;
+   if (Self->Visibility != VIS::VISIBLE) {
+      Self->Visibility = VIS::VISIBLE;
+      mark_buffers_for_refresh(Self);
+   }
    return ERR::Okay;
 }
 
@@ -1021,12 +1026,12 @@ static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
    Self->BasePath.rewind(0);
    Self->BasePath.approximation_scale(Args->Scale);
 
-   DOUBLE x, y;
-   LONG cmd = -1;
-   LONG index = 0;
+   double x, y;
+   int cmd = -1;
+   int index = 0;
 
   if (Args->Callback->isC()) {
-      auto routine = ((ERR (*)(extVector *, LONG, LONG, DOUBLE, DOUBLE, APTR))(Args->Callback->Routine));
+      auto routine = ((ERR (*)(extVector *, int, int, double, double, APTR))(Args->Callback->Routine));
 
       pf::SwitchContext context(ParentContext());
 
@@ -1055,12 +1060,12 @@ static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
    else if (Args->Callback->isScript()) {
       std::array<ScriptArg, 5> args {{
          { "Vector",  Self->UID, FD_OBJECTID },
-         { "Index",   LONG(0) },
-         { "Command", LONG(0) },
-         { "X",       DOUBLE(0) },
-         { "Y",       DOUBLE(0) }
+         { "Index",   int(0) },
+         { "Command", int(0) },
+         { "X",       double(0) },
+         { "Y",       double(0) }
       }};
-      args[0].Long = Self->UID;
+      args[0].Int = Self->UID;
 
       if (Args->Transform) {
          agg::conv_transform<agg::path_storage, agg::trans_affine> t_path(Self->BasePath, Self->Transform);
@@ -1068,11 +1073,11 @@ static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
          do {
             cmd = t_path.vertex(&x, &y);
             if (agg::is_vertex(cmd)) {
-               args[1].Long = index++;
-               args[2].Long = cmd;
+               args[1].Int = index++;
+               args[2].Int = cmd;
                args[3].Double = x;
                args[4].Double = y;
-               if (sc::Call(*Args->Callback, args, result) != ERR::Okay) return ERR::Failed;
+               if (sc::Call(*Args->Callback, args, result) != ERR::Okay) return ERR::Function;
                if (result IS ERR::Terminate) return ERR::Okay;
             }
          } while (cmd != agg::path_cmd_stop);
@@ -1082,11 +1087,11 @@ static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
          do {
             cmd = Self->BasePath.vertex(&x, &y);
             if (agg::is_vertex(cmd)) {
-               args[1].Long = index++;
-               args[2].Long = cmd;
+               args[1].Int = index++;
+               args[2].Int = cmd;
                args[3].Double = x;
                args[4].Double = y;
-               if (sc::Call(*Args->Callback, args, result) != ERR::Okay) return ERR::Failed;
+               if (sc::Call(*Args->Callback, args, result) != ERR::Okay) return ERR::Function;
                if (result IS ERR::Terminate) return ERR::Okay;
             }
          } while (cmd != agg::path_cmd_stop);
@@ -1100,9 +1105,9 @@ static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
 -FIELD-
 AppendPath: Experimental.  Append the path of the referenced vector during path generation.
 
-The path of an external Vector can be appended to the base path in real-time by making a reference to that vector
-here.  The operation is completed immediately after the generation of the client vector's base path, prior to any
-transforms.
+The path of a vector object can be appended to another vector in real-time by making a reference to the former
+vector here.  The operation is completed immediately after the generation of the client vector's base path, prior
+to any transforms.
 
 It is strongly recommended that the appended vector has its #Visibility set to `HIDDEN`.  Any direct transform that
 is applied to the vector will be utilised, but inherited transforms and placement information will be ignored.
@@ -1128,7 +1133,7 @@ static ERR VECTOR_SET_AppendPath(extVector *Self, extVector *Value)
    if (!Value) {
       if (Self->AppendPath) {
          UnsubscribeAction(Self->AppendPath, AC::Free);
-         Self->AppendPath = NULL;
+         Self->AppendPath = nullptr;
       }
       return ERR::Okay;
    }
@@ -1171,6 +1176,7 @@ static ERR VECTOR_GET_ClipRule(extVector *Self, VFR *Value)
 static ERR VECTOR_SET_ClipRule(extVector *Self, VFR Value)
 {
    Self->ClipRule = Value;
+   mark_buffers_for_refresh(Self);
    return ERR::Okay;
 }
 
@@ -1202,13 +1208,13 @@ static ERR VECTOR_SET_Cursor(extVector *Self, PTC Value)
    if (Self->initialised()) {
       // Send a dummy input event to refresh the cursor
 
-      DOUBLE x, y, absx, absy;
+      double x, y, absx, absy;
 
       gfx::GetRelativeCursorPos(Self->Scene->SurfaceID, &x, &y);
       gfx::GetCursorPos(&absx, &absy);
 
       const InputEvent event = {
-         .Next        = NULL,
+         .Next        = nullptr,
          .Value       = 0,
          .Timestamp   = 0,
          .RecipientID = Self->Scene->SurfaceID,
@@ -1239,44 +1245,44 @@ then the list of values is repeated to yield an even number of values.  Thus `5,
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_DashArray(extVector *Self, DOUBLE **Value, LONG *Elements)
+static ERR VECTOR_GET_DashArray(extVector *Self, double **Value, int *Elements)
 {
    if (Self->DashArray) {
       *Value    = Self->DashArray->values.data();
       *Elements = std::ssize(Self->DashArray->values);
    }
    else {
-      *Value    = NULL;
+      *Value    = nullptr;
       *Elements = 0;
    }
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_DashArray(extVector *Self, DOUBLE *Value, LONG Elements)
+static ERR VECTOR_SET_DashArray(extVector *Self, double *Value, int Elements)
 {
    pf::Log log;
 
-   if (Self->DashArray) { delete Self->DashArray; Self->DashArray = NULL; }
+   if (Self->DashArray) { delete Self->DashArray; Self->DashArray = nullptr; }
 
    if ((Value) and (Elements >= 1)) {
-      LONG total;
+      int total;
 
       if (Elements & 1) total = Elements * 2; // To satisfy requirements, the dash path can be doubled to make an even number.
       else total = Elements;
 
       Self->DashArray = new (std::nothrow) DashedStroke(Self->BasePath, total);
       if (Self->DashArray) {
-         for (LONG i=0; i < Elements; i++) Self->DashArray->values[i] = Value[i];
+         for (int i=0; i < Elements; i++) Self->DashArray->values[i] = Value[i];
          if (Elements & 1) {
-            for (LONG i=0; i < Elements; i++) Self->DashArray->values[Elements+i] = Value[i];
+            for (int i=0; i < Elements; i++) Self->DashArray->values[Elements+i] = Value[i];
          }
 
-         DOUBLE total_length = 0;
-         for (LONG i=0; i < std::ssize(Self->DashArray->values)-1; i+=2) {
+         double total_length = 0;
+         for (int i=0; i < std::ssize(Self->DashArray->values)-1; i+=2) {
             if ((Self->DashArray->values[i] < 0) or (Self->DashArray->values[i+1] < 0)) { // Negative values can cause an infinite drawing cycle.
                log.warning("Invalid dash array value pair (%f, %f)", Self->DashArray->values[i], Self->DashArray->values[i+1]);
                delete Self->DashArray;
-               Self->DashArray = NULL;
+               Self->DashArray = nullptr;
                return ERR::InvalidValue;
             }
 
@@ -1285,9 +1291,9 @@ static ERR VECTOR_SET_DashArray(extVector *Self, DOUBLE *Value, LONG Elements)
          }
 
          if (total_length <= 0) {
-            log.warning("DashArray has invalid length.");
+            log.warning("DashArray total length <= 0.");
             delete Self->DashArray;
-            Self->DashArray = NULL;
+            Self->DashArray = nullptr;
             return ERR::InvalidValue;
          }
 
@@ -1300,6 +1306,7 @@ static ERR VECTOR_SET_DashArray(extVector *Self, DOUBLE *Value, LONG Elements)
       else return ERR::AllocMemory;
    }
 
+   mark_buffers_for_refresh(Self);
    return ERR::Okay;
 }
 
@@ -1313,13 +1320,14 @@ negative then the shift will be to the right.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_SET_DashOffset(extVector *Self, DOUBLE Value)
+static ERR VECTOR_SET_DashOffset(extVector *Self, double Value)
 {
    Self->DashOffset = Value;
    if (Self->DashArray) {
       if (Self->DashOffset > 0) Self->DashArray->path.dash_start(Self->DashOffset);
       else Self->DashArray->path.dash_start(Self->DashArray->path.dash_length() + Self->DashOffset);
    }
+   mark_buffers_for_refresh(Self);
    return ERR::Okay;
 }
 
@@ -1333,38 +1341,11 @@ instance if the vector is the child of a viewport scaled down to 50%, the result
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_DisplayScale(extVector *Self, DOUBLE *Value)
+static ERR VECTOR_GET_DisplayScale(extVector *Self, double *Value)
 {
    if (!Self->initialised()) return ERR::NotInitialised;
    gen_vector_tree(Self);
    *Value = Self->Transform.scale();
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
-EnableBkgd: If true, allows filters to use BackgroundImage and BackgroundAlpha source types.
-
-The EnableBkgd option must be set to true if a section of the vector tree uses filters that have `BackgroundImage` or
-`BackgroundAlpha` as a source.  If it is not set, then filters using `BackgroundImage` and `BackgroundAlpha` references
-will not produce the expected behaviour.
-
-The EnableBkgd option can be enabled on Vector sub-classes @VectorGroup, @VectorPattern and @VectorViewport.  All other
-sub-classes will ignore the option if used.
-
-*********************************************************************************************************************/
-
-static ERR VECTOR_GET_EnableBkgd(extVector *Self, LONG *Value)
-{
-   *Value = Self->EnableBkgd;
-   return ERR::Okay;
-}
-
-static ERR VECTOR_SET_EnableBkgd(extVector *Self, LONG Value)
-{
-   if (Value) Self->EnableBkgd = TRUE;
-   else Self->EnableBkgd = FALSE;
    return ERR::Okay;
 }
 
@@ -1393,7 +1374,7 @@ static ERR VECTOR_GET_Fill(extVector *Self, CSTRING *Value)
 static ERR VECTOR_SET_Fill(extVector *Self, CSTRING Value)
 {
    // Note that if an internal routine sets DisableFillColour then the colour will be stored but effectively does nothing.
-   if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
+   if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = nullptr; }
 
    Self->FGFill = false;
 
@@ -1409,14 +1390,14 @@ static ERR VECTOR_SET_Fill(extVector *Self, CSTRING Value)
       if (next) {
          if (*next IS ';') {
             next++;
-            vec::ReadPainter(Self->Scene, next, &Self->Fill[1], NULL);
+            vec::ReadPainter(Self->Scene, next, &Self->Fill[1], nullptr);
             Self->FGFill = true;
          }
          else {
             // SVG rules allow for a solid colour fallback to follow the initial painter reference.
             // This typically looks something like 'url(#thing) rgb(values)'
             VectorPainter fallback;
-            vec::ReadPainter(Self->Scene, next, &fallback, NULL);
+            vec::ReadPainter(Self->Scene, next, &fallback, nullptr);
             if (fallback.Colour.Alpha) Self->Fill[0].Colour = fallback.Colour;
          }
       }
@@ -1425,11 +1406,13 @@ static ERR VECTOR_SET_Fill(extVector *Self, CSTRING Value)
       // If the raster filler doesn't exist for this vector then we'll need to regenerate it.
 
       if (!Self->FillRaster) mark_dirty(Self, RC::FINAL_PATH);
+      else mark_buffers_for_refresh(Self);
 
       return ERR::Okay;
    }
    else {
       Self->Fill[0].reset();
+      mark_buffers_for_refresh(Self);
       return error;
    }
 }
@@ -1447,14 +1430,14 @@ If the Alpha component is set to zero then the FillColour will be ignored by the
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_FillColour(extVector *Self, FLOAT **Value, LONG *Elements)
+static ERR VECTOR_GET_FillColour(extVector *Self, float **Value, int *Elements)
 {
-   *Value = (FLOAT *)&Self->Fill[0].Colour;
+   *Value = (float *)&Self->Fill[0].Colour;
    *Elements = 4;
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_FillColour(extVector *Self, FLOAT *Value, LONG Elements)
+static ERR VECTOR_SET_FillColour(extVector *Self, float *Value, int Elements)
 {
    if (Value) {
       if (Elements >= 1) Self->Fill[0].Colour.Red   = Value[0];
@@ -1466,10 +1449,14 @@ static ERR VECTOR_SET_FillColour(extVector *Self, FLOAT *Value, LONG Elements)
       // If the raster filler doesn't exist for this vector then we'll need to regenerate it.
 
       if (!Self->FillRaster) mark_dirty(Self, RC::FINAL_PATH);
+      else mark_buffers_for_refresh(Self);
    }
-   else Self->Fill[0].Colour.Alpha = 0;
+   else {
+      Self->Fill[0].Colour.Alpha = 0;
+      mark_buffers_for_refresh(Self);
+   }
 
-   if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
+   if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = nullptr; }
 
    return ERR::Okay;
 }
@@ -1484,13 +1471,13 @@ the #Opacity to determine a final opacity value for the render.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_FillOpacity(extVector *Self, DOUBLE *Value)
+static ERR VECTOR_GET_FillOpacity(extVector *Self, double *Value)
 {
    *Value = Self->FillOpacity;
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_FillOpacity(extVector *Self, DOUBLE Value)
+static ERR VECTOR_SET_FillOpacity(extVector *Self, double Value)
 {
    pf::Log log;
 
@@ -1498,6 +1485,7 @@ static ERR VECTOR_SET_FillOpacity(extVector *Self, DOUBLE Value)
       Self->FillOpacity = Value;
 
       if (!Self->FillRaster) mark_dirty(Self, RC::FINAL_PATH);
+      else mark_buffers_for_refresh(Self);
       return ERR::Okay;
    }
    else return log.warning(ERR::OutOfRange);
@@ -1513,7 +1501,7 @@ using the @VectorFilter class and added to a VectorScene using @VectorScene.AddD
 then be referenced by ID in the Filter field of any vector object.  Please refer to the @VectorFilter class
 for further details on filter configuration.
 
-The Filter value can be in the format `ID` or `url(#ID)` according to client preference.
+The Filter value can be in the format `ID` or `url(#SID)` according to client preference.
 
 *********************************************************************************************************************/
 
@@ -1527,26 +1515,28 @@ static ERR VECTOR_SET_Filter(extVector *Self, CSTRING Value)
 {
    pf::Log log;
 
+   mark_buffers_for_refresh(Self);
+
    if ((!Value) or (!Value[0])) {
-      if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
-      Self->Filter = NULL;
+      if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = nullptr; }
+      Self->Filter = nullptr;
       return ERR::Okay;
    }
 
    if (!Self->Scene) { // Vector is not yet initialised, so store the filter string for later.
-      if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
+      if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = nullptr; }
       Self->FilterString = strclone(Value);
       return ERR::Okay;
    }
 
-   OBJECTPTR def = NULL;
+   OBJECTPTR def = nullptr;
    if (Self->Scene->findDef(Value, &def) != ERR::Okay) {
       log.warning("Failed to resolve filter '%s'", Value);
       return ERR::Search;
    }
 
    if (def->Class->BaseClassID IS CLASSID::VECTORFILTER) {
-      if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
+      if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = nullptr; }
       Self->FilterString = strclone(Value);
       Self->Filter = (extVectorFilter *)def;
       return ERR::Okay;
@@ -1573,35 +1563,38 @@ static ERR VECTOR_GET_FillRule(extVector *Self, VFR *Value)
 
 static ERR VECTOR_SET_FillRule(extVector *Self, VFR Value)
 {
-   Self->FillRule = Value;
+   if (Value != Self->FillRule) {
+      Self->FillRule = Value;
+      mark_buffers_for_refresh(Self);
+   }
    return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 -FIELD-
-ID: String identifier for a vector.
+SID: String identifier for a vector.
 
 The ID field is provided for the purpose of SVG support.  Where possible we would recommend that you use the
 existing object name and automatically assigned ID's for identifiers.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_ID(extVector *Self, STRING *Value)
+static ERR VECTOR_GET_SID(extVector *Self, STRING *Value)
 {
-   *Value = Self->ID;
+   *Value = Self->SID;
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_ID(extVector *Self, CSTRING Value)
+static ERR VECTOR_SET_SID(extVector *Self, CSTRING Value)
 {
-   if (Self->ID) FreeResource(Self->ID);
+   if (Self->SID) FreeResource(Self->SID);
 
    if (Value) {
-      Self->ID = strclone(Value);
+      Self->SID = strclone(Value);
       Self->NumericID = strhash(Value);
    }
    else {
-      Self->ID = NULL;
+      Self->SID = nullptr;
       Self->NumericID = 0;
    }
    return ERR::Okay;
@@ -1644,8 +1637,9 @@ static ERR VECTOR_SET_InnerJoin(extVector *Self, VIJ Value)
       case VIJ::BEVEL: Self->InnerJoin = agg::inner_bevel; break;
       case VIJ::JAG:   Self->InnerJoin = agg::inner_jag; break;
       case VIJ::INHERIT: Self->InnerJoin = agg::inner_inherit; break;
-      default: return ERR::Failed;
+      default: return ERR::InvalidValue;
    }
+   mark_buffers_for_refresh(Self);
    return ERR::Okay;
 }
 
@@ -1680,8 +1674,9 @@ static ERR VECTOR_SET_LineCap(extVector *Self, VLC Value)
       case VLC::SQUARE:  Self->LineCap = agg::square_cap; break;
       case VLC::ROUND:   Self->LineCap = agg::round_cap; break;
       case VLC::INHERIT: Self->LineCap = agg::inherit_cap; break;
-      default: return ERR::Failed;
+      default: return ERR::InvalidValue;
    }
+   mark_buffers_for_refresh(Self);
    return ERR::Okay;
 }
 
@@ -1717,8 +1712,9 @@ static ERR VECTOR_SET_LineJoin(extVector *Self, VLJ Value)
       case VLJ::MITER_SMART:  Self->LineJoin = agg::miter_join; break;
       case VLJ::MITER_ROUND:  Self->LineJoin = agg::miter_join_round; break;
       case VLJ::INHERIT:      Self->LineJoin = agg::inherit_join; break;
-      default: return ERR::Failed;
+      default: return ERR::InvalidValue;
    }
+   mark_buffers_for_refresh(Self);
    return ERR::Okay;
 }
 
@@ -1744,7 +1740,7 @@ static ERR VECTOR_SET_Mask(extVector *Self, extVectorClip *Value)
    if (!Value) {
       if (Self->ClipMask) {
          UnsubscribeAction(Self->ClipMask, AC::Free);
-         Self->ClipMask = NULL;
+         Self->ClipMask = nullptr;
       }
       return ERR::Okay;
    }
@@ -1753,6 +1749,7 @@ static ERR VECTOR_SET_Mask(extVector *Self, extVectorClip *Value)
       if (Value->initialised()) { // Ensure that the mask is initialised.
          SubscribeAction(Value, AC::Free, C_FUNCTION(notify_free_clipmask));
          Self->ClipMask = Value;
+         mark_buffers_for_refresh(Self);
          return ERR::Okay;
       }
       else return log.warning(ERR::NotInitialised);
@@ -1788,12 +1785,13 @@ them for theta less than approximately 29 degrees, and a limit of 10.0 converts 
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_SET_MiterLimit(extVector *Self, DOUBLE Value)
+static ERR VECTOR_SET_MiterLimit(extVector *Self, double Value)
 {
    pf::Log log;
 
    if (Value >= 1.0) {
       Self->MiterLimit = Value;
+      mark_buffers_for_refresh(Self);
       return ERR::Okay;
    }
    else return log.warning(ERR::InvalidValue);
@@ -1825,7 +1823,7 @@ static ERR VECTOR_SET_Morph(extVector *Self, extVector *Value)
    if (!Value) {
       if (Self->Morph) {
          UnsubscribeAction(Self->Morph, AC::Free);
-         Self->Morph = NULL;
+         Self->Morph = nullptr;
       }
       return ERR::Okay;
    }
@@ -1834,6 +1832,7 @@ static ERR VECTOR_SET_Morph(extVector *Self, extVector *Value)
       if (Value->initialised()) { // The object must be initialised.
          SubscribeAction(Value, AC::Free, C_FUNCTION(notify_free_morph));
          Self->Morph = Value;
+         mark_buffers_for_refresh(Self);
          return ERR::Okay;
       }
       else return log.warning(ERR::NotInitialised);
@@ -1857,6 +1856,7 @@ static ERR VECTOR_GET_MorphFlags(extVector *Self, VMF *Value)
 static ERR VECTOR_SET_MorphFlags(extVector *Self, VMF Value)
 {
     Self->MorphFlags = Value;
+    mark_buffers_for_refresh(Self);
     return ERR::Okay;
 }
 
@@ -1887,8 +1887,8 @@ static ERR VECTOR_SET_Next(extVector *Self, extVector *Value)
    if ((!Value) or (Value IS Self)) return log.warning(ERR::InvalidValue);
    if (Self->Owner != Value->Owner) return log.warning(ERR::UnsupportedOwner); // Owners must match
 
-   if (Self->Next) Self->Next->Prev = NULL; // Detach from the current Next object.
-   if (Self->Prev) Self->Prev->Next = NULL; // Detach from the current Prev object.
+   if (Self->Next) Self->Next->Prev = nullptr; // Detach from the current Next object.
+   if (Self->Prev) Self->Prev->Next = nullptr; // Detach from the current Prev object.
 
    Self->Next  = Value; // Patch the chain
    Value->Prev = Self;
@@ -1901,6 +1901,7 @@ static ERR VECTOR_SET_Next(extVector *Self, extVector *Value)
       else if (Self->Parent->Class->BaseClassID IS CLASSID::VECTOR) ((extVector *)Self->Parent)->Child = Self;
    }
 
+   mark_buffers_for_refresh(Self);
    return ERR::Okay;
 }
 
@@ -1910,22 +1911,22 @@ static ERR VECTOR_SET_Next(extVector *Self, extVector *Value)
 NumericID: A unique identifier for the vector.
 
 This field assigns a numeric ID to a vector.  Alternatively it can also reflect a case-sensitive hash of the
-#ID field if that has been defined previously.
+#SID field if that has been defined previously.
 
-If NumericID is set by the client, then any value in #ID will be immediately cleared.
+If NumericID is set by the client, then any value in #SID will be immediately cleared.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_NumericID(extVector *Self, LONG *Value)
+static ERR VECTOR_GET_NumericID(extVector *Self, int *Value)
 {
    *Value = Self->NumericID;
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_NumericID(extVector *Self, LONG Value)
+static ERR VECTOR_SET_NumericID(extVector *Self, int Value)
 {
    Self->NumericID = Value;
-   if (Self->ID) { FreeResource(Self->ID); Self->ID = NULL; }
+   if (Self->SID) { FreeResource(Self->SID); Self->SID = nullptr; }
    return ERR::Okay;
 }
 
@@ -1940,10 +1941,11 @@ calculated as `#FillOpacity * Opacity`.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_SET_Opacity(extVector *Self, DOUBLE Value)
+static ERR VECTOR_SET_Opacity(extVector *Self, double Value)
 {
    if ((Value >= 0) and (Value <= 1.0)) {
       Self->Opacity = Value;
+      mark_buffers_for_refresh(Self);
       return ERR::Okay;
    }
    else return ERR::OutOfRange;
@@ -1997,8 +1999,8 @@ static ERR VECTOR_SET_Prev(extVector *Self, extVector *Value)
    if (!Value) return log.warning(ERR::InvalidValue);
    if (Self->Owner != Value->Owner) return log.warning(ERR::UnsupportedOwner); // Owners must match
 
-   if (Self->Next) Self->Next->Prev = NULL; // Detach from the current Next object.
-   if (Self->Prev) Self->Prev->Next = NULL; // Detach from the current Prev object.
+   if (Self->Next) Self->Next->Prev = nullptr; // Detach from the current Next object.
+   if (Self->Prev) Self->Prev->Next = nullptr; // Detach from the current Prev object.
 
    if (Self->Parent) { // Detach from the parent
       if (Self->Parent->classID() IS CLASSID::VECTORSCENE) {
@@ -2009,7 +2011,7 @@ static ERR VECTOR_SET_Prev(extVector *Self, extVector *Value)
          ((extVector *)Self->Parent)->Child = Self->Next;
          Self->Next->Parent = Self->Parent;
       }
-      Self->Parent = NULL;
+      Self->Parent = nullptr;
    }
 
    Self->Prev = Value; // Patch the chain
@@ -2018,6 +2020,7 @@ static ERR VECTOR_SET_Prev(extVector *Self, extVector *Value)
    if (Value->Next) Value->Next->Prev = Self;
    Value->Next = Self;
 
+   mark_buffers_for_refresh(Self);
    return ERR::Okay;
 }
 
@@ -2118,8 +2121,8 @@ static ERR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
 
    agg::path_storage &base = Self->BasePath;
 
-   DOUBLE x, y, x2, y2, x3, y3, last_x = 0, last_y = 0;
-   for (ULONG i=0; i < base.total_vertices(); i++) {
+   double x, y, x2, y2, x3, y3, last_x = 0, last_y = 0;
+   for (uint32_t i=0; i < base.total_vertices(); i++) {
       auto cmd = base.command(i);
       //LONG cmd_flags = cmd & (~agg::path_cmd_mask);
       cmd &= agg::path_cmd_mask;
@@ -2201,7 +2204,7 @@ static ERR VECTOR_GET_Stroke(extVector *Self, CSTRING *Value)
 
 static ERR VECTOR_SET_Stroke(extVector *Self, STRING Value)
 {
-   if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = NULL; }
+   if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = nullptr; }
 
    if (Value) {
       Self->StrokeString = strclone(Value);
@@ -2211,13 +2214,14 @@ static ERR VECTOR_SET_Stroke(extVector *Self, STRING Value)
          // SVG rules allow for a solid colour fallback to follow the initial painter reference.
          // This typically looks something like 'url(#thing) rgb(values)'
          VectorPainter fallback;
-         vec::ReadPainter(Self->Scene, next, &fallback, NULL);
+         vec::ReadPainter(Self->Scene, next, &fallback, nullptr);
          if (fallback.Colour.Alpha) Self->Stroke.Colour = fallback.Colour;
       }
    }
    else Self->Stroke.reset();
 
    Self->Stroked = Self->is_stroked();
+   mark_buffers_for_refresh(Self);
    return ERR::Okay;
 }
 
@@ -2233,14 +2237,14 @@ This field is complemented by the #StrokeOpacity and #Stroke fields.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_StrokeColour(extVector *Self, FLOAT **Value, LONG *Elements)
+static ERR VECTOR_GET_StrokeColour(extVector *Self, float **Value, int *Elements)
 {
-   *Value = (FLOAT *)&Self->Stroke.Colour;
+   *Value = (float *)&Self->Stroke.Colour;
    *Elements = 4;
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_StrokeColour(extVector *Self, FLOAT *Value, LONG Elements)
+static ERR VECTOR_SET_StrokeColour(extVector *Self, float *Value, int Elements)
 {
    if (Value) {
       if (Elements >= 1) Self->Stroke.Colour.Red   = Value[0];
@@ -2252,6 +2256,7 @@ static ERR VECTOR_SET_StrokeColour(extVector *Self, FLOAT *Value, LONG Elements)
    else Self->Stroke.Colour.Alpha = 0;
 
    Self->Stroked = Self->is_stroked();
+   mark_buffers_for_refresh(Self);
    return ERR::Okay;
 }
 
@@ -2267,17 +2272,18 @@ rendering.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_StrokeOpacity(extVector *Self, DOUBLE *Value)
+static ERR VECTOR_GET_StrokeOpacity(extVector *Self, double *Value)
 {
    *Value = Self->StrokeOpacity;
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_StrokeOpacity(extVector *Self, DOUBLE Value)
+static ERR VECTOR_SET_StrokeOpacity(extVector *Self, double Value)
 {
    if ((Value >= 0) and (Value <= 1.0)) {
       Self->StrokeOpacity = Value;
       Self->Stroked = Self->is_stroked();
+      mark_buffers_for_refresh(Self);
       return ERR::Okay;
    }
    else return ERR::OutOfRange;
@@ -2329,13 +2335,13 @@ When two vectors share the same priority, preference is given to the older of th
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_TabOrder(extVector *Self, LONG *Value)
+static ERR VECTOR_GET_TabOrder(extVector *Self, int *Value)
 {
    *Value = Self->TabOrder;
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_TabOrder(extVector *Self, LONG Value)
+static ERR VECTOR_SET_TabOrder(extVector *Self, int Value)
 {
    if ((Value >= 1) and (Value <= 255)) {
       Self->TabOrder = Value;
@@ -2370,7 +2376,7 @@ static ERR VECTOR_SET_Transition(extVector *Self, extVectorTransition *Value)
    if (!Value) {
       if (Self->Transition) {
          UnsubscribeAction(Self->Transition, AC::Free);
-         Self->Transition = NULL;
+         Self->Transition = nullptr;
       }
       return ERR::Okay;
    }
@@ -2379,6 +2385,7 @@ static ERR VECTOR_SET_Transition(extVector *Self, extVectorTransition *Value)
       if (Value->initialised()) { // The object must be initialised.
          SubscribeAction(Value, AC::Free, C_FUNCTION(notify_free_transition));
          Self->Transition = Value;
+         mark_buffers_for_refresh(Self);
          return ERR::Okay;
       }
       else return log.warning(ERR::NotInitialised);
@@ -2393,6 +2400,15 @@ Visibility: Controls the visibility of a vector and its children.
 -END-
 
 *********************************************************************************************************************/
+
+static ERR VECTOR_SET_Visibility(extVector *Self, VIS Value)
+{
+   if (Self->Visibility != Value) {
+      Self->Visibility = Value;
+      mark_buffers_for_refresh(Self);
+   }
+   return ERR::Okay;
+}
 
 //********************************************************************************************************************
 // For sending events to the client
@@ -2417,7 +2433,7 @@ void send_feedback(extVector *Vector, FM Event, OBJECTPTR EventObject)
             // In this implementation the script function will receive all the events chained via the Next field
             sc::Call(sub.Callback, std::to_array<ScriptArg>({
                { "Vector", Vector, FDF_OBJECT },
-               { "Event",  LONG(Event) },
+               { "Event",  int(Event) },
                { "EventObject", EventObject, FDF_OBJECT }
             }), result);
          }
@@ -2433,7 +2449,7 @@ void send_feedback(extVector *Vector, FM Event, OBJECTPTR EventObject)
 
 //********************************************************************************************************************
 
-DOUBLE extVector::fixed_stroke_width()
+double extVector::fixed_stroke_width()
 {
    if (this->ScaledStrokeWidth) {
       return get_parent_diagonal(this) * INV_SQRT2 * this->StrokeWidth;
@@ -2452,7 +2468,7 @@ static const FieldDef clMorphFlags[] = {
    { "YMin",        VMF::Y_MIN },
    { "YMid",        VMF::Y_MID },
    { "YMax",        VMF::Y_MAX },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldDef clLineJoin[] = {
@@ -2462,7 +2478,7 @@ static const FieldDef clLineJoin[] = {
    { "MiterSmart", VLJ::MITER_SMART },
    { "MiterRound", VLJ::MITER_ROUND },
    { "Inherit",    VLJ::INHERIT },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldDef clLineCap[] = {
@@ -2470,7 +2486,7 @@ static const FieldDef clLineCap[] = {
    { "Square",  VLC::SQUARE },
    { "Round",   VLC::ROUND },
    { "Inherit", VLC::INHERIT },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldDef clInnerJoin[] = {
@@ -2479,62 +2495,61 @@ static const FieldDef clInnerJoin[] = {
    { "Bevel",   VIJ::BEVEL },
    { "Jag",     VIJ::JAG },
    { "Inherit", VIJ::INHERIT },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldDef clFillRule[] = {
    { "EvenOdd", VFR::EVEN_ODD },
    { "NonZero", VFR::NON_ZERO },
    { "Inherit", VFR::INHERIT },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 #include "vector_def.c"
 
 static const FieldArray clVectorFields[] = {
-   { "Child",           FDF_OBJECT|FD_R, NULL, NULL, CLASSID::VECTOR },
-   { "Scene",           FDF_OBJECT|FD_R, NULL, NULL, CLASSID::VECTORSCENE },
-   { "Next",            FDF_OBJECT|FD_RW, NULL, VECTOR_SET_Next, CLASSID::VECTOR },
-   { "Prev",            FDF_OBJECT|FD_RW, NULL, VECTOR_SET_Prev, CLASSID::VECTOR },
+   { "Child",           FDF_OBJECT|FD_R, nullptr, nullptr, CLASSID::VECTOR },
+   { "Scene",           FDF_OBJECT|FD_R, nullptr, nullptr, CLASSID::VECTORSCENE },
+   { "Next",            FDF_OBJECT|FD_RW, nullptr, VECTOR_SET_Next, CLASSID::VECTOR },
+   { "Prev",            FDF_OBJECT|FD_RW, nullptr, VECTOR_SET_Prev, CLASSID::VECTOR },
    { "Parent",          FDF_OBJECT|FD_R },
-   { "Matrices",        FDF_POINTER|FDF_STRUCT|FDF_R, NULL, NULL, "VectorMatrix" },
+   { "Matrices",        FDF_POINTER|FDF_STRUCT|FDF_R, nullptr, nullptr, "VectorMatrix" },
    { "StrokeOpacity",   FDF_DOUBLE|FDF_RW, VECTOR_GET_StrokeOpacity, VECTOR_SET_StrokeOpacity },
    { "FillOpacity",     FDF_DOUBLE|FDF_RW, VECTOR_GET_FillOpacity, VECTOR_SET_FillOpacity },
-   { "Opacity",         FDF_DOUBLE|FD_RW, NULL, VECTOR_SET_Opacity },
-   { "MiterLimit",      FDF_DOUBLE|FD_RW, NULL, VECTOR_SET_MiterLimit },
+   { "Opacity",         FDF_DOUBLE|FD_RW, nullptr, VECTOR_SET_Opacity },
+   { "MiterLimit",      FDF_DOUBLE|FD_RW, nullptr, VECTOR_SET_MiterLimit },
    { "InnerMiterLimit", FDF_DOUBLE|FD_RW },
-   { "DashOffset",      FDF_DOUBLE|FD_RW, NULL, VECTOR_SET_DashOffset },
-   { "Visibility",      FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorVisibility },
-   { "Flags",           FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clVectorFlags },
-   { "Cursor",          FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, VECTOR_SET_Cursor, &clVectorCursor },
-   { "PathQuality",     FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorPathQuality },
-   { "ColourSpace",     FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorColourSpace },
-   { "PathTimestamp",   FDF_LONG|FDF_R },
+   { "DashOffset",      FDF_DOUBLE|FD_RW, nullptr, VECTOR_SET_DashOffset },
+   { "Visibility",      FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, VECTOR_SET_Visibility, &clVectorVisibility },
+   { "Flags",           FDF_INTFLAGS|FDF_RI, nullptr, nullptr, &clVectorFlags },
+   { "Cursor",          FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, VECTOR_SET_Cursor, &clVectorCursor },
+   { "PathQuality",     FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, nullptr, &clVectorPathQuality },
+   { "ColourSpace",     FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, nullptr, &clVectorColourSpace },
+   { "PathTimestamp",   FDF_INT|FDF_R },
    // Virtual fields
-   { "ClipRule",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, VECTOR_GET_ClipRule, VECTOR_SET_ClipRule, &clFillRule },
+   { "ClipRule",     FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_RW,  VECTOR_GET_ClipRule, VECTOR_SET_ClipRule, &clFillRule },
    { "DashArray",    FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FD_RW, VECTOR_GET_DashArray, VECTOR_SET_DashArray },
    { "DisplayScale", FDF_VIRTUAL|FDF_DOUBLE|FDF_R,           VECTOR_GET_DisplayScale },
    { "Mask",         FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          VECTOR_GET_Mask, VECTOR_SET_Mask },
    { "Morph",        FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          VECTOR_GET_Morph, VECTOR_SET_Morph },
    { "AppendPath",   FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          VECTOR_GET_AppendPath, VECTOR_SET_AppendPath },
-   { "MorphFlags",   FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW,       VECTOR_GET_MorphFlags, VECTOR_SET_MorphFlags, &clMorphFlags },
-   { "NumericID",    FDF_VIRTUAL|FDF_LONG|FDF_RW,            VECTOR_GET_NumericID, VECTOR_SET_NumericID },
-   { "ID",           FDF_VIRTUAL|FDF_STRING|FDF_RW,          VECTOR_GET_ID, VECTOR_SET_ID },
-   { "ResizeEvent",  FDF_VIRTUAL|FDF_FUNCTION|FDF_W,         NULL, VECTOR_SET_ResizeEvent },
+   { "MorphFlags",   FDF_VIRTUAL|FDF_INTFLAGS|FDF_RW,        VECTOR_GET_MorphFlags, VECTOR_SET_MorphFlags, &clMorphFlags },
+   { "NumericID",    FDF_VIRTUAL|FDF_INT|FDF_RW,             VECTOR_GET_NumericID, VECTOR_SET_NumericID },
+   { "SID",          FDF_VIRTUAL|FDF_STRING|FDF_RW,          VECTOR_GET_SID, VECTOR_SET_SID },
+   { "ResizeEvent",  FDF_VIRTUAL|FDF_FUNCTION|FDF_W,         nullptr, VECTOR_SET_ResizeEvent },
    { "Sequence",     FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, VECTOR_GET_Sequence },
    { "Stroke",       FDF_VIRTUAL|FDF_STRING|FDF_RW,          VECTOR_GET_Stroke, VECTOR_SET_Stroke },
    { "StrokeColour", FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FD_RW,   VECTOR_GET_StrokeColour, VECTOR_SET_StrokeColour },
    { "StrokeWidth",  FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTOR_GET_StrokeWidth, VECTOR_SET_StrokeWidth },
    { "Transition",   FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          VECTOR_GET_Transition, VECTOR_SET_Transition },
-   { "EnableBkgd",   FDF_VIRTUAL|FDF_LONG|FDF_RW,            VECTOR_GET_EnableBkgd, VECTOR_SET_EnableBkgd },
    { "Fill",         FDF_VIRTUAL|FDF_STRING|FDF_RW,          VECTOR_GET_Fill, VECTOR_SET_Fill },
    { "FillColour",   FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FDF_RW,  VECTOR_GET_FillColour, VECTOR_SET_FillColour },
-   { "FillRule",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, VECTOR_GET_FillRule, VECTOR_SET_FillRule, &clFillRule },
+   { "FillRule",     FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_RW,  VECTOR_GET_FillRule, VECTOR_SET_FillRule, &clFillRule },
    { "Filter",       FDF_VIRTUAL|FDF_STRING|FDF_RW,          VECTOR_GET_Filter, VECTOR_SET_Filter },
-   { "LineJoin",     FDF_VIRTUAL|FD_LONG|FD_LOOKUP|FDF_RW,   VECTOR_GET_LineJoin, VECTOR_SET_LineJoin, &clLineJoin },
-   { "LineCap",      FDF_VIRTUAL|FD_LONG|FD_LOOKUP|FDF_RW,   VECTOR_GET_LineCap, VECTOR_SET_LineCap, &clLineCap },
-   { "InnerJoin",    FDF_VIRTUAL|FD_LONG|FD_LOOKUP|FDF_RW,   VECTOR_GET_InnerJoin, VECTOR_SET_InnerJoin, &clInnerJoin },
-   { "TabOrder",     FDF_VIRTUAL|FD_LONG|FD_RW,              VECTOR_GET_TabOrder, VECTOR_SET_TabOrder },
+   { "LineJoin",     FDF_VIRTUAL|FD_INT|FD_LOOKUP|FDF_RW,    VECTOR_GET_LineJoin, VECTOR_SET_LineJoin, &clLineJoin },
+   { "LineCap",      FDF_VIRTUAL|FD_INT|FD_LOOKUP|FDF_RW,    VECTOR_GET_LineCap, VECTOR_SET_LineCap, &clLineCap },
+   { "InnerJoin",    FDF_VIRTUAL|FD_INT|FD_LOOKUP|FDF_RW,    VECTOR_GET_InnerJoin, VECTOR_SET_InnerJoin, &clInnerJoin },
+   { "TabOrder",     FDF_VIRTUAL|FD_INT|FD_RW,               VECTOR_GET_TabOrder, VECTOR_SET_TabOrder },
    END_FIELD
 };
 

@@ -13,15 +13,14 @@ private:
    agg::scanline_u8  mScanLine; // Use scanline_p for large solid polygons/rectangles and scanline_u for complex shapes like text
    extVectorViewport *mView;    // The current view
    objBitmap         *mBitmap;
-   std::stack<agg::trans_affine> mTransforms;
 
 public:
    // The ClipBuffer is used to hold any alpha-masks that are generated as the scene is rendered.
 
    class ClipBuffer {
       VectorState *m_state;
-      std::vector<UBYTE> m_bitmap;
-      LONG m_width, m_height;
+      std::vector<uint8_t> m_bitmap;
+      int m_width, m_height;
       extVector *m_shape;
 
       public:
@@ -30,7 +29,7 @@ public:
 
       public:
 
-      ClipBuffer() : m_shape(NULL), m_clip(NULL) { }
+      ClipBuffer() : m_shape(nullptr), m_clip(nullptr) { }
 
       ClipBuffer(VectorState &pState, extVectorClip *pClip, extVector *pShape) :
          m_state(&pState), m_shape(pShape), m_clip(pClip) { }
@@ -41,17 +40,17 @@ public:
          agg::renderer_base<agg::pixfmt_gray8> &, const agg::trans_affine &);
       void draw_bounding_box(SceneRenderer &);
       void draw_userspace(SceneRenderer &);
-      void resize_bitmap(LONG, LONG, LONG, LONG);
+      void resize_bitmap(int, int, int, int);
    };
 
 private:
-   constexpr DOUBLE view_width() {
+   constexpr double view_width() {
       if (mView->vpViewWidth > 0) return mView->vpViewWidth;
       else if (dmf::hasAnyWidth(mView->vpDimensions)) return mView->vpFixedWidth;
       else return mView->Scene->PageWidth;
    }
 
-   constexpr DOUBLE view_height() {
+   constexpr double view_height() {
       if (mView->vpViewHeight > 0) return mView->vpViewHeight;
       else if (dmf::hasAnyHeight(mView->vpDimensions)) return mView->vpFixedHeight;
       else return mView->Scene->PageHeight;
@@ -64,9 +63,14 @@ private:
 
 public:
    extVectorScene *Scene; // The top-level VectorScene performing the draw.
+   int mObjectCount;     // The number of objects drawn
 
    SceneRenderer(extVectorScene *pScene) : Scene(pScene) { }
-   void draw(objBitmap *Bitmap);
+   void draw(objBitmap *, objVectorViewport *);
+
+   ~SceneRenderer() {
+      Scene->ShareModified = false;
+   }
 };
 
 //********************************************************************************************************************
@@ -79,7 +83,7 @@ public:
 
 class VectorState {
 public:
-   TClipRectangle<DOUBLE> mClip; // Current clip region as defined by the viewports
+   TClipRectangle<double> mClip; // Current clip region as defined by the viewports
    agg::line_join_e  mLineJoin;
    agg::line_cap_e   mLineCap;
    agg::inner_join_e mInnerJoin;
@@ -88,7 +92,7 @@ public:
    VIS    mVisible;
    VOF    mOverflowX, mOverflowY;
    bool   mLinearRGB;
-   bool   mBackgroundActive;
+   bool   mIsolated;
    bool   mDirty;
 
    VectorState() :
@@ -101,7 +105,7 @@ public:
       mVisible(VIS::VISIBLE),
       mOverflowX(VOF::VISIBLE), mOverflowY(VOF::VISIBLE),
       mLinearRGB(false),
-      mBackgroundActive(false),
+      mIsolated(false),
       mDirty(false)
       { }
 };
@@ -134,27 +138,27 @@ public:
       y += m_offset_y;
       const value_type* p = (const value_type*)span(x, y, len);
       do {
-         s->r = p[m_src->oR];
-         s->g = p[m_src->oG];
-         s->b = p[m_src->oB];
-         s->a = p[m_src->oA];
+         s->r = p[m_src->mPixelOrder.Red];
+         s->g = p[m_src->mPixelOrder.Green];
+         s->b = p[m_src->mPixelOrder.Blue];
+         s->a = p[m_src->mPixelOrder.Alpha];
          p = (const value_type*)next_x();
          ++s;
       } while(--len);
    }
 
-   int8u* span(int x, int y, unsigned) {
+   uint8_t * span(int x, int y, unsigned) {
        m_x = x;
        m_row_ptr = m_src->row_ptr(m_wrap_y(y));
        return m_row_ptr + m_wrap_x(x) * 4;
    }
 
-   int8u* next_x() {
+   uint8_t * next_x() {
        int x = ++m_wrap_x;
        return m_row_ptr + x * 4;
    }
 
-   int8u* next_y() {
+   uint8_t * next_y() {
        m_row_ptr = m_src->row_ptr(++m_wrap_y);
        return m_row_ptr + m_wrap_x(m_x) * 4;
    }
@@ -164,10 +168,10 @@ public:
 private:
    wrap_mode_repeat_auto_pow2 m_wrap_x;
    wrap_mode_reflect_auto_pow2 m_wrap_y;
-   UBYTE *m_row_ptr;
+   uint8_t *m_row_ptr;
    unsigned m_offset_x;
    unsigned m_offset_y;
-   UBYTE m_bk_buf[4];
+   uint8_t m_bk_buf[4];
    int m_x;
 };
 
@@ -195,54 +199,54 @@ public:
       y += m_offset_y;
       const value_type* p = (const value_type*)span(x, y, len);
       do {
-         s->r = p[m_src->oR];
-         s->g = p[m_src->oG];
-         s->b = p[m_src->oB];
-         s->a = p[m_src->oA];
+         s->r = p[m_src->mPixelOrder.Red];
+         s->g = p[m_src->mPixelOrder.Green];
+         s->b = p[m_src->mPixelOrder.Blue];
+         s->a = p[m_src->mPixelOrder.Alpha];
          p = (const value_type*)next_x();
          ++s;
       } while(--len);
    }
 
-  int8u * span(int x, int y, unsigned) {
+   uint8_t * span(int x, int y, unsigned) {
       m_x = x;
       m_row_ptr = m_src->row_ptr(m_wrap_y(y));
       return m_row_ptr + m_wrap_x(x) * 4;
-  }
+   }
 
-  int8u * next_x() {
+   uint8_t * next_x() {
       int x = ++m_wrap_x;
       return m_row_ptr + x * 4;
-  }
+   }
 
-  int8u * next_y() {
+   uint8_t * next_y() {
       m_row_ptr = m_src->row_ptr(++m_wrap_y);
       return m_row_ptr + m_wrap_x(m_x) * 4;
-  }
+   }
 
    agg::pixfmt_psl *m_src;
 
 private:
    wrap_mode_reflect_auto_pow2 m_wrap_x;
    wrap_mode_repeat_auto_pow2 m_wrap_y;
-   UBYTE *m_row_ptr;
+   uint8_t *m_row_ptr;
    unsigned m_offset_x;
    unsigned m_offset_y;
-   UBYTE m_bk_buf[4];
+   uint8_t m_bk_buf[4];
    int m_x;
 };
 
 //********************************************************************************************************************
 
-class span_repeat_rkl
+class span_repeat_pf
 {
 private:
-   span_repeat_rkl();
+   span_repeat_pf();
 public:
    typedef typename agg::rgba8::value_type value_type;
    typedef agg::rgba8 color_type;
 
-   span_repeat_rkl(agg::pixfmt_psl & pixf, unsigned offset_x, unsigned offset_y) :
+   span_repeat_pf(agg::pixfmt_psl & pixf, unsigned offset_x, unsigned offset_y) :
        m_src(&pixf), m_wrap_x(pixf.mWidth), m_wrap_y(pixf.mHeight),
        m_offset_x(offset_x), m_offset_y(offset_y) {
       m_bk_buf[0] = m_bk_buf[1] = m_bk_buf[2] = m_bk_buf[3] = 0;
@@ -255,27 +259,27 @@ public:
       y += m_offset_y;
       const value_type* p = (const value_type*)span(x, y, len);
       do {
-         s->r = p[m_src->oR];
-         s->g = p[m_src->oG];
-         s->b = p[m_src->oB];
-         s->a = p[m_src->oA];
+         s->r = p[m_src->mPixelOrder.Red];
+         s->g = p[m_src->mPixelOrder.Green];
+         s->b = p[m_src->mPixelOrder.Blue];
+         s->a = p[m_src->mPixelOrder.Alpha];
          p = (const value_type*)next_x();
          ++s;
       } while(--len);
    }
 
-   int8u * span(int x, int y, unsigned) {
+   uint8_t * span(int x, int y, unsigned) {
       m_x = x;
       m_row_ptr = m_src->row_ptr(m_wrap_y(y));
       return m_row_ptr + m_wrap_x(x) * 4;
    }
 
-   int8u * next_x() {
+   uint8_t * next_x() {
       int x = ++m_wrap_x;
       return m_row_ptr + x * 4;
    }
 
-   int8u * next_y() {
+   uint8_t * next_y() {
       m_row_ptr = m_src->row_ptr(++m_wrap_y);
       return m_row_ptr + m_wrap_x(m_x) * 4;
    }
@@ -283,12 +287,10 @@ public:
    agg::pixfmt_psl *m_src;
 
 private:
-   wrap_mode_repeat_auto_pow2 m_wrap_x;
-   wrap_mode_repeat_auto_pow2 m_wrap_y;
-   UBYTE *m_row_ptr;
-   unsigned m_offset_x;
-   unsigned m_offset_y;
-   UBYTE m_bk_buf[4];
+   wrap_mode_repeat_auto_pow2 m_wrap_x, m_wrap_y;
+   uint8_t *m_row_ptr;
+   unsigned m_offset_x, m_offset_y;
+   uint8_t m_bk_buf[4];
    int m_x;
 };
 } // namespace
@@ -328,27 +330,18 @@ const agg::trans_affine SceneRenderer::build_fill_transform(extVector &Vector, b
 }
 
 //********************************************************************************************************************
-// Generic function for setting the clip region of an AGG rasterizer
 
-void set_raster_clip(agg::rasterizer_scanline_aa<> &Raster, LONG X, LONG Y, LONG Width, LONG Height)
+void set_filter(agg::image_filter_lut &Filter, VSM Method, agg::trans_affine &Transform, double Kernel)
 {
-   if (Width < 0) Width = 0;
-   if (Height < 0) Height = 0;
+   auto compute_kernel = [&Transform, &Kernel]() {
+      // For auto kernel calculation, use larger kernel sizes when shrinking.  A base-level of 3.0 is used so that
+      // the use of advanced filter algorithms is justified for the client.
+      double k;
+      if (Kernel > 0.0) k = Kernel;
+      else k = 3.0 + (1.0 / svg_diag(Transform.sx, Transform.sy));
+      return std::clamp(k, 2.0, 8.0);
+   };
 
-   agg::path_storage clip;
-   clip.move_to(X, Y);
-   clip.line_to(X+Width, Y);
-   clip.line_to(X+Width, Y+Height);
-   clip.line_to(X, Y+Height);
-   clip.close_polygon();
-   Raster.reset();
-   Raster.add_path(clip);
-}
-
-//********************************************************************************************************************
-
-void set_filter(agg::image_filter_lut &Filter, VSM Method)
-{
    switch(Method) {
       case VSM::AUTO:
       case VSM::NEIGHBOUR: // There is a 'span_image_filter_rgb_nn' class but no equivalent image_filter_neighbour() routine?
@@ -360,52 +353,45 @@ void set_filter(agg::image_filter_lut &Filter, VSM Method)
       case VSM::GAUSSIAN:  Filter.calculate(agg::image_filter_gaussian(), true); break;
       case VSM::BESSEL:    Filter.calculate(agg::image_filter_bessel(), true); break;
       case VSM::MITCHELL:  Filter.calculate(agg::image_filter_mitchell(), true); break;
-      case VSM::SINC3:     Filter.calculate(agg::image_filter_sinc(3.0), true); break;
-      case VSM::LANCZOS3:  Filter.calculate(agg::image_filter_lanczos(3.0), true); break;
-      case VSM::BLACKMAN3: Filter.calculate(agg::image_filter_blackman(3.0), true); break;
-      case VSM::SINC8:     Filter.calculate(agg::image_filter_sinc(8.0), true); break;
-      case VSM::LANCZOS8:  Filter.calculate(agg::image_filter_lanczos(8.0), true); break;
-      case VSM::BLACKMAN8: Filter.calculate(agg::image_filter_blackman(8.0), true); break;
-      default: {
-         pf::Log log;
-         log.warning("Unrecognised sampling method %d", LONG(Method));
-         Filter.calculate(agg::image_filter_bicubic(), true);
-         break;
-      }
+      case VSM::SINC:      Filter.calculate(agg::image_filter_sinc(compute_kernel()), true); break;
+      case VSM::LANCZOS:   Filter.calculate(agg::image_filter_lanczos(compute_kernel()), true); break;
+      case VSM::BLACKMAN:  Filter.calculate(agg::image_filter_blackman(compute_kernel()), true); break;
+      default:             Filter.calculate(agg::image_filter_bicubic(), true); break;
    }
 }
 
 //********************************************************************************************************************
 // A generic drawing function for VMImage and VMPattern, this is used to fill vectors with bitmap images.
+// Optimium drawing speed is ensured by only using the chosen SampleMethod if the transform is complex.
 
 template <class T> void drawBitmap(T &Scanline, VSM SampleMethod, agg::renderer_base<agg::pixfmt_psl> &RenderBase, agg::rasterizer_scanline_aa<> &Raster,
-   objBitmap *SrcBitmap, VSPREAD SpreadMethod, DOUBLE Opacity, agg::trans_affine *Transform = NULL, DOUBLE XOffset = 0, DOUBLE YOffset = 0)
+   objBitmap *SrcBitmap, VSPREAD SpreadMethod, double Opacity, agg::trans_affine *Transform = nullptr, double XOffset = 0, double YOffset = 0)
 {
    agg::pixfmt_psl pixels(*SrcBitmap);
 
    if ((Transform) and (Transform->is_complex())) {
       agg::span_interpolator_linear interpolator(*Transform);
       agg::image_filter_lut filter;
-      set_filter(filter, SampleMethod);  // Set the interpolation filter to use.
+      set_filter(filter, SampleMethod, *Transform);  // Set the interpolation filter to use.
 
       if (SpreadMethod IS VSPREAD::REFLECT_X) {
          agg::span_reflect_x source(pixels, XOffset, YOffset);
-         agg::span_image_filter_rgba<agg::span_reflect_x, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
+         agg::span_image_filter_rgba<agg::span_reflect_x, agg::span_interpolator_linear<>> spangen(source, interpolator, filter, true);
          drawBitmapRender(Scanline, RenderBase, Raster, spangen, Opacity);
       }
       else if (SpreadMethod IS VSPREAD::REFLECT_Y) {
          agg::span_reflect_y source(pixels, XOffset, YOffset);
-         agg::span_image_filter_rgba<agg::span_reflect_y, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
+         agg::span_image_filter_rgba<agg::span_reflect_y, agg::span_interpolator_linear<>> spangen(source, interpolator, filter, true);
          drawBitmapRender(Scanline, RenderBase, Raster, spangen, Opacity);
       }
       else if (SpreadMethod IS VSPREAD::REPEAT) {
-         agg::span_repeat_rkl source(pixels, XOffset, YOffset);
-         agg::span_image_filter_rgba<agg::span_repeat_rkl, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
+         agg::span_repeat_pf source(pixels, XOffset, YOffset);
+         agg::span_image_filter_rgba<agg::span_repeat_pf, agg::span_interpolator_linear<>> spangen(source, interpolator, filter, true);
          drawBitmapRender(Scanline, RenderBase, Raster, spangen, Opacity);
       }
       else { // VSPREAD::PAD and VSPREAD::CLIP modes.
          agg::span_once<agg::pixfmt_psl> source(pixels, XOffset, YOffset);
-         agg::span_image_filter_rgba<agg::span_once<agg::pixfmt_psl>, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
+         agg::span_image_filter_rgba<agg::span_once<agg::pixfmt_psl>, agg::span_interpolator_linear<>> spangen(source, interpolator, filter, true);
          drawBitmapRender(Scanline, RenderBase, Raster, spangen, Opacity);
       }
    }
@@ -426,7 +412,7 @@ template <class T> void drawBitmap(T &Scanline, VSM SampleMethod, agg::renderer_
          drawBitmapRender(Scanline, RenderBase, Raster, source, Opacity);
       }
       else if (SpreadMethod IS VSPREAD::REPEAT) {
-         agg::span_repeat_rkl source(pixels, XOffset, YOffset);
+         agg::span_repeat_pf source(pixels, XOffset, YOffset);
          drawBitmapRender(Scanline, RenderBase, Raster, source, Opacity);
       }
       else { // VSPREAD::PAD and VSPREAD::CLIP modes.
@@ -444,8 +430,8 @@ class pattern_rgb {
    public:
       typedef agg::rgba8 color_type;
 
-      pattern_rgb(objBitmap &Bitmap, DOUBLE Height) : mBitmap(&Bitmap) {
-         mScale = ((DOUBLE)Bitmap.Height) / Height;
+      pattern_rgb(objBitmap &Bitmap, double Height) : mBitmap(&Bitmap) {
+         mScale = ((double)Bitmap.Height) / Height;
          mHeight = Height;
 
          if (Bitmap.BitsPerPixel IS 32) {
@@ -460,13 +446,12 @@ class pattern_rgb {
             if (Bitmap.ColourFormat->BluePos IS 0) pixel = &pixel24BGR;
             else pixel = &pixel24RGB;
          }
-         else if (Bitmap.BitsPerPixel IS 16) {
-            if ((Bitmap.ColourFormat->BluePos IS 0) and (Bitmap.ColourFormat->RedPos IS 11)) pixel = &pixel16BGR;
-            else if ((Bitmap.ColourFormat->RedPos IS 0) and (Bitmap.ColourFormat->BluePos IS 11)) pixel = &pixel16RGB;
-            else pixel = &pixel16;
+         else {
+            pf::Log log;
+            log.warning("pattern_rgb: Unsupported bitmap format %dbpp", Bitmap.BitsPerPixel);
          }
 
-         if (Height != (DOUBLE)mBitmap->Height) {
+         if (Height != (double)mBitmap->Height) {
             ipixel = pixel;
             pixel = &pixelScaled;
          }
@@ -476,52 +461,37 @@ class pattern_rgb {
       unsigned height() const { return mHeight; }
 
       static agg::rgba8 pixel32BGRA(const pattern_rgb &Pattern, int x, int y) {
-         UBYTE *p = Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<2);
-         return agg::rgba8(p[2], p[1], p[0], p[3]);
+         auto p = PIXEL_DATA(Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<2), pxBGRA);
+         return p.getRGB();
       }
 
       static agg::rgba8 pixel32RGBA(const pattern_rgb &Pattern, int x, int y) {
-         UBYTE *p = Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<2);
-         return agg::rgba8(p[0], p[1], p[2], p[3]);
+         auto p = PIXEL_DATA(Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<2), pxRGBA);
+         return p.getRGB();
       }
 
       static agg::rgba8 pixel32AGBR(const pattern_rgb &Pattern, int x, int y) {
-         UBYTE *p = Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<2);
-         return agg::rgba8(p[3], p[1], p[2], p[0]);
+         auto p = PIXEL_DATA(Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<2), pxAGBR);
+         return p.getRGB();
       }
 
       static agg::rgba8 pixel32ARGB(const pattern_rgb &Pattern, int x, int y) {
-         UBYTE *p = Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<2);
-         return agg::rgba8(p[1], p[2], p[3], p[0]);
+         auto p = PIXEL_DATA(Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<2), pxARGB);
+         return p.getRGB();
       }
 
       static agg::rgba8 pixel24BGR(const pattern_rgb &Pattern, int x, int y) {
-         UBYTE *p = Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x*3);
-         return agg::rgba8(p[2], p[1], p[0], p[3]);
+         auto p = PIXEL_DATA(Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<2), pxBGR);
+         return p.getRGB();
       }
 
       static agg::rgba8 pixel24RGB(const pattern_rgb &Pattern, int x, int y) {
-         UBYTE *p = Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x*3);
-         return agg::rgba8(p[0], p[1], p[2]);
-      }
-
-      static agg::rgba8 pixel16BGR(const pattern_rgb &Pattern, int x, int y) {
-         UWORD p = ((UWORD *)(Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<1)))[0];
-         return agg::rgba8((p>>8) & 0xf8, (p>>3) & 0xf8, p<<3);
-      }
-
-      static agg::rgba8 pixel16RGB(const pattern_rgb &Pattern, int x, int y) {
-         UWORD p = ((UWORD *)(Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<1)))[0];
-         return agg::rgba8(p<<3, (p>>3) & 0xf8, (p>>8) & 0xf8);
-      }
-
-      static agg::rgba8 pixel16(const pattern_rgb &Pattern, int x, int y) {
-         UWORD p = ((UWORD *)(Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<1)))[0];
-         return agg::rgba8(Pattern.mBitmap->unpackRed(p), Pattern.mBitmap->unpackGreen(p), Pattern.mBitmap->unpackBlue(p));
+         auto p = PIXEL_DATA(Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<2), pxRGB);
+         return p.getRGB();
       }
 
       static agg::rgba8 pixelScaled(const pattern_rgb &Pattern, int x, int y) {
-         DOUBLE src_y = (y + 0.5) * Pattern.mScale - 0.5;
+         double src_y = (y + 0.5) * Pattern.mScale - 0.5;
          int h  = Pattern.mBitmap->Height - 1;
          int y1 = agg::ufloor(src_y);
          int y2 = y1 + 1;
@@ -535,24 +505,24 @@ class pattern_rgb {
    private:
       agg::rgba8 (*ipixel)(const pattern_rgb &, int x, int y);
       objBitmap *mBitmap;
-      DOUBLE mScale;
-      DOUBLE mHeight;
+      double mScale;
+      double mHeight;
 };
 
 //********************************************************************************************************************
 
-static void stroke_brush(VectorState &State, const objVectorImage &Image, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
-   agg::conv_transform<agg::path_storage, agg::trans_affine> &Path, DOUBLE StrokeWidth)
+static void stroke_brush(VectorState &State, const extVectorImage &Image, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
+   agg::conv_transform<agg::path_storage, agg::trans_affine> &Path, double StrokeWidth)
 {
    typedef agg::pattern_filter_bilinear_rgba8 FILTER_TYPE;
    FILTER_TYPE filter;
    pattern_rgb src(*Image.Bitmap, StrokeWidth);
 
-   DOUBLE scale;
-   if (StrokeWidth IS (DOUBLE)Image.Bitmap->Height) scale = 1.0;
-   else scale = (DOUBLE)StrokeWidth / (DOUBLE)Image.Bitmap->Height;
+   double scale;
+   if (StrokeWidth IS (double)Image.Bitmap->Height) scale = 1.0;
+   else scale = (double)StrokeWidth / (double)Image.Bitmap->Height;
 
-   if (isPow2((ULONG)Image.Bitmap->Width)) { // If the image width is a power of 2, use this optimised version
+   if (isPow2((uint32_t)Image.Bitmap->Width)) { // If the image width is a power of 2, use this optimised version
       typedef agg::line_image_pattern_pow2<FILTER_TYPE> pattern_type;
       pattern_type pattern(filter);
       agg::renderer_outline_image<agg::renderer_base<agg::pixfmt_psl>, pattern_type> ren_img(RenderBase, pattern);
@@ -580,9 +550,11 @@ static void stroke_brush(VectorState &State, const objVectorImage &Image, agg::r
 
 //********************************************************************************************************************
 
-void SceneRenderer::draw(objBitmap *Bitmap)
+void SceneRenderer::draw(objBitmap *Bitmap, objVectorViewport *Viewport)
 {
    pf::Log log;
+
+   mObjectCount = 0;
 
    log.traceBranch("Bitmap: %dx%d,%dx%d, Viewport: %p", Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right, Bitmap->Clip.Bottom, Scene->Viewport);
 
@@ -592,18 +564,18 @@ void SceneRenderer::draw(objBitmap *Bitmap)
       return;
    }
 
-   if (Scene->Viewport) {
+   if (Viewport) {
       mBitmap = Bitmap;
       mFormat.setBitmap(*Bitmap);
       mRenderBase.attach(mFormat);
 
-      mView = NULL; // Current view
+      mView = nullptr; // Current view
       mRenderBase.clip_box(Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right-1, Bitmap->Clip.Bottom-1);
 
       Scene->InputBoundaries.clear();
 
       VectorState state;
-      draw_vectors((extVector *)Scene->Viewport, state);
+      draw_vectors((extVector *)Viewport, state);
    }
 }
 
@@ -621,7 +593,7 @@ void SceneRenderer::render_stroke(VectorState &State, extVector &Vector)
 
    // Regarding this validation check, SVG requires that stroked vectors have a size > 0 when a paint server is used
    // as a stroker.  If the size is zero, the paint server is ignored and the solid colour can be used as a stroker
-   // if the client has specified one.  Ref: W3C SVG Coordinate chapter, last paragraph of 7.11 
+   // if the client has specified one.  Ref: W3C SVG Coordinate chapter, last paragraph of 7.11
 
    if (Vector.Bounds.valid()) {
       if (Vector.Stroke.Gradient) {
@@ -639,20 +611,20 @@ void SceneRenderer::render_stroke(VectorState &State, extVector &Vector)
       }
 
       if (Vector.Stroke.Image) {
-         DOUBLE stroke_width = Vector.fixed_stroke_width() * Vector.Transform.scale();
+         double stroke_width = Vector.fixed_stroke_width() * Vector.Transform.scale();
          if (stroke_width < 1) stroke_width = 1;
 
          auto transform = Vector.Transform;
          Vector.BasePath.approximation_scale(transform.scale());
          agg::conv_transform<agg::path_storage, agg::trans_affine> stroke_path(Vector.BasePath, transform);
 
-         stroke_brush(State, *Vector.Stroke.Image, mRenderBase, stroke_path, stroke_width);
+         stroke_brush(State, *((extVectorImage *)Vector.Stroke.Image), mRenderBase, stroke_path, stroke_width);
          return;
       }
    }
-   
+
    // Solid colour
-   
+
    if ((Vector.PathQuality IS RQ::CRISP) or (Vector.PathQuality IS RQ::FAST)) {
       agg::renderer_scanline_bin_solid renderer(mRenderBase);
       renderer.color(agg::rgba(Vector.Stroke.Colour, Vector.Stroke.Colour.Alpha * Vector.StrokeOpacity * State.mOpacity));
@@ -684,7 +656,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
       pf::Log log(__FUNCTION__);
       VectorState state = VectorState(ParentState);
 
-      if (shape->Class->BaseClassID != CLASSID::VECTOR) {
+      if (shape->baseClassID() != CLASSID::VECTOR) {
          log.trace("Non-Vector discovered in the vector tree.");
          continue;
       }
@@ -692,6 +664,11 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
 
       if (shape->dirty()) gen_vector_path(shape);
       else log.trace("%s: #%d, Dirty: NO, ParentView: #%d", shape->Class->ClassName, shape->UID, shape->ParentView ? shape->ParentView->UID : 0);
+
+      if (shape->RequiresRedraw) {
+         state.mDirty = true; // Carry-forward dirty marker for children
+         shape->RequiresRedraw = false;
+      }
 
       // Visibility management.  NB: Under SVG rules VectorGroup objects are always visible as they are not
       // classed as a graphics element.
@@ -708,6 +685,8 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
             continue;
          }
       }
+
+      mObjectCount++;
 
       auto filter = (extVectorFilter *)shape->Filter;
       if ((filter) and (!filter->Disabled)) {
@@ -736,7 +715,8 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
       if (shape->LineCap   != agg::inherit_cap)   state.mLineCap   = shape->LineCap;
       state.mOpacity = shape->Opacity * state.mOpacity;
 
-      // Support for enable-background="new".  This requires the bitmap to have an alpha channel so that
+      // Support for isolated vectors.  A vector will be isolated if it has children using a filter that uses BackgroundImage
+      // or BackgroundAlpha as an input.  This feature requires the bitmap to have an alpha channel so that
       // blending will work correctly, and the bitmap will be cleared to accept fresh content.  It acts as
       // a placeholder over the existing target bitmap, and the new content will be rendered to the target
       // after processing the current branch.  The background is then discarded.
@@ -744,11 +724,11 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
       // TODO: The allocation of this bitmap during rendering isn't optimal.  Perhaps we could allocate it as a permanent
       // dummy bitmap to be retained with the Vector, and the Data would be allocated dynamically during rendering.
       //
-      // TODO: The clipping area of the bitmap should be declared so that unnecessary pixel scanning is avoided.
+      // TODO: The clipping area of the bitmap should be declared so that unnecessary pixel interaction is avoided.
 
-      objBitmap *bmpBkgd = NULL;
-      objBitmap *bmpSave = NULL;
-      if (shape->EnableBkgd) {
+      objBitmap *bmpBkgd = nullptr;
+      objBitmap *bmpSave = nullptr;
+      if ((shape->Flags & VF::ISOLATED) != VF::NIL) {
          if ((bmpBkgd = objBitmap::create::local(fl::Name("scene_temp_bkgd"),
                fl::Width(mBitmap->Width),
                fl::Height(mBitmap->Height),
@@ -759,7 +739,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
             mBitmap = bmpBkgd;
             mFormat.setBitmap(*bmpBkgd);
             clearmem(bmpBkgd->Data, bmpBkgd->LineWidth * bmpBkgd->Height);
-            state.mBackgroundActive = true;
+            state.mIsolated = true;
          }
       }
 
@@ -789,7 +769,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
 
             if ((state.mClip.right > state.mClip.left) and (state.mClip.bottom > state.mClip.top)) { // Continue only if the clipping region is visible
                if (view->vpClip) {
-                  state.mClipStack->emplace(state, (extVectorClip *)NULL, view);
+                  state.mClipStack->emplace(state, (extVectorClip *)nullptr, view);
                   state.mClipStack->top().draw_viewport(*this);
                }
 
@@ -839,7 +819,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                   // applied in realtime.
 
                   if (!view->Fill[0].Pattern->Scene->Viewport->Matrices) {
-                     view->Fill[0].Pattern->Scene->Viewport->newMatrix(NULL, false);
+                     view->Fill[0].Pattern->Scene->Viewport->newMatrix(nullptr, false);
                   }
 
                   // Use transforms for the purpose of placing the pattern correctly
@@ -862,7 +842,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                      view->Fill[0].Pattern->Scene->Viewport->setFields(fl::Width(view->vpFixedWidth), fl::Height(view->vpFixedHeight));
                   }
 
-                  draw_vectors(((extVectorPattern *)view->Fill[0].Pattern)->Viewport, state);
+                  draw_vectors((extVectorViewport *)((extVectorPattern *)view->Fill[0].Pattern)->Viewport, state);
 
                   matrix->ScaleX = 1.0;
                   matrix->ScaleY = 1.0;
@@ -875,7 +855,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                   if ((view->FGFill) and (view->Fill[1].Pattern)) {
                      // Support for foreground fill patterns
                      if (!view->Fill[1].Pattern->Scene->Viewport->Matrices) {
-                        view->Fill[1].Pattern->Scene->Viewport->newMatrix(NULL, false);
+                        view->Fill[1].Pattern->Scene->Viewport->newMatrix(nullptr, false);
                      }
 
                      auto &matrix = view->Fill[1].Pattern->Scene->Viewport->Matrices;
@@ -894,7 +874,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                         view->Fill[1].Pattern->Scene->Viewport->setFields(fl::Width(view->vpFixedWidth), fl::Height(view->vpFixedHeight));
                      }
 
-                     draw_vectors(((extVectorPattern *)view->Fill[1].Pattern)->Viewport, state);
+                     draw_vectors((extVectorViewport *)((extVectorPattern *)view->Fill[1].Pattern)->Viewport, state);
 
                      matrix->ScaleX = 1.0;
                      matrix->ScaleY = 1.0;
@@ -906,7 +886,90 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                   }
                }
 
-               if (view->Child) draw_vectors((extVector *)view->Child, state);
+               if (view->Child) {
+                  constexpr int MAX_AREA = 4096 * 4096; // Maximum allowable area for enabling a viewport buffer
+
+                  if ((view->vpBuffered) and (view->vpFixedWidth * view->vpFixedHeight < MAX_AREA)) {
+                     // In buffered mode, children will be drawn to an independent bitmap that is permanently
+                     // cached.
+
+                     bool redraw = view->vpRefreshBuffer or state.mDirty;
+                     view->vpRefreshBuffer = false;
+
+                     if ((!redraw) and (Scene->ShareModified)) redraw = true;
+
+                     if (view->vpBuffer) {
+                        if ((view->vpBuffer->Width != view->vpFixedWidth) or (view->vpBuffer->Height != view->vpFixedHeight)) {
+                           view->vpBuffer->resize(view->vpFixedWidth, view->vpFixedHeight);
+                           redraw = true;
+                        }
+                     }
+                     else {
+                        view->vpBuffer = objBitmap::create::local(fl::Name("vp_buffer"),
+                           fl::Owner(view->UID),
+                           fl::Width(view->vpFixedWidth),
+                           fl::Height(view->vpFixedHeight),
+                           fl::BitsPerPixel(32),
+                           fl::Flags(BMF::ALPHA_CHANNEL));
+                           //fl::ColourSpace(view->vpColourSpace));
+                        redraw = true;
+                     }
+
+                     if (redraw) {
+                        view->vpBuffer->BkgdIndex = 0;
+                        view->vpBuffer->clear();
+
+                        // A new state is allocated for drawing the children.  Clipping to the bitmap is enforced with
+                        // the overflow values.
+
+                        VectorState child_state;
+                        child_state.mOverflowX = VOF::HIDDEN;
+                        child_state.mOverflowY = VOF::HIDDEN;
+
+                        auto save_bmp    = mBitmap;
+                        auto save_format = mFormat;
+                        auto save_rb     = mRenderBase;
+
+                        // The vector paths will target the coordinate space of their parents, so we
+                        // make adjustments to the bitmap to orient to (0,0).
+
+                        mBitmap = view->vpBuffer;
+                        auto save_data = mBitmap->offset(-view->vpBounds.left, -view->vpBounds.top);
+                        mFormat.setBitmap(*view->vpBuffer);
+
+                        draw_vectors((extVector *)view->Child, child_state);
+
+                        mBitmap->Data = save_data;
+
+                        mRenderBase = save_rb;
+                        mBitmap     = save_bmp;
+                        mFormat     = save_format;
+
+                        //save_bitmap(view->vpBuffer, std::string("viewport"));
+                     }
+
+                     // Draw the cached bitmap buffer
+
+                     view->BasePath.approximation_scale(view->Transform.scale());
+
+                     auto transform = view->Transform;
+                     transform.invert();
+
+                     agg::rasterizer_scanline_aa<> raster;
+                     raster.add_path(view->BasePath);
+
+                     if (!state.mClipStack->empty()) {
+                        agg::alpha_mask_gray8 alpha_mask(state.mClipStack->top().m_renderer);
+                        agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
+                        drawBitmap(masked_scanline, VSM::AUTO, mRenderBase, raster, view->vpBuffer, VSPREAD::REPEAT, view->Opacity, &transform);
+                     }
+                     else {
+                        agg::scanline_u8 scanline;
+                        drawBitmap(scanline, VSM::AUTO, mRenderBase, raster, view->vpBuffer, VSPREAD::REPEAT, view->Opacity, &transform);
+                     }
+                  }
+                  else draw_vectors((extVector *)view->Child, state);
+               }
 
                if (view->ClipMask) state.mClipStack->pop();
 
@@ -961,18 +1024,21 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
 
                   // Clipping masks can reduce the boundary further.
 
-                  if ((!state.mClipStack->empty()) and (state.mClipStack->top().m_clip->Bounds.valid())) {
-                     // NB: This hasn't had much testing and doesn't consider nested clips.
-                     // The Clip bounds should be post-transform
-                     b.shrinking(state.mClipStack->top().m_clip->Bounds);
+                  if (!state.mClipStack->empty()) {
+                     auto &top = state.mClipStack->top();
+                     if ((top.m_clip) and (top.m_clip->Bounds.valid())) {
+                        // NB: This hasn't had much testing and doesn't consider nested clips.
+                        // The Clip bounds should be post-transform
+                        b.shrinking(top.m_clip->Bounds);
+                     }
                   }
                }
                else b = { -1, -1, -1, -1 };
 
-               const DOUBLE abs_x = b.left;
-               const DOUBLE abs_y = b.top;
+               const double abs_x = b.left;
+               const double abs_y = b.top;
 
-               TClipRectangle<DOUBLE> rb_bounds = { DOUBLE(mRenderBase.xmin()), DOUBLE(mRenderBase.ymin()), DOUBLE(mRenderBase.xmax()), DOUBLE(mRenderBase.ymax()) };
+               TClipRectangle<double> rb_bounds = { double(mRenderBase.xmin()), double(mRenderBase.ymin()), double(mRenderBase.xmax()), double(mRenderBase.ymax()) };
                b.shrinking(rb_bounds);
 
                Scene->InputBoundaries.emplace_back(shape->UID, shape->Cursor, b, abs_x, abs_y, shape->InputSubscriptions ? false : true);
@@ -987,13 +1053,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
       if (bmpBkgd) {
          agg::rasterizer_scanline_aa raster;
 
-         agg::path_storage clip;
-         clip.move_to(0, 0);
-         clip.line_to(bmpBkgd->Width, 0);
-         clip.line_to(bmpBkgd->Width, bmpBkgd->Height);
-         clip.line_to(0, bmpBkgd->Height);
-         clip.close_polygon();
-         raster.add_path(clip);
+         basic_path(raster, 0, 0, bmpBkgd->Width, bmpBkgd->Height);
 
          mBitmap = bmpSave;
          mFormat.setBitmap(*mBitmap);
@@ -1008,13 +1068,13 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
          }
          FreeResource(bmpBkgd);
       }
-   }
+   } // for loop
 }
 
 //********************************************************************************************************************
 // For direct vector drawing via the API, no transforms.
 
-void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle)
+void SimpleVector::DrawPath(objBitmap *Bitmap, double StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle)
 {
    pf::Log log("draw_path");
 
@@ -1042,7 +1102,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
          agg::render_scanlines(mRaster, scanline, solid);
       }
       else if (FillStyle->classID() IS CLASSID::VECTORIMAGE) {
-         objVectorImage &image = (objVectorImage &)*FillStyle;
+         extVectorImage &image = (extVectorImage &)*FillStyle;
          fill_image(state, bounds, mPath, VSM::AUTO, transform, Bitmap->Width, Bitmap->Height, image, mRenderer, mRaster);
       }
       else if (FillStyle->classID() IS CLASSID::VECTORGRADIENT) {
@@ -1071,7 +1131,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
          fill_pattern(state, bounds, &mPath, VSM::AUTO, transform, Bitmap->Width, Bitmap->Height, (extVectorPattern &)*StrokeStyle, mRenderer, mRaster);
       }
       else if (StrokeStyle->classID() IS CLASSID::VECTORIMAGE) {
-         objVectorImage &image = (objVectorImage &)*StrokeStyle;
+         extVectorImage &image = (extVectorImage &)*StrokeStyle;
          agg::conv_transform<agg::path_storage, agg::trans_affine> path(mPath, transform);
          stroke_brush(state, image, mRenderer, path, StrokeWidth);
       }
@@ -1090,13 +1150,17 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
 
 //********************************************************************************************************************
 
-void agg::pixfmt_psl::setBitmap(objBitmap &Bitmap, bool Linear)
+void agg::pixfmt_psl::setBitmap(objBitmap &Bitmap, BLM BlendMode) noexcept
 {
-   auto data = Bitmap.Data + (Bitmap.XOffset * Bitmap.BytesPerPixel) + (Bitmap.YOffset * Bitmap.LineWidth);
-   rawBitmap(data, Bitmap.Clip.Right, Bitmap.Clip.Bottom, Bitmap.LineWidth, Bitmap.BitsPerPixel, *Bitmap.ColourFormat, Linear);
+   if (BlendMode IS BLM::AUTO) {
+      if (Bitmap.ColourSpace IS CS::LINEAR_RGB) BlendMode = BLM::LINEAR;
+      else BlendMode = Bitmap.BlendMode;
+   }
+
+   rawBitmap(Bitmap.Data, Bitmap.Clip.Right, Bitmap.Clip.Bottom, Bitmap.LineWidth, Bitmap.BitsPerPixel, *Bitmap.ColourFormat, BlendMode);
 }
 
-void agg::pixfmt_psl::rawBitmap(UBYTE *Data, LONG Width, LONG Height, LONG Stride, LONG BitsPerPixel, ColourFormat &ColourFormat, bool Linear)
+void agg::pixfmt_psl::rawBitmap(uint8_t *Data, int Width, int Height, int Stride, int BitsPerPixel, ColourFormat &ColourFormat, BLM BlendMode) noexcept
 {
    mData   = Data;
    mWidth  = Width;
@@ -1110,54 +1174,97 @@ void agg::pixfmt_psl::rawBitmap(UBYTE *Data, LONG Width, LONG Height, LONG Strid
       fBlendColorHSpan = &blendColorHSpan32;
       fCopyColorHSpan  = &copyColorHSpan32;
 
-      if (ColourFormat.AlphaPos IS 24) {
-         if (ColourFormat.BluePos IS 0) {
-            pixel_order(2, 1, 0, 3); // BGRA
-            fBlendPix = Linear ? &linear32BGRA : &blend32BGRA;
-            fCopyPix  = Linear ? &linearCopy32BGRA : &copy32BGRA;
-            fCoverPix = Linear ? &linearCover32BGRA : &cover32BGRA;
+      if (BlendMode IS BLM::LINEAR) {
+         if (ColourFormat.AlphaPos IS 24) {
+            if (ColourFormat.BluePos IS 0) {
+               pixel_order(pxBGRA);
+               fBlendPix = &linear32BGRA;
+               fCopyPix  = &linearCopy32BGRA;
+               fCoverPix = &linearCover32BGRA;
+            }
+            else {
+               pixel_order(pxRGBA);
+               fBlendPix = &linear32RGBA;
+               fCopyPix  = &linearCopy32RGBA;
+               fCoverPix = &linearCover32RGBA;
+            }
+         }
+         else if (ColourFormat.RedPos IS 24) {
+            pixel_order(pxAGBR);
+            fBlendPix = &linear32AGBR;
+            fCopyPix  = &linearCopy32AGBR;
+            fCoverPix = &linearCover32AGBR;
          }
          else {
-            pixel_order(0, 1, 2, 3); // RGBA
-            fBlendPix = Linear ? &linear32RGBA : &blend32RGBA;
-            fCopyPix  = Linear ? &linearCopy32RGBA : &copy32RGBA;
-            fCoverPix = Linear ? &linearCover32RGBA : &cover32RGBA;
+            pixel_order(pxARGB);
+            fBlendPix = &linear32ARGB;
+            fCopyPix  = &linearCopy32ARGB;
+            fCoverPix = &linearCover32ARGB;
          }
       }
-      else if (ColourFormat.RedPos IS 24) {
-         pixel_order(3, 1, 2, 0); // AGBR
-         fBlendPix = Linear ? &linear32AGBR : &blend32AGBR;
-         fCopyPix  = Linear ? &linearCopy32AGBR : &copy32AGBR;
-         fCoverPix = Linear ? &linearCover32AGBR : &cover32AGBR;
+      else if (BlendMode IS BLM::SRGB) {
+         if (ColourFormat.AlphaPos IS 24) {
+            if (ColourFormat.BluePos IS 0) {
+               pixel_order(pxBGRA);
+               fBlendPix = &srgb32BGRA;
+               fCopyPix  = &srgbCopy32BGRA;
+               fCoverPix = &srgbCover32BGRA;
+            }
+            else {
+               pixel_order(pxRGBA);
+               fBlendPix = &srgb32RGBA;
+               fCopyPix  = &srgbCopy32RGBA;
+               fCoverPix = &srgbCover32RGBA;
+            }
+         }
+         else if (ColourFormat.RedPos IS 24) {
+            pixel_order(pxAGBR);
+            fBlendPix = &srgb32AGBR;
+            fCopyPix  = &srgbCopy32AGBR;
+            fCoverPix = &srgbCover32AGBR;
+         }
+         else {
+            pixel_order(pxARGB);
+            fBlendPix = &srgb32ARGB;
+            fCopyPix  = &srgbCopy32ARGB;
+            fCoverPix = &srgbCover32ARGB;
+         }
       }
-      else {
-         pixel_order(1, 2, 3, 0); // ARGB
-         fBlendPix = Linear ? &linear32ARGB : &blend32ARGB;
-         fCopyPix  = Linear ? &linearCopy32ARGB : &copy32ARGB;
-         fCoverPix = Linear ? &linearCover32ARGB : &cover32ARGB;
+      else { // BLM::GAMMA
+         if (ColourFormat.AlphaPos IS 24) {
+            if (ColourFormat.BluePos IS 0) {
+               pixel_order(pxBGRA);
+               fBlendPix = &gamma32BGRA;
+               fCopyPix  = &gammaCopy32BGRA;
+               fCoverPix = &gammaCover32BGRA;
+            }
+            else {
+               pixel_order(pxRGBA);
+               fBlendPix = &gamma32RGBA;
+               fCopyPix  = &gammaCopy32RGBA;
+               fCoverPix = &gammaCover32RGBA;
+            }
+         }
+         else if (ColourFormat.RedPos IS 24) {
+            pixel_order(pxAGBR);
+            fBlendPix = &gamma32AGBR;
+            fCopyPix  = &gammaCopy32AGBR;
+            fCoverPix = &gammaCover32AGBR;
+         }
+         else {
+            pixel_order(pxARGB);
+            fBlendPix = &gamma32ARGB;
+            fCopyPix  = &gammaCopy32ARGB;
+            fCoverPix = &gammaCover32ARGB;
+         }
       }
    }
    else if (BitsPerPixel IS 24) {
-      fBlendHLine      = &blendHLine24;
-      fBlendSolidHSpan = &blendSolidHSpan24;
-      fBlendColorHSpan = &blendColorHSpan24;
-      fCopyColorHSpan  = &copyColorHSpan24;
-
-      if (ColourFormat.BluePos IS 0) {
-         pixel_order(2, 1, 0, 0); // BGR
-         fBlendPix = &blend24BGR;
-         fCopyPix  = &copy24BGR;
-         fCoverPix = &cover24BGR;
-      }
-      else {
-         pixel_order(0, 1, 2, 0); // RGB
-         fBlendPix = &blend24RGB;
-         fCopyPix  = &copy24RGB;
-         fCoverPix = &cover24RGB;
-      }
+      pf::Log log;
+      log.warning("Support for 24-bit bitmaps is deprecated.");
    }
    else if (BitsPerPixel IS 16) {
-      // Deprecated.  16-bit client code should use 24-bit and downscale instead.
+      // Deprecated.  16-bit client code should use 32-bit and downscale instead.
       pf::Log log;
       log.warning("Support for 16-bit bitmaps is deprecated.");
    }

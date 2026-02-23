@@ -48,7 +48,7 @@ the convolution, the image is resampled back to the original resolution.
 When the image must be resampled to match the coordinate system defined by UnitX/Y prior to
 convolution, or resampled to match the device coordinate system after convolution, it is recommended that
 high quality viewers make use of appropriate interpolation techniques, for example bilinear or bicubic.
-Depending on the speed of the available interpolents, this choice may be affected by the image-rendering
+Depending on the speed of the available interpolants, this choice may be affected by the image-rendering
 property setting. Note that implementations might choose approaches that minimize or eliminate resampling
 when not necessary to produce proper results, such as when the document is zoomed out such that
 UnitX/Y is considerably smaller than a device pixel.
@@ -56,8 +56,9 @@ UnitX/Y is considerably smaller than a device pixel.
 *********************************************************************************************************************/
 
 #include <array>
+#include <bs_thread_pool.h>
 
-#define MAX_DIM 9
+constexpr int MAX_DIM = 9; // Maximum matrix dimension for convolution filter effects.
 
 //********************************************************************************************************************
 
@@ -67,135 +68,100 @@ class extConvolveFX : public extFilterEffect {
    static constexpr CSTRING CLASS_NAME = "ConvolveFX";
    using create = pf::Create<extConvolveFX>;
 
-   DOUBLE UnitX, UnitY;
-   DOUBLE Divisor;
-   DOUBLE Bias;
-   LONG TargetX, TargetY;
-   LONG MatrixColumns, MatrixRows;
-   EM   EdgeMode;
-   LONG MatrixSize;
-   bool PreserveAlpha;
-   DOUBLE Matrix[MAX_DIM * MAX_DIM];
+   double UnitX, UnitY;
+   double Divisor;
+   double Bias;
+   int    TargetX, TargetY;
+   int    MatrixColumns, MatrixRows;
+   int    MatrixSize;
+   EM     EdgeMode;
+   bool   PreserveAlpha;
+   double Matrix[MAX_DIM * MAX_DIM];
 
-   extConvolveFX() : UnitX(1), UnitY(1), Divisor(0), Bias(0), TargetX(-1), TargetY(-1),
-      MatrixColumns(3), MatrixRows(3), EdgeMode(EM::DUPLICATE), MatrixSize(9), PreserveAlpha(false) { }
+   extConvolveFX() : UnitX(1), UnitY(1), Divisor(0), Bias(0),
+      TargetX(-1), TargetY(-1), // If -ve, the target will be computed as the centre of the matrix.
+      MatrixColumns(3), MatrixRows(3), MatrixSize(9), EdgeMode(EM::DUPLICATE), PreserveAlpha(false) { }
 
-   inline UBYTE * getPixel(objBitmap *Bitmap, LONG X, LONG Y) const {
+   inline uint8_t * getPixel(objBitmap *Bitmap, int X, int Y) const {
       if ((X >= Bitmap->Clip.Left) and (X < Bitmap->Clip.Right) and
           (Y >= Bitmap->Clip.Top) and (Y < Bitmap->Clip.Bottom)) {
-         return Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<2);
+         return Bitmap->Data + (Y * Bitmap->LineWidth) + (X * Bitmap->BytesPerPixel);
       }
 
       switch (EdgeMode) {
-         default: return NULL;
-
          case EM::DUPLICATE:
             if (X < Bitmap->Clip.Left) X = Bitmap->Clip.Left;
             else if (X >= Bitmap->Clip.Right) X = Bitmap->Clip.Right - 1;
             if (Y < Bitmap->Clip.Top) Y = Bitmap->Clip.Top;
             else if (Y >= Bitmap->Clip.Bottom) Y = Bitmap->Clip.Bottom - 1;
-            return Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<2);
+            return Bitmap->Data + (Y * Bitmap->LineWidth) + (X * Bitmap->BytesPerPixel);
 
-         case EM::WRAP:
-            while (X < Bitmap->Clip.Left) X += Bitmap->Clip.Right - Bitmap->Clip.Left;
-            X %= Bitmap->Clip.Right - Bitmap->Clip.Left;
-            while (Y < Bitmap->Clip.Top) Y += Bitmap->Clip.Bottom - Bitmap->Clip.Top;
-            Y %= Bitmap->Clip.Bottom - Bitmap->Clip.Top;
-            return Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<2);
+         case EM::WRAP: {
+            auto width = Bitmap->Clip.Right - Bitmap->Clip.Left;
+            auto height = Bitmap->Clip.Bottom - Bitmap->Clip.Top;
+
+            X -= Bitmap->Clip.Left;
+            Y -= Bitmap->Clip.Top;
+
+            if (X < 0) X = std::abs(width + X) % width;
+            else if (X >= width) X %= width;
+
+            if (Y < 0) Y = std::abs(height + Y) % height;
+            else if (Y >= height) Y %= height;
+
+            return Bitmap->Data + ((Y + Bitmap->Clip.Top)  * Bitmap->LineWidth) + ((X + Bitmap->Clip.Left) * Bitmap->BytesPerPixel);
+         }
+
+         default: return nullptr;
       }
    }
 
-   void processClipped(objBitmap *InputBitmap, UBYTE *output, LONG pLeft, LONG pTop, LONG pRight, LONG pBottom) {
-      const UBYTE A = InputBitmap->ColourFormat->AlphaPos>>3;
-      const UBYTE R = InputBitmap->ColourFormat->RedPos>>3;
-      const UBYTE G = InputBitmap->ColourFormat->GreenPos>>3;
-      const UBYTE B = InputBitmap->ColourFormat->BluePos>>3;
+   // Standard algorithm that uses edge detection at the borders (see getPixel()).
 
-      const DOUBLE factor = 1.0 / Divisor;
+   void processClipped(objBitmap *InputBitmap, uint8_t *output, int pLeft, int pTop, int pRight, int pBottom) {
+      if ((pRight <= pLeft) or (pBottom <= pTop)) return;
 
-      UBYTE *input = InputBitmap->Data + (pTop * InputBitmap->LineWidth);
-      UBYTE *outline = output;
-      for (LONG y=pTop; y < pBottom; y++) {
-         UBYTE *out = outline;
-         for (LONG x=pLeft; x < pRight; x++) {
-            DOUBLE r = 0.0, g = 0.0, b = 0.0, a = 0.0;
+      const uint8_t A = InputBitmap->ColourFormat->AlphaPos>>3;
+      const uint8_t R = InputBitmap->ColourFormat->RedPos>>3;
+      const uint8_t G = InputBitmap->ColourFormat->GreenPos>>3;
+      const uint8_t B = InputBitmap->ColourFormat->BluePos>>3;
 
-            // Multiply every value of the filter with corresponding image pixel
+      const double factor = 1.0 / Divisor;
+      const double bias = Bias * 255.0;
 
-            UBYTE kv = 0;
-            for (int fy=y-TargetY; fy < y+MatrixRows-TargetY; fy++) {
-               for (int fx=x-TargetX; fx < x+MatrixColumns-TargetX; fx++) {
-                  UBYTE *pixel = getPixel(InputBitmap, fx, fy);
-                  if (pixel) {
-                     r += pixel[R] * Matrix[kv];
-                     g += pixel[G] * Matrix[kv];
-                     b += pixel[B] * Matrix[kv];
-                     a += pixel[A] * Matrix[kv];
-                  }
-                  kv++;
-               }
+      uint8_t *alpha_input = InputBitmap->Data + (pTop * InputBitmap->LineWidth);
+      uint8_t *outline = output;
+      for (int y=pTop; y < pBottom; y++) {
+         uint8_t *out = outline;
+         for (int x=pLeft; x < pRight; x++) {
+            double r = 0.0, g = 0.0, b = 0.0, a = 0.0;
+            uint8_t kv = 0;
+            for (int fy = 0; fy < MatrixRows; fy++) {
+                int isrcY = F2I(y - (TargetY * UnitY) + (fy * UnitY));
+                for (int fx = 0; fx < MatrixColumns; fx++) {
+                    int isrcX = F2I(x - (TargetX * UnitX) + (fx * UnitX));
+                    if (auto pixel = getPixel(InputBitmap, isrcX, isrcY)) {
+                        r += pixel[R] * Matrix[kv];
+                        g += pixel[G] * Matrix[kv];
+                        b += pixel[B] * Matrix[kv];
+                        a += pixel[A] * Matrix[kv];
+                    }
+                    kv++;
+                }
             }
 
-            LONG lr = F2I((factor * r) + Bias);
-            LONG lg = F2I((factor * g) + Bias);
-            LONG lb = F2I((factor * b) + Bias);
-            out[R] = glLinearRGB.invert(std::min(std::max(lr, 0), 255));
-            out[G] = glLinearRGB.invert(std::min(std::max(lg, 0), 255));
-            out[B] = glLinearRGB.invert(std::min(std::max(lb, 0), 255));
-            if (!PreserveAlpha) out[A] = std::min(std::max(F2I(factor * a + Bias), 0), 255);
-            else out[A] = (input + (x<<2))[A];
+            int lr = F2I((factor * r) + bias);
+            int lg = F2I((factor * g) + bias);
+            int lb = F2I((factor * b) + bias);
+            out[R] = glLinearRGB.invert(std::clamp(lr, 0, 255));
+            out[G] = glLinearRGB.invert(std::clamp(lg, 0, 255));
+            out[B] = glLinearRGB.invert(std::clamp(lb, 0, 255));
+            if (!PreserveAlpha) out[A] = std::clamp(F2I(factor * a + bias), 0, 255);
+            else out[A] = (alpha_input + (x * InputBitmap->BytesPerPixel))[A];
             out += 4;
          }
-         input   += InputBitmap->LineWidth;
-         outline += (Target->Clip.Right - Target->Clip.Left)<<2;
-      }
-   }
-
-   // This algorithm is unclipped and performs no edge detection, so is unsafe to use near the edge of the bitmap.
-
-   void processFast(objBitmap *InputBitmap, UBYTE *output, LONG Left, LONG Top, LONG Right, LONG Bottom) {
-      const UBYTE A = InputBitmap->ColourFormat->AlphaPos>>3;
-      const UBYTE R = InputBitmap->ColourFormat->RedPos>>3;
-      const UBYTE G = InputBitmap->ColourFormat->GreenPos>>3;
-      const UBYTE B = InputBitmap->ColourFormat->BluePos>>3;
-
-      const DOUBLE factor = 1.0 / Divisor;
-
-      UBYTE *input = InputBitmap->Data + (Top * InputBitmap->LineWidth);
-      for (LONG y=Top; y < Bottom; y++) {
-         UBYTE *out = output;
-         UBYTE *filterEdge = InputBitmap->Data + (y-TargetY) * InputBitmap->LineWidth;
-         for (LONG x=Left; x < Right; x++) {
-            DOUBLE r = 0.0, g = 0.0, b = 0.0, a = 0.0;
-            UBYTE kv = 0;
-            const LONG fxs = x - TargetX;
-            const LONG fxe = x + MatrixColumns - TargetX;
-            UBYTE *currentLine = filterEdge;
-            for (int fy=y-TargetY; fy < y+MatrixRows-TargetY; fy++) {
-               UBYTE *pixel = currentLine + (fxs<<2);
-               for (int fx=fxs; fx < fxe; fx++) {
-                  r += pixel[R] * Matrix[kv];
-                  g += pixel[G] * Matrix[kv];
-                  b += pixel[B] * Matrix[kv];
-                  a += pixel[A] * Matrix[kv];
-                  pixel += 4;
-                  kv++;
-               }
-               currentLine += InputBitmap->LineWidth;
-            }
-
-            LONG lr = F2I((factor * r) + Bias);
-            LONG lg = F2I((factor * g) + Bias);
-            LONG lb = F2I((factor * b) + Bias);
-            out[R] = glLinearRGB.invert(std::min(std::max(lr, 0), 255));
-            out[G] = glLinearRGB.invert(std::min(std::max(lg, 0), 255));
-            out[B] = glLinearRGB.invert(std::min(std::max(lb, 0), 255));
-            if (!PreserveAlpha) out[A] = std::min(std::max(F2I(factor * a + Bias), 0), 255);
-            else out[A] = (input + (x<<2))[A];
-            out += 4;
-         }
-         input  += InputBitmap->LineWidth;
-         output += (InputBitmap->Clip.Right - InputBitmap->Clip.Left)<<2;
+         alpha_input += InputBitmap->LineWidth;
+         outline += (Target->Clip.Right - Target->Clip.Left) * Target->BytesPerPixel;
       }
    }
 };
@@ -204,45 +170,57 @@ class extConvolveFX : public extFilterEffect {
 
 static ERR CONVOLVEFX_Draw(extConvolveFX *Self, struct acDraw *Args)
 {
-   if (Self->Target->BytesPerPixel != 4) return ERR::Failed;
+   if (Self->Target->BytesPerPixel != 4) return ERR::InvalidValue;
 
-   const LONG canvas_width  = Self->Target->Clip.Right - Self->Target->Clip.Left;
-   const LONG canvas_height = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
+   const int canvas_width  = Self->Target->Clip.Right - Self->Target->Clip.Left;
+   const int canvas_height = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
 
-   if (canvas_width * canvas_height > 4096 * 4096) return ERR::Failed; // Bail on really large bitmaps.
+   if (canvas_width * canvas_height > 4096 * 4096) return ERR::OutOfRange; // Bail on really large bitmaps.
 
-   UBYTE *output = new (std::nothrow) UBYTE[canvas_width * canvas_height * Self->Target->BytesPerPixel];
-   if (!output) return ERR::Memory;
+   std::vector<uint8_t> data;
+   data.resize(canvas_width * canvas_height * Self->Target->BytesPerPixel);
 
    objBitmap *inBmp;
-   if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::Failed;
+   if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::NoData;
+
+   // Note: The inBmp->Data pointer is pre-adjusted to match the Clip Left and Top values (i.e. add
+   // (Clip.Left * BPP) + (Clip.Top * LineWidth) to Data in order to get its true value)
 
    if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) inBmp->convertToLinear();
    inBmp->premultiply();
 
-   if ((canvas_width > Self->MatrixColumns*3) and (canvas_height > Self->MatrixRows*3)) {
-      const LONG ew = Self->MatrixColumns>>1;
-      const LONG eh = Self->MatrixRows>>1;
-      Self->processClipped(inBmp, output,                       Self->Target->Clip.Left,     Self->Target->Clip.Top, Self->Target->Clip.Left+ew,  Self->Target->Clip.Bottom); // Left
-      Self->processClipped(inBmp, output+((canvas_width-ew)*4), Self->Target->Clip.Right-ew, Self->Target->Clip.Top, Self->Target->Clip.Right,    Self->Target->Clip.Bottom); // Right
-      Self->processClipped(inBmp, output+(ew*4),                Self->Target->Clip.Left+ew,  Self->Target->Clip.Top, Self->Target->Clip.Right-ew, Self->Target->Clip.Top+eh); // Top
-      Self->processClipped(inBmp, output+((canvas_height-eh)*4*canvas_width), Self->Target->Clip.Left+ew,  Self->Target->Clip.Bottom-eh, Self->Target->Clip.Right-ew, Self->Target->Clip.Bottom); // Bottom
-      // Center
-      Self->processFast(inBmp, output+(ew*4)+(canvas_width*eh*4), Self->Target->Clip.Left+ew, Self->Target->Clip.Top+eh, Self->Target->Clip.Right-ew, Self->Target->Clip.Bottom-eh);
+   int thread_count = std::thread::hardware_concurrency();
+   if (thread_count < 1) thread_count = 1;
+   if (canvas_height < 4) thread_count = 1; // Prevent division issues with small images
+   else if (thread_count > canvas_height / 4) thread_count = canvas_height / 4;
+
+   BS::thread_pool pool(thread_count);
+
+   int lines_per_thread = canvas_height / thread_count;
+   for (int i=0; i < thread_count; i++) {
+      int top = Self->Target->Clip.Top + (i * lines_per_thread);
+      int bottom = (i IS thread_count - 1) ? Self->Target->Clip.Bottom : top + lines_per_thread;
+
+      // Calculate output offset for each thread to prevent race conditions
+      int output_offset = i * lines_per_thread * canvas_width * Self->Target->BytesPerPixel;
+      auto thread_output = (uint8_t *)data.data() + output_offset;
+
+      pool.detach_task([Self, inBmp, thread_output, L = Self->Target->Clip.Left, T = top, R = Self->Target->Clip.Right, B = bottom]() {
+         Self->processClipped(inBmp, thread_output, L, T, R, B);
+      });
    }
-   else Self->processClipped(inBmp, output, Self->Target->Clip.Left, Self->Target->Clip.Top, Self->Target->Clip.Right, Self->Target->Clip.Bottom);
+
+   pool.wait();
 
    // Copy the resulting output back to the bitmap.
 
-   ULONG *pixel = (ULONG *)(Self->Target->Data + (Self->Target->Clip.Left<<2) + (Self->Target->Clip.Top * Self->Target->LineWidth));
-   ULONG *src   = (ULONG *)output;
-   for (LONG y=0; y < canvas_height; y++) {
-      copymem(src, pixel, 4 * canvas_width);
+   auto pixel = (uint32_t *)(Self->Target->Data + (Self->Target->Clip.Left * Self->Target->BytesPerPixel) + (Self->Target->Clip.Top * Self->Target->LineWidth));
+   auto src   = (uint32_t *)data.data();
+   for (int y=0; y < canvas_height; y++) {
+      copymem(src, pixel, size_t(Self->Target->BytesPerPixel) * size_t(canvas_width));
       pixel += Self->Target->LineWidth>>2;
       src += canvas_width;
    }
-
-   delete [] output;
 
    if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) inBmp->convertToRGB();
 
@@ -263,31 +241,31 @@ static ERR CONVOLVEFX_Init(extConvolveFX *Self)
       return ERR::BufferOverflow;
    }
 
-   const LONG filter_size = Self->MatrixColumns * Self->MatrixRows;
+   const int filter_size = Self->MatrixColumns * Self->MatrixRows;
 
    if (Self->MatrixSize != filter_size) {
       log.warning("Matrix size of %d does not match the filter size of %dx%d", Self->MatrixSize, Self->MatrixColumns, Self->MatrixRows);
-      return ERR::Failed;
+      return ERR::Mismatch;
    }
 
    // Use client-provided tx/ty values, otherwise default according to the SVG standard.
 
    if ((Self->TargetX < 0) or (Self->TargetX >= Self->MatrixColumns)) {
-      Self->TargetX = floor(Self->MatrixColumns / 2);
+      Self->TargetX = Self->MatrixColumns>>1;
    }
 
    if ((Self->TargetY < 0) or (Self->TargetY >= Self->MatrixRows)) {
-      Self->TargetY = floor(Self->MatrixRows / 2);
+      Self->TargetY = Self->MatrixRows>>1;
    }
 
    if (!Self->Divisor) {
-      DOUBLE divisor = 0;
-      for (LONG i=0; i < filter_size; i++) divisor += Self->Matrix[i];
+      double divisor = 0;
+      for (int i=0; i < filter_size; i++) divisor += Self->Matrix[i];
       if (!divisor) divisor = 1;
       Self->Divisor = divisor;
    }
 
-   log.trace("Convolve Size: (%d,%d), Divisor: %.2f, Bias: %.2f", Self->MatrixColumns, Self->MatrixRows, Self->Divisor, Self->Bias);
+   log.trace("Convolve Size: (%d,%d), Divisor: %g, Bias: %g", Self->MatrixColumns, Self->MatrixRows, Self->Divisor, Self->Bias);
 
    return ERR::Okay;
 }
@@ -320,13 +298,13 @@ clamped to 0 or 1.  The default is 0.
 
 *********************************************************************************************************************/
 
-static ERR CONVOLVEFX_GET_Bias(extConvolveFX *Self, DOUBLE *Value)
+static ERR CONVOLVEFX_GET_Bias(extConvolveFX *Self, double *Value)
 {
    *Value = Self->Bias;
    return ERR::Okay;
 }
 
-static ERR CONVOLVEFX_SET_Bias(extConvolveFX *Self, DOUBLE Value)
+static ERR CONVOLVEFX_SET_Bias(extConvolveFX *Self, double Value)
 {
    Self->Bias = Value;
    return ERR::Okay;
@@ -344,13 +322,13 @@ exception that if the sum is zero, then the divisor is set to `1`.
 
 *********************************************************************************************************************/
 
-static ERR CONVOLVEFX_GET_Divisor(extConvolveFX *Self, DOUBLE *Value)
+static ERR CONVOLVEFX_GET_Divisor(extConvolveFX *Self, double *Value)
 {
    *Value = Self->Divisor;
    return ERR::Okay;
 }
 
-static ERR CONVOLVEFX_SET_Divisor(extConvolveFX *Self, DOUBLE Value)
+static ERR CONVOLVEFX_SET_Divisor(extConvolveFX *Self, double Value)
 {
    pf::Log log;
    if (Value <= 0) return log.warning(ERR::InvalidValue);
@@ -390,20 +368,20 @@ A list of numbers that make up the kernel matrix for the convolution.  The numbe
 
 *********************************************************************************************************************/
 
-static ERR CONVOLVEFX_GET_Matrix(extConvolveFX *Self, DOUBLE **Value, LONG *Elements)
+static ERR CONVOLVEFX_GET_Matrix(extConvolveFX *Self, double **Value, int *Elements)
 {
    *Elements = Self->MatrixSize;
    *Value    = Self->Matrix;
    return ERR::Okay;
 }
 
-static ERR CONVOLVEFX_SET_Matrix(extConvolveFX *Self, DOUBLE *Value, LONG Elements)
+static ERR CONVOLVEFX_SET_Matrix(extConvolveFX *Self, double *Value, int Elements)
 {
    pf::Log log;
 
    if ((Elements > 0) and (Elements <= std::ssize(Self->Matrix))) {
       Self->MatrixSize = Elements;
-      copymem(Value, Self->Matrix, sizeof(DOUBLE) * Elements);
+      copymem(Value, Self->Matrix, sizeof(double) * Elements);
       return ERR::Okay;
    }
    else return log.warning(ERR::InvalidValue);
@@ -420,13 +398,13 @@ the impact on performance.  The default value is 3.
 
 *********************************************************************************************************************/
 
-static ERR CONVOLVEFX_GET_MatrixRows(extConvolveFX *Self, LONG *Value)
+static ERR CONVOLVEFX_GET_MatrixRows(extConvolveFX *Self, int *Value)
 {
    *Value = Self->MatrixRows;
    return ERR::Okay;
 }
 
-static ERR CONVOLVEFX_SET_MatrixRows(extConvolveFX *Self, LONG Value)
+static ERR CONVOLVEFX_SET_MatrixRows(extConvolveFX *Self, int Value)
 {
    pf::Log log;
    if (Value <= 0) return log.warning(ERR::InvalidValue);
@@ -446,13 +424,13 @@ the impact on performance.  The default value is `3`.
 
 *********************************************************************************************************************/
 
-static ERR CONVOLVEFX_GET_MatrixColumns(extConvolveFX *Self, LONG *Value)
+static ERR CONVOLVEFX_GET_MatrixColumns(extConvolveFX *Self, int *Value)
 {
    *Value = Self->MatrixColumns;
    return ERR::Okay;
 }
 
-static ERR CONVOLVEFX_SET_MatrixColumns(extConvolveFX *Self, LONG Value)
+static ERR CONVOLVEFX_SET_MatrixColumns(extConvolveFX *Self, int Value)
 {
    pf::Log log;
    if (Value <= 0) return log.warning(ERR::InvalidValue);
@@ -468,13 +446,13 @@ PreserveAlpha: If TRUE, the alpha channel is protected from the effects of the c
 
 *********************************************************************************************************************/
 
-static ERR CONVOLVEFX_GET_PreserveAlpha(extConvolveFX *Self, LONG *Value)
+static ERR CONVOLVEFX_GET_PreserveAlpha(extConvolveFX *Self, int *Value)
 {
    *Value = Self->PreserveAlpha;
    return ERR::Okay;
 }
 
-static ERR CONVOLVEFX_SET_PreserveAlpha(extConvolveFX *Self, LONG Value)
+static ERR CONVOLVEFX_SET_PreserveAlpha(extConvolveFX *Self, int Value)
 {
    Self->PreserveAlpha = Value;
    return ERR::Okay;
@@ -492,13 +470,13 @@ default, the convolution matrix is centered in X over each pixel of the input im
 
 *********************************************************************************************************************/
 
-static ERR CONVOLVEFX_GET_TargetX(extConvolveFX *Self, LONG *Value)
+static ERR CONVOLVEFX_GET_TargetX(extConvolveFX *Self, int *Value)
 {
    *Value = Self->TargetX;
    return ERR::Okay;
 }
 
-static ERR CONVOLVEFX_SET_TargetX(extConvolveFX *Self, LONG Value)
+static ERR CONVOLVEFX_SET_TargetX(extConvolveFX *Self, int Value)
 {
    if (Self->initialised()) {
       pf::Log log;
@@ -521,13 +499,13 @@ default, the convolution matrix is centered in Y over each pixel of the input im
 
 *********************************************************************************************************************/
 
-static ERR CONVOLVEFX_GET_TargetY(extConvolveFX *Self, LONG *Value)
+static ERR CONVOLVEFX_GET_TargetY(extConvolveFX *Self, int *Value)
 {
    *Value = Self->TargetY;
    return ERR::Okay;
 }
 
-static ERR CONVOLVEFX_SET_TargetY(extConvolveFX *Self, LONG Value)
+static ERR CONVOLVEFX_SET_TargetY(extConvolveFX *Self, int Value)
 {
    if (Self->initialised()) {
       pf::Log log;
@@ -555,13 +533,13 @@ aligns with the pixel grid of the kernel.
 
 *********************************************************************************************************************/
 
-static ERR CONVOLVEFX_GET_UnitX(extConvolveFX *Self, DOUBLE *Value)
+static ERR CONVOLVEFX_GET_UnitX(extConvolveFX *Self, double *Value)
 {
    *Value = Self->UnitX;
    return ERR::Okay;
 }
 
-static ERR CONVOLVEFX_SET_UnitX(extConvolveFX *Self, DOUBLE Value)
+static ERR CONVOLVEFX_SET_UnitX(extConvolveFX *Self, double Value)
 {
    if (Value < 0) return ERR::InvalidValue;
 
@@ -586,13 +564,13 @@ aligns with the pixel grid of the kernel.
 
 *********************************************************************************************************************/
 
-static ERR CONVOLVEFX_GET_UnitY(extConvolveFX *Self, DOUBLE *Value)
+static ERR CONVOLVEFX_GET_UnitY(extConvolveFX *Self, double *Value)
 {
    *Value = Self->UnitY;
    return ERR::Okay;
 }
 
-static ERR CONVOLVEFX_SET_UnitY(extConvolveFX *Self, DOUBLE Value)
+static ERR CONVOLVEFX_SET_UnitY(extConvolveFX *Self, double Value)
 {
    if (Value < 0) return ERR::InvalidValue;
 
@@ -626,19 +604,19 @@ static const FieldDef clEdgeMode[] = {
    { "Duplicate", EM::DUPLICATE },
    { "Wrap",      EM::WRAP },
    { "None",      EM::NONE },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldArray clConvolveFXFields[] = {
    { "Bias",          FDF_VIRTUAL|FDF_DOUBLE|FDF_RI,           CONVOLVEFX_GET_Bias, CONVOLVEFX_SET_Bias },
    { "Divisor",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RI,           CONVOLVEFX_GET_Divisor, CONVOLVEFX_SET_Divisor },
-   { "EdgeMode",      FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RI,  CONVOLVEFX_GET_EdgeMode, CONVOLVEFX_SET_EdgeMode, &clEdgeMode },
-   { "MatrixRows",    FDF_VIRTUAL|FDF_LONG|FDF_RI,             CONVOLVEFX_GET_MatrixRows, CONVOLVEFX_SET_MatrixRows },
-   { "MatrixColumns", FDF_VIRTUAL|FDF_LONG|FDF_RI,             CONVOLVEFX_GET_MatrixColumns, CONVOLVEFX_SET_MatrixColumns },
+   { "EdgeMode",      FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_RI,   CONVOLVEFX_GET_EdgeMode, CONVOLVEFX_SET_EdgeMode, &clEdgeMode },
+   { "MatrixRows",    FDF_VIRTUAL|FDF_INT|FDF_RI,              CONVOLVEFX_GET_MatrixRows, CONVOLVEFX_SET_MatrixRows },
+   { "MatrixColumns", FDF_VIRTUAL|FDF_INT|FDF_RI,              CONVOLVEFX_GET_MatrixColumns, CONVOLVEFX_SET_MatrixColumns },
    { "Matrix",        FDF_VIRTUAL|FDF_DOUBLE|FDF_ARRAY|FDF_RI, CONVOLVEFX_GET_Matrix, CONVOLVEFX_SET_Matrix },
-   { "PreserveAlpha", FDF_VIRTUAL|FDF_LONG|FDF_RW,             CONVOLVEFX_GET_PreserveAlpha, CONVOLVEFX_SET_PreserveAlpha },
-   { "TargetX",       FDF_VIRTUAL|FDF_LONG|FDF_RI,             CONVOLVEFX_GET_TargetX, CONVOLVEFX_SET_TargetX },
-   { "TargetY",       FDF_VIRTUAL|FDF_LONG|FDF_RI,             CONVOLVEFX_GET_TargetY, CONVOLVEFX_SET_TargetY },
+   { "PreserveAlpha", FDF_VIRTUAL|FDF_INT|FDF_RW,              CONVOLVEFX_GET_PreserveAlpha, CONVOLVEFX_SET_PreserveAlpha },
+   { "TargetX",       FDF_VIRTUAL|FDF_INT|FDF_RI,              CONVOLVEFX_GET_TargetX, CONVOLVEFX_SET_TargetX },
+   { "TargetY",       FDF_VIRTUAL|FDF_INT|FDF_RI,              CONVOLVEFX_GET_TargetY, CONVOLVEFX_SET_TargetY },
    { "UnitX",         FDF_VIRTUAL|FDF_DOUBLE|FDF_RI,           CONVOLVEFX_GET_UnitX, CONVOLVEFX_SET_UnitX },
    { "UnitY",         FDF_VIRTUAL|FDF_DOUBLE|FDF_RI,           CONVOLVEFX_GET_UnitY, CONVOLVEFX_SET_UnitY },
    { "XMLDef",        FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R,  CONVOLVEFX_GET_XMLDef },

@@ -11,7 +11,7 @@ It is possible to set this field, but only after initialisation of the surface o
 
 *********************************************************************************************************************/
 
-static ERR GET_AbsX(extSurface *Self, LONG *Value)
+static ERR GET_AbsX(extSurface *Self, int *Value)
 {
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
@@ -22,7 +22,7 @@ static ERR GET_AbsX(extSurface *Self, LONG *Value)
    else return ERR::Search;
 }
 
-static ERR SET_AbsX(extSurface *Self, LONG Value)
+static ERR SET_AbsX(extSurface *Self, int Value)
 {
    pf::Log log;
 
@@ -30,7 +30,7 @@ static ERR SET_AbsX(extSurface *Self, LONG Value)
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
       if (auto parent = find_parent_list(glSurfaces, Self); parent != -1) {
-         LONG x = Value - glSurfaces[parent].Left;
+         int x = Value - glSurfaces[parent].Left;
          move_layer(Self, x, Self->Y);
          return ERR::Okay;
       }
@@ -51,7 +51,7 @@ It is possible to set this field, but only after initialisation of the surface o
 
 *********************************************************************************************************************/
 
-static ERR GET_AbsY(extSurface *Self, LONG *Value)
+static ERR GET_AbsY(extSurface *Self, int *Value)
 {
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
@@ -62,7 +62,7 @@ static ERR GET_AbsY(extSurface *Self, LONG *Value)
    else return ERR::Search;
 }
 
-static ERR SET_AbsY(extSurface *Self, LONG Value)
+static ERR SET_AbsY(extSurface *Self, int Value)
 {
    pf::Log log;
 
@@ -70,7 +70,7 @@ static ERR SET_AbsY(extSurface *Self, LONG Value)
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
       if (auto parent = find_parent_list(glSurfaces, Self); parent != -1) {
-         LONG y = Value - glSurfaces[parent].Top;
+         int y = Value - glSurfaces[parent].Top;
          move_layer(Self, Self->X, y);
          return ERR::Okay;
       }
@@ -95,7 +95,7 @@ Bottom: Returns the bottom-most coordinate of a surface object, `Y + Height`.
 
 *********************************************************************************************************************/
 
-static ERR GET_Bottom(extSurface *Self, LONG *Bottom)
+static ERR GET_Bottom(extSurface *Self, int *Bottom)
 {
    *Bottom = Self->Y + Self->Height;
    return ERR::Okay;
@@ -115,30 +115,9 @@ setting the coordinate fields directly (which can be useful in certain cases).
 
 *********************************************************************************************************************/
 
-static ERR SET_BottomLimit(extSurface *Self, LONG Value)
+static ERR SET_BottomLimit(extSurface *Self, int Value)
 {
    Self->BottomLimit = Value;
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
-BottomMargin: Manipulates the bottom margin of a surface object.
-
-The Surface class supports margin settings, which are similar to the concept of margins on printed paper.  Margin
-values have no significant meaning or effect on a surface object itself, but they are often used by other objects and
-can be helpful in interface construction.  For instance, the Window script uses margins to indicate the space
-available for placing graphics and other surface objects inside of it.
-
-By default, all margins are set to zero when a new surface object is created.
-
-*********************************************************************************************************************/
-
-static ERR SET_BottomMargin(extSurface *Self, LONG Value)
-{
-   if (Value < 0) Self->BottomMargin = -Value;
-   else Self->BottomMargin = Value;
    return ERR::Okay;
 }
 
@@ -313,59 +292,6 @@ static ERR SET_Height(extSurface *Self, Unit *Value)
 /*********************************************************************************************************************
 
 -FIELD-
-InsideHeight: Defines the amount of space between the vertical margins.
-
-A client can determine the internal height of a surface object by reading the InsideHeight field.  The returned value
-is the result of calculating this formula: `Height - TopMargin - BottomMargin`.
-
-If the #TopMargin and #BottomMargin fields are not set, the returned value will be equal to the surface object's
-height.
-
-*********************************************************************************************************************/
-
-static ERR GET_InsideHeight(extSurface *Self, LONG *Value)
-{
-   *Value = Self->Height - Self->TopMargin - Self->BottomMargin;
-   return ERR::Okay;
-}
-
-static ERR SET_InsideHeight(extSurface *Self, LONG Value)
-{
-   LONG height = Value + Self->TopMargin + Self->BottomMargin;
-   if (height < Self->MinHeight) height = Self->MinHeight;
-   Self->setHeight(height);
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
-InsideWidth: Defines the amount of space between the horizontal margins.
-
-A client can determine the internal width of a surface object by reading the InsideWidth field.  The returned value is the
-result of calculating this formula: `Width - LeftMargin - RightMargin`.
-
-If the #LeftMargin and #RightMargin fields are not set, the returned value will be equal to the surface object's width.
-
-*********************************************************************************************************************/
-
-static ERR GET_InsideWidth(extSurface *Self, LONG *Value)
-{
-   *Value = Self->Width - Self->LeftMargin - Self->RightMargin;
-   return ERR::Okay;
-}
-
-static ERR SET_InsideWidth(extSurface *Self, LONG Value)
-{
-   LONG width = Value + Self->LeftMargin + Self->RightMargin;
-   if (width < Self->MinWidth) width = Self->MinWidth;
-   Self->setWidth(width);
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
 LeftLimit: Prevents a surface object from moving beyond a given point on the left-hand side.
 
 A client can prevent a surface object from moving beyond a given point at the left-hand side of its container by setting
@@ -377,7 +303,7 @@ setting the coordinate fields directly.
 
 *********************************************************************************************************************/
 
-static ERR SET_LeftLimit(extSurface *Self, LONG Value)
+static ERR SET_LeftLimit(extSurface *Self, int Value)
 {
    Self->LeftLimit = Value;
    return ERR::Okay;
@@ -386,36 +312,24 @@ static ERR SET_LeftLimit(extSurface *Self, LONG Value)
 /*********************************************************************************************************************
 
 -FIELD-
-LeftMargin: Manipulates the left margin of a surface object.
-
-The Surface class supports margin settings, which are similar to the concept of margins on printed paper.  Margin
-values have no significant meaning or effect on a surface object itself, but they are often used by other objects and
-can be helpful in interface construction.  For instance, the Window template uses margins to indicate the space
-available for placing graphics and other surface objects inside of it.
-
-By default, all margins are set to zero when a new surface object is created.
-
--FIELD-
 MaxHeight: Prevents the height of a surface object from exceeding a certain value.
 
 A client can limit the maximum height of a surface object by setting this field.  Limiting the height affects resizing,
 making it impossible to use the Resize() action to extend beyond the height you specify.
 
-It is possible to circumvent the MaxHeight by setting the Height field directly.  Note that the MaxHeight value refers
-to the inside-height of the surface area, thus the overall maximum height will include both the #TopMargin and
-#BottomMargin values.
+It is possible to circumvent the MaxHeight by setting the Height field directly.
 
 *********************************************************************************************************************/
 
-static ERR SET_MaxHeight(extSurface *Self, LONG Value)
+static ERR SET_MaxHeight(extSurface *Self, int Value)
 {
    Self->MaxHeight = Value;
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
       pf::ScopedObjectLock<extDisplay> display(Self->DisplayID);
       if (display.granted()) display->sizeHints(-1, -1,
-         Self->MaxWidth + Self->LeftMargin + Self->RightMargin,
-         Self->MaxHeight + Self->TopMargin + Self->BottomMargin,
+         (Self->MaxWidth > 0) ? (Self->MaxWidth) : -1,
+         (Self->MaxHeight > 0) ? (Self->MaxHeight) : -1,
          (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
    }
 
@@ -430,21 +344,19 @@ MaxWidth: Prevents the width of a surface object from exceeding a certain value.
 A client can limit the maximum width of a surface object by setting this field.  Limiting the width affects resizing, making
 it impossible to use the #Resize() action to extend beyond the width you specify.
 
-It is possible to circumvent the MaxWidth by setting the Width field directly.  Note that the MaxWidth value refers to
-the inside-width of the surface area, thus the overall maximum width will include both the #LeftMargin and #RightMargin
-values.
+It is possible to circumvent the MaxWidth by setting the Width field directly.
 
 *********************************************************************************************************************/
 
-static ERR SET_MaxWidth(extSurface *Self, LONG Value)
+static ERR SET_MaxWidth(extSurface *Self, int Value)
 {
    Self->MaxWidth = Value;
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
       if (pf::ScopedObjectLock<extDisplay> display(Self->DisplayID); display.granted()) {
          display->sizeHints(-1, -1,
-            Self->MaxWidth + Self->LeftMargin + Self->RightMargin,
-            Self->MaxHeight + Self->TopMargin + Self->BottomMargin,
+            (Self->MaxWidth > 0) ? (Self->MaxWidth) : -1,
+            (Self->MaxHeight > 0) ? (Self->MaxHeight) : -1,
             (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
       }
    }
@@ -465,15 +377,14 @@ It is possible to circumvent the MinHeight by setting the #Height field directly
 
 *********************************************************************************************************************/
 
-static ERR SET_MinHeight(extSurface *Self, LONG Value)
+static ERR SET_MinHeight(extSurface *Self, int Value)
 {
    Self->MinHeight = Value;
    if (Self->MinHeight < 1) Self->MinHeight = 1;
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
       if (pf::ScopedObjectLock<extDisplay> display(Self->DisplayID); display.granted()) {
-         display->sizeHints(Self->MinWidth + Self->LeftMargin + Self->RightMargin,
-            Self->MinHeight + Self->TopMargin + Self->BottomMargin,
+         display->sizeHints(Self->MinWidth, Self->MinHeight,
             -1, -1, (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
       }
    }
@@ -494,15 +405,14 @@ It is possible to circumvent the MinWidth by setting the #Width field directly.
 
 *********************************************************************************************************************/
 
-static ERR SET_MinWidth(extSurface *Self, LONG Value)
+static ERR SET_MinWidth(extSurface *Self, int Value)
 {
    Self->MinWidth = Value;
    if (Self->MinWidth < 1) Self->MinWidth = 1;
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
       if (pf::ScopedObjectLock<extDisplay> display(Self->DisplayID); display.granted()) {
-         display->sizeHints(Self->MinWidth + Self->LeftMargin + Self->RightMargin,
-            Self->MinHeight + Self->TopMargin + Self->BottomMargin,
+         display->sizeHints(Self->MinWidth, Self->MinHeight,
             -1, -1, (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
       }
    }
@@ -517,7 +427,7 @@ Right: Returns the right-most coordinate of a surface object, `X + Width`.
 
 *********************************************************************************************************************/
 
-static ERR GET_Right(extSurface *Self, LONG *Value)
+static ERR GET_Right(extSurface *Self, int *Value)
 {
    *Value = Self->X + Self->Width;
    return ERR::Okay;
@@ -537,30 +447,9 @@ setting the coordinate fields directly (which can be useful in certain cases).
 
 *********************************************************************************************************************/
 
-static ERR SET_RightLimit(extSurface *Self, LONG Value)
+static ERR SET_RightLimit(extSurface *Self, int Value)
 {
    Self->RightLimit = Value;
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
-RightMargin: Manipulates the right margin of a surface object.
-
-The Surface class supports margin settings, which are similar to the concept of margins on printed paper.  Margin
-values have no significant meaning or effect on a surface object itself, but they are often used by other objects and
-can be helpful in interface construction.  For instance, the Window template uses margins to indicate the space
-available for placing graphics and other surface objects inside of it.
-
-By default, all margins are set to zero when a new surface object is created.
-
-*********************************************************************************************************************/
-
-static ERR SET_RightMargin(extSurface *Self, LONG Value)
-{
-   if (Value < 0) Self->RightMargin = -Value;
-   else Self->RightMargin = Value;
    return ERR::Okay;
 }
 
@@ -578,23 +467,13 @@ setting the coordinate fields directly (which can be useful in certain cases).
 
 *********************************************************************************************************************/
 
-static ERR SET_TopLimit(extSurface *Self, LONG Value)
+static ERR SET_TopLimit(extSurface *Self, int Value)
 {
    Self->TopLimit = Value;
    return ERR::Okay;
 }
 
 /*********************************************************************************************************************
-
--FIELD-
-TopMargin: Manipulates the top margin of a surface object.
-
-The Surface class supports margin settings, which are similar to the concept of margins on printed paper.  Margin
-values have no significant meaning or effect on a surface object itself, but they are often used by other objects and
-can be helpful in interface construction.  For instance, the Window template uses margins to indicate the space
-available for placing graphics and other surface objects inside of it.
-
-By default, all margins are set to zero when a new surface object is created.
 
 -FIELD-
 VisibleHeight: The visible height of the surface area, relative to its parents.
@@ -609,7 +488,7 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 *********************************************************************************************************************/
 
-static ERR GET_VisibleHeight(extSurface *Self, LONG *Value)
+static ERR GET_VisibleHeight(extSurface *Self, int *Value)
 {
    if (!Self->ParentID) {
       *Value = Self->Height;
@@ -618,7 +497,7 @@ static ERR GET_VisibleHeight(extSurface *Self, LONG *Value)
    else {
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
-      WORD i;
+      int16_t i;
       if ((i = find_surface_list(Self)) IS -1) return ERR::Search;
 
       auto clip = glSurfaces[i].area();
@@ -643,7 +522,7 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 *********************************************************************************************************************/
 
-static ERR GET_VisibleWidth(extSurface *Self, LONG *Value)
+static ERR GET_VisibleWidth(extSurface *Self, int *Value)
 {
    if (!Self->ParentID) {
       *Value = Self->Height;
@@ -652,13 +531,13 @@ static ERR GET_VisibleWidth(extSurface *Self, LONG *Value)
    else {
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
-      WORD i;
-      if ((i = find_surface_list(Self)) IS -1) return ERR::Search;
-
-      auto clip = glSurfaces[i].area();
-      restrict_region_to_parents(glSurfaces, i, clip, false);
-      *Value = clip.width();
-      return ERR::Okay;
+      if (auto i = find_surface_list(Self); i != -1) {
+         auto clip = glSurfaces[i].area();
+         restrict_region_to_parents(glSurfaces, i, clip, false);
+         *Value = clip.width();
+         return ERR::Okay;
+      }
+      else return ERR::Search;
    }
 }
 
@@ -677,7 +556,7 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 *********************************************************************************************************************/
 
-static ERR GET_VisibleX(extSurface *Self, LONG *Value)
+static ERR GET_VisibleX(extSurface *Self, int *Value)
 {
    if (!Self->ParentID) {
       *Value = Self->Height;
@@ -686,14 +565,13 @@ static ERR GET_VisibleX(extSurface *Self, LONG *Value)
    else {
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
-      WORD i;
-      if ((i = find_surface_list(Self)) IS -1) return ERR::Search;
-
-      auto clip = glSurfaces[i].area();
-      restrict_region_to_parents(glSurfaces, i, clip, false);
-
-      *Value = clip.Left - glSurfaces[i].Left;
-      return ERR::Okay;
+      if (auto i = find_surface_list(Self); i != -1) {
+         auto clip = glSurfaces[i].area();
+         restrict_region_to_parents(glSurfaces, i, clip, false);
+         *Value = clip.Left - glSurfaces[i].Left;
+         return ERR::Okay;
+      }
+      else return ERR::Search;
    }
 }
 
@@ -712,7 +590,7 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 *********************************************************************************************************************/
 
-static ERR GET_VisibleY(extSurface *Self, LONG *Value)
+static ERR GET_VisibleY(extSurface *Self, int *Value)
 {
    if (!Self->ParentID) {
       *Value = Self->Height;
@@ -721,13 +599,13 @@ static ERR GET_VisibleY(extSurface *Self, LONG *Value)
    else {
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
-      WORD i;
-      if ((i = find_surface_list(Self)) IS -1) return ERR::Search;
-
-      auto clip = glSurfaces[i].area();
-      restrict_region_to_parents(glSurfaces, i, clip, false);
-      *Value = clip.Top - glSurfaces[i].Top;
-      return ERR::Okay;
+      if (auto i = find_surface_list(Self); i != -1) {
+         auto clip = glSurfaces[i].area();
+         restrict_region_to_parents(glSurfaces, i, clip, false);
+         *Value = clip.Top - glSurfaces[i].Top;
+         return ERR::Okay;
+      }
+      else return ERR::Search;
    }
 }
 
@@ -874,7 +752,7 @@ an X coordinate calculated from the formula `X = ContainerWidth - SurfaceWidth -
 static ERR GET_XOffset(extSurface *Self, Unit *Value)
 {
    pf::Log log;
-   DOUBLE value;
+   double value;
 
    if (Value->scaled()) {
       Unit xoffset;
@@ -998,7 +876,7 @@ at a Y coordinate calculated from the formula `Y = ContainerHeight - SurfaceHeig
 
 static ERR GET_YOffset(extSurface *Self, Unit *Value)
 {
-   DOUBLE value;
+   double value;
 
    if (Value->scaled()) {
       Unit yoffset;

@@ -2,25 +2,31 @@
 //********************************************************************************************************************
 // Executes the target.
 
-ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
+ERR exec_source(std::string TargetFile, int ShowTime, const std::string Procedure)
 {
    pf::Log log(__FUNCTION__);
    ERR error;
 
-   log.msg("Identifying file '%s'", TargetFile);
+   log.msg("Identifying file '%s'", TargetFile.c_str());
+
+   FindClass(CLASSID::TIRI);
 
    CLASSID class_id, subclass;
-   if ((error = IdentifyFile(TargetFile, CLASSID::NIL, &class_id, &subclass)) != ERR::Okay) {
-      printf("Failed to identify the type of file for path '%s', error: %s.  Assuming CLASSID::SCRIPT.\n", TargetFile, GetErrorMsg(error));
+   if (pf::startswith("STRING:", TargetFile)) {
+      subclass = CLASSID::SCRIPT;
+      class_id = CLASSID::SCRIPT;
+   }
+   else if ((error = IdentifyFile(TargetFile.c_str(), CLASSID::NIL, &class_id, &subclass)) != ERR::Okay) {
+      printf("Failed to identify the type of file for path '%s', error: %s.  Assuming CLASSID::SCRIPT.\n", TargetFile.c_str(), GetErrorMsg(error));
       subclass = CLASSID::SCRIPT;
       class_id = CLASSID::SCRIPT;
    }
 
-   if (class_id IS CLASSID::PARC) glSandbox = TRUE;
+   if (class_id IS CLASSID::PARC) glSandbox = true;
 
    if (glSandbox) {
-      pf::vector<std::string> *params = NULL;
-      glTask->getPtr(FID_Parameters, &params);
+      pf::vector<std::string> *params = nullptr;
+      glTask->get(FID_Parameters, params);
 
       #ifdef _WIN32
          IntegrityLevel il = get_integrity_level();
@@ -34,7 +40,7 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
             std::ostringstream cmdline;
 
             char exe_buffer[128];
-            ULONG i = get_exe(exe_buffer, sizeof(exe_buffer));
+            uint32_t i = get_exe(exe_buffer, sizeof(exe_buffer));
             if ((!i) or (i >= sizeof(exe_buffer)-1)) return ERR::Failed;
 
             cmdline << '"' << exe_buffer << "\" --relaunch";
@@ -42,7 +48,7 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
             else if (GetResource(RES::LOG_LEVEL) >= 3) cmdline << "--log-info";
 
             pf::vector<std::string> &args = *params;
-            for (LONG a=0; a < std::ssize(args); a++) {
+            for (int a=0; a < std::ssize(args); a++) {
                if (pf::iequals("--sandbox", args[a])) continue;
                cmdline << " \"";
                if (args[a].find('"') != std::string::npos) {
@@ -59,7 +65,7 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
 
             // Temporarily switch off debug messages until the child process returns.
 
-            LONG log_level = GetResource(RES::LOG_LEVEL);
+            int log_level = GetResource(RES::LOG_LEVEL);
             SetResource(RES::LOG_LEVEL, 1);
 
             create_low_process(cmdline.str(), true);
@@ -71,7 +77,7 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
 
       #else
 /*
-         error = init_sandbox(args, glRelaunched ? FALSE : TRUE);
+         error = init_sandbox(args, glRelaunched ? false : true);
          if (error IS ERR::LimitedSuccess) {
             // Limited success means that the process was re-launched with a lower priority.
             return error;
@@ -150,37 +156,37 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
          }
       }
 
-      LARGE start_time = 0;
+      int64_t start_time = 0;
       if (ShowTime) start_time = PreciseTime();
 
       if (auto error = InitObject(glScript); error IS ERR::Okay) {
          if (auto error = acActivate(glScript); error IS ERR::Okay) {
             if (ShowTime) { // Print the execution time of the script
-               auto start_seconds = (DOUBLE)start_time / 1000000.0;
-               auto end_seconds   = (DOUBLE)PreciseTime() / 1000000.0;
+               auto start_seconds = (double)start_time / 1000000.0;
+               auto end_seconds   = (double)PreciseTime() / 1000000.0;
                printf("Script executed in %f seconds.\n\n", end_seconds - start_seconds);
             }
 
             if (glScript->Error != ERR::Okay) {
-               log.msg("Script returned an error code of %d: %s", LONG(glScript->Error), GetErrorMsg(glScript->Error));
+               log.msg("Script returned an error code of %d: %s", int(glScript->Error), GetErrorMsg(glScript->Error));
                return glScript->Error;
             }
 
-            STRING msg;
-            if ((glScript->get(FID_ErrorString, &msg) IS ERR::Okay) and (msg)) {
+            CSTRING msg;
+            if ((glScript->get(FID_ErrorMessage, msg) IS ERR::Okay) and (msg)) {
                log.msg("Script returned error message: %s", msg);
                return ERR::Failed;
             }
             else return ERR::Okay;
          }
          else {
-            printf("Script failed during processing.  Use the --log-error option to examine the failure.\n");
-            return ERR::Failed;
+            printf("Script failed during processing: %s\nUse --log-warning or --log-api to examine the failure.\n", GetErrorMsg(error));
+            return error;
          }
       }
       else {
-         printf("Failed to load / initialise the script.\n");
-         return ERR::Failed;
+         printf("Failed to load / initialise the script: %s\n", GetErrorMsg(error));
+         return error;
       }
    }
    else {

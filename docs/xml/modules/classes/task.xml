@@ -11,10 +11,9 @@
     <fileDescription>Executable File</fileDescription>
     <version>1</version>
     <id>7c9e5758</id>
-    <idstring>ID_TASK</idstring>
+    <idstring>TASK</idstring>
     <category>System</category>
-    <include>modules/task.h</include>
-    <copyright>Paul Manias 1996-2024</copyright>
+    <copyright>Paul Manias 1996-2026</copyright>
     <description>
 <p>Tasks, also known as processes, form the basis of process execution in an operating system.  By creating a task object, it is possible to execute a program from within the host system.</p>
 <p>To execute a compiled program, set the <fl>Location</fl> field to point to the executable file before initialising the task.  Arguments can be passed to the executable by setting the <fl>Parameters</fl> field.  After initialising the task, use the <action>Activate</action> action to run the executable.  If the program executes successfully, the task object can be removed and this will not impact the running program.</p>
@@ -41,18 +40,18 @@
         <error code="Okay">Operation successful.</error>
         <error code="Failed">General failure.</error>
         <error code="TimeOut">Can be returned if the <code>WAIT</code> flag is used.  Indicates that the process was launched, but the timeout expired before the process returned.</error>
-        <error code="FieldNotSet">The Location field has not been set.</error>
+        <error code="MissingPath">The Location field has not been set.</error>
       </result>
     </action>
 
     <action>
       <name>GetKey</name>
       <comment>Retrieves custom key values.</comment>
-      <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, LONG Size)</prototype>
+      <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, INT Size)</prototype>
       <input>
         <param type="CSTRING" name="Key">The name of a key value.</param>
         <param type="STRING" name="Value">Pointer to a buffer space large enough to hold the retrieved value.</param>
-        <param type="LONG" name="Size">Indicates the byte size of the Buffer.</param>
+        <param type="INT" name="Size">Indicates the byte size of the Buffer.</param>
       </input>
     </action>
 
@@ -69,11 +68,11 @@
     <action>
       <name>Write</name>
       <comment>Send raw data to a launched process' stdin descriptor.</comment>
-      <prototype>ERR acWrite(*Object, APTR Buffer, LONG Length, LONG Result)</prototype>
+      <prototype>ERR acWrite(*Object, APTR Buffer, INT Length, INT Result)</prototype>
       <input>
         <param type="APTR" name="Buffer">A buffer containing the data that will be written to the object.</param>
-        <param type="LONG" name="Length">The total number of bytes to write to the object.</param>
-        <param type="LONG" name="Result">This parameter with be updated with the total number of bytes written from the Buffer.</param>
+        <param type="INT" name="Length">The total number of bytes to write to the object.</param>
+        <param type="INT" name="Result">This parameter with be updated with the total number of bytes written from the Buffer.</param>
       </input>
       <description>
 <p>If a process is successfully launched with the <code>PIPE</code> set in <fl>Flags</fl>, data can be sent to its stdin pipe by calling the Write() action.  Setting the <code>Buffer</code> parameter to <code>NULL</code> will result in the pipe being closed (this will signal to the process that no more data is incoming).</p>
@@ -127,8 +126,8 @@
 \HKEY_CLASSES_ROOT\
 \HKEY_USERS\
 </pre>
-<p>Here is a valid example for reading the 'Parasol' key value <code>\HKEY_CURRENT_USER\Software\Parasol</code></p>
-<p>Caution: If your programming language uses backslash as an escape character (true for Fluid developers), remember to use double-backslashes as the key value separator in your Name string.</p>
+<p>Here is a valid example for reading the 'Kotuku' key value <code>\HKEY_CURRENT_USER\Software\Kotuku</code></p>
+<p>Caution: If your programming language uses backslash as an escape character (true for Tiri developers), remember to use double-backslashes as the key value separator in your Name string.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -143,7 +142,9 @@
       <comment>Sends a quit message to a task.</comment>
       <prototype>ERR task::Quit(OBJECTPTR Object)</prototype>
       <description>
-<p>The Quit() method can be used as a convenient way of sending a task a quit message.  This will normally result in the destruction of the task, so long as it is still functioning correctly and has been coded to respond to the <code>MSGID_QUIT</code> message type.  It is legal for a task to ignore a quit request if it is programmed to stay alive.</p>
+<p>The Quit() method can be used as a convenient way of sending a task a quit message.  This will normally result in the destruction of the task, so long as it is still functioning correctly and has been coded to respond to the <code>MSGID::QUIT</code> message type.  It is legal for a task to ignore a quit request if it is programmed to stay alive.</p>
+<p>Signal Handling on Unix: When terminating a foreign process on Unix systems, the quit behavior follows a two-stage approach for safe process termination: The first call sends <code>SIGTERM</code> to allow the process to shutdown gracefully; A second call sends <code>SIGKILL</code> to force immediate termination if the process is unresponsive.</p>
+<p>On Windows systems, the method uses <code>winTerminateApp()</code> with a timeout for process termination.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -184,14 +185,26 @@
       <access read="G">Get</access>
       <type>APTR</type>
       <description>
-<p>This field provides direct access to the actions of a task, and is intended for use with the active task object returned from <function>CurrentTask</function>.  Hooking into the action table allows the running executable to 'blend-in' with Parasol's object oriented design.</p>
+<p>This field provides direct access to the actions of a task, and is intended for use with the active task object returned from <function>CurrentTask</function>.  Hooking into the action table allows the running executable to 'blend-in' with Kotuku's object oriented design.</p>
 <p>The Actions field points to a lookup table of ActionEntry items.  Hooking into an action involves writing its <code>AC</code> index in the table with a pointer to the action routine.  For example:</p>
-<pre>if (!AccessObject(CurrentTask(), 5000, &amp;task)) {
-   task-&gt;getPtr(FID_Actions, &amp;actions);
+<pre>if (not AccessObject(CurrentTask(), 5000, &amp;task)) {
+   task-&gt;get(FID_Actions, actions);
    actions[AC::Seek] = PROGRAM_Seek;
    ReleaseObject(task);
 }
 </pre>
+      </description>
+    </field>
+
+    <field>
+      <name>AffinityMask</name>
+      <comment>Controls which CPU cores the process can run on.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT64</type>
+      <description>
+<p>The AffinityMask field sets the CPU affinity for the current process, determining which CPU cores the process is allowed to run on. This is expressed as a bitmask where each bit represents a CPU core (bit 0 = core 0, bit 1 = core 1, etc.).</p>
+<p>Setting CPU affinity is particularly useful for benchmarking applications where consistent performance timing is required, as it prevents the OS from moving the process between different CPU cores during execution.</p>
+<p>Note: This field affects the current process only and requires appropriate system privileges on some platforms.</p>
       </description>
     </field>
 
@@ -203,6 +216,12 @@
       <description>
 <p>This field allows command line arguments to be set using a single string, whereby each value is separated by whitespace. The string will be disassembled and the arguments will be available to read from the <fl>Parameters</fl> field.</p>
 <p>If an argument needs to include whitespace, use double-quotes to encapsulate the value.</p>
+<p>Security Limits: To prevent buffer overflow attacks, the following limits are enforced:</p>
+<list type="bullet">
+<li>Maximum total input length: 64KB (65,536 bytes)</li>
+<li>Maximum individual argument length: 8KB (8,192 bytes)</li>
+<li>Malformed quotes are detected and cause <code>ERR::Syntax</code> to be returned.</li>
+</list>
       </description>
     </field>
 
@@ -212,7 +231,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>The ErrorCallback field can be set with a function reference that will be called when an active process sends data via STDERR.  The callback must follow the prototype <code>Function(*Task, APTR Data, LONG Size)</code></p>
+<p>The ErrorCallback field can be set with a function reference that will be called when an active process sends data via STDERR.  The callback must follow the prototype <code>Function(*Task, APTR Data, int Size)</code></p>
 <p>The information read from STDERR will be returned in the Data pointer and the byte-length of the data will be indicated by the <code>Size</code>.  The data pointer is temporary and will be invalid once the callback function has returned.</p>
       </description>
     </field>
@@ -244,9 +263,9 @@
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>The InputCallback field is available for use only when the task object represents the current process. The referenced function will be called when process receives data from STDIN.  The callback must follow the prototype <code>Function(*Task, APTR Data, LONG Size, ERR Status)</code></p>
-<p>The information read from STDOUT will be returned in the <code>Data</code> pointer and the byte-length of the data will be indicated by the <code>Size</code>.  The data buffer is temporary and will be invalid once the callback function has returned.</p>
-<p>A status of <code>ERR::Finished</code> is sent if the stdinput handle has been closed.</p>
+<p>The InputCallback field is available to the active task object only (i.e. the current process). The referenced function will be called when process receives data from STDIN.  The callback must match the prototype <code>void Function(*Task, APTR Data, int Size, ERR Status)</code>.  In Tiri the prototype is 'function callback(Task, Array, Status)<code> where </code>Array<code> is an array interface.</code>
+<p>The information read from STDOUT will be returned in the </p>Data<code> pointer and the byte-length of the data will be indicated by the </code>Size<code>.  The data buffer is temporary and will be invalid once the callback function has returned.</code>
+<p>A status of </p>ERR::Finished` is sent if the stdinput handle has been closed.</p>
       </description>
     </field>
 
@@ -287,8 +306,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>The OutputCallback field can be set with a function reference that will be called when an active process sends data via STDOUT.  The callback must follow the prototype <code>Function(*Task, APTR Data, LONG Size)</code></p>
-<p>The information read from STDOUT will be returned in the <code>Data</code> pointer and the byte-length of the data will be indicated by the <code>Size</code>.  The <code>Data</code> pointer is temporary and will be invalid once the callback function has returned.</p>
+<p>The OutputCallback field can be set with a function reference that will be called when an active process sends data via STDOUT.  For C++ the callback must match the prototype <code>void Function(*Task, APTR Data, int Size)</code>.  In Tiri the prototype is 'function callback(Task, Array)<code> where </code>Array<code> is an array interface.</code>
+<p>The information read from STDOUT will be returned in the </p>Data<code> pointer and the byte-length of the data will be indicated by the </code>Size<code>.  The </code>Data` pointer is temporary and will be invalid once the callback function has returned.</p>
       </description>
     </field>
 
@@ -299,15 +318,16 @@
       <type>pf::vector&lt;std::string&gt;</type>
       <description>
 <p>Command line arguments for a program can be defined here as a vector list, whereby each argument is an independent string.  To illustrate, the following command-line string:</p>
-<pre>1&gt; YourProgram PREFS MyPrefs -file "documents:readme.txt"</pre>
+<pre>1&gt; YourProgram PREFS MyPrefs -file &quot;documents:readme.txt&quot;</pre>
 <p>Would be represented as follows:</p>
 <pre>pf::vector&lt;std::string&gt; Args = {
-   "PREFS",
-   "MyPrefs",
-   "-file",
-   "documents:readme.txt"
+   &quot;PREFS&quot;,
+   &quot;MyPrefs&quot;,
+   &quot;-file&quot;,
+   &quot;documents:readme.txt&quot;
 };
 </pre>
+<p>NOTE: Scripts should use the <fl>Args</fl> field instead.</p>
       </description>
     </field>
 
@@ -325,10 +345,11 @@
     <field>
       <name>Priority</name>
       <comment>The task priority in relation to other tasks is be defined here.</comment>
-      <access write="S">Set</access>
+      <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
 <p>Set the Priority field to change the priority of the process associated with the task.  The default value for all processes is zero.  High positive values will give the process more CPU time while negative values will yield CPU time to other active processes.</p>
+<p>Behaviour varies between platforms, but for consistency the client can assume that the behaviour is equivalent to the niceness value on Unix-like systems, and the available range is -20 to 20.</p>
 <p>Note that depending on the platform, there may be limits as to whether one process can change the priority level of a foreign process.  Other factors such as the scheduler used by the host system should be considered in the effect of prioritisation.</p>
       </description>
     </field>
@@ -377,16 +398,15 @@
   </fields>
   <types>
     <constants lookup="TSF" comment="Task flags">
-      <const name="ATTACHED">Forces new task to be attached to the parent (child will close when parent closes).</const>
-      <const name="DETACHED">Forces new task to be detached from the parent.</const>
-      <const name="FOREIGN">Set this flag when using the task object to execute a foreign process - that is an executable that does not use the Parasol API.</const>
-      <const name="LOG_ALL">Additional debug messages will be printed during normal usage of the task class when this flag is set.</const>
+      <const name="ATTACHED">Forces the new process to be attached to the parent (child will close when parent closes).</const>
+      <const name="DETACHED">Forces the new process to be detached from the parent.</const>
       <const name="PIPE">Enable the output pipe to the launched process so that it can read data.</const>
-      <const name="PRIVILEGED">During a normal execution process, any privileges of the parent process will be dropped so that the child process runs unprivileged.  This behaviour can be reversed if he PRIVILEGED flag is set, in which case the child process has the same privileges as the parent.</const>
-      <const name="QUIET">Setting this flag will divert all process output to <code>/dev/null</code> or the nearest equivalent for non-Unix systems.</const>
-      <const name="RESET_PATH">If set, the executed process will start in its own folder rather than the folder of the parent process.</const>
+      <const name="PRIVILEGED">The child process will inherit the system privileges of its parent.</const>
+      <const name="QUIET">Divert all process output to <code>/dev/null</code> or the nearest equivalent for non-Unix systems.</const>
+      <const name="RESET_PATH">The new process will start in its own folder and not the folder of the parent process.</const>
       <const name="SHELL">Enables shell mode.  On Unix systems, this means that a shell (usually BASH) will be used to launch the process.</const>
-      <const name="WAIT">This flag will cause the parent process to halt when the task is activated.  Control is returned to the parent process once the child process terminates.</const>
+      <const name="VERBOSE">Enable verbose logging.</const>
+      <const name="WAIT">The parent process will halt when the task is running.  Control is returned to the parent process once the child process terminates.</const>
     </constants>
 
   </types>

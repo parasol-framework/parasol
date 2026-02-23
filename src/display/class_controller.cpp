@@ -5,12 +5,12 @@ Controller: Provides support for reading state-based game controllers.
 
 Use the Controller class to read the state of game controllers that are recognised by the operating system.
 
-Unlike analog devices that stream input commands (e.g. mice), gamepad controllers maintain a state that can be read 
-at any time.  The controller state is normally read at least once per frame, which can be achieved in the main
+Unlike analog devices that stream input commands (e.g. mice), gamepad controllers maintain a state that can be read
+at any time.  The controller state is normally read at least once per frame, which can be achieved in a program's
 inner loop, or in a separate timer.
 
-Controller input management is governed by the @Display class.  The `GRAB_CONTROLLERS` flag must be defined in the 
-active Display's Flags field in order to ensure that controller input can be received.  Failure to do so may mean 
+Controller input management is governed by the @Display class.  The `GRAB_CONTROLLERS` flag must be defined in the
+active Display's Flags field in order to ensure that controller input can be received.  Failure to do so may mean
 that the Controller object appears to work but does not receive input.
 
 -END-
@@ -32,7 +32,7 @@ Query: Get the current controller state.
 static ERR CONTROLLER_Query(objController *Self)
 {
 #ifdef _WIN32
-   if (auto error = winReadController(Self->Port, (DOUBLE *)&Self->LeftTrigger, Self->Buttons); error IS ERR::Okay) {
+   if (auto error = winReadController(Self->Port, (double *)&Self->LeftTrigger, Self->Buttons); error IS ERR::Okay) {
       return ERR::Okay;
    }
    else return error;
@@ -78,7 +78,7 @@ TotalPorts: Reports the total number of controllers connected to the system.
 
 *********************************************************************************************************************/
 
-static ERR CONTROLLER_GET_TotalPorts(extSurface *Self, LONG &Value)
+static ERR CONTROLLER_GET_TotalPorts(extSurface *Self, int &Value)
 {
 #ifdef _WIN32
    if (glLastPort >= 0) Value = glLastPort;
@@ -100,9 +100,9 @@ static const FieldArray clFields[] = {
    { "LeftStickY",   FDF_DOUBLE|FDF_R },
    { "RightStickX",  FDF_DOUBLE|FDF_R },
    { "RightStickY",  FDF_DOUBLE|FDF_R },
-   { "Buttons",      FDF_LONG|FDF_R },
-   { "Port",         FDF_LONG|FDF_RI },
-   { "TotalPorts",   FDF_VIRTUAL|FDF_LONG|FDF_R, CONTROLLER_GET_TotalPorts },
+   { "Buttons",      FDF_INT|FDF_R },
+   { "Port",         FDF_INT|FDF_RI },
+   { "TotalPorts",   FDF_VIRTUAL|FDF_INT|FDF_R, CONTROLLER_GET_TotalPorts },
    END_FIELD
 };
 

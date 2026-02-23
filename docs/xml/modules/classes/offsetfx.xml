@@ -9,10 +9,9 @@
     <comment>A filter effect that offsets the position of an input source.</comment>
     <version>1</version>
     <id>8e3b5bea</id>
-    <idstring>ID_OFFSETFX</idstring>
+    <idstring>OFFSETFX</idstring>
     <category>Graphics</category>
-    <include>modules/offsetfx.h</include>
-    <copyright>Paul Manias © 2010-2025</copyright>
+    <copyright>Paul Manias © 2010-2026</copyright>
     <description>
 <p>This filter offsets the input image relative to its current position in the image space by the specified vector of <code>(XOffset,YOffset)</code>.</p></description>
     <source>
@@ -26,10 +25,10 @@
       <comment>Draws object graphics to drawable areas.</comment>
       <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
       <input>
-        <param type="LONG" name="X">The X position of the region to be drawn.</param>
-        <param type="LONG" name="Y">The Y position of the region to be drawn.</param>
-        <param type="LONG" name="Width">The width of the region to be drawn.</param>
-        <param type="LONG" name="Height">The height of the region to be drawn.</param>
+        <param type="INT" name="X">The X position of the region to be drawn.</param>
+        <param type="INT" name="Y">The Y position of the region to be drawn.</param>
+        <param type="INT" name="Width">The width of the region to be drawn.</param>
+        <param type="INT" name="Height">The height of the region to be drawn.</param>
       </input>
     </action>
 

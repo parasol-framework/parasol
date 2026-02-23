@@ -33,7 +33,7 @@ void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Sha
                   // When the APPLY_FILLS option is enabled, regular fill painting rules will be applied.
 
                   if ((node->Fill->Colour.Alpha > 0) and (!node->DisableFillColour)) {
-                     DOUBLE value = (node->Fill->Colour.Red * 0.2126) + (node->Fill->Colour.Green * 0.7152) + (node->Fill->Colour.Blue * 0.0722);
+                     double value = (node->Fill->Colour.Red * 0.2126) + (node->Fill->Colour.Green * 0.7152) + (node->Fill->Colour.Blue * 0.0722);
                      value *= node->FillOpacity;
                      solid.color(agg::gray8(value * 0xff, 0xff));
 
@@ -52,7 +52,7 @@ void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Sha
                      agg::pixfmt_psl pixf;
                      agg::renderer_base<agg::pixfmt_psl> rb(pixf);
                      ColourFormat cf; // Dummy, not required
-                     pixf.rawBitmap(m_bitmap.data(), m_width, m_height, m_width, 8, cf, true);
+                     pixf.rawBitmap(m_bitmap.data(), m_width, m_height, m_width, 8, cf, BLM::LINEAR);
                      rb.attach(pixf);
 
                      agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(node->BasePath, t);
@@ -68,7 +68,7 @@ void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Sha
 
                      if (node->Fill->Image) { // Bitmap image fill.  NB: The SVG class creates a standard VectorRectangle and associates an image with it in order to support <image> tags.
                         fill_image(state, node->Bounds, node->BasePath, node->Scene->SampleMethod, t,
-                           Render.view_width(), Render.view_height(), *node->Fill->Image, rb, Raster,
+                           Render.view_width(), Render.view_height(), *((extVectorImage *)node->Fill->Image), rb, Raster,
                            node->FillOpacity);
                      }
 
@@ -81,7 +81,7 @@ void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Sha
 
                if ((m_clip->Flags & VCLF::APPLY_STROKES) != VCLF::NIL) {
                   if (node->StrokeRaster) {
-                     DOUBLE value = (node->Stroke.Colour.Red * 0.2126) + (node->Stroke.Colour.Green * 0.7152) + (node->Stroke.Colour.Blue * 0.0722);
+                     double value = (node->Stroke.Colour.Red * 0.2126) + (node->Stroke.Colour.Green * 0.7152) + (node->Stroke.Colour.Blue * 0.0722);
                      value *= node->StrokeOpacity;
                      solid.color(agg::gray8(value * 0xff, 0xff));
 
@@ -114,7 +114,7 @@ void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Sha
 
 //********************************************************************************************************************
 
-void SceneRenderer::ClipBuffer::resize_bitmap(LONG X, LONG Y, LONG Width, LONG Height)
+void SceneRenderer::ClipBuffer::resize_bitmap(int X, int Y, int Width, int Height)
 {
    if ((Width <= 0) or (Height <= 0)) Width = Height = 1;
 
@@ -177,7 +177,7 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Scene)
    }
 
    if (!m_clip->Viewport->Matrices) {
-      m_clip->Viewport->newMatrix(NULL, false);
+      m_clip->Viewport->newMatrix(nullptr, false);
    }
 
    if (m_clip->Units IS VUNIT::BOUNDING_BOX) draw_bounding_box(Scene);
@@ -190,7 +190,7 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Scene)
 void SceneRenderer::ClipBuffer::draw_userspace(SceneRenderer &Scene)
 {
    if (!m_clip->Viewport->Matrices) {
-      if (m_clip->Viewport->newMatrix(NULL, false) != ERR::Okay) return;
+      if (m_clip->Viewport->newMatrix(nullptr, false) != ERR::Okay) return;
    }
 
    auto &matrix = m_clip->Viewport->Matrices;
@@ -243,7 +243,7 @@ void SceneRenderer::ClipBuffer::draw_userspace(SceneRenderer &Scene)
 
 void SceneRenderer::ClipBuffer::draw_bounding_box(SceneRenderer &Render)
 {
-   TClipRectangle<DOUBLE> shape_bounds = TCR_EXPANDING; // Bounds *without transforms*
+   TClipRectangle<double> shape_bounds = TCR_EXPANDING; // Bounds *without transforms*
    calc_full_boundary(m_shape, shape_bounds, false, false, false);
 
    // Set the target area to mock the shape.  The viewbox will remain at (0 0 1 1), or whatever the

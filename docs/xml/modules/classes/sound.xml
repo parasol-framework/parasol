@@ -6,30 +6,40 @@
     <name>Sound</name>
     <type>class</type>
     <module>Audio</module>
-    <comment>Plays and records sound samples in a variety of different data formats.</comment>
+    <comment>High-level audio sample playback interface with intelligent resource management and format detection.</comment>
     <fileExtension>*.wav|*.wave|*.snd</fileExtension>
     <fileDescription>Sound Sample</fileDescription>
     <version>1</version>
     <id>105ee06e</id>
-    <idstring>ID_SOUND</idstring>
+    <idstring>SOUND</idstring>
     <category>Audio</category>
-    <include>modules/sound.h</include>
-    <copyright>Paul Manias © 2002-2024</copyright>
+    <copyright>Paul Manias © 2002-2026</copyright>
     <description>
-<p>The Sound class provides an interface for the playback of audio sample files. By default, all loading and saving of sound data is in WAVE format.  Other audio formats such as MP3 can be supported through Sound class extensions, if available.</p>
-<p>Automatic streaming is enabled by default.  If an attempt is made to play an audio file that exceeds the maximum buffer size, it will be streamed from the source location.  Streaming behaviour can be modified via the <fl>Stream</fl> field.</p>
-<p>The following example illustrates playback of a sound sample that is one octave higher than its normal frequency. The subscription to the <fl>OnStop</fl> callback will result in the program waking once the sample has finished playback.</p>
+<p>The Sound class provides a comprehensive, user-friendly interface for audio sample playback that abstracts the complexities of audio hardware management whilst delivering professional-quality results.  Designed as the primary interface for general-purpose audio operations, the Sound class automatically handles resource allocation, format detection, hardware abstraction, and intelligent streaming decisions to provide optimal performance across diverse system configurations.</p>
+<p>The Sound class implements robust file format support with automatic detection and validation:</p>
+<list type="bullet">
+<li>
+<b>Native WAVE Support:</b> Complete support for WAVE format files including all standard PCM encodings, multiple bit depths (8/16-bit), and both mono and stereo configurations</li>
+<li>
+<b>Automatic Format Detection:</b> File format identification occurs automatically during initialisation based on file headers and content analysis</li>
+<li>
+<b>Extensible Architecture:</b> Additional audio formats (MP3, OGG, FLAC, AAC) can be supported through Sound class extensions and codec plugins</li>
+<li>
+<b>Validation and Error Handling:</b> Comprehensive file validation prevents playback of corrupted or unsupported audio data</li>
+</list>
+<p>The following demonstrates advanced Sound class usage including pitch control and event handling:</p>
 <pre>local snd = obj.new('sound', {
-   path = 'audio:samples/doorbell.wav',
-   note = 'C6',
+   path = 'audio:samples/piano_c4.wav',
+   note = 'C6',    -- Play two octaves higher
+   volume = 0.8,   -- Reduce volume to 80%
    onStop = function(Sound)
+      print('Playback completed')
       proc.signal()
    end
 })
 
 snd.acActivate()
-
-proc.sleep()
+proc.sleep()  -- Wait for completion
 </pre></description>
     <source>
       <file>class_sound.cpp</file>
@@ -64,11 +74,11 @@ proc.sleep()
     <action>
       <name>GetKey</name>
       <comment>Retrieve custom key values.</comment>
-      <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, LONG Size)</prototype>
+      <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, INT Size)</prototype>
       <input>
         <param type="CSTRING" name="Key">The name of a key value.</param>
         <param type="STRING" name="Value">Pointer to a buffer space large enough to hold the retrieved value.</param>
-        <param type="LONG" name="Size">Indicates the byte size of the Buffer.</param>
+        <param type="INT" name="Size">Indicates the byte size of the Buffer.</param>
       </input>
       <description>
 <p>The following custom key values are formally recognised and may be defined automatically when loading sample files:</p>
@@ -87,11 +97,11 @@ proc.sleep()
     <action>
       <name>Read</name>
       <comment>Read decoded audio from the sound sample.</comment>
-      <prototype>ERR acRead(*Object, APTR Buffer, LONG Length, LONG *Result)</prototype>
+      <prototype>ERR acRead(*Object, APTR Buffer, INT Length, INT *Result)</prototype>
       <input>
         <param type="APTR" name="Buffer">Points a buffer that will receive the data.</param>
-        <param type="LONG" name="Length">The total number of bytes to read from the object.  This value cannot exceed the size of the Buffer.</param>
-        <param type="LONG" name="Result">The Read action will write this parameter with the total number of bytes read into the Buffer.</param>
+        <param type="INT" name="Length">The total number of bytes to read from the object.  This value cannot exceed the size of the Buffer.</param>
+        <param type="INT" name="Result">The Read action will write this parameter with the total number of bytes read into the Buffer.</param>
       </input>
       <description>
 <p>This action will read decoded audio from the sound sample.  Decoding is a live process and it may take some time for all data to be returned if the requested amount of data is considerable.  The starting point for the decoded data is determined by the <fl>Position</fl> value.</p>
@@ -111,7 +121,7 @@ proc.sleep()
     <action>
       <name>Seek</name>
       <comment>Moves the cursor position for reading data.</comment>
-      <prototype>ERR acSeek(*Object, DOUBLE Offset, LONG Position)</prototype>
+      <prototype>ERR acSeek(*Object, DOUBLE Offset, INT Position)</prototype>
       <input>
         <param type="DOUBLE" name="Offset">The desired offset to seek to, relative to the Position parameter.</param>
         <param type="POS" name="Position">The position that defines the starting point for Offset.</param>
@@ -220,7 +230,7 @@ proc.sleep()
       <name>Header</name>
       <comment>Contains the first 128 bytes of data in a sample's file header.</comment>
       <access read="G">Get</access>
-      <type>BYTE []</type>
+      <type>INT8 []</type>
       <description>
 <p>The Header field is a pointer to a 128 byte buffer that contains the first 128 bytes of information read from an audio file on initialisation.  This special field is considered to be helpful only to developers writing add-on components for the sound class.</p>
 <p>The buffer that is referred to by the Header field is not populated until the Init action is called on the sound object.</p>
@@ -300,7 +310,7 @@ proc.sleep()
       <access read="R" write="S">Read/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The Pan field adjusts the "horizontal position" of a sample that is being played through stereo speakers. The default value for this field is zero, which plays the sound through both speakers at an equal level.  The minimum value is <code>-1.0</code> to force play through the left speaker and the maximum value is <code>1.0</code> for the right speaker.</p>
+<p>The Pan field adjusts the &quot;horizontal position&quot; of a sample that is being played through stereo speakers. The default value for this field is zero, which plays the sound through both speakers at an equal level.  The minimum value is <code>-1.0</code> to force play through the left speaker and the maximum value is <code>1.0</code> for the right speaker.</p>
       </description>
     </field>
 
@@ -328,7 +338,7 @@ proc.sleep()
       <name>Position</name>
       <comment>The current playback position.</comment>
       <access read="R" write="S">Read/Set</access>
-      <type>BIGINT</type>
+      <type>INT64</type>
       <description>
 <p>The current playback position of the audio sample is indicated by this field.  Writing to the field will alter the playback position, either when the sample is next played, or immediately if it is currently playing.</p>
       </description>
@@ -351,7 +361,12 @@ proc.sleep()
       <access read="R" write="W">Read/Write</access>
       <type lookup="STREAM">STREAM</type>
       <description>
+<p>The Stream field controls how the Sound class manages memory and playback for audio samples. This setting directly influences memory consumption, playback latency, and system resource utilisation.</p>
+<p>Available streaming modes:</p>
 <types lookup="STREAM"/>
+<p>Smart and Always streaming modes use significantly less memory for large samples, making them suitable for applications that handle extensive audio libraries. Never streaming provides the fastest playback initiation but may exhaust system memory with large or numerous samples.</p>
+<p>Memory-resident samples (Never streaming) offer zero-latency playback initiation, whilst streamed samples may have a brief delay as the initial buffer is populated. However, once streaming begins, there should be no perceptible difference in audio quality or continuity.</p>
+<p>The Smart streaming mode monitors system resources and sample characteristics to make optimal decisions. This mode adapts to changing conditions and provides the best balance for most applications without requiring manual configuration.</p>
       </description>
     </field>
 

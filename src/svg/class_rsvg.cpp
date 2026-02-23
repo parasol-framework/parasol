@@ -1,3 +1,17 @@
+/*********************************************************************************************************************
+
+-CLASS-
+RSVG: Picture-based SVG renderer providing bitmap integration for SVG documents.
+
+The RSVG class extends the @Picture class to provide seamless integration of SVG documents within bitmap-based image
+workflows.  This renderer automatically handles SVG-to-bitmap conversion, enabling SVG content to be treated as
+standard raster images within applications that primarily work with bitmap formats.
+
+Key features include automatic format detection, scalable rendering with resolution adaptation, and transparent
+handling of both standard (.svg) and compressed (.svgz) SVG files.
+
+*********************************************************************************************************************/
+
 // SVG renderer for the Picture class
 
 #include "../picture/picture.h"
@@ -27,7 +41,7 @@ static ERR RSVG_Activate(extPicture *Self)
 static ERR RSVG_Free(extPicture *Self)
 {
    if (auto prv = (prvSVG *)Self->ChildPrivate) {
-      if (prv->SVG) { FreeResource(prv->SVG); prv->SVG = NULL; }
+      if (prv->SVG) { FreeResource(prv->SVG); prv->SVG = nullptr; }
    }
    return ERR::Okay;
 }
@@ -37,9 +51,9 @@ static ERR RSVG_Free(extPicture *Self)
 static ERR RSVG_Init(extPicture *Self)
 {
    pf::Log log;
-   STRING path;
+   CSTRING path = nullptr;
 
-   Self->get(FID_Path, &path);
+   Self->get(FID_Path, path);
 
    if ((!path) or ((Self->Flags & PCF::NEW) != PCF::NIL)) {
       return ERR::NoSupport; // Creating new SVG's is not supported in this module.
@@ -48,7 +62,7 @@ static ERR RSVG_Init(extPicture *Self)
    char *buffer;
 
    if (wildcmp("*.svg|*.svgz", path));
-   else if (Self->getPtr(FID_Header, &buffer) IS ERR::Okay) {
+   else if (Self->get(FID_Header, buffer) IS ERR::Okay) {
       if (strisearch("<svg", buffer) >= 0) {
       }
       else return ERR::NoSupport;
@@ -81,8 +95,8 @@ static ERR RSVG_Query(extPicture *Self)
    Self->Queried = TRUE;
 
    if (!prv->SVG) {
-      STRING path;
-      if (Self->get(FID_Path, &path) IS ERR::Okay) {
+      CSTRING path;
+      if (Self->get(FID_Path, path) IS ERR::Okay) {
          if ((prv->SVG = objSVG::create::local(fl::Path(path)))) {
          }
          else return log.warning(ERR::CreateObject);
@@ -92,7 +106,7 @@ static ERR RSVG_Query(extPicture *Self)
 
    objVectorScene *scene;
    ERR error;
-   if (((error = prv->SVG->getPtr(FID_Scene, &scene)) IS ERR::Okay) and (scene)) {
+   if (((error = prv->SVG->get(FID_Scene, scene)) IS ERR::Okay) and (scene)) {
       if ((Self->Flags & PCF::FORCE_ALPHA_32) != PCF::NIL) {
          bmp->Flags |= BMF::ALPHA_CHANNEL;
          bmp->BitsPerPixel  = 32;
@@ -110,13 +124,13 @@ static ERR RSVG_Query(extPicture *Self)
 
       // Check for fixed dimensions specified by the SVG.
 
-      auto view_width = view->get<LONG>(FID_Width);
-      auto view_height = view->get<LONG>(FID_Height);
+      auto view_width = view->get<int>(FID_Width);
+      auto view_height = view->get<int>(FID_Height);
 
       // If the SVG source doesn't specify fixed dimensions, automatically force rescaling to the display width and height.
 
-      if (!view_width)  SetField(view, FID_Width|TDOUBLE|TSCALE, 1.0);
-      if (!view_height) SetField(view, FID_Height|TDOUBLE|TSCALE, 1.0);
+      if (!view_width)  view->set(FID_Width, Unit(1.0, FD_SCALED));
+      if (!view_height) view->set(FID_Height, Unit(1.0, FD_SCALED));
 
       if ((Self->DisplayWidth > 0) and (Self->DisplayHeight > 0)) { // Client specified the display size?
          // Give the vector scene a target width and height.
@@ -168,7 +182,7 @@ static ERR RSVG_Resize(extPicture *Self, struct acResize *Args)
 
       if (Action(AC::Resize, Self->Bitmap, Args) IS ERR::Okay) {
          objVectorScene *scene;
-         if ((prv->SVG->getPtr(FID_Scene, &scene) IS ERR::Okay) and (scene)) {
+         if ((prv->SVG->get(FID_Scene, scene) IS ERR::Okay) and (scene)) {
             scene->setPageWidth(Self->Bitmap->Width);
             scene->setPageHeight(Self->Bitmap->Height);
 
@@ -192,7 +206,7 @@ static const ActionArray clActions[] = {
    { AC::Init,     RSVG_Init },
    { AC::Query,    RSVG_Query },
    { AC::Resize,   RSVG_Resize },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 //********************************************************************************************************************

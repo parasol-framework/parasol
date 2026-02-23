@@ -56,10 +56,10 @@ void anim_value::set_value(objVector &Vector)
 
             case SVF_TEXT_ANCHOR:
                switch(strihash(get_string())) {
-                  case SVF_START:   Vector.set(FID_Align, LONG(ALIGN::LEFT)); return;
-                  case SVF_MIDDLE:  Vector.set(FID_Align, LONG(ALIGN::HORIZONTAL)); return;
-                  case SVF_END:     Vector.set(FID_Align, LONG(ALIGN::RIGHT)); return;
-                  case SVF_INHERIT: Vector.set(FID_Align, LONG(ALIGN::NIL)); return;
+                  case SVF_START:   Vector.set(FID_Align, int(ALIGN::LEFT)); return;
+                  case SVF_MIDDLE:  Vector.set(FID_Align, int(ALIGN::HORIZONTAL)); return;
+                  case SVF_END:     Vector.set(FID_Align, int(ALIGN::RIGHT)); return;
+                  case SVF_INHERIT: Vector.set(FID_Align, int(ALIGN::NIL)); return;
                }
                break;
 
@@ -88,30 +88,30 @@ void anim_value::set_value(objVector &Vector)
          //
          // TODO: Correct implementation requires inspection of the XML tags.  If the parent Vector is a group, its
          // children will need to be checked for currentColor references.
-         FRGB val = get_colour_value(Vector, FID_FillColour);
+         const FRGB val = get_colour_value(Vector, FID_FillColour);
          Vector.set(FID_FillColour, val);
          return;
       }
 
       case SVF_FILL: {
-         auto val = get_colour_value(Vector, FID_FillColour);
+         const auto val = get_colour_value(Vector, FID_FillColour);
          Vector.set(FID_FillColour, val);
          return;
       }
 
       case SVF_FILL_RULE: {
          auto val = get_string();
-         if (val IS "nonzero") Vector.set(FID_FillRule, LONG(VFR::NON_ZERO));
-         else if (val IS "evenodd") Vector.set(FID_FillRule, LONG(VFR::EVEN_ODD));
-         else if (val IS "inherit") Vector.set(FID_FillRule, LONG(VFR::INHERIT));
+         if (val IS "nonzero") Vector.set(FID_FillRule, int(VFR::NON_ZERO));
+         else if (val IS "evenodd") Vector.set(FID_FillRule, int(VFR::EVEN_ODD));
+         else if (val IS "inherit") Vector.set(FID_FillRule, int(VFR::INHERIT));
          return;
       }
 
       case SVF_CLIP_RULE: {
          auto val = get_string();
-         if (val IS "nonzero")      Vector.set(FID_ClipRule, LONG(VFR::NON_ZERO));
-         else if (val IS "evenodd") Vector.set(FID_ClipRule, LONG(VFR::EVEN_ODD));
-         else if (val IS "inherit") Vector.set(FID_ClipRule, LONG(VFR::INHERIT));
+         if (val IS "nonzero")      Vector.set(FID_ClipRule, int(VFR::NON_ZERO));
+         else if (val IS "evenodd") Vector.set(FID_ClipRule, int(VFR::EVEN_ODD));
+         else if (val IS "inherit") Vector.set(FID_ClipRule, int(VFR::INHERIT));
          return;
       }
       case SVF_FILL_OPACITY: {
@@ -132,31 +132,31 @@ void anim_value::set_value(objVector &Vector)
 
       case SVF_STROKE_LINEJOIN:
          switch(strihash(get_string())) {
-            case SVF_MITER: Vector.setLineJoin(LONG(VLJ::MITER)); return;
-            case SVF_ROUND: Vector.setLineJoin(LONG(VLJ::ROUND)); return;
-            case SVF_BEVEL: Vector.setLineJoin(LONG(VLJ::BEVEL)); return;
-            case SVF_INHERIT: Vector.setLineJoin(LONG(VLJ::INHERIT)); return;
-            case SVF_MITER_CLIP: Vector.setLineJoin(LONG(VLJ::MITER_SMART)); return; // Special AGG only join type
-            case SVF_MITER_ROUND: Vector.setLineJoin(LONG(VLJ::MITER_ROUND)); return; // Special AGG only join type
+            case SVF_MITER: Vector.setLineJoin(int(VLJ::MITER)); return;
+            case SVF_ROUND: Vector.setLineJoin(int(VLJ::ROUND)); return;
+            case SVF_BEVEL: Vector.setLineJoin(int(VLJ::BEVEL)); return;
+            case SVF_INHERIT: Vector.setLineJoin(int(VLJ::INHERIT)); return;
+            case SVF_MITER_CLIP: Vector.setLineJoin(int(VLJ::MITER_SMART)); return; // Special AGG only join type
+            case SVF_MITER_ROUND: Vector.setLineJoin(int(VLJ::MITER_ROUND)); return; // Special AGG only join type
          }
          return;
 
       case SVF_STROKE_INNERJOIN: // AGG ONLY
          switch(strihash(get_string())) {
-            case SVF_MITER:   Vector.set(FID_InnerJoin, LONG(VIJ::MITER));  return;
-            case SVF_ROUND:   Vector.set(FID_InnerJoin, LONG(VIJ::ROUND)); return;
-            case SVF_BEVEL:   Vector.set(FID_InnerJoin, LONG(VIJ::BEVEL)); return;
-            case SVF_INHERIT: Vector.set(FID_InnerJoin, LONG(VIJ::INHERIT)); return;
-            case SVF_JAG:     Vector.set(FID_InnerJoin, LONG(VIJ::JAG)); return;
+            case SVF_MITER:   Vector.set(FID_InnerJoin, int(VIJ::MITER));  return;
+            case SVF_ROUND:   Vector.set(FID_InnerJoin, int(VIJ::ROUND)); return;
+            case SVF_BEVEL:   Vector.set(FID_InnerJoin, int(VIJ::BEVEL)); return;
+            case SVF_INHERIT: Vector.set(FID_InnerJoin, int(VIJ::INHERIT)); return;
+            case SVF_JAG:     Vector.set(FID_InnerJoin, int(VIJ::JAG)); return;
          }
          return;
 
       case SVF_STROKE_LINECAP:
          switch(strihash(get_string())) {
-            case SVF_BUTT:    Vector.set(FID_LineCap, LONG(VLC::BUTT)); return;
-            case SVF_SQUARE:  Vector.set(FID_LineCap, LONG(VLC::SQUARE)); return;
-            case SVF_ROUND:   Vector.set(FID_LineCap, LONG(VLC::ROUND)); return;
-            case SVF_INHERIT: Vector.set(FID_LineCap, LONG(VLC::INHERIT)); return;
+            case SVF_BUTT:    Vector.set(FID_LineCap, int(VLC::BUTT)); return;
+            case SVF_SQUARE:  Vector.set(FID_LineCap, int(VLC::SQUARE)); return;
+            case SVF_ROUND:   Vector.set(FID_LineCap, int(VLC::ROUND)); return;
+            case SVF_INHERIT: Vector.set(FID_LineCap, int(VLC::INHERIT)); return;
          }
          return;
 
@@ -176,9 +176,9 @@ void anim_value::set_value(objVector &Vector)
 
       case SVF_DISPLAY: {
          auto val = get_string();
-         if (val IS "none")         Vector.set(FID_Visibility, LONG(VIS::HIDDEN));
-         else if (val IS "inline")  Vector.set(FID_Visibility, LONG(VIS::VISIBLE));
-         else if (val IS "inherit") Vector.set(FID_Visibility, LONG(VIS::INHERIT));
+         if (val IS "none")         Vector.set(FID_Visibility, int(VIS::HIDDEN));
+         else if (val IS "inline")  Vector.set(FID_Visibility, int(VIS::VISIBLE));
+         else if (val IS "inherit") Vector.set(FID_Visibility, int(VIS::INHERIT));
          return;
       }
 

@@ -9,10 +9,9 @@
     <comment>Simplifies the management of date/time information.</comment>
     <version>1</version>
     <id>7c9e7894</id>
-    <idstring>ID_TIME</idstring>
+    <idstring>TIME</idstring>
     <category>System</category>
-    <include>modules/time.h</include>
-    <copyright>Paul Manias 1996-2024</copyright>
+    <copyright>Paul Manias 1996-2026</copyright>
     <description>
 <p>The Time class is available for programs that require time and date management in a multi-platform manner.</p>
 <p>To get the current system time, use the <action>Query</action> action.</p></description>
@@ -103,7 +102,7 @@
       <name>SystemTime</name>
       <comment>Represents the system time when the time object was last queried.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type>BIGINT</type>
+      <type>INT64</type>
       <description>
 <p>The SystemTime field returns the system time if the Time object has been queried.  The time is represented in microseconds.  This field serves no purpose beyond its initial query value.</p>
       </description>
@@ -113,7 +112,7 @@
       <name>TimeStamp</name>
       <comment>Read this field to get representation of the time as a single integer.</comment>
       <access read="G">Get</access>
-      <type>BIGINT</type>
+      <type>INT64</type>
       <description>
 <p>The TimeStamp field is a 64-bit integer that represents the time object as an approximation of the number of milliseconds represented in the time object (approximately the total amount of time passed since Zero-AD).  This is convenient for summarising a time value for comparison with other time stamps, or for storing time in a 64-bit space.</p>
 <p>The TimeStamp value is dynamically calculated when reading this field.</p>

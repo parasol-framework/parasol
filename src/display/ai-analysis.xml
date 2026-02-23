@@ -1,0 +1,741 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<functions module="display" generated="2025-01-25T12:00:00Z">
+  
+  <!-- Display Information Functions -->
+  
+  <function>
+    <source_file>lib_display.cpp</source_file>
+    <name>GetDisplayInfo</name>
+    <category>Display</category>
+    <comment>Retrieves comprehensive display information including size, bit depth, and color format.</comment>
+    <prototype>ERR GetDisplayInfo(OBJECTID DisplayID, DISPLAYINFO **Result)</prototype>
+    
+    <input>
+      <param type="OBJECTID" name="DisplayID">Object ID of the display to be analysed. Use zero for default monitor.</param>
+      <param type="DISPLAYINFO **" name="Result">Pointer to receive DISPLAYINFO structure reference.</param>
+    </input>
+
+    <description>
+      Returns information about a display including size, bit depth, pixel format, and hardware capabilities. For hosted displays (Windows/X11), passing zero as DisplayID retrieves information about the default monitor. The returned structure values remain valid until the next call to this function.
+    </description>
+
+    <result type="ERR">
+      <error code="Okay">Display information successfully retrieved.</error>
+      <error code="NullArgs">The Result parameter was not specified.</error>
+      <error code="AllocMemory">Failed to allocate memory for the structure.</error>
+    </result>
+
+    <ai>
+      <semantics>
+        <memory side_effects="true" zero_initialized="false" tracked="false" ownership="global" lock_required="never"/>
+        <concurrency thread_safe="true"/>
+        <cleanup automatic="false"/>
+        <idempotent>true</idempotent>
+      </semantics>
+      
+      <constraints>
+        <param name="Result" required="true"/>
+        <param name="DisplayID" required="false"/>
+      </constraints>
+
+      <performance>
+        <complexity>time: O(1), space: O(1)</complexity>
+        <cost_factors>Hardware query time may vary by platform</cost_factors>
+        <optimization_hints>Cache results if called frequently for same display</optimization_hints>
+      </performance>
+
+      <relationships>
+        <requires>Display hardware access</requires>
+        <related_functions>ScanDisplayModes, GetDisplayType</related_functions>
+      </relationships>
+
+      <metadata>
+        <internal>Uses thread-local storage for structure allocation</internal>
+        <trackers>t_info thread variable</trackers>
+        <allocation_source>AllocMemory with MEM::HIDDEN flag</allocation_source>
+      </metadata>
+
+      <example language="cpp">
+        <code>
+DISPLAYINFO *info;
+if (GetDisplayInfo(0, &info) == ERR::Okay) {
+    printf("Display: %dx%d at %d bpp\n", info->Width, info->Height, info->BitsPerPixel);
+}
+        </code>
+        <description>Retrieve information about the default display</description>
+      </example>
+    </ai>
+  </function>
+
+  <function>
+    <source_file>lib_display.cpp</source_file>
+    <name>GetDisplayType</name>
+    <category>Display</category>
+    <comment>Returns the type of display driver currently loaded.</comment>
+    <prototype>DT GetDisplayType(void)</prototype>
+    
+    <input></input>
+
+    <description>
+      Returns the type of display supported by the loaded Display module. This indicates the underlying graphics system being used (Windows GDI, X11, OpenGL ES, or native drivers).
+    </description>
+
+    <result type="DT">
+      <error code="NATIVE">The display uses internal native drivers.</error>
+      <error code="X11">The display is driven by X Window System.</error>
+      <error code="WINGDI">The display is driven by Microsoft Windows GDI.</error>
+      <error code="GLES">The display is driven by OpenGL ES.</error>
+    </result>
+
+    <ai>
+      <semantics>
+        <memory side_effects="false" zero_initialized="false" tracked="false" ownership="none" lock_required="never"/>
+        <concurrency thread_safe="true"/>
+        <cleanup automatic="false"/>
+        <idempotent>true</idempotent>
+      </semantics>
+      
+      <performance>
+        <complexity>time: O(1), space: O(1)</complexity>
+        <cost_factors>Compile-time constant evaluation</cost_factors>
+        <optimization_hints>Result is constant for application lifetime</optimization_hints>
+      </performance>
+
+      <metadata>
+        <internal>Determined at compile time by preprocessor macros</internal>
+      </metadata>
+    </ai>
+  </function>
+
+  <function>
+    <source_file>lib_display.cpp</source_file>
+    <name>ScaleToDPI</name>
+    <category>Display</category>
+    <comment>Scales a value to match the active display's DPI setting.</comment>
+    <prototype>DOUBLE ScaleToDPI(DOUBLE Value)</prototype>
+    
+    <input>
+      <param type="DOUBLE" name="Value">The number to be scaled, relative to 96 DPI baseline.</param>
+    </input>
+
+    <description>
+      Convenience function for scaling values to the display's current DPI setting. The provided value must be relative to the system-wide default of 96 DPI. If the display's DPI differs from 96, the value is scaled proportionally. For example, an 8-point font at 96 DPI becomes 20 points at 240 DPI.
+    </description>
+
+    <result type="DOUBLE">
+      Returns the scaled value, or the original value if DPI is unknown.
+    </result>
+
+    <ai>
+      <semantics>
+        <memory side_effects="false" zero_initialized="false" tracked="false" ownership="none" lock_required="never"/>
+        <concurrency thread_safe="true"/>
+        <cleanup automatic="false"/>
+        <idempotent>true</idempotent>
+      </semantics>
+      
+      <performance>
+        <complexity>time: O(1), space: O(1)</complexity>
+        <cost_factors>Simple arithmetic calculation</cost_factors>
+        <optimization_hints>Consider caching DPI values if called frequently</optimization_hints>
+      </performance>
+
+      <relationships>
+        <requires>Display DPI information</requires>
+        <related_functions>GetDisplayInfo</related_functions>
+      </relationships>
+
+      <example language="cpp">
+        <code>
+double scaled_size = ScaleToDPI(12.0);  // Scale 12pt font to current DPI
+        </code>
+        <description>Scale a 12-point font size to the current display DPI</description>
+      </example>
+    </ai>
+  </function>
+
+  <!-- Cursor Management Functions -->
+  
+  <function>
+    <source_file>lib_cursor.cpp</source_file>
+    <name>AccessPointer</name>
+    <category>Cursor</category>
+    <comment>Returns a lock on the default system pointer object.</comment>
+    <prototype>objPointer * AccessPointer(void)</prototype>
+    
+    <input></input>
+
+    <description>
+      Provides access to the default pointer object active in the system, typically the first Pointer object created with the name "SystemPointer". The returned object must be released with ReleaseObject() when no longer needed.
+    </description>
+
+    <result type="objPointer *">
+      Returns the address of the default pointer object, or NULL if not available.
+    </result>
+
+    <ai>
+      <semantics>
+        <memory side_effects="false" zero_initialized="false" tracked="true" ownership="caller" lock_required="never"/>
+        <concurrency thread_safe="true"/>
+        <cleanup automatic="false"/>
+        <idempotent>false</idempotent>
+      </semantics>
+      
+      <constraints>
+        <param name="return" required="true"/>
+      </constraints>
+
+      <performance>
+        <complexity>time: O(1), space: O(1)</complexity>
+        <cost_factors>Object lookup and locking overhead</cost_factors>
+        <optimization_hints>Cache pointer reference if accessed frequently</optimization_hints>
+      </performance>
+
+      <relationships>
+        <requires>SystemPointer object existence</requires>
+        <cleanup_trigger>Must call ReleaseObject() when done</cleanup_trigger>
+        <related_functions>SetCursor, GetCursorPos</related_functions>
+      </relationships>
+
+      <antipatterns>
+        <mistake>Forgetting to call ReleaseObject() causes memory leaks</mistake>
+        <mistake>Using pointer after releasing causes access violations</mistake>
+      </antipatterns>
+
+      <example language="cpp">
+        <code>
+if (auto pointer = gfx::AccessPointer()) {
+    // Use pointer object
+    printf("Cursor at: %f, %f\n", pointer->X, pointer->Y);
+    ReleaseObject(pointer);
+}
+        </code>
+        <description>Access the system pointer and read its position</description>
+      </example>
+    </ai>
+  </function>
+
+  <function>
+    <source_file>lib_cursor.cpp</source_file>
+    <name>GetCursorInfo</name>
+    <category>Cursor</category>
+    <comment>Retrieves graphics information from the active mouse cursor.</comment>
+    <prototype>ERR GetCursorInfo(CursorInfo *Info, LONG Size)</prototype>
+    
+    <input>
+      <param type="CursorInfo *" name="Info">Pointer to CursorInfo structure to fill.</param>
+      <param type="LONG" name="Size">Size of the Info structure in bytes.</param>
+    </input>
+
+    <description>
+      Returns information about the graphics structure of the mouse cursor, including maximum dimensions for custom cursor graphics and optimal bits-per-pixel setting for hardware cursors. Returns all zeros if no cursor is supported (common on touch-screen devices).
+    </description>
+
+    <result type="ERR">
+      <error code="Okay">Cursor information successfully retrieved.</error>
+      <error code="NullArgs">The Info parameter was not specified.</error>
+      <error code="NoSupport">Device does not support a cursor.</error>
+    </result>
+
+    <ai>
+      <semantics>
+        <memory side_effects="false" zero_initialized="true" tracked="false" ownership="none" lock_required="never"/>
+        <concurrency thread_safe="true"/>
+        <cleanup automatic="false"/>
+        <idempotent>true</idempotent>
+      </semantics>
+      
+      <constraints>
+        <param name="Info" required="true"/>
+        <param name="Size" required="true" min="1"/>
+      </constraints>
+
+      <performance>
+        <complexity>time: O(1), space: O(1)</complexity>
+        <cost_factors>Platform-specific cursor capability query</cost_factors>
+      </performance>
+
+      <relationships>
+        <related_functions>SetCustomCursor</related_functions>
+      </relationships>
+
+      <example language="cpp">
+        <code>
+CursorInfo info;
+if (GetCursorInfo(&info, sizeof(info)) == ERR::Okay) {
+    printf("Max cursor size: %dx%d\n", info.Width, info.Height);
+}
+        </code>
+        <description>Query maximum cursor dimensions</description>
+      </example>
+    </ai>
+  </function>
+
+  <function>
+    <source_file>lib_cursor.cpp</source_file>
+    <name>SetCursor</name>
+    <category>Cursor</category>
+    <comment>Sets the cursor image and can anchor the pointer to a surface.</comment>
+    <prototype>ERR SetCursor(OBJECTID ObjectID, CRF Flags, PTC CursorID, CSTRING Name, OBJECTID OwnerID)</prototype>
+    
+    <input>
+      <param type="OBJECTID" name="ObjectID">Surface to anchor to or limit cursor image to.</param>
+      <param type="CRF" name="Flags" lookup="CRF">Optional cursor control flags.</param>
+      <param type="PTC" name="CursorID" lookup="PTC">Cursor image ID to set.</param>
+      <param type="CSTRING" name="Name">Name of cursor image if CursorID is zero.</param>
+      <param type="OBJECTID" name="OwnerID">Object nominated as owner of cursor setting.</param>
+    </input>
+
+    <description>
+      Changes the pointer image and/or restricts pointer movement to a surface area. The cursor image switches back to default when the pointer moves outside the specified surface area. Supports various control flags including restriction, anchoring, and button release conditions.
+    </description>
+
+    <result type="ERR">
+      <error code="Okay">Cursor successfully set.</error>
+      <error code="Args">Invalid parameters provided.</error>
+      <error code="NoSupport">Cursor cannot be set due to system limitations.</error>
+      <error code="OutOfRange">Cursor ID is outside acceptable range.</error>
+      <error code="AccessObject">Failed to access mouse pointer object.</error>
+      <error code="LockFailed">Cursor is locked by another owner.</error>
+      <error code="NothingDone">Cursor not set due to conditional restrictions.</error>
+    </result>
+
+    <ai>
+      <semantics>
+        <memory side_effects="true" zero_initialized="false" tracked="false" ownership="contextual" lock_required="conditional"/>
+        <concurrency thread_safe="true"/>
+        <cleanup automatic="false"/>
+        <idempotent>false</idempotent>
+      </semantics>
+      
+      <flags>
+        <flag name="RESTRICT" effect="Restrict pointer to surface area" default="false"/>
+        <flag name="BUFFER" effect="Buffer cursor change if currently locked" default="false"/>
+        <flag name="LMB" effect="Release cursor after left mouse button release" default="false"/>
+        <flag name="RMB" effect="Release cursor after right mouse button release" default="false"/>
+        <flag name="MMB" effect="Release cursor after middle mouse button release" default="false"/>
+        <flag name="NO_BUTTONS" effect="Only set cursor if no buttons are held" default="false"/>
+      </flags>
+
+      <constraints>
+        <param name="CursorID" required="false" min="0"/>
+        <param name="ObjectID" required="false"/>
+        <param name="OwnerID" required="false"/>
+      </constraints>
+
+      <locking>
+        <condition>Cursor ownership conflicts</condition>
+        <failure_code>LockFailed</failure_code>
+        <mechanism>Cursor ownership system</mechanism>
+      </locking>
+
+      <workflows>
+        <pattern name="basic_cursor_change">
+          <step>Call SetCursor with desired cursor ID</step>
+          <step>Call RestoreCursor when done</step>
+          <description>Basic cursor image change</description>
+          <preconditions>Valid cursor ID</preconditions>
+          <postconditions>Cursor image changed until restored</postconditions>
+        </pattern>
+      </workflows>
+
+      <performance>
+        <complexity>time: O(1), space: O(1)</complexity>
+        <cost_factors>Platform cursor update, ownership checks</cost_factors>
+      </performance>
+
+      <relationships>
+        <requires>Valid pointer object, cursor resources</requires>
+        <related_functions>RestoreCursor, SetCustomCursor</related_functions>
+      </relationships>
+
+      <example language="cpp">
+        <code>
+// Set hand cursor for a surface
+SetCursor(surfaceID, CRF::NIL, PTC::HAND, NULL, ownerID);
+// Restore when done
+RestoreCursor(PTC::DEFAULT, ownerID);
+        </code>
+        <description>Change cursor to hand icon and restore</description>
+      </example>
+    </ai>
+  </function>
+
+  <!-- Surface Management Functions -->
+  
+  <function>
+    <source_file>lib_surfaces.cpp</source_file>
+    <name>ExposeSurface</name>
+    <category>Surface</category>
+    <comment>Exposes surface content to the display by copying it from the buffer.</comment>
+    <prototype>ERR ExposeSurface(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags)</prototype>
+    
+    <input>
+      <param type="OBJECTID" name="SurfaceID">Surface object to expose.</param>
+      <param type="LONG" name="X">Horizontal coordinate of expose area.</param>
+      <param type="LONG" name="Y">Vertical coordinate of expose area.</param>
+      <param type="LONG" name="Width">Width of expose area.</param>
+      <param type="LONG" name="Height">Height of expose area.</param>
+      <param type="EXF" name="Flags" lookup="EXF">Optional exposure flags.</param>
+    </input>
+
+    <description>
+      Exposes surface content within a defined area by copying it to the display. Can include child surfaces that intersect with the exposed region if the CHILDREN flag is set. This is the primary mechanism for making surface changes visible to the user.
+    </description>
+
+    <result type="ERR">
+      <error code="Okay">Surface successfully exposed.</error>
+      <error code="NullArgs">SurfaceID was not specified.</error>
+      <error code="Search">Surface ID does not refer to existing surface.</error>
+    </result>
+
+    <ai>
+      <semantics>
+        <memory side_effects="true" zero_initialized="false" tracked="false" ownership="none" lock_required="never"/>
+        <concurrency thread_safe="true"/>
+        <cleanup automatic="false"/>
+        <idempotent>false</idempotent>
+      </semantics>
+      
+      <flags>
+        <flag name="CHILDREN" effect="Include intersecting child surfaces" default="false"/>
+        <flag name="REDRAW_VOLATILE" effect="Redraw volatile objects in region" default="false"/>
+        <flag name="ABSOLUTE_COORDS" effect="Coordinates are absolute to display" default="false"/>
+      </flags>
+
+      <constraints>
+        <param name="SurfaceID" required="true"/>
+        <param name="Width" required="true" min="1"/>
+        <param name="Height" required="true" min="1"/>
+      </constraints>
+
+      <performance>
+        <complexity>time: O(n), space: O(1)</complexity>
+        <cost_factors>Number of child surfaces, graphics complexity</cost_factors>
+        <optimization_hints>Batch multiple exposures when possible</optimization_hints>
+      </performance>
+
+      <relationships>
+        <requires>Valid surface object, display access</requires>
+        <related_functions>RedrawSurface, CopySurface</related_functions>
+      </relationships>
+
+      <example language="cpp">
+        <code>
+// Expose a region of a surface including children
+ExposeSurface(surfaceID, 10, 10, 100, 100, EXF::CHILDREN);
+        </code>
+        <description>Expose a 100x100 region including child surfaces</description>
+      </example>
+    </ai>
+  </function>
+
+  <function>
+    <source_file>lib_surfaces.cpp</source_file>
+    <name>GetSurfaceInfo</name>
+    <category>Surface</category>
+    <comment>Retrieves display information for any surface without direct access.</comment>
+    <prototype>ERR GetSurfaceInfo(OBJECTID SurfaceID, SURFACEINFO **Info)</prototype>
+    
+    <input>
+      <param type="OBJECTID" name="SurfaceID">Surface object to query (zero for root surface).</param>
+      <param type="SURFACEINFO **" name="Info">Receives pointer to surface information structure.</param>
+    </input>
+
+    <description>
+      Quickly retrieves basic information from surfaces without using AccessObject(). The returned structure values are valid until the next call to this function. Provides efficient access to surface dimensions, parent relationships, and display properties.
+    </description>
+
+    <result type="ERR">
+      <error code="Okay">Surface information successfully retrieved.</error>
+      <error code="NullArgs">Info parameter was not specified.</error>
+      <error code="Search">Surface ID does not refer to existing surface.</error>
+    </result>
+
+    <ai>
+      <semantics>
+        <memory side_effects="false" zero_initialized="false" tracked="false" ownership="global" lock_required="never"/>
+        <concurrency thread_safe="true"/>
+        <cleanup automatic="false"/>
+        <idempotent>true</idempotent>
+      </semantics>
+      
+      <constraints>
+        <param name="Info" required="true"/>
+        <param name="SurfaceID" required="false"/>
+      </constraints>
+
+      <performance>
+        <complexity>time: O(1), space: O(1)</complexity>
+        <cost_factors>Surface list lookup</cost_factors>
+        <optimization_hints>Use instead of AccessObject for read-only access</optimization_hints>
+      </performance>
+
+      <relationships>
+        <requires>Surface tracking system</requires>
+        <related_functions>GetSurfaceCoords, GetSurfaceFlags</related_functions>
+      </relationships>
+
+      <metadata>
+        <internal>Uses thread-local storage for structure</internal>
+        <trackers>Global surface list</trackers>
+      </metadata>
+
+      <example language="cpp">
+        <code>
+SURFACEINFO *info;
+if (GetSurfaceInfo(surfaceID, &info) == ERR::Okay) {
+    printf("Surface: %dx%d at %d,%d\n", info->Width, info->Height, info->X, info->Y);
+}
+        </code>
+        <description>Get basic surface information without locking</description>
+      </example>
+    </ai>
+  </function>
+
+  <!-- Bitmap Graphics Functions -->
+  
+  <function>
+    <source_file>lib_bitmap.cpp</source_file>
+    <name>CopyArea</name>
+    <category>Bitmap</category>
+    <comment>Copies a rectangular area from one bitmap to another efficiently.</comment>
+    <prototype>ERR CopyArea(objBitmap *Source, objBitmap *Dest, BAF Flags, int X, int Y, int Width, int Height, int DestX, int DestY)</prototype>
+    
+    <input>
+      <param type="objBitmap *" name="Source">Source bitmap object.</param>
+      <param type="objBitmap *" name="Dest">Destination bitmap object.</param>
+      <param type="BAF" name="Flags" lookup="BAF">Optional operation flags.</param>
+      <param type="int" name="X">Horizontal position of source area.</param>
+      <param type="int" name="Y">Vertical position of source area.</param>
+      <param type="int" name="Width">Width of area to copy.</param>
+      <param type="int" name="Height">Height of area to copy.</param>
+      <param type="int" name="DestX">Horizontal position in destination.</param>
+      <param type="int" name="DestY">Vertical position in destination.</param>
+    </input>
+
+    <description>
+      Performs high-performance rectangular copying between bitmaps using the fastest available method. Respects clipping regions in both source and destination. Supports transparency, alpha blending, dithering, and linear color space operations. Different bit depths are handled with automatic conversion.
+    </description>
+
+    <result type="ERR">
+      <error code="Okay">Area successfully copied.</error>
+      <error code="NullArgs">Destination parameter not specified.</error>
+      <error code="Mismatch">Bitmaps are incompatible for the operation.</error>
+      <error code="InvalidState">LINEAR flag used with linear colorspace bitmap.</error>
+    </result>
+
+    <ai>
+      <semantics>
+        <memory side_effects="true" zero_initialized="false" tracked="false" ownership="none" lock_required="conditional"/>
+        <concurrency thread_safe="false"/>
+        <cleanup automatic="false"/>
+        <idempotent>false</idempotent>
+      </semantics>
+      
+      <flags>
+        <flag name="DITHER" effect="Enable dithering for color depth conversion" default="false"/>
+        <flag name="BLEND" effect="Enable alpha blending for 32-bit sources" default="false"/>
+        <flag name="LINEAR" effect="Use linear interpolation for blending quality" default="false"/>
+        <flag name="COPY" effect="Avoid blending when destination pixel is empty" default="false"/>
+      </flags>
+
+      <constraints>
+        <param name="Source" required="true"/>
+        <param name="Dest" required="true"/>
+        <param name="Width" required="true" min="0"/>
+        <param name="Height" required="true" min="0"/>
+      </constraints>
+
+      <performance>
+        <complexity>time: O(w*h), space: O(1)</complexity>
+        <cost_factors>Bitmap dimensions, bit depth conversion, alpha blending</cost_factors>
+        <optimization_hints>Use same bit depths, avoid unnecessary flags</optimization_hints>
+      </performance>
+
+      <relationships>
+        <requires>Valid bitmap objects, compatible formats</requires>
+        <related_functions>CopyRawBitmap, DrawRectangle</related_functions>
+      </relationships>
+
+      <antipatterns>
+        <mistake>Using LINEAR flag with linear colorspace bitmaps</mistake>
+        <mistake>Not checking clipping regions before copying</mistake>
+      </antipatterns>
+
+      <example language="cpp">
+        <code>
+// Copy with alpha blending
+CopyArea(srcBitmap, destBitmap, BAF::BLEND, 0, 0, 100, 100, 50, 50);
+        </code>
+        <description>Copy 100x100 area with alpha blending enabled</description>
+      </example>
+    </ai>
+  </function>
+
+  <function>
+    <source_file>lib_bitmap.cpp</source_file>
+    <name>DrawRectangle</name>
+    <category>Bitmap</category>
+    <comment>Draws filled or outlined rectangles to bitmaps.</comment>
+    <prototype>void DrawRectangle(objBitmap *Bitmap, int X, int Y, int Width, int Height, uint32_t Colour, BAF Flags)</prototype>
+    
+    <input>
+      <param type="objBitmap *" name="Bitmap">Target bitmap object.</param>
+      <param type="int" name="X">Left-most coordinate of rectangle.</param>
+      <param type="int" name="Y">Top-most coordinate of rectangle.</param>
+      <param type="int" name="Width">Width of rectangle.</param>
+      <param type="int" name="Height">Height of rectangle.</param>
+      <param type="uint32_t" name="Colour">Color value for the rectangle.</param>
+      <param type="BAF" name="Flags" lookup="BAF">Drawing flags (FILL for filled rectangle).</param>
+    </input>
+
+    <description>
+      Draws rectangles to the target bitmap, either filled or as outlines. The rectangle position and dimensions are defined by X, Y, Width, and Height parameters. The FILL flag determines whether the rectangle is filled or just outlined. Color is specified as a pixel value appropriate for the bitmap's color format.
+    </description>
+
+    <result type="void">
+      No return value - function always succeeds within valid parameters.
+    </result>
+
+    <ai>
+      <semantics>
+        <memory side_effects="true" zero_initialized="false" tracked="false" ownership="none" lock_required="conditional"/>
+        <concurrency thread_safe="false"/>
+        <cleanup automatic="false"/>
+        <idempotent>false</idempotent>
+      </semantics>
+      
+      <flags>
+        <flag name="FILL" effect="Fill rectangle with solid color" default="false"/>
+      </flags>
+
+      <constraints>
+        <param name="Bitmap" required="true"/>
+        <param name="Width" required="true" min="0"/>
+        <param name="Height" required="true" min="0"/>
+      </constraints>
+
+      <performance>
+        <complexity>time: O(w*h), space: O(1)</complexity>
+        <cost_factors>Rectangle size, bitmap color depth</cost_factors>
+        <optimization_hints>Use for clearing or filling large areas</optimization_hints>
+      </performance>
+
+      <relationships>
+        <requires>Valid bitmap object</requires>
+        <related_functions>CopyArea, DrawPixel</related_functions>
+      </relationships>
+
+      <workflows>
+        <pattern name="clear_bitmap">
+          <step>Get bitmap background color</step>
+          <step>Call DrawRectangle with FILL flag covering entire bitmap</step>
+          <description>Clear bitmap to background color</description>
+          <preconditions>Valid bitmap with defined background</preconditions>
+          <postconditions>Bitmap filled with background color</postconditions>
+        </pattern>
+      </workflows>
+
+      <example language="cpp">
+        <code>
+// Draw filled red rectangle
+DrawRectangle(bitmap, 10, 10, 100, 50, 0xFF0000, BAF::FILL);
+        </code>
+        <description>Draw a filled red rectangle</description>
+      </example>
+    </ai>
+  </function>
+
+  <!-- Input Management Functions -->
+  
+  <function>
+    <source_file>lib_input.cpp</source_file>
+    <name>SubscribeInput</name>
+    <category>Input</category>
+    <comment>Subscribe to receive input events for display-related devices.</comment>
+    <prototype>ERR SubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, JTYPE InputMask, OBJECTID DeviceFilter, int *Handle)</prototype>
+    
+    <input>
+      <param type="FUNCTION *" name="Callback">Function to receive input messages.</param>
+      <param type="OBJECTID" name="SurfaceFilter">Only receive events for this surface (optional).</param>
+      <param type="JTYPE" name="InputMask" lookup="JTYPE">Input event types to receive.</param>
+      <param type="OBJECTID" name="DeviceFilter">Device to filter events from (not implemented).</param>
+      <param type="int *" name="Handle">Returns subscription handle.</param>
+    </input>
+
+    <description>
+      Provides systematic access to input events from display-related devices including trackpads, mice, graphics tablets, and touch screens. Keyboard events are not included. Events can be filtered by surface and device, with input masks controlling which event types are received. Each subscription requires cleanup with UnsubscribeInput().
+    </description>
+
+    <result type="ERR">
+      <error code="Okay">Subscription successfully created.</error>
+      <error code="NullArgs">Required parameter not specified.</error>
+    </result>
+
+    <ai>
+      <semantics>
+        <memory side_effects="true" zero_initialized="false" tracked="true" ownership="caller" lock_required="never"/>
+        <concurrency thread_safe="true"/>
+        <cleanup automatic="false"/>
+        <idempotent>false</idempotent>
+      </semantics>
+      
+      <constraints>
+        <param name="Callback" required="true"/>
+        <param name="Handle" required="true"/>
+        <param name="InputMask" required="false"/>
+      </constraints>
+
+      <locking>
+        <condition>Concurrent subscription access</condition>
+        <mechanism>Recursive mutex glInputLock</mechanism>
+      </locking>
+
+      <performance>
+        <complexity>time: O(1), space: O(1)</complexity>
+        <cost_factors>Callback storage, filter processing</cost_factors>
+      </performance>
+
+      <relationships>
+        <requires>Valid callback function</requires>
+        <cleanup_trigger>Must call UnsubscribeInput to avoid leaks</cleanup_trigger>
+        <related_functions>UnsubscribeInput</related_functions>
+      </relationships>
+
+      <workflows>
+        <pattern name="input_monitoring">
+          <step>Call SubscribeInput with callback</step>
+          <step>Process events in callback function</step>
+          <step>Call UnsubscribeInput when done</step>
+          <description>Monitor input events for a period</description>
+          <preconditions>Valid callback function</preconditions>
+          <postconditions>Events received until unsubscribed</postconditions>
+        </pattern>
+      </workflows>
+
+      <antipatterns>
+        <mistake>Forgetting to unsubscribe causes resource leaks</mistake>
+        <mistake>Blocking in callback can affect input processing</mistake>
+      </antipatterns>
+
+      <example language="cpp">
+        <code>
+ERR input_callback(const InputEvent *events, int handle) {
+    for (auto e = events; e; e = e->Next) {
+        if (e->Flags & JTYPE::BUTTON) {
+            // Handle button event
+        }
+    }
+    return ERR::Okay;
+}
+
+int handle;
+SubscribeInput(&input_callback, surfaceID, JTYPE::BUTTON, 0, &handle);
+        </code>
+        <description>Subscribe to button input events for a surface</description>
+      </example>
+    </ai>
+  </function>
+
+</functions>

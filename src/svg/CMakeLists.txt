@@ -3,19 +3,19 @@
 set (MOD svg)
 set (INC_MOD_SVG TRUE PARENT_SCOPE)
 
-idl_gen ("${MOD}.fdl" NAME ${MOD}_defs
+idl_gen ("${MOD}.tdl" NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
    FILES "class_rsvg.cpp" "class_svg.cpp")
 
-idl_compile ("${MOD}.fdl" NAME ${MOD}_idl OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}_def.c")
+idl_compile ("${MOD}.tdl" NAME ${MOD}_idl OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}_def.c")
 
 add_library (${MOD})
 
-set_module_defaults (${MOD})
+set_module_defaults (${MOD} "Svg")
 
 if (MSVC)
    # For Katana
-   add_compile_definitions ("YY_NO_UNISTD_H")
+   target_compile_definitions (${MOD} PRIVATE "YY_NO_UNISTD_H")
 endif ()
 
 target_sources (${MOD} PRIVATE
@@ -35,4 +35,4 @@ target_link_libraries (${MOD} PUBLIC base64)
 
 target_link_libraries (${MOD} PRIVATE ${MATH_LINK})
 
-flute_test (svg_output "tests/test-svg.fluid")
+flute_test (svg_output "tests/test-svg.tiri")

@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -41,16 +41,16 @@ Vector definitions can be saved and loaded from permanent storage by using the @
 
 class VectorState;
 
-static void fill_image(VectorState &, const TClipRectangle<DOUBLE> &, agg::path_storage &, VSM,
-   const agg::trans_affine &, DOUBLE, DOUBLE, objVectorImage &, agg::renderer_base<agg::pixfmt_psl> &,
-   agg::rasterizer_scanline_aa<> &, DOUBLE Alpha = 1.0);
+static void fill_image(VectorState &, const TClipRectangle<double> &, agg::path_storage &, VSM,
+   const agg::trans_affine &, double, double, extVectorImage &, agg::renderer_base<agg::pixfmt_psl> &,
+   agg::rasterizer_scanline_aa<> &, double Alpha = 1.0);
 
-static void fill_gradient(VectorState &, const TClipRectangle<DOUBLE> &, agg::path_storage *,
-   const agg::trans_affine &, DOUBLE, DOUBLE, extVectorGradient &, GRADIENT_TABLE *,
+static void fill_gradient(VectorState &, const TClipRectangle<double> &, agg::path_storage *,
+   const agg::trans_affine &, double, double, extVectorGradient &, GRADIENT_TABLE *,
    agg::renderer_base<agg::pixfmt_psl> &, agg::rasterizer_scanline_aa<> &);
 
-static void fill_pattern(VectorState &, const TClipRectangle<DOUBLE> &, agg::path_storage *,
-   VSM, const agg::trans_affine &, DOUBLE ViewWidth, DOUBLE, extVectorPattern &,
+static void fill_pattern(VectorState &, const TClipRectangle<double> &, agg::path_storage *,
+   VSM, const agg::trans_affine &, double ViewWidth, double, extVectorPattern &,
    agg::renderer_base<agg::pixfmt_psl> &, agg::rasterizer_scanline_aa<> &);
 
 //********************************************************************************************************************
@@ -64,8 +64,10 @@ static void fill_pattern(VectorState &, const TClipRectangle<DOUBLE> &, agg::pat
 static ERR VECTORSCENE_Reset(extVectorScene *);
 
 void apply_focus(extVectorScene *, extVector *);
-static void scene_key_event(evKey *, LONG, extVectorScene *);
+static void scene_key_event(evKey *, int, extVectorScene *);
 static void process_resize_msgs(extVectorScene *);
+
+//********************************************************************************************************************
 
 static void render_to_surface(extVectorScene *Self, objSurface *Surface, objBitmap *Bitmap)
 {
@@ -77,7 +79,26 @@ static void render_to_surface(extVectorScene *Self, objSurface *Surface, objBitm
 
    acDraw(Self);
 
-   Self->Bitmap = NULL;
+   Self->Bitmap = nullptr;
+}
+
+//********************************************************************************************************************
+
+void render_scene_from_viewport(extVectorScene *Self, objBitmap *Bitmap, objVectorViewport *Viewport)
+{
+   SceneRenderer renderer(Self);
+
+   if ((Self->Flags & VPF::RENDER_TIME) != VPF::NIL) { // Client wants to know how long the rendering takes to complete
+      auto time = PreciseTime();
+      renderer.draw(Bitmap, Viewport);
+      if ((Self->RenderTime = PreciseTime() - time) < 1) Self->RenderTime = 1;
+   }
+   else renderer.draw(Bitmap, Viewport);
+
+// For debugging purposes, draw a boundary around the target area.
+//   static RGB8 highlightA = { .Red = 255, .Green = 0, .Blue = 0, .Alpha = 255 };
+//   uint32_t highlight = PackPixelRGBA(bmp, &highlightA);
+//   gfx::DrawRectangle(bmp, bmp->Clip.Left, bmp->Clip.Top, bmp->Clip.Right-bmp->Clip.Left, bmp->Clip.Bottom-bmp->Clip.Top, highlight, BAF::NIL);
 }
 
 //********************************************************************************************************************
@@ -132,9 +153,9 @@ static void notify_redimension(OBJECTPTR Object, ACTIONID ActionID, ERR Result, 
 static void notify_lostfocus(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extVectorScene *)CurrentContext();
-   if (Self->KeyHandle) { UnsubscribeEvent(Self->KeyHandle); Self->KeyHandle = NULL; }
+   if (Self->KeyHandle) { UnsubscribeEvent(Self->KeyHandle); Self->KeyHandle = nullptr; }
 
-   apply_focus(Self, NULL);
+   apply_focus(Self, nullptr);
 }
 
 //********************************************************************************************************************
@@ -189,18 +210,22 @@ static ERR VECTORSCENE_AddDef(extVectorScene *Self, struct sc::AddDef *Args)
 
    OBJECTPTR def = Args->Def;
 
-   if ((def->classID() IS CLASSID::VECTORSCENE) or
-       (def->baseClassID() IS CLASSID::VECTOR) or
-       (def->classID() IS CLASSID::VECTORGRADIENT) or
-       (def->classID() IS CLASSID::VECTORIMAGE) or
-       (def->classID() IS CLASSID::VECTORPATH) or
-       (def->classID() IS CLASSID::VECTORPATTERN) or
-       (def->baseClassID() IS CLASSID::VECTORFILTER) or
-       (def->classID() IS CLASSID::VECTORTRANSITION) or
-       (def->classID() IS CLASSID::VECTORCLIP)) {
-      // The use of this object as a definition is valid.
+   switch(def->classID()) {
+      case CLASSID::VECTORGRADIENT:   ((extVectorGradient*)def)->HostScene = Self; break;
+      case CLASSID::VECTORIMAGE:      ((extVectorImage *)def)->HostScene = Self; break;
+      case CLASSID::VECTORPATH:       ((extVectorPath*)def)->HostScene = Self; break;
+      case CLASSID::VECTORPATTERN:    ((extVectorPattern*)def)->HostScene = Self; break;
+      case CLASSID::VECTORTRANSITION: ((extVectorTransition*)def)->HostScene = Self; break;
+      case CLASSID::VECTORCLIP:       ((extVectorClip*)def)->HostScene = Self; break;
+      case CLASSID::VECTORSCENE:      break;
+
+      default:
+         switch(def->baseClassID()) {
+            case CLASSID::VECTOR:       break;
+            case CLASSID::VECTORFILTER: break;
+            default: return log.warning(ERR::InvalidObject);
+         }
    }
-   else return log.warning(ERR::InvalidObject);
 
    // If the resource does not belong to the Scene object, this can lead to invalid pointer references
 
@@ -240,7 +265,7 @@ static ERR VECTORSCENE_Debug(extVectorScene *Self)
 
    pf::vector<ChildEntry> list;
    if ((ListChildren(Self->UID, &list) IS ERR::Okay) and (list.size() > 1)) {
-      log.msg("Scene #%d has %d children:", Self->UID, LONG(std::ssize(list)-1));
+      log.msg("Scene #%d has %d children:", Self->UID, int(std::ssize(list)-1));
       for (auto &rec : list) {
          auto obj = GetObjectPtr(rec.ObjectID);
          if (obj IS Self->Viewport) continue;
@@ -250,7 +275,7 @@ static ERR VECTORSCENE_Debug(extVectorScene *Self)
 
    log.msg("Scene #%d scene graph follows:", Self->UID);
 
-   LONG level = 0;
+   int level = 0;
    debug_tree((extVector *)Self->Viewport, level);
    return ERR::Okay;
 }
@@ -273,57 +298,14 @@ FieldNotSet: The Bitmap field is NULL.
 
 static ERR VECTORSCENE_Draw(extVectorScene *Self, struct acDraw *Args)
 {
-   pf::Log log;
-   objBitmap *bmp;
-
-   if (!(bmp = Self->Bitmap)) return log.warning(ERR::FieldNotSet);
-
-   // Any pending resize messages for viewports must be processed prior to drawing.
-
-   process_resize_msgs(Self);
-
-   // Send a dummy input event to the mouse cursor to ensure that the movement of underlying
-   // vectors generates the necessary crossing events.
-
-   if ((Self->SurfaceID) and (Self->RefreshCursor)) {
-      DOUBLE abs_x, abs_y;
-      LONG s_x, s_y;
-
-      Self->RefreshCursor = false;
-      gfx::GetSurfaceCoords(Self->SurfaceID, NULL, NULL, &s_x, &s_y, NULL, NULL);
-      gfx::GetCursorPos(&abs_x, &abs_y);
-
-      const InputEvent event = {
-         .Next        = NULL,
-         .Value       = 0,
-         .Timestamp   = 0,
-         .RecipientID = Self->SurfaceID,
-         .OverID      = Self->SurfaceID,
-         .AbsX        = abs_x,
-         .AbsY        = abs_y,
-         .X           = abs_x - s_x,
-         .Y           = abs_y - s_y,
-         .DeviceID    = 0,
-         .Type        = JET::ABS_XY,
-         .Flags       = JTYPE::MOVEMENT,
-         .Mask        = JTYPE::MOVEMENT
-      };
-      scene_input_events(&event, 0);
+   if (!Self->Bitmap) {
+      pf::Log log;
+      return log.warning(ERR::FieldNotSet);
    }
 
-   SceneRenderer renderer(Self);
+   acFlush(Self);
 
-   if ((Self->Flags & VPF::RENDER_TIME) != VPF::NIL) { // Client wants to know how long the rendering takes to complete
-      auto time = PreciseTime();
-      renderer.draw(bmp);
-      if ((Self->RenderTime = PreciseTime() - time) < 1) Self->RenderTime = 1;
-   }
-   else renderer.draw(bmp);
-
-// For debugging purposes, draw a boundary around the target area.
-//   static RGB8 highlightA = { .Red = 255, .Green = 0, .Blue = 0, .Alpha = 255 };
-//   ULONG highlight = PackPixelRGBA(bmp, &highlightA);
-//   gfx::DrawRectangle(bmp, bmp->Clip.Left, bmp->Clip.Top, bmp->Clip.Right-bmp->Clip.Left, bmp->Clip.Bottom-bmp->Clip.Top, highlight, BAF::NIL);
+   render_scene_from_viewport(Self, Self->Bitmap, Self->Viewport);
 
    return ERR::Okay;
 }
@@ -362,25 +344,71 @@ static ERR VECTORSCENE_FindDef(extVectorScene *Self, struct sc::FindDef *Args)
 
    if (*name IS '#') name = name + 1;
    else if (startswith("url(#", name)) {
-      LONG i;
+      int i;
       for (i=5; (name[i] != ')') and name[i]; i++);
       std::string lookup;
       lookup.assign(name, 5, i-5);
 
-      auto def = Self->Defs.find(lookup);
-      if (def != Self->Defs.end()) {
+      if (auto def = Self->Defs.find(lookup); def != Self->Defs.end()) {
          Args->Def = def->second;
          return ERR::Okay;
       }
       else return ERR::Search;
    }
 
-   auto def = Self->Defs.find(name);
-   if (def != Self->Defs.end()) {
+   if (auto def = Self->Defs.find(name); def != Self->Defs.end()) {
       Args->Def = def->second;
       return ERR::Okay;
    }
    else return ERR::Search;
+}
+
+//********************************************************************************************************************
+// Flush pending activity messages.  This should always be performed prior to drawing.
+
+static ERR VECTORSCENE_Flush(extVectorScene *Self)
+{
+   // Protect against recursion from client callbacks.
+
+   static bool recurse = false;
+   if (recurse) return ERR::Recursion;
+   recurse = true;
+
+   // Any pending resize messages for viewports must be processed prior to drawing.
+
+   process_resize_msgs(Self);
+
+   // Send a dummy input event to the mouse cursor to ensure that changes to underlying
+   // vector paths will generate the necessary crossing events.
+
+   if ((Self->SurfaceID) and (Self->RefreshCursor)) {
+      double abs_x, abs_y;
+      int s_x, s_y;
+
+      Self->RefreshCursor = false;
+      gfx::GetSurfaceCoords(Self->SurfaceID, nullptr, nullptr, &s_x, &s_y, nullptr, nullptr);
+      gfx::GetCursorPos(&abs_x, &abs_y);
+
+      const InputEvent event = {
+         .Next        = nullptr,
+         .Value       = 0,
+         .Timestamp   = 0,
+         .RecipientID = Self->SurfaceID,
+         .OverID      = Self->SurfaceID,
+         .AbsX        = abs_x,
+         .AbsY        = abs_y,
+         .X           = abs_x - s_x,
+         .Y           = abs_y - s_y,
+         .DeviceID    = 0,
+         .Type        = JET::ABS_XY,
+         .Flags       = JTYPE::MOVEMENT,
+         .Mask        = JTYPE::MOVEMENT
+      };
+      scene_input_events(&event, 0);
+   }
+
+   recurse = false;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -390,8 +418,8 @@ static ERR VECTORSCENE_Free(extVectorScene *Self, APTR Args)
    Self->Defs.clear(); // Required because the standard destructor is lazy and doesn't clear the table size
    Self->~extVectorScene();
 
-   if (Self->Viewport) Self->Viewport->Parent = NULL;
-   if (Self->Buffer)   { delete Self->Buffer; Self->Buffer = NULL; }
+   if (Self->Viewport) Self->Viewport->Parent = nullptr;
+   if (Self->Buffer)   { delete Self->Buffer; Self->Buffer = nullptr; }
    if (Self->InputHandle) { gfx::UnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
 
    if (Self->SurfaceID) {
@@ -408,6 +436,8 @@ static ERR VECTORSCENE_Free(extVectorScene *Self, APTR Args)
 
 static ERR VECTORSCENE_Init(extVectorScene *Self)
 {
+   Self->Cursor = PTC::DEFAULT;
+
    // Setting the SurfaceID is optional and enables auto-rendering to the display.  The
    // alternative for the client is to set the Bitmap field and manage rendering manually.
    //
@@ -421,8 +451,8 @@ static ERR VECTORSCENE_Init(extVectorScene *Self)
 
          if ((!Self->PageWidth) or (!Self->PageHeight)) {
             Self->Flags |= VPF::RESIZE;
-            Self->PageWidth = surface->get<LONG>(FID_Width);
-            Self->PageHeight = surface->get<LONG>(FID_Height);
+            Self->PageWidth = surface->get<int>(FID_Width);
+            Self->PageHeight = surface->get<int>(FID_Height);
          }
 
          SubscribeAction(*surface, AC::Redimension, C_FUNCTION(notify_redimension));
@@ -441,8 +471,6 @@ static ERR VECTORSCENE_Init(extVectorScene *Self)
       }
    }
 
-   Self->Cursor = PTC::DEFAULT;
-
    return ERR::Okay;
 }
 
@@ -450,7 +478,7 @@ static ERR VECTORSCENE_Init(extVectorScene *Self)
 
 static ERR VECTORSCENE_NewObject(extVectorScene *Self)
 {
-   Self->SampleMethod = VSM::BILINEAR;
+   Self->SampleMethod = VSM::AUTO;
 
    // Please refer to the Reset action for setting variable defaults
    return VECTORSCENE_Reset(Self);
@@ -486,7 +514,7 @@ Reset: Clears all registered definitions and resets field values.  Child vectors
 
 static ERR VECTORSCENE_Reset(extVectorScene *Self)
 {
-   if (Self->Buffer)  { delete Self->Buffer; Self->Buffer = NULL; }
+   if (Self->Buffer)  { delete Self->Buffer; Self->Buffer = nullptr; }
    Self->Defs.clear();
    Self->Gamma = 1.0;
    return ERR::Okay;
@@ -534,7 +562,7 @@ Search: A vector with a matching ID was not found.
 static ERR VECTORSCENE_SearchByID(extVectorScene *Self, struct sc::SearchByID *Args)
 {
    if (!Args) return ERR::NullArgs;
-   Args->Result = NULL;
+   Args->Result = nullptr;
 
    auto vector = (extVector *)Self->Viewport;
    while (vector) {
@@ -587,7 +615,7 @@ static ERR SET_Bitmap(extVectorScene *Self, objBitmap *Value)
       }
       else return ERR::Memory;
    }
-   else Self->Buffer = NULL;
+   else Self->Buffer = nullptr;
 
    return ERR::Okay;
 }
@@ -600,13 +628,13 @@ Defs: Obtain direct access to the SVG definition table.
 Reading the Defs field will return a direct pointer to the SVG definition table, which is declared as a key-value C++
 type:
 
-<pre>std::unordered_map&lt;std::string, OBJECTPTR&gt;</pre>
+<pre>ankerl::unordered_dense::map&lt;std::string, OBJECTPTR&gt;</pre>
 
 Direct access is provided for internal use only and not for the benefit of client programs.
 
 *********************************************************************************************************************/
 
-static ERR GET_Defs(extVectorScene *Self, std::unordered_map<std::string, OBJECTPTR> **Value)
+static ERR GET_Defs(extVectorScene *Self, ankerl::unordered_dense::map<std::string, OBJECTPTR> **Value)
 {
    *Value = &Self->Defs;
    return ERR::Okay;
@@ -637,7 +665,7 @@ option is used then the viewport will be scaled to fit within the page.
 
 *********************************************************************************************************************/
 
-static ERR SET_PageHeight(extVectorScene *Self, LONG Value)
+static ERR SET_PageHeight(extVectorScene *Self, int Value)
 {
    if (Value IS Self->PageHeight) return ERR::Okay;
 
@@ -658,7 +686,7 @@ option is used then the viewport will be scaled to fit within the page.
 
 *********************************************************************************************************************/
 
-static ERR SET_PageWidth(extVectorScene *Self, LONG Value)
+static ERR SET_PageWidth(extVectorScene *Self, int Value)
 {
    if (Value IS Self->PageWidth) return ERR::Okay;
 
@@ -677,12 +705,12 @@ RenderTime: Returns the rendering time of the last scene.
 RenderTime returns the rendering time of the last scene that was drawn, measured in microseconds.  This value can also
 be used to compute frames-per-second with `1000000 / RenderTime`.
 
-The `RENDER_TIME` flag should also be set before fetching this value, as it is required to enable the timing feature.  If
-`RENDER_TIME` is not set, it will be set automatically so that subsequent calls succeed correctly.
+The `RENDER_TIME` flag must be set before fetching this value, as it is required to enable the timing feature.  If
+`RENDER_TIME` is not set, it will be set automatically so that subsequent calls return a correct value.
 
 *********************************************************************************************************************/
 
-static ERR GET_RenderTime(extVectorScene *Self, LARGE *Value)
+static ERR GET_RenderTime(extVectorScene *Self, int64_t *Value)
 {
    Self->Flags |= VPF::RENDER_TIME;
    *Value = Self->RenderTime;
@@ -696,9 +724,19 @@ SampleMethod: The sampling method to use when interpolating images and patterns.
 
 The SampleMethod controls the sampling algorithm that is used when images and patterns in the vector definition are affected
 by rotate, skew and scale transforms.  The choice of method will have a significant impact on the speed and quality of
-the images that are displayed in the rendered scene.  The recommended default is `BILINEAR`, which provides a
-comparatively average result and execution speed.  The most advanced method is `BLACKMAN8`, which produces an excellent
-level of quality at the cost of very poor execution speed.
+the images that are displayed in the rendered scene.  The recommended default is `AUTO`, which allows the drawing
+algorithms to choose the best quality option dynamically.
+
+*********************************************************************************************************************/
+
+static ERR SET_SampleMethod(extVectorScene* Self, VSM Value)
+{
+   if ((Value != Self->SampleMethod) and (Self->Viewport)) mark_dirty(Self->Viewport, RC::FINAL_PATH);
+   Self->SampleMethod = Value;
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
 
 -FIELD-
 Surface: May refer to a @Surface object for enabling automatic rendering.
@@ -815,7 +853,7 @@ static void process_resize_msgs(extVectorScene *Self)
             auto func   = sub.second;
             if (func.isC()) {
                pf::SwitchContext ctx(func.Context);
-               auto callback = (ERR (*)(extVectorViewport *, objVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR))func.Routine;
+               auto callback = (ERR (*)(extVectorViewport *, objVector *, double, double, double, double, APTR))func.Routine;
                result = callback(view, vector, view->FinalX, view->FinalY, view->vpFixedWidth, view->vpFixedHeight, func.Meta);
             }
             else if (func.isScript()) {
@@ -845,15 +883,15 @@ static ERR vector_keyboard_events(extVector *Vector, const evKey *Event)
       auto &sub = *it;
       if (sub.Callback.isC()) {
          pf::SwitchContext ctx(sub.Callback.Context);
-         auto callback = (ERR (*)(objVector *, KQ, KEY, LONG, APTR))sub.Callback.Routine;
+         auto callback = (ERR (*)(objVector *, KQ, KEY, int, APTR))sub.Callback.Routine;
          result = callback(Vector, Event->Qualifiers, Event->Code, Event->Unicode, sub.Callback.Meta);
       }
       else if (sub.Callback.isScript()) {
          // In this implementation the script function will receive all the events chained via the Next field
          sc::Call(sub.Callback, std::to_array<ScriptArg>({
             { "Vector",     Vector, FDF_OBJECT },
-            { "Qualifiers", LONG(Event->Qualifiers) },
-            { "Code",       LONG(Event->Code) },
+            { "Qualifiers", int(Event->Qualifiers) },
+            { "Code",       int(Event->Code) },
             { "Unicode",    Event->Unicode }
          }), result);
       }
@@ -868,7 +906,7 @@ static ERR vector_keyboard_events(extVector *Vector, const evKey *Event)
 //********************************************************************************************************************
 // Distribute input events to any vectors that have subscribed and have the focus
 
-static void scene_key_event(evKey *Event, LONG Size, extVectorScene *Self)
+static void scene_key_event(evKey *Event, int Size, extVectorScene *Self)
 {
    const std::lock_guard<std::recursive_mutex> lock(glVectorFocusLock);
 
@@ -924,18 +962,18 @@ static void scene_key_event(evKey *Event, LONG Size, extVectorScene *Self)
 #include "scene_def.c"
 
 static const FieldArray clSceneFields[] = {
-   { "RenderTime",   FDF_LARGE|FDF_R, GET_RenderTime },
+   { "RenderTime",   FDF_INT64|FDF_R, GET_RenderTime },
    { "Gamma",        FDF_DOUBLE|FDF_RW },
-   { "HostScene",    FDF_OBJECT|FDF_RI,    NULL, NULL, CLASSID::VECTORSCENE },
-   { "Viewport",     FDF_OBJECT|FD_R,      NULL, NULL, CLASSID::VECTORVIEWPORT },
-   { "Bitmap",       FDF_OBJECT|FDF_RW,    NULL, SET_Bitmap, CLASSID::BITMAP },
-   { "Surface",      FDF_OBJECTID|FDF_RI,  NULL, SET_Surface, CLASSID::SURFACE },
-   { "Flags",        FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clVectorSceneFlags },
-   { "PageWidth",    FDF_LONG|FDF_RW,      NULL, SET_PageWidth },
-   { "PageHeight",   FDF_LONG|FDF_RW,      NULL, SET_PageHeight },
-   { "SampleMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorSceneSampleMethod },
+   { "HostScene",    FDF_OBJECT|FDF_RI,    nullptr, nullptr, CLASSID::VECTORSCENE },
+   { "Viewport",     FDF_OBJECT|FD_R,      nullptr, nullptr, CLASSID::VECTORVIEWPORT },
+   { "Bitmap",       FDF_OBJECT|FDF_RW,    nullptr, SET_Bitmap, CLASSID::BITMAP },
+   { "Surface",      FDF_OBJECTID|FDF_RI,  nullptr, SET_Surface, CLASSID::SURFACE },
+   { "Flags",        FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clVectorSceneFlags },
+   { "PageWidth",    FDF_INT|FDF_RW,      nullptr, SET_PageWidth },
+   { "PageHeight",   FDF_INT|FDF_RW,      nullptr, SET_PageHeight },
+   { "SampleMethod", FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, SET_SampleMethod, &clVectorSceneSampleMethod },
    // Virtual fields
-   { "Defs",         FDF_PTR|FDF_SYSTEM|FDF_R, GET_Defs, NULL },
+   { "Defs",         FDF_PTR|FDF_SYSTEM|FDF_R, GET_Defs, nullptr },
    END_FIELD
 };
 

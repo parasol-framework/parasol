@@ -1,16 +1,27 @@
 /*********************************************************************************************************************
 
 -CLASS-
-SVG: Provides support for parsing and rendering SVG files.
+SVG: Provides comprehensive support for parsing, rendering and animating SVG documents.
 
-The SVG class provides support for parsing SVG statements into a scene graph that consists of @Vector objects and
-related constructs.  The generated scene graph is accessible via the #Scene and #Viewport fields.
+The SVG class serves as a complete solution for integrating Scalable Vector Graphics documents into applications.  It parses SVG statements into a scene graph consisting of @Vector objects and related constructs, providing direct programmatic access to all graphical elements.  The generated scene graph is accessible via the #Scene and #Viewport fields, enabling real-time manipulation of individual elements.
 
-It is possible to parse SVG documents directly to the UI.  Set the #Target field with a vector to contain the SVG
-content and it will be structured in the existing scene graph.
+Key capabilities include:
 
-Please refer to the W3C documentation on SVG for a complete reference to the attributes that can be applied to SVG
-elements.
+<list type="bullet">
+<li>W3C-compliant SVG parsing with support for advanced features including gradients, filters, and patterns</li>
+<li>SMIL animation support with automatic frame-based playback</li>
+<li>Dynamic scene graph manipulation for real-time graphics modification</li>
+<li>Flexible rendering targets via the #Target field for integration with existing UI components</li>
+<li>Symbol-based graphics with macro-like functionality through #ParseSymbol()</li>
+<li>Resolution-independent scaling with automatic adaptation to display characteristics</li>
+<li>Export capabilities to multiple formats including PNG images</li>
+</list>
+
+The class supports both file-based loading via #Path and direct string-based parsing via #Statement.  SVG documents can be integrated into existing scene graphs by setting the #Target field, or rendered independently through the automatically created scene structure.
+
+Animation timing is controlled through the #FrameRate field, with callback support via #FrameCallback for custom rendering workflows.  The implementation maintains compatibility with the complete SVG specification while providing enhanced programmatic access unique to Kotuku.
+
+Please refer to the W3C's online documentation for exhaustive information on the SVG standard.
 
 *********************************************************************************************************************/
 
@@ -24,18 +35,23 @@ static void notify_free_frame_callback(OBJECTPTR Object, ACTIONID ActionID, ERR 
 static void notify_free_scene(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extSVG *)CurrentContext();
-   if (Self->AnimationTimer) { UpdateTimer(Self->AnimationTimer, 0); Self->AnimationTimer = NULL; }
+   if (Self->AnimationTimer) { UpdateTimer(Self->AnimationTimer, 0); Self->AnimationTimer = nullptr; }
 }
 
 /*********************************************************************************************************************
 -ACTION-
 Activate: Initiates playback of SVG animations.
 
-SVG documents that use animation features will remain static until they are activated with this action.  The animation
-code will be processed in the background at the pre-defined #FrameRate.  The #Scene will be redrawn automatically as
-each frame is processed.
+SVG documents containing SMIL animation features will remain static until activated through this action.  Upon
+activation, the animation system begins processing animation sequences in the background according to the configured
+#FrameRate.  The #Scene will be automatically redrawn as each frame is computed, ensuring smooth visual transitions.
 
-The client can hook into the animation cycle by setting the #FrameCallback with a suitable function.
+To integrate custom rendering logic with the animation cycle, configure the #FrameCallback field with an appropriate
+function.  This callback will be triggered after each frame preparation, enabling applications to implement custom
+rendering workflows or capture animation frames.
+
+<b>Note:</b> If the SVG document contains no animation elements, this action completes successfully but has no visual
+effect.
 
 -END-
 *********************************************************************************************************************/
@@ -44,10 +60,10 @@ static ERR SVG_Activate(extSVG *Self)
 {
    if (!Self->Animations.empty()) {
       if (!Self->AnimationTimer) {
-         SubscribeTimer(1.0 / (DOUBLE)Self->FrameRate, C_FUNCTION(animation_timer), &Self->AnimationTimer);
+         SubscribeTimer(1.0 / (double)Self->FrameRate, C_FUNCTION(animation_timer), &Self->AnimationTimer);
          SubscribeAction(Self->Scene, AC::Free, C_FUNCTION(notify_free_scene));
       }
-      else UpdateTimer(Self->AnimationTimer, 1.0 / (DOUBLE)Self->FrameRate);
+      else UpdateTimer(Self->AnimationTimer, 1.0 / (double)Self->FrameRate);
    }
 
    return ERR::Okay;
@@ -55,7 +71,14 @@ static ERR SVG_Activate(extSVG *Self)
 
 /*********************************************************************************************************************
 -ACTION-
-Deactivate: Stops all playback of SVG animations.
+Deactivate: Halts all SVG animation playback and suspends frame processing.
+
+This action immediately terminates any active animation playback, stopping all animation timers and suspending frame processing.  The SVG document will remain visible in its current state, but no further animation updates will occur until the object is reactivated.
+
+The deactivation process is immediate and does not affect the underlying scene graph structure.  Animation sequences can be resumed from their current positions by calling the #Activate() action again.
+
+This action is particularly useful for implementing pause functionality or conserving system resources when animations are not required.
+
 -END-
 *********************************************************************************************************************/
 
@@ -67,7 +90,16 @@ static ERR SVG_Deactivate(extSVG *Self)
 
 /*********************************************************************************************************************
 -ACTION-
-DataFeed: SVG data can be parsed on-the-fly via the data feed mechanism.
+DataFeed: Processes SVG data streams for incremental document parsing.
+
+The DataFeed action enables real-time processing of SVG data streams, allowing documents to be parsed incrementally as data becomes available.  This is particularly useful for network-based loading scenarios or when processing large SVG documents that may arrive in segments.
+
+The action accepts XML data streams and integrates them into the existing document structure.  Multiple DataFeed calls can be made to build up complex SVG documents progressively.
+
+<b>Supported data types:</b> `DATA::XML` for SVG content streams.
+
+This mechanism provides an alternative to the static #Statement field for scenarios requiring dynamic content loading or streaming workflows.
+
 -END-
 *********************************************************************************************************************/
 
@@ -99,13 +131,13 @@ static ERR SVG_Free(extSVG *Self)
 
    if ((Self->Target) and (Self->Target IS Self->Scene) and (Self->Scene->Owner IS Self)) {
       FreeResource(Self->Target);
-      Self->Target = NULL;
+      Self->Target = nullptr;
    }
 
-   if (Self->Path)      { FreeResource(Self->Path);      Self->Path = NULL; }
-   if (Self->Title)     { FreeResource(Self->Title);     Self->Title = NULL; }
-   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
-   if (Self->XML)       { FreeResource(Self->XML);       Self->XML = NULL; }
+   if (Self->Path)      { FreeResource(Self->Path);      Self->Path = nullptr; }
+   if (Self->Title)     { FreeResource(Self->Title);     Self->Title = nullptr; }
+   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = nullptr; }
+   if (Self->XML)       { FreeResource(Self->XML);       Self->XML = nullptr; }
 
    if (!Self->Resources.empty()) {
       for (auto id : Self->Resources) FreeResource(id);
@@ -118,11 +150,22 @@ static ERR SVG_Free(extSVG *Self)
 
 /*********************************************************************************************************************
 -ACTION-
-Init: Initialise the SVG object.
+Init: Initialises the SVG object and processes source content.
 
-Initialising an SVG object will load an SVG source file if a #Path has been specified.  The default behaviour is to
-generate the content in a local #Scene object, or alternatively the content can be redirected to an external
-@VectorScene referred to by #Target.
+The initialisation process establishes the scene graph structure and processes any specified SVG source content.  If a #Path has been configured, the referenced SVG file will be loaded and parsed immediately.  Alternatively, if #Statement contains SVG data, that content will be processed instead.
+
+The default behaviour creates a local @VectorScene object to contain the generated scene graph.  This can be overridden by setting the #Target field to redirect content into an existing scene graph structure, enabling integration with existing UI components.
+
+The initialisation sequence includes:
+
+<list type="ordered">
+<li>Scene graph structure creation or validation of the specified #Target</li>
+<li>SVG document parsing and scene graph population</li>
+<li>Resolution of SVG references, definitions, and symbol libraries</li>
+<li>Animation sequence preparation for documents containing SMIL features</li>
+</list>
+
+Successfully initialised SVG objects provide immediate access to the generated scene graph via the #Scene and #Viewport fields, enabling programmatic manipulation of individual graphic elements.
 
 -END-
 *********************************************************************************************************************/
@@ -136,8 +179,8 @@ static ERR SVG_Init(extSVG *Self)
       else return ERR::NewObject;
    }
 
-   if (Self->Path) return parse_svg(Self, Self->Path, NULL);
-   else if (Self->Statement) return parse_svg(Self, NULL, Self->Statement);
+   if (Self->Path) return parse_svg(Self, Self->Path, nullptr);
+   else if (Self->Statement) return parse_svg(Self, nullptr, Self->Statement);
 
    return ERR::Okay;
 }
@@ -158,21 +201,25 @@ static ERR SVG_NewPlacement(extSVG *Self)
 /*********************************************************************************************************************
 
 -METHOD-
-ParseSymbol: Generate a vector scene graph from an SVG symbol, targeting a viewport.
+ParseSymbol: Instantiates an SVG symbol definition within a target viewport.
 
-ParseSymbol() allows the symbols of a loaded SVG document to be processed post-initialisation.  This is useful for
-utilising symbols in a way that is akin to running macros as required by the program.
+ParseSymbol() enables dynamic instantiation of SVG symbol definitions that were declared within the loaded document.
+This method provides macro-like functionality, allowing complex graphical elements to be replicated and positioned as
+needed throughout the application.  This approach promotes efficient memory usage and consistent visual design while
+enabling dynamic scene graph construction.
 
-The `Name` must refer to a symbol that has been declared in the loaded document.  A @VectorViewport must be provided
-for the symbol's generated content to target.
+The specified `ID` must correspond to a symbol element that exists within the current document's definition library.
+The generated content will be structured within the provided @VectorViewport, which must be part of an established
+scene graph.
 
 -INPUT-
 cstr ID: Name of the symbol to parse.
 obj(VectorViewport) Viewport: The target viewport.
 
 -RESULT-
-Okay
-NullArgs
+Okay: Symbol successfully parsed and instantiated.
+NullArgs: Required parameters were not provided.
+NotFound: The specified symbol ID does not exist in the document.
 -END-
 
 *********************************************************************************************************************/
@@ -197,21 +244,26 @@ static ERR SVG_ParseSymbol(extSVG *Self, struct svg::ParseSymbol *Args)
 /*********************************************************************************************************************
 
 -METHOD-
-Render: Render the scene to a target Bitmap.
+Render: Performs high-quality rasterisation of the SVG document to a target bitmap.
 
-This method will render the vector scene directly to a target bitmap at coordinates `(X,Y)` and scaled to the desired
-`(Width,Height)`.
+This method executes complete rasterisation of the SVG scene graph, producing a pixel-based representation within the specified target bitmap.  The rendering process handles all vector elements, gradients, filters, and effects with full anti-aliasing and precision.
+
+The rendered output is positioned at coordinates `(X,Y)` within the target bitmap and scaled to the specified `(Width,Height)` dimensions.  The scaling operation maintains aspect ratios and applies appropriate filtering to ensure optimal visual quality.
+
+The scene's page dimensions are temporarily adjusted to match the specified width and height, ensuring that the entire document content is properly scaled and positioned within the target area.  This approach enables flexible rendering at arbitrary resolutions without affecting the original scene graph.
+
+<b>Performance considerations:</b> Rendering complex SVG documents with multiple effects and high resolutions may require significant processing time.  Consider using appropriate dimensions that balance quality requirements with performance constraints.
 
 -INPUT-
-obj(Bitmap) Bitmap: The target @Bitmap.
-int X: Target X coordinate.
-int Y: Target Y coordinate.
-int Width: Target page width.
-int Height: Target page height.
+obj(Bitmap) Bitmap: The target bitmap object to receive the rendered content.
+int X: Horizontal position within the target bitmap.
+int Y: Vertical position within the target bitmap.
+int Width: Desired width of the rendered output in pixels.
+int Height: Desired height of the rendered output in pixels.
 
 -RESULT-
-Okay
-NullArgs
+Okay: Rendering completed successfully.
+NullArgs: Required bitmap parameter was not provided.
 -END-
 
 *********************************************************************************************************************/
@@ -221,8 +273,8 @@ static ERR SVG_Render(extSVG *Self, struct svg::Render *Args)
    if (!Args) return ERR::NullArgs;
 
    objBitmap *bmp = Args->Bitmap;
-   LONG page_width = Args->Width;
-   LONG page_height = Args->Height;
+   int page_width = Args->Width;
+   int page_height = Args->Height;
 
    Self->Scene->setBitmap(bmp);
 
@@ -232,14 +284,9 @@ static ERR SVG_Render(extSVG *Self, struct svg::Render *Args)
 //   Self->Scene->Viewport->setViewX(Args->X);
 //   Self->Scene->Viewport->setViewY(Args->Y);
 
-   bmp->XOffset += Args->X;
-   bmp->YOffset += Args->Y;
-
-   Action(AC::Draw, Self->Scene, NULL);
-
-   bmp->XOffset -= Args->X;
-   bmp->YOffset -= Args->Y;
-
+   auto data = bmp->offset(Args->X, Args->Y);
+   Action(AC::Draw, Self->Scene, nullptr);
+   bmp->Data = data;
    return ERR::Okay;
 }
 
@@ -263,10 +310,10 @@ static ERR SVG_SaveImage(extSVG *Self, struct acSaveImage *Args)
 
    if (!Args) return ERR::NullArgs;
 
-   LONG width = 0;
-   LONG height = 0;
-   Self->Scene->get(FID_PageWidth, &width);
-   Self->Scene->get(FID_PageHeight, &height);
+   int width = 0;
+   int height = 0;
+   Self->Scene->get(FID_PageWidth, width);
+   Self->Scene->get(FID_PageHeight, height);
 
    if (!width) width = 1920;
    if (!height) height = 1080;
@@ -302,13 +349,13 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
 
    if ((Args->ClassID != CLASSID::NIL) and (Args->ClassID != CLASSID::SVG)) {
       auto mc = (objMetaClass *)FindClass(Args->ClassID);
-      if ((mc->getPtr(FID_ActionTable, &actions) IS ERR::Okay) and (actions)) {
-         if ((actions[LONG(AC::SaveToObject)]) and (actions[LONG(AC::SaveToObject)] != (APTR)SVG_SaveToObject)) {
-            return actions[LONG(AC::SaveToObject)](Self, Args);
+      if ((mc->get(FID_ActionTable, actions) IS ERR::Okay) and (actions)) {
+         if ((actions[int(AC::SaveToObject)]) and (actions[int(AC::SaveToObject)] != (APTR)SVG_SaveToObject)) {
+            return actions[int(AC::SaveToObject)](Self, Args);
          }
-         else if ((actions[LONG(AC::SaveImage)]) and (actions[LONG(AC::SaveImage)] != (APTR)SVG_SaveImage)) {
+         else if ((actions[int(AC::SaveImage)]) and (actions[int(AC::SaveImage)] != (APTR)SVG_SaveImage)) {
             struct acSaveImage saveimage = { .Dest = Args->Dest };
-            return actions[LONG(AC::SaveImage)](Self, &saveimage);
+            return actions[int(AC::SaveImage)](Self, &saveimage);
          }
          else return log.warning(ERR::NoSupport);
       }
@@ -320,11 +367,11 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
       if (xml.ok()) {
          Self->XML = *xml;
 
-         ERR error = xml->insertXML(0, XMI::NIL, header, NULL);
-         LONG index = xml->Tags.back().ID;
+         ERR error = xml->insertXML(0, XMI::NIL, header, nullptr);
+         int index = xml->Tags.back().ID;
 
-         XMLTag *tag;
-         if ((error = xml->insertStatement(index, XMI::NEXT, "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:parasol=\"http://www.parasol.ws/xmlns/svg\"/>", &tag)) IS ERR::Okay) {
+         XTag *tag;
+         if ((error = xml->insertStatement(index, XMI::NEXT, "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:kotuku=\"http://www.kotuku.dev/xmlns/svg\"/>", &tag)) IS ERR::Okay) {
             bool multiple_viewports = (Self->Scene->Viewport->Next) ? true : false;
             if (multiple_viewports) {
                if ((error = save_svg_defs(Self, *xml, Self->Scene, index)) IS ERR::Okay) {
@@ -337,12 +384,12 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
                }
             }
             else {
-               DOUBLE x, y, width, height;
+               double x, y, width, height;
 
-               if (error IS ERR::Okay) error = Self->Viewport->get(FID_ViewX, &x);
-               if (error IS ERR::Okay) error = Self->Viewport->get(FID_ViewY, &y);
-               if (error IS ERR::Okay) error = Self->Viewport->get(FID_ViewWidth, &width);
-               if (error IS ERR::Okay) error = Self->Viewport->get(FID_ViewHeight, &height);
+               if (error IS ERR::Okay) error = Self->Viewport->get(FID_ViewX, x);
+               if (error IS ERR::Okay) error = Self->Viewport->get(FID_ViewY, y);
+               if (error IS ERR::Okay) error = Self->Viewport->get(FID_ViewWidth, width);
+               if (error IS ERR::Okay) error = Self->Viewport->get(FID_ViewHeight, height);
 
                if (error IS ERR::Okay) {
                   char buffer[80];
@@ -352,16 +399,16 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
 
                if (error IS ERR::Okay) {
                   auto dim = Self->Viewport->get<DMF>(FID_Dimensions);
-                  if (dmf::hasAnyX(dim) and (Self->Viewport->get(FID_X, &x) IS ERR::Okay))
+                  if (dmf::hasAnyX(dim) and (Self->Viewport->get(FID_X, x) IS ERR::Okay))
                      set_dimension(tag, "x", x, dmf::hasScaledX(dim));
 
-                  if (dmf::hasAnyY(dim) and (Self->Viewport->get(FID_Y, &y) IS ERR::Okay))
+                  if (dmf::hasAnyY(dim) and (Self->Viewport->get(FID_Y, y) IS ERR::Okay))
                      set_dimension(tag, "y", y, dmf::hasScaledY(dim));
 
-                  if (dmf::hasAnyWidth(dim) and (Self->Viewport->get(FID_Width, &width) IS ERR::Okay))
+                  if (dmf::hasAnyWidth(dim) and (Self->Viewport->get(FID_Width, width) IS ERR::Okay))
                      set_dimension(tag, "width", width, dmf::hasScaledWidth(dim));
 
-                  if (dmf::hasAnyHeight(dim) and (Self->Viewport->get(FID_Height, &height) IS ERR::Okay))
+                  if (dmf::hasAnyHeight(dim) and (Self->Viewport->get(FID_Height, height) IS ERR::Okay))
                      set_dimension(tag, "height", height, dmf::hasScaledHeight(dim));
                }
 
@@ -376,7 +423,7 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
                }
             }
 
-            Self->XML = NULL;
+            Self->XML = nullptr;
          }
 
          return error;
@@ -395,6 +442,13 @@ painter fill reference should be used for this purpose, e.g. `rgb(255,255,255)`.
 URL references to named definitions such as gradients and images.  This will work as long as the named definition is
 registered in the top-level @VectorScene object.
 
+<b>Supported formats:</b>
+<list type="bullet">
+<li>RGB values: `rgb(red, green, blue)`</li>
+<li>Hexadecimal notation: `#RRGGBB` or `#RGB`</li>
+<li>Named colours: Standard SVG colour names</li>
+<li>URL references: `url(#gradientId)` for complex paint definitions</li>
+</list>
 *********************************************************************************************************************/
 
 static ERR GET_Colour(extSVG *Self, CSTRING *Value)
@@ -414,25 +468,37 @@ static ERR SET_Colour(extSVG *Self, CSTRING Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Flags: Optional flags.
+Flags: Configuration flags that modify SVG processing behaviour.
+Lookup: SVF
 
 -FIELD-
-Frame: Forces the graphics to be drawn to a specific frame.
+Frame: Constrains rendering to a specific frame number for frame-based display systems.
 
-If this field is set to a valid frame number, the vector graphics will only be drawn when the frame of the container
-matches the Frame number in this field.  When set to 0 (the default), the Vector will be drawn regardless of the
-container's frame number.
+This field enables frame-synchronised rendering by restricting graphics display to specific frame numbers within
+frame-based container systems.  When set to a non-zero value, the SVG content will only be rendered when the
+container's current frame matches this field's value.
+
+The default value of 0 disables frame-based filtering, allowing the SVG content to be rendered continuously regardless
+of the container's frame state.
 
 -FIELD-
-FrameCallback: Optional callback that is triggered whenever a new frame is prepared.
+FrameCallback: Function callback executed after each animation frame preparation.
 
-Referencing a function in this field will allow the client to receive a callback after the preparation of each
-animation frame (if the SVG object is being animated).  This feature is commonly used to render the SVG document to a
-target @Bitmap.
+This field enables integration of custom logic into the animation processing pipeline by specifying a callback
+function that executes after each animation frame is computed.  The callback mechanism provides precise timing for
+implementing custom rendering workflows, frame capture systems, or animation synchronisation logic.
 
-Note that if the SVG document does not make use of any animation features then the function will never be called.
+The callback function receives a pointer to the SVG object, enabling access to the current scene state and rendering
+control.  This is commonly used for rendering the animated SVG content to target bitmaps, implementing video capture,
+or synchronising with external animation systems.
 
-The function prototype is `void Function(*SVG)`.
+<b>Timing behaviour:</b> The callback executes immediately after frame preparation but before automatic scene
+redrawing, ensuring that custom logic can modify or capture the scene state at the optimal moment.
+
+<b>Animation dependency:</b> Callbacks are only triggered for SVG documents containing SMIL animation features.
+Static documents will not invoke the callback function.
+
+<b>Function prototype:</b> `void Function(*SVG)`
 
 *********************************************************************************************************************/
 
@@ -461,18 +527,26 @@ static ERR SET_FrameCallback(extSVG *Self, FUNCTION *Value)
 /*********************************************************************************************************************
 
 -FIELD-
-FrameRate: The maximum frame rate to use when animating a vector scene.
+FrameRate: Controls the maximum frame rate for SVG animation playback.
 
-This field defines the maximum frame rate that will be used when a vector scene is animated.  It is recommended that
-a value between 50 and 100 is used.  It is important to note that while higher frame rates produce smoother animations,
-they also increase the CPU usage proportionately.  For instance, a frame rate of 100 will use the CPU twice as much as
-a frame rate of 50.  This will subsequently have an effect on power consumption.
+This field establishes the upper limit for animation frame processing, measured in frames per second.  The frame rate directly impacts animation smoothness and system resource consumption, requiring careful balance between visual quality and performance efficiency.
 
-The recommended frame rate is 60, as this will match the majority of modern displays.
+<b>Recommended ranges:</b>
+<list type="bullet">
+<li><b>Standard displays:</b> 60 FPS matches most modern display refresh rates</li>
+<li><b>Balanced performance:</b> 30-50 FPS provides smooth animation with moderate resource usage</li>
+<li><b>Low-power devices:</b> 20-30 FPS conserves battery while maintaining acceptable quality</li>
+</list>
+
+<b>Performance considerations:</b> Higher frame rates increase CPU usage proportionately.  A frame rate of 100 FPS consumes approximately twice the processing power of 50 FPS, with corresponding impact on power consumption and thermal characteristics.
+
+<b>Valid range:</b> 20-1000 FPS, though values above 120 FPS rarely provide perceptible improvements on standard displays.
+
+The frame rate only affects animated SVG documents containing SMIL features.  Static documents are unaffected by this setting.
 
 *********************************************************************************************************************/
 
-static ERR SET_FrameRate(extSVG *Self, LONG Value)
+static ERR SET_FrameRate(extSVG *Self, int Value)
 {
    if ((Value >= 20) and (Value <= 1000)) {
       Self->FrameRate = Value;
@@ -484,9 +558,17 @@ static ERR SET_FrameRate(extSVG *Self, LONG Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Path: A path referring to an SVG file.
+Path: File system path to the source SVG document.
 
-SVG data can be loaded from a file source by setting the Path field to an SVG file.
+This field specifies the location of the SVG file to be loaded and processed during object initialisation.  The path supports both absolute and relative file references, with relative paths resolved according to the current working directory context.
+
+The loading process occurs automatically during initialisation when a valid path is specified.  The referenced file must contain well-formed SVG content that conforms to W3C SVG standards for successful parsing.
+
+<b>Supported file types:</b> Standard SVG files (*.svg) and compressed SVG files (*.svgz) are both supported, with automatic decompression handling for compressed formats.
+
+<b>Path resolution:</b> The file system path is resolved through the standard Kotuku file access mechanisms, supporting virtual file systems, archives, and network-accessible resources where configured.
+
+When both #Path and #Statement are specified, the Path field takes precedence and the Statement content is ignored during initialisation.
 
 *********************************************************************************************************************/
 
@@ -498,7 +580,7 @@ static ERR GET_Path(extSVG *Self, STRING *Value)
 
 static ERR SET_Path(extSVG *Self, CSTRING Value)
 {
-   if (Self->Path)   { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->Path)   { FreeResource(Self->Path); Self->Path = nullptr; }
    Self->Folder.clear();
 
    if ((Value) and (*Value)) {
@@ -510,9 +592,13 @@ static ERR SET_Path(extSVG *Self, CSTRING Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Scene: The VectorScene that manages the Target object is referenced here.
+Scene: Reference to the @VectorScene object containing the SVG scene graph.
 
-The Scene is a read-only field that assists in quickly finding the @VectorScene that owns the #Target object.
+This read-only field provides direct access to the @VectorScene object that manages the complete SVG scene graph structure.  The scene object serves as the root container for all generated vector elements and provides essential rendering coordination.
+
+The scene reference remains valid throughout the SVG object's lifetime and enables direct manipulation of scene-wide properties including page dimensions, rendering settings, and global definitions.  This field simplifies access to the scene graph for applications requiring programmatic control over the complete document structure.
+
+<b>Scene relationship:</b> When a #Target is specified, the Scene field references the @VectorScene that owns the target object.  For automatically generated scenes, this field references the internally created scene object.
 
 *********************************************************************************************************************/
 
@@ -525,18 +611,19 @@ static ERR GET_Scene(extSVG *Self, objVectorScene **Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Statement: A string containing SVG data.
+Statement: String containing complete SVG document markup.
 
 SVG data can be loaded from a string by specifying it here prior to initialisation.  If the #Path field has been
 defined, it will take precedent and the Statement is ignored.
 
-Alternatively the #DataFeed() action can be used to parse data on-the-fly after the SVG object is initialised.
+For incremental data parsing after initialisation, consider using the #DataFeed() action instead, which supports
+progressive document construction from data streams.
 
 *********************************************************************************************************************/
 
 static ERR SET_Statement(extSVG *Self, CSTRING Value)
 {
-   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
+   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = nullptr; }
 
    if ((Value) and (*Value)) {
       if (!(Self->Statement = strclone(Value))) return ERR::AllocMemory;
@@ -547,19 +634,26 @@ static ERR SET_Statement(extSVG *Self, CSTRING Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Target: The container object for new SVG content can be declared here.
+Target: Destination container for the generated SVG scene graph elements.
 
-During the normal initialisation process, a new @VectorViewport is created to host the SVG scene graph.  By default,
-the viewport and its content is strictly owned by the SVG object unless a Target is defined to redirect the scene
-graph elsewhere.
+This field redirects the generated SVG scene graph to an existing container object instead of creating an independent
+scene structure.  The target approach enables seamless integration of SVG content into established UI hierarchies and
+composite scene graphs.
 
-The provided Target can be any object class, as long as it forms part of a scene graph owned by a @VectorScene
-object.  It is recommended that the chosen target is a @VectorViewport.
+<b>Default behaviour:</b> When no target is specified, the SVG object creates and manages a dedicated @VectorViewport
+to contain the generated content.  This viewport and its children remain under direct SVG object ownership.
 
-The use of a Target will make the generated scene graph independent of the SVG object.  Consequently, it is possible
-to terminate the SVG object without impacting the resources it created.  If tracking back to the SVG object is
-still required, use the `ENFORCE_TRACKING` option in #Flags to ensure that SVG definitions are still terminated on
-object destruction.
+<b>Target requirements:</b> The target object must be part of an existing scene graph owned by a @VectorScene object.
+While any vector object can serve as a target, @VectorViewport objects are recommended for optimal compatibility and
+performance.
+
+<b>Ownership implications:</b> Specifying a target makes the generated scene graph independent of the SVG object
+lifecycle.  The SVG object can be terminated without affecting the created vector elements, enabling flexible
+resource management patterns.
+
+<b>Resource tracking:</b> When independent operation is not desired, enable the `ENFORCE_TRACKING` flag to maintain
+resource tracking relationships between the SVG object and generated definitions, ensuring proper cleanup on object
+destruction.
 
 *********************************************************************************************************************/
 
@@ -600,7 +694,7 @@ where a title has been specified, it will be possible to read it from this field
 
 static ERR SET_Title(extSVG *Self, CSTRING Value)
 {
-   if (Self->Title) { FreeResource(Self->Title); Self->Title = NULL; }
+   if (Self->Title) { FreeResource(Self->Title); Self->Title = nullptr; }
    if (Value) Self->Title = strclone(Value);
    return ERR::Okay;
 }
@@ -608,10 +702,11 @@ static ERR SET_Title(extSVG *Self, CSTRING Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Viewport: Returns the first viewport created by an SVG document.
+Viewport: Reference to the primary @VectorViewport containing the SVG document content.
 
-This field simplifies the process of finding the first @VectorViewport that was created by a loaded SVG document.
-`NULL` is returned if an SVG document has not been successfully parsed yet.
+This read-only field provides direct access to the main @VectorViewport object that contains the root-level SVG
+content.
+
 -END-
 
 *********************************************************************************************************************/
@@ -639,19 +734,19 @@ static ERR GET_Viewport(extSVG *Self, OBJECTPTR *Value)
 #include "class_svg_def.c"
 
 static const FieldArray clSVGFields[] = {
-   { "Target",    FDF_OBJECT|FDF_RI, NULL, SET_Target },
-   { "Path",      FDF_STRING|FDF_RW, NULL, SET_Path },
-   { "Title",     FDF_STRING|FDF_RW, NULL, SET_Title },
-   { "Statement", FDF_STRING|FDF_RW, NULL, SET_Statement },
-   { "Frame",     FDF_LONG|FDF_RW, NULL, NULL },
-   { "Flags",     FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clSVGFlags },
-   { "FrameRate", FDF_LONG|FDF_RW, NULL, SET_FrameRate },
+   { "Target",    FDF_OBJECT|FDF_RI, nullptr, SET_Target },
+   { "Path",      FDF_STRING|FDF_RW, nullptr, SET_Path },
+   { "Title",     FDF_STRING|FDF_RW, nullptr, SET_Title },
+   { "Statement", FDF_STRING|FDF_RW, nullptr, SET_Statement },
+   { "Frame",     FDF_INT|FDF_RW, nullptr, nullptr },
+   { "Flags",     FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clSVGFlags },
+   { "FrameRate", FDF_INT|FDF_RW, nullptr, SET_FrameRate },
    // Virtual Fields
    { "Colour",        FDF_VIRTUAL|FDF_STRING|FDF_RW, GET_Colour, SET_Colour },
    { "FrameCallback", FDF_VIRTUAL|FDF_FUNCTION|FDF_RW, GET_FrameCallback, SET_FrameCallback },
    { "Src",           FDF_VIRTUAL|FDF_SYNONYM|FDF_STRING|FDF_RW, GET_Path, SET_Path },
-   { "Scene",         FDF_VIRTUAL|FDF_OBJECT|FDF_R, GET_Scene, NULL },
-   { "Viewport",      FDF_VIRTUAL|FDF_OBJECT|FDF_R, GET_Viewport, NULL },
+   { "Scene",         FDF_VIRTUAL|FDF_OBJECT|FDF_R, GET_Scene, nullptr },
+   { "Viewport",      FDF_VIRTUAL|FDF_OBJECT|FDF_R, GET_Viewport, nullptr },
    END_FIELD
 };
 

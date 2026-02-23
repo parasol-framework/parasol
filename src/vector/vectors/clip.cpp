@@ -30,8 +30,8 @@ the clipping path is sized to match the target vector.  A viewbox size of `0 0 1
 
 static ERR CLIP_Free(extVectorClip *Self)
 {
+   if (Self->ViewportID) { FreeResource(Self->ViewportID); Self->ViewportID = 0; Self->Viewport = nullptr; }
    Self->~extVectorClip();
-   if (Self->ViewportID) { FreeResource(Self->ViewportID); Self->ViewportID = 0; Self->Viewport = NULL; }
    return ERR::Okay;
 }
 
@@ -41,7 +41,7 @@ static ERR CLIP_Init(extVectorClip *Self)
 {
    pf::Log log;
 
-   if ((LONG(Self->Units) <= 0) or (LONG(Self->Units) >= LONG(VUNIT::END))) {
+   if ((int(Self->Units) <= 0) or (int(Self->Units) >= int(VUNIT::END))) {
       log.traceWarning("Invalid Units value of %d", Self->Units);
       return ERR::OutOfRange;
    }
@@ -157,14 +157,14 @@ static const ActionArray clClipActions[] = {
    { AC::Free,      CLIP_Free },
    { AC::Init,      CLIP_Init },
    { AC::NewChild,  CLIP_NewChild },
-   { AC::NewObject, CLIP_NewPlacement },
-   { AC::NIL, NULL }
+   { AC::NewPlacement, CLIP_NewPlacement },
+   { AC::NIL, nullptr }
 };
 
 static const FieldArray clClipFields[] = {
    { "Viewport", FDF_OBJECT|FDF_R, CLIP_GET_Viewport },
-   { "Units",    FDF_LONG|FDF_LOOKUP|FDF_RW, CLIP_GET_Units, CLIP_SET_Units, &clVectorClipUnits },
-   { "Flags",    FDF_LONGFLAGS|FDF_RW, CLIP_GET_Flags, CLIP_SET_Flags, &clVectorClipFlags },
+   { "Units",    FDF_INT|FDF_LOOKUP|FDF_RW, CLIP_GET_Units, CLIP_SET_Units, &clVectorClipUnits },
+   { "Flags",    FDF_INTFLAGS|FDF_RW, CLIP_GET_Flags, CLIP_SET_Flags, &clVectorClipFlags },
    END_FIELD
 };
 

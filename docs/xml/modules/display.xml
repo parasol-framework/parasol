@@ -8,7 +8,7 @@
     <version>1</version>
     <status>stable</status>
     <prefix>gfx</prefix>
-    <copyright>Paul Manias 2003-2024</copyright>
+    <copyright>Paul Manias © 2003-2026</copyright>
     <classes>
       <class>Bitmap</class>
       <class>Clipboard</class>
@@ -61,17 +61,17 @@
     <name>CopyArea</name>
     <category>Bitmap</category>
     <comment>Copies a rectangular area from one bitmap to another.</comment>
-    <prototype>ERR gfx::CopyArea(objBitmap * Bitmap, objBitmap * Dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+    <prototype>ERR gfx::CopyArea(objBitmap * Bitmap, objBitmap * Dest, BAF Flags, INT X, INT Y, INT Width, INT Height, INT XDest, INT YDest)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">The source bitmap.</param>
       <param type="objBitmap *" name="Dest">Pointer to the destination bitmap.</param>
       <param type="BAF" name="Flags" lookup="BAF">Optional flags.</param>
-      <param type="LONG" name="X">The horizontal position of the area to be copied.</param>
-      <param type="LONG" name="Y">The vertical position of the area to be copied.</param>
-      <param type="LONG" name="Width">The width of the area.</param>
-      <param type="LONG" name="Height">The height of the area.</param>
-      <param type="LONG" name="XDest">The horizontal position to copy the area to.</param>
-      <param type="LONG" name="YDest">The vertical position to copy the area to.</param>
+      <param type="INT" name="X">The horizontal position of the area to be copied.</param>
+      <param type="INT" name="Y">The vertical position of the area to be copied.</param>
+      <param type="INT" name="Width">The width of the area.</param>
+      <param type="INT" name="Height">The height of the area.</param>
+      <param type="INT" name="XDest">The horizontal position to copy the area to.</param>
+      <param type="INT" name="YDest">The vertical position to copy the area to.</param>
     </input>
     <description>
 <p>This function copies rectangular areas from one bitmap to another.  It performs a straight region-copy only, using the fastest method available.  Bitmaps may be of a different type (e.g. bit depth), however this will result in performance penalties.  The copy process will respect the clipping region defined in both the source and destination bitmap objects.</p>
@@ -81,7 +81,7 @@
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="Mismatch">The destination bitmap is not a close enough match to the source bitmap in order to perform the blit.</error>
+      <error code="Mismatch">The destination bitmap is not a close enough match to the source bitmap in order to perform the operation.</error>
       <error code="InvalidState">The <code>LINEAR</code> flag was used when at least one bitmap is using a linear colourspace.</error>
       <error code="NullArgs">The <code>Dest</code> parameter was not specified.</error>
     </result>
@@ -91,17 +91,17 @@
     <name>CopyRawBitmap</name>
     <category>Bitmap</category>
     <comment>Copies graphics data from an arbitrary surface to a bitmap.</comment>
-    <prototype>ERR gfx::CopyRawBitmap(struct BitmapSurfaceV2 * Surface, objBitmap * Dest, CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+    <prototype>ERR gfx::CopyRawBitmap(struct BitmapSurfaceV2 * Surface, objBitmap * Dest, CSRF Flags, INT X, INT Y, INT Width, INT Height, INT XDest, INT YDest)</prototype>
     <input>
       <param type="struct BitmapSurfaceV2 *" name="Surface">Description of the surface source.</param>
       <param type="objBitmap *" name="Dest">Destination bitmap.</param>
       <param type="CSRF" name="Flags" lookup="CSRF">Optional flags.</param>
-      <param type="LONG" name="X">Horizontal source coordinate.</param>
-      <param type="LONG" name="Y">Vertical source coordinate.</param>
-      <param type="LONG" name="Width">Source width.</param>
-      <param type="LONG" name="Height">Source height.</param>
-      <param type="LONG" name="XDest">Horizontal destination coordinate.</param>
-      <param type="LONG" name="YDest">Vertical destination coordinate.</param>
+      <param type="INT" name="X">Horizontal source coordinate.</param>
+      <param type="INT" name="Y">Vertical source coordinate.</param>
+      <param type="INT" name="Width">Source width.</param>
+      <param type="INT" name="Height">Source height.</param>
+      <param type="INT" name="XDest">Horizontal destination coordinate.</param>
+      <param type="INT" name="YDest">Vertical destination coordinate.</param>
     </input>
     <description>
 <p>This function will copy data from a described surface to a destination bitmap object.  You are required to provide the function with a full description of the source in a <st>BitmapSurface</st> structure.</p>
@@ -118,17 +118,17 @@
     <name>CopySurface</name>
     <category>Surfaces</category>
     <comment>Copies surface graphics data into any bitmap object</comment>
-    <prototype>ERR gfx::CopySurface(OBJECTID Surface, objBitmap * Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+    <prototype>ERR gfx::CopySurface(OBJECTID Surface, objBitmap * Bitmap, BDF Flags, INT X, INT Y, INT Width, INT Height, INT XDest, INT YDest)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The ID of the surface object to copy from.</param>
       <param type="objBitmap *" name="Bitmap">Must reference a target <class name="Bitmap">Bitmap</class> object.</param>
       <param type="BDF" name="Flags" lookup="BDF">Optional flags.</param>
-      <param type="LONG" name="X">The horizontal source coordinate.</param>
-      <param type="LONG" name="Y">The vertical source coordinate.</param>
-      <param type="LONG" name="Width">The width of the graphic that will be copied.</param>
-      <param type="LONG" name="Height">The height of the graphic that will be copied.</param>
-      <param type="LONG" name="XDest">The horizontal target coordinate.</param>
-      <param type="LONG" name="YDest">The vertical target coordinate.</param>
+      <param type="INT" name="X">The horizontal source coordinate.</param>
+      <param type="INT" name="Y">The vertical source coordinate.</param>
+      <param type="INT" name="Width">The width of the graphic that will be copied.</param>
+      <param type="INT" name="Height">The height of the graphic that will be copied.</param>
+      <param type="INT" name="XDest">The horizontal target coordinate.</param>
+      <param type="INT" name="YDest">The vertical target coordinate.</param>
     </input>
     <description>
 <p>This function will copy the graphics data from any surface object to a target <class name="Bitmap">Bitmap</class>.  This is the fastest and most convenient way to get graphics information out of any surface.  As surfaces are buffered, it is guaranteed that the result will not be obscured by any overlapping surfaces that are on the display.</p>
@@ -145,12 +145,12 @@
     <name>DrawPixel</name>
     <category>Bitmap</category>
     <comment>Draws a single pixel to a bitmap.</comment>
-    <prototype>void gfx::DrawPixel(objBitmap * Bitmap, LONG X, LONG Y, ULONG Colour)</prototype>
+    <prototype>void gfx::DrawPixel(objBitmap * Bitmap, INT X, INT Y, UINT Colour)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">The target bitmap object.</param>
-      <param type="LONG" name="X">The horizontal coordinate of the pixel.</param>
-      <param type="LONG" name="Y">The vertical coordinate of the pixel.</param>
-      <param type="ULONG" name="Colour">The colour value to use for the pixel.</param>
+      <param type="INT" name="X">The horizontal coordinate of the pixel.</param>
+      <param type="INT" name="Y">The vertical coordinate of the pixel.</param>
+      <param type="UINT" name="Colour">The colour value to use for the pixel.</param>
     </input>
     <description>
 <p>This function draws a pixel to the coordinates <code>(X, Y)</code> on a bitmap with a colour determined by the <code>Colour</code> index. This function will check the given coordinates to make sure that the pixel is inside the bitmap's clipping area.</p>
@@ -161,11 +161,11 @@
     <name>DrawRGBPixel</name>
     <category>Bitmap</category>
     <comment>Draws a 24 bit pixel to a <class name="Bitmap">Bitmap</class>.</comment>
-    <prototype>void gfx::DrawRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB)</prototype>
+    <prototype>void gfx::DrawRGBPixel(objBitmap * Bitmap, INT X, INT Y, struct RGB8 * RGB)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">The target bitmap object.</param>
-      <param type="LONG" name="X">Horizontal coordinate of the pixel.</param>
-      <param type="LONG" name="Y">Vertical coordinate of the pixel.</param>
+      <param type="INT" name="X">Horizontal coordinate of the pixel.</param>
+      <param type="INT" name="Y">Vertical coordinate of the pixel.</param>
       <param type="struct RGB8 *" name="RGB">The colour to be drawn, in RGB format.</param>
     </input>
     <description>
@@ -177,18 +177,18 @@
     <name>DrawRectangle</name>
     <category>Bitmap</category>
     <comment>Draws rectangles, both filled and unfilled.</comment>
-    <prototype>void gfx::DrawRectangle(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags)</prototype>
+    <prototype>void gfx::DrawRectangle(objBitmap * Bitmap, INT X, INT Y, INT Width, INT Height, UINT Colour, BAF Flags)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">Pointer to the target <class name="Bitmap">Bitmap</class>.</param>
-      <param type="LONG" name="X">The left-most coordinate of the rectangle.</param>
-      <param type="LONG" name="Y">The top-most coordinate of the rectangle.</param>
-      <param type="LONG" name="Width">The width of the rectangle.</param>
-      <param type="LONG" name="Height">The height of the rectangle.</param>
-      <param type="ULONG" name="Colour">The colour value to use for the rectangle.</param>
-      <param type="BAF" name="Flags" lookup="BAF">Use <code>FILL</code> to fill the rectangle.  Use of <code>BLEND</code> will enable blending.</param>
+      <param type="INT" name="X">The left-most coordinate of the rectangle.</param>
+      <param type="INT" name="Y">The top-most coordinate of the rectangle.</param>
+      <param type="INT" name="Width">The width of the rectangle.</param>
+      <param type="INT" name="Height">The height of the rectangle.</param>
+      <param type="UINT" name="Colour">The colour value to use for the rectangle.</param>
+      <param type="BAF" name="Flags" lookup="BAF">Use <code>FILL</code> to fill the rectangle.</param>
     </input>
     <description>
-<p>This function draws both filled and unfilled rectangles.  The rectangle is drawn to the target bitmap at position (X, Y) with dimensions determined by the specified <code>Width</code> and <code>Height</code>.  If the <code>Flags</code> parameter defines <code>BAF::FILL</code> then the rectangle will be filled, otherwise only the outline will be drawn.  The colour of the rectangle is determined by the pixel value in the <code>Colour</code> parameter.  Blending is not enabled unless the <code>BAF::BLEND</code> flag is defined and an alpha value is present in the <code>Colour</code>.</p>
+<p>This function draws both filled and unfilled rectangles.  The rectangle is drawn to the target bitmap at position (X, Y) with dimensions determined by the specified <code>Width</code> and <code>Height</code>.  If the <code>Flags</code> parameter defines <code>BAF::FILL</code> then the rectangle will be filled, otherwise only the outline will be drawn.  The colour of the rectangle is determined by the pixel value in the <code>Colour</code> parameter.  Alpha blending is not supported.</p>
     </description>
   </function>
 
@@ -196,13 +196,13 @@
     <name>ExposeSurface</name>
     <category>Surfaces</category>
     <comment>Exposes the content of a surface to the display.</comment>
-    <prototype>ERR gfx::ExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags)</prototype>
+    <prototype>ERR gfx::ExposeSurface(OBJECTID Surface, INT X, INT Y, INT Width, INT Height, EXF Flags)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The ID of the surface object that will be exposed.</param>
-      <param type="LONG" name="X">The horizontal coordinate of the area to expose.</param>
-      <param type="LONG" name="Y">The vertical coordinate of the area to expose.</param>
-      <param type="LONG" name="Width">The width of the expose area.</param>
-      <param type="LONG" name="Height">The height of the expose area.</param>
+      <param type="INT" name="X">The horizontal coordinate of the area to expose.</param>
+      <param type="INT" name="Y">The vertical coordinate of the area to expose.</param>
+      <param type="INT" name="Width">The width of the expose area.</param>
+      <param type="INT" name="Height">The height of the expose area.</param>
       <param type="EXF" name="Flags" lookup="EXF">Optional flags - using <code>CHILDREN</code> will expose all intersecting child regions.</param>
     </input>
     <description>
@@ -216,31 +216,17 @@
   </function>
 
   <function>
-    <name>FlipBitmap</name>
-    <category>Bitmap</category>
-    <comment>Flips a bitmap around its horizontal or vertical axis.</comment>
-    <prototype>void gfx::FlipBitmap(objBitmap * Bitmap, FLIP Orientation)</prototype>
-    <input>
-      <param type="objBitmap *" name="Bitmap">Pointer to a bitmap object.</param>
-      <param type="FLIP" name="Orientation" lookup="FLIP">Set to either <code>HORIZONTAL</code> or <code>VERTICAL</code>.  If set to neither, the function does nothing.</param>
-    </input>
-    <description>
-<p>The FlipBitmap() function is used to flip bitmap images on their horizontal or vertical axis.  The amount of time required to flip a bitmap is dependent on the area of the bitmap you are trying to flip over and its total number of colours.</p>
-    </description>
-  </function>
-
-  <function>
     <name>GetColourFormat</name>
     <category>Bitmap</category>
     <comment>Generates the values for a <st>ColourFormat</st> structure for a given bit depth.</comment>
-    <prototype>void gfx::GetColourFormat(struct ColourFormat * Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask)</prototype>
+    <prototype>void gfx::GetColourFormat(struct ColourFormat * Format, INT BitsPerPixel, INT RedMask, INT GreenMask, INT BlueMask, INT AlphaMask)</prototype>
     <input>
       <param type="struct ColourFormat *" name="Format">Pointer to an empty <st>ColourFormat</st> structure.</param>
-      <param type="LONG" name="BitsPerPixel">The depth that you would like to generate colour values for.  Ignored if mask values are set.</param>
-      <param type="LONG" name="RedMask">Red component bit mask value.  Set this value to zero if the <code>BitsPerPixel</code> parameter is used.</param>
-      <param type="LONG" name="GreenMask">Green component bit mask value.</param>
-      <param type="LONG" name="BlueMask">Blue component bit mask value.</param>
-      <param type="LONG" name="AlphaMask">Alpha component bit mask value.</param>
+      <param type="INT" name="BitsPerPixel">The depth that you would like to generate colour values for.  Ignored if mask values are set.</param>
+      <param type="INT" name="RedMask">Red component bit mask value.  Set this value to zero if the <code>BitsPerPixel</code> parameter is used.</param>
+      <param type="INT" name="GreenMask">Green component bit mask value.</param>
+      <param type="INT" name="BlueMask">Blue component bit mask value.</param>
+      <param type="INT" name="AlphaMask">Alpha component bit mask value.</param>
     </input>
     <description>
 <p>This function will generate the values for a <st>ColourFormat</st> structure, for either a given bit depth or customised colour bit values.  The <st>ColourFormat</st> structure is used by internal bitmap routines to pack and unpack bit values to and from bitmap memory.</p>
@@ -260,10 +246,10 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetCursorInfo</name>
     <category>Cursor</category>
     <comment>Retrieves graphics information from the active mouse cursor.</comment>
-    <prototype>ERR gfx::GetCursorInfo(struct CursorInfo * Info, LONG Size)</prototype>
+    <prototype>ERR gfx::GetCursorInfo(struct CursorInfo * Info, INT Size)</prototype>
     <input>
       <param type="struct CursorInfo *" name="Info">Pointer to a <st>CursorInfo</st> structure.</param>
-      <param type="LONG" name="Size">The byte-size of the <code>Info</code> structure.</param>
+      <param type="INT" name="Size">The byte-size of the <code>Info</code> structure.</param>
     </input>
     <description>
 <p>The GetCursorInfo() function is used to retrieve useful information on the graphics structure of the mouse cursor.  It will return the maximum possible dimensions for custom cursor graphics and indicates the optimal bits-per-pixel setting for the hardware cursor.</p>
@@ -310,7 +296,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+      <error code="AllocMemory">AllocMemory() failed to create a new memory block.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -376,15 +362,15 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetSurfaceCoords</name>
     <category>Surfaces</category>
     <comment>Returns the dimensions of a surface.</comment>
-    <prototype>ERR gfx::GetSurfaceCoords(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height)</prototype>
+    <prototype>ERR gfx::GetSurfaceCoords(OBJECTID Surface, INT * X, INT * Y, INT * AbsX, INT * AbsY, INT * Width, INT * Height)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The surface to query.  If zero, the top-level display is queried.</param>
-      <param type="LONG *" name="X">The X coordinate of the surface is returned here.</param>
-      <param type="LONG *" name="Y">The Y coordinate of the surface is returned here.</param>
-      <param type="LONG *" name="AbsX">The absolute X coordinate of the surface is returned here.</param>
-      <param type="LONG *" name="AbsY">The absolute Y coordinate of the surface is returned here.</param>
-      <param type="LONG *" name="Width">The width of the surface is returned here.</param>
-      <param type="LONG *" name="Height">The height of the surface is returned here.</param>
+      <param type="INT *" name="X">The X coordinate of the surface is returned here.</param>
+      <param type="INT *" name="Y">The Y coordinate of the surface is returned here.</param>
+      <param type="INT *" name="AbsX">The absolute X coordinate of the surface is returned here.</param>
+      <param type="INT *" name="AbsY">The absolute Y coordinate of the surface is returned here.</param>
+      <param type="INT *" name="Width">The width of the surface is returned here.</param>
+      <param type="INT *" name="Height">The height of the surface is returned here.</param>
     </input>
     <description>
 <p>GetSurfaceCoords() retrieves the dimensions that describe a surface object's area as X, Y, Width and Height.  This is the fastest way to retrieve surface dimensions when access to the object structure is not already available.</p>
@@ -449,15 +435,15 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetVisibleArea</name>
     <category>Surfaces</category>
     <comment>Returns the visible region of a <class name="Surface">Surface</class>.</comment>
-    <prototype>ERR gfx::GetVisibleArea(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height)</prototype>
+    <prototype>ERR gfx::GetVisibleArea(OBJECTID Surface, INT * X, INT * Y, INT * AbsX, INT * AbsY, INT * Width, INT * Height)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The surface to query.  If zero, the top-level display will be queried.</param>
-      <param type="LONG *" name="X">The X coordinate of the visible area.</param>
-      <param type="LONG *" name="Y">The Y coordinate of the visible area.</param>
-      <param type="LONG *" name="AbsX">The absolute X coordinate of the visible area.</param>
-      <param type="LONG *" name="AbsY">The absolute Y coordinate of the visible area.</param>
-      <param type="LONG *" name="Width">The visible width of the surface.</param>
-      <param type="LONG *" name="Height">The visible height of the surface.</param>
+      <param type="INT *" name="X">The X coordinate of the visible area.</param>
+      <param type="INT *" name="Y">The Y coordinate of the visible area.</param>
+      <param type="INT *" name="AbsX">The absolute X coordinate of the visible area.</param>
+      <param type="INT *" name="AbsY">The absolute Y coordinate of the visible area.</param>
+      <param type="INT *" name="Width">The visible width of the surface.</param>
+      <param type="INT *" name="Height">The visible height of the surface.</param>
     </input>
     <description>
 <p>The GetVisibleArea() function returns the visible area of a <class name="Surface">Surface</class>, which is based on its position within its parent surfaces. The resulting coordinates are relative to point <code>0,0</code> of the queried surface. If the surface is not obscured, then the resulting coordinates will be <code>(0,0),(Width,Height)</code>.</p>
@@ -466,26 +452,6 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <error code="Okay">Operation successful.</error>
       <error code="Failed">General failure.</error>
       <error code="Search">The supplied <code>Surface</code> ID did not refer to a recognised surface object.</error>
-    </result>
-  </function>
-
-  <function>
-    <name>LockBitmap</name>
-    <category>Surfaces</category>
-    <comment>Returns a bitmap that represents the video area covered by the surface object.</comment>
-    <prototype>ERR gfx::LockBitmap(OBJECTID Surface, objBitmap ** Bitmap, LVF * Info)</prototype>
-    <input>
-      <param type="OBJECTID" name="Surface">Object ID of the surface object that you want to lock.</param>
-      <param type="objBitmap **" name="Bitmap">The resulting bitmap will be returned in this parameter.</param>
-      <param type="LVF *" name="Info" lookup="LVF">Special flags may be returned in this parameter.  If <code>EXPOSE_CHANGES</code> is returned, any changes must be exposed in order for them to be displayed to the user.</param>
-    </input>
-    <description>
-<p>Use the LockBitmap() function to gain direct access to the bitmap information of a surface object. Because the layering buffer will be inaccessible to the UI whilst you retain the lock, you must keep your access time to an absolute minimum or desktop performance may suffer.</p>
-<p>Repeated calls to this function will nest.  To release a surface bitmap, call the <function>UnlockBitmap</function> function.</p>
-    </description>
-    <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
     </result>
   </function>
 
@@ -513,27 +479,27 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>ReadPixel</name>
     <category>Bitmap</category>
     <comment>Reads a pixel's colour from the target bitmap.</comment>
-    <prototype>ULONG gfx::ReadPixel(objBitmap * Bitmap, LONG X, LONG Y)</prototype>
+    <prototype>UINT gfx::ReadPixel(objBitmap * Bitmap, INT X, INT Y)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">Pointer to a bitmap object.</param>
-      <param type="LONG" name="X">The horizontal coordinate of the pixel.</param>
-      <param type="LONG" name="Y">The vertical coordinate of the pixel.</param>
+      <param type="INT" name="X">The horizontal coordinate of the pixel.</param>
+      <param type="INT" name="Y">The vertical coordinate of the pixel.</param>
     </input>
     <description>
 <p>This function reads a pixel from a bitmap area and returns its colour index (if the <class name="Bitmap">Bitmap</class> is indexed with a palette) or its packed pixel value.  Zero is returned if the pixel is out of bounds.</p>
     </description>
-    <result type="ULONG">The colour value of the pixel will be returned.  Zero is returned if the pixel is out of bounds.</result>
+    <result type="UINT">The colour value of the pixel will be returned.  Zero is returned if the pixel is out of bounds.</result>
   </function>
 
   <function>
     <name>ReadRGBPixel</name>
     <category>Bitmap</category>
     <comment>Reads a pixel's colour from the target bitmap.</comment>
-    <prototype>void gfx::ReadRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 ** RGB)</prototype>
+    <prototype>void gfx::ReadRGBPixel(objBitmap * Bitmap, INT X, INT Y, struct RGB8 ** RGB)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">Pointer to a bitmap object.</param>
-      <param type="LONG" name="X">The horizontal coordinate of the pixel.</param>
-      <param type="LONG" name="Y">The vertical coordinate of the pixel.</param>
+      <param type="INT" name="X">The horizontal coordinate of the pixel.</param>
+      <param type="INT" name="Y">The vertical coordinate of the pixel.</param>
       <param type="struct RGB8 **" name="RGB">The colour values will be stored in this <st>RGB8</st> structure.</param>
     </input>
     <description>
@@ -589,8 +555,8 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <param type="DOUBLE" name="Value">The number to be scaled.</param>
     </input>
     <description>
-<p>ScaleToDPI() is a convenience function for scaling any value to the active display's current DPI setting.  The value that you provide must be fixed in relation to the system wide default of 96 DPI.  If the display's DPI varies differs to that, your value will be scaled to match.  For instance, an 8 point font at 96 DPI would be scaled to 20 points if the display was 240 DPI.</p>
-<p>If the DPI of the display is unknown, your value will be returned unscaled.</p>
+<p>ScaleToDPI() is a convenience function for scaling a value to the display's current DPI setting.  The provided value must be relative to the system wide default of 96 DPI.  If the display's DPI is not equal to 96, the value will be scaled to match.  For instance, an 8 point font at 96 DPI would be scaled to 20 points if the display was 240 DPI.</p>
+<p>If the DPI of the display is unknown, the value will be returned unscaled.</p>
     </description>
     <result type="DOUBLE">The scaled value is returned.</result>
   </function>
@@ -599,15 +565,15 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SetClipRegion</name>
     <category>Bitmap</category>
     <comment>Sets a clipping region for a bitmap object.</comment>
-    <prototype>void gfx::SetClipRegion(objBitmap * Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate)</prototype>
+    <prototype>void gfx::SetClipRegion(objBitmap * Bitmap, INT Number, INT Left, INT Top, INT Right, INT Bottom, INT Terminate)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">The target bitmap.</param>
-      <param type="LONG" name="Number">The number of the clip region to set.</param>
-      <param type="LONG" name="Left">The horizontal start of the clip region.</param>
-      <param type="LONG" name="Top">The vertical start of the clip region.</param>
-      <param type="LONG" name="Right">The right-most edge of the clip region.</param>
-      <param type="LONG" name="Bottom">The bottom-most edge of the clip region.</param>
-      <param type="LONG" name="Terminate">Set to <code>true</code> if this is the last clip region in the list, otherwise <code>false</code>.</param>
+      <param type="INT" name="Number">The number of the clip region to set.</param>
+      <param type="INT" name="Left">The horizontal start of the clip region.</param>
+      <param type="INT" name="Top">The vertical start of the clip region.</param>
+      <param type="INT" name="Right">The right-most edge of the clip region.</param>
+      <param type="INT" name="Bottom">The bottom-most edge of the clip region.</param>
+      <param type="INT" name="Terminate">Set to <code>true</code> if this is the last clip region in the list, otherwise <code>false</code>.</param>
     </input>
     <description>
 <p>The SetClipRegion() method is used to manage the clipping regions assigned to a bitmap object.  Each new bitmap that is created has at least one clip region assigned to it, but by using SetClipRegion() you can also define multiple clipping areas, which is useful for complex graphics management.</p>
@@ -668,13 +634,13 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SetCustomCursor</name>
     <category>Cursor</category>
     <comment>Sets the cursor to a customised bitmap image.</comment>
-    <prototype>ERR gfx::SetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner)</prototype>
+    <prototype>ERR gfx::SetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap * Bitmap, INT HotX, INT HotY, OBJECTID Owner)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">Refers to the <class name="Surface">Surface</class> object that the pointer should restrict itself to, if the <code>RESTRICT</code> flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.</param>
       <param type="CRF" name="Flags" lookup="CRF">Optional flags affecting the cursor are set here.</param>
       <param type="objBitmap *" name="Bitmap">The <class name="Bitmap">Bitmap</class> to set for the mouse cursor.</param>
-      <param type="LONG" name="HotX">The horizontal position of the cursor hot-spot.</param>
-      <param type="LONG" name="HotY">The vertical position of the cursor hot-spot.</param>
+      <param type="INT" name="HotX">The horizontal position of the cursor hot-spot.</param>
+      <param type="INT" name="HotY">The vertical position of the cursor hot-spot.</param>
       <param type="OBJECTID" name="Owner">The object nominated as the owner of the anchor.</param>
     </input>
     <description>
@@ -701,7 +667,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
-      <error code="NoSupport">This request is not supported.</error>
+      <error code="NoSupport">Operation not supported.</error>
       <error code="AccessObject">Failed to access the internally maintained image object.</error>
     </result>
   </function>
@@ -710,10 +676,10 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SetHostOption</name>
     <category>Display</category>
     <comment>Alter options associated with the host display system.</comment>
-    <prototype>ERR gfx::SetHostOption(HOST Option, LARGE Value)</prototype>
+    <prototype>ERR gfx::SetHostOption(HOST Option, INT64 Value)</prototype>
     <input>
       <param type="HOST" name="Option" lookup="HOST">One of TRAY_ICON, TASKBAR or STICK_TO_FRONT.</param>
-      <param type="LARGE" name="Value">The value to be applied to the option.</param>
+      <param type="INT64" name="Value">The value to be applied to the option.</param>
     </input>
     <description>
 <p>For internal usage only.</p>
@@ -743,10 +709,10 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>StartCursorDrag</name>
     <category>Cursor</category>
     <comment>Attaches an item to the cursor for the purpose of drag and drop.</comment>
-    <prototype>ERR gfx::StartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface)</prototype>
+    <prototype>ERR gfx::StartCursorDrag(OBJECTID Source, INT Item, CSTRING Datatypes, OBJECTID Surface)</prototype>
     <input>
       <param type="OBJECTID" name="Source">Refers to an object that is managing the source data.</param>
-      <param type="LONG" name="Item">A custom number that represents the item being dragged from the source.</param>
+      <param type="INT" name="Item">A custom number that represents the item being dragged from the source.</param>
       <param type="CSTRING" name="Datatypes">A null terminated byte array that lists the datatypes supported by the source item, in order of conversion preference.</param>
       <param type="OBJECTID" name="Surface">A 32-bit composite surface that represents the item being dragged.</param>
     </input>
@@ -770,20 +736,20 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SubscribeInput</name>
     <category>Input</category>
     <comment>Subscribe to incoming input messages for any active surface object.</comment>
-    <prototype>ERR gfx::SubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG * Handle)</prototype>
+    <prototype>ERR gfx::SubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, INT * Handle)</prototype>
     <input>
       <param type="FUNCTION *" name="Callback">Reference to a callback function that will receive input messages.</param>
       <param type="OBJECTID" name="SurfaceFilter">Optional.  Only the input messages that match the given <class name="Surface">Surface</class> ID will be received.</param>
       <param type="JTYPE" name="Mask" lookup="JTYPE">Combine <fl>JTYPE</fl> flags to define the input messages required by the client.  Set to <code>0xffffffff</code> if all messages are required.</param>
       <param type="OBJECTID" name="DeviceFilter">Optional.  Only the input messages that match the given device ID will be received.  NOTE - Support not yet implemented, set to zero.</param>
-      <param type="LONG *" name="Handle">A handle for the subscription is returned here.</param>
+      <param type="INT *" name="Handle">A handle for the subscription is returned here.</param>
     </input>
     <description>
 <p>The SubscribeInput() function provides a systematic way of receiving input events as they occur.  Coverage is limited to device events that are linked to the display (i.e. events from track pads, mouse pointers, graphics tablets and touch screens).  Keyboard devices are not included.</p>
 <p>The client is required to remove the subscription with <function>UnsubscribeInput</function> once tracking is no longer required.</p>
 <p>Input events can be filtered so that they are received in relation to surfaces and devices.  An input mask can also be applied so that only certain types of events are received.</p>
 <p>A callback is required for receiving the input events.  The following C++ code illustrates a method for processing events in the callback:</p>
-<pre>ERR consume_input_events(const InputEvent *Events, LONG Handle)
+<pre>ERR consume_input_events(const InputEvent *Events, int Handle)
 {
    for (auto e=Events; e; e=e-&gt;Next) {
       if (((e-&gt;Flags &amp; JTYPE::BUTTON) != JTYPE::NIL) and (e-&gt;Value &gt; 0)) {
@@ -821,24 +787,6 @@ Alpha  = CFUnpackAlpha(Format,Colour)
   </function>
 
   <function>
-    <name>UnlockBitmap</name>
-    <category>Surfaces</category>
-    <comment>Unlocks any earlier call to gfx::LockBitmap().</comment>
-    <prototype>ERR gfx::UnlockBitmap(OBJECTID Surface, objBitmap * Bitmap)</prototype>
-    <input>
-      <param type="OBJECTID" name="Surface">The ID of the surface object that you are releasing.</param>
-      <param type="objBitmap *" name="Bitmap">Pointer to the bitmap structure returned earlier by LockBitmap().</param>
-    </input>
-    <description>
-<p>Call the UnlockBitmap() function to release a surface object from earlier calls to <function>LockBitmap</function>.</p>
-    </description>
-    <result type="ERR">
-      <error code="Okay">The bitmap has been unlocked successfully.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>UnlockCursor</name>
     <category>Cursor</category>
     <comment>Undoes an earlier call to LockCursor()</comment>
@@ -851,8 +799,8 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="NotLocked">A lock is not present, or the lock belongs to another surface.</error>
-      <error code="AccessObject">Failed to access the pointer object.</error>
+      <error code="ResourceNotLocked">The pointer is not anchored to the given Surface.</error>
+      <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -861,9 +809,9 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>UnsubscribeInput</name>
     <category>Input</category>
     <comment>Removes an input subscription.</comment>
-    <prototype>ERR gfx::UnsubscribeInput(LONG Handle)</prototype>
+    <prototype>ERR gfx::UnsubscribeInput(INT Handle)</prototype>
     <input>
-      <param type="LONG" name="Handle">Reference to a handle returned by <function>SubscribeInput</function>.</param>
+      <param type="INT" name="Handle">Reference to a handle returned by <function>SubscribeInput</function>.</param>
     </input>
     <description>
 <p>This function removes an input subscription that has been created with <function>SubscribeInput</function>.</p>
@@ -924,6 +872,14 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="REDRAW">Redraw the surface before performing the copy operation.</const>
     </constants>
 
+    <constants lookup="BLM" comment="Defines the blending algorithm to use when transparent pixels are rendered to the bitmap.">
+      <const name="AUTO">Use the most suitable of the available algorithms.</const>
+      <const name="GAMMA">Use gamma correct blending.  This algorithm is slow but produces a high quality result.</const>
+      <const name="LINEAR">Use linear blending.  Applicable if the bitmap is in linear colour space.</const>
+      <const name="NONE">Never blend transparent pixels, just copy as-is.</const>
+      <const name="SRGB">Use sRGB linear blending.  This algorithm is extremely efficient but produces poor quality results.</const>
+    </constants>
+
     <constants lookup="BMF" comment="Bitmap flags">
       <const name="ACCELERATED_2D">2D video acceleration is available.</const>
       <const name="ACCELERATED_3D">3D video acceleration is available.</const>
@@ -935,7 +891,6 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="INVERSE_ALPHA">Indicates reverse alpha blending, higher values are transparent.</const>
       <const name="MASK">Declare the <class name="Bitmap">Bitmap</class> as a 1 or 8 bit mask.  Must be set in conjunction with the <class name="Bitmap" field="BitsPerPixel">Bitmap.BitsPerPixel</class> field on initialisation.</const>
       <const name="NEVER_SHRINK">Ignore resize requests that would shrink the size of the bitmap.</const>
-      <const name="NO_BLEND">Drawing routines that support this flag will not blend pixels.</const>
       <const name="NO_DATA">Do not allocate memory in the Data field on initialisation.</const>
       <const name="PREMUL">The RGB values are premultiplied (32-bit only).</const>
       <const name="QUERIED">Automatically set after a <code>Query()</code> on the bitmap.</const>
@@ -1065,11 +1020,6 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="REDRAW_VOLATILE_OVERLAP">Only redraw volatile objects that obscure the expose region from a position outside of the target surface and its children.  Useful if no redrawing has occurred in the surface, but the surface has moved to a new position and the parents need to be redrawn.</const>
     </constants>
 
-    <constants lookup="FLIP" comment="Flags for the bitmap Flip method.">
-      <const name="HORIZONTAL">Flip the bitmap from top to bottom.</const>
-      <const name="VERTICAL">Flip the bitmap from left to right.</const>
-    </constants>
-
     <constants lookup="GMF" comment="Flags for gamma operations.">
       <const name="SAVE">Save the provided settings permanently.</const>
     </constants>
@@ -1107,7 +1057,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="DEVICE_TILT_XY">Controller tilted on the X/Y axis.  Value indicates angle, -ve = left, +ve = right</const>
       <const name="DEVICE_TILT_Z">Controller is rising or falling.  Value expressed as 'speed',</const>
       <const name="DISPLAY_EDGE">Recently supplied input occurred at the edge of the display.</const>
-      <const name="PEN_TILT_XY">For pen-based input, this type indicates the vertical tilt of the pen device.  A value of 0 indicates that the pen is laid flat with nib at the bottom, 0.5 is 90 degrees, 1.0 is laid flat with nib at the top.</const>
+      <const name="PEN_TILT_XY">Pen tilt angle.  0 is pointing down directly with nib at bottom, 0.5 is 90 degrees, 1.0 is inversed (eraser at bottom)</const>
       <const name="PRESSURE">Amount of pressure applied, ranges from 0 (none) to 1.0 (normal) and possibly higher if user presses hard enough</const>
       <const name="WHEEL">Mouse wheel rotation - the value generally reflects the number of 'clicks' rotated on the wheel.</const>
       <const name="WHEEL_TILT">Some mouse wheels can be tilted to the left or right.  Ranges from -1.0 to +1.0</const>
@@ -1174,7 +1124,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
     <constants lookup="RNF" comment="Switches for the Surface class' Flags field.">
       <const name="AFTER_COPY">Read-only.  Indicates that after-copy mode has been enabled.</const>
-      <const name="ASPECT_RATIO">When resizing, enforce the aspect ratio as defined by <class name="Surface" field="MinWidth">Surface.MinWidth</class> and <class name="Surface" field="MinHeight">Surface.MinHeight</class>.</const>
+      <const name="ASPECT_RATIO">When resizing, enforce the aspect ratio as defined by the diagonal from <class name="Surface" field="MinWidth">Surface.MinWidth</class>, <class name="Surface" field="MinHeight">Surface.MinHeight</class> to <class name="Surface" field="MaxWidth">Surface.MaxWidth</class>, <class name="Surface" field="MaxHeight">Surface.MaxHeight</class>.</const>
       <const name="AUTO_QUIT">The surface object will send a quit message to its supporting process when and if the Close method is called.  This flag is typically used when a surface object represents a core window for an application.</const>
       <const name="COMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
       <const name="DISABLED">This flag is set if the Disable action has been called on a surface object.  Calling the Enable action will turn off the flag setting.</const>
@@ -1246,65 +1196,65 @@ Alpha  = CFUnpackAlpha(Format,Colour)
   <structs>
     <struct name="BitmapSurface" typeName="BITMAPSURFACE">
       <field name="Data" type="APTR">Pointer to the bitmap graphics data.</field>
-      <field name="Width" type="WORD">Pixel width of the bitmap.</field>
-      <field name="Height" type="WORD">Pixel height of the bitmap.</field>
-      <field name="LineWidth" type="LONG">The distance between bitmap lines, measured in bytes.</field>
-      <field name="BitsPerPixel" type="UBYTE">The number of bits per pixel (8, 15, 16, 24, 32).</field>
-      <field name="BytesPerPixel" type="UBYTE">The number of bytes per pixel (1, 2, 3, 4).</field>
-      <field name="Opacity" type="UBYTE">Opacity level of the source if <code>CSRF::TRANSLUCENT</code> is used.</field>
-      <field name="Version" type="UBYTE">Version of this structure.</field>
-      <field name="Colour" type="LONG">Colour index to use if <code>CSRF::TRANSPARENT</code> is used.</field>
+      <field name="Width" type="INT16">Pixel width of the bitmap.</field>
+      <field name="Height" type="INT16">Pixel height of the bitmap.</field>
+      <field name="LineWidth" type="INT">The distance between bitmap lines, measured in bytes.</field>
+      <field name="BitsPerPixel" type="UINT8">The number of bits per pixel (8, 15, 16, 24, 32).</field>
+      <field name="BytesPerPixel" type="UINT8">The number of bytes per pixel (1, 2, 3, 4).</field>
+      <field name="Opacity" type="UINT8">Opacity level of the source if <code>CSRF::TRANSLUCENT</code> is used.</field>
+      <field name="Version" type="UINT8">Version of this structure.</field>
+      <field name="Colour" type="INT">Colour index to use if <code>CSRF::TRANSPARENT</code> is used.</field>
       <field name="Clip" type="struct ClipRectangle">A clipping rectangle will restrict drawing operations to this region if <code>CSRF::CLIP</code> is used.</field>
-      <field name="XOffset" type="WORD">Offset all X coordinate references by the given value.</field>
-      <field name="YOffset" type="WORD">Offset all Y coordinate references by the given value.</field>
+      <field name="XOffset" type="INT16">Offset all X coordinate references by the given value.</field>
+      <field name="YOffset" type="INT16">Offset all Y coordinate references by the given value.</field>
       <field name="Format" type="struct ColourFormat">The colour format of this bitmap's pixels, or alternatively use <code>CSRF::DEFAULT_FORMAT</code>.</field>
     </struct>
 
     <struct name="ColourFormat" typeName="COLOURFORMAT">
-      <field name="RedShift" type="UBYTE">Right shift value for red (15/16 bit formats only)</field>
-      <field name="GreenShift" type="UBYTE">Right shift value for green</field>
-      <field name="BlueShift" type="UBYTE">Right shift value for blue</field>
-      <field name="AlphaShift" type="UBYTE">Right shift value for alpha</field>
-      <field name="RedMask" type="UBYTE">Unshifted mask value for red (ranges from 0x00 to 0xff)</field>
-      <field name="GreenMask" type="UBYTE">Unshifted mask value for green</field>
-      <field name="BlueMask" type="UBYTE">Unshifted mask value for blue</field>
-      <field name="AlphaMask" type="UBYTE">Unshifted mask value for alpha</field>
-      <field name="RedPos" type="UBYTE">Left shift/positional value for red</field>
-      <field name="GreenPos" type="UBYTE">Left shift/positional value for green</field>
-      <field name="BluePos" type="UBYTE">Left shift/positional value for blue</field>
-      <field name="AlphaPos" type="UBYTE">Left shift/positional value for alpha</field>
-      <field name="BitsPerPixel" type="UBYTE">Number of bits per pixel for this format.</field>
+      <field name="RedShift" type="UINT8">Right shift value for red (15/16 bit formats only)</field>
+      <field name="GreenShift" type="UINT8">Right shift value for green</field>
+      <field name="BlueShift" type="UINT8">Right shift value for blue</field>
+      <field name="AlphaShift" type="UINT8">Right shift value for alpha</field>
+      <field name="RedMask" type="UINT8">Unshifted mask value for red (ranges from 0x00 to 0xff)</field>
+      <field name="GreenMask" type="UINT8">Unshifted mask value for green</field>
+      <field name="BlueMask" type="UINT8">Unshifted mask value for blue</field>
+      <field name="AlphaMask" type="UINT8">Unshifted mask value for alpha</field>
+      <field name="RedPos" type="UINT8">Left shift/positional value for red</field>
+      <field name="GreenPos" type="UINT8">Left shift/positional value for green</field>
+      <field name="BluePos" type="UINT8">Left shift/positional value for blue</field>
+      <field name="AlphaPos" type="UINT8">Left shift/positional value for alpha</field>
+      <field name="BitsPerPixel" type="UINT8">Number of bits per pixel for this format.</field>
     </struct>
 
     <struct name="CursorInfo">
-      <field name="Width" type="LONG">Maximum cursor width for custom cursors</field>
-      <field name="Height" type="LONG">Maximum cursor height for custom cursors</field>
-      <field name="Flags" type="LONG">Currently unused</field>
-      <field name="BitsPerPixel" type="WORD">Preferred bits-per-pixel setting for custom cursors</field>
+      <field name="Width" type="INT">Maximum cursor width for custom cursors</field>
+      <field name="Height" type="INT">Maximum cursor height for custom cursors</field>
+      <field name="Flags" type="INT">Currently unused</field>
+      <field name="BitsPerPixel" type="INT16">Preferred bits-per-pixel setting for custom cursors</field>
     </struct>
 
     <struct name="DisplayInfo" typeName="DISPLAYINFO">
       <field name="Display" type="OBJECTID">Object ID related to the display</field>
       <field name="Flags" type="SCR" lookup="SCR">Display flags</field>
-      <field name="Width" type="WORD">Pixel width of the display</field>
-      <field name="Height" type="WORD">Pixel height of the display</field>
-      <field name="BitsPerPixel" type="WORD">Bits per pixel</field>
-      <field name="BytesPerPixel" type="WORD">Bytes per pixel</field>
+      <field name="Width" type="INT16">Pixel width of the display</field>
+      <field name="Height" type="INT16">Pixel height of the display</field>
+      <field name="BitsPerPixel" type="INT16">Bits per pixel</field>
+      <field name="BytesPerPixel" type="INT16">Bytes per pixel</field>
       <field name="AccelFlags" type="ACF" lookup="ACF">Flags describing supported hardware features.</field>
-      <field name="AmtColours" type="LONG">Total number of supported colours.</field>
+      <field name="AmtColours" type="INT">Total number of supported colours.</field>
       <field name="PixelFormat" type="struct PixelFormat">The colour format to use for each pixel.</field>
       <field name="MinRefresh" type="FLOAT">Minimum refresh rate</field>
       <field name="MaxRefresh" type="FLOAT">Maximum refresh rate</field>
       <field name="RefreshRate" type="FLOAT">Recommended refresh rate</field>
-      <field name="Index" type="LONG">Display mode ID (internal)</field>
-      <field name="HDensity" type="LONG">Horizontal pixel density per inch.</field>
-      <field name="VDensity" type="LONG">Vertical pixel density per inch.</field>
+      <field name="Index" type="INT">Display mode ID (internal)</field>
+      <field name="HDensity" type="INT">Horizontal pixel density per inch.</field>
+      <field name="VDensity" type="INT">Vertical pixel density per inch.</field>
     </struct>
 
     <struct name="InputEvent">
       <field name="Next" type="const struct InputEvent *">Next event in the chain</field>
       <field name="Value" type="DOUBLE">The value associated with the Type</field>
-      <field name="Timestamp" type="LARGE">PreciseTime() of the recorded input</field>
+      <field name="Timestamp" type="INT64">PreciseTime() of the recorded input</field>
       <field name="RecipientID" type="OBJECTID">Surface that the input message is being conveyed to</field>
       <field name="OverID" type="OBJECTID">Surface that is directly under the mouse pointer at the time of the event</field>
       <field name="AbsX" type="DOUBLE">Absolute horizontal position of mouse cursor (relative to the top left of the display)</field>
@@ -1318,27 +1268,27 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </struct>
 
     <struct name="PixelFormat" comment="Carries instructions to pack or unpack RGBA colours." typeName="PIXELFORMAT">
-      <field name="RedShift" type="UBYTE">Right shift value</field>
-      <field name="GreenShift" type="UBYTE">Green shift value</field>
-      <field name="BlueShift" type="UBYTE">Blue shift value</field>
-      <field name="AlphaShift" type="UBYTE">Alpha shift value</field>
-      <field name="RedMask" type="UBYTE">The unshifted red mask value (ranges from 0x00 to 0xff)</field>
-      <field name="GreenMask" type="UBYTE">The unshifted green mask value (ranges from 0x00 to 0xff)</field>
-      <field name="BlueMask" type="UBYTE">The unshifted blue mask value (ranges from 0x00 to 0xff)</field>
-      <field name="AlphaMask" type="UBYTE">The unshifted alpha mask value (ranges from 0x00 to 0xff)</field>
-      <field name="RedPos" type="UBYTE">Left shift/positional value for red</field>
-      <field name="GreenPos" type="UBYTE">Left shift/positional value for green</field>
-      <field name="BluePos" type="UBYTE">Left shift/positional value for blue</field>
-      <field name="AlphaPos" type="UBYTE">Left shift/positional value for alpha</field>
+      <field name="RedShift" type="UINT8">Right shift value</field>
+      <field name="GreenShift" type="UINT8">Green shift value</field>
+      <field name="BlueShift" type="UINT8">Blue shift value</field>
+      <field name="AlphaShift" type="UINT8">Alpha shift value</field>
+      <field name="RedMask" type="UINT8">The unshifted red mask value (ranges from 0x00 to 0xff)</field>
+      <field name="GreenMask" type="UINT8">The unshifted green mask value (ranges from 0x00 to 0xff)</field>
+      <field name="BlueMask" type="UINT8">The unshifted blue mask value (ranges from 0x00 to 0xff)</field>
+      <field name="AlphaMask" type="UINT8">The unshifted alpha mask value (ranges from 0x00 to 0xff)</field>
+      <field name="RedPos" type="UINT8">Left shift/positional value for red</field>
+      <field name="GreenPos" type="UINT8">Left shift/positional value for green</field>
+      <field name="BluePos" type="UINT8">Left shift/positional value for blue</field>
+      <field name="AlphaPos" type="UINT8">Left shift/positional value for alpha</field>
     </struct>
 
     <struct name="SurfaceCoords">
-      <field name="X" type="LONG">Horizontal coordinate</field>
-      <field name="Y" type="LONG">Vertical coordinate</field>
-      <field name="Width" type="LONG">Width</field>
-      <field name="Height" type="LONG">Height</field>
-      <field name="AbsX" type="LONG">Absolute X</field>
-      <field name="AbsY" type="LONG">Absolute Y</field>
+      <field name="X" type="INT">Horizontal coordinate</field>
+      <field name="Y" type="INT">Vertical coordinate</field>
+      <field name="Width" type="INT">Width</field>
+      <field name="Height" type="INT">Height</field>
+      <field name="AbsX" type="INT">Absolute X</field>
+      <field name="AbsY" type="INT">Absolute Y</field>
     </struct>
 
     <struct name="SurfaceInfo" typeName="SURFACEINFO">
@@ -1347,22 +1297,22 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <field name="BitmapID" type="OBJECTID">Surface bitmap buffer</field>
       <field name="DisplayID" type="OBJECTID">Refers to the display if this object is at root level</field>
       <field name="Flags" type="RNF" lookup="RNF">Surface flags</field>
-      <field name="X" type="LONG">Horizontal coordinate</field>
-      <field name="Y" type="LONG">Vertical coordinate</field>
-      <field name="Width" type="LONG">Width of the surface area</field>
-      <field name="Height" type="LONG">Height of the surface area</field>
-      <field name="AbsX" type="LONG">Absolute X coordinate</field>
-      <field name="AbsY" type="LONG">Absolute Y coordinate</field>
-      <field name="Level" type="WORD">Branch level within the tree</field>
-      <field name="BitsPerPixel" type="BYTE">Bits per pixel of the bitmap</field>
-      <field name="BytesPerPixel" type="BYTE">Bytes per pixel of the bitmap</field>
-      <field name="LineWidth" type="LONG">Line width of the bitmap, in bytes</field>
+      <field name="X" type="INT">Horizontal coordinate</field>
+      <field name="Y" type="INT">Vertical coordinate</field>
+      <field name="Width" type="INT">Width of the surface area</field>
+      <field name="Height" type="INT">Height of the surface area</field>
+      <field name="AbsX" type="INT">Absolute X coordinate</field>
+      <field name="AbsY" type="INT">Absolute Y coordinate</field>
+      <field name="Level" type="INT16">Branch level within the tree</field>
+      <field name="BitsPerPixel" type="INT8">Bits per pixel of the bitmap</field>
+      <field name="BytesPerPixel" type="INT8">Bytes per pixel of the bitmap</field>
+      <field name="LineWidth" type="INT">Line width of the bitmap, in bytes</field>
     </struct>
 
     <struct name="xrMode" comment="Display mode.">
-      <field name="Width" type="LONG">Horizontal</field>
-      <field name="Height" type="LONG">Vertical</field>
-      <field name="Depth" type="LONG">bit depth</field>
+      <field name="Width" type="INT">Horizontal</field>
+      <field name="Height" type="INT">Vertical</field>
+      <field name="Depth" type="INT">bit depth</field>
     </struct>
 
   </structs>

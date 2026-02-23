@@ -22,7 +22,7 @@
 #include <xinput.h>
 #include <map>
 
-#include <parasol/system/errors.h>
+#include <kotuku/system/errors.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -31,7 +31,7 @@
 
 #include "windows.h"
 
-typedef unsigned char UBYTE;
+typedef unsigned char uint8_t;
 
 struct winextra {
    int surface_id;   // 0
@@ -41,9 +41,9 @@ struct winextra {
 };
 
 #if defined(_MSC_VER)
-typedef __int64 LARGE;
+typedef __int64 int64_t;
 #else
-typedef long long LARGE;
+typedef long long int64_t;
 #endif
 
 #define IDT_RESIZE_WINDOW 1
@@ -67,7 +67,7 @@ typedef long long LARGE;
 #define WM_ICONNOTIFY (WM_USER + 101)
 #define ID_TRAY 100
 
-#ifdef _DEBUG
+#ifndef NDEBUG
 #define MSG(...) fprintf(stderr, __VA_ARGS__)
 #else
 #define MSG(...)
@@ -81,13 +81,13 @@ static HWND glMainScreen = 0;
 static char glCursorEntry = FALSE;
 static HCURSOR glDefaultCursor = 0;
 static HWND glDeferredActiveWindow = 0;
-char glTrayIcon = FALSE, glTaskBar = TRUE, glStickToFront = FALSE;
+uint8_t glTrayIcon = 0, glTaskBar = 0, glStickToFront = 0;
 struct WinCursor *glCursors = 0;
 HCURSOR glCurrentCursor = 0;
-static BYTE glScreenClassInit = 0;
+static int8_t glScreenClassInit = 0;
 
 #ifdef DBGMSG
-static std::map<int, const char *> glCmd = { {
+static ankerl::unordered_dense::map<int, const char *> glCmd = { {
  { WM_SETCURSOR, "WM_SETCURSOR" },
  { WM_NCMOUSEHOVER, "WM_NCMOUSEHOVER" },
  { WM_NCMOUSELEAVE, "WM_NCMOUSELEAVE" }, { WM_NCMOUSEMOVE, "WM_NCMOUSEMOVE" },
@@ -141,7 +141,7 @@ static std::map<int, const char *> glCmd = { {
 
 int winLookupSurfaceID(HWND Window)
 {
-   return int(LARGE(GetProp(Window, "SurfaceID")));
+   return int(int64_t(GetProp(Window, "SurfaceID")));
 }
 
 namespace display {
@@ -161,32 +161,23 @@ static void printerror(void)
 
 //********************************************************************************************************************
 
-void winGetCoords(HWND Window, int *WinX, int *WinY, int *WinWidth, int *WinHeight, int *ClientX, int *ClientY,
-   int *ClientWidth, int *ClientHeight)
+ERR winGetCoords(HWND Window, int &WinX, int &WinY, int &WinWidth, int &WinHeight, int &ClientX, int &ClientY,
+   int &ClientWidth, int &ClientHeight)
 {
-   WINDOWINFO info;
+   WINDOWINFO info = { .cbSize = sizeof(info) };
 
-   info.cbSize = sizeof(info);
    if (GetWindowInfo(Window, &info)) {
-      if (WinX)         *WinX      = info.rcWindow.left;
-      if (WinY)         *WinY      = info.rcWindow.top;
-      if (WinWidth)     *WinWidth  = info.rcWindow.right - info.rcWindow.left;
-      if (WinHeight)    *WinHeight = info.rcWindow.bottom - info.rcWindow.top;
-      if (ClientX)      *ClientX      = info.rcClient.left;
-      if (ClientY)      *ClientY      = info.rcClient.top;
-      if (ClientWidth)  *ClientWidth  = info.rcClient.right - info.rcClient.left;
-      if (ClientHeight) *ClientHeight = info.rcClient.bottom - info.rcClient.top;
+      WinX      = info.rcWindow.left;
+      WinY      = info.rcWindow.top;
+      WinWidth  = info.rcWindow.right - info.rcWindow.left;
+      WinHeight = info.rcWindow.bottom - info.rcWindow.top;
+      ClientX      = info.rcClient.left;
+      ClientY      = info.rcClient.top;
+      ClientWidth  = info.rcClient.right - info.rcClient.left;
+      ClientHeight = info.rcClient.bottom - info.rcClient.top;
+      return ERR::Okay;
    }
-   else {
-      if (WinX)         *WinX      = 0;
-      if (WinY)         *WinY      = 0;
-      if (WinWidth)     *WinWidth  = 0;
-      if (WinHeight)    *WinHeight = 0;
-      if (ClientX)      *ClientX      = 0;
-      if (ClientY)      *ClientY      = 0;
-      if (ClientWidth)  *ClientWidth  = 0;
-      if (ClientHeight) *ClientHeight = 0;
-   }
+   else return ERR::SystemCall;
 }
 
 //********************************************************************************************************************
@@ -218,12 +209,12 @@ void winGetDPI(int *HDPI, int *VDPI)
       FreeLibrary(hUser32);
    }
 
-   if (auto screen = GetDC(NULL)) {
+   if (auto screen = GetDC(nullptr)) {
       *HDPI = GetDeviceCaps(screen, LOGPIXELSX);
       *VDPI = GetDeviceCaps(screen, LOGPIXELSY);
       if (*HDPI < 96) *HDPI = 96;
       if (*VDPI < 96) *VDPI = 96;
-      ReleaseDC(NULL, screen);
+      ReleaseDC(nullptr, screen);
    }
 }
 
@@ -240,12 +231,12 @@ char GetMonitorSizeFromEDID(const HKEY hDevRegKey, short *WidthMm, short *Height
 {
     DWORD dwType, AcutalValueNameLength = NAME_SIZE;
     TCHAR valueName[NAME_SIZE];
-    BYTE EDIDdata[1024];
+    int8_t EDIDdata[1024];
     DWORD edidsize=sizeof(EDIDdata);
     int retValue;
 
     for (int i = 0, retValue = ERROR_SUCCESS; retValue != ERROR_NO_MORE_ITEMS; ++i) {
-        retValue = RegEnumValue ( hDevRegKey, i, &valueName[0], &AcutalValueNameLength, NULL, &dwType, EDIDdata, &edidsize);
+        retValue = RegEnumValue ( hDevRegKey, i, &valueName[0], &AcutalValueNameLength, nullptr, &dwType, EDIDdata, &edidsize);
         if (retValue != ERROR_SUCCESS || 0 != _tcscmp(valueName,_T("EDID"))) continue;
         *WidthMm  = ((EDIDdata[68] & 0xF0) << 4) + EDIDdata[66];
         *HeightMm = ((EDIDdata[68] & 0x0F) << 8) + EDIDdata[67];
@@ -258,14 +249,14 @@ char GetSizeForDevID(const char * *TargetDevID, short *WidthMm, short *HeightMm)
 {
     HDEVINFO devInfo = SetupDiGetClassDevsEx(
         &GUID_CLASS_MONITOR, //class GUID
-        NULL, //enumerator
-        NULL, //HWND
+        nullptr, //enumerator
+        nullptr, //HWND
         DIGCF_PRESENT, // Flags //DIGCF_ALLCLASSES|
-        NULL, // device info, create a new one.
-        NULL, // machine name, local machine
-        NULL);// reserved
+        nullptr, // device info, create a new one.
+        nullptr, // machine name, local machine
+        nullptr);// reserved
 
-    if (NULL == devInfo) return FALSE;
+    if (nullptr == devInfo) return FALSE;
 
     char bRes = FALSE;
 
@@ -366,8 +357,8 @@ static const LPCTSTR glWinCursors[] = {
    IDC_IBEAM,
    IDC_ARROW,
    IDC_NO,
-   NULL,        // The invisible cursor is the NULL type
-   NULL,
+   nullptr,        // The invisible cursor is the nullptr type
+   nullptr,
    IDC_SIZEALL
 };
 
@@ -393,8 +384,8 @@ void winSetClassCursor(HWND Window, HCURSOR Cursor)
 void winInitCursors(struct WinCursor *Cursor, int Total)
 {
    for (int i=0; i < Total; i++) {
-      if (glWinCursors[i]) Cursor[i].WinCursor = LoadCursor(NULL, glWinCursors[i]);
-      else Cursor[i].WinCursor = NULL;
+      if (glWinCursors[i]) Cursor[i].WinCursor = LoadCursor(nullptr, glWinCursors[i]);
+      else Cursor[i].WinCursor = nullptr;
    }
 
    glCursors = Cursor;
@@ -483,7 +474,7 @@ int winGetDisplaySettings(int *bits, int *bytes, int *amtcolours)
    devmode.dmSize = sizeof(DEVMODE);
    devmode.dmDriverExtra = 0;
 
-   if (EnumDisplaySettings(NULL, -1, &devmode)) {
+   if (EnumDisplaySettings(nullptr, -1, &devmode)) {
       *bits = devmode.dmBitsPerPel;
 
       if (*bits <= 8) *bits = 24; // Pretend that the screen is 24 bit even though it is 256 colours, as this produces better results
@@ -589,7 +580,7 @@ static void HandleButtonPress(HWND window, int button)
 
    SetCapture(window);
 
-   // Send a Parasol message
+   // Send a Kotuku message
 
    MsgButtonPress(button, 1);
 }
@@ -640,7 +631,7 @@ static void HandleKeyPress(WPARAM value)
 
    // Process normal key presses
 
-   UBYTE keystate[256];
+   uint8_t keystate[256];
    WCHAR printable[2];
    int result;
 
@@ -704,9 +695,6 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
 {
    PAINTSTRUCT paint;
    HDC hdc;
-   int newwidth, newheight, surfaceid;
-   LPRECT rect;
-   RECT winrect, client;
 
 #ifdef DBGMSG
    if (glCmd.contains(msgcode)) {
@@ -830,8 +818,9 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
 
       case WM_MOVE: {
          int wx, wy, wwidth, wheight, cx, cy, cwidth, cheight;
-         winGetCoords(window, &wx, &wy, &wwidth, &wheight, &cx, &cy, &cwidth, &cheight);
-         MsgResizedWindow(winLookupSurfaceID(window), wx, wy, wwidth, wheight, cx, cy, cwidth, cheight);
+         if (winGetCoords(window, wx, wy, wwidth, wheight, cx, cy, cwidth, cheight) == ERR::Okay) {
+            MsgResizedWindow(winLookupSurfaceID(window), wx, wy, wwidth, wheight, cx, cy, cwidth, cheight);
+         }
          return 0;
       }
 
@@ -847,21 +836,22 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
       }
 
       case WM_SIZE: {
-         // Note that the WM_SIZE function tells us the size of the client area
+         // The WM_SIZE event reports the new size of the client area.  See WM_SIZING for incoming size requests from the user.
 
          int cwidth  = LOWORD(lParam);
          int cheight = HIWORD(lParam);
 
-         // If the window has just been maximised, check if the surface object has restrictions on the width and height.  If so, force the window back to its previous dimensions so that it obeys the developer's requirements.
+         // If the window has just been maximised, check if the surface object has restrictions on the width and height.
+         // If so, force the window back to its previous dimensions so that it obeys the developer's requirements.
 
          if (wParam & SIZE_MAXIMIZED) {
             WINDOWPLACEMENT win;
 
-            if ((surfaceid = winLookupSurfaceID(window))) {
-               newwidth  = cwidth;
-               newheight = cheight;
-               CheckWindowSize(surfaceid, &newwidth, &newheight);
-               if ((newwidth != cwidth) or (newheight != cheight)) {
+            if (auto surface_id = winLookupSurfaceID(window)) {
+               auto new_width  = cwidth;
+               auto new_height = cheight;
+               CheckWindowSize(surface_id, new_width, new_height, cwidth, cheight, AXIS_BOTH);
+               if ((new_width != cwidth) or (new_height != cheight)) {
                   ZeroMemory(&win, sizeof(WINDOWPLACEMENT));
                   win.length = sizeof(WINDOWPLACEMENT);
                   GetWindowPlacement(window, &win);
@@ -876,30 +866,53 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
          // Send a resize message to the surface object
 
          int wx, wy, wwidth, wheight, cx, cy;
-         winGetCoords(window, &wx, &wy, &wwidth, &wheight, &cx, &cy, &cwidth, &cheight);
-         MsgResizedWindow(winLookupSurfaceID(window), wx, wy, wwidth, wheight, cx, cy, cwidth, cheight);
-         return 0;
-      }
-
-      case WM_WINDOWPOSCHANGING: {
-         LPWINDOWPOS winpos = (LPWINDOWPOS)lParam;
-         winpos->flags |= SWP_NOCOPYBITS|SWP_NOREDRAW;
+         if (winGetCoords(window, wx, wy, wwidth, wheight, cx, cy, cwidth, cheight) == ERR::Okay) {
+            MsgResizedWindow(winLookupSurfaceID(window), wx, wy, wwidth, wheight, cx, cy, cwidth, cheight);
+         }
          return 0;
       }
 
       case WM_SIZING: {
          // This procedure is called when the user is resizing a window by its anchor points.
 
+         RECT winrect, client;
          GetWindowRect(window, &winrect);
          GetClientRect(window, &client);
-         rect = (LPRECT)lParam;
-         int cwidth  = (rect->right - rect->left) - ((winrect.right - winrect.left) - (client.right - client.left));
-         int cheight = (rect->bottom - rect->top) - ((winrect.bottom- winrect.top) - (client.bottom - client.top));
-         CheckWindowSize(winLookupSurfaceID(window), &cwidth, &cheight);
-         if ((wParam == WMSZ_BOTTOMRIGHT) or (wParam == WMSZ_RIGHT) or (wParam == WMSZ_TOPRIGHT))    rect->right  = rect->left + cwidth + ((winrect.right - winrect.left) - (client.right - client.left));
-         if ((wParam == WMSZ_BOTTOMRIGHT) or (wParam == WMSZ_BOTTOM) or (wParam == WMSZ_BOTTOMLEFT)) rect->bottom = rect->top + cheight + (winrect.bottom - client.bottom - winrect.top);
-         if ((wParam == WMSZ_BOTTOMLEFT) or (wParam == WMSZ_LEFT) or (wParam == WMSZ_TOPLEFT))       rect->left   = rect->right - cwidth - ((winrect.right - winrect.left) - (client.right - client.left));
-         if ((wParam == WMSZ_TOPLEFT) or (wParam == WMSZ_TOP) or (wParam == WMSZ_TOPRIGHT))          rect->top    = rect->bottom - cheight - ((winrect.bottom - winrect.top) - (client.bottom - client.top));
+
+         const int h_margins = ((winrect.right - winrect.left) - (client.right - client.left));
+         const int v_margins = ((winrect.bottom - winrect.top) - (client.bottom - client.top));
+
+         auto rect = (LPRECT)lParam;
+
+         int req_width  = (rect->right - rect->left) - h_margins;
+         int req_height = (rect->bottom - rect->top) - v_margins;
+
+         int axis = AXIS_BOTH;
+         switch(wParam) {
+            case WMSZ_LEFT:
+            case WMSZ_RIGHT:
+               axis = AXIS_HORIZONTAL;
+               break;
+
+            case WMSZ_TOP:
+            case WMSZ_BOTTOM:
+               axis = AXIS_VERTICAL;
+               break;
+         }
+
+         CheckWindowSize(winLookupSurfaceID(window), req_width, req_height, client.right - client.left, client.bottom - client.top, axis);
+
+         rect->right  = rect->left + req_width + h_margins;
+         rect->bottom = rect->top + req_height + v_margins;
+         rect->left   = rect->right - req_width - h_margins;
+         rect->top    = rect->bottom - req_height - v_margins;
+         return 0;
+      }
+
+      case WM_WINDOWPOSCHANGING: {
+         // Improve performance by preventing the window from being redrawn when it is moved or resized.
+         auto winpos = (LPWINDOWPOS)lParam;
+         winpos->flags |= SWP_NOCOPYBITS|SWP_NOREDRAW;
          return 0;
       }
 
@@ -984,8 +997,8 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
             hSubMenu = GetSubMenu(hMenu, 0);
             SetMenuDefaultItem(hSubMenu, IDM_DEFAULTCMD, FALSE);
             SetForegroundWindow(hMainDlg);         // Per KB Article Q135788
-            TrackPopupMenu(hSubMenu, TPM_LEFTBUTTON|TPM_RIGHTBUTTON|TPM_LEFTALIGN, point.x, point.y, 0, hWnd, NULL);
-            PostMessage(hMainDlg, WM_NULL, 0, 0);   // Per KB Article Q135788
+            TrackPopupMenu(hSubMenu, TPM_LEFTBUTTON|TPM_RIGHTBUTTON|TPM_LEFTALIGN, point.x, point.y, 0, hWnd, nullptr);
+            PostMessage(hMainDlg, WM_nullptr, 0, 0);   // Per KB Article Q135788
             DestroyMenu(hMenu);
 #endif
          }
@@ -1073,8 +1086,8 @@ ERR winReadController(int Port, double *Values, CON &Buttons)
       Values[5] = std::clamp(double(state.Gamepad.sThumbRY) * (1.0 / 32767.0), -1.0, 1.0);
 
       if ((Values[2] < tolerance) and (Values[2] > -tolerance) and
-          (Values[3] < tolerance) and (Values[3] > -tolerance)) { 
-         Values[2] = 0; 
+          (Values[3] < tolerance) and (Values[3] > -tolerance)) {
+         Values[2] = 0;
          Values[3] = 0;
       }
 
@@ -1103,7 +1116,7 @@ ERR winReadController(int Port, double *Values, CON &Buttons)
       else Buttons = CON::NIL; //state.Gamepad.wButtons;
       return ERR::Okay;
    }
-   else return ERR::Failed;
+   else return ERR::SystemCall;
 }
 
 //********************************************************************************************************************
@@ -1135,26 +1148,26 @@ int winCreateScreenClass(void)
       glCancelAutoPlayMsg = RegisterWindowMessage(TEXT("QueryCancelAutoPlay"));
    }
 
-   glDefaultCursor = LoadCursor(NULL, IDC_ARROW);
+   glDefaultCursor = LoadCursor(nullptr, IDC_ARROW);
 
    winclass.cbSize        = sizeof(winclass);
-   winclass.style         = CS_DBLCLKS;
+   winclass.style         = CS_DBLCLKS|CS_VREDRAW|CS_HREDRAW;
    winclass.lpfnWndProc   = WindowProcedure;
    winclass.cbClsExtra    = 0;
    winclass.cbWndExtra    = sizeof(struct winextra);
    winclass.hInstance     = glInstance;
    if (!(winclass.hIcon = LoadIcon(glInstance, MAKEINTRESOURCE(500)))) winclass.hIcon = LoadIcon(glInstance, IDI_APPLICATION);
-   winclass.hCursor       = NULL; //glDefaultCursor;
-   winclass.hbrBackground = NULL;
-   winclass.lpszMenuName  = NULL;
+   winclass.hCursor       = nullptr; //glDefaultCursor;
+   winclass.hbrBackground = nullptr;
+   winclass.lpszMenuName  = nullptr;
    winclass.lpszClassName = "ScreenClass";
-   winclass.hIconSm       = NULL;
+   winclass.hIconSm       = nullptr;
 
    if (RegisterClassEx(&winclass)) {
       glScreenClassInit = 1;
 
       if (!glOleInit) {
-         HRESULT result = OleInitialize(NULL);
+         HRESULT result = OleInitialize(nullptr);
          if (result == S_OK) glOleInit = 1; // 1 = Successful initialisation
          else if (result == S_FALSE) glOleInit = 2; // 2 = Attempted initialisation failed.
       }
@@ -1209,7 +1222,7 @@ int winCreateScreenClass(void)
 HWND winCreateScreen(HWND PopOver, int *X, int *Y, int *Width, int *Height, char Maximise, char Borderless, const char *Name,
    char Composite, unsigned char Opacity, char Desktop)
 {
-   if (!Name) Name = "Parasol";
+   if (!Name) Name = "Kotuku";
 
    bool interactive;
    if ((Borderless) and (!glTrayIcon) and (!glTaskBar)) interactive = FALSE;
@@ -1219,13 +1232,13 @@ HWND winCreateScreen(HWND PopOver, int *X, int *Y, int *Width, int *Height, char
    if (Borderless) {
       if (!(Window = CreateWindowEx(
             (glTaskBar ? WS_EX_APPWINDOW : WS_EX_TOOLWINDOW) | (glStickToFront ? WS_EX_TOPMOST : 0),
-            "ScreenClass", (glTaskBar ? Name : NULL),
+            "ScreenClass", (glTaskBar ? Name : nullptr),
             WS_POPUP|WS_CLIPCHILDREN|WS_CLIPSIBLINGS|(Maximise ? WS_MAXIMIZE : 0),
             *X, *Y,
             CW_USEDEFAULT, CW_USEDEFAULT,
             (HWND)PopOver,
-            (HMENU)NULL,
-            glInstance, NULL))) return NULL;
+            (HMENU)nullptr,
+            glInstance, nullptr))) return nullptr;
    }
    else if (!(Window = CreateWindowEx(
       (glTaskBar ? WS_EX_APPWINDOW : 0) | WS_EX_WINDOWEDGE | (glStickToFront ? WS_EX_TOPMOST : 0),
@@ -1234,8 +1247,8 @@ HWND winCreateScreen(HWND PopOver, int *X, int *Y, int *Width, int *Height, char
       *X, *Y,
       CW_USEDEFAULT, CW_USEDEFAULT,
       (HWND)PopOver,
-      (HMENU)NULL,
-      glInstance, NULL))) return NULL;
+      (HMENU)nullptr,
+      glInstance, nullptr))) return nullptr;
 
    // Set the width and height of the window
 
@@ -1248,7 +1261,8 @@ HWND winCreateScreen(HWND PopOver, int *X, int *Y, int *Width, int *Height, char
 
    // Return the absolute coordinates of the client region
 
-   winGetCoords(Window, 0, 0, 0, 0, X, Y, Width, Height);
+   int dummy;
+   winGetCoords(Window, dummy, dummy, dummy, dummy, *X, *Y, *Width, *Height);
 
    if (glTrayIcon) {
       NOTIFYICONDATA nid;
@@ -1267,13 +1281,13 @@ HWND winCreateScreen(HWND PopOver, int *X, int *Y, int *Width, int *Height, char
       SetLastError(0);
       if (!SetWindowLong(Window, GWL_EXSTYLE, GetWindowLong(Window, GWL_EXSTYLE) | WS_EX_LAYERED)) {
          if (!GetLastError()) {
-            return NULL;
+            return nullptr;
          }
       }
 
       if (!Composite) {
          if (!SetLayeredWindowAttributes(Window, 0, Opacity, LWA_ALPHA)) {
-            return NULL;
+            return nullptr;
          }
       }
    }
@@ -1298,7 +1312,7 @@ HWND winCreateChild(HWND Parent, int X, int Y, int Width, int Height)
 {
    if (auto Window = CreateWindowEx(
          0, // WS_EX_NOPARENTNOTIFY
-         "ScreenClass", "Parasol Child Window",
+         "ScreenClass", "Kotuku Child Window",
          WS_CHILD|WS_CLIPCHILDREN|WS_CLIPSIBLINGS,
          0, 0, Width, Height,
          Parent,
@@ -1309,7 +1323,7 @@ HWND winCreateChild(HWND Parent, int X, int Y, int Width, int Height)
 
       return Window;
    }
-   else return NULL;
+   else return nullptr;
 }
 
 //********************************************************************************************************************
@@ -1374,7 +1388,7 @@ void winUpdateWindow(HWND hWnd)
 
 HINSTANCE winGetModuleHandle(void)
 {
-   return GetModuleHandle(NULL);
+   return GetModuleHandle(nullptr);
 }
 
 //********************************************************************************************************************
@@ -1383,7 +1397,7 @@ int winDestroyWindow(HWND window)
 {
    NOTIFYICONDATA notify;
 
-   if (window == glMainScreen) glMainScreen = NULL;
+   if (window == glMainScreen) glMainScreen = nullptr;
 
    ZeroMemory(&notify, sizeof(notify));
    notify.cbSize = sizeof(notify);
@@ -1545,7 +1559,7 @@ void win32RedrawWindow(HWND Window, HDC WindowDC, int X, int Y, int Width,
          size.cy = rect.bottom - rect.top;
 
          if (auto dcMemory = CreateCompatibleDC(WindowDC)) {
-            if (auto bmp = CreateDIBSection(WindowDC, (BITMAPINFO *)&info, DIB_RGB_COLORS, (void **)&alpha_data, NULL, 0)) {
+            if (auto bmp = CreateDIBSection(WindowDC, (BITMAPINFO *)&info, DIB_RGB_COLORS, (void **)&alpha_data, nullptr, 0)) {
                //printf("bpp %d, XD %d, YD %d, Width %d, Height %d, X %d, Y %d, ScanHeight %d\n", (int)BPP, XDest, YDest, Width, Height, X, Y, ScanHeight);
 
                precalc_rgb(Data, alpha_data, ScanWidth, ScanHeight);
@@ -1564,7 +1578,7 @@ void win32RedrawWindow(HWND Window, HDC WindowDC, int X, int Y, int Width,
                auto pOldBitmap = SelectObject(dcMemory, bmp);
                SetDIBitsToDevice(dcMemory, XDest, YDest, Width, Height, X, ScanHeight - (Y + Height), 0, ScanHeight, alpha_data, (BITMAPINFO *)&info, DIB_RGB_COLORS);
 
-               UpdateLayeredWindow(Window, NULL, NULL, &size, dcMemory, &ptSrc, 0, &blend_alpha, ULW_ALPHA);
+               UpdateLayeredWindow(Window, nullptr, nullptr, &size, dcMemory, &ptSrc, 0, &blend_alpha, ULW_ALPHA);
 
                direct_blit = FALSE;
                SelectObject(dcMemory, pOldBitmap);
@@ -1592,7 +1606,7 @@ int winGetPixelFormat(int *redmask, int *greenmask, int *bluemask, int *alphamas
    // WARNING: Calling DescribePixelFormat() causes layered windows to flicker for some bizarre reason.  Therefore this routine has been modified so that DescribePixelFormat() is only called once.
 
    if (!mred) {
-      if (DescribePixelFormat(GetDC(NULL), 1, sizeof(PIXELFORMATDESCRIPTOR), &pfd)) {
+      if (DescribePixelFormat(GetDC(nullptr), 1, sizeof(PIXELFORMATDESCRIPTOR), &pfd)) {
          if (pfd.cRedBits <= 8) mred = formats[pfd.cRedBits] << pfd.cRedShift;
          if (pfd.cGreenBits <= 8) mgreen = formats[pfd.cGreenBits] << pfd.cGreenShift;
          if (pfd.cBlueBits <= 8) mblue = formats[pfd.cBlueBits] << pfd.cBlueShift;
@@ -1619,7 +1633,7 @@ void winGetError(int Error, char *Buffer, int BufferSize)
 
 //********************************************************************************************************************
 
-void winDrawRectangle(HDC hdc, int x, int y, int width, int height, UBYTE red, UBYTE green, UBYTE blue)
+void winDrawRectangle(HDC hdc, int x, int y, int width, int height, uint8_t red, uint8_t green, uint8_t blue)
 {
    RECT rect;
 
@@ -1646,7 +1660,7 @@ int winBlit(HDC dest, int xdest, int ydest, int width, int height, HDC src, int 
 
 void * winCreateCompatibleDC(void)
 {
-   return CreateCompatibleDC(NULL);
+   return CreateCompatibleDC(nullptr);
 }
 
 //********************************************************************************************************************
@@ -1698,7 +1712,7 @@ void winDeleteDC(HDC hdc)
 
 HBITMAP winCreateBitmap(int width, int height, int bpp)
 {
-   return CreateBitmap(width, height, 1, bpp, NULL);
+   return CreateBitmap(width, height, 1, bpp, nullptr);
 }
 
 //********************************************************************************************************************
@@ -1708,7 +1722,7 @@ void winTerminate(void)
    winTerminateClipboard();
 
    if (glScreenClassInit) {
-      UnregisterClass("ScreenClass", GetModuleHandle(NULL));
+      UnregisterClass("ScreenClass", GetModuleHandle(nullptr));
       glScreenClassInit = 0;
    }
 
@@ -1726,7 +1740,7 @@ int winShowWindow(HANDLE window, int Maximise)
 
    if (GetWindowLong(HWND(window), WE_BORDERLESS) == TRUE) {
       // Raw surfaces (composites, borderless windows etc) do not get the focus automatically.
-      // This mirrors the functionality within the Parasol desktop.
+      // This mirrors the functionality within the Kotuku desktop.
 
       result = ShowWindow(HWND(window), Maximise ? SW_SHOWMAXIMIZED : SW_SHOWNOACTIVATE);
    }

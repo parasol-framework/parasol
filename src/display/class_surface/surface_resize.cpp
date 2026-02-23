@@ -27,9 +27,9 @@ static ERR SURFACE_Redimension(extSurface *Self, struct acRedimension *Args)
    // clear of redundant redimension messages.  Seems fine...
 
    if (Self->visible()) { // Visibility check because this sub-routine doesn't play nice with hidden surfaces.
-      UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage)];
-      LONG index = 0;
-      while (ScanMessages(&index, MSGID_ACTION, msgbuffer, sizeof(msgbuffer)) IS ERR::Okay) {
+      uint8_t msgbuffer[sizeof(Message) + sizeof(ActionMessage)];
+      int index = 0;
+      while (ScanMessages(&index, MSGID::ACTION, msgbuffer, sizeof(msgbuffer)) IS ERR::Okay) {
          auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
          if ((action->ActionID IS AC::Redimension) and (action->ObjectID IS Self->UID)) {
             return ERR::Okay|ERR::Notified;
@@ -39,42 +39,42 @@ static ERR SURFACE_Redimension(extSurface *Self, struct acRedimension *Args)
 
    Self->LastRedimension = PreciseTime();
 
-   LONG oldx      = Self->X;
-   LONG oldy      = Self->Y;
-   LONG oldwidth  = Self->Width;
-   LONG oldheight = Self->Height;
+   int oldx      = Self->X;
+   int oldy      = Self->Y;
+   int oldwidth  = Self->Width;
+   int oldheight = Self->Height;
 
    // Extract the new dimensions from the arguments
 
-   LONG newx = F2T(Args->X);
-   LONG newy = F2T(Args->Y);
-   LONG newwidth  = (!Args->Width) ? Self->Width : F2T(Args->Width);
-   LONG newheight = (!Args->Height) ? Self->Height : F2T(Args->Height);
+   int newx = F2T(Args->X);
+   int newy = F2T(Args->Y);
+   int newwidth  = (!Args->Width) ? Self->Width : F2T(Args->Width);
+   int newheight = (!Args->Height) ? Self->Height : F2T(Args->Height);
 
    // Ensure that the requested width does not exceed minimum and maximum values
 
-   if ((Self->MinWidth > 0) and (newwidth < Self->MinWidth + Self->LeftMargin + Self->RightMargin)) {
+   if ((Self->MinWidth > 0) and (newwidth < Self->MinWidth)) {
       if (oldwidth > newwidth) {
-         if (oldwidth > Self->MinWidth + Self->LeftMargin + Self->RightMargin) newwidth = Self->MinWidth + Self->LeftMargin + Self->RightMargin;
+         if (oldwidth > Self->MinWidth) newwidth = Self->MinWidth;
          else newwidth = oldwidth; // Maintain the current width because it is < MinWidth
       }
    }
 
-   if ((newwidth > Self->MaxWidth + Self->LeftMargin + Self->RightMargin)) newwidth = Self->MaxWidth + Self->LeftMargin + Self->RightMargin;
+   if ((Self->MaxWidth > 0) and (newwidth > Self->MaxWidth)) newwidth = Self->MaxWidth;
 
    if (newwidth < 2) newwidth = 2;
 
    // Check requested height against minimum and maximum height values
 
-   if ((Self->MinHeight > 0) and (newheight < Self->MinHeight + Self->TopMargin + Self->BottomMargin)) {
+   if ((Self->MinHeight > 0) and (newheight < Self->MinHeight)) {
       if (oldheight > newheight) {
-         if (oldheight > Self->MinHeight + Self->TopMargin + Self->BottomMargin) newheight = Self->MinHeight + Self->TopMargin + Self->BottomMargin;
+         if (oldheight > Self->MinHeight) newheight = Self->MinHeight;
          else newheight = oldheight;
       }
    }
 
-   if ((Self->MaxHeight > 0) and (newheight > Self->MaxHeight + Self->TopMargin + Self->BottomMargin)) {
-      newheight = Self->MaxHeight + Self->TopMargin + Self->BottomMargin;
+   if ((Self->MaxHeight > 0) and (newheight > Self->MaxHeight)) {
+      newheight = Self->MaxHeight;
    }
 
    if (newheight < 2) newheight = 2;
@@ -85,7 +85,7 @@ static ERR SURFACE_Redimension(extSurface *Self, struct acRedimension *Args)
       return ERR::Okay|ERR::Notified;
    }
 
-   log.traceBranch("%dx%d %dx%d (req. %dx%d, %dx%d) Depth: %.0f $%.8x", newx, newy, newwidth, newheight, F2T(Args->X), F2T(Args->Y), F2T(Args->Width), F2T(Args->Height), Args->Depth, LONG(Self->Flags));
+   log.traceBranch("%dx%d %dx%d (req. %dx%d, %dx%d) Depth: %.0f $%.8x", newx, newy, newwidth, newheight, F2T(Args->X), F2T(Args->Y), F2T(Args->Width), F2T(Args->Height), Args->Depth, int(Self->Flags));
 
    ERR error = resize_layer(Self, newx, newy, newwidth, newheight, newwidth, newheight, F2T(Args->Depth), 0.0, 0);
    return error|ERR::Notified;
@@ -104,7 +104,7 @@ static ERR SURFACE_Resize(extSurface *Self, struct acResize *Args)
    if (((!Args->Width) or (Args->Width IS Self->Width)) and
        ((!Args->Height) or (Args->Height IS Self->Height))) return ERR::Okay|ERR::Notified;
 
-   struct acRedimension redimension = { (DOUBLE)Self->X, (DOUBLE)Self->Y, 0, Args->Width, Args->Height, Args->Depth };
+   struct acRedimension redimension = { (double)Self->X, (double)Self->Y, 0, Args->Width, Args->Height, Args->Depth };
    return Action(AC::Redimension, Self, &redimension)|ERR::Notified;
 }
 
@@ -137,7 +137,7 @@ int Flags: Optional flags.
 -ERRORS-
 Okay
 Args
-Failed
+InvalidState: The surface is not a top-level surface object.
 -END-
 
 *********************************************************************************************************************/
@@ -147,12 +147,12 @@ static ERR SURFACE_SetDisplay(extSurface *Self, struct gfx::SetDisplay *Args)
    pf::Log log;
 
    if ((!Args) or (Args->Width < 0) or (Args->Height < 0)) return log.warning(ERR::Args);
-   if (Self->ParentID) return log.warning(ERR::Failed);
+   if (Self->ParentID) return log.warning(ERR::InvalidState);
 
-   LONG newx = Args->X;
-   LONG newy = Args->Y;
-   LONG newwidth  = (!Args->Width) ? Self->Width : Args->Width;
-   LONG newheight = (!Args->Height) ? Self->Height : Args->Height;
+   int newx = Args->X;
+   int newy = Args->Y;
+   int newwidth  = (!Args->Width) ? Self->Width : Args->Width;
+   int newheight = (!Args->Height) ? Self->Height : Args->Height;
 
    //if ((newx IS Self->X) and (newy IS Self->Y) and (newwidth IS Self->Width) and (newheight IS Self->Height)) return ERR::Okay;
 

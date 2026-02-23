@@ -39,21 +39,21 @@ void SceneRenderer::render_fill(VectorState &State, extVector &Vector, agg::rast
    }
 
    if (Painter.Image) { // Bitmap image fill.  NB: The SVG class creates a standard VectorRectangle and associates an image with it in order to support <image> tags.
-      fill_image(State, Vector.Bounds, Vector.BasePath, Vector.Scene->SampleMethod, 
+      fill_image(State, Vector.Bounds, Vector.BasePath, Vector.Scene->SampleMethod,
          build_fill_transform(Vector, Painter.Image->Units IS VUNIT::USERSPACE, State),
-         mView->vpFixedWidth, mView->vpFixedHeight, *Painter.Image, mRenderBase, Raster, Vector.FillOpacity * State.mOpacity);
+         mView->vpFixedWidth, mView->vpFixedHeight, *((extVectorImage *)Painter.Image), mRenderBase, Raster, Vector.FillOpacity * State.mOpacity);
    }
 
    if (Painter.Gradient) {
       if (auto table = get_fill_gradient_table(Painter, State.mOpacity * Vector.FillOpacity)) {
-         fill_gradient(State, Vector.Bounds, &Vector.BasePath, 
+         fill_gradient(State, Vector.Bounds, &Vector.BasePath,
             build_fill_transform(Vector, Painter.Gradient->Units IS VUNIT::USERSPACE, State),
             mView->vpFixedWidth, mView->vpFixedHeight, *((extVectorGradient *)Painter.Gradient), table, mRenderBase, Raster);
       }
    }
 
    if (Painter.Pattern) {
-      fill_pattern(State, Vector.Bounds, &Vector.BasePath, Vector.Scene->SampleMethod, 
+      fill_pattern(State, Vector.Bounds, &Vector.BasePath, Vector.Scene->SampleMethod,
          build_fill_transform(Vector, Painter.Pattern->Units IS VUNIT::USERSPACE, State),
          mView->vpFixedWidth, mView->vpFixedHeight, *((extVectorPattern *)Painter.Pattern), mRenderBase, Raster);
    }
@@ -66,7 +66,7 @@ void SceneRenderer::render_fill(VectorState &State, extVector &Vector, agg::rast
 
 static void fill_image(VectorState &State, const TClipRectangle<double> &Bounds, agg::path_storage &Path, VSM SampleMethod,
    const agg::trans_affine &Transform, double ViewWidth, double ViewHeight,
-   objVectorImage &Image, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
+   extVectorImage &Image, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster, double Alpha)
 {
    const double c_width  = (Image.Units IS VUNIT::USERSPACE) ? ViewWidth : Bounds.width();
@@ -74,11 +74,12 @@ static void fill_image(VectorState &State, const TClipRectangle<double> &Bounds,
    const double dx = Bounds.left + (dmf::hasScaledX(Image.Dimensions) ? (c_width * Image.X) : Image.X);
    const double dy = Bounds.top + (dmf::hasScaledY(Image.Dimensions) ? (c_height * Image.Y) : Image.Y);
 
-   Path.approximation_scale(Transform.scale());
+   auto t_scale = Transform.scale();
+   Path.approximation_scale(t_scale);
 
    double x_scale, y_scale, x_offset, y_offset;
    calc_aspectratio("fill_image", Image.AspectRatio, c_width, c_height,
-      Image.Bitmap->Width, Image.Bitmap->Height, &x_offset, &y_offset, &x_scale, &y_scale);
+      Image.Bitmap->Width, Image.Bitmap->Height, x_offset, y_offset, x_scale, y_scale);
 
    agg::trans_affine transform;
    transform.scale(x_scale, y_scale);
@@ -86,6 +87,15 @@ static void fill_image(VectorState &State, const TClipRectangle<double> &Bounds,
    transform *= Transform;
 
    transform.invert();
+
+   const double final_x_scale = t_scale * x_scale;
+   const double final_y_scale = t_scale * y_scale;
+
+   if (SampleMethod IS VSM::AUTO) {
+      if ((final_x_scale <= 0.5) or (final_y_scale <= 0.5)) SampleMethod = VSM::BICUBIC;
+      else if ((final_x_scale <= 1.0) or (final_y_scale <= 1.0)) SampleMethod = VSM::SINC;
+      else SampleMethod = VSM::SPLINE16; // Spline works well for enlarging monotone vectors and avoids sharpening artifacts.
+   }
 
    if (!State.mClipStack->empty()) {
       agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
@@ -99,16 +109,13 @@ static void fill_image(VectorState &State, const TClipRectangle<double> &Bounds,
 }
 
 //********************************************************************************************************************
-// Gradient fills
-// The Raster must contain the shape's path.
-// TODO: Support gradient_xy (rounded corner), gradient_sqrt_xy
+// Gradient fills.  // The Raster must contain the shape's path.
 
 static void fill_gradient(VectorState &State, const TClipRectangle<double> &Bounds, agg::path_storage *Path,
    const agg::trans_affine &Transform, double ViewWidth, double ViewHeight, extVectorGradient &Gradient,
-   GRADIENT_TABLE *Table, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
-   agg::rasterizer_scanline_aa<> &Raster)
+   GRADIENT_TABLE *Table, agg::renderer_base<agg::pixfmt_psl> &RenderBase, agg::rasterizer_scanline_aa<> &Raster)
 {
-   constexpr LONG MAX_SPAN = 256;
+   constexpr int MAX_SPAN = 256;
    typedef agg::span_interpolator_linear<> interpolator_type;
    typedef agg::span_allocator<agg::rgba8> span_allocator_type;
    typedef agg::pod_auto_array<agg::rgba8, MAX_SPAN> color_array_type;
@@ -125,11 +132,11 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
 
    Path->approximation_scale(Transform.scale());
 
-   auto render_gradient = [&]<typename Method>(Method SpreadMethod, double Span) {
+   auto render_gradient = [&]<typename Method>(Method SpreadMethod, double SpanA, double SpanB) {
       typedef agg::span_gradient<agg::rgba8, interpolator_type, Method, color_array_type> span_gradient_type;
       typedef agg::renderer_scanline_aa<RENDERER_BASE_TYPE, span_allocator_type, span_gradient_type> renderer_gradient_type;
 
-      span_gradient_type  span_gradient(span_interpolator, SpreadMethod, *Table, 0, Span);
+      span_gradient_type  span_gradient(span_interpolator, SpreadMethod, *Table, SpanA, SpanB);
       renderer_gradient_type solidrender_gradient(RenderBase, span_allocator, span_gradient);
 
       if (State.mClipStack->empty()) {
@@ -158,7 +165,7 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
             const double dy = Gradient.Y2 - Gradient.Y1;
             Gradient.Angle     = atan2(dy, dx);
             Gradient.Length    = sqrt((dx * dx) + (dy * dy));
-            Gradient.CalcAngle = false;        
+            Gradient.CalcAngle = false;
          }
 
          transform.scale(Gradient.Length);
@@ -179,13 +186,13 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
 
          if ((Gradient.Flags & VGF::SCALED_Y2) != VGF::NIL) area.bottom = y_offset + (c_height * Gradient.Y2);
          else area.bottom = y_offset + Gradient.Y2;
-         
+
          if (Gradient.CalcAngle) {
             const double dx = area.width();
             const double dy = area.height();
             Gradient.Angle     = atan2(dy, dx);
             Gradient.Length    = sqrt((dx * dx) + (dy * dy));
-            Gradient.CalcAngle = false;        
+            Gradient.CalcAngle = false;
          }
 
          transform.scale(Gradient.Length / span);
@@ -201,21 +208,21 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
 
       if (Gradient.SpreadMethod IS VSPREAD::REFLECT) {
          agg::gradient_reflect_adaptor<agg::gradient_x> spread_method(gradient_func);
-         render_gradient(spread_method, span);
+         render_gradient(spread_method, 0, span);
       }
       else if (Gradient.SpreadMethod IS VSPREAD::REPEAT) {
          agg::gradient_repeat_adaptor<agg::gradient_x> spread_method(gradient_func);
-         render_gradient(spread_method, span);
+         render_gradient(spread_method, 0, span);
       }
       else if (Gradient.SpreadMethod IS VSPREAD::CLIP) {
          agg::gradient_clip_adaptor<agg::gradient_x> spread_method(gradient_func);
-         render_gradient(spread_method, span);
+         render_gradient(spread_method, 0, span);
       }
-      else render_gradient(gradient_func, span);
+      else render_gradient(gradient_func, 0, span);
    }
    else if (Gradient.Type IS VGT::RADIAL) {
       agg::point_d c, f;
-      
+
       double radial_col_span = Gradient.Radius;
       double focal_radius = Gradient.FocalRadius;
       if (focal_radius <= 0) focal_radius = Gradient.Radius;
@@ -230,7 +237,7 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
 
          if ((Gradient.Flags & (VGF::SCALED_FY|VGF::FIXED_FY)) != VGF::NIL) f.y = Gradient.FocalY;
          else f.y = c.y;
-         
+
          transform.translate(c);
          transform.scale(c_width, c_height);
          apply_transforms(Gradient, transform);
@@ -243,7 +250,7 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
          radial_col_span *= MAX_SPAN;
          transform.scale(MAX_SPAN);
          focal_radius *= MAX_SPAN;
-            
+
          c.x *= MAX_SPAN;
          c.y *= MAX_SPAN;
          f.x *= MAX_SPAN;
@@ -268,7 +275,7 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
             radial_col_span = (ViewWidth + ViewHeight) * radial_col_span * 0.5;
             focal_radius = (ViewWidth + ViewHeight) * focal_radius * 0.5;
          }
-         
+
          transform.translate(c);
          apply_transforms(Gradient, transform);
          transform *= Transform;
@@ -282,23 +289,23 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
 
          if (Gradient.SpreadMethod IS VSPREAD::REFLECT) {
             agg::gradient_reflect_adaptor<agg::gradient_radial> spread_method(gradient_func);
-            render_gradient(spread_method, radial_col_span);
+            render_gradient(spread_method, 0, radial_col_span);
          }
          else if (Gradient.SpreadMethod IS VSPREAD::REPEAT) {
             agg::gradient_repeat_adaptor<agg::gradient_radial> spread_method(gradient_func);
-            render_gradient(spread_method, radial_col_span);
+            render_gradient(spread_method, 0, radial_col_span);
          }
          else if (Gradient.SpreadMethod IS VSPREAD::CLIP) {
             agg::gradient_clip_adaptor<agg::gradient_radial> spread_method(gradient_func);
-            render_gradient(spread_method, radial_col_span);
+            render_gradient(spread_method, 0, radial_col_span);
          }
-         else render_gradient(gradient_func, radial_col_span);
+         else render_gradient(gradient_func, 0, radial_col_span);
       }
       else {
          // Radial gradient with a displaced focal point (uses agg::gradient_radial_focus).
          // The FocalRadius allows the client to alter the border region at which the focal
-         // calculations are being made. 
-         // 
+         // calculations are being made.
+         //
          // SVG requires the focal point to be within the base radius, this can be enforced by setting CONTAIN_FOCAL.
 
          if ((Gradient.Flags & VGF::CONTAIN_FOCAL) != VGF::NIL) {
@@ -317,17 +324,17 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
 
          if (Gradient.SpreadMethod IS VSPREAD::REFLECT) {
             agg::gradient_reflect_adaptor<agg::gradient_radial_focus> spread_method(gradient_func);
-            render_gradient(spread_method, radial_col_span);
+            render_gradient(spread_method, 0, radial_col_span);
          }
          else if (Gradient.SpreadMethod IS VSPREAD::REPEAT) {
             agg::gradient_repeat_adaptor<agg::gradient_radial_focus> spread_method(gradient_func);
-            render_gradient(spread_method, radial_col_span);
+            render_gradient(spread_method, 0, radial_col_span);
          }
          else if (Gradient.SpreadMethod IS VSPREAD::CLIP) {
             agg::gradient_clip_adaptor<agg::gradient_radial_focus> spread_method(gradient_func);
-            render_gradient(spread_method, radial_col_span);
+            render_gradient(spread_method, 0, radial_col_span);
          }
-         else render_gradient(gradient_func, radial_col_span);
+         else render_gradient(gradient_func, 0, radial_col_span);
       }
    }
    else if (Gradient.Type IS VGT::DIAMOND) {
@@ -369,17 +376,17 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
 
       if (Gradient.SpreadMethod IS VSPREAD::REFLECT) {
          agg::gradient_reflect_adaptor<agg::gradient_diamond> spread_method(gradient_func);
-         render_gradient(spread_method, radial_col_span);
+         render_gradient(spread_method, 0, radial_col_span);
       }
       else if (Gradient.SpreadMethod IS VSPREAD::REPEAT) {
          agg::gradient_repeat_adaptor<agg::gradient_diamond> spread_method(gradient_func);
-         render_gradient(spread_method, radial_col_span);
+         render_gradient(spread_method, 0, radial_col_span);
       }
       else if (Gradient.SpreadMethod IS VSPREAD::CLIP) {
          agg::gradient_clip_adaptor<agg::gradient_diamond> spread_method(gradient_func);
-         render_gradient(spread_method, radial_col_span);
+         render_gradient(spread_method, 0, radial_col_span);
       }
-      else render_gradient(gradient_func, radial_col_span);
+      else render_gradient(gradient_func, 0, radial_col_span);
    }
    else if (Gradient.Type IS VGT::CONIC) {
       agg::point_d c;
@@ -417,37 +424,42 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
       transform *= Transform;
       transform.invert();
 
-      render_gradient(gradient_func, radial_col_span);
+      render_gradient(gradient_func, 0, radial_col_span);
    }
    else if (Gradient.Type IS VGT::CONTOUR) {
-      auto x2 = std::clamp(Gradient.X2, 3.0, 1024.0);
+      // TODO: The creation of the contour gradient is expensive, but it can be cached as long as the
+      // path hasn't been modified.
+
+      auto x2 = std::clamp(Gradient.X2, 0.01, 10.0);
       auto x1 = std::clamp(Gradient.X1, 0.0, x2);
 
       agg::gradient_contour gradient_func;
-      gradient_func.frame(0); // This value offsets the gradient from the path, e.g. 10 adds an x,y offset of (10,10)
-      gradient_func.d1(x1);   // x1 and x2 alter the sampling rate and initial offset of the gradient colours
-      gradient_func.d2(x2);
-      gradient_func.contour_create(Path);
+      gradient_func.d1(x1 * 256.0);  // d1 is added to the DT base values
+      gradient_func.d2(x2);  // d2 is a multiplier of the base DT value
+      gradient_func.contour_create(*Path);
 
       transform.translate(Bounds.left, Bounds.top);
       apply_transforms(Gradient, transform);
       transform *= Transform;
       transform.invert();
 
-      typedef agg::span_gradient<agg::rgba8, interpolator_type, agg::gradient_contour, color_array_type> span_gradient_type;
-      typedef agg::renderer_scanline_aa<RENDERER_BASE_TYPE, span_allocator_type, span_gradient_type> renderer_gradient_type;
-      span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, x1, x2);
-      renderer_gradient_type solidrender_gradient(RenderBase, span_allocator, span_gradient);
+      // Regarding repeatable spread methods, bear in mind that the nature of the contour gradient
+      // means that it is always masked by the target path.  To achieve repetition, the client can
+      // use an x2 value > 1.0 to specify the number of colour cycles.
 
-      if (State.mClipStack->empty()) {
-         agg::scanline_u8 scanline;
-         agg::render_scanlines(Raster, scanline, solidrender_gradient);
+      if (Gradient.SpreadMethod IS VSPREAD::REFLECT) {
+         agg::gradient_reflect_adaptor<agg::gradient_contour> spread_method(gradient_func);
+         render_gradient(spread_method, 0, 256.0);
       }
-      else { // Masked gradient
-         agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
-         agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
-         agg::render_scanlines(Raster, masked_scanline, solidrender_gradient);
+      else if (Gradient.SpreadMethod IS VSPREAD::REPEAT) {
+         agg::gradient_repeat_adaptor<agg::gradient_contour> spread_method(gradient_func);
+         render_gradient(spread_method, 0, 256.0);
       }
+      else if (Gradient.SpreadMethod IS VSPREAD::CLIP) {
+         agg::gradient_clip_adaptor<agg::gradient_contour> spread_method(gradient_func);
+         render_gradient(spread_method, 0, 256.0);
+      }
+      else render_gradient(gradient_func, 0, 256.0);
    }
 }
 
@@ -472,7 +484,8 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
    const double y_offset = (Pattern.Units IS VUNIT::USERSPACE) ? 0 : Bounds.top;
    double dx, dy;
 
-   Path->approximation_scale(Transform.scale());
+   auto t_scale = Transform.scale();
+   Path->approximation_scale(t_scale);
 
    if (Pattern.Units IS VUNIT::USERSPACE) { // Use fixed coords in the pattern; equiv. to 'userSpaceOnUse' in SVG
       double target_width, target_height;
@@ -483,7 +496,7 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
       if (dmf::hasScaledHeight(Pattern.Dimensions)) target_height = elem_height * Pattern.Height;
       else if (dmf::hasHeight(Pattern.Dimensions)) target_height = Pattern.Height;
       else target_height = 1;
-      
+
       if (dmf::hasScaledX(Pattern.Dimensions)) dx = x_offset + (elem_width * Pattern.X);
       else if (dmf::hasX(Pattern.Dimensions)) dx = x_offset + Pattern.X;
       else dx = x_offset;
@@ -492,13 +505,13 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
       else if (dmf::hasY(Pattern.Dimensions)) dy = y_offset + Pattern.Y;
       else dy = y_offset;
 
-      LONG page_width = F2T(target_width);
-      LONG page_height = F2T(target_height);
+      int page_width = F2T(target_width);
+      int page_height = F2T(target_height);
 
       if ((page_width != Pattern.Scene->PageWidth) or (page_height != Pattern.Scene->PageHeight)) {
          Pattern.Scene->PageWidth = page_width;
          Pattern.Scene->PageHeight = page_height;
-         mark_dirty(Pattern.Scene->Viewport, RC::ALL);
+         mark_dirty(Pattern.Scene->Viewport, RC::DIRTY);
       }
    }
    else {
@@ -508,7 +521,7 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
 
       double target_width, target_height;
 
-      Pattern.Viewport->vpAspectRatio = ARF::X_MAX|ARF::Y_MAX; // Stretch the 1x1 viewport to match the PageW/H
+      ((extVectorViewport *)Pattern.Viewport)->vpAspectRatio = ARF::X_MAX|ARF::Y_MAX; // Stretch the 1x1 viewport to match the PageW/H
 
       if (Pattern.ContentUnits IS VUNIT::BOUNDING_BOX) {
          Pattern.Viewport->setFields(fl::ViewWidth(Pattern.Width), fl::ViewHeight(Pattern.Height));
@@ -519,15 +532,15 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
 
       if (dmf::hasScaledHeight(Pattern.Dimensions)) target_height = Pattern.Height * elem_height;
       else target_height = Pattern.Height;
-      
-      dx = x_offset + ((elem_width * Pattern.X) * (SCALE_BITMAP ? Transform.sx : 1.0));
-      dy = y_offset + ((elem_height * Pattern.Y) * (SCALE_BITMAP ? Transform.sy : 1.0));
+
+      dx = x_offset + ((elem_width * Pattern.X) * (SCALE_BITMAP ? t_scale : 1.0));
+      dy = y_offset + ((elem_height * Pattern.Y) * (SCALE_BITMAP ? t_scale : 1.0));
 
       // Scale the bitmap so that it matches the final scale on the display.  This requires a matching inverse
       // adjustment when computing the final transform.
 
-      LONG page_width = F2T(target_width * (SCALE_BITMAP ? Transform.sx : 1.0));
-      LONG page_height = F2T(target_height * (SCALE_BITMAP ? Transform.sy : 1.0));
+      int page_width = F2T(target_width * (SCALE_BITMAP ? t_scale : 1.0));
+      int page_height = F2T(target_height * (SCALE_BITMAP ? t_scale : 1.0));
 
       // Mark the bitmap for recomputation if needed.
 
@@ -542,7 +555,7 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
          }
          Pattern.Scene->PageWidth  = page_width;
          Pattern.Scene->PageHeight = page_height;
-         mark_dirty(Pattern.Scene->Viewport, RC::ALL);
+         mark_dirty(Pattern.Scene->Viewport, RC::DIRTY);
       }
    }
 
@@ -553,21 +566,29 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
 
    agg::trans_affine transform;
 
-
-   if (Pattern.Matrices) {
+   if (Pattern.Matrices) { // Client used the 'patternTransform' SVG attribute
       auto &m = *Pattern.Matrices;
       transform.load_all(m.ScaleX, m.ShearY, m.ShearX, m.ScaleY, m.TranslateX + dx, m.TranslateY + dy);
    }
    else transform.translate(dx, dy);
 
-   if ((SCALE_BITMAP) and (Pattern.Units IS VUNIT::BOUNDING_BOX)) {
+   if ((SCALE_BITMAP) and (Pattern.Units != VUNIT::USERSPACE)) {
       // Invert any prior bitmap scaling
-      transform.scale(1.0 / Transform.sx, 1.0 / Transform.sy);
+      transform.scale(1.0 / t_scale, 1.0 / t_scale);
    }
 
-   transform *= Transform;
+   // NB: If the Transform multiplication isn't performed, the pattern tile effectively becomes detached
+   // from the target vector and is drawn as a static background.  Would it a be a useful feature for this
+   // to be available to the client as a toggle?
 
-   transform.invert(); // Required
+   transform *= Transform;
+   transform.invert();
+
+   if (SampleMethod IS VSM::AUTO) {
+      // Using anything more sophisticated than bicubic sampling for tiling is a CPU killer.
+      // If the client requires a different method, they will need to set it explicitly.
+      SampleMethod = VSM::BILINEAR;
+   }
 
    if (!State.mClipStack->empty()) {
       agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);

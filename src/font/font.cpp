@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 This code utilises the work of the FreeType Project under the FreeType License.  For more information please refer to
@@ -35,18 +35,19 @@ Google Fonts Knowledge page: https://fonts.google.com/knowledge
 #include FT_ADVANCES_H
 #include FT_SFNT_NAMES_H
 
-#include <parasol/main.h>
-#include <parasol/modules/xml.h>
-#include <parasol/modules/font.h>
-#include <parasol/modules/display.h>
+#undef FT_INT64  // Avoid Freetype clash
+
+#include <kotuku/main.h>
+#include <kotuku/modules/xml.h>
+#include <kotuku/modules/font.h>
+#include <kotuku/modules/display.h>
 
 #include <sstream>
 #include <array>
 #include <math.h>
 #include <wchar.h>
-#include <parasol/strings.hpp>
+#include <kotuku/strings.hpp>
 #include "../link/unicode.h"
-
 
 using namespace pf;
 
@@ -54,7 +55,7 @@ using namespace pf;
 // This table determines what ASCII characters are treated as white-space for word-wrapping purposes.  You'll need to
 // refer to an ASCII table to see what is going on here.
 
-static const UBYTE glWrapBreaks[256] = {
+static const uint8_t glWrapBreaks[256] = {
    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 0x0f
    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 0x1f
    1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, // 0x2f
@@ -75,31 +76,31 @@ static const UBYTE glWrapBreaks[256] = {
 
 //********************************************************************************************************************
 
-OBJECTPTR modFont = NULL;
+OBJECTPTR modFont = nullptr;
 
 JUMPTABLE_DISPLAY
 JUMPTABLE_CORE
 
-static OBJECTPTR clFont = NULL;
-static OBJECTPTR modDisplay = NULL;
-static FT_Library glFTLibrary = NULL;
+static OBJECTPTR clFont = nullptr;
+static OBJECTPTR modDisplay = nullptr;
+static FT_Library glFTLibrary = nullptr;
 
 #include "font_structs.h"
 
 class extFont : public objFont {
    public:
-   UBYTE *prvData;
+   uint8_t *prvData;
    std::string prvBuffer;
    struct FontCharacter *prvChar;
    class BitmapCache *BmpCache;
-   LONG prvLineCount;
-   LONG prvStrWidth;
-   WORD prvBitmapHeight;
-   WORD prvLineCountCR;
+   int prvLineCount;
+   int prvStrWidth;
+   int16_t prvBitmapHeight;
+   int16_t prvLineCountCR;
    char prvEscape[2];
    char prvFace[32];
    char prvStyle[20];
-   UBYTE prvDefaultChar;
+   uint8_t prvDefaultChar;
 };
 
 #include "font_def.c"
@@ -107,18 +108,18 @@ class extFont : public objFont {
 #include "font_bitmap.cpp"
 
 static ERR add_font_class(void);
-static LONG getutf8(CSTRING, ULONG *);
+static int getutf8(CSTRING, uint32_t *);
 static void scan_truetype_folder(objConfig *);
 static void scan_fixed_folder(objConfig *);
-static ERR analyse_bmp_font(CSTRING, winfnt_header_fields *, std::string &, std::vector<UWORD> &);
-static void string_size(extFont *, CSTRING, LONG, LONG, LONG *, LONG *);
+static ERR analyse_bmp_font(CSTRING, winfnt_header_fields *, std::string &, std::vector<uint16_t> &);
+static void string_size(extFont *, CSTRING, int, int, int *, int *);
 
 //********************************************************************************************************************
 // Return the first unicode value from a given string address.
 
-static LONG getutf8(CSTRING Value, ULONG *Unicode)
+static int getutf8(CSTRING Value, uint32_t *Unicode)
 {
-   LONG i, len, code;
+   int i, len, code;
 
    if ((*Value & 0x80) != 0x80) {
       if (Unicode) *Unicode = *Value;
@@ -151,7 +152,10 @@ static LONG getutf8(CSTRING Value, ULONG *Unicode)
    }
 
    for (i=1; i < len; ++i) {
-      if ((Value[i] & 0xc0) != 0x80) code = -1;
+      if (!Value[i] or ((Value[i] & 0xc0) != 0x80)) {
+         code = -1;
+         break;
+      }
       code <<= 6;
       code |= Value[i] & 0x3f;
    }
@@ -170,10 +174,10 @@ static LONG getutf8(CSTRING Value, ULONG *Unicode)
 // Returns the global point size for font scaling.  This is set to 10 by default, but the user can change the setting
 // in the interface style values.
 
-static DOUBLE glDefaultPoint = 10;
+static double glDefaultPoint = 10;
 static bool glPointSet = false;
 
-static DOUBLE global_point_size(void)
+static double global_point_size(void)
 {
    if (!glPointSet) {
       pf::Log log(__FUNCTION__);
@@ -184,7 +188,7 @@ static DOUBLE global_point_size(void)
             char pointsize[20];
             glPointSet = true;
             if (acGetKey(style.obj, "/interface/@fontsize", pointsize, sizeof(pointsize)) IS ERR::Okay) {
-               glDefaultPoint = strtod(pointsize, NULL);
+               glDefaultPoint = strtod(pointsize, nullptr);
                if (glDefaultPoint < 6) glDefaultPoint = 6;
                else if (glDefaultPoint > 80) glDefaultPoint = 80;
                log.msg("Global font size is %.1f.", glDefaultPoint);
@@ -203,7 +207,7 @@ inline void calc_lines(extFont *Self)
 {
    if (Self->String) {
       if (Self->WrapEdge > 0) {
-         string_size(Self, Self->String, -1, Self->WrapEdge - Self->X, NULL, &Self->prvLineCount);
+         string_size(Self, Self->String, -1, Self->WrapEdge - Self->X, nullptr, &Self->prvLineCount);
       }
       else Self->prvLineCount = Self->prvLineCountCR;
    }
@@ -212,11 +216,11 @@ inline void calc_lines(extFont *Self)
 
 //********************************************************************************************************************
 
-static void string_size(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LONG *Width, LONG *Rows)
+static void string_size(extFont *Font, CSTRING String, int Chars, int Wrap, int *Width, int *Rows)
 {
-   ULONG unicode;
-   WORD rowcount, wordwidth, lastword, tabwidth, charwidth;
-   UBYTE line_abort, pchar;
+   uint32_t unicode;
+   int16_t rowcount, wordwidth, lastword, tabwidth, charwidth;
+   uint8_t line_abort, pchar;
 
    if ((!Font) or (!String)) return;
    if (!Font->initialised()) return;
@@ -235,11 +239,11 @@ static void string_size(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LO
    //log.msg("StringSize: %.10s, Wrap %d, Chars %d, Abort: %d", String, Wrap, Chars, line_abort);
 
    CSTRING start  = String;
-   LONG x         = 0;
-   LONG prevglyph = 0;
-   LONG longest   = 0;
-   LONG charcount = 0;
-   LONG wordindex = 0;
+   int x         = 0;
+   int prevglyph = 0;
+   int longest   = 0;
+   int charcount = 0;
+   int wordindex = 0;
    rowcount = line_abort ? 0 : 1;
    while ((*String) and (charcount < Chars)) {
       lastword = x;
@@ -271,27 +275,27 @@ static void string_size(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LO
 
       // Calculate the width of the discovered word
 
-      wordindex = LONG(String - start);
+      wordindex = int(String - start);
       wordwidth = 0;
       charwidth = 0;
 
       while (charcount < Chars) {
-         LONG charlen = getutf8(String, &unicode);
+         int charlen = getutf8(String, &unicode);
 
          if (Font->FixedWidth > 0) charwidth = Font->FixedWidth;
          else if (unicode < 256) charwidth = Font->prvChar[unicode].Advance * Font->GlyphSpacing;
-         else charwidth = Font->prvChar[(LONG)Font->prvDefaultChar].Advance * Font->GlyphSpacing;
+         else charwidth = Font->prvChar[(int)Font->prvDefaultChar].Advance * Font->GlyphSpacing;
 
          if ((!x) and (x+wordwidth+charwidth >= Wrap)) {
             // This is the first word of the line and it exceeds the boundary, so we have to split it.
 
             lastword = wordwidth;
             wordwidth += charwidth; // This is just to ensure that a break occurs
-            wordindex = (LONG)(String - start);
+            wordindex = (int)(String - start);
             break;
          }
          else {
-            pchar = glWrapBreaks[(UBYTE)(*String)];
+            pchar = glWrapBreaks[(uint8_t)(*String)];
             wordwidth += charwidth;
             String += charlen;
             charcount++;
@@ -321,7 +325,7 @@ static void string_size(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LO
    if (x > longest) longest = x;
 
    if (Rows) {
-      if (line_abort) *Rows = LONG(String - start);
+      if (line_abort) *Rows = int(String - start);
       else *Rows = rowcount;
    }
 
@@ -330,7 +334,7 @@ static void string_size(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LO
 
 //********************************************************************************************************************
 
-static objConfig *glConfig = NULL; // Font database
+static objConfig *glConfig = nullptr; // Font database
 
 static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
@@ -338,7 +342,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    CoreBase = argCoreBase;
 
-   argModule->getPtr(FID_Root, &modFont);
+   argModule->get(FID_Root, modFont);
 
    if (objModule::load("display", &modDisplay, &DisplayBase) != ERR::Okay) return ERR::LoadModule;
 
@@ -351,7 +355,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       if (refresh) fnt::RefreshFonts();
 
       ConfigGroups *groups;
-      if (not ((glConfig->getPtr(FID_Data, &groups) IS ERR::Okay) and (!groups->empty()))) {
+      if (not ((glConfig->get(FID_Data, groups) IS ERR::Okay) and (!groups->empty()))) {
          log.error("Failed to build a database of valid fonts.");
          return ERR::Failed;
       }
@@ -376,11 +380,11 @@ static ERR MODOpen(OBJECTPTR Module)
 
 static ERR MODExpunge(void)
 {
-   if (glCacheTimer) { UpdateTimer(glCacheTimer, 0);  glCacheTimer = NULL; }
-   if (glFTLibrary)  { FT_Done_FreeType(glFTLibrary); glFTLibrary  = NULL; }
-   if (glConfig)     { FreeResource(glConfig);        glConfig     = NULL; }
-   if (clFont)       { FreeResource(clFont);          clFont       = NULL; }
-   if (modDisplay)   { FreeResource(modDisplay);      modDisplay   = NULL; }
+   if (glCacheTimer) { UpdateTimer(glCacheTimer, 0);  glCacheTimer = nullptr; }
+   if (glFTLibrary)  { FT_Done_FreeType(glFTLibrary); glFTLibrary  = nullptr; }
+   if (glConfig)     { FreeResource(glConfig);        glConfig     = nullptr; }
+   if (clFont)       { FreeResource(clFont);          clFont       = nullptr; }
+   if (modDisplay)   { FreeResource(modDisplay);      modDisplay   = nullptr; }
    glBitmapCache.clear();
    return ERR::Okay;
 }
@@ -406,12 +410,12 @@ int: The pixel width of the character will be returned.
 
 *********************************************************************************************************************/
 
-LONG CharWidth(objFont *Font, ULONG Char)
+int CharWidth(objFont *Font, uint32_t Char)
 {
    auto font = (extFont *)Font;
    if (Font->FixedWidth > 0) return Font->FixedWidth;
    else if ((Char < 256) and (font->prvChar)) return font->prvChar[Char].Advance;
-   else return font->prvChar ? font->prvChar[(LONG)font->prvDefaultChar].Advance : 0;
+   else return font->prvChar ? font->prvChar[(int)font->prvDefaultChar].Advance : 0;
 }
 
 /*********************************************************************************************************************
@@ -447,16 +451,16 @@ ERR GetList(FontList **Result)
 
    size_t size = 0;
    ConfigGroups *groups;
-   if (glConfig->getPtr(FID_Data, &groups) IS ERR::Okay) {
+   if (glConfig->get(FID_Data, groups) IS ERR::Okay) {
       for (auto & [group, keys] : groups[0]) {
          size += sizeof(FontList) + keys["Name"].size() + 1 + keys["Styles"].size() + 1 + (keys["Points"].size()*4) + 1;
          if (keys.contains("Alias")) size += keys["Alias"].size() + 1;
          if (keys.contains("Axes")) size += keys["Axes"].size() + 1;
       }
 
-      FontList *list, *last_list = NULL;
+      FontList *list, *last_list = nullptr;
       if (AllocMemory(size, MEM::DATA, &list) IS ERR::Okay) {
-         STRING buffer = (STRING)(list + groups->size());
+         auto buffer = (STRING)(list + groups->size());
          *Result = list;
 
          for (auto & [group, keys] : groups[0]) {
@@ -503,19 +507,19 @@ ERR GetList(FontList **Result)
                   buffer += strcopy(keys["Axes"], buffer) + 1;
                }
 
-               list->Points = NULL;
+               list->Points = nullptr;
                if (keys.contains("Points")) {
                   auto fontpoints = std::string_view(keys["Points"]);
                   if (!fontpoints.empty()) {
-                     list->Points = (LONG *)buffer;
+                     list->Points = (int *)buffer;
                      std::size_t i = 0;
-                     for (WORD j=0; i != std::string::npos; j++) {
-                        ((LONG *)buffer)[0] = svtonum<LONG>(fontpoints);
-                        buffer += sizeof(LONG);
+                     for (int16_t j=0; i != std::string::npos; j++) {
+                        ((int *)buffer)[0] = svtonum<int>(fontpoints);
+                        buffer += sizeof(int);
                         if (i = fontpoints.find(','); i != std::string::npos) fontpoints.remove_prefix(i+1);
                      }
-                     ((LONG *)buffer)[0] = 0;
-                     buffer += sizeof(LONG);
+                     ((int *)buffer)[0] = 0;
+                     buffer += sizeof(int);
                   }
                }
             }
@@ -523,7 +527,7 @@ ERR GetList(FontList **Result)
             list++;
          }
 
-         if (last_list) last_list->Next = NULL;
+         if (last_list) last_list->Next = nullptr;
 
          return ERR::Okay;
       }
@@ -553,7 +557,7 @@ int: The pixel width of the string is returned - this will be zero if there was 
 
 *********************************************************************************************************************/
 
-LONG StringWidth(objFont *Font, CSTRING String, LONG Chars)
+int StringWidth(objFont *Font, CSTRING String, int Chars)
 {
    if ((!Font) or (!String)) return 0;
    if (!Font->initialised()) return 0;
@@ -562,9 +566,9 @@ LONG StringWidth(objFont *Font, CSTRING String, LONG Chars)
    CSTRING str = String;
    if (Chars < 0) Chars = 0x7fffffff;
 
-   LONG len    = 0;
-   LONG widest = 0;
-   LONG whitespace = 0;
+   int len    = 0;
+   int widest = 0;
+   int whitespace = 0;
    while ((*str) and (Chars > 0)) {
       if (*str IS '\n') {
          if (widest < len) widest = len - whitespace;
@@ -574,25 +578,25 @@ LONG StringWidth(objFont *Font, CSTRING String, LONG Chars)
          whitespace = 0;
       }
       else if (*str IS '\t') {
-         WORD tabwidth = (font->prvChar[' '].Advance * Font->GlyphSpacing) * Font->TabSize;
+         int16_t tabwidth = (font->prvChar[' '].Advance * Font->GlyphSpacing) * Font->TabSize;
          if (tabwidth) len = pf::roundup(len, tabwidth);
          str++;
          Chars--;
          whitespace = 0;
       }
       else {
-         ULONG unicode;
+         uint32_t unicode;
          str += getutf8(str, &unicode);
          Chars--;
 
-         LONG advance;
+         int advance;
          if (Font->FixedWidth > 0) advance = Font->FixedWidth;
-         else if ((unicode < 256) and (font->prvChar[unicode].Advance)) {
+         else if ((unicode < 256) and (font->prvChar) and (font->prvChar[unicode].Advance)) {
             advance = font->prvChar[unicode].Advance;
          }
-         else advance = font->prvChar[(LONG)font->prvDefaultChar].Advance;
+         else advance = font->prvChar[(int)font->prvDefaultChar].Advance;
 
-         LONG final_advance = advance * Font->GlyphSpacing;
+         int final_advance = advance * Font->GlyphSpacing;
          len += final_advance;
          whitespace = final_advance - advance;
       }
@@ -639,7 +643,7 @@ ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta)
    if (not config.granted()) return log.warning(ERR::AccessObject);
 
    ConfigGroups *groups;
-   if (glConfig->getPtr(FID_Data, &groups) != ERR::Okay) return ERR::Search;
+   if (glConfig->get(FID_Data, groups) != ERR::Okay) return ERR::Search;
 
    auto get_meta = [](ConfigKeys &Group) {
       auto meta = FMETA::NIL;
@@ -660,7 +664,7 @@ ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta)
       else if (!iequals("Regular", Style)) {
          if (Keys.contains("Regular")) return strclone(Keys["Regular"]);
       }
-      return STRING(NULL);
+      return STRING(nullptr);
    };
 
    std::string style_name(Style);
@@ -724,7 +728,7 @@ ERR RefreshFonts(void)
    scan_fixed_folder(glConfig);
    scan_truetype_folder(glConfig);
 
-   glConfig->sortByKey(NULL, false); // Sort the font names into alphabetical order
+   glConfig->sortByKey(nullptr, false); // Sort the font names into alphabetical order
 
    // Create a style list for each font, e.g.
    //
@@ -733,7 +737,7 @@ ERR RefreshFonts(void)
    //    Styles = Bold,Bold Italic,Italic,Regular
 
    ConfigGroups *groups;
-   if (glConfig->getPtr(FID_Data, &groups) IS ERR::Okay) {
+   if (glConfig->get(FID_Data, groups) IS ERR::Okay) {
       for (auto & [group, keys] : *groups) {
          std::list <std::string> styles;
          for (auto & [k, v] : keys) {
@@ -742,7 +746,7 @@ ERR RefreshFonts(void)
 
          styles.sort();
          std::ostringstream style_list;
-         for (LONG i=0; not styles.empty(); i++) {
+         for (int i=0; not styles.empty(); i++) {
             if (i) style_list << ",";
             style_list << styles.front();
             styles.pop_front();
@@ -796,7 +800,7 @@ ERR ResolveFamilyName(CSTRING String, CSTRING *Result)
    if (not config.granted()) return log.warning(ERR::AccessObject);
 
    ConfigGroups *groups;
-   if (glConfig->getPtr(FID_Data, &groups) != ERR::Okay) return log.warning(ERR::GetField);
+   if (glConfig->get(FID_Data, groups) != ERR::Okay) return log.warning(ERR::GetField);
 
    std::vector<std::string> names;
    pf::split(std::string(String), std::back_inserter(names));
@@ -909,16 +913,16 @@ static void scan_truetype_folder(objConfig *Config)
                         char buffer[100];
                         auto name_table_size = FT_Get_Sfnt_Name_Count(ftface);
                         for (FT_UInt s=0; (s < mvar->num_namedstyles); s++) {
-                           for (LONG n=LONG(name_table_size)-1; n >= 0; n--) {
+                           for (int n=int(name_table_size)-1; n >= 0; n--) {
                               FT_SfntName sft_name;
                               if (!FT_Get_Sfnt_Name(ftface, n, &sft_name)) {
                                  if (sft_name.name_id IS mvar->namedstyle[s].strid) {
                                     // Decode UTF16 Big Endian
-                                    LONG out = 0;
-                                    auto str = (UWORD *)sft_name.string;
-                                    UWORD prev_unicode = 0;
+                                    int out = 0;
+                                    auto str = (uint16_t *)sft_name.string;
+                                    uint16_t prev_unicode = 0;
                                     for (FT_UInt i=0; (i < sft_name.string_len>>1) and (out < std::ssize(buffer)-8); i++) {
-                                       UWORD unicode = (str[i]>>8) | (UBYTE(str[i])<<8);
+                                       uint16_t unicode = (str[i]>>8) | (uint8_t(str[i])<<8);
                                        if ((unicode >= 'A') and (unicode <= 'Z')) {
                                           if ((i > 0) and (prev_unicode >= 'a') and (prev_unicode <= 'z')) {
                                              buffer[out++] = ' ';
@@ -991,7 +995,7 @@ static void scan_fixed_folder(objConfig *Config)
          auto src = location.c_str();
 
          winfnt_header_fields header;
-         std::vector<UWORD> points;
+         std::vector<uint16_t> points;
          std::string facename;
          if (analyse_bmp_font(src, &header, facename, points) IS ERR::Okay) {
             log.detail("Detected font file \"%s\", name: %s", src, facename.c_str());
@@ -1063,13 +1067,13 @@ static void scan_fixed_folder(objConfig *Config)
 
 //********************************************************************************************************************
 
-static ERR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::string &FaceName, std::vector<UWORD> &Points)
+static ERR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::string &FaceName, std::vector<uint16_t> &Points)
 {
    pf::Log log(__FUNCTION__);
    winmz_header_fields mz_header;
    winne_header_fields ne_header;
-   LONG i, res_offset, font_offset;
-   UWORD size_shift, font_count, count;
+   int i, res_offset, font_offset;
+   uint16_t size_shift, font_count, count;
    char face[50];
 
    if ((!Path) or (!Header)) return ERR::NullArgs;
@@ -1090,12 +1094,12 @@ static ERR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::str
             size_shift  = 0;
             fl::ReadLE(*file, &size_shift);
 
-            UWORD type_id = 0;
+            uint16_t type_id = 0;
             for (fl::ReadLE(*file, &type_id); type_id; fl::ReadLE(*file, &type_id)) {
                if (fl::ReadLE(*file, &count) IS ERR::Okay) {
                   if (type_id IS 0x8008) {
                      font_count  = count;
-                     file->get(FID_Position, &font_offset);
+                     file->get(FID_Position, font_offset);
                      font_offset = font_offset + 4;
                      break;
                   }
@@ -1116,8 +1120,8 @@ static ERR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::str
 
                // Get the offset and size of each font entry
 
-               for (LONG i=0; i < font_count; i++) {
-                  UWORD offset = 0, size = 0;
+               for (int i=0; i < font_count; i++) {
+                  uint16_t offset = 0, size = 0;
                   fl::ReadLE(*file, &offset);
                   fl::ReadLE(*file, &size);
                   fonts[i].Offset = offset<<size_shift;
@@ -1159,7 +1163,8 @@ static ERR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::str
                file->seekStart(fonts[0].Offset + Header->face_name_offset);
 
                for (i=0; (size_t)i < sizeof(face)-1; i++) {
-                  if ((file->read(face+i, 1) != ERR::Okay) or (!face[i])) break;
+                  ERR result = file->read(face+i, 1);
+                  if ((result != ERR::Okay) or (!face[i])) break;
                }
                face[i] = 0;
                FaceName = face;
@@ -1184,5 +1189,5 @@ static STRUCTS glStructures = {
    { "FontList", sizeof(FontList) }
 };
 
-PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MOD_IDL, &glStructures)
+KOTUKU_MOD(MODInit, nullptr, MODOpen, MODExpunge, nullptr, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_font_module() { return &ModHeader; }

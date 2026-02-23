@@ -1,0 +1,37 @@
+#include <windows.h>
+
+// Application Icon
+500                     ICON    DISCARDABLE     "kotuku.ico"
+
+// Application Manifest
+1                       RT_MANIFEST             "kotuku.manifest"
+
+// Version Information
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     @KOTUKU_VERSION_MAJOR@,@KOTUKU_VERSION_MINOR@,@KOTUKU_VERSION_PATCH@,0
+PRODUCTVERSION  @KOTUKU_VERSION_MAJOR@,@KOTUKU_VERSION_MINOR@,@KOTUKU_VERSION_PATCH@,0
+FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
+FILEFLAGS       0x0L
+FILEOS          VOS__WINDOWS32
+FILETYPE        VFT_APP
+FILESUBTYPE     VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0" // US English, Unicode
+        BEGIN
+            VALUE "CompanyName",      "Kotuku Open Group"
+            VALUE "FileDescription",  "Origo Launcher"
+            VALUE "FileVersion",      "@KOTUKU_VERSION_MAJOR@.@KOTUKU_VERSION_MINOR@.@KOTUKU_VERSION_PATCH@.0"
+            VALUE "InternalName",     "origo"
+            VALUE "LegalCopyright",   "Copyright (C) @KOTUKU_COPYRIGHT_YEAR@ Paul Manias"
+            VALUE "OriginalFilename", "origo.exe"
+            VALUE "ProductName",      "Origo"
+            VALUE "ProductVersion",   "@KOTUKU_VERSION_MAJOR@.@KOTUKU_VERSION_MINOR@.@KOTUKU_VERSION_PATCH@.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200 // US English, Unicode
+    END
+END

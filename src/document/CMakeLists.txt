@@ -3,15 +3,24 @@
 set (MOD "document")
 set (INC_MOD_DOCUMENT TRUE PARENT_SCOPE)
 
-idl_gen ("defs/${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h" APPEND_IDL "defs/module_def.c"
+idl_gen ("defs/${MOD}.tdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h" APPEND_IDL "defs/module_def.c"
    FILES "${MOD}.cpp"
    ARGS "output-defs=defs/module_def.c" "output-proto=defs/module_def.c" "prototypes=static")
 
-idl_gen ("defs/hashes.fdl" NAME ${MOD}_hashes OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/defs/hashes.h")
+idl_gen ("defs/hashes.tdl" NAME ${MOD}_hashes OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/defs/hashes.h")
 
 add_library (${MOD})
 target_link_libraries (${MOD} PUBLIC unicode)
-set_module_defaults (${MOD})
+set_module_defaults (${MOD} "Doc")
 target_sources (${MOD} PRIVATE "${MOD}.cpp")
 
-flute_test (doc_output "tests/test-doc.fluid")
+# Enable precompiled headers for the document module to speed up compilation
+target_precompile_headers(${MOD} PRIVATE
+   <kotuku/main.h>
+   <kotuku/modules/xml.h>
+   <kotuku/modules/document.h>
+   <kotuku/modules/font.h>
+   <kotuku/modules/display.h>
+   <kotuku/modules/svg.h>)
+
+flute_test (doc_output "tests/test_doc.tiri")

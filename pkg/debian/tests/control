@@ -1,0 +1,15 @@
+Tests: basic-functionality
+Depends: @, build-essential
+Restrictions: allow-stderr
+
+Tests: version-check
+Depends: @
+Restrictions: allow-stderr
+
+Tests: config-validation
+Depends: @
+Restrictions: allow-stderr
+
+Tests: library-dependencies
+Depends: @, libc-bin
+Restrictions: allow-stderr

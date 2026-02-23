@@ -17,13 +17,13 @@ static std::optional<std::string> true_path(CSTRING Path)
 #ifdef _WIN32
    std::string buffer;
    buffer.resize(256);
-   if (auto size = winGetFullPathName(Path, buffer.size(), buffer.data(), NULL); size > 0) {
+   if (auto size = winGetFullPathName(Path, buffer.size(), buffer.data(), nullptr); size > 0) {
       buffer.resize(size);
       return std::make_optional<std::string>(buffer);
    }
    else return std::nullopt;
 #else
-   if (char *rp = realpath(Path, NULL)) {
+   if (char *rp = realpath(Path, nullptr)) {
       std::string p(rp);
       free(rp);
       return std::make_optional<std::string>(p);
@@ -53,7 +53,7 @@ can be problematic if the intent is to create a new file, in which case `RSF::NO
 When checking the file location, ResolvePath() requires an exact match to the provided file name.  If the file
 name can be approximated (i.e. the file extension can be ignored) then use the `RSF::APPROXIMATE` flag.
 
-To resolve the location of executable programs on Unix systems, use the `RSF::PATH` flag.  This uses the `PATH` 
+To resolve the location of executable programs on Unix systems, use the `RSF::PATH` flag.  This uses the `PATH`
 environment variable to resolve the file name specified in the `Path` parameter.
 
 The resolved path will be copied to the `std::string` provided in the `Result` parameter.  This will overwrite any
@@ -67,30 +67,30 @@ virtual driver does not support this check.  This is common when working with ne
 -INPUT-
 cpp(strview) Path: The path to be resolved.
 int(RSF) Flags: Optional flags.
-&cpp(str) Result: Must point to a `std::string` variable so that the resolved path can be stored.  If `NULL`, ResolvePath() will work as normal and return a valid error code without the result string.
+&cpp(str) Result: Must point to a `std::string` variable so that the resolved path can be stored.  If `NULL`, ResolvePath() will work as normal and return a valid error code without the result string.  The value is unchanged if the error code is not `ERR::Okay`.
 
 -ERRORS-
 Okay:        The `Path` was resolved.
 NullArgs:    Invalid parameters were specified.
-AllocMemory: The result string could not be allocated.
-LockFailed:
 Search:       The given volume does not exist.
 FileNotFound: The path was resolved, but the referenced file or folder does not exist (use `NO_FILE_CHECK` to avoid this error code).
 Loop:         The volume refers back to itself.
+VirtualVolume: The path refers to a virtual volume (use `CHECK_VIRTUAL` to return `Okay` instead).
+InvalidPath:  The path is malformed.
 
 -END-
 
 *********************************************************************************************************************/
 
-static ERR resolve(std::string &, std::string &, RSF);
+static ERR resolve(const std::string &, std::string &, RSF);
 static ERR resolve_path_env(std::string_view, std::string *);
-static THREADVAR bool tlClassLoaded;
+static thread_local bool tlClassLoaded;
 
 ERR ResolvePath(const std::string_view &pPath, RSF Flags, std::string *Result)
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("%s, Flags: $%.8x", pPath.data(), LONG(Flags));
+   log.traceBranch("%s, Flags: $%.8x", pPath.data(), int(Flags));
 
    tlClassLoaded = false;
 
@@ -166,15 +166,15 @@ ERR ResolvePath(const std::string_view &pPath, RSF Flags, std::string *Result)
 
    // Keep looping until the volume is resolved
 
-   LONG loop;
-   auto error = ERR::Failed;
+   int loop;
+   auto error = ERR::ResolvePath;
    for (loop=10; loop > 0; loop--) {
       error = resolve(src, dest, Flags);
 
       if (error IS ERR::VirtualVolume) {
-         log.trace("Detected virtual volume '%s'", dest);
+         log.trace("Detected virtual volume '%s'", dest.c_str());
 
-         // If RSF::CHECK_VIRTUAL is set, return ERR::VirtualVolume for reserved volume names.
+         // If RSF::CHECK_VIRTUAL is set, return ERR::VirtualVolume for reserved volume names, otherwise Okay.
 
          if ((Flags & RSF::CHECK_VIRTUAL) IS RSF::NIL) error = ERR::Okay;
 
@@ -207,7 +207,7 @@ ERR ResolvePath(const std::string_view &pPath, RSF Flags, std::string *Result)
             #endif
                // Copy the destination to the source buffer and repeat the resolution process.
 
-               if ((Flags & RSF::NO_DEEP_SCAN) != RSF::NIL) return ERR::Failed;
+               if ((Flags & RSF::NO_DEEP_SCAN) != RSF::NIL) return ERR::Search;
                src = dest;
                continue; // Keep resolving
             }
@@ -224,7 +224,7 @@ ERR ResolvePath(const std::string_view &pPath, RSF Flags, std::string *Result)
    } // for()
 
    if (loop > 0) { // Note that loop starts at 10 and decrements to zero
-      if ((error IS ERR::Okay) and dest.empty()) return ERR::Failed;
+      if ((error IS ERR::Okay) and dest.empty()) return ERR::InvalidPath;
       return error;
    }
    else return ERR::Loop;
@@ -320,11 +320,13 @@ static ERR resolve_path_env(std::string_view RelativePath, std::string *Result)
 ** Flags   - Optional RSF flags.
 */
 
-static ERR resolve_object_path(std::string &, std::string &, std::string &);
+static ERR resolve_object_path(const std::string &, const std::string &, std::string &);
 
-static ERR resolve(std::string &Source, std::string &Dest, RSF Flags)
+static ERR resolve(const std::string &Source, std::string &Dest, RSF Flags)
 {
    pf::Log log("ResolvePath");
+
+   if (&Source IS &Dest) return log.warning(ERR::SanityCheckFailed);
 
    if (get_virtual(Source)) {
       Dest.assign(Source);
@@ -352,7 +354,7 @@ static ERR resolve(std::string &Source, std::string &Dest, RSF Flags)
       return resolve_object_path(fullpath, Source, Dest);
    }
 
-   log.traceBranch("%s, Resolved Path: %s, Flags: $%.8x", Source.c_str(), fullpath.c_str(), LONG(Flags));
+   log.traceBranch("%s, Resolved Path: %s, Flags: $%.8x", Source.c_str(), fullpath.c_str(), int(Flags));
 
    auto path = std::string_view(fullpath);
 
@@ -365,7 +367,7 @@ static ERR resolve(std::string &Source, std::string &Dest, RSF Flags)
       if (get_virtual(Source)) return ERR::VirtualVolume;
 
       if (tlClassLoaded) { // Already attempted to load the module on a previous occasion - we must fail
-         return ERR::Failed;
+         return ERR::LoadModule;
       }
 
       // An external reference can refer to a module for auto-loading (preferred) or a class name.
@@ -393,7 +395,7 @@ static ERR resolve(std::string &Source, std::string &Dest, RSF Flags)
       while ((Source[j] IS '/') or (Source[j] IS '\\')) j++;
       Dest.append(Source, j);
 
-      // Fully resolve the path to a system folder before testing it (e.g. "scripts:" to "parasol:scripts/" to "c:\parasol\scripts\" will be resolved through this recursion).
+      // Fully resolve the path to a system folder before testing it (e.g. "scripts:" to "kotuku:scripts/" to "c:\kotuku\scripts\" will be resolved through this recursion).
 
       #ifdef _WIN32
          if ((Dest[1] IS ':') and ((Dest[2] IS '/') or (Dest[2] IS '\\'))) j = std::string::npos;
@@ -404,7 +406,7 @@ static ERR resolve(std::string &Source, std::string &Dest, RSF Flags)
          j = Dest.find_first_of(":/");
       #endif
 
-      LONG loop;
+      int loop;
       auto error = ERR(-1);
       for (loop=10; loop > 0; loop--) {
          if ((j != std::string::npos) and (j > 1) and (Dest[j] IS ':')) { // Remaining ':' indicates more path resolution is required.
@@ -448,10 +450,10 @@ static ERR resolve(std::string &Source, std::string &Dest, RSF Flags)
 // If the path is merely ":" or resolve_virtual() returns ERR::VirtualVolume, return the VirtualVolume error code to
 // indicate that no further resolution is required.
 
-static ERR resolve_object_path(std::string &Path, std::string &Source, std::string &Dest)
+static ERR resolve_object_path(const std::string &Path, const std::string &Source, std::string &Dest)
 {
    pf::Log log("ResolvePath");
-   ERR (*resolve_virtual)(OBJECTPTR, std::string &, std::string &);
+   ERR (*resolve_virtual)(OBJECTPTR, const std::string &, std::string &);
    ERR error = ERR::VirtualVolume;
 
    if (!Path.empty()) {
@@ -459,7 +461,7 @@ static ERR resolve_object_path(std::string &Path, std::string &Source, std::stri
       if (FindObject(Path.c_str(), CLASSID::NIL, FOF::NIL, &volume_id) IS ERR::Okay) {
          OBJECTPTR object;
          if (AccessObject(volume_id, 5000, &object) IS ERR::Okay) {
-            if ((object->getPtr(FID_ResolvePath, &resolve_virtual) IS ERR::Okay) and (resolve_virtual)) {
+            if ((object->get(FID_ResolvePath, resolve_virtual) IS ERR::Okay) and (resolve_virtual)) {
                error = resolve_virtual(object, Source, Dest);
             }
             ReleaseObject(object);

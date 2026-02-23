@@ -155,7 +155,7 @@ static ERR GET_Path(extDocument *Self, CSTRING *Value)
 static ERR SET_Path(extDocument *Self, CSTRING Value)
 {
    pf::Log log;
-   static BYTE recursion = 0;
+   static int8_t recursion = 0;
 
    if (recursion) return log.warning(ERR::Recursion);
 
@@ -182,7 +182,7 @@ static ERR SET_Path(extDocument *Self, CSTRING Value)
    // Signal that we are leaving the current page
 
    recursion++;
-   for (auto &trigger : Self->Triggers[LONG(DRT::LEAVING_PAGE)]) {
+   for (auto &trigger : Self->Triggers[int(DRT::LEAVING_PAGE)]) {
       if (trigger.isScript()) {
          sc::Call(trigger, std::to_array<ScriptArg>({ { "OldURI", Self->Path }, { "NewURI", newpath } }));
       }
@@ -220,7 +220,7 @@ static ERR SET_Path(extDocument *Self, CSTRING Value)
    }
    else Self->Error = ERR::AllocMemory;
 
-   report_event(Self, DEF::PATH, 0, NULL);
+   report_event(Self, DEF::PATH, 0, nullptr);
 
    return Self->Error;
 }
@@ -254,14 +254,16 @@ margins.
 -FIELD-
 PageWidth: Measures the page width of the document, in pixels.
 
-The width of the longest document line can be retrieved from this field.  The result includes the left and right page
-margins.
+The page width indicates the width of the longest document line, including left and right page margins.  Although
+the PageWidth can be pre-defined by the client, a document can override this value at any time when it is parsed.  If
+imposing fixed page dimensions is desired, consider setting the `Width` and `Height` values of the #View viewport
+object instead.
 
 *********************************************************************************************************************/
 
 static ERR GET_PageWidth(extDocument *Self, Unit *Value)
 {
-   DOUBLE value;
+   double value;
 
    // Reading the PageWidth returns the pixel width of the page after parsing.
 
@@ -270,7 +272,7 @@ static ERR GET_PageWidth(extDocument *Self, Unit *Value)
 
       if (Value->scaled()) {
          if (Self->VPWidth <= 0) return ERR::GetField;
-         value = (DOUBLE)(value * Self->VPWidth);
+         value *= Self->VPWidth;
       }
    }
    else value = Self->PageWidth;
@@ -281,16 +283,12 @@ static ERR GET_PageWidth(extDocument *Self, Unit *Value)
 
 static ERR SET_PageWidth(extDocument *Self, Unit *Value)
 {
-   pf::Log log;
-
    if (Value->Value <= 0) {
-      log.warning("A page width of %.2f is illegal.", Value->Value);
-      return ERR::OutOfRange;
+      pf::Log log;
+      return log.warning(ERR::OutOfRange);
    }
-   Self->PageWidth = Value->Value;
 
-   if (Value->scaled()) Self->RelPageWidth = true;
-   else Self->RelPageWidth = false;
+   Self->PageWidth = *Value;
 
    return ERR::Okay;
 }
@@ -301,7 +299,7 @@ static ERR SET_PageWidth(extDocument *Self, Unit *Value)
 Pretext: Execute the XML defined here prior to loading new pages.
 
 Use the Pretext field to execute document code prior to the loading of a new document.  This feature is commonly used
-to set configure a document in advance, such as setting default font values and background graphics.  It is
+to configure a document in advance, such as setting default font values and background graphics.  It is
 functionally equivalent to embedding an `<include/>` statement at the top of a document, but with the benefit
 of guaranteeing continued execution if the user navigates away from the first page.
 
@@ -312,7 +310,7 @@ A Pretext will always survive document unloading and resets.  It can be removed 
 static ERR SET_Pretext(extDocument *Self, CSTRING Value)
 {
    if (!Value) {
-      if (Self->PretextXML) { FreeResource(Self->PretextXML); Self->PretextXML = NULL; }
+      if (Self->PretextXML) { FreeResource(Self->PretextXML); Self->PretextXML = nullptr; }
       return ERR::Okay;
    }
    else if (Self->PretextXML) {
@@ -320,7 +318,7 @@ static ERR SET_Pretext(extDocument *Self, CSTRING Value)
    }
    else {
       if ((Self->PretextXML = objXML::create::local({
-            fl::Flags(XMF::ALL_CONTENT|XMF::PARSE_HTML|XMF::STRIP_HEADERS|XMF::WELL_FORMED),
+            fl::Flags(XMF::INCLUDE_WHITESPACE|XMF::PARSE_HTML|XMF::STRIP_HEADERS|XMF::WELL_FORMED),
             fl::Statement(Value),
             fl::ReadOnly(true)
          }))) {
@@ -344,6 +342,14 @@ Title: The title of the document.
 
 If a document declares a title under a head tag, the title string will be readable from this field.   This field is
 always `NULL` if a document does not declare a title.
+
+-FIELD-
+View: The viewing area of the document.
+
+The view is an internally allocated viewport that hosts the document #Page.  Its main purpose is to enforce a
+clipping boundary on the page.  By default, the view dimensions will always match that of the parent #Viewport.
+If a fixed viewing size is desired, set the `Width` and `Height` fields of the View's @VectorViewport after the
+initialisation of the document.
 
 -FIELD-
 Viewport: A client-specific viewport that will host the document graphics.
@@ -372,13 +378,12 @@ static ERR SET_Viewport(extDocument *Self, objVectorViewport *Value)
 WorkingPath: Defines the working path (folder or URI).
 
 The working path for a document is defined here.  By default this is defined as the location from which the document
-was loaded, without the file name.  If this cannot be determined then the working path for the parent task is used
-(this is usually set to the location of the parasol executable).
+was loaded, without the file name.  If this cannot be determined, the working path for the parent task is used
+(this is usually set to the location of the origo executable).
 
-The working path is always fully qualified with a slash or colon at the end of the string unless the path cannot be
-determined - in which case an empty string is returned.
+The working path is always fully qualified with a slash or colon at the end of the string.
 
-You can manually change the working path by setting the #Origin field without affecting the loaded document.
+The client can manually change the working path by setting the #Origin field without affecting the loaded document.
 -END-
 
 *********************************************************************************************************************/
@@ -399,7 +404,7 @@ static ERR GET_WorkingPath(extDocument *Self, CSTRING *Value)
    bool path = false;
    if (Self->Path[0] IS '/') path = true;
    else {
-     for (LONG j=0; (Self->Path[j]) and (Self->Path[j] != '/') and (Self->Path[j] != '\\'); j++) {
+     for (int j=0; (Self->Path[j]) and (Self->Path[j] != '/') and (Self->Path[j] != '\\'); j++) {
          if (Self->Path[j] IS ':') {
             path = true;
             break;
@@ -407,8 +412,8 @@ static ERR GET_WorkingPath(extDocument *Self, CSTRING *Value)
       }
    }
 
-   LONG j = 0;
-   for (LONG k=0; Self->Path[k]; k++) {
+   int j = 0;
+   for (int k=0; Self->Path[k]; k++) {
       if ((Self->Path[k] IS ':') or (Self->Path[k] IS '/') or (Self->Path[k] IS '\\')) j = k+1;
    }
 
@@ -418,7 +423,7 @@ static ERR GET_WorkingPath(extDocument *Self, CSTRING *Value)
    if (path) { // Extract absolute path
       Self->WorkingPath.assign(Self->Path, 0, j);
    }
-   else if ((CurrentTask()->get(FID_Path, &task_path) IS ERR::Okay) and (task_path)) {
+   else if ((CurrentTask()->get(FID_Path, task_path) IS ERR::Okay) and (task_path)) {
       std::string buf(task_path);
 
       // Using ResolvePath() can help to determine relative paths such as "../path/file"
@@ -427,7 +432,7 @@ static ERR GET_WorkingPath(extDocument *Self, CSTRING *Value)
 
       ResolvePath(buf, RSF::APPROXIMATE, &Self->WorkingPath);
    }
-   else { *Value = NULL; return ERR::NoData; }
+   else { *Value = nullptr; return ERR::NoData; }
 
    *Value = Self->WorkingPath.c_str();
    return ERR::Okay;

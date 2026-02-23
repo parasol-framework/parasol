@@ -9,13 +9,12 @@
     <comment>Extends the Vector class with support for generating polygons.</comment>
     <version>1</version>
     <id>2a04dc00</id>
-    <idstring>ID_VECTORPOLYGON</idstring>
+    <idstring>VECTORPOLYGON</idstring>
     <category>Graphics</category>
-    <include>modules/vectorpolygon.h</include>
-    <copyright>Paul Manias © 2010-2025</copyright>
+    <copyright>Paul Manias © 2010-2026</copyright>
     <description>
 <p>The VectorPolygon class provides support for three different types of vector:</p>
-<list type="sorted">
+<list type="ordered">
 <li>Closed-point polygons consisting of at least 3 points.</li>
 <li>Open polygons consisting of at least 3 points (a 'polyline' in SVG).</li>
 <li>Single lines consisting of two points only (a 'line' in SVG).</li>
@@ -128,8 +127,8 @@
     <struct name="VectorPoint" comment="Structure for the VectorPolygon PointsArray field.">
       <field name="X" type="DOUBLE">The X coordinate of this point.</field>
       <field name="Y" type="DOUBLE">The Y coordinate of this point.</field>
-      <field name="XScaled" type="UBYTE"><code>TRUE</code> if the <code>X</code> value is scaled to its viewport (between 0 and 1.0).</field>
-      <field name="YScaled" type="UBYTE"><code>TRUE</code> if the <code>Y</code> value is scaled to its viewport (between 0 and 1.0).</field>
+      <field name="XScaled" type="UINT8"><code>TRUE</code> if the <code>X</code> value is scaled to its viewport (between 0 and 1.0).</field>
+      <field name="YScaled" type="UINT8"><code>TRUE</code> if the <code>Y</code> value is scaled to its viewport (between 0 and 1.0).</field>
     </struct>
 
   </structs>

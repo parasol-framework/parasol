@@ -9,10 +9,9 @@
     <comment>Manages the display and positioning of 2-Dimensional rendered graphics.</comment>
     <version>1</version>
     <id>b15cfb8e</id>
-    <idstring>ID_SURFACE</idstring>
+    <idstring>SURFACE</idstring>
     <category>GUI</category>
-    <include>modules/surface.h</include>
-    <copyright>Paul Manias 2003-2024</copyright>
+    <copyright>Paul Manias © 2003-2026</copyright>
     <description>
 <p>The Surface class is used to manage the positioning, drawing and interaction with layered display interfaces.  It works in conjunction with the <class name="Bitmap">Bitmap</class> class for rendering graphics, and the <class name="Pointer">Pointer</class> class for user interaction.</p>
 <p>On a platform such as Windows or Linux, the top-level surface will typically be hosted in an application window.  On Android or when a full screen display is required, a surface can cover the entire display and be window-less.  The top-level surface can act as a host to additional surfaces, which are referred to as children. Placing more surface objects inside of these children will create a hierarchy of many objects that requires sophisticated management that is provisioned by the Surface class.</p>
@@ -44,10 +43,10 @@
       <comment>Redraws the contents of a surface object.</comment>
       <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
       <input>
-        <param type="LONG" name="X">The X position of the region to be drawn.</param>
-        <param type="LONG" name="Y">The Y position of the region to be drawn.</param>
-        <param type="LONG" name="Width">The width of the region to be drawn.</param>
-        <param type="LONG" name="Height">The height of the region to be drawn.</param>
+        <param type="INT" name="X">The X position of the region to be drawn.</param>
+        <param type="INT" name="Y">The Y position of the region to be drawn.</param>
+        <param type="INT" name="Width">The width of the region to be drawn.</param>
+        <param type="INT" name="Height">The height of the region to be drawn.</param>
       </input>
       <description>
 <p>Calling the Draw action on a surface object will send redraw messages to every hook that has been attached to the surface object's drawing system.  This has the effect of redrawing all graphics within the surface object.  The procedure is as follows:</p>
@@ -184,12 +183,12 @@ the surface area first).</li>
       </input>
       <description>
 <p>The AddCallback() method provides a hook for custom functions to draw directly to a surface.  Whenever a surface object performs a redraw event, all functions inserted by this method will be called in their original subscription order with a direct reference to the Surface's target bitmap.  The C/C++ prototype is <code>Function(APTR Context, *Surface, *Bitmap, APTR Meta)</code>.</p>
-<p>The Fluid prototype is <code>function draw(Surface, Bitmap)</code></p>
+<p>The Tiri prototype is <code>function draw(Surface, Bitmap)</code></p>
 <p>The subscriber can draw to the bitmap surface as it would with any freshly allocated bitmap object (refer to the <class name="Bitmap">Bitmap</class> class).  To get the width and height of the available drawing space, please read the Width and Height fields from the Surface object.  If writing to the bitmap directly, please observe the bitmap's clipping region and the XOffset and YOffset values.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
-        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+        <error code="AllocMemory">AllocMemory() failed to create a new memory block.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="ExecViolation">The call was not made from the process that owns the object.</error>
       </result>
@@ -198,12 +197,12 @@ the surface area first).</li>
     <method>
       <name>ExposeToDisplay</name>
       <comment>Redraws a surface region to the display, preferably from its graphics buffer.</comment>
-      <prototype>ERR drw::ExposeToDisplay(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags)</prototype>
+      <prototype>ERR drw::ExposeToDisplay(OBJECTPTR Object, INT X, INT Y, INT Width, INT Height, EXF Flags)</prototype>
       <input>
-        <param type="LONG" name="X">X coordinate of the expose area.</param>
-        <param type="LONG" name="Y">Y coordinate of the expose area.</param>
-        <param type="LONG" name="Width">Width of the expose area.</param>
-        <param type="LONG" name="Height">Height of the expose area.</param>
+        <param type="INT" name="X">X coordinate of the expose area.</param>
+        <param type="INT" name="Y">Y coordinate of the expose area.</param>
+        <param type="INT" name="Width">Width of the expose area.</param>
+        <param type="INT" name="Height">Height of the expose area.</param>
         <param type="EXF" name="Flags" lookup="EXF">Optional flags.</param>
       </input>
       <description>
@@ -217,12 +216,12 @@ the surface area first).</li>
     <method>
       <name>InvalidateRegion</name>
       <comment>Redraws all of the content in a surface object.</comment>
-      <prototype>ERR drw::InvalidateRegion(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height)</prototype>
+      <prototype>ERR drw::InvalidateRegion(OBJECTPTR Object, INT X, INT Y, INT Width, INT Height)</prototype>
       <input>
-        <param type="LONG" name="X">X coordinate of the region to invalidate.</param>
-        <param type="LONG" name="Y">Y coordinate of the region to invalidate.</param>
-        <param type="LONG" name="Width">Width of the region to invalidate.</param>
-        <param type="LONG" name="Height">Height of the region to invalidate.</param>
+        <param type="INT" name="X">X coordinate of the region to invalidate.</param>
+        <param type="INT" name="Y">Y coordinate of the region to invalidate.</param>
+        <param type="INT" name="Width">Width of the region to invalidate.</param>
+        <param type="INT" name="Height">Height of the region to invalidate.</param>
       </input>
       <description>
 <p>Invalidating a surface object will cause everything within a specified area to be redrawn.  This includes child surface objects that intersect with the area that you have specified.  Parent regions that overlap are not included in the redraw.</p>
@@ -303,27 +302,27 @@ the surface area first).</li>
     <method>
       <name>SetDisplay</name>
       <comment>Changes the screen resolution (applies to top-level surface objects only).</comment>
-      <prototype>ERR drw::SetDisplay(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags)</prototype>
+      <prototype>ERR drw::SetDisplay(OBJECTPTR Object, INT X, INT Y, INT Width, INT Height, INT InsideWidth, INT InsideHeight, INT BitsPerPixel, DOUBLE RefreshRate, INT Flags)</prototype>
       <input>
-        <param type="LONG" name="X">The horizontal coordinate/offset for the display.</param>
-        <param type="LONG" name="Y">The vertical coordinate/offset for the display.</param>
-        <param type="LONG" name="Width">The width of the display.</param>
-        <param type="LONG" name="Height">The height of the display.</param>
-        <param type="LONG" name="InsideWidth">The page width of the display must be the same as Width or greater.</param>
-        <param type="LONG" name="InsideHeight">The page height of the display must be the same as Height or greater.</param>
-        <param type="LONG" name="BitsPerPixel">Bits per pixel - 15, 16, 24 or 32.</param>
+        <param type="INT" name="X">The horizontal coordinate/offset for the display.</param>
+        <param type="INT" name="Y">The vertical coordinate/offset for the display.</param>
+        <param type="INT" name="Width">The width of the display.</param>
+        <param type="INT" name="Height">The height of the display.</param>
+        <param type="INT" name="InsideWidth">The page width of the display must be the same as Width or greater.</param>
+        <param type="INT" name="InsideHeight">The page height of the display must be the same as Height or greater.</param>
+        <param type="INT" name="BitsPerPixel">Bits per pixel - 15, 16, 24 or 32.</param>
         <param type="DOUBLE" name="RefreshRate">Refresh rate.</param>
-        <param type="LONG" name="Flags">Optional flags.</param>
+        <param type="INT" name="Flags">Optional flags.</param>
       </input>
       <description>
 <p>The SetDisplay method is used to change the screen resolution of the top-level surface object (which represents the screen display).  It allows you to set the size of the display and you may also change the bitmap depth and the monitor's refresh rate.  If successful, the change is immediate.</p>
 <p>This method exercises some intelligence in adjusting the display to your requested settings.  For instance, if the requested width and/or height is not available, the closest display setting will be chosen.</p>
-<p>This method does not work on anything other than top-level surface objects.  The current top-level surface object is usually named "SystemSurface" by default and can be searched for by that name.</p>
+<p>This method does not work on anything other than top-level surface objects.  The current top-level surface object is usually named &quot;SystemSurface&quot; by default and can be searched for by that name.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
-        <error code="Failed">General failure.</error>
         <error code="Args">Invalid arguments passed to function.</error>
+        <error code="InvalidState">The surface is not a top-level surface object.</error>
       </result>
     </method>
 
@@ -405,17 +404,6 @@ the surface area first).</li>
       <description>
 <p>A client can prevent a surface object from moving beyond a given point at the bottom of its container by setting this field. If for example you were to set the BottomLimit to 5, then any attempt to move the surface object into or beyond the 5 units at the bottom of its container would fail.</p>
 <p>Limits only apply to movement, as induced through the <action>Move</action> action.  This means that limits can be over-ridden by setting the coordinate fields directly (which can be useful in certain cases).</p>
-      </description>
-    </field>
-
-    <field>
-      <name>BottomMargin</name>
-      <comment>Manipulates the bottom margin of a surface object.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type>INT</type>
-      <description>
-<p>The Surface class supports margin settings, which are similar to the concept of margins on printed paper.  Margin values have no significant meaning or effect on a surface object itself, but they are often used by other objects and can be helpful in interface construction.  For instance, the Window script uses margins to indicate the space available for placing graphics and other surface objects inside of it.</p>
-<p>By default, all margins are set to zero when a new surface object is created.</p>
       </description>
     </field>
 
@@ -524,28 +512,6 @@ the surface area first).</li>
     </field>
 
     <field>
-      <name>InsideHeight</name>
-      <comment>Defines the amount of space between the vertical margins.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>INT</type>
-      <description>
-<p>A client can determine the internal height of a surface object by reading the InsideHeight field.  The returned value is the result of calculating this formula: <code>Height - TopMargin - BottomMargin</code>.</p>
-<p>If the <fl>TopMargin</fl> and <fl>BottomMargin</fl> fields are not set, the returned value will be equal to the surface object's height.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>InsideWidth</name>
-      <comment>Defines the amount of space between the horizontal margins.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>INT</type>
-      <description>
-<p>A client can determine the internal width of a surface object by reading the InsideWidth field.  The returned value is the result of calculating this formula: <code>Width - LeftMargin - RightMargin</code>.</p>
-<p>If the <fl>LeftMargin</fl> and <fl>RightMargin</fl> fields are not set, the returned value will be equal to the surface object's width.</p>
-      </description>
-    </field>
-
-    <field>
       <name>LeftLimit</name>
       <comment>Prevents a surface object from moving beyond a given point on the left-hand side.</comment>
       <access read="R" write="S">Read/Set</access>
@@ -557,24 +523,13 @@ the surface area first).</li>
     </field>
 
     <field>
-      <name>LeftMargin</name>
-      <comment>Manipulates the left margin of a surface object.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>INT</type>
-      <description>
-<p>The Surface class supports margin settings, which are similar to the concept of margins on printed paper.  Margin values have no significant meaning or effect on a surface object itself, but they are often used by other objects and can be helpful in interface construction.  For instance, the Window template uses margins to indicate the space available for placing graphics and other surface objects inside of it.</p>
-<p>By default, all margins are set to zero when a new surface object is created.</p>
-      </description>
-    </field>
-
-    <field>
       <name>MaxHeight</name>
       <comment>Prevents the height of a surface object from exceeding a certain value.</comment>
       <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
 <p>A client can limit the maximum height of a surface object by setting this field.  Limiting the height affects resizing, making it impossible to use the Resize() action to extend beyond the height you specify.</p>
-<p>It is possible to circumvent the MaxHeight by setting the Height field directly.  Note that the MaxHeight value refers to the inside-height of the surface area, thus the overall maximum height will include both the <fl>TopMargin</fl> and <fl>BottomMargin</fl> values.</p>
+<p>It is possible to circumvent the MaxHeight by setting the Height field directly.</p>
       </description>
     </field>
 
@@ -585,7 +540,7 @@ the surface area first).</li>
       <type>INT</type>
       <description>
 <p>A client can limit the maximum width of a surface object by setting this field.  Limiting the width affects resizing, making it impossible to use the <action>Resize</action> action to extend beyond the width you specify.</p>
-<p>It is possible to circumvent the MaxWidth by setting the Width field directly.  Note that the MaxWidth value refers to the inside-width of the surface area, thus the overall maximum width will include both the <fl>LeftMargin</fl> and <fl>RightMargin</fl> values.</p>
+<p>It is possible to circumvent the MaxWidth by setting the Width field directly.</p>
       </description>
     </field>
 
@@ -686,17 +641,6 @@ the surface area first).</li>
     </field>
 
     <field>
-      <name>RightMargin</name>
-      <comment>Manipulates the right margin of a surface object.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type>INT</type>
-      <description>
-<p>The Surface class supports margin settings, which are similar to the concept of margins on printed paper.  Margin values have no significant meaning or effect on a surface object itself, but they are often used by other objects and can be helpful in interface construction.  For instance, the Window template uses margins to indicate the space available for placing graphics and other surface objects inside of it.</p>
-<p>By default, all margins are set to zero when a new surface object is created.</p>
-      </description>
-    </field>
-
-    <field>
       <name>Root</name>
       <comment>Surface that is acting as a root for many surface children (useful when applying translucency)</comment>
       <access>-/-</access>
@@ -711,17 +655,6 @@ the surface area first).</li>
       <description>
 <p>A client can prevent a surface object from moving beyond a given point at the top of its container by setting this field. If for example you were to set the TopLimit to 10, then any attempt to move the surface object into or beyond the 10 units at the top of its container would fail.</p>
 <p>Limits only apply to movement, as induced through the <action>Move</action> action.  This means that limits can be over-ridden by setting the coordinate fields directly (which can be useful in certain cases).</p>
-      </description>
-    </field>
-
-    <field>
-      <name>TopMargin</name>
-      <comment>Manipulates the top margin of a surface object.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>INT</type>
-      <description>
-<p>The Surface class supports margin settings, which are similar to the concept of margins on printed paper.  Margin values have no significant meaning or effect on a surface object itself, but they are often used by other objects and can be helpful in interface construction.  For instance, the Window template uses margins to indicate the space available for placing graphics and other surface objects inside of it.</p>
-<p>By default, all margins are set to zero when a new surface object is created.</p>
       </description>
     </field>
 
@@ -969,11 +902,6 @@ the surface area first).</li>
       <const name="REDRAW_VOLATILE_OVERLAP">Only redraw volatile objects that obscure the expose region from a position outside of the target surface and its children.  Useful if no redrawing has occurred in the surface, but the surface has moved to a new position and the parents need to be redrawn.</const>
     </constants>
 
-    <constants lookup="FLIP" comment="Flags for the bitmap Flip method.">
-      <const name="HORIZONTAL">Flip the bitmap from top to bottom.</const>
-      <const name="VERTICAL">Flip the bitmap from left to right.</const>
-    </constants>
-
     <constants lookup="HOST">
       <const name="STICK_TO_FRONT">The hosted display sticks to the front.</const>
       <const name="TASKBAR">The hosted display is given a taskbar button.</const>
@@ -999,7 +927,7 @@ the surface area first).</li>
       <const name="DEVICE_TILT_XY">Controller tilted on the X/Y axis.  Value indicates angle, -ve = left, +ve = right</const>
       <const name="DEVICE_TILT_Z">Controller is rising or falling.  Value expressed as 'speed',</const>
       <const name="DISPLAY_EDGE">Recently supplied input occurred at the edge of the display.</const>
-      <const name="PEN_TILT_XY">For pen-based input, this type indicates the vertical tilt of the pen device.  A value of 0 indicates that the pen is laid flat with nib at the bottom, 0.5 is 90 degrees, 1.0 is laid flat with nib at the top.</const>
+      <const name="PEN_TILT_XY">Pen tilt angle.  0 is pointing down directly with nib at bottom, 0.5 is 90 degrees, 1.0 is inversed (eraser at bottom)</const>
       <const name="PRESSURE">Amount of pressure applied, ranges from 0 (none) to 1.0 (normal) and possibly higher if user presses hard enough</const>
       <const name="WHEEL">Mouse wheel rotation - the value generally reflects the number of 'clicks' rotated on the wheel.</const>
       <const name="WHEEL_TILT">Some mouse wheels can be tilted to the left or right.  Ranges from -1.0 to +1.0</const>
@@ -1018,10 +946,6 @@ the surface area first).</li>
       <const name="MOVEMENT">X/Y coordinate movement only. Movement such as the wheel mouse spinning is not covered by this type as it does not influence the coordinate system.</const>
       <const name="REPEATED">Input is a repeated entry (i.e. user is holding down a button and a repetition timer is being triggered)</const>
       <const name="SECONDARY">Indicates to the receiver of this message that it is not the primary/original recipient</const>
-    </constants>
-
-    <constants lookup="LVF" comment="drwLockBitmap() result flags">
-      <const name="EXPOSE_CHANGES"/>
     </constants>
 
     <constants lookup="PTC" comment="Predefined cursor styles">
@@ -1055,7 +979,7 @@ the surface area first).</li>
 
     <constants lookup="RNF" comment="Switches for the Surface class' Flags field.">
       <const name="AFTER_COPY">Read-only.  Indicates that after-copy mode has been enabled.</const>
-      <const name="ASPECT_RATIO">When resizing, enforce the aspect ratio as defined by <class name="Surface" field="MinWidth">Surface.MinWidth</class> and <class name="Surface" field="MinHeight">Surface.MinHeight</class>.</const>
+      <const name="ASPECT_RATIO">When resizing, enforce the aspect ratio as defined by the diagonal from <class name="Surface" field="MinWidth">Surface.MinWidth</class>, <class name="Surface" field="MinHeight">Surface.MinHeight</class> to <class name="Surface" field="MaxWidth">Surface.MaxWidth</class>, <class name="Surface" field="MaxHeight">Surface.MaxHeight</class>.</const>
       <const name="AUTO_QUIT">The surface object will send a quit message to its supporting process when and if the Close method is called.  This flag is typically used when a surface object represents a core window for an application.</const>
       <const name="COMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
       <const name="DISABLED">This flag is set if the Disable action has been called on a surface object.  Calling the Enable action will turn off the flag setting.</const>
@@ -1105,65 +1029,65 @@ the surface area first).</li>
   <structs>
     <struct name="BitmapSurface" typeName="BITMAPSURFACE">
       <field name="Data" type="APTR">Pointer to the bitmap graphics data.</field>
-      <field name="Width" type="WORD">Pixel width of the bitmap.</field>
-      <field name="Height" type="WORD">Pixel height of the bitmap.</field>
-      <field name="LineWidth" type="LONG">The distance between bitmap lines, measured in bytes.</field>
-      <field name="BitsPerPixel" type="UBYTE">The number of bits per pixel (8, 15, 16, 24, 32).</field>
-      <field name="BytesPerPixel" type="UBYTE">The number of bytes per pixel (1, 2, 3, 4).</field>
-      <field name="Opacity" type="UBYTE">Opacity level of the source if <code>CSRF::TRANSLUCENT</code> is used.</field>
-      <field name="Version" type="UBYTE">Version of this structure.</field>
-      <field name="Colour" type="LONG">Colour index to use if <code>CSRF::TRANSPARENT</code> is used.</field>
+      <field name="Width" type="INT16">Pixel width of the bitmap.</field>
+      <field name="Height" type="INT16">Pixel height of the bitmap.</field>
+      <field name="LineWidth" type="INT">The distance between bitmap lines, measured in bytes.</field>
+      <field name="BitsPerPixel" type="UINT8">The number of bits per pixel (8, 15, 16, 24, 32).</field>
+      <field name="BytesPerPixel" type="UINT8">The number of bytes per pixel (1, 2, 3, 4).</field>
+      <field name="Opacity" type="UINT8">Opacity level of the source if <code>CSRF::TRANSLUCENT</code> is used.</field>
+      <field name="Version" type="UINT8">Version of this structure.</field>
+      <field name="Colour" type="INT">Colour index to use if <code>CSRF::TRANSPARENT</code> is used.</field>
       <field name="Clip" type="struct ClipRectangle">A clipping rectangle will restrict drawing operations to this region if <code>CSRF::CLIP</code> is used.</field>
-      <field name="XOffset" type="WORD">Offset all X coordinate references by the given value.</field>
-      <field name="YOffset" type="WORD">Offset all Y coordinate references by the given value.</field>
+      <field name="XOffset" type="INT16">Offset all X coordinate references by the given value.</field>
+      <field name="YOffset" type="INT16">Offset all Y coordinate references by the given value.</field>
       <field name="Format" type="struct ColourFormat">The colour format of this bitmap's pixels, or alternatively use <code>CSRF::DEFAULT_FORMAT</code>.</field>
     </struct>
 
     <struct name="ColourFormat" typeName="COLOURFORMAT">
-      <field name="RedShift" type="UBYTE">Right shift value for red (15/16 bit formats only)</field>
-      <field name="GreenShift" type="UBYTE">Right shift value for green</field>
-      <field name="BlueShift" type="UBYTE">Right shift value for blue</field>
-      <field name="AlphaShift" type="UBYTE">Right shift value for alpha</field>
-      <field name="RedMask" type="UBYTE">Unshifted mask value for red (ranges from 0x00 to 0xff)</field>
-      <field name="GreenMask" type="UBYTE">Unshifted mask value for green</field>
-      <field name="BlueMask" type="UBYTE">Unshifted mask value for blue</field>
-      <field name="AlphaMask" type="UBYTE">Unshifted mask value for alpha</field>
-      <field name="RedPos" type="UBYTE">Left shift/positional value for red</field>
-      <field name="GreenPos" type="UBYTE">Left shift/positional value for green</field>
-      <field name="BluePos" type="UBYTE">Left shift/positional value for blue</field>
-      <field name="AlphaPos" type="UBYTE">Left shift/positional value for alpha</field>
-      <field name="BitsPerPixel" type="UBYTE">Number of bits per pixel for this format.</field>
+      <field name="RedShift" type="UINT8">Right shift value for red (15/16 bit formats only)</field>
+      <field name="GreenShift" type="UINT8">Right shift value for green</field>
+      <field name="BlueShift" type="UINT8">Right shift value for blue</field>
+      <field name="AlphaShift" type="UINT8">Right shift value for alpha</field>
+      <field name="RedMask" type="UINT8">Unshifted mask value for red (ranges from 0x00 to 0xff)</field>
+      <field name="GreenMask" type="UINT8">Unshifted mask value for green</field>
+      <field name="BlueMask" type="UINT8">Unshifted mask value for blue</field>
+      <field name="AlphaMask" type="UINT8">Unshifted mask value for alpha</field>
+      <field name="RedPos" type="UINT8">Left shift/positional value for red</field>
+      <field name="GreenPos" type="UINT8">Left shift/positional value for green</field>
+      <field name="BluePos" type="UINT8">Left shift/positional value for blue</field>
+      <field name="AlphaPos" type="UINT8">Left shift/positional value for alpha</field>
+      <field name="BitsPerPixel" type="UINT8">Number of bits per pixel for this format.</field>
     </struct>
 
     <struct name="CursorInfo">
-      <field name="Width" type="LONG">Maximum cursor width for custom cursors</field>
-      <field name="Height" type="LONG">Maximum cursor height for custom cursors</field>
-      <field name="Flags" type="LONG">Currently unused</field>
-      <field name="BitsPerPixel" type="WORD">Preferred bits-per-pixel setting for custom cursors</field>
+      <field name="Width" type="INT">Maximum cursor width for custom cursors</field>
+      <field name="Height" type="INT">Maximum cursor height for custom cursors</field>
+      <field name="Flags" type="INT">Currently unused</field>
+      <field name="BitsPerPixel" type="INT16">Preferred bits-per-pixel setting for custom cursors</field>
     </struct>
 
     <struct name="DisplayInfo" typeName="DISPLAYINFO">
       <field name="Display" type="OBJECTID">Object ID related to the display</field>
       <field name="Flags" type="SCR" lookup="SCR">Display flags</field>
-      <field name="Width" type="WORD">Pixel width of the display</field>
-      <field name="Height" type="WORD">Pixel height of the display</field>
-      <field name="BitsPerPixel" type="WORD">Bits per pixel</field>
-      <field name="BytesPerPixel" type="WORD">Bytes per pixel</field>
+      <field name="Width" type="INT16">Pixel width of the display</field>
+      <field name="Height" type="INT16">Pixel height of the display</field>
+      <field name="BitsPerPixel" type="INT16">Bits per pixel</field>
+      <field name="BytesPerPixel" type="INT16">Bytes per pixel</field>
       <field name="AccelFlags" type="ACF" lookup="ACF">Flags describing supported hardware features.</field>
-      <field name="AmtColours" type="LONG">Total number of supported colours.</field>
+      <field name="AmtColours" type="INT">Total number of supported colours.</field>
       <field name="PixelFormat" type="struct PixelFormat">The colour format to use for each pixel.</field>
       <field name="MinRefresh" type="FLOAT">Minimum refresh rate</field>
       <field name="MaxRefresh" type="FLOAT">Maximum refresh rate</field>
       <field name="RefreshRate" type="FLOAT">Recommended refresh rate</field>
-      <field name="Index" type="LONG">Display mode ID (internal)</field>
-      <field name="HDensity" type="LONG">Horizontal pixel density per inch.</field>
-      <field name="VDensity" type="LONG">Vertical pixel density per inch.</field>
+      <field name="Index" type="INT">Display mode ID (internal)</field>
+      <field name="HDensity" type="INT">Horizontal pixel density per inch.</field>
+      <field name="VDensity" type="INT">Vertical pixel density per inch.</field>
     </struct>
 
     <struct name="InputEvent">
       <field name="Next" type="const struct InputEvent *">Next event in the chain</field>
       <field name="Value" type="DOUBLE">The value associated with the Type</field>
-      <field name="Timestamp" type="LARGE">PreciseTime() of the recorded input</field>
+      <field name="Timestamp" type="INT64">PreciseTime() of the recorded input</field>
       <field name="RecipientID" type="OBJECTID">Surface that the input message is being conveyed to</field>
       <field name="OverID" type="OBJECTID">Surface that is directly under the mouse pointer at the time of the event</field>
       <field name="AbsX" type="DOUBLE">Absolute horizontal position of mouse cursor (relative to the top left of the display)</field>
@@ -1182,16 +1106,16 @@ the surface area first).</li>
       <field name="BitmapID" type="OBJECTID">Surface bitmap buffer</field>
       <field name="DisplayID" type="OBJECTID">Refers to the display if this object is at root level</field>
       <field name="Flags" type="RNF" lookup="RNF">Surface flags</field>
-      <field name="X" type="LONG">Horizontal coordinate</field>
-      <field name="Y" type="LONG">Vertical coordinate</field>
-      <field name="Width" type="LONG">Width of the surface area</field>
-      <field name="Height" type="LONG">Height of the surface area</field>
-      <field name="AbsX" type="LONG">Absolute X coordinate</field>
-      <field name="AbsY" type="LONG">Absolute Y coordinate</field>
-      <field name="Level" type="WORD">Branch level within the tree</field>
-      <field name="BitsPerPixel" type="BYTE">Bits per pixel of the bitmap</field>
-      <field name="BytesPerPixel" type="BYTE">Bytes per pixel of the bitmap</field>
-      <field name="LineWidth" type="LONG">Line width of the bitmap, in bytes</field>
+      <field name="X" type="INT">Horizontal coordinate</field>
+      <field name="Y" type="INT">Vertical coordinate</field>
+      <field name="Width" type="INT">Width of the surface area</field>
+      <field name="Height" type="INT">Height of the surface area</field>
+      <field name="AbsX" type="INT">Absolute X coordinate</field>
+      <field name="AbsY" type="INT">Absolute Y coordinate</field>
+      <field name="Level" type="INT16">Branch level within the tree</field>
+      <field name="BitsPerPixel" type="INT8">Bits per pixel of the bitmap</field>
+      <field name="BytesPerPixel" type="INT8">Bytes per pixel of the bitmap</field>
+      <field name="LineWidth" type="INT">Line width of the bitmap, in bytes</field>
     </struct>
 
   </structs>

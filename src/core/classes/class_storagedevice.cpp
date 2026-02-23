@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -27,7 +27,7 @@ static ERR STORAGE_Init(extStorageDevice *);
 
 static ERR STORAGE_Free(extStorageDevice *Self)
 {
-   if (Self->Volume) { FreeResource(Self->Volume); Self->Volume = NULL; }
+   if (Self->Volume) { FreeResource(Self->Volume); Self->Volume = nullptr; }
    return ERR::Okay;
 }
 
@@ -78,7 +78,7 @@ static ERR GET_DeviceID(extStorageDevice *Self, STRING *Value)
       return ERR::Okay;
    }
    else {
-      *Value = NULL;
+      *Value = nullptr;
       return ERR::FieldNotSet;
    }
 }
@@ -111,7 +111,7 @@ static ERR GET_Volume(extStorageDevice *Self, STRING *Value)
       return ERR::Okay;
    }
    else {
-      *Value = NULL;
+      *Value = nullptr;
       return ERR::FieldNotSet;
    }
 }
@@ -123,12 +123,12 @@ static ERR SET_Volume(extStorageDevice *Self, CSTRING Value)
    if (Self->initialised()) return log.warning(ERR::Immutable);
 
    if ((Value) and (*Value)) {
-      LONG len;
+      int len;
       for (len=0; (Value[len]) and (Value[len] != ':'); len++);
 
       if (Self->Volume) FreeResource(Self->Volume);
 
-      if (AllocMemory(len+2, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Volume, NULL) IS ERR::Okay) {
+      if (AllocMemory(len+2, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Volume, nullptr) IS ERR::Okay) {
          copymem(Value, Self->Volume, len);
          Self->Volume[len] = ':';
          Self->Volume[len+1] = 0;
@@ -157,14 +157,14 @@ static const FieldDef clDeviceFlags[] = {
    { "Memory",       DEVICE::MEMORY },
    { "Modem",        DEVICE::MODEM },
    { "USB",          DEVICE::USB },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldArray clFields[] = {
-   { "DeviceFlags", FDF_LARGE|FDF_R, NULL, NULL, &clDeviceFlags },
-   { "DeviceSize",  FDF_LARGE|FDF_R },
-   { "BytesFree",   FDF_LARGE|FDF_R },
-   { "BytesUsed",   FDF_LARGE|FDF_R },
+   { "DeviceFlags", FDF_INT64|FDF_R, nullptr, nullptr, &clDeviceFlags },
+   { "DeviceSize",  FDF_INT64|FDF_R },
+   { "BytesFree",   FDF_INT64|FDF_R },
+   { "BytesUsed",   FDF_INT64|FDF_R },
    // Virtual fields
    { "DeviceID",    FDF_STRING|FDF_R, GET_DeviceID },
    { "Volume",      FDF_STRING|FDF_RI, GET_Volume, SET_Volume },
@@ -174,7 +174,7 @@ static const FieldArray clFields[] = {
 static const ActionArray clActions[] = {
    { AC::Free, STORAGE_Free },
    { AC::Init, STORAGE_Init },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 //********************************************************************************************************************

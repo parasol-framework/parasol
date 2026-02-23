@@ -1,0 +1,226 @@
+--[[
+Documentation is available in the Kotuku Wiki.
+--]]
+
+   import 'gui'
+   import 'gui/fileview'
+   import 'gui/columnview'
+   import 'gui/button'
+   import 'gui/combobox'
+   import 'gui/input'
+   import 'gui/window'
+
+   namespace 'gui'
+
+   gui.dialog ?= { }
+
+GAP = 8
+
+gui.dialog.file = function(Options)
+   self = { -- Public variables
+      windowID    = nil,
+      currentPath = io.splitPath(Options.path),
+      multiSelect = Options.multiSelect ?? false,
+      warnExists  = Options.warnExists ?? false,
+      feedback    = Options.feedback,
+      target      = Options.target
+   }
+
+   function processFeedback()
+      list = self.fileview.view.selectedItems()
+
+      if (self.warnExists is true) and (#list > 0) then
+         error, type = mSys.AnalysePath((self.fileview.path ?? '') .. list[0].filename)
+         if type is LOC_FILE then
+            local msg
+
+            if #list is 1 then
+               msg = "You are about to overwrite the file '" .. list[0].filename .. "'.  Do you want to continue?"
+            else
+               msg = 'You are about to overwrite ' .. #list .. ' files.  Do you want to continue?'
+            end
+
+            confirm = gui.dialog.message({
+               target  = self.target,
+               modal   = true,
+               options = { { id=-1, text='No', icon='items/cancel' },
+                           { id=1, text='Yes', icon='items/checkmark' } },
+               title   = 'Confirmation Required',
+               type    = 'warning',
+               message = msg,
+               popOver = windowID,
+               feedback = function(Dialog, Response, State)
+                  if Response and (Response.id is 1) then
+                     self?.feedback(self, self.fileview.path, list)
+                     self.window = nil
+                  end
+               end
+            })
+
+            return true
+         end
+      end
+
+      if self.feedback then
+         if #list is 0 then list = nil end
+         self.feedback(self, self.fileview.path, list)
+      end
+
+      table.clear(self)
+      return true
+   end
+
+   self.window = gui.window({
+      insideWidth  = 500,
+      insideHeight = 550,
+      minWidth     = 250,
+      minHeight    = 150,
+      quit         = false,
+      center       = true,
+      invertPalette = true,
+      popOver      = Options.popOver,
+      parent       = Options.target,
+      icon         = Options.icon ?? 'icons:folders/folder',
+      title        = Options.title ?? 'Select a file',
+      modal        = Options.modal ?? false,
+      events = {
+         close = function(Window)
+            Options?.feedback(self, nil)
+            table.clear(self)
+            processing.collect()
+         end
+      }
+   })
+
+   self.scene = self.window.scene
+
+   self.viewport = self.window:clientViewport({ })
+
+   self.pathbox = gui.input({
+      target     = self.viewport,
+      x          = 0,
+      y          = 0,
+      xOffset    = 0,
+      text       = Options.path,
+      textFace   = gui.fonts.filesys.face,
+      textFill   = gui.palette.altText,
+      flushEdges = true,
+      bkgd       = 'none',
+      events = {
+         activate = function(Input, Event)
+            self.fileview.browse(Event.text)
+         end
+      }
+   })
+
+   self.pathbox.viewport.new('VectorRectangle', {
+      x=0, y=self.pathbox.viewport.height-1, height=1, width='100%', fill='rgb(255,255,255,0.3)'
+   })
+
+   -- Okay and cancel buttons
+
+   footer = self.window.margins.bottom
+
+   lCancelButton = gui.button({
+      target  = self.viewport,
+      text    = Options.cancelText ?? 'Cancel',
+      xOffset = GAP,
+      yOffset = footer,
+      icon    = 'items/cancel',
+      events = {
+         activate = function(Button)
+            Options?.feedback(self, nil)
+            table.clear(self)
+            processing.collect()
+         end
+      }
+   })
+
+   lOkayButton = gui.button({
+      target     = self.viewport,
+      text       = Options.okText ?? 'Okay',
+      xOffset    = lCancelButton.viewport.width + (GAP * 2),
+      yOffset    = footer,
+      icon       = 'items/checkmark',
+      events = {
+         activate = processFeedback
+      }
+   })
+
+   footer += lOkayButton.viewport.height + GAP
+
+   -- Filter selection
+
+   fv_filters = { name='All Files', ext='', selected=false }
+   if Options.filterList and (#Options.filterList > 0) then
+      -- Pick the first item as being selected if none other is chosen.
+
+      selection = false
+      for item in values(Options.filterList) do
+         if item.selected then
+            selection = true
+            break
+         end
+      end
+
+      if not selection then Options.filterList[0].selected = true end
+
+      for filter in values(Options.filterList) do
+         table.insert(fv_filters, filter)
+      end
+   end
+
+   -- File view area
+
+   viewRegion = self.viewport.new('VectorViewport', {
+      x        = 0,
+      y        = self.pathbox.viewport.y + self.pathbox.viewport.height,
+      width    = '100%',
+      yOffset  = footer,
+      overflow = VOF_HIDDEN
+   })
+
+   self.fileview = gui.fileview({
+      target        = viewRegion,
+      path          = Options.path,
+      filterList    = fv_filters,
+      sysKeys       = true,
+      fileSelected  = processFeedback,
+      style         = 'column', -- column, list, tree
+      toolBar       = { clipboard=true, settings=true },
+      viewOptions = {
+         invertPalette = true
+      },
+      pathChanged = function(FlieView, Path)
+         self.currentPath = Path
+         self.pathbox.text.string = self.currentPath
+      end
+   })
+
+   self.currentPath = self.fileview.path
+
+   self.window:moveToFront()
+   self.window:show()
+
+   return self
+end
+
+   -- This sub-routine is provided for languages other than Tiri to utilise the module.
+
+@if(imported=false)
+   dlg = gui.dialog.file({
+      popOver      = arg('popOver'),
+      target       = arg('target'),
+      modal        = arg('modal'),
+      okText       = arg('okText'),
+      cancelText   = arg('cancelText'),
+      filterList   = arg('filterList'),
+      icon         = arg('icon'),
+      path         = arg('path'),
+      selectFolder = arg('selectFolder', nil),
+      multiSelect  = arg('multiSelect', nil),
+      userInput    = arg('userInput', nil)
+   })
+
+   return dlg.windowID
+@end

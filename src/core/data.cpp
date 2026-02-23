@@ -2,8 +2,8 @@
 #define PRV_CORE_DATA TRUE
 
 #include "defs.h"
-#include <parasol/main.h>
-#include <parasol/modules/core.h>
+#include <kotuku/main.h>
+#include <kotuku/modules/core.h>
 
 #ifdef __unix__
 // In Unix/Linux builds it is assumed that the install location is static.  Dynamic loading is enabled
@@ -12,10 +12,10 @@
       #define _ROOT_PATH /usr/local/
    #endif
    #ifndef _SYSTEM_PATH
-      #define _SYSTEM_PATH /usr/local/share/parasol/
+      #define _SYSTEM_PATH /usr/local/share/kotuku/
    #endif
    #ifndef _MODULE_PATH
-      #define _MODULE_PATH /usr/local/lib/parasol/
+      #define _MODULE_PATH /usr/local/lib/kotuku/
    #endif
 #else
 // In Windows, path information is read from the registry.  If there are no registry entries, the system
@@ -37,7 +37,7 @@ std::string glModulePath = "" _MODULE_PATH ""; // NB: This path will be updated 
 
 std::string glDisplayDriver;
 
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
 CSTRING glClassBinPath = "system:config/classes.bin";
 #endif
 objMetaClass *glRootModuleClass  = 0;
@@ -55,30 +55,40 @@ objMetaClass *glCompressedStreamClass = 0;
 #ifdef __ANDROID__
 objMetaClass *glAssetClass = 0;
 #endif
-BYTE fs_initialised  = FALSE;
-APTR glPageFault     = NULL;
+int8_t fs_initialised  = FALSE;
+APTR glPageFault     = nullptr;
 bool glScanClasses   = false;
 bool glJanitorActive = false;
 bool glDebugMemory   = false;
 bool glEnableCrashHandler = true;
-struct CoreBase *LocalCoreBase = NULL;
-
+struct CoreBase *LocalCoreBase = nullptr;
 // NB: During shutdown, elements in glPrivateMemory are not erased but will have their fields cleared.
+// Can't use ankerl here because removal of elements is too slow.
 std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;
+
+std::set<std::shared_ptr<std::jthread>> glAsyncThreads;
+
+std::mutex glmActionQueue;
+std::unordered_map<OBJECTID, std::deque<QueuedAction>> glActionQueues;
+std::unordered_set<OBJECTID> glActiveAsyncObjects;
+std::unordered_map<OBJECTID, int> glAsyncObjectThreads;
 
 std::condition_variable_any cvObjects;
 std::condition_variable_any cvResources;
 
-std::list<CoreTimer> glTimers;
+std::mutex glmThreadRegistry;
+std::unordered_map<int, std::shared_ptr<ThreadRecord>> glThreadRegistry;
+
+std::list<CoreTimer> glTimers; // Locked with glmTimer.  std::list maintains stable pointers to elements.
 std::list<FDRecord> glFDTable;
 
 std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes;
-std::map<std::string, std::vector<Object *>, CaseInsensitiveMap> glObjectLookup;
+std::unordered_map<std::string, std::vector<Object *>, CaseInsensitiveHash, CaseInsensitiveEqual> glObjectLookup; // Name lookups
 
 std::mutex glmPrint;
-std::mutex glmThreadPool;
 std::recursive_mutex glmMemory;
 std::recursive_mutex glmMsgHandler;
+std::recursive_mutex glmAsyncActions;
 std::recursive_timed_mutex glmObjectLookup;
 std::recursive_timed_mutex glmTimer;
 std::timed_mutex glmClassDB;
@@ -87,47 +97,47 @@ std::timed_mutex glmGeneric;
 std::timed_mutex glmObjectLocking;
 std::timed_mutex glmVolumes;
 
-std::unordered_map<std::string, struct ModHeader *> glStaticModules;
-std::unordered_map<CLASSID, ClassRecord> glClassDB;
-std::unordered_map<CLASSID, extMetaClass *> glClassMap;
+ankerl::unordered_dense::map<std::string, struct ModHeader *> glStaticModules;
+ankerl::unordered_dense::map<CLASSID, ClassRecord> glClassDB;
+ankerl::unordered_dense::map<CLASSID, extMetaClass *> glClassMap;
 std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
-std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory;
-std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren;
-std::unordered_map<ULONG, std::string> glFields;
+std::unordered_map<OBJECTID, ankerl::unordered_dense::set<MEMORYID>> glObjectMemory;
+std::unordered_map<OBJECTID, ankerl::unordered_dense::set<OBJECTID>> glObjectChildren;
+ankerl::unordered_dense::map<uint32_t, std::string> glFields;
 
-std::unordered_multimap<ULONG, CLASSID> glWildClassMap;
+std::unordered_multimap<uint32_t, CLASSID> glWildClassMap;
 
 std::vector<FDRecord> glRegisterFD;
-std::vector<TaskMessage> glQueue;
 std::vector<TaskRecord> glTasks;
 
-class RootModule  *glModuleList  = NULL;
-struct OpenInfo   *glOpenInfo    = NULL;
-struct MsgHandler *glMsgHandlers = NULL, *glLastMsgHandler = 0;
+class RootModule  *glModuleList  = nullptr;
+struct OpenInfo   *glOpenInfo    = nullptr;
+struct MsgHandler *glMsgHandlers = nullptr, *glLastMsgHandler = 0;
 
-objFile *glClassFile   = NULL;
-extTask *glCurrentTask = NULL;
+objFile *glClassFile   = nullptr;
+extTask *glCurrentTask = nullptr;
 
 APTR glJNIEnv = 0;
 std::atomic_ushort glFunctionID = 3333; // IDTYPE_FUNCTION
-LONG glStdErrFlags = 0;
+int glStdErrFlags = 0;
 TIMER glCacheTimer = 0;
-LONG glMemoryFD = -1;
-LONG glValidateProcessID = 0;
-LONG glProcessID = 0;
-LONG glEUID = -1, glEGID = -1, glGID = -1, glUID = -1;
-LONG glWildClassMapTotal = 0;
+int glMemoryFD = -1;
+int glValidateProcessID = 0;
+int glProcessID = 0;
+int glEUID = -1, glEGID = -1, glGID = -1, glUID = -1;
+int glWildClassMapTotal = 0;
 std::atomic_int glPrivateIDCounter = 500;
 std::atomic_int glMessageIDCount = 10000;
 std::atomic_int glGlobalIDCount = 1;
-LONG glEventMask = 0;
+int glEventMask = 0;
 TIMER glProcessJanitor = 0;
-UBYTE glTimerCycle = 1;
-BYTE glFDProtected = 0;
+uint8_t glTimerCycle = 1;
+int8_t glFDProtected = 0;
 std::atomic_int glUniqueMsgID = 1;
+size_t glPageSize = 4096; // Overwritten on opening the Core
 
 #ifdef __unix__
-  THREADVAR LONG glSocket = -1; // Implemented as thread-local because we don't want threads other than main to utilise the messaging system.
+  thread_local int glSocket = -1; // Implemented as thread-local because we don't want threads other than main to utilise the messaging system.
 #elif _WIN32
   WINHANDLE glProcessHandle = 0;
   WINHANDLE glTaskLock = 0;
@@ -135,25 +145,25 @@ std::atomic_int glUniqueMsgID = 1;
 
 HOSTHANDLE glConsoleFD = (HOSTHANDLE)-1; // Managed by GetResource()
 
-LARGE glTimeLog      = 0;
-WORD glCrashStatus   = 0;
-WORD glCodeIndex     = CP_FINISHED;
-WORD glLastCodeIndex = 0;
-WORD glSystemState   = -1; // Initialisation state is -1
-#ifdef _DEBUG
-   WORD glLogLevel = 8; // Thread global
+int64_t glTimeLog    = 0;
+int16_t glCrashStatus   = 0;
+int16_t glCodeIndex     = CP_FINISHED;
+int16_t glLastCodeIndex = 0;
+int16_t glSystemState   = -1; // Initialisation state is -1
+#ifndef NDEBUG
+   int16_t glLogLevel = 2; // Thread global.  Default to warning level for debug builds.
 #else
-   WORD glLogLevel  = 0;
+   int16_t glLogLevel = 0;
 #endif
-WORD glMaxDepth     = 20; // Thread global
+int16_t glMaxDepth     = 20; // Thread global
 bool glShowIO       = false;
 bool glShowPrivate  = false;
 bool glPrivileged   = false;
 bool glSync         = false;
 bool glLogThreads   = false;
-BYTE glProgramStage = STAGE_STARTUP;
+int8_t glProgramStage = STAGE_STARTUP;
 TSTATE glTaskState  = TSTATE::RUNNING;
-LONG glInotify = -1;
+int glInotify = -1;
 
 const struct virtual_drive glFSDefault = {
    0, 0, ":",
@@ -167,58 +177,66 @@ const struct virtual_drive glFSDefault = {
    fs_delete,
    fs_opendir,
    fs_closedir,
-   NULL,
+   nullptr,
    fs_testpath,
    fs_watch_path,
    fs_ignore_file,
    fs_getinfo,
    fs_getdeviceinfo,
-   NULL,
+   nullptr,
    fs_makedir,
    fs_samefile,
    fs_readlink,
    fs_createlink
 };
 
-std::unordered_map<ULONG, virtual_drive> glVirtual;
+ankerl::unordered_dense::map<uint32_t, virtual_drive> glVirtual;
 
 #ifdef __unix__
-struct FileMonitor *glFileMonitor = NULL;
+struct FileMonitor *glFileMonitor = nullptr;
 #endif
 
-THREADVAR char tlFieldName[10]; // $12345678\0
-THREADVAR LONG glForceUID = -1, glForceGID = -1;
-THREADVAR PERMIT glDefaultPermissions = PERMIT::NIL;
-THREADVAR WORD tlDepth     = 0;
-THREADVAR WORD tlLogStatus = 1;
-THREADVAR bool tlMainThread = false; // Will be set to TRUE on open, any other threads will remain FALSE.
-THREADVAR WORD tlPreventSleep = 0;
-THREADVAR WORD tlPublicLockCount = 0; // This variable is controlled by GLOBAL_LOCK() and can be used to check if locks are being held prior to sleeping.
-THREADVAR WORD tlPrivateLockCount = 0; // Count of private *memory* locks held per-thread
+thread_local char tlFieldName[10]; // $12345678\0
+thread_local int glForceUID = -1, glForceGID = -1;
+thread_local PERMIT glDefaultPermissions = PERMIT::NIL;
+thread_local int16_t tlDepth     = 0;
+thread_local int16_t tlLogStatus = 1;
+thread_local bool tlMainThread = false; // Will be set to TRUE on open, any other threads will remain FALSE.
+thread_local int16_t tlPreventSleep = 0;
+thread_local int16_t tlPublicLockCount = 0; // This variable is controlled by GLOBAL_LOCK() and can be used to check if locks are being held prior to sleeping.
+thread_local int16_t tlPrivateLockCount = 0; // Count of private *memory* locks held per-thread
 
-struct Object glDummyObject = {
-   .Class = NULL, .ChildPrivate = NULL, .CreatorMeta = NULL, .Owner = NULL, .NotifyFlags = 0,
-   .ThreadPending = 0, .Queue = 0, .SleepQueue = 0, .ActionDepth = 0,
-   .UID = 0, .Flags = NF::NIL, .ThreadID = 0, .Name = "", .PermitTerminate = false
-};
-class ObjectContext glTopContext; // Top-level context is a dummy and can be thread-shared
-THREADVAR ObjectContext *tlContext = &glTopContext;
+Object glDummyObject;
 
-objTime *glTime = NULL;
+#if defined(__MINGW32__) || defined(__MINGW64__)
+thread_local pf::vector<ObjectContext> *tlContextPtr = nullptr; // Lazy init via tls_get_context()
+#else
+static pf::vector<ObjectContext> make_initial_context()
+{
+   pf::vector<ObjectContext> v;
+   v.reserve(16);
+   v.emplace_back(ObjectContext { &glDummyObject, nullptr, AC::NIL });
+   return v;
+}
 
-THREADVAR WORD tlMsgRecursion = 0;
-THREADVAR TaskMessage *tlCurrentMsg = NULL;
+thread_local pf::vector<ObjectContext> tlContext = make_initial_context();
+#endif
 
-ERR (*glMessageHandler)(struct Message *) = NULL;
-void (*glVideoRecovery)(void) = NULL;
-void (*glKeyboardRecovery)(void) = NULL;
-void (*glNetProcessMessages)(LONG, APTR) = NULL;
+objTime *glTime = nullptr;
+
+thread_local int16_t tlMsgRecursion = 0;
+thread_local TaskMessage *tlCurrentMsg = nullptr;
+
+ERR (*glMessageHandler)(struct Message *) = nullptr;
+void (*glVideoRecovery)(void) = nullptr;
+void (*glKeyboardRecovery)(void) = nullptr;
+void (*glNetProcessMessages)(int, APTR) = nullptr;
 
 #ifdef __ANDROID__
-static struct AndroidBase *AndroidBase = NULL;
+static struct AndroidBase *AndroidBase = nullptr;
 #endif
 
 //********************************************************************************************************************
 
 #include "data_functions.c"
-#include "data_errors.c"
+#include "data_errors.cpp"

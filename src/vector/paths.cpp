@@ -14,15 +14,15 @@ extVectorViewport * get_parent_view(extVector *Vector)
             return Vector->ParentView;
          }
          else if (node->Parent->Class->BaseClassID IS CLASSID::VECTOR) node = (extVector *)(node->Parent);
-         else return NULL;
+         else return nullptr;
       }
    }
-   return NULL;
+   return nullptr;
 }
 
 //********************************************************************************************************************
 // This 'safe' version of gen_vector_path() forces a refresh of the vector and every parent that is marked as dirty.
-// Nothing is done if the tree is clean.  There is a presumption that dirty markers are always applied to children when 
+// Nothing is done if the tree is clean.  There is a presumption that dirty markers are always applied to children when
 // the parent is marked as such.  Generation of the paths is top-down.
 
 void gen_vector_tree(extVector *Vector)
@@ -62,7 +62,7 @@ void gen_vector_path(extVector *Vector)
 
    pf::SwitchContext context(Vector);
 
-   log.traceBranch("%s: #%d, Dirty: $%.2x, ParentView: #%d", Vector->Class->ClassName, Vector->UID, LONG(Vector->Dirty), Vector->ParentView ? Vector->ParentView->UID : 0);
+   log.traceBranch("%s: #%d, Dirty: $%.2x, ParentView: #%d", Vector->Class->ClassName, Vector->UID, int(Vector->Dirty), Vector->ParentView ? Vector->ParentView->UID : 0);
 
    auto parent_view = get_parent_view(Vector);
 
@@ -71,13 +71,13 @@ void gen_vector_path(extVector *Vector)
    if (Vector->classID() IS CLASSID::VECTORGROUP) {
       Vector->Transform.reset();
       apply_parent_transforms(Vector, Vector->Transform);
-      Vector->Dirty &= ~RC::ALL; // Making out that the group has been refreshed is important
+      Vector->Dirty &= ~RC::DIRTY; // Making out that the group has been refreshed is important
       return;
    }
    else if (Vector->classID() IS CLASSID::VECTORVIEWPORT) {
       auto view = (extVectorViewport *)Vector;
 
-      DOUBLE parent_width, parent_height;
+      double parent_width, parent_height;
       OBJECTID parent_id;
 
       // vpTargetX/Y are the display position of the viewport, relative to the container that it is inside.
@@ -113,7 +113,7 @@ void gen_vector_path(extVector *Vector)
 
          if ((!parent_width) or (!parent_height)) {
             // NB: It is perfectly legal, even if unlikely, that a viewport has a width/height of zero.
-            log.msg("Size of parent viewport #%d is %.2fx%.2f, dimensions $%.8x", parent_view->UID, parent_view->vpFixedWidth, parent_view->vpFixedHeight, LONG(parent_view->vpDimensions));
+            log.msg("Size of parent viewport #%d is %.2fx%.2f, dimensions $%.8x", parent_view->UID, parent_view->vpFixedWidth, parent_view->vpFixedHeight, int(parent_view->vpDimensions));
          }
 
          parent_id = parent_view->UID;
@@ -170,8 +170,8 @@ void gen_vector_path(extVector *Vector)
 
       // Contained vectors are normally scaled to the area defined by the viewport.
 
-      DOUBLE target_width  = view->vpFixedWidth;
-      DOUBLE target_height = view->vpFixedHeight;
+      double target_width  = view->vpFixedWidth;
+      double target_height = view->vpFixedHeight;
 
       // The client can force the top-level viewport to be resized by using VPF::RESIZE and defining PageWidth/PageHeight
 
@@ -191,8 +191,8 @@ void gen_vector_path(extVector *Vector)
       // the position of paths within the viewport and not the position of the viewport itself.
 
       calc_aspectratio(__FUNCTION__, view->vpAspectRatio, target_width, target_height,
-         view->vpViewWidth, view->vpViewHeight, &view->vpAlignX, &view->vpAlignY,
-         &view->vpXScale, &view->vpYScale);
+         view->vpViewWidth, view->vpViewHeight, view->vpAlignX, view->vpAlignY,
+         view->vpXScale, view->vpYScale);
 
       log.trace("AlignXY: %.2f %.2f, ScaleXY: %.2f %.2f", view->vpAlignX, view->vpAlignY, view->vpXScale, view->vpYScale);
 
@@ -212,13 +212,7 @@ void gen_vector_path(extVector *Vector)
 
       apply_parent_transforms(get_parent(Vector), Vector->Transform);
 
-      Vector->BasePath.free_all();
-      Vector->BasePath.move_to(0, 0); // Top left
-      Vector->BasePath.line_to(view->vpFixedWidth, 0); // Top right
-      Vector->BasePath.line_to(view->vpFixedWidth, view->vpFixedHeight); // Bottom right
-      Vector->BasePath.line_to(0, view->vpFixedHeight); // Bottom left
-      Vector->BasePath.close_polygon();
-
+      Vector->BasePath.rect(view->vpFixedWidth, view->vpFixedHeight);
       Vector->BasePath.transform(Vector->Transform);
 
       // Compute the clipping boundary of the viewport and store it in the BX/Y fields.
@@ -297,7 +291,7 @@ void gen_vector_path(extVector *Vector)
                if (morph->dirty()) gen_vector_path(morph);
 
                if (morph->BasePath.total_vertices()) {
-                  DOUBLE bx1, bx2, by1, by2;
+                  double bx1, bx2, by1, by2;
 
                   if ((Vector->MorphFlags & VMF::Y_MID) != VMF::NIL) {
                      bounding_rect_single(Vector->BasePath, 0, &bx1, &by1, &bx2, &by2);
@@ -343,7 +337,7 @@ void gen_vector_path(extVector *Vector)
       }
 
       if (Vector->Matrices) {
-         DOUBLE scale = Vector->Transform.scale();
+         double scale = Vector->Transform.scale();
          if (scale > 1.0) Vector->BasePath.angle_tolerance(0.2); // Set in radians.  The less this value is, the more accurate it will be at sharp turns.
          else Vector->BasePath.angle_tolerance(0);
       }
@@ -363,7 +357,7 @@ void gen_vector_path(extVector *Vector)
       }
       else if (Vector->FillRaster) {
          delete Vector->FillRaster;
-         Vector->FillRaster = NULL;
+         Vector->FillRaster = nullptr;
       }
 
       if (Vector->Stroked) {
@@ -393,7 +387,7 @@ void gen_vector_path(extVector *Vector)
       }
       else if (Vector->StrokeRaster) {
          delete Vector->StrokeRaster;
-         Vector->StrokeRaster = NULL;
+         Vector->StrokeRaster = nullptr;
       }
 
       Vector->Dirty &= ~RC::FINAL_PATH;
@@ -404,6 +398,7 @@ void gen_vector_path(extVector *Vector)
 
    // Changes to the path could mean that the mouse cursor needs to be refreshed.
    ((extVectorScene *)Vector->Scene)->RefreshCursor = true;
+   Vector->RequiresRedraw = true;
 }
 
 //********************************************************************************************************************

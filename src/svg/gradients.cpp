@@ -1,7 +1,15 @@
+// Kōtuku SVG extensions:
+//   It is possible to reference in-built colourmaps via 'href'
+//   The fx,fy values can be placed outside of the radial gradient if 'focal="unbound"' is used
+//   The resolution value can be defined to lower the rate of colour sampling.
 
-static ERR gradient_defaults(extSVG *Self, objVectorGradient *Gradient, ULONG Attrib, const std::string Value)
+static ERR gradient_defaults(extSVG *Self, objVectorGradient *Gradient, uint32_t Attrib, const std::string Value)
 {
    switch (Attrib) {
+      case SVF_RESOLUTION:
+         Gradient->setResolution(strtod(Value.c_str(), nullptr));
+         return ERR::Okay;
+
       case SVF_COLOR_INTERPOLATION:
          if (iequals("auto", Value)) Gradient->setColourSpace(VCS::LINEAR_RGB);
          else if (iequals("sRGB", Value)) Gradient->setColourSpace(VCS::SRGB);
@@ -22,7 +30,7 @@ static ERR gradient_defaults(extSVG *Self, objVectorGradient *Gradient, ULONG At
 //********************************************************************************************************************
 // Note that all offsets are percentages.
 
-const std::vector<GradientStop> svgState::process_gradient_stops(const XMLTag &Tag) noexcept
+const std::vector<GradientStop> svgState::process_gradient_stops(const XTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
 
@@ -40,14 +48,14 @@ const std::vector<GradientStop> svgState::process_gradient_stops(const XMLTag &T
          stop.RGB.Blue  = 0;
          stop.RGB.Alpha = 1.0;
 
-         for (LONG a=1; a < std::ssize(scan.Attribs); a++) {
+         for (int a=1; a < std::ssize(scan.Attribs); a++) {
             auto &name  = scan.Attribs[a].Name;
             auto &value = scan.Attribs[a].Value;
             if (value.empty()) continue;
 
             if (iequals("offset", name)) {
-               stop.Offset = strtod(value.c_str(), NULL);
-               for (LONG j=0; value[j]; j++) {
+               stop.Offset = strtod(value.c_str(), nullptr);
+               for (int j=0; value[j]; j++) {
                   if (value[j] IS '%') {
                      stop.Offset = stop.Offset * 0.01; // Must be in the range of 0 - 1.0
                      break;
@@ -63,17 +71,17 @@ const std::vector<GradientStop> svgState::process_gradient_stops(const XMLTag &T
             else if (iequals("stop-color", name)) {
                if (iequals("inherit", value)) {
                   VectorPainter painter;
-                  vec::ReadPainter(Self->Scene, m_stop_color.c_str(), &painter, NULL);
+                  vec::ReadPainter(Self->Scene, m_stop_color.c_str(), &painter, nullptr);
                   stop.RGB = painter.Colour;
                }
-               else if (iequals("currentColor", value)) { 
+               else if (iequals("currentColor", value)) {
                   VectorPainter painter;
-                  vec::ReadPainter(Self->Scene, m_color.c_str(), &painter, NULL);
+                  vec::ReadPainter(Self->Scene, m_color.c_str(), &painter, nullptr);
                   stop.RGB = painter.Colour;
                }
                else {
                   VectorPainter painter;
-                  vec::ReadPainter(Self->Scene, value.c_str(), &painter, NULL);
+                  vec::ReadPainter(Self->Scene, value.c_str(), &painter, nullptr);
                   stop.RGB = painter.Colour;
                }
             }
@@ -81,7 +89,7 @@ const std::vector<GradientStop> svgState::process_gradient_stops(const XMLTag &T
                if (iequals("inherit", value)) {
                   stop_opacity = m_stop_opacity;
                }
-               else stop_opacity = strtod(value.c_str(), NULL);
+               else stop_opacity = strtod(value.c_str(), nullptr);
             }
             else if (iequals("id", name)) {
                log.trace("Use of id attribute in <stop/> ignored.");
@@ -109,20 +117,21 @@ const std::vector<GradientStop> svgState::process_gradient_stops(const XMLTag &T
 
 //********************************************************************************************************************
 
-void svgState::parse_lineargradient(const XMLTag &Tag, objVectorGradient *Gradient, std::string &ID) noexcept
+void svgState::parse_lineargradient(const XTag &Tag, objVectorGradient *Gradient, std::string &ID) noexcept
 {
    pf::Log log(__FUNCTION__);
-   
+
    // Determine the user coordinate system first.
 
-   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+   for (int a=1; a < std::ssize(Tag.Attribs); a++) {
       if (iequals("gradientUnits", Tag.Attribs[a].Name)) {
          if (iequals("userSpaceOnUse", Tag.Attribs[a].Value)) Gradient->Units = VUNIT::USERSPACE;
          break;
       }
    }
-      
-   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+
+   bool process_stops = true;
+   for (int a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
@@ -149,21 +158,26 @@ void svgState::parse_lineargradient(const XMLTag &Tag, objVectorGradient *Gradie
             break;
 
          case SVF_ID: ID = val; break;
-               
+
          case SVF_HREF:
          case SVF_XLINK_HREF: {
-            if (auto other = find_href_tag(Self, val)) {
+            if (val.starts_with("url(#cmap:")) {
+               auto end = val.find(')');
+               auto cmap = val.substr(5, end-5);
+               if (Gradient->setColourMap(cmap) IS ERR::Okay) process_stops = false;
+            }
+            else if (auto other = find_href_tag(Self, val)) {
                std::string dummy;
-               if (iequals("radialGradient", other->Attribs[0].Name)) {
-                  parse_radialgradient(*other, Gradient, dummy);
+               if (iequals("radialGradient", other->name())) {
+                  parse_radialgradient(*other, *Gradient, dummy);
                }
-               else if (iequals("linearGradient", other->Attribs[0].Name)) {
+               else if (iequals("linearGradient", other->name())) {
                   parse_lineargradient(*other, Gradient, dummy);
                }
-               else if (iequals("diamondGradient", other->Attribs[0].Name)) {
+               else if (iequals("diamondGradient", other->name())) {
                   parse_diamondgradient(*other, Gradient, dummy);
                }
-               else if (iequals("contourGradient", other->Attribs[0].Name)) {
+               else if (iequals("contourGradient", other->name())) {
                   parse_contourgradient(*other, Gradient, dummy);
                }
             }
@@ -181,67 +195,77 @@ void svgState::parse_lineargradient(const XMLTag &Tag, objVectorGradient *Gradie
    }
 
    auto stops = process_gradient_stops(Tag);
-   if (stops.size() >= 2) SetArray(Gradient, FID_Stops, stops);
+   if (stops.size() >= 2) Gradient->set(FID_Stops, stops);
 }
 
 //********************************************************************************************************************
 
-void svgState::parse_radialgradient(const XMLTag &Tag, objVectorGradient *Gradient, std::string &ID) noexcept
+void svgState::parse_radialgradient(const XTag &Tag, objVectorGradient &Gradient, std::string &ID) noexcept
 {
    pf::Log log(__FUNCTION__);
-   
+
    // Determine the user coordinate system first.
 
-   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+   for (int a=1; a < std::ssize(Tag.Attribs); a++) {
       if (iequals("gradientUnits", Tag.Attribs[a].Name)) {
-         if (iequals("userSpaceOnUse", Tag.Attribs[a].Value)) Gradient->Units = VUNIT::USERSPACE;
+         if (iequals("userSpaceOnUse", Tag.Attribs[a].Value)) Gradient.Units = VUNIT::USERSPACE;
          break;
       }
    }
 
-   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+   bool process_stops = true;
+   for (int a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
       log.trace("Processing radial gradient attribute %s = %s", Tag.Attribs[a].Name, val);
 
       auto attrib = strihash(Tag.Attribs[a].Name);
       switch(attrib) {
-         case SVF_CX: set_double_units(Gradient, FID_CenterX, val, Gradient->Units); break;
-         case SVF_CY: set_double_units(Gradient, FID_CenterY, val, Gradient->Units); break;
-         case SVF_FX: set_double_units(Gradient, FID_FX, val, Gradient->Units); break;
-         case SVF_FY: set_double_units(Gradient, FID_FY, val, Gradient->Units); break;
-         case SVF_R:  set_double_units(Gradient, FID_Radius, val, Gradient->Units); break;
+         case SVF_CX: set_double_units(&Gradient, FID_CenterX, val, Gradient.Units); break;
+         case SVF_CY: set_double_units(&Gradient, FID_CenterY, val, Gradient.Units); break;
+         case SVF_FX: set_double_units(&Gradient, FID_FX, val, Gradient.Units); break;
+         case SVF_FY: set_double_units(&Gradient, FID_FY, val, Gradient.Units); break;
+         case SVF_R:  set_double_units(&Gradient, FID_Radius, val, Gradient.Units); break;
          case SVF_GRADIENTUNITS: break; // Already processed
-         case SVF_GRADIENTTRANSFORM: Gradient->setTransform(val); break;
+         case SVF_GRADIENTTRANSFORM: Gradient.setTransform(val); break;
          case SVF_ID: ID = val; break;
          case SVF_SPREADMETHOD:
-            if (iequals("pad", val))          Gradient->setSpreadMethod(VSPREAD::PAD);
-            else if (iequals("reflect", val)) Gradient->setSpreadMethod(VSPREAD::REFLECT);
-            else if (iequals("repeat", val))  Gradient->setSpreadMethod(VSPREAD::REPEAT);
+            if (iequals("pad", val))          Gradient.setSpreadMethod(VSPREAD::PAD);
+            else if (iequals("reflect", val)) Gradient.setSpreadMethod(VSPREAD::REFLECT);
+            else if (iequals("repeat", val))  Gradient.setSpreadMethod(VSPREAD::REPEAT);
+            break;
+
+         case SVF_FOCALPOINT:
+            if (iequals("unbound", val)) Gradient.Flags &= ~VGF::CONTAIN_FOCAL;
             break;
 
          case SVF_HREF:
          case SVF_XLINK_HREF: {
-            if (auto other = find_href_tag(Self, val)) {
+            if (val.starts_with("url(#cmap:")) {
+               auto end = val.find(')');
+               auto cmap = val.substr(5, end-5);
+               if (Gradient.setColourMap(cmap) IS ERR::Okay) process_stops = false;
+            }
+            else if (auto other = find_href_tag(Self, val)) {
                std::string dummy;
-               if (iequals("radialGradient", other->Attribs[0].Name)) {
+               if (iequals("radialGradient", other->name())) {
                   parse_radialgradient(*other, Gradient, dummy);
                }
-               else if (iequals("linearGradient", other->Attribs[0].Name)) {
-                  parse_lineargradient(*other, Gradient, dummy);
+               else if (iequals("linearGradient", other->name())) {
+                  parse_lineargradient(*other, &Gradient, dummy);
                }
-               else if (iequals("diamondGradient", other->Attribs[0].Name)) {
-                  parse_diamondgradient(*other, Gradient, dummy);
+               else if (iequals("diamondGradient", other->name())) {
+                  parse_diamondgradient(*other, &Gradient, dummy);
                }
-               else if (iequals("contourGradient", other->Attribs[0].Name)) {
-                  parse_contourgradient(*other, Gradient, dummy);
+               else if (iequals("contourGradient", other->name())) {
+                  parse_contourgradient(*other, &Gradient, dummy);
                }
             }
             break;
          }
 
          default: {
-            if (gradient_defaults(Self, Gradient, attrib, val) != ERR::Okay) {
+            if (gradient_defaults(Self, &Gradient, attrib, val) != ERR::Okay) {
                if (Tag.Attribs[a].Name.find(':') != std::string::npos) break;
                log.warning("%s attribute '%s' unrecognised @ line %d", Tag.name(), Tag.Attribs[a].Name.c_str(), Tag.LineNo);
             }
@@ -249,26 +273,29 @@ void svgState::parse_radialgradient(const XMLTag &Tag, objVectorGradient *Gradie
       }
    }
 
-   auto stops = process_gradient_stops(Tag);
-   if (stops.size() >= 2) SetArray(Gradient, FID_Stops, stops);
+   if (process_stops) {
+      auto stops = process_gradient_stops(Tag);
+      if (stops.size() >= 2) Gradient.set(FID_Stops, stops);
+   }
 }
 
 //********************************************************************************************************************
 
-void svgState::parse_diamondgradient(const XMLTag &Tag, objVectorGradient *Gradient, std::string &ID) noexcept
+void svgState::parse_diamondgradient(const XTag &Tag, objVectorGradient *Gradient, std::string &ID) noexcept
 {
    pf::Log log(__FUNCTION__);
-   
+
    // Determine the user coordinate system first.
 
-   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+   for (int a=1; a < std::ssize(Tag.Attribs); a++) {
       if (iequals("gradientUnits", Tag.Attribs[a].Name)) {
          if (iequals("userSpaceOnUse", Tag.Attribs[a].Value)) Gradient->Units = VUNIT::USERSPACE;
          break;
       }
    }
 
-   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+   bool process_stops = true;
+   for (int a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
@@ -290,18 +317,23 @@ void svgState::parse_diamondgradient(const XMLTag &Tag, objVectorGradient *Gradi
          case SVF_ID: ID = val; break;
          case SVF_HREF:
          case SVF_XLINK_HREF: {
-            if (auto other = find_href_tag(Self, val)) {
+            if (val.starts_with("url(#cmap:")) {
+               auto end = val.find(')');
+               auto cmap = val.substr(5, end-5);
+               if (Gradient->setColourMap(cmap) IS ERR::Okay) process_stops = false;
+            }
+            else if (auto other = find_href_tag(Self, val)) {
                std::string dummy;
-               if (iequals("radialGradient", other->Attribs[0].Name)) {
-                  parse_radialgradient(*other, Gradient, dummy);
+               if (iequals("radialGradient", other->name())) {
+                  parse_radialgradient(*other, *Gradient, dummy);
                }
-               else if (iequals("linearGradient", other->Attribs[0].Name)) {
+               else if (iequals("linearGradient", other->name())) {
                   parse_lineargradient(*other, Gradient, dummy);
                }
-               else if (iequals("diamondGradient", other->Attribs[0].Name)) {
+               else if (iequals("diamondGradient", other->name())) {
                   parse_diamondgradient(*other, Gradient, dummy);
                }
-               else if (iequals("contourGradient", other->Attribs[0].Name)) {
+               else if (iequals("contourGradient", other->name())) {
                   parse_contourgradient(*other, Gradient, dummy);
                }
             }
@@ -317,34 +349,36 @@ void svgState::parse_diamondgradient(const XMLTag &Tag, objVectorGradient *Gradi
    }
 
    auto stops = process_gradient_stops(Tag);
-   if (stops.size() >= 2) SetArray(Gradient, FID_Stops, stops);
+   if (stops.size() >= 2) Gradient->set(FID_Stops, stops);
 }
 
 //********************************************************************************************************************
 
-void svgState::parse_contourgradient(const XMLTag &Tag, objVectorGradient *Gradient, std::string &ID) noexcept
+void svgState::parse_contourgradient(const XTag &Tag, objVectorGradient *Gradient, std::string &ID) noexcept
 {
    pf::Log log(__FUNCTION__);
 
    // Determine the user coordinate system first.
 
-   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+   for (int a=1; a < std::ssize(Tag.Attribs); a++) {
       if (iequals("gradientUnits", Tag.Attribs[a].Name)) {
          if (iequals("userSpaceOnUse", Tag.Attribs[a].Value)) Gradient->Units = VUNIT::USERSPACE;
          break;
       }
    }
 
-   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+   bool process_stops = true;
+   for (int a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
-      log.trace("Processing contour gradient attribute %s =  %s", Tag.Attribs[a].Name, val);
+      log.trace("Processing contour gradient attribute %s = %s", Tag.Attribs[a].Name, val);
 
       auto attrib = strihash(Tag.Attribs[a].Name);
       switch(attrib) {
          case SVF_GRADIENTUNITS: break; // Already processed
          case SVF_GRADIENTTRANSFORM: Gradient->setTransform(val); break;
+         // X1 and X2 adjust padding of the gradient within the target vector.
          case SVF_X1: set_double_units(Gradient, FID_X1, val, Gradient->Units); break;
          case SVF_X2: set_double_units(Gradient, FID_X2, val, Gradient->Units); break;
          case SVF_SPREADMETHOD: {
@@ -356,21 +390,27 @@ void svgState::parse_contourgradient(const XMLTag &Tag, objVectorGradient *Gradi
          case SVF_ID: ID = val; break;
          case SVF_HREF:
          case SVF_XLINK_HREF: {
-            if (auto other = find_href_tag(Self, val)) {
+            if (val.starts_with("url(#cmap:")) {
+               auto end = val.find(')');
+               auto cmap = val.substr(5, end-5);
+               if (Gradient->setColourMap(cmap) IS ERR::Okay) process_stops = false;
+            }
+            else if (auto other = find_href_tag(Self, val)) {
                std::string dummy;
-               if (iequals("radialGradient", other->Attribs[0].Name)) {
-                  parse_radialgradient(*other, Gradient, dummy);
+               if (iequals("radialGradient", other->name())) {
+                  parse_radialgradient(*other, *Gradient, dummy);
                }
-               else if (iequals("linearGradient", other->Attribs[0].Name)) {
+               else if (iequals("linearGradient", other->name())) {
                   parse_lineargradient(*other, Gradient, dummy);
                }
-               else if (iequals("diamondGradient", other->Attribs[0].Name)) {
+               else if (iequals("diamondGradient", other->name())) {
                   parse_diamondgradient(*other, Gradient, dummy);
                }
-               else if (iequals("contourGradient", other->Attribs[0].Name)) {
+               else if (iequals("contourGradient", other->name())) {
                   parse_contourgradient(*other, Gradient, dummy);
                }
             }
+            break;
          }
          default: {
             if (gradient_defaults(Self, Gradient, attrib, val) != ERR::Okay) {
@@ -384,7 +424,7 @@ void svgState::parse_contourgradient(const XMLTag &Tag, objVectorGradient *Gradi
 
 //********************************************************************************************************************
 
-ERR svgState::proc_lineargradient(const XMLTag &Tag) noexcept
+ERR svgState::proc_lineargradient(const XTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -404,7 +444,7 @@ ERR svgState::proc_lineargradient(const XMLTag &Tag) noexcept
          fl::Y1(0.0),
          fl::X2(SCALE(1.0)),
          fl::Y2(0.0));
-      
+
       state.parse_lineargradient(Tag, gradient, id);
 
       if (InitObject(gradient) IS ERR::Okay) {
@@ -422,12 +462,12 @@ ERR svgState::proc_lineargradient(const XMLTag &Tag) noexcept
 
 //********************************************************************************************************************
 
-ERR svgState::proc_radialgradient(const XMLTag &Tag) noexcept
+ERR svgState::proc_radialgradient(const XTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
    std::string id;
-   
+
    auto state = *this;
    state.applyTag(Tag); // Apply all attribute values to the current state.
 
@@ -437,11 +477,12 @@ ERR svgState::proc_radialgradient(const XMLTag &Tag) noexcept
       gradient->setFields(fl::Name("SVGRadialGrad"), fl::Type(VGT::RADIAL), fl::Units(VUNIT::BOUNDING_BOX),
          fl::CenterX(SCALE(0.5)), fl::CenterY(SCALE(0.5)), fl::Radius(SCALE(0.5)));
 
-      state.parse_radialgradient(Tag, gradient, id);
-
-      // Enforce SVG limits on focal point positioning.
+      // Enforce SVG limits on focal point positioning.  Can be overridden with focal="unbound", which is a Kotuku
+      // specific feature.
 
       gradient->Flags |= VGF::CONTAIN_FOCAL;
+
+      state.parse_radialgradient(Tag, *gradient, id);
 
       if (InitObject(gradient) IS ERR::Okay) {
          if (!id.empty()) {
@@ -458,12 +499,12 @@ ERR svgState::proc_radialgradient(const XMLTag &Tag) noexcept
 
 //********************************************************************************************************************
 
-ERR svgState::proc_diamondgradient(const XMLTag &Tag) noexcept
+ERR svgState::proc_diamondgradient(const XTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
    std::string id;
-   
+
    auto state = *this;
    state.applyTag(Tag); // Apply all attribute values to the current state.
 
@@ -491,7 +532,7 @@ ERR svgState::proc_diamondgradient(const XMLTag &Tag) noexcept
 //********************************************************************************************************************
 // NB: Contour gradients are not part of the SVG standard.
 
-ERR svgState::proc_contourgradient(const XMLTag &Tag) noexcept
+ERR svgState::proc_contourgradient(const XTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -507,7 +548,7 @@ ERR svgState::proc_contourgradient(const XMLTag &Tag) noexcept
       state.parse_contourgradient(Tag, gradient, id);
 
       auto stops = process_gradient_stops(Tag);
-      if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
+      if (stops.size() >= 2) gradient->set(FID_Stops, stops);
 
       if (InitObject(gradient) IS ERR::Okay) {
          if (!id.empty()) {
@@ -524,7 +565,7 @@ ERR svgState::proc_contourgradient(const XMLTag &Tag) noexcept
 
 //********************************************************************************************************************
 
-ERR svgState::proc_conicgradient(const XMLTag &Tag) noexcept
+ERR svgState::proc_conicgradient(const XTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -543,14 +584,14 @@ ERR svgState::proc_conicgradient(const XMLTag &Tag) noexcept
       // Determine the user coordinate system first.
 
       gradient->Units = VUNIT::BOUNDING_BOX;
-      for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+      for (int a=1; a < std::ssize(Tag.Attribs); a++) {
          if (iequals("gradientUnits", Tag.Attribs[a].Name)) {
             if (iequals("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT::USERSPACE;
             break;
          }
       }
 
-      for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+      for (int a=1; a < std::ssize(Tag.Attribs); a++) {
          auto &val = Tag.Attribs[a].Value;
          if (val.empty()) continue;
 
@@ -583,7 +624,7 @@ ERR svgState::proc_conicgradient(const XMLTag &Tag) noexcept
       }
 
       auto stops = process_gradient_stops(Tag);
-      if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
+      if (stops.size() >= 2) gradient->set(FID_Stops, stops);
 
       if (InitObject(gradient) IS ERR::Okay) {
          if (!id.empty()) {

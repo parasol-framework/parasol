@@ -9,12 +9,11 @@
     <comment>The Script class defines a common interface for script execution.</comment>
     <version>1</version>
     <id>1b600fba</id>
-    <idstring>ID_SCRIPT</idstring>
+    <idstring>SCRIPT</idstring>
     <category>Data</category>
-    <include>modules/script.h</include>
-    <copyright>Paul Manias 1996-2024</copyright>
+    <copyright>Paul Manias 1996-2026</copyright>
     <description>
-<p>The Script class defines a common interface for the purpose of executing scripts, such as Fluid.  The base class does not include a default parser or execution process of any kind.</p>
+<p>The Script class defines a common interface for the purpose of executing scripts, such as Tiri.  The base class does not include a default parser or execution process of any kind.</p>
 <p>To execute a script file, choose a sub-class that matches the language and create the script object.  Set the <fl>Path</fl> field and then <action>Activate</action> the script.  Global input parameters for the script can be defined via the <action>SetKey</action> action.</p>
 <p>Note that client scripts may sometimes create objects that are unmanaged by the script object that created them. Terminating the script will not remove objects that are outside its resource hierarchy.</p></description>
     <source>
@@ -32,11 +31,11 @@
     <action>
       <name>GetKey</name>
       <comment>Script parameters can be retrieved through this action.</comment>
-      <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, LONG Size)</prototype>
+      <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, INT Size)</prototype>
       <input>
         <param type="CSTRING" name="Key">The name of a key value.</param>
         <param type="STRING" name="Value">Pointer to a buffer space large enough to hold the retrieved value.</param>
-        <param type="LONG" name="Size">Indicates the byte size of the Buffer.</param>
+        <param type="INT" name="Size">Indicates the byte size of the Buffer.</param>
       </input>
     </action>
 
@@ -62,15 +61,15 @@
     <method>
       <name>Callback</name>
       <comment>An internal method for managing callbacks.</comment>
-      <prototype>ERR sc::Callback(OBJECTPTR Object, LARGE ProcedureID, const struct ScriptArg * Args, LONG TotalArgs, ERR * Error)</prototype>
+      <prototype>ERR sc::Callback(OBJECTPTR Object, INT64 ProcedureID, const struct ScriptArg * Args, INT TotalArgs, ERR * Error)</prototype>
       <input>
-        <param type="LARGE" name="ProcedureID">An identifier for the target procedure.</param>
+        <param type="INT64" name="ProcedureID">An identifier for the target procedure.</param>
         <param type="const struct ScriptArg *" name="Args">Optional CSV string containing parameters to pass to the procedure.</param>
-        <param type="LONG" name="TotalArgs">The total number of parameters in the Args parameter.</param>
+        <param type="INT" name="TotalArgs">The total number of parameters in the Args parameter.</param>
         <param type="ERR *" name="Error">The error code returned from the script, if any.</param>
       </input>
       <description>
-<p>Private</p>
+<p>Not for client use.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -79,15 +78,33 @@
     </method>
 
     <method>
-      <name>DerefProcedure</name>
-      <comment>Dereferences a function.</comment>
-      <prototype>ERR sc::DerefProcedure(OBJECTPTR Object, FUNCTION * Procedure)</prototype>
+      <name>DebugLog</name>
+      <comment>Acquire a debug log from a compiled Script.</comment>
+      <prototype>ERR sc::DebugLog(OBJECTPTR Object, CSTRING Options, CSTRING * Result)</prototype>
       <input>
-        <param type="FUNCTION *" name="Procedure">The function to be dereferenced.</param>
+        <param type="CSTRING" name="Options">Options to pass to the underlying language.</param>
+        <param type="CSTRING *" name="Result">Resulting log information.</param>
       </input>
       <description>
-<p>This method is applicable to scripting languages that manage function references as a keyed resource.  Fluid is one such language.</p>
-<p>Any routine that accepts a script function as a parameter should call DerefProcedure at a later point in order to ensure that the function reference is released.  Not doing so may leave the reference in memory until the Script that owns the procedure is terminated.</p>
+<p>Use the DebugLog() method to acquire debug information from a compiled script.  The exact nature of the log will depend on the scripting language in use, but will typically dump readable bytecode for analysis.  The Options parameter is a comma-separated list that may be used to pass language-specific options to the underlying implementation.</p>
+<p>The resulting log information is returned as a string, which needs to be deallocated once no longer required.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+    <method>
+      <name>DerefProcedure</name>
+      <comment>Dereferences an acquired procedure.</comment>
+      <prototype>ERR sc::DerefProcedure(OBJECTPTR Object, FUNCTION * Procedure)</prototype>
+      <input>
+        <param type="FUNCTION *" name="Procedure">The procedure to be dereferenced.</param>
+      </input>
+      <description>
+<p>This method will release a procedure reference that has been acquired through <method>GetProcedureID</method>.  It is only necessary to make this call if the scripting language is managing function references as a keyed resource.  Tiri is one such language.  Languages that do not manage functions as a resource will ignore calls to this method.</p>
+<p>Note that acquiring a procedure reference and then failing to release it can result in the reference remaining in memory until the Script is terminated.  There may also be unforeseen consequences in the garbage collection process.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -98,11 +115,11 @@
     <method>
       <name>Exec</name>
       <comment>Executes a procedure in the script.</comment>
-      <prototype>ERR sc::Exec(OBJECTPTR Object, CSTRING Procedure, const struct ScriptArg * Args, LONG TotalArgs)</prototype>
+      <prototype>ERR sc::Exec(OBJECTPTR Object, CSTRING Procedure, const struct ScriptArg * Args, INT TotalArgs)</prototype>
       <input>
         <param type="CSTRING" name="Procedure">The name of the procedure to execute, or NULL for the default entry point.</param>
         <param type="const struct ScriptArg *" name="Args">Optional parameters to pass to the procedure.</param>
-        <param type="LONG" name="TotalArgs">Total number of <code>Args</code> provided.</param>
+        <param type="INT" name="TotalArgs">Total number of <code>Args</code> provided.</param>
       </input>
       <description>
 <p>Use the Exec() method to execute a named procedure in a script, optionally passing that procedure a series of parameters.</p>
@@ -110,25 +127,25 @@
 <p>Parameter values must be specified as an array of ScriptArg structures.  The following example illustrates:</p>
 <pre>
 struct ScriptArg args[] = {
-   { "Object",       FD_OBJECTID, { .Long = Self-&gt;UID } },
-   { "Output",       FD_PTR,      { .Address = output } },
-   { "OutputLength", FD_LONG,     { .Long = len } }
+   { &quot;Object&quot;,       FD_OBJECTID, { .Int = Self-&gt;UID } },
+   { &quot;Output&quot;,       FD_PTR,      { .Address = output } },
+   { &quot;OutputLength&quot;, FD_INT,      { .Int = len } }
 };
 </pre>
 <p>The ScriptArg structure follows this arrangement:</p>
 <pre>
 struct ScriptArg {
    STRING Name;
-   LONG Type;
+   int Type;
    union {
-      APTR   Address;
-      LONG   Long;
-      LARGE  Large;
-      DOUBLE Double;
+      APTR    Address;
+      int     Int;
+      int64_t Int64;
+      double  Double;
    };
 };
 </pre>
-<p>The Field Descriptor <code>FD</code> specified in the <code>Type</code> must be a match to whatever value is defined in the union.  For instance if the <code>Long</code> field is defined then an <code>FD_LONG</code> <code>Type</code> must be used.  Supplementary field definition information, e.g. <code>FD_OBJECT</code>, may be used to assist in clarifying the type of the value that is being passed.  Field Descriptors are documented in detail in the Parasol Wiki.</p>
+<p>The Field Descriptor <code>FD</code> specified in the <code>Type</code> must be a match to whatever value is defined in the union.  For instance if the <code>Int</code> field is defined then an <code>FD_INT</code> <code>Type</code> must be used.  Supplementary field definition information, e.g. <code>FD_OBJECT</code>, may be used to assist in clarifying the type of the value that is being passed.  Field Descriptors are documented in detail in the Kotuku Wiki.</p>
       </description>
       <result>
         <error code="Okay">The procedure was executed.</error>
@@ -140,13 +157,13 @@ struct ScriptArg {
     <method>
       <name>GetProcedureID</name>
       <comment>Converts a procedure name to an ID.</comment>
-      <prototype>ERR sc::GetProcedureID(OBJECTPTR Object, CSTRING Procedure, LARGE * ProcedureID)</prototype>
+      <prototype>ERR sc::GetProcedureID(OBJECTPTR Object, CSTRING Procedure, INT64 * ProcedureID)</prototype>
       <input>
         <param type="CSTRING" name="Procedure">The name of the procedure.</param>
-        <param type="LARGE *" name="ProcedureID">The computed ID will be returned in this parameter.</param>
+        <param type="INT64 *" name="ProcedureID">The computed ID will be returned in this parameter.</param>
       </input>
       <description>
-<p>This method will convert a procedure name to a unique reference that will be recognised by the script as a direct reference to that procedure.  The ID can be used to create new <code>FUNCTION</code> definitions, for example:</p>
+<p>This method will convert a procedure name to a unique reference within the script, if such a procedure exists.  The ID can be used by the client to create new <code>FUNCTION</code> definitions, for example:</p>
 <pre>FUNCTION callback;
 SET_FUNCTION_SCRIPT(callback, script, procedure_id);
 </pre>
@@ -194,7 +211,7 @@ SET_FUNCTION_SCRIPT(callback, script, procedure_id);
     </field>
 
     <field>
-      <name>ErrorString</name>
+      <name>ErrorMessage</name>
       <comment>A human readable error string may be declared here following a script execution failure.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>

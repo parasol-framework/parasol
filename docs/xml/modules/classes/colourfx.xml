@@ -9,10 +9,9 @@
     <comment>Support for applying colour transformation effects.</comment>
     <version>1</version>
     <id>3db0d377</id>
-    <idstring>ID_COLOURFX</idstring>
+    <idstring>COLOURFX</idstring>
     <category>Graphics</category>
-    <include>modules/colourfx.h</include>
-    <copyright>Paul Manias © 2010-2025</copyright>
+    <copyright>Paul Manias © 2010-2026</copyright>
     <description>
 <p>Use ColourFX to perform colour transformations on an input source.  A <fl>Mode</fl> must be selected and any required <fl>Values</fl> defined prior to rendering.</p>
 <p>SVG requires that the calculations are performed on non-premultiplied colour values.  If the input graphics consists of premultiplied colour values, those values are automatically converted into non-premultiplied colour values for this operation.</p></description>
@@ -27,10 +26,10 @@
       <comment>Render the effect to the target bitmap.</comment>
       <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
       <input>
-        <param type="LONG" name="X">The X position of the region to be drawn.</param>
-        <param type="LONG" name="Y">The Y position of the region to be drawn.</param>
-        <param type="LONG" name="Width">The width of the region to be drawn.</param>
-        <param type="LONG" name="Height">The height of the region to be drawn.</param>
+        <param type="INT" name="X">The X position of the region to be drawn.</param>
+        <param type="INT" name="Y">The Y position of the region to be drawn.</param>
+        <param type="INT" name="Width">The width of the region to be drawn.</param>
+        <param type="INT" name="Height">The height of the region to be drawn.</param>
       </input>
     </action>
 

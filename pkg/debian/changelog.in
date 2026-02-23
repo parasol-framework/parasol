@@ -1,0 +1,6 @@
+kotuku (@VERSION@-1) unstable; urgency=medium
+
+  * Release version @VERSION@
+  @CHANGELOG_ENTRIES@
+
+ -- Kotuku Open Group <team@kotuku.dev>  @BUILD_DATE@

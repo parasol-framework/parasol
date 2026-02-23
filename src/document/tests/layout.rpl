@@ -1,15 +1,15 @@
 <?xml version="1.0"?>
 <!DOCTYPE rpl PUBLIC "-//ROCKLYTE//DTD RPL 1.0//EN">
 
-<body font-size="12pt"/>
+<body font-size="12pt" font-style="medium"/>
 
 <page name="Index">
 
-<p><font size="14pt">Indent Test</a></p>
+<p><font size="14pt" style="Bold">Indent Test</a></p>
 
-<p indent="30">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut nibh tortor, egestas sit amet metus at, fermentum gravida purus. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse egestas nibh turpis, et faucibus risus varius quis. Mauris quis cursus sapien. Etiam eget dui id turpis molestie condimentum. Duis mollis erat vitae ante bibendum, ac pellentesque justo volutpat. Pellentesque blandit aliquam eros ut pulvinar. Phasellus malesuada pulvinar metus vel ullamcorper. Phasellus tristique, sapien non pharetra vehicula, massa lectus blandit lorem, eget consectetur felis massa sed quam. Etiam vel tempor massa. Integer quis nunc non risus malesuada pellentesque. Etiam pretium nunc nibh, sit amet tempor ipsum rhoncus a. Donec id iaculis tellus, et semper magna. Morbi molestie sed risus eget facilisis.</p>
+<p indent="30" style="medium">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut nibh tortor, egestas sit amet metus at, fermentum gravida purus. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse egestas nibh turpis, et faucibus risus varius quis. Mauris quis cursus sapien. Etiam eget dui id turpis molestie condimentum. Duis mollis erat vitae ante bibendum, ac pellentesque justo volutpat. Pellentesque blandit aliquam eros ut pulvinar. Phasellus malesuada pulvinar metus vel ullamcorper. Phasellus tristique, sapien non pharetra vehicula, massa lectus blandit lorem, eget consectetur felis massa sed quam. Etiam vel tempor massa. Integer quis nunc non risus malesuada pellentesque. Etiam pretium nunc nibh, sit amet tempor ipsum rhoncus a. Donec id iaculis tellus, et semper magna. Morbi molestie sed risus eget facilisis.</p>
 
-<p><font size="14pt">Advance Test</a></p>
+<p><font size="14pt" style="Extra Bold Italic">Advance Test</a></p>
 
 <p>Left<advance x="60"/>Right (60)<advance y="60"/>Down (60)</p>
 
@@ -19,7 +19,7 @@
 
 <p><font face="courier"><pre>One Two  Three   Four    Five     Six      Seven       Eight        Nine         Ten</pre></font></p>
 
-<p><font size="14pt">Line Break Test</a></p>
+<p><font size="14pt" style="Thin Italic">Line Break Test</a></p>
 
 <p>Morbi sit amet pretium est, id lobortis turpis.<br/>Integer mollis dapibus porttitor.<br/>Pellentesque aliquet ornare neque, non auctor quam pretium eget.<br/> Cras eget egestas leo. Praesent interdum est vel nunc vehicula dignissim.</p>
 

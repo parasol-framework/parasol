@@ -227,7 +227,7 @@ namespace agg
       bool operator != (const trans_affine& m) const { return !is_equal(m, affine_epsilon); }
 
       // Direct transformation of x and y
-      void transform(double* x, double* y) const;
+      template<class T = double> void transform(T *x, T *y) const;
 
       point_d transform(const point_d &) const;
 
@@ -265,13 +265,13 @@ namespace agg
       void scaling(double* x, double* y) const;
       void scaling_abs(double* x, double* y) const;
    };
-   
+
    inline point_d trans_affine::transform(const point_d &Point) const {
       return { Point.x * sx  + Point.y * shx + tx, Point.x * shy + Point.y * sy  + ty };
    }
 
-   inline void trans_affine::transform(double* x, double* y) const {
-      double tmp = *x;
+   template<class T> void trans_affine::transform(T * x, T * y) const {
+      T tmp = *x;
       *x = tmp * sx  + *y * shx + tx;
       *y = tmp * shy + *y * sy  + ty;
    }
@@ -291,8 +291,9 @@ namespace agg
    }
 
    inline double trans_affine::scale() const {
-      double x = 0.707106781 * sx  + 0.707106781 * shx;
-      double y = 0.707106781 * shy + 0.707106781 * sy;
+      static double SQRT2DIV2 = sqrt(2.0) / 2.0;
+      double x = SQRT2DIV2 * sx  + SQRT2DIV2 * shx;
+      double y = SQRT2DIV2 * shy + SQRT2DIV2 * sy;
       return sqrt(x*x + y*y);
    }
 
@@ -301,7 +302,7 @@ namespace agg
       ty += y;
       return *this;
    }
-   
+
    inline const trans_affine& trans_affine::translate(const point_d pt) {
       tx += pt.x;
       ty += pt.y;

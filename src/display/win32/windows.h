@@ -1,5 +1,5 @@
 
-#ifdef PARASOL_MAIN_H
+#ifdef KOTUKU_MAIN_H
 typedef void * HWND;
 typedef void * HDC;
 typedef void * HBITMAP;
@@ -7,7 +7,7 @@ typedef void * HANDLE;
 typedef void * HINSTANCE;
 typedef void * WNDPROC;
 typedef void * HCURSOR;
-enum class PTC : LONG;
+enum class PTC : int;
 #endif
 
 struct WinCursor {
@@ -16,7 +16,7 @@ struct WinCursor {
    #else
    void * WinCursor;
    #endif
-   #ifdef PARASOL_MAIN_H
+   #ifdef KOTUKU_MAIN_H
    PTC CursorID;
    #else
    int CursorID;
@@ -29,7 +29,7 @@ struct WinDT {
    void *Data;
 };
 
-#if !defined(PARASOL_MAIN_H) && defined(__cplusplus)
+#if !defined(KOTUKU_MAIN_H) && defined(__cplusplus)
 enum class CON : unsigned int {
    NIL = 0,
    GAMEPAD_S = 0x00000001,
@@ -59,7 +59,7 @@ extern "C" {
 
 extern int glIgnoreClip;
 extern int glClipboardUpdates;
-extern BYTE glOleInit;
+extern int8_t glOleInit;
 
 int winLookupSurfaceID(HWND);
 void winCreateScreenClassClipboard(void);
@@ -75,6 +75,7 @@ void winTerminateClipboard(void);
 namespace display {
 
 extern "C" int winAddClip(int, const void *, int, int);
+extern "C" int winAddFileClip(const char16_t *, int, int);
 extern "C" void winClearClipboard(void);
 extern "C" void winCopyClipboard(void);
 extern "C" int winExtractFile(void *, int, char *, int);
@@ -114,7 +115,11 @@ extern void MsgTimer(void);
 extern void MsgWindowClose(int SurfaceID);
 extern void MsgWindowDestroyed(int SurfaceID);
 
-void CheckWindowSize(int, int *, int *);
+#define AXIS_VERTICAL 1
+#define AXIS_HORIZONTAL 2
+#define AXIS_BOTH 3
+
+extern void CheckWindowSize(int, int &, int &, int, int, int = AXIS_BOTH);
 
 void Win32ManagerLoop(void);
 
@@ -131,7 +136,7 @@ extern void winFindClose(HANDLE);
 extern HANDLE winFindWindow(char *, char *);
 extern void winFocus(HWND);
 extern void winFreeDragDrop(void);
-extern void winGetCoords(HWND, int *, int *, int *, int *, int *, int *, int *, int *);
+extern ERR winGetCoords(HWND, int &, int &, int &, int &, int &, int &, int &, int &);
 extern int winGetDesktopSize(int *, int *);
 extern int winGetDisplaySettings(int *, int *, int *);
 extern void winGetMargins(HWND, int *, int *, int *, int *);

@@ -9,10 +9,9 @@
     <comment>Renders a source vector in the effect pipeline.</comment>
     <version>1</version>
     <id>16f8c294</id>
-    <idstring>ID_SOURCEFX</idstring>
+    <idstring>SOURCEFX</idstring>
     <category>Graphics</category>
-    <include>modules/sourcefx.h</include>
-    <copyright>Paul Manias © 2010-2025</copyright>
+    <copyright>Paul Manias © 2010-2026</copyright>
     <description>
 <p>The SourceFX class will render a named vector into a given rectangle within the current user coordinate system.</p>
 <p>Technically the SourceFX object is represented by a new viewport, the bounds of which are defined by attributes <code>X</code>, <code>Y</code>, <code>Width</code> and <code>Height</code>.  The placement and scaling of the referenced vector is controlled by the <fl>AspectRatio</fl> field.</p></description>
@@ -27,10 +26,10 @@
       <comment>Render the source vector to the target bitmap.</comment>
       <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
       <input>
-        <param type="LONG" name="X">The X position of the region to be drawn.</param>
-        <param type="LONG" name="Y">The Y position of the region to be drawn.</param>
-        <param type="LONG" name="Width">The width of the region to be drawn.</param>
-        <param type="LONG" name="Height">The height of the region to be drawn.</param>
+        <param type="INT" name="X">The X position of the region to be drawn.</param>
+        <param type="INT" name="Y">The Y position of the region to be drawn.</param>
+        <param type="INT" name="Width">The width of the region to be drawn.</param>
+        <param type="INT" name="Height">The height of the region to be drawn.</param>
       </input>
     </action>
 

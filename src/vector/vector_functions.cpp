@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -38,17 +38,11 @@ static ResourceManager glResourceSimpleVector = {
    &simplevector_free
 };
 
-static void set_memory_manager(APTR Address, ResourceManager *Manager)
-{
-   ResourceManager **address_mgr = (ResourceManager **)((char *)Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
-   address_mgr[0] = Manager;
-}
-
 static SimpleVector * new_simplevector(void)
 {
    SimpleVector *vector;
-   if (AllocMemory(sizeof(SimpleVector), MEM::DATA|MEM::MANAGED, &vector) != ERR::Okay) return NULL;
-   set_memory_manager(vector, &glResourceSimpleVector);
+   if (AllocMemory(sizeof(SimpleVector), MEM::MANAGED, &vector) != ERR::Okay) return nullptr;
+   SetResourceMgr(vector, &glResourceSimpleVector);
    new(vector) SimpleVector;
    return vector;
 }
@@ -81,7 +75,7 @@ ERR ApplyPath(APTR Vector, objVectorPath *VectorPath)
    if ((!Vector) or (!VectorPath)) return ERR::NullArgs;
    if (VectorPath->classID() != CLASSID::VECTORPATH) return ERR::Args;
 
-   SetField(VectorPath, FID_Sequence, NULL); // Clear any pre-existing path information.
+   VectorPath->set(FID_Sequence, CSTRING(nullptr)); // Clear any pre-existing path information.
 
    // TODO: Apply mPath to VectorPath
 
@@ -135,7 +129,7 @@ double: The pixel width of the character will be returned.
 
 *********************************************************************************************************************/
 
-double CharWidth(APTR Handle, ULONG Char, ULONG KChar, double *Kerning)
+double CharWidth(APTR Handle, uint32_t Char, uint32_t KChar, double *Kerning)
 {
    if (!Handle) return 0;
 
@@ -259,7 +253,7 @@ ERR DrawPath(objBitmap *Bitmap, APTR Path, double StrokeWidth, OBJECTPTR StrokeS
    pf::Log log(__FUNCTION__);
 
    if ((!Bitmap) or (!Path)) return log.warning(ERR::NullArgs);
-   if (StrokeWidth < 0.001) StrokeStyle = NULL;
+   if (StrokeWidth < 0.001) StrokeStyle = nullptr;
 
    if ((!StrokeStyle) and (!FillStyle)) {
       log.traceWarning("No Stroke or Fill parameter provided.");
@@ -319,7 +313,7 @@ int: The internal command value for the vertex will be returned.
 
 *********************************************************************************************************************/
 
-LONG GetVertex(APTR Vector, double *X, double *Y)
+int GetVertex(APTR Vector, double *X, double *Y)
 {
    return ((SimpleVector *)Vector)->mPath.vertex(X, Y);
 }
@@ -347,7 +341,7 @@ AllocMemory
 
 *********************************************************************************************************************/
 
-ERR GenerateEllipse(double CX, double CY, double RX, double RY, LONG Vertices, APTR *Path)
+ERR GenerateEllipse(double CX, double CY, double RX, double RY, int Vertices, APTR *Path)
 {
    pf::Log log(__FUNCTION__);
 
@@ -374,17 +368,17 @@ ERR GenerateEllipse(double CX, double CY, double RX, double RY, LONG Vertices, A
    vector->mPath.curve4(CX - ox, ye, CX - RX, CY + oy, CX - RX, CY);
    vector->mPath.close_polygon();
 #else
-   ULONG steps;
+   uint32_t steps;
 
    if (Vertices >= 3) steps = Vertices;
    else {
-      const double ra = (fabs(RX) + fabs(RY)) / 2.0;
+      const double ra = (fabs(RX) + fabs(RY)) * 0.5;
       const double da = acos(ra / (ra + 0.125)) * 2.0;
       steps = agg::uround(2.0 * agg::pi / da);
       if (steps < 3) steps = 3; // Because you need at least 3 vertices to create a shape.
    }
 
-   for (ULONG step=0; step < steps; step++) {
+   for (uint32_t step=0; step < steps; step++) {
       const double angle = double(step) / double(steps) * 2.0 * agg::pi;
       const double x = CX + cos(angle) * RX;
       const double y = CY + sin(angle) * RY;
@@ -499,7 +493,7 @@ ERR GeneratePath(CSTRING Sequence, APTR *Path)
       if ((error = read_path(paths, Sequence)) IS ERR::Okay) {
          auto vector = new_simplevector();
          if (vector) {
-            convert_to_aggpath(NULL, paths, vector->mPath);
+            convert_to_aggpath(nullptr, paths, vector->mPath);
             *Path = vector;
          }
          else error = ERR::AllocMemory;
@@ -533,7 +527,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERR GetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR *Handle)
+ERR GetFontHandle(CSTRING Family, CSTRING Style, int Weight, int Size, APTR *Handle)
 {
    pf::Log log(__FUNCTION__);
 
@@ -596,7 +590,7 @@ TracePath: Returns the coordinates for a vector path, using callbacks.
 
 Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the
 `Path` from point-to-point if the path were to be rendered with a stroke.  The prototype of the callback  function
-is `ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, double X, double Y, APTR Meta)`.
+is `ERR Function(OBJECTPTR Vector, INT Index, INT Command, double X, double Y, APTR Meta)`.
 
 The `Index` is an incrementing counter that reflects the currently plotted point.  The `X` and `Y` parameters reflect the
 coordinate of a point on the path.
@@ -624,11 +618,11 @@ ERR TracePath(APTR Path, FUNCTION *Callback, double Scale)
    ((SimpleVector *)Path)->mPath.approximation_scale(Scale);
 
    double x, y;
-   LONG cmd = -1;
-   LONG index = 0;
+   int cmd = -1;
+   int index = 0;
 
    if (Callback->isC()) {
-      auto routine = ((ERR (*)(SimpleVector *, LONG, LONG, double, double, APTR))(Callback->Routine));
+      auto routine = ((ERR (*)(SimpleVector *, int, int, double, double, APTR))(Callback->Routine));
 
       pf::SwitchContext context(ParentContext());
 
@@ -644,8 +638,8 @@ ERR TracePath(APTR Path, FUNCTION *Callback, double Scale)
    else if (Callback->isScript()) {
       std::array<ScriptArg, 5> args {{
          { "Path",    Path },
-         { "Index",   LONG(0) },
-         { "Command", LONG(0) },
+         { "Index",   int(0) },
+         { "Command", int(0) },
          { "X",       double(0) },
          { "Y",       double(0) }
       }};
@@ -655,11 +649,11 @@ ERR TracePath(APTR Path, FUNCTION *Callback, double Scale)
       do {
          cmd = ((SimpleVector *)Path)->mPath.vertex(&x, &y);
          if (agg::is_vertex(cmd)) {
-            args[1].Long = index++;
-            args[2].Long = cmd;
+            args[1].Int = index++;
+            args[2].Int = cmd;
             args[3].Double = x;
             args[4].Double = y;
-            if (sc::Call(*Callback, args, result) != ERR::Okay) return ERR::Failed;
+            if (sc::Call(*Callback, args, result) != ERR::Okay) return ERR::Function;
             if (result IS ERR::Terminate) return ERR::Okay;
          }
       } while (cmd != agg::path_cmd_stop);
@@ -831,10 +825,10 @@ ERR ParseTransform(VectorMatrix *Matrix, CSTRING Commands)
    enum { M_MUL, M_TRANSLATE, M_ROTATE, M_SCALE, M_SKEW };
    class cmd {
       public:
-      BYTE type;
+      int8_t type;
       double sx, sy, shx, shy, tx, ty;
       double angle;
-      cmd(BYTE pType) : type(pType), sx(0), sy(0), shx(0), shy(0), tx(0), ty(0), angle(0) {};
+      cmd(int8_t pType) : type(pType), sx(0), sy(0), shx(0), shy(0), tx(0), ty(0), angle(0) {};
    };
 
    std::vector<cmd> list;
@@ -987,9 +981,9 @@ Failed:
 ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
 {
    pf::Log log(__FUNCTION__);
-   ULONG i;
+   uint32_t i;
 
-   if (Result) *Result = NULL;
+   if (Result) *Result = nullptr;
    if ((!IRI) or (!Painter)) return ERR::NullArgs;
 
    Painter->reset();
@@ -1026,7 +1020,7 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
             else if (def->classID() IS CLASSID::VECTORPATTERN) {
                Painter->Pattern = (objVectorPattern *)def;
             }
-            else log.warning("Vector definition '%s' (class $%.8x) not supported.", lookup.c_str(), ULONG(def->classID()));
+            else log.warning("Vector definition '%s' (class $%.8x) not supported.", lookup.c_str(), uint32_t(def->classID()));
             found = true;
          }
          else if (glColourMaps.contains(lookup)) {
@@ -1044,9 +1038,9 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
                   fl::Y1(0.0),
                   fl::X2(SCALE(1.0)),
                   fl::Y2(0.0));
-      
+
                if (gradient->Colours) delete gradient->Colours;
-               gradient->Colours = new (std::nothrow) GradientColours(glColourMaps[lookup]);
+               gradient->Colours = new (std::nothrow) GradientColours(glColourMaps[lookup], 0);
 
                if (InitObject(gradient) IS ERR::Okay) {
                   Scene->addDef(lookup.c_str(), gradient);
@@ -1063,7 +1057,7 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
                while ((*IRI) and (*IRI <= 0x20)) IRI++; // Skip whitespace
             }
 
-            if (Result) *Result = IRI[0] ? IRI : NULL;
+            if (Result) *Result = IRI[0] ? IRI : nullptr;
             return ERR::Okay;
          }
 
@@ -1114,18 +1108,18 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
       auto &rgb = Painter->Colour;
       while (*IRI != '(') IRI++;
       IRI++;
-      double hue = strtod(IRI, NULL) * (1.0 / 360.0);
+      double hue = strtod(IRI, nullptr) * (1.0 / 360.0);
       while ((*IRI) and (*IRI != ',')) IRI++;
       if (*IRI) IRI++;
-      double sat = strtod(IRI, NULL) * 0.01;
+      double sat = strtod(IRI, nullptr) * 0.01;
       while ((*IRI) and (*IRI != ',')) IRI++;
       if (*IRI) IRI++;
-      double light = strtod(IRI, NULL) * 0.01;
+      double light = strtod(IRI, nullptr) * 0.01;
       while ((*IRI) and (*IRI != ',')) IRI++;
 
       if (*IRI) {
          IRI++;
-         rgb.Alpha = std::clamp(strtod(IRI, NULL), 0.0, 1.0);
+         rgb.Alpha = std::clamp(strtod(IRI, nullptr), 0.0, 1.0);
          while (*IRI) IRI++;
       }
       else rgb.Alpha = 1.0;
@@ -1166,17 +1160,17 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
       // Rules apply as for HSL, but the conversion algorithm is different.
       auto &rgb = Painter->Colour;
       IRI += 4;
-      double hue = strtod(IRI, NULL) * (1.0 / 360.0);
+      double hue = strtod(IRI, nullptr) * (1.0 / 360.0);
       while ((*IRI) and (*IRI != ',')) IRI++;
       if (*IRI) IRI++;
-      double sat = strtod(IRI, NULL) * 0.01;
+      double sat = strtod(IRI, nullptr) * 0.01;
       while ((*IRI) and (*IRI != ',')) IRI++;
       if (*IRI) IRI++;
-      double val = strtod(IRI, NULL) * 0.01;
+      double val = strtod(IRI, nullptr) * 0.01;
       while ((*IRI) and (*IRI != ',')) IRI++;
       if (*IRI) {
          IRI++;
-         rgb.Alpha = std::clamp(strtod(IRI, NULL), 0.0, 1.0);
+         rgb.Alpha = std::clamp(strtod(IRI, nullptr), 0.0, 1.0);
          while (*IRI) IRI++;
       }
       else rgb.Alpha = 1.0;
@@ -1186,7 +1180,7 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
       val = std::clamp(val, 0.0, 1.0);
 
       hue = hue / 60.0;
-      LONG i = floor(hue);
+      int i = floor(hue);
       double f = hue - i;
       if (!(i & 1)) f = 1.0 - f; // if i is even
       double m = val * (1.0 - sat);
@@ -1212,7 +1206,7 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
       auto &rgb = Painter->Colour;
       IRI++;
       char nibbles[8];
-      UBYTE n = 0;
+      uint8_t n = 0;
       while ((*IRI) and (n < std::ssize(nibbles))) nibbles[n++] = read_nibble(IRI++);
       while ((*IRI) and (*IRI != ';')) IRI++;
 
@@ -1221,7 +1215,7 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
          rgb.Green = double((nibbles[1]<<4)|nibbles[1]) * (1.0 / 255.0);
          rgb.Blue  = double((nibbles[2]<<4)|nibbles[2]) * (1.0 / 255.0);
          rgb.Alpha = 1.0;
-         if (Result) *Result = IRI[0] ? IRI : NULL;
+         if (Result) *Result = IRI[0] ? IRI : nullptr;
          return ERR::Okay;
       }
       else if (n IS 6) {
@@ -1229,7 +1223,7 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
          rgb.Green = double((nibbles[2]<<4) | nibbles[3]) * (1.0 / 255.0);
          rgb.Blue  = double((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
          rgb.Alpha = 1.0;
-         if (Result) *Result = IRI[0] ? IRI : NULL;
+         if (Result) *Result = IRI[0] ? IRI : nullptr;
          return ERR::Okay;
       }
       else if (n IS 8) {
@@ -1237,7 +1231,7 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
          rgb.Green = double((nibbles[2]<<4) | nibbles[3]) * (1.0 / 255.0);
          rgb.Blue  = double((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
          rgb.Alpha = double((nibbles[6]<<4) | nibbles[7]) * (1.0 / 255.0);
-         if (Result) *Result = IRI[0] ? IRI : NULL;
+         if (Result) *Result = IRI[0] ? IRI : nullptr;
          return ERR::Okay;
       }
       else return ERR::Syntax;
@@ -1546,7 +1540,7 @@ double: The pixel width of the string is returned.
 
 *********************************************************************************************************************/
 
-double StringWidth(APTR Handle, CSTRING String, LONG Chars)
+double StringWidth(APTR Handle, CSTRING String, int Chars)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1560,10 +1554,10 @@ double StringWidth(APTR Handle, CSTRING String, LONG Chars)
 
       if (Chars IS -1) Chars = 0x7fffffff;
 
-      LONG len        = 0;
-      LONG widest     = 0;
-      LONG prev_glyph = 0;
-      LONG i = 0;
+      int len        = 0;
+      int widest     = 0;
+      int prev_glyph = 0;
+      int i = 0;
       while ((i < Chars) and (String[i])) {
          if (String[i] IS '\n') {
             if (widest < len) widest = len;
@@ -1571,7 +1565,7 @@ double StringWidth(APTR Handle, CSTRING String, LONG Chars)
             i++;
          }
          else {
-            ULONG unicode;
+            uint32_t unicode;
             auto charlen = get_utf8(String, unicode, i);
             auto &glyph  = pt->get_glyph(unicode);
             len += glyph.adv_x;

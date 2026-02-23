@@ -191,7 +191,7 @@ namespace agg
                     x++;
                 }
 
-                if (num_cells && cur_cell->x > x) {
+                if (num_cells and cur_cell->x > x) {
                     alpha = calculate_alpha(cover << (poly_subpixel_shift + 1));
                     if (alpha) sl.add_span(x, cur_cell->x - x, alpha);
                 }

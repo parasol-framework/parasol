@@ -8,7 +8,7 @@ Name: Display
 
 #include "defs.h"
 
-std::unordered_map<WinHook, FUNCTION> glWindowHooks;
+ankerl::unordered_dense::map<WinHook, FUNCTION> glWindowHooks;
 
 namespace gfx {
 
@@ -37,7 +37,7 @@ AllocMemory:
 
 ERR GetDisplayInfo(OBJECTID DisplayID, DISPLAYINFO **Result)
 {
-   static THREADVAR DISPLAYINFO *t_info = NULL;
+   static thread_local DISPLAYINFO *t_info = nullptr;
 
    if (!Result) return ERR::NullArgs;
 
@@ -111,20 +111,20 @@ Search: There are no more display modes to return that are a match for the Filte
 
 *********************************************************************************************************************/
 
-ERR ScanDisplayModes(CSTRING Filter, DISPLAYINFO *Info, LONG Size)
+ERR ScanDisplayModes(CSTRING Filter, DISPLAYINFO *Info, int Size)
 {
 #ifdef __snap__
 
    GA_modeInfo modeinfo;
-   UWORD *modes;
-   LONG colours, bytes, i, j, minrefresh, maxrefresh, refresh, display;
-   WORD f_depth, c_depth; // f = filter, c = condition (0 = equal; -1 <, -2 <=; +1 >, +2 >=)
-   WORD f_bytes, c_bytes;
-   WORD f_width, c_width, f_height, c_height;
-   WORD f_refresh, c_refresh;
-   WORD f_minrefresh, c_minrefresh;
-   WORD f_maxrefresh, c_maxrefresh;
-   BYTE interlace, matched;
+   uint16_t *modes;
+   int colours, bytes, i, j, minrefresh, maxrefresh, refresh, display;
+   int16_t f_depth, c_depth; // f = filter, c = condition (0 = equal; -1 <, -2 <=; +1 >, +2 >=)
+   int16_t f_bytes, c_bytes;
+   int16_t f_width, c_width, f_height, c_height;
+   int16_t f_refresh, c_refresh;
+   int16_t f_minrefresh, c_minrefresh;
+   int16_t f_maxrefresh, c_maxrefresh;
+   int8_t interlace, matched;
 
    if ((!Info) or (Size < sizeof(DisplayInfoV3))) return ERR::Args;
 
@@ -245,14 +245,14 @@ Okay
 
 *********************************************************************************************************************/
 
-ERR SetHostOption(HOST Option, LARGE Value)
+ERR SetHostOption(HOST Option, int64_t Value)
 {
 #if defined(_WIN32) || defined(__xwindows__)
    pf::Log log(__FUNCTION__);
 
    switch (Option) {
       case HOST::TRAY_ICON:
-         glTrayIcon += Value;
+         glTrayIcon = Value;
          if (glTrayIcon) glTaskBar = 0;
          break;
 
@@ -262,11 +262,11 @@ ERR SetHostOption(HOST Option, LARGE Value)
          break;
 
       case HOST::STICK_TO_FRONT:
-         glStickToFront += Value;
+         glStickToFront = Value;
          break;
 
       default:
-         log.warning("Invalid option %d, Data %" PF64, LONG(Option), Value);
+         log.warning("Invalid option %d, Data %" PF64, int(Option), (long long)Value);
    }
 #endif
 
@@ -278,12 +278,11 @@ ERR SetHostOption(HOST Option, LARGE Value)
 -FUNCTION-
 ScaleToDPI: Scales a value to the active display's DPI.
 
-ScaleToDPI() is a convenience function for scaling any value to the active display's current DPI setting.  The value
-that you provide must be fixed in relation to the system wide default of 96 DPI.  If the display's DPI varies differs
-to that, your value will be scaled to match.  For instance, an 8 point font at 96 DPI would be scaled to 20 points if
-the display was 240 DPI.
+ScaleToDPI() is a convenience function for scaling a value to the display's current DPI setting.  The provided value
+must be relative to the system wide default of 96 DPI.  If the display's DPI is not equal to 96, the value will be
+scaled to match.  For instance, an 8 point font at 96 DPI would be scaled to 20 points if the display was 240 DPI.
 
-If the DPI of the display is unknown, your value will be returned unscaled.
+If the DPI of the display is unknown, the value will be returned unscaled.
 
 -INPUT-
 double Value: The number to be scaled.
@@ -294,10 +293,10 @@ double: The scaled value is returned.
 
 *********************************************************************************************************************/
 
-DOUBLE ScaleToDPI(DOUBLE Value)
+double ScaleToDPI(double Value)
 {
    if ((!glDisplayInfo.HDensity) or (!glDisplayInfo.VDensity)) return Value;
-   else return 96.0 / (((DOUBLE)glDisplayInfo.HDensity + (DOUBLE)glDisplayInfo.VDensity) * 0.5) * Value;
+   else return 96.0 / (((double)glDisplayInfo.HDensity + (double)glDisplayInfo.VDensity) * 0.5) * Value;
 }
 
 } // namespace

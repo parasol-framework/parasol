@@ -1,0 +1,17 @@
+# Lintian overrides for Kotuku package
+
+# Kotuku uses a custom module loading system, so some libraries
+# may appear unused but are dynamically loaded at runtime
+kotuku: unused-shlib-entry-in-control-file
+
+# Kotuku includes example scripts that may have different permissions
+kotuku: script-not-executable usr/share/kotuku/scripts/*
+
+# Kotuku may include some large data files for graphics/fonts
+kotuku: package-contains-large-file
+
+# Custom configuration files that don't follow standard locations
+kotuku: non-standard-dir-in-usr usr/share/kotuku/
+
+# Kotuku framework specific paths
+kotuku: unusual-interpreter usr/share/kotuku/scripts/*.fluid

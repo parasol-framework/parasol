@@ -466,33 +466,32 @@ namespace agg
       typedef span_image_filter<source_type, in_type> base_type;
       typedef typename color_type::value_type value_type;
       unsigned char oR, oG, oB, oA;
+      bool alpha_limit;
 
       enum base_scale_e {
          base_shift = color_type::base_shift,
          base_mask  = color_type::base_mask
       };
 
-      span_image_filter_rgba(source_type& src, in_type& inter, const image_filter_lut& filter) :
-          base_type(src, inter, &filter)
+      span_image_filter_rgba(source_type& src, in_type& inter, const image_filter_lut& filter, bool pAlphaLimit) :
+          base_type(src, inter, &filter), alpha_limit(pAlphaLimit)
       {
-         oR = src.m_src->oR;
-         oG = src.m_src->oG;
-         oB = src.m_src->oB;
-         oA = src.m_src->oA;
+         oR = src.m_src->mPixelOrder.Red;
+         oG = src.m_src->mPixelOrder.Green;
+         oB = src.m_src->mPixelOrder.Blue;
+         oA = src.m_src->mPixelOrder.Alpha;
       }
 
       void generate(color_type* span, int x, int y, unsigned len) {
          base_type::interpolator().begin(x + base_type::filter_dx_dbl(), y + base_type::filter_dy_dbl(), len);
 
-         int fg[4];
          const value_type *fg_ptr;
 
          unsigned     diameter     = base_type::filter().diameter();
          int          start        = base_type::filter().start();
          const int16* weight_array = base_type::filter().weight_array();
 
-         int x_count;
-         int weight_y;
+         int x_count, weight_y;
 
          do {
             base_type::interpolator().coordinates(&x, &y);
@@ -506,6 +505,7 @@ namespace agg
             int x_lr = x_hr >> image_subpixel_shift;
             int y_lr = y_hr >> image_subpixel_shift;
 
+            int fg[4];
             fg[0] = fg[1] = fg[2] = fg[3] = image_filter_scale / 2;
 
             int x_fract = x_hr & image_subpixel_mask;
@@ -513,11 +513,11 @@ namespace agg
 
             y_hr = image_subpixel_mask - (y_hr & image_subpixel_mask);
             fg_ptr = (const value_type*)base_type::source().span(x_lr + start, y_lr + start, diameter);
-            for(;;) {
+            while (true) {
                 x_count  = diameter;
                 weight_y = weight_array[y_hr];
                 x_hr = image_subpixel_mask - x_fract;
-                for(;;) {
+                while (true) {
                     int weight = (weight_y * weight_array[x_hr] + image_filter_scale / 2) >> image_filter_shift;
 
                     fg[0] += weight * *fg_ptr++;
@@ -525,12 +525,12 @@ namespace agg
                     fg[2] += weight * *fg_ptr++;
                     fg[3] += weight * *fg_ptr;
 
-                    if(--x_count == 0) break;
+                    if (--x_count == 0) break;
                     x_hr  += image_subpixel_scale;
                     fg_ptr = (const value_type*)base_type::source().next_x();
                 }
 
-                if(--y_count == 0) break;
+                if (--y_count == 0) break;
                 y_hr  += image_subpixel_scale;
                 fg_ptr = (const value_type*)base_type::source().next_y();
             }
@@ -546,9 +546,17 @@ namespace agg
             if (fg[3] < 0) fg[3] = 0;
 
             if (fg[oA] > base_mask) fg[oA] = base_mask;
-            if (fg[oR] > fg[oA]) fg[oR] = fg[oA];
-            if (fg[oG] > fg[oA]) fg[oG] = fg[oA];
-            if (fg[oB] > fg[oA]) fg[oB] = fg[oA];
+
+            if (alpha_limit) { // Enable only if pipeline is blending with background color
+               if (fg[oR] > fg[oA]) fg[oR] = fg[oA];
+               if (fg[oG] > fg[oA]) fg[oG] = fg[oA];
+               if (fg[oB] > fg[oA]) fg[oB] = fg[oA];
+            }
+            else { // For copy-only, non-blending pipelines
+               if (fg[oR] > base_mask) fg[oR] = base_mask;
+               if (fg[oG] > base_mask) fg[oG] = base_mask;
+               if (fg[oB] > base_mask) fg[oB] = base_mask;
+            }
 
             span->r = (value_type)fg[oR];
             span->g = (value_type)fg[oG];

@@ -9,12 +9,11 @@
     <comment>A filter effect that utilises the Perlin turbulence function.</comment>
     <version>1</version>
     <id>45df4e3c</id>
-    <idstring>ID_TURBULENCEFX</idstring>
+    <idstring>TURBULENCEFX</idstring>
     <category>Graphics</category>
-    <include>modules/turbulencefx.h</include>
-    <copyright>Paul Manias © 2010-2025</copyright>
+    <copyright>Paul Manias © 2010-2026</copyright>
     <description>
-<p>This filter effect creates an image using the Perlin turbulence function. It allows the synthesis of artificial textures like clouds or marble.  For a detailed description the of the Perlin turbulence function, see "Texturing and Modeling", Ebert et al, AP Professional, 1994. The resulting image will fill the entire filter primitive subregion for this filter primitive.</p>
+<p>This filter effect creates an image using the Perlin turbulence function. It allows the synthesis of artificial textures like clouds or marble.  For a detailed description the of the Perlin turbulence function, see &quot;Texturing and Modeling&quot;, Ebert et al, AP Professional, 1994. The resulting image will fill the entire filter primitive subregion for this filter primitive.</p>
 <p>It is possible to create bandwidth-limited noise by synthesizing only one octave.</p>
 <p>The following order is used for applying the pseudo random numbers.  An initial seed value is computed based on <fl>Seed</fl>.  Then the implementation computes the lattice points for R, then continues getting additional pseudo random numbers relative to the last generated pseudo random number and computes the lattice points for G, and so on for B and A.</p></description>
     <source>
@@ -28,10 +27,10 @@
       <comment>Render the effect to the target bitmap.</comment>
       <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
       <input>
-        <param type="LONG" name="X">The X position of the region to be drawn.</param>
-        <param type="LONG" name="Y">The Y position of the region to be drawn.</param>
-        <param type="LONG" name="Width">The width of the region to be drawn.</param>
-        <param type="LONG" name="Height">The height of the region to be drawn.</param>
+        <param type="INT" name="X">The X position of the region to be drawn.</param>
+        <param type="INT" name="Y">The Y position of the region to be drawn.</param>
+        <param type="INT" name="Width">The width of the region to be drawn.</param>
+        <param type="INT" name="Height">The height of the region to be drawn.</param>
       </input>
     </action>
 

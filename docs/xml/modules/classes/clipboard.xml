@@ -9,14 +9,13 @@
     <comment>The Clipboard class manages cut, copy and paste between applications.</comment>
     <version>1</version>
     <id>4912a9b5</id>
-    <idstring>ID_CLIPBOARD</idstring>
+    <idstring>CLIPBOARD</idstring>
     <category>IO</category>
-    <include>modules/clipboard.h</include>
-    <copyright>Paul Manias 2003-2024</copyright>
+    <copyright>Paul Manias © 2003-2026</copyright>
     <description>
 <p>The Clipboard class manages data transfer between applications on behalf of the user.  Depending on the host system, behaviour between platforms can vary.</p>
 <p>On Windows the clipboard is tightly integrated by default, allowing it to support native Windows applications.  This reduces the default feature set, but ensures that the clipboard behaves in a way that the user would expect it to. If historical buffering is enabled with the <code>CPF::HISTORY_BUFFER</code> option then the clipboard API will actively monitor the clipboard and store copied data in the local <code>clipboard:</code> file cache.  This results in additional overhead to clipboard management.</p>
-<p>On Linux the clipboard is localised and data is shared between Parasol applications only.</p>
+<p>On Linux the clipboard is localised and data is shared between Kōtuku applications only.</p>
 <p>Multiple clipboard objects can be created, but they will share the same group of clipped data for the logged-in user.</p>
 <p>There is a limit on the number of clipped items that can be stored in the clipboard.  Only 1 grouping of each datatype is permitted (for example, only one group of image clips may exist at any time).  In historical buffer mode there is a fixed limit to the clip count and the oldest members are automatically removed.</p></description>
     <source>
@@ -34,12 +33,12 @@
     <action>
       <name>DataFeed</name>
       <comment>This action can be used to place data in a clipboard.</comment>
-      <prototype>ERR acDataFeed(*Object, OBJECTID Object, DATA Datatype, APTR Buffer, LONG Size)</prototype>
+      <prototype>ERR acDataFeed(*Object, OBJECTID Object, DATA Datatype, APTR Buffer, INT Size)</prototype>
       <input>
         <param type="OBJECTID" name="Object">Must refer to the unique ID of the object that you represent. If you do not represent an object, set this parameter to the current task ID.</param>
         <param type="DATA" name="Datatype" lookup="DATA">The type of data being sent.</param>
         <param type="APTR" name="Buffer">The data being sent to the target object.</param>
-        <param type="LONG" name="Size">The size of the data in Buffer.</param>
+        <param type="INT" name="Size">The size of the data in Buffer.</param>
       </input>
       <description>
 <p>Data can be sent to a clipboard object via the DataFeed action. Currently, only the <code>DATA::TEXT</code> type is supported. All data that is sent to a clipboard object through this action will replace any stored information that matches the given data type.</p>
@@ -113,13 +112,13 @@
     <method>
       <name>GetFiles</name>
       <comment>Retrieve the most recently clipped data as a list of files.</comment>
-      <prototype>ERR clip::GetFiles(OBJECTPTR Object, CLIPTYPE Filter, LONG Index, CLIPTYPE * Datatype, CSTRING ** Files, CEF * Flags)</prototype>
+      <prototype>ERR clip::GetFiles(OBJECTPTR Object, CLIPTYPE Filter, INT Index, CLIPTYPE * Datatype, CSTRING ** Files, CEF * Flags)</prototype>
       <input>
         <param type="CLIPTYPE" name="Filter" lookup="CLIPTYPE">Filter down to the specified data type.  This parameter will be updated to reflect the retrieved data type when the method returns.  Set to zero to disable.</param>
-        <param type="LONG" name="Index">If the <code>Filter</code> parameter is zero, this parameter may be set to the index of the desired clip item.</param>
+        <param type="INT" name="Index">If the <code>Filter</code> parameter is zero and clipboard history is enabled, this parameter refers to a historical clipboard item, with zero being the most recent.</param>
         <param type="CLIPTYPE *" name="Datatype" lookup="CLIPTYPE">The resulting datatype of the requested clip data.</param>
-        <param type="CSTRING **" name="Files">The resulting location(s) of the requested clip data are returned in this parameter; terminated with a <code>NULL</code> entry.  You are required to free the returned array with <function module="Core">FreeResource</function>.</param>
-        <param type="CEF *" name="Flags" lookup="CEF">Result flags are returned in this parameter.  If <code>DELETE</code> is set, you need to delete the files after use in order to support the 'cut' operation.</param>
+        <param type="CSTRING **" name="Files">The resulting location(s) of the requested clip data are returned in this parameter; terminated with a <code>NULL</code> entry.  The client must free the returned array with <function module="Core">FreeResource</function>.</param>
+        <param type="CEF *" name="Flags" lookup="CEF">Result flags are returned in this parameter.  If <code>DELETE</code> is defined, the client must delete the files after use in order to support the 'cut' operation.</param>
       </input>
       <description>
 <p>This method returns a list of items that are on the clipboard.  The caller must declare the types of data that it supports (or zero if all datatypes are recognised).</p>
@@ -173,7 +172,7 @@
       <description>
 <p>Applications can request data from a clipboard if it is in drag-and-drop mode by sending a <code>DATA::REQUEST</code> to the Clipboard's DataFeed action.  Doing so will result in a callback to the function that is referenced in the RequestHandler, which must be defined by the source application.  The RequestHandler function must follow this template:</p>
 <p>
-<code>ERR RequestHandler(*Clipboard, OBJECTPTR Requester, LONG Item, BYTE Datatypes[4])</code></p>
+<code>ERR RequestHandler(*Clipboard, OBJECTPTR Requester, int Item, BYTE Datatypes[4])</code></p>
 <p>The function will be expected to send a <code>DATA::RECEIPT</code> to the object referenced in the Requester paramter.  The receipt must provide coverage for the referenced Item and use one of the indicated Datatypes as the data format. If this cannot be achieved then <code>ERR::NoSupport</code> should be returned by the function.</p>
       </description>
     </field>

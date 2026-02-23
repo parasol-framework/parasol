@@ -83,79 +83,54 @@ where `L` is the light unit vector.
 
 *********************************************************************************************************************/
 
+#define USE_SIMD 1
+
+#ifdef USE_SIMD
+#include <immintrin.h>
+#endif
+
+#ifdef _MSC_VER
+    #include <xmmintrin.h>
+    #define PREFETCH(ptr) _mm_prefetch((char*)(ptr), _MM_HINT_T0)
+#elif defined(__GNUC__) || defined(__clang__)
+    #define PREFETCH(ptr) __builtin_prefetch(ptr, 0, 3)
+#else
+    #define PREFETCH(ptr) // No-op for other compilers
+#endif
+
 class point3 {
    public:
-   DOUBLE  x, y, z;
+   double  x, y, z;
 
-   point3(DOUBLE X, DOUBLE Y, DOUBLE Z) : x(X), y(Y), z(Z) {};
+   point3(double X, double Y, double Z) : x(X), y(Y), z(Z) {};
    point3() {};
 
-   void normalize() {
-      DOUBLE scale = 1.0 / (sqrt(dot(*this)));
+   void normalise() {
+      double len_sq = dot(*this); // Compute the length squared of the vector
+      if (std::abs(len_sq - 1.0) < 1e-6) return; // Already normalised
+      double scale = fast_inv_sqrt(len_sq); //  1.0 / sqrt(len_sq);
       x = x * scale;
       y = y * scale;
       z = z * scale;
    }
 
-   friend point3 operator-(const point3& a, const point3& b) {
+   friend point3 operator-(const point3 &a, const point3 &b) {
       return { a.x - b.x, a.y - b.y, a.z - b.z };
    }
 
-   friend point3 operator+(const point3& a, const point3& b) {
+   friend point3 operator+(const point3 &a, const point3 &b) {
       return { a.x + b.x, a.y + b.y, a.z + b.z };
    }
 
-   DOUBLE dot(const point3& vec) const {
+   double dot(const point3 &vec) const { // Compute the dot product between vectors
       return (this->x * vec.x) + (this->y * vec.y) + (this->z * vec.z);
    }
 };
 
-static const DOUBLE ONE_THIRD   = 1.0 / 3.0;
-static const DOUBLE TWO_THIRDS  = 2.0 / 3.0;
-static const DOUBLE ONE_HALF    = 0.5;
-static const DOUBLE ONE_QUARTER = 0.25;
-
-// Shift matrix components to the left, as we advance pixels to the right.
-
-inline void shiftMatrixLeft(UBYTE m[9]) {
-    m[0] = m[1];
-    m[3] = m[4];
-    m[6] = m[7];
-    m[1] = m[2];
-    m[4] = m[5];
-    m[7] = m[8];
-}
-
-//********************************************************************************************************************
-
-inline DOUBLE sobel(UBYTE a, UBYTE b, UBYTE c, UBYTE d, UBYTE e, UBYTE f, DOUBLE Scale) {
-   return (DOUBLE(-a + b - 2 * c + 2 * d -e + f)) * Scale;
-}
-
-inline point3 pointToNormal(DOUBLE x, DOUBLE y, DOUBLE Scale) {
-   point3 vector(-x * Scale, -y * Scale, 1.0);
-   vector.normalize();
-   return vector;
-}
-
-inline point3 leftNormal(const UBYTE m[9], const DOUBLE Scale) {
-   return pointToNormal(sobel(m[1], m[2], m[4], m[5], m[7], m[8], ONE_HALF),
-                        sobel(0, 0, m[1], m[7], m[2], m[8], ONE_THIRD),
-                        Scale);
-}
-
-
-inline point3 interiorNormal(const UBYTE m[9], const DOUBLE Scale) {
-   return pointToNormal(sobel(m[0], m[2], m[3], m[5], m[6], m[8], ONE_QUARTER),
-                        sobel(m[0], m[6], m[1], m[7], m[2], m[8], ONE_QUARTER),
-                        Scale);
-}
-
-inline point3 rightNormal(const UBYTE m[9], const DOUBLE Scale) {
-    return pointToNormal(sobel(m[0], m[1], m[3], m[4], m[6], m[7], ONE_HALF),
-                         sobel(m[0], m[6], m[1], m[7], 0, 0, ONE_THIRD),
-                         Scale);
-}
+constexpr double ONE_THIRD   = 1.0 / 3.0;
+constexpr double TWO_THIRDS  = 2.0 / 3.0;
+constexpr double ONE_HALF    = 0.5;
+constexpr double ONE_QUARTER = 0.25;
 
 //********************************************************************************************************************
 
@@ -167,81 +142,122 @@ class extLightingFX : public extFilterEffect {
 
    FRGB   Colour;           // Colour of the light source.
    FRGB   LinearColour;     // Colour of the light source in linear sRGB space.
-   DOUBLE SpecularExponent; // Exponent value for specular lighting only.
-   DOUBLE Scale;            // Maximum height of the surface for bump map calculations.
-   DOUBLE Constant;         // The ks/kd constant value for the light mode.
-   DOUBLE UnitX, UnitY;     // SVG kernel unit - scale value for X/Y
-   DOUBLE X, Y, Z;          // Position of light source.
+   double SpecularExponent; // Exponent value for specular lighting only.
+   double MapHeight;        // Maximum height of the surface for bump map calculations.
+   double Constant;         // The ks/kd constant value for the light mode.
+   double UnitX, UnitY;     // SVG kernel unit - scale value for X/Y
+   double X, Y, Z;          // Position of light source.
    LT     Type;             // Diffuse or Specular light scattering
    LS     LightSource;      // Light source identifier, recorded for SVG output purposes only.
 
    // DISTANT LIGHT
-   DOUBLE Azimuth, Elevation;    // Distant light
+   double Azimuth, Elevation;    // Distant light
    point3 Direction;             // Pre-calculated value for distant light.
 
    // SPOT LIGHT
-   DOUBLE SpotExponent, ConeAngle; // Spot light
-   DOUBLE PX, PY, PZ;              // Position of spot light source.
-   DOUBLE CosInnerConeAngle;
-   DOUBLE CosOuterConeAngle;
-   DOUBLE ConeScale;
+   double SpotExponent, ConeAngle; // Spot light
+   point3 Spotlight;              // Position of spot light source.
+   double CosInnerConeAngle;
+   double CosOuterConeAngle;
+   double ConeScale;
    point3 SpotDelta;
 
    extLightingFX() {
       SpecularExponent = 1.0;
-      Colour   = { 1.0, 1.0, 1.0, 1.0 };
+      Colour    = { 1.0, 1.0, 1.0, 1.0 };
       LinearColour = { 1.0, 1.0, 1.0, 1.0 };
-      Type     = LT::DIFFUSE;
-      Constant = 1.0;
-      Scale    = 1.0;
-      UnitX    = 1.0;
-      UnitY    = 1.0;
+      Type      = LT::DIFFUSE;
+      Constant  = 1.0;
+      MapHeight = 1.0;
+      UnitX     = 1.0;
+      UnitY     = 1.0;
    }
+
+   // Shift matrix components to the left, as we advance pixels to the right.
+
+   constexpr void shiftMatrixLeft(std::array<uint8_t, 9> &m) {
+      m[0] = m[1];
+      m[3] = m[4];
+      m[6] = m[7];
+      m[1] = m[2];
+      m[4] = m[5];
+      m[7] = m[8];
+   }
+
+   // Prefetch the next row of data to improve cache performance
+
+   inline void prefetchNextRow(const uint8_t* next_row, int width, uint8_t bpp) {
+      for (int i = 0; i < width * bpp; i += 64) { // 64-byte cache lines
+         PREFETCH(next_row + i);
+      }
+   }
+
+   constexpr double sobel(uint8_t a, uint8_t b, uint8_t c, uint8_t d, uint8_t e, uint8_t f, double MapHeight) {
+      return (double(-a + b - 2 * c + 2 * d -e + f)) * MapHeight;
+   }
+
+   inline point3 pointToNormal(double x, double y, double MapHeight) {
+      point3 vector(-x * MapHeight, -y * MapHeight, 1.0);
+      vector.normalise();
+      return vector;
+   }
+
+   inline point3 leftNormal(const std::array<uint8_t, 9> &m, const double MapHeight) {
+      return pointToNormal(sobel(m[1], m[2], m[4], m[5], m[7], m[8], ONE_HALF),
+                           sobel(0, 0, m[1], m[7], m[2], m[8], ONE_THIRD),
+                           MapHeight);
+   }
+
+
+   inline point3 interiorNormal(const std::array<uint8_t, 9> &m, const double MapHeight) {
+      return pointToNormal(sobel(m[0], m[2], m[3], m[5], m[6], m[8], ONE_QUARTER),
+                           sobel(m[0], m[6], m[1], m[7], m[2], m[8], ONE_QUARTER),
+                           MapHeight);
+   }
+
+   inline point3 rightNormal(const std::array<uint8_t, 9> &m, const double MapHeight) {
+       return pointToNormal(sobel(m[0], m[1], m[3], m[4], m[6], m[7], ONE_HALF),
+                            sobel(m[0], m[6], m[1], m[7], 0, 0, ONE_THIRD),
+                            MapHeight);
+   }
+
+   void draw();
+   FRGB colour_spot_light(point3 &Point);
+   inline void diffuse_light(const point3 &, const point3 &, const FRGB &, uint8_t *, uint8_t, uint8_t, uint8_t, uint8_t);
+   inline void specular_light(const point3 &, const point3 &, const FRGB &, uint8_t *, uint8_t, uint8_t, uint8_t, uint8_t);
+   void render_distant(int, int, objBitmap *, const point3 &, double, int, int);
+   void render_spotlight(int, int, objBitmap *, const point3 &, double, int, int);
+   void render_point(int, int, objBitmap *, const point3 &, double, int, int);
 };
-
-//********************************************************************************************************************
-// For point & spot light.
-
-static point3 read_light_delta(extLightingFX *Self, DOUBLE X, DOUBLE Y, DOUBLE SZ, UBYTE Z)
-{
-   // The incoming Z value is in alpha, so is scaled to 0 - 1.0.
-   point3 direction(X, Y, SZ - (DOUBLE(Z) * (1.0 / 255.0) * Self->Scale));
-   direction.normalize();
-   return direction;
-}
 
 //********************************************************************************************************************
 // Colour computation for spot light.  Resulting RGB values are 0 - 1.0
 
-static FRGB colour_spot_light(extLightingFX *Self, point3 &Point)
+FRGB extLightingFX::colour_spot_light(point3 &Point)
 {
-   if (Self->ConeAngle) {
-      DOUBLE cosAngle = -Point.dot(Self->SpotDelta);
-      if (cosAngle < Self->CosOuterConeAngle) return FRGB(0.0, 0.0, 0.0, 1.0);
+   if (ConeAngle) {
+      const double cosAngle = -Point.dot(SpotDelta);
+      if (cosAngle < CosOuterConeAngle) return FRGB(0.0, 0.0, 0.0, 1.0);
 
-      DOUBLE scale = pow(cosAngle, Self->SpotExponent);
-      if (cosAngle < Self->CosInnerConeAngle) {
-         scale = scale * (cosAngle - Self->CosOuterConeAngle);
-         scale *= Self->ConeScale;
+      double scale = pow(cosAngle, SpotExponent);
+      if (cosAngle < CosInnerConeAngle) {
+         scale = scale * (cosAngle - CosOuterConeAngle);
+         scale *= ConeScale;
       }
-      FRGB result(Self->LinearColour.Red * scale, Self->LinearColour.Green * scale, Self->LinearColour.Blue * scale, Self->LinearColour.Alpha * scale);
-      return result;
+      return FRGB(LinearColour.Red * scale, LinearColour.Green * scale, LinearColour.Blue * scale, LinearColour.Alpha * scale);
    }
    else {
-      DOUBLE scale = pow(-Point.dot(Self->SpotDelta), Self->SpotExponent);
-      FRGB result(Self->LinearColour.Red * scale, Self->LinearColour.Green * scale, Self->LinearColour.Blue * scale, Self->LinearColour.Alpha * scale);
-      return result;
+      const double scale = pow(-Point.dot(SpotDelta), SpotExponent);
+      return FRGB(LinearColour.Red * scale, LinearColour.Green * scale, LinearColour.Blue * scale, LinearColour.Alpha * scale);
    }
 }
 
 //********************************************************************************************************************
 // Specular/Diffuse drawing functions.
 
-static void diffuse_light(extLightingFX *Self, const point3 &Normal, const point3 &STL, const FRGB &Colour, UBYTE *Output, UBYTE R, UBYTE G, UBYTE B, UBYTE A)
+inline void extLightingFX::diffuse_light(const point3 &Normal, const point3 &STL, const FRGB &Colour, uint8_t *Output, uint8_t R, uint8_t G, uint8_t B, uint8_t A)
 {
-   DOUBLE scale = (Self->Constant * Normal.dot(STL)) * 255.0;
-   if (scale < 0) scale = 0;
-   else if (scale > 255.0) scale = 255.0;
+   double scale = std::clamp((Constant * Normal.dot(STL)) * 255.0, 0.0, 255.0);
 
    Output[R] = glLinearRGB.invert(F2T(Colour.Red * scale));
    Output[G] = glLinearRGB.invert(F2T(Colour.Green * scale));
@@ -249,28 +265,278 @@ static void diffuse_light(extLightingFX *Self, const point3 &Normal, const point
    Output[A] = 255;
 }
 
-static void specular_light(extLightingFX *Self, const point3 &Normal, const point3 &STL, const FRGB &Colour, UBYTE *Output, UBYTE R, UBYTE G, UBYTE B, UBYTE A)
+inline void extLightingFX::specular_light(const point3 &Normal, const point3 &STL, const FRGB &Colour, uint8_t *Output, uint8_t R, uint8_t G, uint8_t B, uint8_t A)
 {
    point3 halfDir(STL);
    halfDir.z += 1.0; // Eye position is always (0, 0, 1)
-   halfDir.normalize();
+   halfDir.normalise();
 
-   DOUBLE scale = (Self->Constant * std::pow(Normal.dot(halfDir), Self->SpecularExponent)) * 255.0;
-   if (scale < 0) scale = 0;
-   else if (scale > 255.0) scale = 255.0;
+   double scale = std::clamp((Constant * std::pow(Normal.dot(halfDir), SpecularExponent)) * 255.0, 0.0, 255.0);
 
-   const UBYTE r = F2T(Colour.Red * scale);
-   const UBYTE g = F2T(Colour.Green * scale);
-   const UBYTE b = F2T(Colour.Blue * scale);
+   const uint8_t r = F2T(Colour.Red * scale);
+   const uint8_t g = F2T(Colour.Green * scale);
+   const uint8_t b = F2T(Colour.Blue * scale);
 
    Output[R] = glLinearRGB.invert(r);
    Output[G] = glLinearRGB.invert(g);
    Output[B] = glLinearRGB.invert(b);
-   if (Self->LightSource IS LS::DISTANT) {
+   if (LightSource IS LS::DISTANT) {
       // Alpha is chosen from the max of the linear R,G,B light value
       Output[A] = Output[R] > Output[G] ? (Output[R] > Output[B] ? Output[R] : Output[B]) : (Output[G] > Output[B] ? Output[G] : Output[B]);
    }
    else Output[A] = r > g ? (r > b ? r : b) : (g > b ? g : b);
+}
+
+//********************************************************************************************************************
+
+void extLightingFX::render_distant(int StartY, int EndY, objBitmap *Bitmap, const point3 &Light, double spot_height, int Width, int Height)
+{
+   const uint8_t R = Target->ColourFormat->RedPos>>3;
+   const uint8_t G = Target->ColourFormat->GreenPos>>3;
+   const uint8_t B = Target->ColourFormat->BluePos>>3;
+   const uint8_t A = Target->ColourFormat->AlphaPos>>3;
+   const auto bpp = Bitmap->BytesPerPixel;
+   const auto map_height = spot_height * (1.0 / 255.0); // Normalise the map height to 0 - 1.0
+
+   auto input_base = (uint8_t *)(Bitmap->Data + (Bitmap->Clip.Left * bpp) + (Bitmap->Clip.Top * Bitmap->LineWidth));
+   auto dest_base = (uint8_t *)(Target->Data + (Target->Clip.Left * bpp) + (Target->Clip.Top * Target->LineWidth));
+
+   for (int y=StartY; y < EndY; ++y) {
+      uint8_t *input_row = input_base + y * Bitmap->LineWidth;
+      uint8_t *dest_row = dest_base + y * Target->LineWidth;
+
+      // Prefetch the next few rows while processing current row
+      if (y + 2 < std::min(Height, EndY)) prefetchNextRow(input_base + (y + 2) * Bitmap->LineWidth, Width, Bitmap->BytesPerPixel);
+      if (y + 3 < std::min(Height, EndY)) prefetchNextRow(input_base + (y + 3) * Bitmap->LineWidth, Width, Bitmap->BytesPerPixel);
+
+      const uint8_t *row0 = (y IS 0) ? input_row : input_row - Bitmap->LineWidth;
+      const uint8_t *row1 = input_row;
+      const uint8_t *row2 = (y IS Height-1) ? input_row : input_row + Bitmap->LineWidth;
+
+      auto dptr = dest_row;
+      std::array<uint8_t, 9> m;
+
+      // Initialize matrix for first pixel
+      m[1] = row0[A]; row0 += bpp;
+      m[2] = row0[A]; row0 += bpp;
+      m[4] = row1[A]; row1 += bpp;
+      m[5] = row1[A]; row1 += bpp;
+      m[7] = row2[A]; row2 += bpp;
+      m[8] = row2[A]; row2 += bpp;
+
+      if (Type IS LT::DIFFUSE) {
+         // Process left edge pixel
+         diffuse_light(leftNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
+         dptr += bpp;
+
+         for (int x=1; x < Width - 1; ++x) {
+            shiftMatrixLeft(m);
+            m[2] = row0[A]; row0 += bpp;
+            m[5] = row1[A]; row1 += bpp;
+            m[8] = row2[A]; row2 += bpp;
+            diffuse_light(interiorNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
+            dptr += bpp;
+         }
+
+         // Process right edge pixel
+         if (Width > 1) {
+            shiftMatrixLeft(m);
+            diffuse_light(rightNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
+         }
+      }
+      else { // SPECULAR
+         specular_light(leftNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
+         dptr += bpp;
+
+         for (int x=1; x < Width - 1; ++x) {
+            shiftMatrixLeft(m);
+            m[2] = row0[A]; row0 += bpp;
+            m[5] = row1[A]; row1 += bpp;
+            m[8] = row2[A]; row2 += bpp;
+            specular_light(interiorNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
+            dptr += bpp;
+         }
+
+         if (Width > 1) {
+            shiftMatrixLeft(m);
+            specular_light(rightNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
+         }
+      }
+   }
+}
+
+//********************************************************************************************************************
+
+void extLightingFX::render_spotlight(int StartY, int EndY, objBitmap *Bitmap, const point3 &Light, double spot_height, int Width, int Height)
+{
+   const uint8_t R = Target->ColourFormat->RedPos>>3;
+   const uint8_t G = Target->ColourFormat->GreenPos>>3;
+   const uint8_t B = Target->ColourFormat->BluePos>>3;
+   const uint8_t A = Target->ColourFormat->AlphaPos>>3;
+   const auto bpp = Bitmap->BytesPerPixel;
+   const auto map_height = spot_height * (1.0 / 255.0); // Normalise the map height to 0 - 1.0
+
+   auto input_base = (uint8_t *)(Bitmap->Data + (Bitmap->Clip.Left * bpp) + (Bitmap->Clip.Top * Bitmap->LineWidth));
+   auto dest_base = (uint8_t *)(Target->Data + (Target->Clip.Left * bpp) + (Target->Clip.Top * Target->LineWidth));
+
+   // Compute the light direction vector based on the light source position and the alpha value of the pixel.
+   auto read_light_delta = [&Light, spot_height](double X, double Y, uint8_t alpha_val) -> point3 {
+      point3 direction(Light.x - X, Light.y - Y, Light.z - (double(alpha_val) * (1.0 / 255.0) * spot_height));
+      direction.normalise();
+      return direction;
+   };
+
+   for (int y=StartY; y < EndY; ++y) {
+      uint8_t *input_row = input_base + y * Bitmap->LineWidth;
+      uint8_t *dest_row = dest_base + y * Target->LineWidth;
+
+      // Prefetch the next few rows while processing current row
+      if (y + 2 < std::min(Height, EndY)) prefetchNextRow(input_base + (y + 2) * Bitmap->LineWidth, Width, Bitmap->BytesPerPixel);
+      if (y + 3 < std::min(Height, EndY)) prefetchNextRow(input_base + (y + 3) * Bitmap->LineWidth, Width, Bitmap->BytesPerPixel);
+
+      const uint8_t *row0 = (y IS 0) ? input_row : input_row - Bitmap->LineWidth;
+      const uint8_t *row1 = input_row;
+      const uint8_t *row2 = (y IS Height-1) ? input_row : input_row + Bitmap->LineWidth;
+
+      auto dptr = dest_row;
+      std::array<uint8_t, 9> m;
+
+      m[1] = row0[A]; row0 += bpp;
+      m[2] = row0[A]; row0 += bpp;
+      m[4] = row1[A]; row1 += bpp;
+      m[5] = row1[A]; row1 += bpp;
+      m[7] = row2[A]; row2 += bpp;
+      m[8] = row2[A]; row2 += bpp;
+
+      if (Type IS LT::DIFFUSE) {
+         point3 stl = read_light_delta(0, y, m[4]);
+         diffuse_light(leftNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
+         dptr += bpp;
+
+         for (int x=1; x < Width - 1; ++x) {
+            shiftMatrixLeft(m);
+            m[2] = row0[A]; row0 += bpp;
+            m[5] = row1[A]; row1 += bpp;
+            m[8] = row2[A]; row2 += bpp;
+            stl = read_light_delta(x, y, m[4]);
+            diffuse_light(interiorNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
+            dptr += bpp;
+         }
+
+         if (Width > 1) {
+            shiftMatrixLeft(m);
+            stl = read_light_delta(Width-1, y, m[4]);
+            diffuse_light(rightNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
+         }
+      }
+      else { // SPECULAR
+         point3 stl = read_light_delta(0, y, m[4]);
+         specular_light(leftNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
+         dptr += bpp;
+
+         for (int x=1; x < Width - 1; ++x) {
+            shiftMatrixLeft(m);
+            m[2] = row0[A]; row0 += bpp;
+            m[5] = row1[A]; row1 += bpp;
+            m[8] = row2[A]; row2 += bpp;
+            stl = read_light_delta(x, y, m[4]);
+            specular_light(interiorNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
+            dptr += bpp;
+         }
+
+         if (Width > 1) {
+            shiftMatrixLeft(m);
+            stl = read_light_delta(Width-1, y, m[4]);
+            specular_light(rightNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
+         }
+      }
+   }
+}
+
+//********************************************************************************************************************
+
+void extLightingFX::render_point(int StartY, int EndY, objBitmap *Bitmap, const point3 &Light, double spot_height, int Width, int height)
+{
+   const uint8_t R = Target->ColourFormat->RedPos>>3;
+   const uint8_t G = Target->ColourFormat->GreenPos>>3;
+   const uint8_t B = Target->ColourFormat->BluePos>>3;
+   const uint8_t A = Target->ColourFormat->AlphaPos>>3;
+   const auto bpp = Bitmap->BytesPerPixel;
+   const auto map_height = spot_height * (1.0 / 255.0); // Normalise the map height to 0 - 1.0
+
+   auto input_base = (uint8_t *)(Bitmap->Data + (Bitmap->Clip.Left * bpp) + (Bitmap->Clip.Top * Bitmap->LineWidth));
+   auto dest_base = (uint8_t *)(Target->Data + (Target->Clip.Left * bpp) + (Target->Clip.Top * Target->LineWidth));
+
+   // Compute the light direction vector based on the light source position and the alpha value of the pixel.
+   auto read_light_delta = [&Light, spot_height](double X, double Y, uint8_t alpha_val) -> point3 {
+      point3 direction(Light.x - X, Light.y - Y, Light.z - (double(alpha_val) * (1.0 / 255.0) * spot_height));
+      direction.normalise();
+      return direction;
+   };
+
+   for (int y=StartY; y < EndY; ++y) {
+      uint8_t *input_row = input_base + y * Bitmap->LineWidth;
+      uint8_t *dest_row = dest_base + y * Target->LineWidth;
+
+      // Prefetch the next few rows while processing current row
+      if (y + 2 < std::min(height, EndY)) prefetchNextRow(input_base + (y + 2) * Bitmap->LineWidth, Width, Bitmap->BytesPerPixel);
+      if (y + 3 < std::min(height, EndY)) prefetchNextRow(input_base + (y + 3) * Bitmap->LineWidth, Width, Bitmap->BytesPerPixel);
+
+      const uint8_t *row0 = (y IS 0) ? input_row : input_row - Bitmap->LineWidth;
+      const uint8_t *row1 = input_row;
+      const uint8_t *row2 = (y IS height-1) ? input_row : input_row + Bitmap->LineWidth;
+
+      auto dptr = dest_row;
+      std::array<uint8_t, 9> m;
+
+      m[1] = row0[A]; row0 += bpp;
+      m[2] = row0[A]; row0 += bpp;
+      m[4] = row1[A]; row1 += bpp;
+      m[5] = row1[A]; row1 += bpp;
+      m[7] = row2[A]; row2 += bpp;
+      m[8] = row2[A]; row2 += bpp;
+
+      if (Type IS LT::DIFFUSE) {
+         point3 stl = read_light_delta(0, y, m[4]);
+         diffuse_light(leftNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
+         dptr += bpp;
+
+         for (int x=1; x < Width-1; ++x) {
+            shiftMatrixLeft(m);
+            m[2] = row0[A]; row0 += bpp;
+            m[5] = row1[A]; row1 += bpp;
+            m[8] = row2[A]; row2 += bpp;
+            stl = read_light_delta(x, y, m[4]);
+            diffuse_light(interiorNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
+            dptr += bpp;
+         }
+
+         shiftMatrixLeft(m);
+         stl = read_light_delta(Width-1, y, m[4]);
+         diffuse_light(rightNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
+      }
+      else { // SPECULAR
+         point3 stl = read_light_delta(0, y, m[4]);
+         specular_light(leftNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
+         dptr += bpp;
+
+         for (int x=1; x < Width - 1; ++x) {
+            shiftMatrixLeft(m);
+            m[2] = row0[A]; row0 += bpp;
+            m[5] = row1[A]; row1 += bpp;
+            m[8] = row2[A]; row2 += bpp;
+            stl = read_light_delta(x, y, m[4]);
+            specular_light(interiorNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
+            dptr += bpp;
+         }
+
+         if (Width > 1) {
+            shiftMatrixLeft(m);
+            stl = read_light_delta(Width-1, y, m[4]);
+            specular_light(rightNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
+         }
+      }
+   }
 }
 
 /*********************************************************************************************************************
@@ -281,237 +547,106 @@ Draw: Render the effect to the target bitmap.
 
 static ERR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
 {
-   pf::Log log;
+   if (Self->Target->BytesPerPixel != 4) return ERR::InvalidState;
+   Self->draw();
+   return ERR::Okay;
+}
 
-   if (Self->Target->BytesPerPixel != 4) return log.warning(ERR::InvalidState);
+//*********************************************************************************************************************
 
-   auto lt = point3(Self->X, Self->Y, Self->Z); // Light source
-   auto pt = point3(Self->PX, Self->PY, Self->PZ); // Target for the light source
+void extLightingFX::draw()
+{
+   auto lt = point3(X, Y, Z); // Light source
+   auto pt = Spotlight; // Target for the light source, used by LS::SPOT only.
 
-   if (Self->Filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX) {
+   if (Filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX) {
       // Light source coordinates are expressed as relative to the client vector's bounding box in this mode.
-      auto &client = Self->Filter->ClientVector;
-      const DOUBLE c_width  = client->Bounds.width();
-      const DOUBLE c_height = client->Bounds.height();
+      auto &client = Filter->ClientVector;
+      const double c_width  = client->Bounds.width();
+      const double c_height = client->Bounds.height();
 
       lt.x = (lt.x * c_width) + client->Bounds.left;
       lt.y = (lt.y * c_height) + client->Bounds.top;
-      lt.z = lt.z * sqrt((c_width * c_width) + (c_height * c_height)) * 0.70710678118654752440084436210485;
+      lt.z = lt.z * sqrt((c_width * c_width) + (c_height * c_height)) * SQRT2DIV2;
 
-      if (Self->LightSource IS LS::SPOT) {
+      if (LightSource IS LS::SPOT) {
          pt.x = (pt.x * c_width) + client->Bounds.left;
          pt.y = (pt.y * c_height) + client->Bounds.top;
-         pt.z = pt.z * sqrt((c_width * c_width) + (c_height * c_height)) * 0.70710678118654752440084436210485;
+         pt.z = pt.z * sqrt((c_width * c_width) + (c_height * c_height)) * SQRT2DIV2;
       }
    }
 
-   auto &t = Self->Filter->ClientVector->Transform;
-   t.transform(&lt.x, &lt.y);
+   auto &t = Filter->ClientVector->Transform;
 
-   // The Z axis is affected by scaling only.  Compute this according to SVG rules.
-   const DOUBLE sz = (t.sx IS t.sy) ? t.sx : sqrt((t.sx*t.sx) + (t.sy*t.sy)) * 0.70710678118654752440084436210485;
-   lt.z *= sz;
+   const double scale = (t.sx IS t.sy) ? t.sx : sqrt((t.sx*t.sx) + (t.sy*t.sy)) * SQRT2DIV2;
+
+   lt.z *= scale;
+   t.transform(&lt.x, &lt.y);
 
    // Rendering algorithm requires light source coordinates to be relative to the exposed bitmap.
 
-   lt.x -= Self->Target->Clip.Left;
-   lt.y -= Self->Target->Clip.Top;
-
-   if (Self->LightSource IS LS::SPOT) {
+   if (LightSource IS LS::SPOT) {
       t.transform(&pt.x, &pt.y);
-      pt.x -= Self->Target->Clip.Left;
-      pt.y -= Self->Target->Clip.Top;
-      pt.z *= sz;
+      pt.z *= scale;
 
-      Self->SpotDelta = point3(pt.x, pt.y, pt.z) - point3(lt.x, lt.y, lt.z);
-      Self->SpotDelta.normalize();
+      // SpotDelta gives the center of the rendered light, expressed in relative coordinates 0 - 1.0
 
-      if (Self->ConeAngle) {
-         Self->CosOuterConeAngle = cos(Self->ConeAngle * DEG2RAD);
-         const DOUBLE AA_THRESHOLD = 0.016;
-         Self->CosInnerConeAngle = Self->CosOuterConeAngle + AA_THRESHOLD;
-         Self->ConeScale = 1.0 / AA_THRESHOLD;
+      SpotDelta = point3(pt.x, pt.y, pt.z) - point3(lt.x, lt.y, lt.z);
+
+      if (SpotDelta.dot(SpotDelta) > 1e-10) SpotDelta.normalise();
+      else SpotDelta = point3(0, 0, -1);
+
+      if (ConeAngle) {
+         CosOuterConeAngle = cos(ConeAngle * DEG2RAD);
+         const double AA_THRESHOLD = 0.016;
+         CosInnerConeAngle = CosOuterConeAngle + AA_THRESHOLD;
+         ConeScale = 1.0 / AA_THRESHOLD;
       }
    }
 
+   lt.x -= Target->Clip.Left; // Re-orient the light source coordinates to (0,0)
+   lt.y -= Target->Clip.Top;
+
    objBitmap *bmp;
-   if (get_source_bitmap(Self->Filter, &bmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::Failed;
+   if (get_source_bitmap(Filter, &bmp, SourceType, Input, false) != ERR::Okay) return;
 
    // Note! Linear conversion of the source bitmap is unnecessary because only the alpha channel is used.
 
    // The alpha channel of the source bitmap will function as the Z value for the bump map.  The RGB components
    // are ignored for input purposes.
 
-   const UBYTE R = Self->Target->ColourFormat->RedPos>>3;
-   const UBYTE G = Self->Target->ColourFormat->GreenPos>>3;
-   const UBYTE B = Self->Target->ColourFormat->BluePos>>3;
-   const UBYTE A = Self->Target->ColourFormat->AlphaPos>>3;
-
-   LONG width  = Self->Target->Clip.Right - Self->Target->Clip.Left;
-   LONG height = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
+   int width  = Target->Clip.Right - Target->Clip.Left;
+   int height = Target->Clip.Bottom - Target->Clip.Top;
    if (bmp->Clip.Right - bmp->Clip.Left < width) width = bmp->Clip.Right - bmp->Clip.Left;
    if (bmp->Clip.Bottom - bmp->Clip.Top < height) height = bmp->Clip.Bottom - bmp->Clip.Top;
 
-   const UBYTE bpp = Self->Target->BytesPerPixel;
-   UBYTE *in = (UBYTE *)(bmp->Data + (bmp->Clip.Left * bpp) + (bmp->Clip.Top * bmp->LineWidth));
-   UBYTE *dest = (UBYTE *)(Self->Target->Data + (Self->Target->Clip.Left * bpp) + (Self->Target->Clip.Top * Self->Target->LineWidth));
-   UBYTE *dptr;
+   const double spot_height = MapHeight * scale;
 
-   UBYTE m[9];
-   const DOUBLE scale = Self->Scale * (1.0 / 255.0); // Adjust to match the scale of alpha values.
+   const int num_threads = std::min(std::thread::hardware_concurrency(), static_cast<unsigned int>(height));
+   const int min_rows_per_chunk = 4; // Minimum work per thread to avoid overhead
+   const int chunk_size = std::max(min_rows_per_chunk, height / num_threads);
+   const int num_chunks = (height + chunk_size - 1) / chunk_size;
 
-   if (Self->Type IS LT::DIFFUSE) {
-      for (LONG y=0; y < height; y++) {
-         const UBYTE *row0 = (y IS 0) ? in : in - bmp->LineWidth;
-         const UBYTE *row1 = in;
-         const UBYTE *row2 = (y IS height-1) ? in : in + bmp->LineWidth;
+   BS::thread_pool pool(num_threads);
 
-         dptr = dest;
-         m[1] = row0[A]; row0 += bpp;
-         m[2] = row0[A]; row0 += bpp;
-         m[4] = row1[A]; row1 += bpp;
-         m[5] = row1[A]; row1 += bpp;
-         m[7] = row2[A]; row2 += bpp;
-         m[8] = row2[A]; row2 += bpp;
+   for (int chunk=0; chunk < num_chunks; ++chunk) {
+      const int start_y = chunk * chunk_size;
+      const int end_y = std::min(start_y + chunk_size, height);
 
-         if (Self->LightSource IS LS::DISTANT) { // Diffuse distant light
-            diffuse_light(Self, leftNormal(m, scale), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
-            dptr += bpp;
-
-            for (LONG x=1; x < width-1; ++x) {
-                shiftMatrixLeft(m);
-                m[2] = row0[A]; row0 += bpp;
-                m[5] = row1[A]; row1 += bpp;
-                m[8] = row2[A]; row2 += bpp;
-                diffuse_light(Self, interiorNormal(m, scale), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
-                dptr += bpp;
-            }
-
-            shiftMatrixLeft(m);
-            diffuse_light(Self, rightNormal(m, scale), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
+      pool.detach_task([&, start_row = start_y, end_row = end_y]() {
+         if (LightSource IS LS::DISTANT) {
+            render_distant(start_row, end_row, bmp, lt, spot_height, width, height);
          }
-         else if (Self->LightSource IS LS::SPOT) { // Diffuse spot light
-            point3 stl = read_light_delta(Self, lt.x, lt.y - DOUBLE(y), lt.z, m[4]);
-            diffuse_light(Self, leftNormal(m, scale), stl, colour_spot_light(Self, stl), dptr, R, G, B, A);
-            dptr += bpp;
-
-            for (LONG x=1; x < width-1; ++x) {
-                shiftMatrixLeft(m);
-                m[2] = row0[A]; row0 += bpp;
-                m[5] = row1[A]; row1 += bpp;
-                m[8] = row2[A]; row2 += bpp;
-                stl = read_light_delta(Self, lt.x - DOUBLE(x), lt.y - DOUBLE(y), lt.z, m[4]);
-                diffuse_light(Self, interiorNormal(m, scale), stl, colour_spot_light(Self, stl), dptr, R, G, B, A);
-                dptr += bpp;
-            }
-
-            shiftMatrixLeft(m);
-            stl = read_light_delta(Self, lt.x - DOUBLE(width-1), lt.y - DOUBLE(y), lt.z, m[4]);
-            diffuse_light(Self, rightNormal(m, scale), stl, colour_spot_light(Self, stl), dptr, R, G, B, A);
+         else if (LightSource IS LS::SPOT) {
+            render_spotlight(start_row, end_row, bmp, lt, spot_height, width, height);
          }
-         else { // Diffuse point light
-            point3 stl = read_light_delta(Self, lt.x, lt.y - DOUBLE(y), lt.z, m[4]);
-            diffuse_light(Self, leftNormal(m, scale), stl, Self->LinearColour, dptr, R, G, B, A);
-            dptr += bpp;
-
-            for (LONG x=1; x < width-1; ++x) {
-                shiftMatrixLeft(m);
-                m[2] = row0[A]; row0 += bpp;
-                m[5] = row1[A]; row1 += bpp;
-                m[8] = row2[A]; row2 += bpp;
-                stl = read_light_delta(Self, lt.x - DOUBLE(x), lt.y - DOUBLE(y), lt.z, m[4]);
-                diffuse_light(Self, interiorNormal(m, scale), stl, Self->LinearColour, dptr, R, G, B, A);
-                dptr += bpp;
-            }
-
-            shiftMatrixLeft(m);
-            stl = read_light_delta(Self, lt.x - DOUBLE(width-1), lt.y - DOUBLE(y), lt.z, m[4]);
-            diffuse_light(Self, rightNormal(m, scale), stl, Self->LinearColour, dptr, R, G, B, A);
+         else if (LightSource IS LS::POINT) {
+            render_point(start_row, end_row, bmp, lt, spot_height, width, height);
          }
-
-         dptr += bpp;
-
-         in   += bmp->LineWidth;
-         dest += Self->Target->LineWidth;
-      }
-   }
-   else { // SPECULAR
-      for (LONG y=0; y < height; y++) {
-         const UBYTE *row0 = (y IS 0) ? in : in - bmp->LineWidth;
-         const UBYTE *row1 = in;
-         const UBYTE *row2 = (y IS height-1) ? in : in + bmp->LineWidth;
-
-         dptr = dest;
-         m[1] = row0[A]; row0 += bpp;
-         m[2] = row0[A]; row0 += bpp;
-         m[4] = row1[A]; row1 += bpp;
-         m[5] = row1[A]; row1 += bpp;
-         m[7] = row2[A]; row2 += bpp;
-         m[8] = row2[A]; row2 += bpp;
-
-         if (Self->LightSource IS LS::DISTANT) { // Specular distant light
-            specular_light(Self, leftNormal(m, scale), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
-            dptr += bpp;
-
-            for (LONG x=1; x < width-1; ++x) {
-                shiftMatrixLeft(m);
-                m[2] = row0[A]; row0 += bpp;
-                m[5] = row1[A]; row1 += bpp;
-                m[8] = row2[A]; row2 += bpp;
-                specular_light(Self, interiorNormal(m, scale), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
-                dptr += bpp;
-            }
-
-            shiftMatrixLeft(m);
-            specular_light(Self, rightNormal(m, scale), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
-         }
-         else if (Self->LightSource IS LS::SPOT) { // Specular spot light
-            point3 stl = read_light_delta(Self, lt.x, lt.y - DOUBLE(y), lt.z, m[4]);
-            specular_light(Self, leftNormal(m, scale), stl, colour_spot_light(Self, stl), dptr, R, G, B, A);
-            dptr += bpp;
-
-            for (LONG x=1; x < width-1; ++x) {
-                shiftMatrixLeft(m);
-                m[2] = row0[A]; row0 += bpp;
-                m[5] = row1[A]; row1 += bpp;
-                m[8] = row2[A]; row2 += bpp;
-                stl = read_light_delta(Self, lt.x - DOUBLE(x), lt.y - DOUBLE(y), lt.z, m[4]);
-                specular_light(Self, interiorNormal(m, scale), stl, colour_spot_light(Self, stl), dptr, R, G, B, A);
-                dptr += bpp;
-            }
-
-            shiftMatrixLeft(m);
-            stl = read_light_delta(Self, lt.x - DOUBLE(width-1), lt.y - DOUBLE(y), lt.z, m[4]);
-            specular_light(Self, rightNormal(m, scale), stl, colour_spot_light(Self, stl), dptr, R, G, B, A);
-         }
-         else { // LS::POINT Specular point light
-            point3 stl = read_light_delta(Self, lt.x, lt.y - DOUBLE(y), lt.z, m[4]);
-            specular_light(Self, leftNormal(m, scale), stl, Self->LinearColour, dptr, R, G, B, A);
-            dptr += bpp;
-
-            for (LONG x=1; x < width-1; ++x) {
-                shiftMatrixLeft(m);
-                m[2] = row0[A]; row0 += bpp;
-                m[5] = row1[A]; row1 += bpp;
-                m[8] = row2[A]; row2 += bpp;
-                stl = read_light_delta(Self, lt.x - DOUBLE(x), lt.y - DOUBLE(y), lt.z, m[4]);
-                specular_light(Self, interiorNormal(m, scale), stl, Self->LinearColour, dptr, R, G, B, A);
-                dptr += bpp;
-            }
-
-            shiftMatrixLeft(m);
-            stl = read_light_delta(Self, lt.x - DOUBLE(width-1), lt.y - DOUBLE(y), lt.z, m[4]);
-            specular_light(Self, rightNormal(m, scale), stl, Self->LinearColour, dptr, R, G, B, A);
-         }
-
-         dptr += bpp;
-
-         in   += bmp->LineWidth;
-         dest += Self->Target->LineWidth;
-      }
+      });
    }
 
-   return ERR::Okay;
+   pool.wait();
 }
 
 //********************************************************************************************************************
@@ -654,9 +789,9 @@ static ERR LIGHTINGFX_SetSpotLight(extLightingFX *Self, struct lt::SetSpotLight 
    Self->X  = Args->X;
    Self->Y  = Args->Y;
    Self->Z  = Args->Z;
-   Self->PX = Args->PX;
-   Self->PY = Args->PY;
-   Self->PZ = Args->PZ;
+   Self->Spotlight.x = Args->PX;
+   Self->Spotlight.y = Args->PY;
+   Self->Spotlight.z = Args->PZ;
 
    Self->SpotExponent = Args->Exponent;
    Self->ConeAngle    = Args->ConeAngle;
@@ -679,14 +814,14 @@ The default colour is pure white, `1.0,1.0,1.0,1.0`.
 
 *********************************************************************************************************************/
 
-static ERR LIGHTINGFX_GET_Colour(extLightingFX *Self, FLOAT **Value, LONG *Elements)
+static ERR LIGHTINGFX_GET_Colour(extLightingFX *Self, float **Value, int *Elements)
 {
-   *Value = (FLOAT *)&Self->Colour;
+   *Value = (float *)&Self->Colour;
    *Elements = 4;
    return ERR::Okay;
 }
 
-static ERR LIGHTINGFX_SET_Colour(extLightingFX *Self, FLOAT *Value, LONG Elements)
+static ERR LIGHTINGFX_SET_Colour(extLightingFX *Self, float *Value, int Elements)
 {
    if (Value) {
       if (Elements >= 1) Self->Colour.Red   = Value[0];
@@ -712,13 +847,13 @@ In the Phong lighting model, this field specifies the kd value in diffuse mode, 
 
 *********************************************************************************************************************/
 
-static ERR LIGHTINGFX_GET_Constant(extLightingFX *Self, DOUBLE *Value)
+static ERR LIGHTINGFX_GET_Constant(extLightingFX *Self, double *Value)
 {
    *Value = Self->Constant;
    return ERR::Okay;
 }
 
-static ERR LIGHTINGFX_SET_Constant(extLightingFX *Self, DOUBLE Value)
+static ERR LIGHTINGFX_SET_Constant(extLightingFX *Self, double Value)
 {
    if (Value >= 0) {
       Self->Constant = Value;
@@ -737,13 +872,13 @@ shinier the end result.
 
 *********************************************************************************************************************/
 
-static ERR LIGHTINGFX_GET_Exponent(extLightingFX *Self, DOUBLE *Value)
+static ERR LIGHTINGFX_GET_Exponent(extLightingFX *Self, double *Value)
 {
    *Value = Self->SpecularExponent;
    return ERR::Okay;
 }
 
-static ERR LIGHTINGFX_SET_Exponent(extLightingFX *Self, DOUBLE Value)
+static ERR LIGHTINGFX_SET_Exponent(extLightingFX *Self, double Value)
 {
    if ((Value >= 1.0) and (Value <= 128.0)) {
       Self->SpecularExponent = Value;
@@ -759,15 +894,15 @@ Scale: The maximum height of the input surface (bump map) when the alpha input i
 
 *********************************************************************************************************************/
 
-static ERR LIGHTINGFX_GET_Scale(extLightingFX *Self, DOUBLE *Value)
+static ERR LIGHTINGFX_GET_Scale(extLightingFX *Self, double *Value)
 {
-   *Value = Self->Scale;
+   *Value = Self->MapHeight;
    return ERR::Okay;
 }
 
-static ERR LIGHTINGFX_SET_Scale(extLightingFX *Self, DOUBLE Value)
+static ERR LIGHTINGFX_SET_Scale(extLightingFX *Self, double Value)
 {
-   Self->Scale = Value;
+   Self->MapHeight = Value;
    return ERR::Okay;
 }
 
@@ -806,13 +941,13 @@ that a value be provided for at least one of ResX and #UnitX.
 
 *********************************************************************************************************************/
 
-static ERR LIGHTINGFX_GET_UnitX(extLightingFX *Self, DOUBLE *Value)
+static ERR LIGHTINGFX_GET_UnitX(extLightingFX *Self, double *Value)
 {
    *Value = Self->UnitX;
    return ERR::Okay;
 }
 
-static ERR LIGHTINGFX_SET_UnitX(extLightingFX *Self, DOUBLE Value)
+static ERR LIGHTINGFX_SET_UnitX(extLightingFX *Self, double Value)
 {
    if (Value < 0) return ERR::InvalidValue;
    Self->UnitX = Value;
@@ -834,13 +969,13 @@ that a value be provided for at least one of ResY and #UnitY.
 
 *********************************************************************************************************************/
 
-static ERR LIGHTINGFX_GET_UnitY(extLightingFX *Self, DOUBLE *Value)
+static ERR LIGHTINGFX_GET_UnitY(extLightingFX *Self, double *Value)
 {
    *Value = Self->UnitY;
    return ERR::Okay;
 }
 
-static ERR LIGHTINGFX_SET_UnitY(extLightingFX *Self, DOUBLE Value)
+static ERR LIGHTINGFX_SET_UnitY(extLightingFX *Self, double Value)
 {
    if (Value < 0) return ERR::InvalidValue;
    Self->UnitY = Value;
@@ -872,7 +1007,7 @@ static ERR LIGHTINGFX_GET_XMLDef(extLightingFX *Self, STRING *Value)
 static const FieldDef clLightingType[] = {
    { "Diffuse",  LT::DIFFUSE },
    { "Specular", LT::SPECULAR },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 #include "filter_lighting_def.c"
@@ -882,7 +1017,7 @@ static const FieldArray clLightingFXFields[] = {
    { "Constant", FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,          LIGHTINGFX_GET_Constant, LIGHTINGFX_SET_Constant },
    { "Exponent", FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,          LIGHTINGFX_GET_Exponent, LIGHTINGFX_SET_Exponent },
    { "Scale",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,          LIGHTINGFX_GET_Scale, LIGHTINGFX_SET_Scale },
-   { "Type",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, LIGHTINGFX_GET_Type, LIGHTINGFX_SET_Type, &clLightingType },
+   { "Type",     FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_RW,  LIGHTINGFX_GET_Type, LIGHTINGFX_SET_Type, &clLightingType },
    { "UnitX",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,          LIGHTINGFX_GET_UnitX, LIGHTINGFX_SET_UnitX },
    { "UnitY",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,          LIGHTINGFX_GET_UnitY, LIGHTINGFX_SET_UnitY },
    { "XMLDef",   FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, LIGHTINGFX_GET_XMLDef },

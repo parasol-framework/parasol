@@ -9,16 +9,15 @@
     <comment>Provides support for the filling and stroking of vectors with colour gradients.</comment>
     <version>1</version>
     <id>e81ac386</id>
-    <idstring>ID_VECTORGRADIENT</idstring>
+    <idstring>VECTORGRADIENT</idstring>
     <category>Graphics</category>
-    <include>modules/vectorgradient.h</include>
-    <copyright>Paul Manias © 2010-2025</copyright>
+    <copyright>Paul Manias © 2010-2026</copyright>
     <description>
 <p>The VectorGradient class is used by Vector painting algorithms to fill and stroke vectors with gradients.  This is achieved by initialising a VectorGradient object with the desired settings and then registering it with a <class name="VectorScene">VectorScene</class> via the <class name="VectorScene" method="AddDef">VectorScene.AddDef()</class> method.</p>
 <p>Any vector within the target scene will be able to utilise the gradient for filling or stroking by referencing its name through the <class name="Vector" field="Fill">Vector.Fill</class> and <class name="Vector" field="Stroke">Vector.Stroke</class> fields.  For instance 'url(#redgradient)'.</p>
 <p>It is strongly recommended that the VectorGradient is owned by the <class name="VectorScene">VectorScene</class> that is handling the definition.  This will ensure that the VectorGradient is de-allocated when the scene is destroyed.</p></description>
     <source>
-      <file path="defs/">gradient.cpp</file>
+      <file path="painters/">gradient.cpp</file>
     </source>
   </info>
 
@@ -166,12 +165,24 @@
     </field>
 
     <field>
+      <name>Resolution</name>
+      <comment>Affects the rate of change for colours in the gradient.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>By default, the colours generated for a gradient will be spaced for a smooth transition between stops that maximise resolution.  The resolution can be reduced by setting the Resolution value to a fraction between 0 and 1.0.</p>
+<p>This results in the colour values being averaged to a single value for every block of n colours, where n is the value <code>1 / (1 - Resolution)</code>.</p>
+<p>Resolution is at its maximum when this value is set to 1 (the default).</p>
+      </description>
+    </field>
+
+    <field>
       <name>SpreadMethod</name>
-      <comment>The behaviour to use when the gradient bounds do not match the vector path.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <comment>Determines the rendering behaviour to use when gradient colours are cycled.</comment>
+      <access read="R" write="S">Read/Set</access>
       <type lookup="VSPREAD">VSPREAD</type>
       <description>
-<p>Indicates what happens if the gradient starts or ends inside the bounds of the target vector.  The default is <code>VSPREAD::PAD</code>.  Other valid options for gradients are <code>REFLECT</code>, <code>REPEAT</code> and <code>CLIP</code>.</p>
+<p>SpreadMethod determines what happens when the first cycle of gradient colours is exhausted and needs to begin again. The default setting is <code>VSPREAD::PAD</code>.</p>
 <types lookup="VSPREAD"/>
       </description>
     </field>
@@ -189,7 +200,7 @@
     <field>
       <name>TotalStops</name>
       <comment>Total number of stops defined in the Stops array.</comment>
-      <access read="R">Read</access>
+      <access read="G">Get</access>
       <type>INT</type>
       <description>
 <p>This read-only field indicates the total number of stops that have been defined in the <fl>Stops</fl> array.</p>
@@ -209,7 +220,7 @@
     <field>
       <name>Type</name>
       <comment>Specifies the type of gradient (e.g. <code>RADIAL</code>, <code>LINEAR</code>)</comment>
-      <access read="R" write="W">Read/Write</access>
+      <access read="R" write="S">Read/Set</access>
       <type lookup="VGT">VGT</type>
       <description>
 <p>The type of the gradient to be drawn is specified here.</p>
@@ -234,8 +245,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The <code>(X1, Y1)</code> field values define the starting coordinate for mapping linear gradients.  Other gradient types ignore these values.  The gradient will be drawn from <code>(X1, Y1)</code> to <code>(X2, Y2)</code>.</p>
-<p>Coordinate values can be expressed as percentages that are scaled to the target space.</p>
+<p>For linear gradients, the <code>(X1, Y1)</code> field values define the starting coordinate for mapping linear gradients.  The gradient will be drawn from <code>(X1, Y1)</code> to <code>(X2, Y2)</code>.  Coordinate values can be expressed as units that are scaled to the target space.</p>
+<p>For contour gradients, <code>X1</code> is used as the floor for the gradient colour values and <code>X2</code> acts as a multiplier. <code>X1</code> has a range of <code>0 &lt; X1 &lt; X2</code> and <code>X2</code> has a range of <code>.01 &lt; X2 &lt; 10</code>.</p>
       </description>
     </field>
 
@@ -245,8 +256,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The <code>(X2, Y2)</code> field values define the end coordinate for mapping linear gradients.  Other gradient types ignore these values.  The gradient will be drawn from <code>(X1, Y1)</code> to <code>(X2, Y2)</code>.</p>
-<p>Coordinate values can be expressed as percentages that are scaled to the target space.</p>
+<p>For linear gradients, the <code>(X1, Y1)</code> field values define the starting coordinate for mapping linear gradients.  The gradient will be drawn from <code>(X1, Y1)</code> to <code>(X2, Y2)</code>.  Coordinate values can be expressed as units that are scaled to the target space.</p>
+<p>For contour gradients, <code>X1</code> is used as the floor for the gradient colour values and <code>X2</code> acts as a multiplier. <code>X1</code> has a range of <code>0 &lt; X1 &lt; X2</code> and <code>X2</code> has a range of <code>.01 &lt; X2 &lt; 10</code>.</p>
       </description>
     </field>
 
@@ -257,7 +268,7 @@
       <type>DOUBLE</type>
       <description>
 <p>The <code>(X1, Y1)</code> field values define the starting coordinate for mapping linear gradients.  Other gradient types ignore these values.  The gradient will be drawn from <code>(X1, Y1)</code> to <code>(X2, Y2)</code>.</p>
-<p>Coordinate values can be expressed as percentages that are scaled to the target space.</p>
+<p>Coordinate values can also be expressed as units that are scaled to the target space.</p>
       </description>
     </field>
 
@@ -268,7 +279,7 @@
       <type>DOUBLE</type>
       <description>
 <p>The <code>(X2, Y2)</code> field values define the end coordinate for mapping linear gradients.  Other gradient types ignore these values.  The gradient will be drawn from <code>(X1, Y1)</code> to <code>(X2, Y2)</code>.</p>
-<p>Coordinate values can be expressed as percentages that are scaled to the target space.</p>
+<p>Coordinate values can also be expressed as units that are scaled to the target space.</p>
       </description>
     </field>
 
@@ -339,7 +350,7 @@
       <field name="ScaleY" type="DOUBLE">Matrix value D</field>
       <field name="TranslateX" type="DOUBLE">Matrix value E</field>
       <field name="TranslateY" type="DOUBLE">Matrix value F</field>
-      <field name="Tag" type="LONG">An optional tag value defined by the client for matrix identification.</field>
+      <field name="Tag" type="INT">An optional tag value defined by the client for matrix identification.</field>
     </struct>
 
   </structs>

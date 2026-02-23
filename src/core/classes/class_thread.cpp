@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -19,7 +19,7 @@ static ERR thread_entry(objThread *Thread) {
 }
 
 objThread::create thread = { fl::Routine(thread_entry), fl::Flags(THF::AUTO_FREE) };
-if (thread.ok()) thread->activate(thread);
+if (thread.ok()) thread->activate();
 </pre>
 
 To initialise the thread with data, call #SetData() prior to execution and read the #Data field from within the
@@ -38,159 +38,52 @@ thread routine.
 #endif
 
 #include "../defs.h"
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
-static const LONG THREADPOOL_MAX = 6;
+thread_local int8_t tlThreadCrashed;
+thread_local extThread *tlThreadRef;
 
 static void thread_entry_cleanup(void *);
 
-struct AsyncAction {
-   extThread *Thread;
-   bool InUse;
-
-   // Move constructor
-   AsyncAction(AsyncAction &&Other) noexcept : Thread(NULL), InUse(false) {
-      Thread = Other.Thread;
-      InUse  = Other.InUse;
-      Other.Thread = NULL;
-      Other.InUse  = false;
-   }
-
-   AsyncAction() : Thread(0), InUse(0) { }
-
-   AsyncAction(extThread *pThread) {
-      Thread = pThread;
-      InUse  = pThread ? true : false;
-   }
-
-   ~AsyncAction() {
-      if (InUse) {
-         pf::Log log(__FUNCTION__);
-         log.warning("Pooled thread #%d is still in use on closure.", Thread->UID);
-      }
+struct ThreadEntryCleanupGuard {
+   ~ThreadEntryCleanupGuard() {
+      thread_entry_cleanup(nullptr);
    }
 };
-
-static std::vector<struct AsyncAction> glAsyncActions;
 
 //********************************************************************************************************************
 // Returns a unique ID for the active thread.  The ID has no relationship with the host operating system.
 
-static THREADVAR THREADID tlUniqueThreadID(0);
+static thread_local THREADID tlUniqueThreadID(0);
 static std::atomic_int glThreadIDCount = 1;
 
 THREADID get_thread_id(void)
 {
-   if (tlUniqueThreadID.defined()) return tlUniqueThreadID;
+   if (tlUniqueThreadID.defined()) {
+      // Preserve the invariant that a defined thread ID always has a registry record.
+      std::lock_guard lock(glmThreadRegistry);
+      if (auto it = glThreadRegistry.find(int(tlUniqueThreadID)); it IS glThreadRegistry.end()) {
+         glThreadRegistry[int(tlUniqueThreadID)] = std::make_shared<ThreadRecord>();
+      }
+      return tlUniqueThreadID;
+   }
+
    tlUniqueThreadID = THREADID(glThreadIDCount++);
+
+   // Register the new thread in the global thread registry
+   auto record = std::make_shared<ThreadRecord>();
+   {
+      std::lock_guard lock(glmThreadRegistry);
+      glThreadRegistry[int(tlUniqueThreadID)] = std::move(record);
+   }
+
    return tlUniqueThreadID;
 }
 
 //********************************************************************************************************************
-// Retrieve a thread object from the thread pool.
+// Called whenever a MSGID::THREAD_CALLBACK message is caught by ProcessMessages().  See thread_entry() for usage.
 
-ERR threadpool_get(extThread **Result)
-{
-   pf::Log log;
-
-   log.traceBranch();
-
-   glmThreadPool.lock();
-
-      for (auto &at : glAsyncActions) {
-         if ((at.Thread) and (!at.InUse)) {
-            at.InUse = true;
-            *Result = at.Thread;
-            glmThreadPool.unlock();
-            return ERR::Okay;
-         }
-      }
-
-   glmThreadPool.unlock();
-
-   if (auto thread = extThread::create::untracked(fl::Name("AsyncAction"))) {
-      glmThreadPool.lock();
-      if (glAsyncActions.size() < THREADPOOL_MAX) {
-         glAsyncActions.emplace_back(thread);
-         thread->Pooled = true;
-      }
-      *Result = thread;
-      glmThreadPool.unlock();
-      return ERR::Okay;
-   }
-   else return log.warning(ERR::CreateObject);
-}
-
-//********************************************************************************************************************
-// Mark a thread in the pool as no longer in use.  The thread object will be destroyed if it is not in the pool.
-
-void threadpool_release(extThread *Thread)
-{
-   pf::Log log;
-
-   log.traceBranch("Thread: #%d, Total: %d", Thread->UID, (LONG)glAsyncActions.size());
-
-   glmThreadPool.lock();
-   for (auto &at : glAsyncActions) {
-      if (at.Thread IS Thread) {
-         at.InUse = false;
-         Thread->Active = false; // For pooled threads we mark them as inactive manually.
-         glmThreadPool.unlock();
-         return;
-      }
-   }
-
-   // If the thread object is not pooled, assume it was allocated dynamically from threadpool_get() and destroy it.
-
-   glmThreadPool.unlock();
-   FreeResource(Thread);
-}
-
-//********************************************************************************************************************
-// Destroy the entire thread pool.  For use on application shutdown only.
-
-void remove_threadpool(void)
-{
-   if (!glAsyncActions.empty()) {
-      pf::Log log("Core");
-      log.branch("Removing the action thread pool of %d threads.", (LONG)glAsyncActions.size());
-      std::lock_guard lock(glmThreadPool);
-      glAsyncActions.clear();
-   }
-}
-
-//********************************************************************************************************************
-// Called whenever a MSGID_THREAD_ACTION message is caught by ProcessMessages().  See thread_action() for usage.
-
-ERR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
-{
-   auto msg = (ThreadActionMessage *)Message;
-   if (!msg) return ERR::Okay;
-
-   if (msg->Callback.isC()) {
-      auto routine = (void (*)(ACTIONID, OBJECTPTR, ERR, LONG, APTR))msg->Callback.Routine;
-      routine(msg->ActionID, msg->Object, msg->Error, msg->Key, msg->Callback.Meta);
-   }
-   else if (msg->Callback.isScript()) {
-      auto script = msg->Callback.Context;
-      if (LockObject(script, 5000) IS ERR::Okay) {
-         sc::Call(msg->Callback, std::to_array<ScriptArg>({
-            { "ActionID", LONG(msg->ActionID) },
-            { "Object",   msg->Object, FD_OBJECTPTR },
-            { "Error",    LONG(msg->Error) },
-            { "Key",      msg->Key }
-         }));
-         ReleaseObject(script);
-      }
-   }
-
-   return ERR::Okay;
-}
-
-//********************************************************************************************************************
-// Called whenever a MSGID_THREAD_CALLBACK message is caught by ProcessMessages().  See thread_entry() for usage.
-
-ERR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+ERR msg_threadcallback(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize)
 {
    pf::Log log;
 
@@ -226,65 +119,6 @@ ERR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG
 }
 
 //********************************************************************************************************************
-// This is the entry point for all threads.
-
-THREADVAR BYTE tlThreadCrashed;
-THREADVAR extThread *tlThreadRef;
-
-#ifdef _WIN32
-static int thread_entry(extThread *Self)
-#elif __unix__
-static void * thread_entry(extThread *Self)
-#endif
-{
-   auto uid = Self->UID;
-
-   // Note that the Active flag will have been set to true prior to entry, and will remain until msg_threadcallback()
-   // is called.
-
-   // Configure crash indicators and a cleanup operation
-
-   tlThreadCrashed = true;
-   tlThreadRef     = Self;
-   #ifdef __GNUC__
-   pthread_cleanup_push(&thread_entry_cleanup, Self);
-   #endif
-
-   ThreadMessage msg = { .ThreadID = uid, .Callback = Self->Callback };
-   bool pooled = Self->Pooled;
-
-   {
-      // Replace the default dummy context with one that pertains to the thread
-      ObjectContext thread_ctx(Self, AC::NIL);
-
-      if (Self->Routine.isC()) {
-         auto routine = (ERR (*)(extThread *, APTR))Self->Routine.Routine;
-         Self->Error = routine(Self, Self->Routine.Meta);
-      }
-      else if (Self->Routine.isScript()) {
-         ScopedObjectLock script(Self->Routine.Context, 5000);
-         if (script.granted()) {
-            sc::Call(Self->Routine, std::to_array<ScriptArg>({ { "Thread", Self, FD_OBJECTPTR } }));
-         }
-      }
-   }
-
-   // Please no references to Self after this point.  It is possible that the Thread object has been forcibly removed
-   // if the client routine is persistently running during shutdown.
-
-   // See msg_threadcallback()
-   if (!pooled) SendMessage(MSGID_THREAD_CALLBACK, MSF::ADD|MSF::WAIT, &msg, sizeof(msg));
-
-   // Reset the crash indicators and invoke the cleanup code.
-   tlThreadRef     = NULL;
-   tlThreadCrashed = false;
-   #ifdef __GNUC__
-   pthread_cleanup_pop(true);
-   #endif
-   return 0;
-}
-
-//********************************************************************************************************************
 // Cleanup on completion of a thread.  Note that this will also run in the event that the thread throws an exception.
 
 static void thread_entry_cleanup(void *Arg)
@@ -294,6 +128,8 @@ static void thread_entry_cleanup(void *Arg)
       log.error("A thread in this program has crashed.");
       if (tlThreadRef) tlThreadRef->Active = false;
    }
+
+   deregister_thread();
 
    #ifdef _WIN32
       free_threadlock();
@@ -319,37 +155,58 @@ static ERR THREAD_Activate(extThread *Self)
 
    Self->Active = true; // Indicate that the thread is running
 
-#ifdef __unix__
+   std::thread::id thread_id = std::this_thread::get_id();
 
-   pthread_attr_t attr;
-   pthread_attr_init(&attr);
-   // On Linux it is better not to set the stack size, as it implies you intend to manually allocate the stack and guard it...
-   //pthread_attr_setstacksize(&attr, Self->StackSize);
-   if (!pthread_create(&Self->PThread, &attr, (APTR (*)(APTR))&thread_entry, Self)) {
-      pthread_attr_destroy(&attr);
+   Self->CPPThread = new (std::nothrow) std::jthread([Self]() {
+      auto uid = Self->UID;
+
+      // Note that the Active flag will have been set to true prior to entry, and will remain until msg_threadcallback()
+      // is called.
+
+      // Configure crash indicators and a cleanup operation
+
+      tlThreadCrashed = true;
+      tlThreadRef     = Self;
+      ThreadEntryCleanupGuard cleanup_guard;
+
+      ThreadMessage msg = { .ThreadID = uid, .Callback = Self->Callback };
+
+      {
+         // Replace the default dummy context with one that pertains to the thread
+         extObjectContext thread_ctx(Self, AC::NIL);
+
+         if (Self->Routine.isC()) {
+            auto routine = (ERR (*)(extThread *, APTR))Self->Routine.Routine;
+            Self->Error = routine(Self, Self->Routine.Meta);
+         }
+         else if (Self->Routine.isScript()) {
+            ScopedObjectLock script(Self->Routine.Context, 5000);
+            if (script.granted()) {
+               sc::Call(Self->Routine, std::to_array<ScriptArg>({ { "Thread", Self, FD_OBJECTPTR } }));
+            }
+         }
+      }
+
+      // Please no references to Self after this point.  It is possible that the Thread object has been forcibly removed
+      // if the client routine is persistently running during shutdown.
+
+      // See msg_threadcallback()
+      SendMessage(MSGID::THREAD_CALLBACK, MSF::NIL, &msg, sizeof(msg));
+
+      // Reset the crash indicators and invoke the cleanup code.
+      tlThreadRef     = nullptr;
+      tlThreadCrashed = false;
+   });
+
+   if (Self->CPPThread) {
+      Self->ThreadID = Self->CPPThread->get_id();
+      Self->Handle   = Self->CPPThread->native_handle();
       return ERR::Okay;
    }
    else {
-      char errstr[80];
-      log.warning("pthread_create() failed with error: %s.", strerror_r(errno, errstr, sizeof(errstr)));
-      pthread_attr_destroy(&attr);
       Self->Active = false;
       return log.warning(ERR::SystemCall);
    }
-
-#elif _WIN32
-
-   if ((Self->Handle = winCreateThread((APTR)&thread_entry, Self, Self->StackSize, &Self->ThreadID))) {
-      return ERR::Okay;
-   }
-   else {
-      Self->Active = false;
-      return log.warning(ERR::SystemCall);
-   }
-
-#else
-   #error Platform support for threads is required.
-#endif
 }
 
 /*********************************************************************************************************************
@@ -364,16 +221,7 @@ could result in an unstable application.
 static ERR THREAD_Deactivate(extThread *Self)
 {
    if (Self->Active) {
-      #ifdef __ANDROID__
-         return ERR::NoSupport;
-      #elif __unix__
-         pthread_cancel(Self->PThread);
-      #elif _WIN32
-         winTerminateThread(Self->Handle);
-      #else
-         #warning Add code to kill threads.
-      #endif
-
+      Self->CPPThread->request_stop();
       Self->Active = false;
    }
 
@@ -393,17 +241,11 @@ static ERR THREAD_Free(extThread *Self)
 {
    if ((Self->Data) and (Self->DataSize > 0)) {
       FreeResource(Self->Data);
-      Self->Data = NULL;
+      Self->Data = nullptr;
       Self->DataSize = 0;
    }
 
-   #ifdef __unix__
-      if (Self->Msgs[0] != -1) { close(Self->Msgs[0]); Self->Msgs[0] = -1; }
-      if (Self->Msgs[1] != -1) { close(Self->Msgs[1]); Self->Msgs[1] = -1; }
-   #elif _WIN32
-      if (Self->Msgs[0]) { winCloseHandle(Self->Msgs[0]); Self->Msgs[0] = 0; }
-      if (Self->Msgs[1]) { winCloseHandle(Self->Msgs[1]); Self->Msgs[1] = 0; }
-   #endif
+   if (Self->CPPThread) { delete Self->CPPThread; Self->CPPThread = nullptr; }
 
    Self->~extThread();
    return ERR::Okay;
@@ -428,9 +270,6 @@ static ERR THREAD_Init(extThread *Self)
 {
    pf::Log log;
 
-   if (Self->StackSize < 1024) Self->StackSize = 1024;
-   else if (Self->StackSize > 1024 * 1024) return log.warning(ERR::OutOfRange);
-
    return ERR::Okay;
 }
 
@@ -439,11 +278,6 @@ static ERR THREAD_Init(extThread *Self)
 static ERR THREAD_NewPlacement(extThread *Self)
 {
    new (Self) extThread;
-   Self->StackSize = 16384;
-   #ifdef __unix__
-      Self->Msgs[0] = -1;
-      Self->Msgs[1] = -1;
-   #endif
    return ERR::Okay;
 }
 
@@ -481,7 +315,7 @@ static ERR THREAD_SetData(extThread *Self, struct th::SetData *Args)
 
    if (Self->Data) {
       FreeResource(Self->Data);
-      Self->Data = NULL;
+      Self->Data = nullptr;
       Self->DataSize = 0;
    }
 
@@ -489,7 +323,7 @@ static ERR THREAD_SetData(extThread *Self, struct th::SetData *Args)
       Self->Data = Args->Data;
       return ERR::Okay;
    }
-   else if (AllocMemory(Args->Size, MEM::DATA, &Self->Data, NULL) IS ERR::Okay) {
+   else if (AllocMemory(Args->Size, MEM::DATA, &Self->Data, nullptr) IS ERR::Okay) {
       Self->DataSize = Args->Size;
       copymem(Args->Data, Self->Data, Args->Size);
       return ERR::Okay;
@@ -535,7 +369,7 @@ the thread object.  It is paired with the #DataSize field, which reflects the si
 
 *********************************************************************************************************************/
 
-static ERR GET_Data(extThread *Self, APTR *Value, LONG *Elements)
+static ERR GET_Data(extThread *Self, APTR *Value, int *Elements)
 {
    *Value = Self->Data;
    *Elements = Self->DataSize;
@@ -581,25 +415,13 @@ static ERR SET_Routine(extThread *Self, FUNCTION *Value)
    return ERR::Okay;
 }
 
-/*********************************************************************************************************************
--FIELD-
-StackSize: The stack size to allocate for the thread.
-
-The initial size of the thread's stack can be modified by setting this field.  It may also be read prior to activation
-in order to check the default stack size.  Changes to the stack size when the thread is active will have no effect.
-
-On some platforms it may not be possible to preset the stack size and the provided value will be ignored.
--END-
-*********************************************************************************************************************/
-
 #include "class_thread_def.c"
 
 static const FieldArray clFields[] = {
    { "Data",      FDF_ARRAY|FDF_BYTE|FDF_R, GET_Data },
-   { "DataSize",  FD_LONG|FDF_R },
-   { "StackSize", FDF_LONG|FDF_RW },
-   { "Error",     FDF_LONG|FDF_R },
-   { "Flags",     FDF_LONG|FDF_RI, NULL, NULL, &clThreadFlags },
+   { "DataSize",  FDF_INT|FDF_R },
+   { "Error",     FDF_INT|FDF_R },
+   { "Flags",     FDF_INT|FDF_RI, nullptr, nullptr, &clThreadFlags },
    // Virtual fields
    { "Callback",  FDF_FUNCTIONPTR|FDF_RW, GET_Callback, SET_Callback },
    { "Routine",   FDF_FUNCTIONPTR|FDF_RW, GET_Routine, SET_Routine },

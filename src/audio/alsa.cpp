@@ -1,13 +1,15 @@
 #ifdef ALSA_ENABLED
 
+#include "device_enum.h"
+
 //********************************************************************************************************************
 
 static void free_alsa(extAudio *Self)
 {
-   if (Self->sndlog) { snd_output_close(Self->sndlog); Self->sndlog = NULL; }
-   if (Self->Handle) { snd_pcm_close(Self->Handle); Self->Handle = NULL; }
-   if (Self->MixHandle) { snd_mixer_close(Self->MixHandle); Self->MixHandle = NULL; }
-   if (Self->AudioBuffer) { FreeResource(Self->AudioBuffer); Self->AudioBuffer = NULL; }
+   if (Self->sndlog) { snd_output_close(Self->sndlog); Self->sndlog = nullptr; }
+   if (Self->Handle) { snd_pcm_close(Self->Handle); Self->Handle = nullptr; }
+   if (Self->MixHandle) { snd_mixer_close(Self->MixHandle); Self->MixHandle = nullptr; }
+   if (Self->AudioBuffer) { FreeResource(Self->AudioBuffer); Self->AudioBuffer = nullptr; }
 }
 
 //********************************************************************************************************************
@@ -18,25 +20,20 @@ static ERR init_audio(extAudio *Self)
    struct snd::SetVolume setvol;
    snd_pcm_hw_params_t *hwparams;
    snd_pcm_stream_t stream;
-   snd_ctl_t *ctlhandle;
    snd_pcm_t *pcmhandle;
    snd_mixer_elem_t *elem;
    snd_mixer_selem_id_t *sid;
    snd_pcm_uframes_t periodsize;
-   snd_ctl_card_info_t *info;
-   LONG err, index;
-   WORD channel;
+   int err, index;
+   int16_t channel;
    long pmin, pmax;
    int dir;
-   WORD voltotal;
    std::string pcm_name;
 
    if (Self->Handle) {
       log.msg("Audio system is already active.");
       return ERR::Okay;
    }
-
-   snd_ctl_card_info_alloca(&info);
 
    log.msg("Initialising sound card device.");
 
@@ -46,101 +43,34 @@ static ERR init_audio(extAudio *Self)
    if (!Self->Device.empty()) pcm_name = Self->Device;
    else pcm_name = "default";
 
-   // Convert english pcm_name to the device number
-
-   if (!iequals("default", pcm_name)) {
-      STRING cardid, cardname;
-
-      LONG card = -1;
-      if ((snd_card_next(&card) < 0) or (card < 0)) {
-         log.warning("There are no sound cards supported by audio drivers.");
-         return ERR::NoSupport;
-      }
-
-      while (card >= 0) {
-         std::string name = "hw:" + std::to_string(card);
-
-         if ((err = snd_ctl_open(&ctlhandle, name.c_str(), 0)) >= 0) {
-            if ((err = snd_ctl_card_info(ctlhandle, info)) >= 0) {
-               cardid = (STRING)snd_ctl_card_info_get_id(info);
-               cardname = (STRING)snd_ctl_card_info_get_name(info);
-
-               if (iequals(cardid, pcm_name)) {
-                  pcm_name = name;
-                  snd_ctl_close(ctlhandle);
-                  break;
-               }
-            }
-            snd_ctl_close(ctlhandle);
-         }
-
-         if (snd_card_next(&card) < 0) card = -1;
-      }
-   }
-
-   // Check if the default ALSA device is a real sound card.  We don't want to use it if it's a modem or other
-   // unexpected device.
+   // Use unified device enumeration to find the appropriate audio device
+   ALSADeviceInfo selected_device;
 
    if (iequals("default", pcm_name)) {
-      // If there are no sound devices in the system, abort
-
-      LONG card = -1;
-      if ((snd_card_next(&card) < 0) or (card < 0)) {
+      // Select best available device (most mixer controls, not a modem)
+      selected_device = ALSADeviceEnumerator::select_best_device();
+      if (selected_device.card_number IS -1) {
          log.warning("There are no sound cards supported by audio drivers.");
          return ERR::NoSupport;
       }
 
-      // Check the number of mixer controls for all cards that support output.  We'll choose the card that has the most
-      // mixer controls as the default.
-
-      WORD volmax = 0;
-      while (card >= 0) {
-         std::string name = "hw:" + std::to_string(card);
-         log.msg("Opening card %s", name.c_str());
-
-         if ((err = snd_ctl_open(&ctlhandle, name.c_str(), 0)) >= 0) {
-            if ((err = snd_ctl_card_info(ctlhandle, info)) >= 0) {
-
-               auto cardid   = (STRING)snd_ctl_card_info_get_id(info);
-               auto cardname = (STRING)snd_ctl_card_info_get_name(info);
-
-               log.msg("Identified card %s, name %s", cardid, cardname);
-
-               if (iequals("modem", cardid)) goto next_card;
-
-               snd_mixer_t *mixhandle;
-               if ((err = snd_mixer_open(&mixhandle, 0)) >= 0) {
-                  if ((err = snd_mixer_attach(mixhandle, name.c_str())) >= 0) {
-                     if ((err = snd_mixer_selem_register(mixhandle, NULL, NULL)) >= 0) {
-                        if ((err = snd_mixer_load(mixhandle)) >= 0) {
-                           // Build a list of all available volume controls
-
-                           snd_mixer_selem_id_alloca(&sid);
-                           voltotal = 0;
-                           for (elem=snd_mixer_first_elem(mixhandle); elem; elem=snd_mixer_elem_next(elem)) voltotal++;
-
-                           log.msg("Card %s has %d mixer controls.", cardid, voltotal);
-
-                           if (voltotal > volmax) {
-                              volmax = voltotal;
-                              Self->Device = cardid;
-                              pcm_name = name;
-                           }
-                        }
-                        else log.warning("snd_mixer_load() %s", snd_strerror(err));
-                     }
-                     else log.warning("snd_mixer_selem_register() %s", snd_strerror(err));
-                  }
-                  else log.warning("snd_mixer_attach() %s", snd_strerror(err));
-                  snd_mixer_close(mixhandle);
-               }
-               else log.warning("snd_mixer_open() %s", snd_strerror(err));
-            }
-next_card:
-            snd_ctl_close(ctlhandle);
-         }
-         if (snd_card_next(&card) < 0) card = -1;
+      Self->Device = selected_device.card_id;
+      pcm_name = selected_device.device_name;
+      log.msg("Selected default device: %s (%s) with %d mixer controls",
+              selected_device.card_id.c_str(), selected_device.card_name.c_str(),
+              selected_device.mixer_controls);
+   }
+   else {
+      // Find specific device by ID
+      selected_device = ALSADeviceEnumerator::find_device_by_id(pcm_name);
+      if (selected_device.card_number IS -1) {
+         log.warning("Requested device '%s' not found.", pcm_name.c_str());
+         return ERR::NoSupport;
       }
+
+      pcm_name = selected_device.device_name;
+      log.msg("Using specified device: %s (%s)",
+              selected_device.card_id.c_str(), selected_device.card_name.c_str());
    }
 
    snd_output_stdio_attach(&Self->sndlog, stderr, 0);
@@ -149,7 +79,7 @@ next_card:
 
    if (Self->MixHandle) {
       snd_mixer_close(Self->MixHandle);
-      Self->MixHandle = NULL;
+      Self->MixHandle = nullptr;
    }
 
    // Mixer initialisation, for controlling volume
@@ -164,7 +94,7 @@ next_card:
       return ERR::Failed;
    }
 
-   if ((err = snd_mixer_selem_register(Self->MixHandle, NULL, NULL)) < 0) {
+   if ((err = snd_mixer_selem_register(Self->MixHandle, nullptr, nullptr)) < 0) {
       log.warning("snd_mixer_selem_register() %s", snd_strerror(err));
       return ERR::Failed;
    }
@@ -177,7 +107,7 @@ next_card:
    // Build a list of all available volume controls
 
    snd_mixer_selem_id_alloca(&sid);
-   voltotal = 0;
+   int voltotal = 0;
    for (elem=snd_mixer_first_elem(Self->MixHandle); elem; elem=snd_mixer_elem_next(elem)) voltotal++;
 
    log.msg("%d mixer controls have been reported by alsa.", voltotal);
@@ -208,7 +138,7 @@ next_card:
 
       volctl[index].Name = snd_mixer_selem_id_get_name(sid);
 
-      for (channel=0; channel < (LONG)volctl[index].Channels.size(); channel++) volctl[index].Channels[channel] = -1;
+      for (channel=0; channel < (int)volctl[index].Channels.size(); channel++) volctl[index].Channels[channel] = -1;
 
       VCF flags = VCF::NIL;
       if (snd_mixer_selem_has_playback_volume(elem))        flags |= VCF::PLAYBACK;
@@ -322,14 +252,14 @@ next_card:
    // by the hardware.
 
    dir = 0;
-   if ((err = snd_pcm_hw_params_set_rate_near(pcmhandle, hwparams, (ULONG *)&Self->OutputRate, &dir)) < 0) {
+   if ((err = snd_pcm_hw_params_set_rate_near(pcmhandle, hwparams, (uint32_t *)&Self->OutputRate, &dir)) < 0) {
       log.warning("set_rate_near() %s", snd_strerror(err));
       return ERR::Failed;
    }
 
    // Set number of channels
 
-   ULONG channels = ((Self->Flags & ADF::STEREO) != ADF::NIL) ? 2 : 1;
+   uint32_t channels = ((Self->Flags & ADF::STEREO) != ADF::NIL) ? 2 : 1;
    if ((err = snd_pcm_hw_params_set_channels_near(pcmhandle, hwparams, &channels)) < 0) {
       log.warning("set_channels_near(%d) %s", channels, snd_strerror(err));
       return ERR::Failed;
@@ -365,7 +295,7 @@ next_card:
    // Set buffer sizes.  Note that we will retrieve the period and buffer sizes AFTER telling ALSA what the audio
    // parameters are.
 
-   log.msg("Using period frame size of %d, buffer size of %d", (LONG)periodsize, (LONG)buffersize);
+   log.msg("Using period frame size of %d, buffer size of %d", (int)periodsize, (int)buffersize);
 
    if ((err = snd_pcm_hw_params_set_period_size_near(pcmhandle, hwparams, &periodsize, 0)) < 0) {
       log.warning("Period size failure: %s", snd_strerror(err));
@@ -391,7 +321,7 @@ next_card:
 
    // Retrieve ALSA buffer sizes
 
-   err = snd_pcm_hw_params_get_periods(hwparams, (ULONG *)&Self->Periods, &dir);
+   err = snd_pcm_hw_params_get_periods(hwparams, (uint32_t *)&Self->Periods, &dir);
 
    snd_pcm_hw_params_get_period_size(hwparams, &periodsize, 0);
    Self->PeriodSize = periodsize;
@@ -408,7 +338,7 @@ next_card:
 
    // Allocate a buffer that we will use for audio output
 
-   if (Self->AudioBuffer) { FreeResource(Self->AudioBuffer); Self->AudioBuffer = NULL; }
+   if (Self->AudioBuffer) { FreeResource(Self->AudioBuffer); Self->AudioBuffer = nullptr; }
 
    if (AllocMemory(Self->AudioBufferSize, MEM::DATA, &Self->AudioBuffer) IS ERR::Okay) {
       if ((Self->Flags & ADF::SYSTEM_WIDE) != ADF::NIL) {
@@ -417,12 +347,12 @@ next_card:
          auto oldctl = Self->Volumes;
          Self->Volumes = volctl;
 
-         for (LONG i=0; i < (LONG)volctl.size(); i++) {
-            LONG j;
-            for (j=0; j < (LONG)oldctl.size(); j++) {
+         for (int i=0; i < (int)volctl.size(); i++) {
+            int j;
+            for (j=0; j < (int)oldctl.size(); j++) {
                if (volctl[i].Name == oldctl[j].Name) {
                   setvol.Index   = i;
-                  setvol.Name    = NULL;
+                  setvol.Name    = nullptr;
                   setvol.Flags   = SVF::NIL;
                   setvol.Channel = -1;
                   setvol.Volume  = oldctl[j].Channels[0];
@@ -435,9 +365,9 @@ next_card:
 
             // If the user has no volume defined for a mixer, set our own.
 
-            if (j IS (LONG)oldctl.size()) {
+            if (j IS (int)oldctl.size()) {
                setvol.Index   = i;
-               setvol.Name    = NULL;
+               setvol.Name    = nullptr;
                setvol.Flags   = SVF::NIL;
                setvol.Channel = -1;
                setvol.Volume  = 0.8;

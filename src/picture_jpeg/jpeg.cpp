@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 This software is based in part on the work of the Independent JPEG Group.  Source code has been derived from the
@@ -11,23 +11,22 @@ related to this Package.  The original libjpeg source code can be obtained from 
 
 #include <array>
 
-#include <parasol/main.h>
-#include <parasol/modules/picture.h>
-#include <parasol/modules/display.h>
+#include <kotuku/main.h>
+#include <kotuku/modules/picture.h>
+#include <kotuku/modules/display.h>
 
 #include "../picture/picture.h"
 
 extern "C" {
-#include "lib/jpeglib.h"
-#include "lib/jerror.h"
-#include "lib/jpegint.h"
+#include "jpeglib.h"
+#include "jerror.h"
 }
 
 JUMPTABLE_CORE
 JUMPTABLE_DISPLAY
 
-static OBJECTPTR clJPEG = NULL;
-static OBJECTPTR modDisplay = NULL;
+static OBJECTPTR clJPEG = nullptr;
+static OBJECTPTR modDisplay = nullptr;
 
 static ERR JPEG_Activate(extPicture *);
 static ERR JPEG_Init(extPicture *);
@@ -35,6 +34,152 @@ static ERR JPEG_Query(extPicture *);
 static ERR JPEG_SaveImage(extPicture *, struct acSaveImage *);
 
 static void decompress_jpeg(extPicture *, objBitmap *, struct jpeg_decompress_struct *);
+
+// Custom data source manager for Kotuku objFile
+typedef struct {
+   struct jpeg_source_mgr pub;
+   objFile *infile;
+   JOCTET *buffer;
+   boolean start_of_file;
+} kotuku_source_mgr;
+
+typedef kotuku_source_mgr *kotuku_src_ptr;
+
+#define INPUT_BUF_SIZE 4096
+
+// Initialize source
+METHODDEF(void) init_kotuku_source(j_decompress_ptr cinfo) {
+   kotuku_src_ptr src = (kotuku_src_ptr)cinfo->src;
+   src->start_of_file = TRUE;
+}
+
+// Fill input buffer
+METHODDEF(boolean) fill_kotuku_input_buffer(j_decompress_ptr cinfo) {
+   kotuku_src_ptr src = (kotuku_src_ptr)cinfo->src;
+   int nbytes;
+
+   if (src->infile->read(src->buffer, INPUT_BUF_SIZE, &nbytes) != ERR::Okay) {
+      if (src->start_of_file) ERREXIT(cinfo, JERR_INPUT_EMPTY);
+      WARNMS(cinfo, JWRN_JPEG_EOF);
+      src->buffer[0] = 0xFF;
+      src->buffer[1] = JPEG_EOI;
+      nbytes = 2;
+   }
+
+   src->pub.next_input_byte = src->buffer;
+   src->pub.bytes_in_buffer = nbytes;
+   src->start_of_file = FALSE;
+
+   return TRUE;
+}
+
+// Skip input data
+METHODDEF(void) skip_kotuku_input_data(j_decompress_ptr cinfo, long num_bytes) {
+   kotuku_src_ptr src = (kotuku_src_ptr)cinfo->src;
+
+   if (num_bytes > 0) {
+      while (num_bytes > (long)src->pub.bytes_in_buffer) {
+         num_bytes -= (long)src->pub.bytes_in_buffer;
+         (void)fill_kotuku_input_buffer(cinfo);
+      }
+      src->pub.next_input_byte += (size_t)num_bytes;
+      src->pub.bytes_in_buffer -= (size_t)num_bytes;
+   }
+}
+
+// Terminate source
+METHODDEF(void) term_kotuku_source(j_decompress_ptr cinfo) {
+   // No work necessary here
+}
+
+// Set up data source for reading from Kotuku objFile
+static void jpeg_kotuku_src(j_decompress_ptr cinfo, objFile *infile) {
+   kotuku_src_ptr src;
+
+   if (cinfo->src IS nullptr) {
+      cinfo->src = (struct jpeg_source_mgr *)
+         (*cinfo->mem->alloc_small)((j_common_ptr)cinfo, JPOOL_PERMANENT,
+                                   sizeof(kotuku_source_mgr));
+      src = (kotuku_src_ptr)cinfo->src;
+      src->buffer = (JOCTET *)
+         (*cinfo->mem->alloc_small)((j_common_ptr)cinfo, JPOOL_PERMANENT,
+                                   INPUT_BUF_SIZE * sizeof(JOCTET));
+   }
+
+   src = (kotuku_src_ptr)cinfo->src;
+   src->pub.init_source = init_kotuku_source;
+   src->pub.fill_input_buffer = fill_kotuku_input_buffer;
+   src->pub.skip_input_data = skip_kotuku_input_data;
+   src->pub.resync_to_restart = jpeg_resync_to_restart;
+   src->pub.term_source = term_kotuku_source;
+   src->infile = infile;
+   src->pub.bytes_in_buffer = 0;
+   src->pub.next_input_byte = nullptr;
+}
+
+// Custom destination manager for saving
+typedef struct {
+   struct jpeg_destination_mgr pub;
+   objFile *outfile;
+   JOCTET *buffer;
+} kotuku_destination_mgr;
+
+typedef kotuku_destination_mgr *kotuku_dest_ptr;
+
+#define OUTPUT_BUF_SIZE 4096
+
+// Initialize destination
+METHODDEF(void) init_kotuku_destination(j_compress_ptr cinfo) {
+   kotuku_dest_ptr dest = (kotuku_dest_ptr)cinfo->dest;
+   dest->buffer = (JOCTET *)
+      (*cinfo->mem->alloc_small)((j_common_ptr)cinfo, JPOOL_IMAGE,
+                                OUTPUT_BUF_SIZE * sizeof(JOCTET));
+   dest->pub.next_output_byte = dest->buffer;
+   dest->pub.free_in_buffer = OUTPUT_BUF_SIZE;
+}
+
+// Empty output buffer
+METHODDEF(boolean) empty_kotuku_output_buffer(j_compress_ptr cinfo) {
+   kotuku_dest_ptr dest = (kotuku_dest_ptr)cinfo->dest;
+
+   if (dest->outfile->write(dest->buffer, OUTPUT_BUF_SIZE) != ERR::Okay) {
+      ERREXIT(cinfo, JERR_FILE_WRITE);
+   }
+
+   dest->pub.next_output_byte = dest->buffer;
+   dest->pub.free_in_buffer = OUTPUT_BUF_SIZE;
+
+   return TRUE;
+}
+
+// Terminate destination
+METHODDEF(void) term_kotuku_destination(j_compress_ptr cinfo) {
+   kotuku_dest_ptr dest = (kotuku_dest_ptr)cinfo->dest;
+   int datacount = OUTPUT_BUF_SIZE - dest->pub.free_in_buffer;
+
+   if (datacount > 0) {
+      if (dest->outfile->write(dest->buffer, datacount) != ERR::Okay) {
+         ERREXIT(cinfo, JERR_FILE_WRITE);
+      }
+   }
+}
+
+// Set up destination for writing to Kotuku objFile
+static void jpeg_kotuku_dest(j_compress_ptr cinfo, objFile *outfile) {
+   kotuku_dest_ptr dest;
+
+   if (cinfo->dest IS nullptr) {
+      cinfo->dest = (struct jpeg_destination_mgr *)
+         (*cinfo->mem->alloc_small)((j_common_ptr)cinfo, JPOOL_PERMANENT,
+                                   sizeof(kotuku_destination_mgr));
+   }
+
+   dest = (kotuku_dest_ptr)cinfo->dest;
+   dest->pub.init_destination = init_kotuku_destination;
+   dest->pub.empty_output_buffer = empty_kotuku_output_buffer;
+   dest->pub.term_destination = term_kotuku_destination;
+   dest->outfile = outfile;
+}
 
 //********************************************************************************************************************
 
@@ -49,8 +194,8 @@ static ERR JPEG_Activate(extPicture *Self)
    if (Self->Bitmap->initialised()) return ERR::Okay;
 
    if (!Self->prvFile) {
-      STRING path;
-      if (Self->get(FID_Location, &path) != ERR::Okay) return log.warning(ERR::GetField);
+      CSTRING path;
+      if (Self->get(FID_Location, path) != ERR::Okay) return log.warning(ERR::GetField);
 
       if (!(Self->prvFile = objFile::create::local(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
          log.warning("Failed to open file \"%s\".", path);
@@ -65,7 +210,7 @@ static ERR JPEG_Activate(extPicture *Self)
    auto bmp = Self->Bitmap;
    cinfo.err = jpeg_std_error((struct jpeg_error_mgr *)&jerr);
    jpeg_create_decompress(&cinfo);
-   jpeg_stdio_src(&cinfo, Self->prvFile);
+   jpeg_kotuku_src(&cinfo, Self->prvFile);
    jpeg_read_header(&cinfo, TRUE);
 
    bmp->Width  = cinfo.image_width;
@@ -104,7 +249,7 @@ static ERR JPEG_Activate(extPicture *Self)
    }
 
    FreeResource(Self->prvFile);
-   Self->prvFile = NULL;
+   Self->prvFile = nullptr;
 
    return ERR::Okay;
 }
@@ -118,7 +263,7 @@ static void decompress_jpeg(extPicture *Self, objBitmap *Bitmap, struct jpeg_dec
 
    log.trace("Unpacking data to a %dbpp Bitmap...", Bitmap->BitsPerPixel);
 
-   LONG row_stride = Cinfo->output_width * Cinfo->output_components;
+   int row_stride = Cinfo->output_width * Cinfo->output_components;
    JSAMPARRAY buffer = (*Cinfo->mem->alloc_sarray)((j_common_ptr) Cinfo, JPOOL_IMAGE, row_stride, 1);
    for (JDIMENSION y=0; Cinfo->output_scanline < Cinfo->output_height; y++) {
       jpeg_read_scanlines(Cinfo, buffer, 1);
@@ -135,7 +280,7 @@ static void decompress_jpeg(extPicture *Self, objBitmap *Bitmap, struct jpeg_dec
       }
       else if (Cinfo->out_color_space IS JCS_RGB) {
          for (JDIMENSION x=0; x < Cinfo->output_width; x++) {
-            WORD i = *row++;
+            int16_t i = *row++;
             rgb.Red   = GETJSAMPLE(Cinfo->colormap[0][i]);
             rgb.Green = GETJSAMPLE(Cinfo->colormap[1][i]);
             rgb.Blue  = GETJSAMPLE(Cinfo->colormap[2][i]);
@@ -163,10 +308,10 @@ static void decompress_jpeg(extPicture *Self, objBitmap *Bitmap, struct jpeg_dec
 static ERR JPEG_Init(extPicture *Self)
 {
    pf::Log log;
-   UBYTE *buffer;
-   STRING path = NULL;
+   uint8_t *buffer;
+   CSTRING path = nullptr;
 
-   Self->get(FID_Location, &path);
+   Self->get(FID_Location, path);
 
    if ((!path) or ((Self->Flags & PCF::NEW) != PCF::NIL)) {
       // If no location has been specified, assume that the picture is being created from scratch (e.g. to save an image to disk).  The
@@ -183,7 +328,7 @@ static ERR JPEG_Init(extPicture *Self)
       }
       else return log.warning(ERR::FieldNotSet);
    }
-   else if (Self->getPtr(FID_Header, &buffer) IS ERR::Okay) {
+   else if (Self->get(FID_Header, buffer) IS ERR::Okay) {
       if ((buffer[0] IS 0xff) and (buffer[1] IS 0xd8) and (buffer[2] IS 0xff) and
           ((buffer[3] IS 0xe0) or (buffer[3] IS 0xe1) or (buffer[3] IS 0xfe))) {
          log.msg("The file is a JPEG picture.");
@@ -207,8 +352,8 @@ static ERR JPEG_Query(extPicture *Self)
    log.branch();
 
    if (!Self->prvFile) {
-      STRING path;
-      if (Self->get(FID_Location, &path) != ERR::Okay) return log.warning(ERR::GetField);
+      CSTRING path;
+      if (Self->get(FID_Location, path) != ERR::Okay) return log.warning(ERR::GetField);
 
       if (!(Self->prvFile = objFile::create::local(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
          return log.warning(ERR::CreateObject);
@@ -220,7 +365,7 @@ static ERR JPEG_Query(extPicture *Self)
       auto bmp = Self->Bitmap;
       cinfo->err = jpeg_std_error((struct jpeg_error_mgr *)&jerr);
       jpeg_create_decompress(cinfo);
-      jpeg_stdio_src(cinfo, Self->prvFile);
+      jpeg_kotuku_src(cinfo, Self->prvFile);
       jpeg_read_header(cinfo, FALSE);
 
       if (!bmp->Width)           bmp->Width          = cinfo->image_width;
@@ -248,12 +393,12 @@ static ERR JPEG_SaveImage(extPicture *Self, struct acSaveImage *Args)
 
    log.branch();
 
-   OBJECTPTR file = NULL;
+   OBJECTPTR file = nullptr;
 
    if ((Args) and (Args->Dest)) file = Args->Dest;
    else {
-      STRING path;
-      if (Self->get(FID_Location, &path) != ERR::Okay) return log.warning(ERR::MissingPath);
+      CSTRING path;
+      if (Self->get(FID_Location, path) != ERR::Okay) return log.warning(ERR::MissingPath);
 
       if (!(file = objFile::create::local(fl::Path(path), fl::Flags(FL::NEW|FL::WRITE)))) {
          return log.warning(ERR::CreateObject);
@@ -266,7 +411,7 @@ static ERR JPEG_SaveImage(extPicture *Self, struct acSaveImage *Args)
    struct jpeg_error_mgr jerr;
    cinfo.err = jpeg_std_error((struct jpeg_error_mgr *)&jerr);
    jpeg_create_compress(&cinfo);
-   jpeg_stdio_dest(&cinfo, (objFile *)file);
+   jpeg_kotuku_dest(&cinfo, (objFile *)file);
 
    cinfo.image_width      = Self->Bitmap->Width; 	// image width and height, in pixels
    cinfo.image_height     = Self->Bitmap->Height;
@@ -279,14 +424,14 @@ static ERR JPEG_SaveImage(extPicture *Self, struct acSaveImage *Args)
    jpeg_start_compress(&cinfo, TRUE);
 
    {
-      auto buffer = std::make_unique<UBYTE[]>(3 * Self->Bitmap->Width);
+      auto buffer = std::make_unique<uint8_t[]>(3 * Self->Bitmap->Width);
       JSAMPROW row_pointer[1];
       RGB8 rgb;
 
-      for (LONG y=0; y < Self->Bitmap->Height; y++) {
+      for (int y=0; y < Self->Bitmap->Height; y++) {
          row_pointer[0] = buffer.get();
-         WORD index = 0;
-         for (LONG x=0; x < Self->Bitmap->Width; x++) {
+         int16_t index = 0;
+         for (int x=0; x < Self->Bitmap->Width; x++) {
             Self->Bitmap->ReadUCRPixel(Self->Bitmap, x, y, &rgb);
             buffer[index++] = rgb.Red;
             buffer[index++] = rgb.Green;
@@ -314,7 +459,7 @@ static ActionArray clActions[] = {
    { AC::Init,      JPEG_Init },
    { AC::Query,     JPEG_Query },
    { AC::SaveImage, JPEG_SaveImage },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 //********************************************************************************************************************
@@ -345,12 +490,12 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERR MODExpunge(void)
 {
-   if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
-   if (clJPEG)     { FreeResource(clJPEG);     clJPEG = NULL; }
+   if (modDisplay) { FreeResource(modDisplay); modDisplay = nullptr; }
+   if (clJPEG)     { FreeResource(clJPEG);     clJPEG = nullptr; }
    return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, NULL, NULL, MODExpunge, MOD_IDL, NULL)
+KOTUKU_MOD(MODInit, nullptr, nullptr, MODExpunge, nullptr, MOD_IDL, nullptr)
 extern "C" struct ModHeader * register_jpeg_module() { return &ModHeader; }

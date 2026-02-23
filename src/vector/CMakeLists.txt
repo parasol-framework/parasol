@@ -3,18 +3,18 @@
 set (MOD vector)
 set (INC_MOD_VECTOR TRUE PARENT_SCOPE)
 
-idl_gen ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/vector.h"
+idl_gen ("${MOD}.tdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/vector.h"
    FILES "vector_functions.cpp"
    ARGS "output-defs=module_def.c")
 
-idl_compile ("${MOD}.fdl" NAME ${MOD}_idl OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/idl.h")
+idl_compile ("${MOD}.tdl" NAME ${MOD}_idl OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/idl.h")
 
 add_library (${MOD})
 
-set_module_defaults (${MOD})
+set_module_defaults (${MOD} "Vec")
 
 if (MSVC)
-
+   target_compile_options (${MOD} PRIVATE /GS-)
 else ()
 target_compile_options (${MOD} PRIVATE
   "$<${GCC_COMPAT}:$<BUILD_INTERFACE:-Wno-narrowing;-Wno-uninitialized>>")
@@ -27,7 +27,8 @@ target_sources (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/vector_functions.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/filters/filter.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/scene/scene.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/defs/defs.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/painters/painters.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/transformers/transformers.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/colourmaps.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/agg/src/agg_arc.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/agg/src/agg_arrowhead.cpp"
@@ -60,6 +61,15 @@ target_include_directories (${MOD} PRIVATE
 target_precompile_headers(${MOD} PRIVATE
    "vector.h" "font.h")
 
+# Enable unity builds to speed up compilation of the many AGG source files
+set_target_properties(${MOD} PROPERTIES UNITY_BUILD ON)
+set_target_properties(${MOD} PROPERTIES UNITY_BUILD_BATCH_SIZE 8)
+
 target_link_libraries (${MOD} PUBLIC unicode)
 target_link_libraries (${MOD} PUBLIC linear_rgb)
-target_link_libraries (${MOD} PRIVATE ${MATH_LINK} freetype)
+target_link_libraries (${MOD} PRIVATE ${MATH_LINK})
+
+# Only link freetype if font support is enabled
+if (NOT DISABLE_FONT)
+   target_link_libraries (${MOD} PRIVATE freetype)
+endif()

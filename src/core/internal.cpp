@@ -16,19 +16,19 @@ using namespace pf;
 //********************************************************************************************************************
 
 #ifdef __APPLE__
-struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size)
+struct sockaddr_un * get_socket_path(int ProcessID, socklen_t *Size)
 {
    // OSX doesn't support anonymous sockets, so we use /tmp instead.
-   static THREADVAR struct sockaddr_un tlSocket;
+   static thread_local struct sockaddr_un tlSocket;
    tlSocket.sun_family = AF_UNIX;
-   *Size = sizeof(sa_family_t) + snprintf(tlSocket.sun_path, sizeof(tlSocket.sun_path), "/tmp/parasol.%d", ProcessID) + 1;
+   *Size = sizeof(sa_family_t) + snprintf(tlSocket.sun_path, sizeof(tlSocket.sun_path), "/tmp/kotuku.%d", ProcessID) + 1;
    return &tlSocket;
 }
 #elif __unix__
-struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size)
+struct sockaddr_un * get_socket_path(int ProcessID, socklen_t *Size)
 {
-   static THREADVAR struct sockaddr_un tlSocket;
-   static THREADVAR bool init = false;
+   static thread_local struct sockaddr_un tlSocket;
+   static thread_local bool init = false;
 
    if (!init) {
       tlSocket.sun_family = AF_UNIX;
@@ -40,8 +40,8 @@ struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size)
       init = true;
    }
 
-   ((LONG *)(tlSocket.sun_path+4))[0] = ProcessID;
-   *Size = sizeof(sa_family_t) + 4 + sizeof(LONG);
+   ((int *)(tlSocket.sun_path+4))[0] = ProcessID;
+   *Size = sizeof(sa_family_t) + 4 + sizeof(int);
    return &tlSocket;
 }
 #endif
@@ -90,7 +90,7 @@ CLASSID lookup_class_by_ext(CLASSID Filter, std::string_view Ext)
 
 //********************************************************************************************************************
 
-ERR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
+ERR process_janitor(OBJECTID SubscriberID, int Elapsed, int TotalElapsed)
 {
    if (glTasks.empty()) {
       glJanitorActive = false;
@@ -104,7 +104,7 @@ ERR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
 
    // However, it can be 'blocked' from certain processes, e.g. those started from ZTerm.  Such processes are discovered in the second search routine.
 
-   LONG childprocess, status;
+   int childprocess, status;
    while ((childprocess = waitpid(-1, &status, WNOHANG)) > 0) {
       log.warning("Zombie process #%d discovered.", childprocess);
 
@@ -140,7 +140,7 @@ ERR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
 
 /*********************************************************************************************************************
 
-copy_args: Used for turning argument structures into sendable messages.
+copy_args: Serialise argument structures into sendable messages.
 
 This function searches an argument structure for pointer and string types.  If it encounters them, it attempts to
 convert them to a format that can be passed to other memory spaces.
@@ -149,215 +149,132 @@ A PTR|RESULT followed by a PTRSIZE indicates that the user has to supply a buffe
 the function will fill the buffer with data, which means that a result set has to be returned to the caller.  Example:
 
 <pre>
-Read(Bytes (FD_LONG), Buffer (FD_PTRRESULT), BufferSize (FD_PTRSIZE), &BytesRead (FD_LONGRESULT));
+Read(Bytes (FD_INT), Buffer (FD_PTRRESULT), BufferSize (FD_PTRSIZE), &BytesRead (FD_INTRESULT));
 </pre>
 
 A standard PTR followed by a PTRSIZE indicates that the user has to supply a buffer to the function.  It is assumed
 that this is one-way traffic only, and the function will not fill the buffer with data.  Example:
 
 <pre>
-Write(Bytes (FD_LONG, Buffer (FD_PTR), BufferSize (FD_PTRSIZE), &BytesWritten (FD_LONGRESULT));
+Write(Bytes (FD_INT, Buffer (FD_PTR), BufferSize (FD_PTRSIZE), &BytesWritten (FD_INTRESULT));
 </pre>
 
 If the function will return a memory block of its own, it must return the block as a MEMORYID, not a PTR.  The
 allocation must be made using the object's MemFlags, as the action messaging functions will change between
 public|untracked and private memory flags as necessary.  Example:
 
-  Read(Bytes (FD_LONG), &BufferMID (FD_LONGRESULT), &BufferSize (FD_LONGRESULT));
+  Read(Bytes (FD_INT), &BufferMID (FD_INTRESULT), &BufferSize (FD_INTRESULT));
 
 *********************************************************************************************************************/
 
-ERR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffer, BYTE *Buffer, LONG BufferSize,
-                    LONG *NewSize, CSTRING ActionName)
-{
-   pf::Log log("CopyArguments");
-   BYTE *src, *data;
-   LONG j, len;
-   ERR error;
-   STRING str;
-
-   if ((!Args) or (!ArgsBuffer) or (!Buffer)) return log.warning(ERR::NullArgs);
-
-   for (LONG i=0; (i < ArgsSize); i++) { // Copy the arguments to the buffer
-      if (i >= BufferSize) return log.warning(ERR::BufferOverflow);
-      Buffer[i] = ArgsBuffer[i];
-   }
-
-   LONG pos = 0;
-   LONG offset = ArgsSize;
-   for (LONG i=0; Args[i].Name; i++) {
-      // If the current byte position in the argument structure exceeds the size of that structure, break immediately.
-
-      if (pos >= ArgsSize) {
-         log.error("Invalid action definition for \"%s\".  Amount of arguments exceeds limit of %d bytes.", ActionName, ArgsSize);
-         break;
-      }
-
-      // Process the argument depending on its type
-
-      if (Args[i].Type & FD_STR) { // Copy the string and make sure that there is enough space for it to fit inside the buffer.
-         j = offset;
-         if ((str = ((STRING *)(ArgsBuffer + pos))[0])) {
-            for (len=0; (str[len]) and (offset < BufferSize); len++) Buffer[offset++] = str[len];
-            if (offset < BufferSize) {
-               Buffer[offset++] = 0;
-               ((STRING *)(Buffer + pos))[0] = str;
-            }
-            else { error = ERR::BufferOverflow; goto looperror; }
-         }
-         else ((STRING *)(Buffer + pos))[0] = NULL;
-
-         pos += sizeof(STRING);
-      }
-      else if (Args[i].Type & FD_PTR) {
-         if (Args[i].Type & (FD_LONG|FD_PTRSIZE)) { // Pointer to long.
-            if ((size_t)offset < (BufferSize - sizeof(LONG))) {
-               ((LONG *)Buffer)[offset] = ((LONG *)(ArgsBuffer + pos))[0];
-               ((APTR *)(Buffer + pos))[0] = ArgsBuffer + offset;
-               offset += sizeof(LONG);
-            }
-            else { error = ERR::BufferOverflow; goto looperror; }
-         }
-         else if (Args[i].Type & (FD_DOUBLE|FD_LARGE)) { // Pointer to large/double
-            if ((size_t)offset < (BufferSize - sizeof(LARGE))) {
-               ((LARGE *)Buffer)[offset] = ((LARGE *)(ArgsBuffer + pos))[0];
-               ((APTR *)(Buffer + pos))[0] = ArgsBuffer + offset;
-               offset += sizeof(LARGE);
-            }
-            else { error = ERR::BufferOverflow; goto looperror; }
-         }
-         else {
-            // There are two types of pointer references:
-
-            // 1. Receive Pointers
-            //    If FD_RESULT is used, this indicates that there is a result to be stored in a buffer setup by the
-            //    caller.  The size of this is determined by a following FD_PTRSIZE.
-
-            // 2. Send Pointers
-            //    Standard FD_PTR types must be followed by an FD_PTRSIZE that indicates the amount of data that needs
-            //    to be passed to the other task.  A public memory block is allocated and filled with data for this
-            //    particular type.
-
-            if (!(Args[i+1].Type & FD_PTRSIZE)) {
-               // If no PTRSIZE is specified, send a warning
-               log.warning("Warning: Argument \"%s\" is not followed up with a PTRSIZE definition.", Args[i].Name);
-               ((APTR *)(Buffer + pos))[0] = NULL;
-            }
-            else {
-               LONG memsize = ((LONG *)(ArgsBuffer + pos + sizeof(APTR)))[0];
-               if (memsize > 0) {
-                  if (Args[i].Type & FD_RESULT) { // "Receive" pointer type: Prepare a buffer so that we can accept a result
-                     APTR mem;
-                     if (AllocMemory(memsize, MEM::NO_CLEAR, &mem, NULL) IS ERR::Okay) {
-                        ((APTR *)(Buffer + pos))[0] = mem;
-                     }
-                     else { error = ERR::AllocMemory; goto looperror; }
-                  }
-                  else {
-                     // "Send" pointer type: Prepare the argument structure for sending data to the other task
-                     if ((src = ((BYTE **)(ArgsBuffer + pos))[0])) { // Get the data source pointer
-                        if (memsize > MSG_MAXARGSIZE) {
-                           // For large data areas, we need to allocate them as public memory blocks
-                           if (AllocMemory(memsize, MEM::NO_CLEAR, (void **)&data, NULL) IS ERR::Okay) {
-                              ((APTR *)(Buffer + pos))[0] = data;
-                              copymem(src, data, memsize);
-                           }
-                           else { error = ERR::AllocMemory; goto looperror; }
-                        }
-                        else {
-                           ((APTR *)(Buffer + pos))[0] = ArgsBuffer + offset; // Record the address at which we are going to write the data
-                           for (LONG len=0; len < memsize; len++) {
-                              if (offset >= BufferSize) {
-                                 error = ERR::BufferOverflow;
-                                 goto looperror;
-                              }
-                              else Buffer[offset++] = src[len];
-                           }
-                        }
-                     }
-                     else ((LONG *)(Buffer + pos))[0] = 0;
-                  }
-               }
-               else ((LONG *)(Buffer + pos))[0] = 0;
-            }
-         }
-         pos += sizeof(APTR);
-      }
-      else if (Args[i].Type & (FD_LONG|FD_PTRSIZE)) pos += sizeof(LONG);
-      else if (Args[i].Type & (FD_DOUBLE|FD_LARGE)) pos += sizeof(LARGE);
-      else log.warning("Bad type definition for argument \"%s\".", Args[i].Name);
-   }
-
-   *NewSize = offset;
-   return ERR::Okay;
-
-looperror:
-   // When an error occurs inside the loop, we back-track through the position at where the error occurred and free any
-   // memory allocations that have been made.
-
-   return log.warning(error);
-}
-
-//********************************************************************************************************************
-// This version of free_ptr_args() is for thread-based execution.  Used by thread_action() in lib_actions.c
-
-void local_free_args(APTR Parameters, const struct FunctionField *Args)
-{
-   LONG pos = 0;
-   for (LONG i=0; Args[i].Name; i++) {
-      if ((Args[i].Type & FD_PTR) and (Args[i+1].Type & FD_PTRSIZE)) {
-         LONG size = ((LONG *)((BYTE *)Parameters + pos + sizeof(APTR)))[0];
-         if ((Args[i].Type & FD_RESULT) or (size > MSG_MAXARGSIZE)) {
-            APTR pointer;
-            if ((pointer = ((APTR *)((BYTE *)Parameters + pos))[0])) {
-               ((APTR *)((BYTE *)Parameters + pos))[0] = 0;
-               FreeResource(pointer);
-            }
-         }
-         pos += sizeof(APTR);
-      }
-      else if (Args[i].Type & (FD_DOUBLE|FD_LARGE)) pos += sizeof(LARGE);
-      else pos += sizeof(LONG);
-   }
-}
-
-//********************************************************************************************************************
-// Resolves pointers and strings within an ActionMessage structure.
-
-ERR resolve_args(APTR Parameters, const struct FunctionField *Args)
+ERR copy_args(const FunctionField *Args, int ArgsSize, int8_t *Parameters, std::vector<int8_t> &Buffer)
 {
    pf::Log log(__FUNCTION__);
 
-   auto Buffer = (BYTE *)Parameters;
-   LONG pos = 0;
-   for (LONG i=0; Args[i].Name; i++) {
+   if ((!Args) or (!Parameters)) return ERR::NullArgs;
+
+   // Buffer size must be computed in advance
+
+   int size = ArgsSize;
+   int pos = 0;
+   for (int i=0; Args[i].Name; i++) {
+      if (pos >= ArgsSize) return ERR::InvalidData; // Sanity check, the pos can't exceed ArgsSize.
+
       if (Args[i].Type & FD_STR) {
-         // Replace the offset with a pointer
-         if (((LONG *)(Buffer + pos))[0]) {
-            ((STRING *)(Buffer + pos))[0] = Buffer + ((LONG *)(Buffer + pos))[0];
+         if (Args[i].Type & FD_CPP) {
+            if (std::string *str = ((std::string **)(Parameters + pos))[0]) size += str->length() + 1;
          }
-         pos += sizeof(STRING);
-      }
-      else if ((Args[i].Type & FD_PTR) and (Args[i+1].Type & FD_PTRSIZE)) {
-         LONG size = ((LONG *)(Buffer + pos + sizeof(APTR)))[0];
-         if ((Args[i].Type & FD_RESULT) or (size > MSG_MAXARGSIZE)) {
-            // Gain exclusive access to the public memory block that was allocated for this argument, and store the pointer to it.
-            // The memory block will need to be released by the routine that called our function.
-
-            if (auto mid = ((MEMORYID *)(Buffer + pos))[0]) {
-               log.warning("Bad memory ID #%d for arg \"%s\", not a public allocation.", mid, Args[i].Name);
-               return ERR::AccessMemory;
-            }
-         }
-         else if (((LONG *)(Buffer + pos))[0] > 0) {
-            ((APTR *)(Buffer + pos))[0] = Buffer + ((LONG *)(Buffer + pos))[0];
-         }
-         else ((APTR *)(Buffer + pos))[0] = NULL;
-
+         else if (auto str = ((STRING *)(Parameters + pos))[0]) size += strlen(str) + 1;
          pos += sizeof(APTR);
       }
-      else if (Args[i].Type & (FD_DOUBLE|FD_LARGE)) pos += sizeof(LARGE);
-      else pos += sizeof(LONG);
+      else if (Args[i].Type & FD_PTR) {
+         if (Args[i].Type & FD_RESULT); // Result will be stored in the parameter buffer.
+         else if (Args[i].Type & (FD_INT|FD_PTRSIZE)) { // Pointer to int.
+            pos += sizeof(int);
+         }
+         else if (Args[i].Type & (FD_DOUBLE|FD_INT64)) { // Pointer to large/double
+            pos += sizeof(int64_t);
+         }
+         else if (Args[i+1].Type & FD_PTRSIZE) {
+            if (int memsize = ((int *)(Parameters + pos + sizeof(APTR)))[0]; memsize > 0) {
+               size += memsize;
+            }
+         }
+         else { // No PTRSIZE is a problem
+            log.warning(ERR::InvalidType);
+         }
+         pos += sizeof(APTR);
+      }
+      else if (Args[i].Type & (FD_DOUBLE|FD_INT64)) pos += sizeof(int64_t);
+      else pos += sizeof(int);
    }
+
+   Buffer.reserve(size); // Ensures that the buffer space remains stable when extended.
+   Buffer.resize(ArgsSize);
+   copymem(Parameters, Buffer.data(), ArgsSize);
+
+   pos = 0;
+   for (int i=0; Args[i].Name; i++) {
+      APTR param = Buffer.data() + pos;
+
+      if (Args[i].Type & FD_STR) {
+         if (Args[i].Type & FD_CPP) {
+            auto insert = (STRING)(Buffer.data() + Buffer.size());
+            if (std::string *str = ((std::string **)(Parameters + pos))[0]) {
+               Buffer.resize(Buffer.size() + str->length() + 1);
+               ((STRING *)param)[0] = insert;
+               copymem(str->c_str(), insert, str->length() + 1);
+            }
+            else ((STRING *)param)[0] = nullptr;
+            pos += sizeof(std::string);
+         }
+         else {
+            auto insert = (STRING)(Buffer.data() + Buffer.size());
+            if (auto str = ((STRING *)(Parameters + pos))[0]) {
+               auto len = strlen(str);
+               Buffer.resize(Buffer.size() + len + 1);
+               ((STRING *)param)[0] = insert;
+               copymem(str, Buffer.data() + Buffer.size(), len + 1);
+            }
+            else ((STRING *)param)[0] = nullptr;
+            pos += sizeof(STRING);
+         }
+      }
+      else if (Args[i].Type & FD_PTR) {
+         if (Args[i].Type & FD_INT) { // Pointer to int.
+            auto insert = (int *)(Buffer.data() + Buffer.size());
+            Buffer.resize(Buffer.size() + sizeof(int));
+            insert[0] = ((int *)(Parameters + pos))[0];
+            ((APTR *)param)[0] = insert;
+         }
+         else if (Args[i].Type & (FD_DOUBLE|FD_INT64)) { // Pointer to large/double
+            auto insert = (int64_t *)(Buffer.data() + Buffer.size());
+            Buffer.resize(Buffer.size() + sizeof(int64_t));
+            insert[0] = ((int64_t *)(Parameters + pos))[0];
+            ((APTR *)param)[0] = insert;
+         }
+         else if (Args[i+1].Type & FD_PTRSIZE) { // Pointer to a buffer
+            if (int memsize = ((int *)(Parameters + pos + sizeof(APTR)))[0]; memsize > 0) {
+               if (Args[i].Type & FD_RESULT) { // 'Receive' buffer
+                  Buffer.resize(Buffer.size() + memsize);
+               }
+               else { // 'Send' buffer
+                  if (int8_t *src = ((int8_t **)param)[0]) { // Get the data source pointer
+                     auto insert = Buffer.data() + Buffer.size();
+                     ((APTR *)param)[0] = insert;
+                     Buffer.resize(Buffer.size() + memsize);
+                     copymem(src, insert, memsize);
+                  }
+               }
+            }
+            else ((APTR *)param)[0] = nullptr;
+         }
+         else ((APTR *)param)[0] = nullptr;
+         pos += sizeof(APTR);
+      }
+      else if (Args[i].Type & (FD_DOUBLE|FD_INT64)) pos += sizeof(int64_t);
+      else pos += sizeof(int);
+   }
+
    return ERR::Okay;
 }

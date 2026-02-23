@@ -40,14 +40,14 @@ void doc_menu::define_font(font_entry *Font)
 
 //********************************************************************************************************************
 
-objSurface * doc_menu::create(DOUBLE Width)
+objSurface * doc_menu::create(double Width)
 {
    pf::Log log(__FUNCTION__);
 
    log.branch();
 
    if (m_surface.empty()) {
-      DOUBLE height = m_items.size() * 20;
+      double height = m_items.size() * 20;
       if (height < 20) height = 20;
 
       m_surface.set(objSurface::create::global({
@@ -93,11 +93,11 @@ void doc_menu::refresh()
 {
    pf::Log log(__FUNCTION__);
 
-   const DOUBLE HGAP = std::trunc(m_font_size * 0.2);
-   LONG total_icons = 0;
+   const double HGAP = std::trunc(m_font_size * 0.2);
+   int total_icons = 0;
 
    std::ostringstream buf;
-   buf << "<body margins=\"" << HGAP << " " << HGAP << " " << HGAP << " " << 0 << "\" " << 
+   buf << "<body margins=\"" << HGAP << " " << HGAP << " " << HGAP << " " << 0 << "\" " <<
       "link=\"rgb(0,0,0)\" v-link=\"rgb(0,0,0)\" " <<
       "font-face=\"" << m_font_face << "\" font-size=\"" << m_font_size << "\"/>\n";
 
@@ -154,11 +154,11 @@ void doc_menu::refresh()
    // Resize the menu to match the new content.  If the height of the menu is excessive (relative to the height
    // of the display), we reduce it and utilise a scrollbar to see all menu items.
 
-   auto doc_width  = m_doc->get<DOUBLE>(FID_PageWidth);
-   auto doc_height = m_doc->get<DOUBLE>(FID_PageHeight);
+   auto doc_width  = m_doc->get<double>(FID_PageWidth);
+   auto doc_height = m_doc->get<double>(FID_PageHeight);
 
-   DOUBLE view_width  = doc_width;
-   DOUBLE view_height = doc_height;
+   double view_width  = doc_width;
+   double view_height = doc_height;
 
    DISPLAYINFO *display;
    if (gfx::GetDisplayInfo(0, &display) IS ERR::Okay) {
@@ -174,8 +174,8 @@ void doc_menu::refresh()
       m_view->setFields(fl::Height(view_height));
 
       objVectorViewport *doc_page, *doc_view;
-      if (m_doc->getPtr(FID_Page, &doc_page) IS ERR::Okay) {
-         if (m_doc->getPtr(FID_View, &doc_view) IS ERR::Okay) {
+      if (m_doc->get(FID_Page, doc_page) IS ERR::Okay) {
+         if (m_doc->get(FID_View, doc_view) IS ERR::Okay) {
             m_scroll.init((extDocument *)CurrentContext(), doc_page, doc_view);
             m_scroll.m_auto_adjust_view_size = false;
 
@@ -197,16 +197,16 @@ void doc_menu::reposition(objVectorViewport *RelativeViewport)
 
    pf::ScopedObjectLock<objSurface> lk_surface(RelativeViewport->Scene->SurfaceID); // Window surface
    if (lk_surface.granted()) {
-      auto w_absx = lk_surface->get<DOUBLE>(FID_AbsX);
-      auto w_absy = lk_surface->get<DOUBLE>(FID_AbsY);
+      auto w_absx = lk_surface->get<double>(FID_AbsX);
+      auto w_absy = lk_surface->get<double>(FID_AbsY);
 
-      auto vp_absx = RelativeViewport->get<DOUBLE>(FID_AbsX);
-      auto vp_absy = RelativeViewport->get<DOUBLE>(FID_AbsY);
-      auto vp_height = RelativeViewport->get<DOUBLE>(FID_Height);
+      auto vp_absx = RelativeViewport->get<double>(FID_AbsX);
+      auto vp_absy = RelativeViewport->get<double>(FID_AbsY);
+      auto vp_height = RelativeViewport->get<double>(FID_Height);
 
       // Invert the menu position if it will drop off the display
 
-      DOUBLE y = w_absy + vp_absy + vp_height;
+      double y = w_absy + vp_absy + vp_height;
       if (y + m_surface->Height > (display->Height * 0.97)) {
          y -= m_surface->Height + vp_height;
       }
@@ -222,7 +222,7 @@ void doc_menu::toggle(objVectorViewport *Relative)
    pf::Log log(__FUNCTION__);
    log.branch();
 
-   const DOUBLE time_lapse = 20000; // Amount of time that must elapse to trigger the toggle.
+   const double time_lapse = 20000; // Amount of time that must elapse to trigger the toggle.
 
    auto current_time = PreciseTime();
    if (m_show_time > m_hide_time) { // Hide the menu

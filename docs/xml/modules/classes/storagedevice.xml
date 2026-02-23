@@ -9,10 +9,9 @@
     <comment>Queries the meta data of file system volumes.</comment>
     <version>1</version>
     <id>63e19c4a</id>
-    <idstring>ID_STORAGEDEVICE</idstring>
+    <idstring>STORAGEDEVICE</idstring>
     <category>System</category>
-    <include>modules/storagedevice.h</include>
-    <copyright>Paul Manias 1996-2024</copyright>
+    <copyright>Paul Manias 1996-2026</copyright>
     <description>
 <p>The StorageDevice class returns the meta data of file system volumes.  A reference to an existing volume is required in the <fl>Volume</fl> field in order to make a successful analysis.  If the volume name cannot be resolved, initialisation will fail.</p>
 <p>Following initialisation, all meta fields describing the volume are readable for further information.</p></description>
@@ -26,14 +25,14 @@
       <name>BytesFree</name>
       <comment>Total amount of storage space that is available, measured in bytes.</comment>
       <access read="R">Read</access>
-      <type>BIGINT</type>
+      <type>INT64</type>
     </field>
 
     <field>
       <name>BytesUsed</name>
       <comment>Total amount of storage space in use.</comment>
       <access read="R">Read</access>
-      <type>BIGINT</type>
+      <type>INT64</type>
       <description>
 <p>The total amount of storage space used by the device is indicated in this field.</p>
 <p>Please note that storage usage is typically measured in terms of blocks.  For instance a block size of 512 bytes will mean that this field will be a multiple of 512.  Two files of 1 byte each on such a file system would take up 1024 bytes of space and not 2.</p>
@@ -64,7 +63,7 @@
       <name>DeviceSize</name>
       <comment>The storage size of the device in bytes, without accounting for the file system format.</comment>
       <access read="R">Read</access>
-      <type>BIGINT</type>
+      <type>INT64</type>
       <description>
 <p>This field indicates the storage size of the device.  It does not reflect the available space determined by the device's file system, which will typically be measurably smaller than this value.</p>
       </description>

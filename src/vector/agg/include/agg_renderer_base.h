@@ -9,35 +9,36 @@
 #ifndef AGG_RENDERER_BASE_INCLUDED
 #define AGG_RENDERER_BASE_INCLUDED
 
+#include <type_traits>
 #include "agg_basics.h"
 #include "agg_rendering_buffer.h"
 
 namespace agg
 {
-template<class PixelFormat> class renderer_base {
+template<typename PixelFormat>
+class renderer_base {
 public:
-    typedef PixelFormat pixfmt_type;
-    typedef typename pixfmt_type::color_type color_type;
-    typedef typename pixfmt_type::row_data row_data;
+    using pixfmt_type = PixelFormat;
+    using color_type = typename pixfmt_type::color_type;
+    using row_data = typename pixfmt_type::row_data;
 
-    renderer_base() : m_ren(0), m_clip_box(1, 1, 0, 0) {}
-    explicit renderer_base(pixfmt_type& ren) {
+    renderer_base() noexcept : m_ren(nullptr), m_clip_box(1, 1, 0, 0) {}
+    explicit renderer_base(pixfmt_type& ren) noexcept {
+        attach(ren);
+    }
+
+    void attach(pixfmt_type& ren) noexcept {
         m_ren = &ren;
         m_clip_box = rect_i(0, 0, ren.width() - 1, ren.height() - 1);
     }
 
-    inline void attach(pixfmt_type& ren) {
-        m_ren = &ren;
-        m_clip_box = rect_i(0, 0, ren.width() - 1, ren.height() - 1);
-    }
+    constexpr const pixfmt_type& ren() const noexcept { return *m_ren; }
+    constexpr pixfmt_type& ren() noexcept { return *m_ren; }
 
-    inline const pixfmt_type& ren() const { return *m_ren;  }
-    inline pixfmt_type& ren() { return *m_ren;  }
+    constexpr unsigned width()  const noexcept { return m_ren->width(); }
+    constexpr unsigned height() const noexcept { return m_ren->height(); }
 
-    inline unsigned width()  const { return m_ren->width();  }
-    inline unsigned height() const { return m_ren->height(); }
-
-    bool clip_box(int x1, int y1, int x2, int y2) {
+    bool clip_box(int x1, int y1, int x2, int y2) noexcept {
         rect_i cb(x1, y1, x2, y2);
         cb.normalize();
         if (cb.clip(rect_i(0, 0, width() - 1, height() - 1))) {
@@ -51,7 +52,7 @@ public:
         return false;
     }
 
-    void reset_clipping(bool visibility) {
+    void reset_clipping(bool visibility) noexcept {
         if (visibility) {
             m_clip_box.x1 = 0;
             m_clip_box.y1 = 0;
@@ -66,18 +67,18 @@ public:
         }
     }
 
-    inline void clip_box_naked(int x1, int y1, int x2, int y2) {
+    constexpr void clip_box_naked(int x1, int y1, int x2, int y2) noexcept {
         m_clip_box.x1 = x1;
         m_clip_box.y1 = y1;
         m_clip_box.x2 = x2;
         m_clip_box.y2 = y2;
     }
 
-    inline void clip_box_naked(rect_i &box) {
+    constexpr void clip_box_naked(const rect_i& box) noexcept {
         m_clip_box = box;
     }
 
-    inline bool inbox(int x, int y) const {
+    constexpr bool inbox(int x, int y) const noexcept {
         return x >= m_clip_box.x1 and y >= m_clip_box.y1 and
                x <= m_clip_box.x2 and y <= m_clip_box.y2;
     }

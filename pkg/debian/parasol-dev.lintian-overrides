@@ -1,0 +1,7 @@
+# Lintian overrides for Kotuku development package
+
+# Development package may contain header files that seem unused
+kotuku-dev: unused-file-in-deb usr/include/kotuku/*
+
+# Some development files may have unusual permissions
+kotuku-dev: unusual-file-perm usr/include/kotuku/*

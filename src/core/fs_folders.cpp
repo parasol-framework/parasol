@@ -64,7 +64,7 @@ ERR OpenDir(CSTRING Path, RDF Flags, DirInfo **Result)
 
    log.traceBranch("Path: '%s'", Path);
 
-   *Result = NULL;
+   *Result = nullptr;
 
    if ((Flags & (RDF::FOLDER|RDF::FILE)) IS RDF::NIL) Flags |= RDF::FOLDER|RDF::FILE;
 
@@ -74,15 +74,15 @@ ERR OpenDir(CSTRING Path, RDF Flags, DirInfo **Result)
       auto vd = get_fs(resolved_path);
 
       // NB: We use MAX_FILENAME rather than resolve_len in the allocation size because fs_opendir() requires more space.
-      LONG path_len = strlen(Path) + 1;
+      int path_len = strlen(Path) + 1;
       DirInfo *dir;
       // Layout: [DirInfo] [FileInfo] [Driver] [Name] [Path]
-      LONG size = sizeof(DirInfo) + sizeof(FileInfo) + vd->DriverSize + MAX_FILENAME + path_len + MAX_FILENAME;
-      if (AllocMemory(size, MEM::DATA|MEM::MANAGED, (APTR *)&dir, NULL) != ERR::Okay) {
+      int size = sizeof(DirInfo) + sizeof(FileInfo) + vd->DriverSize + MAX_FILENAME + path_len + MAX_FILENAME;
+      if (AllocMemory(size, MEM::DATA|MEM::MANAGED, (APTR *)&dir, nullptr) != ERR::Okay) {
          return ERR::AllocMemory;
       }
 
-      set_memory_manager(dir, &glResourceFolder);
+      SetResourceMgr(dir, &glResourceFolder);
 
       dir->Info            = (FileInfo *)(dir + 1);
       dir->Info->Name      = STRING(dir->Info + 1) + vd->DriverSize;
@@ -178,18 +178,18 @@ ERR ScanDir(DirInfo *Dir)
    file->UserID  = 0;
    file->GroupID = 0;
 
-   if (file->Tags) { delete file->Tags; file->Tags = NULL; }
+   if (file->Tags) { delete file->Tags; file->Tags = nullptr; }
 
    // Support for scanning of volume names
 
    if ((Dir->prvPath[0] IS ':') or (!Dir->prvPath[0])) {
       if (auto lock = std::unique_lock{glmVolumes, 4s}) {
-         LONG count = 0;
+         int count = 0;
          for (auto const &pair : glVolumes) {
             if (count IS Dir->prvIndex) {
                Dir->prvIndex++;
                auto &volume = pair.first;
-               LONG j = strcopy(volume, file->Name, MAX_FILENAME-2);
+               int j = strcopy(volume, file->Name, MAX_FILENAME-2);
                if ((Dir->prvFlags & RDF::QUALIFY) != RDF::NIL) {
                   file->Name[j++] = ':';
                   file->Name[j] = 0;

@@ -21,22 +21,22 @@ class extVectorShape : public extVector {
    static constexpr CSTRING CLASS_NAME = "VectorShape";
    using create = pf::Create<extVectorShape>;
 
-   DOUBLE Radius;
-   DOUBLE CX, CY;
-   DOUBLE M, N1, N2, N3, A, B, Phi;
-   LONG Vertices;
+   double Radius;
+   double CX, CY;
+   double M, N1, N2, N3, A, B, Phi;
+   int Vertices;
+   int Spiral;
+   int Repeat;
    DMF Dimensions;
-   LONG Spiral;
-   LONG Repeat;
-   UBYTE Close;
-   UBYTE Mod;
+   bool Close;
+   uint8_t Mod;
 };
 
 //********************************************************************************************************************
 
 static void generate_supershape(extVectorShape *Vector, agg::path_storage &Path)
 {
-   DOUBLE cx = Vector->CX, cy = Vector->CY;
+   double cx = Vector->CX, cy = Vector->CY;
 
    agg::path_storage path_buffer, *target;
    if (Path.empty()) target = &Path;
@@ -45,31 +45,32 @@ static void generate_supershape(extVectorShape *Vector, agg::path_storage &Path)
    if (dmf::hasScaledCenterX(Vector->Dimensions)) cx *= get_parent_width(Vector);
    if (dmf::hasScaledCenterY(Vector->Dimensions)) cy *= get_parent_height(Vector);
 
-   const DOUBLE scale = Vector->Radius;
-   DOUBLE rescale = 0;
-   DOUBLE tscale = Vector->Transform.scale();
+   const double scale = Vector->Radius;
+   double rescale = 0;
+   double tscale = Vector->Transform.scale();
 
-   DOUBLE vertices = Vector->Vertices;
+   double vertices = Vector->Vertices;
    if (vertices IS DEFAULT_VERTICES) {
       if (Vector->Spiral > 1) vertices *= 2;
    }
 
-   const DOUBLE m  = Vector->M;
-   const DOUBLE n1 = Vector->N1;
-   const DOUBLE n2 = Vector->N2;
-   const DOUBLE n3 = Vector->N3;
-   DOUBLE phi_a;
-   if (Vector->Spiral > 1) phi_a = (agg::pi * Vector->Phi * DOUBLE(Vector->Spiral)) / vertices;
+   const double m  = Vector->M;
+   const double n1 = Vector->N1;
+   const double n2 = Vector->N2;
+   const double n3 = Vector->N3;
+   double phi_a;
+   if (Vector->Spiral > 1) phi_a = (agg::pi * Vector->Phi * double(Vector->Spiral)) / vertices;
    else phi_a = (agg::pi * Vector->Phi) / vertices;
-   const DOUBLE a = 1.0 / Vector->A;
-   const DOUBLE b = 1.0 / Vector->B;
+   const double a = 1.0 / Vector->A;
+   const double b = 1.0 / Vector->B;
+   double min_x = DBL_MAX, max_x = -DBL_MAX, min_y = DBL_MAX, max_y = -DBL_MAX;
 
-   LONG lx = 0x7fffffff, ly = 0x7fffffff;
-   for (DOUBLE i=0; i < vertices; i++) {
-      const DOUBLE phi = phi_a * i;
-      const DOUBLE t1 = pow(std::abs(a * cos(m * phi * 0.25)), n2);
-      const DOUBLE t2 = pow(std::abs(b * sin(m * phi * 0.25)), n3);
-      DOUBLE r  = 1.0 / pow(t1 + t2, 1.0/n1);
+   int lx = 0x7fffffff, ly = 0x7fffffff;
+   for (double i=0; i < vertices; i++) {
+      const double phi = phi_a * i;
+      const double t1 = pow(std::abs(a * cos(m * phi * 0.25)), n2);
+      const double t2 = pow(std::abs(b * sin(m * phi * 0.25)), n3);
+      double r  = 1.0 / pow(t1 + t2, 1.0/n1);
 
       // These additional transforms can help in building a greater library of shapes.
 
@@ -78,14 +79,14 @@ static void generate_supershape(extVectorShape *Vector, agg::path_storage &Path)
          case 2: r = log(r); break;
          case 3: r = atan(r); break;
          case 4: r = exp(1.0 / r); break;
-         case 5: r = 1+fastPow(cos(r), 2); break;
+         case 5: r = 1 + fastPow(cos(r), 2); break;
          case 6: r = fastPow(sin(r),2); break;
-         case 7: r = 1+fastPow(sin(r), 2); break;
+         case 7: r = 1 + fastPow(sin(r), 2); break;
          case 8: r = fastPow(cos(r),2); break;
       }
 
-      DOUBLE x = r * cos(phi);
-      DOUBLE y = r * sin(phi);
+      double x = r * cos(phi);
+      double y = r * sin(phi);
 
       x *= scale * tscale;
       y *= scale * tscale;
@@ -103,31 +104,47 @@ static void generate_supershape(extVectorShape *Vector, agg::path_storage &Path)
 
       if (i == 0.0) target->move_to(x, y); // Plot the vertex
       else target->line_to(x, y);
+
+      if (Vector->Spiral <= 1) { // Boundary management for non-spirals
+         if (x < min_x) min_x = x;
+         if (y < min_y) min_y = y;
+         if (x > max_x) max_x = x;
+         if (y > max_y) max_y = y;
+      }
    }
 
    if (Vector->Spiral > 1) {
-      DOUBLE total = target->total_vertices();
-      for (DOUBLE i=0; i < total; i++) {
-         DOUBLE x, y;
+      double total = target->total_vertices();
+      for (double i=0; i < total; i++) {
+         double x, y;
          target->vertex(i, &x, &y);
          x = x * (i / total);
          y = y * (i / total);
          target->modify_vertex(i, x, y);
+
+         // Boundary management
+
+         if (x < min_x) min_x = x;
+         if (y < min_y) min_y = y;
+         if (x > max_x) max_x = x;
+         if (y > max_y) max_y = y;
       }
    }
-   else if (Vector->Repeat > 1) {
-      target->close_polygon(); // Repeated paths are always closed.
+   else {
+      if (Vector->Repeat > 1) {
+         target->close_polygon(); // Repeated paths are always closed.
 
-      agg::path_storage clone(*target);
+         agg::path_storage clone(*target);
 
-      for (LONG i=0; i < Vector->Repeat-1; i++) {
-         agg::trans_affine transform;
-         transform.scale(DOUBLE(i+1) / DOUBLE(Vector->Repeat));
-         agg::conv_transform<agg::path_storage, agg::trans_affine> scaled_path(clone, transform);
-         target->concat_path(scaled_path);
+         for (int i=0; i < Vector->Repeat-1; i++) {
+            agg::trans_affine transform;
+            transform.scale(double(i+1) / double(Vector->Repeat));
+            agg::conv_transform<agg::path_storage, agg::trans_affine> scaled_path(clone, transform);
+            target->concat_path(scaled_path);
+         }
       }
+      else if (Vector->Close) target->close_polygon();
    }
-   else if (Vector->Close) target->close_polygon();
 
    agg::trans_affine transform;
    if (rescale != scale) transform.scale(scale / rescale);
@@ -136,7 +153,7 @@ static void generate_supershape(extVectorShape *Vector, agg::path_storage &Path)
 
    if (&Path != target) Path.concat_path(*target);
 
-   Vector->Bounds = { cx - scale, cy - scale, cx + scale, cy + scale };
+   Vector->Bounds = { min_x + cx, min_y + cy, max_x + cx, max_y + cy };
 }
 
 //********************************************************************************************************************
@@ -152,7 +169,7 @@ static ERR SUPER_NewObject(extVectorShape *Self)
    Self->B = 1;
    Self->Phi = 2;
    Self->Vertices = DEFAULT_VERTICES;
-   Self->Close = TRUE;
+   Self->Close = true;
    Self->GeneratePath = (void (*)(extVector *, agg::path_storage &))&generate_supershape;
    return ERR::Okay;
 }
@@ -165,13 +182,13 @@ This field sets the Superformula's 'A' parameter value.
 
 *********************************************************************************************************************/
 
-static ERR SUPER_GET_A(extVectorShape *Self, DOUBLE *Value)
+static ERR SUPER_GET_A(extVectorShape *Self, double *Value)
 {
    *Value = Self->A;
    return ERR::Okay;
 }
 
-static ERR SUPER_SET_A(extVectorShape *Self, DOUBLE Value)
+static ERR SUPER_SET_A(extVectorShape *Self, double Value)
 {
    Self->A = Value;
    reset_path(Self);
@@ -186,13 +203,13 @@ This field sets the Superformula's 'B' parameter value.
 
 *********************************************************************************************************************/
 
-static ERR SUPER_GET_B(extVectorShape *Self, DOUBLE *Value)
+static ERR SUPER_GET_B(extVectorShape *Self, double *Value)
 {
    *Value = Self->B;
    return ERR::Okay;
 }
 
-static ERR SUPER_SET_B(extVectorShape *Self, DOUBLE Value)
+static ERR SUPER_SET_B(extVectorShape *Self, double Value)
 {
    Self->B = Value;
    reset_path(Self);
@@ -231,7 +248,7 @@ The vertical center of the shape is defined here as either a fixed or scaled val
 *********************************************************************************************************************/
 
 static ERR SUPER_GET_CenterY(extVectorShape *Self, Unit *Value)
-{ 
+{
    Value->set(Self->CY);
    return ERR::Okay;
 }
@@ -253,13 +270,13 @@ If TRUE, the shape path will be closed between the beginning and end points.
 
 *********************************************************************************************************************/
 
-static ERR SUPER_GET_Close(extVectorShape *Self, LONG *Value)
+static ERR SUPER_GET_Close(extVectorShape *Self, int *Value)
 {
    *Value = Self->Close;
    return ERR::Okay;
 }
 
-static ERR SUPER_SET_Close(extVectorShape *Self, LONG Value)
+static ERR SUPER_SET_Close(extVectorShape *Self, int Value)
 {
    Self->Close = Value;
    reset_path(Self);
@@ -305,13 +322,13 @@ This field sets the Superformula's 'M' parameter value.
 
 *********************************************************************************************************************/
 
-static ERR SUPER_GET_M(extVectorShape *Self, DOUBLE *Value)
+static ERR SUPER_GET_M(extVectorShape *Self, double *Value)
 {
    *Value = Self->M;
    return ERR::Okay;
 }
 
-static ERR SUPER_SET_M(extVectorShape *Self, DOUBLE Value)
+static ERR SUPER_SET_M(extVectorShape *Self, double Value)
 {
    Self->M = Value;
    reset_path(Self);
@@ -340,13 +357,13 @@ generated 'r' value.  Possible values and their effects are:
 
 *********************************************************************************************************************/
 
-static ERR SUPER_GET_Mod(extVectorShape *Self, LONG *Value)
+static ERR SUPER_GET_Mod(extVectorShape *Self, int *Value)
 {
    *Value = Self->Mod;
    return ERR::Okay;
 }
 
-static ERR SUPER_SET_Mod(extVectorShape *Self, LONG Value)
+static ERR SUPER_SET_Mod(extVectorShape *Self, int Value)
 {
    Self->Mod = Value;
    reset_path(Self);
@@ -361,13 +378,13 @@ This field sets the Superformula's 'N1' parameter value.
 
 *********************************************************************************************************************/
 
-static ERR SUPER_GET_N1(extVectorShape *Self, DOUBLE *Value)
+static ERR SUPER_GET_N1(extVectorShape *Self, double *Value)
 {
    *Value = Self->N1;
    return ERR::Okay;
 }
 
-static ERR SUPER_SET_N1(extVectorShape *Self, DOUBLE Value)
+static ERR SUPER_SET_N1(extVectorShape *Self, double Value)
 {
    Self->N1 = Value;
    reset_path(Self);
@@ -382,13 +399,13 @@ This field sets the Superformula's 'N2' parameter value.
 
 *********************************************************************************************************************/
 
-static ERR SUPER_GET_N2(extVectorShape *Self, DOUBLE *Value)
+static ERR SUPER_GET_N2(extVectorShape *Self, double *Value)
 {
    *Value = Self->N2;
    return ERR::Okay;
 }
 
-static ERR SUPER_SET_N2(extVectorShape *Self, DOUBLE Value)
+static ERR SUPER_SET_N2(extVectorShape *Self, double Value)
 {
    Self->N2 = Value;
    reset_path(Self);
@@ -403,13 +420,13 @@ This field sets the Superformula's 'N3' parameter value.
 
 *********************************************************************************************************************/
 
-static ERR SUPER_GET_N3(extVectorShape *Self, DOUBLE *Value)
+static ERR SUPER_GET_N3(extVectorShape *Self, double *Value)
 {
    *Value = Self->N3;
    return ERR::Okay;
 }
 
-static ERR SUPER_SET_N3(extVectorShape *Self, DOUBLE Value)
+static ERR SUPER_SET_N3(extVectorShape *Self, double Value)
 {
    Self->N3 = Value;
    reset_path(Self);
@@ -427,13 +444,13 @@ that the Phi value is increased in increments of 2 until the desired effect is a
 
 *********************************************************************************************************************/
 
-static ERR SUPER_GET_Phi(extVectorShape *Self, DOUBLE *Value)
+static ERR SUPER_GET_Phi(extVectorShape *Self, double *Value)
 {
    *Value = Self->Phi;
    return ERR::Okay;
 }
 
-static ERR SUPER_SET_Phi(extVectorShape *Self, DOUBLE Value)
+static ERR SUPER_SET_Phi(extVectorShape *Self, double Value)
 {
    if (Value >= 2.0) {
       Self->Phi = Value;
@@ -478,13 +495,13 @@ The Repeat value cannot be set in conjunction with #Spiral.
 
 *********************************************************************************************************************/
 
-static ERR SUPER_GET_Repeat(extVectorShape *Self, LONG *Value)
+static ERR SUPER_GET_Repeat(extVectorShape *Self, int *Value)
 {
    *Value = Self->Repeat;
    return ERR::Okay;
 }
 
-static ERR SUPER_SET_Repeat(extVectorShape *Self, LONG Value)
+static ERR SUPER_SET_Repeat(extVectorShape *Self, int Value)
 {
    if ((Value >= 0) and (Value < 512)) {
       Self->Repeat = Value;
@@ -503,13 +520,13 @@ specified.  For instance, a value of 5 will generate five spirals.
 
 *********************************************************************************************************************/
 
-static ERR SUPER_GET_Spiral(extVectorShape *Self, LONG *Value)
+static ERR SUPER_GET_Spiral(extVectorShape *Self, int *Value)
 {
    *Value = Self->Spiral;
    return ERR::Okay;
 }
 
-static ERR SUPER_SET_Spiral(extVectorShape *Self, LONG Value)
+static ERR SUPER_SET_Spiral(extVectorShape *Self, int Value)
 {
    if (Value >= 0) {
       Self->Spiral = Value;
@@ -529,13 +546,13 @@ their vertices will always touch the sides of an elliptical area.
 -END-
 *********************************************************************************************************************/
 
-static ERR SUPER_GET_Vertices(extVectorShape *Self, LONG *Value)
+static ERR SUPER_GET_Vertices(extVectorShape *Self, int *Value)
 {
    *Value = Self->Vertices;
    return ERR::Okay;
 }
 
-static ERR SUPER_SET_Vertices(extVectorShape *Self, LONG Value)
+static ERR SUPER_SET_Vertices(extVectorShape *Self, int Value)
 {
    if ((Value >= 3) and (Value < 16384)) {
       Self->Vertices = Value;
@@ -552,20 +569,20 @@ static const FieldDef clSuperDimensions[] = {
    { "FixedCenterY",  DMF::FIXED_CENTER_Y },
    { "ScaledCenterX", DMF::SCALED_CENTER_X },
    { "ScaledCenterY", DMF::SCALED_CENTER_Y },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const ActionArray clVectorShapeActions[] = {
    { AC::NewObject, SUPER_NewObject },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 static const FieldArray clVectorShapeFields[] = {
    { "CenterX",    FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, SUPER_GET_CenterX, SUPER_SET_CenterX },
    { "CenterY",    FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, SUPER_GET_CenterY, SUPER_SET_CenterY },
    { "Radius",     FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, SUPER_GET_Radius,  SUPER_SET_Radius },
-   { "Close",      FDF_VIRTUAL|FDF_LONG|FDF_RW, SUPER_GET_Close, SUPER_SET_Close },
-   { "Dimensions", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, SUPER_GET_Dimensions, SUPER_SET_Dimensions, &clSuperDimensions },
+   { "Close",      FDF_VIRTUAL|FDF_INT|FDF_RW, SUPER_GET_Close, SUPER_SET_Close },
+   { "Dimensions", FDF_VIRTUAL|FDF_INTFLAGS|FDF_RW, SUPER_GET_Dimensions, SUPER_SET_Dimensions, &clSuperDimensions },
    { "Phi",        FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, SUPER_GET_Phi,  SUPER_SET_Phi },
    { "A",          FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, SUPER_GET_A,  SUPER_SET_A },
    { "B",          FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, SUPER_GET_B,  SUPER_SET_B },
@@ -573,10 +590,10 @@ static const FieldArray clVectorShapeFields[] = {
    { "N1",         FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, SUPER_GET_N1, SUPER_SET_N1 },
    { "N2",         FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, SUPER_GET_N2, SUPER_SET_N2 },
    { "N3",         FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, SUPER_GET_N3, SUPER_SET_N3 },
-   { "Vertices",   FDF_VIRTUAL|FDF_LONG|FDF_RW, SUPER_GET_Vertices, SUPER_SET_Vertices },
-   { "Mod",        FDF_VIRTUAL|FDF_LONG|FDF_RW, SUPER_GET_Mod, SUPER_SET_Mod },
-   { "Spiral",     FDF_VIRTUAL|FDF_LONG|FDF_RW, SUPER_GET_Spiral, SUPER_SET_Spiral },
-   { "Repeat",     FDF_VIRTUAL|FDF_LONG|FDF_RW, SUPER_GET_Repeat, SUPER_SET_Repeat },
+   { "Vertices",   FDF_VIRTUAL|FDF_INT|FDF_RW, SUPER_GET_Vertices, SUPER_SET_Vertices },
+   { "Mod",        FDF_VIRTUAL|FDF_INT|FDF_RW, SUPER_GET_Mod, SUPER_SET_Mod },
+   { "Spiral",     FDF_VIRTUAL|FDF_INT|FDF_RW, SUPER_GET_Spiral, SUPER_SET_Spiral },
+   { "Repeat",     FDF_VIRTUAL|FDF_INT|FDF_RW, SUPER_GET_Repeat, SUPER_SET_Repeat },
    // Synonyms
    { "CX", FDF_SYNONYM|FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, SUPER_GET_CenterX, SUPER_SET_CenterX },
    { "CY", FDF_SYNONYM|FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, SUPER_GET_CenterY, SUPER_SET_CenterY },

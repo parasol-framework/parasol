@@ -1,0 +1,31 @@
+<svg id="svg-root" width="100%" height="100%" viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!--
+Tests feConvolveMatrix with different values for the 'order' attribute.
+
+You should see three filtered images.  Each image is the same and has the same filter applied to it.  The test has passed if all
+the three filtered images look the same, and the filtered result shows bright white edges on a dark background.  The rendered
+picture should match the reference image.
+-->
+  <defs>
+    <filter id="convolve-without-order" filterUnits="objectBoundingBox" x="0%" y="0%" width="100%" height="100%">
+      <feConvolveMatrix kernelMatrix="1 1 1 1 -8 1 1 1 1" preserveAlpha="true"/>
+    </filter>
+    <filter id="convolve-with-order1" filterUnits="objectBoundingBox" x="0%" y="0%" width="100%" height="100%">
+      <feConvolveMatrix order="3" kernelMatrix="1 1 1 1 -8 1 1 1 1" preserveAlpha="true"/>
+    </filter>
+    <filter id="convolve-with-order2" filterUnits="objectBoundingBox" x="0%" y="0%" width="100%" height="100%">
+      <feConvolveMatrix order="3 3" kernelMatrix="1 1 1 1 -8 1 1 1 1" preserveAlpha="true"/>
+    </filter>
+  </defs>
+
+  <text x="50%" y="3em" style="font-size:18px; text-anchor:middle">feConvolveMatrix 'order' attribute</text>
+
+  <image x="90" y="100" width="100" height="100" xlink:href="image1.jpg" filter="url(#convolve-without-order)"/>
+  <text x="135" y="220" style="font-size:9px; text-anchor:middle">without order</text>
+
+  <image x="190" y="100" width="100" height="100" xlink:href="image1.jpg" filter="url(#convolve-with-order1)"/>
+  <text x="235" y="220" style="font-size:9px; text-anchor:middle">order="3"</text>
+
+  <image x="290" y="100" width="100" height="100" xlink:href="image1.jpg" filter="url(#convolve-with-order2)"/>
+  <text x="335" y="220" style="font-size:9px; text-anchor:middle">order="3 3"</text>
+</svg>

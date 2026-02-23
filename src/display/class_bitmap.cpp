@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -10,7 +10,7 @@ Bitmap: Manages bitmap graphics and provides drawing functionality.
 
 The Bitmap class provides a way of describing an area of memory that an application can draw to, and/or display if the
 data is held in video memory.  Bitmaps are used in the handling of @Display and @Picture objects, and form the backbone
-of Parasol's graphics functionality.  The Bitmap class supports everything from basic graphics primitives to masking and
+of Kōtuku's graphics functionality.  The Bitmap class supports everything from basic graphics primitives to masking and
 alpha blending features.
 
 To create a new bitmap object, you need to specify its #Width and #Height at a minimum.  Preferably, you should also
@@ -25,7 +25,7 @@ memory (this is the default type).  If the `TEXTURE` or `VIDEO` flags are specif
 CPU cannot access this memory, unless you specifically request it.  To do this, use the #Lock() and #Unlock() actions
 to temporarily gain read/write access to a bitmap.
 
-If you require complex drawing functionality that is not available in the Bitmap class, consider using the 
+If you require complex drawing functionality that is not available in the Bitmap class, consider using the
 functionality provided by the Vector module.
 
 To save the image of a bitmap, either copy its image to a @Picture object, or use the SaveImage()
@@ -45,9 +45,9 @@ using namespace display;
 #define DLLCALL // __declspec(dllimport)
 #define WINAPI  __stdcall
 
-DLLCALL LONG WINAPI SetPixelV(APTR, LONG, LONG, LONG);
-DLLCALL LONG WINAPI SetPixel(APTR, LONG, LONG, LONG);
-DLLCALL LONG WINAPI GetPixel(APTR, LONG, LONG);
+DLLCALL int WINAPI SetPixelV(APTR, int, int, int);
+DLLCALL int WINAPI SetPixel(APTR, int, int, int);
+DLLCALL int WINAPI GetPixel(APTR, int, int);
 #endif
 
 static ERR CalculatePixelRoutines(extBitmap *);
@@ -59,115 +59,115 @@ static ERR CalculatePixelRoutines(extBitmap *);
 
 #ifdef _WIN32
 
-static void  VideoDrawPixel(objBitmap *, LONG, LONG, ULONG);
-static void  VideoDrawRGBPixel(objBitmap *, LONG, LONG, RGB8 *);
-static void  VideoDrawRGBIndex(objBitmap *, UBYTE *, RGB8 *);
-static ULONG VideoReadPixel(objBitmap *, LONG, LONG);
-static void  VideoReadRGBPixel(objBitmap *, LONG, LONG, RGB8 *);
-static void  VideoReadRGBIndex(objBitmap *, UBYTE *, RGB8 *);
+static void  VideoDrawPixel(objBitmap *, int, int, uint32_t);
+static void  VideoDrawRGBPixel(objBitmap *, int, int, RGB8 *);
+static void  VideoDrawRGBIndex(objBitmap *, uint8_t *, RGB8 *);
+static uint32_t VideoReadPixel(objBitmap *, int, int);
+static void  VideoReadRGBPixel(objBitmap *, int, int, RGB8 *);
+static void  VideoReadRGBIndex(objBitmap *, uint8_t *, RGB8 *);
 
-#else
+#elif defined(__xwindows__) or defined(__ANDROID__) or defined(_GLES_)
 
-static void VideoDrawPixel32(objBitmap *, LONG, LONG, ULONG);
-static void VideoDrawPixel24(objBitmap *, LONG, LONG, ULONG);
-static void VideoDrawPixel16(objBitmap *, LONG, LONG, ULONG);
-static void VideoDrawPixel8(objBitmap *,  LONG, LONG, ULONG);
+static void VideoDrawPixel32(objBitmap *, int, int, uint32_t);
+static void VideoDrawPixel24(objBitmap *, int, int, uint32_t);
+static void VideoDrawPixel16(objBitmap *, int, int, uint32_t);
+static void VideoDrawPixel8(objBitmap *,  int, int, uint32_t);
 
-static void VideoDrawRGBPixel32(objBitmap *, LONG, LONG, RGB8 *);
-static void VideoDrawRGBPixel24(objBitmap *, LONG, LONG, RGB8 *);
-static void VideoDrawRGBPixel16(objBitmap *, LONG, LONG, RGB8 *);
-static void VideoDrawRGBPixel8(objBitmap *,  LONG, LONG, RGB8 *);
+static void VideoDrawRGBPixel32(objBitmap *, int, int, RGB8 *);
+static void VideoDrawRGBPixel24(objBitmap *, int, int, RGB8 *);
+static void VideoDrawRGBPixel16(objBitmap *, int, int, RGB8 *);
+static void VideoDrawRGBPixel8(objBitmap *,  int, int, RGB8 *);
 
-static void VideoDrawRGBIndex32(objBitmap *, ULONG *, RGB8 *);
-static void VideoDrawRGBIndex24(objBitmap *, UBYTE *, RGB8 *);
-static void VideoDrawRGBIndex16(objBitmap *, UWORD *, RGB8 *);
-static void VideoDrawRGBIndex8(objBitmap *,  UBYTE *, RGB8 *);
+static void VideoDrawRGBIndex32(objBitmap *, uint32_t *, RGB8 *);
+static void VideoDrawRGBIndex24(objBitmap *, uint8_t *, RGB8 *);
+static void VideoDrawRGBIndex16(objBitmap *, uint16_t *, RGB8 *);
+static void VideoDrawRGBIndex8(objBitmap *,  uint8_t *, RGB8 *);
 
-static ULONG VideoReadPixel32(objBitmap *, LONG, LONG);
-static ULONG VideoReadPixel24(objBitmap *, LONG, LONG);
-static ULONG VideoReadPixel16(objBitmap *, LONG, LONG);
-static ULONG VideoReadPixel8(objBitmap *,  LONG, LONG);
+static uint32_t VideoReadPixel32(objBitmap *, int, int);
+static uint32_t VideoReadPixel24(objBitmap *, int, int);
+static uint32_t VideoReadPixel16(objBitmap *, int, int);
+static uint32_t VideoReadPixel8(objBitmap *,  int, int);
 
-static void VideoReadRGBPixel32(objBitmap *, LONG, LONG, RGB8 *);
-static void VideoReadRGBPixel24(objBitmap *, LONG, LONG, RGB8 *);
-static void VideoReadRGBPixel16(objBitmap *, LONG, LONG, RGB8 *);
-static void VideoReadRGBPixel8(objBitmap *,  LONG, LONG, RGB8 *);
+static void VideoReadRGBPixel32(objBitmap *, int, int, RGB8 *);
+static void VideoReadRGBPixel24(objBitmap *, int, int, RGB8 *);
+static void VideoReadRGBPixel16(objBitmap *, int, int, RGB8 *);
+static void VideoReadRGBPixel8(objBitmap *,  int, int, RGB8 *);
 
-static void VideoReadRGBIndex32(objBitmap *, ULONG *, RGB8 *);
-static void VideoReadRGBIndex24(objBitmap *, UBYTE *, RGB8 *);
-static void VideoReadRGBIndex16(objBitmap *, UWORD *, RGB8 *);
-static void VideoReadRGBIndex8(objBitmap *,  UBYTE *, RGB8 *);
+static void VideoReadRGBIndex32(objBitmap *, uint32_t *, RGB8 *);
+static void VideoReadRGBIndex24(objBitmap *, uint8_t *, RGB8 *);
+static void VideoReadRGBIndex16(objBitmap *, uint16_t *, RGB8 *);
+static void VideoReadRGBIndex8(objBitmap *,  uint8_t *, RGB8 *);
 
 #endif
 
 // Memory Pixel Routines
 
-static void MemDrawPixel32(objBitmap *, LONG, LONG, ULONG);
-static void MemDrawLSBPixel24(objBitmap *, LONG, LONG, ULONG);
-static void MemDrawMSBPixel24(objBitmap *, LONG, LONG, ULONG);
-static void MemDrawPixel16(objBitmap *, LONG, LONG, ULONG);
-static void MemDrawPixel8(objBitmap *, LONG, LONG, ULONG);
+static void MemDrawPixel32(objBitmap *, int, int, uint32_t);
+static void MemDrawLSBPixel24(objBitmap *, int, int, uint32_t);
+static void MemDrawMSBPixel24(objBitmap *, int, int, uint32_t);
+static void MemDrawPixel16(objBitmap *, int, int, uint32_t);
+static void MemDrawPixel8(objBitmap *, int, int, uint32_t);
 
-static ULONG MemReadPixel32(objBitmap *, LONG, LONG);
-static ULONG MemReadLSBPixel24(objBitmap *, LONG, LONG);
-static ULONG MemReadMSBPixel24(objBitmap *, LONG, LONG);
-static ULONG MemReadPixel16(objBitmap *, LONG, LONG);
-static ULONG MemReadPixel8(objBitmap *, LONG, LONG);
+static uint32_t MemReadPixel32(objBitmap *, int, int);
+static uint32_t MemReadLSBPixel24(objBitmap *, int, int);
+static uint32_t MemReadMSBPixel24(objBitmap *, int, int);
+static uint32_t MemReadPixel16(objBitmap *, int, int);
+static uint32_t MemReadPixel8(objBitmap *, int, int);
 
-static void MemDrawRGBPixel32(objBitmap *, LONG, LONG, RGB8 *);
-static void MemDrawLSBRGBPixel24(objBitmap *, LONG, LONG, RGB8 *);
-static void MemDrawMSBRGBPixel24(objBitmap *, LONG, LONG, RGB8 *);
-static void MemDrawRGBPixel16(objBitmap *, LONG, LONG, RGB8 *);
-static void MemDrawRGBPixel8(objBitmap *, LONG, LONG, RGB8 *);
+static void MemDrawRGBPixel32(objBitmap *, int, int, RGB8 *);
+static void MemDrawLSBRGBPixel24(objBitmap *, int, int, RGB8 *);
+static void MemDrawMSBRGBPixel24(objBitmap *, int, int, RGB8 *);
+static void MemDrawRGBPixel16(objBitmap *, int, int, RGB8 *);
+static void MemDrawRGBPixel8(objBitmap *, int, int, RGB8 *);
 
-static void MemDrawRGBIndex32(objBitmap *, ULONG *, RGB8 *);
-static void MemDrawLSBRGBIndex24(objBitmap *, UBYTE *, RGB8 *);
-static void MemDrawMSBRGBIndex24(objBitmap *, UBYTE *, RGB8 *);
-static void MemDrawRGBIndex16(objBitmap *, UWORD *, RGB8 *);
-static void MemDrawRGBIndex8(objBitmap *, UBYTE *, RGB8 *);
+static void MemDrawRGBIndex32(objBitmap *, uint32_t *, RGB8 *);
+static void MemDrawLSBRGBIndex24(objBitmap *, uint8_t *, RGB8 *);
+static void MemDrawMSBRGBIndex24(objBitmap *, uint8_t *, RGB8 *);
+static void MemDrawRGBIndex16(objBitmap *, uint16_t *, RGB8 *);
+static void MemDrawRGBIndex8(objBitmap *, uint8_t *, RGB8 *);
 
-static void MemReadRGBPixel32(objBitmap *, LONG, LONG, RGB8 *);
-static void MemReadLSBRGBPixel24(objBitmap *, LONG, LONG, RGB8 *);
-static void MemReadMSBRGBPixel24(objBitmap *, LONG, LONG, RGB8 *);
-static void MemReadRGBPixel16(objBitmap *, LONG, LONG, RGB8 *);
-static void MemReadRGBPixel8(objBitmap *, LONG, LONG, RGB8 *);
+static void MemReadRGBPixel32(objBitmap *, int, int, RGB8 *);
+static void MemReadLSBRGBPixel24(objBitmap *, int, int, RGB8 *);
+static void MemReadMSBRGBPixel24(objBitmap *, int, int, RGB8 *);
+static void MemReadRGBPixel16(objBitmap *, int, int, RGB8 *);
+static void MemReadRGBPixel8(objBitmap *, int, int, RGB8 *);
 
-static void MemReadRGBIndex32(objBitmap *, ULONG *, RGB8 *);
-static void MemReadLSBRGBIndex24(objBitmap *, UBYTE *, RGB8 *);
-static void MemReadMSBRGBIndex24(objBitmap *, UBYTE *, RGB8 *);
-static void MemReadRGBIndex16(objBitmap *, UWORD *, RGB8 *);
-static void MemReadRGBIndex8(objBitmap *, UBYTE *, RGB8 *);
+static void MemReadRGBIndex32(objBitmap *, uint32_t *, RGB8 *);
+static void MemReadLSBRGBIndex24(objBitmap *, uint8_t *, RGB8 *);
+static void MemReadMSBRGBIndex24(objBitmap *, uint8_t *, RGB8 *);
+static void MemReadRGBIndex16(objBitmap *, uint16_t *, RGB8 *);
+static void MemReadRGBIndex8(objBitmap *, uint8_t *, RGB8 *);
 
-static void MemReadRGBPixelPlanar(objBitmap *, LONG, LONG, RGB8 *);
-static void MemReadRGBIndexPlanar(objBitmap *, UBYTE *, RGB8 *);
-static void MemDrawPixelPlanar(objBitmap *, LONG, LONG, ULONG);
-static ULONG MemReadPixelPlanar(objBitmap *, LONG, LONG);
+static void MemReadRGBPixelPlanar(objBitmap *, int, int, RGB8 *);
+static void MemReadRGBIndexPlanar(objBitmap *, uint8_t *, RGB8 *);
+static void MemDrawPixelPlanar(objBitmap *, int, int, uint32_t);
+static uint32_t MemReadPixelPlanar(objBitmap *, int, int);
 
-static void DrawRGBPixelPlanar(objBitmap *, LONG X, LONG Y, RGB8 *);
+static void DrawRGBPixelPlanar(objBitmap *, int X, int Y, RGB8 *);
 
 //********************************************************************************************************************
 
 static ERR GET_Handle(extBitmap *, APTR *);
 
 static ERR SET_Bkgd(extBitmap *, RGB8 *);
-static ERR SET_BkgdIndex(extBitmap *, LONG);
+static ERR SET_BkgdIndex(extBitmap *, int);
 static ERR SET_Trans(extBitmap *, RGB8 *);
-static ERR SET_TransIndex(extBitmap *, LONG);
-static ERR SET_Data(extBitmap *, UBYTE *);
+static ERR SET_TransIndex(extBitmap *, int);
+static ERR SET_Data(extBitmap *, uint8_t *);
 static ERR SET_Handle(extBitmap *, APTR);
 static ERR SET_Palette(extBitmap *, RGBPalette *);
 
 static const FieldDef clDataFlags[] = {
    { "Video", MEM::VIDEO }, { "Blit", MEM::TEXTURE }, { "NoClear", MEM::NO_CLEAR }, { "Data", 0 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
-FDEF argsDrawUCPixel[]  = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Colour", FD_LONG }, { NULL, 0 } };
-FDEF argsDrawUCRPixel[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Colour", FD_PTR|FD_RGB }, { NULL, 0 } };
-FDEF argsReadUCPixel[]  = { { "Value", FD_LONG }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Colour", FD_PTR|FD_RESULT|FD_RGB }, { NULL, 0 } };
-FDEF argsReadUCRPixel[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Colour", FD_PTR|FD_RESULT|FD_RGB }, { NULL, 0 } };
-FDEF argsDrawUCRIndex[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "Data", FD_PTR }, { "Colour", FD_PTR|FD_RGB }, { NULL, 0 } };
-FDEF argsReadUCRIndex[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "Data", FD_PTR }, { "Colour", FD_PTR|FD_RGB|FD_RESULT }, { NULL, 0 } };
+FDEF argsDrawUCPixel[]  = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_INT }, { "Y", FD_INT }, { "Colour", FD_INT }, { nullptr, 0 } };
+FDEF argsDrawUCRPixel[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_INT }, { "Y", FD_INT }, { "Colour", FD_PTR|FD_RGB }, { nullptr, 0 } };
+FDEF argsReadUCPixel[]  = { { "Value", FD_INT }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_INT }, { "Y", FD_INT }, { "Colour", FD_PTR|FD_RESULT|FD_RGB }, { nullptr, 0 } };
+FDEF argsReadUCRPixel[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_INT }, { "Y", FD_INT }, { "Colour", FD_PTR|FD_RESULT|FD_RGB }, { nullptr, 0 } };
+FDEF argsDrawUCRIndex[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "Data", FD_PTR }, { "Colour", FD_PTR|FD_RGB }, { nullptr, 0 } };
+FDEF argsReadUCRIndex[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "Data", FD_PTR }, { "Colour", FD_PTR|FD_RGB|FD_RESULT }, { nullptr, 0 } };
 
 //********************************************************************************************************************
 // Surface locking routines.  These should only be called on occasions where you need to use the CPU to access graphics
@@ -180,7 +180,7 @@ FDEF argsReadUCRIndex[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { 
 
 #ifdef _WIN32
 
-ERR lock_surface(extBitmap *Bitmap, WORD Access)
+ERR lock_surface(extBitmap *Bitmap, int16_t Access)
 {
    if (!Bitmap->Data) {
       pf::Log log(__FUNCTION__);
@@ -198,10 +198,10 @@ ERR unlock_surface(extBitmap *Bitmap)
 
 #elif __xwindows__
 
-ERR lock_surface(extBitmap *Bitmap, WORD Access)
+ERR lock_surface(extBitmap *Bitmap, int16_t Access)
 {
-   LONG size;
-   WORD alignment;
+   int size;
+   int16_t alignment;
 
    if (((Bitmap->Flags & BMF::X11_DGA) != BMF::NIL) and (glDGAAvailable)) {
       return ERR::Okay;
@@ -211,10 +211,10 @@ ERR lock_surface(extBitmap *Bitmap, WORD Access)
       if (Bitmap->x11.readable) {
          if ((Bitmap->x11.readable->width >= Bitmap->Width) and (Bitmap->x11.readable->height >= Bitmap->Height)) {
             if (Access & SURFACE_READ) {
-               XGetSubImage(XDisplay, Bitmap->x11.drawable, Bitmap->XOffset + Bitmap->Clip.Left,
-                  Bitmap->YOffset + Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left,
+               XGetSubImage(XDisplay, Bitmap->x11.drawable, Bitmap->Clip.Left,
+                  Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left,
                   Bitmap->Clip.Bottom - Bitmap->Clip.Top, 0xffffffff, ZPixmap, Bitmap->x11.readable,
-                  Bitmap->XOffset + Bitmap->Clip.Left, Bitmap->YOffset + Bitmap->Clip.Top);
+                  Bitmap->Clip.Left, Bitmap->Clip.Top);
             }
             return ERR::Okay;
          }
@@ -232,19 +232,20 @@ ERR lock_surface(extBitmap *Bitmap, WORD Access)
       }
       else size = Bitmap->LineWidth * Bitmap->Height;
 
-      Bitmap->Data = (UBYTE *)malloc(size);
+      Bitmap->Data = (uint8_t *)malloc(size);
+      if (!Bitmap->Data) return ERR::AllocMemory;
 
       if ((Bitmap->x11.readable = XCreateImage(XDisplay, CopyFromParent, Bitmap->BitsPerPixel,
            ZPixmap, 0, (char *)Bitmap->Data, Bitmap->Width, Bitmap->Height, alignment, Bitmap->LineWidth))) {
          if (Access & SURFACE_READ) {
-            XGetSubImage(XDisplay, Bitmap->x11.drawable, Bitmap->XOffset + Bitmap->Clip.Left,
-               Bitmap->YOffset + Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left,
+            XGetSubImage(XDisplay, Bitmap->x11.drawable, Bitmap->Clip.Left,
+               Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left,
                Bitmap->Clip.Bottom - Bitmap->Clip.Top, 0xffffffff, ZPixmap, Bitmap->x11.readable,
-               Bitmap->XOffset + Bitmap->Clip.Left, Bitmap->YOffset + Bitmap->Clip.Top);
+               Bitmap->Clip.Left, Bitmap->Clip.Top);
          }
          return ERR::Okay;
       }
-      else return ERR::Failed;
+      else return ERR::CreateResource;
    }
    return ERR::Okay;
 }
@@ -256,7 +257,7 @@ ERR unlock_surface(extBitmap *Bitmap)
 
 #elif _GLES_
 
-ERR lock_surface(extBitmap *Bitmap, WORD Access)
+ERR lock_surface(extBitmap *Bitmap, int16_t Access)
 {
    pf::Log log(__FUNCTION__);
 
@@ -343,12 +344,30 @@ ERR unlock_surface(extBitmap *Bitmap)
    return ERR::Okay;
 }
 
+#else
+
+ERR lock_surface(extBitmap *Bitmap, int16_t Access)
+{
+   if (!Bitmap->Data) {
+      pf::Log log(__FUNCTION__);
+      log.warning("[Bitmap:%d] Bitmap is missing the Data field.", Bitmap->UID);
+      return ERR::FieldNotSet;
+   }
+
+   return ERR::Okay;
+}
+
+ERR unlock_surface(extBitmap *Bitmap)
+{
+   return ERR::Okay;
+}
+
 #endif
 
 //********************************************************************************************************************
 
 #ifdef __xwindows__
-static ERR alloc_shm(LONG Size, UBYTE **Data, LONG *ID)
+static ERR alloc_shm(int Size, uint8_t **Data, int *ID)
 {
    pf::Log log(__FUNCTION__);
 
@@ -358,9 +377,9 @@ static ERR alloc_shm(LONG Size, UBYTE **Data, LONG *ID)
       return ERR::Memory;
    }
 
-   auto addr = shmat(id, NULL, 0);
-   if ((addr != (APTR)-1) and (addr != NULL)) {
-      *Data = (UBYTE *)addr;
+   auto addr = shmat(id, nullptr, 0);
+   if ((addr != (APTR)-1) and (addr != nullptr)) {
+      *Data = (uint8_t *)addr;
       *ID = id;
       return ERR::Okay;
    }
@@ -370,10 +389,10 @@ static ERR alloc_shm(LONG Size, UBYTE **Data, LONG *ID)
    }
 }
 
-static void free_shm(APTR Address, LONG ID)
+static void free_shm(APTR Address, int ID)
 {
    shmdt(Address);
-   shmctl(ID, IPC_RMID, NULL);
+   shmctl(ID, IPC_RMID, nullptr);
 }
 #endif
 
@@ -381,23 +400,23 @@ static void free_shm(APTR Address, LONG ID)
 // Score = Abs(BB1 - BB2) + Abs(GG1 - GG2) + Abs(RR1 - RR2)
 // The closer the score is to zero, the better the colour match.
 
-static ULONG RGBToValue(RGB8 *RGB, RGBPalette *Palette)
+static uint32_t RGBToValue(RGB8 *RGB, RGBPalette *Palette)
 {
-   LONG BestMatch  = 0x7fffffff; // Highest possible value
-   ULONG best = 0;
-   WORD mred   = RGB->Red;
-   WORD mgreen = RGB->Green;
-   WORD mblue  = RGB->Blue;
+   int BestMatch  = 0x7fffffff; // Highest possible value
+   uint32_t best = 0;
+   int16_t mred   = RGB->Red;
+   int16_t mgreen = RGB->Green;
+   int16_t mblue  = RGB->Blue;
 
-   WORD i;
+   int16_t i;
    for (i=Palette->AmtColours-1; i > 0; i--) {
-      LONG Match = mred - Palette->Col[i].Red; // R1 - R2
+      int Match = mred - Palette->Col[i].Red; // R1 - R2
       if (Match < 0) Match = -Match; // Abs(R1 - R2)
 
-      WORD g = mgreen - Palette->Col[i].Green;
+      int16_t g = mgreen - Palette->Col[i].Green;
       if (g < 0) Match -= g; else Match += g;
 
-      WORD b = mblue - Palette->Col[i].Blue;
+      int16_t b = mblue - Palette->Col[i].Blue;
       if (b < 0) Match -= b; else Match += b;
 
       if (Match < BestMatch) {
@@ -412,8 +431,8 @@ static ULONG RGBToValue(RGB8 *RGB, RGBPalette *Palette)
 
 //********************************************************************************************************************
 
-inline static UBYTE conv_l2r(DOUBLE X) {
-   LONG ix;
+inline static uint8_t conv_l2r(double X) {
+   int ix;
 
    if (X < 0.0031308) ix = F2T(((X * 12.92) * 255.0) + 0.5);
    else ix = F2T(((std::pow(X, 1.0 / 2.4) * 1.055 - 0.055) * 255.0) + 0.5);
@@ -432,7 +451,8 @@ Clearing a bitmap wipes away its graphical contents by drawing a blank area over
 the blank area is determined by the #BkgdIndex field.  To clear a bitmap to a different colour, use the #DrawRectangle()
 method instead.
 
-If the bitmap supports alpha blending, the alpha blend bits will be reset to 'clear' status.
+If the bitmap supports alpha blending and a transparent result is desired, setting #BkgdIndex to zero is
+an efficient way to achieve this outcome.
 
 *********************************************************************************************************************/
 
@@ -450,7 +470,7 @@ static ERR BITMAP_Clear(extBitmap *Self)
    }
 #endif
 
-   LONG opacity = Self->Opacity;
+   auto opacity = Self->Opacity;
    Self->Opacity = 255;
    gfx::DrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->BkgdIndex, BAF::FILL);
    Self->Opacity = opacity;
@@ -462,7 +482,7 @@ static ERR BITMAP_Clear(extBitmap *Self)
 -METHOD-
 Compress: Compresses bitmap data to save memory.
 
-A bitmap can be compressed with the CompressBitmap() method to save memory when the bitmap is not in use.  This is 
+A bitmap can be compressed with the CompressBitmap() method to save memory when the bitmap is not in use.  This is
 useful if a large bitmap needs to be stored in memory and it is anticipated that the bitmap will be used infrequently.
 
 Once a bitmap is compressed, its image data is invalid.  Any attempt to access the bitmap's image data will likely
@@ -493,7 +513,7 @@ static ERR BITMAP_Compress(extBitmap *Self, struct bmp::Compress *Args)
 
    if ((Self->DataFlags & (MEM::VIDEO|MEM::TEXTURE)) != MEM::NIL) {
       log.warning("Cannot compress video bitmaps.");
-      return ERR::Failed;
+      return ERR::NoSupport;
    }
 
    if (Self->Size < 8192) return ERR::Okay;
@@ -505,7 +525,7 @@ static ERR BITMAP_Compress(extBitmap *Self, struct bmp::Compress *Args)
 
       if ((Self->Data) and (Self->prvAFlags & BF_DATA)) {
          FreeResource(Self->Data);
-         Self->Data = NULL;
+         Self->Data = nullptr;
       }
 
       return ERR::Okay;
@@ -521,7 +541,7 @@ static ERR BITMAP_Compress(extBitmap *Self, struct bmp::Compress *Args)
 
    APTR buffer;
    if (AllocMemory(Self->Size, MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
-      LONG result;
+      int result;
       if (glCompress->compressBuffer(Self->Data, Self->Size, buffer, Self->Size, &result) IS ERR::Okay) {
          if (AllocMemory(result, MEM::NO_CLEAR, &Self->prvCompress) IS ERR::Okay) {
             copymem(buffer, Self->prvCompress, result);
@@ -529,14 +549,14 @@ static ERR BITMAP_Compress(extBitmap *Self, struct bmp::Compress *Args)
          }
          else error = ERR::ReallocMemory;
       }
-      else error = ERR::Failed;
+      else error = ERR::Compression;
    }
    else error = ERR::AllocMemory;
 
    if (error IS ERR::Okay) { // Free the original data
       if ((Self->Data) and (Self->prvAFlags & BF_DATA)) {
          FreeResource(Self->Data);
-         Self->Data = NULL;
+         Self->Data = nullptr;
       }
 
       Self->Flags |= BMF::COMPRESSED;
@@ -572,22 +592,22 @@ ERR BITMAP_ConvertToLinear(extBitmap *Self)
    if (Self->ColourSpace IS CS::LINEAR_RGB) return log.warning(ERR::NothingDone);
    if (Self->BytesPerPixel != 4) return log.warning(ERR::InvalidState);
 
-   const auto w = (LONG)(Self->Clip.Right - Self->Clip.Left);
-   const auto h = (LONG)(Self->Clip.Bottom - Self->Clip.Top);
+   const auto w = int(Self->Clip.Right - Self->Clip.Left);
+   const auto h = int(Self->Clip.Bottom - Self->Clip.Top);
 
    if (Self->Clip.Left + w > Self->Width) return log.warning(ERR::InvalidDimension);
    if (Self->Clip.Top + h > Self->Height) return log.warning(ERR::InvalidDimension);
 
    if ((Self->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) {
-      const UBYTE R = Self->ColourFormat->RedPos>>3;
-      const UBYTE G = Self->ColourFormat->GreenPos>>3;
-      const UBYTE B = Self->ColourFormat->BluePos>>3;
-      const UBYTE A = Self->ColourFormat->AlphaPos>>3;
+      const uint8_t R = Self->ColourFormat->RedPos>>3;
+      const uint8_t G = Self->ColourFormat->GreenPos>>3;
+      const uint8_t B = Self->ColourFormat->BluePos>>3;
+      const uint8_t A = Self->ColourFormat->AlphaPos>>3;
 
-      UBYTE *data = Self->Data + (Self->LineWidth * Self->Clip.Top) + (Self->Clip.Left * Self->BytesPerPixel);
-      for (LONG y=0; y < h; y++) {
-         UBYTE *pixel = data;
-         for (LONG x=0; x < w; x++) {
+      uint8_t *data = Self->Data + (Self->LineWidth * Self->Clip.Top) + (Self->Clip.Left * Self->BytesPerPixel);
+      for (int y=0; y < h; y++) {
+         uint8_t *pixel = data;
+         for (int x=0; x < w; x++) {
             if (pixel[A]) {
                pixel[R] = glLinearRGB.convert(pixel[R]);
                pixel[G] = glLinearRGB.convert(pixel[G]);
@@ -599,14 +619,14 @@ ERR BITMAP_ConvertToLinear(extBitmap *Self)
       }
    }
    else {
-      const UBYTE R = Self->ColourFormat->RedPos>>3;
-      const UBYTE G = Self->ColourFormat->GreenPos>>3;
-      const UBYTE B = Self->ColourFormat->BluePos>>3;
+      const uint8_t R = Self->ColourFormat->RedPos>>3;
+      const uint8_t G = Self->ColourFormat->GreenPos>>3;
+      const uint8_t B = Self->ColourFormat->BluePos>>3;
 
-      UBYTE *data = Self->Data + (Self->LineWidth * Self->Clip.Top) + (Self->Clip.Left * Self->BytesPerPixel);
-      for (LONG y=0; y < h; y++) {
-         UBYTE *pixel = data;
-         for (LONG x=0; x < w; x++) {
+      uint8_t *data = Self->Data + (Self->LineWidth * Self->Clip.Top) + (Self->Clip.Left * Self->BytesPerPixel);
+      for (int y=0; y < h; y++) {
+         uint8_t *pixel = data;
+         for (int x=0; x < w; x++) {
             pixel[R] = glLinearRGB.convert(pixel[R]);
             pixel[G] = glLinearRGB.convert(pixel[G]);
             pixel[B] = glLinearRGB.convert(pixel[B]);
@@ -648,22 +668,22 @@ ERR BITMAP_ConvertToRGB(extBitmap *Self)
    if (Self->ColourSpace IS CS::SRGB) return log.warning(ERR::NothingDone);
    if (Self->BytesPerPixel != 4) return log.warning(ERR::InvalidState);
 
-   const auto w = (LONG)(Self->Clip.Right - Self->Clip.Left);
-   const auto h = (LONG)(Self->Clip.Bottom - Self->Clip.Top);
+   const auto w = (int)(Self->Clip.Right - Self->Clip.Left);
+   const auto h = (int)(Self->Clip.Bottom - Self->Clip.Top);
 
    if (Self->Clip.Left + w > Self->Width) return log.warning(ERR::InvalidDimension);
    if (Self->Clip.Top + h > Self->Height) return log.warning(ERR::InvalidDimension);
 
    if ((Self->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) {
-      const UBYTE R = Self->ColourFormat->RedPos>>3;
-      const UBYTE G = Self->ColourFormat->GreenPos>>3;
-      const UBYTE B = Self->ColourFormat->BluePos>>3;
-      const UBYTE A = Self->ColourFormat->AlphaPos>>3;
+      const uint8_t R = Self->ColourFormat->RedPos>>3;
+      const uint8_t G = Self->ColourFormat->GreenPos>>3;
+      const uint8_t B = Self->ColourFormat->BluePos>>3;
+      const uint8_t A = Self->ColourFormat->AlphaPos>>3;
 
-      UBYTE *data = Self->Data + (Self->LineWidth * Self->Clip.Top) + (Self->Clip.Left * Self->BytesPerPixel);
-      for (LONG y=0; y < h; y++) {
-         UBYTE *pixel = data;
-         for (LONG x=0; x < w; x++) {
+      uint8_t *data = Self->Data + (Self->LineWidth * Self->Clip.Top) + (Self->Clip.Left * Self->BytesPerPixel);
+      for (int y=0; y < h; y++) {
+         uint8_t *pixel = data;
+         for (int x=0; x < w; x++) {
             if (pixel[A]) {
                pixel[R] = glLinearRGB.invert(pixel[R]);
                pixel[G] = glLinearRGB.invert(pixel[G]);
@@ -675,14 +695,14 @@ ERR BITMAP_ConvertToRGB(extBitmap *Self)
       }
    }
    else {
-      const UBYTE R = Self->ColourFormat->RedPos>>3;
-      const UBYTE G = Self->ColourFormat->GreenPos>>3;
-      const UBYTE B = Self->ColourFormat->BluePos>>3;
+      const uint8_t R = Self->ColourFormat->RedPos>>3;
+      const uint8_t G = Self->ColourFormat->GreenPos>>3;
+      const uint8_t B = Self->ColourFormat->BluePos>>3;
 
-      UBYTE *data = Self->Data + (Self->LineWidth * Self->Clip.Top) + (Self->Clip.Left * Self->BytesPerPixel);
-      for (LONG y=0; y < h; y++) {
-         UBYTE *pixel = data;
-         for (LONG x=0; x < w; x++) {
+      uint8_t *data = Self->Data + (Self->LineWidth * Self->Clip.Top) + (Self->Clip.Left * Self->BytesPerPixel);
+      for (int y=0; y < h; y++) {
+         uint8_t *pixel = data;
+         for (int x=0; x < w; x++) {
             pixel[R] = glLinearRGB.invert(pixel[R]);
             pixel[G] = glLinearRGB.invert(pixel[G]);
             pixel[B] = glLinearRGB.invert(pixel[B]);
@@ -771,7 +791,7 @@ static ERR BITMAP_Decompress(extBitmap *Self, struct bmp::Decompress *Args)
       SetOwner(glCompress, glModule);
    }
 
-   auto error = glCompress->decompressBuffer(Self->prvCompress, Self->Data, Self->Size, NULL);
+   auto error = glCompress->decompressBuffer(Self->prvCompress, Self->Data, Self->Size, nullptr);
    if (error IS ERR::BufferOverflow) error = ERR::Okay;
 
    if ((Args) and (Args->RetainData IS TRUE)) {
@@ -779,7 +799,7 @@ static ERR BITMAP_Decompress(extBitmap *Self, struct bmp::Decompress *Args)
    }
    else {
       FreeResource(Self->prvCompress);
-      Self->prvCompress = NULL;
+      Self->prvCompress = nullptr;
       Self->Flags &= ~BMF::COMPRESSED;
    }
 
@@ -807,7 +827,7 @@ static ERR BITMAP_CopyData(extBitmap *Self, struct acCopyData *Args)
 
    auto target = (extBitmap *)Args->Dest;
 
-   LONG max_height = Self->Height > target->Height ? target->Height : Self->Height;
+   int max_height = Self->Height > target->Height ? target->Height : Self->Height;
 
    if (Self->Width >= target->Width) { // Source is wider or equal to the target
       gfx::CopyArea(Self, target, BAF::NIL, 0, 0, target->Width, max_height, 0, 0);
@@ -852,8 +872,8 @@ static ERR BITMAP_Demultiply(extBitmap *Self)
       const std::lock_guard<std::mutex> lock(mutex);
       if (!glDemultiply) {
          if (AllocMemory(256 * 256, MEM::NO_CLEAR|MEM::UNTRACKED, &glDemultiply) IS ERR::Okay) {
-            for (LONG a=1; a <= 255; a++) {
-               for (LONG i=0; i <= 255; i++) {
+            for (int a=1; a <= 255; a++) {
+               for (int i=0; i <= 255; i++) {
                   glDemultiply[(a<<8) + i] = (i * 0xff) / a;
                }
             }
@@ -866,31 +886,31 @@ static ERR BITMAP_Demultiply(extBitmap *Self)
    if (Self->BitsPerPixel != 32) return log.warning(ERR::InvalidState);
    if ((Self->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL) return log.warning(ERR::InvalidState);
 
-   const auto w = (LONG)(Self->Clip.Right - Self->Clip.Left);
-   const auto h = (LONG)(Self->Clip.Bottom - Self->Clip.Top);
+   const auto w = int(Self->Clip.Right - Self->Clip.Left);
+   const auto h = int(Self->Clip.Bottom - Self->Clip.Top);
 
    if (Self->Clip.Left + w > Self->Width) return log.warning(ERR::InvalidDimension);
    if (Self->Clip.Top + h > Self->Height) return log.warning(ERR::InvalidDimension);
 
-   const UBYTE A = Self->ColourFormat->AlphaPos>>3;
-   const UBYTE R = Self->ColourFormat->RedPos>>3;
-   const UBYTE G = Self->ColourFormat->GreenPos>>3;
-   const UBYTE B = Self->ColourFormat->BluePos>>3;
+   const uint8_t A = Self->ColourFormat->AlphaPos>>3;
+   const uint8_t R = Self->ColourFormat->RedPos>>3;
+   const uint8_t G = Self->ColourFormat->GreenPos>>3;
+   const uint8_t B = Self->ColourFormat->BluePos>>3;
 
-   UBYTE *data = Self->Data + (Self->Clip.Left * Self->BytesPerPixel) + (Self->Clip.Top * Self->LineWidth);
-   for (LONG y=0; y < h; y++) {
-      UBYTE *pixel = data;
-      for (LONG x=0; x < w; x++) {
-         const UBYTE a = pixel[A];
+   uint8_t *data = Self->Data + (Self->Clip.Left * Self->BytesPerPixel) + (Self->Clip.Top * Self->LineWidth);
+   for (int y=0; y < h; y++) {
+      uint8_t *pixel = data;
+      for (int x=0; x < w; x++) {
+         const uint8_t a = pixel[A];
          if (a < 0xff) {
             if (a == 0) pixel[R] = pixel[G] = pixel[B] = 0;
             else {
-               ULONG r = glDemultiply[(a<<8) + pixel[R]]; //(ULONG(pixel[R]) * 0xff) / a;
-               ULONG g = glDemultiply[(a<<8) + pixel[G]]; //(ULONG(pixel[G]) * 0xff) / a;
-               ULONG b = glDemultiply[(a<<8) + pixel[B]]; //(ULONG(pixel[B]) * 0xff) / a;
-               pixel[R] = UBYTE((r > 0xff) ? 0xff : r);
-               pixel[G] = UBYTE((g > 0xff) ? 0xff : g);
-               pixel[B] = UBYTE((b > 0xff) ? 0xff : b);
+               uint32_t r = glDemultiply[(a<<8) + pixel[R]]; //(uint32_t(pixel[R]) * 0xff) / a;
+               uint32_t g = glDemultiply[(a<<8) + pixel[G]]; //(uint32_t(pixel[G]) * 0xff) / a;
+               uint32_t b = glDemultiply[(a<<8) + pixel[B]]; //(uint32_t(pixel[B]) * 0xff) / a;
+               pixel[R] = uint8_t((r > 0xff) ? 0xff : r);
+               pixel[G] = uint8_t((g > 0xff) ? 0xff : g);
+               pixel[B] = uint8_t((b > 0xff) ? 0xff : b);
             }
          }
          pixel += 4;
@@ -948,68 +968,10 @@ static ERR BITMAP_DrawRectangle(extBitmap *Self, struct bmp::DrawRectangle *Args
 
 /*********************************************************************************************************************
 
--METHOD-
-Flip: Flips a bitmap around the horizontal or vertical axis.
-
-This method is used to flip bitmap images on their horizontal or vertical axis.
-
--INPUT-
-int(FLIP) Orientation: Set to either `HORIZONTAL` or `VERTICAL`.
-
--ERRORS-
-Okay
-Args
-NullArgs
-
-*********************************************************************************************************************/
-
-static ERR BITMAP_Flip(extBitmap *Self, struct bmp::Flip *Args)
-{
-   pf::Log log;
-
-   if (!Args) return log.warning(ERR::NullArgs);
-
-   // NB: A faster way to flip a Bitmap would be to use CopyArea() to do the transfer in strips, but would require a
-   // temporary memory area to hold the information.
-
-   if (Args->Orientation IS FLIP::HORIZONTAL) {
-      if (lock_surface(Self, SURFACE_READWRITE) IS ERR::Okay) {
-         for (LONG y=0; y < Self->Height/2; y++) {
-            for (LONG x=0; x < Self->Width; x++) {
-               LONG c1 = Self->ReadUCPixel(Self, x, Self->Height - y - 1);
-               LONG c2 = Self->ReadUCPixel(Self, x, y);
-               Self->DrawUCPixel(Self, x, y, c1);
-               Self->DrawUCPixel(Self, x, Self->Height - y - 1, c2);
-            }
-         }
-         unlock_surface(Self);
-      }
-   }
-   else if (Args->Orientation IS FLIP::VERTICAL) {
-      if (lock_surface(Self, SURFACE_READWRITE) IS ERR::Okay) {
-         // Palette based Bitmap
-         for (LONG x=0; x < Self->Width/2; x++) {
-            for (LONG y=0; y < Self->Height; y++) {
-               LONG c1 = Self->ReadUCPixel(Self, Self->Width - x - 1, y); // Right pixel
-               LONG c2 = Self->ReadUCPixel(Self, x, y); // Left pixel
-               Self->DrawUCPixel(Self, Self->Width - x - 1, y, c2);
-               Self->DrawUCPixel(Self, x, y, c1);
-            }
-         }
-         unlock_surface(Self);
-      }
-   }
-   else return log.warning(ERR::Args);
-
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
 -ACTION-
 Flush: Flushes pending graphics operations and returns when the accelerator is idle.
 
-The Flush() action ensures that client graphics operations are synchronised with the graphics accelerator.  
+The Flush() action ensures that client graphics operations are synchronised with the graphics accelerator.
 Synchronisation is essential prior to drawing to the bitmap with the CPU.  Failure to synchronise may
 result in corruption in the bitmap's graphics display.
 
@@ -1039,7 +1001,7 @@ static ERR BITMAP_Free(extBitmap *Self)
          XShmDetach(XDisplay, &Self->x11.ShmInfo);
          Self->x11.XShmImage = false;
          free_shm(Self->Data, Self->x11.ShmInfo.shmid);
-         Self->Data = NULL;
+         Self->Data = nullptr;
       }
 
       if (Self->x11.gc) {
@@ -1050,14 +1012,14 @@ static ERR BITMAP_Free(extBitmap *Self)
 
    if ((Self->Data) and (Self->prvAFlags & BF_DATA)) {
       FreeResource(Self->Data);
-      Self->Data = NULL;
+      Self->Data = nullptr;
    }
 
-   if (Self->prvCompress) { FreeResource(Self->prvCompress); Self->prvCompress = NULL; }
+   if (Self->prvCompress) { FreeResource(Self->prvCompress); Self->prvCompress = nullptr; }
 
    if (Self->ResolutionChangeHandle) {
       UnsubscribeEvent(Self->ResolutionChangeHandle);
-      Self->ResolutionChangeHandle = NULL;
+      Self->ResolutionChangeHandle = nullptr;
    }
 
    #ifdef __xwindows__
@@ -1068,14 +1030,14 @@ static ERR BITMAP_Free(extBitmap *Self)
 
       if (Self->x11.readable) {
          XDestroyImage(Self->x11.readable);
-         Self->x11.readable = NULL;
+         Self->x11.readable = nullptr;
       }
    #endif
 
    #ifdef _WIN32
       if (Self->win.Drawable) {
          winDeleteDC(Self->win.Drawable);
-         Self->win.Drawable = NULL;
+         Self->win.Drawable = nullptr;
       }
    #endif
 
@@ -1143,7 +1105,7 @@ static ERR BITMAP_Init(extBitmap *Self)
 
    if (acQuery(Self) != ERR::Okay) return log.warning(ERR::Query);
 
-   log.branch("Size: %dx%d @ %d bit, %d bytes, Mem: $%.8x, Flags: $%.8x", Self->Width, Self->Height, Self->BitsPerPixel, Self->BytesPerPixel, LONG(Self->DataFlags), LONG(Self->Flags));
+   log.branch("Size: %dx%d @ %d bit, %d bytes, Mem: $%.8x, Flags: $%.8x", Self->Width, Self->Height, Self->BitsPerPixel, Self->BytesPerPixel, int(Self->DataFlags), int(Self->Flags));
 
    if (Self->Clip.Left < 0) Self->Clip.Left = 0;
    if (Self->Clip.Top < 0)  Self->Clip.Top  = 0;
@@ -1192,7 +1154,7 @@ static ERR BITMAP_Init(extBitmap *Self)
             if (alloc_shm(Self->Size, &Self->Data, &Self->x11.ShmInfo.shmid) IS ERR::Okay) {
                Self->prvAFlags |= BF_DATA;
 
-               WORD alignment;
+               int16_t alignment;
                if (Self->LineWidth & 0x0001) alignment = 8;
                else if (Self->LineWidth & 0x0002) alignment = 16;
                else alignment = 32;
@@ -1288,8 +1250,18 @@ static ERR BITMAP_Init(extBitmap *Self)
 
    if ((Self->DataFlags & (MEM::VIDEO|MEM::TEXTURE)) != MEM::NIL) Self->Flags |= BMF::2DACCELERATED;
 
-#else
-   #error Platform requires memory allocation routines for the Bitmap class.
+#else // Software rendering only
+   Self->DataFlags &= ~(MEM::TEXTURE|MEM::VIDEO);
+
+   if (!Self->Data) {
+      if ((Self->Flags & BMF::NO_DATA) IS BMF::NIL) {
+         if (!Self->Size) return log.warning(ERR::FieldNotSet);
+         if (AllocMemory(Self->Size, MEM::NO_BLOCKING|MEM::NO_POOL|MEM::NO_CLEAR|Self->DataFlags, &Self->Data) IS ERR::Okay) {
+            Self->prvAFlags |= BF_DATA;
+         }
+         else return log.warning(ERR::AllocMemory);
+      }
+   }
 #endif
 
    // Determine the correct pixel format for the bitmap
@@ -1299,7 +1271,7 @@ static ERR BITMAP_Init(extBitmap *Self)
    if (!glHeadless) {
       if (Self->x11.drawable) {
          XVisualInfo visual, *info;
-         LONG items;
+         int items;
          visual.bits_per_rgb = Self->BytesPerPixel * 8;
          if ((info = XGetVisualInfo(XDisplay, VisualBitsPerRGBMask, &visual, &items))) {
             gfx::GetColourFormat(Self->ColourFormat, Self->BitsPerPixel, info->red_mask, info->green_mask, info->blue_mask, 0xff000000);
@@ -1314,7 +1286,7 @@ static ERR BITMAP_Init(extBitmap *Self)
 #elif _WIN32
 
    if ((Self->DataFlags & MEM::VIDEO) != MEM::NIL) {
-      LONG red, green, blue, alpha;
+      int red, green, blue, alpha;
 
       if (!winGetPixelFormat(&red, &green, &blue, &alpha)) {
          gfx::GetColourFormat(Self->ColourFormat, Self->BitsPerPixel, red, green, blue, alpha);
@@ -1358,14 +1330,6 @@ static ERR BITMAP_Init(extBitmap *Self)
 
    if (Self->BitsPerPixel < 32) Self->Flags &= ~BMF::ALPHA_CHANNEL;
 
-   //log.msg("Red: %.2x/%d/%d , Green: %.2x/%d/%d",
-   //   Self->prvColourFormat.RedMask,   Self->prvColourFormat.RedShift,   Self->prvColourFormat.RedPos,
-   //   Self->prvColourFormat.GreenMask, Self->prvColourFormat.GreenShift, Self->prvColourFormat.GreenPos);
-
-   //log.msg("Blue: %.2x/%d/%d , Alpha: %.2x/%d/%d",
-   //   Self->prvColourFormat.BlueMask,  Self->prvColourFormat.BlueShift,  Self->prvColourFormat.BluePos,
-   //   Self->prvColourFormat.AlphaMask, Self->prvColourFormat.AlphaShift, Self->prvColourFormat.AlphaPos);
-
    return ERR::Okay;
 }
 
@@ -1379,17 +1343,17 @@ static ERR BITMAP_Lock(extBitmap *Self)
 {
 #ifdef __xwindows__
    if (Self->x11.drawable) {
-      WORD alignment;
-      LONG size, bpp;
+      int16_t alignment;
+      int size, bpp;
 
       // If there is an existing readable area, try to reuse it if possible
 
       if (Self->x11.readable) {
          if ((Self->x11.readable->width >= Self->Width) and (Self->x11.readable->height >= Self->Height)) {
-            XGetSubImage(XDisplay, Self->x11.drawable, Self->XOffset + Self->Clip.Left,
-               Self->YOffset + Self->Clip.Top, Self->Clip.Right - Self->Clip.Left,
+            XGetSubImage(XDisplay, Self->x11.drawable, Self->Clip.Left,
+               Self->Clip.Top, Self->Clip.Right - Self->Clip.Left,
                Self->Clip.Bottom - Self->Clip.Top, 0xffffffff, ZPixmap, Self->x11.readable,
-               Self->XOffset + Self->Clip.Left, Self->YOffset + Self->Clip.Top);
+               Self->Clip.Left, Self->Clip.Top);
             return ERR::Okay;
          }
          else XDestroyImage(Self->x11.readable);
@@ -1406,18 +1370,18 @@ static ERR BITMAP_Lock(extBitmap *Self)
       }
       else size = Self->ByteWidth * Self->Height;
 
-      Self->Data = (UBYTE *)malloc(size);
+      Self->Data = (uint8_t *)malloc(size);
 
       if ((bpp = Self->BitsPerPixel) IS 32) bpp = 24;
 
       if ((Self->x11.readable = XCreateImage(XDisplay, CopyFromParent, bpp,
            ZPixmap, 0, (char *)Self->Data, Self->Width, Self->Height, alignment, Self->ByteWidth))) {
-         XGetSubImage(XDisplay, Self->x11.drawable, Self->XOffset + Self->Clip.Left,
-            Self->YOffset + Self->Clip.Top, Self->Clip.Right - Self->Clip.Left,
+         XGetSubImage(XDisplay, Self->x11.drawable, Self->Clip.Left,
+            Self->Clip.Top, Self->Clip.Right - Self->Clip.Left,
             Self->Clip.Bottom - Self->Clip.Top, 0xffffffff, ZPixmap, Self->x11.readable,
-            Self->XOffset + Self->Clip.Left, Self->YOffset + Self->Clip.Top);
+            Self->Clip.Left, Self->Clip.Top);
       }
-      else return ERR::Failed;
+      else return ERR::CreateResource;
    }
 
    return ERR::Okay;
@@ -1433,15 +1397,15 @@ static ERR BITMAP_Lock(extBitmap *Self)
 
 static ERR BITMAP_NewObject(extBitmap *Self)
 {
-   #define CBANK 5
+   constexpr int CBANK = 5;
    RGB8 *RGB;
-   LONG i, j;
+   int i, j;
 
    Self->Palette      = &Self->prvPaletteArray;
    Self->ColourFormat = &Self->prvColourFormat;
    Self->ColourSpace  = CS::SRGB;
-
-   Self->Opacity = 255;
+   Self->BlendMode    = BLM::AUTO;
+   Self->Opacity      = 255;
 
    // Generate the standard colour palette
 
@@ -1534,28 +1498,28 @@ static ERR BITMAP_Premultiply(extBitmap *Self)
    if (Self->BitsPerPixel != 32) return log.warning(ERR::InvalidState);
    if ((Self->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL) return log.warning(ERR::InvalidState);
 
-   const auto w = (LONG)(Self->Clip.Right - Self->Clip.Left);
-   const auto h = (LONG)(Self->Clip.Bottom - Self->Clip.Top);
+   const auto w = (int)(Self->Clip.Right - Self->Clip.Left);
+   const auto h = (int)(Self->Clip.Bottom - Self->Clip.Top);
 
    if (Self->Clip.Left + w > Self->Width) return log.warning(ERR::InvalidDimension);
    if (Self->Clip.Top + h > Self->Height) return log.warning(ERR::InvalidDimension);
 
-   const UBYTE A = Self->ColourFormat->AlphaPos>>3;
-   const UBYTE R = Self->ColourFormat->RedPos>>3;
-   const UBYTE G = Self->ColourFormat->GreenPos>>3;
-   const UBYTE B = Self->ColourFormat->BluePos>>3;
+   const uint8_t A = Self->ColourFormat->AlphaPos>>3;
+   const uint8_t R = Self->ColourFormat->RedPos>>3;
+   const uint8_t G = Self->ColourFormat->GreenPos>>3;
+   const uint8_t B = Self->ColourFormat->BluePos>>3;
 
-   UBYTE *data = Self->Data + (Self->Clip.Left * Self->BytesPerPixel) + (Self->Clip.Top * Self->LineWidth);
-   for (LONG y=0; y < h; y++) {
-      UBYTE *pixel = data;
-      for (LONG x=0; x < w; x++) {
-         const UBYTE a = pixel[A];
+   uint8_t *data = Self->Data + (Self->Clip.Left * Self->BytesPerPixel) + (Self->Clip.Top * Self->LineWidth);
+   for (int y=0; y < h; y++) {
+      uint8_t *pixel = data;
+      for (int x=0; x < w; x++) {
+         const uint8_t a = pixel[A];
          if (a < 0xff) {
              if (a == 0) pixel[R] = pixel[G] = pixel[B] = 0;
              else {
-                pixel[R] = UBYTE((pixel[R] * a + 0xff) >> 8);
-                pixel[G] = UBYTE((pixel[G] * a + 0xff) >> 8);
-                pixel[B] = UBYTE((pixel[B] * a + 0xff) >> 8);
+                pixel[R] = uint8_t((pixel[R] * a + 0xff) >> 8);
+                pixel[G] = uint8_t((pixel[G] * a + 0xff) >> 8);
+                pixel[B] = uint8_t((pixel[B] * a + 0xff) >> 8);
              }
          }
          pixel += 4;
@@ -1585,7 +1549,7 @@ static ERR BITMAP_Query(extBitmap *Self)
 {
    pf::Log log;
    OBJECTID display_id;
-   LONG i;
+   int i;
 
    log.msg(VLF::BRANCH|VLF::DETAIL, "Bitmap: %p, Depth: %d, Width: %d, Height: %d", Self, Self->BitsPerPixel, Self->Width, Self->Height);
 
@@ -1597,8 +1561,8 @@ static ERR BITMAP_Query(extBitmap *Self)
       if ((Self->DataFlags & MEM::TEXTURE) != MEM::NIL) {
          // OpenGL requires bitmap textures to be a power of 2.
 
-         LONG new_width = nearestPower(Self->Width);
-         LONG new_height = nearestPower(Self->Height);
+         int new_width = nearestPower(Self->Width);
+         int new_height = nearestPower(Self->Height);
 
          if (new_width != Self->Width) {
             log.msg("Extending bitmap width from %d to %d for OpenGL.", Self->Width, new_width);
@@ -1633,7 +1597,7 @@ static ERR BITMAP_Query(extBitmap *Self)
       Self->BytesPerPixel = 1;
    }
 
-   // If no type has been set, use the type that is native to the system that Parasol is running on.
+   // If no type has been set, use the type that is native to the system that Kōtuku is running on.
 
    if (Self->Type IS BMP::NIL) Self->Type = BMP::CHUNKY;
 
@@ -1756,7 +1720,7 @@ static ERR BITMAP_Read(extBitmap *Self, struct acRead *Args)
    if (!Self->Data) return ERR::NoData;
    if ((!Args) or (!Args->Buffer)) return ERR::NullArgs;
 
-   LONG len = Args->Length;
+   int len = Args->Length;
    if (Self->Position + len > Self->Size) len = Self->Size - Self->Position;
    copymem(Self->Data + Self->Position, Args->Buffer, len);
    Self->Position += len;
@@ -1785,19 +1749,19 @@ FieldNotSet
 static ERR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
 {
    pf::Log log;
-   LONG width, height, bytewidth, bpp, amtcolours, size;
+   int width, height, bytewidth, bpp, amtcolours, size;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
    auto origbpp = Self->BitsPerPixel;
 
-   if (Args->Width > 0) width = (LONG)Args->Width;
+   if (Args->Width > 0) width = (int)Args->Width;
    else width = Self->Width;
 
-   if (Args->Height > 0) height = (LONG)Args->Height;
+   if (Args->Height > 0) height = (int)Args->Height;
    else height = Self->Height;
 
-   if ((Args->Depth > 0) and ((Self->Flags & BMF::FIXED_DEPTH) IS BMF::NIL)) bpp = (LONG)Args->Depth;
+   if ((Args->Depth > 0) and ((Self->Flags & BMF::FIXED_DEPTH) IS BMF::NIL)) bpp = (int)Args->Depth;
    else bpp = Self->BitsPerPixel;
 
    // If the NEVER_SHRINK option is set, the width and height may not be set to anything less than what is current.
@@ -1815,7 +1779,7 @@ static ERR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
 
    // Calculate type-dependent values
 
-   WORD bytesperpixel;
+   int16_t bytesperpixel;
    switch(bpp) {
       case 1:  bytesperpixel = 1; amtcolours = 2; break;
       case 8:  bytesperpixel = 1; amtcolours = 256; break;
@@ -1830,8 +1794,8 @@ static ERR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
    if (Self->Type IS BMP::PLANAR) bytewidth = (width + (width % 16))/8;
    else bytewidth = width * bytesperpixel;
 
-   LONG linewidth = ALIGN32(bytewidth);
-   LONG planemod = bytewidth * height;
+   int linewidth = ALIGN32(bytewidth);
+   int planemod = bytewidth * height;
 
    if (Self->Type IS BMP::PLANAR) size = linewidth * height * bpp;
    else size = linewidth * height;
@@ -1859,7 +1823,7 @@ static ERR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
    else if (Self->x11.XShmImage);
    #endif
    else if ((Self->Data) and (Self->prvAFlags & BF_DATA)) {
-      UBYTE *data;
+      uint8_t *data;
       if ((size <= Self->Size) and (size / Self->Size > 0.5)) { // Do nothing when shrinking unless able to save considerable resources
          size = Self->Size;
       }
@@ -1887,14 +1851,14 @@ setfields:
    Self->Clip.Bottom    = height;
 
 #ifdef __xwindows__
-   WORD alignment;
+   int16_t alignment;
    if (Self->x11.XShmImage) {
       Self->x11.XShmImage = false; // Set to FALSE in case we fail (will drop through to standard XImage support)
       XShmDetach(XDisplay, &Self->x11.ShmInfo);  // Remove the previous attachment
       XSync(XDisplay, False);
 
       free_shm(Self->Data, Self->x11.ShmInfo.shmid);
-      Self->Data = NULL;
+      Self->Data = nullptr;
 
       alloc_shm(size, &Self->Data, &Self->x11.ShmInfo.shmid);
 
@@ -1974,32 +1938,32 @@ static ERR BITMAP_SaveImage(extBitmap *Self, struct acSaveImage *Args)
 {
    pf::Log log;
    struct {
-      BYTE Signature;
-      BYTE Version;
-      BYTE Encoding;
-      BYTE BitsPixel;
-      WORD XMin, YMin;
-      WORD XMax, YMax;
-      WORD XDPI, YDPI; // DPI
-      UBYTE palette[48];
-      BYTE Reserved;
-      BYTE NumPlanes;
-      WORD BytesLine;
-      WORD PalType;
-      WORD XRes;
-      WORD YRes;
-      UBYTE dummy[54];
+      int8_t  Signature;
+      int8_t  Version;
+      int8_t  Encoding;
+      int8_t  BitsPixel;
+      int16_t XMin, YMin;
+      int16_t XMax, YMax;
+      int16_t XDPI, YDPI; // DPI
+      uint8_t palette[48];
+      int8_t  Reserved;
+      int8_t  NumPlanes;
+      int16_t BytesLine;
+      int16_t PalType;
+      int16_t XRes;
+      int16_t YRes;
+      uint8_t dummy[54];
    } pcx;
    RGB8 rgb;
-   UBYTE *buffer, lastpixel, newpixel;
-   LONG i, j, p, size;
+   uint8_t *buffer, lastpixel, newpixel;
+   int i, j, p, size;
 
    if ((!Args) or (!Args->Dest)) return log.warning(ERR::NullArgs);
 
    log.branch("Save To #%d", Args->Dest->UID);
 
-   LONG width = Self->Clip.Right - Self->Clip.Left;
-   LONG height = Self->Clip.Bottom - Self->Clip.Top;
+   int width = Self->Clip.Right - Self->Clip.Left;
+   int height = Self->Clip.Bottom - Self->Clip.Top;
 
    // Create PCX Header
 
@@ -2023,13 +1987,13 @@ static ERR BITMAP_SaveImage(extBitmap *Self, struct acSaveImage *Args)
 
    size = width * height * pcx.NumPlanes;
    if (AllocMemory(size, MEM::DATA|MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
-      acWrite(Args->Dest, &pcx, sizeof(pcx), NULL);
+      acWrite(Args->Dest, &pcx, sizeof(pcx), nullptr);
 
-      LONG dp = 0;
+      int dp = 0;
       for (i=Self->Clip.Top; i < (Self->Clip.Bottom); i++) {
          if (pcx.NumPlanes IS 1) { // Save as a 256 colour image
             lastpixel = Self->ReadUCPixel(Self, Self->Clip.Left, i);
-            UBYTE counter = 1;
+            uint8_t counter = 1;
             for (j=Self->Clip.Left+1; j <= width; j++) {
                newpixel = Self->ReadUCPixel(Self, j, i);
 
@@ -2066,7 +2030,7 @@ static ERR BITMAP_SaveImage(extBitmap *Self, struct acSaveImage *Args)
                   case 1:  lastpixel = rgb.Green; break;
                   default: lastpixel = rgb.Blue;
                }
-               UBYTE counter = 1;
+               uint8_t counter = 1;
 
                for (j=Self->Clip.Left+1; j < Self->Clip.Right; j++) {
                   Self->ReadUCRPixel(Self, j, i, &rgb);
@@ -2110,22 +2074,22 @@ static ERR BITMAP_SaveImage(extBitmap *Self, struct acSaveImage *Args)
          }
       }
 
-      acWrite(Args->Dest, buffer, dp, NULL);
+      acWrite(Args->Dest, buffer, dp, nullptr);
       FreeResource(buffer);
 
       // Setup palette
 
       if (Self->AmtColours <= 256) {
-         UBYTE palette[(256 * 3) + 1];
-         LONG j = 0;
+         uint8_t palette[(256 * 3) + 1];
+         int j = 0;
          palette[j++] = 12;          // Palette identifier
-         for (LONG i=0; i < 256; i++) {
+         for (int i=0; i < 256; i++) {
             palette[j++] = Self->Palette->Col[i].Red;
             palette[j++] = Self->Palette->Col[i].Green;
             palette[j++] = Self->Palette->Col[i].Blue;
          }
 
-         acWrite(Args->Dest, palette, sizeof(palette), NULL);
+         acWrite(Args->Dest, palette, sizeof(palette), nullptr);
       }
 
       return ERR::Okay;
@@ -2142,9 +2106,9 @@ Seek: Changes the current byte position for read/write operations.
 
 static ERR BITMAP_Seek(extBitmap *Self, struct acSeek *Args)
 {
-   if (Args->Position IS SEEK::START) Self->Position = (LONG)Args->Offset;
-   else if (Args->Position IS SEEK::END) Self->Position = (LONG)(Self->Size - Args->Offset);
-   else if (Args->Position IS SEEK::CURRENT) Self->Position = (LONG)(Self->Position + Args->Offset);
+   if (Args->Position IS SEEK::START) Self->Position = (int)Args->Offset;
+   else if (Args->Position IS SEEK::END) Self->Position = (int)(Self->Size - Args->Offset);
+   else if (Args->Position IS SEEK::CURRENT) Self->Position = (int)(Self->Position + Args->Offset);
    else return ERR::Args;
 
    if (Self->Position > Self->Size) Self->Position = Self->Size;
@@ -2204,18 +2168,23 @@ Write: Writes raw image data to a bitmap object.
 
 static ERR BITMAP_Write(extBitmap *Self, struct acWrite *Args)
 {
-   if (Self->Data) {
-      auto Data = (BYTE *)Self->Data + Self->Position;
-      LONG amt_bytes = 0;
-      while (Args->Length > 0) {
-         Data[amt_bytes] = ((UBYTE *)Args->Buffer)[amt_bytes];
-         Args->Length--;
-         amt_bytes++;
-      }
-      Self->Position += amt_bytes;
-      return ERR::Okay;
-   }
-   else return ERR::NoData;
+   if (!Args) return ERR::NullArgs;
+
+   Args->Result = 0;
+
+   if (!Self->Data) return ERR::NoData;
+   if (Args->Length <= 0) return ERR::Okay;
+   if (!Args->Buffer) return ERR::NullArgs;
+
+   int available = Self->Size - Self->Position;
+   if (available <= 0) return ERR::OutOfSpace;
+   if (Args->Length > available) return ERR::OutOfSpace;
+
+   copymem(Args->Buffer, Self->Data + Self->Position, Args->Length);
+   Self->Position += Args->Length;
+   Args->Result = Args->Length;
+
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -2264,7 +2233,7 @@ directly.
 
 *********************************************************************************************************************/
 
-static ERR SET_BkgdIndex(extBitmap *Self, LONG Index)
+static ERR SET_BkgdIndex(extBitmap *Self, int Index)
 {
    if ((Index < 0) or (Index > 255)) return ERR::OutOfRange;
    Self->BkgdIndex = Index;
@@ -2273,6 +2242,12 @@ static ERR SET_BkgdIndex(extBitmap *Self, LONG Index)
 }
 
 /*********************************************************************************************************************
+
+-FIELD-
+BlendMode: Defines the blending algorithm to use when rendering transparent pixels.
+
+The BlendMode field defines the blending algorithm to use when rendering transparent pixels.  The default value is
+`AUTO` which will use the best blending algorithm available for the current graphics context.
 
 -FIELD-
 BytesPerPixel: The number of bytes per pixel.
@@ -2393,7 +2368,7 @@ initialisation process to allocate the correct amount of memory for you by not i
 
 *********************************************************************************************************************/
 
-ERR SET_Data(extBitmap *Self, UBYTE *Value)
+ERR SET_Data(extBitmap *Self, uint8_t *Value)
 {
 #ifdef __xwindows__
    if (Self->x11.XShmImage) return ERR::NotPossible;
@@ -2441,7 +2416,7 @@ This field points to an internal C function that can be used for drawing pixels 
 function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will
 be performed (meaning it is possible to supply invalid coordinates that would result in a segfault).
 
-The prototype of the DrawUCPixel function is `Function(*Bitmap, LONG X, LONG Y, ULONG Colour)`.
+The prototype of the DrawUCPixel function is `Function(*Bitmap, LONG X, LONG Y, uint32_t Colour)`.
 
 The new pixel value must be defined in the `Colour` parameter.
 
@@ -2452,7 +2427,7 @@ This field points to an internal C function that can be used for drawing pixels 
 the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks
 will be performed (meaning it is possible to supply an invalid address that would result in a segfault).
 
-The prototype of the DrawUCRIndex function is `Function(*Bitmap, UBYTE *Data, RGB8 *RGB)`.
+The prototype of the DrawUCRIndex function is `Function(*Bitmap, uint8_t *Data, RGB8 *RGB)`.
 
 The Data parameter must point to a location within the Bitmap's graphical address space. The new pixel value must be
 defined in the `RGB` parameter.
@@ -2575,7 +2550,7 @@ ERR SET_Palette(extBitmap *Self, RGBPalette *SrcPalette)
       }
 
       Self->Palette->AmtColours = SrcPalette->AmtColours;
-      WORD i = SrcPalette->AmtColours-1;
+      int16_t i = SrcPalette->AmtColours-1;
       while (i > 0) {
          Self->Palette->Col[i] = SrcPalette->Col[i];
          i--;
@@ -2593,7 +2568,7 @@ ERR SET_Palette(extBitmap *Self, RGBPalette *SrcPalette)
 -FIELD-
 PlaneMod: The differential between each bitmap plane.
 
-This field specifies the distance (in bytes) between each bitplane.  For non-planar types like `CHUNKY`, this field 
+This field specifies the distance (in bytes) between each bitplane.  For non-planar types like `CHUNKY`, this field
 will reflect the total size of the bitmap.  The calculation used for `PLANAR` types is `ByteWidth * Height`.
 
 -FIELD-
@@ -2609,7 +2584,7 @@ This field points to an internal C function that can be used for reading pixels 
 the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks
 will be performed (meaning it is possible to supply an invalid address that would result in a segfault).
 
-The prototype of the ReadUCRIndex function is `Function(*Bitmap, UBYTE *Data, RGB8 *RGB)`.
+The prototype of the ReadUCRIndex function is `Function(*Bitmap, uint8_t *Data, RGB8 *RGB)`.
 
 The `Data` parameter must point to a location within the Bitmap's graphical address space. The pixel value will be
 returned in the `RGB` parameter.
@@ -2683,7 +2658,7 @@ NOTE: This field should never be set if the bitmap utilises alpha transparency.
 
 *********************************************************************************************************************/
 
-static ERR SET_TransIndex(extBitmap *Self, LONG Index)
+static ERR SET_TransIndex(extBitmap *Self, int Index)
 {
    if ((Index < 0) or (Index > 255)) return ERR::OutOfRange;
 
@@ -2704,13 +2679,6 @@ This field defines the graphics data type - either `PLANAR` (required for 1-bit 
 -FIELD-
 Width: The width of the bitmap, in pixels.
 
--FIELD-
-XOffset: Private. Provided for surface/video drawing purposes - considered too advanced for standard use.
-
--FIELD-
-YOffset: Private. Provided for surface/video drawing purposes - considered too advanced for standard use.
--END-
-
 *********************************************************************************************************************/
 
 //********************************************************************************************************************
@@ -2725,13 +2693,13 @@ static ERR CalculatePixelRoutines(extBitmap *Self)
       Self->ReadUCRIndex = MemReadRGBIndexPlanar;
       Self->DrawUCPixel  = MemDrawPixelPlanar;
       Self->DrawUCRPixel = DrawRGBPixelPlanar;
-      Self->DrawUCRIndex = NULL;
+      Self->DrawUCRIndex = nullptr;
       return ERR::Okay;
    }
 
    if (Self->Type != BMP::CHUNKY) {
-      log.warning("Unsupported Bitmap->Type %d.", LONG(Self->Type));
-      return ERR::Failed;
+      log.warning("Unsupported Bitmap->Type %d.", int(Self->Type));
+      return ERR::NoSupport;
    }
 
 #ifdef _WIN32
@@ -2746,7 +2714,7 @@ static ERR CalculatePixelRoutines(extBitmap *Self)
       return ERR::Okay;
    }
 
-#else
+#elif defined(__xwindows__) or defined(__ANDROID__) or defined(_GLES_)
 
    if ((Self->DataFlags & (MEM::VIDEO|MEM::TEXTURE)) != MEM::NIL) {
       switch(Self->BytesPerPixel) {
@@ -2762,10 +2730,10 @@ static ERR CalculatePixelRoutines(extBitmap *Self)
          case 2:
             Self->ReadUCPixel  = &VideoReadPixel16;
             Self->ReadUCRPixel = &VideoReadRGBPixel16;
-            Self->ReadUCRIndex = (void (*)(objBitmap *, UBYTE *, RGB8 *))&VideoReadRGBIndex16;
+            Self->ReadUCRIndex = (void (*)(objBitmap *, uint8_t *, RGB8 *))&VideoReadRGBIndex16;
             Self->DrawUCPixel  = &VideoDrawPixel16;
             Self->DrawUCRPixel = &VideoDrawRGBPixel16;
-            Self->DrawUCRIndex = (void (*)(objBitmap *, UBYTE *, RGB8 *))&VideoDrawRGBIndex16;
+            Self->DrawUCRIndex = (void (*)(objBitmap *, uint8_t *, RGB8 *))&VideoDrawRGBIndex16;
             break;
 
          case 3:
@@ -2780,15 +2748,15 @@ static ERR CalculatePixelRoutines(extBitmap *Self)
          case 4:
             Self->ReadUCPixel  = &VideoReadPixel32;
             Self->ReadUCRPixel = &VideoReadRGBPixel32;
-            Self->ReadUCRIndex = (void (*)(objBitmap *, UBYTE *, RGB8 *))&VideoReadRGBIndex32;
+            Self->ReadUCRIndex = (void (*)(objBitmap *, uint8_t *, RGB8 *))&VideoReadRGBIndex32;
             Self->DrawUCPixel  = &VideoDrawPixel32;
             Self->DrawUCRPixel = &VideoDrawRGBPixel32;
-            Self->DrawUCRIndex = (void (*)(objBitmap *, UBYTE *, RGB8 *))&VideoDrawRGBIndex32;
+            Self->DrawUCRIndex = (void (*)(objBitmap *, uint8_t *, RGB8 *))&VideoDrawRGBIndex32;
             break;
 
          default:
             log.warning("Unsupported Bitmap->BytesPerPixel %d.", Self->BytesPerPixel);
-            return ERR::Failed;
+            return ERR::NoSupport;
       }
       return ERR::Okay;
    }
@@ -2807,10 +2775,10 @@ static ERR CalculatePixelRoutines(extBitmap *Self)
       case 2:
          Self->ReadUCPixel  = MemReadPixel16;
          Self->ReadUCRPixel = MemReadRGBPixel16;
-         Self->ReadUCRIndex = (void (*)(objBitmap *, UBYTE *, RGB8 *))MemReadRGBIndex16;
+         Self->ReadUCRIndex = (void (*)(objBitmap *, uint8_t *, RGB8 *))MemReadRGBIndex16;
          Self->DrawUCPixel  = MemDrawPixel16;
          Self->DrawUCRPixel = MemDrawRGBPixel16;
-         Self->DrawUCRIndex = (void (*)(objBitmap *, UBYTE *, RGB8 *))MemDrawRGBIndex16;
+         Self->DrawUCRIndex = (void (*)(objBitmap *, uint8_t *, RGB8 *))MemDrawRGBIndex16;
          break;
 
       case 3:
@@ -2835,15 +2803,15 @@ static ERR CalculatePixelRoutines(extBitmap *Self)
       case 4:
          Self->ReadUCPixel  = MemReadPixel32;
          Self->ReadUCRPixel = MemReadRGBPixel32;
-         Self->ReadUCRIndex = (void (*)(objBitmap *, UBYTE *, RGB8 *))MemReadRGBIndex32;
+         Self->ReadUCRIndex = (void (*)(objBitmap *, uint8_t *, RGB8 *))MemReadRGBIndex32;
          Self->DrawUCPixel  = MemDrawPixel32;
          Self->DrawUCRPixel = MemDrawRGBPixel32;
-         Self->DrawUCRIndex = (void (*)(objBitmap *, UBYTE *, RGB8 *))MemDrawRGBIndex32;
+         Self->DrawUCRIndex = (void (*)(objBitmap *, uint8_t *, RGB8 *))MemDrawRGBIndex32;
          break;
 
       default:
         log.warning("Unsupported Bitmap->BytesPerPixel %d.", Self->BytesPerPixel);
-        return ERR::Failed;
+        return ERR::NoSupport;
    }
 
    return ERR::Okay;
@@ -2868,41 +2836,40 @@ static ERR CalculatePixelRoutines(extBitmap *Self)
 #include "class_bitmap_def.c"
 
 static const FieldArray clBitmapFields[] = {
-   { "Palette",       FDF_POINTER|FDF_RW, NULL, SET_Palette },
+   { "Palette",       FDF_POINTER|FDF_RW, nullptr, SET_Palette },
    { "ColourFormat",  FDF_POINTER|FDF_STRUCT|FDF_R, NULL, NULL, "ColourFormat" },
-   { "DrawUCPixel",   FDF_POINTER|FDF_R, NULL, NULL, &argsDrawUCPixel },
-   { "DrawUCRPixel",  FDF_POINTER|FDF_R, NULL, NULL, &argsDrawUCRPixel },
-   { "ReadUCPixel",   FDF_POINTER|FDF_R, NULL, NULL, &argsReadUCPixel },
-   { "ReadUCRPixel",  FDF_POINTER|FDF_R, NULL, NULL, &argsReadUCRPixel },
-   { "ReadUCRIndex",  FDF_POINTER|FDF_R, NULL, NULL, &argsReadUCRIndex },
-   { "DrawUCRIndex",  FDF_POINTER|FDF_R, NULL, NULL, &argsDrawUCRIndex },
-   { "Data",          FDF_POINTER|FDF_RI, NULL, SET_Data },
-   { "Width",         FDF_LONG|FDF_RI, NULL, NULL },
-   { "ByteWidth",     FDF_LONG|FDF_R, NULL, NULL },
-   { "Height",        FDF_LONG|FDF_RI, NULL, NULL },
-   { "Type",          FDF_LONG|FDF_RI|FDF_LOOKUP, NULL, NULL, &clBitmapType },
-   { "LineWidth",     FDF_LONG|FDF_R },
-   { "PlaneMod",      FDF_LONG|FDF_R },
-   { "ClipLeft",      FDF_LONG|FDF_RW },
-   { "ClipRight",     FDF_LONG|FDF_RW },
-   { "ClipBottom",    FDF_LONG|FDF_RW },
-   { "ClipTop",       FDF_LONG|FDF_RW },
-   { "Size",          FDF_LONG|FDF_R },
-   { "DataFlags",     FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clDataFlags },
-   { "AmtColours",    FDF_LONG|FDF_RI },
-   { "Flags",         FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clBitmapFlags },
-   { "TransIndex",    FDF_LONG|FDF_RW, NULL, SET_TransIndex },
-   { "BytesPerPixel", FDF_LONG|FDF_RI },
-   { "BitsPerPixel",  FDF_LONG|FDF_RI },
-   { "Position",      FDF_LONG|FDF_R },
-   { "XOffset",       FDF_LONG|FDF_SYSTEM|FDF_RW },
-   { "YOffset",       FDF_LONG|FDF_SYSTEM|FDF_RW },
-   { "Opacity",       FDF_LONG|FDF_RW },
-   { "DataID",        FDF_LONG|FDF_SYSTEM|FDF_R },
-   { "TransColour",   FDF_RGB|FDF_RW, NULL, SET_Trans },
-   { "Bkgd",          FDF_RGB|FDF_RW, NULL, SET_Bkgd },
-   { "BkgdIndex",     FDF_LONG|FDF_RW, NULL, SET_BkgdIndex },
-   { "ColourSpace",   FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clBitmapColourSpace },
+   { "DrawUCPixel",   FDF_POINTER|FDF_R, nullptr, nullptr, &argsDrawUCPixel },
+   { "DrawUCRPixel",  FDF_POINTER|FDF_R, nullptr, nullptr, &argsDrawUCRPixel },
+   { "ReadUCPixel",   FDF_POINTER|FDF_R, nullptr, nullptr, &argsReadUCPixel },
+   { "ReadUCRPixel",  FDF_POINTER|FDF_R, nullptr, nullptr, &argsReadUCRPixel },
+   { "ReadUCRIndex",  FDF_POINTER|FDF_R, nullptr, nullptr, &argsReadUCRIndex },
+   { "DrawUCRIndex",  FDF_POINTER|FDF_R, nullptr, nullptr, &argsDrawUCRIndex },
+   { "Data",          FDF_POINTER|FDF_RI, nullptr, SET_Data },
+   { "Width",         FDF_INT|FDF_RI, nullptr, nullptr },
+   { "ByteWidth",     FDF_INT|FDF_R, nullptr, nullptr },
+   { "Height",        FDF_INT|FDF_RI, nullptr, nullptr },
+   { "Type",          FDF_INT|FDF_RI|FDF_LOOKUP, nullptr, nullptr, &clBitmapType },
+   { "LineWidth",     FDF_INT|FDF_R },
+   { "PlaneMod",      FDF_INT|FDF_R },
+   { "ClipLeft",      FDF_INT|FDF_RW },
+   { "ClipRight",     FDF_INT|FDF_RW },
+   { "ClipBottom",    FDF_INT|FDF_RW },
+   { "ClipTop",       FDF_INT|FDF_RW },
+   { "Size",          FDF_INT|FDF_R },
+   { "DataFlags",     FDF_INTFLAGS|FDF_RI, nullptr, nullptr, &clDataFlags },
+   { "AmtColours",    FDF_INT|FDF_RI },
+   { "Flags",         FDF_INTFLAGS|FDF_RI, nullptr, nullptr, &clBitmapFlags },
+   { "TransIndex",    FDF_INT|FDF_RW, nullptr, SET_TransIndex },
+   { "BytesPerPixel", FDF_INT|FDF_RI },
+   { "BitsPerPixel",  FDF_INT|FDF_RI },
+   { "Position",      FDF_INT|FDF_R },
+   { "Opacity",       FDF_INT|FDF_RW },
+   { "BlendMode",     FDF_INT|FDF_RW|FDF_LOOKUP, nullptr, nullptr, &clBitmapBlendMode },
+   { "DataID",        FDF_INT|FDF_SYSTEM|FDF_R },
+   { "TransColour",   FDF_RGB|FDF_RW, nullptr, SET_Trans },
+   { "Bkgd",          FDF_RGB|FDF_RW, nullptr, SET_Bkgd },
+   { "BkgdIndex",     FDF_INT|FDF_RW, nullptr, SET_BkgdIndex },
+   { "ColourSpace",   FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clBitmapColourSpace },
    // Virtual fields
    { "Clip",          FDF_POINTER|FDF_STRUCT|FDF_RW, GET_Clip, SET_Clip },
    { "Handle",        FDF_POINTER|FDF_SYSTEM|FDF_RW, GET_Handle, SET_Handle },
@@ -2925,4 +2892,3 @@ ERR create_bitmap_class(void)
 
    return clBitmap ? ERR::Okay : ERR::AddClass;
 }
-

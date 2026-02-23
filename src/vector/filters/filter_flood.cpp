@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -22,7 +22,7 @@ class extFloodFX : public extFilterEffect {
 
    FRGB   Colour;
    RGB8   ColourRGB; // A cached conversion of the FRGB value
-   DOUBLE Opacity;
+   double Opacity;
 };
 
 //********************************************************************************************************************
@@ -85,14 +85,14 @@ The colour is complemented by the #Opacity field.
 
 *********************************************************************************************************************/
 
-static ERR FLOODFX_GET_Colour(extFloodFX *Self, FLOAT **Value, LONG *Elements)
+static ERR FLOODFX_GET_Colour(extFloodFX *Self, float **Value, int *Elements)
 {
-   *Value = (FLOAT *)&Self->Colour;
+   *Value = (float *)&Self->Colour;
    *Elements = 4;
    return ERR::Okay;
 }
 
-static ERR FLOODFX_SET_Colour(extFloodFX *Self, FLOAT *Value, LONG Elements)
+static ERR FLOODFX_SET_Colour(extFloodFX *Self, float *Value, int Elements)
 {
    pf::Log log;
    if (Value) {
@@ -120,13 +120,13 @@ Opacity: Modifies the opacity of the flood colour.
 
 *********************************************************************************************************************/
 
-static ERR FLOODFX_GET_Opacity(extFloodFX *Self, DOUBLE *Value)
+static ERR FLOODFX_GET_Opacity(extFloodFX *Self, double *Value)
 {
    *Value = Self->Opacity;
    return ERR::Okay;
 }
 
-static ERR FLOODFX_SET_Opacity(extFloodFX *Self, DOUBLE Value)
+static ERR FLOODFX_SET_Opacity(extFloodFX *Self, double Value)
 {
    pf::Log log;
    if ((Value >= 0.0) and (Value <= 1.0)) {
