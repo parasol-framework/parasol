@@ -736,7 +736,7 @@ int64_t SetResource(RES Resource, int64_t Value)
          break;
 
       default:
-         log.warning("Unrecognised resource ID: %d, Value: %" PF64, int(Resource), (int64_t)Value);
+         log.warning("Unrecognised resource ID: %d, Value: %" PRId64, int(Resource), (int64_t)Value);
    }
 
    return oldvalue;
