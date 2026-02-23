@@ -151,9 +151,9 @@ int16_t glCodeIndex     = CP_FINISHED;
 int16_t glLastCodeIndex = 0;
 int16_t glSystemState   = -1; // Initialisation state is -1
 #ifndef NDEBUG
-   int16_t glLogLevel = 8; // Thread global
+   int16_t glLogLevel = 2; // Thread global.  Default to warning level for debug builds.
 #else
-   int16_t glLogLevel  = 0;
+   int16_t glLogLevel = 0;
 #endif
 int16_t glMaxDepth     = 20; // Thread global
 bool glShowIO       = false;

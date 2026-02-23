@@ -91,11 +91,13 @@ static void msg_thread_complete(ACTIONID ActionID, OBJECTPTR Object, ERR Error, 
 
 static int async_script(lua_State *Lua)
 {
-   pf::Log log(__FUNCTION__);
+   pf::Log log("async.script");
 
    GCobject *gc_script = lua_toobject(Lua, 1);
    if (gc_script->classptr->ClassID != CLASSID::SCRIPT) luaL_error(Lua, ERR::WrongClass);
    if (not gc_script->ptr) luaL_error(Lua, ERR::ObjectCorrupt);
+
+   log.branch("Script: %d", gc_script->uid);
 
    gc_script->ptr->pin(); // Prevent the object from being freed while the thread is running.
 
@@ -138,7 +140,7 @@ static int async_script(lua_State *Lua)
 
 static int async_action(lua_State *Lua)
 {
-   pf::Log log(__FUNCTION__);
+   pf::Log log("async.action");
 
    // Args: Object (1), Action (2), Callback (3), Key (4), Parameters...
 
@@ -235,7 +237,7 @@ static int async_action(lua_State *Lua)
 
 static int async_method(lua_State *Lua)
 {
-   pf::Log log(__FUNCTION__);
+   pf::Log log("async.method");
 
    auto gc_obj = lj_lib_checkobject(Lua, 1);
    if (not gc_obj->ptr) luaL_error(Lua, ERR::ObjectCorrupt);
@@ -345,6 +347,8 @@ static int async_method(lua_State *Lua)
 
 static int async_wait(lua_State *Lua)
 {
+   pf::Log log("async.wait");
+
    // Collect object IDs from argument 1 into a zero-terminated array.
 
    std::vector<OBJECTID> ids;
