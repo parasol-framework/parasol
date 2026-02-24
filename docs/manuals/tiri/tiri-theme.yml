@@ -3,10 +3,10 @@ extends: default
 font:
   catalog:
     Noto Serif:
-      normal: fonts/NotoSerif-Regular.ttf
-      bold: fonts/NotoSerif-Bold.ttf
-      italic: fonts/NotoSerif-Italic.ttf
-      bold_italic: fonts/NotoSerif-BoldItalic.ttf
+      normal: ../../../data/fonts/truetype/NotoSerif-VariableFont.ttf
+      bold: ../../../data/fonts/truetype/NotoSerif-VariableFont.ttf
+      italic: ../../../data/fonts/truetype/NotoSerif-VariableFont.ttf
+      bold_italic: ../../../data/fonts/truetype/NotoSerif-VariableFont.ttf
     Noto Sans:
       normal: ../../../data/fonts/truetype/NotoSans-VariableFont.ttf
       bold: ../../../data/fonts/truetype/NotoSans-VariableFont.ttf
