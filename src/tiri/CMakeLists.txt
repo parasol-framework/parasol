@@ -713,7 +713,7 @@ set (TIRI_TESTS
    jitoptions fstring const import_scope unicode ellipsis safe_nav close type_annotations type_fixing
    type_inference jit pipe pipe_iteration arrow_functions result_filter thunks deferred_expr shadow_assert ranges
    annotations locality anonymous_for key_values debug_filesources compound choose_from flow table_slice
-   try_except import processing metatables with
+   try_except import processing metatables with thunk_table_index
 )
 
 foreach (TEST_NAME ${TIRI_TESTS})
