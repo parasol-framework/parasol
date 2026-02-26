@@ -65,14 +65,14 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function displayError(Message)
+function displayError(Message:str)
    page = glBody .. [[<page name="Index">]] .. Message .. [[</page>]]
    displayInlineDoc(page, { })
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function configureScrollbar(View, Page)
+function configureScrollbar(View:obj, Page:obj)
    if glScrollbar then
       glScrollbar.changeViewport(View, Page)
    else
@@ -87,7 +87,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function displaySVG(Path)
+function displaySVG(Path:str)
    vp = glViewArea.new('VectorViewport', { x=0, y=0, xOffset=0, yOffset=0, overflow='hidden' })
    svg = vp.new('svg', { target=vp, path=Path, flags=SVF_ENFORCE_TRACKING })
 
@@ -99,7 +99,7 @@ function displaySVG(Path)
    end
 end
 
-function displayDoc(Path)
+function displayDoc(Path:str)
    doc = glViewArea.new('document', { path = Path .. '#Index' })
 
    configureScrollbar(doc.view, doc.page)
@@ -109,7 +109,7 @@ function displayDoc(Path)
    end
 end
 
-function displayImage(Path)
+function displayImage(Path:str)
    try
       pic = glWindow.scene.new('picture', { src=Path, flags='ForceAlpha32' })
       img = glWindow.scene.new('VectorImage', { picture = pic })
@@ -135,14 +135,14 @@ function displayImage(Path)
    end
 end
 
-function displayText(Path)
+function displayText(Path:str)
 
 end
 
-function displayFile(Path)
+function displayFile(Path:str)
    msg('Load file ' .. (Path ?? 'NIL'))
 
-   if not Path then return end
+   Path ?? return
 
    if glTerminateView then
       glTerminateView()
@@ -250,8 +250,9 @@ end
                   modal       = true,
                   popOver     = glWindow.surface,
                   warnExists  = true,
+                  allowNew    = true,
                   feedback = function(Dialog, Path, Files)
-                     if not Files then return end
+                     Files ?? return
 
                      target_file = Path .. Files[0].filename
 
@@ -259,7 +260,7 @@ end
                      if bmp then
                         pic = obj.new('picture', {
                            width = bmp.width, height = bmp.height, bitsPerPixel = bmp.bitsPerPixel,
-                           flags = 'New|FORCE_ALPHA_32'
+                           flags = PCF_NEW|PCF_FORCE_ALPHA_32
                         })
                         bmp.acCopyData(pic.bitmap)
                         file = obj.new('file', { flags=FL_NEW|FL_WRITE, path=target_file })

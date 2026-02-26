@@ -100,7 +100,7 @@ gui.window = function(Options)
          return {
             x = self.surface.x, y = self.surface.y, width = self.surface.width, height = self.surface.height
          }
-      else
+      else 
          return {
             x = self.surface.x + self.client.left, y = self.surface.y + self.client.top,
             width = self.surface.width - self.client.left - self.client.right,
