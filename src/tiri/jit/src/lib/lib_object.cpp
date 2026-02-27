@@ -666,6 +666,7 @@ ERR push_object_id(lua_State *Lua, OBJECTID ObjectID)
 
 //********************************************************************************************************************
 // Object instance methods (accessed via metatable, not library functions)
+// State is maintained globally, so other object variables reference the same state table.
 
 static int object_state(lua_State *Lua)
 {

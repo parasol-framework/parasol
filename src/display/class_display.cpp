@@ -510,14 +510,6 @@ static ERR DISPLAY_Init(extDisplay *Self)
          return ERR::NoSupport;
       }
 
-      if (xbpp IS 24) {
-         static bool bpp_warning = false;
-         if (!bpp_warning) {
-            bpp_warning = true;
-            log.warning("Running in 32bpp instead of 24bpp is strongly recommended.");
-         }
-      }
-
       int xbytes;
       if (xbpp <= 8) xbytes = 1;
       else if (xbpp <= 16) xbytes = 2;
@@ -536,6 +528,14 @@ static ERR DISPLAY_Init(extDisplay *Self)
             }
          }
          XFree(list);
+      }
+
+      if ((xbpp IS 24) and (xbytes IS 3)) {
+         static bool bpp_warning = false;
+         if (!bpp_warning) {
+            bpp_warning = true;
+            log.warning("Running in 32bpp instead of 24bpp is strongly recommended.");
+         }
       }
 
       #ifdef XRANDR_ENABLED

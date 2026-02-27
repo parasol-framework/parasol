@@ -40,24 +40,24 @@ io.search = function(Path:str, Options:table)
    end
 
    function dateLessThan(A, B) -- struct DateTime
-      if A.Year < B.Year then return true
-      elseif A.Year > B.Year then return false end
+      if A.year < B.year then return true
+      elseif A.year > B.year then return false end
 
       -- else years are equal, so test months
-      if A.Month < B.Month then return true
-      elseif A.Month > B.Month then return false end
+      if A.month < B.month then return true
+      elseif A.month > B.month then return false end
 
-      if A.Day < B.Day then return true
-      elseif A.Day > B.Day then return false end
+      if A.day < B.day then return true
+      elseif A.day > B.day then return false end
 
-      if A.Hour < B.Hour then return true
-      elseif A.Hour > B.Hour then return false end
+      if A.hour < B.hour then return true
+      elseif A.hour > B.hour then return false end
 
-      if A.Minute < B.Minute then return true
-      elseif A.Minute > B.Minute then return false end
+      if A.minute < B.minute then return true
+      elseif A.minute > B.minute then return false end
 
-      if A.Second < B.Second then return true
-      elseif A.Second > B.Second then return false end
+      if A.second < B.second then return true
+      elseif A.second > B.second then return false end
 
       return false -- Dates are exactly equal
    end
@@ -109,8 +109,8 @@ io.search = function(Path:str, Options:table)
 
          if lOptions.minSize?? and (lOptions.minSize > 0) and (fl.size < lOptions.minSize) then match = false end
          if lOptions.maxSize and (lOptions.maxSize >= 0) and (fl.size > lOptions.maxSize) then match = false end
-         if lOptions.minDateSet and dateLessThan(fl.modified, lOptions.minDate) then match = false end
-         if lOptions.maxDateSet and dateLessThan(lOptions.maxDate, fl.modified) then match = false end
+         if lOptions.minDateSet and dateLessThan(fl.date, lOptions.minDate) then match = false end
+         if lOptions.maxDateSet and dateLessThan(lOptions.maxDate, fl.date) then match = false end
 
          if match and (fl.flags & FL_FILE) != 0 then
             match = contentMatch(fl.path)
@@ -204,15 +204,11 @@ io.search = function(Path:str, Options:table)
    end
 
    if lOptions.maxDate then
-      err, max_date = mSys.StrReadDate(lOptions.maxDate)
-      assert(err is ERR_Okay, 'Invalid maxDate value.')
-      lOptions.maxDate = max_date
+      lOptions.maxDateSet = true
    end
 
    if lOptions.minDate then
-      err, min_date = mSys.StrReadDate(lOptions.minDate)
-      assert(err is ERR_Okay, 'Invalid minDate value.')
-      lOptions.minDate = min_date
+      lOptions.minDateSet = true
    end
 
    if type(Path) is 'table' or type(Path) is 'array' then
