@@ -141,6 +141,7 @@ cfg[0].apple    -- 'banana'
 cfg[0]['orange'] -- 'lemon'
 ----
 
+[[sec-raw-access]]
 ==== Raw Access
 
 The `rawget()`, `rawset()`, and `rawlen()` functions bypass metamethods entirely.

@@ -125,25 +125,7 @@ include::ch25_input_handling.adoc[]
 
 include::ch26_threading.adoc[]
 
-// Part V: Application Development
-
-= Application Development
-
-include::ch27_gui_programming.adoc[]
-
-include::ch28_widget_reference.adoc[]
-
-include::ch29_vector_graphics.adoc[]
-
-include::ch30_svg_integration.adoc[]
-
-include::ch31_animation_and_vfx.adoc[]
-
-include::ch32_networking.adoc[]
-
-include::ch33_document_engine.adoc[]
-
-// Part VI: Advanced Topics
+// Part V: Advanced Topics
 
 = Advanced Topics
 
@@ -159,7 +141,7 @@ include::ch38_logging_and_diagnostics.adoc[]
 
 include::ch39_embedding_tiri_in_cpp.adoc[]
 
-// Part VII: Tools
+// Part VI: Tools
 
 = Tools
 

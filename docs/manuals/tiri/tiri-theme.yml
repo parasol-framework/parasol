@@ -3,15 +3,15 @@ extends: default
 font:
   catalog:
     Noto Serif:
-      normal: ../../../data/fonts/truetype/NotoSerif-VariableFont.ttf
-      bold: ../../../data/fonts/truetype/NotoSerif-VariableFont.ttf
-      italic: ../../../data/fonts/truetype/NotoSerif-VariableFont.ttf
-      bold_italic: ../../../data/fonts/truetype/NotoSerif-VariableFont.ttf
+      normal: ../fonts/NotoSerif-Regular.ttf
+      bold: ../fonts/NotoSerif-Bold.ttf
+      italic: ../fonts/NotoSerif-Italic.ttf
+      bold_italic: ../fonts/NotoSerif-BoldItalic.ttf
     Noto Sans:
-      normal: ../../../data/fonts/truetype/NotoSans-VariableFont.ttf
-      bold: ../../../data/fonts/truetype/NotoSans-VariableFont.ttf
-      italic: ../../../data/fonts/truetype/NotoSans-Italic-VariableFont.ttf
-      bold_italic: ../../../data/fonts/truetype/NotoSans-Italic-VariableFont.ttf
+      normal: ../fonts/NotoSans-Regular.ttf
+      bold: ../fonts/NotoSans-Bold.ttf
+      italic: ../fonts/NotoSans-Italic.ttf
+      bold_italic: ../fonts/NotoSans-BoldItalic.ttf
     Courier Prime:
       normal: ../../../data/fonts/truetype/Courier Prime.ttf
       bold: ../../../data/fonts/truetype/Courier Prime Bold.ttf
