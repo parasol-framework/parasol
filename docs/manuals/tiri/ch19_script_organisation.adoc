@@ -1,4 +1,4 @@
-VERIFIED: 2026-02-13
+// VERIFIED: 2026-02-13
 
 [[ch-script-management]]
 == Script Management
