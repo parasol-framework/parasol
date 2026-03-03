@@ -100,8 +100,8 @@ This appendix provides a quick-reference for all reserved words in Tiri.  Reserv
 |Keyword |Description
 
 |`with`      |Introduces a scoped block with context bindings.
-|`namespace` |Declares a namespace for organising related definitions.  See <<ch-script-organisation>>.
-|`import`    |Imports a module or namespace.  See <<ch-script-organisation>>.
+|`namespace` |Declares a namespace for organising related definitions.  See <<ch-script-management>>.
+|`import`    |Imports a module or namespace.  See <<ch-script-management>>.
 |`as`        |Provides an alias in `import` statements or performs type conversion.
 |`defer`     |Registers code to execute when the enclosing scope exits.  See <<ch-resource-management>>.
 |===

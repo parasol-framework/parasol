@@ -5,7 +5,7 @@
 
 A metatable is a regular table that the runtime attaches to another table or userdata to customise its behaviour.  When an operation has no native implementation for a given operand -- for example, adding two tables -- the runtime looks up a specially named field in the operand's metatable.  If the field exists and holds a callable value, the runtime invokes it.  That callable value is called a _metamethod_.
 
-Every table and full userdata can carry exactly one metatable.  Strings share a single metatable provided by the string library.  Primitives like numbers, booleans, nil, and light userdata have no metatables.
+Every table and full userdata can carry exactly one metatable.  Strings share a single metatable provided by the string library.  Primitive types can use shared base metatables (for example via `debug.setMetatable`).
 
 [[sec-metatable-basics]]
 === Metatable Basics
