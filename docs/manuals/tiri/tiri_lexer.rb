@@ -10,6 +10,7 @@
 # Then use [source,tiri] in your AsciiDoc files.
 
 require 'rouge'
+require 'set'
 
 module Rouge
    module Lexers
