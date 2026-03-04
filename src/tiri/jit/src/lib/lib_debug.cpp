@@ -401,7 +401,7 @@ static bool lj_parse_annotation_string(lua_State *L, std::string_view sv)
    GCarray *arr = lj_array_new(L, anno_idx, AET::TABLE);
    GCRef *refs = (GCRef *)arr->arraydata();
    for (int i = 0; i < anno_idx; i++) {
-      lua_rawgeti(L, -2, i);  // Push temp_table[i] onto stack
+      lua_rawgeti(L, -1, i);  // Push temp_table[i] onto stack
       GCtab *entry = tabV(L->top - 1);
       setgcref(refs[i], obj2gco(entry));
       lj_gc_anybarriert(L, entry);
