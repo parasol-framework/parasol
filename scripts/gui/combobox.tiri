@@ -45,7 +45,7 @@ end
 
 gui.combobox = function(Options)
    self = { -- Public variables
-      events         = (Options.events ?? { }),
+      events         = Options.events ?? { },
       label          = Options.label,
       parentViewport = Options.target,
       allowCustom    = Options.allowCustom,
@@ -180,7 +180,7 @@ gui.combobox = function(Options)
       textFlags = (function()
          flags = 0
          if self.allowCustom then
-            flags = bit.bor(flags, VTXF_EDITABLE)
+            flags = flags | VTXF_EDITABLE
          end
          return flags
       end)()
