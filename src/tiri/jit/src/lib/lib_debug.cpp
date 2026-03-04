@@ -1308,18 +1308,17 @@ LJLIB_CF(debug_anno_set)
 }
 
 //********************************************************************************************************************
-// debug.anno.list(): table
+// debug.anno.list(): array<table>
 //
-// Returns a shallow copy of the entire _ANNO table, which contains all registered function annotations.
-// The returned table is indexed by function references, with each value being an annotation entry.
+// Returns a native array of all annotation entry tables registered in the global _ANNO table.
+// Each element is an annotation entry containing the name, source, and annotations fields.
 //
 // Notes:
-//   - Returns an empty table if no annotations have been registered
-//   - The returned table is a copy; modifying it does not affect _ANNO
+//   - Returns an empty array if no annotations have been registered
 //
 // Example:
 //   all_annotations = debug.anno.list()
-//   for func, entry in pairs(all_annotations) do
+//   for entry in all_annotations do
 //      print(entry.name, #entry.annotations, "annotations")
 //   end
 
@@ -1328,20 +1327,38 @@ LJLIB_CF(debug_anno_list)
    lua_getglobal(L, "_ANNO");
    if (lua_isnil(L, -1)) {
       lua_pop(L, 1);
-      lua_newtable(L);  // Return empty table if _ANNO doesn't exist
+      lj_gc_check(L);
+      GCarray *arr = lj_array_new(L, 0, AET::TABLE);
+      setarrayV(L, L->top, arr);
+      incr_top(L);
+      return 1;
    }
-   else {
-      // Create shallow copy
-      lua_newtable(L);
-      lua_pushnil(L);
-      while (lua_next(L, -3) != 0) {
-         lua_pushvalue(L, -2);  // Copy key
-         lua_pushvalue(L, -2);  // Copy value
-         lua_settable(L, -5);   // Set in new table
-         lua_pop(L, 1);         // Pop value, keep key for next iteration
-      }
-      lua_remove(L, -2);  // Remove original _ANNO
+
+   // Count entries in _ANNO
+   uint32_t count = 0;
+   lua_pushnil(L);
+   while (lua_next(L, -2) != 0) {
+      count++;
+      lua_pop(L, 1);
    }
+
+   lj_gc_check(L);
+   GCarray *arr = lj_array_new(L, count, AET::TABLE);
+   GCRef *refs = (GCRef *)arr->arraydata();
+
+   // Fill array with entry tables from _ANNO
+   uint32_t idx = 0;
+   lua_pushnil(L);
+   while (lua_next(L, -2) != 0) {
+      if (lua_istable(L, -1)) setgcref(refs[idx], obj2gco(tabV(L->top - 1)));
+      else setnilV((TValue *)&refs[idx]);
+      idx++;
+      lua_pop(L, 1);
+   }
+   lua_pop(L, 1);  // Remove _ANNO
+
+   setarrayV(L, L->top, arr);
+   incr_top(L);
    return 1;
 }
 
@@ -1385,7 +1402,7 @@ extern int luaopen_debug(lua_State *L)
    // Register debug.anno interface prototypes
    reg_iface_prototype("debug.anno", "get", { TiriType::Table }, { TiriType::Func });
    reg_iface_prototype("debug.anno", "set", { TiriType::Table }, { TiriType::Func, TiriType::Any, TiriType::Str, TiriType::Str });
-   reg_iface_prototype("debug.anno", "list", { TiriType::Table }, {});
+   reg_iface_prototype("debug.anno", "list", { TiriType::Array }, {});
 
    return 1;
 }
