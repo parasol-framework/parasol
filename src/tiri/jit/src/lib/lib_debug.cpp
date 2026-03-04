@@ -395,6 +395,21 @@ static bool lj_parse_annotation_string(lua_State *L, std::string_view sv)
       lua_rawseti(L, -2, anno_idx++);
    }
 
+   // Convert the temp table to a proper array<table>
+
+   lj_gc_check(L);
+   GCarray *arr = lj_array_new(L, anno_idx, AET::TABLE);
+   GCRef *refs = (GCRef *)arr->arraydata();
+   for (int i = 0; i < anno_idx; i++) {
+      lua_rawgeti(L, -2, i);  // Push temp_table[i] onto stack
+      GCtab *entry = tabV(L->top - 1);
+      setgcref(refs[i], obj2gco(entry));
+      lj_gc_anybarriert(L, entry);
+      lua_pop(L, 1);
+   }
+   setarrayV(L, L->top, arr);
+   incr_top(L);
+   lua_remove(L, -2);  // Remove the temp table, leaving the array on top
    return true;
 }
 
@@ -1220,13 +1235,13 @@ LJLIB_CF(debug_anno_get)
 //********************************************************************************************************************
 // debug.anno.set(func, annotations [, source [, name]]): table
 //
-// Sets annotations for a function.  Annotations can be provided as a table (for programmatic use) or as a string
-// in annotation syntax (for parsing).  The annotations are stored in the global _ANNO table, indexed by function.
-// Returns the annotation entry that was created/updated.
+// Sets annotations for a function.  Annotations can be provided as an array<table> (for programmatic use) or as a
+// string in annotation syntax (for parsing).  The annotations are stored in the global _ANNO table, indexed by
+// function.  Returns the annotation entry that was created/updated.
 //
 //   func        - The function to annotate
 //   annotations - Either:
-//                 - A table/array of annotation objects
+//                 - An array<table> of annotation objects, where each element is a table with at least a name field
 //                 - A string in annotation syntax: "@Name(key=value, ...)"
 //   source      - (optional) Source identifier, defaults to "<runtime>"
 //   name        - (optional) Function name, falls back to debug info or "<anonymous>"
@@ -1266,12 +1281,12 @@ LJLIB_CF(debug_anno_set)
       }
       // Parsed annotations array is now on stack
    }
-   else if (lua_istable(L, 2)) {
-      lua_pushvalue(L, 2);  // Push annotations table/array
+   else if (lua_isarray(L, 2)) {
+      lua_pushvalue(L, 2);  // Push annotations array
    }
    else {
       lua_pop(L, 1);  // Pop _ANNO
-      lj_err_argt(L, 2, LUA_TTABLE);
+      lj_err_argt(L, 2, LUA_TARRAY);
    }
 
    // Create entry table with name, source, and annotations
