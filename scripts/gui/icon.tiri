@@ -203,7 +203,7 @@ gui.icon = function(Options)
 
    gname = 'iconFill' .. self.iconVP.id
    self.svgGradient = gui.simpleGradient(self.iconVP.scene, gname, { lThemeColour.first, lThemeColour.last },
-      0, self.iconVP.y, 0, self.iconVP.height, 'boundingbox')
+      0, self.iconVP.y, 0, 1, 'boundingbox')
    gui.applyFill(self.iconVP, 'url(#' .. gname .. ')')
 
    check self.viewport.mtSubscribeInput(JTYPE_BUTTON, inputFeedback)
