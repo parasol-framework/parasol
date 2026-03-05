@@ -1,0 +1,455 @@
+// VERIFIED: 2026-03-05
+
+[[ch-annotations-and-preprocessing]]
+== Annotations & Preprocessing
+
+Tiri provides two compile-time mechanisms: _annotations_ and _preprocessor directives_.  Annotations attach structured metadata to function declarations.  Preprocessor directives conditionally include or exclude blocks of source code based on the execution environment.
+
+Both features are evaluated at parse time.  Annotations are stored in the global `_ANNO` table and are accessible at runtime through the `debug.anno` interface (see <<sec-the-debug-anno-interface>>).  Preprocessor directives produce no runtime artefacts; excluded blocks are discarded during parsing.
+
+[[sec-annotation-syntax]]
+=== Annotation Syntax
+
+An annotation begins with `@` followed by an identifier and an optional parenthesised argument list.  Annotations can only precede function declarations (`function`, `local function`, `global function`, or `thunk`).  Placing an annotation before any other statement raises a parse error.
+
+[source,ebnf]
+----
+annotation       = "@" identifier [ "(" argument_list ")" ] ;
+argument_list    = argument { "," argument } ;
+argument         = identifier "=" value
+                 | identifier ;
+value            = string_literal | number_literal | boolean_literal | array_literal | identifier ;
+array_literal    = ( "[" | "{" ) [ value { "," value } ] ( "]" | "}" ) ;
+annotated_stmt   = annotation { ";" annotation } function_decl ;
+----
+
+Multiple annotations are separated by semicolons.  A bare identifier without `=` in an argument list is treated as a boolean with the value `true`.
+
+[source,tiri]
+----
+@Test
+function SimpleTest()
+   assert(1 + 1 is 2)
+end
+
+@Test(name='Addition', priority=1, labels=['math', 'basic'])
+function AdditionTest()
+   assert(2 + 3 is 5)
+end
+
+@Test(priority=1); @Requires(display=true)
+function UITest()
+   -- multiple annotations on one function
+end
+----
+
+==== Value Types
+
+Annotation arguments accept the following value types:
+
+[cols="1,2,2"]
+|===
+|Type |Syntax |Example
+
+|String
+|Single or double quotes
+|`name='My Test'`
+
+|Number
+|Integer or floating-point literal
+|`priority=1`, `timeout=3.5`
+
+|Boolean
+|`true` or `false`
+|`enabled=true`
+
+|Array
+|`[...]` or `{...}`
+|`labels=['unit', 'smoke']`
+
+|Bare identifier
+|Identifier without `=`
+|`@SuppressWarnings(unused, deprecated)`
+|===
+
+A bare identifier in an argument list is equivalent to setting that key to `true`.  The following two forms are identical:
+
+[source,tiri]
+----
+@SuppressWarnings(unused, deprecated)
+@SuppressWarnings(unused=true, deprecated=true)
+----
+
+==== Scope
+
+Annotations attach to the immediately following function declaration.  They do not attach to variable declarations, assignments, or control flow statements.  The following raises a parse error:
+
+[source,tiri]
+----
+@Cached <1>
+x = compute()
+----
+<1> Error: annotations must precede a function declaration
+
+[[sec-standard-annotations]]
+=== Standard Annotations
+
+Annotation names are not reserved by the language.  Any valid identifier is accepted as an annotation name.  The following annotations are recognised by standard Tiri tooling:
+
+[cols="1,3"]
+|===
+|Annotation |Purpose
+
+|`@Disabled`
+|Marks a function as disabled.  Recognised by the Flute test runner, which skips functions bearing this annotation.
+
+|`@SuppressWarnings`
+|Documents intentional suppression of warnings.  Accepts bare identifiers naming the suppressed warnings: `@SuppressWarnings(unused, deprecated)`.
+|===
+
+Annotations that are not recognised by any tool are silently retained in the `_ANNO` table and have no effect on compilation or execution.
+
+[[sec-test-framework-annotations]]
+=== Test Framework Annotations
+
+The Flute test runner (see <<ch-flute>>) recognises the following annotations.  These annotations control test discovery, lifecycle, filtering, and execution.
+
+==== @Test
+
+Marks a function as a test case.
+
+[source,tiri]
+----
+@Test function BasicTest()
+   assert(true)
+end
+
+@Test(name='Custom Name', priority=1, labels=['unit', 'smoke'])
+function PriorityTest()
+   assert(1 is 1)
+end
+----
+
+Accepted arguments:
+
+[cols="1,1,3"]
+|===
+|Argument |Type |Description
+
+|`name`
+|String
+|Display name for the test.  Defaults to the function name.
+
+|`priority`
+|Number
+|Execution order.  Tests are sorted by priority in ascending order before execution.
+
+|`labels`
+|Array
+|String labels for filtering.  The Flute runner accepts `labels=unit,smoke` on the command line to run only matching tests, or `labels=~slow` to exclude tests with a given label.
+
+|`timeout`
+|Number
+|Maximum execution time in milliseconds.
+
+|`hotpath`
+|Number
+|Executes the test the specified number of times to exercise JIT compilation paths.
+|===
+
+==== @BeforeAll
+
+Runs once before all tests in the file.  A file may contain at most one `@BeforeAll` function.
+
+[source,tiri]
+----
+@BeforeAll
+function InitialiseTestSuite()
+   -- one-time setup
+end
+----
+
+==== @AfterAll
+
+Runs once after all tests in the file have completed.
+
+[source,tiri]
+----
+@AfterAll
+function CleanUpTestSuite()
+   -- one-time teardown
+end
+----
+
+==== @BeforeEach
+
+Runs before each `@Test` function in the file.
+
+[source,tiri]
+----
+@BeforeEach
+function SetUpTest()
+   -- per-test setup
+end
+----
+
+Accepted arguments:
+
+[cols="1,1,3"]
+|===
+|Argument |Type |Description
+
+|`hotpath`
+|Boolean
+|If `true`, marks all tests in the file for hot-path execution.  Each test runs multiple times to allow JIT compilation to engage.
+|===
+
+==== @AfterEach
+
+Runs after each `@Test` function in the file.
+
+[source,tiri]
+----
+@AfterEach
+function TearDownTest()
+   -- per-test cleanup
+end
+----
+
+==== @Requires
+
+Conditionally disables a test if the specified runtime requirements are not met.  Attach alongside `@Test`:
+
+[source,tiri]
+----
+@Test; @Requires(display=true, network=false)
+function GraphicsOnlyTest()
+   -- runs only when display is available and network is not required
+end
+----
+
+Accepted arguments:
+
+[cols="1,1,3"]
+|===
+|Argument |Type |Description
+
+|`network`
+|Boolean
+|Requires the network module to be available.
+
+|`ssl`
+|Boolean
+|Requires SSL support to be available.
+
+|`font`
+|Boolean
+|Requires the font module to be available.
+
+|`audio`
+|Boolean
+|Requires the audio module to be available.
+
+|`display`
+|Boolean
+|Requires the display module to be available.
+|===
+
+If a requirement evaluates to `false`, the test is skipped with a status indicating unmet requirements.
+
+==== @Disabled
+
+Marks a test as unconditionally skipped.  The Flute runner reports it as disabled.
+
+[source,tiri]
+----
+@Test; @Disabled
+function BrokenTest()
+   -- skipped until fixed
+end
+----
+
+[[sec-compile-time-preprocessor]]
+=== Compile-Time Preprocessor
+
+The `@if` and `@end` directives conditionally include or exclude source code at parse time.  Excluded code is never compiled and produces no bytecode.
+
+[source,ebnf]
+----
+compile_if = "@if" "(" condition ")" { statement } "@end" ;
+condition  = identifier "=" ( boolean_literal | string_literal ) ;
+----
+
+The condition is a single `key=value` pair.  The parser evaluates the condition immediately and either parses the enclosed statements or skips them entirely.
+
+[source,tiri]
+----
+@if(imported=false)
+   print('Running as main script')
+@end
+
+@if(platform='linux')
+   global linuxSpecificSetup = true
+@end
+----
+
+==== Supported Conditions
+
+[cols="1,1,1,3"]
+|===
+|Condition |Value Type |Values |Description
+
+|`imported`
+|Boolean
+|`true`, `false`
+|`true` when the current file is being loaded via `import`.  `false` when the file is the entry-point script.
+
+|`debug`
+|Boolean
+|`true`, `false`
+|`true` when the runtime log level is greater than 2 (i.e. verbose logging is active).  `false` otherwise.
+
+|`platform`
+|String
+|`'windows'`, `'linux'`, `'osx'`, `'native'`
+|Matches against the current operating system.  Comparison is case-insensitive.
+
+|`exists`
+|String
+|File or directory path
+|`true` when the specified path exists.  The path is resolved relative to the directory containing the current script.
+|===
+
+Providing a value of the wrong type for a condition raises a parse error.  For example, `@if(platform=true)` is invalid because `platform` requires a string.
+
+==== Nesting
+
+`@if` blocks can be nested.  The parser tracks nesting depth and correctly matches each `@end` to its corresponding `@if`:
+
+[source,tiri]
+----
+@if(imported=false)
+   print('Main script')
+   @if(platform='linux')
+      print('Linux main script')
+   @end
+@end
+----
+
+==== Import Guarding
+
+A common use of `@if` is to separate code that executes only when a file is run directly from code that is available when the file is imported:
+
+[source,tiri]
+----
+-- Exported functions (always available)
+global function add(A, B) return A + B end
+global function multiply(A, B) return A * B end
+
+@if(imported=false)
+   -- Entry point: runs only when executed directly
+   print(add(2, 3))
+@end
+
+@if(imported=true)
+   -- Initialisation for importers only
+   print('Module loaded')
+@end
+----
+
+[[sec-the-debug-anno-interface]]
+=== The debug.anno Interface
+
+The `debug.anno` interface provides runtime access to function annotations.  All annotations, whether declared in source code or registered programmatically, are stored in the global `_ANNO` table indexed by function reference.
+
+==== debug.anno.get()
+
+[.api]`Entry = debug.anno.get(Func)`
+
+Returns the annotation entry for `Func`, or `nil` if no annotations are registered.
+
+[source,tiri]
+----
+@Test(name='Example')
+function myTest()
+   return 42
+end
+
+entry = debug.anno.get(myTest)
+print(entry.name)                  -- 'myTest'
+print(entry.source)                -- source file path
+print(#entry.annotations)          -- 1
+print(entry.annotations[0].name)   -- 'Test'
+print(entry.annotations[0].args.name) -- 'Example'
+----
+
+==== debug.anno.set()
+
+[.api]`Entry = debug.anno.set(Func, Annotations, [Source], [Name])`
+
+Sets annotations for `Func`.  `Annotations` is either an `array<table>` of annotation objects or a string in annotation syntax.  `Source` defaults to `'<runtime>'`.  `Name` defaults to the function's debug name, or `'<anonymous>'` if unavailable.  Returns the created annotation entry.
+
+Calling `debug.anno.set()` on a function that already has annotations overwrites the previous entry.
+
+**Array input:**
+
+[source,tiri]
+----
+function target() end
+
+debug.anno.set(target, array<table> {
+   { name = 'Test', args = { name = 'My Test', labels = { 'unit', 'smoke' } } },
+   { name = 'Requires', args = { network = false } }
+}, 'test_file.tiri', 'target')
+----
+
+**String input:**
+
+[source,tiri]
+----
+function target() end
+
+debug.anno.set(target, '@Test(name="My Test"); @Requires(network=false)')
+----
+
+The string parser accepts the same syntax as source-level annotations, including arrays, numbers, booleans, and bare identifiers.
+
+==== debug.anno.list()
+
+[.api]`AllEntries = debug.anno.list()`
+
+Returns a shallow copy of the entire `_ANNO` table.  The returned table is indexed by function references; each value is an annotation entry.  Modifying the returned table does not affect the `_ANNO` table.
+
+Returns an empty table if no annotations have been registered.
+
+[source,tiri]
+----
+all = debug.anno.list()
+for func, entry in pairs(all) do
+   print(entry.name, #entry.annotations, 'annotations')
+end
+----
+
+==== Annotation Entry Structure
+
+Each entry in the `_ANNO` table has the following structure:
+
+[source,tiri]
+----
+{
+   name = 'functionName',        -- function name or '<anonymous>'
+   source = 'path/to/file.tiri', -- source file or '<runtime>'
+   annotations = array<table> {
+      {
+         name = 'Test',          -- annotation name
+         args = {                -- key-value argument table
+            name = 'My Test',
+            labels = { 'unit', 'smoke' }
+         }
+      }
+   }
+}
+----
+
+Each annotation contains a `name` field (the annotation identifier) and an `args` table (the key-value arguments, which is empty if no arguments were provided).
+
