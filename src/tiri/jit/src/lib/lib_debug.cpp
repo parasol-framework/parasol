@@ -5,11 +5,11 @@
 // Major portions taken verbatim or adapted from the Lua interpreter.
 // Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 //
-// The debug library provides introspection functions for examining and manipulating the Lua runtime
-// environment.  It includes standard Lua debug functions as well as Kotuku-specific extensions for
+// The debug library provides introspection functions for examining and manipulating the Tiri runtime
+// environment.  It includes standard Tiri debug functions as well as Kotuku-specific extensions for
 // code validation and annotation management.
 //
-//   debug.getRegistry()         - Returns the Lua registry table
+//   debug.getRegistry()         - Returns the Tiri registry table
 //   debug.getMetatable(obj)     - Returns the metatable of any object
 //   debug.setMetatable(obj, mt) - Sets the metatable of any object
 //   debug.getEnv(obj)           - Returns the environment of a function/thread/userdata
@@ -174,7 +174,7 @@ static char* unmakemask(int mask, char* smask)
 //   - Number literals: integer or floating-point
 //   - Array literals: [item, item, ...] or {item, item, ...}
 //
-// Returns true and pushes the value to the Lua stack on success.
+// Returns true and pushes the value to the Tiri stack on success.
 // Returns false on parse error (nothing pushed to stack).
 
 static bool parse_annotation_value(lua_State *L, std::string_view& sv)
@@ -263,7 +263,7 @@ static bool parse_annotation_value(lua_State *L, std::string_view& sv)
 }
 
 //********************************************************************************************************************
-// Internal helper: Parses an annotation string into a Lua table.
+// Internal helper: Parses an annotation string into a Tiri table.
 //
 // Annotation Syntax:
 //   @Name                 - Simple annotation with no arguments
@@ -277,7 +277,7 @@ static bool parse_annotation_value(lua_State *L, std::string_view& sv)
 // Produces an array of annotation entries, each containing:
 //   { name = "AnnotationName", args = { key = value, ... } }
 //
-// Returns true and pushes the annotations array to the Lua stack on success.
+// Returns true and pushes the annotations array to the Tiri stack on success.
 // Returns false on parse error (nothing pushed to stack).
 
 static bool lj_parse_annotation_string(lua_State *L, std::string_view sv)
@@ -416,8 +416,8 @@ static bool lj_parse_annotation_string(lua_State *L, std::string_view sv)
 //********************************************************************************************************************
 // debug.getRegistry():table
 //
-// Returns the Lua registry table, a pre-defined table used by C code to store Lua values.  The registry is a global
-// table accessible only from C code, used to store references that should not be accessible from Lua code.
+// Returns the Tiri registry table, a pre-defined table used by C code to store Tiri values.  The registry is a global
+// table accessible only from C code, used to store references that should not be accessible from Tiri code.
 
 LJLIB_CF(debug_getRegistry)
 {
@@ -544,7 +544,7 @@ LJLIB_CF(debug_setMetatable)
 //********************************************************************************************************************
 // debug.getEnv(object:any):table
 //
-// Returns the environment of the given object.  The object can be a Lua function, a thread, or a userdata.
+// Returns the environment of the given object.  The object can be a Tiri function, a thread, or a userdata.
 // For functions, this is the table that is used for global variable access within the function.
 //
 // Example:
@@ -561,7 +561,7 @@ LJLIB_CF(debug_getEnv)
 //********************************************************************************************************************
 // debug.setEnv(object:any, table):any
 //
-// Sets the environment of the given object to the given table.  The object can be a Lua function, a thread,
+// Sets the environment of the given object to the given table.  The object can be a Tiri function, a thread,
 // or a userdata.  For functions, this changes the table used for global variable access.  Throws an error if the
 // environment cannot be set (e.g., for C functions)
 //
@@ -601,7 +601,7 @@ LJLIB_CF(debug_setEnv)
 //     shortSource    - Short version of source (for error messages)
 //     lineDefined    - Line where the function definition starts
 //     lastLineDefined - Line where the function definition ends
-//     what           - "Lua", "C", "main", or "tail"
+//     what           - "Tiri", "C", "main", or "tail"
 //     currentLine    - Current line being executed
 //     name           - Name of the function (if available)
 //     nameWhat       - How the name was obtained ("global", "local", "method", "field", "")
@@ -761,7 +761,7 @@ LJLIB_CF(debug_setLocal)
 // Returns the name and value of an upvalue from a function.  Upvalues are external local variables that the
 // function uses and that are captured in the function's closure.  For C functions, upvalue names are always ""
 //
-//   func  - A Lua function
+//   func  - A Tiri function
 //   index - 0-based upvalue index
 
 LJLIB_CF(debug_getUpvalue)
@@ -775,7 +775,7 @@ LJLIB_CF(debug_getUpvalue)
 // Sets the value of an upvalue in a function.  Returns the name of the upvalue, or nil if the index is out of range.
 // Note: This modifies the upvalue for all closures sharing it.
 //
-//   func  - A Lua function
+//   func  - A Tiri function
 //   index - 0-based upvalue index
 //   value - The new value to assign
 //
@@ -822,13 +822,13 @@ LJLIB_CF(debug_upvalueID)
 // * Share breakpoint state across multiple function instances
 // * Connect instrumentation code to production closures
 //
-//   func1 - First Lua function (must be a Lua function, not C)
+//   func1 - First Tiri function (must be a Tiri function, not C)
 //   n1    - 0-based upvalue index in func1
-//   func2 - Second Lua function (must be a Lua function, not C)
+//   func2 - Second Tiri function (must be a Tiri function, not C)
 //   n2    - 0-based upvalue index in func2
 //
 // Notes:
-//   - Both functions must be Lua functions (not C functions)
+//   - Both functions must be Tiri functions (not C functions)
 //   - After joining, both upvalues share the same value
 //
 // Example:
@@ -855,7 +855,7 @@ LJLIB_CF(debug_upvalueJoin)
 //********************************************************************************************************************
 // debug.getUserValue(userdata):table
 //
-// Returns the Lua value (typically a table) associated with the given userdata, or nil if the userdata has no
+// Returns the Tiri value (typically a table) associated with the given userdata, or nil if the userdata has no
 // associated value or if the argument is not a userdata.
 //
 //   userdata - A userdata value
@@ -872,7 +872,7 @@ LJLIB_CF(debug_getUserValue)
 //********************************************************************************************************************
 // debug.setUserValue(userdata, value):any
 //
-// Sets the Lua value (typically a table) associated with the given userdata.  Returns the userdata.
+// Sets the Tiri value (typically a table) associated with the given userdata.  Returns the userdata.
 //
 //   userdata - A userdata value
 //   value    - A table to associate with the userdata
@@ -897,9 +897,9 @@ LJLIB_CF(debug_setUserValue)
 //
 //   hook   - A function to be called on hook events, or nil to turn off hooks
 //   mask   - A string specifying when the hook is called:
-//            'c' - Call: hook is called whenever Lua calls a function
-//            'r' - Return: hook is called whenever Lua returns from a function
-//            'l' - Line: hook is called whenever Lua executes a new line of code
+//            'c' - Call: hook is called whenever Tiri calls a function
+//            'r' - Return: hook is called whenever Tiri returns from a function
+//            'l' - Line: hook is called whenever Tiri executes a new line of code
 //   count  - (optional) If > 0, hook is also called after every 'count' instructions
 //
 // Hook Function Signature:
@@ -1066,7 +1066,7 @@ LJLIB_CF(debug_validate)
          lua_newtable(L);  // diagnostic entry
 
          SourceSpan span = entry.token.span();
-         // LSP uses 0-based line/column, Lua parser uses 1-based
+         // LSP uses 0-based line/column, Tiri parser uses 1-based
          settabsi(L, "line", span.line > 0 ? span.line - 1 : 0);
          settabsi(L, "column", span.column > 0 ? span.column - 1 : 0);
          settabsi(L, "endColumn", span.column);  // Already correct after -1 adjustment
@@ -1094,7 +1094,7 @@ LJLIB_CF(debug_validate)
          lua_newtable(L);  // tip entry
 
          SourceSpan span = entry.token.span();
-         // LSP uses 0-based line/column, Lua parser uses 1-based
+         // LSP uses 0-based line/column, Tiri parser uses 1-based
          settabsi(L, "line", span.line > 0 ? span.line - 1 : 0);
          settabsi(L, "column", span.column > 0 ? span.column - 1 : 0);
          settabsi(L, "endColumn", span.column);  // Already correct after -1 adjustment
