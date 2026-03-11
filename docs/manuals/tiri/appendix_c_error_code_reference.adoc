@@ -19,7 +19,7 @@ The threshold boundary is `ERR_Terminate` (value 9).
 
 === Error Code Table
 
-The following table lists all error codes with their numeric values, Tiri constant names, and descriptions.  Aliases are listed in parentheses where applicable.
+The following tables list the exported error codes referenced in this manual, with their numeric values, Tiri constant names, and descriptions.  Aliases are listed in parentheses where applicable.
 
 ==== Minor Codes (0--8)
 
@@ -56,12 +56,12 @@ The following table lists all error codes with their numeric values, Tiri consta
 |128|`ERR_InvalidState` |Object is in an incorrect state for the requested operation.
 |141|`ERR_NullArgs` |Required arguments are null.
 |152|`ERR_InvalidValue` |An invalid value was provided.
-|162|`ERR_Exception` |Generic exception code.  Assigned to runtime errors and `error()` calls.
-|167|`ERR_WrongType` |The expected type was not provided.
-|174|`ERR_Immutable` |Object or resource is immutable and cannot be modified.
-|176|`ERR_Obsolete` |The requested feature is obsolete.
-|178|`ERR_NotPossible` |The operation is not possible in the current context.
-|189|`ERR_InvalidType` |An invalid type was specified.
+|163|`ERR_Exception` |Generic exception code.  Assigned to runtime errors and `error()` calls.
+|168|`ERR_WrongType` |The expected type was not provided.
+|175|`ERR_Immutable` |Object or resource is immutable and cannot be modified.
+|177|`ERR_Obsolete` |The requested feature is obsolete.
+|179|`ERR_NotPossible` |The operation is not possible in the current context.
+|190|`ERR_InvalidType` |An invalid type was specified.
 |===
 
 ==== Data and I/O Errors
@@ -94,8 +94,8 @@ The following table lists all error codes with their numeric values, Tiri consta
 |126|`ERR_Finished` (`ERR_EndOfFile`, `ERR_OutOfData`) |End of file or data stream reached.
 |138|`ERR_DataSize` |Data size is incorrect or exceeds limits.
 |148|`ERR_InputOutput` |General I/O error.
-|173|`ERR_ExpectedFolder` |A folder path was expected but a file or other type was provided.
-|175|`ERR_ReadFileToBuffer` |Failed to read file contents into a buffer.
+|174|`ERR_ExpectedFolder` |A folder path was expected but a file or other type was provided.
+|176|`ERR_ReadFileToBuffer` |Failed to read file contents into a buffer.
 |===
 
 ==== Search and Lookup Errors
@@ -139,14 +139,12 @@ The following table lists all error codes with their numeric values, Tiri consta
 |101|`ERR_CreateObject` |Object creation failed.
 |104|`ERR_ResourceExists` |The resource already exists.
 |110|`ERR_ObjectExists` |An object with the same identity already exists.
-|115|`ERR_FieldValidation` |Field value failed validation.
 |122|`ERR_Exists` |The item already exists.
 |142|`ERR_InvalidObject` (`ERR_WrongObjectType`, `ERR_WrongClass`) |The object is invalid or of the wrong type.
 |154|`ERR_Deactivated` |The object has been deactivated.
-|161|`ERR_InvalidReference` |An invalid object reference was provided.
-|166|`ERR_UseSubClass` |The operation requires a subclass implementation.
-|181|`ERR_AlreadyDefined` |The item has already been defined.
-|195|`ERR_UnknownProperty` |The specified property is not recognised.
+|162|`ERR_InvalidReference` |An invalid object reference was provided.
+|167|`ERR_UseSubClass` |The operation requires a subclass implementation.
+|182|`ERR_AlreadyDefined` |The item has already been defined.
 |===
 
 ==== Memory Errors
@@ -179,7 +177,6 @@ The following table lists all error codes with their numeric values, Tiri consta
 |28 |`ERR_NoSupport` |The requested feature is not supported.
 |35 |`ERR_SystemCorrupt` |System corruption detected.
 |38 |`ERR_CoreVersion` |Core framework version mismatch.
-|40 |`ERR_ModuleValidation` |Module failed validation checks.
 |54 |`ERR_IllegalMethodID` |An illegal method ID was specified.
 |55 |`ERR_IllegalActionID` |An illegal action ID was specified.
 |56 |`ERR_ModuleOpenFailed` |Failed to open a module binary.
@@ -191,7 +188,7 @@ The following table lists all error codes with their numeric values, Tiri consta
 |107|`ERR_SystemCall` |A system call failed.
 |149|`ERR_LoadModule` |Failed to load a module binary.
 |153|`ERR_ServiceUnavailable` |The requested service is unavailable.
-|179|`ERR_ResolveSymbol` |Failed to resolve a symbol within a module.
+|180|`ERR_ResolveSymbol` |Failed to resolve a symbol within a module.
 |===
 
 ==== Security and Permission Errors
@@ -203,7 +200,6 @@ The following table lists all error codes with their numeric values, Tiri consta
 |34 |`ERR_NoPermission` (`ERR_Permissions`, `ERR_PermissionDenied`) |Insufficient permissions or a security violation occurred.
 |143|`ERR_ExecViolation` |An execution violation was detected.
 |151|`ERR_Security` |A security error occurred.
-|194|`ERR_NotAuthorised` |The caller is not authorised to perform the operation.
 |===
 
 ==== Concurrency Errors
@@ -214,14 +210,14 @@ The following table lists all error codes with their numeric values, Tiri consta
 
 |24 |`ERR_LockFailed` (`ERR_Lock`) |A lock operation failed.
 |62 |`ERR_DeadLock` |A deadlock was detected.
-|77 |`ERR_ResourceNotLocked` |The resource is not locked when a lock is required.
-|114|`ERR_SemaphoreOperation` |A semaphore operation failed.
+|77 |`ERR_NotLocked` |The resource is not locked when a lock is required.
+|114|`ERR_AllocSemaphore` |Semaphore allocation failed.
 |139|`ERR_Busy` |The resource is busy.
 |155|`ERR_LockRequired` |A lock is required before performing this operation.
 |156|`ERR_AlreadyLocked` (`ERR_Locked`) |The resource is already locked.
-|163|`ERR_ThreadAlreadyActive` |The thread is already active.
-|165|`ERR_OutsideMainThread` |The operation must be performed on the main thread.
-|168|`ERR_ThreadNotLocked` |The thread is not locked when a lock is required.
+|164|`ERR_ThreadAlreadyActive` |The thread is already active.
+|166|`ERR_OutsideMainThread` |The operation must be performed on the main thread.
+|169|`ERR_ThreadNotLocked` |The thread is not locked when a lock is required.
 |===
 
 ==== Network Errors
@@ -230,7 +226,7 @@ The following table lists all error codes with their numeric values, Tiri consta
 |===
 |Value |Constant |Description
 
-|30 |`ERR_Timeout` (`ERR_TimeOut`) |The operation timed out before completion.
+|30 |`ERR_TimeOut` |The operation timed out before completion.
 |129|`ERR_HostNotFound` |The specified host was not found.
 |130|`ERR_InvalidURI` |The URI is invalid.
 |131|`ERR_ConnectionRefused` |The connection was refused by the remote host.
@@ -239,8 +235,8 @@ The following table lists all error codes with their numeric values, Tiri consta
 |134|`ERR_Disconnected` |The connection was disconnected.
 |140|`ERR_ConnectionAborted` |The connection was aborted.
 |147|`ERR_WouldBlock` |The operation would block on a non-blocking socket.
-|159|`ERR_ProxySSLTunnel` |Failed to establish an SSL tunnel through a proxy.
-|160|`ERR_InvalidHTTPResponse` |An invalid HTTP response was received.
+|160|`ERR_ProxySSLTunnel` |Failed to establish an SSL tunnel through a proxy.
+|161|`ERR_InvalidHTTPResponse` |An invalid HTTP response was received.
 |===
 
 ==== Syntax and Parsing Errors
@@ -269,7 +265,7 @@ The following table lists all error codes with their numeric values, Tiri consta
 |112|`ERR_Resize` |A resize operation failed.
 |113|`ERR_Redimension` |A redimension operation failed.
 |125|`ERR_GetSurfaceInfo` |Failed to retrieve surface information.
-|164|`ERR_OpenGL` |An OpenGL error occurred.
+|165|`ERR_OpenGL` |An OpenGL error occurred.
 |===
 
 ==== Compression Errors
@@ -278,10 +274,8 @@ The following table lists all error codes with their numeric values, Tiri consta
 |===
 |Value |Constant |Description
 
-|171|`ERR_Decompression` |A decompression error occurred.
-|172|`ERR_Compression` |A compression error occurred.
-|190|`ERR_CompressionStreamError` |An error occurred in the compression stream.
-|192|`ERR_InvalidCompression` |Invalid compression data was detected.
+|172|`ERR_Decompression` |A decompression error occurred.
+|173|`ERR_Compression` |A compression error occurred.
 |===
 
 ==== Miscellaneous Errors
@@ -293,7 +287,6 @@ The following table lists all error codes with their numeric values, Tiri consta
 |25 |`ERR_ExamineFailed` |An examine operation failed.
 |31 |`ERR_NoStats` |Statistics are unavailable.
 |32 |`ERR_LowCapacity` |Insufficient capacity.
-|41 |`ERR_ProcessCreation` |Process creation failed.
 |44 |`ERR_ObtainMethod` |Failed to obtain a method reference.
 |45 |`ERR_ArrayFull` |The array is full and cannot accept new elements.
 |48 |`ERR_DoNotExpunge` |The object must not be expunged.
@@ -312,11 +305,8 @@ The following table lists all error codes with their numeric values, Tiri consta
 |144|`ERR_Recursion` |A recursion limit was exceeded.
 |145|`ERR_IllegalAddress` |An illegal address was specified.
 |150|`ERR_InvalidHandle` |An invalid handle was provided.
-|157|`ERR_NoMediaInserted` |No media is inserted in the device.
-|169|`ERR_MessageOperation` |A message operation failed.
-|170|`ERR_SetVolume` |Failed to set the volume path.
-|177|`ERR_CreateResource` |Resource creation failed.
-|180|`ERR_Function` |A function error occurred.
-|191|`ERR_TaskExecutionFailed` |Task execution failed.
-|193|`ERR_SanityCheckFailed` |A sanity check failed.
+|158|`ERR_NoMediaInserted` |No media is inserted in the device.
+|171|`ERR_SetVolume` |Failed to set the volume path.
+|178|`ERR_CreateResource` |Resource creation failed.
+|181|`ERR_Function` |A function error occurred.
 |===

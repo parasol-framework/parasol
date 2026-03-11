@@ -1,0 +1,19 @@
+[[appendix-migration-from-lua]]
+[appendix]
+== Migration from Lua
+
+NOTE: In standard Lua, `^` is the exponentiation operator.  In Tiri, `^` is bitwise XOR and `**` is exponentiation.
+
+NOTE: Tiri uses `is` instead of `==` and `!=` instead of `~=`.
+
+[[sec-deprecated-string-functions]]
+=== Deprecated String Functions
+
+[[sec-migration-from-lua-scoping]]
+=== Migration from Lua Scoping
+
+[[sec-exception-handling-migration]]
+=== Exception Handling
+
+[[sec-migration-from-lua-patterns]]
+=== Migration from Lua Patterns

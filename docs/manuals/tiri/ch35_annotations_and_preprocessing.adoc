@@ -3,9 +3,9 @@
 [[ch-annotations-and-preprocessing]]
 == Annotations & Preprocessing
 
-Tiri provides two compile-time mechanisms: _annotations_ and _preprocessor directives_.  Annotations attach structured metadata to function declarations.  Preprocessor directives conditionally include or exclude blocks of source code based on the execution environment.
+Tiri provides two parsing-related mechanisms: _annotations_ and _preprocessor directives_.  Annotations attach structured metadata to function declarations.  Preprocessor directives conditionally include or exclude blocks of source code based on the execution environment.
 
-Both features are evaluated at parse time.  Annotations are stored in the global `_ANNO` table and are accessible at runtime through the `debug.anno` interface (see <<sec-the-debug-anno-interface>>).  Preprocessor directives produce no runtime artefacts; excluded blocks are discarded during parsing.
+Both features are recognised by the parser, but they do not behave identically afterwards.  Source annotations are parsed with the function declaration, then registered into the global `_ANNO` table later when that declaration executes via emitted `debug.anno.set(...)` bytecode.  They are accessible at runtime through the `debug.anno` interface (see <<sec-the-debug-anno-interface>>).  Preprocessor directives produce no runtime artefacts; excluded blocks are discarded during parsing.
 
 [[sec-annotation-syntax]]
 === Annotation Syntax
@@ -101,7 +101,7 @@ Annotation names are not reserved by the language.  Any valid identifier is acce
 |Annotation |Purpose
 
 |`@Disabled`
-|Marks a function as disabled.  Recognised by the Flute test runner, which skips functions bearing this annotation.
+|Marks a function as disabled.  Recognised by the Flute test runner, which omits functions bearing this annotation from the discovered test list.
 
 |`@SuppressWarnings`
 |Documents intentional suppression of warnings.  Accepts bare identifiers naming the suppressed warnings: `@SuppressWarnings(unused, deprecated)`.
@@ -148,10 +148,6 @@ Accepted arguments:
 |Array
 |String labels for filtering.  The Flute runner accepts `labels=unit,smoke` on the command line to run only matching tests, or `labels=~slow` to exclude tests with a given label.
 
-|`timeout`
-|Number
-|Maximum execution time in milliseconds.
-
 |`hotpath`
 |Number
 |Executes the test the specified number of times to exercise JIT compilation paths.
@@ -159,7 +155,7 @@ Accepted arguments:
 
 ==== @BeforeAll
 
-Runs once before all tests in the file.  A file may contain at most one `@BeforeAll` function.
+Runs once before the discovered tests in the file.  If multiple `@BeforeAll` functions are present, Flute executes all of them.
 
 [source,tiri]
 ----
@@ -255,11 +251,11 @@ Accepted arguments:
 |Requires the display module to be available.
 |===
 
-If a requirement evaluates to `false`, the test is skipped with a status indicating unmet requirements.
+If a requirement evaluates to `false`, Flute omits the test from the discovered test list.
 
 ==== @Disabled
 
-Marks a test as unconditionally skipped.  The Flute runner reports it as disabled.
+Marks a test so that Flute omits it from the discovered test list.
 
 [source,tiri]
 ----
@@ -360,7 +356,7 @@ global function multiply(A, B) return A * B end
 [[sec-the-debug-anno-interface]]
 === The debug.anno Interface
 
-The `debug.anno` interface provides runtime access to function annotations.  All annotations, whether declared in source code or registered programmatically, are stored in the global `_ANNO` table indexed by function reference.
+The `debug.anno` interface provides runtime access to function annotations.  All annotations, whether registered programmatically or declared in source code, are stored in the global `_ANNO` table indexed by function reference.  For source annotations, the `_ANNO` entry appears when the annotated declaration executes, not merely when the file is parsed.
 
 ==== debug.anno.get()
 
@@ -452,4 +448,3 @@ Each entry in the `_ANNO` table has the following structure:
 ----
 
 Each annotation contains a `name` field (the annotation identifier) and an `args` table (the key-value arguments, which is empty if no arguments were provided).
-

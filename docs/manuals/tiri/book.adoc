@@ -139,17 +139,13 @@ include::ch37_performance_and_the_jit.adoc[]
 
 include::ch38_logging_and_diagnostics.adoc[]
 
-include::ch39_embedding_tiri_in_cpp.adoc[]
-
 // Part VI: Tools
 
 = Tools
 
-include::ch40_origo.adoc[]
+include::ch39_origo.adoc[]
 
-include::ch41_flute.adoc[]
-
-include::ch42_tiri_lsp.adoc[]
+include::ch40_tiri_lsp.adoc[]
 
 // Appendices
 
