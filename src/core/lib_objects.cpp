@@ -2176,6 +2176,8 @@ For internal use only.  Provides an access point for the Object class to manage 
 Set either one of Field or ActionID, never both.  If both are empty, the context is that of a resource node.
 Resource managers are expected to check up the stack if the operating context is required.
 
+This function does not acquire an object lock, that is the responsibility of the caller if needed.
+
 -INPUT-
 obj Object: Object to host the current context.  If NULL, the current context is popped.
 ptr(struct(Field)) Field: Active field, if any.
