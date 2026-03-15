@@ -72,7 +72,7 @@ The returned table contains the following fields:
 
 |`what`
 |string
-|Function type: `'Tiri'`, `'C'`, `'main'`, or `'tail'`.
+|Function type: `'Tiri'`, `'C'`, or `'main'`.
 
 |`fileIndex`
 |integer

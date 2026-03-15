@@ -140,6 +140,10 @@ Accepted arguments:
 |String
 |Display name for the test.  Defaults to the function name.
 
+|`timeout`
+|Number
+|Fails the test if its execution time exceeds the specified number of seconds.
+
 |`priority`
 |Number
 |Execution order.  Tests are sorted by priority in ascending order before execution.
