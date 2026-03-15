@@ -1,0 +1,46 @@
+[[appendix-operator-precedence]]
+[appendix]
+== Operator Precedence
+
+This appendix provides a quick-reference for all Tiri operators, ordered from highest to lowest precedence.  Operators on the same row share the same precedence level.  See <<ch-operators>> for full semantics.
+
+=== Precedence Table
+
+[cols="1,4,2"]
+|===
+|Level |Operators |Associativity
+|10|`pass:[**]`|Right
+|9|`-` (unary), `not`, `#`, `~` (unary)|Unary (right)
+|8|`*`, `/`, `%`|Left
+|7|`+`, `-`|Left
+|6|`..`, `<<`, `>>`|`..` right; shifts left
+|5|`&`|Left
+|4|`^`, `is`, `!=`, `<`, `>`, `\<=`, `>=`, `in` |Left
+|3|`\|`, `and`, `\|>`|Left
+|2|`or`, `??`, `? :>`|Left (`? :>` right)
+|===
+
+=== Postfix and Suffix Operators
+
+Postfix operators (`++`, `??` postfix) and suffix chains (`.field`, `[index]`, `()`, `?.`, `?:`, `?[]`) bind tighter than all binary operators.  They evaluate immediately after the primary expression, left to right.
+
+=== Compound Assignment Operators
+
+Compound assignment operators (`+=`, `-=`, `*=`, `/=`, `%=`, `..=`, `?=`, `??=`) are statements, not expressions.  They do not participate in precedence evaluation.
+
+=== Parentheses
+
+Parentheses override precedence.  `(a + b) * c` forces addition before multiplication.
+
+=== Examples
+
+[source,tiri]
+----
+2 + 3 * 4           -- 14 (level 8 before level 7)
+2 ** 3 ** 2         -- 512 (right-associative: 2 ** (3 ** 2))
+'a' .. 'b' .. 'c'   -- 'abc' (right-associative)
+x > 0 and x < 10    -- comparison (level 4) before logical (level 3)
+a & 0xFF | 0x100    -- AND (level 5) before OR (level 3)
+a ?? b or c         -- ?? and or share level 2; evaluates left to right
+x ? a :> y ? b :> c -- right-associative: x ? a :> (y ? b :> c)
+----
