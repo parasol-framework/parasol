@@ -301,6 +301,14 @@ function runTests()
 
          totalTime = (mSys.PreciseTime() - startTime) / 1000000
 
+         if succeeded and test.timeout?? then
+            timeout = tonumber(test.timeout)
+            if timeout and timeout > 0 and totalTime > timeout then
+               succeeded = false
+               error_msg = string.format('Timeout exceeded: %.6f sec (limit %.6f sec)', totalTime, timeout)
+            end
+         end
+
          if #after_each > 0 then
             for f in values(after_each) do
                f()
