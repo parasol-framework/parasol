@@ -314,7 +314,7 @@ end
 [discrete]
 ==== Renamed Functions
 
-`string.sub()` is renamed to `string.substr()`.  The parameters are the same, but indices are zero-based:
+`string.sub()` is renamed to `string.substr()`.  Indices are zero-based, and the end index is exclusive (Lua's end index is inclusive).
 
 [source,tiri]
 ----
@@ -323,6 +323,20 @@ string.sub('hello', 1, 3)    -- 'hel'
 
 -- Tiri
 string.substr('hello', 0, 3) -- 'hel'
+----
+
+[discrete]
+==== Index Migration Note
+
+When migrating code that computes substring bounds dynamically, remember that Lua uses 1-based indices with an inclusive end, while Tiri uses 0-based indices with an exclusive end.  A direct translation is:
+
+[source,tiri]
+----
+-- Lua
+part = string.sub(s, Start, Stop)      -- Start/Stop are 1-based, Stop inclusive
+
+-- Tiri
+part = string.substr(s, Start - 1, Stop) -- Start is 0-based, Stop is exclusive
 ----
 
 [discrete]
@@ -335,16 +349,16 @@ The following Lua string functions are removed:
 |Function |Replacement
 
 |`string.gsub()`
-|`regex.replace()` or `string.replace()`
+|`regex.new(Pattern).replace(Text, Replacement)` or `string.replace()` (literal only)
 
 |`string.match()`
-|`regex.search()`
+|`regex.new(Pattern).extract(Text)` or `regex.new(Pattern).findFirst(Text)`
 
 |`string.gmatch()`
-|`regex.scan()`
+|`regex.new(Pattern).findAll(Text)`
 
 |`string.find()` with patterns
-|`regex.search()` or `string.find()` (literal only)
+|`regex.new(Pattern).findFirst(Text)` or `string.find()` (literal only)
 |===
 
 See <<sec-migration-pattern-matching>> for the pattern-to-regex migration guide.
@@ -352,14 +366,14 @@ See <<sec-migration-pattern-matching>> for the pattern-to-regex migration guide.
 [[sec-migration-pattern-matching]]
 === Migration from Lua Patterns
 
-Lua patterns are deprecated in favour of POSIX-compatible regular expressions provided by the `regex.*` interface.  The following table maps common Lua pattern constructs to their regex equivalents:
+Lua patterns are deprecated in favour of ECMAScript-compatible regular expressions compiled with `regex.new()`.  The following table maps common Lua pattern constructs to their regex equivalents:
 
 [cols="2,2,3"]
 |===
 |Lua Pattern |Regex Equivalent |Description
 
 |`%a`
-|`[a-zA-Z]` or `[:alpha:]`
+|`[a-zA-Z]` or `[[:alpha:]]`
 |Letters
 
 |`%d`
@@ -419,7 +433,7 @@ Lua's `-` quantifier (lazy match) maps to `*?` in regex.
 [discrete]
 ==== Captures
 
-Lua patterns use `()` for captures.  Regular expressions use the same syntax, but Tiri's `regex.search()` returns match objects rather than raw strings:
+Lua patterns use `()` for captures.  Regular expressions use the same syntax; in Tiri, prefer `rx.extract()` for `string.match()`-style capture extraction:
 
 [source,tiri]
 ----
@@ -427,10 +441,8 @@ Lua patterns use `()` for captures.  Regular expressions use the same syntax, bu
 local year, month, day = string.match(date, '(%d+)-(%d+)-(%d+)')
 
 -- Tiri
-m = regex.search(date, [[\d+)-(\d+)-(\d+)]])
-if m then
-   year, month, day = m[0], m[1], m[2]
-end
+rx = regex.new([[(\d+)-(\d+)-(\d+)]])
+year, month, day = rx.extract(date)
 ----
 
 [discrete]
@@ -450,8 +462,8 @@ s = string.gsub(s, '%s+$', '')
 -- Tiri
 s = s:trim()
 -- Or with regex:
-s = regex.replace(s, [[^\s+]], '')
-s = regex.replace(s, [[\s+$]], '')
+s = regex.new([[^\s+]]).replace(s, '')
+s = regex.new([[\s+$]]).replace(s, '')
 ----
 
 [source,tiri]
@@ -476,7 +488,7 @@ result = string.gsub(text, 'old', 'new')
 -- Tiri
 result = text:replace('old', 'new')
 -- Or with regex for pattern-based replacement:
-result = regex.replace(text, [[pattern]], 'replacement')
+result = regex.new([[pattern]]).replace(text, 'replacement')
 ----
 
 See <<ch-regular-expressions>> and <<ch-strings>> for the complete API references.
@@ -561,7 +573,107 @@ The `os` library is removed.  Time, date and filesystem operations are provided 
 [discrete]
 ==== Debug Library
 
-The introspective portions of the debug library are removed to reduce binary size.  A limited debug library is available for diagnostics.  See <<ch-the-debug-library>>.
+The standard Lua debug library is restructured.  Several functions are renamed to follow Tiri's camelCase convention, some are removed, and new diagnostic functions are added.
+
+The following table maps standard Lua debug functions to their Tiri equivalents:
+
+[cols="2,2,2"]
+|===
+|Lua |Tiri |Status
+
+|`debug.getinfo()`
+|`debug.getInfo()`
+|Renamed.  The `what` field returns `'Tiri'` instead of `'Lua'`.  Adds `fileIndex` field (with the `S` option).
+
+|`debug.getlocal()`
+|`debug.getLocal()`
+|Renamed.  Index is 0-based.
+
+|`debug.setlocal()`
+|`debug.setLocal()`
+|Renamed.  Index is 0-based.
+
+|`debug.getupvalue()`
+|`debug.getUpvalue()`
+|Renamed.  Index is 0-based.
+
+|`debug.setupvalue()`
+|`debug.setUpvalue()`
+|Renamed.  Index is 0-based.
+
+|`debug.upvalueid()`
+|`debug.upvalueID()`
+|Renamed.
+
+|`debug.upvaluejoin()`
+|`debug.upvalueJoin()`
+|Renamed.
+
+|`debug.getmetatable()`
+|`debug.getMetatable()`
+|Renamed.
+
+|`debug.setmetatable()`
+|`debug.setMetatable()`
+|Renamed.
+
+|`debug.getfenv()`
+|`debug.getEnv()`
+|Renamed.
+
+|`debug.setfenv()`
+|`debug.setEnv()`
+|Renamed.
+
+|`debug.sethook()`
+|`debug.setHook()`
+|Renamed.
+
+|`debug.gethook()`
+|`debug.getHook()`
+|Renamed.
+
+|`debug.traceback()`
+|`debug.traceback()`
+|Unchanged.
+
+|`debug.getregistry()`
+|`debug.getRegistry()`
+|Renamed.
+
+|`debug.getuservalue()`
+|`debug.getUserValue()`
+|Renamed.
+
+|`debug.setuservalue()`
+|`debug.setUserValue()`
+|Renamed.
+
+|`debug.debug()`
+|—
+|Removed.
+|===
+
+Tiri adds the following functions with no Lua equivalent:
+
+[cols="2,3"]
+|===
+|Function |Description
+
+|`debug.fileSources()`
+|Returns an array of all registered source files for the current script execution.
+
+|`debug.validate()`
+|Parses Tiri code without executing it and returns diagnostics.
+
+|`debug.locality()`
+|Returns how a variable name is resolved (`'local'`, `'upvalue'`, `'global'`, or `'nil'`).
+
+|`debug.anno`
+|Sub-table providing programmatic access to the annotation system.
+|===
+
+See <<ch-the-debug-library>> for the complete API reference.
 
 [[sec-migration-arrays]]
 === Arrays as a Distinct Type
@@ -575,7 +687,7 @@ local items = { 'a', 'b', 'c' }
 table.insert(items, 'd')
 
 -- Tiri: use an array
-items = array('a', 'b', 'c')
+items = array<string> { 'a', 'b', 'c' }
 items:push('d')
 ----
 
