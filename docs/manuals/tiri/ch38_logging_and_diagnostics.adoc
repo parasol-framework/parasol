@@ -56,8 +56,8 @@ Kōtuku's logging system organises output by severity.  Log messages are written
 |Level |Description |Command-line flag
 
 |Trace
-|Extremely verbose debug output.  Available in Debug builds only when built with `-DKOTUKU_VLOG=ON`.
-|_(enabled at build time)_
+|Extremely verbose debug output.  Available in Debug builds only when built with `-DKOTUKU_VLOG=ON`, and requires `--log-trace` or `--log-all` at runtime.
+|`--log-trace` / `--log-all`
 
 |Detail
 |Extended log level for API modules (C++) and Tiri libraries.  For in-depth module diagnostics.
@@ -77,10 +77,12 @@ Kōtuku's logging system organises output by severity.  Log messages are written
 
 |Error
 |Error conditions intended for end-user visibility.
-|_(always visible)_
+|`--log-error`
 |===
 
 Each command-line flag enables its level and all levels above it.  For example, `--log-warning` displays warnings and errors.
+
+`--log-none` suppresses all non-critical log output (including errors).
 
 [source,bash]
 ----

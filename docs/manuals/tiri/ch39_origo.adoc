@@ -43,7 +43,7 @@ If no script path is provided, Origo attempts automatic detection (see <<sec-aut
 |Executes a single Tiri statement or expression instead of loading a script file.  The next argument is treated as the code to execute.
 
 |`--procedure <name>`
-|Specifies a procedure within the script to execute.
+|Specifies the name of a procedure/function within the script to execute.
 
 |===
 
@@ -70,7 +70,7 @@ When debugging thread-related issues, append `--log-threads` to include thread i
 |`--no-crash-handler`
 |Disables the default crash handler.  On Unix systems, this disables signal handlers for SIGINT, SIGTERM, SIGSEGV, and related signals.  Recommended when debugging with `gdb` and programs that may need to process these signals.
 
-|`home=<name>`
+|`--home=<name>`
 |Customises the name of the home folder directory (default: `kotuku`).  This segregates user configuration and cache data.
 
 |`--jit-options <options>`
@@ -156,7 +156,9 @@ Mark the script as executable with `chmod +x script.tiri` to run it directly fro
 [[sec-exit-codes]]
 === Exit Codes
 
-Origo returns `0` on successful execution.  A non-zero exit code indicates that the script or framework encountered an error.  If the script sets an error code or error message on its Script object, the corresponding error code is returned to the shell.
+Origo returns `0` on successful execution.  A non-zero exit code indicates that the script or framework encountered an error.
+
+If the script sets an explicit error code on its Script object, that error code is returned to the shell.  If the script sets only an error message (with no explicit error code), Origo returns a generic failure code.
 
 [discrete]
 [[sec-version-output]]
