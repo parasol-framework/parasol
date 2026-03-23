@@ -23,6 +23,8 @@ function counter()
 end
 
 gui.toolbar = function(Options)
+   local theme
+
    self = { -- Public variables
       host           = nil,
       viewport       = nil,  -- The main viewport for the toolbar
@@ -32,13 +34,7 @@ gui.toolbar = function(Options)
       _disabled      = false,
       _lookup        = { },
       _hasFocus      = false,
-      _cellMargin    = Options.cellMargin    ?? 6,
-      _iconSize      = Options.iconSize      ?? gui.interface.iconSize,
-      _iconTheme     = Options.iconTheme     ?? gui.style.page.icon,
-      _iconHighlight = Options.iconHighlight ?? gui.style.page.iconHighlight,
-      _hoverFill     = Options.hoverFill     ?? gui.style.button.highlight,
-      _selectFill    = Options.selectFill    ?? gui.palette.prime,
-      _groupBorder   = Options.groupBorder   ?? gui.style.widget.stroke
+      _cellMargin    = Options.cellMargin ?? 6
    }
 
    function sendFeedback()
@@ -210,14 +206,14 @@ gui.toolbar = function(Options)
                   item.width = self._iconSize + (self._cellMargin * 2)
                end
 
-               item.bkgd = self.vg.new('VectorRectangle', { fill = gui.style.page.bkgd,
+               item.bkgd = self.vg.new('VectorRectangle', { fill = theme.page.bkgd,
                   name = 'groupbkgd', x = x, y = y, roundX = self._round, roundY = self._round, width = 1, height = 1
                })
 
                item.bkgd.acMoveToBack()
 
                item.border = self.vg.new('VectorRectangle', {
-                  name = 'grouprect', stroke = gui.style.button.bkgd, strokeWidth = gui.style.widget.strokeWidth,
+                  name = 'grouprect', stroke = theme.button.bkgd, strokeWidth = theme.widget.strokeWidth,
                   x = x, y = y, roundX = self._round, roundY = self._round, width = 1, height = 1
                })
 
@@ -612,6 +608,15 @@ gui.toolbar = function(Options)
    -- Main entry point
 
    assert(Options.target, 'A target viewport is required.')
+
+   theme = gui.getTheme(Options.target)
+
+   self._iconSize      = Options.iconSize      ?? gui.interface.iconSize
+   self._iconTheme     = Options.iconTheme     ?? theme.page.icon
+   self._iconHighlight = Options.iconHighlight ?? theme.page.iconHighlight
+   self._hoverFill     = Options.hoverFill     ?? theme.button.highlight
+   self._selectFill    = Options.selectFill    ?? gui.palette.prime
+   self._groupBorder   = Options.groupBorder   ?? theme.window.text
 
    if Options.groupMargin then
       self._groupMargin = Options.groupMargin
