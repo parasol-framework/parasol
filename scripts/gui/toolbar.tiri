@@ -11,11 +11,11 @@ Documentation is available in the Kotuku Wiki.
 
 local lClickX, lClickY
 lCounter = 0
-lTipDelay = 0.75
+lTipDelay <const> = 0.75
 
-TI_ICON  = 1
-TI_BREAK = 2
-TI_GROUP = 3
+TI_ICON  <const> = 1
+TI_BREAK <const> = 2
+TI_GROUP <const> = 3
 
 function counter()
    lCounter++
@@ -29,16 +29,16 @@ gui.toolbar = function(Options)
       _groupMargin   = 4,
       _groupCount    = 0,
       _round         = 4,
-      _cellMargin    = Options.cellMargin ?? 6,
       _disabled      = false,
       _lookup        = { },
-      _iconSize      = Options.iconSize ?? gui.interface.iconSize,
       _hasFocus      = false,
-      _iconTheme     = Options.iconTheme ?? gui.style.page.icon,
+      _cellMargin    = Options.cellMargin    ?? 6,
+      _iconSize      = Options.iconSize      ?? gui.interface.iconSize,
+      _iconTheme     = Options.iconTheme     ?? gui.style.page.icon,
       _iconHighlight = Options.iconHighlight ?? gui.style.page.iconHighlight,
-      _hoverFill     = Options.hoverFill ?? gui.style.button.highlight,
-      _selectFill    = Options.selectFill ?? gui.palette.prime,
-      _groupBorder   = Options.groupBorder ?? gui.style.widget.stroke
+      _hoverFill     = Options.hoverFill     ?? gui.style.button.highlight,
+      _selectFill    = Options.selectFill    ?? gui.palette.prime,
+      _groupBorder   = Options.groupBorder   ?? gui.style.widget.stroke
    }
 
    function sendFeedback()
@@ -560,7 +560,7 @@ gui.toolbar = function(Options)
             if self._current then
                hoverUpdate(nil)
             end
-         elseif (ev.flags & JTYPE_MOVEMENT)?? then
+         elseif (ev.flags & JTYPE_MOVEMENT) != 0 then
             if self._clicked then return end
 
             item = getCursorItem(ev.x, ev.y)
@@ -571,7 +571,7 @@ gui.toolbar = function(Options)
             else
                cancelTipTimer()
             end
-         elseif (ev.flags & JTYPE_BUTTON)?? then
+         elseif (ev.flags & JTYPE_BUTTON) != 0 then
             if ev.value > 0 then
                if self._disabled then return end
 
@@ -654,7 +654,7 @@ gui.toolbar = function(Options)
       self = { }
    end)
 
-   self.viewport.mtSubscribeFeedback(bit.bor(FM_HAS_FOCUS, FM_CHILD_HAS_FOCUS, FM_LOST_FOCUS), function(Viewport, Event)
+   self.viewport.mtSubscribeFeedback(FM_HAS_FOCUS|FM_CHILD_HAS_FOCUS|FM_LOST_FOCUS, function(Viewport, Event)
       if Event is FM_LOST_FOCUS then
          self._hasFocus = false
          if self._current then

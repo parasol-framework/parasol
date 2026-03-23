@@ -552,7 +552,6 @@ end
 
 gui.fileview = function(Options)
    self = {
-      window         = nil,
       path           = Options.path,
       timer          = nil,
       resetTimer     = nil,
@@ -1398,7 +1397,6 @@ gui.fileview = function(Options)
          end
 
          self.toolbar = gui.toolbar({
-            iconTheme = 'pearl',
             target  = self.view.viewport,
             x       = 0,
             y       = 0,
@@ -1620,7 +1618,7 @@ gui.fileview = function(Options)
       if self.view.sItem then return (self.path ?? '') .. self.view.sItem.filename end
    end
 
-   if not Options.target then error('A target viewport must be specified.') end
+   assert(Options.target, 'A target viewport must be specified.')
 
    -- View initialisation
 

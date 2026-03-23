@@ -23,6 +23,8 @@ gui.tooltip = function(Options)
       flags = RNF_STICK_TO_FRONT | RNF_COMPOSITE
    })
 
+   self.surface.detach()
+
    self.scene = self.surface.new('VectorScene', { flags=VPF_RESIZE, surface=self.surface })
 
    self.viewport = self.scene.new('VectorViewport', { })
@@ -90,7 +92,6 @@ gui.tooltip = function(Options)
    end
 
    self.surface.acShow()
-   self.surface.detach()
 
    return self
 end

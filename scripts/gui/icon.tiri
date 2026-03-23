@@ -172,11 +172,8 @@ gui.icon = function(Options)
    assert(Options.target, 'A target viewport is required.')
    assert(Options.image??, 'The image option is required.')
 
-   if Options.theme is 'light' then
-      lThemeColour = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
-   else
-      lThemeColour = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } }
-   end
+   theme = gui.getTheme(Options.target)
+   lThemeColour = gui.iconThemes[theme.page.icon ?? 'carbon']
 
    calcWords()
 

@@ -77,7 +77,7 @@ gui.dialog.file = function(Options)
       minHeight    = 150,
       quit         = false,
       center       = true,
-      invertPalette = true,
+      theme        = 'dark',
       popOver      = Options.popOver,
       parent       = Options.target,
       icon         = Options.icon ?? 'icons:folders/folder',
@@ -149,7 +149,7 @@ gui.dialog.file = function(Options)
 
    footer += lOkayButton.viewport.height + GAP
 
-   -- Filter selection
+   -- Populate filter selection
 
    fv_filters = { name='All Files', ext='', selected=false }
    if Options.filterList and (#Options.filterList > 0) then
