@@ -76,7 +76,7 @@ gui.divider = function(Options:table)
       self._length      = 'width'
 
       sd = self._secondary.dimensions
-      if (bit.band(sd, DMF_FIXED_X) is 0) or (bit.band(sd, DMF_FIXED_X_OFFSET) is 0) then
+      if ((sd & DMF_FIXED_X) is 0) or ((sd & DMF_FIXED_X_OFFSET) is 0) then
          error('The opposing viewport must use fixed x and xOffset coordinates.')
       end
    elseif Options.top and Options.bottom then
@@ -137,7 +137,7 @@ gui.divider = function(Options:table)
 
    if Options.style != 'none' then
       self._dividerVP.new('VectorRectangle', {
-         name='div_fill', x='1%', y='1%', width='98%', height='98%', fill='url(#' .. div_name .. ')'
+         name='div_fill', x='1%', y='1%', width='98%', height='98%', fill=f'url(#{div_name})'
       })
    end
 

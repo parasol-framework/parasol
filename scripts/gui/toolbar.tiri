@@ -206,14 +206,15 @@ gui.toolbar = function(Options)
                   item.width = self._iconSize + (self._cellMargin * 2)
                end
 
-               item.bkgd = self.vg.new('VectorRectangle', { fill = theme.page.bkgd,
+               item.bkgd = self.vg.new('VectorRectangle', {
+                  fill = theme.toolbar.bkgd,
                   name = 'groupbkgd', x = x, y = y, roundX = self._round, roundY = self._round, width = 1, height = 1
                })
 
                item.bkgd.acMoveToBack()
 
                item.border = self.vg.new('VectorRectangle', {
-                  name = 'grouprect', stroke = theme.button.bkgd, strokeWidth = theme.widget.strokeWidth,
+                  name = 'grouprect', stroke = theme.button.bkgd, strokeWidth = gui.sizing.widget.strokeWidth,
                   x = x, y = y, roundX = self._round, roundY = self._round, width = 1, height = 1
                })
 
@@ -426,7 +427,7 @@ gui.toolbar = function(Options)
          })
 
          item.sticker.bkgd = item.sticker.viewport.new('VectorEllipse', {
-            cx='50%', cy='50%', radius=self._iconSize * 0.25, fill=gui.palette.prime
+            cx='50%', cy='50%', radius=self._iconSize * 0.25, fill=theme.palette.prime
          })
       end
 
@@ -612,11 +613,11 @@ gui.toolbar = function(Options)
    theme = gui.getTheme(Options.target)
 
    self._iconSize      = Options.iconSize      ?? gui.interface.iconSize
-   self._iconTheme     = Options.iconTheme     ?? theme.page.icon
-   self._iconHighlight = Options.iconHighlight ?? theme.page.iconHighlight
+   self._iconTheme     = Options.iconTheme     ?? theme.toolbar.icon
+   self._iconHighlight = Options.iconHighlight ?? theme.toolbar.iconHighlight
    self._hoverFill     = Options.hoverFill     ?? theme.button.highlight
-   self._selectFill    = Options.selectFill    ?? gui.palette.prime
-   self._groupBorder   = Options.groupBorder   ?? theme.window.text
+   self._selectFill    = Options.selectFill    ?? theme.palette.prime
+   self._groupBorder   = Options.groupBorder   ?? theme.window.stroke
 
    if Options.groupMargin then
       self._groupMargin = Options.groupMargin

@@ -26,14 +26,6 @@ function hosted(self:table):bool
    return self.hosted
 end
 
-iconTheme = thunk():str
-   if gui.rgbValue(gui.strToRGB(gui.style.widget.text)) > 127 then
-      return 'pearl'
-   else
-      return 'default' -- The default theme is dark
-   end
-end
-
 gui.window = function(Options:table)
    self = { -- Public variables
       events       = Options.events ?? { },
@@ -41,8 +33,7 @@ gui.window = function(Options:table)
       minimiseEnabled   = Options.minimise??,
       maximiseEnabled   = Options.maximise??,
       moveToBackEnabled = Options.moveToBack??,
-      theme             = nil, -- Theme interface
-      closeEnabled = Options.close??,
+      theme        = nil,
       focus        = Options.focus??,
       quit         = Options.quit is false ? nil :> true, -- Quit defaults to true, user can explicitly set false to disable
       title        = Options.title ?? 'Window',
@@ -405,29 +396,15 @@ gui.window = function(Options:table)
    })
 
    if hosted(self) then
-      local fill
-      if Options.invertPalette then
-         fill = gui.palette.base
-         self.textFill = gui.palette.altText
-      else
-         fill = gui.style.window.bkgd
-      end
-
       self.bkgd = self.viewport.new('VectorRectangle', {
-         fill   = fill,
-         x      = 0,
-         y      = 0,
-         width  = '100%',
-         height = '100%'
+         fill = self.theme.window.bkgd, x = 0, y = 0, width = '100%', height = '100%'
       })
+   elseif mGfx.GetDisplayType() is DT_NATIVE then
+      -- Full-screen mode (for video playback or gaming), do nothing.
    else
-      if mGfx.GetDisplayType() is DT_NATIVE then
-         -- Full-screen mode (for video playback or gaming), do nothing.
-      else
-         lStyle.initialise(self)
-         lStyle.frame(self)
-         lStyle.titlebar(self)
-      end
+      lStyle.initialise(self)
+      lStyle.frame(self)
+      lStyle.titlebar(self)
    end
 
    self:setTitle(self.title)
@@ -464,8 +441,6 @@ gui.window = function(Options:table)
    end)
 
    mGfx.windowHook(self.surface.id, WH_CLOSE, function()
-      self.closeEnabled ?? return
-
       result = self.events?.close(self)
       if result != nil then -- If client returns something, the window stays open
          msg('Client requested that the window stay open.')

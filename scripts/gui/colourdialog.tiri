@@ -15,12 +15,12 @@ Documentation is available in the Kotuku Wiki.
 
    gui.dialog ?= { }
 
-BTNSIZE    = 20
-BTNGAP     = 3
-WIDGET_GAP = 6
-COL_BORDER = { r=0, g=0, b=0, a=160 }
+BTNSIZE    <const> = 20
+BTNGAP     <const> = 3
+WIDGET_GAP <const> = 6
+COL_BORDER <const> = gui.rgb(0, 0, 0, 160)
 
-COMMON = array<string> {
+COMMON <const> = array<string> {
   '0,64,64', '0,128,128', '0,192,192', '0,255,255', '64,255,255',  '128,255,255', '192,255,255', '224,255,255', -- Aqua
   '0,64,0',  '0,128,0',   '0,192,0',   '0,255,0',   '64,255,64',   '128,255,128', '192,255,192', '224,255,224', -- Green
   '64,64,0', '128,128,0', '192,192,0', '255,255,0', '255,255,64',  '255,255,128', '255,255,192', '255,255,224', -- Yellow
@@ -54,7 +54,7 @@ function updateRGBInput(self, RGB:table)
    RGB ?? return
    self._rgb = RGB
    if self.vecChosenColour then
-      self.vecChosenColour.fill = gui.rgbToSVG(self._rgb)
+      self.vecChosenColour.fill = tostring(self._rgb)
    end
    self.inputRGB.text.string = (self._rgb.r ?? 0) .. ',' .. (self._rgb.g ?? 0) .. ',' .. (self._rgb.b ?? 0)
    self.viewport.acDraw()
@@ -64,14 +64,14 @@ end
 
 function refreshColourNodes(self)
    for idx, node in ipairs(self._colourNodes) do
-      rgb = self._userColours?[idx] ?? { }
+      rgb = self._userColours?[idx] ?? gui.rgb(255,255,255,255)
 
       rgb.r ?= 255
       rgb.g ?= 255
       rgb.b ?= 255
       rgb.a ?= 255
 
-      node.fill = gui.rgbToSVG(rgb)
+      node.fill = tostring(rgb)
    end
 end
 
@@ -175,8 +175,8 @@ function buildLayout(self, Options)
          rgb = gui.strToRGB(COMMON[colour])
 
          vec = self.viewport.new('VectorRectangle', {
-            fill   = gui.rgbToSVG(rgb),
-            stroke = gui.rgbToSVG(COL_BORDER),
+            fill   = tostring(rgb),
+            stroke = tostring(COL_BORDER),
             strokeWidth = 1,
             x      = x,
             y      = y,
@@ -222,15 +222,19 @@ function buildLayout(self, Options)
    for row=1, 2 do
       x = dx
       for column=1, 7 do
-         rgb = self._userColours?[ci] ?? { r=255, g=255, b=255, a=255 }
+         rgb = self._userColours?[ci] ?? gui.rgb(255, 255, 255, 255)
          rgb.r ?= 255
          rgb.g ?= 255
          rgb.b ?= 255
          rgb.a ?= 255
 
+         if not getmetatable(rgb) then
+            setmetatable(rgb, gui.mtRGB)
+         end
+
          vec = self.viewport.new('VectorRectangle', {
-            fill   = gui.rgbToSVG(rgb),
-            stroke = gui.rgbToSVG(COL_BORDER),
+            fill   = rgb:toSVG(),
+            stroke = COL_BORDER:toSVG(),
             strokeWidth = 1,
             x      = x,
             y      = y,
@@ -325,7 +329,7 @@ function buildLayout(self, Options)
       height = rainbow.height,
       roundX = 4,
       roundY = 4,
-      stroke = gui.rgbToSVG(COL_BORDER),
+      stroke = COL_BORDER:toSVG(),
       fill   = 'url(#Rainbow)'
    })
 
@@ -351,8 +355,8 @@ function buildLayout(self, Options)
       roundY = 4,
       width  = rainbow.width,
       height = 32,
-      fill   = gui.rgbToSVG(self._rgb),
-      stroke = gui.rgbToSVG(COL_BORDER)
+      fill   = tostring(self._rgb),
+      stroke = COL_BORDER:toSVG()
    })
 
    dy += self.vecChosenColour.height + WIDGET_GAP
@@ -398,7 +402,7 @@ function buildLayout(self, Options)
       events = {
          activate = function(Widget)
             saveColours(self)
-            self?.feedback(self._rgb.r .. ',' .. self._rgb.g .. ',' .. self._rgb.b)
+            self?.feedback(f'{self._rgb.r},{self._rgb.g},{self._rgb.b}')
             table.clear(self)
          end
       }
@@ -425,7 +429,7 @@ function arrangePicker(self)
       self.vecPicker.cX = self._rainbowX + self._picker.x
       self.vecPicker.cY = self._rainbowY + self._picker.y
 
-      self.vecPicker.stroke     = 'rgba(' .. val .. ',' .. val .. ',' .. val .. ',1)'
+      self.vecPicker.stroke     = f'rgba({val},{val},{val},1)'
       self.vecPicker.visibility = VIS_VISIBLE
    else
       self.vecPicker.visibility = VIS_HIDDEN
@@ -484,7 +488,7 @@ function selectPalette(self, X, Y)
    self._picker = { x=dX, y=dY }
    arrangePicker(self)
    self.viewport.acDraw()
-   updateRGBInput(self, { r=rgb.red, g=rgb.green, b=rgb.blue })
+   updateRGBInput(self, gui.rgb(rgb.red, rgb.green, rgb.blue))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -497,6 +501,10 @@ function loadColours(self)
          if type(self._userColours) != 'array' then
             msg('Invalid colours.json file detected.')
             self._userColours = array<table>
+         end
+
+         for i, col in self._usercolours do
+            self._usercolours[i] = gui.rgb(col.r, col.g, col.b)
          end
       end
    end
@@ -515,7 +523,7 @@ gui.dialog.colour = function(Options)
       _rainbowY  = -1,
       _rainbow   = { winX = 0, winY = 0, winWidth = 0, winHeight = 0 },
       _rainbowBmp,
-      _rgb       = { r=200, g=200, b=200, a=255 },
+      _rgb       = gui.rgb(200, 200, 200, 255),
       _links     = array<table>,
       _userColours = array<table>,
       _picker = nil

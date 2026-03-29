@@ -9,9 +9,10 @@ Documentation is available in the Kotuku Wiki.
 
    namespace 'gui'
 
-VMARGIN   = gui.style.widget.margin
-GAP       = 26
-ICON_SIZE = 12
+VMARGIN   = gui.sizing.widget.margin
+GAP       <const> = 26
+ICON_SIZE <const> = 12
+
 count = 0
 
 function counter()
@@ -134,7 +135,7 @@ function arrangeItems(self)
             x        = x + iconWidth + VMARGIN,
             face     = gui.fonts.menu.face,
             fontSize = string.format('%.2fpt', gui.fonts.menu.size),
-            fill     = gui.style.menubar.text,
+            fill     = self.theme.menubar.text,
             string   = item.displayName
          })
 
@@ -239,6 +240,7 @@ gui.menubar = function(Options)
    try
       assert(Options.target, 'A target viewport is required.')
 
+      self.theme = gui.getTheme(Options.target)
       self.viewport = Options.target.new('vectorviewport')
       self.viewport.x      = Options.x ?? 0
       self.viewport.y      = Options.y ?? 0
@@ -346,7 +348,7 @@ gui.menubar = function(Options)
       self.viewport.height = ICON_SIZE + (VMARGIN * 2)
 
       self._bkgd.new('VectorRectangle', { -- Main background
-         fill   = gui.style.menubar.bkgd,
+         fill   = self.theme.menubar.bkgd,
          x      = 0,
          y      = 0,
          width  = '100%',
@@ -354,7 +356,7 @@ gui.menubar = function(Options)
       })
 
       self._highlight = self._bkgd.new('VectorRectangle', { -- Highlight for items
-         fill = gui.style.menubar.highlight,
+         fill = self.theme.menubar.highlight,
          x = 0, y = 0, width = 1, height = self.viewport.height - 1,
          visibility = 'hidden'
       })

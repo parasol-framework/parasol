@@ -7,8 +7,8 @@ Documentation is available in the Kotuku Wiki.
    namespace 'gui'
 
 FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
-BOX_SIZE = math.floor(FONT_MAX_HEIGHT * 1.35) + 1
-MARGIN = math.floor(FONT_HEIGHT * 0.5) + 1
+BOX_SIZE <const> = math.floor(FONT_MAX_HEIGHT * 1.35) + 1
+MARGIN <const> = math.floor(FONT_HEIGHT * 0.5) + 1
 
 local lStyle = thunk():str
    if mSys.AnalysePath('style:slider.tiri') is ERR_Okay then
@@ -48,6 +48,7 @@ gui.slider = function(Options)
    assert(target, 'A target viewport is required.')
    assert(self.max > self.min, 'The min/max values are invalid.')
 
+   self.theme = gui.getTheme(target)
    self.orientation = (Options.orientation is 'vertical') ? 'V' :> 'H'
    self._labelSize = 0
 
@@ -82,7 +83,7 @@ gui.slider = function(Options)
             face      = gui.fonts.label.face,
             fontSize  = string.format('%.2fpt', gui.fonts.label.size),
             fontStyle = gui.fonts.label.style,
-            fill      = gui.style.window.text,
+            fill      = self.theme.window.text,
             string    = self.label,
             lineLimit = 1
          })

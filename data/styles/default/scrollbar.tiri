@@ -6,8 +6,8 @@
 
    glCounter = 0
 
-ARROW_FILL = 'rgba(0,0,0,.8)'
-ARROW_FILL_ACTIVE = 'rgba(0,0,0,.95)'
+ARROW_FILL <const> = 'rgba(0,0,0,.8)'
+ARROW_FILL_ACTIVE <const> = 'rgba(0,0,0,.95)'
 
 return {
    arrange = function(State:table)
@@ -20,7 +20,7 @@ return {
       gui.simpleGradient(Viewport.scene, gradient, { { r=176,g=178,b=183,a=255 }, { r=212,g=211,b=215,a=255 } }, 0, 0, 0, '100%', nil, true)
 
       State.barBkgd = Viewport.new('VectorRectangle', {
-         width = '100%', height = '100%', fill = 'url(#' .. gradient .. ')'
+         width = '100%', height = '100%', fill = f'url(#{gradient})'
       })
    end,
    slider = function(State:table, Viewport)
@@ -35,12 +35,12 @@ return {
       end
 
       State.slider.bkRect = Viewport.new('VectorRectangle', {
-         width = '100%', height = '100%', stroke = 'rgba(148,149,160,1)', strokeWidth = 1, fill = 'url(#' .. gradient .. ')'
+         width = '100%', height = '100%', stroke = 'rgba(148,149,160,1)', strokeWidth = 1, fill = f'url(#{gradient})'
       })
 
       State.slider.border = Viewport.new('VectorPath', {
          name = 'slider_highlight',
-         sequence = 'M1,' .. Viewport.height-1 .. ' L1,1 M' .. Viewport.width-2 .. ',1',
+         sequence = f'M1,{Viewport.height-1} L1,1 M{Viewport.width-2},1',
          stroke = 'rgba(255,255,255,.8)'
       })
 
@@ -147,11 +147,7 @@ return {
       })
 
       local err, matrix = State.posButton.arrow.mtNewMatrix()
-      if State.direction is 'V' then -- Point down
-         mVec.rotate(matrix, 180, Viewport.viewX + (Viewport.viewWidth * 0.5), Viewport.viewY + (Viewport.viewHeight * 0.5))
-      else -- Point right
-         mVec.rotate(matrix, 90, Viewport.viewX + (Viewport.viewWidth * 0.5), Viewport.viewY + (Viewport.viewHeight * 0.5))
-      end
+      mVec.rotate(matrix, State.direction is 'V' ? 180 :> 90, Viewport.viewX + (Viewport.viewWidth * 0.5), Viewport.viewY + (Viewport.viewHeight * 0.5))
    end,
    negButtonPress = function(State:table, Value:num)
       State.negButton.arrow.fill = (Value is 1) ? ARROW_FILL_ACTIVE :> ARROW_FILL

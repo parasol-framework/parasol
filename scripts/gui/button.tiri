@@ -37,7 +37,7 @@ gui.button = function(Options)
       self.viewport.acDisable()
       if self.text then self.text.opacity = 1.0 end
       self.bkgd.fill = theme.button.bkgd
-      if self.events.enable then self.events.enable(self) end
+      self.events?.enable(self)
       self.viewport.acDraw()
    end
 
@@ -64,7 +64,7 @@ gui.button = function(Options)
    if not vps.x and not vps.xOffset then vps.x = 0 end
    if not vps.y and not vps.yOffset then vps.y = 0 end
    if not vps.width and not (vps.xOffset and vps.x) then
-      vps.width = theme.widget.width
+      vps.width = gui.sizing.widget.width
       calc_width = true
    end
 
@@ -72,21 +72,21 @@ gui.button = function(Options)
 
    self.bkgd = self.viewport.new('VectorRectangle', {
       fill   = theme.button.bkgd,
-      x      = theme.widget.strokeWidth * 0.5,
-      y      = theme.widget.strokeWidth * 0.5,
-      width  = self.viewport.width - theme.widget.strokeWidth,
-      height = HEIGHT - theme.widget.strokeWidth,
-      roundX = theme.widget.strokeWidth * 2,
-      roundY = theme.widget.strokeWidth * 2,
+      x      = gui.sizing.widget.strokeWidth * 0.5,
+      y      = gui.sizing.widget.strokeWidth * 0.5,
+      width  = self.viewport.width - gui.sizing.widget.strokeWidth,
+      height = HEIGHT - gui.sizing.widget.strokeWidth,
+      roundX = gui.sizing.widget.strokeWidth * 2,
+      roundY = gui.sizing.widget.strokeWidth * 2,
       stroke = theme.widget.stroke,
-      strokeWidth = theme.widget.strokeWidth,
+      strokeWidth = gui.sizing.widget.strokeWidth,
       resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
          if Vector.width != Width then
-            Vector.width = Width - theme.widget.strokeWidth
+            Vector.width = Width - gui.sizing.widget.strokeWidth
          end
 
          if Vector.height != Height then
-            Vector.height = Height - theme.widget.strokeWidth
+            Vector.height = Height - gui.sizing.widget.strokeWidth
          end
       end
    })
@@ -110,15 +110,15 @@ gui.button = function(Options)
    end
 
    self._textClip = self.viewport.new('VectorViewport', {
-      x = theme.widget.strokeWidth, y = theme.widget.strokeWidth,
-      xOffset = theme.widget.strokeWidth, yOffset = theme.widget.strokeWidth,
+      x = gui.sizing.widget.strokeWidth, y = gui.sizing.widget.strokeWidth,
+      xOffset = gui.sizing.widget.strokeWidth, yOffset = gui.sizing.widget.strokeWidth,
       overflow = VOF_HIDDEN
    })
 
    if Options.text then
       self.text = self._textClip.new('VectorText', {
          x         = GAP + label_offset,
-         y         = FONT_HEIGHT + math.floor((HEIGHT - FONT_HEIGHT - (theme.widget.strokeWidth * 2)) * 0.5),
+         y         = FONT_HEIGHT + math.floor((HEIGHT - FONT_HEIGHT - (gui.sizing.widget.strokeWidth * 2)) * 0.5),
          face      = gui.fonts.button.face,
          fontSize  = string.format('%.2fpt', gui.fonts.button.size),
          fontStyle = gui.fonts.button.style,
