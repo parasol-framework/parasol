@@ -97,3 +97,18 @@ end
    result = returnTwoValues() has FLAG_A
    assert(result is true, 'Multi-return: first value should have FLAG_A')
 end
+
+@Test function ErrorCheck()
+   strvar = 'hello'
+   try
+      local fail = 0x100 has strvar
+   success
+      error('Expected failure when using "has" with string value')
+   end
+
+   try
+      local fail = strvar has 0x10
+   success
+      error('Expected failure when using "has" with string value')
+   end
+end

@@ -2071,6 +2071,12 @@ ParserResult<ExpDesc> IrEmitter::emit_bitwise_expr(BinOpr opr, ExpDesc lhs, cons
 //********************************************************************************************************************
 // Emit bytecode for the `has` operator (bitwise flag test): `a has b` => `bit.band(a, b) != 0`
 // Produces a boolean (jump-based) result, like comparison operators.
+// Evaluation order is intentional:
+// 1) Materialise/capture LHS first.
+// 2) Resolve callee/call frame.
+// 3) Evaluate RHS last.
+// This preserves `has` left-to-right operand semantics when RHS evaluation has side effects
+// (for example, mutating the source referenced by LHS).
 
 ParserResult<ExpDesc> IrEmitter::emit_has_flag_expr(ExpDesc lhs, const ExprNode& rhs_ast)
 {
@@ -2090,7 +2096,8 @@ ParserResult<ExpDesc> IrEmitter::emit_has_flag_expr(ExpDesc lhs, const ExprNode&
       }
    }
 
-   // Runtime path: emit bit.band(lhs, rhs) call, then compare result against 0
+   // Runtime path: emit bit.band(lhs, rhs) call, then compare result against 0.
+   // Keep LHS stable before RHS emission so RHS side effects cannot alter which LHS value we test.
 
    RegisterAllocator allocator(fs);
 
@@ -2134,7 +2141,8 @@ ParserResult<ExpDesc> IrEmitter::emit_has_flag_expr(ExpDesc lhs, const ExprNode&
    // Ensure freereg is past the call frame
    if (fs->freereg <= arg2) fs->freereg = arg2 + 1;
 
-   // Load bit.band callee to call_base before evaluating RHS to preserve call-shape semantics.
+   // Load bit.band callee to call_base before RHS emission.
+   // LHS is already captured above; delaying RHS avoids violating left-to-right operand semantics.
    ExpDesc callee, key;
    callee.init(ExpKind::Global, 0);
    callee.u.sval = this->lex_state.keepstr("bit");
@@ -2158,7 +2166,8 @@ ParserResult<ExpDesc> IrEmitter::emit_has_flag_expr(ExpDesc lhs, const ExprNode&
       lhs = lhs_to_arg1.legacy();
    }
 
-   // Evaluate RHS after callee resolution to match explicit bit.band(a, b) semantics.
+   // Evaluate RHS only after LHS is fixed and call frame is prepared.
+   // This ordering prevents `x has f()` from reading a mutated `x` when `f()` has side effects.
    auto rhs_result = this->emit_expression(rhs_ast);
    if (not rhs_result.ok()) return rhs_result;
    ExpDesc rhs = rhs_result.value_ref();
