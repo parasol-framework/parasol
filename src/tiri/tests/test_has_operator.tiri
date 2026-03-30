@@ -42,9 +42,23 @@ end
 @Test function CombinedFlags()
    flags = FLAG_A | FLAG_B  -- 0x03
    -- Testing against combined mask
-   assert(flags has (FLAG_A | FLAG_B), 'Should detect combined flags (exact match)')
-   assert(flags has (FLAG_A | FLAG_C), 'Should detect partial overlap with FLAG_A')
+   assert(flags has FLAG_A | FLAG_B, 'Should detect combined flags (exact match)')
+   assert(flags has FLAG_A | FLAG_C, 'Should detect partial overlap with FLAG_A')
    assert(not (flags has (FLAG_C | FLAG_D)), 'Should not detect non-overlapping flags')
+
+   flags = DEVICE_FLOPPY_DISK
+   if flags has DEVICE_FLOPPY_DISK|DEVICE_COMPACT_DISC|DEVICE_FIXED then
+      -- Success
+   else
+      error('Failed to correctly detect DEVICE_FLOPPY_DISK')
+   end
+
+   flags = DEVICE_FIXED
+   if flags has DEVICE_FLOPPY_DISK|DEVICE_COMPACT_DISC|DEVICE_FIXED then
+      -- Success
+   else
+      error('Failed to correctly detect DEVICE_FIXED')
+   end
 end
 
 @Test function InIfCondition()
