@@ -1101,6 +1101,72 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
       }
       return ERR::Okay;
    }
+   else if (startswith("oklch(", IRI)) {
+      // CSS oklch() colour function: oklch(L C H [/ alpha])
+      // L: lightness 0-1 (or 0%-100%), C: chroma ~0-0.4 (or percentage), H: hue in degrees
+      // Values are space-separated; alpha is optional, preceded by '/'
+
+      auto &rgb = Painter->Colour;
+      IRI += 6;
+      while ((*IRI) and (*IRI <= 0x20)) IRI++;
+
+      double l = strtod(IRI, (STRING *)&IRI);
+      if (*IRI IS '%') { l *= 0.01; IRI++; }
+      while ((*IRI) and (*IRI <= 0x20)) IRI++;
+
+      double c = strtod(IRI, (STRING *)&IRI);
+      if (*IRI IS '%') { c *= 0.004; IRI++; } // 100% = 0.4
+      while ((*IRI) and (*IRI <= 0x20)) IRI++;
+
+      double h_deg = strtod(IRI, (STRING *)&IRI);
+      while ((*IRI) and (*IRI <= 0x20)) IRI++;
+
+      // Optional alpha after '/'
+      if (*IRI IS '/') {
+         IRI++;
+         rgb.Alpha = (float)strtod(IRI, (STRING *)&IRI);
+         if (*IRI IS '%') { rgb.Alpha *= 0.01f; IRI++; }
+         rgb.Alpha = std::clamp(rgb.Alpha, 0.0f, 1.0f);
+      }
+      else rgb.Alpha = 1.0f;
+
+      l = std::clamp(l, 0.0, 1.0);
+      c = std::max(c, 0.0);
+
+      // OKLCh to OKLAB
+      const double h_rad = h_deg * (agg::pi / 180.0);
+      const double ok_a = c * cos(h_rad);
+      const double ok_b = c * sin(h_rad);
+
+      // OKLAB to linear sRGB via the intermediate LMS cube-root space
+      const double l_ = l + 0.3963377774 * ok_a + 0.2158037573 * ok_b;
+      const double m_ = l - 0.1055613458 * ok_a - 0.0638541728 * ok_b;
+      const double s_ = l - 0.0894841775 * ok_a - 1.2914855480 * ok_b;
+
+      const double ll = l_ * l_ * l_;
+      const double mm = m_ * m_ * m_;
+      const double ss = s_ * s_ * s_;
+
+      double lr = +4.0767416621 * ll - 3.3077115913 * mm + 0.2309699292 * ss;
+      double lg = -1.2684380046 * ll + 2.6097574011 * mm - 0.3413193965 * ss;
+      double lb = -0.0041960863 * ll - 0.7034186147 * mm + 1.7076147010 * ss;
+
+      // Linear sRGB to sRGB (gamma companding)
+      auto linear_to_srgb = [](double v) -> double {
+         if (v <= 0.0031308) return 12.92 * v;
+         return 1.055 * pow(v, 1.0 / 2.4) - 0.055;
+      };
+
+      rgb.Red   = std::clamp((float)linear_to_srgb(lr), 0.0f, 1.0f);
+      rgb.Green = std::clamp((float)linear_to_srgb(lg), 0.0f, 1.0f);
+      rgb.Blue  = std::clamp((float)linear_to_srgb(lb), 0.0f, 1.0f);
+
+      if (Result) {
+         while ((*IRI) and (*IRI != ';')) IRI++;
+         *Result = IRI[0] ? IRI : NULL;
+      }
+      return ERR::Okay;
+   }
    else if ((startswith("hsl(", IRI)) or (startswith("hsla(", IRI))) {
       // Hue is a number expressing an angle in degrees
       // S&L are expressed as a percentage from 0 to 100.  The '%' is ignored.  'none' is also valid.
