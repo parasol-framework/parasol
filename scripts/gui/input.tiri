@@ -6,11 +6,11 @@ Documentation is available in the Kotuku Wiki.
 
    namespace 'gui'
 
-function reportActivate(self, State)
+function reportActivate(self:table, State:str, Force:bool)
    self.events.activate ?? return
    text = self.text.string
    hash = string.hash(text)
-   if hash != self.hash then
+   if Force or hash != self.hash then
       self.hash = hash
       self.events.activate(self, { text=text, state=State })
    end
@@ -155,6 +155,25 @@ gui.input = function(Options)
       end
    end
 
+   if Options.shadowLabel then
+      self.shadowLabel = self._textClip.new('VectorText', {
+         name      = 'vt_shadow',
+         x         = 4,
+         y         = math.round(font_height + math.floor((box_height - font_height - (gui.sizing.page.strokeWidth * 2)) * 0.5)),
+         face      = Options.textFace ?? gui.fonts.widget.face,
+         fontSize  = string.format('%.2fpt', gui.fonts.widget.size),
+         fontStyle = Options.textStyle ?? gui.fonts.widget.style,
+         fill      = textFill,
+         opacity   = 0.5,
+         string    = Options.shadowLabel,
+         lineLimit = 1
+      })
+
+      if Options.text?? then
+         self.shadowLabel.visibility = VIS_HIDDEN
+      end
+   end
+
    self.text = self._textClip.new('VectorText', {
       name      = 'vt_input',
       x         = 4,
@@ -174,19 +193,25 @@ gui.input = function(Options)
 
    if Options.selected then self.text.mtSelectArea(0, 20000) end
 
-   self.viewport.mtSubscribeFeedback(FM_HAS_FOCUS | FM_CHILD_HAS_FOCUS | FM_LOST_FOCUS, function(Viewport, Event)
+   self.viewport.mtSubscribeFeedback(FM_HAS_FOCUS | FM_CHILD_HAS_FOCUS | FM_LOST_FOCUS, function(Viewport:obj, Event)
       if Event is FM_LOST_FOCUS then
-         self.bkgd.stroke = theme.page.stroke
+         if not Options.flushEdges then
+            self.bkgd.stroke = theme.page.stroke
+         end
          self.events?.lostFocus(self)
          if validateInput(self) then
-            reportActivate(self, 'lost-focus')
+            reportActivate(self, 'lost-focus', false)
          end
       else
          self._lastGoodInput = self.text.string
          if self.disabled then
-            self.bkgd.stroke = theme.page.stroke
+            if not Options.flushEdges then
+               self.bkgd.stroke = theme.page.stroke
+            end
          else
-            self.bkgd.stroke = theme.page.strokeFocus
+            if not Options.flushEdges then
+               self.bkgd.stroke = theme.page.strokeFocus
+            end
             self.events?.focus(self)
          end
       end
@@ -194,15 +219,23 @@ gui.input = function(Options)
       Viewport.acDraw()
    end)
 
-   self._textClip.mtSubscribeKeyboard(function(Viewport, Qualifiers, Value, Unicode)
+   self._textClip.mtSubscribeKeyboard(function(Viewport:obj, Qualifiers, Value, Unicode)
       if (Qualifiers & KQ_PRESSED) is 0 then return end
 
       if (Value is KEY_ENTER) or (Value is KEY_NP_ENTER) then
          validateInput(self)
-         reportActivate(self, 'activated')
+         reportActivate(self, 'activated', true)
       end
 
       self.events?.keypress(self, { qualifiers=Qualifiers, value=Value, unicode=Unicode })
+
+      if self.shadowLabel then
+         if self.text.string?? then
+            self.shadowLabel.visibility = VIS_HIDDEN
+         else
+            self.shadowLabel.visibility = VIS_VISIBLE
+         end
+      end
    end)
 
    if self.events.cursorEntry or self.events.cursorExit then
@@ -217,7 +250,6 @@ gui.input = function(Options)
          until not Msg
       end)
    end
-
 
    self.events?.show(self)
 

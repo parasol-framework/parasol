@@ -17,17 +17,27 @@ Documentation is available in the Kotuku Wiki.
 GAP <const> = 8
 
 gui.dialog.file = function(Options)
+   local target_path, target_file
+   if Options.path then target_path, target_file = io.splitPath(Options.path) end
+
    self = { -- Public variables
       windowID    = nil,
-      currentPath = io.splitPath(Options.path),
+      currentPath = target_path,
       multiSelect = Options.multiSelect ?? false,
       warnExists  = Options.warnExists ?? false,
       feedback    = Options.feedback,
-      target      = Options.target
+      target      = Options.target,
+      allowNew    = Options.allowNew
    }
 
    function processFeedback()
       list = self.fileview.view.selectedItems()
+      if not list?? then
+         local file = self.filebox.text.string
+         if file?? then
+            list:push({ filename = file })
+         end
+      end
 
       if (self.warnExists is true) and (#list > 0) then
          _, type = mSys.AnalysePath((self.fileview.path ?? '') .. list[0].filename)
@@ -100,7 +110,7 @@ gui.dialog.file = function(Options)
       x          = 0,
       y          = 0,
       xOffset    = 0,
-      text       = Options.path,
+      text       = self.currentPath,
       textFace   = gui.fonts.filesys.face,
       flushEdges = true,
       bkgd       = 'none',
@@ -147,6 +157,32 @@ gui.dialog.file = function(Options)
 
    footer += lOkayButton.viewport.height + GAP
 
+   if Options.allowNew then
+      self.filebox = gui.input({
+         target      = self.viewport,
+         x           = 0,
+         yOffset     = footer,
+         xOffset     = 0,
+         shadowLabel = 'Enter file name',
+         textFace    = gui.fonts.filesys.face,
+         flushEdges  = true,
+         text        = target_file,
+         events = {
+            activate = function(Widget:table, Event:table)
+               if Event.state is 'activated' then
+                  processFeedback()
+               end
+            end
+         }
+      })
+
+      self.filebox.viewport.new('VectorRectangle', {
+         x=0, y='100%', height=1, width='100%', fill=theme.window.stroke
+      })
+
+      footer += self.filebox.viewport.height
+   end
+
    -- Populate filter selection
 
    fv_filters = array<table>
@@ -180,7 +216,7 @@ gui.dialog.file = function(Options)
 
    self.fileview = gui.fileview({
       target        = viewRegion,
-      path          = Options.path,
+      path          = self.currentPath,
       filterList    = fv_filters,
       sysKeys       = true,
       fileSelected  = processFeedback,
@@ -193,7 +229,11 @@ gui.dialog.file = function(Options)
       end
    })
 
-   self.currentPath = self.fileview.path
+   self.currentPath = self.fileview.path -- Ensure consistency
+
+   viewRegion.new('VectorRectangle', {
+      x=0, y='100%', height=1, width='100%', fill=theme.window.stroke
+   })
 
    self.window:moveToFront()
    self.window:show()
@@ -213,9 +253,10 @@ end
       filterList   = arg('filterList'),
       icon         = arg('icon'),
       path         = arg('path'),
-      selectFolder = arg('selectFolder', nil),
-      multiSelect  = arg('multiSelect', nil),
-      userInput    = arg('userInput', nil)
+      selectFolder = arg('selectFolder'),
+      multiSelect  = arg('multiSelect'),
+      userInput    = arg('userInput'),
+      allowNew     = arg('allowNew')
    })
 
    return dlg.windowID
