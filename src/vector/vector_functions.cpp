@@ -948,13 +948,27 @@ ReadPainter: Parses a painter string to its colour, gradient, pattern or image v
 This function will parse an SVG style IRI into its equivalent logical values.  The results can then be processed for
 rendering a stroke or fill operation in the chosen style.
 
-Colours can be referenced using one of three methods.  Colour names such as `orange` and `red` are accepted.  Hexadecimal
-RGB values are supported in the format `#RRGGBBAA`.  Floating point RGB is supported as `rgb(r,g,b,a)` whereby the
-component values range between `0.0` and `255.0`.
+Colours can be expressed in the following formats:
 
-A Gradient, Image or Pattern can be referenced using the `url(#name)` format, where the 'name' is a definition that has
-been registered with the provided `Scene` object.  If `Scene` is `NULL` then it will not be possible to find the
-reference.  Any failure to lookup a reference will be silently discarded.
+<types>
+<type name="Named colour">Standard SVG colour names such as `orange` and `red` are accepted.  Application-defined
+colour names are also supported.</type>
+<type name="#RRGGBB / #RRGGBBAA">Hexadecimal formats.  Alpha defaults to fully opaque when omitted.</type>
+<type name="rgb(R,G,B) / rgba(R,G,B,A)">Component values range from `0` to `255`, or from `0%` to `100%`.  The
+alpha component ranges from `0.0` to `1.0` (or `0%` to `100%`).</type>
+<type name="hsl(H,S,L) / hsla(H,S,L,A)">Hue is expressed in degrees (`0`-`360`).  Saturation and lightness are
+percentages.  Alpha ranges from `0.0` to `1.0`.</type>
+<type name="hsv(H,S,V)">Hue in degrees (`0`-`360`), saturation and value as percentages.  An optional alpha
+component ranging from `0.0` to `1.0` is supported.</type>
+<type name="oklch(L C H [/ A])">CSS Color Level 4 OKLCh colour space.  Lightness (`L`) is `0`-`1` or `0%`-`100%`.
+Chroma (`C`) is an unbounded positive value, or a percentage where `100%` equals `0.4`.  Hue (`H`) is in degrees.
+Alpha (`A`) is optional, preceded by `/`, and ranges from `0.0` to `1.0` or `0%` to `100%`.</type>
+</typesookup=>
+
+A Gradient, Image or Pattern can be referenced using the `url(#name)` format, where `name` is a definition
+registered with the provided `Scene` object.  If `Scene` is `NULL` then it will not be possible to find the
+reference.  Any failure to look up a reference will result in an error.  The `Scene` parameter accepts either a
+@VectorScene or a @Vector object if its Scene field value is defined.
 
 To access one of the pre-defined colourmaps, use the format `url(#cmap:name)`.  The colourmap will be accessible as
 a linear gradient that belongs to the `Scene`.  Valid colourmap names are `cmap:crest`,
@@ -963,7 +977,7 @@ a linear gradient that belongs to the `Scene`.  Valid colourmap names are `cmap:
 
 A !VectorPainter structure must be provided by the client and will be used to store the final result.  All pointers
 that are returned will remain valid as long as the provided Scene exists with its registered painter definitions.  An
-optional `Result` string can store a reference to the character up to which the IRI was parsed.
+optional `Result` string can store a reference to the character position up to which the IRI was parsed.
 
 -INPUT-
 obj(VectorScene) Scene: Optional.  Required if `url()` references are to be resolved.
