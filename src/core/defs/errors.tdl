@@ -64,7 +64,7 @@ function declareErrors()
     "IllegalMethodID",
     "IllegalActionID",
     "ModuleOpenFailed",
-    "IllegalActionAttempt",
+    "IllegalActionAttempt",  -- DEPRECATED
     "EntryMissingHeader",
     "ModuleMissingInit",
     "ModuleInitFailed",

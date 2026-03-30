@@ -140,7 +140,15 @@ OBJECTPTR access_object(GCobject *Object)
       return nullptr;
    }
 
-   if (Object->ptr) Object->accesscount++;
+   if (Object->ptr) {
+      #if LUA_USE_ASSERT
+         // This error indicates that the object was forcibly terminated (e.g. because the parent was terminated).
+         // The client should have marked the object as detached in order to prevent this issue.
+         assert(Object->ptr->Class, "Object terminated while still attached.");
+      #endif
+      Object->accesscount++;
+   }
+
    return Object->ptr;
 }
 

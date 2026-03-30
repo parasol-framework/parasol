@@ -1334,8 +1334,9 @@ LJ_NORET LJ_NOINLINE static void err_argmsg(lua_State *L, int narg, CSTRING msg)
    CSTRING fname = "?";
    CSTRING ftype = lj_debug_funcname(L, L->base - 1, &fname);
    if (narg < 0 and narg > LUA_REGISTRYINDEX) narg = (int)(L->top - L->base) + narg + 1;
-   if (ftype and ftype[3] IS 'h' and --narg IS 0)  //  Check for "method".
+   if (ftype and ftype[3] IS 'h' and --narg IS 0) { //  Check for "method".
       msg = lj_strfmt_pushf(L, err2msg(ErrMsg::BADSELF), fname, msg);
+   }
    else msg = lj_strfmt_pushf(L, err2msg(ErrMsg::BADARG), narg, fname, msg);
    lj_err_callermsg(L, msg);
 }
