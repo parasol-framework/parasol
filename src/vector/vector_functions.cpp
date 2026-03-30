@@ -948,13 +948,27 @@ ReadPainter: Parses a painter string to its colour, gradient, pattern or image v
 This function will parse an SVG style IRI into its equivalent logical values.  The results can then be processed for
 rendering a stroke or fill operation in the chosen style.
 
-Colours can be referenced using one of three methods.  Colour names such as `orange` and `red` are accepted.  Hexadecimal
-RGB values are supported in the format `#RRGGBBAA`.  Floating point RGB is supported as `rgb(r,g,b,a)` whereby the
-component values range between `0.0` and `255.0`.
+Colours can be expressed in the following formats:
 
-A Gradient, Image or Pattern can be referenced using the `url(#name)` format, where the 'name' is a definition that has
-been registered with the provided `Scene` object.  If `Scene` is `NULL` then it will not be possible to find the
-reference.  Any failure to lookup a reference will be silently discarded.
+<types>
+<type name="Named colour">Standard SVG colour names such as `orange` and `red` are accepted.  Application-defined
+colour names are also supported.</type>
+<type name="#RRGGBB / #RRGGBBAA">Hexadecimal formats.  Alpha defaults to fully opaque when omitted.</type>
+<type name="rgb(R,G,B) / rgba(R,G,B,A)">Component values range from `0` to `255`, or from `0%` to `100%`.  The
+alpha component ranges from `0.0` to `1.0` (or `0%` to `100%`).</type>
+<type name="hsl(H,S,L) / hsla(H,S,L,A)">Hue is expressed in degrees (`0`-`360`).  Saturation and lightness are
+percentages.  Alpha ranges from `0.0` to `1.0`.</type>
+<type name="hsv(H,S,V)">Hue in degrees (`0`-`360`), saturation and value as percentages.  An optional alpha
+component ranging from `0.0` to `1.0` is supported.</type>
+<type name="oklch(L C H [/ A])">CSS Color Level 4 OKLCh colour space.  Lightness (`L`) is `0`-`1` or `0%`-`100%`.
+Chroma (`C`) is an unbounded positive value, or a percentage where `100%` equals `0.4`.  Hue (`H`) is in degrees.
+Alpha (`A`) is optional, preceded by `/`, and ranges from `0.0` to `1.0` or `0%` to `100%`.</type>
+</typesookup=>
+
+A Gradient, Image or Pattern can be referenced using the `url(#name)` format, where `name` is a definition
+registered with the provided `Scene` object.  If `Scene` is `NULL` then it will not be possible to find the
+reference.  Any failure to look up a reference will result in an error.  The `Scene` parameter accepts either a
+@VectorScene or a @Vector object if its Scene field value is defined.
 
 To access one of the pre-defined colourmaps, use the format `url(#cmap:name)`.  The colourmap will be accessible as
 a linear gradient that belongs to the `Scene`.  Valid colourmap names are `cmap:crest`,
@@ -963,7 +977,7 @@ a linear gradient that belongs to the `Scene`.  Valid colourmap names are `cmap:
 
 A !VectorPainter structure must be provided by the client and will be used to store the final result.  All pointers
 that are returned will remain valid as long as the provided Scene exists with its registered painter definitions.  An
-optional `Result` string can store a reference to the character up to which the IRI was parsed.
+optional `Result` string can store a reference to the character position up to which the IRI was parsed.
 
 -INPUT-
 obj(VectorScene) Scene: Optional.  Required if `url()` references are to be resolved.
@@ -1094,6 +1108,72 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
       rgb.Red   = std::clamp(rgb.Red, 0.0f, 1.0f);
       rgb.Green = std::clamp(rgb.Green, 0.0f, 1.0f);
       rgb.Blue  = std::clamp(rgb.Blue, 0.0f, 1.0f);
+
+      if (Result) {
+         while ((*IRI) and (*IRI != ';')) IRI++;
+         *Result = IRI[0] ? IRI : NULL;
+      }
+      return ERR::Okay;
+   }
+   else if (startswith("oklch(", IRI)) {
+      // CSS oklch() colour function: oklch(L C H [/ alpha])
+      // L: lightness 0-1 (or 0%-100%), C: chroma ~0-0.4 (or percentage), H: hue in degrees
+      // Values are space-separated; alpha is optional, preceded by '/'
+
+      auto &rgb = Painter->Colour;
+      IRI += 6;
+      while ((*IRI) and (*IRI <= 0x20)) IRI++;
+
+      double l = strtod(IRI, (STRING *)&IRI);
+      if (*IRI IS '%') { l *= 0.01; IRI++; }
+      while ((*IRI) and (*IRI <= 0x20)) IRI++;
+
+      double c = strtod(IRI, (STRING *)&IRI);
+      if (*IRI IS '%') { c *= 0.004; IRI++; } // 100% = 0.4
+      while ((*IRI) and (*IRI <= 0x20)) IRI++;
+
+      double h_deg = strtod(IRI, (STRING *)&IRI);
+      while ((*IRI) and (*IRI <= 0x20)) IRI++;
+
+      // Optional alpha after '/'
+      if (*IRI IS '/') {
+         IRI++;
+         rgb.Alpha = (float)strtod(IRI, (STRING *)&IRI);
+         if (*IRI IS '%') { rgb.Alpha *= 0.01f; IRI++; }
+         rgb.Alpha = std::clamp(rgb.Alpha, 0.0f, 1.0f);
+      }
+      else rgb.Alpha = 1.0f;
+
+      l = std::clamp(l, 0.0, 1.0);
+      c = std::max(c, 0.0);
+
+      // OKLCh to OKLAB
+      const double h_rad = h_deg * (agg::pi / 180.0);
+      const double ok_a = c * cos(h_rad);
+      const double ok_b = c * sin(h_rad);
+
+      // OKLAB to linear sRGB via the intermediate LMS cube-root space
+      const double l_ = l + 0.3963377774 * ok_a + 0.2158037573 * ok_b;
+      const double m_ = l - 0.1055613458 * ok_a - 0.0638541728 * ok_b;
+      const double s_ = l - 0.0894841775 * ok_a - 1.2914855480 * ok_b;
+
+      const double ll = l_ * l_ * l_;
+      const double mm = m_ * m_ * m_;
+      const double ss = s_ * s_ * s_;
+
+      double lr = +4.0767416621 * ll - 3.3077115913 * mm + 0.2309699292 * ss;
+      double lg = -1.2684380046 * ll + 2.6097574011 * mm - 0.3413193965 * ss;
+      double lb = -0.0041960863 * ll - 0.7034186147 * mm + 1.7076147010 * ss;
+
+      // Linear sRGB to sRGB (gamma companding)
+      auto linear_to_srgb = [](double v) -> double {
+         if (v <= 0.0031308) return 12.92 * v;
+         return 1.055 * pow(v, 1.0 / 2.4) - 0.055;
+      };
+
+      rgb.Red   = std::clamp((float)linear_to_srgb(lr), 0.0f, 1.0f);
+      rgb.Green = std::clamp((float)linear_to_srgb(lg), 0.0f, 1.0f);
+      rgb.Blue  = std::clamp((float)linear_to_srgb(lb), 0.0f, 1.0f);
 
       if (Result) {
          while ((*IRI) and (*IRI != ';')) IRI++;
