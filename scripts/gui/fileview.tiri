@@ -136,18 +136,18 @@ end
 
 function convertPermissions(Permissions)
    out = ''
-   if (Permissions & PERMIT_READ)??  then out ..= 'r' else out ..= '-' end
-   if (Permissions & PERMIT_WRITE)?? then out ..= 'w' else out ..= '-' end
-   if (Permissions & PERMIT_EXEC)??  then out ..= 'x' else out ..= '-' end
+   if Permissions has PERMIT_READ  then out ..= 'r' else out ..= '-' end
+   if Permissions has PERMIT_WRITE then out ..= 'w' else out ..= '-' end
+   if Permissions has PERMIT_EXEC  then out ..= 'x' else out ..= '-' end
 
    out = out .. ' '
 
-   if (Permissions & PERMIT_GROUP_READ)??  then out ..= 'r' else out = out .. '-' end
-   if (Permissions & PERMIT_GROUP_WRITE)?? then out ..= 'w' else out = out .. '-' end
+   if Permissions has PERMIT_GROUP_READ  then out ..= 'r' else out = out .. '-' end
+   if Permissions has PERMIT_GROUP_WRITE then out ..= 'w' else out = out .. '-' end
 
-   if (Permissions & PERMIT_GROUPID)?? then
+   if Permissions has PERMIT_GROUPID then
       out ..= 'g'
-   elseif (Permissions & PERMIT_GROUP_EXEC)?? then
+   elseif Permissions has PERMIT_GROUP_EXEC then
       out ..= 'x'
    else
       out ..= '-'
@@ -155,11 +155,11 @@ function convertPermissions(Permissions)
 
    out ..= ' '
 
-   if (Permissions & PERMIT_OTHERS_READ)??  then out = out .. 'r' else out = out .. '-' end
-   if (Permissions & PERMIT_OTHERS_WRITE)?? then out = out .. 'w' else out = out .. '-' end
-   if (Permissions & PERMIT_OTHERS_EXEC)??  then out = out .. 'x' else out = out .. '-' end
+   if Permissions has PERMIT_OTHERS_READ  then out = out .. 'r' else out = out .. '-' end
+   if Permissions has PERMIT_OTHERS_WRITE then out = out .. 'w' else out = out .. '-' end
+   if Permissions has PERMIT_OTHERS_EXEC  then out = out .. 'x' else out = out .. '-' end
 
-   if (Permissions & PERMIT_USERID)?? then out = out .. ' s' end
+   if Permissions has PERMIT_USERID then out = out .. ' s' end
 
    return out
 end
@@ -311,7 +311,7 @@ function displayFilters(self)
          item.vp.mtSubscribeInput(JTYPE_BUTTON, function(Viewport, Events)
             ev = Events
             while ev do
-               if (ev.flags & JTYPE_BUTTON)?? then
+               if ev.flags has JTYPE_BUTTON then
                   if ev.type is JET_BUTTON_1 and ev.value is 1 then
                      if item.selected then
                         item.highlight.visibility = VIS_HIDDEN
@@ -442,13 +442,13 @@ end
 
 function createFileItem(self, Info)
    if not self.showHidden then
-      if (Info.flags & RDF_HIDDEN)?? then return end
+      if Info.flags has RDF_HIDDEN then return end
    end
 
    msg('createFileItem() ' .. Info.name .. string.format(', $%.8x', Info.flags))
 
    local new_item
-   if (Info.flags & RDF_VOLUME) != 0 then -- Get the icon to use for displaying the volume
+   if Info.flags has RDF_VOLUME then -- Get the icon to use for displaying the volume
       icon = getFileIcon(Info.name .. ':')
       if icon is 'icons:folders/folder' then icon = 'folders/folder_shortcut' end
       icon ?= 'folders/folder_shortcut'
@@ -456,9 +456,9 @@ function createFileItem(self, Info)
       total_size = nil
       free_space = nil
       device = obj.new('storagedevice', { volume = Info.name .. ':' } )
-      if (device.deviceFlags & DEVICE_BOOKMARK)?? then -- User shortcut
+      if device.deviceFlags has DEVICE_BOOKMARK then -- User shortcut
          colour = self.theme.palette.type is 'light' ? 'carbon' :> 'pearl'
-      elseif (device.deviceFlags & (DEVICE_FLOPPY_DISK|DEVICE_FIXED|DEVICE_HARD_DISK|DEVICE_COMPACT_DISC))?? then
+      elseif device.deviceFlags has (DEVICE_FLOPPY_DISK|DEVICE_FIXED|DEVICE_HARD_DISK|DEVICE_COMPACT_DISC) then
          colour = 'green'
          if device.deviceSize >= 1 then total_size = sortNum(device.deviceSize) end
          if device.bytesFree >= 1 then free_space = sortNum(device.bytesFree) end
@@ -481,7 +481,7 @@ function createFileItem(self, Info)
          totalsize   = total_size,
          freespace   = free_space
       }
-   elseif (Info.flags & RDF_FOLDER) != 0 then
+   elseif Info.flags has RDF_FOLDER then
       local display_name = self.view.noIcons ? Info.name :> rxStripFolder.extract(Info.name)
 
       if not Info.name:endsWith('/') then
@@ -506,7 +506,7 @@ function createFileItem(self, Info)
       if Info.modified.year?? then
          new_item.date = { sort = 'D' .. sortNum(Info.timestamp), value = printableTime(Info.modified) }
       end
-   elseif (Info.Flags & RDF_FILE) != 0 then
+   elseif Info.Flags has RDF_FILE then
       if self.hideFiles then return end
 
       if not lFilter or lFilter.test(Info.name) then
@@ -589,7 +589,7 @@ gui.fileview = function(Options)
 
       if not findItem(Info.name) then -- Add missing volume
          err, info = mSys.GetFileInfo(Info.name .. ':')
-         if (err is ERR_Okay) and (info.flags & RDF_HIDDEN) is 0 then
+         if (err is ERR_Okay) and not (info.flags has RDF_HIDDEN) then
             addFileItem(self, info)
             self.view.sort()
          end
@@ -654,7 +654,7 @@ gui.fileview = function(Options)
 
          info = dirinfo.info
 
-         if (info.Flags & RDF_VOLUME)?? and (info.Flags & RDF_HIDDEN)?? then
+         if (info.Flags has RDF_VOLUME) and (info.Flags has RDF_HIDDEN) then
             -- Ignore hidden volumes
          elseif #self.view.items is 0 then -- Empty view, this is the first file.
             addFileItem(self, info)
@@ -746,7 +746,7 @@ gui.fileview = function(Options)
       end
 
       if not Path then -- If no file is given, the monitored folder was affected by something.
-         if ((Flags & MFF_DELETE)?? and (Flags & MFF_SELF)??) or (Flags & MFF_UNMOUNT)?? then
+         if ((Flags has MFF_DELETE) and (Flags has MFF_SELF)) or (Flags has MFF_UNMOUNT) then
             if self.path:startsWith('cd') then
             elseif self.path:startsWith('disk') then
             else -- Check that the folder is definitely gone and that this is not a mis-report.
@@ -759,10 +759,10 @@ gui.fileview = function(Options)
       end
 
       local info, info_err
-      if (Flags & MFF_DELETE) is 0 then
+      if not (Flags has MFF_DELETE) then
          info_err, info = mSys.GetFileInfo(self.path .. (Path ?? ''))
          if info_err is ERR_Okay then
-            if self.hideFiles and (info.Flags & RDF_FILE)?? then return end
+            if self.hideFiles and (info.Flags has RDF_FILE) then return end
             -- Use the true file name with the trailing slash if it is a folder (important
             -- for symbolically linked directories).
             Path = info.name
@@ -771,14 +771,14 @@ gui.fileview = function(Options)
          info_err = ERR_Failed
       end
 
-      if (Flags & MFF_CREATE)?? then
+      if Flags has MFF_CREATE then
          if info_err is ERR_Okay then
             addFileItem(self, info)
             self.view.sort()
          end
-      elseif (Flags & MFF_DELETE)?? then
+      elseif Flags has MFF_DELETE then
          deleteItem(Path)
-      elseif (Flags & MFF_MOVED)?? then -- Determine if the file has been moved in or moved out
+      elseif Flags has MFF_MOVED then -- Determine if the file has been moved in or moved out
          if info_err is ERR_Okay then
             -- It is possible that the moved file is replacing an already existing file in
             -- the view (i.e. rename operation), so do a tag-check first.
@@ -789,7 +789,7 @@ gui.fileview = function(Options)
          else
             deleteItem(Path)
          end
-      elseif (Flags & (MFF_ATTRIB|MFF_CLOSED))?? and File then
+      elseif Flags has (MFF_ATTRIB|MFF_CLOSED) and File then
          if info_err is ERR_Okay then
             item = findItem(Path)
             if item then
@@ -1302,10 +1302,10 @@ gui.fileview = function(Options)
 
       local err
       if self.deviceInfo and not self.watch and self.path and self.path != ':' then
-         if (self.deviceInfo.deviceFlags & DEVICE_REMOVABLE)?? then
-            if (self.deviceInfo.deviceFlags & DEVICE_WRITE) is 0 then
+         if self.deviceInfo.deviceFlags has DEVICE_REMOVABLE then
+            if not (self.deviceInfo.deviceFlags has DEVICE_WRITE) then
                -- Read only device, do not refresh
-            elseif (self.deviceInfo.deviceFlags & (DEVICE_FLOPPY_DISK|DEVICE_USB)) then
+            elseif self.deviceInfo.deviceFlags has DEVICE_FLOPPY_DISK|DEVICE_USB then
                -- Slow device, do not refresh
             else
                err, self.timer = mSys.SubscribeTimer(2.0, incrementalRefresh) -- Write/Read access to removable device
@@ -1330,10 +1330,10 @@ gui.fileview = function(Options)
 
    function configureView(self, ViewOptions)
       self.view.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Value, Unicode)
-         if (Qualifiers & KQ_PRESSED) is 0 then return end
+         if not (Qualifiers has KQ_PRESSED) then return end
          if self.hasFocus != true then return end
 
-         if self.enableSysKeys and (Qualifiers & KQ_CTRL)?? then
+         if self.enableSysKeys and Qualifiers has KQ_CTRL then
             -- NB: Sys-keys should only be enabled if cut/copy/paste support is not implemented in the core
             -- application.
 
@@ -1706,7 +1706,7 @@ gui.fileview = function(Options)
                         flags = flags|CEF_DELETE
                      end
 
-                     if (flags & CEF_DELETE)?? then
+                     if flags has CEF_DELETE then
                         msg('Move "' .. item.path .. '" to "' .. dest .. '"')
                      else
                         msg('Copy "' .. item.path .. '" to "' .. dest .. '"')
