@@ -150,7 +150,8 @@ enum class AstBinaryOperator : uint8_t {
    ShiftRight,
    LogicalAnd,
    LogicalOr,
-   IfEmpty
+   IfEmpty,
+   HasFlag
 };
 
 enum class NameResolution : uint8_t {
