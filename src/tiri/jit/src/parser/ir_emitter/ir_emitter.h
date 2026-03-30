@@ -182,6 +182,7 @@ private:
    ParserResult<ExpDesc> emit_ternary_expr(const TernaryExprPayload& payload);
    ParserResult<ExpDesc> emit_if_empty_expr(ExpDesc lhs, const ExprNode& rhs_ast);
    ParserResult<ExpDesc> emit_bitwise_expr(BinOpr opr, ExpDesc lhs, const ExprNode& rhs_ast);
+   ParserResult<ExpDesc> emit_has_flag_expr(ExpDesc lhs, const ExprNode& rhs_ast);
    ParserResult<ExpDesc> emit_presence_expr(const PresenceExprPayload& payload);
    ParserResult<ExpDesc> emit_pipe_expr(const PipeExprPayload& payload);
    ParserResult<ExpDesc> emit_member_expr(const MemberExprPayload& payload);

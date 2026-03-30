@@ -1615,8 +1615,8 @@ end
 
    for _, v in arr do
       found = arr:find(v) != nil
-      has = arr:contains(v)
-      assert(found is has, "contains() should agree with find() for value " .. v)
+      has_v = arr:contains(v)
+      assert(found is has_v, "contains() should agree with find() for value " .. v)
    end
 
    -- Test non-existent value

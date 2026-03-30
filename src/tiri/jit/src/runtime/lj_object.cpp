@@ -190,10 +190,12 @@ extern "C" void bc_object_getfield(lua_State *L, GCobject *Obj, GCstr *Key, TVal
 
    const auto saved_base = L->base;
    const auto saved_top = L->top;
+
    if (not Ins) {
       auto jb = tvref(G(L)->jit_base);
       if (jb) L->base = jb;
    }
+
    if (curr_funcisL(L)) L->top = curr_topL(L);
 
    if (not Obj->uid) luaL_error(L, ERR::DoesNotExist, "Object dereferenced, unable to read field.");

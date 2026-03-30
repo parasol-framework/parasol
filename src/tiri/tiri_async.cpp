@@ -148,7 +148,7 @@ static int async_action(lua_State *Lua)
    if (not gc_obj->ptr) luaL_error(Lua, ERR::ObjectCorrupt);
 
    auto type = lua_type(Lua, 2);
-   AC action_id;
+   AC action_id = AC::NIL;
    CSTRING action = nullptr;
    if (type IS LUA_TSTRING) {
       action = lua_tostring(Lua, 2);

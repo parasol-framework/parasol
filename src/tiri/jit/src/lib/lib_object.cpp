@@ -1050,6 +1050,7 @@ extern "C" int luaopen_object(lua_State *L)
    // Register obj interface prototypes for compile-time type inference
    reg_iface_prototype("obj", "new", { TiriType::Object }, { TiriType::Str });
    reg_iface_prototype("obj", "find", { TiriType::Object }, { TiriType::Any });
+   reg_iface_prototype("obj", "class", { TiriType::Object }, { TiriType::Object });
    reg_iface_prototype("obj", "init", { TiriType::Object }, { TiriType::Object });
    reg_iface_prototype("obj", "free", { TiriType::Nil }, { TiriType::Object });
    reg_iface_prototype("obj", "children", { TiriType::Table }, { TiriType::Object });
