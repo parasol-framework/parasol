@@ -970,8 +970,8 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
    switch (token.kind()) {
       case TokenKind::Plus:
          info.op = AstBinaryOperator::Add;
-         info.left = 6;
-         info.right = 6;
+         info.left = 7;
+         info.right = 7;
          return info;
       case TokenKind::Minus:
          // Check if this is actually the start of a choose case negative literal pattern
@@ -981,23 +981,23 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
             if (this->is_choose_relational_pattern(1)) return std::nullopt;
          }
          info.op = AstBinaryOperator::Subtract;
-         info.left = 6;
-         info.right = 6;
+         info.left = 7;
+         info.right = 7;
          return info;
       case TokenKind::Multiply:
          info.op = AstBinaryOperator::Multiply;
-         info.left = 7;
-         info.right = 7;
+         info.left = 8;
+         info.right = 8;
          return info;
       case TokenKind::Divide:
          info.op = AstBinaryOperator::Divide;
-         info.left = 7;
-         info.right = 7;
+         info.left = 8;
+         info.right = 8;
          return info;
       case TokenKind::Modulo:
          info.op = AstBinaryOperator::Modulo;
-         info.left = 7;
-         info.right = 7;
+         info.left = 8;
+         info.right = 8;
          return info;
       case TokenKind::Cat:
          info.op = AstBinaryOperator::Concat;
@@ -1050,7 +1050,7 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
       case TokenKind::HasToken:
          info.op = AstBinaryOperator::HasFlag;
          info.left = 3;
-         info.right = 3;
+         info.right = 2;  // Allow bitwise ops (|, ^, &) to be parsed as RHS without parentheses
          return info;
       case TokenKind::Presence:
          // Only treat ?? as binary if-empty when lookahead indicates binary usage
@@ -1063,18 +1063,18 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
          break;  // Not a binary operator, will be handled as postfix
       case TokenKind::ShiftLeft:
          info.op = AstBinaryOperator::ShiftLeft;
-         info.left = 5;   // C precedence: shifts bind looser than +/- (6)
-         info.right = 5;  // Left-associative: 1 << 2 << 3 = (1 << 2) << 3
+         info.left = 6;   // C precedence: shifts bind tighter than AND (5)
+         info.right = 6;  // Left-associative: 1 << 2 << 3 = (1 << 2) << 3
          return info;
       case TokenKind::ShiftRight:
          info.op = AstBinaryOperator::ShiftRight;
-         info.left = 5;   // C precedence: shifts bind looser than +/- (6)
-         info.right = 5;  // Left-associative
+         info.left = 6;   // C precedence: shifts bind tighter than AND (5)
+         info.right = 6;  // Left-associative
          return info;
       case TokenKind::Power:
          info.op = AstBinaryOperator::Power;
-         info.left = 10;
-         info.right = 9;  // Right-associative
+         info.left = 11;
+         info.right = 10;  // Right-associative
          return info;
       default:
          break;
@@ -1126,22 +1126,22 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
 
    if (token.raw() IS '&') {
       info.op = AstBinaryOperator::BitAnd;
-      info.left = 4;  // Lower than shifts (5) per C precedence
-      info.right = 4;  // Left-associative: a & b & c = (a & b) & c
+      info.left = 5;  // AND > XOR > OR per C precedence; above shifts (6)
+      info.right = 5;  // Left-associative: a & b & c = (a & b) & c
       return info;
    }
 
    if (token.raw() IS '|') {
       info.op = AstBinaryOperator::BitOr;
-      info.left = 2;  // Lower than XOR (3) per C precedence: AND > XOR > OR
-      info.right = 2;  // Left-associative: a | b | c = (a | b) | c
+      info.left = 3;  // Above logical-and (2); allows `x has A|B` to parse as `x has (A|B)`
+      info.right = 3;  // Left-associative: a | b | c = (a | b) | c
       return info;
    }
 
    if (token.raw() IS '^') {
       info.op = AstBinaryOperator::BitXor;
-      info.left = 3;  // Lower than AND (4) per C precedence: AND > XOR > OR
-      info.right = 3;  // Left-associative: a ^ b ^ c = (a ^ b) ^ c
+      info.left = 4;  // XOR binds tighter than OR (3), looser than AND (5)
+      info.right = 4;  // Left-associative: a ^ b ^ c = (a ^ b) ^ c
       return info;
    }
    return std::nullopt;
