@@ -1,4 +1,4 @@
-VERIFIED: 2026-02-12
+// VERIFIED: 2026-02-12
 
 [[ch-type-system]]
 == Type System

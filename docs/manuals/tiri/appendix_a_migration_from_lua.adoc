@@ -30,7 +30,7 @@ The following table lists all incompatible changes between standard Lua and Tiri
 |<<sec-migration-control-flow>>
 
 |`pcall()` / `xpcall()`
-|`try ... except`
+|`try pass:[...] except`
 |<<sec-migration-exception-handling>>
 
 |`select()`
@@ -205,7 +205,7 @@ end
 -- Tiri
 global glCounter = 0     -- explicitly global
 function inc()
-   glCounter += 1        -- accesses global
+   glCounter++           -- accesses global
 end
 ----
 
@@ -413,7 +413,7 @@ Lua patterns are deprecated in favour of ECMAScript-compatible regular expressio
 |Balanced match (use recursive patterns or manual parsing)
 |===
 
-Capitalised Lua pattern classes (e.g. `%A`, `%D`) represent the complement set.  In regex, use `[^...]` or the capitalised shorthand (`\D`, `\W`, `\S`).
+Capitalised Lua pattern classes (e.g. `%A`, `%D`) represent the complement set.  In regex, use `[^pass:[...]]` or the capitalised shorthand (`\D`, `\W`, `\S`).
 
 [discrete]
 ==== Quantifiers
@@ -503,12 +503,12 @@ The following standard Lua functions are removed or replaced:
 |Function |Replacement
 
 |`loadstring(Code)`
-|`load(Code)` — compiles and returns a function from a string.
+|`load(Code)` compiles and returns a function from a string.
 
 |`dofile(Path)`
-|`loadFile(Path)` — loads and executes a file.
+|`loadFile(Path)` loads and executes a file.
 
-|`select(N, ...)`
+|`select(N, pass:[...])`
 |Result filter operator `[mask]`.  See <<ch-result-management>>.
 
 |`unpack(Table)`
@@ -540,9 +540,7 @@ The `package` library (`require`, `module`, `package.path`, etc.) is removed.  T
 local json = require('json')
 
 -- Tiri
-include 'json'
--- or
-import 'json'
+import 'json' as json
 ----
 
 [discrete]
@@ -700,19 +698,176 @@ The following Tiri features have no counterpart in standard Lua.  They do not re
 
 * **Compound assignment**: `+=`, `-=`, `*=`, `/=`, `%=`, `..=` (see <<ch-variables-and-scoping>>)
 * **Postfix increment**: `counter++` (see <<ch-operators>>)
-* **Arrow functions**: `n => n * 2` (see <<ch-functions>>)
+* **Arrow functions**: `n pass:[=>] n * 2` (see <<ch-functions>>)
 * **String interpolation**: `f'Hello {name}'` (see <<sec-string-interpolation>>)
 * **Safe navigation**: `obj?.field` (see <<ch-operators>>)
 * **Ternary operator**: `cond ? a :> b` (see <<ch-operators>>)
+* **If-nil assignment**: `x ?= default` (see <<ch-operators>>)
 * **If-empty operator**: `value ?? default` (see <<ch-operators>>)
-* **Ranges**: `{0..10}`, `{0...10}` (see <<ch-ranges>>)
+* **If-empty assignment**: `x ??= default` (see <<ch-operators>>)
+* **Ranges**: `{0..10}`, `{0pass:[...]10}` (see <<ch-ranges>>)
 * **Type annotations**: `local x:num = 0` (see <<ch-type-system>>)
 * **Constant variables**: `local x <const> = 42` (see <<ch-variables-and-scoping>>)
-* **To-be-closed variables**: `resource <close> = ...` (see <<ch-resource-management>>)
-* **Defer statement**: `defer ... end` (see <<ch-resource-management>>)
-* **Choose expressions**: `choose x from ... end` (see <<ch-pattern-matching>>)
+* **To-be-closed variables**: `resource <close> = pass:[...]` (see <<ch-resource-management>>)
+* **Defer statement**: `defer pass:[...] end` (see <<ch-resource-management>>)
+* **Choose expressions**: `choose x from pass:[...] end` (see <<ch-pattern-matching>>)
 * **Result filter**: `[_*]func()` (see <<ch-result-management>>)
 * **Pipe operator**: `x |> func()` (see <<ch-result-management>>)
 * **Deferred expressions**: `<{ expr }>` (see <<ch-resource-management>>)
-* **Thunk functions**: `thunk name():type ... end` (see <<ch-resource-management>>)
+* **Thunk functions**: `thunk name():type pass:[...] end` (see <<ch-resource-management>>)
 * **Unicode operators**: `≠`, `≤`, `≥`, `×`, `÷`, `↑` (see <<ch-operators>>)
+
+The following subsections illustrate how selected features replace common verbose Lua patterns.  Each example shows the Lua idiom followed by the equivalent Tiri code.  Refer to the cross-referenced chapters for the complete specification.
+
+[discrete]
+==== If-Nil and If-Empty Assignment
+
+The `?=` operator assigns a value only when the variable is `nil`.  The `??=` variant assigns when the variable is falsey under extended semantics (`nil`, `false`, `0` or `""`).  Both replace the common Lua pattern of checking before assigning defaults.
+
+[source,tiri]
+----
+-- Lua
+function initialise(options)
+   if options == nil then
+      options = {}
+   end
+   if options.timeout == nil then
+      options.timeout = 30
+   end
+end
+
+-- Tiri
+function initialise(Options)
+   Options ?= {}
+   Options.timeout ?= 30
+end
+----
+
+[discrete]
+==== Ternary Operator
+
+The ternary operator `condition ? a :> b` replaces four-line if-then-else blocks when selecting between two values.  Only the selected branch is evaluated.
+
+[source,tiri]
+----
+-- Lua
+local label
+if count > 1 then
+   label = 'items'
+else
+   label = 'item'
+end
+
+-- Tiri
+label = count > 1 ? 'items' :> 'item'
+----
+
+[discrete]
+==== Safe Navigation
+
+The `?.` operator short-circuits to `nil` when the left-hand side is `nil`, eliminating nested guard clauses.
+
+[source,tiri]
+----
+-- Lua
+local city = nil
+if user ~= nil then
+   if user.profile ~= nil then
+      if user.profile.address ~= nil then
+         city = user.profile.address.city
+      end
+   end
+end
+
+-- Tiri
+city = user?.profile?.address?.city
+----
+
+[discrete]
+==== If-Empty Operator
+
+The `??` operator returns the right-hand operand when the left-hand side is falsey under extended semantics.  Unlike Lua's `or`, it correctly handles `0` and `""` as falsey values.
+
+[source,tiri]
+----
+-- Lua: the 'x and x or y' idiom fails when x is 0 or false
+local width = opts.width or 100  -- broken if opts.width is 0
+
+-- Tiri: ?? treats 0 and "" as falsey
+width = opts.width ?? 100        -- correctly defaults when 0
+name = user?.name ?? 'Guest'     -- combines with safe navigation
+----
+
+[discrete]
+==== String Interpolation
+
+Interpolated strings prefixed with `f` embed expressions directly, replacing long concatenation chains.
+
+[source,tiri]
+----
+-- Lua
+print('Hello, ' .. name .. '! You scored ' .. tostring(score) .. ' points.')
+
+-- Tiri
+print(f'Hello, {name}! You scored {score} points.')
+----
+
+[discrete]
+==== Arrow Functions
+
+Arrow functions provide concise syntax for anonymous functions, particularly useful with higher-order operations on arrays and ranges.
+
+[source,tiri]
+----
+-- Lua
+table.sort(items, function(a, b)
+   return a.name < b.name
+end)
+
+-- Tiri
+items:sort((a, b) => a.name < b.name)
+----
+
+[discrete]
+==== Defer
+
+The `defer` statement schedules cleanup code to run when the enclosing scope exits, regardless of whether the exit is normal, a `return` or an exception.  This replaces the Lua pattern of manually closing resources at every exit point.
+
+[source,tiri]
+----
+-- Lua
+function readConfig(path)
+   local file, err = io.open(path, 'r')
+   if not file then return nil, err end
+   local ok, content = pcall(file.read, file, '*a')
+   file:close()           -- must remember to close before every return
+   if not ok then return nil, content end
+   return content
+end
+
+-- Tiri
+function readConfig(Path)
+   file = io.open(Path, 'r')
+   defer
+      file:close()        -- runs automatically when scope exits
+   end
+   return file:read('*a')
+end
+----
+
+[discrete]
+==== Ranges
+
+Range literals replace manually constructed numeric `for` loops and support functional methods like `map`, `filter` and `reduce`.
+
+[source,tiri]
+----
+-- Lua
+local squares = {}
+for i = 0, 9 do
+   squares[i + 1] = i * i
+end
+
+-- Tiri
+squares = {0..10}:map(i => i * i)
+----
