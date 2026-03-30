@@ -135,7 +135,7 @@
 <p>This function will copy the graphics data from any surface object to a target <a href="classes/bitmap.html">Bitmap</a>.  This is the fastest and most convenient way to get graphics information out of any surface.  As surfaces are buffered, it is guaranteed that the result will not be obscured by any overlapping surfaces that are on the display.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">Search</th><td>The supplied <code>Surface</code> ID did not refer to a recognised surface object</td></tr>
-<tr><th class="col-md-1">AccessObject</th><td>An attempt to gain exclusive access to a shared object failed.</td></tr>
+<tr><th class="col-md-1">AccessObject</th><td>Attempting to lock an object failed.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Display module documentation © Paul Manias © 2003-2026</div></div>
 <div class="docs-content" style="display:none;" id="DrawPixel"><h2>DrawPixel()</h2><p class="lead">Draws a single pixel to a bitmap.</p><div class="card card-info mb-3"><div class="card-header"><samp>void gfx::DrawPixel(objBitmap * Bitmap, INT X, INT Y, UINT Colour)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Bitmap</td><td>The target bitmap object.</td></tr>
@@ -260,7 +260,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 <p>This function returns the current <code>Flags</code> field from a <a href="classes/surface.html">Surface</a>.  It provides the same result as reading the field directly, however it is considered advantageous in circumstances where the overhead of locking a surface object for a read operation is undesirable.</p>
 <p>For information on the available flags, please refer to the <a href="classes/surface.html#tf-Flags">Surface⇒Flags</a> field.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">AccessMemory</th><td>Access to a shared memory block was denied.</td></tr>
+<tr><th class="col-md-1">AccessMemory</th><td>Access to a memory block was denied.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Display module documentation © Paul Manias © 2003-2026</div></div>
 <div class="docs-content" style="display:none;" id="GetSurfaceInfo"><h2>GetSurfaceInfo()</h2><p class="lead">Retrieves display information for any surface object without having to access it directly.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR gfx::GetSurfaceInfo(OBJECTID Surface, struct SurfaceInfoV2 ** Info)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Surface</td><td>The unique ID of a <a href="classes/surface.html">Surface</a> to query.  If zero, the root surface is returned.</td></tr>
@@ -431,7 +431,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">InUse</th><td>A drag and drop operation has already been started.</td></tr>
 <tr><th class="col-md-1">Failed</th><td>The left mouse button is not held by the user.</td></tr>
-<tr><th class="col-md-1">AccessObject</th><td>An attempt to gain exclusive access to a shared object failed.</td></tr>
+<tr><th class="col-md-1">AccessObject</th><td>Attempting to lock an object failed.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Display module documentation © Paul Manias © 2003-2026</div></div>
 <div class="docs-content" style="display:none;" id="SubscribeInput"><h2>SubscribeInput()</h2><p class="lead">Subscribe to incoming input messages for any active surface object.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR gfx::SubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, INT * Handle)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Callback</td><td>Reference to a callback function that will receive input messages.</td></tr>
@@ -505,7 +505,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 <p>Call this function to undo any earlier calls to LockCursor() and return the mouse pointer to its regular state.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">ResourceNotLocked</th><td>The pointer is not anchored to the given Surface.</td></tr>
-<tr><th class="col-md-1">AccessObject</th><td>An attempt to gain exclusive access to a shared object failed.</td></tr>
+<tr><th class="col-md-1">AccessObject</th><td>Attempting to lock an object failed.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Display module documentation © Paul Manias © 2003-2026</div></div>
 <div class="docs-content" style="display:none;" id="UnsubscribeInput"><h2>UnsubscribeInput()</h2><p class="lead">Removes an input subscription.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR gfx::UnsubscribeInput(INT Handle)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Handle</td><td>Reference to a handle returned by <a href="?page=SubscribeInput">SubscribeInput()</a>.</td></tr>
