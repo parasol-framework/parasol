@@ -2076,19 +2076,18 @@ ParserResult<ExpDesc> IrEmitter::emit_has_flag_expr(ExpDesc lhs, const ExprNode&
 {
    FuncState* fs = &this->func_state;
 
-   // Constant folding: if both operands are numeric constants, compute at compile time
-
-   auto rhs_result = this->emit_expression(rhs_ast);
-   if (not rhs_result.ok()) return rhs_result;
-   ExpDesc rhs = rhs_result.value_ref();
-
-   if (lhs.is_num_constant_nojump() and rhs.is_num_constant_nojump()) {
-      auto k1 = lj_num2bit(lhs.number_value());
-      auto k2 = lj_num2bit(rhs.number_value());
-      bool result = (k1 & k2) != 0;
-      lhs.k = result ? ExpKind::True : ExpKind::False;
-      lhs.result_type = TiriType::Bool;
-      return ParserResult<ExpDesc>::success(lhs);
+   // Constant folding: if both operands are numeric constants, compute at compile time.
+   // Read RHS directly from AST so we do not emit/evaluate RHS before resolving bit.band.
+   if (lhs.is_num_constant_nojump() and rhs_ast.kind IS AstNodeKind::LiteralExpr) {
+      auto *rhs_literal = std::get_if<LiteralValue>(&rhs_ast.data);
+      if (rhs_literal and rhs_literal->kind IS LiteralKind::Number) {
+         auto k1 = lj_num2bit(lhs.number_value());
+         auto k2 = lj_num2bit(rhs_literal->number_value);
+         bool result = (k1 & k2) != 0;
+         lhs.k = result ? ExpKind::True : ExpKind::False;
+         lhs.result_type = TiriType::Bool;
+         return ParserResult<ExpDesc>::success(lhs);
+      }
    }
 
    // Runtime path: emit bit.band(lhs, rhs) call, then compare result against 0
@@ -2100,12 +2099,6 @@ ParserResult<ExpDesc> IrEmitter::emit_has_flag_expr(ExpDesc lhs, const ExprNode&
       ExpressionValue lhs_discharge(fs, lhs);
       lhs_discharge.discharge();
       lhs = lhs_discharge.legacy();
-   }
-
-   if (rhs.k IS ExpKind::Call) {
-      ExpressionValue rhs_discharge(fs, rhs);
-      rhs_discharge.discharge();
-      rhs = rhs_discharge.legacy();
    }
 
    // Discharge LHS to register if needed
@@ -2141,7 +2134,7 @@ ParserResult<ExpDesc> IrEmitter::emit_has_flag_expr(ExpDesc lhs, const ExprNode&
    // Ensure freereg is past the call frame
    if (fs->freereg <= arg2) fs->freereg = arg2 + 1;
 
-   // Load bit.band callee to call_base
+   // Load bit.band callee to call_base before evaluating RHS to preserve call-shape semantics.
    ExpDesc callee, key;
    callee.init(ExpKind::Global, 0);
    callee.u.sval = this->lex_state.keepstr("bit");
@@ -2163,6 +2156,17 @@ ParserResult<ExpDesc> IrEmitter::emit_has_flag_expr(ExpDesc lhs, const ExprNode&
       ExpressionValue lhs_to_arg1(fs, lhs);
       lhs_to_arg1.to_reg(allocator, BCReg(arg1));
       lhs = lhs_to_arg1.legacy();
+   }
+
+   // Evaluate RHS after callee resolution to match explicit bit.band(a, b) semantics.
+   auto rhs_result = this->emit_expression(rhs_ast);
+   if (not rhs_result.ok()) return rhs_result;
+   ExpDesc rhs = rhs_result.value_ref();
+
+   if (rhs.k IS ExpKind::Call) {
+      ExpressionValue rhs_discharge(fs, rhs);
+      rhs_discharge.discharge();
+      rhs = rhs_discharge.legacy();
    }
 
    // Move RHS to arg2
