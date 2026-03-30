@@ -1047,6 +1047,11 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
          info.left = 1;
          info.right = 1;
          return info;
+      case TokenKind::HasToken:
+         info.op = AstBinaryOperator::HasFlag;
+         info.left = 3;
+         info.right = 3;
+         return info;
       case TokenKind::Presence:
          // Only treat ?? as binary if-empty when lookahead indicates binary usage
          if (not this->ctx.lex().should_emit_presence()) {

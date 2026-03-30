@@ -362,6 +362,7 @@ static UnsupportedNodeRecorder glUnsupportedNodes;
       case AstBinaryOperator::LogicalAnd:   return BinOpr::LogicalAnd;
       case AstBinaryOperator::LogicalOr:    return BinOpr::LogicalOr;
       case AstBinaryOperator::IfEmpty:      return BinOpr::IfEmpty;
+      case AstBinaryOperator::HasFlag:     return BinOpr::HasFlag;
       default: return std::nullopt;
    }
 }
@@ -1814,6 +1815,9 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload &Paylo
 
    if (opr IS BinOpr::IfEmpty) return this->emit_if_empty_expr(lhs, *Payload.right);
 
+   // HasFlag operator: bit.band(lhs, rhs) != 0, producing a boolean result
+   if (opr IS BinOpr::HasFlag) return this->emit_has_flag_expr(lhs, *Payload.right);
+
    // Bitwise operators need special handling to control bytecode order for JIT compatibility.
    // The JIT expects callee to be loaded BEFORE arguments, matching explicit bit.band() pattern.
    if (opr IS BinOpr::BitAnd or opr IS BinOpr::BitOr or opr IS BinOpr::BitXor or
@@ -2060,6 +2064,142 @@ ParserResult<ExpDesc> IrEmitter::emit_bitwise_expr(BinOpr opr, ExpDesc lhs, cons
    ExpressionValue result_val(fs, lhs);
    result_val.discharge();
    lhs = result_val.legacy();
+
+   return ParserResult<ExpDesc>::success(lhs);
+}
+
+//********************************************************************************************************************
+// Emit bytecode for the `has` operator (bitwise flag test): `a has b` => `bit.band(a, b) != 0`
+// Produces a boolean (jump-based) result, like comparison operators.
+
+ParserResult<ExpDesc> IrEmitter::emit_has_flag_expr(ExpDesc lhs, const ExprNode& rhs_ast)
+{
+   FuncState* fs = &this->func_state;
+
+   // Constant folding: if both operands are numeric constants, compute at compile time
+
+   auto rhs_result = this->emit_expression(rhs_ast);
+   if (not rhs_result.ok()) return rhs_result;
+   ExpDesc rhs = rhs_result.value_ref();
+
+   if (lhs.is_num_constant_nojump() and rhs.is_num_constant_nojump()) {
+      auto k1 = lj_num2bit(lhs.number_value());
+      auto k2 = lj_num2bit(rhs.number_value());
+      bool result = (k1 & k2) != 0;
+      lhs.k = result ? ExpKind::True : ExpKind::False;
+      lhs.result_type = TiriType::Bool;
+      return ParserResult<ExpDesc>::success(lhs);
+   }
+
+   // Runtime path: emit bit.band(lhs, rhs) call, then compare result against 0
+
+   RegisterAllocator allocator(fs);
+
+   // Discharge Call expressions to NonReloc first
+   if (lhs.k IS ExpKind::Call) {
+      ExpressionValue lhs_discharge(fs, lhs);
+      lhs_discharge.discharge();
+      lhs = lhs_discharge.legacy();
+   }
+
+   if (rhs.k IS ExpKind::Call) {
+      ExpressionValue rhs_discharge(fs, rhs);
+      rhs_discharge.discharge();
+      rhs = rhs_discharge.legacy();
+   }
+
+   // Discharge LHS to register if needed
+   if (not lhs.is_num_constant_nojump()) {
+      ExpressionValue lhs_val(fs, lhs);
+      lhs_val.discharge_to_any_reg(allocator);
+      lhs = lhs_val.legacy();
+   }
+
+   // Calculate base register for the bit.band call frame
+   BCREG call_base;
+   if (lhs.k IS ExpKind::NonReloc and lhs.u.s.info >= fs->varmap.size() and lhs.u.s.info + 1 IS fs->freereg) {
+      call_base = lhs.u.s.info;
+   }
+   else call_base = fs->freereg;
+
+   BCREG arg1 = call_base + 1 + LJ_FR2;
+   BCREG arg2 = arg1 + 1;
+
+   // Convert LHS to value form
+   ExpressionValue lhs_toval(fs, lhs);
+   lhs_toval.to_val();
+   lhs = lhs_toval.legacy();
+
+   // Move LHS out of call_base if it's there (callee goes at call_base)
+   bool lhs_was_base = (lhs.k IS ExpKind::NonReloc and lhs.u.s.info IS call_base);
+   if (lhs_was_base) {
+      ExpressionValue lhs_to_arg1(fs, lhs);
+      lhs_to_arg1.to_reg(allocator, BCReg(arg1));
+      lhs = lhs_to_arg1.legacy();
+   }
+
+   // Ensure freereg is past the call frame
+   if (fs->freereg <= arg2) fs->freereg = arg2 + 1;
+
+   // Load bit.band callee to call_base
+   ExpDesc callee, key;
+   callee.init(ExpKind::Global, 0);
+   callee.u.sval = this->lex_state.keepstr("bit");
+
+   ExpressionValue callee_val(fs, callee);
+   callee_val.to_reg(allocator, BCReg(call_base));
+   callee = callee_val.legacy();
+
+   key.init(ExpKind::Str, 0);
+   key.u.sval = this->lex_state.keepstr("band");
+   expr_index(fs, &callee, &key);
+
+   ExpressionValue callee_indexed(fs, callee);
+   callee_indexed.to_reg(allocator, BCReg(call_base));
+   callee = callee_indexed.legacy();
+
+   // Move LHS to arg1 if it wasn't at call_base
+   if (not lhs_was_base) {
+      ExpressionValue lhs_to_arg1(fs, lhs);
+      lhs_to_arg1.to_reg(allocator, BCReg(arg1));
+      lhs = lhs_to_arg1.legacy();
+   }
+
+   // Move RHS to arg2
+   ExpressionValue rhs_toval(fs, rhs);
+   rhs_toval.to_val();
+   rhs = rhs_toval.legacy();
+
+   ExpressionValue rhs_to_arg2(fs, rhs);
+   rhs_to_arg2.to_reg(allocator, BCReg(arg2));
+   rhs = rhs_to_arg2.legacy();
+
+   // Emit CALL instruction for bit.band(lhs, rhs)
+   fs->freereg = arg2 + 1;
+   ExpDesc band_result;
+   band_result.k = ExpKind::Call;
+   band_result.u.s.info = bcemit_INS(fs, BCINS_ABC(BC_CALL, call_base, 2, fs->freereg - call_base - LJ_FR2));
+   band_result.u.s.aux = call_base;
+   fs->freereg = call_base + 1;
+
+   // Discharge call result to a register
+   ExpressionValue band_val(fs, band_result);
+   band_val.discharge();
+   band_result = band_val.legacy();
+
+   BCREG result_reg = band_result.u.s.info;
+
+   // Compare result against 0: BC_ISNEN skips the JMP when result != 0 (truthy/has flag)
+   ExpDesc zerov(0.0);
+   bcemit_INS(fs, BCINS_AD(BC_ISNEN, result_reg, const_num(fs, &zerov)));
+
+   // Release the result register
+   allocator.release_register(BCReg(result_reg));
+
+   // Produce a Jmp expression (same pattern as bcemit_comp)
+   lhs.u.s.info = bcemit_jmp(fs);
+   lhs.k = ExpKind::Jmp;
+   lhs.result_type = TiriType::Bool;
 
    return ParserResult<ExpDesc>::success(lhs);
 }
