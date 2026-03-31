@@ -5,29 +5,38 @@
 // are taken into account through use of BX1,BY1,BX2,BY2.  The list is sorted starting from the background to the
 // foreground.
 
-void get_viewport_at_xy_node(extVector *Vector, std::vector<std::vector<extVectorViewport *>> &Collection, double X, double Y, int Branch)
-{
-   if ((size_t)Branch >= Collection.size()) Collection.resize(Branch+1);
-
-   for (auto node=Vector; node; node=(extVector *)node->Next) {
-      if (node->classID() IS CLASSID::VECTORVIEWPORT) {
-         auto vp = (extVectorViewport *)node;
-
-         if (vp->dirty()) gen_vector_path(vp);
-
-         if (vp->vpBounds.hit_test(X, Y)) Collection[Branch].emplace_back(vp);
-      }
-
-      if (node->Child) get_viewport_at_xy_node((extVector *)node->Child, Collection, X, Y, Branch + 1);
-   }
-}
-
-//********************************************************************************************************************
-
 extVectorViewport * get_viewport_at_xy(extVectorScene *Scene, double X, double Y)
 {
+   //pf::Log log(__FUNCTION__);
+   //log.branch("Scene: %d", Scene->UID);
+
    std::vector<std::vector<extVectorViewport *>> viewports;
-   get_viewport_at_xy_node((extVector *)Scene->Viewport, viewports, X, Y, 0);
+
+   auto inspect_xy = [](auto &Self, extVector *Vector, std::vector<std::vector<extVectorViewport *>> &Collection, double X, double Y, int Branch) -> void {
+      //pf::Log log("get_viewport_node");
+      //log.branch("Vector: %d", Vector->UID);
+
+      if ((size_t)Branch >= Collection.size()) Collection.resize(Branch+1);
+
+      for (auto node=Vector; node; node=(extVector *)node->Next) {
+         if (not (node->Visibility IS VIS::HIDDEN)) { // Checking for HIDDEN ensures that INHERIT is handled correctly
+            if (node->classID() IS CLASSID::VECTORVIEWPORT) {
+               auto vp = (extVectorViewport *)node;
+
+               if (vp->dirty()) gen_vector_path(vp);
+
+               if (vp->vpBounds.hit_test(X, Y)) {
+                  Collection[Branch].emplace_back(vp);
+               }
+               else continue; // No point in checking children of a non-hitting viewport
+            }
+
+            if (node->Child) Self(Self, (extVector *)node->Child, Collection, X, Y, Branch + 1);
+         }
+      }
+   };
+
+   inspect_xy(inspect_xy, (extVector *)Scene->Viewport, viewports, X, Y, 0);
 
    // From front to back, determine the first path that the (X,Y) point resides in.
 
@@ -58,6 +67,9 @@ static void send_input_events(extVector *Vector, InputEvent *Event, bool Propaga
       }
       return;
    }
+
+   //pf::Log log(__FUNCTION__);
+   //log.branch("Vector: %d, Type: %d", Vector->UID, Event->Type);
 
    bool consumed = false;
    for (auto it=Vector->InputSubscriptions->begin(); it != Vector->InputSubscriptions->end(); ) {
