@@ -285,7 +285,7 @@ void load_include_for_class(lua_State *Lua, objMetaClass *MetaClass)
 static ERR MODExpunge(void)
 {
    if (glMsgThread) { FreeResource(glMsgThread); glMsgThread = nullptr; }
-   if (clTiri)     { FreeResource(clTiri); clTiri = nullptr; }
+   if (clTiri)      { FreeResource(clTiri); clTiri = nullptr; }
    if (modDisplay)  { FreeResource(modDisplay); modDisplay = nullptr; }
    if (modRegex)    { FreeResource(modRegex); modRegex = nullptr; }
    return ERR::Okay;
