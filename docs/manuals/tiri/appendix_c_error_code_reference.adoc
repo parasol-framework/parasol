@@ -19,10 +19,10 @@ The threshold boundary is `ERR_Terminate` (value 9).
 
 === Error Code Table
 
-The following tables list the exported error codes referenced in this manual, with their numeric values, Tiri constant names, and descriptions.  Aliases are listed in parentheses where applicable.
+The following tables list the exported error codes referenced in this manual, with their constant names and descriptions.  Aliases are listed in parentheses where applicable.
 
 [discrete]
-==== Minor Codes (0--8)
+==== Minor Codes
 
 [cols="1,3,5"]
 |===

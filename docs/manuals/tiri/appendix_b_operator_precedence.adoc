@@ -16,7 +16,7 @@ This appendix provides a quick-reference for all Tiri operators, ordered from hi
 |6|`..`, `<<`, `>>`|`..` right; shifts left
 |5|`&`|Left
 |4|`^`, `is`, `!=`, `<`, `>`, `\<=`, `>=`, `in` |Left
-|3|`\|`, `and`, `\|>`|Left
+|3|`has`, `\|`, `and`, `\|>`|Left
 |2|`or`, `??`, `? :>`|Left (`? :>` right)
 |===
 
@@ -41,6 +41,7 @@ Parentheses override precedence.  `(a + b) * c` forces addition before multiplic
 'a' .. 'b' .. 'c'   -- 'abc' (right-associative)
 x > 0 and x < 10    -- comparison (level 4) before logical (level 3)
 a & 0xFF | 0x100    -- AND (level 5) before OR (level 3)
+flags has F1 | F2   -- has (level 3) consumes bitwise OR on RHS
 a ?? b or c         -- ?? and or share level 2; evaluates left to right
 x ? a :> y ? b :> c -- right-associative: x ? a :> (y ? b :> c)
 ----

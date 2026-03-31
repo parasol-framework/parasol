@@ -11,11 +11,11 @@ This appendix provides a quick-reference for all reserved words in Tiri.  Reserv
 |`and`     |`as`       |`break`    |`check`    |`choose`
 |`continue`|`defer`    |`do`       |`else`     |`elseif`
 |`end`     |`except`   |`false`    |`for`      |`from`
-|`function`|`global`   |`if`       |`import`   |`in`
-|`is`      |`local`    |`namespace`|`nil`      |`not`
-|`or`      |`raise`    |`repeat`   |`return`   |`success`
-|`then`    |`thunk`    |`true`     |`try`      |`until`
-|`when`    |`while`    |`with`     |           |
+|`function`|`global`   |`has`      |`if`       |`import`
+|`in`      |`is`       |`local`    |`namespace`|`nil`
+|`not`     |`or`       |`raise`    |`repeat`   |`return`
+|`success` |`then`     |`thunk`    |`true`     |`try`
+|`until`   |`when`     |`while`    |`with`     |
 |===
 
 === Reference by Category
@@ -77,6 +77,7 @@ This appendix provides a quick-reference for all reserved words in Tiri.  Reserv
 |`or`  |Logical OR.  Short-circuits; returns the first true operand or the last operand.  See <<sec-logical-operators>>.
 |`not` |Logical negation.  Returns `true` if the operand is false; `false` otherwise.  See <<sec-logical-operators>>.
 |`is`  |Equality comparison.  Replaces `==` from standard Lua.  See <<sec-comparison-operators>>.
+|`has` |Bitwise flag testing.  Returns `true` if any flags in the right operand are set in the left operand.  See <<sec-flag-testing-operator>>.
 |===
 
 ==== Exception Handling
