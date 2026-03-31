@@ -8,7 +8,7 @@
    mGfx ?= mod.load('display')
    mVec ?= mod.load('vector')
 
-   glItemCounter   = 1
+   glItemCounter = 1
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -240,7 +240,7 @@ gui.initView = function(Options, BuildUI, NewItems)
             if Input.value is 0 then
                if vw.sensitive and (not Zone.item.insensitive) then
                   reportItemActivated(vw, 'user', Zone.item)
-               elseif (Input.flags & JTYPE_DBL_CLICK)?? then
+               elseif Input.flags has JTYPE_DBL_CLICK then
                   reportItemActivated(vw, 'user', Zone.item)
                end
             end
@@ -593,7 +593,7 @@ gui.initView = function(Options, BuildUI, NewItems)
    end)
 
    vw.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Code, Unicode)
-      if (Qualifiers & KQ_PRESSED)?? then
+      if Qualifiers has KQ_PRESSED then
          if (Code is KEY_ENTER) or (Code is KEY_NP_ENTER) or (Code is KEY_SPACE) then
             -- TODO: item activation
          elseif (Code is KEY_UP) or (Code is KEY_LEFT) then
@@ -637,7 +637,7 @@ gui.initView = function(Options, BuildUI, NewItems)
                highlightItem(vw, nil)
             end
          elseif ev.type is JET_BUTTON_1 then
-            if (ev.flags & JTYPE_REPEATED)?? then return end
+            if ev.flags has JTYPE_REPEATED then return end
 
             if ev.value is 1 then
                vw.clickAbsX = ev.absX

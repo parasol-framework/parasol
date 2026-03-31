@@ -220,7 +220,7 @@ gui.input = function(Options)
    end)
 
    self._textClip.mtSubscribeKeyboard(function(Viewport:obj, Qualifiers, Value, Unicode)
-      if (Qualifiers & KQ_PRESSED) is 0 then return end
+      if not (Qualifiers has KQ_PRESSED) then return end
 
       if (Value is KEY_ENTER) or (Value is KEY_NP_ENTER) then
          validateInput(self)
@@ -241,10 +241,9 @@ gui.input = function(Options)
    if self.events.cursorEntry or self.events.cursorExit then
       self.inputViewport.mtSubscribeInput(JTYPE_CROSSING, function(Viewport, Msg)
          repeat
-            if Msg.type is JET_CROSSED_IN then
-               self.events?.cursorEntry(self)
-            elseif Msg.type is JET_CROSSED_OUT then
-               self.events?.cursorExit(self)
+            choose Msg.type from
+               JET_CROSSED_IN -> self.events?.cursorEntry(self)
+               JET_CROSSED_OUT -> self.events?.cursorExit(self)
             end
             Msg = Msg.next
          until not Msg
