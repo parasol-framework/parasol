@@ -1407,7 +1407,7 @@ struct CIEXYZ {
       const double lb = to_linear(RGB.Blue);
       X = 0.4124564 * lr + 0.3575761 * lg + 0.1804375 * lb;
       Y = 0.2126729 * lr + 0.7151522 * lg + 0.0721750 * lb;
-      Z = 0.0193339 * lr + 0.0585023 * lg + 0.9505041 * lb;
+      Z = 0.0193339 * lr + 0.1191920 * lg + 0.9505041 * lb;
       Alpha = RGB.Alpha;
    }
 

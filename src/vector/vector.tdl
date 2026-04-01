@@ -326,6 +326,9 @@ module({ name="Vector", copyright="Paul Manias © 2010-2026", version=1.0, times
   ]],
   [[
    void reset() {
+      CIE.X = 0;
+      CIE.Y = 0;
+      CIE.Z = 0;
       Colour.Alpha = 0;
       CIE.Alpha = 0;
       Gradient = nullptr;

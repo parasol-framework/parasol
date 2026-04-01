@@ -17,7 +17,7 @@ static void linear_rgb_to_painter(double LR, double LG, double LB, float Alpha, 
 
    Painter->CIE.X = 0.4124564 * LR + 0.3575761 * LG + 0.1804375 * LB;
    Painter->CIE.Y = 0.2126729 * LR + 0.7151522 * LG + 0.0721750 * LB;
-   Painter->CIE.Z = 0.0193339 * LR + 0.0585023 * LG + 0.9505041 * LB;
+   Painter->CIE.Z = 0.0193339 * LR + 0.1191920 * LG + 0.9505041 * LB;
    Painter->CIE.Alpha = Alpha;
 }
 

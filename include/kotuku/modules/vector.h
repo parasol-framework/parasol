@@ -537,6 +537,9 @@ struct VectorPainter {
    struct CIEXYZ CIE;             // CIE colour representation
    struct FRGB Colour;            // A single RGB colour definition, suitable for block colour fills.
    void reset() {
+      CIE.X = 0;
+      CIE.Y = 0;
+      CIE.Z = 0;
       Colour.Alpha = 0;
       CIE.Alpha = 0;
       Gradient = nullptr;
@@ -4174,4 +4177,3 @@ template <pf::NumericOrScale T> FieldValue RoundY(T Value) {
 }
 
 }
-

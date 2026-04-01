@@ -341,7 +341,7 @@ end
    -- sRGB white (1,1,1) should give the D65 white point: X≈0.9505, Y≈1.0, Z≈1.0890
    painter = struct.new('VectorPainter')
    check mVec.ReadPainter(nil, "rgb(255,255,255)", painter)
-   assert(checkCIE(painter, 0.9505, 1.0, 1.0283, 1.0), 'CIE XYZ from rgb() white is incorrect')
+   assert(checkCIE(painter, 0.9505, 1.0, 1.0890, 1.0), 'CIE XYZ from rgb() white is incorrect')
 end
 
 @Test function CIEFromHex()
@@ -355,14 +355,14 @@ end
    -- Named white should match D65 white point
    painter = struct.new('VectorPainter')
    check mVec.ReadPainter(nil, "white", painter)
-   assert(checkCIE(painter, 0.9505, 1.0, 1.0283, 1.0), 'CIE XYZ from named "white" is incorrect')
+   assert(checkCIE(painter, 0.9505, 1.0, 1.0890, 1.0), 'CIE XYZ from named "white" is incorrect')
 end
 
 @Test function CIEFromOKLab()
    -- oklab() white (1 0 0): verify CIE XYZ is also the D65 white point
    painter = struct.new('VectorPainter')
    check mVec.ReadPainter(nil, "oklab(1 0 0)", painter)
-   assert(checkCIE(painter, 0.9505, 1.0, 1.0283, 1.0), 'CIE XYZ from oklab() white is incorrect')
+   assert(checkCIE(painter, 0.9505, 1.0, 1.0890, 1.0), 'CIE XYZ from oklab() white is incorrect')
 end
 
 @Test function CIEFromLab()
