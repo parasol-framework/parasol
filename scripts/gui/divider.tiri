@@ -76,7 +76,7 @@ gui.divider = function(Options:table)
       self._length      = 'width'
 
       sd = self._secondary.dimensions
-      if ((sd & DMF_FIXED_X) is 0) or ((sd & DMF_FIXED_X_OFFSET) is 0) then
+      if not (sd has DMF_FIXED_X and sd has DMF_FIXED_X_OFFSET) then
          error('The opposing viewport must use fixed x and xOffset coordinates.')
       end
    elseif Options.top and Options.bottom then
@@ -87,7 +87,7 @@ gui.divider = function(Options:table)
       self._length      = 'height'
 
       sd = self._secondary.dimensions
-      assert((sd & DMF_FIXED_Y) != 0 and (sd & DMF_FIXED_Y_OFFSET) != 0, 'The opposing viewport must use fixed y and yOffset coordinates.')
+      assert((sd has DMF_FIXED_Y) and (sd has DMF_FIXED_Y_OFFSET), 'The opposing viewport must use fixed y and yOffset coordinates.')
    else
       error('A left/right or top/bottom pair must be specified.')
    end

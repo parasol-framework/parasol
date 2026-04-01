@@ -196,7 +196,7 @@ gui.menu = function(Options)
 
    self.show = function()
       surface = self.surface
-      if (surface.flags & RNF_VISIBLE) != 0 then return end
+      if surface.flags has RNF_VISIBLE then return end
 
       self.reverseX = Options.reverseX ?? false
 
@@ -426,8 +426,10 @@ gui.menu = function(Options)
                check ERR_Terminate
             end
 
-            if (Qualifiers & KQ_PRESSED) is 0 then return end
+            if not (Qualifiers has KQ_PRESSED) then return end
+
             if Value is KEY_UP then
+
             elseif Value is KEY_DOWN then
 
             elseif Value is KEY_RETURN then
@@ -445,12 +447,8 @@ gui.menu = function(Options)
          if ev.type is JET_BUTTON_1 then
             if ev.value is 1 then
                if self.hItem then -- Menu item activated
-                  if self.hItem.config.feedback then
-                     self.hItem.config.feedback(self, self.hItem.config)
-                  end
-                  if self.feedback then
-                     self.feedback(self, self.hItem.config)
-                  end
+                  self.hItem.config?.feedback(self, self.hItem.config)
+                  self?.feedback(self, self.hItem.config)
                   self.surface.acHide()
                end
             end

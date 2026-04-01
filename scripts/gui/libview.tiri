@@ -583,11 +583,11 @@ gui.initView = function(Options, BuildUI, NewItems)
       if Event is FM_LOST_FOCUS then
          vw.hasFocus = false
          if vw.border then vw.border.stroke = vw.theme.border end
-         if vw.events.lostFocus then vw.events.lostFocus(vw) end
+         vw.events?.lostFocus(vw)
       else
          vw.hasFocus = true
          if vw.border then vw.border.stroke = vw.theme.borderFocus end
-         if vw.events.focus then vw.events.focus(vw) end
+         vw.events?.focus(vw)
       end
       vw.viewport.acDraw()
    end)

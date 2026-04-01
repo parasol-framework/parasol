@@ -162,7 +162,7 @@ gui.dropdown = function(Options)
 
    self.show = function()
       surface = self.surface
-      if (surface.flags & RNF_VISIBLE) != 0 then return end
+      if surface.flags has RNF_VISIBLE then return end
 
       if self.relative then
          -- Correct the position of the menu according to the relative vector that it is offset from.
@@ -281,8 +281,10 @@ gui.dropdown = function(Options)
                raise ERR_Terminate
             end
 
-            if (Qualifiers & KQ_PRESSED) is 0 then return end
+            if not (Qualifiers has KQ_PRESSED) then return end
+
             if Value is KEY_UP then
+
             elseif Value is KEY_DOWN then
 
             elseif Value is KEY_RETURN then

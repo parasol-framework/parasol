@@ -373,7 +373,7 @@ gui.columnView = function(Options)
          ev = Events
          while ev do
             if ev.type is JET_BUTTON_1 then
-               if (ev.flags & JTYPE_REPEATED)?? then return end
+               if ev.flags has JTYPE_REPEATED then return end
 
                for col in values(View.columns) do
                   if (ev.x >= col.x+2) and (ev.x < col.x + col.px_width-2) then
@@ -551,13 +551,13 @@ gui.columnView = function(Options)
             if col.showIcons and item.icon then
                try
                   local theme = item.iconTheme ?? View.theme.page.icon
-                  local uid   = theme .. '+' .. item.icon
+                  local uid   = f'{theme}+{item.icon}'
                   local info  = gui.createIcon(View.scene, item.icon, ICON_SIZE, theme, uid)
                   item._iconFill = info.fill
 
                   if View.theme.page.iconHighlight and View.theme.page.iconHighlight != theme then
                      theme = View.theme.page.iconHighlight
-                     uid   = theme .. '+' .. item.icon
+                     uid   = f'{theme}+{item.icon}'
                      info  = gui.createIcon(View.scene, item.icon, ICON_SIZE, theme, uid)
                      item._iconHighlight = info.fill
                   end
@@ -595,7 +595,7 @@ gui.columnView = function(Options)
             if item[attrib]?? then
                if not item._col[attrib].text then
                   item._col[attrib].text = col.vecViewport.new('VectorText', {
-                     name      = 'text_' .. attrib,
+                     name      = f'text_{attrib}',
                      face      = View.fontFace,
                      fontSize  = string.format('%.2fpt', View.fontSize),
                      fontStyle = View.fontStyle,

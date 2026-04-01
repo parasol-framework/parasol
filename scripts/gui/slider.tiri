@@ -18,7 +18,7 @@ local lStyle = thunk():str
    end
 end
 
-gui.slider = function(Options)
+gui.slider = function(Options:table)
    self = { -- Public variables
       min    = Options.min ?? 0,
       max    = Options.max ?? 1,

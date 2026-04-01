@@ -298,17 +298,17 @@ gui.window = function(Options:table)
 
       self.visible = true
       self.surface.acShow()
-      if (self.surface.flags & RNF_HAS_FOCUS)?? then
+      if self.surface.flags has RNF_HAS_FOCUS then
          self.surface.acFocus()
       end
 
-      if self.events and self.events.show then self.events.show(self) end
+      self.events?.show(self)
    end
 
    self.hide = function(self:table)
       self.visible = false
       self.surface.acHide()
-      if self.events and self.events.hide then self.events.hide(self) end
+      self.events?.hide(self)
    end
 
    self.setTitle = function(self:table, Title)
@@ -422,7 +422,7 @@ gui.window = function(Options:table)
 
       info = struct.new('SurfaceInfo')
       if mGfx.GetSurfaceInfo(self.surface.popOver, info) is ERR_Okay then
-         if (info.flags & RNF_STICK_TO_FRONT)?? then
+         if info.flags has RNF_STICK_TO_FRONT then
             self.surface.flags = self.surface.flags | RNF_STICK_TO_FRONT
          end
       end
@@ -450,7 +450,7 @@ gui.window = function(Options:table)
 
    self.surface.subscribe('focus', function(Surface, Args, self)
       Surface.acMoveToFront()
-      if self.visible and (Surface.flags & RNF_VISIBLE) is 0 then
+      if self.visible and not (Surface.flags has RNF_VISIBLE) then
          Surface.acShow()
       end
 

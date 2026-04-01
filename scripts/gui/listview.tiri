@@ -62,20 +62,20 @@ gui.listView = function(Options:table)
          Item._vectors.highlight.fill = View.theme.page.textSelectBkgd
          Item._vectors.highlight.visibility = VIS_VISIBLE
          if View.theme.page.iconHighlight and View.hIcons[Item.icon] then
-            Item._vectors.iconImage.fill = 'url(#' .. View.hIcons[Item.icon] .. ')'
+            Item._vectors.iconImage.fill = f'url(#{View.hIcons[Item.icon]})'
          end
       elseif Highlighted then
          Item._vectors.highlight.fill = View.theme.page.textHighlightBkgd
          setListTextFill(Item, View.theme.page.textHighlight)
          Item._vectors.highlight.visibility = VIS_VISIBLE
          if View.theme.page.iconHighlight and View.hIcons[Item.icon] then
-            Item._vectors.iconImage.fill = 'url(#' .. View.hIcons[Item.icon] .. ')'
+            Item._vectors.iconImage.fill = f'url(#{View.hIcons[Item.icon]})'
          end
       else
          setListTextFill(Item, View.theme.page.text)
          Item._vectors.highlight.visibility = VIS_HIDDEN
          if View.icons[Item.icon] then
-            Item._vectors.iconImage.fill = 'url(#' .. Item.icon .. ')'
+            Item._vectors.iconImage.fill = f'url(#{Item.icon})'
          end
       end
    end
@@ -146,8 +146,8 @@ gui.listView = function(Options:table)
                   if View.theme.page.iconHighlight is View.theme.page.icon then
                      View.hIcons[item.icon] = item.icon
                   else
-                     gui.createIcon(View.scene, item.icon, ICON_SIZE, View.theme.page.iconHighlight, '_h_' .. item.icon)
-                     View.hIcons[item.icon] = '_h_' .. item.icon
+                     gui.createIcon(View.scene, item.icon, ICON_SIZE, View.theme.page.iconHighlight, f'_h_{item.icon}')
+                     View.hIcons[item.icon] = f'_h_{item.icon}'
                   end
                end
 

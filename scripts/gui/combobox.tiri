@@ -213,7 +213,7 @@ gui.combobox = function(Options)
    end)
 
    self._textClip.mtSubscribeKeyboard(function(Viewport, Qualifiers, Value, Unicode)
-      if not (Qualifiers & KQ_PRESSED)?? then return end
+      if not (Qualifiers has KQ_PRESSED) then return end
 
       if (Value is KEY_ENTER) or (Value is KEY_NP_ENTER) or ((not self.allowCustom) and (Value is KEY_SPACE)) then
          toggleMenu(self)
@@ -248,7 +248,7 @@ gui.combobox = function(Options)
       self.viewport.width = self.menu.surface.width + self.labelSize
    end
 
-   if self.events.show then self.events.show(self) end
+   self.events?.show(self)
 
    return self
 end

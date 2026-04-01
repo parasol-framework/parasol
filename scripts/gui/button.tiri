@@ -154,7 +154,7 @@ gui.button = function(Options)
    end)
 
    self.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Value, Unicode)
-      if (Qualifiers & KQ_PRESSED) is 0 then return end
+      if not (Qualifiers has KQ_PRESSED) then return end
 
       if (Value is KEY_ENTER) or (Value is KEY_SPACE) or (Value is KEY_NP_ENTER) then
          self.events?.activate(self)
@@ -173,7 +173,7 @@ gui.button = function(Options)
             if Msg.value > 0 then
                if not self.disabled then
                   -- Click event is triggered on release unless the button is set to pulse
-                  if (Msg.flags & JTYPE_REPEATED)?? then
+                  if Msg.flags has JTYPE_REPEATED then
                      if self.pulse then
                         self.events?.activate(self)
                      end

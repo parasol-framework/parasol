@@ -13,10 +13,6 @@ HEIGHT    <const> = math.floor(FONT_MAX_HEIGHT * 1.25) + 1
 ICON_SIZE <const> = HEIGHT * 0.56
 GAP       <const> = HEIGHT * 0.35
 
-function iconTheme(Widget)
-   return Widget.theme.palette.type is 'light' ? 'pearl' :> 'default' -- The default theme is dark
-end
-
 function toggleState(self)
    if self.state is 1 then
       self.state = 0
@@ -96,7 +92,9 @@ gui.checkbox = function(Options)
       strokeWidth = gui.sizing.page.strokeWidth,
    })
 
-   chk_icon = gui.createIcon(self.viewport.scene, 'items/checkmark', ICON_SIZE, iconTheme(self))
+   icon_theme = gui.rgbToIconTheme(self.theme.page.text)
+
+   chk_icon = gui.createIcon(self.viewport.scene, 'items/checkmark', ICON_SIZE, icon_theme)
 
    self.iconRender = self.viewport.new('VectorViewport', {
       x      = (HEIGHT - ICON_SIZE) * 0.5,
@@ -149,7 +147,7 @@ gui.checkbox = function(Options)
    end)
 
    self.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Value, Unicode)
-      if (Qualifiers & KQ_PRESSED) is 0 then return end
+      if not (Qualifiers has KQ_PRESSED) then return end
 
       if (Value is KEY_ENTER) or (Value is KEY_SPACE) or (Value is KEY_NP_ENTER) then
          toggleState(self)

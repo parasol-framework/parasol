@@ -238,14 +238,14 @@ gui.toolbar = function(Options)
                end
                item.icon.acMoveToFront()
             elseif item.displayName?? then
-               fill_name = 'tbar_' .. self._iconTheme
+               fill_name = f'tbar_{self._iconTheme}'
                gui.simpleGradient(self.viewport.scene, fill_name, gui.iconThemes[self._iconTheme], 0, 0, 0, 1, 'boundingbox', true)
-               item.textFill = 'url(#' .. fill_name .. ')'
+               item.textFill = f'url(#{fill_name})'
 
                if self._iconHighlight and (self._iconTheme != self._iconHighlight) then
-                  alt_name = 'tbar_' .. self._iconHighlight
+                  alt_name = f'tbar_{self._iconHighlight}'
                   gui.simpleGradient(self.viewport.scene, alt_name, gui.iconThemes[self._iconHighlight], 0, 0, 0, 1, 'boundingbox', true)
-                  item.textAltFill = 'url(#' .. alt_name .. ')'
+                  item.textAltFill = f'url(#{alt_name})'
                end
 
                item.vectorText = self.vg.new('VectorText', {
@@ -415,7 +415,7 @@ gui.toolbar = function(Options)
 
    self.applySticker = function(ID, Content)
       item = self._lookup[ID]
-      if not item then return end
+      item ?? return
 
       sticker_size = math.floor(self._iconSize * 0.5)
 
@@ -451,7 +451,7 @@ gui.toolbar = function(Options)
          end
 
          if type(Content) is 'string' then
-            if Content:len() > 1 then Content = Content:sub(0,1) end
+            if #Content > 1 then Content = Content:sub(0,1) end
          end
 
          font_size = sticker_size * 0.75
@@ -675,7 +675,7 @@ gui.toolbar = function(Options)
    end)
 
    self.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Code, Unicode)
-      if (Qualifiers & KQ_PRESSED) != 0 then
+      if Qualifiers has KQ_PRESSED then
          if (Code is KEY_ENTER) or (Code is KEY_NP_ENTER) or (Code is KEY_SPACE) then
             sendFeedback()
          elseif (Code is KEY_UP) or (Code is KEY_LEFT) then
