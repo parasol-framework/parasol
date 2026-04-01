@@ -997,6 +997,20 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
    pf::Log log(__FUNCTION__);
    uint32_t i;
 
+   // Convert sRGB (gamma-encoded, 0-1) to CIE XYZ via linear sRGB.
+   auto srgb_to_ciexyz = [](const FRGB &RGB, CIEXYZ &CIE) {
+      auto to_linear = [](double V) -> double {
+         return (V <= 0.04045) ? V / 12.92 : pow((V + 0.055) / 1.055, 2.4);
+      };
+      double lr = to_linear(RGB.Red);
+      double lg = to_linear(RGB.Green);
+      double lb = to_linear(RGB.Blue);
+      CIE.X = 0.4124564 * lr + 0.3575761 * lg + 0.1804375 * lb;
+      CIE.Y = 0.2126729 * lr + 0.7151522 * lg + 0.0721750 * lb;
+      CIE.Z = 0.0193339 * lr + 0.0585023 * lg + 0.9505041 * lb;
+      CIE.Alpha = RGB.Alpha;
+   };
+
    if (Result) *Result = nullptr;
    if ((!IRI) or (!Painter)) return ERR::NullArgs;
 
@@ -1109,6 +1123,8 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
       rgb.Green = std::clamp(rgb.Green, 0.0f, 1.0f);
       rgb.Blue  = std::clamp(rgb.Blue, 0.0f, 1.0f);
 
+      srgb_to_ciexyz(rgb, Painter->CIE);
+
       if (Result) {
          while ((*IRI) and (*IRI != ';')) IRI++;
          *Result = IRI[0] ? IRI : NULL;
@@ -1175,6 +1191,12 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
       rgb.Green = std::clamp((float)linear_to_srgb(lg), 0.0f, 1.0f);
       rgb.Blue  = std::clamp((float)linear_to_srgb(lb), 0.0f, 1.0f);
 
+      // Convert directly from linear sRGB to CIE XYZ (avoids double gamma round-trip)
+      Painter->CIE.X = 0.4124564 * lr + 0.3575761 * lg + 0.1804375 * lb;
+      Painter->CIE.Y = 0.2126729 * lr + 0.7151522 * lg + 0.0721750 * lb;
+      Painter->CIE.Z = 0.0193339 * lr + 0.0585023 * lg + 0.9505041 * lb;
+      Painter->CIE.Alpha = rgb.Alpha;
+
       if (Result) {
          while ((*IRI) and (*IRI != ';')) IRI++;
          *Result = IRI[0] ? IRI : NULL;
@@ -1230,6 +1252,8 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
          rgb.Blue  = hueToRgb(p, q, hue - 1.0/3.0);
       }
 
+      srgb_to_ciexyz(rgb, Painter->CIE);
+
       if (Result) {
          while ((*IRI) and (*IRI != ';')) IRI++;
          *Result = IRI[0] ? IRI : NULL;
@@ -1276,6 +1300,8 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
          default: rgb.Red = 0;   rgb.Green = 0;   rgb.Blue = 0; break;
       }
 
+      srgb_to_ciexyz(rgb, Painter->CIE);
+
       if (Result) {
          while ((*IRI) and (*IRI != ';')) IRI++;
          *Result = IRI[0] ? IRI : NULL;
@@ -1295,6 +1321,7 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
          rgb.Green = double((nibbles[1]<<4)|nibbles[1]) * (1.0 / 255.0);
          rgb.Blue  = double((nibbles[2]<<4)|nibbles[2]) * (1.0 / 255.0);
          rgb.Alpha = 1.0;
+         srgb_to_ciexyz(rgb, Painter->CIE);
          if (Result) *Result = IRI[0] ? IRI : nullptr;
          return ERR::Okay;
       }
@@ -1303,6 +1330,7 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
          rgb.Green = double((nibbles[2]<<4) | nibbles[3]) * (1.0 / 255.0);
          rgb.Blue  = double((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
          rgb.Alpha = 1.0;
+         srgb_to_ciexyz(rgb, Painter->CIE);
          if (Result) *Result = IRI[0] ? IRI : nullptr;
          return ERR::Okay;
       }
@@ -1311,6 +1339,7 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
          rgb.Green = double((nibbles[2]<<4) | nibbles[3]) * (1.0 / 255.0);
          rgb.Blue  = double((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
          rgb.Alpha = double((nibbles[6]<<4) | nibbles[7]) * (1.0 / 255.0);
+         srgb_to_ciexyz(rgb, Painter->CIE);
          if (Result) *Result = IRI[0] ? IRI : nullptr;
          return ERR::Okay;
       }
@@ -1325,6 +1354,7 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
          rgb.Green = (float)src.Green * (1.0 / 255.0);
          rgb.Blue  = (float)src.Blue  * (1.0 / 255.0);
          rgb.Alpha = (float)src.Alpha * (1.0 / 255.0);
+         srgb_to_ciexyz(rgb, Painter->CIE);
          if (Result) {
             while ((*IRI) and (*IRI != ';')) IRI++;
             *Result = IRI[0] ? IRI : NULL;
@@ -1339,6 +1369,7 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
          rgb.Green = (float)src.Green * (1.0 / 255.0);
          rgb.Blue  = (float)src.Blue  * (1.0 / 255.0);
          rgb.Alpha = (float)src.Alpha * (1.0 / 255.0);
+         srgb_to_ciexyz(rgb, Painter->CIE);
          if (Result) {
             while ((*IRI) and (*IRI != ';')) IRI++;
             *Result = IRI[0] ? IRI : NULL;
