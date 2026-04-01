@@ -78,7 +78,7 @@ gui.combobox = function(Options)
    assert(Options.target, 'A target viewport is required.')
    assert(Options.items and #Options.items > 0, 'A list of items is required.')
 
-   self.theme = gui.getTheme(Options.parentViewport)
+   self.theme = gui.getTheme(self.parentViewport)
 
    vps = { -- Viewport settings
       x       = Options.x,

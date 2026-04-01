@@ -222,7 +222,7 @@ gui.strToRGB = function(Value:str):table
 
    local result, fail
    try
-      if string.byte(Value) is 35 then
+      if string.byte(Value) is 35 then -- '#'
          colour = tonumber(Value:substr(1), 16) -- Convert hex string to number
 
          if colour and #Value is 7 then
@@ -586,22 +586,22 @@ end
      orangeApples = { light = { bkgd = '#ffffff', base = '#19302d', prime = '#74a108', second = '#263248', type = 'light',
                                 contrast = '#e89214', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
                       dark =  { bkgd = '#19302d', base = '#ffffff', prime = '#74a108', second = '#263248', type = 'dark',
-                                contrast = '#e89214', neutral = 'rgb(40,40,40)', text='rgb(0,0,0)', altText='rgb(255,255,255)' }
+                                contrast = '#e89214', neutral = 'rgb(40,40,40)', text='rgb(255,255,255)', altText='rgb(255,255,255)' }
                     },
      greenland    = { light = { bkgd = '#f9FFfB', base = '#163a00', prime = '#c55500', second = '#55c500', type = 'light',
                                 contrast = '#567a00', neutral = '#e9e9e0', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
                       dark  = { bkgd = '#163a00', base = '#ffffff', prime = '#c55500', second = '#55c500', type = 'dark',
-                                contrast = '#567a00', neutral = '#494940', text='rgb(0,0,0)', altText='rgb(255,255,255)' }
+                                contrast = '#567a00', neutral = '#494940', text='rgb(255,255,255)', altText='rgb(255,255,255)' }
                     },
      sunrise      = { light = { bkgd = '#f9FfFc', base = '#687878', prime = '#e2581b', second = '#bd3232', type = 'light',
                                 contrast = '#eb9500', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
                       dark=   { bkgd = '#000000', base = '#687878', prime = '#e2581b', second = '#bd3232', type = 'dark',
-                                contrast = '#eb9500', neutral = 'rgb(40,40,40)', text='rgb(0,0,0)', altText='rgb(255,255,255)' }
+                                contrast = '#eb9500', neutral = 'rgb(40,40,40)', text='rgb(255,255,255)', altText='rgb(255,255,255)' }
                     },
      candyfloss   = { light = { bkgd = '#fffaf7', base = '#375a5e', prime = '#6ac9a6', second = '#FF8B94', type = 'light',
                                 contrast = '#e07780', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
                       dark  = { bkgd = '#375a5e', base = '#ffffff', prime = '#6ac9a6', second = '#FF8B94', type = 'dark',
-                                contrast = '#e07780', neutral = 'rgb(40,40,40)', text='rgb(0,0,0)', altText='rgb(255,255,255)' }
+                                contrast = '#e07780', neutral = 'rgb(40,40,40)', text='rgb(255,255,255)', altText='rgb(255,255,255)' }
                     },
      template     = { light = { type = '', bkgd = '', base = '', prime = '', second = '', contrast = '', neutral = '', text='', altText='' } }
    }
@@ -699,6 +699,7 @@ end
          },
          toolbar = {
             bkgd          = gui.palette.dark.bkgd,
+            groupStroke   = gui.palette.dark.base,
             icon          = 'pearl',
             iconHighlight = 'pearl'
          },
@@ -758,6 +759,7 @@ end
          },
          toolbar = {
             bkgd          = gui.palette.light.bkgd,
+            groupStroke   = gui.palette.light.base,
             icon          = 'carbon',
             iconHighlight = 'pearl'
          },

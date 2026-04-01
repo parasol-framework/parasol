@@ -214,7 +214,7 @@ gui.toolbar = function(Options)
                item.bkgd.acMoveToBack()
 
                item.border = self.vg.new('VectorRectangle', {
-                  name = 'grouprect', stroke = theme.button.bkgd, strokeWidth = gui.sizing.widget.strokeWidth,
+                  name = 'grouprect', stroke = theme.toolbar.groupStroke, strokeWidth = gui.sizing.widget.strokeWidth,
                   x = x, y = y, roundX = self._round, roundY = self._round, width = 1, height = 1
                })
 
@@ -557,7 +557,7 @@ gui.toolbar = function(Options)
             if self._current then
                hoverUpdate(nil)
             end
-         elseif (ev.flags & JTYPE_MOVEMENT) != 0 then
+         elseif ev.flags has JTYPE_MOVEMENT then
             if self._clicked then return end
 
             item = getCursorItem(ev.x, ev.y)
@@ -568,7 +568,7 @@ gui.toolbar = function(Options)
             else
                cancelTipTimer()
             end
-         elseif (ev.flags & JTYPE_BUTTON) != 0 then
+         elseif ev.flags has JTYPE_BUTTON then
             if ev.value > 0 then
                if self._disabled then return end
 

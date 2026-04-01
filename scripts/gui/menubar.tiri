@@ -316,7 +316,7 @@ gui.menubar = function(Options)
       end)
 
       self.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Code, Unicode)
-         if (Qualifiers & KQ_PRESSED) != 0 then
+         if Qualifiers has KQ_PRESSED then
             if (Code is KEY_ENTER) or (Code is KEY_NP_ENTER) or (Code is KEY_SPACE) then
                activateItem(self)
             elseif (Code is KEY_UP) or (Code is KEY_LEFT) then

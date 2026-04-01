@@ -58,7 +58,7 @@ gui.icon = function(Options)
             if (math.abs(Msg.absX - lClick.x) > 2) or (math.abs(Msg.absY - lClick.y) > 2) then
                -- Do nothing - mouse moved/dragged when icon was clicked
             elseif self.events.activate then
-               if (Msg.flags & JTYPE_DBL_CLICK)?? then
+               if Msg.flags has JTYPE_DBL_CLICK then
                   self.events.activate(self, { name='dblclick' })
                else
                   self.events.activate(self, { name='click' })
