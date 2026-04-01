@@ -1365,7 +1365,14 @@ struct HSV {
    double Hue;           // Between 0 and 359.999
    double Saturation;    // Between 0 and 1.0
    double Value;         // Between 0 and 1.0.  Corresponds to Value, Lightness or Brightness
-   double Alpha;         // Alpha blending value from 0 to 1.0.
+   double Alpha;         // Alpha blending value from 0 to 1.0
+};
+
+struct CIEXYZ {
+   double X;        // X is a mix of the three CIE RGB curves chosen to be non-negative
+   double Y;        // Luminance value from 0 to 1.0
+   double Z;        // Z is quasi-equal to blue
+   double Alpha;    // Alpha blending value from 0 to 1.0
 };
 
 struct FRGB {
