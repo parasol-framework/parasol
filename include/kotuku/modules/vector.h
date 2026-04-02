@@ -534,12 +534,17 @@ struct VectorPainter {
    objVectorPattern * Pattern;    // A VectorPattern object, suitable for pattern based fills.
    objVectorImage * Image;        // A VectorImage object, suitable for image fills.
    objVectorGradient * Gradient;  // A VectorGradient object, suitable for gradient fills.
+   struct CIEXYZ CIE;             // CIE colour representation
    struct FRGB Colour;            // A single RGB colour definition, suitable for block colour fills.
    void reset() {
+      CIE.X = 0;
+      CIE.Y = 0;
+      CIE.Z = 0;
       Colour.Alpha = 0;
-      Gradient = NULL;
-      Image    = NULL;
-      Pattern  = NULL;
+      CIE.Alpha = 0;
+      Gradient = nullptr;
+      Image    = nullptr;
+      Pattern  = nullptr;
    }
 };
 
@@ -1236,7 +1241,7 @@ class objFilterEffect : public Object {
 struct MergeSource {
    VSF SourceType;              // The type of the required source.
    objFilterEffect * Effect;    // Effect pointer if the SourceType is REFERENCE.
-  MergeSource(VSF pType, objFilterEffect *pEffect = NULL) : SourceType(pType), Effect(pEffect) { };
+  MergeSource(VSF pType, objFilterEffect *pEffect = nullptr) : SourceType(pType), Effect(pEffect) { };
 };
 
 // ImageFX class definition
@@ -4172,4 +4177,3 @@ template <pf::NumericOrScale T> FieldValue RoundY(T Value) {
 }
 
 }
-

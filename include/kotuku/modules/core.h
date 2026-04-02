@@ -1365,7 +1365,7 @@ struct HSV {
    double Hue;           // Between 0 and 359.999
    double Saturation;    // Between 0 and 1.0
    double Value;         // Between 0 and 1.0.  Corresponds to Value, Lightness or Brightness
-   double Alpha;         // Alpha blending value from 0 to 1.0.
+   double Alpha;         // Alpha blending value from 0 to 1.0
 };
 
 struct FRGB {
@@ -1386,6 +1386,48 @@ typedef struct RGB8 {
    constexpr RGB8(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255) noexcept
       : Red(r), Green(g), Blue(b), Alpha(a) { }
 } RGB8;
+
+struct CIEXYZ {
+   double X;        // X is a mix of the three CIE RGB curves chosen to be non-negative
+   double Y;        // Luminance value from 0 to 1.0
+   double Z;        // Z is quasi-equal to blue
+   double Alpha;    // Alpha blending value from 0 to 1.0
+   constexpr CIEXYZ() noexcept = default;
+   constexpr CIEXYZ(double x, double y, double z, double a = 1.0) noexcept
+     : X(x), Y(y), Z(z), Alpha(a) { }
+
+   // Convert sRGB (gamma-encoded, 0-1) to CIE XYZ via linear sRGB.
+
+   inline CIEXYZ(const FRGB &RGB) {
+      auto to_linear = [](const double V) -> double {
+          return (V <= 0.04045) ? V / 12.92 : pow((V + 0.055) / 1.055, 2.4);
+      };
+      const double lr = to_linear(RGB.Red);
+      const double lg = to_linear(RGB.Green);
+      const double lb = to_linear(RGB.Blue);
+      X = 0.4124564 * lr + 0.3575761 * lg + 0.1804375 * lb;
+      Y = 0.2126729 * lr + 0.7151522 * lg + 0.0721750 * lb;
+      Z = 0.0193339 * lr + 0.1191920 * lg + 0.9505041 * lb;
+      Alpha = RGB.Alpha;
+   }
+
+   // Convert CIE XYZ to sRGB via the inverse sRGB matrix and gamma encoding
+   inline FRGB toFRGB() const {
+      auto linear_to_srgb = [](double V) -> float {
+         if (V < 0.0) V = 0.0; else if (V > 1.0) V = 1.0;
+         return float((V <= 0.0031308) ? 12.92 * V : 1.055 * pow(V, 1.0 / 2.4) - 0.055);
+      };
+      double lr =  3.2404542 * X - 1.5371385 * Y - 0.4985314 * Z;
+      double lg = -0.9692660 * X + 1.8760108 * Y + 0.0415560 * Z;
+      double lb =  0.0556434 * X - 0.2040259 * Y + 1.0572252 * Z;
+      return FRGB(linear_to_srgb(lr), linear_to_srgb(lg), linear_to_srgb(lb), float(Alpha));
+   }
+
+   inline RGB8 toRGB() const {
+      auto frgb = toFRGB();
+      return RGB8(frgb.Red * 255, frgb.Green * 255, frgb.Blue * 255, frgb.Alpha * 255);
+   }
+};
 
 struct RGB16 {
    uint16_t Red;    // Red component value
@@ -3837,8 +3879,8 @@ typedef struct { EVENTID EventID; int16_t TotalWithFocus; int16_t TotalLostFocus
 
 struct evHotplug {
    EVENTID EventID;
-   int16_t Type;            // HT ID
-   int16_t Action;          // HTA_INSERTED, HTA_REMOVED
+   int16_t Type;        // HT ID
+   int16_t Action;      // HTA_INSERTED, HTA_REMOVED
    int VendorID;        // USB vendor ID
    union {
       int ProductID;    // USB product or device ID

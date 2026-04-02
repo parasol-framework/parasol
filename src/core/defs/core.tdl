@@ -1641,8 +1641,8 @@ typedef struct { EVENTID EventID; int16_t TotalWithFocus; int16_t TotalLostFocus
 
 struct evHotplug {
    EVENTID EventID;
-   int16_t Type;            // HT ID
-   int16_t Action;          // HTA_INSERTED, HTA_REMOVED
+   int16_t Type;        // HT ID
+   int16_t Action;      // HTA_INSERTED, HTA_REMOVED
    int VendorID;        // USB vendor ID
    union {
       int ProductID;    // USB product or device ID
