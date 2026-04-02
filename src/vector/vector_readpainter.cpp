@@ -145,15 +145,9 @@ static ERR parse_url(pf::Log &Log, objVectorScene *Scene, CSTRING IRI, VectorPai
    bool found = false;
    if (((extVectorScene *)Scene)->Defs.contains(lookup)) {
       auto def = ((extVectorScene *)Scene)->Defs[lookup];
-      if (def->classID() IS CLASSID::VECTORGRADIENT) {
-         Painter->Gradient = (objVectorGradient *)def;
-      }
-      else if (def->classID() IS CLASSID::VECTORIMAGE) {
-         Painter->Image = (objVectorImage *)def;
-      }
-      else if (def->classID() IS CLASSID::VECTORPATTERN) {
-         Painter->Pattern = (objVectorPattern *)def;
-      }
+      if (def->classID() IS CLASSID::VECTORGRADIENT) Painter->Gradient = (objVectorGradient *)def;
+      else if (def->classID() IS CLASSID::VECTORIMAGE) Painter->Image = (objVectorImage *)def;
+      else if (def->classID() IS CLASSID::VECTORPATTERN) Painter->Pattern = (objVectorPattern *)def;
       else Log.warning("Vector definition '%s' (class $%.8x) not supported.", lookup.c_str(), uint32_t(def->classID()));
       found = true;
    }
@@ -283,13 +277,12 @@ static ERR parse_oklch(CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
 }
 
 //********************************************************************************************************************
+// CSS lab() colour function: lab(L a b [/ alpha])
+// L: lightness 0-100 (or 0%-100%), a: ~-125 to 125 (or percentage), b: ~-125 to 125 (or percentage)
+// Values are space-separated; alpha is optional, preceded by '/'
 
 static ERR parse_lab(CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
 {
-   // CSS lab() colour function: lab(L a b [/ alpha])
-   // L: lightness 0-100 (or 0%-100%), a: ~-125 to 125 (or percentage), b: ~-125 to 125 (or percentage)
-   // Values are space-separated; alpha is optional, preceded by '/'
-
    IRI += 4;
    while ((*IRI) and (*IRI <= 0x20)) IRI++;
 
@@ -304,13 +297,12 @@ static ERR parse_lab(CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
 }
 
 //********************************************************************************************************************
+// CSS lch() colour function: lch(L C H [/ alpha])
+// L: lightness 0-100 (or 0%-100%), C: chroma ~0-150 (or percentage), H: hue in degrees
+// Values are space-separated; alpha is optional, preceded by '/'
 
 static ERR parse_lch(CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
 {
-   // CSS lch() colour function: lch(L C H [/ alpha])
-   // L: lightness 0-100 (or 0%-100%), C: chroma ~0-150 (or percentage), H: hue in degrees
-   // Values are space-separated; alpha is optional, preceded by '/'
-
    IRI += 4;
    while ((*IRI) and (*IRI <= 0x20)) IRI++;
 
@@ -332,7 +324,6 @@ static ERR parse_lch(CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
 }
 
 //********************************************************************************************************************
-
 // Parse the common (H, S, X [, A]) format used by HSL and HSV.
 // Returns hue (0-1), saturation (0-1), third component (0-1), and alpha (0-1).
 
@@ -376,7 +367,7 @@ static ERR parse_hsl(CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
       return p;
    };
 
-   if (sat == 0) {
+   if (sat IS 0) {
       rgb.Red = rgb.Green = rgb.Blue = light;
    }
    else {
