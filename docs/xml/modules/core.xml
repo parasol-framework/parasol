@@ -2920,10 +2920,10 @@ static ResourceManager glNodeManager = {
     </struct>
 
     <struct name="CIEXYZ" comment="Colour structure for CIE X, Y and Z components.">
-      <field name="X" type="DOUBLE">X is a mix of the three CIE RGB curves chosen to be non-negative</field>
-      <field name="Y" type="DOUBLE">Luminance value from 0 to 1.0</field>
-      <field name="Z" type="DOUBLE">Z is quasi-equal to blue</field>
-      <field name="Alpha" type="DOUBLE">Alpha blending value from 0 to 1.0</field>
+      <field name="X" type="FLOAT">X is a mix of the three CIE RGB curves chosen to be non-negative</field>
+      <field name="Y" type="FLOAT">Luminance value from 0 to 1.0</field>
+      <field name="Z" type="FLOAT">Z is quasi-equal to blue</field>
+      <field name="Alpha" type="FLOAT">Alpha blending value from 0 to 1.0</field>
     </struct>
 
     <struct name="ChildEntry" comment="Structure for ListChildren() function">

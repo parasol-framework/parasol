@@ -132,14 +132,14 @@ struct("RGB8", { type="RGB8", comment="8-bit RGB colour value." }, [[
 ]])
 
 struct("CIEXYZ", { comment="Colour structure for CIE X, Y and Z components." }, [[
-  double X      # X is a mix of the three CIE RGB curves chosen to be non-negative
-  double Y      # Luminance value from 0 to 1.0
-  double Z      # Z is quasi-equal to blue
-  double Alpha  # Alpha blending value from 0 to 1.0
+  float X      # X is a mix of the three CIE RGB curves chosen to be non-negative
+  float Y      # Luminance value from 0 to 1.0
+  float Z      # Z is quasi-equal to blue
+  float Alpha  # Alpha blending value from 0 to 1.0
 ]],
 [[
    constexpr CIEXYZ() noexcept = default;
-   constexpr CIEXYZ(double x, double y, double z, double a = 1.0) noexcept
+   constexpr CIEXYZ(float x, float y, float z, float a = 1.0) noexcept
      : X(x), Y(y), Z(z), Alpha(a) { }
 
    // Convert sRGB (gamma-encoded, 0-1) to CIE XYZ via linear sRGB.
