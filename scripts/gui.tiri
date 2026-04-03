@@ -24,7 +24,7 @@ glStyleConfig = 'user:config/style.cfg'
 
 ----------------------------------------------------------------------------------------------------------------------
 
-gui.mtRGB = { -- RGB metatable
+gui.mtRGB = { -- RGB8 metatable
    __newindex = function(Self, Key, Value)
       error(f'Table structure is immutable: Cannot set {Key}')
    end,
@@ -33,9 +33,9 @@ gui.mtRGB = { -- RGB metatable
    end,
    __tostring = function(Self):str -- Returns an SVG compliant colour string
       if Self.a is 255 or Self.a is nil then
-         return string.format('rgb(%d,%d,%d)', Self.r ?? -1, Self.g ?? -1, Self.b ?? -1)
+         return string.format('rgb(%d %d %d)', Self.r ?? -1, Self.g ?? -1, Self.b ?? -1)
       else
-         return string.format('rgba(%d,%d,%d,%g)', Self.r ?? -1, Self.g ?? -1, Self.b ?? -1, Self.a / 255)
+         return string.format('rgba(%d %d %d / %g)', Self.r ?? -1, Self.g ?? -1, Self.b ?? -1, Self.a / 255)
       end
    end
 }
@@ -105,6 +105,86 @@ end
 
 function gui.mtRGB:withAlpha(Alpha:num):table
    return setmetatable({ r = self.r, g = self.g, b = self.b, a = self.a * Alpha }, gui.mtRGB)
+end
+
+-- Convert RGB table { r, g, b, a } (0-255) to HSL table { h, s, l }
+-- h is hue in degrees [0,360), s and l are in [0,1].
+
+function gui.mtRGB:toHSL():table
+   local r = self.r / 255
+   local g = self.g / 255
+   local b = self.b / 255
+
+   local max = r
+   if g > max then max = g end
+   if b > max then max = b end
+
+   local min = r
+   if g < min then min = g end
+   if b < min then min = b end
+
+   local l = (max + min) / 2
+   if max is min then
+      return { h = 0, s = 0, l = l }
+   end
+
+   local delta = max - min
+   local s = (l > 0.5) ? (delta / (2 - max - min)) :> (delta / (max + min))
+   local h
+
+   if r >= max then
+      h = (g - b) / delta
+   elseif g >= max then
+      h = 2.0 + (b - r) / delta
+   else
+      h = 4.0 + (r - g) / delta
+   end
+   h = h * 60
+   if h < 0 then h = h + 360 end
+
+   return { h = h, s = s, l = l }
+end
+
+-- Return the relative luminance of the colour per WCAG 2.x (BT.709 coefficients).
+-- Result is in [0,1] where 0 is black and 1 is white.
+
+function gui.mtRGB:luminance():num
+   linearise = function(u)
+      u = u / 255
+      return (u <= 0.04045) ? (u / 12.92) :> (((u + 0.055) / 1.055) ** 2.4)
+   end
+   return 0.2126 * linearise(self.r) + 0.7152 * linearise(self.g) + 0.0722 * linearise(self.b)
+end
+
+-- Convert RGB table { r, g, b, a } (0-255) to Display P3 table { r, g, b }
+-- Values are in [0,1].  Out-of-gamut sRGB colours may produce values outside [0,1].
+
+function gui.mtRGB:toDisplayP3():table
+   -- Linearise sRGB
+   linearise = function(u)
+      u = u / 255
+      return (u <= 0.04045) ? (u / 12.92) :> (((u + 0.055) / 1.055) ** 2.4)
+   end
+   local lr = linearise(self.r)
+   local lg = linearise(self.g)
+   local lb = linearise(self.b)
+
+   -- sRGB linear → XYZ D65
+   local x =  0.4124564 * lr + 0.3575761 * lg + 0.1804375 * lb
+   local y =  0.2126729 * lr + 0.7151522 * lg + 0.0721750 * lb
+   local z =  0.0193339 * lr + 0.1191920 * lg + 0.9503041 * lb
+
+   -- XYZ D65 → Display P3 linear
+   local pr =  2.4934969 * x - 0.9313836 * y - 0.4027108 * z
+   local pg = -0.8294890 * x + 1.7626641 * y + 0.0236247 * z
+   local pb =  0.0358458 * x - 0.0761724 * y + 0.9568845 * z
+
+   -- Apply sRGB-style gamma (Display P3 uses the same transfer function)
+   gamma = function(u)
+      return (u <= 0.0031308) ? (u * 12.92) :> (1.055 * (u ** (1 / 2.4)) - 0.055)
+   end
+
+   return { r = gamma(pr), g = gamma(pg), b = gamma(pb) }
 end
 
 -- Convert RGB table { r, g, b, a } (0-255) to OKLab table { okl, oka, okb, a }

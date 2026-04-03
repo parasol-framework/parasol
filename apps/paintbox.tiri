@@ -1,0 +1,49 @@
+-- Paintbox reads a given colour and then outputs the possible CSS declarations for it
+
+   import 'gui'
+
+   local colour = arg('colour')
+
+   assert(colour??, 'A colour must be specified on the commandline.')
+
+   painter = struct.new('VectorPainter')
+   err = mVec.ReadPainter(nil, colour, painter)
+
+   if err is not ERR_Okay then
+      error(f'Failed to parse provided colour: {colour}')
+   end
+
+   nrgb  = painter.Colour -- Normalised RGB
+   rgb   = gui.rgb(nrgb.Red * 255, nrgb.Green * 255, nrgb.Blue * 255, nrgb.Alpha * 255)
+   oklab = rgb:toOKLab()
+   oklch = rgb:toOKLCH()
+   hsl   = rgb:toHSL()
+   hsv   = rgb:toHSV()
+   xyz   = painter.CIE
+   p3    = rgb:toDisplayP3()
+   lum   = rgb:luminance()
+
+   alpha = rgb.a / 255
+
+   -- WCAG 2.x contrast ratio against black (L=0) and white (L=1)
+   cr_black = (lum + 0.05) / 0.05
+   cr_white = 1.05 / (lum + 0.05)
+
+   -- Hex representation: omit alpha channel when fully opaque
+   hex = (rgb.a >= 255) ?
+      string.format('#%02x%02x%02x', rgb.r, rgb.g, rgb.b) :>
+      string.format('#%02x%02x%02x%02x', rgb.r, rgb.g, rgb.b, rgb.a)
+
+   print(f'Source:  {colour}')
+   print('')
+   print(f'RGB:     {rgb} / {hex}')
+   print(string.format('HSL:     hsl(%.4g %.4g %.4g / %.3g)', hsl.h, hsl.s, hsl.l, alpha))
+   print(string.format('CIE XYZ: color(xyz-d50 %.4g %.4g %.4g / %.3g)', xyz.x, xyz.y, xyz.z, alpha))
+   print(string.format('OKLAB:   oklab(%.4g %.4g %.4g / %.3g)', oklab.okl, oklab.oka, oklab.okb, alpha))
+   print(string.format('OKLCH:   oklch(%.4g %.4g %.4g / %.3g)', oklch.okl, oklch.okc, oklch.okh, alpha))
+   print(string.format('P3:      color(display-p3 %.4g %.4g %.4g / %.3g)', p3.r, p3.g, p3.b, alpha))
+   print(string.format('HSV:     hsv(%.4g, %.4g, %.4g)', hsv.h, hsv.s / 255, hsv.v / 255))
+   print('')
+   print(string.format('Luminance: %.4g', lum))
+   print(string.format('Contrast:  %.2f:1 (black) / %.2f:1 (white)', cr_black, cr_white))
+
