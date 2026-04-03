@@ -1,3 +1,4 @@
+// UPDATED: 2026-04-03 -- Clarified `is not` as an inequality form using reserved words.
 [[appendix-reserved-words]]
 [appendix]
 == Reserved Words & Keywords
@@ -76,7 +77,7 @@ This appendix provides a quick-reference for all reserved words in Tiri.  Reserv
 |`and` |Logical AND.  Short-circuits; returns the first false operand or the last operand.  See <<sec-logical-operators>>.
 |`or`  |Logical OR.  Short-circuits; returns the first true operand or the last operand.  See <<sec-logical-operators>>.
 |`not` |Logical negation.  Returns `true` if the operand is false; `false` otherwise.  See <<sec-logical-operators>>.
-|`is`  |Equality comparison.  Replaces `==` from standard Lua.  See <<sec-comparison-operators>>.
+|`is`  |Equality comparison.  Replaces `==` from standard Lua.  Combines with `not` as `is not` for inequality.  See <<sec-comparison-operators>>.
 |`has` |Bitwise flag testing.  Returns `true` if any flags in the right operand are set in the left operand.  See <<sec-flag-testing-operator>>.
 |===
 

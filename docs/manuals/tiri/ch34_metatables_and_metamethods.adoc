@@ -1,4 +1,5 @@
 // VERIFIED: 2026-03-03
+// UPDATED: 2026-04-03 -- Added `is not` alongside `!=` in equality semantics.
 
 [[ch-metatables-and-metamethods]]
 == Metatables & Metamethods
@@ -110,7 +111,7 @@ The `is` operator compares tables and userdata by identity.  Two distinct object
 
 The runtime invokes `pass:[__]eq` only when both operands share the same metatable, or when both metatables define the same function object as their `pass:[__]eq` field.  If neither condition holds, the operator falls back to identity comparison.
 
-The `!=` operator negates the result of the `is` comparison, including any `pass:[__]eq` metamethod invocation.
+The `is not` and `!=` operators negate the result of the `is` comparison, including any `pass:[__]eq` metamethod invocation.
 
 `rawequal(A, B)` bypasses `pass:[__]eq` entirely and always compares by identity.
 
@@ -358,7 +359,7 @@ The following table lists every metamethod recognised by the runtime, ordered by
 |`pass:[__]newindex`   |Write to absent key          |`pass:[__]newindex(self, key, value)` or table
 |`pass:[__]gc`         |Userdata finalisation        |`pass:[__]gc(self)`
 |`pass:[__]mode`       |Weak table mode (string)     |Not callable; value is `'k'`, `'v'`, or `'kv'`
-|`pass:[__]eq`         |`is` / `!=` comparison       |`pass:[__]eq(a, b)` pass:[->]boolean
+|`pass:[__]eq`         |`is` / `is not` / `!=` comparison       |`pass:[__]eq(a, b)` pass:[->]boolean
 |`pass:[__]len`        |`#` operator                 |`pass:[__]len(self)` pass:[->]number
 |`pass:[__]lt`         |`<` and `>` comparison       |`pass:[__]lt(a, b)` pass:[->]boolean
 |`pass:[__]le`         |`\<=` and `>=` comparison |`pass:[__]le(a, b)` pass:[->]boolean

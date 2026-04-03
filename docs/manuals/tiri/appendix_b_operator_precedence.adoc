@@ -1,3 +1,4 @@
+// UPDATED: 2026-04-03 -- Added `is not` to the precedence quick-reference.
 [[appendix-operator-precedence]]
 [appendix]
 == Operator Precedence
@@ -15,7 +16,7 @@ This appendix provides a quick-reference for all Tiri operators, ordered from hi
 |7|`+`, `-`|Left
 |6|`..`, `<<`, `>>`|`..` right; shifts left
 |5|`&`|Left
-|4|`^`, `is`, `!=`, `<`, `>`, `\<=`, `>=`, `in` |Left
+|4|`^`, `is`, `is not`, `!=`, `<`, `>`, `\<=`, `>=`, `in` |Left
 |3|`has`, `\|`, `and`, `\|>`|Left
 |2|`or`, `??`, `? :>`|Left (`? :>` right)
 |===

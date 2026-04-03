@@ -1,3 +1,4 @@
+// UPDATED: 2026-04-03 -- Documented `is not` as an alternative inequality form.
 [[appendix-migration-from-lua]]
 [appendix]
 == Migration from Lua
@@ -18,7 +19,7 @@ The following table lists all incompatible changes between standard Lua and Tiri
 |<<sec-migration-equality>>
 
 |`~=`
-|`!=`
+|`is not` / `!=`
 |<<sec-migration-equality>>
 
 |`^` (exponentiation)
@@ -115,6 +116,7 @@ if y ~= 0 then ... end
 
 -- Tiri
 if x is nil then ... end
+if y is not 0 then ... end
 if y != 0 then ... end
 ----
 
