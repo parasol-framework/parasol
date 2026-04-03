@@ -63,6 +63,60 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- rgb() space-separated (modern CSS)
+-----------------------------------------------------------------------------------------------------------------------
+
+@Test function ReadRGBSpace()
+   painter = struct.new('VectorPainter')
+   check mVec.ReadPainter(nil, "rgb(255 128 0)", painter)
+   assert(checkRGB(painter, 1.0, 128/255, 0, 1.0), 'Failed rgb() space-separated')
+end
+
+@Test function ReadRGBSpaceAlpha()
+   painter = struct.new('VectorPainter')
+   check mVec.ReadPainter(nil, "rgb(255 255 255 / 0.5)", painter)
+   assert(checkRGB(painter, 1.0, 1.0, 1.0, 0.5), 'Failed rgb() space-separated with alpha')
+end
+
+@Test function ReadRGBSpaceAlphaPercent()
+   painter = struct.new('VectorPainter')
+   check mVec.ReadPainter(nil, "rgb(0 0 255 / 75%)", painter)
+   assert(checkRGB(painter, 0, 0, 1.0, 0.75), 'Failed rgb() space-separated with percentage alpha')
+end
+
+@Test function ReadRGBSpacePercentage()
+   painter = struct.new('VectorPainter')
+   check mVec.ReadPainter(nil, "rgb(100% 50% 0%)", painter)
+   assert(checkRGB(painter, 1.0, 0.5, 0, 1.0), 'Failed rgb() space-separated with percentages')
+end
+
+@Test function ReadRGBSpacePercentageAlpha()
+   painter = struct.new('VectorPainter')
+   check mVec.ReadPainter(nil, "rgb(100% 0% 0% / 0.3)", painter)
+   assert(checkRGB(painter, 1.0, 0, 0, 0.3), 'Failed rgb() space-separated percentages with alpha')
+end
+
+@Test function ReadRGBSpaceBlack()
+   painter = struct.new('VectorPainter')
+   check mVec.ReadPainter(nil, "rgb(0 0 0)", painter)
+   assert(checkRGB(painter, 0, 0, 0, 1.0), 'Failed rgb() space-separated black')
+end
+
+@Test function ReadRGBSpaceNoAlpha()
+   -- Verify alpha defaults to 1.0 when no slash is present
+   painter = struct.new('VectorPainter')
+   check mVec.ReadPainter(nil, "rgb(128 64 32)", painter)
+   assert(checkRGB(painter, 128/255, 64/255, 32/255, 1.0), 'Failed rgb() space-separated default alpha')
+end
+
+@Test function ReadRGBASpace()
+   -- rgba() prefix should also work with the space-separated format
+   painter = struct.new('VectorPainter')
+   check mVec.ReadPainter(nil, "rgba(0 255 0 / 0.8)", painter)
+   assert(checkRGB(painter, 0, 1.0, 0, 0.8), 'Failed rgba() space-separated')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- Hex colours
 -----------------------------------------------------------------------------------------------------------------------
 
@@ -417,6 +471,7 @@ end
    -- Pure red expressed in multiple formats should produce near-identical RGB values
    local formats = {
       "rgb(255,0,0)",
+      "rgb(255 0 0)",
       "#ff0000",
       "red",
       "hsl(0,100,50)"
