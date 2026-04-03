@@ -1,25 +1,118 @@
--- Paintbox reads a given colour and then outputs the possible CSS declarations for it
+-- Paintbox reads a given CSS colour and outputs useful information for it.
 
    import 'gui'
+   import 'json'
 
-   local colour = arg('colour')
+function clamp(Value, Min, Max)
+   if Value < Min then return Min end
+   if Value > Max then return Max end
+   return Value
+end
 
-   assert(colour??, 'A colour must be specified on the commandline.')
+function normaliseHue(Hue)
+   Hue = Hue % 360
+   if Hue < 0 then Hue = Hue + 360 end
+   return Hue
+end
 
-   painter = struct.new('VectorPainter')
-   err = mVec.ReadPainter(nil, colour, painter)
+function hexFromRGB(RGB)
+   return (RGB.a >= 255) ?
+      string.format('#%02x%02x%02x', RGB.r, RGB.g, RGB.b) :>
+      string.format('#%02x%02x%02x%02x', RGB.r, RGB.g, RGB.b, RGB.a)
+end
 
-   if err is not ERR_Okay then
-      error(f'Failed to parse provided colour: {colour}')
+function hslToRGB(H, S, L, A)
+   H = normaliseHue(H) / 360
+   S = clamp(S, 0, 1)
+   L = clamp(L, 0, 1)
+   A ?= 255
+
+   if S is 0 then
+      local v = math.floor((L * 255) + 0.5)
+      return gui.rgb(v, v, v, A)
    end
 
-   nrgb  = painter.Colour -- Normalised RGB
+   hue2rgb = function(P, Q, T)
+      if T < 0 then T++ end
+      if T > 1 then T -= 1 end
+      if T < (1 / 6) then return P + ((Q - P) * 6 * T) end
+      if T < (1 / 2) then return Q end
+      if T < (2 / 3) then return P + ((Q - P) * ((2 / 3) - T) * 6) end
+      return P
+   end
+
+   local q = (L < 0.5) ? (L * (1 + S)) :> (L + S - (L * S))
+   local p = (2 * L) - q
+   local r = hue2rgb(p, q, H + (1 / 3))
+   local g = hue2rgb(p, q, H)
+   local b = hue2rgb(p, q, H - (1 / 3))
+   return gui.rgb(
+      math.floor((r * 255) + 0.5),
+      math.floor((g * 255) + 0.5),
+      math.floor((b * 255) + 0.5),
+      A
+   )
+end
+
+function makePaletteEntry(RGB)
+   local hsl = RGB:toHSL()
+   return {
+      rgb = RGB,
+      hex = hexFromRGB(RGB),
+      hsl = hsl
+   }
+end
+
+function generatePalette(BaseRGB, Scheme, Count)
+   local base_hsl = BaseRGB:toHSL()
+   local palette = {}
+   local i = 0
+
+   addHue = function(Hue, Sat, Lit)
+      palette[i++] = makePaletteEntry(hslToRGB(Hue, Sat, Lit, BaseRGB.a))
+   end
+
+   if Scheme is 'complementary' then
+      addHue(base_hsl.h, base_hsl.s, base_hsl.l)
+      addHue(base_hsl.h + 180, base_hsl.s, base_hsl.l)
+   elseif Scheme is 'triadic' then
+      addHue(base_hsl.h, base_hsl.s, base_hsl.l)
+      addHue(base_hsl.h + 120, base_hsl.s, base_hsl.l)
+      addHue(base_hsl.h + 240, base_hsl.s, base_hsl.l)
+   elseif Scheme is 'split' then
+      addHue(base_hsl.h, base_hsl.s, base_hsl.l)
+      addHue(base_hsl.h + 150, base_hsl.s, base_hsl.l)
+      addHue(base_hsl.h + 210, base_hsl.s, base_hsl.l)
+   elseif Scheme is 'analogous' then
+      local count = clamp(Count, 2, 12)
+      for idx in {0..count - 1} do
+         ratio = (count is 1) ? 0 :> (idx / (count - 1))
+         offset = -30 + (ratio * 60)
+         addHue(base_hsl.h + offset, base_hsl.s, base_hsl.l)
+      end
+   elseif Scheme is 'monochrome' then
+      local count = clamp(Count, 2, 12)
+      for idx in {0..count - 1} do
+         ratio = (count is 1) ? 0 :> (idx / (count - 1))
+         lit = clamp(0.12 + (ratio * 0.76), 0, 1)
+         sat = clamp(base_hsl.s * (0.7 + (0.6 * (1 - math.abs((ratio * 2) - 1)))), 0, 1)
+         addHue(base_hsl.h, sat, lit)
+      end
+   else
+      error("Invalid palette scheme. Supported values: analogous, complementary, triadic, split, monochrome")
+   end
+
+   return palette
+end
+
+function buildColourReport(Painter)
+   nrgb  = Painter.Colour -- Normalised RGB
    rgb   = gui.rgb(nrgb.Red * 255, nrgb.Green * 255, nrgb.Blue * 255, nrgb.Alpha * 255)
    oklab = rgb:toOKLab()
    oklch = rgb:toOKLCH()
    hsl   = rgb:toHSL()
    hsv   = rgb:toHSV()
-   xyz   = painter.CIE
+   xyz   = { x = Painter.CIE.x, y = Painter.CIE.y, z = Painter.CIE.z, a = Painter.CIE.alpha }
    p3    = rgb:toDisplayP3()
    lum   = rgb:luminance()
 
@@ -34,16 +127,187 @@
       string.format('#%02x%02x%02x', rgb.r, rgb.g, rgb.b) :>
       string.format('#%02x%02x%02x%02x', rgb.r, rgb.g, rgb.b, rgb.a)
 
-   print(f'Source:  {colour}')
-   print('')
-   print(f'RGB:     {rgb} / {hex}')
-   print(string.format('HSL:     hsl(%.4g %.4g %.4g / %.3g)', hsl.h, hsl.s, hsl.l, alpha))
-   print(string.format('CIE XYZ: color(xyz-d50 %.4g %.4g %.4g / %.3g)', xyz.x, xyz.y, xyz.z, alpha))
-   print(string.format('OKLAB:   oklab(%.4g %.4g %.4g / %.3g)', oklab.okl, oklab.oka, oklab.okb, alpha))
-   print(string.format('OKLCH:   oklch(%.4g %.4g %.4g / %.3g)', oklch.okl, oklch.okc, oklch.okh, alpha))
-   print(string.format('P3:      color(display-p3 %.4g %.4g %.4g / %.3g)', p3.r, p3.g, p3.b, alpha))
-   print(string.format('HSV:     hsv(%.4g, %.4g, %.4g)', hsv.h, hsv.s / 255, hsv.v / 255))
-   print('')
-   print(string.format('Luminance: %.4g', lum))
-   print(string.format('Contrast:  %.2f:1 (black) / %.2f:1 (white)', cr_black, cr_white))
+   return {
+      rgb        = rgb,
+      hex        = hex,
+      hsl        = hsl,
+      xyz        = xyz,
+      oklab      = oklab,
+      oklch      = oklch,
+      p3         = p3,
+      hsv        = hsv,
+      alpha      = alpha,
+      luminance  = lum,
+      cr_black   = cr_black,
+      cr_white   = cr_white,
+      css = {
+         hsl   = string.format('hsl(%.4g %.4g %.4g / %.3g)', hsl.h, hsl.s, hsl.l, alpha),
+         xyz   = string.format('color(xyz-d50 %.4g %.4g %.4g / %.3g)', xyz.x, xyz.y, xyz.z, alpha),
+         oklab = string.format('oklab(%.4g %.4g %.4g / %.3g)', oklab.okl, oklab.oka, oklab.okb, alpha),
+         oklch = string.format('oklch(%.4g %.4g %.4g / %.3g)', oklch.okl, oklch.okc, oklch.okh, alpha),
+         p3    = string.format('color(display-p3 %.4g %.4g %.4g / %.3g)', p3.r, p3.g, p3.b, alpha),
+         hsv   = string.format('hsv(%.4g, %.4g, %.4g)', hsv.h, hsv.s / 255, hsv.v / 255)
+      }
+   }
+end
 
+function outputText(Report, Format)
+   if Format:find('rgb')   then print(f'RGB:     {Report.rgb}') end
+   if Format:find('hex')   then print(f'RGB Hex: {Report.hex}') end
+   if Format:find('hsl')   then print(f'HSL:     {Report.css.hsl}') end
+   if Format:find('xyz')   then print(f'CIE XYZ: {Report.css.xyz}') end
+   if Format:find('oklab') then print(f'OKLAB:   {Report.css.oklab}') end
+   if Format:find('oklch') then print(f'OKLCH:   {Report.css.oklch}') end
+   if Format:find('p3')    then print(f'P3:      {Report.css.p3}') end
+   if Format:find('hsv')   then print(f'HSV:     {Report.css.hsv}') end
+
+   if Format:find('info') then
+      print('')
+      print(string.format('Luminance: %.4g', Report.luminance))
+      print(string.format('Contrast:  %.2f:1 (black) / %.2f:1 (white)', Report.cr_black, Report.cr_white))
+   end
+end
+
+function outputPalette(Palette, Scheme:str, Preview:bool)
+   print('')
+   print(f'Palette ({Scheme}):')
+   idx = 0
+   ESC <const> = string.char(27)
+   for entry in values(Palette) do
+      block = ''
+      if Preview then
+         rgb = entry.rgb
+         block = f'{ESC}[48;2;{rgb.r};{rgb.g};{rgb.b}m        {ESC}[0m'
+      end
+
+      print(f'  {idx + 1}. {entry.hex} {block}')
+      idx++
+   end
+end
+
+function getSwatchEntries(Report, Palette)
+   entries = {}
+   idx = 0
+   entries[idx++] = { hex = Report.hex, rgb = Report.rgb }
+   if Palette then
+      pidx = 0
+      while Palette[pidx] do
+         entries[idx++] = { hex = Palette[pidx].hex, rgb = Palette[pidx].rgb }
+         pidx++
+      end
+   end
+   return entries
+end
+
+function buildSwatchSVG(Entries)
+   swatch_width = 84
+   swatch_height = 56
+   count = 0
+   while Entries[count] do count++ end
+   total_width = swatch_width * count
+   total_height = swatch_height
+
+   parts = {}
+   parts[#parts] = string.format('<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d">', total_width, total_height, total_width, total_height)
+
+   idx = 0
+   while Entries[idx] do
+      entry = Entries[idx]
+      x = idx * swatch_width
+      parts[#parts] = string.format('<rect x="%d" y="0" width="%d" height="%d" fill="%s"/>', x, swatch_width, swatch_height, entry.hex)
+      idx++
+   end
+
+   parts[#parts] = '</svg>'
+   return table.concat(parts)
+end
+
+function emitSwatchPreview(Mode, Entries, PreviewFile, Format)
+   if Mode is 'svg' then
+      svg = buildSwatchSVG(Entries)
+      if PreviewFile then
+         file = io.open(PreviewFile, 'w')
+         assert(file, f'Failed to open preview file for writing: {PreviewFile}')
+         file:write(svg)
+         file:close()
+         if Format is not 'json' then
+            print('')
+            print(f'Swatch SVG written to: {PreviewFile}')
+         end
+      elseif Format != 'json' then
+         print('')
+         print('Swatch Preview (SVG):')
+         print(svg)
+      end
+   end
+end
+
+function outputJSON(Report, Format, Palette, Scheme)
+   output = {}
+
+   if Format:find('rgb')   then output.rgb = Report.rgb end
+   if Format:find('hex')   then output.hex = Report.hex end
+   if Format:find('hsl')   then output.hsl = Report.hsl; output.css_hsl = Report.css.hsl end
+   if Format:find('xyz')   then output.xyz = Report.xyz; output.css_xyz = Report.css.xyz end
+   if Format:find('oklab') then output.oklab = Report.oklab; output.css_oklab = Report.css.oklab end
+   if Format:find('oklch') then output.oklch = Report.oklch; output.css_oklch = Report.css.oklch end
+   if Format:find('p3')    then output.p3 = Report.p3; output.css_p3 = Report.css.p3 end
+   if Format:find('hsv')   then output.hsv = Report.hsv; output.css_hsv = Report.css.hsv end
+
+   if Format:find('info') then
+      output.info = {
+         alpha      = Report.alpha,
+         luminance  = Report.luminance,
+         cr_black   = Report.cr_black,
+         cr_white   = Report.cr_white
+      }
+   end
+
+   if Palette then
+      output.palette = { scheme = Scheme, colours = Palette }
+   end
+
+   print(json.encode(output))
+end
+
+   colour      = arg('colour')
+   all_output  = arg('output', 'rgb,hex,hsl,xyz,oklab,oklch,p3,hsv,info'):split(',')
+   format      = arg('format', 'text')
+   preview     = arg('preview')
+   target_file = arg('save-to')
+
+   scheme = arg('scheme')
+   scheme ?= arg('palette')
+   scheme = scheme ? scheme:lower() :> nil
+
+   preview = preview ? preview:lower() :> nil
+   palette_count = tonumber(arg('palette_count', '5'))
+   assert(format is 'text' or format is 'json', "format must be 'text' or 'json'")
+
+   if scheme then
+      assert(palette_count?? and palette_count >= 2, 'palette_count must be a number >= 2')
+   end
+
+   painter = struct.new('VectorPainter')
+
+   if colour then
+      err = mVec.ReadPainter(nil, colour, painter)
+      assert(err is ERR_Okay, f'Failed to parse provided colour: {colour}')
+
+      report = buildColourReport(painter)
+      palette = scheme ? generatePalette(report.rgb, scheme, palette_count) :> nil
+
+      if format is 'json' then
+         if preview then
+            emitSwatchPreview(preview, getSwatchEntries(report, palette), target_file, format)
+         end
+         outputJSON(report, all_output, palette, scheme)
+      else
+         outputText(report, all_output)
+         if palette then
+            outputPalette(palette, scheme, preview is 'ansi' or preview is '1')
+         end
+      end
+   else
+      assert(colour??, 'A colour must be specified on the commandline.')
+   end
