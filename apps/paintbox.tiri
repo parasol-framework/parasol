@@ -305,7 +305,7 @@ end
       else
          outputText(report, all_output)
          if palette then
-            outputPalette(palette, scheme, preview is 'ansi' or preview is '1')
+            outputPalette(palette, scheme, preview is 'ansi' or preview is 'true')
          end
       end
    else
