@@ -559,6 +559,8 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
    if (*IRI IS ';') IRI++;
    while ((*IRI) and (*IRI <= 0x20)) IRI++;
 
+   // TODO: Use a hash comparison
+
    if (startswith("url(", IRI))           return parse_url(log, Scene, IRI, Painter, Result);
    else if ((startswith("rgb(", IRI)) or
             (startswith("rgba(", IRI)))   return parse_rgb(IRI, Painter, Result);
