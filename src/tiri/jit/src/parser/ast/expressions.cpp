@@ -258,6 +258,27 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
          continue;
       }
 
+      // 'is not' compound operator: treat as inequality (equivalent to !=)
+      // Handled here rather than in match_binary_operator() to avoid lookahead
+      // side-effects that corrupt the token stream for f-strings with expressions.
+
+      if (next.kind() IS TokenKind::IsToken) {
+         constexpr uint8_t is_left = 3;
+         constexpr uint8_t is_right = 3;
+         if (is_left <= precedence) break;
+         this->ctx.tokens().advance(); // Consume 'is'
+         AstBinaryOperator is_op = AstBinaryOperator::Equal;
+         if (this->ctx.tokens().current().kind() IS TokenKind::NotToken) {
+            this->ctx.tokens().advance(); // Consume 'not'
+            is_op = AstBinaryOperator::NotEqual;
+         }
+         auto right = this->parse_expression(is_right);
+         if (not right.ok()) return right;
+         SourceSpan span = combine_spans(left.value_ref()->span, right.value_ref()->span);
+         left = ParserResult<ExprNodePtr>::success(make_binary_expr(span, is_op, std::move(left.value_ref()), std::move(right.value_ref())));
+         continue;
+      }
+
       auto op_info = this->match_binary_operator(next);
       if (not op_info.has_value()) break;
       if (op_info->left <= precedence) break;
@@ -1005,7 +1026,6 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
          info.right = 4;
          return info;
       case TokenKind::Equal:
-      case TokenKind::IsToken:
          info.op = AstBinaryOperator::Equal;
          info.left = 3;
          info.right = 3;
