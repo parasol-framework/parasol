@@ -1388,12 +1388,12 @@ typedef struct RGB8 {
 } RGB8;
 
 struct CIEXYZ {
-   double X;        // X is a mix of the three CIE RGB curves chosen to be non-negative
-   double Y;        // Luminance value from 0 to 1.0
-   double Z;        // Z is quasi-equal to blue
-   double Alpha;    // Alpha blending value from 0 to 1.0
+   float X;        // X is a mix of the three CIE RGB curves chosen to be non-negative
+   float Y;        // Luminance value from 0 to 1.0
+   float Z;        // Z is quasi-equal to blue
+   float Alpha;    // Alpha blending value from 0 to 1.0
    constexpr CIEXYZ() noexcept = default;
-   constexpr CIEXYZ(double x, double y, double z, double a = 1.0) noexcept
+   constexpr CIEXYZ(float x, float y, float z, float a = 1.0) noexcept
      : X(x), Y(y), Z(z), Alpha(a) { }
 
    // Convert sRGB (gamma-encoded, 0-1) to CIE XYZ via linear sRGB.
@@ -1405,21 +1405,22 @@ struct CIEXYZ {
       const double lr = to_linear(RGB.Red);
       const double lg = to_linear(RGB.Green);
       const double lb = to_linear(RGB.Blue);
-      X = 0.4124564 * lr + 0.3575761 * lg + 0.1804375 * lb;
-      Y = 0.2126729 * lr + 0.7151522 * lg + 0.0721750 * lb;
-      Z = 0.0193339 * lr + 0.1191920 * lg + 0.9505041 * lb;
+      X = (0.4124564 * lr) + (0.3575761 * lg) + (0.1804375 * lb);
+      Y = (0.2126729 * lr) + (0.7151522 * lg) + (0.0721750 * lb);
+      Z = (0.0193339 * lr) + (0.1191920 * lg) + (0.9505041 * lb);
       Alpha = RGB.Alpha;
    }
 
    // Convert CIE XYZ to sRGB via the inverse sRGB matrix and gamma encoding
+
    inline FRGB toFRGB() const {
       auto linear_to_srgb = [](double V) -> float {
          if (V < 0.0) V = 0.0; else if (V > 1.0) V = 1.0;
          return float((V <= 0.0031308) ? 12.92 * V : 1.055 * pow(V, 1.0 / 2.4) - 0.055);
       };
-      double lr =  3.2404542 * X - 1.5371385 * Y - 0.4985314 * Z;
-      double lg = -0.9692660 * X + 1.8760108 * Y + 0.0415560 * Z;
-      double lb =  0.0556434 * X - 0.2040259 * Y + 1.0572252 * Z;
+      double lr =  (3.2404542 * X) - (1.5371385 * Y) - (0.4985314 * Z);
+      double lg = (-0.9692660 * X) + (1.8760108 * Y) + (0.0415560 * Z);
+      double lb =  (0.0556434 * X) - (0.2040259 * Y) + (1.0572252 * Z);
       return FRGB(linear_to_srgb(lr), linear_to_srgb(lg), linear_to_srgb(lb), float(Alpha));
    }
 
