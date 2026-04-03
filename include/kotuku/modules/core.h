@@ -1385,6 +1385,16 @@ typedef struct RGB8 {
    constexpr RGB8() noexcept = default;
    constexpr RGB8(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255) noexcept
       : Red(r), Green(g), Blue(b), Alpha(a) { }
+   constexpr RGB8(FRGB frgb) noexcept {
+      Red   = frgb.Red * 255;
+      Green = frgb.Green * 255;
+      Blue  = frgb.Blue * 255;
+      Alpha = frgb.Alpha * 255;
+   }
+
+   inline FRGB toFRGB() const noexcept {
+      return FRGB(Red / 255.0, Green / 255.0, Blue / 255.0, Alpha / 255.0);
+   }
 } RGB8;
 
 struct CIEXYZ {
@@ -1409,6 +1419,19 @@ struct CIEXYZ {
       Y = (0.2126729 * lr) + (0.7151522 * lg) + (0.0721750 * lb);
       Z = (0.0193339 * lr) + (0.1191920 * lg) + (0.9505041 * lb);
       Alpha = RGB.Alpha;
+   }
+
+   inline CIEXYZ(const RGB8 &RGB) {
+      auto to_linear = [](const double V) -> double {
+          return (V <= 0.04045) ? V / 12.92 : pow((V + 0.055) / 1.055, 2.4);
+      };
+      const double lr = to_linear(RGB.Red / 255.0);
+      const double lg = to_linear(RGB.Green / 255.0);
+      const double lb = to_linear(RGB.Blue / 255.0);
+      X = (0.4124564 * lr) + (0.3575761 * lg) + (0.1804375 * lb);
+      Y = (0.2126729 * lr) + (0.7151522 * lg) + (0.0721750 * lb);
+      Z = (0.0193339 * lr) + (0.1191920 * lg) + (0.9505041 * lb);
+      Alpha = RGB.Alpha / 255.0;
    }
 
    // Convert CIE XYZ to sRGB via the inverse sRGB matrix and gamma encoding
