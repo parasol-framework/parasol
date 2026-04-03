@@ -198,25 +198,41 @@ static ERR parse_url(pf::Log &Log, objVectorScene *Scene, CSTRING IRI, VectorPai
 static ERR parse_rgb(CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
 {
    auto &rgb = Painter->Colour;
-   // Note that in some rare cases, RGB values are expressed in percentage terms, e.g. rgb(34.38%,0.23%,52%)
-   // The rgba() format is a CSS3 convention that is not supported prior to SVG2.
-   IRI += 4;
-   if (*IRI IS '(') IRI++;
+   // Supports both legacy comma-separated format: rgb(R,G,B) / rgba(R,G,B,A)
+   // and modern CSS space-separated format: rgb(R G B) / rgb(R G B / A)
+   // Component values range from 0-255 or 0%-100%.
+
+   while (*IRI != '(') IRI++;
+   IRI++;
+   while ((*IRI) and (*IRI <= 0x20)) IRI++;
+
    rgb.Red = strtod(IRI, (STRING *)&IRI) * (1.0 / 255.0);
    if (*IRI IS '%') { rgb.Red *= (255.0 / 100.0); IRI++; }
-   if (*IRI IS ',') IRI++;
+   while ((*IRI) and (*IRI <= 0x20)) IRI++;
+
+   bool legacy = (*IRI IS ',');
+   if (legacy) IRI++;
+
    rgb.Green = strtod(IRI, (STRING *)&IRI) * (1.0 / 255.0);
    if (*IRI IS '%') { rgb.Green *= (255.0 / 100.0); IRI++; }
-   if (*IRI IS ',') IRI++;
+   while ((*IRI) and (*IRI <= 0x20)) IRI++;
+   if (legacy and (*IRI IS ',')) IRI++;
+
    rgb.Blue = strtod(IRI, (STRING *)&IRI) * (1.0 / 255.0);
    if (*IRI IS '%') { rgb.Blue *= (255.0 / 100.0); IRI++; }
-   if (*IRI IS ',') {
-      IRI++;
-      rgb.Alpha = strtod(IRI, (STRING *)&IRI); // CSS3 dictates the alpha range is 0 - 1.0 by default
-      if (*IRI IS '%') { rgb.Alpha *= (255.0 / 100.0); IRI++; } // A % value is also valid
-      rgb.Alpha = std::clamp(rgb.Alpha, 0.0f, 1.0f);
+
+   if (legacy) {
+      if (*IRI IS ',') {
+         IRI++;
+         rgb.Alpha = strtod(IRI, (STRING *)&IRI);
+         if (*IRI IS '%') { rgb.Alpha *= 0.01f; IRI++; }
+         rgb.Alpha = std::clamp(rgb.Alpha, 0.0f, 1.0f);
+      }
+      else rgb.Alpha = 1.0;
    }
-   else rgb.Alpha = 1.0;
+   else {
+      rgb.Alpha = parse_css_alpha(IRI);
+   }
 
    rgb.Red   = std::clamp(rgb.Red, 0.0f, 1.0f);
    rgb.Green = std::clamp(rgb.Green, 0.0f, 1.0f);
@@ -494,8 +510,11 @@ Colours can be expressed in the following formats:
 <type name="Named colour">Standard SVG colour names such as `orange` and `red` are accepted.  Application-defined
 colour names are also supported.</type>
 <type name="#RRGGBB / #RRGGBBAA">Hexadecimal formats.  Alpha defaults to fully opaque when omitted.</type>
-<type name="rgb(R,G,B) / rgba(R,G,B,A)">Component values range from `0` to `255`, or from `0%` to `100%`.  The
-alpha component ranges from `0.0` to `1.0` (or `0%` to `100%`).</type>
+<type name="rgb(R,G,B) / rgba(R,G,B,A)">Legacy comma-separated format.  Component values range from `0` to `255`,
+or from `0%` to `100%`.  The alpha component ranges from `0.0` to `1.0` (or `0%` to `100%`).</type>
+<type name="rgb(R G B) / rgb(R G B / A)">Modern CSS space-separated format.  Component values range from `0` to
+`255`, or from `0%` to `100%`.  Alpha is optional, preceded by `/`, and ranges from `0.0` to `1.0` (or `0%` to
+`100%`).</type>
 <type name="hsl(H,S,L) / hsla(H,S,L,A)">Hue is expressed in degrees (`0`-`360`).  Saturation and lightness are
 percentages.  Alpha ranges from `0.0` to `1.0`.</type>
 <type name="hsv(H,S,V)">Hue in degrees (`0`-`360`), saturation and value as percentages.  An optional alpha
