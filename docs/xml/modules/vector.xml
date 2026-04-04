@@ -418,8 +418,11 @@ Z: Close Path
 <type name="Named colour">Standard SVG colour names such as <code>orange</code> and <code>red</code> are accepted.  Application-defined
 colour names are also supported.</type>
 <type name="#RRGGBB / #RRGGBBAA">Hexadecimal formats.  Alpha defaults to fully opaque when omitted.</type>
-<type name="rgb(R,G,B) / rgba(R,G,B,A)">Component values range from <code>0</code> to <code>255</code>, or from <code>0%</code> to <code>100%</code>.  The
-alpha component ranges from <code>0.0</code> to <code>1.0</code> (or <code>0%</code> to <code>100%</code>).</type>
+<type name="rgb(R,G,B) / rgba(R,G,B,A)">Legacy comma-separated format.  Component values range from <code>0</code> to <code>255</code>,
+or from <code>0%</code> to <code>100%</code>.  The alpha component ranges from <code>0.0</code> to <code>1.0</code> (or <code>0%</code> to <code>100%</code>).</type>
+<type name="rgb(R G B) / rgb(R G B / A)">Modern CSS space-separated format.  Component values range from <code>0</code> to
+<code>255</code>, or from <code>0%</code> to <code>100%</code>.  Alpha is optional, preceded by <code>/</code>, and ranges from <code>0.0</code> to <code>1.0</code> (or <code>0%</code> to
+<code>100%</code>).</type>
 <type name="hsl(H,S,L) / hsla(H,S,L,A)">Hue is expressed in degrees (<code>0</code>-<code>360</code>).  Saturation and lightness are
 percentages.  Alpha ranges from <code>0.0</code> to <code>1.0</code>.</type>
 <type name="hsv(H,S,V)">Hue in degrees (<code>0</code>-<code>360</code>), saturation and value as percentages.  An optional alpha
@@ -1065,8 +1068,7 @@ Hue (<code>H</code>) is in degrees.  Alpha (<code>A</code>) is optional, precede
       <field name="Pattern" type="objVectorPattern *">A <class name="VectorPattern">VectorPattern</class> object, suitable for pattern based fills.</field>
       <field name="Image" type="objVectorImage *">A <class name="VectorImage">VectorImage</class> object, suitable for image fills.</field>
       <field name="Gradient" type="objVectorGradient *">A <class name="VectorGradient">VectorGradient</class> object, suitable for gradient fills.</field>
-      <field name="CIE" type="struct CIEXYZ">CIE colour representation</field>
-      <field name="Colour" type="struct FRGB">A single RGB colour definition, suitable for block colour fills.</field>
+      <field name="Colour" type="struct FRGB">A single RGB colour definition, suitable for block colour fills.  Colour values are unclamped to support all possible colour spaces.</field>
     </struct>
 
     <struct name="VectorPoint" comment="Structure for the VectorPolygon PointsArray field.">
