@@ -10,9 +10,9 @@ static double linear_to_srgb(double V)
 static void linear_rgb_to_painter(double LR, double LG, double LB, float Alpha, VectorPainter *Painter)
 {
    auto &rgb = Painter->Colour;
-   rgb.Red   = std::clamp((float)linear_to_srgb(LR), 0.0f, 1.0f);
-   rgb.Green = std::clamp((float)linear_to_srgb(LG), 0.0f, 1.0f);
-   rgb.Blue  = std::clamp((float)linear_to_srgb(LB), 0.0f, 1.0f);
+   rgb.Red   = (float)linear_to_srgb(LR); // Can potentially overflow the 0 - 1.0 sRGB range (permitted)
+   rgb.Green = (float)linear_to_srgb(LG);
+   rgb.Blue  = (float)linear_to_srgb(LB);
    rgb.Alpha = Alpha;
 }
 
@@ -192,7 +192,8 @@ static ERR parse_rgb(CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
    auto &rgb = Painter->Colour;
    // Supports both legacy comma-separated format: rgb(R,G,B) / rgba(R,G,B,A)
    // and modern CSS space-separated format: rgb(R G B) / rgb(R G B / A)
-   // Component values range from 0-255 or 0%-100%.
+   // Component values are permitted to exceed the standard ranges of 0-255 or 0%-100% if representing colours
+   // outside the sRGB gamut.
 
    while (*IRI != '(') IRI++;
    IRI++;
@@ -222,13 +223,7 @@ static ERR parse_rgb(CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
       }
       else rgb.Alpha = 1.0;
    }
-   else {
-      rgb.Alpha = parse_css_alpha(IRI);
-   }
-
-   rgb.Red   = std::clamp(rgb.Red, 0.0f, 1.0f);
-   rgb.Green = std::clamp(rgb.Green, 0.0f, 1.0f);
-   rgb.Blue  = std::clamp(rgb.Blue, 0.0f, 1.0f);
+   else rgb.Alpha = parse_css_alpha(IRI);
 
    advance_result(IRI, Result);
    return ERR::Okay;
