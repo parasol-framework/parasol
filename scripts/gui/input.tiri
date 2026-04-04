@@ -64,6 +64,22 @@ gui.input = function(Options)
       self.viewport.acDraw()
    end
 
+   function checkShadowLabel(self)
+      if self.shadowLabel then
+         if self.text.string?? then
+            self.shadowLabel.visibility = VIS_HIDDEN
+         else
+            self.shadowLabel.visibility = VIS_VISIBLE
+         end
+      end
+   end
+
+   self.setText = function(self, Text:str)
+      if self.text then self.text.string = Text end
+      checkShadowLabel(self)
+      self.viewport.acDraw()
+   end
+
    -- Main entry point --
 
    assert(Options.target, 'A target viewport is required.')
@@ -148,11 +164,7 @@ gui.input = function(Options)
 
    textFill = Options.textFill
    if not textFill?? then
-      if Options.bkgd is 'none' then
-         textFill = theme.window.text
-      else
-         textFill = theme.page.text
-      end
+      textFill = Options.bkgd is 'none' ? theme.window.text :> theme.page.text
    end
 
    if Options.shadowLabel then
@@ -229,17 +241,11 @@ gui.input = function(Options)
 
       self.events?.keypress(self, { qualifiers=Qualifiers, value=Value, unicode=Unicode })
 
-      if self.shadowLabel then
-         if self.text.string?? then
-            self.shadowLabel.visibility = VIS_HIDDEN
-         else
-            self.shadowLabel.visibility = VIS_VISIBLE
-         end
-      end
+      checkShadowLabel(self)
    end)
 
    if self.events.cursorEntry or self.events.cursorExit then
-      self.inputViewport.mtSubscribeInput(JTYPE_CROSSING, function(Viewport, Msg)
+      self.inputViewport.mtSubscribeInput(JTYPE_CROSSING, function(Viewport:obj, Msg)
          repeat
             choose Msg.type from
                JET_CROSSED_IN -> self.events?.cursorEntry(self)

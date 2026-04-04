@@ -3,7 +3,7 @@
    namespace 'gui'
 
 global mVec ?= mod.load('vector') -- Configure mVec as a global convenience.  For fast access, clients assign to lVec
-lVec = mVec
+local lVec = mVec
 
 _LIB[_NS] = {
    theme = nil,
@@ -16,11 +16,12 @@ _LIB[_NS] = {
 
 gui = _LIB[_NS]
 
-rxPixel    <const> = <{ regex.new([[^(\d+)([a-zA-Z]*)$]]) }>
-rxFontSize <const> = <{ regex.new([[^(-?\d+)%$]]) }>
-rxNum      <const> = <{ regex.new([[\d+]]) }>
+local rxPixel    <const> = <{ regex.new([[^(\d+)([a-zA-Z]*)$]]) }>
+local rxFontSize <const> = <{ regex.new([[^(-?\d+)%$]]) }>
+local rxNum      <const> = <{ regex.new([[\d+]]) }>
 
-glStyleConfig = 'user:config/style.cfg'
+local glStyleConfig = 'user:config/style.cfg'
+local glPainter = struct.new('VectorPainter')
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -42,12 +43,16 @@ gui.mtRGB = { -- RGB8 metatable
 
 gui.mtRGB.__index = gui.mtRGB
 
-gui.rgb = function(R:num, G:num, B:num, A:num):table
+gui.srgb = function(R:num, G:num, B:num, A:num):table -- sRGB values
    R ?= 0
    G ?= 0
    B ?= 0
    A ?= 255
    return setmetatable({ r = R, g = G, b = B, a = A }, gui.mtRGB)
+end
+
+gui.nrgb = function(R:num, G:num, B:num, A:num):table -- Normalised RGB values
+   return setmetatable({ r = R * 255, g = G * 255, b = B * 255, a = A ? A * 255 :> 255}, gui.mtRGB)
 end
 
 function gui.mtRGB:interpolate(New:table, Ratio:num):table
@@ -180,9 +185,7 @@ function gui.mtRGB:toDisplayP3():table
    local pb =  0.0358458 * x - 0.0761724 * y + 0.9568845 * z
 
    -- Apply sRGB-style gamma (Display P3 uses the same transfer function)
-   gamma = function(u)
-      return (u <= 0.0031308) ? (u * 12.92) :> (1.055 * (u ** (1 / 2.4)) - 0.055)
-   end
+   gamma = (u) => (u <= 0.0031308) ? (u * 12.92) :> (1.055 * (u ** (1 / 2.4)) - 0.055)
 
    return { r = gamma(pr), g = gamma(pg), b = gamma(pb) }
 end
@@ -216,7 +219,7 @@ function gui.mtRGB:toOKLab():table
       okl = 0.2104542553 * lms_l + 0.7936177850 * lms_m - 0.0040720468 * lms_s,
       oka = 1.9779984951 * lms_l - 2.4285922050 * lms_m + 0.4505937099 * lms_s,
       okb = 0.0259040371 * lms_l + 0.7827717662 * lms_m - 0.8086757660 * lms_s,
-      a   = self.a
+      a   = self.a / 255
    }
 end
 
@@ -228,7 +231,12 @@ function gui.mtRGB:toOKLCH():table
    local c = math.sqrt(lab.oka * lab.oka + lab.okb * lab.okb)
    local h = math.deg(math.atan2(lab.okb, lab.oka))
    if h < 0 then h = h + 360 end
-   return { okl = lab.okl, okc = c, okh = h, a = self.a }
+   return setmetatable({ okl = lab.okl, okc = c, okh = h, a = self.a / 255 },
+      { __tostring = (Self) => Self.a is 1 ?
+         string.format('oklch(%.3f %.3f %.3f)', Self.okl, Self.okc, Self.okh) :>
+         string.format('oklch(%.3f %.3f %.3f / %.3f)', Self.okl, Self.okc, Self.okh, Self.a)
+      }
+   )
 end
 
 -- Convert RGB table to HSV
@@ -295,68 +303,18 @@ gui.pixel = function(val:str):num
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Convert an RGB string to an RGB table.  Supports '#' and 'rgb()'
+-- Convert a colour string to an RGB table.
 
 gui.strToRGB = function(Value:str):table
    assert(Value, 'Empty value passed to strToRGB()')
 
-   local result, fail
-   try
-      if string.byte(Value) is 35 then -- '#'
-         colour = tonumber(Value:substr(1), 16) -- Convert hex string to number
-
-         if colour and #Value is 7 then
-            result = {
-               r = ((colour>>16) & 0xff),
-               g = ((colour>>8) & 0xff),
-               b = (colour & 0xff),
-               a = 255
-            }
-         elseif colour and #Value is 9 then
-            result = {
-               r = ((colour>>24) & 0xff),
-               g = ((colour>>16) & 0xff),
-               b = ((colour>>8) & 0xff),
-               a = (colour & 0xff)
-            }
-         else
-            result = { r=0, g=0, b=0, a=255 }
-         end
-      else
-         -- Value can be rgb(r,g,b,a) or 'r,g,b,a'
-         if Value:startsWith('rgb(') then
-            Value = Value:substr(4)
-         end
-
-         colours = array<int> { 0, 0, 0, 255 }
-         c = 0
-         for start, stop in rxNum.findAll(Value) do
-            colours[c++] = tonumber(Value:substr(start, stop))
-         end
-
-         assert(c >= 3, "Invalid value: " .. tostring(Value))
-
-         r = colours[0]
-         g = colours[1]
-         b = colours[2]
-         a = colours[3]
-         if r > 255 then r = 255 end
-         if g > 255 then g = 255 end
-         if b > 255 then b = 255 end
-         if a > 255 then a = 255 end
-         if r < 0 then r = 0 end
-         if g < 0 then g = 0 end
-         if b < 0 then b = 0 end
-         if a < 0 then a = 0 end
-         result = { r=r, g=g, b=b, a=a }
-      end
+   try<trace>
+      lVec.ReadPainter(nil, Value, glPainter)
+      nrgb = glPainter.Colour
+      return setmetatable({ r=nrgb.red*255, g=nrgb.green*255, b=nrgb.blue*255, a=nrgb.alpha*255 }, gui.mtRGB)
    except ex
-      fail = ex.message .. '\nInput value: ' .. Value
+      error(f'Parsing "{Value}" failed: {ex.message}\n{ex.stackTrace}')
    end
-
-   assert(not fail, fail)
-   setmetatable(result, gui.mtRGB)
-   return result
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -615,7 +573,10 @@ gui.setTheme = function(Object:obj, Theme:str):table
 end
 
 local function modifyAlpha(Colour:str, Alpha:num):str
-   return gui.strToRGB(Colour):withAlpha(Alpha):toSVG()
+   lVec.ReadPainter(nil, Colour, glPainter)
+   nrgb = glPainter.Colour
+   rgb = gui.nrgb(nrgb.red, nrgb.green, nrgb.blue, nrgb.alpha)
+   return rgb:withAlpha(Alpha):toSVG()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -637,19 +598,19 @@ end
    }
 
    gui.iconThemes = {
-     default = { first=gui.rgb(90,90,90), last=gui.rgb(70,70,110) },
-     carbon  = { first=gui.rgb(90,90,90), last=gui.rgb(70,70,110) },
-     yellow  = { first=gui.rgb(0xcf,0xd5,0x30), last=gui.rgb(0xd6,0x87,0x10), stroke=gui.rgb(60, 30, 30, 90) },
-     orange  = { first=gui.rgb(0xFD,0xC8,0x30), last=gui.rgb(0xF3,0x73,0x35) },
-     blue    = { first=gui.rgb(0x4b,0x6c,0xb7), last=gui.rgb(0x18,0x28,0x48) },
-     ocean   = { first=gui.rgb(0xA8,0xC0,0xFF), last=gui.rgb(0x3F,0x2B,0x96) },
-     green   = { first=gui.rgb(0x7e,0x9d,0x13), last=gui.rgb(0x00,0x65,0x32) },
-     red     = { first=gui.rgb(0xf5,0xaf,0x19), last=gui.rgb(0xf1,0x27,0x11) },
-     indigo  = { first=gui.rgb(0xad,0x53,0x89), last=gui.rgb(0x3c,0x10,0x53) },
-     rose    = { first=gui.rgb(0xff,0xc3,0xa0), last=gui.rgb(0xFF,0xAF,0xBD) },
-     pink    = { first=gui.rgb(0xff,0xdd,0xe1), last=gui.rgb(0xee,0x9c,0xa7) },
-     grey    = { first=gui.rgb(100,100,100), last=gui.rgb(70,70,70) },
-     pearl   = { first=gui.rgb(250,249,248), last=gui.rgb(190,191,192) }
+     default = { first=gui.srgb(90,90,90), last=gui.srgb(70,70,110) },
+     carbon  = { first=gui.srgb(90,90,90), last=gui.srgb(70,70,110) },
+     yellow  = { first=gui.srgb(0xcf,0xd5,0x30), last=gui.srgb(0xd6,0x87,0x10), stroke=gui.srgb(60, 30, 30, 90) },
+     orange  = { first=gui.srgb(0xFD,0xC8,0x30), last=gui.srgb(0xF3,0x73,0x35) },
+     blue    = { first=gui.srgb(0x4b,0x6c,0xb7), last=gui.srgb(0x18,0x28,0x48) },
+     ocean   = { first=gui.srgb(0xA8,0xC0,0xFF), last=gui.srgb(0x3F,0x2B,0x96) },
+     green   = { first=gui.srgb(0x7e,0x9d,0x13), last=gui.srgb(0x00,0x65,0x32) },
+     red     = { first=gui.srgb(0xf5,0xaf,0x19), last=gui.srgb(0xf1,0x27,0x11) },
+     indigo  = { first=gui.srgb(0xad,0x53,0x89), last=gui.srgb(0x3c,0x10,0x53) },
+     rose    = { first=gui.srgb(0xff,0xc3,0xa0), last=gui.srgb(0xFF,0xAF,0xBD) },
+     pink    = { first=gui.srgb(0xff,0xdd,0xe1), last=gui.srgb(0xee,0x9c,0xa7) },
+     grey    = { first=gui.srgb(100,100,100), last=gui.srgb(70,70,70) },
+     pearl   = { first=gui.srgb(250,249,248), last=gui.srgb(190,191,192) }
    }
 
    gui.palettes = {
@@ -658,30 +619,30 @@ end
      -- prime (primary) and second (secondary prime) are colour pairs, normally of the same hue.
      -- contrast is a suitable complement to prime and should be of a strongly contrasting hue
      -- neutral is a default background colour for unpainted areas (e.g. window background), usually a light grey tone
-     ocean        = { light = { bkgd = '#ECF0F1', base = '#2C3E50', prime = '#3498DB', second = '#2980B9', type = 'light',
-                                contrast = '#E74C3C', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
-                      dark =  { bkgd = '#3e4b57', base = '#8C8E80', prime = '#3498DB', second = '#2980B9', type = 'dark',
-                                contrast = '#E74C3C', neutral = '#2C3E50', text='rgb(255,255,255)', altText='rgb(255,255,255)' },
+     ocean        = { light = { bkgd = 'oklch(0.952 0.004 214.329)', base = 'oklch(0.356 0.039 248.975)', prime = 'oklch(0.653 0.135 242.687)', second = 'oklch(0.576 0.119 242.282)', type = 'light',
+                                contrast = 'oklch(0.631 0.194 29.442)', neutral = 'oklch(0.894 0 89.876)', text='black', altText='white' },
+                      dark =  { bkgd = 'oklch(0.406 0.026 246.349)', base = 'oklch(0.641 0.020 113.575)', prime = 'oklch(0.653 0.135 242.687)', second = 'oklch(0.576 0.119 242.282)', type = 'dark',
+                                contrast = 'oklch(0.631 0.194 29.442)', neutral = 'oklch(0.356 0.039 248.975)', text='white', altText='white' },
                     },
-     orangeApples = { light = { bkgd = '#ffffff', base = '#19302d', prime = '#74a108', second = '#263248', type = 'light',
-                                contrast = '#e89214', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
-                      dark =  { bkgd = '#19302d', base = '#ffffff', prime = '#74a108', second = '#263248', type = 'dark',
-                                contrast = '#e89214', neutral = 'rgb(40,40,40)', text='rgb(255,255,255)', altText='rgb(255,255,255)' }
+     orangeApples = { light = { bkgd = 'white', base = 'oklch(0.289 0.030 185.119)', prime = 'oklch(0.652 0.166 127.067)', second = 'oklch(0.317 0.043 262.142)', type = 'light',
+                                contrast = 'oklch(0.732 0.157 67.580)', neutral = 'oklch(0.894 0 89.876)', text='black', altText='white' },
+                      dark =  { bkgd = 'oklch(0.289 0.030 185.119)', base = 'white', prime = 'oklch(0.652 0.166 127.067)', second = 'oklch(0.317 0.043 262.142)', type = 'dark',
+                                contrast = 'oklch(0.732 0.157 67.580)', neutral = 'oklch(0.277 0 89.876)', text='white', altText='white' }
                     },
-     greenland    = { light = { bkgd = '#f9FFfB', base = '#163a00', prime = '#c55500', second = '#55c500', type = 'light',
-                                contrast = '#567a00', neutral = '#e9e9e0', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
-                      dark  = { bkgd = '#163a00', base = '#ffffff', prime = '#c55500', second = '#55c500', type = 'dark',
-                                contrast = '#567a00', neutral = '#494940', text='rgb(255,255,255)', altText='rgb(255,255,255)' }
+     greenland    = { light = { bkgd = 'oklch(0.994 0.008 157.097)', base = 'oklch(0.309 0.093 136.720)', prime = 'oklch(0.584 0.162 46.883)', second = 'oklch(0.729 0.223 137.562)', type = 'light',
+                                contrast = 'oklch(0.532 0.138 127.325)', neutral = 'oklch(0.932 0.012 106.630)', text='black', altText='white' },
+                      dark  = { bkgd = 'oklch(0.309 0.093 136.720)', base = 'white', prime = 'oklch(0.584 0.162 46.883)', second = 'oklch(0.729 0.223 137.562)', type = 'dark',
+                                contrast = 'oklch(0.532 0.138 127.325)', neutral = 'oklch(0.402 0.015 107.041)', text='white', altText='white' }
                     },
-     sunrise      = { light = { bkgd = '#f9FfFc', base = '#687878', prime = '#e2581b', second = '#bd3232', type = 'light',
-                                contrast = '#eb9500', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
-                      dark=   { bkgd = '#000000', base = '#687878', prime = '#e2581b', second = '#bd3232', type = 'dark',
-                                contrast = '#eb9500', neutral = 'rgb(40,40,40)', text='rgb(255,255,255)', altText='rgb(255,255,255)' }
+     sunrise      = { light = { bkgd = 'oklch(0.995 0.007 164.946)', base = 'oklch(0.560 0.019 196.622)', prime = 'oklch(0.634 0.185 40.533)', second = 'oklch(0.532 0.176 25.513)', type = 'light',
+                                contrast = 'oklch(0.740 0.161 69.169)', neutral = 'oklch(0.894 0 89.876)', text='black', altText='white' },
+                      dark=   { bkgd = 'black', base = 'oklch(0.560 0.019 196.622)', prime = 'oklch(0.634 0.185 40.533)', second = 'oklch(0.532 0.176 25.513)', type = 'dark',
+                                contrast = 'oklch(0.740 0.161 69.169)', neutral = 'oklch(0.277 0 89.876)', text='white', altText='white' }
                     },
-     candyfloss   = { light = { bkgd = '#fffaf7', base = '#375a5e', prime = '#6ac9a6', second = '#FF8B94', type = 'light',
-                                contrast = '#e07780', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
-                      dark  = { bkgd = '#375a5e', base = '#ffffff', prime = '#6ac9a6', second = '#FF8B94', type = 'dark',
-                                contrast = '#e07780', neutral = 'rgb(40,40,40)', text='rgb(255,255,255)', altText='rgb(255,255,255)' }
+     candyfloss   = { light = { bkgd = 'oklch(0.988 0.007 53.450)', base = 'oklch(0.443 0.041 204.992)', prime = 'oklch(0.768 0.105 167.447)', second = 'oklch(0.765 0.140 16.033)', type = 'light',
+                                contrast = 'oklch(0.690 0.130 15.681)', neutral = 'oklch(0.894 0 89.876)', text='black', altText='white' },
+                      dark  = { bkgd = 'oklch(0.443 0.041 204.992)', base = 'white', prime = 'oklch(0.768 0.105 167.447)', second = 'oklch(0.765 0.140 16.033)', type = 'dark',
+                                contrast = 'oklch(0.690 0.130 15.681)', neutral = 'oklch(0.277 0 89.876)', text='white', altText='white' }
                     },
      template     = { light = { type = '', bkgd = '', base = '', prime = '', second = '', contrast = '', neutral = '', text='', altText='' } }
    }

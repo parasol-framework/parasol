@@ -3,7 +3,6 @@ The FileSearch interface simplifies the process of searching for files and folde
 Refer to the Tiri I/O Wiki page for documentation.
 --]]
 
-
 io.search = function(Path:str, Options:table)
    lOptions      = Options
    ADJUST_LOG    = 0

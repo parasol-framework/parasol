@@ -18,7 +18,7 @@ Documentation is available in the Kotuku Wiki.
 BTNSIZE    <const> = 20
 BTNGAP     <const> = 3
 WIDGET_GAP <const> = 6
-COL_BORDER <const> = gui.rgb(0, 0, 0, 160)
+COL_BORDER <const> = 'rgba(128,128,128,0.75)'
 
 COMMON <const> = array<string> {
   '0,64,64', '0,128,128', '0,192,192', '0,255,255', '64,255,255',  '128,255,255', '192,255,255', '224,255,255', -- Aqua
@@ -56,7 +56,7 @@ function updateRGBInput(self, RGB:table)
    if self.vecChosenColour then
       self.vecChosenColour.fill = tostring(self._rgb)
    end
-   self.inputRGB.text.string = (self._rgb.r ?? 0) .. ',' .. (self._rgb.g ?? 0) .. ',' .. (self._rgb.b ?? 0)
+   self.inputRGB:setText('rgb(' .. (self._rgb.r ?? 0) .. ',' .. (self._rgb.g ?? 0) .. ',' .. (self._rgb.b ?? 0) .. ')')
    self.viewport.acDraw()
 end
 
@@ -64,7 +64,7 @@ end
 
 function refreshColourNodes(self)
    for idx, node in ipairs(self._colourNodes) do
-      rgb = self._userColours?[idx] ?? gui.rgb(255,255,255,255)
+      rgb = self._userColours?[idx] ?? gui.srgb(255,255,255,255)
 
       rgb.r ?= 255
       rgb.g ?= 255
@@ -156,7 +156,7 @@ function buildLayout(self, Options)
       x         = dx,
       y         = dy + gui.getFontHeight(gui.fonts.window),
       string    = 'Basic colours',
-      fill      = 'rgba(0,0,0,1)',
+      fill      = self._window.theme.window.text,
       face      = gui.fonts.window.face,
       fontSize  = string.format('%.2fpt', gui.fonts.window.size),
       fontStyle = gui.fonts.window.style,
@@ -172,11 +172,11 @@ function buildLayout(self, Options)
    for row=0, 6 do
       x = WIDGET_GAP - 1
       for col=0, 7 do
-         rgb = gui.strToRGB(COMMON[colour])
+         rgb = gui.strToRGB(f'rgb({COMMON[colour]})')
 
          vec = self.viewport.new('VectorRectangle', {
             fill   = tostring(rgb),
-            stroke = tostring(COL_BORDER),
+            stroke = COL_BORDER,
             strokeWidth = 1,
             x      = x,
             y      = y,
@@ -207,7 +207,7 @@ function buildLayout(self, Options)
       x         = dx,
       y         = dy + gui.getFontHeight(gui.fonts.window),
       string    = 'Personal colours',
-      fill      = 'rgba(0,0,0,1)',
+      fill      = self._window.theme.window.text,
       face      = gui.fonts.window.face,
       fontSize  = string.format('%.2fpt', gui.fonts.window.size),
       fontStyle = gui.fonts.window.style,
@@ -222,7 +222,7 @@ function buildLayout(self, Options)
    for row=1, 2 do
       x = dx
       for column=1, 7 do
-         rgb = self._userColours?[ci] ?? gui.rgb(255, 255, 255, 255)
+         rgb = self._userColours?[ci] ?? gui.srgb(255, 255, 255, 255)
          rgb.r ?= 255
          rgb.g ?= 255
          rgb.b ?= 255
@@ -234,7 +234,7 @@ function buildLayout(self, Options)
 
          vec = self.viewport.new('VectorRectangle', {
             fill   = rgb:toSVG(),
-            stroke = COL_BORDER:toSVG(),
+            stroke = COL_BORDER,
             strokeWidth = 1,
             x      = x,
             y      = y,
@@ -311,7 +311,7 @@ function buildLayout(self, Options)
       x         = dx,
       y         = dy + gui.getFontHeight(gui.fonts.window),
       string    = 'Rainbow palette',
-      fill      = 'rgba(0,0,0,1)',
+      fill      = self._window.theme.window.text,
       face      = gui.fonts.window.face,
       fontSize  = string.format('%.2fpt', gui.fonts.window.size),
       fontStyle = gui.fonts.window.style,
@@ -329,7 +329,7 @@ function buildLayout(self, Options)
       height = rainbow.height,
       roundX = 4,
       roundY = 4,
-      stroke = COL_BORDER:toSVG(),
+      stroke = COL_BORDER,
       fill   = 'url(#Rainbow)'
    })
 
@@ -356,7 +356,7 @@ function buildLayout(self, Options)
       width  = rainbow.width,
       height = 32,
       fill   = tostring(self._rgb),
-      stroke = COL_BORDER:toSVG()
+      stroke = COL_BORDER,
    })
 
    dy += self.vecChosenColour.height + WIDGET_GAP
@@ -366,7 +366,7 @@ function buildLayout(self, Options)
       x      = dx,
       y      = dy,
       width  = rainbow.width,
-      label  = 'RGB:',
+      shadowLabel = 'Colour',
       inputMask = '^%d+,%d+,%d+$',
       events = {
          activate = function(Widget, Event)
@@ -488,7 +488,7 @@ function selectPalette(self, X, Y)
    self._picker = { x=dX, y=dY }
    arrangePicker(self)
    self.viewport.acDraw()
-   updateRGBInput(self, gui.rgb(rgb.red, rgb.green, rgb.blue))
+   updateRGBInput(self, gui.srgb(rgb.red, rgb.green, rgb.blue))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -504,7 +504,7 @@ function loadColours(self)
          end
 
          for i, col in self._usercolours do
-            self._usercolours[i] = gui.rgb(col.r, col.g, col.b)
+            self._usercolours[i] = gui.srgb(col.r, col.g, col.b)
          end
       end
    end
@@ -523,7 +523,7 @@ gui.dialog.colour = function(Options)
       _rainbowY  = -1,
       _rainbow   = { winX = 0, winY = 0, winWidth = 0, winHeight = 0 },
       _rainbowBmp,
-      _rgb       = gui.rgb(200, 200, 200, 255),
+      _rgb       = gui.srgb(200, 200, 200, 255),
       _links     = array<table>,
       _userColours = array<table>,
       _picker = nil
@@ -607,7 +607,7 @@ gui.dialog.colour = function(Options)
    self._window.surface.minWidth  = math.floor(client.width * 0.25)
    self._window.surface.minHeight = math.floor(client.width * scale * 0.25)
 
-   updateRGBInput(self, gui.strToRGB(Options.colour ?? '200,200,200'))
+   updateRGBInput(self, gui.strToRGB(Options.colour ?? 'rgb(200,200,200)'))
 
    self._window:moveToFront()
    self._window:show()

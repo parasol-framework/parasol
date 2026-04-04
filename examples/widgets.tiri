@@ -185,7 +185,7 @@ end
             gui.dialog.colour({
                modal   = true,
                popOver = win.surface,
-               colour  = '255,0,0',
+               colour  = 'rgb(255,0,0)',
                feedback = function(Colour)
                   if not Colour then
                      print('Dialog was cancelled.')

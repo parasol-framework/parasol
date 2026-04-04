@@ -107,7 +107,7 @@ end
 
 function buildColourReport(Painter)
    nrgb  = Painter.Colour -- Normalised RGB
-   rgb   = gui.rgb(nrgb.Red * 255, nrgb.Green * 255, nrgb.Blue * 255, nrgb.Alpha * 255)
+   rgb   = gui.nrgb(nrgb.Red, nrgb.Green, nrgb.Blue, nrgb.Alpha)
    oklab = rgb:toOKLab()
    oklch = rgb:toOKLCH()
    hsl   = rgb:toHSL()
@@ -128,18 +128,18 @@ function buildColourReport(Painter)
       string.format('#%02x%02x%02x%02x', rgb.r, rgb.g, rgb.b, rgb.a)
 
    return {
-      rgb        = rgb,
-      hex        = hex,
-      hsl        = hsl,
-      xyz        = xyz,
-      oklab      = oklab,
-      oklch      = oklch,
-      p3         = p3,
-      hsv        = hsv,
-      alpha      = alpha,
-      luminance  = lum,
-      cr_black   = cr_black,
-      cr_white   = cr_white,
+      rgb       = rgb,
+      hex       = hex,
+      hsl       = hsl,
+      xyz       = xyz,
+      oklab     = oklab,
+      oklch     = oklch,
+      p3        = p3,
+      hsv       = hsv,
+      alpha     = alpha,
+      luminance = lum,
+      cr_black  = cr_black,
+      cr_white  = cr_white,
       css = {
          hsl   = string.format('hsl(%.4g %.4g %.4g / %.3g)', hsl.h, hsl.s, hsl.l, alpha),
          xyz   = string.format('color(xyz-d50 %.4g %.4g %.4g / %.3g)', xyz.x, xyz.y, xyz.z, alpha),
@@ -275,22 +275,75 @@ end
    format      = arg('format', 'text')
    preview     = arg('preview')
    target_file = arg('save-to')
+   input_file  = arg('input')
 
    scheme = arg('scheme')
    scheme ?= arg('palette')
    scheme = scheme ? scheme:lower() :> nil
 
    preview = preview ? preview:lower() :> nil
-   palette_count = tonumber(arg('palette_count', '5'))
+   palette_count = tonumber(arg('palette-count', '5'))
    assert(format is 'text' or format is 'json', "format must be 'text' or 'json'")
 
    if scheme then
-      assert(palette_count?? and palette_count >= 2, 'palette_count must be a number >= 2')
+      assert(palette_count?? and palette_count >= 2, 'palette-count must be a number >= 2')
    end
 
    painter = struct.new('VectorPainter')
 
-   if colour then
+   if input_file and #all_output is 1 then
+      -- In this mode the entire file will be loaded into memory and scanned for colour strings,
+      -- which will be converted to the new colour type specified by 'output'
+
+      fl = obj.new('file', { path=input_file })
+      buffer = string.alloc(fl.size)
+      fl.free()
+
+      err, result = mSys.ReadFileToBuffer(input_file, buffer)
+
+      rx_hex = regex.new('#[a-fA-F0-9]{6,8}')
+      rx_rgb = regex.new([[rgb\(.+?\)]])
+
+      out = ''
+      index = 0
+      convert = nil
+
+      if all_output[0] is 'oklch' then
+         convert = function(RGB)
+            oklab = RGB:toOKLCH()
+            return tostring(oklab)
+         end
+      else
+         error('Provided output type is not supported.')
+      end
+
+      for start, stop in rx_hex.findAll(buffer) do
+         segment = buffer:substr(index, start)
+
+         col = buffer:substr(start, stop)
+         err = mVec.ReadPainter(nil, col, painter)
+         nrgb = painter.Colour -- Normalised RGB
+         out = out .. segment .. convert(gui.nrgb(nrgb.Red, nrgb.Green, nrgb.Blue, nrgb.Alpha))
+         index = stop
+      end
+      out = out .. buffer:substr(index)
+
+      buffer = out
+      out = ''
+      index = 0
+      for start, stop in rx_rgb.findAll(buffer) do
+         segment = buffer:substr(index, start)
+
+         col = buffer:substr(start, stop)
+         err = mVec.ReadPainter(nil, col, painter)
+         nrgb = painter.Colour -- Normalised RGB
+         out = out .. segment .. convert(gui.nrgb(nrgb.Red, nrgb.Green, nrgb.Blue, nrgb.Alpha))
+         index = stop
+      end
+      out = out .. buffer:substr(index)
+
+      print(out)
+   elseif colour then
       err = mVec.ReadPainter(nil, colour, painter)
       assert(err is ERR_Okay, f'Failed to parse provided colour: {colour}')
 
