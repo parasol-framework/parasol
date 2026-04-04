@@ -534,14 +534,9 @@ struct VectorPainter {
    objVectorPattern * Pattern;    // A VectorPattern object, suitable for pattern based fills.
    objVectorImage * Image;        // A VectorImage object, suitable for image fills.
    objVectorGradient * Gradient;  // A VectorGradient object, suitable for gradient fills.
-   struct CIEXYZ CIE;             // CIE colour representation
-   struct FRGB Colour;            // A single RGB colour definition, suitable for block colour fills.
+   struct FRGB Colour;            // A single RGB colour definition, suitable for block colour fills.  Colour values are unclamped to support all possible colour spaces.
    void reset() {
-      CIE.X = 0;
-      CIE.Y = 0;
-      CIE.Z = 0;
       Colour.Alpha = 0;
-      CIE.Alpha = 0;
       Gradient = nullptr;
       Image    = nullptr;
       Pattern  = nullptr;
