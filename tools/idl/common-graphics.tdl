@@ -115,6 +115,10 @@ struct("FRGB", { comment="32-bit floating point RGB colour components." }, [[
   float Alpha # Alpha component value
 ]],
 [[
+   // Note that the colour components are unclamped so that any given FRGB value can support other colour spaces.
+   // If targeting a colour space like Display P3 for instance, the expectation is that colour values will exceed
+   // 1.0 and negative values are permitted.
+
    constexpr FRGB() noexcept = default;
    constexpr FRGB(float R, float G, float B, float A = 1.0) noexcept : Red(R), Green(G), Blue(B), Alpha(A) { };
 ]])
@@ -212,6 +216,103 @@ struct("RGB32", { comment="32-bit RGB colour value." }, [[
   uint Blue    # Blue component value
   uint Alpha   # Alpha component value
 ]])
+
+--[==[
+Under consideration:
+
+-- Compressed Display P3 colour, packed into 64 bits.
+-- Stores RGB as 16-bit unsigned fixed-point values (0-65535 maps to 0.0-1.0 in linear Display P3 space)
+-- with 8-bit alpha and 8 reserved flag bits.  Note: For HDR (brightness) management, the expectation is that
+-- the client either creates a separate HDR map or uses the alpha channel to manage brightness rather than
+-- bundling it into the colour.
+--
+-- Layout: [Red:16][Green:16][Blue:16][Alpha:8][Flags:8]
+
+struct("CDP3", { comment="Compressed Display P3 colour." }, [[
+  ushort Red     # Display P3 red, linear, 16-bit fixed-point (0 = 0.0, 65535 = 1.0)
+  ushort Green   # Display P3 green, linear, 16-bit fixed-point
+  ushort Blue    # Display P3 blue, linear, 16-bit fixed-point
+  uchar  Alpha   # Alpha component (0 = transparent, 255 = opaque)
+  uchar  Info    # Lower-four bits represent the source (e.g. OKLCH, HSL, etc); Upper bits implementation dependent.
+]],
+[[
+   constexpr CDP3() noexcept : Red(0), Green(0), Blue(0), Alpha(255), Flags(0) { }
+
+   constexpr CDP3(uint16_t R, uint16_t G, uint16_t B, uint8_t A = 255, uint8_t F = 0) noexcept
+      : Red(R), Green(G), Blue(B), Alpha(A), Flags(F) { }
+
+   // Construct from FRGB (assumed sRGB gamma-encoded, 0-1 range).
+   // Converts sRGB -> linear sRGB -> linear Display P3.
+
+   inline CDP3(const FRGB &SRGB, uint8_t F = 0) noexcept {
+      // sRGB to linear sRGB
+      auto srgb_to_linear = [](float V) -> double {
+         if (V <= 0.0f) return 0.0;
+         if (V >= 1.0f) return 1.0;
+         return (V <= 0.04045f) ? V / 12.92 : pow((V + 0.055) / 1.055, 2.4);
+      };
+
+      const double lr = srgb_to_linear(SRGB.Red);
+      const double lg = srgb_to_linear(SRGB.Green);
+      const double lb = srgb_to_linear(SRGB.Blue);
+
+      // Linear sRGB (D65) to linear Display P3 (D65) via the combined matrix:
+      //   P3_from_sRGB = inverse(sRGB_to_XYZ_matrix_for_P3_primaries) * sRGB_to_XYZ
+      // Pre-computed D65-adapted matrix (sRGB -> Display P3, both linear):
+
+      const double pr = ( 0.8224621 * lr) + (0.1775380 * lg) + (0.0000000 * lb);
+      const double pg = ( 0.0331942 * lr) + (0.9668058 * lg) + (0.0000000 * lb);
+      const double pb = ( 0.0170827 * lr) + (0.0723974 * lg) + (0.9105199 * lb);
+
+      auto to_u16 = [](double V) -> uint16_t {
+         if (V <= 0.0) return 0;
+         if (V >= 1.0) return 65535;
+         return uint16_t(V * 65535.0 + 0.5);
+      };
+
+      Red   = to_u16(pr);
+      Green = to_u16(pg);
+      Blue  = to_u16(pb);
+      Alpha = uint8_t(SRGB.Alpha * 255.0f + 0.5f);
+      Flags = F;
+   }
+
+   // Convert back to FRGB (sRGB gamma-encoded, 0-1 range).
+   // Linear Display P3 -> linear sRGB -> sRGB.
+
+   inline FRGB toFRGB() const noexcept {
+      const double pr = Red   / 65535.0;
+      const double pg = Green / 65535.0;
+      const double pb = Blue  / 65535.0;
+
+      // Linear Display P3 (D65) to linear sRGB (D65):
+      //   sRGB_from_P3 = inverse(P3_to_sRGB_matrix)
+
+      const double lr = ( 1.2249401 * pr) + (-0.2249402 * pg) + ( 0.0000000 * pb);
+      const double lg = (-0.0420569 * pr) + ( 1.0420571 * pg) + ( 0.0000000 * pb);
+      const double lb = (-0.0196376 * pr) + (-0.0786507 * pg) + ( 1.0982882 * pb);
+
+      // Linear sRGB to sRGB (gamma encode)
+      auto linear_to_srgb = [](double V) -> float {
+         if (V <= 0.0) return 0.0f;
+         if (V > 1.0) return 1.0f;
+         return float((V <= 0.0031308) ? 12.92 * V : 1.055 * pow(V, 1.0 / 2.4) - 0.055);
+      };
+
+      return FRGB(linear_to_srgb(lr), linear_to_srgb(lg), linear_to_srgb(lb), Alpha / 255.0f);
+   }
+
+   inline RGB8 toRGB() const noexcept {
+      auto frgb = toFRGB();
+      return RGB8(uint8_t(frgb.Red * 255.0f + 0.5f), uint8_t(frgb.Green * 255.0f + 0.5f),
+                  uint8_t(frgb.Blue * 255.0f + 0.5f), Alpha);
+   }
+
+   inline uint64_t raw() const noexcept {
+      return ((uint64_t *)(&this->Red))[0];
+   }
+]])
+--]==]
 
 struct("RGBPalette", { }, [[
   int AmtColours              # Total colours

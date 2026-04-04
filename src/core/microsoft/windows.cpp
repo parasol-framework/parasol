@@ -56,11 +56,8 @@ constexpr int MAX_ERROR_MSG = 400;
 constexpr int MAX_USERNAME = 256;
 constexpr int MAX_ENV_VALUE = 512;
 
-#ifndef NDEBUG
-#define MSG(...) printf(__VA_ARGS__)
-#else
+//#define MSG(...) printf(__VA_ARGS__)
 #define MSG(...)
-#endif
 
 #include <string>
 #include <array>

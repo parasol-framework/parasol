@@ -10,15 +10,10 @@ static double linear_to_srgb(double V)
 static void linear_rgb_to_painter(double LR, double LG, double LB, float Alpha, VectorPainter *Painter)
 {
    auto &rgb = Painter->Colour;
-   rgb.Red   = std::clamp((float)linear_to_srgb(LR), 0.0f, 1.0f);
-   rgb.Green = std::clamp((float)linear_to_srgb(LG), 0.0f, 1.0f);
-   rgb.Blue  = std::clamp((float)linear_to_srgb(LB), 0.0f, 1.0f);
+   rgb.Red   = (float)linear_to_srgb(LR); // Can potentially overflow the 0 - 1.0 sRGB range (permitted)
+   rgb.Green = (float)linear_to_srgb(LG);
+   rgb.Blue  = (float)linear_to_srgb(LB);
    rgb.Alpha = Alpha;
-
-   Painter->CIE.X = 0.4124564 * LR + 0.3575761 * LG + 0.1804375 * LB;
-   Painter->CIE.Y = 0.2126729 * LR + 0.7151522 * LG + 0.0721750 * LB;
-   Painter->CIE.Z = 0.0193339 * LR + 0.1191920 * LG + 0.9505041 * LB;
-   Painter->CIE.Alpha = Alpha;
 }
 
 // Advance the IRI past the current value and set the Result pointer.
@@ -115,9 +110,6 @@ static void cielab_to_painter(double L, double A, double B, float Alpha, VectorP
    double lb =  0.0556434 * cx - 0.2040259 * cy + 1.0572252 * cz;
 
    linear_rgb_to_painter(lr, lg, lb, Alpha, Painter);
-
-   // Override CIE with the directly computed D65 values (more precise than re-deriving from linear RGB)
-   Painter->CIE = { (float)cx, (float)cy, (float)cz, Alpha };
 }
 
 //********************************************************************************************************************
@@ -198,31 +190,41 @@ static ERR parse_url(pf::Log &Log, objVectorScene *Scene, CSTRING IRI, VectorPai
 static ERR parse_rgb(CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
 {
    auto &rgb = Painter->Colour;
-   // Note that in some rare cases, RGB values are expressed in percentage terms, e.g. rgb(34.38%,0.23%,52%)
-   // The rgba() format is a CSS3 convention that is not supported prior to SVG2.
-   IRI += 4;
-   if (*IRI IS '(') IRI++;
+   // Supports both legacy comma-separated format: rgb(R,G,B) / rgba(R,G,B,A)
+   // and modern CSS space-separated format: rgb(R G B) / rgb(R G B / A)
+   // Component values are permitted to exceed the standard ranges of 0-255 or 0%-100% if representing colours
+   // outside the sRGB gamut.
+
+   while (*IRI != '(') IRI++;
+   IRI++;
+   while ((*IRI) and (*IRI <= 0x20)) IRI++;
+
    rgb.Red = strtod(IRI, (STRING *)&IRI) * (1.0 / 255.0);
    if (*IRI IS '%') { rgb.Red *= (255.0 / 100.0); IRI++; }
-   if (*IRI IS ',') IRI++;
+   while ((*IRI) and (*IRI <= 0x20)) IRI++;
+
+   bool legacy = (*IRI IS ',');
+   if (legacy) IRI++;
+
    rgb.Green = strtod(IRI, (STRING *)&IRI) * (1.0 / 255.0);
    if (*IRI IS '%') { rgb.Green *= (255.0 / 100.0); IRI++; }
-   if (*IRI IS ',') IRI++;
+   while ((*IRI) and (*IRI <= 0x20)) IRI++;
+   if (legacy and (*IRI IS ',')) IRI++;
+
    rgb.Blue = strtod(IRI, (STRING *)&IRI) * (1.0 / 255.0);
    if (*IRI IS '%') { rgb.Blue *= (255.0 / 100.0); IRI++; }
-   if (*IRI IS ',') {
-      IRI++;
-      rgb.Alpha = strtod(IRI, (STRING *)&IRI); // CSS3 dictates the alpha range is 0 - 1.0 by default
-      if (*IRI IS '%') { rgb.Alpha *= (255.0 / 100.0); IRI++; } // A % value is also valid
-      rgb.Alpha = std::clamp(rgb.Alpha, 0.0f, 1.0f);
+
+   if (legacy) {
+      if (*IRI IS ',') {
+         IRI++;
+         rgb.Alpha = strtod(IRI, (STRING *)&IRI);
+         if (*IRI IS '%') { rgb.Alpha *= 0.01f; IRI++; }
+         rgb.Alpha = std::clamp(rgb.Alpha, 0.0f, 1.0f);
+      }
+      else rgb.Alpha = 1.0;
    }
-   else rgb.Alpha = 1.0;
+   else rgb.Alpha = parse_css_alpha(IRI);
 
-   rgb.Red   = std::clamp(rgb.Red, 0.0f, 1.0f);
-   rgb.Green = std::clamp(rgb.Green, 0.0f, 1.0f);
-   rgb.Blue  = std::clamp(rgb.Blue, 0.0f, 1.0f);
-
-   Painter->CIE = CIEXYZ(rgb);
    advance_result(IRI, Result);
    return ERR::Okay;
 }
@@ -378,7 +380,6 @@ static ERR parse_hsl(CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
       rgb.Blue  = hueToRgb(p, q, hue - 1.0/3.0);
    }
 
-   Painter->CIE = CIEXYZ(rgb);
    advance_result(IRI, Result);
    return ERR::Okay;
 }
@@ -411,7 +412,6 @@ static ERR parse_hsv(CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
       default: rgb.Red = 0;   rgb.Green = 0;   rgb.Blue = 0; break;
    }
 
-   Painter->CIE = CIEXYZ(rgb);
    advance_result(IRI, Result);
    return ERR::Okay;
 }
@@ -443,7 +443,6 @@ static ERR parse_hex(CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
    }
    else return ERR::Syntax;
 
-   Painter->CIE = CIEXYZ(rgb);
    if (Result) *Result = IRI[0] ? IRI : nullptr;
    return ERR::Okay;
 }
@@ -470,7 +469,6 @@ static ERR parse_named_colour(pf::Log &Log, CSTRING IRI, VectorPainter *Painter,
       rgb.Green = (float)src.Green * (1.0 / 255.0);
       rgb.Blue  = (float)src.Blue  * (1.0 / 255.0);
       rgb.Alpha = (float)src.Alpha * (1.0 / 255.0);
-      Painter->CIE = CIEXYZ(rgb);
       advance_result(IRI, Result);
       return ERR::Okay;
    }
@@ -494,8 +492,11 @@ Colours can be expressed in the following formats:
 <type name="Named colour">Standard SVG colour names such as `orange` and `red` are accepted.  Application-defined
 colour names are also supported.</type>
 <type name="#RRGGBB / #RRGGBBAA">Hexadecimal formats.  Alpha defaults to fully opaque when omitted.</type>
-<type name="rgb(R,G,B) / rgba(R,G,B,A)">Component values range from `0` to `255`, or from `0%` to `100%`.  The
-alpha component ranges from `0.0` to `1.0` (or `0%` to `100%`).</type>
+<type name="rgb(R,G,B) / rgba(R,G,B,A)">Legacy comma-separated format.  Component values range from `0` to `255`,
+or from `0%` to `100%`.  The alpha component ranges from `0.0` to `1.0` (or `0%` to `100%`).</type>
+<type name="rgb(R G B) / rgb(R G B / A)">Modern CSS space-separated format.  Component values range from `0` to
+`255`, or from `0%` to `100%`.  Alpha is optional, preceded by `/`, and ranges from `0.0` to `1.0` (or `0%` to
+`100%`).</type>
 <type name="hsl(H,S,L) / hsla(H,S,L,A)">Hue is expressed in degrees (`0`-`360`).  Saturation and lightness are
 percentages.  Alpha ranges from `0.0` to `1.0`.</type>
 <type name="hsv(H,S,V)">Hue in degrees (`0`-`360`), saturation and value as percentages.  An optional alpha
@@ -529,8 +530,9 @@ A !VectorPainter structure must be provided by the client and will be used to st
 that are returned will remain valid as long as the provided Scene exists with its registered painter definitions.  An
 optional `Result` string can store a reference to the character position up to which the IRI was parsed.
 
-Note: To ensure that colour values are never clipped, colours are stored in CIE XYZ format irrespective of the
-referenced colour space.
+Note: To ensure that colour values are never clipped, values stored in the Colour field are unclamped from the sRGB
+colour space (colours may be negative or exceed 1.0).  Clients must clamp colours as necessary when converting to their
+target colour space.
 
 -INPUT-
 obj(VectorScene) Scene: Optional.  Required if `url()` references are to be resolved.
