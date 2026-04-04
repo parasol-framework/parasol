@@ -239,10 +239,10 @@ static ERR VECTOR_Draw(extVector *Self, struct acDraw *Args)
       // TODO: Would need to account for client defined brush stroke widths and stroke scaling.
 
       const auto stroke_width = Self->fixed_stroke_width() + 1;
-      const int bx1 = F2T(Self->BX1 - stroke_width);
-      const int by1 = F2T(Self->BY1 - stroke_width);
-      const int bx2 = F2T(Self->BX2 + stroke_width);
-      const int by2 = F2T(Self->BY2 + stroke_width);
+      const int bx1 = int(Self->BX1 - stroke_width);
+      const int by1 = int(Self->BY1 - stroke_width);
+      const int bx2 = int(Self->BX2 + stroke_width);
+      const int by2 = int(Self->BY2 + stroke_width);
 
       struct drwScheduleRedraw area = { .X = bx1, .Y = by1, .Width = bx2 - bx1, .Height = by2 - by1 };
 #endif
