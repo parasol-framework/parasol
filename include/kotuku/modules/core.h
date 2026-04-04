@@ -1373,6 +1373,10 @@ struct FRGB {
    float Green;  // Green component value
    float Blue;   // Blue component value
    float Alpha;  // Alpha component value
+   // Note that the colour components are unclamped so that any given FRGB value can support other colour spaces.
+   // If targeting a colour space like Display P3 for instance, the expectation is that colour values will exceed
+   // 1.0 and negative values are permitted.
+
    constexpr FRGB() noexcept = default;
    constexpr FRGB(float R, float G, float B, float A = 1.0) noexcept : Red(R), Green(G), Blue(B), Alpha(A) { };
 };
