@@ -205,13 +205,24 @@ alpha component ranges from <code>0.0</code> to <code>1.0</code> (or <code>0%</c
 percentages.  Alpha ranges from <code>0.0</code> to <code>1.0</code>.</td></tr>
 <tr><th class="col-md-1">hsv(H,S,V)</th><td>Hue in degrees (<code>0</code>-<code>360</code>), saturation and value as percentages.  An optional alpha
 component ranging from <code>0.0</code> to <code>1.0</code> is supported.</td></tr>
+<tr><th class="col-md-1">oklab(L a b [/ A])</th><td>CSS Color Level 4 OKLAB colour space.  Lightness (<code>L</code>) is <code>0</code>-<code>1</code> or <code>0%</code>-<code>100%</code>.
+The <code>a</code> and <code>b</code> axes range from approximately <code>-0.4</code> to <code>0.4</code>, or as percentages where <code>100%</code> equals <code>0.4</code>.
+Alpha (<code>A</code>) is optional, preceded by <code>/</code>, and ranges from <code>0.0</code> to <code>1.0</code> or <code>0%</code> to <code>100%</code>.</td></tr>
 <tr><th class="col-md-1">oklch(L C H [/ A])</th><td>CSS Color Level 4 OKLCh colour space.  Lightness (<code>L</code>) is <code>0</code>-<code>1</code> or <code>0%</code>-<code>100%</code>.
 Chroma (<code>C</code>) is an unbounded positive value, or a percentage where <code>100%</code> equals <code>0.4</code>.  Hue (<code>H</code>) is in degrees.
 Alpha (<code>A</code>) is optional, preceded by <code>/</code>, and ranges from <code>0.0</code> to <code>1.0</code> or <code>0%</code> to <code>100%</code>.</td></tr>
+<tr><th class="col-md-1">lab(L a b [/ A])</th><td>CSS Color Level 4 CIE Lab colour space.  Lightness (<code>L</code>) is <code>0</code>-<code>100</code> or <code>0%</code>-<code>100%</code>.
+The <code>a</code> and <code>b</code> axes range from approximately <code>-125</code> to <code>125</code>, or as percentages where <code>100%</code> equals <code>125</code>.
+Alpha (<code>A</code>) is optional, preceded by <code>/</code>, and ranges from <code>0.0</code> to <code>1.0</code> or <code>0%</code> to <code>100%</code>.</td></tr>
+<tr><th class="col-md-1">lch(L C H [/ A])</th><td>CSS Color Level 4 CIE LCH colour space (cylindrical form of Lab).  Lightness (<code>L</code>) is
+<code>0</code>-<code>100</code> or <code>0%</code>-<code>100%</code>.  Chroma (<code>C</code>) is an unbounded positive value, or a percentage where <code>100%</code> equals <code>150</code>.
+Hue (<code>H</code>) is in degrees.  Alpha (<code>A</code>) is optional, preceded by <code>/</code>, and ranges from <code>0.0</code> to <code>1.0</code> or
+<code>0%</code> to <code>100%</code>.</td></tr>
 </tbody></table>
 <p>A Gradient, Image or Pattern can be referenced using the <code>url(#name)</code> format, where <code>name</code> is a definition registered with the provided <code>Scene</code> object.  If <code>Scene</code> is <code>NULL</code> then it will not be possible to find the reference.  Any failure to look up a reference will result in an error.  The <code>Scene</code> parameter accepts either a <a href="classes/vectorscene.html">VectorScene</a> or a <a href="classes/vector.html">Vector</a> object if its Scene field value is defined.</p>
 <p>To access one of the pre-defined colourmaps, use the format <code>url(#cmap:name)</code>.  The colourmap will be accessible as a linear gradient that belongs to the <code>Scene</code>.  Valid colourmap names are <code>cmap:crest</code>, <code>cmap:flare</code>, <code>cmap:icefire</code>, <code>cmap:inferno</code>, <code>cmap:magma</code>, <code>cmap:mako</code>, <code>cmap:plasma</code>, <code>cmap:rocket</code>, <code>cmap:viridis</code>.</p>
 <p>A <a data-toggle="tooltip" title="" href="?page=struct-VectorPainter">VectorPainter</a> structure must be provided by the client and will be used to store the final result.  All pointers that are returned will remain valid as long as the provided Scene exists with its registered painter definitions.  An optional <code>Result</code> string can store a reference to the character position up to which the IRI was parsed.</p>
+<p>Note: To ensure that colour values are never clipped, colours are stored in CIE XYZ format irrespective of the referenced colour space.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">Failed</th><td>General failure.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
@@ -638,6 +649,7 @@ Alpha (<code>A</code>) is optional, preceded by <code>/</code>, and ranges from 
 <div class="docs-content" style="display:none;" id="struct-VectorPainter"><h1>VectorPainter Structure</h1><p class="lead">Deserialised painter information; compliant with SVG painter definitions.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Pattern</th><td><span class="text-nowrap">objVectorPattern *</span></td><td>A <a href="classes/vectorpattern.html">VectorPattern</a> object, suitable for pattern based fills.</td></tr>
 <tr><th>Image</th><td><span class="text-nowrap">objVectorImage *</span></td><td>A <a href="classes/vectorimage.html">VectorImage</a> object, suitable for image fills.</td></tr>
 <tr><th>Gradient</th><td><span class="text-nowrap">objVectorGradient *</span></td><td>A <a href="classes/vectorgradient.html">VectorGradient</a> object, suitable for gradient fills.</td></tr>
+<tr><th>CIE</th><td><span class="text-nowrap">struct CIEXYZ</span></td><td>CIE colour representation</td></tr>
 <tr><th>Colour</th><td><span class="text-nowrap">struct FRGB</span></td><td>A single RGB colour definition, suitable for block colour fills.</td></tr>
 </tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2026</div></div>
 <div class="docs-content" style="display:none;" id="struct-VectorPoint"><h1>VectorPoint Structure</h1><p class="lead">Structure for the VectorPolygon PointsArray field.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>X</th><td><span class="text-nowrap">DOUBLE</span></td><td>The X coordinate of this point.</td></tr>

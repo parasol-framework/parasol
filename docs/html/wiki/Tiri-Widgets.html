@@ -743,6 +743,10 @@
 <td style="text-align: left;">Maximum pixel size of the A or B side.</td>
 </tr>
 <tr>
+<td style="text-align: left;">offsetA/B</td>
+<td style="text-align: left;">Adjust the coverage of the divider by insetting from the A and B sides respectively.</td>
+</tr>
+<tr>
 <td style="text-align: left;">fixedSize</td>
 <td style="text-align: left;">Set if the divider position should remain fixed when the window is resized (default is proportional).</td>
 </tr>
@@ -1785,10 +1789,6 @@
 <td style="text-align: left;">Readable, defines the client boundaries around the frame.</td>
 </tr>
 <tr>
-<td style="text-align: left;">close</td>
-<td style="text-align: left;">Enables the close widget if <code>true</code> (default).</td>
-</tr>
-<tr>
 <td style="text-align: left;">events</td>
 <td style="text-align: left;">A table of event triggers. Supported events are <code>show</code>, <code>focus</code>, <code>lostFocus</code>, <code>close</code>, <code>minimise</code> and <code>maximise</code>.</td>
 </tr>
@@ -1842,7 +1842,7 @@
 </tr>
 <tr>
 <td style="text-align: left;">quit</td>
-<td style="text-align: left;">If <code>true</code>, sends a quit message to the client application when the window closes.</td>
+<td style="text-align: left;">If <code>true</code> (default), sends a quit message to the client application when the window closes. Use <code>false</code> to explicitly disable.</td>
 </tr>
 <tr>
 <td style="text-align: left;">stickToFront</td>
