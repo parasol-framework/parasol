@@ -35,7 +35,7 @@ namespace agg
 
         apply_gamma_dir_rgb(const GammaLut& gamma) : m_gamma(gamma) {}
 
-        AGG_INLINE void operator () (value_type* p)
+        inline void operator () (value_type* p)
         {
             p[Order::R] = m_gamma.dir(p[Order::R]);
             p[Order::G] = m_gamma.dir(p[Order::G]);
@@ -56,7 +56,7 @@ namespace agg
 
         apply_gamma_inv_rgb(const GammaLut& gamma) : m_gamma(gamma) {}
 
-        AGG_INLINE void operator () (value_type* p)
+        inline void operator () (value_type* p)
         {
             p[Order::R] = m_gamma.inv(p[Order::R]);
             p[Order::G] = m_gamma.inv(p[Order::G]);
@@ -78,7 +78,7 @@ namespace agg
         enum base_scale_e { base_shift = color_type::base_shift };
 
         //--------------------------------------------------------------------
-        static AGG_INLINE void blend_pix(value_type* p,
+        static inline void blend_pix(value_type* p,
                                          unsigned cr, unsigned cg, unsigned cb,
                                          unsigned alpha,
                                          unsigned cover=0)
@@ -100,7 +100,7 @@ namespace agg
         enum base_scale_e { base_shift = color_type::base_shift };
 
         //--------------------------------------------------------------------
-        static AGG_INLINE void blend_pix(value_type* p,
+        static inline void blend_pix(value_type* p,
                                          unsigned cr, unsigned cg, unsigned cb,
                                          unsigned alpha,
                                          unsigned cover)
@@ -113,7 +113,7 @@ namespace agg
         }
 
         //--------------------------------------------------------------------
-        static AGG_INLINE void blend_pix(value_type* p,
+        static inline void blend_pix(value_type* p,
                                          unsigned cr, unsigned cg, unsigned cb,
                                          unsigned alpha)
         {
@@ -143,7 +143,7 @@ namespace agg
         void gamma(const gamma_type& g) { m_gamma = &g; }
 
         //--------------------------------------------------------------------
-        AGG_INLINE void blend_pix(value_type* p,
+        inline void blend_pix(value_type* p,
                                   unsigned cr, unsigned cg, unsigned cb,
                                   unsigned alpha,
                                   unsigned cover=0)
@@ -183,61 +183,42 @@ namespace agg
         };
 
     private:
-        //--------------------------------------------------------------------
-        AGG_INLINE void copy_or_blend_pix(value_type* p,
-                                          const color_type& c,
-                                          unsigned cover)
-        {
-            if (c.a)
-            {
+        inline void copy_or_blend_pix(value_type* p, const color_type& c, unsigned cover) {
+            if (c.a) {
                 calc_type alpha = (calc_type(c.a) * (cover + 1)) >> 8;
-                if(alpha == base_mask)
-                {
+                if(alpha == base_mask) {
                     p[order_type::R] = c.r;
                     p[order_type::G] = c.g;
                     p[order_type::B] = c.b;
                 }
-                else
-                {
-                    m_blender.blend_pix(p, c.r, c.g, c.b, alpha, cover);
-                }
+                else m_blender.blend_pix(p, c.r, c.g, c.b, alpha, cover);
             }
         }
 
-        //--------------------------------------------------------------------
-        AGG_INLINE void copy_or_blend_pix(value_type* p,
-                                          const color_type& c)
+        inline void copy_or_blend_pix(value_type* p, const color_type& c)
         {
-            if (c.a)
-            {
-                if(c.a == base_mask)
-                {
+            if (c.a) {
+                if (c.a == base_mask) {
                     p[order_type::R] = c.r;
                     p[order_type::G] = c.g;
                     p[order_type::B] = c.b;
                 }
-                else
-                {
-                    m_blender.blend_pix(p, c.r, c.g, c.b, c.a);
-                }
+                else m_blender.blend_pix(p, c.r, c.g, c.b, c.a);
             }
         }
 
 
     public:
-        //--------------------------------------------------------------------
         explicit pixfmt_alpha_blend_rgb(rbuf_type& rb) :
             m_rbuf(&rb)
         {}
         void attach(rbuf_type& rb) { m_rbuf = &rb; }
 
-        //--------------------------------------------------------------------
         template<class PixFmt>
         bool attach(PixFmt& pixf, int x1, int y1, int x2, int y2)
         {
             rect_i r(x1, y1, x2, y2);
-            if(r.clip(rect_i(0, 0, pixf.width()-1, pixf.height()-1)))
-            {
+            if(r.clip(rect_i(0, 0, pixf.width()-1, pixf.height()-1))) {
                 int stride = pixf.stride();
                 m_rbuf->attach(pixf.pix_ptr(r.x1, stride < 0 ? r.y2 : r.y1),
                                (r.x2 - r.x1) + 1,
@@ -248,50 +229,36 @@ namespace agg
             return false;
         }
 
-        //--------------------------------------------------------------------
         Blender& blender() { return m_blender; }
 
-        //--------------------------------------------------------------------
-        AGG_INLINE unsigned width()  const { return m_rbuf->width();  }
-        AGG_INLINE unsigned height() const { return m_rbuf->height(); }
-        AGG_INLINE int      stride() const { return m_rbuf->stride(); }
+        inline unsigned width()  const { return m_rbuf->width();  }
+        inline unsigned height() const { return m_rbuf->height(); }
+        inline int      stride() const { return m_rbuf->stride(); }
 
-        //--------------------------------------------------------------------
-        AGG_INLINE       int8u* row_ptr(int y)       { return m_rbuf->row_ptr(y); }
-        AGG_INLINE const int8u* row_ptr(int y) const { return m_rbuf->row_ptr(y); }
-        AGG_INLINE row_data     row(int y)     const { return m_rbuf->row(y); }
+        inline       int8u* row_ptr(int y)       { return m_rbuf->row_ptr(y); }
+        inline const int8u* row_ptr(int y) const { return m_rbuf->row_ptr(y); }
+        inline row_data     row(int y)     const { return m_rbuf->row(y); }
 
-        //--------------------------------------------------------------------
-        AGG_INLINE int8u* pix_ptr(int x, int y)
-        {
+        inline int8u* pix_ptr(int x, int y) {
             return m_rbuf->row_ptr(y) + x * pix_width;
         }
 
-        AGG_INLINE const int8u* pix_ptr(int x, int y) const
-        {
+        inline const int8u* pix_ptr(int x, int y) const {
             return m_rbuf->row_ptr(y) + x * pix_width;
         }
 
-        //--------------------------------------------------------------------
-        AGG_INLINE static void make_pix(int8u* p, const color_type& c)
-        {
+        inline static void make_pix(int8u* p, const color_type& c) {
             ((value_type*)p)[order_type::R] = c.r;
             ((value_type*)p)[order_type::G] = c.g;
             ((value_type*)p)[order_type::B] = c.b;
         }
 
-        //--------------------------------------------------------------------
-        AGG_INLINE color_type pixel(int x, int y) const
-        {
+        inline color_type pixel(int x, int y) const {
             value_type* p = (value_type*)m_rbuf->row_ptr(y) + x + x + x;
-            return color_type(p[order_type::R],
-                              p[order_type::G],
-                              p[order_type::B]);
+            return color_type(p[order_type::R], p[order_type::G], p[order_type::B]);
         }
 
-        //--------------------------------------------------------------------
-        AGG_INLINE void copy_pixel(int x, int y, const color_type& c)
-        {
+        inline void copy_pixel(int x, int y, const color_type& c) {
             value_type* p = (value_type*)m_rbuf->row_ptr(x, y, 1) + x + x + x;
             p[order_type::R] = c.r;
             p[order_type::G] = c.g;
@@ -299,14 +266,14 @@ namespace agg
         }
 
         //--------------------------------------------------------------------
-        AGG_INLINE void blend_pixel(int x, int y, const color_type& c, int8u cover)
+        inline void blend_pixel(int x, int y, const color_type& c, int8u cover)
         {
             copy_or_blend_pix((value_type*)m_rbuf->row_ptr(x, y, 1) + x + x + x, c, cover);
         }
 
 
         //--------------------------------------------------------------------
-        AGG_INLINE void copy_hline(int x, int y,
+        inline void copy_hline(int x, int y,
                                    unsigned len,
                                    const color_type& c)
         {
@@ -323,14 +290,10 @@ namespace agg
 
 
         //--------------------------------------------------------------------
-        AGG_INLINE void copy_vline(int x, int y,
-                                   unsigned len,
-                                   const color_type& c)
+        inline void copy_vline(int x, int y, unsigned len, const color_type& c)
         {
-            do
-            {
-                value_type* p = (value_type*)
-                    m_rbuf->row_ptr(x, y++, 1) + x + x + x;
+            do {
+                value_type* p = (value_type*)m_rbuf->row_ptr(x, y++, 1) + x + x + x;
                 p[order_type::R] = c.r;
                 p[order_type::G] = c.g;
                 p[order_type::B] = c.b;
@@ -340,21 +303,14 @@ namespace agg
 
 
         //--------------------------------------------------------------------
-        void blend_hline(int x, int y,
-                         unsigned len,
-                         const color_type& c,
-                         int8u cover)
+        void blend_hline(int x, int y, unsigned len, const color_type& c, int8u cover)
         {
-            if (c.a)
-            {
-                value_type* p = (value_type*)
-                    m_rbuf->row_ptr(x, y, len) + x + x + x;
+            if (c.a) {
+                value_type* p = (value_type *)m_rbuf->row_ptr(x, y, len) + x + x + x;
 
                 calc_type alpha = (calc_type(c.a) * (calc_type(cover) + 1)) >> 8;
-                if(alpha == base_mask)
-                {
-                    do
-                    {
+                if (alpha == base_mask) {
+                    do {
                         p[order_type::R] = c.r;
                         p[order_type::G] = c.g;
                         p[order_type::B] = c.b;
