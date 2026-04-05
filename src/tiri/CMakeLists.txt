@@ -287,10 +287,16 @@ if (MSVC)
       OUTPUT_NAME "lua51"
       ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/jit/lib"
    )
+   # Convert paths to forward slashes for safe use in C string literals
+   file(TO_CMAKE_PATH "${CMAKE_BINARY_DIR}" LJ_PDB_BUILD_PATH)
+   file(TO_CMAKE_PATH "${CMAKE_INSTALL_PREFIX}" LJ_PDB_INSTALL_PATH)
+
    target_compile_definitions(jit_lib PRIVATE
       ${JIT_COMMON_DEFS}
       _CRT_SECURE_NO_DEPRECATE
-      $<$<CONFIG:Debug>:LUA_USE_ASSERT>)
+      $<$<CONFIG:Debug>:LUA_USE_ASSERT>
+      LJ_PDB_BUILD_DIR="${LJ_PDB_BUILD_PATH}"
+      LJ_PDB_INSTALL_DIR="${LJ_PDB_INSTALL_PATH}")
 
    target_include_directories(jit_lib PRIVATE
       "${JIT_SRC}"
