@@ -71,7 +71,7 @@ gui.scrollbar = function(Options)
             self.vbar.sliderVP.y      = offset
             self.vbar.sliderVP.height = slider_size
 
-            if (slider_size <= 12) then
+            if slider_size <= 12 then
                self.vbar.viewport.visibility = VIS_HIDDEN
                lView.xOffset = 0
                if self.hbar then self.hbar.viewport.xOffset = 0 end
@@ -90,12 +90,12 @@ gui.scrollbar = function(Options)
 
          offset, slider_size = calcSlider(lView.width, lPage.width, self.hbar.sliderHostVP.width, -lPage.x)
          if (offset != self.hbar.slider.offset) or (slider_size != self.hbar.slider.size) then
-            self.hbar.slider.offset   = offset
-            self.hbar.slider.size     = slider_size
-            self.hbar.sliderVP.x      = offset
-            self.hbar.sliderVP.width  = slider_size
+            self.hbar.slider.offset  = offset
+            self.hbar.slider.size    = slider_size
+            self.hbar.sliderVP.x     = offset
+            self.hbar.sliderVP.width = slider_size
 
-            if (slider_size <= 12) then
+            if slider_size <= 12 then
                self.hbar.viewport.visibility = VIS_HIDDEN
                lView.yOffset = 0
             else
@@ -224,7 +224,7 @@ gui.scrollbar = function(Options)
             repeat
                if Msg.type is JET_LMB then
                   if Msg.value > 0 then
-                     if (bar.direction is 'V') then
+                     if bar.direction is 'V' then
                         self.scrollPage(0, -(lView.height * 0.10))
                      else
                         self.scrollPage(-(lView.width * 0.10), 0)
