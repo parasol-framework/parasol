@@ -393,7 +393,6 @@ class extPainter : public VectorPainter {
 public:
    GRADIENT_TABLE *GradientTable;
    double GradientAlpha;
-   RGB8   RGB;
 };
 
 class extVector : public objVector {

@@ -81,7 +81,9 @@ void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Sha
 
                if ((m_clip->Flags & VCLF::APPLY_STROKES) != VCLF::NIL) {
                   if (node->StrokeRaster) {
-                     double value = (node->Stroke.Colour.Red * 0.2126) + (node->Stroke.Colour.Green * 0.7152) + (node->Stroke.Colour.Blue * 0.0722);
+                     double value = (std::clamp<float>(node->Stroke.Colour.Red, 0, 1) * 0.2126) + 
+                        (std::clamp<float>(node->Stroke.Colour.Green, 0, 1) * 0.7152) + 
+                        (std::clamp<float>(node->Stroke.Colour.Blue, 0, 1) * 0.0722);
                      value *= node->StrokeOpacity;
                      solid.color(agg::gray8(value * 0xff, 0xff));
 
