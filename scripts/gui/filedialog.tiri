@@ -32,7 +32,7 @@ gui.dialog.file = function(Options)
 
    function processFeedback()
       list = self.fileview.view.selectedItems()
-      if not list?? then
+      if not list?? and self.filebox then
          local file = self.filebox.text.string
          if file?? then
             list:push({ filename = file })
@@ -84,7 +84,6 @@ gui.dialog.file = function(Options)
       minHeight    = 150,
       quit         = false,
       center       = true,
-      theme        = 'light',
       popOver      = Options.popOver,
       parent       = Options.target,
       icon         = Options.icon ?? 'icons:folders/folder',

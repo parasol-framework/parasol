@@ -306,7 +306,10 @@ function displayFilters(self)
          text_x ?= math.floor(item.txt.displayHeight * 0.5)
          item_height ?= math.floor((item.txt.displayHeight + descent) * 1.3)
 
-         if item.selected then item.highlight.visibility = VIS_VISIBLE end
+         if item.selected then
+            item.highlight.visibility = VIS_VISIBLE
+            item.txt.fill = self.theme.page.textSelect
+         end
 
          item.vp.mtSubscribeInput(JTYPE_BUTTON, function(Viewport, Events)
             ev = Events
@@ -316,10 +319,12 @@ function displayFilters(self)
                      if item.selected then
                         item.highlight.visibility = VIS_HIDDEN
                         item.selected = false
+                        item.txt.fill = self.theme.page.text
                         self._filters = nil
                      else
                         item.highlight.visibility = VIS_VISIBLE
                         item.selected = true
+                        item.txt.fill = self.theme.page.textSelect
                         self._filters = nil
                      end
 

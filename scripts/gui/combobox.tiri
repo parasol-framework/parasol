@@ -151,7 +151,7 @@ gui.combobox = function(Options)
    })
 
    if not Options.flushEdges then
-      self.bkgd.stroke      = self.theme.page.stroke
+      self.bkgd.stroke      = self.theme.input.stroke
       self.bkgd.strokeWidth = gui.sizing.page.strokeWidth
       self.bkgd.roundX      = gui.sizing.page.strokeWidth * 2
       self.bkgd.roundY      = gui.sizing.page.strokeWidth * 2
@@ -173,9 +173,9 @@ gui.combobox = function(Options)
    self.text = self._textClip.new('VectorText', {
       x         = 4,
       y         = FONT_HEIGHT + math.floor((BOX_HEIGHT - FONT_HEIGHT - (gui.sizing.widget.strokeWidth * 2)) * 0.5),
-      face      = gui.fonts.widget.face,
-      fontSize  = string.format('%.2fpt', gui.fonts.widget.size),
-      fontStyle = gui.fonts.widget.style,
+      face      = gui.fonts.input.face,
+      fontSize  = string.format('%.2fpt', gui.fonts.input.size),
+      fontStyle = gui.fonts.input.style,
       fill      = self.theme.page.text,
       string    = defaultText,
       lineLimit = 1,
@@ -192,7 +192,7 @@ gui.combobox = function(Options)
 
    self.viewport.mtSubscribeFeedback(FM_HAS_FOCUS | FM_CHILD_HAS_FOCUS | FM_LOST_FOCUS, function(Viewport, Event)
       if (Event is FM_LOST_FOCUS) then
-         self.bkgd.stroke = self.theme.page.stroke
+         self.bkgd.stroke = self.theme.input.stroke
          self.events?.lostFocus(self)
          if self.allowCustom then
             reportFeedback(self)
@@ -202,9 +202,9 @@ gui.combobox = function(Options)
       else
          self._lastGoodInput = self.text.string
          if self.disabled then
-            self.bkgd.stroke = self.theme.page.stroke
+            self.bkgd.stroke = self.theme.input.stroke
          else
-            self.bkgd.stroke = self.theme.page.strokeFocus
+            self.bkgd.stroke = self.theme.input.strokeFocus
             self.events?.focus(self)
          end
       end

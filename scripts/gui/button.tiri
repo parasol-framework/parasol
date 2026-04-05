@@ -6,7 +6,7 @@ Documentation is available in the Kotuku Wiki.
 
    namespace 'gui'
 
-LINE_SPACING, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
+LINE_SPACING, FONT_HEIGHT = gui.getFontHeight(gui.fonts.button)
 HEIGHT    <const> = math.floor(LINE_SPACING * 1.75) + 1
 ICON_SIZE <const> = HEIGHT * 0.56
 GAP       <const> = HEIGHT * 0.35
