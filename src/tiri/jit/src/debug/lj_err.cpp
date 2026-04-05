@@ -1555,6 +1555,15 @@ static void lj_assert_native_backtrace()
 #else
    #define LJ_PDB_CONFIG "Release"
 #endif
+
+#ifndef LJ_PDB_BUILD_DIR
+   #define LJ_PDB_BUILD_DIR "."
+#endif
+
+#ifndef LJ_PDB_INSTALL_DIR
+   #define LJ_PDB_INSTALL_DIR "."
+#endif
+
    SymSetSearchPath(process, LJ_PDB_BUILD_DIR "/lib/" LJ_PDB_CONFIG ";"
                              LJ_PDB_BUILD_DIR "/" LJ_PDB_CONFIG ";"
                              LJ_PDB_INSTALL_DIR "/lib");
