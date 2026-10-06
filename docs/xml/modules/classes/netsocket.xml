@@ -273,6 +273,16 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     </field>
 
     <field>
+      <name>DispatchSuspended</name>
+      <comment>Temporarily suppresses socket input and output dispatch during protocol handover.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>Set to one while replacing callbacks and consuming an already-read protocol prefix, then restore zero before returning from the incoming handler.  Bytes remain queued while suspended.  This gate does not authorise reading further bytes or pumping messages inside a handover notification.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Error</name>
       <comment>Information about the last error that occurred during a NetSocket operation</comment>
       <access read="R">Read</access>
@@ -392,12 +402,22 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     </field>
 
     <field>
+      <name>PeerName</name>
+      <comment>Expected TLS server identity, independent of the transport Address.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
+      <description>
+<p>Set before connection or before enabling TLS on a proxy tunnel.  An empty value defaults to Address.  DNS names are used for SNI and certificate name checking; IP literals omit SNI and use certificate IP identity checking.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Port</name>
       <comment>The port number to use for connections.</comment>
       <access read="R" write="I">Read/Init</access>
       <type>INT</type>
       <description>
-<p>For NetSocket clients, this is the remote port used by <method>Connect</method>.  For <class name="NetServer">NetServer</class> listeners, this inherited field is the local port to bind during initialisation.  A NetServer port of zero requests an ephemeral port from the operating system; after initialisation this field contains the selected port.</p>
+<p>For NetSocket clients, this is the remote port used by <method>Connect</method>.  For <class name="NetServer">NetServer</class> listeners, this inherited field is the local port to bind during initialisation.  A value of zero requests an ephemeral port from the operating system; after initialisation this field contains the selected port.</p>
       </description>
     </field>
 

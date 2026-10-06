@@ -16,11 +16,11 @@
       end
    }
 
-rxPixel    <const> = <{ regex.new([[^(\d+)([a-zA-Z]*)$]]) }>
-rxFontSize <const> = <{ regex.new([[^(-?\d+)%$]]) }>
+rxPixel    <const> = <{ r[[^(\d+)([a-zA-Z]*)$]] }>
+rxFontSize <const> = <{ r[[^(-?\d+)%$]] }>
 
 glStyleConfig = 'user:config/style.cfg'
-glPainter = struct.new('VectorPainter')
+glPainter = struct<VectorPainter>
 
 gui.fontList = thunk():table
    return exec([[
@@ -35,7 +35,7 @@ gui.fontList = thunk():table
 
    -- Merge
    for group_name, option_group in options do
-      local cat_group:table = catalogue[group_name]
+      cat_group:table = catalogue[group_name]
       if not cat_group then
          cat_group = { }
          catalogue[group_name] = cat_group
@@ -89,9 +89,9 @@ gui.mtHSV = { -- HSV metatable
    end,
    __tostring = function():str -- Returns an SVG compliant colour string
       if &a is 1 or &a is nil then
-         return string.format('hsv(%d %d %d)', &r ?? -1, &g ?? -1, &b ?? -1)
+         return string.format('hsv(%g,%g%%,%g%%)', &h, &s * 100, &v * 100)
       else
-         return string.format('hsv(%d %d %d / %g)', &r ?? -1, &g ?? -1, &b ?? -1, &a)
+         return string.format('hsv(%g,%g%%,%g%%,%g)', &h, &s * 100, &v * 100, &a)
       end
    end
 }
@@ -232,7 +232,7 @@ end
 -- Return the light value of an RGB colour (i.e. the V in HSV)
 
 function gui.mtRGB.brightness():num
-   local max:num = &b
+   max:num = &b
    if &g > max then max = &g end
    if &r > max then max = &r end
    return max
@@ -254,11 +254,11 @@ end
 -- h is hue in degrees [0,360), s and l are in [0,1].
 
 function gui.mtRGB.toHSL():table
-   local r:num = &r
-   local g:num = &g
-   local b:num = &b
+   r:num = &r
+   g:num = &g
+   b:num = &b
 
-   local max:num = r
+   max:num = r
    if g > max then max = g end
    if b > max then max = b end
 
@@ -365,7 +365,7 @@ gui.getFontHeight = function(Font:table):<num,num>
    try<trace>
       if not Font.height then
          err, handle = mVec.GetFontHandle(Font.face, 'Regular', 0, tonumber(Font.size))
-         metrics = struct.new('FontMetrics')
+         metrics = struct<FontMetrics>
          mVec.GetFontMetrics(handle, metrics)
          Font.height  = metrics.height
          Font.spacing = metrics.lineSpacing
@@ -472,7 +472,7 @@ gui.simpleGradient = function(Scene:obj!, Name:str!, Colours:any!, X1:num!, Y1:n
    stops = { }
    i = 0
    for col in values(colours) do
-      vc = struct.new('GradientStop')
+      vc = struct<GradientStop>
       vc.offset    = col.offset ? col.offset : (i / (#colours - 1))
       vc.rgb.red   = col.r
       vc.rgb.green = col.g
@@ -486,19 +486,13 @@ gui.simpleGradient = function(Scene:obj!, Name:str!, Colours:any!, X1:num!, Y1:n
       name=Name, stops=stops, x1=X1, y1=Y1, x2=X2, y2=Y2, units=(Units ?? 'boundingbox')
    })
 
-   if IgnoreClashes then -- Do not fail if a resource with the same name already exists (nb: will return nil).
-      try
-         Scene.mtAddDef(Name, gradient)
-      except ex
-         if ex.code is ERR_ResourceExists then
-            gradient.free()
-            return
-         else
-            raise
-         end
-      end
-   else
-      Scene.mtAddDef(Name, gradient)
+   local err = Scene.mtAddDef(Name, gradient)
+   if err is ERR_ResourceExists and IgnoreClashes then -- Do not fail if the name is already registered
+      gradient.free()
+      return
+   elseif err != ERR_Okay then
+      gradient.free()
+      raise err, f'Failed to register gradient "{Name}": {mSys.GetErrorMsg(err)}'
    end
 
    return gradient
@@ -535,15 +529,16 @@ gui.createIcon = function(Scene:obj!, Path:str!, Size:num, Theme:any!, Name:str)
 
    Name ??= Path
 
+   if not Path.startsWith('icons:') then
+      Path = f'icons:{Path}.svg'
+   end
+
    if Scene.mtFindDef(Name) is ERR_Okay then -- Return if the icon pattern is already registered
       return { name = Name, theme = Theme, size = Size, path = Path, fill = f'url(#{Name})' }
    end
 
    icon.pattern  = Scene.new('VectorPattern', { pageWidth=Size, pageHeight=Size, spreadMethod=VSPREAD_PAD })
    icon.gradient = gui.simpleGradient(icon.pattern.scene, gname, { lGradient.first, lGradient.last }, 0, 0, 0, 1, 'boundingbox', true)
-   if not Path.startsWith('icons:') then
-      Path = f'icons:{Path}.svg'
-   end
    icon.svg = obj.new('svg', { target=icon.pattern.viewport, path=Path })
 
    gui.forVector(icon.pattern.viewport, function(Vector)
@@ -661,8 +656,8 @@ gui.setTheme = function(Object:obj, Theme:str!):table
          loadFile(f'config:themes/{Theme}.tiri')
          assert(gui.themes[Theme], 'Theme configuration did not initialise correctly.')
       else
-         Theme = 'light' -- Revert to a known default
          print(f'Theme "{Theme}" is not installed.')
+         Theme = 'light' -- Revert to a known default
       end
    end
 
@@ -736,7 +731,6 @@ gui.palettes = {
    -- contrast is a suitable complement to prime and should be of a strongly contrasting hue
    -- neutral is a default background colour for undefined areas (e.g. window background), usually a light grey tone
    -- mid is used for separating an area from bkgd without drawing attention.  E.g. scrollbar and slider tracks
-   -- face is a midtone colour for widgets, normally drawn over 'mid'.  Chroma must be weaker than 'prime'
    -- text is the default colour for text drawn over 'bkgd'
    -- altText is the default colour for text drawn over 'prime' when highlighted or selected.  Can be same as 'text'
    ocean = {
@@ -799,7 +793,7 @@ gui.palettes = {
 
       if mSys.AnalysePath(glStyleConfig) is ERR_Okay then
          try
-            local cfg = obj.new('config', { path=glStyleConfig })
+            local cfg <close> = obj.new('config', { path=glStyleConfig })
             theme = [_*]cfg.mtReadValue('Style', 'Theme')
             palette = [_*]cfg.mtReadValue('Style', 'Palette')
             paletteTheme = [_*]cfg.mtReadValue('Style', 'PaletteTheme')
@@ -813,7 +807,7 @@ gui.palettes = {
             print(f'  Detail: {ex.message}')
          end
       else
-         local file = obj.new('file', { path=glStyleConfig, flags=FL_WRITE|FL_NEW })
+         local file <close> = obj.new('file', { path=glStyleConfig, flags=FL_WRITE|FL_NEW })
          file.acWrite("[Style]\nTheme = light\nPalette = ocean\nPaletteTheme = light\n")
       end
    end
@@ -958,7 +952,7 @@ gui.themes = {
          foreStroke      = 'none',
          foreHighlight   = gui.palette.light.contrast,
          foreStrokeFocus = gui.palette.light.contrast,
-         highlight       = gui.palette.light.face,
+         highlight       = 'none',
          stroke          = 'none',
          strokeFocus     = gui.palette.light.contrast
       },

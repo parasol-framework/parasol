@@ -252,6 +252,8 @@ class AudioEffectProcessor {
 public:
    virtual ~AudioEffectProcessor() = default;
    // Buffers contain normalised floating-point audio: magnitude 1.0 is 0 dBFS, with finite headroom above unity.
+   // process() must not dereference the owning effect object.  A container fading out a removed branch keeps
+   // calling process() on that branch's processors after their effects have been disconnected and possibly freed.
    virtual void process(float *Buffer, int Frames) = 0;
    // Notify observers of output frames that bypass processing or belong to an idle chain.
    virtual void skip(int Frames) { }
@@ -266,12 +268,20 @@ public:
    virtual uint64_t decay_estimate() const { return 0; }
    virtual int64_t latency() const { return 0; }
    virtual double gain_reduction() const { return 0; }
+   // Values of AudioMeterSource::PROCESSOR meters, read under the mixer lock at the end of every meter interval.
+   // Value is the index declared by the output template, and Channel is the channel index within the processing layout
+   // for a channel-scoped meter, or -1.  Set Floor if the value is at the floor of its range.  Constant-time only.
+   virtual double meter_value(int Value, int Channel, bool &Floor) const { return 0; }
    // Called off the render thread and outside the mixer mutex. Read only immutable configuration here;
    // prepared storage must not reference the owning framework object, whose lifetime may end during preparation.
    virtual ERR prepare(int Rate, bool Stereo, std::unique_ptr<AudioEffectConfiguration> &Result) {
       return ERR::Okay;
    }
 };
+
+// A branch chain is hosted by a container effect such as AudioSplitter.  It shares the mixer mutex and generation of
+// the container's chain and is configured together with it.  DrainFrames, State and Truncated are only used by
+// top-level chains, which control draining for everything that they host.
 
 struct AudioEffectChain {
    std::shared_ptr<std::recursive_mutex> Mutex;
@@ -285,6 +295,9 @@ struct AudioEffectChain {
    bool Stereo = false;
    std::vector<int> Layout; // Committed processing layout; empty until configured
    uint64_t FormatGeneration = 0; // Output configuration generation at the last commit
+   OBJECTID Container = 0;  // Branch chains only: the hosting container effect
+   int Branch = -1;         // Branch chains only: the current branch index within the container
+   double LatencyBudget = 0; // Branch chains only: the container's latency budget in milliseconds
    bool pending() const;
    void reset();
    ERR latency(int64_t &Frames) const;
@@ -292,7 +305,16 @@ struct AudioEffectChain {
    uint64_t decay_estimate() const;
 
    explicit AudioEffectChain(std::shared_ptr<std::recursive_mutex> Lock) : Mutex(std::move(Lock)) { }
+   ~AudioEffectChain();
 };
+
+// A latency budget in milliseconds as whole output frames, rounded up.
+
+inline int64_t budget_frames(double Milliseconds, int Rate)
+{
+   if ((Rate <= 0) or (Milliseconds <= 0)) return 0;
+   return int64_t(std::ceil(Milliseconds * double(Rate) / 1000.0 - 1e-9));
+}
 
 // Snapshot storage is sized on the control thread when the meter layout changes.  The render thread only overwrites
 // existing elements, so publication never allocates.
@@ -313,7 +335,7 @@ public:
    bool ResetPending = true;
    // Set by subclass constructors that publish parameters.  Static storage; never freed.
    const AudioEffectSchema *Schema = nullptr;
-   // Changes staged by SetParameter(), InsertEntry() and RemoveEntry() after initialisation, pending Flush().
+   // Changes staged by SetKey(), InsertEntry() and RemoveEntry() after initialisation, pending Flush().
    std::unique_ptr<AudioParamState> Pending;
 
    std::vector<int> Layout;        // Processing layout.  Input and output layouts are always identical.
@@ -321,12 +343,16 @@ public:
    bool FormatCommitted = false;   // True once a processing layout has been committed by device activation
    bool Stereo = false;            // Derived from Layout for the stereo-only DSP implementations
 
+   // Container effects only: the branch chains in branch order.  Read and written under the mixer mutex.
+   std::vector<std::shared_ptr<AudioEffectChain>> Branches;
+
    std::vector<AudioMeterDesc> Meters; // Current meter layout
    std::vector<double> InputPeaks, OutputPeaks; // Per-channel accumulators for the current interval
    double Reduction = 0;
 
    extAudioEffect(objMetaClass *ClassPtr, OBJECTID ObjectID) : objAudioEffect(ClassPtr, ObjectID) {
-      AudioID = Channel = Order = OutputRate = 0;
+      AudioID = ParentID = 0;
+      Channel = Order = OutputRate = Branch = 0;
       Flags = AEF::NIL;
    }
    ~extAudioEffect();
@@ -351,6 +377,13 @@ public:
 
 
 };
+
+// Container effects host branch chains.  A container cannot be attached to a branch.
+
+inline bool is_effect_container(CLASSID ClassID)
+{
+   return ClassID IS CLASSID::AUDIOSPLITTER;
+}
 
 static void process_effects(AudioEffectChain &, float *, int);
 #ifdef UNIT_TESTS

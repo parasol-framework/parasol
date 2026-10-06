@@ -4,8 +4,8 @@
 
 set (BUNDLED_PACKAGES
    benchmark button checkbox colourdialog combobox config dialog divider dropdown filedialog filemgr filesearch
-   fileview fontdialog git gui httpserver icon input json menu menubar oauth2 openapi options proxyserver scrollbar
-   slider tempus toolbar tooltip url vfx view window)
+   fileview fontdialog git gui httpserver icon input json menu menubar oauth2 openai openapi options proxyserver scrollbar
+   slider smtp tempus toolbar tooltip url vfx view window)
 
 set (PACKAGE_MANIFESTS)
 
@@ -221,3 +221,10 @@ file (CONFIGURE OUTPUT "${PACKAGE_INDEX}" CONTENT "${PACKAGE_INDEX_CONTENT}" @ON
 if (KOTUKU_INSTALL)
    install (FILES "${PACKAGE_INDEX}" DESTINATION "${SHARE_TARGET}/packages")
 endif ()
+
+flute_test (package_openapi "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_openapi.tiri")
+flute_test (package_oauth2 "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_oauth2.tiri")
+flute_test (package_openai_streaming "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_openai_streaming.tiri")
+flute_test (package_openai "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_openai.tiri")
+flute_test (package_chatgpt "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_chatgpt.tiri")
+flute_test (package_smtp "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_smtp.tiri")

@@ -22,6 +22,19 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length);
 static CSTRING clientsocket_state(NTC Value);
 
 //********************************************************************************************************************
+// Return encrypted TLS output that has not yet been handed to the operating system.
+
+static size_t clientsocket_pending_tls_output(extClientSocket *Self)
+{
+#if !defined(DISABLE_SSL) and defined(_WIN32)
+   return Self->TLS.Handle ? ssl_pending_output_size(Self->TLS.Handle) : 0;
+#else
+   (void)Self;
+   return 0;
+#endif
+}
+
+//********************************************************************************************************************
 // Disconnect a client socket and report the state change.
 
 static void disconnect(extClientSocket *Self)
@@ -351,10 +364,23 @@ static void clientsocket_outgoing_impl(HOSTHANDLE SocketFD, extClientSocket *Cli
    ClientSocket->OutgoingRecursion++;
 
    auto error = ERR::Okay;
+   bool tls_output_blocked = false;
+
+#if !defined(DISABLE_SSL) and defined(_WIN32)
+   // Schannel can consume all queued plaintext while retaining the encrypted record until IOCP has capacity.  Flush
+   // that record even when WriteQueue is empty, and do not encrypt later plaintext ahead of it.
+   if (clientsocket_pending_tls_output(ClientSocket)) {
+      error = tls_flush_output(ClientSocket);
+      if (error IS ERR::BufferOverflow) {
+         error = ERR::Okay;
+         tls_output_blocked = true;
+      }
+   }
+#endif
 
    // Send out remaining queued data before getting new data to send
 
-   while (not ClientSocket->WriteQueue.Buffer.empty()) {
+   while ((!error) and (!tls_output_blocked) and (not ClientSocket->WriteQueue.Buffer.empty())) {
       size_t len = ClientSocket->WriteQueue.Buffer.size() - ClientSocket->WriteQueue.Index;
       #ifndef DISABLE_SSL
          if ((not ClientSocket->TLS.Handle) and (len > glMaxWriteLen)) len = glMaxWriteLen;
@@ -365,7 +391,12 @@ static void clientsocket_outgoing_impl(HOSTHANDLE SocketFD, extClientSocket *Cli
       if (len > 0) {
          error = send_data(ClientSocket, ClientSocket->WriteQueue.Buffer.data() + ClientSocket->WriteQueue.Index, &len);
          if (len > 0) ClientSocket->WriteQueue.Index += len;
-         if ((error != ERR::Okay) or (not len)) break;
+         if ((error != ERR::Okay) or (not len)) {
+            // BufferOverflow is backpressure, not a failure.  Writing resumes on the next notification, and counting
+            // it against ErrorCountdown would disconnect a slow reader with data still queued.
+            if (error IS ERR::BufferOverflow) error = ERR::Okay;
+            break;
+         }
       }
 
       if (ClientSocket->WriteQueue.Index >= ClientSocket->WriteQueue.Buffer.size()) {
@@ -376,6 +407,7 @@ static void clientsocket_outgoing_impl(HOSTHANDLE SocketFD, extClientSocket *Cli
    }
 
    if ((!error) and (ClientSocket->CloseAfterWrite) and (ClientSocket->WriteQueue.Buffer.empty()) and
+       (not clientsocket_pending_tls_output(ClientSocket)) and
        (not network_platform().has_pending_write(ClientSocket->Handle))) {
       ClientSocket->CloseAfterWrite = false;
       disconnect(ClientSocket);
@@ -410,8 +442,10 @@ static void clientsocket_outgoing_impl(HOSTHANDLE SocketFD, extClientSocket *Cli
       // If the write queue is empty then we remove the FD-Write registration so that
       // we don't tax system resources.
 
-      if (ClientSocket->WriteQueue.Buffer.empty() and (not network_platform().has_pending_write(ClientSocket->Handle))) {
-         log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Server->UID, ClientSocket->Handle.int_value());
+      if (ClientSocket->WriteQueue.Buffer.empty() and (not clientsocket_pending_tls_output(ClientSocket)) and
+          (not network_platform().has_pending_write(ClientSocket->Handle))) {
+         log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Server->UID,
+            ClientSocket->Handle.int_value());
          network_platform().remove_write(ClientSocket->Handle);
       }
    }
@@ -438,7 +472,8 @@ static ERR CLIENTSOCKET_Deactivate(extClientSocket *Self)
    log.branch();
 
    if ((Self->State IS NTC::CONNECTED) and
-       ((not Self->WriteQueue.Buffer.empty()) or network_platform().has_pending_write(Self->Handle))) {
+       ((not Self->WriteQueue.Buffer.empty()) or clientsocket_pending_tls_output(Self) or
+        network_platform().has_pending_write(Self->Handle))) {
       log.msg("Delaying disconnect until queued data is flushed.");
       Self->CloseAfterWrite = true;
       network_platform().register_write(Self->Handle, &clientsocket_outgoing, Self);
@@ -618,6 +653,31 @@ ConnectTime: System time for the creation of this socket.
 Next: Next socket in the chain.
 
 -FIELD-
+OutQueueSize: The number of bytes waiting in the socket's outgoing queue.
+
+Data passed to #Write() that cannot be sent immediately is held in a software queue and written as the connection
+permits.  OutQueueSize reports the number of queued bytes that have not yet been passed to the operating system, so a
+value of zero indicates that the queue is empty.  This can be used to pace writes against a slow client, or to wait
+for queued data to be sent before disconnecting.
+
+Writes that have been passed to the operating system but not yet completed are not included.
+
+*********************************************************************************************************************/
+
+static ERR CS_GET_OutQueueSize(extClientSocket *Self, int *Value)
+{
+   auto &queue = Self->WriteQueue;
+   auto queued = (queue.Index < queue.Buffer.size()) ? queue.Buffer.size() - queue.Index : 0;
+#if !defined(DISABLE_SSL) and defined(_WIN32)
+   queued += Self->TLS.PendingPlaintext;
+#endif
+   *Value = int(std::min(queued, size_t(INT_MAX)));
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
 Prev: Previous socket in the chain.
 
 -FIELD-
@@ -680,6 +740,8 @@ static const FieldArray clClientSocketFields[] = {
    { "Client",      FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::NETCLIENT },
    { "ClientData",  FDF_POINTER|FDF_R },
    { "State",       FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, CS_SET_State, &clNetSocketState },
+   // Virtual fields
+   { "OutQueueSize", FDF_VIRTUAL|FDF_INT|FDF_R, CS_GET_OutQueueSize },
    END_FIELD
 };
 

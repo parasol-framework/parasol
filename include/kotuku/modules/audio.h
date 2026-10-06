@@ -13,6 +13,14 @@ class objAudioEffect;
 class objAudioEqualiser;
 class objAudioReverb;
 class objAudioCompressor;
+class objAudioLimiter;
+class objAudioGate;
+class objAudioDelay;
+class objAudioChorus;
+class objAudioFlanger;
+class objAudioLoudness;
+class objAudioSaturator;
+class objAudioSplitter;
 class objAudioAnalyser;
 class objSound;
 
@@ -586,8 +594,6 @@ class objAudio : public Object {
 // AudioEffect methods
 
 namespace fx {
-struct SetParameter { std::string_view Path; double Value; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetParameter { std::string_view Path; double Value; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct InsertEntry { std::string_view Group; int Index; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct RemoveEntry { std::string_view Group; int Index; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct GetResponse { std::span<const double> Frequencies; std::span<double> Magnitudes; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
@@ -612,20 +618,22 @@ class objAudioEffect : public Object {
    int      Order;    // Processing position within the chain.
    AEF      Flags;    // Optional processing flags.
    int      OutputRate; // Output sample rate of the attached Audio object.
+   OBJECTID ParentID; // The container effect that hosts this effect, or zero for an effect in a top-level chain.
+   int      Branch;   // Zero-based index of the container branch that hosts the effect.
 
    // Action stubs
 
    inline ERR flush() noexcept { return Action(AC::Flush, this, nullptr); }
-   inline ERR init() noexcept { return InitObject(this); }
-   inline ERR setParameter(const std::string_view &Path, double Value) noexcept {
-      struct fx::SetParameter args = { Path, Value };
-      return Action(AC(-1), this, &args);
-   }
-   inline ERR getParameter(const std::string_view &Path, double * Value) noexcept {
-      struct fx::GetParameter args = { Path, (double)0 };
-      ERR error = Action(AC(-2), this, &args);
-      if (Value) *Value = args.Value;
+   inline ERR getKey(std::string_view Key, std::string &Value) noexcept {
+      struct acGetKey args = { Key, &Value };
+      auto error = Action(AC::GetKey, this, &args);
+      if (error != ERR::Okay) Value.clear();
       return error;
+   }
+   inline ERR init() noexcept { return InitObject(this); }
+   inline ERR acSetKey(std::string_view FieldName, std::string_view Value) noexcept {
+      struct acSetKey args = { FieldName, Value };
+      return Action(AC::SetKey, this, &args);
    }
    inline ERR insertEntry(const std::string_view &Group, int Index) noexcept {
       struct fx::InsertEntry args = { Group, Index };
@@ -703,6 +711,19 @@ class objAudioEffect : public Object {
       return error;
    }
 
+   inline ERR getParent(OBJECTID &Value) noexcept {
+      Value = this->ParentID;
+      return ERR::Okay;
+   }
+
+   inline ERR getBranch(int &Value) noexcept {
+      auto field = &this->Class->Dictionary[12];
+      SetObjectContext(this, field, AC::NIL);
+      auto error = field->GetValue(this, &Value);
+      RestoreObjectContext();
+      return error;
+   }
+
    inline ERR getLatency(int64_t &Value) noexcept {
       auto field = &this->Class->Dictionary[6];
       SetObjectContext(this, field, AC::NIL);
@@ -753,6 +774,18 @@ class objAudioEffect : public Object {
       return field->WriteValue(this, field, FD_INT, &Value);
    }
 
+   inline ERR setParent(OBJECTID Value) noexcept {
+      if (this->initialised()) return ERR::ImmutableField;
+      this->ParentID = Value;
+      return ERR::Okay;
+   }
+
+   inline ERR setBranch(const int Value) noexcept {
+      if (this->initialised()) return ERR::ImmutableField;
+      this->Branch = Value;
+      return ERR::Okay;
+   }
+
 };
 
 // AudioEqualiser class definition
@@ -774,13 +807,13 @@ class objAudioEqualiser : public objAudioEffect {
    // Customised field getting
 
    inline ERR getBands(std::span<struct AudioEQBand> &Value) noexcept {
-      auto field = &this->Class->Dictionary[14];
+      auto field = &this->Class->Dictionary[16];
       auto get_field = (ERR (*)(APTR, std::span<struct AudioEQBand> &))field->GetValue;
       return get_field(this, Value);
    }
 
    inline ERR getGain(double &Value) noexcept {
-      auto field = &this->Class->Dictionary[13];
+      auto field = &this->Class->Dictionary[15];
       return field->GetValue(this, &Value);
    }
 
@@ -788,12 +821,12 @@ class objAudioEqualiser : public objAudioEffect {
    // Customised field setting
 
    inline ERR setBands(std::span<const struct AudioEQBand> Value) noexcept {
-      auto field = &this->Class->Dictionary[14];
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(this, field, 0x00101318, &Value);
    }
 
    inline ERR setGain(const double Value) noexcept {
-      auto field = &this->Class->Dictionary[13];
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(this, field, FD_DOUBLE, &Value);
    }
 
@@ -842,6 +875,203 @@ class objAudioCompressor : public objAudioEffect {
 
 
    // Customised field setting
+
+};
+
+// AudioLimiter class definition
+
+#define VER_AUDIOLIMITER (1.000000)
+
+class objAudioLimiter : public objAudioEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = CLASSID::AUDIOLIMITER;
+   static constexpr CSTRING CLASS_NAME = "AudioLimiter";
+
+   using create = kt::Create<objAudioLimiter>;
+   objAudioLimiter(objMetaClass *pClass, OBJECTID pUID) noexcept : objAudioEffect(pClass, pUID) {}
+
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
+
+   // Customised field getting
+
+
+   // Customised field setting
+
+};
+
+// AudioGate class definition
+
+#define VER_AUDIOGATE (1.000000)
+
+class objAudioGate : public objAudioEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = CLASSID::AUDIOGATE;
+   static constexpr CSTRING CLASS_NAME = "AudioGate";
+
+   using create = kt::Create<objAudioGate>;
+   objAudioGate(objMetaClass *pClass, OBJECTID pUID) noexcept : objAudioEffect(pClass, pUID) {}
+
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
+
+   // Customised field getting
+
+
+   // Customised field setting
+
+};
+
+// AudioDelay class definition
+
+#define VER_AUDIODELAY (1.000000)
+
+class objAudioDelay : public objAudioEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = CLASSID::AUDIODELAY;
+   static constexpr CSTRING CLASS_NAME = "AudioDelay";
+
+   using create = kt::Create<objAudioDelay>;
+   objAudioDelay(objMetaClass *pClass, OBJECTID pUID) noexcept : objAudioEffect(pClass, pUID) {}
+
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
+
+   // Customised field getting
+
+
+   // Customised field setting
+
+};
+
+// AudioChorus class definition
+
+#define VER_AUDIOCHORUS (1.000000)
+
+class objAudioChorus : public objAudioEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = CLASSID::AUDIOCHORUS;
+   static constexpr CSTRING CLASS_NAME = "AudioChorus";
+
+   using create = kt::Create<objAudioChorus>;
+   objAudioChorus(objMetaClass *pClass, OBJECTID pUID) noexcept : objAudioEffect(pClass, pUID) {}
+
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
+
+   // Customised field getting
+
+
+   // Customised field setting
+
+};
+
+// AudioFlanger class definition
+
+#define VER_AUDIOFLANGER (1.000000)
+
+class objAudioFlanger : public objAudioEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = CLASSID::AUDIOFLANGER;
+   static constexpr CSTRING CLASS_NAME = "AudioFlanger";
+
+   using create = kt::Create<objAudioFlanger>;
+   objAudioFlanger(objMetaClass *pClass, OBJECTID pUID) noexcept : objAudioEffect(pClass, pUID) {}
+
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
+
+   // Customised field getting
+
+
+   // Customised field setting
+
+};
+
+// AudioLoudness class definition
+
+#define VER_AUDIOLOUDNESS (1.000000)
+
+class objAudioLoudness : public objAudioEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = CLASSID::AUDIOLOUDNESS;
+   static constexpr CSTRING CLASS_NAME = "AudioLoudness";
+
+   using create = kt::Create<objAudioLoudness>;
+   objAudioLoudness(objMetaClass *pClass, OBJECTID pUID) noexcept : objAudioEffect(pClass, pUID) {}
+
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
+
+   // Customised field getting
+
+
+   // Customised field setting
+
+};
+
+// AudioSaturator class definition
+
+#define VER_AUDIOSATURATOR (1.000000)
+
+class objAudioSaturator : public objAudioEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = CLASSID::AUDIOSATURATOR;
+   static constexpr CSTRING CLASS_NAME = "AudioSaturator";
+
+   using create = kt::Create<objAudioSaturator>;
+   objAudioSaturator(objMetaClass *pClass, OBJECTID pUID) noexcept : objAudioEffect(pClass, pUID) {}
+
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
+
+   // Customised field getting
+
+
+   // Customised field setting
+
+};
+
+// AudioSplitter class definition
+
+#define VER_AUDIOSPLITTER (1.000000)
+
+class objAudioSplitter : public objAudioEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = CLASSID::AUDIOSPLITTER;
+   static constexpr CSTRING CLASS_NAME = "AudioSplitter";
+
+   using create = kt::Create<objAudioSplitter>;
+   objAudioSplitter(objMetaClass *pClass, OBJECTID pUID) noexcept : objAudioEffect(pClass, pUID) {}
+
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
+
+   // Customised field getting
+
+   inline ERR getLatencyBudget(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      SetObjectContext(this, field, AC::NIL);
+      auto error = field->GetValue(this, &Value);
+      RestoreObjectContext();
+      return error;
+   }
+
+
+   // Customised field setting
+
+   inline ERR setLatencyBudget(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
 
 };
 

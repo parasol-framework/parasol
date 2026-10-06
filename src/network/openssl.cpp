@@ -570,6 +570,12 @@ static ERR tls_accept_client(extClientSocket *Self, extNetServer *Server)
       if (auto client_bio = BIO_new_socket(Self->Handle, BIO_NOCLOSE)) {
          SSL_set_bio(client_ssl, client_bio, client_bio);
 
+         // As for outbound sockets in sslLinkSocket().  A write that fails with SSL_ERROR_WANT_WRITE is retried from
+         // the write queue rather than the caller's buffer, which OpenSSL rejects as a bad write retry unless moving
+         // write buffers are accepted.
+
+         SSL_set_mode(client_ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_ENABLE_PARTIAL_WRITE);
+
          Self->TLS.Handle = client_ssl;
          Self->TLS.BIOHandle = client_bio;
 
@@ -631,20 +637,41 @@ static ERR tls_connect(extNetSocket *Self)
       }
    }
 
-   // Set SNI (Server Name Indication) if we have a hostname
-   // This is critical for modern HTTPS servers that serve multiple domains
+   // Set SNI (Server Name Indication) if we have a hostname, and bind certificate verification to the expected peer.
+   // SNI is critical for modern HTTPS servers that serve multiple domains.  Without a pinned host, SSL_VERIFY_PEER
+   // only validates the certificate chain, so any trusted certificate issued for a different domain would be accepted.
 
-   if (!Self->Address.empty()) {
-      auto address = Self->Address.c_str();
+   const auto &peer = Self->PeerName.empty() ? Self->Address : Self->PeerName;
+   if (!peer.empty()) {
+      auto address = peer.c_str();
+      bool verify = (Self->Flags & NSF::DISABLE_SERVER_VERIFY) IS NSF::NIL;
 
-      // Only set SNI for client connections, and only if Address is a hostname (not IP)
-      struct in_addr addr;
-      if (inet_aton(address, &addr) IS 0) {
-         // Address is not an IP, so it's likely a hostname - set SNI
+      struct in6_addr ip_buffer;
+      bool is_ip = (inet_pton(AF_INET, address, &ip_buffer) IS 1) or (inet_pton(AF_INET6, address, &ip_buffer) IS 1);
+
+      if (!is_ip) {
          if (SSL_set_tlsext_host_name(Self->TLS.Handle, address)) {
             log.msg("SNI set to: %s", address);
          }
          else log.warning("Failed to set SNI hostname: %s", address);
+
+         if (verify) {
+            SSL_set_hostflags(Self->TLS.Handle, X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
+            if (!SSL_set1_host(Self->TLS.Handle, address)) {
+               log.warning("Failed to set expected certificate hostname: %s", address);
+               Self->Error = ERR::Security;
+               Self->setState(NTC::DISCONNECTED);
+               return Self->Error;
+            }
+         }
+      }
+      else if (verify) {
+         if (!X509_VERIFY_PARAM_set1_ip_asc(SSL_get0_param(Self->TLS.Handle), address)) {
+            log.warning("Failed to set expected certificate IP address: %s", address);
+            Self->Error = ERR::Security;
+            Self->setState(NTC::DISCONNECTED);
+            return Self->Error;
+         }
       }
    }
 

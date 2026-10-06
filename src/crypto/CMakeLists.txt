@@ -11,7 +11,7 @@ set_module_defaults (${MOD} "Crypto")
 target_sources (${MOD} PRIVATE crypto.cpp)
 
 if (WIN32)
-   target_sources (${MOD} PRIVATE backend_windows.cpp)
+   target_sources (${MOD} PRIVATE backend_windows.cpp backend_windows_native.cpp)
    target_link_libraries (${MOD} PRIVATE bcrypt advapi32)
 else ()
    include (FetchContent)
@@ -52,19 +52,25 @@ else ()
       "${BEARSSL_ROOT}/src/rsa/rsa_i31_pkcs1_vrfy.c"
       "${BEARSSL_ROOT}/src/rsa/rsa_i31_pub.c"
       "${BEARSSL_ROOT}/src/rsa/rsa_pkcs1_sig_unpad.c")
-
-   install (FILES "${BEARSSL_ROOT}/LICENSE.txt"
-      DESTINATION "${SHARE_TARGET}/licenses" RENAME bearssl.txt)
 endif ()
 
 if (BUILD_TESTS)
    flute_test (crypto_primitives "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_crypto.tiri")
-
+   flute_test (crypto_oauth2_pkce "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_oauth2_pkce.tiri")
 endif ()
 
 if (UNIT_TESTS)
+   if (WIN32)
+      set_target_properties (${MOD} PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+   endif ()
    add_executable (test_crypto_native tests/test_primitives.cpp)
    target_link_libraries (test_crypto_native PRIVATE crypto)
    add_test (NAME crypto_native COMMAND test_crypto_native)
-   set_tests_properties (crypto_native PROPERTIES LABELS crypto)
+   if (WIN32)
+      set_tests_properties (crypto_native PROPERTIES
+         ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:${MOD}>"
+         LABELS crypto)
+   else ()
+      set_tests_properties (crypto_native PROPERTIES LABELS crypto)
+   endif ()
 endif ()

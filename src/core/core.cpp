@@ -193,6 +193,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
    tlMainThread   = true;
    glMainThreadID = THREADID(GetThreadID());
    glCodeIndex    = 0; // Reset the code index so that CloseCore() will work.
+   glAsyncActionsClosed = false;
 
    if (glProcessID) fprintf(log_output(), "Core module has already been initialised (OpenCore() called more than once.)\n");
 
@@ -1412,7 +1413,7 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
          std::string name(vol, 0, v);
          std::string path(vol, v + 1, vol.size() - (v + 1));
 
-         VOLUME flags = VOLUME::HIDDEN;
+         auto flags = VOLUME::HIDDEN;
          if (auto lock = std::shared_lock{glmVolumes, 1s}) {
             if (glVolumes.contains(name)) flags = VOLUME::NIL;
          }

@@ -54,10 +54,18 @@ mixing.</li>
     <classes>
       <class>Audio</class>
       <class>AudioAnalyser</class>
+      <class>AudioChorus</class>
       <class>AudioCompressor</class>
+      <class>AudioDelay</class>
       <class>AudioEffect</class>
       <class>AudioEqualiser</class>
+      <class>AudioFlanger</class>
+      <class>AudioGate</class>
+      <class>AudioLimiter</class>
+      <class>AudioLoudness</class>
       <class>AudioReverb</class>
+      <class>AudioSaturator</class>
+      <class>AudioSplitter</class>
       <class>Sound</class>
     </classes>
   </info>

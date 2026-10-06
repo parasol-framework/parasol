@@ -271,6 +271,14 @@ class objClientSocket : public Object {
       return ERR::Okay;
    }
 
+   inline ERR getOutQueueSize(int &Value) noexcept {
+      auto field = &this->Class->Dictionary[10];
+      SetObjectContext(this, field, AC::NIL);
+      auto error = field->GetValue(this, &Value);
+      RestoreObjectContext();
+      return error;
+   }
+
 
    // Customised field setting
 
@@ -565,6 +573,8 @@ class objNetSocket : public Object {
    NSF  Flags;             // Optional flags.
    int  MsgLimit;          // Limits the size of incoming and outgoing data packets.
    int  MaxPacketSize;     // Maximum UDP packet size for sending and receiving data.
+   std::string PeerName;   // Expected TLS server identity, independent of the transport Address.
+   int  DispatchSuspended; // Temporarily suppresses socket input and output dispatch during protocol handover.
    int  MulticastTTL;      // Time-to-live (hop limit) for multicast packets.
 
    // Action stubs
@@ -652,7 +662,7 @@ class objNetSocket : public Object {
    }
 
    inline ERR getState(NTC &Value) noexcept {
-      auto field = &this->Class->Dictionary[6];
+      auto field = &this->Class->Dictionary[7];
       SetObjectContext(this, field, AC::NIL);
       auto error = field->GetValue(this, &Value);
       RestoreObjectContext();
@@ -684,13 +694,23 @@ class objNetSocket : public Object {
       return ERR::Okay;
    }
 
+   inline ERR getPeerName(std::string_view &Value) noexcept {
+      Value = this->PeerName;
+      return ERR::Okay;
+   }
+
+   inline ERR getDispatchSuspended(int &Value) noexcept {
+      Value = this->DispatchSuspended;
+      return ERR::Okay;
+   }
+
    inline ERR getMulticastTTL(int &Value) noexcept {
       Value = this->MulticastTTL;
       return ERR::Okay;
    }
 
    inline ERR getHandle(APTR &Value) noexcept {
-      auto field = &this->Class->Dictionary[5];
+      auto field = &this->Class->Dictionary[6];
       SetObjectContext(this, field, AC::NIL);
       auto error = field->GetValue(this, &Value);
       RestoreObjectContext();
@@ -698,7 +718,7 @@ class objNetSocket : public Object {
    }
 
    inline ERR getFeedback(FUNCTION * &Value) noexcept {
-      auto field = &this->Class->Dictionary[13];
+      auto field = &this->Class->Dictionary[15];
       SetObjectContext(this, field, AC::NIL);
       auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
       auto error = get_field(this, Value);
@@ -716,7 +736,7 @@ class objNetSocket : public Object {
    }
 
    inline ERR getOutgoing(FUNCTION * &Value) noexcept {
-      auto field = &this->Class->Dictionary[10];
+      auto field = &this->Class->Dictionary[12];
       SetObjectContext(this, field, AC::NIL);
       auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
       auto error = get_field(this, Value);
@@ -725,7 +745,7 @@ class objNetSocket : public Object {
    }
 
    inline ERR getOutQueueSize(int &Value) noexcept {
-      auto field = &this->Class->Dictionary[15];
+      auto field = &this->Class->Dictionary[17];
       SetObjectContext(this, field, AC::NIL);
       auto error = field->GetValue(this, &Value);
       RestoreObjectContext();
@@ -747,7 +767,7 @@ class objNetSocket : public Object {
    }
 
    inline ERR setState(const NTC Value) noexcept {
-      auto field = &this->Class->Dictionary[6];
+      auto field = &this->Class->Dictionary[7];
       return field->WriteValue(this, field, FD_INT, &Value);
    }
 
@@ -774,6 +794,16 @@ class objNetSocket : public Object {
       return ERR::Okay;
    }
 
+   inline ERR setPeerName(const std::string_view &Value) noexcept {
+      auto field = &this->Class->Dictionary[11];
+      return field->WriteValue(this, field, 0x00804300, &Value);
+   }
+
+   inline ERR setDispatchSuspended(const int Value) noexcept {
+      auto field = &this->Class->Dictionary[4];
+      return field->WriteValue(this, field, FD_INT, &Value);
+   }
+
    inline ERR setMulticastTTL(const int Value) noexcept {
       if (this->initialised()) return ERR::ImmutableField;
       this->MulticastTTL = Value;
@@ -781,12 +811,12 @@ class objNetSocket : public Object {
    }
 
    inline ERR setHandle(APTR Value) noexcept {
-      auto field = &this->Class->Dictionary[5];
+      auto field = &this->Class->Dictionary[6];
       return field->WriteValue(this, field, 0x08000508, Value);
    }
 
    inline ERR setFeedback(const FUNCTION Value) noexcept {
-      auto field = &this->Class->Dictionary[13];
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(this, field, FD_FUNCTION, &Value);
    }
 
@@ -796,7 +826,7 @@ class objNetSocket : public Object {
    }
 
    inline ERR setOutgoing(const FUNCTION Value) noexcept {
-      auto field = &this->Class->Dictionary[10];
+      auto field = &this->Class->Dictionary[12];
       return field->WriteValue(this, field, FD_FUNCTION, &Value);
    }
 
@@ -910,28 +940,28 @@ class objNetServer : public objNetSocket {
    // Customised field setting
 
    inline ERR setSSLCertificate(const std::string_view &Value) noexcept {
-      auto field = &this->Class->Dictionary[19];
+      auto field = &this->Class->Dictionary[21];
       return field->WriteValue(this, field, 0x00804500, &Value);
    }
 
    inline ERR setSSLKeyPassword(const std::string_view &Value) noexcept {
       if (this->initialised()) return ERR::ImmutableField;
-      auto field = &this->Class->Dictionary[20];
+      auto field = &this->Class->Dictionary[22];
       return field->WriteValue(this, field, 0x00804500, &Value);
    }
 
    inline ERR setBacklog(const int Value) noexcept {
-      auto field = &this->Class->Dictionary[23];
-      return field->WriteValue(this, field, FD_INT, &Value);
-   }
-
-   inline ERR setClientLimit(const int Value) noexcept {
       auto field = &this->Class->Dictionary[25];
       return field->WriteValue(this, field, FD_INT, &Value);
    }
 
+   inline ERR setClientLimit(const int Value) noexcept {
+      auto field = &this->Class->Dictionary[27];
+      return field->WriteValue(this, field, FD_INT, &Value);
+   }
+
    inline ERR setSocketLimit(const int Value) noexcept {
-      auto field = &this->Class->Dictionary[24];
+      auto field = &this->Class->Dictionary[26];
       return field->WriteValue(this, field, FD_INT, &Value);
    }
 

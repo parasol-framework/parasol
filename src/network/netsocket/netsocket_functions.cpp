@@ -127,11 +127,20 @@ static void netsocket_incoming_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
       }
    }
 
+   if (Self->DispatchSuspended) {
+      if (Self->IncomingRecursion) Self->IncomingRecursion = 2;
+      return;
+   }
+
    if (Self->Terminating) { // Set by FreeWarning()
       log.trace("Socket terminating...", Self->UID);
       if (Self->Handle.is_valid()) free_socket(Self);
       return;
    }
+
+#if !defined(DISABLE_SSL) and defined(_WIN32)
+   uint64_t records_before = Self->TLS.Handle ? ssl_decrypted_records(Self->TLS.Handle) : 0;
+#endif
 
 #ifndef DISABLE_SSL
   #ifdef _WIN32
@@ -242,13 +251,25 @@ restart:
       // of the data.
 
       Self->IncomingRecursion = 1;
+#if !defined(DISABLE_SSL) and defined(_WIN32)
+      if (Self->TLS.Handle) records_before = ssl_decrypted_records(Self->TLS.Handle);
+#endif
       goto restart;
    }
 #ifndef DISABLE_SSL
  #ifdef _WIN32
-   else if (Self->TLS.Handle and (ssl_has_decrypted_data(Self->TLS.Handle) or ssl_has_encrypted_data(Self->TLS.Handle))) {
-      // SSL has buffered data that needs processing - continue without waiting for socket notification
+   else if (Self->TLS.Handle and (ssl_has_decrypted_data(Self->TLS.Handle) or
+      (ssl_has_encrypted_data(Self->TLS.Handle) and (ssl_decrypted_records(Self->TLS.Handle) != records_before)))) {
+      // SSL has buffered data that needs processing - continue without waiting for socket notification.  Buffered
+      // encrypted data only justifies another pass if this pass decrypted a record; otherwise it is an incomplete
+      // record, and repeating the callback would spin until the rest arrives.  Network reports new data itself.
       log.trace("SSL has buffered data, continuing processing");
+      Self->IncomingRecursion = 1;
+      records_before = ssl_decrypted_records(Self->TLS.Handle);
+      goto restart;
+   }
+ #else
+   else if (Self->TLS.Handle and (SSL_pending(Self->TLS.Handle) > 0)) {
       Self->IncomingRecursion = 1;
       goto restart;
    }
@@ -273,6 +294,8 @@ static void netsocket_outgoing_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
    kt::Log log(__FUNCTION__);
 
    kt::SwitchContext context(Self); // Set context & lock
+
+   if (Self->DispatchSuspended) return;
 
    if (Self->Terminating) return;
 

@@ -117,10 +117,7 @@ if (WIN32)
          LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib"
          RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib")
       if (KOTUKU_INSTALL)
-         install (TARGETS display-windows
-            RUNTIME DESTINATION "${LIB_TARGET}"
-            ARCHIVE DESTINATION "${LIB_TARGET}"
-            LIBRARY DESTINATION "${LIB_TARGET}")
+         install (TARGETS display-windows RUNTIME DESTINATION "${LIB_TARGET}")
       endif ()
    endif ()
 
@@ -183,7 +180,8 @@ else ()
 
    target_sources (${MOD} PRIVATE ${FUNCTIONS} ${DISPLAY_DRIVERS} ${CLASSES} "linux/controller.cpp")
    if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-      target_sources (${MOD} PRIVATE "linux/desktop_entry.cpp")
+      target_sources (${MOD} PRIVATE "linux/controller_mapping.cpp" "linux/desktop_entry.cpp"
+         "linux/graphics_hardware.cpp")
    endif ()
 
    # Wayland support

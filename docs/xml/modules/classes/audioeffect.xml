@@ -16,6 +16,9 @@
 <p>AudioEffect is a support class for audio processors.  Use a derived class to perform DSP; the AudioEffect class itself passes samples through unchanged.</p>
 <p>A zero <fl>Channel</fl> applies the effect universally.  Otherwise use the complete handle returned by <class name="Audio" method="OpenChannels">Audio.OpenChannels()</class>. Application chains process their channel set before it is added to the master mix.  The global chain processes the master mix before the built-in output filter.  Lower <fl>Order</fl> values run first; ties retain attachment order.</p>
 <p>Attachment, field changes and detachment are serialised with mixing.  Freeing an effect waits for any current mix window before detaching it.  Closing its channel set or freeing its Audio target disconnects the effect; a disconnected effect must be replaced to attach it again.  Global effects are immutable after initialisation.</p>
+<header>Parallel Branches</header>
+<p>Each chain processes its effects one after another.  To divide the signal and process it along separate paths, attach a container effect such as <class name="AudioSplitter">AudioSplitter</class> to the chain.  A container hosts a set of branches, each being an ordinary chain of effects, and sums their outputs.  The container is a single node in its chain, so effects can run before and after it.</p>
+<p>An effect is attached to a branch by setting its <fl>Parent</fl> to the container and its <fl>Branch</fl> to the branch index before initialisation, or by creating it as a child of the container.  It inherits the container's <fl>Audio</fl> and <fl>Channel</fl>, and is ordered by <fl>Order</fl> within its branch.  Branch effects publish meters, accept live changes and can be bypassed in the same way as effects in a top-level chain.  Containers cannot be nested.</p>
 <header>Stop Notifications</header>
 <p>Effects such as reverbs and delays continue to produce output after their source stops.  When a voice's path has effects, being its channel set's chain followed by the global chain, the sample's <code>OnStop</code> notification and the <class name="Sound" field="OnStop">Sound.OnStop</class> callback are held until that output has drained.  They are then delivered after the device queue, as for a path without effects, so the callback marks the approximate end of everything that the voice made audible.</p>
 <header>Parameter Schema</header>
@@ -37,11 +40,11 @@
 <p>A <code>param</code> element describes one value.  Its <code>type</code> is <code>double</code>, <code>int</code>, <code>bool</code> or <code>enum</code>; enumerations list their values as <code>option</code> elements.  The <code>unit</code> attribute is omitted for unitless values.  The <code>scale</code> is <code>linear</code> or <code>log</code> and indicates how a control should map positions to values.  The <code>min</code> and <code>max</code> bounds are inclusive unless <code>min-exclusive</code> or <code>max-exclusive</code> is set.  A <code>max</code> of <code>nyquist</code> means half of the <fl>OutputRate</fl> and is always exclusive. A <code>step</code> is present only for stepped values.</p>
 <p>A <code>group</code> element describes a repeated structure, such as a list of equaliser bands, with <code>min</code> and <code>max</code> entry counts. Its entries are numbered from zero. Use <method>GetGroupCount</method> to read the number of entries, including staged insertions and removals.</p>
 <p>A <code>rule</code> element relates a parameter to a sibling in the same group, or to another top-level parameter.  If the sibling named by <code>key</code> holds one of the listed <code>values</code>, the parameter is either ignored by the processor (<code>inactive=&quot;1&quot;</code>) or limited to a lower <code>max</code>.</p>
-<p>An <code>output</code> element names data that can be read back from the processor.  A <code>curve</code> output is read with <method>GetResponse</method>.  The <code>spectrum</code> and <code>waveform</code> outputs of an <class name="AudioAnalyser">AudioAnalyser</class> are read with its own methods.  Scalar outputs are meter values, read together with <method>ReadMeters</method> or individually with <method>GetOutput</method>. Their <code>label</code>, <code>description</code>, <code>unit</code>, <code>scope</code>, <code>semantics</code> and zero-based <code>slot</code> attributes describe the value and its location in the current meter layout.  A <code>channel</code> scope identifies a value measured on one channel of the processing layout, and its <code>channel</code> attribute holds the channel identity from the <code>SPK</code> constants.  A <code>global</code> scope identifies a value that applies to every channel, such as linked gain reduction.  Keys are stable, e.g. <code>input_peak_left</code>, and only channels present in the processing layout are listed.  Sample peaks are not true-peak measurements.  Gain reduction, where offered, is non-negative attenuation in decibels.</p>
+<p>An <code>output</code> element names data that can be read back from the processor.  A <code>curve</code> output is read with <method>GetResponse</method>.  The <code>spectrum</code> and <code>waveform</code> outputs of an <class name="AudioAnalyser">AudioAnalyser</class> are read with its own methods.  Scalar outputs are meter values, read together with <method>ReadMeters</method> or individually with <method>GetOutput</method>. Their <code>label</code>, <code>description</code>, <code>unit</code>, <code>scope</code>, <code>semantics</code> and zero-based <code>slot</code> attributes describe the value and its location in the current meter layout.  A <code>channel</code> scope identifies a value measured on one channel of the processing layout, and its <code>channel</code> attribute holds the channel identity from the <code>SPK</code> constants.  A <code>global</code> scope identifies a value that applies to every channel, such as linked gain reduction.  Keys are stable, e.g. <code>input_peak_left</code>, and only channels present in the processing layout are listed.  Sample peaks are not true-peak measurements.  Gain reduction, where offered, is non-negative attenuation in decibels.  Other scalar outputs, such as the loudness and applied gain of an <class name="AudioLoudness">AudioLoudness</class>, are computed by the processor and described by their <code>unit</code> and <code>semantics</code>.</p>
 <p>The <code>slot</code> attributes describe the meter layout that was current when the schema was read.  A change of processing layout replaces the meter layout; use <method>GetMeterLayout</method> to resolve keys to slots, and repeat the resolution whenever <method>ReadMeters</method> reports a different <code>ID</code>.</p>
 <p>Parameters are addressed by key-paths: <code>key</code> for a top-level parameter, or <code>group[index].key</code> for a group member, e.g. <code>bands[2].frequency</code>.  Values are always in real units, such as hertz or decibels; they are never normalised.</p>
 <header>Staged Changes</header>
-<p>Before initialisation, <method>SetParameter</method>, <method>InsertEntry</method> and <method>RemoveEntry</method> change the effect directly and <code>Init()</code> validates the result.  After initialisation they change a working copy instead, which is applied as a single change when the client calls <code>Flush()</code>.  This allows related changes, such as switching a band's type together with its Q, without the processor ever running the state between them.  <method>GetParameter</method> reports staged values.  A flush that breaks any rule is rejected in full and the working copy is discarded.</p></description>
+<p>Before initialisation, <action>SetKey</action>, <method>InsertEntry</method> and <method>RemoveEntry</method> change the effect directly and <code>Init()</code> validates the result.  After initialisation they change a working copy instead, which is applied as a single change when the client calls <code>Flush()</code>.  This allows related changes, such as switching a band's type together with its Q, without the processor ever running the state between them.  <action>GetKey</action> reports staged values.  A flush that breaks any rule is rejected in full and the working copy is discarded.</p></description>
     <source>
       <file>class_audioeffect.cpp</file>
     </source>
@@ -50,11 +53,11 @@
   <actions>
     <action>
       <name>Flush</name>
-      <comment>Applies changes staged by SetParameter(), InsertEntry() and RemoveEntry().</comment>
+      <comment>Applies changes staged by SetKey(), InsertEntry() and RemoveEntry().</comment>
       <prototype>ERR acFlush(*Object)</prototype>
       <tiriPrototype>err = Object.acFlush()</tiriPrototype>
       <description>
-<p>After initialisation, parameter changes made through <method>SetParameter</method>, <method>InsertEntry</method> and <method>RemoveEntry</method> are held in a working copy.  Flush() validates the working copy as a whole and applies it in a single step, so the processor never runs a partially changed state.</p>
+<p>After initialisation, parameter changes made through <action>SetKey</action>, <method>InsertEntry</method> and <method>RemoveEntry</method> are held in a working copy.  Flush() validates the working copy as a whole and applies it in a single step, so the processor never runs a partially changed state.</p>
 <p>The working copy is discarded whether or not the flush succeeds.  If any value or rule is invalid, the effect is left unchanged and <code>ERR::InvalidValue</code> is returned.  Calling Flush() with no staged changes has no effect.</p>
       </description>
       <result>
@@ -62,6 +65,53 @@
         <error code="NotInitialised">The effect has been disconnected from its Audio object.</error>
         <error code="InvalidState">A staged edit would change the configured processor instance's algorithmic latency.</error>
         <error code="InvalidValue">The staged changes break a rule or range.  Nothing was applied.</error>
+        <error code="Immutable">The effect is attached to the global chain.</error>
+      </result>
+    </action>
+
+    <action>
+      <name>GetKey</name>
+      <comment>Reads a parameter value by key.</comment>
+      <prototype>ERR acGetKey(*Object, std::string_view Key, std::string &amp;Value)</prototype>
+      <tiriPrototype>err, str = Object.acGetKey(Key:str)</tiriPrototype>
+      <input>
+        <param type="STRVIEW" name="Key">The name of a key value.</param>
+        <param type="STRING" name="Value">Pointer to a buffer space large enough to hold the retrieved value.</param>
+      </input>
+      <description>
+<p>Reads the value of a parameter published in the <fl>Schema</fl>.  If changes are staged, the staged value is returned, so a client always reads back what it has set.  Values are returned as numeric strings with sufficient precision to preserve the original number.  Convert the result to a number when performing arithmetic.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="Failed">The value could not be formatted.</error>
+        <error code="Search">The key is malformed or names an unknown parameter.</error>
+        <error code="NoSupport">The effect does not publish a schema.</error>
+        <error code="OutOfRange">The group index does not refer to an existing entry.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </action>
+
+    <action>
+      <name>SetKey</name>
+      <comment>Changes a parameter value by key.</comment>
+      <prototype>ERR acSetKey(*Object, std::string_view Key, std::string_view Value)</prototype>
+      <tiriPrototype>err = Object.acSetKey(Key:str, Value:str)</tiriPrototype>
+      <input>
+        <param type="STRVIEW" name="Key">The name of the target key.</param>
+        <param type="STRVIEW" name="Value">The string value to associate with Key.</param>
+      </input>
+      <description>
+<p>Sets a parameter published in the <fl>Schema</fl>.  The value is checked against the parameter's own range immediately. Rules that relate parameters to each other are checked when the change is applied: by <code>Init()</code> before initialisation, or by <code>Flush()</code> afterwards.  After initialisation the change is staged and has no effect on the processor until <code>Flush()</code> is called.</p>
+<p>Values must be numeric strings, including enumerated values.  Leading and trailing whitespace and an optional leading plus sign are accepted.  Empty strings, trailing text and non-finite values are rejected.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="Search">The key is malformed or names an unknown parameter.</error>
+        <error code="NoSupport">The effect does not publish a schema.</error>
+        <error code="OutOfRange">The group index does not refer to an existing entry.</error>
+        <error code="NotInitialised">The effect has been disconnected from its Audio object.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="InvalidValue">The value is not a finite number or is outside the parameter's range.</error>
         <error code="Immutable">The effect is attached to the global chain.</error>
       </result>
     </action>
@@ -79,7 +129,7 @@
         <param type="INT *" name="Count">The number of entries is returned here.</param>
       </input>
       <description>
-<p>Returns the current entry count for the named group.  Staged insertions and removals are included, matching <method>GetParameter</method>.  A failed Flush() discards staged changes, so subsequent queries return the committed count. The count can be read before initialisation or after the effect has been disconnected.</p>
+<p>Returns the current entry count for the named group.  Staged insertions and removals are included, matching <action>GetKey</action>.  A failed Flush() discards staged changes, so subsequent queries return the committed count. The count can be read before initialisation or after the effect has been disconnected.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -130,27 +180,6 @@
         <error code="NoSupport">The key names a curve or another unsupported output kind.</error>
         <error code="NotInitialised">The effect is disconnected.</error>
         <error code="InvalidState">No current valid measurement is available, or the effect is idle or bypassed.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-      </result>
-    </method>
-
-    <method>
-      <name>GetParameter</name>
-      <comment>Reads a parameter value by key.</comment>
-      <prototype>ERR fx::GetParameter(OBJECTPTR Object, STRVIEW Path, DOUBLE * Value)</prototype>
-      <tiriPrototype>err, Value:num = GetParameter(Path:str)</tiriPrototype>
-      <input>
-        <param type="STRVIEW" name="Path">A parameter key such as <code>gain</code> or <code>bands[2].frequency</code>.</param>
-        <param type="DOUBLE *" name="Value">The parameter value is returned here.</param>
-      </input>
-      <description>
-<p>Reads the value of a parameter published in the <fl>Schema</fl>.  If changes are staged, the staged value is returned, so a client always reads back what it has set.  Enumerated values are returned as their numeric value.</p>
-      </description>
-      <result>
-        <error code="Okay">Operation successful.</error>
-        <error code="Search">The key is malformed or names an unknown parameter.</error>
-        <error code="NoSupport">The effect does not publish a schema.</error>
-        <error code="OutOfRange">The group index does not refer to an existing entry.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
@@ -237,7 +266,7 @@
       <description>
 <p>ReadMeters() returns the effect's latest measurement interval as a <st>MeterReading</st> structure.  All values and metadata describe the same interval, so readings from different intervals are never mixed.  Use <method>GetOutput</method> instead when only one value is needed.</p>
 <p><code>Values</code> holds one element per meter descriptor, indexed by the <code>Slot</code> of the descriptors from <method>GetMeterLayout</method>. Compare the reading's <code>ID</code> with the ID returned by <method>GetMeterLayout</method>.  If they differ, the layout may have changed since the descriptors were read, e.g. after a device reconfiguration, so call <method>GetMeterLayout</method> again before interpreting the values.</p>
-<p>Peaks are sample peaks in dBFS, floored at -120 dBFS.  Gain reduction is non-negative attenuation in dB.  The <code>Flags</code> of each element of <code>Values</code> is a combination of the following:</p>
+<p>Peaks are sample peaks in dBFS, floored at -120 dBFS.  Gain reduction is non-negative attenuation in dB.  Values that the processor computes, such as loudness, are read at the end of the interval and are flagged <code>FLOOR</code> when they are at the floor of their range.  The <code>Flags</code> of each element of <code>Values</code> is a combination of the following:</p>
 <types lookup="AMV"/>
 <p>Intervals contain <code>ceil(OutputRate / 20)</code> frames (50 ms rounded up).  Reads are non-destructive; slow readers can miss intervals.  Idle publishes a partial final interval.  Reset and reconfiguration invalidate measurements. <code>Sequence</code> increases on publication.  <code>Position</code> counts processed output frames since reset; <code>Interval</code> is the number of frames represented.  <code>ID</code> identifies configuration and path changes, including changes to the meter layout.</p>
 <p>The reading's <code>Flags</code> reports the snapshot's validity and lifecycle state.  Bypassed and disconnected snapshots do not set <code>VALID</code>, and none of their values are flagged as valid.</p>
@@ -276,31 +305,6 @@
       </result>
     </method>
 
-    <method>
-      <name>SetParameter</name>
-      <comment>Changes a parameter value by key.</comment>
-      <prototype>ERR fx::SetParameter(OBJECTPTR Object, STRVIEW Path, DOUBLE Value)</prototype>
-      <tiriPrototype>err = SetParameter(Path:str, Value:num)</tiriPrototype>
-      <input>
-        <param type="STRVIEW" name="Path">A parameter key such as <code>gain</code> or <code>bands[2].frequency</code>.</param>
-        <param type="DOUBLE" name="Value">The new value, in the parameter's unit.</param>
-      </input>
-      <description>
-<p>Sets a parameter published in the <fl>Schema</fl>.  The value is checked against the parameter's own range immediately. Rules that relate parameters to each other are checked when the change is applied: by <code>Init()</code> before initialisation, or by <code>Flush()</code> afterwards.  After initialisation the change is staged and has no effect on the processor until <code>Flush()</code> is called.</p>
-<p>Enumerated values are set with their numeric value.</p>
-      </description>
-      <result>
-        <error code="Okay">Operation successful.</error>
-        <error code="Search">The key is malformed or names an unknown parameter.</error>
-        <error code="NoSupport">The effect does not publish a schema.</error>
-        <error code="OutOfRange">The group index does not refer to an existing entry.</error>
-        <error code="NotInitialised">The effect has been disconnected from its Audio object.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="InvalidValue">The value is outside the parameter's range.</error>
-        <error code="Immutable">The effect is attached to the global chain.</error>
-      </result>
-    </method>
-
   </methods>
 
   <fields>
@@ -311,6 +315,17 @@
       <type>OBJECTID</type>
       <description>
 <p>Set before initialisation.  Explicit targets take precedence over ownership.  Ownership changes after attachment do not change the target.  Freeing the target disconnects all its effects, including effects owned by other objects.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Branch</name>
+      <comment>Zero-based index of the container branch that hosts the effect.</comment>
+      <access read="G" write="I">Get/Init</access>
+      <type>INT</type>
+      <description>
+<p>Set Branch before initialisation, together with <fl>Parent</fl>, to select the branch of a container effect such as <class name="AudioSplitter">AudioSplitter</class> that the effect is attached to.  Initialisation fails with <code>ERR::OutOfRange</code> if the branch does not exist.  The field is ignored if <fl>Parent</fl> is zero.</p>
+<p>Branch indexes change when the container's <code>branches</code> group is edited: removing an earlier branch moves the effect down by one, and inserting an earlier branch moves it up by one.  The effect stays attached to the same branch and reading this field returns its current index.  After the effect's branch is removed, the field retains the last index that the effect had.</p>
       </description>
     </field>
 
@@ -376,12 +391,24 @@
     </field>
 
     <field>
+      <name>Parent</name>
+      <comment>The container effect that hosts this effect, or zero for an effect in a top-level chain.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>OBJECTID</type>
+      <description>
+<p>Set Parent before initialisation to attach the effect to a branch of a container effect such as <class name="AudioSplitter">AudioSplitter</class>, instead of attaching it directly to an Audio chain.  The <fl>Branch</fl> field selects the branch.  Creating the effect as a child of a container sets Parent automatically.</p>
+<p>The container must be initialised.  The effect inherits the container's <fl>Audio</fl> and <fl>Channel</fl>; if either field has been set to a different value, initialisation fails with <code>ERR::InvalidValue</code>.  Like the container, the effect is immutable after initialisation if it belongs to the global chain.  A container cannot be attached to the branch of another container.</p>
+<p>Within its branch, the effect is ordered by <fl>Order</fl>.  Removing the branch from the container, freeing the container, or disconnecting the container from its Audio object or channel set disconnects the effect.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Schema</name>
       <comment>An XML description of the effect's parameters.</comment>
       <access read="G">Get</access>
       <type>STRING</type>
       <description>
-<p>The schema describes every parameter that can be read or changed with <method>GetParameter</method> and <method>SetParameter</method>, including units, ranges, defaults, repeated groups and the rules between parameters.  The format is described in the class documentation.  Scalar outputs are listed for the channels of the current processing layout, with slots from the current meter layout.  Instance-specific bounds, such as the Nyquist frequency, are resolved against <fl>OutputRate</fl>.</p>
+<p>The schema describes every parameter that can be read or changed with <action>GetKey</action> and <action>SetKey</action>, including units, ranges, defaults, repeated groups and the rules between parameters.  The format is described in the class documentation.  Scalar outputs are listed for the channels of the current processing layout, with slots from the current meter layout.  Instance-specific bounds, such as the Nyquist frequency, are resolved against <fl>OutputRate</fl>.</p>
 <p>The value is empty if the class does not publish a schema.</p>
       </description>
     </field>

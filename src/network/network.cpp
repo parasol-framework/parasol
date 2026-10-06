@@ -48,6 +48,7 @@ sockets and HTTP, please refer to the @NetSocket, @NetServer and @HTTP classes.
     #include <openssl/rsa.h>
     #include <openssl/evp.h>
     #include <openssl/x509.h>
+    #include <openssl/x509v3.h>
     #include <openssl/pem.h>
     #include <openssl/pkcs12.h>
   #endif
@@ -95,6 +96,7 @@ DEFINE_ENUM_FLAG_OPERATORS(SHS)
 struct TLSSession {
    #ifdef _WIN32
       SSL_HANDLE Handle = nullptr;
+      size_t PendingPlaintext = 0; // Application bytes represented by retained encrypted output
    #else
       SSL *Handle = nullptr;
       BIO *BIOHandle = nullptr;
@@ -985,6 +987,7 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
 
          size_t bytes_sent;
          if (auto error = ssl_write(Self->TLS.Handle, Buffer, *Length, &bytes_sent); error IS SSL_OK) {
+            Self->TLS.PendingPlaintext = bytes_sent;
             if (*Length != bytes_sent) log.traceWarning("Sent %d of %d bytes.", int(bytes_sent), int(*Length));
             *Length = bytes_sent;
             if (auto flush_error = tls_flush_output(Self); flush_error != ERR::Okay) return flush_error;
