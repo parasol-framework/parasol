@@ -18,13 +18,16 @@ idl_gen ("${MOD}.tdl" NAME ${MOD}_defs
    APPEND_IDL "module_def.c"
    ARGS "output-defs=module_def.c" "output-proto=module_def.c")
 
-set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast")
-
 if (WIN32)
    set (C_INCLUDE_PATH "")
 endif ()
 
 add_library (${MOD})
+
+if (NOT MSVC)
+   target_compile_options (${MOD} PRIVATE
+      "$<$<COMPILE_LANGUAGE:C>:-Wno-pointer-to-int-cast;-Wno-int-to-pointer-cast>")
+endif ()
 
 set_module_defaults (${MOD} "Audio")
 
@@ -74,9 +77,11 @@ if (AUDIO_TESTS)
       flute_test (audio_delay "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_audiodelay.tiri")
       flute_test (audio_chorus "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_audiochorus.tiri")
       flute_test (audio_flanger "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_audioflanger.tiri")
+      flute_test (audio_phaser "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_audiophaser.tiri")
       flute_test (audio_loudness "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_audioloudness.tiri")
       flute_test (audio_saturator "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_audiosaturator.tiri")
       flute_test (audio_splitter "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_audiosplitter.tiri")
+      flute_test (audio_stereo "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_audiostereo.tiri")
       flute_test (audio_analyser "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_audioanalyser.tiri")
       flute_test (audio_dsp_infrastructure "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_dsp_infrastructure.tiri")
       flute_test (audio_effect_schema "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_audioeffect_schema.tiri")

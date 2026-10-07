@@ -63,9 +63,11 @@ mixing.</li>
       <class>AudioGate</class>
       <class>AudioLimiter</class>
       <class>AudioLoudness</class>
+      <class>AudioPhaser</class>
       <class>AudioReverb</class>
       <class>AudioSaturator</class>
       <class>AudioSplitter</class>
+      <class>AudioStereo</class>
       <class>Sound</class>
     </classes>
   </info>

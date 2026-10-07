@@ -175,8 +175,7 @@ elseif (ANDROID)
    # GL2 Link: -ljnigraphics -lEGL -lGLESv2 -DGLES2
    # GL3 Link: -ljnigraphics -lEGL -lGLESv3 -DGLES3
 else ()
-	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-strict-overflow")
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-strict-overflow")
+   add_compile_options (-Wno-strict-overflow)
 
    target_sources (${MOD} PRIVATE ${FUNCTIONS} ${DISPLAY_DRIVERS} ${CLASSES} "linux/controller.cpp")
    if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -351,7 +350,7 @@ else ()
    endif ()
 
    if (X11_FOUND)
-      # Apt package requirements: libxrandr-dev libxxf86vm-dev
+      # Apt package requirements: libxfixes-dev libxrandr-dev libxxf86vm-dev
 
       target_compile_definitions (${MOD} PRIVATE DISPLAY_X11_DRIVER)
       add_library (display-x11)
@@ -385,6 +384,14 @@ else ()
          target_link_libraries (display-x11 PRIVATE Xrandr)
          list (APPEND X11_DRIVER_DEFINITIONS XRANDR_ENABLED)
       endif ()
+      if (X11_Xfixes_FOUND)
+         target_include_directories (display-x11 PRIVATE "${X11_Xfixes_INCLUDE_PATH}")
+         target_link_libraries (display-x11 PRIVATE "${X11_Xfixes_LIB}")
+         list (APPEND X11_DRIVER_DEFINITIONS XFIXES_ENABLED)
+         message (STATUS "XFixes found - X11 clipboard receive support enabled")
+      else ()
+         message (STATUS "XFixes not found - X11 clipboard receive support disabled")
+      endif ()
       # Applied at target level because x11_native.h guards its extension headers on these definitions, and every
       # file that includes it must agree on the layout of the structures that the header declares.
 
@@ -409,3 +416,4 @@ endif ()
 # Flute runs under headless mode - these tests have to be run manually.
 # "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wayland_window_state.tiri")
 # "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_wayland_clipboard.tiri")
+# "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_x11_clipboard.tiri")

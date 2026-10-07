@@ -9,12 +9,16 @@
 #include <X11/cursorfont.h>
 #include <X11/extensions/XShm.h>
 #include <X11/extensions/sync.h>
+#ifdef XFIXES_ENABLED
+#include <X11/extensions/Xfixes.h>
+#endif
 #ifdef XRANDR_ENABLED
 #include <X11/extensions/Xrandr.h>
 #endif
 
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <mutex>
 #include <unordered_map>
 #include <unordered_set>
@@ -32,12 +36,15 @@ struct X11WindowRecord {
    XSyncCounter FrameCounter = 0;
    int64_t FrameValue = 0;         // Current value of FrameCounter; odd while a frame is being drawn
    int64_t SyncRequest = 0;        // Value from a pending _NET_WM_SYNC_REQUEST message, or zero
+   int MinWidth = 0, MinHeight = 0; // Size limits last applied by setSizeHints(); zero means no limit
+   int MaxWidth = 0, MaxHeight = 0;
    bool SyncRequestExtended = false;
    bool FrameOpen = false;
    bool Owned = false;
    bool Root = false;
    bool Visible = false;
    bool Adopted = false; // True if the window was created inside a host window supplied by the client
+   bool Maximisable = true; // False while an aspect ratio is enforced, because window managers ignore it when maximised
 };
 
 struct X11BitmapRecord {
@@ -74,6 +81,27 @@ struct X11Driver::State {
    Atom TakeFocusAtom = 0;
    Atom SyncRequestAtom = 0;
    Atom SyncCounterAtom = 0;
+   Atom ClipboardAtom = 0;
+   Atom TargetsAtom = 0;
+   Atom UTF8StringAtom = 0;
+   Atom TextAtom = 0;
+   Atom TextPlainAtom = 0;
+   Atom TextUTF8Atom = 0;
+   Atom URIListAtom = 0;
+   Atom TimestampAtom = 0;
+   Atom IncrAtom = 0;
+   Atom MultipleAtom = 0;
+   Atom AtomPairAtom = 0;
+   Atom ClipboardPropertyAtom = 0;
+   Atom TimestampPropertyAtom = 0;
+   Window ClipboardWindow = 0;
+   Time ClipboardTimestamp = CurrentTime;
+   Time LastServerTimestamp = CurrentTime;
+   Time TransferTimestamp = CurrentTime;
+   Atom TransferTarget = None;
+   std::string ClipboardText;
+   uint64_t TransferGeneration = 0;
+   std::chrono::steady_clock::time_point TransferStarted = {};
    GC GraphicsContext = 0;
    GC ClipGraphicsContext = 0;
    int ConnectionFD = -1;
@@ -87,6 +115,11 @@ struct X11Driver::State {
    int RandREventBase = 0;
    std::atomic<int> DPI = 0;   // Logical DPI declared by Xft.dpi, or zero if the desktop does not define it
    bool FrameSync = false; // True if the XSync extension is available for compositor frame synchronisation
+   bool ClipboardTransfer = false;
+#ifdef XFIXES_ENABLED
+   bool XFixes = false;
+   int XFixesEventBase = 0;
+#endif
    bool Closing = false;
    bool TrayIcon = false;
    bool TaskBar = false;
@@ -100,6 +133,7 @@ void x11_process_events(X11Driver::State *State);
 void x11_begin_frame(X11Driver::State *State, X11WindowRecord *Window);
 void x11_end_frame(X11Driver::State *State, X11WindowRecord *Window);
 void x11_install_bitmap_routines(extBitmap *Bitmap);
+void x11_request_clipboard(X11Driver::State *State, Time Timestamp);
 
 void handle_button_press(XEvent *Event);
 void handle_button_release(XEvent *Event);
