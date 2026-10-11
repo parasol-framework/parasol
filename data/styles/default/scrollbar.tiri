@@ -7,9 +7,9 @@ return {
       State.slider.sequence = f'M1,{State.slider.viewport.height-1} L1,1 M{State.slider.viewport.width-2},1'
    end,
    background = function(State:table, Viewport:obj, Theme:table)
-      State.barBkgd = Viewport.new('VectorRectangle', {
-         width = '100%', height = '100%', fill = Theme.slider.bkgd
-      })
+      State.barBkgd = Viewport.new('VectorRectangle', table.merge({
+         width = '100%', height = '100%'
+      }, Theme.slider.bkgd))
    end,
    slider = function(State:table, Viewport:obj, Theme:table)
       button_face      = Theme.slider.fore
@@ -17,9 +17,10 @@ return {
 
       State.slider = { viewport = Viewport }
 
-      State.slider.bkRect = Viewport.new('VectorRectangle', {
-         name='SliderRect', width = '100%', height = '100%', fill = button_face, opacity = 0.5
-      })
+      State.slider.bkRect = Viewport.new('VectorRectangle', table.merge({
+         name='SliderRect', width = '100%', height = '100%'
+      }, button_face))
+      State.slider.bkRect.opacity = 0.5
 
       -- Decoration
 
@@ -29,7 +30,7 @@ return {
 
       dec = State.slider.decoration
       local stroke
-      local slider_colour = gui.strToRGB(Theme.slider.fore)
+      local slider_colour = gui.strToRGB(button_face.fill)
       if slider_colour.luminance(slider_colour) > 0.5 then
          stroke = 'rgb(0 0 0 / .5)'
       else
@@ -65,10 +66,10 @@ return {
       Viewport.mtSubscribeInput(JTYPE_CROSSING, function(Viewport, Msg)
          repeat
             if Msg.type is JET_CROSSED_IN then
-               State.slider.bkRect.fill = button_highlight
+               State.slider.bkRect.fill = button_highlight.fill
                State.slider.bkRect.opacity = 1
             elseif Msg.type is JET_CROSSED_OUT then
-               State.slider.bkRect.fill = button_face
+               State.slider.bkRect.fill = button_face.fill
                State.slider.bkRect.opacity = 0.5
             end
             Msg = Msg.next

@@ -94,8 +94,8 @@ gui.divider = function(Options:table)
 
    div_name = f'divider-bkgd-{self._vp.id}'
    if Options.style != 'none' then
-      colour = gui.strToRGB(theme.window.stroke)
-      colour = colour.interpolate(gui.strToRGB(theme.window.bkgd), 0.85)
+      colour = gui.strToRGB(theme.window.stroke.stroke)
+      colour = colour.interpolate(gui.strToRGB(theme.window.bkgd.fill), 0.85)
       colour.a = 255
 
       if self._orientation is 'h' then -- Top to bottom tiling

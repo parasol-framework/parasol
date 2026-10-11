@@ -566,7 +566,7 @@ end
 
 gui.separator = function(Viewport:obj!, Orientation:str!, Pos:any!, MarginA:any, MarginB:any):num
    local o = Orientation.sub(0, 1)
-   local options = { fill=tostring(gui.getTheme(Viewport).window.stroke) }
+   local options = { fill=tostring(gui.getTheme(Viewport).window.stroke.stroke) }
 
    if o is 'h' or o is 'H' then
       options.x       = MarginA ?? 0
@@ -813,92 +813,85 @@ gui.palettes = {
    end
 
 gui.themes = {
-   -- All colour values are fills, so gradient and pattern references are also permitted.
+   -- Themes work by utilising table.merge() to combine presentation values like fill, stroke and strokeWidth
+   -- with vector object definitions.  The majority of the time, the target will be a VectorRectangle or VectorText
+   -- object.  Gradient and pattern fills are also permitted via the use of 'url()'.
    dark = {
       palette = gui.palette.dark,
       page = {
-         bkgd              = gui.palette.dark.bkgd,     -- Background for hosting text & paper-based layouts
-         stroke            = gui.palette.dark.mid,      -- Border stroke for any area surrounding 'bkgd'
-         strokeFocus       = gui.palette.dark.contrast, -- Stroke to use when 'border' has the user's focus
-         text              = gui.palette.dark.text,     -- Default colour for text drawn over 'bkgd'
-         icon              = 'pearl',                   -- Default icon theme for icons drawn over 'bkgd'
-         iconHighlight     = 'pearl',                   -- Recommended icon theme when highlighted or selected
+         bkgd = { -- Background for hosting text & paper-based layouts
+            fill = gui.palette.dark.bkgd
+         },
+         border = { -- Standard stroke for page borders
+            stroke      = gui.palette.dark.mid,
+            strokeWidth = 2
+         }
+         borderFocus = {  -- Stroke to use when 'bkgd' has the user's focus
+            stroke      = gui.palette.dark.contrast,
+            strokeWidth = 2
+         },
+         text = { fill = gui.palette.dark.text },       -- Default colour for text drawn over 'bkgd'
          textHighlight     = gui.palette.dark.altText,  -- Colour for 'text' during user hover
          textHighlightBkgd = gui.palette.dark.contrast, -- Background fill for 'text' during user hover
          textSelect        = gui.palette.dark.altText,  -- Colour for 'text' when selected
-         textSelectBkgd    = gui.palette.dark.prime     -- Background fill for 'text' when selected
+         textSelectBkgd    = gui.palette.dark.prime,    -- Background fill for 'text' when selected
+         icon              = 'pearl',                   -- Default icon theme for icons drawn over 'bkgd'
+         iconHighlight     = 'pearl'                    -- Recommended icon theme when highlighted or selected
       },
       widget = { -- Non-input widgets only (exc. checkbox, combobox, etc.)
-         text        = gui.palette.dark.text,
-         bkgd        = gui.palette.dark.prime,
-         stroke      = 'rgb(255 255 255 / .25)',
-         strokeFocus = gui.palette.dark.contrast
+         text        = { fill = gui.palette.dark.text },
+         bkgd        = { fill = gui.palette.dark.prime },
+         stroke      = { stroke = 'rgb(255 255 255 / .25)' },
+         strokeFocus = { stroke = gui.palette.dark.contrast }
       },
       input = {
-         text        = gui.palette.dark.text,
-         bkgd        = gui.palette.dark.prime,
-         stroke      = 'rgb(255 255 255 / .25)',
-         strokeFocus = gui.palette.dark.contrast
+         bkgd  = { fill = gui.palette.dark.bkgd, stroke = 'rgb(255 255 255 / .25)' },
+         focus = { stroke = gui.palette.dark.contrast },
+         text  = { fill = gui.palette.dark.text }
       },
       window = {
-         bkgd = gui.palette.dark.neutral,
-         icon = 'pearl',
-         text = gui.palette.dark.text,
-         stroke = modifyAlpha(gui.palette.dark.text, 0.25) -- Stroking of lines/paths (not borders of widgets)
+         bkgd   = { fill = gui.palette.dark.neutral },
+         text   = { fill = gui.palette.dark.text },
+         stroke = { stroke = modifyAlpha(gui.palette.dark.text, 0.25) }, -- Stroking of lines/paths (not borders of widgets)
+         icon   = 'pearl'
       },
       button = {
-         bkgd      = gui.palette.dark.neutral,
-         highlight = gui.palette.dark.contrast
+         bkgd      = { fill = gui.palette.dark.neutral, stroke = 'rgb(255 255 255 / .25)' },
+         highlight = { fill = gui.palette.dark.contrast },
+         focus     = { stroke = gui.palette.dark.contrast },
+         text      = { fill = gui.palette.dark.text }
       },
       menubar = {
-         bkgd = {
-            fill = 'rgb(0 0 0 / .5)'
-         },
-         text = {
-            fill = gui.palette.dark.text
-         },
-         highlight = {
-            fill = gui.palette.dark.contrast
-         }
+         bkgd = { fill = 'rgb(0 0 0 / .5)' },
+         text = { fill = gui.palette.dark.text },
+         highlight = { fill = gui.palette.dark.contrast }
          -- 'menu' item reference is inserted post-construction
       },
       menu = {
-         bkgd = { -- VectorRectangle
-            fill = gui.palette.dark.bkgd
-         },
-         border = { -- VectorRectangle
-            stroke = gui.palette.dark.inverse,
-            opacity = 0.5
-         },
-         highlight = { -- VectorRectangle
-            fill = gui.palette.dark.contrast
-         },
-         text = { -- VectorText
-            fill = gui.palette.dark.text
-         },
-         icon = 'pearl'
+         bkgd      = { fill = gui.palette.dark.bkgd }, -- VectorRectangle
+         border    = { stroke = gui.palette.dark.inverse, opacity = 0.5 }, -- VectorRectangle
+         highlight = { fill = gui.palette.dark.contrast }, -- VectorRectangle
+         text      = { fill = gui.palette.dark.text }, -- VectorText
+         icon      = 'pearl'
       },
       dropdown = {
-         bkgd          = gui.palette.dark.bkgd,
-         stroke        = gui.palette.dark.inverse,
+         bkgd          = { fill = gui.palette.dark.bkgd },
+         border        = { stroke = gui.palette.dark.inverse },
+         highlight     = { fill = gui.palette.dark.contrast },
+         text          = { fill = gui.palette.dark.text },
+         textHighlight = { fill = gui.palette.dark.altText },
          icon          = 'pearl',
-         iconHighlight = 'pearl',
-         text          = gui.palette.dark.text,
-         textHighlight = gui.palette.dark.altText
+         iconHighlight = 'pearl'
       },
       slider = {
-         bkgd            = gui.palette.dark.mid,
-         fore            = gui.palette.dark.inverse,
-         foreStroke      = 'none',
-         foreHighlight   = gui.palette.dark.contrast,
-         foreStrokeFocus = gui.palette.dark.contrast,
-         highlight       = 'none',
-         stroke          = 'none',
-         strokeFocus     = gui.palette.dark.contrast
+         bkgd          = { fill = gui.palette.dark.mid, stroke = 'none' },
+         fore          = { fill = gui.palette.dark.inverse, stroke = 'none', opacity = 0.75 },
+         foreHighlight = { fill = gui.palette.dark.contrast, opacity = 1 },
+         foreFocus     = { stroke = gui.palette.dark.contrast }
       },
       toolbar = {
-         bkgd          = gui.palette.dark.bkgd,
-         groupStroke   = 'rgb(255 255 255 / .25)', -- Match input stroke
+         bkgd          = { fill = gui.palette.dark.bkgd },
+         groupBorder   = { stroke = 'rgb(255 255 255 / .25)' },
          icon          = 'pearl',
          iconHighlight = 'pearl'
       },
@@ -909,88 +902,79 @@ gui.themes = {
    light = {
       palette = gui.palette.light,
       page = {
-         bkgd              = gui.palette.light.bkgd,
-         stroke            = gui.palette.light.mid,
-         strokeFocus       = gui.palette.light.contrast,
-         icon              = 'carbon',
-         iconHighlight     = 'pearl',
-         text              = gui.palette.light.text,
+         bkgd = {
+            fill = gui.palette.light.bkgd
+         },
+         border = {
+            stroke      = gui.palette.light.mid,
+            strokeWidth = 2
+         },
+         borderFocus = {
+            stroke = gui.palette.light.contrast,
+            strokeWidth = 2
+         },
+         text = { fill = gui.palette.light.text },
          textHighlight     = gui.palette.light.altText,
          textHighlightBkgd = gui.palette.light.contrast,
          textSelect        = gui.palette.light.altText,
-         textSelectBkgd    = gui.palette.light.prime
+         textSelectBkgd    = gui.palette.light.prime,
+         icon              = 'carbon',
+         iconHighlight     = 'pearl'
       },
       widget = {
-         text        = gui.palette.light.altText,
-         bkgd        = gui.palette.light.prime,
-         stroke      = 'rgb(0 0 0 / .35)',
-         strokeFocus = gui.palette.light.contrast
+         text        = { fill = gui.palette.light.altText },
+         bkgd        = { fill = gui.palette.light.prime },
+         stroke      = { stroke = 'rgb(0 0 0 / .35)' },
+         strokeFocus = { stroke = gui.palette.light.contrast }
       },
       input = {
-         text        = gui.palette.light.altText,
-         bkgd        = gui.palette.light.prime,
-         stroke      = 'rgb(0 0 0 / .35)',
-         strokeFocus = gui.palette.light.contrast
+         bkgd  = { fill = gui.palette.light.bkgd, stroke = 'rgb(0 0 0 / .35)' },
+         focus = { stroke = gui.palette.light.contrast },
+         text  = { fill = gui.palette.light.text }
       },
       window = {
-         bkgd   = gui.palette.light.neutral,
-         icon   = 'carbon',
-         text   = gui.palette.light.text,
-         stroke = modifyAlpha(gui.palette.light.inverse, 0.5)
+         bkgd   = { fill = gui.palette.light.neutral },
+         text   = { fill = gui.palette.light.text },
+         stroke = { stroke = modifyAlpha(gui.palette.light.inverse, 0.5) },
+         icon   = 'carbon'
       },
       button = {
-         bkgd = gui.palette.light.inverse,
-         highlight = gui.palette.light.contrast
+         bkgd      = { fill = gui.palette.light.inverse, stroke = 'rgb(0 0 0 / .35)' },
+         highlight = { fill = gui.palette.light.contrast },
+         focus     = { stroke = gui.palette.light.contrast },
+         text      = { fill = gui.palette.light.altText }
       },
       menubar = {
-         bkgd = {
-            fill = gui.palette.light.inverse,
-         },
-         text = {
-            fill = gui.palette.light.altText,
-         },
-         highlight = {
-            fill = gui.palette.light.contrast
-         }
+         bkgd      = { fill = gui.palette.light.inverse, },
+         text      = { fill = gui.palette.light.altText },
+         highlight = { fill = gui.palette.light.contrast }
          -- 'menu' item reference is inserted post-construction
       },
       menu = {
-         bkgd = {
-            fill = gui.palette.light.inverse
-         },
-         border = {
-            stroke = gui.palette.light.neutral,
-            opacity = 0.5
-         },
-         highlight = {
-            fill = gui.palette.light.contrast
-         },
-         text = {
-            fill = gui.palette.light.altText
-         },
+         bkgd      = { fill = gui.palette.light.inverse },
+         border    = { stroke  = gui.palette.light.neutral, opacity = 0.5 },
+         highlight = { fill = gui.palette.light.contrast },
+         text      = { fill = gui.palette.light.altText },
          icon      = 'pearl'
       },
       dropdown = {
-         bkgd   = gui.palette.light.bkgd,
-         stroke = gui.palette.light.inverse,
-         icon   = 'carbon',
-         iconHighlight = 'pearl',
-         text          = gui.palette.light.text,
-         textHighlight = gui.palette.light.altText
+         bkgd          = { fill = gui.palette.light.bkgd },
+         border        = { stroke = gui.palette.light.inverse },
+         highlight     = { fill = gui.palette.light.contrast },
+         text          = { fill = gui.palette.light.text },
+         textHighlight = { fill = gui.palette.light.altText },
+         icon          = 'carbon',
+         iconHighlight = 'pearl'
       },
       slider = {
-         bkgd            = gui.palette.light.mid,
-         fore            = gui.palette.light.inverse,
-         foreStroke      = 'none',
-         foreHighlight   = gui.palette.light.contrast,
-         foreStrokeFocus = gui.palette.light.contrast,
-         highlight       = 'none',
-         stroke          = 'none',
-         strokeFocus     = gui.palette.light.contrast
+         bkgd          = { fill = gui.palette.light.mid, stroke = 'none' },
+         fore          = { fill = gui.palette.light.inverse, stroke = 'none', opacity = 0.75 },
+         foreHighlight = { fill = gui.palette.light.contrast, opacity = 1 },
+         foreFocus     = { stroke = gui.palette.light.contrast }
       },
       toolbar = {
-         bkgd          = gui.palette.light.bkgd,
-         groupStroke   = gui.palette.light.inverse,
+         bkgd          = { fill = gui.palette.light.bkgd },
+         groupBorder   = { stroke = gui.palette.light.inverse },
          icon          = 'carbon',
          iconHighlight = 'pearl'
       },

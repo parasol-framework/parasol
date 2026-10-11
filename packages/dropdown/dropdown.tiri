@@ -20,7 +20,8 @@ ITEM_SPACING <const> = 1.2
 SCROLL_WIDTH <const> = 12
 
 gui.dropdown = function(Options)
-   local theme = Options.theme ?? gui.getTheme()
+   local theme = Options.relative ? gui.getTheme(Options.relative) : gui.getTheme()
+   local dropdown = table.merge(theme.dropdown, Options.theme)
 
    self = entity { -- Public variables
       surface  = nil,
@@ -162,7 +163,7 @@ gui.dropdown = function(Options)
       end
 
       if &hItem then -- Redraw the previously highlighted item
-         &hItem.text.fill = theme.dropdown.text
+         &hItem.text.fill = dropdown.text.fill
          if &hItem.iconView then
             &hItem.iconView.fill = &hItem.iconFill
          end
@@ -173,7 +174,7 @@ gui.dropdown = function(Options)
       &hItem = Item
 
       if Item then -- Draw the newly highlighted area
-         Item.text.fill = theme.dropdown.textHighlight
+         Item.text.fill = dropdown.textHighlight.fill
          if Item.iconView then
             Item.iconView.fill = Item.iconHighlightFill
          end
@@ -288,24 +289,22 @@ gui.dropdown = function(Options)
       -- Offsets are used for the background and border because they are relative to the view box, whereas a
       -- resizeEvent reports the scaled dimensions.
 
-      &viewport.new('VectorRectangle', { -- Background
-         fill = theme.dropdown.bkgd,
+      &viewport.new('VectorRectangle', table.merge({ -- Background
          x = 1.5, y = 1.5, xOffset = 1.5, yOffset = 1.5, roundX = 3, roundY = 3
-      })
+      }, dropdown.bkgd))
 
       -- Items are placed in a page that scrolls within a clipped frame if there are more than lineLimit of them.
 
       &frame = &viewport.new('VectorViewport', { x=0, y=0, xOffset=0, yOffset=0, overflow=VOF_HIDDEN })
       &page = &frame.new('VectorViewport', { x=0, y=0, width='100%', height=1 })
 
-      &highlight = &page.new('VectorRectangle', {
-         x = 2, y = 0, xOffset = 2, height = ITEM_HEIGHT, fill = theme.menu.highlight.fill, visibility = 'hidden'
-      })
+      &highlight = &page.new('VectorRectangle', table.merge({
+         x = 2, y = 0, xOffset = 2, height = ITEM_HEIGHT, visibility = 'hidden'
+      }, dropdown.highlight))
 
-      &viewport.new('VectorRectangle', { -- Menu border
-         stroke = theme.dropdown.stroke,
+      &viewport.new('VectorRectangle', table.merge({ -- Menu border
          strokeWidth = 1.5, x = 1.5, y = 1.5, xOffset = 1.5, yOffset = 1.5, roundX = 3, roundY = 3
-      })
+      }, dropdown.border))
 
       -- Input coordinates are relative to the page, so they already account for scaling and scrolling.
 
@@ -352,15 +351,14 @@ gui.dropdown = function(Options)
       for item in values(Options.config) do
          if item['item'] then
             mi = { y=y, config=item }
-            vText = &page.new('VectorText', {
+            vText = &page.new('VectorText', table.merge({
                x        = TEXT_X,
                face     = gui.fonts.menu.face,
                fontSize = string.format('%.2fpt', gui.fonts.menu.size),
                fontStyle = gui.fonts.menu.style,
-               fill     = theme.page.text,
                align    = 'left',
                string   = item['item']
-            })
+            }, dropdown.text))
 
             bw = [___*_]vText.mtGetBoundary(0)
 
@@ -371,11 +369,11 @@ gui.dropdown = function(Options)
 
             if showIcons and item.icon then
                try
-                  info = gui.createIcon(&viewport.scene, item.icon, ICON_SIZE, theme.dropdown.icon)
+                  info = gui.createIcon(&viewport.scene, item.icon, ICON_SIZE, dropdown.icon)
                   mi.iconFill = info.fill
 
-                  if theme.dropdown.iconHighlight and theme.dropdown.iconHighlight != theme.dropdown.icon then
-                     local info = gui.createIcon(&viewport.scene, item.icon, ICON_SIZE, theme.dropdown.iconHighlight)
+                  if dropdown.iconHighlight and dropdown.iconHighlight != dropdown.icon then
+                     local info = gui.createIcon(&viewport.scene, item.icon, ICON_SIZE, dropdown.iconHighlight)
                      mi.iconHighlightFill = info.fill
                   else
                      mi.iconHighlightFill = mi.iconFill

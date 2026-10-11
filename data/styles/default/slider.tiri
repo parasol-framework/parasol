@@ -4,44 +4,40 @@
 
 return {
    background = function(Slider:table, Viewport:obj)
-      slider_bkgd = Slider.prvTheme.slider.bkgd
-      stroke = Slider.prvTheme.slider.stroke
+      bar_theme = Slider.prvTheme.slider.bkgd
 
       if Slider.orientation is 'V' then
-         Slider.prvBarBkgd = Viewport.new('VectorRectangle', {
+         Slider.prvBarBkgd = Viewport.new('VectorRectangle', table.merge({
             x = '0', y = 0, width = '100%', height = '100%',
-            fill = slider_bkgd, stroke = stroke,
             roundX = 4, roundY = 4
-         })
+         }, bar_theme))
       else
-         Slider.prvBarBkgd = Viewport.new('VectorRectangle', {
+         Slider.prvBarBkgd = Viewport.new('VectorRectangle', table.merge({
             x = 0, y = '0', width = '100%', height = '100%',
-            fill = slider_bkgd, stroke = stroke,
             roundX = 4, roundY = 4
-         })
+         }, bar_theme))
       end
    end,
    slider = function(Slider:table, Viewport:obj)
-      button_face      = Slider.prvTheme.slider.fore
+      button_face = Slider.prvTheme.slider.fore
       button_highlight = Slider.prvTheme.slider.foreHighlight
       gap    = gui.sizing.widget.strokeWidth
-      stroke = Slider.prvTheme.slider.foreStroke
 
-      Slider.button = Viewport.new('VectorRectangle', {
+      Slider.button = Viewport.new('VectorRectangle', table.merge({
          x = gap, y = gap, roundX = 4, roundY = 4,
          width = Viewport.width-(gap*2), height = Viewport.height-(gap*2),
-         fill = button_face, stroke = stroke, strokeWidth = gui.sizing.widget.strokeWidth, opacity = 0.75
-      })
+         strokeWidth = gui.sizing.widget.strokeWidth
+      }, button_face))
 
       Viewport.mtSubscribeFeedback(FM_HAS_FOCUS | FM_CHILD_HAS_FOCUS | FM_LOST_FOCUS, function(Viewport, Event)
          if Event is FM_LOST_FOCUS then
-            Slider.button.stroke = stroke
+            Slider.button.stroke = button_face.stroke
             Slider.events?.lostFocus(Slider)
          else
             if Slider.disabled then
-               Slider.button.stroke = stroke
+               Slider.button.stroke = button_face.stroke
             else
-               Slider.button.stroke = Slider.prvTheme.slider.foreStrokeFocus
+               Slider.button.stroke = Slider.prvTheme.slider.foreFocus.stroke
                Slider.events?.focus(Slider)
             end
          end
@@ -52,11 +48,11 @@ return {
       Viewport.mtSubscribeInput(JTYPE_CROSSING, function(Viewport, Msg)
          repeat
             if Msg.type is JET_CROSSED_IN then
-               Slider.button.fill = button_highlight
-               Slider.button.opacity = 1
+               Slider.button.fill = button_highlight.fill
+               Slider.button.opacity = button_highlight.opacity
             elseif Msg.type is JET_CROSSED_OUT then
-               Slider.button.fill = button_face
-               Slider.button.opacity = 0.75
+               Slider.button.fill = button_face.fill
+               Slider.button.opacity = button_face.opacity
             end
             Msg = Msg.next
          until not Msg

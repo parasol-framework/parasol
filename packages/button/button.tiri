@@ -14,14 +14,14 @@ ICON_SIZE <const> = HEIGHT * 0.56
 GAP       <const> = HEIGHT * 0.35
 
 gui.button = function(Options)
-   self = { -- Public variables
+   self = entity { -- Public variables
       events         = Options.events ?? { },
       parentViewport = Options.target,
       text           = nil, -- A VectorText that represents the string
       viewport       = nil, -- The button's primary viewport
    }
 
-   theme = gui.getTheme(self.parentViewport)
+   theme = table.merge(gui.getTheme(self.parentViewport).button, Options.theme)
 
    -- Change the active state of the button to disabled or enabled
 
@@ -29,7 +29,6 @@ gui.button = function(Options)
       self.disabled = true
       self.viewport.acDisable()
       self.text?.opacity = 0.5
-      self.bkgd.fill = theme.button.bkgd
       self.events?.disable(self)
       self.viewport.acDraw()
    end
@@ -38,7 +37,6 @@ gui.button = function(Options)
       self.disabled = false
       self.viewport.acEnable()
       self.text?.opacity = 1.0
-      self.bkgd.fill = theme.button.bkgd
       self.events?.enable(self)
       self.viewport.acDraw()
    end
@@ -46,6 +44,7 @@ gui.button = function(Options)
    -- Main entry point --
 
    assert(Options.target, 'A target viewport is required.')
+
    if Options.feedback then -- Backwards compatibility
       print('Replace the use of button feedback with the event equivalent.')
       self.events.activate = Options.feedback
@@ -72,15 +71,13 @@ gui.button = function(Options)
 
    self.viewport = self.parentViewport.new('VectorViewport', vps)
 
-   self.bkgd = self.viewport.new('VectorRectangle', {
-      fill   = theme.button.bkgd,
+   self.bkgd = self.viewport.new('VectorRectangle', table.merge({
       x      = gui.sizing.widget.strokeWidth * 0.5,
       y      = gui.sizing.widget.strokeWidth * 0.5,
       width  = self.viewport.width - gui.sizing.widget.strokeWidth,
       height = HEIGHT - gui.sizing.widget.strokeWidth,
       roundX = gui.sizing.widget.strokeWidth * 2,
       roundY = gui.sizing.widget.strokeWidth * 2,
-      stroke = theme.widget.stroke,
       strokeWidth = gui.sizing.widget.strokeWidth,
       resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
          if Vector.width != Width then
@@ -91,11 +88,11 @@ gui.button = function(Options)
             Vector.height = Height - gui.sizing.widget.strokeWidth
          end
       end
-   })
+   }, theme.bkgd))
 
    if Options.icon then
       try
-         icon = gui.createIcon(self.viewport.scene, Options.icon, ICON_SIZE, gui.rgbToIconTheme(theme.widget.text))
+         icon = gui.createIcon(self.viewport.scene, Options.icon, ICON_SIZE, gui.rgbToIconTheme(theme.text.fill))
 
          if icon then
             self.iconRender = self.viewport.new('VectorViewport', {
@@ -118,16 +115,15 @@ gui.button = function(Options)
    })
 
    if Options.text then
-      self.text = self._textClip.new('VectorText', {
+      self.text = self._textClip.new('VectorText', table.merge({
          x         = GAP + label_offset,
          y         = FONT_HEIGHT + math.floor((HEIGHT - FONT_HEIGHT - (gui.sizing.widget.strokeWidth * 2)) * 0.5),
          face      = gui.fonts.button.face,
          fontSize  = string.format('%.2fpt', gui.fonts.button.size),
          fontStyle = gui.fonts.button.style,
-         fill      = theme.widget.text,
          string    = Options.text,
          lineLimit = 1
-      })
+      }, theme.text))
    end
 
    if calc_width then
@@ -141,13 +137,13 @@ gui.button = function(Options)
 
    self.viewport.mtSubscribeFeedback(FM_HAS_FOCUS|FM_CHILD_HAS_FOCUS|FM_LOST_FOCUS, function(Viewport:obj!, Event)
       if Event is FM_LOST_FOCUS then
-         self.bkgd.stroke = theme.widget.stroke
+         self.bkgd.stroke = theme.bkgd.stroke
          self.events?.lostFocus(self)
       else
          if self.disabled then
-            self.bkgd.stroke = theme.widget.stroke
+            self.bkgd.stroke = theme.bkgd.stroke
          else
-            self.bkgd.stroke = theme.widget.strokeFocus
+            self.bkgd.stroke = theme.focus.stroke
             self.events?.focus(self)
          end
       end
@@ -166,10 +162,10 @@ gui.button = function(Options)
    self.viewport.mtSubscribeInput(JTYPE_CROSSING|JTYPE_BUTTON|JTYPE_REPEATED, function(Viewport:obj!, Msg)
       repeat
          if Msg.type is JET_CROSSED_IN then
-            self.bkgd.fill = theme.button.highlight
+            self.bkgd.fill = theme.highlight.fill
             self.events?.cursorEntry(self)
          elseif Msg.type is JET_CROSSED_OUT then
-            self.bkgd.fill = theme.button.bkgd
+            self.bkgd.fill = theme.bkgd.fill
             self.events?.cursorExit(self)
          elseif Msg.type is JET_LMB then
             if Msg.value > 0 then

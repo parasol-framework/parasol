@@ -18,11 +18,11 @@ end
 -- Keep the widget range above zero: the slider's default-value handling treats zero as an unset value.
 
 function addSlider(Label:str, Value:num, Min:num, Max:num, Apply:func)
-   caption = glViewport.new('VectorText', {
+   caption = glViewport.new('VectorText', table.merge({
       x = 16, y = glY + 14,
-      face = gui.fonts.label.face, fontSize = '10pt', fill = gui.getTheme(glViewport).window.text,
+      face = gui.fonts.label.face, fontSize = '10pt',
       string = string.format('%s: %.2f', Label, Value)
-   })
+   }, gui.getTheme(glViewport).window.text))
 
    gui.slider({
       target = glViewport, x = 16, y = glY + 20, size = 270,

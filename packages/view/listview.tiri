@@ -74,7 +74,7 @@ gui.listView = function(Options:table!):table
             Item._vectors.iconImage.fill = f'url(#{View.hIcons[Item.icon]})'
          end
       else
-         setListTextFill(Item, View.theme.page.text)
+         setListTextFill(Item, View.theme.page.text.fill)
          Item._vectors.highlight.visibility = VIS_HIDDEN
          if View.icons[Item.icon] then
             Item._vectors.iconImage.fill = f'url(#{Item.icon})'
@@ -195,7 +195,7 @@ gui.listView = function(Options:table!):table
             elseif item._highlighted then
                item._vectors.text.fill = View.theme.page.textHighlight
             else
-               item._vectors.text.fill = item.colour ?? View.theme.page.text
+               item._vectors.text.fill = item.colour ?? View.theme.page.text.fill
             end
          end
 

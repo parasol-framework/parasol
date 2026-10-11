@@ -24,7 +24,7 @@ function counter()
 end
 
 gui.toolbar = function(Options)
-   local theme
+   local theme, toolbar_theme
 
    self = { -- Public variables
       host           = nil,
@@ -207,17 +207,16 @@ gui.toolbar = function(Options)
                   item.width = self._iconSize + (self._cellMargin * 2)
                end
 
-               item.bkgd = self.vg.new('VectorRectangle', {
-                  fill = theme.toolbar.bkgd,
+               item.bkgd = self.vg.new('VectorRectangle', table.merge({
                   name = 'groupbkgd', x = x, y = y, roundX = self._round, roundY = self._round, width = 1, height = 1
-               })
+               }, toolbar_theme.bkgd))
 
                item.bkgd.acMoveToBack()
 
-               item.border = self.vg.new('VectorRectangle', {
-                  name = 'grouprect', stroke = theme.toolbar.groupStroke, strokeWidth = gui.sizing.widget.strokeWidth,
+               item.border = self.vg.new('VectorRectangle', table.merge({
+                  name = 'grouprect', strokeWidth = gui.sizing.widget.strokeWidth,
                   x = x, y = y, roundX = self._round, roundY = self._round, width = 1, height = 1
-               })
+               }, toolbar_theme.groupBorder))
 
                if self._groupClip then
                   item.clip = self._groupClip.viewport.new('VectorRectangle', {
@@ -612,13 +611,14 @@ gui.toolbar = function(Options)
    assert(Options.target, 'A target viewport is required.')
 
    theme = gui.getTheme(Options.target)
+   toolbar_theme = table.merge(theme.toolbar, Options.theme)
 
    self._iconSize      = Options.iconSize      ?? gui.interface.iconSize
-   self._iconTheme     = Options.iconTheme     ?? theme.toolbar.icon
-   self._iconHighlight = Options.iconHighlight ?? theme.toolbar.iconHighlight
-   self._hoverFill     = Options.hoverFill     ?? theme.button.highlight
+   self._iconTheme     = Options.iconTheme     ?? toolbar_theme.icon
+   self._iconHighlight = Options.iconHighlight ?? toolbar_theme.iconHighlight
+   self._hoverFill     = Options.hoverFill     ?? theme.button.highlight.fill
    self._selectFill    = Options.selectFill    ?? theme.palette.prime
-   self._groupBorder   = Options.groupBorder   ?? theme.window.stroke
+   self._groupBorder   = Options.groupBorder   ?? theme.window.stroke.stroke
 
    if Options.groupMargin then
       self._groupMargin = Options.groupMargin
@@ -708,7 +708,7 @@ gui.toolbar = function(Options)
    self.viewport.mtSubscribeInput(JTYPE_BUTTON | JTYPE_MOVEMENT | JTYPE_CROSSING, inputFeedback)
 
    kbfill = 'rgba(0,0,0,.5)'
-   if Options.theme != 'light' then
+   if theme != gui.themes.light then
       kbfill = 'rgba(255,255,255,.78)'
    end
 

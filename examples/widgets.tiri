@@ -240,10 +240,10 @@ end
       end
    end)
 
-   text = viewport.new('vectortext', {
+   text = viewport.new('vectortext', table.merge({
       x=win.margins.left, y=y, string='Kōtuku interfaces are drawn using real-time vector graphics',
-      face='Noto Sans', fontSize=20, fill=win.theme.window.text, textFlags='!editable'
-   })
+      face='Noto Sans', fontSize=20, textFlags='!editable'
+   }, win.theme.window.text))
    font_size = tonumber(text.fontSize)
    text.y += font_size
    y += font_size + 14
