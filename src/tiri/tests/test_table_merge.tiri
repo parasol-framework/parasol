@@ -351,6 +351,52 @@ end
    assert(rawequal(sequence[0], sequence[1]) and not rawequal(sequence[0], child))
 end
 
+@Test function DeepOneSidedBackReferences()
+   local source = { value=7 }
+   source.self = source
+   source.child = { parent=source }
+   source.alias = source.child
+   local defaults = table.merge(source, {}, nil, true)
+   assert(rawequal(defaults.self, defaults))
+   for option in values({ true, false }) do
+      for other in values({ {}, { extra=8 } }) do
+         for result in values({ table.merge(source, other, option, true),
+            table.merge(other, source, option, true) }) do
+            assert(rawequal(result.self, result), 'A one-sided self-reference must reuse the merged root')
+            assert(rawequal(result.child.parent, result), 'A nested back-reference must reuse the merged root')
+            assert(rawequal(result.child, result.alias), 'Shared children must remain shared')
+            assert(not rawequal(result.child, source.child) and result.value is 7)
+         end
+      end
+   end
+   assert(rawequal(source.self, source) and rawequal(source.child.parent, source))
+
+   local left = { child={ value=1 } }
+   local right = { child={ extra=2 } }
+   left.child.self = left.child
+   right.child.parent = right
+   local result = table.merge(left, right, nil, true)
+   assert(rawequal(result.child.self, result.child), 'Nested merged pairs must preserve one-sided cycles')
+   assert(rawequal(result.child.parent, result), 'Back-references may target either input root')
+   assert(result.child.value is 1 and result.child.extra is 2)
+
+   local shared = { value=3 }
+   shared.self = shared
+   local separate = table.merge({ a=shared, b=shared }, { a={ extra=4 }, b={ extra=5 } }, nil, true)
+   assert(not rawequal(separate.a, separate.b), 'Different source pairs must retain distinct results')
+   assert(rawequal(separate.a.self, separate.a) and rawequal(separate.b.self, separate.b))
+   assert(separate.a.extra is 4 and separate.b.extra is 5)
+
+   local sequence = {}
+   sequence[0] = sequence
+   for copy in values({ table.merge(sequence, {}, nil, true), table.merge({}, sequence, nil, true) }) do
+      assert(rawequal(copy[0], copy), 'Merging a sequence with an empty input must preserve its cycle')
+   end
+   local combined = table.merge(sequence, sequence, nil, true)
+   assert(rawequal(combined[0], combined) and rawequal(combined[1], combined),
+      'Concatenated sequence entries must preserve root back-references')
+end
+
 @Test function DeepDepthAndCollection()
    local head = {}
    local cursor = head
