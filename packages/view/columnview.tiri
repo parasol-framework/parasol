@@ -181,7 +181,7 @@ function arrangeColumns(View:table!)
       col.bannerVP.width = col.px_width
 
       if not lEnableTextGradients then
-         col.fillItem = View.theme.page.text
+         col.fillItem = View.theme.page.text.fill
          col.fillItemSelect = View.theme.page.textHighlight
       elseif not col.vecGradient then
          defName = 'colGradient' .. glCounter
@@ -368,9 +368,9 @@ gui.columnView = function(Options):table
          name = 'banner_vp', x = 0, y = 0, width = '100%', height = BANNER_HEIGHT, overflow = VOF_HIDDEN
       })
 
-      View.banner.lines = View.banner.viewport.new('VectorPath', {
-         name = 'banner_lines', stroke = View.theme.window.stroke, strokeWidth = 1
-      })
+      View.banner.lines = View.banner.viewport.new('VectorPath', table.merge({
+         name = 'banner_lines', strokeWidth = 1
+      }, View.theme.window.stroke))
 
       View.banner.viewport.mtSubscribeInput(JTYPE_MOVEMENT|JTYPE_BUTTON, function(Viewport, Events)
          ev = Events
@@ -417,15 +417,14 @@ gui.columnView = function(Options):table
 
             -- Column title
 
-            col.vecTitle = col.bannerVP.new('VectorText', {
+            col.vecTitle = col.bannerVP.new('VectorText', table.merge({
                name      = 'col_title',
                face      = View.fontFace,
                fontSize  = string.format('%.2fpt', View.fontSize),
                fontStyle = View.fontStyle,
-               fill      = View.theme.window.text,
                align     = col.align ?? 'left',
                y         = math.round((BANNER_HEIGHT + FONT_HEIGHT) * 0.5)
-            })
+            }, View.theme.window.text))
 
             -- Support for resize management
 

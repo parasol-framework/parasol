@@ -1578,6 +1578,12 @@ LJ_NORET LJ_NOINLINE static void err_argmsg(lua_State *L, int narg, CSTRING msg)
 
    CSTRING fname = "?";
    CSTRING ftype = lj_debug_funcname(L, L->base - 1, &fname);
+   auto function = frame_func(L->base - 1);
+   if (isffunc(function)) {
+      // Built-in identities remain available when caller bytecode or stripped debug data cannot recover a name.
+      auto builtin_name = builtin_callable_name(BuiltinCallableID(function->c.ffid));
+      if (builtin_name) fname = builtin_name;
+   }
    err_argtop(L);  // Covers direct callers whose message does not require stack allocation.
 
    if (narg < 0 and narg > LUA_REGISTRYINDEX) narg = (int)(L->top - L->base) + narg + 1;

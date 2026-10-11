@@ -63,7 +63,7 @@ end
       x      = cmbColours.viewport.x + cmbColours.viewport.width + 10,
       y      = 10,
       events = {
-         activate = function(Widget, Value)
+         activate = function(Value)
             config.l = math.floor(Value + 0.5)
             waveFunction.l = config.l
             waveFunction.n = config.n
@@ -83,7 +83,7 @@ end
       x      = slL.viewport.x + slL.viewport.width + 10,
       y      = 10,
       events = {
-         activate = function(Widget, Value)
+         activate = function(Value)
             config.m = math.floor(Value + 0.5)
             waveFunction.l = config.l
             waveFunction.n = config.n
@@ -103,7 +103,7 @@ end
       x      = slM.viewport.x + slM.viewport.width + 10,
       y      = 10,
       events = {
-         activate = function(Widget, Value)
+         activate = function(Value)
             config.n = math.floor(Value + 0.5)
             waveFunction.l = config.l
             waveFunction.n = config.n
@@ -123,7 +123,7 @@ end
       x      = slN.viewport.x + slN.viewport.width + 10,
       y      = 10,
       events = {
-         activate = function(Widget, Value)
+         activate = function(Value)
             config.scale = Value
             waveFunction.l = config.l
             waveFunction.n = config.n

@@ -1992,19 +1992,16 @@ LexState::BufferedToken LexState::scan_buffered_token()
 void LexState::ensure_lookahead(size_t count)
 {
    while (this->available_lookahead() < count) {
-      size_t buffered_count = this->buffered_tokens.size();
+      // Scan expansions in an empty buffer so they cannot consume tokens already gathered by lookahead.
+      // The returned token precedes any additional tokens produced by f-strings or '<identifier'.
+
+      std::deque<BufferedToken> pending;
+      pending.swap(this->buffered_tokens);
       BufferedToken buffered = this->scan_buffered_token();
-
-      // Scanning '<identifier' temporarily pushes the identifier to the front so direct token consumption can return
-      // '<' first.  Preserve tokens already gathered by lookahead and normalise this expansion to '<', identifier.
-
-      if (buffered.token IS '<' and this->buffered_tokens.size() IS buffered_count + 1) {
-         BufferedToken identifier = std::move(this->buffered_tokens.front());
-         this->buffered_tokens.pop_front();
-         this->buffered_tokens.push_back(std::move(buffered));
-         this->buffered_tokens.push_back(std::move(identifier));
-      }
-      else this->buffered_tokens.push_back(std::move(buffered));
+      pending.swap(this->buffered_tokens);
+      this->buffered_tokens.push_back(std::move(buffered));
+      this->buffered_tokens.insert(this->buffered_tokens.end(),
+         std::make_move_iterator(pending.begin()), std::make_move_iterator(pending.end()));
    }
 }
 

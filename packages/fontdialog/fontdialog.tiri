@@ -17,7 +17,7 @@ Documentation is available in the Kotuku Wiki.
    gui.dialog ?= { }
 
 gui.dialog.font = function(Options)
-   self = { -- Public variables
+   self = entity { -- Public interface
       windowID    = nil,
       face        = 'Noto Sans',
       pointSize   = 12,
@@ -82,7 +82,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
    function refreshExample()
       if not self.guidelines then
-         local page_colour = gui.strToRGB(lWindow.theme.page.bkgd)
+         local page_colour = gui.strToRGB(lWindow.theme.page.bkgd.fill)
          line_col = (page_colour.luminance(page_colour) > 0.5) ? 'rgb(0 0 0 / .25)' :
             'rgb(255 255 255 / .15)'
          self.guidelines = self.examplePage.new('VectorPath', { strokeWidth = 0.5, stroke = line_col })
@@ -91,15 +91,13 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       pageWidth = self.examplePage.width
       gap = exampleMargin()
 
-      if self.exampleText then
-         self.exampleText.free()
-         self.exampleText = nil
-      end
+      self.exampleText?.free()
+      self.exampleText = nil
 
       try
          self.exampleText = self.examplePage.new('VectorText', {
             x          = gap,
-            fill       = lWindow.theme.page.text,
+            fill       = lWindow.theme.page.text.fill,
             inlineSize = pageWidth - (gap * 2),
             face       = self.face,
             fontSize   = self.pointSize .. 'pt',
@@ -111,9 +109,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
          msg(f'Failed to create example text for {self.face} {self.style}')
       end
 
-      if self.exampleText then
-         self.exampleText.y = math.floor(gap + self.exampleText.displaySize)
-      end
+      self.exampleText?.y = math.floor(gap + self.exampleText.displaySize)
 
       refreshGuidelines()
 
@@ -164,15 +160,19 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
    getFonts()
 
-   -- Disassemble any compact font face definition.
+   -- Disassemble any compact font face definition.  Trailing and empty parts are optional, e.g. 'Noto Sans' or
+   -- 'Noto Sans::Bold'.
 
    if lOptions.face then
       s = string.split(lOptions.face, ':') -- FaceName, Size, Style, Colour
-      if s[0] then lOptions.face      = s[0] end
-      if s[1] then lOptions.pointSize = s[1] end
-      if s[2] then lOptions.style     = s[2] end
-      if s[3] then lOptions.colour    = s[3] end
+      s.resize(4) -- Missing parts are padded with nil
+      if s[0]?? then lOptions.face      = s[0] end
+      if s[1]?? then lOptions.pointSize = tonumber(s[1]) ?? lOptions.pointSize end
+      if s[2]?? then lOptions.style     = s[2] end
+      if s[3]?? then lOptions.colour    = s[3] end
    end
+
+   if lOptions.pointSize then self.pointSize = math.clamp(tonumber(lOptions.pointSize) ?? self.pointSize, 4, 400) end
 
    lWindow = gui.window({
       insideWidth  = 700,
@@ -243,11 +243,9 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       yOffset = footer
    })
 
-   self.exampleBkgd = self.exampleVP.new('VectorRectangle', {
-      fill = lWindow.theme.page.bkgd, stroke = lWindow.theme.page.stroke,
-      strokeWidth = gui.sizing.page.strokeWidth,
+   self.exampleBkgd = self.exampleVP.new('VectorRectangle', table.merge({
       x = 0, y = 0, width = '100%', height = '100%'
-   })
+   }, table.merge(lWindow.theme.page.bkgd, lWindow.theme.page.border)))
 
    self.exampleView = self.exampleVP.new('VectorViewport', {
       x = 4, y = 4, xOffset = 4, yOffset = 4, overflow = VOF_HIDDEN
@@ -324,6 +322,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
             supported = false
             face = self.face
             if lFonts[face].alias then face = lFonts[face].alias end
+
             for v in values(lFonts[face].styles) do
                if v is self.style then
                   supported = true

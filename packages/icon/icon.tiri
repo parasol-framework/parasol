@@ -28,13 +28,13 @@ function imageLocation(Path:str!):str
 end
 
 gui.icon = function(Options)
-   self = { -- Public variables
+   self = { -- Public interface
       parentViewport = Options.target,
       events         = Options.events ?? { },
       viewport       = nil -- The icon's primary viewport
    }
 
-   local lText, lTextGroup, lThemeColour
+   local lText, lTextGroup, lThemeColour, theme
    lClick      = { held=false, x=0, y=0 }
    lWords      = array<table>
    lLines      = array<str>
@@ -43,7 +43,7 @@ gui.icon = function(Options)
    lFontSize   = FONT_HEIGHT
    lLineHeight = 0
 
-   function inputFeedback(Viewport, Msg)
+   function inputFeedback(Viewport:obj!, Msg)
       if Msg.type is JET_BUTTON_1 then
          if Msg.value > 0 then
             lClick.held = true
@@ -58,17 +58,17 @@ gui.icon = function(Options)
 
             if (math.abs(Msg.absX - lClick.x) > 2) or (math.abs(Msg.absY - lClick.y) > 2) then
                -- Do nothing - mouse moved/dragged when icon was clicked
-            elseif self.events.activate then
+            elseif &events.activate then
                if Msg.flags has JTYPE_DBL_CLICK then
-                  self.events.activate(self, { name='dblclick' })
+                  &events.activate({ name='dblclick' })
                else
-                  self.events.activate(self, { name='click' })
+                  &events.activate({ name='click' })
                end
             end
          end
          Viewport.acDraw()
       elseif Msg.type is JET_BUTTON_2 then
-         self.events.activate(self, { name='altclick' })
+         &events.activate({ name='altclick' })
       end
    end
 
@@ -131,10 +131,10 @@ gui.icon = function(Options)
 
       lLines ?! return
 
-      box_height = self.viewport.height - (lIconSize + MARGIN)
+      box_height = &viewport.height - (lIconSize + MARGIN)
       y = lIconSize + MARGIN
 
-      lTextGroup = self.viewport.new('VectorGroup', { })
+      lTextGroup = &viewport.new('VectorGroup', { })
 
       lTextGroup.new('VectorRectangle', {
          fill   = 'rgba(0,0,0,.5)',
@@ -147,15 +147,14 @@ gui.icon = function(Options)
       })
 
       for line in values(lLines) do
-         vText = lTextGroup.new('VectorText', {
+         vText = lTextGroup.new('VectorText', table.merge({
             x         = math.floor(lIconSize * 0.5),
             face      = gui.fonts.icon.face,
             fontSize  = string.format('%.2fpt', lFontSize),
             fontStyle = gui.fonts.icon.style,
-            fill      = gui.style.widget.text,
             align     = 'horizontal',
             string    = line
-         })
+         }, theme.widget.text))
 
          y += lLineHeight
          vText.y = math.floor(y)
@@ -164,57 +163,61 @@ gui.icon = function(Options)
 
    -- Main entry point
 
-   if Options.text?? then
-      lText = rx_whitespace.replace(Options.text.trim(), ' ').split(' ')
-   else
-      lText = nil
+   using self do
+      if Options.text?? then
+         lText = rx_whitespace.replace(Options.text.trim(), ' ').split(' ')
+      else
+         lText = nil
+      end
+
+      assert(Options.target, 'A target viewport is required.')
+      assert(Options.image??, 'The image option is required.')
+
+      theme = gui.getTheme(Options.target)
+      lThemeColour = gui.iconThemes[theme.page.icon ?? 'carbon']
+
+      calcWords()
+
+      &viewport = Options.target.new('VectorViewport', {
+         x           = Options.x ?? 0,
+         y           = Options.y ?? 0,
+         width       = lIconSize,
+         height      = lIconSize,
+         aspectRatio = 'XMid|YMin|Meet',
+         cursor      = 'hand'
+      })
+
+      &iconVP = &viewport.new('VectorViewport', {
+         x = 0, y = 0, width = lIconSize, height = lIconSize
+      })
+
+      &viewport.dragCallback = function(Viewport, X, Y)
+         Viewport.x = X
+         Viewport.y = Y
+         Viewport.acDraw()
+      end
+
+      src = imageLocation(Options.image)
+      assert(src, 'Invalid image source ' .. Options.image)
+      &svg = obj.new('svg', { target=&iconVP, path=src })
+
+      gname = 'iconFill' .. &iconVP.id
+      &svgGradient = gui.simpleGradient(&iconVP.scene, gname, { lThemeColour.first, lThemeColour.last },
+         0, &iconVP.y, 0, 1, 'boundingbox')
+      gui.applyFill(&iconVP, f'url(#{gname})')
+
+      check &viewport.mtSubscribeInput(JTYPE_BUTTON, inputFeedback)
+
+      gap = &viewport.height * 0.1
+      if gap < 2 then gap = 2 end
+
+      &viewport.height += gap + MARGIN + (lLineHeight * #lLines)
+
+      initText()
+
+      &events?.show()
+      &viewport.acDraw()
+
+      return &&
    end
-
-   assert(Options.target, 'A target viewport is required.')
-   assert(Options.image??, 'The image option is required.')
-
-   theme = gui.getTheme(Options.target)
-   lThemeColour = gui.iconThemes[theme.page.icon ?? 'carbon']
-
-   calcWords()
-
-   self.viewport = Options.target.new('VectorViewport', {
-      x = Options.x ?? 0, y = Options.y ?? 0,
-      width = lIconSize, height = lIconSize,
-      aspectRatio = 'XMid|YMin|Meet',
-      cursor = 'hand'
-   })
-
-   self.iconVP = self.viewport.new('VectorViewport', {
-      x = 0, y = 0, width = lIconSize, height = lIconSize
-   })
-
-   self.viewport.dragCallback = function(Viewport, X, Y)
-      Viewport.x = X
-      Viewport.y = Y
-      Viewport.acDraw()
-   end
-
-   src = imageLocation(Options.image)
-   assert(src, 'Invalid image source ' .. Options.image)
-   self.svg = obj.new('svg', { target=self.iconVP, path=src })
-
-   gname = 'iconFill' .. self.iconVP.id
-   self.svgGradient = gui.simpleGradient(self.iconVP.scene, gname, { lThemeColour.first, lThemeColour.last },
-      0, self.iconVP.y, 0, 1, 'boundingbox')
-   gui.applyFill(self.iconVP, f'url(#{gname})')
-
-   check self.viewport.mtSubscribeInput(JTYPE_BUTTON, inputFeedback)
-
-   gap = self.viewport.height * 0.1
-   if gap < 2 then gap = 2 end
-
-   self.viewport.height += gap + MARGIN + (lLineHeight * #lLines)
-
-   initText()
-
-   self.events?.show(self)
-   self.viewport.acDraw()
-
-   return self
 end

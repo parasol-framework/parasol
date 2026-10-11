@@ -157,16 +157,15 @@ function buildLayout(self, Options)
    dx = WIDGET_GAP
    dy = 0
 
-   self.txtBasicColours = self.viewport.new('VectorText', {
+   self.txtBasicColours = self.viewport.new('VectorText', table.merge({
       x         = dx,
       y         = dy + gui.getFontHeight(gui.fonts.window),
       string    = 'Basic colours',
-      fill      = self._window.theme.window.text,
       face      = gui.fonts.window.face,
       fontSize  = string.format('%.2fpt', gui.fonts.window.size),
       fontStyle = gui.fonts.window.style,
       align     = 'left'
-   })
+   }, self._window.theme.window.text))
 
    dy += gui.getFontHeight(gui.fonts.window) + WIDGET_GAP
 
@@ -208,16 +207,15 @@ function buildLayout(self, Options)
 
    -- Configure an array of 8x2 user customised colours
 
-   self.txtPersonalColours = self.viewport.new('VectorText', {
+   self.txtPersonalColours = self.viewport.new('VectorText', table.merge({
       x         = dx,
       y         = dy + gui.getFontHeight(gui.fonts.window),
       string    = 'Personal colours',
-      fill      = self._window.theme.window.text,
       face      = gui.fonts.window.face,
       fontSize  = string.format('%.2fpt', gui.fonts.window.size),
       fontStyle = gui.fonts.window.style,
       align     = 'left'
-   })
+   }, self._window.theme.window.text))
 
    self._colourNodes = array<any>
 
@@ -312,16 +310,15 @@ function buildLayout(self, Options)
    dx += ((BTNSIZE + BTNGAP) * 8) + 10
    dy = 0
 
-   self.txtRainbowPalette = self.viewport.new('VectorText', {
+   self.txtRainbowPalette = self.viewport.new('VectorText', table.merge({
       x         = dx,
       y         = dy + gui.getFontHeight(gui.fonts.window),
       string    = 'Rainbow palette',
-      fill      = self._window.theme.window.text,
       face      = gui.fonts.window.face,
       fontSize  = string.format('%.2fpt', gui.fonts.window.size),
       fontStyle = gui.fonts.window.style,
       align     = 'left'
-   })
+   }, self._window.theme.window.text))
 
    dy += gui.getFontHeight(gui.fonts.window) + WIDGET_GAP
 
@@ -374,7 +371,7 @@ function buildLayout(self, Options)
       shadowLabel = 'Colour',
       inputMask = [[^rgb\(\d+,\d+,\d+\)$]],
       events = {
-         activate = function(Widget, Event)
+         activate = function(Event)
             updateRGBInput(self, gui.strToRGB(Event.text))
          end
       }
