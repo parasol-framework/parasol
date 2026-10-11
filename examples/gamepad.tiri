@@ -11,23 +11,25 @@ Gamepad demonstration
    glPath = glSelf.workingPath
 
    win = gui.window({ title='Gamepad Demo', insideWidth=600, insideHeight=400, enableControllers=true })
+
    viewport = win.clientViewport({ aspectRatio = ARF_MEET })
 
-   text = viewport.new('vectortext', {
-      x=win.margins.left, y=20, string='Use a gamepad to control the football.', face='Noto Sans', fontSize=20, fill='rgb(0,0,0)'
-   })
+   text = viewport.new('vectortext', table.merge({
+      x=win.margins.left, y=20, string='Use a gamepad to control the football.', face='Noto Sans',
+      fontSize=20
+   }, gui.getTheme(win.scene).window.text))
 
-   txtLeftStick = viewport.new('vectortext', {
-      x=win.margins.left, y=50, string='Left Stick:', face='Noto Sans', fontSize=20, fill='rgb(0,0,0)'
-   })
+   txtLeftStick = viewport.new('vectortext', table.merge({
+      x=win.margins.left, y=50, string='Left Stick:', face='Noto Sans', fontSize=20
+   }, gui.getTheme(win.scene).window.text))
 
-   txtRightStick = viewport.new('vectortext', {
-      x=win.margins.left, y=80, string='Right Stick:', face='Noto Sans', fontSize=20, fill='rgb(0,0,0)'
-   })
+   txtRightStick = viewport.new('vectortext', table.merge({
+      x=win.margins.left, y=80, string='Right Stick:', face='Noto Sans', fontSize=20
+   }, gui.getTheme(win.scene).window.text))
 
-   txtButtons = viewport.new('vectortext', {
-      x=win.margins.left, y=110, string='Buttons:', face='Noto Sans', fontSize=20, fill='rgb(0,0,0)'
-   })
+   txtButtons = viewport.new('vectortext', table.merge({
+      x=win.margins.left, y=110, string='Buttons:', face='Noto Sans', fontSize=20,
+   }, gui.getTheme(win.scene).window.text))
 
    --txtStatus = viewport.new('vectortext', {
    --   x=win.margins.left, y=140, string='Controller:', face='Noto Sans', fontSize=16, fill='rgb(0,0,0)'
@@ -49,7 +51,7 @@ Gamepad demonstration
       x      = win.margins.left,
       y      = 120,
       events = {
-         activate = function(Widget, Value)
+         activate = function(Value)
             hardness = Value
          end
       }

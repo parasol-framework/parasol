@@ -40,17 +40,17 @@ end
 
 function addSlider(Label:str, Value:num, Min:num, Max:num, Step:num, Apply:func)
    caption_format = (Step and Step % 1 is 0) ? '%s: %.0f' : '%s: %.2f'
-   caption = glViewport.new('VectorText', {
+   caption = glViewport.new('VectorText', table.merge({
       x = 16, y = glY + 14,
-      face = gui.fonts.label.face, fontSize = '10pt', fill = gui.getTheme(glViewport).window.text,
+      face = gui.fonts.label.face, fontSize = '10pt',
       string = string.format(caption_format, Label, Value)
-   })
+   }, gui.getTheme(glViewport).window.text))
 
    gui.slider({
       target = glViewport, x = 16, y = glY + 20, size = 270, step = Step,
       min = Min, max = Max, value = Value,
       events = {
-         activate = function(Widget:table, Position:num)
+         activate = function(Position:num)
             value = Position
             Apply(value)
             caption.string = string.format(caption_format, Label, value)

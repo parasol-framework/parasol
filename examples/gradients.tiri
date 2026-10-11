@@ -9,13 +9,13 @@ Gradient Demonstration
 local win, viewport, gradientVP, rect
 local focalEllipse, contourShape, distalShape, uiEvent
 
-radiusChanged = function() end
-glColourMap = 'cmap:magma'
+radiusChanged  = function() end
+glColourMap    = 'cmap:magma'
 glSpreadMethod = VSPREAD_REFLECT
-glRadius = 100
-glResolution = 1.0
-glEasing = GEZ_LINEAR
-glGamma = 1.0
+glRadius       = 100
+glResolution   = 1.0
+glEasing       = GEZ_LINEAR
+glGamma        = 1.0
 glActiveGradient = nil
 MIN_RADIUS <const> = 2
 MAX_RADIUS <const> = 400
@@ -181,12 +181,14 @@ function selectGradient(Text):obj
       end
    elseif Text is 'Distal' then
       gradient = createGradient('GradientDistal', {
-         colourMap = glColourMap, units='boundingBox', spreadMethod=glSpreadMethod,
-         radius = glRadius,
-         innerFall = GFALL_LINEAR,
-         outerFall = GFALL_LINEAR,
-         floor = 0, -- Added to the signed DT base values (0 - 1.0)
-         multiplier = 1  -- Multiplier of the base DT value (0.01 - 10.0)
+         colourMap    = glColourMap,
+         units        = 'boundingBox',
+         spreadMethod = glSpreadMethod,
+         radius       = glRadius,
+         innerFall    = GFALL_LINEAR,
+         outerFall    = GFALL_LINEAR,
+         floor        = 0, -- Added to the signed DT base values (0 - 1.0)
+         multiplier   = 1  -- Multiplier of the base DT value (0.01 - 10.0)
       })
 
       if not distalShape then
@@ -394,7 +396,7 @@ function buildScene()
       x      = cmbEasing.viewport.x + cmbEasing.viewport.width + 10,
       y      = 10,
       events = {
-         activate = function(Widget, Value)
+         activate = function(Value)
             glResolution = Value
             glActiveGradient.resolution = glResolution
             gradientVP.scene.surface.mtScheduleRedraw()
@@ -411,7 +413,7 @@ function buildScene()
       x      = slResolution.viewport.x + slResolution.viewport.width + 10,
       y      = 10,
       events = {
-         activate = function(Widget:table, Value:num!)
+         activate = function(Value:num!)
             glRadius = Value
             radiusChanged(Value)
             gradientVP.scene.surface.mtScheduleRedraw()
@@ -428,7 +430,7 @@ function buildScene()
       x      = slRadius.viewport.x + slRadius.viewport.width + 10,
       y      = 10,
       events = {
-         activate = function(Widget:table, Value:num!)
+         activate = function(Value:num!)
             glGamma = Value
             glActiveGradient.gamma = glGamma
             gradientVP.scene.surface.mtScheduleRedraw()
@@ -443,7 +445,7 @@ function buildScene()
       icon    = 'items/file_saveas',
       size    = cmbColours.viewport.height,
       events  = {
-         activate = function(Button)
+         activate = function()
             gui.dialog.file({
                title       = 'Save Gradient as PNG Image',
                okText      = 'Save',
