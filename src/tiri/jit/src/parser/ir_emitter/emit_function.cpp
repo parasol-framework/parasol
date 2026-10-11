@@ -527,6 +527,11 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(
    };
 
    switch (Expr.kind) {
+      case AstNodeKind::CurrentContextExpr:
+         // The context is a receiver in a safe-navigation target, never a replaceable binding.
+         if (UseAssignmentResolution) return this->unsupported_expr(Expr.kind, Expr.span);
+         return this->emit_current_context_expr();
+
       case AstNodeKind::IdentifierExpr: {
          const NameRef& name_ref = std::get<NameRef>(Expr.data);
          if (UseAssignmentResolution) return this->emit_assignment_identifier(name_ref, AllocNewLocal);

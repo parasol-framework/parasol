@@ -11,6 +11,28 @@ function enforce_hotpath() end
    assert(result is "Hello World", "Basic interpolation failed: " .. tostring(result))
 end
 
+@Test function FallbackInterpolation()
+   opts = { face = 'hello' }
+   x = 'goodbye'
+   assert((opts.face ?? f'{x} world') is 'hello', 'A present value should bypass the formatted fallback')
+
+   opts.face = nil
+   assert((opts.face ?? f'{x} world') is 'goodbye world', 'A missing value should use the full formatted fallback')
+   assert((opts.face ?? f'{x}') is 'goodbye', 'An expression-only formatted fallback should remain intact')
+   assert((opts.face ?? (f'{x} world')) is 'goodbye world', 'Parenthesised formatted fallbacks should remain intact')
+end
+
+@Test function FallbackInterpolationAfterBufferedTokens()
+   opts = {}
+   x = 'goodbye'
+   assert((opts.face ?? 'prefix ' .. f'{x} world') is 'prefix goodbye world',
+      'Lookahead should preserve tokens preceding a formatted string')
+   assert((opts.face ?? f'prefix {x} world') is 'prefix goodbye world',
+      'Lookahead should preserve the leading literal of a formatted string')
+   assert((opts.face ?? f'{x} {x}') is 'goodbye goodbye',
+      'Lookahead should preserve multiple interpolated expressions')
+end
+
 @Test function MultipleExpressions()
    a = 1
    b = 2

@@ -1,4 +1,4 @@
--- Raw, shallow table merging and live-shape sequence concatenation.
+-- Raw shallow and deep table merging, with live-shape sequence concatenation.
 
 @BeforeEach(hotpath=true)
 function enforce_hotpath() end
@@ -18,7 +18,7 @@ function enforce_hotpath() end
    assert(first.merge(second, false).b is 2)
    local merge = table.merge
    assert(merge(first, second, nil).b is 3)
-   assert(merge(first, second, false, 'ignored').b is 2)
+   assert(merge(first, second, false, nil, 'ignored').b is 2)
 end
 
 @Test function NilInputsAreEmptyTables()
@@ -228,6 +228,45 @@ end
    end
 end
 
+function expect_merge_argument_error(Call:func)
+   local failed = false
+   try
+      Call()
+   except e
+      failed = true
+      assert(e.code is ERR_Args, 'Invalid merge input should remain an argument error')
+      assert(e.message.find("Bad argument #2 to 'table.merge'") != nil,
+         'The diagnostic should identify the built-in and argument: ' .. e.message)
+      assert(e.message.find('Nil or table expected') != nil,
+         'The diagnostic should retain the expected types: ' .. e.message)
+   end
+   assert(failed, 'Merging a string should raise an argument error')
+end
+
+@Test function ArgumentErrorNamesBuiltinInNestedCall()
+   local theme = { highlight='invalid' }
+   expect_merge_argument_error(function()
+      local result = { value=table.merge({}, theme.highlight) }
+   end)
+end
+
+@Test function ArgumentErrorNamesBuiltinThroughAlias()
+   local merge = table.merge
+   expect_merge_argument_error(function()
+      merge({}, 'invalid')
+   end)
+end
+
+@Test function ArgumentErrorNamesBuiltinInStrippedBytecode()
+   local function dumped_merge()
+      local input = { value='invalid' }
+      local result = { value=table.merge({}, input.value) }
+   end
+   expect_merge_argument_error(function()
+      exec(string.dump(dumped_merge, true))
+   end)
+end
+
 @Test function ChangingShapesAndCollectableEntries()
    local saved = {}
    for iteration in {0 to 160} do
@@ -264,5 +303,91 @@ end
          end
       end
       assert(found, 'Collectable keys and values must survive full collection')
+   end
+end
+
+@Test function DeepNestedMergesAndDefaults()
+   local first = { child={ keep=1, shared={ a=2, conflict=1 }, list={ 10 } }, scalar=false }
+   local second = { child={ added=3, shared={ b=4, conflict=2 }, list={ 20 } }, scalar={ value=5 } }
+   local result = table.merge(first, second, nil, true)
+   assert(result.child.keep is 1 and result.child.added is 3)
+   assert(result.child.shared.a is 2 and result.child.shared.b is 4 and result.child.shared.conflict is 2)
+   assert(result.child.list[0] is 10 and result.child.list[1] is 20)
+   assert(result.scalar.value is 5 and result.scalar != second.scalar)
+   result.child.shared.a = 99
+   assert(first.child.shared.a is 2 and second.child.shared.a is nil)
+   local kept = first.merge(second, false, true)
+   assert(kept.scalar is false and kept.child.added is 3)
+   assert(kept.child.shared.b is 4 and kept.child.shared.conflict is 1)
+   assert(table.merge(first, second).child is second.child)
+   assert(table.merge(first, second, nil, false).child is second.child)
+   assert(table.merge(first, second, nil, nil).child is second.child)
+   local merge = table.merge
+   assert(merge(first, second, true, true).child.keep is 1)
+   assert(table.merge(nil, nil, nil, true).size() is 0)
+end
+
+@Test function DeepGraphsAndRawAccess()
+   local function forbidden() raise 'Deep merge invoked a metamethod' end
+   local hooks = { __index=forbidden, __newindex=forbidden, __pairs=forbidden, __eq=forbidden }
+   local child = setmetatable({ value=7 }, hooks)
+   local key = {}
+   local first = setmetatable({ left=child, right=child, [key]=child }, hooks)
+   rawset(first, 'self', first)
+   local second = { extra=8 }
+   second.self = second
+   local result = table.merge(first, second, false, true)
+   assert(rawequal(result.self, result) and result.self.extra is 8)
+   assert(rawequal(result.left, result.right) and rawequal(result[key], result.left))
+   assert(not rawequal(result.left, child) and result.left.value is 7)
+   assert(getmetatable(result) is nil and getmetatable(result.left) is nil)
+   for source in values({ first, second }) do
+      local copy = table.merge(nil, source, nil, true)
+      assert(rawequal(copy.self, copy))
+   end
+   local same = table.merge(first, first, nil, true)
+   assert(rawequal(same.self, same) and same.left.value is 7)
+   local sequence = table.merge({ child }, { child }, false, true)
+   assert(rawequal(sequence[0], sequence[1]) and not rawequal(sequence[0], child))
+end
+
+@Test function DeepDepthAndCollection()
+   local head = {}
+   local cursor = head
+   for i in {0 to 5000} do
+      cursor.next = { value=i }
+      cursor = cursor.next
+   end
+   local copy = table.merge(head, nil, nil, true)
+   processing.collect('full')
+   for i in {0 to 5000} do
+      copy = copy.next
+      assert(copy.value is i)
+   end
+   assert(copy.next is nil)
+end
+
+@Test function DeepOptionValidationAndBytecode()
+   assert(debug.validate('local result:table = table.merge({}, {}, nil, true)').success)
+   assert(debug.validate('({}).merge({}, false, true)').success)
+   assert(debug.validate('table.merge({}, {}, nil, nil)').success)
+   assert(not debug.validate('table.merge({}, {}, nil, true, false)').success)
+   local merge = table.merge
+   for invalid in values({ 0, '', {}, function() end }) do
+      local caught = false
+      try
+         merge(nil, nil, nil, invalid)
+      except e
+         caught = true
+         assert(e.code is ERR_Args and e.message.find('argument #4') != nil)
+      end
+      assert(caught, 'The deep option must be boolean or nil')
+   end
+   local function factory():table
+      return table.merge({ child={ a=1 } }, { child={ b=2 } }, nil, true)
+   end
+   for stripped in values({ false, true }) do
+      local result = exec(string.dump(factory, stripped))
+      assert(result.child.a is 1 and result.child.b is 2)
    end
 end
