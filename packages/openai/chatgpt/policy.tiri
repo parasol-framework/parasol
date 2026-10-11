@@ -118,7 +118,7 @@ chatgpt_policy.policy = function(Options:table):table
 
    self.capabilities = function():table
       return { nonStreaming=false, previousResponseID=false, background=false, conversations=false,
-         hostedTools=false, webSearch=true, chatGPTPlan=true, statelessHTTP=true }
+         hostedTools=false, webSearch=true, chatGPTPlan=true, statelessHTTP=true, websocket=false }
    end
 
    self.validate = function(Request:table):<table, table>

@@ -1,6 +1,9 @@
--- Private Responses streaming transport.  HTTP callbacks and user callbacks run serially on the processing thread.
+-- Private Responses streaming transports.  Transport and user callbacks run serially on the processing thread.
 
    include 'http'
+   @if(exists='modules:websocket')
+   include 'websocket'
+   @end
    import 'json'
    import './sse', './bounded_json'
 
@@ -199,6 +202,17 @@ openai_stream.stream = function(Options:table):table
          addDiagnostic(state, SSEEvent.data)
          complete('incomplete', nil, streamError('response', details.reason or 'response_incomplete',
             'Response incomplete', state), true)
+      elseif raw.type is 'error' then
+         provider = raw.error is <table> and raw.error != json.null and raw.error or raw
+         state.httpStatus = raw.status or 0
+         addDiagnostic(state, SSEEvent.data)
+         error_kind = state.httpStatus is 401 or state.httpStatus is 403 ? 'authentication' :
+            state.httpStatus is 429 ? 'rate_limit' :
+            state.httpStatus >= 400 and state.httpStatus < 500 ? 'invalid_request' :
+            state.httpStatus >= 500 ? 'server' : apiKind(provider.code)
+         complete('failed', nil, streamError(error_kind, provider.code is <str> and provider.code or 'response_error',
+            provider.message is <str> and redactDiagnostic(provider.message).sub(0, 1024) or 'Response failed',
+            state, { param=provider.param }), true)
       end
 
       notify(event)
@@ -248,6 +262,25 @@ openai_stream.stream = function(Options:table):table
    end
 
    self.feed = feed
+   ws_bytes = 0
+   self.feedMessage = function(Message:str):bool
+      if state.terminal or state.closed then return false end
+      if not (Message is <str>) or #Message > (options.maxEventBytes or 1048576) then
+         complete('failed', nil, streamError('transport', 'event_byte_limit', 'WebSocket event byte limit exceeded',
+            state))
+         releaseSubscriptions()
+         return false
+      end
+      ws_bytes += #Message
+      if ws_bytes > (options.maxBytes or 16777216) or state.eventIndex >= (options.maxEvents or 100000) then
+         code = ws_bytes > (options.maxBytes or 16777216) ? 'byte_limit' : 'event_limit'
+         complete('failed', nil, streamError('transport', code, 'WebSocket stream limit exceeded', state))
+         releaseSubscriptions()
+         return false
+      end
+      if state.value is 'pending' then state.value = 'open' end
+      return decoded({ data=Message, event='message' })
+   end
    self.finish = finish
 
    self.cancel = function()
@@ -399,3 +432,177 @@ openai_stream.request = function(Options:table):<table, table>
 
    return stream
 end
+
+
+-- Persistent Responses WebSocket transport.
+
+@if(exists='modules:websocket')
+
+function wsFailure(Code:str, Message:str, Status:num):table
+   return { kind='transport', code=Code, message=Message, httpStatus=Status or 0, retryable=false }
+end
+
+function validStreamID(ID:any):bool
+   return ID is <str> and #ID > 0 and #ID <= 256 and r'^[A-Za-z0-9_.]+$'.test(ID.replace('-', 'a'))
+end
+
+openai_stream.connect = function(Options:table):<table, table>
+   local options = Options or {}
+   local connected = false
+   local closed = false
+   local socket:obj
+   local active = {}
+   local named = {}
+   local named_count = 0
+   local active_count = 0
+   local handshake_signal <close> = obj.new('File', { flags='buffer' })
+   local proc = processing.new({ timeout=Options.timeout or 60, signals=array<obj> { handshake_signal } })
+   local waiting = true
+   local self = {}
+
+   function interruptAll(Reason:str)
+      for lane, entry in pairs(active) do
+         active[lane] = nil
+         entry.stream.finish(Reason)
+      end
+      active_count = 0
+   end
+
+   socket = obj.new('websocket', {
+      location = Options.url,
+      maxMessageSize = Options.maxMessageBytes or 16777216,
+      stateChanged = function(WebSocket:obj, State:num)
+         if State is WSS_OPEN then
+            connected = true
+            if waiting then check handshake_signal.acSignal() end
+         elseif State is WSS_CLOSED then
+            connected = false
+            closed = true
+            interruptAll('connection_terminated')
+            if waiting then check handshake_signal.acSignal() end
+         end
+      end,
+      incoming = function(WebSocket:obj, Buffer:array<byte>, Type:num, Final:num)
+         if closed then return end
+         if Type != WSM_TEXT or Final != 1 then
+            interruptAll('connection_terminated')
+            self.close()
+            return
+         end
+         local wire = Buffer.getString()
+         local raw:any = nil
+         try raw = openai_json.decode(wire, Options.maxMessageBytes or 16777216, 64) end
+         if not (raw is <table>) or raw is json.null or not (raw.type is <str>) then
+            interruptAll('connection_terminated')
+            self.close()
+            return
+         end
+         if raw.stream_id != nil and not validStreamID(raw.stream_id) then
+            interruptAll('connection_terminated')
+            self.close()
+            return
+         end
+         if raw.type is 'error' and raw.stream_id is nil and (active_count > 1 or not active['']) then
+            -- Preserve the provider failure for every response before dropping the connection.
+            closed = true
+            connected = false
+            local failed = active
+            active = {}
+            active_count = 0
+            for _, entry in pairs(failed) do
+               entry.stream.feedMessage(wire)
+            end
+            self.close()
+            return
+         end
+         local lane = raw.stream_id or ''
+         local entry = active[lane]
+         if not entry then
+            interruptAll('connection_terminated')
+            self.close()
+            return
+         end
+         local terminal = raw.type is 'response.completed' or raw.type is 'response.failed' or
+            raw.type is 'response.incomplete' or raw.type is 'error'
+         if terminal then active[lane] = nil; active_count -= 1 end
+         entry.stream.feedMessage(wire)
+      end
+   })
+
+   self.close = function()
+      if closed and not socket then return end
+      closed = true
+      connected = false
+      interruptAll('connection_terminated')
+      if socket then
+         local old = socket
+         socket = nil
+         old.incoming = nil
+         old.stateChanged = nil
+         old.free()
+      end
+   end
+
+   self.state = function():str return connected and 'open' or closed and 'closed' or 'connecting' end
+
+   self.create = function(Request:table, StreamID:str):<table, table>
+      if not connected or closed then return nil, wsFailure('connection_closed', 'Responses connection is closed') end
+      if StreamID != nil and not validStreamID(StreamID) then
+         return nil, wsFailure('invalid_stream_id', 'Invalid Responses stream ID')
+      end
+      local lane = StreamID or ''
+      if active[lane] then return nil, wsFailure('stream_busy', 'A response is already running on this stream') end
+      if active_count >= 16 then return nil, wsFailure('connection_busy', 'Too many active responses') end
+      if StreamID and not named[StreamID] and named_count >= 32 then
+         return nil, wsFailure('stream_limit', 'Too many named streams on this connection')
+      end
+
+      local validated, err = Options.prepare(Request)
+      if err then return nil, err end
+      if validated.background != nil or validated.stream_id != nil then
+         return nil, wsFailure('unsupported_field', 'The request contains a field reserved for another transport')
+      end
+      validated.stream = nil
+      validated.type = 'response.create'
+      if StreamID then validated.stream_id = StreamID end
+      local wire:any = nil
+      try wire = Options.encode(validated) except e
+         return nil, wsFailure('json_encoding', 'Unable to encode Responses request')
+      end
+      local stream_options = {}
+      for key, value in pairs(options.limits or {}) do stream_options[key] = value end
+      stream_options.responseDecoder = Options.responseDecoder
+      stream_options.itemDecoder = Options.itemDecoder
+      stream_options.errorTranslator = options.translateError
+      local stream = openai_stream.stream(stream_options)
+      if socket.mtSend(wire, WSM_TEXT) != ERR_Okay then
+         stream.close()
+         return nil, wsFailure('send_failed', 'Unable to send Responses request')
+      end
+      active[lane] = { stream=stream }
+      active_count++
+      if StreamID and not named[StreamID] then named[StreamID] = true; named_count++ end
+      return stream
+   end
+
+   for name, value in pairs(Options.headers or {}) do
+      if socket.acSetKey(name, value) != ERR_Okay then
+         self.close()
+         return nil, wsFailure('invalid_header', 'Invalid WebSocket request header')
+      end
+   end
+   if socket.acActivate() != ERR_Okay then
+      self.close()
+      return nil, wsFailure('activation_failed', 'Unable to start Responses WebSocket')
+   end
+   if not connected and not closed then proc.sleep() end
+   waiting = false
+   if not connected then
+      local status = socket and socket.status or 0
+      local code = closed and 'handshake_failed' or 'timeout'
+      self.close()
+      return nil, wsFailure(code, 'Unable to open Responses WebSocket', status)
+   end
+   return self
+end
+@end

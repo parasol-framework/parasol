@@ -33,6 +33,23 @@ function eventWire(Type:str, Extra:table):str
    return 'data: ' .. json.encode(value) .. '\n\n'
 end
 
+@Test function FlatProviderErrorsPreserveDetails()
+   for transport in values(array<str> { 'http', 'websocket' }) do
+      local stream = openai_stream.stream()
+      local details = { code='server_error', message='Provider failed', param='input', sequence_number=1 }
+      if transport is 'http' then
+         stream.feed(eventWire('error', details))
+      else
+         details.type = 'error'
+         stream.feedMessage(json.encode(details))
+      end
+      local response, err = stream.result()
+      assert(not response and stream.state() is 'failed' and err.kind is 'server' and
+         err.code is 'server_error' and err.message is 'Provider failed' and err.param is 'input',
+         'Flat streaming errors preserve provider details on both transports')
+   end
+end
+
 @Test; @Requires(network=true, ssl=true) function HTTPSRequestsStartWithTLS()
    first_bytes = array<int>
    seen = {}
