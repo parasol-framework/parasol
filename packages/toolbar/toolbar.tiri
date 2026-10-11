@@ -708,7 +708,7 @@ gui.toolbar = function(Options)
    self.viewport.mtSubscribeInput(JTYPE_BUTTON | JTYPE_MOVEMENT | JTYPE_CROSSING, inputFeedback)
 
    kbfill = 'rgba(0,0,0,.5)'
-   if theme != gui.themes.light then
+   if theme.scheme is 'dark' then
       kbfill = 'rgba(255,255,255,.78)'
    end
 

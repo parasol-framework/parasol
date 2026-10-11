@@ -110,6 +110,12 @@ gui.dialog.file = function(Options)
 
    self.viewport = self.window.clientViewport({ })
 
+   path_theme = table.clone(theme.input)
+   path_theme.bkgd.fill = 'none'
+   path_theme.bkgd.stroke = 'none'
+   path_theme.bkgd.roundX = 0
+   path_theme.bkgd.roundY = 0
+
    self.pathbox = gui.input({
       target     = self.viewport,
       x          = 0,
@@ -117,8 +123,7 @@ gui.dialog.file = function(Options)
       xOffset    = 0,
       text       = self.currentPath,
       textFace   = gui.fonts.filesys.face,
-      flushEdges = true,
-      bkgd       = 'none',
+      theme      = path_theme,
       events = {
          activate = function(Input, Event)
             self.fileview.browse(Event.text)
@@ -169,7 +174,7 @@ gui.dialog.file = function(Options)
          xOffset     = 0,
          shadowLabel = 'Enter file name',
          textFace    = gui.fonts.filesys.face,
-         flushEdges  = true,
+         theme       = path_theme,
          text        = target_file,
          events = {
             activate = function(Widget:table!, Event:table!)

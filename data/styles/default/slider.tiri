@@ -3,41 +3,29 @@
    import 'gui'
 
 return {
-   background = function(Slider:table, Viewport:obj)
-      bar_theme = Slider.prvTheme.slider.bkgd
-
-      if Slider.orientation is 'V' then
-         Slider.prvBarBkgd = Viewport.new('VectorRectangle', table.merge({
-            x = '0', y = 0, width = '100%', height = '100%',
-            roundX = 4, roundY = 4
-         }, bar_theme))
-      else
-         Slider.prvBarBkgd = Viewport.new('VectorRectangle', table.merge({
-            x = 0, y = '0', width = '100%', height = '100%',
-            roundX = 4, roundY = 4
-         }, bar_theme))
-      end
+   background = function(Slider:table!, Viewport:obj!)
+      Slider.prvBarBkgd = Viewport.new('VectorRectangle', table.merge({
+         x = '0', y = 0, width = '100%', height = '100%',
+      }, Slider.prvTheme.slider.bkgd))
    end,
-   slider = function(Slider:table, Viewport:obj)
-      button_face = Slider.prvTheme.slider.fore
-      button_highlight = Slider.prvTheme.slider.foreHighlight
-      gap    = gui.sizing.widget.strokeWidth
+   slider = function(Slider:table!, Viewport:obj!)
+      GAP <const> = Slider.prvTheme.slider.bkgd.strokeWidth
 
       Slider.button = Viewport.new('VectorRectangle', table.merge({
-         x = gap, y = gap, roundX = 4, roundY = 4,
-         width = Viewport.width-(gap*2), height = Viewport.height-(gap*2),
-         strokeWidth = gui.sizing.widget.strokeWidth
-      }, button_face))
+         x = GAP, y = GAP, width = Viewport.width-(GAP*2), height = Viewport.height-(GAP*2)
+      }, Slider.prvTheme.slider.fore))
 
       Viewport.mtSubscribeFeedback(FM_HAS_FOCUS | FM_CHILD_HAS_FOCUS | FM_LOST_FOCUS, function(Viewport, Event)
          if Event is FM_LOST_FOCUS then
-            Slider.button.stroke = button_face.stroke
+            gui.applyStyle(Slider.button, Slider.prvTheme.slider.fore)
             Slider.events?.lostFocus(Slider)
+            Slider.hasFocus = false
          else
+            Slider.hasFocus = true
             if Slider.disabled then
-               Slider.button.stroke = button_face.stroke
+               gui.applyStyle(Slider.button, Slider.prvTheme.slider.fore)
             else
-               Slider.button.stroke = Slider.prvTheme.slider.foreFocus.stroke
+               gui.applyStyle(Slider.button, Slider.prvTheme.slider.foreFocus)
                Slider.events?.focus(Slider)
             end
          end
@@ -48,11 +36,9 @@ return {
       Viewport.mtSubscribeInput(JTYPE_CROSSING, function(Viewport, Msg)
          repeat
             if Msg.type is JET_CROSSED_IN then
-               Slider.button.fill = button_highlight.fill
-               Slider.button.opacity = button_highlight.opacity
+               gui.applyStyle(Slider.button, Slider.prvTheme.slider.foreHighlight)
             elseif Msg.type is JET_CROSSED_OUT then
-               Slider.button.fill = button_face.fill
-               Slider.button.opacity = button_face.opacity
+               gui.applyStyle(Slider.button, Slider.hasFocus ? Slider.prvTheme.slider.foreFocus : Slider.prvTheme.slider.fore)
             end
             Msg = Msg.next
          until not Msg

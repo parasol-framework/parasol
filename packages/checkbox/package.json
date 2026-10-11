@@ -28,8 +28,8 @@
   "files": [
     {
       "path": "checkbox.tiri",
-      "size": 5115,
-      "sha256": "4707b182db37e418f5cbc1866bea3b365195feb05422725c831951a3fe0fc6ce",
+      "size": 5034,
+      "sha256": "4a29f83abb93fc8ddcbfa009456a221311ea0c3fe67cbcb845309daa36cd4702",
       "mediaType": "application/vnd.kotuku.tiri"
     }
   ]

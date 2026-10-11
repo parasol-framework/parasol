@@ -670,6 +670,16 @@ gui.setTheme = function(Object:obj, Theme:str!):table
    return gui.themes[Theme]
 end
 
+----------------------------------------------------------------------------------------------------------------------
+
+gui.applyStyle = function(Vector:any!, Set:table)
+   if not Set then return end
+
+   for k, v in Set do
+      Vector[k] = v
+   end
+end
+
 function modifyAlpha(Colour:str!, Alpha:num!):str
    mVec.ReadPainter(nil, Colour, glPainter)
    nrgb = glPainter.colour
@@ -817,6 +827,7 @@ gui.themes = {
    -- with vector object definitions.  The majority of the time, the target will be a VectorRectangle or VectorText
    -- object.  Gradient and pattern fills are also permitted via the use of 'url()'.
    dark = {
+      scheme  = 'dark', -- Colour scheme ('light' or 'dark') for code that adapts to the theme's brightness
       palette = gui.palette.dark,
       page = {
          bkgd = { -- Background for hosting text & paper-based layouts
@@ -845,7 +856,7 @@ gui.themes = {
          strokeFocus = { stroke = gui.palette.dark.contrast }
       },
       input = {
-         bkgd  = { fill = gui.palette.dark.bkgd, stroke = 'rgb(255 255 255 / .25)' },
+         bkgd  = { fill = gui.palette.dark.bkgd, stroke = 'rgb(255 255 255 / .25)', strokeWidth = 2, roundX = 4, roundY = 4 },
          focus = { stroke = gui.palette.dark.contrast },
          text  = { fill = gui.palette.dark.text }
       },
@@ -856,7 +867,7 @@ gui.themes = {
          icon   = 'pearl'
       },
       button = {
-         bkgd      = { fill = gui.palette.dark.neutral, stroke = 'rgb(255 255 255 / .25)' },
+         bkgd      = { fill = gui.palette.dark.neutral, stroke = 'rgb(255 255 255 / .25)', strokeWidth = 2, roundX = 4, roundY = 4 },
          highlight = { fill = gui.palette.dark.contrast },
          focus     = { stroke = gui.palette.dark.contrast },
          text      = { fill = gui.palette.dark.text }
@@ -884,10 +895,15 @@ gui.themes = {
          iconHighlight = 'pearl'
       },
       slider = {
-         bkgd          = { fill = gui.palette.dark.mid, stroke = 'none' },
-         fore          = { fill = gui.palette.dark.inverse, stroke = 'none', opacity = 0.75 },
+         bkgd          = { fill = gui.palette.dark.mid, stroke = 'none', roundX = 4, roundY = 4, strokeWidth = 2 },
+         fore          = { fill = gui.palette.dark.inverse, stroke = 'none', opacity = 0.75, roundX = 4, roundY = 4, strokeWidth = 2 },
          foreHighlight = { fill = gui.palette.dark.contrast, opacity = 1 },
-         foreFocus     = { stroke = gui.palette.dark.contrast }
+         foreFocus     = { stroke = gui.palette.dark.contrast, strokeWidth = 2 }
+      },
+      scrollbar = {
+         bkgd          = { fill = gui.palette.dark.mid, stroke = 'none', strokeWidth = 2 },
+         fore          = { fill = gui.palette.dark.inverse, stroke = 'none', opacity = 0.75, strokeWidth = 2 },
+         foreHighlight = { fill = gui.palette.dark.contrast, opacity = 1 }
       },
       toolbar = {
          bkgd          = { fill = gui.palette.dark.bkgd },
@@ -900,6 +916,7 @@ gui.themes = {
       }
    },
    light = {
+      scheme  = 'light',
       palette = gui.palette.light,
       page = {
          bkgd = {
@@ -928,7 +945,7 @@ gui.themes = {
          strokeFocus = { stroke = gui.palette.light.contrast }
       },
       input = {
-         bkgd  = { fill = gui.palette.light.bkgd, stroke = 'rgb(0 0 0 / .35)' },
+         bkgd  = { fill = gui.palette.light.bkgd, stroke = 'rgb(0 0 0 / .35)', strokeWidth = 2, roundX = 4, roundY = 4 },
          focus = { stroke = gui.palette.light.contrast },
          text  = { fill = gui.palette.light.text }
       },
@@ -939,7 +956,7 @@ gui.themes = {
          icon   = 'carbon'
       },
       button = {
-         bkgd      = { fill = gui.palette.light.inverse, stroke = 'rgb(0 0 0 / .35)' },
+         bkgd      = { fill = gui.palette.light.inverse, stroke = 'rgb(0 0 0 / .35)', strokeWidth = 2, roundX = 4, roundY = 4 },
          highlight = { fill = gui.palette.light.contrast },
          focus     = { stroke = gui.palette.light.contrast },
          text      = { fill = gui.palette.light.altText }
@@ -967,10 +984,15 @@ gui.themes = {
          iconHighlight = 'pearl'
       },
       slider = {
-         bkgd          = { fill = gui.palette.light.mid, stroke = 'none' },
-         fore          = { fill = gui.palette.light.inverse, stroke = 'none', opacity = 0.75 },
+         bkgd          = { fill = gui.palette.light.mid, stroke = 'none', roundX = 4, roundY = 4, strokeWidth = 2 },
+         fore          = { fill = gui.palette.light.inverse, stroke = 'none', opacity = 0.75, roundX = 4, roundY = 4, strokeWidth = 2 },
          foreHighlight = { fill = gui.palette.light.contrast, opacity = 1 },
-         foreFocus     = { stroke = gui.palette.light.contrast }
+         foreFocus     = { stroke = gui.palette.light.contrast, strokeWidth = 2 }
+      },
+      scrollbar = {
+         bkgd          = { fill = gui.palette.light.mid, stroke = 'none', strokeWidth = 2 },
+         fore          = { fill = gui.palette.light.inverse, stroke = 'none', opacity = 0.75, strokeWidth = 2 },
+         foreHighlight = { fill = gui.palette.light.contrast, opacity = 1 }
       },
       toolbar = {
          bkgd          = { fill = gui.palette.light.bkgd },

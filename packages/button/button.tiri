@@ -72,20 +72,17 @@ gui.button = function(Options)
    self.viewport = self.parentViewport.new('VectorViewport', vps)
 
    self.bkgd = self.viewport.new('VectorRectangle', table.merge({
-      x      = gui.sizing.widget.strokeWidth * 0.5,
-      y      = gui.sizing.widget.strokeWidth * 0.5,
-      width  = self.viewport.width - gui.sizing.widget.strokeWidth,
-      height = HEIGHT - gui.sizing.widget.strokeWidth,
-      roundX = gui.sizing.widget.strokeWidth * 2,
-      roundY = gui.sizing.widget.strokeWidth * 2,
-      strokeWidth = gui.sizing.widget.strokeWidth,
+      x      = theme.bkgd.strokeWidth * 0.5,
+      y      = theme.bkgd.strokeWidth * 0.5,
+      width  = self.viewport.width - theme.bkgd.strokeWidth,
+      height = HEIGHT - theme.bkgd.strokeWidth,
       resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
          if Vector.width != Width then
-            Vector.width = Width - gui.sizing.widget.strokeWidth
+            Vector.width = Width - theme.bkgd.strokeWidth
          end
 
          if Vector.height != Height then
-            Vector.height = Height - gui.sizing.widget.strokeWidth
+            Vector.height = Height - theme.bkgd.strokeWidth
          end
       end
    }, theme.bkgd))
@@ -137,13 +134,15 @@ gui.button = function(Options)
 
    self.viewport.mtSubscribeFeedback(FM_HAS_FOCUS|FM_CHILD_HAS_FOCUS|FM_LOST_FOCUS, function(Viewport:obj!, Event)
       if Event is FM_LOST_FOCUS then
-         self.bkgd.stroke = theme.bkgd.stroke
+         self.hasFocus = false
+         gui.applyStyle(self.bkgd, theme.bkgd)
          self.events?.lostFocus(self)
       else
          if self.disabled then
-            self.bkgd.stroke = theme.bkgd.stroke
+            gui.applyStyle(self.bkgd, theme.bkgd)
          else
-            self.bkgd.stroke = theme.focus.stroke
+            self.hasFocus = true
+            gui.applyStyle(self.bkgd, theme.focus)
             self.events?.focus(self)
          end
       end
@@ -162,10 +161,12 @@ gui.button = function(Options)
    self.viewport.mtSubscribeInput(JTYPE_CROSSING|JTYPE_BUTTON|JTYPE_REPEATED, function(Viewport:obj!, Msg)
       repeat
          if Msg.type is JET_CROSSED_IN then
-            self.bkgd.fill = theme.highlight.fill
+            gui.applyStyle(self.bkgd, theme.highlight)
             self.events?.cursorEntry(self)
          elseif Msg.type is JET_CROSSED_OUT then
-            self.bkgd.fill = theme.bkgd.fill
+            local t = table.clone(theme.bkgd)
+            if self.hasFocus then gui.applyStyle(t, theme.focus) end
+            gui.applyStyle(self.bkgd, t)
             self.events?.cursorExit(self)
          elseif Msg.type is JET_LMB then
             if Msg.value > 0 then

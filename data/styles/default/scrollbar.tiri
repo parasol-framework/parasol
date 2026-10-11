@@ -9,17 +9,14 @@ return {
    background = function(State:table, Viewport:obj, Theme:table)
       State.barBkgd = Viewport.new('VectorRectangle', table.merge({
          width = '100%', height = '100%'
-      }, Theme.slider.bkgd))
+      }, Theme.scrollbar.bkgd))
    end,
    slider = function(State:table, Viewport:obj, Theme:table)
-      button_face      = Theme.slider.fore
-      button_highlight = Theme.slider.foreHighlight
-
       State.slider = { viewport = Viewport }
 
       State.slider.bkRect = Viewport.new('VectorRectangle', table.merge({
          name='SliderRect', width = '100%', height = '100%'
-      }, button_face))
+      }, Theme.scrollbar.fore))
       State.slider.bkRect.opacity = 0.5
 
       -- Decoration
@@ -30,7 +27,7 @@ return {
 
       dec = State.slider.decoration
       local stroke
-      local slider_colour = gui.strToRGB(button_face.fill)
+      local slider_colour = gui.strToRGB(Theme.scrollbar.fore.fill)
       if slider_colour.luminance(slider_colour) > 0.5 then
          stroke = 'rgb(0 0 0 / .5)'
       else
@@ -66,11 +63,9 @@ return {
       Viewport.mtSubscribeInput(JTYPE_CROSSING, function(Viewport, Msg)
          repeat
             if Msg.type is JET_CROSSED_IN then
-               State.slider.bkRect.fill = button_highlight.fill
-               State.slider.bkRect.opacity = 1
+               gui.applyStyle(State.slider.bkRect, Theme.scrollbar.foreHighlight)
             elseif Msg.type is JET_CROSSED_OUT then
-               State.slider.bkRect.fill = button_face.fill
-               State.slider.bkRect.opacity = 0.5
+               gui.applyStyle(State.slider.bkRect, Theme.scrollbar.fore)
             end
             Msg = Msg.next
          until not Msg

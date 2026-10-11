@@ -32,8 +32,8 @@
   "files": [
     {
       "path": "fontdialog.tiri",
-      "size": 13339,
-      "sha256": "2a90e510f8d12e77ddb5d74c1caabb0942bc64b08652718d16e15ba09a8be6c9",
+      "size": 13223,
+      "sha256": "e36e5a069c920b96640d514a18985b94c75eeac3e06b2927425ac9d3d27af89a",
       "mediaType": "application/vnd.kotuku.tiri"
     }
   ]
