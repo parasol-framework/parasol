@@ -11,9 +11,7 @@ Documentation is available in the Kotuku Wiki.
    namespace gui
 
 FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
-HEIGHT    <const> = math.floor(FONT_MAX_HEIGHT * 1.25) + 1
-ICON_SIZE <const> = HEIGHT * 0.56
-GAP       <const> = HEIGHT * 0.35
+DEFAULT_HEIGHT <const> = math.floor(FONT_MAX_HEIGHT * 1.25) + 1
 
 function toggleState()
    if &state is 1 then
@@ -61,6 +59,12 @@ gui.checkbox = function(Options)
 
       theme = gui.getTheme(&parentViewport)
       &theme = theme.input
+
+      -- The checkbox is a square of the widget height, and the icon and label spacing scale with it
+
+      HEIGHT    <const> = Options.height ?? DEFAULT_HEIGHT
+      ICON_SIZE <const> = HEIGHT * 0.56
+      GAP       <const> = HEIGHT * 0.35
 
       vps = { -- Viewport settings
          x        = Options.x,

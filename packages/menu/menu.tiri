@@ -445,7 +445,7 @@ gui.menu = function(Options:table!)
       if &prepare then
          &_preparing = true
          defer &_preparing = false end
-         &prepare(self, &config)
+         &prepare(&config)
          if not &surface then return end
          if &parentItem then
             &parentItem.config.items = &config

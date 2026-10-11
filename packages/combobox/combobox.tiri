@@ -11,7 +11,7 @@ Documentation is available in the Kotuku Wiki.
    namespace gui
 
 FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
-BOX_HEIGHT <const> = math.floor(FONT_MAX_HEIGHT * 1.35) + 1
+DEFAULT_HEIGHT <const> = math.floor(FONT_MAX_HEIGHT * 1.35) + 1
 MARGIN     <const> = math.floor(FONT_HEIGHT * 0.5) + 1
 
 function iconTheme(Widget:table!):str
@@ -97,6 +97,8 @@ gui.combobox = function(Options)
          &input_theme = &theme.input
       end
 
+      BOX_HEIGHT <const> = Options.height ?? DEFAULT_HEIGHT
+
       vps = { -- Viewport settings
          x       = Options.x,
          y       = Options.y,
@@ -155,7 +157,7 @@ gui.combobox = function(Options)
          x = 0, y = 0, width = '100%', height = '100%'
       }, &input_theme.bkgd))
 
-      ICON_SIZE = FONT_HEIGHT
+      ICON_SIZE = math.min(FONT_HEIGHT, BOX_HEIGHT - (&input_theme.bkgd.strokeWidth * 2))
       down_icon = gui.createIcon(&viewport.scene, 'arrows/down', ICON_SIZE, iconTheme(self))
 
       &iconRender = &viewport.new('VectorViewport', {

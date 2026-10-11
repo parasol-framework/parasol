@@ -95,7 +95,7 @@ gui.input = function(Options)
       end
 
       font_max_height, font_height = gui.getFontHeight(gui.fonts.input)
-      box_height = math.floor(font_max_height * 1.35) + 1
+      box_height = Options.height ?? (math.floor(font_max_height * 1.35) + 1)
 
       vps = { -- Viewport settings
          name    = 'vp_input',

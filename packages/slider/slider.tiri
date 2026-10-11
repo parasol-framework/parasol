@@ -9,7 +9,7 @@ Documentation is available in the Kotuku Wiki.
    namespace gui
 
 FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
-BOX_SIZE <const> = math.floor(FONT_MAX_HEIGHT * 1.35) + 1
+DEFAULT_THICKNESS <const> = math.floor(FONT_MAX_HEIGHT * 1.35) + 1
 MARGIN <const> = math.floor(FONT_HEIGHT * 0.5) + 1
 
 gui.slider = function(Options:table!)
@@ -22,6 +22,7 @@ gui.slider = function(Options:table!)
       step   = (Options.step != nil) ? Options.step : 0,
       value  = (Options.value != nil) ? Options.value : min + ((max - min) * 0.5),
       label  = Options.label,
+      thickness = Options.thickness ?? DEFAULT_THICKNESS, -- Breadth of the slider, which is also the thumb's box size
       events = Options.events ?? { },
       viewport = nil,
       setRange = function(Min:num!, Max:num!)
@@ -75,10 +76,10 @@ gui.slider = function(Options:table!)
 
       prvTrackValue = function(Position:num):num
          if &orientation is 'V' then
-            track = &prvSliderHostVP.height - BOX_SIZE
+            track = &prvSliderHostVP.height - &thickness
             return &min + ((&max - &min) * math.clamp((track - Position) / track, 0, 1))
          else
-            track = &prvSliderHostVP.width - BOX_SIZE
+            track = &prvSliderHostVP.width - &thickness
             return &min + ((&max - &min) * math.clamp(Position / track, 0, 1))
          end
       end,
@@ -86,10 +87,10 @@ gui.slider = function(Options:table!)
       prvPlaceSlider = function()
          fraction = (&value - &min) / (&max - &min)
          if &orientation is 'V' then
-            track = &prvSliderHostVP.height - BOX_SIZE
+            track = &prvSliderHostVP.height - &thickness
             &prvSliderVP.y = track - (fraction * track)
          else
-            &prvSliderVP.x = fraction * (&prvSliderHostVP.width - BOX_SIZE)
+            &prvSliderVP.x = fraction * (&prvSliderHostVP.width - &thickness)
          end
       end
    }
@@ -108,7 +109,7 @@ gui.slider = function(Options:table!)
 
       if &orientation is 'V' then
          &viewport = target.new('VectorViewport', {
-            x = Options.x, y = Options.y, height = (Options.size ?? 100), width = BOX_SIZE
+            x = Options.x, y = Options.y, height = (Options.size ?? 100), width = &thickness
          })
 
          &prvSliderHostVP = &viewport.new('VectorViewport', { y = 0, width = '100%', yOffset = 0 })
@@ -118,14 +119,14 @@ gui.slider = function(Options:table!)
          }, &prvTheme.slider.bkgd))
       else
          &viewport = target.new('VectorViewport', {
-            x = Options.x, y = Options.y, width = (Options.size ?? 100), height = BOX_SIZE
+            x = Options.x, y = Options.y, width = (Options.size ?? 100), height = &thickness
          })
 
          if &label then
             &labelText = &viewport.new('VectorText', table.merge({
                name      = 'Label',
                x         = 0,
-               y         = math.round(FONT_HEIGHT + math.floor((BOX_SIZE - FONT_HEIGHT) * 0.5)),
+               y         = math.round(FONT_HEIGHT + math.floor((&thickness - FONT_HEIGHT) * 0.5)),
                face      = gui.fonts.label.face,
                fontSize  = string.format('%.2fpt', gui.fonts.label.size),
                fontStyle = gui.fonts.label.style,
@@ -144,7 +145,7 @@ gui.slider = function(Options:table!)
          }, &prvTheme.slider.bkgd))
       end
 
-      &prvSliderVP = &prvSliderHostVP.new('VectorViewport', { width = BOX_SIZE, height = BOX_SIZE })
+      &prvSliderVP = &prvSliderHostVP.new('VectorViewport', { width = &thickness, height = &thickness })
 
       -- Drag coordinates are relative to the drag origin, so snapping the slider does not impede its movement.
 
@@ -200,7 +201,7 @@ gui.slider = function(Options:table!)
          function(Viewport:obj!, Msg)
             repeat
                if (Msg.type is JET_LMB) and (Msg.value > 0) and (not &disabled) then -- Centre the slider on the click position
-                  &setValue(&prvTrackValue(((&orientation is 'V') ? Msg.y : Msg.x) - (BOX_SIZE * 0.5)))
+                  &setValue(&prvTrackValue(((&orientation is 'V') ? Msg.y : Msg.x) - (&thickness * 0.5)))
                end
                Msg = Msg.next
             until Msg is nil

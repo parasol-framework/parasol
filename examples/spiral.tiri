@@ -28,7 +28,7 @@ function addSlider(Label:str, Value:num, Min:num, Max:num, Apply:func)
       target = glViewport, x = 16, y = glY + 20, size = 270,
       min = Min, max = Max, value = Value,
       events = {
-         activate = function(Widget:table, Position:num)
+         activate = function(Position:num)
             value = Position
             Apply(value)
             caption.string = string.format('%s: %.2f', Label, value)

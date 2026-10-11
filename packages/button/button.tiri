@@ -9,9 +9,7 @@ Documentation is available in the Kotuku Wiki.
    namespace gui
 
 LINE_SPACING, FONT_HEIGHT = gui.getFontHeight(gui.fonts.button)
-HEIGHT    <const> = math.floor(LINE_SPACING * 1.75) + 1
-ICON_SIZE <const> = HEIGHT * 0.56
-GAP       <const> = HEIGHT * 0.35
+DEFAULT_HEIGHT <const> = math.floor(LINE_SPACING * 1.75) + 1
 
 gui.button = function(Options)
    self = entity { -- Public variables
@@ -23,6 +21,12 @@ gui.button = function(Options)
 
    base_theme = gui.getTheme(self.parentViewport)
    theme = table.merge(base_theme.button, Options.theme)
+
+   -- Icon size and text padding scale with the button height
+
+   HEIGHT    <const> = Options.height ?? DEFAULT_HEIGHT
+   ICON_SIZE <const> = HEIGHT * 0.56
+   GAP       <const> = HEIGHT * 0.35
 
    -- Change the active state of the button to disabled or enabled
 
@@ -115,7 +119,7 @@ gui.button = function(Options)
    if Options.text then
       self.text = self._textClip.new('VectorText', table.merge({
          x         = GAP + label_offset,
-         y         = FONT_HEIGHT + math.floor((HEIGHT - FONT_HEIGHT - (gui.sizing.widget.strokeWidth * 2)) * 0.5),
+         y         = FONT_HEIGHT + math.floor((HEIGHT - FONT_HEIGHT - (theme.bkgd.strokeWidth * 2)) * 0.5),
          face      = gui.fonts.button.face,
          fontSize  = string.format('%.2fpt', gui.fonts.button.size),
          fontStyle = gui.fonts.button.style,

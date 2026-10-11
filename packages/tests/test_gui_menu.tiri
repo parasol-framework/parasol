@@ -128,8 +128,8 @@ end
    local parent = { id='parent', item='Parent', items=array<table> { child } }
    local menu = gui.menu({ target=surface, relative=target,
       config=array<table> { first, { group='Heading' }, { item='Disabled', disabled=true }, second, parent },
-      onHighlight=function(Menu, Item)
-         events.push({ menu=Menu, item=Item })
+      onHighlight=function(Item)
+         events.push({ menu=&&, item=Item })
       end
    })
    defer menu.surface?.free() end
@@ -589,9 +589,9 @@ end
    local calls = 0
    local opens = 0
    local received_menu:table
-   local config = { id='copy', item='Copy', qualifier='ctrl', key='c', onActivate=function(Menu, Item)
+   local config = { id='copy', item='Copy', qualifier='ctrl', key='c', onActivate=function(Item)
       calls++
-      received_menu = Menu
+      received_menu = &&
       assert(Item.id is 'copy', 'The activation callback must receive the original shortcut item')
    end }
    local bar = gui.menubar({ target=target, createItems=function(Bar)
@@ -819,9 +819,9 @@ end
    local states = array<any>
    local menu_states = array<any>
    local config = { id='grid', item='Show Grid', checkable=true,
-      onActivate=function(Menu, Item) states.push(Item.checked) end }
+      onActivate=function(Item) states.push(Item.checked) end }
    local menu = gui.menu({ target=surface, relative=target, showIcons=false,
-      onActivate=function(Menu, Item) menu_states.push(Item.checked) end,
+      onActivate=function(Item) menu_states.push(Item.checked) end,
       config=array<table> { config, { item='Disabled', checkable=true, checked=true, disabled=true } }
    })
    assert(menu.getChecked('grid') is false, 'Checkable items must default to unchecked')
@@ -886,7 +886,7 @@ end
    local surface <close>, target = newTarget()
    local states = array<any>
    local config = { id='grid', item='Show Grid', checkable=true, qualifier='CTRL', key='G',
-      onActivate=function(Menu, Item) states.push(Item.checked) end }
+      onActivate=function(Item) states.push(Item.checked) end }
    local bar = gui.menubar({ target=target, createItems=function(Bar)
       Bar.addItem('view', 'View', nil, nil, array<table> {
          { menu={ text='Display', items=array<table> { config } } }
@@ -919,9 +919,9 @@ end
    local calls = 0
    local config = array<table> { { id='save', item='Save', checkable=true } }
    local menu = gui.menu({ target=surface, relative=target, config=config,
-      prepare=function(Menu, Config)
-         assert(Menu.config is Config and Config is config, 'Prepare must receive the live configuration')
-         assert(not Menu.visible, 'Prepare must run before the menu becomes visible')
+      prepare=function(Config)
+         assert(&config is Config and Config is config, 'Prepare must receive the live configuration')
+         assert(not &visible, 'Prepare must run before the menu becomes visible')
          calls++
          Config[0].item = calls is 1 ? 'Save the current document' : 'Save'
          Config[0].checked = calls is 1
@@ -929,7 +929,7 @@ end
          if calls is 1 then Config.push({ id='new', item='New', key='N', qualifier='CTRL' })
          else Config.pop()
          end
-         Menu.show()
+         &show()
       end
    })
    local viewport_id = menu.viewport.id
@@ -961,9 +961,9 @@ end
    local calls = 0
    local menu = gui.menu({ target=surface, relative=target, prepare=function() end,
       config=array<table> { { menu={ text='Recent', items=array<table>,
-         prepare=function(Menu, Config)
+         prepare=function(Config)
             calls++
-            Menu.config = array<table> { { id='recent', item=f'Recent document {calls}',
+            &config = array<table> { { id='recent', item=f'Recent document {calls}',
                key='R', qualifier='CTRL' } }
          end
       } } }
@@ -992,9 +992,9 @@ end
    local calls, hits = 0, 0
    local entry
    local bar = gui.menubar({ target=target, createItems=function(Bar)
-      entry = Bar.addItem('file', 'File', nil, nil, nil, function(Menu, Config)
+      entry = Bar.addItem('file', 'File', nil, nil, nil, function(Config)
          calls++
-         Menu.config = array<table> { { item='Dynamic action', key='G', qualifier='CTRL',
+         &config = array<table> { { item='Dynamic action', key='G', qualifier='CTRL',
             onActivate=function() hits++ end } }
       end)
    end })
