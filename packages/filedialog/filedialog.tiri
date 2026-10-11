@@ -125,7 +125,7 @@ gui.dialog.file = function(Options)
       textFace   = gui.fonts.filesys.face,
       theme      = path_theme,
       events = {
-         activate = function(Input, Event)
+         activate = function(Event)
             self.fileview.browse(Event.text)
          end
       }
@@ -177,7 +177,7 @@ gui.dialog.file = function(Options)
          theme       = path_theme,
          text        = target_file,
          events = {
-            activate = function(Widget:table!, Event:table!)
+            activate = function(Event:table!)
                if Event.state is 'activated' then
                   processFeedback()
                end

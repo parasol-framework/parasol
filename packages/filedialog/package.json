@@ -34,8 +34,8 @@
   "files": [
     {
       "path": "filedialog.tiri",
-      "size": 7591,
-      "sha256": "7a82d2746de28ddc360a1804a1406d156d7f8f731a66611aa241974b33f01c60",
+      "size": 7569,
+      "sha256": "684e1f114b23b6dc18e039e4dd4d303fa5c0e0b137fa2656dde877b68c9db6f7",
       "mediaType": "application/vnd.kotuku.tiri"
     }
   ]

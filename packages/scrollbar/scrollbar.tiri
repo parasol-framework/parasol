@@ -36,8 +36,8 @@ gui.scrollbar = function(Options)
       min_size = 20
       if slider_size < min_size then -- Fixed slider calculation
          slider_size = min_size
-         scale = (PageLength - ViewLength) / (HostLength - min_size)
-         offset = Position / scale
+         scale       = (PageLength - ViewLength) / (HostLength - min_size)
+         offset      = Position / scale
          if slider_size + offset > HostLength then
             offset = HostLength - slider_size
             if offset < 0 then offset = 0 end
@@ -82,11 +82,11 @@ gui.scrollbar = function(Options)
             if slider_size <= 12 then
                self.vbar.viewport.visibility = VIS_HIDDEN
                lView.xOffset = 0
-               if self.hbar then self.hbar.viewport.xOffset = 0 end
+               self.hbar?.viewport.xOffset = 0
             else
                self.vbar.viewport.visibility = VIS_VISIBLE
                lView.xOffset = self.vbar.sliderVP.width
-               if self.hbar then self.hbar.viewport.xOffset = lBreadth end
+               self.hbar?.viewport.xOffset = lBreadth
             end
 
             lStyle.arrange(self.vbar)
@@ -127,8 +127,7 @@ gui.scrollbar = function(Options)
          bar = vp.state()
          bar.viewport  = vp
          bar.direction = 'V'
-
-         lStyle.background(bar, bar.viewport, lTheme)
+         bar.barBkgd = bar.viewport.new('VectorRectangle', table.merge({ width = '100%', height = '100%' }, lTheme.scrollbar.bkgd))
 
          bar.sliderHostVP = vp.new('VectorViewport', { name='VSliderHostVP', y = 0, width = '100%', yOffset = 0, overflow = VOF_HIDDEN })
          bar.sliderVP = bar.sliderHostVP.new('VectorViewport', { name='VSliderVP', width = lBreadth, height = bar.sliderHostVP.height, overflow = VOF_HIDDEN })
@@ -156,7 +155,7 @@ gui.scrollbar = function(Options)
          bar.viewport  = vp
          bar.direction = 'H'
 
-         lStyle.background(bar, bar.viewport, lTheme)
+         bar.barBkgd = bar.viewport.new('VectorRectangle', table.merge({ width = '100%', height = '100%' }, lTheme.scrollbar.bkgd))
 
          bar.sliderHostVP = vp.new('VectorViewport', { name='HSliderHostVP', x = 0, height = '100%', xOffset = 0, overflow = VOF_HIDDEN })
          bar.sliderVP = bar.sliderHostVP.new('VectorViewport', { name='HSliderVP', width = bar.sliderHostVP.height, height = lBreadth, overflow = VOF_HIDDEN })

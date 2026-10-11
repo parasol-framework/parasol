@@ -371,7 +371,7 @@ function buildLayout(self, Options)
       shadowLabel = 'Colour',
       inputMask = [[^rgb\(\d+,\d+,\d+\)$]],
       events = {
-         activate = function(Widget, Event)
+         activate = function(Event)
             updateRGBInput(self, gui.strToRGB(Event.text))
          end
       }

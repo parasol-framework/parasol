@@ -51,7 +51,7 @@ Gamepad demonstration
       x      = win.margins.left,
       y      = 120,
       events = {
-         activate = function(Widget, Value)
+         activate = function(Value)
             hardness = Value
          end
       }

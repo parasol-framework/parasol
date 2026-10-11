@@ -214,8 +214,7 @@ gui.toolbar = function(Options)
                item.bkgd.acMoveToBack()
 
                item.border = self.vg.new('VectorRectangle', table.merge({
-                  name = 'grouprect', strokeWidth = gui.sizing.widget.strokeWidth,
-                  x = x, y = y, roundX = self._round, roundY = self._round, width = 1, height = 1
+                  name = 'grouprect', x = x, y = y, roundX = self._round, roundY = self._round, width = 1, height = 1
                }, toolbar_theme.groupBorder))
 
                if self._groupClip then

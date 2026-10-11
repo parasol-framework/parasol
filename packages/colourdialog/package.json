@@ -33,8 +33,8 @@
   "files": [
     {
       "path": "colourdialog.tiri",
-      "size": 20136,
-      "sha256": "101826d972b52308367914f8a442bc3f2b8ca0ad1a61642d71eaa0327dd292d6",
+      "size": 20128,
+      "sha256": "b781e5f9d676b66852e43c1b708fbb2c0f19fb4b746110b4bc241fbbaf0cbe67",
       "mediaType": "application/vnd.kotuku.tiri"
     }
   ]

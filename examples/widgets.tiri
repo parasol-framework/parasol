@@ -25,7 +25,7 @@ end
 
 -- This is a universal callback for any menu item that is activated by the user.
 
-function itemClicked(Menu, Item)
+function itemClicked(Item)
    print(f'Selected menu item "{Item.item}" (id: {Item.id ?? "none"})')
 end
 
@@ -37,7 +37,7 @@ function dynamicMenuCallback(ID, Name)
    print(f'Dynamic menubar item selected: {ID}, {Name}')
 end
 
-function addDynamicMenuItem(Menu, Item)
+function addDynamicMenuItem(Item)
    if dynamic_item_added then
       print('The dynamic menubar item already exists.')
       return
@@ -138,7 +138,7 @@ end
          Bar.addItem('view', 'View', 'page/page', menuCallback, array<table> {
             { group='Layout' },
             { id='show_grid', item='Show Grid', checkable=true, checked=false, qualifier='CTRL', key='G',
-              onActivate=function(Menu, Item) print(f'Grid display enabled: {Item.checked}') end },
+              onActivate=function(Item) print(f'Grid display enabled: {Item.checked}') end },
             { id='columns', item='Column View', icon='layout/column_three', onActivate=itemClicked },
             { id='list', item='List View', icon='layout/list', onActivate=itemClicked },
             {
@@ -206,7 +206,7 @@ end
       y      = 50,
       popup  = true,
       onActivate = itemClicked,
-      onHighlight = function(Menu, Item)
+      onHighlight = function(Item)
          print(f'Highlighted menu item: {Item.item}')
       end,
       config = array<table> {
@@ -255,7 +255,7 @@ end
       y      = y,
       icon   = 'items/question',
       events = {
-         activate = function(Widget)
+         activate = function()
             gui.dialog.message({
                modal         = true,
                image         = 'items/warning',
@@ -293,7 +293,7 @@ end
       y      = y,
       icon   = 'tools/palette',
       events = {
-         activate = function(Widget)
+         activate = function()
             gui.dialog.colour({
                modal   = true,
                popOver = win.surface,
@@ -319,7 +319,7 @@ end
       y      = y,
       icon   = 'items/font',
       events = {
-         activate = function(Widget)
+         activate = function()
             gui.dialog.font({
                okText     = 'Select Font',
                cancelText = 'Exit',
@@ -346,7 +346,7 @@ end
       y      = y,
       icon   = 'folders/folder',
       events = {
-         activate = function(Widget)
+         activate = function()
             gui.dialog.file({
                filterList  = array<table> { { name='MP3 Audio Files', ext='mp3' }, { name='Text Files', ext='txt' } },
                okText      = 'Select File',
@@ -380,7 +380,7 @@ end
       x      = win.margins.left,
       y      = y,
       events = {
-         activate = function(Widget)
+         activate = function()
          end,
          focus = widgetFocus
       }
@@ -396,7 +396,7 @@ end
       x      = win.viewport.width / 2,
       y      = y,
       events = {
-         activate = function(Widget, Value)
+         activate = function(Value)
          end
       }
    })
@@ -420,7 +420,7 @@ end
          { item='Thunder', icon='weather/thunder' }
       },
       events = {
-         activate = function(Widget)
+         activate = function()
          end,
          focus = widgetFocus
       }
@@ -436,10 +436,12 @@ end
       label  = 'Inputbox: ',
       text   = 'Your text here',
       events = {
-         activate = function(Widget, Event)
+         activate = function(Event)
             print('Input state set to "' .. (Event.state ?? 'NIL') .. '", text "' .. (Event.text ?? 'NIL') .. '"')
          end,
-         focus = widgetFocus
+         focus = function()
+            widgetFocus(&&)
+         end
       }
    })
    y += input.viewport.height + 16
@@ -456,16 +458,16 @@ end
       text   = 'Alarm',
       size   = 80,
       events = {
-         show = function(Icon)
-            vfx.fadeIn(Icon.viewport, { seconds=1.0, delay=0.1 })
+         show = function()
+            vfx.fadeIn(&viewport, { seconds=1.0, delay=0.1 })
          end,
-         activate = function(Icon)
-            if Icon.effect then return end
-            Icon.effect = vfx.shake(Icon.viewport, {
+         activate = function()
+            if &effect then return end
+            &effect = vfx.shake(&viewport, {
                seconds = 1.0,
                intensity = 1.0,
                callback = function(Effect)
-                  Icon.effect = nil
+                  &effect = nil
                end
             })
 
@@ -485,19 +487,19 @@ end
       image  = 'programs/filemanager',
       text   = 'Wilhelm\'s House',
       events = {
-         show = function(Icon)
-            vfx.rotate(Icon.viewport, { seconds=0.8 })
-            vfx.zoomIn(Icon.viewport, { seconds=0.4, delay=0.3 })
+         show = function()
+            vfx.rotate(&viewport, { seconds=0.8 })
+            vfx.zoomIn(&viewport, { seconds=0.4, delay=0.3 })
          end,
-         activate = function(Icon)
-            if Icon.effect then return end
+         activate = function()
+            if &effect then return end
 
-            Icon.effect = vfx.chain({
-               vfx.rotate(Icon.viewport, { seconds=0.8 }),
-               vfx.zoomOut(Icon.viewport, { seconds=0.8 })
+            &effect = vfx.chain({
+               vfx.rotate(&viewport, { seconds=0.8 }),
+               vfx.zoomOut(&viewport, { seconds=0.8 })
             }, function()
-               Icon.viewport.free()
-               Icon.viewport = nil
+               &viewport.free()
+               &viewport = nil
             end)
 
             sndWilhelm?.acActivate()

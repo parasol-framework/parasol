@@ -21,14 +21,15 @@ gui.button = function(Options)
       viewport       = nil, -- The button's primary viewport
    }
 
-   theme = table.merge(gui.getTheme(self.parentViewport).button, Options.theme)
+   base_theme = gui.getTheme(self.parentViewport)
+   theme = table.merge(base_theme.button, Options.theme)
 
    -- Change the active state of the button to disabled or enabled
 
    self.disable = function()
       self.disabled = true
       self.viewport.acDisable()
-      self.text?.opacity = 0.5
+      gui.applyStyle(self.bkgd, theme.disabled)
       self.events?.disable(self)
       self.viewport.acDraw()
    end
@@ -36,7 +37,7 @@ gui.button = function(Options)
    self.enable = function()
       self.disabled = false
       self.viewport.acEnable()
-      self.text?.opacity = 1.0
+      gui.applyStyle(self.bkgd, theme.bkgd)
       self.events?.enable(self)
       self.viewport.acDraw()
    end
@@ -106,8 +107,8 @@ gui.button = function(Options)
    end
 
    self._textClip = self.viewport.new('VectorViewport', {
-      x = gui.sizing.widget.strokeWidth, y = gui.sizing.widget.strokeWidth,
-      xOffset = gui.sizing.widget.strokeWidth, yOffset = gui.sizing.widget.strokeWidth,
+      x = theme.bkgd.strokeWidth, y = theme.bkgd.strokeWidth,
+      xOffset = theme.bkgd.strokeWidth, yOffset = theme.bkgd.strokeWidth,
       overflow = VOF_HIDDEN
    })
 

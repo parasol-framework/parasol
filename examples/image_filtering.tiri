@@ -195,7 +195,7 @@ function buildScene()
          { item='Mitchell' }
       },
       events = {
-         activate = function(Widget, Text)
+         activate = function(Text)
             selectFilter(Text)
          end
       }
@@ -211,7 +211,7 @@ function buildScene()
       y      = 10,
       items  = { { item='Test Pattern' }, { item='Photo' }, { item='Gradient' } },
       events = {
-         activate = function(Widget, Text)
+         activate = function(Text)
             if Text is 'Test Pattern' then
                rect.fill = 'url(#pattern)'
                transformStyle = 'zoom'
@@ -236,7 +236,7 @@ function buildScene()
       x      = cmbImageType.viewport.x + cmbImageType.viewport.width + 10,
       y      = 10,
       events = {
-         activate = function(Widget, Value)
+         activate = function(Value)
             glRotate = Value
             transform()
          end
@@ -252,7 +252,7 @@ function buildScene()
       x      = slRotate.viewport.x + slRotate.viewport.width + 10,
       y      = 10,
       events = {
-         activate = function(Widget, Value)
+         activate = function(Value)
             glScale = Value
             transform()
          end
