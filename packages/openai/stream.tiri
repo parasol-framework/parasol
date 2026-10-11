@@ -502,7 +502,9 @@ openai_stream.connect = function(Options:table):<table, table>
             self.close()
             return
          end
-         if raw.type is 'error' and raw.stream_id is nil and (active_count > 1 or not active['']) then
+         local provider = raw.error is <table> and raw.error != json.null and raw.error or raw
+         if raw.type is 'error' and raw.stream_id is nil and
+            (provider.code is 'websocket_connection_limit_reached' or not active['']) then
             -- Preserve the provider failure for every response before dropping the connection.
             closed = true
             connected = false
