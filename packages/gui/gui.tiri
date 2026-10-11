@@ -565,13 +565,14 @@ end
 -- Negative positions, including -0.0, are interpreted as offsets from the end
 
 gui.separator = function(Viewport:obj!, Orientation:str!, Pos:any!, MarginA:any, MarginB:any):num
-   local o = Orientation.sub(0, 1)
-   local options = { fill=tostring(gui.getTheme(Viewport).window.stroke.stroke) }
+   o = Orientation.sub(0, 1)
+   stroke = gui.getTheme(Viewport).window.stroke
+   options = { fill = stroke.stroke }
 
    if o is 'h' or o is 'H' then
       options.x       = MarginA ?? 0
       options.xOffset = MarginB ?? 0
-      options.height  = gui.sizing.widget.strokeWidth
+      options.height  = stroke.strokeWidth
 
       if Pos is <num> and (Pos < 0 or (Pos is 0 and (1/Pos) < 0)) then -- Include negative zero
          options.yOffset = -Pos
@@ -584,7 +585,7 @@ gui.separator = function(Viewport:obj!, Orientation:str!, Pos:any!, MarginA:any,
    else
       options.y       = MarginA ?? 0
       options.yOffset = MarginB ?? 0
-      options.width   = gui.sizing.widget.strokeWidth
+      options.width   = stroke.strokeWidth
       if Pos is <num> and (Pos < 0 or (Pos is 0 and (1/Pos) < 0)) then
          options.xOffset = -Pos
          subvp = Viewport.new('VectorViewport', options)
@@ -594,7 +595,7 @@ gui.separator = function(Viewport:obj!, Orientation:str!, Pos:any!, MarginA:any,
          Viewport.new('VectorRectangle', options)
       end
    end
-   return gui.sizing.widget.strokeWidth
+   return stroke.strokeWidth
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -701,11 +702,7 @@ gui.sizing = {
    widget = {
       width  = 160, -- Default width for common widgets (px)
       gap    = 6,   -- Recommended gap between widgets (px)
-      margin = 6,   -- Recommended internal margin for widgets (px)
-      strokeWidth = 2
-   },
-   page = {
-      strokeWidth = 2
+      margin = 6    -- Recommended internal margin for widgets (px)
    }
 }
 
@@ -873,7 +870,7 @@ gui.themes = {
       window = {
          bkgd   = { fill = gui.palette.dark.neutral },
          text   = { fill = gui.palette.dark.text },
-         stroke = { stroke = modifyAlpha(gui.palette.dark.text, 0.25) }, -- Stroking of lines/paths (not borders of widgets)
+         stroke = { stroke = modifyAlpha(gui.palette.dark.text, 0.25), strokeWidth = 2 }, -- Stroking of lines/paths (not borders of widgets)
          icon   = 'pearl'
       },
       button = {
@@ -966,7 +963,7 @@ gui.themes = {
       window = {
          bkgd   = { fill = gui.palette.light.neutral },
          text   = { fill = gui.palette.light.text },
-         stroke = { stroke = modifyAlpha(gui.palette.light.inverse, 0.5) },
+         stroke = { stroke = modifyAlpha(gui.palette.light.inverse, 0.5), strokeWidth = 2 },
          icon   = 'carbon'
       },
       button = {
