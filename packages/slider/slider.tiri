@@ -102,7 +102,7 @@ gui.slider = function(Options:table!)
       assert(&step >= 0, 'The step value cannot be negative.')
 
       base_theme = gui.getTheme(target)
-      &prvTheme = Options.theme ? table.merge(base_theme, { slider = table.merge(base_theme.slider, Options.theme) }) : base_theme
+      &prvTheme = Options.theme ? table.merge(base_theme, { slider = table.merge(base_theme.slider, Options.theme, true, true) }) : base_theme
       &orientation = (Options.orientation is 'vertical') ? 'V' : 'H'
       &prvLabelSize = 0
       &value = &prvSnap(&value)

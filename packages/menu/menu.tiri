@@ -132,7 +132,7 @@ gui.menu = function(Options:table!)
 
    MARGIN <const> = gui.sizing.widget.margin
 
-   theme = Options.theme ? table.merge(gui.themes[theme_name].menu, Options.theme) : gui.themes[theme_name].menu
+   theme = table.merge(gui.themes[theme_name].menu, Options.theme, true, true)
 
    self = entity { -- Public interface
       surface     = nil,

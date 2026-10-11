@@ -29,8 +29,8 @@
   "files": [
     {
       "path": "combobox.tiri",
-      "size": 10121,
-      "sha256": "a70421647ef3bd81e76319159f46cac7dd865e65bc17fdb31625a1dbfd005293",
+      "size": 9867,
+      "sha256": "6c3b1414a5ff2c28719b69ecbb90ef4dcc03b6cff5ad994b2672f1ec988ca045",
       "mediaType": "application/vnd.kotuku.tiri"
     }
   ]

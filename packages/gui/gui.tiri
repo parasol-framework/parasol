@@ -686,6 +686,8 @@ gui.applyStyle = function(Vector:any!, Set:table)
    end
 end
 
+----------------------------------------------------------------------------------------------------------------------
+
 function modifyAlpha(Colour:str!, Alpha:num!):str
    mVec.ReadPainter(nil, Colour, glPainter)
    nrgb = glPainter.colour

@@ -89,13 +89,7 @@ gui.combobox = function(Options)
       assert(Options.items and #Options.items > 0, 'A list of items is required.')
 
       &theme = gui.getTheme(&parentViewport)
-      if Options.theme then
-         &input_theme = table.merge(&theme.input, Options.theme)
-         -- Merge in bkgd to ensure that we don't lose important default values like strokeWidth
-         &input_theme.bkgd = table.merge(&theme.input.bkgd, Options.theme.bkgd)
-      else
-         &input_theme = &theme.input
-      end
+      &input_theme = table.merge(&theme.input, Options.theme, true, true)
 
       BOX_HEIGHT <const> = Options.height ?? DEFAULT_HEIGHT
 

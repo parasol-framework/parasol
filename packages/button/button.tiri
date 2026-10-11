@@ -20,7 +20,7 @@ gui.button = function(Options)
    }
 
    base_theme = gui.getTheme(self.parentViewport)
-   theme = table.merge(base_theme.button, Options.theme)
+   theme = table.merge(base_theme.button, Options.theme, true, true)
 
    -- Icon size and text padding scale with the button height
 

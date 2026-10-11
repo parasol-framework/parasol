@@ -86,13 +86,7 @@ gui.input = function(Options)
       assert(Options.target, 'A target viewport is required.')
 
       theme = gui.getTheme(Options.target)
-      if Options.theme then
-         input_theme = table.merge(theme.input, Options.theme)
-         -- Merge in bkgd to ensure that we don't lose important default values like strokeWidth
-         input_theme.bkgd = table.merge(theme.input.bkgd, Options.theme.bkgd)
-      else
-         input_theme = theme.input
-      end
+      input_theme = table.merge(theme.input, Options.theme, true, true)
 
       font_max_height, font_height = gui.getFontHeight(gui.fonts.input)
       box_height = Options.height ?? (math.floor(font_max_height * 1.35) + 1)

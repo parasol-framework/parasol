@@ -610,7 +610,7 @@ gui.toolbar = function(Options)
    assert(Options.target, 'A target viewport is required.')
 
    theme = gui.getTheme(Options.target)
-   toolbar_theme = table.merge(theme.toolbar, Options.theme)
+   toolbar_theme = table.merge(theme.toolbar, Options.theme, true, true)
 
    self._iconSize      = Options.iconSize      ?? gui.interface.iconSize
    self._iconTheme     = Options.iconTheme     ?? toolbar_theme.icon
