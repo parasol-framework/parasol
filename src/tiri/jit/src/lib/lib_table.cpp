@@ -388,6 +388,127 @@ static void table_merge_keys(lua_State *L, GCtab *Source, GCtab *Destination, bo
    }
 }
 
+// Deep merges memoise ordered source pairs and process a VM-rooted work queue.  This avoids native recursion
+// and preserves cycles and aliases for each pair without invoking metamethods or stepping GC during traversal.
+
+static GCtab *table_merge_deep_ensure(lua_State *L, GCtab *First, GCtab *Second,
+   GCtab *Memo, GCtab *Queue, uint32_t *Count, int32_t Parent)
+{
+   if (not First) {
+      First = Second;
+      Second = nullptr;
+   }
+   // One-sided references to an ancestor belong to that merged result, rather than a detached clone.
+   // Only two-sided ancestors are linked; ordinary deep clones still use the pair memo directly.
+   if (First and not Second) {
+      for (int32_t ancestor = Parent; ancestor >= 0; ancestor = numberVint(lj_tab_getint(Queue, ancestor + 3))) {
+         if (tabV(lj_tab_getint(Queue, ancestor)) IS First or
+             tabV(lj_tab_getint(Queue, ancestor + 1)) IS First) {
+            return tabV(lj_tab_getint(Queue, ancestor + 2));
+         }
+      }
+   }
+   TValue first_key, second_key;
+   if (First) settabV(L, &first_key, First);
+   else setboolV(&first_key, 0);
+   if (Second) settabV(L, &second_key, Second);
+   else setboolV(&second_key, 0);
+
+   cTValue *found = lj_tab_get(L, Memo, &first_key);
+   GCtab *pairs;
+   if (tvisnil(found)) {
+      pairs = lj_tab_new(L, 0, 0);
+      settabV(L, lj_tab_set(L, Memo, &first_key), pairs);
+      lj_gc_anybarriert(L, Memo);
+   }
+   else pairs = tabV(found);
+
+   found = lj_tab_get(L, pairs, &second_key);
+   if (not tvisnil(found)) return tabV(found);
+   if (*Count >= INT32_MAX / 4) lj_err_msg(L, ErrMsg::TABOV);
+
+   GCtab *result = lj_tab_new(L, 0, 0);
+   settabV(L, lj_tab_set(L, pairs, &second_key), result);
+   lj_gc_anybarriert(L, pairs);
+   int32_t offset = int32_t((*Count)++ * 4);
+   copyTV(L, lj_tab_setint(L, Queue, offset), &first_key);
+   copyTV(L, lj_tab_setint(L, Queue, offset + 1), &second_key);
+   settabV(L, lj_tab_setint(L, Queue, offset + 2), result);
+   setintV(lj_tab_setint(L, Queue, offset + 3), Parent);
+   lj_gc_anybarriert(L, Queue);
+   return result;
+}
+
+static void table_merge_deep_value(lua_State *L, GCtab *Destination, cTValue *Key,
+   cTValue *First, cTValue *Second, bool Overwrite, GCtab *Memo, GCtab *Queue, uint32_t *Count, int32_t Parent)
+{
+   TValue value;
+   if (First and tvistab(First) and Second and tvistab(Second)) {
+      settabV(L, &value, table_merge_deep_ensure(L, tabV(First), tabV(Second), Memo, Queue, Count, Parent));
+   }
+   else {
+      cTValue *selected = (First and (not Second or not Overwrite)) ? First : Second;
+      copyTV(L, &value, selected);
+      if (tvistab(&value)) {
+         settabV(L, &value, table_merge_deep_ensure(L, tabV(&value), nullptr, Memo, Queue, Count, Parent));
+      }
+   }
+   copyTV(L, lj_tab_set(L, Destination, Key), &value);
+   lj_gc_anybarriert(L, Destination);
+}
+
+static int table_merge_deep(lua_State *L, GCtab *First, GCtab *Second, bool Overwrite)
+{
+   lua_settop(L, 5);  // Inputs, memo, queue and result.
+   settabV(L, L->base + 2, lj_tab_new(L, 0, 0));
+   settabV(L, L->base + 3, lj_tab_new(L, 0, 0));
+   GCtab *memo = tabV(L->base + 2);
+   GCtab *queue = tabV(L->base + 3);
+   uint32_t count = 0;
+   settabV(L, L->base + 4, table_merge_deep_ensure(L, First, Second, memo, queue, &count, -1));
+
+   for (uint32_t i = 0; i < count; i++) {
+      int32_t offset = int32_t(i * 4);
+      cTValue *first_entry = lj_tab_getint(queue, offset);
+      cTValue *second_entry = lj_tab_getint(queue, offset + 1);
+      GCtab *first = tvistab(first_entry) ? tabV(first_entry) : nullptr;
+      GCtab *second = tvistab(second_entry) ? tabV(second_entry) : nullptr;
+      GCtab *result = tabV(lj_tab_getint(queue, offset + 2));
+      int32_t parent = second ? offset : numberVint(lj_tab_getint(queue, offset + 3));
+      auto first_shape = table_merge_shape(first);
+      auto second_shape = table_merge_shape(second);
+
+      if (first_shape.dense and second_shape.dense) {
+         if (uint64_t(first_shape.count) + second_shape.count > LJ_MAX_ASIZE) lj_err_msg(L, ErrMsg::TABOV);
+         for (uint32_t j = 0; j < first_shape.count + second_shape.count; j++) {
+            TValue key, value;
+            setintV(&key, int32_t(j));
+            copyTV(L, &value, j < first_shape.count ? lj_tab_getint(first, int32_t(j)) :
+               lj_tab_getint(second, int32_t(j - first_shape.count)));
+            table_merge_deep_value(L, result, &key, &value, nullptr, Overwrite, memo, queue, &count, parent);
+         }
+      }
+      else {
+         for (int pass = 0; pass < 2; pass++) {
+            GCtab *source = pass IS 0 ? first : second;
+            if (not source) continue;
+            TValue cursor, entry[2], left, right;
+            setnilV(&cursor);
+            while (lj_tab_next(source, &cursor, entry)) {
+               copyTV(L, &cursor, &entry[0]);
+               // Copy entries before queue growth or destination stores can invalidate table slot pointers.
+               copyTV(L, &left, first ? lj_tab_get(L, first, &cursor) : niltv(L));
+               copyTV(L, &right, second ? lj_tab_get(L, second, &cursor) : niltv(L));
+               if (pass IS 1 and not tvisnil(&left)) continue;
+               table_merge_deep_value(L, result, &cursor, tvisnil(&left) ? nullptr : &left,
+                  tvisnil(&right) ? nullptr : &right, Overwrite, memo, queue, &count, parent);
+            }
+         }
+      }
+   }
+   return 1;
+}
+
 LJLIB_CF(table_merge)
 {
    lj_lib_checkany(L, 1);
@@ -402,10 +523,17 @@ LJLIB_CF(table_merge)
       overwrite = tvistrue(L->base + 2);
    }
 
+   bool deep = false;
+   if (L->base + 3 < L->top and not tvisnil(L->base + 3)) {
+      if (not tvisbool(L->base + 3)) lj_err_argtype(L, 4, "boolean");
+      deep = tvistrue(L->base + 3);
+   }
+
    // Finish a pending GC step before inspecting weak tables.  No GC step may clear source entries between the
    // shape scan and copying, particularly dense numerical keys stored in the hash part.
 
    lj_gc_check(L);
+   if (deep) return table_merge_deep(L, first, second, overwrite);
    auto first_shape = table_merge_shape(first);
    auto second_shape = table_merge_shape(second);
    uint64_t count = uint64_t(first_shape.count) + second_shape.count;
@@ -867,7 +995,7 @@ extern int luaopen_table(lua_State *L)
    reg_iface_method(L, "table", "size", TiriType::Table, builtin_callable_id(FastFunc::table_size),
       { TiriType::Num }, { TiriType::Table });
    reg_iface_method(L, "table", "merge", TiriType::Table, builtin_callable_id(FastFunc::table_merge),
-      { TiriType::Table }, { TiriType::Table, TiriType::Table, TiriType::Bool }, FProtoFlags::None,
+      { TiriType::Table }, { TiriType::Table, TiriType::Table, TiriType::Bool, TiriType::Bool }, FProtoFlags::None,
       FProtoArity::required(2));
    reg_iface_method(L, "table", "clone", TiriType::Table, builtin_callable_id(FastFunc::table_clone),
       { TiriType::Table }, { TiriType::Table }, FProtoFlags::None, FProtoArity::required(1));

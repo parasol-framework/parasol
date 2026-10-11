@@ -42,6 +42,52 @@ end
    &glContextAccessInherited = nil
 end
 
+@Test function RootContextSupportsSafeNavigationStores()
+   &glContextSafeStore = { value = 1 }
+   defer
+      &glContextSafeStore = nil
+   end
+
+   &glContextSafeStore?.value = 3
+   &&?.glContextSafeStore?.value += 4
+   assert(glContextSafeStore.value is 7, 'Safe context stores should update the selected root field')
+end
+
+@Test function TemporaryContextSupportsSafeNavigationStores()
+   local receiver = { text = { string = 'old' }, items = { 1 } }
+   using receiver do
+      &text?.string = 'new'
+      &items?[0] += 4
+      &&?.text?.string ..= '!'
+   end
+
+   assert(receiver.text.string is 'new!', 'Safe member stores should use the temporary context')
+   assert(receiver.items[0] is 5, 'Safe index compound stores should use the temporary context')
+end
+
+@Test function InheritedContextSafeStoresSkipMissingReceivers()
+   local receiver = entity { text = { string = 'old' } }
+   local calls = 0
+
+   function replacement():str
+      calls++
+      return 'new'
+   end
+
+   function receiver.update()
+      &text?.string = replacement()
+      &missing?[replacement()] = replacement()
+   end
+
+   receiver.update()
+   assert(receiver.text.string is 'new', 'Safe member stores should use an inherited entity context')
+   assert(calls is 1, 'A missing safe receiver should skip both the index and the RHS')
+
+   receiver.text = nil
+   receiver.update()
+   assert(calls is 1, 'A missing context field should skip the RHS of a safe member store')
+end
+
 @Test function DebugSetLocalCannotModifyInheritedContextCache()
    local receiver = entity { value = 7 }
 
