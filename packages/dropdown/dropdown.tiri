@@ -20,8 +20,8 @@ ITEM_SPACING <const> = 1.2
 SCROLL_WIDTH <const> = 12
 
 gui.dropdown = function(Options)
-   local theme = Options.relative ? gui.getTheme(Options.relative) : gui.getTheme()
-   local dropdown = table.merge(theme.dropdown, Options.theme)
+   local theme_name = gui.getThemeName(Options.relative?.scene) -- Adopt the theme of the window that opens the dropdown
+   local dropdown = table.merge(gui.themes[theme_name].dropdown, Options.theme)
 
    self = entity { -- Public variables
       surface  = nil,
@@ -257,6 +257,7 @@ gui.dropdown = function(Options)
       &surface.init()
 
       &scene = obj.new('VectorScene', { flags=VPF_RESIZE, surface=&surface })
+      gui.setTheme(&scene, theme_name) -- Child widgets such as the scrollbar read the theme from the scene
       &viewport = &scene.new('VectorViewport', { })
 
       &surface.subscribe('free', function(Surface, Args)

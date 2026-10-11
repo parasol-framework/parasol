@@ -598,14 +598,15 @@ gui.separator = function(Viewport:obj!, Orientation:str!, Pos:any!, MarginA:any,
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Return the localised theme table for a given Viewport or vector Scene (effectively the theme assigned to the
--- display Window).  NB: If a viewport is provided then the nearest parent scene is queried.
+-- Return the name of the theme assigned to a given Viewport or vector Scene (effectively the theme assigned to the
+-- display Window).  NB: If a viewport is provided then the nearest parent scene is queried.  Pop-up surfaces use
+-- this to adopt the theme of the window that opened them.
 
-gui.getTheme = function(Object:obj):table
+gui.getThemeName = function(Object:obj):str
    local scene:obj
 
    if not Object then
-      return gui.themes[gui.theme]
+      return gui.theme
    end
 
    if obj.class(Object).name is 'VectorViewport' then
@@ -617,13 +618,18 @@ gui.getTheme = function(Object:obj):table
    end
 
    state = scene.state()
-   themeName = state.theme -- Get pre-defined theme
-   if not themeName then -- Theme undefined, apply the default
+   if not state.theme then -- Theme undefined, apply the default
       state.theme = gui.theme
-      themeName = state.theme
    end
 
-   return gui.themes[state.theme]
+   return state.theme
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Return the localised theme table for a given Viewport or vector Scene.
+
+gui.getTheme = function(Object:obj):table
+   return gui.themes[gui.getThemeName(Object)]
 end
 
 ----------------------------------------------------------------------------------------------------------------------

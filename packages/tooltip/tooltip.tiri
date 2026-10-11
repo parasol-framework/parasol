@@ -13,7 +13,7 @@ gui.tooltip = function(Options)
    local self = entity { } -- Public variables
 
    using self do
-      theme = Options.theme ?? gui.getTheme(Options.target)
+      theme = Options.theme ?? gui.getTheme(Options.target).page
 
       &free = function()
          local surface = &surface
@@ -43,7 +43,7 @@ gui.tooltip = function(Options)
             Vector.width  = Width - (Vector.x * 2)
             Vector.height = Height - (Vector.y * 2)
          end
-      }, table.merge(theme.page.bkgd, theme.page.border)))
+      }, table.merge(theme.bkgd, theme.border)))
 
       &text = &viewport.new('VectorText', table.merge({
          x         = gui.fonts.button.size,
@@ -52,7 +52,7 @@ gui.tooltip = function(Options)
          fontStyle = gui.fonts.button.style,
          fontSize  = string.format('%.2fpt', gui.fonts.button.size),
          textFlags = VTXF_RASTER
-      }, theme.page.text))
+      }, theme.text))
 
       &surface.height = (gui.fonts.button.size*1.5) + tonumber(&text.fontSize)
       &surface.y = ptr.y - &surface.height

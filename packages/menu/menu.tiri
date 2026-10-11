@@ -124,11 +124,17 @@ end
 gui.findMenuShortcut = findMenuShortcut
 
 gui.menu = function(Options:table!)
+   -- The menu adopts the theme of the window that it is opened from.  The global theme is the fallback for popups
+   -- that have no reference to a window.
+
+   theme_source = Options.relative?.scene ?? Options.parentMenu?.scene ?? Options.hostScene ?? Options.client?.scene
+   theme_name = gui.getThemeName(theme_source)
+
    theme:table
    if Options.theme then
-      theme = table.merge(gui.getTheme().menu, Options.theme)
+      theme = table.merge(gui.themes[theme_name].menu, Options.theme)
    else
-      theme = gui.getTheme().menu
+      theme = gui.themes[theme_name].menu
    end
 
    self = entity { -- Public interface
@@ -759,6 +765,7 @@ gui.menu = function(Options:table!)
       &surface.init()
 
       &scene = &surface.new('VectorScene', { flags=VPF_RESIZE, surface=&surface, hostScene=Options.hostScene })
+      gui.setTheme(&scene, theme_name)
       &viewport = &scene.new('VectorViewport', { })
 
       -- A popup takes surface focus, so its own viewport must receive keys rather than the invoking widget.

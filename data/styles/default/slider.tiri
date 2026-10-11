@@ -38,7 +38,11 @@ return {
             if Msg.type is JET_CROSSED_IN then
                gui.applyStyle(Slider.button, Slider.prvTheme.slider.foreHighlight)
             elseif Msg.type is JET_CROSSED_OUT then
-               gui.applyStyle(Slider.button, Slider.hasFocus ? Slider.prvTheme.slider.foreFocus : Slider.prvTheme.slider.fore)
+               if Slider.hasFocus then
+                  gui.applyStyle(Slider.button, table.merge(Slider.prvTheme.slider.fore, Slider.prvTheme.slider.foreFocus))
+               else
+                  gui.applyStyle(Slider.button, Slider.prvTheme.slider.fore)
+               end
             end
             Msg = Msg.next
          until not Msg
