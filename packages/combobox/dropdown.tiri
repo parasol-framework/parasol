@@ -233,7 +233,6 @@ gui.dropdown = function(Options)
    -- highlighted.
 
    self.activate = function():bool
-   print('active ', tostring(&hItem))
       item = &hItem
       if (not item) or (not selectable(item)) then return false end
       item.config?.feedback(self, item.config)
